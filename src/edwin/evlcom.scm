@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -233,7 +233,7 @@ The values are printed in the typein window."
 		 (call-with-transcript-buffer
 		  (lambda (buffer)
 		    (insert-string
-		     (fluid-let ((*unparse-with-maximum-readability?* #t))
+		     (parameterize ((param:print-with-maximum-readability? #t))
 		       (write-to-string expression))
 		     (buffer-end buffer)))))
 	     (editor-eval buffer
@@ -282,7 +282,7 @@ Has no effect if evaluate-in-inferior-repl is false."
 	 (if (default-object? environment)
 	     (evaluation-environment)
 	     (begin
-	       (guarantee-environment environment 'PROMPT-FOR-EXPRESSION-VALUE)
+	       (guarantee environment? environment 'PROMPT-FOR-EXPRESSION-VALUE)
 	       environment))))
     (eval-with-history (apply prompt-for-expression
 			      prompt
@@ -300,7 +300,7 @@ Has no effect if evaluate-in-inferior-repl is false."
 	 (if (default-object? environment)
 	     (evaluation-environment)
 	     (begin
-	       (guarantee-environment environment 'PROMPT-FOR-EXPRESSION)
+	       (guarantee environment? environment 'PROMPT-FOR-EXPRESSION)
 	       environment))))
     (read-from-string
      (apply prompt-for-string
@@ -314,13 +314,12 @@ Has no effect if evaluate-in-inferior-repl is false."
 	      ;; This sets up the correct environment in the typein buffer
 	      ;; so that completion of variables works right.
 	      (local-set-variable! scheme-environment environment buffer))
-	    options)
-     environment)))
+	    options))))
 
-(define (read-from-string string environment)
+(define (read-from-string string)
   (bind-condition-handler (list condition-type:error) evaluation-error-handler
     (lambda ()
-      (read (open-input-string string) environment))))
+      (read (open-input-string string)))))
 
 (define-major-mode prompt-for-expression scheme #f
   (mode-description (ref-mode-object minibuffer-local))
@@ -353,25 +352,21 @@ Has no effect if evaluate-in-inferior-repl is false."
 	evaluation-error-handler
       (lambda ()
 	(let loop
-	    ((expressions (read-expressions-from-region region environment))
+	    ((expressions (read-expressions-from-region region))
 	     (result unspecific))
 	  (if (null? expressions)
 	      result
 	      (loop (cdr expressions)
 		    (editor-eval buffer (car expressions) environment))))))))
 
-(define (read-expressions-from-region region #!optional environment)
-  (let ((environment
-	 (if (default-object? environment)
-	     (evaluation-environment region)
-	     environment)))
-    (call-with-input-region region
-      (lambda (port)
-	(let loop ()
-	  (let ((expression (read port environment)))
-	    (if (eof-object? expression)
-		'()
-		(cons expression (loop)))))))))
+(define (read-expressions-from-region region)
+  (call-with-input-region region
+    (lambda (port)
+      (let loop ()
+	(let ((expression (read port)))
+	  (if (eof-object? expression)
+	      '()
+	      (cons expression (loop))))))))
 
 (define (evaluation-environment #!optional buffer global-ok?)
   (let ((buffer (->buffer buffer)))
@@ -415,27 +410,28 @@ Set by Scheme evaluation code to update the mode line."
 (define (editor-eval buffer sexp environment)
   (let ((core
 	 (lambda ()
-	   (with-input-from-port dummy-i/o-port
-	     (lambda ()
-	       (let ((value))
-		 (let ((output-string
-			(with-output-to-string
-			  (lambda ()
-			    (set! value (eval-with-history sexp environment))
-			    unspecific))))
-		   (let ((evaluation-output-receiver
-			  (ref-variable evaluation-output-receiver buffer)))
-		     (if evaluation-output-receiver
-			 (evaluation-output-receiver value output-string)
-			 (with-output-to-transcript-buffer
-			  (lambda ()
-			    (write-string output-string)
-			    (transcript-write
-			     value
-			     (and (ref-variable enable-transcript-buffer
-						buffer)
-				  (transcript-buffer))))))))
-		 value))))))
+	   (parameterize ((current-input-port dummy-i/o-port))
+	     (let ((value))
+	       (let ((output-string
+		      (call-with-output-string
+			(lambda (port)
+			  (parameterize ((current-output-port port))
+			    (set! value
+				  (eval-with-history sexp environment))
+			    unspecific)))))
+		 (let ((evaluation-output-receiver
+			(ref-variable evaluation-output-receiver buffer)))
+		   (if evaluation-output-receiver
+		       (evaluation-output-receiver value output-string)
+		       (with-output-to-transcript-buffer
+			(lambda ()
+			  (write-string output-string)
+			  (transcript-write
+			   value
+			   (and (ref-variable enable-transcript-buffer
+					      buffer)
+				(transcript-buffer))))))))
+	       value)))))
     (if (ref-variable enable-run-light? buffer)
 	(let ((run-light (ref-variable-object run-light))
 	      (outside)
@@ -480,13 +476,15 @@ Set by Scheme evaluation code to update the mode line."
 	       (let ((output-port
 		      (mark->output-port (buffer-end buffer) buffer)))
 		 (fresh-line output-port)
-		 (with-output-to-port output-port thunk))))))
+		 (parameterize ((current-output-port output-port))
+		   (thunk)))))))
       (let ((value))
 	(let ((output
-	       (with-output-to-string
-		 (lambda ()
-		   (set! value (thunk))
-		   unspecific))))
+	       (call-with-output-string
+		 (lambda (port)
+		   (parameterize ((current-output-port port))
+		     (set! value (thunk))
+		     unspecific)))))
 	  (if (and (not (string-null? output))
 		   (not (ref-variable evaluation-output-receiver)))
 	      (string->temporary-buffer output "*Unsolicited-Output*" '())))
@@ -519,17 +517,17 @@ Set by Scheme evaluation code to update the mode line."
 		(not (number? value)))
 	   (string-append
 	    " "
-	    (write-to-string (object-hash value)))
+	    (write-to-string (hash-object value)))
 	   "")
        ": ")))
 
 (define (transcript-value-string value)
   (if (undefined-value? value)
       ""
-      (fluid-let ((*unparser-list-depth-limit*
-		   (ref-variable transcript-list-depth-limit))
-		  (*unparser-list-breadth-limit*
-		   (ref-variable transcript-list-breadth-limit)))
+      (parameterize ((param:printer-list-depth-limit
+		      (ref-variable transcript-list-depth-limit))
+		     (param:printer-list-breadth-limit
+		      (ref-variable transcript-list-breadth-limit)))
 	(write-to-string value))))
 
 (define (call-with-transcript-buffer procedure)

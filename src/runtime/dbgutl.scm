@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -55,7 +55,7 @@ USA.
   (cond ((string? name)
 	 (write-string name port))
 	((interned-symbol? name)
-	 (write-string (symbol-name name) port))
+	 (write-string (symbol->string name) port))
 	(else
 	 (write name port))))
 
@@ -63,14 +63,13 @@ USA.
   (cond ((string? name)
 	 (write-string (string-upcase name)))
 	((interned-symbol? name)
-	 (write-string (string-upcase (symbol-name name)) port))
+	 (write-string (string-upcase (symbol->string name)) port))
 	(else
 	 (write name port))))
 
 (define (debug/read-eval-print-1 environment port)
   (let ((value
-	 (debug/eval (prompt-for-expression "Evaluate expression"
-					    port environment)
+	 (debug/eval (prompt-for-expression "Evaluate expression" port)
 		     environment)))
     (if (undefined-value? value)
 	(debugger-message port "No value")
@@ -88,10 +87,15 @@ USA.
 		    (write-string ">")
 		    (exit unspecific))
 		thunk))))))
-    (let ((x (with-output-to-truncated-string length thunk)))
+    (let ((x
+	   (call-with-truncated-output-string length
+	     (lambda (port)
+	       (parameterize ((current-output-port port))
+		 (thunk))))))
       (if (and (car x) (> length 4))
-	  (substring-move! " ..." 0 4 (cdr x) (- length 4)))
-      (cdr x))))
+	  (string-append (string-slice (cdr x) 0 (- length 4))
+			 " ...")
+	  (cdr x)))))
 
 (define (show-frames environment depth port)
   (debugger-presentation port

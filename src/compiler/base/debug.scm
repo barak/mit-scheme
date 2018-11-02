@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -78,9 +78,8 @@ USA.
 (define (write-rtl-instructions rtl port)
   (write-instructions
    (lambda ()
-     (with-output-to-port port
-       (lambda ()
-	 (for-each show-rtl-instruction rtl))))))
+     (parameterize ((current-output-port port))
+       (for-each show-rtl-instruction rtl)))))
 
 (define (dump-rtl filename)
   (write-instructions
@@ -104,17 +103,17 @@ USA.
   (newline))
 
 (define (write-instructions thunk)
-  (fluid-let ((*show-instruction* write)
-	      (*unparser-radix* 16)
-	      (*unparse-uninterned-symbols-by-name?* #t))
-    (thunk)))
+  (fluid-let ((*show-instruction* write))
+    (parameterize ((param:printer-radix 16)
+		   (param:print-uninterned-symbols-by-name? #t))
+      (thunk))))
 
 (define (pp-instructions thunk)
-  (fluid-let ((*show-instruction* pretty-print)
-	      (*pp-primitives-by-name* #f)
-	      (*unparser-radix* 16)
-	      (*unparse-uninterned-symbols-by-name?* #t))
-    (thunk)))
+  (fluid-let ((*show-instruction* pretty-print))
+    (parameterize ((param:pp-primitives-by-name? #f)
+		   (param:printer-radix 16)
+		   (param:print-uninterned-symbols-by-name? #t))
+      (thunk))))
 
 (define *show-instruction*)
 

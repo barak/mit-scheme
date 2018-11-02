@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,11 +35,11 @@ USA.
 (define (os/restore-modes-to-updated-file! pathname modes)
   (set-file-modes! pathname (fix:or modes nt-file-mode/archive)))
 
-(define (os/scheme-can-quit?)
+(define (os/scheme-can-suspend?)
   #t)
 
 (define (os/quit dir)
-  (with-real-working-directory-pathname dir %quit))
+  (with-real-working-directory-pathname dir suspend))
 
 (define (with-real-working-directory-pathname dir thunk)
   (let ((inside (->namestring (directory-pathname-as-file dir)))
@@ -51,13 +51,15 @@ USA.
 	     (->namestring
 	      (directory-pathname-as-file (working-directory-pathname))))
        (set-working-directory-pathname! inside)
-       ((ucode-primitive set-working-directory-pathname! 1) inside))
+       ((ucode-primitive set-working-directory-pathname! 1)
+	(string-for-primitive inside)))
      thunk
      (lambda ()
        (set! inside
 	     (->namestring
 	      (directory-pathname-as-file (working-directory-pathname))))
-       ((ucode-primitive set-working-directory-pathname! 1) outside)
+       ((ucode-primitive set-working-directory-pathname! 1)
+	(string-for-primitive outside))
        (set-working-directory-pathname! outside)
        (start-thread-timer)))))
 
@@ -66,12 +68,13 @@ USA.
        (let ((entries (directory-read file #f #t)))
 	 (if all-files?
 	     entries
-	     (list-transform-positive entries
-	       (let ((mask
-		      (fix:or nt-file-mode/hidden nt-file-mode/system)))
-		 (lambda (entry)
-		   (fix:= (fix:and (file-attributes/modes (cdr entry)) mask)
-			  0))))))))
+	     (filter (let ((mask
+			    (fix:or nt-file-mode/hidden nt-file-mode/system)))
+		       (lambda (entry)
+			 (fix:= (fix:and (file-attributes/modes (cdr entry))
+					 mask)
+				0)))
+		     entries)))))
 
 ;;;; Win32 Clipboard Interface
 

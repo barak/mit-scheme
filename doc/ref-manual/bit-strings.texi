@@ -57,12 +57,12 @@ bit strings rather than a means of entering them as data.
 All of the bit-string procedures are MIT/GNU Scheme extensions.
 
 @menu
-* Construction of Bit Strings::  
-* Selecting Bit String Components::  
-* Cutting and Pasting Bit Strings::  
-* Bitwise Operations on Bit Strings::  
-* Modification of Bit Strings::  
-* Integer Conversions of Bit Strings::  
+* Construction of Bit Strings::
+* Selecting Bit String Components::
+* Cutting and Pasting Bit Strings::
+* Bitwise Operations on Bit Strings::
+* Modification of Bit Strings::
+* Integer Conversions of Bit Strings::
 @end menu
 
 @node Construction of Bit Strings, Selecting Bit String Components, Bit Strings, Bit Strings

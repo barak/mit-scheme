@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,31 +28,65 @@ USA.
 ;;; package: (runtime load)
 
 (declare (usual-integrations))
+
+(define *purification-root-marker*
+  '|#[PURIFICATION-ROOT]|)
 
-(define (initialize-package!)
-  (set! *purification-root-marker* (intern "#[PURIFICATION-ROOT]"))
-  (set! condition-type:not-loading
-	(make-condition-type 'NOT-LOADING condition-type:error '()
-	  "No file being loaded."))
-  (initialize-command-line-parsers)
-  (set! hook/process-command-line default/process-command-line)
-  (add-event-receiver! event:after-restart process-command-line))
+(define-deferred condition-type:not-loading
+  (make-condition-type 'not-loading condition-type:error '()
+    "No file being loaded."))
 
+(define-deferred param:after-load-hooks
+  (make-settable-parameter '()))
+
+(define-deferred current-load-environment
+  (make-general-parameter #!default
+			  (lambda (object)
+			    (if (default-object? object)
+				object
+				(guarantee environment? object)))
+			  default-parameter-merger
+			  (lambda (value)
+			    (if (default-object? value)
+				(nearest-repl/environment)
+				value))
+			  #f))
+
+(define-deferred param:eval-unit
+  (make-unsettable-parameter #f
+    (lambda (value)
+      (and value
+	   (->absolute-uri value)))))
+
+(define-deferred current-load-pathname
+  (make-forwarding-parameter param:eval-unit
+    (lambda (pathname)
+      (pathname->uri (merge-pathnames pathname)))
+    (lambda (eval-unit)
+      (let ((pathname (and eval-unit (uri->pathname eval-unit #f))))
+	(if (not pathname)
+	    (error condition-type:not-loading))
+	pathname))))
+
+(define-deferred param:loading?
+  (make-unsettable-parameter #f))
+
+(define-deferred param:suppress-loading-message?
+  (make-settable-parameter #f))
+
+(define-deferred param:write-notifications?
+  (make-unsettable-parameter #t))
+
+;; Backwards compatibility:
 (define load/loading? #f)
-(define load/after-load-hooks)
-(define load/suppress-loading-message? #f)
-(define *eval-unit* #f)
-(define *current-load-environment* 'NONE)
-(define *write-notifications?* #t)
-
-(define *purification-root-marker*)
-(define condition-type:not-loading)
-
-;; Obsolete and ignored:
-(define load-noisily? #f)
+(define load/suppress-loading-message? #!default)
+(define (suppress-loading-message?)
+  (if (default-object? load/suppress-loading-message?)
+      (param:suppress-loading-message?)
+      load/suppress-loading-message?))
 
 (define (load pathname #!optional environment syntax-table purify?)
-  syntax-table				;ignored
+  (declare (ignore syntax-table))
   (let ((environment
 	 (if (default-object? environment)
 	     (current-load-environment)
@@ -72,14 +106,14 @@ USA.
 (define (load-1 pathname environment purify?)
   (receive (pathname* loader notifier) (choose-load-method pathname)
     (if pathname*
-	(maybe-notify load/suppress-loading-message?
+	(maybe-notify (suppress-loading-message?)
 		      (loader environment purify?)
 		      notifier)
 	(load-failure load-1 pathname environment purify?))))
 
 (define (file-loadable? pathname)
   (receive (pathname* loader notifier) (choose-load-method pathname)
-    loader notifier
+    (declare (ignore loader notifier))
     (if pathname* #t #f)))
 
 (define (choose-load-method pathname)
@@ -87,7 +121,7 @@ USA.
     (receive (pathname* loader notifier) (choose-fasload-method pathname)
       (if pathname*
 	  (values pathname*
-		  (wrap-loader pathname (fasloader->loader loader))
+		  (wrap-loader pathname (fasloader->loader pathname loader))
 		  notifier)
 	  (let ((pathname*
 		 (if (file-regular? pathname)
@@ -101,31 +135,34 @@ USA.
 			(loading-notifier pathname*))
 		(values #f #f #f)))))))
 
-(define (fasloader->loader loader)
+(define (fasloader->loader pathname loader)
   (lambda (environment purify?)
     (let ((scode (loader)))
       (if purify? (purify (load/purification-root scode)))
-      (extended-scode-eval scode environment))))
+      (if (r7rs-scode-file? scode)
+	  (eval-r7rs-scode-file scode pathname (current-library-db))
+	  (extended-scode-eval scode environment)))))
 
 (define (source-loader pathname)
   (lambda (environment purify?)
-    purify?
-    (call-with-input-file pathname
-      (lambda (port)
-	(let loop ((value unspecific))
-	  (let ((sexp (read port environment)))
-	    (if (eof-object? sexp)
-		value
-		(loop (repl-eval sexp environment)))))))))
+    (declare (ignore purify?))
+    (let ((source (read-r7rs-source pathname)))
+      (if source
+	  (eval-r7rs-source source (current-library-db))
+	  (call-with-input-file pathname
+	    (lambda (port)
+	      (let loop ((value unspecific))
+		(let ((sexp (read port)))
+		  (if (eof-object? sexp)
+		      value
+		      (loop (repl-eval sexp environment)))))))))))
 
 (define (wrap-loader pathname loader)
   (lambda (environment purify?)
     (lambda ()
-      (with-load-environment environment
-	(lambda ()
-	  (with-eval-unit (pathname->uri pathname)
-	    (lambda ()
-	      (loader environment purify?))))))))
+      (parameterize ((current-load-pathname pathname)
+		     (current-load-environment environment))
+	(loader environment purify?)))))
 
 (define (fasload pathname #!optional suppress-notifications?)
   (receive (pathname* loader notifier) (choose-fasload-method pathname)
@@ -135,7 +172,7 @@ USA.
 
 (define (file-fasloadable? pathname)
   (receive (pathname* loader notifier) (choose-fasload-method pathname)
-    loader notifier
+    (declare (ignore loader notifier))
     (if pathname* #t #f)))
 
 (define (choose-fasload-method pathname)
@@ -164,7 +201,7 @@ USA.
 	 (values pathname
 		 (lambda ()
 		   ((ucode-primitive binary-fasload)
-		    (->namestring pathname)))
+		    (string-for-primitive (->namestring pathname))))
 		 (let ((notifier (loading-notifier pathname)))
 		   (lambda (thunk)
 		     (if (file-modification-time<?
@@ -190,12 +227,12 @@ USA.
   (and (file-regular? pathname)
        (call-with-binary-input-file pathname
 	 (lambda (port)
-	   (let ((n (vector-ref (gc-space-status) 0)))
-	     (let ((marker (make-string n)))
-	       (and (eqv? (read-string! marker port) n)
+	   (let ((n (bytes-per-object)))
+	     (let ((marker (make-bytevector n)))
+	       (and (eqv? (read-bytevector! marker port) n)
 		    (let loop ((i 0))
 		      (if (fix:< i n)
-			  (and (fix:= (vector-8b-ref marker i) #xFA)
+			  (and (fix:= (bytevector-u8-ref marker i) #xFA)
 			       (loop (fix:+ i 1)))
 			  #t)))))))))
 
@@ -206,8 +243,8 @@ USA.
        (file-regular? pathname)))
 
 (define (load/purification-root object)
-  (or (and (comment? object)
-	   (let ((text (comment-text object)))
+  (or (and (scode-comment? object)
+	   (let ((text (scode-comment-text object)))
 	     (and (dbg-info-vector? text)
 		  (dbg-info-vector/purification-root text))))
       (and (object-type? (ucode-type compiled-entry) object)
@@ -224,11 +261,11 @@ USA.
 (define (maybe-notify suppress-notifications? loader notifier)
   (let ((notify?
 	 (if (if (default-object? suppress-notifications?)
-		 load/suppress-loading-message?
+		 (suppress-loading-message?)
 		 suppress-notifications?)
 	     #f
-	     *write-notifications?*)))
-    (fluid-let ((*write-notifications?* notify?))
+	     (param:write-notifications?))))
+    (parameterize ((param:write-notifications? notify?))
       (if notify?
 	  (notifier loader)
 	  (loader)))))
@@ -248,56 +285,23 @@ USA.
        (write (enough-namestring pathname) port)))
     (thunk)))
 
-(define (with-eval-unit uri thunk)
-  (fluid-let ((*eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)))
-    (thunk)))
-
-(define (current-eval-unit #!optional error?)
-  (let ((unit *eval-unit*))
-    (if (and (not unit)
-	     (if (default-object? error?) #t error?))
-	(error condition-type:not-loading))
-    unit))
-
-(define (current-load-pathname)
-  (or (uri->pathname (current-eval-unit) #f)
-      (error condition-type:not-loading)))
-
-(define (current-load-environment)
-  (let ((env *current-load-environment*))
-    (if (eq? env 'NONE)
-	(nearest-repl/environment)
-	env)))
-
-(define (set-load-environment! environment)
-  (guarantee-environment environment 'SET-LOAD-ENVIRONMENT!)
-  (if (not (eq? *current-load-environment* 'NONE))
-      (begin
-	(set! *current-load-environment* environment)
-	unspecific)))
-
-(define (with-load-environment environment thunk)
-  (guarantee-environment environment 'WITH-LOAD-ENVIRONMENT)
-  (fluid-let ((*current-load-environment* environment))
-    (thunk)))
-
 (define (load/push-hook! hook)
-  (if (not load/loading?) (error condition-type:not-loading))
-  (set! load/after-load-hooks (cons hook load/after-load-hooks))
-  unspecific)
+  (if (not (param:loading?)) (error condition-type:not-loading))
+  (param:after-load-hooks (cons hook (param:after-load-hooks))))
 
 (define (handle-load-hooks thunk)
   (receive (result hooks)
-      (fluid-let ((load/loading? #t)
-		  (load/after-load-hooks '()))
-	(let ((result (thunk)))
-	  (values result (reverse load/after-load-hooks))))
+      (fluid-let ((load/loading? #t))	;backwards compatibility
+	(parameterize ((param:loading? #t)
+		       (param:after-load-hooks '()))
+	  (let ((result (thunk)))
+	    (values result (reverse (param:after-load-hooks))))))
     (for-each (lambda (hook) (hook)) hooks)
     result))
 
 (define (load-failure procedure pathname . arguments)
   (apply procedure
-	 (error:file-operation pathname
+	 (error:file-operation 0
 			       "find" "file" "file does not exist"
 			       procedure
 			       (cons pathname arguments))
@@ -397,7 +401,8 @@ USA.
 		      (lambda (uri)
 			(reverse! (let ((rp (reverse (uri-path uri))))
 				    (if (and (pair? rp)
-					     (string-null? (car rp)))
+					     (fix:= 0
+						    (string-length (car rp))))
 					(cdr rp)
 					rp))))))
 		 (and (eq? (uri-scheme uri) (uri-scheme lib))
@@ -409,16 +414,19 @@ USA.
 			    (and (pair? pu)
 				 (string=? (car pu) (car pl))
 				 (loop (cdr pu) (cdr pl)))
-			    (make-pathname #f #f (cons 'RELATIVE pu)
+			    (make-pathname #f #f (cons 'relative pu)
 					   #f #f #f)))))))
 	  (if path
 	      (with-directory-rewriting-rule directory path thunk)
 	      (thunk)))))))
 
+(define (standard-library-directory-pathname)
+  (last library-directory-path))
+
 (define (pathname->standard-uri pathname)
   (let ((uri
 	 (pathname->uri
-	  (enough-pathname pathname (system-library-directory-pathname)))))
+	  (enough-pathname pathname (standard-library-directory-pathname)))))
     (if (uri-absolute? uri)
 	uri
 	(system-library-uri uri))))
@@ -427,281 +435,21 @@ USA.
   (or (uri->pathname uri #f)
       (merge-pathnames
        (uri->pathname (make-uri #f #f (list-tail (uri-path uri) 4) #f #f))
-       (system-library-directory-pathname))))
+       (standard-library-directory-pathname))))
 
 (define (system-uri #!optional rel-uri)
   (if (string? system-base-uri)
       (begin
 	(set! system-base-uri (string->uri system-base-uri))
 	unspecific))
-  (maybe-merge rel-uri system-base-uri 'SYSTEM-URI))
+  (maybe-merge rel-uri system-base-uri 'system-uri))
 
 (define system-base-uri "http://www.gnu.org/software/mit-scheme/")
 
 (define (system-library-uri #!optional rel-uri)
-  (maybe-merge rel-uri (system-uri "lib/") 'SYSTEM-LIBRARY-URI))
+  (maybe-merge rel-uri (system-uri "lib/") 'system-library-uri))
 
 (define (maybe-merge rel-uri base-uri caller)
   (if (default-object? rel-uri)
       base-uri
       (merge-uris (->relative-uri rel-uri caller) base-uri)))
-
-;;;; Command Line Parser
-
-(define (process-command-line)
-  (set! generate-suspend-file? #f)
-  (hook/process-command-line ((ucode-primitive get-unused-command-line 0))))
-
-(define *unused-command-line*)
-(define *command-line-parsers*)
-(define *load-init-file?*)
-
-(define (command-line)
-  *command-line*)
-
-(define *command-line* '())
-
-(define hook/process-command-line)
-(define (default/process-command-line unused-command-line)
-  (let ((after-parsing-actions '()))
-
-    (define (process-keyword command-line unused)
-      (if (pair? command-line)
-	  (let ((keyword (car command-line)))
-	    (if (option-keyword? keyword)
-		(let ((parser (find-keyword-parser keyword)))
-		  (if parser
-		      (receive (next tail-action) (parser command-line)
-			(if tail-action
-			    (set! after-parsing-actions
-				  (cons tail-action after-parsing-actions)))
-			(process-keyword next unused))
-		      (find-next-keyword command-line unused)))
-		(begin
-		  (warn "Invalid keyword:" keyword)
-		  (find-next-keyword command-line unused))))
-	  (done unused)))
-
-    (define (find-next-keyword command-line unused)
-      (let ((unused (cons (car command-line) unused))
-	    (command-line (cdr command-line)))
-	(if (pair? command-line)
-	    (if (option-keyword? (car command-line))
-		(process-keyword command-line unused)
-		(find-next-keyword command-line unused))
-	    (done unused))))
-
-    (define (done unused)
-      (let ((unused (reverse! unused)))
-	(if (pair? unused)
-	    (warn "Unhandled command line options:" unused))
-	unused))
-
-    (if unused-command-line
-	(begin
-	  (set! *unused-command-line*)
-	  (fluid-let ((*load-init-file?* #t))
-	    (set! *unused-command-line*
-		  (process-keyword (vector->list unused-command-line) '()))
-	    (for-each (lambda (act) (act))
-		      (reverse after-parsing-actions))
-	    (if *load-init-file?* (load-init-file))))
-	(begin
-	  (set! *unused-command-line* #f)
-	  (load-init-file)))))
-
-(define (find-keyword-parser keyword)
-  (let ((entry (assoc (strip-leading-hyphens keyword) *command-line-parsers*)))
-    (and entry
-	 (cddr entry))))
-
-(define (option-keyword? argument)
-  (and (fix:> (string-length argument) 1)
-       (char=? #\- (string-ref argument 0))))
-
-(define (load-init-file)
-  (let ((pathname (init-file-pathname)))
-    (if pathname
-	(load pathname user-initial-environment)))
-  unspecific)
-
-(define (set-command-line-parser! keyword proc #!optional description)
-  (guarantee-string keyword 'SET-COMMAND-LINE-PARSER!)
-  (let ((keyword (strip-leading-hyphens keyword))
-	(desc (if (default-object? description)
-		  ""
-		  (begin
-		    (guarantee-string description 'SET-COMMAND-LINE-PARSER!)
-		    description))))
-
-    (let ((place (assoc keyword *command-line-parsers*)))
-      (if place
-	  (begin
-	    (set-car! (cdr place) desc)
-	    (set-cdr! (cdr place) proc))
-	  (begin
-	    (set! *command-line-parsers*
-		  (cons (cons* keyword desc proc)
-			*command-line-parsers*))
-	    unspecific)))))
-
-(define (strip-leading-hyphens keyword)
-  (let ((end (string-length keyword)))
-    (let loop ((start 0))
-      (cond ((and (fix:< start end)
-		  (char=? #\- (string-ref keyword start)))
-	     (loop (fix:+ start 1)))
-	    ((fix:= start 0)
-	     keyword)
-	    (else
-	     (substring keyword start end))))))
-
-(define (command-line-option-description keyword-line description-lines caller)
-  (if (pair? description-lines)
-      (if (and (null? (cdr description-lines))
-	       (not (car description-lines)))
-	  ""
-	  (begin
-	    (for-each (lambda (description-line)
-			(guarantee-string description-line caller))
-		      description-lines)
-	    (decorated-string-append "" "\n  " ""
-				     (cons keyword-line description-lines))))
-      (string-append keyword-line "\n  (No description.)")))
-
-(define (simple-command-line-parser keyword thunk . description-lines)
-  (guarantee-string keyword 'SIMPLE-COMMAND-LINE-PARSER)
-  (set-command-line-parser! keyword
-    (lambda (command-line)
-      (values (cdr command-line) thunk))
-    (command-line-option-description
-     (string-append "--" keyword)
-     description-lines
-     'SIMPLE-COMMAND-LINE-PARSER)))
-
-;; Upwards compatibility.
-(define simple-option-parser simple-command-line-parser)
-
-(define (argument-command-line-parser keyword multiple? procedure
-				      . description-lines)
-  (set-command-line-parser! keyword
-    (if multiple?
-	(lambda (command-line)
-	  (for-each-non-keyword (cdr command-line) procedure))
-	(lambda (command-line)
-	  (if (pair? (cdr command-line))
-	      (values (cddr command-line)
-		      (lambda () (procedure (cadr command-line))))
-	      (values '()
-		      (lambda ()
-			(warn "Missing argument to command-line option:"
-			      (string-append "--" keyword)))))))
-    (command-line-option-description
-     (string-append "--" keyword " ARG" (if multiple? " ..." ""))
-     description-lines
-     'ARGUMENT-COMMAND-LINE-PARSER)))
-
-(define (for-each-non-keyword command-line processor)
-  (let ((end
-	 (lambda (command-line accum)
-	   (if (pair? accum)
-	       (let ((objects (reverse! accum)))
-		 (values command-line
-			 (lambda () (for-each processor objects))))
-	       (values command-line #f)))))
-    (let loop ((command-line command-line) (accum '()))
-      (if (pair? command-line)
-	  (let ((next (car command-line)))
-	    (if (option-keyword? next)
-		(end command-line accum)
-		(loop (cdr command-line) (cons next accum))))
-	  (end '() accum)))))
-
-(define (collect-args command-line)
-
-  (define-integrable (end unused args)
-    (set! *command-line* (append! *command-line* (reverse! args)))
-    (values unused #f))
-
-  (let loop ((unused (cdr command-line)) (args '()))
-    (if (pair? unused)
-	(let ((next (car unused)))
-	  (if (option-keyword? next)
-	      (end unused args)
-	      (loop (cdr unused) (cons next args))))
-	(end unused args))))
-
-(define (collect-remaining-args command-line)
-  (set! *command-line* (append! *command-line* (cdr command-line)))
-  (values '() #f))
-
-(define (show-command-line-options)
-  (write-string "
-
-ADDITIONAL OPTIONS supported by this band:\n")
-  (do ((parsers (sort *command-line-parsers*
-		      (lambda (a b) (string<? (car a) (car b))))
-		(cdr parsers)))
-      ((null? parsers))
-    (let ((description (cadar parsers)))
-      (if (not (string-null? description))
-	  (begin
-	    (newline)
-	    (write-string description)
-	    (newline)))))
-  (%exit 0))
-
-(define (initialize-command-line-parsers)
-  (set! *command-line-parsers* '())
-  (simple-command-line-parser "no-init-file"
-    (lambda ()
-      (set! *load-init-file?* #f)
-      unspecific)
-    "Inhibits automatic loading of the ~/.scheme.init file.")
-  (set! generate-suspend-file? #f)
-  (simple-command-line-parser "suspend-file"
-    (lambda ()
-      (set! generate-suspend-file? #t)
-      unspecific)
-    "If specified, Scheme saves a band to ~/scheme_suspend on reception"
-    "of some signals.  This is unavailable on some operating systems."
-    "Under Unix, this is triggered by SIGUSR1 and SIGPWR, and also, if"
-    "Scheme is not running under Emacs, SIGHUP.")
-  (simple-command-line-parser "no-suspend-file"
-    (lambda ()
-      (set! generate-suspend-file? #f)
-      unspecific)
-    "Inhibits automatic saving of bands to ~/scheme_suspend.")
-  (argument-command-line-parser "load" #t
-    (lambda (arg)
-      (run-in-nearest-repl
-       (lambda (repl)
-	 (fluid-let ((load/suppress-loading-message? (cmdl/batch-mode? repl)))
-	   (load arg (repl/environment repl))))))
-    "Loads the argument files as if in the REPL."
-    "In batch mode, loading messages are suppressed.")
-  (argument-command-line-parser "eval" #t
-    (lambda (arg)
-      (run-in-nearest-repl
-       (lambda (repl)
-	 (let ((environment (repl/environment repl)))
-	   (repl-eval/write (read (open-input-string arg)
-				  environment)
-			    environment
-			    repl)))))
-    "Evaluates the argument expressions as if in the REPL.")
-  (simple-command-line-parser "help" show-command-line-options #f)
-  (simple-command-line-parser "version" (lambda () (%exit 0)) #f)
-  (set-command-line-parser!
-   "args" collect-args
-   (command-line-option-description
-    "--args ARG ..."
-    '("Appends ARGs (up to the next keyword) to the list (command-line).")
-    'initialize-command-line-parsers))
-  (set-command-line-parser!
-   "" collect-remaining-args
-   (command-line-option-description
-    "-- ARG ..."
-    '("Appends all ARGs (to the end of the command-line) to the list"
-      "(command-line).")
-    'initialize-command-line-parsers)))

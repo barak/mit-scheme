@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,29 +43,11 @@ USA.
      (lambda ()
        (%compile-regsexp regsexp)))))
 
-(define (%link-insn insn)
-  (%make-compiled-regsexp
-   (insn
-    (lambda (position groups fail)
-      fail
-      (cons (get-index position)
-	    (%convert-groups groups))))))
-
-(define-record-type <compiled-regsexp>
-    (%make-compiled-regsexp impl)
-    compiled-regsexp?
-  (impl %compiled-regsexp-impl))
-
-(define-guarantee compiled-regsexp "compiled regular s-expression")
-
-(define (%top-level-match crsexp start-position)
-  ((%compiled-regsexp-impl crsexp) start-position '() (lambda () #f)))
-
 (define (%compile-regsexp regsexp)
   (cond ((unicode-char? regsexp)
-	 (insn:char regsexp))
+	 (insn:char regsexp #f))
 	((string? regsexp)
-	 (insn:string regsexp))
+	 (insn:string regsexp #f))
 	((and (pair? regsexp)
 	      (symbol? (car regsexp))
 	      (find (lambda (rule)
@@ -77,41 +59,45 @@ USA.
 	(else
 	 (error "Ill-formed regular s-expression:" regsexp))))
 
-(define (%compile-char-set items)
-  (scalar-values->char-set
-   (append-map (lambda (item)
-		 (cond ((well-formed-scalar-value-range? item)
-			(list item))
-		       ((unicode-char? item)
-			(list (char->integer item)))
-		       ((char-set? item)
-			(char-set->scalar-values item))
-		       ((string? item)
-			(map char->integer (string->list item)))
-		       (else
-			(error "Ill-formed char-set item:" item))))
-	       items)))
+(define (%link-insn insn)
+  (make-compiled-regsexp
+   (insn
+    (lambda (position groups fail)
+      fail
+      (cons (get-index position)
+	    ((groups 'get-all)))))))
 
-(define (%compile-group-key key)
-  (if (not (or (fix:fixnum? key)
-	       (unicode-char? key)
-	       (symbol? key)))
-      (error "Ill-formed regsexp group key:" key))
-  key)
+(define-record-type <compiled-regsexp>
+    (make-compiled-regsexp impl)
+    compiled-regsexp?
+  (impl compiled-regsexp-impl))
+
+(define (top-level-match crsexp start-position)
+  (let ((result
+	 ((compiled-regsexp-impl crsexp)
+	  start-position (make-groups) (lambda () #f))))
+    (and result
+	 (cons (get-index start-position)
+	       result))))
+
+(define (group-key? object)
+  (or (fix:fixnum? object)
+      (unicode-char? object)
+      (symbol? object)))
 
 (define condition-type:compile-regsexp)
 (define signal-compile-error)
 (define (initialize-conditions!)
   (set! condition-type:compile-regsexp
-	(make-condition-type 'COMPILE-REGSEXP condition-type:error
-	    '(PATTERN CAUSE)
+	(make-condition-type 'compile-regsexp condition-type:error
+	    '(pattern cause)
 	  (lambda (condition port)
-	    (write (access-condition condition 'PATTERN) port)
+	    (write (access-condition condition 'pattern) port)
 	    (write-string ": " port)
-	    (write-condition-report (access-condition condition 'CAUSE) port))))
+	    (write-condition-report (access-condition condition 'cause) port))))
   (set! signal-compile-error
 	(condition-signaller condition-type:compile-regsexp
-			     '(PATTERN CAUSE)
+			     '(pattern cause)
 			     standard-error-handler))
   unspecific)
 
@@ -122,7 +108,7 @@ USA.
    (lambda ()
      (if (not (and (pair? pattern)
 		   (symbol? (car pattern))))
-	 (error:bad-range-argument pattern 'DEFINE-RULE))
+	 (error:bad-range-argument pattern 'define-rule))
      (let ((p
 	    (find (lambda (p)
 		    (eq? (car p) (car pattern)))
@@ -137,97 +123,132 @@ USA.
 
 (define %compile-regsexp-rules '())
 
-(define-rule '(ANY-CHAR)
+(define-rule '(any-char)
   (lambda ()
-    (%compile-regsexp '(INVERSE-CHAR-SET "\n"))))
+    (insn:char-matching (negate (char=-predicate #\newline)))))
 
-(define-rule '(+ FORM)
-  (lambda (regsexp)
-    (%compile-regsexp `(** 1 #F ,regsexp))))
+(define-rule `(char-ci datum)
+  (lambda (char)
+    (guarantee unicode-char? char)
+    (insn:char char #t)))
 
-(define-rule '(+? FORM)
-  (lambda (regsexp)
-    (%compile-regsexp `(**? 1 #F ,regsexp))))
+(define-rule `(string-ci datum)
+  (lambda (string)
+    (guarantee string? string)
+    (insn:string string #t)))
 
-(define-rule '(CHAR-SET * DATUM)
+(define-rule '(char-matching expression)
+  (lambda (predicate)
+    (insn:char-matching
+     (cond ((unary-procedure? predicate)
+	    predicate)
+	   ((and (syntax-match? '('not expression) predicate)
+		 (unary-procedure? (cadr predicate)))
+	    (cadr predicate))
+	   (else
+	    (error:not-a unary-procedure? predicate))))))
+
+(define-rule '(char-in * datum)
   (lambda items
-    (insn:char-set (%compile-char-set items))))
+    (insn:char-set (char-set* items))))
 
-(define-rule '(INVERSE-CHAR-SET * DATUM)
+(define-rule '(char-not-in * datum)
   (lambda items
-    (insn:inverse-char-set (%compile-char-set items))))
+    (insn:inverse-char-set (char-set* items))))
 
-(define-rule '(LINE-START) (lambda () (insn:line-start)))
-(define-rule '(LINE-END) (lambda () (insn:line-end)))
-(define-rule '(STRING-START) (lambda () (insn:string-start)))
-(define-rule '(STRING-END) (lambda () (insn:string-end)))
+(define-rule '(legacy-char-syntax datum)
+  (lambda (code)
+    (insn:char-matching
+     (if (or (char=? code #\-) (char=? code #\space))
+	 char-whitespace?
+	 (syntax-code-predicate code)))))
+
+(define-rule '(inverse-legacy-char-syntax datum)
+  (lambda (code)
+    (insn:char-matching
+     (negate
+      (if (or (char=? code #\-) (char=? code #\space))
+	  char-whitespace?
+	  (syntax-code-predicate code))))))
+
+(define (negate predicate)
+  (lambda (object)
+    (not (predicate object))))
+
+(define-rule '(line-start) (lambda () (insn:line-start)))
+(define-rule '(line-end) (lambda () (insn:line-end)))
+(define-rule '(string-start) (lambda () (insn:string-start)))
+(define-rule '(string-end) (lambda () (insn:string-end)))
 
-(define-rule '(? FORM)
+(define-rule '(? form)			;greedy 0 or 1
   (lambda (regsexp)
     (insn:? (%compile-regsexp regsexp))))
 
-(define-rule '(* FORM)
+(define-rule '(* form)			;greedy 0 or more
   (lambda (regsexp)
     (insn:* (%compile-regsexp regsexp))))
 
-(define-rule '(?? FORM)
+(define-rule '(+ form)			;greedy 1 or more
+  (lambda (regsexp)
+    (%compile-regsexp `(** 1 #f ,regsexp))))
+
+(define-rule '(?? form)			;shy 0 or 1
   (lambda (regsexp)
     (insn:?? (%compile-regsexp regsexp))))
 
-(define-rule '(*? FORM)
+(define-rule '(*? form)			;shy 0 or more
   (lambda (regsexp)
     (insn:*? (%compile-regsexp regsexp))))
 
-(define-rule '(** DATUM FORM)
+(define-rule '(+? form)			;shy 1 or more
+  (lambda (regsexp)
+    (%compile-regsexp `(**? 1 #f ,regsexp))))
+
+(define-rule '(** datum form)		;greedy exactly N
   (lambda (n regsexp)
-    (check-repeat-1-arg n)
+    (guarantee exact-nonnegative-integer? n)
     (insn:** n n (%compile-regsexp regsexp))))
 
-(define-rule '(**? DATUM FORM)
+(define-rule '(**? datum form)		;shy exactly N
   (lambda (n regsexp)
-    (check-repeat-1-arg n)
+    (guarantee exact-nonnegative-integer? n)
     (insn:**? n n (%compile-regsexp regsexp))))
 
-(define (check-repeat-1-arg n)
-  (if (not (exact-nonnegative-integer? n))
-      (error "Repeat limit must be non-negative integer:" n)))
-
-(define-rule '(** DATUM DATUM FORM)
+(define-rule '(** datum datum form)	;greedy between N and M
   (lambda (n m regsexp)
     (check-repeat-2-args n m)
     (insn:** n m (%compile-regsexp regsexp))))
 
-(define-rule '(**? DATUM DATUM FORM)
+(define-rule '(**? datum datum form)	;shy begin N and M
   (lambda (n m regsexp)
     (check-repeat-2-args n m)
     (insn:**? n m (%compile-regsexp regsexp))))
 
 (define (check-repeat-2-args n m)
-  (if (not (exact-nonnegative-integer? n))
-      (error "Repeat limit must be non-negative integer:" n))
+  (guarantee exact-nonnegative-integer? n)
   (if m
       (begin
-	(if (not (exact-nonnegative-integer? m))
-	    (error "Repeat limit must be non-negative integer:" m))
+	(guarantee exact-nonnegative-integer? m)
 	(if (not (<= n m))
 	    (error "Repeat lower limit greater than upper limit:" n m)))))
 
-(define-rule '(ALT * FORM)
+(define-rule '(alt * form)
   (lambda regsexps
     (insn:alt (map %compile-regsexp regsexps))))
 
-(define-rule '(SEQ * FORM)
+(define-rule '(seq * form)
   (lambda regsexps
     (insn:seq (map %compile-regsexp regsexps))))
 
-(define-rule '(GROUP DATUM FORM)
+(define-rule `(group datum form)
   (lambda (key regsexp)
-    (insn:group (%compile-group-key key)
-		(%compile-regsexp regsexp))))
+    (guarantee group-key? key)
+    (insn:group key (%compile-regsexp regsexp))))
 
-(define-rule '(GROUP-REF DATUM)
+(define-rule `(group-ref datum)
   (lambda (key)
-    (insn:group-ref (%compile-group-key key))))
+    (guarantee group-key? key)
+    (insn:group-ref key)))
 
 ;;;; Instructions
 
@@ -274,82 +295,71 @@ USA.
 	  (succeed position groups fail)
 	  (fail)))))
 
-(define (insn:char char)
+(define (insn:char-matching predicate)
   (lambda (succeed)
     (lambda (position groups fail)
-      (if (eqv? (next-char position) char)
+      (if (let ((char (next-char position)))
+	    (and char
+		 (predicate char)))
 	  (succeed (next-position position) groups fail)
 	  (fail)))))
 
-(define (insn:chars chars)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (let loop ((chars chars) (position position))
-	(if (pair? chars)
-	    (if (eqv? (next-char position) (car chars))
-		(loop (cdr chars) (next-position position))
-		(fail))
-	    (succeed position groups fail))))))
+(define (insn:char char fold-case?)
+  (insn:char-matching
+   ((if fold-case? char-ci=-predicate char=-predicate) char)))
 
-(define (insn:string string)
+(define (insn:char-set char-set)
+  (insn:char-matching (char-set-predicate char-set)))
+
+(define (insn:inverse-char-set char-set)
+  (insn:char-matching (negate (char-set-predicate char-set))))
+
+(define (insn:string string fold-case?)
   (let ((end (string-length string)))
     (cond ((fix:= end 0)
 	   (insn:always-succeed))
 	  ((fix:= end 1)
-	   (insn:char (string-ref string 0)))
+	   (insn:char (string-ref string 0) fold-case?))
 	  (else
-	   (lambda (succeed)
-	     (lambda (position groups fail)
-	       (let loop ((i 0) (position position))
-		 (if (fix:< i end)
-		     (let ((char (string-ref string i)))
-		       (if (eqv? (next-char position) char)
+	   (let ((c= (if fold-case? char-ci=? char=?)))
+	     (lambda (succeed)
+	       (lambda (position groups fail)
+		 (let loop ((i 0) (position position))
+		   (if (fix:< i end)
+		       (if (let ((char (next-char position)))
+			     (and char
+				  (c= char (string-ref string i))))
 			   (loop (fix:+ i 1) (next-position position))
-			   (fail)))
-		     (succeed position groups fail)))))))))
+			   (fail))
+		       (succeed position groups fail))))))))))
 
-(define (insn:char-set char-set)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (if (let ((char (next-char position)))
-	    (and char
-		 (char-set-member? char-set char)))
-	  (succeed (next-position position) groups fail)
-	  (fail)))))
-
-(define (insn:inverse-char-set char-set)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (if (let ((char (next-char position)))
-	    (and char
-		 (not (char-set-member? char-set char))))
-	  (succeed (next-position position) groups fail)
-	  (fail)))))
-
 (define (insn:group key insn)
-  (insn:seq (list (%insn:start-group key)
-		  insn
-		  (%insn:end-group key))))
-
-(define (%insn:start-group key)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (succeed position
-	       (%start-group key position groups)
-	       fail))))
-
-(define (%insn:end-group key)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (succeed position
-	       (%end-group key position groups)
-	       fail))))
+  (let ((start
+	 (lambda (succeed)
+	   (lambda (position groups fail)
+	     (succeed position
+		      ((groups 'start) key position)
+		      fail))))
+	(end
+	 (lambda (succeed)
+	   (lambda (position groups fail)
+	     (succeed position
+		      ((groups 'end) key position)
+		      fail)))))
+    (lambda (succeed)
+      (start (insn (end succeed))))))
 
 (define (insn:group-ref key)
   (lambda (succeed)
     (lambda (position groups fail)
-      (((%find-group key groups) succeed) position groups fail))))
-
+      ((let ((value ((groups 'get-value) key)))
+	 (if value
+	     ((insn:string value #f) succeed)
+	     ;; This can happen with (* (GROUP ...)), but in other cases it
+	     ;; would be an error.
+	     succeed))
+       position groups fail))))
+
 (define (insn:seq insns)
   (lambda (succeed)
     (fold-right (lambda (insn next)
@@ -440,10 +450,10 @@ USA.
 		   succeed
 		   insn)))
 
-(define (%hybrid-chain limit linker)
+(define (%hybrid-chain limit pre-linker)
   (if (<= limit 8)
-      (%immediate-chain limit linker)
-      (%delayed-chain limit linker)))
+      (%immediate-chain limit pre-linker)
+      (%delayed-chain limit pre-linker)))
 
 (define (%immediate-chain limit pre-linker)
   (lambda (succeed)
@@ -465,205 +475,284 @@ USA.
 ;;;; Positions
 
 (define (get-index position)
-  ((%position-type-get-index (%get-position-type position)) position))
+  ((position 'get-index)))
 
 (define (next-char position)
-  ((%position-type-next-char (%get-position-type position)) position))
-
-(define (prev-char position)
-  ((%position-type-prev-char (%get-position-type position)) position))
+  ((position 'next-char)))
 
 (define (next-position position)
-  ((%position-type-next-position (%get-position-type position)) position))
+  ((position 'next-position)))
+
+(define (prev-char position)
+  ((position 'prev-char)))
+
+(define (prev-position position)
+  ((position 'prev-position)))
 
 (define (same-positions? p1 p2)
-  ((%position-type-same? (%get-position-type p1)) p1 p2))
+  (and (eq? ((p1 'get-marker)) ((p2 'get-marker)))
+       (fix:= ((p1 'get-index)) ((p2 'get-index)))))
 
-(define (%get-position-type position)
-  (or (find (lambda (type)
-	      ((%position-type-predicate type) position))
-	    %all-position-types)
-      (error:wrong-type-datum position "position")))
+(define (make-source-position source)
+  (let ((marker (list 'source-position)))
 
-(define-structure (%position-type (constructor %make-position-type))
-  (predicate #f read-only #t)
-  (get-index #f read-only #t)
-  (next-char #f read-only #t)
-  (prev-char #f read-only #t)
-  (next-position #f read-only #t)
-  (same? #f read-only #t))
+    (define (at-index index next-char prev-char prev-position)
 
-(define (define-position-type predicate . args)
-  (add-boot-init!
-   (lambda ()
-     (let ((type (apply %make-position-type predicate args)))
-       (let ((tail
-	      (find-tail (lambda (type)
-			   (eq? (%position-type-predicate type) predicate))
-			 %all-position-types)))
-	 (if tail
-	     (set-car! tail type)
-	     (begin
-	       (set! %all-position-types (cons type %all-position-types))
-	       unspecific)))))))
+      (define (next-position)
+	(at-index (fix:+ index 1) (source) next-char this))
 
-(define %all-position-types '())
+      (define (this operator)
+	(case operator
+	  ((get-marker) (lambda () marker))
+	  ((get-index) (lambda () index))
+	  ((next-char) (lambda () next-char))
+	  ((next-position) next-position)
+	  ((prev-char) (lambda () prev-char))
+	  ((prev-position) (lambda () prev-position))
+	  (else (error "Unknown operator:" operator))))
+
+      this)
+
+    (at-index 0 (source) #f #f)))
+
+(define (make-string-position string start end)
+  (let ((marker (list 'string-position)))
+
+    (define (at-index index)
+
+      (define (next-char)
+	(and (fix:< index end)
+	     (string-ref string index)))
+
+      (define (next-position)
+	(at-index (fix:+ index 1)))
+
+      (define (prev-char)
+	(and (fix:> index start)
+	     (string-ref string (fix:- index 1))))
+
+      (define (prev-position)
+	(at-index (fix:- index 1)))
+
+      (lambda (operator)
+	(case operator
+	  ((get-marker) (lambda () marker))
+	  ((get-index) (lambda () index))
+	  ((next-char) next-char)
+	  ((next-position) next-position)
+	  ((prev-char) prev-char)
+	  ((prev-position) prev-position)
+	  (else (error "Unknown operator:" operator)))))
+
+    (at-index start)))
 
 ;;;; Groups
 
-(define (%start-group key position groups)
-  (cons (list key position)
-	groups))
+(define (make-groups)
 
-(define (%end-group key position groups)
-  ;; Kind of slow, but it's functional.  Could speed up with side
-  ;; effects.
-  (let ((p (assq key groups)))
-    (if (not (and p (null? (cddr p))))
-	(error "%END-GROUP called with no %START-GROUP:" key))
-    (cons (list key (cadr p) position)
-	  (delq p groups))))
+  (define (state started-groups ended-groups)
 
-(define (%find-group key groups)
-  (let ((p (assq key groups)))
-    (if (not p)
-	;; This can happen with (* (GROUP ...)), but in other cases it
-	;; would be an error.
-	(insn:always-succeed)
-	(begin
-	  (if (null? (cddr p))
-	      (error "Reference to group appears before group's end:" key))
-	  (insn:chars (%group-chars (cadr p) (caddr p)))))))
+    (define (start key position)
+      (if (assv key started-groups)
+	  (error "Incorrectly nested group:" key))
+      (state (cons (cons key position) started-groups)
+	     ended-groups))
 
-(define (%group-chars start-position end-position)
-  (let ((same? (%position-type-same? (%get-position-type start-position))))
-    (let loop ((position start-position) (chars '()))
-      (if (same? position end-position)
-	  (reverse! chars)
-	  (let ((char (next-char position)))
-	    (if (not char)
-		(error "Failure of SAME? predicate"))
-	    (loop (next-position position)
-		  (cons char chars)))))))
+    (define (end key position)
+      (if (not (and (pair? started-groups)
+		    (eqv? (caar started-groups) key)))
+	  (error "Incorrectly nested group:" key))
+      (state (cdr started-groups)
+	     (cons (finish-group key
+				 (cdar started-groups)
+				 position)
+		   ended-groups)))
 
-(define (%convert-groups groups)
-  (map (lambda (g)
-	 (list (car g)
-	       (get-index (cadr g))
-	       (get-index (caddr g))))
-       (remove (lambda (g)
-		 (null? (cddr g)))
-	       groups)))
+    (define (finish-group key start-position end-position)
+      (cons key
+	    (let loop ((position end-position) (chars '()))
+	      (if (same-positions? position start-position)
+		  (list->string chars)
+		  (let ((char (prev-char position)))
+		    (loop (prev-position position)
+			  (cons char chars)))))))
+
+    (define (get-value key)
+      (if (assv key started-groups)
+	  (error "Can't refer to unfinished group:" key))
+      (let ((p (assv key ended-groups)))
+	(and p
+	     (cdr p))))
+
+    (lambda (operator)
+      (case operator
+	((start) start)
+	((end) end)
+	((get-value) get-value)
+	((get-all) (lambda () (reverse ended-groups)))
+	(else (error "Unknown operator:" operator)))))
+
+  (state '() '()))
 
-;;;; Match input port
-
-(define (regsexp-match-input-port crsexp port)
-  (let ((caller 'REGSEXP-MATCH-INPUT-PORT))
-    (guarantee-compiled-regsexp crsexp caller)
-    (guarantee-input-port port caller)
-    (%top-level-match crsexp
-		      (%char-source->position
-		       (lambda ()
-			 (let ((char (read-char port)))
-			   (if (eof-object? char)
-			       #f
-			       char)))))))
-
-(define (%char-source->position source)
-  (%make-source-position 0 (source) #f source))
-
-(define-structure (%source-position (constructor %make-source-position))
-  (index #f read-only #t)
-  (next-char #f read-only #t)
-  (prev-char #f read-only #t)
-  (source #f read-only #t))
-
-(define-position-type %source-position?
-  (lambda (position)
-    (%source-position-index position))
-  (lambda (position)
-    (%source-position-next-char position))
-  (lambda (position)
-    (%source-position-prev-char position))
-  (lambda (position)
-    (%make-source-position (fix:+ (%source-position-index position) 1)
-			   ((%source-position-source position))
-			   (%source-position-next-char position)
-			   (%source-position-source position)))
-  (lambda (p1 p2)
-    (and (eq? (%source-position-source p1)
-	      (%source-position-source p2))
-	 (fix:= (%source-position-index p1)
-		(%source-position-index p2)))))
-
-;;;; Match string
+;;;; Match and search
 
 (define (regsexp-match-string crsexp string #!optional start end)
-  (let ((caller 'REGSEXP-MATCH-STRING))
-    (guarantee-compiled-regsexp crsexp caller)
-    (guarantee-string string caller)
-    (let* ((end
-	    (let ((length (string-length string)))
-	      (if (default-object? end)
-		  length
-		  (begin
-		    (guarantee-substring-end-index end length caller)
-		    end))))
-	   (start
-	    (if (default-object? start)
-		0
-		(begin
-		  (guarantee-substring-start-index start end caller)
-		  start))))
-      (%top-level-match crsexp
-			(cons start (%make-substring string start end))))))
+  (let* ((caller 'regsexp-match-string)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (guarantee nfc-string? string caller)
+    (top-level-match crsexp (make-string-position string start end))))
 
-(define-structure (%substring (constructor %make-substring))
-  (string #f read-only #t)
-  (start #f read-only #t)
-  (end #f read-only #t))
+(define (regsexp-search-string-forward crsexp string #!optional start end)
+  (let* ((caller 'regsexp-search-string-forward)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (guarantee nfc-string? string caller)
+    (let loop ((position (make-string-position string start end)))
+      (or (top-level-match crsexp position)
+	  (and (next-char position)
+	       (loop (next-position position)))))))
 
-(define (%string-position? object)
-  (declare (no-type-checks))
-  (and (pair? object)
-       (%substring? (cdr object))))
+(define (regsexp-match-input-port crsexp port)
+  (top-level-match crsexp
+		   (make-source-position
+		    (lambda ()
+		      (let ((char (read-char port)))
+			(if (eof-object? char)
+			    #f
+			    char))))))
+
+;;;; Convert regexp pattern to regsexp
 
-(define-integrable (%string-position-index position)
-  (declare (no-type-checks))
-  (car position))
+(define (re-pattern->regsexp pattern)
+  (let ((end (string-length pattern)))
+    (let ((index 0)
+	  (this-alt '())
+	  (prev-alts '())
+	  (group-number 0)
+	  (pending-groups '()))
 
-(define-integrable (%string-position-string position)
-  (declare (no-type-checks))
-  (%substring-string (cdr position)))
+      (define (have-next?)
+	(fix:< index end))
 
-(define-integrable (%string-position-start position)
-  (declare (no-type-checks))
-  (%substring-start (cdr position)))
+      (define (get-next)
+	(let ((char (string-ref pattern index)))
+	  (set! index (fix:+ index 1))
+	  char))
 
-(define-integrable (%string-position-end position)
-  (declare (no-type-checks))
-  (%substring-end (cdr position)))
+      (define (next-is? char)
+	(and (char=? (string-ref pattern index) char)
+	     (begin
+	       (set! index (fix:+ index 1))
+	       #t)))
 
-(define-position-type %string-position?
-  (lambda (position)
-    (%string-position-index position))
-  (lambda (position)
-    (if (fix:< (%string-position-index position)
-	       (%string-position-end position))
-	(string-ref (%string-position-string position)
-		    (%string-position-index position))
-	#f))
-  (lambda (position)
-    (if (fix:> (%string-position-index position)
-	       (%string-position-start position))
-	(string-ref (%string-position-string position)
-		    (fix:- (%string-position-index position) 1))
-	#f))
-  (lambda (position)
-    (declare (no-type-checks))
-    (cons (fix:+ (car position) 1)
-	  (cdr position)))
-  (lambda (p1 p2)
-    (declare (no-type-checks))
-    (and (eq? (cdr p1) (cdr p2))
-	 (fix:= (car p1) (car p2)))))
+      (define (get-expr)
+	(let ((alt (get-alt)))
+	  (if (pair? prev-alts)
+	      `(alt ,@(reverse (cons alt prev-alts)))
+	      alt)))
+
+      (define (get-alt)
+        (let ((exprs (optimize-alt (reverse this-alt) #f)))
+          (if (= (length exprs) 1)
+              (car exprs)
+              `(seq ,@exprs))))
+
+      (define (optimize-alt exprs builder)
+        (if (pair? exprs)
+            (if (char? (car exprs))
+                (let ((builder (or builder (string-builder))))
+                  (builder (car exprs))
+                  (optimize-alt (cdr exprs) builder))
+                (if builder
+                    (cons (builder)
+                          (cons (car exprs)
+                                (optimize-alt (cdr exprs) #f)))
+                    (cons (car exprs)
+                          (optimize-alt (cdr exprs) #f))))
+            (if builder
+                (list (builder))
+                '())))
+
+      (define (dispatch)
+	(if (have-next?)
+	    (let ((char (get-next)))
+	      (case char
+		((#\\) (dispatch-backslash))
+		((#\$) (output-expr '(line-end)))
+		((#\^) (output-expr '(line-start)))
+		((#\.) (output-expr '(any-char)))
+		((#\[) (parse-char-set))
+		((#\*) (replace-last-expr (lambda (expr) `(* ,expr))))
+		((#\+) (replace-last-expr (lambda (expr) `(+ ,expr))))
+		((#\?) (replace-last-expr (lambda (expr) `(? ,expr))))
+		(else (output-expr char))))
+	    (get-expr)))
+
+      (define (dispatch-backslash)
+	(let ((char (get-next)))
+	  (case char
+	    ((#\<) (output-expr '(word-start)))
+	    ((#\>) (output-expr '(word-end)))
+	    ((#\b) (output-expr '(word-bound)))
+	    ((#\B) (output-expr '(not-word-bound)))
+	    ((#\`) (output-expr '(string-start)))
+	    ((#\') (output-expr '(string-end)))
+	    ((#\w) (output-expr '(char-in whitespace)))
+	    ((#\W) (output-expr '(char-not-in whitespace)))
+	    ((#\s) (output-expr `(legacy-char-syntax ,(get-next))))
+	    ((#\S) (output-expr `(inverse-legacy-char-syntax ,(get-next))))
+	    ((#\() (start-group))
+	    ((#\)) (end-group))
+	    ((#\|) (push-alt))
+	    (else (error "Unsupported regexp:" (string #\\ char))))))
+
+      (define (output-expr expr)
+	(set! this-alt (cons expr this-alt))
+        (dispatch))
+
+      (define (replace-last-expr transform)
+	(set-car! this-alt (transform (car this-alt)))
+        (dispatch))
+
+      (define (start-group)
+	(set! group-number (fix:+ group-number 1))
+	(set! pending-groups
+	      (cons (vector group-number this-alt prev-alts)
+		    pending-groups))
+	(set! this-alt '())
+	(set! prev-alts '())
+        (dispatch))
+
+      (define (end-group)
+	(let ((expr `(group ,(vector-ref (car pending-groups) 0) ,(get-expr))))
+	  (set! this-alt (vector-ref (car pending-groups) 1))
+	  (set! prev-alts (vector-ref (car pending-groups) 2))
+	  (set! pending-groups (cdr pending-groups))
+	  (output-expr expr)))
+
+      (define (push-alt)
+	(set! prev-alts (cons (get-alt) prev-alts))
+	(set! this-alt '())
+        (dispatch))
+
+      (define (parse-char-set)
+        (let loop
+            ((chars
+              (append (if (next-is? #\^)
+                          (list #\^)
+                          '())
+                      (if (next-is? #\])
+                          (list #\])
+                          '()))))
+          (let ((char (get-next)))
+            (if (char=? char #\])
+                (output-expr
+                 (receive (ranges invert?)
+                     (re-char-pattern->code-points
+                      (list->string (reverse chars)))
+                   (cons (if invert? 'char-not-in 'char-in)
+			 (normalize-ranges ranges))))
+                (loop (cons char chars))))))
+
+      (dispatch))))

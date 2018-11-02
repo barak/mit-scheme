@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,9 +34,9 @@ USA.
 (define-syntax copy
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER) (cdr form))
+     (if (syntax-match? '(identifier) (cdr form))
 	 (let ((identifier (close-syntax (cadr form) environment)))
-	   `(LOCAL-DECLARE ((INTEGRATE ,identifier)) ,identifier))
+	   `(local-declare ((integrate ,identifier)) ,identifier))
 	 (ill-formed-syntax form)))))
 
 ;;;; Primitives
@@ -93,11 +93,22 @@ USA.
 (define rec:pi/2 (flo:* 2. (flo:atan2 1. 1.)))
 (define rec:pi (flo:* 2. rec:pi/2))
 
+(define flo:radix 2)
+(define flo:ulp-of-one)
+(define flo:error-bound)
+(define flo:log-error-bound)
+(define flo:normal-exponent-max-base-2)
+(define flo:normal-exponent-min-base-2)
+(define flo:normal-exponent-max-base-e)
+(define flo:normal-exponent-min-base-e)
+(define flo:normal-exponent-max-base-10)
+(define flo:normal-exponent-min-base-10)
+(define flo:subnormal-exponent-min-base-2)
+(define flo:subnormal-exponent-min-base-e)
+(define flo:subnormal-exponent-min-base-10)
 (define flo:significand-digits-base-2)
 (define flo:significand-digits-base-10)
 (define int:flonum-integer-limit)
-(define fix:largest-value)
-(define fix:smallest-value)
 
 (define (initialize-microcode-dependencies!)
   (let ((p microcode-id/floating-mantissa-bits))
@@ -113,39 +124,51 @@ USA.
 		  (flo:/ (int:->flonum p)
 			 (flo:/ (flo:log 10.) (flo:log 2.))))))
     (set! int:flonum-integer-limit (int:expt 2 p)))
+  (set! flo:ulp-of-one microcode-id/floating-epsilon)
+  (set! flo:error-bound (flo:/ flo:ulp-of-one 2.))
+  (set! flo:log-error-bound (flo:log flo:error-bound))
+  (set! flo:normal-exponent-max-base-2 microcode-id/floating-exponent-max)
+  (set! flo:normal-exponent-min-base-2 microcode-id/floating-exponent-min)
+  (set! flo:subnormal-exponent-min-base-2
+	(int:- flo:normal-exponent-min-base-2
+	       (int:- flo:significand-digits-base-2 1)))
+  (set! flo:normal-exponent-max-base-e
+	(flo:log (flo:expt 2. (int:->flonum flo:normal-exponent-max-base-2))))
+  (set! flo:normal-exponent-min-base-e
+	(flo:log (flo:expt 2. (int:->flonum flo:normal-exponent-min-base-2))))
+  (set! flo:subnormal-exponent-min-base-e
+	(flo:+
+	 flo:normal-exponent-min-base-e
+	 (flo:log
+	  (flo:expt 2.
+		    (flo:- 0. (int:->flonum flo:significand-digits-base-2))))))
+  (set! flo:normal-exponent-max-base-10
+	(flo:/ flo:normal-exponent-max-base-e (flo:log 10.)))
+  (set! flo:normal-exponent-min-base-10
+	(flo:/ flo:normal-exponent-min-base-e (flo:log 10.)))
+  (set! flo:subnormal-exponent-min-base-10
+	(flo:/ flo:subnormal-exponent-min-base-e (flo:log 10.)))
   unspecific)
-
-(define (largest-fixnum)
-  fix:largest-value)
-
-(define (smallest-fixnum)
-  fix:smallest-value)
 
 (define (initialize-package!)
   (initialize-microcode-dependencies!)
   (add-event-receiver! event:after-restore initialize-microcode-dependencies!)
   (initialize-*maximum-fixnum-radix-powers*!)
-  (let ((fixed-objects-vector (get-fixed-objects-vector)))
-    (let ((set-trampoline!
-	   (lambda (slot operator)
-	     (vector-set! fixed-objects-vector
-			  (fixed-objects-vector-slot slot)
-			  operator))))
-      (set-trampoline! 'GENERIC-TRAMPOLINE-ZERO? complex:zero?)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-POSITIVE? complex:positive?)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-NEGATIVE? complex:negative?)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-ADD-1 complex:1+)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-SUBTRACT-1 complex:-1+)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-EQUAL? complex:=)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-LESS? complex:<)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-GREATER? complex:>)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-ADD complex:+)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-SUBTRACT complex:-)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-MULTIPLY complex:*)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-DIVIDE complex:/)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-QUOTIENT complex:quotient)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-REMAINDER complex:remainder)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-MODULO complex:modulo)))
+  (set-fixed-objects-item! 'generic-trampoline-zero? complex:zero?)
+  (set-fixed-objects-item! 'generic-trampoline-positive? complex:positive?)
+  (set-fixed-objects-item! 'generic-trampoline-negative? complex:negative?)
+  (set-fixed-objects-item! 'generic-trampoline-add-1 complex:1+)
+  (set-fixed-objects-item! 'generic-trampoline-subtract-1 complex:-1+)
+  (set-fixed-objects-item! 'generic-trampoline-equal? complex:=)
+  (set-fixed-objects-item! 'generic-trampoline-less? complex:<)
+  (set-fixed-objects-item! 'generic-trampoline-greater? complex:>)
+  (set-fixed-objects-item! 'generic-trampoline-add complex:+)
+  (set-fixed-objects-item! 'generic-trampoline-subtract complex:-)
+  (set-fixed-objects-item! 'generic-trampoline-multiply complex:*)
+  (set-fixed-objects-item! 'generic-trampoline-divide complex:/)
+  (set-fixed-objects-item! 'generic-trampoline-quotient complex:quotient)
+  (set-fixed-objects-item! 'generic-trampoline-remainder complex:remainder)
+  (set-fixed-objects-item! 'generic-trampoline-modulo complex:modulo)
 
   ;; The binary cases for the following operators rely on the fact that the
   ;; &<mumble> operators, either interpreted or open-coded by the
@@ -161,23 +184,21 @@ USA.
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
 		 (identity (close-syntax (list-ref form 3) environment)))
-	     `(SET! ,(close-syntax name environment)
-		    (MAKE-ENTITY
-		     (NAMED-LAMBDA (,name SELF . ZS)
-		       SELF		; ignored
-		       (REDUCE ,(close-syntax (list-ref form 2) environment)
+	     `(set! ,(close-syntax name environment)
+		    (make-arity-dispatched-procedure
+		     (named-lambda (,name self . zs)
+		       self		; ignored
+		       (reduce ,(close-syntax (list-ref form 2) environment)
 			       ,identity
-			       ZS))
-		     (VECTOR
-		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      (NAMED-LAMBDA (,(symbol-append 'NULLARY- name))
-			,identity)
-		      (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
-			(IF (NOT (COMPLEX:COMPLEX? Z))
-			    (ERROR:WRONG-TYPE-ARGUMENT Z "number" ',name))
-			Z)
-		      (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
-			((UCODE-PRIMITIVE ,(list-ref form 4)) Z1 Z2))))))))))
+			       zs))
+		     (named-lambda (,(symbol 'nullary- name))
+		       ,identity)
+		     (named-lambda (,(symbol 'unary- name) z)
+		       (if (not (complex:complex? z))
+			   (error:wrong-type-argument z "number" ',name))
+		       z)
+		     (named-lambda (,(symbol 'binary- name) z1 z2)
+		       ((ucode-primitive ,(list-ref form 4)) z1 z2)))))))))
     (commutative + complex:+ 0 &+)
     (commutative * complex:* 1 &*))
 
@@ -186,21 +207,19 @@ USA.
 	(sc-macro-transformer
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1)))
-	     `(SET! ,(close-syntax name environment)
-		    (MAKE-ENTITY
-		     (NAMED-LAMBDA (,name SELF Z1 . ZS)
-		       SELF		; ignored
+	     `(set! ,(close-syntax name environment)
+		    (make-arity-dispatched-procedure
+		     (named-lambda (,name self z1 . zs)
+		       self		; ignored
 		       (,(close-syntax (list-ref form 3) environment)
-			Z1
-			(REDUCE ,(close-syntax (list-ref form 4) environment)
+			z1
+			(reduce ,(close-syntax (list-ref form 4) environment)
 				,(close-syntax (list-ref form 5) environment)
-				ZS)))
-		     (VECTOR
-		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      #F
-		      ,(close-syntax (list-ref form 2) environment)
-		      (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
-			((UCODE-PRIMITIVE ,(list-ref form 6)) Z1 Z2))))))))))
+				zs)))
+		     #f
+		     ,(close-syntax (list-ref form 2) environment)
+		     (named-lambda (,(symbol 'binary- name) z1 z2)
+		       ((ucode-primitive ,(list-ref form 6)) z1 z2)))))))))
     (non-commutative - complex:negate complex:- complex:+ 0 &-)
     (non-commutative / complex:invert complex:/ complex:* 1 &/))
 
@@ -210,33 +229,31 @@ USA.
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
 		 (type (list-ref form 4)))
-	     `(SET! ,(close-syntax name environment)
-		    (MAKE-ENTITY
-		     (NAMED-LAMBDA (,name SELF . ZS)
-		       SELF		; ignored
-		       (REDUCE-COMPARATOR
+	     `(set! ,(close-syntax name environment)
+		    (make-arity-dispatched-procedure
+		     (named-lambda (,name self . zs)
+		       self		; ignored
+		       (reduce-comparator
 			,(close-syntax (list-ref form 2) environment)
-			ZS ',name))
-		     (VECTOR
-		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      (NAMED-LAMBDA (,(symbol-append 'NULLARY- name)) #T)
-		      (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
-			(IF (NOT (,(intern (string-append "complex:" type "?"))
-				  Z))
-			    (ERROR:WRONG-TYPE-ARGUMENT
-			     Z ,(string-append type " number") ',name))
-			#T)
-		      (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
-			,(let ((p
-				`((UCODE-PRIMITIVE ,(list-ref form 3)) Z1 Z2)))
-			   (if (list-ref form 5)
-			       `(NOT ,p)
-			       p)))))))))))
-    (relational = complex:= &= "complex" #F)
-    (relational < complex:< &< "real" #F)
-    (relational > complex:> &> "real" #F)
-    (relational <= (lambda (x y) (not (complex:< y x))) &> "real" #T)
-    (relational >= (lambda (x y) (not (complex:< x y))) &< "real" #T))
+			zs ',name))
+		     (named-lambda (,(symbol 'nullary- name)) #t)
+		     (named-lambda (,(symbol 'unary- name) z)
+		       (if (not (,(intern (string-append "complex:" type "?"))
+				 z))
+			   (error:wrong-type-argument
+			    z ,(string-append type " number") ',name))
+		       #t)
+		     (named-lambda (,(symbol 'binary- name) z1 z2)
+		       ,(let ((p
+			       `((ucode-primitive ,(list-ref form 3)) z1 z2)))
+			  (if (list-ref form 5)
+			      `(not ,p)
+			      p))))))))))
+    (relational = complex:= &= "complex" #f)
+    (relational < complex:< &< "real" #f)
+    (relational > complex:> &> "real" #f)
+    (relational <= (lambda (x y) (not (complex:< y x))) &> "real" #t)
+    (relational >= (lambda (x y) (not (complex:< x y))) &< "real" #t))
 
   (let-syntax
       ((max/min
@@ -244,36 +261,19 @@ USA.
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
 		 (generic-binary (close-syntax (list-ref form 2) environment)))
-	     `(SET! ,(close-syntax name environment)
-		    (MAKE-ENTITY
-		     (NAMED-LAMBDA (,name SELF X . XS)
-		       SELF		; ignored
-		       (REDUCE-MAX/MIN ,generic-binary X XS ',name))
-		     (VECTOR
-		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      #F
-		      (NAMED-LAMBDA (,(symbol-append 'UNARY- name) X)
-			(IF (NOT (COMPLEX:REAL? X))
-			    (ERROR:WRONG-TYPE-ARGUMENT X "real number" ',name))
-			X)
-		      ,generic-binary))))))))
+	     `(set! ,(close-syntax name environment)
+		    (make-arity-dispatched-procedure
+		     (named-lambda (,name self x . xs)
+		       self		; ignored
+		       (reduce-max/min ,generic-binary x xs ',name))
+		     #f
+		     (named-lambda (,(symbol 'unary- name) x)
+		       (if (not (complex:real? x))
+			   (error:wrong-type-argument x "real number" ',name))
+		       x)
+		     ,generic-binary)))))))
     (max/min max complex:max)
     (max/min min complex:min))
-
-  (let loop ((n 1))
-    (if (fix:fixnum? n)
-	(loop (* n 2))
-	(let ((n (- n 1)))
-	  (if (not (fix:fixnum? n))
-	      (error "Unable to compute largest fixnum:" n))
-	  (set! fix:largest-value n))))
-  (let loop ((n -1))
-    (if (fix:fixnum? n)
-	(loop (* n 2))
-	(let ((n (quotient n 2)))
-	  (if (not (fix:fixnum? n))
-	      (error "Unable to compute smallest fixnum:" n))
-	  (set! fix:smallest-value n))))
 
   unspecific)
 
@@ -288,15 +288,6 @@ USA.
 
 (define (int:even? n)
   (int:zero? (int:remainder n 2)))
-
-(define (int:modulo n d)
-  (let ((r (int:remainder n d)))
-    (if (or (int:zero? r)
-	    (if (int:negative? n)
-		(int:negative? d)
-		(not (int:negative? d))))
-	r
-	(int:+ r d))))
 
 (define (int:gcd n m)
   (let loop ((n n) (m m))
@@ -373,7 +364,7 @@ USA.
 			  (int:* answer b)
 			  (loop b e answer))))))))
 	((int:zero? e) 1)
-	(else (error:bad-range-argument e 'EXPT))))
+	(else (error:bad-range-argument e 'expt))))
 
 ;; A vector indexed by radix of pairs of the form (N . (expt RADIX N))
 ;; where N is the maximum value for which the cdr is a fixnum.  Used
@@ -495,7 +486,7 @@ USA.
 	      (make-power-stack value split-factor '() split-digits)))))
 
   (cond ((not (int:integer? number))
-	 (error:wrong-type-argument number #f 'NUMBER->STRING))
+	 (error:wrong-type-argument number #f 'number->string))
 	((int:negative? number)
 	 (list->string (cons #\- (n>0 (int:negate number)))))
 	(else
@@ -565,29 +556,29 @@ USA.
    (lambda (form environment)
      (let ((name (list-ref form 1))
 	   (int:op (close-syntax (list-ref form 2) environment)))
-       `(DEFINE (,name U/U* V/V*)
-	  (RAT:BINARY-OPERATOR U/U* V/V*
+       `(define (,name u/u* v/v*)
+	  (rat:binary-operator u/u* v/v*
 	    ,int:op
-	    (LAMBDA (U V V*)
-	      (MAKE-RATIONAL (,int:op (INT:* U V*) V) V*))
-	    (LAMBDA (U U* V)
-	      (MAKE-RATIONAL (,int:op U (INT:* V U*)) U*))
-	    (LAMBDA (U U* V V*)
-	      (LET ((D1 (INT:GCD U* V*)))
-		(IF (INT:= D1 1)
-		    (MAKE-RATIONAL (,int:op (INT:* U V*) (INT:* V U*))
-				   (INT:* U* V*))
-		    (LET* ((U*/D1 (INT:QUOTIENT U* D1))
-			   (T
-			    (,int:op (INT:* U (INT:QUOTIENT V* D1))
-				     (INT:* V U*/D1))))
-		      (IF (INT:ZERO? T)
-			  0	;(MAKE-RATIONAL 0 1)
-			  (LET ((D2 (INT:GCD T D1)))
-			    (MAKE-RATIONAL
-			     (INT:QUOTIENT T D2)
-			     (INT:* U*/D1
-				    (INT:QUOTIENT V* D2)))))))))))))))
+	    (lambda (u v v*)
+	      (make-rational (,int:op (int:* u v*) v) v*))
+	    (lambda (u u* v)
+	      (make-rational (,int:op u (int:* v u*)) u*))
+	    (lambda (u u* v v*)
+	      (let ((d1 (int:gcd u* v*)))
+		(if (int:= d1 1)
+		    (make-rational (,int:op (int:* u v*) (int:* v u*))
+				   (int:* u* v*))
+		    (let* ((u*/d1 (int:quotient u* d1))
+			   (t
+			    (,int:op (int:* u (int:quotient v* d1))
+				     (int:* v u*/d1))))
+		      (if (int:zero? t)
+			  0	;(make-rational 0 1)
+			  (let ((d2 (int:gcd t d1)))
+			    (make-rational
+			     (int:quotient t d2)
+			     (int:* u*/d1
+				    (int:quotient v* d2)))))))))))))))
 
 (define-addition-operator rat:+ int:+)
 (define-addition-operator rat:- int:-)
@@ -632,6 +623,12 @@ USA.
       (make-ratnum (let ((n (ratnum-numerator q))) (int:* n n))
 		   (let ((d (ratnum-denominator q))) (int:* d d)))
       (int:* q q)))
+
+(define (rat:cube q)
+  (if (ratnum? q)
+      (make-ratnum (let ((n (ratnum-numerator q))) (int:* n (int:* n n)))
+		   (let ((d (ratnum-denominator q))) (int:* d (int:* d d))))
+      (int:* q (int:* q q))))
 
 (define (rat:/ u/u* v/v*)
   (declare (integrate-operator rat:sign-correction))
@@ -716,24 +713,24 @@ USA.
 (define (rat:numerator q)
   (cond ((ratnum? q) (ratnum-numerator q))
 	((int:integer? q) q)
-	(else (error:wrong-type-argument q #f 'NUMERATOR))))
+	(else (error:wrong-type-argument q #f 'numerator))))
 
 (define (rat:denominator q)
   (cond ((ratnum? q) (ratnum-denominator q))
 	((int:integer? q) 1)
-	(else (error:wrong-type-argument q #f 'DENOMINATOR))))
+	(else (error:wrong-type-argument q #f 'denominator))))
 
 (define-syntax define-integer-coercion
   (sc-macro-transformer
    (lambda (form environment)
-     `(DEFINE (,(list-ref form 1) Q)
-	(COND ((RATNUM? Q)
+     `(define (,(list-ref form 1) q)
+	(cond ((ratnum? q)
 	       (,(close-syntax (list-ref form 3) environment)
-		(RATNUM-NUMERATOR Q)
-		(RATNUM-DENOMINATOR Q)))
-	      ((INT:INTEGER? Q) Q)
-	      (ELSE
-	       (ERROR:WRONG-TYPE-ARGUMENT Q
+		(ratnum-numerator q)
+		(ratnum-denominator q)))
+	      ((int:integer? q) q)
+	      (else
+	       (error:wrong-type-argument q
 					  "real number"
 					  ',(list-ref form 2))))))))
 
@@ -803,7 +800,7 @@ USA.
 		  ((int:positive? e)
 		   (exact-method e))
 		  (else 1))))
-      (error:bad-range-argument e 'EXPT)))
+      (error:bad-range-argument e 'expt)))
 
 (define (rat:->string q radix)
   (if (ratnum? q)
@@ -944,11 +941,6 @@ USA.
       (let ((p flo:significand-digits-base-2))
 	(rat:* (flo:->integer (flo:denormalize f p))
 	       (rat:expt 2 (int:- e-p p)))))))
-
-(define (flo:nan? x)
-  (not (or (flo:positive? x)
-	   (flo:negative? x)
-	   (flo:zero? x))))
 
 (define (real:real? object)
   (or (flonum? object)
@@ -962,7 +954,9 @@ USA.
        (real:= 1 x)))
 
 (define (real:rational? x)
-  (if (flonum? x) #t (rat:rational? x)))
+  (if (flonum? x)
+      (not (or (flo:nan? x) (flo:infinite? x)))
+      (rat:rational? x)))
 
 (define (real:integer? x)
   (if (flonum? x) (flo:integer? x) ((copy rat:integer?) x)))
@@ -970,7 +964,16 @@ USA.
 (define (real:exact? x)
   (and (not (flonum? x))
        (or (rat:rational? x)
-	   (error:wrong-type-argument x #f 'EXACT?))))
+	   (error:wrong-type-argument x #f 'exact?))))
+
+(define (real:finite? x)
+  (if (flonum? x) (flo:finite? x) #t))
+
+(define (real:infinite? x)
+  (if (flonum? x) (flo:infinite? x) #f))
+
+(define (real:nan? x)
+  (if (flonum? x) (flo:nan? x) #f))
 
 (define (real:zero? x)
   (if (flonum? x) (flo:zero? x) ((copy rat:zero?) x)))
@@ -987,10 +990,10 @@ USA.
 (define-syntax define-standard-unary
   (sc-macro-transformer
    (lambda (form environment)
-     `(DEFINE (,(list-ref form 1) X)
-	(IF (FLONUM? X)
-	    (,(close-syntax (list-ref form 2) environment) X)
-	    (,(close-syntax (list-ref form 3) environment) X))))))
+     `(define (,(list-ref form 1) x)
+	(if (flonum? x)
+	    (,(close-syntax (list-ref form 2) environment) x)
+	    (,(close-syntax (list-ref form 3) environment) x))))))
 
 (define-standard-unary real:1+ (lambda (x) (flo:+ x flo:1)) (copy rat:1+))
 (define-standard-unary real:-1+ (lambda (x) (flo:- x flo:1)) (copy rat:-1+))
@@ -998,6 +1001,7 @@ USA.
 (define-standard-unary real:invert (lambda (x) (flo:/ flo:1 x)) rat:invert)
 (define-standard-unary real:abs flo:abs rat:abs)
 (define-standard-unary real:square (lambda (x) (flo:* x x)) rat:square)
+(define-standard-unary real:cube (lambda (x) (flo:* x (flo:* x x))) rat:cube)
 (define-standard-unary real:floor flo:floor rat:floor)
 (define-standard-unary real:ceiling flo:ceiling rat:ceiling)
 (define-standard-unary real:truncate flo:truncate rat:truncate)
@@ -1011,21 +1015,21 @@ USA.
   (lambda (q)
     (if (rat:rational? q)
 	q
-	(error:wrong-type-argument q #f 'INEXACT->EXACT))))
+	(error:wrong-type-argument q #f 'inexact->exact))))
 
 (define-syntax define-standard-binary
   (sc-macro-transformer
    (lambda (form environment)
      (let ((flo:op (close-syntax (list-ref form 2) environment))
 	   (rat:op (close-syntax (list-ref form 3) environment)))
-       `(DEFINE (,(list-ref form 1) X Y)
-	  (IF (FLONUM? X)
-	      (IF (FLONUM? Y)
-		  (,flo:op X Y)
-		  (,flo:op X (RAT:->INEXACT Y)))
-	      (IF (FLONUM? Y)
-		  (,flo:op (RAT:->INEXACT X) Y)
-		  (,rat:op X Y))))))))
+       `(define (,(list-ref form 1) x y)
+	  (if (flonum? x)
+	      (if (flonum? y)
+		  (,flo:op x y)
+		  (,flo:op x (rat:->inexact y)))
+	      (if (flonum? y)
+		  (,flo:op (rat:->inexact x) y)
+		  (,rat:op x y))))))))
 
 (define-standard-binary real:+ flo:+ (copy rat:+))
 (define-standard-binary real:- flo:- (copy rat:-))
@@ -1139,7 +1143,7 @@ USA.
    (if (flonum? n)
        (if (flo:integer? n)
 	   (flo:->integer n)
-	   (error:wrong-type-argument n #f 'EVEN?))
+	   (error:wrong-type-argument n #f 'even?))
        n)))
 
 (define-syntax define-integer-binary
@@ -1148,20 +1152,20 @@ USA.
      (let ((operator (close-syntax (list-ref form 3) environment))
 	   (flo->int
 	    (lambda (n)
-	      `(IF (FLO:INTEGER? ,n)
-		   (FLO:->INTEGER ,n)
-		   (ERROR:WRONG-TYPE-ARGUMENT ,n "integer"
+	      `(if (flo:integer? ,n)
+		   (flo:->integer ,n)
+		   (error:wrong-type-argument ,n "integer"
 					      ',(list-ref form 2))))))
-       `(DEFINE (,(list-ref form 1) N M)
-	  (IF (FLONUM? N)
-	      (INT:->INEXACT
-	       (,operator ,(flo->int 'N)
-			  (IF (FLONUM? M)
-			      ,(flo->int 'M)
-			      M)))
-	      (IF (FLONUM? M)
-		  (INT:->INEXACT (,operator N ,(flo->int 'M)))
-		  (,operator N M))))))))
+       `(define (,(list-ref form 1) n m)
+	  (if (flonum? n)
+	      (int:->inexact
+	       (,operator ,(flo->int 'n)
+			  (if (flonum? m)
+			      ,(flo->int 'm)
+			      m)))
+	      (if (flonum? m)
+		  (int:->inexact (,operator n ,(flo->int 'm)))
+		  (,operator n m))))))))
 
 (define-integer-binary real:quotient quotient int:quotient)
 (define-integer-binary real:remainder remainder int:remainder)
@@ -1177,10 +1181,10 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((operator (close-syntax (list-ref form 2) environment)))
-       `(DEFINE (,(list-ref form 1) Q)
-	  (IF (FLONUM? Q)
-	      (RAT:->INEXACT (,operator (FLO:->RATIONAL Q)))
-	      (,operator Q)))))))
+       `(define (,(list-ref form 1) q)
+	  (if (flonum? q)
+	      (rat:->inexact (,operator (flo:->rational q)))
+	      (,operator q)))))))
 
 (define-rational-unary real:numerator rat:numerator)
 (define-rational-unary real:denominator rat:denominator)
@@ -1189,10 +1193,10 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((operator (close-syntax (list-ref form 2) environment)))
-       `(DEFINE (,(list-ref form 1) Q)
-	  (IF (FLONUM? Q)
-	      (,operator (FLO:->RATIONAL Q))
-	      (,operator Q)))))))
+       `(define (,(list-ref form 1) q)
+	  (if (flonum? q)
+	      (,operator (flo:->rational q))
+	      (,operator q)))))))
 
 (define-rational-exact-unary real:numerator->exact rat:numerator)
 (define-rational-exact-unary real:denominator->exact rat:denominator)
@@ -1200,20 +1204,37 @@ USA.
 (define-syntax define-transcendental-unary
   (sc-macro-transformer
    (lambda (form environment)
-     `(DEFINE (,(list-ref form 1) X)
-	(IF (,(close-syntax (list-ref form 2) environment) X)
+     `(define (,(list-ref form 1) x)
+	(if (,(close-syntax (list-ref form 2) environment) x)
 	    ,(close-syntax (list-ref form 3) environment)
 	    (,(close-syntax (list-ref form 4) environment)
-	     (REAL:->INEXACT X)))))))
+	     (real:->inexact x)))))))
 
 (define-transcendental-unary real:exp real:exact0= 1 flo:exp)
 (define-transcendental-unary real:log real:exact1= 0 flo:log)
+(define-transcendental-unary real:expm1 real:exact0= 0 flo:expm1-guarded)
+(define-transcendental-unary real:log1p real:exact0= 0 flo:log1p-guarded)
 (define-transcendental-unary real:sin real:exact0= 0 flo:sin)
 (define-transcendental-unary real:cos real:exact0= 1 flo:cos)
 (define-transcendental-unary real:tan real:exact0= 0 flo:tan)
 (define-transcendental-unary real:asin real:exact0= 0 flo:asin)
 (define-transcendental-unary real:acos real:exact1= 0 flo:acos)
 (define-transcendental-unary real:atan real:exact0= 0 flo:atan)
+
+(define-integrable flo:log2 (flo:log 2.))
+(define-integrable flo:1-sqrt1/2 (flo:- 1. (flo:sqrt 0.5)))
+
+(declare (integrate flo:expm1-guarded))
+(define (flo:expm1-guarded x)
+  (if (flo:< (flo:abs x) flo:log2)
+      (flo:expm1 x)
+      (flo:- (flo:exp x) 1.)))
+
+(declare (integrate flo:log1p-guarded))
+(define (flo:log1p-guarded x)
+  (if (flo:< (flo:abs x) flo:1-sqrt1/2)
+      (flo:log1p x)
+      (flo:log (flo:+ 1. x))))
 
 (define (real:atan2 y x)
   (if (and (real:exact0= y)
@@ -1253,10 +1274,10 @@ USA.
 		 ((flo:zero? x)
 		  (if (flo:positive? y)
 		      x
-		      (error:divide-by-zero 'EXPT (list x y))))
+		      (error:divide-by-zero 'expt (list x y))))
 		 ((and (flo:negative? x)
 		       (not (flo:integer? y)))
-		  (error:bad-range-argument x 'EXPT))
+		  (error:bad-range-argument x 'expt))
 		 (else
 		  (flo:expt x y))))))
     (if (flonum? x)
@@ -1281,7 +1302,15 @@ USA.
 				      (loop x y answer)))))))))
 		 (cond ((int:positive? y) (exact-method y))
 		       ((int:negative? y)
-			(flo:/ flo:1 (exact-method (int:negate y))))
+			(if (flo:< (flo:abs x) flo:1)
+			    (flo:/ flo:1 (exact-method (int:negate y)))
+			    ;; For any base above 1 and sufficiently large
+			    ;; exponents, or for any negative exponent and
+			    ;; sufficiently large base, the division above
+			    ;; would overflow into infinite and then yield
+			    ;; 0 when it should yield a subnormal.  So use
+			    ;; the general case.
+			    (general-case x (int:->flonum y))))
 		       (else flo:1))))
 	      (else
 	       (general-case x (rat:->inexact y))))
@@ -1335,6 +1364,33 @@ USA.
   (and (real:exact? (rec:real-part z))
        (real:exact? (rec:imag-part z))))
 
+(define (complex:finite? z)
+  (if (recnum? z)
+      ((copy rec:finite?) z)
+      ((copy real:finite?) z)))
+
+(define (rec:finite? z)
+  (and (real:finite? (rec:real-part z))
+       (real:finite? (rec:imag-part z))))
+
+(define (complex:infinite? z)
+  (if (recnum? z)
+      ((copy rec:infinite?) z)
+      ((copy real:infinite?) z)))
+
+(define (rec:infinite? z)
+  (or (real:infinite? (rec:real-part z))
+      (real:infinite? (rec:imag-part z))))
+
+(define (complex:nan? z)
+  (if (recnum? z)
+      ((copy rec:nan?) z)
+      ((copy real:nan?) z)))
+
+(define (rec:nan? z)
+  (or (real:nan? (rec:real-part z))
+      (real:nan? (rec:imag-part z))))
+
 (define (complex:real-arg name x)
   (if (recnum? x) (rec:real-arg name x) x))
 
@@ -1387,33 +1443,33 @@ USA.
 
 (define (complex:positive? x)
   (if (recnum? x)
-      (real:positive? (rec:real-arg 'POSITIVE? x))
+      (real:positive? (rec:real-arg 'positive? x))
       ((copy real:positive?) x)))
 
 (define (complex:negative? x)
   (if (recnum? x)
-      (real:negative? (rec:real-arg 'NEGATIVE? x))
+      (real:negative? (rec:real-arg 'negative? x))
       ((copy real:negative?) x)))
 
 (define (complex:even? x)
-  (if (recnum? x) (real:even? (rec:real-arg 'EVEN? x)) ((copy real:even?) x)))
+  (if (recnum? x) (real:even? (rec:real-arg 'even? x)) ((copy real:even?) x)))
 
 (define (complex:max x y)
   (if (recnum? x)
       (if (recnum? y)
-	  (real:max (rec:real-arg 'MAX x) (rec:real-arg 'MAX y))
-	  (real:max (rec:real-arg 'MAX x) y))
+	  (real:max (rec:real-arg 'max x) (rec:real-arg 'max y))
+	  (real:max (rec:real-arg 'max x) y))
       (if (recnum? y)
-	  (real:max x (rec:real-arg 'MAX y))
+	  (real:max x (rec:real-arg 'max y))
 	  ((copy real:max) x y))))
 
 (define (complex:min x y)
   (if (recnum? x)
       (if (recnum? y)
-	  (real:min (rec:real-arg 'MIN x) (rec:real-arg 'MIN y))
-	  (real:min (rec:real-arg 'MIN x) y))
+	  (real:min (rec:real-arg 'min x) (rec:real-arg 'min y))
+	  (real:min (rec:real-arg 'min x) y))
       (if (recnum? y)
-	  (real:min x (rec:real-arg 'MIN y))
+	  (real:min x (rec:real-arg 'min y))
 	  ((copy real:min) x y))))
 
 (define (complex:+ z1 z2)
@@ -1494,7 +1550,7 @@ USA.
 	((real:real? z)
 	 z)
 	(else
-	 (error:wrong-type-argument z #f 'CONJUGATE))))
+	 (error:wrong-type-argument z #f 'conjugate))))
 
 (define (complex:/ z1 z2)
   (if (recnum? z1)
@@ -1528,111 +1584,111 @@ USA.
       ((copy real:invert) z)))
 
 (define (complex:abs x)
-  (if (recnum? x) (real:abs (rec:real-arg 'ABS x)) ((copy real:abs) x)))
+  (if (recnum? x) (real:abs (rec:real-arg 'abs x)) ((copy real:abs) x)))
 
 (define (complex:quotient n d)
-  (real:quotient (complex:real-arg 'QUOTIENT n)
-		 (complex:real-arg 'QUOTIENT d)))
+  (real:quotient (complex:real-arg 'quotient n)
+		 (complex:real-arg 'quotient d)))
 
 (define (complex:remainder n d)
-  (real:remainder (complex:real-arg 'REMAINDER n)
-		  (complex:real-arg 'REMAINDER d)))
+  (real:remainder (complex:real-arg 'remainder n)
+		  (complex:real-arg 'remainder d)))
 
 (define (complex:modulo n d)
-  (real:modulo (complex:real-arg 'MODULO n)
-	       (complex:real-arg 'MODULO d)))
+  (real:modulo (complex:real-arg 'modulo n)
+	       (complex:real-arg 'modulo d)))
 
 (define (complex:integer-floor n d)
-  (real:integer-floor (complex:real-arg 'INTEGER-FLOOR n)
-		      (complex:real-arg 'INTEGER-FLOOR d)))
+  (real:integer-floor (complex:real-arg 'integer-floor n)
+		      (complex:real-arg 'integer-floor d)))
 
 (define (complex:integer-ceiling n d)
-  (real:integer-ceiling (complex:real-arg 'INTEGER-CEILING n)
-			(complex:real-arg 'INTEGER-CEILING d)))
+  (real:integer-ceiling (complex:real-arg 'integer-ceiling n)
+			(complex:real-arg 'integer-ceiling d)))
 
 (define (complex:integer-round n d)
-  (real:integer-round (complex:real-arg 'INTEGER-ROUND n)
-		      (complex:real-arg 'INTEGER-ROUND d)))
+  (real:integer-round (complex:real-arg 'integer-round n)
+		      (complex:real-arg 'integer-round d)))
 
 (define (complex:divide n d)
-  (real:divide (complex:real-arg 'DIVIDE n)
-	       (complex:real-arg 'DIVIDE d)))
+  (real:divide (complex:real-arg 'divide n)
+	       (complex:real-arg 'divide d)))
 
 (define (complex:gcd n m)
-  (real:gcd (complex:real-arg 'GCD n)
-	    (complex:real-arg 'GCD m)))
+  (real:gcd (complex:real-arg 'gcd n)
+	    (complex:real-arg 'gcd m)))
 
 (define (complex:lcm n m)
-  (real:lcm (complex:real-arg 'LCM n)
-	    (complex:real-arg 'LCM m)))
+  (real:lcm (complex:real-arg 'lcm n)
+	    (complex:real-arg 'lcm m)))
 
 (define (complex:numerator q)
-  (real:numerator (complex:real-arg 'NUMERATOR q)))
+  (real:numerator (complex:real-arg 'numerator q)))
 
 (define (complex:denominator q)
-  (real:denominator (complex:real-arg 'DENOMINATOR q)))
+  (real:denominator (complex:real-arg 'denominator q)))
 
 (define (complex:numerator->exact q)
-  (real:numerator->exact (complex:real-arg 'NUMERATOR->EXACT q)))
+  (real:numerator->exact (complex:real-arg 'numerator->exact q)))
 
 (define (complex:denominator->exact q)
-  (real:denominator->exact (complex:real-arg 'DENOMINATOR->EXACT q)))
+  (real:denominator->exact (complex:real-arg 'denominator->exact q)))
 
 (define (complex:floor x)
   (if (recnum? x)
-      (real:floor (rec:real-arg 'FLOOR x))
+      (real:floor (rec:real-arg 'floor x))
       ((copy real:floor) x)))
 
 (define (complex:ceiling x)
   (if (recnum? x)
-      (real:ceiling (rec:real-arg 'CEILING x))
+      (real:ceiling (rec:real-arg 'ceiling x))
       ((copy real:ceiling) x)))
 
 (define (complex:truncate x)
   (if (recnum? x)
-      (real:truncate (rec:real-arg 'TRUNCATE x))
+      (real:truncate (rec:real-arg 'truncate x))
       ((copy real:truncate) x)))
 
 (define (complex:round x)
   (if (recnum? x)
-      (real:round (rec:real-arg 'ROUND x))
+      (real:round (rec:real-arg 'round x))
       ((copy real:round) x)))
 
 (define (complex:floor->exact x)
   (if (recnum? x)
-      (real:floor->exact (rec:real-arg 'FLOOR->EXACT x))
+      (real:floor->exact (rec:real-arg 'floor->exact x))
       ((copy real:floor->exact) x)))
 
 (define (complex:ceiling->exact x)
   (if (recnum? x)
-      (real:ceiling->exact (rec:real-arg 'CEILING->EXACT x))
+      (real:ceiling->exact (rec:real-arg 'ceiling->exact x))
       ((copy real:ceiling->exact) x)))
 
 (define (complex:truncate->exact x)
   (if (recnum? x)
-      (real:truncate->exact (rec:real-arg 'TRUNCATE->EXACT x))
+      (real:truncate->exact (rec:real-arg 'truncate->exact x))
       ((copy real:truncate->exact) x)))
 
 (define (complex:round->exact x)
   (if (recnum? x)
-      (real:round->exact (rec:real-arg 'ROUND->EXACT x))
+      (real:round->exact (rec:real-arg 'round->exact x))
       ((copy real:round->exact) x)))
 
 (define (complex:rationalize x e)
-  (real:rationalize (complex:real-arg 'RATIONALIZE x)
-		    (complex:real-arg 'RATIONALIZE e)))
+  (real:rationalize (complex:real-arg 'rationalize x)
+		    (complex:real-arg 'rationalize e)))
 
 (define (complex:rationalize->exact x e)
-  (real:rationalize->exact (complex:real-arg 'RATIONALIZE x)
-			   (complex:real-arg 'RATIONALIZE e)))
+  (real:rationalize->exact (complex:real-arg 'rationalize x)
+			   (complex:real-arg 'rationalize e)))
 
 (define (complex:simplest-rational x y)
-  (real:simplest-rational (complex:real-arg 'SIMPLEST-RATIONAL x)
-			  (complex:real-arg 'SIMPLEST-RATIONAL y)))
+  (real:simplest-rational (complex:real-arg 'simplest-rational x)
+			  (complex:real-arg 'simplest-rational y)))
 
 (define (complex:simplest-exact-rational x y)
-  (real:simplest-exact-rational (complex:real-arg 'SIMPLEST-RATIONAL x)
-				(complex:real-arg 'SIMPLEST-RATIONAL y)))
+  (real:simplest-exact-rational (complex:real-arg 'simplest-rational x)
+				(complex:real-arg 'simplest-rational y)))
 
 (define (complex:exp z)
   (if (recnum? z)
@@ -1648,6 +1704,16 @@ USA.
 	 (make-recnum (real:log (real:negate z)) rec:pi))
 	(else
 	 ((copy real:log) z))))
+
+(define (complex:expm1 z)
+  (if (recnum? z)
+      (complex:- (complex:exp z) 1)	;XXX
+      ((copy real:expm1) z)))
+
+(define (complex:log1p z)
+  (if (recnum? z)
+      (complex:log (complex:+ z 1))	;XXX
+      ((copy real:log1p) z)))
 
 (define (complex:sin z)
   (if (recnum? z)
@@ -1730,9 +1796,9 @@ USA.
 	   (rec:atan (make-recnum (real:exact->inexact x)
 				  (real:exact->inexact y))))))
     (cond ((recnum? y)
-	   (rec-case (rec:real-arg 'ATAN y) (complex:real-arg 'ATAN x)))
+	   (rec-case (rec:real-arg 'atan y) (complex:real-arg 'atan x)))
 	  ((recnum? x)
-	   (rec-case y (rec:real-arg 'ATAN x)))
+	   (rec-case y (rec:real-arg 'atan x)))
 	  (else
 	   ((copy real:atan2) y x)))))
 
@@ -1778,9 +1844,9 @@ USA.
 	       ((real:positive? (complex:real-part z2))
 		(real:0 (complex:exact? z1)))
 	       ((real:zero? (complex:real-part z2))
-		(error:bad-range-argument z2 'EXPT))
+		(error:bad-range-argument z2 'expt))
 	       (else
-		(error:divide-by-zero 'EXPT (list z1 z2)))))
+		(error:divide-by-zero 'expt (list z1 z2)))))
 	((and (recnum? z1)
 	      (int:integer? z2))
 	 (let ((exact-method
@@ -1815,16 +1881,16 @@ USA.
   (let ((check-arg
 	 (lambda (x)
 	   (if (recnum? x)
-	       (rec:real-arg 'MAKE-RECTANGULAR x)
+	       (rec:real-arg 'make-rectangular x)
 	       (begin
 		 (if (not (real:real? x))
-		     (error:wrong-type-argument x #f 'MAKE-RECTANGULAR))
+		     (error:wrong-type-argument x #f 'make-rectangular))
 		 x)))))
     ((copy complex:%make-rectangular) (check-arg real) (check-arg imag))))
 
 (define (complex:make-polar real imag)
-  ((copy complex:%make-polar) (complex:real-arg 'MAKE-POLAR real)
-			      (complex:real-arg 'MAKE-POLAR imag)))
+  ((copy complex:%make-polar) (complex:real-arg 'make-polar real)
+			      (complex:real-arg 'make-polar imag)))
 
 (define (complex:%make-rectangular real imag)
   (if (real:exact0= imag)
@@ -1838,12 +1904,12 @@ USA.
 (define (complex:real-part z)
   (cond ((recnum? z) (rec:real-part z))
 	((real:real? z) z)
-	(else (error:wrong-type-argument z #f 'REAL-PART))))
+	(else (error:wrong-type-argument z #f 'real-part))))
 
 (define (complex:imag-part z)
   (cond ((recnum? z) (rec:imag-part z))
 	((real:real? z) 0)
-	(else (error:wrong-type-argument z #f 'IMAG-PART))))
+	(else (error:wrong-type-argument z #f 'imag-part))))
 
 (define (complex:exact->inexact z)
   (if (recnum? z)
@@ -1947,6 +2013,456 @@ USA.
 
 (define (square z)
   (complex:* z z))
+
+(define (cube z)
+  (complex:* z (complex:* z z)))
+
+;;; log(1 - e^x), defined only on negative x
+
+(define (log1mexp x)
+  (guarantee-real x 'log1mexp)
+  (guarantee-negative x 'log1mexp)
+  (if (< (- flo:log2) x)
+      (log (- (expm1 x)))
+      (log1p (- (exp x)))))
+
+;;; log(1 + e^x)
+
+(define (log1pexp x)
+  (guarantee-real x 'log1pexp)
+  (cond ((<= x flo:subnormal-exponent-min-base-e) 0.)
+	((<= x flo:log-error-bound) (exp x))
+	((<= x 18) (log1p (exp x)))
+	((<= x 33.3) (+ x (exp (- x))))
+	(else (exact->inexact x))))
+
+;;; Some lemmas for the bounds below.
+;;;
+;;; Lemma 1.  If |d| < 1/2, then 1/(1 + d) <= 2.
+;;;
+;;; Proof.  If 0 <= d <= 1/2, then 1 + d >= 1, so that 1/(1 + d) <= 1.
+;;; If -1/2 <= d <= 0, then 1 + d >= 1/2, so that 1/(1 + d) <= 2.  QED.
+;;;
+;;; Lemma 2. If b = a*(1 + d)/(1 + d') for |d'| < 1/2 and nonzero a, b,
+;;; then b = a*(1 + e) for |e| <= 2|d' - d|.
+;;;
+;;; Proof.  |a - b|/|a|
+;;;		= |a - a*(1 + d)/(1 + d')|/|a|
+;;;		= |1 - (1 + d)/(1 + d')|
+;;;		= |(1 + d' - 1 - d)/(1 + d')|
+;;;		= |(d' - d)/(1 + d')|
+;;;	       <= 2|d' - d|, by Lemma 1,
+;;;
+;;; QED.
+;;;
+;;; Lemma 3.  For |d|, |d'| < 1/4,
+;;;
+;;;	|log((1 + d)/(1 + d'))| <= 4|d - d'|.
+;;;
+;;; Proof.  Write
+;;;
+;;;	log((1 + d)/(1 + d'))
+;;;	 = log(1 + (1 + d)/(1 + d') - 1)
+;;;	 = log(1 + (1 + d - 1 - d')/(1 + d')
+;;;	 = log(1 + (d - d')/(1 + d')).
+;;;
+;;; By Lemma 1, |(d - d')/(1 + d')| < 2|d' - d| < 1, so the Taylor
+;;; series of log(1 + x) converges absolutely for (d - d')/(1 + d'),
+;;; and thus we have
+;;;
+;;;	|log(1 + (d - d')/(1 + d'))|
+;;;	 = |\sum_{n=1}^\infty ((d - d')/(1 + d'))^n/n|
+;;;	<= \sum_{n=1}^\infty |(d - d')/(1 + d')|^n/n
+;;;	<= \sum_{n=1}^\infty |2(d' - d)|^n/n
+;;;	<= \sum_{n=1}^\infty |2(d' - d)|^n
+;;;	 = 1/(1 - |2(d' - d)|)
+;;;	<= 4|d' - d|,
+;;;
+;;; QED.
+;;;
+;;; Lemma 4.  If 1/e <= 1 + x <= e, then
+;;;
+;;;	log(1 + (1 + d) x) = (1 + d') log(1 + x)
+;;;
+;;; for |d'| < 8|d|.
+;;;
+;;; Proof.  Write
+;;;
+;;;	log(1 + (1 + d) x)
+;;;	= log(1 + x + x*d)
+;;;	= log((1 + x) (1 + x + x*d)/(1 + x))
+;;;	= log(1 + x) + log((1 + x + x*d)/(1 + x))
+;;;	= log(1 + x) (1 + log((1 + x + x*d)/(1 + x))/log(1 + x)).
+;;;
+;;; The relative error is bounded by
+;;;
+;;;	|log((1 + x + x*d)/(1 + x))/log(1 + x)|
+;;;	<= 4|x + x*d - x|/|log(1 + x)|, by Lemma 3,
+;;;	 = 4|x*d|/|log(1 + x)|
+;;;	 < 8|d|,
+;;;
+;;; since in this range 0 < 1 - 1/e < x/log(1 + x) <= e - 1 < 2.  QED.
+
+;;; Logistic function: 1/(1 + e^{-x}) = e^x/(1 + e^x).	Maps a
+;;; log-odds-space probability in [-\infty, +\infty] into a
+;;; direct-space probability in [0,1].	Inverse of logit.
+;;;
+;;; Ill-conditioned for large x; the identity logistic(-x) = 1 -
+;;; logistic(x) and the function (logistic-1/2 x) = (- (logistic x)
+;;; 1/2) may help to rearrange a computation.
+;;;
+;;; This implementation gives relative error bounded by 7 eps.
+
+(define (logistic x)
+  (guarantee-real x 'logistic)
+  (cond ((<= x flo:subnormal-exponent-min-base-e)
+	 ;; e^x/(1 + e^x) < e^x < smallest positive float.  (XXX Should
+	 ;; raise inexact and underflow here.)
+	 0.)
+	((<= x flo:log-error-bound)
+	 ;; e^x < eps, so
+	 ;;
+	 ;;	|e^x - e^x/(1 + e^x)|/|e^x/(1 + e^x)|
+	 ;;	<= |1 - 1/(1 + e^x)|*|1 + e^x|
+	 ;;	 = |(1 + e^x - 1)/(1 + e^x)|*|1 + e^x|
+	 ;;	 = |e^x/(1 + e^x)|*|1 + e^x|
+	 ;;	 = |e^x|
+	 ;;	 < eps.
+	 ;;
+	 (exp x))
+	((<= x (- flo:log-error-bound))
+	 ;; e^{-x} > 0, so 1 + e^{-x} > 1, and 0 < 1/(1 + e^{-x}) < 1;
+	 ;; further, since e^{-x} < 1 + e^{-x}, we also have 0 <
+	 ;; e^{-x}/(1 + e^{-x}) < 1.  Thus, if exp has relative error
+	 ;; d0, + has relative error d1, and / has relative error d2,
+	 ;; then we get
+	 ;;
+	 ;;	(1 + d2)/[(1 + (1 + d0) e^{-x})(1 + d1)]
+	 ;;	= (1 + d2)/[1 + e^{-x} + d0 e^{-x}
+	 ;;			+ d1 + d1 e^{-x} + d0 d1 e^{-x}]
+	 ;;	= (1 + d2)/[(1 + e^{-x})(1 + d0 e^{-x}/(1 + e^{-x})
+	 ;;				    + d1/(1 + e^{-x})
+	 ;;				    + d0 d1 e^{-x}/(1 + e^{-x}))].
+	 ;;	= (1 + d2)/[(1 + e^{-x})(1 + d')]
+	 ;;	= [1/(1 + e^{-x})] (1 + d2)/(1 + d')
+	 ;;
+	 ;; where
+	 ;;
+	 ;;	d' = d0 e^{-x}/(1 + e^{-x})
+	 ;;	     + d1/(1 + e^{-x})
+	 ;;	     + d0 d1 e^{-x}/(1 + e^{-x}).
+	 ;;
+	 ;; By Lemma 2 this relative error is bounded by
+	 ;;
+	 ;;	2|d2 - d'|
+	 ;;	 = 2|d2 - d0 e^{-x}/(1 + e^{-x})
+	 ;;		- d1/(1 + e^{-x})
+	 ;;		- d0 d1 e^{-x}/(1 + e^{-x})|
+	 ;;	<= 2|d2| + 2|d0 e^{-x}/(1 + e^{-x})|
+	 ;;		+ 2|d1/(1 + e^{-x})|
+	 ;;		+ 2|d0 d1 e^{-x}/(1 + e^{-x})|
+	 ;;	<= 2|d2| + 2|d0| + 2|d1| + 2|d0 d1|
+	 ;;	<= 6 eps + 2 eps^2.
+	 ;;
+	 (/ 1 (+ 1 (exp (- x)))))
+	(else
+	 ;; If x > -log eps, then e^{-x} < eps, so the relative error
+	 ;; of 1 from 1/(1 + e^{-x}) is
+	 ;;
+	 ;;	|1/(1 + e^{-x}) - 1|/|1/(1 + e^{-x})|
+	 ;;	 = |e^{-x}/(1 + e^{-x})|/|1/(1 + e^{-x})|
+	 ;;	 = |e^{-x}|
+	 ;;	<= eps.
+	 ;;
+	 1.)))
+
+;;; Logistic function, translated in output by 1/2: logistic(x) - 1/2 =
+;;; 1/(1 + e^{-x}) - 1/2. Well-conditioned on the entire real plane,
+;;; with maximum condition number 1 at 0.
+;;;
+;;; This implementation gives relative error bounded by 5 eps.
+
+(define (logistic-1/2 x)
+  ;; Suppose exp has error d0, + has error d1, expm1 has error d2, and
+  ;; / has error d3, so we evaluate
+  ;;
+  ;;	-(1 + d2) (1 + d3) (e^{-x} - 1)
+  ;;	  / [2 (1 + d1) (1 + (1 + d0) e^{-x})].
+  ;;
+  ;; In the denominator,
+  ;;
+  ;;	1 + (1 + d0) e^{-x}
+  ;;	= 1 + e^{-x} + d0 e^{-x}
+  ;;	= (1 + e^{-x}) (1 + d0 e^{-x}/(1 + e^{-x})),
+  ;;
+  ;; so the relative error of the numerator is
+  ;;
+  ;;	d' = d2 + d3 + d2 d3,
+  ;; and of the denominator,
+  ;;	d'' = d1 + d0 e^{-x}/(1 + e^{-x}) + d0 d1 e^{-x}/(1 + e^{-x})
+  ;;	    = d1 + d0 L(-x) + d0 d1 L(-x),
+  ;;
+  ;; where L(-x) is logistic(-x).  By Lemma 1 the relative error of the
+  ;; quotient is bounded by
+  ;;
+  ;;	2|d2 + d3 + d2 d3 - d1 - d0 L(x) + d0 d1 L(x)|,
+  ;;
+  ;; Since 0 < L(x) < 1, this is bounded by
+  ;;
+  ;;	2|d2| + 2|d3| + 2|d2 d3| + 2|d1| + 2|d0| + 2|d0 d1|
+  ;;	<= 4 eps + 2 eps^2.
+  ;;
+  (- (/ (expm1 (- x)) (* 2 (+ 1 (exp (- x)))))))
+
+(define-integrable logit-boundary-lo	;logistic(-1)
+  (flo:/ (flo:exp -1.) (flo:+ 1. (flo:exp -1.))))
+(define-integrable logit-boundary-hi	;logistic(+1)
+  (flo:/ 1. (flo:+ 1. (flo:exp -1.))))
+
+;;; Logit function: log p/(1 - p).  Defined on [0,1].  Maps a
+;;; direct-space probability in [0,1] to a log-odds-space probability
+;;; in [-\infty, +\infty].  Inverse of logistic.
+;;;
+;;; Ill-conditioned near 1/2 and 1; the identity logit(1 - p) =
+;;; -logit(p) and the function (logit1/2+ p0) = (logit (+ 1/2 p0)) may
+;;; help to rearrange a computation for p in [1/(1 + e), 1 - 1/(1 +
+;;; e)].
+;;;
+;;; This implementation gives relative error bounded by 10 eps.
+
+(define (logit p)
+  (guarantee-real p 'logit)
+  (if (not (<= 0 p 1))
+      (error:bad-range-argument p 'logit))
+  ;; For small p, 1 - p is so close to 1 that log(p) is essentially
+  ;; log(p/(1 - p)).  For p near 1/2, the quotient is close to 1 so we
+  ;; want to use log1p with the identity
+  ;;
+  ;;	log(p/(1 - p)) = -log((1 - p)/p)
+  ;;	  = -log(1 + (1 - p)/p - 1)
+  ;;	  = -log(1 + (1 - p - p)/p)
+  ;;	  = -log(1 + (1 - 2p)/p).
+  ;;
+  ;; to get an intermediate quotient near zero.
+  ;;
+  (cond ((<= logit-boundary-lo p logit-boundary-hi)
+	 ;; Since p = 2p/2 <= 1 <= 2*2p = 4p, the floating-point
+	 ;; evaluation of 1 - 2p is exact; the only error arises from
+	 ;; division and log1p.	 First, note that if logistic(-1) <= p
+	 ;; <= logistic(+1), (1 - 2p)/p lies in the bounds of Lemma 4.
+	 ;;
+	 ;; If division has relative error d0 and log1p has relative
+	 ;; error d1, the outcome is
+	 ;;
+	 ;;	-(1 + d1) log(1 + (1 - 2p) (1 + d0)/p)
+	 ;;	= -(1 + d1) (1 + d') log(1 + (1 - 2p)/p)
+	 ;;	= -(1 + d1 + d' + d1 d') log(1 + (1 - 2p)/p).
+	 ;;
+	 ;; where |d'| < 8|d0| by Lemma 4.  The relative error is then
+	 ;; bounded by
+	 ;;
+	 ;;	|d1 + d' + d1 d'|
+	 ;;	<= |d1| + 8|d0| + 8|d1 d0|
+	 ;;	<= 9 eps + 8 eps^2.
+	 ;;
+	 (- (log1p (/ (- 1 (* 2 p)) p))))
+	(else
+	 ;; If - has relative error d0, / has relative error d1, and
+	 ;; log has relative error d2, then
+	 ;;
+	 ;;	(1 + d2) log((1 + d0) p/[(1 - p)(1 + d1)])
+	 ;;	= (1 + d2) [log(p/(1 - p)) + log((1 + d0)/(1 + d1))]
+	 ;;	= log(p/(1 - p)) + d2 log(p/(1 - p))
+	 ;;	  + (1 + d2) log((1 + d0)/(1 + d1))
+	 ;;	= log(p/(1 - p))*[1 + d2 +
+	 ;;	    + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))]
+	 ;;
+	 ;; Since 0 <= p < logistic(-1) or logistic(+1) < p <= 1, we
+	 ;; have |log(p/(1 - p))| > 1.	Hence this error is bounded by
+	 ;;
+	 ;;	|d2 + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
+	 ;;	<= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
+	 ;;	<= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))|
+	 ;;	<= |d2| + 4|(1 + d2) (d0 - d1)|, by Lemma 3,
+	 ;;	<= |d2| + 4|d0 - d1 + d2 d0 - d1 d0|
+	 ;;	<= |d2| + 4|d0| + 4|d1| + 4|d2 d0| + 4|d1 d0|
+	 ;;	<= 9 eps + 8 eps^2.
+	 ;;
+	 (log (/ p (- 1 p))))))
+
+;;; Logit function, translated in input by 1/2: (logit1/2+ p-1/2) =
+;;; (logit (+ 1/2 p-1/2)).  Defined on [-1/2, 1/2].  Inverse of
+;;; logistic-1/2.
+;;;
+;;; Ill-conditioned near +/-1/2.  If |p0| > 1/2 - 1/(1 + e), it may be
+;;; better to compute 1/2 + p0 or -1/2 - p0 and to use logit instead.
+;;; This implementation gives relative error bounded by 10 eps.
+
+(define (logit1/2+ p-1/2)
+  (cond ((<= (abs p-1/2) (- 1/2 (/ 1 (+ 1 (exp 1)))))
+	 ;; If p' = p - 1/2, then p = 1/2 + p', so we compute:
+	 ;;
+	 ;; log(p/(1 - p))
+	 ;; = log((1/2 + p')/(1 - (1/2 + p')))
+	 ;; = log((1/2 + p')/(1/2 - p'))
+	 ;; = log(1 + (1/2 + p')/(1/2 - p') - 1)
+	 ;; = log(1 + (1/2 + p' - (1/2 - p'))/(1/2 - p'))
+	 ;; = log(1 + (1/2 + p' - 1/2 + p')/(1/2 - p'))
+	 ;; = log(1 + 2 p'/(1/2 - p'))
+	 ;;
+	 ;; Note that since p0/2 <= 1/2 <= 2 p0, 1/2 - p0 is
+	 ;; computed exactly without error; the only error
+	 ;; arises from division and log1p.  If the error of
+	 ;; division is d0 and the error of log1p is d1, then
+	 ;; what we compute is
+	 ;;
+	 ;;	(1 + d1) log(1 + (1 + d0) 2 p0/(1/2 - p0))
+	 ;;	= (1 + d1) (1 + d') log(1 + 2 p0/(1/2 - p0))
+	 ;;	= (1 + d1 + d' + d1 d') log(1 + 2 p0/(1/2 - p0)).
+	 ;;
+	 ;; where |d'| < 8|d0| by Lemma 4, since
+	 ;;
+	 ;;	1/e <= 1 + 2*p0/(1/2 - p0) <= e
+	 ;;
+	 ;; when |p0| <= 1/2 - 1/(1 + e).  Hence the relative
+	 ;; error is bounded by
+	 ;;
+	 ;;	|d1 + d' + d1 d'|
+	 ;;	<= |d1| + |d'| + |d1 d'|
+	 ;;	<= |d1| + 8 |d0| + 8 |d1 d0|
+	 ;;	<= 9 eps + 8 eps^2.
+	 ;;
+	 (log1p (/ (* 2 p-1/2) (- 1/2 p-1/2))))
+	(else
+	 ;; We have a choice of computing logit(1/2 + p0) or -logit(1 -
+	 ;; (1/2 + p0)) = -logit(1/2 - p0).  It doesn't matter which
+	 ;; way we do this: either way, since 1/2 p0 <= 1/2 <= 2 p0,
+	 ;; the sum and difference are computed exactly.  So let's do
+	 ;; the one that skips the final negation.
+	 ;;
+	 ;; Again, the only error arises from division and log.  So the
+	 ;; result is
+	 ;;
+	 ;;	(1 + d1) log((1 + d0) (1/2 + p0)/(1/2 - p0))
+	 ;;	= (1 + d1) (1 + log(1 + d0)/log((1/2 + p0)/(1/2 - p0)))
+	 ;;	  * log((1/2 + p0)/(1/2 - p0))
+	 ;;	= (1 + d') log((1/2 + p0)/(1/2 - p0))
+	 ;;
+	 ;; where
+	 ;;
+	 ;;	d' = d1 + log(1 + d0)/log((1/2 + p0)/(1/2 - p0))
+	 ;;	     + d1 log(1 + d0)/log((1/2 + p0)/(1/2 - p0)).
+	 ;;
+	 ;; For |p| > 1/2 - 1/(1 + e), logit(1/2 + p0) > 1.  For |d0| <
+	 ;; 1/2, |log(1 + d0)| < 2|d0|.  Hence this is bounded by
+	 ;;
+	 ;;	|d'| <= |d1| + 2|d0| + 2|d0 d1|
+	 ;;	     <= 3 eps + 2 eps^2.
+	 ;;
+	 (log (/ (+ 1/2 p-1/2) (- 1/2 p-1/2))))))
+
+;;; log logistic(x) = -log (1 + e^{-x})
+
+(define (log-logistic x)
+  (guarantee-real x 'log-logistic)
+  (- (log1pexp (- x))))
+
+(define logit-exp-boundary-lo		;log logistic(-1)
+  (flo:- 0. (flo:log (flo:+ 1. (flo:exp +1.)))))
+(define logit-exp-boundary-hi		;log logistic(+1)
+  (flo:- 0. (flo:log (flo:+ 1. (flo:exp -1.)))))
+
+;;; log e^t/(1 - e^t) = logit(e^t)
+
+(define (logit-exp t)
+  (guarantee-real t 'logit-exp)
+  (cond ((<= t flo:log-error-bound)
+	 ;; e^t < eps, so since log(e^t/(1 - e^t)) = t - log(1 - e^t),
+	 ;; and |log(1 - e^t)| < 1 < |t|, we have
+	 ;;
+	 ;;	|t - log(e^t/(1 - e^t))|/|log(e^t/(1 - e^t))|
+	 ;;	 = |log(1 - e^t)|/|t - log(1 - e^t)|
+	 ;;	<= |log(1 - e^t)|
+	 ;;	<= 1/(1 - e^t)
+	 ;;	<= 2|e^t|
+	 ;;	<= 2 eps.
+	 ;;
+	 t)
+	((<= logit-exp-boundary-lo t logit-exp-boundary-hi)
+	 ;; We can use the identity
+	 ;;
+	 ;;	log(e^t/(1 - e^t))
+	 ;;	= -log((1 - e^t)/e^t)
+	 ;;	= -log(1 + (1 - e^t)/e^t - 1)
+	 ;;	= -log(1 + (1 - e^t - e^t)/e^t)
+	 ;;	= -log(1 + (1 - 2 e^t)/e^t)
+	 ;;
+	 ;; to compute this with log1p.
+	 ;;
+	 ;; Since e^t = 2 e^t/2 <= 1 < 2*2 e^t = 4 e^t, 1 - 2 e^t is
+	 ;; without additional error beyond that in e^t.  Further,
+	 ;; |e^t/(1 - 2 e^t)| <= 2.  The intermediate division is
+	 ;;
+	 ;;	(1 - 2 (1 + d0) e^t) (1 + d1)/[(1 + d0) e^t]
+	 ;;	= (1 - 2 e^t - 2 d0 e^t) (1 + d1)/[(1 + d0) e^t]
+	 ;;	= (1 - 2 e^t) (1 - 2 d0 e^t/(1 - 2 e^t)) (1 + d1)
+	 ;;	    / [(1 + d0) e^t]
+	 ;;	= [(1 - 2 e^t)/e^t]
+	 ;;	  * (1 - 2 d0 e^t/(1 - 2 e^t)) (1 + d1)/(1 + d0)
+	 ;;	= [(1 - 2 e^t)/e^t]
+	 ;;	  * (1 + d1 - (1 + d1) 2 d0 e^t/(1 - 2 e^t))
+	 ;;	  / (1 + d0).
+	 ;;
+	 ;; By Lemma 2, the relative error d' of the intermediate division
+	 ;; is bounded by
+	 ;;
+	 ;;	2|d0 - d1 + (1 + d1) 2 d0 e^t/(1 - 2 e^t)|
+	 ;;	<= 2|d0| + 2|d1| + 2|d0 (1 + d1) e^t/(1 - 2 e^t)|
+	 ;;	<= 2|d0| + 2|d1| + 4|d0 (1 + d1)|
+	 ;;	 = 2|d0| + 2|d1| + 4|d0 + d0 d1)|
+	 ;;	<= 2|d0| + 2|d1| + 4|d0| + 4|d0 d1|
+	 ;;	<= 8 eps + 4 eps^2.
+	 ;;
+	 ;; By Lemma 4, the relative error of using log1p is compounded
+	 ;; by no more than 8|d'|, so the relative error of the result
+	 ;; is bounded by
+	 ;;
+	 ;;	|d2| + |d'| + |d2 d'|
+	 ;;	<= eps + 8 eps + 4 eps^2 + eps*(6 eps + 4 eps^2)
+	 ;;	 = 9 eps + 10 eps^2 + 4 eps^3.
+	 ;;
+	 (let ((e^t (exp t)))
+	   (- (log1p (/ (- 1 (* 2 e^t)) e^t)))))
+	(else
+	 ;; We use the identity
+	 ;;
+	 ;;	log(e^t/(1 - e^t))
+	 ;;	= -log((1 - e^t)/e^t)
+	 ;;	= -log(e^{-t} - 1)
+	 ;;
+	 ;; to compute this with expm1.
+	 ;;
+	 ;;	-(1 + d0) log((1 + d1) (e^{-t} - 1))
+	 ;;	= -(1 + d0) [log(e^{-t} - 1) + log(1 + d1)]
+	 ;;	= -[(1 + d0) log(e^{-t} - 1) + (1 + d0) log(1 + d1)]
+	 ;;	= -[log(e^{-t} - 1) + d0 log(e^{-t} - 1)
+	 ;;		+ (1 + d0) log(1 + d1) log(e^{-t} - 1)/log(e^{-t} - 1)]
+	 ;;	= -log(e^{-t} - 1)
+	 ;;	  * (1 + d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1))
+	 ;;
+	 ;; If t <= -log(1 + e), then log(e^{-t} - 1) >= 1; similarly,
+	 ;; if t >= -log(1 + 1/e), then log(e^{-t} - 1) <= -1.	Hence,
+	 ;; in both cases, |log(e^{-t} - 1)| >= 1, so that
+	 ;;
+	 ;;	|d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1)|
+	 ;;	<= |d0| + |(1 + d0) log(1 + d1)/log(e^{-t} - 1)|
+	 ;;	<= |d0| + |(1 + d0) log(1 + d1)|
+	 ;;	<= |d0| + |log(1 + d1)| + |d0 log(1 + d1)|
+	 ;;	<= |d0| + |1/(1 - |d1|)| + |d0/(1 - d1)|
+	 ;;	<= |d0| + 2|d1| + 2|d0 d1|
+	 ;;	<= 3 eps + 2 eps^2.
+	 ;;
+	 (- (log (expm1 (- t)))))))
 
 ;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 
@@ -2008,11 +2524,11 @@ USA.
 	       (<= 2 radix 36))
 	  radix)
 	 ((and (pair? radix)
-	       (eq? (car radix) 'HEUR)
+	       (eq? (car radix) 'heur)
 	       (list? radix))
 	  (parse-format-tail (cdr radix)))
 	 (else
-	  (error:bad-range-argument radix 'NUMBER->STRING)))))
+	  (error:bad-range-argument radix 'number->string)))))
 
 (define (parse-format-tail tail)
   (let loop
@@ -2030,11 +2546,11 @@ USA.
 			      (cadr modifier)))
 		   (cadr modifier))))
 	    (cond ((and (pair? modifier)
-			(eq? (car modifier) 'EXACTNESS)
+			(eq? (car modifier) 'exactness)
 			(pair? (cdr modifier))
-			(memq (cadr modifier) '(E S))
+			(memq (cadr modifier) '(e s))
 			(null? (cddr modifier)))
-		   (if (eq? (cadr modifier) 'E)
+		   (if (eq? (cadr modifier) 'e)
 		       (warn "NUMBER->STRING: ignoring exactness modifier"
 			     modifier))
 		   (loop tail
@@ -2042,26 +2558,26 @@ USA.
 			 radix
 			 radix-expressed))
 		  ((and (pair? modifier)
-			(eq? (car modifier) 'RADIX)
+			(eq? (car modifier) 'radix)
 			(pair? (cdr modifier))
-			(memq (cadr modifier) '(B O D X))
+			(memq (cadr modifier) '(b o d x))
 			(or (null? (cddr modifier))
 			    (and (pair? (cddr modifier))
-				 (memq (caddr modifier) '(E S))
+				 (memq (caddr modifier) '(e s))
 				 (null? (cdddr modifier)))))
 		   (if (and (pair? (cddr modifier))
-			    (eq? (caddr modifier) 'E))
+			    (eq? (caddr modifier) 'e))
 		       (warn
 			"NUMBER->STRING: ignoring radix expression modifier"
 			modifier))
 		   (loop tail
 			 exactness-expressed
 			 (specify-modifier radix)
-			 (if (pair? (cddr modifier)) (caddr modifier) 'E)))
+			 (if (pair? (cddr modifier)) (caddr modifier) 'e)))
 		  (else
 		   (error "Illegal format modifier" modifier)))))
 	(case radix
-	  ((B) 2)
-	  ((O) 8)
-	  ((D #F) 10)
-	  ((X) 16)))))
+	  ((b) 2)
+	  ((o) 8)
+	  ((d #f) 10)
+	  ((x) 16)))))

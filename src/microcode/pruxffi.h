@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -90,9 +90,7 @@ extern void* pointer_value (void);
 extern void check_number_of_args (int num);
 extern SCM unspecific (void);
 extern SCM empty_list (void);
-extern int flovec_length (SCM vector);
-extern double* flovec_loc (SCM vector);
-extern double flovec_ref (SCM vector, int index);
+extern int flovec_length (double *first);
 
 #ifndef MIT_SCHEME /* Do not include in the microcode, just shims. */
 extern SCM cons (SCM car, SCM cdr);

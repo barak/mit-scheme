@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -87,7 +87,7 @@ USA.
 ;;;; File Syntaxer
 
 (define (syntax-file input-string bin-string spec-string)
-  (guarantee-environment sf/default-syntax-table 'syntax-file)
+  (guarantee environment? sf/default-syntax-table 'syntax-file)
   (guarantee-list-of-type sf/top-level-definitions symbol? 'syntax-file)
   (for-each (lambda (input-string)
 	      (receive (input-pathname bin-pathname spec-pathname)
@@ -122,18 +122,18 @@ USA.
 (define (sf/internal input-pathname bin-pathname spec-pathname
 		     environment declarations)
   spec-pathname				;ignored
-  (with-simple-restart 'CONTINUE
+  (with-simple-restart 'continue
       (string-append "Skip processing file " (->namestring input-pathname))
     (lambda ()
       (let ((do-it
 	     (let ((start-date (get-decoded-time)))
 	       (lambda ()
-		 (fasdump (make-comment
-			   `((SOURCE-FILE . ,(->namestring input-pathname))
-			     (DATE ,(decoded-time/year start-date)
+		 (fasdump (make-scode-comment
+			   `((source-file . ,(->namestring input-pathname))
+			     (date ,(decoded-time/year start-date)
 				   ,(decoded-time/month start-date)
 				   ,(decoded-time/day start-date))
-			     (TIME ,(decoded-time/hour start-date)
+			     (time ,(decoded-time/hour start-date)
 				   ,(decoded-time/minute start-date)
 				   ,(decoded-time/second start-date)))
 			   (sf/file->scode input-pathname bin-pathname
@@ -152,16 +152,6 @@ USA.
 		  (with-notification message do-it)))
 	    (do-it))))))
 
-;; If not #F, should be a string file type.  SF will pretty print
-;; the macro-expanded, but unoptimized file content to the output
-;; directory in a file with this extension.
-(define macroexpanded-pathname-type #f)
-
-;; If not #F, should be a string file type.  SF will pretty print
-;; the optimized file content to the output directory in a file
-;; with this extension.
-(define optimized-pathname-type #f)
-
 (define (sf/file->scode input-pathname output-pathname
 			environment declarations)
   (fluid-let ((sf/default-externs-pathname
@@ -170,32 +160,21 @@ USA.
 			      (pathname-directory input-pathname)
 			      #f
 			      externs-pathname-type
-			      'NEWEST)))
+			      'newest)))
     (receive (expression externs-block externs)
-	(integrate/file input-pathname
-			(and output-pathname
-			     macroexpanded-pathname-type
-			     (pathname-new-type output-pathname
-						macroexpanded-pathname-type))
-			environment declarations)
+	(integrate/file input-pathname environment declarations)
       (if output-pathname
 	  (write-externs-file (pathname-new-type output-pathname
 						 externs-pathname-type)
 			      externs-block
 			      externs))
-      (if (and output-pathname
-	       optimized-pathname-type)
-	  (call-with-output-file
-	      (pathname-new-type output-pathname optimized-pathname-type)
-	    (lambda (port)
-	      (pp expression port))))
       expression)))
 
 (define externs-pathname-type
   "ext")
 
 (define sf/default-externs-pathname
-  (make-pathname #f #f #f #f externs-pathname-type 'NEWEST))
+  (make-pathname #f #f #f #f externs-pathname-type 'newest))
 
 (define (read-externs-file pathname)
   (let ((pathname (merge-pathnames pathname sf/default-externs-pathname)))
@@ -221,10 +200,10 @@ USA.
 		       (values (vector-ref object 2) (vector-ref object 3))
 		       (wrong-version (vector-ref object 1))))
 		  ((and (list? object)
-			(for-all? object
-			  (lambda (element)
-			    (and (vector? element)
-				 (= 4 (vector-length element))))))
+			(every (lambda (element)
+				 (and (vector? element)
+				      (= 4 (vector-length element))))
+			       object))
 		   (wrong-version 1))
 		  (else
 		   (error "Not an externs file:" namestring))))
@@ -249,17 +228,12 @@ USA.
 
 ;;;; Optimizer Top Level
 
-(define (integrate/file file-name macroexpanded-file-name environment declarations)
+(define (integrate/file file-name environment declarations)
   (integrate/kernel
    (lambda ()
-     (let ((scode (phase:syntax (phase:read file-name)
-				environment
-				declarations)))
-       (if macroexpanded-file-name
-	   (call-with-output-file macroexpanded-file-name
-	     (lambda (port)
-	       (pp scode port))))
-       scode))))
+     (phase:syntax (phase:read file-name)
+		   environment
+		   declarations))))
 
 (define (integrate/simple preprocessor input receiver)
   (call-with-values
@@ -271,24 +245,37 @@ USA.
 	  expression))))
 
 (define (integrate/kernel get-scode)
-  (receive (operations environment expression)
-      (receive (block expression) (phase:transform (get-scode))
-	(phase:optimize block expression))
-    (phase:generate-scode operations environment expression)))
+  (let ((scode (get-scode)))
+    (if (r7rs-scode-file? scode)
+	(integrate/r7rs-scode-file scode)
+	(integrate/kernel-1 (lambda () (phase:transform (get-scode)))))))
+
+(define (integrate/kernel-1 get-transformed)
+  (call-with-values
+      (lambda ()
+	(call-with-values get-transformed
+	  phase:optimize))
+    phase:generate-scode))
 
 (define (phase:read filename)
-  (in-phase "Read" (lambda () (read-file filename))))
+  (in-phase "Read"
+    (lambda ()
+      (or (read-r7rs-source filename)
+	  (read-file filename)))))
 
 (define (phase:syntax s-expressions environment declarations)
   (in-phase "Syntax"
     (lambda ()
-      (syntax* (if (null? declarations)
-		   s-expressions
-		   (cons (cons (close-syntax 'DECLARE
-					     system-global-environment)
-			       declarations)
-			 s-expressions))
-	       environment))))
+      (if (r7rs-source? s-expressions)
+	  (syntax-r7rs-source s-expressions (current-library-db))
+	  (syntax* (if (null? declarations)
+		       s-expressions
+		       (cons (cons (close-syntax 'declare
+						 (runtime-environment->syntactic
+						  system-global-environment))
+				   declarations)
+			     s-expressions))
+		   environment)))))
 
 (define (phase:transform scode)
   (in-phase "Transform"
@@ -296,7 +283,9 @@ USA.
       (transform/top-level scode sf/top-level-definitions))))
 
 (define (phase:optimize block expression)
-  (in-phase "Optimize" (lambda () (integrate/top-level block expression))))
+  (in-phase "Optimize"
+    (lambda ()
+      (integrate/top-level block expression))))
 
 (define (phase:generate-scode operations environment expression)
   (in-phase "Generate SCode"
@@ -304,6 +293,27 @@ USA.
       (receive (externs-block externs)
 	  (operations->external operations environment)
 	(values (cgen/external expression) externs-block externs)))))
+
+(define (integrate/r7rs-scode-file scode)
+  (values (map-r7rs-scode-file integrate/r7rs-library scode)
+	  #f
+	  '()))
+
+(define (integrate/r7rs-library library)
+  (let ((imports (scode-library-imports-used library)))
+    (map-scode-library (lambda (contents)
+			 (receive (optimized externs-block externs)
+			     (integrate/kernel-1
+			      (lambda ()
+				(phase:transform-r7rs imports contents)))
+			   (declare (ignore externs-block externs))
+			   optimized))
+		       library)))
+
+(define (phase:transform-r7rs imports scode)
+  (in-phase "Transform"
+    (lambda ()
+      (transform/r7rs-library imports scode))))
 
 (define (in-phase name thunk)
   (if (eq? sf:noisy? 'old-style)

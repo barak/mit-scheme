@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -154,61 +154,96 @@ The following commands evaluate Scheme expressions:
        1)
    state indent-point normal-indent))
 
+(define standard-scheme-indentations
+  `(;; R7RS keywords:
+    (begin . 0)
+    (case . 1)
+    (case-lambda . 0)
+    (cond-expand . 0)
+    (define . 1)
+    (define-library . 1)
+    (define-record-type . 3)
+    (define-syntax . 1)
+    (define-values . 1)
+    (delay . 0)
+    (delay-force . 0)
+    (do . 2)
+    (guard . 1)
+    (import . 0)
+    (lambda . 1)
+    (let . ,scheme-mode:indent-let-method)
+    (let* . 1)
+    (let*-syntax . 1)
+    (let*-values . 1)
+    (let-syntax . 1)
+    (let-values . 1)
+    (letrec . 1)
+    (letrec* . 1)
+    (letrec-syntax . 1)
+    (parameterize . 1)
+    (syntax-rules . ,scheme-mode:indent-let-method)
+    (unless . 1)
+    (when . 1)
+
+    ;; R7RS procedures:
+    (call-with-current-continuation . 0)
+    (call-with-input-file . 1)
+    (call-with-output-file . 1)
+    (call-with-port . 1)
+    (call-with-values . 1)
+    (call/cc . 0)
+    (dynamic-wind . 3)
+    (with-exception-handler . 1)
+    (with-input-from-file . 1)
+    (with-output-to-file . 1)
+
+    ;; SRFI keywords:
+    (and-let* . 1)
+    (receive . 2)
+
+    ;; MIT/GNU Scheme keywords:
+    (declare . 0)
+    (define-structure . 1)
+    (fluid-let . 1)
+    (list-parser . 0)
+    (local-declare . 1)
+    (named-lambda . 1)
+    (object-parser . 0)
+    (vector-parser . 0)
+
+    ;; MIT/GNU Scheme procedures:
+    (bind-condition-handler . 2)
+    (bind-restart . 3)
+    (call-with-append-file . 1)
+    (call-with-binary-append-file . 1)
+    (call-with-binary-input-file . 1)
+    (call-with-binary-output-file . 1)
+    (call-with-input-string . 1)
+    (call-with-output-string . 0)
+    (make-condition-type . 3)
+    (with-restart . 4)
+    (with-simple-restart . 2)
+    (within-continuation . 1)
+    ))
+
 (define scheme-mode:indent-methods
   (make-string-table))
+
+(for-each (lambda (p)
+	    (string-table-put! scheme-mode:indent-methods
+			       (symbol->string (car p))
+			       (cdr p)))
+	  standard-scheme-indentations)
+
+(define scheme-mode:indent-regexps
+  `(scheme-mode:indent-regexps
+    ("default" . #f)
+    ("def" . definition)))
 
 (define (scheme-indent-method name method)
   (define-variable-local-value! (selected-buffer)
       (name->variable (symbol 'LISP-INDENT/ name) 'INTERN)
-    method))
-
-(for-each (lambda (entry)
-	    (for-each (lambda (name)
-			(string-table-put! scheme-mode:indent-methods
-					   (symbol->string name)
-					   (car entry)))
-		      (cdr entry)))
-	  `(;; R4RS keywords:
-	    (0 BEGIN DELAY)
-	    (1 CASE LAMBDA LET* LETREC LET-SYNTAX LETREC-SYNTAX SYNTAX-RULES)
-	    (2 DO)
-	    (,scheme-mode:indent-let-method LET)
-
-	    ;; R4RS procedures:
-	    (1 CALL-WITH-INPUT-FILE WITH-INPUT-FROM-FILE
-	       CALL-WITH-OUTPUT-FILE WITH-OUTPUT-TO-FILE)
-
-	    ;; SRFI keywords:
-            (1 AND-LET*)
-	    (2 RECEIVE)
-	    (3 DEFINE-RECORD-TYPE)
-
-	    ;; MIT/GNU Scheme keywords:
-	    (1 DEFINE-STRUCTURE FLUID-LET LET*-SYNTAX LOCAL-DECLARE
-	       NAMED-LAMBDA)
-
-	    ;; MIT/GNU Scheme procedures:
-	    (0 CALL-WITH-OUTPUT-STRING WITH-OUTPUT-TO-STRING)
-	    (1 CALL-WITH-APPEND-FILE CALL-WITH-BINARY-APPEND-FILE
-	       CALL-WITH-BINARY-INPUT-FILE CALL-WITH-BINARY-OUTPUT-FILE
-	       WITH-INPUT-FROM-PORT WITH-INPUT-FROM-STRING WITH-OUTPUT-TO-PORT
-	       CALL-WITH-VALUES WITH-VALUES WITHIN-CONTINUATION
-	       KEEP-MATCHING-ITEMS KEEP-MATCHING-ITEMS! DELETE-MATCHING-ITEMS
-	       DELETE-MATCHING-ITEMS! FIND-MATCHING-ITEM FIND-NON-MATCHING-ITEM
-	       COUNT-MATCHING-ITEMS COUNT-NON-MATCHING-ITEMS
-	       LIST-TRANSFORM-POSITIVE LIST-TRANSFORM-NEGATIVE
-	       LIST-SEARCH-POSITIVE LIST-SEARCH-NEGATIVE
-	       FOR-ALL? THERE-EXISTS? LIST-OF-TYPE? VECTOR-OF-TYPE?
-	       CALL-WITH-INPUT-STRING)
-	    (2 WITH-SIMPLE-RESTART BIND-CONDITION-HANDLER)
-	    (3 MAKE-CONDITION-TYPE)
-	    (4 WITH-RESTART)))
-
-(define scheme-mode:indent-regexps
-  `(SCHEME-MODE:INDENT-REGEXPS
-    ("DEFAULT" . #F)
-    ("DEF" . DEFINITION)
-    ("WITH-" . 1)))
+      method))
 
 ;;;; Completion
 
@@ -231,10 +266,7 @@ The following commands evaluate Scheme expressions:
 	  (let ((completions
 		 (let ((environment (evaluation-environment #f)))
 		   (obarray-completions
-		    (if (and bound-only?
-			     (environment-lookup
-			      environment
-			      '*PARSER-CANONICALIZE-SYMBOLS?*))
+		    (if (and bound-only? (param:reader-fold-case?))
 			(string-downcase prefix)
 			prefix)
 		    (if bound-only?
@@ -246,9 +278,9 @@ The following commands evaluate Scheme expressions:
 	    (cond ((not (pair? completions))
 		   (if-not-found))
 		  ((null? (cdr completions))
-		   (if-unique (symbol-name (car completions))))
+		   (if-unique (symbol->string (car completions))))
 		  (else
-		   (let ((completions (map symbol-name completions)))
+		   (let ((completions (map symbol->string completions)))
 		     (if-not-unique
 		      (string-greatest-common-prefix completions)
 		      (lambda () (sort completions string<=?))))))))
@@ -260,7 +292,7 @@ The following commands evaluate Scheme expressions:
   (let ((completions '()))
     (for-each-interned-symbol
      (lambda (symbol)
-       (if (and (string-prefix? prefix (symbol-name symbol))
+       (if (and (string-prefix? prefix (symbol->string symbol))
 		(filter symbol))
 	   (set! completions (cons symbol completions)))
        unspecific))
@@ -320,14 +352,14 @@ Otherwise, it is shown in the echo area."
 			(cond ((pair? argl)
 			       (insert-char #\space point)
 			       (insert-string (if (symbol? (car argl))
-						  (symbol-name (car argl))
+						  (symbol->string (car argl))
 						  (write-to-string (car argl)))
 					      point)
 			       (loop (cdr argl)))
 			      ((symbol? argl)
 			       (insert-string " . " point)
-			       (insert-string (symbol-name argl) point)))))
-		    (fluid-let ((*unparse-uninterned-symbols-by-name?* #t))
+			       (insert-string (symbol->string argl) point)))))
+		    (parameterize ((param:print-uninterned-symbols-by-name? #t))
 		      (message procedure-name ": " argl))))
 	      (editor-error "Expression does not evaluate to a procedure: "
 			    (extract-string start end))))))))

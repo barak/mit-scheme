@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,7 +33,6 @@ USA.
   (parent false read-only true)
   (name false read-only true)
   (index false read-only true)
-  (%unparser false)
   (description false)
   (method-alist '())
 
@@ -44,36 +43,30 @@ USA.
 
 (define make-vector-tag
   (let ((root-tag (%make-vector-tag false 'OBJECT false false)))
-    (set-vector-tag-%unparser!
-     root-tag
-     (lambda (state object)
-       ((standard-unparser
-	 (symbol->string (vector-tag-name (tagged-vector/tag object)))
-	 false)
-	state object)))
+    (define-print-method (lambda (object)
+			   (and (vector? object)
+				(fix:> (vector-length object) 0)
+				(eq? root-tag (vector-ref object 0))))
+      (standard-print-method
+       (lambda (object)
+	 (string "LIAR:" (vector-tag-name (tagged-vector/tag object))))))
     (named-lambda (make-vector-tag parent name enumeration)
-      (let ((tag
-	     (%make-vector-tag (or parent root-tag)
-			       name
-			       (and enumeration
-				    (enumeration/name->index enumeration
-							     name))
-			       ;; Propagate this downward at construction time
-			       ;; to avoid having to crawl upward at use time.
-			       (and parent (vector-tag-noop parent)))))
-	(unparser/set-tagged-vector-method! tag tagged-vector/unparse)
-	tag))))
+      (%make-vector-tag (or parent root-tag)
+			name
+			(and enumeration
+			     (enumeration/name->index enumeration
+						      name))
+			;; Propagate this downward at construction time
+			;; to avoid having to crawl upward at use time.
+			(and parent (vector-tag-noop parent))))))
 
 (define (define-vector-tag-unparser tag unparser)
-  (set-vector-tag-%unparser! tag unparser)
+  (define-print-method (lambda (object)
+			 (and (vector? object)
+			      (fix:> (vector-length object) 0)
+			      (eq? tag (vector-ref object 0))))
+    unparser)
   (vector-tag-name tag))
-
-(define (vector-tag-unparser tag)
-  (or (vector-tag-%unparser tag)
-      (let ((parent (vector-tag-parent tag)))
-	(if parent
-	    (vector-tag-unparser parent)
-	    (error "Missing unparser" tag)))))
 
 (define (vector-tag-put! tag key value)
   (let ((entry (assq key (vector-tag-method-alist tag))))
@@ -109,9 +102,6 @@ USA.
 (define-integrable (tagged-vector/index vector)
   (vector-tag-index (tagged-vector/tag vector)))
 
-(define-integrable (tagged-vector/unparser vector)
-  (vector-tag-unparser (tagged-vector/tag vector)))
-
 (define (tagged-vector? object)
   (and (vector? object)
        (not (zero? (vector-length object)))
@@ -120,7 +110,7 @@ USA.
 (define (->tagged-vector object)
   (let ((object
 	 (if (exact-nonnegative-integer? object)
-	     (unhash object)
+	     (unhash-object object)
 	     object)))
     (and (or (tagged-vector? object)
 	     (named-structure? object))
@@ -143,18 +133,8 @@ USA.
 
 (define (tagged-vector/description object)
   (cond ((named-structure? object)
-	 named-structure/description)
+	 pp-description)
 	((tagged-vector? object)
 	 (vector-tag-description (tagged-vector/tag object)))
 	(else
 	 (error "Not a tagged vector" object))))
-
-(define (standard-unparser name unparser)
-  (let ((name (string-append (symbol->string 'LIAR) ":" name)))
-    (if unparser
-	(unparser/standard-method name unparser)
-	(unparser/standard-method name))))
-
-(define (tagged-vector/unparse state vector)
-  (fluid-let ((*unparser-radix* 16))
-    ((tagged-vector/unparser vector) state vector)))

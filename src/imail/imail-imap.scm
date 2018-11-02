@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -139,9 +139,7 @@ USA.
   (cond ((string-ci=? "inbox" mailbox) "inbox")
 	((and (string-prefix-ci? "inbox/" mailbox)
 	      (not (string-prefix? "inbox/" mailbox)))
-	 (let ((mailbox (string-copy mailbox)))
-	   (substring-downcase! mailbox 0 5)
-	   mailbox))
+	 (string-downcase (string-slice mailbox 0 5)))
 	(else mailbox)))
 
 (define (compatible-imap-urls? url1 url2)
@@ -403,8 +401,8 @@ USA.
 	       mailbox)))
 	(flags (imap:response:list-flags response)))
     (let ((url (imap-url-new-mailbox url mailbox))
-	  (noselect? (memq '\\NOSELECT flags))
-	  (noinferiors? (memq '\\NOINFERIORS flags)))
+	  (noselect? (memq '|\\NOSELECT| flags))
+	  (noinferiors? (memq '|\\NOINFERIORS| flags)))
       (if (and noselect? noinferiors?)
 	  #f				;Completely uninteresting.
 	  (receive (folder-url container-url)
@@ -446,7 +444,7 @@ USA.
   (let* ((slash (string-find-next-char mailbox #\/))
 	 (root (if slash (string-head mailbox slash) mailbox))
 	 (key (make-imap-url-string url root)))
-    (hash-table/intern! imap-delimiters-table key
+    (hash-table-intern! imap-delimiters-table key
       (lambda ()
 	(let ((delimiter
 	       (imap:response:list-delimiter
@@ -743,7 +741,8 @@ USA.
 	   (set! connection-closure-thread-registration
 		 (start-standard-polling-thread
 		  connection-closure-thread-interval
-		  connection-closure-output-processor))
+		  connection-closure-output-processor
+		  'connection-closure-thread))
 	   unspecific)))))
 
 (define (connection-closure-output-processor)
@@ -1163,9 +1162,9 @@ USA.
 
 (define (imail-flag->imap-flag flag)
   (let ((entry
-	 (list-search-positive standard-imap-flags
-	   (lambda (entry)
-	     (string-ci=? flag (cdr entry))))))
+	 (find (lambda (entry)
+		 (string-ci=? flag (cdr entry)))
+	       standard-imap-flags)))
     (if entry
 	(car entry)
 	(intern flag))))
@@ -1330,7 +1329,7 @@ USA.
 	      (count 0))
 	  ((imail-ui:message-wrapper "Reading message data")
 	   (lambda ()
-	     (hash-table/for-each message-sets
+	     (hash-table-walk message-sets
 	       (lambda (keywords messages)
 		 (imap:command:fetch-set/for-each
 		  (lambda (response)
@@ -1386,8 +1385,11 @@ USA.
 	      (let ((keywords (select-uncached-keywords message keywords)))
 		(if (pair? keywords)
 		    (begin
-		      (hash-table/modify! message-sets keywords '()
-			(lambda (messages) (cons message messages)))
+		      (hash-table-update!/default message-sets
+						  keywords
+						  (lambda (messages)
+						    (cons message messages))
+						  '())
 		      (set! count (+ count 1)))))))))))
     (values message-sets count)))
 
@@ -1403,9 +1405,9 @@ USA.
 	       #t)))))
 
 (define (select-uncached-keywords message keywords)
-  (delete-matching-items keywords
-    (lambda (keyword)
-      (imap-message-keyword-cached? message keyword))))
+  (remove (lambda (keyword)
+	    (imap-message-keyword-cached? message keyword))
+	  keywords))
 
 ;;;; MIME support
 
@@ -1803,7 +1805,7 @@ USA.
 (define (clean-temporary-directory directory)
   (if (file-directory? directory)
       (for-each
-       (let* ((now (get-universal-time))
+       (let* ((now (- (get-universal-time) epoch))
 	      (then (- now temporary-file-expiration-time)))
 	 (lambda (pathname)
 	   (catch-file-errors (lambda (condition) condition #f)
@@ -1863,9 +1865,9 @@ USA.
 					'())))))
 		      keywords)))
 	    (let ((uncached
-		   (list-transform-positive alist
-		     (lambda (entry)
-		       (null? (cdr entry))))))
+		   (filter (lambda (entry)
+			     (null? (cdr entry)))
+			   alist)))
 	      (if (pair? uncached)
 		  (let ((response
 			 (fetch-message-items-1 message
@@ -2012,7 +2014,7 @@ USA.
 		  (map (lambda (x)
 			 (if (exact-nonnegative-integer? x)
 			     (number->string x)
-			     (symbol-name x)))
+			     (symbol->string x)))
 		       section))
 		 "]"))
 
@@ -2045,7 +2047,7 @@ USA.
    `(,@(imap-message-cache-specifier message)
      ,(encode-cache-namestring
        (if (symbol? keyword)
-	   (symbol-name keyword)
+	   (symbol->string keyword)
 	   keyword)))))
 
 (define (imap-message-cache-pathname message)
@@ -2090,7 +2092,7 @@ USA.
        (do ((i 0 (fix:+ i 1)))
 	   ((fix:= i n))
 	 (let ((char (string-ref string i)))
-	   (cond ((char-set-member? char-set:cache-namestring-safe char)
+	   (cond ((char-in-set? char char-set:cache-namestring-safe)
 		  (write-char char port))
 		 ((char=? char #\/)
 		  (write-char #\# port))
@@ -2157,7 +2159,7 @@ USA.
 	  (let ((n (read-string! buffer input-port)))
 	    (if (fix:> n 0)
 		(begin
-		  (write-substring buffer 0 n output-port)
+		  (write-string buffer output-port 0 n)
 		  (loop)))))))))
 
 (define (delete-file-recursively pathname)
@@ -2393,7 +2395,7 @@ USA.
 (define (imap:command:fetch-response connection command arguments)
   (let ((responses (apply imap:command connection command arguments)))
     (if (and (pair? (cdr responses))
-	     (for-all? (cdr responses) imap:response:fetch?))
+	     (every imap:response:fetch? (cdr responses)))
 	(if (null? (cddr responses))
 	    (cadr responses)
 	    ;; Some servers, notably UW IMAP, sometimes return
@@ -2496,7 +2498,7 @@ USA.
 (define (imap:command:multiple-response predicate
 					connection command . arguments)
   (let ((responses (apply imap:command connection command arguments)))
-    (if (for-all? (cdr responses) predicate)
+    (if (every predicate (cdr responses))
 	(cdr responses)
 	(error "Malformed response from IMAP server:" responses))))
 
@@ -2575,10 +2577,10 @@ USA.
 					(cddr arguments))
 				 arguments))
 		      imap-trace-port)
-	  (flush-output imap-trace-port)))
+	  (flush-output-port imap-trace-port)))
     (imap-transcript-write-string tag port)
     (imap-transcript-write-char #\space port)
-    (imap-transcript-write-string (symbol-name command) port)
+    (imap-transcript-write-string (symbol->string command) port)
     (for-each (lambda (argument)
 		(if argument
 		    (begin
@@ -2596,7 +2598,7 @@ USA.
       (cond ((exact-nonnegative-integer? argument)
 	     (imap-transcript-write argument port))
 	    ((symbol? argument)
-	     (imap-transcript-write-string (symbol-name argument) port))
+	     (imap-transcript-write-string (symbol->string argument) port))
 	    ((and (pair? argument)
 		  (eq? (car argument) 'QUOTE)
 		  (pair? (cdr argument))
@@ -2664,7 +2666,7 @@ USA.
     (if imap-trace-port
 	(begin
 	  (write-line (list 'RECEIVE response) imap-trace-port)
-	  (flush-output imap-trace-port)))
+	  (flush-output-port imap-trace-port)))
     response))
 
 (define (imap:catch-no-response predicate thunk)
@@ -2682,12 +2684,15 @@ USA.
 (define (process-queued-responses connection command)
   (with-modification-events-deferred
     (lambda ()
-      (let loop ((responses (dequeue-imap-responses connection)))
+      (let loop
+	  ((responses (dequeue-imap-responses connection))
+	   (returned '()))
 	(if (pair? responses)
-	    (if (process-response connection command (car responses))
-		(cons (car responses) (loop (cdr responses)))
-		(loop (cdr responses)))
-	    '())))))
+	    (loop (cdr responses)
+		  (if (process-response connection command (car responses))
+		      (cons (car responses) returned)
+		      returned))
+	    (reverse! returned))))))
 
 (define (process-response connection command response)
   (cond ((imap:response:status-response? response)
@@ -2773,10 +2778,10 @@ USA.
 	     (let ((pflags (imap:response-code:permanentflags code)))
 	       (set-imap-folder-permanent-keywords?!
 		folder
-		(if (memq '\\* pflags) #t #f))
+		(if (memq '|\\*| pflags) #t #f))
 	       (set-imap-folder-permanent-flags!
 		folder
-		(map imap-flag->imail-flag (delq '\\* pflags)))))))
+		(map imap-flag->imail-flag (delq '|\\*| pflags)))))))
 	((imap:response-code:read-only? code)
 	 (with-imap-connection-folder connection
 	   (lambda (folder)

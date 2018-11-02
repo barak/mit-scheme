@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,7 +50,7 @@ USA.
   (define (block-type! block type)
     (set-block-type! block type)
     (for-each loop (block-children block)))
-  
+
   (loop root-block)
   (if compiler:use-multiclosures?
       (merge-closure-blocks! root-block)))
@@ -72,7 +72,7 @@ USA.
       (examine-children block update?))
      (else
       (error "Illegal block type" block))))
-  
+
   (define (examine-children block update?)
     (for-each (lambda (child)
 		(loop child update?))
@@ -82,10 +82,9 @@ USA.
 
 (define (original-block-children block)
   (append (block-disowned-children block)
-	  (list-transform-positive
-	      (block-children block)
-	    (lambda (block*)
-	      (eq? block (original-block-parent block*))))))
+	  (filter (lambda (block*)
+		    (eq? block (original-block-parent block*)))
+		  (block-children block))))
 
 (define (maybe-close-procedure! procedure)
   (if (eq? true (procedure-closure-context procedure))
@@ -109,16 +108,15 @@ USA.
 					      value)))))))))
 		  (find-closure-bindings
 		   original-parent
-		   (list-transform-negative (block-free-variables block)
-		     (lambda (lvalue)
-		       (or (uninteresting-variable? lvalue)
-			   (begin
-			     (set-variable-closed-over?! lvalue true)
-			     false))))
+		   (remove (lambda (lvalue)
+			     (or (uninteresting-variable? lvalue)
+				 (begin
+				   (set-variable-closed-over?! lvalue true)
+				   false)))
+			   (block-free-variables block))
 		   '()
-		   (list-transform-negative
-		       (block-variables-nontransitively-free block)
-		     uninteresting-variable?))))
+		   (remove uninteresting-variable?
+			   (block-variables-nontransitively-free block)))))
 	    (lambda (closure-block closure-block?)
 	      (transfer-block-child! block parent closure-block)
 	      (set-procedure-closure-size!
@@ -144,9 +142,7 @@ USA.
     (and block*
 	 (let ((closure-block (block-parent block))
 	       (ancestor-block (block-shared-block (block-parent block*))))
-	   (and (for-all?
-		 (refilter-variables (block-bound-variables closure-block)
-				     update? procedure)
+	   (and (every
 		 (let ((bvars (block-bound-variables ancestor-block)))
 		   (lambda (var)
 		     (or (memq var bvars)
@@ -158,7 +154,9 @@ USA.
 					 (procedure/full-closure? val)
 					 (eq? (block-shared-block
 					       (procedure-closing-block val))
-					      ancestor-block)))))))))
+					      ancestor-block))))))))
+		 (refilter-variables (block-bound-variables closure-block)
+				     update? procedure))
 		(graft-child! procedure ancestor-block closure-block))))))
 
 (define (graft-child! procedure ancestor-block closure-block)
@@ -246,12 +244,11 @@ USA.
 
 (define (attempt-children-merge block procedure update?)
   (let ((closure-children
-	 (list-transform-positive
-	     (original-block-children block)
-	   (lambda (block*)
-	     (let ((procedure* (block-procedure block*)))
-	       (and procedure*
-		    (procedure/full-closure? procedure*)))))))
+	 (filter (lambda (block*)
+		   (let ((procedure* (block-procedure block*)))
+		     (and procedure*
+			  (procedure/full-closure? procedure*))))
+		 (original-block-children block))))
     (and (not (null? closure-children))
 	 (list-split
 	  closure-children
@@ -268,9 +265,9 @@ USA.
 (define (merge-children! block procedure unconditional conditional update?)
   (let ((ic-parent
 	 (let ((block
-		(list-search-positive unconditional
-		  (lambda (block*)
-		    (block-parent (block-parent block*))))))
+		(find (lambda (block*)
+			(block-parent (block-parent block*)))
+		      unconditional)))
 	   (and block
 		(block-parent (block-parent block)))))
 	(closed-over-variables
@@ -289,17 +286,17 @@ USA.
 			  (closure-block (block-parent block*)))
 		     (if (and (or (not (block-parent closure-block))
 				  ic-parent)
-			      (for-all?
-			       (refilter-variables
-				(block-bound-variables closure-block)
-				update? (block-procedure block*))
+			      (every
 			       (lambda (var)
 				 (or (lvalue-implicit? var unconditional)
 				     (let ((ind (variable-indirection var)))
 				       (memq (if ind
 						 (car ind)
 						 var)
-					     closed-over-variables))))))
+					     closed-over-variables))))
+			       (refilter-variables
+				(block-bound-variables closure-block)
+				update? (block-procedure block*))))
 			 (cons (car conditional) block-closed)
 			 block-closed))))
 	    ((null? (cdr block-closed))

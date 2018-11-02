@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -457,9 +457,9 @@ except for \\[info-cease-edit] to return to Info."
 		  (let ((current-item (current-menu-item (current-point))))
 		    (and current-item
 			 (let ((current-index (mark-index current-item)))
-			   (list-search-positive item-alist
-			     (lambda (entry)
-			       (= current-index (cdr entry)))))))))
+			   (find (lambda (entry)
+				   (= current-index (cdr entry)))
+				 item-alist))))))
 	     (if current-entry
 		 (prompt-for-alist-value "Menu item"
 					 item-alist
@@ -649,9 +649,7 @@ The name may be an abbreviation of the reference name."
     (%cref-item-keyword item (mark-1+ colon))))
 
 (define (%cref-item-keyword item colon)
-  (let ((string (extract-string item colon)))
-    (string-replace! string #\newline #\Space)
-    (string-trim string)))
+  (string-trim (string-replace (extract-string item colon) #\newline #\space)))
 
 (define (cref-item-name item)
   (let ((colon (char-search-forward #\: item (group-end item) false)))
@@ -860,9 +858,9 @@ The name may be an abbreviation of the reference name."
       (for-each
        (lambda (submenu)
 	 (let ((nodename (car submenu)))
-	   (if (not (or (list-search-positive menu-items
-			  (lambda (item)
-			    (string-ci=? item nodename)))
+	   (if (not (or (find (lambda (item)
+				(string-ci=? item nodename))
+			      menu-items)
 			(re-search-forward (string-append "^\\* "
 							  (re-quote-string
 							   nodename)
@@ -931,9 +929,9 @@ The name may be an abbreviation of the reference name."
 			     (let ((info-dir (edwin-info-directory)))
 			       (if (and info-dir
 					(file-directory? info-dir)
-					(not (there-exists? directories
-					       (lambda (dir)
-						 (pathname=? info-dir dir)))))
+					(not (any (lambda (dir)
+						    (pathname=? info-dir dir))
+						  directories)))
 				   (append directories (list info-dir))
 				   directories))))))
 		 (set-variable-local-value! buffer variable directories)

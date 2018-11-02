@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -123,8 +123,8 @@ USA.
 			(- (abs max-frame) min-frame 1)
 			(- max-frame min-frame)))
 	(rest? (negative? max-frame)))
-    (guarantee-exact-nonnegative-integer n-required)
-    (guarantee-exact-nonnegative-integer n-optional)
+    (guarantee exact-nonnegative-integer? n-required)
+    (guarantee exact-nonnegative-integer? n-optional)
     (if (not (and (< n-required #x80) (< n-optional #x80)))
 	(error "Can't encode procedure arity:" n-required n-optional))
     (fix:or n-required
@@ -138,7 +138,7 @@ USA.
 	     0)))
     (if offset
 	(begin
-	  (guarantee-exact-nonnegative-integer offset)
+	  (guarantee exact-nonnegative-integer? offset)
 	  (if (not (< offset #x7FF8))
 	      (error "Can't encode continuation offset:" offset))
 	  (+ offset #x8000))
@@ -250,13 +250,17 @@ USA.
        (let ((base (rtl:offset-base expression))
 	     (offset (rtl:offset-offset expression)))
 	 (if (rtl:register? base)
-	     (or (rtl:machine-constant? offset)
+	     (or (rtl:immediate-machine-constant? offset)
 		 (rtl:register? offset))
 	     (and (rtl:offset-address? base)
-		  (rtl:machine-constant? offset)
+		  (rtl:immediate-machine-constant? offset)
 		  (rtl:register? (rtl:offset-address-base base))
 		  (rtl:register? (rtl:offset-address-offset base)))))
        expression))
+
+(define (rtl:immediate-machine-constant? expression)
+  (and (rtl:machine-constant? expression)
+       (immediate-integer? (rtl:machine-constant-value expression))))
 
 (define (simple-offset->ea! offset)
   (let ((base (rtl:offset-base offset))
@@ -292,6 +296,7 @@ USA.
 	(rule-matcher ((? scale offset-operator?)
 		       (REGISTER (? base))
 		       (MACHINE-CONSTANT (? offset)))
+		      (QUALIFIER (immediate-integer? offset))
 		      (values scale
 			      (ea:offset (word-source base) offset scale)))
 	(rule-matcher ((? scale offset-operator?)
@@ -299,6 +304,7 @@ USA.
 			(REGISTER (? base))
 			(REGISTER (? index)))
 		       (MACHINE-CONSTANT (? offset)))
+		      (QUALIFIER (immediate-integer? offset))
 		      (values scale
 			      (ea:indexed (word-source base)
 					  offset scale
@@ -308,6 +314,7 @@ USA.
 			(REGISTER (? base))
 			(MACHINE-CONSTANT (? offset)))
 		       (REGISTER (? index)))
+		      (QUALIFIER (immediate-integer? offset))
 		      (values scale
 			      (ea:indexed (word-source base)
 					  offset scale*

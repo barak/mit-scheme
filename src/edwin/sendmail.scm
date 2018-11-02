@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -363,9 +363,9 @@ is inserted."
     (let ((given-header?
 	   (lambda (name null-true?)
 	     (let ((header
-		    (find-matching-item headers
-		      (lambda (header)
-			(string-ci=? (car header) name)))))
+		    (find (lambda (header)
+			    (string-ci=? (car header) name))
+			  headers)))
 	       (and header
 		    (cadr header)
 		    (if null-true?
@@ -920,7 +920,7 @@ the user from the mailer."
 		 (append-message (buffer-length buffer) port)))
 	     (call-with-append-file pathname
 	       (lambda (port)
-		 (append-message ((port/operation port 'LENGTH) port)
+		 (append-message ((textual-port-operation port 'LENGTH) port)
 				 port)))))))
    pathnames))
 
@@ -1005,7 +1005,7 @@ the user from the mailer."
                           message-pathname
                           trace-buffer
                           lookup-context)))
-      (cond ((not (for-all? responses smtp-response-valid?))
+      (cond ((not (every smtp-response-valid? responses))
 	     (pop-up-temporary-buffer "*SMTP-invalid*"
 				      '(READ-ONLY FLUSH-ON-SPACE)
 	       (lambda (buffer window)
@@ -1055,8 +1055,8 @@ the user from the mailer."
 
 (define (smtp-responses-ok? responses lookup-context)
   (if (ref-variable smtp-require-valid-recipients lookup-context)
-      (for-all? responses smtp-response-valid?)
-      (there-exists? responses smtp-response-valid?)))
+      (every smtp-response-valid? responses)
+      (any smtp-response-valid? responses)))
 
 (define (call-with-smtp-socket host-name service trace-buffer receiver)
   (let ((port #f))
@@ -1097,7 +1097,7 @@ the user from the mailer."
   (newline (smtp-port-port port)))
 
 (define (smtp-drain-output port)
-  (flush-output (smtp-port-port port)))
+  (flush-output-port (smtp-port-port port)))
 
 (define (smtp-trace-write-string string port)
   (let ((trace-buffer (smtp-port-trace-buffer port)))
@@ -1163,7 +1163,7 @@ the user from the mailer."
   (smtp-drain-output port)
   (let ((response (smtp-read-line port)))
     (let ((n (smtp-response-number response)))
-      (if (not (there-exists? numbers (lambda (n*) (= n n*))))
+      (if (not (any (lambda (n*) (= n n*)) numbers))
 	  (editor-error response))
       (if (smtp-response-continued? response)
 	  (let loop ((responses (list response)))
@@ -1273,7 +1273,7 @@ the user from the mailer."
      (call-with-output-string
        (lambda (port)
 	 (let ((context (encode-base64:initialize port #f)))
-	   (encode-base64:update context string 0 (string-length string))
+	   (encode-base64:update context (string->bytevector string))
 	   (encode-base64:finalize context))))))
   (smtp-write-line port (base64 user-name))
   (smtp-read-response port 334)
@@ -1285,12 +1285,12 @@ the user from the mailer."
    (call-with-output-string
      (lambda (port)
        (let ((context (encode-base64:initialize port)))
-	 (encode-base64:update context "\000" 0 1)
-	 (encode-base64:update context user-name 0 (string-length user-name))
-	 (encode-base64:update context "\000" 0 1)
+	 (encode-base64:update context (bytevector 0))
+	 (encode-base64:update context (string->bytevector user-name))
+	 (encode-base64:update context (bytevector 0))
 	 (call-with-stored-pass-phrase pass-phrase-key
 	   (lambda (pass)
-	     (encode-base64:update context pass 0 (string-length pass))))
+	     (encode-base64:update context (string->bytevector pass))))
 	 (encode-base64:finalize context))))))
 
 (define (smtp-server-pass-phrase-key user-name lookup-context)
@@ -1347,7 +1347,7 @@ the user from the mailer."
 	    (lambda (string start end)
 	      (encode-quoted-printable:update
                context
-               (xsubstring string 0 (xstring-length string))
+               (string-copy string)
                start
                end)))
 	  (encode-quoted-printable:finalize context)))
@@ -1415,9 +1415,9 @@ the user from the mailer."
 	(subtype (mime-attachment-subtype attachment)))
     (write-message-header-field
      "Content-Type"
-     (string-append (symbol-name type)
+     (string-append (symbol->string type)
 		    "/"
-		    (symbol-name subtype)
+		    (symbol->string subtype)
 		    (mime-parameters->string
 		     (mime-attachment-parameters attachment)))
      port)
@@ -1444,30 +1444,31 @@ the user from the mailer."
 		    (mime-attachment-message-headers attachment))
 	  (newline port)
 	  ((mime-attachment-message-body-generator attachment) port))
-	(receive (initialize update finalize text?)
-	    (if (eq? type 'TEXT)
-		(values encode-quoted-printable:initialize
-			encode-quoted-printable:update
-			encode-quoted-printable:finalize
-			#t)
-		(values encode-base64:initialize
-			encode-base64:update
-			encode-base64:finalize
-			#f))
-	  (let ((context (initialize port text?)))
-	    ((if (eq? type 'TEXT)
-		 call-with-input-file
-		 call-with-binary-input-file)
-	     (mime-attachment-pathname attachment)
-	     (lambda (input-port)
-	       (let ((buffer (make-string 4096)))
-		 (let loop ()
-		   (let ((n-read (read-string! buffer input-port)))
-		     (if (> n-read 0)
-			 (begin
-			   (update context buffer 0 n-read)
-			   (loop))))))))
-	    (finalize context))))))
+	(if (eq? type 'TEXT)
+	    (let ((context (encode-quoted-printable:initialize port #t)))
+	      (call-with-input-file (mime-attachment-pathname attachment)
+		(lambda (input-port)
+		  (let ((buffer (make-string 4096)))
+		    (let loop ()
+		      (let ((n-read (read-string! buffer input-port)))
+			(if (> n-read 0)
+			    (begin
+			      (encode-quoted-printable:update context
+							      buffer 0 n-read)
+			      (loop))))))))
+	      (encode-quoted-printable:finalize context))
+	    (let ((context (encode-base64:initialize port #f)))
+	      (call-with-binary-input-file
+		  (mime-attachment-pathname attachment)
+		(lambda (input-port)
+		  (let ((buffer (make-bytevector 4096)))
+		    (let loop ()
+		      (let ((n-read (read-bytevector! buffer input-port)))
+			(if (> n-read 0)
+			    (begin
+			      (encode-base64:update context buffer 0 n-read)
+			      (loop))))))))
+	      (encode-base64:finalize context))))))
 
 (define (enable-buffer-mime-processing! buffer)
   (buffer-remove! buffer 'MAIL-DISABLE-MIME-PROCESSING))
@@ -1539,14 +1540,14 @@ the user from the mailer."
   (decorated-string-append
    "; " "" ""
    (map (lambda (parameter)
-	  (string-append (symbol-name (car parameter))
+	  (string-append (symbol->string (car parameter))
 			 "=\""
 			 (cadr parameter)
 			 "\""))
 	parameters)))
 
 (define (mime-disposition->string disposition)
-  (string-append (symbol-name (car disposition))
+  (string-append (symbol->string (car disposition))
 		 (mime-parameters->string (cdr disposition))))
 
 (define (guarantee-mime-compliant-headers h-start h-end)
@@ -1583,15 +1584,14 @@ the user from the mailer."
 	 (plen (string-length prefix)))
     (if (not (<= 1 length (- 70 plen)))
 	(error:bad-range-argument length 'RANDOM-MIME-BOUNDARY-STRING))
-    (string-head! (call-with-output-string
-		    (lambda (port)
-		      (write-string prefix port)
-		      (let ((context (encode-base64:initialize port #f)))
-			(let ((n (* (integer-ceiling (- length 2) 4) 3)))
-			  (encode-base64:update context
-						(random-byte-vector n) 0 n))
-			(encode-base64:finalize context))))
-		  (+ plen length))))
+    (string-head (call-with-output-string
+		   (lambda (port)
+		     (write-string prefix port)
+		     (let ((context (encode-base64:initialize port #f)))
+		       (let ((n (* (integer-ceiling (- length 2) 4) 3)))
+			 (encode-base64:update context (random-bytevector n)))
+		       (encode-base64:finalize context))))
+		 (+ plen length))))
 
 ;;;; Attachment browser
 
@@ -1659,9 +1659,9 @@ You can add and delete attachments from that buffer."
   (let ((start (mark-right-inserting-copy mark))
 	(type (mime-attachment-type attachment))
 	(subtype (mime-attachment-subtype attachment)))
-    (insert-string-pad-right (string-append (symbol-name type)
+    (insert-string-pad-right (string-append (symbol->string type)
 					    "/"
-					    (symbol-name subtype))
+					    (symbol->string subtype))
 			     30 #\space mark)
     (if (not (and (eq? type 'MESSAGE) (eq? subtype 'RFC822)))
 	(begin
@@ -1786,15 +1786,14 @@ Otherwise, the MIME type is determined from the file's suffix;
 	     (if prompt?
 		 (do-mime)
 		 (let ((entry
-			(find-matching-item
-			    (ref-variable file-type-to-mime-type buffer)
-			  (lambda (entry)
-			    (cond ((string? type)
-				   (string-ci=? (car entry) type))
-				  ((not type)
-				   (not (car entry)))
-				  (else
-				   (eq? type 'WILD)))))))
+			(find (lambda (entry)
+				(cond ((string? type)
+				       (string-ci=? (car entry) type))
+				      ((not type)
+				       (not (car entry)))
+				      (else
+				       (eq? type 'WILD))))
+			      (ref-variable file-type-to-mime-type buffer))))
 		   (cond (entry (make-mime-type (cadr entry) (caddr entry)))
 			 ((pathname-mime-type pathname))
 			 (else
@@ -1845,9 +1844,9 @@ This is a list, each element of which is a list of three items:
 	(and (list? x)
 	     (= (length x) 3)
 	     (or (not (car x)) (string? (car x)))
-	     (there-exists? mime-top-level-types
-	       (lambda (e)
-		 (eq? (cdr e) (cadr x))))
+	     (any (lambda (e)
+		    (eq? (cdr e) (cadr x)))
+		  mime-top-level-types)
 	     (symbol? (caddr x)))))))
 
 (define mime-top-level-types

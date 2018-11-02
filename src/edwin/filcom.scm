@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -218,7 +218,7 @@ procedures are called."
 		    (lambda ()
 		      (catch-file-errors (lambda (condition) condition #f)
 			(lambda ()
-			  (fluid-let ((load/suppress-loading-message? #t))
+			  (parameterize ((param:suppress-loading-message? #t))
 			    (load pathname '(EDWIN)))))))))))
 	  (if (and (procedure? database)
 		   (procedure-arity-valid? database 1))
@@ -437,13 +437,13 @@ With argument, saves all with no questions."
 (define (save-some-buffers no-confirmation? exiting?)
   (let ((buffers
 	 (let ((exiting? (and (not (default-object? exiting?)) exiting?)))
-	   (list-transform-positive (buffer-list)
-	     (lambda (buffer)
-	       (and (buffer-modified? buffer)
-		    (or (buffer-pathname buffer)
-			(and exiting?
-			     (ref-variable buffer-offer-save buffer)
-			     (> (buffer-length buffer) 0)))))))))
+	   (filter (lambda (buffer)
+		     (and (buffer-modified? buffer)
+			  (or (buffer-pathname buffer)
+			      (and exiting?
+				   (ref-variable buffer-offer-save buffer)
+				   (> (buffer-length buffer) 0)))))
+		   (buffer-list)))))
     (for-each (if (and (not (default-object? no-confirmation?))
 		       no-confirmation?)
 		  (lambda (buffer)
@@ -477,9 +477,9 @@ all buffers."
 
 (define (pathname->buffer pathname)
   (let ((pathname (->pathname pathname)))
-    (list-search-positive (buffer-list)
-      (lambda (buffer)
-	(equal? pathname (buffer-pathname buffer))))))
+    (find (lambda (buffer)
+	    (equal? pathname (buffer-pathname buffer)))
+	  (buffer-list))))
 
 (define-command set-visited-file-name
   "Change name of file visited in current buffer.
@@ -653,7 +653,8 @@ Prefix arg means treat the plaintext file as binary data."
     (blowfish-decrypt-file from to binary-plaintext? #f)))
 
 (define (guarantee-blowfish-available)
-  (if (not (blowfish-available?))
+  (if (not (ignore-errors (lambda () (load-option 'blowfish))
+			  (lambda (condition) condition #f)))
       (editor-error "Blowfish encryption not supported on this system.")))
 
 (define (blowfish-encrypt-file from to binary-plaintext? delete-plaintext?)
@@ -664,12 +665,13 @@ Prefix arg means treat the plaintext file as binary data."
 			   (->namestring to)
 			   " already exists; overwrite")))
        (begin
-	 ((if binary-plaintext?
-	      call-with-binary-input-file
-	      call-with-input-file)
-	  from
-	  (lambda (input)
-	    (%blowfish-encrypt-file to input)))
+	 (if binary-plaintext?
+	     (call-with-binary-input-file from
+	       (lambda (input)
+		 (%blowfish-encrypt-from-binary-port to input)))
+	     (call-with-input-file from
+	       (lambda (input)
+		 (%blowfish-encrypt-from-textual-port to input))))
 	 (let ((t (file-modification-time-indirect from)))
 	   (set-file-times! to t t))
 	 (set-file-modes! to (file-modes from))
@@ -684,46 +686,55 @@ Prefix arg means treat the plaintext file as binary data."
 			   (->namestring to)
 			   " already exists; overwrite")))
        (begin
-	 ((if binary-plaintext?
-	      call-with-binary-output-file
-	      call-with-output-file)
-	  to
-	  (lambda (output)
-	    (%blowfish-decrypt-file from output)))
+	 (if binary-plaintext?
+	     (call-with-binary-output-file to
+	       (lambda (output)
+		 (%blowfish-decrypt-to-binary-port from output)))
+	     (call-with-output-file to
+	       (lambda (output)
+		 (%blowfish-decrypt-to-textual-port from output))))
 	 (let ((t (file-modification-time-indirect from)))
 	   (set-file-times! to t t))
 	 (set-file-modes! to (file-modes from))
 	 (if delete-ciphertext? (delete-file from))
 	 #t)))
+
+(define (%blowfish-encrypt-from-textual-port pathname input)
+  (%blowfish-encrypt-from-binary-port
+   pathname
+   (textual->binary-port input 'iso-8859-1)))
 
-(define (%blowfish-encrypt-file pathname input)
+(define (%blowfish-encrypt-from-binary-port pathname input)
   (call-with-binary-output-file pathname
     (lambda (output)
-      (call-with-sensitive-string (call-with-confirmed-pass-phrase md5-string)
-	(lambda (key-string)
-	  (blowfish-encrypt-port input output key-string
+      (call-with-sensitive-bytes (call-with-confirmed-pass-phrase md5-string)
+	(lambda (key)
+	  (blowfish-encrypt-port input output key
 				 (write-blowfish-file-header output)
 				 #t))))))
 
-(define (%blowfish-decrypt-file pathname output)
+(define (%blowfish-decrypt-to-textual-port pathname output)
+  (%blowfish-decrypt-to-binary-port
+   pathname
+   (textual->binary-port output 'iso-8859-1)))
+
+(define (%blowfish-decrypt-to-binary-port pathname output)
   (call-with-binary-input-file pathname
     (lambda (input)
-      (call-with-sensitive-string
+      (call-with-sensitive-bytes
        (call-with-pass-phrase "Pass phrase" md5-string)
-       (lambda (key-string)
-	 (blowfish-encrypt-port input output key-string
+       (lambda (key)
+	 (blowfish-encrypt-port input output key
 				(read-blowfish-file-header input)
 				#f))))))
 
-(define (call-with-sensitive-string string receiver)
+(define (call-with-sensitive-bytes bytes receiver)
   (dynamic-wind (lambda ()
 		  unspecific)
 		(lambda ()
-		  (receiver string))
+		  (receiver bytes))
 		(lambda ()
-		  (string-fill! string #\NUL)
-		  (set! string)
-		  unspecific)))
+		  (bytevector-fill! bytes 0))))
 
 ;;;; Prompting
 
@@ -840,19 +851,19 @@ Prefix arg means treat the plaintext file as binary data."
 		       (lambda ()
 			 (canonicalize-filename-completions
 			  directory
-			  (list-transform-positive filenames
-			    (lambda (filename)
-			      (string-prefix? string filename))))))))))
+			  (filter (lambda (filename)
+				    (string-prefix? string filename))
+				  filenames))))))))
 	     (cond ((null? filenames)
 		    (if-not-found))
 		   ((null? (cdr filenames))
 		    (unique-case (car filenames)))
 		   (else
 		    (let ((filtered-filenames
-			   (list-transform-negative filenames
-			     (lambda (filename)
-			       (completion-ignore-filename?
-				(merge-pathnames filename directory))))))
+			   (remove (lambda (filename)
+				     (completion-ignore-filename?
+				      (merge-pathnames filename directory)))
+				   filenames)))
 		      (cond ((null? filtered-filenames)
 			     (non-unique-case filenames filenames))
 			    ((null? (cdr filtered-filenames))

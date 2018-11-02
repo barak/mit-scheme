@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,10 +24,28 @@ USA.
 
 |#
 
-;;;; Syntax Items
+;;;; Syntax items and compiler
 
 (declare (usual-integrations))
 
+;;; These items (and keyword-item) can be stored in a syntactic environment.
+
+;;; Variable items represent run-time variables.
+
+(define (var-item id)
+  (guarantee identifier? id 'var-item)
+  (%var-item id))
+
+(define-record-type <var-item>
+    (%var-item id)
+    var-item?
+  (id var-item-id))
+
+(define-print-method var-item?
+  (standard-print-method 'var-item
+    (lambda (item)
+      (list (var-item-id item)))))
+
 ;;; Reserved name items do not represent any form, but instead are
 ;;; used to reserve a particular name in a syntactic environment.  If
 ;;; the classifier refers to a reserved name, a syntax error is
@@ -36,90 +54,142 @@ USA.
 ;;; one of the names being bound.
 
 (define-record-type <reserved-name-item>
-    (make-reserved-name-item)
+    (reserved-name-item)
     reserved-name-item?)
-
-;;; Keyword items represent macro keywords.  There are several flavors
-;;; of keyword item.
-
-(define-record-type <classifier-item>
-    (make-classifier-item classifier)
-    classifier-item?
-  (classifier classifier-item/classifier))
-
-(define-record-type <compiler-item>
-    (make-compiler-item compiler)
-    compiler-item?
-  (compiler compiler-item/compiler))
-
-(define-record-type <expander-item>
-    (make-expander-item expander)
-    expander-item?
-  (expander expander-item/expander))
-
-(define-record-type <keyword-value-item>
-    (make-keyword-value-item item expression)
-    keyword-value-item?
-  (item keyword-value-item/item)
-  (expression keyword-value-item/expression))
-
-(define (keyword-item? item)
-  (or (classifier-item? item)
-      (compiler-item? item)
-      (expander-item? item)
-      (keyword-value-item? item)))
-
-;;; Variable items represent run-time variables.
-
-(define-record-type <variable-item>
-    (make-variable-item name)
-    variable-item?
-  (name variable-item/name))
 
-;;; Expression items represent any kind of expression other than a
-;;; run-time variable or a sequence.
+;;; These items can't be stored in a syntactic environment.
 
-(define-record-type <expression-item>
-    (make-expression-item compiler)
-    expression-item?
-  (compiler expression-item/compiler))
+;;; Definition items, whether top-level or internal, keyword or variable.
 
-;;; Body items represent sequences (e.g. BEGIN).
+(define (syntax-defn-item ctx id value)
+  (guarantee identifier? id 'syntax-defn-item)
+  (guarantee defn-item-value? value 'syntax-defn-item)
+  (%defn-item ctx id value #t))
 
-(define-record-type <body-item>
-    (make-body-item components)
-    body-item?
-  (components body-item/components))
+(define (defn-item ctx id value)
+  (guarantee identifier? id 'defn-item)
+  (guarantee defn-item-value? value 'defn-item)
+  (%defn-item ctx id value #f))
 
-(define (flatten-body-items items)
+(define (defn-item-value? object)
+  (not (reserved-name-item? object)))
+(register-predicate! defn-item-value? 'defn-item-value)
+
+(define-record-type <defn-item>
+    (%defn-item ctx id value syntax?)
+    defn-item?
+  (ctx defn-item-ctx)
+  (id defn-item-id)
+  (value defn-item-value)
+  (syntax? defn-item-syntax?))
+
+(define-print-method defn-item?
+  (standard-print-method 'defn-item
+    (lambda (item)
+      (list (defn-item-id item)
+	    (defn-item-value item)))))
+
+;;; Sequence items.
+
+(define (seq-item ctx elements)
+  (let ((elements (flatten-items elements)))
+    (if (and (pair? elements)
+	     (null? (cdr elements)))
+	(car elements)
+	(%seq-item ctx elements))))
+
+(define-record-type <seq-item>
+    (%seq-item ctx elements)
+    seq-item?
+  (ctx seq-item-ctx)
+  (elements seq-item-elements))
+
+(define (flatten-items items)
   (append-map item->list items))
 
 (define (item->list item)
-  (if (body-item? item)
-      (flatten-body-items (body-item/components item))
+  (if (seq-item? item)
+      (seq-item-elements item)
       (list item)))
 
-;;; Declaration items represent block-scoped declarations that are to
-;;; be passed through to the compiler.
+;;; Expression items represent any kind of expression other than a
+;;; run-time variable or a sequence.
 
-(define-record-type <declaration-item>
-    (make-declaration-item get-text)
-    declaration-item?
-  (get-text declaration-item/get-text))
+(define-record-type <expr-item>
+    (expr-item ctx compiler)
+    expr-item?
+  (ctx expr-item-ctx)
+  (compiler expr-item-compiler))
 
-(define (declaration-item/text item)
-  ((declaration-item/get-text item)))
+(define (body-item ctx items)
+  (expr-item ctx
+    (lambda ()
+      (output/body (map compile-item (flatten-items items))))))
 
-;;; Binding items represent definitions, whether top-level or
-;;; internal, keyword or variable.  Null binding items are for
-;;; definitions that don't emit code.
+(define (combination-item ctx operator operands)
+  (expr-item ctx
+    (lambda ()
+      (output/combination (compile-expr-item operator)
+			  (map compile-expr-item operands)))))
 
-(define-record-type <binding-item>
-    (make-binding-item name value)
-    binding-item?
-  (name binding-item/name)
-  (value binding-item/value))
+(define (constant-item ctx datum)
+  (expr-item ctx
+    (lambda ()
+      (output/constant datum))))
+
+;;;; Compiler
 
-(define-record-type <null-binding-item>
-    (make-null-binding-item)
-    null-binding-item?)
+(define compile-item)
+(define compile-expr-item)
+(add-boot-init!
+ (lambda ()
+   (set! compile-item
+	 (cached-standard-predicate-dispatcher 'compile-item 1))
+   (set! compile-expr-item
+	 (cached-standard-predicate-dispatcher 'compile-expr-item 1))
+   (run-deferred-boot-actions 'define-item-compiler)))
+
+(define (define-item-compiler predicate compiler #!optional expr-compiler)
+  (defer-boot-action 'define-item-compiler
+    (lambda ()
+      (define-predicate-dispatch-handler compile-item
+	(list predicate)
+	compiler)
+      (if expr-compiler
+	  (define-predicate-dispatch-handler compile-expr-item
+	    (list predicate)
+	    (if (default-object? expr-compiler) compiler expr-compiler))))))
+
+(define-item-compiler var-item?
+  (lambda (item)
+    (output/variable (var-item-id item))))
+
+(define-item-compiler expr-item?
+  (lambda (item)
+    ((expr-item-compiler item))))
+
+(define-item-compiler seq-item?
+  (lambda (item)
+    (output/sequence (map compile-item (seq-item-elements item))))
+  (lambda (item)
+    (output/sequence (map compile-expr-item (seq-item-elements item)))))
+
+(define (illegal-expression-compiler description)
+  (let ((message (string description " may not be used as an expression:")))
+    (lambda (item)
+      (error message item))))
+
+(define-item-compiler defn-item?
+  (lambda (item)
+    (let ((name (defn-item-id item))
+	  (value (compile-expr-item (defn-item-value item))))
+      (if (defn-item-syntax? item)
+	  (output/syntax-definition name value)
+	  (output/definition name value))))
+  (illegal-expression-compiler "Definition"))
+
+(define-item-compiler reserved-name-item?
+  (illegal-expression-compiler "Reserved name"))
+
+(define-item-compiler keyword-item?
+  (illegal-expression-compiler "Syntactic keyword"))

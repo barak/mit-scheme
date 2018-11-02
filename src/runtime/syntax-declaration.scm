@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -39,7 +39,7 @@ USA.
 		      known-declarations))
 	  unspecific))))
 
-(define (map-declaration-identifiers procedure declaration)
+(define (map-decl-ids procedure declaration)
   (if (not (pair? declaration))
       (error "Ill-formed declaration:" declaration))
   (let* ((declaration
@@ -51,94 +51,120 @@ USA.
 		    (cdr declaration))))
 	 (entry (assq (car declaration) known-declarations)))
     (if (and entry (syntax-match? (cadr entry) (cdr declaration)))
-	((cddr entry) declaration procedure)
+	((cddr entry) procedure declaration biselector:cr)
 	(begin
 	  (warn "Unknown declaration:" declaration)
 	  declaration))))
 
+(define (map+ procedure items selector)
+  (map procedure
+       items
+       (biselect-list-elts items selector)))
+
 (define known-declarations '())
 
 (for-each (lambda (keyword)
-	    (define-declaration keyword '(* IDENTIFIER)
-	      (lambda (declaration procedure)
+	    (define-declaration keyword '(* identifier)
+	      (lambda (procedure declaration selector)
 		(cons (car declaration)
-		      (map procedure (cdr declaration))))))
+		      (map+ procedure
+			    (cdr declaration)
+			    (biselect-cdr selector))))))
 	  ;; The names in USUAL-INTEGRATIONS are always global.
 	  '(
-	    USUAL-INTEGRATIONS
-	    IGNORABLE
-	    IGNORE
-	    INTEGRATE
-	    INTEGRATE-OPERATOR
-	    INTEGRATE-SAFELY
-	    TYPE-CHECKS
-	    NO-TYPE-CHECKS
-	    RANGE-CHECKS
-	    NO-RANGE-CHECKS
+	    usual-integrations
+	    ignorable
+	    ignore
+	    integrate
+	    integrate-operator
+	    integrate-safely
+	    type-checks
+	    no-type-checks
+	    range-checks
+	    no-range-checks
 	    ))
 
-(define-declaration 'INTEGRATE-EXTERNAL
+(define-declaration 'integrate-external
   `(* ,(lambda (object)
 	 (or (string? object)
 	     (pathname? object))))
-  (lambda (declaration procedure)
-    procedure
+  (lambda (procedure declaration selector)
+    (declare (ignore procedure selector))
+    declaration))
+
+(define-declaration 'target-metadata
+  `(* (symbol * datum))
+  (lambda (procedure declaration selector)
+    (declare (ignore procedure selector))
     declaration))
 
 (for-each
  (lambda (keyword)
-   (define-declaration keyword '(DATUM)
-     (lambda (declaration procedure)
+   (define-declaration keyword '(datum)
+     (lambda (procedure declaration selector)
        (list (car declaration)
-	     (let loop ((varset (cadr declaration)))
-	       (cond ((syntax-match? '('SET * IDENTIFIER) varset)
+	     (let loop
+		 ((varset (cadr declaration))
+		  (selector (biselect-cadr selector)))
+	       (cond ((syntax-match? '('set * identifier) varset)
 		      (cons (car varset)
-			    (map procedure (cdr varset))))
-		     ((syntax-match?* '(('UNION * DATUM)
-					('INTERSECTION * DATUM)
-					('DIFFERENCE DATUM DATUM))
+			    (map+ procedure
+				  (cdr varset)
+				  (biselect-cdr selector))))
+		     ((syntax-match?* '(('union * datum)
+					('intersection * datum)
+					('difference datum datum))
 				      varset)
 		      (cons (car varset)
-			    (map loop (cdr varset))))
+			    (map+ loop
+				  (cdr varset)
+				  (biselect-cdr selector))))
 		     (else varset)))))))
- '(CONSTANT
-   IGNORE-ASSIGNMENT-TRAPS
-   IGNORE-REFERENCE-TRAPS
-   PURE-FUNCTION
-   SIDE-EFFECT-FREE
-   USUAL-DEFINITION
-   UUO-LINK))
+ '(constant
+   ignore-assignment-traps
+   ignore-reference-traps
+   pure-function
+   side-effect-free
+   usual-definition
+   uuo-link))
 
-(define-declaration 'REPLACE-OPERATOR '(* (IDENTIFIER * (DATUM DATUM)))
-  (lambda (declaration procedure)
+(define-declaration 'replace-operator '(* (identifier * (datum datum)))
+  (lambda (procedure declaration selector)
     (cons (car declaration)
-	  (map (lambda (rule)
-		 (cons (procedure (car rule))
-		       (map (lambda (clause)
-			      (list (car clause)
-				    (if (identifier? (cadr clause))
-					(procedure (cadr clause))
-					(cadr clause))))
-			    (cdr rule))))
-	       (cdr declaration)))))
+	  (map+ (lambda (rule selector)
+		  (cons (procedure (car rule) (biselect-car selector))
+			(map+ (lambda (clause selector)
+				(list (car clause)
+				      (if (identifier? (cadr clause))
+					  (procedure
+					   (cadr clause)
+					   (biselect-cadr selector))
+					  (cadr clause))))
+			      (cdr rule)
+			      (biselect-cdr selector))))
+		(cdr declaration)
+		(biselect-cdr selector)))))
 
-(define-declaration 'REDUCE-OPERATOR '(* (IDENTIFIER DATUM * DATUM))
-  (lambda (declaration procedure)
+(define-declaration 'reduce-operator '(* (identifier datum * datum))
+  (lambda (procedure declaration selector)
     (cons (car declaration)
-	  (map (lambda (rule)
-		 (cons* (procedure (car rule))
-			(if (identifier? (cadr rule))
-			    (procedure (cadr rule))
-			    (cadr rule))
-			(map (lambda (clause)
-			       (if (syntax-match?*
-				    '(('NULL-VALUE IDENTIFIER DATUM)
-				      ('SINGLETON IDENTIFIER)
-				      ('WRAPPER IDENTIFIER ? DATUM))
-				    clause)
-				   (cons* (car clause)
-					  (procedure (cadr clause))
-					  (cddr clause))
-				   clause))
-			     (cddr rule))))
-	       (cdr declaration)))))
+	  (map+ (lambda (rule selector)
+		  (cons* (procedure (car rule) (biselect-car selector))
+			 (if (identifier? (cadr rule))
+			     (procedure (cadr rule) (biselect-cadr selector))
+			     (cadr rule))
+			 (map+ (lambda (clause selector)
+				 (if (syntax-match?*
+				      '(('null-value identifier datum)
+					('singleton identifier)
+					('wrapper identifier ? datum))
+				      clause)
+				     (cons* (car clause)
+					    (procedure (cadr clause)
+						       (biselect-cadr selector))
+					    (cddr clause))
+				     clause))
+			       (cddr rule)
+			       (biselect-cddr selector))))
+		(cdr declaration)
+		(biselect-cdr selector)))))

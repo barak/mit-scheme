@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,9 +31,9 @@ USA.
 (define-structure (command
 		   (constructor %make-command ())
 		   (print-procedure
-		    (unparser/standard-method 'COMMAND
-		      (lambda (state command)
-			(unparse-object state (command-name command))))))
+		    (standard-print-method 'COMMAND
+		      (lambda (command)
+			(list (command-name command))))))
   name
   %description
   interactive-specification
@@ -43,13 +43,13 @@ USA.
   (let ((desc (command-%description command)))
     (if (description? desc)
 	desc
-	(let ((new (->doc-string (symbol-name (command-name command)) desc)))
+	(let ((new (->doc-string (symbol->string (command-name command)) desc)))
 	  (if new
 	      (set-command-%description! command new))
 	  new))))
 
 (define (command-name-string command)
-  (editor-name/internal->external (symbol-name (command-name command))))
+  (editor-name/internal->external (symbol->string (command-name command))))
 
 (define (editor-name/internal->external string)
   string)
@@ -58,7 +58,7 @@ USA.
   string)
 
 (define (make-command name description specification procedure)
-  (let* ((sname (symbol-name name))
+  (let* ((sname (symbol->string name))
 	 (command
 	  (or (string-table-get editor-commands sname)
 	      (let ((command (%make-command)))
@@ -74,7 +74,7 @@ USA.
   (make-string-table 500))
 
 (define (name->command name #!optional if-undefined)
-  (or (string-table-get editor-commands (symbol-name name))
+  (or (string-table-get editor-commands (symbol->string name))
       (case (if (default-object? if-undefined) 'INTERN if-undefined)
 	((#F) #f)
 	((ERROR) (error "Undefined command:" name))
@@ -103,9 +103,9 @@ USA.
 (define-structure (variable
 		   (constructor %make-variable ())
 		   (print-procedure
-		    (unparser/standard-method 'VARIABLE
-		      (lambda (state variable)
-			(unparse-object state (variable-name variable))))))
+		    (standard-print-method 'VARIABLE
+		      (lambda (variable)
+			(list (variable-name variable))))))
   name
   %description
   %value
@@ -120,7 +120,8 @@ USA.
   (let ((desc (variable-%description variable)))
     (if (description? desc)
 	desc
-	(let ((new (->doc-string (symbol-name (variable-name variable)) desc)))
+	(let ((new
+	       (->doc-string (symbol->string (variable-name variable)) desc)))
 	  (if new
 	      (set-variable-%description! variable new))
 	  new))))
@@ -129,11 +130,11 @@ USA.
 (define-integrable variable-default-value variable-%default-value)
 
 (define (variable-name-string variable)
-  (editor-name/internal->external (symbol-name (variable-name variable))))
+  (editor-name/internal->external (symbol->string (variable-name variable))))
 
 (define (make-variable name description value buffer-local?
 		       #!optional test normalization)
-  (let* ((sname (symbol-name name))
+  (let* ((sname (symbol->string name))
 	 (variable
 	  (or (string-table-get editor-variables sname)
 	      (let ((variable (%make-variable)))
@@ -183,7 +184,7 @@ USA.
   (make-string-table 50))
 
 (define (name->variable name #!optional if-undefined)
-  (or (string-table-get editor-variables (symbol-name name))
+  (or (string-table-get editor-variables (symbol->string name))
       (case (if (default-object? if-undefined) 'INTERN if-undefined)
 	((#F) #f)
 	((ERROR) (error "Undefined variable:" name))
@@ -196,10 +197,10 @@ USA.
       (name->variable object)))
 
 (define (variable-permanent-local! variable)
-  (hash-table/put! permanent-local-variables variable #t))
+  (hash-table-set! permanent-local-variables variable #t))
 
 (define (variable-permanent-local? variable)
-  (hash-table/get permanent-local-variables variable #f))
+  (hash-table-ref/default permanent-local-variables variable #f))
 
 (define permanent-local-variables
-  (make-weak-eq-hash-table))
+  (make-key-weak-eq-hash-table))

@@ -11,9 +11,9 @@ those which are a consequence of the Intel x86 architecture.
 @end ifinfo
 
 @menu
-* Win32 Package Overview::      
-* Foreign function interface::  
-* Device Independent Bitmap Utilities::  
+* Win32 Package Overview::
+* Foreign function interface::
+* Device Independent Bitmap Utilities::
 @end menu
 
 
@@ -106,9 +106,9 @@ declaring the types of values passed to and returned from the foreign
 procedures and a form for declaring foreign procedures.
 
 @menu
-* Windows Types::               
-* Windows Foreign Procedures::  
-* Win32 API names and procedures::  
+* Windows Types::
+* Windows Foreign Procedures::
+* Win32 API names and procedures::
 @end menu
 
 @node  Windows Types, Windows Foreign Procedures, Foreign function interface, Foreign function interface
@@ -549,8 +549,8 @@ null handle error value.
 
 
 @menu
-* DIB procedures::              
-* Other parts of the DIB Utilities implementation::  
+* DIB procedures::
+* Other parts of the DIB Utilities implementation::
 @end menu
 
 @node DIB procedures, Other parts of the DIB Utilities implementation, Device Independent Bitmap Utilities, Device Independent Bitmap Utilities

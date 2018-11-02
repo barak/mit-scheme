@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,7 +32,7 @@ USA.
   (if (eq? (http-request-method) 'post)
       (let ((entity (http-request-entity)))
 	(if entity
-	    (let ((document (read-xml (open-input-octets entity))))
+	    (let ((document (bytevector->xml (string->iso8859-1 entity))))
 	      (if document
 		  (write-xml (process-xmlrpc-request document pathname) port)
 		  (http-status-response 400 "Ill-formed XML entity")))
@@ -58,11 +58,11 @@ USA.
 		  (apply handler params)))))))))))
 
 (define (get-xmlrpc-method-handler pathname name)
-  (let ((methods (make-weak-eq-hash-table)))
+  (let ((methods (make-key-weak-eq-hash-table)))
     (let ((environment (make-expansion-environment pathname)))
       (environment-define environment 'define-xmlrpc-method
 	(lambda (name handler)
-	  (hash-table/put! methods name handler)))
-      (fluid-let ((load/suppress-loading-message? #t))
+	  (hash-table-set! methods name handler)))
+      (parameterize ((param:suppress-loading-message? #t))
 	(load pathname environment)))
-    (hash-table/get methods name #f)))
+    (hash-table-ref/default methods name #f)))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,7 +36,7 @@ USA.
    static SCHEME_OBJECT compiled_block_debug_filename (SCHEME_OBJECT);
 #endif
 
-static void do_printing (outf_channel, SCHEME_OBJECT, bool);
+static void print_object (outf_channel, SCHEME_OBJECT);
 static bool print_primitive_name (outf_channel, SCHEME_OBJECT);
 static void print_expression (outf_channel, SCHEME_OBJECT, const char *);
 
@@ -187,44 +187,108 @@ Print_Return (const char * String)
 }
 
 static void
+print_simple (outf_channel stream, SCHEME_OBJECT object)
+{
+  unsigned int type = (OBJECT_TYPE (object));
+  const char * name = 0;
+  if (type < TYPE_CODE_LIMIT)
+    name = (type_names[type]);
+  if (name != 0)
+    outf (stream, "[%s", name);
+  else
+    outf (stream, "[%#02x", type);
+  outf (stream, " %#lx]", OBJECT_DATUM (object));
+}
+
+static void
+print_char (outf_channel stream, unsigned int cp)
+{
+  switch (cp)
+    {
+    case '\\':
+      outf (stream, "\\\\");
+      break;
+    case '"':
+      outf (stream, "\\\"");
+      break;
+    case '\t':
+      outf (stream, "\\t");
+      break;
+    case '\n':
+      outf (stream, "\\n");
+      break;
+    case '\f':
+      outf (stream, "\\f");
+      break;
+    default:
+      if ((cp >= ' ') && (cp <= '~'))
+	outf (stream, "%c", cp);
+      else
+	outf (stream, "\\%03o", cp);
+      break;
+    }
+}
+
+static void
 print_string (outf_channel stream, SCHEME_OBJECT string)
 {
-  long length;
+  long length, long_enough;
   long i;
   char * next;
-  char this;
 
   outf (stream, "\"");
   length = (STRING_LENGTH (string));
+  long_enough = (length < 100 ? length : 90);
   next = (STRING_POINTER (string));
-  for (i = 0; (i < length); i += 1)
+  for (i = 0; (i < long_enough); i += 1)
+    print_char (stream, *next++);
+  if (length != long_enough)
+    outf (stream, "...[%ld total chars]", length);
+  outf (stream, "\"");
+}
+
+static void
+print_ustring (outf_channel stream, SCHEME_OBJECT string)
+{
+  long length, long_enough;
+  long i;
+  unsigned char * next;
+  unsigned int cp;
+  unsigned char cp_size;
+
+  length = (STRING_LENGTH (string));
+  long_enough = (length < 100 ? length : 90);
+  next = (STRING_LOC (string, 0));
+
+  cp_size
+    = ((OBJECT_TYPE (MEMORY_REF (string, BYTEVECTOR_LENGTH_INDEX))) & 0x03);
+  if (cp_size == 0)
     {
-      this = (*next++);
-      switch (this)
-	{
-	case '\\':
-	  outf (stream, "\\\\");
-	  break;
-	case '"':
-	  outf (stream, "\\\"");
-	  break;
-	case '\t':
-	  outf (stream, "\\t");
-	  break;
-	case '\n':
-	  outf (stream, "\\n");
-	  break;
-	case '\f':
-	  outf (stream, "\\f");
-	  break;
-	default:
-	  if ((this >= ' ') && (this <= '~'))
-	    outf (stream, "%c", this);
-	  else
-	    outf (stream, "\\%03o", this);
-	  break;
-	}
+      print_simple (stream, string);
+      return;
     }
+
+  outf (stream, "\"");
+  for (i = 0; (i < long_enough); i += 1)
+    {
+      switch (cp_size) {
+      case 1:
+	cp = *next++;
+	break;
+      case 2:
+	cp = *next++;
+	cp |= (*next++ << 8);
+	break;
+      case 3:
+	cp = *next++;
+	cp |= (*next++ << 8);
+	cp |= (*next++ << 16);
+	break;
+      }
+      print_char (stream, cp);
+    }
+  if (length != long_enough)
+    outf (stream, "...[%ld total chars]", length);
   outf (stream, "\"");
 }
 
@@ -273,20 +337,12 @@ print_filename (outf_channel stream, SCHEME_OBJECT filename)
 }
 #endif
 
-static void
-print_object (SCHEME_OBJECT object)
-{
-  do_printing (ERROR_OUTPUT, object, true);
-  outf_error ("\n");
-  outf_flush_error();
-}
-
 DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
   "A cheap, built-in printer intended for debugging the interpreter.")
 {
   PRIMITIVE_HEADER (1);
 
-  print_object (ARG_REF (1));
+  print_object (ERROR_OUTPUT, ARG_REF (1));
   return (SHARP_F);
 }
 
@@ -300,15 +356,14 @@ print_objects (SCHEME_OBJECT * objects, int n)
   end = (objects + n);
   while (scan < end)
     {
-      outf_error
-	("%4lx: ", ((unsigned long) (((char *) scan) - ((char *) objects))));
-      do_printing (ERROR_OUTPUT, (*scan++), true);
+      outf_error ("%#lx: ", ((unsigned long) scan));
+      print_object (ERROR_OUTPUT, (*scan++));
       outf_error ("\n");
     }
   outf_flush_error();
 }
 
-/* This is useful because `do_printing' doesn't print the contents of
+/* This is useful because `print_object' doesn't print the contents of
    vectors.  The reason that it doesn't is because vectors are used to
    represent named structures, and most named structures don't want to
    be printed out explicitly.  */
@@ -321,11 +376,12 @@ Print_Vector (SCHEME_OBJECT vector)
 }
 
 static void
-print_expression (outf_channel stream, SCHEME_OBJECT expression, const char * string)
+print_expression (outf_channel stream,
+		  SCHEME_OBJECT expression, const char * string)
 {
   if ((string [0]) != 0)
     outf (stream, "%s: ", string);
-  do_printing (stream, expression, true);
+  print_object (stream, expression);
 }
 
 void
@@ -335,276 +391,250 @@ Print_Expression (SCHEME_OBJECT expression, const char * string)
 }
 
 static void
-do_printing (outf_channel stream, SCHEME_OBJECT Expr, bool Detailed)
+print_compiled_entry (outf_channel stream, SCHEME_OBJECT entry)
 {
-  long Temp_Address = (OBJECT_DATUM (Expr));
-  bool handled_p = false;
+  bool closure_p = false;
+  cc_entry_type_t cet;
+  const char * type_string;
+  SCHEME_OBJECT filename;
 
-  if (EMPTY_LIST_P (Expr))	{ outf (stream, "()");	return; }
-  else if (Expr == SHARP_F)	{ outf (stream, "#F");	return; }
-  else if (Expr == SHARP_T)	{ outf (stream, "#T");	return; }
-  else if (Expr == UNSPECIFIC)	{ outf (stream, "[UNSPECIFIC]"); return; }
-
-  else if (Expr == return_to_interpreter)
-    {
-      outf (stream, "[RETURN_TO_INTERPRETER]");
-      return;
-    }
-
-  else if (Expr == reflect_to_interface)
-    {
-      outf (stream, "[REFLECT_TO_INTERFACE]");
-      return;
-    }
-
-
-  switch (OBJECT_TYPE (Expr))
-    {
-    case TC_ACCESS:
+  if (read_cc_entry_type ((&cet), (CC_ENTRY_ADDRESS (entry))))
+    type_string = "UNKNOWN";
+  else
+    switch (cet.marker)
       {
-	outf (stream, "[ACCESS (");
-	Expr = (MEMORY_REF (Expr, ACCESS_NAME));
-      SPrint:
-	print_symbol (stream, Expr);
-	handled_p = true;
-	outf (stream, ")");
+      case CET_PROCEDURE:
+      case CET_CLOSURE:
+	if (cc_entry_closure_p (entry))
+	  {
+	    type_string = "compiled-closure";
+	    entry = (cc_closure_to_entry (entry));
+	    closure_p = true;
+	  }
+	else
+	  type_string = "compiled-procedure";
+	break;
+
+      case CET_CONTINUATION:
+	type_string = "compiled-return-address";
+	break;
+
+      case CET_EXPRESSION:
+	type_string = "compiled-expression";
+	break;
+
+      case CET_INTERNAL_CONTINUATION:
+	type_string = "compiled-return-address";
+	break;
+
+      case CET_INTERNAL_PROCEDURE:
+      case CET_TRAMPOLINE:
+	type_string = "compiled-entry";
+	break;
+
+      case CET_RETURN_TO_INTERPRETER:
+	type_string = "compiled-return-address";
+	break;
+
+      default:
+	type_string = "compiled-entry";
 	break;
       }
 
-    case TC_ASSIGNMENT:
-      outf (stream, "[SET! (");
-      Expr = (MEMORY_REF ((MEMORY_REF (Expr, ASSIGN_NAME)), VARIABLE_SYMBOL));
-      goto SPrint;
+  outf (stream, "[%s offset: %#lx entry: %#lx",
+	type_string,
+	(cc_entry_to_block_offset (entry)),
+	(OBJECT_DATUM (entry)));
+  if (closure_p)
+    outf (stream, " address: %#lx", (OBJECT_DATUM (entry)));
 
-    case TC_CHARACTER_STRING:
-      print_string (stream, Expr);
+  filename = (compiled_entry_debug_filename (entry));
+  if (STRING_P (filename))
+    {
+      outf (stream, " file: ");
+      print_filename (stream, filename);
+    }
+  else if (PAIR_P (filename))
+    {
+      outf (stream, " file: ");
+      print_filename (stream, (PAIR_CAR (filename)));
+      outf (stream, " block: %ld",
+	    ((long) (FIXNUM_TO_LONG (PAIR_CDR (filename)))));
+    }
+  outf (stream, "]");
+}
+
+static void
+print_object (outf_channel stream, SCHEME_OBJECT obj)
+{
+  if (EMPTY_LIST_P (obj))	{ outf (stream, "()");	return; }
+  else if (obj == SHARP_F)	{ outf (stream, "#F");	return; }
+  else if (obj == SHARP_T)	{ outf (stream, "#T");	return; }
+  else if (obj == UNSPECIFIC){ outf (stream, "[unspecific]"); return; }
+
+  else if (obj == return_to_interpreter)
+    {
+      outf (stream, "[return-to-interpreter]");
+      return;
+    }
+
+  else if (obj == reflect_to_interface)
+    {
+      outf (stream, "[reflect-to-interface]");
+      return;
+    }
+
+  switch (OBJECT_TYPE (obj))
+    {
+    case TC_ACCESS:
+      outf (stream, "[access ");
+      print_symbol (stream, (MEMORY_REF (obj, ACCESS_NAME)));
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      return;
+
+    case TC_ASSIGNMENT:
+      outf (stream, "[set! ");
+      print_symbol (stream, (MEMORY_REF ((MEMORY_REF (obj, ASSIGN_NAME)),
+					 VARIABLE_SYMBOL)));
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 
     case TC_DEFINITION:
-      outf (stream, "[DEFINE (");
-      Expr = (MEMORY_REF (Expr, DEFINE_NAME));
-      goto SPrint;
+      outf (stream, "[define ");
+      print_symbol (stream, (MEMORY_REF (obj, DEFINE_NAME)));
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      return;
+
+    case TC_CHARACTER_STRING:
+    case TC_BYTEVECTOR:
+      print_string (stream, obj);
+      return;
+
+    case TC_UNICODE_STRING:
+      print_ustring (stream, obj);
+      return;
 
     case TC_FIXNUM:
-      outf (stream, "%ld", ((long) (FIXNUM_TO_LONG (Expr))));
+      outf (stream, "%ld", ((long) (FIXNUM_TO_LONG (obj))));
       return;
 
     case TC_BIG_FLONUM:
-      outf (stream, "%lf", (FLONUM_TO_DOUBLE (Expr)));
+      outf (stream, "%lf", (FLONUM_TO_DOUBLE (obj)));
       return;
 
     case TC_WEAK_CONS:
     case TC_LIST:
-      print_list (stream, Expr);
+      print_list (stream, obj);
       return;
 
-    case TC_NULL:
-      break;
+    case TC_FALSE:
+      print_simple (stream, obj);
+      return;
 
     case TC_UNINTERNED_SYMBOL:
-      outf (stream, "[UNINTERNED_SYMBOL (");
-      goto SPrint;
+      outf (stream, "[uninterned ");
+      print_symbol (stream, obj);
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      return;
 
     case TC_INTERNED_SYMBOL:
-      print_symbol (stream, Expr);
+      print_symbol (stream, obj);
       return;
 
     case TC_VARIABLE:
-      Expr = (MEMORY_REF (Expr, VARIABLE_SYMBOL));
-      if (Detailed)
-	{
-	  outf (stream, "[VARIABLE (");
-	  goto SPrint;
-	}
-      print_symbol (stream, Expr);
+      outf (stream, "[variable ");
+      print_symbol (stream, (MEMORY_REF (obj, VARIABLE_SYMBOL)));
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 
     case TC_COMBINATION:
-      outf (stream, "[COMBINATION (%ld args) 0x%lx]",
-	      ((long) ((VECTOR_LENGTH (Expr)) - 1)),
-	      ((long) Temp_Address));
-      if (Detailed)
-	{
-	  outf (stream, " (");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_FN_SLOT)), false);
-	  outf (stream, " ...)");
-	}
+      outf (stream, "[combination ");
+      print_object (stream, (MEMORY_REF (obj, COMB_FN_SLOT)));
+      outf (stream, " ... (%ld args)", (VECTOR_LENGTH (obj)) - 1);
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 
     case TC_ENVIRONMENT:
+      outf (stream, "[environment from ");
       {
 	SCHEME_OBJECT procedure;
-
-	outf (stream, "[ENVIRONMENT 0x%lx]", ((long) Temp_Address));
-	outf (stream, " (from ");
-	procedure = (MEMORY_REF (Expr, ENVIRONMENT_FUNCTION));
+	procedure = (MEMORY_REF (obj, ENVIRONMENT_FUNCTION));
 	if ((OBJECT_TYPE (procedure)) == TC_QUAD)
 	  procedure = (MEMORY_REF (procedure, ENV_EXTENSION_PROCEDURE));
-	do_printing (stream, procedure, false);
-	outf (stream, ")");
-	return;
+	print_object (stream, procedure);
       }
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      return;
 
     case TC_EXTENDED_LAMBDA:
-      if (Detailed)
-	outf (stream, "[EXTENDED_LAMBDA (");
-      do_printing (stream,
-		   (MEMORY_REF ((MEMORY_REF (Expr, ELAMBDA_NAMES)), 1)),
-		   false);
-      if (Detailed)
-	outf (stream, ") 0x%lx", ((long) Temp_Address));
+      outf (stream, "[extended-lambda ");
+      print_object (stream, (MEMORY_REF ((MEMORY_REF (obj, ELAMBDA_NAMES)),
+					 1)));
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 
     case TC_EXTENDED_PROCEDURE:
-      if (Detailed)
-	outf (stream, "[EXTENDED_PROCEDURE (");
-      do_printing (stream, (MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
-      if (Detailed)
-	outf (stream, ") 0x%lx]", ((long) Temp_Address));
-      break;
+      outf (stream, "[extended-procedure ");
+      print_object (stream, (MEMORY_REF (obj, PROCEDURE_LAMBDA_EXPR)));
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      return;
 
     case TC_LAMBDA:
-      if (Detailed)
-	outf (stream, "[LAMBDA (");
-      do_printing (stream,
-		   (MEMORY_REF ((MEMORY_REF (Expr, LAMBDA_FORMALS)), 1)),
-		  false);
-      if (Detailed)
-	outf (stream, ") 0x%lx]", ((long) Temp_Address));
+      outf (stream, "[lambda ");
+      print_object (stream, (MEMORY_REF ((MEMORY_REF (obj, LAMBDA_FORMALS)),
+					 1)));
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 
     case TC_PRIMITIVE:
-      outf (stream, "[PRIMITIVE ");
-      print_primitive_name (stream, Expr);
+      outf (stream, "[primitive ");
+      print_primitive_name (stream, obj);
       outf (stream, "]");
       return;
 
     case TC_PROCEDURE:
-      if (Detailed)
-	outf (stream, "[PROCEDURE (");
-      do_printing (stream, (MEMORY_REF (Expr, PROCEDURE_LAMBDA_EXPR)), false);
-      if (Detailed)
-	outf (stream, ") 0x%lx]", ((long) Temp_Address));
+      outf (stream, "[procedure ");
+      print_object (stream, (MEMORY_REF (obj, PROCEDURE_LAMBDA_EXPR)));
+      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 
     case TC_REFERENCE_TRAP:
-      {
-	if ((OBJECT_DATUM (Expr)) <= TRAP_MAX_IMMEDIATE)
-	  break;
-	outf (stream, "[REFERENCE-TRAP");
-	print_expression (stream, (MEMORY_REF (Expr, TRAP_TAG)), " tag");
-	print_expression (stream, (MEMORY_REF (Expr, TRAP_EXTRA)), " extra");
-	outf (stream, "]");
-	return;
-      }
+      if ((OBJECT_DATUM (obj)) <= TRAP_MAX_IMMEDIATE)
+	print_simple (stream, obj);
+      else
+	{
+	  outf (stream, "[reference-trap");
+	  print_expression (stream, (MEMORY_REF (obj, TRAP_TAG)), " tag");
+	  print_expression (stream, (MEMORY_REF (obj, TRAP_EXTRA)), " extra");
+	  outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+	}
+      return;
 
     case TC_RETURN_CODE:
-      outf (stream, "[RETURN_CODE ");
-      print_return_name (stream, Expr);
+      outf (stream, "[return-code ");
+      print_return_name (stream, obj);
       outf (stream, "]");
       return;
 
     case TC_CONSTANT:
-      break;
+      print_simple (stream, obj);
+      return;
 
 #ifdef CC_SUPPORT_P
     case TC_COMPILED_ENTRY:
-      {
-	SCHEME_OBJECT entry = Expr;
-	bool closure_p = false;
-	cc_entry_type_t cet;
-	const char * type_string;
-	SCHEME_OBJECT filename;
-
-	if (read_cc_entry_type ((&cet), (CC_ENTRY_ADDRESS (entry))))
-	  type_string = "UNKNOWN";
-	else
-	  switch (cet.marker)
-	    {
-	    case CET_PROCEDURE:
-	    case CET_CLOSURE:
-	      if (cc_entry_closure_p (entry))
-		{
-		  type_string = "COMPILED_CLOSURE";
-		  entry = (cc_closure_to_entry (entry));
-		  closure_p = true;
-		}
-	      else
-		type_string = "COMPILED_PROCEDURE";
-	      break;
-
-	    case CET_CONTINUATION:
-	      type_string = "COMPILED_RETURN_ADDRESS";
-	      break;
-
-	    case CET_EXPRESSION:
-	      type_string = "COMPILED_EXPRESSION";
-	      break;
-
-	    case CET_INTERNAL_CONTINUATION:
-	      type_string = "COMPILED_RETURN_ADDRESS";
-	      break;
-
-	    case CET_INTERNAL_PROCEDURE:
-	    case CET_TRAMPOLINE:
-	      type_string = "COMPILED_ENTRY";
-	      break;
-
-	    case CET_RETURN_TO_INTERPRETER:
-	      type_string = "COMPILED_RETURN_ADDRESS";
-	      break;
-
-	    default:
-	      type_string = "COMPILED_ENTRY";
-	      break;
-	    }
-
-	outf (stream, "[%s offset: %#lx entry: %#lx",
-	      type_string,
-	      (cc_entry_to_block_offset (entry)),
-	      (OBJECT_DATUM (entry)));
-	if (closure_p)
-	  outf (stream, " address: 0x%lx", ((long) Temp_Address));
-
-	filename = (compiled_entry_debug_filename (entry));
-	if (STRING_P (filename))
-	  {
-	    outf (stream, " file: ");
-	    print_filename (stream, filename);
-	  }
-	else if (PAIR_P (filename))
-	  {
-	    outf (stream, " file: ");
-	    print_filename (stream, (PAIR_CAR (filename)));
-	    outf (stream, " block: %ld",
-		    ((long) (FIXNUM_TO_LONG (PAIR_CDR (filename)))));
-	  }
-	outf (stream, "]");
-	return;
-      }
+      print_compiled_entry (stream, obj);
+      return;
 #endif
 
     default:
-      break;
+      print_simple (stream, obj);
     }
-  if (!handled_p)
-    {
-      unsigned int type = (OBJECT_TYPE (Expr));
-      const char * name = 0;
-      if ((OBJECT_TYPE (Expr)) < TYPE_CODE_LIMIT)
-	name = (type_names[type]);
-      if (name != 0)
-	outf (stream, "[%s", name);
-      else
-	outf (stream, "[%#02x", type);
-    }
-  outf (stream, " %#lx]", ((unsigned long) Temp_Address));
 }
 
-extern void
-Debug_Print (SCHEME_OBJECT Expr, bool Detailed)
+void
+Print (SCHEME_OBJECT Expr)
 {
-  do_printing (ERROR_OUTPUT, Expr, Detailed);
+  print_object (ERROR_OUTPUT, Expr);
   outf_error ("\n");
   outf_flush_error ();
 }
@@ -636,6 +666,40 @@ Print_One_Continuation_Frame (SCHEME_OBJECT Temp)
   return (print_one_continuation_frame (ERROR_OUTPUT, Temp));
 }
 
+/* Code to dump the Scheme stack. */
+
+static void
+dump_stack (outf_channel stream,
+	    SCHEME_OBJECT *sp,
+	    SCHEME_OBJECT *limit,
+	    int count)
+{
+  int done = 0;
+  while (((count == 0) || (done < count))
+	 && (STACK_LOCATIVE_ABOVE_P (sp, limit)))
+    {
+      SCHEME_OBJECT obj;
+      outf (stream, "%#lx: ", ((unsigned long) sp));
+      obj = (STACK_LOCATIVE_POP (sp));
+      print_object (stream, obj);
+      outf (stream, "\n");
+      done += 1;
+      if ((RETURN_CODE_P (obj))
+	  && ((OBJECT_DATUM (obj)) == RC_JOIN_STACKLETS))
+	{
+	  SCHEME_OBJECT cp = (STACK_LOCATIVE_POP (sp));
+	  sp = (control_point_start (cp));
+	  limit = (control_point_end (cp));
+	}
+    }
+}
+
+void
+Stack (int count)
+{
+  dump_stack (ERROR_OUTPUT, stack_pointer, stack_end, count);
+}
+
 /* Back_Trace relies on (a) only a call to SAVE_CONT puts a return code on the
    stack; (b) SAVE_CONT pushes the expression first.  */
 
@@ -734,6 +798,8 @@ Print_Primitive (SCHEME_OBJECT primitive)
   }
 }
 
+/* Code for scanning the heap for obviously broken or invalid objects. */
+
 #ifdef ENABLE_DEBUGGING_TOOLS
 
 static void
@@ -760,6 +826,7 @@ next_addr (SCHEME_OBJECT * addr)
   unsigned int type = OBJECT_TYPE (object);
   switch (type)
    {
+#ifdef CC_SUPPORT_P
     case TC_LINKAGE_SECTION:
       {
 	linkage_section_type_t section_type
@@ -782,6 +849,7 @@ next_addr (SCHEME_OBJECT * addr)
       }
     case TC_MANIFEST_CLOSURE:
       return (compiled_closure_objects (addr + 1));
+#endif /* CC_SUPPORT_P */
     case TC_MANIFEST_NM_VECTOR:
       {
 	unsigned long n_words = (OBJECT_DATUM (object));
@@ -797,12 +865,17 @@ dump_object (SCHEME_OBJECT * addr)
 {
   SCHEME_OBJECT object = *addr;
   outf_error ("%#lx: ", (unsigned long)addr);
-  print_object (object);
+  print_object (ERROR_OUTPUT, object);
+  outf_error ("\n");
   {
     SCHEME_OBJECT * end = next_addr (addr);
+    if (end > Free)
+      end = Free;
     while (++addr < end)
       dump_word (addr);
   }
+  if (addr == Free)
+    outf_error ("%#lx: Free\n", (unsigned long)addr);
 }
 
 #define SAVE_COUNT 16
@@ -869,6 +942,135 @@ dump_heap_at (SCHEME_OBJECT *addr)
 }
 
 static bool
+verify_object (SCHEME_OBJECT object)
+{
+  return (gc_type_code (OBJECT_TYPE (object)) != GC_UNDEFINED);    
+}
+
+#define VALID_ADDRESS_P(address)					\
+  ((ADDRESS_IN_CONSTANT_P (address))					\
+   || ((heap_start <= (address)) && ((address) < Free)))
+
+static bool
+verify_tuple (SCHEME_OBJECT object, int size, const char * name,
+	      unsigned long address)
+{
+  SCHEME_OBJECT * location;
+  int i;
+
+  location = OBJECT_ADDRESS (object);
+  if (! (VALID_ADDRESS_P (location)))
+    {
+      outf_error ("%#lx: Invalid %s\n", address, name);
+      return (false);
+    }
+  i = 0;
+  while (i < size)
+    {
+      SCHEME_OBJECT * slot = MEMORY_LOC (object, i);
+      if (! ((VALID_ADDRESS_P (slot)) && verify_object (*slot)))
+	{
+	  outf_error ("%#lx: Invalid %s (word %d)\n", address, name, i);
+	  return (false);
+	}
+      i += 1;
+    }
+  return (true);
+}
+
+static bool
+verify_vector (SCHEME_OBJECT object, unsigned long address)
+{
+  unsigned long header, length;
+  unsigned int header_type;
+  SCHEME_OBJECT * location;
+
+  location = OBJECT_ADDRESS (object);
+  if (! (VALID_ADDRESS_P (location)))
+    {
+      outf_error ("%#lx: Invalid vector\n", address);
+      return (false);
+    }
+  header = MEMORY_REF (object, 0);
+  length = OBJECT_DATUM (header);
+  header_type = OBJECT_TYPE (header);
+  if (header_type != TC_MANIFEST_VECTOR
+      && header_type != TC_MANIFEST_NM_VECTOR)
+    {
+      outf_error ("%#lx: Invalid vector header\n", address);
+      return (false);
+    }
+  if (! (VALID_ADDRESS_P (location + length)))
+    {
+      outf_error ("%#lx: Invalid vector length\n", address);
+      return (false);
+    }
+  /* Double-check each element? */
+  if (length > 1000000)
+    {
+      outf_error ("%#lx: Extraordinary vector size: %ld\n", address, length);
+    }
+  return (true);
+}
+
+#ifdef CC_SUPPORT_P
+static bool
+verify_compiled (SCHEME_OBJECT object, unsigned long address)
+{
+  insn_t * block;
+
+  if (! (VALID_ADDRESS_P (OBJECT_ADDRESS (object))))
+    {
+      outf_error ("%#lx: Invalid entry\n", address);
+      return (false);
+    }
+  /* block = cc_entry_to_block_address (object);  too many SIGSEGVs! */
+  block = CC_ENTRY_ADDRESS (object);
+  while (1)
+    {
+      cc_entry_offset_t ceo;
+      if (read_cc_entry_offset ((&ceo), block))
+	{
+	  outf_error ("%#lx: Invalid entry format\n", address);
+	  return (false);
+	}
+      assert (ceo.offset > 0);
+      block -= (ceo.offset);
+      if (! (VALID_ADDRESS_P ((SCHEME_OBJECT *)block)))
+	{
+	  outf_error ("%#lx: Invalid entry offset\n", address);
+	  return (false);
+	}
+      if (! (ceo.continued_p))
+	{
+	  unsigned int header_type;
+
+	  if ((unsigned long)block % sizeof (SCHEME_OBJECT) != 0)
+	    {
+	      outf_error ("%#lx: Invalid block alignment\n", address);
+	      return (false);
+	    }
+	  if ((CC_BLOCK_ADDR_END ((SCHEME_OBJECT *) block))
+	      < ((SCHEME_OBJECT *) (CC_ENTRY_ADDRESS (object))))
+	    {
+	      outf_error ("%#lx: Invalid block size\n", address);
+	      return (false);
+	    }
+	  header_type = OBJECT_TYPE(*((SCHEME_OBJECT *) block));
+	  if (! (header_type == TC_MANIFEST_VECTOR
+		 || header_type == TC_MANIFEST_CLOSURE))
+	    {
+	      outf_error ("%#lx: Invalid block header\n", address);
+	      return (false);
+	    }
+	  break;
+	}
+    }
+  return (true);
+}
+#endif /* CC_SUPPORT_P */
+
+static bool
 verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 {
   int complaints = 0;
@@ -877,72 +1079,196 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
     {
       SCHEME_OBJECT object = *area;
       unsigned int type = OBJECT_TYPE (object);
-      switch (type)
+      unsigned int code = gc_type_code (type);
+      switch (code)
 	{
-	case TC_LINKAGE_SECTION:
-	  {
-	    linkage_section_type_t section_type
-	      = ((linkage_section_type_t)((OBJECT_DATUM (object)) >> 16));
-	    switch (section_type)
-	      {
-	      case LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR:
-	      case LINKAGE_SECTION_TYPE_OPERATOR:
-		{
-		  unsigned long n_words = ((OBJECT_DATUM (object)) & 0xFFFFUL);
-		  SCHEME_OBJECT * next = area + (1 + n_words);
-		  if (next > end)
-		    {
-		      outf_error ("; %#lx: Invalid linkage section size: %ld\n",
-				  (unsigned long)area, n_words);
-		      return (false);
-		    }
-		  area = next;
-		}
-		break;
-	      case LINKAGE_SECTION_TYPE_REFERENCE:
-	      case LINKAGE_SECTION_TYPE_ASSIGNMENT:
-		area += 1;
-		break;
-	      default:
-		outf_error ("; %#lx: Invalid linkage section type: %d\n",
-			    (unsigned long)area, section_type);
-		complaints += 1;
-		area += 1;
-		break;
-	      }
-	  }
-	  break;
-	case TC_MANIFEST_CLOSURE:
-	  area = compiled_closure_objects (area + 1);
-	  break;
-	case TC_MANIFEST_NM_VECTOR:
-	  {
-	    unsigned long n_words = (OBJECT_DATUM (object));
-	    SCHEME_OBJECT * next = area + (1 + n_words);
-	    if (next > end)
-	      {
-		outf_error ("; %#lx: Invalid nm-vector size: %ld\n",
-			    (unsigned long)area, n_words);
-		return (false);
-	      }
-	    area = next;
-	  }
-	  break;
-	default:
-	  if (gc_type_code (type) == GC_UNDEFINED)
-	    {
-	      outf_error ("; %#lx: Invalid type code: %d (0x%x)\n",
-			  (unsigned long)area, type, type);
-	      complaints += 1;
-	    }
+	case GC_UNDEFINED:
+	  outf_error ("%#lx: Invalid object type: %#x\n",
+		      (unsigned long)area, type);
+	  complaints += 1;
+	  area += 1;
+	  return (false);
+
+	case GC_NON_POINTER:
 	  area += 1;
 	  break;
+
+	case GC_CELL:
+	  if (! verify_tuple (object, 1, "cell", (unsigned long)area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_PAIR:
+	  if (! verify_tuple (object, 2, "pair", (unsigned long)area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_TRIPLE:
+	  if (! verify_tuple (object, 3, "triple", (unsigned long)area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_QUADRUPLE:
+	  if (! verify_tuple (object, 4, "quadruple", (unsigned long)area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_VECTOR:
+	  if (! verify_vector (object, (unsigned long)area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_SPECIAL:
+	  switch (type)
+	    {
+	    case TC_BROKEN_HEART:
+	      /* These are not a problem??? */
+#if 0
+	      outf_error ("%#lx: Invalid broken-heart\n", (unsigned long)area);
+	      complaints += 1;
+#endif
+	      area += 1;
+	      break;
+
+	    case TC_REFERENCE_TRAP:
+	      if ((OBJECT_DATUM (object)) > TRAP_MAX_IMMEDIATE)
+		{
+		  if (! (verify_object (MEMORY_REF (object, 0))
+			 && verify_object (MEMORY_REF (object, 1))))
+		    {
+		      outf_error ("%#lx: Invalid reference trap\n",
+				  (unsigned long)area);
+		      complaints += 1;
+		    }
+		}
+	      area += 1;
+	      break;
+
+	    case TC_LINKAGE_SECTION:
+	      {
+		linkage_section_type_t section_type
+		  = ((linkage_section_type_t)((OBJECT_DATUM (object)) >> 16));
+		switch (section_type)
+		  {
+		  case LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR:
+		  case LINKAGE_SECTION_TYPE_OPERATOR:
+		    {
+		      unsigned long n_words
+			= ((OBJECT_DATUM (object)) & 0xFFFFUL);
+		      SCHEME_OBJECT * next = area + (1 + n_words);
+		      if (next > end)
+			{
+			  outf_error ("%#lx: Invalid linkage section size: %ld\n",
+				      (unsigned long)area, n_words);
+			  return (false);
+			}
+		      else if (n_words > 1000)
+			{
+			  outf_error
+			    ("%#lx: Extraordinary linkage section size: %ld\n",
+			     (unsigned long)area, n_words);
+			}
+		      area = next;
+		    }
+		    break;
+		  case LINKAGE_SECTION_TYPE_REFERENCE:
+		  case LINKAGE_SECTION_TYPE_ASSIGNMENT:
+		    area += 1;
+		    break;
+		  default:
+		    outf_error ("%#lx: Invalid linkage section type: %#x\n",
+				(unsigned long)area, section_type);
+		    complaints += 1;
+		    area += 1;
+		    break;
+		  }
+	      }
+	      break;
+
+	    case TC_MANIFEST_CLOSURE:
+	      area = compiled_closure_objects (area + 1);
+	      break;
+
+	    case TC_MANIFEST_NM_VECTOR:
+	      {
+		unsigned long n_words = (OBJECT_DATUM (object));
+		SCHEME_OBJECT * next = area + (1 + n_words);
+		if (next > end)
+		  {
+		    outf_error ("%#lx: Invalid nm-vector size: %ld\n",
+				(unsigned long)area, n_words);
+		    return (false);
+		  }
+		else if (n_words > 1000000)
+		  {
+		    outf_error ("%#lx: Extraordinary nm-vector size: %ld\n",
+				(unsigned long)area, n_words);
+		  }
+		area = next;
+	      }
+	      break;
+	      
+	    default:
+	      outf_error ("%#lx: Invalid special\n", (unsigned long)area);
+	      complaints += 1;
+	      area += 1;
+	      break;
+	    }
+	  break;
+
+#ifdef CC_SUPPORT_P
+	case GC_COMPILED:
+	  if (! verify_compiled (object, (unsigned long)area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+#endif
+
+	default:
+	  outf_error ("%#lx: unknown gc type code: %#x\n",
+		      (unsigned long)area, gc_type_code (type));
+	  complaints += 1;
 	}
     }
+
   if (area != end)
     {
-      outf_error ("; %#lx: Invalid address\n", (unsigned long)area);
+      outf_error ("%#lx: Invalid end address\n", (unsigned long)area);
       return (false);
+    }
+  return (complaints == 0);
+}
+
+bool
+verify_stack (SCHEME_OBJECT * sp, SCHEME_OBJECT * bottom)
+{
+  int complaints = 0;
+  while (STACK_LOCATIVE_ABOVE_P (sp, bottom))
+    {
+      SCHEME_OBJECT object = STACK_LOCATIVE_POP (sp);
+      unsigned int type = OBJECT_TYPE (object);
+      if (type == TC_MANIFEST_NM_VECTOR)
+	{
+	  unsigned long n_words = (OBJECT_DATUM (object));
+	  if (n_words > 1000)
+	    outf_error ("%#lx: Extraordinary finger size: %ld\n",
+			((unsigned long)sp), n_words);
+	  sp = STACK_LOCATIVE_OFFSET (sp, n_words);
+	}
+      else if (type == TC_MANIFEST_CLOSURE
+	       || type == TC_BROKEN_HEART
+	       || gc_type_code (type) == GC_UNDEFINED)
+	{
+	  outf_error ("%#lx: Invalid stack slot: ", ((unsigned long)sp));
+	  print_object (ERROR_OUTPUT, object);
+	  outf_error ("\n");
+	  complaints += 1;
+	}
     }
   return (complaints == 0);
 }
@@ -952,7 +1278,9 @@ verify_heap (void)
 {
   bool c = verify_heap_area ("constants", constant_start, constant_alloc_next);
   bool h = verify_heap_area ("heap", heap_start, Free);
-  return (c && h);
+  bool s = verify_stack (stack_pointer, STACK_BOTTOM);
+  outf_flush_error ();
+  return (c && h && s);
 }
 
 #else  /* !ENABLE_DEBUGGING_TOOLS */
@@ -1011,9 +1339,9 @@ Returns #T if the scan was successful and #F if there were any complaints.")
 #define D_TRACE_ON_ERROR	12
 #define D_PER_FILE		13
 #define D_BIGNUM		14
-
+#define D_PRINT_ERRORS		15
 #ifndef LAST_SWITCH
-#define LAST_SWITCH D_BIGNUM
+#define LAST_SWITCH D_PRINT_ERRORS
 #endif
 
 static bool *
@@ -1036,6 +1364,7 @@ find_flag (int flag_number)
     case D_TRACE_ON_ERROR:	return (&Trace_On_Error);
     case D_PER_FILE:		return (&Per_File);
     case D_BIGNUM:		return (&Bignum_Debug);
+    case D_PRINT_ERRORS:	return (&Print_Errors);
     MORE_DEBUG_FLAG_CASES ();
     default:			return (0);
     }
@@ -1061,6 +1390,7 @@ flag_name (int flag_number)
     case D_TRACE_ON_ERROR:	return ("Trace_On_Error");
     case D_PER_FILE:		return ("Per_File");
     case D_BIGNUM:		return ("Bignum_Debug");
+    case D_PRINT_ERRORS:	return ("Print_Errors");
     MORE_DEBUG_FLAG_NAMES ();
     default:			return ("Unknown Debug Flag");
     }
@@ -1080,7 +1410,7 @@ show_flags (int all)
   outf_flush_error();
 }
 
-static int
+static void
 set_flag (int flag_number, int value)
 {
   bool * flag = (find_flag (flag_number));
@@ -1091,7 +1421,6 @@ set_flag (int flag_number, int value)
       (*flag) = value;
       SET_FLAG_HOOK (flag);
     }
-  return (0);
 }
 
 static int
@@ -1148,12 +1477,11 @@ debug_edit_flags (void)
   outf_flush_error();
 }
 
-static int
+static void
 set_flag (int flag_number, int value)
 {
-  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
-  /*NOTREACHED*/
-  return (0);
+  outf_error ("Not a debugging version.  No flags to set.\n");
+  outf_flush_error();
 }
 
 #endif /* not ENABLE_DEBUGGING_TOOLS */

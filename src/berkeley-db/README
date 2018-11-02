@@ -1,0 +1,5 @@
+The BERKELEY-DB option.
+
+This plugin is incomplete.  The accompanying files are just chunks of
+code for the old microcode module prdb4 as cut out of microcode/ and
+runtime/.

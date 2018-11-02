@@ -1,0 +1,64 @@
+
+gdbm.scm,1598
+(define (import-gdbm)32,1081
+(define-integrable (every-loop 62,1650
+(define (->bytes 69,1816
+(define (bytes-length 81,2192
+(define GDBM_READER 88,2403
+(define GDBM_WRITER 89,2458
+(define GDBM_WRCREAT(90,2513
+(define GDBM_NEWDB 91,2595
+(define GDBM_FAST 92,2674
+(define (gdbm-open 94,2744
+(define (guarantee-gdbm-open-flags 113,3433
+(define (gdbm-close 128,4014
+(define GDBM_INSERT 143,4443
+(define GDBM_REPLACE 144,4513
+(define (gdbm-store 146,4586
+(define (gdbm-fetch 166,5363
+(define (gdbm-exists? 176,5645
+(define (gdbm-delete 185,5915
+(define (gdbm-keys 194,6188
+(define (gdbm-firstkey 208,6567
+(define (gdbm-nextkey 216,6773
+(define (gdbm-reorganize 230,7267
+(define (gdbm-sync 238,7508
+(define (gdbm-strerror 245,7668
+(define (strerror 249,7816
+(define GDBM_CACHESIZE 254,8023
+(define GDBM_SYNCMODE 255,8094
+(define (gdbm-setopt 257,8163
+(define (gdbm-version)282,9023
+(define (guarantee-nonnull-string 285,9118
+(define-structure (gdbf 290,9298
+(define (guarantee-gdbf 304,9881
+(define-integrable (with-gdbf-locked 310,10099
+(define (with-gdbf-locked-open 313,10201
+(define (gdbm-error 322,10484
+(define (gdbf-args-put-key! 328,10695
+(define (gdbf-args-put-content! 339,11059
+(define (gdbf-args-get-key 350,11452
+(define (gdbf-args-get-content 362,11807
+(define open-gdbfs 374,12176
+(define open-gdbfs-mutex)375,12200
+(define (add-open-gdbf-cleanup 377,12227
+(define (remove-open-gdbf-cleanup 384,12410
+(define (weak-assq 392,12628
+(define (cleanup-open-gdbfs)400,12830
+(define (reset-open-gdbfs)423,13395
+(define (initialize-package!)427,13518
+
+optiondb.scm,31
+(define-load-option 'GDBM3,20
+
+gdbm.pkg,221
+MIT/GNU Scheme is free software;10,317
+the Free Software Foundation;12,457
+the Free Software Foundation; either version 2 of the License,12,457
+the Free Software Foundation; either version 2 of the License, or 12,457
+
+make.scm,0
+
+gdbm-check.scm,0
+
+compile.scm,0

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -366,7 +366,7 @@ OBJECT->FIXNUM not, after all, independent of the tag.
   (QUALIFIER
    (and (rtl:offset-address? base)
 	(rtl:simple-subexpressions? base)
-	(rtl:machine-constant? (rtl:offset-address-offset base))))   
+	(rtl:machine-constant? (rtl:offset-address-offset base))))
   (rtl:make-float-offset base (rtl:make-machine-constant value)))
 
 ;; This is here to avoid generating things like
@@ -379,9 +379,7 @@ OBJECT->FIXNUM not, after all, independent of the tag.
 ;; known!
 
 (define (rtl:simple-subexpressions? expr)
-  (for-all? (cdr expr)
-    (lambda (sub)
-      (or (rtl:machine-constant? sub)
-	  (rtl:register? sub)))))
-
-
+  (every (lambda (sub)
+	   (or (rtl:machine-constant? sub)
+	       (rtl:register? sub)))
+	 (cdr expr)))

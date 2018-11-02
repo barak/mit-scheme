@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -39,20 +39,14 @@ USA.
 ;;; of those names, and a new sequence in which those definitions are
 ;;; replaced by assignments.  UNSCAN-DEFINES will invert that.
 
-;;; The Open Block abstraction can be used to store scanned
-;;; definitions in code, which is extremely useful for code analysis
-;;; and transformation.  The supplied procedures, MAKE-OPEN-BLOCK and
-;;; OPEN-BLOCK-COMPONENTS, will connect directly to SCAN-DEFINES and
-;;; UNSCAN-DEFINES, respectively.
-
-(define-integrable open-block-tag
-  ((ucode-primitive string->symbol) "#[open-block]"))
+;;; The Open Block abstraction can be used to store scanned definitions in code,
+;;; which is extremely useful for code analysis and transformation.
 
 (define-integrable sequence-type
   (ucode-type sequence))
 
 (define null-sequence
-  '(NULL-SEQUENCE))
+  '(null-sequence))
 
 (define (cons-sequence action seq)
   (if (eq? seq null-sequence)
@@ -63,39 +57,44 @@ USA.
 
 ;;; This depends on the fact that the lambda abstraction will preserve
 ;;; the order of the auxiliaries.  That is, giving MAKE-LAMBDA a list
-;;; of auxiliaries will result in LAMBDA-COMPONENTS returning an
+;;; of auxiliaries will result in SCODE-LAMBDA-COMPONENTS returning an
 ;;; EQUAL?  list.
 
 (define (scan-defines expression receiver)
   ((scan-loop expression receiver) '() '() null-sequence))
 
 (define (scan-loop expression receiver)
-  (cond ((open-block? expression)	; must come before SEQUENCE? clause
+  (cond ((scode-open-block? expression)	;must come before SCODE-SEQUENCE? clause
 	 (scan-loop
 	  (%open-block-actions expression)
 	  (lambda (names declarations body)
 	    (receiver (append (%open-block-names expression) names)
-		      (append (%open-block-declarations expression) declarations)
+		      (append (%open-block-declarations expression)
+			      declarations)
 		      body))))
-	((sequence? expression)
+	((scode-sequence? expression)
 	 ;; Build the sequence from the tail-end first so that the
 	 ;; null-sequence shows up in the tail and is detected by
 	 ;; cons-sequence.
-	 (scan-loop (sequence-immediate-second expression)
-		    (scan-loop (sequence-immediate-first expression)
-			       receiver)))
-	((definition? expression)
-	 (definition-components expression
-	   (lambda (name value)
-	     (lambda (names declarations body)
-	       (receiver (cons name names)
-			 declarations
-			 (cons-sequence (make-assignment name value)
-					body))))))
-	((block-declaration? expression)
+	 (let loop
+	     ((actions (scode-sequence-actions expression))
+	      (receiver receiver))
+	   (if (pair? actions)
+	       (loop (cdr actions)
+		     (scan-loop (car actions) receiver))
+	       receiver)))
+	((scode-definition? expression)
+	 (let ((name (scode-definition-name expression))
+	       (value (scode-definition-value expression)))
+	   (lambda (names declarations body)
+	     (receiver (cons name names)
+		       declarations
+		       (cons-sequence (make-scode-assignment name value)
+				      body)))))
+	((scode-block-declaration? expression)
 	 (lambda (names declarations body)
 	   (receiver names
-		     (append (block-declaration-text expression)
+		     (append (scode-block-declaration-text expression)
 			     declarations)
 		     body)))
 	(else
@@ -110,27 +109,26 @@ USA.
     (cond ((not (pair? names))
 	   (values '() body))
 
-	  ((assignment? body)
-	   (assignment-components body
-	     (lambda (name value)
-	       (if (eq? name (car names))
-		   (values (cdr names) (make-definition name value))
-		   (values names body)))))
+	  ((scode-assignment? body)
+	   (let ((name (scode-assignment-name body))
+		 (value (scode-assignment-value body)))
+	     (if (eq? name (car names))
+		 (values (cdr names) (make-scode-definition name value))
+		 (values names body))))
 
-	  ((sequence? body)
-	   (let ((head (sequence-immediate-first body))
-		 (tail (sequence-immediate-second body)))
-
-	     (receive (names1 unscanned-head) (unscan-loop names head)
-	       (receive (names2 unscanned-tail) (unscan-loop names1 tail)
-		 (values names2
-			 ;; Only cons a new sequence if something changed.
-			 (if (and (eq? head unscanned-head)
-				  (eq? tail unscanned-tail))
-			     body
-			     (&typed-pair-cons
-			      sequence-type
-			      unscanned-head unscanned-tail)))))))
+	  ((scode-sequence? body)
+	   (let loop
+	       ((names names)
+		(actions (scode-sequence-actions body))
+		(unscanned-actions '()))
+	     (if (pair? actions)
+		 (receive (names* unscanned-action)
+		     (unscan-loop names (car actions))
+		   (loop names*
+			 (cdr actions)
+			 (cons unscanned-action unscanned-actions)))
+		 (values names
+			 (make-scode-sequence (reverse unscanned-actions))))))
 
 	  (else
 	   (values names body))))
@@ -138,94 +136,83 @@ USA.
   (receive (names* body*) (unscan-loop names body)
     (if (not (null? names*))
 	(error "Extraneous auxiliaries -- get a wizard"
-	       'UNSCAN-DEFINES
+	       'unscan-defines
 	       names*))
 
     (if (null? declarations)
 	body*
-	(&typed-pair-cons
-	 sequence-type
-	 (make-block-declaration declarations)
-	 body*))))
+	(&typed-pair-cons sequence-type
+			  (make-scode-block-declaration declarations)
+			  body*))))
 
 ;;;; Open Block
 
-(define (make-open-block names declarations actions)
+(define (make-scode-open-block names declarations actions)
   (if (and (null? names)
 	   (null? declarations))
       actions
-      (&typed-pair-cons
-       sequence-type
-       (make-open-block-descriptor names declarations)
-       (&typed-pair-cons
-	sequence-type
-	(make-open-block-definitions names)
-	actions))))
+      (make-scode-sequence
+       (cons (make-open-block-descriptor names declarations)
+	     (append (map %make-open-block-definition names)
+		     (list actions))))))
 
-(define (open-block? object)
-  (and (sequence? object)
-       (open-block-descriptor? (sequence-immediate-first object))
-       (sequence? (sequence-immediate-second object))))
+(define (%make-open-block-definition name)
+  (make-scode-definition name (make-unassigned-reference-trap)))
 
-(define (open-block-actions open-block)
-  (guarantee-open-block open-block 'OPEN-BLOCK-ACTIONS)
-  (%open-block-actions open-block))
+(define (scode-open-block? object)
+  (and (scode-sequence? object)
+       (let ((actions (scode-sequence-actions object)))
+	 (and (open-block-descriptor? (car actions))
+	      (let ((names (%open-block-descriptor-names (car actions))))
+		(and (fix:> (length (cdr actions)) (length names))
+		     (every %open-block-definition-named?
+			    names
+			    (cdr actions))))))))
+(register-predicate! scode-open-block? 'open-block '<= scode-sequence?)
 
-(define (open-block-declarations open-block)
-  (guarantee-open-block open-block 'OPEN-BLOCK-DECLARATIONS)
-  (%open-block-declarations open-block))
+(define (%open-block-definition-named? name expr)
+  (and (scode-definition? expr)
+       (eq? name (scode-definition-name expr))
+       (unassigned-reference-trap? (scode-definition-value expr))))
 
-(define (open-block-definitions open-block)
-  (guarantee-open-block open-block 'OPEN-BLOCK-DEFINITIONS)
-  (%open-block-definitions open-block))
-
-(define (open-block-names open-block)
-  (guarantee-open-block open-block 'OPEN-BLOCK-NAMES)
+(define (scode-open-block-names open-block)
+  (guarantee scode-open-block? open-block 'scode-open-block-names)
   (%open-block-names open-block))
 
-(define (open-block-components open-block receiver)
-  (guarantee-open-block open-block 'OPEN-BLOCK-COMPONENTS)
-  (let ((descriptor (sequence-immediate-first open-block)))
-    (receiver (%open-block-descriptor-names descriptor)
-	      (%open-block-descriptor-declarations descriptor)
-	      (%open-block-actions open-block))))
+(define (scode-open-block-declarations open-block)
+  (guarantee scode-open-block? open-block 'scode-open-block-declarations)
+  (%open-block-declarations open-block))
 
-(define (make-open-block-definitions names)
-  (let ((definitions
-	  (map (lambda (name)
-		 (make-definition name (make-unassigned-reference-trap)))
-	       names)))
-    (if (null? definitions)
-	'()
-	(make-sequence definitions))))
-
-(define-guarantee open-block "SCode open-block")
+(define (scode-open-block-actions open-block)
+  (guarantee scode-open-block? open-block 'scode-open-block-actions)
+  (%open-block-actions open-block))
 
 (define (%open-block-descriptor open-block)
-  (sequence-immediate-first open-block))
-
-(define (%open-block-actions open-block)
-  (sequence-immediate-second (sequence-immediate-second open-block)))
-
-(define (%open-block-declarations open-block)
-  (%open-block-descriptor-declarations (%open-block-descriptor open-block)))
-
-(define (%open-block-definitions open-block)
-  (sequence-immediate-first (sequence-immediate-second open-block)))
+  (car (scode-sequence-actions open-block)))
 
 (define (%open-block-names open-block)
   (%open-block-descriptor-names (%open-block-descriptor open-block)))
 
-(define (make-open-block-descriptor names declarations)
+(define (%open-block-declarations open-block)
+  (%open-block-descriptor-declarations (%open-block-descriptor open-block)))
+
+(define (%open-block-actions open-block)
+  (make-scode-sequence
+   (list-tail (cdr (scode-sequence-actions open-block))
+	      (length (%open-block-names open-block)))))
+
+(define-integrable (make-open-block-descriptor names declarations)
   (vector open-block-tag names declarations))
 
 (define (open-block-descriptor? object)
   (and (vector? object)
-       (not (zero? (vector-length object)))
-       (eq? (vector-ref object 0) open-block-tag)))
+       (fix:> (vector-length object) 0)
+       (eq? open-block-tag (vector-ref object 0))))
 
-(define (%open-block-descriptor-names descriptor)
+(define-integrable open-block-tag '|#[open-block]|)
+
+(define-integrable (%open-block-descriptor-names descriptor)
   (vector-ref descriptor 1))
 
-(define (%open-block-descriptor-declarations descriptor)
+(define-integrable (%open-block-descriptor-declarations descriptor)
   (vector-ref descriptor 2))

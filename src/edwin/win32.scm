@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,7 +48,7 @@ USA.
   (win32-screen-write-substring! 7))
 
 ;;(define (debug . details)
-;;  (pp details console-output-port))
+;;  (pp details (console-i/o-port)))
 
 (define-structure (win32-screen-state
 		   (constructor make-win32-screen-state (handle))
@@ -247,8 +247,8 @@ USA.
       (error "Screen has unexpectedly vanished" screen)))
 
 (define (handle->win32-screen handle)
-  (list-search-positive win32-screens
-    (lambda (screen) (eqv? handle (state/handle (screen-state screen))))))
+  (find (lambda (screen) (eqv? handle (state/handle (screen-state screen))))
+	win32-screens))
 
 (define-integrable (screen-name screen)
   (state/name (screen-state screen)))
@@ -386,9 +386,12 @@ USA.
       (values (lambda ()		;halt-update?
 		(or pending-result
 		    (probe 'IN-UPDATE)))
-	      (lambda ()		;peek-no-hang
-		(or pending-result
-		    (probe #f)))
+	      (lambda (timeout)		;peek-no-hang
+		(keyboard-peek-busy-no-hang
+		 (lambda ()
+		   (or pending-result
+		       (probe #f)))
+		 timeout))
 	      (lambda ()		;peek
 		(or pending-result
 		    (let ((result (get-next-event #t)))
@@ -419,7 +422,7 @@ USA.
 	(else (error "Illegal change event:" event))))
 
 (define (process-special-event event)
-  (let ((handler (hash-table/get event-handlers (event-type event) #f))
+  (let ((handler (hash-table-ref/default event-handlers (event-type event) #f))
 	(screen (handle->win32-screen (event-handle event))))
     (and handler
 	 screen
@@ -429,7 +432,7 @@ USA.
   (make-strong-eqv-hash-table))
 
 (define (define-event-handler event-type handler)
-  (hash-table/put! event-handlers event-type handler))
+  (hash-table-set! event-handlers event-type handler))
 
 ;;;; Events
 
@@ -461,6 +464,8 @@ USA.
 		 event:process-status)
 		(else
 		 (let ((flag
+			;; Note that this procedure no longer unblocks
+			;; for subprocess status changes!!!
 			(test-for-io-on-descriptor
 			 ;; console-channel-descriptor here
 			 ;; means "input from message queue".

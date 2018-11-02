@@ -1,9 +1,9 @@
-#| -*- Mode: Scheme; keyword-style: none -*-
+#| -*-Scheme-*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,492 +28,226 @@ USA.
 
 (declare (usual-integrations))
 
-;;;; SRFI features
+;;;; Definitions
 
-(define-syntax :cond-expand
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (let ((if-error (lambda () (ill-formed-syntax form))))
-       (if (syntax-match? '(+ (DATUM * FORM)) (cdr form))
-	   (let loop ((clauses (cdr form)))
-	     (let ((req (caar clauses))
-		   (if-true (lambda () `(,(rename 'BEGIN) ,@(cdar clauses)))))
-	       (if (and (identifier? req)
-			(compare (rename 'ELSE) req))
-		   (if (null? (cdr clauses))
-		       (if-true)
-		       (if-error))
-		   (let req-loop
-		       ((req req)
-			(if-true if-true)
-			(if-false
-			 (lambda ()
-			   (if (null? (cdr clauses))
-			       (if-error)
-			       (loop (cdr clauses))))))
-		     (cond ((identifier? req)
-			    (if (any (lambda (feature)
-				       (compare (rename feature) req))
-				     supported-srfi-features)
-				(if-true)
-				(if-false)))
-			   ((and (syntax-match? '(IDENTIFIER DATUM) req)
-				 (compare (rename 'NOT) (car req)))
-			    (req-loop (cadr req)
-				      if-false
-				      if-true))
-			   ((and (syntax-match? '(IDENTIFIER * DATUM) req)
-				 (compare (rename 'AND) (car req)))
-			    (let and-loop ((reqs (cdr req)))
-			      (if (pair? reqs)
-				  (req-loop (car reqs)
-					    (lambda () (and-loop (cdr reqs)))
-					    if-false)
-				  (if-true))))
-			   ((and (syntax-match? '(IDENTIFIER * DATUM) req)
-				 (compare (rename 'OR) (car req)))
-			    (let or-loop ((reqs (cdr req)))
-			      (if (pair? reqs)
-				  (req-loop (car reqs)
-					    if-true
-					    (lambda () (or-loop (cdr reqs))))
-				  (if-false))))
-			   (else
-			    (if-error)))))))
-	   (if-error))))))
+(define $define
+  (spar-transformer->runtime
+   (delay
+     (spar-or
+       (scons-rule `(id ,(optional-value-pattern))
+	 (lambda (name value)
+	   (scons-call keyword:define name value)))
+       (scons-rule
+	   `((spar
+	      ,(spar-subform
+		 (spar-push-subform-if identifier? spar-arg:form)
+		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
+	     (+ any))
+	 (lambda (name bvl body-forms)
+	   (scons-define name
+	     (apply scons-named-lambda (cons name bvl) body-forms))))
+       (scons-rule
+	   `((spar
+	      ,(spar-subform
+		 (spar-push-subform)
+		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
+	     (+ any))
+	 (lambda (nested bvl body-forms)
+	   (scons-define nested
+	     (apply scons-lambda bvl body-forms))))))))
 
-(define supported-srfi-features
-  '(MIT
-    MIT/GNU
-    SWANK		       ;Provides SWANK module for SLIME
-    SRFI-0		       ;COND-EXPAND
-    SRFI-1		       ;List Library
-    SRFI-2		       ;AND-LET*
-    SRFI-6		       ;Basic String Ports
-    SRFI-8		       ;RECEIVE
-    SRFI-9		       ;DEFINE-RECORD-TYPE
-    SRFI-23		       ;ERROR
-    SRFI-27		       ;Sources of Random Bits
-    SRFI-30		       ;Nested Multi-Line Comments (#| ... |#)
-    SRFI-62		       ;S-expression comments
-    SRFI-69		       ;Basic Hash Tables
-    ))
+(define (optional-value-pattern)
+  `(or any (value-of ,unassigned-expression)))
+
+(define (unassigned-expression)
+  `(,keyword:unassigned))
+
+(define (unspecific-expression)
+  `(,keyword:unspecific))
 
-(define-syntax :receive
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (if (syntax-match? '(R4RS-BVL FORM + FORM) (cdr form))
-	 (let ((r-lambda (rename 'LAMBDA)))
-	   `(,(rename 'CALL-WITH-VALUES)
-	     (,r-lambda () ,(caddr form))
-	     (,r-lambda ,(cadr form) ,@(cdddr form))))
-	 (ill-formed-syntax form)))))
+;;;; Let-like forms
 
-(define-syntax :define-record-type
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (if (syntax-match? '(IDENTIFIER
-			  (IDENTIFIER * IDENTIFIER)
-			  IDENTIFIER
-			  * (IDENTIFIER IDENTIFIER ? IDENTIFIER))
-			(cdr form))
-	 (let ((type (cadr form))
-	       (constructor (car (caddr form)))
-	       (c-tags (cdr (caddr form)))
-	       (predicate (cadddr form))
-	       (fields (cddddr form))
-	       (de (rename 'DEFINE)))
-	   `(,(rename 'BEGIN)
-	     (,de ,type (,(rename 'MAKE-RECORD-TYPE) ',type ',(map car fields)))
-	     (,de ,constructor (,(rename 'RECORD-CONSTRUCTOR) ,type ',c-tags))
-	     (,de ,predicate (,(rename 'RECORD-PREDICATE) ,type))
-	     ,@(append-map
-		(lambda (field)
-		  (let ((name (car field)))
-		    (cons `(,de ,(cadr field)
-				(,(rename 'RECORD-ACCESSOR) ,type ',name))
-			  (if (pair? (cddr field))
-			      `((,de ,(caddr field)
-				     (,(rename 'RECORD-MODIFIER) ,type ',name)))
-			      '()))))
-		fields)))
-	 (ill-formed-syntax form)))))
+(define $let
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((or id (value #f))
+	   ,(let-bindings-pattern)
+	   (+ any))
+       (lambda (name bindings body-forms)
+	 (let ((ids (map car bindings))
+	       (vals (map cadr bindings)))
+	   (if name
+	       (generate-named-let name ids vals body-forms)
+	       (apply scons-call
+		      (apply scons-named-lambda
+			     (cons scode-lambda-name:let ids)
+			     body-forms)
+		      vals))))))))
 
-(define-syntax :define
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (receive (name value) (parse-define-form form rename)
-       `(,keyword:define ,name ,value)))))
+(define (let-bindings-pattern)
+  `(subform (* (subform (list id ,(optional-value-pattern))))))
 
-(define (parse-define-form form rename)
-  (cond ((syntax-match? '((DATUM . MIT-BVL) + FORM) (cdr form))
-	 (parse-define-form
-	  `(,(car form) ,(caadr form)
-			,(if (identifier? (caadr form))
-			     `(,(rename 'NAMED-LAMBDA) ,@(cdr form))
-			     `(,(rename 'LAMBDA) ,(cdadr form) ,@(cddr form))))
-	  rename))
-	((syntax-match? '(IDENTIFIER ? EXPRESSION) (cdr form))
-	 (values (cadr form)
-		 (if (pair? (cddr form))
-		     (caddr form)
-		     (unassigned-expression))))
-	(else
-	 (ill-formed-syntax form))))
-
 (define named-let-strategy 'internal-definition)
 
-(define-syntax :let
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (cond ((syntax-match? '(IDENTIFIER (* (IDENTIFIER ? EXPRESSION)) + FORM)
-			   (cdr form))
-	    (let ((name (cadr form))
-		  (bindings (caddr form))
-		  (body (cdddr form)))
-	      (let ((vars (map car bindings))
-		    (vals (map (lambda (binding)
-				 (if (pair? (cdr binding))
-				     (cadr binding)
-				     (unassigned-expression)))
-			       bindings)))
-		(case named-let-strategy
-		  ((fixed-point)
-		   (let ((iter (make-synthetic-identifier 'ITER))
-			 (kernel (make-synthetic-identifier 'KERNEL))
-			 (temps (map (lambda (b)
-				       (declare (ignore b))
-				       (make-synthetic-identifier 'TEMP)) bindings))
-			 (r-lambda (rename 'LAMBDA))
-			 (r-declare (rename 'DECLARE)))
-		     `((,r-lambda (,kernel)
-			  (,kernel ,kernel ,@vals))
-		       (,r-lambda (,iter ,@vars)
-			  ((,r-lambda (,name)
-			      (,r-declare (INTEGRATE-OPERATOR ,name))
-			      ,@body)
-			   (,r-lambda ,temps
-			      (,r-declare (INTEGRATE ,@temps))
-			      (,iter ,iter ,@temps)))))))
-		  ((internal-definition)
-		   `((,(rename 'LET) ()
-		      (,(rename 'DEFINE) (,name ,@vars) ,@body)
-		      ,name)
-		     ,@vals))
-		  ((letrec)
-		   `((,(rename 'LETREC)
-		      ((,name (,(rename 'NAMED-LAMBDA) (,name ,@vars)
-			       ,@body)))
-		      ,name)
-		     ,@vals))
-		  ((letrec*)
-		   `((,(rename 'LETREC*)
-		      ((,name (,(rename 'NAMED-LAMBDA) (,name ,@vars)
-			       ,@body)))
-		      ,name)
-		     ,@vals))
-		  (else (error "Unrecognized named-let-strategy: " named-let-strategy))))))
-	   ((syntax-match? '((* (IDENTIFIER ? EXPRESSION)) + FORM) (cdr form))
-	    `(,keyword:let ,@(cdr (normalize-let-bindings form))))
-	   (else
-	    (ill-formed-syntax form))))))
-
-(define (normalize-let-bindings form)
-  `(,(car form) ,(map (lambda (binding)
-			(if (pair? (cdr binding))
-			    binding
-			    (list (car binding) (unassigned-expression))))
-		      (cadr form))
-		,@(cddr form)))
-
-(define-syntax :let*
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare			;ignore
-     (expand/let* form (rename 'LET)))))
-
-(define-syntax :let*-syntax
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare			;ignore
-     (expand/let* form (rename 'LET-SYNTAX)))))
-
-(define (expand/let* form let-keyword)
-  (syntax-check '(KEYWORD (* DATUM) + FORM) form)
-  (let ((bindings (cadr form))
-	(body (cddr form)))
-    (if (pair? bindings)
-	(let loop ((bindings bindings))
-	  (if (pair? (cdr bindings))
-	      `(,let-keyword (,(car bindings)) ,(loop (cdr bindings)))
-	      `(,let-keyword ,bindings ,@body)))
-	`(,let-keyword ,bindings ,@body))))
-
-(define-syntax :letrec
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (declare (ignore compare))
-     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form)
-     (let ((bindings (cadr form))
-	   (r-lambda (rename 'LAMBDA))
-	   (r-named-lambda (rename 'NAMED-LAMBDA))
-	   (r-set!   (rename 'SET!)))
-       (let ((temps (map (lambda (binding)
-			   (make-synthetic-identifier
-			    (identifier->symbol (car binding)))) bindings)))
-	 `((,r-named-lambda (,lambda-tag:unnamed ,@(map car bindings))
-			    ((,r-lambda ,temps
-					,@(map (lambda (binding temp)
-						 `(,r-set! ,(car binding) ,temp)) bindings temps))
-			     ,@(map cadr bindings))
-			    ((,r-lambda () ,@(cddr form))))
-	   ,@(map (lambda (binding)
-		    (declare (ignore binding))
-		    (unassigned-expression)) bindings)))))))
-
-(define-syntax :letrec*
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (declare (ignore compare))
-     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form)
-     (let ((bindings (cadr form))
-	   (r-lambda (rename 'LAMBDA))
-	   (r-named-lambda (rename 'NAMED-LAMBDA))
-	   (r-set!   (rename 'SET!)))
-       `((,r-named-lambda (,lambda-tag:unnamed ,@(map car bindings))
-			  ,@(map (lambda (binding)
-				   `(,r-set! ,@binding)) bindings)
-			  ((,r-lambda () ,@(cddr form))))
-	 ,@(map (lambda (binding)
-		  (declare (ignore binding))
-		  (unassigned-expression)) bindings))))))
+(define (generate-named-let name ids vals body-forms)
+  (let ((proc (apply scons-named-lambda (cons name ids) body-forms)))
+    (case named-let-strategy
+      ((internal-definition)
+       (apply scons-call
+	      (scons-let '() (scons-define name proc) name)
+	      vals))
+      ((letrec)
+       (apply scons-call
+	      (scons-letrec (list (list name proc)) name)
+	      vals))
+      ((letrec*)
+       (apply scons-call
+	      (scons-letrec* (list (list name proc)) name)
+	      vals))
+      ((fixed-point)
+       (let ((iter (new-identifier 'iter))
+	     (kernel (new-identifier 'kernel))
+	     (temps (map new-identifier ids)))
+	 (scons-call (scons-lambda (list kernel)
+		       (apply scons-call kernel kernel vals))
+		     (scons-lambda (cons iter ids)
+		       (scons-call (apply scons-lambda
+					  (list name)
+					  (scons-declare
+					   (list 'integrate-operator name))
+					  body-forms)
+				   (scons-lambda temps
+				     (scons-declare (cons 'integrate temps))
+				     (apply scons-call iter iter temps)))))))
+      (else
+       (error "Unrecognized strategy:" named-let-strategy)))))
 
-(define-syntax :and
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (syntax-check '(KEYWORD * EXPRESSION) form)
-     (let ((operands (cdr form)))
-       (if (pair? operands)
-	   (let ((if-keyword (rename 'IF)))
-	     (let loop ((operands operands))
-	       (if (pair? (cdr operands))
-		   `(,if-keyword ,(car operands)
-				 ,(loop (cdr operands))
-				 #F)
-		   (car operands))))
-	   `#T)))))
-
-(define-syntax :case
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (syntax-check '(KEYWORD EXPRESSION + (DATUM * EXPRESSION)) form)
-     (letrec
-	 ((process-clause
-	   (lambda (clause rest)
-	     (cond ((null? (car clause))
-		    (process-rest rest))
-		   ((and (identifier? (car clause))
-			 (compare (rename 'ELSE) (car clause))
-			 (null? rest))
-		    `(,(rename 'BEGIN) ,@(cdr clause)))
-		   ((list? (car clause))
-		    `(,(rename 'IF) ,(process-predicate (car clause))
-				    (,(rename 'BEGIN) ,@(cdr clause))
-				    ,(process-rest rest)))
+(define $let*
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `(,(let-bindings-pattern)
+	   (+ any))
+       (lambda (bindings body-forms)
+	 (expand-let* scons-let bindings body-forms))))))
+
+(define $let*-syntax
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 '((subform (* (subform (list id any))))
+	   (+ any))
+       (lambda (bindings body-forms)
+	 (expand-let* scons-let-syntax bindings body-forms))))))
+
+(define (expand-let* scons-let bindings body-forms)
+  (if (pair? bindings)
+      (fold-right (lambda (binding expr)
+		    (scons-let (list binding) expr))
+		  (apply scons-begin body-forms)
+		  bindings)
+      (apply scons-let '() body-forms)))
+
+(define $letrec
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `(,(let-bindings-pattern)
+	   (+ any))
+       (lambda (bindings body-forms)
+	 (let* ((ids (map car bindings))
+		(vals (map cadr bindings))
+		(temps (map new-identifier ids)))
+	   (scons-let (map (lambda (id)
+			     (list id (unassigned-expression)))
+			   ids)
+	     (cond ((not (pair? ids))
+		    (default-object))
+		   ((not (pair? (cdr ids)))
+		    (scons-set! (car ids) (car vals)))
 		   (else
-		    (syntax-error "Ill-formed clause:" clause)))))
-	  (process-rest
-	   (lambda (rest)
-	     (if (pair? rest)
-		 (process-clause (car rest) (cdr rest))
-		 (unspecific-expression))))
-	  (process-predicate
-	   (lambda (items)
-	     ;; Optimize predicate for speed in compiled code.
-	     (cond ((null? (cdr items))
-		    (single-test (car items)))
-		   ((null? (cddr items))
-		    `(,(rename 'OR) ,(single-test (car items))
-				    ,(single-test (cadr items))))
-		   ((null? (cdddr items))
-		    `(,(rename 'OR) ,(single-test (car items))
-				    ,(single-test (cadr items))
-				    ,(single-test (caddr items))))
-		   ((null? (cddddr items))
-		    `(,(rename 'OR) ,(single-test (car items))
-				    ,(single-test (cadr items))
-				    ,(single-test (caddr items))
-				    ,(single-test (cadddr items))))
-		   (else
-		    `(,(rename
-			(if (for-all? items eq-testable?) 'MEMQ 'MEMV))
-		      ,(rename 'TEMP)
-		      ',items)))))
-	  (single-test
-	   (lambda (item)
-	     `(,(rename (if (eq-testable? item) 'EQ? 'EQV?))
-	       ,(rename 'TEMP)
-	       ',item)))
-	  (eq-testable?
-	   (lambda (item)
-	     (or (symbol? item)
-		 (boolean? item)
-		 ;; remainder are implementation dependent:
-		 (char? item)
-		 (fix:fixnum? item)))))
-       `(,(rename 'LET) ((,(rename 'TEMP) ,(cadr form)))
-			,(process-clause (caddr form)
-					 (cdddr form)))))))
+		    (apply scons-let
+			   (map list temps vals)
+			   (map scons-set! ids temps))))
+	     (scons-call (apply scons-lambda '() body-forms)))))))))
+
+(define $letrec*
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `(,(let-bindings-pattern)
+	   (+ any))
+       (lambda (bindings body-forms)
+	 (let ((ids (map car bindings))
+	       (vals (map cadr bindings)))
+	   (scons-let (map (lambda (id)
+			     (list id (unassigned-expression)))
+			   ids)
+	     (apply scons-begin (map scons-set! ids vals))
+	     (scons-call (apply scons-lambda '() body-forms)))))))))
 
-(define-syntax :cond
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (let ((clauses (cdr form)))
-       (if (not (pair? clauses))
-	   (syntax-error "Form must have at least one clause:" form))
-       (let loop ((clause (car clauses)) (rest (cdr clauses)))
-	 (expand/cond-clause clause rename compare (null? rest)
-			     (if (pair? rest)
-				 (loop (car rest) (cdr rest))
-				 (unspecific-expression))))))))
-
-(define-syntax :do
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION ? EXPRESSION))
-			     (+ FORM)
-			     * FORM)
-		   form)
-     (let ((bindings (cadr form))
-	   (r-loop (rename 'DO-LOOP)))
-       `(,(rename 'LET)
-	 ,r-loop
-	 ,(map (lambda (binding)
-		 (list (car binding) (cadr binding)))
-	       bindings)
-	 ,(expand/cond-clause (caddr form) rename compare #f
-			      `(,(rename 'BEGIN)
-				,@(cdddr form)
-				(,r-loop ,@(map (lambda (binding)
-						  (if (pair? (cddr binding))
-						      (caddr binding)
-						      (car binding)))
-						bindings)))))))))
-
-(define (expand/cond-clause clause rename compare else-allowed? alternative)
-  (if (not (and (pair? clause) (list? (cdr clause))))
-      (syntax-error "Ill-formed clause:" clause))
-  (cond ((and (identifier? (car clause))
-	      (compare (rename 'ELSE) (car clause)))
-	 (if (not else-allowed?)
-	     (syntax-error "Misplaced ELSE clause:" clause))
-	 (if (or (not (pair? (cdr clause)))
-		 (and (identifier? (cadr clause))
-		      (compare (rename '=>) (cadr clause))))
-	     (syntax-error "Ill-formed ELSE clause:" clause))
-	 `(,(rename 'BEGIN) ,@(cdr clause)))
-	((not (pair? (cdr clause)))
-	 `(,(rename 'OR) ,(car clause) ,alternative))
-	((and (identifier? (cadr clause))
-	      (compare (rename '=>) (cadr clause)))
-	 (if (not (and (pair? (cddr clause))
-		       (null? (cdddr clause))))
-	     (syntax-error "Ill-formed => clause:" clause))
-	 (let ((r-temp (rename 'TEMP)))
-	   `(,(rename 'LET) ((,r-temp ,(car clause)))
-			    (,(rename 'IF) ,r-temp
-					   (,(caddr clause) ,r-temp)
-					   ,alternative))))
-	(else
-	 `(,(rename 'IF) ,(car clause)
-			 (,(rename 'BEGIN) ,@(cdr clause))
-			 ,alternative))))
-
-(define-syntax :quasiquote
-  (er-macro-transformer
-   (lambda (form rename compare)
-
-     (define (descend-quasiquote x level return)
-       (cond ((pair? x) (descend-quasiquote-pair x level return))
-	     ((vector? x) (descend-quasiquote-vector x level return))
-	     (else (return 'QUOTE x))))
-
-     (define (descend-quasiquote-pair x level return)
-       (cond ((not (and (pair? x)
-			(identifier? (car x))
-			(pair? (cdr x))
-			(null? (cddr x))))
-	      (descend-quasiquote-pair* x level return))
-	     ((compare (rename 'QUASIQUOTE) (car x))
-	      (descend-quasiquote-pair* x (+ level 1) return))
-	     ((compare (rename 'UNQUOTE) (car x))
-	      (if (zero? level)
-		  (return 'UNQUOTE (cadr x))
-		  (descend-quasiquote-pair* x (- level 1) return)))
-	     ((compare (rename 'UNQUOTE-SPLICING) (car x))
-	      (if (zero? level)
-		  (return 'UNQUOTE-SPLICING (cadr x))
-		  (descend-quasiquote-pair* x (- level 1) return)))
+(define $let-values
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((subform (* (subform (list ,r4rs-lambda-list? any))))
+	   (+ any))
+       (lambda (bindings body-forms)
+	 (let ((body (apply scons-begin body-forms)))
+	   (case (length bindings)
+	     ((0)
+	      (scons-let '() body))
+	     ((1)
+	      (scons-cwv (car (car bindings))
+			 (scons-lambda '() (cadr (car bindings)))
+			 body))
 	     (else
-	      (descend-quasiquote-pair* x level return))))
+	      (let-values-multi bindings body)))))))))
 
-     (define (descend-quasiquote-pair* x level return)
-       (descend-quasiquote (car x) level
-	 (lambda (car-mode car-arg)
-	   (descend-quasiquote (cdr x) level
-	     (lambda (cdr-mode cdr-arg)
-	       (cond ((and (eq? car-mode 'QUOTE) (eq? cdr-mode 'QUOTE))
-		      (return 'QUOTE x))
-		     ((eq? car-mode 'UNQUOTE-SPLICING)
-		      (if (and (eq? cdr-mode 'QUOTE) (null? cdr-arg))
-			  (return 'UNQUOTE car-arg)
-			  (return 'APPEND
-				  (list car-arg
-					(finalize-quasiquote cdr-mode
-							     cdr-arg)))))
-		     ((and (eq? cdr-mode 'QUOTE) (list? cdr-arg))
-		      (return 'LIST
-			      (cons (finalize-quasiquote car-mode car-arg)
-				    (map (lambda (element)
-					   (finalize-quasiquote 'QUOTE
-								element))
-					 cdr-arg))))
-		     ((eq? cdr-mode 'LIST)
-		      (return 'LIST
-			      (cons (finalize-quasiquote car-mode car-arg)
-				    cdr-arg)))
-		     (else
-		      (return
-		       'CONS
-		       (list (finalize-quasiquote car-mode car-arg)
-			     (finalize-quasiquote cdr-mode cdr-arg))))))))))
+(define (let-values-multi bindings body)
+  (let ((temps
+	 (map (lambda (index)
+		(new-identifier (symbol 'temp- index)))
+	      (iota (length bindings))))
+	(thunks
+	 (map (lambda (binding)
+		(scons-lambda () (cadr binding)))
+	      bindings)))
+    (scons-let (map list temps thunks)
+      (let loop ((bvls (map car bindings)) (temps temps))
+	(if (pair? bvls)
+	    (scons-cwv (car bvls)
+		       (car temps)
+		       (loop (cdr bvls) (cdr temps)))
+	    body)))))
 
-     (define (descend-quasiquote-vector x level return)
-       (descend-quasiquote (vector->list x) level
-	 (lambda (mode arg)
-	   (case mode
-	     ((QUOTE) (return 'QUOTE x))
-	     ((LIST) (return 'VECTOR arg))
-	     (else
-	      (return 'LIST->VECTOR
-		      (list (finalize-quasiquote mode arg))))))))
+(define-syntax $let*-values
+  (syntax-rules ()
+    ((let*-values () body0 body1 ...)
+     (let () body0 body1 ...))
+    ((let*-values (binding0 binding1 ...) body0 body1 ...)
+     (let-values (binding0)
+       (let*-values (binding1 ...)
+	 body0 body1 ...)))))
 
-     (define (finalize-quasiquote mode arg)
-       (case mode
-	 ((QUOTE) `(,(rename 'QUOTE) ,arg))
-	 ((UNQUOTE) arg)
-	 ((UNQUOTE-SPLICING) (syntax-error ",@ in illegal context:" arg))
-	 (else `(,(rename mode) ,@arg))))
+;;; SRFI 8: receive
 
-     (syntax-check '(KEYWORD EXPRESSION) form)
-     (descend-quasiquote (cadr form) 0 finalize-quasiquote))))
+(define $receive
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `(,r4rs-lambda-list? any (+ any))
+       (lambda (bvl expr body-forms)
+	 (scons-cwv bvl
+		    (scons-lambda '() expr)
+		    (apply scons-begin body-forms)))))))
+
+(define (scons-cwv bvl thunk body)
+  (scons-call (scons-close 'call-with-values)
+	      thunk
+	      (scons-lambda bvl body)))
 
-;;;; SRFI 2: AND-LET*
+;;; SRFI 2: and-let*
 
 ;;; The SRFI document is a little unclear about the semantics, imposes
 ;;; the weird restriction that variables may be duplicated (citing
@@ -522,141 +256,724 @@ USA.
 ;;; follow.  This passes all of the tests except for the one that
 ;;; detects duplicate bound variables, though.
 
-(define-syntax :and-let*
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare
-     (let ((%and (rename 'AND))
-	   (%let (rename 'LET))
-	   (%begin (rename 'BEGIN)))
-       (cond ((syntax-match? '(() * FORM) (cdr form))
-	      `(,%begin #T ,@(cddr form)))
-	     ((syntax-match? '((* DATUM) * FORM) (cdr form))
-	      (let ((clauses (cadr form))
-		    (body (cddr form)))
-		(define (expand clause recur)
-		  (cond ((syntax-match? 'IDENTIFIER clause)
-			 (recur clause))
-			((syntax-match? '(EXPRESSION) clause)
-			 (recur (car clause)))
-			((syntax-match? '(IDENTIFIER EXPRESSION) clause)
-			 (let ((tail (recur (car clause))))
-			   (and tail `(,%let (,clause) ,tail))))
-			(else #f)))
-		(define (recur clauses make-body)
-		  (expand (car clauses)
-			  (let ((clauses (cdr clauses)))
-			    (if (null? clauses)
-				make-body
-				(lambda (conjunct)
-				  `(,%and ,conjunct
-					  ,(recur clauses make-body)))))))
-		(or (recur clauses
-			   (if (null? body)
-			       (lambda (conjunct) conjunct)
-			       (lambda (conjunct)
-				 `(,%and ,conjunct (,%begin ,@body)))))
-		    (ill-formed-syntax form))))
-	     (else
-	      (ill-formed-syntax form)))))))
-
-(define-syntax :access
-  (er-macro-transformer
-   (lambda (form rename compare)
-     rename compare			;ignore
-     (cond ((syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
-	    `(,keyword:access ,@(cdr form)))
-	   ((syntax-match? '(IDENTIFIER IDENTIFIER + FORM) (cdr form))
-	    `(,keyword:access ,(cadr form) (,(car form) ,@(cddr form))))
-	   (else
-	    (ill-formed-syntax form))))))
-
-(define-syntax :cons-stream
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
-     `(,(rename 'CONS) ,(cadr form)
-		       (,(rename 'DELAY) ,(caddr form))))))
+(define $and-let*
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((subform (* (list (or id (subform any) (subform id any)))))
+	   (* any))
+       (lambda (clauses body-exprs)
+	 (let recur1 ((conjunct #t) (clauses clauses))
+	   (cond ((pair? clauses)
+		  (scons-and conjunct
+			     (let ((clause (car clauses)))
+			       (let ((rest (recur1 (car clause) (cdr clauses))))
+				 (if (pair? (cdr clause))
+				     (scons-let (list clause) rest)
+				     rest)))))
+		 ((pair? body-exprs)
+		  (scons-and conjunct (apply scons-begin body-exprs)))
+		 (else
+		  conjunct))))))))
 
-(define-syntax :define-integrable
+;;;; Conditionals
+
+(define $cond
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((* ,cond-clause-pattern)
+	   ,cond-else-clause-pattern)
+       (lambda (clauses else-actions)
+	 (fold-right expand-cond-clause
+		     (if else-actions
+			 (apply scons-begin else-actions)
+			 (unspecific-expression))
+		     clauses))))))
+
+(define cond-clause-pattern
+  '(subform (cons (and (not (ignore-if id=? else))
+		       any)
+		  (if (ignore-if id=? =>)
+		      (list (value =>)
+			    any)
+		      (cons (value begin)
+			    (* any))))))
+
+(define cond-else-clause-pattern
+  '(or (subform (ignore-if id=? else)
+		(+ any))
+       (value #f)))
+
+(define (expand-cond-clause clause rest)
+  ((cond-clause-expander scons-if) clause rest))
+
+(define ((cond-clause-expander scons-if) clause rest)
+  (let ((predicate (car clause))
+	(type (cadr clause))
+	(actions (cddr clause)))
+    (case type
+      ((=>)
+       (let ((temp (new-identifier 'temp)))
+	 (scons-let (list (list temp predicate))
+	   (scons-if temp
+		     (scons-call (car actions) temp)
+		     rest))))
+      ((begin)
+       (if (pair? actions)
+	   (scons-if predicate
+		     (apply scons-begin actions)
+		     rest)
+	   (let ((temp (new-identifier 'temp)))
+	     (scons-let (list (list temp predicate))
+	       (scons-if temp temp rest)))))
+      (else
+       (error "Unknown clause type:" type)))))
+
+(define $do
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((subform (* (subform (list id any (? any)))))
+	   ,cond-clause-pattern
+	   (* any))
+       (lambda (bindings test-clause actions)
+	 (let ((loop-name (new-identifier 'do-loop)))
+	   (scons-named-let loop-name
+	       (map (lambda (binding)
+		      (list (car binding)
+			    (cadr binding)))
+		    bindings)
+	     (expand-cond-clause test-clause
+				 (scons-begin
+				   (apply scons-begin actions)
+				   (apply scons-call
+					  loop-name
+					  (map (lambda (binding)
+						 (if (pair? (cddr binding))
+						     (caddr binding)
+						     (car binding)))
+					       bindings)))))))))))
+
+(define $case
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 (let ((action-pattern
+		'(if (ignore-if id=? =>)
+		     (list (value =>)
+			   any)
+		     (cons (value begin)
+			   (+ any)))))
+	   `(any
+	     (* (subform (cons (subform (* any))
+			       ,action-pattern)))
+	     (or (subform (ignore-if id=? else)
+			  ,action-pattern)
+		 (value #f))))
+       (lambda (expr clauses else-clause)
+	 (let ((temp (new-identifier 'key)))
+
+	   (define (process-clause clause rest)
+	     (if (pair? (car clause))
+		 (scons-if (process-predicate (car clause))
+			   (process-action (cadr clause) (cddr clause))
+			   rest)
+		 rest))
+
+	   (define (process-predicate items)
+	     (apply scons-or
+		    (map (lambda (item)
+			   (scons-call (scons-close
+					(if (or (symbol? item)
+						(boolean? item)
+						;; implementation dependent:
+						(char? item)
+						(fix:fixnum? item))
+					    'eq?
+					    'eqv?))
+				       (scons-quote item)
+				       temp))
+			 items)))
+
+	   (define (process-action type exprs)
+	     (cond ((eq? type 'begin) (apply scons-begin exprs))
+		   ((eq? type '=>) (scons-call (car exprs) temp))
+		   (else (error "Unrecognized action type:" type))))
+
+	   (scons-let (list (list temp expr))
+	     (fold-right process-clause
+			 (if else-clause
+			     (process-action (car else-clause)
+					     (cdr else-clause))
+			     (unspecific-expression))
+			 clauses))))))))
+
+(define-syntax $and
+  (syntax-rules ()
+    ((and) #t)
+    ((and expr0) expr0)
+    ((and expr0 expr1+ ...) (if expr0 (and expr1+ ...) #f))))
+
+(define-syntax $when
+  (syntax-rules ()
+    ((when condition form ...)
+     (if condition
+	 (begin form ...)))))
+
+(define-syntax $unless
+  (syntax-rules ()
+    ((unless condition form ...)
+     (if (not condition)
+	 (begin form ...)))))
+
+(define-syntax $delay-force
+  (syntax-rules ()
+    ((delay-force expression)
+     (make-unforced-promise (lambda () expression)))))
+
+(define-syntax $delay
+  (syntax-rules ()
+    ((delay expression)
+     (delay-force (make-promise expression)))))
+
+(define-syntax $parameterize
+  (syntax-rules ()
+    ((parameterize ((param value) ...) form ...)
+     (parameterize* (list (cons param value) ...)
+		    (lambda () form ...)))))
+
+(define $guard
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((subform id
+			    (* ,cond-clause-pattern)
+			    ,cond-else-clause-pattern)
+		   (+ any))
+       (lambda (var clauses else-actions body)
+	 (let ((guard-k (new-identifier 'guard-k))
+	       (condition (new-identifier 'condition)))
+	   (scons-call 'call-with-current-continuation
+		       (scons-lambda (list guard-k)
+			 (scons-call 'with-exception-handler
+				     (scons-lambda (list condition)
+				       (scons-let (list (list var condition))
+					 (guard-handler guard-k condition
+							clauses else-actions)))
+				     (apply scons-lambda '() body))))))))))
+
+(define (guard-handler guard-k condition clauses else-actions)
+  (if else-actions
+      (scons-call guard-k
+		  (fold-right expand-cond-clause
+			      (apply scons-begin else-actions)
+			      clauses))
+      (fold-right (cond-clause-expander
+		   (lambda (p c a)
+		     (scons-if p (scons-call guard-k c) a)))
+		  (scons-call 'raise-continuable condition)
+		  clauses)))
+
+(define $include
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((+ ,string?))
+       (lambda (filenames)
+	 (apply scons-begin (read-files filenames #f)))))))
+
+(define $include-ci
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((+ ,string?))
+       (lambda (filenames)
+	 (apply scons-begin (read-files filenames #t)))))))
+
+(define (read-files filenames fold-case?)
+  (parameterize ((param:reader-fold-case? fold-case?))
+    (append-map read-file filenames)))
+
+(define $define-values
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `(,r4rs-lambda-list? any)
+       (lambda (bvl expr)
+	 (if (and (pair? bvl)
+		  (null? (cdr bvl)))
+	     (scons-define (car bvl) expr)
+	     (let ((temp-bvl
+		    (map-r4rs-lambda-list
+		     (lambda (name)
+		       (new-identifier (symbol 'temp- name)))
+		     bvl)))
+	       (let ((names (r4rs-lambda-list-names bvl))
+		     (temps (r4rs-lambda-list-names temp-bvl)))
+		 (scons-begin
+		   (apply scons-begin
+			  (map (lambda (name)
+				 (scons-define name (unassigned-expression)))
+			       names))
+		   (scons-call 'call-with-values
+			       (scons-lambda '() expr)
+			       (apply scons-lambda
+				      temp-bvl
+				      (map* (list (unspecific-expression))
+					    (lambda (name temp)
+					      (scons-set! name temp))
+					    names
+					    temps))))))))))))
+
+;;; This optimizes some simple cases, but it could be better.  Among other
+;;; things it could take advantage of arity-dispatched procedures in the right
+;;; circumstances.
+
+(define $case-lambda
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((* (subform (cons ,r4rs-lambda-list? (+ any)))))
+       (lambda (clauses)
+	 (if (pair? clauses)
+	     (let ((clauses (case-lambda-eliminate-redundant-clauses clauses)))
+	       (if (pair? (cdr clauses))
+		   (let ((arities
+			  (map r4rs-lambda-list-arity (map car clauses)))
+			 (temps
+			  (map (lambda (i)
+				 (new-identifier (symbol 'p i)))
+			       (iota (length clauses)))))
+		     (scons-let (map (lambda (temp clause)
+				       (list temp
+					     (apply scons-lambda clause)))
+				     temps
+				     clauses)
+		       (let ((choices (map cons arities temps)))
+			 (if (every exact-nonnegative-integer? arities)
+			     (case-lambda-no-rest choices)
+			     (case-lambda-rest choices)))))
+		   (apply scons-lambda (car clauses))))
+	     (case-lambda-no-choices)))))))
+
+(define (case-lambda-eliminate-redundant-clauses clauses)
+  ;; For now just handle fixed arities.  Handling variable arities needs
+  ;; something like intervals or an inversion list, which is a lot of hair.
+  (let loop ((clauses clauses) (arities '()))
+    (if (pair? clauses)
+	(let ((arity (r4rs-lambda-list-arity (caar clauses))))
+	  (if (memv arity arities)
+	      (loop (cdr clauses) arities)
+	      (cons (car clauses) (loop (cdr clauses) (cons arity arities)))))
+	'())))
+
+(define (case-lambda-no-rest choices)
+  (let ((choices (sort choices (lambda (c1 c2) (fix:< (car c1) (car c2))))))
+    (let ((low (apply min (map car choices)))
+	  (high (apply max (map car choices))))
+      (let ((args
+	     (map (lambda (i)
+		    (new-identifier (symbol 'a i)))
+		  (iota high))))
+
+	(define (choose i)
+	  (let ((choice (assv i choices))
+		(args* (list-head args i)))
+	    (if choice
+		(apply scons-call (cdr choice) args*)
+		(scons-call 'error "No matching case-lambda clause:"
+			    (apply scons-call 'list args*)))))
+
+	(scons-lambda (append (list-head args low)
+			      (list #!optional)
+			      (list-tail args low))
+	  (let loop ((i low))
+	    (if (fix:< i high)
+		(scons-if (scons-call 'default-object? (list-ref args i))
+			  (choose i)
+			  (loop (fix:+ i 1)))
+		(choose i))))))))
+
+(define (case-lambda-rest choices)
+  (let ((args (new-identifier 'args))
+	(nargs (new-identifier 'nargs)))
+    (scons-lambda args
+      (scons-let (list (list nargs (scons-call 'length args)))
+	(let loop ((choices choices))
+	  (if (pair? choices)
+	      (scons-if (scons-call (if (procedure-arity-max (caar choices))
+					'fix:=
+					'fix:>=)
+				    nargs
+				    (procedure-arity-min (caar choices)))
+			(scons-call 'apply (cdar choices) args)
+			(loop (cdr choices)))
+	      (scons-call 'error
+			  "No matching case-lambda clause:"
+			  args)))))))
+
+(define (case-lambda-no-choices)
+  (let ((args (new-identifier 'args)))
+    (scons-lambda args
+      (scons-call 'error "No matching case-lambda clause:" args))))
+
+;;;; Quasiquote
+
+(define-syntax $quasiquote
   (er-macro-transformer
    (lambda (form rename compare)
-     compare				;ignore
-     (let ((r-begin (rename 'BEGIN))
-	   (r-declare (rename 'DECLARE))
-	   (r-define (rename 'DEFINE)))
-       (cond ((syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
-	      `(,r-begin
-		(,r-declare (INTEGRATE ,(cadr form)))
-		(,r-define ,@(cdr form))))
-	     ((syntax-match? '((IDENTIFIER * IDENTIFIER) + FORM) (cdr form))
-	      `(,r-begin
-		(,r-declare (INTEGRATE-OPERATOR ,(caadr form)))
-		(,r-define ,(cadr form)
-			   ,@(let ((arguments (cdadr form)))
-			       (if (null? arguments)
-				   '()
-				   `((,r-declare (INTEGRATE ,@arguments)))))
-			   ,@(cddr form))))
+
+     (define (descend x level return)
+       (cond ((pair? x) (descend-pair x level return))
+	     ((vector? x) (descend-vector x level return))
+	     (else (return 'quote x))))
+
+     (define (descend-pair x level return)
+       (cond ((quotation? 'quasiquote x)
+	      (descend-pair* x (+ level 1) return))
+	     ((quotation? 'unquote x)
+	      (if (= level 0)
+		  (return 'unquote (cadr x))
+		  (descend-pair* x (- level 1) return)))
+	     ((quotation? 'unquote-splicing x)
+	      (if (= level 0)
+		  (return 'unquote-splicing (cadr x))
+		  (descend-pair* x (- level 1) return)))
 	     (else
-	      (ill-formed-syntax form)))))))
+	      (descend-pair* x level return))))
 
-(define-syntax :fluid-let
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare
-     (syntax-check '(KEYWORD (* (FORM ? EXPRESSION)) + FORM) form)
-     (let ((left-hand-sides (map car (cadr form)))
-	   (right-hand-sides (map cdr (cadr form)))
-	   (r-define (rename 'DEFINE))
-	   (r-lambda (rename 'LAMBDA))
-	   (r-let (rename 'LET))
-	   (r-set! (rename 'SET!))
-	   (r-shallow-fluid-bind (rename 'SHALLOW-FLUID-BIND))
-	   (r-unspecific (rename 'UNSPECIFIC)))
-       (let ((temporaries
-	      (map (lambda (lhs)
-		     (make-synthetic-identifier
-		      (if (identifier? lhs) lhs 'TEMPORARY)))
-		   left-hand-sides))
-	     (swap! (make-synthetic-identifier 'SWAP!))
-	     (body `(,r-lambda () ,@(cddr form))))
-	 `(,r-let ,(map cons temporaries right-hand-sides)
-	    (,r-define (,swap!)
-	      ,@(map (lambda (lhs temporary)
-		       `(,r-set! ,lhs (,r-set! ,temporary (,r-set! ,lhs))))
-		     left-hand-sides
-		     temporaries)
-	      ,r-unspecific)
-	    (,r-shallow-fluid-bind ,swap! ,body ,swap!)))))))
+     (define (quotation? name x)
+       (and (pair? x)
+	    (identifier? (car x))
+	    (compare (rename name) (car x))
+	    (pair? (cdr x))
+	    (null? (cddr x))))
 
-(define-syntax :local-declare
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare
-     (syntax-check '(KEYWORD (* (IDENTIFIER * DATUM)) + FORM) form)
-     (let ((r-let (rename 'LET))
-	   (r-declare (rename 'DECLARE)))
-       `(,r-let ()
-		(,r-declare ,@(cadr form))
-		,@(cddr form))))))
+     (define (descend-pair* x level return)
+       (descend (car x) level
+	 (lambda (car-mode car-arg)
+	   (descend (cdr x) level
+	     (lambda (cdr-mode cdr-arg)
+	       (cond ((and (eq? car-mode 'quote) (eq? cdr-mode 'quote))
+		      (return 'quote x))
+		     ((eq? car-mode 'unquote-splicing)
+		      (if (and (eq? cdr-mode 'quote) (null? cdr-arg))
+			  (return 'unquote car-arg)
+			  (return 'append
+				  (list car-arg
+					(finalize cdr-mode cdr-arg)))))
+		     ((and (eq? cdr-mode 'quote) (list? cdr-arg))
+		      (return 'list
+			      (cons (finalize car-mode car-arg)
+				    (map (lambda (element)
+					   (finalize 'quote element))
+					 cdr-arg))))
+		     ((eq? cdr-mode 'list)
+		      (return 'list
+			      (cons (finalize car-mode car-arg)
+				    cdr-arg)))
+		     (else
+		      (return 'cons
+			      (list (finalize car-mode car-arg)
+				    (finalize cdr-mode cdr-arg))))))))))
 
-(define (unspecific-expression)
-  `(,keyword:unspecific))
+     (define (descend-vector x level return)
+       (descend (vector->list x) level
+	 (lambda (mode arg)
+	   (case mode
+	     ((quote) (return 'quote x))
+	     ((list) (return 'vector arg))
+	     (else (return 'list->vector (list (finalize mode arg))))))))
 
-(define (unassigned-expression)
-  `(,keyword:unassigned))
+     (define (finalize mode arg)
+       (case mode
+	 ((quote) `(,(rename 'quote) ,arg))
+	 ((unquote) arg)
+	 ((unquote-splicing) (syntax-error ",@ in illegal context:" arg))
+	 (else `(,(rename mode) ,@arg))))
 
-(define-syntax :begin0
+     (syntax-check '(_ expression) form)
+     (descend (cadr form) 0 finalize))))
+
+;;;; SRFI 0 and R7RS: cond-expand
+
+(define $cond-expand
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((value id=?)
+		   (* (subform (cons ,(feature-requirement-pattern)
+				     (* any))))
+		   (opt (subform (cons (keep-if id=? else)
+				       (* any)))))
+       (lambda (id=? clauses)
+	 (apply scons-begin (evaluate-cond-expand id=? clauses)))))))
+
+(define (feature-requirement-pattern)
+  (spar-pattern-fixed-point
+   (lambda (feature-requirement)
+     `(or (keep-if id!=? else)
+	  (subform
+	   (or (cons (or (keep-if id=? or)
+			 (keep-if id=? and))
+		     (* ,feature-requirement))
+	       (list (keep-if id=? not)
+		     ,feature-requirement)
+	       (list (keep-if id=? library)
+		     ,(library-name-pattern))))))))
+
+(define (library-name-pattern)
+  `(subform (* (or symbol ,exact-nonnegative-integer?))))
+
+(define (evaluate-cond-expand id=? clauses)
+  (let ((clause
+	 (find (lambda (clause)
+		 (or (id=? 'else (car clause))
+		     (evaluate-feature-requirement id=? (car clause))))
+	       clauses)))
+    (if clause
+	(cdr clause)
+	'())))
+
+(define (evaluate-feature-requirement id=? feature-requirement)
+
+  (define (eval-req req)
+    (cond ((identifier? req) (supported-feature? req))
+	  ((id=? 'or (car req)) (eval-or (cdr req)))
+	  ((id=? 'and (car req)) (eval-and (cdr req)))
+	  ((id=? 'not (car req)) (eval-req (cadr req)))
+	  (else (error "Unknown requirement:" req))))
+
+  (define (supported-feature? req)
+    (let ((p
+	   (find (lambda (p)
+		   (id=? (car p) req))
+		 supported-features)))
+      (and p
+	   ((cdr p)))))
+
+  (define (eval-or reqs)
+    (and (pair? reqs)
+	 (or (eval-req (car reqs))
+	     (eval-or (cdr reqs)))))
+
+  (define (eval-and reqs)
+    (or (not (pair? reqs))
+	(and (eval-req (car reqs))
+	     (eval-and (cdr reqs)))))
+
+  (eval-req feature-requirement))
+
+(define (define-feature name procedure)
+  (set! supported-features (cons (cons name procedure) supported-features))
+  name)
+
+(define supported-features '())
+
+(define (always) #t)
+
+(define-feature 'mit always)
+(define-feature 'mit/gnu always)
+
+;; r7rs features
+(define-feature 'exact-closed always)
+(define-feature 'exact-complex always)
+(define-feature 'ieee-float always)
+(define-feature 'full-unicode always)
+(define-feature 'ratio always)
+
+(define-feature 'swank always)   ;Provides SWANK module for SLIME
+(define-feature 'srfi-0 always)  ;COND-EXPAND
+(define-feature 'srfi-1 always)  ;List Library
+(define-feature 'srfi-2 always)  ;AND-LET*
+(define-feature 'srfi-6 always)  ;Basic String Ports
+(define-feature 'srfi-8 always)  ;RECEIVE
+(define-feature 'srfi-9 always)  ;DEFINE-RECORD-TYPE
+(define-feature 'srfi-23 always) ;ERROR
+(define-feature 'srfi-27 always) ;Sources of Random Bits
+(define-feature 'srfi-30 always) ;Nested Multi-Line Comments (#| ... |#)
+(define-feature 'srfi-39 always) ;Parameter objects
+(define-feature 'srfi-62 always) ;S-expression comments
+(define-feature 'srfi-69 always) ;Basic Hash Tables
+(define-feature 'srfi-131 always) ;ERR5RS Record Syntax (reduced)
+
+(define ((os? value))
+  (eq? value microcode-id/operating-system))
+
+(define-feature 'windows (os? 'nt))
+(define-feature 'unix (os? 'unix))
+(define-feature 'posix (os? 'unix))
+
+(define ((os-variant? value))
+  (string=? value microcode-id/operating-system-variant))
+
+(define-feature 'darwin (os-variant? "OS X"))
+(define-feature 'gnu-linux (os-variant? "GNU/Linux"))
+
+(define-feature 'big-endian (lambda () (host-big-endian?)))
+(define-feature 'little-endian (lambda () (not (host-big-endian?))))
+
+(define ((machine? value))
+  (string=? value microcode-id/machine-type))
+
+(define-feature 'i386 (machine? "IA-32"))
+(define-feature 'x86-64 (machine? "x86-64"))
+
+(define (features)
+  (filter-map (lambda (p)
+		(and ((cdr p))
+		     (car p)))
+	      supported-features))
+
+;;;; SRFI 9, SRFI 131, R7RS: define-record-type
+
+(define $define-record-type
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((or (and id (value #f))
+	       (subform id any))
+	   (or (and id (value #f))
+	       (and ,not (value #f))
+	       (subform id (* symbol)))
+	   (or id ,not)
+	   (* (subform (list symbol id (or id (value #f))))))
+       (lambda (type-name parent maker-name maker-args pred-name field-specs)
+	 (apply scons-begin
+		(scons-define type-name
+		  (scons-call (scons-close 'new-make-record-type)
+			      (scons-quote type-name)
+			      (scons-quote (map car field-specs))
+			      (or parent (default-object))))
+		(if maker-name
+		    (scons-define maker-name
+		      (scons-call (scons-close 'record-constructor)
+				  type-name
+				  (if maker-args
+				      (scons-quote maker-args)
+				      (default-object))))
+		    (default-object))
+		(if pred-name
+		    (scons-define pred-name
+		      (scons-call (scons-close 'record-predicate) type-name))
+		    (default-object))
+		(append-map (lambda (field-spec)
+			      (let ((name (car field-spec))
+				    (accessor (cadr field-spec))
+				    (modifier (caddr field-spec)))
+				(list (scons-define accessor
+					(scons-call
+					 (scons-close 'record-accessor)
+					 type-name
+					 (scons-quote name)))
+				      (if modifier
+					  (scons-define modifier
+					    (scons-call
+					     (scons-close 'record-modifier)
+					     type-name
+					     (scons-quote name)))
+					  (default-object)))))
+			    field-specs)))))))
+
+;;;; MIT/GNU Scheme custom syntax
+
+(define $cons-stream
+  (spar-transformer->runtime
+   (delay (scons-rule `(any any) scons-stream))))
+
+(define $cons-stream*
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((+ any))
+       (lambda (exprs)
+	 (reduce-right scons-stream unspecific exprs))))))
+
+(define (scons-stream expr1 expr2)
+  (scons-call (scons-close 'cons)
+	      expr1
+	      (scons-delay expr2)))
+
+(define $circular-stream
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((+ any))
+       (lambda (exprs)
+	 (let ((self (new-identifier 'self)))
+	   (scons-letrec
+	       (list (list self
+			   (fold-right scons-stream
+				       self
+				       exprs)))
+	     self)))))))
+
+(define-syntax $local-declare
   (syntax-rules ()
-    ((BEGIN0 form0 form1+ ...)
-     (LET ((RESULT form0))
+    ((local-declare ((directive datum ...) ...) form0 form1+ ...)
+     (let ()
+       (declare (directive datum ...) ...)
+       form0 form1+ ...))))
+
+(define-syntax $begin0
+  (syntax-rules ()
+    ((begin0 form0 form1+ ...)
+     (let ((result form0))
        form1+ ...
-       RESULT))))
+       result))))
 
-(define-syntax :assert
+(define-syntax $assert
   (syntax-rules ()
-    ((ASSERT condition . extra)
-     (IF (NOT condition)
-         (ERROR "Assertion failed:" 'condition . extra)))))
+    ((assert condition . extra)
+     (if (not condition)
+         (error "Assertion failed:" 'condition . extra)))))
+
+(define $define-integrable
+  (spar-transformer->runtime
+   (delay
+     (spar-or
+       (scons-rule `(id any)
+	 (lambda (name expr)
+	   (scons-begin
+	     (scons-declare (list 'integrate name))
+	     (scons-define name expr))))
+       (scons-rule `((subform id (* id)) (+ any))
+	 (lambda (name bvl body-forms)
+	   (scons-begin
+	     (scons-declare (list 'integrate-operator name))
+	     (scons-define name
+	       (apply scons-named-lambda
+		      (cons name bvl)
+		      (if (null? bvl)
+			  body-forms
+			  (cons (scons-declare (cons 'integrate bvl))
+				body-forms)))))))))))
+
+(define $fluid-let
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `(,(let-bindings-pattern)
+	   (+ any))
+       (lambda (bindings body-forms)
+	 (let ((ids (map car bindings))
+	       (vals (map cadr bindings)))
+	   (let ((temps
+		  (map (lambda (id)
+			 (new-identifier (symbol 'temp- id)))
+		       ids))
+		 (swap! (new-identifier 'swap!)))
+	     (scons-let (map list temps vals)
+	       (scons-define swap!
+		 (scons-lambda '()
+		   (apply scons-begin
+			  (map (lambda (id temp)
+				 (scons-set! id
+					     (scons-set! temp
+							 (scons-set! id))))
+			       ids
+			       temps))
+		   #f))
+	       (scons-call (scons-close 'shallow-fluid-bind)
+			   swap!
+			   (apply scons-lambda '() body-forms)
+			   swap!)))))))))
+
+(define-syntax $bundle
+  (syntax-rules ()
+    (($bundle predicate name ...)
+     (alist->bundle predicate
+                    (list (cons 'name name) ...)))))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -626,9 +626,21 @@ DEFINE_SCHEME_UTILITY_2 (comutil_apply, procedure, frame_size)
 	  STACK_PUSH (procedure);
 	  procedure = operator;
 	  frame_size += 1;
+	  goto invoke_compiled_entry;
 	}
-	/* fall through */
 
+      case TC_RECORD:
+	{
+	  SCHEME_OBJECT applicator = record_applicator(procedure);
+	  if (!CC_ENTRY_P (applicator))
+	    goto handle_in_interpreter;
+	  STACK_PUSH (procedure);
+	  procedure = applicator;
+	  frame_size += 1;
+	  goto invoke_compiled_entry;
+	}
+
+      invoke_compiled_entry:
       case TC_COMPILED_ENTRY:
 	{
 	  long code
@@ -1437,40 +1449,50 @@ DEFINE_SCHEME_ENTRY (comp_error_restart)
 void
 apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
 {
-  while ((OBJECT_TYPE (procedure)) == TC_ENTITY)
+  while (true)
     {
-      {
-	unsigned long frame_size = (n_args + 1);
-	SCHEME_OBJECT data = (MEMORY_REF (procedure, ENTITY_DATA));
-	if ((VECTOR_P (data))
-	    && (frame_size < (VECTOR_LENGTH (data)))
-	    && (CC_ENTRY_P (VECTOR_REF (data, frame_size)))
-	    && ((VECTOR_REF (data, 0))
-		== (VECTOR_REF (fixed_objects, ARITY_DISPATCHER_TAG))))
+      switch (OBJECT_TYPE (procedure))
+	{
+	case TC_COMPILED_ENTRY:
+	  setup_compiled_invocation_from_primitive (procedure, n_args);
+	  return;
+
+	case TC_ENTITY:
 	  {
-	    procedure = (VECTOR_REF (data, frame_size));
-	    continue;
+	    unsigned long frame_size = (n_args + 1);
+	    SCHEME_OBJECT data = (MEMORY_REF (procedure, ENTITY_DATA));
+	    if ((VECTOR_P (data))
+		&& (frame_size < (VECTOR_LENGTH (data)))
+		&& ((VECTOR_REF (data, 0))
+		    == (VECTOR_REF (fixed_objects, ARITY_DISPATCHER_TAG))))
+	      procedure = (VECTOR_REF (data, frame_size));
+	    else
+	      {
+		STACK_PUSH (procedure);
+		n_args += 1;
+		procedure = (MEMORY_REF (procedure, ENTITY_OPERATOR));
+	      }
 	  }
-      }
-      {
-	SCHEME_OBJECT operator = (MEMORY_REF (procedure, ENTITY_OPERATOR));
-	if (CC_ENTRY_P (operator))
+	  continue;
+
+	case TC_RECORD:
 	  {
+	    SCHEME_OBJECT applicator = record_applicator(procedure);
+	    if (applicator == SHARP_F)
+	      goto handle_in_interpreter;
 	    STACK_PUSH (procedure);
 	    n_args += 1;
-	    procedure = operator;
+	    procedure = applicator;
 	  }
-      }
-      break;
-    }
+	  continue;
 
-  if (CC_ENTRY_P (procedure))
-    setup_compiled_invocation_from_primitive (procedure, n_args);
-  else
-    {
-      STACK_PUSH (procedure);
-      PUSH_APPLY_FRAME_HEADER (n_args);
-      PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
+	handle_in_interpreter:
+	default:
+	  STACK_PUSH (procedure);
+	  PUSH_APPLY_FRAME_HEADER (n_args);
+	  PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
+	  return;
+	}
     }
 }
 
@@ -2886,10 +2908,7 @@ win32_allocate_registers (void)
   win32_catatonia_block = (regmem.catatonia_block);
   Registers = (regmem.Registers);
   if (!win32_system_utilities.lock_memory_area ((&regmem), (sizeof (regmem))))
-    {
-      outf_error ("Unable to lock registers\n");
-      outf_flush_error ();
-    }
+    outf_error_line ("Unable to lock registers");
 }
 
 void

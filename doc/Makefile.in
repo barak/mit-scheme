@@ -1,7 +1,7 @@
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
-#     Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+#     2015, 2016, 2017, 2018 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -44,7 +44,11 @@ libdir = @libdir@
 infodir = @infodir@
 mandir = @mandir@
 includedir = @includedir@
+docdir = @docdir@
 oldincludedir = /usr/include
+
+PACKAGE_TARNAME = @PROJECT@
+PROJECT = @PROJECT@
 
 DESTDIR =
 top_builddir = .
@@ -65,7 +69,7 @@ pdfdir = @pdfdir@
 psdir = @psdir@
 INST_TARGETS = @INST_TARGETS@
 
-SUBDIRS = ffi imail ref-manual sos user-manual
+SUBDIRS = ffi ref-manual sos user-manual
 DISTCLEAN_FILES = Makefile make-common config.log config.status
 
 all:
@@ -103,19 +107,7 @@ maintainer-clean:
 
 tags TAGS:
 
-install: install-config install-info-gz install-man $(INST_TARGETS)
-
-install-config: doc-config.scm
-	$(mkinstalldirs) $(DESTDIR)$(infodir)
-	$(INSTALL_DATA) $< $(DESTDIR)$(infodir)/mit-scheme-doc-config.scm
-
-doc-config.scm:
-	@echo "Saving documentation configuration."
-	@ ( echo "(QUOTE"; \
-	    echo " ((INSTALL \"$(INSTALL_DATA)\")"; \
-	    echo "  (HTMLDIR \"${htmldir}\")"; \
-	    echo "  (PDFDIR \"${pdfdir}\")"; \
-	    echo "  (PSDIR \"${psdir}\")))" ) >doc-config.scm
+install: install-info-gz install-man $(INST_TARGETS)
 
 install-info-gz install-info:
 	$(mkinstalldirs) $(DESTDIR)$(infodir)
@@ -128,7 +120,7 @@ install-info-gz install-info:
 
 install-man:
 	$(mkinstalldirs) $(DESTDIR)$(mandir)/man1
-	$(INSTALL_DATA) scheme.1 $(DESTDIR)$(mandir)/man1/.
+	$(INSTALL_DATA) ${PROJECT}.1 $(DESTDIR)$(mandir)/man1/.
 
 install-html:
 	$(mkinstalldirs) $(DESTDIR)$(htmldir)

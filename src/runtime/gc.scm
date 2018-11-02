@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,7 +36,8 @@ USA.
   (set! hook/stack-overflow default/stack-overflow)
   (set! hook/hardware-trap default/hardware-trap)
   (set! default-safety-margin 4500)
-  (set! constant-space-queue (list 'CONSTANT-SPACE-QUEUE))
+  (set! constant-space-queue '())
+  (set! constant-space-queue-mutex (make-thread-mutex))
   (set! hook/gc-start default/gc-start)
   (set! hook/gc-finish default/gc-finish)
   (let ((fixed-objects ((ucode-primitive get-fixed-objects-vector))))
@@ -67,49 +68,21 @@ USA.
 (define default-safety-margin)
 
 (define (default/gc-flip safety-margin)
-  (let ((try-queue
-	 (lambda (queue pure?)
-	   (let ((items (cdr queue)))
-	     (and (pair? items)
-		  (let ((result
-			 (purify-internal (if (pair? (cdr items))
-					      items
-					      (car items))
-					  pure?
-					  safety-margin)))
-		    (and (pair? result)
-			 (begin
-			   (if (car result)
-			       (set-cdr! queue '())
-			       (begin
-				 (set-cdr! queue (cdr items))
-				 (queued-purification-failure)))
-			   (cdr result)))))))))
-    (or (try-queue constant-space-queue #f)
-	(gc-flip-internal safety-margin))))
-
-(define (queued-purification-failure)
-  (warn "Unable to purify all queued items; dequeuing one."))
+  (if (and (not (eq? '() constant-space-queue))
+	   (not (object-constant? constant-space-queue)))
+      (purify-internal constant-space-queue safety-margin)
+      (gc-flip-internal safety-margin)))
 
 (define (default/purify item pure-space? queue?)
   pure-space?
-  (if (not (object-constant? item))
+  (if (and (not (eq? 'non-pointer (object-gc-type item)))
+	   (not (object-constant? item)))
       (if queue?
-	  (with-absolutely-no-interrupts
+	  (with-thread-mutex-lock constant-space-queue-mutex
 	    (lambda ()
-	      (set-cdr! constant-space-queue
-			(cons item (cdr constant-space-queue)))
+	      (set! constant-space-queue (cons item constant-space-queue))
 	      unspecific))
-	  (let loop ()
-	    (let ((result
-		   (purify-internal item #f default-safety-margin)))
-	      (cond ((not (pair? result))
-		     ;; Wrong phase -- try again.
-		     (gc-flip)
-		     (loop))
-		    ((not (car result))
-		     (error "PURIFY: not enough room in constant space"
-			    item))))))))
+	  (purify-internal item default-safety-margin))))
 
 (define (default/stack-overflow)
   (abort->nearest "Aborting!: maximum recursion depth exceeded"))
@@ -119,6 +92,7 @@ USA.
   (abort->nearest "Aborting!: the hardware trapped"))
 
 (define constant-space-queue)
+(define constant-space-queue-mutex)
 (define hook/gc-start)
 (define hook/gc-finish)
 
@@ -128,14 +102,12 @@ USA.
       (gc-finish start-value space-remaining)
       space-remaining)))
 
-(define (purify-internal item pure-space? safety-margin)
-  pure-space?
+(define (purify-internal item safety-margin)
   (let ((start-value (hook/gc-start)))
     (let ((result
 	   ((ucode-primitive primitive-purify) item #f safety-margin)))
-      (if result
-	  (gc-finish start-value (cdr result)))
-      result)))
+      (gc-finish start-value (cdr result))
+      (cdr result))))
 
 (define (default/gc-start)
   #f)
@@ -145,25 +117,30 @@ USA.
   #f)
 
 (define (gc-finish start-value space-remaining)
-  (if (< space-remaining 4096)
-      (if gc-boot-loading?
-	  (let ((console ((ucode-primitive tty-output-channel 0))))
-	    ((ucode-primitive channel-write 4)
-	     console
-	     gc-boot-death-message
-	     0
-	     ((ucode-primitive string-length 1) gc-boot-death-message))
-	    ((ucode-primitive exit-with-value 1) #x14))
-	  (abort->nearest
-	   (cmdl-message/append
-	    (cmdl-message/strings "Aborting!: out of memory")
-	    ;; Clean up whatever possible to avoid a reoccurrence.
-	    (cmdl-message/active
+  (hook/gc-finish start-value space-remaining)
+  ((ucode-primitive request-interrupts! 1) interrupt-bit/after-gc))
+
+(define (abort-heap-low)
+  (if gc-boot-loading?
+      (let ((console ((ucode-primitive tty-output-channel 0))))
+	((ucode-primitive channel-write 4)
+	 console
+	 gc-boot-death-message
+	 0
+	 ((ucode-primitive string-length 1) gc-boot-death-message))
+	((ucode-primitive exit-with-value 1) #x14))
+      (abort->nearest
+       (cmdl-message/append
+	(cmdl-message/strings "Aborting!: out of memory")
+	;; Clean up whatever possible to avoid a reoccurrence.
+	(cmdl-message/active
+	 (if (nearest-cmdl/batch-mode?)
+	     (lambda (port)
+	       (newline port)
+	       (exit 'gc-out-of-space))
 	     (lambda (port)
 	       port
-	       (with-gc-notification! #t gc-clean)))))))
-  ((ucode-primitive request-interrupts! 1) interrupt-bit/after-gc)
-  (hook/gc-finish start-value space-remaining))
+	       (with-gc-notification! #t gc-clean))))))))
 
 (define gc-boot-loading?)
 
@@ -188,10 +165,9 @@ USA.
 		       safety-margin)))))
 
 (define (flush-purification-queue!)
-  (if (pair? (cdr constant-space-queue))
-      (begin
-	(gc-flip)
-	(flush-purification-queue!))))
+  (if (and (not (eq? '() constant-space-queue))
+	   (not (object-constant? constant-space-queue)))
+      (gc-flip)))
 
 (define (purify item #!optional pure-space? queue?)
   ;; Purify an item -- move it into pure space and clean everything by

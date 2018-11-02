@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,9 +32,9 @@ USA.
 		   (conc-name value-class/)
 		   (constructor %make-value-class (name parent))
 		   (print-procedure
-		    (unparser/standard-method 'VALUE-CLASS
-		      (lambda (state class)
-			(unparse-object state (value-class/name class))))))
+		    (standard-print-method 'VALUE-CLASS
+		      (lambda (class)
+			(list (value-class/name class))))))
   (name false read-only true)
   (parent false read-only true)
   (children '())
@@ -85,7 +85,7 @@ USA.
 	   (parent-name (caddr form)))
        (let* ((name->variable
 	       (lambda (name)
-		 (symbol-append 'VALUE-CLASS= name)))
+		 (symbol 'VALUE-CLASS= name)))
 	      (variable (name->variable name)))
 	 `(BEGIN
 	    (DEFINE ,variable
@@ -95,9 +95,9 @@ USA.
 		    (close-syntax (name->variable parent-name)
 				  environment)
 		    `#F)))
-	    (DEFINE (,(symbol-append variable '?) CLASS)
+	    (DEFINE (,(symbol variable '?) CLASS)
 	      (VALUE-CLASS/ANCESTOR-OR-SELF? CLASS ,variable))
-	    (DEFINE (,(symbol-append 'REGISTER- variable '?) REGISTER)
+	    (DEFINE (,(symbol 'REGISTER- variable '?) REGISTER)
 	      (VALUE-CLASS/ANCESTOR-OR-SELF?
 	       (REGISTER-VALUE-CLASS REGISTER)
 	       ,variable))))))))

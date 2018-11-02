@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,12 +24,16 @@ USA.
 
 |#
 
-;;;; Directory Operations -- OS/2
+;;;; Directory Operations -- Win32
 ;;; package: (runtime directory)
 
 (declare (usual-integrations))
 
-(define *expand-directory-prefixes?* #t)
+(define *expand-directory-prefixes?*)
+
+(define (initialize-package!)
+  (set! *expand-directory-prefixes?* (make-unsettable-parameter #t))
+  unspecific)
 
 (define (directory-read pattern #!optional sort? full?)
   (let ((sort? (if (default-object? sort?) #t sort?))
@@ -54,7 +58,7 @@ USA.
 	   (lambda (pathname)
 	     (merge-pathnames pathname directory-path)))
 	 (let ((fnames (generate-directory-pathnames pattern)))
-	   (fluid-let ((*expand-directory-prefixes?* #f))
+	   (parameterize ((*expand-directory-prefixes?* #f))
 	     (map ->pathname fnames))))))
 
 (define (generate-directory-pathnames pathname)
@@ -74,7 +78,7 @@ USA.
 	     (cons (merge-pathnames (car entry) directory-path)
 		   (cdr entry))))
 	 (let ((entries (generate-directory-entries pattern)))
-	   (fluid-let ((*expand-directory-prefixes?* #f))
+	   (parameterize ((*expand-directory-prefixes?* #f))
 	     (map (lambda (entry) (cons (->pathname (car entry)) (cdr entry)))
 		  entries))))))
 

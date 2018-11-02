@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -60,8 +60,8 @@ USA.
 
 ;; (define (shift number amount)
 ;;   (cond ((exact-integer? number) (arithmetic-shift number amount))
-;; 	((flonum? number) (flonum-denormalize number amount))
-;; 	...))
+;;	   ((flonum? number) (flonum-denormalize number amount))
+;;	   ...))
 
 ;;; Eventually the next two should be primitives with nice definitions
 ;;; on bignums requiring only a single copy and nice open-codings for
@@ -173,7 +173,7 @@ USA.
 	   (bits '() (cons (odd? integer) bits)))
 	  ((zero? integer) bits))
       (begin
-	(guarantee-index-fixnum length 'INTEGER->LIST)
+	(guarantee index-fixnum? length 'integer->list)
 	(do ((length length (- length 1))
 	     (integer integer (shift-right integer 1))
 	     (bits '() (cons (odd? integer) bits)))
@@ -216,3 +216,39 @@ USA.
 (define (shiftin x mask)
   ;; (bitwise-and ... mask)?
   (shift-left x (first-set-bit mask)))
+
+;;; Other standardish bit operations
+
+;;; Find First Set, 1-indexed; (ffs 0) = 0
+;;;
+;;; (Note some authors use 0-indexed ffs, and fail or return -1 for 0.)
+
+(define-integrable (ffs x)
+  (+ 1 (first-set-bit x)))
+
+;;; Find Last Set, 1-indexed; (fls 0) = 0
+;;;
+;;; For negative inputs, we find last clear, a.k.a. find last set of
+;;; complement.
+;;;
+;;; (Note some authors use 0-indexed fls, and fail or return -1 for 0.)
+
+(define-integrable (fls x)
+  (integer-length x))
+
+;;; Count Trailing Zeros; (ctz 0) = 0
+
+(define-integrable (ctz x)
+  (ffs x))
+
+;;; Count Leading Zeros in an n-bit word
+
+(declare (integrate clz))
+(define ((clz n) x)
+  ;; Round up to a power of two minus 1, at most 2^n; count the
+  ;; low-order one bits; subtract from n to get the zero bits
+  (assert (< x (shift-left 1 n)))
+  (let loop ((i 1) (x x))
+    (if (< i n)
+        (loop (* i 2) (bitwise-ior x (shift-right x i)))
+        (- n (bit-count x)))))

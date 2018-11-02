@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -80,19 +80,36 @@ allocate_marked_vector (unsigned int type,
 }
 
 SCHEME_OBJECT
-make_vector (unsigned long length, SCHEME_OBJECT contents, bool gc_check_p)
+make_marked_vector (unsigned int type,
+		    unsigned long length,
+		    SCHEME_OBJECT fill_value,
+		    bool gc_check_p)
 {
   if (gc_check_p)
     Primitive_GC_If_Needed (length + 1);
-  {
-    SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (TC_VECTOR, Free));
-    (*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, length));
-    while ((length--) > 0)
-      (*Free++) = contents;
-    return (result);
-  }
+  SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (type, Free));
+  (*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, length));
+  while ((length--) > 0)
+    (*Free++) = fill_value;
+  return (result);
+}
+
+SCHEME_OBJECT
+make_vector (unsigned long length, SCHEME_OBJECT filler, bool gc_check_p)
+{
+  return (make_marked_vector (TC_VECTOR, length, filler, gc_check_p));
 }
 
+DEFINE_PRIMITIVE ("ALLOCATE-NM-VECTOR", Prim_allocate_nm_vector, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (allocate_non_marked_vector
+     ((arg_ulong_index_integer (1, N_TYPE_CODES)),
+      (arg_ulong_index_integer (2, (1UL << DATUM_LENGTH))),
+      true));
+}
+
 DEFINE_PRIMITIVE ("VECTOR-CONS", Prim_vector_cons, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
@@ -113,6 +130,16 @@ DEFINE_PRIMITIVE ("VECTOR", Prim_vector, 0, LEXPR, 0)
       (*result_scan++) = (STACK_LOCATIVE_POP (argument_scan));
     PRIMITIVE_RETURN (result);
   }
+}
+
+DEFINE_PRIMITIVE ("%MAKE-RECORD", Prim_make_record, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (make_marked_vector (TC_RECORD,
+			 (arg_ulong_index_integer (1, (1UL << DATUM_LENGTH))),
+			 (ARG_REF (2)),
+			 true));
 }
 
 DEFINE_PRIMITIVE ("%RECORD", Prim_record, 0, LEXPR, 0)
@@ -364,4 +391,37 @@ DEFINE_PRIMITIVE ("SUBVECTOR-FILL!", Prim_vector_fill, 4, 4, 0)
   while ((length--) > 0)
     (*scan++) = fill_value;
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+static SCHEME_OBJECT record_marker (SCHEME_OBJECT);
+
+/* An applicable record is one whose tag is FIXOBJ_RECORD_TAG and
+   which has an applicator at FIXOBJ_RECORD_APP_INDEX within that tag.
+   It is applied just like an entity: the record is passed as the
+   first argument.
+
+   Returns the applicator if present, else #F. */
+SCHEME_OBJECT
+record_applicator (SCHEME_OBJECT record)
+{
+  SCHEME_OBJECT marker = (record_marker (record));
+  return ((RECORD_P (marker))
+	  && ((VECTOR_REF (marker, 0))
+	      == (VECTOR_REF (fixed_objects, FIXOBJ_RECORD_TAG))))
+    ? (VECTOR_REF (marker,
+		   (FIXNUM_TO_ULONG (VECTOR_REF (fixed_objects,
+						 FIXOBJ_RECORD_APP_INDEX)))))
+    : SHARP_F;
+}
+
+static SCHEME_OBJECT
+record_marker (SCHEME_OBJECT record)
+{
+  SCHEME_OBJECT marker = (VECTOR_REF (record, 0));
+  return (((OBJECT_TYPE (marker)) == TC_CONSTANT)
+	  && ((OBJECT_DATUM (marker)) >= FASDUMP_RECORD_MARKER_START)
+	  && ((OBJECT_DATUM (marker)) < FASDUMP_RECORD_MARKER_END))
+    ? (VECTOR_REF ((VECTOR_REF (fixed_objects, FIXOBJ_PROXIED_RECORD_TYPES)),
+		   ((OBJECT_DATUM (marker)) - FASDUMP_RECORD_MARKER_START)))
+    : marker;
 }

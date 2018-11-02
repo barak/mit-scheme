@@ -1,0 +1,6 @@
+To find out what should go in this file, see "Information For
+Maintainers of GNU Software" (maintain.texi), the section called
+"Recording Changes".
+
+Matt Birkholz            The conversion to a plugin.
+The MIT/GNU Scheme Team  The original (runtime crypto) package.

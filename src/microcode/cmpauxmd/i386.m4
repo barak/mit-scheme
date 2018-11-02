@@ -3,7 +3,8 @@
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
 ###     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013,
-###     2014 Massachusetts Institute of Technology
+###     2014, 2015, 2016, 2017, 2018 Massachusetts Institute of
+###     Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###
@@ -23,7 +24,7 @@
 ### 02110-1301, USA.
 
 ### Intel IA-32 assembly language part of the compiled code interface.
-### See cmpint.txt, cmpint.c, cmpint-mc68k.h, and cmpgc.h for more
+### See cmpint.txt, cmpint.c, cmpintmd/i386*, and cmpgc.h for more
 ### documentation.
 ###
 ### This m4 source expands into either Unix (gas) source or PC
@@ -335,14 +336,6 @@ define(REGBLOCK_SIZE_IN_OBJECTS,
 	    +(COMPILER_REGBLOCK_N_HOOKS*COMPILER_HOOK_SIZE)
 	    +(COMPILER_REGBLOCK_N_TEMPS*COMPILER_TEMP_SIZE)))
 
-# Define the floating-point processor control word.  Always set
-# round-to-even and double precision.  Under Win32, mask all
-# exceptions.  Under unix and OS/2, mask only the inexact result
-# exception.
-ifdef(`WIN32',
-      `define(FP_CONTROL_WORD,HEX(023f))',
-      `define(FP_CONTROL_WORD,HEX(0220))')
-
 define(regs,REG(esi))
 define(rfree,REG(edi))
 define(rmask,REG(ebp))
@@ -410,21 +403,9 @@ ifdef(`VALGRIND_MODE',`',`
 	jne	i386_initialize_no_fp
 ')
 	OP(inc,l)	REG(eax)			# 387 available
-	OP(sub,l)	TW(IMM(4),REG(esp))
-	fclex
-	fnstcw		WOF(-2,REG(ebp))
-	OP(and,w)	TW(IMM(HEX(f0e0)),WOF(-2,REG(ebp)))
-	OP(or,w)	TW(IMM(FP_CONTROL_WORD),WOF(-2,REG(ebp)))
-	fldcw		WOF(-2,REG(ebp))
 i386_initialize_no_fp:
 ')
 	OP(mov,l)	TW(REG(eax),ABS(EVR(i387_presence)))
-
-# FIXME: Some IA-32 systems have SSE support, and since the microcode
-# might use SSE instructions, we need to determine, using CPUID,
-# whether the CPU supports SSE instructions, so that we can save and
-# restore the SSE MXCSR in the floating-point environment.
-
 	OP(mov,l)	TW(IMM(0),ABS(EVR(sse_presence)))
 
 # Do a bunch of hair to determine if we need to do cache synchronization.
@@ -485,28 +466,39 @@ i386_initialize_no_fp:
 
 # Detect "GenuineIntel".
 
-#	OP(cmp,l)	TW(IMM(HEX(756e6547)),REG(ebx))
-#	jne		not_intel_cpu
-#	OP(cmp,l)	TW(IMM(HEX(49656e69)),REG(edx))
-#	jne		not_intel_cpu
-#	OP(cmp,l)	TW(IMM(HEX(6c65746e)),REG(ecx))
-#	jne		not_intel_cpu
+	OP(cmp,l)	TW(IMM(HEX(756e6547)),REG(ebx))
+	jne		not_intel_cpu
+	OP(cmp,l)	TW(IMM(HEX(49656e69)),REG(edx))
+	jne		not_intel_cpu
+	OP(cmp,l)	TW(IMM(HEX(6c65746e)),REG(ecx))
+	jne		not_intel_cpu
+
+# Some IA-32 systems have SSE support, and since the microcode might
+# use SSE instructions, we need to determine, using CPUID, whether the
+# CPU supports SSE instructions, so that we can save and restore the
+# SSE MXCSR in the floating-point environment.
+
+	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
+	cpuid
+	OP(and,l)	TW(IMM(HEX(02000000)),REG(edx))
+	OP(cmp,l)	TW(IMM(HEX(0)),REG(edx))
+	je		no_sse
+	OP(mov,l)	TW(IMM(HEX(00000001)),ABS(EVR(sse_presence)))
+no_sse:
 
 # For CPU families 4 (486), 5 (Pentium), or 6 (Pentium Pro, Pentium
 # II, Pentium III), don't use CPUID synchronization.
 
-#	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
-#	cpuid
 #	OP(shr,l)	TW(IMM(HEX(08)),REG(eax))
 #	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
 #	OP(cmp,l)	TW(IMM(HEX(4)),REG(eax))
 #	jl		done_setting_up_cpuid
 #	OP(cmp,l)	TW(IMM(HEX(6)),REG(eax))
 #	jg		done_setting_up_cpuid
-#
-#	jmp		cpuid_not_needed
-#
-#not_intel_cpu:
+
+	jmp		done_setting_up_cpuid
+
+not_intel_cpu:
 
 # Detect "AuthenticAMD".
 
@@ -686,12 +678,14 @@ interface_to_scheme_proceed:
 ')
 	OP(mov,l)	TW(EVR(Free),rfree)		# Free pointer = %edi
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
-	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
-
 	# Restore the C stack pointer, which we zeroed back in
 	# scheme_to_interface, for within_c_stack.
+	# Restore the C frame pointer too; the interface may have called
+	# Re_Enter_Interpreter which probably clobbered both.
 	OP(mov,l)	TW(REG(esp),EVR(C_Stack_Pointer))
 	OP(mov,l)	TW(EVR(stack_pointer),REG(esp))
+	OP(mov,l)	TW(REG(ebp),EVR(C_Frame_Pointer))
+	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
@@ -1136,8 +1130,8 @@ asm_generic_$1_fail:
 IF387(`define_unary_operation(decrement,22,sub,fsubr)
 define_unary_operation(increment,26,add,fadd)
 
-define_unary_predicate(negative,2a,jl,jb)
-define_unary_predicate(positive,2c,jg,ja)
+define_unary_predicate(negative,2a,jl,ja)
+define_unary_predicate(positive,2c,jg,jb)
 define_unary_predicate(zero,2d,je,je)
 
 # define_binary_operation(name,index,fix*fix,flo*flo)

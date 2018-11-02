@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,7 +32,7 @@ USA.
 (define-syntax define-primitives
   (sc-macro-transformer
    (lambda (form environment)
-     environment
+     (declare (ignore environment))
      (let ((primitive-definition
 	    (lambda (variable-name primitive-args)
 	      (let ((primitive
@@ -43,11 +43,11 @@ USA.
 		      (let ((names
 			     (map (lambda (n) (symbol 'a n))
 				  (iota (procedure-arity-min arity) 1))))
-			`(DEFINE-INTEGRABLE (,variable-name ,@names)
+			`(define-integrable (,variable-name ,@names)
 			   (,primitive ,@names)))
-		      `(DEFINE-INTEGRABLE ,variable-name
+		      `(define-integrable ,variable-name
 			 ,primitive)))))))
-       `(BEGIN ,@(map (lambda (name)
+       `(begin ,@(map (lambda (name)
 			(cond ((not (pair? name))
 			       (primitive-definition name (list name)))
 			      ((not (symbol? (cadr name)))
@@ -59,52 +59,68 @@ USA.
 (define-syntax ucode-type
   (sc-macro-transformer
    (lambda (form environment)
-     environment
+     (declare (ignore environment))
      (apply microcode-type (cdr form)))))
 
 (define-syntax ucode-primitive
   (sc-macro-transformer
    (lambda (form environment)
-     environment
+     (declare (ignore environment))
      (apply make-primitive-procedure (cdr form)))))
 
 (define-syntax ucode-return-address
   (sc-macro-transformer
    (lambda (form environment)
-     environment
+     (declare (ignore environment))
      (make-return-address (apply microcode-return (cdr form))))))
-
+
 (define-syntax define-guarantee
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+     (if (syntax-match? '(symbol expression) (cdr form))
 	 (let ((root (cadr form))
 	       (desc (close-syntax (caddr form) environment)))
 	   (let ((p-name (symbol root '?))
 		 (g-name (symbol 'guarantee- root))
 		 (e-name (symbol 'error:not- root)))
-	     `(BEGIN
-		(DEFINE (,g-name OBJECT #!OPTIONAL CALLER)
-		  (DECLARE (INTEGRATE CALLER))
-		  (IF (NOT (,(close-syntax p-name environment) OBJECT))
-		      (,(close-syntax e-name environment) OBJECT CALLER)))
-		(DEFINE (,e-name OBJECT #!OPTIONAL CALLER)
-		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT
-					     ,desc
-					     (IF (DEFAULT-OBJECT? CALLER)
-						 #F
-						 CALLER))))))
+	     `(begin
+		(define (,g-name object #!optional caller)
+		  (declare (integrate caller))
+		  (if (not (,(close-syntax p-name environment) object))
+		      (,(close-syntax e-name environment) object caller))
+		  object)
+		(define (,e-name object #!optional caller)
+		  (error:wrong-type-argument object ,desc caller)))))
 	 (ill-formed-syntax form)))))
 
 (define-syntax define-deferred
   (er-macro-transformer
    (lambda (form rename compare)
-     compare
-     (receive (name value)
-	 (parse-define-form form rename)
-       `(,(rename 'BEGIN)
-	  (,(rename 'DEFINE) ,name)
-	  (,(rename 'ADD-BOOT-INIT!)
-	   (,(rename 'LAMBDA) ()
-	     (,(rename 'SET!) ,name ,value)
-	     ,(rename 'UNSPECIFIC))))))))
+     (declare (ignore compare))
+     (syntax-check '(_ identifier expression) form)
+     (let ((name (cadr form))
+	   (value (caddr form)))
+       `(,(rename 'begin)
+	  (,(rename 'define) ,name)
+	  (,(rename 'add-boot-init!)
+	   (,(rename 'lambda) ()
+	     (,(rename 'set!) ,name ,value)
+	     ,(rename 'unspecific))))))))
+
+(define-syntax select-on-bytes-per-word
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore rename compare))
+     (syntax-check '(_ expression expression) form)
+     (let ((bpo (bytes-per-object)))
+       (case bpo
+	 ((4) (cadr form))
+	 ((8) (caddr form))
+	 (else (error "Unsupported bytes-per-object:" bpo)))))))
+
+(define-syntax variable-setter
+  (syntax-rules ()
+    ((_ identifier)
+     (lambda (value)
+       (set! identifier value)
+       unspecific))))

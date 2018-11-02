@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -195,7 +195,7 @@ trampoline_entry_addr (SCHEME_OBJECT * block, unsigned long index)
 }
 
 bool
-store_trampoline_insns (insn_t * entry, byte_t code)
+store_trampoline_insns (insn_t * entry, uint8_t code)
 {
   (*entry++) = 0xB0;		/* MOV AL,code */
   (*entry++) = code;
@@ -223,8 +223,6 @@ x86_64_reset_hook (void)
 {
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * rsi_value = ((unsigned char *) Registers);
-
-  x86_64_interface_initialize ();
 
   /* These must match machines/x86-64/lapgen.scm */
 

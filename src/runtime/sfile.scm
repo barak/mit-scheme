@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,7 +32,7 @@ USA.
 (define (file-exists-direct? filename)
   (let ((result
 	 ((ucode-primitive file-exists-direct? 1)
-	  (->namestring (merge-pathnames filename)))))
+	  (string-for-primitive (->namestring (merge-pathnames filename))))))
     (if (eq? 0 result)
 	#t
 	result)))
@@ -40,7 +40,7 @@ USA.
 (define (file-exists-indirect? filename)
   (let ((result
 	 ((ucode-primitive file-exists? 1)
-	  (->namestring (merge-pathnames filename)))))
+	  (string-for-primitive (->namestring (merge-pathnames filename))))))
     (if (eq? 0 result)
 	#f
 	result)))
@@ -52,40 +52,43 @@ USA.
 (let ((make-file-type
        (lambda (procedure)
 	 (lambda (filename)
-	   (let ((n (procedure (->namestring (merge-pathnames filename)))))
+	   (let ((n
+		  (procedure
+		   (string-for-primitive
+		    (->namestring (merge-pathnames filename))))))
 	     (and n
 		  (let ((types
-			 '#(REGULAR
-			    DIRECTORY
-			    UNIX-SYMBOLIC-LINK
-			    UNIX-CHARACTER-DEVICE
-			    UNIX-BLOCK-DEVICE
-			    UNIX-NAMED-PIPE
-			    UNIX-SOCKET
-			    OS2-NAMED-PIPE
-			    WIN32-NAMED-PIPE)))
+			 '#(regular
+			    directory
+			    unix-symbolic-link
+			    unix-character-device
+			    unix-block-device
+			    unix-named-pipe
+			    unix-socket
+			    unknown
+			    win32-named-pipe)))
 		    (if (fix:< n (vector-length types))
 			(vector-ref types n)
-			'UNKNOWN))))))))
+			'unknown))))))))
   (set! file-type-direct
 	(make-file-type (ucode-primitive file-type-direct 1)))
   (set! file-type-indirect
 	(make-file-type (ucode-primitive file-type-indirect 1))))
 
 (define (file-regular? filename)
-  (eq? 'REGULAR (file-type-indirect filename)))
+  (eq? 'regular (file-type-indirect filename)))
 
 (define (file-directory? filename)
-  (eq? 'DIRECTORY (file-type-indirect filename)))
+  (eq? 'directory (file-type-indirect filename)))
 
 (define (file-symbolic-link? filename)
   ((ucode-primitive file-symlink? 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 (define file-soft-link? file-symbolic-link?)
 
 (define (file-access filename amode)
   ((ucode-primitive file-access 2)
-   (->namestring (merge-pathnames filename))
+   (string-for-primitive (->namestring (merge-pathnames filename)))
    amode))
 
 (define (file-readable? filename)
@@ -94,10 +97,10 @@ USA.
 (define (file-writeable? filename)
   ((ucode-primitive file-access 2)
    (let ((pathname (merge-pathnames filename)))
-     (let ((filename (->namestring pathname)))
+     (let ((filename (string-for-primitive (->namestring pathname))))
        (if ((ucode-primitive file-exists? 1) filename)
 	   filename
-	   (directory-namestring pathname))))
+	   (string-for-primitive (directory-namestring pathname)))))
    2))
 (define file-writable? file-writeable?) ;upwards compatability
 
@@ -105,30 +108,37 @@ USA.
   (file-access filename 1))
 
 (define (file-touch filename)
-  ((ucode-primitive file-touch 1) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-touch 1)
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (make-directory name)
   ((ucode-primitive directory-make 1)
-   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+   (string-for-primitive
+    (->namestring (directory-pathname-as-file (merge-pathnames name))))))
 
 (define (delete-directory name)
   ((ucode-primitive directory-delete 1)
-   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+   (string-for-primitive
+    (->namestring (directory-pathname-as-file (merge-pathnames name))))))
 
 (define (rename-file from to)
-  ((ucode-primitive file-rename) (->namestring (merge-pathnames from))
-				 (->namestring (merge-pathnames to))))
+  ((ucode-primitive file-rename)
+   (string-for-primitive (->namestring (merge-pathnames from)))
+   (string-for-primitive (->namestring (merge-pathnames to)))))
 
 (define (delete-file filename)
-  ((ucode-primitive file-remove) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-remove)
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (hard-link-file from to)
-  ((ucode-primitive file-link-hard 2) (->namestring (merge-pathnames from))
-				      (->namestring (merge-pathnames to))))
+  ((ucode-primitive file-link-hard 2)
+   (string-for-primitive (->namestring (merge-pathnames from)))
+   (string-for-primitive (->namestring (merge-pathnames to)))))
 
 (define (soft-link-file from to)
-  ((ucode-primitive file-link-soft 2) (->namestring from)
-				      (->namestring (merge-pathnames to))))
+  ((ucode-primitive file-link-soft 2)
+   (string-for-primitive (->namestring from))
+   (string-for-primitive (->namestring (merge-pathnames to)))))
 
 (define (delete-file-no-errors filename)
   (call-with-current-continuation
@@ -143,8 +153,9 @@ USA.
 	 #t)))))
 
 (define (file-eq? x y)
-  ((ucode-primitive file-eq?) (->namestring (merge-pathnames x))
-			      (->namestring (merge-pathnames y))))
+  ((ucode-primitive file-eq?)
+   (string-for-primitive (->namestring (merge-pathnames x)))
+   (string-for-primitive (->namestring (merge-pathnames y)))))
 
 (define (current-file-time)
   (call-with-temporary-file-pathname file-modification-time))
@@ -152,7 +163,8 @@ USA.
 (define (directory-file-names directory #!optional include-dots?)
   (let ((channel
 	 (directory-channel-open
-	  (->namestring (pathname-as-directory directory))))
+	  (string-for-primitive
+	   (->namestring (pathname-as-directory directory)))))
 	(include-dots?
 	 (if (default-object? include-dots?) #f include-dots?)))
     (let loop ((result '()))
@@ -194,43 +206,55 @@ USA.
      (lambda () (receiver pathname))
      (lambda () (deallocate-temporary-file pathname)))))
 
+(define (with-temporary-file pathname thunk)
+  (dynamic-wind
+   (lambda ()
+     (let ((updater (fixed-objects-updater 'files-to-delete))
+	   (string (string-for-primitive (->namestring pathname))))
+       (with-files-to-delete-locked
+	(lambda ()
+	  (updater (lambda (filenames) (cons string filenames)))))))
+   thunk
+   (lambda () (deallocate-temporary-file pathname))))
+
+(define files-to-delete-mutex)
+
+(define (with-files-to-delete-locked thunk)
+  (with-thread-mutex-lock files-to-delete-mutex
+    (lambda () (without-interruption thunk))))
+
 (define (allocate-temporary-file pathname)
   (and (not (file-exists? pathname))
-       (let ((objects (get-fixed-objects-vector))
-	     (slot (fixed-objects-vector-slot 'FILES-TO-DELETE))
-	     (filename (->namestring pathname)))
-	 (without-interrupts
+       (let ((updater (fixed-objects-updater 'files-to-delete))
+	     (filename (string-for-primitive (->namestring pathname))))
+	 (with-files-to-delete-locked
 	  (lambda ()
 	    (and (file-touch pathname)
 		 (begin
-		   (vector-set! objects slot
-				(cons filename (vector-ref objects slot)))
-		   ((ucode-primitive set-fixed-objects-vector! 1) objects)
+		   (updater
+		    (lambda (filenames)
+		      (cons filename filenames)))
 		   #t)))))))
 
 (define (deallocate-temporary-file pathname)
-  (delete-file-no-errors pathname)
-  (let ((objects (get-fixed-objects-vector))
-	(slot (fixed-objects-vector-slot 'FILES-TO-DELETE))
-	(filename (->namestring pathname)))
-    (without-interrupts
+  (if (file-exists? pathname)
+      (delete-file-no-errors pathname))
+  (let ((updater (fixed-objects-updater 'files-to-delete))
+	(filename (string-for-primitive (->namestring pathname))))
+    (with-files-to-delete-locked
      (lambda ()
-       (vector-set! objects slot
-		    (delete! filename (vector-ref objects slot)))
-       ((ucode-primitive set-fixed-objects-vector! 1) objects)))))
+       (updater
+	(lambda (filenames)
+	  (delete! filename filenames)))))))
 
 ;;;; Init files
 
-(define (guarantee-init-file-specifier object procedure)
-  (if (not (init-file-specifier? object))
-      (error:wrong-type-argument object "init-file specifier" procedure)))
-
 (define (init-file-specifier? object)
   (and (list? object)
-       (for-all? object
-	 (lambda (object)
-	   (and (string? object)
-		(not (string-null? object)))))))
+       (every (lambda (object)
+		(and (string? object)
+		     (not (fix:= 0 (string-length object)))))
+	      object)))
 
 (define (guarantee-init-file-directory pathname)
   (let ((directory (user-homedir-pathname)))
@@ -258,7 +282,7 @@ USA.
 
 (define (pathname-type->mime-type type)
   (and (string? type)
-       (let ((mime-type (hash-table/get local-type-map type #f)))
+       (let ((mime-type (hash-table-ref/default local-type-map type #f)))
 	 (if mime-type
 	     (and (mime-type? mime-type)
 		  mime-type)
@@ -267,13 +291,13 @@ USA.
 		    (string->mime-type string)))))))
 
 (define (associate-pathname-type-with-mime-type type mime-type)
-  (guarantee-string type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
-  (guarantee-mime-type mime-type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
-  (hash-table/put! local-type-map type mime-type))
+  (guarantee string? type 'associate-pathname-type-with-mime-type)
+  (guarantee mime-type? mime-type 'associate-pathname-type-with-mime-type)
+  (hash-table-set! local-type-map type mime-type))
 
 (define (disassociate-pathname-type-from-mime-type type)
-  (guarantee-string type 'DISASSOCIATE-PATHNAME-TYPE-FROM-MIME-TYPE)
-  (hash-table/put! local-type-map type 'DISASSOCIATED))
+  (guarantee string? type 'disassociate-pathname-type-from-mime-type)
+  (hash-table-set! local-type-map type 'disassociated))
 
 (define-record-type <mime-type>
     (%%make-mime-type top-level subtype)
@@ -282,8 +306,8 @@ USA.
   (subtype mime-type/subtype))
 
 (define (make-mime-type top-level subtype)
-  (guarantee-mime-token top-level 'MAKE-MIME-TYPE)
-  (guarantee-mime-token subtype 'MAKE-MIME-TYPE)
+  (guarantee mime-token? top-level 'make-mime-type)
+  (guarantee mime-token? subtype 'make-mime-type)
   (%make-mime-type top-level subtype))
 
 (define (%make-mime-type top-level subtype)
@@ -292,22 +316,21 @@ USA.
     (let loop ((i 0))
       (if (fix:< i e)
 	  (if (eq? (vector-ref top-level-mime-types i) top-level)
-	      (hash-table/intern! (vector-ref interned-mime-types i)
+	      (hash-table-intern! (vector-ref interned-mime-types i)
 				  subtype
 				  new)
 	      (loop (fix:+ i 1)))
-	  (hash-table/intern! unusual-interned-mime-types
+	  (hash-table-intern! unusual-interned-mime-types
 			      (cons top-level subtype)
 			      new)))))
 
 (define top-level-mime-types
-  '#(TEXT IMAGE AUDIO VIDEO APPLICATION MULTIPART MESSAGE))
+  '#(text image audio video application multipart message))
 
-(set-record-type-unparser-method! <mime-type>
-  (standard-unparser-method 'MIME-TYPE
-    (lambda (mime-type port)
-      (write-char #\space port)
-      (write-string (mime-type->string mime-type) port))))
+(define-print-method mime-type?
+  (standard-print-method 'mime-type
+    (lambda (mime-type)
+      (list (mime-type->string mime-type)))))
 
 (define interned-mime-types)
 (define unusual-interned-mime-types)
@@ -315,6 +338,7 @@ USA.
 (define local-type-map)
 
 (define (initialize-package!)
+  (set! files-to-delete-mutex (make-thread-mutex))
   (set! interned-mime-types
 	;; We really want each of these hash tables to be a
 	;; datum-weak hash table, but the hash table abstraction
@@ -328,7 +352,7 @@ USA.
 			     (string->char-set "()<>@,;:\\\"/[]?=")))
   (set! local-type-map (make-string-hash-table))
   (associate-pathname-type-with-mime-type "scm"
-					  (make-mime-type 'TEXT 'X-SCHEME))
+					  (make-mime-type 'text 'x-scheme))
   unspecific)
 
 (define (mime-type->string mime-type)
@@ -337,14 +361,14 @@ USA.
       (write-mime-type mime-type port))))
 
 (define (write-mime-type mime-type port)
-  (guarantee-mime-type mime-type 'WRITE-MIME-TYPE)
-  (write-string (symbol-name (mime-type/top-level mime-type)) port)
+  (guarantee mime-type? mime-type 'write-mime-type)
+  (write-string (symbol->string (mime-type/top-level mime-type)) port)
   (write-string "/" port)
-  (write-string (symbol-name (mime-type/subtype mime-type)) port))
+  (write-string (symbol->string (mime-type/subtype mime-type)) port))
 
 (define (string->mime-type string #!optional start end)
   (vector-ref (or (*parse-string parser:mime-type string start end)
-		  (error:not-mime-type-string string 'STRING->MIME-TYPE))
+		  (error:not-a mime-type-string? string 'string->mime-type))
 	      0))
 
 (define (mime-type-string? object)
@@ -356,7 +380,7 @@ USA.
 
 (define (mime-token? object)
   (and (interned-symbol? object)
-       (string-is-mime-token? (symbol-name object))))
+       (string-is-mime-token? (symbol->string object))))
 
 (define (mime-token-string? object)
   (and (string? object)
@@ -380,8 +404,3 @@ USA.
 
 (define matcher:mime-token
   (*matcher (* (char-set char-set:mime-token))))
-
-(define-guarantee mime-type "MIME type")
-(define-guarantee mime-type-string "MIME type string")
-(define-guarantee mime-token "MIME token")
-(define-guarantee mime-token-string "MIME token string")

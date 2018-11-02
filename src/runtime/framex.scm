@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,12 +40,12 @@ USA.
 (define (stack-frame/debugging-info/default frame)
   (values (make-debugging-info/noise
 	   (lambda (long?)
-	     (with-output-to-string
-	       (lambda ()
-		 (display "Unknown (methodless) ")
+	     (call-with-output-string
+	       (lambda (port)
+		 (display "Unknown (methodless) " port)
 		 (if long?
-		     (pp frame)
-		     (write frame))))))
+		     (pp frame port)
+		     (write frame port))))))
 	  undefined-environment
 	  undefined-expression))
 
@@ -130,17 +130,13 @@ USA.
 
 (define (method/force-snap-thunk frame)
   (let ((promise (stack-frame/ref frame 1)))
-    (values (make-combination (ucode-primitive force 1)
-			      (list (make-evaluated-object promise)))
+    (values (make-scode-combination (ucode-primitive force 1)
+				    (list (make-evaluated-object promise)))
 	    undefined-environment
-	    (cond ((promise-forced? promise) undefined-expression)
-		  ((promise-non-expression? promise) unknown-expression)
-		  (else
-		   (validate-subexpression frame
-					   (promise-expression promise)))))))
+	    undefined-expression)))
 
 (define ((method/application-frame index) frame)
-  (values (make-combination
+  (values (make-scode-combination
 	   (make-evaluated-object (stack-frame/ref frame index))
 	   (stack-frame-list frame (1+ index)))
 	  undefined-environment
@@ -158,17 +154,18 @@ USA.
 	  undefined-expression))
 
 (define (method/compiler-lookup-apply-trap-restart frame)
-  (values (make-combination (make-variable (stack-frame/ref frame 2))
-			    (stack-frame-list frame 6))
+  (values (make-scode-combination
+	   (make-scode-variable (stack-frame/ref frame 2))
+	   (stack-frame-list frame 6))
 	  (stack-frame/ref frame 3)
 	  undefined-expression))
 
 (define (method/compiler-error-restart frame)
   (let ((primitive (stack-frame/ref frame 2)))
     (if (primitive-procedure? primitive)
-	(values (make-combination (make-variable 'apply)
-				  (list primitive
-					unknown-expression))
+	(values (make-scode-combination (make-scode-variable 'apply)
+					(list primitive
+					      unknown-expression))
 		undefined-environment
 		undefined-expression)
 	(stack-frame/debugging-info/default frame))))
@@ -187,9 +184,10 @@ USA.
 	  undefined-expression))
 
 (define ((hardware-trap-noise frame) long?)
-  (with-output-to-string
-    (lambda ()
-      (hardware-trap-frame/describe frame long?))))
+  (call-with-output-string
+    (lambda (port)
+      (parameterize ((current-output-port port))
+	(hardware-trap-frame/describe frame long?)))))
 
 (define (method/compiled-code frame)
   (let ((get-environment
@@ -218,37 +216,37 @@ USA.
 			       frame
 			       (select-subexp expression))))))
 		     (case (vector-ref source-code 0)
-		       ((SEQUENCE-CONTINUE)
+		       ((sequence-continue)
 			(win &pair-car))
-		       ((ASSIGNMENT-CONTINUE
-			 DEFINITION-CONTINUE)
+		       ((assignment-continue
+			 definition-continue)
 			(win &pair-cdr))
-		       ((CONDITIONAL-DECIDE)
+		       ((conditional-decide)
 			(win &triple-first))
-		       ((COMBINATION-OPERAND)
+		       ((combination-operand)
 			(values
 			 expression
 			 (get-environment)
 			 (validate-subexpression
 			  frame
 			  (if (zero? (vector-ref source-code 2))
-			      (combination-operator expression)
-			      (list-ref (combination-operands expression)
+			      (scode-combination-operator expression)
+			      (list-ref (scode-combination-operands expression)
 					(-1+ (vector-ref source-code 2)))))))
-		       ((COMBINATION-ELEMENT)
+		       ((combination-element)
 			(win2 undefined-environment
 			      (vector-ref source-code 2)))
-		       ((SEQUENCE-ELEMENT)
+		       ((sequence-element)
 			(win2 undefined-environment
 			      (vector-ref source-code 2)))
-		       ((CONDITIONAL-PREDICATE)
+		       ((conditional-predicate)
 			(win2 undefined-environment
 			      (vector-ref source-code 2)))
 		       (else
 			(lose))))
 		   (lose))))
 	    ((dbg-procedure? object)
-	     (values (lambda-body (dbg-procedure/source-code object))
+	     (values (scode-lambda-body (dbg-procedure/source-code object))
 		     (and (dbg-procedure/block object)
 			  (get-environment))
 		     undefined-expression))
@@ -262,39 +260,39 @@ USA.
 
 (define (initialize-package!)
   (set! stack-frame-type/pop-return-error
-	(microcode-return/name->type 'POP-RETURN-ERROR))
-  (record-method 'COMBINATION-APPLY method/null)
-  (record-method 'REENTER-COMPILED-CODE method/null)
+	(microcode-return/name->type 'pop-return-error))
+  (record-method 'combination-apply method/null)
+  (record-method 'reenter-compiled-code method/null)
   (let ((method (method/standard &pair-car)))
-    (record-method 'DISJUNCTION-DECIDE method)
-    (record-method 'SEQUENCE-CONTINUE method))
+    (record-method 'disjunction-decide method)
+    (record-method 'sequence-continue method))
   (let ((method (method/standard &pair-cdr)))
-    (record-method 'ASSIGNMENT-CONTINUE method)
-    (record-method 'DEFINITION-CONTINUE method))
+    (record-method 'assignment-continue method)
+    (record-method 'definition-continue method))
   (let ((method (method/standard &triple-first)))
-    (record-method 'CONDITIONAL-DECIDE method))
+    (record-method 'conditional-decide method))
   (let ((method (method/expression-only &pair-car)))
-    (record-method 'ACCESS-CONTINUE method))
-  (record-method 'COMBINATION-SAVE-VALUE method/combination-save-value)
-  (record-method 'EVAL-ERROR method/eval-error)
-  (record-method 'FORCE-SNAP-THUNK method/force-snap-thunk)
+    (record-method 'access-continue method))
+  (record-method 'combination-save-value method/combination-save-value)
+  (record-method 'eval-error method/eval-error)
+  (record-method 'force-snap-thunk method/force-snap-thunk)
   (let ((method (method/application-frame 3)))
-    (record-method 'INTERNAL-APPLY method)
-    (record-method 'INTERNAL-APPLY-VAL method))
-  (let ((method (method/compiler-reference-trap make-variable)))
-    (record-method 'COMPILER-REFERENCE-TRAP-RESTART method)
-    (record-method 'COMPILER-SAFE-REFERENCE-TRAP-RESTART method))
-  (record-method 'COMPILER-UNASSIGNED?-TRAP-RESTART
-		 (method/compiler-reference-trap make-unassigned?))
-  (record-method 'COMPILER-ASSIGNMENT-TRAP-RESTART
-		 (method/compiler-assignment-trap make-assignment))
-  (record-method 'COMPILER-LOOKUP-APPLY-TRAP-RESTART
+    (record-method 'internal-apply method)
+    (record-method 'internal-apply-val method))
+  (let ((method (method/compiler-reference-trap make-scode-variable)))
+    (record-method 'compiler-reference-trap-restart method)
+    (record-method 'compiler-safe-reference-trap-restart method))
+  (record-method 'compiler-unassigned?-trap-restart
+		 (method/compiler-reference-trap make-scode-unassigned?))
+  (record-method 'compiler-assignment-trap-restart
+		 (method/compiler-assignment-trap make-scode-assignment))
+  (record-method 'compiler-lookup-apply-trap-restart
 		 method/compiler-lookup-apply-trap-restart)
-  (record-method 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART
+  (record-method 'compiler-operator-lookup-trap-restart
 		 method/compiler-lookup-apply-trap-restart)
-  (record-method 'COMPILER-ERROR-RESTART
+  (record-method 'compiler-error-restart
 		 method/compiler-error-restart)
-  (record-method 'HARDWARE-TRAP method/hardware-trap)
+  (record-method 'hardware-trap method/hardware-trap)
   (set-stack-frame-type/debugging-info-method!
    stack-frame-type/compiled-return-address
    method/compiled-code)

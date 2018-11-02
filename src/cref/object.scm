@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,10 +51,9 @@ USA.
 		   (constructor make-package (name parent))
 		   (conc-name package/)
 		   (print-procedure
-		    (standard-unparser-method 'PACKAGE
-		      (lambda (package port)
-			(write-char #\space port)
-			(write (package/name package) port)))))
+		    (standard-print-method 'package
+		      (lambda (package)
+			(list (package/name package))))))
   (name #f read-only #t)
   (files '())
   parent
@@ -70,16 +69,16 @@ USA.
   (null? (package/name package)))
 
 (define-integrable (package/find-reference package name)
-  (find-matching-item (package/references package)
-		      (lambda (ref) (eq? (reference/name ref) name))))
+  (find (lambda (ref) (eq? (reference/name ref) name))
+	(package/references package)))
 
 (define-integrable (package/put-reference! package reference)
   (set-package/references! package
 			   (cons reference (package/references package))))
 
 (define-integrable (package/find-binding package name)
-  (find-matching-item (package/bindings package)
-		      (lambda (ref) (eq? (binding/name ref) name))))
+  (find (lambda (ref) (eq? (binding/name ref) name))
+	(package/bindings package)))
 
 (define-integrable (package/put-binding! package binding)
   (set-package/bindings! package
@@ -108,19 +107,17 @@ USA.
 		   (constructor %make-binding (package name value-cell new?))
 		   (conc-name binding/)
 		   (print-procedure
-		    (standard-unparser-method 'BINDING
-		      (lambda (binding port)
-			(write-char #\space port)
-			(write (binding/name binding) port)
-			(write-char #\space port)
-			(write (package/name (binding/package binding))
-			       port)))))
+		    (standard-print-method 'binding
+		      (lambda (binding)
+			(list (binding/name binding)
+			      (package/name (binding/package binding)))))))
   (package #f read-only #t)
   (name #f read-only #t)
   (value-cell #f read-only #t)
   (new? #f)
   (references '())
-  (links '()))
+  (links '())
+  (deprecated? #f))
 
 (define (make-binding package name value-cell new?)
   (let ((binding (%make-binding package name value-cell new?)))
@@ -173,13 +170,10 @@ USA.
 		   (constructor %make-reference (package name))
 		   (conc-name reference/)
 		   (print-procedure
-		    (standard-unparser-method 'REFERENCE
-		      (lambda (reference port)
-			(write-char #\space port)
-			(write (reference/name reference) port)
-			(write-char #\space port)
-			(write (package/name (reference/package reference))
-			       port)))))
+		    (standard-print-method 'reference
+		      (lambda (reference)
+			(list (reference/name reference)
+			      (package/name (reference/package reference)))))))
   (package #f read-only #t)
   (name #f read-only #t)
   (expressions '())
@@ -205,7 +199,7 @@ USA.
 (declare (integrate-operator name->string))
 (define (name->string name)
   (if (interned-symbol? name)
-      (symbol-name name)
+      (symbol->string name)
       (write-to-string name)))
 
 (define-integrable (name<? x y)

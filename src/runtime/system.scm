@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,7 +32,7 @@ USA.
 (define (add-subsystem-identification! name version)
   (if (not (and (string? name) (not (string-null? name))))
       (error:wrong-type-argument name "non-null string"
-				 'ADD-SUBSYSTEM-IDENTIFICATION!))
+				 'add-subsystem-identification!))
   (let ((version
 	 (let loop ((version version))
 	   (append-map (lambda (version)
@@ -112,15 +112,16 @@ USA.
       ""))
 
 (define (find-entry name)
-  (find-matching-item subsystem-identifications
-    (lambda (entry)
-      (match-entry? name entry))))
+  (find (lambda (entry)
+	  (match-entry? name entry))
+	subsystem-identifications))
 
 (define (match-entry? name entry)
   (let ((s (car entry)))
-    (substring-ci=? name 0 (string-length name)
-		    s 0
-		    (or (string-find-next-char s #\space)
-			(string-length s)))))
+    (string-ci=? name
+		 (let ((space (string-find-next-char s #\space)))
+		   (if space
+		       (string-slice s 0 space)
+		       s)))))
 
 (define subsystem-identifications '())

@@ -1,8 +1,8 @@
 \input texinfo @c -*-Texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-ffi
-@set VERSION 0.2
-@set UPDATED 2011-09-19
+@set VERSION 1.0
+@set UPDATED 2018-06-10
 @settitle FFI @value{VERSION}
 @comment %**end of header
 
@@ -20,8 +20,8 @@ This manual documents @acronym{FFI} @value{VERSION}.
 
 Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-    2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
-    Massachusetts Institute of Technology
+    2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
+    2016, 2017, 2018 Massachusetts Institute of Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -45,10 +45,13 @@ Documentation License.''
 @subtitle for MIT/GNU Scheme version 9.0.1
 @subtitle @value{UPDATED}
 @author by Matt Birkholz
+@end titlepage
 @page
+@iftex
+@contents
 @vskip 0pt plus 1filll
 @insertcopying
-@end titlepage
+@end iftex
 
 @ifnottex
 @node Top, Introduction, (dir), (dir)
@@ -62,7 +65,7 @@ Documentation License.''
 * C Declarations:: Declare C types and functions.
 * Alien Data:: Manipulate C data.
 * Alien Functions:: Generate callout trampolines and call them.
-* Callbacks:: Generate callback trampolines and get interrupted by them.
+* Callbacks:: Generate callback trampolines and register handlers for them.
 * Compiling and Linking:: Build and install the shim.
 * Hello World:: A short example.
 * GNU Free Documentation License::
@@ -142,7 +145,6 @@ Examples of the new syntax:
 (C-callback (lambda (window event) @dots{}))
 @myresult{} 13                     @r{; A fixnum registration ID.}
 @end group
-
 @end example
 @comment The C-array-loc! example assumes 2 GdkColors are 6 words, #x18bytes.
 @comment 0x081afc78 - 0x081afc60 = 0x18
@@ -170,7 +172,7 @@ parsed declarations), @file{@i{library}-const.c} (a C program that
 prints C constants and struct offsets), and @file{@i{library}-shim.c}
 (trampoline functions adapting Scheme procedure application to C
 function call).  The @file{-const.c} program generates a
-@file{-const.scm} file, which can be syntaxed to produce a
+@file{-const.scm} file, which can be expanded into a
 @file{-const.bin} file.
 
 @smallexample
@@ -181,7 +183,7 @@ function call).  The @file{-const.c} program generates a
 The @file{-types.bin} and @file{-const.bin} files together provide
 the information needed to expand @code{C-...} syntax, and are only
 needed at syntax time.  The compiled @file{-shim.so} file is used at
-run time, dynamically loaded into the Scheme machine.  @ref{Compiling
+run time, dynamically loaded into the Scheme machine.  @xref{Compiling
 and Linking}, which describes these files in more detail, and shows
 how they might be built and installed.
 
@@ -192,12 +194,15 @@ how they might be built and installed.
 The @strong{@code{C-include}} syntax loads the @file{-types.bin} and
 @file{-const.bin} files @emph{at syntax time}.  It should appear
 at the top level of any file containing @code{C-...} syntax, or be
-evaluated in the syntax environment of such code.
+expanded in the syntax environment of such code.
 
 The @strong{@code{C-call}} syntax arranges to invoke a callout
 trampoline.  Arguments to the trampoline can be integers, floats,
-strings or aliens (non-heap pointers, to C data structures,
-@pxref{Alien Data}).
+strings (or bytevectors) or aliens (non-heap pointers, to C data
+structures, @pxref{Alien Data}).  If a string argument might contain
+non-ASCII characters (code points U+0080 and larger), it should be
+converted to a bytevector e.g.@: by @code{string->utf8}, else an error
+could be signaled.
 
 @smallexample
 (let ((alien (make-alien '|GtkWidget|)))
@@ -236,6 +241,7 @@ accessed (if any).
 @expansion{}
 (#[primitive c-peek-int] alien 4)
 @end group
+@c (param:pp-primitives-by-name? #f) to display primitives thuswise.
 
 @group
 (C->= alien "GdkRectangle width" 0)
@@ -268,8 +274,8 @@ peeked pointer.  This avoids consing a new alien.
 @end smallexample
 
 The above syntax is understood to say ``The data at this @code{alien}
-address is a GtkWidget.  Load its @code{style} member (an alien
-address), into @code{alien} (clobbering @code{alien}'s old address).''
+address is a GtkWidget.  Load its @code{style} member into
+@code{alien} (clobbering @code{alien}'s old address).''
 
 The @strong{@code{C-enum}}, @strong{@code{C-sizeof}} and
 @strong{@code{C-offset}} syntaxes all
@@ -294,7 +300,6 @@ byte size and a byte offset respectively.
 @expansion{}
 8
 @end group
-
 @end smallexample
 
 The two element form of the @code{C-enum} syntax can be used to find
@@ -416,7 +421,7 @@ only the target of a pointer type.
 While the informal grammar above allows anonymous structs to be member
 types, they are useless outside a named type declaration.  The peek
 and poke (@code{C->} and @code{C->=}) syntaxes require a type name
-(e.g.  @code{"GdkEventAny"} or @code{"struct _GdkEventAny"}) before
+(e.g.@: @code{"GdkEventAny"} or @code{"struct _GdkEventAny"}) before
 any member names.
 
 @smallexample
@@ -587,23 +592,38 @@ They cannot be garbage collected.  They are ``on call'' to handle
 callbacks from the toolkit until they are explicitly de-registered.  A
 band restore automatically de-registers all callbacks.
 
-The callback procedures are executed like an interrupt handler.  They
-actually interrupt the thread executing the most recent callout,
-e.g. to @code{gtk_main}.  The thread runs with thread switching
-disabled for the duration of the callback, and can callout to the
-toolkit, which can callback again.  The (nested) callbacks and nested
-callouts all run in the same thread, and so will return in LIFO order
-as expected by the toolkit.  Note that the runtime system will not
-balk at a callback procedure that calls @code{yield-thread}, waits for
-I/O, sleeps, or otherwise causes a thread switch.  Presumably such a
-procedure has some other way of enforcing the LIFO ordering.
+Callback procedures are executed with thread preemption suspended.
+Thus Scheme will not switch to another thread, especially not one
+preempted in an earlier callback.  Such a thread could finish its
+callback and return from the later callback, not to its original
+caller.
+
+Scheme will not preempt a callback, but if the callback calls
+@code{suspend-thread} it will switch to a running thread.  If the
+callback does IO (and blocks), suspends, yields, sleeps, or grabs
+(waits for) a mutex, the runtime system will switch to another thread,
+possibly a thread that blocked for IO during an earlier callback but
+is now recently unblocked and determined to finish and return to the
+wrong caller.  Thus callback procedures should be written as if they
+were interrupt handlers.  They should be short and simple because they
+must not wait.
+
+@c Something clever with a Scheme-side model of the C stack and some
+@c thread-join operations might provide the necessary guarantee (LIFO
+@c calls/returns across threads) so that callbacks can wait (for a
+@c mutex or IO or just for the C stack to unwind enough).
+
+@c Doing that for a multi-processing world "just" requires threads to
+@c wait for (and be scheduled for) a particular processor (a
+@c particular C stack).  Such an exercise is left to the poor soul who
+@c could not figure out how to avoid the problem in the first place.
 
 The @code{outf-error} procedure is provided for debugging purposes.
 It writes one or more argument strings (and @code{write}s any
 non-strings) to the Unix ``stderr'' channel, atomically, via a machine
-primitive, bypassing the runtime's I/O buffering and thread switching.
-Thus trace messages from multiple threads will appear on stderr intact
-and uninterrupted.
+primitive, bypassing the runtime's IO buffering and thread switching.
+Thus trace messages from multiple threads will appear on stderr
+intact, uninterrupted.
 
 
 @node Compiling and Linking, Hello World, Callbacks, Top
@@ -630,7 +650,7 @@ This script will produce three files:
 This file contains the trampoline functions --- one for each declared
 C extern or callback.  It includes the @file{mit-scheme.h} header
 file, found in the @code{AUXDIR} directory ---
-e.g. @file{/usr/local/lib/mit-scheme/}.
+e.g. @file{/usr/local/lib/mit-scheme-i386/}.
 
 @item prhello-const.c
 This file contains a C program that creates
@@ -652,6 +672,10 @@ installing a shim for the example ``Hello, World!'' program.
 @example
 @verbatiminclude prhello-Makefile
 @end example
+
+The FFI also supports libraries created by GNU automake (libtool).
+The source distribution includes several simple plugins.  Each uses a
+portable Makefile.am to build and install its shared object.
 
 
 @node Hello World, GNU Free Documentation License, Compiling and Linking, Top
@@ -1125,5 +1149,4 @@ If your document contains nontrivial examples of program code, we
 recommend releasing these examples in parallel under your choice of
 free software license, such as the GNU General Public License,
 to permit their use in free software.
-
 @bye

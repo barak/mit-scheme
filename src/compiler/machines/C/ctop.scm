@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -77,7 +77,7 @@ USA.
   (fluid-let ((*compiler-file-handle*
 	       (string-append
 		"(anonymous scode "
-		(vector-8b->hexadecimal (random-byte-vector 8))
+		(bytevector->hexadecimal (random-bytevector 8))
 		")")))
     (action)))
 
@@ -96,7 +96,7 @@ USA.
   (let ((typifier
 	 ;; Guarantee unique temporary files for liarc.  We could
 	 ;; instead change how the files are loaded.
-	 (let ((suffix (vector-8b->hexadecimal (random-byte-vector #x10))))
+	 (let ((suffix (bytevector->hexadecimal (random-bytevector #x10))))
 	   (lambda (type)
 	     (lambda (pathname)
 	       (pathname-new-type
@@ -211,10 +211,11 @@ USA.
 
 (define (assemble&link info-output-pathname)
   (phase/assemble info-output-pathname)
-  (if info-output-pathname
-      (phase/info-generation-2 *labels* info-output-pathname))
-  (phase/output-generation)
-  *result*)
+  (let ((file-wrapper
+	 (and info-output-pathname
+	      (phase/info-generation-2 *labels* info-output-pathname))))
+    (phase/output-generation)
+    (values *result* file-wrapper)))
 
 (define (wrap-lap entry-label some-lap)
   (set! *start-label* entry-label)
@@ -406,29 +407,25 @@ USA.
 	      (last-reference *external-labels*))))
 	(cond ((eq? pathname 'KEEP)	; for dynamic execution
 	       ;; (warn "C back end cannot keep debugging info in memory")
-	       unspecific)
+	       #f)
 	      ((eq? pathname 'RECURSIVE) ; recursive compilation
 	       (set! *recursive-compilation-results*
 		     (cons (vector *recursive-compilation-number*
 				   info
 				   #f)
 			   *recursive-compilation-results*))
-	       unspecific)
+	       #f)
 	      (else
-	       (compiler:dump-info-file
-		(let ((others (recursive-compilation-results)))
-		  (if (null? others)
-		      info
-		      (list->vector
-		       (cons info
-			     (map (lambda (other) (vector-ref other 1))
-				  others)))))
-		pathname)))))))
+	       (let ((others (recursive-compilation-results)))
+		 (if (null? others)
+		     info
+		     (list->vector
+		      (cons info
+			    (map (lambda (other) (vector-ref other 1))
+				 others)))))))))))
 
 (define (compiler:dump-bci-file binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci")))
-    (split-inf-structure! binf #f)
-    (dump-compressed binf bci-path)))
+  (dump-compressed binf (pathname-new-type pathname "bci")))
 
 (define (dump-compressed object path)
   (call-with-temporary-filename
@@ -438,21 +435,18 @@ USA.
 
 (define compiler:dump-info-file compiler:dump-bci-file)
 
-;; This defintion exported to compiler to handle losing C name restrictions
+;; This definition exported to compiler to handle losing C name restrictions.
 
 (define (canonicalize-label-name prefix)
   (if (string-null? prefix)
       "empty_string"
-      (let* ((str (if (char-alphabetic? (string-ref prefix 0))
-		      (string-copy prefix)
-		      (string-append "Z_" prefix)))
-	     (len (string-length str)))
-	(do ((i 0 (1+ i)))
-	    ((>= i len) str)
-	  (let ((char (string-ref str i)))
-	    (if (not (char-alphanumeric? char))
-		(string-set! str i
-			     (case char
-			       ((#\?) #\P)
-			       ((#\!) #\B)
-			       (else #\_)))))))))
+      (string-map (lambda (char)
+		    (if (char-alphanumeric? char)
+			char
+			(case char
+			  ((#\?) #\P)
+			  ((#\!) #\B)
+			  (else #\_))))
+		  (if (char-alphabetic? (string-ref prefix 0))
+		      prefix
+		      (string-append "Z_" prefix)))))

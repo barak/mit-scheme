@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -39,10 +39,9 @@ USA.
   (for-each (lambda (lvalue)
 	      (set-lvalue-source-links!
 	       lvalue
-	       (list-transform-negative
-		   (lvalue-backward-links lvalue)
-		 (lambda (lvalue*)
-		   (memq lvalue (lvalue-backward-links lvalue*))))))
+	       (remove (lambda (lvalue*)
+			 (memq lvalue (lvalue-backward-links lvalue*)))
+		       (lvalue-backward-links lvalue))))
 	    lvalues)
   ;; b. Remove nop nodes
   (transitive-closure false delete-if-nop! lvalues)
@@ -51,7 +50,7 @@ USA.
   (let loop
       ((lvalues lvalues)
        (combinations
-	(list-transform-positive applications application/combination?)))
+	(filter application/combination? applications)))
     (let ((unknown-lvalues (eliminate-known-nodes lvalues)))
       (transmit-values (fold-combinations combinations)
 	(lambda (any-folded? not-folded)
@@ -76,27 +75,28 @@ USA.
 #|
 (define (eliminate-known-nodes lvalues)
   (let ((knowable-nodes
-	 (list-transform-positive lvalues
-	   (lambda (lvalue)
-	     (and (not (or (lvalue-passed-in? lvalue)
-			   (and (variable? lvalue)
-				(variable-assigned? lvalue)
-				(not (memq 'CONSTANT
-					   (variable-declarations lvalue))))))
-		  (let ((values (lvalue-values lvalue)))
-		    (and (not (null? values))
-			 (null? (cdr values))
-			 (or (rvalue/procedure? (car values))
-			     (rvalue/constant? (car values))))))))))
+	 (filter (lambda (lvalue)
+		   (and (not (or (lvalue-passed-in? lvalue)
+				 (and (variable? lvalue)
+				      (variable-assigned? lvalue)
+				      (not (memq 'CONSTANT
+						 (variable-declarations
+						  lvalue))))))
+			(let ((values (lvalue-values lvalue)))
+			  (and (not (null? values))
+			       (null? (cdr values))
+			       (or (rvalue/procedure? (car values))
+				   (rvalue/constant? (car values)))))))
+		 lvalues)))
     (with-new-lvalue-marks
      (lambda ()
        (for-each lvalue-mark! knowable-nodes)
        (transitive-closure false delete-if-known! knowable-nodes))))
-  (list-transform-negative lvalues lvalue-known-value))
+  (remove lvalue-known-value lvalues))
 
 (define (delete-if-known! lvalue)
   (if (and (not (lvalue-known-value lvalue))
-	   (for-all? (lvalue-source-links lvalue) lvalue-known-value))
+	   (every lvalue-known-value (lvalue-source-links lvalue)))
       (let ((value (car (lvalue-values lvalue))))
 	(for-each (lambda (lvalue*)
 		    (if (lvalue-marked? lvalue*)
@@ -106,22 +106,22 @@ USA.
 |#
 
 (define (eliminate-known-nodes lvalues)
-  (list-transform-negative lvalues
-    (lambda (lvalue)
-      (and (not (or (lvalue-passed-in? lvalue)
-		    (and (variable? lvalue)
-			 (variable-assigned? lvalue)
-			 (not (memq 'CONSTANT
-				    (variable-declarations lvalue))))))
-	   (let ((values (lvalue-values lvalue)))
-	     (and (not (null? values))
-		  (null? (cdr values))
-		  (let ((value (car values)))
-		    (and (or (rvalue/procedure? value)
-			     (rvalue/constant? value))
-			 (begin
-			   (set-lvalue-known-value! lvalue value)
-			   true)))))))))
+  (remove (lambda (lvalue)
+	    (and (not (or (lvalue-passed-in? lvalue)
+			  (and (variable? lvalue)
+			       (variable-assigned? lvalue)
+			       (not (memq 'CONSTANT
+					  (variable-declarations lvalue))))))
+		 (let ((values (lvalue-values lvalue)))
+		   (and (not (null? values))
+			(null? (cdr values))
+			(let ((value (car values)))
+			  (and (or (rvalue/procedure? value)
+				   (rvalue/constant? value))
+			       (begin
+				 (set-lvalue-known-value! lvalue value)
+				 true)))))))
+	  lvalues))
 
 #|
 (define (fold-combinations combinations)
@@ -167,24 +167,28 @@ USA.
     (and (constant-foldable-operator? operator)
 	 ;; (rvalue-known? continuation)
 	 ;; (uni-continuation? (rvalue-known-value continuation))
-	 (for-all? operands rvalue-known-constant?)
+	 (every rvalue-known-constant? operands)
 	 (let ((op (constant-foldable-operator-value operator)))
 	   (and (or (arity-correct? op (length operands))
 		    (begin
 		      (error "fold-combination: Wrong number of arguments"
 			     op (length operands))
 		      false))
-		(let ((constant
-		       (make-constant
-			(apply op (map rvalue-constant-value operands)))))
-		  (combination/constant! combination constant)
-		  (for-each (lambda (value)
-			      (if (uni-continuation? value)
-				  (maybe-fold-lvalue!
-				   (uni-continuation/parameter value)
-				   constant)))
-			    (rvalue-values continuation))
-		  true))))))
+		(let ((value
+		       (let ((operands (map rvalue-constant-value operands)))
+			 (ignore-errors
+			  (lambda ()
+			    (apply op operands))))))
+		  (and (not (condition? value))
+		       (let ((constant (make-constant value)))
+			 (combination/constant! combination constant)
+			 (for-each (lambda (value)
+				     (if (uni-continuation? value)
+					 (maybe-fold-lvalue!
+					  (uni-continuation/parameter value)
+					  constant)))
+				   (rvalue-values continuation))
+			 true))))))))
 
 (define (maybe-fold-lvalue! lvalue constant)
   (lvalue-connect!:rvalue lvalue constant)
@@ -210,7 +214,7 @@ USA.
 
 (define (recompute-lvalue-passed-in! lvalue)
   (set-lvalue-passed-in?! lvalue false)
-  (if (there-exists? (lvalue-backward-links lvalue) lvalue-passed-in?)
+  (if (any lvalue-passed-in? (lvalue-backward-links lvalue))
       (begin
 	(set-lvalue-passed-in?! lvalue 'INHERITED)
 	;; The assignment would return the right value, but this is clearer.

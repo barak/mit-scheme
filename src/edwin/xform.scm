@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,26 +63,26 @@ USA.
   (let ((entry (assq (scode-variable-name variable) transforms)))
     (if (not entry)
 	variable
-	(make-combination (make-primitive-procedure 'VECTOR-REF)
-			  (list name-of-self (cdr entry))))))
+	(make-scode-combination (make-primitive-procedure 'vector-ref)
+				(list name-of-self (cdr entry))))))
 
 (define (transform-assignment transforms assignment)
-  (assignment-components assignment
-    (lambda (name value)
-      (let ((entry (assq name transforms))
-	    (value (transform-expression transforms value)))
-	(if (not entry)
-	    (make-assignment name value)
-	    (make-combination (make-primitive-procedure 'VECTOR-SET!)
-			      (list name-of-self
-				    (cdr entry)
-				    value)))))))
+  (let ((name (scode-assignment-name assignment))
+	(value (scode-assignment-value assignment)))
+    (let ((entry (assq name transforms))
+	  (value (transform-expression transforms value)))
+      (if (not entry)
+	  (make-scode-assignment name value)
+	  (make-scode-combination (make-primitive-procedure 'vector-set!)
+				  (list name-of-self
+					(cdr entry)
+					value))))))
 
 (define (transform-combination transforms combination)
-  (combination-components combination
-    (lambda (operator operands)
-      (make-combination (transform-expression transforms operator)
-			(transform-expressions transforms operands)))))
+  (let ((operator (scode-combination-operator combination))
+	(operands (scode-combination-operands combination)))
+    (make-scode-combination (transform-expression transforms operator)
+			    (transform-expressions transforms operands))))
 
 (define (transform-lambda transforms expression)
   (lambda-components** expression
@@ -92,43 +92,44 @@ USA.
 					   body)))))
 
 (define (transform-open-block transforms open-block)
-  (open-block-components open-block
-    (lambda (names declarations body)
-      (make-open-block names declarations
-		       (transform-expression (remove-transforms transforms
-								names)
-					     body)))))
+  (let ((names (scode-open-block-names open-block)))
+    (make-scode-open-block
+     names
+     (scode-open-block-declarations open-block)
+     (transform-expression (remove-transforms transforms names)
+			   (scode-open-block-actions open-block)))))
 
 (define (transform-definition transforms definition)
-  (definition-components definition
-    (lambda (name value)
-      (error "Free definition encountered:" name)
-      (make-definition name (transform-expression transforms value)))))
+  (let ((name (scode-definition-name definition))
+	(value (scode-definition-value definition)))
+    (error "Free definition encountered:" name)
+    (make-scode-definition name (transform-expression transforms value))))
 
 (define (transform-sequence transforms expression)
-  (make-sequence (transform-expressions transforms
-					(sequence-actions expression))))
+  (make-scode-sequence
+   (transform-expressions transforms (scode-sequence-actions expression))))
 
 (define (transform-conditional transforms conditional)
-  (conditional-components conditional
-    (lambda (predicate consequent alternative)
-      (make-conditional (transform-expression transforms predicate)
-			(transform-expression transforms consequent)
-			(transform-expression transforms alternative)))))
+  (make-scode-conditional
+   (transform-expression transforms (scode-conditional-predicate conditional))
+   (transform-expression transforms (scode-conditional-consequent conditional))
+   (transform-expression transforms
+			 (scode-conditional-alternative conditional))))
 
 (define (transform-disjunction transforms disjunction)
-  (disjunction-components disjunction
-    (lambda (predicate alternative)
-      (make-disjunction (transform-expression transforms predicate)
-			(transform-expression transforms alternative)))))
+  (make-scode-disjunction
+   (transform-expression transforms (scode-disjunction-predicate disjunction))
+   (transform-expression transforms
+			 (scode-disjunction-alternative disjunction))))
 
 (define (transform-comment transforms comment)
-  (comment-components comment
-    (lambda (text expression)
-      (make-comment text (transform-expression transforms expression)))))
+  (make-scode-comment
+   (scode-comment-text comment)
+   (transform-expression transforms (scode-comment-expression comment))))
 
 (define (transform-delay transforms expression)
-  (make-delay (transform-expression transforms (delay-expression expression))))
+  (make-scode-delay
+   (transform-expression transforms (scode-delay-expression expression))))
 
 (define scode-walker
   (make-scode-walker transform-constant

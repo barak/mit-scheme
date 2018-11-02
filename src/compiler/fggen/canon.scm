@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -136,11 +136,9 @@ ARBITRARY:	The expression may be executed more than once.  It
 	       (canout-needs? a)
 	       (canout-splice? a)))
 
-(define ((canonicalize/unary open close) expression bound context)
-  (open expression
-	(lambda (exp)
-	  (canonicalize/combine-unary close
-	   (canonicalize/expression exp bound context)))))
+(define ((canonicalize/unary combiner part1) expression bound context)
+  (canonicalize/combine-unary combiner
+   (canonicalize/expression (part1 expression) bound context)))
 
 (define (canonicalize/combine-binary combiner a b)
   (make-canout (combiner (canout-expr a) (canout-expr b))
@@ -148,12 +146,10 @@ ARBITRARY:	The expression may be executed more than once.  It
 	       (or (canout-needs? a) (canout-needs? b))
 	       (and (canout-splice? a) (canout-splice? b))))
 
-(define ((canonicalize/binary open close) expression bound context)
-  (open expression
-	(lambda (a b)
-	  (canonicalize/combine-binary close
-	   (canonicalize/expression a bound context)
-	   (canonicalize/expression b bound context)))))
+(define ((canonicalize/binary combiner part1 part2) expression bound context)
+  (canonicalize/combine-binary combiner
+   (canonicalize/expression (part1 expression) bound context)
+   (canonicalize/expression (part2 expression) bound context)))
 
 (define (canonicalize/combine-ternary combiner a b c)
   (make-canout (combiner (canout-expr a) (canout-expr b) (canout-expr c))
@@ -161,13 +157,12 @@ ARBITRARY:	The expression may be executed more than once.  It
 	       (or (canout-needs? a) (canout-needs? b) (canout-needs? c))
 	       (and (canout-splice? a) (canout-splice? b) (canout-splice? c))))
 
-(define ((canonicalize/ternary open close) expression bound context)
-  (open expression
-	(lambda (a b c)
-	  (canonicalize/combine-ternary close
-	   (canonicalize/expression a bound context)
-	   (canonicalize/expression b bound context)
-	   (canonicalize/expression c bound context)))))
+(define ((canonicalize/ternary combiner part1 part2 part3)
+	 expression bound context)
+  (canonicalize/combine-ternary combiner
+   (canonicalize/expression (part1 expression) bound context)
+   (canonicalize/expression (part2 expression) bound context)
+   (canonicalize/expression (part3 expression) bound context)))
 
 (define canonicalize/constant
   canonicalize/trivial)
@@ -189,7 +184,7 @@ ARBITRARY:	The expression may be executed more than once.  It
   (define (normal)
     (scode/make-directive
      (scode/make-combination
-      (scode/make-lambda lambda-tag:let
+      (scode/make-lambda scode-lambda-name:let
 			 (list environment-variable) '() false '()
 			 '()
 			 body)
@@ -198,23 +193,21 @@ ARBITRARY:	The expression may be executed more than once.  It
      original-expression))
 
   (define (comment body recvr)
-    (scode/comment-components
-     body
-     (lambda (text nbody)
-       (if (and (scode/comment-directive? text 'ENCLOSE)
-		(scode/combination? nbody))
-	   (scode/combination-components
-	    nbody
-	    (lambda (operator operands)
-	      (if (and (eq? operator (ucode-primitive SCODE-EVAL))
-		       (scode/quotation? (car operands))
-		       (scode/variable? (cadr operands))
-		       (eq? (scode/variable-name (cadr operands))
-			    environment-variable))
-		  (recvr (scode/quotation-expression (car operands)))
-		  (normal))))
-	   (normal)))))
- 
+    (let ((text (scode/comment-text body))
+	  (nbody (scode/comment-expression body)))
+      (if (and (scode/comment-directive? text 'ENCLOSE)
+	       (scode/combination? nbody))
+	  (let ((operator (scode/combination-operator nbody))
+		(operands (scode/combination-operands nbody)))
+	    (if (and (eq? operator (ucode-primitive SCODE-EVAL))
+		     (scode/quotation? (car operands))
+		     (scode/variable? (cadr operands))
+		     (eq? (scode/variable-name (cadr operands))
+			  environment-variable))
+		(recvr (scode/quotation-expression (car operands)))
+		(normal)))
+	  (normal))))
+
   (cond ((scode/variable? body)
 	 (let ((name (scode/variable-name body)))
 	   (if (eq? name environment-variable)
@@ -225,15 +218,14 @@ ARBITRARY:	The expression may be executed more than once.  It
 	((not (scode/the-environment? exp))
 	 (normal))
 	((scode/combination? body)
-	 (scode/combination-components
-	  body
-	  (lambda (operator operands)
-	    (if (or (not (scode/comment? operator))
-		    (not (null? operands)))
-		(normal)
-		(comment operator
-			 (lambda (nopr)
-			   (scode/make-combination nopr '())))))))
+	 (let ((operator (scode/combination-operator body))
+	       (operands (scode/combination-operands body)))
+	   (if (or (not (scode/comment? operator))
+		   (not (null? operands)))
+	       (normal)
+	       (comment operator
+			(lambda (nopr)
+			  (scode/make-combination nopr '()))))))
 	((scode/comment? body)
 	 (comment body (lambda (nbody) nbody)))
 	(else (normal))))
@@ -275,37 +267,36 @@ ARBITRARY:	The expression may be executed more than once.  It
 	    true true false)))))
 
 (define (canonicalize/assignment expr bound context)
-  (scode/assignment-components
-   expr
-   (lambda (name old-value)
-     (let ((value (canonicalize/expression old-value bound context)))
-       (cond ((eq? context 'ARBITRARY)
-	      (canonicalize/combine-binary scode/make-assignment
-	       (make-canout name true false (if (memq name bound) true false))
-	       value))
-	     ((memq name bound)
-	      (canonicalize/combine-binary scode/make-assignment
-	       (make-canout name true false true)
-	       value))
-	     (else
-	      (make-canout
-	       (scode/make-combination (ucode-primitive LEXICAL-ASSIGNMENT)
-		(list (scode/make-variable environment-variable)
-		      name
-		      (canout-expr value)))
-	       (canout-safe? value)
-	       true false)))))))
+  (let ((name (scode/assignment-name expr))
+	(old-value (scode/assignment-value expr)))
+    (let ((value (canonicalize/expression old-value bound context)))
+      (cond ((eq? context 'ARBITRARY)
+	     (canonicalize/combine-binary scode/make-assignment
+	      (make-canout name true false (if (memq name bound) true false))
+	      value))
+	    ((memq name bound)
+	     (canonicalize/combine-binary scode/make-assignment
+	      (make-canout name true false true)
+	      value))
+	    (else
+	     (make-canout
+	      (scode/make-combination (ucode-primitive LEXICAL-ASSIGNMENT)
+	       (list (scode/make-variable environment-variable)
+		     name
+		     (canout-expr value)))
+	      (canout-safe? value)
+	      true false))))))
 
 ;;;; Hairy expressions
 
 (define (canonicalize/definition expression bound context)
-  (scode/definition-components expression
-    (lambda (name value)
-      (let ((value (canonicalize/expression value bound context)))
-	(if (memq context '(ONCE-ONLY ARBITRARY))
-	    (error "canonicalize/definition: unscanned definition"
-		   expression))
-	(single-definition name value context)))))
+  (let ((name (scode/definition-name expression))
+	(value (scode/definition-value expression)))
+    (let ((value (canonicalize/expression value bound context)))
+      (if (memq context '(ONCE-ONLY ARBITRARY))
+	  (error "canonicalize/definition: unscanned definition"
+		 expression))
+      (single-definition name value context))))
 
 (define (canonicalize/the-environment expr bound context)
   expr bound context ;; ignored
@@ -326,9 +317,9 @@ ARBITRARY:	The expression may be executed more than once.  It
 	 (scode/make-directive
 	  (if (null? *top-level-declarations*)
 	      (canout-expr canout)
-	      (make-open-block '()
-			       *top-level-declarations*
-			       (canout-expr canout)))
+	      (scode/make-open-block '()
+				     *top-level-declarations*
+				     (canout-expr canout)))
 	  '(COMPILE-PROCEDURE)
 	  expr)
 	 true
@@ -337,13 +328,11 @@ ARBITRARY:	The expression may be executed more than once.  It
 
 (define (canonicalize/sequence expr bound context)
   (cond ((not (scode/open-block? expr))
-	 (scode/sequence-components expr
-	  (lambda (actions)
-	    (canonicalize/combine-unary
-	     scode/make-sequence
-	     (combine-list (map (lambda (act)
-				  (canonicalize/expression act bound context))
-				actions))))))
+	 (canonicalize/combine-unary
+	  scode/make-sequence
+	  (combine-list (map (lambda (act)
+			       (canonicalize/expression act bound context))
+			     (scode/sequence-actions expr)))))
 	((or (eq? context 'ONCE-ONLY)
 	     (eq? context 'ARBITRARY)
 	     (and (eq? context 'FIRST-CLASS)
@@ -351,20 +340,20 @@ ARBITRARY:	The expression may be executed more than once.  It
 	 (error "canonicalize/sequence: open block in bad context"
 		expr context))
 	(else
-	 (scode/open-block-components
-	  expr
-	  (lambda (names decls body)
-	    (fluid-let ((*top-level-declarations*
-			 (append decls *top-level-declarations*)))
-	      (let ((body (unscan-defines names decls body)))
-		((if (and (eq? context 'TOP-LEVEL)
-			  compiler:compress-top-level?
-			  (> (length names) 1))
-		     canonicalize/compressing
-		     canonicalize/expression)
-		 body
-		 bound
-		 context))))))))
+	 (let ((names (scode/open-block-names expr))
+	       (decls (scode/open-block-declarations expr))
+	       (body (scode/open-block-actions expr)))
+	   (fluid-let ((*top-level-declarations*
+			(append decls *top-level-declarations*)))
+	     (let ((body (unscan-defines names decls body)))
+	       ((if (and (eq? context 'TOP-LEVEL)
+			 compiler:compress-top-level?
+			 (> (length names) 1))
+		    canonicalize/compressing
+		    canonicalize/expression)
+		body
+		bound
+		context)))))))
 
 (define (%single-definition name value)
   (scode/make-combination
@@ -430,7 +419,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 			       (collect knames kvals directive-wrapper))
 			 (join (collect knames kvals directive-wrapper)
 			       (collect vnames vvals identity-procedure))))))
-	    (for-all? values canout-safe?)
+	    (every canout-safe? values)
 	    true
 	    false))
 	  ((pseudo-constant? (car values))
@@ -447,7 +436,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 ;; Collect continguous simple definitions into multi-definitions
 ;; in an attempt to make the top-level code smaller.
 ;; Note: MULTI-DEFINITION can reorder the definitions, so this
-;; code must be careful.  Currently it only collects 
+;; code must be careful.  Currently it only collects
 ;; lambda expressions or expressions with no free variables.
 ;; Note: call-with-current-continuation at top-level may
 ;; expose this, but unless the programmer goes out of his/her
@@ -460,9 +449,7 @@ ARBITRARY:	The expression may be executed more than once.  It
   (if (or (not (scode/sequence? expr))
 	  (scode/open-block? expr))
       (give-up)
-      (scode/sequence-components
-       expr
-       (lambda (actions)
+      (let ((actions (scode/sequence-actions expr)))
 	 (define (add-group group groups)
 	   (cond ((null? group)
 		  groups)
@@ -495,28 +482,27 @@ ARBITRARY:	The expression may be executed more than once.  It
 				    (cons out
 					  (add-group group groups))
 				    '())))
-		     (scode/definition-components
-		      next
-		      (lambda (name value)
-			(let ((value*
-			       (canonicalize/expression value bound context)))
-			  (cond ((not (canout-safe? value*))
-				 (give-up))
-				((or (scode/lambda? value)
-				     ;; This means that there are no free vars.
-				     (canout-splice? value*))
-				 (collect (cdr actions)
-					  groups
-					  (cons (list name value*)
-						group)))
-				(else
-				 (collect (cdr actions)
-					  (cons (single-definition name value*
-								   context)
-						(add-group group groups))
-					  '()))))))))))
+		     (let ((name (scode/definition-name next))
+			   (value (scode/definition-value next)))
+		       (let ((value*
+			      (canonicalize/expression value bound context)))
+			 (cond ((not (canout-safe? value*))
+				(give-up))
+			       ((or (scode/lambda? value)
+				    ;; This means that there are no free vars.
+				    (canout-splice? value*))
+				(collect (cdr actions)
+					 groups
+					 (cons (list name value*)
+					       group)))
+			       (else
+				(collect (cdr actions)
+					 (cons (single-definition name value*
+								  context)
+					       (add-group group groups))
+					 '())))))))))
 
-	 (collect actions '() '())))))
+	 (collect actions '() '()))))
 
 ;;;; Hairier expressions
 
@@ -530,26 +516,25 @@ ARBITRARY:	The expression may be executed more than once.  It
 		 (EQ? (SCODE/ABSOLUTE-REFERENCE-NAME ,value) ',name)))))))
 
 (define (canonicalize/combination expr bound context)
-  (scode/combination-components
-   expr
-   (lambda (operator operands)
-     (cond ((lambda? operator)
-	    (canonicalize/let operator operands bound context))
-	   ((and (is-operator? operator lexical-unassigned?)
-		 (scode/the-environment? (car operands))
-		 (symbol? (cadr operands)))
-	    (canonicalize/unassigned? (cadr operands) expr bound context))
-	   ((and (is-operator? operator error-procedure)
-		 (scode/the-environment? (caddr operands)))
-	    (canonicalize/error operator operands bound context))
-	   (else
-	    (canonicalize/combine-binary
-	     scode/make-combination
-	     (canonicalize/expression operator bound context)
-	     (combine-list
-	      (map (lambda (op)
-		     (canonicalize/expression op bound context))
-		   operands))))))))
+  (let ((operator (scode/combination-operator expr))
+	(operands (scode/combination-operands expr)))
+    (cond ((scode/lambda? operator)
+	   (canonicalize/let operator operands bound context))
+	  ((and (is-operator? operator lexical-unassigned?)
+		(scode/the-environment? (car operands))
+		(symbol? (cadr operands)))
+	   (canonicalize/unassigned? (cadr operands) expr bound context))
+	  ((and (is-operator? operator error-procedure)
+		(scode/the-environment? (caddr operands)))
+	   (canonicalize/error operator operands bound context))
+	  (else
+	   (canonicalize/combine-binary
+	    scode/make-combination
+	    (canonicalize/expression operator bound context)
+	    (combine-list
+	     (map (lambda (op)
+		    (canonicalize/expression op bound context))
+		  operands)))))))
 
 (define (canonicalize/unassigned? name expr bound context)
   (cond ((not (eq? context 'FIRST-CLASS))
@@ -585,30 +570,28 @@ ARBITRARY:	The expression may be executed more than once.  It
 ;;;; Protect from further canonicalization
 
 (define (canonicalize/comment expr bound context)
-  (scode/comment-components
-   expr
-   (lambda (text body)
-     (if (not (and (scode/comment-directive? text 'PROCESSED 'ENCLOSE)
-		   (scode/combination? body)))
-	 (canonicalize/combine-unary
-	  (lambda (body*)
-	    (scode/make-comment text body*))
-	  (canonicalize/expression body bound context))
-	 (scode/combination-components
-	  body
-	  (lambda (operator operands)
-	    (if (and (eq? operator (ucode-primitive SCODE-EVAL))
-		     (scode/the-environment? (cadr operands)))
-		(make-canout
-		 (scode/make-directive
-		  (scode/make-combination
-		   operator
-		   (list (car operands)
-			 (scode/make-variable environment-variable)))
-		  (cadr text)
-		  (caddr text))
-		 false true false)
-		(make-canout expr true true false))))))))
+  (let ((text (scode/comment-text expr))
+	(body (scode/comment-expression expr)))
+    (if (not (and (scode/comment-directive? text 'PROCESSED 'ENCLOSE)
+		  (scode/combination? body)))
+	(canonicalize/combine-unary
+	 (lambda (body*)
+	   (scode/make-comment text body*))
+	 (canonicalize/expression body bound context))
+	(let ((operator (scode/combination-operator body))
+	      (operands (scode/combination-operands body)))
+	  (if (and (eq? operator (ucode-primitive SCODE-EVAL))
+		   (scode/the-environment? (cadr operands)))
+	      (make-canout
+	       (scode/make-directive
+		(scode/make-combination
+		 operator
+		 (list (car operands)
+		       (scode/make-variable environment-variable)))
+		(cadr text)
+		(caddr text))
+	       false true false)
+	      (make-canout expr true true false))))))
 
 ;;;; Utility for hairy expressions
 
@@ -639,25 +622,20 @@ ARBITRARY:	The expression may be executed more than once.  It
 	;; For the following optimization it is assumed that
 	;; scode/make-evaluation is called only in restricted ways.
 	(else
-	 (scode/combination-components
-	  exp
-	  (lambda (operator operands)
-	    (if (or (not (null? operands))
-		    (not (scode/lambda? operator)))
-		(default)
-		(scode/lambda-components
-		 operator
-		 (lambda (name req opt rest aux decls body)
-		   name req opt rest aux decls ;; ignored
-		   (if (not (scode/comment? body))
-		       (default)
-		       (scode/comment-components
-			body
-			(lambda (text expr)
-			  expr ;; ignored
-			  (if (not (scode/comment-directive? text 'PROCESSED))
-			      (default)
-			      exp))))))))))))
+	 (let ((operator (scode/combination-operator exp))
+	       (operands (scode/combination-operands exp)))
+	   (if (or (not (null? operands))
+		   (not (scode/lambda? operator)))
+	       (default)
+	       (scode/lambda-components
+		operator
+		(lambda (name req opt rest aux decls body)
+		  name req opt rest aux decls ;; ignored
+		  (if (and (scode/comment? body)
+			   (scode/comment-directive? (scode/comment-text body)
+						     'processed))
+		      exp
+		      (default)))))))))
 
 ;;;; Hair cubed
 
@@ -745,7 +723,8 @@ ARBITRARY:	The expression may be executed more than once.  It
 		     (let* ((env-code (scode/make-the-environment))
 			    (nbody
 			     (canonicalize/expression
-			      (unscan-defines auxiliary decls (canout-expr nbody))
+			      (unscan-defines auxiliary decls
+					      (canout-expr nbody))
 			      '()
 			      (if (canonicalize/optimization-low? context)
 				  'FIRST-CLASS
@@ -754,7 +733,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 			     (canonicalize/bind-environment (canout-expr nbody)
 							    env-code
 							    body)))
-      
+
 		       (if (canonicalize/optimization-low? context)
 			   nexpr
 			   (scode/make-evaluation nexpr
@@ -779,13 +758,15 @@ ARBITRARY:	The expression may be executed more than once.  It
 			   (scode/make-absolute-reference '*MAKE-ENVIRONMENT)
 			   (cons* (scode/make-variable environment-variable)
 				  (list->vector
-				   (cons lambda-tag:unnamed names))
+				   (cons scode-lambda-name:unnamed names))
 				  (map scode/make-variable names)))))
 
 		    (if (and (scode/the-environment? body)
 			     (null? auxiliary))
 			env-code
-			(let* ((uexpr (unscan-defines auxiliary decls (canout-expr nbody)))
+			(let* ((uexpr
+				(unscan-defines auxiliary decls
+						(canout-expr nbody)))
 			       (nexpr
 				(canout-expr
 				 (canonicalize/expression
@@ -796,7 +777,8 @@ ARBITRARY:	The expression may be executed more than once.  It
 				      'TOP-LEVEL)))))
 
 			   (if (canonicalize/optimization-low? context)
-			       (canonicalize/bind-environment nexpr env-code uexpr)
+			       (canonicalize/bind-environment nexpr env-code
+							      uexpr)
 			       (scode/make-evaluation
 				(canonicalize/bind-environment
 				 nexpr
@@ -835,36 +817,35 @@ ARBITRARY:	The expression may be executed more than once.  It
 	   (lambda (form environment)
 	     (let ((name (cadr form)))
 	       `(DISPATCH-ENTRY ,name
-				,(close-syntax (symbol-append 'CANONICALIZE/
-							      name)
+				,(close-syntax (symbol 'CANONICALIZE/ name)
 					       environment))))))
 
 	 (nary-entry
 	  (sc-macro-transformer
 	   (lambda (form environment)
-	     (let ((nary (cadr form))
-		   (name (caddr form)))
+	     (let ((name (cadr form))
+		   (parts (cddr form)))
 	       `(DISPATCH-ENTRY ,name
 				,(close-syntax
-				  `(,(symbol-append 'CANONICALIZE/ nary)
-				    ,(symbol-append 'SCODE/ name '-COMPONENTS)
-				    ,(symbol-append 'SCODE/MAKE- name))
-				  environment))))))
-
-	 (binary-entry
-	  (sc-macro-transformer
-	   (lambda (form environment)
-	     environment
-	     `(NARY-ENTRY BINARY ,(cadr form))))))
+				  `(,(case (length parts)
+				       ((1) 'canonicalize/unary)
+				       ((2) 'canonicalize/binary)
+				       ((3) 'canonicalize/ternary)
+				       (else (error "Unsupported entry:" name)))
+				    ,(symbol 'scode/make- name)
+				    ,@(map (lambda (part)
+					     (symbol 'scode/ name '- part))
+					   parts))
+				  environment)))))))
 
       ;; quotations are treated as constants.
-      (binary-entry access)
+      (nary-entry access environment name)
       (standard-entry assignment)
       (standard-entry comment)
-      (nary-entry ternary conditional)
+      (nary-entry conditional predicate consequent alternative)
       (standard-entry definition)
-      (nary-entry unary delay)
-      (binary-entry disjunction)
+      (nary-entry delay expression)
+      (nary-entry disjunction predicate alternative)
       (standard-entry variable)
       (standard-entry the-environment)
       (dispatch-entry combination canonicalize/combination)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -73,10 +73,10 @@ USA.
   (make-strong-eq-hash-table))
 
 (define-integrable (stackify/table/lookup key)
-  (hash-table/get *stackify/table* key #f))
+  (hash-table-ref/default *stackify/table* key #f))
 
 (define-integrable (stackify/table/associate! key val)
-  (hash-table/put! *stackify/table* key val))
+  (hash-table-set! *stackify/table* key val))
 
 ;; An value in the table looks like
 ;;
@@ -250,7 +250,7 @@ USA.
 	(length (string-list/length sl)))
     (if (fix:< ptr (string-length current))
 	(begin
-	  (vector-8b-set! current ptr byte)
+	  (string-set! current ptr (integer->char byte))
 	  (set-string-list/pointer! sl (fix:+ ptr 1))
 	  (set-string-list/length! sl (fix:+ length 1))
 	  sl)
@@ -498,18 +498,20 @@ USA.
 	  (if (uninterned-symbol? obj)
 	      stackify-opcode/push-uninterned-symbol
 	      stackify-opcode/push-symbol)
-	  (symbol-name obj)
+	  (symbol->string obj)
 	  prog))
 	((bit-string? obj)
 	 (build/string stackify-opcode/push-bit-string
-		       (reverse-string
-			(number->string
-			 (bit-string->unsigned-integer obj)
-			 16))
+		       (list->string
+			(reverse
+			 (string->list
+			  (number->string
+			   (bit-string->unsigned-integer obj)
+			   16))))
 		       (build/push-nat (bit-string-length obj) prog)))
 	((scode/primitive-procedure? obj)
 	 (let ((arity (primitive-procedure-arity obj))
-	       (name (symbol-name (primitive-procedure-name obj))))
+	       (name (symbol->string (primitive-procedure-name obj))))
 	   (cond ((fix:< arity 0)
 		  (build/string stackify-opcode/push-primitive-lexpr
 				name

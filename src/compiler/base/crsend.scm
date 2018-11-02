@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,7 +33,7 @@ USA.
 
 (declare (usual-integrations))
 
-(load-option 'COMPRESS)			; XXX ugh
+(load-option 'COMPRESS)                        ; XXX ugh
 
 (define (finish-cross-compilation:directory directory #!optional force?)
   (let ((force? (if (default-object? force?) #f force?)))
@@ -54,6 +54,36 @@ USA.
 			 (finish-cross-compilation:file pathname force?))))
 		(directory-read (pathname-as-directory directory))))))
 
+(define (finish-cross-compilation:files directory #!optional force?)
+  (let ((force? (if (default-object? force?) #f force?)))
+    (let loop ((directory directory))
+      (for-each (lambda (pathname)
+                 (cond ((file-directory? pathname)
+                        (if (not (let ((ns (file-namestring pathname)))
+                                   (or (string=? ns ".")
+                                       (string=? ns ".."))))
+                            (loop pathname)))
+                       ((let ((t (pathname-type pathname)))
+                          (and (string? t)
+                               (string=? t "moc")))
+                        (finish-cross-compilation:file pathname force?))))
+               (directory-read (pathname-as-directory directory))))))
+
+(define (finish-cross-compilation:info-files directory #!optional force?)
+  (let ((force? (if (default-object? force?) #f force?)))
+    (let loop ((directory directory))
+      (for-each (lambda (pathname)
+		  (cond ((file-directory? pathname)
+			 (if (not (let ((ns (file-namestring pathname)))
+				    (or (string=? ns ".")
+					(string=? ns ".."))))
+			     (loop pathname)))
+			((let ((t (pathname-type pathname)))
+			   (and (string? t)
+				(string=? t "fni")))
+			 (finish-cross-compilation:info-file pathname force?))))
+		(directory-read (pathname-as-directory directory))))))
+
 (define (finish-cross-compilation:info-file pathname #!optional force?)
   (let* ((input-file (pathname-default-type pathname "fni"))
 	 (output-file (pathname-new-type input-file "bci")))
@@ -67,10 +97,6 @@ USA.
 	      (write (enough-namestring output-file) port))
 	    (lambda ()
 	      (let ((inf (fasload input-file #t)))
-		((access SPLIT-INF-STRUCTURE! ; XXX ugh
-			 (->environment '(RUNTIME COMPILER-INFO)))
-		 inf
-		 #f)
 		(call-with-temporary-filename
 		  (lambda (temp)
 		    (fasdump inf temp #t)
@@ -99,17 +125,20 @@ USA.
     (if (null? others)
 	expression
 	(scode/make-comment
-	 (make-dbg-info-vector
-	  (let ((all-blocks
-		 (list->vector
-		  (cons
-		   (compiled-code-address->block expression)
-		   others))))
-	    (if compile-by-procedures?
-		(list 'COMPILED-BY-PROCEDURES
-		      all-blocks
-		      (list->vector others))
-		all-blocks)))
+	 ;; Keep in sync with "toplev.scm" and with "runtime/infstr.scm".
+	 (vector
+	  '|#[(runtime compiler-info)dbg-info-vector]|
+	  (if compile-by-procedures?
+	      'compiled-by-procedures
+	      'compiled-as-unit)
+	  (compiled-code-address->block expression)
+	  (list->vector
+	   (map (lambda (other)
+		  (vector-ref other 2))
+		others))
+	  '()
+	  '()
+	  '())
 	 expression))))
 
 (define (cross-link-end object)
@@ -118,7 +147,7 @@ USA.
      (if (compiled-code-block? code-vector)
 	 code-vector
 	 (begin
-	   (guarantee-vector code-vector #f)
+	   (guarantee vector? code-vector #f)
 	   (let ((new-code-vector
 		  (cross-link/finish-assembly
 		   (cc-code-block/bit-string code-vector)

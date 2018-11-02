@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -70,34 +70,27 @@ USA.
   system-vector-ref
   system-vector-set!
 
-  primitive-object-ref primitive-object-set!)
+  primitive-object-ref primitive-object-set!
+  (primitive-object-hash 1)
+  (primitive-object-hash-2 2)
+  (primitive-memory-hash 3))
 
 (define (host-big-endian?)
   host-big-endian?-saved)
 
-(define host-big-endian?-saved)
-
-(define ephemeron-type)
-
-(define (initialize-package!)
-  ;; Assumptions:
-  ;; * Word length is 32 or 64 bits.
-  ;; * Type codes are at most 8 bits.
-  ;; * Zero is a non-pointer type code.
-  (set! host-big-endian?-saved
-	(case (object-datum
-	       (vector-ref
-		(object-new-type (ucode-type vector)
-				 "\000\001\002\000\000\003\004\000")
-		1))
-	  ((#x00010200 #x0001020000030400) #t)
-	  ((#x00020100 #x0004030000020100) #f)
-	  (else (error "Unable to determine endianness of host."))))
-  (add-secondary-gc-daemon! clean-obarray)
-  ;; Kludge until the next released version, to avoid a bootstrapping
-  ;; failure.
-  (set! ephemeron-type (microcode-type 'EPHEMERON))
-  unspecific)
+;; Assumptions:
+;; * Word length is 32 or 64 bits.
+;; * Type codes are at most 8 bits.
+;; * Zero is a non-pointer type code.
+(define-deferred host-big-endian?-saved
+  (case (object-datum
+	 (vector-ref
+	  (object-new-type (ucode-type vector)
+			   (bytevector 0 1 2 0 0 3 4 0))
+	  1))
+    ((#x00010200 #x0001020000030400) #t)
+    ((#x00020100 #x0004030000020100) #f)
+    (else (error "Unable to determine endianness of host."))))
 
 ;;;; Potpourri
 
@@ -143,15 +136,40 @@ USA.
 (define (call-with-values thunk receiver)
   ((thunk) receiver))
 
-(define with-values call-with-values)
-
 (define (write-to-string object #!optional max)
   (if (or (default-object? max) (not max))
-      (with-output-to-string (lambda () (write object)))
-      (with-output-to-truncated-string max (lambda () (write object)))))
+      (call-with-output-string
+       (lambda (port) (write object port)))
+      (call-with-truncated-output-string
+       max
+       (lambda (port) (write object port)))))
+
+(define (edit . args)
+  (let ((env (let ((package (name->package '(edwin))))
+	       (and package (package/environment package)))))
+    (if env
+	(apply (environment-lookup env 'edit) args)
+	(begin
+	  (with-notification
+	   (lambda (port) (display "Loading Edwin" port))
+	   (lambda ()
+	     (parameterize ((param:suppress-loading-message? #t))
+	       (load-option 'edwin)
+	       (if (let ((display (get-environment-variable "DISPLAY")))
+		     (and (string? display)
+			  (not (string-null? display))))
+		   (ignore-errors (lambda () (load-option 'x11-screen)))))))
+	  (apply (environment-lookup (->environment '(edwin)) 'edit) args)))))
+
+(define edwin edit)
+
+(define (spawn-edwin . args)
+  (let ((thread (create-thread #f (lambda () (apply edwin args)))))
+    (detach-thread thread)
+    thread))
 
 (define (pa procedure)
-  (guarantee-procedure procedure 'PA)
+  (guarantee procedure? procedure 'pa)
   (cond ((procedure-lambda procedure)
 	 => (lambda (scode)
 	      (pp (unsyntax-lambda-list scode))))
@@ -173,7 +191,7 @@ USA.
   (set-working-directory-pathname!
     (if (default-object? pathname)
         (user-homedir-pathname)
- 	pathname)))
+	pathname)))
 
 (define (show-time thunk)
   (let ((process-start (process-time-clock))
@@ -197,42 +215,59 @@ USA.
 	   (write-string " GC); real time: " port)
 	   (write (- real-end real-start) port))))
       value)))
-
+
 (define (wait-interval ticks)
   (let ((end (+ (real-time-clock) ticks)))
     (let wait-loop ()
       (if (< (real-time-clock) end)
 	  (wait-loop)))))
+
+(define (exit #!optional object)
+  ((param:exit-hook) (exit-object->code object)))
 
-(define (exit #!optional integer)
-  (hook/exit (if (default-object? integer) #f integer)))
-
-(define (default/exit integer)
-  (if (prompt-for-confirmation "Kill Scheme")
-      (%exit integer)))
-
-(define hook/exit default/exit)
-
-(define (%exit #!optional integer)
+(define (default-exit code)
   (event-distributor/invoke! event:before-exit)
-  (if (or (default-object? integer)
-	  (not integer))
-      ((ucode-primitive exit 0))
-      ((ucode-primitive exit-with-value 1) integer)))
+  (within-continuation root-continuation
+    (lambda ()
+      ((ucode-primitive exit-with-value 1) code))))
 
-(define (quit)
-  (hook/quit))
+(define-deferred param:exit-hook
+  (make-settable-parameter default-exit))
 
-(define (%quit)
-  (with-absolutely-no-interrupts (ucode-primitive halt))
-  unspecific)
+(define (emergency-exit #!optional object)
+  ((ucode-primitive exit-with-value 1) (exit-object->code object)))
 
-(define default/quit %quit)
-(define hook/quit default/quit)
+(define (exit-object->code object)
+  (cond ((or (eq? #t object) (default-object? object))
+	 normal-termination-code)
+	((not object)
+	 abnormal-termination-code)
+	((and (exact-nonnegative-integer? object)
+	      (< object (microcode-termination/code-limit)))
+	 object)
+	((and (interned-symbol? object)
+	      (microcode-termination/name->code object)))
+	(else
+	 abnormal-termination-code)))
 
+(define-deferred normal-termination-code
+  (microcode-termination/name->code 'halt))
+
+(define-deferred abnormal-termination-code
+  (microcode-termination/name->code 'save-and-exit))
+
+(define (suspend)
+  ((param:suspend-hook)))
+
+(define (default-suspend)
+  (with-absolutely-no-interrupts (ucode-primitive halt)))
+
+(define-deferred param:suspend-hook
+  (make-settable-parameter default-suspend))
+
 (define user-initial-environment
   (*make-environment system-global-environment
-		     (vector lambda-tag:unnamed)))
+		     (vector scode-lambda-name:unnamed)))
 
 (define user-initial-prompt
   "]=>")
@@ -250,6 +285,12 @@ USA.
 
 (define (unbind-variable environment name)
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
+
+(define (simple-top-level-environment fold-case?)
+  (make-top-level-environment (list 'param:reader-fold-case?
+				    '*parser-canonicalize-symbols?*)
+			      (list (make-settable-parameter fold-case?)
+				    #!default)))
 
 (define (object-gc-type object)
   (%encode-gc-type ((ucode-primitive object-gc-type 1) object)))
@@ -262,14 +303,14 @@ USA.
 		(fix:>= t -4)
 		(fix:<= t 4)))
       (error "Illegal GC-type value:" t))
-  (vector-ref '#(COMPILED-ENTRY VECTOR GC-INTERNAL UNDEFINED NON-POINTER
-				CELL PAIR TRIPLE QUADRUPLE)
+  (vector-ref '#(compiled-entry vector gc-internal undefined non-pointer
+				cell pair triple quadruple)
 	      (fix:+ t 4)))
 
 (define (object-non-pointer? object)
   (case (object-gc-type object)
-    ((NON-POINTER) #t)
-    ((GC-INTERNAL)
+    ((non-pointer) #t)
+    ((gc-internal)
      (or (object-type? (ucode-type manifest-nm-vector) object)
 	 (and (object-type? (ucode-type reference-trap) object)
 	      (<= (object-datum object) trap-max-immediate))))
@@ -277,8 +318,8 @@ USA.
 
 (define (object-pointer? object)
   (case (object-gc-type object)
-    ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY) #t)
-    ((GC-INTERNAL)
+    ((cell pair triple quadruple vector compiled-entry) #t)
+    ((gc-internal)
      (or (object-type? (ucode-type broken-heart) object)
 	 (and (object-type? (ucode-type reference-trap) object)
 	      (> (object-datum object) trap-max-immediate))))
@@ -286,18 +327,18 @@ USA.
 
 (define (non-pointer-type-code? code)
   (case (type-code->gc-type code)
-    ((NON-POINTER) #t)
-    ((GC-INTERNAL) (fix:= (ucode-type manifest-nm-vector) code))
+    ((non-pointer) #t)
+    ((gc-internal) (fix:= (ucode-type manifest-nm-vector) code))
     (else #f)))
 
 (define (pointer-type-code? code)
   (case (type-code->gc-type code)
-    ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY) #t)
-    ((GC-INTERNAL) (fix:= (ucode-type broken-heart) code))
+    ((cell pair triple quadruple vector compiled-entry) #t)
+    ((gc-internal) (fix:= (ucode-type broken-heart) code))
     (else #f)))
 
 (define (undefined-value? object)
-  ;; Note: the unparser takes advantage of the fact that objects
+  ;; Note: the printer takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
   ;; (object-type? (ucode-type constant) object)
   (or (eq? object unspecific)
@@ -305,9 +346,24 @@ USA.
 
 (define unspecific
   (object-new-type (ucode-type constant) 1))
+
+(define (strip-angle-brackets name)
+  (let ((maybe-strip
+	 (lambda (s)
+	   (and (string-prefix? "<" s)
+		(string-suffix? ">" s)
+		(substring s 1 (fix:- (string-length s) 1))))))
+    (if (string? name)
+	(or (maybe-strip name) name)
+	(let ((s (maybe-strip (symbol->string name))))
+	  (if s
+	      (string->symbol s)
+	      name)))))
 
 (define (for-each-interned-symbol procedure)
-  (for-each-symbol-in-obarray (fixed-objects-item 'OBARRAY) procedure))
+  (with-obarray-lock
+    (lambda ()
+      (for-each-symbol-in-obarray (fixed-objects-item 'obarray) procedure))))
 
 (define (for-each-symbol-in-obarray obarray procedure)
   (let per-bucket ((index (vector-length obarray)))
@@ -336,9 +392,9 @@ USA.
     list))
 
 (define (clean-obarray)
-  (without-interrupts
+  (with-obarray-lock
    (lambda ()
-     (let ((obarray (fixed-objects-item 'OBARRAY)))
+     (let ((obarray (fixed-objects-item 'obarray)))
        (let loop ((index (vector-length obarray)))
 	 (if (fix:> index 0)
 	     (let ((index (fix:- index 1)))
@@ -368,6 +424,10 @@ USA.
 		       (else (vector-set! obarray index tail))))
 	       (find-broken-entry (vector-ref obarray index) #f)
 	       (loop index))))))))
+
+(add-boot-init!
+ (lambda ()
+   (add-secondary-gc-daemon! clean-obarray)))
 
 (define (impurify object)
   object)
@@ -380,9 +440,9 @@ USA.
 	   (lambda ()
 	     (let loop ()
 	       (if (not ((ucode-primitive primitive-fasdump)
-			 object filename dump-option))
+			 object (string-for-primitive filename) dump-option))
 		   (begin
-		     (with-simple-restart 'RETRY "Try again."
+		     (with-simple-restart 'retry "Try again."
 		       (lambda ()
 			 (error "FASDUMP: Object is too large to be dumped:"
 				object)))
@@ -404,15 +464,8 @@ USA.
 (define (make-hook-list)
   (%make-hook-list '()))
 
-(define (guarantee-hook-list object caller)
-  (if (not (hook-list? object))
-      (error:not-hook-list object caller)))
-
-(define (error:not-hook-list object caller)
-  (error:wrong-type-argument object "hook list" caller))
-
 (define (append-hook-to-list hook-list key hook)
-  (guarantee-hook-list hook-list 'APPEND-HOOK-TO-LIST)
+  (guarantee hook-list? hook-list 'append-hook-to-list)
   (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
     (if (pair? alist)
 	(loop (cdr alist)
@@ -429,7 +482,7 @@ USA.
 	      (set-hook-list-hooks! hook-list tail))))))
 
 (define (remove-hook-from-list hook-list key)
-  (guarantee-hook-list hook-list 'REMOVE-HOOK-FROM-LIST)
+  (guarantee hook-list? hook-list 'remove-hook-from-list)
   (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
     (if (pair? alist)
 	(loop (cdr alist)
@@ -442,14 +495,172 @@ USA.
 		  alist)))))
 
 (define (hook-in-list? hook-list key)
-  (guarantee-hook-list hook-list 'HOOK-IN-LIST?)
+  (guarantee hook-list? hook-list 'hook-in-list?)
   (if (assq key (hook-list-hooks hook-list)) #t #f))
 
 (define (run-hooks-in-list hook-list . arguments)
-  (guarantee-hook-list hook-list 'RUN-HOOKS-IN-LIST)
+  (guarantee hook-list? hook-list 'run-hooks-in-list)
   (for-each (lambda (p)
 	      (apply (cdr p) arguments))
 	    (hook-list-hooks hook-list)))
+
+;;;; Metadata tables
+
+(define metadata-table?
+  (make-bundle-predicate 'metadata-table))
+
+(define (make-alist-metadata-table)
+  (let ((alist '()))
+
+    (define (has? key)
+      (if (assv key alist) #t #f))
+
+    (define (get key #!optional default-value)
+      (let ((p (assv key alist)))
+	(if p
+	    (cdr p)
+	    (begin
+	      (if (default-object? default-value)
+		  (error "Object has no associated metadata:" key))
+	      default-value))))
+
+    (define (put! key metadata)
+      (let ((p (assv key alist)))
+	(if p
+	    (set-cdr! p metadata)
+	    (begin
+	      (set! alist (cons (cons key metadata) alist))
+	      unspecific))))
+
+    (define (intern! key get-value)
+      (let ((p (assv key alist)))
+	(if p
+	    (cdr p)
+	    (let ((value (get-value)))
+	      (set! alist (cons (cons key value) alist))
+	      value))))
+
+    (define (delete! key)
+      (set! alist
+	    (remove! (lambda (p)
+		       (eqv? (car p) key))
+		     alist))
+      unspecific)
+
+    (define (get-alist)
+      alist)
+
+    (define (put-alist! alist*)
+      (for-each (lambda (p)
+		  (put! (car p) (cdr p)))
+		alist*))
+
+    (bundle metadata-table?
+	    has? get put! intern! delete! get-alist put-alist!)))
+
+(define (make-hashed-metadata-table)
+  (let ((table (make-key-weak-eqv-hash-table)))
+
+    (define (has? key)
+      (hash-table-exists? table key))
+
+    (define (get key #!optional default-value)
+      (if (default-object? default-value)
+	  (hash-table-ref table key)
+	  (hash-table-ref/default table key default-value)))
+
+    (define (put! key metadata)
+      (hash-table-set! table key metadata))
+
+    (define (intern! key get-value)
+      (hash-table-intern! table key get-value))
+
+    (define (delete! key)
+      (hash-table-delete! table key))
+
+    (define (get-alist)
+      (hash-table->alist table))
+
+    (define (put-alist! alist*)
+      (for-each (lambda (p)
+		  (put! (car p) (cdr p)))
+		alist*))
+
+    (bundle metadata-table?
+	    has? get put! intern! delete! get-alist put-alist!)))
+
+;;;; Builder for vector-like sequences
+
+(define (make-sequence-builder elt? seq? make-seq seq-length seq-set! seq-copy!
+			       buffer-length)
+  (let ((buffers)
+	(buffer)
+	(start)
+	(index)
+	(count))
+
+    (define (reset!)
+      (set! buffers '())
+      (set! buffer (make-seq buffer-length))
+      (set! start 0)
+      (set! index 0)
+      (set! count 0)
+      unspecific)
+
+    (define (append-elt! elt)
+      (seq-set! buffer index elt)
+      (set! index (fix:+ index 1))
+      (set! count (fix:+ count 1))
+      (if (not (fix:< index buffer-length))
+	  (begin
+	    (set! buffers (cons (get-partial) buffers))
+	    (set! buffer (make-seq buffer-length))
+	    (set! start 0)
+	    (set! index 0)
+	    unspecific)))
+
+    (define (append-seq! seq)
+      (let ((length (seq-length seq)))
+	(if (fix:> length 0)
+	    (begin
+	      (if (fix:> index start)
+		  (begin
+		    (set! buffers (cons (get-partial) buffers))
+		    (set! start index)))
+	      (set! buffers (cons (vector seq 0 length) buffers))
+	      (set! count (fix:+ count length))
+	      unspecific))))
+
+    (define (build)
+      (let ((result (make-seq count)))
+	(do ((parts (reverse
+		     (if (fix:> index start)
+			 (cons (get-partial) buffers)
+			 buffers))
+		    (cdr parts))
+	     (i 0
+		(let ((v (car parts)))
+		  (let ((start (vector-ref v 1))
+			(end (vector-ref v 2)))
+		  (seq-copy! result i (vector-ref v 0) start end)
+		  (fix:+ i (fix:- end start))))))
+	    ((not (pair? parts))))
+	result))
+
+    (define (get-partial)
+      (vector buffer start index))
+
+    (reset!)
+    (lambda (#!optional object)
+      (cond ((default-object? object) (build))
+	    ((elt? object) (append-elt! object))
+	    ((seq? object) (append-seq! object))
+	    (else
+	     (case object
+	       ((empty?) (fix:= count 0))
+	       ((count) count)
+	       ((reset!) (reset!))
+	       (else (error "Unsupported argument:" object))))))))
 
 ;;;; Ephemerons
 
@@ -463,7 +674,7 @@ USA.
 ;;;   .    for
 ;;;   .      GC
 
-(define canonical-false (list 'FALSE))
+(define canonical-false (list 'false))
 
 (define (canonicalize object)
   (if (eq? object #f)
@@ -476,35 +687,35 @@ USA.
       object))
 
 (define (make-ephemeron key datum)
-  ((ucode-primitive MAKE-EPHEMERON 2) (canonicalize key) (canonicalize datum)))
+  ((ucode-primitive make-ephemeron 2) (canonicalize key) (canonicalize datum)))
 
 (define (ephemeron? object)
-  (object-type? ephemeron-type object))
+  (object-type? (ucode-type ephemeron) object))
 
 (define-guarantee ephemeron "ephemeron")
 
 (define (ephemeron-key ephemeron)
-  (guarantee-ephemeron ephemeron 'EPHEMERON-KEY)
+  (guarantee-ephemeron ephemeron 'ephemeron-key)
   (decanonicalize (primitive-object-ref ephemeron 1)))
 
 (define (ephemeron-datum ephemeron)
-  (guarantee-ephemeron ephemeron 'EPHEMERON-DATUM)
+  (guarantee-ephemeron ephemeron 'ephemeron-datum)
   (decanonicalize (primitive-object-ref ephemeron 2)))
 
 (define (set-ephemeron-key! ephemeron key)
-  (guarantee-ephemeron ephemeron 'SET-EPHEMERON-KEY!)
+  (guarantee-ephemeron ephemeron 'set-ephemeron-key!)
   (let ((key* (primitive-object-ref ephemeron 1)))
     (if key* (primitive-object-set! ephemeron 1 (canonicalize key)))
     (reference-barrier key*))
   unspecific)
 
 (define (set-ephemeron-datum! ephemeron datum)
-  (guarantee-ephemeron ephemeron 'SET-EPHEMERON-DATUM!)
+  (guarantee-ephemeron ephemeron 'set-ephemeron-datum!)
   (let ((key (primitive-object-ref ephemeron 1)))
     (if key (primitive-object-set! ephemeron 2 (canonicalize datum)))
     (reference-barrier key))
   unspecific)
 
 (define (ephemeron-broken? ephemeron)
-  (guarantee-ephemeron ephemeron 'EPHEMERON-BROKEN?)
+  (guarantee-ephemeron ephemeron 'ephemeron-broken?)
   (not (primitive-object-ref ephemeron 1)))

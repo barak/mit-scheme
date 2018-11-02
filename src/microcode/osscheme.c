@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,27 +63,6 @@ executing_scheme_primitive_p (void)
 {
   return (PRIMITIVE_P (GET_PRIMITIVE));
 }
-
-#ifdef __OS2__
-
-void
-request_attention_interrupt (void)
-{
-  REQUEST_INTERRUPT (INT_Global_1);
-}
-
-int
-test_and_clear_attention_interrupt (void)
-{
-  unsigned long code;
-  GRAB_INTERRUPT_REGISTERS ();
-  code = GET_INT_CODE;
-  CLEAR_INTERRUPT_NOLOCK (INT_Global_1);
-  RELEASE_INTERRUPT_REGISTERS ();
-  return ((code & INT_Global_1) != 0);
-}
-
-#endif /* __OS2__ */
 
 void
 request_console_resize_interrupt (void)

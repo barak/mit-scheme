@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,10 +33,9 @@ USA.
 		   (conc-name display-type/)
 		   (constructor %make-display-type)
 		   (print-procedure
-		    (unparser/standard-method 'DISPLAY-TYPE
-		      (lambda (state display-type)
-			(unparse-object state
-					(display-type/name display-type))))))
+		    (standard-print-method 'DISPLAY-TYPE
+		      (lambda (display-type)
+			(list (display-type/name display-type))))))
   (name false read-only true)
   (multiple-screens? false read-only true)
   (operation/available? false read-only true)
@@ -87,11 +86,11 @@ USA.
   ((display-type/operation/with-interrupts-disabled display-type) thunk))
 
 (define (editor-display-types)
-  (list-transform-positive display-types display-type/available?))
+  (filter display-type/available? display-types))
 
 (define (name->display-type name)
   (let ((display-type
-	 (list-search-positive display-types
-	   (lambda (display-type)
-	     (eq? name (display-type/name display-type))))))
+	 (find (lambda (display-type)
+		 (eq? name (display-type/name display-type)))
+	       display-types)))
     display-type))

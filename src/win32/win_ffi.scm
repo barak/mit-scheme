@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,10 +72,10 @@ USA.
 		      (intern (string-append "arg" (number->string i))))
 		    indexes))
 	      (type-names
-	       (map (lambda (n) (symbol-append n '-TYPE))
+	       (map (lambda (n) (symbol n '-TYPE))
 		    arg-names)))
 	 `(LAMBDA (MODULE-ENTRY)
-	    (LET ,(map (lambda (type-name index) 
+	    (LET ,(map (lambda (type-name index)
 			 `(,type-name
 			   (LIST-REF ,(close-syntax 'ARG-TYPES environment)
 				     ,(- index 1))))
@@ -116,12 +116,12 @@ USA.
 			     (module-entry/machine-address module-entry)
 			     (map (lambda (f x) (f x)) arg-types args)))
 		     ((access error system-global-environment)
-		      "Wrong arg count for foreign function" 
+		      "Wrong arg count for foreign function"
 		      name
 		      (length args)
 		      (list 'requires arg-count)))))))))
     (parameterize-with-module-entry procedure lib name)))
-  
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;;  Windows function registry
@@ -135,7 +135,7 @@ USA.
 ;;  scheme window.  It used the hwnd parameter to find the window-specific
 ;;  version of the wndproc.  There is a minor complication: the first time
 ;;  that we know what the window handle is happens during the call to
-;;  GENERAL-SCHEME-WNDPROC, so we can only associate the handle with 
+;;  GENERAL-SCHEME-WNDPROC, so we can only associate the handle with
 ;;  the window procedure at that time.  Further, we do not know what first
 ;;  or last message is -- Various places in the Win32 API Reference imply
 ;;  the first is WM_CREATE or WM_NCCREATE but I have seen the sequence
@@ -146,7 +146,8 @@ USA.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define make-integer-hash-table
-  (strong-hash-table/constructor modulo int:= #f))
+  (hash-table-constructor
+   (make-hash-table-type modulo int:= #f hash-table-entry-type:strong)))
 
 (define (initialize-wndproc-registry)
   (set! wndproc-registry (make-integer-hash-table)))
@@ -162,10 +163,10 @@ USA.
     (cond (newproc
 	   => (lambda (theproc)
 		(set! newproc #F)
-		(hash-table/put! wndproc-registry hwnd theproc)
+		(hash-table-set! wndproc-registry hwnd theproc)
 		(set-interrupt-enables! mask)
 		(theproc hwnd message wparam lparam)))
-	  ((hash-table/get wndproc-registry hwnd #f)
+	  ((hash-table-ref/default wndproc-registry hwnd #f)
 	   => (lambda (wndproc)
 		(wndproc hwnd message wparam lparam)))
 	  (else
@@ -186,16 +187,16 @@ USA.
 
 
 ;; How do we delete wndprocs from the table?  It is not clear what is the very
-;; last windows message received by a window. 
+;; last windows message received by a window.
 ;;
 ;; As a temporary measure we check to see if the windows still exist every GC
 
 (define (wndproc-registry-cleaner)
-  (hash-table/for-each wndproc-registry
+  (hash-table-walk wndproc-registry
     (lambda (hwnd wndproc)
       wndproc                         ; ignored
       (if (not (is-window? hwnd))
-	  (hash-table/remove! wndproc-registry hwnd)))))
+	  (hash-table-delete! wndproc-registry hwnd)))))
 
 ;; Applications should use DEFAULT-SCHEME-WNDPROC rather than DEF-WINDOW-PROC
 ;; so that we can hook in behaviour for all scheme windows.
@@ -209,14 +210,14 @@ USA.
          (C-proc    (get-window-long hwnd GWL_WNDPROC))
          (scheme?   (= C-proc scheme-wndproc))
 	 (old-proc  (if scheme?
-	                (or (hash-table/get wndproc-registry hwnd #f)
+			(or (hash-table-ref/default wndproc-registry hwnd #f)
 			    default-scheme-wndproc)
 			(lambda (hw m w l)
 			  (%call-foreign-function c-proc hw m w l)))))
     (set-window-long hwnd GWL_WNDPROC scheme-wndproc)
-    (hash-table/put! wndproc-registry hwnd (subclass-behaviour old-proc))
+    (hash-table-set! wndproc-registry hwnd (subclass-behaviour old-proc))
     unspecific))
-	                
+
 
 (define wndproc-registry)
 (define message-polling-thread)
@@ -234,12 +235,12 @@ USA.
 
 
 (define (make-message-polling-loop)
-  (define msg (make-string 40))
+  (define msg (make-bytevector 40))
   (define (message-polling-loop)
     (if (peek-message msg 0 0 0 1 #|PM_REMOVE|#)
         (begin
 	  (translate-message msg)
-	  (without-interrupts (lambda()(dispatch-message msg)))
+	  (without-interrupts (lambda() (dispatch-message msg)))
 	  (message-polling-loop))))
   message-polling-loop)
 
@@ -258,13 +259,12 @@ USA.
       (loop))
     (loop))
 
-  ;; install dummy handler and 
+  ;; install dummy handler and
   (without-interrupts
     (lambda ()
-      (let  ((system-interrupt-vector
-	       (vector-ref (get-fixed-objects-vector)
-		           (fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))))
-         (vector-set! system-interrupt-vector 3 ignoring-interrupt-handler))))
+      (vector-set! (fixed-objects-item 'system-interrupt-vector)
+		   3
+		   ignoring-interrupt-handler)))
 
   (set! message-polling-thread (create-thread #f thunk)))
 ;
@@ -340,15 +340,15 @@ USA.
 
 ;;(define get-last-error
 ;;  (make-windows-procedure kernel32.dll "GetLastError" int-result))
-;;    
+;;
 ;;(define set-last-error
 ;;  (make-windows-procedure kernel32.dll "SetLastError" void-result int-arg))
-    
+
 (define close-window)
 (define create-round-rect-rgn)
 (define create-window-ex)
 (define dispatch-message)
-(define get-window-long)       
+(define get-window-long)
 (define get-window-text)
 (define is-iconic?)
 (define is-window?)
@@ -356,12 +356,12 @@ USA.
 (define message-box)
 (define message-box-ex)
 (define peek-message)
-(define pt-in-region)      
+(define pt-in-region)
 (define set-window-long)
 (define set-window-text)
 (define sleep)
 (define translate-message)
-(define unregister-class)      
+(define unregister-class)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -423,15 +423,15 @@ USA.
   (set! unregister-class
     (windows-procedure (unregister-class (name string) (instance hinstance))
       bool user32.dll "UnregisterClassA"))
-      
+
   (set! get-window-long
     (windows-procedure (get-window-long (hwnd hwnd) (index int))
       long user32.dll "GetWindowLongA"))
-       
+
   (set! set-window-long
     (windows-procedure (set-window-long (hwnd hwnd) (index int) (value long))
       long user32.dll "SetWindowLongA"))
-       
+
   (set! message-box
     (windows-procedure
 	(message-box (owner hwnd) (text string ) (title string) (style int))
@@ -467,7 +467,7 @@ USA.
   ((make-primitive-procedure 'set-general-scheme-wndproc)
     general-scheme-wndproc))
 
-    
+
 (define (initialize-package!)
   ;; Install GENERAL-SCHEME-WNDPROC
   ;; (initialize-general-scheme-wndproc!)

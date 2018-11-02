@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -59,19 +59,17 @@ USA.
     (make-scfg application '())))
 
 (define-vector-tag-unparser application-tag
-  (lambda (state application)
-    ((case (application-type application)
-       ((COMBINATION)
-	(standard-unparser (symbol->string 'COMBINATION) false))
-       ((RETURN)
-	(standard-unparser (symbol->string 'RETURN)
-	  (lambda (state return)
-	    (unparse-object state (return/operand return)))))
-       (else
-	(standard-unparser (symbol->string 'APPLICATION)
-	  (lambda (state application)
-	    (unparse-object state (application-type application))))))
-     state application)))
+  (standard-print-method
+   (lambda (application)
+     (case (application-type application)
+       ((COMBINATION) "LIAR:combination")
+       ((RETURN) "LIAR:return")
+       (else "LIAR:application")))
+   (lambda (application)
+     (case (application-type application)
+       ((COMBINATION) '())
+       ((RETURN) (list (return/operand return)))
+       (else (list (application-type application)))))))
 
 (define-integrable (application-block application)
   (reference-context/block (application-context application)))

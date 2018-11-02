@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -60,14 +60,14 @@ USA.
 	   (loop (cdr items) passed (cons (car items) failed))))))
 
 (define (generate-label #!optional prefix)
-  (if (default-object? prefix) (set! prefix 'LABEL))
+  (if (default-object? prefix) (set! prefix 'label))
   (string->uninterned-symbol
    (canonicalize-label-name
     (string-append
      (symbol->string
-      (cond ((eq? prefix lambda-tag:unnamed) 'LAMBDA)
-	    ((eq? prefix lambda-tag:let) 'LET)
-	    ((eq? prefix lambda-tag:fluid-let) 'FLUID-LET)
+      (cond ((eq? prefix scode-lambda-name:unnamed) 'lambda)
+	    ((eq? prefix scode-lambda-name:let) 'let)
+	    ((eq? prefix scode-lambda-name:fluid-let) 'fluid-let)
 	    (else prefix)))
      "-"
      (number->string (generate-label-number))))))
@@ -92,17 +92,17 @@ USA.
   (if (null? items)
       (error "ALL-EQ?: undefined for empty set"))
   (or (null? (cdr items))
-      (for-all? (cdr items)
-	(let ((item (car items)))
-	  (lambda (item*)
-	    (eq? item item*))))))
+      (every (let ((item (car items)))
+	       (lambda (item*)
+		 (eq? item item*)))
+	     (cdr items))))
 
 (define (all-eq-map? items map)
   (if (null? items)
       (error "ALL-EQ-MAP?: undefined for empty set"))
   (let ((item (map (car items))))
     (if (or (null? (cdr items))
-	    (for-all? (cdr items) (lambda (item*) (eq? item (map item*)))))
+	    (every (lambda (item*) (eq? item (map item*))) (cdr items)))
 	(values true item)
 	(values false false))))
 
@@ -144,7 +144,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: (cadr form))
+     `(DEFINE-INTEGRABLE ,(symbol 'TYPE-CODE: (cadr form))
 	',(microcode-type (cadr form))))))
 
 (define-type-code lambda)
@@ -242,14 +242,14 @@ USA.
     FLO:TRUNCATE->EXACT FLO:ROUND->EXACT
 
     ;; Random
-    OBJECT-TYPE CHAR-ASCII? ASCII->CHAR CHAR->INTEGER CHAR-BITS CHAR-CODE
+    OBJECT-TYPE CHAR->INTEGER CHAR-BITS CHAR-CODE
     CHAR-DOWNCASE CHAR-UPCASE INTEGER->CHAR MAKE-CHAR
     PRIMITIVE-PROCEDURE-ARITY
 
     ;; References (assumes immediate constants are immutable)
     CAR CDR LENGTH
     VECTOR-REF VECTOR-LENGTH
-    STRING-REF STRING-LENGTH STRING-MAXIMUM-LENGTH
+    STRING-REF STRING-LENGTH
     BIT-STRING-LENGTH
     ))
 
@@ -283,10 +283,12 @@ USA.
 
 (define boolean-valued-function-primitives
   (list (ucode-primitive %record?)
+	(ucode-primitive %tagged-vector? 1)
 	(ucode-primitive &<)
 	(ucode-primitive &=)
 	(ucode-primitive &>)
 	(ucode-primitive bit-string?)
+	(ucode-primitive bytevector? 1)
 	(ucode-primitive char?)
 	(ucode-primitive eq?)
 	(ucode-primitive equal-fixnum?)
@@ -316,11 +318,15 @@ USA.
 	(ucode-primitive positive?)
 	(ucode-primitive string?)
 	(ucode-primitive vector?)
+	(ucode-primitive weak-pair? 1)
 	(ucode-primitive zero-fixnum?)
 	(ucode-primitive zero?)))
 
 (define additional-side-effect-free-primitives
-  (list (ucode-primitive %record)
+  (list (ucode-primitive %make-record 2)
+	(ucode-primitive %make-tagged-vector 2)
+	(ucode-primitive %record)
+	(ucode-primitive allocate-bytevector 1)
 	(ucode-primitive cons)
 	(ucode-primitive floating-vector-cons)
 	(ucode-primitive get-interrupt-enables)
@@ -328,11 +334,14 @@ USA.
 	(ucode-primitive string-allocate)
 	(ucode-primitive system-pair-cons)
 	(ucode-primitive vector)
-	(ucode-primitive vector-cons)))
+	(ucode-primitive vector-cons)
+	(ucode-primitive weak-cons 2)))
 
 (define additional-function-primitives
   (list (ucode-primitive %record-length)
 	(ucode-primitive %record-ref)
+	(ucode-primitive %tagged-vector-datum 1)
+	(ucode-primitive %tagged-vector-tag 1)
 	(ucode-primitive &*)
 	(ucode-primitive &+)
 	(ucode-primitive &-)
@@ -340,6 +349,9 @@ USA.
 	(ucode-primitive -1+)
 	(ucode-primitive 1+)
 	(ucode-primitive bit-string-length)
+	(ucode-primitive bit-string-length)
+	(ucode-primitive bytevector-length 1)
+	(ucode-primitive bytevector-u8-ref 2)
 	(ucode-primitive car)
 	(ucode-primitive cdr)
 	(ucode-primitive char->integer)
@@ -404,7 +416,9 @@ USA.
 	(ucode-primitive system-vector-size)
 	(ucode-primitive vector-8b-ref)
 	(ucode-primitive vector-length)
-	(ucode-primitive vector-ref)))
+	(ucode-primitive vector-ref)
+	(ucode-primitive weak-car 1)
+	(ucode-primitive weak-cdr 1)))
 
 ;;;; "Foldable" and side-effect-free operators
 
@@ -414,9 +428,9 @@ USA.
 
 (let ((global-valued
        (lambda (names)
-	 (list-transform-negative names
-	   (lambda (name)
-	     (lexical-unreferenceable? system-global-environment name)))))
+	 (remove (lambda (name)
+		   (lexical-unreferenceable? system-global-environment name))
+		 names)))
       (global-value
        (lambda (name)
 	 (lexical-reference system-global-environment name))))

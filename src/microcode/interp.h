@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,6 +63,7 @@ USA.
 #define CHECK_RETURN_CODE(code, offset)					\
   ((CONT_RET (offset)) == (MAKE_RETURN_CODE (code)))
 
+#if 0
 /* Saving history is required for C_call_scheme to work correctly
    because the recursive call to Interpret() can rotate the history.  */
 
@@ -72,6 +73,15 @@ USA.
   PRIMITIVE_APPLY (primitive);						\
   history_register = APFI_saved_history;				\
 } while (0)
+
+#else
+/* C_call_scheme must save/restore history_register on/from the stack
+   so that it will be relocated if the call to Interpret() causes a
+   garbage collection. */
+
+#define APPLY_PRIMITIVE_FROM_INTERPRETER PRIMITIVE_APPLY
+
+#endif
 
 /* Stack manipulation */
 
@@ -85,7 +95,7 @@ USA.
   Will_Push_Limit = (STACK_LOC (- (N)))
 
 #define Pushed()							\
-  if (STACK_LOCATIVE_LESS_P (stack_pointer, Will_Push_Limit))		\
+  if (STACK_LOCATIVE_ABOVE_P (stack_pointer, Will_Push_Limit))		\
     {									\
       Stack_Death ();							\
     }									\

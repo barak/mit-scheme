@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,15 +30,20 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! primitive-gc-daemons (make-queue))
+  (set! primitive-gc-daemons (make-serial-queue))
   (set! trigger-primitive-gc-daemons! (make-trigger primitive-gc-daemons))
   (set! add-primitive-gc-daemon! (make-adder primitive-gc-daemons))
-  (set! gc-daemons (make-queue))
+  (set! add-primitive-gc-daemon!/unsafe
+	(make-adder/unsafe primitive-gc-daemons))
+  (set! gc-daemons (make-serial-queue))
   (set! trigger-gc-daemons! (make-trigger gc-daemons))
   (set! add-gc-daemon! (make-adder gc-daemons))
-  (set! secondary-gc-daemons (make-queue))
+  (set! add-gc-daemon!/unsafe (make-adder/unsafe gc-daemons))
+  (set! secondary-gc-daemons (make-serial-queue))
   (set! trigger-secondary-gc-daemons! (make-trigger secondary-gc-daemons))
   (set! add-secondary-gc-daemon! (make-adder secondary-gc-daemons))
+  (set! add-secondary-gc-daemon!/unsafe
+	(make-adder/unsafe secondary-gc-daemons))
   (let ((fixed-objects ((ucode-primitive get-fixed-objects-vector))))
     (vector-set! fixed-objects #x0B trigger-primitive-gc-daemons!)
     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
@@ -49,6 +54,7 @@ USA.
 (define primitive-gc-daemons)
 (define trigger-primitive-gc-daemons!)
 (define add-primitive-gc-daemon!)
+(define add-primitive-gc-daemon!/unsafe)
 
 ;;; GC-DAEMONS are executed after each GC from an interrupt handler.
 ;;; This interrupt handler has lower priority than the GC interrupt,
@@ -58,10 +64,11 @@ USA.
 (define gc-daemons)
 (define trigger-gc-daemons!)
 (define add-gc-daemon!)
+(define add-gc-daemon!/unsafe)
 (define (add-gc-daemon!/no-restore daemon)
   (add-gc-daemon!
    (lambda ()
-     (if (not *within-restore-window?*)
+     (if (not (*within-restore-window?*))
 	 (daemon)))))
 
 ;;; SECONDARY-GC-DAEMONS are executed rarely.  Their purpose is to
@@ -70,6 +77,7 @@ USA.
 (define secondary-gc-daemons)
 (define trigger-secondary-gc-daemons!)
 (define add-secondary-gc-daemon!)
+(define add-secondary-gc-daemon!/unsafe)
 
 (define (make-trigger daemons)
   (lambda ()
@@ -79,6 +87,10 @@ USA.
 (define (make-adder daemons)
   (lambda (daemon)
     (enqueue! daemons daemon)))
+
+(define (make-adder/unsafe daemons)
+  (lambda (daemon)
+    (enqueue!/unsafe daemons daemon)))
 
 (define (gc-clean #!optional threshold)
   (let ((threshold

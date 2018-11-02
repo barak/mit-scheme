@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,10 +38,6 @@ USA.
 
 (define pathname-map/tag "pathname-map")
 (define pathname-map/root-node cdr)
-
-(unparser/set-tagged-pair-method!
- pathname-map/tag
- (unparser/standard-method "PATHNAME-MAP"))
 
 (declare (integrate-operator node/make))
 
@@ -106,6 +102,9 @@ USA.
   (named-lambda (pathname-map? object)
     (and (pair? object)
 	 (eq? (car object) pathname-map/tag))))
+
+(define-print-method pathname-map?
+  (standard-print-method 'pathname-map))
 
 (set! pathname-map/lookup
   (named-lambda (pathname-map/lookup map pathname if-found if-not)

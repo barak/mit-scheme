@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -252,7 +252,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 
 (define (mode-apropos regexp)
   (for-each (lambda (mode)
-	      (write-string (symbol-name (mode-name mode)))
+	      (write-string (symbol->string (mode-name mode)))
 	      (newline)
 	      (print-short-description "Mode" (mode-description mode)))
 	    (string-table-apropos editor-modes regexp)))
@@ -316,7 +316,10 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	      (buffer-not-modified! buffer)))))))
 
 (define (with-output-to-help-display thunk)
-  (string->temporary-buffer (with-output-to-string thunk)
+  (string->temporary-buffer (call-with-output-string
+			      (lambda (port)
+				(parameterize ((current-output-port port))
+				  (thunk))))
 			    "*Help*"
 			    '(READ-ONLY)))
 
@@ -403,7 +406,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 		    (if (pair? bindings)
 			(xkey->name (car bindings))
 			(string-append "M-x " (command-name-string command))))
-		  (string-append "M-x " (symbol-name argument))))
+		  (string-append "M-x " (symbol->string argument))))
 	    (find-escape next comtabs)))
 
     (define (show-bindings argument next comtabs)

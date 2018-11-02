@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,14 +51,25 @@ USA.
 	(output? #f))
     (let ((free-references
 	   (append-map! (lambda (package)
-			  (delete-matching-items
-			      (package/references package)
-			    reference/binding))
+			  (remove reference/binding
+				  (package/references package)))
 			packages)))
       (if (pair? free-references)
 	  (begin
 	    (format-references port indentation width "Free References" #f
 	      (sort free-references reference<?))
+	    (set! output? #t))))
+    (let ((deprecated-references
+	   (append-map! (lambda (package)
+			  (filter (lambda (r)
+				    (let ((b (reference/binding r)))
+				      (and b (binding/deprecated? b))))
+				  (package/references package)))
+			packages)))
+      (if (pair? deprecated-references)
+	  (begin
+	    (format-references port indentation width "Deprecated References" #f
+	      (sort deprecated-references reference<?))
 	    (set! output? #t))))
     (receive (undefined multiple) (get-value-cells/unusual packages)
       (if (pair? undefined)
@@ -127,14 +138,14 @@ USA.
 
 (define (get-value-cells/unusual packages)
   (receive (unlinked linked) (get-value-cells packages)
-    (values (delete-matching-items linked
-	      (lambda (value-cell)
-		(pair? (value-cell/expressions value-cell))))
-	    (keep-matching-items (append unlinked linked)
-	      (lambda (value-cell)
-		(let ((expressions (value-cell/expressions value-cell)))
-		  (and (pair? expressions)
-		       (pair? (cdr expressions)))))))))
+    (values (remove (lambda (value-cell)
+		      (pair? (value-cell/expressions value-cell)))
+		    linked)
+	    (filter (lambda (value-cell)
+		      (let ((expressions (value-cell/expressions value-cell)))
+			(and (pair? expressions)
+			     (pair? (cdr expressions)))))
+		    (append unlinked linked)))))
 
 (define (get-value-cells packages)
   (let ((unlinked '())
@@ -289,9 +300,9 @@ USA.
 	(value-cell (expression/value-cell expression)))
     (let ((binding
 	   (and value-cell
-		(find-matching-item (value-cell/bindings value-cell)
-		  (lambda (binding)
-		    (eq? package* (binding/package binding)))))))
+		(find (lambda (binding)
+			(eq? package* (binding/package binding)))
+		      (value-cell/bindings value-cell)))))
       (if binding
 	  (let ((name (binding/name binding)))
 	    (if (and package

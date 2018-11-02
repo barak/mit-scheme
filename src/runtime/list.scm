@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -88,7 +88,7 @@ USA.
 	this-element)))
 
 (define (make-list length #!optional value)
-  (guarantee-index-fixnum length 'MAKE-LIST)
+  (guarantee index-fixnum? length 'make-list)
   (let ((value (if (default-object? value) '() value)))
     (let loop ((n length) (result '()))
       (if (fix:zero? n)
@@ -104,7 +104,7 @@ USA.
   items)
 
 (define (make-circular-list length #!optional value)
-  (guarantee-index-fixnum length 'MAKE-CIRCULAR-LIST)
+  (guarantee index-fixnum? length 'make-circular-list)
   (if (fix:> length 0)
       (let ((value (if (default-object? value) '() value)))
 	(let ((last (cons value '())))
@@ -117,7 +117,7 @@ USA.
       '()))
 
 (define (make-initialized-list length initialization)
-  (guarantee-index-fixnum length 'MAKE-INITIALIZED-LIST)
+  (guarantee index-fixnum? length 'make-initialized-list)
   (let loop ((index (fix:- length 1)) (result '()))
     (if (fix:< index 0)
 	result
@@ -128,18 +128,18 @@ USA.
   (cons a d))
 
 (define (iota count #!optional start step)
-  (guarantee-index-fixnum count 'IOTA)
+  (guarantee index-fixnum? count 'iota)
   (let ((start
 	 (if (default-object? start)
 	     0
 	     (begin
-	       (guarantee-number start 'IOTA)
+	       (guarantee number? start 'iota)
 	       start)))
 	(step
 	 (if (default-object? step)
 	     1
 	     (begin
-	       (guarantee-number step 'IOTA)
+	       (guarantee number? step 'iota)
 	       step))))
     (make-initialized-list count (lambda (index) (+ start (* index step))))))
 
@@ -174,10 +174,9 @@ USA.
 		  #f)))
 	#f)))
 
-(define-guarantee pair "pair")
-(define-guarantee list "list")
-(define-guarantee dotted-list "improper list")
-(define-guarantee circular-list "circular list")
+(define (non-empty-list? object)
+  (and (pair? object)
+       (list? (cdr object))))
 
 (define (list-of-type? object predicate)
   (let loop ((l1 object) (l2 object))
@@ -226,7 +225,7 @@ USA.
 (define (guarantee-list->length object #!optional caller)
   (let ((n (list?->length object)))
     (if (not n)
-	(error:not-list object caller))
+	(error:not-a list? object caller))
     n))
 
 (define (guarantee-list-of-type->length object predicate description
@@ -239,26 +238,26 @@ USA.
     n))
 
 (define (length list)
-  (guarantee-list->length list 'LENGTH))
+  (guarantee-list->length list 'length))
 
 (define (length=? left right)
   (define (%length=? n list)
     (cond ((pair? list) (and (fix:positive? n)
 			     (%length=? (fix:- n 1) (cdr list))))
 	  ((null? list) (fix:zero? n))
-	  (else (error:not-list list 'length=?))))
+	  (else (error:not-a list? list 'length=?))))
 
   (define (%same-length left right)
     (cond ((pair? left)
 	   (cond ((pair? right) (%same-length (cdr left) (cdr right)))
 		 ((null? right) #f)
-		 (else (error:not-list right 'length=?))))
+		 (else (error:not-a list? right 'length=?))))
 	  ((null? left)
 	   (cond ((pair? right) #f)
 		 ((null? right) #t)
-		 (else (error:not-list right 'length=?))))
+		 (else (error:not-a list? right 'length=?))))
 	  (else
-	   (error:not-list left 'length=?))))
+	   (error:not-a list? left 'length=?))))
 
   ;; Take arguments in either order to make this easy to use.
   (cond ((pair? left)
@@ -286,7 +285,7 @@ USA.
 (define (null-list? l #!optional caller)
   (cond ((pair? l) #f)
 	((null? l) #t)
-	(else (error:not-list l caller))))
+	(else (error:not-a list? l caller))))
 
 (define (list= predicate . lists)
 
@@ -312,7 +311,7 @@ USA.
 
   (define (lose)
     (for-each (lambda (list)
-		(guarantee-list list 'LIST=))
+		(guarantee list? list 'list=))
 	      lists))
 
   (if (and (pair? lists)
@@ -323,40 +322,40 @@ USA.
 (define (list-ref list index)
   (let ((tail (list-tail list index)))
     (if (not (pair? tail))
-	(error:bad-range-argument index 'LIST-REF))
+	(error:bad-range-argument index 'list-ref))
     (car tail)))
 
 (define (list-set! list index new-value)
   (let ((tail (list-tail list index)))
     (if (not (pair? tail))
-	(error:bad-range-argument index 'LIST-SET!))
+	(error:bad-range-argument index 'list-set!))
     (set-car! tail new-value)))
 
 (define (list-tail list index)
-  (guarantee-index-fixnum index 'LIST-TAIL)
+  (guarantee index-fixnum? index 'list-tail)
   (let loop ((list list) (index* index))
     (if (fix:zero? index*)
 	list
 	(begin
 	  (if (not (pair? list))
-	      (error:bad-range-argument index 'LIST-TAIL))
+	      (error:bad-range-argument index 'list-tail))
 	  (loop (cdr list) (fix:- index* 1))))))
 
 (define (list-head list index)
-  (guarantee-index-fixnum index 'LIST-HEAD)
+  (guarantee index-fixnum? index 'list-head)
   (let loop ((list list) (index* index))
     (if (fix:zero? index*)
 	'()
 	(begin
 	  (if (not (pair? list))
-	      (error:bad-range-argument index 'LIST-HEAD))
+	      (error:bad-range-argument index 'list-head))
 	  (cons (car list) (loop (cdr list) (fix:- index* 1)))))))
 
 (define (sublist list start end)
   (list-head (list-tail list start) (- end start)))
 
 (define (list-copy items)
-  (let ((lose (lambda () (error:not-list items 'LIST-COPY))))
+  (let ((lose (lambda () (error:not-a list? items 'list-copy))))
     (cond ((pair? items)
 	   (let ((head (cons (car items) '())))
 	     (let loop ((list (cdr items)) (previous head))
@@ -378,43 +377,19 @@ USA.
 (define (car+cdr pair)
   (values (car pair) (cdr pair)))
 
-;;;; Weak Pairs
-
-(define-integrable (weak-cons car cdr)
-  (system-pair-cons (ucode-type weak-cons) (or car weak-pair/false) cdr))
-
-(define-integrable (weak-pair? object)
-  (object-type? (ucode-type weak-cons) object))
-
-(define-integrable (weak-pair/car? weak-pair)
-  (system-pair-car weak-pair))
-
-(define (weak-car weak-pair)
-  (let ((car (system-pair-car weak-pair)))
-    (and (not (eq? car weak-pair/false))
-	 car)))
-
-(define-integrable (weak-set-car! weak-pair object)
-  (system-pair-set-car! weak-pair (or object weak-pair/false)))
-
-(define-integrable (weak-cdr weak-pair)
-  (system-pair-cdr weak-pair))
-
-(define-integrable (weak-set-cdr! weak-pair object)
-  (system-pair-set-cdr! weak-pair object))
+;;;; Weak lists
 
 (define (weak-list->list items)
   (let loop ((items* items) (result '()))
     (if (weak-pair? items*)
-	(loop (system-pair-cdr items*)
-	      (let ((item (system-pair-car items*)))
-		(if (not item)
-		    result
-		    (cons (if (eq? item weak-pair/false) #f item)
-			  result))))
+	(loop (weak-cdr items*)
+	      (let ((item (%weak-car items*)))
+		(if item
+		    (cons (%weak-false->false item) result)
+		    result)))
 	(begin
 	  (if (not (null? items*))
-	      (error:not-weak-list items 'WEAK-LIST->LIST))
+	      (error:not-a weak-list? items 'weak-list->list))
 	  (reverse! result)))))
 
 (define (list->weak-list items)
@@ -424,11 +399,8 @@ USA.
 	      (weak-cons (car items*) result))
 	(begin
 	  (if (not (null? items*))
-	      (error:not-list items 'LIST->WEAK-LIST))
+	      (error:not-a list? items 'list->weak-list))
 	  result))))
-
-(define weak-pair/false
-  "weak-pair/false")
 
 (define (weak-list? object)
   (let loop ((l1 object) (l2 object))
@@ -440,53 +412,50 @@ USA.
 		   (null? l1))))
 	(null? l1))))
 
-(define-guarantee weak-list "weak list")
-
-(define (weak-memq object items)
-  (let ((object (or object weak-pair/false)))
+(define (weak-memq item items)
+  (let ((item (%false->weak-false item)))
     (let loop ((items* items))
       (if (weak-pair? items*)
-	  (if (eq? object (system-pair-car items*))
+	  (if (eq? item (%weak-car items*))
 	      items*
-	      (loop (system-pair-cdr items*)))
+	      (loop (weak-cdr items*)))
 	  (begin
 	    (if (not (null? items*))
-		(error:not-weak-list items 'WEAK-MEMQ))
+		(error:not-a weak-list? items 'weak-memq))
 	    #f)))))
 
 (define (weak-delq! item items)
-  (letrec ((trim-initial-segment
-	    (lambda (items*)
-	      (if (weak-pair? items*)
-		  (if (or (eq? item (system-pair-car items*))
-			  (eq? #f (system-pair-car items*)))
-		      (trim-initial-segment (system-pair-cdr items*))
-		      (begin
-			(locate-initial-segment items*
-						(system-pair-cdr items*))
-			items*))
-		  (begin
-		    (if (not (null? items*))
-			(error:not-weak-list items 'WEAK-DELQ!))
-		    '()))))
-	   (locate-initial-segment
-	    (lambda (last this)
-	      (if (weak-pair? this)
-		  (if (or (eq? item (system-pair-car this))
-			  (eq? #f (system-pair-car this)))
-		      (set-cdr! last
-				(trim-initial-segment (system-pair-cdr this)))
-		      (locate-initial-segment this (system-pair-cdr this)))
-		  (if (not (null? this))
-		      (error:not-weak-list items 'WEAK-DELQ!))))))
-    (trim-initial-segment items)))
+  (let ((item (%false->weak-false item)))
+    (letrec ((trim-initial-segment
+	      (lambda (items*)
+		(if (weak-pair? items*)
+		    (if (or (eq? item (%weak-car items*))
+			    (eq? #f (%weak-car items*)))
+			(trim-initial-segment (weak-cdr items*))
+			(begin
+			  (locate-initial-segment items* (weak-cdr items*))
+			  items*))
+		    (begin
+		      (if (not (null? items*))
+			  (error:not-a weak-list? items 'weak-delq!))
+		      '()))))
+	     (locate-initial-segment
+	      (lambda (last this)
+		(if (weak-pair? this)
+		    (if (or (eq? item (%weak-car this))
+			    (eq? #f (%weak-car this)))
+			(set-cdr! last (trim-initial-segment (weak-cdr this)))
+			(locate-initial-segment this (weak-cdr this)))
+		    (if (not (null? this))
+			(error:not-a weak-list? items 'weak-delq!))))))
+      (trim-initial-segment items))))
 
 ;;;; General CAR CDR
 
 ;;; Return a list of car and cdr symbols that the code
 ;;; represents.  Leftmost operation is outermost.
 (define (decode-general-car-cdr code)
-  (guarantee-positive-fixnum code)
+  (guarantee positive-fixnum? code)
   (do ((code code (fix:lsh code -1))
        (result '() (cons (if (even? code) 'cdr 'car) result)))
       ((= code 1) result)))
@@ -497,8 +466,8 @@ USA.
   (do ((code operation-list (cdr code))
        (answer 1 (+ (* answer 2)
 		    (case (car code)
-		      ((CAR) 1)
-		      ((CDR) 0)
+		      ((car) 1)
+		      ((cdr) 0)
 		      (else (error "encode-general-car-cdr: Invalid operation"
 				    (car code)))))))
       ((not (pair? code))
@@ -511,10 +480,10 @@ USA.
 (declare (integrate-operator safe-car safe-cdr))
 
 (define (safe-car x)
-  (if (pair? x) (car x) (error:not-pair x 'SAFE-CAR)))
+  (if (pair? x) (car x) (error:not-a pair? x 'safe-car)))
 
 (define (safe-cdr x)
-  (if (pair? x) (cdr x) (error:not-pair x 'SAFE-CDR)))
+  (if (pair? x) (cdr x) (error:not-a pair? x 'safe-cdr)))
 
 (define (caar x) (safe-car (safe-car x)))
 (define (cadr x) (safe-car (safe-cdr x)))
@@ -608,12 +577,13 @@ USA.
 				       ((null? next)
 					(set-cdr! cell accum))
 				       (else
-					(error:not-list (car rest) 'APPEND))))
+					(error:not-a list? (car rest)
+						     'append))))
 			       root))
 			    ((null? l1)
 			     accum)
 			    (else
-			     (error:not-list (car rest) 'APPEND))))
+			     (error:not-a list? (car rest) 'append))))
 		    (cdr rest))
 	      accum))
 	'())))
@@ -628,7 +598,7 @@ USA.
 	       head)
 	      (else
 	       (if (not (null? head))
-		   (error:not-list (car lists) 'APPEND!))
+		   (error:not-a list? (car lists) 'append!))
 	       (loop (car tail) (cdr tail)))))
       '()))
 
@@ -641,7 +611,7 @@ USA.
 	(loop (cdr rest) (cons (car rest) so-far))
 	(begin
 	  (if (not (null? rest))
-	      (error:not-list l 'REVERSE*))
+	      (error:not-a list? l 'reverse*))
 	  so-far))))
 
 (define (reverse*! l tail)
@@ -652,7 +622,7 @@ USA.
 	  (loop next current))
 	(begin
 	  (if (not (null? current))
-	      (error:not-list l 'REVERSE*!))
+	      (error:not-a list? l 'reverse*!))
 	  new-cdr))))
 
 ;;;; Mapping Procedures
@@ -710,7 +680,7 @@ USA.
       (cdr head)))
 
   (define (bad-end)
-    (mapper-error (cons first rest) 'MAP))
+    (mapper-error (cons first rest) 'map))
 
   (if (pair? rest)
       (if (pair? (cdr rest))
@@ -721,7 +691,7 @@ USA.
 (define (mapper-error lists caller)
   (for-each (lambda (list)
 	      (if (dotted-list? list)
-		  (error:not-list list caller)))
+		  (error:not-a list? list caller)))
 	    lists))
 
 (define for-each)
@@ -740,50 +710,50 @@ USA.
 	       (extra-vars (list-ref form 2))
 	       (combiner (list-ref form 3))
 	       (initial-value (list-ref form 4)))
-	   `(SET! ,name
-		  (NAMED-LAMBDA (,name ,@extra-vars PROCEDURE FIRST . REST)
+	   `(set! ,name
+		  (named-lambda (,name ,@extra-vars procedure first . rest)
 
-		    (DEFINE (MAP-1 L)
-		      (IF (PAIR? L)
-			  (,combiner (PROCEDURE (CAR L))
-				     (MAP-1 (CDR L)))
-			  (BEGIN
-			    (IF (NOT (NULL? L))
-				(BAD-END))
+		    (define (map-1 l)
+		      (if (pair? l)
+			  (,combiner (procedure (car l))
+				     (map-1 (cdr l)))
+			  (begin
+			    (if (not (null? l))
+				(bad-end))
 			    ,initial-value)))
 
-		    (DEFINE (MAP-2 L1 L2)
-		      (IF (AND (PAIR? L1) (PAIR? L2))
-			  (,combiner (PROCEDURE (CAR L1) (CAR L2))
-				     (MAP-2 (CDR L1) (CDR L2)))
-			  (BEGIN
-			    (IF (NOT (AND (OR (NULL? L1) (PAIR? L1))
-					  (OR (NULL? L2) (PAIR? L2))))
-				(BAD-END))
+		    (define (map-2 l1 l2)
+		      (if (and (pair? l1) (pair? l2))
+			  (,combiner (procedure (car l1) (car l2))
+				     (map-2 (cdr l1) (cdr l2)))
+			  (begin
+			    (if (not (and (or (null? l1) (pair? l1))
+					  (or (null? l2) (pair? l2))))
+				(bad-end))
 			    ,initial-value)))
 
-		    (DEFINE (MAP-N LISTS)
-		      (LET SPLIT ((LISTS LISTS) (CARS '()) (CDRS '()))
-			(IF (PAIR? LISTS)
-			    (IF (PAIR? (CAR LISTS))
-				(SPLIT (CDR LISTS)
-				       (CONS (CAR (CAR LISTS)) CARS)
-				       (CONS (CDR (CAR LISTS)) CDRS))
-				(BEGIN
-				  (IF (NOT (NULL? (CAR LISTS)))
-				      (BAD-END))
+		    (define (map-n lists)
+		      (let split ((lists lists) (cars '()) (cdrs '()))
+			(if (pair? lists)
+			    (if (pair? (car lists))
+				(split (cdr lists)
+				       (cons (car (car lists)) cars)
+				       (cons (cdr (car lists)) cdrs))
+				(begin
+				  (if (not (null? (car lists)))
+				      (bad-end))
 				  ,initial-value))
-			    (,combiner (APPLY PROCEDURE (REVERSE! CARS))
-				       (MAP-N (REVERSE! CDRS))))))
+			    (,combiner (apply procedure (reverse! cars))
+				       (map-n (reverse! cdrs))))))
 
-		    (DEFINE (BAD-END)
-		      (MAPPER-ERROR (CONS FIRST REST) ',name))
+		    (define (bad-end)
+		      (mapper-error (cons first rest) ',name))
 
-		    (IF (PAIR? REST)
-			(IF (PAIR? (CDR REST))
-			    (MAP-N (CONS FIRST REST))
-			    (MAP-2 FIRST (CAR REST)))
-			(MAP-1 FIRST)))))))))
+		    (if (pair? rest)
+			(if (pair? (cdr rest))
+			    (map-n (cons first rest))
+			    (map-2 first (car rest)))
+			(map-1 first)))))))))
 
   (mapper for-each () begin unspecific)
   (mapper map* (initial-value) cons initial-value)
@@ -792,13 +762,81 @@ USA.
   (mapper append-map! () append! '())
   (mapper append-map*! (initial-value) append! initial-value))
 
-(define (reduce procedure initial list)
+(declare (integrate-operator %fold-left))
+
+(define (%fold-left caller procedure initial list)
+  (declare (integrate caller procedure initial))
+  (let %fold-left-step ((state initial) (remaining list))
+    (if (pair? remaining)
+	(%fold-left-step (procedure state (car remaining))
+			 (cdr remaining))
+	(begin
+	  (if (not (null? remaining))
+	      (error:not-a list? list caller))
+	  state))))
+
+;; N-ary version
+;; Invokes (PROCEDURE state arg1 arg2 ...) on the all the lists in parallel.
+;; State is returned as soon as any list is exhausted.
+(define (%fold-left-lists caller procedure initial arglists)
+  (let fold-left-step ((state initial) (lists arglists))
+    (let collect-arguments ((arglists (reverse lists)) (cars '()) (cdrs '()))
+      (if (pair? arglists)
+	  (let ((first-list (car arglists)))
+	    (if (pair? first-list)
+		(collect-arguments (cdr arglists)
+				   (cons (car first-list) cars)
+				   (cons (cdr first-list) cdrs))
+		(begin
+		  (if (not (null? first-list))
+		      (mapper-error arglists caller))
+		  state)))
+	  (begin
+	    (if (not (null? arglists))
+		(mapper-error arglists caller))
+	    (fold-left-step (apply procedure state cars)
+			    cdrs))))))
+
+(define (fold-left procedure initial first . rest)
+  (if (pair? rest)
+      (%fold-left-lists 'fold-left procedure initial (cons first rest))
+      (%fold-left 'fold-left procedure initial first)))
+
+;;; Variants of FOLD-LEFT that should probably be avoided.
+
+;; Like FOLD-LEFT, but
+;;    PROCEDURE takes the arguments with the state at the right-hand end.
+(define (fold procedure initial first . rest)
+  (if (pair? rest)
+      (%fold-left-lists 'fold
+			(lambda (state . arguments)
+			  (apply procedure (append arguments (list state))))
+			initial
+			(cons first rest))
+      (%fold-left 'fold
+		  (lambda (state item)
+		    (declare (integrate state item))
+		    (procedure item state))
+		  initial
+		  first)))
+
+;; Like FOLD-LEFT, with four differences.
+;;    1. Not n-ary
+;;    2. INITIAL is first element in list.
+;;    3. DEFAULT is only used if the list is empty
+;;    4. PROCEDURE takes arguments in the wrong order.
+(define (reduce procedure default list)
   (if (pair? list)
-      (%fold-1 procedure (car list) (cdr list) 'REDUCE)
+      (%fold-left 'reduce
+		  (lambda (state item)
+		    (declare (integrate state item))
+		    (procedure item state))
+		  (car list)
+		  (cdr list))
       (begin
 	(if (not (null? list))
-	    (error:not-list list 'REDUCE))
-	initial)))
+	    (error:not-a list? list 'reduce))
+	default)))
 
 (define (reduce-left procedure initial list)
   (reduce (lambda (a b) (procedure b a)) initial list))
@@ -810,42 +848,12 @@ USA.
 	    (procedure first (loop (car rest) (cdr rest)))
 	    (begin
 	      (if (not (null? rest))
-		  (error:not-list list 'REDUCE-RIGHT))
+		  (error:not-a list? list 'reduce-right))
 	      first)))
       (begin
 	(if (not (null? list))
-	    (error:not-list list 'REDUCE-RIGHT))
+	    (error:not-a list? list 'reduce-right))
 	initial)))
-
-(define (fold procedure initial first . rest)
-  (if (pair? rest)
-      (let loop ((lists (cons first rest)) (value initial))
-	(let split ((lists lists) (cars '()) (cdrs '()))
-	  (if (pair? lists)
-	      (if (pair? (car lists))
-		  (split (cdr lists)
-			 (cons (car (car lists)) cars)
-			 (cons (cdr (car lists)) cdrs))
-		  (begin
-		    (if (not (null? (car lists)))
-			(mapper-error (cons first rest) 'FOLD))
-		    value))
-	      (loop (reverse! cdrs)
-		    (apply procedure (reverse! (cons value cars)))))))
-      (%fold-1 procedure initial first 'FOLD)))
-
-(define (%fold-1 procedure initial list caller)
-  (let loop ((value initial) (list* list))
-    (if (pair? list*)
-	(loop (procedure (car list*) value)
-	      (cdr list*))
-	(begin
-	  (if (not (null? list*))
-	      (error:not-list list caller))
-	  value))))
-
-(define (fold-left procedure initial list)
-  (%fold-1 (lambda (a b) (procedure b a)) initial list 'FOLD-LEFT))
 
 (define (fold-right procedure initial first . rest)
   (if (pair? rest)
@@ -858,7 +866,7 @@ USA.
 			 (cons (cdr (car lists)) cdrs))
 		  (begin
 		    (if (not (null? (car lists)))
-			(mapper-error (cons first rest) 'FOLD-RIGHT))
+			(mapper-error (cons first rest) 'fold-right))
 		    initial))
 	      (apply procedure
 		     (reverse! (cons (loop (reverse! cdrs)) cars))))))
@@ -867,182 +875,54 @@ USA.
 	    (procedure (car list) (loop (cdr list)))
 	    (begin
 	      (if (not (null? list))
-		  (error:not-list first 'FOLD-RIGHT))
+		  (error:not-a list? first 'fold-right))
 	      initial)))))
 
-;;;; Generalized list operations
+;;;; Generalized list operations -- mostly deprecated in favor of SRFI-1
 
 (define (find-matching-item items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (car items*)
-	    (loop (cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-list items 'FIND-MATCHING-ITEM))
-	  #f))))
+  (find predicate items))
 
 (define (find-non-matching-item items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (loop (cdr items*))
-	    (car items*))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-list items 'FIND-MATCHING-ITEM))
-	  #f))))
+  (find (lambda (item) (not (predicate item))) items))
 
-(define (find-unique-matching-item items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (if (there-exists? (cdr items*) predicate)
-		#f
-		(car items*))
-	    (loop (cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-list items 'FIND-UNIQUE-MATCHING-ITEM))
-	  #f))))
-
-(define (find-unique-non-matching-item items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (loop (cdr items*))
-	    (if (for-all? (cdr items*) predicate)
-		(car items*)
-		#f))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-list items 'FIND-UNIQUE-NON-MATCHING-ITEM))
-	  #f))))
-
 (define (count-matching-items items predicate)
-  (do ((items* items (cdr items*))
-       (n 0 (if (predicate (car items*)) (fix:+ n 1) n)))
-      ((not (pair? items*))
-       (if (not (null? items*))
-	   (error:not-list items 'COUNT-MATCHING-ITEMS))
-       n)))
+  (count predicate items))
 
 (define (count-non-matching-items items predicate)
-  (do ((items* items (cdr items*))
-       (n 0 (if (predicate (car items*)) n (fix:+ n 1))))
-      ((not (pair? items*))
-       (if (not (null? items*))
-	   (error:not-list items 'COUNT-NON-MATCHING-ITEMS))
-       n)))
+  (count (lambda (item)
+	   (not (predicate item)))
+	 items))
 
 (define (keep-matching-items items predicate)
-  (let ((lose (lambda () (error:not-list items 'KEEP-MATCHING-ITEMS))))
-    (cond ((pair? items)
-	   (let ((head (cons (car items) '())))
-	     (let loop ((items* (cdr items)) (previous head))
-	       (cond ((pair? items*)
-		      (if (predicate (car items*))
-			  (let ((new (cons (car items*) '())))
-			    (set-cdr! previous new)
-			    (loop (cdr items*) new))
-			  (loop (cdr items*) previous)))
-		     ((not (null? items*)) (lose))))
-	     (if (predicate (car items))
-		 head
-		 (cdr head))))
-	  ((null? items) items)
-	  (else (lose)))))
+  (filter predicate items))
 
 (define (delete-matching-items items predicate)
-  (let ((lose (lambda () (error:not-list items 'DELETE-MATCHING-ITEMS))))
-    (cond ((pair? items)
-	   (let ((head (cons (car items) '())))
-	     (let loop ((items* (cdr items)) (previous head))
-	       (cond ((pair? items*)
-		      (if (predicate (car items*))
-			  (loop (cdr items*) previous)
-			  (let ((new (cons (car items*) '())))
-			    (set-cdr! previous new)
-			    (loop (cdr items*) new))))
-		     ((not (null? items*)) (lose))))
-	     (if (predicate (car items))
-		 (cdr head)
-		 head)))
-	  ((null? items) items)
-	  (else (lose)))))
-
+  (remove predicate items))
+
 (define (delete-matching-items! items predicate)
-  (letrec
-      ((trim-initial-segment
-	(lambda (items*)
-	  (if (pair? items*)
-	      (if (predicate (car items*))
-		  (trim-initial-segment (cdr items*))
-		  (begin
-		    (locate-initial-segment items* (cdr items*))
-		    items*))
-	      (begin
-		(if (not (null? items*))
-		    (lose))
-		'()))))
-       (locate-initial-segment
-	(lambda (last this)
-	  (if (pair? this)
-	      (if (predicate (car this))
-		  (set-cdr! last (trim-initial-segment (cdr this)))
-		  (locate-initial-segment this (cdr this)))
-	      (if (not (null? this))
-		  (lose)))))
-       (lose
-	(lambda ()
-	  (error:not-list items 'DELETE-MATCHING-ITEMS!))))
-    (trim-initial-segment items)))
+  (remove! predicate items))
 
 (define (keep-matching-items! items predicate)
-  (letrec
-      ((trim-initial-segment
-	(lambda (items*)
-	  (if (pair? items*)
-	      (if (predicate (car items*))
-		  (begin
-		    (locate-initial-segment items* (cdr items*))
-		    items*)
-		  (trim-initial-segment (cdr items*)))
-	      (begin
-		(if (not (null? items*))
-		    (lose))
-		'()))))
-       (locate-initial-segment
-	(lambda (last this)
-	  (if (pair? this)
-	      (if (predicate (car this))
-		  (locate-initial-segment this (cdr this))
-		  (set-cdr! last (trim-initial-segment (cdr this))))
-	      (if (not (null? this))
-		  (lose)))))
-       (lose
-	(lambda ()
-	  (error:not-list items 'KEEP-MATCHING-ITEMS!))))
-    (trim-initial-segment items)))
+  (filter! predicate items))
 
 (define ((list-deletor predicate) items)
-  (delete-matching-items items predicate))
+  (remove predicate items))
 
 (define ((list-deletor! predicate) items)
-  (delete-matching-items! items predicate))
+  (remove! predicate items))
 
 ;;;; Membership lists
 
 (define (memq item items)
-  (%member item items eq? 'MEMQ))
+  (%member item items eq? 'memq))
 
 (define (memv item items)
-  (%member item items eqv? 'MEMV))
+  (%member item items eqv? 'memv))
 
 (define (member item items #!optional =)
   (let ((= (if (default-object? =) equal? =)))
-    (%member item items = 'MEMBER)))
+    (%member item items = 'member)))
 
 (define (member-procedure = #!optional caller)
   (lambda (item items)
@@ -1055,7 +935,7 @@ USA.
 	(cons item items))))
 
 (define-integrable (%member item items = caller)
-  (let ((lose (lambda () (error:not-list items caller))))
+  (let ((lose (lambda () (error:not-a list? items caller))))
     (let loop ((items items))
       (if (pair? items)
 	  (if (= (car items) item)
@@ -1070,17 +950,17 @@ USA.
   ((deletor (lambda (match) (predicate match item))) items))
 
 (define (delq item items)
-  (%delete item items eq? 'DELQ))
+  (%delete item items eq? 'delq))
 
 (define (delv item items)
-  (%delete item items eqv? 'DELQ))
+  (%delete item items eqv? 'delv))
 
 (define (delete item items #!optional =)
   (let ((= (if (default-object? =) equal? =)))
-    (%delete item items = 'DELETE)))
+    (%delete item items = 'delete)))
 
 (define-integrable (%delete item items = caller)
-  (let ((lose (lambda () (error:not-list items caller))))
+  (let ((lose (lambda () (error:not-a list? items caller))))
     (if (pair? items)
 	(let ((head (cons (car items) '())))
 	  (let loop ((items (cdr items)) (previous head))
@@ -1101,14 +981,14 @@ USA.
 	  items))))
 
 (define (delq! item items)
-  (%delete! item items eq? 'DELQ!))
+  (%delete! item items eq? 'delq!))
 
 (define (delv! item items)
-  (%delete! item items eqv? 'DELV!))
+  (%delete! item items eqv? 'delv!))
 
 (define (delete! item items #!optional =)
   (let ((= (if (default-object? =) equal? =)))
-    (%delete! item items = 'DELETE!)))
+    (%delete! item items = 'delete!)))
 
 (define-integrable (%delete! item items = caller)
   (letrec
@@ -1132,10 +1012,10 @@ USA.
 			    (trim-initial-segment (cdr this)))
 		  (locate-initial-segment this (cdr this)))
 	      (if (not (null? this))
-		  (error:not-list items caller)))))
+		  (error:not-a list? items caller)))))
        (lose
 	(lambda ()
-	  (error:not-list items caller))))
+	  (error:not-a list? items caller))))
     (trim-initial-segment items)))
 
 ;;;; Association lists
@@ -1143,13 +1023,11 @@ USA.
 (define (alist? object)
   (list-of-type? object pair?))
 
-(define-guarantee alist "association list")
-
 (define-integrable (alist-cons key datum alist)
   (cons (cons key datum) alist))
 
 (define (alist-copy alist)
-  (let ((lose (lambda () (error:not-alist alist 'ALIST-COPY))))
+  (let ((lose (lambda () (error:not-a alist? alist 'alist-copy))))
     (cond ((pair? alist)
 	   (if (pair? (car alist))
 	       (let ((head (cons (car alist) '())))
@@ -1171,7 +1049,7 @@ USA.
 
 (define (association-procedure predicate selector #!optional caller)
   (lambda (key items)
-    (let ((lose (lambda () (error:not-list items caller))))
+    (let ((lose (lambda () (error:not-a list? items caller))))
       (let loop ((items items))
 	(if (pair? items)
 	    (if (predicate (selector (car items)) key)
@@ -1186,17 +1064,17 @@ USA.
   ((deletor (lambda (entry) (predicate (selector entry) key))) alist))
 
 (define (assq key alist)
-  (%assoc key alist eq? 'ASSQ))
+  (%assoc key alist eq? 'assq))
 
 (define (assv key alist)
-  (%assoc key alist eqv? 'ASSV))
+  (%assoc key alist eqv? 'assv))
 
 (define (assoc key alist #!optional =)
   (let ((= (if (default-object? =) equal? =)))
-    (%assoc key alist = 'ASSOC)))
+    (%assoc key alist = 'assoc)))
 
 (define-integrable (%assoc key alist = caller)
-  (let ((lose (lambda () (error:not-alist alist caller))))
+  (let ((lose (lambda () (error:not-a alist? alist caller))))
     (declare (no-type-checks))
     (let loop ((alist alist))
       (if (pair? alist)
@@ -1212,20 +1090,20 @@ USA.
 	    #f)))))
 
 (define (del-assq key alist)
-  (%alist-delete key alist eq? 'DEL-ASSQ))
+  (%alist-delete key alist eq? 'del-assq))
 
 (define (del-assv key alist)
-  (%alist-delete key alist eqv? 'DEL-ASSV))
+  (%alist-delete key alist eqv? 'del-assv))
 
 (define (del-assoc key alist)
-  (%alist-delete key alist equal? 'DEL-ASSOC))
+  (%alist-delete key alist equal? 'del-assoc))
 
 (define (alist-delete key alist #!optional =)
   (let ((= (if (default-object? =) equal? =)))
-    (%alist-delete key alist = 'ALIST-DELETE)))
+    (%alist-delete key alist = 'alist-delete)))
 
 (define-integrable (%alist-delete key alist = caller)
-  (let ((lose (lambda () (error:not-alist alist caller))))
+  (let ((lose (lambda () (error:not-a alist? alist caller))))
     (if (pair? alist)
 	(begin
 	  (if (not (pair? (car alist)))
@@ -1251,17 +1129,17 @@ USA.
 	  alist))))
 
 (define (del-assq! key alist)
-  (%alist-delete! key alist eq? 'DEL-ASSQ!))
+  (%alist-delete! key alist eq? 'del-assq!))
 
 (define (del-assv! key alist)
-  (%alist-delete! key alist eqv? 'DEL-ASSV!))
+  (%alist-delete! key alist eqv? 'del-assv!))
 
 (define (del-assoc! key alist)
-  (%alist-delete! key alist equal? 'DEL-ASSOC!))
+  (%alist-delete! key alist equal? 'del-assoc!))
 
 (define (alist-delete! key alist #!optional =)
   (let ((= (if (default-object? =) equal? =)))
-    (%alist-delete! key alist = 'ALIST-DELETE!)))
+    (%alist-delete! key alist = 'alist-delete!)))
 
 (define-integrable (%alist-delete! item items = caller)
   (letrec
@@ -1294,7 +1172,7 @@ USA.
 		 (lose)))))
        (lose
 	(lambda ()
-	  (error:not-alist items caller))))
+	  (error:not-a alist? items caller))))
     (trim-initial-segment items)))
 
 ;;;; Keyword lists
@@ -1307,8 +1185,6 @@ USA.
 	     (not (eq? (cdr l1) l2))
 	     (loop (cdr (cdr l1)) (cdr l1)))
 	(null? l1))))
-
-(define-guarantee keyword-list "keyword list")
 
 (define (restricted-keyword-list? object keywords)
   (let loop ((l1 object) (l2 object))
@@ -1337,11 +1213,9 @@ USA.
 	     (not (eq? (cdr l1) l2))
 	     (loop (cdr (cdr l1)) (cdr l1) (cons (car l1) symbols)))
 	(null? l1))))
-
-(define-guarantee unique-keyword-list "unique keyword list")
-
-(define (get-keyword-value klist key)
-  (let ((lose (lambda () (error:not-keyword-list klist 'GET-KEYWORD-VALUE))))
+
+(define (get-keyword-value klist key #!optional default-value)
+  (let ((lose (lambda () (error:not-a keyword-list? klist 'get-keyword-value))))
     (let loop ((klist klist))
       (if (pair? klist)
 	  (begin
@@ -1353,7 +1227,24 @@ USA.
 	  (begin
 	    (if (not (null? klist))
 		(lose))
-	    #!default)))))
+	    default-value)))))
+
+(define (get-keyword-values klist key)
+  (let ((lose
+	 (lambda () (error:not-a keyword-list? klist 'get-keyword-values))))
+    (let loop ((klist klist) (values '()))
+      (if (pair? klist)
+	  (begin
+	    (if (not (pair? (cdr klist)))
+		(lose))
+	    (loop (cdr (cdr klist))
+		  (if (eq? (car klist) key)
+		      (cons (car (cdr klist)) values)
+		      values)))
+	  (begin
+	    (if (not (null? klist))
+		(lose))
+	    (reverse! values))))))
 
 (define (keyword-list->alist klist)
   (let loop ((klist klist))
@@ -1370,20 +1261,64 @@ USA.
 		    (loop (cdr alist))))
 	'())))
 
+(define (keyword-option-parser keyword-option-specs)
+  (guarantee-list-of keyword-option-spec? keyword-option-specs
+		     'keyword-option-parser)
+  (lambda (options caller)
+    (guarantee keyword-list? options caller)
+    (apply values
+	   (map (lambda (spec)
+		  (receive (name predicate get-default)
+		      (keyword-option-spec-parts spec)
+		    (let ((value (get-keyword-value options name)))
+		      (if (default-object? value)
+			  (begin
+			    (if (default-object? get-default)
+				(error (string "Missing required option '"
+					       name
+					       "':")
+				       options))
+			    (get-default))
+			  (guarantee predicate value caller)))))
+		keyword-option-specs))))
+
+(define (keyword-option-spec? object)
+  (and (list? object)
+       (memv (length object) '(2 3))
+       (interned-symbol? (car object))
+       (or (and (unary-procedure? (cadr object))
+		(or (null? (cddr object))
+		    (thunk? (caddr object))))
+	   (and (list-of-type? (cadr object) interned-symbol?)
+		(or (null? (cddr object))
+		    (memq (caddr object) (cadr object))
+		    (thunk? (caddr object)))))))
+
+(define (keyword-option-spec-parts spec)
+  (values (car spec)
+	  (if (pair? (cadr spec))
+	      (lambda (object) (memq object (cadr spec)))
+	      (cadr spec))
+	  (cond ((null? (cddr spec)) (default-object))
+		((interned-symbol? (caddr spec)) (lambda () (caddr spec)))
+		(else (caddr spec)))))
+
 ;;;; Last pair
 
 (define (last list)
   (car (last-pair list)))
 
 (define (last-pair list)
-  (guarantee-pair list 'LAST-PAIR)
+  (if (not (pair? list))
+      (error:not-a pair? list 'last-pair))
   (let loop ((list list))
     (if (pair? (cdr list))
 	(loop (cdr list))
 	list)))
 
 (define (except-last-pair list)
-  (guarantee-pair list 'EXCEPT-LAST-PAIR)
+  (if (not (pair? list))
+      (error:not-a pair? list 'except-last-pair))
   (if (not (pair? (cdr list)))
       '()
       (let ((head (cons (car list) '())))
@@ -1395,7 +1330,8 @@ USA.
 	      head)))))
 
 (define (except-last-pair! list)
-  (guarantee-pair list 'EXCEPT-LAST-PAIR!)
+  (if (not (pair? list))
+      (error:not-a pair? list 'except-last-pair!))
   (if (pair? (cdr list))
       (begin
 	(let loop ((list list))

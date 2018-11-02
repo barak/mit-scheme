@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,47 +29,132 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! pp-description (make-generic-procedure 1 'PP-DESCRIPTION))
-  (set-generic-procedure-default-generator! pp-description
-    (lambda (generic tags)
-      generic tags
-      pp-description/default))
-  (set! forced-indentation (special-printer kernel/forced-indentation))
-  (set! pressured-indentation (special-printer kernel/pressured-indentation))
-  (set! print-procedure (special-printer kernel/print-procedure))
-  (set! print-let-expression (special-printer kernel/print-let-expression))
-  (set! print-case-expression (special-printer kernel/print-case-expression))
-  (set! code-dispatch-list
-	`((COND . ,forced-indentation)
-	  (CASE . ,print-case-expression)
-	  (IF . ,forced-indentation)
-	  (OR . ,forced-indentation)
-	  (AND . ,forced-indentation)
-	  (LET . ,print-let-expression)
-	  (LET* . ,print-let-expression)
-	  (LETREC . ,print-let-expression)
-	  (FLUID-LET . ,print-let-expression)
-	  (DEFINE . ,print-procedure)
-	  (DEFINE-INTEGRABLE . ,print-procedure)
-	  (LAMBDA . ,print-procedure)
-	  (NAMED-LAMBDA . ,print-procedure)))
-  (set! dispatch-list code-dispatch-list)
-  (set! dispatch-default print-combination)
-  (set! cocked-object (generate-uninterned-symbol))
-  unspecific)
+(define param:pp-arity-dispatched-procedure-style)
+(define param:pp-auto-highlighter)
+(define param:pp-avoid-circularity?)
+(define param:pp-default-as-code?)
+(define param:pp-forced-x-size)
+(define param:pp-lists-as-tables?)
+(define param:pp-named-lambda->define?)
+(define param:pp-no-highlights?)
+(define param:pp-primitives-by-name?)
+(define param:pp-save-vertical-space?)
+(define param:pp-uninterned-symbols-by-name?)
 
-(define *pp-named-lambda->define?* #f)
-(define *pp-primitives-by-name* #t)
-(define *pp-uninterned-symbols-by-name* #t)
-(define *pp-no-highlights?* #t)
-(define *pp-save-vertical-space?* #f)
-(define *pp-lists-as-tables?* #t)
-(define *pp-forced-x-size* #f)
-(define *pp-avoid-circularity?* #f)
-(define *pp-default-as-code?* #t)
-(define *pp-auto-highlighter* #f)
+(add-boot-init!
+ (lambda ()
+   ;; Controls the appearance of procedures in the CASE statement used
+   ;; to describe an arity dispatched procedure:
+   ;;  FULL:  full bodies of procedures
+   ;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
+   ;;  SHORT: procedures appear in #[...] syntax
+   (set! param:pp-arity-dispatched-procedure-style
+	 (make-settable-parameter 'full))
+   (set! param:pp-auto-highlighter (make-settable-parameter #f))
+   (set! param:pp-avoid-circularity? (make-settable-parameter #f))
+   (set! param:pp-default-as-code? (make-settable-parameter #t))
+   (set! param:pp-forced-x-size (make-settable-parameter #f))
+   (set! param:pp-lists-as-tables? (make-settable-parameter #t))
+   (set! param:pp-named-lambda->define? (make-settable-parameter #f))
+   (set! param:pp-no-highlights? (make-settable-parameter #t))
+   (set! param:pp-primitives-by-name? (make-settable-parameter #t))
+   (set! param:pp-save-vertical-space? (make-settable-parameter #f))
+   (set! param:pp-uninterned-symbols-by-name? (make-settable-parameter #t))
 
+   (set! x-size (make-unsettable-parameter #f))
+   (set! output-port (make-unsettable-parameter #f))
+   (set! forced-indentation (special-printer kernel/forced-indentation))
+   (set! pressured-indentation (special-printer kernel/pressured-indentation))
+   (set! print-procedure (special-printer kernel/print-procedure))
+   (set! print-let-expression (special-printer kernel/print-let-expression))
+   (set! print-case-expression (special-printer kernel/print-case-expression))
+   (set! code-dispatch-list
+	 (make-unsettable-parameter
+	  `((cond . ,forced-indentation)
+	    (case . ,print-case-expression)
+	    (if . ,forced-indentation)
+	    (or . ,forced-indentation)
+	    (and . ,forced-indentation)
+	    (let . ,print-let-expression)
+	    (let* . ,print-let-expression)
+	    (letrec . ,print-let-expression)
+	    (fluid-let . ,print-let-expression)
+	    (define . ,print-procedure)
+	    (define-integrable . ,print-procedure)
+	    (lambda . ,print-procedure)
+	    (named-lambda . ,print-procedure))))
+   (set! dispatch-list (make-unsettable-parameter (code-dispatch-list)))
+   (set! dispatch-default (make-unsettable-parameter print-combination))
+   (set! cocked-object (generate-uninterned-symbol))
+   unspecific))
+
+(define *pp-arity-dispatched-procedure-style* #!default)
+(define *pp-auto-highlighter* #!default)
+(define *pp-avoid-circularity?* #!default)
+(define *pp-default-as-code?* #!default)
+(define *pp-forced-x-size* #!default)
+(define *pp-lists-as-tables?* #!default)
+(define *pp-named-lambda->define?* #!default)
+(define *pp-no-highlights?* #!default)
+(define *pp-primitives-by-name* #!default)
+(define *pp-save-vertical-space?* #!default)
+(define *pp-uninterned-symbols-by-name* #!default)
+
+(define (get-param:pp-arity-dispatched-procedure-style)
+  (if (default-object? *pp-arity-dispatched-procedure-style*)
+      (param:pp-arity-dispatched-procedure-style)
+      *pp-arity-dispatched-procedure-style*))
+
+(define (get-param:pp-named-lambda->define?)
+  (if (default-object? *pp-named-lambda->define?*)
+      (param:pp-named-lambda->define?)
+      *pp-named-lambda->define?*))
+
+(define (get-param:pp-primitives-by-name?)
+  (if (default-object? *pp-primitives-by-name*)
+      (param:pp-primitives-by-name?)
+      *pp-primitives-by-name*))
+
+(define (get-param:pp-uninterned-symbols-by-name?)
+  (if (default-object? *pp-uninterned-symbols-by-name*)
+      (param:pp-uninterned-symbols-by-name?)
+      *pp-uninterned-symbols-by-name*))
+
+(define (get-param:pp-no-highlights?)
+  (if (default-object? *pp-no-highlights?*)
+      (param:pp-no-highlights?)
+      *pp-no-highlights?*))
+
+(define (get-param:pp-save-vertical-space?)
+  (if (default-object? *pp-save-vertical-space?*)
+      (param:pp-save-vertical-space?)
+      *pp-save-vertical-space?*))
+
+(define (get-param:pp-lists-as-tables?)
+  (if (default-object? *pp-lists-as-tables?*)
+      (param:pp-lists-as-tables?)
+      *pp-lists-as-tables?*))
+
+(define (get-param:pp-forced-x-size)
+  (if (default-object? *pp-forced-x-size*)
+      (param:pp-forced-x-size)
+      *pp-forced-x-size*))
+
+(define (get-param:pp-avoid-circularity?)
+  (if (default-object? *pp-avoid-circularity?*)
+      (param:pp-avoid-circularity?)
+      *pp-avoid-circularity?*))
+
+(define (get-param:pp-default-as-code?)
+  (if (default-object? *pp-default-as-code?*)
+      (param:pp-default-as-code?)
+      *pp-default-as-code?*))
+
+(define (get-param:pp-auto-highlighter)
+  (if (default-object? *pp-auto-highlighter*)
+      (param:pp-auto-highlighter)
+      *pp-auto-highlighter*))
+
 (define (pp object #!optional port . rest)
   (let ((port (if (default-object? port) (current-output-port) port)))
     (let ((pretty-print
@@ -88,36 +173,38 @@ USA.
 	     (pretty-print object))))))
 
 (define pp-description)
+(add-boot-init!
+ (lambda ()
+   (set! pp-description
+	 (standard-predicate-dispatcher 'pp-description 1))
 
-(define (pp-description/default object)
-  (cond ((named-structure? object)
-	 (named-structure/description object))
-	((%record? object)		; unnamed record
-	 (let loop ((i (- (%record-length object) 1)) (d '()))
-	   (if (< i 0)
-	       d
-	       (loop (- i 1)
-		     (cons (list i (%record-ref object i)) d)))))
-	((weak-pair? object)
-	 `((WEAK-CAR ,(weak-car object))
-	   (WEAK-CDR ,(weak-cdr object))))
-	((cell? object)
-	 `((CONTENTS ,(cell-contents object))))
-	(else
-	 #f)))
+   (define-predicate-dispatch-default-handler pp-description
+     (lambda (object)
+       (declare (ignore object))
+       #f))
+
+   (set! define-pp-describer
+	 (named-lambda (define-pp-describer predicate describer)
+	   (define-predicate-dispatch-handler pp-description
+	     (list predicate)
+	     describer)))
+
+   (run-deferred-boot-actions 'pp-describers)
+
+   (define-pp-describer weak-pair?
+     (lambda (wp)
+       `((weak-car ,(weak-car wp))
+	 (weak-cdr ,(weak-cdr wp)))))
+
+   (define-pp-describer cell?
+     (lambda (cell)
+       `((contents ,(cell-contents cell)))))))
 
-;;; Controls the appearance of procedures in the CASE statement used
-;;; to describe an arity dispatched procedure:
-;;;  FULL:  full bodies of procedures
-;;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
-;;;  SHORT: procedures appear in #[...] unparser syntax
-(define *pp-arity-dispatched-procedure-style* 'FULL)
-
 (define (unsyntax-entity object)
   (define (unsyntax-entry procedure)
-    (case *pp-arity-dispatched-procedure-style*
-      ((FULL)  (unsyntax-entity procedure))
-      ((NAMED)
+    (case (get-param:pp-arity-dispatched-procedure-style)
+      ((full)  (unsyntax-entity procedure))
+      ((named)
        (let ((text (unsyntax-entity procedure)))
 	 (if (and (pair? text)
 		  (eq? (car text) 'named-lambda)
@@ -125,7 +212,7 @@ USA.
 		  (pair? (cadr text)))
 	     (caadr text)
 	     text)))
-      ((SHORT) procedure)
+      ((short) procedure)
       (else procedure)))
   (cond ((arity-dispatched-procedure? object)
 	 (let* ((default  (entity-procedure  object))
@@ -140,9 +227,9 @@ USA.
 				(cdr cases)))
 			 (else
 			  (loop (+ i 1) tests (cdr cases)))))))
-	   `(CASE NUMBER-OF-ARGUMENTS
+	   `(case number-of-arguments
 	      ,@cases*
-	      (ELSE
+	      (else
 	       ,(unsyntax-entry default)))))
 	((and (procedure? object) (procedure-lambda object))
 	 => unsyntax)
@@ -152,7 +239,7 @@ USA.
 (define (pretty-print object #!optional port as-code? indentation)
   (let ((as-code?
 	 (if (default-object? as-code?)
-	     (let ((default *pp-default-as-code?*))
+	     (let ((default (get-param:pp-default-as-code?)))
 	       (if (boolean? default)
 		   default
 		   (not (scode-constant? object))))
@@ -163,13 +250,14 @@ USA.
 			     (unsyntax object))))
 		    (if (and as-code?
 			     (pair? sexp)
-			     (eq? (car sexp) 'NAMED-LAMBDA)
-			     *pp-named-lambda->define?*)
-			(if (and (eq? 'LAMBDA *pp-named-lambda->define?*)
+			     (eq? (car sexp) 'named-lambda)
+			     (get-param:pp-named-lambda->define?))
+			(if (and (eq? 'lambda
+				      (get-param:pp-named-lambda->define?))
 				 (pair? (cdr sexp))
 				 (pair? (cadr sexp)))
-			    `(LAMBDA ,(cdadr sexp) ,@(cddr sexp))
-			    `(DEFINE ,@(cdr sexp)))
+			    `(lambda ,(cdadr sexp) ,@(cddr sexp))
+			    `(define ,@(cdr sexp)))
 			sexp))
 		  (if (default-object? port) (current-output-port) port)
 		  as-code?
@@ -188,16 +276,16 @@ USA.
   (object #f read-only #t)
   (start-string "*=>" read-only #t)
   (end-string   "<=*" read-only #t)
-  (as-code? 'DEFAULT read-only #t)
-  (depth-limit 'DEFAULT read-only #t)
-  (breadth-limit 'DEFAULT read-only #t))
+  (as-code? 'default read-only #t)
+  (depth-limit 'default read-only #t)
+  (breadth-limit 'default read-only #t))
 
 (define (with-highlight-strings-printed pph thunk)
   (let ((print-string
 	 (lambda (s)
 	   (if (string? s)
-	       (*unparse-string s)
-	       (s output-port)))))
+	       (*print-string s)
+	       (s (output-port))))))
     (print-string (pph/start-string pph))
     (thunk)
     (print-string (pph/end-string pph))))
@@ -215,20 +303,23 @@ USA.
 	0)))
 
 (define (pp-top-level expression port as-code? indentation list-depth)
-  (fluid-let ((x-size (- (or *pp-forced-x-size* (output-port/x-size port)) 1))
-	      (output-port port)
-	      (*unparse-uninterned-symbols-by-name?*
-	       *pp-uninterned-symbols-by-name*)
-	      (*unparse-abbreviate-quotations?*
-	       (or as-code?
-		   *unparse-abbreviate-quotations?*)))
+  (parameterize ((x-size
+		  (- (or (get-param:pp-forced-x-size)
+			 (output-port/x-size port))
+		     1))
+		 (output-port port)
+		 (param:print-uninterned-symbols-by-name?
+		  (get-param:pp-uninterned-symbols-by-name?))
+		 (param:printer-abbreviate-quotations?
+		  (or as-code?
+		      (param:printer-abbreviate-quotations?))))
     (let* ((numerical-walk
-	    (if *pp-avoid-circularity?*
+	    (if (get-param:pp-avoid-circularity?)
 		numerical-walk-avoid-circularities
 		numerical-walk))
 	   (node (numerical-walk expression list-depth)))
       (if (positive? indentation)
-	  (*unparse-string (make-string indentation #\space)))
+	  (*print-string (make-string indentation #\space)))
       (if as-code?
 	  (print-node node indentation list-depth)
 	  (print-non-code-node node indentation list-depth))
@@ -237,58 +328,58 @@ USA.
 (define x-size)
 (define output-port)
 
-(define-integrable (*unparse-char char)
-  (output-port/write-char output-port char))
+(define-integrable (*print-char char)
+  (output-port/write-char (output-port) char))
 
-(define-integrable (*unparse-string string)
-  (output-port/write-string output-port string))
+(define-integrable (*print-string string)
+  (output-port/write-string (output-port) string))
 
-(define-integrable (*unparse-open)
-  (*unparse-char #\())
+(define-integrable (*print-open)
+  (*print-char #\())
 
-(define-integrable (*unparse-close)
-  (*unparse-char #\)))
+(define-integrable (*print-close)
+  (*print-char #\)))
 
-(define-integrable (*unparse-space)
-  (*unparse-char #\space))
+(define-integrable (*print-space)
+  (*print-char #\space))
 
-(define-integrable (*unparse-newline)
-  (*unparse-char #\newline))
+(define-integrable (*print-newline)
+  (*print-char #\newline))
 
 (define (print-non-code-node node column depth)
-  (fluid-let ((dispatch-list '())
-	      (dispatch-default
-	       (if *pp-lists-as-tables?*
-		   print-data-table
-		   print-data-column)))
+  (parameterize ((dispatch-list '())
+		 (dispatch-default
+		  (if (get-param:pp-lists-as-tables?)
+		      print-data-table
+		      print-data-column)))
     (print-node node column depth)))
 
 (define (print-code-node node column depth)
-  (fluid-let ((dispatch-list code-dispatch-list)
-	      (dispatch-default print-combination))
+  (parameterize ((dispatch-list (code-dispatch-list))
+		 (dispatch-default print-combination))
     (print-node node column depth)))
 
 (define (print-data-column nodes column depth)
-  (*unparse-open)
+  (*print-open)
   (print-column nodes (+ column 1) (+ depth 1))
-  (*unparse-close))
+  (*print-close))
 
 (define (print-data-table nodes column depth)
-  (*unparse-open)
+  (*print-open)
   (maybe-print-table nodes (+ column 1) (+ depth 1))
-  (*unparse-close))
+  (*print-close))
 
 (define (print-node node column depth)
   (cond ((list-node? node)
 	 (print-list-node node column depth))
 	((symbol? node)
-	 (*unparse-symbol node))
+	 (*print-symbol node))
 	((prefix-node? node)
-	 (*unparse-string (prefix-node-prefix node))
+	 (*print-string (prefix-node-prefix node))
 	 (let ((new-column
 		(+ column (string-length (prefix-node-prefix node))))
 	       (subnode (prefix-node-subnode node)))
-	   (if (null? dispatch-list)
+	   (if (null? (dispatch-list))
 	       (print-node subnode new-column depth)
 	       (print-non-code-node subnode new-column depth))))
 	((highlighted-node? node)
@@ -297,8 +388,8 @@ USA.
 	     (lambda ()
 	       (let ((handler
 		      (let ((as-code? (pph/as-code? highlight))
-			    (currently-as-code? (not (null? dispatch-list))))
-			(cond ((or (eq? as-code? 'DEFAULT)
+			    (currently-as-code? (not (null? (dispatch-list)))))
+			(cond ((or (eq? as-code? 'default)
 				   (eq? as-code? currently-as-code?))
 			       print-node)
 			      (as-code?
@@ -309,48 +400,54 @@ USA.
 			  (+ column (pph/start-string-length highlight))
 			  (+ depth (pph/end-string-length highlight))))))))
 	(else
-	 (*unparse-string node))))
+	 (*print-string node))))
 
 (define (print-list-node node column depth)
-  (if (and *pp-save-vertical-space?*
+  (if (and (get-param:pp-save-vertical-space?)
 	   (fits-within? node column depth))
       (print-guaranteed-list-node node)
       (let* ((subnodes (node-subnodes node))
 	     (association
 	      (and (not (null? (cdr subnodes)))
-		   (assq (unhighlight (car subnodes)) dispatch-list))))
+		   (let ((first (unhighlight (car subnodes))))
+		     (and (symbol? first)
+			  (assq (if (string-prefix? "define-"
+						    (symbol->string first))
+				    'define
+				    first)
+				(dispatch-list)))))))
 	(if (and (not association)
 		 (fits-within? node column depth))
 	    (print-guaranteed-list-node node)
 	    ((if association
 		 (cdr association)
-		 dispatch-default)
+		 (dispatch-default))
 	     subnodes column depth)))))
 
 (define (print-guaranteed-node node)
   (cond ((list-node? node)
 	 (print-guaranteed-list-node node))
 	((symbol? node)
-	 (*unparse-symbol node))
+	 (*print-symbol node))
 	((highlighted-node? node)
 	 (with-highlight-strings-printed (highlighted-node/highlight node)
 	   (lambda ()
 	     (print-guaranteed-node (highlighted-node/subnode node)))))
 	((prefix-node? node)
-	 (*unparse-string (prefix-node-prefix node))
+	 (*print-string (prefix-node-prefix node))
 	 (print-guaranteed-node (prefix-node-subnode node)))
 	(else
-	 (*unparse-string node))))
+	 (*print-string node))))
 
 (define (print-guaranteed-list-node node)
-  (*unparse-open)
+  (*print-open)
   (let loop ((nodes (node-subnodes node)))
     (print-guaranteed-node (car nodes))
     (if (not (null? (cdr nodes)))
 	(begin
-	  (*unparse-space)
+	  (*print-space)
 	  (loop (cdr nodes)))))
-  (*unparse-close))
+  (*print-close))
 
 (define (print-column nodes column depth)
   (let loop ((nodes nodes))
@@ -390,7 +487,7 @@ USA.
   (define (default)
     (print-column nodes column depth))
 
-  (let* ((available-space (- x-size column))
+  (let* ((available-space (- (x-size) column))
 	 (n-nodes (length nodes))
 	 (max-cols (quotient (+ n-nodes 1) 2)))
 
@@ -468,34 +565,34 @@ USA.
 ;;;; Printers
 
 (define (print-combination nodes column depth)
-  (*unparse-open)
+  (*print-open)
   (let ((column (+ column 1))
 	(depth (+ depth 1)))
     (cond ((null? (cdr nodes))
 	   (print-node (car nodes) column depth))
 	  ((two-on-first-line? nodes column depth)
 	   (print-guaranteed-node (car nodes))
-	   (*unparse-space)
+	   (*print-space)
 	   (print-guaranteed-column (cdr nodes)
 				    (+ column 1 (node-size (car nodes)))))
 	  (else
 	   (print-column nodes column depth))))
-  (*unparse-close))
+  (*print-close))
 
 (define dispatch-list)
 (define dispatch-default)
 (define code-dispatch-list)
 
 (define ((special-printer procedure) nodes column depth)
-  (*unparse-open)
-  (print-guaranteed-node (car nodes))	;(*unparse-symbol (car nodes))
-  (*unparse-space)
+  (*print-open)
+  (print-guaranteed-node (car nodes))	;(*print-symbol (car nodes))
+  (*print-space)
   (if (not (null? (cdr nodes)))
       (procedure (cdr nodes)
 		 (+ column 2 (node-size (car nodes)))
 		 (+ column 2)
 		 (+ depth 1)))
-  (*unparse-close))
+  (*print-close))
 
 ;;; Force the indentation to be an optimistic column.
 
@@ -551,22 +648,22 @@ USA.
 	   (print-node (car nodes) optimistic depth))
 	  ((symbol? (car nodes))
 	   ;; named let
-	   (*unparse-symbol (car nodes))
+	   (*print-symbol (car nodes))
 	   (let ((new-optimistic
 		  (+ optimistic (+ 1 (symbol-length (car nodes))))))
 	     (cond ((fits-within? (cadr nodes) new-optimistic 0)
-		    (*unparse-space)
+		    (*print-space)
 		    (print-guaranteed-node (cadr nodes))
 		    (print-body (cddr nodes)))
 		   ((and (list-node? (cadr nodes))
 			 (fits-as-column? (node-subnodes (cadr nodes))
 					  (+ new-optimistic 2)
 					  0))
-		    (*unparse-space)
-		    (*unparse-open)
+		    (*print-space)
+		    (*print-open)
 		    (print-guaranteed-column (node-subnodes (cadr nodes))
 					     (+ new-optimistic 1))
-		    (*unparse-close)
+		    (*print-close)
 		    (print-body (cddr nodes)))
 		   (else
 		    (tab-to optimistic)
@@ -597,7 +694,7 @@ USA.
 ;;;; Alignment
 
 (define-integrable (fits-within? node column depth)
-  (> (- x-size depth)
+  (> (- (x-size) depth)
      (+ column (node-size node))))
 
 ;;; Fits if each node fits when stacked vertically at the given column.
@@ -606,7 +703,7 @@ USA.
   (let loop ((nodes nodes))
     (if (null? (cdr nodes))
 	(fits-within? (car nodes) column depth)
-	(and (> x-size
+	(and (> (x-size)
 		(+ column (node-size (car nodes))))
 	     (loop (cdr nodes))))))
 
@@ -615,37 +712,35 @@ USA.
 
 (define (two-on-first-line? nodes column depth)
   (let ((column (+ column (+ 1 (node-size (car nodes))))))
-    (and (> x-size column)
+    (and (> (x-size) column)
 	 (fits-as-column? (cdr nodes) column depth))))
 
 ;;; Starts a new line with the specified indentation.
 
 (define (tab-to column)
-  (*unparse-newline)
+  (*print-newline)
   (pad-with-spaces column))
 
 (define-integrable (pad-with-spaces n-spaces)
-  (*unparse-string (make-string n-spaces #\space)))
+  (*print-string (make-string n-spaces #\space)))
 
 ;;;; Numerical Walk
 
 (define (numerical-walk object list-depth)
   (define (numerical-walk-no-auto-highlight object list-depth)
-    (cond ((pair? object)
-	   (let ((prefix (unparse-list/prefix-pair? object)))
+    (cond ((and (pair? object)
+		(not (named-list? object)))
+	   (let ((prefix (prefix-pair? object)))
 	     (if prefix
 		 (make-prefix-node prefix
 				   (numerical-walk (cadr object)
 						   list-depth))
-		 (let ((unparser (unparse-list/unparser object)))
-		   (if unparser
-		       (walk-custom unparser object list-depth)
-		       (walk-pair object list-depth))))))
+		 (walk-pair object list-depth))))
 	  ((symbol? object)
-	   (if (or *pp-uninterned-symbols-by-name*
+	   (if (or (get-param:pp-uninterned-symbols-by-name?)
 		   (interned-symbol? object))
 	       object
-	       (walk-custom unparse-object object list-depth)))
+	       (walk-custom object list-depth)))
 	  ((pretty-printer-highlight? object)
 	   ;; (1) see note below.
 	   (let ((rest (walk-highlighted-object
@@ -656,21 +751,19 @@ USA.
 				       (node-size rest))
 				    object
 				    rest)))
-	  ((vector? object)
+	  ((and (vector? object)
+		(not (named-vector? object)))
 	   (if (zero? (vector-length object))
-	       (walk-custom unparse-object object list-depth)
-	       (let ((unparser (unparse-vector/unparser object)))
-		 (if unparser
-		     (walk-custom unparser object list-depth)
-		     (make-prefix-node "#"
-				       (walk-pair (vector->list object)
-						  list-depth))))))
+	       (walk-custom object list-depth)
+	       (make-prefix-node "#"
+				 (walk-pair (vector->list object)
+					    list-depth))))
 	  ((primitive-procedure? object)
-	   (if *pp-primitives-by-name*
+	   (if (get-param:pp-primitives-by-name?)
 	       (primitive-procedure-name object)
-	       (walk-custom unparse-object object list-depth)))
+	       (walk-custom object list-depth)))
 	  (else
-	   (walk-custom unparse-object object list-depth))))
+	   (walk-custom object list-depth))))
 
   ;; We do the following test first and the test above at (1) for a
   ;; PRETTY-PRINTER-HIGHLIGHT because the highlighted object may
@@ -679,33 +772,32 @@ USA.
   ;; otherwise we would get infinite recursion when the `unwrapped'
   ;; object REST is re-auto-highlighted by the test below.
 
-  (cond ((and *pp-auto-highlighter*
-	      (not (pretty-printer-highlight? object))
-	      (*pp-auto-highlighter* object))
+  (cond ((let ((highlighter (get-param:pp-auto-highlighter)))
+	   (and highlighter
+		(not (pretty-printer-highlight? object))
+		(highlighter object)))
 	 => (lambda (highlighted)
 	      (numerical-walk-no-auto-highlight highlighted list-depth)))
 	(else
 	 (numerical-walk-no-auto-highlight object list-depth))))
 
-(define (walk-custom unparser object list-depth)
+(define (walk-custom object list-depth)
   (call-with-output-string
-   (lambda (port)
-     (unparser (make-unparser-state port
-				    list-depth
-				    #t
-				    (nearest-repl/environment))
-	       object))))
+    (lambda (port)
+      (print-for-pp object port list-depth))))
 
 (define (walk-pair pair list-depth)
-  (if (and *unparser-list-depth-limit*
-	   (>= list-depth *unparser-list-depth-limit*)
-	   (no-highlights? pair))
+  (if (let ((limit (get-param:printer-list-depth-limit)))
+	(and limit
+	     (>= list-depth limit)
+	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0))
-	  (cond ((and *unparser-list-breadth-limit*
-		      (>= list-breadth *unparser-list-breadth-limit*)
-		      (no-highlights? pair))
+	  (cond ((let ((limit (get-param:printer-list-breadth-limit)))
+		   (and limit
+			(>= list-breadth limit)
+			(no-highlights? pair)))
 		 (make-singleton-list-node "..."))
 		((null? (cdr pair))
 		 (make-singleton-list-node
@@ -714,22 +806,22 @@ USA.
 		 (make-list-node
 		  (numerical-walk (car pair) list-depth)
 		  (let ((list-breadth (+ list-breadth 1)))
-		    (if (and (pair? (cdr pair))
-			     (not (unparse-list/unparser (cdr pair))))
+		    (if (pair? (cdr pair))
 			(loop (cdr pair) list-breadth)
 			(make-list-node
 			 "."
 			 (make-singleton-list-node
-			  (if (and *unparser-list-breadth-limit*
-				   (>= list-breadth
-				       *unparser-list-breadth-limit*)
-				   (no-highlights? pair))
+			  (if (let ((limit
+				     (get-param:printer-list-breadth-limit)))
+				(and limit
+				     (>= list-breadth limit)
+				     (no-highlights? pair)))
 			      "..."
 			      (numerical-walk (cdr pair)
 					      list-depth)))))))))))))
 
 (define-integrable (no-highlights? object)
-  (or *pp-no-highlights?*
+  (or (get-param:pp-no-highlights?)
       (not (partially-highlighted? object))))
 
 (define (partially-highlighted? object)
@@ -745,17 +837,17 @@ USA.
 
 (define (walk-highlighted-object object list-depth numerical-walk)
   (let ((dl (pph/depth-limit object)))
-    (fluid-let ((*unparser-list-breadth-limit*
-		 (let ((bl (pph/breadth-limit object)))
-		   (if (eq? bl 'DEFAULT)
-		       *unparser-list-breadth-limit*
-		       bl)))
-		(*unparser-list-depth-limit*
-		 (if (eq? dl 'DEFAULT)
-		     *unparser-list-depth-limit*
-		     dl)))
+    (parameterize ((param:printer-list-breadth-limit
+		    (let ((bl (pph/breadth-limit object)))
+		      (if (eq? bl 'default)
+			  (param:printer-list-breadth-limit)
+			  bl)))
+		   (param:printer-list-depth-limit
+		    (if (eq? dl 'default)
+			(param:printer-list-depth-limit)
+			dl)))
       (numerical-walk (pph/object object)
-		      (if (eq? dl 'DEFAULT)
+		      (if (eq? dl 'default)
 			  list-depth
 			  0)))))
 
@@ -789,24 +881,21 @@ USA.
   (define queue (cdr half-pointer/queue))
   (define half-pointer (car half-pointer/queue))
   (cond ((pair? object)
-	 (let ((prefix (unparse-list/prefix-pair? object)))
+	 (let ((prefix (prefix-pair? object)))
 	   (if prefix
 	       (make-prefix-node
 		prefix
 		(numerical-walk-terminating
 		 (cadr object)
-		 (advance half-pointer (update-queue queue '(CDR CAR)))
+		 (advance half-pointer (update-queue queue '(cdr car)))
 		 list-depth))
-	       (let ((unparser (unparse-list/unparser object)))
-		 (if unparser
-		     (walk-custom unparser object list-depth)
-		     (walk-pair-terminating object half-pointer/queue
-					    list-depth))))))
+	       (walk-pair-terminating object half-pointer/queue
+				      list-depth))))
 	((symbol? object)
-	 (if (or *pp-uninterned-symbols-by-name*
+	 (if (or (get-param:pp-uninterned-symbols-by-name?)
 		 (interned-symbol? object))
 	     object
-	     (walk-custom unparse-object object list-depth)))
+	     (walk-custom object list-depth)))
 	((pretty-printer-highlight? object)
 	 (let ((rest (walk-highlighted-object object list-depth)))
 	   (make-highlighted-node (+ (pph/start-string-length object)
@@ -816,42 +905,41 @@ USA.
 				  rest)))
 	((vector? object)
 	 (if (zero? (vector-length object))
-	     (walk-custom unparse-object object list-depth)
-	     (let ((unparser (unparse-vector/unparser object)))
-	       (if unparser
-		   (walk-custom unparser object list-depth)
-		   (make-prefix-node
-		    "#"
-		    (walk-vector-terminating
-		     (vector->list object)
-		     half-pointer/queue list-depth))))))
+	     (walk-custom object list-depth)
+	     (make-prefix-node
+	      "#"
+	      (walk-vector-terminating
+	       (vector->list object)
+	       half-pointer/queue list-depth))))
 	((primitive-procedure? object)
-	 (if *pp-primitives-by-name*
+	 (if (get-param:pp-primitives-by-name?)
 	     (primitive-procedure-name object)
-	     (walk-custom unparse-object object list-depth)))
+	     (walk-custom object list-depth)))
 	(else
-	 (walk-custom unparse-object object list-depth))))
+	 (walk-custom object list-depth))))
 
 ;;; The following two procedures walk lists and vectors, respectively.
 
 (define (walk-pair-terminating pair half-pointer/queue list-depth)
-	(if (and *unparser-list-depth-limit*
-	   (>= list-depth *unparser-list-depth-limit*)
-	   (no-highlights? pair))
+  (if (let ((limit (get-param:printer-list-depth-limit)))
+	(and limit
+	     (>= list-depth limit)
+	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0)
 			       (half-pointer/queue half-pointer/queue))
-	  (cond ((and *unparser-list-breadth-limit*
-		      (>= list-breadth *unparser-list-breadth-limit*)
-		      (no-highlights? pair))
+	  (cond ((let ((limit (get-param:printer-list-breadth-limit)))
+		   (and limit
+			(>= list-breadth limit)
+			(no-highlights? pair)))
 		 (make-singleton-list-node "..."))
 		((null? (cdr pair))
 		 (make-singleton-list-node
 		  (let ((half-pointer/queue
 			 (advance
 			  (car half-pointer/queue)
-			  (update-queue (cdr half-pointer/queue) '(CAR)))))
+			  (update-queue (cdr half-pointer/queue) '(car)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
 			(numerical-walk-terminating
@@ -861,19 +949,18 @@ USA.
 		  (let ((half-pointer/queue
 			 (advance
 			  (car half-pointer/queue)
-			  (update-queue (cdr half-pointer/queue) '(CAR)))))
+			  (update-queue (cdr half-pointer/queue) '(car)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
 			(numerical-walk-terminating
 			 (car pair) half-pointer/queue list-depth)))
 		  (let ((list-breadth (+ list-breadth 1)))
 		    (if
-		     (and (pair? (cdr pair))
-			  (not (unparse-list/unparser (cdr pair))))
+		     (pair? (cdr pair))
 		     (let ((half-pointer/queue
 			    (advance
 			     (car half-pointer/queue)
-			     (update-queue (cdr half-pointer/queue) '(CDR)))))
+			     (update-queue (cdr half-pointer/queue) '(cdr)))))
 		       (if (eq? (car half-pointer/queue) (cdr pair))
 			   (make-singleton-list-node
 			    (string-append
@@ -884,16 +971,16 @@ USA.
 		      "."
 		      (make-singleton-list-node
 		       (if
-			(and *unparser-list-breadth-limit*
-			     (>= list-breadth
-				 *unparser-list-breadth-limit*)
-			     (no-highlights? pair))
+			(let ((limit (get-param:printer-list-breadth-limit)))
+			  (and limit
+			       (>= list-breadth limit)
+			       (no-highlights? pair)))
 			"..."
 			(let ((half-pointer/queue
 			       (advance
 				(car half-pointer/queue)
 				(update-queue
-				 (cdr half-pointer/queue) '(CDR)))))
+				 (cdr half-pointer/queue) '(cdr)))))
 			  (if (eq? (car half-pointer/queue) (cdr pair))
 			      (circularity-string (cdr half-pointer/queue))
 			      (numerical-walk-terminating
@@ -901,15 +988,17 @@ USA.
 			       half-pointer/queue list-depth)))))))))))))))
 
 (define (walk-vector-terminating pair half-pointer/queue list-depth)
-  (if (and *unparser-list-depth-limit*
-	   (>= list-depth *unparser-list-depth-limit*)
-	   (no-highlights? pair))
+  (if (let ((limit (get-param:printer-list-depth-limit)))
+	(and limit
+	     (>= list-depth limit)
+	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0))
-	  (cond ((and *unparser-list-breadth-limit*
-		      (>= list-breadth *unparser-list-breadth-limit*)
-		      (no-highlights? pair))
+	  (cond ((let ((limit (get-param:printer-list-breadth-limit)))
+		   (and limit
+			(>= list-breadth limit)
+			(no-highlights? pair)))
 		 (make-singleton-list-node "..."))
 		((null? (cdr pair))
 		 (make-singleton-list-node
@@ -932,20 +1021,7 @@ USA.
 			(circularity-string (cdr half-pointer/queue))
 			(numerical-walk-terminating
 			 (car pair) half-pointer/queue list-depth)))
-		  (let ((list-breadth (+ list-breadth 1)))
-		    (if (not (unparse-list/unparser (cdr pair)))
-			(loop (cdr pair) list-breadth)
-			(make-list-node
-			 "."
-			 (make-singleton-list-node
-			  (if (and *unparser-list-breadth-limit*
-				   (>= list-breadth
-				       *unparser-list-breadth-limit*)
-				   (no-highlights? pair))
-			      "..."
-			      (numerical-walk-terminating
-			       (cdr pair)
-			       half-pointer/queue list-depth)))))))))))))
+		  (loop (cdr pair) (+ list-breadth 1)))))))))
 
 ;;;; These procedures allow the walkers to interact with the queue.
 
@@ -971,9 +1047,9 @@ USA.
 (define (update-queue queue command-list)
   (define (uq-iter queue command-list)
     (cond ((null? command-list) queue)
-	  ((eq? (car command-list) 'CAR)
+	  ((eq? (car command-list) 'car)
 	   (uq-iter (add-car queue) (cdr command-list)))
-	  ((eq? (car command-list) 'CDR)
+	  ((eq? (car command-list) 'cdr)
 	   (uq-iter (add-cdr queue) (cdr command-list)))
 	  (else
 	   (uq-iter (add-vector-ref (car command-list) queue)
@@ -998,7 +1074,7 @@ USA.
 		   (constructor
 		    make-queue
 		    (#!optional cons-cell past-cdrs)))
-  (cons-cell (let* ((new-vector (make-fluid-vector))
+  (cons-cell (let* ((new-vector (make-parameter-vector))
 		    (pointer (cons 0 new-vector)))
 	       (cons pointer pointer)))
   (past-cdrs 0))
@@ -1011,7 +1087,7 @@ USA.
 (define virtual-fluid-vector-length (-1+ default-fluid-vector-length))
 
 (define (fluid-vector-extend fluid-vector)
-  (define new-fluid-vector (make-fluid-vector))
+  (define new-fluid-vector (make-parameter-vector))
   (vector-set! fluid-vector virtual-fluid-vector-length new-fluid-vector)
   new-fluid-vector)
 
@@ -1021,7 +1097,7 @@ USA.
       (vector-set! fluid-vector index object)
       (fluid-vector-set! tail (- index virtual-fluid-vector-length) object)))
 
-(define (make-fluid-vector)
+(define (make-parameter-vector)
   (make-vector default-fluid-vector-length #f))
 
 ;;; The actual queue constructors/extractors
@@ -1110,7 +1186,8 @@ USA.
 	   ((= cdrs 1) ", downstream 1 cdr.)]")
 	   (else
 	    (string-append ", downstream "
-			   (number->string cdrs) " cdrs.)]"))))))
+			   (number->string cdrs)
+			   " cdrs.)]"))))))
 
 
 ;;;; Node Model
@@ -1127,8 +1204,8 @@ USA.
      (lambda (port)
        (write symbol port)))))
 
-(define (*unparse-symbol symbol)
-  (write symbol output-port))
+(define (*print-symbol symbol)
+  (write symbol (output-port)))
 
 (define-structure (prefix-node
 		   (conc-name prefix-node-)

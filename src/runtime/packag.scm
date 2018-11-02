@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -65,20 +65,25 @@ USA.
 (define (package-name? object)
   (list-of-type? object symbol?))
 
+(define (package-name=? name1 name2)
+  (or (and (null? name1) (null? name2))
+      (and (pair? name1)
+	   (pair? name2)
+	   (eq? (car name1) (car name2))
+	   (package-name=? (cdr name1) (cdr name2)))))
+
 (define (package/reference package name)
   (lexical-reference (package/environment package) name))
 
 (define (finalize-package-record-type!)
   (let ((rtd
-	 (make-record-type "package" '(PARENT CHILDREN NAME ENVIRONMENT))))
-    (let ((tag (record-type-dispatch-tag rtd)))
-      (set! package-tag tag)
-      (for-each (lambda (p) (%record-set! p 0 tag)) *packages*))
-    (set-record-type-unparser-method! rtd
-      (standard-unparser-method 'PACKAGE
-	(lambda (package port)
-	  (write-char #\space port)
-	  (write (package/name package) port))))))
+	 (make-record-type "package" '(parent children name environment))))
+    (set! package-tag rtd)
+    (for-each (lambda (p) (%record-set! p 0 rtd)) *packages*)
+    (define-print-method (record-predicate rtd)
+      (standard-print-method 'package
+	(lambda (package)
+	  (list (package/name package)))))))
 
 (define (name->package name)
   (find-package name #f))
@@ -101,23 +106,17 @@ USA.
 	      package))))
 
 (define-integrable package-name-tag
-  ((ucode-primitive string->symbol) "#[(package)package-name-tag]"))
+  '|#[(package)package-name-tag]|)
 
 (define (find-package name #!optional error?)
   (let package-loop ((packages *packages*))
-    (if (null? packages)
-	(if error?
-	    (error "Unable to find package:" name)
-	    #f)
-	(if (let name-loop ((name1 name)
-			    (name2 (package/name (car packages))))
-	      (cond ((and (null? name1) (null? name2)) #t)
-		    ((or (null? name1) (null? name2)) #f)
-		    ((eq? (car name1) (car name2))
-		     (name-loop (cdr name1) (cdr name2)))
-		    (else #f)))
+    (if (pair? packages)
+	(if (package-name=? name (package/name (car packages)))
 	    (car packages)
-	    (package-loop (cdr packages))))))
+	    (package-loop (cdr packages)))
+	(begin
+	  (if error? (error "Unable to find package:" name))
+	  #f))))
 
 (define (name-append name package)
   (let loop ((names (package/name package)))
@@ -154,7 +153,7 @@ USA.
     (let ((dir (directory-pathname pathname))
 	  (pkg (package-set-pathname pathname os-type))
 	  (options
-	   (cons (cons 'OS-TYPE os-type)
+	   (cons (cons 'os-type os-type)
 		 (if (default-object? options) '() options))))
       (with-working-directory-pathname dir
 	(lambda ()
@@ -163,10 +162,10 @@ USA.
 		(error "Malformed package-description file:" pkg))
 	    (construct-packages-from-file file)
 	    (let ((alternate-loader
-		   (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
+		   (lookup-option 'alternate-package-loader options))
 		  (load-component
 		   (lambda (name environment)
-		     (load name environment 'DEFAULT #t))))
+		     (load name environment 'default #t))))
 	      (if alternate-loader
 		  (alternate-loader load-component options)
 		  (begin
@@ -195,13 +194,7 @@ USA.
 					 ""))
 				   "")))
 			 "-"
-			 (case (if (default-object? os-type)
-				   microcode-id/operating-system
-				   os-type)
-			   ((NT) "w32")
-			   ((OS/2) "os2")
-			   ((UNIX) "unx")
-			   (else "unk"))))
+			 (microcode-id/operating-system-suffix os-type)))
      "pkd")))
 
 (define-integrable (make-package-file tag version descriptions loads)
@@ -235,7 +228,7 @@ USA.
 (define (package-file? object)
   (and (vector? object)
        (fix:= (vector-length object) 4)
-       (eq? (package-file/tag object) 'PACKAGE-DESCRIPTIONS)
+       (eq? (package-file/tag object) 'package-descriptions)
        (and (index-fixnum? (package-file/version object))
 	    (fix:= (package-file/version object) 2))
        (vector-of-type? (package-file/descriptions object)
@@ -262,6 +255,12 @@ USA.
 	      (and (symbol? (vector-ref object 0))
 		   (package-name? (vector-ref object 1))
 		   (symbol? (vector-ref object 2))))
+	     ((fix:= (vector-length object) 4)
+	      (and (symbol? (vector-ref object 0))
+		   (package-name? (vector-ref object 1))
+		   (symbol? (vector-ref object 2))
+		   (or (eq? #f (vector-ref object 3))
+		       (eq? 'deprecated (vector-ref object 3)))))
 	     (else #f))))
 
 (define (load-description? object)
@@ -275,7 +274,7 @@ USA.
 		    (vector-of-type? (cdr file-case)
 		      (lambda (clause)
 			(and (pair? clause)
-			     (or (eq? (car clause) 'ELSE)
+			     (or (eq? (car clause) 'else)
 				 (vector-of-type? (car clause) symbol?))
 			     (vector-of-type? (cdr clause) string?)))))
 	       (vector-of-type? file-case string?))))
@@ -292,7 +291,7 @@ USA.
 	 (lambda (name)
 	   (or (null? name)
 	       (and (pair? name)
-		    (eq? (car name) 'PACKAGE)
+		    (eq? (car name) 'package)
 		    (null? (cdr name)))))))
     (let ((n (vector-length descriptions)))
       (do ((i 0 (fix:+ i 1)))
@@ -345,7 +344,7 @@ USA.
 	    ((fix:= i n))
 	  (let ((binding (vector-ref bindings i)))
 	    (link-variables (find-package-environment (vector-ref binding 1))
-			    (if (fix:= (vector-length binding) 3)
+			    (if (fix:>= (vector-length binding) 3)
 				(vector-ref binding 2)
 				(vector-ref binding 0))
 			    environment
@@ -358,7 +357,7 @@ USA.
 	    (let ((source-environment
 		   (find-package-environment (vector-ref binding 1)))
 		  (source-name
-		   (if (fix:= (vector-length binding) 3)
+		   (if (fix:>= (vector-length binding) 3)
 		       (vector-ref binding 2)
 		       (vector-ref binding 0))))
 	      (guarantee-binding source-environment source-name)
@@ -394,7 +393,7 @@ USA.
 	     ((ucode-primitive vector-cons)
 	      n
 	      (make-unmapped-unassigned-reference-trap))))
-	(vector-set! vn 0 'DUMMY-PROCEDURE)
+	(vector-set! vn 0 'dummy-procedure)
 	(do ((names names (cdr names))
 	     (j 1 (fix:+ j 1)))
 	    ((not (pair? names)))
@@ -410,7 +409,7 @@ USA.
 (define null-environment
   ((ucode-primitive object-set-type)
    ((ucode-primitive object-type) #f)
-   (fix:xor ((ucode-primitive object-datum) #F) 1)))
+   (fix:xor ((ucode-primitive object-datum) #f) 1)))
 
 (define (find-package-environment name)
   (package/environment (find-package name)))
@@ -470,7 +469,7 @@ USA.
 			  ((fix:= i n))
 			(let ((clause (vector-ref clauses i)))
 			  (if (let ((keys (car clause)))
-				(or (eq? keys 'ELSE)
+				(or (eq? keys 'else)
 				    (let ((n (vector-length keys)))
 				      (let loop ((i 0))
 					(and (fix:< i n)

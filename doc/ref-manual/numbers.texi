@@ -24,14 +24,14 @@ as fixed point and floating point are referred to by names such as
 @emph{fixnum} and @emph{flonum}.
 
 @menu
-* Numerical types::             
-* Exactness::                   
-* Implementation restrictions::  
-* Syntax of numerical constants::  
-* Numerical operations::        
-* Numerical input and output::  
-* Fixnum and Flonum Operations::  
-* Random Numbers::              
+* Numerical types::
+* Exactness::
+* Implementation restrictions::
+* Syntax of numerical constants::
+* Numerical operations::
+* Numerical input and output::
+* Fixnum and Flonum Operations::
+* Random Numbers::
 @end menu
 
 @node Numerical types, Exactness, Numbers, Numbers
@@ -104,8 +104,8 @@ exact result, then it may either report the violation of an
 implementation restriction or it may silently coerce its result to an
 inexact value.  @xref{Implementation restrictions}.
 
-@findex inexact->exact
-With the exception of @code{inexact->exact}, the operations described in
+@findex exact
+With the exception of @code{exact}, the operations described in
 this section must generally return inexact results when given any
 inexact arguments.  An operation may, however, return an exact result if
 it can prove that the value of the result is unaffected by the
@@ -161,7 +161,7 @@ within the implementation:
 @group
 *                gcd                modulo
 +                imag-part          numerator
--                inexact->exact     quotient
+-                exact              quotient
 abs              lcm                rationalize
 angle            magnitude          real-part
 ceiling          make-polar         remainder
@@ -522,7 +522,7 @@ For integers @var{n1} and @var{n2} with @var{n2} not equal to 0,
 
 @example
 @group
-(= @var{n1} 
+(= @var{n1}
    (+ (* @var{n2} (quotient @var{n1} @var{n2}))
       (remainder @var{n1} @var{n2})))
                                     @result{}  #t
@@ -640,7 +640,7 @@ of 0 is defined to be 1.
 @group
 (numerator (/ 6 4))  @result{}  3
 (denominator (/ 6 4))  @result{}  2
-(denominator (exact->inexact (/ 6 4))) @result{} 2.0
+(denominator (inexact (/ 6 4))) @result{} 2.0
 @end group
 @end example
 @end deffn
@@ -661,8 +661,8 @@ modes required by the @sc{ieee} floating point standard.
 
 Note: If the argument to one of these procedures is inexact, then the
 result will also be inexact.  If an exact value is needed, the result
-should be passed to the @code{inexact->exact} procedure (or use one of
-the procedures below).
+should be passed to the @code{exact} procedure (or use one of the
+procedures below).
 
 @example
 @group
@@ -693,7 +693,7 @@ equivalent
 @example
 @group
 (floor->exact x)
-(inexact->exact (floor x))
+(exact (floor x))
 @end group
 @end example
 
@@ -719,8 +719,8 @@ simplest rational of all.
 
 @example
 @group
-(rationalize (inexact->exact .3) 1/10)  @result{} 1/3    @r{; exact}
-(rationalize .3 1/10)                   @result{} #i1/3  @r{; inexact}
+(rationalize (exact .3) 1/10)  @result{} 1/3    @r{; exact}
+(rationalize .3 1/10)          @result{} #i1/3  @r{; inexact}
 @end group
 @end example
 
@@ -854,9 +854,13 @@ minus @var{pi} (exclusive) to @var{pi} (inclusive).
 @code{conjugate} returns the complex conjugate of @var{z}.
 @end deffn
 
-@deffn procedure exact->inexact z
-@deffnx procedure inexact->exact z
-@code{exact->inexact} returns an inexact representation of @var{z}.  The
+The procedures @code{exact} and @code{inexact} implement the natural
+one-to-one correspondence between exact and inexact integers
+throughout an implementation-dependent range.
+
+@deffn procedure inexact z
+@deffnx procedure exact->inexact z
+@code{inexact} returns an inexact representation of @var{z}.  The
 value returned is the inexact number that is numerically closest to the
 argument.  If an exact argument has no reasonably close inexact
 equivalent, then a violation of an implementation restriction may be
@@ -864,16 +868,27 @@ reported; MIT/GNU Scheme signals an error of type
 @code{condition-type:bad-range-argument} in this case.
 @findex condition-type:bad-range-argument
 
-@code{inexact->exact} returns an exact representation of @var{z}.  The
-value returned is the exact number that is numerically closest to the
+The procedure @code{exact->inexact} has been deprecated by @urseven{}.
+@end deffn
+
+@deffn procedure inexact z
+@deffnx procedure exact->inexact z
+@code{inexact} returns an inexact representation of @var{z}.  The
+value returned is the inexact number that is numerically closest to the
+argument.  If an exact argument has no reasonably close inexact
+equivalent, then a violation of an implementation restriction may be
+reported; MIT/GNU Scheme signals an error of type
+@code{condition-type:bad-range-argument} in this case.
+@findex condition-type:bad-range-argument
+
+@code{exact} returns an exact representation of @var{z}.  The value
+returned is the exact number that is numerically closest to the
 argument.  If an inexact argument has no reasonably close exact
 equivalent, then a violation of an implementation restriction may be
-reported; in MIT/GNU Scheme this case does not occur because all inexact
-numbers are representable as exact numbers.
+reported; in MIT/GNU Scheme this case does not occur because all
+inexact numbers are representable as exact numbers.
 
-These procedures implement the natural one-to-one correspondence between
-exact and inexact integers throughout an implementation-dependent range.
-@xref{Implementation restrictions}.
+The procedure @code{inexact->exact} has been deprecated by @urseven{}.
 @end deffn
 
 @node Numerical input and output, Fixnum and Flonum Operations, Numerical operations, Numbers
@@ -934,9 +949,17 @@ the result, and consequently can be tolerated by many applications.
 @end defvr
 
 @defvr variable flonum-unparser-cutoff
-This variable controls the action of @code{number->string} when
+This variable is @strong{deprecated}; use
+@code{param:flonum-printer-cutoff} instead.
+@end defvr
+
+@defvr parameter param:flonum-printer-cutoff
+This parameter controls the action of @code{number->string} when
 @var{number} is a flonum (and consequently controls all printing of
-flonums).  The value of this variable is normally a list of three items:
+flonums).  This parameter may be called with an argument to set its
+value.
+
+The value of this parameter is normally a list of three items:
 
 @table @var
 @item rounding-type
@@ -983,50 +1006,61 @@ symbol @code{normal} may be used, which is equivalent to the list
 @code{normal}.
 
 @noindent
-The default value for @code{flonum-unparser-cutoff} is @code{normal}.
+The default value for @code{param:flonum-printer-cutoff} is @code{normal}.
 If it is bound to a value different from those described here,
 @code{number->string} issues a warning and acts as though the value had
 been @code{normal}.
 @end defvr
 
 @noindent
-Some examples of @code{flonum-unparser-cutoff}:
+Some examples of @code{param:flonum-printer-cutoff}:
 
 @example
 (number->string (* 4 (atan 1 1)))
                                     @result{} "3.141592653589793"
-(fluid-let ((flonum-unparser-cutoff '(relative 5)))
-  (number->string (* 4 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(relative 5)))
+  (lambda ()
+    (number->string (* 4 (atan 1 1)))))
                                     @result{} "3.1416"
-(fluid-let ((flonum-unparser-cutoff '(relative 5)))
-  (number->string (* 4000 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(relative 5)))
+  (lambda ()
+    (number->string (* 4000 (atan 1 1)))))
                                     @result{} "3141.6"
-(fluid-let ((flonum-unparser-cutoff '(relative 5 scientific)))
-  (number->string (* 4000 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(relative 5 scientific)))
+  (lambda ()
+    (number->string (* 4000 (atan 1 1)))))
                                     @result{} "3.1416e3"
-(fluid-let ((flonum-unparser-cutoff '(relative 5 scientific)))
-  (number->string (* 40000 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(relative 5 scientific)))
+  (lambda ()
+    (number->string (* 40000 (atan 1 1)))))
                                     @result{} "3.1416e4"
-(fluid-let ((flonum-unparser-cutoff '(relative 5 engineering)))
-  (number->string (* 40000 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(relative 5 engineering)))
+  (lambda ()
+    (number->string (* 40000 (atan 1 1)))))
                                     @result{} "31.416e3"
-(fluid-let ((flonum-unparser-cutoff '(absolute 5)))
-  (number->string (* 4 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(absolute 5)))
+  (lambda ()
+    (number->string (* 4 (atan 1 1)))))
                                     @result{} "3.14159"
-(fluid-let ((flonum-unparser-cutoff '(absolute 5)))
-  (number->string (* 4000 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(absolute 5)))
+  (lambda ()
+    (number->string (* 4000 (atan 1 1)))))
                                     @result{} "3141.59265"
-(fluid-let ((flonum-unparser-cutoff '(absolute -4)))
-  (number->string (* 4e10 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(absolute -4)))
+  (lambda ()
+    (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "31415930000."
-(fluid-let ((flonum-unparser-cutoff '(absolute -4 scientific)))
-  (number->string (* 4e10 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(absolute -4 scientific)))
+  (lambda ()
+    (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "3.141593e10"
-(fluid-let ((flonum-unparser-cutoff '(absolute -4 engineering)))
-  (number->string (* 4e10 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(absolute -4 engineering)))
+  (lambda ()
+    (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "31.41593e9"
-(fluid-let ((flonum-unparser-cutoff '(absolute -5)))
-  (number->string (* 4e10 (atan 1 1))))
+(parameterize ((param:flonum-printer-cutoff '(absolute -5)))
+  (lambda ()
+    (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "31415900000."
 @end example
 
@@ -1063,8 +1097,8 @@ used improperly, these operations can return incorrect answers, or even
 malformed objects that confuse the garbage collector.
 
 @menu
-* Fixnum Operations::           
-* Flonum Operations::           
+* Fixnum Operations::
+* Flonum Operations::
 @end menu
 
 @node Fixnum Operations, Flonum Operations, Fixnum and Flonum Operations, Fixnum and Flonum Operations
@@ -1353,10 +1387,10 @@ either an exact integer or an inexact real; the current implementation
 has been tuned to make these two cases fast.
 
 If @var{state} is given and not @code{#f}, it must be a random-state
-object; otherwise, it defaults to the value of the variable
-@code{*random-state*}.  This object is used to maintain the state of the
-pseudo-random-number generator and is altered as a side effect of the
-@code{random} procedure.
+object; otherwise, it defaults to the @code{default-random-source}.
+This object is used to maintain the state of the pseudo-random-number
+generator and is altered as a side effect of the @code{random}
+procedure.
 
 @example
 @group
@@ -1388,23 +1422,18 @@ procedure.  This allows a particular random-state object to be saved in
 order to replay a particular pseudo-random sequence.
 
 @defvr variable *random-state*
-This variable holds a data structure, a random-state object, that
-encodes the internal state of the random-number generator that
-@code{random} uses by default.  A call to @code{random} will perform a
-side effect on this data structure.  This variable may be changed, using
-@code{set!} or @code{fluid-let}, to hold a new random-state object.
+This variable is @strong{deprecated}; pass an explicit state instead.
 @end defvr
 
 @deffn procedure make-random-state [state]
 This procedure returns a new random-state object, suitable for use as
-the value of the variable @code{*random-state*}, or as the @var{state}
-argument to @code{random}.  If @var{state} is not given or @code{#f},
-@code{make-random-state} returns a @emph{copy} of the current
-random-number state object (the value of the variable
-@code{*random-state*}).  If @var{state} is a random-state object, a copy
-of that object is returned.  If @var{state} is @code{#t}, then a new
-random-state object is returned that has been ``randomly'' initialized
-by some means (such as by a time-of-day clock).
+as the @var{state} argument to @code{random}.  If @var{state} is not
+given or @code{#f}, @code{make-random-state} returns a @emph{copy} of
+@code{default-random-source}.  If @var{state} is a random-state
+object, a copy of that object is returned.  If @var{state} is
+@code{#t}, then a new random-state object is returned that has been
+``randomly'' initialized by some means (such as by a time-of-day
+clock).
 @end deffn
 
 @deffn procedure random-state? object

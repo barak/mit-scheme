@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,7 +30,8 @@ USA.
 (declare (usual-integrations))
 
 (define (load-option name #!optional no-error?)
-  (let ((no-error? (and (not (default-object? no-error?)) no-error?)))
+  (let ((no-error? (and (not (default-object? no-error?)) no-error?))
+	(path library-directory-path))
 
     (define (find-option options parent)
       (cond ((assq name options) => load-entry)
@@ -46,36 +47,46 @@ USA.
     (define (search-parent pathname)
       (call-with-values
 	  (lambda ()
-	    (fluid-let ((*options* '())
-			(*parent* #f))
-	      (fluid-let ((load/suppress-loading-message? #t))
-		(load pathname (make-load-environment)))
-	      (values *options* *parent*)))
+	    (parameterize ((*options* '())
+			   (*parent* #f)
+			   (param:suppress-loading-message? #t))
+	      (load pathname (simple-top-level-environment #t))
+	      (values (*options*)
+		      (let ((parent (*parent*)))
+			(if (eq? #t parent)
+			    (next-optiondb)
+			    parent)))))
 	find-option))
 
-    (define (make-load-environment)
-      (let ((e (extend-top-level-environment system-global-environment)))
-	(environment-define e '*PARSER-CANONICALIZE-SYMBOLS?* #t)
-	e))
+    (define (next-optiondb)
+      (and (pair? path)
+	   (let ((p (merge-pathnames "optiondb" (car path))))
+	     (set! path (cdr path))
+	     (if (file-loadable? p)
+		 p
+		 (next-optiondb)))))
+
+    (define (initial-load-options)
+      (or *initial-options-file*
+	  (let ((s (get-environment-variable "MITSCHEME_LOAD_OPTIONS")))
+	    (and s (confirm-pathname
+		    (merge-pathnames s (user-homedir-pathname)))))
+	  (next-optiondb)))
 
     (if (memq name loaded-options)
 	name
-	(find-option *options* *parent*))))
+	(find-option (*options*) initial-load-options))))
+
+(define (option-loaded? name)
+  (not (eq? #f (memq name loaded-options))))
 
 (define (define-load-option name . loaders)
-  (set! *options* (cons (cons name loaders) *options*))
+  (*options* (cons (cons name loaders) (*options*)))
   unspecific)
 
 (define (further-load-options place)
-  (set! *parent* place)
+  (*parent* place)
   unspecific)
-
-(define (initial-load-options)
-  (or *initial-options-file*
-      (let ((s (get-environment-variable "MITSCHEME_LOAD_OPTIONS")))
-	(and s
-	     (confirm-pathname (merge-pathnames s (user-homedir-pathname)))))
-      (local-load-options)))
 
 (define (local-load-options)
   (or (library-file? "optiondb")
@@ -86,16 +97,24 @@ USA.
       (error "Cannot locate a load-option database.")))
 
 (define (library-file? library-internal-path)
-  (confirm-pathname (system-library-pathname library-internal-path #f)))
+  (confirm-pathname
+   (pathname-new-type
+    (system-library-pathname (pathname-default-type library-internal-path "scm")
+			     #f)
+    #f)))
 
 (define (confirm-pathname pathname)
   (and (file-loadable? pathname)
        pathname))
 
 (define loaded-options '())
-(define *options* '())			; Current options.
-(define *parent* initial-load-options)	; A thunk or a pathname/string or #f.
+(define *options*)		 ; Current options.
+(define *parent*)		 ; A thunk or a pathname/string or #f.
 (define *initial-options-file* #f)
+
+(define (initialize-package!)
+  (set! *options* (make-settable-parameter '()))
+  (set! *parent* (make-settable-parameter #f)))
 
 (define (dummy-option-loader)
   unspecific)
@@ -121,11 +140,12 @@ USA.
 			  (lambda ()
 			    (load pathname
 				  environment
-				  'DEFAULT
+				  'default
 				  #t))))))))))
        files)
       (flush-purification-queue!)
-      (eval init-expression environment))))
+      (if init-expression
+	  (eval init-expression environment)))))
 
 (define (force* value)
   (cond ((procedure? value) (force* (value)))

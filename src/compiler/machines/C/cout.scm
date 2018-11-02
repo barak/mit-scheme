@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -425,7 +425,7 @@ USA.
 (define (make-nonce)
   (if *disable-nonces?*
       "nonce"
-      (vector-8b->hexadecimal (random-byte-vector 8))))
+      (bytevector->hexadecimal (random-bytevector 8))))
 
 (define (top-level/stackify handle ntags code-fn
 			    decl-code-name code-name code-blocks
@@ -504,12 +504,12 @@ USA.
 (define (declare-dynamic-initialization handle)
   (c:line (c:call "DECLARE_DYNAMIC_INITIALIZATION"
 		  (c:string handle)
-		  (c:string (vector-8b->hexadecimal (random-byte-vector 8))))))
+		  (c:string (bytevector->hexadecimal (random-bytevector 8))))))
 
 (define (declare-dynamic-object-initialization handle)
   (c:line (c:call "DECLARE_DYNAMIC_OBJECT_INITIALIZATION"
 		  (c:string handle)
-		  (c:string (vector-8b->hexadecimal (random-byte-vector 8))))))
+		  (c:string (bytevector->hexadecimal (random-bytevector 8))))))
 
 (define (declare-subcodes decl-name blocks)
   (if (and (pair? blocks)
@@ -541,8 +541,8 @@ USA.
     (let loop ((src 0) (dst 0))
       (if (fix:>= src len)
 	  (substring temp 0 dst)
-	  (let ((index (substring-find-next-char-in-set
-			string src len char-set:C-string-quoted)))
+	  (let ((index (string-find-next-char-in-set
+			string char-set:C-string-quoted src len)))
 	    (if (not index)
 		(begin
 		  (substring-move! string src len temp dst)
@@ -566,13 +566,13 @@ USA.
 ;; convention for the named characters when they appear in strings.
 
 (define (C-quotify-string-char char next)
-  (cond ((char-set-member? char-set:C-named-chars char)
+  (cond ((char-in-set? char char-set:C-named-chars)
 	 (let ((result (write-to-string (string char))))
 	   (substring result 1 (-1+ (string-length result)))))
 	((char=? char #\NUL)
 	 ;; Avoid ambiguities
 	 (if (or (not next)
-		 (not (char-set-member? char-set:numeric next)))
+		 (not (char-in-set? next char-set:numeric)))
 	     "\\0"
 	     "\\000"))
 	((char=? char #\?)
@@ -603,32 +603,33 @@ USA.
 ;; the characters are not really characters at all.
 
 (define (C-quotify-data-string/breakup string)
-  (let ((n-bytes (vector-8b-length string))
-	(new-string
-	 (lambda ()
-	   (let ((s (make-string 66)))
-	     (string-set! s 0 #\")
-	     s))))
-    (let loop ((i 0) (s (new-string)) (j 1))
-      (if (fix:< i n-bytes)
-	  (if (fix:< j 62)
-	      (let ((b (vector-8b-ref string i)))
-		(string-set! s j #\\)
-		(string-set! s (fix:+ j 1) #\x)
-		(string-set! s (fix:+ j 2)
-			     (digit->char (fix:quotient b #x10) 16))
-		(string-set! s (fix:+ j 3)
-			     (digit->char (fix:remainder b #x10) 16))
-		(loop (fix:+ i 1) s (fix:+ j 4)))
-	      (begin
-		(string-set! s j #\")
-		(cons s (loop i (new-string) 1))))
-	  (if (fix:> j 1)
-	      (begin
-		(string-set! s j #\")
-		(set-string-length! s (fix:+ j 1))
-		(list s))
-	      '())))))
+  (let ((builder (string-builder)))
+    (map (lambda (part)
+	   (builder 'reset!)
+	   (builder #\")
+	   (string-for-each
+	    (lambda (char)
+	      (let ((b (char->integer char)))
+		(builder #\\)
+		(builder #\x)
+		(builder (digit->char (fix:quotient b #x10) 16))
+		(builder (digit->char (fix:remainder b #x10) 16))))
+	    part)
+	   (builder #\")
+	   (builder 'immutable))
+	 (split-string string 64))))
+
+(define (split-string string n)
+  (let ((len (string-length string)))
+    (let loop ((start 0) (parts '()))
+      (let ((end (fix:+ start n)))
+	(if (fix:<= end len)
+	    (reverse!
+	     (cons (string-slice string start len)
+		   parts))
+	    (loop end
+		  (cons (string-slice string start end)
+			parts)))))))
 
 (define (handle-objects start-offset)
   (if *use-stackify?*

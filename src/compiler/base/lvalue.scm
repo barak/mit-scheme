@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -98,9 +98,9 @@ USA.
       (variable-normal-offset variable)))
 
 (define-vector-tag-unparser variable-tag
-  (standard-unparser (symbol->string 'VARIABLE)
-    (lambda (state variable)
-      (unparse-object state (variable-name variable)))))
+  (standard-print-method "LIAR:variable"
+    (lambda (variable)
+      (list (variable-name variable)))))
 
 (define-integrable (lvalue/variable? lvalue)
   (eq? (tagged-vector/tag lvalue) variable-tag))
@@ -110,17 +110,17 @@ USA.
    (lambda (form environment)
      environment
      (let* ((name (cadr form))
-	    (symbol
+	    (variable-name
 	     (intern (string-append "#[" (symbol->string name) "]"))))
        `(BEGIN (DEFINE-INTEGRABLE
-		 (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
-		 (MAKE-VARIABLE BLOCK ',symbol))
+		 (,(symbol 'MAKE- name '-VARIABLE) BLOCK)
+		 (MAKE-VARIABLE BLOCK ',variable-name))
 	       (DEFINE-INTEGRABLE
-		 (,(symbol-append 'VARIABLE/ name '-VARIABLE?) LVALUE)
-		 (EQ? (VARIABLE-NAME LVALUE) ',symbol))
-	       (DEFINE (,(symbol-append name '-VARIABLE?) LVALUE)
+		 (,(symbol 'VARIABLE/ name '-VARIABLE?) LVALUE)
+		 (EQ? (VARIABLE-NAME LVALUE) ',variable-name))
+	       (DEFINE (,(symbol name '-VARIABLE?) LVALUE)
 		 (AND (VARIABLE? LVALUE)
-		      (EQ? (VARIABLE-NAME LVALUE) ',symbol))))))))
+		      (EQ? (VARIABLE-NAME LVALUE) ',variable-name))))))))
 
 (define-named-variable continuation)
 (define-named-variable value)
@@ -285,14 +285,12 @@ USA.
 	 (car source-set))))
 
 (define (lvalue/source-set lvalue)
-  (list-transform-positive
-      (eq-set-adjoin lvalue (lvalue-backward-links lvalue))
-    lvalue/source?))
+  (filter lvalue/source?
+	  (eq-set-adjoin lvalue (lvalue-backward-links lvalue))))
 
 (define (lvalue/external-source-set lvalue)
-  (list-transform-positive
-      (eq-set-adjoin lvalue (lvalue-backward-links lvalue))
-    lvalue/external-source?))
+  (filter lvalue/external-source?
+	  (eq-set-adjoin lvalue (lvalue-backward-links lvalue))))
 
 (define (lvalue/source? lvalue)
   (or (lvalue/external-source? lvalue)

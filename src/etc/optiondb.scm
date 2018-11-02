@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,7 +57,7 @@ USA.
 	   (lambda (dir pathname)
 	     (with-working-directory-pathname dir
 	       (lambda ()
-		 (load pathname '(RUNTIME))))))
+		 (load pathname '(runtime))))))
 	  (lose (lambda () (error "Unable to find package directory:" place))))
       (lambda ()
 	(if (not (name->package package-name))
@@ -75,61 +75,61 @@ USA.
 			(finish dir pathname)
 			(dir-loop (cdr dirs)))))
 		(receive (dir pathname)
-		    (try-dir (system-library-directory-pathname))
+		    (try-dir
+		     (let ((d (system-library-directory-pathname "lib")))
+		       (pathname-new-directory d (except-last-pair
+						  (pathname-directory d)))))
 		  (if (not dir)
 		      (lose))
 		  (finish dir pathname))))))))
 
-(define-load-option 'EDWIN
-  (guarded-system-loader '(edwin) "edwin"))
-
-(define-load-option 'COMPILER
-  (lambda () (load-option 'SF))
+(define-load-option 'compiler
+  (lambda () (load-option 'sf))
   (guarded-system-loader '(compiler) "compiler"
 			 (if (eq? microcode-id/compiled-code-type 'C)
 			     "machines/C/make"
 			     "make")))
 
-(define-load-option 'CREF
+(define-load-option 'cref
   (guarded-system-loader '(cross-reference) "cref"))
 
-(define-load-option 'FFI
+(define-load-option 'edwin
+  (guarded-system-loader '(edwin) "edwin"))
+
+(define-load-option 'ffi
   (guarded-system-loader '(ffi) "ffi"))
 
-(define-load-option 'IMAIL
+(define-load-option 'imail
   (guarded-system-loader '(edwin imail) "imail"))
 
-(define-load-option '*PARSER
+(define-load-option '*parser
   (guarded-system-loader '(runtime *parser) "star-parser"))
 
-(define-load-option 'PC-SAMPLE
-  (guarded-system-loader '(pc-sample) "pcsample"))
-
-(define-load-option 'RCS
-  (guarded-system-loader '(rcs) "rcs"))
-
-(define-load-option 'SF
+(define-load-option 'sf
   (guarded-system-loader '(scode-optimizer) "sf"))
 
-(define-load-option 'SOS
+(define-load-option 'sos
   (guarded-system-loader '(sos) "sos"))
 
-(define-load-option 'SSP
+(define-load-option 'ssp
   (guarded-system-loader '(runtime ssp) "ssp"))
 
-(define-load-option 'STUDENT
+(define-load-option 'student
   (guarded-system-loader '(student) "6001"))
 
-(define-load-option 'SWAT
-  (guarded-system-loader '(swat) "swat"))
-
-(define-load-option 'WIN32
+(define-load-option 'win32
   (guarded-system-loader '(win32) "win32"))
 
-(define-load-option 'XDOC
+(define-load-option 'x11
+  (guarded-system-loader '(x11) "x11"))
+
+(define-load-option 'x11-screen
+  (guarded-system-loader '(edwin screen x11-screen) "x11-screen"))
+
+(define-load-option 'xdoc
   (guarded-system-loader '(runtime ssp xdoc) "xdoc"))
 
-(define-load-option 'XML
+(define-load-option 'xml
   (guarded-system-loader '(runtime xml) "xml"))
 
 (further-load-options standard-load-options)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,8 +26,8 @@ USA.
 
 ;;;; Edwin Packaging
 
-(global-definitions "../runtime/runtime")
-(global-definitions "../xml/xml")
+(global-definitions "../runtime/")
+(global-definitions "../xml/")
 
 (define-package (edwin)
   (files "utils"
@@ -49,7 +49,6 @@ USA.
 	 "modes"			; editor mode abstraction
 	 "buffer"			; buffer abstraction
 	 "bufset"			; buffer-set abstraction
-	 "winren"			; window-system rename targets
 
 	 "edtstr"			; editor abstraction
 	 "editor"			; editor top level
@@ -99,33 +98,195 @@ USA.
 	 "outline"			; outline minor mode
 	 "sort"				; sorting commands
 	 "webster"			; access a Webster server
+	 "world-monitor"
 	 )
 
   (parent ())
-  (import (runtime parser)
-	  (*parser-associate-positions?* runtime-parser-associate-positions?)
-	  (*parser-canonicalize-symbols?* runtime-parser-canonicalize-symbols?)
-	  (*parser-radix* runtime-parser-radix)
-	  (*parser-table* runtime-parser-table))
-  (import (runtime character)
-	  bucky-bits->prefix)
-  (import (runtime char-syntax)
-	  char-syntax-table/entries)
   (import (runtime)
 	  define-primitives
 	  ucode-primitive
 	  ucode-type)
-  (export (edwin class-macros)
-	  class-instance-transforms)
+  (import (runtime char-syntax)
+	  char-syntax-table/entries)
+  (import (runtime character)
+	  bucky-bits->prefix)
+  (import (runtime microcode-tables)
+	  fixed-objects-item
+	  update-fixed-objects-item!)
+  (import (runtime port)
+	  (make-port make-textual-port)
+	  (make-port-type make-textual-port-type)
+	  (port/input-channel input-port-channel)
+	  (port/output-channel output-port-channel)
+	  (port/state textual-port-state)
+	  generic-port-operation:write-substring)
+  #|
+  (import (blowfish)
+	  blowfish-encrypt-port
+	  blowfish-file?
+	  read-blowfish-file-header
+	  write-blowfish-file-header)
+  (import (gdbm)
+	  gdbm-close
+	  gdbm-delete
+	  gdbm-exists?
+	  gdbm-fetch
+	  gdbm-firstkey
+	  gdbm-nextkey
+	  gdbm-open
+	  gdbm-reorganize
+	  gdbm-store
+	  gdbm_fast
+	  gdbm_replace
+	  gdbm_wrcreat)
+  |#
   (export ()
 	  create-editor
 	  create-editor-args
-	  edit
-	  edwin
 	  inhibit-editor-init-file?
 	  reset-editor
 	  reset-editor-windows
-	  (save-editor-files debug-save-files)))
+	  (save-editor-files debug-save-files))
+  (export (edwin class-macros)
+	  class-instance-transforms))
+
+(define-package (edwin string)
+  (files "string")
+  (parent (edwin))
+  (import (runtime character-set)
+	  (char-set-table %char-set-table))
+  (export (edwin)
+	  (set-vector-8b-length! set-string-length!)
+	  (vector-8b-length string-length)
+	  (vector-8b-maximum-length string-maximum-length)
+	  (vector-8b? string?)
+	  ascii-string-copy
+	  burst-string
+	  bytevector->string
+	  char->string
+	  decorated-string-append
+	  error:not-string
+	  guarantee-string
+	  guarantee-string-index
+	  guarantee-substring
+	  guarantee-substring-end-index
+	  guarantee-substring-start-index
+	  list->string
+	  make-string
+	  make-vector-8b
+	  random-byte-vector
+	  set-string-length!
+	  string
+	  string->bytevector
+	  string->list
+	  string->vector
+	  string-append
+	  string-capitalize
+	  string-capitalize!
+	  string-capitalized?
+	  string-ci-hash
+	  string-ci<=?
+	  string-ci<?
+	  string-ci=?
+	  string-ci>=?
+	  string-ci>?
+	  string-compare
+	  string-compare-ci
+	  string-copy
+	  string-copy!
+	  string-downcase
+	  string-downcase!
+	  string-fill!
+	  string-find-next-char
+	  string-find-next-char-ci
+	  string-find-next-char-in-set
+	  string-find-previous-char
+	  string-find-previous-char-ci
+	  string-find-previous-char-in-set
+	  string-for-each
+	  string-hash
+	  string-head
+	  string-head!
+	  string-length
+	  string-lower-case?
+	  string-map
+	  string-match-backward
+	  string-match-backward-ci
+	  string-match-forward
+	  string-match-forward-ci
+	  string-maximum-length
+	  string-move!
+	  string-null?
+	  string-pad-left
+	  string-pad-right
+	  string-prefix-ci?
+	  string-prefix?
+	  string-ref
+	  string-replace
+	  string-replace!
+	  string-search-all
+	  string-search-backward
+	  string-search-forward
+	  string-set!
+	  string-suffix-ci?
+	  string-suffix?
+	  string-tail
+	  string-trim
+	  string-trim-left
+	  string-trim-right
+	  string-upcase
+	  string-upcase!
+	  string-upper-case?
+	  string<=?
+	  string<?
+	  string=?
+	  string>=?
+	  string>?
+	  string?
+	  substring
+	  substring->list
+	  substring-capitalize!
+	  substring-capitalized?
+	  substring-ci<?
+	  substring-ci=?
+	  substring-downcase!
+	  substring-fill!
+	  substring-find-next-char
+	  substring-find-next-char-ci
+	  substring-find-next-char-in-set
+	  substring-find-previous-char
+	  substring-find-previous-char-ci
+	  substring-find-previous-char-in-set
+	  substring-lower-case?
+	  substring-match-backward
+	  substring-match-backward-ci
+	  substring-match-forward
+	  substring-match-forward-ci
+	  substring-move!
+	  substring-move-left!
+	  substring-move-right!
+	  substring-prefix-ci?
+	  substring-prefix?
+	  substring-replace
+	  substring-replace!
+	  substring-search-all
+	  substring-search-backward
+	  substring-search-forward
+	  substring-suffix-ci?
+	  substring-suffix?
+	  substring-upcase!
+	  substring-upper-case?
+	  substring<?
+	  substring=?
+	  substring?
+	  vector-8b-fill!
+	  vector-8b-find-next-char
+	  vector-8b-find-next-char-ci
+	  vector-8b-find-previous-char
+	  vector-8b-find-previous-char-ci
+	  vector-8b-ref
+	  vector-8b-set!)
+  (initialization (initialize-package!)))
 
 (define-package (edwin class-macros)
   (files "clsmac")
@@ -137,17 +298,17 @@ USA.
 	  usual==>
 	  with-instance-variables)
   (import (runtime syntax)
-	  compile/expression
-	  make-compiler-item))
+	  classifier->runtime
+	  classify-form
+	  compile-expr-item
+	  compile-item
+	  expr-item))
 
 (define-package (edwin class-macros transform-instance-variables)
   (files "xform")
   (parent (edwin class-macros))
   (export (edwin class-macros)
-	  transform-instance-variables)
-  (import ()
-	  (make-scode-variable make-variable)
-	  (scode-variable-name variable-name)))
+	  transform-instance-variables))
 
 (define-package (edwin class-constructor)
   (files "clscon")
@@ -809,10 +970,6 @@ USA.
 	  edwin-variable$list-matching-lines-default-context-lines
 	  pop-up-occur-buffer))
 
-;; This package is set up to handle two versions of the debugger.
-;; Therefore, please don't remove variables just because they aren't
-;; referenced by the standard debugger. -- Arthur
-
 (define-package (edwin debugger)
   (files "debug")
   (parent (edwin))
@@ -820,7 +977,6 @@ USA.
 	  debug-scheme-error
 	  edwin-command$browse-continuation
 	  edwin-command$browse-environment
-	  edwin-command$browser-evaluator
 	  edwin-command$browser-next-line
 	  edwin-command$browser-previous-line
 	  edwin-command$browser-quit
@@ -921,6 +1077,8 @@ USA.
 
 (define-package (edwin process)
   (parent (edwin))
+  (import (runtime primitive-io)
+	  channel-descriptor-for-select)
   (export (edwin)
 	  accept-process-output
 	  add-process-filter
@@ -983,11 +1141,16 @@ USA.
 (os-type-case
  ((unix dos nt)
   (define-package (edwin screen console-screen)
-    (files "termcap" "tterm")
+    (files "ansi" "termcap" "tterm")
     (parent (edwin screen))
     (export (edwin)
 	    resize-screen)
+    (import (edwin keyboard)
+	    keyboard-peek-busy-no-hang)
+    (import (edwin process)
+	    register-process-output-events)
     (import (runtime primitive-io)
+	    channel-descriptor-for-select
 	    %channel-read
 	    channel-type=terminal?
 	    have-select?
@@ -1007,7 +1170,6 @@ USA.
 	   "shell"			; shell subprocess commands
 	   "techinfo"			; techinfo commands
 	   "telnet"			; telnet subprocess commands
-	   "xmodef"			; x bindings for fundamental mode
 	   "manual"			; man page display
 	   "print"			; printer output
 	   ))
@@ -1022,98 +1184,12 @@ USA.
 
   (extend-package (edwin process)
     (files "process"))
-  
+
   (define-package (edwin screen x-screen)
     (files "xterm")
     (parent (edwin screen))
-    (export (edwin)
-	    edwin-variable$x-cut-to-clipboard
-	    edwin-variable$x-paste-from-clipboard
-	    os/interprogram-cut
-	    os/interprogram-paste
-	    x-root-window-size
-	    x-screen-ignore-focus-button?
-	    x-selection-timeout
-	    xterm-screen/flush!
-	    xterm-screen/grab-focus!)
-    (export (edwin x-commands)
-	    screen-display
-	    screen-xterm
-	    xterm-screen/set-icon-name
-	    xterm-screen/set-name)
-    (initialization (initialize-package!)))
-
-  (define-package (edwin x-keys)
-    (files "key-x11")
-    (parent (edwin))
-    (export (edwin screen x-screen)
-	    x-make-special-key))
-
-  (define-package (edwin x-commands)
-    (files "xcom")
-    (parent (edwin))
-    (export (edwin)
-	    edwin-command$lower-frame
-	    edwin-command$raise-frame
-	    edwin-command$set-background-color
-	    edwin-command$set-border-color
-	    edwin-command$set-border-width
-	    edwin-command$set-cursor-color
-	    edwin-command$set-default-font
-	    edwin-command$set-font
-	    edwin-command$set-foreground-color
-	    edwin-command$set-frame-icon-name
-	    edwin-command$set-frame-name
-	    edwin-command$set-frame-position
-	    edwin-command$set-frame-size
-	    edwin-command$set-internal-border-width
-	    edwin-command$set-mouse-color
-	    edwin-command$set-mouse-shape
-	    edwin-command$show-frame-position
-	    edwin-command$show-frame-size
-	    edwin-command$x-lower-screen
-	    edwin-command$x-mouse-ignore
-	    edwin-command$x-mouse-keep-one-window
-	    edwin-command$x-mouse-select
-	    edwin-command$x-mouse-select-and-split
-	    edwin-command$x-mouse-set-mark
-	    edwin-command$x-mouse-set-point
-	    edwin-command$x-mouse-show-event
-	    edwin-command$x-raise-screen
-	    edwin-command$x-set-background-color
-	    edwin-command$x-set-border-color
-	    edwin-command$x-set-border-width
-	    edwin-command$x-set-cursor-color
-	    edwin-command$x-set-font
-	    edwin-command$x-set-foreground-color
-	    edwin-command$x-set-icon-name
-	    edwin-command$x-set-internal-border-width
-	    edwin-command$x-set-mouse-color
-	    edwin-command$x-set-mouse-shape
-	    edwin-command$x-set-position
-	    edwin-command$x-set-size
-	    edwin-command$x-set-window-name
-	    edwin-variable$frame-icon-name-format
-	    edwin-variable$frame-icon-name-length
-	    edwin-variable$frame-name-format
-	    edwin-variable$frame-name-length
-	    edwin-variable$x-screen-icon-name-format
-	    edwin-variable$x-screen-icon-name-length
-	    edwin-variable$x-screen-name-format
-	    edwin-variable$x-screen-name-length
-	    x-button1-down
-	    x-button1-up
-	    x-button2-down
-	    x-button2-up
-	    x-button3-down
-	    x-button3-up
-	    x-button4-down
-	    x-button4-up
-	    x-button5-down
-	    x-button5-up)
-    (export (edwin screen x-screen)
-	    update-xterm-screen-names!)))
-
+    (import (runtime ffi)
+	    load-option-quietly)))
  ((nt)
   (global-definitions "../win32/win32")
 
@@ -1135,7 +1211,7 @@ USA.
 	    edwin-command$dired-hidden-toggle))
 
   (extend-package (edwin screen console-screen)
-    (files "ansi" "bios"))
+    (files "bios"))
 
   (extend-package (edwin process)
     (files "process"))
@@ -1176,6 +1252,8 @@ USA.
 	    swp_nozorder
 	    update-window
 	    ws_overlappedwindow)
+    (import (edwin keyboard)
+	    keyboard-peek-busy-no-hang)
     (export (edwin win-commands)
 	    win32-screen/get-client-size
 	    win32-screen/get-position
@@ -1215,214 +1293,7 @@ USA.
 	    edwin-command$show-frame-position
 	    edwin-command$show-frame-size)
     (export (edwin screen win32)
-	    update-win32-screen-name!)))
-
- ((os/2)
-  (extend-package (edwin)
-    (files "os2"
-	   "dosfile"
-	   "comint"			; command interpreter process stuff
-	   "compile"			; compilation subprocess
-	   "shell"			; shell subprocess commands
-	   "telnet"			; telnet subprocess commands
-	   )
-    (import (runtime os2-window-primitives)
-	    os2-clipboard-read-text
-	    os2-clipboard-write-text))
-
-  (extend-package (edwin dired)
-    (files "diros2")
-    (export (edwin)
-	    edwin-command$dired-chmod
-	    edwin-command$dired-do-compress
-	    edwin-command$dired-hidden-toggle))
-
-  (extend-package (edwin process)
-    (files "process"))
-
-  (define-package (edwin screen os2-screen)
-    (files "os2term")
-    (parent (edwin screen))
-    (export (edwin)
-	    os2-screen/get-frame-size
-	    os2-screen/get-position
-	    os2-screen/activate!
-	    os2-screen/deactivate!
-	    os2-screen/hide!
-	    os2-screen/lower!
-	    os2-screen/maximize!
-	    os2-screen/minimize!
-	    os2-screen/raise!
-	    os2-screen/restore!
-	    os2-screen/show!
-	    os2-screen/set-background-color!
-	    os2-screen/set-font!
-	    os2-screen/set-foreground-color!
-	    os2-screen/set-position!
-	    os2-screen/set-size!
-	    os2-screen/set-title!
-	    os2/desktop-width
-	    os2/desktop-height
-	    screen-char-width
-	    screen-char-height
-	    screen-pel-width
-	    screen-pel-height)
-    (import (runtime os2-window-primitives)
-	    button-event-type:down
-	    button-event/flags
-	    button-event/number
-	    button-event/type
-	    button-event/x
-	    button-event/y
-	    cursor_flash
-	    cursor_solid
-	    event-type
-	    event-type:button
-	    event-type:close
-	    event-type:command
-	    event-type:focus
-	    event-type:help
-	    event-type:key
-	    event-type:paint
-	    event-type:resize
-	    event-type:visibility
-	    event-wid
-	    focus-event/gained?
-	    font-metrics/descender
-	    font-metrics/height
-	    font-metrics/width
-	    hwnd_desktop
-	    idi_edwin
-	    kc_alt
-	    kc_ctrl
-	    kc_virtualkey
-	    key-event/code
-	    key-event/flags
-	    key-event/repeat
-	    nullhandle
-	    number-of-event-types
-	    os2ps-clear
-	    os2ps-set-colors
-	    os2ps-set-font
-	    os2ps-write
-	    os2win-activate
-	    os2win-alarm
-	    os2win-close
-	    os2win-close-event-qid
-	    os2win-console-wid
-	    os2win-desktop-height
-	    os2win-desktop-width
-	    os2win-destroy-pointer
-	    os2win-event-ready?
-	    os2win-focus?
-	    os2win-get-event
-	    os2win-get-frame-size
-	    os2win-get-pos
-	    os2win-get-size
-	    os2win-invalidate
-	    os2win-load-pointer
-	    os2win-move-cursor
-	    os2win-open
-	    os2win-open-event-qid
-	    os2win-ps
-	    os2win-scroll
-	    os2win-set-grid
-	    os2win-set-icon
-	    os2win-set-pos
-	    os2win-set-size
-	    os2win-set-state
-	    os2win-set-title
-	    os2win-shape-cursor
-	    os2win-show
-	    os2win-show-cursor
-	    paint-event/xh
-	    paint-event/xl
-	    paint-event/yh
-	    paint-event/yl
-	    resize-event/height
-	    resize-event/width
-	    virtual-key-supremum
-	    visibility-event/shown?
-	    vk_backspace
-	    vk_backtab
-	    vk_break
-	    vk_button1
-	    vk_button2
-	    vk_button3
-	    vk_clear
-	    vk_delete
-	    vk_down
-	    vk_end
-	    vk_enddrag
-	    vk_enter
-	    vk_ereof
-	    vk_esc
-	    vk_f1
-	    vk_f10
-	    vk_f11
-	    vk_f12
-	    vk_f13
-	    vk_f14
-	    vk_f15
-	    vk_f16
-	    vk_f17
-	    vk_f18
-	    vk_f19
-	    vk_f2
-	    vk_f20
-	    vk_f21
-	    vk_f22
-	    vk_f23
-	    vk_f24
-	    vk_f3
-	    vk_f4
-	    vk_f5
-	    vk_f6
-	    vk_f7
-	    vk_f8
-	    vk_f9
-	    vk_home
-	    vk_insert
-	    vk_left
-	    vk_newline
-	    vk_pa1
-	    vk_pagedown
-	    vk_pageup
-	    vk_pause
-	    vk_printscrn
-	    vk_right
-	    vk_space
-	    vk_sysrq
-	    vk_tab
-	    vk_up
-	    wa_error
-	    window-state:bottom
-	    window-state:hide
-	    window-state:maximize
-	    window-state:minimize
-	    window-state:restore
-	    window-state:top)
-    (initialization (initialize-package!)))
-
-  (define-package (edwin os2-commands)
-    (files "os2com")
-    (parent (edwin))
-    (export (edwin)
-	    edwin-command$define-color-name
-	    edwin-command$set-background-color
-	    edwin-command$set-font
-	    edwin-command$set-foreground-color
-	    edwin-command$set-frame-name
-	    edwin-command$set-frame-position
-	    edwin-command$set-frame-size
-	    edwin-command$set-screen-position
-	    edwin-command$set-screen-size
-	    edwin-command$show-frame-position
-	    edwin-command$show-frame-size
-	    edwin-command$show-screen-position
-	    edwin-command$show-screen-size)
-    (export (edwin screen os2-screen)
-	    update-os2-screen-names!))))
+	    update-win32-screen-name!))))
 
 (define-package (edwin diff)
   (files "diff")

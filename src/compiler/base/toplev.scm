@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,6 +34,7 @@ USA.
 (define compile-file:override-usual-integrations '())
 (define compile-file:sf-only? #f)
 (define compile-file:force? #f)
+(define compile-file:show-dependencies? #f)
 (define compiler:compile-data-files-as-expressions? #t)
 (define compile-file)
 (let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
@@ -52,32 +53,33 @@ USA.
 	       (let ((output-time (file-modification-time output-file)))
 		 (if (not output-time)
 		     (list input-file)
-		     (list-transform-positive (cons input-file dependencies)
-		       (lambda (dependency)
-			 (let ((dep-time (file-modification-time dependency)))
-			   (if dep-time
-			       (> dep-time output-time)
-			       (begin
-				 (warn "Missing dependency:"
-				       (->namestring dependency))
-				 #f)))))))))
+		     (filter (lambda (dependency)
+			       (let ((dep-time
+				      (file-modification-time dependency)))
+				 (if dep-time
+				     (> dep-time output-time)
+				     (begin
+				       (warn "Missing dependency:"
+					     (->namestring dependency))
+				       #f))))
+			     (cons input-file dependencies))))))
 	  (if (pair? reasons)
 	      (begin
-		(write-notification-line
-		 (lambda (port)
-		   (write-string "Generating " port)
-		   (write (->namestring output-file) port)
-		   (write-string " because of:" port)
-		   (for-each (lambda (reason)
-			       (write-char #\space port)
-			       (write (->namestring reason) port))
-			     reasons)))
+		(if compile-file:show-dependencies?
+		    (write-notification-line
+		     (lambda (port)
+		       (write-string "Generating " port)
+		       (write (->namestring output-file) port)
+		       (write-string " because of:" port)
+		       (for-each (lambda (reason)
+				   (write-char #\space port)
+				   (write (->namestring reason) port))
+				 reasons))))
 		(doit)))))))
 
   (set! compile-file
 	(named-lambda (compile-file file #!optional dependencies environment)
-	  (process-file (scm-pathname file)
-			(bin-pathname file)
+	  (process-file (scm-pathname file) (bin-pathname file)
 			(map ext-pathname
 			     (if (default-object? dependencies)
 				 '()
@@ -90,21 +92,18 @@ USA.
 				 (if (not (environment? environment))
 				     (error:wrong-type-argument environment
 								"environment"
-								'COMPILE-FILE))
+								'compile-file))
 				 environment)))
 			  (sf/default-declarations
-			   `((USUAL-INTEGRATIONS
+			   `((usual-integrations
 			      ,@compile-file:override-usual-integrations)
-			     ,@(let ((deps (keep-matching-items
-					    dependencies ext-pathname?)))
+			     ,@(let ((deps (filter ext-pathname? dependencies)))
 				 (if (null? deps)
 				     '()
-				     `((INTEGRATE-EXTERNAL ,@deps)))))))
+				     `((integrate-external ,@deps)))))))
 		(sf input-file output-file))))
 	  (if (not compile-file:sf-only?)
-	      (process-file (bin-pathname file)
-			    (com-pathname file)
-			    '()
+	      (process-file (bin-pathname file) (com-pathname file) '()
 		(lambda (input-file output-file dependencies)
 		  dependencies
 		  (fluid-let ((compiler:coalescing-constant-warnings? #f))
@@ -152,13 +151,12 @@ USA.
 		 compiler:generate-lap-files?
 		 (pathname-new-type output-pathname "lap")
 		 (lambda (lap-output-port)
-		   (fluid-let ((*debugging-key*
-				(random-byte-vector 32)))
+		   (fluid-let ((*debugging-key* (random-bytevector 32)))
 		     (compile-scode/file/hook
 		      input-pathname
 		      output-pathname
 		      (lambda ()
-			(compile-scode/internal
+			(compile-bin-file-1
 			 scode
 			 (pathname-new-type
 			  output-pathname
@@ -167,9 +165,50 @@ USA.
 			 lap-output-port)))))))))))))
   unspecific)
 
+(define (compile-bin-file-1 scode info-output-pathname rtl-output-port
+			    lap-output-port)
+  (receive (result wrapper)
+      (let ((do-one-expr
+	     (lambda (scode library-name)
+	       (fluid-let ((*library-name* library-name))
+		 (compile-scode/internal scode
+					 info-output-pathname
+					 rtl-output-port
+					 lap-output-port)))))
+	(if (r7rs-scode-file? scode)
+	    (let ((file-wrappers '()))
+	      (let ((result
+		     (map-r7rs-scode-file
+		      (lambda (library)
+			(let ((name
+			       (or (scode-library-name library)
+				   'program)))
+			  (map-scode-library
+			   (lambda (contents)
+			     (receive (result file-wrapper)
+				 (do-one-expr contents name)
+			       (if file-wrapper
+				   (set! file-wrappers
+					 (cons file-wrapper
+					       file-wrappers)))
+			       result))
+			   library)))
+		      scode)))
+		(values result
+			(vector 'debugging-library-wrapper
+				3
+				*debugging-key*
+				(list->vector (reverse file-wrappers))))))
+	    (do-one-expr scode #f)))
+    (if wrapper
+	(compiler:dump-info-file wrapper
+				 info-output-pathname))
+    result))
+
 (define *debugging-key*)
 (define *compiler-input-pathname*)
 (define *compiler-output-pathname*)
+(define *library-name*)
 
 (define (maybe-open-file open? pathname receiver)
   (if open?
@@ -222,21 +261,29 @@ USA.
     (cond ((scode/constant? scode)
 	   scode)
 	  ((scode/open-block? scode)
-	   (scode/open-block-components
-	    scode
-	    (lambda (names declarations body)
-	      (if (null? names)
-		  (scan-defines
-		   body
-		   (lambda (names declarations* body)
-		     (make-open-block names
-				      (append declarations declarations*)
-				      body)))
-		  scode))))
+	   (let ((names (scode/open-block-names scode))
+		 (declarations (scode/open-block-declarations scode))
+		 (body (scode/open-block-actions scode)))
+	     (if (null? names)
+		 (scan-defines body
+			       (lambda (names declarations* body)
+				 (scode/make-open-block names
+							(append declarations
+								declarations*)
+							body)))
+		 scode)))
 	  (else
-	   (scan-defines scode make-open-block)))))
+	   (scan-defines scode make-scode-open-block)))))
 
 ;;;; Alternate Entry Points
+
+(define compile-directory
+  (directory-processor
+   "bin"
+   (lambda ()
+     (compiler:compiled-code-pathname-type))
+   (lambda (pathname output-directory)
+     (compile-bin-file pathname output-directory))))
 
 (define (compile-scode scode #!optional keep-debugging-info?)
   (compiler-output->compiled-expression
@@ -260,7 +307,10 @@ USA.
 	      (*info-output-filename* keep-debugging-info?))
     (compile-scode/no-file/hook
      (lambda ()
-       (compile-scode/internal scode keep-debugging-info?)))))
+       (receive (result file-wrapper)
+	   (compile-scode/internal scode keep-debugging-info?)
+	 (declare (ignore file-wrapper))
+	 result)))))
 
 (define (compiler:batch-compile input #!optional output)
   (fluid-let ((compiler:batch-mode? #t))
@@ -327,15 +377,18 @@ USA.
 		       (*procedure-result?* procedure-result?))
 	     (compile-scode/recursive/hook
 	      (lambda ()
-		(compile-scode/internal
-		 scode
-		 (and *info-output-filename*
-		      (if (eq? *info-output-filename* 'KEEP)
-			  'KEEP
-			  'RECURSIVE))
-		 *rtl-output-port*
-		 *lap-output-port*
-		 bind-compiler-variables)))))))
+		(receive (result file-wrapper)
+		    (compile-scode/internal
+		     scode
+		     (and *info-output-filename*
+			  (if (eq? *info-output-filename* 'KEEP)
+			      'KEEP
+			      'RECURSIVE))
+		     *rtl-output-port*
+		     *lap-output-port*
+		     bind-compiler-variables)
+		  (declare (ignore file-wrapper))
+		  result)))))))
     (if procedure-result?
 	(let ((do-it
 	       (lambda ()
@@ -388,6 +441,7 @@ USA.
 ;; Last used: [end]
 (define *tl-bound*)
 (define *tl-free*)
+(define *tl-metadata*)
 
 ;; First set: phase/rtl-generation
 ;; Last used: phase/lap-linearization
@@ -420,16 +474,19 @@ USA.
 (define (in-compiler thunk)
   (let ((run-compiler
 	 (lambda ()
-	   (let ((value
-		  (let ((expression (thunk)))
+	   (receive (scode file-marker) (thunk)
+	     (let ((result
 		    (let ((others (recursive-compilation-results)))
-		      (if (compiled-code-address? expression)
+		      (if (compiled-code-address? scode)
 			  (scode/make-comment
-			   (make-dbg-info-vector
+			   ;; Keep in sync with "crsend.scm" and with
+			   ;; "runtime/infstr.scm".
+			   (vector
+			    '|#[(runtime compiler-info)dbg-info-vector]|
 			    (if compiler:compile-by-procedures?
-				'COMPILED-BY-PROCEDURES
-				'COMPILED-AS-UNIT)
-			    (compiled-code-address->block expression)
+				'compiled-by-procedures
+				'compiled-as-unit)
+			    (compiled-code-address->block scode)
 			    (list->vector
 			     (map (lambda (other)
 				    (vector-ref other 2))
@@ -447,18 +504,25 @@ USA.
 				    *tl-free*
 				    (map (lambda (other)
 					   (vector-ref other 4))
-					 others))))
-			   expression)
+					 others)))
+			    (delete-duplicates
+			     (append *tl-metadata*
+				     (append-map (lambda (other)
+						   (vector-ref other 5))
+						 others))
+			     (lambda (elt1 elt2)
+			       (eq? (car elt1) (car elt2)))))
+			   scode)
 			  (vector compiler:compile-by-procedures?
-				  expression
+				  scode
 				  (map (lambda (other)
 					 (vector-ref other 2))
-				       others)))))))
-	     (if compiler:show-time-reports?
-		 (compiler-time-report "Total compilation time"
-				       *process-time*
-				       *real-time*))
-	     value))))
+				       others))))))
+	       (if compiler:show-time-reports?
+		   (compiler-time-report "Total compilation time"
+					 *process-time*
+					 *real-time*))
+	       (values result file-marker))))))
     (if compiler:preserve-data-structures?
 	(begin
 	  (compiler:reset!)
@@ -495,6 +559,7 @@ USA.
 		(*root-block*)
 		(*tl-bound*)
 		(*tl-free*)
+		(*tl-metadata*)
 		(*rtl-expression*)
 		(*rtl-procedures*)
 		(*rtl-continuations*)
@@ -534,6 +599,7 @@ USA.
   (set! *root-block*)
   (set! *tl-bound*)
   (set! *tl-free*)
+  (set! *tl-metadata*)
   (set! *rtl-expression*)
   (set! *rtl-procedures*)
   (set! *rtl-continuations*)
@@ -685,6 +751,7 @@ USA.
       (set! *lvalues* '())
       (set! *applications* '())
       (set! *parallels* '())
+      (set! *tl-metadata* '())
       (set! *root-expression* (construct-graph (last-reference *scode*)))
       (if *procedure-result?*
 	  (let ((node (expression-entry-node *root-expression*)))
@@ -988,21 +1055,12 @@ USA.
 (define (phase/rtl-file-output scode port)
   (compiler-phase "RTL File Output"
     (lambda ()
-      (write-string "RTL for object " port)
-      (write *recursive-compilation-number* port)
-      (newline port)
-      (pp scode port #t 4)
-      (newline port)
-      (newline port)
+      (rtl/lap-file-header "RTL" scode port)
       (write-rtl-instructions (linearize-rtl *rtl-root*
 					     *rtl-procedures*
 					     *rtl-continuations*)
 			      port)
-      (if (not (zero? *recursive-compilation-number*))
-	  (begin
-	    (write-char #\page port)
-	    (newline port)))
-      (output-port/flush-output port))))
+      (rtl/lap-file-footer port))))
 
 (define (phase/lap-generation)
   (compiler-phase "LAP Generation"
@@ -1055,41 +1113,56 @@ USA.
 (define (phase/lap-file-output scode port)
   (compiler-phase "LAP File Output"
     (lambda ()
-      (fluid-let ((*unparser-radix* 16)
-		  (*unparse-uninterned-symbols-by-name?* #t))
-	(with-output-to-port port
-	  (lambda ()
-	    (write-string "LAP for object ")
-	    (write *recursive-compilation-number*)
-	    (newline)
-	    (pp scode (current-output-port) #t 4)
-	    (newline)
-	    (newline)
-	    (newline)
-	    (for-each
-		(lambda (instruction)
-		  (cond ((and (pair? instruction)
-			      (eq? (car instruction) 'LABEL))
-			 (write (cadr instruction))
-			 (write-char #\:))
-			((and (pair? instruction)
-			      (eq? (car instruction) 'COMMENT))
-			 (write-char #\tab)
-			 (write-string ";;")
-			 (for-each (lambda (frob)
-				     (write-string " ")
-				     (write (if (and (pair? frob)
-						     (eq? (car frob) 'RTL))
-						(cadr frob)
-						frob)))
-			   (cdr instruction)))
-			(else
-			 (write-char #\tab)
-			 (write instruction)))
-		  (newline))
-	      *lap*)
-	    (if (not (zero? *recursive-compilation-number*))
-		(begin
-		  (write-char #\page)
-		  (newline)))
-	    (output-port/flush-output port)))))))
+      (parameterize ((param:printer-radix 16)
+		     (param:print-uninterned-symbols-by-name? #t))
+	(rtl/lap-file-header "LAP" scode port)
+	(for-each (lambda (instruction)
+		    (write-lap-instruction instruction port))
+		  *lap*)
+	(rtl/lap-file-footer port)))))
+
+(define (write-lap-instruction instruction port)
+  (cond ((and (pair? instruction)
+	      (eq? (car instruction) 'label))
+	 (write (cadr instruction) port)
+	 (write-char #\: port)
+	 (newline port))
+	((and (pair? instruction)
+	      (eq? (car instruction) 'comment))
+	 (write-char #\tab port)
+	 (write-string ";;" port)
+	 (for-each (lambda (frob)
+		     (write-string " " port)
+		     (write (if (and (pair? frob)
+				     (eq? (car frob) 'rtl))
+				(cadr frob)
+				frob)
+			    port))
+		   (cdr instruction))
+	 (newline port))
+	((record? instruction)
+	 ;; Handles c:line and c:group instructions.
+	 (write instruction port))
+	(else
+	 (write-char #\tab port)
+	 (write instruction port)
+	 (newline port))))
+
+(define (rtl/lap-file-header tag scode port)
+  (write-char #\page port)
+  (newline port)
+  (write-string tag port)
+  (write-string " for object " port)
+  (write *recursive-compilation-number* port)
+  (cond ((eq? *library-name* 'program)
+	 (write-string " in R7RS top level" port))
+	(*library-name*
+	 (write-string " in R7RS library " port)
+	 (write *library-name* port)))
+  (newline port)
+  (pp scode port #t 4)
+  (newline port)
+  (newline port))
+
+(define (rtl/lap-file-footer port)
+  (output-port/flush-output port))

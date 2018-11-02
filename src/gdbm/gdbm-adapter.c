@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -67,7 +67,7 @@ alloc_gdbm_content (gdbm_args * args, int size)
   return (bytes);
 }
 
-extern char *
+extern const char *
 get_gdbm_version (void)
 {
   return (gdbm_version);
@@ -81,11 +81,23 @@ fatal_error (const char * msg)
   error_external_return ();
 }
 
+#ifdef GDBM_VERSION_MAJOR
+# if GDBM_VERSION_MAJOR > 1
+#  define GDBM_NEED_NOLOCK 1
+# elif GDBM_VERSION_MAJOR == 1 && GDBM_VERSION_MINOR >= 13
+#  define GDBM_NEED_NOLOCK 1
+# endif
+#endif
+
 extern gdbm_args *
 do_gdbm_open (char * name, int block_size, int read_write, int mode)
 {
   gdbm_args *args = (gdbm_args *) malloc (sizeof (gdbm_args));
   if (!args) return (args);
+
+#ifdef GDBM_NEED_NOLOCK
+  read_write |= GDBM_NOLOCK;
+#endif
 
   args->key.dsize = 0;
   args->key.dptr = NULL;
@@ -93,14 +105,14 @@ do_gdbm_open (char * name, int block_size, int read_write, int mode)
   args->content.dsize = 0;
   args->content.dptr = NULL;
   args->content_allocation = 0;
-  args->gdbm_errno = 0;
-  args->sys_errno = 0;
+  args->errno_gdbm = 0;
+  args->errno_sys = 0;
   args->dbf = gdbm_open (name, block_size, read_write, mode, &fatal_error);
 
   if (args->dbf == NULL)
     {
-      args->gdbm_errno = gdbm_errno;
-      args->sys_errno = errno;
+      args->errno_gdbm = gdbm_errno;
+      args->errno_sys = errno;
     }
   return (args);
 }
@@ -122,8 +134,8 @@ do_gdbm_store (gdbm_args * args, int flag)
   int ret = gdbm_store (args->dbf, args->key, args->content, flag);
   if (ret == -1)
     {
-      args->gdbm_errno = gdbm_errno;
-      args->sys_errno = errno;
+      args->errno_gdbm = gdbm_errno;
+      args->errno_sys = errno;
     }
   return (ret);
 }
@@ -180,8 +192,8 @@ do_gdbm_reorganize (gdbm_args * args)
   int ret = gdbm_reorganize (args->dbf);
   if (ret)
     {
-      args->gdbm_errno = gdbm_errno;
-      args->sys_errno = errno;
+      args->errno_gdbm = gdbm_errno;
+      args->errno_sys = errno;
     }
   return (ret);
 }
@@ -198,8 +210,8 @@ do_gdbm_setopt (gdbm_args * args, int option, int value)
   int ret = gdbm_setopt (args->dbf, option, &value, sizeof (int));
   if (ret)
     {
-      args->gdbm_errno = gdbm_errno;
-      args->sys_errno = errno;
+      args->errno_gdbm = gdbm_errno;
+      args->errno_sys = errno;
     }
   return (ret);
 }

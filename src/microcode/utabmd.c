@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -60,8 +60,10 @@ static SCHEME_OBJECT names_to_vector (unsigned long, const char **);
 #define ID_STACK_TYPE		10	/* Scheme stack type (string) */
 #define ID_MACHINE_TYPE		11	/* Machine type (string) */
 #define ID_CC_ARCH		12	/* Compiled-code support (string) */
+#define ID_FLONUM_EXP_MIN	13	/* Minimum finite (normal) exponent */
+#define ID_FLONUM_EXP_MAX	14	/* Maximum finite exponent */
 
-#define N_IDENTITY_NAMES 0x0D
+#define N_IDENTITY_NAMES 0x0F
 static const char * identity_names [] =
 {
   /* 0x00 */	"system-release-string",
@@ -76,7 +78,9 @@ static const char * identity_names [] =
   /* 0x09 */	"os-variant-string",
   /* 0x0A */	"stack-type-string",
   /* 0x0B */	"machine-type-string",
-  /* 0x0C */	"cc-arch-string"
+  /* 0x0C */	"cc-arch-string",
+  /* 0x0D */	"flonum-exponent-min",
+  /* 0x0E */	"flonum-exponent-max",
 };
 
 SCHEME_OBJECT
@@ -94,6 +98,8 @@ make_microcode_identification_vector (void)
   VECTOR_SET (v, ID_OS_VARIANT, (char_pointer_to_string (OS_Variant)));
   VECTOR_SET (v, ID_STACK_TYPE, (char_pointer_to_string ("standard")));
   VECTOR_SET (v, ID_MACHINE_TYPE, (char_pointer_to_string (MACHINE_TYPE)));
+  VECTOR_SET (v, ID_FLONUM_EXP_MIN, (LONG_TO_FIXNUM (DBL_MIN_EXP - 1)));
+  VECTOR_SET (v, ID_FLONUM_EXP_MAX, (LONG_TO_FIXNUM (DBL_MAX_EXP - 1)));
   {
     const char * name = (cc_arch_name ());
     if (name != 0)
@@ -108,14 +114,7 @@ cc_arch_name (void)
   switch (compiler_processor_type)
     {
     case COMPILER_NONE_TYPE: return ("none");
-    case COMPILER_MC68020_TYPE: return ("mc68k");
-    case COMPILER_VAX_TYPE: return ("vax");
-    case COMPILER_SPECTRUM_TYPE: return ("hppa");
-    case COMPILER_MC68040_TYPE: return ("mc68k");
-    case COMPILER_SPARC_TYPE: return ("sparc");
     case COMPILER_IA32_TYPE: return ("i386");
-    case COMPILER_ALPHA_TYPE: return ("alpha");
-    case COMPILER_MIPS_TYPE: return ("mips");
     case COMPILER_C_TYPE: return ("c");
     case COMPILER_SVM_TYPE: return ("svm1");
     case COMPILER_X86_64_TYPE: return ("x86-64");
@@ -179,9 +178,11 @@ initialize_fixed_objects_vector (void)
   STORE_FIXOBJ (GENERIC_TRAMPOLINE_REMAINDER, SHARP_F);
   STORE_FIXOBJ (GENERIC_TRAMPOLINE_MODULO, SHARP_F);
 
-  STORE_FIXOBJ (ARITY_DISPATCHER_TAG,
-		(char_pointer_to_symbol
-		 ("#[(microcode)arity-dispatcher-tag]")));
+  STORE_FIXOBJ (FIXOBJ_PROXIED_RECORD_TYPES,
+		(make_vector ((FASDUMP_RECORD_MARKER_END
+			       - FASDUMP_RECORD_MARKER_START),
+			      SHARP_F,
+			      false)));
 
 #ifdef __WIN32__
   NT_initialize_fov (fixed_objects);

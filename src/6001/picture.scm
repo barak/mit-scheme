@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -80,7 +80,6 @@ USA.
 	   (case name
 	     ((X) (make-window/X11 width height x y))
 	     ((WIN32) (make-window/win32 width height x y))
-	     ((OS/2) (make-window/OS2 width height x y))
 	     (else (error "Unsupported graphics type:" name))))))
     (graphics-set-coordinate-limits window 0 (- (- height 1)) (- width 1) 0)
     (restore-focus-to-editor)
@@ -107,38 +106,10 @@ USA.
     (graphics-operation window 'MOVE-WINDOW x y)
     window))
 
-(define (make-window/OS2 width height x y)
-  (let ((window (make-graphics-device 'OS/2 width height)))
-    ;; X, Y specify the position of the upper-left corner of the
-    ;; window, in coordinates relative to the upper-left corner of the
-    ;; display with Y growing down; the OS/2 SET-WINDOW-POSITION
-    ;; operation specifies the position of the lower-left corner of
-    ;; the window, in coordinates relative to the lower left corner of
-    ;; the display, with Y growing up.
-    (call-with-values (lambda () (graphics-operation window 'DESKTOP-SIZE))
-      (lambda (dx dy)
-	dx
-	(call-with-values
-	    (lambda () (graphics-operation window 'WINDOW-FRAME-SIZE))
-	  (lambda (fx fy)
-	    fx
-	    (graphics-operation window 'SET-WINDOW-POSITION
-				x
-				(- dy (+ y fy)))))))
-    window))
-
-(define os2-image-colormap:gray-256
-  (make-initialized-vector 256
-    (lambda (index)
-      (+ (* index #x10000)
-	 (* index #x100)
-	 index))))
-
 (define (resize-window window width height)
   (let ((name (graphics-type-name (graphics-type window))))
     (case name
       ((X WIN32) (graphics-operation window 'RESIZE-WINDOW width height))
-      ((OS/2) (graphics-operation window 'SET-WINDOW-SIZE width height))
       (else (error "Unsupported graphics type:" name)))))
 
 (define (show-window-size window)
@@ -152,20 +123,12 @@ USA.
     (case name
       ((X) (n-gray-map/X11 window))
       ((WIN32) (n-gray-map/win32 window))
-      ((OS/2) (n-gray-map/os2 window))
       (else (error "Unsupported graphics type:" name)))))
 
 (define n-gray-map/win32
   (let ((map (make-vector 128)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i 128))
-      (vector-set! map i i))
-    (lambda (window) window map)))
-
-(define n-gray-map/os2
-  (let ((map (make-vector 256)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i 256))
       (vector-set! map i i))
     (lambda (window) window map)))
 
@@ -181,18 +144,18 @@ USA.
 	(visual-info (vector->list (x-graphics/visual-info window))))
     (let ((find-class
 	   (lambda (class)
-	     (there-exists? visual-info
-	       (lambda (info)
-		 (eqv? class (x-visual-info/class info))))))
+	     (any (lambda (info)
+		    (eqv? class (x-visual-info/class info)))
+		  visual-info)))
 	  (find-range
 	   (lambda (class depth-min depth-max)
-	     (there-exists? visual-info
-	       (lambda (info)
-		 (and (eqv? class (x-visual-info/class info))
-		      ;; kludge, but X made us do it.
-		      (<= depth-min
-			  (x-visual-info/colormap-size info)
-			  depth-max))))))
+	     (any (lambda (info)
+		    (and (eqv? class (x-visual-info/class info))
+			 ;; kludge, but X made us do it.
+			 (<= depth-min
+			     (x-visual-info/colormap-size info)
+			     depth-max)))
+		  visual-info)))
 	  (make-gray-map
 	   (lambda (n-levels)
 	     (let ((gm (make-vector n-levels))
@@ -478,11 +441,11 @@ USA.
 	  (if (>= row 0)
 	      (let ((rowvals
 		     (map (cond ((= pmin pmax)
-				 (lambda (x) x (ascii->char 0)))
+				 (lambda (x) x (integer->char 0)))
 				(else
 				 (let ((scale (/ 255. (- pmax pmin))))
 				   (lambda (x)
-				     (ascii->char
+				     (integer->char
 				      (round->exact (* (- x pmin) scale)))))))
 			  (flo:vector->list (vector-ref data row)))))
 		(begin

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,9 +72,9 @@ USA.
 		   (conc-name rnode/)
 		   (constructor make-rnode (register))
 		   (print-procedure
-		    (unparser/standard-method 'RNODE
-		      (lambda (state rnode)
-			(unparse-object state (rnode/register rnode))))))
+		    (standard-print-method 'RNODE
+		      (lambda (rnode)
+			(list (rnode/register rnode))))))
   (register false read-only true)
   (forward-links '())
   (backward-links '())
@@ -135,9 +135,9 @@ USA.
 
 (define (add-rnode/initial-value! target expression)
   (let ((values (rnode/initial-values target)))
-    (if (not (there-exists? values
-	       (lambda (value)
-		 (rtl:expression=? expression value))))
+    (if (not (any (lambda (value)
+		    (rtl:expression=? expression value))
+		  values))
 	(set-rnode/initial-values! target
 				   (cons expression values)))))
 
@@ -174,9 +174,9 @@ USA.
 		     (values-substitution-step
 		      rnodes
 		      (rnode/classified-values rnode))))
-		(if (there-exists? values
-		      (lambda (value)
-			(eq? (car value) 'SUBSTITUTABLE-REGISTERS)))
+		(if (any (lambda (value)
+			   (eq? (car value) 'SUBSTITUTABLE-REGISTERS))
+			 values)
 		    (set-rnode/classified-values! rnode values)
 		    (let ((expression (values-unique-expression values)))
 		      (if expression (set! new-constant? true))
@@ -203,9 +203,9 @@ USA.
 
 (define (initial-known-value values)
   (and (not (null? values))
-       (not (there-exists? values
-	      (lambda (value)
-		(rtl:volatile-expression? (cdr value)))))
+       (not (any (lambda (value)
+		   (rtl:volatile-expression? (cdr value)))
+		 values))
        (let loop ((value (car values)) (rest (cdr values)))
 	 (cond ((eq? (car value) 'SUBSTITUTABLE-REGISTERS) 'UNDETERMINED)
 	       ((null? rest) (values-unique-expression values))
@@ -214,10 +214,10 @@ USA.
 (define (values-unique-expression values)
   (let ((class (caar values))
 	(expression (cdar values)))
-    (and (for-all? (cdr values)
-	   (lambda (value)
-	     (and (eq? class (car value))
-		  (rtl:expression=? expression (cdr value)))))
+    (and (every (lambda (value)
+		  (and (eq? class (car value))
+		       (rtl:expression=? expression (cdr value))))
+		(cdr values))
 	 expression)))
 
 (define (values-substitution-step rnodes values)

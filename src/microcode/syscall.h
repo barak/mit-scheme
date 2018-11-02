@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,16 +31,11 @@ USA.
 
 #include "config.h"
 
-#ifdef __OS2__
-#  define DEFINE_OS2_SYSCALLS
-#  include "os2api.h"
-#  undef DEFINE_OS2_SYSCALLS
+#ifdef __WIN32__
+#  define DEFINE_WIN32_SYSCALLS
+#  include "ntapi.h"
+#  undef DEFINE_WIN32_SYSCALLS
 #else
-#  ifdef __WIN32__
-#    define DEFINE_WIN32_SYSCALLS
-#    include "ntapi.h"
-#    undef DEFINE_WIN32_SYSCALLS
-#  else
 
 /* Unix case, inline for historical reasons.  Must match "uxtop.c".  */
 
@@ -165,8 +160,7 @@ enum syserr_names
   syserr_too_many_open_files_in_system
 };
 
-#  endif /* not __WIN32__ */
-#endif /* not __OS2__ */
+#endif /* not __WIN32__ */
 
 extern void error_in_system_call (enum syserr_names, enum syscall_names)
      NORETURN;

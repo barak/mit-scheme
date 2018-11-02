@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -60,7 +60,7 @@ USA.
   (let ((declarations (maybe-flush-declarations declarations)))
     (if (null? declarations)
 	expression
-	(make-declaration declarations expression))))
+	(make-scode-declaration declarations expression))))
 
 (define flush-declarations?)
 
@@ -83,17 +83,18 @@ USA.
   ;; Declarations which are not handled by SF but are known to be handled
   ;; by the compiler so SF ignores then silently.
   '(
-    CONSTANT
-    IGNORE-ASSIGNMENT-TRAPS
-    IGNORE-REFERENCE-TRAPS
-    NO-RANGE-CHECKS
-    NO-TYPE-CHECKS
-    PURE-FUNCTION
-    RANGE-CHECKS
-    SIDE-EFFECT-FREE
-    TYPE-CHECKS
-    USUAL-DEFINITION
-    UUO-LINK
+    constant
+    ignore-assignment-traps
+    ignore-reference-traps
+    no-range-checks
+    no-type-checks
+    pure-function
+    range-checks
+    side-effect-free
+    target-metadata
+    type-checks
+    usual-definition
+    uuo-link
     ))
 
 (define (known-compiler-declaration? declaration)
@@ -123,56 +124,58 @@ USA.
 (define (cgen/variable interns variable)
   (cdr (or (assq variable (cdr interns))
 	   (let ((association
-		  (cons variable (make-variable (variable/name variable)))))
+		  (cons variable
+			(make-scode-variable (variable/name variable)))))
 	     (set-cdr! interns (cons association (cdr interns)))
 	     association))))
 
-(define-method/cgen 'ACCESS
+(define-method/cgen 'access
   (lambda (interns expression)
-    (make-access (cgen/expression interns (access/environment expression))
-		 (access/name expression))))
+    (make-scode-access (cgen/expression interns (access/environment expression))
+		       (access/name expression))))
 
-(define-method/cgen 'ASSIGNMENT
+(define-method/cgen 'assignment
   (lambda (interns expression)
-    (make-assignment-from-variable
-     (cgen/variable interns (assignment/variable expression))
+    (make-scode-assignment
+     (scode-variable-name
+      (cgen/variable interns (assignment/variable expression)))
      (cgen/expression interns (assignment/value expression)))))
 
-(define-method/cgen 'COMBINATION
+(define-method/cgen 'combination
   (lambda (interns expression)
-    (make-combination
+    (make-scode-combination
      (cgen/expression interns (combination/operator expression))
      (cgen/expressions interns (combination/operands expression)))))
 
-(define-method/cgen 'CONDITIONAL
+(define-method/cgen 'conditional
   (lambda (interns expression)
-    (make-conditional
+    (make-scode-conditional
      (cgen/expression interns (conditional/predicate expression))
      (cgen/expression interns (conditional/consequent expression))
      (cgen/expression interns (conditional/alternative expression)))))
 
-(define-method/cgen 'CONSTANT
+(define-method/cgen 'constant
   (lambda (interns expression)
     interns ; is ignored
     (constant/value expression)))
 
-(define-method/cgen 'DECLARATION
+(define-method/cgen 'declaration
   (lambda (interns expression)
     (cgen/declaration (declaration/declarations expression)
 		      (cgen/expression interns
 				       (declaration/expression expression)))))
 
-(define-method/cgen 'DELAY
+(define-method/cgen 'delay
   (lambda (interns expression)
-    (make-delay (cgen/expression interns (delay/expression expression)))))
+    (make-scode-delay (cgen/expression interns (delay/expression expression)))))
 
-(define-method/cgen 'DISJUNCTION
+(define-method/cgen 'disjunction
   (lambda (interns expression)
-    (make-disjunction
+    (make-scode-disjunction
      (cgen/expression interns (disjunction/predicate expression))
      (cgen/expression interns (disjunction/alternative expression)))))
 
-(define-method/cgen 'PROCEDURE
+(define-method/cgen 'procedure
   (lambda (interns procedure)
     interns ; ignored
     (make-lambda* (procedure/name procedure)
@@ -184,17 +187,17 @@ USA.
 			(body  (procedure/body procedure)))
 		    (if (open-block? body)
 			(cgen-open-block body)
-			(make-open-block
+			(make-scode-open-block
 			 '()
 			 (maybe-flush-declarations (block/declarations block))
 			 (cgen/expression (list block) body)))))))
 
 (define (cgen-open-block expression)
   (let ((block (open-block/block expression)))
-    (make-open-block
+    (make-scode-open-block
      (map variable/name (open-block/variables expression))
      (maybe-flush-declarations (block/declarations block))
-     (make-sequence
+     (make-scode-sequence
       (let loop
 	  ((variables (open-block/variables expression))
 	   (values (open-block/values expression))
@@ -202,23 +205,24 @@ USA.
 	(cond ((null? variables) (cgen/expressions (list block) actions))
 	      ((null? actions) (error "Extraneous auxiliaries"))
 	      ((eq? (car actions) open-block/value-marker)
-	       (cons (make-assignment (variable/name (car variables))
-				      (cgen/expression (list block) (car values)))
+	       (cons (make-scode-assignment (variable/name (car variables))
+					    (cgen/expression (list block)
+							     (car values)))
 		     (loop (cdr variables) (cdr values) (cdr actions))))
 	      (else
 	       (cons (cgen/expression (list block) (car actions))
 		     (loop variables values (cdr actions))))))))))
 
-(define-method/cgen 'QUOTATION
+(define-method/cgen 'quotation
   (lambda (interns expression)
     interns ; ignored
-    (make-quotation (cgen/top-level expression))))
+    (make-scode-quotation (cgen/top-level expression))))
 
-(define-method/cgen 'REFERENCE
+(define-method/cgen 'reference
   (lambda (interns expression)
     (cgen/variable interns (reference/variable expression))))
 
-(define-method/cgen 'SEQUENCE
+(define-method/cgen 'sequence
   (lambda (interns expression)
     (let ((actions
 	   (if flush-declarations?
@@ -226,7 +230,7 @@ USA.
 	       (sequence/actions expression))))
       (if (null? (cdr actions))
 	  (cgen/expression interns (car actions))
-	  (make-sequence (cgen/expressions interns actions))))))
+	  (make-scode-sequence (cgen/expressions interns actions))))))
 
 (define (remove-references actions)
   (if (null? (cdr actions))
@@ -236,14 +240,14 @@ USA.
 	    rest
 	    (cons (car actions) rest)))))
 
-(define-method/cgen 'THE-ENVIRONMENT
+(define-method/cgen 'the-environment
   (lambda (interns expression)
     interns expression ; ignored
-    (make-the-environment)))
+    (make-scode-the-environment)))
 
 ;;; Debugging utility
 (define (pp-expression form #!optional port)
-  (fluid-let ((*pp-primitives-by-name* #f)
-	      (*pp-uninterned-symbols-by-name* #f)
-	      (*unparse-abbreviate-quotations?* #t))
+  (parameterize ((param:pp-primitives-by-name? #f)
+		 (param:pp-uninterned-symbols-by-name? #f)
+		 (param:printer-abbreviate-quotations? #t))
     (pp (cgen/external-with-declarations form) port)))

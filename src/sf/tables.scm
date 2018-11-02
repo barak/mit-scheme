@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -208,7 +208,7 @@ USA.
 
 ;; When processing a global reference, we only have a name.
 (define (operations/lookup-global operations name if-found if-not)
-  (guarantee-symbol name 'operations/lookup-global)
+  (guarantee symbol? name 'operations/lookup-global)
   (let ((probe (find (lambda (entry)
 		       (eq? (variable/name (car entry)) name))
 		     (vector-ref operations 2))))
@@ -226,7 +226,7 @@ USA.
 	  (vector-ref operations 2)))
 
 (define (operations/bind operations operation variable value)
-  (guarantee-known-declaration operation 'operations/bind)
+  (guarantee known-declaration? operation 'operations/bind)
   (guarantee-variable variable 'operations/bind)
   (vector (cons (cons* variable operation value)
 		(vector-ref operations 0))
@@ -234,7 +234,7 @@ USA.
 	  (vector-ref operations 2)))
 
 (define (operations/bind-top-level operations operation variable value)
-  (guarantee-known-declaration operation 'operations/bind-top-level)
+  (guarantee known-declaration? operation 'operations/bind-top-level)
   (guarantee-variable variable 'operations/bind-top-level)
   (vector (vector-ref operations 0)
 	  (cons (cons* variable operation value)
@@ -242,7 +242,7 @@ USA.
 	  (vector-ref operations 2)))
 
 (define (operations/bind-global operations operation variable value)
-  (guarantee-known-declaration operation 'operations/bind-global)
+  (guarantee known-declaration? operation 'operations/bind-global)
   (guarantee-variable variable 'operations/bind-global)
   (vector (vector-ref operations 0)
 	  (vector-ref operations 1)

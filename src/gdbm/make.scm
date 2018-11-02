@@ -6,4 +6,4 @@
   (lambda ()
     (load-package-set "gdbm")))
 
-(add-subsystem-identification! "GDBM2" '(0 1))
+(add-subsystem-identification! "GDBM" '(1 0))

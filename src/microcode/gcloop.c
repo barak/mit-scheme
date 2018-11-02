@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -293,8 +293,8 @@ tospace_to_newspace (void * addr)
   return
     (((addr >= ((void *) tospace_start))
       && (addr <= ((void *) tospace_end)))
-     ? ((((byte_t *) addr) - ((byte_t *) tospace_start))
-	+ ((byte_t *) newspace_start))
+     ? ((((uint8_t *) addr) - ((uint8_t *) tospace_start))
+	+ ((uint8_t *) newspace_start))
      : addr);
 }
 
@@ -304,8 +304,8 @@ newspace_to_tospace (void * addr)
   return
     (((addr >= ((void *) newspace_start))
       && (addr <= ((void *) newspace_end)))
-     ? ((((byte_t *) addr) - ((byte_t *) newspace_start))
-	+ ((byte_t *) tospace_start))
+     ? ((((uint8_t *) addr) - ((uint8_t *) newspace_start))
+	+ ((uint8_t *) tospace_start))
      : addr);
 }
 
@@ -442,12 +442,22 @@ DEFINE_GC_TUPLE_HANDLER (gc_tuple)
 {
   SCHEME_OBJECT * from = (OBJECT_ADDRESS (tuple));
   SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (from));
+  if (new_address == 0) {
+    new_address = GC_TRANSPORT_WORDS (from, n_words, false);
+    /* A little hack to localize lists.  Transport CDRs eagerly. */
+    if (n_words == 2) {
+      SCHEME_OBJECT cdr = READ_TOSPACE(new_address + CONS_CDR);
+      while (OBJECT_TYPE(cdr) == TC_LIST &&
+             (GC_PRECHECK_FROM(OBJECT_ADDRESS(cdr)) == 0)) {
+        cdr = READ_TOSPACE(GC_TRANSPORT_WORDS(OBJECT_ADDRESS(cdr), 2, false) +
+                           CONS_CDR);
+      }
+    }
+  }
   return
-    (OBJECT_NEW_ADDRESS (tuple,
-			 ((new_address != 0)
-			  ? new_address
-			  : (GC_TRANSPORT_WORDS (from, n_words, false)))));
+      (OBJECT_NEW_ADDRESS(tuple, new_address));
 }
+
 
 DEFINE_GC_VECTOR_HANDLER (gc_vector)
 {
@@ -532,11 +542,10 @@ DEFINE_GC_TRANSPORT_WORDS (gc_transport_words)
   }
   if (n_words == 0)
     std_gc_death ("gc_transport_words: attempt to transfer zero words.");
+#if 0
   if (n_words > 0x10000)
-    {
-      outf_error ("\nWarning: copying large block: %lu\n", n_words);
-      outf_flush_error ();
-    }
+      outf_error_line ("\nWarning: copying large block: %lu", n_words);
+#endif
 #endif
   new_address = newspace_next;
   while (from < from_end)
@@ -885,7 +894,7 @@ gc_transport_weak_pair (SCHEME_OBJECT pair)
 
   if ((caddr != 0) && (ADDRESS_IN_FROMSPACE_P (caddr)))
     {
-      WRITE_TOSPACE (new_addr, (OBJECT_NEW_TYPE (TC_NULL, old_car)));
+      WRITE_TOSPACE (new_addr, (OBJECT_NEW_TYPE (TC_FALSE, old_car)));
       (old_addr[1])
 	= ((weak_chain == 0)
 	   ? (MAKE_OBJECT ((OBJECT_TYPE (old_car)), 0))
@@ -1244,19 +1253,19 @@ finalize_gc_object_references (void)
 
 gc_type_t gc_type_map [N_TYPE_CODES] =
 {
-  GC_NON_POINTER,		/* TC_NULL,etc */
+  GC_NON_POINTER,		/* TC_FALSE */
   GC_PAIR,			/* TC_LIST */
   GC_NON_POINTER,		/* TC_CHARACTER */
   GC_PAIR,		   	/* TC_SCODE_QUOTE */
-  GC_TRIPLE,		        /* TC_PCOMB2 */
+  GC_UNDEFINED,		        /* was TC_PCOMB2 */
   GC_PAIR,			/* TC_UNINTERNED_SYMBOL */
   GC_VECTOR,			/* TC_BIG_FLONUM */
-  GC_PAIR,			/* TC_COMBINATION_1 */
+  GC_UNDEFINED,			/* was TC_COMBINATION_1 */
   GC_NON_POINTER,		/* TC_CONSTANT */
   GC_PAIR,			/* TC_EXTENDED_PROCEDURE */
   GC_VECTOR,			/* TC_VECTOR */
   GC_NON_POINTER,		/* TC_RETURN_CODE */
-  GC_TRIPLE,			/* TC_COMBINATION_2 */
+  GC_UNDEFINED,			/* was TC_COMBINATION_2 */
   GC_SPECIAL,			/* TC_MANIFEST_CLOSURE */
   GC_VECTOR,			/* TC_BIG_FIXNUM */
   GC_PAIR,			/* TC_PROCEDURE */
@@ -1271,31 +1280,31 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_NON_POINTER,		/* TC_PRIMITIVE */
   GC_PAIR,			/* TC_SEQUENCE */
   GC_NON_POINTER,		/* TC_FIXNUM */
-  GC_PAIR,			/* TC_PCOMB1 */
+  GC_VECTOR,			/* TC_UNICODE_STRING */
   GC_VECTOR,			/* TC_CONTROL_POINT */
   GC_PAIR,			/* TC_INTERNED_SYMBOL */
-  GC_VECTOR,			/* TC_CHARACTER_STRING,TC_VECTOR_8B */
+  GC_VECTOR,			/* TC_CHARACTER_STRING */
   GC_PAIR,			/* TC_ACCESS */
   GC_TRIPLE,			/* TC_HUNK3_A */
   GC_PAIR,			/* TC_DEFINITION */
   GC_SPECIAL,			/* TC_BROKEN_HEART */
   GC_PAIR,			/* TC_ASSIGNMENT */
   GC_TRIPLE,			/* TC_HUNK3_B */
-  GC_UNDEFINED,			/* unused */
+  GC_PAIR,			/* TC_TAGGED_OBJECT */
   GC_VECTOR,			/* TC_COMBINATION */
   GC_SPECIAL,			/* TC_MANIFEST_NM_VECTOR */
   GC_COMPILED,			/* TC_COMPILED_ENTRY */
   GC_PAIR,			/* TC_LEXPR */
-  GC_VECTOR,			/* TC_PCOMB3 */
+  GC_UNDEFINED,			/* was TC_PCOMB3 */
   GC_VECTOR,			/* TC_EPHEMERON */
   GC_TRIPLE,			/* TC_VARIABLE */
   GC_NON_POINTER,		/* TC_THE_ENVIRONMENT */
   GC_PAIR,			/* TC_SYNTAX_ERROR */
   GC_VECTOR,			/* TC_VECTOR_1B,TC_BIT_STRING */
-  GC_NON_POINTER,		/* TC_PCOMB0 */
+  GC_UNDEFINED,			/* was TC_PCOMB0 */
   GC_VECTOR,			/* TC_VECTOR_16B */
   GC_SPECIAL,			/* TC_REFERENCE_TRAP */
-  GC_UNDEFINED,			/* 0x33 */
+  GC_VECTOR,			/* TC_BYTEVECTOR */
   GC_TRIPLE,			/* TC_CONDITIONAL */
   GC_PAIR,			/* TC_DISJUNCTION */
   GC_CELL,			/* TC_CELL */

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,7 +29,8 @@ USA.
 (declare (usual-integrations))
 
 (define (enable-group-undo! group)
-  (set-group-undo-data! group '()))
+  (if (eq? #t (group-undo-data group))
+      (set-group-undo-data! group '())))
 
 (define (disable-group-undo! group)
   (set-group-undo-data! group #t))
@@ -177,7 +178,7 @@ which includes both the saved text and other data."
   ;; the editor does not exist or is not running.  It would actually
   ;; prefer to be run *before* the GC, but that's not possible now.
   (if edwin-editor
-      (let ((bytes/word (vector-ref (gc-space-status) 0)))
+      (let ((bytes/word (bytes-per-object)))
 	(let ((words->bytes
 	       (lambda (words)
 		 (round (/ words bytes/word)))))

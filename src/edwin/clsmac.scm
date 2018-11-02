@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,7 +37,7 @@ USA.
 (define-syntax define-class
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (and (syntax-match? '(IDENTIFIER DATUM (* SYMBOL)) (cdr form))
+     (if (and (syntax-match? '(identifier datum (* symbol)) (cdr form))
 	      (or (identifier? (caddr form))
 		  (null? (caddr form))))
 	 (let ((name (cadr form))
@@ -49,9 +49,9 @@ USA.
 			    (name->class (identifier->symbol superclass)))
 		       variables)
 	   ;; Load-time definition.
-	   `(,(close-syntax 'DEFINE environment)
+	   `(,(close-syntax 'define environment)
 	     ,name
-	     (,(close-syntax 'MAKE-CLASS environment)
+	     (,(close-syntax 'make-class environment)
 	      ',(identifier->symbol name)
 	      ,superclass
 	      ',variables)))
@@ -62,21 +62,21 @@ USA.
    (lambda (form environment)
      (let ((finish
 	    (lambda (name operation expression)
-	      `(,(close-syntax 'CLASS-METHOD-DEFINE environment)
+	      `(,(close-syntax 'class-method-define environment)
 		,name
 		',operation
 		,expression))))
-       (cond ((syntax-match? '(IDENTIFIER SYMBOL EXPRESSION) (cdr form))
+       (cond ((syntax-match? '(identifier symbol expression) (cdr form))
 	      (finish (cadr form) (caddr form) (cadddr form)))
-	     ((and (syntax-match? '(IDENTIFIER (SYMBOL . MIT-BVL) + EXPRESSION)
+	     ((and (syntax-match? '(identifier (symbol . mit-bvl) + expression)
 				  (cdr form))
 		   (pair? (cdr (caddr form)))
 		   (identifier? (cadr (caddr form))))
 	      (finish (cadr form)
 		      (car (caddr form))
-		      `(,(close-syntax 'NAMED-LAMBDA environment)
+		      `(,(close-syntax 'named-lambda environment)
 			,(caddr form)
-			(,(close-syntax 'WITH-INSTANCE-VARIABLES environment)
+			(,(close-syntax 'with-instance-variables environment)
 			 ,(cadr form)
 			 ,(cadr (caddr form))
 			 ()
@@ -85,23 +85,30 @@ USA.
 	      (ill-formed-syntax form)))))))
 
 (define with-instance-variables
-  (make-unmapped-macro-reference-trap
-   (make-compiler-item
-    (lambda (form environment)
-      (syntax-check '(KEYWORD IDENTIFIER EXPRESSION (* IDENTIFIER) + EXPRESSION)
-		    form)
-      (let ((class-name (cadr form))
-	    (self (caddr form))
-	    (free-names (cadddr form))
-	    (body (cddddr form)))
-	(transform-instance-variables
-	 (class-instance-transforms
-	  (name->class (identifier->symbol class-name)))
-	 (compile/expression self environment)
-	 free-names
-	 (compile/expression
-	  `(,(close-syntax 'BEGIN system-global-environment) ,@body)
-	  environment)))))))
+  (classifier->runtime
+   ;; Rest arg facilitates cross-compiling from 9.2.
+   ;; It should be removed after 9.3 release.
+   (lambda (form senv . rest)
+     (syntax-check '(_ identifier expression (* identifier) + expression) form)
+     (let ((class-name (cadr form))
+	   (self-item (apply classify-form (caddr form) senv rest))
+	   (free-names (cadddr form))
+	   (body-item
+	    (apply classify-form
+		   `(,(close-syntax 'begin
+				    (runtime-environment->syntactic
+				     system-global-environment))
+		     ,@(cddddr form))
+		   senv
+		   rest)))
+       (expr-item #f
+	 (lambda ()
+	   (transform-instance-variables
+	    (class-instance-transforms
+	     (name->class (identifier->symbol class-name)))
+	    (compile-expr-item self-item)
+	    free-names
+	    (compile-item body-item))))))))
 
 (define-syntax ==>
   (syntax-rules ()

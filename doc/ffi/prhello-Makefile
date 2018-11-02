@@ -1,6 +1,12 @@
+AUXDIR=/usr/local/lib/mit-scheme-i386
+
 install: build
-	echo '(install-shim "$(DESTDIR)" "prhello")' \
-	| mit-scheme --batch-mode
+	install -m 644 prhello-types.bin $(AUXDIR)
+	install -m 644 prhello-const.bin $(AUXDIR)
+	install -m 644 prhello-shim.so $(AUXDIR)
+
+uninstall:
+	rm $(AUXDIR)/prhello-*
 
 clean:
 	rm prhello-const* prhello-types* prhello-shim* 
@@ -8,12 +14,10 @@ clean:
 build: prhello-shim.so prhello-types.bin prhello-const.bin
 
 prhello-shim.so: prhello-shim.o
-	echo "(link-shim)" \
-	| mit-scheme --batch-mode -- -o $@ $^ `pkg-config --libs gtk+-2.0`
+	$(CC) -shared -fPIC -o $@ $^ `pkg-config --libs gtk+-3.0`
 
 prhello-shim.o: prhello-shim.c
-	echo '(compile-shim)' \
-	| mit-scheme --batch-mode -- `pkg-config --cflags gtk+-2.0` -c $<
+	$(CC) -I$(AUXDIR) -Wall -fPIC `pkg-config --cflags gtk+-3.0` -o $@ -c $<
 
 prhello-shim.c prhello-const.c prhello-types.bin: prhello.cdecl
 	echo '(generate-shim "prhello" "#include <gtk/gtk.h>")' \
@@ -26,7 +30,7 @@ prhello-const.scm: prhello-const
 	./prhello-const
 
 prhello-const: prhello-const.o
-	$(CC) -o $@ $^ $(LDFLAGS) `pkg-config --libs gtk+-2.0`
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) `pkg-config --libs gtk+-3.0`
 
 prhello-const.o: prhello-const.c
-	$(CC) `pkg-config --cflags gtk+-2.0` $(CFLAGS) -o $@ -c $<
+	$(CC) `pkg-config --cflags gtk+-3.0` $(CFLAGS) -o $@ -c $<

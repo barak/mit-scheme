@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -391,8 +391,6 @@ USA.
    (let ((bit-string (make-bit-string 64 #f)))
      ;; Skip the manifest preceding the flonum data.  Is there a
      ;; better way to express this?
-     (let* ((bytes-per-object (vector-ref (gc-space-status) 0))
-            (bits-per-object (* 8 bytes-per-object))
-            (flonum-data-offset-in-bits bits-per-object))
+     (let ((flonum-data-offset-in-bits (* 8 (bytes-per-object))))
        (read-bits! flonum flonum-data-offset-in-bits bit-string))
      bit-string)))

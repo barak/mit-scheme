@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -60,12 +60,16 @@ USA.
 		   "machines/C"))))
     (if (null? filenames)
 	(error "Can't find source files of compiler"))
-    (set! source-filenames filenames))
+    (set! source-filenames
+	  ;; Don't process these excluded files.  It would be better to extract
+	  ;; the filenames from the package description, but that's hard to do
+	  ;; without extending the package abstraction a bit.
+	  (lset-difference string=? filenames '("base/asstop" "base/crsend"))))
   (set! source-hash (make-string-hash-table))
   (set! source-nodes
 	(map (lambda (filename)
 	       (let ((node (make/source-node filename)))
-		 (hash-table/put! source-hash filename node)
+		 (hash-table-set! source-hash filename node)
 		 node))
 	     source-filenames))
   (initialize/syntax-dependencies!)
@@ -101,7 +105,7 @@ USA.
   (%make/source-node filename (->pathname filename)))
 
 (define (filename->source-node filename)
-  (let ((node (hash-table/get source-hash filename #f)))
+  (let ((node (hash-table-ref/default source-hash filename #f)))
     (if (not node)
 	(error "Unknown source file:" filename))
     node))
@@ -148,14 +152,14 @@ USA.
   (for-each (lambda (node)
 	      (set-source-node/dependencies!
 	       node
-	       (list-transform-negative (source-node/backward-closure node)
-		 (lambda (node*)
-		   (memq node (source-node/backward-closure node*)))))
+	       (remove (lambda (node*)
+			 (memq node (source-node/backward-closure node*)))
+		       (source-node/backward-closure node)))
 	      (set-source-node/dependents!
 	       node
-	       (list-transform-negative (source-node/forward-closure node)
-		 (lambda (node*)
-		   (memq node (source-node/forward-closure node*))))))
+	       (remove (lambda (node*)
+			 (memq node (source-node/forward-closure node*)))
+		       (source-node/forward-closure node))))
 	    nodes))
 
 (define (compute-ranks! nodes)
@@ -208,23 +212,24 @@ USA.
 	 (lambda (node)
 	   (let ((time (source-node/modification-time node)))
 	     (if (and time
-		      (there-exists? (source-node/dependencies node)
-			(lambda (node*)
-			  (let ((newer?
-				 (let ((time*
-					(source-node/modification-time node*)))
-				   (or (not time*)
-				       (> time* time)))))
-			    (if newer?
-				(write-notification-line
-				 (lambda (port)
-				   (write-string "Binary file " port)
-				   (write (source-node/filename node) port)
-				   (write-string " newer than dependency "
-						 port)
-				   (write (source-node/filename node*)
-					  port))))
-			    newer?))))
+		      (any (lambda (node*)
+			     (let ((newer?
+				    (let ((time*
+					   (source-node/modification-time
+					    node*)))
+				      (or (not time*)
+					  (> time* time)))))
+			       (if newer?
+				   (write-notification-line
+				    (lambda (port)
+				      (write-string "Binary file " port)
+				      (write (source-node/filename node) port)
+				      (write-string " newer than dependency "
+						    port)
+				      (write (source-node/filename node*)
+					     port))))
+			       newer?))
+			   (source-node/dependencies node)))
 		 (set-source-node/modification-time! node #f))))
 	 source-nodes)
 	(for-each
@@ -249,14 +254,20 @@ USA.
   (write-notification-line
    (lambda (port)
      (write-string "Begin pass 1:" port)))
-  (for-each (lambda (node)
-	      (if (not (source-node/modification-time node))
-		  (source-node/syntax! node)))
-	    source-nodes/by-rank)
-  (if (there-exists? source-nodes/by-rank
-	(lambda (node)
-	  (and (not (source-node/modification-time node))
-	       (source-node/circular? node))))
+  (bind-condition-handler (list condition-type:simple-warning)
+      (lambda (condition)
+	(if (string=? (access-condition condition 'MESSAGE)
+		      "Missing externs file:")
+	    (muffle-warning)))
+    (lambda ()
+      (for-each (lambda (node)
+		  (if (not (source-node/modification-time node))
+		      (source-node/syntax! node)))
+		source-nodes/by-rank)))
+  (if (any (lambda (node)
+	     (and (not (source-node/modification-time node))
+		  (source-node/circular? node)))
+	   source-nodes/by-rank)
       (begin
 	(write-notification-line
 	 (lambda (port)
@@ -307,8 +318,7 @@ USA.
      ((if compiler:enable-integration-declarations?
 	  identity-procedure
 	  (lambda (declarations)
-	    (list-transform-negative declarations
-	      integration-declaration?)))
+	    (remove integration-declaration? declarations)))
       (source-node/declarations node)))))
 
 (define (modification-time node type)

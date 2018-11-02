@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -156,7 +156,7 @@ USA.
   (parser-table parser-macros-table))
 
 (define (make-parser-macros parent)
-  (if parent (guarantee-parser-macros parent 'MAKE-PARSER-MACROS))
+  (if parent (guarantee parser-macros? parent 'MAKE-PARSER-MACROS))
   (%make-parser-macros (or parent *global-parser-macros*)
 		       (make-strong-eq-hash-table)
 		       (make-strong-eq-hash-table)))
@@ -166,30 +166,26 @@ USA.
 		       (make-strong-eq-hash-table)
 		       (make-strong-eq-hash-table)))
 
-(define (guarantee-parser-macros object procedure)
-  (if (not (parser-macros? object))
-      (error:wrong-type-argument object "parser macros" procedure)))
-
 (define (define-matcher-macro name expander)
-  (hash-table/put! (matcher-macros-table *parser-macros*) name expander))
+  (hash-table-set! (matcher-macros-table *parser-macros*) name expander))
 
 (define (lookup-matcher-macro name)
   (let loop ((environment *parser-macros*))
     (and environment
-	 (or (hash-table/get (matcher-macros-table environment) name #f)
+	 (or (hash-table-ref/default (matcher-macros-table environment) name #f)
 	     (loop (parent-macros environment))))))
 
 (define (define-parser-macro name expander)
-  (hash-table/put! (parser-macros-table *parser-macros*) name expander))
+  (hash-table-set! (parser-macros-table *parser-macros*) name expander))
 
 (define (lookup-parser-macro name)
   (let loop ((environment *parser-macros*))
     (and environment
-	 (or (hash-table/get (parser-macros-table environment) name #f)
+	 (or (hash-table-ref/default (parser-macros-table environment) name #f)
 	     (loop (parent-macros environment))))))
 
 (define (with-current-parser-macros macros thunk)
-  (guarantee-parser-macros macros 'WITH-CURRENT-PARSER-MACROS)
+  (guarantee parser-macros? macros 'WITH-CURRENT-PARSER-MACROS)
   (fluid-let ((*parser-macros* macros))
     (thunk)))
 
@@ -197,7 +193,7 @@ USA.
   *parser-macros*)
 
 (define (set-current-parser-macros! macros)
-  (guarantee-parser-macros macros 'SET-CURRENT-PARSER-MACROS!)
+  (guarantee parser-macros? macros 'SET-CURRENT-PARSER-MACROS!)
   (set! *parser-macros* macros)
   unspecific)
 
@@ -274,7 +270,7 @@ USA.
   (string->uninterned-symbol
    (string-append
     internal-identifier-prefix
-    (symbol-name prefix)
+    (symbol->string prefix)
     (number->string
      (let ((entry (assq prefix *id-counters*)))
        (if entry
@@ -287,7 +283,7 @@ USA.
     internal-identifier-suffix)))
 
 (define (internal-identifier? identifier)
-  (let ((string (symbol-name identifier)))
+  (let ((string (symbol->string identifier)))
     (and (string-prefix? internal-identifier-prefix string)
 	 (string-suffix? internal-identifier-suffix string))))
 
@@ -441,9 +437,9 @@ USA.
 		 ((LAMBDA)
 		  `(LAMBDA ,(cadr expression)
 		     ,(loop (caddr expression)
-			    (delete-matching-items substitutions
-			      (lambda (s)
-				(memq (car s) (cadr expression)))))))
+			    (remove (lambda (s)
+				      (memq (car s) (cadr expression)))
+				    substitutions))))
 		 ((LET)
 		  `(LET ,(cadr expression)
 		     ,(map (lambda (binding)
@@ -451,10 +447,10 @@ USA.
 			       ,(loop (cadr binding) substitutions)))
 			   (caddr expression))
 		     ,(loop (cadddr expression)
-			    (delete-matching-items substitutions
-			      (lambda (s)
-				(or (eq? (car s) (cadr expression))
-				    (assq (car s) (caddr expression))))))))
+			    (remove (lambda (s)
+				      (or (eq? (car s) (cadr expression))
+					  (assq (car s) (caddr expression))))
+				    substitutions))))
 		 ((PROTECT)
 		  expression)
 		 (else
@@ -488,7 +484,7 @@ USA.
 		(count-references identifiers body)
 		identifiers
 		(map cadr bindings)))))
-    (if (there-exists? discards (lambda (discard) discard))
+    (if (any (lambda (discard) discard) discards)
 	(values identifier
 		(apply-discards-to-list discards bindings)
 		(apply-discards-to-calls identifier discards body))
@@ -518,7 +514,7 @@ USA.
 	(let ((discards
 	       (map (lambda (count) (= 0 count))
 		    (count-references identifiers body*))))
-	  (if (there-exists? discards (lambda (discard) discard))
+	  (if (any (lambda (discard) discard) discards)
 	      (values `(LAMBDA ,(apply-discards-to-list discards identifiers)
 			 ,body*)
 		      (apply-discards-to-calls identifier discards body))
@@ -599,9 +595,9 @@ USA.
 	     (or (boolean? body)
 		 (symbol? body)
 		 (and (syntax-match?
-		       '('BEGIN
-			  ('SET-PARSER-BUFFER-POINTER! EXPRESSION IDENTIFIER)
-			  EXPRESSION)
+		       '('begin
+			  ('set-parser-buffer-pointer! expression identifier)
+			  expression)
 		       body)
 		      (or (boolean? (caddr body))
 			  (symbol? (caddr body)))))))
@@ -641,18 +637,18 @@ USA.
 	     (case (car expression)
 	       ((LAMBDA)
 		(loop (caddr expression)
-		      (delete-matching-items alist
-			(lambda (entry)
-			  (memq (car entry) (cadr expression))))))
+		      (remove (lambda (entry)
+				(memq (car entry) (cadr expression)))
+			      alist)))
 	       ((LET)
 		(for-each (lambda (binding)
 			    (loop (cadr binding) alist))
 			  (caddr expression))
 		(loop (cadddr expression)
-		      (delete-matching-items alist
-			(lambda (entry)
-			  (or (eq? (car entry) (cadr expression))
-			      (assq (car entry) (caddr expression)))))))
+		      (remove (lambda (entry)
+				(or (eq? (car entry) (cadr expression))
+				    (assq (car entry) (caddr expression))))
+			      alist)))
 	       ((PROTECT)
 		unspecific)
 	       (else
@@ -679,12 +675,12 @@ USA.
   (pp pointers)
   (newline)
   |#
-  (cond ((or (find-matching-item pointer-optimizations
-	       (lambda (p)
-		 (syntax-match? (car p) expression)))
-	     (find-matching-item default-pointer-optimizations
-	       (lambda (p)
-		 (syntax-match? (car p) expression))))
+  (cond ((or (find (lambda (p)
+		     (syntax-match? (car p) expression))
+		   pointer-optimizations)
+	     (find (lambda (p)
+		     (syntax-match? (car p) expression))
+		   default-pointer-optimizations))
 	 => (lambda (p)
 	      (let ((expression* ((cdr p) expression pointers)))
 		(if (equal? expression* expression)
@@ -776,22 +772,22 @@ USA.
 (define (%drop-pointer-refs identifiers pointers)
   (cons #f
 	(map (lambda (ids)
-	       (delete-matching-items ids
-		 (lambda (id)
-		   (memq id identifiers))))
+	       (remove (lambda (id)
+			 (memq id identifiers))
+		       ids))
 	     (cdr pointers))))
 
 (define (%current-pointers pointers)
   (if (car pointers)
-      (find-matching-item (cdr pointers)
-	(lambda (identifiers)
-	  (memq (car pointers) identifiers)))
+      (find (lambda (identifiers)
+	      (memq (car pointers) identifiers))
+	    (cdr pointers))
       '()))
 
 (define (%id-pointers identifier pointers)
-  (or (find-matching-item (cdr pointers)
-	(lambda (ids)
-	  (memq identifier ids)))
+  (or (find (lambda (ids)
+	      (memq identifier ids))
+	    (cdr pointers))
       '()))
 
 (define-pointer-optimization
@@ -1008,7 +1004,7 @@ USA.
 				 EXPRESSION)
     (lambda (expression)
       (let ((expression* (car (last-pair (caddr expression)))))
-	(and (syntax-match? '('IF EXPRESSION EXPRESSION EXPRESSION)
+	(and (syntax-match? '('if expression expression expression)
 			    expression*)
 	     (equal? (cadddr expression*)
 		     (cadddr expression)))))
@@ -1025,7 +1021,7 @@ USA.
 				 ('BEGIN . (+ EXPRESSION)))
     (lambda (expression)
       (let ((expression* (car (last-pair (cadddr expression)))))
-	(and (syntax-match? '('IF EXPRESSION EXPRESSION EXPRESSION)
+	(and (syntax-match? '('if expression expression expression)
 			    expression*)
 	     (equal? (caddr expression*)
 		     (caddr expression)))))

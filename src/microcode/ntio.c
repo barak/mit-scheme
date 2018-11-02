@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -848,12 +848,12 @@ OS_test_select_registry (select_registry_t registry, int blockp)
 }
 
 int
-OS_pause (void)
+OS_pause (bool blockp, bool ignore_status_change)
 {
-  /* Wait-for-io must spin. */
   return
-    ((OS_process_any_status_change ())
+    ((!ignore_status_change && (OS_process_any_status_change ()))
      ? SELECT_PROCESS_STATUS_CHANGE
+     /* Wait-for-io must spin. */
      : SELECT_INTERRUPT);
 }
 

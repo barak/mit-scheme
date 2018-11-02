@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -73,7 +73,7 @@ USA.
 #define STACK_LOCATIVE_OFFSET(locative, offset) ((locative) + (offset))
 #define STACK_LOCATIVE_REFERENCE(locative, offset) ((locative) [(offset)])
 #define STACK_LOCATIVE_DIFFERENCE(newer, older) ((older) - (newer))
-#define STACK_LOCATIVE_LESS_P(loc1, loc2) ((loc1) < (loc2))
+#define STACK_LOCATIVE_ABOVE_P(loc1, loc2) ((loc1) < (loc2))
 
 #define ADDRESS_IN_STACK_REGION_P(address, lower_limit, upper_limit)	\
   (((address) >= (lower_limit)) && ((address) < (upper_limit)))

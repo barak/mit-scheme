@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,13 +31,15 @@ USA.
 
 (define copyright-years)
 
+(define last-copyright-year 2018 )
+
 (add-boot-init!
  (lambda ()
    (set! copyright-years
-	 (let ((now 2014)
+	 (let ((now last-copyright-year)
 	       (then 1986))
 	   (iota (+ (- now then) 1) then)))
-   (add-subsystem-identification! "Release" '(9 2))
+   (add-subsystem-identification! "Release" '(10 1 2))
    (snarf-microcode-version!)
    (add-event-receiver! event:after-restore snarf-microcode-version!)
    (add-subsystem-identification! "Runtime" '(15 7))))
@@ -50,7 +52,7 @@ USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port 'WRITE-MIT-SCHEME-COPYRIGHT)))
+	     (guarantee textual-output-port? port 'write-mit-scheme-copyright)))
 	(cmark (if (default-object? cmark) "(C)" cmark))
 	(line-prefix (if (default-object? line-prefix) "" line-prefix)))
     (write-words (let ((years (map number->string copyright-years)))
@@ -73,7 +75,7 @@ USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port 'WRITE-MIT-SCHEME-LICENSE)))
+	     (guarantee textual-output-port? port 'write-mit-scheme-license)))
 	(line-prefix (if (default-object? line-prefix) "" line-prefix))
 	(short? (if (default-object? short?) #f short?)))
     (let loop
@@ -159,14 +161,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 
     (define (skip-white i)
       (if (and (fix:< i end)
-	       (char-set-member? char-set:whitespace (string-ref text i)))
+	       (char-in-set? (string-ref text i) char-set:whitespace))
 	  (skip-white (fix:+ i 1))
 	  i))
 
     (define (skip-non-white i)
       (if (and (fix:< i end)
-	       (not (char-set-member? char-set:whitespace
-				      (string-ref text i))))
+	       (not (char-in-set? (string-ref text i) char-set:whitespace)))
 	  (skip-non-white (fix:+ i 1))
 	  i))
 

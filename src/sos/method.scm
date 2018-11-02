@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -105,8 +105,8 @@ USA.
 
 (define (method-combinator-record generic intern?)
   (let ((combinator
-	 (or (list-search-positive (generic-procedure-generator-list generic)
-	       method-combinator?)
+	 (or (find method-combinator?
+		   (generic-procedure-generator-list generic))
 	     (and intern?
 		  (let ((combinator (make-method-combinator)))
 		    (add-generic-procedure-generator generic combinator)
@@ -165,28 +165,27 @@ USA.
 (define (try-computed-emps generic classes methods)
   (let loop
       ((generators
-	(sort-methods (list-transform-positive
-			  (append-map enumerate-union-specializers
-				      (list-transform-positive
-					  (generic-procedure-methods generic)
-					computed-emp?))
-			(lambda (method)
-			  (method-applicable? method classes)))
+	(sort-methods (filter (lambda (method)
+				(method-applicable? method classes))
+			      (append-map enumerate-union-specializers
+					  (filter computed-emp?
+						  (generic-procedure-methods
+						   generic))))
 		      classes)))
     (and (not (null? generators))
 	 (let ((result (apply (method-procedure (car generators)) classes)))
 	   (cond ((not result)
 		  (loop (cdr generators)))
-		 ((or (there-exists? (cdr generators)
-			(lambda (generator)
-			  (and (specializers=?
-				(method-specializers generator)
-				(method-specializers (car generators)))
-			       (apply (method-procedure generator) classes))))
-		      (there-exists? methods
-			(lambda (method)
-			  (specializers=? (method-specializers method)
-					  classes))))
+		 ((or (any (lambda (generator)
+			     (and (specializers=?
+				   (method-specializers generator)
+				   (method-specializers (car generators)))
+				  (apply (method-procedure generator) classes)))
+			   (cdr generators))
+		      (any (lambda (method)
+			     (specializers=? (method-specializers method)
+					     classes))
+			   methods))
 		  (lambda args
 		    (error:extra-applicable-methods generic args)))
 		 (else result))))))
@@ -196,11 +195,11 @@ USA.
 
 (define (compute-methods-1 generic classes)
   (let ((methods
-	 (list-transform-positive (generic-procedure-methods generic)
-	   (lambda (method)
-	     (and (not (computed-emp? method))
-		  (method-applicable? method classes))))))
-    (let ((results (list-transform-negative methods computed-method?)))
+	 (filter (lambda (method)
+		   (and (not (computed-emp? method))
+			(method-applicable? method classes)))
+		 (generic-procedure-methods generic))))
+    (let ((results (remove computed-method? methods)))
       (for-each
        (lambda (method)
 	 (let ((result (apply (method-procedure method) classes)))
@@ -224,7 +223,7 @@ USA.
 				     result method)))
 			     results))
 		 unspecific))))
-       (list-transform-positive methods computed-method?))
+       (filter computed-method? methods))
       results)))
 
 (define (method-applicable? method classes)
@@ -257,12 +256,9 @@ USA.
   (let loop ((s1 s1) (s2 s2))
     (or (null? s2)
 	(if (null? s1)
-	    (for-all? s2
-	      (lambda (s)
-		(subclass? <object> s)))
-	    (and (for-all? (specializer-classes (car s1))
-		   (lambda (c)
-		     (subclass? c (car s2))))
+	    (every (lambda (s) (subclass? <object> s)) s2)
+	    (and (every (lambda (c) (subclass? c (car s2)))
+			(specializer-classes (car s1)))
 		 (loop (cdr s1) (cdr s2)))))))
 
 ;;;; Method Specializers
@@ -270,7 +266,7 @@ USA.
 (define (specializers? object)
   (and (list? object)
        (not (null? object))
-       (for-all? object specializer?)))
+       (every specializer? object)))
 
 (define (specializer? object)
   (or (class? object)
@@ -309,8 +305,8 @@ USA.
 	    (specializer-classes s2)))
 
 (define (eq-set=? x y)
-  (and (for-all? x (lambda (x) (memq x y)))
-       (for-all? y (lambda (y) (memq y x)))))
+  (and (every (lambda (x) (memq x y)) x)
+       (every (lambda (y) (memq y x)) y)))
 
 (define (specializer-classes s)
   (cond ((class? s)

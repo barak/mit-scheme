@@ -22,6 +22,8 @@ USA.
 |#
 
 ;;;; IEEE 754 Format
+
+(declare (usual-integrations))
 
 (define (decompose-ieee754-double x)
   (decompose-ieee754-binary x 11 53))
@@ -78,7 +80,7 @@ USA.
            (cond ((<= 1 x)              ;Nonnegative exponent (normal)
                   (let loop ((exponent 0) (x x))
                     (cond ((< emax exponent) (if-infinite sign))
-                          ((< base x) (loop (+ exponent 1) (/ x base)))
+                          ((<= base x) (loop (+ exponent 1) (/ x base)))
                           (else (if-normal sign exponent (significand x))))))
                  ((< (expt base emin) x) ;Negative exponent, normal
                   (let loop ((exponent 0) (x x))
@@ -112,9 +114,9 @@ USA.
              (if (zero? trailing-significand)
                  (compose-ieee754-infinity sign base emax precision)
                  (let ((p-1 (- precision 1))
-                       (T trailing-significand))
-                   (let ((quiet   (extract-bit-field 1 p-1 T))
-                         (payload (extract-bit-field p-1 0 T)))
+                       (t trailing-significand))
+                   (let ((quiet   (extract-bit-field 1 p-1 t))
+                         (payload (extract-bit-field p-1 0 t)))
                      (compose-ieee754-nan sign quiet payload
                                           base emax precision)))))
             (else
@@ -165,6 +167,7 @@ USA.
 (define (ieee754-binary-hex-string x exponent-bits precision)
   (receive (base emin emax bias exp-subnormal exp-inf/nan)
            (ieee754-binary-parameters exponent-bits precision)
+    bias exp-subnormal exp-inf/nan
     (define (symbolic sign name extra)
       (assert (or (= sign 0) (= sign 1)))
       (assert (<= 0 extra))

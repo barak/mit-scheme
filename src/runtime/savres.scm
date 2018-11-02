@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,7 +41,11 @@ USA.
 
 (define world-id "Image")
 (define time-world-saved #f)
-(define *within-restore-window?* #f)
+(define time-world-restored #f)
+(define *within-restore-window?*)
+
+(define (initialize-package!)
+  (set! *within-restore-window?* (make-unsettable-parameter #f)))
 
 (define (disk-save filename #!optional id)
   (let ((filename (->namestring (merge-pathnames filename)))
@@ -64,8 +68,10 @@ USA.
 			interrupt-mask
 			(gc-flip)
 			(do ()
-			    (((ucode-primitive dump-band) restart filename))
-			  (with-simple-restart 'RETRY "Try again."
+			    (((ucode-primitive dump-band)
+			      restart
+			      (string-for-primitive filename)))
+			  (with-simple-restart 'retry "Try again."
 			    (lambda ()
 			      (error "Disk save failed:" filename))))
 			(continuation
@@ -73,10 +79,11 @@ USA.
 			   (set! time-world-saved time)
 			   (if (string? id) unspecific #f)))))))
 		 ((ucode-primitive set-fixed-objects-vector!) fixed-objects))))
-	   (read-microcode-tables!)
+	   (read-microcode-identification!)
 	   (lambda ()
 	     (set! time-world-saved time)
-	     (fluid-let ((*within-restore-window?* #t))
+	     (set! time-world-restored (get-universal-time))
+	     (parameterize ((*within-restore-window?* #t))
 	       (event-distributor/invoke! event:after-restore))
 	     (start-thread-timer)
 	     (cond ((string? id)
@@ -116,13 +123,13 @@ USA.
 			  (or (try pathname)
 			      (system-library-pathname pathname))))))))))
     (event-distributor/invoke! event:before-exit)
-    ((ucode-primitive load-band) filename)))
+    ((ucode-primitive load-band) (string-for-primitive filename))))
 
 (define (identify-world #!optional port)
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port 'IDENTIFY-WORLD))))
+	     (guarantee textual-output-port? port 'identify-world))))
     (write-mit-scheme-copyright port #!default #!default #t)
     (newline port)
     (write-mit-scheme-license port #!default #t)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,13 +33,12 @@ USA.
 			 (constructor %make-class
 				      (name direct-superclasses direct-slots))
 			 (print-procedure
-			  (standard-unparser-method 'CLASS
-			    (lambda (class port)
+			  (standard-print-method 'CLASS
+			    (lambda (class)
 			      (let ((name (class-name class)))
 				(if name
-				    (begin
-				      (write-char #\space port)
-				      (write name port))))))))
+				    (list name)
+				    '()))))))
   (name #f read-only #t)
   (direct-superclasses #f read-only #t)
   (direct-slots #f read-only #t)
@@ -64,18 +63,38 @@ USA.
 			   direct-slots))))
     (set-class/precedence-list! class (compute-precedence-list class))
     (set-class/slots! class (compute-slots class))
-    (set-class/dispatch-tag! class (make-dispatch-tag class))
+    (set-class/dispatch-tag!
+     class
+     (make-class-tag name
+		     (lambda (object)
+		       (and (instance? object)
+			    (subclass? (instance-class object) class)))
+		     class))
     (install-slot-accessor-methods class)
     class))
+
+(define class-metatag
+  (make-dispatch-metatag 'class-tag))
+
+(define class-tag?
+  (dispatch-tag->predicate class-metatag))
+
+(define make-class-tag
+  (dispatch-metatag-constructor class-metatag 'make-class))
 
 (define (make-trivial-subclass superclass . superclasses)
   (make-class (class-name superclass) (cons superclass superclasses) '()))
 
 (define <object>
-  (let ((class (%make-class '<OBJECT> '() '())))
+  (let ((class (%make-class '<object> '() '())))
     (set-class/precedence-list! class (list class))
     (set-class/slots! class '())
-    (set-class/dispatch-tag! class (make-dispatch-tag class))
+    (set-class/dispatch-tag! class
+			     (make-class-tag '<object>
+					     (lambda (object)
+					       (declare (ignore object))
+					       #t)
+					     class))
     class))
 
 (define (class-name class)
@@ -95,9 +114,9 @@ USA.
   (class/slots (guarantee-class class 'CLASS-SLOTS)))
 
 (define (class-slot class name error?)
-  (or (list-search-positive (class/slots (guarantee-class class 'CLASS-SLOT))
-	(lambda (slot)
-	  (eq? name (slot-name slot))))
+  (or (find (lambda (slot)
+	      (eq? name (slot-name slot)))
+	    (class/slots (guarantee-class class 'CLASS-SLOT)))
       (and error?
 	   (class-slot class (error:no-such-slot class name) error?))))
 
@@ -106,9 +125,9 @@ USA.
 
 (define (subclass? c s)
   (let ((pl (class-precedence-list c)))
-    (and (there-exists? (specializer-classes s)
-	   (lambda (s)
-	     (memq s pl)))
+    (and (any (lambda (s)
+		(memq s pl))
+	      (specializer-classes s))
 	 #t)))
 
 (define (guarantee-class class name)
@@ -284,9 +303,7 @@ USA.
 (define-primitive-class <boolean> <object>)
 (define-primitive-class <char> <object>)
 (define-primitive-class <pair> <object>)
-(define-primitive-class <%record> <object>)
-(define-primitive-class <record> <%record>)
-(define-primitive-class <dispatch-tag> <%record>)
+(define-primitive-class <record> <object>)
 (define-primitive-class <string> <object>)
 (define-primitive-class <symbol> <object>)
 (define-primitive-class <vector> <object>)
@@ -321,23 +338,22 @@ USA.
 (define-primitive-class <entity> <procedure>)
 
 (define (object-class object)
-  (dispatch-tag->class (dispatch-tag object)))
+  (dispatch-tag->class (object->dispatch-tag object)))
 
 (define (record-type-class type)
-  (dispatch-tag->class (record-type-dispatch-tag type)))
+  (dispatch-tag->class type))
 
 (define (record-class record)
   (record-type-class (record-type-descriptor record)))
 
 (define (dispatch-tag->class tag)
-  (let ((contents (dispatch-tag-contents tag)))
-    (cond ((class? contents) contents)
-	  ((hash-table/get built-in-class-table tag #f))
-	  ((record-type? contents)
-	   (let ((class (make-record-type-class contents)))
-	     (hash-table/put! built-in-class-table tag class)
-	     class))
-	  (else <object>))))
+  (cond ((class-tag? tag) (dispatch-tag-extra-ref tag 0))
+	((hash-table-ref/default built-in-class-table tag #f))
+	((record-type? tag)
+	 (let ((class (make-record-type-class tag)))
+	   (hash-table-set! built-in-class-table tag class)
+	   class))
+	(else <object>)))
 
 (define (make-record-type-class type)
   (let ((class
@@ -345,7 +361,7 @@ USA.
 		      (string-append "<" (record-type-name type) ">"))
 		     (list <record>)
 		     (record-type-field-names type))))
-    (set-class/dispatch-tag! class (record-type-dispatch-tag type))
+    (set-class/dispatch-tag! class type)
     class))
 
 (define built-in-class-table
@@ -362,45 +378,24 @@ USA.
   ;;    classes anyway, which have strong references to dispatch tags,
   ;;    so they need to be changed to hold weak references.
   (make-strong-eq-hash-table))
-
+
 (let ((assign-type
-       (lambda (name class)
-	 (hash-table/put! built-in-class-table
-			  (or (built-in-dispatch-tag name)
-			      (built-in-dispatch-tag
-			       (microcode-type/code->name
-				(microcode-type/name->code name)))
-			      (error "Unknown type name:" name))
+       (lambda (predicate class)
+	 (hash-table-set! built-in-class-table
+			  (predicate->dispatch-tag predicate)
 			  class))))
-  (assign-type 'BOOLEAN <boolean>)
-  (assign-type 'CHARACTER <char>)
-  (assign-type 'PAIR <pair>)
-  (assign-type 'RECORD <%record>)
-  (assign-type 'DISPATCH-TAG <dispatch-tag>)
-  (assign-type 'STRING <string>)
-  (assign-type 'INTERNED-SYMBOL <symbol>)
-  (assign-type 'UNINTERNED-SYMBOL <symbol>)
-  (assign-type 'VECTOR <vector>)
-
-  (assign-type 'COMPILED-PROCEDURE <procedure>)
-  (assign-type 'EXTENDED-PROCEDURE <procedure>)
-  (assign-type 'PRIMITIVE <procedure>)
-  (assign-type 'PROCEDURE <procedure>)
-  (assign-type 'ENTITY <entity>)
-
-  (if (fix:= (object-type 1) (object-type -1))
-      (assign-type 'FIXNUM <fixnum>)
-      (begin
-	(assign-type 'POSITIVE-FIXNUM <fixnum>)
-	(assign-type 'NEGATIVE-FIXNUM <fixnum>)))
-  (assign-type 'BIGNUM <bignum>)
-  (assign-type 'RATNUM <ratnum>)
-  (assign-type 'FLONUM <flonum>)
-  (assign-type 'FLONUM-VECTOR <flonum-vector>)
-  (assign-type 'RECNUM <recnum>))
-
-(hash-table/put! built-in-class-table
-		 standard-generic-procedure-tag
-		 <generic-procedure>)
+  (assign-type boolean? <boolean>)
+  (assign-type char? <char>)
+  (assign-type entity? <entity>)
+  (assign-type exact-integer? <exact-integer>)
+  (assign-type exact-rational? <exact-rational>)
+  (assign-type flo:flonum? <inexact-rational>)
+  (assign-type generic-procedure? <generic-procedure>)
+  (assign-type number? <number>)
+  (assign-type pair? <pair>)
+  (assign-type procedure? <procedure>)
+  (assign-type string? <string>)
+  (assign-type symbol? <symbol>)
+  (assign-type vector? <vector>))
 
 (define <class> (object-class <object>))

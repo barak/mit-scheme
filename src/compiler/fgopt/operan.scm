@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -56,13 +56,13 @@ USA.
 	    (rvalue-values (combination/continuation combination))))
 
 (define (continuation-passed-out? continuation)
-  (there-exists? (continuation/combinations continuation)
-    (lambda (combination)
-      (and (not (combination/simple-inline? combination))
-	   (let ((operator (combination/operator combination)))
-	     (or (rvalue-passed-in? operator)
-		 (there-exists? (rvalue-values operator)
-		   (lambda (rvalue) (not (rvalue/procedure? rvalue))))))))))
+  (any (lambda (combination)
+	 (and (not (combination/simple-inline? combination))
+	      (let ((operator (combination/operator combination)))
+		(or (rvalue-passed-in? operator)
+		    (any (lambda (rvalue) (not (rvalue/procedure? rvalue)))
+			 (rvalue-values operator))))))
+       (continuation/combinations continuation)))
 
 (define (analyze/continuation continuation)
   (let ((returns (continuation/returns continuation))
@@ -96,7 +96,8 @@ USA.
   (and (not (procedure-passed-out? procedure))
        (let ((combinations (procedure-applications procedure)))
 	 (and (not (null? combinations))
-	      (for-all? combinations
-		(lambda (combination)
-		  (eq? (rvalue-known-value (combination/operator combination))
-		       procedure)))))))
+	      (every (lambda (combination)
+		       (eq? (rvalue-known-value
+			     (combination/operator combination))
+			    procedure))
+		     combinations)))))

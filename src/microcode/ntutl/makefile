@@ -3,7 +3,8 @@
 ###     Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###         1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
 ###         2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011,
-###         2012, 2013, 2014 Massachusetts Institute of Technology
+###         2012, 2013, 2014, 2015, 2016, 2017, 2018 Massachusetts
+###         Institute of Technology
 ###
 ###     This file is part of MIT/GNU Scheme.
 ###
@@ -25,10 +26,6 @@
 
 #### Makefile for Scheme under Win32 compiled by Microsoft Visual C++.
 !include <win32.mak>
-
-#USER_PRIM_SOURCES = prbfish.c prgdbm.c prmd5.c prpgsql.c
-#USER_PRIM_OBJECTS = prbfish.obj prgdbm.obj prmd5.obj prpgsql.obj
-#USER_LIBS = blowfish.lib gdbm.lib md5.lib pq.lib
 
 # **** Microsoft supplies their assembler as a separate product, and
 # **** we don't currently have a copy, so use the Watcom assembler.
@@ -57,7 +54,7 @@ cflags = $(cflags) -Zi -Od
 !ENDIF
 cflags = $(cflags) $(cvarsmt) /DMIT_SCHEME /DGUI=1 /I.
 
-all: scheme.exe bchschem.exe bintopsb.exe psbtobin.exe
+all: scheme.exe bintopsb.exe psbtobin.exe
 
 .c.obj:
 	$(cc) $(cflags) -c $*.c
@@ -134,15 +131,7 @@ STD_GC_SOURCES = \
 fasdump.c \
 gcloop.c \
 memmag.c \
-purify.c \
-wabbit.c
-
-BCH_GC_SOURCES = \
-bchdmp.c \
-bchgcl.c \
-bchmmg.c \
-bchpur.c \
-bchutl.c
+purify.c
 
 NT_SOURCES = \
 intext.c \
@@ -231,15 +220,7 @@ STD_GC_OBJECTS = \
 fasdump.obj \
 gcloop.obj \
 memmag.obj \
-purify.obj \
-wabbit.obj
-
-BCH_GC_OBJECTS = \
-bchdmp.obj \
-bchgcl.obj \
-bchmmg.obj \
-bchpur.obj \
-bchutl.obj
+purify.obj
 
 NT_OBJECTS = \
 intext.obj \
@@ -262,10 +243,6 @@ ntasutl.obj
 SOURCES = $(CORE_SOURCES) $(STD_GC_SOURCES)
 OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(NT_OBJECTS) \
 	$(OS_PRIM_OBJECTS) usrdef.obj
-
-BCHSOURCES = $(CORE_SOURCES) $(BCH_GC_SOURCES)
-BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(NT_OBJECTS) \
-	$(OS_PRIM_OBJECTS) bchdef.obj
 
 SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
 SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.obj
@@ -305,11 +282,6 @@ scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj ntgui.res
 	-out:scheme.exe $(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj \
 	$(guilibsmt) $(SCHEME_LIB) ntgui.res
 
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) scheme32.obj
-	$(link) $(linkdebug) $(guiflags) /base:0x4000000 /fixed /map \
-	-out:bchschem.exe $(BCHOBJECTS) $(SCHEME_OBJECTS) scheme32.obj \
-	$(guilibsmt) $(SCHEME_LIB) ntgui.res
-
 scheme32.obj : scheme32.c ntscmlib.h
 
 bintopsb.exe : bintopsb.obj missing.obj
@@ -333,19 +305,12 @@ usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) ntgui.c \
 	.\findprim $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) ntgui.c \
 	> usrdef.c
 
-bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) ntgui.c \
-	findprim.exe
-	.\findprim $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) ntgui.c \
-	> bchdef.c
-
 #
 # Dependencies.  (This was a lot of work!)
 #
 # This first section defines the dependencies of the include files.
 #
 AVLTREE_H = avltree.h $(CONFIG_H)
-BCHDRN_H = bchdrn.h $(CONFIG_H)
-BCHGCC_H = bchgcc.h $(CONFIG_H) $(GCCODE_H)
 BIGNMINT_H = bignmint.h $(PRIMS_H)
 BIGNUM_H = bignum.h ansidecl.h
 BITSTR_H = bitstr.h
@@ -500,10 +465,6 @@ utils.obj: utils.c $(SCHEME_H) $(PRIMS_H) $(HISTORY_H) \
 vector.obj: vector.c $(SCHEME_H) $(PRIMS_H)
 wind.obj: wind.c $(OBSTACK_H) $(DSTACK_H) $(OUTF_H)
 
-prbfish.obj: prbfish.c $(SCHEME_H) $(PRIMS_H)
-prgdbm.obj: prgdbm.c $(SCHEME_H) $(PRIMS_H) $(OS_H)
-prmd5.obj: prmd5.c $(SCHEME_H) $(PRIMS_H)
-prpgsql.obj: prpgsql.c $(SCHEME_H) $(PRIMS_H) $(USRDEF_H) $(OS_H)
 prosenv.obj: prosenv.c $(SCHEME_H) $(PRIMS_H) $(OSENV_H) $(OSTOP_H) $(LIMITS_H)
 prosfile.obj: prosfile.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H)
 prosfs.obj: prosfs.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H) $(OSFS_H) $(OSIO_H)
@@ -524,15 +485,6 @@ fasdump.obj: fasdump.c $(SCHEME_H) $(PRIMS_H) $(OSSCHEME_H) $(OSIO_H) \
 gcloop.obj: gcloop.c $(SCHEME_H) $(GCCODE_H)
 memmag.obj: memmag.c $(SCHEME_H) $(PRIMS_H) $(MEMMAG_H) $(GCCODE_H)
 purify.obj: purify.c $(SCHEME_H) $(PRIMS_H) $(GCCODE_H) $(ZONES_H)
-wabbit.obj: wabbit.c $(SCHEME_H) $(GCCODE_H)
-
-bchdmp.obj: bchdmp.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H) $(OSFS_H) $(TRAP_H) \
-	$(LOOKUP_H) $(FASL_H) $(NT_H) $(NTIO_H) $(BCHGCC_H) $(DUMP_C)
-bchgcl.obj: bchgcl.c $(SCHEME_H) $(BCHGCC_H)
-bchmmg.obj: bchmmg.c $(SCHEME_H) $(PRIMS_H) $(MEMMAG_H) $(OPTION_H) \
-	$(OSENV_H) $(OSENV_H) $(NT_H) $(BCHGCC_H) $(BCHDRN_H)
-bchpur.obj: bchpur.c $(SCHEME_H) $(PRIMS_H) $(BCHGCC_H) $(ZONES_H)
-bchutl.obj: bchutl.c $(CONFIG_H)
 
 intext.obj: intext.c ansidecl.h $(DSTACK_H) $(INTEXT_H)
 ntenv.obj: ntenv.c $(SCHEME_H) $(NT_H) $(OSENV_H) $(NTSCREEN_H)

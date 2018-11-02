@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,11 +30,12 @@ USA.
 (declare (usual-integrations))
 
 (define (file-modes filename)
-  ((ucode-primitive file-modes 1) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-modes 1)
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (set-file-modes! filename modes)
   ((ucode-primitive set-file-modes! 2)
-   (->namestring (merge-pathnames filename))
+   (string-for-primitive (->namestring (merge-pathnames filename)))
    modes))
 
 (define-integrable nt-file-mode/read-only  #x001)
@@ -48,7 +49,7 @@ USA.
 
 (define (file-attributes filename)
   ((ucode-primitive file-attributes 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 (define file-attributes-direct file-attributes)
 (define file-attributes-indirect file-attributes)
 
@@ -73,12 +74,13 @@ USA.
 	 (file-attributes/length attr))))
 
 (define (copy-file from to)
-  ((ucode-primitive nt-copy-file 2) (->namestring (merge-pathnames from))
-				    (->namestring (merge-pathnames to))))
+  ((ucode-primitive nt-copy-file 2)
+   (string-for-primitive (->namestring (merge-pathnames from)))
+   (string-for-primitive (->namestring (merge-pathnames to)))))
 
 (define (file-modification-time filename)
   ((ucode-primitive file-mod-time 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 (define file-modification-time-direct file-modification-time)
 (define file-modification-time-indirect file-modification-time)
 
@@ -90,7 +92,8 @@ USA.
 (define file-access-time-indirect file-modification-time-indirect)
 
 (define (set-file-times! filename access-time modification-time)
-  (let ((filename (->namestring (merge-pathnames filename))))
+  (let ((filename
+	 (string-for-primitive (->namestring (merge-pathnames filename)))))
     ((ucode-primitive set-file-times! 3)
      filename
      (or access-time (file-access-time filename))
@@ -119,81 +122,13 @@ USA.
 	     (win32-registry/get-value key "Content Type")
 	   (and type
 		(begin
-		  (if (not (eq? type 'REG_SZ))
+		  (if (not (eq? type 'reg_sz))
 		      (error "Wrong value type in registry entry:"
 			     name))
 		  value))))))
-
-(define get-environment-variable)
-(define set-environment-variable!)
-(define set-environment-variable-default!)
-(define delete-environment-variable!)
-(define reset-environment-variables!)
-(let ((environment-variables '())
-      (environment-defaults '()))
 
-  ;; Kludge: since getenv returns #f for unbound,
-  ;; that can also be the marker for a deleted variable
-  (define-integrable *variable-deleted* #f)
-
-  (define (env-error proc var)
-    (error "Variable must be a string:" var proc))
-
-  (define (default-variable! var val)
-    (if (and (not (assoc var environment-variables))
-	     (not ((ucode-primitive get-environment-variable 1) var)))
-	(set! environment-variables
-	      (cons (cons var (if (procedure? val) (val) val))
-		    environment-variables)))
-    unspecific)
-
-  (set! get-environment-variable
-	(lambda (variable)
-	  (if (not (string? variable))
-	      (env-error 'GET-ENVIRONMENT-VARIABLE variable))
-	  (let ((variable (string-upcase variable)))
-	    (cond ((assoc variable environment-variables)
-		   => cdr)
-		  (else
-		   ((ucode-primitive get-environment-variable 1) variable))))))
-
-  (set! set-environment-variable!
-	(lambda (variable value)
-	  (if (not (string? variable))
-	      (env-error 'SET-ENVIRONMENT-VARIABLE! variable))
-	  (let ((variable (string-upcase variable)))
-	    (cond ((assoc variable environment-variables)
-		   => (lambda (pair) (set-cdr! pair value)))
-		  (else
-		   (set! environment-variables
-			 (cons (cons variable value) environment-variables)))))
-	  unspecific))
-
-  (set! delete-environment-variable!
-	(lambda (variable)
-	  (if (not (string? variable))
-	      (env-error 'DELETE-ENVIRONMENT-VARIABLE! variable))
-	  (set-environment-variable! variable *variable-deleted*)))
-
-  (set! reset-environment-variables!
-	(lambda ()
-	  (set! environment-variables '())
-	  (for-each (lambda (def) (default-variable! (car def) (cdr def)))
-		    environment-defaults)))
-
-  (set! set-environment-variable-default!
-	(lambda (var val)
-	  (if (not (string? var))
-	      (env-error 'SET-ENVIRONMENT-VARIABLE-DEFAULT! var))
-	  (let ((var (string-upcase var)))
-	    (cond ((assoc var environment-defaults)
-		   => (lambda (pair) (set-cdr! pair val)))
-		  (else
-		   (set! environment-defaults
-			 (cons (cons var val) environment-defaults))))
-	    (default-variable! var val))))
-
-  )
+(define (os/make-env-cache)
+  (make-string-ci-hash-table))
 
 (define current-user-name)
 (define current-home-directory)
@@ -327,18 +262,18 @@ USA.
 	       (trydir (get-environment-variable "winbootdir")))))
       (if (not sysroot)
 	  (error "Unable to find Windows system root."))
-      (pathname-new-directory (pathname-as-directory sysroot) '(ABSOLUTE)))))
+      (pathname-new-directory (pathname-as-directory sysroot) '(absolute)))))
 
 (define (file-line-ending pathname)
   (if (let ((type (dos/fs-drive-type pathname)))
 	(or (string=? "NFS" (car type))
 	    (string=? "NtNfs" (car type))
 	    (string=? "Samba" (car type))))
-      'LF
-      'CRLF))
+      'lf
+      'crlf))
 
 (define (default-line-ending)
-  'CRLF)
+  'crlf)
 
 (define (dos/fs-drive-type pathname)
   ;; (system-name . [nfs-]mount-point)
@@ -362,22 +297,22 @@ USA.
 	 (fs-type     (nt-volume-info/file-system-name volume-info)))
     (cond ((or (string-ci=? fs-type "VFAT")
 	       (string-ci=? fs-type "FAT32"))
-	   'VFAT)			; ``kind of''
+	   'vfat)			; ``kind of''
 	  ((string-ci=? fs-type "FAT")
-	   #F)
+	   #f)
 	  ((> (nt-volume-info/max-component-length volume-info) 32)
 	   ;; 32 is random -- FAT is 12 and everything else is much larger.
-	   #T)				; NTFS HPFS
-	  (else #F))))			; FAT
+	   #t)				; NTFS HPFS
+	  (else #f))))			; FAT
 
 (define (nt-volume-info pathname)
   (let ((root
 	 (pathname-new-directory
 	  (directory-pathname (merge-pathnames pathname))
-	  '(ABSOLUTE))))
+	  '(absolute))))
     (let ((info
 	   ((ucode-primitive nt-get-volume-information 1)
-	    (->namestring root))))
+	    (string-for-primitive (->namestring root)))))
       (if (not info)
 	  (error "Error reading volume information:" root))
       info)))
@@ -422,7 +357,7 @@ USA.
 	    (loop (+ index 1))
 	    filename))))
 
-  (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
+  (guarantee init-file-specifier? specifier 'init-file-specifier->pathname)
   (let ((long-base (merge-pathnames ".mit-scheme/" (user-homedir-pathname))))
     (if (dos/fs-long-filenames? long-base)
 	(if (pair? specifier)
@@ -448,7 +383,7 @@ USA.
 			(and entry
 			     (cdr entry)))
 		      (let ((filename (generate-fat-init-file short-base)))
-			(let ((channel (port/output-channel port)))
+			(let ((channel (output-port-channel port)))
 			  (channel-file-set-position
 			   channel
 			   (channel-file-length channel)))
@@ -489,7 +424,7 @@ USA.
   (if ctty
       (error "Can't manipulate controlling terminal of subprocess:" ctty))
   ((ucode-primitive nt-make-subprocess 8)
-   filename
+   (string-for-primitive filename)
    (rewrite-args filename (vector->list arguments))
    (and environment
 	(rewrite-env (vector->list environment)))
@@ -511,7 +446,7 @@ USA.
 		      (substring<? (car s1) 0 (cdr s1)
 				   (car s2) 0 (cdr s2)))))))
     (let ((result
-	   (make-string
+	   (make-legacy-string
 	    (reduce +
 		    0
 		    (map (lambda (s) (fix:+ (string-length s) 1))
@@ -521,7 +456,7 @@ USA.
 	    (let ((n (string-length (car strings))))
 	      (substring-move! (car strings) 0 n result index)
 	      (let ((index* (fix:+ index n)))
-		(string-set! result index* #\NUL)
+		(string-set! result index* #\nul)
 		(loop (cdr strings) (fix:+ index* 1))))))
       result)))
 
@@ -539,7 +474,7 @@ USA.
 (define (rewrite-args/no-quoting strings)
   (if (pair? strings)
       (let ((result
-	     (make-string
+	     (make-legacy-string
 	      (fix:+ (reduce +
 			     0
 			     (map (lambda (s) (string-length s)) strings))
@@ -578,7 +513,7 @@ USA.
 	   (cons (if need-quotes? (fix:+ k 2) k)
 		 need-quotes?)))))
   (let ((analyses (map analyze-arg strings)))
-    (let ((result (make-string (reduce + 0 (map car analyses)))))
+    (let ((result (make-legacy-string (reduce + 0 (map car analyses)))))
       (define (do-arg index s analysis)
 	(if (cdr analysis)
 	    (begin
@@ -689,28 +624,28 @@ USA.
 	   ((access get-module-handle env)
 	    (file-namestring
 	     (pathname-default-type
-	      ((make-primitive-procedure 'SCHEME-PROGRAM-NAME))
+	      ((make-primitive-procedure 'scheme-program-name))
 	      "exe"))))
-	  (buf (make-string 256)))
+	  (buf (make-legacy-string 256)))
       (substring buf 0 ((access get-module-file-name env) handle buf 256)))))
 
 (define (os/shell-file-name)
   (or (get-environment-variable "SHELL")
       (get-environment-variable "COMSPEC")
-      (if (eq? 'WINNT (nt/windows-type))
+      (if (eq? 'winnt (nt/windows-type))
 	  "cmd.exe"
 	  "command.com")))
 
 (define (nt/windows-type)
   (cond ((string-prefix? "Microsoft Windows NT"
 			 microcode-id/operating-system-variant)
-	 'WINNT)
+	 'winnt)
 	((string-prefix? "Microsoft Windows 9"
 			 microcode-id/operating-system-variant)
-	 'WIN9X)
+	 'win9x)
 	((string-prefix? "Microsoft Windows"
 			 microcode-id/operating-system-variant)
-	 'WIN3X)
+	 'win3x)
 	(else #f)))
 
 (define (os/form-shell-command command)

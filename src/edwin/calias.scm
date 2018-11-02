@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -73,9 +73,9 @@ USA.
 		    (+ code (if (<= #x01 code #x1A) #x60 #x40)))
 		  (fix:or (char-bits key) char-bit:control)))
       (let ((entry
-	     (list-search-positive alias-keys
-	       (lambda (entry)
-		 (eqv? (cdr entry) key)))))
+	     (find (lambda (entry)
+		     (eqv? (cdr entry) key))
+		   alias-keys)))
 	(if entry
 	    (unmap-alias-key (car entry))
 	    key))))
@@ -90,7 +90,7 @@ USA.
 	((char? key) (char->name (unmap-alias-key key)))
 	((special-key? key) (special-key/name key))
 	((button? key) (button-name key))
-        (else (error:wrong-type-argument key "key" 'KEY-NAME))))
+        (else (error:wrong-type-argument key "key" 'key-name))))
 
 (define (xkey->name xkey)
   (let ((keys (xkey->list xkey)))
@@ -149,7 +149,7 @@ USA.
 		  (char->name (unmap-alias-key key))))))
 	((special-key? key) (special-key/name key))
 	((button? key) (button-name key))
-        (else (error:wrong-type-argument key "key" 'EMACS-KEY-NAME))))
+        (else (error:wrong-type-argument key "key" 'emacs-key-name))))
 
 (define (key? object)
   (or (char? object)
@@ -160,7 +160,7 @@ USA.
   (cond ((char? key) (char-bits key))
 	((special-key? key) (special-key/bucky-bits key))
 	((button? key) (button-bits key))
-        (else (error:wrong-type-argument key "key" 'KEY-BUCKY-BITS))))
+        (else (error:wrong-type-argument key "key" 'key-bucky-bits))))
 
 (define (key<? key1 key2)
   (or (< (key-bucky-bits key1) (key-bucky-bits key2))
@@ -177,7 +177,7 @@ USA.
 		  (and (button? key2)
 		       (string<? (button-name key1) (button-name key2))))
 		 (else
-		  (error:wrong-type-argument key1 "key" 'KEY<?))))))
+		  (error:wrong-type-argument key1 "key" 'key<?))))))
 
 (define (key=? key1 key2)
   (and (= (key-bucky-bits key1) (key-bucky-bits key2))
@@ -190,7 +190,7 @@ USA.
 	     ((button? key1)
 	      (eq? key1 key2))
 	     (else
-	      (error:wrong-type-argument key1 "key" 'KEY=?)))))
+	      (error:wrong-type-argument key1 "key" 'key=?)))))
 
 (define (xkey<? x y)
   (let loop ((x (xkey->list x)) (y (xkey->list y)))
@@ -217,11 +217,9 @@ USA.
 (define-structure (special-key (constructor %make-special-key)
 			       (conc-name special-key/)
 			       (print-procedure
-				(standard-unparser-method 'SPECIAL-KEY
-				  (lambda (key port)
-				    (write-char #\space port)
-				    (write-string (special-key/name key)
-						  port)))))
+				(standard-print-method 'special-key
+				  (lambda (key)
+				    (list (special-key/name key))))))
   (symbol #f read-only #t)
   (bucky-bits #f read-only #t))
 
@@ -244,12 +242,12 @@ USA.
 
 (define (special-key/name special-key)
   (string-append (bucky-bits->prefix (special-key/bucky-bits special-key))
-		 (symbol-name (special-key/symbol special-key))))
+		 (symbol->string (special-key/symbol special-key))))
 
 (define (make-special-key name bits)
   (hook/make-special-key name bits))
 
-(define hashed-keys (list 'HASHED-KEYS))
+(define hashed-keys (list 'hashed-keys))
 (define hook/make-special-key intern-special-key)
 
 ;; Predefined special keys
@@ -257,8 +255,8 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     `(DEFINE ,(cadr form)
-	(INTERN-SPECIAL-KEY ',(cadr form) 0)))))
+     `(define ,(cadr form)
+	(intern-special-key ',(cadr form) 0)))))
 
 (define-special-key backspace)
 (define-special-key stop)

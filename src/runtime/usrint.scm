@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,76 +31,59 @@ USA.
 
 ;;;; Prompting
 
-(define (prompt-for-command-expression prompt #!optional port environment)
+(define (prompt-for-command-expression prompt #!optional port)
   (let ((prompt (canonicalize-command-prompt prompt))
-	(port (optional-port port 'PROMPT-FOR-COMMAND-EXPRESSION))
-	(environment
-	 (optional-environment environment 'PROMPT-FOR-COMMAND-EXPRESSION))
+	(port (optional-port port 'prompt-for-command-expression))
 	(level (nearest-cmdl/level)))
-    (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-EXPRESSION)))
+    (let ((operation
+	   (textual-port-operation port 'prompt-for-command-expression)))
       (if operation
-	  (operation port environment prompt level)
+	  (operation port prompt level)
 	  (begin
-	    (guarantee-i/o-port port 'PROMPT-FOR-COMMAND-EXPRESSION)
+	    (guarantee textual-i/o-port? port 'prompt-for-command-expression)
 	    (write-command-prompt port prompt level)
-	    (port/with-input-terminal-mode port 'COOKED
+	    (with-input-port-terminal-mode port 'cooked
 	      (lambda ()
-		(read port environment))))))))
+		(read port))))))))
 
-(define (prompt-for-expression prompt #!optional port environment)
-  (%prompt-for-expression
-   (optional-port port 'PROMPT-FOR-EXPRESSION)
-   (optional-environment environment 'PROMPT-FOR-EXPRESSION)
-   prompt
-   'PROMPT-FOR-EXPRESSION))
+(define (prompt-for-expression prompt #!optional port)
+  (%prompt-for-expression port prompt 'prompt-for-expression))
 
 (define (prompt-for-evaluated-expression prompt #!optional environment port)
-  (let ((environment
-	 (optional-environment environment 'PROMPT-FOR-EVALUATED-EXPRESSION))
-	(port (optional-port port 'PROMPT-FOR-EVALUATED-EXPRESSION)))
-    (repl-eval
-     (%prompt-for-expression port
-			     environment
-			     prompt
-			     'PROMPT-FOR-EVALUATED-EXPRESSION)
-     environment)))
+  (repl-eval
+   (%prompt-for-expression port prompt 'prompt-for-evaluated-expression)
+   (if (default-object? environment)
+       (nearest-repl/environment)
+       (guarantee environment? environment 'prompt-for-evaluated-expression))))
 
-(define (%prompt-for-expression port environment prompt caller)
-  (let ((prompt (canonicalize-prompt prompt ": ")))
-    (let ((operation (port/operation port 'PROMPT-FOR-EXPRESSION)))
+(define (%prompt-for-expression port prompt caller)
+  (let ((port (optional-port port caller))
+	(prompt (canonicalize-prompt prompt ": ")))
+    (let ((operation (textual-port-operation port 'prompt-for-expression)))
       (if operation
-	  (operation port environment prompt)
+	  (operation port prompt)
 	  (begin
-	    (guarantee-i/o-port port caller)
-	    (port/with-output-terminal-mode port 'COOKED
+	    (guarantee textual-i/o-port? port caller)
+	    (with-output-port-terminal-mode port 'cooked
 	      (lambda ()
 		(fresh-line port)
 		(newline port)
 		(write-string prompt port)
-		(flush-output port)))
-	    (port/with-input-terminal-mode port 'COOKED
+		(flush-output-port port)))
+	    (with-input-port-terminal-mode port 'cooked
 	      (lambda ()
-		(read port environment))))))))
+		(read port))))))))
 
 (define (optional-port port caller)
   (if (default-object? port)
       (interaction-i/o-port)
-      (begin
-	(guarantee-port port caller)
-	port)))
-
-(define (optional-environment environment caller)
-  (if (default-object? environment)
-      (nearest-repl/environment)
-      (begin
-	(guarantee-environment environment caller)
-	environment)))
+      (guarantee textual-port? port caller)))
 
 (define (prompt-for-command-char prompt #!optional port)
   (let ((prompt (canonicalize-command-prompt prompt))
 	(port (if (default-object? port) (interaction-i/o-port) port))
 	(level (nearest-cmdl/level)))
-    (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-CHAR)))
+    (let ((operation (textual-port-operation port 'prompt-for-command-char)))
       (if operation
 	  (operation port prompt level)
 	  (default/prompt-for-command-char port prompt level)))))
@@ -109,87 +92,90 @@ USA.
   (write-command-prompt port prompt level)
   (let loop ()
     (let ((char
-	   (port/with-input-terminal-mode port 'RAW
+	   (with-input-port-terminal-mode port 'raw
 	     (lambda ()
 	       (read-char port)))))
       (if (char-graphic? char)
 	  (begin
-	    (port/with-output-terminal-mode port 'COOKED
+	    (with-output-port-terminal-mode port 'cooked
 	      (lambda ()
 		(write-char char port)
-		(flush-output port)))
+		(flush-output-port port)))
 	    char)
 	  (loop)))))
 
 (define (prompt-for-confirmation prompt #!optional port)
   (let ((prompt (canonicalize-prompt prompt " (y or n)? "))
 	(port (if (default-object? port) (interaction-i/o-port) port)))
-    (let ((operation (port/operation port 'PROMPT-FOR-CONFIRMATION)))
+    (let ((operation (textual-port-operation port 'prompt-for-confirmation)))
       (if operation
 	  (operation port prompt)
 	  (default/prompt-for-confirmation port prompt)))))
 
 (define (default/prompt-for-confirmation port prompt)
-  (port/with-output-terminal-mode port 'COOKED
+  (with-output-port-terminal-mode port 'cooked
     (lambda ()
       (fresh-line port)))
   (let loop ()
-    (port/with-output-terminal-mode port 'COOKED
+    (with-output-port-terminal-mode port 'cooked
       (lambda ()
 	(newline port)
 	(write-string prompt port)
-	(flush-output port)))
+	(flush-output-port port)))
     (let ((char
-	   (port/with-input-terminal-mode port 'RAW
+	   (with-input-port-terminal-mode port 'raw
 	     (lambda ()
 	       (read-char port)))))
       (case char
 	((#\y #\Y #\space)
-	 (port/with-output-terminal-mode port 'COOKED
+	 (with-output-port-terminal-mode port 'cooked
 	   (lambda ()
 	     (write-string "Yes" port)
-	     (flush-output port)))
+	     (flush-output-port port)))
 	 true)
 	((#\n #\N #\rubout)
-	 (port/with-output-terminal-mode port 'COOKED
+	 (with-output-port-terminal-mode port 'cooked
 	   (lambda ()
 	     (write-string "No" port)
-	     (flush-output port)))
+	     (flush-output-port port)))
 	 false)
 	((#\newline)
 	 (loop))
 	(else
-	 (port/with-output-terminal-mode port 'COOKED
+	 (with-output-port-terminal-mode port 'cooked
 	   (lambda ()
 	     (write char port)
 	     (beep port)
-	     (flush-output port)))
+	     (flush-output-port port)))
 	 (loop))))))
-
+
 (define (prompt-for-string prompt #!optional port)
   ;; Returns a string (the normal, "cooked" input line) or eof-object.
   (let ((port (if (default-object? port) (interaction-i/o-port) port)))
-    (let ((operation (port/operation port 'PROMPT-FOR-STRING)))
+    (let ((operation (textual-port-operation port 'prompt-for-string)))
       (if operation
 	  (operation port prompt)
 	  (default/prompt-for-string port prompt)))))
 
 (define (default/prompt-for-string port prompt)
-  (port/with-output-terminal-mode port 'COOKED
+  (with-output-port-terminal-mode port 'cooked
     (lambda ()
       (fresh-line port)
       (newline port)
       (write-string prompt port)
-      (flush-output port)))
-  (port/with-input-terminal-mode port 'COOKED
+      (flush-output-port port)))
+  (with-input-port-terminal-mode port 'cooked
     (lambda ()
       (read-line port))))
-
+
 (define (call-with-pass-phrase prompt receiver #!optional port)
-  ;; Returns a string or eof-object -- the normal, "cooked but not
-  ;; echoed" input line.
-  (let ((port (if (default-object? port) (interaction-i/o-port) port)))
-    (let ((operation (port/operation port 'CALL-WITH-PASS-PHRASE)))
+  (let ((port
+	 (if (default-object? port)
+	     (interaction-i/o-port)
+	     (begin
+	       (guarantee textual-i/o-port? port 'call-with-pass-phrase)
+	       port))))
+    (let ((operation (textual-port-operation port 'call-with-pass-phrase)))
       (if operation
 	  (operation port prompt receiver)
 	  (default/call-with-pass-phrase port prompt receiver)))))
@@ -198,77 +184,64 @@ USA.
   ;; Kludge: Uses RAW mode and "cooks" #\backspace, #\return, etc.
   ;; without regard for the tty's current "special characters".
   ;; Signals an error if PORT is not an i/o port.
-
-  (define (del-char str)
-    (let ((l (string-length str)))
-      (if (fix:> l 0)
-	  (set-string-length! str (fix:-1+ l))))
-    str)
-
-  (define (add-char str char)
-    (let ((i (string-length str))
-	  (max (if (string-null? str) 0 (string-maximum-length str))))
-      (if (fix:< i max)
-	  (begin
-	    (set-string-length! str (fix:1+ i))
-	    (string-set! str i char)
-	    str)
-	  (let ((new (string-allocate (fix:+ 10 i))))
-	    (if (not (string-null? str))
-		(begin
-		  (substring-move! str 0 i new 0)
-		  (set-string-length! str (string-maximum-length str))
-		  (string-fill! str #\delete)))
-	    (set-string-length! new (fix:1+ i))
-	    (string-set! new i char)
-	    new))))
-
-  (define-integrable (with-binary-line-ending thunk)
-    (let ((outside))
-      (dynamic-wind
-	  (lambda ()
-	    (if (port/open? port)
-		(begin
-		  (set! outside (port/line-ending port))
-		  (port/set-line-ending port 'BINARY))))
-	  thunk
-	  (lambda ()
-	    (if (port/open? port)
-		(begin
-		  (port/set-line-ending port outside)
-		  (set! outside)))))))
-
-  (guarantee-i/o-port port 'default/call-with-pass-phrase)
-  (port/with-output-terminal-mode port 'COOKED
-    (lambda ()
-      (fresh-line port)
-      (newline port)
-      (write-string (canonicalize-prompt prompt ": ") port)
-      (flush-output port)))
-  (let loop ((input ""))
-    (let ((char (with-binary-line-ending
-		 (lambda ()
-		   (port/with-input-terminal-mode port 'RAW
-		     (lambda ()
-		       (read-char port)))))))
-      (cond ((or (eof-object? char)
-		    (char=? char #\return)
-		    (char=? char #\linefeed))
-		(receiver input)
-		(set-string-length! input (string-maximum-length input))
-		(string-fill! input #\delete)
-		(port/with-output-terminal-mode port 'COOKED
+  (let ((buffer (make-string 16))
+	(index 0)
+	(fill-char (integer->char #x155555)))
+    (with-output-port-terminal-mode port 'cooked
+      (lambda ()
+	(fresh-line port)
+	(newline port)
+	(write-string (canonicalize-prompt prompt ": ") port)
+	(flush-output-port port)))
+    (let loop ()
+      (let ((char
+	     (with-binary-line-ending port
+	      (lambda ()
+		(with-input-port-terminal-mode port 'raw
 		  (lambda ()
-		    (newline port)))
-		unspecific)
-	    ((or (char=? char #\backspace)
-		 (char=? char #\delete))
-	     (loop (del-char input)))
-	    ((char=? char #\U+15)
-	     (set-string-length! input 0)
-	     (loop input))
-	    (else
-	     (loop (add-char input char)))))))
+		    (read-char port)))))))
+	(cond ((or (eof-object? char)
+		   (char=? char #\return)
+		   (char=? char #\linefeed))
+	       (with-output-port-terminal-mode port 'cooked
+		 (lambda ()
+		   (newline port)))
+	       (receiver (string-slice buffer 0 index))
+	       (string-fill! buffer fill-char)
+	       unspecific)
+	      ((or (char=? char #\backspace)
+		   (char=? char #\delete))
+	       (if (fix:> index 0)
+		   (set! index (fix:- index 1)))
+	       (loop))
+	      ((char=? char (integer->char #x15)) ;C-w
+	       (set! index 0)
+	       (loop))
+	      (else
+	       (let ((n (string-length buffer)))
+		 (if (not (fix:< index n))
+		     (let ((buffer* (make-string (fix:* 2 n))))
+		       (string-copy! buffer* 0 buffer)
+		       (string-fill! buffer fill-char)
+		       (set! buffer buffer*))))
+	       (string-set! buffer index char)
+	       (set! index (fix:+ index 1))
+	       (loop)))))))
+
+(define (with-binary-line-ending port thunk)
+  (let ((outside))
+    (dynamic-wind
+	(lambda ()
+	  (if (textual-port-open? port)
+	      (begin
+		(set! outside (port/line-ending port))
+		(port/set-line-ending port 'binary))))
+	thunk
+	(lambda ()
+	  (if (textual-port-open? port)
+	      (begin
+		(port/set-line-ending port outside)
+		(set! outside)))))))
 
 (define (canonicalize-prompt prompt suffix)
   (if (let ((length (string-length prompt)))
@@ -281,7 +254,7 @@ USA.
   (cond ((string? prompt)
 	 prompt)
 	((and (pair? prompt)
-	      (eq? 'STANDARD (car prompt))
+	      (eq? 'standard (car prompt))
 	      (string? (cdr prompt)))
 	 (cons (car prompt) (canonicalize-prompt (cdr prompt) " ")))
 	(else
@@ -289,23 +262,23 @@ USA.
 
 (define (write-command-prompt port prompt level)
   (if (not (nearest-cmdl/batch-mode?))
-      (port/with-output-terminal-mode port 'COOKED
+      (with-output-port-terminal-mode port 'cooked
 	(lambda ()
 	  (fresh-line port)
 	  (newline port)
 	  (if (and (pair? prompt)
-		   (eq? 'STANDARD (car prompt)))
+		   (eq? 'standard (car prompt)))
 	      (begin
 		(write level port)
 		(write-string " " port)
 		(write-string (cdr prompt) port))
 	      (write-string prompt port))
-	  (flush-output port)))))
+	  (flush-output-port port)))))
 
 ;;;; Debugger Support
 
 (define (port/debugger-failure port message)
-  (let ((operation (port/operation port 'DEBUGGER-FAILURE)))
+  (let ((operation (textual-port-operation port 'debugger-failure)))
     (if operation
 	(operation port message)
 	(default/debugger-failure port message))))
@@ -315,7 +288,7 @@ USA.
   (default/debugger-message port message))
 
 (define (port/debugger-message port message)
-  (let ((operation (port/operation port 'DEBUGGER-MESSAGE)))
+  (let ((operation (textual-port-operation port 'debugger-message)))
     (if operation
 	(operation port message)
 	(default/debugger-message port message))))
@@ -325,7 +298,7 @@ USA.
   (write-string message port))
 
 (define (port/debugger-presentation port thunk)
-  (let ((operation (port/operation port 'DEBUGGER-PRESENTATION)))
+  (let ((operation (textual-port-operation port 'debugger-presentation)))
     (if operation
 	(operation port thunk)
 	(default/debugger-presentation port thunk))))
@@ -336,23 +309,16 @@ USA.
 
 ;;;; Miscellaneous Hooks
 
-(define (port/write-result port expression value hash-number
-			   #!optional environment)
-  (let ((operation (port/operation port 'WRITE-RESULT))
-	(environment
-	 (if (default-object? environment)
-	     (nearest-repl/environment)
-	     (begin
-	       (guarantee-environment environment 'PORT/WRITE-RESULT)
-	       environment))))
+(define (port/write-result port expression value hash-number)
+  (let ((operation (textual-port-operation port 'write-result)))
     (if operation
-	(operation port expression value hash-number environment)
-	(default/write-result port expression value hash-number environment))))
+	(operation port expression value hash-number)
+	(default/write-result port expression value hash-number))))
 
-(define (default/write-result port expression object hash-number environment)
+(define (default/write-result port expression object hash-number)
   expression
   (if (not (nearest-cmdl/batch-mode?))
-      (port/with-output-terminal-mode port 'COOKED
+      (with-output-port-terminal-mode port 'cooked
 	(lambda ()
 	  (fresh-line port)
 	  (write-string ";" port)
@@ -364,39 +330,39 @@ USA.
 		(if hash-number
 		    (begin
 		      (write-string " " port)
-		      (write hash-number port environment)))
+		      (write hash-number port)))
 		(write-string ": " port)
-		(write object port environment)))))))
+		(write object port)))))))
 
 (define write-result:undefined-value-is-special? true)
 
 (define (port/set-default-directory port directory)
-  (let ((operation (port/operation port 'SET-DEFAULT-DIRECTORY)))
+  (let ((operation (textual-port-operation port 'set-default-directory)))
     (if operation
 	(operation port directory))))
 
 (define (port/set-default-environment port environment)
-  (let ((operation (port/operation port 'SET-DEFAULT-ENVIRONMENT)))
+  (let ((operation (textual-port-operation port 'set-default-environment)))
     (if operation
 	(operation port environment))))
 
 (define (port/gc-start port)
-  (let ((operation (port/operation port 'GC-START)))
-    (if (and operation (not *within-restore-window?*))
+  (let ((operation (textual-port-operation port 'gc-start)))
+    (if (and operation (not (*within-restore-window?*)))
 	(operation port))))
 
 (define (port/gc-finish port)
-  (let ((operation (port/operation port 'GC-FINISH)))
-    (if (and operation (not *within-restore-window?*))
+  (let ((operation (textual-port-operation port 'gc-finish)))
+    (if (and operation (not (*within-restore-window?*)))
 	(operation port))))
 
 (define (port/read-start port)
-  (let ((operation (port/operation port 'READ-START)))
+  (let ((operation (textual-port-operation port 'read-start)))
     (if operation
 	(operation port))))
 
 (define (port/read-finish port)
-  (let ((operation (port/operation port 'READ-FINISH)))
+  (let ((operation (textual-port-operation port 'read-finish)))
     (if operation
 	(operation port))))
 
@@ -421,8 +387,8 @@ USA.
 	     unspecific))
 	 (lambda ()
 	   (let ((v
-		  (fluid-let ((*notification-depth*
-			       (+ *notification-depth* 1)))
+		  (parameterize ((*notification-depth*
+				  (1+ (*notification-depth*))))
 		    (thunk))))
 	     (set! done? #t)
 	     v))
@@ -440,27 +406,27 @@ USA.
 	     (newline port)))))))
 
 (define (wrap-notification-port port)
-  (make-port wrapped-notification-port-type port))
+  (make-textual-port wrapped-notification-port-type port))
 
 (define (make-wrapped-notification-port-type)
-  (make-port-type `((WRITE-CHAR ,operation/write-char)
-		    (X-SIZE ,operation/x-size)
-		    (COLUMN ,operation/column)
-		    (FLUSH-OUTPUT ,operation/flush-output)
-		    (DISCRETIONARY-FLUSH-OUTPUT
-		     ,operation/discretionary-flush-output))
-		  #f))
+  (make-textual-port-type `((write-char ,operation/write-char)
+			    (x-size ,operation/x-size)
+			    (column ,operation/column)
+			    (flush-output ,operation/flush-output)
+			    (discretionary-flush-output
+			     ,operation/discretionary-flush-output))
+			  #f))
 
 (define (operation/write-char port char)
-  (let ((port* (port/state port)))
+  (let ((port* (textual-port-state port)))
     (let ((n (output-port/write-char port* char)))
       (if (char=? char #\newline)
 	  (write-notification-prefix port*))
       n)))
 
 (define (operation/x-size port)
-  (let ((port* (port/state port)))
-    (let ((op (port/operation port* 'X-SIZE)))
+  (let ((port* (textual-port-state port)))
+    (let ((op (textual-port-operation port* 'x-size)))
       (and op
 	   (let ((n (op port*)))
 	     (and n
@@ -468,8 +434,8 @@ USA.
 		       0)))))))
 
 (define (operation/column port)
-  (let ((port* (port/state port)))
-    (let ((op (port/operation port* 'COLUMN)))
+  (let ((port* (textual-port-state port)))
+    (let ((op (textual-port-operation port* 'column)))
       (and op
 	   (let ((n (op port*)))
 	     (and n
@@ -477,28 +443,29 @@ USA.
 		       0)))))))
 
 (define (operation/flush-output port)
-  (output-port/flush-output (port/state port)))
+  (output-port/flush-output (textual-port-state port)))
 
 (define (operation/discretionary-flush-output port)
-  (output-port/discretionary-flush (port/state port)))
+  (output-port/discretionary-flush (textual-port-state port)))
 
 (define (write-notification-prefix port)
   (write-string ";" port)
-  (do ((i 0 (+ i 1)))
-      ((not (< i *notification-depth*)))
-    (write-string indentation-atom port)))
+  (let ((depth (*notification-depth*)))
+    (do ((i 0 (+ i 1)))
+	((not (< i depth)))
+      (write-string indentation-atom port))))
 
 (define (notification-prefix-length)
   (+ 1
      (* (string-length indentation-atom)
-	*notification-depth*)))
+	(*notification-depth*))))
 
 (define *notification-depth*)
 (define indentation-atom)
 (define wrapped-notification-port-type)
 
 (define (initialize-package!)
-  (set! *notification-depth* 0)
+  (set! *notification-depth* (make-unsettable-parameter 0))
   (set! indentation-atom "  ")
   (set! wrapped-notification-port-type (make-wrapped-notification-port-type))
   unspecific)

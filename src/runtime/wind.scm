@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -113,10 +113,10 @@ USA.
 		      (set-state-point/from-nearer! new-root #f)
 		      (set-state-space/nearest-point! space new-root)
 		      (with-stack-marker from-nearer
-			set-interrupt-enables! interrupt-mask))
+			'set-interrupt-enables! interrupt-mask))
 		    ;; Disable interrupts again in case FROM-NEARER
 		    ;; re-enabled them.
-		    (set-interrupt-enables! interrupt-mask)
+		    ((ucode-primitive set-interrupt-enables! 1) interrupt-mask)
 		    ;; Make sure that NEW-ROOT is still the root,
 		    ;; because FROM-NEARER might have moved it.  If
 		    ;; it has been moved, find the new root, and
@@ -142,19 +142,19 @@ USA.
       (procedure (fix:and interrupt-mask interrupt-mask/gc-ok)))))
 
 (define (current-state-point space)
-  (guarantee-state-space space 'CURRENT-STATE-POINT)
+  (guarantee-state-space space 'current-state-point)
   (state-space/nearest-point space))
 
 (define (execute-at-new-state-point space before during after)
-  (guarantee-state-space space 'EXECUTE-AT-NEW-STATE-POINT)
+  (guarantee-state-space space 'execute-at-new-state-point)
   (%execute-at-new-state-point space before during after))
 
 (define (translate-to-state-point point)
-  (guarantee-state-point point 'TRANSLATE-TO-STATE-POINT)
+  (guarantee-state-point point 'translate-to-state-point)
   (%translate-to-state-point point))
 
 (define (state-point/space point)
-  (guarantee-state-point point 'STATE-POINT/SPACE)
+  (guarantee-state-point point 'state-point/space)
   (let ((interrupt-mask (limit-interrupts! interrupt-mask/gc-ok)))
     (let loop ((point point))
       (let ((nearer-point (state-point/nearer-point point)))
@@ -202,7 +202,7 @@ USA.
 
 (define (set-dynamic-state! state global-only?)
   (if (not (dynamic-state? state))
-      (error:wrong-type-argument state "dynamic state" 'SET-DYNAMIC-STATE!))
+      (error:wrong-type-argument state "dynamic state" 'set-dynamic-state!))
   (if (not global-only?)
       (%translate-to-state-point (dynamic-state/local state)))
   (%translate-to-state-point (dynamic-state/global state)))

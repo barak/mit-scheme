@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,8 +37,8 @@ USA.
     (let ((definition-analysis (map analyze/top-level/definition definitions)))
       (if (pair? others)
 	  (cons (vector false
-			'EXPRESSION
-			(analyze-and-compress (make-sequence others)))
+			'expression
+			(analyze-and-compress (make-scode-sequence others)))
 		definition-analysis)
 	  definition-analysis))))
 
@@ -46,33 +46,33 @@ USA.
   (if (null? expressions)
       (values '() '())
       (let ((rest (lambda () (sort-expressions (cdr expressions)))))
-	(if (block-declaration? (car expressions))
+	(if (scode-block-declaration? (car expressions))
 	    (rest)
 	    (receive (definitions others) (rest)
-	      (if (definition? (car expressions))
+	      (if (scode-definition? (car expressions))
 		  (values (cons (car expressions) definitions) others)
 		  (values definitions (cons (car expressions) others))))))))
 
 (define (process-top-level expression)
-  (cond ((comment? expression)
-	 (process-top-level (comment-expression expression)))
-	((sequence? expression)
-	 (append-map! process-top-level (sequence-actions expression)))
+  (cond ((scode-comment? expression)
+	 (process-top-level (scode-comment-expression expression)))
+	((scode-sequence? expression)
+	 (append-map! process-top-level (scode-sequence-actions expression)))
 	(else
 	 (list expression))))
 
 (define (analyze/top-level/definition definition)
-  (let ((name (definition-name definition))
-	(expression (definition-value definition)))
+  (let ((name (scode-definition-name definition))
+	(expression (scode-definition-value definition)))
     (cond ((unassigned-reference-trap? expression)
-	   (vector name 'UNASSIGNED '#()))
+	   (vector name 'unassigned '#()))
 	  ((scode-constant? expression)
-	   (vector name 'CONSTANT '#()))
+	   (vector name 'constant '#()))
 	  (else
 	   (vector name
-		   (cond ((lambda? expression) 'LAMBDA)
-			 ((delay? expression) 'DELAY)
-			 (else 'EXPRESSION))
+		   (cond ((scode-lambda? expression) 'lambda)
+			 ((scode-delay? expression) 'delay)
+			 (else 'expression))
 		   (analyze-and-compress expression))))))
 
 (define (analyze-and-compress expression)
@@ -94,23 +94,23 @@ USA.
   (error "Illegal expression" expression))
 
 (define (analyze/access expression)
-  (if (access-environment expression)
+  (if (scode-access-environment expression)
       (warn "Access to non-global environment:" (unsyntax expression)))
   (list expression))
 
 (define (analyze/variable expression)
-  (list (variable-name expression)))
+  (list (scode-variable-name expression)))
 
 (define (analyze/assignment expression)
-  (eq-set-adjoin (assignment-name expression)
-		 (analyze/expression (assignment-value expression))))
+  (eq-set-adjoin (scode-assignment-name expression)
+		 (analyze/expression (scode-assignment-value expression))))
 
 (define (analyze/combination expression)
-  (eq-set-union (analyze/expression (combination-operator expression))
-		(analyze/expressions (combination-operands expression))))
+  (eq-set-union (analyze/expression (scode-combination-operator expression))
+		(analyze/expressions (scode-combination-operands expression))))
 
 (define (analyze/lambda expression)
-  (lambda-components expression
+  (scode-lambda-components expression
     (lambda (name required optional rest auxiliary declarations body)
       name declarations
       (eq-set-difference (analyze/expression body)
@@ -120,40 +120,45 @@ USA.
 				 auxiliary)))))
 
 (define (analyze/error-combination expression)
-  (combination-components expression
-    (lambda (operator operands)
-      (analyze/expressions (list operator (car operands) (cadr operands))))))
+  (let ((operator (scode-combination-operator expression))
+	(operands (scode-combination-operands expression)))
+    (analyze/expressions (list operator (car operands) (cadr operands)))))
 
 (define (analyze/delay expression)
-  (analyze/expression (delay-expression expression)))
+  (analyze/expression (scode-delay-expression expression)))
 
 (define (analyze/sequence expression)
-  (analyze/expressions (sequence-actions expression)))
+  (analyze/expressions (scode-sequence-actions expression)))
 
 (define (analyze/conditional expression)
-  (analyze/expressions (conditional-components expression list)))
+  (analyze/expressions
+   (list (scode-conditional-predicate expression)
+	 (scode-conditional-consequent expression)
+	 (scode-conditional-alternative expression))))
 
 (define (analyze/disjunction expression)
-  (analyze/expressions (disjunction-components expression list)))
+  (analyze/expressions
+   (list (scode-disjunction-predicate expression)
+	 (scode-disjunction-alternative expression))))
 
 (define (analyze/comment expression)
-  (analyze/expression (comment-expression expression)))
+  (analyze/expression (scode-comment-expression expression)))
 
 (define analyze/dispatch
   (make-scode-walker
    analyze/uninteresting
-   `((ACCESS ,analyze/access)
-     (ASSIGNMENT ,analyze/assignment)
-     (COMBINATION ,analyze/combination)
-     (COMMENT ,analyze/comment)
-     (CONDITIONAL ,analyze/conditional)
-     (DEFINITION ,analyze/error)
-     (DELAY ,analyze/delay)
-     (DISJUNCTION ,analyze/disjunction)
-     (ERROR-COMBINATION ,analyze/error-combination)
-     (LAMBDA ,analyze/lambda)
-     (SEQUENCE ,analyze/sequence)
-     (VARIABLE ,analyze/variable))))
+   `((access ,analyze/access)
+     (assignment ,analyze/assignment)
+     (combination ,analyze/combination)
+     (comment ,analyze/comment)
+     (conditional ,analyze/conditional)
+     (definition ,analyze/error)
+     (delay ,analyze/delay)
+     (disjunction ,analyze/disjunction)
+     (error-combination ,analyze/error-combination)
+     (lambda ,analyze/lambda)
+     (sequence ,analyze/sequence)
+     (variable ,analyze/variable))))
 
 (define (eq-set-adjoin x y)
   (if (memq x y)

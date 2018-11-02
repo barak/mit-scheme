@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -105,8 +105,7 @@ may change if call-with-current-continuation is handled specially.
 		    (and (not (lvalue/external-source? lvalue))
 			 (null? (lvalue-initial-values lvalue))
 			 (memq end (lvalue-backward-links lvalue))
-			 (for-all? (lvalue-initial-backward-links lvalue)
-				   next)))
+			 (every next (lvalue-initial-backward-links lvalue))))
 
 		  (define (next lvalue)
 		    (if (lvalue-marked? lvalue)
@@ -149,28 +148,28 @@ may change if call-with-current-continuation is handled specially.
 	       (else true)))))
 
 (define (block/no-free-references? block)
-  (and (for-all? (block-free-variables block)
-	 (lambda (variable)
-	   (or (lvalue-integrated? variable)
-	       (let ((block (variable-block variable)))
-		 (and (ic-block? block)
-		      (not (ic-block/use-lookup? block)))))))
+  (and (every (lambda (variable)
+		(or (lvalue-integrated? variable)
+		    (let ((block (variable-block variable)))
+		      (and (ic-block? block)
+			   (not (ic-block/use-lookup? block))))))
+	      (block-free-variables block))
        (let loop ((block* block))
 	 (and (not
-	       (there-exists? (block-applications block*)
-		 (lambda (application)
-		   (let ((block*
-			  (if (application/combination? application)
-			      (let ((adjustment
-				     (combination/frame-adjustment
-				      application)))
-				(and adjustment
-				     (cdr adjustment)))
-			      (block-popping-limit
-			       (reference-context/block
-				(application-context application))))))
-		     (and block* (block-ancestor? block block*))))))
-	      (for-all? (block-children block*) loop)))))
+	       (any (lambda (application)
+		      (let ((block*
+			     (if (application/combination? application)
+				 (let ((adjustment
+					(combination/frame-adjustment
+					 application)))
+				   (and adjustment
+					(cdr adjustment)))
+				 (block-popping-limit
+				  (reference-context/block
+				   (application-context application))))))
+			(and block* (block-ancestor? block block*))))
+		    (block-applications block*)))
+	      (every loop (block-children block*))))))
 
 (define (compute-block-popping-limits block)
   (let ((external (stack-block/external-ancestor block)))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -133,7 +133,7 @@ entry	0		MOV	AL,code		0xB0, code-byte
 #define COMPILER_REGBLOCK_EXTRA_SIZE					\
   (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
 
-typedef byte_t insn_t;
+typedef uint8_t insn_t;
 
 /* Number of insn_t units preceding entry address in which header
    (type and offset info) is stored.  */
@@ -174,7 +174,6 @@ typedef byte_t insn_t;
 #  define ASM_ENTRY_POINT(name) name
 #endif
 
-extern void ASM_ENTRY_POINT (x86_64_interface_initialize) (void);
 extern void ASM_ENTRY_POINT (within_c_stack) (void (*) (void *), void *);
 
 extern void asm_assignment_trap (void);

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -532,7 +532,7 @@ declare_trampoline_block (entry_count_t n_block_entries)
 }
 
 bool
-store_trampoline_insns (insn_t * entry, byte_t code)
+store_trampoline_insns (insn_t * entry, uint8_t code)
 {
   /* Trampoline entries are stored in the lowest part of the
      compiled_entries table.  That's why we reserve those above.  */

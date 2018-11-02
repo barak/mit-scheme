@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -61,9 +61,8 @@ USA.
   (bind-condition-handler (list condition-type:error)
       evaluation-error-handler
     (lambda ()
-      (with-input-from-port dummy-i/o-port
-	(lambda ()
-	  (with-output-to-transcript-buffer thunk))))))
+      (parameterize ((current-input-port dummy-i/o-port))
+	(with-output-to-transcript-buffer thunk)))))
 
 ;;;; Stepper Mode
 
@@ -152,7 +151,7 @@ c	contract the step under the cursor")
   (let ((buffer (new-buffer "*Stepper*")))
     (add-kill-buffer-hook buffer kill-stepper-buffer)
     (buffer-put! buffer 'STEPPER-STATE state)
-    (hash-table/put! stepper-buffers state buffer)
+    (hash-table-set! stepper-buffers state buffer)
     (set-buffer-read-only! buffer)
     (set-buffer-major-mode! buffer (ref-mode-object stepper))
     buffer))
@@ -160,7 +159,7 @@ c	contract the step under the cursor")
 (define (kill-stepper-buffer buffer)
   (let ((state (buffer-get buffer 'STEPPER-STATE)))
     (if state
-	(hash-table/remove! stepper-buffers state)))
+	(hash-table-delete! stepper-buffers state)))
   (buffer-remove! buffer 'STEPPER-STATE))
 
 (define (buffer->stepper-state buffer)
@@ -168,11 +167,11 @@ c	contract the step under the cursor")
       (error:bad-range-argument buffer 'BUFFER->STEPPER-STATE)))
 
 (define (stepper-state->buffer state)
-  (or (hash-table/get stepper-buffers state #f)
+  (or (hash-table-ref/default stepper-buffers state #f)
       (get-stepper-buffer state)))
 
 (define stepper-buffers
-  (make-weak-eq-hash-table))
+  (make-key-weak-eq-hash-table))
 
 (define (current-stepper-state)
   (buffer->stepper-state (current-buffer)))
@@ -193,19 +192,19 @@ c	contract the step under the cursor")
 
 (define (get-buffer-ynode-regions buffer)
   (or (buffer-get buffer 'YNODE-REGIONS)
-      (let ((table (make-weak-eq-hash-table)))
+      (let ((table (make-key-weak-eq-hash-table)))
 	(buffer-put! buffer 'YNODE-REGIONS table)
 	table)))
 
 (define (clear-ynode-regions! regions)
-  (for-each mark-temporary! (hash-table/datum-list regions))
-  (hash-table/clear! regions))
+  (for-each mark-temporary! (hash-table-values regions))
+  (hash-table-clear! regions))
 
 (define (ynode-start-mark regions node)
-  (hash-table/get regions node #f))
+  (hash-table-ref/default regions node #f))
 
 (define (save-ynode-region! regions node start end)
-  (hash-table/put! regions node (mark-temporary-copy start))
+  (hash-table-set! regions node (mark-temporary-copy start))
   (add-text-property (mark-group start) (mark-index start) (mark-index end)
 		     'STEPPER-NODE node))
 

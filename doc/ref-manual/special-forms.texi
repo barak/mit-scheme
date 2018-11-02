@@ -6,18 +6,18 @@ A special form is an expression that follows special evaluation rules.
 This chapter describes the basic Scheme special forms.
 
 @menu
-* Lambda Expressions::          
-* Lexical Binding::             
-* Dynamic Binding::             
-* Definitions::                 
-* Assignments::                 
-* Quoting::                     
-* Conditionals::                
-* Sequencing::                  
-* Iteration::                   
-* Structure Definitions::       
-* Macros::                      
-* SRFI syntax::                 
+* Lambda Expressions::
+* Lexical Binding::
+* Dynamic Binding::
+* Definitions::
+* Assignments::
+* Quoting::
+* Conditionals::
+* Sequencing::
+* Iteration::
+* Structure Definitions::
+* Macros::
+* SRFI syntax::
 @end menu
 
 @node Lambda Expressions, Lexical Binding, Special Forms, Special Forms
@@ -332,10 +332,154 @@ the restriction is satisfied automatically.
 @node Dynamic Binding, Definitions, Lexical Binding, Special Forms
 @section Dynamic Binding
 
-@deffn {special form} fluid-let ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
-@cindex binding expression, dynamic (or fluid)
-@cindex fluid binding
+@anchor{parameterize}
+@deffn {special form} parameterize ((@var{parameter} @var{value}) @dots{}) expression expression @dots{}
+Note that both @var{parameter} and @var{value} are expressions.
+It is an error if the value of any @var{parameter} expression is not a
+parameter object.
+
+A @code{parameterize} expression is used to change the values of
+specified parameter objects during the evaluation of the body
+@var{expression}s.
+
+The @var{parameter} and @var{value} expressions are evaluated in an
+unspecified order. The body is evaluated in a dynamic
+environment in which each @var{parameter} is bound to the converted
+@var{value}---the result of passing @var{value} to the conversion
+procedure specified when the @var{parameter} was created.
+Then the previous value of @var{parameter} is restored
+without passing it to the conversion procedure.
+The value of the parameterize expression is the value of the last
+body @var{expression}.
+
+The @code{parameterize} special form is standardized by @usrfi{39} and
+by @urseven{}.
+@end deffn
+
+Parameter objects can be used to specify configurable settings for a
+computation without the need to pass the value to every procedure in
+the call chain explicitly.
+
+@example
+@group
+(define radix
+  (make-parameter
+   10
+   (lambda (x)
+     (if (and (exact-integer?  x) (<= 2 x 16))
+         x
+         (error "invalid radix")))))
+@end group
+
+(define (f n) (number->string n (radix)))
+
+@group
+(f 12)                                  @result{} "12"
+(parameterize ((radix 2))
+  (f 12))                               @result{} "1100"
+(f 12)                                  @result{} "12"
+(radix 16)                              @error{} Wrong number of arguments
+(parameterize ((radix 0))
+  (f 12))                               @error{} invalid radix
+@end group
+@end example
+
+@cindex binding expression, dynamic
 @cindex dynamic binding
+@cindex dynamic environment
+@cindex dynamic extent
+A @dfn{dynamic binding} changes the value of a parameter
+(@pxref{Parameters}) object temporarily, for a @dfn{dynamic extent}.
+The set of all dynamic bindings at a given time is called the
+@dfn{dynamic environment}.  The new values are only accessible to the
+thread that constructed the dynamic environment, and any threads
+created within that environment.
+
+@cindex extent, of dynamic binding (defn)
+The @dfn{extent} of a dynamic binding is defined to be the time period
+during which calling the parameter returns the new value.  Normally
+this time period begins when the body is entered and ends when it is
+exited, a contiguous time period.  However Scheme has first-class
+continuations by which it is possible to leave the body and reenter it
+many times.  In this situation, the extent is non-contiguous.
+
+@cindex dynamic binding, and continuations
+@cindex continuation, and dynamic binding
+When the body is exited by invoking a continuation, the current
+dynamic environment is unwound until it can be re-wound to the
+environment captured by the continuation.  When the continuation
+returns, the process is reversed, restoring the original dynamic
+environment.
+
+The following example shows the interaction between dynamic binding
+and continuations.  Side effects to the binding that occur both inside
+and outside of the body are preserved, even if continuations are used
+to jump in and out of the body repeatedly.
+
+@example
+@group
+(define (complicated-dynamic-parameter)
+  (let ((variable (make-settable-parameter 1))
+        (inside-continuation))
+    (write-line (variable))
+    (call-with-current-continuation
+     (lambda (outside-continuation)
+       (parameterize ((variable 2))
+         (write-line (variable))
+         (variable 3)
+         (call-with-current-continuation
+          (lambda (k)
+            (set! inside-continuation k)
+            (outside-continuation #t)))
+         (write-line (variable))
+         (set! inside-continuation #f))))
+    (write-line (variable))
+    (if inside-continuation
+        (begin
+          (variable 4)
+          (inside-continuation #f)))))
+@end group
+@end example
+
+@noindent
+Evaluating @samp{(complicated-dynamic-binding)} writes the following on
+the console:
+
+@example
+@group
+1
+2
+1
+3
+4
+@end group
+@end example
+
+@noindent
+Commentary: the first two values written are the initial binding of
+@code{variable} and its new binding inside @code{parameterize}'s body.
+Immediately after they are written, the binding visible in the body
+is set to @samp{3}, and @code{outside-continuation} is invoked,
+exiting the body.  At this point, @samp{1} is written, demonstrating
+that the original binding of @code{variable} is still visible outside
+the body.  Then we set @code{variable} to @samp{4} and reenter the
+body by invoking @code{inside-continuation}.  At this point, @samp{3}
+is written, indicating that the binding modified in the body is still
+the binding visible in the body.  Finally, we exit the body
+normally, and write @samp{4}, demonstrating that the binding modified
+outside of the body was also preserved.
+
+@subsection Fluid-Let
+
+The @code{fluid-let} special form can change the value of @emph{any}
+variable for a dynamic extent, but it is difficult to implement in a
+multi-processing (SMP) world.  It and the cell object type
+(@pxref{Cells}) are now @strong{deprecated}.  They are still available
+and functional in a uni-processing (non-SMP) world, but will signal an
+error when used in an SMP world.  The @code{parameterize} special form
+(@pxref{parameterize}) should be used instead.
+
+@deffn {special form} fluid-let ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
 @cindex variable binding, fluid-let
 The @var{init}s are evaluated in the current environment (in some
 unspecified order), the current values of the @var{variable}s are saved,
@@ -360,109 +504,7 @@ any of the @var{variable}s are unbound.  However, because
 @code{fluid-let} operates by means of side effects, it is valid for any
 @var{variable} to be unassigned when the form is entered.
 @findex condition-type:unbound-variable
-
-Here is an example showing the difference between @code{fluid-let} and
-@code{let}.  First see how @code{let} affects the binding of a variable:
-
-@example
-@group
-(define variable #t)
-(define (access-variable) variable)
-variable                                @result{}  #t
-(let ((variable #f))
-  (access-variable))                    @result{}  #t
-variable                                @result{}  #t
-@end group
-@end example
-
-@code{access-variable} returns @code{#t} in this case because it
-is defined in an environment with @code{variable} bound to
-@code{#t}.  @code{fluid-let}, on the other hand, temporarily reuses an
-existing variable:
-
-@example
-@group
-variable                                @result{}  #t
-(fluid-let ((variable #f))              @r{;reuses old binding}
-  (access-variable))                    @result{}  #f
-variable                                @result{}  #t
-@end group
-@end example
-
-@cindex extent, of dynamic binding (defn)
-The @dfn{extent} of a dynamic binding is defined to be the time period
-during which the variable contains the new value.  Normally this time
-period begins when the body is entered and ends when it is exited; on a
-sequential machine it is normally a contiguous time period.  However,
-because Scheme has first-class continuations, it is possible to leave
-the body and then reenter it, as many times as desired.  In this
-situation, the extent becomes non-contiguous.
-
-@cindex dynamic binding, and continuations
-@cindex continuation, and dynamic binding
-When the body is exited by invoking a continuation, the new value is
-saved, and the variable is set to the old value.  Then, if the body is
-reentered by invoking a continuation, the old value is saved, and the
-variable is set to the new value.  In addition, side effects to the
-variable that occur both inside and outside of body are preserved, even
-if continuations are used to jump in and out of body repeatedly.
 @end deffn
-
-Here is a complicated example that shows the interaction between dynamic
-binding and continuations:
-
-@example
-@group
-(define (complicated-dynamic-binding)
-  (let ((variable 1)
-        (inside-continuation))
-    (write-line variable)
-    (call-with-current-continuation
-     (lambda (outside-continuation)
-       (fluid-let ((variable 2))
-         (write-line variable)
-         (set! variable 3)
-         (call-with-current-continuation
-          (lambda (k)
-            (set! inside-continuation k)
-            (outside-continuation #t)))
-         (write-line variable)
-         (set! inside-continuation #f))))
-    (write-line variable)
-    (if inside-continuation
-        (begin
-          (set! variable 4)
-          (inside-continuation #f)))))
-@end group
-@end example
-
-@noindent
-Evaluating @samp{(complicated-dynamic-binding)} writes the following on
-the console:
-
-@example
-@group
-1
-2
-1
-3
-4
-@end group
-@end example
-
-@noindent
-Commentary: the first two values written are the initial binding of
-@code{variable} and its new binding after the @code{fluid-let}'s body is
-entered.  Immediately after they are written, @code{variable} is set to
-@samp{3}, and then @code{outside-continuation} is invoked, causing us to
-exit the body.  At this point, @samp{1} is written, demonstrating that
-the original value of @code{variable} has been restored, because we have
-left the body.  Then we set @code{variable} to @samp{4} and reenter the
-body by invoking @code{inside-continuation}.  At this point, @samp{3} is
-written, indicating that the side effect that previously occurred within
-the body has been preserved.  Finally, we exit body normally, and write
-@samp{4}, demonstrating that the side effect that occurred outside of
-the body was also preserved.
 
 @node Definitions, Assignments, Dynamic Binding, Special Forms
 @section Definitions
@@ -515,8 +557,8 @@ fact, these two expressions are equivalent:
 @end deffn
 
 @menu
-* Top-Level Definitions::       
-* Internal Definitions::        
+* Top-Level Definitions::
+* Internal Definitions::
 @end menu
 
 @node Top-Level Definitions, Internal Definitions, Definitions, Definitions
@@ -1359,11 +1401,8 @@ defined with that symbol as its name.
 
 @deffn {structure option} print-procedure expression
 Evaluating @var{expression} must yield a procedure of two arguments,
-which is used to print instances of the structure.  The procedure is an
-@dfn{unparser method} (@pxref{Custom Output}).  If the structure
-instances are records, this option has the same effect as calling
-@code{set-record-type-unparser-method!}.
-@findex set-record-type-unparser-method!
+which is used to print instances of the structure.  The procedure is a
+@dfn{print method} (@pxref{Custom Output}).
 @end deffn
 
 @deffn {structure option} constructor [name [argument-list]]
@@ -1510,11 +1549,11 @@ used with the @code{type-descriptor} option.
 In the usual case, where @var{expression} is not given, the @code{named}
 option causes a type descriptor and predicate to be defined for the
 structure (recall that the @code{type} option without @code{named}
-suppresses their definition), and also defines a default unparser method
+suppresses their definition), and also defines a default print method
 for the structure instances (which can be overridden by the
-@code{print-procedure} option).  If the default unparser method is not
+@code{print-procedure} option).  If the default print method is not
 wanted then the @code{print-procedure} option should be specified as
-@code{#F}.  This causes the structure to be printed in its native
+@code{#f}.  This causes the structure to be printed in its native
 representation, as a list or vector, which includes the type descriptor.
 The type descriptor is a unique object, @emph{not} a record type, that
 describes the structure instances and is additionally stored in the
@@ -1533,7 +1572,7 @@ the first element of the list.
 
 If @var{expression} is specified, it is an expression that is evaluated
 to yield a tag object.  The @var{expression} is evaluated once when the
-structure definition is evaluated (to specify the unparser method), and
+structure definition is evaluated (to specify the print method), and
 again whenever a predicate or constructor is called.  Because of this,
 @var{expression} is normally a variable reference or a constant.  The
 value yielded by @var{expression} may be any object at all.  That object
@@ -1621,8 +1660,8 @@ instead.
 
 @item
 The @code{print-function} option is named @code{print-procedure}.  Its
-argument is a procedure of two arguments (the unparser state and the
-structure instance) rather than three as in Common Lisp.
+argument is a procedure of two arguments (the structure instance and a
+textual output port) rather than three as in Common Lisp.
 
 @item
 By default, named structures are tagged with a unique object of some
@@ -1722,10 +1761,10 @@ use of the macro.
 @end itemize
 
 @menu
-* Syntactic Binding Constructs::  
-* Pattern Language::            
-* Syntactic Closures::          
-* Explicit Renaming::           
+* Syntactic Binding Constructs::
+* Pattern Language::
+* Syntactic Closures::
+* Explicit Renaming::
 @end menu
 
 @node Syntactic Binding Constructs, Pattern Language, Macros, Macros
@@ -2078,9 +2117,9 @@ transformers is somewhat cumbersome and can be confusing for the newly
 initiated, but it is easily mastered.
 
 @menu
-* Syntax Terminology::          
-* SC Transformer Definition::   
-* SC Identifiers::              
+* Syntax Terminology::
+* SC Transformer Definition::
+* SC Identifiers::
 @end menu
 
 @node Syntax Terminology, SC Transformer Definition, Syntactic Closures, Syntactic Closures
@@ -2577,9 +2616,6 @@ Creates and returns and new synthetic identifier (alias) that is
 guaranteed to be different from all existing identifiers.
 @var{Identifier} is any existing identifier, which is used in deriving
 the name of the new identifier.
-
-This is implemented by syntactically closing @var{identifier} in a
-special empty environment.
 @end deffn
 
 @node Explicit Renaming,  , Syntactic Closures, Macros
@@ -2753,29 +2789,26 @@ must be written using the @code{er-macro-transformer} syntax:
 @cindex SRFI syntax
 Several special forms have been introduced to support some of the
 @uref{http://srfi.schemers.org/,Scheme Requests for Implementation}
-(@acronym{SRFI}).  Note that MIT/GNU Scheme has for some time supported
-@uref{http://srfi.schemers.org/srfi-23/srfi-23.html,@acronym{SRFI} 23}
-(error-reporting mechanism) and
-@uref{http://srfi.schemers.org/srfi-30/srfi-30.html,@acronym{SRFI} 30}
-(nested multi-line comments), since these @acronym{SRFI}s reflect
-existing practice rather than introducing new functionality.
+(@acronym{SRFI}).  Note that MIT/GNU Scheme has for some time
+supported @usrfi{23} (error-reporting mechanism) and @usrfi{30} (nested
+multi-line comments), since these @acronym{SRFI}s reflect existing
+practice rather than introducing new functionality.
 
 @menu
-* cond-expand (SRFI 0)::        
-* receive (SRFI 8)::            
-* and-let* (SRFI 2)::           
-* define-record-type (SRFI 9)::  
+* cond-expand (SRFI 0)::
+* receive (SRFI 8)::
+* and-let* (SRFI 2)::
+* define-record-type (SRFI 9)::
 @end menu
 
 @node cond-expand (SRFI 0), receive (SRFI 8), SRFI syntax, SRFI syntax
 @subsection cond-expand (SRFI 0)
 
 @cindex SRFI 0
-@uref{http://srfi.schemers.org/srfi-0/srfi-0.html,@acronym{SRFI} 0}
-is a mechanism for portably determining the availability of
-@uref{http://srfi.schemers.org/,@acronym{SRFI}} @dfn{features}.
-The @code{cond-expand} special form conditionally expands according to
-the features available.
+@usrfi{0} is a mechanism for portably determining the availability of
+@uref{http://srfi.schemers.org/,@acronym{SRFI}} @dfn{features}.  The
+@code{cond-expand} special form conditionally expands according to the
+features available.
 
 @deffn {special form} cond-expand clause clause dots{}
 Each @var{clause} has the form
@@ -2837,18 +2870,18 @@ present.
 
 Note that MIT/GNU Scheme allows @code{cond-expand} in any context where a
 special form is allowed.  This is an extension of the semantics defined
-by @acronym{SRFI 0}, which only allows @code{cond-expand} at top level.
+by @asrfi{0}, which only allows @code{cond-expand} at top level.
 @end deffn
 
 @node receive (SRFI 8), and-let* (SRFI 2), cond-expand (SRFI 0), SRFI syntax
 @subsection receive (SRFI 8)
 
 @cindex SRFI 8
-@uref{http://srfi.schemers.org/srfi-8/srfi-8.html,@acronym{SRFI} 8}
-defines a convenient syntax to bind an identifier to each of the values
-of a multiple-valued expression and then evaluate an expression in the
-scope of the bindings.  As an instance of this pattern, consider the
-following excerpt from a @samp{quicksort} procedure:
+@usrfi{8} defines a convenient syntax to bind an identifier to each of
+the values of a multiple-valued expression and then evaluate an
+expression in the scope of the bindings.  As an instance of this
+pattern, consider the following excerpt from a @samp{quicksort}
+procedure:
 
 @example
 @group
@@ -2936,9 +2969,8 @@ body are the values of the @samp{receive} expression.
 @subsection and-let* (SRFI 2)
 
 @cindex SRFI 2
-@uref{http://srfi.schemers.org/srfi-2/srfi-2.html,@acronym{SRFI} 2}
-provides a form that combines @samp{and} and @samp{let*} for a
-logically short-circuiting sequential binding operator.
+@usrfi{2} provides a form that combines @samp{and} and @samp{let*} for
+a logically short-circuiting sequential binding operator.
 
 @deffn {special form} and-let* (clause @dots{}) body
 Runs through each of the clauses left-to-right, short-circuiting like
@@ -2986,10 +3018,9 @@ Example:
 @subsection define-record-type (SRFI 9)
 
 @cindex SRFI 9
-The @samp{define-record-type} syntax described in
-@uref{http://srfi.schemers.org/srfi-9/srfi-9.html,@acronym{SRFI} 9} is a
-slight simplification of one written for Scheme 48 by Jonathan Rees.
-Unlike many record-defining special forms, it does not create any new
+The @samp{define-record-type} syntax described in @usrfi{9} is a slight
+simplification of one written for Scheme 48 by Jonathan Rees.  Unlike
+many record-defining special forms, it does not create any new
 identifiers.  Instead, the names of the record type, predicate,
 constructor, and so on are all listed explicitly in the source.  This
 has the following advantages:

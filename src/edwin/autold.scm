@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -185,7 +185,7 @@ Second arg is prefix arg when called interactively."
     (list
      (prompt-for-alist-value "Load library"
 			     (map (lambda (library)
-				    (cons (symbol-name (car library))
+				    (cons (symbol->string (car library))
 					  (car library)))
 				  known-libraries))
      (command-argument)))
@@ -206,7 +206,8 @@ Second arg is prefix arg when called interactively."
 			 (bind-condition-handler (list condition-type:error)
 			     evaluation-error-handler
 			   (lambda ()
-			     (fluid-let ((load/suppress-loading-message? #t))
+			     (parameterize
+				 ((param:suppress-loading-message? #t))
 			       ((message-wrapper #f "Loading " (car library))
 				(lambda ()
 				  (load-library library))))))))
@@ -234,5 +235,5 @@ Second arg PURIFY? means purify the file's contents after loading;
      (bind-condition-handler (list condition-type:error)
 	 evaluation-error-handler
        (lambda ()
-	 (fluid-let ((load/suppress-loading-message? #t))
+	 (parameterize ((param:suppress-loading-message? #t))
 	   (load filename environment 'DEFAULT purify?)))))))

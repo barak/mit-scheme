@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+MIT_SCHEME_EXE=${0}
+case ${MIT_SCHEME_EXE} in
+/*)
+    ;;
+*)
+    MIT_SCHEME_EXE=`pwd`/${MIT_SCHEME_EXE}
+    ;;
+esac
+HERE=`dirname "${MIT_SCHEME_EXE}"`
+MITSCHEME_LIBRARY_PATH=${HERE}/lib
+export MIT_SCHEME_EXE
+export MITSCHEME_LIBRARY_PATH
+"${HERE}"/microcode/scheme "${@}"

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -582,21 +582,21 @@ This variable is ignored if rmail-pop-procedure is #F."
   '()
   (lambda (object)
     (and (list? object)
-	 (for-all? object
-	   (lambda (object)
-	     (and (list? object)
-		  (= 3 (length object))
-		  (string? (car object))
-		  (string? (cadr object))
-		  (let ((password (caddr object)))
-		    (or (string? password)
-			(symbol? password)
-			(and (pair? password)
-			     (eq? 'FILE (car password))
-			     (pair? (cdr password))
-			     (or (string? (cadr password))
-				 (pathname? (cadr password)))
-			     (null? (cddr password)))))))))))
+	 (every (lambda (object)
+		  (and (list? object)
+		       (= 3 (length object))
+		       (string? (car object))
+		       (string? (cadr object))
+		       (let ((password (caddr object)))
+			 (or (string? password)
+			     (symbol? password)
+			     (and (pair? password)
+				  (eq? 'FILE (car password))
+				  (pair? (cdr password))
+				  (or (string? (cadr password))
+				      (pathname? (cadr password)))
+				  (null? (cddr password)))))))
+		object))))
 
 (define (get-mail-from-pop-server server insert buffer)
   (let ((procedure (ref-variable rmail-pop-procedure buffer)))
@@ -933,7 +933,7 @@ and reverse search is specified by a negative numeric arg."
 		(number->string (msg-memo/number (msg-memo/last memo)))
 		(append-map!
 		 (lambda (label) (list "," label))
-		 (append! (map symbol-name (msg-memo/attributes memo))
+		 (append! (map symbol->string (msg-memo/attributes memo))
 			  (parse-labels (msg-memo/start memo))))))))
 
 ;;;; Message deletion
@@ -1767,7 +1767,7 @@ Completion is performed over known labels when reading."
 	  rmail-last-label
 	  (alist->string-table
 	   (map list
-		(append! (map symbol-name attributes)
+		(append! (map symbol->string attributes)
 			 (buffer-keywords (current-buffer)))))
 	  'REQUIRE-MATCH? require-match?)))
     (set! rmail-last-label label)
@@ -1825,7 +1825,7 @@ Completion is performed over known labels when reading."
 	      (update-mode-line! (mark-buffer start))))))))
 
 (define (attribute->string attribute)
-  (string-append " " (string-downcase (symbol-name attribute)) ","))
+  (string-append " " (string-downcase (symbol->string attribute)) ","))
 
 (define (label->attribute label)
   (let ((s (intern-soft label)))

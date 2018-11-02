@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -144,9 +144,9 @@ USA.
 			'()))
 		   ((NEWNAME)
 		    (discard-known-char #\space port)
-		    (let ((old (read-xstring port)))
+		    (let ((old (read-string port)))
 		      (discard-known-char #\space port)
-		      (list old (read-xstring port))))
+		      (list old (read-string port))))
 		   ((UIDNEXT UIDVALIDITY UNSEEN)
 		    (discard-known-char #\space port)
 		    (list (read-nz-number port)))
@@ -261,7 +261,7 @@ USA.
 	  ((imap:atom-char? char) (read-atom port))
 	  (else (error "Illegal astring syntax:" char)))))
 
-(define (read-xstring port)
+(define (read-string port)
   (let ((char (peek-char-no-eof port)))
     (cond ((char=? #\" char) (read-quoted port))
 	  ((char=? #\{ char) (read-literal port))
@@ -543,16 +543,16 @@ USA.
     char))
 
 (define (read-string-internal delimiters port)
-  (let ((s (read-string delimiters port)))
+  (let ((s (read-delimited-string delimiters port)))
     (if (and (not (eof-object? s))
              imap-transcript-port)
 	(write-string s imap-transcript-port))
     s))
 
 (define (read-substring!-internal string start end port)
-  (let ((n-read (read-substring! string start end port)))
+  (let ((n-read (read-string! string port start end)))
     (if imap-transcript-port
-	(write-substring string start (+ start n-read) imap-transcript-port))
+	(write-string string imap-transcript-port start (+ start n-read)))
     n-read))
 
 (define (start-imap-transcript pathname)
@@ -572,9 +572,9 @@ USA.
       (write-char char imap-transcript-port)))
 
 (define (imap-transcript-write-substring string start end port)
-  (write-substring string start end port)
+  (write-string string port start end)
   (if imap-transcript-port
-      (write-substring string start end imap-transcript-port)))
+      (write-string string imap-transcript-port start end)))
 
 (define (imap-transcript-write-string string port)
   (write-string string port)
@@ -587,9 +587,9 @@ USA.
       (write object imap-transcript-port)))
 
 (define (imap-transcript-flush-output port)
-  (flush-output port)
+  (flush-output-port port)
   (if imap-transcript-port
-      (flush-output imap-transcript-port)))
+      (flush-output-port imap-transcript-port)))
 
 (define imap-transcript-port #f)
 
@@ -655,16 +655,16 @@ USA.
 
 (define (imap:response:fetch-body-part response section offset)
   (let ((entry
-	 (list-search-positive (cddr response)
-	   (lambda (entry)
-	     (and (eq? (car entry) 'BODY)
-		  (equal? (cadr entry) section)
-		  (pair? (cddr entry))
-		  (eqv? offset (caddr entry))
-		  (pair? (cdddr entry))
-		  (or (not (cadddr entry))
-		      (string? (cadddr entry)))
-		  (null? (cddddr entry)))))))
+	 (find (lambda (entry)
+		 (and (eq? (car entry) 'BODY)
+		      (equal? (cadr entry) section)
+		      (pair? (cddr entry))
+		      (eqv? offset (caddr entry))
+		      (pair? (cdddr entry))
+		      (or (not (cadddr entry))
+			  (string? (cadddr entry)))
+		      (null? (cddddr entry))))
+	       (cddr response))))
     (if (not entry)
 	(error "Missing FETCH body part:" section offset))
     (cadddr entry)))

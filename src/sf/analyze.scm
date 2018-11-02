@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,60 +45,61 @@ USA.
 (define define-method/always-false?
   (expression/make-method-definer always-false?-dispatch-vector))
 
-(define-method/always-false? 'ACCESS false-procedure)
+(define-method/always-false? 'access false-procedure)
 
-(define-method/always-false? 'ASSIGNMENT false-procedure)
+(define-method/always-false? 'assignment false-procedure)
 
-(define-method/always-false? 'COMBINATION
+(define-method/always-false? 'combination
   (lambda (expression)
     (cond ((expression/call-to-not? expression)
            (expression/never-false? (first (combination/operands expression))))
           ((procedure? (combination/operator expression))
-           (expression/always-false? (procedure/body (combination/operator expression))))
+           (expression/always-false?
+	    (procedure/body (combination/operator expression))))
           (else #f))))
 
-(define-method/always-false? 'CONDITIONAL
+(define-method/always-false? 'conditional
   (lambda (expression)
     (and (or (expression/always-false? (conditional/predicate expression))
              (expression/always-false? (conditional/consequent expression)))
          (or (expression/never-false? (conditional/predicate expression))
              (expression/always-false? (conditional/alternative expression))))))
 
-(define-method/always-false? 'CONSTANT
+(define-method/always-false? 'constant
   (lambda (expression)
     (not (constant/value expression))))
 
-(define-method/always-false? 'DECLARATION
+(define-method/always-false? 'declaration
   (lambda (expression)
     (expression/always-false?
      (declaration/expression expression))))
 
 ;; A promise is not a false value.
-(define-method/always-false? 'DELAY false-procedure)
+(define-method/always-false? 'delay false-procedure)
 
-(define-method/always-false? 'DISJUNCTION
+(define-method/always-false? 'disjunction
   (lambda (expression)
     (and (expression/always-false? (disjunction/predicate expression))
          (expression/always-false? (disjunction/alternative expression)))))
 
-(define-method/always-false? 'OPEN-BLOCK
+(define-method/always-false? 'open-block
   (lambda (expression)
     (expression/always-false?
      (last (open-block/actions expression)))))
 
 ;; A closure is not a false value.
-(define-method/always-false? 'PROCEDURE false-procedure)
+(define-method/always-false? 'procedure false-procedure)
 
-(define-method/always-false? 'QUOTATION false-procedure)
+(define-method/always-false? 'quotation false-procedure)
 
-(define-method/always-false? 'REFERENCE false-procedure)
+(define-method/always-false? 'reference false-procedure)
 
-(define-method/always-false? 'SEQUENCE
+(define-method/always-false? 'sequence
   (lambda (expression)
     (expression/always-false?
      (last (sequence/actions expression)))))
 
-(define-method/always-false? 'THE-ENVIRONMENT false-procedure)
+(define-method/always-false? 'the-environment false-procedure)
 
 ;;; EXPRESSION/BOOLEAN?
 ;;
@@ -114,57 +115,57 @@ USA.
 (define define-method/boolean?
   (expression/make-method-definer boolean?-dispatch-vector))
 
-(define-method/boolean? 'ACCESS false-procedure)
+(define-method/boolean? 'access false-procedure)
 
-(define-method/boolean? 'ASSIGNMENT false-procedure)
+(define-method/boolean? 'assignment false-procedure)
 
-(define-method/boolean? 'COMBINATION
+(define-method/boolean? 'combination
   (lambda (expression)
     (or (expression/call-to-boolean-predicate? expression)
         (and (procedure? (combination/operator expression))
              (boolean? (procedure/body (combination/operator expression)))))))
 
-(define-method/boolean? 'CONDITIONAL
+(define-method/boolean? 'conditional
   (lambda (expression)
     (and (or (expression/always-false? (conditional/predicate expression))
              (expression/boolean? (conditional/consequent expression)))
          (or (expression/never-false? (conditional/predicate expression))
              (expression/boolean? (conditional/alternative expression))))))
 
-(define-method/boolean? 'CONSTANT
+(define-method/boolean? 'constant
   (lambda (expression)
     ;; jrm:  do not accept unspecific here.
     (or (not (constant/value expression))
         (eq? (constant/value expression) #t))))
 
-(define-method/boolean? 'DECLARATION
+(define-method/boolean? 'declaration
   (lambda (expression)
     (expression/boolean? (declaration/expression expression))))
 
-(define-method/boolean? 'DELAY  false-procedure)
+(define-method/boolean? 'delay  false-procedure)
 
-(define-method/boolean? 'DISJUNCTION
+(define-method/boolean? 'disjunction
   (lambda (expression)
     (and (expression/boolean? (disjunction/predicate expression))
          (or (expression/never-false? (disjunction/predicate expression))
              (expression/boolean? (disjunction/alternative expression))))))
 
-(define-method/boolean? 'OPEN-BLOCK
+(define-method/boolean? 'open-block
   (lambda (expression)
     (expression/boolean?
      (last (open-block/actions expression)))))
 
-(define-method/boolean? 'PROCEDURE false-procedure)
+(define-method/boolean? 'procedure false-procedure)
 
-(define-method/boolean? 'QUOTATION false-procedure)
+(define-method/boolean? 'quotation false-procedure)
 
-(define-method/boolean? 'REFERENCE false-procedure)
+(define-method/boolean? 'reference false-procedure)
 
-(define-method/boolean? 'SEQUENCE
+(define-method/boolean? 'sequence
   (lambda (expression)
     (expression/boolean? (last (sequence/actions expression)))))
 
-(define-method/boolean? 'THE-ENVIRONMENT false-procedure)
+(define-method/boolean? 'the-environment false-procedure)
 
 ;;; EXPRESSION/EFFECT-FREE?
 ;;
@@ -179,20 +180,21 @@ USA.
 (define define-method/effect-free?
   (expression/make-method-definer effect-free?-dispatch-vector))
 
-(define-method/effect-free? 'ACCESS
+(define-method/effect-free? 'access
   (lambda (expression)
     (expression/effect-free? (access/environment expression))))
 
-(define-method/effect-free? 'ASSIGNMENT false-procedure)
+(define-method/effect-free? 'assignment false-procedure)
 
-(define-method/effect-free? 'COMBINATION
+(define-method/effect-free? 'combination
   (lambda (expression)
-    (and (for-all? (combination/operands expression) expression/effect-free?)
+    (and (every expression/effect-free? (combination/operands expression))
          (or (expression/call-to-effect-free-primitive? expression)
              (and (procedure? (combination/operator expression))
-                  (expression/effect-free? (procedure/body (combination/operator expression))))))))
+                  (expression/effect-free?
+		   (procedure/body (combination/operator expression))))))))
 
-(define-method/effect-free? 'CONDITIONAL
+(define-method/effect-free? 'conditional
   (lambda (expression)
     (and (expression/effect-free? (conditional/predicate expression))
          (or (expression/always-false? (conditional/predicate expression))
@@ -200,16 +202,16 @@ USA.
          (or (expression/never-false? (conditional/predicate expression))
              (expression/effect-free? (conditional/alternative expression))))))
 
-(define-method/effect-free? 'CONSTANT true-procedure)
+(define-method/effect-free? 'constant true-procedure)
 
-(define-method/effect-free? 'DECLARATION
+(define-method/effect-free? 'declaration
   (lambda (expression)
     (expression/effect-free? (declaration/expression expression))))
 
 ;; Consing a promise is not considered an effect.
-(define-method/effect-free? 'DELAY true-procedure)
+(define-method/effect-free? 'delay true-procedure)
 
-(define-method/effect-free? 'DISJUNCTION
+(define-method/effect-free? 'disjunction
   (lambda (expression)
     (and (expression/effect-free? (disjunction/predicate expression))
          (or (expression/never-false? (disjunction/predicate expression))
@@ -218,23 +220,23 @@ USA.
 ;; This could be smarter and skip the assignments
 ;; done for the letrec, but it is easier to just
 ;; assume it causes effects.
-(define-method/effect-free? 'OPEN-BLOCK
+(define-method/effect-free? 'open-block
   (lambda (expression)
     (declare (ignore expression))
     #f))
 
 ;; Just consing a closure is not considered a side-effect.
-(define-method/effect-free? 'PROCEDURE true-procedure)
+(define-method/effect-free? 'procedure true-procedure)
 
-(define-method/effect-free? 'QUOTATION false-procedure)
+(define-method/effect-free? 'quotation false-procedure)
 
-(define-method/effect-free? 'REFERENCE true-procedure)
+(define-method/effect-free? 'reference true-procedure)
 
-(define-method/effect-free? 'SEQUENCE
+(define-method/effect-free? 'sequence
   (lambda (expression)
-    (for-all? (sequence/actions expression) expression/effect-free?)))
+    (every expression/effect-free? (sequence/actions expression))))
 
-(define-method/effect-free? 'THE-ENVIRONMENT true-procedure)
+(define-method/effect-free? 'the-environment true-procedure)
 
 ;;; EXPRESSION/FREE-VARIABLES
 ;;
@@ -257,84 +259,95 @@ USA.
 (define define-method/free-variables
   (expression/make-method-definer free-variables-dispatch-vector))
 
-(define-method/free-variables 'ACCESS
+(define-method/free-variables 'access
   (lambda (expression)
     (expression/free-variables (access/environment expression))))
 
-(define-method/free-variables 'ASSIGNMENT
+(define-method/free-variables 'assignment
   (lambda (expression)
     (lset-adjoin eq?
                  (expression/free-variables (assignment/value expression))
                  (assignment/variable expression))))
 
-(define-method/free-variables 'COMBINATION
+(define-method/free-variables 'combination
   (lambda (expression)
-    (lset-union eq?
-                (expression/free-variables (combination/operator expression))
-                (expressions/free-variables (combination/operands expression)))))
+    (lset-union
+     eq?
+     (expression/free-variables (combination/operator expression))
+     (expressions/free-variables (combination/operands expression)))))
 
-(define-method/free-variables 'CONDITIONAL
+(define-method/free-variables 'conditional
   (lambda (expression)
-    (lset-union eq?
-                (expression/free-variables (conditional/predicate expression))
-                (if (expression/always-false? (conditional/predicate expression))
-                    (no-free-variables)
-                    (expression/free-variables (conditional/consequent expression)))
-                (if (expression/never-false? (conditional/predicate expression))
-                    (no-free-variables)
-                    (expression/free-variables (conditional/alternative expression))))))
+    (lset-union
+     eq?
+     (expression/free-variables (conditional/predicate expression))
+     (if (expression/always-false? (conditional/predicate expression))
+	 (no-free-variables)
+	 (expression/free-variables (conditional/consequent expression)))
+     (if (expression/never-false? (conditional/predicate expression))
+	 (no-free-variables)
+	 (expression/free-variables (conditional/alternative expression))))))
 
-(define-method/free-variables 'CONSTANT
+(define-method/free-variables 'constant
   (lambda (expression)
     expression
     (no-free-variables)))
 
-(define-method/free-variables 'DECLARATION
+(define-method/free-variables 'declaration
   (lambda (expression)
     (expression/free-variables (declaration/expression expression))))
 
-(define-method/free-variables 'DELAY
+(define-method/free-variables 'delay
   (lambda (expression)
     (expression/free-variables (delay/expression expression))))
 
-(define-method/free-variables 'DISJUNCTION
+(define-method/free-variables 'disjunction
   (lambda (expression)
-    (lset-union eq?
-                (expression/free-variables (disjunction/predicate expression))
-                (if (expression/never-false? (disjunction/predicate expression))
-                    (no-free-variables)
-                    (expression/free-variables (disjunction/alternative expression))))))
+    (lset-union
+     eq?
+     (expression/free-variables (disjunction/predicate expression))
+     (if (expression/never-false? (disjunction/predicate expression))
+	 (no-free-variables)
+	 (expression/free-variables (disjunction/alternative expression))))))
 
-(define-method/free-variables 'OPEN-BLOCK
+(define-method/free-variables 'open-block
   (lambda (expression)
     (let ((omit (block/bound-variables (open-block/block expression))))
      (fold-left (lambda (variables action)
                   (if (eq? action open-block/value-marker)
                       variables
-                      (lset-union eq? variables (lset-difference eq? (expression/free-variables action) omit))))
-                (lset-difference eq? (expressions/free-variables (open-block/values expression)) omit)
+                      (lset-union eq?
+				  variables
+				  (lset-difference
+				   eq?
+				   (expression/free-variables action)
+				   omit))))
+                (lset-difference eq?
+				 (expressions/free-variables
+				  (open-block/values expression))
+				 omit)
                 (open-block/actions expression)))))
 
-(define-method/free-variables 'PROCEDURE
+(define-method/free-variables 'procedure
   (lambda (expression)
     (lset-difference eq?
      (expression/free-variables (procedure/body expression))
      (block/bound-variables (procedure/block expression)))))
 
-(define-method/free-variables 'QUOTATION
+(define-method/free-variables 'quotation
   (lambda (expression)
     (declare (ignore expression))
     (no-free-variables)))
 
-(define-method/free-variables 'REFERENCE
+(define-method/free-variables 'reference
   (lambda (expression)
     (singleton-variable (reference/variable expression))))
 
-(define-method/free-variables 'SEQUENCE
+(define-method/free-variables 'sequence
   (lambda (expression)
     (expressions/free-variables (sequence/actions expression))))
 
-(define-method/free-variables 'THE-ENVIRONMENT
+(define-method/free-variables 'the-environment
   (lambda (expression)
     (declare (ignore expression))
     (no-free-variables)))
@@ -367,48 +380,55 @@ USA.
 (define define-method/free-variable?
   (expression/make-method-definer is-free-dispatch-vector))
 
-(define-method/free-variable? 'ACCESS
+(define-method/free-variable? 'access
   (lambda (expression variable)
     (expression/free-variable? (access/environment expression) variable)))
 
-(define-method/free-variable? 'ASSIGNMENT
+(define-method/free-variable? 'assignment
   (lambda (expression variable)
     (or (eq? variable (assignment/variable expression))
         (expression/free-variable? (assignment/value expression) variable))))
 
-(define-method/free-variable? 'COMBINATION
+(define-method/free-variable? 'combination
   (lambda (expression variable)
     (or (expression/free-variable? (combination/operator expression) variable)
-        (expressions/free-variable? (combination/operands expression) variable))))
+        (expressions/free-variable?
+	 (combination/operands expression) variable))))
 
-(define-method/free-variable? 'CONDITIONAL
+(define-method/free-variable? 'conditional
   (lambda (expression variable)
     (or (expression/free-variable? (conditional/predicate expression) variable)
         (cond ((expression/always-false? (conditional/predicate expression))
-               (expression/free-variable? (conditional/alternative expression) variable))
+               (expression/free-variable? (conditional/alternative expression)
+					  variable))
               ((expression/never-false? (conditional/predicate expression))
-               (expression/free-variable? (conditional/consequent expression) variable))
-              ((expression/free-variable? (conditional/consequent expression) variable))
-              (else (expression/free-variable? (conditional/alternative expression) variable))))))
+               (expression/free-variable? (conditional/consequent expression)
+					  variable))
+              ((expression/free-variable? (conditional/consequent expression)
+					  variable))
+              (else
+	       (expression/free-variable? (conditional/alternative expression)
+					  variable))))))
 
-(define-method/free-variable? 'CONSTANT false-procedure)
+(define-method/free-variable? 'constant false-procedure)
 
-(define-method/free-variable? 'DECLARATION
+(define-method/free-variable? 'declaration
   (lambda (expression variable)
     (expression/free-variable? (declaration/expression expression) variable)))
 
-(define-method/free-variable? 'DELAY
+(define-method/free-variable? 'delay
   (lambda (expression variable)
     (expression/free-variable? (delay/expression expression) variable)))
 
-(define-method/free-variable? 'DISJUNCTION
+(define-method/free-variable? 'disjunction
   (lambda (expression variable)
     (or (expression/free-variable? (disjunction/predicate expression) variable)
         (if (expression/never-false? (disjunction/predicate expression))
             #f
-            (expression/free-variable? (disjunction/alternative expression) variable)))))
+            (expression/free-variable? (disjunction/alternative expression)
+				       variable)))))
 
-(define-method/free-variable? 'OPEN-BLOCK
+(define-method/free-variable? 'open-block
   (lambda (expression variable)
     (fold-left (lambda (answer action)
                  (or answer
@@ -418,17 +438,17 @@ USA.
                #f
                (open-block/actions expression))))
 
-(define-method/free-variable? 'PROCEDURE
+(define-method/free-variable? 'procedure
   (lambda (expression variable)
     (expression/free-variable? (procedure/body expression) variable)))
 
-(define-method/free-variable? 'QUOTATION false-procedure)
+(define-method/free-variable? 'quotation false-procedure)
 
-(define-method/free-variable? 'REFERENCE
+(define-method/free-variable? 'reference
   (lambda (expression variable)
     (eq? (reference/variable expression) variable)))
 
-(define-method/free-variable? 'SEQUENCE
+(define-method/free-variable? 'sequence
   (lambda (expression variable)
   (fold-left (lambda (answer action)
                (or answer
@@ -438,7 +458,7 @@ USA.
              #f
              (sequence/actions expression))))
 
-(define-method/free-variable? 'THE-ENVIRONMENT false-procedure)
+(define-method/free-variable? 'the-environment false-procedure)
 
 ;;; EXPRESSION/FREE-VARIABLE-INFO <expression> <variable>
 ;;
@@ -452,11 +472,13 @@ USA.
   (expression/free-variable-info-dispatch expression variable (cons 0 0)))
 
 (define (expression/free-variable-info-dispatch expression variable info)
-  ((expression/method free-info-dispatch-vector expression) expression variable info))
+  ((expression/method free-info-dispatch-vector expression)
+   expression variable info))
 
 (define (expressions/free-variable-info expressions variable info)
   (fold-left (lambda (answer expression)
-               (expression/free-variable-info-dispatch expression variable answer))
+               (expression/free-variable-info-dispatch expression variable
+						       answer))
              info
              expressions))
 
@@ -466,44 +488,55 @@ USA.
 (define define-method/free-variable-info
   (expression/make-method-definer free-info-dispatch-vector))
 
-(define-method/free-variable-info 'ACCESS
+(define-method/free-variable-info 'access
   (lambda (expression variable info)
-    (expression/free-variable-info-dispatch (access/environment expression) variable info)))
+    (expression/free-variable-info-dispatch (access/environment expression)
+					    variable info)))
 
-(define-method/free-variable-info 'ASSIGNMENT
+(define-method/free-variable-info 'assignment
   (lambda (expression variable info)
     (or (eq? variable (assignment/variable expression))
-        (expression/free-variable-info-dispatch (assignment/value expression) variable info))))
+        (expression/free-variable-info-dispatch (assignment/value expression)
+						variable info))))
 
-(define-method/free-variable-info 'COMBINATION
+(define-method/free-variable-info 'combination
   (lambda (expression variable info)
     (let ((operator (combination/operator expression))
-          (inner-info (expressions/free-variable-info (combination/operands expression) variable info)))
+          (inner-info
+	   (expressions/free-variable-info (combination/operands expression)
+					   variable info)))
       (if (and (reference? operator)
                (eq? (reference/variable operator) variable))
           (cons (fix:1+ (car inner-info)) (cdr inner-info))
-          (expression/free-variable-info-dispatch operator variable inner-info)))))
+          (expression/free-variable-info-dispatch operator variable
+						  inner-info)))))
 
-(define-method/free-variable-info 'CONDITIONAL
+(define-method/free-variable-info 'conditional
   (lambda (expression variable info)
     (expression/free-variable-info-dispatch
      (conditional/predicate expression) variable
      (expression/free-variable-info-dispatch
       (conditional/consequent expression) variable
-      (expression/free-variable-info-dispatch (conditional/alternative expression) variable info)))))
+      (expression/free-variable-info-dispatch
+       (conditional/alternative expression)
+       variable info)))))
 
-(define-method/free-variable-info 'CONSTANT
-  (lambda (expression variable info) (declare (ignore expression variable)) info))
-
-(define-method/free-variable-info 'DECLARATION
+(define-method/free-variable-info 'constant
   (lambda (expression variable info)
-    (expression/free-variable-info-dispatch (declaration/expression expression) variable info)))
+    (declare (ignore expression variable))
+    info))
+
+(define-method/free-variable-info 'declaration
+  (lambda (expression variable info)
+    (expression/free-variable-info-dispatch (declaration/expression expression)
+					    variable info)))
 
-(define-method/free-variable-info 'DELAY
+(define-method/free-variable-info 'delay
   (lambda (expression variable info)
-    (expression/free-variable-info-dispatch (delay/expression expression) variable info)))
+    (expression/free-variable-info-dispatch (delay/expression expression)
+					    variable info)))
 
-(define-method/free-variable-info 'DISJUNCTION
+(define-method/free-variable-info 'disjunction
   (lambda (expression variable info)
     (expression/free-variable-info-dispatch
      (disjunction/predicate expression) variable
@@ -511,35 +544,38 @@ USA.
       (disjunction/alternative expression) variable
       info))))
 
-(define-method/free-variable-info 'OPEN-BLOCK
+(define-method/free-variable-info 'open-block
   (lambda (expression variable info)
     (fold-left (lambda (info action)
                  (if (eq? action open-block/value-marker)
                      info
-                     (expression/free-variable-info-dispatch action variable info)))
+                     (expression/free-variable-info-dispatch action variable
+							     info)))
                info
                (open-block/actions expression))))
 
-(define-method/free-variable-info 'PROCEDURE
+(define-method/free-variable-info 'procedure
   (lambda (expression variable info)
-    (expression/free-variable-info-dispatch (procedure/body expression) variable info)))
+    (expression/free-variable-info-dispatch (procedure/body expression)
+					    variable info)))
 
-(define-method/free-variable-info 'QUOTATION
+(define-method/free-variable-info 'quotation
   (lambda (expression variable info)
     (declare (ignore expression variable))
     info))
 
-(define-method/free-variable-info 'REFERENCE
+(define-method/free-variable-info 'reference
   (lambda (expression variable info)
     (if (eq? (reference/variable expression) variable)
         (cons (car info) (fix:1+ (cdr info)))
         info)))
 
-(define-method/free-variable-info 'SEQUENCE
+(define-method/free-variable-info 'sequence
   (lambda (expression variable info)
-    (expressions/free-variable-info (sequence/actions expression) variable info)))
+    (expressions/free-variable-info (sequence/actions expression)
+				    variable info)))
 
-(define-method/free-variable-info 'THE-ENVIRONMENT
+(define-method/free-variable-info 'the-environment
   (lambda (expression variable info)
     (declare (ignore expression variable))
     info))
@@ -559,54 +595,55 @@ USA.
 (define define-method/never-false?
   (expression/make-method-definer never-false?-dispatch-vector))
 
-(define-method/never-false? 'ACCESS false-procedure)
+(define-method/never-false? 'access false-procedure)
 
-(define-method/never-false? 'ASSIGNMENT false-procedure)
+(define-method/never-false? 'assignment false-procedure)
 
-(define-method/never-false? 'COMBINATION
+(define-method/never-false? 'combination
   (lambda (expression)
     (cond ((expression/call-to-not? expression)
            (expression/always-false? (first (combination/operands expression))))
           ((procedure? (combination/operator expression))
-           (expression/never-false? (procedure/body (combination/operator expression))))
+           (expression/never-false?
+	    (procedure/body (combination/operator expression))))
           (else #f))))
 
-(define-method/never-false? 'CONDITIONAL
+(define-method/never-false? 'conditional
   (lambda (expression)
     (and (or (expression/always-false? (conditional/predicate expression))
              (expression/never-false? (conditional/consequent expression)))
          (or (expression/never-false? (conditional/predicate expression))
              (expression/never-false? (conditional/alternative expression))))))
 
-(define-method/never-false? 'CONSTANT        constant/value)
+(define-method/never-false? 'constant        constant/value)
 
-(define-method/never-false? 'DECLARATION
+(define-method/never-false? 'declaration
   (lambda (expression)
     (expression/never-false? (declaration/expression expression))))
 
-(define-method/never-false? 'DELAY true-procedure)
+(define-method/never-false? 'delay true-procedure)
 
-(define-method/never-false? 'DISJUNCTION
+(define-method/never-false? 'disjunction
   (lambda (expression)
     (or (expression/never-false? (disjunction/predicate expression))
         (expression/never-false? (disjunction/alternative expression)))))
 
-(define-method/never-false? 'OPEN-BLOCK
+(define-method/never-false? 'open-block
   (lambda (expression)
     (expression/never-false?
      (last (open-block/actions expression)))))
 
-(define-method/never-false? 'PROCEDURE true-procedure)
+(define-method/never-false? 'procedure true-procedure)
 
-(define-method/never-false? 'QUOTATION false-procedure)
+(define-method/never-false? 'quotation false-procedure)
 
-(define-method/never-false? 'REFERENCE false-procedure)
+(define-method/never-false? 'reference false-procedure)
 
-(define-method/never-false? 'SEQUENCE
+(define-method/never-false? 'sequence
   (lambda (expression)
     (expression/never-false? (last (sequence/actions expression)))))
 
-(define-method/never-false? 'THE-ENVIRONMENT true-procedure)
+(define-method/never-false? 'the-environment true-procedure)
 
 ;;; EXPRESSION/PURE-FALSE?
 
@@ -622,20 +659,22 @@ USA.
 (define define-method/pure-false?
   (expression/make-method-definer pure-false?-dispatch-vector))
 
-(define-method/pure-false? 'ACCESS false-procedure)
+(define-method/pure-false? 'access false-procedure)
 
-(define-method/pure-false? 'ASSIGNMENT false-procedure)
+(define-method/pure-false? 'assignment false-procedure)
 
-(define-method/pure-false? 'COMBINATION
+(define-method/pure-false? 'combination
   (lambda (expression)
     (cond ((expression/call-to-not? expression)
            (expression/pure-true? (first (combination/operands expression))))
           ((procedure? (combination/operator expression))
-           (and (for-all? (combination/operands expression) expression/effect-free?)
-                (expression/pure-false? (procedure/body (combination/operator expression)))))
+           (and (every expression/effect-free?
+		       (combination/operands expression))
+                (expression/pure-false?
+		 (procedure/body (combination/operator expression)))))
           (else #f))))
 
-(define-method/pure-false? 'CONDITIONAL
+(define-method/pure-false? 'conditional
   (lambda (expression)
     (and (expression/effect-free? (conditional/predicate expression))
          (or (expression/always-false? (conditional/predicate expression))
@@ -643,38 +682,38 @@ USA.
          (or (expression/never-false? (conditional/predicate expression))
              (expression/pure-false? (conditional/alternative expression))))))
 
-(define-method/pure-false? 'CONSTANT
+(define-method/pure-false? 'constant
   (lambda (expression)
     (not (constant/value expression))))
 
-(define-method/pure-false? 'DECLARATION
+(define-method/pure-false? 'declaration
   (lambda (expression)
     (expression/pure-false?
      (declaration/expression expression))))
 
-(define-method/pure-false? 'DELAY false-procedure)
+(define-method/pure-false? 'delay false-procedure)
 
-(define-method/pure-false? 'DISJUNCTION
+(define-method/pure-false? 'disjunction
   (lambda (expression)
     (and (expression/pure-false? (disjunction/predicate expression))
          (expression/pure-false? (disjunction/alternative expression)))))
 
 ;; Could be smarter
-(define-method/pure-false? 'OPEN-BLOCK false-procedure)
+(define-method/pure-false? 'open-block false-procedure)
 
-(define-method/pure-false? 'PROCEDURE false-procedure)
+(define-method/pure-false? 'procedure false-procedure)
 
-(define-method/pure-false? 'QUOTATION false-procedure)
+(define-method/pure-false? 'quotation false-procedure)
 
-(define-method/pure-false? 'REFERENCE false-procedure)
+(define-method/pure-false? 'reference false-procedure)
 
-(define-method/pure-false? 'SEQUENCE
+(define-method/pure-false? 'sequence
   (lambda (expression)
-    (and (for-all? (except-last-pair (sequence/actions expression))
-                   expression/effect-free?) ;; unlikely
+    (and (every expression/effect-free? ; unlikely
+		(except-last-pair (sequence/actions expression)))
          (expression/pure-false? (last (sequence/actions expression))))))
 
-(define-method/pure-false? 'THE-ENVIRONMENT false-procedure)
+(define-method/pure-false? 'the-environment false-procedure)
 
 ;;; EXPRESSION/PURE-TRUE?
 ;;
@@ -691,20 +730,22 @@ USA.
 (define define-method/pure-true?
   (expression/make-method-definer pure-true?-dispatch-vector))
 
-(define-method/pure-true? 'ACCESS false-procedure)
+(define-method/pure-true? 'access false-procedure)
 
-(define-method/pure-true? 'ASSIGNMENT false-procedure)
+(define-method/pure-true? 'assignment false-procedure)
 
-(define-method/pure-true? 'COMBINATION
+(define-method/pure-true? 'combination
   (lambda (expression)
     (cond ((expression/call-to-not? expression)
            (expression/pure-false? (first (combination/operands expression))))
           ((procedure? (combination/operator expression))
-           (and (for-all? (combination/operands expression) expression/effect-free?)
-                (expression/pure-true? (procedure/body (combination/operator expression)))))
+           (and (every expression/effect-free?
+		       (combination/operands expression))
+                (expression/pure-true?
+		 (procedure/body (combination/operator expression)))))
           (else #f))))
 
-(define-method/pure-true? 'CONDITIONAL
+(define-method/pure-true? 'conditional
   (lambda (expression)
     (and (expression/effect-free? (conditional/predicate expression))
          (or (expression/always-false? (conditional/predicate expression))
@@ -712,37 +753,37 @@ USA.
          (or (expression/never-false? (conditional/predicate expression))
              (expression/pure-true? (conditional/alternative expression))))))
 
-(define-method/pure-true? 'CONSTANT
+(define-method/pure-true? 'constant
   (lambda (expression)
     (eq? (constant/value expression) #t)))
 
-(define-method/pure-true? 'DECLARATION
+(define-method/pure-true? 'declaration
   (lambda (expression)
     (expression/pure-true? (declaration/expression expression))))
 
-(define-method/pure-true? 'DELAY false-procedure)
+(define-method/pure-true? 'delay false-procedure)
 
-(define-method/pure-true? 'DISJUNCTION
+(define-method/pure-true? 'disjunction
   (lambda (expression)
     (and (expression/effect-free? (disjunction/predicate expression))
          (expression/boolean? (disjunction/predicate expression))
          (expression/pure-true? (disjunction/alternative expression)))))
 
-(define-method/pure-true? 'OPEN-BLOCK false-procedure)
+(define-method/pure-true? 'open-block false-procedure)
 
-(define-method/pure-true? 'PROCEDURE false-procedure)
+(define-method/pure-true? 'procedure false-procedure)
 
-(define-method/pure-true? 'QUOTATION false-procedure)
+(define-method/pure-true? 'quotation false-procedure)
 
-(define-method/pure-true? 'REFERENCE false-procedure)
+(define-method/pure-true? 'reference false-procedure)
 
-(define-method/pure-true? 'SEQUENCE
+(define-method/pure-true? 'sequence
   (lambda (expression)
-    (and (for-all? (except-last-pair (sequence/actions expression))
-                   expression/effect-free?)
+    (and (every expression/effect-free?
+		(except-last-pair (sequence/actions expression)))
          (expression/pure-true? (last (sequence/actions expression))))))
 
-(define-method/pure-true? 'THE-ENVIRONMENT false-procedure)
+(define-method/pure-true? 'the-environment false-procedure)
 
 ;;; EXPRESSION/SIZE <expr>
 ;;
@@ -760,22 +801,22 @@ USA.
 (define define-method/size
   (expression/make-method-definer size-dispatch-vector))
 
-(define-method/size 'ACCESS
+(define-method/size 'access
   (lambda (expression)
     (fix:1+ (expression/size (access/environment expression)))))
 
-(define-method/size 'ASSIGNMENT
+(define-method/size 'assignment
   (lambda (expression)
     (fix:1+ (expression/size (assignment/value expression)))))
 
-(define-method/size 'COMBINATION
+(define-method/size 'combination
   (lambda (expression)
     (fold-left (lambda (total operand)
                  (fix:+ total (expression/size operand)))
                (fix:1+ (expression/size (combination/operator expression)))
                (combination/operands expression))))
 
-(define-method/size 'CONDITIONAL
+(define-method/size 'conditional
   (lambda (expression)
     (fix:+
      (expression/size (conditional/predicate expression))
@@ -783,23 +824,23 @@ USA.
       (expression/size (conditional/consequent expression))
       (fix:1+ (expression/size (conditional/alternative expression)))))))
 
-(define-method/size 'CONSTANT
+(define-method/size 'constant
   (lambda (expression) (declare (ignore expression)) 1))
 
-(define-method/size 'DECLARATION
+(define-method/size 'declaration
   (lambda (expression)
     (fix:1+ (expression/size (declaration/expression expression)))))
 
-(define-method/size 'DELAY
+(define-method/size 'delay
   (lambda (expression)
     (fix:1+ (expression/size (delay/expression expression)))))
 
-(define-method/size 'DISJUNCTION
+(define-method/size 'disjunction
   (lambda (expression)
     (fix:+ (expression/size (disjunction/predicate expression))
            (fix:1+ (expression/size (disjunction/alternative expression))))))
 
-(define-method/size 'OPEN-BLOCK
+(define-method/size 'open-block
   (lambda (expression)
     (fold-left (lambda (total action)
                 (if (eq? action open-block/value-marker)
@@ -808,20 +849,20 @@ USA.
               1
               (open-block/actions expression))))
 
-(define-method/size 'PROCEDURE
+(define-method/size 'procedure
   (lambda (expression)
     (fix:1+ (expression/size (procedure/body expression)))))
 
-(define-method/size 'QUOTATION
+(define-method/size 'quotation
   (lambda (expression)
     (fix:1+ (expression/size (quotation/expression expression)))))
 
-(define-method/size 'REFERENCE
+(define-method/size 'reference
   (lambda (expression)
     (declare (ignore expression))
     1))
 
-(define-method/size 'SEQUENCE
+(define-method/size 'sequence
   (lambda (expression)
     (fold-left (lambda (total action)
                  (fix:+ total (expression/size action)))
@@ -842,55 +883,55 @@ USA.
 (define define-method/expression->list
   (expression/make-method-definer expression->list-dispatch-vector))
 
-(define-method/expression->list 'ACCESS
+(define-method/expression->list 'access
   (lambda (expression)
-    `(ACCESS ,(access/name expression)
+    `(access ,(access/name expression)
 	     ,(expression->list (access/environment expression)))))
 
-(define-method/expression->list 'ASSIGNMENT
+(define-method/expression->list 'assignment
   (lambda (expression)
-    `(SET! ,(assignment/variable expression)
+    `(set! ,(assignment/variable expression)
 	   ,(expression->list (assignment/value expression)))))
 
-(define-method/expression->list 'COMBINATION
+(define-method/expression->list 'combination
   (lambda (expression)
     (cons (expression->list (combination/operator expression))
 	  (map expression->list (combination/operands expression)))))
 
-(define-method/expression->list 'CONDITIONAL
+(define-method/expression->list 'conditional
   (lambda (expression)
-    `(IF ,(expression->list (conditional/predicate expression))
+    `(if ,(expression->list (conditional/predicate expression))
 	 ,(expression->list (conditional/consequent expression))
 	 ,(expression->list (conditional/alternative expression)))))
 
-(define-method/expression->list 'CONSTANT
+(define-method/expression->list 'constant
   (lambda (expression) (constant/value expression)))
 
-(define-method/expression->list 'DECLARATION
+(define-method/expression->list 'declaration
   (lambda (expression)
-    `(DECLARE ,(declaration/declarations expression)
+    `(declare ,(declaration/declarations expression)
 	      ,(expression->list (declaration/expression expression)))))
 
-(define-method/expression->list 'DELAY
+(define-method/expression->list 'delay
   (lambda (expression)
-    `(DELAY ,(expression->list (delay/expression expression)))))
+    `(delay ,(expression->list (delay/expression expression)))))
 
-(define-method/expression->list 'DISJUNCTION
+(define-method/expression->list 'disjunction
   (lambda (expression)
-    `(OR ,(expression->list (disjunction/predicate expression))
+    `(or ,(expression->list (disjunction/predicate expression))
 	 ,(expression->list (disjunction/alternative expression)))))
 
-(define-method/expression->list 'OPEN-BLOCK
+(define-method/expression->list 'open-block
   (lambda (expression)
-    `(OPEN-BLOCK
+    `(open-block
       ',(map variable/name (open-block/variables expression))
       ,@(map (lambda (action)
 	       (if (eq? action open-block/value-marker)
-		   `(QUOTE ,action)
+		   `(quote ,action)
 		   (expression->list action)))
 	     (open-block/actions expression)))))
 
-(define-method/expression->list 'PROCEDURE
+(define-method/expression->list 'procedure
   (lambda (expression)
     (let ((name (procedure/name expression))
 	  (required (map variable/name (procedure/required expression)))
@@ -898,18 +939,18 @@ USA.
 	  (rest     (let ((rest-arg (procedure/rest expression)))
 		      (and rest-arg
 			   (variable/name rest-arg)))))
-      `(PROCEDURE ,name
+      `(procedure ,name
 		  ,(make-lambda-list required optional rest '())
 		  ,(expression->list (procedure/body expression))))))
 
-(define-method/expression->list 'QUOTATION
+(define-method/expression->list 'quotation
   (lambda (expression)
-    `(QUOTE ,(quotation/expression expression))))
+    `(quote ,(quotation/expression expression))))
 
-(define-method/expression->list 'REFERENCE
+(define-method/expression->list 'reference
   (lambda (expression)
     (variable/name (reference/variable expression))))
 
-(define-method/expression->list 'SEQUENCE
+(define-method/expression->list 'sequence
   (lambda (expression)
-    `(BEGIN ,@(map expression->list (sequence/actions expression)))))
+    `(begin ,@(map expression->list (sequence/actions expression)))))

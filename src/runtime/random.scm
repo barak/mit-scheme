@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -52,8 +52,16 @@ USA.
 (define-integrable b 4294967291 #|(- (expt 2 32) 5)|#)
 (define-integrable b. 4294967291. #|(exact->inexact b)|#)
 
+(define-integrable (with-random-state-lock state thunk)
+  (if (eq? state default-random-source)
+      (with-thread-mutex-lock default-random-source-mutex
+	(lambda ()
+	  (without-interruption thunk)))
+      (thunk)))
+
 (define (flo:random-element state)
-  (let ((mask ((ucode-primitive set-interrupt-enables!) interrupt-mask/gc-ok)))
+  (with-random-state-lock state
+   (lambda ()
     (let ((index (random-state-index state))
 	  (vector (random-state-vector state)))
       (let ((element (flo:vector-ref vector index)))
@@ -75,8 +83,7 @@ USA.
 				   (if (fix:= (fix:+ index 1) r)
 				       0
 				       (fix:+ index 1))))
-	((ucode-primitive set-interrupt-enables!) mask)
-	element))))
+	element)))))
 
 (define-integrable (int:random-element state)
   (flo:truncate->exact (flo:random-element state)))
@@ -131,17 +138,17 @@ USA.
 ;;;; Operations producing random values
 
 (define (random modulus #!optional state)
-  (let ((state (guarantee-random-state state 'RANDOM)))
+  (let ((state (get-random-state state 'random)))
     ;; Kludge: an exact integer modulus means that result is an exact
     ;; integer.  Otherwise, the result is a real number.
     (cond ((int:integer? modulus)
 	   (if (int:> modulus 0)
 	       (%random-integer modulus state)
-	       (error:bad-range-argument modulus 'RANDOM)))
+	       (error:bad-range-argument modulus 'random)))
 	  ((flo:flonum? modulus)
 	   (if (flo:> modulus 0.)
 	       (flo:* (flo:random-unit state) modulus)
-	       (error:bad-range-argument modulus 'RANDOM)))
+	       (error:bad-range-argument modulus 'random)))
 	  ((real? modulus)
 	   ;; I can't think of the correct thing to do here.  The old
 	   ;; code scaled a random element into the appropriate range,
@@ -151,7 +158,7 @@ USA.
 	   ;; know.  -- cph
 	   (error "Unsupported modulus:" modulus))
 	  (else
-	   (error:wrong-type-argument modulus "real number" 'RANDOM)))))
+	   (error:wrong-type-argument modulus "real number" 'random)))))
 
 (define (flo:random-unit state)
   ;; Guarantee that (< 0 returned-value 1)
@@ -159,23 +166,23 @@ USA.
 		1.)
 	 flimit.))
 
-(define (random-byte-vector n #!optional state)
-  (let ((state (guarantee-random-state state 'RANDOM-BYTE-VECTOR))
-	(s (make-string n)))
+(define (random-bytevector n #!optional state)
+  (let ((state (get-random-state state 'random-bytevector))
+	(bytes (make-bytevector n)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i n))
-      (vector-8b-set! s i (small-random-integer 256 state)))
-    s))
+      (bytevector-u8-set! bytes i (small-random-integer #x100 state)))
+    bytes))
 
 (define (random-source-make-integers source)
-  (guarantee-random-state source 'RANDOM-SOURCE-MAKE-INTEGERS)
+  (guarantee-random-state source 'random-source-make-integers)
   (lambda (modulus)
     (if (int:> modulus 0)
 	(%random-integer modulus source)
 	(error:bad-range-argument modulus #f))))
 
 (define (random-source-make-reals source #!optional unit)
-  (guarantee-random-state source 'RANDOM-SOURCE-MAKE-REALS)
+  (guarantee-random-state source 'random-source-make-reals)
   (let ((unit
 	 (if (default-object? unit)
 	     .5
@@ -183,7 +190,7 @@ USA.
 	       (if (not (and (real? unit) (< 0 unit 1)))
 		   (error:wrong-type-argument unit
 					      "real unit"
-					      'RANDOM-SOURCE-MAKE-REALS))
+					      'random-source-make-reals))
 	       unit))))
     (if (flo:flonum? unit)
 	;; Ignore UNIT and return maximum precision.
@@ -199,23 +206,23 @@ USA.
   (if (or (eq? #t state) (int:integer? state))
       ;; Use good random source if available
       (if (file-readable? "/dev/urandom")
-	  (call-with-input-file "/dev/urandom"
+	  (call-with-binary-input-file "/dev/urandom"
 	    (lambda (port)
 	      (initial-random-state
 	       (lambda (b)
 		 (let outer ()
 		   (let inner
 		       ((m #x100)
-			(n (char->integer (read-char port))))
+			(n (read-u8 port)))
 		     (cond ((< m b)
 			    (inner (* m #x100)
 				   (+ (* n #x100)
-				      (char->integer (read-char port)))))
+				      (read-u8 port))))
 			   ((< n b) n)
 			   (else (outer)))))))))
 	  (simple-random-state))
       (copy-random-state
-       (guarantee-random-state state 'MAKE-RANDOM-STATE))))
+       (get-random-state state 'make-random-state))))
 
 (define (simple-random-state)
   (initial-random-state
@@ -234,7 +241,7 @@ USA.
 
 (define (random-source-pseudo-randomize! source i j)
   source i j
-  (error "Unimplemented procedure:" 'RANDOM-SOURCE-PSEUDO-RANDOMIZE!))
+  (error "Unimplemented procedure:" 'random-source-pseudo-randomize!))
 
 (define (initial-random-state generate-random-seed)
   ;; The numbers returned by GENERATE-RANDOM-SEED are not critical.
@@ -273,12 +280,11 @@ USA.
 
 ;;;; External representation of state
 
-(define-integrable ers:tag 'RANDOM-STATE-V1)
+(define-integrable ers:tag 'random-state-v1)
 (define-integrable ers:length (fix:+ r 3))
 
 (define (export-random-state state)
-  (if (not (random-state? state))
-      (error:wrong-type-argument state "random state" 'EXPORT-RANDOM-STATE))
+  (guarantee-random-state state 'export-random-state)
   (let ((v (make-vector ers:length)))
     (vector-set! v 0 ers:tag)
     (vector-set! v 1 (random-state-index state))
@@ -295,7 +301,7 @@ USA.
 	 (lambda ()
 	   (error:wrong-type-argument v
 				      "external random state"
-				      'IMPORT-RANDOM-STATE))))
+				      'import-random-state))))
     (if (not (and (vector? v)
 		  (fix:= (vector-length v) ers:length)
 		  (eq? (vector-ref v 0) ers:tag)))
@@ -331,9 +337,13 @@ USA.
   (and (vector? object)
        (fix:= (vector-length object) 4)
        (eq? (vector-ref object 0) random-state-tag)))
+(register-predicate! random-state? 'random-state '<= vector?)
 
 (define-integrable random-state-tag
   '|#[(runtime random-number)random-state]|)
+
+(define-print-method random-state?
+  (standard-print-method 'random-state))
 
 (define-integrable (random-state-index s) (vector-ref s 1))
 (define-integrable (set-random-state-index! s x) (vector-set! s 1 x))
@@ -342,6 +352,8 @@ USA.
 (define-integrable (set-random-state-borrow! s x) (vector-set! s 2 x))
 
 (define-integrable (random-state-vector s) (vector-ref s 3))
+
+(define-guarantee random-state "random state")
 
 (define (copy-random-state state)
   (%make-random-state (random-state-index state)
@@ -357,7 +369,7 @@ USA.
       result)))
 
 (define (copy-random-state! source target)
-  (without-interrupts
+  (with-random-state-lock source
    (lambda ()
      (set-random-state-index! target (random-state-index source))
      (set-random-state-borrow! target (random-state-borrow source))
@@ -367,35 +379,33 @@ USA.
 	   ((fix:= i r))
 	 (flo:vector-set! vt i (flo:vector-ref vs i)))))))
 
-(define (guarantee-random-state state procedure)
-  (if (if (default-object? state) #f state)
-      (begin
-	(if (not (random-state? state))
-	    (error:wrong-type-argument state "random state" procedure))
-	state)
-      (let ((state *random-state*))
-	(if (not (random-state? state))
-	    (error "Invalid *random-state*:" state))
-	state)))
+(define (get-random-state state procedure)
+  (let ((state
+	 (if (or (default-object? state) (not state))
+	     (or *random-state* default-random-source)
+	     state)))
+    (guarantee-random-state state procedure)
+    state))
 
 ;;;; Initialization
 
-(define *random-state*)
+(define *random-state* #f)
 (define flimit.)
 (define flimit)
 (define default-random-source)
+(define default-random-source-mutex)
 (define random-integer)
 (define random-real)
 
 (define (initialize-package!)
-  (set! *random-state* (simple-random-state))
   (set! flimit.
 	(let loop ((x 1.))
 	  (if (flo:= (flo:+ x 1.) 1.)
 	      (flo:/ 1. x)
 	      (loop (flo:/ x 2.)))))
   (set! flimit (flo:truncate->exact flimit.))
-  (set! default-random-source *random-state*)
+  (set! default-random-source (simple-random-state))
+  (set! default-random-source-mutex (make-thread-mutex))
   (set! random-integer (random-source-make-integers default-random-source))
   (set! random-real (random-source-make-reals default-random-source))
   unspecific)
@@ -403,15 +413,13 @@ USA.
 (define (finalize-random-state-type!)
   (add-event-receiver! event:after-restart
     (lambda ()
-      (random-source-randomize! *random-state*)
-      (if (not (eq? default-random-source *random-state*))
-	  (random-source-randomize! default-random-source))))
+      (random-source-randomize! default-random-source)))
   (named-structure/set-tag-description! random-state-tag
-    (make-define-structure-type 'VECTOR
-				'RANDOM-STATE
-				'#(INDEX BORROW VECTOR)
+    (make-define-structure-type 'vector
+				'random-state
+				'#(index borrow vector)
 				'#(1 2 3)
 				(make-vector 3 (lambda () #f))
-				(standard-unparser-method 'RANDOM-STATE #f)
+				#f
 				random-state-tag
 				4)))

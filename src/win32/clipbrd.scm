@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,13 +47,18 @@ USA.
   (let ((mem (get-clipboard-data CF_TEXT)))
     (and (not (= mem 0))
 	 (let* ((maxlen (global-size mem))
-		(s (string-allocate maxlen))
+		(bv (make-bytevector maxlen))
 		(ptr (global-lock mem)))
-	   (copy-memory s ptr maxlen)
+	   (copy-memory bv ptr maxlen)
 	   (global-unlock mem)
 	   (close-clipboard)
-	   (set-string-length! s (vector-8b-find-next-char s 0 maxlen 0))
-	   s))))
+	   (iso8859-1->string bv
+			      0
+			      (let loop ((i 0))
+				(if (or (not (fix:< i maxlen))
+					(fix:= (bytevector-u8-ref bv i) 0))
+				    i
+				    (loop (fix:+ i 1)))))))))
 
 (define (win32-screen-width)
   (get-system-metrics SM_CXSCREEN))

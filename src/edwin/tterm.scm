@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,7 +30,7 @@ USA.
 
 (define (make-console-screen)
   (let ((description (console-termcap-description)))
-    (cond ((not (output-port/baud-rate console-i/o-port))
+    (cond ((not (output-port/baud-rate (console-i/o-port)))
 	   (error "standard output not a terminal"))
 	  ((not description)
 	   (error "terminal type not set"))
@@ -42,9 +42,9 @@ USA.
 	  ((not (no-undesirable-characteristics? description))
 	   (error "terminal type has undesirable characteristics"
 		  (terminal-type-name description))))
-    (let ((baud-rate (output-port/baud-rate console-i/o-port))
-	  (x-size (output-port/x-size console-i/o-port))
-	  (y-size (output-port/y-size console-i/o-port)))
+    (let ((baud-rate (output-port/baud-rate (console-i/o-port)))
+	  (x-size (output-port/x-size (console-i/o-port)))
+	  (y-size (output-port/y-size (console-i/o-port))))
       (make-screen (with-values
 		       (lambda ()
 			 (compute-scrolling-costs description
@@ -97,7 +97,7 @@ USA.
 	 (terminal-output-baud-rate channel))))
 
 (define (output-port/buffered-bytes port)
-  (let ((operation (port/operation port 'BUFFERED-OUTPUT-BYTES)))
+  (let ((operation (textual-port-operation port 'buffered-output-bytes)))
     (if operation
 	(operation port)
 	0)))
@@ -109,11 +109,11 @@ USA.
 	 (no-undesirable-characteristics? description))))
 
 (define (console-termcap-description)
-  (if (eq? console-description 'UNKNOWN)
+  (if (eq? console-description 'unknown)
       (set! console-description
 	    (let ((term (get-environment-variable "TERM")))
 	      (and term
-		   (or (and (output-port/baud-rate console-i/o-port)
+		   (or (and (output-port/baud-rate (console-i/o-port))
 			    (make-termcap-description term))
 		       term)))))
   console-description)
@@ -168,7 +168,7 @@ USA.
   ;; terminal's special key sequences against the buffer.  They wait a
   ;; little-while for incomplete sequences, then yield the individual
   ;; characters.
-  (let ((channel (port/input-channel console-i/o-port))
+  (let ((channel (port/input-channel (console-i/o-port)))
         (buffer  (make-string (* 3 input-buffer-size)))
         (start   0)
         (end     0)
@@ -191,16 +191,16 @@ USA.
 		 (let ((n-chars (fix:- end start)))
 		   (let find
 		       ((key-pairs (terminal-state/key-table terminal-state))
-			(possible-pending? #F))
+			(possible-pending? #f))
 		     (if (null? key-pairs)
 			 (begin
 			   (if (number? incomplete-pending)
 			       (if (or (not possible-pending?)
 				       (> (real-time-clock)
 					  incomplete-pending))
-				   (set! incomplete-pending #T)))
+				   (set! incomplete-pending #t)))
 			   (if (number? incomplete-pending)
-			       #F
+			       #f
 			       (vector-8b-ref buffer start)))
 			 (let* ((key-seq  (caar key-pairs))
 				(n-seq    (string-length key-seq)))
@@ -222,58 +222,48 @@ USA.
 				  (find (cdr key-pairs)
 					possible-pending?))))))))))
 	 (read-more?			; -> #F or #T if some octets were read
-	  (named-lambda (read-more? block?)
-	    (if block?
-		(channel-blocking channel)
-		(channel-nonblocking channel))
+	  (named-lambda (read-more?)
 	    (let ((n (%channel-read channel buffer end input-buffer-size)))
-	      (cond ((not n)  #F)
-		    ((eq? n #T) #F)
+	      (cond ((not n)  #f)
+		    ((eq? n #t) #f)
 		    ((fix:> n 0)
 		     (set! end (fix:+ end n))
-		     #T)
+		     #t)
 		    ((fix:= n 0)
 		     ;;(error "Reached EOF in keyboard input.")
-		     #F)))))
+		     #f)))))
 	 (match-event	; -> #F or match (char or pair) or input event
 	  (named-lambda (match-event block?)
 	    (let loop ()
 	      (or (begin
-		    (read-more? #f)
+		    (read-more?)
 		    (match-key))
-		  ;; Atomically poll async event sources and block.
-		  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+		  ;; Poll event sources and block.
+		  (begin
 		    (cond (inferior-thread-changes?
-			   (set-interrupt-enables! mask)
 			   (or (->update-event (accept-thread-output))
 			       (loop)))
 			  ((process-output-available?)
-			   (set-interrupt-enables! mask)
 			   (or (->update-event (accept-process-output))
 			       (loop)))
 			  ((process-status-changes?)
-			   (set-interrupt-enables! mask)
 			   (or (->update-event (handle-process-status-changes))
 			       (loop)))
 			  ((not have-select?)
-			   (set-interrupt-enables! mask)
 			   (and block? (loop)))
 			  (incomplete-pending
 			   ;; Must busy-wait.
-			   (set-interrupt-enables! mask)
 			   (loop))
 			  (block?
-			   (read-more? #t)
-			   (set-interrupt-enables! mask)
+			   (block-for-event)
 			   (loop))
 			  (else
-			   (set-interrupt-enables! mask)
 			   #f)))))))
 	 (->update-event
 	  (named-lambda (->update-event redisplay?)
 	    (and redisplay?
 		 (make-input-event
-		  (if (eq? redisplay? 'FORCE-RETURN) 'RETURN 'UPDATE)
+		  (if (eq? redisplay? 'force-return) 'return 'update)
 		  update-screens! #f))))
 	 (consume-match!
 	  (named-lambda (consume-match! match)
@@ -309,18 +299,51 @@ USA.
 		   match)
 		  ((pair? match)
 		   (cdr match))
-		  (else (error "Bogus input match:" match))))))
+		  (else (error "Bogus input match:" match)))))
+	 (block-for-event
+	  (named-lambda (block-for-event)
+	    (let ((input-available? #f)
+		  (output-available? #f)
+		  (registrations))
+	      (dynamic-wind
+	       (lambda ()
+		 (let ((thread (current-thread)))
+		   (set! registrations
+			 (cons
+			  (register-io-thread-event
+			   (channel-descriptor-for-select channel) 'read
+			   thread (lambda (mode)
+				    mode
+				    (set! input-available? #t)))
+			  (register-process-output-events
+			   thread (lambda (mode)
+				    mode
+				    (set! output-available? #t)))))))
+	       (lambda ()
+		 (with-thread-events-blocked
+		  (lambda ()
+		    (if (and (not input-available?)
+			     (not output-available?)
+			     (not (process-status-changes?))
+			     (not inferior-thread-changes?))
+			(suspend-current-thread))))
+		 unspecific)
+	       (lambda ()
+		 (for-each deregister-io-thread-event registrations)))))))
       (values
        (named-lambda (halt-update?)
 	 (or (fix:< start end)
-	     (read-more? #f)))
-       (named-lambda (peek-no-hang)
-	 (let ((event (->event (match-event #f))))
-	   (if (input-event? event)
-	       (begin
-		 (apply-input-event event)
-		 #f)
-	       event)))
+	     (read-more?)))
+       (named-lambda (peek-no-hang timeout)
+	 (keyboard-peek-busy-no-hang
+	  (lambda ()
+	    (let ((event (->event (match-event #f))))
+	      (if (input-event? event)
+		  (begin
+		    (apply-input-event event)
+		    #f)
+		  event)))
+	  timeout))
        (named-lambda (peek)
 	 (->event (match-event #t)))
        (named-lambda (read)
@@ -358,7 +381,7 @@ USA.
 
 (define (initialize-package!)
   (set! console-display-type
-	(make-display-type 'CONSOLE
+	(make-display-type 'console
 			   false
 			   console-available?
 			   make-console-screen
@@ -368,16 +391,17 @@ USA.
 			   with-console-grabbed
 			   with-console-interrupts-enabled
 			   with-console-interrupts-disabled))
-  (set! console-description 'UNKNOWN)
+  (set! console-description 'unknown)
   unspecific)
 
 (define (with-console-grabbed receiver)
   (bind-console-state false
     (lambda (get-outside-state)
       (terminal-operation terminal-raw-input
-			  (port/input-channel console-i/o-port))
+			  (port/input-channel (console-i/o-port)))
+      (channel-nonblocking (port/input-channel (console-i/o-port)))
       (terminal-operation terminal-raw-output
-			  (port/output-channel console-i/o-port))
+			  (port/output-channel (console-i/o-port)))
       (tty-set-interrupt-enables 2)
       (receiver
        (lambda (thunk)
@@ -400,14 +424,14 @@ USA.
 		    (set-console-state! outside-state)))))
 
 (define (console-state)
-  (vector (channel-state (port/input-channel console-i/o-port))
-	  (channel-state (port/output-channel console-i/o-port))
+  (vector (channel-state (port/input-channel (console-i/o-port)))
+	  (channel-state (port/output-channel (console-i/o-port)))
 	  (tty-get-interrupt-enables)))
 
 (define (set-console-state! state)
-  (set-channel-state! (port/input-channel console-i/o-port)
+  (set-channel-state! (port/input-channel (console-i/o-port))
 		      (vector-ref state 0))
-  (set-channel-state! (port/output-channel console-i/o-port)
+  (set-channel-state! (port/output-channel (console-i/o-port))
 		      (vector-ref state 1))
   (tty-set-interrupt-enables (vector-ref state 2)))
 
@@ -466,22 +490,22 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE-INTEGRABLE (,(symbol-append 'SCREEN- name) SCREEN)
-	  (,(close-syntax (symbol-append 'TERMINAL-STATE/ name)
+       `(define-integrable (,(symbol 'screen- name) screen)
+	  (,(close-syntax (symbol 'terminal-state/ name)
 			  environment)
-	   (SCREEN-STATE SCREEN)))))))
+	   (screen-state screen)))))))
 
 (define-syntax define-ts-modifier
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
        (let ((param (make-synthetic-identifier name)))
-	 `(DEFINE-INTEGRABLE
-	    (,(symbol-append 'SET-SCREEN- name '!) SCREEN ,param)
+	 `(define-integrable
+	    (,(symbol 'set-screen- name '!) screen ,param)
 	    (,(close-syntax
-	       (symbol-append 'SET-TERMINAL-STATE/ name '!)
+	       (symbol 'set-terminal-state/ name '!)
 	       environment)
-	     (SCREEN-STATE SCREEN)
+	     (screen-state screen)
 	     ,param)))))))
 
 (define-ts-accessor description)
@@ -509,7 +533,7 @@ USA.
 
 (define (console-discard! screen)
   screen
-  (set! console-description 'UNKNOWN)
+  (set! console-description 'unknown)
   unspecific)
 
 (define (console-enter! screen)
@@ -527,7 +551,7 @@ USA.
     (exit-insert-mode screen)
     (maybe-output screen (ts-exit-keypad-mode description))
     (maybe-output screen (ts-exit-termcap-mode description)))
-  (output-port/flush-output console-i/o-port))
+  (output-port/flush-output (console-i/o-port)))
 
 (define (console-modeline-event! screen window type)
   screen window type
@@ -536,14 +560,14 @@ USA.
 (define (console-wrap-update! screen thunk)
   (let ((finished? (thunk)))
     (window-direct-output-cursor! (screen-cursor-window screen))
-    (output-port/flush-output console-i/o-port)
+    (output-port/flush-output (console-i/o-port))
     finished?))
 
 (define (console-discretionary-flush screen)
-  (let ((n (output-port/buffered-bytes console-i/o-port)))
+  (let ((n (output-port/buffered-bytes (console-i/o-port))))
     (if (fix:< 20 n)
 	(begin
-	  (output-port/flush-output console-i/o-port)
+	  (output-port/flush-output (console-i/o-port))
 	  (let ((baud-rate (screen-baud-rate screen)))
 	    (if (fix:< baud-rate 2400)
 		(let ((msec (quotient (* n 10000) baud-rate)))
@@ -558,7 +582,7 @@ USA.
 
 (define (console-flush! screen)
   screen
-  (output-port/flush-output console-i/o-port))
+  (output-port/flush-output (console-i/o-port)))
 
 (define (console-write-cursor! screen x y)
   (move-cursor screen x y))
@@ -572,7 +596,7 @@ USA.
 	(exit-insert-mode screen)
 	(move-cursor screen x y)
 	(highlight-if-desired screen highlight)
-	(output-port/write-char console-i/o-port char)
+	(output-port/write-char (console-i/o-port) char)
 	(record-cursor-after-output screen (fix:1+ x)))))
 
 (define (console-write-substring! screen x y string start end highlight)
@@ -589,7 +613,7 @@ USA.
 				 (screen-x-size screen))))
 		   (fix:-1+ end)
 		   end)))
-	  (output-port/write-substring console-i/o-port string start end)
+	  (output-port/write-substring (console-i/o-port) string start end)
 	  (record-cursor-after-output screen (fix:+ x (fix:- end start)))))))
 
 (define (console-clear-line! screen x y first-unused-x)
@@ -637,7 +661,7 @@ USA.
 		 (and (fix:< (insert-lines-cost screen yl yu amount) draw-cost)
 		      (begin
 			(insert-lines screen yl yu amount)
-			'CLEARED))
+			'cleared))
 		 (and (fix:<
 		       (fix:+ (delete-lines-cost screen yu* y-size amount)
 			      (insert-lines-cost screen yl y-size amount))
@@ -645,7 +669,7 @@ USA.
 		      (begin
 			(delete-lines screen yu* y-size amount)
 			(insert-lines screen yl y-size amount)
-			'CLEARED))))))))
+			'cleared))))))))
 
 (define (console-scroll-lines-up! screen xl xu yl yu amount)
   (let ((description (screen-description screen)))
@@ -659,7 +683,7 @@ USA.
 	       (and (fix:< (delete-lines-cost screen yl yu amount) draw-cost)
 		    (begin
 		      (delete-lines screen yl yu amount)
-		      'CLEARED))
+		      'cleared))
 	       (let ((yu* (fix:- yu amount)))
 		 (and (fix:<
 		       (fix:+ (delete-lines-cost screen yl y-size amount)
@@ -668,7 +692,7 @@ USA.
 		      (begin
 			(delete-lines screen yl y-size amount)
 			(insert-lines screen yu* y-size amount)
-			'CLEARED))))))))
+			'cleared))))))))
 
 (define (scroll-draw-cost screen yl yu)
   (do ((yl yl (fix:+ yl 1))
@@ -721,7 +745,7 @@ USA.
 		       first-unused-x)))
 	      (do ((x (screen-cursor-x screen) (fix:1+ x)))
 		  ((fix:= x first-unused-x))
-		(output-port/write-char console-i/o-port #\space))
+		(output-port/write-char (console-i/o-port) #\space))
 	      (record-cursor-after-output screen first-unused-x)))))))
 
 (define (clear-multi-char screen n)
@@ -746,7 +770,7 @@ USA.
 			   x-end))))
 		(do ((x cursor-x (fix:1+ x)))
 		    ((fix:= x x-end))
-		  (output-port/write-char console-i/o-port #\space))
+		  (output-port/write-char (console-i/o-port) #\space))
 		(record-cursor-after-output screen x-end))))))))
 
 (define (insert-lines screen yl yu n)
@@ -1067,7 +1091,7 @@ USA.
   (output-n screen command 1))
 
 (define-integrable (output-n screen command n-lines)
-  (output-port/write-string console-i/o-port
+  (output-port/write-string (console-i/o-port)
 			    (pad-string screen command n-lines)))
 
 (define (maybe-output screen command)
@@ -1175,7 +1199,7 @@ compute this as INSERT-LINE-COST[line]+INSERT-LINE-NEXT-COST[line], we
 add INSERT-LINE-NEXT-COST into INSERT-LINE-COST.  This is reasonable
 because of the particular algorithm used.
 
-Deletion is essentially the same as insertion. 
+Deletion is essentially the same as insertion.
 
 Note that the multiply factors are in tenths of characters.  |#
 
@@ -1199,7 +1223,7 @@ Note that the multiply factors are in tenths of characters.  |#
 	 (state (screen-state screen)))
     (if (not (terminal-state? state))
 	(editor-error "Not a terminal screen")
-	(let ((port console-i/o-port)
+	(let ((port (console-i/o-port))
 	      (desc (terminal-state/description state)))
 	  (let ((x-size (output-port/x-size port))
 		(y-size (output-port/y-size port)))

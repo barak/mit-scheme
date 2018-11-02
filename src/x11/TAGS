@@ -1,0 +1,337 @@
+
+optiondb.scm,30
+(define-load-option 'X113,20
+
+x11-base.scm,4521
+(define (x-visual-deallocate 33,1151
+(define (x-close-display 40,1338
+(define (x-close-all-displays)44,1444
+(define (x-window-set-input-hint 49,1542
+(define (->bytes 54,1761
+(define-integrable (every-loop 65,2086
+(define (->cstring 72,2252
+(define (x-window-set-name 97,3040
+(define (x-window-set-icon-name 102,3254
+(define (x-open-display 109,3499
+(define (x-display-get-size 118,3787
+(define (x-close-window 127,4139
+(define (x-set-default-font 131,4241
+(define (x-display-descriptor 138,4491
+(define (x-max-request-size 142,4627
+(define (x-display-process-events 146,4757
+(define (event-type 162,5301
+(define (event-type-name 194,6821
+(define (make-event-object 200,6959
+(define (key-event 299,10748
+(define key-event-state-mask342,12365
+(define (button-event 348,12561
+(define (x-key-button-mask-to-scheme 362,12969
+(define (x-select-input 378,13783
+(define (x-window-event-mask 383,13981
+(define (x-window-set-event-mask 387,14110
+(define (x-window-or-event-mask 392,14305
+(define (x-window-andc-event-mask 398,14589
+(define event-type:button-down 404,14879
+(define event-type:button-up 405,14945
+(define event-type:configure 406,15007
+(define event-type:enter 407,15069
+(define event-type:focus-in 408,15123
+(define event-type:focus-out 409,15183
+(define event-type:key-press 410,15245
+(define event-type:leave 411,15307
+(define event-type:motion 412,15361
+(define event-type:expose 413,15417
+(define event-type:delete-window 414,15473
+(define event-type:map 415,15543
+(define event-type:unmap 416,15593
+(define event-type:take-focus 417,15647
+(define event-type:visibility 418,15711
+(define event-type:selection-clear 419,15775
+(define event-type:selection-notify 420,15849
+(define event-type:selection-request 421,15925
+(define event-type:property-notify 422,16003
+(define number-of-event-types 423,16077
+(define (x-window-display 427,16159
+(define (x-window-x-size 431,16311
+(define (x-window-y-size 435,16428
+(define (x-window-beep 439,16545
+(define (x-window-clear 443,16656
+(define (x-display-flush 447,16770
+(define (x-window-flush 451,16876
+(define (x-display-sync 455,16990
+(define (x-display-get-default 459,17135
+(define (x-window-query-pointer 466,17453
+(define map-key-state485,18228
+(define (x-window-id 507,19047
+(define (x-window-set-foreground-color 513,19186
+(define (x-window-set-background-color 523,19595
+(define (x-window-set-border-color 533,20008
+(define (x-window-set-cursor-color 543,20401
+(define (x-window-set-mouse-color 553,20794
+(define (x-window-set-mouse-shape 563,21183
+(define (x-window-set-font 568,21385
+(define (x-window-set-border-width 573,21590
+(define (x-window-set-internal-border-width 577,21749
+(define (x-window-set-input-focus 583,21957
+(define (x-window-map 590,22212
+(define (x-window-iconify 594,22320
+(define (x-window-withdraw 598,22440
+(define (x-window-set-size 602,22563
+(define (x-window-raise 606,22712
+(define (x-window-lower 610,22826
+(define (x-window-get-size 614,22940
+(define (x-window-get-position 623,23286
+(define (x-window-set-position 632,23606
+(define (x-font-structure 638,23769
+(define (copy-x-font-struct 670,24822
+(define (copy-x-char-struct 711,26399
+(define (x-free-font 722,26857
+(define (x-list-fonts 726,26949
+(define (x-intern-atom 766,28192
+(define (x-get-atom-name 770,28350
+(define (x-get-window-property 797,29171
+(define (char-ptr-to-prop-data-32 860,31443
+(define (char-ptr-to-prop-data-16 871,31762
+(define (char-ptr-to-prop-data-8 882,32083
+(define (x-change-property 888,32267
+(define (prop-data-32->bytes.length 916,33279
+(define (prop-data-16->bytes.length 930,33733
+(define (prop-data-8->bytes.length 946,34305
+(define (x-delete-property 953,34537
+(define (x-set-selection-owner 960,34759
+(define (x-get-selection-owner 967,35089
+(define (x-convert-selection 971,35248
+(define (x-send-selection-notify 981,35709
+(define-integrable (guarantee-Atom 994,36271
+(define-integrable (guarantee-Window 997,36382
+(define-integrable (guarantee-Time 1000,36492
+(define-integrable (guarantee-xvisual 1003,36603
+(define-integrable (guarantee-xdisplay 1009,36829
+(define-integrable (guarantee-xwindow 1014,37045
+(define cleanups)1028,37660
+(define cleanups-mutex)1029,37678
+(define (reset-x11-cleanups!)1031,37703
+(define (initialize-package!)1035,37801
+(define (add-alien-cleanup! 1040,37953
+(define (make-cleanup 1050,38264
+(define (cleanup-alien! 1054,38356
+(define (cleanup-x11!)1064,38638
+(define (weak-assq 1080,39010
+
+x11-color.scm,435
+(define (x-window-visual 35,1161
+(define (x-get-visual-info 42,1366
+(define (init-visual-infos! 111,4434
+(define (cleanup-visual-infos! 114,4535
+(define (x-window-colormap 124,4785
+(define (x-set-window-colormap 127,4895
+(define (x-create-colormap 130,4996
+(define (x-free-colormap 134,5152
+(define (x-allocate-color 138,5252
+(define (x-store-color 144,5452
+(define (x-store-colors 156,5861
+(define (x-query-color 177,6697
+
+x11-device.scm,5820
+(define event-mask:normal31,1104
+(define event-mask:ignore-focus41,1484
+(define user-event-mask:default 44,1579
+(define (initialize-package!)48,1678
+(define (x-graphics/available?)116,4487
+(define x-graphics-device-type)120,4607
+(define display-finalizer)124,4667
+(define-structure (x-display126,4695
+(define (x-graphics/open-display 144,5205
+(define (x-graphics/close-display 169,5974
+(define (x-graphics/open-display? 182,6441
+(define (register-event-previewer! 185,6523
+(define (read-event 219,7586
+(define (%read-and-process-event 230,7869
+(define (discard-events 242,8244
+(define (process-event 257,8669
+(define event-handlers281,9460
+(define-integrable (define-event-handler 284,9526
+(define-event-handler event-type:configure287,9640
+(define-event-handler event-type:delete-window295,9900
+(define-event-handler event-type:map300,10013
+(define-event-handler event-type:unmap305,10126
+(define-event-handler event-type:visibility310,10241
+(define x-graphics:auto-raise? 334,11116
+(define-structure (x-window 336,11152
+(define-integrable (x-graphics-device/xw 344,11367
+(define (x-graphics/display 347,11470
+(define-integrable (x-graphics-device/xd 350,11565
+(define-integrable (x-graphics-device/mapped? 353,11688
+(define-integrable (x-graphics-device/visibility 356,11810
+(define (x-graphics/open-window? 359,11929
+(define (x-graphics/close-window 362,12015
+(define (close-x-window 367,12156
+(define (x-geometry-string 372,12288
+(define x-graphics-default-geometry 385,12643
+(define x-graphics-default-display-name 386,12690
+(define (x-graphics/open 388,12735
+(define (map-window 416,13631
+(define (decode-suppress-map-arg 433,14181
+(define (x-graphics/clear 453,14924
+(define (x-graphics/coordinate-limits 456,15009
+(define (x-graphics/device-coordinate-limits 461,15236
+(define (x-graphics/drag-cursor 465,15407
+(define (x-graphics/draw-line 470,15546
+(define (x-graphics/draw-lines 477,15753
+(define (x-graphics/draw-point 480,15862
+(define (x-graphics/draw-points 485,15997
+(define (x-graphics/draw-text 488,16108
+(define (x-graphics/draw-text-opaque 494,16264
+(define (x-graphics/flush 500,16430
+(define (x-graphics/move-cursor 507,16696
+(define (x-graphics/reset-clip-rectangle 512,16835
+(define (x-graphics/set-clip-rectangle 515,16953
+(define (x-graphics/set-coordinate-limits 522,17190
+(define (x-graphics/set-drawing-mode 529,17438
+(define (x-graphics/set-line-style 532,17553
+(define (x-graphics/set-background-color 554,18200
+(define (x-graphics/set-border-color 557,18327
+(define (x-graphics/set-border-width 560,18446
+(define (x-graphics/set-font 563,18565
+(define (x-graphics/set-foreground-color 566,18666
+(define (x-graphics/set-internal-border-width 569,18793
+(define (x-graphics/set-mouse-color 572,18930
+(define (x-graphics/set-mouse-shape 575,19047
+(define (x-graphics/draw-arc 580,19196
+(define (x-graphics/draw-circle 591,19530
+(define (x-graphics/fill-circle 601,19773
+(define (x-graphics/fill-polygon 611,20016
+(define (x-graphics/copy-area 615,20171
+(define (x-graphics/get-default 626,20548
+(define (x-graphics/window-id 630,20700
+(define (x-graphics/set-input-hint 635,20819
+(define (x-graphics/disable-keyboard-focus 638,20936
+(define (x-graphics/enable-keyboard-focus 645,21235
+(define (x-graphics/select-user-events 648,21363
+(define (x-graphics/query-pointer 651,21492
+(define (x-graphics/read-button 658,21792
+(define (read-event-of-type 664,21989
+(define (x-graphics/read-user-event 678,22441
+(define (x-graphics/discard-events 681,22530
+(define (x-graphics/font-structure 686,22645
+(define-structure (x-font-structure 689,22755
+(define-structure (x-character-bounds 702,23165
+(define (x-graphics/map-window 712,23436
+(define (x-graphics/withdraw-window 715,23528
+(define (x-graphics/iconify-window 718,23626
+(define (x-graphics/raise-window 721,23722
+(define (x-graphics/lower-window 724,23814
+(define (x-graphics/set-icon-name 727,23906
+(define (x-graphics/set-window-name 730,24017
+(define (x-graphics/move-window 733,24125
+(define (x-graphics/resize-window 736,24231
+(define-structure (x-image 743,24420
+(define image-list)749,24510
+(define (initialize-image-datatype)751,24531
+(define (create-x-image 770,25128
+(define (x-image/destroy 776,25344
+(define (x-image/get-pixel 779,25425
+(define (x-image/set-pixel 782,25523
+(define (x-image/draw 785,25631
+(define (x-image/draw-subimage 795,25874
+(define (x-image/fill-from-byte-vector 805,26111
+(define (x-graphics/create-image 810,26275
+(define (x-graphics-image/destroy 815,26419
+(define (x-graphics-image/width 818,26507
+(define (x-graphics-image/height 821,26591
+(define (x-graphics-image/draw 824,26677
+(define (x-graphics-image/draw-subimage 837,26999
+(define (x-graphics-image/fill-from-byte-vector 848,27289
+(define-record-type <colormap>853,27446
+(define colormap-list)858,27587
+(define (initialize-colormap-datatype)860,27611
+(define (make-colormap 868,27800
+(define (x-graphics/get-colormap 871,27904
+(define (x-graphics/set-colormap 874,28015
+(define (create-x-colormap 878,28158
+(define (x-colormap/free 885,28431
+(define (x-colormap/allocate-color 888,28521
+(define (x-colormap/query-color 891,28632
+(define (x-colormap/store-color 894,28743
+(define (x-colormap/store-colors 897,28866
+(define (x-graphics/color? 900,28988
+(define (x-graphics/image-depth 912,29463
+(define (x-graphics/visual-info 915,29554
+(define-structure (visual-info 919,29682
+(define-integrable x-visual-class:static-gray 931,30050
+(define-integrable x-visual-class:gray-scale 932,30099
+(define-integrable x-visual-class:static-color 933,30147
+(define-integrable x-visual-class:pseudo-color 934,30197
+(define-integrable x-visual-class:true-color 935,30247
+(define-integrable x-visual-class:direct-color 936,30295
+
+x11-graphics.scm,1280
+(define (x-graphics-set-vdc-extent 33,1147
+(define (x-graphics-vdc-extent 37,1359
+(define (x-graphics-reset-clip-rectangle 50,1914
+(define (x-graphics-set-clip-rectangle 53,2017
+(define (x-graphics-reconfigure 58,2233
+(define (x-graphics-open-window 61,2344
+(define (x-graphics-draw-line 93,3473
+(define (x-graphics-move-cursor 98,3745
+(define (x-graphics-drag-cursor 102,3894
+(define (x-graphics-draw-point 107,4120
+(define (x-graphics-draw-arc 112,4322
+(define (x-graphics-draw-string 120,4741
+(define (x-graphics-draw-image-string 125,4961
+(define (x-graphics-set-function 130,5187
+(define (x-graphics-draw-points 134,5378
+(define (x-graphics-draw-lines 142,5757
+(define (x-graphics-set-fill-style 150,6133
+(define (x-graphics-set-line-style 154,6315
+(define (x-graphics-set-dashes 158,6497
+(define (x-graphics-copy-area 163,6738
+(define (x-graphics-fill-polygon 172,7134
+(define (x-create-image 180,7476
+(define (x-bytes-into-image 190,7904
+(define (x-get-pixel-from-image 198,8338
+(define (x-set-pixel-in-image 204,8512
+(define (x-destroy-image 208,8659
+(define (x-display-image 211,8728
+(define (x-read-image 217,8975
+(define (x-window-depth 222,9213
+(define (x-graphics-map-x-coordinate 226,9336
+(define (x-graphics-map-y-coordinate 229,9435
+
+x11-terminal.scm,793
+(define (xterm-erase-cursor 33,1164
+(define (xterm-draw-cursor 36,1241
+(define (xterm-dump-rectangle 39,1316
+(define (xterm-reconfigure 42,1431
+(define (xterm-map-x-coordinate 45,1538
+(define (xterm-map-y-coordinate 48,1627
+(define (xterm-map-x-size 51,1716
+(define (xterm-map-y-size 54,1801
+(define (xterm-open-window 57,1888
+(define (xterm-x-size 86,2821
+(define (xterm-y-size 89,2884
+(define (xterm-set-size 92,2947
+(define (xterm-enable-cursor 95,3040
+(define (xterm-write-cursor! 98,3144
+(define (xterm-write-char! 104,3383
+(define (xterm-write-substring! 112,3736
+(define (xterm-clear-rectangle! 127,4414
+(define (xterm-scroll-lines-up 137,4961
+(define (xterm-scroll-lines-down 148,5545
+(define (xterm-save-contents 159,6145
+(define (xterm-restore-contents 175,6916
+
+x11-test.scm,94
+(define (run-tests)29,1064
+(define (test-graphics 56,1953
+(define (test-properties 67,2298
+
+x11.scm,29
+(define (import-x11)29,1053
+
+x11.pkg,169
+Free Software Foundation;12,476
+Free Software Foundation; either version 2 of the License,12,476
+Free Software Foundation; either version 2 of the License, or 12,476
+
+make.scm,0

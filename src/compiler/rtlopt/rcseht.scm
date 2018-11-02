@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,25 +30,24 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-hash-table)
+(define (make-rcse-ht)
   (make-vector 31 false))
 
 (define *hash-table*)
 
-(define-integrable (hash-table-size)
+(define-integrable (rcse-ht-size)
   (vector-length *hash-table*))
 
-(define-integrable (hash-table-ref hash)
+(define-integrable (rcse-ht-ref hash)
   (vector-ref *hash-table* hash))
 
-(define-integrable (hash-table-set! hash element)
+(define-integrable (rcse-ht-set! hash element)
   (vector-set! *hash-table* hash element))
 
 (define-structure (element
 		   (constructor %make-element)
 		   (constructor make-element (expression))
-		   (print-procedure
-		    (standard-unparser (symbol->string 'ELEMENT) false)))
+		   (print-procedure (standard-print-method "LIAR:element")))
   (expression false read-only true)
   (cost false)
   (in-memory? false)
@@ -58,8 +57,8 @@ USA.
   (previous-value false)
   (first-value false))
 
-(define (hash-table-lookup hash expression)
-  (let loop ((element (hash-table-ref hash)))
+(define (rcse-ht-lookup hash expression)
+  (let loop ((element (rcse-ht-ref hash)))
     (and element
 	 (if (let ((expression* (element-expression element)))
 	       (or (eq? expression expression*)
@@ -67,16 +66,16 @@ USA.
 	     element
 	     (loop (element-next-hash element))))))
 
-(define (hash-table-insert! hash expression class)
+(define (rcse-ht-insert! hash expression class)
   (let ((element (make-element expression))
 	(cost (rtl:expression-cost expression)))
     (set-element-cost! element cost)
     (if hash
 	(begin
-	  (let ((next (hash-table-ref hash)))
+	  (let ((next (rcse-ht-ref hash)))
 	    (set-element-next-hash! element next)
 	    (if next (set-element-previous-hash! next element)))
-	  (hash-table-set! hash element)))
+	  (rcse-ht-set! hash element)))
     (cond ((not class)
 	   (set-element-first-value! element element))
 	  ((or (< cost (element-cost class))
@@ -110,7 +109,7 @@ USA.
 		    (loop next (element-next-value next)))))))
     element))
 
-(define (hash-table-delete! hash element)
+(define (rcse-ht-delete! hash element)
   (if element
       (begin
        ;; **** Mark this element as removed.  [ref crock-1]
@@ -130,19 +129,19 @@ USA.
 	 (if next (set-element-previous-hash! next previous))
 	 (if previous
 	     (set-element-next-hash! previous next)
-	     (hash-table-set! hash next))))))
+	     (rcse-ht-set! hash next))))))
 
-(define (hash-table-delete-class! predicate)
+(define (rcse-ht-delete-class! predicate)
   (let table-loop ((i 0))
-    (if (< i (hash-table-size))
-	(let bucket-loop ((element (hash-table-ref i)))
+    (if (< i (rcse-ht-size))
+	(let bucket-loop ((element (rcse-ht-ref i)))
 	  (if element
 	      (begin
-		(if (predicate element) (hash-table-delete! i element))
+		(if (predicate element) (rcse-ht-delete! i element))
 		(bucket-loop (element-next-hash element)))
 	      (table-loop (1+ i)))))))
 
-(define (hash-table-copy table)
+(define (rcse-ht-copy table)
   ;; During this procedure, the `element-cost' slots of `table' are
   ;; reused as "broken hearts".
   (let ((elements (vector->list table)))

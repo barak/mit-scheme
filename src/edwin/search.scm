@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,79 +33,79 @@ USA.
    (lambda (form environment)
      (let ((name (cadr form))
 	   (find-next (close-syntax (caddr form) environment)))
-       `(DEFINE (,name GROUP START END CHAR)
+       `(define (,name group start end char)
 	  ;; Assume (FIX:<= START END)
-	  (AND (NOT (FIX:= START END))
-	       (COND ((FIX:<= END (GROUP-GAP-START GROUP))
-		      (,find-next (GROUP-TEXT GROUP) START END CHAR))
-		     ((FIX:<= (GROUP-GAP-START GROUP) START)
-		      (LET ((POSITION
+	  (and (not (fix:= start end))
+	       (cond ((fix:<= end (group-gap-start group))
+		      (,find-next (group-text group) start end char))
+		     ((fix:<= (group-gap-start group) start)
+		      (let ((position
 			     (,find-next
-			      (GROUP-TEXT GROUP)
-			      (FIX:+ START (GROUP-GAP-LENGTH GROUP))
-			      (FIX:+ END (GROUP-GAP-LENGTH GROUP))
-			      CHAR)))
-			(AND POSITION
-			     (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
-		     ((,find-next (GROUP-TEXT GROUP)
-				  START
-				  (GROUP-GAP-START GROUP)
-				  CHAR))
-		     (ELSE
-		      (LET ((POSITION
-			     (,find-next (GROUP-TEXT GROUP)
-					 (GROUP-GAP-END GROUP)
-					 (FIX:+ END
-						(GROUP-GAP-LENGTH GROUP))
-					 CHAR)))
-			(AND POSITION
-			     (FIX:- POSITION
-				    (GROUP-GAP-LENGTH GROUP))))))))))))
+			      (group-text group)
+			      (fix:+ start (group-gap-length group))
+			      (fix:+ end (group-gap-length group))
+			      char)))
+			(and position
+			     (fix:- position (group-gap-length group)))))
+		     ((,find-next (group-text group)
+				  start
+				  (group-gap-start group)
+				  char))
+		     (else
+		      (let ((position
+			     (,find-next (group-text group)
+					 (group-gap-end group)
+					 (fix:+ end
+						(group-gap-length group))
+					 char)))
+			(and position
+			     (fix:- position
+				    (group-gap-length group))))))))))))
 
 (define-next-char-search group-find-next-char
-  xsubstring-find-next-char)
+  substring-find-next-char)
 (define-next-char-search group-find-next-char-ci
-  xsubstring-find-next-char-ci)
+  substring-find-next-char-ci)
 (define-next-char-search group-find-next-char-in-set
-  xsubstring-find-next-char-in-set)
+  substring-find-next-char-in-set)
 
 (define-syntax define-prev-char-search
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form))
 	   (find-previous (close-syntax (caddr form) environment)))
-       `(DEFINE (,name GROUP START END CHAR)
+       `(define (,name group start end char)
 	  ;; Assume (FIX:<= START END)
-	  (AND (NOT (FIX:= START END))
-	       (COND ((FIX:<= END (GROUP-GAP-START GROUP))
-		      (,find-previous (GROUP-TEXT GROUP) START END CHAR))
-		     ((FIX:<= (GROUP-GAP-START GROUP) START)
-		      (LET ((POSITION
+	  (and (not (fix:= start end))
+	       (cond ((fix:<= end (group-gap-start group))
+		      (,find-previous (group-text group) start end char))
+		     ((fix:<= (group-gap-start group) start)
+		      (let ((position
 			     (,find-previous
-			      (GROUP-TEXT GROUP)
-			      (FIX:+ START (GROUP-GAP-LENGTH GROUP))
-			      (FIX:+ END (GROUP-GAP-LENGTH GROUP))
-			      CHAR)))
-			(AND POSITION
-			     (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
-		     ((,find-previous (GROUP-TEXT GROUP)
-				      (GROUP-GAP-END GROUP)
-				      (FIX:+ END (GROUP-GAP-LENGTH GROUP))
-				      CHAR)
-		      => (LAMBDA (POSITION)
-			   (FIX:- POSITION (GROUP-GAP-LENGTH GROUP))))
+			      (group-text group)
+			      (fix:+ start (group-gap-length group))
+			      (fix:+ end (group-gap-length group))
+			      char)))
+			(and position
+			     (fix:- position (group-gap-length group)))))
+		     ((,find-previous (group-text group)
+				      (group-gap-end group)
+				      (fix:+ end (group-gap-length group))
+				      char)
+		      => (lambda (position)
+			   (fix:- position (group-gap-length group))))
 		     (else
-		      (,find-previous (GROUP-TEXT GROUP)
-				      START
-				      (GROUP-GAP-START GROUP)
-				      CHAR)))))))))
+		      (,find-previous (group-text group)
+				      start
+				      (group-gap-start group)
+				      char)))))))))
 
 (define-prev-char-search group-find-previous-char
-  xsubstring-find-previous-char)
+  substring-find-previous-char)
 (define-prev-char-search group-find-previous-char-ci
-  xsubstring-find-previous-char-ci)
+  substring-find-previous-char-ci)
 (define-prev-char-search group-find-previous-char-in-set
-  xsubstring-find-previous-char-in-set)
+  substring-find-previous-char-in-set)
 
 (define-integrable (%find-next-newline group start end)
   (group-find-next-char group start end #\newline))
@@ -126,7 +126,7 @@ USA.
 	     (let loop ((i1 s1) (i2 s2))
 	       (if (or (fix:= i1 e1)
 		       (fix:= i2 string-end)
-		       (not (char=? (xstring-ref text i1)
+		       (not (char=? (string-ref text i1)
 				    (string-ref string i2))))
 		   i1
 		   (loop (fix:+ i1 1) (fix:+ i2 1)))))))
@@ -154,7 +154,7 @@ USA.
     (let ((match
 	   (lambda (s1 e1 e2)
 	     (let loop ((i1 (fix:- e1 1)) (i2 (fix:- e2 1)))
-	       (cond ((not (char=? (xstring-ref text i1)
+	       (cond ((not (char=? (string-ref text i1)
 				   (string-ref string i2)))
 		      (fix:+ i1 1))
 		     ((or (fix:= i1 s1) (fix:= i2 string-start))
@@ -192,7 +192,7 @@ USA.
 	     (let loop ((i1 s1) (i2 s2))
 	       (if (or (fix:= i1 e1)
 		       (fix:= i2 string-end)
-		       (not (char-ci=? (xstring-ref text i1)
+		       (not (char-ci=? (string-ref text i1)
 				       (string-ref string i2))))
 		   i1
 		   (loop (fix:+ i1 1) (fix:+ i2 1)))))))
@@ -220,7 +220,7 @@ USA.
     (let ((match
 	   (lambda (s1 e1 e2)
 	     (let loop ((i1 (fix:- e1 1)) (i2 (fix:- e2 1)))
-	       (cond ((not (char-ci=? (xstring-ref text i1)
+	       (cond ((not (char-ci=? (string-ref text i1)
 				      (string-ref string i2)))
 		      (fix:+ i1 1))
 		     ((or (fix:= i1 s1) (fix:= i2 string-start))
@@ -313,7 +313,7 @@ USA.
 
 (define (skip-chars-forward pattern #!optional start end limit?)
   (let ((start (if (default-object? start) (current-point) start))
-	(limit? (if (default-object? limit?) 'LIMIT limit?)))
+	(limit? (if (default-object? limit?) 'limit limit?)))
     (let ((end (default-end-mark start end)))
       (let ((index
 	     (group-find-next-char-in-set (mark-group start)
@@ -326,7 +326,7 @@ USA.
 
 (define (skip-chars-backward pattern #!optional end start limit?)
   (let ((end (if (default-object? end) (current-point) end))
-	(limit? (if (default-object? limit?) 'LIMIT limit?)))
+	(limit? (if (default-object? limit?) 'limit limit?)))
     (let ((start (default-start-mark start end)))
       (let ((index
 	     (group-find-previous-char-in-set (mark-group start)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,321 +31,447 @@ USA.
 
 ;;;; Macro transformers
 
-(define (transformer-keyword name transformer->expander)
-  (lambda (form environment definition-environment)
-    definition-environment		;ignore
-    (syntax-check '(KEYWORD EXPRESSION) form)
-    (let ((item (classify/expression (cadr form) environment)))
-      (make-keyword-value-item
-       (transformer->expander (transformer-eval (compile-item/expression item)
-						environment)
-			      environment)
-       (make-expression-item
-	(lambda ()
-	  (output/combination (output/runtime-reference name)
-			      (list (compile-item/expression item)
-				    (output/the-environment)))))))))
+(define (transformer-classifier transformer->keyword-item
+				transformer->expander-name)
+  (lambda (form senv hist)
+    (scheck '(_ expression) form senv hist)
+    (let ((transformer
+	   (compile-expr-item (classify-form (cadr form)
+					     senv
+					     (hist-cadr hist)))))
+      (transformer->keyword-item
+       (transformer-eval transformer senv)
+       senv
+       (expr-item (serror-ctx form senv hist)
+	 (lambda ()
+	   (output/top-level-syntax-expander transformer->expander-name
+					     transformer)))))))
 
-(define classifier:sc-macro-transformer
+(define $sc-macro-transformer
   ;; "Syntactic Closures" transformer
-  (transformer-keyword 'SC-MACRO-TRANSFORMER->EXPANDER
-		       sc-macro-transformer->expander))
+  (classifier->runtime
+   (transformer-classifier sc-macro-transformer->keyword-item
+			   'sc-macro-transformer->expander)))
 
-(define classifier:rsc-macro-transformer
+(define $rsc-macro-transformer
   ;; "Reversed Syntactic Closures" transformer
-  (transformer-keyword 'RSC-MACRO-TRANSFORMER->EXPANDER
-		       rsc-macro-transformer->expander))
+  (classifier->runtime
+   (transformer-classifier rsc-macro-transformer->keyword-item
+			   'rsc-macro-transformer->expander)))
 
-(define classifier:er-macro-transformer
+(define $er-macro-transformer
   ;; "Explicit Renaming" transformer
-  (transformer-keyword 'ER-MACRO-TRANSFORMER->EXPANDER
-		       er-macro-transformer->expander))
+  (classifier->runtime
+   (transformer-classifier er-macro-transformer->keyword-item
+			   'er-macro-transformer->expander)))
 
-(define classifier:non-hygienic-macro-transformer
-  (transformer-keyword 'NON-HYGIENIC-MACRO-TRANSFORMER->EXPANDER
-		       non-hygienic-macro-transformer->expander))
+(define $spar-macro-transformer
+  ;; "Syntax PARser" transformer
+  (classifier->runtime
+   (transformer-classifier spar-macro-transformer->keyword-item
+			   'spar-macro-transformer->expander)))
 
 ;;;; Core primitives
 
-(define (compiler:lambda form environment)
-  (syntax-check '(KEYWORD MIT-BVL + FORM) form)
-  (receive (bvl body)
-      (compile/lambda (cadr form) (cddr form) environment)
-    (output/lambda bvl body)))
+(define $begin
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (ctx . deferred-items)
+	   (seq-item ctx
+	     (map-in-order (lambda (p) (p))
+			   deferred-items)))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar* (spar-subform spar-push-deferred-classified))
+       (spar-match-null)))))
 
-(define (compiler:named-lambda form environment)
-  (syntax-check '(KEYWORD (IDENTIFIER . MIT-BVL) + FORM) form)
-  (receive (bvl body)
-      (compile/lambda (cdadr form) (cddr form) environment)
-    (output/named-lambda (identifier->symbol (caadr form)) bvl body)))
+(define $if
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values if-item
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform spar-push-classified)
+       (spar-subform spar-push-classified)
+       (spar-or (spar-subform spar-push-classified)
+		(spar-push-value unspecific-item spar-arg:ctx))
+       (spar-match-null)))))
 
-(define (compile/lambda bvl body environment)
-  (let ((environment (make-internal-syntactic-environment environment)))
-    ;; Force order -- bind names before classifying body.
-    (let ((bvl
-	   (map-mit-lambda-list (lambda (identifier)
-				  (bind-variable! environment identifier))
-				bvl)))
-      (values bvl
-	      (compile-body-item
-	       (classify/body body
-			      environment
-			      environment))))))
+(define $quote
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values constant-item
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform (spar-push-value strip-syntactic-closures spar-arg:form))
+       (spar-match-null)))))
 
-(define (classifier:begin form environment definition-environment)
-  (syntax-check '(KEYWORD * FORM) form)
-  (classify/body (cdr form) environment definition-environment))
+(define $quote-identifier
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values quoted-id-item
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform
+	 (spar-match identifier? spar-arg:form)
+	 (spar-push-value lookup-identifier spar-arg:form spar-arg:senv)
+	 (spar-or (spar-match var-item? spar-arg:value)
+		  (spar-error "Can't quote a keyword identifier:"
+			      spar-arg:form)))
+       (spar-match-null)))))
+
+(define $set!
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (ctx lhs-item rhs-item)
+	   (if (var-item? lhs-item)
+	       (assignment-item ctx (var-item-id lhs-item) rhs-item)
+	       (access-assignment-item ctx
+				       (access-item-name lhs-item)
+				       (access-item-env lhs-item)
+				       rhs-item)))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform
+	 spar-push-classified
+	 (spar-or (spar-match (lambda (lhs-item)
+				(or (var-item? lhs-item)
+				    (access-item? lhs-item)))
+			      spar-arg:value)
+		  (spar-error "Variable required in this context:"
+			      spar-arg:form)))
+       (spar-or (spar-subform spar-push-classified)
+		(spar-push-value unassigned-item spar-arg:ctx))
+       (spar-match-null)))))
 
-(define (compiler:if form environment)
-  (syntax-check '(KEYWORD EXPRESSION EXPRESSION ? EXPRESSION) form)
-  (output/conditional
-   (compile/expression (cadr form) environment)
-   (compile/expression (caddr form) environment)
-   (if (pair? (cdddr form))
-       (compile/expression (cadddr form) environment)
-       (output/unspecific))))
-
-(define (compiler:quote form environment)
-  environment				;ignore
-  (syntax-check '(KEYWORD DATUM) form)
-  (output/constant (strip-syntactic-closures (cadr form))))
-
-(define (compiler:set! form environment)
-  (syntax-check '(KEYWORD FORM ? EXPRESSION) form)
-  (receive (name environment-item)
-      (classify/location (cadr form) environment)
-    (let ((value
-	   (if (pair? (cddr form))
-	       (compile/expression (caddr form) environment)
-	       (output/unassigned))))
-      (if environment-item
-	  (output/access-assignment
-	   name
-	   (compile-item/expression environment-item)
-	   value)
-	  (output/assignment name value)))))
-
-(define (classify/location form environment)
-  (let ((item (classify/expression form environment)))
-    (cond ((variable-item? item)
-	   (values (variable-item/name item) #f))
-	  ((access-item? item)
-	   (values (access-item/name item) (access-item/environment item)))
-	  (else
-	   (syntax-error "Variable required in this context:" form)))))
-
-(define (compiler:delay form environment)
-  (syntax-check '(KEYWORD EXPRESSION) form)
-  (output/delay (compile/expression (cadr form) environment)))
+;; TODO: this is a classifier rather than a macro because it uses the
+;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
+;; the compiler wants this, but it would be nice to eliminate this
+;; hack.
+(define $or
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values or-item
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar* (spar-subform spar-push-classified))
+       (spar-match-null)))))
 
 ;;;; Definitions
 
 (define keyword:define
-  (classifier->keyword
-   (lambda (form environment definition-environment)
-     (classify/define form environment definition-environment
-		      variable-binding-theory))))
+  (spar-classifier->keyword
+   (delay
+     (spar-call-with-values defn-item
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform
+	 (spar-match identifier? spar-arg:form)
+	 (spar-push-value bind-variable spar-arg:form spar-arg:senv))
+       (spar-subform spar-push-classified)
+       (spar-match-null)))))
 
-(define (classifier:define-syntax form environment definition-environment)
-  (syntax-check '(KEYWORD IDENTIFIER EXPRESSION) form)
-  (classify/define form environment definition-environment
-		   syntactic-binding-theory))
+(define $define-syntax
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (ctx id item)
+	   (receive (id senv)
+	       (if (closed-identifier? id)
+		   (values (syntactic-closure-form id)
+			   (syntactic-closure-senv id))
+		   (values id (serror-ctx-senv ctx)))
+	     (bind-keyword id senv item)
+	     ;; User-defined macros at top level are preserved in the output.
+	     (if (and (keyword-item-has-expr? item)
+		      (senv-top-level? senv))
+		 (syntax-defn-item ctx id (keyword-item-expr item))
+		 (seq-item ctx '()))))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-push-subform-if identifier? spar-arg:form)
+       (spar-subform
+	 spar-push-classified
+	 (spar-or (spar-match keyword-item? spar-arg:value)
+		  (spar-error "Keyword binding value must be a keyword:"
+			      spar-arg:form)))
+       (spar-match-null)))))
+
+;;;; Lambdas
 
-(define (classify/define form environment definition-environment
-			 binding-theory)
-  (if (not (syntactic-environment/top-level? definition-environment))
-      (syntactic-environment/define definition-environment
-				    (cadr form)
-				    (make-reserved-name-item)))
-  (binding-theory definition-environment
-		  (cadr form)
-		  (classify/expression (caddr form) environment)))
+(define $lambda
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (ctx bvl body-ctx body)
+	   (assemble-lambda-item ctx scode-lambda-name:unnamed bvl
+				 body-ctx body))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-push-subform-if mit-lambda-list? spar-arg:form)
+       (spar-push-body)))))
 
-(define (syntactic-binding-theory environment name item)
-  (if (not (keyword-item? item))
-      (syntax-error "Syntactic binding value must be a keyword:" name))
-  (syntactic-environment/define environment name item)
-  ;; User-defined macros at top level are preserved in the output.
-  (if (and (keyword-value-item? item)
-           (syntactic-environment/top-level? environment))
-      (make-binding-item (rename-top-level-identifier name) item)
-      (make-null-binding-item)))
+(define $named-lambda
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (ctx name bvl body-ctx body)
+	   (assemble-lambda-item ctx (identifier->symbol name) bvl
+				 body-ctx body))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform
+	 (spar-push-subform-if identifier? spar-arg:form)
+	 (spar-push-form-if mit-lambda-list? spar-arg:form))
+       (spar-push-body)))))
 
-(define (variable-binding-theory environment name item)
-  (if (keyword-item? item)
-      (syntax-error "Binding value may not be a keyword:" name))
-  (make-binding-item (bind-variable! environment name) item))
+(define (spar-push-body)
+  (spar-and
+    (spar-push spar-arg:ctx)
+    (spar-encapsulate-values
+	(lambda (elts)
+	  (lambda (frame-senv)
+	    (let ((body-senv (make-internal-senv frame-senv)))
+	      (map-in-order (lambda (elt) (elt body-senv))
+			    elts))))
+      (spar+ (spar-subform spar-push-open-classified))
+      (spar-match-null))))
+
+(define (assemble-lambda-item ctx name bvl body-ctx body)
+  (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx))))
+    (lambda-item ctx
+		 name
+		 (map-mit-lambda-list (lambda (id)
+					(bind-variable id frame-senv))
+				      bvl)
+		 (lambda ()
+		   (body-item body-ctx (body frame-senv))))))
 
 ;;;; LET-like
 
-(define keyword:let
-  (classifier->keyword
-   (lambda (form environment definition-environment)
-     definition-environment
-     (let* ((binding-environment
-	     (make-internal-syntactic-environment environment))
-	    (body-environment
-	     (make-internal-syntactic-environment binding-environment)))
-       (classify/let-like form
-			  environment
-			  binding-environment
-			  body-environment
-			  variable-binding-theory
-			  output/let)))))
+(define spar-promise:let-syntax
+  (delay
+    (spar-call-with-values
+	(lambda (ctx bindings body-ctx body)
+	  (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx))))
+	    (for-each (lambda (binding)
+			(bind-keyword (car binding) frame-senv (cdr binding)))
+		      bindings)
+	    (seq-item body-ctx (body frame-senv))))
+      (spar-subform)
+      (spar-push spar-arg:ctx)
+      (spar-subform
+	(spar-call-with-values list
+	 (spar*
+	   (spar-call-with-values cons
+	     (spar-subform (spar-push-subform-if identifier? spar-arg:form)
+			   (spar-subform spar-push-classified)
+			   (spar-match-null)))))
+	(spar-match-null))
+       (spar-push-body))))
 
-
-(define (classifier:let-syntax form environment definition-environment)
-  definition-environment
-  (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form)
-  (let* ((binding-environment
-	  (make-internal-syntactic-environment environment))
-	 (body-environment
-	  (make-internal-syntactic-environment binding-environment)))
-    (classify/let-like form
-		       environment
-		       binding-environment
-		       body-environment
-		       syntactic-binding-theory
-		       output/let)))
+(define $let-syntax
+  (spar-classifier->runtime spar-promise:let-syntax))
 
 (define keyword:let-syntax
-  (classifier->keyword classifier:let-syntax))
+  (spar-classifier->keyword spar-promise:let-syntax))
 
-(define (classifier:letrec-syntax form environment definition-environment)
-  definition-environment
-  (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form)
-  (let* ((binding-environment
-	  (make-internal-syntactic-environment environment))
-	 (body-environment
-	  (make-internal-syntactic-environment binding-environment)))
-    (for-each (let ((item (make-reserved-name-item)))
-		(lambda (binding)
-		  (syntactic-environment/define binding-environment
-						(car binding)
-						item)))
-	      (cadr form))
-    (classify/let-like form
-		       binding-environment
-		       binding-environment
-		       body-environment
-		       syntactic-binding-theory
-		       output/letrec)))
-
-(define (classify/let-like form
-			   value-environment
-			   binding-environment
-			   body-environment
-			   binding-theory
-			   output/let)
-  ;; Classify right-hand sides first, in order to catch references to
-  ;; reserved names.  Then bind names prior to classifying body.
-  (let* ((bindings
-	  (remove! null-binding-item?
-		   (map (lambda (binding item)
-			  (binding-theory binding-environment
-					  (car binding)
-					  item))
-			(cadr form)
-			(map (lambda (binding)
-			       (classify/expression (cadr binding)
-						    value-environment))
-			     (cadr form)))))
-	 (body
-	  (classify/body (cddr form)
-			 body-environment
-			 body-environment)))
-    (if (eq? binding-theory syntactic-binding-theory)
-	body
-	(make-expression-item
-	 (let ((names (map binding-item/name bindings))
-	       (values (map binding-item/value bindings)))
-	   (lambda ()
-	     (output/let names
-			 (map compile-item/expression values)
-			 (compile-body-item body))))))))
+(define $letrec-syntax
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (ctx bindings body-ctx body)
+	   (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx)))
+		 (ids (map car bindings)))
+	     (for-each (lambda (id)
+			 (reserve-identifier id frame-senv))
+		       ids)
+	     (for-each (lambda (id item)
+			 (bind-keyword id frame-senv item))
+		       ids
+		       (map (lambda (binding)
+			      ((cdr binding) frame-senv))
+			    bindings))
+	     (seq-item body-ctx (body frame-senv))))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform
+	 (spar-call-with-values list
+	   (spar*
+	     (spar-call-with-values cons
+	       (spar-subform (spar-push-subform-if identifier? spar-arg:form)
+			     (spar-subform spar-push-open-classified)
+			     (spar-match-null)))))
+	 (spar-match-null))
+       (spar-push-body)))))
 
-(define (compile-body-item item)
-  (receive (declaration-items items)
-      (extract-declarations-from-body (body-item/components item))
-    (output/body (map declaration-item/text declaration-items)
-		 (compile-body-items items))))
+;;;; Pseudo keywords
 
-;; TODO: this is a compiler rather than a macro because it uses the
-;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
-;; the compiler wants this, but it would be nice to eliminate this
-;; hack.
-(define (compiler:or form environment)
-  (syntax-check '(KEYWORD * EXPRESSION) form)
-  (if (pair? (cdr form))
-      (let loop ((expressions (cdr form)))
-	(let ((compiled (compile/expression (car expressions) environment)))
-	  (if (pair? (cdr expressions))
-	      (output/disjunction compiled (loop (cdr expressions)))
-	      compiled)))
-      `#F))
+(define (pseudo-keyword-classifier form senv hist)
+  (serror (serror-ctx form senv hist)
+	  "Special keyword can't be expanded:" form))
+
+(define $...
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $=>
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $_
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $else
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $unquote
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $unquote-splicing
+  (classifier->runtime pseudo-keyword-classifier))
 
 ;;;; MIT-specific syntax
 
+(define $access
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (ctx names env)
+	   (fold-right (lambda (name env*)
+			 (access-item ctx name env*))
+		       env
+		       names))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-call-with-values list
+	 (spar+ (spar-push-subform-if symbol? spar-arg:form)))
+       (spar-subform spar-push-classified)
+       (spar-match-null)))))
+
 (define-record-type <access-item>
-    (make-access-item name environment)
+    (access-item ctx name env)
     access-item?
-  (name access-item/name)
-  (environment access-item/environment))
+  (ctx access-item-ctx)
+  (name access-item-name)
+  (env access-item-env))
 
-(define keyword:access
-  (classifier->keyword
-   (lambda (form environment definition-environment)
-     definition-environment
-     (make-access-item (cadr form)
-		       (classify/expression (caddr form) environment)))))
-
-(define-item-compiler <access-item>
+(define-item-compiler access-item?
   (lambda (item)
-    (output/access-reference
-     (access-item/name item)
-     (compile-item/expression (access-item/environment item)))))
+    (output/access-reference (access-item-name item)
+			     (compile-expr-item (access-item-env item)))))
 
-(define (compiler:the-environment form environment)
-  (syntax-check '(KEYWORD) form)
-  (if (not (syntactic-environment/top-level? environment))
-      (syntax-error "This form allowed only at top level:" form))
-  (output/the-environment))
+(define $the-environment
+  (spar-classifier->runtime
+   (delay
+     (spar-and
+       (spar-or (spar-match senv-top-level? spar-arg:senv)
+		(spar-error "This form allowed only at top level:"
+			    spar-arg:form spar-arg:senv))
+       (spar-subform)
+       (spar-match-null)
+       (spar-push-value the-environment-item spar-arg:ctx)))))
 
 (define keyword:unspecific
-  (compiler->keyword
-   (lambda (form environment)
-     form environment			;ignore
-     (output/unspecific))))
+  (spar-classifier->keyword
+   (delay
+     (spar-and
+       (spar-subform)
+       (spar-match-null)
+       (spar-push-value unspecific-item spar-arg:ctx)))))
 
 (define keyword:unassigned
-  (compiler->keyword
-   (lambda (form environment)
-     form environment			;ignore
-     (output/unassigned))))
+  (spar-classifier->keyword
+   (delay
+     (spar-and
+       (spar-subform)
+       (spar-match-null)
+       (spar-push-value unassigned-item spar-arg:ctx)))))
 
 ;;;; Declarations
 
-(define (classifier:declare form environment definition-environment)
-  definition-environment
-  (syntax-check '(KEYWORD * (IDENTIFIER * DATUM)) form)
-  (make-declaration-item
-   (lambda ()
-     (classify/declarations (cdr form) environment))))
+(define $declare
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (ctx decls)
+	   (let ((senv (serror-ctx-senv ctx))
+		 (hist (serror-ctx-hist ctx)))
+	     (decl-item ctx
+	       (lambda ()
+		 (smap (lambda (decl hist)
+			 (map-decl-ids (lambda (id selector)
+					 (classify-id id
+						      senv
+						      (hist-select selector
+								   hist)))
+				       decl))
+		       decls
+		       (hist-cadr hist))))))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-call-with-values list
+	 (spar*
+	   (spar-push-subform-if (lambda (form)
+				   (and (pair? form)
+					(identifier? (car form))
+					(list? (cdr form))))
+				 spar-arg:form)))
+       (spar-match-null)))))
 
-(define (classify/declarations declarations environment)
-  (map (lambda (declaration)
-	 (classify/declaration declaration environment))
-       declarations))
+(define (classify-id id senv hist)
+  (let ((item (classify-form id senv hist)))
+    (if (not (var-item? item))
+	(serror (serror-ctx id senv hist)
+		"Variable required in this context:" id))
+    (var-item-id item)))
+
+;;;; Specific expression items
 
-(define (classify/declaration declaration environment)
-  (map-declaration-identifiers (lambda (identifier)
-				 (variable-item/name
-				  (classify/variable-reference identifier
-							       environment)))
-			       declaration))
+(define (access-assignment-item ctx name env-item rhs-item)
+  (expr-item ctx
+    (lambda ()
+      (output/access-assignment name
+				(compile-expr-item env-item)
+				(compile-expr-item rhs-item)))))
 
-(define (classify/variable-reference identifier environment)
-  (let ((item (classify/expression identifier environment)))
-    (if (not (variable-item? item))
-	(syntax-error "Variable required in this context:" identifier))
-    item))
+(define (assignment-item ctx id rhs-item)
+  (expr-item ctx
+    (lambda ()
+      (output/assignment id (compile-expr-item rhs-item)))))
+
+(define (decl-item ctx classify)
+  (expr-item ctx
+    (lambda ()
+      (output/declaration (classify)))))
+
+(define (if-item ctx predicate consequent alternative)
+  (expr-item ctx
+    (lambda ()
+      (output/conditional (compile-expr-item predicate)
+			  (compile-expr-item consequent)
+			  (compile-expr-item alternative)))))
+
+(define (lambda-item ctx name bvl classify-body)
+  (expr-item ctx
+    (lambda ()
+      (output/lambda name bvl (compile-item (classify-body))))))
+
+(define (or-item ctx . items)
+  (expr-item ctx
+    (lambda ()
+      (output/disjunction (map compile-expr-item items)))))
+
+(define (quoted-id-item ctx var-item)
+  (expr-item ctx
+    (lambda ()
+      (output/quoted-identifier (var-item-id var-item)))))
+
+(define (the-environment-item ctx)
+  (expr-item ctx output/the-environment))
+
+(define (unspecific-item ctx)
+  (expr-item ctx output/unspecific))
+
+(define (unassigned-item ctx)
+  (expr-item ctx output/unassigned))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -83,21 +83,18 @@ USA.
 
 (define (read-xml port #!optional pi-handlers)
   (receive (coding prefix) (determine-coding port)
-    (parse-xml (input-port->parser-buffer port prefix)
+    (parse-xml (textual-input-port->parser-buffer port prefix)
 	       coding
-	       (guarantee-pi-handlers pi-handlers 'READ-XML))))
+	       (guarantee-pi-handlers pi-handlers 'read-xml))))
+
+(define (bytevector->xml bv #!optional start end pi-handlers)
+  (read-xml (binary->textual-port (open-input-bytevector bv start end))
+	    pi-handlers))
 
 (define (string->xml string #!optional start end pi-handlers)
   (parse-xml (string->parser-buffer string start end)
-	     (if (string? string)
-		 'ISO-8859-1
-		 'ANY)
-	     (guarantee-pi-handlers pi-handlers 'STRING->XML)))
-
-(define (utf8-string->xml string #!optional start end pi-handlers)
-  (parse-xml (utf8-string->parser-buffer string start end)
-	     'UTF-8
-	     (guarantee-pi-handlers pi-handlers 'UTF8-STRING->XML)))
+	     'any
+	     (guarantee-pi-handlers pi-handlers 'string->xml)))
 
 (define (guarantee-pi-handlers object caller)
   (if (default-object? object)
@@ -136,7 +133,7 @@ USA.
 	     (char->integer c))))
 	(prefix
 	 (lambda (n)
-	   (wide-string (integer->char n))))
+	   (string (integer->char n))))
 	(lose
 	 (lambda bytes
 	   (error "Illegal starting bytes:" bytes))))
@@ -386,9 +383,9 @@ USA.
     (do ((attrs attrs (cdr attrs)))
 	((not (pair? attrs)) unspecific)
       (let ((name (xml-attribute-name (car attrs))))
-	(if (there-exists? (cdr attrs)
-	      (lambda (attr)
-		(xml-name=? (xml-attribute-name attr) name)))
+	(if (any (lambda (attr)
+		   (xml-name=? (xml-attribute-name attr) name))
+		 (cdr attrs))
 	    (perror p "Attributes with same name" (xml-name->symbol name)))))))
 
 (define (parse-element-content b p name)
@@ -433,9 +430,9 @@ USA.
 (define (process-attr-decls name attrs p)
   (let ((decl
 	 (and (or *standalone?* *internal-dtd?*)
-	      (find-matching-item *att-decls*
-		(lambda (decl)
-		  (xml-name=? (xml-!attlist-name decl) name))))))
+	      (find (lambda (decl)
+		      (xml-name=? (xml-!attlist-name decl) name))
+		    *att-decls*))))
     (if decl
 	(do ((defns (xml-!attlist-definitions decl) (cdr defns))
 	     (attrs attrs (process-attr-defn (car defns) attrs p)))
@@ -447,9 +444,9 @@ USA.
 	(type (cadr defn))
 	(default (caddr defn)))
     (let ((attr
-	   (find-matching-item attrs
-	     (lambda (attr)
-	       (xml-name=? (car (xml-attribute-name attr)) name)))))
+	   (find (lambda (attr)
+		   (xml-name=? (car (xml-attribute-name attr)) name))
+		 attrs)))
       (if attr
 	  (let ((av (xml-attribute-value attr)))
 	    (if (and (pair? default)
@@ -482,9 +479,9 @@ USA.
   description
   (lambda (buffer)
     (let loop ()
-      (cond ((there-exists? ends
-	       (lambda (end)
-		 (match-parser-buffer-string-no-advance buffer end)))
+      (cond ((any (lambda (end)
+		    (match-parser-buffer-string-no-advance buffer end))
+		  ends)
 	     #t)
 	    ((match-parser-buffer-char-in-set buffer char-set)
 	     (loop))
@@ -504,7 +501,7 @@ USA.
 				   "]]>")))
     (*parser
      (transform (lambda (v)
-		  (if (string-null? (vector-ref v 0))
+		  (if (fix:= 0 (string-length (vector-ref v 0)))
 		      '#()
 		      v))
        parse-body))))
@@ -580,7 +577,7 @@ USA.
 			   (string->uri value) ;signals error if not URI
 			   (if (if (xml-name=? name 'xmlns:xml)
 				   (not (string=? value xml-uri-string))
-				   (or (string-null? value)
+				   (or (fix:= 0 (string-length value))
 				       (string=? value xml-uri-string)
 				       (string=? value xmlns-uri-string)))
 			       (forbidden-uri))
@@ -635,7 +632,7 @@ USA.
 	     (lambda (v)
 	       (let ((name (vector-ref v 0))
 		     (text (vector-ref v 1)))
-		 (if (string-ci=? (symbol-name name) "xml")
+		 (if (string-ci=? (symbol->string name) "xml")
 		     (perror p "Reserved XML processor name" name))
 		 (let ((entry (assq name *pi-handlers*)))
 		   (if entry
@@ -677,9 +674,9 @@ USA.
 	     (if (not (unicode-scalar-value? n))
 		 (perror p "Invalid code point" n))
 	     (let ((char (integer->char n)))
-	       (if (not (char-set-member? char-set:xml-char char))
+	       (if (not (char-in-set? char char-set:xml-char))
 		   (perror p "Disallowed Unicode character" char))
-	       (call-with-utf8-output-string
+	       (call-with-output-string
 		 (lambda (port)
 		   (write-char char port))))))))
     (*parser
@@ -746,10 +743,10 @@ USA.
 	       (do ((attrs attrs (cdr attrs)))
 		   ((not (pair? attrs)))
 		 (let ((name (->name (xml-attribute-name (car attrs)))))
-		   (if (there-exists? (cdr attrs)
-			 (lambda (attr)
-			   (xml-name=? (->name (xml-attribute-name attr))
-				       name)))
+		   (if (any (lambda (attr)
+			      (xml-name=? (->name (xml-attribute-name attr))
+					  name))
+			    (cdr attrs))
 		       (perror p "Attributes with same name" name))))
 	       attrs))
 	 (seq (* parse-attribute)
@@ -825,10 +822,10 @@ USA.
 ;;;; Normalization
 
 (define (normalize-attribute-value string)
-  (call-with-utf8-output-string
+  (call-with-output-string
     (lambda (port)
       (let normalize-string ((string string))
-	(let ((b (utf8-string->parser-buffer (normalize-line-endings string))))
+	(let ((b (string->parser-buffer (normalize-line-endings string))))
 	  (let loop ()
 	    (let* ((p (get-parser-buffer-pointer b))
 		   (char (read-parser-buffer-char b)))
@@ -859,23 +856,30 @@ USA.
 		 (loop))))))))))
 
 (define (trim-attribute-whitespace string)
-  (call-with-utf8-output-string
-   (lambda (port)
-     (let ((string (string-trim string)))
-       (let ((end (string-length string)))
-	 (let loop ((start 0))
+  (let ((end (string-length string)))
+    (call-with-output-string
+     (lambda (port)
+
+	 (define (skip-spaces start pending-space?)
 	   (if (fix:< start end)
-	       (let ((regs
-		      (re-substring-search-forward "  +" string start end)))
-		 (if regs
+	       (let ((char (string-ref string start)))
+		 (if (char-in-set? char-set:whitespace)
+		     (skip-spaces (fix:+ start 1) pending-space?)
 		     (begin
-		       (write-substring string
-					start
-					(re-match-start-index 0 regs)
-					port)
-		       (write-char #\space port)
-		       (loop (re-match-end-index 0 regs)))
-		     (write-substring string start end port))))))))))
+		       (if pending-space? (write-char #\space port))
+		       (write-char char port)
+		       (find-next-space (fix:+ start 1)))))))
+
+	 (define (find-next-space start)
+	   (if (fix:< start end)
+	       (let ((char (string-ref string start)))
+		 (if (char-in-set? char-set:whitespace)
+		     (skip-spaces (fix:+ start 1) #t)
+		     (begin
+		       (write-char char port)
+		       (find-next-space (fix:+ start 1)))))))
+
+	 (skip-spaces 0 #f)))))
 
 (define (normalize-line-endings string #!optional always-copy?)
   (if (string-find-next-char string #\return)
@@ -888,31 +892,18 @@ USA.
 					 #\linefeed))
 			    2
 			    1)))))
-	  (let ((n
-		 (let loop ((start 0) (n 0))
-		   (let ((index
-			  (substring-find-next-char string start end
-						    #\return)))
-		     (if index
-			 (loop (step-over-eol index)
-			       (fix:+ n (fix:+ (fix:- index start) 1)))
-			 (fix:+ n (fix:- end start)))))))
-	    (let ((string* (make-string n)))
-	      (let loop ((start 0) (start* 0))
-		(let ((index
-		       (substring-find-next-char string start end
-						 #\return)))
-		  (if index
-		      (let ((start*
-			     (substring-move! string start index
-					      string* start*)))
-			(string-set! string* start* #\newline)
-			(loop (step-over-eol index)
-			      (fix:+ start* 1)))
-		      (substring-move! string start end string* start*))))
-	      string*))))
-      (if (and (not (default-object? always-copy?))
-	       always-copy?)
+	  (let ((builder (string-builder)))
+	    (let loop ((start 0))
+	      (let ((index
+		     (string-find-next-char string #\return start end)))
+		(if index
+		    (begin
+		      (builder #\newline)
+		      (builder (string-slice string start index))
+		      (loop (step-over-eol index)))
+		    (builder (string-slice string start index)))))
+	    (builder))))
+      (if (if (default-object? always-copy?) #f always-copy?)
 	  (string-copy string)
 	  string)))
 
@@ -955,9 +946,9 @@ USA.
 	  (make-xml-parameter-entity-ref name)))))
 
 (define (find-parameter-entity name)
-  (find-matching-item *parameter-entities*
-    (lambda (entity)
-      (eq? name (xml-parameter-!entity-name entity)))))
+  (find (lambda (entity)
+	  (eq? name (xml-parameter-!entity-name entity)))
+	*parameter-entities*))
 
 (define *parameter-entities*)
 
@@ -988,7 +979,7 @@ USA.
   (let ((v
 	 (expand-entity-value name p
 	   (lambda ()
-	     (*parse-utf8-string parse-content string)))))
+	     (*parse-string parse-content string)))))
     (if (not v)
 	(perror p "Malformed entity reference" string))
     v))
@@ -1325,7 +1316,7 @@ USA.
 	     (string? (vector-ref v 0)))
 	(let ((v*
 	       (fluid-let ((*external-expansion?* #t))
-		 (*parse-utf8-string parser (vector-ref v 0)))))
+		 (*parse-string parser (vector-ref v 0)))))
 	  (if (not v*)
 	      (perror ptr
 		      (string-append "Malformed " description)

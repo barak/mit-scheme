@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,7 +48,7 @@ USA.
   (with-rdf-input-port port
     (lambda ()
       (post-process-parser-output
-       (parse-turtle-doc (input-port->parser-buffer port))
+       (parse-turtle-doc (textual-input-port->parser-buffer port))
        (->absolute-uri base-uri 'READ-RDF/TURTLE)))))
 
 (define parse-turtle-doc
@@ -202,7 +202,7 @@ USA.
 
 (define parse:language
   (*parser
-   (map utf8-string->symbol
+   (map string->symbol
 	(match (seq (+ (char-set char-set:turtle-lower))
 		    (* (seq "-"
 			    (+ (char-set char-set:turtle-lower+digit)))))))))
@@ -279,7 +279,7 @@ USA.
 		  char-set:turtle-digit))
 
 (define char-set:name-start-char
-  (scalar-values->char-set
+  (char-set*
    '((#x0041 . #x005B)
      #x005F
      (#x0061 . #x007B)
@@ -298,7 +298,7 @@ USA.
 
 (define char-set:name-char
   (char-set-union char-set:name-start-char
-		  (scalar-values->char-set
+		  (char-set*
 		   '(#x002D
 		     (#x0030 . #x003A)
 		     #x00B7
@@ -309,7 +309,7 @@ USA.
   (char-set-difference char-set:name-start-char (char-set #\_)))
 
 (define char-set:character
-  (scalar-values->char-set '((#x20 . #x5C) (#x5D . #x110000))))
+  (char-set* '((#x20 . #x5C) (#x5D . #x110000))))
 
 (define char-set:ucharacter
   (char-set-difference char-set:character (char-set #\>)))
@@ -325,7 +325,7 @@ USA.
 (define (delimited-region-parser name start-delim end-delim
 				 char-set parse-escapes)
   (lambda (buffer)
-    (let ((output (open-utf8-output-string))
+    (let ((output (open-output-string))
 	  (start (get-parser-buffer-pointer buffer)))
 
       (define (read-head)
@@ -365,7 +365,7 @@ USA.
       (define (copy p)
 	(call-with-parser-buffer-tail buffer p
 	  (lambda (string start end)
-	    (write-substring string start end output))))
+	    (write-string string output start end))))
 
       (define (finish)
 	(vector (get-output-string output)))
@@ -602,8 +602,8 @@ USA.
       (cond ((uri? o)
 	     (receive (prefix expansion)
 		 (uri->rdf-prefix o (port/rdf-prefix-registry port) #f)
-	       (if (and prefix (not (hash-table/get table prefix #f)))
-		   (hash-table/put! table prefix expansion))))
+	       (if (and prefix (not (hash-table-ref/default table prefix #f)))
+		   (hash-table-set! table prefix expansion))))
 	    ((rdf-graph? o)
 	     (check-graph o))))
 
@@ -612,10 +612,11 @@ USA.
 		(write-rdf/turtle-prefix (car p) (cdr p) port))
 	      (sort (hash-table->alist table)
 		(lambda (a b)
-		  (let ((a (symbol-name (car a)))
-			(b (symbol-name (car b))))
-		    (substring<? a 0 (fix:- (string-length a) 1)
-				 b 0 (fix:- (string-length b) 1))))))))
+		  (let ((a (symbol->string (car a)))
+			(b (symbol->string (car b))))
+		    (string<?
+		     (string-head a (fix:- (string-length a) 1))
+		     (string-head b (fix:- (string-length b) 1)))))))))
 
 (define (write-rdf/turtle-prefix prefix expansion #!optional port)
   (let ((port (if (default-object? port) (current-output-port) port)))
@@ -766,18 +767,18 @@ USA.
 		    (else #f))))
 	((rdf-bnode? o)
 	 (and (not (inline-bnode o))
-	      (call-with-utf8-output-string
+	      (call-with-output-string
 		(lambda (port)
 		  (write-rdf/nt-bnode o port)))))
 	((uri? o)
-	 (call-with-utf8-output-string
+	 (call-with-output-string
 	   (lambda (port*)
 	     (write-uri o (port/rdf-prefix-registry port) port*))))
 	((rdf-graph? o)
 	 (and (null? (rdf-graph-triples o))
 	      "{}"))
 	((rdf-literal? o)
-	 (call-with-utf8-output-string
+	 (call-with-output-string
 	   (lambda (port)
 	     (write-rdf/turtle-literal o port))))
 	(else
@@ -912,7 +913,7 @@ USA.
 
 (define (write-literal-text text port)
   (if (string-find-next-char text #\newline)
-      (let ((tport (open-utf8-input-string text)))
+      (let ((tport (open-input-string text)))
 	(write-string "\"\"\"" port)
 	(let loop ()
 	  (let ((char (read-char tport)))
@@ -937,8 +938,8 @@ USA.
 	  (let ((start (string-length expansion)))
 	    (if (*match-string match:name s start end)
 		(begin
-		  (write-string (symbol-name prefix) port)
-		  (write-substring s start end port))
+		  (write-string (symbol->string prefix) port)
+		  (write-string s port start end))
 		(write-rdf/nt-uri uri port)))
 	  (write-rdf/nt-uri uri port)))))
 
@@ -1002,7 +1003,7 @@ USA.
   (write-char #\space port))
 
 (define (write-symbol symbol port)
-  (write-string (symbol-name symbol) port))
+  (write-string (symbol->string symbol) port))
 
 (define (write-parens open close indentation port procedure)
   (write-string open port)

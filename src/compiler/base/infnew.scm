@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -262,24 +262,25 @@ USA.
       (for-each (lambda (label-binding)
 		  (for-each (lambda (key)
 			      (let ((datum
-				     (hash-table/get labels key no-datum)))
+				     (hash-table-ref/default labels key
+							     no-datum)))
 				(if (not (eq? datum no-datum))
 				    (error "Redefining label:" key datum)))
-			      (hash-table/put! labels
+			      (hash-table-set! labels
 					       key
 					       (cdr label-binding)))
 			    (car label-binding)))
 		label-bindings)
       (let ((map-label/fail
 	     (lambda (label)
-	       (let ((key (system-pair-car label)))
-		 (let ((datum (hash-table/get labels key no-datum)))
+	       (let ((key (symbol->string label)))
+		 (let ((datum (hash-table-ref/default labels key no-datum)))
 		   (if (eq? datum no-datum)
 		       (error "Missing label:" key))
 		   datum))))
 	    (map-label/false
 	     (lambda (label)
-	       (hash-table/get labels (system-pair-car label) #f))))
+	       (hash-table-ref/default labels (symbol->string label) #f))))
 	(for-each (lambda (label)
 		    (set-dbg-label/external?! (map-label/fail label) true))
 		  external-labels)
@@ -321,7 +322,7 @@ USA.
        (let ((offsets (make-rb-tree = <)))
 	 (for-each (lambda (binding)
 		     (let ((offset (cdr binding))
-			   (name (system-pair-car (car binding))))
+			   (name (symbol->string (car binding))))
 		       (let ((datum (rb-tree/lookup offsets offset #f)))
 			 (if datum
 			     (set-cdr! datum (cons name (cdr datum)))
@@ -333,10 +334,10 @@ USA.
   (if (null? (cdr names))
       (car names)
       (let ((distinguished
-	     (list-transform-negative names
-	       (lambda (name)
-		 (or (standard-name? name "label")
-		     (standard-name? name "end-label"))))))
+	     (remove (lambda (name)
+		       (or (standard-name? name "label")
+			   (standard-name? name "end-label")))
+		     names)))
 	(cond ((null? distinguished)
 	       (min-suffix names))
 	      ((null? (cdr distinguished))
@@ -365,14 +366,16 @@ USA.
 			  (suffix-number y)))))))
 
 (define (standard-name? string prefix)
-  (let ((index (string-match-forward-ci string prefix))
-	(end (string-length string)))
-    (and (= index (string-length prefix))
-	 (>= (- end index) 2)
-	 (let ((next (string-ref string index)))
-	   (or (char=? #\- next)
-	       (char=? #\_ next)))
-	 (let loop ((index (1+ index)))
-	   (or (= index end)
-	       (and (char-numeric? (string-ref string index))
-		    (loop (1+ index))))))))
+  (let ((string (string-foldcase string))
+	(prefix (string-foldcase prefix)))
+    (let ((index (string-match-forward string prefix))
+	  (end (string-length string)))
+      (and (= index (string-length prefix))
+	   (>= (- end index) 2)
+	   (let ((next (string-ref string index)))
+	     (or (char=? #\- next)
+		 (char=? #\_ next)))
+	   (let loop ((index (1+ index)))
+	     (or (= index end)
+		 (and (char-numeric? (string-ref string index))
+		      (loop (1+ index)))))))))

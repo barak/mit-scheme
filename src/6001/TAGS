@@ -1,0 +1,310 @@
+
+arith.scm,2689
+(define-integrable (int:->flonum 32,1102
+(define-integrable (flonum? 35,1187
+(define (flo:integer? 39,1308
+(define (flo:->integer 42,1361
+(define-syntax define-standard-unary47,1508
+(define-standard-unary rational? 55,1769
+(define-standard-unary integer? 56,1836
+(define-standard-unary exact? 57,1895
+(define-standard-unary zero? 61,2010
+(define-standard-unary negative? 62,2060
+(define-standard-unary positive? 63,2122
+(define-standard-unary abs 64,2184
+(define-standard-unary floor 65,2228
+(define-standard-unary ceiling 66,2283
+(define-standard-unary truncate 67,2342
+(define-standard-unary round 68,2403
+(define-standard-unary exact->inexact 69,2458
+(define-standard-unary inexact->exact70,2525
+(define-syntax define-standard-binary79,2755
+(define-standard-binary real:+ 93,3188
+(define-standard-binary real:- 94,3232
+(define-standard-binary rationalize95,3276
+(define (int:rationalize 99,3350
+(define (int:simplest-rational 102,3432
+(define (real:* 112,3647
+(define (real:/ 121,3877
+(define (real:invert 127,4134
+(define (real:=132,4250
+(define (real:< 147,4610
+(define (real:max 156,4766
+(define (real:min 165,4990
+(define-integrable (flo/int:< 174,5214
+(define-integrable (int/flo:< 180,5382
+(define (even? 186,5551
+(define-syntax define-integer-binary189,5622
+(define-integer-binary quotient 208,6204
+(define-integer-binary remainder 209,6259
+(define-integer-binary modulo 210,6317
+(define-integer-binary real:gcd 211,6366
+(define-integer-binary real:lcm 212,6411
+(define (numerator 214,6457
+(define (denominator 221,6612
+(define-syntax define-transcendental-unary228,6773
+(define-transcendental-unary exp 237,7096
+(define-transcendental-unary log 238,7153
+(define-transcendental-unary sin 239,7210
+(define-transcendental-unary cos 240,7267
+(define-transcendental-unary tan 241,7324
+(define-transcendental-unary asin 242,7381
+(define-transcendental-unary acos 243,7440
+(define-transcendental-unary real:atan 244,7499
+(define (real:atan2 246,7564
+(define-integrable (real:exact0=251,7694
+(define-integrable (real:exact1=254,7771
+(define (real:->flonum 257,7846
+(define (sqrt 262,7925
+(define (int:sqrt 270,8074
+(define (expt 279,8297
+(define number? 321,9392
+(define complex? 322,9419
+(define real? 323,9447
+(define (inexact? 325,9473
+(define (odd? 328,9515
+(define (inc 331,9552
+(define (dec 334,9580
+(define (= . 337,9609
+(define (< 340,9663
+(define (> 343,9717
+(define (<=346,9792
+(define (>=349,9875
+(define (max 352,9958
+(define (min 355,10019
+(define (+ 358,10080
+(define (* 372,10373
+(define (- 386,10666
+(define (/ 397,10904
+(define (gcd 408,11109
+(define (lcm 411,11167
+(define (atan 414,11225
+
+edextra.scm,1421
+(define student-root-directory)31,1068
+(define student-work-directory)32,1100
+(define pset-directory)33,1132
+(define pset-list-file)34,1156
+(define command-line-student-directory 35,1180
+(set! standard-editor-initialization44,1458
+(define (standard-login-initialization)50,1609
+(define-command logout92,3379
+(define (restore-focus-to-editor)99,3553
+(define-command print-graphics118,4152
+(define (print-given-x-window 129,4515
+(define (print-pointed-x-window)142,4891
+(define problem-sets/default-ps 192,6876
+(define problem-sets/psets 193,6913
+(define psets/first-pset 194,6945
+(define psets/rest-psets 195,6975
+(define psets/empty? 196,7005
+(define pset/ps 197,7033
+(define pset/groups 198,7054
+(define (groups/files-to-copy 199,7079
+(define (groups/files-to-load 202,7181
+(define (groups/files-to-reference 205,7283
+(define (groups/files-to-load&reference 208,7395
+(define (groups/buffer-to-select 211,7517
+(define (groups/all-files 214,7625
+(define (ps-groups 224,8047
+(define (merge-lists 235,8510
+(define (files-all-exist? 248,8894
+(define-command load-problem-set253,9026
+(define (load-quietly 296,10506
+(define (->string 300,10640
+(define (load-ps-copy-file 307,10780
+(define (rename-ps-file 360,12595
+(define (copy-ps-file 378,13135
+(set! default-homedir-pathname 386,13355
+(set! editor-can-exit? 388,13423
+(set! scheme-can-suspend? 389,13450
+(set! paranoid-exit? 390,13480
+
+floppy.scm,3336
+(define (run-floppy-login-loop)31,1073
+(define (login-loop)35,1191
+(define (first-login)76,2540
+(define (normal-login)127,4091
+(define (no-floppy-login)153,4845
+(define (login-common 169,5418
+(define (run-floppy-logout)182,5760
+(define-key 'fundamental 229,7082
+(define-key 'fundamental 230,7129
+(define-key 'fundamental 231,7176
+(define-key 'fundamental 232,7221
+(define (standard-configuration 234,7268
+(define (append-string 254,7825
+(define (show-dialog)257,7913
+(define (wait-for-user)266,8230
+(define-command initialize-floppy272,8392
+(define (initialize-floppy)303,9357
+(define (mediainit-floppy)351,10761
+(define mediainit-command383,11867
+(define mediainit-floppy-missing386,11938
+(define mediainit-floppy-busy389,12048
+(define (make-floppy-file-system)392,12134
+(define make-floppy-fs-command404,12547
+(define-command load-from-floppy409,12677
+(define (load-from-floppy)417,12880
+(define floppy-contents-loaded?)435,13428
+(define-command checkpoint-floppy437,13463
+(define (checkpoint-floppy)447,13750
+(define (read-working-directory)501,15464
+(define-command describe-dos-filenames553,17096
+(define (write-floppy-file 562,17314
+(define (read-floppy-file 578,17977
+(define (delete-floppy-file 583,18194
+(define (read-floppy-directory)586,18284
+(define (dos-file-modification-time 592,18450
+(define (dosls 602,18754
+(define parse-dosls-output606,18894
+(define parse-dosls-line633,19678
+(define (month-name->number 661,20676
+(define (make-dos-time 672,21006
+(define (time-zone-offset)687,21362
+(define-structure (file-record 696,21735
+(define (file-record/dos-name 700,21831
+(define floppy-directory703,21932
+(define (file-record/unix-name 706,21974
+(define (file-record/name=710,22102
+(define (run-dosll-command 715,22227
+(define (run-doscp-command 718,22320
+(define (run-dosrm-command 721,22408
+(define (run-dos-command 724,22498
+(define (form-floppy-command 750,23452
+(define no-floppy-in-drive758,23671
+(define floppy-write-protected-regexp761,23748
+(define non-dos-floppy-in-drive764,23854
+(define (handle-floppy-errors 767,23931
+(define *floppy-abort-handler*)787,24600
+(define (default-floppy-abort-handler)789,24633
+(define condition-type:floppy-error795,24756
+(define make-condition:floppy-error805,25233
+(define floppy-error/command810,25382
+(define floppy-error/output813,25473
+(define condition-type:no-floppy-in-drive816,25562
+(define make-condition:no-floppy-in-drive822,25781
+(define condition-type:floppy-write-protected827,25942
+(define make-condition:floppy-write-protected833,26180
+(define condition-type:floppy-drive-busy838,26349
+(define condition-type:non-dos-floppy-in-drive844,26567
+(define make-condition:non-dos-floppy-in-drive850,26811
+(define (directory-filename? 857,27003
+(define (extract-string-match 860,27112
+(define (three-way-sort 863,27229
+(define (buffer->string 882,27826
+(define valid-dos-filename?887,27942
+(define dos-filename-description917,28858
+(set! os/auto-save-pathname947,29629
+(set! os/precious-backup-pathname973,30405
+(set! os/default-backup-filename980,30616
+(set! os/buffer-backup-pathname984,30740
+(set! os/backup-filename?994,31110
+(set! os/auto-save-filename?1001,31343
+(define (dired-buffer-directory 1008,31582
+(set! prompt-for-pathname*1014,31846
+(define (student-directory? 1044,32921
+
+make.scm,165
+(set! repl:allow-restart-notifications? 40,1415
+(set! repl:write-result-hash-numbers? 41,1459
+(set! x-graphics:auto-raise? 44,1573
+(set! (access (access45,1606
+
+nodefs.scm,147
+(define (initialize-package!)32,1109
+(define (student/repl-eval 36,1196
+(define (rewrite-scode 50,1560
+(define (write-definition-value 75,2405
+
+pic-imag.scm,30
+(define (build-image 33,1136
+
+pic-ops.scm,386
+(define-integrable (in-rect? 31,1080
+(define make-pt 34,1196
+(define xcor 35,1218
+(define ycor 36,1236
+(define (picture-overlap 38,1255
+(define (picture-paste! 85,2758
+(define (picture-cut 111,3631
+(define (picture-scale 141,4665
+(define (picture-rotate 174,5726
+(define (picture-v-reflect 293,9614
+(define (picture-h-reflect 310,10072
+(define (flo:vector-reverse 325,10486
+
+pic-read.scm,184
+(define (pgm-file->picture 31,1103
+(define (standard-pathname 36,1262
+(define (get-header 43,1462
+(define get-line55,1924
+(define (get-body 69,2308
+(define (picture-read 96,3003
+
+pic-reco.scm,526
+(define-record-type <picture>31,1084
+(define (make-picture 41,1375
+(define (picture-set-data! 57,1834
+(define (picture-min 61,1950
+(define (picture-max 67,2074
+(define (picture-set-image! 73,2198
+(define (make-picture-referencer 79,2367
+(define (make-picture-setter 95,2963
+(define picture-ref112,3630
+(define no-error-picture-ref116,3750
+(define picture-set!120,3873
+(define no-error-picture-set!124,3993
+(define (picture-map! 128,4117
+(define (invalidate-cached-values 147,4764
+(define (find-min-max 155,4996
+
+picture.scm,1385
+(define (flo:make-vector 33,1087
+(define (flo:vector-copy 41,1294
+(define (side-effecting-iter 49,1531
+(define (lo-bound 58,1730
+(define (up-bound 61,1818
+(define (flo:vector->list 64,1899
+(define (generate-list 69,2029
+(define (make-window 77,2241
+(define (make-window/X11 88,2647
+(define (make-window/win32 104,3183
+(define (resize-window 109,3367
+(define (show-window-size 115,3619
+(define (n-gray-map 121,3849
+(define n-gray-map/win32128,4089
+(define (n-gray-map/X11 135,4257
+(define (allocate-grays 142,4511
+(define use-color? 200,6386
+(define 2pi 201,6409
+(define color-saturation 202,6439
+(define minimum-color-intensity 203,6467
+(define (make-spectrum-palette 205,6504
+(define (hsv->rgb 220,6955
+(define (linear-binner 242,7532
+(define (cutoff-binner 256,7959
+(define-integrable visual-class:static-gray 270,8525
+(define-integrable visual-class:gray-scale 271,8572
+(define-integrable visual-class:static-color 272,8618
+(define-integrable visual-class:pseudo-color 273,8666
+(define-integrable visual-class:true-color 274,8714
+(define-integrable visual-class:direct-color 275,8760
+(define (procedure->picture 279,8825
+(define (picture-map 284,8962
+(define (picture-display 351,11166
+(define (call-with-last-picture-file 400,13122
+(define *last-picture-displayed*408,13371
+(define (picture-write 411,13415
+(define (picture->pgm-file 422,13845
+
+6001.pkg,394
+MIT/GNU Scheme is free software;10,317
+the Free Software Foundation;12,457
+the Free Software Foundation; either version 2 of the License,12,457
+the Free Software Foundation; either version 2 of the License, or 12,457
+	  ;picture-cutcut132,2483
+	  ;picture-h-reflectreflect133,2499
+	  ;picture-overlapoverlap134,2521
+	  ;picture-rotaterotate136,2560
+	  ;picture-scalescale137,2579

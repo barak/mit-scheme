@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,7 +33,7 @@ USA.
 (define (c-generate library #!optional prefix)
   (let ((prefix (if (default-object? prefix) "" prefix))
 	(includes (include-cdecls library)))
-    (guarantee-string prefix 'c-generate)
+    (guarantee string? prefix 'c-generate)
     (let ((shim.c (string-append library "-shim.c")))
       (if c-generate-noisily?
 	  (with-notification
@@ -108,7 +108,7 @@ USA.
 	     (callout-restores name tos-var ret-var ret-ctype includes))
 	    (return
 	     (callout-return tos-var ret-var ret-ctype includes))
-	    (name (symbol-name name)))
+	    (name (symbol->string name)))
 	(write-string
 	 (string-append "
 SCM
@@ -126,7 +126,7 @@ Scm_continue_"name" (void)
 	  (inits (callout-inits ret-ctype params includes))
 	  (call (callout-call name ret-var ret-ctype params includes))
 	  (saves (callout-saves ret-var ret-ctype includes)))
-      (let ((name (symbol-name name)))
+      (let ((name (symbol->string name)))
 	(write-string
 	 (string-append "
 SCM
@@ -147,8 +147,8 @@ Scm_"name" (void)
 "))))))
 
 (define (matching-param? string params)
-  (find-matching-item params
-    (lambda (param) (string=? string (symbol-name (car param))))))
+  (find (lambda (param) (string=? string (symbol->string (car param))))
+	params))
 
 (define (new-variable root-name params)
   ;; Returns a name (string) for a variable that must be distinct from
@@ -174,7 +174,7 @@ Scm_"name" (void)
 
 (define (callout-restores name tos-var ret-var ret-ctype includes)
   (let* ((ctype (definite-ctype ret-ctype includes))
-	 (tramp2 (string-append "&Scm_continue_" (symbol-name name)))
+	 (tramp2 (string-append "&Scm_continue_" (symbol->string name)))
 	 (ret-decl (decl-string ret-ctype)))
     (string-append "
   "tos-var" = callout_lunseal ("tramp2");"
@@ -214,7 +214,7 @@ Scm_"name" (void)
 			    (if (null? params) '()
 				(cons
 				 (let* ((param (car params))
-					(name (symbol-name (car param)))
+					(name (symbol->string (car param)))
 					(type (cadr param))
 					(decl (decl-string type)))
 				   (string-append "
@@ -223,7 +223,10 @@ Scm_"name" (void)
 
 (define (callout-inits ret-ctype params includes)
   ;; Returns a multi-line string in C syntax for the Init section.
-  (let* ((alien-ret-arg? (ctype/pointer? (definite-ctype ret-ctype includes)))
+  (let* ((alien-ret-arg? (let ((definite (definite-ctype ret-ctype includes)))
+			   (or (ctype/pointer? definite)
+			       (ctype/struct? definite)
+			       (ctype/union? definite))))
 	 (nargs
 	  ;; (c-call 1:alien-function 2:ret-alien 3:arg1)
 	  ;; (c-call 1:alien-function 2:arg1)
@@ -239,7 +242,7 @@ Scm_"name" (void)
 			  (name (car param))
 			  (ctype (cadr param))
 			  (funcast (callout-arg-converter name ctype includes))
-			  (name (symbol-name name))
+			  (name (symbol->string name))
 			  (num (number->string n)))
 		     (string-append "
   "name" = "funcast" ("num");"))
@@ -253,9 +256,9 @@ Scm_"name" (void)
 
 (define (callout-call name ret-var ret-ctype params includes)
   ;; Returns a multi-line string in C syntax for the Call section.
-  (let ((name (symbol-name name))
+  (let ((name (symbol->string name))
 	(args (decorated-string-append
-	       "" ", " "" (map (lambda (param) (symbol-name (car param)))
+	       "" ", " "" (map (lambda (param) (symbol->string (car param)))
 			       params))))
     (if (not (ctype/void? (definite-ctype ret-ctype includes)))
 	(string-append "
@@ -323,7 +326,7 @@ Scm_"name" (void)
 	((eq? ctype 'ushort) "unsigned short")
 	((eq? ctype 'uint) "unsigned int")
 	((eq? ctype 'ulong) "unsigned long")
-	((symbol? ctype) (symbol-name ctype))
+	((symbol? ctype) (symbol->string ctype))
 	((ctype/pointer? ctype)
 	 (string-append (decl-string (ctype-pointer/target-type ctype))
 			" *"))
@@ -331,11 +334,11 @@ Scm_"name" (void)
 	 (string-append (decl-string (ctype-const/qualified-type ctype))
 			" const"))
 	((ctype/struct-name? ctype)
-	 (string-append "struct " (symbol-name (ctype-struct/name ctype))))
+	 (string-append "struct " (symbol->string (ctype-struct/name ctype))))
 	((ctype/union-name? ctype)
-	 (string-append "union " (symbol-name (ctype-union/name ctype))))
+	 (string-append "union " (symbol->string (ctype-union/name ctype))))
 	((ctype/enum-name? ctype)
-	 (string-append "enum " (symbol-name (ctype-enum/name ctype))))
+	 (string-append "enum " (symbol->string (ctype-enum/name ctype))))
 	(else
 	 (error "Could not generate a C type declaration:" ctype))))
 
@@ -371,7 +374,7 @@ Scm_"name" (void)
       (let ((declares (callback-decls params))
 	    (restores (callback-restores params tos-var))
 	    (constructs (callback-conses params args-var includes))
-	    (name (symbol-name name)))
+	    (name (symbol->string name)))
 	(write-string
 	 (string-append "
 static void
@@ -396,7 +399,7 @@ Scm_kernel_"name" (void)
 	  (saves (callback-saves params))
 	  (return (callback-return ret-ctype includes))
 	  (ret-decl (decl-string ret-ctype))
-	  (name (symbol-name name)))
+	  (name (symbol->string name)))
       (write-string
        (string-append
 	"
@@ -412,7 +415,7 @@ Scm_"name" ("arglist")
   ;; the second (inner, kernel) part of a callback trampoline.
   (apply string-append (map (lambda (param)
 			      (let ((decl (decl-string (cadr param)))
-				    (name (symbol-name (car param))))
+				    (name (symbol->string (car param))))
 				(string-append "
   "decl" "name";")))
 			    params)))
@@ -420,7 +423,7 @@ Scm_"name" ("arglist")
 (define (callback-restores params tos-var)
   ;; Returns a multi-line string setting the params from the C data stack.
   (apply string-append (map (lambda (param)
-			      (let ((name (symbol-name (car param)))
+			      (let ((name (symbol->string (car param)))
 				    (decl (decl-string (cadr param))))
 				(string-append "
   CSTACK_LPOP ("decl", "name", "tos-var");")))
@@ -434,7 +437,7 @@ Scm_"name" ("arglist")
 		      (ctype (cadr param)))
 		  (if (eq? name '|ID|)
 		      ""
-		      (let ((name (symbol-name name)))
+		      (let ((name (symbol->string name)))
 			(let ((construction
 			       (callback-arg-cons name ctype includes)))
 			  (string-append "
@@ -446,13 +449,13 @@ Scm_"name" ("arglist")
    "" ", " ""				;prefix, infix, suffix
    (map (lambda (param)
 	  (string-append (decl-string (cadr param))
-			 " " (symbol-name (car param))))
+			 " " (symbol->string (car param))))
 	params)))
 
 (define (callback-saves params)
   (apply string-append
    (map (lambda (param)
-	  (let ((name (symbol-name (car param)))
+	  (let ((name (symbol->string (car param)))
 		(ctype (cadr param)))
 	    (string-append "
   CSTACK_PUSH ("(decl-string ctype)", "name");")))
@@ -514,7 +517,7 @@ Scm_"name" ("arglist")
 
 #include <stdio.h>
 " (basics-grovel-func) (enums-grovel-func includes)))
-      (flush-output)
+      (flush-output-port)
       (let* ((structs (gen-struct-grovel-funcs includes))
 	     (unions (gen-union-grovel-funcs includes)))
 	(let ((library (c-includes/library includes)))
@@ -558,7 +561,7 @@ grovel_basics (FILE * out)
 	  (map (lambda (entry)
 		 (let* ((name (car entry))
 			(decl (decl-string name))
-			(name (symbol-name name)))
+			(name (symbol->string name)))
 		   (string-append "
   fprintf (out, \"   ((sizeof "name") . %ld)\\n\", (long) sizeof ("decl"));")))
 		    peek-poke-primitives))
@@ -574,7 +577,7 @@ grovel_enums (FILE * out)
 \{"
    (apply string-append
 	  (map (lambda (constant)
-		 (let ((name (symbol-name (car constant))))
+		 (let ((name (symbol->string (car constant))))
 		   (string-append "
   fprintf (out, \"   (|"name"| . %ld)\\n\", ((long)"name"));")))
 	       (c-includes/enum-constants includes)))
@@ -620,12 +623,12 @@ grovel_enums (FILE * out)
   ;; Generate C code for a grovel_NAME function.
   (let ((fname (cond ((ctype/struct-name? name)
 		      (string-append "grovel_struct_"
-				     (symbol-name (ctype-struct/name name))))
+				     (symbol->string (ctype-struct/name name))))
 		     ((ctype/union-name? name)
 		      (string-append "grovel_union_"
-				     (symbol-name (ctype-union/name name))))
+				     (symbol->string (ctype-union/name name))))
 		     ((symbol? name)
-		      (string-append "grovel_type_" (symbol-name name)))
+		      (string-append "grovel_type_" (symbol->string name)))
 		     (else (error "Unexpected name:" name))))
 	(ctype (definite-ctype name includes))
 	(decl (decl-string name))
@@ -641,7 +644,7 @@ void
      ctype includes
      (lambda (path brief-type)
        (let ((path (decorated-string-append
-		    "" "." "" (map symbol-name path)))
+		    "" "." "" (map symbol->string path)))
 	     (key (cons* 'OFFSET name path)))
 	 (_ "
   fprintf (out, \"   (")(write key)(_" %ld . ")(write brief-type)(_")\\n\", (long)((char*)&(S."path") - (char*)&S));"))))

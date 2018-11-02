@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,10 +31,10 @@ USA.
 
 ;;;; Prompting
 
-(define (emacs/prompt-for-command-expression port environment prompt level)
+(define (emacs/prompt-for-command-expression port prompt level)
   (transmit-modeline-string port prompt level)
   (transmit-signal port #\R)
-  (read port environment))
+  (read port))
 
 (define (emacs/prompt-for-command-char port prompt level)
   (transmit-modeline-string port prompt level)
@@ -49,7 +49,7 @@ USA.
    (string-append (number->string level)
 		  " "
 		  (if (and (pair? prompt)
-			   (eq? 'STANDARD (car prompt)))
+			   (eq? 'standard (car prompt)))
 		      (let ((entry (assoc (cdr prompt) cmdl-prompt-alist)))
 			(if entry
 			    (cadr entry)
@@ -60,9 +60,9 @@ USA.
   '(("debug> " "[Debug]")
     ("where> " "[Where]")))
 
-(define (emacs/prompt-for-expression port environment prompt)
+(define (emacs/prompt-for-expression port prompt)
   (transmit-signal-with-argument port #\i prompt)
-  (read port environment))
+  (read port))
 
 (define (emacs/prompt-for-confirmation port prompt)
   (transmit-signal-with-argument
@@ -118,12 +118,12 @@ USA.
 	(loop)))
   #t)
 
-(define (emacs/^G-interrupt)
+(define (emacs/^g-interrupt)
   (transmit-signal the-console-port #\g))
 
 ;;;; Miscellaneous Hooks
 
-(define (emacs/write-result port expression object hash-number environment)
+(define (emacs/write-result port expression object hash-number)
   expression
   (cond ((undefined-value? object)
 	 (transmit-signal-with-argument port #\v ""))
@@ -142,7 +142,7 @@ USA.
 	  port #\v
 	  (call-with-output-string
 	    (lambda (port)
-	      (write object port environment)))))))
+	      (write object port)))))))
 
 (define (emacs/error-decision repl condition)
   condition
@@ -161,12 +161,12 @@ USA.
 
 (define (emacs/read-start port)
   (transmit-signal port #\s)
-  (let ((operation (deferred-operation 'READ-START)))
+  (let ((operation (deferred-operation 'read-start)))
     (if operation
 	(operation port))))
 
 (define (emacs/read-finish port)
-  (let ((operation (deferred-operation 'READ-FINISH)))
+  (let ((operation (deferred-operation 'read-finish)))
     (if operation
 	(operation port)))
   (transmit-signal port #\f))
@@ -178,42 +178,43 @@ USA.
 
 (define (emacs/gc-start port)
   (output-port/flush-output port)
-  (cwb (port/output-channel port) "\033b" 0 2))
+  (cwb (output-port-channel port) gc-start-bytes))
 
 (define (emacs/gc-finish port)
-  (cwb (port/output-channel port) "\033e" 0 2))
+  (cwb (output-port-channel port) gc-end-bytes))
 
 (define (transmit-signal port type)
-  (let ((channel (port/output-channel port))
-	(buffer (string #\altmode type)))
+  (let ((channel (output-port-channel port))
+	(buffer (string->utf8 (string #\esc type))))
     (output-port/flush-output port)
     (with-absolutely-no-interrupts
      (lambda ()
-       (cwb channel buffer 0 2)))))
+       (cwb channel buffer)))))
 
 (define (transmit-signal-with-argument port type string)
-  (let ((channel (port/output-channel port))
-	(length (string-length string)))
-    (let ((buffer-length (+ length 3)))
-      (let ((buffer (make-string buffer-length)))
-	(string-set! buffer 0 #\altmode)
-	(string-set! buffer 1 type)
-	(substring-move! string 0 length buffer 2)
-	(string-set! buffer (- buffer-length 1) #\altmode)
-	(output-port/flush-output port)
-	(with-absolutely-no-interrupts
-	 (lambda ()
-	   (cwb channel buffer 0 buffer-length)))))))
+  (let ((channel (output-port-channel port))
+	(buffer
+	 (let ((builder (bytevector-builder)))
+	   (builder (char->integer #\esc))
+	   (builder (char->integer type))
+	   (builder (string->utf8 string))
+	   (builder (char->integer #\esc))
+	   (builder))))
+    (output-port/flush-output port)
+    (with-absolutely-no-interrupts
+     (lambda ()
+       (cwb channel buffer)))))
 
-(define (cwb channel string start end)
+(define (cwb channel bytes)
   ;; This is a private copy of CHANNEL-WRITE-BLOCK that bypasses all
   ;; the threading hair in that procedure.
-  (let loop ((start start) (n-left (fix:- end start)))
-    (let ((n
-	   ((ucode-primitive channel-write 4) (channel-descriptor channel)
-					      string start end)))
-      (cond ((not n) (loop start n-left))
-	    ((fix:< n n-left) (loop (fix:+ start n) (fix:- n-left n)))))))
+  (let ((end (bytevector-length bytes)))
+    (let loop ((start 0) (n-left end))
+      (let ((n
+	     ((ucode-primitive channel-write 4) (channel-descriptor channel)
+						bytes start end)))
+	(cond ((not n) (loop start n-left))
+	      ((fix:< n n-left) (loop (fix:+ start n) (fix:- n-left n))))))))
 
 (define (emacs-typeout port message)
   (emacs-eval port "(message \"%s\" " (write-to-string message) ")"))
@@ -223,48 +224,56 @@ USA.
 
 ;;;; Initialization
 
+(define gc-start-bytes)
+(define gc-end-bytes)
 (define vanilla-console-port-type)
 (define emacs-console-port-type)
 
 (define (initialize-package!)
-  (set! vanilla-console-port-type (port/type the-console-port))
+  (set! gc-start-bytes
+	(bytevector (char->integer #\esc)
+		    (char->integer #\b)))
+  (set! gc-end-bytes
+	(bytevector (char->integer #\esc)
+		    (char->integer #\e)))
+  (set! vanilla-console-port-type (textual-port-type the-console-port))
   (set! emacs-console-port-type
-	(make-port-type
-	 `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
-	   (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
-	   (PROMPT-FOR-COMMAND-EXPRESSION ,emacs/prompt-for-command-expression)
-	   (PROMPT-FOR-CONFIRMATION ,emacs/prompt-for-confirmation)
-	   (DEBUGGER-FAILURE ,emacs/debugger-failure)
-	   (DEBUGGER-MESSAGE ,emacs/debugger-message)
-	   (DEBUGGER-PRESENTATION ,emacs/debugger-presentation)
-	   (WRITE-RESULT ,emacs/write-result)
-	   (SET-DEFAULT-DIRECTORY ,emacs/set-default-directory)
-	   (READ-START ,emacs/read-start)
-	   (READ-FINISH ,emacs/read-finish)
-	   (GC-START ,emacs/gc-start)
-	   (GC-FINISH ,emacs/gc-finish))
+	(make-textual-port-type
+	 `((prompt-for-expression ,emacs/prompt-for-expression)
+	   (prompt-for-command-char ,emacs/prompt-for-command-char)
+	   (prompt-for-command-expression ,emacs/prompt-for-command-expression)
+	   (prompt-for-confirmation ,emacs/prompt-for-confirmation)
+	   (debugger-failure ,emacs/debugger-failure)
+	   (debugger-message ,emacs/debugger-message)
+	   (debugger-presentation ,emacs/debugger-presentation)
+	   (write-result ,emacs/write-result)
+	   (set-default-directory ,emacs/set-default-directory)
+	   (read-start ,emacs/read-start)
+	   (read-finish ,emacs/read-finish)
+	   (gc-start ,emacs/gc-start)
+	   (gc-finish ,emacs/gc-finish))
 	 vanilla-console-port-type))
   (add-event-receiver! event:after-restore
     (lambda ()
       (let ((type (select-console-port-type)))
-	(if (let ((type (port/type the-console-port)))
+	(if (let ((type (textual-port-type the-console-port)))
 	      (or (eq? type vanilla-console-port-type)
 		  (eq? type emacs-console-port-type)))
-	    (set-port/type! the-console-port type))))))
+	    (set-textual-port-type! the-console-port type))))))
 
 (define (select-console-port-type)
   (if ((ucode-primitive under-emacs? 0))
       (begin
 	(set! hook/clean-input/flush-typeahead
 	      emacs/clean-input/flush-typeahead)
-	(set! hook/^G-interrupt emacs/^G-interrupt)
+	(set! hook/^g-interrupt emacs/^g-interrupt)
 	(set! hook/error-decision emacs/error-decision)
 	emacs-console-port-type)
       (begin
 	(set! hook/clean-input/flush-typeahead #f)
-	(set! hook/^G-interrupt #f)
+	(set! hook/^g-interrupt #f)
 	(set! hook/error-decision #f)
 	vanilla-console-port-type)))
 
 (define (deferred-operation name)
-  (port-type/operation vanilla-console-port-type name))
+  (textual-port-type-operation vanilla-console-port-type name))

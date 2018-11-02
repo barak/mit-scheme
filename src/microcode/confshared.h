@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -128,7 +128,7 @@ USA.
 
 #ifndef OFF_T_MAX
 #  if SIZEOF_OFF_T < SIZEOF_INTMAX_T
-#    define OFF_T_MAX (~ ((~ ((intmax_t) 0)) << (CHAR_BIT * SIZEOF_OFF_T)))
+#    define OFF_T_MAX ((((intmax_t) 1) << (CHAR_BIT * SIZEOF_OFF_T)) - 1)
 #  else
 #    define OFF_T_MAX INTMAX_MAX
 #  endif
@@ -136,7 +136,7 @@ USA.
 
 #ifndef TIME_T_MAX
 #  if SIZEOF_TIME_T < SIZEOF_INTMAX_T
-#    define TIME_T_MAX (~ ((~ ((intmax_t) 0)) << (CHAR_BIT * SIZEOF_TIME_T)))
+#    define TIME_T_MAX ((((intmax_t) 1) << (CHAR_BIT * SIZEOF_TIME_T)) - 1)
 #  else
 #    define TIME_T_MAX INTMAX_MAX
 #  endif
@@ -230,21 +230,11 @@ typedef enum
 
 typedef enum
 {
-  COMPILER_NONE_TYPE,
-  COMPILER_MC68020_TYPE,
-  COMPILER_VAX_TYPE,
-  COMPILER_SPECTRUM_TYPE,
-  COMPILER_OLD_MIPS_TYPE,
-  COMPILER_MC68040_TYPE,
-  COMPILER_SPARC_TYPE,
-  COMPILER_RS6000_TYPE,
-  COMPILER_MC88K_TYPE,
-  COMPILER_IA32_TYPE,
-  COMPILER_ALPHA_TYPE,
-  COMPILER_MIPS_TYPE,
-  COMPILER_C_TYPE,
-  COMPILER_SVM_TYPE,
-  COMPILER_X86_64_TYPE,
+  COMPILER_NONE_TYPE = 0,
+  COMPILER_IA32_TYPE = 9,
+  COMPILER_C_TYPE = 12,
+  COMPILER_SVM_TYPE = 13,
+  COMPILER_X86_64_TYPE = 14,
 } cc_arch_t;
 
 #include "cmpintmd-config.h"
@@ -339,15 +329,7 @@ typedef enum
 
 /* SHARP_F is a magic value:
    Typecode TC_CONSTANT, high datum bits #b100, low datum bits are the top
-   TYPE_CODE_LENGTH bits of HPPA_QUAD_BIT
-
-   SHARP_F is stored in gr5 for access by compiled code.  This allows
-   us to generate #F and test against #F quickly, and also to use gr5
-   for compiled OBJECT->ADDRESS operations.  If we ever go to 5bit
-   typecodes we will be able to dispense with this overloading.
-
-   See also cmpauxmd/hppa.m4.  */
-
+   TYPE_CODE_LENGTH bits of HPPA_QUAD_BIT  */
 #define SHARP_F         0x22000010
 
 #endif /* hp9000s800 */
@@ -486,31 +468,6 @@ extern void * alpha_heap_malloc (unsigned long);
 
 #endif /* __alpha */
 
-#ifdef __OS2__
-
-#define PREALLOCATE_HEAP_MEMORY()					\
-{									\
-  extern void OS2_alloc_heap (void);					\
-  OS2_alloc_heap ();							\
-}
-
-extern void * OS2_commit_heap (unsigned long);
-#define HEAP_MALLOC OS2_commit_heap
-#define HEAP_FREE(address)
-
-#define EXIT_SCHEME_DECLARATIONS extern void OS2_exit_scheme (int)
-#define EXIT_SCHEME OS2_exit_scheme
-
-extern void OS2_stack_reset (void);
-#define STACK_RESET OS2_stack_reset
-
-extern int OS2_stack_overflowed_p (void);
-#define STACK_OVERFLOWED_P OS2_stack_overflowed_p
-
-#define CC_ARCH_INITIALIZE i386_interface_initialize
-
-#endif /* __OS2__ */
-
 #ifdef __WIN32__
 
 extern void win32_stack_reset (void);

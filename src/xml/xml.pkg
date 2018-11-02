@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,7 +38,8 @@ USA.
   (parent (runtime xml))
   (export ()
 	  char-set:xml-char
-	  char-set:xml-whitespace)
+	  char-set:xml-whitespace
+	  xml-char?)
   (export (runtime xml)
 	  char-set:char-data
 	  char-set:name-initial
@@ -50,16 +51,6 @@ USA.
   (files "xml-names")
   (parent (runtime xml))
   (export ()
-	  error:not-xml-name
-	  error:not-xml-name-symbol
-	  error:not-xml-namespace-conformant-name
-	  error:not-xml-nmtoken
-	  error:not-xml-qname
-	  guarantee-xml-name
-	  guarantee-xml-name-symbol
-	  guarantee-xml-namespace-conformant-name
-	  guarantee-xml-nmtoken
-	  guarantee-xml-qname
 	  make-xml-name
 	  make-xml-name-symbol
 	  make-xml-nmtoken
@@ -120,42 +111,8 @@ USA.
 	  <xml-parameter-entity-ref>
 	  <xml-processing-instructions>
 	  <xml-unparsed-!entity>
-	  error:not-xml-!attlist
-	  error:not-xml-!element
-	  error:not-xml-!entity
-	  error:not-xml-!notation
-	  error:not-xml-attribute
-	  error:not-xml-attribute-list
-	  error:not-xml-comment
-	  error:not-xml-declaration
-	  error:not-xml-document
-	  error:not-xml-dtd
-	  error:not-xml-element
-	  error:not-xml-entity-ref
-	  error:not-xml-external-id
-	  error:not-xml-parameter-!entity
-	  error:not-xml-parameter-entity-ref
-	  error:not-xml-processing-instructions
-	  error:not-xml-unparsed-!entity
 	  find-xml-attr
 	  flatten-xml-element-content
-	  guarantee-xml-!attlist
-	  guarantee-xml-!element
-	  guarantee-xml-!entity
-	  guarantee-xml-!notation
-	  guarantee-xml-attribute
-	  guarantee-xml-attribute-list
-	  guarantee-xml-comment
-	  guarantee-xml-declaration
-	  guarantee-xml-document
-	  guarantee-xml-dtd
-	  guarantee-xml-element
-	  guarantee-xml-entity-ref
-	  guarantee-xml-external-id
-	  guarantee-xml-parameter-!entity
-	  guarantee-xml-parameter-entity-ref
-	  guarantee-xml-processing-instructions
-	  guarantee-xml-unparsed-!entity
 	  make-xml-!attlist
 	  make-xml-!element
 	  make-xml-!entity
@@ -301,10 +258,10 @@ USA.
   (files "xml-parser")
   (parent (runtime xml))
   (export ()
+	  bytevector->xml
 	  read-xml
 	  read-xml-file
 	  string->xml
-	  utf8-string->xml
 	  xml-processing-instructions-handlers)
   (export (runtime xml)
 	  coding-requires-bom?
@@ -314,11 +271,10 @@ USA.
   (files "xml-output")
   (parent (runtime xml))
   (export ()
-	  (xml->string xml->octets)
 	  write-xml
 	  write-xml-file
-	  xml->octets
-	  xml->wide-string))
+	  xml->bytevector
+	  xml->string))
 
 (define-package (runtime xml html)
   (files "xhtml" "xhtml-entities")
@@ -327,10 +283,6 @@ USA.
 	  (html-document html-1.0-document)
 	  (html-dtd html-1.0-dtd)
 	  (html-external-id html-1.0-external-id)
-	  error:not-html-element
-	  error:not-html-element-name
-	  guarantee-html-element
-	  guarantee-html-element-name
 	  html-1.0-document
 	  html-1.0-dtd
 	  html-1.0-external-id
@@ -560,29 +512,9 @@ USA.
 	  canonicalize-rdf-subject
 	  canonicalize-rdf-uri
 	  copy-rdf-prefix-registry
-	  error:not-rdf-bnode
-	  error:not-rdf-graph
-	  error:not-rdf-literal
-	  error:not-rdf-object
-	  error:not-rdf-predicate
-	  error:not-rdf-prefix
-	  error:not-rdf-prefix-registry
-	  error:not-rdf-qname
-	  error:not-rdf-subject
-	  error:not-rdf-triple
 	  event:new-rdf-graph
 	  event:new-rdf-triple
 	  for-each-rdf-triple
-	  guarantee-rdf-bnode
-	  guarantee-rdf-graph
-	  guarantee-rdf-literal
-	  guarantee-rdf-object
-	  guarantee-rdf-predicate
-	  guarantee-rdf-prefix
-	  guarantee-rdf-prefix-registry
-	  guarantee-rdf-qname
-	  guarantee-rdf-subject
-	  guarantee-rdf-triple
 	  make-rdf-bnode
 	  make-rdf-graph
 	  make-rdf-literal

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,16 +37,19 @@ USA.
 
 (define-integrable keyword-prefix "#[keyword]")
 
-(define (string->keyword string)
-  (guarantee-string string 'STRING->KEYWORD)
-  (string->symbol (string-append keyword-prefix string)))
+(define (string->keyword string #!optional fold-case?)
+  (guarantee string? string 'string->keyword)
+  ((if (if (default-object? fold-case?) #f fold-case?)
+       intern
+       string->symbol)
+   (string-append keyword-prefix string)))
 
 (define (keyword? object)
   (and (interned-symbol? object)
-       (string-prefix? keyword-prefix (symbol-name object))))
+       (string-prefix? keyword-prefix (symbol->string object))))
 
 (define-guarantee keyword "keyword")
 
 (define (keyword->string keyword)
-  (guarantee-keyword keyword 'KEYWORD->STRING)
-  (string-tail (symbol-name keyword) (string-length keyword-prefix)))
+  (guarantee-keyword keyword 'keyword->string)
+  (string-tail (symbol->string keyword) (string-length keyword-prefix)))

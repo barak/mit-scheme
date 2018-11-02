@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -54,6 +54,7 @@ USA.
 		 (inferior-threads '())
 		 (recursive-edit-continuation #f)
 		 (recursive-edit-level 0))
+       (thread-put! editor-thread 'name edwin-editor)
        (editor-grab-display edwin-editor
 	 (lambda (with-editor-ungrabbed operations)
 	   (let ((message (cmdl-message/null)))
@@ -70,26 +71,23 @@ USA.
 		      (lambda (root-continuation)
 			(set! editor-thread-root-continuation
 			      root-continuation)
-			(with-notification-output-port null-output-port
-			  (lambda ()
-			    (do ((thunks (let ((thunks editor-initial-threads))
-					   (set! editor-initial-threads '())
-					   thunks)
-					 (cdr thunks)))
-				((null? thunks))
-			      (create-thread root-continuation (car thunks)))
-			    (top-level-command-reader
-			     edwin-initialization)))))))
+			(parameterize ((notification-output-port
+					null-output-port))
+			  (do ((thunks (let ((thunks editor-initial-threads))
+					 (set! editor-initial-threads '())
+					 thunks)
+				       (cdr thunks)))
+			      ((null? thunks))
+			    (create-thread root-continuation
+					   (car thunks)
+					   (car thunks)))
+			  (top-level-command-reader edwin-initialization))))))
 		 message)
 	       #f
 	       `((START-CHILD ,(editor-start-child-cmdl with-editor-ungrabbed))
 		 (CHILD-PORT ,(editor-child-cmdl-port (nearest-cmdl/port)))
 		 ,@operations))
 	      message))))))))
-
-(define (edwin . args) (apply edit args))
-(simple-command-line-parser "edit" edit
-			    "Causes Edwin to start immediately after Scheme.")
 
 (define edwin-editor #f)
 (define editor-abort)
@@ -286,7 +284,7 @@ with the contents of the startup message."
 (define (maybe-debug-scheme-error error-type condition)
   (let ((p
 	 (variable-default-value
-	  (or (name->variable (symbol-append 'DEBUG-ON- error-type '-ERROR) #f)
+	  (or (name->variable (symbol 'DEBUG-ON- error-type '-ERROR) #f)
 	      (ref-variable-object debug-on-internal-error)))))
     (if p
 	(debug-scheme-error error-type condition (eq? p 'ASK))))
@@ -435,7 +433,11 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 
 (define-structure (input-event
 		   (constructor make-input-event (type operator . operands))
-		   (conc-name input-event/))
+		   (conc-name input-event/)
+		   (print-procedure
+		    (standard-print-method 'input-event
+		      (lambda (event)
+			(list (input-event/type event))))))
   (type #f read-only #t)
   (operator #f read-only #t)
   (operands #f read-only #t))
@@ -485,7 +487,7 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
   (within-continuation editor-abort reset-editor))
 
 (define (exit-scheme)
-  (within-continuation editor-abort %exit))
+  (within-continuation editor-abort exit))
 
 (define (editor-grab-display editor receiver)
   (display-type/with-display-grabbed (editor-display-type editor)
@@ -570,7 +572,8 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 		 (weak-set-cdr! (car threads) #f))
 	       (loop (cdr threads) threads)))))))
 
-(define (start-standard-polling-thread interval output-processor)
+(define (start-standard-polling-thread interval output-processor
+				       #!optional name)
   (let ((holder (list #f)))
     (set-car! holder
 	      (register-inferior-thread!
@@ -583,7 +586,8 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 				     (exit-current-thread unspecific))
 				    (registration
 				     (inferior-thread-output! registration))))
-			    (sleep-current-thread interval))))))
+			    (sleep-current-thread interval)))
+			name)))
 		 (detach-thread thread)
 		 thread)
 	       output-processor))
@@ -606,6 +610,11 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
       (begin
 	(set! inferior-thread-changes? #t)
 	(signal-thread-event editor-thread #f))))
+
+(define (inferior-thread-run-light! flags)
+  (set-car! flags #t)
+  (if (not inferior-thread-changes?)
+      (set! inferior-thread-changes? #t)))
 
 (define (accept-thread-output)
   (with-interrupt-mask interrupt-mask/gc-ok

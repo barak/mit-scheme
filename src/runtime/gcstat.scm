@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,12 +30,11 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! hook/record-statistic! default/record-statistic!)
   (set! history-modes
-	`((NONE . ,none:install-history!)
-	  (BOUNDED . ,bounded:install-history!)
-	  (UNBOUNDED . ,unbounded:install-history!)))
-  (set-history-mode! 'BOUNDED)
+	`((none . ,none:install-history!)
+	  (bounded . ,bounded:install-history!)
+	  (unbounded . ,unbounded:install-history!)))
+  (set-history-mode! 'bounded)
   (set! timestamp (cons 0 0))
   (statistics-reset!)
   (add-event-receiver! event:after-restore statistics-reset!)
@@ -44,7 +43,8 @@ USA.
   unspecific)
 
 (define (recorder/gc-start)
-  (port/gc-start (nearest-cmdl/port))
+  (port/gc-start (console-i/o-port))
+  (set! this-gc-start-uctime (get-universal-time))
   (set! this-gc-start-clock (real-time-clock))
   (set! this-gc-start (process-time-clock))
   unspecific)
@@ -56,14 +56,16 @@ USA.
     (increment-non-runtime! (- end-time this-gc-start))
     (statistics-flip this-gc-start end-time
 		     space-remaining
+		     this-gc-start-uctime
 		     this-gc-start-clock end-time-clock))
-  (port/gc-finish (nearest-cmdl/port)))
+  (port/gc-finish (console-i/o-port)))
 
 (define timestamp)
 (define total-gc-time)
 (define last-gc-start)
 (define last-gc-end)
 (define this-gc-start)
+(define this-gc-start-uctime)
 (define this-gc-start-clock)
 (define last-gc-start-clock)
 (define last-gc-end-clock)
@@ -87,17 +89,19 @@ USA.
   (this-gc-end false read-only true)
   (last-gc-start false read-only true)
   (last-gc-end false read-only true)
+  (this-gc-start-uctime false read-only true)
   (this-gc-start-clock false read-only true)
   (this-gc-end-clock false read-only true)
   (last-gc-start-clock false read-only true)
   (last-gc-end-clock false read-only true))
 
-(define (statistics-flip start-time end-time heap-left start-clock end-clock)
+(define (statistics-flip start-time end-time heap-left
+			 start-uctime start-clock end-clock)
   (let ((statistic
 	 (make-gc-statistic timestamp heap-left
 			    start-time end-time
 			    last-gc-start last-gc-end
-			    start-clock end-clock
+			    start-uctime start-clock end-clock
 			    last-gc-start-clock last-gc-end-clock)))
     (set! timestamp (cons (1+ (car timestamp)) (cdr timestamp)))
     (set! total-gc-time (+ (- end-time start-time) total-gc-time))
@@ -105,17 +109,10 @@ USA.
     (set! last-gc-end end-time)
     (set! last-gc-start-clock start-clock)
     (set! last-gc-end-clock end-clock)
-    (record-statistic! statistic)
-    (hook/record-statistic! statistic)))
+    (record-statistic! statistic)))
 
 (define (gc-statistic/meter stat)
   (car (gc-statistic/timestamp stat)))
-
-(define hook/record-statistic!)
-
-(define (default/record-statistic! statistic)
-  statistic
-  false)
 
 (define (gctime)
   (internal-time/ticks->seconds total-gc-time))
@@ -159,7 +156,7 @@ USA.
 (define (set-history-mode! mode)
   (let ((entry (assq mode history-modes)))
     (if (not entry)
-	(error "Bad mode name" 'SET-HISTORY-MODE! mode))
+	(error "Bad mode name" 'set-history-mode! mode))
     ((cdr entry))
     (set! history-mode (car entry))))
 
@@ -178,7 +175,7 @@ USA.
 
 (define (none:record-in-history! item)
   item
-  'DONE)
+  'done)
 
 (define (none:get-history)
   '())

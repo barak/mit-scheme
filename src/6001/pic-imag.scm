@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,13 +38,13 @@ USA.
 	 (image-width (fix:* h-sf pic-width)) ;x
 	 (image-height (fix:* v-sf pic-height)) ;iy
 	 (use-string?
-	  (for-all? (vector->list gray-map)
-	    (lambda (n)
-	      (<= 0 n 255))))
+	  (every (lambda (n)
+		   (<= 0 n 255))
+		 (vector->list gray-map)))
 	 (image (image/create window image-width image-height))
 	 (pixels
 	  (if use-string?
-	      (make-string (fix:* image-width image-height))
+	      (make-legacy-string (fix:* image-width image-height))
 	      (make-vector (fix:* image-width image-height))))
 	 (write-pixel (if use-string? vector-8b-set! vector-set!))
 	 (py-max (- pic-height 1))
@@ -84,7 +84,7 @@ USA.
 			   (write-pixel pixels n-is-1 v)
 			   (write-pixel pixels (fix:+ n-is-1 1) v)
 			   (x-loop (fix:+ px 1) (fix:+ ix h-sf)))
-			 (y-loop (fix:- py 1) 
+			 (y-loop (fix:- py 1)
 				 (fix:+ iy-index rect-index-height))))))))
 
 	  ((and (fix:= 3 h-sf) (fix:= 3 v-sf))
@@ -107,7 +107,7 @@ USA.
 			   (write-pixel pixels (fix:+ row2 1) v)
 			   (write-pixel pixels (fix:+ row2 2) v)
 			   (x-loop (fix:+ px 1) (fix:+ ix h-sf)))
-			 (y-loop (fix:- py 1) 
+			 (y-loop (fix:- py 1)
 				 (fix:+ iy-index rect-index-height))))))))
 
 	  ((and (fix:= 4 h-sf) (fix:= 4 v-sf))
@@ -138,10 +138,10 @@ USA.
 			   (write-pixel pixels (fix:+ row3 2) v)
 			   (write-pixel pixels (fix:+ row3 3) v)
 			   (x-loop (fix:+ px 1) (fix:+ ix h-sf)))
-			 (y-loop (fix:- py 1) 
+			 (y-loop (fix:- py 1)
 				 (fix:+ iy-index rect-index-height))))))))
 
-	  (else 
+	  (else
 	   (let y-loop ((py py-max) (iy-index 0))
 	     (if (fix:<= 0 py)
 		 (let ((pic-row (vector-ref pic-data py)))
@@ -160,13 +160,10 @@ USA.
 					   (m-loop (fix:+ m 1)))
 					 (n-loop (fix:+ n image-width)))))
 				 (x-loop (fix:+ px 1) (fix:+ ix h-sf)))))
-			 (y-loop (fix:- py 1) 
+			 (y-loop (fix:- py 1)
 				 (fix:+ iy-index rect-index-height)))))))))
     ;; Kludge: IMAGE/FILL-FROM-BYTE-VECTOR should take an argument
     ;; that specifies what color a given byte in PIXELS maps to.
-    ;; OS/2 requires this information, so we supply it here.
-    (if (eq? 'OS/2 microcode-id/operating-system)
-	(os2-image/set-colormap image (os2-image-colormap)))
     (image/fill-from-byte-vector image pixels)
     (1d-table/put! (graphics-device/properties window) image (cons h-sf v-sf))
     image))

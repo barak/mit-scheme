@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -109,25 +109,18 @@ This file is not the file you visited; that changes only when you save."
    (lambda ()
      (remove-group-microcode-entry (buffer-group buffer)))))
 
-(define add-group-microcode-entry)
-(define remove-group-microcode-entry)
-(let ((index (fixed-objects-vector-slot 'EDWIN-AUTO-SAVE)))
-  (set! add-group-microcode-entry
-	(lambda (group namestring)
-	  (let ((vector (get-fixed-objects-vector)))
-	    (let ((alist (vector-ref vector index)))
-	      (let ((entry (assq group alist)))
-		(if entry
-		    (set-cdr! entry namestring)
-		    (vector-set! vector
-				 index
-				 (cons (cons group namestring) alist))))))))
-  (set! remove-group-microcode-entry
-	(lambda (group)
-	  (let ((vector (get-fixed-objects-vector)))
-	    (vector-set! vector
-			 index
-			 (del-assq! group (vector-ref vector index)))))))
+(define (add-group-microcode-entry group namestring)
+  (let ((entry (assq group (fixed-objects-item 'edwin-auto-save))))
+    (if entry
+	(set-cdr! entry namestring)
+	(update-fixed-objects-item! 'edwin-auto-save
+				    (lambda (alist)
+				      (cons (cons group namestring) alist))))))
+
+(define (remove-group-microcode-entry group)
+  (update-fixed-objects-item! 'edwin-auto-save
+			      (lambda (alist)
+				(del-assq! group alist))))
 
 (define (delete-auto-save-file! buffer)
   (and (ref-variable delete-auto-save-files)
@@ -154,12 +147,12 @@ This file is not the file you visited; that changes only when you save."
 
 (define (do-auto-save)
   (let ((buffers
-	 (list-transform-positive (buffer-list)
-	   (lambda (buffer)
-	     (and (buffer-auto-save-pathname buffer)
-		  (buffer-auto-save-modified? buffer)
-		  (<= (* 10 (buffer-save-length buffer))
-		      (* 13 (buffer-length buffer))))))))
+	 (filter (lambda (buffer)
+		   (and (buffer-auto-save-pathname buffer)
+			(buffer-auto-save-modified? buffer)
+			(<= (* 10 (buffer-save-length buffer))
+			    (* 13 (buffer-length buffer)))))
+		 (buffer-list))))
     (if (not (null? buffers))
 	(begin
 	  (temporary-message "Auto saving...")

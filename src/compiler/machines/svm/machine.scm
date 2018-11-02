@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -70,14 +70,14 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL * SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol * symbol) (cdr form))
 	 (let ((tag (cadr form))
 	       (params (cddr form)))
-	   (let ((name (symbol-append 'INST: tag)))
+	   (let ((name (symbol 'INST: tag)))
 	     `(BEGIN
 		(DEFINE-INTEGRABLE (,name ,@params)
 		  (LIST (LIST ',tag ,@params)))
-		(DEFINE-INTEGRABLE (,(symbol-append name '?) INST)
+		(DEFINE-INTEGRABLE (,(symbol name '?) INST)
 		  (EQ? (CAR INST) ',tag)))))
 	 (ill-formed-syntax form)))))
 
@@ -85,7 +85,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(* SYMBOL) (cdr form))
+     (if (syntax-match? '(* symbol) (cdr form))
 	 `(BEGIN
 	    ,@(let loop ((names (cdr form)))
 		(if (pair? names)
@@ -98,7 +98,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(* SYMBOL) (cdr form))
+     (if (syntax-match? '(* symbol) (cdr form))
 	 `(BEGIN
 	    ,@(let loop ((names (cdr form)))
 		(if (pair? names)
@@ -114,9 +114,12 @@ USA.
 (define-inst copy-block size size-type from to)
 
 (define (load-immediate-operand? n)
-  (or (and (exact-integer? n)
-	   (<= signed-fixnum/lower-limit n) (< n signed-fixnum/upper-limit))
+  (or (immediate-integer? n)
       (flo:flonum? n)))
+
+(define (immediate-integer? n)
+  (and (exact-integer? n)
+       (<= signed-fixnum/lower-limit n) (< n signed-fixnum/upper-limit)))
 
 ;; TYPE and DATUM can be constants or registers; address is a register.
 (define-inst load-pointer target type address)
@@ -172,15 +175,15 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL * SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol * symbol) (cdr form))
 	 (let ((tag (cadr form))
 	       (params (cddr form)))
-	   (let ((name (symbol-append 'EA: tag)))
+	   (let ((name (symbol 'EA: tag)))
 	     `(BEGIN
 		(DEFINE-INTEGRABLE (,name ,@params)
 		  (INST-EA (,tag ,@(map (lambda (p) (list 'UNQUOTE p))
 					params))))
-		(DEFINE-INTEGRABLE (,(symbol-append name '?) EA)
+		(DEFINE-INTEGRABLE (,(symbol name '?) EA)
 		  (AND (PAIR? EA)
 		       (EQ? (CAR EA) ',tag))))))
 	 (ill-formed-syntax form)))))
@@ -222,7 +225,7 @@ USA.
   (ea:pre-decrement rref:stack-pointer 'WORD))
 
 (define (ea:stack-ref index)
-  (guarantee-non-negative-fixnum index 'ea:stack-ref)
+  (guarantee non-negative-fixnum? index 'ea:stack-ref)
   (if (zero? index)
       (ea:indirect rref:stack-pointer)
       (ea:offset rref:stack-pointer index 'WORD)))
@@ -254,7 +257,7 @@ USA.
 	,@(map (lambda (name)
 		 (let ((code (if (pair? name) (cadr name) name))
 		       (prim (if (pair? name) (car name) name)))
-		   `(DEFINE (,(symbol-append 'TRAP: prim) . ARGS)
+		   `(DEFINE (,(symbol 'TRAP: prim) . ARGS)
 		      (APPLY INST:TRAP ',code ARGS))))
 	       (cdr form))))))
 
@@ -278,10 +281,11 @@ USA.
      environment
      `(BEGIN
        ,@(map (lambda (name)
-		`(DEFINE-INST ,(symbol-append 'INTERRUPT-TEST- name)))
+		`(DEFINE-INST ,(symbol 'INTERRUPT-TEST- name)))
 	      (cdr form))))))
 
 (define-interrupt-tests dynamic-link procedure continuation ic-procedure)
+(define-inst pop-return)
 
 ;;;; Machine registers, register references.
 
@@ -319,7 +323,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(* SYMBOL) (cdr form))
+     (if (syntax-match? '(* symbol) (cdr form))
 	 (let ((alist
 		(let loop ((names (cdr form)) (index 0))
 		  (if (pair? names)
@@ -328,11 +332,11 @@ USA.
 		      '()))))
 	   `(BEGIN
 	      ,@(map (lambda (p)
-		       `(DEFINE-INTEGRABLE ,(symbol-append 'REGNUM: (car p))
+		       `(DEFINE-INTEGRABLE ,(symbol 'REGNUM: (car p))
 			  ,(cdr p)))
 		     alist)
 	      ,@(map (lambda (p)
-		       `(DEFINE-INTEGRABLE ,(symbol-append 'RREF: (car p))
+		       `(DEFINE-INTEGRABLE ,(symbol 'RREF: (car p))
 			  (REGISTER-REFERENCE ,(cdr p))))
 		     alist)
 	      (DEFINE FIXED-REGISTERS ',alist)))
@@ -399,19 +403,19 @@ USA.
 
 (define (interpreter-register:unbound?)
   (rtl:make-machine-register regnum:value))
-  
+
 (define-syntax define-machine-register
   (sc-macro-transformer
    (lambda (form environment)
      (if (syntax-match? '(symbol identifier) (cdr form))
-	 (let ((name (symbol-append 'INTERPRETER- (cadr form)))
+	 (let ((name (symbol 'interpreter- (cadr form)))
 	       (regnum (close-syntax (caddr form) environment)))
-	   `(BEGIN
-	      (DEFINE (,name)
-		(RTL:MAKE-MACHINE-REGISTER ,regnum))
-	      (DEFINE (,(symbol-append name '?) EXPRESSION)
-		(AND (RTL:REGISTER? EXPRESSION)
-		     (FIX:= (RTL:REGISTER-NUMBER EXPRESSION) ,regnum)))))
+	   `(begin
+	      (define (,name)
+		(rtl:make-machine-register ,regnum))
+	      (define (,(symbol name '?) expression)
+		(and (rtl:register? expression)
+		     (fix:= (rtl:register-number expression) ,regnum)))))
 	 (ill-formed-syntax form)))))
 
 (define-machine-register stack-pointer regnum:stack-pointer)
@@ -473,45 +477,8 @@ USA.
      (error "No such interpreter register" locative))))
 
 (define (rtl:constant-cost expression)
-  (let ((if-integer
-	 (lambda (value)
-	   value
-	   ;; Can this be done in fewer bytes for suitably small values?
-	   1))				; MOV immediate
-	(get-pc-cost
-	 (+ 3				; CALL
-	    4))				; POP
-	(based-reference-cost
-	 1)				; MOV r/m
-	(address-offset-cost
-	 1))				; LEA instruction
-
-    (define (if-synthesized-constant type datum)
-      (if-integer (make-non-pointer-literal type datum)))
-
-    (case (rtl:expression-type expression)
-      ((CONSTANT)
-       (let ((value (rtl:constant-value expression)))
-	 (if (object-non-pointer? value)
-	     (if-synthesized-constant (object-type value) (object-datum value))
-	     (+ get-pc-cost based-reference-cost))))
-      ((MACHINE-CONSTANT)
-       (if-integer (rtl:machine-constant-value expression)))
-      ((ENTRY:PROCEDURE ENTRY:CONTINUATION)
-       (+ get-pc-cost address-offset-cost))
-      ((ASSIGNMENT-CACHE VARIABLE-CACHE)
-       (+ get-pc-cost based-reference-cost))
-      ((OFFSET-ADDRESS BYTE-OFFSET-ADDRESS FLOAT-OFFSET-ADDRESS)
-       address-offset-cost)
-      ((CONS-POINTER)
-       (and (rtl:machine-constant? (rtl:cons-pointer-type expression))
-	    (rtl:machine-constant? (rtl:cons-pointer-datum expression))
-	    (if-synthesized-constant
-	     (rtl:machine-constant-value (rtl:cons-pointer-type expression))
-	     (rtl:machine-constant-value
-	      (rtl:cons-pointer-datum expression)))))
-      (else
-       #f))))
+  expression				; ignored
+  1)
 
 (define compiler:open-code-floating-point-arithmetic?
   #t)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,10 +36,6 @@ extern long death_blow;
 extern void get_band_parameters (unsigned long *, unsigned long *);
 
 #ifdef __WIN32__
-#  define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
-#endif
-
-#ifdef __OS2__
 #  define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
 #endif
 
@@ -113,7 +109,9 @@ termination_prefix (int code)
     {
       if (!option_batch_mode)
 	{
-	  outf_console ("\n%s.\n", (term_messages[code]));
+	  /* Pick a message "randomly" */
+	  unsigned long i = (((unsigned long) Free) >> 3) % MAX_HALT_MESSAGE;
+	  outf_console ("\n%s\n", (term_halt_messages[i]));
 	  outf_flush_console ();
 	}
     }
@@ -296,8 +294,7 @@ edwin_auto_save (void)
 	      if ((setjmp (interpreter_catch_env)) == 0)
 		{
 		  Tchannel channel;
-		  outf_error ("Auto-saving file \"%s\"\n", namestring);
-		  outf_flush_error ();
+		  outf_error_line ("Auto-saving file \"%s\"", namestring);
 		  channel = (OS_open_output_file (namestring));
 		  if (start < gap_start)
 		    OS_channel_write (channel, start, (gap_start - start));

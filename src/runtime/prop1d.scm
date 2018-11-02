@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,20 +29,22 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! population-of-1d-tables (make-population))
-  (add-secondary-gc-daemon! gc-1d-tables!))
+(define-deferred population-of-1d-tables
+  (make-serial-population/unsafe))
 
-(define (initialize-unparser!)
-  (unparser/set-tagged-pair-method! 1d-table-tag
-				    (standard-unparser-method '1D-TABLE #f)))
+(add-boot-init!
+ (lambda ()
+   (add-secondary-gc-daemon!/unsafe clean-1d-tables!)))
 
-(define population-of-1d-tables)
-
-(define (gc-1d-tables!)
-  (map-over-population! population-of-1d-tables 1d-table/clean!))
+(define (clean-1d-tables!)
+  (for-each-inhabitant population-of-1d-tables 1d-table/clean!))
 
 (define (make-1d-table)
+  (let ((table (list 1d-table-tag)))
+    (add-to-population! population-of-1d-tables table)
+    table))
+
+(define (make-1d-table/unsafe)
   (let ((table (list 1d-table-tag)))
     (add-to-population!/unsafe population-of-1d-tables table)
     table))
@@ -51,11 +53,14 @@ USA.
   (and (pair? object)
        (eq? (car object) 1d-table-tag)))
 
-(define 1d-table-tag
-  "1D table")
+(define-integrable 1d-table-tag
+  '|#[1D table]|)
 
-(define false-key
-  "false key")
+(define-integrable false-key
+  '|#[1D table false]|)
+
+(define-print-method 1d-table?
+  (standard-print-method '1d-table))
 
 (define-integrable (weak-cons car cdr)
   (system-pair-cons (ucode-type weak-cons) car cdr))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,6 +29,16 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 
+// TODO(cph): remove when LEGACY_STRING_P is removed.
+bool
+string_p (SCHEME_OBJECT object)
+{
+  return ((LEGACY_STRING_P (object))
+          || (BYTEVECTOR_P (object))
+          || ((UNICODE_STRING_P (object))
+	      && ((UNICODE_STRING_BYTES_PER_CP (object)) == 1)));
+}
+
 SCHEME_OBJECT
 allocate_string (unsigned long nbytes)
 {
@@ -83,6 +93,14 @@ char_pointer_to_string_no_gc (const char * cp)
     while ((*scan++) != '\0')
       ;
   return (memory_to_string_no_gc (((scan - 1) - cp), cp));
+}
+
+unsigned char *
+string_to_char_pointer (SCHEME_OBJECT string, unsigned long * lp)
+{
+  if (lp != 0)
+    (*lp) = (STRING_LENGTH (string));
+  return (STRING_LOC (string, 0));
 }
 
 /* Currently the strings used in symbols have type codes in the length
@@ -140,7 +158,7 @@ DEFINE_PRIMITIVE ("SET-STRING-MAXIMUM-LENGTH!", Prim_set_string_maximum_length, 
       SET_STRING_LENGTH (string, length);
     MEMORY_SET
       (string,
-       STRING_HEADER,
+       BYTEVECTOR_HEADER,
        (MAKE_OBJECT
 	(TC_MANIFEST_NM_VECTOR, ((BYTES_TO_WORDS (length + 1)) + 1))));
   }

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,20 +30,20 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! add-event-receiver! (make-receiver-modifier 'ADD-RECEIVER))
-  (set! remove-event-receiver! (make-receiver-modifier 'REMOVE-RECEIVER))
+  (set! add-event-receiver! (make-receiver-modifier 'add-receiver))
+  (set! remove-event-receiver! (make-receiver-modifier 'remove-receiver))
   unspecific)
 
 (define-structure (event-distributor
 		   (constructor make-event-distributor ())
 		   (conc-name event-distributor/))
-  (events (make-queue))
+  (events (make-serial-queue))
   (lock false)
   (receivers '()))
 
 (define (event-distributor/invoke! event-distributor . arguments)
   (enqueue! (event-distributor/events event-distributor)
-	    (cons 'INVOKE-RECEIVERS arguments))
+	    (cons 'invoke-receivers arguments))
   (process-events! event-distributor))
 
 (define (make-receiver-modifier keyword)
@@ -70,13 +70,13 @@ USA.
 	   (queue-map! (event-distributor/events event-distributor)
 	     (lambda (event)
 	       (case (car event)
-		 ((INVOKE-RECEIVERS)
+		 ((invoke-receivers)
 		  (do ((receivers
 			(event-distributor/receivers event-distributor)
 			(cdr receivers)))
 		      ((null? receivers))
 		    (apply (car receivers) (cdr event))))
-		 ((ADD-RECEIVER)
+		 ((add-receiver)
 		  (let ((receiver (cdr event))
 			(receivers
 			 (event-distributor/receivers event-distributor)))
@@ -84,7 +84,7 @@ USA.
 			(set-event-distributor/receivers!
 			 event-distributor
 			 (append! receivers (list receiver))))))
-		 ((REMOVE-RECEIVER)
+		 ((remove-receiver)
 		  (set-event-distributor/receivers!
 		   event-distributor
 		   (delv! (cdr event)

@@ -1,0 +1,379 @@
+
+db.scm,3115
+(define database-connections 31,1069
+(define *database-connection* 32,1103
+(define *user-name*)33,1137
+(define *ps-number*)34,1158
+(define *page-key*)35,1179
+(define (with-database-connection 37,1200
+(define (database-connection)52,1667
+(define (open-database-connection)59,1924
+(define (close-database)70,2321
+(define (db-run-query 77,2583
+(define debug-queries? 83,2798
+(define (db-run-cmd 85,2826
+(define (db-quote 91,2994
+(define (db-register-problem-set 105,3276
+(define (register-part-outputs 126,4011
+(define (register-output 156,4940
+(define (db-registered-problem-sets)164,5192
+(define (db-ps-problem-names 178,5580
+(define (db-problem-submitted? 190,5933
+(define (db-get-ps-structure)205,6417
+(define (ps-structure->tree 222,6932
+(define (chop-into-pieces! 235,7335
+(define (chop-off-head! 242,7557
+(define (db-previously-saved-input 254,7847
+(define (db-save-input! 265,8237
+(define (input-submission-status 290,9027
+(define (saved-inputs-query 301,9341
+(define (saved-inputs-condition 307,9555
+(define (db-previously-saved-output 314,9748
+(define (db-save-output! 326,10160
+(define (output-submission-status 346,10847
+(define (saved-outputs-query 357,11163
+(define (saved-outputs-condition 363,11380
+(define (db-get-saved-output 368,11553
+(define (db-get-persistent-value 389,12241
+(define (db-set-persistent-value! 392,12339
+(define (db-intern-persistent-value! 395,12437
+(define (db-delete-persistent-value! 398,12549
+(define (db-get-global-value 401,12639
+(define (db-set-global-value! 404,12738
+(define (db-intern-global-value! 407,12837
+(define (db-delete-global-value! 410,12950
+(define global-page-key413,13041
+(define (get-persistent-value 416,13090
+(define (set-persistent-value! 428,13424
+(define (intern-persistent-value! 451,14150
+(define (delete-persistent-value! 470,14720
+(define (persistent-value-query 474,14875
+(define (persistent-value-condition 480,15124
+(define (db-saved-submitters 487,15342
+(define (db-late-submitters 490,15443
+(define (db-marked-submitters 493,15528
+(define (db-clear-submitter 515,16171
+(define (db-clear-late-flag 525,16559
+(define (db-set-output-field 529,16744
+(define (db-known-user? 542,17147
+(define (known-user? 545,17213
+(define (guarantee-known-user 562,17646
+(define (db-known-users 566,17769
+(define (db-new-user-account 583,18248
+(define (db-get-user-password 597,18630
+(define (db-change-user-password 612,19040
+(define (db-user-real-name 618,19257
+(define (db-set-user-real-name 633,19703
+(define (db-user-enabled? 640,19981
+(define (db-user-administrator? 643,20060
+(define (db-set-user-enabled 646,20151
+(define (db-set-user-administrator 649,20245
+(define (get-user-flag 652,20351
+(define (set-user-flag 665,20736
+(define (db-encrypt-password 671,20961
+(define (db-valid-password? 686,21481
+(define char-set:password693,21826
+(define char-set:not-password697,21925
+(define (db-generate-password)700,21995
+(define (random-digit-string 705,22198
+(define (parse-problem-number 708,22314
+(define problem-number-regexp715,22596
+(define (field-list->db-string 726,22925
+
+validate-xdoc.scm,3029
+(define (count-matching-items 32,1092
+(define (validate-xdoc 37,1259
+(define (check-element 45,1544
+(define (check-element-content 59,1983
+(define (define-element-checker 87,2721
+(define element-checkers99,3268
+(define (vx:standard-attrs 102,3325
+(define (vx:container-attrs 108,3462
+(define (problem-element-name? 112,3558
+(define (answer-element-name? 116,3671
+(define-element-checker 'xdoc 121,3824
+(define-element-checker 'head 136,4426
+(define-element-checker 'due-date 138,4464
+(define-element-checker 'problem 147,4761
+(define-element-checker 'answer 156,5074
+(define-element-checker 'label 164,5269
+(define (input-element-name? 170,5367
+(define (vx:input-attrs 173,5467
+(define-element-checker 'text 177,5576
+(define-element-checker 'menu 181,5657
+(define-element-checker 'menuitem 188,5838
+(define-element-checker 'true-false 190,5880
+(define-element-checker 'checkbox 194,5967
+(define-element-checker 'radio-buttons 198,6052
+(define-element-checker 'radio-entry 204,6192
+(define (input-checker-element-name? 211,6346
+(define (vx:unary-checker-attrs 214,6460
+(define (vx:n-ary-checker-attrs 218,6576
+(define-element-checker 'check-input 222,6694
+(define-element-checker 'check-inputs 229,6936
+(define-element-checker 'number 236,7179
+(define-element-checker 'boolean 243,7414
+(define-element-checker 'menuindex 248,7554
+(define (switched-output-name? 255,7730
+(define (vx:switched-output-attrs 258,7826
+(define-element-checker 'explain 262,7935
+(define-element-checker 'hint 266,8028
+(define-element-checker 'expected-value 270,8118
+(define-element-checker 'when 274,8219
+(define-element-checker 'case 285,8520
+(define-element-checker 'refer 297,8874
+(define-element-checker 'choice 301,8975
+(define-element-checker 'default 305,9079
+(define (button-element-name? 309,9135
+(define (vx:button-attrs 312,9219
+(define-element-checker 'check-button 316,9318
+(define-element-checker 'submit-button 320,9408
+(define (vx:required-attr 326,9522
+(define (vx:optional-attr 332,9731
+(define (vx:check-attr 337,9888
+(define ((vx:tester 348,10128
+(define (vx:number-tester 353,10220
+(define (vx:index-tester 358,10347
+(define vx:cdata 364,10474
+(define vx:id 365,10532
+(define vx:idref 366,10584
+(define vx:nmtoken 367,10649
+(define vx:idrefs369,10717
+(define vx:nmtokens375,10874
+(define vx:boolean381,11033
+(define vx:style387,11171
+(define vx:url393,11262
+(define vx:number399,11343
+(define vx:nonnegative-integer402,11401
+(define vx:positive-integer405,11505
+(define vx:minute 408,11599
+(define vx:hour 409,11650
+(define vx:day 410,11697
+(define vx:month 411,11751
+(define vx:year 412,11800
+(define vx:problem-number414,11871
+(define vx:number-type419,12022
+(define vx:procedure-name427,12226
+(define (vx:content-error 430,12307
+(define (vx:error 433,12387
+(define condition-type:xdoc-validation-error436,12479
+(define xdoc-validation-error/element453,13050
+(define xdoc-validation-error/message-items456,13159
+(define error:xdoc-validation459,13280
+
+xdoc.scm,8075
+(define *in-xdoc-context?* 31,1064
+(define *xdoc-recursive?*)32,1095
+(define *xdoc-ps-number*)33,1122
+(define *xdoc-environment*)34,1148
+(define *xdoc-root*)35,1176
+(define *xdoc-late?*)36,1197
+(define *xdoc-element-properties*)37,1219
+(define *xdoc-id-map*)38,1254
+(define *xdoc-inputs*)39,1277
+(define *xdoc-outputs*)40,1300
+(define *trace-expansion-port* 41,1324
+(define-mime-handler '(43,1360
+(define (mathml-stylesheet)69,2234
+(define (pathname->ps-number 74,2372
+(define (with-xdoc-expansion-context 81,2609
+(define (trace-expansion 106,3617
+(define (untrace-expansion)110,3727
+(define (xdoc-pre-passes 118,3892
+(define (strip-xdoc-space 122,4018
+(define (save-structure-properties 141,4790
+(define (xdoc-recursive?)196,6417
+(define (xdoc-ps-number)197,6462
+(define (xdoc-part-number 199,6506
+(define (ps-info 204,6615
+(define (save-container-props 215,6971
+(define (save-element-props 227,7365
+(define (save-xdoc-id 235,7648
+(define (xdoc-db-id 243,7879
+(define (xdoc-element-containers 246,7954
+(define (xdoc-element-properties 249,8042
+(define (%xdoc-element-properties 256,8232
+(define (nearest-container 263,8448
+(define (named-element 269,8640
+(define (memoize-xdoc-inputs)275,8795
+(define (memoize-xdoc-input 280,8960
+(define (memoize-xdoc-outputs)292,9407
+(define (memoize-xdoc-output 299,9646
+(define (current-input-status 314,10163
+(define (input-submitted? 318,10271
+(define (%current-input-status 321,10349
+(define (current-inputs-status 327,10531
+(define (current-output-status 340,10957
+(define (output-submitted? 344,11067
+(define (%current-output-status 347,11147
+(define (generate-xdoc-html 355,11355
+(define (define-html-generator 372,11845
+(define (xdoc-html-generator 375,11941
+(define html-generators378,12049
+(define (generate-container-items 381,12105
+(define (generate-item 390,12360
+(define (expand-xdoc 406,12883
+(define (generate-xdoc-in-html 412,13056
+(define (generate-container-groups 423,13435
+(define (parse-container-groups 433,13709
+(define-html-generator 'xdoc492,15388
+(define-html-generator 'head511,15982
+(define-html-generator 'page-frame516,16046
+(define-html-generator 'due-date520,16132
+(define (due-date->decoded-time 532,16453
+(define (find-xdoc-due-date 546,16801
+(define (xdoc-due-date-attributes 551,16946
+(define (xdoc-due-date-string 558,17136
+(define (due-date-in-past?)578,17696
+(define (decoded-time-in-past? 583,17819
+(define-html-generator 'problem586,17918
+(define (generate-problem-body 624,19125
+(define (problem-group-type 642,19657
+(define (problem-separator? 650,19915
+(define (generate-answer-block 660,20228
+(define (append-to-answer-block 675,20673
+(define *answer-block-appendixes*)680,20807
+(define (generate-answer-row 682,20843
+(define (generate-answer-item 686,20949
+(define-html-generator 'label703,21443
+(define (define-xdoc-input 709,21537
+(define (xdoc-active-input-status 713,21705
+(define (xdoc-active-element-request 721,21977
+(define (canonicalize-xdoc-input-value 742,22708
+(define xdoc-input-canonicalizers753,23094
+(define-xdoc-input 'text756,23160
+(define-xdoc-input 'menu769,23515
+(define menu-dummy-string790,24123
+(define (xd:menu-values 793,24173
+(define-xdoc-input 'checkbox800,24379
+(define-xdoc-input 'radio-buttons811,24726
+(define (xd:radio-button-values 834,25409
+(define (define-unary-xdoc-output 843,25644
+(define (unary-xdoc-output-source 856,26122
+(define (define-n-ary-xdoc-output 860,26261
+(define (define-0-ary-xdoc-output 876,26863
+(define (xdoc-output-checkable? 883,27106
+(define (xdoc-output-expected-value 890,27293
+(define (xdoc-active-output-status 893,27389
+(define (%xdoc-output-definition 900,27657
+(define xdoc-output-definitions906,27859
+(define-unary-xdoc-output 'check-input 909,27924
+(define-n-ary-xdoc-output 'check-inputs 915,28111
+(define-0-ary-xdoc-output 'programmed-output 921,28299
+(define-unary-xdoc-output 'number 928,28508
+(define (close-enough? 942,28905
+(define-unary-xdoc-output 'boolean 952,29159
+(define-html-generator 'explain987,30235
+(define-html-generator 'hint993,30409
+(define (switched-content-selector 999,30573
+(define-html-generator 'expected-value1031,31528
+(define-html-generator 'when1043,31969
+(define (define-when-condition 1054,32374
+(define when-conditions1057,32474
+(define-when-condition 'submitted1060,32530
+(define-when-condition 'not-submitted1064,32623
+(define-when-condition 'confirming-submission1068,32726
+(define (descendant-outputs-submitted? 1072,32824
+(define (confirming-submission? 1077,32977
+(define (descendant-outputs 1084,33178
+(define (xdoc-outputs-submitted? 1087,33263
+(define-html-generator 'case1098,33557
+(define (content-selector-source 1132,34643
+(define-html-generator 'submit1143,34936
+(define (descendant-inputs 1168,35680
+(define (find-attribute 1173,35790
+(define (%find-attribute 1182,36033
+(define (symbol-attribute 1187,36151
+(define (id-attribute 1192,36291
+(define (idref-attribute 1197,36427
+(define (ids-attribute 1202,36551
+(define (nmtokens-attribute 1207,36716
+(define (attribute-value->list 1212,36888
+(define (boolean-attribute 1215,36974
+(define (numeric-attribute 1221,37185
+(define (int0-attribute 1229,37430
+(define (int1-attribute 1232,37538
+(define (complex-attribute 1235,37643
+(define (index0-attribute 1238,37736
+(define (index1-attribute 1246,37924
+(define (procedure-attribute 1254,38110
+(define (procedure-name-attribute 1259,38280
+(define (xdoc-procedure-name? 1265,38510
+(define (xdoc-attributes 1270,38648
+(define (preserved-attributes 1274,38780
+(define (merge-attributes 1277,38878
+(define (preserved-attribute? 1290,39213
+(define (merged-attribute? 1298,39473
+(define (merge-attribute 1302,39580
+(define (class-union 1311,39885
+(define (find-named-child 1332,40397
+(define (find-child 1337,40530
+(define (%find-child 1340,40626
+(define (%find-result 1346,40771
+(define (xml-element-text 1351,40892
+(define (find-named-descendant 1361,41169
+(define (find-descendant 1366,41308
+(define (find-descendant-or-self 1369,41414
+(define (matching-descendants 1372,41536
+(define (matching-descendants-or-self 1375,41638
+(define (%find-descendant 1378,41756
+(define (%find-descendant-or-self 1385,41991
+(define (%matching-descendants 1390,42114
+(define (%matching-descendants-or-self 1400,42426
+(define xdoc-uri1409,42633
+(define (xdoc-name? 1412,42698
+(define (xdoc-name=1415,42759
+(define (xdoc-element? 1419,42857
+(define (xdoc-element-name 1423,42960
+(define (xdoc-element-name=1429,43124
+(define (xdoc-content-type 1433,43246
+(define xdoc-content-types1439,43447
+(define (xdoc-element-type 1442,43506
+(define xdoc-element-types1448,43707
+(define (xdoc-container? 1451,43766
+(define (xdoc-internal-container? 1456,43912
+(define (xdoc-input? 1459,44005
+(define (xdoc-output? 1462,44072
+(define (xdoc-content-selector? 1465,44141
+(define (xdoc-action? 1468,44230
+(define-syntax define-element1471,44300
+(define-element xdoc 1491,44969
+(define-element head 1492,45017
+(define-element page-frame 1493,45054
+(define-element due-date 1494,45097
+(define-element problem 1495,45138
+(define-element answer 1496,45188
+(define-element label 1497,45239
+(define-element text 1499,45278
+(define-element menu 1500,45312
+(define-element menuitem 1501,45348
+(define-element checkbox 1502,45388
+(define-element radio-buttons 1503,45426
+(define-element radio-entry 1504,45471
+(define-element check-input 1506,45516
+(define-element check-inputs 1507,45558
+(define-element programmed-output 1508,45601
+(define-element number 1509,45649
+(define-element boolean 1510,45686
+(define-element menuindex 1511,45724
+(define-element explain 1513,45765
+(define-element hint 1514,45813
+(define-element expected-value 1515,45858
+(define-element when 1516,45913
+(define-element case 1517,45958
+(define-element refer 1518,46005
+(define-element choice 1519,46043
+(define-element default 1520,46082
+(define-element submit 1522,46123
+(define (xd:true-false 1524,46161
+(define (xd:true-false? 1529,46366
+
+xdoc.pkg,221
+MIT/GNU Scheme is free software;10,317
+the Free Software Foundation;12,457
+the Free Software Foundation; either version 2 of the License,12,457
+the Free Software Foundation; either version 2 of the License, or 12,457
+
+load.scm,0
+
+compile.scm,0

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -182,7 +182,7 @@ USA.
 		    (eq? 'NO-INITIALIZE-INSTANCE init-arg-names))
 		#f)
 	       ((and (list? init-arg-names)
-		     (for-all? init-arg-names symbol?))
+		     (every symbol? init-arg-names))
 		(length init-arg-names))
 	       ((exact-nonnegative-integer? init-arg-names)
 		init-arg-names)
@@ -306,15 +306,15 @@ USA.
 
 (define (make-initialization class arg-slots)
   (let ((if-slots
-	 (list-transform-positive (class-slots class)
-	   (lambda (slot)
-	     (and (slot-initializer slot)
-		  (not (memq slot arg-slots))))))
+	 (filter (lambda (slot)
+		   (and (slot-initializer slot)
+			(not (memq slot arg-slots))))
+		 (class-slots class)))
 	(iv-slots
-	 (list-transform-positive (class-slots class)
-	   (lambda (slot)
-	     (and (slot-initial-value? slot)
-		  (not (memq slot arg-slots)))))))
+	 (filter (lambda (slot)
+		   (and (slot-initial-value? slot)
+			(not (memq slot arg-slots))))
+		 (class-slots class))))
     (let ((if-n (length if-slots))
 	  (iv-n (length iv-slots))
 	  (if-indexes (map slot-index if-slots))
@@ -330,10 +330,11 @@ USA.
 
 (define (instance? object)
   (and (tagged-vector? object)
-       (class? (dispatch-tag-contents (tagged-vector-tag object)))))
+       (class-tag? (tagged-vector-tag object))))
+(register-predicate! instance? 'instance '<= tagged-vector?)
 
 (define (instance-class instance)
-  (dispatch-tag-contents (tagged-vector-tag instance)))
+  (dispatch-tag->class (tagged-vector-tag instance)))
 
 (define (instance-predicate specializer)
   (if (not (specializer? specializer))

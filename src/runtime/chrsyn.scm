@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,23 +43,23 @@ USA.
    (vector-copy
     (if (or (default-object? table) (not table))
 	(char-syntax-table/entries standard-char-syntax-table)
-	(guarantee-char-syntax-table table 'MAKE-CHAR-SYNTAX-TABLE)))))
+	(guarantee-char-syntax-table table 'make-char-syntax-table)))))
 
 (define (get-char-syntax table char)
-  (vector-ref (guarantee-char-syntax-table table 'GET-CHAR-SYNTAX)
-	      (char->ascii char)))
+  (vector-ref (guarantee-char-syntax-table table 'get-char-syntax)
+	      (char->integer char)))
 
 (define (set-char-syntax! table char string)
-  (let ((entries (guarantee-char-syntax-table table 'SET-CHAR-SYNTAX!))
+  (let ((entries (guarantee-char-syntax-table table 'set-char-syntax!))
 	(entry (string->char-syntax string)))
     (cond ((char? char)
-	   (vector-set! entries (char->ascii char) entry))
+	   (vector-set! entries (char->integer char) entry))
 	  ((char-set? char)
 	   (for-each (lambda (char)
-		       (vector-set! entries (char->ascii char) entry))
+		       (vector-set! entries (char->integer char) entry))
 		     (char-set-members char)))
 	  (else
-	   (error:wrong-type-argument char "character" 'SET-CHAR-SYNTAX!)))))
+	   (error:wrong-type-argument char "character" 'set-char-syntax!)))))
 
 (define standard-char-syntax-table)
 
@@ -110,14 +110,14 @@ USA.
   (string->char-syntax string->syntax-entry))
 
 (define (char-syntax->string entry)
-  (guarantee-char-syntax entry 'CHAR-SYNTAX->STRING)
+  (guarantee-char-syntax entry 'char-syntax->string)
   (let ((code (fix:and #xf entry)))
     (string-append
      (vector-ref char-syntax-codes code)
      (let ((match (fix:and #xff (fix:lsh entry -4))))
        (if (zero? match)
 	   " "
-	   (string (ascii->char match))))
+	   (string (integer->char match))))
      (let ((cbits (fix:and #xFF (fix:lsh entry -12))))
        (string-append
 	(if (fix:= 0 (fix:and #x40 cbits)) "" "1")
@@ -145,27 +145,56 @@ USA.
 		(fix:<= (fix:and #xf object) 12)))
       (error:bad-range-argument object procedure)))
 
-(define char-syntax-codes
-  '#(" " "." "w" "_" "(" ")" "'" "\"" "$" "\\" "/" "<" ">"))
-
-(define (substring-find-next-char-of-syntax string start end table code)
-  (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR-OF-SYNTAX)
-  (let loop ((index start))
-    (and (fix:< index end)
-	 (if (char=? code (char->syntax-code table (string-ref string index)))
-	     index
-	     (loop (fix:+ index 1))))))
-
-(define (substring-find-next-char-not-of-syntax string start end table code)
-  (guarantee-substring string start end
-		       'SUBSTRING-FIND-NEXT-CHAR-NOT-OF-SYNTAX)
-  (let loop ((index start))
-    (and (fix:< index end)
-	 (if (char=? code (char->syntax-code table (string-ref string index)))
-	     (loop (fix:+ index 1))
-	     index))))
+(define (char-syntax-code? object)
+  (and (char? object)
+       (let ((n (vector-length char-syntax-codes)))
+	 (let loop ((i 0))
+	   (and (fix:< i n)
+		(or (char=? (string-ref (vector-ref char-syntax-codes i) 0)
+			    object)
+		    (loop (fix:+ i 1))))))))
 
 (define (char->syntax-code table char)
   (string-ref (vector-ref char-syntax-codes
 			  (fix:and #xf (get-char-syntax table char)))
 	      0))
+
+(define char-syntax-codes
+  '#(" " "." "w" "_" "(" ")" "'" "\"" "$" "\\" "/" "<" ">"))
+
+(define (substring-find-next-char-of-syntax string start end table code)
+  (guarantee 8-bit-string? string 'substring-find-next-char-of-syntax)
+  (let ((index
+	 (string-find-first-index (syntax-code-predicate code table)
+				  (string-slice string start end))))
+    (and index
+	 (fix:+ start index))))
+
+(define (substring-find-next-char-not-of-syntax string start end table code)
+  (guarantee 8-bit-string? string 'substring-find-next-char-not-of-syntax)
+  (let ((index
+	 (string-find-first-index (let ((pred
+					 (syntax-code-predicate code table)))
+				    (lambda (char)
+				      (not (pred char))))
+				  (string-slice string start end))))
+    (and index
+	 (fix:+ start index))))
+
+(define (syntax-code-predicate code #!optional table)
+  (guarantee char-syntax-code? code 'syntax-code-predicate)
+  (let ((entries
+	 (char-syntax-table/entries
+	  (if (default-object? table)
+	      standard-char-syntax-table
+	      (begin
+		(guarantee char-syntax-table? table 'syntax-code-predicate)
+		table)))))
+    (lambda (char)
+      (let ((cp (char->integer char)))
+	(and (fix:< cp #x100)
+	     (char=? (string-ref (vector-ref char-syntax-codes
+					     (fix:and #x0F
+						      (vector-ref entries cp)))
+				 0)
+		     code))))))

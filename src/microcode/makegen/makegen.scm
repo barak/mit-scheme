@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,10 +40,10 @@ USA.
 	 (map (lambda (pathname)
 		(cons (pathname-name pathname)
 		      (read-file pathname)))
-	      (keep-matching-items (directory-read "makegen/")
-		(lambda (pathname)
-		  (re-string-match "^files-.+\\.scm$"
-				   (file-namestring pathname)))))))
+	      (filter (lambda (pathname)
+			(re-string-match "^files-.+\\.scm$"
+					 (file-namestring pathname)))
+		      (directory-read "makegen/")))))
     (call-with-input-file "makegen/Makefile.in.in"
       (lambda (input)
 	(call-with-output-file "Makefile.in"
@@ -121,16 +121,16 @@ USA.
        (append-map (lambda (spec)
 		     (let ((dir (pathname-as-directory (car spec))))
 		       (if (file-directory? dir)
-			   (delete-matching-items
-			       (directory-read (merge-pathnames "*.scm" dir))
-			     (lambda (path)
-			       (member (pathname-name path) (cdr spec))))
+			   (remove (lambda (path)
+				     (member (pathname-name path) (cdr spec)))
+				   (directory-read
+				    (merge-pathnames "*.scm" dir)))
 			   (begin
 			     (warn "Can't read directory:" dir)
 			     '()))))
 		   specs)))
 
-(define os-pkd-suffixes '("unx" "w32" "os2"))
+(define os-pkd-suffixes '("unx"))
 
 (define (package-description-files descriptor)
   (receive (filename suffixes)
@@ -194,9 +194,9 @@ USA.
 (define (maybe-update-dependencies deps-filename source-files)
   (if (let ((mtime (file-modification-time deps-filename)))
 	(or (not mtime)
-	    (there-exists? source-files
-	      (lambda (source-file)
-		(> (file-modification-time source-file) mtime)))))
+	    (any (lambda (source-file)
+		   (> (file-modification-time source-file) mtime))
+		 source-files)))
       (let ((rules (map generate-rule source-files)))
 	(call-with-output-file deps-filename
 	  (lambda (output)
@@ -233,5 +233,5 @@ USA.
 	(error "Missing rule target:" rule))
     (cons* (string-head (car items) (- (string-length (car items)) 1))
 	   (cadr items)
-	   (sort (delete-matching-items (cddr items) pathname-absolute?)
+	   (sort (remove pathname-absolute? (cddr items))
 		 string<?))))

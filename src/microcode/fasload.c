@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -565,34 +565,34 @@ DEFINE_GC_OBJECT_HANDLER (fasload_cc_entry)
 static void *
 relocate_address (void * vaddr)
 {
-  byte_t * caddr = vaddr;
-  byte_t * result;
+  uint8_t * caddr = vaddr;
+  uint8_t * result;
 
-  if ((caddr >= ((byte_t *) (FASLHDR_HEAP_START (fh))))
-      && (caddr < ((byte_t *) (FASLHDR_HEAP_END (fh)))))
+  if ((caddr >= ((uint8_t *) (FASLHDR_HEAP_START (fh))))
+      && (caddr < ((uint8_t *) (FASLHDR_HEAP_END (fh)))))
     result
-      = (((byte_t *) new_heap_start)
-	 + (caddr - ((byte_t *) (FASLHDR_HEAP_START (fh)))));
-  else if ((caddr >= ((byte_t *) (FASLHDR_CONSTANT_START (fh))))
-	   && (caddr < ((byte_t *) (FASLHDR_CONSTANT_END (fh)))))
+      = (((uint8_t *) new_heap_start)
+	 + (caddr - ((uint8_t *) (FASLHDR_HEAP_START (fh)))));
+  else if ((caddr >= ((uint8_t *) (FASLHDR_CONSTANT_START (fh))))
+	   && (caddr < ((uint8_t *) (FASLHDR_CONSTANT_END (fh)))))
     result
-      = (((byte_t *) new_constant_start)
-	 + (caddr - ((byte_t *) (FASLHDR_CONSTANT_START (fh)))));
-  else if ((caddr >= ((byte_t *) (FASLHDR_UTILITIES_START (fh))))
-	   && (caddr < ((byte_t *) (FASLHDR_UTILITIES_END (fh)))))
+      = (((uint8_t *) new_constant_start)
+	 + (caddr - ((uint8_t *) (FASLHDR_CONSTANT_START (fh)))));
+  else if ((caddr >= ((uint8_t *) (FASLHDR_UTILITIES_START (fh))))
+	   && (caddr < ((uint8_t *) (FASLHDR_UTILITIES_END (fh)))))
     result
-      = (((byte_t *) new_utilities)
-	 + (caddr - ((byte_t *) (FASLHDR_UTILITIES_START (fh)))));
+      = (((uint8_t *) new_utilities)
+	 + (caddr - ((uint8_t *) (FASLHDR_UTILITIES_START (fh)))));
   else if (ADDRESS_IN_STACK_REGION_P (caddr,
-				      ((byte_t *) (FASLHDR_STACK_START (fh))),
-				      ((byte_t *) (FASLHDR_STACK_END (fh)))))
+				      ((uint8_t *) (FASLHDR_STACK_START (fh))),
+				      ((uint8_t *) (FASLHDR_STACK_END (fh)))))
     result
       = (N_PUSHED_TO_SP
 	 ((SP_TO_N_PUSHED (caddr,
-			   ((byte_t *) (FASLHDR_STACK_START (fh))),
-			   ((byte_t *) (FASLHDR_STACK_END (fh))))),
-	  ((byte_t *) new_stack_start),
-	  ((byte_t *) new_stack_end)));
+			   ((uint8_t *) (FASLHDR_STACK_START (fh))),
+			   ((uint8_t *) (FASLHDR_STACK_END (fh))))),
+	  ((uint8_t *) new_stack_start),
+	  ((uint8_t *) new_stack_end)));
   else
     {
       outf_fatal ("Pointer out of range: %#lx\n", ((unsigned long) caddr));

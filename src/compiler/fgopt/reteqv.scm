@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,19 +41,17 @@ USA.
       return-class))
    (append-map
     (lambda (source)
-      (list-transform-positive
-	  (node-equivalence-classes
-	   (gmap
-	    (eq-set-adjoin
-	     source
-	     (list-transform-positive (lvalue-forward-links source)
-	       lvalue/unique-source))
-	    lvalue-applications
-	    eq-set-union)
-	   return=?)
-	(lambda (class)
-	  (not (null? (cdr class))))))
-    (gmap (list-transform-positive lvalues continuation-variable?)
+      (filter (lambda (class)
+		(not (null? (cdr class))))
+	      (node-equivalence-classes
+	       (gmap
+		(eq-set-adjoin
+		 source
+		 (filter lvalue/unique-source (lvalue-forward-links source)))
+		lvalue-applications
+		eq-set-union)
+	       return=?)))
+    (gmap (filter continuation-variable? lvalues)
       lvalue/unique-source
       (lambda (source sources)
 	(if (and source (not (memq source sources)))
@@ -76,9 +74,9 @@ USA.
 		       (begin
 			 (node-mark! node)
 			 (let ((class
-				(list-search-positive classes
-				  (lambda (class)
-				    (node=? node (car class))))))
+				(find (lambda (class)
+					(node=? node (car class)))
+				      classes)))
 			   (if class
 			       (set-cdr! class (cons node (cdr class)))
 			       (begin

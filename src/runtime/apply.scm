@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,6 +33,16 @@ USA.
 ;;;  so there is a binary (primitive) version of apply installed
 ;;;  at boot time, and this code replaces it.
 
+(add-boot-init!
+ (lambda ()
+   (set! apply
+	 (make-arity-dispatched-procedure
+	  apply-entity-procedure
+	  (lambda () (error:wrong-number-of-arguments apply '(1 . #f) '()))
+	  (lambda (f) (f))
+	  apply-2))
+   unspecific))
+
 (define (apply-2 f a0)
   (let ((fail (lambda () (error "apply: Improper argument list" a0))))
     (let-syntax
@@ -48,22 +58,22 @@ USA.
 			(clause clause)
 			(clauses clauses)
 			(free '()))
-		     `(COND ((PAIR? ,lv)
+		     `(cond ((pair? ,lv)
 			     ,(if (pair? (cdr clauses))
 				  (let ((av (car clause))
-					(lv* (make-synthetic-identifier 'L)))
-				    `(LET ((,av (CAR ,lv))
-					   (,lv* (CDR ,lv)))
+					(lv* (make-synthetic-identifier 'l)))
+				    `(let ((,av (car ,lv))
+					   (,lv* (cdr ,lv)))
 				       ,(walk lv*
 					      (car clauses)
 					      (cdr clauses)
 					      (cons av free))))
 				  (make-syntactic-closure environment free
 				    (cadr (car clauses)))))
-			    ((NULL? ,lv)
+			    ((null? ,lv)
 			     ,(make-syntactic-closure environment free
 				(cadr clause)))
-			    (ELSE (FAIL))))
+			    (else (fail))))
 		   (make-syntactic-closure environment '() (cadr clause))))))))
       (apply-dispatch&bind a0
 			   (v0 (f))
@@ -93,14 +103,3 @@ USA.
 		     args)
 		   (car args))
 	       '())))
-
-(define (initialize-package!)
-  (set! apply
-	(make-entity
-	 apply-entity-procedure
-	 (vector (fixed-objects-item 'ARITY-DISPATCHER-TAG)
-		 (lambda ()
-		   (error:wrong-number-of-arguments apply '(1 . #F) '()))
-		 (lambda (f) (f))
-		 apply-2)))
-  unspecific)

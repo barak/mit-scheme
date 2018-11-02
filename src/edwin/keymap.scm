@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -142,9 +142,9 @@ Previous contents of that buffer are killed first."
 	  (if (and (pair? (cdr comtabs))
 		   (comtab? (cadr comtabs))
 		   (or global?
-		       (not (there-exists? global-modes
-			      (lambda (mode)
-				(eq? (cdr comtabs) (mode-comtabs mode)))))))
+		       (not (any (lambda (mode)
+				   (eq? (cdr comtabs) (mode-comtabs mode)))
+				 global-modes))))
 	      (loop (cdr comtabs))
 	      '()))))
 
@@ -152,9 +152,9 @@ Previous contents of that buffer are killed first."
   (map (lambda (element)
 	 (cons (xkey->name (car element))
 	       (command-name-string (cdr element))))
-       (sort (list-transform-negative elements
-	       (lambda (element)
-		 (button? (car element))))
+       (sort (remove (lambda (element)
+		       (button? (car element)))
+		     elements)
 	     (lambda (a b) (xkey<? (car a) (car b))))))
 
 (define (sort-by-prefix elements)
@@ -162,9 +162,9 @@ Previous contents of that buffer are killed first."
     (let ((make-entry
 	   (lambda (prefix element)
 	     (let ((entry
-		    (list-search-positive prefix-alist
-		      (lambda (entry)
-			(string=? (car entry) prefix)))))
+		    (find (lambda (entry)
+			    (string=? (car entry) prefix))
+			  prefix-alist)))
 	       (if entry
 		   (set-cdr! entry (cons element (cdr entry)))
 		   (set! prefix-alist

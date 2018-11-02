@@ -1,0 +1,124 @@
+
+optiondb.scm,32
+(define-load-option 'PGSQL3,20
+
+pgsql.scm,4286
+(define (import-postgresql)32,1091
+(define-integrable (every-loop 102,2649
+(define (->bytes 109,2815
+(define (bytes-length 120,3154
+(define-integrable (pq-clear 125,3272
+(define-integrable (peek-cstring 128,3339
+(define-integrable (pq-cmd-status 134,3468
+(define-integrable (pq-cmd-tuples 137,3578
+(define-integrable (pq-connect-db 140,3688
+(define-integrable (pq-connect-poll 144,3830
+(define-integrable (pq-connect-start 147,3910
+(define-integrable (pq-db 151,4058
+(define-integrable (pq-end-copy 154,4134
+(define-integrable (pq-error-message 157,4206
+(define (pq-escape-bytea 160,4318
+(define (peek-memory 166,4503
+(define (free-memory 180,4971
+(define (create-memory)183,5048
+(define (pq-escape-string 192,5267
+(define-integrable (pq-exec 195,5373
+(define-integrable (pq-field-name 199,5514
+(define-integrable (pq-finish 202,5632
+(define-integrable (pq-freemem 205,5701
+(define-integrable (pq-get-is-null? 212,5877
+(define-integrable (pq-get-line 215,5997
+(define-integrable (pq-get-value 218,6093
+(define-integrable (pq-host 222,6240
+(define-integrable (pq-make-empty-pg-result 225,6320
+(define-integrable (pq-n-fields 230,6496
+(define-integrable (pq-n-tuples 233,6568
+(define-integrable (pq-options 236,6640
+(define-integrable (pq-pass 239,6745
+(define-integrable (pq-port 242,6844
+(define-integrable (pq-put-line 245,6943
+(define-integrable (pq-res-status 248,7029
+(define-integrable (pq-reset 251,7139
+(define-integrable (pq-reset-poll 254,7206
+(define-integrable (pq-reset-start 257,7282
+(define-integrable (pq-result-error-message 260,7360
+(define-integrable (pq-result-status 263,7489
+(define-integrable (pq-status 266,7571
+(define-integrable (pq-tty 269,7640
+(define (pq-unescape-bytea 272,7737
+(define-integrable (pq-user 278,7905
+(define-syntax define-enum281,8005
+(define (index->name 295,8417
+(define-enum connection-status301,8625
+(define-enum postgres-polling-status310,8844
+(define-enum exec-status317,8996
+(define pgsql-initialized? 327,9178
+(define connections)328,9209
+(define results)329,9230
+(define memories)330,9247
+(define-structure connection 332,9266
+(define-structure result 333,9303
+(define-structure memory 334,9336
+(define-syntax define-guarantee336,9369
+(define-guarantee connection 359,10243
+(define-guarantee result 360,10297
+(define (initialize-package!)362,10350
+(define condition-type:pgsql-error382,10801
+(define condition-type:pgsql-connection-error388,11000
+(define error:pgsql-connection395,11302
+(define condition-type:pgsql-query-error400,11449
+(define error:pgsql-query409,11772
+(define (write-message 414,11914
+(define error-regsexp426,12197
+(define (open-pgsql-conn 436,12423
+(define (close-pgsql-conn 453,12966
+(define (call-with-pgsql-conn 456,13059
+(define (pgsql-conn-open? 468,13345
+(define-integrable (connection->handle 472,13483
+(define (poll-pgsql-conn 475,13598
+(define (poll-pgsql-reset 479,13735
+(define-syntax define-connection-accessor483,13872
+(define-connection-accessor db)493,14203
+(define-connection-accessor user)494,14235
+(define-connection-accessor pass)495,14269
+(define-connection-accessor host)496,14303
+(define-connection-accessor port)497,14337
+(define-connection-accessor tty)498,14371
+(define-connection-accessor options)499,14404
+(define-connection-accessor reset)500,14441
+(define-connection-accessor reset-start)501,14476
+(define-connection-accessor error-message)502,14517
+(define (pgsql-conn-status 504,14561
+(define (pgsql-get-line 507,14680
+(define (pgsql-put-line 511,14815
+(define (pgsql-end-copy 514,14915
+(define (escape-pgsql-string 517,15001
+(define (encode-pgsql-bytea 527,15318
+(define (decode-pgsql-bytea 530,15381
+(define (exec-pgsql-query 533,15449
+(define (make-empty-pgsql-result 553,16053
+(define-integrable (result->handle 564,16423
+(define-syntax define-result-accessor567,16520
+(define-result-accessor result-error-message)578,16872
+(define-result-accessor n-tuples)579,16918
+(define-result-accessor n-fields)580,16952
+(define-result-accessor cmd-status)581,16986
+(define (pgsql-result-status 583,17023
+(define (pgsql-clear 587,17162
+(define (pgsql-field-name 590,17238
+(define (pgsql-get-value 593,17346
+(define (pgsql-get-is-null? 599,17535
+(define (pgsql-cmd-tuples 602,17659
+
+pgsql.pkg,253
+MIT/GNU Scheme is free software;10,317
+the Free Software Foundation;12,457
+the Free Software Foundation; either version 2 of the License,12,457
+the Free Software Foundation; either version 2 of the License, or 12,457
+	  open-pgsql-connconn51,1573
+
+pgsql-check.scm,0
+
+make.scm,0
+
+compile.scm,0

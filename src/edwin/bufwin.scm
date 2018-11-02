@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -217,7 +217,7 @@ USA.
 
 (define-integrable (%window-char->image window char)
   (vector-ref (%window-char-image-strings window)
-	      (char->ascii char)))
+	      (char->integer char)))
 
 (define-integrable (%window-point window)
   (with-instance-variables buffer-window window () point))
@@ -501,12 +501,12 @@ USA.
 (define-structure (outline
 		   (constructor %make-outline)
 		   (print-procedure
-		    (unparser/standard-method 'OUTLINE
-		      (lambda (state outline)
-			(unparse-string state "index: ")
-			(unparse-object state (outline-index-length outline))
-			(unparse-string state " y: ")
-			(unparse-object state (outline-y-size outline))))))
+		    (bracketed-print-method 'OUTLINE
+		      (lambda (outline port)
+			(write-string "index: " port)
+			(write (outline-index-length outline) port)
+			(write-string " y: " port)
+			(write (outline-y-size outline) port)))))
   ;; The number of characters in the text line.  This is exclusive of
   ;; the newlines at the line's beginning and end, if any.
   index-length
@@ -569,16 +569,16 @@ USA.
 (define-structure (o3
 		   (constructor %make-o3)
 		   (print-procedure
-		    (unparser/standard-method 'O3
-		      (lambda (state o3)
-			(unparse-string state "index: ")
-			(unparse-object state (o3-index o3))
-			(unparse-string state " y: ")
-			(unparse-object state (o3-y o3))
+		    (bracketed-print-method 'O3
+		      (lambda (o3 port)
+			(write-string "index: " port)
+			(write (o3-index o3) port)
+			(write-string " y: " port)
+			(write (o3-y o3) port)
 			(if (outline? (o3-outline o3))
 			    (begin
-			      (unparse-string state " ")
-			      (unparse-object state (o3-outline o3))))))))
+			      (write-string " " port)
+			      (write (o3-outline o3) port)))))))
   outline
   index
   y)
@@ -630,21 +630,21 @@ USA.
 
 (define (%window-line-start-index? window index)
   (or (%window-group-start-index? window index)
-      (char=? (xstring-ref (group-text (%window-group window))
-			   (fix:- (group-index->position-integrable
-				   (%window-group window)
-				   index
-				   #f)
-				  1))
+      (char=? (string-ref (group-text (%window-group window))
+			  (fix:- (group-index->position-integrable
+				  (%window-group window)
+				  index
+				  #f)
+				 1))
 	      #\newline)))
 
 (define (%window-line-end-index? window index)
   (or (%window-group-end-index? window index)
-      (char=? (xstring-ref (group-text (%window-group window))
-			   (group-index->position-integrable
-			    (%window-group window)
-			    index
-			    #t))
+      (char=? (string-ref (group-text (%window-group window))
+			  (group-index->position-integrable
+			   (%window-group window)
+			   index
+			   #t))
 	      #\newline)))
 
 (define (clip-mark-to-display window mark)

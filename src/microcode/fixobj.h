@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,11 +47,11 @@ USA.
 #define STEPPER_STATE		0x0E
 #define FIXED_OBJECTS_SLOTS	0x0F	/* Names of these slots. */
 #define FIXOBJ_FILES_TO_DELETE	0x10	/* Temporary files to delete. */
-/* #define UNUSED		0x11 */
-/* #define UNUSED		0x12 */
+#define FIXOBJ_RECORD_TAG       0x11	/* Tag identifying standard record. */
+#define FIXOBJ_RECORD_APP_INDEX 0x12	/* Index of record applicator. */
 #define DUMMY_HISTORY		0x13	/* Empty history structure. */
 #define Bignum_One              0x14    /* Cache for bignum one. */
-/* #define UNUSED		0x15 */
+#define FIXOBJ_PROXIED_RECORD_TYPES	0x15
 #define Termination_Vector	0x16    /* Names for terminations. */
 #define Termination_Proc_Vector	0x17	/* Handlers for terminations. */
 /* #define UNUSED		0x18 */
@@ -63,7 +63,7 @@ USA.
 /* #define UNUSED		0x1E */
 /* #define UNUSED		0x1F */
 #define CC_ERROR_PROCEDURE	0x20	/* Error handler for compiled code. */
-/* #define UNUSED	 	0x21 */
+/* #define UNUSED		0x21 */
 /* #define UNUSED		0x22 */
 #define Primitive_Profiling_Table 0x23	/* Table of profile counts for
 					   primitives. */
@@ -110,15 +110,8 @@ USA.
 #define CC_BKPT_PROCEDURE		0x3F /* Procedure to invoke when
 						compiled code hits a
 						breakpoint.  */
-/* #F or a vector of 4 elements:
-   - A boolean flag
-   - A vector of objects to find
-   - A vector to fill with references
-   - A boolean flag = do you want a vector of all obj heads returned
-     in this slot. If so, slot 0 will be a boolean flag indicating if
-     there may be more.  */
 
-#define GC_WABBIT_DESCRIPTOR		0x40
+/* #define GC_WABBIT_DESCRIPTOR		0x40 */
 
 #define CALLBACK_HANDLER		0x41
 
@@ -144,11 +137,11 @@ USA.
   /* 0x0E */	"stepper-state",					\
   /* 0x0F */	"microcode-fixed-objects-slots",			\
   /* 0x10 */	"files-to-delete",					\
-  /* 0x11 */	0,							\
-  /* 0x12 */	0,							\
+  /* 0x11 */	"record-dispatch-tag",					\
+  /* 0x12 */	"record-applicator-index",				\
   /* 0x13 */	"dummy-history",					\
   /* 0x14 */	"bignum-one",						\
-  /* 0x15 */	0,							\
+  /* 0x15 */	"proxied-record-types",					\
   /* 0x16 */	"microcode-terminations-vector",			\
   /* 0x17 */	"microcode-terminations-procedures",			\
   /* 0x18 */	0,							\
@@ -191,7 +184,7 @@ USA.
   /* 0x3D */	"pc-sample/prob-comp-table",				\
   /* 0x3E */	"pc-sample/ufo-table",					\
   /* 0x3F */	"compiled-code-bkpt-handler",				\
-  /* 0x40 */	"gc-wabbit-descwiptor",					\
+  /* 0x40 */	0,							\
   /* 0x41 */	"callback-handler",					\
   /* 0x42 */	0,							\
   /* 0x43 */	0,							\

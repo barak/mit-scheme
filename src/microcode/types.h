@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,7 +26,7 @@ USA.
 
 /* Type code definitions */
 
-#define TC_NULL				0x00
+#define TC_FALSE			0x00
 #define TC_LIST				0x01
 #define TC_CHARACTER			0x02
 #define	TC_SCODE_QUOTE			0x03
@@ -53,7 +53,7 @@ USA.
 #define TC_PRIMITIVE			0x18
 #define TC_SEQUENCE			0x19
 #define TC_FIXNUM			0x1A
-/* #define TC_PCOMB1			0x1B */
+#define TC_UNICODE_STRING		0x1B
 #define TC_CONTROL_POINT		0x1C
 #define TC_INTERNED_SYMBOL		0x1D
 #define TC_CHARACTER_STRING		0x1E
@@ -63,7 +63,7 @@ USA.
 #define TC_BROKEN_HEART			0x22
 #define TC_ASSIGNMENT			0x23
 #define TC_HUNK3_B			0x24
-/* #define TC_UNUSED_25			0x25 */
+#define TC_TAGGED_OBJECT		0x25
 #define TC_COMBINATION			0x26
 #define TC_MANIFEST_NM_VECTOR		0x27
 #define TC_COMPILED_ENTRY		0x28
@@ -77,7 +77,7 @@ USA.
 /* #define TC_PCOMB0			0x30 */
 #define TC_VECTOR_16B			0x31
 #define TC_REFERENCE_TRAP		0x32
-/* #define TC_UNUSED_33			0x33 */
+#define TC_BYTEVECTOR			0x33
 #define TC_CONDITIONAL			0x34
 #define TC_DISJUNCTION			0x35
 #define TC_CELL				0x36
@@ -131,7 +131,7 @@ USA.
   /* 0x18 */			"primitive",				\
   /* 0x19 */			"sequence",				\
   /* 0x1A */			"fixnum",				\
-  /* 0x1B */			0,					\
+  /* 0x1B */			"unicode-string",			\
   /* 0x1C */			"control-point",			\
   /* 0x1D */			"interned-symbol",			\
   /* 0x1e */			"string",				\
@@ -141,7 +141,7 @@ USA.
   /* 0x22 */			"broken-heart",				\
   /* 0x23 */			"assignment",				\
   /* 0x24 */			"triple",				\
-  /* 0x25 */			0,					\
+  /* 0x25 */			"tagged-object",			\
   /* 0x26 */			"combination",				\
   /* 0x27 */			"manifest-nm-vector",			\
   /* 0x28 */			"compiled-entry",			\
@@ -155,7 +155,7 @@ USA.
   /* 0x30 */			0,					\
   /* 0x31 */			"vector-16b",				\
   /* 0x32 */			"reference-trap",			\
-  /* 0x33 */			0,					\
+  /* 0x33 */			"bytevector",				\
   /* 0x34 */			"conditional",				\
   /* 0x35 */			"disjunction",				\
   /* 0x36 */			"cell",					\
@@ -172,10 +172,8 @@ USA.
 
 /* Aliases */
 
-#define TC_FALSE			TC_NULL
-#define TC_MANIFEST_VECTOR		TC_NULL
+#define TC_MANIFEST_VECTOR		TC_FALSE
 #define TC_BIT_STRING			TC_VECTOR_1B
-#define TC_VECTOR_8B			TC_CHARACTER_STRING
 #define TC_HUNK3			TC_HUNK3_B
 
 #define UNMARKED_HISTORY_TYPE		TC_HUNK3_A

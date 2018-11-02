@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -58,9 +58,9 @@ USA.
 				  (else
 				   (stack-block/external-ancestor block))))))))
 	      (and adjustment
-		   (if (for-all? (block-popping-limits block)
-			 (lambda (limit)
-			   (block-ancestor-or-self? adjustment limit)))
+		   (if (every (lambda (limit)
+				(block-ancestor-or-self? adjustment limit))
+			      (block-popping-limits block))
 		       (cons 'KNOWN adjustment)
 		       (let ((limit (block-popping-limit block)))
 			 (if limit
@@ -171,11 +171,10 @@ USA.
 	      (closure-procedure-needs-operator? procedure))
 	 (list block)
 	 '())
-     (list-transform-negative
-	 (cdr (procedure-required procedure))
-       (lambda (variable)
-	 (or (lvalue-integrated? variable)
-	     (variable-register variable))))
+     (remove (lambda (variable)
+	       (or (lvalue-integrated? variable)
+		   (variable-register variable)))
+	     (cdr (procedure-required procedure)))
      (procedure-optional procedure)
      (if (procedure-rest procedure) (list (procedure-rest procedure)) '())
      (if (and (not (procedure/closure? procedure))
@@ -187,9 +186,9 @@ USA.
   (let ((block (and (memq overwritten-block targets) overwritten-block)))
     (if (not block)
 	(lambda (subproblem)
-	  (list-transform-positive (subproblem-free-variables subproblem)
-	    (lambda (variable)
-	      (memq variable targets))))
+	  (filter (lambda (variable)
+		    (memq variable targets))
+		  (subproblem-free-variables subproblem)))
 	(lambda (subproblem)
 	  (let loop
 	      ((variables (subproblem-free-variables subproblem))
@@ -257,18 +256,17 @@ USA.
 		(add-reference-context/adjacent-parents! context blocks)))))
       (values node
 	      (map node-value
-		   (list-transform-negative
-		       (append terminal-nodes reordered-non-terms)
-		     node/noop?)))))
+		   (remove node/noop?
+			   (append terminal-nodes reordered-non-terms))))))
 
 (define (generate-assignments nodes rest)
   (cond ((null? nodes)
 	 rest)
 	((first-node-needs-temporary? nodes)
 	 (linearize-subproblem!
-	  (if (for-all? (cdr nodes)
-		(lambda (node)
-		  (subproblem-simple? (node-value node))))
+	  (if (every (lambda (node)
+		       (subproblem-simple? (node-value node)))
+		     (cdr nodes))
 	      continuation-type/register
 	      continuation-type/push)
 	  (node-value (car nodes))

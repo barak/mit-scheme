@@ -3,7 +3,8 @@
 ###     Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###         1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
 ###         2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011,
-###         2012, 2013, 2014 Massachusetts Institute of Technology
+###         2012, 2013, 2014, 2015, 2016, 2017, 2018 Massachusetts
+###         Institute of Technology
 ###
 ###     This file is part of MIT/GNU Scheme.
 ###
@@ -26,9 +27,7 @@
 #### Makefile for Scheme under Win32 compiled by Watcom C/C++
 ###  This makefile is meant to be used with Watcom make.
 
-USER_PRIM_SOURCES = # prbfish.c prgdbm.c prmd5.c prpgsql.c
-USER_PRIM_OBJECTS = # prbfish.obj prgdbm.obj prmd5.obj prpgsql.obj
-USER_LIBS = library wsock32.lib #,blowfish.lib,gdbm.lib,md5.lib,pq.lib
+USER_LIBS = library wsock32.lib
 
 CC = wcc386
 M4 = m4
@@ -289,8 +288,8 @@ utils.obj &
 vector.obj &
 wind.obj
 
-SOURCES = $(CORE_SOURCES) $(USER_PRIM_SOURCES)
-OBJECTS = $(CORE_OBJECTS) $(USER_PRIM_OBJECTS) usrdef.obj
+SOURCES = $(CORE_SOURCES)
+OBJECTS = $(CORE_OBJECTS) usrdef.obj
 SCHEME_LIB = $(USER_LIBS)
 
 scheme : scheme.exe .SYMBOLIC

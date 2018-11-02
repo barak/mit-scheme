@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
-#     Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+#     2015, 2016, 2017, 2018 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -47,7 +47,7 @@ trap clean EXIT INT TERM
 #   src/configure.ac
 #   src/etc/make-native.sh
 
-if ! "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' > /dev/null 2> /dev/null
+if ! "${MIT_SCHEME_EXE}" --batch-mode --no-init-file --eval '(%exit)' > /dev/null 2> /dev/null
 then
     cat <<EOF >&2
 *** Error in ${0}
@@ -75,14 +75,14 @@ fi
 
 . etc/functions.sh
 
-INSTALLED_SUBDIRS="cref edwin ffi imail sf sos ssp star-parser xml"
-OTHER_SUBDIRS="6001 compiler rcs runtime win32 xdoc microcode"
+INSTALLED_SUBDIRS="cref ffi sf sos ssp star-parser xml"
+PLUGIN_SUBDIRS="blowfish edwin gdbm imail pgsql mcrypt x11 x11-screen"
+OTHER_SUBDIRS="6001 compiler runtime win32 xdoc microcode"
 
 # lib
 maybe_mkdir lib
 maybe_link lib/include ../microcode
 maybe_link lib/mit-scheme.h ../microcode/pruxffi.h
-maybe_link lib/shim-config.scm ../microcode/shim-config.scm
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 
 maybe_link lib/compiler ../compiler
@@ -95,6 +95,8 @@ maybe_link lib/sf ../sf
 maybe_link lib/sos ../sos
 maybe_link lib/ssp ../ssp
 maybe_link lib/star-parser ../star-parser
+maybe_link lib/x11 ../x11
+maybe_link lib/x11-screen ../x11-screen
 maybe_link lib/xml ../xml
 
 maybe_link config.sub microcode/config.sub
@@ -103,5 +105,10 @@ maybe_link config.guess microcode/config.guess
 for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
-    (cd ${SUBDIR} && ./Setup.sh ${@:+"${@}"})
+    (cd ${SUBDIR} && ./Setup.sh ${1+"$@"})
+done
+
+for SUBDIR in ${PLUGIN_SUBDIRS}; do
+    echo "setting up ${SUBDIR}"
+    (cd ${SUBDIR} && ./autogen.sh)
 done

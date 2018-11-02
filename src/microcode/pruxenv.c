@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -163,6 +163,21 @@ The result is either a string (the variable's value),\n\
 		      ? SHARP_F
 		      : (char_pointer_to_string (variable_value)));
   }
+}
+
+DEFINE_PRIMITIVE ("GET-ENVIRONMENT", Prim_get_environment, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  char ** scan = environ;
+  int n = 0;
+  while ((*scan++) != 0)
+    n += 1;
+  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, n, true));
+  SCHEME_OBJECT * to = (VECTOR_LOC (v, 0));
+  scan = environ;
+  while ((*scan) != 0)
+    (*to++) = (char_pointer_to_string (*scan++));
+  PRIMITIVE_RETURN (v);
 }
 
 #define HOSTNAMESIZE 1024

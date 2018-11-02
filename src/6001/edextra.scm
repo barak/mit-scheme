@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -106,8 +106,6 @@ USA.
       ((WIN32)
        ((access set-focus (->environment '(win32)))
 	((access get-handle (->environment '(win32))) 1)))
-      ((OS/2)
-       (os2-screen/activate! (selected-screen)))
       (else
        (error "Unsupported graphics type:" name)))))
 
@@ -248,9 +246,9 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 
 ;;; Returns #t iff FILES all exist in DIRECTORY.
 (define (files-all-exist? files directory)
-  (for-all? files
-    (lambda (file)
-      (file-exists? (merge-pathnames directory file)))))
+  (every (lambda (file)
+	   (file-exists? (merge-pathnames directory file)))
+	 files))
 
 (define-command load-problem-set
   "Load a 6.001 problem set."
@@ -296,13 +294,15 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 		(groups/files-to-copy groups)))))
 
 (define (load-quietly pathname environment)
-  (fluid-let ((load/suppress-loading-message? #t))
+  (parameterize ((param:suppress-loading-message? #t))
     (load pathname environment)))
 
 (define (->string object)
   (if (string? object)
       object
-      (with-output-to-string (lambda () (display object)))))
+      (call-with-output-string
+	(lambda (port)
+	  (display object port)))))
 
 (define (load-ps-copy-file file source-dir dest-dir)
   (let ((source-file (merge-pathnames file source-dir))
@@ -386,7 +386,7 @@ option the file from the problem set will not be installed.
 (set! default-homedir-pathname (lambda () student-work-directory))
 
 (set! editor-can-exit? #f)
-(set! scheme-can-quit? #f)
+(set! scheme-can-suspend? #f)
 (set! paranoid-exit? #t)
 
 (set-variable! enable-transcript-buffer #t)

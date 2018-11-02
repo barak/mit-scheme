@@ -144,11 +144,10 @@ With a prefix argument, list pastes starting at a certain number."
           (else (list count)))))
 
 (define (show-lisppaste entry #!optional port)
-  (let ((port (if (default-object? port)
-                  (current-output-port)
-                  (begin
-                    (guarantee-output-port port 'SHOW-LISPPASTE)
-                    port))))
+  (let ((port
+	 (if (default-object? port)
+	     (current-output-port)
+	     (guarantee textual-output-port? port 'SHOW-LISPPASTE))))
     (receive (number time author channel title annotations content)
         (lisppaste-entry/components entry)
       (write-string "Paste " port)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -133,10 +133,10 @@ USA.
 
 (define (rtl:any-subexpression? expression predicate)
   (and (not (rtl:constant? expression))
-       (there-exists? (cdr expression)
-	 (lambda (x)
-	   (and (pair? x)
-		(predicate x))))))
+       (any (lambda (x)
+	      (and (pair? x)
+		   (predicate x)))
+	    (cdr expression))))
 
 (define (rtl:expression-contains? expression predicate)
   (let loop ((expression expression))
@@ -145,10 +145,10 @@ USA.
 
 (define (rtl:all-subexpressions? expression predicate)
   (or (rtl:constant? expression)
-      (for-all? (cdr expression)
-	(lambda (x)
-	  (or (not (pair? x))
-	      (predicate x))))))
+      (every (lambda (x)
+	       (or (not (pair? x))
+		   (predicate x)))
+	     (cdr expression))))
 
 (define (rtl:reduce-subparts expression operator initial if-expression if-not)
   (let ((remap
@@ -199,7 +199,7 @@ USA.
 	  ((rtl:register? expression)
 	   (= (rtl:register-number expression) register))
 	  ((rtl:contains-no-substitutable-registers? expression) false)
-	  (else (there-exists? (cdr expression) loop)))))
+	  (else (any loop (cdr expression))))))
 
 (define (rtl:subst-register rtl register substitute)
   (letrec
@@ -307,8 +307,8 @@ USA.
 	    y
 	    (loop (cdr x)
 		  (let ((x (car x)))
-		    (if (there-exists? y
-			  (lambda (y)
-			    (rtl:expression=? x y)))
+		    (if (any (lambda (y)
+			       (rtl:expression=? x y))
+			     y)
 			y
 			(cons x y))))))))

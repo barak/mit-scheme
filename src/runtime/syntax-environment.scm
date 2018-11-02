@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,243 +28,286 @@ USA.
 
 (declare (usual-integrations))
 
-(define-record-type <syntactic-environment>
-    (make-senv ops state)
-    syntactic-environment?
-  (ops senv-ops)
-  (state senv-state))
+(define (runtime-environment->syntactic env)
+  (cond ((interpreter-environment? env) (%top-level-runtime-senv env))
+	((environment? env) (%internal-runtime-senv env))
+	(else (error:not-a environment? env 'runtime-environment->syntactic))))
 
-(define-guarantee syntactic-environment "syntactic environment")
+(define (senv->runtime senv)
+  ((senv-get-runtime senv)))
 
-(define-record-type <senv-ops>
-    (make-senv-ops type lookup define rename ->environment)
-    senv-ops?
-  (type senv-ops:type)
-  (lookup senv-ops:lookup)
-  (define senv-ops:define)
-  (rename senv-ops:rename)
-  (->environment senv-ops:->environment))
+(define (senv-top-level? senv)
+  (eq? 'top-level ((senv-get-type senv))))
 
-(define (->syntactic-environment object #!optional caller)
-  (cond ((environment? object)
-	 (runtime-environment->syntactic-environment object))
-	((syntactic-environment? object)
-	 object)
+(define ((id-dispatcher handle-raw caller) identifier senv)
+  (cond ((raw-identifier? identifier)
+	 (handle-raw identifier senv))
+	((closed-identifier? identifier)
+	 (handle-raw (syntactic-closure-form identifier)
+		     (syntactic-closure-senv identifier)))
 	(else
-	 (error:not-syntactic-environment object caller))))
+	 (error:not-a identifier? identifier caller))))
 
-(define (senv-type senv)
-  ((senv-ops:type (senv-ops senv)) (senv-state senv)))
+(define lookup-identifier
+  (id-dispatcher (lambda (identifier senv)
+		   (or ((senv-lookup senv) identifier)
+		       (var-item identifier)))
+		 'lookup-identifier))
 
-(define (syntactic-environment/top-level? senv)
-  (let ((type (senv-type senv)))
-    (or (eq? type 'top-level)
-	(eq? type 'runtime-top-level))))
+(define reserve-identifier
+  (id-dispatcher (lambda (identifier senv)
+		   ((senv-store senv) identifier (reserved-name-item)))
+		 'reserve-identifier))
 
-(define (syntactic-environment/lookup senv name)
-  ((senv-ops:lookup (senv-ops senv)) (senv-state senv) name))
+(define (bind-keyword identifier senv item)
+  (guarantee keyword-item? item 'bind-keyword)
+  ((id-dispatcher (lambda (identifier senv)
+		    ((senv-store senv) identifier item))
+		  'bind-keyword)
+   identifier
+   senv))
 
-(define (syntactic-environment/define senv name item)
-  ((senv-ops:define (senv-ops senv)) (senv-state senv) name item))
+(define bind-variable
+  (id-dispatcher (lambda (identifier senv)
+		   (let ((rename ((senv-rename senv) identifier)))
+		     ((senv-store senv) identifier (var-item rename))
+		     rename))
+		 'bind-variable))
 
-(define (syntactic-environment/rename senv name)
-  ((senv-ops:rename (senv-ops senv)) (senv-state senv) name))
+(define-record-type <syntactic-environment>
+    (make-senv get-type get-runtime lookup store rename describe)
+    syntactic-environment?
+  (get-type senv-get-type)
+  (get-runtime senv-get-runtime)
+  (lookup senv-lookup)
+  (store senv-store)
+  (rename senv-rename)
+  (describe senv-describe))
 
-(define (syntactic-environment->environment senv)
-  ((senv-ops:->environment (senv-ops senv)) (senv-state senv)))
+(define-print-method syntactic-environment?
+  (standard-print-method 'syntactic-environment
+    (lambda (senv)
+      (list ((senv-get-type senv))))))
 
-(define (bind-variable! senv name)
-  (let ((rename (syntactic-environment/rename senv name)))
-    (syntactic-environment/define senv name (make-variable-item rename))
-    rename))
+(define-pp-describer syntactic-environment?
+  (lambda (senv)
+    ((senv-describe senv))))
 
-;;; Null syntactic environments signal an error for any operation.
-;;; They are used as the definition environment for expressions (to
-;;; prevent illegal use of definitions) and to seal off environments
-;;; used in magic keywords.
+;;; Runtime syntactic environments are wrappers around runtime environments.
 
-(define null-senv-ops
-  (make-senv-ops
-   (lambda (state)
-     state
-     'null)
-   (lambda (state name)
-     state
-     (error "Can't lookup name in null syntactic environment:" name))
-   (lambda (state name item)
-     state
-     (error "Can't bind name in null syntactic environment:" name item))
-   (lambda (state name)
-     state
-     (error "Can't rename name in null syntactic environment:" name))
-   (lambda (state)
-     state
-     (error "Can't evaluate in null syntactic environment."))))
+;;; Wrappers around top-level runtime environments.
+(define (%top-level-runtime-senv env)
+  (let ((bound '()))
 
-(define null-syntactic-environment
-  (make-senv null-senv-ops unspecific))
+    (define (get-type)
+      'top-level)
 
-;;; Runtime environments can be used to look up keywords, but can't be
-;;; modified.
+    (define (get-runtime)
+      env)
 
-(define (runtime-environment->syntactic-environment env)
-  (guarantee-environment env 'environment->syntactic-environment)
-  (make-senv runtime-senv-ops env))
+    (define (lookup identifier)
+      (let ((binding (assq identifier bound)))
+	(if binding
+	    (cdr binding)
+	    (environment-lookup-macro env identifier))))
 
-(define runtime-senv-ops
-  (make-senv-ops
-   (lambda (env)
-     (if (interpreter-environment? env) 'runtime-top-level 'runtime))
-   (lambda (env name)
-     (and (symbol? name)
-	  (let ((item (environment-lookup-macro env name)))
-	    (if (procedure? item)
-		;; **** Kludge to support bootstrapping.
-		(non-hygienic-macro-transformer->expander item env)
-		item))))
-   (lambda (env name item)
-     (environment-define-macro env name item))
-   (lambda (env name)
-     env
-     (rename-top-level-identifier name))
-   (lambda (env)
-     env)))
+    (define (store identifier item)
+      (let ((binding (assq identifier bound)))
+	(if binding
+	    (set-cdr! binding item)
+	    (begin
+	      (set! bound (cons (cons identifier item) bound))
+	      unspecific))))
+
+    (define (rename identifier)
+      identifier)
+
+    (define (describe)
+      `((env ,env)
+	(bound ,bound)))
+
+    (make-senv get-type get-runtime lookup store rename describe)))
+
+;;; Wrappers around internal runtime environments.
+(define (%internal-runtime-senv env)
+
+  (define (get-type)
+    'internal-runtime)
+
+  (define (get-runtime)
+    env)
+
+  (define (lookup identifier)
+    (environment-lookup-macro env identifier))
+
+  (define (store identifier item)
+    (error "Can't bind in non-top-level runtime environment:" identifier item))
+
+  (define (rename identifier)
+    (error "Can't rename in non-top-level runtime environment:" identifier))
+
+  (define (describe)
+    `((env ,env)))
+
+  (make-senv get-type get-runtime lookup store rename describe))
 
-;;; Top-level syntactic environments represent top-level environments.
-;;; They are always layered over a real syntactic environment.
+;;; Keyword environments are used to make keywords that represent items.
 
-(define (make-top-level-syntactic-environment parent)
-  (guarantee-syntactic-environment parent 'make-top-level-syntactic-environment)
-  (if (not (let ((type (senv-type parent)))
-	     (or (eq? type 'top-level)
-		 (eq? type 'runtime-top-level)
-		 (eq? type 'null))))
-      (error:bad-range-argument parent "top-level syntactic environment"
-				'make-top-level-syntactic-environment))
-  (make-senv tl-senv-ops (make-tl-state parent '())))
+(define (make-keyword-senv name item)
 
-(define-record-type <tl-state>
-    (make-tl-state parent bound)
-    tl-state?
-  (parent tl-state-parent)
-  (bound tl-state-bound set-tl-state-bound!))
+  (define (get-type)
+    'keyword)
 
-(define tl-senv-ops
-  (make-senv-ops
-   (lambda (state)
-     state
-     'top-level)
-   (lambda (state name)
-     (let ((binding (assq name (tl-state-bound state))))
-       (if binding
-	   (cdr binding)
-	   (syntactic-environment/lookup (tl-state-parent state) name))))
-   (lambda (state name item)
-     (let ((bound (tl-state-bound state)))
-       (let ((binding (assq name bound)))
-	 (if binding
-	     (set-cdr! binding item)
-	     (set-tl-state-bound! state (cons (cons name item) bound))))))
-   (lambda (state name)
-     state
-     (rename-top-level-identifier name))
-   (lambda (state)
-     (syntactic-environment->environment (tl-state-parent state)))))
-
+  (define (get-runtime)
+    (error "Can't evaluate in keyword environment."))
+
+  (define (lookup identifier)
+    (and (eq? name identifier)
+	 item))
+
+  (define (store identifier item)
+    (error "Can't bind in keyword environment:" identifier item))
+
+  (define (rename identifier)
+    (error "Can't rename in keyword environment:" identifier))
+
+  (define (describe)
+    `((name ,name)
+      (item ,item)))
+
+  (guarantee raw-identifier? name 'make-keyword-environment)
+  (guarantee keyword-item? item 'make-keyword-environment)
+  (make-senv get-type get-runtime lookup store rename describe))
+
 ;;; Internal syntactic environments represent environments created by
 ;;; procedure application.
 
-(define (make-internal-syntactic-environment parent)
-  (guarantee-syntactic-environment parent 'make-internal-syntactic-environment)
-  (make-senv internal-senv-ops
-	     (make-internal-state parent '() '() (make-rename-id))))
+(define (make-internal-senv parent)
+  (guarantee syntactic-environment? parent 'make-internal-senv)
+  (let ((bound '())
+	(free '())
+	(get-runtime (senv-get-runtime parent))
+	(rename (make-local-identifier-renamer)))
 
-(define-record-type <internal-state>
-    (make-internal-state parent bound free rename-state)
-    internal-state?
-  (parent internal-state-parent)
-  (bound internal-state-bound set-internal-state-bound!)
-  (free internal-state-free set-internal-state-free!)
-  (rename-state internal-state-rename-state))
+    (define (get-type)
+      'internal)
 
-(define internal-senv-ops
-  (make-senv-ops
-   (lambda (state)
-     state
-     'internal)
-   (lambda (state name)
-     (let ((binding
-	    (or (assq name (internal-state-bound state))
-		(assq name (internal-state-free state)))))
-       (if binding
-	   (cdr binding)
-	   (let ((item
-		  (syntactic-environment/lookup (internal-state-parent state)
-						name)))
-	     (set-internal-state-free! state
-				       (cons (cons name item)
-					     (internal-state-free state)))
-	     item))))
-   (lambda (state name item)
-     (cond ((assq name (internal-state-bound state))
-	    => (lambda (binding)
-		 (set-cdr! binding item)))
-	   ((assq name (internal-state-free state))
-	    (if (reserved-name-item? item)
-		(syntax-error "Premature reference to reserved name:" name)
-		(error "Can't define name; already free:" name)))
-	   (else
-	    (set-internal-state-bound! state
-				       (cons (cons name item)
-					     (internal-state-bound state))))))
-   (lambda (state name)
-     (rename-identifier name (internal-state-rename-state state)))
-   (lambda (state)
-     (syntactic-environment->environment (internal-state-parent state)))))
+    (define (lookup identifier)
+      (let ((binding
+	     (or (assq identifier bound)
+		 (assq identifier free))))
+	(if binding
+	    (cdr binding)
+	    (let ((item ((senv-lookup parent) identifier)))
+	      (set! free (cons (cons identifier item) free))
+	      item))))
+
+    (define (store identifier item)
+      (cond ((assq identifier bound)
+	     => (lambda (binding)
+		  (set-cdr! binding item)))
+	    ((assq identifier free)
+	     (error "Can't define name; already free:" identifier))
+	    (else
+	     (set! bound (cons (cons identifier item) bound))
+	     unspecific)))
+
+    (define (describe)
+      `((bound ,bound)
+	(free ,free)
+	(parent ,parent)))
+
+    (make-senv get-type get-runtime lookup store rename describe)))
 
 ;;; Partial syntactic environments are used to implement syntactic
 ;;; closures that have free names.
 
-(define (make-partial-syntactic-environment names names-senv else-senv)
-  (guarantee-list-of-unique-symbols names 'make-partial-syntactic-environment)
-  (guarantee-syntactic-environment names-senv
-				   'make-partial-syntactic-environment)
-  (guarantee-syntactic-environment else-senv
-				   'make-partial-syntactic-environment)
-  (if (or (null? names)
-	  (eq? names-senv else-senv))
-      else-senv
-      (make-senv partial-senv-ops
-		 (%make-partial-state names names-senv else-senv))))
+(define (make-partial-senv free-ids free-senv bound-senv)
+  (let ((caller 'make-partial-senv))
+    (guarantee list-of-unique-symbols? free-ids caller)
+    (guarantee syntactic-environment? free-senv caller)
+    (guarantee syntactic-environment? bound-senv caller))
+  (if (or (null? free-ids)
+	  (eq? free-senv bound-senv))
+      bound-senv
+      (let ()
+	(define (get-type)
+	  'partial)
 
-(define-record-type <partial-state>
-    (%make-partial-state names names-senv else-senv)
-    partial-state?
-  (names partial-state-names)
-  (names-senv partial-state-names-senv)
-  (else-senv partial-state-else-senv))
+	(define (get-runtime)
+	  ;; **** Shouldn't this be a syntax error?  It can happen as the
+	  ;; result of a partially-closed transformer.  ****
+	  (error "Can't evaluate in partial syntactic environment"))
 
-(define partial-senv-ops
-  (make-senv-ops
-   (lambda (state)
-     state
-     'partial)
-   (lambda (state name)
-     (syntactic-environment/lookup (if (memq name (partial-state-names state))
-				       (partial-state-names-senv state)
-				       (partial-state-else-senv state))
-				   name))
-   (lambda (state name item)
-     ;; **** Shouldn't this be a syntax error?  It can happen as the
-     ;; result of a misplaced definition.  ****
-     (error "Can't bind name in partial syntactic environment:"
-	    state name item))
-   (lambda (state name)
-     (syntactic-environment/rename (if (memq name (partial-state-names state))
-				       (partial-state-names-senv state)
-				       (partial-state-else-senv state))
-				   name))
-   (lambda (state)
-     ;; **** Shouldn't this be a syntax error?  It can happen as the
-     ;; result of a partially-closed transformer.  ****
-     (error "Can't evaluate in partial syntactic environment:" state))))
+	(define (lookup identifier)
+	  ((senv-lookup (select-env identifier)) identifier))
+
+	(define (store identifier item)
+	  ;; **** Shouldn't this be a syntax error?  It can happen as the
+	  ;; result of a misplaced definition.  ****
+	  (error "Can't bind identifier in partial syntactic environment:"
+		 identifier item))
+
+	(define (rename identifier)
+	  ((senv-rename (select-env identifier)) identifier))
+
+	(define (select-env identifier)
+	  (if (memq identifier free-ids) free-senv bound-senv))
+
+	(define (describe)
+	  `((free-ids ,free-ids)
+	    (free-senv ,free-senv)
+	    (bound-senv ,bound-senv)))
+
+	(make-senv get-type get-runtime lookup store rename describe))))
+
+;;; Sealed syntactic environments are used for libraries.  A combination of
+;;; top-level and internal syntactic environments, they gather all of the free
+;;; references together so they can be captured by a lambda expression wrapped
+;;; around the body of the library.
+
+(define (make-sealed-senv env)
+  (guarantee environment? env 'make-sealed-senv)
+  (let ((bound '())
+	(free '()))
+
+    (define (get-type)
+      'sealed)
+
+    (define (get-runtime)
+      env)
+
+    (define (lookup identifier)
+      (cond ((or (assq identifier bound)
+		 (assq identifier free))
+	     => cdr)
+	    ((environment-lookup-macro env identifier))
+	    (else
+	     (if (not (environment-bound? env identifier))
+		 (warn "Reference to unbound variable:" identifier))
+	     ;; Capture free runtime references:
+	     (let ((item (var-item identifier)))
+	       (set! free (cons (cons identifier item) free))
+	       item))))
+
+    (define (store identifier item)
+      (cond ((assq identifier bound)
+	     => (lambda (binding)
+		  (set-cdr! binding item)))
+	    ((assq identifier free)
+	     (error "Can't define name; already free:" identifier))
+	    (else
+	     (set! bound (cons (cons identifier item) bound))
+	     unspecific)))
+
+    (define (rename identifier)
+      identifier)
+
+    (define (describe)
+      `((bound ,bound)
+	(free ,free)
+	(env ,env)))
+
+    (values (make-senv get-type get-runtime lookup store rename describe)
+	    (lambda () (map car bound))
+	    (lambda () (map car free)))))

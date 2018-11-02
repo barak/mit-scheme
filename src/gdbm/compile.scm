@@ -1,13 +1,12 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the GDBM wrapper.
+;;;; Compile the GDBM option.
 
-(load-option 'CREF)
-(load-option 'FFI)
+(load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (with-system-library-directories
-	'("./")
+    (with-working-directory-pathname (merge-pathnames "../ffi")
       (lambda ()
-	(compile-file "gdbm" '() (->environment '(RUNTIME)))))
-    (cref/generate-constructors "gdbm" 'ALL)))
+	(load "make")))
+    (compile-file "gdbm" '() (->environment '(runtime)))
+    (cref/generate-constructors "gdbm")))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,7 +69,7 @@ Whichever character you type to run this command is inserted."
 	     (if (input-event? input)
 		 (abort-current-command input)
 		 (begin
-		   (if (not (and (char? input) (char-ascii? input)))
+		   (if (not (ascii-char? input))
 		       (editor-error "Can't quote non-ASCII char:" input))
 		   (set-command-prompt!
 		    (string-append (command-prompt) (key-name input)))
@@ -82,7 +82,7 @@ Whichever character you type to run this command is inserted."
       (let ((char (read-ascii-char)))
 	(let ((digit (char->digit char 4)))
 	  (if digit
-	      (ascii->char
+	      (integer->char
 	       (let ((digit2 (read-digit)))
 		 (let ((digit3 (read-digit)))
 		   (+ (* (+ (* digit 8) digit2) 8) digit3))))
@@ -315,13 +315,13 @@ For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
 ;;;; Leaving Edwin
 
 ;; Set this to #F to indicate that returning from the editor has the
-;; same effect as calling %EXIT, or to prevent the editor from
+;; same effect as calling EXIT, or to prevent the editor from
 ;; returning to scheme.
 (define editor-can-exit? #t)
 
-;; Set this to #F to indicate that calling QUIT has the same effect
-;; as calling %EXIT, or to prevent the editor from suspending to the OS.
-(define scheme-can-quit?
+;; Set this to #F to indicate that calling SUSPEND has the same effect
+;; as calling EXIT, or to prevent the editor from suspending to the OS.
+(define scheme-can-suspend?
   #t)
 
 ;; Set this to #T to force the exit commands to always prompt for
@@ -334,7 +334,7 @@ With argument, saves visited file first."
   "P"
   (lambda (argument)
     (if argument (save-buffer (current-buffer) #f))
-    (if (and scheme-can-quit? (os/scheme-can-quit?))
+    (if (and scheme-can-suspend? (os/scheme-can-suspend?))
 	(quit-scheme)
 	(editor-error "Scheme cannot be suspended"))))
 
@@ -348,15 +348,15 @@ With argument, saves visited file first."
 
 (define (save-buffers-and-exit no-confirmation? noun exit)
   (save-some-buffers no-confirmation? #t)
-  (if (and (or (not (there-exists? (buffer-list)
-		      (lambda (buffer)
-			(and (buffer-modified? buffer)
-			     (buffer-pathname buffer)))))
+  (if (and (or (not (any (lambda (buffer)
+			   (and (buffer-modified? buffer)
+				(buffer-pathname buffer)))
+			 (buffer-list)))
 	       (prompt-for-yes-or-no? "Modified buffers exist; exit anyway"))
-	   (if (there-exists? (process-list)
-		 (lambda (process)
-		   (and (not (process-kill-without-query process))
-			(process-runnable? process))))
+	   (if (any (lambda (process)
+		      (and (not (process-kill-without-query process))
+			   (process-runnable? process)))
+		    (process-list))
 	       (and (prompt-for-yes-or-no?
 		     "Active processes exist; kill them and exit anyway")
 		    (begin

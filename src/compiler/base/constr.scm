@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -71,7 +71,7 @@ USA.
     (if (eqv? element (constraint/element constraint))
 	constraint
 	(loop (constraint/afters constraint))))
-  
+
   (loop (constraint-graph/entry-nodes graph-head)))
 
 (define (find-or-make-constraint element graph-head
@@ -80,7 +80,7 @@ USA.
       (if (default-object? afters)
 	  (make-constraint element graph-head)
 	  (make-constraint element graph-head afters))))
-          
+
 
 (define (constraint-add! before after)
   (if (eq? (constraint/element before) (constraint/element after))
@@ -88,7 +88,7 @@ USA.
   (set-constraint/afters! before (cons after (constraint/afters before)))
   (let ((c-graph (constraint/graph-head after)))
     (if c-graph
-	(set-constraint-graph/entry-nodes! 
+	(set-constraint-graph/entry-nodes!
 	 c-graph
 	 (delq! after (constraint-graph/entry-nodes c-graph)))))
   (set-constraint/closed?! before false)
@@ -178,13 +178,11 @@ USA.
 	     (result '()))
     (if (and (pair? linearized-constraints)
 	     (pair? things))
-	(let ((match (list-search-positive
-			 things
-		       (lambda (thing)
-			 (eqv?
-			  (constraint/element
-			   (car linearized-constraints))
-			  (element-extractor thing))))))
+	(let ((match
+	       (find (lambda (thing)
+		       (eqv? (constraint/element (car linearized-constraints))
+			     (element-extractor thing)))
+		     things)))
 	  (loop (cdr linearized-constraints)
 		(delv match things)
 		(if (and match
@@ -223,7 +221,7 @@ USA.
 			   node-marked?)
 
   (define result)
-  
+
   (define (loop node)
     (node-mark! node)
     (for-each next (get-children node))
@@ -233,7 +231,7 @@ USA.
     (and node
 	 (not (node-marked? node))
 	 (loop node)))
-    
+
   (define (doit node)
     (set! result '())
     (loop node)
@@ -261,4 +259,3 @@ USA.
 
 (define (constraint-mark! constraint)
   (set-constraint/generation! constraint *constraint-generation*))
-

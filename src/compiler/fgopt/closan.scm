@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -156,10 +156,8 @@ USA.
 ;;; is difficult to determine how to make it work well.
 
 (define (identify-closure-limits! procs&conts applications lvalues)
-  (let ((procedures
-	 (delete-matching-items procs&conts procedure-continuation?))
-	(combinations
-	 (keep-matching-items applications application/combination?)))
+  (let ((procedures (remove procedure-continuation? procs&conts))
+	(combinations (filter application/combination? applications)))
     (for-each (lambda (procedure)
 		(set-procedure-variables! procedure '()))
 	      procedures)
@@ -254,7 +252,7 @@ USA.
 	   (close-combination-arguments! combination)))))
 
 (define (compatibility-class procs)
-  (if (for-all? procs rvalue/procedure?)
+  (if (every rvalue/procedure? procs)
       (let* ((model (car procs))
 	     (model-env (procedure-closing-block model)))
 	(call-with-values (lambda () (procedure-arity-encoding model))
@@ -491,9 +489,9 @@ USA.
   (remove-condition procedure)
   (for-each (let ((block (procedure-block procedure)))
 	      (lambda (entry)
-		(if (there-exists? (cdr entry)
-		      (lambda (entry*)
-			(block-ancestor-or-self? (car entry*) block)))
+		(if (any (lambda (entry*)
+			   (block-ancestor-or-self? (car entry*) block))
+			 (cdr entry))
 		    (close-non-descendant-callees! (car entry) block
 						   condition))))
 	    *undrifting-constraints*))
@@ -531,28 +529,31 @@ USA.
   unspecific)
 
 (define (remove-condition-1 procedure constraints)
-  (delete-matching-items! constraints
-    (lambda (entry)
-      (let ((tail
-	     (delete-matching-items! (cdr entry)
-	       (lambda (entry*)
-		 (let ((conditions
-			(delete-matching-items! (cdr entry*)
-			  (lambda (condition)
-			    (and condition
-				 (or (eq? procedure
-					  (condition-procedure condition))
-				     (memq procedure
-					   (condition-dependencies condition)))
-				 (begin
-				   (debug:remove-condition (car entry)
-							   (car entry*)
-							   condition)
-				   #t))))))
-		   (set-cdr! entry* conditions)
-		   (null? conditions))))))
-	(set-cdr! entry tail)
-	(null? tail)))))
+  (remove!
+   (lambda (entry)
+     (let ((tail
+	    (remove!
+	     (lambda (entry*)
+	       (let ((conditions
+		      (remove! (lambda (condition)
+				 (and condition
+				      (or (eq? procedure
+					       (condition-procedure condition))
+					  (memq procedure
+						(condition-dependencies
+						 condition)))
+				      (begin
+					(debug:remove-condition (car entry)
+								(car entry*)
+								condition)
+					#t)))
+			       (cdr entry*))))
+		 (set-cdr! entry* conditions)
+		 (null? conditions)))
+	     (cdr entry))))
+       (set-cdr! entry tail)
+       (null? tail)))
+   constraints))
 
 (define (debug:remove-condition block block* condition)
   (if debug:trace-constraints?
@@ -565,7 +566,7 @@ USA.
 (define (pending-undrifting? procedure)
   (let ((entry (assq (procedure-block procedure) *undrifting-constraints*)))
     (and entry
-	 (there-exists? (cdr entry) valid-constraint-conditions?))))
+	 (any valid-constraint-conditions? (cdr entry)))))
 
 (define (undrift-procedures! constraints)
   (for-each
@@ -589,12 +590,12 @@ USA.
    constraints))
 
 (define (valid-constraint-conditions? entry)
-  (there-exists? (cdr entry)
-    (lambda (condition)
-      (not
-       (and condition
-	    (eq? 'CONTAGION (condition-keyword condition))
-	    (procedure/trivial-closure? (condition-argument condition)))))))
+  (any (lambda (condition)
+	 (not
+	  (and condition
+	       (eq? 'CONTAGION (condition-keyword condition))
+	       (procedure/trivial-closure? (condition-argument condition)))))
+       (cdr entry)))
 
 (define-structure condition
   (procedure #f read-only #t)

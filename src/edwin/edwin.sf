@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,16 +24,23 @@ USA.
 
 |#
 
-(load-option 'CREF)
+(load-option 'cref)
 
-(if (not (name->package '(EDWIN)))
+(if (not (name->package '(edwin)))
     (let ((package-set (package-set-pathname "edwin")))
       (if (not (file-exists? package-set))
 	  (cref/generate-trivial-constructor "edwin"))
       (construct-packages-from-file (fasload package-set))))
 
-(if (lexical-unreferenceable? (->environment '(EDWIN CLASS-CONSTRUCTOR))
-			      'CLASS-DESCRIPTORS)
+(if (lexical-unreferenceable? (->environment '(edwin string))
+			      'string?)
+    (begin
+      (fluid-let ((sf/default-syntax-table (->environment '(edwin))))
+	(sf-conditionally "string"))
+      (load "string.bin" '(edwin string))))
+
+(if (lexical-unreferenceable? (->environment '(edwin class-constructor))
+			      'class-descriptors)
     (begin
       (let ((sf-and-load
 	     (lambda (files package)
@@ -42,12 +49,12 @@ USA.
 	       (for-each (lambda (file)
 			   (load (string-append file ".bin") package))
 			 files))))
-	(sf-and-load '("macros") '(EDWIN MACROS))
-	(sf-and-load '("clsmac") '(EDWIN CLASS-MACROS))
+	(sf-and-load '("macros") '(edwin macros))
+	(sf-and-load '("clsmac") '(edwin class-macros))
 	(sf-and-load '("xform")
-		     '(EDWIN CLASS-MACROS TRANSFORM-INSTANCE-VARIABLES))
-	(sf-and-load '("class") '(EDWIN))
-	(sf-and-load '("clscon") '(EDWIN CLASS-CONSTRUCTOR)))))
+		     '(edwin class-macros transform-instance-variables))
+	(sf-and-load '("class") '(edwin))
+	(sf-and-load '("clscon") '(edwin class-constructor)))))
 
 (let ((read-class-definitions
        (lambda (filename)
@@ -58,13 +65,13 @@ USA.
 		   (write filename port))
 	       (lambda ()
 		 (syntax* (read-file (string-append filename ".scm"))
-			  (->environment '(EDWIN WINDOW)))))
+			  (->environment '(edwin window)))))
 	     (begin
 	       (fresh-line)
 	       (write-string "Pre-loading class definitions from ")
 	       (write filename)
 	       (syntax* (read-file (string-append filename ".scm"))
-			(->environment '(EDWIN WINDOW)))
+			(->environment '(edwin window)))
 	       (write-string " -- done")
 	       (newline))))))
   (read-class-definitions "window")
@@ -77,5 +84,5 @@ USA.
 
 (load "decls")
 
-(cref/generate-constructors "edwin" 'ALL)
+(cref/generate-constructors "edwin")
 (sf-conditionally "edwin.ldr")

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -52,40 +52,21 @@ USA.
 ;;; that reads from an input port.
 
 (define (string->parser-buffer string #!optional start end)
-  (if (string? string)
-      (let ((string (string->wide-string string start end)))
-	(make-parser-buffer string 0 (wide-string-length string) 0 0 #f #t 0))
-      (begin
-	(guarantee-wide-string string 'STRING->PARSER-BUFFER)
-	(let* ((end
-		(if (or (default-object? end) (not end))
-		    (wide-string-length string)
-		    (guarantee-substring-end-index end
-						   (wide-string-length string)
-						   'STRING->PARSER-BUFFER)))
-	       (start
-		(if (or (default-object? start) (not start))
-		    0
-		    (guarantee-substring-start-index start end
-						     'STRING->PARSER-BUFFER))))
-	  (make-parser-buffer string start end 0 0 #f #t 0)))))
+  (let* ((caller 'string->parser-buffer)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (make-parser-buffer string start end 0 0 #f #t 0)))
 
-(define (utf8-string->parser-buffer string #!optional start end)
-  (let ((ws (utf8-string->wide-string string start end)))
-    (make-parser-buffer ws 0 (wide-string-length ws) 0 0 #f #t 0)))
-
-(define (input-port->parser-buffer port #!optional prefix)
-  (guarantee-input-port port 'INPUT-PORT->PARSER-BUFFER)
+(define (textual-input-port->parser-buffer port #!optional prefix)
+  (guarantee textual-input-port? port 'textual-input-port->parser-buffer)
   (if (or (default-object? prefix)
 	  (not prefix)
-	  (and (wide-string? prefix)
-	       (zero? (wide-string-length prefix))))
-      (make-parser-buffer (make-wide-string min-length) 0 0 0 0 port #f 0)
-      (begin
-	(guarantee-wide-string prefix 'INPUT-PORT->PARSER-BUFFER)
-	(let ((n (wide-string-length prefix)))
-	  (make-parser-buffer (%grow-buffer prefix n (max min-length n))
-			      0 n 0 0 port #f 0)))))
+	  (and (string? prefix)
+	       (fix:= 0 (string-length prefix))))
+      (make-parser-buffer (make-string min-length) 0 0 0 0 port #f 0)
+      (let ((n (string-length prefix)))
+	(make-parser-buffer (%grow-buffer prefix n (fix:max min-length n))
+			    0 n 0 0 port #f 0))))
 
 (define-integrable min-length 256)
 
@@ -96,11 +77,8 @@ USA.
 (define (*match-string matcher string #!optional start end)
   (complete-*match matcher (string->parser-buffer string start end)))
 
-(define (*match-utf8-string matcher string #!optional start end)
-  (complete-*match matcher (utf8-string->parser-buffer string start end)))
-
 (define (*match-symbol matcher symbol)
-  (*match-utf8-string matcher (symbol-name symbol)))
+  (*match-string matcher (symbol->string symbol)))
 
 (define (complete-*parse parser buffer)
   (let ((v (parser buffer)))
@@ -111,11 +89,8 @@ USA.
 (define (*parse-string parser string #!optional start end)
   (complete-*parse parser (string->parser-buffer string start end)))
 
-(define (*parse-utf8-string parser string #!optional start end)
-  (complete-*parse parser (utf8-string->parser-buffer string start end)))
-
 (define (*parse-symbol parser symbol)
-  (*parse-utf8-string parser (symbol-name symbol)))
+  (*parse-string parser (symbol->string symbol)))
 
 (define-structure parser-buffer-pointer
   (index #f read-only #t)
@@ -135,7 +110,7 @@ USA.
   (set-parser-buffer-line! buffer (parser-buffer-pointer-line p)))
 
 (define (get-parser-buffer-tail buffer p)
-  (call-with-parser-buffer-tail buffer p wide-string->utf8-string))
+  (call-with-parser-buffer-tail buffer p substring))
 
 (define (call-with-parser-buffer-tail buffer p procedure)
   ;; P must be a buffer pointer previously returned by
@@ -152,8 +127,8 @@ USA.
 		(parser-buffer-base-offset buffer))))
 	(if (<= (parser-buffer-start buffer) p* (parser-buffer-index buffer))
 	    p*
-	    (error:bad-range-argument p 'POINTER->INDEX)))
-      (error:wrong-type-argument p "parser-buffer pointer" 'POINTER->INDEX)))
+	    (error:bad-range-argument p 'pointer->index)))
+      (error:wrong-type-argument p "parser-buffer pointer" 'pointer->index)))
 
 (define (parser-buffer-position-string object)
   (let ((pointer
@@ -181,8 +156,8 @@ USA.
   ;; characters available, return #F and leave the position unchanged.
   (and (guarantee-buffer-chars buffer 1)
        (let ((char
-	      (wide-string-ref (parser-buffer-string buffer)
-			       (parser-buffer-index buffer))))
+	      (string-ref (parser-buffer-string buffer)
+			  (parser-buffer-index buffer))))
 	 (increment-buffer-index! buffer char)
 	 char)))
 
@@ -191,15 +166,15 @@ USA.
   ;; current position.  If there is a character available, return it,
   ;; otherwise return #F.  The position is unaffected in either case.
   (and (guarantee-buffer-chars buffer 1)
-       (wide-string-ref (parser-buffer-string buffer)
-			(parser-buffer-index buffer))))
+       (string-ref (parser-buffer-string buffer)
+		   (parser-buffer-index buffer))))
 
 (define (parser-buffer-ref buffer index)
   (if (not (index-fixnum? index))
-      (error:wrong-type-argument index "index" 'PARSER-BUFFER-REF))
+      (error:wrong-type-argument index "index" 'parser-buffer-ref))
   (and (guarantee-buffer-chars buffer (fix:+ index 1))
-       (wide-string-ref (parser-buffer-string buffer)
-			(fix:+ (parser-buffer-index buffer) index))))
+       (string-ref (parser-buffer-string buffer)
+		   (fix:+ (parser-buffer-index buffer) index))))
 
 (define (match-parser-buffer-char buffer char)
   (match-char buffer char char=?))
@@ -237,14 +212,11 @@ USA.
 (define (match-parser-buffer-char-not-in-set-no-advance buffer set)
   (match-char-not-no-advance buffer set char-in-set?))
 
-(define-integrable (char-in-set? char set)
-  (char-set-member? set char))
-
 (define-integrable (match-char buffer reference compare)
   (and (guarantee-buffer-chars buffer 1)
        (let ((char
-	      (wide-string-ref (parser-buffer-string buffer)
-			       (parser-buffer-index buffer))))
+	      (string-ref (parser-buffer-string buffer)
+			  (parser-buffer-index buffer))))
 	 (and (compare char reference)
 	      (begin
 		(increment-buffer-index! buffer char)
@@ -252,8 +224,8 @@ USA.
 
 (define-integrable (match-char-no-advance buffer reference compare)
   (and (guarantee-buffer-chars buffer 1)
-       (compare (wide-string-ref (parser-buffer-string buffer)
-				 (parser-buffer-index buffer))
+       (compare (string-ref (parser-buffer-string buffer)
+			    (parser-buffer-index buffer))
 		reference)))
 
 (define-integrable (match-char-not buffer reference compare)
@@ -281,16 +253,7 @@ USA.
   (match-string buffer string match-substring-loop-na char-ci=?))
 
 (define-integrable (match-string buffer string loop compare)
-  (cond ((wide-string? string)
-	 (loop buffer
-	       string 0 (wide-string-length string)
-	       compare wide-string-ref))
-	((string? string)
-	 (loop buffer
-	       string 0 (string-length string)
-	       compare string-ref))
-	(else
-	 (error:wrong-type-argument string "string" #f))))
+  (loop buffer string 0 (string-length string) compare))
 
 (define (match-parser-buffer-substring buffer string start end)
   (match-substring buffer string start end match-substring-loop char=?))
@@ -305,20 +268,10 @@ USA.
   (match-substring buffer string start end match-substring-loop-na char-ci=?))
 
 (define-integrable (match-substring buffer string start end loop compare)
-  (cond ((wide-string? string)
-	 (loop buffer
-	       string start end
-	       compare wide-string-ref))
-	((string? string)
-	 (loop buffer
-	       string start end
-	       compare string-ref))
-	(else
-	 (error:wrong-type-argument string "string" #f))))
-
+  (guarantee string? string)
+  (loop buffer string start end compare))
 
-(define-integrable (match-substring-loop buffer string start end
-					 compare extract)
+(define-integrable (match-substring-loop buffer string start end compare)
   (and (guarantee-buffer-chars buffer (fix:- end start))
        (let ((bs (parser-buffer-string buffer)))
 	 (let loop
@@ -326,10 +279,10 @@ USA.
 	      (bi (parser-buffer-index buffer))
 	      (bl (parser-buffer-line buffer)))
 	   (if (fix:< i end)
-	       (and (compare (extract string i) (wide-string-ref bs bi))
+	       (and (compare (string-ref string i) (string-ref bs bi))
 		    (loop (fix:+ i 1)
 			  (fix:+ bi 1)
-			  (if (char=? (wide-string-ref bs bi) #\newline)
+			  (if (char=? (string-ref bs bi) #\newline)
 			      (fix:+ bl 1)
 			      bl)))
 	       (begin
@@ -337,13 +290,12 @@ USA.
 		 (set-parser-buffer-line! buffer bl)
 		 #t))))))
 
-(define-integrable (match-substring-loop-na buffer string start end
-					    compare extract)
+(define-integrable (match-substring-loop-na buffer string start end compare)
   (and (guarantee-buffer-chars buffer (fix:- end start))
        (let ((bs (parser-buffer-string buffer)))
 	 (let loop ((i start) (bi (parser-buffer-index buffer)))
 	   (if (fix:< i end)
-	       (and (compare (extract string i) (wide-string-ref bs bi))
+	       (and (compare (string-ref string i) (string-ref bs bi))
 		    (loop (fix:+ i 1) (fix:+ bi 1)))
 	       #t)))))
 
@@ -359,7 +311,7 @@ USA.
       (let loop ((i i) (n (parser-buffer-line buffer)))
 	(if (fix:< i j)
 	    (loop (fix:+ i 1)
-		  (if (char=? (wide-string-ref s i) #\newline)
+		  (if (char=? (string-ref s i) #\newline)
 		      (fix:+ n 1)
 		      n))
 	    (set-parser-buffer-line! buffer n)))
@@ -375,23 +327,20 @@ USA.
 	(if (fix:> index 0)
 	    (let* ((end* (fix:- end index))
 		   (string*
-		    (let ((n (wide-string-length string)))
+		    (let ((n (string-length string)))
 		      (if (and (fix:> n min-length)
 			       (fix:<= end* (fix:quotient n 4)))
-			  (make-wide-string (fix:quotient n 2))
+			  (make-string (fix:quotient n 2))
 			  string))))
-	      (without-interrupts
+	      (without-interruption
 	       (lambda ()
-		 (do ((i index (fix:+ i 1))
-		      (j 0 (fix:+ j 1)))
-		     ((not (fix:< i end)))
-		   (wide-string-set! string* j (wide-string-ref string i)))
+		 (string-copy! string* 0 string index end)
 		 (set-parser-buffer-string! buffer string*)
 		 (set-parser-buffer-index! buffer 0)
 		 (set-parser-buffer-end! buffer end*)
 		 (set-parser-buffer-base-offset!
 		  buffer
-		  (+ (parser-buffer-base-offset buffer) index)))))))
+		  (fix:+ (parser-buffer-base-offset buffer) index)))))))
       (set-parser-buffer-start! buffer (parser-buffer-index buffer))))
 
 (define-integrable (guarantee-buffer-chars buffer n)
@@ -403,24 +352,24 @@ USA.
   ;; Don't read more characters than are needed.  The XML parser
   ;; depends on this when doing its character-code detection.
   (and (not (parser-buffer-at-end? buffer))
-       (let ((min-end (+ (parser-buffer-index buffer) n))
+       (let ((min-end (fix:+ (parser-buffer-index buffer) n))
 	     (end (parser-buffer-end buffer)))
-	 ;; (assert (> min-end end))
+	 ;; (assert (fix:> min-end end))
 	 (let ((string (parser-buffer-string buffer)))
-	   (if (> min-end (wide-string-length string))
+	   (if (fix:> min-end (string-length string))
 	       (set-parser-buffer-string! buffer
 					  (%grow-buffer string end min-end))))
 	 (let ((port (parser-buffer-port buffer))
 	       (string (parser-buffer-string buffer)))
-	   (port/with-input-blocking-mode port 'BLOCKING
+	   (with-input-port-blocking-mode port 'blocking
 	     (lambda ()
 	       (let loop ((end end))
-		 (if (< end min-end)
+		 (if (fix:< end min-end)
 		     (let ((n-read
 			    (input-port/read-substring! port
 							string end min-end)))
-		       (if (> n-read 0)
-			   (let ((end (+ end n-read)))
+		       (if (fix:> n-read 0)
+			   (let ((end (fix:+ end n-read)))
 			     (set-parser-buffer-end! buffer end)
 			     (loop end))
 			   (begin
@@ -430,12 +379,10 @@ USA.
 
 (define (%grow-buffer string end min-length)
   (let ((new-string
-	 (make-wide-string
-	  (let loop ((n (wide-string-length string)))
-	    (if (<= min-length n)
+	 (make-string
+	  (let loop ((n (string-length string)))
+	    (if (fix:<= min-length n)
 		n
-		(loop (* n 2)))))))
-    (do ((i 0 (+ i 1)))
-	((not (< i end)))
-      (wide-string-set! new-string i (wide-string-ref string i)))
+		(loop (fix:* n 2)))))))
+    (string-copy! new-string 0 string 0 end)
     new-string))

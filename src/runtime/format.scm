@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -61,7 +61,7 @@ USA.
 	   (format-loop port format-string arguments)
 	   (output-port/discretionary-flush port))))
     (cond ((not destination)
-	   (with-output-to-string (lambda () (start (current-output-port)))))
+	   (call-with-output-string start))
 	  ((eq? destination true)
 	   (start (current-output-port)))
 	  ((output-port? destination)
@@ -86,7 +86,10 @@ USA.
 
 (define (parse-dispatch port string supplied-arguments parsed-arguments
 			modifiers)
-  ((vector-ref format-dispatch-table (vector-8b-ref string 0))
+  ((let ((cp (char->integer (string-ref string 0))))
+     (if (fix:< cp #x100)
+	 (vector-ref format-dispatch-table cp)
+	 parse-default))
    port
    string
    supplied-arguments
@@ -166,14 +169,14 @@ USA.
   modifiers				;ignore
   (format-loop port
 	       (substring string
-			  (1+ (string-find-next-char string #\Newline))
+			  (1+ (string-find-next-char string #\newline))
 			  (string-length string))
 	       arguments))
 
 (define ((format-ignore-whitespace modifiers) port string arguments)
   (format-loop port
 	       (cond ((null? modifiers) (eliminate-whitespace string))
-		     ((memq 'AT modifiers)
+		     ((memq 'at modifiers)
 		      (string-append "\n" (eliminate-whitespace string)))
 		     (else string))
 	       arguments))
@@ -184,7 +187,7 @@ USA.
       (cond ((= n limit) "")
 	    ((let ((char (string-ref string n)))
 	       (and (char-whitespace? char)
-		    (not (char=? char #\Newline))))
+		    (not (char=? char #\newline))))
 	     (loop (1+ n)))
 	    (else
 	     (substring string n limit))))))
@@ -196,12 +199,12 @@ USA.
   (if (default-object? n-columns)
       (write (car arguments) port)
       (output-port/write-string port
-				((if (memq 'AT modifiers)
+				((if (memq 'at modifiers)
 				     string-pad-left
 				     string-pad-right)
-				 (with-output-to-string
-				   (lambda ()
-				     (write (car arguments))))
+				 (call-with-output-string
+				   (lambda (port)
+				     (write (car arguments) port)))
 				 n-columns)))
   (format-loop port string (cdr arguments)))
 
@@ -212,7 +215,7 @@ USA.
 	(let ((table (make-vector 256 parse-default)))
 	  (for-each (lambda (entry)
 		      (vector-set! table
-				   (char->ascii (car entry))
+				   (char->integer (car entry))
 				   (cadr entry)))
 		    (let ((format-string
 			   (format-wrapper (format-object display)))
@@ -232,13 +235,13 @@ USA.
 			(#\# ,parse-arity)
 			(#\V ,parse-argument)
 			(#\v ,parse-argument)
-			(#\@ ,(parse-modifier 'AT))
-			(#\: ,(parse-modifier 'COLON))
+			(#\@ ,(parse-modifier 'at))
+			(#\: ,(parse-modifier 'colon))
 			(#\%
-			 ,(format-wrapper (format-insert-character #\Newline)))
+			 ,(format-wrapper (format-insert-character #\newline)))
 			(#\~ ,(format-wrapper (format-insert-character #\~)))
 			(#\; ,(format-wrapper format-ignore-comment))
-			(#\Newline ,(format-wrapper format-ignore-whitespace))
+			(#\newline ,(format-wrapper format-ignore-whitespace))
 			(#\A ,format-string)
 			(#\a ,format-string)
 			(#\S ,format-object)

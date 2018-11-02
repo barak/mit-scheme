@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,9 +33,9 @@ USA.
 		   (constructor make-rtl-expr
 				(rgraph label entry-edge debugging-info))
 		   (print-procedure
-		    (standard-unparser (symbol->string 'RTL-EXPR)
-		      (lambda (state expression)
-			(unparse-object state (rtl-expr/label expression))))))
+		    (standard-print-method "LIAR:rtl-expr"
+		      (lambda (expression)
+			(list (rtl-expr/label expression))))))
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true)
@@ -53,10 +53,9 @@ USA.
 					debugging-info
 					next-continuation-offset stack-leaf?))
 		   (print-procedure
-		    (standard-unparser (symbol->string 'RTL-PROCEDURE)
-		      (lambda (state procedure)
-			(unparse-object state
-					(rtl-procedure/label procedure))))))
+		    (standard-print-method "LIAR:rtl-procedure"
+		      (lambda (procedure)
+			(list (rtl-procedure/label procedure))))))
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true)
@@ -88,11 +87,9 @@ USA.
 					next-continuation-offset
 					debugging-info))
 		   (print-procedure
-		    (standard-unparser (symbol->string 'RTL-CONTINUATION)
-		      (lambda (state continuation)
-			(unparse-object
-			 state
-			 (rtl-continuation/label continuation))))))
+		    (standard-print-method "LIAR:rtl-continuation"
+		      (lambda (continuation)
+			(list (rtl-continuation/label continuation))))))
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true)
@@ -109,21 +106,21 @@ USA.
 	     (length procedures)
 	     (length continuations)))))
     (if expression
-	(hash-table/put! hash-table
+	(hash-table-set! hash-table
 			 (rtl-expr/label expression)
 			 expression))
     (for-each (lambda (procedure)
-		(hash-table/put! hash-table
+		(hash-table-set! hash-table
 				 (rtl-procedure/label procedure)
 				 procedure))
 	      procedures)
     (for-each (lambda (continuation)
-		(hash-table/put! hash-table
+		(hash-table-set! hash-table
 				 (rtl-continuation/label continuation)
 				 continuation))
 	      continuations)
     (lambda (label)
-      (let ((datum (hash-table/get hash-table label #f)))
+      (let ((datum (hash-table-ref/default hash-table label #f)))
 	(if (not datum)
 	    (error "Undefined label:" label))
 	datum))))

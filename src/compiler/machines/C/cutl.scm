@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -82,6 +82,10 @@ USA.
   (indentation c:line-indentation)
   (text c:line-text))
 
+(define-print-method c:line?
+  (lambda (line port)
+    (c:write-line line port)))
+
 (define-guarantee c:line "C line")
 
 (define (c:line . items)
@@ -97,7 +101,7 @@ USA.
 (define (c:line-item item)
   (cond ((string? item) item)
 	((char? item) (string item))
-	((symbol? item) (symbol-name item))
+	((symbol? item) (symbol->string item))
 	((number? item)
 	 ;; XXX Kludgey test for negative zero, to support building
 	 ;; from versions when NUMBER->STRING failed to do that itself.
@@ -145,6 +149,10 @@ USA.
     (c:%make-group lines)
     c:group?
   (lines c:group-lines))
+
+(define-print-method c:group?
+  (lambda (group port)
+    (c:write-group group port)))
 
 (define-guarantee c:group "C group")
 
@@ -223,13 +231,13 @@ USA.
                 (lambda (port)
                   (let ((end (string-length comment)))
                     (let loop ((start 0) (index index))
-                      (write-substring comment start index port)
+                      (write-string comment port start index)
                       (write-string "*\\/" port)
                       (let ((index (+ index 2)))
                         (cond ((substring-search-forward "*/" comment index end)
                                => (lambda (index*) (loop index index*)))
                               (else
-                               (write-substring comment index end port))))))))))
+                               (write-string comment port index end))))))))))
         (else comment)))
 
 (define (c:string . content)
@@ -368,7 +376,7 @@ USA.
 	      1
 	      0)))
       (if (fix:< i n)
-	  (and (char-set-member? c:decimal-chars (string-ref e i))
+	  (and (char-in-set? (string-ref e i) c:decimal-chars)
 	       (loop (fix:+ i 1)))
 	  #t))))
 
@@ -387,11 +395,11 @@ USA.
   (let ((types
 	 (let ((types '(char short int long float double)))
 	   `(,@(map (lambda (t)
-		      (cons t (symbol-name t)))
+		      (cons t (symbol->string t)))
 		    types)
 	     ,@(map (lambda (t)
 		      (cons (symbol 'u t)
-			    (string-append "unsigned " (symbol-name t))))
+			    (string-append "unsigned " (symbol->string t))))
 		    types)
 	     (sobj . "SCHEME_OBJECT")))))
     `(,@types
@@ -412,7 +420,7 @@ USA.
 
 (define (c:var item)
   (cond ((string? item) item)
-	((symbol? item) (symbol-name item))
+	((symbol? item) (symbol->string item))
 	(else (error:wrong-type-argument item "C variable" 'C:VAR))))
 
 (define (c:array-decl type name dim items)
@@ -449,7 +457,7 @@ USA.
   (let ((n (string-length e)))
     (let loop ((i 0))
       (if (fix:< i n)
-	  (and (char-set-member? c:identifier-chars (string-ref e i))
+	  (and (char-in-set? (string-ref e i) c:identifier-chars)
 	       (loop (fix:+ i 1)))
 	  #t))))
 

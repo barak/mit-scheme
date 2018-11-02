@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -135,6 +135,19 @@ DEFINE_PRIMITIVE ("REAL-TIME-CLOCK", Prim_real_time_clock, 0, 0,
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (double_to_integer (OS_real_time_clock ()));
+}
+
+DEFINE_PRIMITIVE ("CURRENT-JIFFY", Prim_current_jiffy, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  clock_t n = (OS_current_jiffy ());
+  PRIMITIVE_RETURN ((n == (clock_t)-1) ? SHARP_F : (intmax_to_integer (n)));
+}
+
+DEFINE_PRIMITIVE ("JIFFIES-PER-SECOND", Prim_jiffies_per_second, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (intmax_to_integer (OS_jiffies_per_second ()));
 }
 
 DEFINE_PRIMITIVE ("PROCESS-TIMER-CLEAR", Prim_process_timer_clear, 0, 0,

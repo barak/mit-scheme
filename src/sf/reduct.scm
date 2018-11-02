@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -183,7 +183,7 @@ Examples:
 	 (variable/make block exp '()))
 	((not (pair? exp))
 	 (constant exp))
-	((eq? (car exp) 'PRIMITIVE)
+	((eq? (car exp) 'primitive)
 	 (cond ((or (null? (cdr exp)) (not (list? exp)))
 		(fail))
 	       ((null? (cddr exp))
@@ -193,12 +193,12 @@ Examples:
 		 (make-primitive-procedure (cadr exp) (caddr exp))))
 	       (else
 		(fail))))
-	((eq? (car exp) 'QUOTE)
+	((eq? (car exp) 'quote)
 	 (if (or (not (pair? (cdr exp)))
 		 (not (null? (cddr exp))))
 	     (fail))
 	 (constant (cadr exp)))
-	((eq? (car exp) 'GLOBAL)
+	((eq? (car exp) 'global)
 	 (if (or (not (pair? (cdr exp)))
 		 (not (null? (cddr exp)))
 		 (not (symbol? (cadr exp))))
@@ -294,7 +294,7 @@ Examples:
 		      map1 map2
 		      binop source-block exprs
 		      wrap last single none)
-  (let ((expr (->expression 'REDUCE-OPERATOR binop source-block)))
+  (let ((expr (->expression 'reduce-operator binop source-block)))
     (let ((vars (filter-vars (cons expr exprs)))
 	  (binop (map1
 		  (handle-variable
@@ -366,7 +366,7 @@ Examples:
   (define (check opts)
     ;; options is guaranteed to be a list.  No need to check for pairness.
     (cond ((null? opts)
-	   'DONE)
+	   'done)
 	  ((or (not (pair? (car opts)))
 	       (not (list? (car opts))))
 	   (error "DECODE-OPTIONS: Bad option" (car opts)))
@@ -391,31 +391,31 @@ Examples:
   (cond ((not wrapper)
 	 (receiver 0 identity-wrapper '()))
 	((null? (cdr wrapper))
-	 (let ((expr (->expression 'REDUCE-OPERATOR (car wrapper) block)))
+	 (let ((expr (->expression 'reduce-operator (car wrapper) block)))
 	   (receiver 0 (->wrapper expr) (list expr))))
 	((and (null? (cddr wrapper))
 	      (exact-nonnegative-integer? (cadr wrapper)))
-	 (let ((expr (->expression 'REDUCE-OPERATOR (car wrapper) block)))
+	 (let ((expr (->expression 'reduce-operator (car wrapper) block)))
 	   (receiver (cadr wrapper) (->wrapper expr) (list expr))))
 	(else
-	 (fail 'WRAPPER wrapper))))
+	 (fail 'wrapper wrapper))))
 
 (define (with-singleton singleton block receiver)
   (cond ((not singleton)
 	 (receiver identity-combiner '()))
 	((null? (cdr singleton))
-	 (let ((expr (->expression 'REDUCE-OPERATOR (car singleton) block)))
+	 (let ((expr (->expression 'reduce-operator (car singleton) block)))
 	   (receiver (->mapper-combiner expr)
 		     (list expr))))
 	(else
-	 (fail 'SINGLETON singleton))))
+	 (fail 'singleton singleton))))
 
 ;;;; Reduction top level
 
 (define (reducer/make rule block)
   (with-arguments-from rule
     (lambda (name binop . options)
-      (decode-options '(NULL-VALUE GROUP SINGLETON WRAPPER MAXIMUM)
+      (decode-options '(null-value group singleton wrapper maximum)
 	  options
 	(lambda (null-value group singleton wrapper maximum)
 
@@ -433,7 +433,7 @@ Examples:
 				  (if (or (not (null? (cdr maximum)))
 					  (not (exact-nonnegative-integer?
 						(car maximum))))
-				      (fail 'MAXIMUM maximum)
+				      (fail 'maximum maximum)
 				      (car maximum)))))
 			(grouper spare-args min-args max-args
 				 binop block
@@ -445,46 +445,46 @@ Examples:
 				   '() single-combiner
 				   single-combiner (->error-thunk name)))
 			  ((not (= (length null-value) 2))
-			   (fail 'NULL-VALUE null-value))
+			   (fail 'null-value null-value))
 			  (else
-			   (let* ((val (->expression 'REDUCE-OPERATOR
+			   (let* ((val (->expression 'reduce-operator
 						     (car null-value)
 						     block))
 				  (combiner (->singleton-combiner val))
 				  (null (->value-thunk val)))
 			     (case (cadr null-value)
-			       ((ANY ALWAYS)
+			       ((any always)
 				(if singleton
-				    (incompatible 'SINGLETON singleton
-						  'NULL-VALUE null-value))
+				    (incompatible 'singleton singleton
+						  'null-value null-value))
 				(invoke spare-args (list val) combiner
 					combiner null))
-			       ((ONE SINGLE)
+			       ((one single)
 				(if singleton
-				    (incompatible 'SINGLETON singleton
-						  'NULL-VALUE null-value))
+				    (incompatible 'singleton singleton
+						  'null-value null-value))
 				(invoke (1+ spare-args) (list val)
 					identity-combiner
 					combiner null))
-			       ((NONE EMPTY)
+			       ((none empty)
 				(invoke spare-args
 					(list val) single-combiner
 					single-combiner null))
 			       (else
-				(fail 'NULL-VALUE null-value)))))))))))
+				(fail 'null-value null-value)))))))))))
 
 	  (cond ((not group)
 		 (make-reducer-internal group-right))
 		((not (null? (cdr group)))
-		 (fail 'GROUP group))
+		 (fail 'group group))
 		(else
 		 (case (car group)
-		   ((RIGHT ASSOCIATIVE)
+		   ((right associative)
 		    (make-reducer-internal group-right))
-		   ((LEFT)
+		   ((left)
 		    (make-reducer-internal group-left))
 		   (else
-		    (fail 'GROUP group))))))))))
+		    (fail 'group group))))))))))
 
 ;;;; Replacement top level
 
@@ -532,7 +532,7 @@ Examples:
 
   (define (expr->case expr)
     (cons (and (symbol? expr) expr)
-	  (->expression 'REPLACE-OPERATOR
+	  (->expression 'replace-operator
 			expr
 			block)))
 
@@ -555,7 +555,7 @@ Examples:
 				parsed)
 			  (max (1+ len*) len)
 			  default)))
-		((memq (car a-case) '(ANY ELSE OTHERWISE))
+		((memq (car a-case) '(any else otherwise))
 		 (if default
 		     (error "REPLACE-OPERATOR: Duplicate default" ocases))
 		 (parse (cdr cases)

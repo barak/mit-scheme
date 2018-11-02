@@ -79,11 +79,12 @@
 ;;;; Miscellaneous Kludgerosity
 
 (define (compiled-entry? object)
-  (object-type? (ucode-type COMPILED-ENTRY) object))
+  (object-type? (ucode-type compiled-entry) object))
 
-(define event-return-address 'UNINITIALIZED)
+(define event-return-address 'uninitialized)
 
 (define (initialize-package!)
+  (set! stack-sampling-return-address (make-unsettable-parameter #f))
   (let ((blocked? (block-thread-events)))
     (signal-thread-event (current-thread)
       (lambda ()
@@ -105,7 +106,7 @@
                     (and (eq? stack-frame-type/compiled-return-address
                               (stack-frame/type stack-frame))
                          (stack-frame/return-address stack-frame))))))))
-    (do () ((not (eq? event-return-address 'UNINITIALIZED)))
+    (do () ((not (eq? event-return-address 'uninitialized)))
       (suspend-current-thread))
     (if (not blocked?)
         (unblock-thread-events))))
@@ -129,7 +130,7 @@
     (define (deregister-event)
       (deregister-timer-event timer-registration)
       (set! timer-registration #f))
-    (values (with-simple-restart 'ABORT "Abort stack sampling."
+    (values (with-simple-restart 'abort "Abort stack sampling."
               (lambda ()
                 (dynamic-wind
                  register-event
@@ -138,7 +139,7 @@
             profile)))
 
 (define (carefully-record-sample profile continuation)
-  (with-simple-restart 'CONTINUE "Ignore the sample."
+  (with-simple-restart 'continue "Ignore the sample."
     (lambda ()
       (let ((ignore (first-bound-restart))) ;silly
         (define (go) (record-sample profile continuation))
@@ -160,10 +161,10 @@
               (stack-frame/type stack-frame))
          (eq? event-return-address (stack-frame/return-address stack-frame)))))
 
-(define stack-sampling-return-address #f)
+(define stack-sampling-return-address)
 
 (define (stack-sampling-stack-frame? stack-frame)
-  (let ((return-address stack-sampling-return-address))
+  (let ((return-address (stack-sampling-return-address)))
     (and (compiled-return-address? return-address)
          (eq? stack-frame-type/compiled-return-address
               (stack-frame/type stack-frame))
@@ -179,9 +180,9 @@
        (let ((stack-frame (continuation/first-subproblem continuation)))
          (if (eq? stack-frame-type/compiled-return-address
                   (stack-frame/type stack-frame))
-             (fluid-let ((stack-sampling-return-address
-                          (stack-frame/return-address stack-frame)))
-               (thunk))
+             (parameterize ((stack-sampling-return-address
+			     (stack-frame/return-address stack-frame)))
+	       (thunk))
              (thunk)))))))
 
 ;;;; Profile Data
@@ -258,7 +259,7 @@
                (if (compiled-closure? return-address)
                    (compiled-closure->entry return-address)
                    return-address)))
-          (hash-table/intern! (profile.entries profile) return-address
+          (hash-table-intern! (profile.entries profile) return-address
             (lambda ()
               (receive (expression environment subexpression)
                        (stack-frame/debugging-info stack-frame)
@@ -285,10 +286,10 @@
     value))
 
 (define (display-profile profile output-port)
-  (let ((entries (hash-table/datum-list (profile.entries profile))))
+  (let ((entries (hash-table-values (profile.entries profile))))
     (define (sortem entry.count)
-      (sort (delete-matching-items entries
-              (lambda (e) (zero? (entry.count e))))
+      (sort (remove (lambda (e) (zero? (entry.count e)))
+		    entries)
             (lambda (a b) (< (entry.count a) (entry.count b)))))
     (let ((sampled (sortem entry.sampled-count))
           (waiting (sortem entry.waiting-count)))
@@ -395,10 +396,10 @@
 
 (define (profile-pp expression output-port)
   ;; Random parametrization.
-  (fluid-let ((*unparser-list-breadth-limit* 5)
-              (*unparser-list-depth-limit* 3)
-              (*unparser-string-length-limit* 40)
-              (*unparse-primitives-by-name?* #t)
-              (*pp-save-vertical-space?* #t)
-              (*pp-default-as-code?* #t))
+  (parameterize ((param:printer-list-breadth-limit 5)
+		 (param:printer-list-depth-limit 3)
+		 (param:printer-string-length-limit 40)
+		 (param:print-primitives-by-name? #t)
+		 (param:pp-save-vertical-space? #t)
+		 (param:pp-default-as-code? #t))
     (pp expression output-port)))

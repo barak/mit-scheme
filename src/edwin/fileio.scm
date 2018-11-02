@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,8 +40,8 @@ filename suffix \".bf\"."
 (define ((read/write-encrypted-file? write?) group pathname)
   (and (ref-variable enable-encrypted-files group)
        (equal? "bf" (pathname-type pathname))
-       (md5-available?)
-       (blowfish-available?)
+       (ignore-errors (lambda () (load-option 'blowfish))
+		      (lambda (condition) condition #f))
        (or write? (blowfish-file? pathname))
        #t))
 
@@ -50,7 +50,7 @@ filename suffix \".bf\"."
     (message m)
     (call-with-output-mark mark
       (lambda (output)
-	(%blowfish-decrypt-file pathname output)))
+	(%blowfish-decrypt-to-textual-port pathname output)))
     ;; Disable auto-save here since we don't want to auto-save the
     ;; unencrypted contents of the encrypted file.
     (local-set-variable! auto-save-default #f (mark-buffer mark))
@@ -59,9 +59,10 @@ filename suffix \".bf\"."
 (define (write-encrypted-file region pathname)
   (let ((m (string-append "Encrypting file " (->namestring pathname) "...")))
     (message m)
-    (%blowfish-encrypt-file pathname
-			    (make-buffer-input-port (region-start region)
-						    (region-end region)))
+    (%blowfish-encrypt-from-textual-port
+     pathname
+     (make-buffer-input-port (region-start region)
+			     (region-end region)))
     (message m "done")))
 
 (define (os-independent/read-file-methods)
@@ -85,11 +86,11 @@ filename suffix \".bf\"."
 
 (define (r/w-file-methods? objects)
   (and (list? objects)
-       (for-all? objects
-	 (lambda (object)
-	   (and (pair? object)
-		(procedure? (car object))
-		(procedure? (cdr object)))))))
+       (every (lambda (object)
+		(and (pair? object)
+		     (procedure? (car object))
+		     (procedure? (cdr object))))
+	      objects)))
 
 (define-variable read-file-methods
   "List of alternate methods to be used for reading a file into a buffer.
@@ -216,7 +217,7 @@ of the predicates is satisfied, the file is written in the usual way."
     (lambda (port)
       (if (not (ref-variable translate-file-data-on-input group))
 	  (port/set-line-ending port 'NEWLINE))
-      (let ((length ((port/operation port 'LENGTH) port)))
+      (let ((length ((textual-port-operation port 'LENGTH) port)))
 	(bind-condition-handler (list condition-type:allocation-failure)
 	    (lambda (condition)
 	      condition
@@ -303,10 +304,10 @@ of the predicates is satisfied, the file is written in the usual way."
 
 (define (string->mode-alist? object)
   (and (alist? object)
-       (for-all? object
-	 (lambda (association)
-	   (and (string? (car association))
-		(->mode? (cdr association)))))))
+       (every (lambda (association)
+		(and (string? (car association))
+		     (->mode? (cdr association))))
+	      object)))
 
 (define (->mode? object)
   (or (mode? object)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -139,10 +139,10 @@ USA.
 		(lambda (item)
 		  (or (xml-comment? item)
 		      (xml-processing-instructions? item)))))
-	   (append! (keep-matching-items (xml-document-misc-1 doc) p)
-		    (keep-matching-items (xml-document-misc-2 doc) p)
+	   (append! (filter p (xml-document-misc-1 doc))
+		    (filter p (xml-document-misc-2 doc))
 		    (list (xml-document-root doc))
-		    (keep-matching-items (xml-document-misc-3 doc) p)))
+		    (filter p (xml-document-misc-3 doc))))
 	 node)
 	node))))
 
@@ -180,7 +180,7 @@ USA.
   (xml-element-name (node-item node)))
 
 (define-method node-string ((node <element-node>))
-  (call-with-utf8-output-string
+  (call-with-output-string
     (lambda (port)
       (let loop ((node node))
 	(stream-for-each (lambda (child)
@@ -221,7 +221,7 @@ USA.
 (define-syntax define-simple-content
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
+     (if (syntax-match? '(identifier expression) (cdr form))
 	 (let ((node-type (close-syntax (cadr form) environment))
 	       (item-type (close-syntax (caddr form) environment)))
 	   `(BEGIN

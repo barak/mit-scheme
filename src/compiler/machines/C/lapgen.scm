@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -176,7 +176,7 @@ USA.
 		   (if (eq? type* 'DOUBLE)
 		       reg
 		       (reg-select reg type)))))
-    
+
     (cond ((register-is-machine-register? reg)
 	   (if (not (compatible/C*register? type (register-type reg)))
 	       (error "standard-target!: Incompatible type register" reg type))
@@ -220,7 +220,12 @@ USA.
     permanent-register-list)))
 
 (define (standard-move-to-target! src tgt)
-  (let ((src-type (register-type src)))
+  (let ((src-type (register-type src))
+	(assign
+	 (lambda (tgt src)
+	   (if (equal? tgt src)
+	       (lap)
+	       (lap ,(c:= tgt src))))))
     (cond ((not (eq? (register-type tgt) src-type))
 	   (comp-internal-error "Incompatible registers"
 				'STANDARD-MOVE-TO-TARGET!
@@ -228,11 +233,11 @@ USA.
 	  ((register-is-machine-register? tgt)
 	   (let ((src (standard-source! src
 					(machine-register-type-symbol tgt))))
-	     (LAP ,(c:= (machine-register-name tgt) src))))
+	     (assign (machine-register-name tgt) src)))
 	  ((register-is-machine-register? src)
 	   (let ((tgt (standard-target! tgt
 					(machine-register-type-symbol src))))
-	     (LAP ,(c:= tgt (machine-register-name src)))))
+	     (assign tgt (machine-register-name src))))
 	  (else
 	   (let ((reg-type
 		  (case src-type
@@ -242,8 +247,8 @@ USA.
 		     (comp-internal-error "Unknown RTL register type"
 					  'STANDARD-MOVE-TO-TARGET!
 					  src-type)))))
-	     (LAP ,(c:= (find-register! tgt reg-type)
-			(find-register! src reg-type))))))))
+	     (assign (find-register! tgt reg-type)
+		     (find-register! src reg-type)))))))
 
 ;;;; Communicate with "cout.scm"
 
@@ -396,9 +401,9 @@ USA.
 
 (define (object-label-value label)
   (let ((entry
-	 (list-search-positive (table->list-of-entries objects)
-	   (lambda (entry)
-	     (string=? label (entry-label entry))))))
+	 (find (lambda (entry)
+		 (string=? label (entry-label entry)))
+	       (table->list-of-entries objects))))
     (if (not entry)
 	(error "object-label-value: Unknown" label)
 	(entry-value entry))))
@@ -510,7 +515,7 @@ USA.
 (define (define-label! label)
   (set! labels
 	(cons (vector label #f
-		      (generate-new-label-symbol "LABEL_")    
+		      (generate-new-label-symbol "LABEL_")
 		      #f #f #f #f)
 	      labels))
   unspecific)
@@ -662,8 +667,7 @@ USA.
 	,@(let loop ((names (cddr form)) (index (cadr form)))
 	    (if (pair? names)
 		(cons `(DEFINE-INTEGRABLE
-			 ,(symbol-append 'CODE:COMPILER-
-					 (car names))
+			 ,(symbol 'CODE:COMPILER- (car names))
 			 ,index)
 		      (loop (cdr names) (1+ index)))
 		`()))))))

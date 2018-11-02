@@ -8,8 +8,8 @@ AC_PROG_MAKE_SET
 AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,8 +33,8 @@ AH_TOP([/*
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -130,35 +130,10 @@ AC_ARG_ENABLE([native-code],
 	[Support native compiled code if available [[yes]]]))
 : ${enable_native_code='yes'}
 
-AC_ARG_WITH([openssl],
-    AS_HELP_STRING([--with-openssl],
-	[Use OpenSSL crypto library if available [[yes]]]))
-: ${with_openssl='yes'}
-
-AC_ARG_WITH([mhash],
-    AS_HELP_STRING([--with-mhash],
-	[Use mhash library if available [[yes]]]))
-: ${with_mhash='yes'}
-
-AC_ARG_WITH([mcrypt],
-    AS_HELP_STRING([--with-mcrypt],
-	[Use mcrypt library if available [[yes]]]))
-: ${with_mcrypt='yes'}
-
-AC_ARG_WITH([gdbm],
-    AS_HELP_STRING([--with-gdbm],
-	[Use gdbm library if available [[yes]]]))
-: ${with_gdbm='yes'}
-
-AC_ARG_WITH([db-4],
-    AS_HELP_STRING([--with-db-4],
-	[Use Berkeley DB v4 library if available [[yes]]]))
-: ${with_db_4='yes'}
-
-AC_ARG_WITH([libpq],
-    AS_HELP_STRING([--with-libpq],
-	[Use PostgreSQL libpq library if available [[yes]]]))
-: ${with_libpq='yes'}
+AC_ARG_WITH([compiler-target],
+    AS_HELP_STRING([--with-compiler-target],
+	[Compiler target architecture [[same as native code]]]))
+: ${with_compiler_target=yes}
 
 AC_ARG_WITH([termcap],
     AS_HELP_STRING([--with-termcap],
@@ -167,9 +142,9 @@ AC_ARG_WITH([termcap],
 
 dnl For reasons I don't understand, it is necessary to use
 dnl quadigraphs here instead of [[ ... ]].
-AC_ARG_WITH([macosx-version],
-    AS_HELP_STRING([--with-macosx-version],
-	[MacOSX version to compile for @<:@host's version@:>@]))
+AC_ARG_WITH([macos-version],
+    AS_HELP_STRING([--with-macos-version],
+	[macOS version to compile for @<:@host's version@:>@]))
 
 AC_ARG_WITH([module-loader],
     AS_HELP_STRING([--with-module-loader],
@@ -181,18 +156,8 @@ GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
 OPTIONAL_BASES=
 OPTIONAL_SOURCES=
 OPTIONAL_OBJECTS=
-PRBFISH_LIBS=
-PRMD5_LIBS=
 SCHEME_DEFS=-DMIT_SCHEME
 SCHEME_LDFLAGS=
-MODULE_BASES=
-MODULE_AUX_BASES=
-MODULE_LIBS=
-MODULE_TARGETS=
-MODULE_RULES=/dev/null
-MODULE_CFLAGS=
-MODULE_LDFLAGS=
-MODULE_LOADER=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
@@ -275,10 +240,7 @@ fi
 CCLD=${CC}
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
-
-if test x${mit_scheme_native_code} = xhppa; then
-   GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
-fi
+MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
 
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 EXE_NAME=mit-scheme-${mit_scheme_native_code}
@@ -306,66 +268,69 @@ dragonfly*)
     GNU_LD=yes
     ;;
 darwin*)
-    if test -n "${with_macosx_version}"; then
-	MACOSX=${with_macosx_version}
-	MACOSX_CFLAGS="-mmacosx-version-min=${MACOSX}"
+    if test -n "${with_macos_version}"; then
+	MACOS=${with_macos_version}
+	MACOS_CFLAGS="-mmacosx-version-min=${MACOS}"
     else
-	MACOSX=`sw_vers | ${GREP} ^ProductVersion: \
+	MACOS=`sw_vers | ${GREP} ^ProductVersion: \
 	    | ${EGREP} -o '[[0-9]+\.[0-9]+]'`
-	if test -z "${MACOSX}"; then
-	    AC_MSG_ERROR([Unable to determine MacOSX version])
+	if test -z "${MACOS}"; then
+	    AC_MSG_ERROR([Unable to determine macOS version])
 	fi
-	MACOSX_CFLAGS=
+	MACOS_CFLAGS=
     fi
-    if test "${MACOSX}" = 10.4; then
-	SDK=MacOSX${MACOSX}u
+    if test "${MACOS}" = 10.4; then
+	SDK=MacOSX${MACOS}u
     else
-	SDK=MacOSX${MACOSX}
+	SDK=MacOSX${MACOS}
     fi
-    MACOSX_SYSROOT=
+    MACOS_SDKS=
     for dir in /Developer/SDKs \
     	/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
     do
 	if test -d "${dir}"; then
-	    MACOSX_SYSROOT=${dir}
+	    MACOS_SDKS=${dir}
 	    break
 	fi
     done
-    if test -z "${MACOSX_SYSROOT}"; then
+    if test -z "${MACOS_SDKS}"; then
 	AC_MSG_WARN([Can't find SDKs directory, not checking for SDK])
-    else	
-	MACOSX_SYSROOT=${MACOSX_SYSROOT}/${SDK}.sdk
-	if test ! -d "${MACOSX_SYSROOT}"; then
-	    AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
-	fi
+    else
+        MACOS_SYSROOT=
+        for sysroot in ${MACOS_SDKS}/MacOSX.sdk ${MACOS_SDKS}/${SDK}.sdk; do
+            if test -d "${sysroot}"; then
+                MACOS_SYSROOT=${sysroot}
+                MACOS_CFLAGS="${MACOS_CFLAGS} -isysroot ${sysroot}"
+                break
+            fi
+        done
+        if test -z "${MACOS_SYSROOT}"; then
+            AC_MSG_ERROR([No macOS SDK for version: ${MACOS}])
+        fi
     fi
-    MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
-    MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
-    MACOSX_CFLAGS="${MACOSX_CFLAGS} -DSIGNAL_HANDLERS_CAN_USE_SCHEME_STACK"
-    AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
+    MACOS_CFLAGS="${MACOS_CFLAGS} -fconstant-cfstrings"
+    MACOS_CFLAGS="${MACOS_CFLAGS} -DSIGNAL_HANDLERS_CAN_USE_SCHEME_STACK"
+    dnl needed for lgamma_r:
+    MACOS_CFLAGS="${MACOS_CFLAGS} -D_REENTRANT"
+    AC_MSG_NOTICE([Compiling for macOS version ${MACOS}])
     case ${mit_scheme_native_code} in
     i386)
-	MACOSX_CFLAGS="-arch i386 ${MACOSX_CFLAGS}"
+	MACOS_CFLAGS="-arch i386 ${MACOS_CFLAGS}"
 	AS_FLAGS="-arch i386 ${AS_FLAGS}"
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
     	;;
     x86-64)
-	MACOSX_CFLAGS="-arch x86_64 ${MACOSX_CFLAGS}"
+	MACOS_CFLAGS="-arch x86_64 ${MACOS_CFLAGS}"
 	AS_FLAGS="-arch x86_64 ${AS_FLAGS}"
     	;;
     esac
-    CFLAGS="${CFLAGS} ${MACOSX_CFLAGS} -frounding-math"
-    LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
-    LDFLAGS="${LDFLAGS} -framework CoreFoundation"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle"
-    if test "${with_module_loader}" != no; then
-      if test "${with_module_loader}" = yes; then
-	MODULE_LOADER='${SCHEME_EXE}'
-      else
-	MODULE_LOADER="${with_module_loader}"
-      fi
-      MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle_loader ${MODULE_LOADER}"
+    if ! cc --version | grep -q clang; then
+        dnl -frounding-math not supported by clang.
+        MACOS_CFLAGS="${MACOS_CFLAGS} -frounding-math"
     fi
+    CFLAGS="${CFLAGS} ${MACOS_CFLAGS}"
+    LDFLAGS="${LDFLAGS} ${MACOS_CFLAGS} -Wl,-syslibroot,${MACOS_SYSROOT}"
+    LDFLAGS="${LDFLAGS} -framework CoreFoundation"
     AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
 netbsd*)
@@ -391,8 +356,6 @@ if test "${DO_GCC_TESTS}" = yes; then
     if test "${GNU_LD}" = yes; then
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
     fi
-    MODULE_CFLAGS="-fPIC ${MODULE_CFLAGS}"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared -fPIC"
     AC_MSG_CHECKING([for ELF binaries])
     AC_EGREP_CPP([yes],
 	[
@@ -727,7 +690,7 @@ AC_CHECK_FUNCS([fpsetround frexp fsync fsync_range ftruncate])
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpagesize getpgrp])
 AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])
-AC_CHECK_FUNCS([lockf log1p])
+AC_CHECK_FUNCS([lgamma_r lockf log1p])
 AC_CHECK_FUNCS([madvise memcpy mkdir mktime modf])
 AC_CHECK_FUNCS([nice ntp_adjtime ntp_gettime])
 AC_CHECK_FUNCS([openpty])
@@ -829,195 +792,6 @@ no)
     ;;
 esac
 
-dnl The OpenSSL crypto library provides support for blowfish and MD5.
-if test "${with_openssl}" != no; then
-    if test "${with_openssl}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_openssl}/include"
-	LDFLAGS="${LDFLAGS} -L${with_openssl}/lib"
-    fi
-    FOUND=
-    AC_CHECK_HEADERS([openssl/blowfish.h openssl/md5.h],
-	[
-	AC_CHECK_LIB([crypto], [BF_set_key],
-	    [
-	    AC_DEFINE([HAVE_LIBCRYPTO], [1],
-		[Define to 1 if you have the `crypto' library (-lcrypto).])
-	    FOUND=yes
-	    ])
-	])
-    if test -n "${FOUND}"; then
-	MODULE_LIBS="-lcrypto ${MODULE_LIBS}"
-	MODULE_BASES="${MODULE_BASES} prbfish prmd5"
-	PRBFISH_LIBS="-lcrypto"
-	PRMD5_LIBS="-lcrypto"
-    fi
-fi
-
-dnl These libraries might not be installed, so take care generating
-dnl file dependencies using "makegen/makegen.scm" when called on
-dnl "makegen/files-optional.scm".  To wit, "prmhash.c" & "prmcrypt.c"
-dnl must conditionalize their dependencies on <mhash.h> & <mcrypt.h>,
-dnl respectively, to avoid warnings in "Makefile.deps" and its embeds.
-dnl Finally, note that "prmd5.c" is similarly conditionalized as well.
-
-dnl The mhash library provides MD5 support.  It can be loaded in addition
-dnl to other MD5 libraries and provides a rich set of hashes.
-if test "${with_mhash}" != no; then
-    if test "${with_mhash}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_mhash}/include"
-	LDFLAGS="${LDFLAGS} -L${with_mhash}/lib"
-    fi
-    AC_CHECK_HEADER([mhash.h],
-	[
-	AC_DEFINE([HAVE_MHASH_H], [1],
-	    [Define to 1 if you have the <mhash.h> header file.])
-	AC_CHECK_LIB([mhash], [mhash_count],
-	    [
-	    AC_DEFINE([HAVE_LIBMHASH], [1],
-		[Define to 1 if you have the `mhash' library (-lmhash).])
-	    if test ${enable_debugging} != no; then
-	       LIBS="-lmhash ${LIBS}"
-	    fi
-	    MODULE_LIBS="-lmhash ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prmhash"
-	    if test "x${PRMD5_LIBS}" = x; then
-		PRMD5_LIBS="-lmhash"
-	    fi
-	    ])
-	])
-fi
-
-dnl The mcrypt library provides blowfish, but its CFB mode is 8 bit.
-dnl We have been using 64-bit CFB, so this isn't really compatible.
-dnl But mcrypt provides many ciphers and can be loaded in addition.
-if test "${with_mcrypt}" != no; then
-    if test "${with_mcrypt}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_mcrypt}/include"
-	LDFLAGS="${LDFLAGS} -L${with_mcrypt}/lib"
-    fi
-    AC_CHECK_HEADER([mcrypt.h],
-	[
-	AC_DEFINE([HAVE_MCRYPT_H], [1],
-	    [Define to 1 if you have the <mcrypt.h> header file.])
-	AC_CHECK_LIB([mcrypt], [mcrypt_generic_init],
-	    [
-	    AC_DEFINE([HAVE_LIBMCRYPT], [1],
-		[Define to 1 if you have the `mcrypt' library (-lmcrypt).])
-	    MODULE_LIBS="-lmcrypt ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prmcrypt"
-	    ])
-	])
-fi
-
-dnl gdbm support
-if test "${with_gdbm}" != no; then
-    if test "${with_gdbm}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_gdbm}/include"
-	LDFLAGS="${LDFLAGS} -L${with_gdbm}/lib"
-    fi
-    AC_CHECK_HEADER([gdbm.h],
-	[
-	AC_DEFINE([HAVE_GDBM_H], [1],
-	    [Define to 1 if you have the <gdbm.h> header file.])
-	AC_CHECK_LIB([gdbm], [gdbm_open],
-	    [
-	    AC_DEFINE([HAVE_LIBGDBM], [1],
-		[Define to 1 if you have the `gdbm' library (-lgdbm).])
-	    MODULE_LIBS="-lgdbm ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prgdbm"
-	    ])
-	])
-fi
-
-dnl DB v4 support
-if test "${with_db_4}" != no; then
-    if test "${with_db_4}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_db_4}/include"
-	LDFLAGS="${LDFLAGS} -L${with_db_4}/lib"
-    fi
-    AC_CHECK_HEADER([db.h],
-	[
-	AC_DEFINE([HAVE_DB_H], [1],
-	    [Define to 1 if you have the <db.h> header file.])
-	AC_MSG_CHECKING([for db_create in -ldb-4])
-	save_LIBS=${LIBS}
-	LIBS="${LIBS} -ldb-4"
-	AC_LINK_IFELSE(
-	    [AC_LANG_PROGRAM(
-		[[#include <db.h>]],
-		[[db_create (0, 0, 0)]])],
-	    [
-	    AC_MSG_RESULT([yes])
-	    AC_DEFINE([HAVE_LIBDB_4], [1],
-		[Define to 1 if you have the `db-4' library (-ldb-4).])
-	    MODULE_LIBS="-ldb-4 ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prdb4"
-	    ],
-	    [
-	    AC_MSG_RESULT([no])
-	    ])
-	LIBS=${save_LIBS}
-	])
-fi
-
-dnl PostgreSQL support
-if test "${with_libpq}" != no; then
-    if test "${with_libpq}" != yes; then
-	libpq_inc=${with_libpq}/include
-	libpq_lib=${with_libpq}/lib
-    else
-	AC_PATH_PROG([PG_CONFIG], [pg_config])
-	if test "x${PG_CONFIG}" != x; then
-	    libpq_inc=`${PG_CONFIG} --includedir 2>/dev/null`
-	    libpq_lib=`${PG_CONFIG} --libdir 2>/dev/null`
-	else
-	    if test -d /usr/include/postgresql; then
-	       libpq_inc=/usr/include/postgresql
-	    else
-	       libpq_inc=/usr/include
-	    fi
-	    libpq_lib=/usr/lib
-	fi
-    fi
-    if test "x${libpq_inc}" != x; then
-	if test "${libpq_inc}" != /usr/include; then
-	    CPPFLAGS="${CPPFLAGS} -I${libpq_inc}"
-	fi
-    fi
-    if test "x${libpq_lib}" != x; then
-	if test "${libpq_lib}" != /usr/lib; then
-	    LDFLAGS="${LDFLAGS} -L${libpq_lib}"
-	fi
-    fi
-    AC_CHECK_HEADER([libpq-fe.h],
-	[
-	AC_DEFINE([HAVE_LIBPQ_FE_H], [1],
-	    [Define to 1 if you have the <libpq-fe.h> header file.])
-	AC_CHECK_LIB([pq], [PQconnectdb],
-	    [
-	    AC_DEFINE([HAVE_LIBPQ], [1],
-		[Define to 1 if you have the `pq' library (-lpq).])
-	    MODULE_LIBS="-lpq ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prpgsql"
-	    ])
-	])
-fi
-
-dnl Add support for X if present.
-if test "${no_x}" != yes; then
-    if test "x${x_includes}" != x; then
-	FOO=-I`echo ${x_includes} | sed -e "s/:/ -I/g"`
-	CPPFLAGS="${CPPFLAGS} ${FOO}"
-    fi
-    if test "x${x_libraries}" != x; then
-	FOO=-L`echo ${x_libraries} | sed -e "s/:/ -L/g"`
-	LDFLAGS="${LDFLAGS} ${FOO}"
-    fi
-    MODULE_LIBS="-lX11 ${MODULE_LIBS}"
-    MODULE_BASES="${MODULE_BASES} prx11"
-    MODULE_AUX_BASES="${MODULE_AUX_BASES} x11base x11color x11graph x11term"
-fi
-
 dnl Check for dynamic loader support.
 AC_CHECK_FUNC([dlopen],
     [],
@@ -1051,8 +825,6 @@ none)
     ;;
 c)
     AC_CONFIG_LINKS([cmpauxmd.c:cmpauxmd/c.c])
-    AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
-    AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
@@ -1073,6 +845,11 @@ svm1)
     ;;
 esac
 
+if test x"${mit_scheme_compiler_target}" = xc; then
+    AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
+    AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
+fi
+
 AC_CONFIG_LINKS([
     cmpintmd.h:cmpintmd/${mit_scheme_native_code}.h
     cmpintmd.c:cmpintmd/${mit_scheme_native_code}.c
@@ -1084,41 +861,14 @@ for base in ${OPTIONAL_BASES}; do
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} ${base}.o"
 done
 
-if test "x${MODULE_BASES}" != x; then
-    MODULE_RULES=config-rules.module
-    rm -f ${MODULE_RULES}
-    for BASE in ${MODULE_BASES}; do
-	MODULE_TARGETS="${MODULE_TARGETS} ${BASE}.so"
-	MODULE_AUX_BASES="${MODULE_AUX_BASES} ${BASE}"
-    done
-    for BASE in ${MODULE_AUX_BASES}; do
-	echo >> ${MODULE_RULES}
-	echo ${BASE}.o: ${BASE}.c >> ${MODULE_RULES}
-	echo "	" '$(COMPILE_MODULE)' -c '$*.c' >> ${MODULE_RULES}
-    done
-fi
-if test "x${MODULE_TARGETS}" != x; then
-    if test ! -e ../lib/lib; then mkdir ../lib/lib; fi
-    for BASE in ${MODULE_TARGETS}; do
-	ln -sf ../../microcode/${BASE} ../lib/lib/${BASE}
-    done
-fi
-
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])
 AC_SUBST([M4_FLAGS])
 AC_SUBST([M4])
 AC_SUBST([OPTIONAL_SOURCES])
 AC_SUBST([OPTIONAL_OBJECTS])
-AC_SUBST([PRBFISH_LIBS])
-AC_SUBST([PRMD5_LIBS])
 AC_SUBST([SCHEME_DEFS])
 AC_SUBST([SCHEME_LDFLAGS])
-AC_SUBST([MODULE_TARGETS])
-AC_SUBST_FILE([MODULE_RULES])
-AC_SUBST([MODULE_CFLAGS])
-AC_SUBST([MODULE_LDFLAGS])
-AC_SUBST([MODULE_LOADER])
 AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([AUX_PROGRAMS])
@@ -1136,7 +886,3 @@ rm -f makegen-cc
 echo "#!/bin/sh" > makegen-cc
 echo exec gcc -MM -MG -DMIT_SCHEME ${CPPFLAGS} '"${1}"' >> makegen-cc
 chmod +x makegen-cc
-
-if test ${MODULE_RULES} != /dev/null; then
-    rm -f ${MODULE_RULES}
-fi

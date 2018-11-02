@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,7 +29,6 @@ USA.
 #include "scheme.h"
 #include "osscheme.h"		/* error_unimplemented_primitive -- foo */
 #include "prims.h"
-#include <errno.h>
 
 double
 arg_flonum (int arg_number)
@@ -144,10 +143,7 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
 {									\
   double result;							\
   PRIMITIVE_HEADER (1);							\
-  errno = 0;								\
   result = (function (arg_flonum (1)));					\
-  if (errno != 0)							\
-    error_bad_range_arg (1);						\
   FLONUM_RESULT (result);						\
 }
 
@@ -159,10 +155,7 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
   x = (arg_flonum (1));							\
   if (! (restriction))							\
     error_bad_range_arg (1);						\
-  errno = 0;								\
   result = (function (x));						\
-  if (errno != 0)							\
-    error_bad_range_arg (1);						\
   FLONUM_RESULT (result);						\
 }
 
@@ -194,17 +187,26 @@ DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
   double result;
   PRIMITIVE_HEADER (1);
   x = (arg_flonum (1));
-  if (! (x >= 0))
-    error_bad_range_arg (1);
-  errno = 0;
   result = (log (x));
-  if ((errno != 0) && ((x != 0) || (errno != ERANGE)))
-    error_bad_range_arg (1);
   FLONUM_RESULT (result);
 }
 
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
+
+DEFINE_PRIMITIVE ("FLONUM-SINH", Prim_flonum_sinh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (sinh)
+DEFINE_PRIMITIVE ("FLONUM-COSH", Prim_flonum_cosh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (cosh)
+DEFINE_PRIMITIVE ("FLONUM-TANH", Prim_flonum_tanh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (tanh)
+DEFINE_PRIMITIVE ("FLONUM-ASINH", Prim_flonum_asinh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (asinh)
+DEFINE_PRIMITIVE ("FLONUM-ACOSH", Prim_flonum_acosh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (acosh)
+DEFINE_PRIMITIVE ("FLONUM-ATANH", Prim_flonum_atanh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (atanh)
+
 DEFINE_PRIMITIVE ("FLONUM-SIN", Prim_flonum_sin, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (sin)
 DEFINE_PRIMITIVE ("FLONUM-COS", Prim_flonum_cos, 1, 1, 0)
@@ -232,11 +234,77 @@ DEFINE_PRIMITIVE ("FLONUM-ATAN2", Prim_flonum_atan2, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("FLONUM-SQRT", Prim_flonum_sqrt, 1, 1, 0)
      RESTRICTED_TRANSCENDENTAL_FUNCTION (sqrt, (x >= 0))
+DEFINE_PRIMITIVE ("FLONUM-CBRT", Prim_flonum_cbrt, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (cbrt)
+
+DEFINE_PRIMITIVE ("FLONUM-HYPOT", Prim_flonum_hypot, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  FLONUM_RESULT (hypot ((arg_flonum (1)), (arg_flonum (2))));
+}
 
 DEFINE_PRIMITIVE ("FLONUM-EXPT", Prim_flonum_expt, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   FLONUM_RESULT (pow ((arg_flonum (1)), (arg_flonum (2))));
+}
+
+/* (Complete) Gamma and error functions */
+
+DEFINE_PRIMITIVE ("FLONUM-LGAMMA", Prim_flonum_lgamma, 1, 1, 0)
+{
+  double x;
+  double result;
+  PRIMITIVE_HEADER (1);
+
+  x = (arg_flonum (1));
+#ifdef HAVE_LGAMMA_R
+  {
+    int sign;
+    result = (lgamma_r (x, (&sign)));
+  }
+#else
+  result = (lgamma (x));
+#endif
+  FLONUM_RESULT (result);
+}
+
+DEFINE_PRIMITIVE ("FLONUM-GAMMA", Prim_flonum_gamma, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (tgamma)
+DEFINE_PRIMITIVE ("FLONUM-ERF", Prim_flonum_erf, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (erf)
+DEFINE_PRIMITIVE ("FLONUM-ERFC", Prim_flonum_erfc, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (erfc)
+
+/* Bessel functions of the first (j*) and second (y*) kind */
+
+DEFINE_PRIMITIVE ("FLONUM-J0", Prim_flonum_j0, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (j0)
+DEFINE_PRIMITIVE ("FLONUM-J1", Prim_flonum_j1, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (j1)
+DEFINE_PRIMITIVE ("FLONUM-Y0", Prim_flonum_y0, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (y0)
+DEFINE_PRIMITIVE ("FLONUM-Y1", Prim_flonum_y1, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (y1)
+
+DEFINE_PRIMITIVE ("FLONUM-JN", Prim_flonum_jn, 2, 2, 0)
+{
+  int n;
+  double x;
+  PRIMITIVE_HEADER (2);
+  n = (arg_integer_in_range (1, INT_MIN, INT_MAX));
+  x = (arg_flonum (2));
+  FLONUM_RESULT (jn (n, x));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-YN", Prim_flonum_yn, 2, 2, 0)
+{
+  int n;
+  double x;
+  PRIMITIVE_HEADER (2);
+  n = (arg_integer_in_range (1, INT_MIN, INT_MAX));
+  x = (arg_flonum (2));
+  FLONUM_RESULT (yn (n, x));
 }
 
 DEFINE_PRIMITIVE ("FLONUM?", Prim_flonum_p, 1, 1, 0)
@@ -390,5 +458,101 @@ DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-SINGLE", Prim_cast_integer_to_ieee754
     cast.u32 = integer_to_uintmax (ARG_REF (1));
 
     PRIMITIVE_RETURN (double_to_flonum ((double) cast.f));
+  }
+}
+
+/* C99 flonum predicates */
+
+DEFINE_PRIMITIVE ("FLONUM-IS-FINITE?", Prim_flonum_is_finite_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isfinite (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-INFINITE?", Prim_flonum_is_infinite_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isinf (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-NAN?", Prim_flonum_is_nan_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isnan (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-NORMAL?", Prim_flonum_is_normal_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isnormal (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-NEGATIVE?", Prim_flonum_is_negative_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (signbit (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-GREATER?", Prim_flonum_is_greater_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (isgreater ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-GREATER-OR-EQUAL?", Prim_flonum_is_greater_or_equal_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (isgreaterequal ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-LESS-OR-EQUAL?", Prim_flonum_is_less_or_equal_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (islessequal ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-LESS?", Prim_flonum_is_less_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (isless ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-LESS-OR-GREATER?", Prim_flonum_is_less_or_greater_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (islessgreater ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-UNORDERED?", Prim_flonum_is_unordered_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (isunordered ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+/* Miscellaneous floating-point operations */
+
+DEFINE_PRIMITIVE ("FLONUM-COPYSIGN", Prim_flonum_copysign, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    double magnitude = (arg_flonum (1));
+    double sign = (arg_flonum (2));
+    FLONUM_RESULT (copysign (magnitude, sign));
+  }
+}
+
+DEFINE_PRIMITIVE ("FLONUM-NEXTAFTER", Prim_flonum_nextafter, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    double x = (arg_flonum (1));
+    double direction = (arg_flonum (2));
+    FLONUM_RESULT (nextafter (x, direction));
   }
 }

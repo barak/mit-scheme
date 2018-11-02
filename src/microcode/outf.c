@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,12 +47,6 @@ USA.
 #  include <windows.h>
 #  include "ntscreen.h"
    extern HANDLE master_tty_window;
-#endif
-
-#ifdef __OS2__
-   extern char * OS2_thread_fatal_error_buffer (void);
-   extern void OS2_message_box (const char *, const char *, int);
-   extern void OS2_console_write (const char *, size_t);
 #endif
 
 void
@@ -101,6 +95,15 @@ outf_error (const char * format, ...)
   va_list args;
   va_start (args, format);
   voutf_error (format, args);
+  va_end (args);
+}
+
+void
+outf_error_line (const char * format, ...)
+{
+  va_list args;
+  va_start (args, format);
+  voutf_error_line (format, args);
   va_end (args);
 }
 
@@ -188,52 +191,6 @@ outf_flush_fatal (void)
 
 #endif /* __WIN32__ */
 
-#ifdef __OS2__
-
-#define OUTF_VARIANTS_DEFINED 1
-
-void
-voutf_console (const char * format, va_list args)
-{
-  char buffer [4096];
-  vsprintf (buffer, format, args);
-  OS2_console_write (buffer, (strlen (buffer)));
-}
-
-void
-outf_flush_console (void)
-{
-}
-
-void
-voutf_error (const char * format, va_list args)
-{
-  voutf_console (format, args);
-}
-
-void
-outf_flush_error (void)
-{
-}
-
-void
-voutf_fatal (const char * format, va_list args)
-{
-  char * buffer = (OS2_thread_fatal_error_buffer ());
-  unsigned int end = (strlen (buffer));
-  vsprintf ((& (buffer [end])), format, args);
-}
-
-void
-outf_flush_fatal (void)
-{
-  char * buffer = (OS2_thread_fatal_error_buffer ());
-  OS2_message_box ("MIT/GNU Scheme terminating", buffer, 1);
-  (buffer[0]) = '\0';
-}
-
-#endif /* __OS2__ */
-
 #ifndef OUTF_VARIANTS_DEFINED
 
 void
@@ -257,6 +214,14 @@ voutf_error (const char * format, va_list args)
 void
 outf_flush_error (void)
 {
+  fflush (stderr);
+}
+
+void
+voutf_error_line (const char * format, va_list args)
+{
+  vfprintf (stderr, format, args);
+  fputc ('\n', stderr);
   fflush (stderr);
 }
 
