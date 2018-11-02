@@ -7,15 +7,15 @@ Subject: AUXDIR_NAME sans arch
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 09237da..f07ce71 100644
+index 7de03d1..0e29a6e 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
-@@ -102,7 +102,7 @@ svm1)
-     INSTALL_LIARC_BUNDLES=
-     ;;
- esac
+@@ -162,7 +162,7 @@ else
+     IF_SVM_COMPILER='#!svm compiler: '
+ fi
+ 
 -AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 +AUXDIR_NAME=mit-scheme
  AUXDIR='$(libdir)'/${AUXDIR_NAME}
- 
- # Please keep the following messages synchronized with the messages in
+ MIT_SCHEME_LIBDIR=${AUXDIR}/
+ MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
