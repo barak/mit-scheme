@@ -196,7 +196,9 @@ USA.
        `((weak-car ,(weak-car wp))
 	 (weak-cdr ,(weak-cdr wp)))))
 
-   (define-pp-describer cell?
+   (define-pp-describer (lambda (object)
+			  (and (cell? object)
+			       (not (promise? object))))
      (lambda (cell)
        `((contents ,(cell-contents cell)))))))
 
