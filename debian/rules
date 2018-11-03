@@ -40,8 +40,8 @@ override_dh_auto_install:
 # Upstream changelog is over 5MB, leave a copy in the doc package but
 # remove it from the binary package to reduce bloat.
 # See http://dedup.debian.net/.
-override_dh_installchangelog:
-	dh_installchangelog
+override_dh_installchangelogs:
+	dh_installchangelogs
 	-rm --verbose \
 	   debian/mit-scheme/usr/share/doc/mit-scheme/changelog \
 	   debian/mit-scheme-dbg/usr/share/doc/mit-scheme-dbg/changelog
