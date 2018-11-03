@@ -1,4 +1,4 @@
-mit-scheme (9.2-1) UNRELEASED; urgency=medium
+mit-scheme (10.1.2-1) unstable; urgency=medium
 
   [ Ondřej Nový ]
   * d/control: Deprecating priority extra as per policy 4.0.1
@@ -9,8 +9,26 @@ mit-scheme (9.2-1) UNRELEASED; urgency=medium
   * new upstream release
   * bump standards version
   * merge / update quilt patches
+  * typo in debian/rules (closes: #834651)
+  * remove Chris Hanson, who has retired, as maintainer (closes: #829686)
+  * install entire /usr/lib/ARCH/mit-scheme hierarchy
+  * info file installation tweaks, for compression
+  * manually shift .bci files from mit-scheme to mit-scheme-dbg
+  * build dependency on mit-scheme (>= 10)
+  * PDF file is gone: imail documentation seems info-only now
+  * per policy, menu file begone
+  * upstream build rife with race conditions: dh --no-parallel
+  * stop removing runtime.com, needed for self-hosted rebuild
+  * patch: AUXDIR_NAME needs to be fixed twice (upstream SPOT violation)
+  * do not install *.la library support file
+  * secure a couple URLs
+  * add desktop icon and keywords
+  * harden
+  * lintian tag desktop-mime-but-no-exec-code
+  * lintian tag public-upstream-key-not-minimal
+  * secure debian/watch URL
 
- -- Barak A. Pearlmutter <bap@debian.org>  Fri, 02 Nov 2018 14:03:38 +0000
+ -- Barak A. Pearlmutter <bap@debian.org>  Sun, 11 Nov 2018 14:13:23 +0000
 
 mit-scheme (9.1.1-5) unstable; urgency=low
 
