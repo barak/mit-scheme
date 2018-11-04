@@ -232,7 +232,8 @@ USA.
 
 (define (unsyntax-sequence-object environment seq)
   (let ((actions (scode-sequence-actions seq)))
-    (if (and (scode-block-declaration? (car actions))
+    (if (and (pair? actions)
+	     (scode-block-declaration? (car actions))
 	     (pair? (cdr actions)))
 	`(begin
 	  (declare ,@(scode-block-declaration-text (car actions)))
@@ -421,7 +422,8 @@ USA.
 (define (unsyntax-lambda-body-sequence environment body)
   (if (scode-sequence? body)
       (let ((actions (scode-sequence-actions body)))
-	(if (and (scode-block-declaration? (car actions))
+	(if (and (pair? actions)
+		 (scode-block-declaration? (car actions))
 		 (pair? (cdr actions)))
 	    `((declare ,@(scode-block-declaration-text (car actions)))
 	      ,@(unsyntax-sequence-for-splicing

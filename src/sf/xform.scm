@@ -324,10 +324,15 @@ USA.
 (define (transform/sequence block environment expression)
   ;; Don't remove references from sequences here.  We want them
   ;; to signal ignored variables.
-  (sequence/%make
-   expression
-   (transform/expressions block environment
-			  (scode-sequence-actions expression))))
+  (let ((actions
+	 (transform/expressions block environment
+				(scode-sequence-actions expression))))
+    (cond ((not (pair? actions))
+	   (transform/constant block environment unspecific))
+	  ((not (pair? (cdr actions)))
+	   (car actions))
+	  (else
+	   (sequence/%make expression actions)))))
 
 (define (transform/the-environment block environment expression)
   environment ; ignored

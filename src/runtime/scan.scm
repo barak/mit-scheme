@@ -28,7 +28,7 @@ USA.
 ;;; package: (runtime scode-scan)
 
 (declare (usual-integrations))
-
+
 ;;; Scanning of internal definitions is necessary to reduce the number
 ;;; of "real auxiliary" variables in the system.  These bindings are
 ;;; maintained in alists by the microcode, and cannot be compiled as
@@ -41,17 +41,6 @@ USA.
 
 ;;; The Open Block abstraction can be used to store scanned definitions in code,
 ;;; which is extremely useful for code analysis and transformation.
-
-(define-integrable sequence-type
-  (ucode-type sequence))
-
-(define null-sequence
-  '(null-sequence))
-
-(define (cons-sequence action seq)
-  (if (eq? seq null-sequence)
-      action
-      (&typed-pair-cons sequence-type action seq)))
 
 ;;;; Scanning
 
@@ -61,7 +50,7 @@ USA.
 ;;; EQUAL?  list.
 
 (define (scan-defines expression receiver)
-  ((scan-loop expression receiver) '() '() null-sequence))
+  ((scan-loop expression receiver) '() '() (make-scode-sequence '())))
 
 (define (scan-loop expression receiver)
   (cond ((scode-open-block? expression)	;must come before SCODE-SEQUENCE? clause
@@ -74,7 +63,7 @@ USA.
 		      body))))
 	((scode-sequence? expression)
 	 ;; Build the sequence from the tail-end first so that the
-	 ;; null-sequence shows up in the tail and is detected by
+	 ;; empty sequence shows up in the tail and is detected by
 	 ;; cons-sequence.
 	 (let loop
 	     ((actions (scode-sequence-actions expression))
@@ -102,6 +91,9 @@ USA.
 	   (receiver names
 		     declarations
 		     (cons-sequence expression body))))))
+
+(define (cons-sequence action sequence)
+  (make-scode-sequence (cons action (scode-sequence-actions sequence))))
 
 (define (unscan-defines names declarations body)
 
@@ -141,7 +133,7 @@ USA.
 
     (if (null? declarations)
 	body*
-	(&typed-pair-cons sequence-type
+	(&typed-pair-cons (ucode-type sequence)
 			  (make-scode-block-declaration declarations)
 			  body*))))
 
@@ -162,7 +154,8 @@ USA.
 (define (scode-open-block? object)
   (and (scode-sequence? object)
        (let ((actions (scode-sequence-actions object)))
-	 (and (open-block-descriptor? (car actions))
+	 (and (pair? actions)
+	      (open-block-descriptor? (car actions))
 	      (let ((names (%open-block-descriptor-names (car actions))))
 		(and (fix:> (length (cdr actions)) (length names))
 		     (every %open-block-definition-named?

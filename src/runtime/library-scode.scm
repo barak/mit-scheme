@@ -124,7 +124,9 @@ USA.
   (let ((scode (strip-comments scode)))
     (or (scode-library? scode)
 	(and (scode-sequence? scode)
-	     (every scode-library? (scode-sequence-actions scode))))))
+	     (let ((actions (scode-sequence-actions scode)))
+	       (and (pair? actions)
+		    (every scode-library? actions)))))))
 (register-predicate! r7rs-scode-file? 'r7rs-scode-file)
 
 (define (r7rs-scode-file-libraries scode)

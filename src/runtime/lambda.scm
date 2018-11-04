@@ -444,7 +444,8 @@ USA.
       (let ((actions
 	     (and (scode-sequence? body)
 		  (scode-sequence-actions body))))
-	(if (and actions (scode-block-declaration? (car actions)))
+	(if (and (pair? actions)
+		 (scode-block-declaration? (car actions)))
 	    (receiver name required optional rest auxiliary
 		      (scode-block-declaration-text (car actions))
 		      (make-scode-sequence (cdr actions)))

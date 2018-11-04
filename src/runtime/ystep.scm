@@ -284,7 +284,9 @@ USA.
 	 (or (eq? f1 (scode-conditional-consequent f2))
 	     (eq? f1 (scode-conditional-alternative f2))))
 	((scode-sequence? f2)
-	 (eq? f1 (car (last-pair (scode-sequence-actions f2)))))
+	 (let ((actions (scode-sequence-actions f2)))
+	   (and (pair? actions)
+		(eq? f1 (car (last-pair actions))))))
 	(else #f)))
 
 ;;;; Stepper nodes

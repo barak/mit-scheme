@@ -593,9 +593,12 @@ USA.
                           (cons action filtered)))
                     '()
                     (sequence/collect-actions '() actions))))
-    (if (null? (cdr filtered-actions))
-        (car filtered-actions)
-        (sequence/%make scode filtered-actions))))
+    (cond ((not (pair? filtered-actions))
+	   (constant/make unspecific unspecific))
+	  ((not (pair? (cdr filtered-actions)))
+           (car filtered-actions))
+	  (else
+           (sequence/%make scode filtered-actions)))))
 
 ;; Done specially so we can tweak the print method.
 ;; This makes debugging an awful lot easier.

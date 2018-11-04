@@ -503,21 +503,25 @@ USA.
 ;;;; Combinators
 
 (define (generate/sequence block continuation context expression)
-  (if (scode/sequence? expression)
-      ;; This is done in a funny way to enforce processing in sequence order.
-      ;; In this way, compile-by-procedures compiles in a predictable order.
-      (let ((first-action
-	     (generate/subproblem/effect
-	      block continuation context
-	      (car (scode/sequence-actions expression))
-              'SEQUENCE-CONTINUE
-	      expression)))
-	((scfg*ctype->ctype! continuation)
-	 first-action
-	 (generate/expression
-	  block continuation context
-	  (scode/make-sequence (cdr (scode/sequence-actions expression))))))
-      (error "Not a sequence" expression)))
+  (if (not (scode/sequence? expression))
+      (error "Not a sequence:" expression))
+  (let ((actions (scode/sequence-actions expression)))
+    (if (pair? actions)
+	(let loop ((actions actions))
+	  (let ((action (car actions))
+		(rest (cdr actions)))
+	    (if (pair? rest)
+		;; This is done in a funny way to enforce processing in sequence
+		;; order.  In this way, compile-by-procedures compiles in a
+		;; predictable order.
+		(let ((first-action
+		       (generate/subproblem/effect block continuation context
+						   action 'sequence-continue
+						   expression)))
+		  ((scfg*ctype->ctype! continuation) first-action (loop rest)))
+		(generate/expression block continuation context action))))
+	(continue/rvalue-constant block continuation
+				  (make-constant unspecific)))))
 
 (define (generate/conditional block continuation context expression)
   (let ((predicate (scode/conditional-predicate expression))

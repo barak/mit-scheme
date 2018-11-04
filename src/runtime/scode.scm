@@ -242,28 +242,39 @@ USA.
 ;;;; Sequence
 
 (define (make-scode-sequence actions)
-  (guarantee non-empty-list? actions 'make-sequence)
-  (let loop ((actions actions))
-    (if (pair? (cdr actions))
-	(system-pair-cons (ucode-type sequence)
-			  (unmap-reference-trap (car actions))
-			  (unmap-reference-trap (loop (cdr actions))))
-	(car actions))))
+  (guarantee list? actions 'make-sequence)
+  (let ((actions (append-map scode-sequence-actions actions)))
+    (if (pair? actions)
+	(let loop ((actions actions))
+	  (if (pair? (cdr actions))
+	      (system-pair-cons (ucode-type sequence)
+				(unmap-reference-trap (car actions))
+				(unmap-reference-trap (loop (cdr actions))))
+	      (car actions)))
+	(empty-sequence))))
 
 (define (scode-sequence? object)
   (object-type? (ucode-type sequence) object))
 (register-predicate! scode-sequence? 'scode-sequence)
 
 (define (scode-sequence-actions expression)
-  (if (scode-sequence? expression)
-      (append-map scode-sequence-actions
-		  (list (map-reference-trap
-			 (lambda ()
-			   (system-pair-car expression)))
-			(map-reference-trap
-			 (lambda ()
-			   (system-pair-cdr expression)))))
-      (list expression)))
+  (cond ((not (scode-sequence? expression)) (list expression))
+	((sequence-empty? expression) '())
+	(else
+	 (append-map scode-sequence-actions
+		     (list (map-reference-trap
+			    (lambda ()
+			      (system-pair-car expression)))
+			   (map-reference-trap
+			    (lambda ()
+			      (system-pair-cdr expression))))))))
+
+(define (empty-sequence)
+  (system-pair-cons (ucode-type sequence) #!unspecific #!unspecific))
+
+(define (sequence-empty? sequence)
+  (and (eq? #!unspecific (system-pair-car sequence))
+       (eq? #!unspecific (system-pair-cdr sequence))))
 
 ;;;; Combination
 
