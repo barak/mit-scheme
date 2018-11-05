@@ -249,14 +249,17 @@ USA.
 	   (eq? (flo:safe-negative? x)
 		(flo:safe-negative? y)))))
 
+;;; Measure the distance from x to the next floating-point number of
+;;; the same sign as x and larger in magnitude.  For +/-0, this yields
+;;; the smallest subnormal.  For +/-inf, this yields +inf.  For NaN
+;;; this yields some NaN.
+
 (define (flo:ulp x)
-  ;; Measure the distance from x to the next float in the direction of
-  ;; the sign of x.
   (if (flo:finite? x)
-      (let* ((direction (flo:copysign (flo:+inf.0) x))
-             (x* (flo:nextafter x direction)))
-        (flo:* (flo:copysign 1. x) (flo:- x* x)))
-      x))
+      (let* ((x0 (flo:abs x))
+             (x1 (flo:nextafter x0 (flo:+inf.0))))
+        (flo:- x1 x0))
+      (flo:+inf.0)))
 
 (define (int:->flonum n)
   ((ucode-primitive integer->flonum 2) n #b10))

@@ -119,13 +119,17 @@ USA.
 
 (define-enumerated-test 'flo:ulp
   (vector
-   (vector (flo:-inf.0) (flo:-inf.0))
+   (vector (flo:-inf.0) (flo:+inf.0))
+   (vector (+ -3. (* 2 flo:ulp-of-one)) (* 2 flo:ulp-of-one))
+   (vector -3. (* 2 flo:ulp-of-one))
    (vector -2. (* 2 flo:ulp-of-one))
    (vector -1. flo:ulp-of-one)
    (vector -0. "4.9406564584124654e-324")
    (vector 0. "4.9406564584124654e-324")
    (vector 1. flo:ulp-of-one)
    (vector 2. (* 2 flo:ulp-of-one))
+   (vector 3. (* 2 flo:ulp-of-one))
+   (vector (- 3. (* 2 flo:ulp-of-one)) (* 2 flo:ulp-of-one))
    (vector (flo:+inf.0) (flo:+inf.0)))
   (lambda (v)
     (let ((x (vector-ref v 0))
