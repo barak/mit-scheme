@@ -5987,3 +5987,25 @@ USA.
 	  eval-r7rs-scode-file
 	  eval-r7rs-source
 	  syntax-r7rs-source))
+
+(define-package (runtime ieee754)
+  (files "ieee754")
+  (parent (runtime))
+  (export ()
+	  compose-ieee754
+	  compose-ieee754-binary128
+	  compose-ieee754-binary32
+	  compose-ieee754-binary64
+	  decompose-ieee754
+	  decompose-ieee754-binary128
+	  decompose-ieee754-binary32
+	  decompose-ieee754-binary64
+	  ieee754-binary-hex-string
+	  ieee754-binary-parameters
+	  ieee754-binary128-exact?
+	  ieee754-binary128-hex-string
+	  ieee754-binary32-exact?
+	  ieee754-binary32-hex-string
+	  ieee754-binary64-exact?
+	  ieee754-binary64-hex-string
+	  ))
