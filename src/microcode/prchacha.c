@@ -28,35 +28,32 @@ USA.
 #include "prims.h"
 
 static void
-do_chacha_core(void (*core)(uint8_t *, const uint8_t *, const uint8_t *,
-			    const uint8_t *))
+do_chacha_core(void (*core) (uint8_t *, const uint8_t *, const uint8_t *,
+			     const uint8_t *))
 {
-    uint8_t * output;
-    unsigned long offset;
-    const uint8_t * input;
-    const uint8_t * key;
-    const uint8_t * constant;
-    unsigned long noutput, ninput, nkey, nconstant;
+  unsigned long noutput;
+  uint8_t * output = (arg_bytevector (1, (&noutput)));
+  if (noutput < 64)
+    error_bad_range_arg (1);
 
-    output = (arg_bytevector (1, (&noutput)));
-    if (noutput < 64)
-      error_bad_range_arg (1);
+  unsigned long offset = (arg_ulong_index_integer (2, (noutput - 64)));
 
-    offset = (arg_ulong_index_integer (2, noutput - 63));
+  unsigned long ninput;
+  const uint8_t * input = (arg_bytevector (3, (&ninput)));
+  if (ninput != 16)
+    error_bad_range_arg (3);
 
-    input = (arg_bytevector (3, (&ninput)));
-    if (ninput != 16)
-      error_bad_range_arg (3);
+  unsigned long nkey;
+  const uint8_t * key = (arg_bytevector (4, (&nkey)));
+  if (nkey != 32)
+    error_bad_range_arg (4);
 
-    key = (arg_bytevector (4, (&nkey)));
-    if (nkey != 32)
-      error_bad_range_arg (4);
+  unsigned long nconstant;
+  const uint8_t * constant = (arg_bytevector (5, (&nconstant)));
+  if (nconstant != 16)
+    error_bad_range_arg (5);
 
-    constant = (arg_bytevector (5, (&nconstant)));
-    if (nconstant != 16)
-      error_bad_range_arg (5);
-
-    (*core)(output, input, key, constant);
+  (*core) ((output + offset), input, key, constant);
 }
 
 DEFINE_PRIMITIVE ("CHACHA8-CORE", Prim_chacha8_core, 5, 5,
@@ -64,7 +61,7 @@ DEFINE_PRIMITIVE ("CHACHA8-CORE", Prim_chacha8_core, 5, 5,
 Compute the ChaCha8 core hash function:\n\
 OUTPUT[OFFSET, OFFSET+1, ..., OFFSET+63] := ChaCha8(INPUT, KEY, CONST).")
 {
-  PRIMITIVE_HEADER (1);
+  PRIMITIVE_HEADER (5);
   do_chacha_core(&chacha8_core);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -74,7 +71,7 @@ DEFINE_PRIMITIVE ("CHACHA12-CORE", Prim_chacha12_core, 5, 5,
 Compute the ChaCha12 core hash function:\n\
 OUTPUT[OFFSET, OFFSET+1, ..., OFFSET+63] := ChaCha12(INPUT, KEY, CONST).")
 {
-  PRIMITIVE_HEADER (1);
+  PRIMITIVE_HEADER (5);
   do_chacha_core(&chacha12_core);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -84,7 +81,7 @@ DEFINE_PRIMITIVE ("CHACHA20-CORE", Prim_chacha20_core, 5, 5,
 Compute the ChaCha20 core hash function:\n\
 OUTPUT[OFFSET, OFFSET+1, ..., OFFSET+63] := ChaCha20(INPUT, KEY, CONST).")
 {
-  PRIMITIVE_HEADER (1);
+  PRIMITIVE_HEADER (5);
   do_chacha_core(&chacha20_core);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
