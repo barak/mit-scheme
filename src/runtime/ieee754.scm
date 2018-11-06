@@ -165,6 +165,7 @@ USA.
      (flo:+inf.0)))
 
 (define (compose-ieee754-nan sign quiet payload)
+  (declare (ignore sign quiet payload))
   (flo:nan.0))
 
 (define (ieee754-binary-parameters exponent-bits precision)
