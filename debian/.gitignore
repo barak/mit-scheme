@@ -3,6 +3,7 @@
 *.substvars
 /autoreconf.after
 /autoreconf.before
+/debhelper-build-stamp
 /files
 /mit-scheme-dbg/
 /mit-scheme-doc/

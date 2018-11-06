@@ -1,4 +1,2 @@
-doc/imail/mit-scheme-imail.info*
-doc/ref-manual/mit-scheme-ref.info*
-doc/sos/mit-scheme-sos.info*
-doc/user-manual/mit-scheme-user.info*
+usr/share/info/*.info
+usr/share/info/*.info-*

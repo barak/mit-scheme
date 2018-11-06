@@ -3,8 +3,15 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# Passing --no-parallel because of some creepy race conditions, like
+# on building x11-compat which can get built twice and if the second
+# build happens at just the wrong time it interferes with the first
+# build or with an invocation of the generated executable.
+
 %:
-	dh $@
+	dh $@ --no-parallel
 
 override_dh_autoreconf:
 	dh_autoreconf sh -- -e -x -c \
@@ -33,9 +40,32 @@ endif
 override_dh_auto_install:
 	dh_auto_install --sourcedirectory=src
 	dh_auto_install --sourcedirectory=doc -- install-html install-pdf
+	@echo remove symbolic link executables
 	cd debian/tmp/usr/bin && \
-	 rm --verbose -f scheme bchscheme mit-scheme mit-scheme-native
-	find debian/tmp/usr/lib -name runtime.com -delete
+	for f in scheme bchscheme mit-scheme mit-scheme-native; do \
+	  if [ -L $$f ]; then \
+	    rm --verbose -f $$f; \
+	  else \
+	    echo skipping $$f; \
+	  fi; \
+	done
+#	@echo delete runtime.com for MYSTERIOUS reasons
+#	@echo stop doing this because it breaks future builds
+#	find debian/tmp/usr/lib -name runtime.com -ls -delete
+	@echo allow dh scripts to compress info files themselves
+	find debian/tmp \( -name '*.info.gz' -o -name '*.info-*.gz' \) -ls -exec gunzip '{}' ';'
+	@echo remove .la library support files as these are not actually used by the dynamic linker
+	find debian/tmp -name '*.la' -ls -delete
+
+override_dh_install:
+	dh_install
+	@echo All .bci files belong in -dbg, move them manually for robustness
+	mkdir -p debian/mit-scheme-dbg
+	tar -C debian/mit-scheme -cf - $$(cd debian/mit-scheme && find -name '*.bci') \
+	 | tar -C debian/mit-scheme-dbg -xvf -
+	find debian/mit-scheme -name '*.bci' -delete
+	@echo remove empty directory
+	-rmdir debian/mit-scheme/usr/lib/x86_64-linux-gnu/mit-scheme/lib
 
 # Upstream changelog is over 5MB, leave a copy in the doc package but
 # remove it from the binary package to reduce bloat.

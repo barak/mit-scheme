@@ -3,7 +3,7 @@ Section: lisp
 Priority: optional
 Maintainer: Barak A. Pearlmutter <bap@debian.org>
 Build-Depends: debhelper (>= 11),
-		mit-scheme,
+		mit-scheme (>= 10),
 		libssl-dev, libmhash-dev, libmcrypt-dev,
 		libgdbm-dev, libpq-dev,
 		libncurses5-dev,

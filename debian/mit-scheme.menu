@@ -1,5 +1,0 @@
-?package(mit-scheme):\
-  needs="X11"\
-  section="Applications/Programming"\
-  title="MIT/GNU Scheme"\
-  command="/usr/bin/mit-scheme --edit"

@@ -1,9 +1,3 @@
 usr/bin
-usr/lib/*/mit-scheme/*/*.com
-usr/lib/*/mit-scheme/*/*.pkd
-usr/lib/*/mit-scheme/*/*.scm
-usr/lib/*/mit-scheme/all.com
-usr/lib/*/mit-scheme/edwin/TUTORIAL
-usr/lib/*/mit-scheme/lib
-usr/lib/*/mit-scheme/optiondb.scm
+usr/lib/*/mit-scheme
 debian/mit-scheme.desktop usr/share/applications/

@@ -3,8 +3,9 @@ Date: Wed, 3 Jul 2013 21:00:45 +0100
 Subject: AUXDIR_NAME sans arch
 
 ---
- src/configure.ac | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ src/configure.ac           | 2 +-
+ src/microcode/configure.ac | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
 index 7de03d1..0e29a6e 100644
@@ -19,3 +20,16 @@ index 7de03d1..0e29a6e 100644
  AUXDIR='$(libdir)'/${AUXDIR_NAME}
  MIT_SCHEME_LIBDIR=${AUXDIR}/
  MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
+diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
+index 6c5e525..c421305 100644
+--- a/src/microcode/configure.ac
++++ b/src/microcode/configure.ac
+@@ -246,7 +246,7 @@ CCLD=${CC}
+ MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
+ MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
+ 
+-AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
++AUXDIR_NAME=mit-scheme
+ EXE_NAME=mit-scheme-${mit_scheme_native_code}
+ 
+ dnl Add OS-dependent customizations.  This must happen before checking
