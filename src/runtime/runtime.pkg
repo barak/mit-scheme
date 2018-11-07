@@ -1178,6 +1178,7 @@ USA.
 	  bytevector-u32le-set!
 	  bytevector-u8-ref
 	  bytevector-u8-set!
+	  bytevector-zero-explicit!
 	  bytevector=?
 	  bytevector?
 	  exact-nonnegative-integer->bytevector
