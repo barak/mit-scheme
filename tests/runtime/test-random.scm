@@ -56,7 +56,7 @@ USA.
     (lambda ()
       ;; XXX Should make the seed more compact than just the original
       ;; complete state.
-      (let ((state (make-random-state)))
+      (let ((state (make-random-state #t)))
 	(with-test-properties
 	    (lambda ()
 	      ;; Ensure we don't accidentally use the global state.
