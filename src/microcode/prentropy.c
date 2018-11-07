@@ -24,6 +24,7 @@ USA.
 
 */
 
+#include "osentropy.h"
 #include "prims.h"
 
 DEFINE_PRIMITIVE ("GET-ENTROPY", Prim_get_entropy, 1, 1,
