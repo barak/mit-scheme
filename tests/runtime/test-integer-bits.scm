@@ -51,19 +51,19 @@ USA.
     (random-integer-of-weight (random-integer (+ n 1)) n)))
 
 (define (randomly-generate-integers procedure)
-  (do ((i 0 (+ i 1))) ((= i #x100))
+  (do ((i 0 (+ i 1))) ((= i (if keep-it-fast!? 8 #x100)))
     (procedure (random-large-integer))))
 
 (define (randomly-generate-fixnums procedure)
-  (do ((i 0 (+ i 1))) ((= i #x1000))
+  (do ((i 0 (+ i 1))) ((= i (if keep-it-fast!? #x10 #x1000)))
     (procedure (random-fixnum))))
 
 (define (randomly-generate-integer-pairs procedure)
-  (do ((i 0 (+ i 1))) ((= i #x100))
+  (do ((i 0 (+ i 1))) ((= i (if keep-it-fast!? 8 #x100)))
     (procedure (random-large-integer) (random-large-integer))))
 
 (define (randomly-generate-fixnum-pairs procedure)
-  (do ((i 0 (+ i 1))) ((= i #x1000))
+  (do ((i 0 (+ i 1))) ((= i (if keep-it-fast!? #x10 #x1000)))
     (procedure (random-fixnum) (random-fixnum))))
 
 (define (define-random-unary-fixnum-test name procedure)
@@ -377,7 +377,7 @@ USA.
 
 (define-test 'BIT-MASK
   (lambda ()
-    (do ((i 0 (+ i 1))) ((>= i #x1000))
+    (do ((i 0 (+ i 1))) ((>= i (if keep-it-fast!? #x10 #x1000)))
       (let ((size (random-integer #x1000))
             (position (random-integer #x1000)))
         (assert-eqv (bit-mask size position)
@@ -387,7 +387,7 @@ USA.
 
 (define-test 'BIT-ANTIMASK
   (lambda ()
-    (do ((i 0 (+ i 1))) ((>= i #x1000))
+    (do ((i 0 (+ i 1))) ((>= i (if keep-it-fast!? #x10 #x1000)))
       (let ((size (random-integer #x1000))
             (position (random-integer #x1000)))
         (assert-eqv (bit-antimask size position)
@@ -398,7 +398,7 @@ USA.
 (define (define-per-bit-test name procedure)
   (define-test name
     (lambda ()
-      (do ((i 0 (+ i 1))) ((>= i #x100))
+      (do ((i 0 (+ i 1))) ((>= i (if keep-it-fast!? 8 #x100)))
         (procedure (random-integer-of-weight (random-integer #x1000) #x1000)
                    (random-integer #x1000))))))
 
