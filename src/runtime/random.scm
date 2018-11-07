@@ -205,21 +205,23 @@ USA.
 (define (make-random-state #!optional state)
   (if (or (eq? #t state) (int:integer? state))
       ;; Use good random source if available
-      (if (file-readable? "/dev/urandom")
-	  (call-with-binary-input-file "/dev/urandom"
-	    (lambda (port)
-	      (initial-random-state
-	       (lambda (b)
-		 (let outer ()
-		   (let inner
-		       ((m #x100)
-			(n (read-u8 port)))
-		     (cond ((< m b)
-			    (inner (* m #x100)
-				   (+ (* n #x100)
-				      (read-u8 port))))
-			   ((< n b) n)
-			   (else (outer)))))))))
+      (if (implemented-primitive-procedure? (ucode-primitive get-entropy 1))
+	  (initial-random-state
+	   (let ((buf ((ucode-primitive allocate-bytevector 1) 32))
+		 (i 0))
+	     (define (next)
+	       (if (= i 0)
+		   (begin ((ucode-primitive get-entropy 1) buf)
+			  (set! i 32)))
+	       (set! i (- i 1))
+	       (begin0 (bytevector-u8-ref buf i)
+		 (bytevector-u8-set! buf i 0)))
+	     (lambda (b)
+	       (let reject ()
+		 (let loop ((m #x100) (n (next)))
+		   (cond ((< m b) (loop (* m #x100) (+ (* n #x100) (next))))
+			 ((< n b) n)
+			 (else (reject))))))))
 	  (simple-random-state))
       (copy-random-state
        (get-random-state state 'make-random-state))))
