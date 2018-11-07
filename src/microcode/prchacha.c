@@ -36,7 +36,7 @@ do_chacha_core (void (*core) (uint8_t *, const uint8_t *, const uint8_t *,
   if (noutput < 64)
     error_bad_range_arg (1);
 
-  unsigned long offset = (arg_ulong_index_integer (2, (noutput - 64)));
+  unsigned long offset = (arg_ulong_index_integer (2, (noutput - 64 + 1)));
 
   unsigned long ninput;
   const uint8_t * input = (arg_bytevector (3, (&ninput)));
