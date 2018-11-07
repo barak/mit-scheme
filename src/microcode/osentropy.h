@@ -1,4 +1,4 @@
-#| -*-Scheme-*-
+/* -*-C-*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -22,71 +22,13 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
-|#
+*/
 
-;;;; Core C files used on all platforms.
+#ifndef MITSCHEME_OSENTROPY_H
+#define MITSCHEME_OSENTROPY_H
 
-"artutl"
-"avltree"
-"bkpt"
-"bignum"
-"bigprm"
-"bitstr"
-"boot"
-"bytevector"
-"chacha12"
-"chacha20"
-"chacha8"
-"char"
-"daemon"
-"debug"
-"dfloat"
-"error"
-"extern"
-"fasdump"
-"fasl"
-"fasload"
-"fixnum"
-"floenv"
-"flonum"
-"gcloop"
-"generic"
-"hooks"
-"hunk"
-"intern"
-"interp"
-"intprm"
-"keccak"
-"list"
-"lookprm"
-"lookup"
-"md5"
-"memmag"
-"missing"
-"obstack"
-"option"
-"osscheme"
-"ostty"
-"outf"
-"prchacha"
-"prentropy"
-"prim"
-"primutl"
-"prkeccak"
-"prmd5"
-"ptrvec"
-"purify"
-"purutl"
-"regex"
-"rgxprim"
-"step"
-"storage"
-"string"
-"syntax"
-"sysprim"
-"term"
-"transact"
-"utabmd"
-"utils"
-"vector"
-"wind"
+#include <stddef.h>
+
+void OS_get_entropy (uint8_t [32]);
+
+#endif /* MITSCHEME_OSENTROPY_H */
