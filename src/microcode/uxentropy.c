@@ -31,11 +31,21 @@ USA.
 
 #define PATH_URANDOM "/dev/urandom"
 
+static void
+tx_close (void * cookie)
+{
+  int * fdp = cookie;
+  if ((*fdp) != -1)
+    (void) UX_close (*fdp);
+}
+
 void
 OS_get_entropy (uint8_t buf [32])
 {
   size_t nbytes = 32;
-  int fd;
+  int fd = -1;
+  transaction_begin ();
+  transaction_record_action (tat_always, tx_close, (&fd));
   STD_FD_SYSTEM_CALL (syscall_open, fd, (UX_open (PATH_URANDOM, O_RDONLY)));
   ssize_t nread;
   while ((nread = (UX_read (fd, buf, nbytes))) != 0)
@@ -46,7 +56,10 @@ OS_get_entropy (uint8_t buf [32])
 	  continue;
 	}
       if (((size_t) nread) >= nbytes)
-	return;
+	{
+	  transaction_commit ();
+	  return;
+	}
       nbytes -= ((size_t) nread);
       buf += ((size_t) nread);
     }
