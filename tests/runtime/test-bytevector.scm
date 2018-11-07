@@ -173,12 +173,12 @@ USA.
       (assert-range-error
        (lambda ()
 	 (bytevector-fill! (make-bytevector n) 51 0 (+ n 1))))
-	  (assert-range-error
-	   (lambda ()
-	     (bytevector-fill! (make-bytevector n) 51 n (+ n 1))))
-	  (assert-range-error
-	   (lambda ()
-	     (bytevector-fill! (make-bytevector n) 51 -1 n))))))
+      (assert-range-error
+       (lambda ()
+	 (bytevector-fill! (make-bytevector n) 51 n (+ n 1))))
+      (assert-range-error
+       (lambda ()
+	 (bytevector-fill! (make-bytevector n) 51 -1 n))))))
 
 (define (test-bytevector-properties v bytes)
   (assert-true (bytevector? v))
