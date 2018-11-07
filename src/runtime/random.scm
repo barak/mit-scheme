@@ -28,29 +28,81 @@ USA.
 ;;; package: (runtime random-number)
 
 (declare (usual-integrations))
-
-;;; A "subtract-with-borrow" RNG, based on the algorithm from "A New
-;;; Class of Random Number Generators", George Marsaglia and Arif
-;;; Zaman, The Annals of Applied Probability, Vol. 1, No. 3, 1991.
-
-;;; The basic algorithm produces a sequence of values x[n] by
-;;;      let t = (x[n-s] - x[n-r] - borrow[n-1])
-;;;      if (t >= 0)
-;;;        then x[n] = t, borrow[n] = 0
-;;;        else x[n] = t + b, borrow[n] = 1
-;;; where the constants R, S, and B are chosen according to some
-;;; constraints that are explained in the article.  Finding
-;;; appropriate constants is compute-intensive; the constants used
-;;; here are taken from the article and are claimed to represent
-;;; "hundreds of hours" of compute time.  The period of this generator
-;;; is (- (EXPT B R) (EXPT B S)), which is approximately (EXPT 10 414).
 
-;;;; Core algorithm
+;;; Kludges to make this work in the cold load before much else has
+;;; been loaded.
 
-(define-integrable r 43)
-(define-integrable s 22)
-(define-integrable b 4294967291 #|(- (expt 2 32) 5)|#)
-(define-integrable b. 4294967291. #|(exact->inexact b)|#)
+(define-primitives
+  (allocate-bytevector 1)
+  (char->integer 1)
+  (bytevector-copy! 5)
+  (bytevector-fill! 4)
+  (bytevector-length 1)
+  (bytevector-u8-ref 2)
+  (bytevector-u8-set! 3))
+
+(define (make-bytevector n b)
+  (let ((bv (allocate-bytevector n)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:>= i n))
+      (bytevector-u8-set! bv i b))
+    bv))
+
+(define (bytevector-zero-explicit! bv)
+  ;; Don't let any compiler optimize this away.
+  ((no-op bytevector-fill!) bv 0 0 (bytevector-length bv)))
+
+(define (no-op x)
+  x)
+
+;;;; Random state data structure
+
+;;; Just a container for a 32-byte ChaCha20 key.
+;;;
+;;; XXX For greater throughput, we could use an arbitrary-size buffer
+;;; of outputs under a single key, erased as we read through them.
+
+(define-integrable random-state-tag '|#[(runtime random-number)random-state]|)
+
+(define-integrable (%make-random-state)
+  (vector random-state-tag (make-bytevector 32 0)))
+
+(define (random-state? object)
+  (and (vector? object)
+       (fix:= 2 (vector-length object))
+       (eq? random-state-tag (vector-ref object 0))))
+(register-predicate! random-state? 'random-state '<= vector?)
+
+(define-guarantee random-state "random state")
+
+(define-print-method random-state?
+  (standard-print-method 'random-state))
+
+(define-integrable (random-state-key s) (vector-ref s 1))
+
+(define (make-random-state #!optional state)
+  (if (or (eq? #t state) (int:integer? state))
+      (let ((state (%make-random-state)))
+	(random-source-randomize! state)
+	state)
+      (with-random-state state 'make-random-state
+	(lambda (state)
+	  (let ((state* (%make-random-state)))
+	    (let ((key* (random-state-key state*))
+		  (key (random-state-key state)))
+	      (bytevector-copy! key* 0 key 0 32))
+	    state*)))))
+
+(declare (integrate-operator with-random-state))
+(define (with-random-state state procedure body)
+  (let ((state
+	 (if (or (default-object? state) (not state))
+	     (or *random-state* default-random-source)
+	     state)))
+    (guarantee-random-state state procedure)
+    (with-random-state-lock state
+      (lambda ()
+	(body state)))))
 
 (define-integrable (with-random-state-lock state thunk)
   (if (eq? state default-random-source)
@@ -59,127 +111,100 @@ USA.
 	  (without-interruption thunk)))
       (thunk)))
 
-(define (flo:random-element state)
-  (with-random-state-lock state
-   (lambda ()
-    (let ((index (random-state-index state))
-	  (vector (random-state-vector state)))
-      (let ((element (flo:vector-ref vector index)))
-	(let ((difference
-	       (flo:- (flo:- (flo:vector-ref vector
-					     (if (fix:< (fix:- index s) 0)
-						 (fix:+ (fix:- index s) r)
-						 (fix:- index s)))
-			     element)
-		      (random-state-borrow state))))
-	  (if (flo:< difference 0.)
-	      (begin
-		(flo:vector-set! vector index (flo:+ difference b.))
-		(set-random-state-borrow! state 1.))
-	      (begin
-		(flo:vector-set! vector index difference)
-		(set-random-state-borrow! state 0.)))
-	  (set-random-state-index! state
-				   (if (fix:= (fix:+ index 1) r)
-				       0
-				       (fix:+ index 1))))
-	element)))))
-
-(define-integrable (int:random-element state)
-  (flo:truncate->exact (flo:random-element state)))
-
-;;;; Integer scaling
-
-(define (%random-integer m state)
-  (if (int:> m b)
-      (large-random-integer m state)
-      (small-random-integer m state)))
-
-(define (small-random-integer m state)
-  ;; This uses the rejection method to select a uniformly-distributed
-  ;; subset of the generated elements.  The trick with SCALE-FACTOR
-  ;; limits the number of samples required to find an element in the
-  ;; subset, which is otherwise on the order of B for small M.
-  (let ((m. (int:->flonum m)))
-    (let ((scale-factor (flo:truncate (flo:/ b. m.))))
-      (flo:truncate->exact
-       (flo:/ (let ((limit (flo:* scale-factor m.)))
-		(let loop ()
-		  (let ((elt (flo:random-element state)))
-		    (if (flo:< elt limit)
-			elt
-			(loop)))))
-	      scale-factor)))))
-
-(define (large-random-integer m state)
-  ;; This also uses the rejection method, but this time to select a
-  ;; subset of B^N where N is the smallest integer s.t. (<= M B^N).
-  (receive (n b^n)
-      (let loop ((n 2) (b^n (int:* b b)))
-	(if (int:<= m b^n)
-	    (values n b^n)
-	    (loop (fix:+ n 1) (int:* b^n b))))
-    (let ((scale-factor (int:quotient b^n m)))
-      (int:quotient (let ((limit (int:* scale-factor m)))
-		      (let loop ()
-			(let ((elt (int:large-random-element state n)))
-			  (if (int:< elt limit)
-			      elt
-			      (loop)))))
-		    scale-factor))))
-
-(define (int:large-random-element state n)
-  (let loop ((i 1) (elt (int:random-element state)))
-    (if (fix:< i n)
-	(loop (fix:+ i 1)
-	      (int:+ (int:* elt b) (int:random-element state)))
-	elt)))
-
-;;;; Operations producing random values
+;;; Legacy API
 
 (define (random modulus #!optional state)
-  (let ((state (get-random-state state 'random)))
-    ;; Kludge: an exact integer modulus means that result is an exact
-    ;; integer.  Otherwise, the result is a real number.
-    (cond ((int:integer? modulus)
-	   (if (int:> modulus 0)
-	       (%random-integer modulus state)
-	       (error:bad-range-argument modulus 'random)))
-	  ((flo:flonum? modulus)
-	   (if (flo:> modulus 0.)
-	       (flo:* (flo:random-unit state) modulus)
-	       (error:bad-range-argument modulus 'random)))
-	  ((real? modulus)
-	   ;; I can't think of the correct thing to do here.  The old
-	   ;; code scaled a random element into the appropriate range,
-	   ;; which gave one of B evenly-distributed values.  But this
-	   ;; is arbitrary and not necessarily what the caller wants.
-	   ;; If you have an idea what should happen here, let me
-	   ;; know.  -- cph
-	   (error "Unsupported modulus:" modulus))
-	  (else
-	   (error:wrong-type-argument modulus "real number" 'random)))))
+  (cond ((int:integer? modulus)
+	 (if (int:> modulus 0)
+	     (%random-integer modulus state)
+	     (error:bad-range-argument modulus 'random)))
+	((flo:flonum? modulus)
+	 (if (flo:> modulus 0.)
+	     (flo:* (flo:random-unit-open state) modulus)
+	     (error:bad-range-argument modulus 'random)))
+	((real? modulus)
+	 (error "Unsupported modulus:" modulus))
+	(else
+	 (error:wrong-type-argument modulus "real number" 'random))))
+
+;;;; Export/import
 
-(define (flo:random-unit state)
-  ;; Guarantee that (< 0 returned-value 1)
-  (flo:/ (flo:+ (int:->flonum (%random-integer (int:- flimit 1) state))
-		1.)
-	 flimit.))
+;;; Just a vector of the 32 bytes of the ChaCha20 key.
 
-(define (random-bytevector n #!optional state)
-  (let ((state (get-random-state state 'random-bytevector))
-	(bytes (make-bytevector n)))
+(define-integrable ers:tag 'random-state-v2)
+(define-integrable ers:length 33)
+
+(define (export-random-state state)
+  (guarantee-random-state state 'export-random-state)
+  (let ((v (make-vector ers:length))
+	(key (random-state-key state)))
+    (vector-set! v 0 ers:tag)
     (do ((i 0 (fix:+ i 1)))
-	((fix:= i n))
-      (bytevector-u8-set! bytes i (small-random-integer #x100 state)))
-    bytes))
+	((fix:>= i 32))
+      (vector-set! v (fix:+ 1 i) (bytevector-u8-ref key i)))
+    v))
+
+(define (import-random-state v)
+  (define (lose)
+    (error:wrong-type-argument v "external random state v2"
+			       'import-random-state))
+  (if (not (vector? v))
+      (lose))
+  (if (not (fix:= ers:length (vector-length v)))
+      (lose))
+  (if (not (eq? ers:tag (vector-ref v 0)))
+      (lose))
+  (let* ((state (%make-random-state))
+	 (key (random-state-key state)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:>= i 32))
+      (let ((x (vector-ref v (fix:+ 1 i))))
+	(if (not (index-fixnum? x))
+	    (lose))
+	(if (not (fix:< x 256))
+	    (lose))
+	(bytevector-u8-set! key i x)))
+    state))
+
+;;;; SRFI 27 API
+
+(define (make-random-source)
+  (%make-random-state))
+
+(define (random-source-state-ref source)
+  (let ((state source))
+    (export-random-state state)))
+
+(define (random-source-state-set! source exported-state)
+  (let ((dst source)
+	(src (import-random-state exported-state)))
+    (bytevector-copy! (random-state-key dst) 0 (random-state-key src) 0 32)))
+
+(define (random-source-randomize! source)
+  (let ((state source))
+    ((ucode-primitive get-entropy 1) (random-state-key state))))
+
+(define (random-source-pseudo-randomize! source x y)
+  (let* ((state source)
+	 (key (random-state-key state)))
+    (do ((i 0 (+ i 1)))
+	((>= i 16))
+      (let ((j i)
+	    (byte (bitwise-and #xff (shift-right x (* 8 i)))))
+	(bytevector-u8-set! key j byte)))
+    (do ((i 0 (+ i 1)))
+	((>= i 16))
+      (let ((j (+ i 16))
+	    (byte (bitwise-and #xff (shift-right y (* 8 i)))))
+	(bytevector-u8-set! key j byte)))))
 
 (define (random-source-make-integers source)
   (guarantee-random-state source 'random-source-make-integers)
-  (lambda (modulus)
-    (if (int:> modulus 0)
-	(%random-integer modulus source)
-	(error:bad-range-argument modulus #f))))
+  (let ((state source))
+    (lambda (modulus)
+      (if (int:> modulus 0)
+	  (%random-integer modulus state)
+	  (error:bad-range-argument modulus #f)))))
 
 (define (random-source-make-reals source #!optional unit)
   (guarantee-random-state source 'random-source-make-reals)
@@ -191,225 +216,303 @@ USA.
 		   (error:wrong-type-argument unit
 					      "real unit"
 					      'random-source-make-reals))
-	       unit))))
+	       unit)))
+	(state source))
     (if (flo:flonum? unit)
 	;; Ignore UNIT and return maximum precision.
-	(lambda () (flo:random-unit source))
+	(lambda () (flo:random-unit-open state))
 	;; Limit the maximum size of UNIT to avoid problems.
 	(let ((m (- (truncate (/ 1 (min 1/65536 unit))) 1)))
 	  (lambda ()
-	    (* unit (%random-integer m source)))))))
+	    (* unit (%random-integer m state)))))))
 
-;;;; Operations on state
+;;;; Core algorithm
 
-(define (make-random-state #!optional state)
-  (if (or (eq? #t state) (int:integer? state))
-      ;; Use good random source if available
-      (if (implemented-primitive-procedure? (ucode-primitive get-entropy 1))
-	  (initial-random-state
-	   (let ((buf ((ucode-primitive allocate-bytevector 1) 32))
-		 (i 0))
-	     (define (next)
-	       (if (= i 0)
-		   (begin ((ucode-primitive get-entropy 1) buf)
-			  (set! i 32)))
-	       (set! i (- i 1))
-	       (begin0 (bytevector-u8-ref buf i)
-		 (bytevector-u8-set! buf i 0)))
-	     (lambda (b)
-	       (let reject ()
-		 (let loop ((m #x100) (n (next)))
-		   (cond ((< m b) (loop (* m #x100) (+ (* n #x100) (next))))
-			 ((< n b) n)
-			 (else (reject))))))))
-	  (simple-random-state))
-      (copy-random-state
-       (get-random-state state 'make-random-state))))
+;;; Given key k, split the 64-byte ChaCha20_k(0) into 32-byte halves x
+;;; and k'; yield x as the output and replace the state by k'.
 
-(define (simple-random-state)
-  (initial-random-state
-   (congruential-rng
-    (int:+ ((ucode-primitive real-time-clock 0))
-	   (int:* 100000 ((ucode-primitive system-clock 0)))))))
+(define-integrable chacha20-core (ucode-primitive chacha20-core 5))
 
-(define (make-random-source)
-  (initial-random-state (congruential-rng 0)))
+(define (%random-bytevector-short! bv state)
+  (let ((key (random-state-key state))
+	(output (allocate-bytevector 64)))
+    (chacha20-core output 0 zero16 key chacha-const)
+    (bytevector-copy! key 0 output 0 32)
+    (bytevector-copy! bv 0 output 32 (fix:+ 32 (bytevector-length bv)))
+    (bytevector-zero-explicit! output)))
 
-(define (random-source-state-set! source v)
-  (copy-random-state! (import-random-state v) source))
-
-(define (random-source-randomize! source)
-  (copy-random-state! (make-random-state #t) source))
-
-(define (random-source-pseudo-randomize! source i j)
-  source i j
-  (error "Unimplemented procedure:" 'random-source-pseudo-randomize!))
-
-(define (initial-random-state generate-random-seed)
-  ;; The numbers returned by GENERATE-RANDOM-SEED are not critical.
-  ;; Except for the explicitly disallowed sequences, all other
-  ;; sequences produce reasonable results, although some sequences
-  ;; might require a small number of initial generation steps to get
-  ;; them into the main cycle.  (See the article for details.)
-  (let ((seeds (flo:vector-cons r)))
-    (let fill ()
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i r))
-	(flo:vector-set! seeds i (int:->flonum (generate-random-seed b))))
-      ;; Disallow cases with all seeds either 0 or b-1, since they can
-      ;; get locked in trivial cycles.
-      (if (or (let loop ((i 0))
-		(or (fix:= i r)
-		    (and (flo:= (flo:vector-ref seeds i) 0.)
-			 (loop (fix:+ i 1)))))
-	      (let ((b-1 (flo:- b. 1.)))
-		(let loop ((i 0))
-		  (or (fix:= i r)
-		      (and (flo:= (flo:vector-ref seeds i) b-1)
-			   (loop (fix:+ i 1)))))))
-	  (fill)))
-    (%make-random-state 0 0. seeds)))
-
-(define (congruential-rng seed)
-  (let ((a 16807 #|(expt 7 5)|#)
-	(m 2147483647 #|(- (expt 2 31) 1)|#))
-    (let ((m-1 (int:- m 1)))
-      (let ((seed (int:+ (int:remainder seed m-1) 1)))
-	(lambda (b)
-	  (let ((n (int:remainder (int:* a seed) m)))
-	    (set! seed n)
-	    (int:quotient (int:* (int:- n 1) b) m-1)))))))
+(define (random-bytevector n #!optional state)
+  (let ((bytes (allocate-bytevector n)))
+    (if (fix:< n 32)
+	(with-random-state state 'random-bytevector
+	  (lambda (state)
+	    ;; Small enough to be serviced in a single request.
+	    (%random-bytevector-short! bytes state)))
+	(let ((key (allocate-bytevector 32))
+	      (nonce (make-bytevector 16 0)))
+	  ;; Grab a key in a single request; then derive a long byte
+	  ;; vector from the key.
+	  (with-random-state state 'random-bytevector
+	    (lambda (state)
+	      (%random-bytevector-short! key state)))
+	  (let ((n/64 (fix:quotient n 64)))
+	    (do ((i 0 (fix:+ i 1)))
+		((fix:>= i n/64))
+	      (chacha20-core bytes (fix:* i 64) nonce key chacha-const)
+	      (let loop ((j 0) (t 1))
+		(if (fix:< j 8)
+		    (let ((t (fix:+ t (bytevector-u8-ref nonce i))))
+		      (bytevector-u8-set! nonce i (fix:and t #xff))
+		      (loop (fix:+ j 1) (fix:lsh t -8))))))
+	    (let* ((rem (fix:- n (fix:* n/64 64))))
+	      (if (fix:positive? rem)
+		  (let ((output (allocate-bytevector 64)))
+		    (chacha20-core output 0 nonce key chacha-const)
+		    (bytevector-copy! bytes (fix:* n/64 64) output 0 rem)
+		    (bytevector-zero-explicit! output))))
+	    (bytevector-zero-explicit! key))))
+    bytes))
 
-;;;; External representation of state
+;;;; Integers
 
-(define-integrable ers:tag 'random-state-v1)
-(define-integrable ers:length (fix:+ r 3))
+(define (%random-integer n state)
+  (if (fix:fixnum? n)
+      ;; 2^k mod n = 1 + (2^k - 1 - n) mod n = 1 + (L - n) mod n where
+      ;; L = 2^k - 1 is (fix:largest-value).
+      (let ((m (fix:remainder (fix:+ 1 (fix:- (fix:largest-value) n)) n)))
+	(let loop ()
+	  (let ((r (%random-nonnegative-fixnum state)))
+	    (if (fix:< r m)
+		(loop)
+		(fix:remainder r n)))))
+      (let* ((nbytes (quotient (integer-length n) 8))
+	     (m (remainder (- (shift-left 1 (* 8 nbytes)) n) n)))
+	(let loop ()
+	  (let ((r (%random-integer-of-length-in-bytes nbytes state)))
+	    (if (< r m)
+		(loop)
+		(int:remainder r n)))))))
 
-(define (export-random-state state)
-  (guarantee-random-state state 'export-random-state)
-  (let ((v (make-vector ers:length)))
-    (vector-set! v 0 ers:tag)
-    (vector-set! v 1 (random-state-index state))
-    (vector-set! v 2 (inexact->exact (random-state-borrow state)))
-    (let ((v* (random-state-vector state)))
-      (do ((i 0 (fix:+ i 1))
-	   (j 3 (fix:+ j 1)))
-	  ((fix:= i r))
-	(vector-set! v j (inexact->exact (flo:vector-ref v* i)))))
-    v))
+;;; Assumes 6-bit type codes, 1 bit for sign.
 
-(define (import-random-state v)
-  (let ((lose
-	 (lambda ()
-	   (error:wrong-type-argument v
-				      "external random state"
-				      'import-random-state))))
-    (if (not (and (vector? v)
-		  (fix:= (vector-length v) ers:length)
-		  (eq? (vector-ref v 0) ers:tag)))
-	(lose))
-    (let ((index (vector-ref v 1))
-	  (borrow (vector-ref v 2))
-	  (v* (flo:vector-cons r)))
-      (if (not (and (index-fixnum? index)
-		    (fix:< index r)
-		    (index-fixnum? borrow)
-		    (fix:< borrow 2)))
-	  (lose))
-      (do ((i 3 (fix:+ i 1))
-	   (j 0 (fix:+ j 1)))
-	  ((fix:= j r))
-	(let ((n (vector-ref v i)))
-	  (if (not (and (exact-nonnegative-integer? n)
-			(< n b)))
-	      (lose))
-	  (flo:vector-set! v* j (exact->inexact n))))
-      (%make-random-state index (exact->inexact borrow) v*))))
+(define-integrable high-fixnum-byte-mask #x1)
+
+(define (%random-nonnegative-fixnum-32 state)
+  (let ((bv (random-bytevector 4 state)))
+    (let ((b0 (bytevector-u8-ref bv 0))
+	  (b1 (bytevector-u8-ref bv 1))
+	  (b2 (bytevector-u8-ref bv 2))
+	  (b3 (fix:and (bytevector-u8-ref bv 3) high-fixnum-byte-mask)))
+      (declare (integrate b0 b1 b2 b3))
+      (begin0 (fix:or (fix:or b0 (fix:lsh b1 8))
+		      (fix:or (fix:lsh b2 16) (fix:lsh b3 24)))
+	(bytevector-zero-explicit! bv)))))
+
+(define (%random-nonnegative-fixnum-64 state)
+  (let ((bv (random-bytevector 8 state)))
+    (let ((b0 (bytevector-u8-ref bv 0))
+	  (b1 (bytevector-u8-ref bv 1))
+	  (b2 (bytevector-u8-ref bv 2))
+	  (b3 (bytevector-u8-ref bv 3))
+	  (b4 (bytevector-u8-ref bv 4))
+	  (b5 (bytevector-u8-ref bv 5))
+	  (b6 (bytevector-u8-ref bv 6))
+	  (b7 (fix:and (bytevector-u8-ref bv 7) high-fixnum-byte-mask)))
+      (declare (integrate b0 b1 b2 b3 b4 b5 b6 b7))
+      (begin0 (fix:or
+	       (fix:or (fix:or b0 (fix:lsh b1 8))
+		       (fix:or (fix:lsh b2 16) (fix:lsh b3 24)))
+	       (fix:or (fix:or (fix:lsh b4 32) (fix:lsh b5 40))
+		       (fix:or (fix:lsh b6 48) (fix:lsh b7 56))))
+	(bytevector-zero-explicit! bv)))))
+
+(define (%random-integer-of-length-in-bytes nbytes state)
+  (let ((bv (random-bytevector nbytes state)))
+    (define-integrable (byte i) (bytevector-u8-ref bv i))
+    (begin0 (do ((i 0 (fix:+ i 1))
+		 (n 0 (bitwise-ior n (shift-left (byte i) (fix:* 8 i)))))
+		((fix:>= i nbytes) n))
+      (bytevector-zero-explicit! bv))))
 
-;;;; State abstraction
+;;;; Count leading zeros in 16-bit and 32-bit words
 
-;;; The RANDOM-STATE data abstraction must be built by hand because
-;;; the random-number generator is needed in order to build the record
-;;; abstraction.
+(declare (integrate-operator fix:bitcount16))
+(define (fix:bitcount16 x)
+  (let* ((x1 (fix:- x (fix:and (fix:lsh x -1) #x5555)))
+	 (x2 (fix:+ (fix:and (fix:lsh x1 -2) #x3333) (fix:and x1 #x3333)))
+	 (x3 (fix:and (fix:+ x2 (fix:lsh x2 4)) #x0f0f))
+	 (c0 x3)
+	 (c1 (fix:lsh x3 -8))
+	 (s (fix:+ c0 c1)))
+    (declare (integrate x1 x2 x3 x4 c0 c1 s))
+    (fix:and s #xf)))
 
-(define-integrable (%make-random-state i b v)
-  (vector random-state-tag i b v))
+(declare (integrate-operator fix:clz16))
+(define (fix:clz16 x)
+  (let* ((x2 (fix:or x (fix:lsh x -1)))
+	 (x4 (fix:or x2 (fix:lsh x2 -2)))
+	 (x8 (fix:or x4 (fix:lsh x4 -4)))
+	 (x16 (fix:or x8 (fix:lsh x8 -8))))
+    (declare (integrate x2 x4 x8 x16))
+    (fix:- 16 (fix:bitcount16 x16))))
 
-(define (random-state? object)
-  (and (vector? object)
-       (fix:= (vector-length object) 4)
-       (eq? (vector-ref object 0) random-state-tag)))
-(register-predicate! random-state? 'random-state '<= vector?)
+(declare (integrate-operator fix:bitcount32))
+(define (fix:bitcount32 x)
+  (let* ((x1 (fix:- x (fix:and (fix:lsh x -1) #x55555555)))
+	 (x2
+	  (fix:+ (fix:and (fix:lsh x1 -2) #x33333333) (fix:and x1 #x33333333)))
+	 (x3 (fix:and (fix:+ x2 (fix:lsh x2 -4)) #x0f0f0f0f))
+	 (c0 x3)
+	 (c1 (fix:lsh x3 -8))
+	 (c2 (fix:lsh x3 -16))
+	 (c3 (fix:lsh x3 -24))
+	 (s (fix:+ (fix:+ c0 c1) (fix:+ c2 c3))))
+    (declare (integrate x1 x2 x3 x4 c0 c1 c2 c3 s))
+    (fix:and s #xff)))
 
-(define-integrable random-state-tag
-  '|#[(runtime random-number)random-state]|)
+(declare (integrate-operator fix:clz32))
+(define (fix:clz32 x)
+  (let* ((x2 (fix:or x (fix:lsh x -1)))
+	 (x4 (fix:or x2 (fix:lsh x2 -2)))
+	 (x8 (fix:or x4 (fix:lsh x4 -4)))
+	 (x16 (fix:or x8 (fix:lsh x8 -8)))
+	 (x32 (fix:or x16 (fix:lsh x16 -8))))
+    (declare (integrate x2 x4 x8 x16 x32))
+    (fix:- 32 (fix:bitcount32 x32))))
 
-(define-print-method random-state?
-  (standard-print-method 'random-state))
+(define (%random-16 state)
+  (let ((bv (random-bytevector 2 state)))
+    (let ((b0 (bytevector-u8-ref bv 0))
+	  (b1 (bytevector-u8-ref bv 1)))
+      (declare (integrate b0 b1))
+      (begin0 (fix:or b0 (fix:lsh b1 8))
+	(bytevector-zero-explicit! bv)))))
 
-(define-integrable (random-state-index s) (vector-ref s 1))
-(define-integrable (set-random-state-index! s x) (vector-set! s 1 x))
+(define (%random-32 state)
+  (let ((bv (random-bytevector 4 state)))
+    (let ((b0 (bytevector-u8-ref bv 0))
+	  (b1 (bytevector-u8-ref bv 1))
+	  (b2 (bytevector-u8-ref bv 2))
+	  (b3 (bytevector-u8-ref bv 3)))
+      (declare (integrate b0 b1 b2 b3))
+      (begin0 (fix:or (fix:or b0 (fix:lsh b1 8))
+		      (fix:or (fix:lsh b2 16) (fix:lsh b3 24)))
+	(bytevector-zero-explicit! bv)))))
+
+;;;; Uniform [0,1] sampler and uniform (2^{emin - p - 1}, 1 - ulp(1)/4) sampler
 
-(define-integrable (random-state-borrow s) (vector-ref s 2))
-(define-integrable (set-random-state-borrow! s x) (vector-set! s 2 x))
+(define (flo:random-unit-closed-32 state)
+  (define (exponent)
+    (let loop ((z 0))
+      (if (fix:>= z 1088)
+	  z
+	  (let ((x (%random-16 state)))
+	    (if (fix:= x 0)
+		(loop (fix:+ z 16))
+		(fix:+ z (fix:clz16 x)))))))
+  (define (significand-64)
+    (let ((s0 (int:->flonum (fix:or (%random-16 state) #x0001)))
+	  (s1 (int:->flonum (%random-16 state)))
+	  (s2 (int:->flonum (%random-16 state)))
+	  (s3 (int:->flonum (fix:or (%random-16 state) #x8000))))
+      (let ((lo (flo:+ (flo:* 65536. s1) s0))
+	    (hi (flo:+ (flo:* 65536. s3) s2)))
+	(declare (integrate lo hi))
+	(flo:+ (flo:* 4294967296. hi) lo))))
+  (flo:ldexp (significand-64) (fix:- -64 (exponent))))
 
-(define-integrable (random-state-vector s) (vector-ref s 3))
+(define (flo:random-unit-closed-64 state)
+  (define (exponent)
+    (let loop ((z 0))
+      (if (fix:>= z 1088)
+	  z
+	  (let ((x (%random-32 state)))
+	    (if (fix:= x 0)
+		(loop (fix:+ z 32))
+		(fix:+ z (fix:clz32 x)))))))
+  (define (significand-64)
+    (let ((lo (int:->flonum (fix:or (%random-32 state) #x00000001)))
+	  (hi (int:->flonum (fix:or (%random-32 state) #x80000000))))
+      (flo:+ (flo:* 4294967296. hi) lo)))
+  (flo:ldexp (significand-64) (fix:- -64 (exponent))))
 
-(define-guarantee random-state "random state")
+(define (flo:random-unit-open-32 state)
+  (define (exponent)
+    (let loop ((z 0))
+      (if (fix:>= z 1088)
+	  z
+	  (let ((x (%random-16 state)))
+	    (if (fix:= x 0)
+		(loop (fix:+ z 16))
+		(fix:+ z (fix:clz16 x)))))))
+  (define (significand-53)
+    (let ((s0 (int:->flonum (%random-16 state)))
+	  (s1 (int:->flonum (%random-16 state)))
+	  (s2 (int:->flonum (%random-16 state)))
+	  (s3 (int:->flonum (fix:and (%random-16 state) #xf))))
+      (let ((lo (flo:+ (flo:* 65536. s1) s0))
+	    (hi (flo:+ (flo:* 65536. s3) s2)))
+	(declare (integrate lo hi))
+	(flo:+ (flo:* 4294967296. hi) lo))))
+  (flo:max
+   flo:smallest-positive-subnormal	;paranoia
+   (flo:ldexp (significand-53) (fix:- -53 (exponent)))))
 
-(define (copy-random-state state)
-  (%make-random-state (random-state-index state)
-		      (random-state-borrow state)
-		      (flo:vector-copy (random-state-vector state))))
-
-(define (flo:vector-copy vector)
-  (let ((n (flo:vector-length vector)))
-    (let ((result (flo:vector-cons n)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i n))
-	(flo:vector-set! result i (flo:vector-ref vector i)))
-      result)))
-
-(define (copy-random-state! source target)
-  (with-random-state-lock source
-   (lambda ()
-     (set-random-state-index! target (random-state-index source))
-     (set-random-state-borrow! target (random-state-borrow source))
-     (let ((vs (random-state-vector source))
-	   (vt (random-state-vector target)))
-       (do ((i 0 (fix:+ i 1)))
-	   ((fix:= i r))
-	 (flo:vector-set! vt i (flo:vector-ref vs i)))))))
-
-(define (get-random-state state procedure)
-  (let ((state
-	 (if (or (default-object? state) (not state))
-	     (or *random-state* default-random-source)
-	     state)))
-    (guarantee-random-state state procedure)
-    state))
+(define (flo:random-unit-open-64 state)
+  (define (exponent)
+    (let loop ((z 0))
+      (if (fix:>= z 1088)
+	  z
+	  (let ((x (%random-32 state)))
+	    (if (fix:= x 0)
+		(loop (fix:+ z 32))
+		(fix:+ z (fix:clz32 x)))))))
+  (define (significand-53)
+    (let ((lo (int:->flonum (%random-32 state)))
+	  (hi
+	   (int:->flonum
+	    (fix:or #x100000 (fix:and (%random-32 state) #xfffff)))))
+      (flo:+ (flo:* 4294967296. hi) lo)))
+  (flo:max
+   flo:smallest-positive-subnormal	;paranoia
+   (flo:ldexp (significand-53) (fix:- -53 (exponent)))))
 
 ;;;; Initialization
 
+(define %random-nonnegative-fixnum)
 (define *random-state* #f)
-(define flimit.)
-(define flimit)
 (define default-random-source)
 (define default-random-source-mutex)
+(define flo:random-unit-closed)
+(define flo:random-unit-open)
+(define flo:random-unit)
 (define random-integer)
 (define random-real)
+(define zero16)
+(define chacha-const)
 
 (define (initialize-package!)
-  (set! flimit.
-	(let loop ((x 1.))
-	  (if (flo:= (flo:+ x 1.) 1.)
-	      (flo:/ 1. x)
-	      (loop (flo:/ x 2.)))))
-  (set! flimit (flo:truncate->exact flimit.))
-  (set! default-random-source (simple-random-state))
+  (set! zero16 (make-bytevector 16 0))
+  (set! %random-nonnegative-fixnum
+	(select-on-bytes-per-word %random-nonnegative-fixnum-32
+				  %random-nonnegative-fixnum-64))
+  (set! flo:random-unit-open
+	(select-on-bytes-per-word flo:random-unit-open-32
+				  flo:random-unit-open-64))
+  (set! flo:random-unit-closed
+	(select-on-bytes-per-word flo:random-unit-closed-32
+				  flo:random-unit-closed-64))
+  (set! flo:random-unit flo:random-unit-open) ;deprecated
   (set! default-random-source-mutex (make-thread-mutex))
+  (set! default-random-source (make-random-source))
+  (random-source-randomize! default-random-source)
   (set! random-integer (random-source-make-integers default-random-source))
   (set! random-real (random-source-make-reals default-random-source))
+  (set! chacha-const (allocate-bytevector 16))
+  (let ((c "expand 32-byte k"))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:>= i 16))
+      (bytevector-u8-set! chacha-const i (char->integer (string-ref c i)))))
   unspecific)
 
 (define (finalize-random-state-type!)
@@ -419,9 +522,9 @@ USA.
   (named-structure/set-tag-description! random-state-tag
     (make-define-structure-type 'vector
 				'random-state
-				'#(index borrow vector)
-				'#(1 2 3)
-				(make-vector 3 (lambda () #f))
+				'#(key)
+				'#(1)
+				(make-vector 1 (lambda () #f))
 				#f
 				random-state-tag
-				4)))
+				2)))
