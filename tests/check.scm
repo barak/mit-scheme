@@ -75,6 +75,7 @@ USA.
     "runtime/test-predicate"
     ("runtime/test-predicate-dispatch" (runtime predicate-dispatch))
     "runtime/test-process"
+    "runtime/test-random"
     "runtime/test-readwrite"
     "runtime/test-regsexp"
     "runtime/test-rgxcmp"
