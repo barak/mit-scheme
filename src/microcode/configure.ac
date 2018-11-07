@@ -210,6 +210,7 @@ if test ${GCC} = yes; then
     fi
     CFLAGS="-Wall -Wundef -Wpointer-arith -Winline ${CFLAGS}"
     CFLAGS="-Wstrict-prototypes -Wnested-externs -Wredundant-decls ${CFLAGS}"
+    CFLAGS_WERROR=-Werror
 
     AC_MSG_CHECKING([for GCC>=4])
     AC_COMPILE_IFELSE(
@@ -860,6 +861,8 @@ for base in ${OPTIONAL_BASES}; do
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} ${base}.c"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} ${base}.o"
 done
+
+CFLAGS="${CFLAGS} ${CFLAGS_WERROR}"
 
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])
