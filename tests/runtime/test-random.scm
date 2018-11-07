@@ -43,6 +43,13 @@ USA.
       (assert-!= ((random-source-make-integers s0) (expt 2 32))
 		 ((random-source-make-integers s1) (expt 2 32))))))
 
+(define-test 'random-source-fresh-deterministic
+  (lambda ()
+    (let* ((s0 (make-random-source))
+	   (s1 (make-random-source)))
+      (assert-= ((random-source-make-integers s0) (expt 2 64))
+		((random-source-make-integers s1) (expt 2 64))))))
+
 (define-test 'random-source-randomize!
   (lambda ()
     (let* ((s0 (make-random-state #t))
