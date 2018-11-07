@@ -65,12 +65,8 @@ stamp-shim: $(c_sources) $(cdecls)
 x11-const.bin: x11-const.scm
 	echo '(sf "x11-const")' | $(MIT_SCHEME_EXE) --batch-mode
 
-x11-const.scm: stamp-x11-const
+x11-const.scm: x11-const$(EXEEXT)
 	./x11-const
-
-stamp-x11-const: stamp-shim
-	$(MAKE) x11-const
-	echo "done" > $@
 
 @MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) x11-const.bin x11.pkg
