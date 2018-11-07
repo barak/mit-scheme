@@ -208,7 +208,7 @@ if test ${GCC} = yes; then
 	CFLAGS="-O0 -g -DENABLE_DEBUGGING_TOOLS ${CFLAGS}"
 	LDFLAGS="${LDFLAGS} -g"
     fi
-    CFLAGS="-Wall -Wundef -Wpointer-arith -Winline ${CFLAGS}"
+    CFLAGS="-Wall -Werror -Wundef -Wpointer-arith -Winline ${CFLAGS}"
     CFLAGS="-Wstrict-prototypes -Wnested-externs -Wredundant-decls ${CFLAGS}"
 
     AC_MSG_CHECKING([for GCC>=4])
