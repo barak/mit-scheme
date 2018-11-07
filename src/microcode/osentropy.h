@@ -27,7 +27,7 @@ USA.
 #ifndef MITSCHEME_OSENTROPY_H
 #define MITSCHEME_OSENTROPY_H
 
-#include <stddef.h>
+#include "config.h"
 
 void OS_get_entropy (uint8_t [32]);
 
