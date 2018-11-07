@@ -84,7 +84,7 @@ USA.
 	      (i 0 (+ i 1)))
 	     ((not (and (pair? inputs) (pair? outputs))))
 	   (let ((input (car inputs)) (output (car outputs)))
-	     (run-sub-test
+	     (with-test-properties
 	      (lambda ()
 		(assert-eqv
 		 (flo:with-rounding-mode mode (lambda () (operator input)))
