@@ -229,6 +229,8 @@ if test ${GCC} = yes; then
 	-Wtype-limits \
 	-Wundef \
 	-Wuninitialized \
+	-Wunreachable-code \
+	-Wwrite-strings \
 	; do
 	AC_MSG_CHECKING([for compiler warning $flag])
 	SAVED_CFLAGS="$CFLAGS"
@@ -240,7 +242,7 @@ if test ${GCC} = yes; then
     done
 
     # other possibilities:
-    # -Wmissing-prototypes -Wunreachable-code -Wwrite-strings
+    # -Wmissing-prototypes
 fi
 FOO=`${INSTALL} --help 2> /dev/null | ${FGREP} -e --preserve-timestamps`
 if test "x${FOO}" != x; then
