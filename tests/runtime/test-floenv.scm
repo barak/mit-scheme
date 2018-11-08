@@ -79,11 +79,15 @@ USA.
    (define (define-rounding-test name operator outputs)
      (define-test (symbol 'ROUNDING-MODE-INDEPENDENT ': mode '/ name)
        (map (lambda (input output)
-              (lambda ()
-		(assert-eqv
-		 (flo:with-rounding-mode mode (lambda () (operator input)))
-		 output)))
-            inputs outputs)))
+	      (lambda ()
+		(with-test-properties
+		    (lambda ()
+		      (assert-eqv
+		       (flo:with-rounding-mode mode
+			 (lambda () (operator input)))
+		       output))
+		  'EXPRESSION `(,name ,input))))
+	    inputs outputs)))
    (define-rounding-test 'CEILING ceiling
      '(-2.0 -1.0 -1.0 -0.0 -0.0 0.0 1.0 1.0 2.0 2.0))
    (define-rounding-test 'FLOOR floor
