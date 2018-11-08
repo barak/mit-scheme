@@ -177,6 +177,13 @@ USA.
 (define-invop-flag-test 'flonum-sqrt (applicator flo:sqrt -1.))	;(g)
 (define-invop-trap-test 'flonum-sqrt (applicator flo:sqrt -1.))	;(g)
 
+(define-invop-flag-test 'flonum-sqrt
+  (applicator (make-primitive-procedure 'flonum-sqrt) -1.)
+  'xerror)
+(define-invop-trap-test 'flonum-sqrt
+  (applicator (make-primitive-procedure 'flonum-sqrt) -1.)
+  'xerror)
+
 ;;; IEEE 754-2008, Sec. 7.3
 
 ;; XXX Check sign of infinity.
