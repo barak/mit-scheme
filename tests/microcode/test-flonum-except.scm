@@ -178,11 +178,9 @@ USA.
 (define-invop-trap-test 'flonum-sqrt (applicator flo:sqrt -1.))	;(g)
 
 (define-invop-flag-test 'flonum-sqrt
-  (applicator (make-primitive-procedure 'flonum-sqrt) -1.)
-  'xerror)
+  (applicator (make-primitive-procedure 'flonum-sqrt) -1.))
 (define-invop-trap-test 'flonum-sqrt
-  (applicator (make-primitive-procedure 'flonum-sqrt) -1.)
-  'xerror)
+  (applicator (make-primitive-procedure 'flonum-sqrt) -1.))
 
 ;;; IEEE 754-2008, Sec. 7.3
 
@@ -246,11 +244,11 @@ USA.
 
 ;; XXX atanpi, atan2pi
 
-(define-invop-flag-test 'flonum-asin (applicator flo:asin 2.) 'xerror)
-(define-invop-trap-test 'flonum-asin (applicator flo:asin 2.) 'xerror)
+(define-invop-flag-test 'flonum-asin (applicator flo:asin 2.))
+(define-invop-trap-test 'flonum-asin (applicator flo:asin 2.))
 ;; XXX Not clear how to make asin underflow reliably.
-(define-invop-flag-test 'flonum-acos (applicator flo:acos 2.) 'xerror)
-(define-invop-trap-test 'flonum-acos (applicator flo:acos 2.) 'xerror)
+(define-invop-flag-test 'flonum-acos (applicator flo:acos 2.))
+(define-invop-trap-test 'flonum-acos (applicator flo:acos 2.))
 ;; XXX Not clear how to make atan underflow reliably.
 
 ;; XXX sinh, cosh, tanh, asinh, acosh, atanh
