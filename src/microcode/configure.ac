@@ -231,6 +231,8 @@ if test ${GCC} = yes; then
 	-Wuninitialized \
 	-Wunreachable-code \
 	-Wwrite-strings \
+	\
+	-Wno-error=stringop-truncation \
 	; do
 	AC_MSG_CHECKING([for compiler warning $flag])
 	SAVED_CFLAGS="$CFLAGS"
@@ -243,6 +245,8 @@ if test ${GCC} = yes; then
 
     # other possibilities:
     # -Wmissing-prototypes (requires prototypes for DEFINE_PRIMITIVE)
+    # -Wstringop-truncation (requires it to not whine about correct use
+    #  of strncpy for buffers that are _not_ null-terminated)
 fi
 FOO=`${INSTALL} --help 2> /dev/null | ${FGREP} -e --preserve-timestamps`
 if test "x${FOO}" != x; then
