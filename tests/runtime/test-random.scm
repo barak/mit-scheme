@@ -60,9 +60,7 @@ USA.
 
 (define-test 'random-bytevector-large
   (lambda ()
-    (assert-error
-     (lambda ()
-       (assert-= (bytevector-length (random-bytevector 1088)) 1088)))))
+    (assert-= (bytevector-length (random-bytevector 1088)) 1088)))
 
 (define (define-random-test name procedure)
   (define-test name
