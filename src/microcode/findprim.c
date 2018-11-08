@@ -633,6 +633,11 @@ initialize_token_buffer (void)
 void
 grow_token_buffer (void)
 {
+  if (token_buffer_length >= (SIZE_MAX / 2))
+    {
+      fprintf (stderr, "token buffer overflow\n");
+      exit (1);
+    }
   token_buffer_length *= 2;
   token_buffer = (xrealloc (token_buffer, token_buffer_length));
   return;
@@ -812,6 +817,11 @@ void
 grow_data_buffer (void)
 {
   char * old_data_buffer = ((char *) data_buffer);
+  if (buffer_length >= (SIZE_MAX / (2 * (sizeof (struct descriptor)))))
+    {
+      fprintf (stderr, "data buffer overflow\n");
+      exit (1);
+    }
   buffer_length *= 2;
   data_buffer =
     ((struct descriptor (*) [])
@@ -827,6 +837,11 @@ grow_data_buffer (void)
 	scan += 1;
       }
   }
+  if (buffer_length >= (SIZE_MAX / (sizeof (struct descriptor *))))
+    {
+      fprintf (stderr, "result buffer overflow\n");
+      exit (1);
+    }
   result_buffer =
     ((struct descriptor **)
      (xrealloc (((char *) result_buffer),
