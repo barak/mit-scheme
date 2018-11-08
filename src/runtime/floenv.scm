@@ -271,21 +271,17 @@ USA.
   ((ucode-primitive defer-float-exception-traps 0)))
 
 (define (flo:default-trapped-exceptions)
-  ;; By default, we trap the standard IEEE 754 exceptions that Scheme
-  ;; can safely run with trapped, in order to report errors as soon as
-  ;; they happen.  Scheme cannot safely run with the inexact result
-  ;; exception trapped (which you almost never want anyway), and there
-  ;; are some non-standard exceptions which we will not trap in order
-  ;; to keep behaviour consistent between host systems.
+  ;; By default, we trap nothing, following iEEE 754-2008's default
+  ;; exception handling recommendation.
   ;;
-  ;; XXX If you want to read the exceptions that don't trap by default,
-  ;; you must disable interrupts so that the lazy floating-point
-  ;; environment switching mechanism will work.  Is that too much of a
-  ;; burden?
-  (fix:or (fix:or (flo:exception:divide-by-zero)
-		  (flo:exception:invalid-operation))
-	  (fix:or (flo:exception:overflow)
-		  (flo:exception:underflow))))
+  ;; This is a change from the past in MIT Scheme which used to trap
+  ;; all the standard exceptions except for inexact-result.
+  ;;
+  ;; Note that for querying the status of floating-point operations,
+  ;; the floating-point environment is not reliable in the current
+  ;; thread until you touch it, e.g. with flo:clear-exceptions! or
+  ;; flo:preserving-environment.
+  0)
 
 ;++ Include machine-dependent bits, by number rather than by name.
 
