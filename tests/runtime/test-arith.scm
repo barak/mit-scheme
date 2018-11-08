@@ -349,9 +349,4 @@ USA.
     (let ((y (vector-ref v 0))
           (x (vector-ref v 1))
           (theta (vector-ref v 2)))
-      (define (body)
-        (assert-eqv (atan y x) theta))
-      (if (and (= y 0) (= x 0))
-          ;; XXX expected failure
-          (assert-error body)
-          (body)))))
+      (assert-eqv (atan y x) theta))))

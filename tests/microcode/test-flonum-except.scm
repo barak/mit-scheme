@@ -174,11 +174,9 @@ USA.
 (define-invop-flag-test 'flonum-divide (applicator flo:/ 0. 0.)) ;(e)
 (define-invop-trap-test 'flonum-divide (applicator flo:/ 0. 0.)) ;(e)
 (define-invop-flag-test 'flonum-divide                           ;(e)
-  (applicator (make-primitive-procedure 'flonum-divide) 0. 0.)
-  'xerror)
+  (applicator (make-primitive-procedure 'flonum-divide) 0. 0.))
 (define-invop-trap-test 'flonum-divide                           ;(e)
-  (applicator (make-primitive-procedure 'flonum-divide) 0. 0.)
-  'xerror)
+  (applicator (make-primitive-procedure 'flonum-divide) 0. 0.))
 ;; XXX remainder ;(f)
 (define-invop-flag-test 'flonum-sqrt (applicator flo:sqrt -1.))	;(g)
 (define-invop-trap-test 'flonum-sqrt (applicator flo:sqrt -1.))	;(g)
@@ -194,11 +192,9 @@ USA.
 (define-divbyzero-flag-test 'flonum-divide (applicator flo:/ 1. 0.))
 (define-divbyzero-trap-test 'flonum-divide (applicator flo:/ 1. 0.))
 (define-divbyzero-flag-test 'flonum-divide
-  (applicator (make-primitive-procedure 'flonum-divide) 1. 0.)
-  'xerror)
+  (applicator (make-primitive-procedure 'flonum-divide) 1. 0.))
 (define-divbyzero-trap-test 'flonum-divide
-  (applicator (make-primitive-procedure 'flonum-divide) 1. 0.)
-  'xerror)
+  (applicator (make-primitive-procedure 'flonum-divide) 1. 0.))
 (define-divbyzero-flag-test 'flonum-log (applicator flo:log 0.))
 (define-divbyzero-trap-test 'flonum-log (applicator flo:log 0.))
 

@@ -68,17 +68,8 @@ DEFINE_PRIMITIVE ("FLONUM-SUBTRACT", Prim_flonum_subtract, 2, 2, 0)
      FLONUM_BINARY_OPERATION (-)
 DEFINE_PRIMITIVE ("FLONUM-MULTIPLY", Prim_flonum_multiply, 2, 2, 0)
      FLONUM_BINARY_OPERATION (*)
-
 DEFINE_PRIMITIVE ("FLONUM-DIVIDE", Prim_flonum_divide, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    double denominator = (arg_flonum (2));
-    if (denominator == 0)
-      error_bad_range_arg (2);
-    FLONUM_RESULT ((arg_flonum (1)) / denominator);
-  }
-}
+     FLONUM_BINARY_OPERATION (/)
 
 DEFINE_PRIMITIVE ("FLONUM-MODULO", Prim_flonum_modulo, 2, 2, 0)
 #ifdef HAVE_FMOD
@@ -226,8 +217,6 @@ DEFINE_PRIMITIVE ("FLONUM-ATAN2", Prim_flonum_atan2, 2, 2, 0)
   {
     double y = (arg_flonum (1));
     double x = (arg_flonum (2));
-    if ((x == 0) && (y == 0))
-      error_bad_range_arg (2);
     FLONUM_RESULT (atan2 (y, x));
   }
 }
