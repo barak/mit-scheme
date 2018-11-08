@@ -208,22 +208,27 @@ if test ${GCC} = yes; then
 	CFLAGS="-O0 -g -DENABLE_DEBUGGING_TOOLS ${CFLAGS}"
 	LDFLAGS="${LDFLAGS} -g"
     fi
-    CFLAGS="-Wall -Wundef -Wpointer-arith -Winline ${CFLAGS}"
-    CFLAGS="-Wstrict-prototypes -Wnested-externs -Wredundant-decls ${CFLAGS}"
     CFLAGS_WERROR=-Werror
 
     for flag in \
+	-Wall \
 	-Wclobbered \
 	-Wempty-body \
 	-Wignored-qualifiers \
 	-Wimplicit-fallthrough \
+	-Winline \
 	-Wmissing-field-initializers \
 	-Wmissing-parameter-type \
+	-Wnested-externs \
 	-Wold-style-declaration \
 	-Woverride-init \
-	-Wtype-limits \
-	-Wuninitialized \
+	-Wpointer-arith \
+	-Wredundant-decls \
 	-Wshift-negative-value \
+	-Wstrict-prototypes \
+	-Wtype-limits \
+	-Wundef \
+	-Wuninitialized \
 	; do
 	AC_MSG_CHECKING([for compiler warning $flag])
 	SAVED_CFLAGS="$CFLAGS"
