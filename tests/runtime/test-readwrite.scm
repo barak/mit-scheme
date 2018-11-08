@@ -70,7 +70,7 @@ USA.
   `(("+inf.0" ,assert-inf+)
     ("-inf.0" ,assert-inf-)
     ("inf.0" ,assert-symbol)
-    ("nan.0" ,assert-symbol xfail))
+    ("nan.0" ,assert-symbol))
   (lambda (string #!optional assertion xfail?)
     (with-expected-failure xfail?
       (lambda ()
@@ -79,8 +79,8 @@ USA.
 	  (assert-equal (write-to-string object) string))))))
 
 (define-enumerated-test 'read
-  `(("+nan.0" ,assert-nan xfail)
-    ("-nan.0" ,assert-nan xfail))
+  `(("+nan.0" ,assert-nan)
+    ("-nan.0" ,assert-nan))
   (lambda (string assertion #!optional xfail?)
     (with-expected-failure xfail?
       (lambda ()
