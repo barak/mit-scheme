@@ -242,7 +242,7 @@ if test ${GCC} = yes; then
     done
 
     # other possibilities:
-    # -Wmissing-prototypes
+    # -Wmissing-prototypes (requires prototypes for DEFINE_PRIMITIVE)
 fi
 FOO=`${INSTALL} --help 2> /dev/null | ${FGREP} -e --preserve-timestamps`
 if test "x${FOO}" != x; then
