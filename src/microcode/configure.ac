@@ -214,6 +214,8 @@ if test x"${GCC}" = xyes; then
     CFLAGS_WERROR=-Werror
 
     for flag in \
+	-frounding-math \
+	\
 	-Wall \
 	-Wclobbered \
 	-Wempty-body \
@@ -237,7 +239,7 @@ if test x"${GCC}" = xyes; then
 	\
 	-Wno-error=stringop-truncation \
 	; do
-	AC_MSG_CHECKING([for compiler warning $flag])
+	AC_MSG_CHECKING([for compiler $flag])
 	SAVED_CFLAGS=${CFLAGS}
 	CFLAGS="${SAVED_CFLAGS} ${flag} -Werror"
 	AC_TRY_COMPILE([],[],
