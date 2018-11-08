@@ -57,6 +57,12 @@ USA.
       (random-source-randomize! s0)
       (assert-!= ((random-source-make-integers s0) (expt 2 32))
 		 ((random-source-make-integers s1) (expt 2 32))))))
+
+(define-test 'random-bytevector-large
+  (lambda ()
+    (assert-error
+     (lambda ()
+       (assert-= (bytevector-length (random-bytevector 1088)) 1088)))))
 
 (define (define-random-test name procedure)
   (define-test name
