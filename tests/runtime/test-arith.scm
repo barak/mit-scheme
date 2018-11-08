@@ -334,3 +334,24 @@ USA.
           (assert-eqv (expt (/ 1 x) (- y)) x^y)
           (assert-eqv (expt (* 2 x) (/ y 2)) x^y)
           (assert-eqv (expt (/ 1 (* 2 x)) (- (/ y 2))) x^y))))))
+
+(define-enumerated-test 'atan2
+  (vector
+   (vector +0. -1. (+ (atan 0 -1)))
+   (vector -0. -1. (- (atan 0 -1)))
+   (vector +0. -0. (+ (atan 0 -1)))
+   (vector -0. -0. (- (atan 0 -1)))
+   (vector +0. +0. +0.)
+   (vector -0. +0. -0.)
+   (vector +0. +1. +0.)
+   (vector -0. +1. -0.))
+  (lambda (v)
+    (let ((y (vector-ref v 0))
+          (x (vector-ref v 1))
+          (theta (vector-ref v 2)))
+      (define (body)
+        (assert-eqv (atan y x) theta))
+      (if (and (= y 0) (= x 0))
+          ;; XXX expected failure
+          (assert-error body)
+          (body)))))

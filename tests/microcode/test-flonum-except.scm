@@ -173,6 +173,12 @@ USA.
   (applicator flo:- (flo:-inf.0) (flo:-inf.0)))
 (define-invop-flag-test 'flonum-divide (applicator flo:/ 0. 0.)) ;(e)
 (define-invop-trap-test 'flonum-divide (applicator flo:/ 0. 0.)) ;(e)
+(define-invop-flag-test 'flonum-divide                           ;(e)
+  (applicator (make-primitive-procedure 'flonum-divide) 0. 0.)
+  'xerror)
+(define-invop-trap-test 'flonum-divide                           ;(e)
+  (applicator (make-primitive-procedure 'flonum-divide) 0. 0.)
+  'xerror)
 ;; XXX remainder ;(f)
 (define-invop-flag-test 'flonum-sqrt (applicator flo:sqrt -1.))	;(g)
 (define-invop-trap-test 'flonum-sqrt (applicator flo:sqrt -1.))	;(g)
@@ -187,6 +193,12 @@ USA.
 ;; XXX Check sign of infinity.
 (define-divbyzero-flag-test 'flonum-divide (applicator flo:/ 1. 0.))
 (define-divbyzero-trap-test 'flonum-divide (applicator flo:/ 1. 0.))
+(define-divbyzero-flag-test 'flonum-divide
+  (applicator (make-primitive-procedure 'flonum-divide) 1. 0.)
+  'xerror)
+(define-divbyzero-trap-test 'flonum-divide
+  (applicator (make-primitive-procedure 'flonum-divide) 1. 0.)
+  'xerror)
 (define-divbyzero-flag-test 'flonum-log (applicator flo:log 0.))
 (define-divbyzero-trap-test 'flonum-log (applicator flo:log 0.))
 
