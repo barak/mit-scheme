@@ -212,24 +212,27 @@ if test ${GCC} = yes; then
     CFLAGS="-Wstrict-prototypes -Wnested-externs -Wredundant-decls ${CFLAGS}"
     CFLAGS_WERROR=-Werror
 
-    AC_MSG_CHECKING([for GCC>=4])
-    AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM(
-	    [[
-	    #if __GNUC__ >= 4
-	    ;
-	    #else
-	    #error "gcc too old"
-	    #endif
-	    ]],
-	    [[]]
-	)],
-	[
-	AC_MSG_RESULT([yes])
-	CFLAGS="-Wextra -Wno-sign-compare -Wno-unused-parameter ${CFLAGS}"
-	CFLAGS="-Wold-style-definition ${CFLAGS}"
-	],
-	[AC_MSG_RESULT([no])])
+    for flag in \
+	-Wclobbered \
+	-Wempty-body \
+	-Wignored-qualifiers \
+	-Wimplicit-fallthrough \
+	-Wmissing-field-initializers \
+	-Wmissing-parameter-type \
+	-Wold-style-declaration \
+	-Woverride-init \
+	-Wtype-limits \
+	-Wuninitialized \
+	-Wshift-negative-value \
+	; do
+	AC_MSG_CHECKING([for compiler warning $flag])
+	SAVED_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS $flag"
+	AC_TRY_COMPILE([],[],
+	    [AC_MSG_RESULT(yes)],
+	    [AC_MSG_RESULT(no)
+	    CFLAGS="$SAVED_CFLAGS"])
+    done
 
     # other possibilities:
     # -Wmissing-prototypes -Wunreachable-code -Wwrite-strings
