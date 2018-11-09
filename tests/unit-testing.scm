@@ -250,6 +250,11 @@ USA.
 	  (write-string "assertion " port)
 	  (write (cdr p) port)
 	  (write-string ": " port))))
+  (cond ((failure-property 'SEED failure)
+	 => (lambda (p)
+	      (write-string " (seed " port)
+	      (write (cdr p) port)
+	      (write-string ") " port))))
   (cond ((failure-property 'CONDITION failure)
 	 => (lambda (p)
 	      (let ((expr (failure-property 'EXPRESSION failure)))
@@ -319,7 +324,7 @@ USA.
 
 ;;;; Assertions
 
-(define-for-tests (run-sub-test thunk . properties)
+(define (run-sub-test thunk . properties)
   (call-with-current-continuation
    (lambda (k)
      (parameterize ((assertion-index 1))
@@ -440,6 +445,9 @@ USA.
 
 (define-for-tests assert-range-error
   (error-assertion condition-type:bad-range-argument))
+
+(define-for-tests expect-failure
+  (error-assertion condition-type:failure))
 
 (define-for-tests keep-it-fast!?
   (let ((v (get-environment-variable "FAST")))

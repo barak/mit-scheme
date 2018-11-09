@@ -211,30 +211,45 @@ if test x"${GCC}" = xyes; then
 	CFLAGS="-O0 -g ${CFLAGS}"
 	LDFLAGS="${LDFLAGS} -g"
     fi
-    CFLAGS="-Wall -Wundef -Wpointer-arith -Winline ${CFLAGS}"
-    CFLAGS="-Wstrict-prototypes -Wnested-externs -Wredundant-decls ${CFLAGS}"
+    CFLAGS_WERROR=-Werror
 
-    AC_MSG_CHECKING([for GCC>=4])
-    AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM(
-	    [[
-	    #if __GNUC__ >= 4
-	    ;
-	    #else
-	    #error "gcc too old"
-	    #endif
-	    ]],
-	    [[]]
-	)],
-	[
-	AC_MSG_RESULT([yes])
-	CFLAGS="-Wextra -Wno-sign-compare -Wno-unused-parameter ${CFLAGS}"
-	CFLAGS="-Wold-style-definition ${CFLAGS}"
-	],
-	[AC_MSG_RESULT([no])])
+    for flag in \
+	-Wall \
+	-Wclobbered \
+	-Wempty-body \
+	-Wignored-qualifiers \
+	-Wimplicit-fallthrough \
+	-Winline \
+	-Wmissing-field-initializers \
+	-Wmissing-parameter-type \
+	-Wnested-externs \
+	-Wold-style-declaration \
+	-Woverride-init \
+	-Wpointer-arith \
+	-Wredundant-decls \
+	-Wshift-negative-value \
+	-Wstrict-prototypes \
+	-Wtype-limits \
+	-Wundef \
+	-Wuninitialized \
+	-Wunreachable-code \
+	-Wwrite-strings \
+	\
+	-Wno-error=stringop-truncation \
+	; do
+	AC_MSG_CHECKING([for compiler warning $flag])
+	SAVED_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS $flag"
+	AC_TRY_COMPILE([],[],
+	    [AC_MSG_RESULT(yes)],
+	    [AC_MSG_RESULT(no)
+	    CFLAGS="$SAVED_CFLAGS"])
+    done
 
     # other possibilities:
-    # -Wmissing-prototypes -Wunreachable-code -Wwrite-strings
+    # -Wmissing-prototypes (requires prototypes for DEFINE_PRIMITIVE)
+    # -Wstringop-truncation (requires it to not whine about correct use
+    #  of strncpy for buffers that are _not_ null-terminated)
 fi
 FOO=`${INSTALL} --help 2> /dev/null | ${FGREP} -e --preserve-timestamps`
 if test "x${FOO}" != x; then
@@ -540,6 +555,14 @@ define([SCM_INC_FENV],
 if test "x$ac_cv_header_fenv_h" = "xyes"; then
   AC_CHECK_TYPES([fenv_t], [], [], [SCM_INC_FENV])
   AC_CHECK_TYPES([fexcept_t], [], [], [SCM_INC_FENV])
+  AC_CHECK_FUNCS([feclearexcept fedisableexcept feenableexcept])
+  AC_CHECK_FUNCS([fegetenv fegetexcept fegetexceptflag fegetround feholdexcept])
+  AC_CHECK_FUNCS([feraiseexcept fesetenv fesetexceptflag fesetround])
+  AC_CHECK_FUNCS([fetestexcept feupdateenv])
+fi
+
+if test "x$ac_cv_header_ieeefp_h" = "xyes"; then
+  AC_CHECK_TYPES([fpgetround fpsetround])
 fi
 
 AC_CHECK_SIZEOF([time_t])
@@ -685,11 +708,9 @@ AC_FUNC_WAIT3
 AC_CHECK_FUNCS([clock_gettime closefrom ctermid])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([expm1])
-AC_CHECK_FUNCS([fcntl fdatasync feclearexcept fedisableexcept feenableexcept])
-AC_CHECK_FUNCS([fegetenv fegetexcept fegetexceptflag fegetround feholdexcept])
-AC_CHECK_FUNCS([feraiseexcept fesetenv fesetexceptflag fesetround])
-AC_CHECK_FUNCS([fetestexcept feupdateenv floor fmod fpathconf fpgetround])
-AC_CHECK_FUNCS([fpsetround frexp fsync fsync_range ftruncate])
+AC_CHECK_FUNCS([fcntl fdatasync])
+AC_CHECK_FUNCS([floor fmod fpathconf])
+AC_CHECK_FUNCS([frexp fsync fsync_range ftruncate])
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpagesize getpgrp])
 AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])
@@ -863,6 +884,8 @@ for base in ${OPTIONAL_BASES}; do
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} ${base}.c"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} ${base}.o"
 done
+
+CFLAGS="${CFLAGS} ${CFLAGS_WERROR}"
 
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])

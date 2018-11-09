@@ -106,6 +106,9 @@ USA.
 (define flo:subnormal-exponent-min-base-2)
 (define flo:subnormal-exponent-min-base-e)
 (define flo:subnormal-exponent-min-base-10)
+(define flo:smallest-positive-subnormal)
+(define flo:smallest-positive-normal)
+(define flo:largest-positive-normal)
 (define flo:significand-digits-base-2)
 (define flo:significand-digits-base-10)
 (define int:flonum-integer-limit)
@@ -148,6 +151,12 @@ USA.
 	(flo:/ flo:normal-exponent-min-base-e (flo:log 10.)))
   (set! flo:subnormal-exponent-min-base-10
 	(flo:/ flo:subnormal-exponent-min-base-e (flo:log 10.)))
+  (set! flo:smallest-positive-subnormal
+	(flo:ldexp 1. flo:subnormal-exponent-min-base-2))
+  (set! flo:smallest-positive-normal
+	(flo:ldexp 1. flo:normal-exponent-min-base-2))
+  (set! flo:largest-positive-normal
+	(flo:ldexp 1. flo:normal-exponent-max-base-2))
   unspecific)
 
 (define (initialize-package!)

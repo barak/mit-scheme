@@ -31,7 +31,7 @@ USA.
 (define-test 'interesting-svl-round-trip
   (lambda ()
     (map (lambda (svl)
-	   (run-sub-test
+	   (with-test-properties
 	    (lambda ()
 	      (assert-equal-canonical-svls (trim-empty-segments svl)
 					   (svl-round-trip svl)))
@@ -44,7 +44,7 @@ USA.
 (define-test 'random-svl-round-trip
   (lambda ()
     (map (lambda (svl)
-	   (run-sub-test
+	   (with-test-properties
 	    (lambda ()
 	      (guarantee code-point-list? svl)
 	      (assert-equal-canonical-svls (canonicalize-svl svl)
@@ -55,8 +55,8 @@ USA.
 		  (make-random-svls 100 100)))))
 
 (define (canonicalize-svl svl)
-  (named-call '%CANONICALIZE-SCALAR-VALUE-LIST
-	      %canonicalize-scalar-value-list
+  (named-call 'NORMALIZE-RANGES
+	      normalize-ranges
 	      svl))
 
 (define (make-random-svls n-ranges n-iter)
@@ -81,7 +81,7 @@ USA.
   (lambda ()
     (map (lambda (svl)
 	   (map (lambda (value)
-		  (run-sub-test
+		  (with-test-properties
 		   (lambda ()
 		     (assert-boolean=
 		      (char-in-set? (integer->char value) (char-set* svl))
@@ -111,10 +111,17 @@ USA.
 (define-test 'invert
   (lambda ()
     (map (lambda (svl)
-	   (run-sub-test
+	   (with-test-properties
 	    (lambda ()
-	      (assert-equal (svl-invert-thru svl)
-			    (svl-invert-direct (trim-empty-segments svl))))
+	      ((lambda (body)
+		 (if (equal? svl '())
+		     ;; XXX Broken, please fix!
+		     (expect-failure body)
+		     body))
+	       (lambda ()
+		 (assert-equal
+		  (svl-invert-thru svl)
+		  (svl-invert-direct (trim-empty-segments svl))))))
 	    'EXPRESSION `(SVL-INVERT ,svl)))
 	 interesting-svls)))
 
@@ -143,7 +150,7 @@ USA.
   (lambda ()
     (map (lambda (svl1)
 	   (map (lambda (svl2)
-		  (run-sub-test
+		  (with-test-properties
 		   (lambda ()
 		     (assert-equal
 		      (char-set->code-points

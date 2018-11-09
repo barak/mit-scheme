@@ -68,17 +68,8 @@ DEFINE_PRIMITIVE ("FLONUM-SUBTRACT", Prim_flonum_subtract, 2, 2, 0)
      FLONUM_BINARY_OPERATION (-)
 DEFINE_PRIMITIVE ("FLONUM-MULTIPLY", Prim_flonum_multiply, 2, 2, 0)
      FLONUM_BINARY_OPERATION (*)
-
 DEFINE_PRIMITIVE ("FLONUM-DIVIDE", Prim_flonum_divide, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    double denominator = (arg_flonum (2));
-    if (denominator == 0)
-      error_bad_range_arg (2);
-    FLONUM_RESULT ((arg_flonum (1)) / denominator);
-  }
-}
+     FLONUM_BINARY_OPERATION (/)
 
 DEFINE_PRIMITIVE ("FLONUM-MODULO", Prim_flonum_modulo, 2, 2, 0)
 #ifdef HAVE_FMOD
@@ -214,9 +205,9 @@ DEFINE_PRIMITIVE ("FLONUM-COS", Prim_flonum_cos, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM-TAN", Prim_flonum_tan, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (tan)
 DEFINE_PRIMITIVE ("FLONUM-ASIN", Prim_flonum_asin, 1, 1, 0)
-     RESTRICTED_TRANSCENDENTAL_FUNCTION (asin, ((x >= -1) && (x <= 1)))
+     SIMPLE_TRANSCENDENTAL_FUNCTION (asin)
 DEFINE_PRIMITIVE ("FLONUM-ACOS", Prim_flonum_acos, 1, 1, 0)
-     RESTRICTED_TRANSCENDENTAL_FUNCTION (acos, ((x >= -1) && (x <= 1)))
+     SIMPLE_TRANSCENDENTAL_FUNCTION (acos)
 DEFINE_PRIMITIVE ("FLONUM-ATAN", Prim_flonum_atan, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (atan)
 
@@ -226,14 +217,12 @@ DEFINE_PRIMITIVE ("FLONUM-ATAN2", Prim_flonum_atan2, 2, 2, 0)
   {
     double y = (arg_flonum (1));
     double x = (arg_flonum (2));
-    if ((x == 0) && (y == 0))
-      error_bad_range_arg (2);
     FLONUM_RESULT (atan2 (y, x));
   }
 }
 
 DEFINE_PRIMITIVE ("FLONUM-SQRT", Prim_flonum_sqrt, 1, 1, 0)
-     RESTRICTED_TRANSCENDENTAL_FUNCTION (sqrt, (x >= 0))
+     SIMPLE_TRANSCENDENTAL_FUNCTION (sqrt)
 DEFINE_PRIMITIVE ("FLONUM-CBRT", Prim_flonum_cbrt, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (cbrt)
 

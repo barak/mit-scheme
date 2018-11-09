@@ -34,8 +34,8 @@ extern unsigned short x87_read_control_word (void);
 extern void x87_write_control_word (unsigned short);
 extern unsigned short x87_read_status_word (void);
 /* extern void x87_write_status_word (unsigned short);	No f(n)stsw. */
-extern void x87_read_environment (unsigned char *);
-extern void x87_write_environment (const unsigned char *);
+extern void x87_read_environment (struct x87_fenv *);
+extern void x87_write_environment (const struct x87_fenv *);
 
 #ifndef x87_p
 #  ifdef HAVE_X87

@@ -1,4 +1,4 @@
-#| -*-Scheme-*-
+/* -*-C-*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -22,71 +22,47 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
-|#
+*/
 
-;;;; Core C files used on all platforms.
+#include "prims.h"
+#include "ux.h"
 
-"artutl"
-"avltree"
-"bkpt"
-"bignum"
-"bigprm"
-"bitstr"
-"boot"
-"bytevector"
-"chacha12"
-"chacha20"
-"chacha8"
-"char"
-"daemon"
-"debug"
-"dfloat"
-"error"
-"extern"
-"fasdump"
-"fasl"
-"fasload"
-"fixnum"
-"floenv"
-"flonum"
-"gcloop"
-"generic"
-"hooks"
-"hunk"
-"intern"
-"interp"
-"intprm"
-"keccak"
-"list"
-"lookprm"
-"lookup"
-"md5"
-"memmag"
-"missing"
-"obstack"
-"option"
-"osscheme"
-"ostty"
-"outf"
-"prchacha"
-"prentropy"
-"prim"
-"primutl"
-"prkeccak"
-"prmd5"
-"ptrvec"
-"purify"
-"purutl"
-"regex"
-"rgxprim"
-"step"
-"storage"
-"string"
-"syntax"
-"sysprim"
-"term"
-"transact"
-"utabmd"
-"utils"
-"vector"
-"wind"
+#include <unistd.h>
+
+#define PATH_URANDOM "/dev/urandom"
+
+static void
+tx_close (void * cookie)
+{
+  int * fdp = cookie;
+  if ((*fdp) != -1)
+    (void) UX_close (*fdp);
+}
+
+void
+OS_get_entropy (uint8_t buf [32])
+{
+  size_t nbytes = 32;
+  int fd = -1;
+  transaction_begin ();
+  transaction_record_action (tat_always, tx_close, (&fd));
+  STD_FD_SYSTEM_CALL (syscall_open, fd, (UX_open (PATH_URANDOM, O_RDONLY)));
+  ssize_t nread;
+  while ((nread = (UX_read (fd, buf, nbytes))) != 0)
+    {
+      if (nread == -1)
+	{
+	  UX_prim_check_errno (syscall_read);
+	  continue;
+	}
+      if (((size_t) nread) >= nbytes)
+	{
+	  transaction_commit ();
+	  return;
+	}
+      nbytes -= ((size_t) nread);
+      buf += ((size_t) nread);
+    }
+  /* Premature EOF makes no sense on /dev/urandom.  */
+  error_external_return ();
+}

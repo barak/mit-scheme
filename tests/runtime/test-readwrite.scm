@@ -28,6 +28,60 @@ USA.
 
 (declare (usual-integrations))
 
+(define (define-enumerated-test name cases procedure)
+  (define-test name
+    (map (lambda (casen)
+	   (lambda ()
+	     (with-test-properties (lambda () (apply procedure casen))
+	       'DESCRIPTION (write-to-string casen))))
+	 cases)))
+
+(define (with-expected-failure xfail? body)
+  (case xfail?
+    ((xfail) (expect-failure body))
+    ((xerror) (assert-error body))
+    (else (body))))
+
+(define assert-nan
+  (predicate-assertion nan? "NaN"))
+
+(define assert-inf
+  (predicate-assertion infinite? "infinity"))
+
+(define (assert-inf- x)
+  (assert-inf x)
+  (assert-< x 0))
+
+(define (assert-inf+ x)
+  (assert-inf x)
+  (assert-< 0 x))
+
+(define assert-symbol
+  (predicate-assertion symbol? "symbol"))
+
+(define (read-from-string string)
+  (read (open-input-string string)))
+
 (define-test 'DOT-SYMBOL-GETS-BARS
   (lambda ()
     (assert-equal (write-to-string (string->symbol ".")) "|.|")))
+
+(define-enumerated-test 'read/write-invariance
+  `(("+inf.0" ,assert-inf+)
+    ("-inf.0" ,assert-inf-)
+    ("inf.0" ,assert-symbol)
+    ("nan.0" ,assert-symbol))
+  (lambda (string #!optional assertion xfail?)
+    (with-expected-failure xfail?
+      (lambda ()
+	(let ((object (read-from-string string)))
+	  (assertion object)
+	  (assert-equal (write-to-string object) string))))))
+
+(define-enumerated-test 'read
+  `(("+nan.0" ,assert-nan)
+    ("-nan.0" ,assert-nan))
+  (lambda (string assertion #!optional xfail?)
+    (with-expected-failure xfail?
+      (lambda ()
+	(assertion (read-from-string string))))))

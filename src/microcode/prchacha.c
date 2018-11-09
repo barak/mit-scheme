@@ -28,15 +28,15 @@ USA.
 #include "prims.h"
 
 static void
-do_chacha_core(void (*core) (uint8_t *, const uint8_t *, const uint8_t *,
-			     const uint8_t *))
+do_chacha_core (void (*core) (uint8_t *, const uint8_t *, const uint8_t *,
+			      const uint8_t *))
 {
   unsigned long noutput;
   uint8_t * output = (arg_bytevector (1, (&noutput)));
   if (noutput < 64)
     error_bad_range_arg (1);
 
-  unsigned long offset = (arg_ulong_index_integer (2, (noutput - 64)));
+  unsigned long offset = (arg_ulong_index_integer (2, (noutput - 64 + 1)));
 
   unsigned long ninput;
   const uint8_t * input = (arg_bytevector (3, (&ninput)));
@@ -62,7 +62,7 @@ Compute the ChaCha8 core hash function:\n\
 OUTPUT[OFFSET, OFFSET+1, ..., OFFSET+63] := ChaCha8(INPUT, KEY, CONST).")
 {
   PRIMITIVE_HEADER (5);
-  do_chacha_core(&chacha8_core);
+  do_chacha_core (&chacha8_core);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -72,7 +72,7 @@ Compute the ChaCha12 core hash function:\n\
 OUTPUT[OFFSET, OFFSET+1, ..., OFFSET+63] := ChaCha12(INPUT, KEY, CONST).")
 {
   PRIMITIVE_HEADER (5);
-  do_chacha_core(&chacha12_core);
+  do_chacha_core (&chacha12_core);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -82,6 +82,6 @@ Compute the ChaCha20 core hash function:\n\
 OUTPUT[OFFSET, OFFSET+1, ..., OFFSET+63] := ChaCha20(INPUT, KEY, CONST).")
 {
   PRIMITIVE_HEADER (5);
-  do_chacha_core(&chacha20_core);
+  do_chacha_core (&chacha20_core);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

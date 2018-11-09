@@ -79,6 +79,10 @@ USA.
    (if (default-object? start) 0 start)
    (if (default-object? end) (bytevector-length bytevector) end)))
 
+(define (bytevector-zero-explicit! bytevector #!optional start end)
+  ;; Don't let any compiler optimize this away.
+  ((identity-procedure bytevector-fill!) bytevector 0 start end))
+
 (define (bytevector-copy bytevector #!optional start end)
   ((ucode-primitive bytevector-copy 3)
    bytevector

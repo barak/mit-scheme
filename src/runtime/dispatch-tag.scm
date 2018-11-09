@@ -104,7 +104,7 @@ USA.
 	 (int:quotient
 	  (let loop ((n 2)) (if (fix:fixnum? n) (loop (int:* n 2)) n))
 	  tag-cache-number-adds-ok))
-	(state (make-random-state)))
+	(state (make-random-state #t)))
     (lambda ()
       (random modulus state))))
 

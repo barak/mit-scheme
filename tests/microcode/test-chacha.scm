@@ -26,18 +26,18 @@ USA.
 
 ;;;; Tests of ChaCha
 
-(define (define-chacha-core-test name primitive expected)
+(define (define-chacha-core-test name expected)
   (define-test name
     (lambda ()
       (let ((output (make-bytevector 64))
 	    (input (make-bytevector 16 0))
 	    (key (make-bytevector 32 0))
-	    (constant (string->utf8 "expand 32-byte k")))
+	    (constant (string->utf8 "expand 32-byte k"))
+	    (primitive (make-primitive-procedure name 5)))
 	(primitive output 0 input key constant)
 	(assert-equal output expected)))))
 
 (define-chacha-core-test 'chacha8-core
-  (make-primitive-procedure 'chacha8-core 5)
   '#u8(#x3e #x00 #xef #x2f #x89 #x5f #x40 #xd6
        #x7f #x5b #xb8 #xe8 #x1f #x09 #xa5 #xa1
        #x2c #x84 #x0e #xc3 #xce #x9a #x7f #x3b
@@ -48,7 +48,6 @@ USA.
        #x38 #x7b #xfd #xb8 #x0e #x0c #xfe #x42))
 
 (define-chacha-core-test 'chacha12-core
-  (make-primitive-procedure 'chacha12-core 5)
   '#u8(#x9b #xf4 #x9a #x6a #x07 #x55 #xf9 #x53
        #x81 #x1f #xce #x12 #x5f #x26 #x83 #xd5
        #x04 #x29 #xc3 #xbb #x49 #xe0 #x74 #x14
@@ -59,7 +58,6 @@ USA.
        #x61 #x0b #xe8 #x2f #x41 #x13 #x26 #xbe))
 
 (define-chacha-core-test 'chacha20-core
-  (make-primitive-procedure 'chacha20-core 5)
   '#u8(#x76 #xb8 #xe0 #xad #xa0 #xf1 #x3d #x90
        #x40 #x5d #x6a #xe5 #x53 #x86 #xbd #x28
        #xbd #xd2 #x19 #xb8 #xa0 #x8d #xed #x1a
@@ -68,3 +66,33 @@ USA.
        #x77 #x24 #xe0 #x3f #xb8 #xd8 #x4a #x37
        #x6a #x43 #xb8 #xf4 #x15 #x18 #xa1 #x1c
        #xc3 #x87 #xb6 #x69 #xb2 #xee #x65 #x86))
+
+(define (define-chacha-fencepost-test name)
+  (define-test (symbol 'chacha-fencepost/ name)
+    (lambda ()
+      (let ((output (make-bytevector 65))
+	    (input (make-bytevector 16 0))
+	    (key (make-bytevector 32 0))
+	    (constant (string->utf8 "expand 32-byte k"))
+	    (primitive (make-primitive-procedure name 5)))
+	(define (zv n) (make-bytevector n 0))
+	(bytevector-u8-set! output 64 #xff)
+	(primitive output 0 input key constant)
+	(assert-= (bytevector-u8-ref output 64) #xff)
+	(bytevector-u8-set! output 0 #xff)
+	(primitive output 1 input key constant)
+	(assert-= (bytevector-u8-ref output 0) #xff)
+	(assert-error (lambda () (primitive output -1 input key constant)))
+	(assert-error (lambda () (primitive output 2 input key constant)))
+	(assert-error (lambda () (primitive output 3 input key constant)))
+	(assert-error (lambda () (primitive output 64 input key constant)))
+	(assert-error (lambda () (primitive output 0 (zv 15) key constant)))
+	(assert-error (lambda () (primitive output 0 (zv 17) key constant)))
+	(assert-error (lambda () (primitive output 0 input (zv 31) constant)))
+	(assert-error (lambda () (primitive output 0 input (zv 33) constant)))
+	(assert-error (lambda () (primitive output 0 input key (zv 15))))
+	(assert-error (lambda () (primitive output 0 input key (zv 17))))))))
+
+(define-chacha-fencepost-test 'chacha8-core)
+(define-chacha-fencepost-test 'chacha12-core)
+(define-chacha-fencepost-test 'chacha20-core)

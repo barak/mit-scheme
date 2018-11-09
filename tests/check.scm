@@ -46,6 +46,7 @@ USA.
     "microcode/test-flonum-casts"
     "microcode/test-flonum-casts.scm"
     "microcode/test-flonum-casts.com"
+    "microcode/test-flonum-except"
     "microcode/test-keccak"
     "microcode/test-lookup"
     "runtime/test-arith"
@@ -75,6 +76,7 @@ USA.
     "runtime/test-predicate"
     ("runtime/test-predicate-dispatch" (runtime predicate-dispatch))
     "runtime/test-process"
+    "runtime/test-random"
     "runtime/test-readwrite"
     "runtime/test-regsexp"
     "runtime/test-rgxcmp"

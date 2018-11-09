@@ -78,17 +78,16 @@ USA.
    (define inputs '(-2.0 -1.5 -1.0 -0.5 -0.0 0.0 0.5 1.0 1.5 2.0))
    (define (define-rounding-test name operator outputs)
      (define-test (symbol 'ROUNDING-MODE-INDEPENDENT ': mode '/ name)
-       (lambda ()
-	 (do ((inputs inputs (cdr inputs))
-	      (outputs outputs (cdr outputs))
-	      (i 0 (+ i 1)))
-	     ((not (and (pair? inputs) (pair? outputs))))
-	   (let ((input (car inputs)) (output (car outputs)))
-	     (run-sub-test
+       (map (lambda (input output)
 	      (lambda ()
-		(assert-eqv
-		 (flo:with-rounding-mode mode (lambda () (operator input)))
-		 output))))))))
+		(with-test-properties
+		    (lambda ()
+		      (assert-eqv
+		       (flo:with-rounding-mode mode
+			 (lambda () (operator input)))
+		       output))
+		  'EXPRESSION `(,name ,input))))
+	    inputs outputs)))
    (define-rounding-test 'CEILING ceiling
      '(-2.0 -1.0 -1.0 -0.0 -0.0 0.0 1.0 1.0 2.0 2.0))
    (define-rounding-test 'FLOOR floor

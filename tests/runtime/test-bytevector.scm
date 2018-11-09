@@ -173,12 +173,33 @@ USA.
       (assert-range-error
        (lambda ()
 	 (bytevector-fill! (make-bytevector n) 51 0 (+ n 1))))
-	  (assert-range-error
-	   (lambda ()
-	     (bytevector-fill! (make-bytevector n) 51 n (+ n 1))))
-	  (assert-range-error
-	   (lambda ()
-	     (bytevector-fill! (make-bytevector n) 51 -1 n))))))
+      (assert-range-error
+       (lambda ()
+	 (bytevector-fill! (make-bytevector n) 51 n (+ n 1))))
+      (assert-range-error
+       (lambda ()
+	 (bytevector-fill! (make-bytevector n) 51 -1 n))))))
+
+(define-test 'bytevector-zero-explicit!
+  ;; Can't really test what we want here -- that the bytevector is
+  ;; zero'd in memory even if the compiler can prove its value is not
+  ;; used afterward.  Worse, we can't even really guarantee this,
+  ;; because the GC might have copied it already and we have no way to
+  ;; zero the original.
+  (lambda ()
+    (let ((bv (make-bytevector 3 #xff)))
+      (bytevector-zero-explicit! bv 1 2)
+      (assert-= (bytevector-u8-ref bv 0) #xff)
+      (assert-= (bytevector-u8-ref bv 1) 0)
+      (assert-= (bytevector-u8-ref bv 2) #xff)
+      (bytevector-zero-explicit! bv 1)
+      (assert-= (bytevector-u8-ref bv 0) #xff)
+      (assert-= (bytevector-u8-ref bv 1) 0)
+      (assert-= (bytevector-u8-ref bv 2) 0)
+      (bytevector-zero-explicit! bv 0)
+      (assert-= (bytevector-u8-ref bv 0) 0)
+      (assert-= (bytevector-u8-ref bv 1) 0)
+      (assert-= (bytevector-u8-ref bv 2) 0))))
 
 (define (test-bytevector-properties v bytes)
   (assert-true (bytevector? v))
