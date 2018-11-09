@@ -196,16 +196,19 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
-if test ${GCC} = yes; then
+if test x"${GCC}" = xyes; then
 
     dnl Discard flags computed by AC_PROG_CC; we'll use our own.
     CFLAGS=${SAVED_CFLAGS}
     LDFLAGS=${SAVED_LDFLAGS}
 
-    if test ${enable_debugging} = no; then
+    if test x"${enable_debugging}" = xno; then
 	CFLAGS="-O3 ${CFLAGS}"
     else
-	CFLAGS="-O0 -g -DENABLE_DEBUGGING_TOOLS ${CFLAGS}"
+        if test x"${enable_debugging}" = xyes; then
+            CFLAGS="-DENABLE_DEBUGGING_TOOLS ${CFLAGS}"
+        fi
+	CFLAGS="-O0 -g ${CFLAGS}"
 	LDFLAGS="${LDFLAGS} -g"
     fi
     CFLAGS="-Wall -Wundef -Wpointer-arith -Winline ${CFLAGS}"
