@@ -76,8 +76,7 @@ USA.
   (declare (ignore project))
   (if (file-exists? (merge-pathnames "optiondb.scm" scmlibdir))
       ;; NOT in dpkg-buildpackage's chroot
-      (update-optiondb plugins
-		       (update-plugins-file operation name scmlibdir)
+      (update-optiondb (update-plugins-file operation name scmlibdir)
 		       scmlibdir)))
 
 (define (update-plugin-doc operation name project infodir scmdocdir)
