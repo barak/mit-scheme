@@ -633,7 +633,7 @@ initialize_token_buffer (void)
 void
 grow_token_buffer (void)
 {
-  if (token_buffer_length >= (SIZE_MAX / 2))
+  if (token_buffer_length >= (INT_MAX / 2))
     {
       fprintf (stderr, "token buffer overflow\n");
       exit (1);
@@ -817,7 +817,7 @@ void
 grow_data_buffer (void)
 {
   char * old_data_buffer = ((char *) data_buffer);
-  if (buffer_length >= (SIZE_MAX / (2 * (sizeof (struct descriptor)))))
+  if (buffer_length >= (INT_MAX / (2 * (sizeof (struct descriptor)))))
     {
       fprintf (stderr, "data buffer overflow\n");
       exit (1);
@@ -837,7 +837,7 @@ grow_data_buffer (void)
 	scan += 1;
       }
   }
-  if (buffer_length >= (SIZE_MAX / (sizeof (struct descriptor *))))
+  if (buffer_length >= (INT_MAX / (sizeof (struct descriptor *))))
     {
       fprintf (stderr, "result buffer overflow\n");
       exit (1);
