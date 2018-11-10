@@ -375,7 +375,7 @@ esac
 
 if test "${DO_GCC_TESTS}" = yes; then
     if test "${GNU_LD}" = yes; then
-	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
+	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-export-dynamic"
     fi
     AC_MSG_CHECKING([for ELF binaries])
     AC_EGREP_CPP([yes],
