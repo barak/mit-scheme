@@ -238,12 +238,13 @@ if test x"${GCC}" = xyes; then
 	-Wno-error=stringop-truncation \
 	; do
 	AC_MSG_CHECKING([for compiler warning $flag])
-	SAVED_CFLAGS="$CFLAGS"
-	CFLAGS="$CFLAGS $flag"
+	SAVED_CFLAGS=${CFLAGS}
+	CFLAGS="${SAVED_CFLAGS} ${flag} -Werror"
 	AC_TRY_COMPILE([],[],
-	    [AC_MSG_RESULT(yes)],
+	    [AC_MSG_RESULT(yes)
+             CFLAGS="${SAVED_CFLAGS} ${flag}"],
 	    [AC_MSG_RESULT(no)
-	    CFLAGS="$SAVED_CFLAGS"])
+	     CFLAGS=${SAVED_CFLAGS}])
     done
 
     # other possibilities:

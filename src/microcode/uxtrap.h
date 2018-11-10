@@ -334,8 +334,9 @@ struct full_sigcontext
 #endif
 
 #define SIGINFO_T siginfo_t *
+#define HAVE_REAL_SIGINFO_T 1
 #define SIGINFO_VALID_P(info) ((info) != 0)
-#define SIGINFO_CODE(info) ((info) -> si_code)
+#define SIGINFO_CODE(info) (((info) != 0) ? ((info) -> si_code) : (0))
 
 #define __SIGCONTEXT_REG(scp, ir) ((((scp) -> uc_mcontext) . gregs) [(ir)])
 
@@ -390,7 +391,7 @@ struct full_sigcontext
 #endif /* mips */
 
 #ifdef __IA32__
- 
+
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #  include <ucontext.h>
 #endif
@@ -740,7 +741,8 @@ typedef struct
 
 #ifdef HAVE_SIGACTION_SIGINFO_SIGNALS
 #  define SIGINFO_T siginfo_t *
-#  define SIGINFO_VALID_P(info) (1)
+#  define HAVE_REAL_SIGINFO_T 1
+#  undef SIGINFO_VALID_P
 #  define SIGINFO_CODE(info) ((info) -> si_code)
 #  define SIGCONTEXT_ARG_T void
 #  define SIGCONTEXT_T ucontext_t
@@ -748,7 +750,8 @@ typedef struct
 
 #ifndef SIGINFO_T
 #  define SIGINFO_T int
-#  define SIGINFO_VALID_P(info) (0)
+#  undef HAVE_REAL_SIGINFO_T
+#  undef SIGINFO_VALID_P
 #  define SIGINFO_CODE(info) (0)
 #endif
 
@@ -808,10 +811,6 @@ typedef struct
 
 #ifdef __CYGWIN__
    extern unsigned int end;
-#endif
-
-#ifndef ADDRESS_UCODE_P
-#  define ADDRESS_UCODE_P(addr) (0)
 #endif
 
 /* Machine/OS-independent section */
