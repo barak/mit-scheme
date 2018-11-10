@@ -234,7 +234,6 @@ if test x"${GCC}" = xyes; then
 	-Wtype-limits \
 	-Wundef \
 	-Wuninitialized \
-	-Wunreachable-code \
 	-Wwrite-strings \
 	\
 	-Wno-error=stringop-truncation \
@@ -253,6 +252,7 @@ if test x"${GCC}" = xyes; then
     # -Wmissing-prototypes (requires prototypes for DEFINE_PRIMITIVE)
     # -Wstringop-truncation (requires it to not whine about correct use
     #  of strncpy for buffers that are _not_ null-terminated)
+    # -Wunreachable-code (too many false positives in clang)
 fi
 FOO=`${INSTALL} --help 2> /dev/null | ${FGREP} -e --preserve-timestamps`
 if test "x${FOO}" != x; then
