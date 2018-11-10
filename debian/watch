@@ -1,3 +1,3 @@
 version=3
 opts=pgpsigurlmangle=s/$/.sig/ \
-http://ftp.gnu.org/gnu/mit-scheme/stable.pkg/([\d\.]+)/mit-scheme-([\d\.]+)\.tar\.gz debian uupdate
+https://ftp.gnu.org/gnu/mit-scheme/stable.pkg/([\d\.]+)/mit-scheme-([\d\.]+)\.tar\.gz debian uupdate
