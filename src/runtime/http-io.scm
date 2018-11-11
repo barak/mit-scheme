@@ -93,7 +93,7 @@ USA.
 					      (number->string m))
 			    headers)
 		      body))))
-      (values headers "")))
+      (values headers (bytevector))))
 
 (define (simple-http-request? object)
   (and (http-request? object)
@@ -103,7 +103,7 @@ USA.
 
 (define (make-simple-http-request uri)
   (guarantee simple-http-request-uri? uri 'make-http-request)
-  (%make-http-request '|GET| uri #f '() ""))
+  (%make-http-request '|GET| uri #f '() (bytevector)))
 
 (define (simple-http-response? object)
   (and (http-response? object)
