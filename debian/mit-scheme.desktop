@@ -1,8 +1,11 @@
 [Desktop Entry]
 Version=1.0
 Name=MIT/GNU Scheme
+Icon=MIT_GNU_Scheme_Logo.svg
+Keywords=Lisp; R6RS; Algorithmic Programming Language; Lambda Calculus; Lambda the Ultimate; Structure and Interpretation of Computer Programs;
 Exec=/usr/bin/mit-scheme --edit
 TryExec=mit-scheme
 Terminal=false
 Type=Application
 Categories=Development;IDE;Utility;TextEditor;
+MimeType=text/x-scheme;

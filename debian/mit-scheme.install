@@ -1,3 +1,4 @@
 usr/bin
 usr/lib/*/mit-scheme
 debian/mit-scheme.desktop usr/share/applications/
+debian/MIT_GNU_Scheme_Logo.svg /usr/share/icons/hicolor/scalable/apps/
