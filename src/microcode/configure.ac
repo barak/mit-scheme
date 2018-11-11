@@ -221,7 +221,6 @@ if test x"${GCC}" = xyes; then
 	-Wempty-body \
 	-Wignored-qualifiers \
 	-Wimplicit-fallthrough \
-	-Winline \
 	-Wmissing-field-initializers \
 	-Wmissing-parameter-type \
 	-Wnested-externs \
