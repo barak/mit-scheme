@@ -109,7 +109,7 @@ LIBS="${LIBS} ${MCRYPT_LIBS}"
 
 MIT_SCHEME_PROJECT=mit-scheme
 : ${MIT_SCHEME_TOOLCHAIN_EXE=mit-scheme}
-rif test x"${MIT_SCHEME_LIBDIR}" = x; then
+if test x"${MIT_SCHEME_LIBDIR}" = x; then
     MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
 			 echo "          (system-library-directory-pathname)))" ) \
 		       | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
