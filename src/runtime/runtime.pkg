@@ -3777,13 +3777,16 @@ USA.
 (define-package (runtime random-number)
   (files "random")
   (parent (runtime))
+  (export () deprecated:random
+	  (flo:random-unit flo:random-unit-open))
   (export ()
 	  (random-source-state-ref export-random-state)
 	  (random-source? random-state?)
 	  *random-state*
 	  default-random-source
 	  export-random-state
-	  flo:random-unit
+	  flo:random-unit-closed
+	  flo:random-unit-open
 	  import-random-state
 	  make-random-source
 	  make-random-state
