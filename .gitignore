@@ -9,11 +9,13 @@
 *.err
 *.exe
 *.ext
+*.fni
 *.fre
 *.la
 *.lap
 *.lo
 *.map
+*.moc
 *.o
 *.obj
 *.pdf
