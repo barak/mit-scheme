@@ -802,6 +802,11 @@ typedef struct
 #endif
 
 #if defined(__linux__) || defined(__NetBSD__)
+#  if defined(__NetBSD__) && defined(__aarch64__)
+/* NetBSD/aarch64 doesn't provide _init.  Maybe we should just always
+   use __executable_start on NetBSD.  */
+#    define _init __executable_start
+#  endif
    extern unsigned int _init;
    extern unsigned int etext;
 #  define ADDRESS_UCODE_P(addr)						\
