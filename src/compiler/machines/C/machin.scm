@@ -31,6 +31,8 @@ USA.
 
 ;;;; Architecture Parameters
 
+(define (target-fasdump-format) (error "I should not be fasdumping crap!"))
+
 (define use-pre/post-increment? true)
 (define endianness 'DONT-KNOW)
 (define scheme-object-width "OBJECT_LENGTH")
