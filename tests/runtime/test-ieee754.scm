@@ -25,6 +25,8 @@ USA.
 |#
 
 ;;;; Test of IEEE 754 utilities
+
+(declare (usual-integrations))
 
 (define (define-enumerated-test name elements procedure)
   (define-test name
@@ -53,9 +55,11 @@ USA.
                               compose-ieee754-binary32
                               ieee754-binary32-exact?
                               decompose-ieee754-binary32))
-    (do ((i 0 (+ i (if keep-it-fast!? 347911 1))))
-        ((>= i (expt 2 32)))
-      (test i))))
+    (let ((increment (if keep-it-fast!? 347911 1))
+          (maximum (expt 2 32)))
+      (do ((i 0 (+ i increment)))
+          ((>= i maximum))
+        (test i)))))
 
 (define-enumerated-test 'binary64-roundtrip-selective
   '(#x0000000000000000
