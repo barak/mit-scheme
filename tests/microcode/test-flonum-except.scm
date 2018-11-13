@@ -68,12 +68,15 @@ USA.
       (flo:preserving-environment
        (lambda ()
 	 (flo:clear-exceptions! (flo:supported-exceptions))
-	 (flo:with-exceptions-untrapped (flo:supported-exceptions)
-	   (lambda ()
-	     (with-failure-expected xfail?
-	       (lambda ()
-		 (assertion (procedure))
-		 (assert-nonzero (flo:test-exceptions exception)))))))))))
+	 ((lambda (body)
+	    (if (flo:have-trap-enable/disable?)
+		(flo:with-exceptions-untrapped (flo:supported-exceptions) body)
+		(body)))
+	  (lambda ()
+	    (with-failure-expected xfail?
+	      (lambda ()
+		(assertion (procedure))
+		(assert-nonzero (flo:test-exceptions exception)))))))))))
 
 (define (define-exception-trap-test name excname exception condition-type
 	  procedure #!optional xfail?)
@@ -81,7 +84,10 @@ USA.
     (lambda ()
       (flo:preserving-environment
        (lambda ()
-	 (with-failure-expected xfail?
+	 (with-failure-expected
+	     (if (flo:have-trap-enable/disable?)
+		 xfail?
+		 'xerror)
 	   (lambda ()
 	     (assert-error
 	      (lambda ()
