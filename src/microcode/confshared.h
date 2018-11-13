@@ -603,6 +603,7 @@ extern void win32_stack_reset (void);
 #ifdef __aarch64__
 #  define MACHINE_TYPE		"aarch64"
 #  define CURRENT_FASL_ARCH	FASL_AARCH64
+#  define HEAP_IN_LOW_MEMORY	1
 #endif
 
 #ifdef sonyrisc
