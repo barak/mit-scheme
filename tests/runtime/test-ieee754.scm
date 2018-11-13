@@ -26,14 +26,11 @@ USA.
 
 ;;;; Test of IEEE 754 utilities
 
-(define (define-enumerated-test prefix elements procedure)
-  (do ((i 0 (+ i 1))
-       (elements elements (cdr elements)))
-      ((not (pair? elements)))
-    (let ((element (car elements)))
-      (define-test (symbol prefix '/ element)
-        (lambda ()
-          (procedure element))))))
+(define (define-enumerated-test name elements procedure)
+  (define-test name
+    (map (lambda (element)
+           (lambda () (procedure element)))
+         elements)))
 
 (define ((test-ieee754-roundtrip w t bexp-inf/nan compose exact? decompose)
          bits)
