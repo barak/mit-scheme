@@ -547,7 +547,7 @@ USA.
   (let ((operation (textual-port-operation port 'char-set)))
     (if operation
 	(operation port)
-	char-set:iso-8859-1)))
+	char-set:ascii)))
 
 (define (port/supports-coding? port)
   (let ((operation (textual-port-operation port 'supports-coding?)))
