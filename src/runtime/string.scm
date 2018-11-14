@@ -562,6 +562,10 @@ USA.
       (lambda (#!optional object)
 	(cond ((bitless-char? object) (append-char! object))
 	      ((string? object) (append-string! object))
+	      ((list-of-type? object bitless-char?)
+	       (for-each append-char! object))
+	      ((vector-of-type? object bitless-char?)
+	       (vector-for-each append-char! object))
 	      (else
 	       (case object
 		 ((#!default nfc) (build build-string:nfc))
@@ -1012,8 +1016,8 @@ USA.
 		    ((char? dm)
 		     (loop dm))
 		    (else
-		     (loop (string-ref dm 0))
-		     (builder (string-ref dm 1))))))))
+		     (loop (vector-ref dm 0))
+		     (builder (vector-ref dm 1))))))))
     (let* ((string (builder 'mutable))
 	   (end (ustring-length string)))
 
@@ -1134,13 +1138,13 @@ USA.
 
     (define (match-second fc-index sc)
       (let ((keys (vector-ref sk fc-index)))
-	(let loop ((start 0) (end (string-length keys)))
+	(let loop ((start 0) (end (vector-length keys)))
 	  (and (fix:< start end)
 	       (let ((m (fix:quotient (fix:+ start end) 2)))
-		 (let ((key (string-ref keys m)))
+		 (let ((key (vector-ref keys m)))
 		   (cond ((char<? sc key) (loop start m))
 			 ((char<? key sc) (loop (fix:+ m 1) end))
-			 (else (string-ref (vector-ref sv fc-index) m)))))))))
+			 (else (vector-ref (vector-ref sv fc-index) m)))))))))
 
     (scan-for-first-char 0)
     (builder 'immutable)))

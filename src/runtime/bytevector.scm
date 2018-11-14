@@ -197,18 +197,6 @@ USA.
   (guarantee u16? u16 'bytevector-u16le-set!)
   (bytevector-u8-set! bytevector index (u16le-byte0 u16))
   (bytevector-u8-set! bytevector (fix:+ index 1) (u16le-byte1 u16)))
-
-;; Can be removed after 9.3 release:
-(define (vector->bytevector-u16be v #!optional start end)
-  (let* ((end (fix:end-index end (vector-length v) 'vector->bytevector-u16))
-	 (start (fix:start-index start end 'vector->bytevector-u16))
-	 (bv (allocate-bytevector (fix:lsh (fix:- end start) 1))))
-    (do ((i start (fix:+ i 1))
-	 (j 0 (fix:+ j 2)))
-	((not (fix:< i end)))
-      (bytevector-u8-set! bv j (u16be-byte0 (vector-ref v i)))
-      (bytevector-u8-set! bv (fix:+ j 1) (u16be-byte1 (vector-ref v i))))
-    bv))
 
 ;;;; U32 accessors
 

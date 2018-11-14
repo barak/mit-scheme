@@ -274,6 +274,16 @@ USA.
                   (loop alist))
                 (loop (cdr alist))))))
     (detect-undefined-ranges sorted)))
+
+(define (split-property-alist map-key map-value alist)
+  (append-map (lambda (e)
+		(map (let ((value (map-value (cdr e))))
+		       (lambda (i)
+			 (cons (map-key i) value)))
+		     (if (pair? (car e))
+			 (iota (- (cdar e) (caar e)) (caar e))
+			 (list (car e)))))
+	      alist))
 
 (define (detect-undefined-ranges alist)
   (let loop ((alist alist) (last-end 0))
@@ -301,6 +311,11 @@ USA.
 	 (if (fix:< i #x110000)
 	     (cons (cons (make-cpr i #x110000) value) result)
 	     result)))))
+
+(define (remove-undefined-ranges alist value)
+  (remove (lambda (e)
+	    (equal? value (cdr e)))
+	  alist))
 
 (define (repertoire-elts document)
   (xml-element-children
@@ -379,29 +394,17 @@ USA.
 		 (read-prop-file "dm")))))
 
 (define (generate-canonical-cm-prop)
-  (let ((alist (compute-canonical-cm-prop-alist)))
-    (let ((trie-part
+  (let ((trie-part
+	 (let ((alist (compute-canonical-cm-prop-alist)))
 	   (map (lambda (e i)
 		  (cons (char->integer (car e))
 			(number->string i 16)))
 		alist
-		(iota (length alist)))))
-      (write-prop-file "canonical-cm"
-		       (read-ucd-version-file)
-		       (merge-property-alist
-			(add-undefined-ranges trie-part ""))))
-    (let ((char-vectors
-	   (lambda (accessor)
-	     (list->vector
-	      (map (lambda (e)
-		     (list->vector (map accessor (cdr e))))
-		   alist)))))
-      (parameterize ((param:pp-lists-as-tables? #f))
-	(generate-property-table-1 "canonical-cm-second"
-	  `((define-deferred ucd-canonical-cm-second-keys
-	      (vector-map vector->string ,(char-vectors car)))
-	    (define-deferred ucd-canonical-cm-second-values
-	      (vector-map vector->string ,(char-vectors cdr)))))))))
+		(iota (length alist))))))
+    (write-prop-file "canonical-cm"
+		     (read-ucd-version-file)
+		     (merge-property-alist
+		      (add-undefined-ranges trie-part "")))))
 
 (define (compute-canonical-cm-prop-alist)
   (let ((table (make-strong-eqv-hash-table)))
@@ -418,32 +421,23 @@ USA.
     (sort (map (lambda (e)
 		 (cons (car e)
 		       (sort (cdr e)
-			     (lambda (a b)
-			       (char<? (car a) (car b))))))
+			     (lambda (a b) (char<? (car a) (car b))))))
 	       (hash-table->alist table))
-	  (lambda (a b)
-	    (char<? (car a) (car b))))))
+	  (lambda (a b) (char<? (car a) (car b))))))
 
 (define (compute-reverse-canonical-cm-prop-alist)
   (remove (lambda (e)
             (char-full-composition-exclusion? (car e)))
-	  (append-map (let ((split
-			     (string-splitter 'delimiter #\space
-					      'allow-runs? #f)))
-			(lambda (e)
-			  (let ((decomp
-				 (map (lambda (s)
-					(integer->char
-					 (string->number s 16 #t)))
-				      (split (cdr e)))))
-			    (map (lambda (i)
-				   (cons (integer->char i) decomp))
-				 (if (pair? (car e))
-				     (iota (- (cdar e) (caar e)) (caar e))
-				     (list (car e)))))))
-		      (remove (lambda (e)
-				(string=? "#" (cdr e)))
-			      (read-prop-file "canonical-dm")))))
+	  (split-property-alist
+	   integer->char
+	   (lambda (value)
+	     (map (lambda (s)
+		    (integer->char (string->number s 16 #t)))
+		  (canonical-cm-prop-splitter value)))
+	   (remove-undefined-ranges (read-prop-file "canonical-dm") "#"))))
+
+(define canonical-cm-prop-splitter
+  (string-splitter 'delimiter #\space 'allow-runs? #f))
 
 (define char-full-composition-exclusion?
   (access char-full-composition-exclusion? (->environment '(runtime string))))
@@ -550,25 +544,48 @@ USA.
 	      "slc"
 	      "suc"
 	      "tc"
-	      "uc")))
+	      "uc"))
+  (generate-canonical-cm-second))
 
+(define (generate-canonical-cm-second)
+  (let ((strings
+	 (let ((alist (compute-canonical-cm-prop-alist)))
+	   (lambda (accessor)
+	     (list->vector
+	      (map (lambda (e)
+		     (list->vector (map accessor (cdr e))))
+		   alist))))))
+    (parameterize ((param:pp-lists-as-tables? #f))
+      (generate-property-table-1 "canonical-cm-second"
+	(lambda ()
+	  `((define ucd-canonical-cm-second-keys
+	      ,(strings car))
+	    (define ucd-canonical-cm-second-values
+	      ,(strings cdr))))))))
+
 (define (generate-property-table prop-name)
   (generate-property-table-1 prop-name
-			     (generate-property-table-code prop-name)))
+    (lambda ()
+      (generate-property-table-code prop-name))))
 
-(define (generate-property-table-1 prop-name exprs)
+(define (generate-property-table-1 prop-name get-exprs)
   (let ((ucd-version (read-ucd-version-file)))
-    (parameterize ((param:pp-forced-x-size 1000)
-		   (param:print-char-in-unicode-syntax? #t))
-      (call-with-output-file (prop-table-file-name prop-name)
-	(lambda (port)
-	  (write-copyright-and-title prop-name ucd-version port)
-	  (write-code-header port)
-	  (print-code-expr (car exprs) port)
-	  (for-each (lambda (expr)
-		      (newline port)
-		      (print-code-expr expr port))
-		    (cdr exprs)))))))
+    (let ((exprs
+	   (with-notification
+	    (lambda (port)
+	      (write-string "UCD property " port)
+	      (write-string prop-name port))
+	    get-exprs)))
+      (parameterize ((param:pp-forced-x-size 1000))
+	(call-with-output-file (prop-table-file-name prop-name)
+	  (lambda (port)
+	    (write-copyright-and-title prop-name ucd-version port)
+	    (write-code-header port)
+	    (print-code-expr (car exprs) port)
+	    (for-each (lambda (expr)
+			(newline port)
+			(print-code-expr expr port))
+		      (cdr exprs))))))))
 
 (define (prop-table-file-name prop-name)
   (string-append (->namestring output-file-root)
@@ -658,8 +675,7 @@ USA.
   ((trie-code-generator (unmapped-enum-value-manager #f metadata))
    prop-name metadata prop-alist proc-name))
 
-(define (value-manager default-string converter
-		       #!optional runtime-default runtime-converter)
+(define (value-manager default-string converter #!optional runtime-default)
   (make-value-manager default-string
 		      converter
 		      (if (default-object? runtime-default)
@@ -670,10 +686,7 @@ USA.
 			    (lambda (char-expr)
 			      char-expr
 			      value-expr))
-			  runtime-default)
-		      (if (default-object? runtime-converter)
-			  (lambda (sv-expr) sv-expr)
-			  runtime-converter)))
+			  runtime-default)))
 
 (define (maybe-quote object)
   (if (or (symbol? object)
@@ -685,13 +698,11 @@ USA.
 (define-record-type <value-manager>
     (make-value-manager default-string
 			converter
-			runtime-default
-			runtime-converter)
+			runtime-default)
     value-manager?
   (default-string value-manager-default-string)
   (converter value-manager-converter)
-  (runtime-default value-manager-runtime-default)
-  (runtime-converter value-manager-runtime-converter))
+  (runtime-default value-manager-runtime-default))
 
 (define (string->char string)
   (let ((cp (string->number string 16)))
@@ -702,8 +713,7 @@ USA.
 (define value-manager:code-point
   (value-manager "#"
 		 string->char
-		 (lambda (char-expr) char-expr)
-		 (lambda (sv-expr) sv-expr)))
+		 (lambda (char-expr) char-expr)))
 
 (define value-manager:code-points
   (value-manager "#"
@@ -718,11 +728,7 @@ USA.
 				    (null? (cdr cps)))
 			       (string->char (car cps))
 			       (list->vector (map string->char cps)))))))
-		 (lambda (char-expr) char-expr)
-		 (lambda (svs-expr)
-		   `(if (vector? ,svs-expr)
-			(vector->string ,svs-expr)
-			,svs-expr))))
+		 (lambda (char-expr) char-expr)))
 
 (define value-manager:ccc
   (value-manager "0"
@@ -739,7 +745,9 @@ USA.
 		     (if (not (u16? n))
 			 (error "Illegal u16 value:" string))
 		     n))
-		 (lambda (char-expr) char-expr #f)))
+		 (lambda (char-expr)
+		   (declare (ignore char-expr))
+		   #f)))
 
 (define value-manager:rational-or-nan
   (value-manager "NaN"
@@ -783,9 +791,8 @@ USA.
 (define (hashed-code-generator value-manager)
   (let ((default-string (value-manager-default-string value-manager))
 	(value-converter (value-manager-converter value-manager))
-	(runtime-default (value-manager-runtime-default value-manager))
-	(runtime-converter (value-manager-runtime-converter value-manager)))
-    (lambda (prop-name metadata prop-alist proc-name)
+	(runtime-default (value-manager-runtime-default value-manager)))
+    (lambda (metadata prop-alist proc-name)
       (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
 	    (mapping
 	     (append-map (lambda (p)
@@ -799,9 +806,7 @@ USA.
 				 prop-alist))))
 	(with-notification
 	 (lambda (port)
-	   (write-string "UCD property " port)
-	   (write-string prop-name port)
-	   (write-string ": table pairs = " port)
+	   (write-string "table pairs = " port)
 	   (write (length mapping) port)))
 	`((define (,proc-name char)
 	    (hash-table-ref ,table-name char
@@ -811,16 +816,15 @@ USA.
 	      (for-each (lambda (p)
 			  (hash-table-set! table
 					   (integer->char (car p))
-					   ,(runtime-converter '(cdr p))))
+					   (cdr p)))
 			',mapping)
 	      table)))))))
 
 (define (inversion-map-generator value-manager)
   (let ((default-string (value-manager-default-string value-manager))
 	(value-converter (value-manager-converter value-manager))
-	(runtime-default (value-manager-runtime-default value-manager))
-	(runtime-converter (value-manager-runtime-converter value-manager)))
-    (lambda (prop-name metadata prop-alist proc-name)
+	(runtime-default (value-manager-runtime-default value-manager)))
+    (lambda (metadata prop-alist proc-name)
       (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
 	    (pairs
 	     (remove (lambda (p)
@@ -829,9 +833,7 @@ USA.
 		     prop-alist)))
 	(with-notification
 	 (lambda (port)
-	   (write-string "UCD property " port)
-	   (write-string prop-name port)
-	   (write-string ": table pairs = " port)
+	   (write-string "table pairs = " port)
 	   (write (length pairs) port)))
 	(let ((keys
 	       (list->vector
@@ -850,26 +852,19 @@ USA.
 				 char
 				 (lambda () ,(runtime-default 'char))))
 	    (define-deferred ,table-name
-	      (make-inversion-map ',keys
-				  (vector-map (lambda (value)
-						,(runtime-converter 'value))
-					      ',values)))))))))
+	      (make-inversion-map ',keys ',values))))))))
 
 (define (trie-code-generator value-manager #!optional bit-slices)
   (let ((bit-slices (if (default-object? bit-slices) '(5 4 4 4 4) bit-slices))
         (convert-value (make-trie-value-converter value-manager))
-	(runtime-default (value-manager-runtime-default value-manager))
-	(runtime-converter (value-manager-runtime-converter value-manager)))
+	(runtime-default (value-manager-runtime-default value-manager)))
     (lambda (prop-name metadata prop-alist proc-name)
       (declare (ignore metadata))
       (let ((tables
-	     (build-trie-tables bit-slices convert-value runtime-converter
-                                prop-name prop-alist)))
+	     (build-trie-tables bit-slices convert-value prop-name prop-alist)))
 	(with-notification
 	 (lambda (port)
-	   (write-string "UCD property " port)
-	   (write-string prop-name port)
-	   (write-string ": tables = " port)
+	   (write-string "tables = " port)
 	   (write (map trie-table-n-entries tables) port)
 	   (write-string " entries; " port)
 	   (write (apply + (map trie-table-n-bytes tables)) port)
@@ -883,7 +878,7 @@ USA.
                    `(or ,accesses ,default)
                    accesses)))
 	  ,@(map (lambda (table)
-		   `(define-deferred ,(trie-table-name table)
+		   `(define ,(trie-table-name table)
 		      ,(trie-table-expr table)))
                  tables))))))
 
@@ -929,8 +924,7 @@ USA.
 (define (code:rsh a n)
   (code:lsh a (- n)))
 
-(define (build-trie-tables bit-slices convert-value runtime-converter
-                           prop-name prop-alist)
+(define (build-trie-tables bit-slices convert-value prop-name prop-alist)
   (define (loop suffix offset scale bit-slices tables)
     (let ((mask
 	   (and (fix:> suffix 0)
@@ -966,8 +960,7 @@ USA.
 					   offset
 					   scale)
 			  (receive (n-entries n-bytes table-expr accessor)
-			      (choose-value-format converted-values
-                                                   runtime-converter)
+			      (choose-value-format converted-values)
 			    (make-trie-table (make-name (fix:+ suffix 1))
 					     n-entries
 					     n-bytes
@@ -977,7 +970,7 @@ USA.
 					     #f
 					     #f))))
 		  (receive (n-entries n-bytes table-expr accessor)
-		      (choose-value-format converted-values runtime-converter)
+		      (choose-value-format converted-values)
 		    (list (make-trie-table (make-name suffix)
 					   n-entries
 					   n-bytes
@@ -1017,31 +1010,31 @@ USA.
     (cond ((fix:< n #x100)
 	   (values (vector-length index)
 		   (+ 2 (vector-length index))
-                   `(vector->bytevector ',index)
+                   `',(vector->bytevector index)
 		   (lambda (bv-expr i-expr)
 		     `(bytevector-u8-ref ,bv-expr ,i-expr))))
 	  ((fix:< n #x10000)
 	   (values (vector-length index)
 		   (+ 2 (* 2 (vector-length index)))
-                   `(vector->bytevector-u16be ',index)
+                   `',(vector->bytevector-u16be index)
 		   (lambda (bv-expr i-expr)
 		     `(bytevector-u16be-ref ,bv-expr
 					    (fix:lsh ,i-expr 1)))))
 	  (else
 	   (error "Table too large:" n)))))
 
-(define (choose-value-format converted-values runtime-converter)
+(define (vector->bytevector-u16be v)
+  (let* ((end (vector-length v))
+	 (bv (make-bytevector (fix:lsh end 1))))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i end)))
+      (bytevector-u16be-set! bv (fix:lsh i 1) (vector-ref v i)))
+    bv))
+
+(define (choose-value-format converted-values)
   (values (vector-length converted-values)
 	  (+ 1 (* 8 (vector-length converted-values)))
-          (let ((conversion (runtime-converter 'converted)))
-            (if (eq? 'converted conversion)
-                converted-values
-		`(vector-map (lambda (converted)
-			       ,(if (vector-find-next-element converted-values
-							      #f)
-				    `(and converted ,conversion)
-				    conversion))
-			     ',converted-values)))
+          `',converted-values
 	  (lambda (v-expr i-expr)
 	    `(vector-ref ,v-expr ,i-expr))))
 

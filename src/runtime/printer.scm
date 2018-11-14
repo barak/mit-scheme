@@ -681,7 +681,7 @@ USA.
 		    (if (let ((limit (get-param:printer-list-breadth-limit)))
 			  (and limit
 			       (>= index limit)))
-			(*print-string " ...)" context*)
+			(*print-string " ..." context*)
 			(begin
 			  (*print-char #\space context*)
 			  (print-number (bytevector-u8-ref bytevector index)
