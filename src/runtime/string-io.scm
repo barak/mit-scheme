@@ -164,6 +164,7 @@ USA.
 			    (extract-output ,string-out/extract-output)
 			    (extract-output! ,string-out/extract-output!)
 			    (output-column ,string-out/output-column)
+			    (char-set ,string-out/char-set)
 			    (position ,string-out/position)
 			    (write-self ,string-out/write-self))
 			  #f))
@@ -195,11 +196,15 @@ USA.
 (define (string-out/output-column port)
   (ostate-column (textual-port-state port)))
 
+(define (string-out/char-set port)
+  (declare (ignore port))
+  char-set:unicode)
+
 (define (string-out/position port)
   ((ostate-builder (textual-port-state port)) 'count))
 
 (define (string-out/write-self port output-port)
-  port
+  (declare (ignore port))
   (write-string " to string" output-port))
 
 (define (new-column char column)
