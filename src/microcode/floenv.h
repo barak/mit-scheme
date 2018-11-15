@@ -42,6 +42,43 @@ USA.
 #  endif
 #  ifdef __APPLE__
 #    undef HAVE_FEGETEXCEPT
+#    define HAVE_FEENABLEEXCEPT
+#    define HAVE_FEDISABLEEXCEPT
+
+// From http://www-personal.umich.edu/~williams/archive/computation/fe-handling-example.c
+
+inline int feenableexcept(unsigned int excepts)
+{
+    fenv_t fenv;
+    if (fegetenv (&fenv))
+      return -1;
+
+    unsigned int new_excepts = excepts & FE_ALL_EXCEPT;
+    unsigned int old_excepts = fenv.__control & FE_ALL_EXCEPT;
+
+    // unmask
+    fenv.__control &= ~new_excepts;
+    fenv.__mxcsr   &= ~(new_excepts << 7);
+
+    return (fesetenv (&fenv)) ? -1 : old_excepts;
+}
+
+inline int fedisableexcept(unsigned int excepts)
+{
+    fenv_t fenv;
+    if (fegetenv (&fenv))
+      return -1;
+
+    unsigned int new_excepts = excepts & FE_ALL_EXCEPT;
+    unsigned int old_excepts = fenv.__control & FE_ALL_EXCEPT;
+
+    // mask
+    fenv.__control |= new_excepts;
+    fenv.__mxcsr   |= new_excepts << 7;
+
+    return (fesetenv (&fenv)) ? -1 : old_excepts;
+}
+
 #  endif
 #elif ((!defined (CMPINTMD_EMULATES_FENV)) && (defined (HAVE_IEEEFP_H)))
 
