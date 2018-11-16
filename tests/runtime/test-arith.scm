@@ -366,3 +366,15 @@ USA.
       (if (zero? theta)
           (assert-eqv (atan y x) theta)
           (assert-<= (relerr theta (atan y x)) 1e-15)))))
+
+(define-enumerated-test 'negate-zero
+  (vector
+   (vector 0. -0.)
+   (vector -0. 0.))
+  (lambda (v)
+    (let ((x (vector-ref v 0))
+          (y (vector-ref v 1)))
+      (if (flo:= -1. (flo:copysign 1. x))
+          (assert-eqv (- x) y)
+          (expect-failure (lambda () (assert-eqv (- x) y))))
+      (assert-eqv (- 0 (flo:copysign 1. x)) (flo:copysign 1. y)))))
