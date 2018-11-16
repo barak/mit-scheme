@@ -274,19 +274,21 @@ USA.
 
 (define (right-accumulation-inverse identity inverse-expansion make-binary)
   (lambda (expr operands block)
-    (let ((expand
-	   (lambda (expr x y)
-	      (if (constant-eq? y identity)
-		  x
-		  (make-binary expr block x y)))))
-      (cond ((null? operands) #f)
-	    ((null? (cdr operands))
-	     (expand expr (constant/make #f identity) (car operands)))
-	    (else
-	     (let ((inverse (inverse-expansion #f (cdr operands) block)))
-	       (if inverse
-		   (expand expr (car operands) inverse)
-		   #f)))))))
+    (cond ((null? operands) #f)
+	  ((null? (cdr operands))
+	   (let ((y (car operands)))
+	     (if (constant-eq? y identity)
+		 (constant/make #f identity)
+		 ;; Converting (- x) to (- 0 x) breaks signed zero.
+		 #f)))
+	  ((inverse-expansion #f (cdr operands) block)
+	   => (lambda (inverse)
+		(let ((x (car operands))
+		      (y inverse))
+		  (if (constant-eq? inverse identity)
+		      x
+		      (make-binary expr block x y)))))
+	  (else #f))))
 
 (define --expansion
   (right-accumulation-inverse 0 +-expansion

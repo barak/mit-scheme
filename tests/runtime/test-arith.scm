@@ -374,7 +374,5 @@ USA.
   (lambda (v)
     (let ((x (vector-ref v 0))
           (y (vector-ref v 1)))
-      (if (flo:= -1. (flo:copysign 1. x))
-          (assert-eqv (- x) y)
-          (expect-failure (lambda () (assert-eqv (- x) y))))
+      (assert-eqv (- x) y)
       (assert-eqv (- 0 (flo:copysign 1. x)) (flo:copysign 1. y)))))
