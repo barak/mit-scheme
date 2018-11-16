@@ -37,7 +37,7 @@ USA.
 (declare (usual-integrations))
 
 (define (make-bundle-predicate name)
-  (let ((type (new-make-record-type name '() <bundle>)))
+  (let ((type (make-record-type name '() <bundle>)))
     (set-record-type-applicator! type %bundle-applicator)
     (record-predicate type)))
 
@@ -76,7 +76,7 @@ USA.
               object)))
 
 (define <bundle>
-  (new-make-record-type '<bundle> '(alist)))
+  (make-record-type '<bundle> '(alist)))
 
 (define bundle?
   (record-predicate <bundle>))

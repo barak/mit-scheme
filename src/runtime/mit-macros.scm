@@ -836,7 +836,7 @@ USA.
        (lambda (type-name parent maker-name maker-args pred-name field-specs)
 	 (apply scons-begin
 		(scons-define type-name
-		  (scons-call (scons-close 'new-make-record-type)
+		  (scons-call (scons-close 'make-record-type)
 			      (scons-quote type-name)
 			      (scons-quote (map car field-specs))
 			      (or parent (default-object))))

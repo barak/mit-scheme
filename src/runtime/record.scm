@@ -35,13 +35,13 @@ USA.
 (define-primitives
   (vector-cons 2))
 
-(define (new-make-record-type type-name field-specs #!optional parent-type)
-  (guarantee valid-field-specs? field-specs 'new-make-record-type)
-  (let ((type-name (->type-name type-name 'new-make-record-type)))
+(define (make-record-type type-name field-specs #!optional parent-type)
+  (guarantee valid-field-specs? field-specs 'make-record-type)
+  (let ((type-name (->type-name type-name 'make-record-type)))
     (if (default-object? parent-type)
 	(%make-record-type type-name field-specs #f)
 	(begin
-	  (guarantee record-type? parent-type 'new-make-record-type)
+	  (guarantee record-type? parent-type 'make-record-type)
 	  (%make-record-type type-name
 			     (append (record-type-field-specs parent-type)
 				     field-specs)
@@ -90,32 +90,6 @@ USA.
 (define (initialize-record-procedures!)
   (run-deferred-boot-actions 'record-procedures))
 
-;; Replace this with new-make-record-type after the 9.3 release.
-(define (make-record-type type-name field-specs
-			  #!optional
-			  default-inits unparser-method entity-unparser-method)
-  (declare (ignore entity-unparser-method))
-  (let* ((caller 'make-record-type)
-	 (type
-	  (%make-record-type
-	   (->type-name type-name caller)
-	   (if (default-object? default-inits)
-	       (begin
-		 (guarantee valid-field-specs? field-specs caller)
-		 field-specs)
-	       (begin
-		 (if (not (list-of-unique-symbols? field-specs))
-		     (error:not-a list-of-unique-symbols? field-specs caller))
-		 (guarantee list? default-inits caller)
-		 (if (not (fix:= (length field-specs) (length default-inits)))
-		     (error:bad-range-argument default-inits caller))
-		 (map make-field-spec field-specs default-inits)))
-	   #f)))
-    (if (and unparser-method
-	     (not (default-object? unparser-method)))
-	(define-print-method (record-predicate type) unparser-method))
-    type))
-
 (define (list-of-unique-symbols? object)
   (and (list-of-type? object symbol?)
        (let loop ((elements object))

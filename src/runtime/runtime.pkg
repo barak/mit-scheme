@@ -3804,6 +3804,7 @@ USA.
   (files "record")
   (parent (runtime))
   (export () deprecated:record
+	  (new-make-record-type make-record-type) ;RELNOTE: delete
 	  set-record-type-unparser-method!)
   (export ()
 	  applicable-record?
@@ -3823,7 +3824,6 @@ USA.
 	  named-list?
 	  named-structure?
 	  named-vector?
-	  new-make-record-type
 	  record-accessor
 	  record-applicator
 	  record-constructor

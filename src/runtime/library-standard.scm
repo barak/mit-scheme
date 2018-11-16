@@ -150,7 +150,7 @@ USA.
     (cons-stream* cons delay)
     (define lambda named-lambda)
     (define-integrable begin lambda let set! shallow-fluid-bind)
-    (define-record-type define new-make-record-type quote record-accessor
+    (define-record-type define make-record-type quote record-accessor
 			record-constructor record-modifier record-predicate)
     (define-values begin call-with-values define lambda set!)
     (delay delay-force make-promise)
