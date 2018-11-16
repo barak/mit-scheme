@@ -59,6 +59,22 @@ USA.
 (define assert-symbol
   (predicate-assertion symbol? "symbol"))
 
+(define assert-exact-integer
+  (predicate-assertion exact-integer? "exact integer"))
+
+(define assert-exact-rational
+  (predicate-assertion exact-rational? "exact rational"))
+
+(define (complex-nonreal? object)
+  (and (complex? object)
+       (not (real? object))))
+
+(define assert-complex-nonreal
+  (predicate-assertion complex-nonreal? "complex nonreal"))
+
+(define assert-flonum
+  (predicate-assertion flo:flonum? "flonum"))
+
 (define (read-from-string string)
   (read (open-input-string string)))
 
@@ -70,13 +86,38 @@ USA.
   `(("+inf.0" ,assert-inf+)
     ("-inf.0" ,assert-inf-)
     ("inf.0" ,assert-symbol)
-    ("nan.0" ,assert-symbol))
+    ("nan.0" ,assert-symbol)
+    ("123" ,assert-exact-integer)
+    ("1/34" ,assert-exact-rational)
+    ("123+456i" ,assert-complex-nonreal)
+    ("1.23" ,assert-flonum))
   (lambda (string #!optional assertion xfail?)
     (with-expected-failure xfail?
       (lambda ()
 	(let ((object (read-from-string string)))
 	  (assertion object)
 	  (assert-equal (write-to-string object) string))))))
+
+(define-enumerated-test 'read/write-invariance-hex
+  `(("+inf.0" ,assert-inf+)
+    ("-inf.0" ,assert-inf-)
+    ("inf.0" ,assert-symbol)
+    ("nan.0" ,assert-symbol)
+    ("#x123" ,assert-exact-integer)
+    ("#x1/34" ,assert-exact-rational)
+    ("#x123+456i" ,assert-complex-nonreal xfail)
+    ("#x1.23p+0" ,assert-flonum xfail))
+  (lambda (string #!optional assertion xfail?)
+    (with-expected-failure xfail?
+      (lambda ()
+	(let ((object
+               (parameterize ((param:reader-radix #x10))
+		 (read-from-string string))))
+	  (assertion object)
+	  (let ((string*
+		 (parameterize ((param:printer-radix #x10))
+		   (write-to-string object))))
+	    (assert-equal string* string)))))))
 
 (define-enumerated-test 'read
   `(("+nan.0" ,assert-nan)
