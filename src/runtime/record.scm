@@ -576,7 +576,6 @@ USA.
 (define structure-type/length)
 (add-boot-init!
  (lambda ()
-   ;; unparser-method field should be removed after 9.3 is released.
    (set! rtd:structure-type
 	 (make-record-type "structure-type"
 			   '(physical-type name field-names field-indexes
