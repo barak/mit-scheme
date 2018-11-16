@@ -2283,6 +2283,7 @@ USA.
   (export (runtime thread)
 	  %deregister-gc-event)
   (import (runtime thread)
+	  first-running-thread
 	  %maybe-toggle-thread-timer
 	  %signal-thread-event)
   (initialization (initialize-package!)))

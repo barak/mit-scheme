@@ -120,14 +120,11 @@ USA.
     (without-interrupts
      (lambda ()
        (if (< (gc-statistic/heap-left statistic) 4096)
-	   (begin
-	     (for-each
-	       (lambda (entry)
-		 (signal-event (weak-car entry) abort-heap-low))
-	       gc-events)
-	     (let ((thread (console-thread)))
-	       (if (and thread (not (weak-assq thread gc-events)))
-		   (signal-event thread abort-heap-low))))
+	   (if first-running-thread
+	       (signal-event first-running-thread abort-heap-low)
+	       (let ((thread (console-thread)))
+		 (if thread
+		     (signal-event thread abort-heap-low))))
 	   (for-each
 	     (lambda (entry)
 	       (let ((thread (weak-car entry))
