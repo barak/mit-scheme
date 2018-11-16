@@ -3834,7 +3834,6 @@ USA.
 	  record-predicate
 	  record-type-default-value-by-index
 	  record-type-descriptor
-	  record-type-dispatch-tag	;can be deleted after 9.3 release
 	  record-type-field-names
 	  record-type-field-specs
 	  record-type-name

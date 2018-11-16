@@ -157,10 +157,6 @@ USA.
 	 (dispatch-metatag-constructor %record-metatag 'make-record-type))
    unspecific))
 
-;; Can be deleted after 9.3 release:
-(define (record-type-dispatch-tag record-type)
-  record-type)
-
 (define-integrable (%record-type-field-names record-type)
   (dispatch-tag-extra-ref record-type 0))
 
