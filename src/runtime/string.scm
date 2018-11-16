@@ -1165,11 +1165,8 @@ USA.
   (fix:- jamo-trailing-end jamo-trailing-start))
 
 (define-integrable jamo-tbase (fix:- jamo-trailing-start 1))
-
-;;; These can be integrable after 9.3 is released.
-;;; Otherwise they trip a bug in the 9.2 compiler.
-(define jamo-tcount (fix:+ jamo-trailing-size 1))
-(define jamo-ncount (fix:* jamo-vowel-size jamo-tcount))
+(define-integrable jamo-tcount (fix:+ jamo-trailing-size 1))
+(define-integrable jamo-ncount (fix:* jamo-vowel-size jamo-tcount))
 
 (define (jamo-leading? char)
   (and (fix:>= (char->integer char) jamo-leading-start)
