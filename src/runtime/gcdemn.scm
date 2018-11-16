@@ -58,9 +58,10 @@ USA.
 
 ;;; GC-DAEMONS are executed after each GC from an interrupt handler.
 ;;; This interrupt handler has lower priority than the GC interrupt,
-;;; which guarantees that these daemons will not be run inside of
-;;; critical sections.  As a result, the daemons may allocate storage
-;;; and use most of the runtime facilities.
+;;; which allows these daemons to allocate storage and use most of the
+;;; runtime facilities.  The interrupt handler runs in the thread that
+;;; trapped, or in no thread if the thread system trapped.  Other
+;;; threads will resume running while this interrupt is serviced.
 (define gc-daemons)
 (define trigger-gc-daemons!)
 (define add-gc-daemon!)
@@ -71,8 +72,8 @@ USA.
      (if (not (*within-restore-window?*))
 	 (daemon)))))
 
-;;; SECONDARY-GC-DAEMONS are executed rarely.  Their purpose is to
-;;; reclaim storage that is either unlikely to be reclaimed or
+;;; SECONDARY-GC-DAEMONS must be triggered explicitly.  Their purpose
+;;; is to reclaim storage that is either unlikely to be reclaimed or
 ;;; expensive to reclaim.
 (define secondary-gc-daemons)
 (define trigger-secondary-gc-daemons!)
