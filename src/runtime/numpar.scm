@@ -92,9 +92,11 @@ USA.
 			     exactness (or radix 10)
 			     char))
 	       ((char=? #\. char)
-		(and (or (not radix) (fix:= 10 radix))
-		     (parse-decimal-1 string start end
-				      (or exactness 'implicit-inexact) #f)))
+		(and (or (not radix) (fix:= 10 radix) (fix:= #x10 radix))
+		     (parse-dotted-1 string start end
+				     (or exactness 'implicit-inexact)
+				     (or radix 10)
+				     #f)))
 	       ((char->digit char (or radix 10))
 		=> (lambda (digit)
 		     (parse-integer string start end digit
@@ -111,9 +113,10 @@ USA.
 		     (parse-integer string start end digit
 				    exactness radix sign)))
 	       ((char=? #\. char)
-		(and (fix:= 10 radix)
-		     (parse-decimal-1 string start end
-				      (or exactness 'implicit-inexact) sign)))
+		(parse-dotted-1 string start end
+				(or exactness 'implicit-inexact)
+				radix
+				sign))
 	       ((i? char)
 		(and (fix:= start end)
 		     (make-rectangular 0 (if (eq? #\- sign) -1 1))))
@@ -130,26 +133,32 @@ USA.
 		   (parse-denominator-1 string start+1 end
 					integer exactness radix sign))
 		  ((char=? #\. char)
-		   (and (fix:= radix 10)
-			(if sharp?
-			    (parse-decimal-3 string start+1 end
-					     integer 0 exactness sign)
-			    (parse-decimal-2 string start+1 end
-					     integer 0
-					     (or exactness 'implicit-inexact)
-					     sign))))
+		   (if sharp?
+		       (parse-dotted-3 string start+1 end
+					integer 0 exactness radix sign)
+		       (parse-dotted-2 string start+1 end
+				       integer 0
+				       (or exactness 'implicit-inexact)
+				       radix
+				       sign)))
 		  ((exponent-marker? char)
+		   ;; XXX Necessary to limit this to radix 10?
 		   (and (fix:= radix 10)
 			(parse-exponent-1 string start+1 end
 					  integer 0
 					  (or exactness 'implicit-inexact)
-					  sign)))
+					  radix sign 10)))
+		  ((or (char=? #\p char) (char=? #\P char))
+		   (parse-exponent-1 string start+1 end
+				     integer 0
+				     (or exactness 'implicit-inexact)
+				     radix sign 2))
 		  (else
 		   (parse-complex string start end
 				  (finish-integer integer exactness sign)
 				  exactness radix sign))))
 	  (finish-integer integer exactness sign)))))
-
+
 (define (parse-digits string start end integer exactness radix k)
   (let loop ((start start) (integer integer))
     (if (fix:< start end)
@@ -181,53 +190,66 @@ USA.
 			    (finish integer exactness sign)
 			    exactness radix sign))))))
 
-(define (parse-decimal-1 string start end exactness sign)
-  ;; State: radix is 10, leading dot seen.
+(define (parse-dotted-1 string start end exactness radix sign)
+  ;; State: leading dot seen.
   (and (fix:< start end)
-       (let ((digit (char->digit (string-ref string start) 10))
+       (let ((digit (char->digit (string-ref string start) radix))
 	     (start (fix:+ start 1)))
 	 (and digit
-	      (parse-decimal-2 string start end digit -1 exactness sign)))))
+	      (parse-dotted-2 string start end digit -1 exactness radix
+			      sign)))))
 
-(define (parse-decimal-2 string start end integer exponent exactness sign)
-  ;; State: radix is 10, dot seen.
-  (let loop ((start start) (integer integer) (exponent exponent))
+(define (parse-dotted-2 string start end integer rexponent exactness radix
+			sign)
+  ;; State: dot seen.
+  (let loop ((start start) (integer integer) (rexponent rexponent))
     (if (fix:< start end)
 	(let ((char (string-ref string start))
 	      (start+1 (fix:+ start 1)))
-	  (cond ((char->digit char 10)
+	  (cond ((char->digit char radix)
 		 => (lambda (digit)
 		      (loop start+1
-			    (+ (* integer 10) digit)
-			    (- exponent 1))))
+			    (+ (* integer radix) digit)
+			    (- rexponent 1))))
 		((char=? #\# char)
-		 (parse-decimal-3 string start+1 end
-				  integer exponent exactness sign))
+		 (parse-dotted-3 string start+1 end
+				 integer rexponent exactness radix sign))
 		(else
-		 (parse-decimal-4 string start end
-				  integer exponent exactness sign))))
-	(finish-real integer exponent exactness sign))))
+		 (parse-dotted-4 string start end
+				 integer rexponent exactness radix sign))))
+	(finish-real integer rexponent exactness radix sign 10 0))))
 
-(define (parse-decimal-3 string start end integer exponent exactness sign)
-  ;; State: radix is 10, dot and # seen.
+(define (parse-dotted-3 string start end integer rexponent exactness radix
+			sign)
+  ;; State: dot and # seen.
   (let loop ((start start))
     (if (fix:< start end)
 	(let ((char (string-ref string start))
 	      (start+1 (fix:+ start 1)))
 	  (if (char=? #\# char)
 	      (loop start+1)
-	      (parse-decimal-4 string start end
-			       integer exponent exactness sign)))
-	(finish-real integer exponent exactness sign))))
+	      (parse-dotted-4 string start end
+			      integer rexponent exactness radix sign)))
+	(finish-real integer rexponent exactness radix sign radix 0))))
+
+(define (parse-dotted-4 string start end integer rexponent exactness radix
+			sign)
+  (cond ((exponent-marker? (string-ref string start))
+	 (and (fix:= radix 10)
+	      (parse-exponent-1 string (fix:+ start 1) end
+				integer rexponent exactness radix sign 10)))
+	((or (char=? #\p (string-ref string start))
+	     (char=? #\P (string-ref string start)))
+	 (and (fix:= radix #x10)
+	      (parse-exponent-1 string (fix:+ start 1) end
+				integer rexponent exactness radix sign 2)))
+	(else
+	 (parse-dotted-5 string start end integer rexponent exactness radix
+			 sign))))
 
-(define (parse-decimal-4 string start end integer exponent exactness sign)
-  (if (exponent-marker? (string-ref string start))
-      (parse-exponent-1 string (fix:+ start 1) end
-			integer exponent exactness sign)
-      (parse-decimal-5 string start end integer exponent exactness sign)))
-
-(define (parse-exponent-1 string start end integer exponent exactness sign)
-  ;; State: radix is 10, exponent seen.
+(define (parse-exponent-1 string start end integer rexponent exactness radix
+			  sign base)
+  ;; State: exponent seen.
   (define (get-digits start esign)
     (and (fix:< start end)
 	 (let ((digit (char->digit (string-ref string start) 10)))
@@ -243,11 +265,11 @@ USA.
 		      (continue start eint esign)))))))
 
   (define (continue start eint esign)
-    (let ((exponent (+ exponent (if (eq? #\- esign) (- eint) eint))))
+    (let ((bexponent (if (eq? #\- esign) (- eint) eint)))
       (if (fix:= start end)
-	  (finish-real integer exponent exactness sign)
-	  (parse-decimal-5 string start end
-			   integer exponent exactness sign))))
+	  (finish-real integer rexponent exactness radix sign base bexponent)
+	  (parse-decimal-5 string start end integer rexponent exactness radix
+			   sign base bexponent))))
 
   (and (fix:< start end)
        (let ((esign (string-ref string start)))
@@ -255,10 +277,11 @@ USA.
 	     (get-digits (fix:+ start 1) esign)
 	     (get-digits start #f)))))
 
-(define (parse-decimal-5 string start end integer exponent exactness sign)
+(define (parse-dotted-5 string start end integer rexponent exactness radix
+                        sign)
   (parse-complex string start end
-		 (finish-real integer exponent exactness sign)
-		 exactness 10 sign))
+		 (finish-real integer rexponent exactness radix sign 10 0)
+		 exactness radix sign))
 
 (define (parse-complex string start end real exactness radix sign)
   (if (fix:< start end)
@@ -291,9 +314,9 @@ USA.
   ;; State: result is rational, apply exactness and sign.
   (finish (/ numerator denominator) exactness sign))
 
-;; (finish-real integer exponent exactness sign)
+;; (finish-real integer rexponent exactness radix sign base bexponent)
 ;;
-;;    magnitude is (* INTEGER (EXPT 10 EXPONENT))
+;;    magnitude is (* INTEGER (EXPT RADIX REXPONENT) (EXPT BASE BEXPONENT))
 ;;
 ;; In the general case for an inexact result, to obtain a correctly
 ;; rounded result, it is necessary to work with exact or high
@@ -330,18 +353,23 @@ USA.
 ;; the reciprocal is exact.
 
 (define exact-flonum-powers-of-10)	; a vector, i -> 10.^i
-
-(define (finish-real integer exponent exactness sign)
+
+(define (finish-real integer rexponent exactness radix sign base bexponent)
   ;; State: result is integer, apply exactness and sign.
 
   (define (high-precision-method)
-    (apply-exactness exactness
-		     (* (apply-sign sign integer)
-			(expt 10 exponent))))
+    (apply-sign sign
+		(apply-exactness exactness
+				 (* integer
+				    (expt radix rexponent)
+				    (expt base bexponent)))))
 
-  (if (or (eq? 'inexact exactness) (eq? 'implicit-inexact exactness))
-      (let ((abs-exponent (if (< exponent 0) (- exponent) exponent))
-	    (powers-of-10 exact-flonum-powers-of-10))
+  (if (and (fix:= radix 10)
+	   (fix:= base 10)
+	   (or (eq? 'inexact exactness) (eq? 'implicit-inexact exactness)))
+      (let* ((exponent (+ rexponent bexponent))
+	     (abs-exponent (if (< exponent 0) (- exponent) exponent))
+	     (powers-of-10 exact-flonum-powers-of-10))
 	(define-integrable (finish-flonum x power-of-10)
 	  (if (eq? #\- sign)
 	      (if (eq? exponent abs-exponent)
@@ -363,7 +391,23 @@ USA.
 		    (finish-flonum exact-flonum-integer
 				   (vector-ref powers-of-10 abs-exponent))))
 	      (else (high-precision-method))))
-      (high-precision-method)))
+      (if (and (fix:power-of-two? radix)
+	       (fix:power-of-two? base)
+	       (or (eq? 'inexact exactness) (eq? 'implicit-inexact exactness)))
+	  ;; x * r^re * b^be
+	  ;; = x * 2^{log_2 r^re} * 2^{log_2 b^be}
+	  ;; = x * 2^{re log_2 r + be log_2 b}
+	  (let* ((log2r (fix:- (integer-length radix) 1))
+		 (log2b (fix:- (integer-length base) 1)))
+	    (let* ((e (fix:+ (fix:* rexponent log2r) (fix:* bexponent log2b)))
+		   (x (flo:ldexp (int:->flonum integer) e)))
+	      (if (eq? #\- sign)
+		  (flo:negate x)
+		  x)))
+	  (high-precision-method))))
+
+(define-integrable (fix:power-of-two? x)
+  (fix:= 0 (fix:and x (fix:- x 1))))
 
 (define flonum-parser-fast?
   #f)
@@ -371,6 +415,19 @@ USA.
 (define (finish number exactness sign)
   (apply-sign sign (apply-exactness exactness number)))
 
+(define (apply-sign sign number)
+  (if (eq? #\- sign)
+      ;; Kludge to work around miscompilation of (- number).
+      (cond ((flo:flonum? number)
+	     (flo:negate number))
+	    ((and (complex? number) (not (real? number)))
+	     (make-rectangular (apply-sign sign (real-part number))
+			       (apply-sign sign (imag-part number))))
+	    (else
+	     (- number)))
+      number))
+
+#;
 (define (apply-sign sign number)
   (if (eq? #\- sign)
       (- number)
