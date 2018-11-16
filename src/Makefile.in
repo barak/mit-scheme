@@ -85,6 +85,9 @@ HOST_COMPILER = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) --no-init
 HOST_RUNTIME_ONLY = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
   --band runtime.com --no-init-file --load runtime/host-adapter.scm
 
+MAKE_IN_SUBDIRS = \
+	f () { t=$$1; shift; for d; do (cd "$$d" && $(MAKE) "$$t"); done; }; f
+
 # This rule is for LIARC.
 .SUFFIXES: .bld .pkd .c
 .pkd.c .bld.c:
@@ -586,7 +589,7 @@ install: install-standard @INSTALL_LIARC_BUNDLES@
 
 .PHONY: install-standard
 install-standard: install-auxdir-top
-	etc/make-in-subdirs.sh install $(INSTALLED_SUBDIRS)
+	@+$(MAKE_IN_SUBDIRS) install $(INSTALLED_SUBDIRS)
 
 .PHONY: install-auxdir-top
 install-auxdir-top:
@@ -619,11 +622,11 @@ liarc-dist:
 # **** Build liarc from distribution ****
 
 stamp_compile-liarc-boot-bundles: stamp_install-microcode
-	etc/make-in-subdirs.sh compile-liarc-bundle $(LIARC_BOOT_BUNDLES)
+	@+$(MAKE_IN_SUBDIRS) compile-liarc-bundle $(LIARC_BOOT_BUNDLES)
 	echo "done" > $@
 
 stamp_install-liarc-boot-bundles: stamp_compile-liarc-boot-bundles
-	etc/make-in-subdirs.sh install-liarc-bundle $(LIARC_BOOT_BUNDLES)
+	@+$(MAKE_IN_SUBDIRS) install-liarc-bundle $(LIARC_BOOT_BUNDLES)
 	echo "done" > $@
 
 stamp_build-liarc-boot-compiler: stamp_install-liarc-boot-bundles
@@ -644,11 +647,11 @@ stamp_compile-liarc-bundles: stamp_liarc-compile-scheme compile-liarc-bundles
 
 .PHONY: compile-liarc-bundles
 compile-liarc-bundles: compile-microcode
-	etc/make-in-subdirs.sh compile-liarc-bundle $(LIARC_BUNDLES)
+	@+$(MAKE_IN_SUBDIRS) compile-liarc-bundle $(LIARC_BUNDLES)
 
 .PHONY: install-liarc-bundles
 install-liarc-bundles:
-	etc/make-in-subdirs.sh install-liarc-bundle $(LIARC_BUNDLES)
+	@+$(MAKE_IN_SUBDIRS) install-liarc-bundle $(LIARC_BUNDLES)
 
 # **** Build native from liarc ****
 
