@@ -245,7 +245,7 @@ USA.
 				integer rexponent exactness radix sign 2)))
 	(else
 	 (parse-dotted-5 string start end integer rexponent exactness radix
-			 sign))))
+			 sign 10 0))))
 
 (define (parse-exponent-1 string start end integer rexponent exactness radix
 			  sign base)
@@ -268,8 +268,8 @@ USA.
     (let ((bexponent (if (eq? #\- esign) (- eint) eint)))
       (if (fix:= start end)
 	  (finish-real integer rexponent exactness radix sign base bexponent)
-	  (parse-decimal-5 string start end integer rexponent exactness radix
-			   sign base bexponent))))
+	  (parse-dotted-5 string start end integer rexponent exactness radix
+			  sign base bexponent))))
 
   (and (fix:< start end)
        (let ((esign (string-ref string start)))
@@ -278,9 +278,10 @@ USA.
 	     (get-digits start #f)))))
 
 (define (parse-dotted-5 string start end integer rexponent exactness radix
-                        sign)
+                        sign base bexponent)
   (parse-complex string start end
-		 (finish-real integer rexponent exactness radix sign 10 0)
+		 (finish-real integer rexponent exactness radix sign
+			      base bexponent)
 		 exactness radix sign))
 
 (define (parse-complex string start end real exactness radix sign)

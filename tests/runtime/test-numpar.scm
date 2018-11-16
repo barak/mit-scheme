@@ -85,7 +85,7 @@ USA.
 (define-eqv-test "#d#e-100" -100)
 (define-eqv-test "#x#e-100" -256)
 
-(define-eqv-test "#e1e1+1e1i" 10+10i 'xerror)
+(define-eqv-test "#e1e1+1e1i" 10+10i)
 
 (define-eqv-test "#e#x1p10" (expt 2 10))
 (define-eqv-test "#e#x1.1p4" #x11)
