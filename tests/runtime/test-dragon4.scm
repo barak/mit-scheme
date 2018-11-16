@@ -81,3 +81,22 @@ USA.
     (try 0.00501   '(absolute  2 normal) ".01")
     (try 0.00499   '(absolute -3 normal) "0.")
     ))
+
+(define (define-hex-tests name . cases)
+  (define-test name
+    (map (lambda (case0)
+           (let ((x (car case0))
+                 (s (cadr case0)))
+             (lambda ()
+               (assert-string= (number->string x #x10) s))))
+         cases)))
+
+(define-hex-tests 'hex
+  '(0. "0.")
+  '(-0. "-0.")
+  '(1. "#x1p+0")
+  '(-1. "#x-1p+0")
+  '(1.5 "#x1.8p+0")
+  '(-1.5 "#x-1.8p+0")
+  '(15. "#x1.ep+3")
+  '(16. "#x1p+4"))

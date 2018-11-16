@@ -196,7 +196,7 @@ USA.
               (decompose-ieee754-binary64 x)
        (compose-ieee754-binary128 sign biased-exponent trailing-significand))))
 
-(define (ieee754-binary-hex-string x exponent-bits precision)
+(define (ieee754-binary-hex-string x exponent-bits precision #!optional mark)
   (receive (base emin emax bias exp-subnormal exp-inf/nan)
            (ieee754-binary-parameters exponent-bits precision)
     bias exp-subnormal exp-inf/nan
@@ -215,8 +215,9 @@ USA.
             (fractional
              (if (zero? fractional) "" (number->string fractional #x10)))
             (expsign (if (< exponent 0) "-" "+"))
-            (exponent (number->string (abs exponent) #d10)))
-        (string-append sign "0x" integer dot fractional "p" expsign exponent)))
+            (exponent (number->string (abs exponent) #d10))
+            (mark (if (default-object? mark) "0x" mark)))
+        (string-append sign mark integer dot fractional "p" expsign exponent)))
     (decompose-ieee754 x base emax precision
       (lambda (sign)                    ;if-zero
         (numeric sign 0 0 0))
@@ -243,14 +244,14 @@ USA.
       (lambda (sign quiet payload)
         (symbolic sign (if (zero? quiet) "sNaN" "qNaN") payload)))))
 
-(define (ieee754-binary32-hex-string x)
-  (ieee754-binary-hex-string x 8 24))
+(define (ieee754-binary32-hex-string x #!optional mark)
+  (ieee754-binary-hex-string x 8 24 mark))
 
-(define (ieee754-binary64-hex-string x)
-  (ieee754-binary-hex-string x 11 53))
+(define (ieee754-binary64-hex-string x #!optional mark)
+  (ieee754-binary-hex-string x 11 53 mark))
 
-(define (ieee754-binary128-hex-string x)
-  (ieee754-binary-hex-string x 15 113))
+(define (ieee754-binary128-hex-string x #!optional mark)
+  (ieee754-binary-hex-string x 15 113 mark))
 
 (define (round-up x n)
   (* n (quotient (+ x (- n 1)) n)))

@@ -66,41 +66,44 @@ not much different to numbers within a few orders of magnitude of 1.
   unspecific)
 
 (define (flo:->string x radix)
-  (let ((x>0
-	 (lambda (x)
-	   (let ((p flo:significand-digits-base-2))
-	     (call-with-values (lambda () (dragon4-normalize x p))
-	       (lambda (f e)
-		 (call-with-values flonum-printer-cutoff-args
-		   (lambda (cutoff-mode cutoff display-procedure)
-		     (dragon4 f e p radix cutoff-mode cutoff
-		       (lambda (u k generate)
-			 (let ((digits
-				(list->string
-				 (let loop ((u u) (k k) (generate generate))
-				   k	;ignore
-				   (if (negative? u)
-				       '()
-				       (cons (digit->char u radix)
-					     (generate loop)))))))
-			   (display-procedure digits k radix))))))))))))
-    (or (and flonum-printer-hook
-	     (flonum-printer-hook x radix))
-	(cond ((flo:nan? x)
-	       (string-copy "+nan.0"))
-	      ((flo:positive? x)
+  (define (x>0 x signify)
+    (let ((p flo:significand-digits-base-2))
+      (call-with-values flonum-printer-cutoff-args
+	(lambda (cutoff-mode cutoff display-procedure)
+	  (if (int:= radix #x10)
+	      (string-append "#x" (signify (ieee754-binary64-hex-string x "")))
+	      (signify
+	       (call-with-values (lambda () (dragon4-normalize x p))
+		 (lambda (f e)
+		   (dragon4 f e p radix cutoff-mode cutoff
+		     (lambda (u k generate)
+		       (let ((digits
+			      (list->string
+			       (let loop
+				   ((u u) (k k) (generate generate))
+				 k	;ignore
+				 (if (negative? u)
+				     '()
+				     (cons (digit->char u radix)
+					   (generate loop)))))))
+			 (display-procedure digits k radix))))))))))))
+  (or (and flonum-printer-hook
+	   (flonum-printer-hook x radix))
+      (cond ((flo:nan? x)
+	     (string-copy "+nan.0"))
+	    ((flo:positive? x)
+	     (if (flo:infinite? x)
+		 (string-copy "+inf.0")
+		 (x>0 x (lambda (s) s))))
+	    ((flo:negative? x)
+	     (let ((x (flo:negate x)))
 	       (if (flo:infinite? x)
-		   (string-copy "+inf.0")
-		   (x>0 x)))
-	      ((flo:negative? x)
-	       (let ((x (flo:negate x)))
-		 (if (flo:infinite? x)
-		     (string-copy "-inf.0")
-		     (string-append "-" (x>0 x)))))
-	      ((flo:zero? x)
-	       (string-copy (if (flo:safe-negative? x) "-0." "0.")))
-	      (else
-	       (string-copy "+nan.0"))))))
+		   (string-copy "-inf.0")
+		   (x>0 x (lambda (s) (string-append "-" s))))))
+	    ((flo:zero? x)
+	     (string-copy (if (flo:safe-negative? x) "-0." "0.")))
+	    (else
+	     (string-copy "+nan.0")))))
 
 (define (flonum-printer:normal-output digits k radix)
   (let ((k+1 (+ k 1)))
