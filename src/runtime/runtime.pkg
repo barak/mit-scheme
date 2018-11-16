@@ -3850,9 +3850,6 @@ USA.
   (export (runtime pathname)
 	  record-type-proxy:host
 	  record-type-proxy:pathname)
-  (export (runtime printer)
-	  named-list-with-unparser?
-	  named-vector-with-unparser?)
   (initialization (initialize-package!)))
 
 (define-package (runtime reference-trap)

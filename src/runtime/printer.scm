@@ -635,30 +635,27 @@ USA.
           (loop (fix:- index 1))))))
 
 (define (print-vector vector context)
-  (let ((printer (named-vector-with-unparser? vector)))
-    (if printer
-	(call-print-method printer vector context)
-	(limit-print-depth context
-	  (lambda (context*)
-	    (let ((end (vector-length vector)))
-	      (if (fix:> end 0)
-		  (begin
-		    (*print-string "#(" context*)
-		    (print-object (safe-vector-ref vector 0) context*)
-		    (let loop ((index 1))
-		      (if (fix:< index end)
-			  (if (let ((limit
-				     (context-list-breadth-limit context*)))
-				(and limit
-				     (>= index limit)))
-			      (*print-string " ...)" context*)
-			      (begin
-				(*print-char #\space context*)
-				(print-object (safe-vector-ref vector index)
-					      context*)
-				(loop (fix:+ index 1))))))
-		    (*print-char #\) context*))
-		  (*print-string "#()" context*))))))))
+  (limit-print-depth context
+    (lambda (context*)
+      (let ((end (vector-length vector)))
+	(if (fix:> end 0)
+	    (begin
+	      (*print-string "#(" context*)
+	      (print-object (safe-vector-ref vector 0) context*)
+	      (let loop ((index 1))
+		(if (fix:< index end)
+		    (if (let ((limit
+			       (context-list-breadth-limit context*)))
+			  (and limit
+			       (>= index limit)))
+			(*print-string " ...)" context*)
+			(begin
+			  (*print-char #\space context*)
+			  (print-object (safe-vector-ref vector index)
+					context*)
+			  (loop (fix:+ index 1))))))
+	      (*print-char #\) context*))
+	    (*print-string "#()" context*))))))
 
 (define (safe-vector-ref vector index)
   (if (with-absolutely-no-interrupts
@@ -708,8 +705,6 @@ USA.
          => (lambda (prefix) (print-prefix-pair prefix pair context)))
         ((and (get-param:print-streams?) (stream-pair? pair))
          (print-stream-pair pair context))
-	((named-list-with-unparser? pair)
-	 => (lambda (printer) (call-print-method printer pair context)))
         (else
          (print-list pair context))))
 
