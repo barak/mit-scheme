@@ -156,7 +156,7 @@ USA.
   (set! flo:smallest-positive-normal
 	(flo:ldexp 1. flo:normal-exponent-min-base-2))
   (set! flo:largest-positive-normal
-	(flo:ldexp 1. flo:normal-exponent-max-base-2))
+	(flo:ldexp (flo:nextafter 2. 0.) flo:normal-exponent-max-base-2))
   unspecific)
 
 (define (initialize-package!)
