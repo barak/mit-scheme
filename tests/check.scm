@@ -72,6 +72,7 @@ USA.
     ("runtime/test-library-loader" (runtime library))
     "runtime/test-md5"
     "runtime/test-mime-codec"
+    "runtime/test-numpar"
     ("runtime/test-parametric-predicate" (runtime parametric-predicate))
     "runtime/test-predicate"
     ("runtime/test-predicate-dispatch" (runtime predicate-dispatch))
