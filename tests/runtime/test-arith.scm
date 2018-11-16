@@ -32,6 +32,15 @@ USA.
   (assert-true (flo:flonum? object))
   (assert-true (flo:nan? object)))
 
+(define (not-integer? x)
+  (not (integer? x)))
+
+(define assert-integer
+  (predicate-assertion integer? "integer"))
+
+(define assert-not-integer
+  (predicate-assertion not-integer? "not integer"))
+
 (define (define-enumerated-test prefix elements procedure)
   (let ((n (vector-length elements)))
     (do ((i 0 (+ i 1))) ((>= i n))
@@ -376,3 +385,28 @@ USA.
           (y (vector-ref v 1)))
       (assert-eqv (- x) y)
       (assert-eqv (- 0 (flo:copysign 1. x)) (flo:copysign 1. y)))))
+
+(define-enumerated-test 'integer?
+  (vector
+   0
+   1
+   (* 1/2 (identity-procedure 2))
+   0.
+   1.
+   1.+0.i)
+  assert-integer)
+
+(define-enumerated-test 'not-integer?
+  (vector
+   1/2
+   0.1
+   1+2i
+   (flo:nan.0))
+  assert-not-integer)
+
+(define-enumerated-test 'not-integer?/broken
+  (vector
+   (flo:+inf.0)
+   (flo:-inf.0))
+  (lambda (x)
+    (expect-failure (lambda () (assert-not-integer x)))))
