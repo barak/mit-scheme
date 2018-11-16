@@ -5994,10 +5994,15 @@ USA.
   (files "ieee754")
   (parent (runtime))
   (export ()
-	  compose-ieee754
+	  compose-ieee754-binary
 	  compose-ieee754-binary128
 	  compose-ieee754-binary32
 	  compose-ieee754-binary64
+	  compose-ieee754-infinity
+	  compose-ieee754-nan
+	  compose-ieee754-normal
+	  compose-ieee754-subnormal
+	  compose-ieee754-zero
 	  decompose-ieee754
 	  decompose-ieee754-binary128
 	  decompose-ieee754-binary32
