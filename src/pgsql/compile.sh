@@ -36,5 +36,4 @@ report=pgsql-$suffix.crf
 if [ -s "$report" ]; then
     echo "$0: warning: $report is not empty"
     awk "{printf \"$report:%d: %s\\n\",NR,\$0}" $report
-    exit 1
 fi

@@ -25,7 +25,7 @@
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = autogen.sh
 
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)pgsql
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -57,10 +57,9 @@ pgsql-shim.c: stamp-shim
 pgsql-const.c: stamp-shim
 pgsql-types.bin: stamp-shim
 stamp-shim: pgsql-shim.h $(cdecls)
-	touch stamp-shim
 	echo '(generate-shim "pgsql" "#include \"pgsql-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode \
-	|| rm stamp-shim
+	    | $(MIT_SCHEME_EXE) --batch-mode
+	echo "done" > $@
 
 pgsql-const.bin: pgsql-const.scm
 	echo '(sf "pgsql-const")' | $(MIT_SCHEME_EXE) --batch-mode
@@ -70,8 +69,8 @@ pgsql-const.scm: pgsql-const
 
 @MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) pgsql.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
 CLEANFILES = pgsql-const* pgsql-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd

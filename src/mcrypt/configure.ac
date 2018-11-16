@@ -108,26 +108,26 @@ CFLAGS="${MCRYPT_CFLAGS} ${CFLAGS}"
 LIBS="${LIBS} ${MCRYPT_LIBS}"
 
 MIT_SCHEME_PROJECT=mit-scheme
-: ${MIT_SCHEME_EXE=mit-scheme}
+: ${MIT_SCHEME_TOOLCHAIN_EXE=mit-scheme}
 rif test x"${MIT_SCHEME_LIBDIR}" = x; then
     MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
 			 echo "          (system-library-directory-pathname)))" ) \
-		       | ${MIT_SCHEME_EXE} --batch-mode`
+		       | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 if test x"${MIT_SCHEME_INCLUDEDIR}" = x; then
     MIT_SCHEME_INCLUDEDIR=`( echo "(display (->namestring" ;\
                              echo "          (directory-pathname" ;\
                              echo "           (system-library-pathname" ;\
                              echo '            "mit-scheme.h"))))' ) \
-                           | ${MIT_SCHEME_EXE} --batch-mode`
+                           | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 if test x"${MIT_SCHEME_OS_SUFFIX}" = x; then
     MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
-                          | ${MIT_SCHEME_EXE} --batch-mode`
+                          | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 if test x"${MIT_SCHEME_CC_TYPE}" = x; then
     MIT_SCHEME_CC_TYPE=`echo "(display microcode-id/compiled-code-type)" \
-                        | ${MIT_SCHEME_EXE} --batch-mode`
+                        | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 
 MIT_SCHEME_PKD="mcrypt-${MIT_SCHEME_OS_SUFFIX}.pkd"
@@ -153,7 +153,7 @@ ${MIT_SCHEME_PKD}: stamp-scheme"
 
 AC_SUBST([MIT_SCHEME_PROJECT])
 AC_SUBST([MIT_CFLAGS])
-AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([MIT_SCHEME_TOOLCHAIN_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])
 AC_SUBST([MIT_SCHEME_INCLUDEDIR])
 AC_SUBST([MIT_SCHEME_PKD])

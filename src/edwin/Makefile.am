@@ -24,7 +24,7 @@
 
 EXTRA_DIST = autogen.sh
 
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)edwin
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -42,8 +42,8 @@ include $(srcdir)/source-dependencies.am
 edwin.bld: stamp-scheme
 edwin-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
 stamp-scheme: $(sources) edwin.ldr edwin.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd *.bld
 CLEANFILES += stamp-scheme

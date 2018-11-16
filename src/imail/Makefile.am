@@ -24,7 +24,7 @@
 
 EXTRA_DIST = autogen.sh
 
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)imail
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -79,8 +79,8 @@ imap-syntax.bci: stamp-scheme
 imap-syntax.com: stamp-scheme
 imail-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
 stamp-scheme: $(sources) imail.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-scheme

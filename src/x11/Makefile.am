@@ -25,7 +25,7 @@
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = autogen.sh
 
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)x11
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -70,7 +70,7 @@ x11-const.scm: x11-const$(EXEEXT)
 
 @MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) x11-const.bin x11.pkg
-	./compile.sh
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 
 MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) x11-const

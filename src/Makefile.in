@@ -119,6 +119,19 @@ all-native: all-xml
 @IF_X11@all-native: all-x11
 @IF_X11_SCREEN@all-native: all-x11-screen
 
+# Plugins all depend on this target to make sure that they can use it
+# to compile themselves.
+.PHONY: all-toolchain
+all-toolchain: microcode/scheme
+all-toolchain: lib/runtime.com
+all-toolchain: lib/all.com
+all-toolchain: all-compiler
+all-toolchain: all-cref
+all-toolchain: all-ffi
+all-toolchain: all-runtime
+all-toolchain: all-sf
+all-toolchain: all-star-parser
+
 # XXX This should really depend on microcode/gen-nonce and
 # microcode/extract-liarc-decls instead of microcode/scheme, but
 # splitting up dependencies within the microcode subdirectory is more
@@ -396,8 +409,8 @@ bundle-xml: xml/xml-unx.c
 all-blowfish: compile-blowfish
 
 .PHONY: compile-blowfish
-compile-blowfish: compile-runtime compile-ffi
-	(cd blowfish && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+compile-blowfish: all-toolchain
+	(cd blowfish && $(MAKE))
 
 .PHONY: compile-blowfish-c
 compile-blowfish-c:
@@ -411,11 +424,11 @@ compile-blowfish-c:
 all-edwin: compile-edwin
 
 .PHONY: compile-edwin
-compile-edwin: compile-runtime compile-xml
+compile-edwin: all-toolchain compile-xml
 @IF_BLOWFISH@compile-edwin: compile-blowfish
 @IF_GDBM@compile-edwin: compile-gdbm
 @IF_X11@compile-edwin: compile-x11
-	(cd edwin && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+	(cd edwin && $(MAKE))
 
 ################
 # gdbm
@@ -425,8 +438,8 @@ compile-edwin: compile-runtime compile-xml
 all-gdbm: compile-gdbm
 
 .PHONY: compile-gdbm
-compile-gdbm: compile-runtime compile-ffi
-	(cd gdbm && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+compile-gdbm: all-toolchain
+	(cd gdbm && $(MAKE))
 
 .PHONY: compile-gdbm-c
 compile-gdbm-c:
@@ -440,8 +453,8 @@ compile-gdbm-c:
 all-imail: compile-imail
 
 .PHONY: compile-imail
-compile-imail: compile-runtime compile-sos compile-edwin compile-star-parser
-	(cd imail && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+compile-imail: all-toolchain compile-sos compile-edwin
+	(cd imail && $(MAKE))
 
 ################
 # mcrypt
@@ -451,8 +464,8 @@ compile-imail: compile-runtime compile-sos compile-edwin compile-star-parser
 all-mcrypt: compile-mcrypt
 
 .PHONY: compile-mcrypt
-compile-mcrypt: compile-runtime compile-ffi
-	(cd mcrypt && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+compile-mcrypt: all-toolchain
+	(cd mcrypt && $(MAKE))
 
 .PHONY: compile-mcrypt-c
 compile-mcrypt-c:
@@ -466,8 +479,8 @@ compile-mcrypt-c:
 all-pgsql: compile-pgsql
 
 .PHONY: compile-pgsql
-compile-pgsql: compile-runtime compile-ffi
-	(cd pgsql && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+compile-pgsql: all-toolchain
+	(cd pgsql && $(MAKE))
 
 .PHONY: compile-pgsql-c
 compile-pgsql-c:
@@ -481,8 +494,8 @@ compile-pgsql-c:
 all-x11: compile-x11
 
 .PHONY: compile-x11
-compile-x11: compile-runtime compile-ffi
-	(cd x11 && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+compile-x11: all-toolchain
+	(cd x11 && $(MAKE))
 
 .PHONY: compile-x11-c
 compile-x11-c:
@@ -496,8 +509,8 @@ compile-x11-c:
 all-x11-screen: compile-x11-screen
 
 .PHONY: compile-x11-screen
-compile-x11-screen: compile-runtime compile-x11 compile-edwin
-	(cd x11-screen && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+compile-x11-screen: all-toolchain compile-x11 compile-edwin
+	(cd x11-screen && $(MAKE))
 
 #####################
 ### Cross compilation

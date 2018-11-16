@@ -34,5 +34,6 @@ suffix=`echo "(display (microcode-id/operating-system-suffix))" \
 	| ${MIT_SCHEME_EXE} --batch-mode`
 report=imail-$suffix.crf
 if [ -s "$report" ]; then
+    echo "$0: warning: $report is not empty"
     awk "{printf \"$report:%d: %s\\n\",NR,\$0}" $report
 fi

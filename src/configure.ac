@@ -391,6 +391,10 @@ export MIT_SCHEME_INCLUDEDIR
 export MIT_SCHEME_OS_SUFFIX
 export MIT_SCHEME_CC_TYPE
 
+# Plugins use this one
+MIT_SCHEME_TOOLCHAIN_EXE=../run-build
+export MIT_SCHEME_TOOLCHAIN_EXE
+
 AC_CONFIG_SUBDIRS([microcode])
 if test x"${enable_blowfish}" = xyes; then
     AC_CONFIG_SUBDIRS([blowfish])

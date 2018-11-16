@@ -25,7 +25,7 @@
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = autogen.sh
 
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)blowfish
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -57,10 +57,9 @@ blowfish-shim.c: stamp-shim
 blowfish-const.c: stamp-shim
 blowfish-types.bin: stamp-shim
 stamp-shim: blowfish-shim.h $(cdecls)
-	touch stamp-shim
 	echo '(generate-shim "blowfish" "#include \"blowfish-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode \
-	|| rm stamp-shim
+	    | $(MIT_SCHEME_EXE) --batch-mode
+	echo "done" > $@
 
 blowfish-const.bin: blowfish-const.scm
 	echo '(sf "blowfish-const")' | $(MIT_SCHEME_EXE) --batch-mode
@@ -70,8 +69,8 @@ blowfish-const.scm: blowfish-const
 
 @MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) blowfish.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
 CLEANFILES = blowfish-const* blowfish-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd

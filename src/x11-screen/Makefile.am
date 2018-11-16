@@ -24,7 +24,7 @@
 
 EXTRA_DIST = autogen.sh
 
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)x11-screen
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -41,8 +41,8 @@ scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 
 @MIT_SCHEME_DEPS@
 stamp-scheme: $(sources) x11-screen.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-scheme

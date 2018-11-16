@@ -35,19 +35,19 @@ AM_INIT_AUTOMAKE
 AC_PROG_INSTALL
 
 MIT_SCHEME_PROJECT=mit-scheme
-: ${MIT_SCHEME_EXE=mit-scheme}
+: ${MIT_SCHEME_TOOLCHAIN_EXE=mit-scheme}
 if test x"${MIT_SCHEME_LIBDIR}" = x; then
     MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
 			 echo "          (system-library-directory-pathname)))" ) \
-		       | ${MIT_SCHEME_EXE} --batch-mode`
+		       | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 if test x"${MIT_SCHEME_OS_SUFFIX}" = x; then
     MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
-                          | ${MIT_SCHEME_EXE} --batch-mode`
+                          | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 if test x"${MIT_SCHEME_CC_TYPE}" = x; then
     MIT_SCHEME_CC_TYPE=`echo "(display microcode-id/compiled-code-type)" \
-                        | ${MIT_SCHEME_EXE} --batch-mode`
+                        | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 
 MIT_SCHEME_PKD="x11-screen-${MIT_SCHEME_OS_SUFFIX}.pkd"
@@ -72,7 +72,7 @@ MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${MIT_SCHEME_PKD}: stamp-scheme"
 
 AC_SUBST([MIT_SCHEME_PROJECT])
-AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([MIT_SCHEME_TOOLCHAIN_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])
 AC_SUBST([MIT_SCHEME_PKD])
 AC_SUBST([MIT_SCHEME_SCMs])

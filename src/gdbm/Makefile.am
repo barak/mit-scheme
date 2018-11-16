@@ -25,7 +25,7 @@
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = autogen.sh
 
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)gdbm
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -57,10 +57,9 @@ gdbm-shim.c: stamp-shim
 gdbm-const.c: stamp-shim
 gdbm-types.bin: stamp-shim
 stamp-shim: gdbm-shim.h $(cdecls)
-	touch stamp-shim
 	echo '(generate-shim "gdbm" "#include \"gdbm-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode \
-	|| rm stamp-shim
+	    | $(MIT_SCHEME_EXE) --batch-mode
+	echo "done" > $@
 
 gdbm-const.bin: gdbm-const.scm
 	echo '(sf "gdbm-const")' | $(MIT_SCHEME_EXE) --batch-mode
@@ -70,8 +69,8 @@ gdbm-const.scm: gdbm-const
 
 @MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) gdbm.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
 CLEANFILES = gdbm-const* gdbm-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
