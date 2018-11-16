@@ -89,6 +89,8 @@ USA.
 (define-eqv-test "#e#x1.1p4" #x11)
 (define-eqv-test "#e#x1.1p-1" (* #x11 (expt 2 (- (+ 1 4)))))
 (define-eqv-test "#x1.1p-1" (exact->inexact (* #x11 (expt 2 (- (+ 1 4))))))
+(define-eqv-test "#x1p-1022" flo:smallest-positive-normal)
+(define-eqv-test "#x1.fffffffffffffp+1023" flo:largest-positive-normal 'xfail)
 
 (define-eqv-test "#b0." 0.)
 (define-eqv-test "#b0.+0.i" 0.+0.i)
