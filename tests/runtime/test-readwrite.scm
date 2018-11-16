@@ -105,8 +105,8 @@ USA.
     ("nan.0" ,assert-symbol)
     ("#x123" ,assert-exact-integer)
     ("#x1/34" ,assert-exact-rational)
-    ("#x123+456i" ,assert-complex-nonreal xfail)
-    ("#x1.23p+0" ,assert-flonum xfail))
+    ("#x123+456i" ,assert-complex-nonreal)
+    ("#x1.23p+0" ,assert-flonum))
   (lambda (string #!optional assertion xfail?)
     (with-expected-failure xfail?
       (lambda ()

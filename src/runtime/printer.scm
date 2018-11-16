@@ -916,13 +916,12 @@ USA.
 		  object
 		  (let ((prefix
 			 (lambda (prefix limit radix)
-			   (if (exact-rational? object)
-			       (begin
-				 (if (not (and (exact-integer? object)
-					       (< (abs object) limit)))
-				     (*print-string prefix context))
-				 radix)
-			       10))))
+			   (if (not (or (and (flo:flonum? object)
+					     (not (flo:finite? object)))
+					(and (exact-integer? object)
+					     (< (abs object) limit))))
+			       (*print-string prefix context))
+			   radix)))
 		    (case (get-param:printer-radix)
 		      ((2) (prefix "#b" 2 2))
 		      ((8) (prefix "#o" 8 8))
