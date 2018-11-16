@@ -891,7 +891,8 @@ USA.
 
 (declare (integrate flo:integer?))
 (define (flo:integer? x)
-  (flo:= x (flo:round x)))
+  (and (flo:finite? x)
+       (flo:= x (flo:round x))))
 
 (define (flo:rationalize x e)
   (flo:simplest-rational (flo:- x e) (flo:+ x e)))

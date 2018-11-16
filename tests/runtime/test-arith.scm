@@ -401,12 +401,7 @@ USA.
    1/2
    0.1
    1+2i
-   (flo:nan.0))
-  assert-not-integer)
-
-(define-enumerated-test 'not-integer?/broken
-  (vector
+   (flo:nan.0)
    (flo:+inf.0)
    (flo:-inf.0))
-  (lambda (x)
-    (expect-failure (lambda () (assert-not-integer x)))))
+  assert-not-integer)
