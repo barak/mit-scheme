@@ -106,6 +106,7 @@ USA.
     ("#x123" ,assert-exact-integer)
     ("#x1/34" ,assert-exact-rational)
     ("#x123+456i" ,assert-complex-nonreal)
+    ("#x1.23p+4-1.ffp-8i" ,assert-complex-nonreal)
     ("#x1.23p+0" ,assert-flonum))
   (lambda (string #!optional assertion xfail?)
     (with-expected-failure xfail?
