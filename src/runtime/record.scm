@@ -564,7 +564,8 @@ USA.
 ;;;; Runtime support for DEFINE-STRUCTURE
 
 (define rtd:structure-type)
-(define make-define-structure-type)
+;; RELNOTE: rename without "new-"
+(define new-make-define-structure-type)
 (define structure-type?)
 (define structure-type/physical-type)
 (define structure-type/name)
@@ -579,9 +580,8 @@ USA.
    (set! rtd:structure-type
 	 (make-record-type "structure-type"
 			   '(physical-type name field-names field-indexes
-					   default-inits unparser-method tag
-					   length)))
-   (set! make-define-structure-type
+					   default-inits tag length)))
+   (set! new-make-define-structure-type
 	 (record-constructor rtd:structure-type))
    (set! structure-type?
 	 (record-predicate rtd:structure-type))
@@ -600,6 +600,13 @@ USA.
    (set! structure-type/length
 	 (record-accessor rtd:structure-type 'length))
    unspecific))
+
+;; RELNOTE: delete
+(define (make-define-structure-type physical-type name field-names field-indexes
+				    default-inits unparser-method tag length)
+  (declare (ignore unparser-method))
+  (new-make-define-structure-type physical-type name field-names field-indexes
+				  default-inits tag length))
 
 (define-integrable (structure-type/field-index type field-name)
   (vector-ref (structure-type/field-indexes type)

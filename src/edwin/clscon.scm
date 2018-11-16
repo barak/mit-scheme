@@ -51,13 +51,12 @@ USA.
 				       (and superclass
 					    (class-methods superclass))))))
 	       (named-structure/set-tag-description! class
-		 (make-define-structure-type
+		 (new-make-define-structure-type
 		  'VECTOR
 		  name
 		  (list->vector (map car transforms))
 		  (list->vector (map cdr transforms))
 		  (make-vector (length transforms) (lambda () #f))
-		  (standard-print-method name)
 		  class
 		  object-size))
 	       class))))

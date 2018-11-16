@@ -811,15 +811,12 @@ differences:
 				    `',name))
 			      field-names
 			      inits)))
-	       `(,(absolute 'make-define-structure-type context)
+	       `(,(absolute 'new-make-define-structure-type context)
 		 ',(structure/physical-type structure)
 		 ',name
 		 '#(,@field-names)
 		 '#(,@(map slot/index slots))
 		 (vector ,@inits)
-		 ;; This field was the print-procedure, no longer used.
-		 ;; It should be removed after 9.3 is released.
-		 #f
 		 ,(if (and tag-expression
 			   (not (eq? tag-expression type-name)))
 		      (close tag-expression context)

@@ -145,23 +145,21 @@ USA.
   (add-event-receiver! event:after-restore reset-threads!)
   (add-event-receiver! event:before-exit stop-thread-timer)
   (named-structure/set-tag-description! thread-mutex-tag
-    (make-define-structure-type 'vector
-				"thread-mutex"
-				'#(waiting-threads owner)
-				'#(1 2)
-				(vector 2 (lambda () #f))
-				#f
-				thread-mutex-tag
-				3))
+    (new-make-define-structure-type 'vector
+				    "thread-mutex"
+				    '#(waiting-threads owner)
+				    '#(1 2)
+				    (vector 2 (lambda () #f))
+				    thread-mutex-tag
+				    3))
   (named-structure/set-tag-description! link-tag
-    (make-define-structure-type 'vector
-				"link"
-				'#(prev next item)
-				'#(1 2 3)
-				(vector 3 (lambda () #f))
-				#f
-				link-tag
-				4)))
+    (new-make-define-structure-type 'vector
+				    "link"
+				    '#(prev next item)
+				    '#(1 2 3)
+				    (vector 3 (lambda () #f))
+				    link-tag
+				    4)))
 
 (define-print-method link?
   (standard-print-method 'link))

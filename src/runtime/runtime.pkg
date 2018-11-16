@@ -3824,6 +3824,7 @@ USA.
 	  named-list?
 	  named-structure?
 	  named-vector?
+	  new-make-define-structure-type ;RELNOTE: rename without "new-"
 	  record-accessor
 	  record-applicator
 	  record-constructor

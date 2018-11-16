@@ -520,11 +520,10 @@ USA.
     (lambda ()
       (random-source-randomize! default-random-source)))
   (named-structure/set-tag-description! random-state-tag
-    (make-define-structure-type 'vector
-				'random-state
-				'#(key)
-				'#(1)
-				(make-vector 1 (lambda () #f))
-				#f
-				random-state-tag
-				2)))
+    (new-make-define-structure-type 'vector
+				    'random-state
+				    '#(key)
+				    '#(1)
+				    (make-vector 1 (lambda () #f))
+				    random-state-tag
+				    2)))
