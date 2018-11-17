@@ -34,14 +34,9 @@ USA.
 	 (end (fix:end-index end (string-length string) caller))
 	 (start (fix:start-index start end caller))
 	 (z
-	  (cond ((string=? string "+nan.0") (flo:nan.0))
-		((string=? string "-nan.0") (flo:nan.0))
-		((string=? string "+inf.0") (flo:+inf.0))
-		((string=? string "-inf.0") (flo:-inf.0))
-		(else
-		 (parse-number string start end
-			       (if (default-object? radix) #f radix)
-			       caller)))))
+	  (parse-number string start end
+			(if (default-object? radix) #f radix)
+			caller)))
     (if (and (not z) (if (default-object? error?) #f error?))
 	(error:bad-range-argument string caller))
     z))
@@ -117,6 +112,16 @@ USA.
 				(or exactness 'implicit-inexact)
 				radix
 				sign))
+	       ((and (char-ci=? #\i char)
+		     (string-prefix-ci? "nf.0" string start end))
+		(parse-complex string (+ start 4) end
+			       (if (eq? #\- sign) (flo:-inf.0) (flo:+inf.0))
+			       exactness radix sign))
+	       ((and (char-ci=? #\n char)
+		     (string-prefix-ci? "an.0" string start end))
+		(parse-complex string (+ start 4) end
+			       (flo:nan.0)
+			       exactness radix sign))
 	       ((i? char)
 		(and (fix:= start end)
 		     (make-rectangular 0 (if (eq? #\- sign) -1 1))))
@@ -278,7 +283,7 @@ USA.
 	     (get-digits start #f)))))
 
 (define (parse-dotted-5 string start end integer rexponent exactness radix
-                        sign base bexponent)
+			sign base bexponent)
   (parse-complex string start end
 		 (finish-real integer rexponent exactness radix sign
 			      base bexponent)

@@ -1946,9 +1946,12 @@ USA.
 		(if (real:exact1= i)
 		    ""
 		    (real:->string i radix)))))
-	 (if (real:negative? i)
-	     (string-append "-" (positive-case (real:negate i)))
-	     (string-append "+" (positive-case i))))
+	 (cond ((not (real:finite? i))
+		(real:->string i radix))
+	       ((real:negative? i)
+		(string-append "-" (positive-case (real:negate i))))
+	       (else
+		(string-append "+" (positive-case i)))))
        (if imaginary-unit-j? "j" "i"))
       (real:->string z radix)))
 
