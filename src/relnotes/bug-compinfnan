@@ -1,0 +1,2 @@
+Bug fix: Complex numbers with nonfinite real and imaginary parts can be
+read and printed in rectangular notation now.
