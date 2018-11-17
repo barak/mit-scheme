@@ -1492,13 +1492,11 @@ USA.
 (define-deferred default-http-user-agent
   (list
    (cons "MIT-GNU-Scheme"
-	 (let ((s (string-copy (get-subsystem-version-string "release"))))
-	   (let ((end (string-length s)))
-	     (do ((i 0 (+ i 1)))
-		 ((not (< i end)))
-	       (if (not (char-in-set? (string-ref s i) char-set:http-token))
-		   (string-set! s i #\_))))
-	   s))))
+	 (string-map (lambda (c)
+		       (if (char-in-set? c char-set:http-token)
+			   c
+			   #\_))
+		     (get-subsystem-version-string "release")))))
 
 (define (vector->values vector)
   (apply values (vector->list vector)))

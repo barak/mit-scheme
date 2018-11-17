@@ -96,7 +96,7 @@ USA.
 	       (s (version-string (cdr entry))))
 	   (and s
 		(if (string-null? s)
-		    (string-copy name)
+		    name
 		    (string-append name " " s)))))))
 
 (define (version-string version)
