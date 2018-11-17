@@ -1,0 +1,39 @@
+New pseudorandom number generator algorithm for random API.
+
+The PRNG algorithm is based on the stream cipher ChaCha.  The state is
+a 32-byte seed s; each output x is obtained by breaking the 64-byte
+quantity ChaCha_s(0) into two 32-byte halves s' and x, and replacing
+the state s by s'.
+
+The state is a little smaller than the old algorithm, and we now
+implement random-source-pseudo-randomize! keyed by two 128-bit integer
+seeds which can safely be drawn from the random source itself to attain
+reproducible randomized subtrees of computation with no danger of
+collisions in the seeds.
+
+. (flo:random-unit state) is now deprecated: use flo:random-unit-open
+  if you must for essentially the same semantics, but prefer
+  flo:random-unit-closed.
+
+. (flo:random-unit-open state) samples from the uniform distribution on
+  real numbers in (2^{emin - p}/2, 1 - 2^p/2) rounded to the nearest
+  floating-point number.  Previously, flo:random-unit and random-real
+  were limited to a narrower range and excluded many floating-point
+  numbers in that range.
+
+. (flo:random-unit-closed state) samples from the uniform distribution
+  on real numbers in [0, 1] rounded to the nearest floating-point
+  number.  Effectively, though, it samples from (0, 1], because the
+  probability of getting 0 is smaller than 2^emin which is negligible
+  even for IEEE 754 binary32 (single-precision) where it is 2^-127,
+  whereas the probability of getting 1 is the small but nonnegligible
+  2^{-p}/2, e.g. 2^-54 in binary64.  Thus, it is safe to pass the
+  outcome to log, but not safe to pass the outcome to log1p.
+
+WARNING: The SRFI 27 and old MIT Scheme RNG API are not widely
+implemented as cryptographic PRNGs, so code written against them can't
+rely on them to be cryptographically secure in general.  Further,
+anything involving random-integer, random-real, or bignums is likely to
+be vulnerable to timing attacks.  But if you accidentally do use this
+API to generate cryptographic key material (like SRFI 27 suggests) then
+you might not be as bad off as you would have been before.

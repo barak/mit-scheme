@@ -1,0 +1,6 @@
+Bug fix: The microcode is now compiled with -frounding-math so that the
+rounding mode can be reliably changed.
+
+Note: GCC >=7 sometimes miscompiles math under -O3 even if
+-frounding-math is specified.  In particular, (floor 0.5) sometimes
+returns -0. instead of +0. as it should.

@@ -1,0 +1,7 @@
+New procedure (bytevector-zero-explicit! bv [start [end]]) intended not
+to be optimized away.
+
+This isn't correctly implemented yet -- an old copy of the data may
+remain elsewhere in memory after a GC -- but it may be useful to mark
+where you _would_ want to zero the bytevector if we fixed it in the
+future.

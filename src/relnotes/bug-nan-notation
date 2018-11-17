@@ -1,0 +1,3 @@
+Bug fix: `+nan.0' and `-nan.0' are now read as floating-point
+not-a-number; `nan.0' was incorrectly read as that, but is now read as
+a symbol as it should be.

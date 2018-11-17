@@ -1,0 +1,23 @@
+New IEEE 754 procedures:
+
+. (decompose-ieee754 x base emax precision if-zero if-subnormal if-normal if-infinite if-nan)
+. (decompoes-ieee754-binary x exponent-bits precision) -> [sign biased-exponent trailing-significand]
+. (decompose-ieee754-binary32 x) -> [sign biased-exponent trailing-significand]
+. (decompose-ieee754-binary64 x) -> [sign biased-exponent trailing-significand]
+. (decompose-ieee754-binary128 x) -> [sign biased-exponent trailing-significand]
+. (compose-ieee754-binary sign biased-exponent trailing-significand exponent-bits precision) -> real
+. (compose-ieee754-binary32 sign biased-exponent trailing-significand) -> real
+. (compose-ieee754-binary64 sign biased-exponent trailing-significand) -> real
+. (compose-ieee754-binary128 sign biased-exponent trailing-significand) -> real
+. (compose-ieee754-zero sign) -> real
+. (compose-ieee754-subnormal sign significand base emin precision) -> real
+. (compose-ieee754-normal sign exponent significand base emin precision) -> real
+. (compose-ieee754-infinity sign) -> real
+. (compose-ieee754-nan sign quiet payload) -> nan
+. (ieee754-binary32-exact? x) -> boolean
+. (ieee754-binary64-exact? x) -> boolean
+. (ieee754-binary128-exact? x) -> boolean
+. (ieee754-binary-hex-string x exponent-bits precision) -> string
+. (ieee754-binary32-hex-string x) -> string
+. (ieee754-binary64-hex-string x) -> string
+. (ieee754-binary128-hex-string x) -> string

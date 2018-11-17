@@ -1,0 +1,18 @@
+New procedures:
+
+. (log1p x) = log (1 + x) for any x in (-1, +\infty), -inf for -1.
+  [The primitive flo:log1p has a range restriction due to the Intel
+  i387 CPU instruction.]
+. (expm1 x) = e^x - 1 for any real x.
+  [The primitive flo:expm1 has a range restriction due to the Intel
+  i387 CPU instruction.]
+. (log1mexp x) = log (1 - e^x), for x < 0
+. (log1pexp x) = log (1 + e^x)
+. (logistic x) = 1/(1 + e^{-x}), inverse of logit
+. (logit p) = log p/(1 - p), inverse of logistic
+. (log-logistic x) = log 1/(1 + e^{-x}), inverse of logit-exp
+. (logit-exp t) = log e^t/(1 - e^t), inverse of log-logistic
+. (logit1/2+ p) = (logit (+ 1/2 p)), inverse of logistic-1/2
+. (logistic-1/2 x) = (- (logistic x) 1/2), inverse of logit1/2+
+. (logsumexp (list x y z ...)) = log (e^x + e^y + e^z + ...),
+  guaranteed not to overflow or underflow
