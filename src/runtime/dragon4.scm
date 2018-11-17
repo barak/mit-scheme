@@ -90,27 +90,27 @@ not much different to numbers within a few orders of magnitude of 1.
     (or (and flonum-printer-hook
 	     (flonum-printer-hook x radix))
 	(cond ((flo:nan? x)
-	       (string-copy "+nan.0"))
+	       "+nan.0")
 	      ((flo:positive? x)
 	       (if (flo:infinite? x)
-		   (string-copy "+inf.0")
+		   "+inf.0"
 		   (x>0 x)))
 	      ((flo:negative? x)
 	       (let ((x (flo:negate x)))
 		 (if (flo:infinite? x)
-		     (string-copy "-inf.0")
+		     "-inf.0"
 		     (string-append "-" (x>0 x)))))
 	      ((flo:zero? x)
-	       (string-copy (if (flo:safe-negative? x) "-0." "0.")))
+	       (if (flo:safe-negative? x) "-0." "0."))
 	      (else
-	       (string-copy "+nan.0"))))))
+	       "+nan.0")))))
 
 (define (flonum-printer:normal-output digits k radix)
   (let ((k+1 (+ k 1)))
     (let ((k+1-l (- k+1 (string-length digits)))
 	  (n (flo:significand-digits radix)))
       (cond ((zero? (string-length digits))
-	     (string-copy "0."))
+	     "0.")
 	    ((< k+1-l (- n))
 	     (scientific-output digits k radix 0))
 	    ((negative? k)
