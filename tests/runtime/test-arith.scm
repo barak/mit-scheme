@@ -41,6 +41,9 @@ USA.
 (define assert-not-integer
   (predicate-assertion not-integer? "not integer"))
 
+(define assert-real
+  (predicate-assertion real? "real number"))
+
 (define (define-enumerated-test prefix elements procedure)
   (let ((n (vector-length elements)))
     (do ((i 0 (+ i 1))) ((>= i n))
@@ -133,6 +136,16 @@ USA.
           (list (flo:-inf.0) 0))
   (lambda (l)
     (assert-nan (apply * l))))
+
+(define-enumerated-test 'polar0-real
+  (vector 0 0. -0. 1 1. -1.)
+  (lambda (magnitude)
+    (assert-real (make-polar magnitude 0))))
+
+(define-enumerated-test 'polar0-real-xfail
+  (vector (flo:+inf.0) (flo:-inf.0))
+  (lambda (magnitude)
+    (expect-failure (lambda () (assert-real (make-polar magnitude 0))))))
 
 (define-enumerated-test 'flo:ulp
   (vector
