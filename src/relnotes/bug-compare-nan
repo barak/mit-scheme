@@ -1,0 +1,2 @@
+Bug fix: The <= and >= procedures now return false for NaN inputs; they
+previously returned true.
