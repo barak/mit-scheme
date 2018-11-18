@@ -1796,7 +1796,9 @@ USA.
 	   (complex:-i*
 	    (complex:log
 	     (complex:+ (complex:+i* z)
-			(complex:sqrt (complex:- 1 (complex:* z z)))))))))
+			(complex:*
+			 (complex:sqrt (complex:+ 1 z))
+			 (complex:sqrt (complex:- 1 z)))))))))
     (let ((unsafe-case
 	   (lambda (z)
 	     (complex:negate (safe-case (complex:negate z))))))
