@@ -142,6 +142,10 @@ USA.
   (lambda (magnitude)
     (assert-real (make-polar magnitude 0))))
 
+(define-test 'polar0-nan
+  (lambda ()
+    (assert-nan (make-polar (flo:nan.0) 0))))
+
 (define-enumerated-test 'flo:ulp
   (vector
    (vector (flo:-inf.0) (flo:+inf.0))
