@@ -1744,7 +1744,9 @@ USA.
       ((copy real:expm1) z)))
 
 (define (complex:log1p z)
-  (if (recnum? z)
+  (if (or (recnum? z)
+	  (and (real:real? z)
+	       (<= z -1)))
       (complex:log (complex:+ z 1))	;XXX
       ((copy real:log1p) z)))
 
