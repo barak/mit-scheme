@@ -124,3 +124,12 @@ USA.
 (define-eqv-test "#x-0.-0.i" -0.-0.i)
 (define-eqv-test "#x-0.+10.i" -0.+16.i)
 (define-eqv-test "#x-0.-10.i" -0.-16.i)
+
+(define-eqv-test "+2i" (make-rectangular 0 2))
+(define-eqv-test "-2i" (make-rectangular 0 -2))
+(define-eqv-test "0+2i" (make-rectangular 0 2))
+(define-eqv-test "0-2i" (make-rectangular 0 -2))
+(define-eqv-test "0.+2i" (make-rectangular +0. 2))
+(define-eqv-test "0.-2i" (make-rectangular +0. -2))
+(define-eqv-test "-0.+2i" (make-rectangular -0. 2) 'xfail)
+(define-eqv-test "-0.-2i" (make-rectangular -0. -2) 'xfail)
