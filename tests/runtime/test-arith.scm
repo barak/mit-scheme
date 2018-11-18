@@ -231,7 +231,7 @@ USA.
 (define (relerr e a)
   (if (= e 0)
       (if (= a 0) 0 1)
-      (magnitude (/ (- e a) a))))
+      (magnitude (/ (- e a) e))))
 
 (define-enumerated-test 'expm1-approx
   (vector
