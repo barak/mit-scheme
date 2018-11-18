@@ -1,0 +1,5 @@
+Bug fix: Several bugs were fixed involving signed zero in complex numbers:
+
+- -0.+i is now correctly parses as negative zero real part; previously
+   the negative was discarded and it was parsed as positive zero.
+- -0.i is now correctly printed as such, not as `+-0.i'.
