@@ -1740,14 +1740,14 @@ USA.
 
 (define (complex:expm1 z)
   (if (recnum? z)
-      (complex:- (complex:exp z) 1)	;XXX
+      (complex:-1+ (complex:exp z))	;XXX
       ((copy real:expm1) z)))
 
 (define (complex:log1p z)
   (if (or (recnum? z)
 	  (and (real:real? z)
 	       (<= z -1)))
-      (complex:log (complex:+ z 1))	;XXX
+      (complex:log (complex:1+ z))	;XXX
       ((copy real:log1p) z)))
 
 (define (complex:log1m z)
