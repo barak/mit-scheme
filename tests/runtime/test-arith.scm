@@ -138,14 +138,9 @@ USA.
     (assert-nan (apply * l))))
 
 (define-enumerated-test 'polar0-real
-  (vector 0 0. -0. 1 1. -1.)
+  (vector 0 0. -0. 1 1. -1. (flo:+inf.0) (flo:-inf.0))
   (lambda (magnitude)
     (assert-real (make-polar magnitude 0))))
-
-(define-enumerated-test 'polar0-real-xfail
-  (vector (flo:+inf.0) (flo:-inf.0))
-  (lambda (magnitude)
-    (expect-failure (lambda () (assert-real (make-polar magnitude 0))))))
 
 (define-enumerated-test 'flo:ulp
   (vector

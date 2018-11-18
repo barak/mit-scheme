@@ -1916,8 +1916,10 @@ USA.
       (make-recnum real imag)))
 
 (define (complex:%make-polar magnitude angle)
-  (complex:%make-rectangular (real:* magnitude (real:cos angle))
-			     (real:* magnitude (real:sin angle))))
+  (if (real:exact0= angle)
+      magnitude
+      (complex:%make-rectangular (real:* magnitude (real:cos angle))
+				 (real:* magnitude (real:sin angle)))))
 
 (define (complex:real-part z)
   (cond ((recnum? z) (rec:real-part z))
