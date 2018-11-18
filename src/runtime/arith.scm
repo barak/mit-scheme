@@ -237,13 +237,16 @@ USA.
 	(sc-macro-transformer
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
-		 (type (list-ref form 4)))
+		 (comp (list-ref form 2))
+		 (prim (list-ref form 3))
+		 (type (list-ref form 4))
+		 (borked? (list-ref form 5)))
 	     `(set! ,(close-syntax name environment)
 		    (make-arity-dispatched-procedure
 		     (named-lambda (,name self . zs)
 		       self		; ignored
 		       (reduce-comparator
-			,(close-syntax (list-ref form 2) environment)
+			,(close-syntax comp environment)
 			zs ',name))
 		     (named-lambda (,(symbol 'nullary- name)) #t)
 		     (named-lambda (,(symbol 'unary- name) z)
@@ -253,16 +256,16 @@ USA.
 			    z ,(string-append type " number") ',name))
 		       #t)
 		     (named-lambda (,(symbol 'binary- name) z1 z2)
-		       ,(let ((p
-			       `((ucode-primitive ,(list-ref form 3)) z1 z2)))
-			  (if (list-ref form 5)
-			      `(not ,p)
-			      p))))))))))
+		       (,(if borked?
+			     (close-syntax comp environment)
+			     `(ucode-primitive ,prim))
+			z1
+			z2)))))))))
     (relational = complex:= &= "complex" #f)
     (relational < complex:< &< "real" #f)
     (relational > complex:> &> "real" #f)
-    (relational <= (lambda (x y) (not (complex:< y x))) &> "real" #t)
-    (relational >= (lambda (x y) (not (complex:< x y))) &< "real" #t))
+    (relational <= complex:<= &> "real" #t)
+    (relational >= complex:>= &< "real" #t))
 
   (let-syntax
       ((max/min
@@ -285,6 +288,18 @@ USA.
     (max/min min complex:min))
 
   unspecific)
+
+(define (complex:<= x y)
+  ;; XXX Should use a generic trampoline for this.
+  (and (not (and (flo:flonum? x) (flo:nan? x)))
+       (not (and (flo:flonum? y) (flo:nan? y)))
+       (not (complex:> x y))))
+
+(define (complex:>= x y)
+  ;; XXX Should use a generic trampoline for this.
+  (and (not (and (flo:flonum? x) (flo:nan? x)))
+       (not (and (flo:flonum? y) (flo:nan? y)))
+       (not (complex:< x y))))
 
 (define (int:max n m)
   (if (int:< n m) m n))

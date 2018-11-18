@@ -135,14 +135,14 @@ USA.
     (let ((id identity-procedure))
       (assert-false (= x (flo:nan.0)))
       (assert-false (< x (flo:nan.0)))
-      (expect-failure (lambda () (assert-false ((id >=) x (flo:nan.0)))))
+      (assert-false ((id >=) x (flo:nan.0)))
       (assert-false (> x (flo:nan.0)))
-      (expect-failure (lambda () (assert-false ((id <=) x (flo:nan.0)))))
+      (assert-false ((id <=) x (flo:nan.0)))
       (assert-false (= (flo:nan.0) x))
       (assert-false (< (flo:nan.0) x))
-      (expect-failure (lambda () (assert-false ((id >=) (flo:nan.0) x))))
+      (assert-false ((id >=) (flo:nan.0) x))
       (assert-false (> (flo:nan.0) x))
-      (expect-failure (lambda () (assert-false ((id <=) (flo:nan.0) x)))))))
+      (assert-false ((id <=) (flo:nan.0) x)))))
 
 (define-enumerated-test 'inf*0-exact
   (vector (list 0 (flo:+inf.0))
