@@ -299,7 +299,7 @@ USA.
 		      (parse-top-level string start end exactness radix)))
 		 (and (complex? imaginary)
 		      (= 0 (real-part imaginary))
-		      (+ real imaginary))))
+		      (make-rectangular real (imag-part imaginary)))))
 	      ((char=? #\@ char)
 	       (let ((angle
 		      (parse-top-level string start+1 end exactness radix)))

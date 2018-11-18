@@ -131,5 +131,5 @@ USA.
 (define-eqv-test "0-2i" (make-rectangular 0 -2))
 (define-eqv-test "0.+2i" (make-rectangular +0. 2))
 (define-eqv-test "0.-2i" (make-rectangular +0. -2))
-(define-eqv-test "-0.+2i" (make-rectangular -0. 2) 'xfail)
-(define-eqv-test "-0.-2i" (make-rectangular -0. -2) 'xfail)
+(define-eqv-test "-0.+2i" (make-rectangular -0. 2))
+(define-eqv-test "-0.-2i" (make-rectangular -0. -2))
