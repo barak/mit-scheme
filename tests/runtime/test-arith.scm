@@ -132,7 +132,7 @@ USA.
           (list (flo:+inf.0) 0)
           (list (flo:-inf.0) 0))
   (lambda (l)
-    (expect-failure (lambda () (assert-nan (apply * l))))))
+    (assert-nan (apply * l))))
 
 (define-enumerated-test 'flo:ulp
   (vector
