@@ -9,6 +9,9 @@ If you want to trap on (e.g.) invalid-operation, you can do
   (lambda ()
     ...))
 
+You can find the set of all exceptions that can be trapped with
+(flo:trappable-exceptions).
+
 You can also test for floating-point exceptions after a computation
 without trapping.  Before you can do this for the first time in any
 thread, you must clear the floating-point exceptions (otherwise there
@@ -16,7 +19,7 @@ may be residual garbage from past computations):
 
 (flo:preserving-environment
  (lambda ()
-   (flo:clear-exceptions! (flo:all-exceptions))
+   (flo:clear-exceptions! (flo:supported-exceptions))
    (let ((x (do-big-computation)))
      (if (not (zero? (flo:test-exceptions (flo:exception:underflow))))
          (warn "underflow"))
