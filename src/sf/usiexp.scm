@@ -111,14 +111,6 @@ USA.
 	       (make-combination expr block binary-predicate operands)))
 	#f)))
 
-(define (pairwise-test-inverse inverse-expansion)
-  (lambda (expr operands block)
-    (let ((inverse (inverse-expansion expr operands block)))
-      (if inverse
-	  (make-combination expr block (ucode-primitive not)
-			    (list inverse))
-	  #f))))
-
 (define =-expansion
   (pairwise-test (ucode-primitive &=)
 		 (ucode-primitive zero?)
@@ -133,9 +125,6 @@ USA.
   (pairwise-test (ucode-primitive &>)
 		 (ucode-primitive negative?)
 		 (ucode-primitive positive?)))
-
-(define <=-expansion (pairwise-test-inverse >-expansion))
-(define >=-expansion (pairwise-test-inverse <-expansion))
 
 ;;;; Fixnum Operations
 
@@ -703,10 +692,8 @@ USA.
 	    /
 	    1+
 	    <
-	    <=
 	    =
 	    >
-	    >=
 	    apply
 	    caaaar
 	    caaadr
@@ -787,10 +774,8 @@ USA.
 	   /-expansion
 	   1+-expansion
 	   <-expansion
-	   <=-expansion
 	   =-expansion
 	   >-expansion
-	   >=-expansion
 	   apply*-expansion
 	   caaaar-expansion
 	   caaadr-expansion
