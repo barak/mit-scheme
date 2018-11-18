@@ -473,3 +473,23 @@ USA.
    (flo:+inf.0)
    (flo:-inf.0))
   assert-not-integer)
+
+(define-test 'atan-0
+  (lambda ()
+    (assert-eqv (atan 0) 0)))
+
+(define-enumerated-test 'atan
+  (vector
+   (vector +2i +1.5707963267948966+.5493061443340549i)
+   (vector +0.+2i +1.5707963267948966+.5493061443340549i)
+   (vector -0.+2i -1.5707963267948966+.5493061443340549i)
+   (vector -2i +1.5707963267948966-.5493061443340549i 'xfail)
+   (vector +0.-2i +1.5707963267948966-.5493061443340549i)
+   (vector -0.-2i -1.5707963267948966-.5493061443340549i))
+  (lambda (v)
+    (let ((x (vector-ref v 0))
+          (t (vector-ref v 1))
+          (xfail? (if (<= 3 (vector-length v)) (vector-ref v 2) #f)))
+      (with-expected-failure xfail?
+        (lambda ()
+          (assert-<= (relerr t (atan x)) 1e-15))))))
