@@ -1750,6 +1750,11 @@ USA.
       (complex:log (complex:+ z 1))	;XXX
       ((copy real:log1p) z)))
 
+(define (complex:log1m z)
+  (if (and (real:real? z) (real:< 1 z))
+      (make-recnum (real:log (real:- z 1)) (real:negate rec:pi))
+      (complex:log1p (complex:negate z))))
+
 (define (complex:sin z)
   (if (recnum? z)
       (complex:/ (let ((iz (complex:+i* z)))
@@ -1839,8 +1844,8 @@ USA.
 
 (define (rec:atan z)
   (complex:/ (let ((iz (complex:+i* z)))
-	       (complex:- (complex:log (complex:1+ iz))
-			  (complex:log (complex:- 1 iz))))
+	       (complex:- (complex:log1p iz)
+			  (complex:log1m iz)))
 	     +2i))
 
 (define (complex:angle z)
