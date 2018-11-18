@@ -93,9 +93,9 @@ USA.
     ("123" ,assert-exact-integer)
     ("1/34" ,assert-exact-rational)
     ("123+456i" ,assert-complex-nonreal)
-    ("-0.i" ,assert-real xfail)         ;real?
-    ("0.-0.i" ,assert-real xfail)       ;real?
-    ("-0.-0.i" ,assert-real xfail)      ;real?
+    ("-0.i" ,assert-real)               ;real?
+    ("0.-0.i" ,assert-real)             ;real?
+    ("-0.-0.i" ,assert-real)            ;real?
     ("1.23" ,assert-flonum)
     ("+inf.0i" ,assert-complex-nonreal)
     ("-inf.0i" ,assert-complex-nonreal)

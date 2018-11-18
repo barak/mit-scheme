@@ -1977,6 +1977,11 @@ USA.
 		(real:->string i radix))
 	       ((real:negative? i)
 		(string-append "-" (positive-case (real:negate i))))
+	       ((and (flo:flonum? i)
+		     (flo:zero? i)
+		     (flo:negative? (flo:copysign 1. i)))
+		;; Not negative, but positive case gives `+-0.'.
+		"-0.")
 	       (else
 		(string-append "+" (positive-case i)))))
        (if imaginary-unit-j? "j" "i"))
