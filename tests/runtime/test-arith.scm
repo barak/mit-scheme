@@ -28,6 +28,9 @@ USA.
 
 (declare (usual-integrations))
 
+(define (rsqrt x)
+  (/ 1 (sqrt x)))
+
 (define (assert-nan object)
   (assert-true (flo:flonum? object))
   (assert-true (flo:nan? object)))
@@ -474,12 +477,105 @@ USA.
    (flo:-inf.0))
   assert-not-integer)
 
+(define-test 'asin-0
+  (lambda ()
+    (assert-eqv (asin 0) 0)
+    (assert-eqv (asin (identity-procedure 0)) 0)
+    (assert-eqv (asin 0.) 0.)
+    (assert-eqv (asin (identity-procedure 0.)) 0.)
+    (assert-eqv (asin -0.) -0.)
+    (assert-eqv (asin (identity-procedure -0.)) -0.)))
+
+(define-enumerated-test 'asin
+  (vector
+   (vector (/ (- (sqrt 6) (sqrt 2)) 4) (/ 3.1415926535897932 12))
+   (vector (/ (sqrt (- 2 (sqrt 2))) 2) (/ 3.1415926535897932 8))
+   (vector 1/2 (/ 3.1415926535897932 6))
+   (vector (rsqrt 2) (/ 3.1415926535897932 4))
+   (vector (/ (sqrt 3) 2) (/ 3.1415926535897932 3))
+   (vector (/ (sqrt (+ 2 (sqrt 2))) 2) (* 3.1415926535897932 3/8))
+   (vector (/ (+ (sqrt 6) (sqrt 2)) 4) (* 3.1415926535897932 5/12))
+   (vector 1 (/ 3.1415926535897932 2))
+   (vector 2 1.5707963267948966+1.3169578969248166i 'xfail)
+   (vector 2.+0.i 1.5707963267948966+1.3169578969248166i)
+   (vector 2.-0.i 1.5707963267948966-1.3169578969248166i)
+   (vector -2 -1.5707963267948966+1.3169578969248166i)
+   (vector -2.+0.i -1.5707963267948966+1.3169578969248166i)
+   (vector -2.-0.i -1.5707963267948966-1.3169578969248166i)
+   (vector 1e150 1.5707963267948966+346.0809111296668i 'xfail)
+   (vector 1e150+0.i 1.5707963267948966+346.0809111296668i 'xfail)
+   (vector 1e150-0.i 1.5707963267948966-346.0809111296668i)
+   (vector -1e150 -1.5707963267948966+346.0809111296668i)
+   (vector -1e150+0.i -1.5707963267948966+346.0809111296668i)
+   (vector -1e150-0.i -1.5707963267948966-346.0809111296668i 'xfail)
+   (vector 1e300 1.5707963267948966+691.4686750787736i 'xfail)
+   (vector 1e300+0.i 1.5707963267948966+691.4686750787736i 'xfail)
+   (vector 1e300-0.i 1.5707963267948966-691.4686750787736i 'xfail)
+   (vector -1e300 -1.5707963267948966+691.4686750787736i 'xfail)
+   (vector -1e300+0.i -1.5707963267948966+691.4686750787736i 'xfail)
+   (vector -1e300-0.i -1.5707963267948966-691.4686750787736i 'xfail))
+  (lambda (v)
+    (let ((x (vector-ref v 0))
+          (t (vector-ref v 1))
+          (xfail? (if (<= 3 (vector-length v)) (vector-ref v 2) #f)))
+      (with-expected-failure xfail?
+        (lambda ()
+          (assert-<= (relerr t (asin x)) 1e-14))))))
+
+(define-test 'acos-1
+  (lambda ()
+    (assert-eqv (acos 1) 0)
+    (assert-eqv (acos (identity-procedure 1)) 0)
+    (assert-eqv (acos 1.) 0.)
+    (assert-eqv (acos (identity-procedure 1.)) 0.)))
+
+(define pi/2 (/ 3.1415926535897932 2))
+
+(define-enumerated-test 'acos
+  (vector
+   (vector (/ (+ (sqrt 6) (sqrt 2)) 4) (/ 3.1415926535897932 12))
+   (vector (/ (sqrt (+ 2 (sqrt 2))) 2) (/ 3.1415926535897932 8))
+   (vector (/ (sqrt 3) 2) (/ 3.1415926535897932 6))
+   (vector (rsqrt 2) (/ 3.1415926535897932 4))
+   (vector 1/2 (/ 3.1415926535897932 3))
+   (vector (/ (sqrt (- 2 (sqrt 2))) 2) (* 3.1415926535897932 3/8))
+   (vector (/ (- (sqrt 6) (sqrt 2)) 4) (* 3.1415926535897932 5/12))
+   (vector 0 (/ 3.1415926535897932 2))
+   (vector 2 (* +i (log (- 2 (sqrt 3)))) 'xfail)
+   (vector 2.+0.i (* +i (log (- 2 (sqrt 3)))))
+   (vector 2.-0.i (* -i (log (- 2 (sqrt 3)))))
+   ;; -i log(z + sqrt(z^2 - 1))
+   ;; = -i log(z + sqrt(z - 1) sqrt(z + 1))
+   ;; = -i log(z (1 + sqrt(z - 1) sqrt(z + 1)/z))
+   ;; = -i log(z) - i log1p(sqrt(z - 1) sqrt(z + 1)/z)
+   (vector 1e150 (* +i (+ (log 1e150) (log 2))) 'xfail)
+   (vector 1e150+0.i (* +i (+ (log 1e150) (log 2))) 'xfail)
+   (vector 1e150-0.i (* -i (+ (log 1e150) (log 2))) 'xfail)
+   (vector -1e150 (+ pi/2 (* +i (+ (log 1e150) (log 2)))) 'xfail)
+   (vector -1e150+0.i (+ pi/2 (* +i (+ (log 1e150) (log 2)))) 'xfail)
+   (vector -1e150-0.i (+ pi/2 (* -i (+ (log 1e150) (log 2)))) 'xfail)
+   (vector 1e300 (* +i (+ (log 1e300) (log 2))) 'xfail)
+   (vector 1e300+0.i (* +i (+ (log 1e300) (log 2))) 'xfail)
+   (vector 1e300-0.i (* -i (+ (log 1e300) (log 2))) 'xfail)
+   (vector -1e300 (+ pi/2 (* +i (+ (log 1e300) (log 2)))) 'xfail)
+   (vector -1e300+0.i (+ pi/2 (* +i (+ (log 1e300) (log 2)))) 'xfail)
+   (vector -1e300-0.i (+ pi/2 (* -i (+ (log 1e300) (log 2)))) 'xfail))
+  (lambda (v)
+    (let ((x (vector-ref v 0))
+          (t (vector-ref v 1))
+          (xfail? (if (<= 3 (vector-length v)) (vector-ref v 2) #f)))
+      (with-expected-failure xfail?
+        (lambda ()
+          (assert-<= (relerr t (acos x)) 1e-14))))))
+
 (define-test 'atan-0
   (lambda ()
-    (assert-eqv (atan 0) 0)))
-
-(define (rsqrt x)
-  (/ 1 (sqrt x)))
+    (assert-eqv (atan 0) 0)
+    (assert-eqv (atan (identity-procedure 0)) 0)
+    (assert-eqv (atan 0.) 0.)
+    (assert-eqv (atan (identity-procedure 0.)) 0.)
+    (assert-eqv (atan -0.) -0.)
+    (assert-eqv (atan (identity-procedure -0.)) -0.)))
 
 (define-enumerated-test 'atan
   (vector
