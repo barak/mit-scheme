@@ -129,6 +129,20 @@ USA.
   (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))
   (lambda (v) (assert-nan (/ v (flo:nan.0)))))
 
+(define-enumerated-test 'nan-order
+  (vector 0 0. -0. 1 1. -1 -1. (flo:-inf.0) (flo:+inf.0) (flo:nan.0))
+  (lambda (x)
+    (assert-false (= x (flo:nan.0)))
+    (assert-false (< x (flo:nan.0)))
+    (expect-failure (lambda () (assert-false (>= x (flo:nan.0)))))
+    (assert-false (> x (flo:nan.0)))
+    (expect-failure (lambda () (assert-false (<= x (flo:nan.0)))))
+    (assert-false (= (flo:nan.0) x))
+    (assert-false (< (flo:nan.0) x))
+    (expect-failure (lambda () (assert-false (>= (flo:nan.0) x))))
+    (assert-false (> (flo:nan.0) x))
+    (expect-failure (lambda () (assert-false (<= (flo:nan.0) x))))))
+
 (define-enumerated-test 'inf*0-exact
   (vector (list 0 (flo:+inf.0))
           (list 0 (flo:-inf.0))
