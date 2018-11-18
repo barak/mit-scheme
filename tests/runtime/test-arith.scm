@@ -32,6 +32,12 @@ USA.
   (assert-true (flo:flonum? object))
   (assert-true (flo:nan? object)))
 
+(define (assert-inf- object)
+  (assert-eqv object (flo:-inf.0)))
+
+(define (assert-inf+ object)
+  (assert-eqv object (flo:+inf.0)))
+
 (define (not-integer? x)
   (not (integer? x)))
 
@@ -43,6 +49,12 @@ USA.
 
 (define assert-real
   (predicate-assertion real? "real number"))
+
+(define (with-expected-failure xfail? body)
+  (case xfail?
+    ((xfail) (expect-failure body))
+    ((xerror) (assert-error body))
+    (else (body))))
 
 (define (define-enumerated-test prefix elements procedure)
   (let ((n (vector-length elements)))
@@ -219,7 +231,7 @@ USA.
 (define (relerr e a)
   (if (= e 0)
       (if (= a 0) 0 1)
-      (abs (/ (- e a) a))))
+      (magnitude (/ (- e a) a))))
 
 (define-enumerated-test 'expm1-approx
   (vector
@@ -234,14 +246,25 @@ USA.
 
 (define-enumerated-test 'log1p-approx
   (vector
-   (cons -0.3 -.35667494393873245)
-   (cons (- (sqrt 1/2) 1) -0.34657359027997264)
-   (cons -0.25 -.2876820724517809)
-   (cons 0.25 .22314355131420976)
-   (cons (- 1 (sqrt 1/2)) 0.25688251232181475)
-   (cons 0.3 .26236426446749106))
+   (list -0.3 -.35667494393873245)
+   (list (- (sqrt 1/2) 1) -0.34657359027997264)
+   (list -0.25 -.2876820724517809)
+   (list 0.25 .22314355131420976)
+   (list (- 1 (sqrt 1/2)) 0.25688251232181475)
+   (list 0.3 .26236426446749106)
+   (list -2 +3.141592653589793i 'xfail))
   (lambda (v)
-    (assert-<= (relerr (cdr v) (log1p (car v))) 1e-15)))
+    (let ((x (car v))
+          (z (cadr v))
+          (xfail? (if (pair? (cddr v)) (caddr v) #f)))
+      (with-expected-failure xfail?
+        (lambda ()
+          (assert-<= (relerr z (log1p x)) 1e-15))))))
+
+(define-test 'log1p-inf
+  (lambda ()
+    (assert-inf- (log1p -1))
+    (assert-inf- (log1p -1.))))
 
 (define-enumerated-test 'log1mexp
   (vector
