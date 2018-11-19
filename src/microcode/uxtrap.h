@@ -735,8 +735,78 @@ typedef struct
 #endif /* __NetBSD_Version__ >= 200000000 */
 #endif /* __NetBSD__ */
 
-#ifdef _POSIX_REALTIME_SIGNALS
-#  define HAVE_SIGACTION_SIGINFO_SIGNALS
+#ifdef __APPLE__
+
+#  ifdef __IA32__
+#    define HAVE_SIGCONTEXT
+#    define SIGCONTEXT_FIRST_REG(scp) (& ((scp) -> uc_mcontext -> __ss))
+#    define SIGCONTEXT_NREGS						\
+  (((sizeof (_STRUCT_X86_THREAD_STATE32)) + (SIZEOF_UNSIGNED_LONG - 1))	\
+   / SIZEOF_UNSIGNED_LONG)
+#    define SIGCONTEXT_SP(scp) (((scp) -> uc_mcontext -> __ss) . __esp)
+#    define SIGCONTEXT_PC(scp) (((scp) -> uc_mcontext -> __ss) . __eip)
+#    define SIGCONTEXT_RFREE(scp) (((scp) -> uc_mcontext -> __ss) . __edi)
+#  endif /* __IA32__ */
+
+#  ifdef __x86_64__
+#    define HAVE_SIGCONTEXT
+#    define SIGCONTEXT_FIRST_REG(scp) (& ((scp) -> uc_mcontext -> __ss))
+#    define SIGCONTEXT_NREGS						\
+  (((sizeof (_STRUCT_X86_THREAD_STATE64)) + (SIZEOF_UNSIGNED_LONG - 1))	\
+   / SIZEOF_UNSIGNED_LONG)
+#    define SIGCONTEXT_SP(scp) (((scp) -> uc_mcontext -> __ss) . __rsp)
+#    define SIGCONTEXT_PC(scp) (((scp) -> uc_mcontext -> __ss) . __rip)
+#    define SIGCONTEXT_RFREE(scp) (((scp) -> uc_mcontext -> __ss) . __rdi)
+#  endif /* __x86_64__ */
+
+#  define INITIALIZE_UX_SIGNAL_CODES() do				\
+{									\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_ILLOPC, "Illegal opcode");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_ILLTRP, "Illegal trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_PRVOPC, "Privileged opcode");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_COPROC, "Coprocessor error");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_BADSTK, "Internal stack error");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTDIV, "Floating-point divide by zero");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTOVF, "Floating-point overflow");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTUND, "Floating-point underflow");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTRES, "Floating-point inexact result");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTINV, "Invalid floating-point operation");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTSUB, "Subscript out of range");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_INTDIV, "Integer divide by zero");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_INTOVF, "Integer overflow");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGSEGV, (~0L), SEGV_MAPERR, "Address not mapped to object");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGSEGV, (~0L), SEGV_ACCERR, "Invalid permissions for mapped object"); \
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGBUS, (~0L), BUS_ADRALN, "Invalid address alignment");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGBUS, (~0L), BUS_ADRERR, "Nonexistent physical address");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGBUS, (~0L), BUS_OBJERR, "Object-specific hardware error");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGTRAP, (~0L), TRAP_BRKPT, "Process breakpoint");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGTRAP, (~0L), TRAP_TRACE, "Process trace trap");			\
+} while (0)
+
+#endif /* __APPLE__ */
+
+#if !(defined (HAVE_SIGACTION_SIGINFO_SIGNALS)) && (defined (_POSIX_REALTIME_SIGNALS))
+#  define HAVE_SIGACTION_SIGINFO_SIGNALS 1
 #endif
 
 #ifdef HAVE_SIGACTION_SIGINFO_SIGNALS

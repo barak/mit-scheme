@@ -56,10 +56,6 @@ extern void UX_reinitialize_tty (void);
 #  endif
 #endif
 
-#ifndef __APPLE__
-#  define HAVE_SIGFPE
-#endif
-
 static Tsignal_handler
 current_handler (int signo)
 {
@@ -340,9 +336,7 @@ initialize_signal_descriptors (void)
   defsignal (SIGTRAP, "SIGTRAP",	dfl_terminate,	CORE_DUMP);
   defsignal (SIGIOT, "SIGIOT",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGEMT, "SIGEMT",		dfl_terminate,	CORE_DUMP);
-#ifdef HAVE_SIGFPE
   defsignal (SIGFPE, "SIGFPE",		dfl_terminate,	CORE_DUMP);
-#endif
   defsignal (SIGKILL, "SIGKILL",	dfl_terminate,	(NOIGNORE | NOBLOCK | NOCATCH));
   defsignal (SIGBUS, "SIGBUS",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGSEGV, "SIGSEGV",	dfl_terminate,	CORE_DUMP);
@@ -553,7 +547,6 @@ DEFUN_STD_HANDLER (sighnd_terminate,
     ? (find_signal_name (signo))
     : 0)))
 
-#ifdef HAVE_SIGFPE
 extern void clear_float_exceptions (void);
 
 static
@@ -562,7 +555,6 @@ DEFUN_STD_HANDLER (sighnd_fpe,
   clear_float_exceptions ();
   trap_handler ("floating-point exception", signo, info, scp);
 })
-#endif
 
 static
 DEFUN_STD_HANDLER (sighnd_hardware_trap,
@@ -676,9 +668,7 @@ UX_initialize_signals (void)
   initialize_signal_descriptors ();
   initialize_signal_debugging ();
   bind_handler (SIGINT,		sighnd_control_g);
-#ifdef HAVE_SIGFPE
   bind_handler (SIGFPE,		sighnd_fpe);
-#endif
   bind_handler (SIGALRM,	sighnd_timer);
   bind_handler (SIGVTALRM,	sighnd_timer);
   bind_handler (SIGTERM,	sighnd_control_g);
