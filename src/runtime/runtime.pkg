@@ -1092,7 +1092,6 @@ USA.
 	  string-find-previous-char-in-set
 	  string-foldcase
 	  string-for-each
-	  string-for-primitive		;export to (runtime) after 9.3
 	  string-hash			;SRFI-69
 	  string-ci-hash		;SRFI-69
 	  string-head
@@ -1141,6 +1140,8 @@ USA.
 	  substring
 	  substring?
 	  vector->string)
+  (export (runtime)
+	  string-for-primitive)
   (export (runtime symbol)
 	  %ascii-ustring!
 	  %ascii-ustring-allocate
