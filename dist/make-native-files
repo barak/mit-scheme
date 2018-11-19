@@ -35,7 +35,7 @@ system_usage ()
 {
     echo "usage: ${PROGRAM} TYPE ARCH"
     usage_arg_type
-    echo "  ARCH must be 'i386' or 'x86-64'"
+    echo "  ARCH must be one of 'i386', 'x86-64', or 'svm1'"
 }
 USAGE_FUNCTION=system_usage
 
@@ -48,7 +48,7 @@ build ()
 {
     my_configure --enable-native-code="${ARCH}"
     my_make
-    touch .native-release-marker
+    echo "${ARCH}" > .native-release-marker
 }
 
 clean ()
