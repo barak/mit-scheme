@@ -770,3 +770,24 @@ USA.
              'xfail)
       (lambda ()
         (assert-inf+ (magnitude z))))))
+
+(define-enumerated-test 'infinite-angle
+  (vector
+   (vector +inf.0 0.)   ;XXX Why not exact, if imag-part is exact 0?
+   (vector -inf.0 pi)
+   (vector +inf.0+i 0.)
+   (vector +inf.0-i -0.)
+   (vector -inf.0-i (- pi))
+   (vector -inf.0+i pi)
+   (vector 1+inf.0i (* pi 1/2))
+   (vector 1-inf.0i (* pi -1/2))
+   (vector -1-inf.0i (* pi -1/2))
+   (vector -1+inf.0i (* pi 1/2))
+   (vector +inf.0+inf.0i (* pi 1/4))
+   (vector +inf.0-inf.0i (* pi -1/4))
+   (vector -inf.0-inf.0i (* pi -3/4))
+   (vector -inf.0+inf.0i (* pi 3/4)))
+  (lambda (v)
+    (let ((z (vector-ref v 0))
+          (t (vector-ref v 1)))
+      (assert-<= (relerr t (angle z)) 1e-15))))
