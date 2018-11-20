@@ -258,8 +258,8 @@ USA.
     (assert-eqv (cdr v) (expm1 (car v)))))
 
 (define (relerr e a)
-  (if (= e 0)
-      (if (= a 0) 0 1)
+  (if (or (zero? e) (infinite? e))
+      (if (eqv? a e) 0 1)
       (magnitude (/ (- e a) e))))
 
 (define-enumerated-test 'expm1-approx
@@ -307,7 +307,7 @@ USA.
 
 (define-enumerated-test 'log1pexp
   (vector
-   (cons -1000 0)
+   (cons -1000 0.)
    (cons -708 3.30755300363840783e-308)
    (cons -38 3.13913279204802960e-17)
    (cons -37 8.53304762574406580e-17)
@@ -317,7 +317,7 @@ USA.
    (cons 18 18.0000000152299791)
    (cons 19 19.0000000056027964)
    (cons 33 33.0000000000000071)
-   (cons 34 34))
+   (cons 34 34.))
   (lambda (v)
     (assert-<= (relerr (cdr v) (log1pexp (car v))) 1e-15)))
 
@@ -366,6 +366,11 @@ USA.
   (lambda (l)
     (assert-nan (flo:with-trapped-exceptions 0 (lambda () (logsumexp l))))))
 
+(define (designify0 x)
+  (if (zero? x)
+      (abs x)
+      x))
+
 (define-enumerated-test 'logit-logistic
   (vector
    (vector -36.7368005696771
@@ -385,8 +390,8 @@ USA.
    ;; Would like to do +/-710 but we get inexact result traps.
    (vector +708 1 -3.307553003638408e-308)
    (vector -708 3.307553003638408e-308 -708)
-   (vector +1000 1 0)
-   (vector -1000 0 -1000))
+   (vector +1000 1. -0.)
+   (vector -1000 0. -1000.))
   (lambda (v)
     (let ((x (vector-ref v 0))
           (p (vector-ref v 1))
@@ -404,7 +409,8 @@ USA.
           (assert-<= (logistic (- x)) 1e-300))
       (assert-<= (relerr t (log-logistic x)) 1e-15)
       (if (<= x 709)
-          (assert-<= (relerr x (logit-exp t)) 1e-15))
+          (assert-<= (relerr (exact->inexact x) (designify0 (logit-exp t)))
+                     1e-15))
       (if (< p 1)
           (assert-<= (relerr (log1p (- p)) (log-logistic (- x))) 1e-15)))))
 
