@@ -389,6 +389,7 @@ etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_compiler_target}" \
 compiler/configure "${mit_scheme_compiler_target}" || exit $?
 
 # configure scripts for subdirs care about these
+export IS_NATIVE_RELEASE
 export MIT_SCHEME_EXE
 export MIT_SCHEME_LIBDIR
 export MIT_SCHEME_INCLUDEDIR
