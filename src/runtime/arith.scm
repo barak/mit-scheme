@@ -93,22 +93,26 @@ USA.
 (define rec:pi/2 (flo:* 2. (flo:atan2 1. 1.)))
 (define rec:pi (flo:* 2. rec:pi/2))
 
-(define flo:radix 2)
+(define-integrable flo:radix 2)
+(define-integrable flo:radix. 2.)
 (define flo:ulp-of-one)
 (define flo:error-bound)
 (define flo:log-error-bound)
-(define flo:normal-exponent-max-base-2)
-(define flo:normal-exponent-min-base-2)
-(define flo:normal-exponent-max-base-e)
-(define flo:normal-exponent-min-base-e)
-(define flo:normal-exponent-max-base-10)
-(define flo:normal-exponent-min-base-10)
-(define flo:subnormal-exponent-min-base-2)
-(define flo:subnormal-exponent-min-base-e)
-(define flo:subnormal-exponent-min-base-10)
+(define flo:subnormal-exponent-min)
+(define flo:normal-exponent-min)
+(define flo:normal-exponent-max)
 (define flo:smallest-positive-subnormal)
 (define flo:smallest-positive-normal)
 (define flo:largest-positive-normal)
+(define flo:least-subnormal-exponent-base-2)
+(define flo:least-subnormal-exponent-base-e)
+(define flo:least-subnormal-exponent-base-10)
+(define flo:least-normal-exponent-base-2)
+(define flo:least-normal-exponent-base-e)
+(define flo:least-normal-exponent-base-10)
+(define flo:greatest-normal-exponent-base-2)
+(define flo:greatest-normal-exponent-base-e)
+(define flo:greatest-normal-exponent-base-10)
 (define flo:significand-digits-base-2)
 (define flo:significand-digits-base-10)
 (define int:flonum-integer-limit)
@@ -130,33 +134,100 @@ USA.
   (set! flo:ulp-of-one microcode-id/floating-epsilon)
   (set! flo:error-bound (flo:/ flo:ulp-of-one 2.))
   (set! flo:log-error-bound (flo:log flo:error-bound))
-  (set! flo:normal-exponent-max-base-2 microcode-id/floating-exponent-max)
-  (set! flo:normal-exponent-min-base-2 microcode-id/floating-exponent-min)
-  (set! flo:subnormal-exponent-min-base-2
-	(int:- flo:normal-exponent-min-base-2
+  (set! flo:normal-exponent-max microcode-id/floating-exponent-max)
+  (set! flo:normal-exponent-min microcode-id/floating-exponent-min)
+  (set! flo:subnormal-exponent-min
+	(int:- flo:normal-exponent-min
 	       (int:- flo:significand-digits-base-2 1)))
-  (set! flo:normal-exponent-max-base-e
-	(flo:log (flo:expt 2. (int:->flonum flo:normal-exponent-max-base-2))))
-  (set! flo:normal-exponent-min-base-e
-	(flo:log (flo:expt 2. (int:->flonum flo:normal-exponent-min-base-2))))
-  (set! flo:subnormal-exponent-min-base-e
-	(flo:+
-	 flo:normal-exponent-min-base-e
-	 (flo:log
-	  (flo:expt 2.
-		    (flo:- 0. (int:->flonum flo:significand-digits-base-2))))))
-  (set! flo:normal-exponent-max-base-10
-	(flo:/ flo:normal-exponent-max-base-e (flo:log 10.)))
-  (set! flo:normal-exponent-min-base-10
-	(flo:/ flo:normal-exponent-min-base-e (flo:log 10.)))
-  (set! flo:subnormal-exponent-min-base-10
-	(flo:/ flo:subnormal-exponent-min-base-e (flo:log 10.)))
   (set! flo:smallest-positive-subnormal
-	(flo:ldexp 1. flo:subnormal-exponent-min-base-2))
+	(flo:scalbn 1. flo:subnormal-exponent-min))
   (set! flo:smallest-positive-normal
-	(flo:ldexp 1. flo:normal-exponent-min-base-2))
+	(flo:scalbn 1. flo:normal-exponent-min))
   (set! flo:largest-positive-normal
-	(flo:ldexp (flo:nextafter 2. 0.) flo:normal-exponent-max-base-2))
+	(flo:scalbn (flo:nextafter flo:radix. 0.) flo:normal-exponent-max))
+  (define (rejigger x worst good?)
+    ;; We could use bisection but the initial approximations should be
+    ;; good enough that this search should take at most a couple steps.
+    (define (good x i)
+      (if (fix:>= i 10)
+	  (error "Floating-point parameters are hosed, can't find 'em!"))
+      (let ((x* (flo:nextafter x worst)))
+	(if (good? x*) (good x* (fix:+ i 1)) x)))
+    (define (bad x i)
+      (if (fix:>= i 10)
+	  (error "Floating-point parameters are hosed, can't find 'em!"))
+      (let ((x* (flo:nextafter x (flo:negate worst))))
+	(if (good? x*) x* (bad x* (fix:+ i 1)))))
+    (if (good? x) (good x 0) (bad x 0)))
+  (set! flo:least-subnormal-exponent-base-2
+	(rejigger (flo:- (int:->flonum flo:subnormal-exponent-min) 1.)
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (not (flo:zero? (flo:expt 2. x))))))
+  (set! flo:least-subnormal-exponent-base-e
+	(rejigger (flo:- (flo:log flo:smallest-positive-subnormal) flo:log2)
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (not (flo:zero? (flo:exp x))))))
+  (set! flo:least-subnormal-exponent-base-10
+	(rejigger (flo:/ flo:least-subnormal-exponent-base-e (flo:log 10.))
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (not (flo:zero? (flo:expt 10. x))))))
+  (set! flo:least-normal-exponent-base-2
+	(int:->flonum flo:normal-exponent-min))
+  (set! flo:least-normal-exponent-base-e
+	(rejigger (flo:log flo:smallest-positive-normal)
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (flo:normal? (exp x)))))
+  (set! flo:least-normal-exponent-base-10
+	(rejigger (flo:/ flo:least-normal-exponent-base-e (flo:log 10.))
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (flo:normal? (flo:expt 10. x)))))
+  (let ((b flo:radix.)
+	(emax (int:->flonum flo:normal-exponent-max)))
+    ;; Let eps = ulp(1)/2 = 1/(2 b^{p - 1}).  The largest positive
+    ;; floating-point number m is
+    ;;
+    ;;	b^emax (b - 1 + (b^{p - 1} - 1)/b^{p - 1})
+    ;;	b^emax (b - 1 + (2 b^{p - 1} - 2)/(2 b^{p - 1}))
+    ;;	= b^emax (b - 1 + 1 - 2 eps)
+    ;;	= b^emax (b - 2 eps).
+    ;;
+    ;; What _would_ be the next larger floating-point number is m' =
+    ;; b^{emax + 1}; anything up to (and excluding) halfway from m to
+    ;; m' gets rounded to m, while anything halfway to m' or above is
+    ;; rounded to +infinity.
+    ;;
+    ;; We seek the greatest floating-point x with fl(e^x) < (m + m')/2.
+    ;; We can start by computing an approximation to the log of
+    ;;
+    ;;	(b*b^emax + b^emax (b - 2 eps))/2
+    ;;	= b^emax (b + b - 2 eps)/2
+    ;;	= b^emax (2b - 2 eps)/2
+    ;;	= b^emax 2b (1 - 2 eps/b)/2
+    ;;	= b^{emax + 1} (1 - 2 eps/b)
+    ;;
+    ;; by
+    ;;
+    ;;	log(b^{emax + 1} (1 - 2 eps/b))
+    ;;	= log(b^{emax + 1}) + log(1 - 2 eps/b)
+    ;;	= (emax + 1) log(b) + log1p(-2 eps/b)
+    ;;	= (emax + 1) log(b) + log1p(-ulp(1)/b)
+    ;;
+    ;; It will be off by at most a handful of rounding errors, so we
+    ;; rejigger this estimate with a short search for the correct one.
+    ;;
+    (set! flo:greatest-normal-exponent-base-e
+	  (rejigger (flo:+ (flo:* (flo:+ emax 1.) (flo:log b))
+			   (flo:log1p (flo:/ (flo:negate flo:ulp-of-one) b)))
+		    flo:largest-positive-normal
+		    (lambda (x) (flo:finite? (flo:exp x)))))
+    (set! flo:greatest-normal-exponent-base-2
+	  (rejigger (flo:/ flo:greatest-normal-exponent-base-e (flo:log 2.))
+		    flo:largest-positive-normal
+		    (lambda (x) (flo:finite? (flo:expt 2. x)))))
+    (set! flo:greatest-normal-exponent-base-10
+	  (rejigger (flo:/ flo:greatest-normal-exponent-base-e (flo:log 10.))
+		    flo:largest-positive-normal
+		    (lambda (x) (flo:finite? (flo:expt 10. x))))))
   unspecific)
 
 (define (initialize-package!)
@@ -2083,7 +2154,7 @@ USA.
 
 (define (log1pexp x)
   (guarantee-real x 'log1pexp)
-  (cond ((<= x flo:subnormal-exponent-min-base-e) 0.)
+  (cond ((< x flo:least-subnormal-exponent-base-e) 0.)
 	((<= x flo:log-error-bound) (exp x))
 	((<= x 18) (log1p (exp x)))
 	((<= x 33.3) (+ x (exp (- x))))
@@ -2212,7 +2283,7 @@ USA.
 
 (define (logistic x)
   (guarantee-real x 'logistic)
-  (cond ((<= x flo:subnormal-exponent-min-base-e)
+  (cond ((< x flo:least-subnormal-exponent-base-2)
 	 ;; e^x/(1 + e^x) < e^x < smallest positive float.  (XXX Should
 	 ;; raise inexact and underflow here.)
 	 0.)

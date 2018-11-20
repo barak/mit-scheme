@@ -3359,22 +3359,26 @@ USA.
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
 	  flo:error-bound
+	  flo:greatest-normal-exponent-base-10
+	  flo:greatest-normal-exponent-base-2
+	  flo:greatest-normal-exponent-base-e
 	  flo:largest-positive-normal
+	  flo:least-normal-exponent-base-10
+	  flo:least-normal-exponent-base-2
+	  flo:least-normal-exponent-base-e
+	  flo:least-subnormal-exponent-base-10
+	  flo:least-subnormal-exponent-base-2
+	  flo:least-subnormal-exponent-base-e
 	  flo:log-error-bound
-	  flo:normal-exponent-max-base-10
-	  flo:normal-exponent-max-base-2
-	  flo:normal-exponent-max-base-e
-	  flo:normal-exponent-min-base-10
-	  flo:normal-exponent-min-base-2
-	  flo:normal-exponent-min-base-e
+	  flo:normal-exponent-max
+	  flo:normal-exponent-min
 	  flo:radix
+	  flo:radix.
 	  flo:significand-digits-base-10
 	  flo:significand-digits-base-2
 	  flo:smallest-positive-normal
 	  flo:smallest-positive-subnormal
-	  flo:subnormal-exponent-min-base-10
-	  flo:subnormal-exponent-min-base-2
-	  flo:subnormal-exponent-min-base-e
+	  flo:subnormal-exponent-min
 	  flo:ulp-of-one
 	  flonum-printer:engineering-output
 	  flonum-printer:normal-output

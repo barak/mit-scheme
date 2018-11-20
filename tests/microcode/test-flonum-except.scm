@@ -32,7 +32,7 @@ USA.
   x)
 
 (define (flo:subnormal? x)
-  (flo:< (flo:abs x) (flo:ldexp 1. flo:normal-exponent-min-base-2)))
+  (flo:< (flo:abs x) flo:smallest-positive-normal))
 
 (define assert-flonum
   (predicate-assertion flo:flonum? "object"))
@@ -208,21 +208,21 @@ USA.
 
 ;; XXX Check rounding modes.
 (define-overflow-flag-test 'flonum-multiply
-  (applicator flo:* 2. (flo:ldexp 1. flo:normal-exponent-max-base-2)))
+  (applicator flo:* flo:radix. (flo:scalbn 1. flo:normal-exponent-max)))
 (define-overflow-trap-test 'flonum-multiply
-  (applicator flo:* 2. (flo:ldexp 1. flo:normal-exponent-max-base-2)))
+  (applicator flo:* flo:radix. (flo:scalbn 1. flo:normal-exponent-max)))
 
 ;;; IEEE 754-2008, Sec. 7.5
 
 (define-underflow-flag-test 'flonum-multiply
-  (applicator flo:* .50000001 (flo:ldexp 1. flo:normal-exponent-min-base-2)))
+  (applicator flo:* .50000001 (flo:scalbn 1. flo:normal-exponent-min)))
 (define-underflow-trap-test 'flonum-multiply
-  (applicator flo:* .50000001 (flo:ldexp 1. flo:normal-exponent-min-base-2)))
+  (applicator flo:* .50000001 (flo:scalbn 1. flo:normal-exponent-min)))
 
 ;;; IEEE 754-2008, Sec. 7.6
 
 (define-inexact-flag-test 'flonum-multiply
-  (applicator flo:* .50000001 (flo:ldexp 1. flo:normal-exponent-min-base-2)))
+  (applicator flo:* .50000001 (flo:scalbn 1. flo:normal-exponent-min)))
 
 ;;; Miscellaneous inexact results
 

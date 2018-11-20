@@ -1,8 +1,10 @@
 New flonum-related definitions:
 
-. flo:radix - Floating-point radix.  This is essentially always 2 but
-  useful for assertions if you want to future-proof code that assumes
-  it with a noisy failure in case we ever violate the assumption.
+. flo:radix - Floating-point radix as an integer.  This is essentially
+  always 2 but useful for assertions if you want to future-proof code
+  that assumes it with a noisy failure in case we ever violate the
+  assumption.
+- flo:radix. - Floating-point radix as a flonum.
 . flo:error-bound - Greatest possible relative error in rounding to nearest.
 . flo:log-error-bound = (log flo:error-bound)
 . flo:ulp-of-one - Distance from 1 to next greater floating-point number.
@@ -10,21 +12,41 @@ New flonum-related definitions:
 . flo:log-ulp-of-one = (log flo:ulp-of-one)
 . (flo:ulp x) - Distance from x to the next floating-point number
   larger in magnitude with the same sign.
-. flo:normal-exponent-max-base-2 - Exponent of greatest power of two
-  that is a floating-point number.
-. flo:normal-exponent-min-base-2 - Exponent of least positive power of
-  two that is a _normal_ floating-point number.
-. flo:normal-exponent-max-base-e, flo:normal-exponent-min-base-e,
-  flo:normal-exponent-max-base-10, flo:normal-exponent-min-base-10 -
-  Exponents of the greatest and least positive powers of e and 10 that
-  are normal floating-point numbers.
-. flo:subnormal-exponent-min-base-2 - Exponent of least positive power
-  of two that is a nonzero, subnormal floating-point number.  This
-  number is the least positive floating-point number.
-. flo:subnormal-exponent-min-base-e, flo:subnormal-exponent-min-base-10 -
-  Exponents of least positive powers of e and 10.
+. flo:normal-exponent-max - Exponent of greatest integer power of
+  flo:radix that is a finite floating-point number, as an exact
+  integer.  Note that there are floating-point numbers greater than
+  (expt flo:radix. flo:normal-exponent-max) -- the greatest one is just
+  below flo:radix times that.  But there are none that are a greater
+  _integer_ power of flo:radix.
+. flo:normal-exponent-min - Exponent of least positive integer power of
+  flo:radix that is a normal floating-point number, as an exact
+  integer.  (expt flo:radix. flo:normal-exponent-min) is also named
+  flo:smallest-positive-normal.
+. flo:subnormal-exponent-min - Exponent of least positive integer power
+  of flo:radix that is a nonzero, subnormal floating-point number, as
+  an exact integer.  (expt flo:radix. flo:subnormal-exponent-min) is
+  the least positive floating-point number, also named
+  flo:smallest-positive-subnormal.
 . flo:smallest-positive-subnormal - Smallest positive subnormal.
 . flo:smallest-positive-normal - Smallest positive normal.
 . flo:largest-positive-normal - Largest positive normal.
+. flo:least-subnormal-exponent-base-2 - Least flonum input x for which
+  (expt 2. x) gives a nonzero result.
+. flo:least-subnormal-exponent-base-e - Least flonum input x for which
+  (exp x) gives a nonzero result.
+. flo:least-subnormal-exponent-base-10 - Least flonum input x for which
+  (expt 10. x) gives a nonzero result.
+. flo:least-normal-exponent-base-2 - Least flonum input x for which
+  (expt 2. x) gives a normal result.
+. flo:least-normal-exponent-base-e - Least flonum input x for which
+  (exp x) gives a normal result.
+. flo:least-normal-exponent-base-10 - Least flonum input x for which
+  (expt 10. x) gives a normal result.
+. flo:greatest-normal-exponent-base-2 - Greatest flonum input x for
+  which (expt 2. x) gives a finite result.
+. flo:greatest-normal-exponent-base-e - Greatest flonum input x for
+  which (exp x) gives a finite result.
+. flo:greatest-normal-exponent-base-10 - Greatest flonum input x for
+  which (expt 10. x) gives a finite result.
 . (flo:ldexp x e) = x * 2^e
 . (flo:scalbn x e) = x * b^e, where b is flo:radix
