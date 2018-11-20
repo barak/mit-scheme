@@ -764,12 +764,7 @@ USA.
    -inf.0-inf.0i
    -inf.0+inf.0i)
   (lambda (z)
-    (with-expected-failure
-        (and (infinite? (real-part z))
-             (infinite? (imag-part z))
-             'xfail)
-      (lambda ()
-        (assert-inf+ (magnitude z))))))
+    (assert-inf+ (magnitude z))))
 
 (define-enumerated-test 'infinite-angle
   (vector

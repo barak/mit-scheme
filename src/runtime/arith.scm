@@ -1934,11 +1934,15 @@ USA.
   (if (recnum? z)
       (let ((ar (real:abs (rec:real-part z)))
 	    (ai (real:abs (rec:imag-part z))))
-	(let ((v (real:max ar ai))
-	      (w (real:min ar ai)))
-	  (if (real:zero? v)
-	      v
-	      (real:* v (real:sqrt (real:1+ (real:square (real:/ w v))))))))
+	(if (and (real:exact? ar)
+		 (real:exact? ai))
+	    (let ((v (real:max ar ai))
+		  (w (real:min ar ai)))
+	      (if (real:zero? v)
+		  v
+		  (real:* v
+			  (real:sqrt (real:1+ (real:square (real:/ w v)))))))
+	    (flo:hypot (real:->inexact ar) (real:->inexact ai))))
       (real:abs z)))
 
 (define (complex:sqrt z)
