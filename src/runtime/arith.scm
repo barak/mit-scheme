@@ -2283,7 +2283,7 @@ USA.
 
 (define (logistic x)
   (guarantee-real x 'logistic)
-  (cond ((< x flo:least-subnormal-exponent-base-2)
+  (cond ((< x flo:least-subnormal-exponent-base-e)
 	 ;; e^x/(1 + e^x) < e^x < smallest positive float.  (XXX Should
 	 ;; raise inexact and underflow here.)
 	 0.)
