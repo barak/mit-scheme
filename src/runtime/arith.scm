@@ -2406,7 +2406,7 @@ USA.
 ;;; Ill-conditioned near +/-1/2.  If |p0| > 1/2 - 1/(1 + e), it may be
 ;;; better to compute 1/2 +/- p0 (whichever is closer to zero) and to
 ;;; use logit instead.  This implementation gives relative error
-;;; bounded by 10 eps.
+;;; bounded by 34 eps.
 
 (define (logit1/2+ p-1/2)
   (cond ((<= (abs p-1/2) (- 1/2 (/ 1 (+ 1 (exp 1)))))
@@ -2420,54 +2420,60 @@ USA.
 	 ;; = log(1 + (1/2 + p' - 1/2 + p')/(1/2 - p'))
 	 ;; = log(1 + 2 p'/(1/2 - p'))
 	 ;;
-	 ;; Note that since p0/2 <= 1/2 <= 2 p0, 1/2 - p0 is
-	 ;; computed exactly without error; the only error
-	 ;; arises from division and log1p.  If the error of
-	 ;; division is d0 and the error of log1p is d1, then
+	 ;; If the error of subtraction is d0, the error of
+	 ;; division is d1, and the error of log1p is d2, then
 	 ;; what we compute is
 	 ;;
-	 ;;	(1 + d1) log(1 + (1 + d0) 2 p0/(1/2 - p0))
-	 ;;	= (1 + d1) (1 + d') log(1 + 2 p0/(1/2 - p0))
-	 ;;	= (1 + d1 + d' + d1 d') log(1 + 2 p0/(1/2 - p0)).
+	 ;;	(1 + d2) log(1 + (1 + d1) 2 p0/[(1 + d0) (1/2 - p0)])
+	 ;;	= (1 + d2) log(1 + (1 + d') 2 p0/(1/2 - p0))
+	 ;;	= (1 + d2) (1 + d'') log(1 + 2 p0/(1/2 - p0))
+	 ;;	= (1 + d2 + d'' + d2 d'') log(1 + 2 p0/(1/2 - p0)),
 	 ;;
-	 ;; where |d'| < 8|d0| by Lemma 4, since
+	 ;; where |d'| < 2|d0 - d1| <= 4 eps by Lemma 2, and
+	 ;; |d''| < 8|d'| < 32 eps by Lemma 4 since
 	 ;;
 	 ;;	1/e <= 1 + 2*p0/(1/2 - p0) <= e
 	 ;;
 	 ;; when |p0| <= 1/2 - 1/(1 + e).  Hence the relative
 	 ;; error is bounded by
 	 ;;
-	 ;;	|d1 + d' + d1 d'|
-	 ;;	<= |d1| + |d'| + |d1 d'|
-	 ;;	<= |d1| + 8 |d0| + 8 |d1 d0|
-	 ;;	<= 9 eps + 8 eps^2.
+	 ;;	|d2 + d'' + d2 d''|
+	 ;;	<= |d2| + |d''| + |d2 d''|
+	 ;;	<= |d1| + 32 |d0| + 32 |d1 d0|
+	 ;;	<= 33 eps + 32 eps^2.
 	 ;;
 	 (log1p (/ (* 2 p-1/2) (- 1/2 p-1/2))))
 	(else
-	 ;; We have a choice of computing logit(1/2 + p0) or -logit(1 -
-	 ;; (1/2 + p0)) = -logit(1/2 - p0).  It doesn't matter which
-	 ;; way we do this: either way, since 1/2 p0 <= 1/2 <= 2 p0,
+	 ;; We have a choice of computing logit(1/2 + p') or -logit(1 -
+	 ;; (1/2 + p')) = -logit(1/2 - p').  It doesn't matter which
+	 ;; way we do this: either way, since 1/2 p' <= 1/2 <= 2 p',
 	 ;; the sum and difference are computed exactly.  So let's do
 	 ;; the one that skips the final negation.
 	 ;;
-	 ;; Again, the only error arises from division and log.  So the
-	 ;; result is
+	 ;; The result is
 	 ;;
-	 ;;	(1 + d1) log((1 + d0) (1/2 + p0)/(1/2 - p0))
-	 ;;	= (1 + d1) (1 + log(1 + d0)/log((1/2 + p0)/(1/2 - p0)))
-	 ;;	  * log((1/2 + p0)/(1/2 - p0))
-	 ;;	= (1 + d') log((1/2 + p0)/(1/2 - p0))
+	 ;;	(1 + d1) log((1 + d0) (1/2 + p')/[(1 + d2) (1/2 - p')])
+	 ;;	= (1 + d1) (1 + log((1 + d0)/(1 + d2))
+	 ;;			/ log((1/2 + p')/(1/2 - p')))
+	 ;;	  * log((1/2 + p')/(1/2 - p'))
+	 ;;	= (1 + d') log((1/2 + p')/(1/2 - p'))
+	 ;;	= (1 + d') logit(1/2 + p')
 	 ;;
 	 ;; where
 	 ;;
-	 ;;	d' = d1 + log(1 + d0)/log((1/2 + p0)/(1/2 - p0))
-	 ;;	     + d1 log(1 + d0)/log((1/2 + p0)/(1/2 - p0)).
+	 ;;	d' = d1 + log((1 + d0)/(1 + d2))/logit(1/2 + p')
+	 ;;	     + d1 log((1 + d0)/(1 + d2))/logit(1/2 + p').
 	 ;;
-	 ;; For |p| > 1/2 - 1/(1 + e), logit(1/2 + p0) > 1.  For |d0| <
-	 ;; 1/2, |log(1 + d0)| < 2|d0|.  Hence this is bounded by
+	 ;; For |p| > 1/2 - 1/(1 + e), logit(1/2 + p') > 1.  Provided
+	 ;; |d0|, |d2| < 1/4, by Lemma 3 we have
 	 ;;
-	 ;;	|d'| <= |d1| + 2|d0| + 2|d0 d1|
-	 ;;	     <= 3 eps + 2 eps^2.
+	 ;;	|log((1 + d0)/(1 + d2))| <= 4|d0 - d2|.
+	 ;;
+	 ;; Hence the relative error is bounded by
+	 ;;
+	 ;;	|d'| <= |d1| + 4|d0 - d2| + 4|d1| |d0 - d2|
+	 ;;	     <= |d1| + 4|d0| + 4|d2| + 4|d1 d0| + 4|d1 d2|
+	 ;;	     <= 9 eps + 8 eps^2.
 	 ;;
 	 (log (/ (+ 1/2 p-1/2) (- 1/2 p-1/2))))))
 
