@@ -740,3 +740,27 @@ USA.
     (assert-inf+
      (expt 10.
            (flo:nextafter flo:greatest-normal-exponent-base-2 (flo:+inf.0))))))
+
+(define-enumerated-test 'infinite-magnitude
+  (vector
+   +inf.0
+   -inf.0
+   +inf.0+i
+   +inf.0-i
+   -inf.0-i
+   -inf.0+i
+   1+inf.0i
+   1-inf.0i
+   -1-inf.0i
+   -1+inf.0i
+   +inf.0+inf.0i
+   +inf.0-inf.0i
+   -inf.0-inf.0i
+   -inf.0+inf.0i)
+  (lambda (z)
+    (with-expected-failure
+        (and (infinite? (real-part z))
+             (infinite? (imag-part z))
+             'xfail)
+      (lambda ()
+        (assert-inf+ (magnitude z))))))
