@@ -2309,7 +2309,19 @@ USA.
   ;;	2|d2| + 2|d3| + 2|d2 d3| + 2|d1| + 2|d0| + 2|d0 d1|
   ;;	<= 4 eps + 2 eps^2.
   ;;
-  (- (/ (expm1 (- x)) (* 2 (+ 1 (exp (- x)))))))
+  ;; However, if x is a large negative, e^{-x} might overflow.  When
+  ;;
+  ;;    x < log(eps) - 2 < log(eps) - log(4) = log(eps/4)
+  ;;      < log(eps/4) - log(1 - eps/4)
+  ;;      = logit(eps/4),
+  ;;
+  ;; we have logistic(x) < eps/4.  Hence the relative error of
+  ;; logistic(x) - 1/2 from -1/2 is bounded by eps/2, and so the
+  ;; relative error of -1/2 from logistic(x) - 1/2 is bounded by eps.
+  ;;
+  (if (< x (flo:- flo:log-error-bound 2.))
+      -0.5
+      (- (/ (expm1 (- x)) (* 2 (+ 1 (exp (- x))))))))
 
 (define-integrable logit-boundary-lo	;logistic(-1)
   (flo:/ (flo:exp -1.) (flo:+ 1. (flo:exp -1.))))

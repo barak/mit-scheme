@@ -401,11 +401,7 @@ USA.
             (assert-<= (relerr x (logit1/2+ p)) 1e-15)
             (assert-= (- (logit1/2+ p)) (logit1/2+ (- p)))))
       (assert-<= (relerr p (logistic-1/2 x)) 1e-15)
-      ;; Currently logistic-1/2 takes no measures to avoid overflow in
-      ;; (exp (- x)).
-      (with-expected-failure (if (>= x 710) 'xfail #f)
-        (lambda ()
-          (assert-= (- (logistic-1/2 x)) (logistic-1/2 (- x))))))))
+      (assert-= (- (logistic-1/2 x)) (logistic-1/2 (- x))))))
 
 (define-enumerated-test 'expt-exact
   (vector
