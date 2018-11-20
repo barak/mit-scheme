@@ -387,14 +387,25 @@ USA.
    (vector 1e-300 4e-300)
    (vector 1e-16 4e-16)
    (vector .2310585786300049 1.)
-   (vector .49999999999999994 37.42994775023705))
+   (vector .49999999999999994 37.42994775023705)
+   (vector .5 38)
+   (vector .5 38)
+   (vector .5 709)
+   (vector .5 1000)
+   (vector .5 1e300))
   (lambda (v)
     (let ((p (vector-ref v 0))
           (x (vector-ref v 1)))
-      (assert-<= (relerr x (logit1/2+ p)) 1e-15)
+      (if (< p .5)
+          (begin
+            (assert-<= (relerr x (logit1/2+ p)) 1e-15)
+            (assert-= (- (logit1/2+ p)) (logit1/2+ (- p)))))
       (assert-<= (relerr p (logistic-1/2 x)) 1e-15)
-      (assert-= (- (logit1/2+ p)) (logit1/2+ (- p)))
-      (assert-= (- (logistic-1/2 x)) (logistic-1/2 (- x))))))
+      ;; Currently logistic-1/2 takes no measures to avoid overflow in
+      ;; (exp (- x)).
+      (with-expected-failure (if (>= x 710) 'xfail #f)
+        (lambda ()
+          (assert-= (- (logistic-1/2 x)) (logistic-1/2 (- x))))))))
 
 (define-enumerated-test 'expt-exact
   (vector
