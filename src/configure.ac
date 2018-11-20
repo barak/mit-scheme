@@ -30,9 +30,9 @@ USA.
 ])
 
 if test -f .native-release-marker; then
-    IS_NATIVE_RELEASE=yes
+    IS_NATIVE_RELEASE=`cat .native-release-marker`
 else
-    IS_NATIVE_RELEASE=no
+    IS_NATIVE_RELEASE=
 fi
 
 AC_ARG_ENABLE([debugging],
@@ -43,7 +43,11 @@ AC_ARG_ENABLE([debugging],
 AC_ARG_ENABLE([native-code],
     AS_HELP_STRING([--enable-native-code],
 	[Support native compiled code if available [[yes]]]))
-: ${enable_native_code=yes}
+if test x"${IS_NATIVE_RELEASE}" != x; then
+    : ${enable_native_code=${IS_NATIVE_RELEASE}}
+else
+    : ${enable_native_code=yes}
+fi
 
 AC_ARG_WITH([compiler-target],
     AS_HELP_STRING([--with-compiler-target],
@@ -53,7 +57,7 @@ AC_ARG_WITH([compiler-target],
 AC_ARG_ENABLE([host-scheme-test],
     AS_HELP_STRING([--enable-host-scheme-test],
 	[Test for working scheme on build host [[if necessary]]]))
-if test x"${IS_NATIVE_RELEASE}" = xyes || test -f lib/all.com; then
+if test x"${IS_NATIVE_RELEASE}" != x || test -f lib/all.com; then
     : ${enable_host_scheme_test=no}
 else
     : ${enable_host_scheme_test=yes}
@@ -72,7 +76,7 @@ fi
 AC_ARG_WITH([default-target],
     AS_HELP_STRING([--with-default-target],
 	[Set the default make target [[all]]]))
-if test x"${IS_NATIVE_RELEASE}" = xyes; then
+if test x"${IS_NATIVE_RELEASE}" != x; then
     DEFAULT_DEFAULT_TARGET=compile-microcode
 elif test "x${enable_cross_compiling}" = xyes; then
     DEFAULT_DEFAULT_TARGET=cross-host
