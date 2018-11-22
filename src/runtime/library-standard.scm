@@ -974,3 +974,31 @@ USA.
 
 (define-standard-library '(srfi 131)
   '(define-record-type))
+
+;;;; Legacy packages
+
+(define legacy-libraries)
+
+(define (initialize-legacy-libraries! package-file)
+  (set! legacy-libraries
+	(filter-map (lambda (pd)
+		      (and (let ((name (package-description/name pd)))
+			     (and (pair? name)
+				  (eq? (car name) 'runtime)))
+			   (create-legacy-library pd)))
+		    (vector->list (package-file/descriptions package-file))))
+  (register-libraries! legacy-libraries host-library-db))
+
+(define (create-legacy-library pd)
+  (make-library (cons* 'mit 'legacy (package-description/name pd))
+		'parsed-imports '()
+		'exports (package-exports pd)
+		'parsed-contents '()
+		'filename #f
+		'environment system-global-environment))
+
+(define (package-exports pd)
+  (filter-map (lambda (link)
+		(and (null? (link-description/package link))
+		     (make-library-export (link-description/outer-name link))))
+	      (vector->list (package-description/exports pd))))

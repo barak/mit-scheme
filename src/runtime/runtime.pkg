@@ -52,6 +52,13 @@ USA.
 	  package/reference
 	  package?
 	  all-packages)
+  (export (runtime library standard)
+	  link-description/inner-name
+	  link-description/outer-name
+	  link-description/package
+	  package-description/exports
+	  package-description/name
+	  package-file/descriptions)
   (export (runtime environment)
 	  package-name-tag)
   (initialization (initialize-package!)))

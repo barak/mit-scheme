@@ -570,8 +570,22 @@ USA.
   (if obj
       (eval obj system-global-environment)))
 
-(link-variables (->environment '(runtime environment)) 'package-name-tag
-		(->environment '(package)) 'package-name-tag)
+(let* ((package-env (->environment '(package)))
+       (export
+	(lambda (target-package names)
+	  (let ((target-env (->environment target-package)))
+	    (for-each (lambda (name)
+			(link-variables target-env name package-env name))
+		      names)))))
+  (export '(runtime environment)
+	  '(package-name-tag))
+  (export '(runtime library standard)
+	  '(link-description/inner-name
+	    link-description/outer-name
+	    link-description/package
+	    package-description/exports
+	    package-description/name
+	    package-file/descriptions)))
 
 (let ((roots
        (list->vector
@@ -602,6 +616,10 @@ USA.
   ;; Then, really purify the rest.
   (purify roots #t #f)
   (write-string "done" (console-i/o-port)))
+
+((lexical-reference (->environment '(runtime library standard))
+		    'initialize-legacy-libraries!)
+ packages-file)
 
 )
 
