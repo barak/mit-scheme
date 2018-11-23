@@ -155,16 +155,45 @@ using.
 We will use as an example the installation for GNU/Linux.  The
 installation for other unix systems is similar.  There are several
 references to @var{ARCH} below; these refer to the computer
-architecture that Scheme is compiled for, either @samp{i386} or
-@samp{x86-64}.
+architecture that Scheme is compiled for: either @samp{i386}
+@samp{x86-64}, or @samp{svm1}.
 
 MIT/GNU Scheme is distributed as a compressed `tar' file.  The tar
 file contains both source and binary files; the binary files are
-pre-compiled Scheme code for a particular computer architecture.
+pre-compiled Scheme code for a particular computer architecture.  The
+source files are C programs that need to be compiled.
+
+@heading Requirements
+
+At a minimum, you will need a C compiler (e.g. @samp{gcc}) and a
+@samp{make} program, and a ``curses'' library.  For example, here are
+the packages that must be installed on some popular systems:
+
+@itemize @bullet
+@item
+Debian-like systems: @code{gcc} @code{make} @code{libncurses-dev}
+@item
+CentOS-like systems: @code{gcc} @code{make} @code{ncurses-devel}
+@item
+macOS systems: @code{Xcode}
+@end itemize
+
+Additionally, if you want support for X11 graphics, you'll need:
+
+@itemize @bullet
+@item
+Debian-like systems: @code{libx11-dev}
+@item
+CentOS-like systems: @code{libX11-devel}
+@item
+macOS systems: @code{XQuartz} (from @url{https://www.xquartz.org/})
+@end itemize
+
+@heading Steps
 
 In order to install the software, it's necessary to configure and
 compile the C code, then to install the combined C and Scheme
-binaries.  This is done in the following steps:
+binaries, with the following steps.
 
 @enumerate
 @item
@@ -201,13 +230,24 @@ installed somewhere else, for example @file{/opt/mit-scheme}, pass the
 The configure script accepts all the normal arguments for such
 scripts, and additionally accepts some that are specific to MIT/GNU
 Scheme.  To see all the possible arguments and their meanings, run the
-command @kbd{./configure --help}.
+command @kbd{./configure --help}.  However, do not specify the
+following options, which are all preconfigured to the right values;
+doing so will probably cause the build to fail:
+
+@example
+--enable-native-code
+--enable-host-scheme-test
+--enable-cross-compiling
+--with-compiler-target
+--with-default-target
+--with-scheme-build
+@end example
 
 @item
 Build the software:
 
 @example
-make compile-microcode
+make
 @end example
 
 @item
@@ -240,27 +280,26 @@ Depending on configuration options and file-system permissions, you
 may need super-user privileges to do the installation step.
 @end enumerate
 
-After you have installed Scheme you will want to install several
+@heading Plugins
+
+After you have installed Scheme you may want to install several
 @dfn{plugins}.  Scheme no longer uses dynamically loaded microcode
 modules installed with Scheme.  The micromodules have been converted
 into plugins: new subsystems that use the C/FFI to dynamically load
-the same code.  Crucially at this point plugins can be built and
-installed separately.
+the same code.  Instead you configure, build, and install additional
+plugins after installing the core system.
 
-To get all of the functionality previously available in version 9.2
-you will need to build and install all of the plugins included in the
-@file{src} subdirectory: blowfish, gdbm, mcrypt, pgsql, edwin, imail,
-x11 and x11-screen.  Edwin does not use the C/FFI directly, but it
-does use the blowfish and gdbm plugins.  It is now built separately,
-like a plugin, after the blowfish and gdbm plugins are installed.
-Similarly, Imail must be built after Edwin is installed, and the X11
-Screen option cannot be built until Edwin and the X11 plugin are
-installed.  And without X11 Screen, Edwin will only display on a
-terminal.
+By default, the following plugins are built and installed:
+@file{edwin}, @file{imail}, @file{x11}, and @file{x11-screen}.  (The
+latter two only if X11 libraries are installed on your system.)  To
+get all of the functionality previously available in version 9.2 you
+will need to build and install the remaining plugins included in the
+@file{src} subdirectory: @file{blowfish}, @file{gdbm}, @file{mcrypt},
+and @file{pgsql}.  These plugins are all configured, built, and
+installed in the GNU standard way.  See the @file{README} file in each
+plugin's source directory for complete details.
 
-These plugins are all configured, built and installed in the GNU
-standard way.  See the @file{README} file in each plugin's source
-directory for complete details.
+@heading Cleanup
 
 After installing Scheme and your desired plugins, you can delete the
 source directory:
@@ -283,7 +322,7 @@ will allow you to choose the directory in which MIT/GNU Scheme is
 to be installed, and the name of the folder in which the shortcuts are
 to be placed.
 
-To uninstall the software, open up the @samp{Control Panel}, run
+To uninstall the software, open up the @code{Control Panel}, run
 @samp{Add/Remove Programs}, and double-click on @samp{MIT/GNU Scheme}.
 
 @node Portable C Installation
