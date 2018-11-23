@@ -176,7 +176,9 @@ MIT_SCHEME_CC_TYPE=${mit_scheme_native_code}
 #   src/configure.ac
 #   src/etc/make-native.sh
 
-if test x"${with_scheme_build}" != xdefault; then
+if test x"${IS_NATIVE_RELEASE}" != x; then
+    MIT_SCHEME_EXE=no-mit-scheme-needed
+elif test x"${with_scheme_build}" != xdefault; then
     AC_MSG_CHECKING([for specified MIT/GNU Scheme build])
     HOST_BUILD_DIR=${with_scheme_build}
     case ${HOST_BUILD_DIR} in
