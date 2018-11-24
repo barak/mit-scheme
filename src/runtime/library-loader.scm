@@ -33,13 +33,7 @@ USA.
 
 (define (syntax-r7rs-source source db)
   (register-r7rs-source! source (copy-library-db db))
-  (make-r7rs-scode-file
-   (map library->scode-library
-	(append (r7rs-source-libraries source)
-		(let ((program (r7rs-source-program source)))
-		  (if program
-		      (list program)
-		      '()))))))
+  (r7rs-source->scode-file source))
 
 (define-automatic-property '(contents bound-names imports-used)
     '(parsed-contents imports exports imports-environment)
@@ -177,7 +171,7 @@ USA.
 	 (let ((filename (->namestring pathname)))
 	   (map (lambda (library)
 		  (scode-library->library library filename))
-		(r7rs-scode-file-libraries scode)))))
+		(r7rs-scode-file-elements scode)))))
     (register-libraries! libraries db)
     (let loop ((libraries libraries) (result unspecific))
       (if (pair? libraries)
@@ -207,3 +201,132 @@ USA.
 	  (if (not p)
 	      (error "Not an exported name:" name))
 	  (cdr p))))))
+
+(define (find-scheme-libraries! pathname)
+  (preregister-libraries! pathname (current-library-db)))
+
+(define (preregister-libraries! pathname db)
+  (let ((pattern (get-directory-read-pattern pathname)))
+    (if pattern
+	(let ((root (directory-pathname pattern)))
+	  (let loop ((pattern pattern))
+	    (receive (files subdirs)
+		(find-matching-files scheme-pathname? pattern)
+	      (for-each (lambda (group)
+			  (preregister-scheme-file! group root db))
+			(group-scheme-files files))
+	      (for-each (lambda (subdir)
+			  (loop (pathname-as-directory subdir)))
+			subdirs)))))))
+
+(define (get-directory-read-pattern pathname)
+  (case (file-type-direct pathname)
+    ((regular)
+     (and (or (scheme-pathname? pathname)
+	      (not (pathname-type pathname)))
+	  (pathname-new-type pathname 'wild)))
+    ((directory) (pathname-as-directory pathname))
+    (else #f)))
+
+(define (find-matching-files predicate pattern)
+  (let loop
+      ((pathnames (directory-read pattern #f))
+       (files '())
+       (directories '()))
+    (if (pair? pathnames)
+	(let ((pathname (car pathnames))
+	      (pathnames (cdr pathnames)))
+	  (case (file-type-direct pathname)
+	    ((regular)
+	     (loop pathnames
+		   (if (predicate pathname)
+		       (cons pathname files)
+		       files)
+		   directories))
+	    ((directory)
+	     (loop pathnames
+		   files
+		   (if (member (file-namestring pathname) '("." ".."))
+		       directories
+		       (cons pathname directories))))
+	    (else
+	     (loop pathnames files directories))))
+	(values files directories))))
+
+(define (scheme-pathname? pathname)
+  (member (pathname-type pathname) '("scm" "bin" "com")))
+
+(define (group-scheme-files files)
+  (let ((table (make-string-hash-table)))
+    (for-each (lambda (file)
+		(hash-table-update! table
+				    (pathname-name file)
+				    (lambda (files) (cons file files))
+				    (lambda () '())))
+	      files)
+    (hash-table-values table)))
+
+(define (preregister-scheme-file! file-group root db)
+
+  (define (find-file type)
+    (find (lambda (file)
+	    (string=? type (pathname-type file)))
+	  file-group))
+
+  (define (handle-compiled compiled)
+    (let ((scode (fasload compiled)))
+      (if (r7rs-scode-file? scode)
+	  (finish (map (lambda (scode-library)
+			 (scode-library->library scode-library
+						 (->namestring compiled)))
+		       (r7rs-scode-file-libraries scode))
+		  compiled))))
+
+  (define (handle-source source)
+    (let ((parsed (read-r7rs-source source)))
+      (if parsed
+	  (finish (r7rs-source-libraries parsed) source))))
+
+  (define (finish libraries filename)
+    (let ((display-filename (enough-namestring filename root)))
+      ;; Remove any previously registed libraries from this file.
+      (for-each (let ((no-type (pathname-new-type filename #f)))
+		  (lambda (library)
+		    (if (let ((filename* (library-filename library)))
+			  (and filename*
+			       (pathname=? (pathname-new-type filename* #f)
+					   no-type)))
+			(with-notification
+			    (lambda (port)
+			      (write-string "Deregistering library " port)
+			      (write (library-name library) port)
+			      (write-string " from \"" port)
+			      (write-string
+			       (enough-namestring (library-filename library)
+						  root)
+			       port)
+			      (write-string "\"" port))
+			  (lambda ()
+			    (db 'delete! (library-name library)))))))
+		(db 'get-all))
+      ;; Now register the current file contents.
+      (for-each (lambda (library)
+		  (with-notification
+		      (lambda (port)
+			(write-string "Registering library " port)
+			(write (library-name library) port)
+			(write-string " from \"" port)
+			(write-string display-filename port)
+			(write-string "\"" port))
+		    (lambda ()
+		      (preregister-library! library db))))
+		libraries)))
+
+  (let ((compiled (or (find-file "com") (find-file "bin")))
+	(source (find-file "scm")))
+    (if compiled
+	(handle-compiled compiled)
+	(begin
+	  (if (not source)
+	      (error "No scheme files:" file-group))
+	  (handle-source source)))))

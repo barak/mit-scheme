@@ -92,6 +92,13 @@ USA.
   (libraries r7rs-source-libraries)
   (program r7rs-source-program))
 
+(define (r7rs-source-elements source)
+  (let ((libraries (r7rs-source-libraries source))
+	(program (r7rs-source-program source)))
+    (if program
+	(append libraries (list program))
+	libraries)))
+
 (define (register-r7rs-source! source db)
   (register-libraries! (r7rs-source-libraries source) db)
   (let ((program (r7rs-source-program source)))

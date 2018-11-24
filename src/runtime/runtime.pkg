@@ -5925,6 +5925,7 @@ USA.
 	  library-imports-environment
 	  library-parsed-contents
 	  library-parsed-imports
+	  library-preregistered?
 	  library-syntaxed-contents
 	  list->library-export
 	  list->library-import
@@ -5932,6 +5933,7 @@ USA.
 	  make-library-db
 	  make-library-export
 	  make-library-import
+	  preregister-library!
 	  register-libraries!
 	  register-library!))
 
@@ -5941,8 +5943,9 @@ USA.
   (export (runtime)
 	  library-name=?
 	  library-name?
-	  r7rs-source-program
+	  r7rs-source-elements
 	  r7rs-source-libraries
+	  r7rs-source-program
 	  r7rs-source?
 	  read-r7rs-source
 	  register-r7rs-source!)
@@ -5987,7 +5990,10 @@ USA.
   (export (runtime library)
 	  library->scode-library
 	  make-r7rs-scode-file
+	  r7rs-scode-file-elements
 	  r7rs-scode-file-libraries
+	  r7rs-scode-file-program
+	  r7rs-source->scode-file
 	  scode-library->library))
 
 (define-package (runtime library loader)
@@ -5995,6 +6001,7 @@ USA.
   (parent (runtime library))
   (export ()
 	  environment			;R7RS
+	  find-scheme-libraries!
 	  null-environment		;R7RS
 	  scheme-report-environment	;R7RS
 	  )

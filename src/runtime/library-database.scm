@@ -40,15 +40,27 @@ USA.
 
     (define (put! library)
       (if (and (library 'has? 'db)
-	       (not (eq? (library 'get 'db) this)))
-	  (error "Can't use library in multiple databases:" library))
+	       (not (eqv? (library 'get 'db) this)))
+	  (error "Can't use library in multiple databases:" library this))
       (library 'put! 'db this)
       (let ((name (library 'get 'name)))
 	(if name
 	    (begin
 	      (if (has? name)
-		  (warn "Overwriting library:" name))
+		  (let ((library* (get name)))
+		    (if (not (library-preregistered? library*))
+			(warn "Replacing library:" library* this))
+		    (library* 'delete! 'db)))
 	      (hash-table-set! table name library)))))
+
+    (define (delete! name)
+      (if (not (has? name))
+	  (error "No library of this name in database:" name this))
+      (let ((library (get name)))
+	(if (not (library-preregistered? library))
+	    (warn "Removing library:" library this))
+	(library 'delete! 'db))
+      (hash-table-delete! table name))
 
     (define (get-names)
       (hash-table-keys table))
@@ -69,7 +81,7 @@ USA.
 
     (define this
       (bundle library-db?
-	      has? get put! get-names get-all get-copy
+	      has? get put! delete! get-names get-all get-copy
 	      summarize-self describe-self))
     this))
 
@@ -313,6 +325,15 @@ USA.
   (for-each (lambda (library)
 	      (register-library! library db))
 	    libraries))
+
+(define (preregister-library! library db)
+  (library 'delete! 'parsed-contents)
+  (library 'delete! 'contents)
+  (library 'put! 'preregistration? #t)
+  (register-library! library db))
+
+(define (library-preregistered? library)
+  (library 'has? 'preregistration?))
 
 (define (library-accessor key)
   (lambda (library)

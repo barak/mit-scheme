@@ -98,6 +98,11 @@ USA.
   (guarantee metadata-elt? elt 'metadata-elt-values)
   (cdr elt))
 
+(define (r7rs-source->scode-file source)
+  (make-r7rs-scode-file
+   (map library->scode-library
+	(r7rs-source-elements source))))
+
 (define (library->scode-library library)
   (make-scode-library
    `(scode-library
@@ -116,9 +121,9 @@ USA.
 		'contents (scode-library-contents library)
 		'filename filename))
 
-(define (make-r7rs-scode-file libraries)
-  (guarantee-list-of scode-library? libraries 'make-r7rs-scode-file)
-  (make-scode-sequence libraries))
+(define (make-r7rs-scode-file elements)
+  (guarantee-list-of scode-library? elements 'make-r7rs-scode-file)
+  (make-scode-sequence elements))
 
 (define (r7rs-scode-file? scode)
   (let ((scode (strip-comments scode)))
@@ -129,7 +134,7 @@ USA.
 		    (every scode-library? actions)))))))
 (register-predicate! r7rs-scode-file? 'r7rs-scode-file)
 
-(define (r7rs-scode-file-libraries scode)
+(define (r7rs-scode-file-elements scode)
   (let ((scode (strip-comments scode)))
     (if (scode-library? scode)
 	(list scode)
@@ -141,11 +146,16 @@ USA.
       (strip-comments (scode-comment-expression object))
       object))
 
-;; Unlike map, guarantees that procedure is called on the libraries in order.
+(define (r7rs-scode-file-libraries scode)
+  (filter scode-library-name (r7rs-scode-file-elements scode)))
+
+(define (r7rs-scode-file-program scode)
+  (let ((elts (remove scode-library-name (r7rs-scode-file-elements scode))))
+    (and (pair? elts)
+	 (car elts))))
+
 (define (map-r7rs-scode-file procedure scode)
   (guarantee r7rs-scode-file? scode 'map-r7rs-scode-file)
-  (let loop ((libraries (r7rs-scode-file-libraries scode)) (results '()))
-    (if (pair? libraries)
-	(loop (cdr libraries)
-	      (cons (procedure (car libraries)) results))
-	(make-scode-sequence (reverse results)))))
+  (make-scode-sequence
+   (map-in-order procedure
+		 (r7rs-scode-file-elements scode))))
