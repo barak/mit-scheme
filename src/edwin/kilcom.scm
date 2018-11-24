@@ -203,7 +203,7 @@ The command \\[yank] can retrieve it from there.
   ;; This dummy is re-assigned by the last display type loaded(!).  It
   ;; needs to be a display type operation.
   (declare (ignore point))
-  unspecific)
+  #f)
 
 (define (kill-ring-save string forward? context)
   (command-message-receive append-next-kill-tag
