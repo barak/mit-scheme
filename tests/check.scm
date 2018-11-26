@@ -86,6 +86,7 @@ USA.
     "runtime/test-string-normalization"
     "runtime/test-string-search"
     "runtime/test-syncproc"
+    "runtime/test-syntax"
     "runtime/test-syntax-rename"
     "runtime/test-thread-queue"
     "runtime/test-url"
