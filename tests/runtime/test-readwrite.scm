@@ -118,7 +118,10 @@ USA.
     ("+nan.0+inf.0i" ,assert-complex-nonreal)
     ("\"|\"" ,assert-string)
     ("\"\\\"\"" ,assert-string)
-    ("\"\\\\\"" ,assert-string))
+    ("\"\\\\\"" ,assert-string)
+    ("|\"|" ,assert-symbol)
+    ("|\\\||" ,assert-symbol)
+    ("|\\\\|" ,assert-symbol))
   (lambda (string #!optional assertion xfail?)
     (with-expected-failure xfail?
       (lambda ()
