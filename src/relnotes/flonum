@@ -50,3 +50,11 @@ New flonum-related definitions:
   which (expt 10. x) gives a finite result.
 . (flo:ldexp x e) = x * 2^e
 . (flo:scalbn x e) = x * b^e, where b is flo:radix
+. (flo:classify x) returns one of the symbols
+  - zero
+  - subnormal
+  - normal
+  - infinite
+  - nan
+. (flo:subnormal? x) is true if x is subnormal; false if zero, normal,
+  infinite, or NaN
