@@ -55,3 +55,40 @@ USA.
                  (list ((test) 1) ((test) 2)))
               test-environment)
         '(1 2))))))
+
+(define-test 'bug55090
+  (lambda ()
+    (expect-failure
+     (lambda ()
+       (assert-equal
+        (unsyntax
+         (cadddr
+          (scode-open-block-actions
+           (scode-sequence-actions
+            (syntax '(begin
+                       (define-syntax vector-edit-code
+                         (syntax-rules ()
+                           ((_ v r o s)
+                            (let ((index (vector-length v)))
+                              (subvector-move-left! v o index r (+ o s))
+                              r))
+                           ((_ v r o s i e)
+                            (let ((index i))
+                              (subvector-move-left! v o index r (+ o s))
+                              (vector-set! r (+ s index) e)
+                              (let ((skew (1+ s)))
+                                (vector-edit-code v r index skew))))))
+                       (let ((input (vector 0 1 3)))
+                         (let ((array (make-vector 4)))
+                           (vector-edit-code input array 0 0 2 2))))
+                    test-environment)))))
+        '(let ((input (vector 0 1 3)))
+           (let ((array (make-vector 4)))
+             (let ((index 2))
+               (subvector-move-left! input 0 index array (+ 0 0))
+               (vector-set! array (+ 0 index) 2)
+               (let ((skew (1+ 0)))
+                 (let ((.index.1-0 (vector-length input)))
+                   (subvector-move-left! input index .index.1-0
+                                         array (+ index skew))
+                   array))))))))))
