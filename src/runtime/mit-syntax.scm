@@ -205,9 +205,8 @@ USA.
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
-	 (lambda (ctx bvl body-ctx body)
-	   (assemble-lambda-item ctx scode-lambda-name:unnamed bvl
-				 body-ctx body))
+	 (lambda (ctx bvl body)
+	   (assemble-lambda-item ctx scode-lambda-name:unnamed bvl body))
        (spar-subform)
        (spar-push spar-arg:ctx)
        (spar-push-subform-if mit-lambda-list? spar-arg:form)
@@ -217,9 +216,8 @@ USA.
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
-	 (lambda (ctx name bvl body-ctx body)
-	   (assemble-lambda-item ctx (identifier->symbol name) bvl
-				 body-ctx body))
+	 (lambda (ctx name bvl body)
+	   (assemble-lambda-item ctx (identifier->symbol name) bvl body))
        (spar-subform)
        (spar-push spar-arg:ctx)
        (spar-subform
@@ -227,19 +225,7 @@ USA.
 	 (spar-push-form-if mit-lambda-list? spar-arg:form))
        (spar-push-body)))))
 
-(define (spar-push-body)
-  (spar-and
-    (spar-push spar-arg:ctx)
-    (spar-encapsulate-values
-	(lambda (elts)
-	  (lambda (frame-senv)
-	    (let ((body-senv (make-internal-senv frame-senv)))
-	      (map-in-order (lambda (elt) (elt body-senv))
-			    elts))))
-      (spar+ (spar-subform spar-push-open-classified))
-      (spar-match-null))))
-
-(define (assemble-lambda-item ctx name bvl body-ctx body)
+(define (assemble-lambda-item ctx name bvl body)
   (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx))))
     (lambda-item ctx
 		 name
@@ -247,19 +233,35 @@ USA.
 					(bind-variable id frame-senv))
 				      bvl)
 		 (lambda ()
-		   (body-item body-ctx (body frame-senv))))))
+		   (receive (body-ctx body-items) (body frame-senv)
+		     (body-item body-ctx body-items))))))
+
+(define (spar-push-body)
+  (spar-call-with-values
+      (lambda (ctx . elts)
+	(lambda (frame-senv)
+	  (let ((body-senv (make-internal-senv frame-senv)))
+	    (values (serror-ctx (serror-ctx-form ctx)
+				body-senv
+				(serror-ctx-hist ctx))
+		    (map-in-order (lambda (elt) (elt body-senv))
+				  elts)))))
+    (spar-push spar-arg:ctx)
+    (spar+ (spar-subform spar-push-open-classified))
+    (spar-match-null)))
 
 ;;;; LET-like
 
 (define spar-promise:let-syntax
   (delay
     (spar-call-with-values
-	(lambda (ctx bindings body-ctx body)
+	(lambda (ctx bindings body)
 	  (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx))))
 	    (for-each (lambda (binding)
 			(bind-keyword (car binding) frame-senv (cdr binding)))
 		      bindings)
-	    (seq-item body-ctx (body frame-senv))))
+	    (receive (body-ctx body-items) (body frame-senv)
+	      (seq-item body-ctx body-items))))
       (spar-subform)
       (spar-push spar-arg:ctx)
       (spar-subform
@@ -282,7 +284,7 @@ USA.
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
-	 (lambda (ctx bindings body-ctx body)
+	 (lambda (ctx bindings body)
 	   (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx)))
 		 (ids (map car bindings)))
 	     (for-each (lambda (id)
@@ -294,7 +296,8 @@ USA.
 		       (map (lambda (binding)
 			      ((cdr binding) frame-senv))
 			    bindings))
-	     (seq-item body-ctx (body frame-senv))))
+	     (receive (body-ctx body-items) (body frame-senv)
+	       (seq-item body-ctx body-items))))
        (spar-subform)
        (spar-push spar-arg:ctx)
        (spar-subform
