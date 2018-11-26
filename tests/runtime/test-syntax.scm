@@ -62,9 +62,9 @@ USA.
      (lambda ()
        (assert-equal
         (unsyntax
-         (cadddr
-          (scode-open-block-actions
-           (scode-sequence-actions
+         (cadr
+          (scode-sequence-actions
+           (scode-open-block-actions
             (syntax '(begin
                        (define-syntax vector-edit-code
                          (syntax-rules ()
