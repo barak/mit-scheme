@@ -552,7 +552,7 @@ USA.
       (begin
         (*print-char #\| context)
 	(string-for-each (lambda (char)
-			   (print-string-char char context))
+			   (print-string-char char context #\|))
 			 s)
         (*print-char #\| context))))
 
@@ -590,13 +590,13 @@ USA.
           (*print-char #\" context)
 	  (do ((index 0 (fix:+ index 1)))
 	      ((not (fix:< index end*)))
-	    (print-string-char (string-ref string index) context))
+	    (print-string-char (string-ref string index) context #\"))
           (if (< end* end)
               (*print-string "..." context))
           (*print-char #\" context))
       (*print-string string context)))
 
-(define (print-string-char char context)
+(define (print-string-char char context quote-char)
   (case char
     ((#\bel)
      (*print-char #\\ context)
@@ -613,8 +613,12 @@ USA.
     ((#\tab)
      (*print-char #\\ context)
      (*print-char #\t context))
-    ((#\\ #\" #\|)
+    ((#\\)
      (*print-char #\\ context)
+     (*print-char #\\ context))
+    ((#\" #\|)
+     (if (eqv? char quote-char)
+         (*print-char #\\ context))
      (*print-char char context))
     (else
      (if (and (char-in-set? char char-set:normal-printing)

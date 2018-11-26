@@ -116,7 +116,7 @@ USA.
     ("-inf.0-inf.0i" ,assert-complex-nonreal)
     ("+inf.0+nan.0i" ,assert-complex-nonreal)
     ("+nan.0+inf.0i" ,assert-complex-nonreal)
-    ("\"|\"" ,assert-string xfail)
+    ("\"|\"" ,assert-string)
     ("\"\\\"\"" ,assert-string)
     ("\"\\\\\"" ,assert-string))
   (lambda (string #!optional assertion xfail?)
