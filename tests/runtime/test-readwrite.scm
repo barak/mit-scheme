@@ -59,6 +59,9 @@ USA.
 (define assert-symbol
   (predicate-assertion symbol? "symbol"))
 
+(define assert-string
+  (predicate-assertion string? "string"))
+
 (define assert-exact-integer
   (predicate-assertion exact-integer? "exact integer"))
 
@@ -112,7 +115,10 @@ USA.
     ("-inf.0+inf.0i" ,assert-complex-nonreal)
     ("-inf.0-inf.0i" ,assert-complex-nonreal)
     ("+inf.0+nan.0i" ,assert-complex-nonreal)
-    ("+nan.0+inf.0i" ,assert-complex-nonreal))
+    ("+nan.0+inf.0i" ,assert-complex-nonreal)
+    ("\"|\"" ,assert-string xfail)
+    ("\"\\\"\"" ,assert-string)
+    ("\"\\\\\"" ,assert-string))
   (lambda (string #!optional assertion xfail?)
     (with-expected-failure xfail?
       (lambda ()
