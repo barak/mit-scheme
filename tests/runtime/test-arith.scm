@@ -71,11 +71,6 @@ USA.
 (define assert-normal
   (predicate-assertion flo:normal? "normal floating-point number"))
 
-(define (flo:subnormal? x)
-  (and (flo:finite? x)
-       (not (flo:zero? x))
-       (not (flo:normal? x))))
-
 (define assert-subnormal
   (predicate-assertion flo:subnormal? "subnormal floating-point number"))
 
@@ -786,3 +781,19 @@ USA.
     (let ((z (vector-ref v 0))
           (t (vector-ref v 1)))
       (assert-<= (relerr t (angle z)) 1e-15))))
+
+(define-enumerated-test 'flo:classify
+  `#((0. zero)
+     (-0. zero)
+     (,(flo:nextafter 0. 1.) subnormal)
+     (,flo:smallest-positive-subnormal subnormal)
+     (,flo:smallest-positive-normal normal)
+     (1. normal)
+     (+inf.0 infinite)
+     (-inf.0 infinite)
+     (+nan.0 nan)
+     (-nan.0 nan))
+  (lambda (l)
+    (let ((x (car l))
+          (c (cadr l)))
+      (assert-eq (flo:classify x) c))))

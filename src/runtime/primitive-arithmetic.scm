@@ -267,6 +267,17 @@ USA.
 (define (->flonum x)
   (guarantee real? x '->flonum)
   (exact->inexact (real-part x)))
+
+(define (flo:subnormal? x)
+  (and (flo:finite? x)
+       (not (or (flo:zero? x)
+		(flo:normal? x)))))
+
+(define (flo:classify x)
+  (cond ((not (flo:finite? x)) (if (flo:infinite? x) 'infinite 'nan))
+	((flo:zero? x) 'zero)
+	((flo:normal? x) 'normal)
+	(else 'subnormal)))
 
 ;;;; Exact integers
 

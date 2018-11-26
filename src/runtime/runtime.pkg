@@ -306,6 +306,7 @@ USA.
 	  flo:cbrt
 	  flo:ceiling
 	  flo:ceiling->exact
+	  flo:classify
 	  flo:copysign
 	  flo:cos
 	  flo:cosh
@@ -348,6 +349,7 @@ USA.
 	  flo:sin
 	  flo:sinh
 	  flo:sqrt
+	  flo:subnormal?
 	  flo:tan
 	  flo:tanh
 	  flo:truncate
