@@ -340,12 +340,5 @@ USA.
    (lambda (closing-senv)
      (close-syntax (procedure closing-senv) senv))))
 
-(define (map-in-order procedure . lists)
-  (let loop ((lists lists) (values '()))
-    (if (pair? (car lists))
-	(loop (map cdr lists)
-	      (cons (apply procedure (map car lists)) values))
-	(reverse! values))))
-
 (define (smap procedure forms hist)
   (map procedure forms (subform-hists forms hist)))
