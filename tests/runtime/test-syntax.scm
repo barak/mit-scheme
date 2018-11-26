@@ -92,3 +92,18 @@ USA.
                    (subvector-move-left! input index .index.1-0
                                          array (+ index skew))
                    array))))))))))
+
+(define-test 'quoted-macro-name
+  (lambda ()
+    (assert-error
+     (lambda ()
+       (assert-equal
+        (unsyntax
+         (syntax '(let ()
+                    (define-syntax foo
+                      (er-macro-transformer
+                       (lambda (f r c)
+                         `(,(r 'quote) foo))))
+                    (foo))
+                 test-environment))
+        '(let () 'foo))))))
