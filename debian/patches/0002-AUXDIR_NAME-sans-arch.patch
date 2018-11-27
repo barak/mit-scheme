@@ -8,10 +8,10 @@ Subject: AUXDIR_NAME sans arch
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 7de03d1..0e29a6e 100644
+index afcf3f0..b1d0e31 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
-@@ -162,7 +162,7 @@ else
+@@ -166,7 +166,7 @@ else
      IF_SVM_COMPILER='#!svm compiler: '
  fi
  
@@ -21,10 +21,10 @@ index 7de03d1..0e29a6e 100644
  MIT_SCHEME_LIBDIR=${AUXDIR}/
  MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
 diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
-index 6c5e525..c421305 100644
+index 5d032d7..e49df5c 100644
 --- a/src/microcode/configure.ac
 +++ b/src/microcode/configure.ac
-@@ -246,7 +246,7 @@ CCLD=${CC}
+@@ -250,7 +250,7 @@ CCLD=${CC}
  MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
  MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
  
