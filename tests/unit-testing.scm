@@ -449,6 +449,8 @@ USA.
 (define-for-tests expect-failure
   (error-assertion condition-type:failure))
 
+(define-for-tests expect-error assert-error)
+
 (define-for-tests keep-it-fast!?
   (let ((v (get-environment-variable "FAST")))
     (if (or (eq? v #f) (string-null? v))

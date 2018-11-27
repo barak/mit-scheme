@@ -36,11 +36,10 @@ USA.
 	       'DESCRIPTION (write-to-string casen))))
 	 cases)))
 
-(define (with-expected-failure xfail? body)
-  (case xfail?
-    ((xfail) (expect-failure body))
-    ((xerror) (assert-error body))
-    (else (body))))
+(define (with-expected-failure xfail body)
+  (if (default-object? xfail)
+      (body)
+      (xfail body)))
 
 (define assert-nan
   (predicate-assertion nan? "NaN"))
@@ -122,8 +121,8 @@ USA.
     ("|\"|" ,assert-symbol)
     ("|\\\||" ,assert-symbol)
     ("|\\\\|" ,assert-symbol))
-  (lambda (string #!optional assertion xfail?)
-    (with-expected-failure xfail?
+  (lambda (string #!optional assertion xfail)
+    (with-expected-failure xfail
       (lambda ()
 	(let ((object (read-from-string string)))
 	  (assertion object)
@@ -161,8 +160,8 @@ USA.
     ("#x-inf.0-inf.0i" ,assert-complex-nonreal)
     ("#x+inf.0+nan.0i" ,assert-complex-nonreal)
     ("#x+nan.0+inf.0i" ,assert-complex-nonreal))
-  (lambda (string #!optional assertion xfail?)
-    (with-expected-failure xfail?
+  (lambda (string #!optional assertion xfail)
+    (with-expected-failure xfail
       (lambda ()
 	(let ((object
                (parameterize ((param:reader-radix #x10))
@@ -176,7 +175,7 @@ USA.
 (define-enumerated-test 'read
   `(("+nan.0" ,assert-nan)
     ("-nan.0" ,assert-nan))
-  (lambda (string assertion #!optional xfail?)
-    (with-expected-failure xfail?
+  (lambda (string assertion #!optional xfail)
+    (with-expected-failure xfail
       (lambda ()
 	(assertion (read-from-string string))))))

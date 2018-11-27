@@ -33,7 +33,7 @@ USA.
 
 (define-test 'local-define-syntax/syntax
   (lambda ()
-    (assert-error
+    (expect-error
      (lambda ()
        (assert-equal
         (unsyntax
@@ -46,7 +46,7 @@ USA.
 
 (define-test 'local-define-syntax/eval
   (lambda ()
-    (assert-error
+    (expect-error
      (lambda ()
        (assert-equal
         (eval '(let ()
@@ -95,7 +95,7 @@ USA.
 
 (define-test 'quoted-macro-name
   (lambda ()
-    (assert-error
+    (expect-error
      (lambda ()
        (assert-equal
         (unsyntax

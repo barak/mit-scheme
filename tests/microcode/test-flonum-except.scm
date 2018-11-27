@@ -55,14 +55,13 @@ USA.
 (define assert-nothing
   (predicate-assertion (lambda (x) x #t) "nothing"))
 
-(define (with-failure-expected xfail? procedure)
-  (case xfail?
-    ((xfail) (expect-failure procedure))
-    ((xerror) (assert-error procedure))
-    (else (procedure))))
+(define (with-failure-expected xfail procedure)
+  (if (default-object? xfail)
+      (procedure)
+      (xfail procedure)))
 
 (define (define-exception-flag-test name excname exception assertion procedure
-	  #!optional xfail?)
+	  #!optional xfail)
   (define-test (symbol name '/ excname '/ 'flag)
     (lambda ()
       (flo:preserving-environment
@@ -73,21 +72,21 @@ USA.
 		(flo:with-exceptions-untrapped (flo:supported-exceptions) body)
 		(body)))
 	  (lambda ()
-	    (with-failure-expected xfail?
+	    (with-failure-expected xfail
 	      (lambda ()
 		(assertion (procedure))
 		(assert-nonzero (flo:test-exceptions exception)))))))))))
 
 (define (define-exception-trap-test name excname exception condition-type
-	  procedure #!optional xfail?)
+	  procedure #!optional xfail)
   (define-test (symbol name '/ excname '/ 'trap)
     (lambda ()
       (flo:preserving-environment
        (lambda ()
 	 (with-failure-expected
 	     (if (flo:have-trap-enable/disable?)
-		 xfail?
-		 'xerror)
+		 xfail
+		 assert-error)
 	   (lambda ()
 	     (assert-error
 	      (lambda ()
@@ -96,54 +95,54 @@ USA.
 		    (flo:with-exceptions-trapped exception procedure))))
 	      (list condition-type)))))))))
 
-(define (define-invop-flag-test name procedure #!optional xfail?)
+(define (define-invop-flag-test name procedure #!optional xfail)
   (define-exception-flag-test name 'invalid-operation
     (flo:exception:invalid-operation)
-    assert-nan procedure xfail?))
+    assert-nan procedure xfail))
 
-(define (define-invop-trap-test name procedure #!optional xfail?)
+(define (define-invop-trap-test name procedure #!optional xfail)
   (define-exception-trap-test name 'invalid-operation
     (flo:exception:invalid-operation)
     condition-type:invalid-floating-point-operation
-    procedure xfail?))
+    procedure xfail))
 
-(define (define-divbyzero-flag-test name procedure #!optional xfail?)
+(define (define-divbyzero-flag-test name procedure #!optional xfail)
   (define-exception-flag-test name 'divide-by-zero
     (flo:exception:divide-by-zero)
-    assert-inf procedure xfail?))
+    assert-inf procedure xfail))
 
-(define (define-divbyzero-trap-test name procedure #!optional xfail?)
+(define (define-divbyzero-trap-test name procedure #!optional xfail)
   (define-exception-trap-test name 'divide-by-zero
     (flo:exception:divide-by-zero)
     condition-type:floating-point-divide-by-zero
-    procedure xfail?))
+    procedure xfail))
 
-(define (define-overflow-flag-test name procedure #!optional xfail?)
+(define (define-overflow-flag-test name procedure #!optional xfail)
   (define-exception-flag-test name 'overflow
     (flo:exception:overflow)
-    assert-inf procedure xfail?))
+    assert-inf procedure xfail))
 
-(define (define-overflow-trap-test name procedure #!optional xfail?)
+(define (define-overflow-trap-test name procedure #!optional xfail)
   (define-exception-trap-test name 'overflow
     (flo:exception:overflow)
     condition-type:floating-point-overflow
-    procedure xfail?))
+    procedure xfail))
 
-(define (define-underflow-flag-test name procedure #!optional xfail?)
+(define (define-underflow-flag-test name procedure #!optional xfail)
   (define-exception-flag-test name 'underflow
     (flo:exception:underflow)
-    assert-subnormal procedure xfail?))
+    assert-subnormal procedure xfail))
 
-(define (define-underflow-trap-test name procedure #!optional xfail?)
+(define (define-underflow-trap-test name procedure #!optional xfail)
   (define-exception-trap-test name 'underflow
     (flo:exception:underflow)
     condition-type:floating-point-underflow
-    procedure xfail?))
+    procedure xfail))
 
-(define (define-inexact-flag-test name procedure #!optional xfail?)
+(define (define-inexact-flag-test name procedure #!optional xfail)
   (define-exception-flag-test name 'inexact-result
     (flo:exception:inexact-result)
-    assert-nothing procedure xfail?))
+    assert-nothing procedure xfail))
 
 (define (applicator procedure . arguments)
   (lambda ()

@@ -28,23 +28,22 @@ USA.
 
 (declare (usual-integrations))
 
-(define (define-eqv-test s v #!optional xfail?)
-  (define-eqv-test-1 s v xfail?)
+(define (define-eqv-test s v #!optional xfail)
+  (define-eqv-test-1 s v xfail)
   (if (not (string=? s (string-upcase s)))
-      (define-eqv-test-1 (string-upcase s) v xfail?)))
+      (define-eqv-test-1 (string-upcase s) v xfail)))
 
-(define (define-eqv-test-1 s v #!optional xfail?)
+(define (define-eqv-test-1 s v #!optional xfail)
   (define-test s
     (lambda ()
-      (with-xfail xfail?
+      (with-xfail xfail
         (lambda ()
           (assert-eqv (string->number s) v))))))
 
-(define (with-xfail xfail? body)
-  (case xfail?
-    ((xfail) (expect-failure body))
-    ((xerror) (assert-error body))
-    (else (body))))
+(define (with-xfail xfail body)
+  (if (default-object? xfail)
+      (body)
+      (xfail body)))
 
 (define-eqv-test "#e1e9" (expt 10 9))
 (define-eqv-test "#e1f9" (expt 10 9))
