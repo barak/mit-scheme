@@ -33,16 +33,15 @@ fi
 HOST_SCHEME_EXE=${1}
 TARGET_ARCH=${2}
 
-MDIR=`compiler/choose-machine.sh "${TARGET_ARCH}"`
-
 if test -f makefiles_created; then
-    CODE_TYPE=`cat makefiles_created`
-    if test "${CODE_TYPE}" = "${MDIR}"; then
+    MAKEFILE_ARCH=`cat makefiles_created`
+    if test x"${MAKEFILE_ARCH}" = x"${TARGET_ARCH}"; then
 	echo "Makefiles already created."
 	exit 0
     fi
 fi
 
+MDIR=`compiler/choose-machine.sh "${TARGET_ARCH}"`
 run_cmd rm -f compiler/machine compiler/compiler.pkg
 run_cmd ln -s machines/"${MDIR}" compiler/machine
 run_cmd ln -s machine/compiler.pkg compiler/.
@@ -52,7 +51,7 @@ BUNDLES="6001 compiler cref ffi sf sos ssp star-parser xdoc xml"
 run_cmd ${HOST_SCHEME_EXE} --batch-mode --heap 4000 --no-init-file <<EOF
 (begin
   (load "etc/utilities")
-  (generate-c-bundles (quote (${BUNDLES})) "${MDIR}"))
+  (generate-c-bundles (quote (${BUNDLES})) "${TARGET_ARCH}"))
 EOF
 
 run_cmd rm -f compiler/machine compiler/compiler.pkg
@@ -60,7 +59,7 @@ run_cmd rm -f compiler/machine compiler/compiler.pkg
 for SUBDIR in ${BUNDLES} runtime win32; do
     echo "creating ${SUBDIR}/Makefile.in"
     rm -f ${SUBDIR}/Makefile.in
-    cat etc/std-makefile-prefix ${SUBDIR}/Makefile-fragment	\
+    cat etc/std-makefile-prefix ${SUBDIR}/Makefile-fragment \
 	> ${SUBDIR}/Makefile.in
     if test -f ${SUBDIR}/Makefile-bundle; then
 	cat ${SUBDIR}/Makefile-bundle >> ${SUBDIR}/Makefile.in
@@ -70,5 +69,5 @@ for SUBDIR in ${BUNDLES} runtime win32; do
 done
 
 run_cmd rm -f makefiles_created
-echo "echo ${MDIR} > makefiles_created"
-echo "${MDIR}" > makefiles_created
+echo "echo ${TARGET_ARCH} > makefiles_created"
+echo "${TARGET_ARCH}" > makefiles_created
