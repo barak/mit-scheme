@@ -2732,7 +2732,11 @@ if test "${enable_native_code+set}" = set; then :
   enableval=$enable_native_code;
 fi
 
-: ${enable_native_code='yes'}
+if test x"${IS_NATIVE_RELEASE}" != x; then
+    : ${enable_native_code=${IS_NATIVE_RELEASE}}
+else
+    : ${enable_native_code=yes}
+fi
 
 
 # Check whether --with-compiler-target was given.

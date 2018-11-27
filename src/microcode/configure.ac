@@ -128,7 +128,11 @@ AC_ARG_ENABLE([debugging],
 AC_ARG_ENABLE([native-code],
     AS_HELP_STRING([--enable-native-code],
 	[Support native compiled code if available [[yes]]]))
-: ${enable_native_code='yes'}
+if test x"${IS_NATIVE_RELEASE}" != x; then
+    : ${enable_native_code=${IS_NATIVE_RELEASE}}
+else
+    : ${enable_native_code=yes}
+fi
 
 AC_ARG_WITH([compiler-target],
     AS_HELP_STRING([--with-compiler-target],

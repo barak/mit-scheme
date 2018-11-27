@@ -1,42 +1,0 @@
-
-6001/TAGS,include
-
-blowfish/TAGS,include
-
-compiler/TAGS,include
-
-cref/TAGS,include
-
-edwin/TAGS,include
-
-ffi/TAGS,include
-
-gdbm/TAGS,include
-
-imail/TAGS,include
-
-mcrypt/TAGS,include
-
-microcode/TAGS,include
-
-pgsql/TAGS,include
-
-runtime/TAGS,include
-
-sf/TAGS,include
-
-sos/TAGS,include
-
-ssp/TAGS,include
-
-star-parser/TAGS,include
-
-win32/TAGS,include
-
-x11/TAGS,include
-
-x11-screen/TAGS,include
-
-xdoc/TAGS,include
-
-xml/TAGS,include
