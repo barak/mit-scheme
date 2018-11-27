@@ -46,7 +46,7 @@ static SCHEME_OBJECT fixed_objects_syscall_names (void);
 static SCHEME_OBJECT fixed_objects_syserr_names (void);
 static SCHEME_OBJECT names_to_vector (unsigned long, const char **);
 
-#define IDENTITY_LENGTH 	20	/* Plenty of room */
+#define IDENTITY_LENGTH		20	/* Plenty of room */
 #define ID_RELEASE		0	/* System release (string) */
 #define ID_MICRO_VERSION	1	/* Microcode version (fixnum) */
 /* 2 unused */
@@ -62,8 +62,10 @@ static SCHEME_OBJECT names_to_vector (unsigned long, const char **);
 #define ID_CC_ARCH		12	/* Compiled-code support (string) */
 #define ID_FLONUM_EXP_MIN	13	/* Minimum finite (normal) exponent */
 #define ID_FLONUM_EXP_MAX	14	/* Maximum finite exponent */
+#define ID_NONNEG_FIXNUM_LENGTH	15	/* Number of bits in nonneg. fixnum */
+#define ID_NONNEG_FIXNUM_MASK	16	/* Mask for nonneg. fixnum */
 
-#define N_IDENTITY_NAMES 0x0F
+#define N_IDENTITY_NAMES 0x11
 static const char * identity_names [] =
 {
   /* 0x00 */	"system-release-string",
@@ -81,6 +83,8 @@ static const char * identity_names [] =
   /* 0x0C */	"cc-arch-string",
   /* 0x0D */	"flonum-exponent-min",
   /* 0x0E */	"flonum-exponent-max",
+  /* 0x0F */	"nonnegative-fixnum-length",
+  /* 0x10 */	"nonnegative-fixnum-mask",
 };
 
 SCHEME_OBJECT
@@ -100,6 +104,8 @@ make_microcode_identification_vector (void)
   VECTOR_SET (v, ID_MACHINE_TYPE, (char_pointer_to_string (MACHINE_TYPE)));
   VECTOR_SET (v, ID_FLONUM_EXP_MIN, (LONG_TO_FIXNUM (DBL_MIN_EXP - 1)));
   VECTOR_SET (v, ID_FLONUM_EXP_MAX, (LONG_TO_FIXNUM (DBL_MAX_EXP - 1)));
+  VECTOR_SET (v, ID_NONNEG_FIXNUM_LENGTH, (ULONG_TO_FIXNUM (FIXNUM_LENGTH)));
+  VECTOR_SET (v, ID_NONNEG_FIXNUM_MASK, (ULONG_TO_FIXNUM (FIXNUM_MASK)));
   {
     const char * name = (cc_arch_name ());
     if (name != 0)

@@ -182,6 +182,8 @@ USA.
 (define microcode-id/floating-epsilon)
 (define microcode-id/floating-exponent-min)
 (define microcode-id/floating-exponent-max)
+(define microcode-id/nonnegative-fixnum-length)
+(define microcode-id/nonnegative-fixnum-mask)
 (define microcode-id/operating-system)
 (define microcode-id/operating-system-name)
 (define microcode-id/operating-system-variant)
@@ -200,6 +202,10 @@ USA.
         (microcode-identification-item 'flonum-exponent-min))
   (set! microcode-id/floating-exponent-max
         (microcode-identification-item 'flonum-exponent-max))
+  (set! microcode-id/nonnegative-fixnum-length
+	(microcode-identification-item 'nonnegative-fixnum-length))
+  (set! microcode-id/nonnegative-fixnum-mask
+	(microcode-identification-item 'nonnegative-fixnum-mask))
   (set! microcode-id/operating-system-name
 	(microcode-identification-item 'os-name-string))
   (set! microcode-id/operating-system

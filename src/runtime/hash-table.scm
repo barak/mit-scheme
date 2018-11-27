@@ -1008,6 +1008,31 @@ USA.
 
 (define-integrable (equal-hash-mod key modulus)
   (fix:remainder (equal-hash key) modulus))
+
+(define (binary-hash-by-identity object1 object2 #!optional modulus)
+  (binary-hash eq-hash object1 object2 modulus))
+
+(define (binary-hash-by-eqv object1 object2 #!optional modulus)
+  (binary-hash eqv-hash object1 object2 modulus))
+
+(define (binary-hash-by-equal object1 object2 #!optional modulus)
+  (binary-hash equal-hash object1 object2 modulus))
+
+;;; Assumes that hash-fn always returns a nonnegative fixnum.
+(define-integrable (binary-hash hash-fn object1 object2 modulus)
+  (let ((sum
+	 (+ (* 31 (hash-fn object1))
+	    (hash-fn object2))))
+    (if (default-object? modulus)
+	(if (fix:fixnum? sum)
+	    sum
+	    (fix:xor (shift-right sum microcode-id/nonnegative-fixnum-length)
+		     (bitwise-and sum microcode-id/nonnegative-fixnum-mask)))
+	(begin
+	  (guarantee positive-fixnum? modulus 'binary-eq-hash-mod)
+	  (if (fix:fixnum? sum)
+	      (fix:remainder sum modulus)
+	      (modulo sum modulus))))))
 
 ;;;; Constructing and Open-Coding Types and Constructors
 
