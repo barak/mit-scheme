@@ -3805,6 +3805,7 @@ USA.
 	  make-random-state
 	  random
 	  random-bytevector
+	  random-bytevector!
 	  random-integer
 	  random-real
 	  random-source-make-integers

@@ -233,44 +233,52 @@ USA.
 
 (define-integrable chacha20-core (ucode-primitive chacha20-core 5))
 
-(define (%random-bytevector-short! bv state)
+(define (%random-bytevector-short! bv start end state)
   (let ((key (random-state-key state))
 	(output (allocate-bytevector 64)))
     (chacha20-core output 0 zero16 key chacha-const)
     (bytevector-copy! key 0 output 0 32)
-    (bytevector-copy! bv 0 output 32 (fix:+ 32 (bytevector-length bv)))
+    (bytevector-copy! bv start output 32 (fix:+ 32 (fix:- end start)))
     (bytevector-zero-explicit! output)))
+
+(define (random-bytevector! bv #!optional start end state)
+  (let* ((end (fix:end-index end (bytevector-length bv) 'random-bytevector!))
+         (start (fix:start-index start end 'random-bytevector!))
+         (n (- end start)))
+    (if (fix:< n 32)
+        (with-random-state state 'random-bytevector
+          (lambda (state)
+            ;; Small enough to be serviced in a single request.
+            (%random-bytevector-short! bv start end state)))
+        (let ((key (allocate-bytevector 32))
+              (nonce (make-bytevector 16 0)))
+          ;; Grab a key in a single request; then derive a long byte
+          ;; vector from the key.
+          (with-random-state state 'random-bytevector
+            (lambda (state)
+              (%random-bytevector-short! key 0 32 state)))
+          (let ((n/64 (fix:quotient n 64)))
+            (do ((i 0 (fix:+ i 1)))
+                ((fix:>= i n/64))
+              (chacha20-core bv (fix:+ start (fix:* i 64))
+                             nonce key chacha-const)
+              (let loop ((j 0) (t 1))
+                (if (fix:< j 8)
+                    (let ((t (fix:+ t (bytevector-u8-ref nonce j))))
+                      (bytevector-u8-set! nonce j (fix:and t #xff))
+                      (loop (fix:+ j 1) (fix:lsh t -8))))))
+            (let* ((rem (fix:- n (fix:* n/64 64))))
+              (if (fix:positive? rem)
+                  (let ((output (allocate-bytevector 64)))
+                    (chacha20-core output 0 nonce key chacha-const)
+                    (bytevector-copy! bv (fix:+ start (fix:* n/64 64))
+                                      output 0 rem)
+                    (bytevector-zero-explicit! output))))
+            (bytevector-zero-explicit! key))))))
 
 (define (random-bytevector n #!optional state)
   (let ((bytes (allocate-bytevector n)))
-    (if (fix:< n 32)
-	(with-random-state state 'random-bytevector
-	  (lambda (state)
-	    ;; Small enough to be serviced in a single request.
-	    (%random-bytevector-short! bytes state)))
-	(let ((key (allocate-bytevector 32))
-	      (nonce (make-bytevector 16 0)))
-	  ;; Grab a key in a single request; then derive a long byte
-	  ;; vector from the key.
-	  (with-random-state state 'random-bytevector
-	    (lambda (state)
-	      (%random-bytevector-short! key state)))
-	  (let ((n/64 (fix:quotient n 64)))
-	    (do ((i 0 (fix:+ i 1)))
-		((fix:>= i n/64))
-	      (chacha20-core bytes (fix:* i 64) nonce key chacha-const)
-	      (let loop ((j 0) (t 1))
-		(if (fix:< j 8)
-		    (let ((t (fix:+ t (bytevector-u8-ref nonce j))))
-		      (bytevector-u8-set! nonce j (fix:and t #xff))
-		      (loop (fix:+ j 1) (fix:lsh t -8))))))
-	    (let* ((rem (fix:- n (fix:* n/64 64))))
-	      (if (fix:positive? rem)
-		  (let ((output (allocate-bytevector 64)))
-		    (chacha20-core output 0 nonce key chacha-const)
-		    (bytevector-copy! bytes (fix:* n/64 64) output 0 rem)
-		    (bytevector-zero-explicit! output))))
-	    (bytevector-zero-explicit! key))))
+    (random-bytevector! bytes 0 n state)
     bytes))
 
 ;;;; Integers

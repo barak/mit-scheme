@@ -121,6 +121,25 @@ USA.
 (define-random-test 'random/rational
   (lambda (state)
     (assert-error (lambda () (random 1/4 state)))))
+
+(define-random-test 'random-bytevector!/short
+  (lambda (state)
+    (let ((bv (make-bytevector 32 0))
+          (state* (make-random-state state)))
+      (random-bytevector! bv 3 20 state)
+      (assert-equal (bytevector-copy bv 0 3) (make-bytevector 3 0))
+      (assert-equal (bytevector-copy bv 3 20) (random-bytevector 17 state*))
+      (assert-equal (bytevector-copy bv 20 32) (make-bytevector  12 0)))))
+
+(define-random-test 'random-bytevector!/long
+  (lambda (state)
+    (let ((bv (make-bytevector 3000 0))
+          (state* (make-random-state state)))
+      (random-bytevector! bv 1000 2000 state)
+      (assert-equal (bytevector-copy bv 0 1000) (make-bytevector 1000 0))
+      (assert-equal (bytevector-copy bv 1000 2000)
+                    (random-bytevector 1000 state*))
+      (assert-equal (bytevector-copy bv 2000 3000) (make-bytevector 1000 0)))))
 
 ;;; Stochastic tests
 
