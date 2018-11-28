@@ -210,7 +210,24 @@ USA.
                         (yes-traps (lambda () (not (safe-compare x y))))
                         (if (or (flo:nan? x) (flo:nan? y))
                             #t
-                            (not (unsafe-compare x y))))))
+                            (not (unsafe-compare x y))))
+                       (if (safe-compare x y)
+                           (begin
+                             (assert-true (not (flo:nan? x)))
+                             (assert-true (not (flo:nan? y)))
+                             (assert-true (unsafe-compare x y))))
+                       (if (not (safe-compare x y))
+                           (begin
+                             (assert-true
+                              (or (flo:nan? x)
+                                  (flo:nan? y)
+                                  (not (unsafe-compare x y))))))
+                       (if (not (or (flo:nan? x) (flo:nan? y)))
+                           (begin
+                             (if (unsafe-compare x y)
+                                 (assert-true (safe-compare x y)))
+                             (if (not (unsafe-compare x y))
+                                 (assert-false (unsafe-compare x y)))))))
                    cases))
             cases)))))
 
