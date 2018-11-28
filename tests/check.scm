@@ -65,6 +65,8 @@ USA.
     ("runtime/test-file-attributes" (runtime))
     "runtime/test-floenv"
     "runtime/test-flonum"
+    "runtime/test-flonum.bin"
+    "runtime/test-flonum.com"
     "runtime/test-hash-table"
     "runtime/test-integer-bits"
     ("runtime/test-library-parser" (runtime library))
