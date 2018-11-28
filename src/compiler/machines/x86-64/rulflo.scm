@@ -318,6 +318,10 @@ USA.
                       (flonum-source-reference! source)
                       operand))))
 
+;;; For predicate giving (if (predicate x y) a b), return the
+;;; equivalent (if (predicate* y x) a b).  The unary predicates are
+;;; treated as if y = 0.  (XXX Separate this into another function.)
+
 (define (commute-flonum-predicate predicate)
   (case predicate
     ((FLONUM-EQUAL? FLONUM-ZERO?) 'FLONUM-EQUAL?)
