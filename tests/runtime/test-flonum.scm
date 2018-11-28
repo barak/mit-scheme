@@ -293,12 +293,13 @@ USA.
                                (assert-eqv
                                 (no-traps (lambda () (unsafe-compare a b)))
                                 c)
-                               (if (safe-compare a b)
+                               (if (yes-traps (lambda () (safe-compare a b)))
                                    (begin
                                      (assert-true (not (flo:nan? a)))
                                      (assert-true (not (flo:nan? b)))
                                      (assert-true (unsafe-compare a b))))
-                               (if (not (safe-compare a b))
+                               (if (yes-traps
+                                    (lambda () (not (safe-compare a b))))
                                    (assert-true
                                     (or (flo:nan? a)
                                         (flo:nan? b)
