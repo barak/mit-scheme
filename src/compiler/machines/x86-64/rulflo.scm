@@ -293,6 +293,16 @@ USA.
    (INST-EA (@PCR ,(allocate-double-float-bits-label double-flobits:zero)))))
 
 (define-rule predicate
+  (FLONUM-PRED-1-ARG FLONUM-IS-NEGATIVE? (REGISTER (? source)))
+  (set-current-branches! (lambda (label)
+                           (LAP (JNZ (@PCR ,label))))
+                         (lambda (label)
+                           (LAP (JZ (@PCR ,label)))))
+  (let ((temp (temporary-register-reference)))
+    (LAP (MOVMSKF P D ,temp ,(flonum-source-reference! source))
+         (TEST B ,temp (&U 1)))))
+
+(define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
                       (REGISTER (? source1))
                       (REGISTER (? source2)))
