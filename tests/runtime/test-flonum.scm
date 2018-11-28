@@ -35,6 +35,11 @@ USA.
              (apply procedure arguments)))
          cases)))
 
+(define (with-expected-failure xfail body)
+  (if (default-object? xfail)
+      (body)
+      (xfail body)))
+
 (define (no-traps f)
   (if (flo:have-trap-enable/disable?)
       (flo:with-trapped-exceptions 0 f)
@@ -268,3 +273,173 @@ USA.
                      1)))
                 cases))
          cases)))
+
+(define-syntax define-*constcomp-test
+  (syntax-rules ()
+    ((define-*constcomp-test name safe-compare unsafe-compare x0
+       x y a b u v c d cases)
+     (define-test name
+       (map (lambda (arguments)
+              (apply (lambda (y u v #!optional xfail)
+                       d
+                       (let ((x x0))
+                         (declare (integrate x))
+                         (lambda ()
+                           (with-expected-failure xfail
+                             (lambda ()
+                               (assert-eqv
+                                (yes-traps (lambda () (safe-compare a b)))
+                                c)
+                               (assert-eqv
+                                (no-traps (lambda () (unsafe-compare a b)))
+                                c)
+                               (if (safe-compare a b)
+                                   (begin
+                                     (assert-true (not (flo:nan? a)))
+                                     (assert-true (not (flo:nan? b)))
+                                     (assert-true (unsafe-compare a b))))
+                               (if (not (safe-compare a b))
+                                   (assert-true
+                                    (or (flo:nan? a)
+                                        (flo:nan? b)
+                                        (not (unsafe-compare a b)))))
+                               (if (not (or (flo:nan? a) (flo:nan? b)))
+                                   (begin
+                                     (if (unsafe-compare a b)
+                                         (assert-true (safe-compare a b)))
+                                     (if (not (unsafe-compare a b))
+                                         (assert-false
+                                          (safe-compare a b))))))))))
+                     arguments))
+            cases)))))
+
+(define-syntax define-lconstcomp-test
+  (syntax-rules ()
+    ((define-lconstcomp-test name safe-compare unsafe-compare x0 cases)
+     (define-*constcomp-test name safe-compare unsafe-compare x0
+       x y x y u v u v
+       cases))))
+
+(define-syntax define-rconstcomp-test
+  (syntax-rules ()
+    ((define-lconstcomp-test name safe-compare unsafe-compare x0 cases)
+     (define-*constcomp-test name safe-compare unsafe-compare x0
+       x y y x u v v u
+       cases))))
+
+(define-syntax define-constcomp-test
+  (syntax-rules ()
+    ((define-constcomp-test name safe unsafe x0 cases)
+     (begin
+       (define-lconstcomp-test (symbol name '/lconst) safe unsafe x0 cases)
+       (define-rconstcomp-test (symbol name '/rconst) safe unsafe x0 cases)))))
+
+(define-constcomp-test '< flo:safe< flo:< 0.
+  `((-inf.0 #f #t)
+    (-1. #f #t)
+    (,subnormal- #f #t)
+    (-0. #f #f)
+    (+0. #f #f)
+    (,subnormal+ #t #f)
+    (+1. #t #f)
+    (+inf.0 #t #f)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '> flo:safe> flo:> 0.
+  `((-inf.0 #t #f)
+    (-1. #t #f)
+    (,subnormal- #t #f)
+    (-0. #f #f)
+    (+0. #f #f)
+    (,subnormal+ #f #t)
+    (+1. #f #t)
+    (+inf.0 #f #t)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '<= flo:safe<= flo:<= 0.
+  `((-inf.0 #f #t)
+    (-1. #f #t)
+    (,subnormal- #f #t)
+    (-0. #t #t)
+    (+0. #t #t)
+    (,subnormal+ #t #f)
+    (+1. #t #f)
+    (+inf.0 #t #f)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '>= flo:safe>= flo:>= 0.
+  `((-inf.0 #t #f)
+    (-1. #t #f)
+    (,subnormal- #t #f)
+    (-0. #t #t)
+    (+0. #t #t)
+    (,subnormal+ #f #t)
+    (+1. #f #t)
+    (+inf.0 #f #t)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '<> flo:safe<> flo:<> 0.
+  `((-inf.0 #t #t)
+    (-1. #t #t)
+    (,subnormal- #t #t)
+    (-0. #f #f)
+    (+0. #f #f)
+    (,subnormal+ #t #t)
+    (+1. #t #t)
+    (+inf.0 #t #t)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '< flo:safe< flo:< 1.
+  `((-inf.0 #f #t)
+    (-1. #f #t)
+    (,subnormal- #f #t)
+    (-0. #f #t)
+    (+0. #f #t)
+    (,subnormal+ #f #t)
+    (+1. #f #f)
+    (+inf.0 #t #f)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '> flo:safe> flo:> 1.
+  `((-inf.0 #t #f)
+    (-1. #t #f)
+    (,subnormal- #t #f)
+    (-0. #t #f)
+    (+0. #t #f)
+    (,subnormal+ #t #f)
+    (+1. #f #f)
+    (+inf.0 #f #t)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '<= flo:safe<= flo:<= 1.
+  `((-inf.0 #f #t)
+    (-1. #f #t)
+    (,subnormal- #f #t)
+    (-0. #f #t)
+    (+0. #f #t)
+    (,subnormal+ #f #t)
+    (+1. #t #t)
+    (+inf.0 #t #f)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '>= flo:safe>= flo:>= 1.
+  `((-inf.0 #t #f)
+    (-1. #t #f)
+    (,subnormal- #t #f)
+    (-0. #t #f)
+    (+0. #t #f)
+    (,subnormal+ #t #f)
+    (+1. #t #t)
+    (+inf.0 #f #t)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '<> flo:safe<> flo:<> 1.
+  `((-inf.0 #t #t)
+    (-1. #t #t)
+    (,subnormal- #t #t)
+    (-0. #t #t)
+    (+0. #t #t)
+    (,subnormal+ #t #t)
+    (+1. #f #f)
+    (+inf.0 #t #t)
+    (+nan.0 #f #f)))
