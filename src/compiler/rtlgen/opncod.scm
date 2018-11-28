@@ -1579,7 +1579,10 @@ USA.
 	   expressions)))
       '(0 1)
       internal-close-coding-for-type-checks)))
- '(FLONUM-EQUAL? FLONUM-LESS? FLONUM-GREATER?))
+ '(FLONUM-EQUAL? FLONUM-LESS? FLONUM-GREATER?
+		 FLONUM-IS-LESS? FLONUM-IS-LESS-OR-EQUAL?
+		 FLONUM-IS-GREATER? FLONUM-IS-GREATER-OR-EQUAL?
+		 FLONUM-IS-LESS-OR-GREATER? FLONUM-IS-UNORDERED?))
 
 ;;;; Generic arithmetic
 
