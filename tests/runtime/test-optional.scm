@@ -37,8 +37,4 @@ USA.
       (define (local #!optional arg)
         (assert-eqv (fixit arg) #!default))
       (local))
-    ;; Compiler incorrectly passes unassigned reference trap if
-    ;; argument is never passed.
-    (if (compiled-procedure? test)
-        (expect-failure test)
-        (test))))
+    (test)))

@@ -96,7 +96,7 @@ USA.
 		    (operands operands))
 		 (if (not (null? parameters))
 		     (if (null? operands)
-			 (for-each lvalue-unassigned! parameters)
+			 (for-each lvalue-defaulted! parameters)
 			 (begin
 			   (lvalue-connect! (car parameters) (car operands))
 			   (loop (cdr parameters) (cdr operands)))))))
@@ -135,8 +135,8 @@ USA.
     (eq-set-union* (lvalue-initial-values (car lvalues))
 		   (map lvalue-initial-values (cdr lvalues)))))
 
-(define (lvalue-unassigned! lvalue)
-  (lvalue-connect! lvalue (make-constant (make-unassigned-reference-trap))))
+(define (lvalue-defaulted! lvalue)
+  (lvalue-connect! lvalue (make-constant (default-object))))
 
 (define-integrable (lvalue-connect! lvalue rvalue)
   (if (rvalue/reference? rvalue)
