@@ -450,7 +450,7 @@ DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-SINGLE", Prim_cast_integer_to_ieee754
   }
 }
 
-/* C99 flonum predicates */
+/* IEEE 754 quiet predicates */
 
 DEFINE_PRIMITIVE ("FLONUM-IS-FINITE?", Prim_flonum_is_finite_p, 1, 1, 0)
 {
@@ -522,6 +522,26 @@ DEFINE_PRIMITIVE ("FLONUM-IS-UNORDERED?", Prim_flonum_is_unordered_p, 2, 2, 0)
   PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN
     (BOOLEAN_TO_OBJECT (isunordered ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-EQUAL?", Prim_flonum_is_equal_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    double x = (arg_flonum (1));
+    double y = (arg_flonum (2));
+    PRIMITIVE_RETURN
+      (BOOLEAN_TO_OBJECT ((islessequal (x, y)) && (isgreaterequal (x, y))));
+  }
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-ZERO?", Prim_flonum_is_zero_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    double x = (arg_flonum (1));
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((fpclassify (x)) == FP_ZERO));
+  }
 }
 
 /* Miscellaneous floating-point operations */

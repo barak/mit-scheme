@@ -107,14 +107,9 @@ USA.
     (,subnormal+ #f)
     (+1. #f)
     (+inf.0 #f)
-    ;; (+nan.0 #f)      ; exception
-    )
+    (+nan.0 #f))
   (lambda (x v)
-    (assert-eqv (yes-traps (lambda () (flo:zero? x))) v)))
-
-(define-test 'nan-is-not-zero
-  (lambda ()
-    (assert-false (no-traps (lambda () (flo:zero? (flo:nan.0)))))))
+    (assert-eqv (yes-traps (lambda () (flo:safe-zero? x))) v)))
 
 (define-enumerated-test 'subnormal?
   `((-inf.0 #f)
@@ -241,6 +236,7 @@ USA.
   (define-comparison-test '>= flo:safe>= flo:>= cases)
   (define-comparison-test '<= flo:safe<= flo:<= cases)
   (define-comparison-test '<> flo:safe<> flo:<> cases)
+  (define-comparison-test '= flo:safe= flo:= cases)
   (define-test 'unordered?
     (map (lambda (x)
            (map (lambda (y)
@@ -379,6 +375,17 @@ USA.
     (+inf.0 #f #t)
     (+nan.0 #f #f)))
 
+(define-constcomp-test '= flo:safe= flo:= 0.
+  `((-inf.0 #f #f)
+    (-1. #f #f)
+    (,subnormal- #f #f)
+    (-0. #t #t)
+    (+0. #t #t)
+    (,subnormal+ #f #f)
+    (+1. #f #f)
+    (+inf.0 #f #f)
+    (+nan.0 #f #f)))
+
 (define-constcomp-test '<> flo:safe<> flo:<> 0.
   `((-inf.0 #t #t)
     (-1. #t #t)
@@ -432,6 +439,17 @@ USA.
     (,subnormal+ #t #f)
     (+1. #t #t)
     (+inf.0 #f #t)
+    (+nan.0 #f #f)))
+
+(define-constcomp-test '= flo:safe= flo:= 1.
+  `((-inf.0 #f #f)
+    (-1. #f #f)
+    (,subnormal- #f #f)
+    (-0. #f #f)
+    (+0. #f #f)
+    (,subnormal+ #f #f)
+    (+1. #t #t)
+    (+inf.0 #f #f)
     (+nan.0 #f #f)))
 
 (define-constcomp-test '<> flo:safe<> flo:<> 1.

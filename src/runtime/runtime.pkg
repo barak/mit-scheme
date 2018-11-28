@@ -342,9 +342,11 @@ USA.
 	  flo:round
 	  flo:round->exact
 	  flo:safe-negative?
+	  flo:safe-zero?
 	  flo:safe<
 	  flo:safe<=
 	  flo:safe<>
+	  flo:safe=
 	  flo:safe>
 	  flo:safe>=
 	  flo:sin
