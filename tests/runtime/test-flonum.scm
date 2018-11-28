@@ -194,33 +194,44 @@ USA.
   (lambda (x n?)
     (assert-eqv (yes-traps (lambda () (flo:safe-negative? x))) n?)))
 
+(define-syntax define-comparison-test
+  (syntax-rules ()
+    ((define-comparison-test name safe-compare unsafe-compare cases)
+     (define-test name
+       (map (lambda (x)
+              (map (lambda (y)
+                     (lambda ()
+                       (assert-eqv
+                        (yes-traps (lambda () (safe-compare x y)))
+                        (if (or (flo:nan? x) (flo:nan? y))
+                            #f
+                            (unsafe-compare x y)))
+                       (assert-eqv
+                        (yes-traps (lambda () (not (safe-compare x y))))
+                        (if (or (flo:nan? x) (flo:nan? y))
+                            #t
+                            (not (unsafe-compare x y))))))
+                   cases))
+            cases)))))
+
 (let* ((subnormal+ flo:smallest-positive-subnormal)
        (subnormal- (no-traps (lambda () (- subnormal+))))
        (cases
         `(-inf.0 -1. ,subnormal- -0. +0. ,subnormal+ +1. +inf.0 +nan.0)))
-  (define (define-comparison-test name safe-compare unsafe-compare)
-    (define-test name
-      (map (lambda (x)
-             (map (lambda (y)
-                    (lambda ()
-                      (assert-eqv
-                       (yes-traps (lambda () (safe-compare x y)))
-                       (if (or (flo:nan? x) (flo:nan? y))
-                           #f
-                           (unsafe-compare x y)))))
-                  cases))
-           cases)))
-  (define-comparison-test '< flo:safe< flo:<)
-  (define-comparison-test '> flo:safe> flo:>)
-  (define-comparison-test '>= flo:safe>= flo:>=)
-  (define-comparison-test '<= flo:safe<= flo:<=)
-  (define-comparison-test '<> flo:safe<> flo:<>)
+  (define-comparison-test '< flo:safe< flo:< cases)
+  (define-comparison-test '> flo:safe> flo:> cases)
+  (define-comparison-test '>= flo:safe>= flo:>= cases)
+  (define-comparison-test '<= flo:safe<= flo:<= cases)
+  (define-comparison-test '<> flo:safe<> flo:<> cases)
   (define-test 'unordered?
     (map (lambda (x)
            (map (lambda (y)
                   (lambda ()
                     (assert-eqv (yes-traps (lambda () (flo:unordered? x y)))
-                                (or (flo:nan? x) (flo:nan? y)))))
+                                (or (flo:nan? x) (flo:nan? y)))
+                    (assert-eqv (yes-traps (lambda ()
+                                             (not (flo:unordered? x y))))
+                                (not (or (flo:nan? x) (flo:nan? y))))))
                 cases))
          cases))
   (define-test 'tetrachotomy
