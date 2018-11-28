@@ -248,7 +248,13 @@ USA.
                                 (or (flo:nan? x) (flo:nan? y)))
                     (assert-eqv (yes-traps (lambda ()
                                              (not (flo:unordered? x y))))
-                                (not (or (flo:nan? x) (flo:nan? y))))))
+                                (not (or (flo:nan? x) (flo:nan? y))))
+                    (if (flo:unordered? x y)
+                        (assert-true (or (flo:nan? x) (flo:nan? y))))
+                    (if (not (flo:unordered? x y))
+                        (begin
+                          (assert-false (flo:nan? x))
+                          (assert-false (flo:nan? y))))))
                 cases))
          cases))
   (define-test 'tetrachotomy
