@@ -41,12 +41,10 @@ USA.
       (f)))
 
 (define (yes-traps f)
-  #;
   (if (flo:have-trap-enable/disable?)
-      (flo:with-trapped-exceptions (flo:trappable-exceptions) f)
-      (f))
-  ;; XXX Temporary workaround for my setup.
-  (no-traps f))
+      ;; XXX Should enable all traps.
+      (flo:with-trapped-exceptions (flo:exception:invalid-operation) f)
+      (f)))
 
 (define subnormal+ flo:smallest-positive-subnormal)
 (define subnormal- (no-traps (lambda () (- subnormal+))))
@@ -104,9 +102,14 @@ USA.
     (,subnormal+ #f)
     (+1. #f)
     (+inf.0 #f)
-    (+nan.0 #f))
+    ;; (+nan.0 #f)      ; exception
+    )
   (lambda (x v)
     (assert-eqv (yes-traps (lambda () (flo:zero? x))) v)))
+
+(define-test 'nan-is-not-zero
+  (lambda ()
+    (assert-false (no-traps (lambda () (flo:zero? (flo:nan.0)))))))
 
 (define-enumerated-test 'subnormal?
   `((-inf.0 #f)
