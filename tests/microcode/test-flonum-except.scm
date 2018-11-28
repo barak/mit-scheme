@@ -275,22 +275,26 @@ USA.
 
 ;; XXX sinh, cosh, tanh, asinh, acosh, atanh
 
-(define-invop-compare-test 'flo:= (applicator flo:= 0. +nan.0) expect-failure)
-(define-invop-compare-test 'flo:= (applicator flo:= +nan.0 0.) expect-failure)
-(define-invop-compare-test 'flo:= (applicator flo:= +nan.0 +nan.0) expect-failure)
+(let ((expect-failure
+       (if (eq? microcode-id/compiled-code-type 'x86-64)
+           #!default
+           expect-failure)))
+  (define-invop-compare-test 'flo:= (applicator flo:= 0. +nan.0) expect-failure)
+  (define-invop-compare-test 'flo:= (applicator flo:= +nan.0 0.) expect-failure)
+  (define-invop-compare-test 'flo:= (applicator flo:= +nan.0 +nan.0) expect-failure)
 
-(define-invop-compare-test 'flo:< (applicator flo:< 0. +nan.0) expect-failure)
-(define-invop-compare-test 'flo:< (applicator flo:< +nan.0 0.) expect-failure)
-(define-invop-compare-test 'flo:< (applicator flo:< +nan.0 +nan.0) expect-failure)
+  (define-invop-compare-test 'flo:< (applicator flo:< 0. +nan.0) expect-failure)
+  (define-invop-compare-test 'flo:< (applicator flo:< +nan.0 0.) expect-failure)
+  (define-invop-compare-test 'flo:< (applicator flo:< +nan.0 +nan.0) expect-failure)
 
-(define-invop-compare-test 'flo:> (applicator flo:> 0. +nan.0) expect-failure)
-(define-invop-compare-test 'flo:> (applicator flo:> +nan.0 0.) expect-failure)
-(define-invop-compare-test 'flo:> (applicator flo:> +nan.0 +nan.0) expect-failure)
+  (define-invop-compare-test 'flo:> (applicator flo:> 0. +nan.0) expect-failure)
+  (define-invop-compare-test 'flo:> (applicator flo:> +nan.0 0.) expect-failure)
+  (define-invop-compare-test 'flo:> (applicator flo:> +nan.0 +nan.0) expect-failure)
 
-(define-invop-compare-test 'flo:<= (applicator flo:<= 0. +nan.0) expect-failure)
-(define-invop-compare-test 'flo:<= (applicator flo:<= +nan.0 0.) expect-failure)
-(define-invop-compare-test 'flo:<= (applicator flo:<= +nan.0 +nan.0) expect-failure)
+  (define-invop-compare-test 'flo:<= (applicator flo:<= 0. +nan.0) expect-failure)
+  (define-invop-compare-test 'flo:<= (applicator flo:<= +nan.0 0.) expect-failure)
+  (define-invop-compare-test 'flo:<= (applicator flo:<= +nan.0 +nan.0) expect-failure)
 
-(define-invop-compare-test 'flo:>= (applicator flo:>= 0. +nan.0) expect-failure)
-(define-invop-compare-test 'flo:>= (applicator flo:>= +nan.0 0.) expect-failure)
-(define-invop-compare-test 'flo:>= (applicator flo:>= +nan.0 +nan.0) expect-failure)
+  (define-invop-compare-test 'flo:>= (applicator flo:>= 0. +nan.0) expect-failure)
+  (define-invop-compare-test 'flo:>= (applicator flo:>= +nan.0 0.) expect-failure)
+  (define-invop-compare-test 'flo:>= (applicator flo:>= +nan.0 +nan.0) expect-failure))

@@ -336,9 +336,48 @@ USA.
     ((FLONUM-EQUAL?) 'FLONUM-EQUAL?)
     ((FLONUM-LESS?) 'FLONUM-GREATER?)
     ((FLONUM-GREATER?) 'FLONUM-LESS?)
+    ((FLONUM-IS-LESS?) 'FLONUM-IS-GREATER?)
+    ((FLONUM-IS-LESS-OR-EQUAL?) 'FLONUM-IS-GREATER-OR-EQUAL?)
+    ((FLONUM-IS-GREATER?) 'FLONUM-IS-LESS?)
+    ((FLONUM-IS-GREATER-OR-EQUAL?) 'FLONUM-IS-GREATER-OR-EQUAL?)
+    ((FLONUM-IS-UNORDERED?) 'FLONUM-IS-UNORDERED?)
+    ((FLONUM-IS-LESS-OR-GREATER?) 'FLONUM-IS-LESS-OR-GREATER?)
     (else (error "commute-flonum-predicate: Unknown predicate" predicate))))
-
+
 (define (flonum-branch! predicate source1 source2)
+  ;; (U)COMI sets
+  ;; - if unordered:    zf=1 pf=1 cf=1
+  ;; - if greater:      zf=0 pf=0 cf=0
+  ;; - if less:         zf=0 pf=0 cf=1
+  ;; - if equal:        zf=1 pf=0 cf=0
+  ;;
+  ;; (`Unordered' means NaN.)
+  ;;
+  ;; Thus:
+  ;; - JP (pf=1) is jump if NaN
+  ;; - JNP (pf=0) is jump if number
+  ;; - JE=JZ (zf=1) is jump if equal or NaN = not (less or greater)
+  ;; - JNE=JNZ (zf=0) is jump if not (equal or NaN) = less or greater
+  ;; - JA=JNBE (cf=0 & zf=0) is jump if greater = not (less or equal or NaN)
+  ;; - JAE=JNB (cf=0) is jump if greater or equal = not (less or NaN)
+  ;; - JB=JNAE (cf=1) is jump if less or NaN = not (greater or equal)
+  ;; - JBE=JNA (cf=1 | zf=1) is jump if not greater = less or equal or NaN
+  ;;
+  ;; None of the other (distinct) jump condition codes involve only zf,
+  ;; pf, and cf.  (JC=JB=JNAE and JNC=JAE=JNB too.)
+  ;;
+  ;; Apparently x86 doesn't like <, <=, or = -- they require two
+  ;; conditional jumps while all the rest take only one.  Go figure.
+  ;;
+  ;; XXX Needs more automatic tests.
+  ;;
+  ;; XXX Support signalling FLONUM-LESS-OR-EQUAL?,
+  ;; FLONUM-GREATER-OR-EQUAL?, and FLONUM-LESS-OR-GREATER?.
+  ;;
+  (define (signalling-comparison)
+    (LAP (COMIF S D ,source1 ,source2)))
+  (define (quiet-comparison)
+    (LAP (UCOMIF S D ,source1 ,source2)))
   (case predicate
     ((FLONUM-EQUAL?)
      (set-current-branches! (lambda (label)
@@ -348,8 +387,9 @@ USA.
                                      (LABEL ,unordered))))
                             (lambda (label)
                               (LAP (JNE (@PCR ,label))
-                                   (JP (@PCR ,label))))))
-    ((FLONUM-LESS?)
+                                   (JP (@PCR ,label)))))
+     (signalling-comparison))
+    ((FLONUM-LESS? FLONUM-IS-LESS?)
      (set-current-branches! (lambda (label)
                               (let ((unordered (generate-label 'UNORDERED)))
                                 (LAP (JP (@PCR ,unordered))
@@ -357,15 +397,50 @@ USA.
                                      (LABEL ,unordered))))
                             (lambda (label)
                               (LAP (JAE (@PCR ,label))
-                                   (JP (@PCR ,label))))))
-    ((FLONUM-GREATER?)
+                                   (JP (@PCR ,label)))))
+     (case predicate
+       ((FLONUM-LESS?) (signalling-comparison))
+       ((FLONUM-IS-LESS?) (quiet-comparison))
+       (else (assert #f))))
+    ((FLONUM-GREATER? FLONUM-IS-GREATER?)
      (set-current-branches! (lambda (label)
                               (LAP (JA (@PCR ,label))))
                             (lambda (label)
-                              (LAP (JBE (@PCR ,label))))))
+                              (LAP (JBE (@PCR ,label)))))
+     (case predicate
+       ((FLONUM-GREATER?) (signalling-comparison))
+       ((FLONUM-IS-GREATER?) (quiet-comparison))
+       (else (assert #f))))
+    ((FLONUM-IS-LESS-OR-EQUAL?)
+     (set-current-branches! (lambda (label)
+                              (let ((unordered (generate-label 'UNORDERED)))
+                                (LAP (JP (@PCR ,unordered))
+                                     (JBE (@PCR ,label))
+                                     (LABEL ,unordered))))
+                            (lambda (label)
+                              (LAP (JA (@PCR ,label))
+                                   (JP (@PCR ,label)))))
+     (quiet-comparison))
+    ((FLONUM-IS-GREATER-OR-EQUAL?)
+     (set-current-branches! (lambda (label)
+                              (LAP (JAE (@PCR ,label))))
+                            (lambda (label)
+                              (LAP (JB (@PCR ,label)))))
+     (quiet-comparison))
+    ((FLONUM-IS-LESS-OR-GREATER?)
+     (set-current-branches! (lambda (label)
+                              (LAP (JNE (@PCR ,label))))
+                            (lambda (label)
+                              (LAP (JE (@PCR ,label)))))
+     (quiet-comparison))
+    ((FLONUM-IS-UNORDERED?)
+     (set-current-branches! (lambda (label)
+                              (LAP (JP (@PCR ,label))))
+                            (lambda (label)
+                              (LAP (JNP (@PCR ,label)))))
+     (quiet-comparison))
     (else
-     (error "flonum-branch!: Unknown predicate" predicate)))
-  (LAP (UCOMIF S D ,source1 ,source2)))
+     (error "flonum-branch!: Unknown predicate" predicate))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT (? fp-value))))
