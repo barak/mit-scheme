@@ -647,7 +647,17 @@ USA.
 
 (define-rule predicate
   (FLONUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
-  (flonum-compare-zero predicate source))
+  (flonum-compare-zero (flonum-pred-1->2-args predicate) source))
+
+;;; For a predicate giving (if (predicate x) a b), return predicate* so
+;;; that (if (predicate* x 0) a b) is equivalent.
+
+(define (flonum-pred-1->2-args predicate)
+  (case predicate
+    ((FLONUM-ZERO?) 'FLONUM-EQUAL?)
+    ((FLONUM-NEGATIVE?) 'FLONUM-LESS?)
+    ((FLONUM-POSITIVE?) 'FLONUM-GREATER?)
+    (else (error "Invalid flonum-pred-1-arg:" predicate))))
 
 (define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
@@ -702,17 +712,20 @@ USA.
 		    (LAP (FLD1)
 			 (FUCOMP (ST 0) (ST ,(1+ sti)))))))
 
+;;; For predicate giving (if (predicate x y) a b), return predicate* so
+;;; that (if (predicate* y x) a b) is equivalent.
+
 (define (commute-flonum-predicate pred)
   (case pred
-    ((FLONUM-EQUAL? FLONUM-ZERO?) 'FLONUM-EQUAL?)
-    ((FLONUM-LESS? FLONUM-NEGATIVE?) 'FLONUM-GREATER?)
-    ((FLONUM-GREATER? FLONUM-POSITIVE?) 'FLONUM-LESS?)
+    ((FLONUM-EQUAL?) 'FLONUM-EQUAL?)
+    ((FLONUM-LESS?) 'FLONUM-GREATER?)
+    ((FLONUM-GREATER?) 'FLONUM-LESS?)
     (else
      (error "commute-flonum-predicate: Unknown predicate" pred))))
 
 (define (flonum-branch! predicate prefix)
   (case predicate
-    ((FLONUM-EQUAL? FLONUM-ZERO?)
+    ((FLONUM-EQUAL?)
      (set-current-branches! (lambda (label)
 			      (let ((unordered (generate-label 'UNORDERED)))
 				(LAP (JP (@PCR ,unordered))
@@ -721,7 +734,7 @@ USA.
 			    (lambda (label)
 			      (LAP (JNE (@PCR ,label))
 				   (JP (@PCR ,label))))))
-    ((FLONUM-LESS? FLONUM-NEGATIVE?)
+    ((FLONUM-LESS?)
      (set-current-branches! (lambda (label)
 			      (let ((unordered (generate-label 'UNORDERED)))
 				(LAP (JP (@PCR ,unordered))
@@ -730,7 +743,7 @@ USA.
 			    (lambda (label)
 			      (LAP (JAE (@PCR ,label))
 				   (JP (@PCR ,label))))))
-    ((FLONUM-GREATER? FLONUM-POSITIVE?)
+    ((FLONUM-GREATER?)
      (set-current-branches! (lambda (label)
 			      (LAP (JA (@PCR ,label))))
 			    (lambda (label)
