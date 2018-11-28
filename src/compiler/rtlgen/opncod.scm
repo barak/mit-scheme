@@ -1554,7 +1554,7 @@ USA.
 	   expressions)))
       '(0)
       internal-close-coding-for-type-checks)))
- '(FLONUM-ZERO? FLONUM-POSITIVE? FLONUM-NEGATIVE?))
+ '(FLONUM-ZERO? FLONUM-POSITIVE? FLONUM-NEGATIVE? FLONUM-IS-NEGATIVE?))
 
 (for-each
  (lambda (flonum-pred)
