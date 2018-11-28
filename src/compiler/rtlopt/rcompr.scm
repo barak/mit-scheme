@@ -204,6 +204,9 @@ USA.
 	      ((rtl:object->unsigned-fixnum? expression)
 	       (recursion rtl:object->unsigned-fixnum-expression
 			  rtl:make-object->unsigned-fixnum))
+	      ((rtl:object->float? expression)
+	       (recurse-and-search rtl:object->float-expression
+				   rtl:make-object->float))
 	      (else
 	       (values false false)))))))
 
