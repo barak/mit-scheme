@@ -368,18 +368,7 @@ USA.
     (+inf.0 #t #f)
     (+nan.0 #f #f)))
 
-(define-lconstcomp-test '>=/lconst flo:safe>= flo:>= 0.
-  `((-inf.0 #t #f)
-    (-1. #t #f)
-    (,subnormal- #t #f)
-    (-0. #t #t)
-    (+0. #t #t)
-    (,subnormal+ #f #t)
-    (+1. #f #t)
-    (+inf.0 #f #t)
-    (+nan.0 #f #f)))
-
-(define-rconstcomp-test '>=/rconst flo:safe>= flo:>= 0.
+(define-constcomp-test '>= flo:safe>= flo:>= 0.
   `((-inf.0 #t #f)
     (-1. #t #f)
     (,subnormal- #t #f)
@@ -434,18 +423,7 @@ USA.
     (+inf.0 #t #f)
     (+nan.0 #f #f)))
 
-(define-lconstcomp-test '>=/lconst flo:safe>= flo:>= 1.
-  `((-inf.0 #t #f)
-    (-1. #t #f)
-    (,subnormal- #t #f)
-    (-0. #t #f)
-    (+0. #t #f)
-    (,subnormal+ #t #f)
-    (+1. #t #t)
-    (+inf.0 #f #t)
-    (+nan.0 #f #f)))
-
-(define-rconstcomp-test '>=/rconst flo:safe>= flo:>= 1.
+(define-constcomp-test '>= flo:safe>= flo:>= 1.
   `((-inf.0 #t #f)
     (-1. #t #f)
     (,subnormal- #t #f)
