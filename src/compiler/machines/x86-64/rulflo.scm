@@ -288,7 +288,7 @@ USA.
 (define-rule predicate
   (FLONUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
   (flonum-branch!
-   predicate
+   (flonum-pred-1->2-args predicate)
    (flonum-source-reference! source)
    (INST-EA (@PCR ,(allocate-double-float-bits-label double-flobits:zero)))))
 
@@ -318,20 +318,29 @@ USA.
                       (flonum-source-reference! source)
                       operand))))
 
-;;; For predicate giving (if (predicate x y) a b), return the
-;;; equivalent (if (predicate* y x) a b).  The unary predicates are
-;;; treated as if y = 0.  (XXX Separate this into another function.)
+;;; For a predicate giving (if (predicate x) a b), return predicate* so
+;;; that (if (predicate* x 0) a b) is equivalent.
+
+(define (flonum-pred-1->2-args predicate)
+  (case predicate
+    ((FLONUM-ZERO?) 'FLONUM-EQUAL?)
+    ((FLONUM-NEGATIVE?) 'FLONUM-LESS?)
+    ((FLONUM-POSITIVE?) 'FLONUM-GREATER?)
+    (else (error "Invalid flonum-pred-1-arg:" predicate))))
+
+;;; For predicate giving (if (predicate x y) a b), return predicate* so
+;;; that (if (predicate* y x) a b) is equivalent.
 
 (define (commute-flonum-predicate predicate)
   (case predicate
-    ((FLONUM-EQUAL? FLONUM-ZERO?) 'FLONUM-EQUAL?)
-    ((FLONUM-LESS? FLONUM-NEGATIVE?) 'FLONUM-GREATER?)
-    ((FLONUM-GREATER? FLONUM-POSITIVE?) 'FLONUM-LESS?)
+    ((FLONUM-EQUAL?) 'FLONUM-EQUAL?)
+    ((FLONUM-LESS?) 'FLONUM-GREATER?)
+    ((FLONUM-GREATER?) 'FLONUM-LESS?)
     (else (error "commute-flonum-predicate: Unknown predicate" predicate))))
 
 (define (flonum-branch! predicate source1 source2)
   (case predicate
-    ((FLONUM-EQUAL? FLONUM-ZERO?)
+    ((FLONUM-EQUAL?)
      (set-current-branches! (lambda (label)
                               (let ((unordered (generate-label 'UNORDERED)))
                                 (LAP (JP (@PCR ,unordered))
@@ -340,7 +349,7 @@ USA.
                             (lambda (label)
                               (LAP (JNE (@PCR ,label))
                                    (JP (@PCR ,label))))))
-    ((FLONUM-LESS? FLONUM-NEGATIVE?)
+    ((FLONUM-LESS?)
      (set-current-branches! (lambda (label)
                               (let ((unordered (generate-label 'UNORDERED)))
                                 (LAP (JP (@PCR ,unordered))
@@ -349,7 +358,7 @@ USA.
                             (lambda (label)
                               (LAP (JAE (@PCR ,label))
                                    (JP (@PCR ,label))))))
-    ((FLONUM-GREATER? FLONUM-POSITIVE?)
+    ((FLONUM-GREATER?)
      (set-current-branches! (lambda (label)
                               (LAP (JA (@PCR ,label))))
                             (lambda (label)
