@@ -330,9 +330,12 @@ USA.
 	  flo:lgamma
 	  flo:log
 	  flo:log1p
+	  flo:make-nan
 	  flo:max
 	  flo:min
 	  flo:modulo
+	  flo:nan-payload
+	  flo:nan-quiet?
 	  flo:nan?
 	  flo:negate
 	  flo:negative?

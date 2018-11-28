@@ -226,7 +226,10 @@ USA.
   (flo:vector-cons floating-vector-cons 1)
   (flo:vector-length floating-vector-length 1)
   (flo:vector-ref floating-vector-ref 2)
-  (flo:vector-set! floating-vector-set! 3))
+  (flo:vector-set! floating-vector-set! 3)
+  (flo:make-nan flonum-make-nan 3)
+  (flo:nan-quiet? flonum-nan-quiet? 1)
+  (flo:nan-payload flonum-nan-payload 1))
 
 (define (flo:<= x y) (or (flo:< x y) (flo:= x y)))
 (define (flo:>= x y) (or (flo:> x y) (flo:= x y)))

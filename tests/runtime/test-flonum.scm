@@ -35,6 +35,12 @@ USA.
              (apply procedure arguments)))
          cases)))
 
+(define assert-flonum
+  (predicate-assertion flo:flonum? "flonum"))
+
+(define assert-nan
+  (predicate-assertion flo:nan? "NaN"))
+
 (define (with-expected-failure xfail body)
   (if (default-object? xfail)
       (body)
@@ -462,3 +468,28 @@ USA.
     (+1. #f #f)
     (+inf.0 #t #t)
     (+nan.0 #f #f)))
+
+(define-enumerated-test 'nan
+  `(;;(#f #f 0)   ; infinity
+    (#f #t 0)
+    ;;(#t #f 0)   ; infinity
+    (#t #t 0)
+    (#f #f 1)
+    (#f #t 1)
+    (#t #f 1)
+    (#t #t 1)
+    (#f #f 12345)
+    (#f #t 12345)
+    (#t #f 12345)
+    (#t #t 12345)
+    (#f #f ,(- (expt 2 51) 1))
+    (#f #t ,(- (expt 2 51) 1))
+    (#t #f ,(- (expt 2 51) 1))
+    (#f #t ,(- (expt 2 51) 1)))
+  (lambda (negative? quiet? payload)
+    (let ((nan (flo:make-nan negative? quiet? payload)))
+      (assert-flonum nan)
+      (assert-nan nan)
+      (assert-eqv (flo:safe-negative? nan) negative?)
+      (assert-eqv (flo:nan-quiet? nan) quiet?)
+      (assert-eqv (flo:nan-payload nan) payload))))

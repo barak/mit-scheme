@@ -26,9 +26,12 @@ USA.
 
 /* Floating Point Arithmetic */
 
+#include <float.h>
+
 #include "scheme.h"
 #include "osscheme.h"		/* error_unimplemented_primitive -- foo */
 #include "prims.h"
+#include "ctassert.h"
 
 double
 arg_flonum (int arg_number)
@@ -541,6 +544,65 @@ DEFINE_PRIMITIVE ("FLONUM-IS-ZERO?", Prim_flonum_is_zero_p, 1, 1, 0)
   {
     double x = (arg_flonum (1));
     PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((fpclassify (x)) == FP_ZERO));
+  }
+}
+
+/* NaN utilities */
+
+DEFINE_PRIMITIVE ("FLONUM-MAKE-NAN", Prim_flonum_make_nan, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  CTASSERT (FLT_RADIX == 2);
+  CTASSERT (DBL_MANT_DIG == 53);
+  {
+    uint64_t sign = (OBJECT_TO_BOOLEAN (ARG_REF (1)));
+    uint64_t quiet = (OBJECT_TO_BOOLEAN (ARG_REF (2)));
+    uint64_t payload =
+      (arg_index_integer_to_intmax (3, ((UINT64_C (1)) << 51)));
+    union {
+      double d;
+      uint64_t i;
+    } u = { .i = 0 };
+    if ((!quiet) && (payload == 0))
+      error_bad_range_arg (payload);
+    (u.i) |= (sign << 63);
+    (u.i) |= ((UINT64_C (0x7ff)) << 52);
+    (u.i) |= (quiet << 51);
+    (u.i) |= payload;
+    FLONUM_RESULT (u.d);
+  }
+}
+
+DEFINE_PRIMITIVE ("FLONUM-NAN-QUIET?", Prim_flonum_nan_quiet_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CTASSERT (FLT_RADIX == 2);
+  CTASSERT (DBL_MANT_DIG == 53);
+  {
+    union {
+      double d;
+      uint64_t i;
+    } u = { .d = (arg_flonum (1)) };
+    if (((u.i) & ((UINT64_C (0x7ff)) << 52)) != ((UINT64_C (0x7ff)) << 52))
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((u.i) & ((UINT64_C (1)) << 51)));
+  }
+}
+
+DEFINE_PRIMITIVE ("FLONUM-NAN-PAYLOAD", Prim_flonum_nan_payload, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CTASSERT (FLT_RADIX == 2);
+  CTASSERT (DBL_MANT_DIG == 53);
+  {
+    union {
+      double d;
+      uint64_t i;
+    } u = { .d = (arg_flonum (1)) };
+    if (((u.i) & ((UINT64_C (0x7ff)) << 52)) != ((UINT64_C (0x7ff)) << 52))
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN
+      (uintmax_to_integer ((u.i) & (((UINT64_C (1)) << 51) - 1)));
   }
 }
 
