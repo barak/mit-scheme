@@ -106,6 +106,15 @@ USA.
     condition-type:invalid-floating-point-operation
     procedure xfail))
 
+(define (define-invop-compare-test name procedure #!optional xfail)
+  (define-exception-flag-test name 'invalid-operation
+    (flo:exception:invalid-operation)
+    assert-false procedure xfail)
+  (define-exception-trap-test name 'invalid-operation
+    (flo:exception:invalid-operation)
+    condition-type:invalid-floating-point-operation
+    procedure xfail))
+
 (define (define-divbyzero-flag-test name procedure #!optional xfail)
   (define-exception-flag-test name 'divide-by-zero
     (flo:exception:divide-by-zero)
@@ -265,3 +274,23 @@ USA.
 ;; XXX Not clear how to make atan underflow reliably.
 
 ;; XXX sinh, cosh, tanh, asinh, acosh, atanh
+
+(define-invop-compare-test 'flo:= (applicator flo:= 0. +nan.0) expect-failure)
+(define-invop-compare-test 'flo:= (applicator flo:= +nan.0 0.) expect-failure)
+(define-invop-compare-test 'flo:= (applicator flo:= +nan.0 +nan.0) expect-failure)
+
+(define-invop-compare-test 'flo:< (applicator flo:< 0. +nan.0) expect-failure)
+(define-invop-compare-test 'flo:< (applicator flo:< +nan.0 0.) expect-failure)
+(define-invop-compare-test 'flo:< (applicator flo:< +nan.0 +nan.0) expect-failure)
+
+(define-invop-compare-test 'flo:> (applicator flo:> 0. +nan.0) expect-failure)
+(define-invop-compare-test 'flo:> (applicator flo:> +nan.0 0.) expect-failure)
+(define-invop-compare-test 'flo:> (applicator flo:> +nan.0 +nan.0) expect-failure)
+
+(define-invop-compare-test 'flo:<= (applicator flo:<= 0. +nan.0) expect-failure)
+(define-invop-compare-test 'flo:<= (applicator flo:<= +nan.0 0.) expect-failure)
+(define-invop-compare-test 'flo:<= (applicator flo:<= +nan.0 +nan.0) expect-failure)
+
+(define-invop-compare-test 'flo:>= (applicator flo:>= 0. +nan.0) expect-failure)
+(define-invop-compare-test 'flo:>= (applicator flo:>= +nan.0 0.) expect-failure)
+(define-invop-compare-test 'flo:>= (applicator flo:>= +nan.0 +nan.0) expect-failure)
