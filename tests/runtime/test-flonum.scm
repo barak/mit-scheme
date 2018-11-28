@@ -223,7 +223,7 @@ USA.
                              (if (unsafe-compare x y)
                                  (assert-true (safe-compare x y)))
                              (if (not (unsafe-compare x y))
-                                 (assert-false (unsafe-compare x y)))))))
+                                 (assert-false (safe-compare x y)))))))
                    cases))
             cases)))))
 
