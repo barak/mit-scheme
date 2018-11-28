@@ -224,30 +224,6 @@ USA.
 		(and (fix:fixnum? n)
 		     (predicate n)))))))
 
-(define-rule rewriting
-  (OBJECT->FLOAT (REGISTER (? operand register-known-value)))
-  ;; This is not quite what we want.  We really want to rewrite all
-  ;; OBJECT->FLOAT expressions with known constant operands, not just
-  ;; the nonzero ones, and then decide later whether to put it in
-  ;; memory based on whether there is a temporary register that we can
-  ;; zero with XOR.  By not rewriting this case when the constant is
-  ;; zero, using a temporary may cause some other register to be
-  ;; written to memory, which defeats the purpose of using XOR to
-  ;; avoid memory access.
-  (QUALIFIER (rtl:constant-flonum-test operand flo:nonzero?))
-  (rtl:make-object->float operand))
-
-(define (rtl:constant-flonum-test expression predicate)
-  (and (rtl:object->float? expression)
-       (let ((expression (rtl:object->float-expression expression)))
-	 (and (rtl:constant? expression)
-	      (let ((n (rtl:constant-value expression)))
-		(and (flo:flonum? n)
-		     (predicate n)))))))
-
-(define-integrable (flo:nonzero? value)
-  (not (flo:= value 0.)))
-
 ;;;; Indexed addressing modes
 
 (define-rule rewriting
