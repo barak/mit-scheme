@@ -335,12 +335,6 @@ USA.
        (define-lconstcomp-test (symbol name '/lconst) safe unsafe x0 cases)
        (define-rconstcomp-test (symbol name '/rconst) safe unsafe x0 cases)))))
 
-(define expect-failure-x86-64
-  (if (and (eq? microcode-id/compiled-code-type 'x86-64)
-           (compiled-procedure? (lambda (x) x)))
-      expect-failure
-      #!default))
-
 (define-constcomp-test '< flo:safe< flo:< 0.
   `((-inf.0 #f #t)
     (-1. #f #t)
@@ -375,14 +369,14 @@ USA.
     (+nan.0 #f #f)))
 
 (define-lconstcomp-test '>=/lconst flo:safe>= flo:>= 0.
-  `((-inf.0 #t #f ,expect-failure-x86-64)
-    (-1. #t #f ,expect-failure-x86-64)
-    (,subnormal- #t #f ,expect-failure-x86-64)
+  `((-inf.0 #t #f)
+    (-1. #t #f)
+    (,subnormal- #t #f)
     (-0. #t #t)
     (+0. #t #t)
-    (,subnormal+ #f #t ,expect-failure-x86-64)
-    (+1. #f #t ,expect-failure-x86-64)
-    (+inf.0 #f #t ,expect-failure-x86-64)
+    (,subnormal+ #f #t)
+    (+1. #f #t)
+    (+inf.0 #f #t)
     (+nan.0 #f #f)))
 
 (define-rconstcomp-test '>=/rconst flo:safe>= flo:>= 0.
@@ -441,14 +435,14 @@ USA.
     (+nan.0 #f #f)))
 
 (define-lconstcomp-test '>=/lconst flo:safe>= flo:>= 1.
-  `((-inf.0 #t #f ,expect-failure-x86-64)
-    (-1. #t #f ,expect-failure-x86-64)
-    (,subnormal- #t #f ,expect-failure-x86-64)
-    (-0. #t #f ,expect-failure-x86-64)
-    (+0. #t #f ,expect-failure-x86-64)
-    (,subnormal+ #t #f ,expect-failure-x86-64)
+  `((-inf.0 #t #f)
+    (-1. #t #f)
+    (,subnormal- #t #f)
+    (-0. #t #f)
+    (+0. #t #f)
+    (,subnormal+ #t #f)
     (+1. #t #t)
-    (+inf.0 #f #t ,expect-failure-x86-64)
+    (+inf.0 #f #t)
     (+nan.0 #f #f)))
 
 (define-rconstcomp-test '>=/rconst flo:safe>= flo:>= 1.
