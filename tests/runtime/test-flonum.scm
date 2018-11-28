@@ -41,6 +41,26 @@ USA.
 (define assert-nan
   (predicate-assertion flo:nan? "NaN"))
 
+(define assert-qnan
+  (predicate-assertion flo:qnan? "qNaN"))
+
+(define assert-snan
+  (predicate-assertion flo:snan? "sNaN"))
+
+(define (eqv-nan? x y)
+  (if (flo:nan? x)
+      (and (flo:nan? y)
+           (eqv? (flo:safe-negative? x) (flo:safe-negative? y))
+           (eqv? (flo:nan-quiet? x) (flo:nan-quiet? y))
+           (eqv? (flo:nan-payload x) (flo:nan-payload y)))
+      (and (not (flo:nan? y))
+           (eqv? x y))))
+
+(define-comparator eqv-nan? 'eqv-nan?)
+
+(define assert-eqv-nan
+  (simple-binary-assertion eqv-nan? #f))
+
 (define (with-expected-failure xfail body)
   (if (default-object? xfail)
       (body)
@@ -490,6 +510,117 @@ USA.
     (let ((nan (flo:make-nan negative? quiet? payload)))
       (assert-flonum nan)
       (assert-nan nan)
+      (if quiet?
+          (assert-qnan nan)
+          (assert-snan nan))
       (assert-eqv (flo:safe-negative? nan) negative?)
       (assert-eqv (flo:nan-quiet? nan) quiet?)
       (assert-eqv (flo:nan-payload nan) payload))))
+
+(let ((inputs '((-inf.0) (-1.) (-0.) (+0.) (+1.) (+inf.0)))
+      (quiet-cases
+       `((-inf.0 -inf.0 -inf.0 -inf.0 -inf.0 -inf.0)
+         (-inf.0 -1. -inf.0 -1. -1. -inf.0)
+         (-inf.0 -0. -inf.0 -0. -0. -inf.0)
+         (-inf.0 +0. -inf.0 +0. +0. -inf.0)
+         (-inf.0 +1. -inf.0 +1. +1. -inf.0)
+         (-inf.0 +inf.0 -inf.0 +inf.0 -inf.0 +inf.0)
+         (-inf.0 ,(flo:qnan) -inf.0 -inf.0 -inf.0 -inf.0)
+         (-1. -inf.0 -inf.0 -1. -1. -inf.0)
+         (-1. -1. -1. -1. -1. -1.)
+         (-1. -0. -1. -0. -0. -1.)
+         (-1. +0. -1. +0. +0. -1.)
+         (-1. +1. -1. +1. -1. +1.)
+         (-1. +inf.0 -1. +inf.0 -1. +inf.0)
+         (-1. ,(flo:qnan) -1. -1. -1. -1.)
+         (-0. -inf.0 -inf.0 -0. -0. -inf.0)
+         (-0. -1. -1. -0. -0. -1.)
+         (-0. -0. -0. -0. -0. -0.)
+         (-0. +0. -0. +0. -0. +0.)      ;arbitrary
+         (-0. +1. -0. +1. -0. +1.)
+         (-0. +inf.0 -0. +inf.0 -0. +inf.0)
+         (-0. ,(flo:qnan) -0. -0. -0. -0.)
+         (+0. -inf.0 -inf.0 +0. +0. -inf.0)
+         (+0. -1. -1. +0. +0. -1.)
+         (+0. -0. +0. -0. +0. -0.)      ;arbitrary
+         (+0. +0. +0. +0. +0. +0.)
+         (+0. +1. +0. +1. +0. +1.)
+         (+0. +inf.0 +0. +inf.0 +0. +inf.0)
+         (+0. ,(flo:qnan) +0. +0. +0. +0.)
+         (+1. -inf.0 -inf.0 +1. +1. -inf.0)
+         (+1. -1. -1. +1. -1. +1.)
+         (+1. -0. -0. +1. -0. +1.)
+         (+1. +0. +0. +1. +0. +1.)
+         (+1. +1. +1. +1. +1. +1.)
+         (+1. +inf.0 +1. +inf.0 +1. +inf.0)
+         (+1. ,(flo:qnan) +1. +1. +1. +1.)
+         (+inf.0 -inf.0 -inf.0 +inf.0 -inf.0 +inf.0)
+         (+inf.0 -1. -1. +inf.0 -1. +inf.0)
+         (+inf.0 -0. -0. +inf.0 -0. +inf.0)
+         (+inf.0 +0. +0. +inf.0 +0. +inf.0)
+         (+inf.0 +1. +1. +inf.0 +1. +inf.0)
+         (+inf.0 +inf.0 +inf.0 +inf.0 +inf.0 +inf.0)
+         (+inf.0 ,(flo:qnan) +inf.0 +inf.0 +inf.0 +inf.0)
+         (,(flo:qnan) -inf.0 -inf.0 -inf.0 -inf.0 -inf.0)
+         (,(flo:qnan) -1. -1. -1. -1. -1.)
+         (,(flo:qnan) -0. -0. -0. -0. -0.)
+         (,(flo:qnan) +0. +0. +0. +0. +0.)
+         (,(flo:qnan) +1. +1. +1. +1. +1.)
+         (,(flo:qnan) +inf.0 +inf.0 +inf.0 +inf.0 +inf.0)
+         (,(flo:qnan) ,(flo:qnan)
+          ,(flo:qnan) ,(flo:qnan)
+          ,(flo:qnan) ,(flo:qnan)))))
+  (define-enumerated-test 'min quiet-cases
+    (lambda (x y min max min-mag max-mag)
+      max min-mag max-mag
+      (assert-eqv-nan (yes-traps (lambda () (flo:min x y))) min)))
+  (define-enumerated-test 'max quiet-cases
+    (lambda (x y min max min-mag max-mag)
+      min min-mag max-mag
+      (assert-eqv-nan (yes-traps (lambda () (flo:max x y))) max)))
+  (define-enumerated-test 'min-mag quiet-cases
+    (lambda (x y min max min-mag max-mag)
+      min max max-mag
+      (assert-eqv-nan (yes-traps (lambda () (flo:min-mag x y))) min-mag)))
+  (define-enumerated-test 'max-mag quiet-cases
+    (lambda (x y min max min-mag max-mag)
+      min max min-mag
+      (assert-eqv-nan (yes-traps (lambda () (flo:max-mag x y))) max-mag)))
+  (define-enumerated-test 'min-snan-left inputs
+    (lambda (x)
+      (assert-eqv (no-traps (lambda () (flo:min (flo:snan) x))) x)))
+  (define-enumerated-test 'max-snan-left inputs
+    (lambda (x)
+      (assert-eqv (no-traps (lambda () (flo:max (flo:snan) x))) x)))
+  (define-enumerated-test 'min-snan-right inputs
+    (lambda (x)
+      (assert-eqv (no-traps (lambda () (flo:min x (flo:snan)))) x)))
+  (define-enumerated-test 'max-snan-right inputs
+    (lambda (x)
+      (assert-eqv (no-traps (lambda () (flo:max x (flo:snan)))) x)))
+  (define-test 'min-snan-both
+    (lambda ()
+      (assert-nan (no-traps (lambda () (flo:min (flo:snan) (flo:snan)))))))
+  (define-test 'max-snan-both
+    (lambda ()
+      (assert-nan (no-traps (lambda () (flo:max (flo:snan) (flo:snan)))))))
+  (define-enumerated-test 'min-mag-snan-left inputs
+    (lambda (x)
+      (assert-eqv (no-traps (lambda () (flo:min-mag (flo:snan) x))) x)))
+  (define-enumerated-test 'max-mag-snan-left inputs
+    (lambda (x)
+      (assert-eqv (no-traps (lambda () (flo:max-mag (flo:snan) x))) x)))
+  (define-enumerated-test 'min-mag-snan-right inputs
+    (lambda (x)
+      (assert-eqv (no-traps (lambda () (flo:min-mag x (flo:snan)))) x)))
+  (define-enumerated-test 'max-mag-snan-right inputs
+    (lambda (x)
+      (assert-eqv (no-traps (lambda () (flo:max-mag x (flo:snan)))) x)))
+  (define-test 'min-mag-snan-both
+    (lambda ()
+      (assert-nan
+       (no-traps (lambda () (flo:min-mag (flo:snan) (flo:snan)))))))
+  (define-test 'max-mag-snan-both
+    (lambda ()
+      (assert-nan
+       (no-traps (lambda () (flo:max-mag (flo:snan) (flo:snan))))))))

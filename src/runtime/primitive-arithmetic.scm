@@ -235,17 +235,50 @@ USA.
 (define (flo:>= x y) (or (flo:> x y) (flo:= x y)))
 (define (flo:<> x y) (or (flo:< x y) (flo:> x y)))
 
+(define (flo:invalid-minmax x y caller)
+  caller
+  (cond ((not (flo:nan? x))
+	 (assert (flo:nan? y))
+	 (if (not (flo:nan-quiet? y))
+	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
+	 x)
+	((not (flo:nan? y))
+	 (assert (flo:nan? x))
+	 (if (not (flo:nan-quiet? x))
+	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
+	 y)
+	(else
+	 (if (not (and (flo:nan-quiet? x) (flo:nan-quiet? y)))
+	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
+	 x)))
+
 (define (flo:min x y)
-  (cond ((flo:< x y) x)
-	((flo:> x y) y)
-	((flo:= x y) x)
-	(else (error:bad-range-argument (if (flo:finite? x) x y) 'flo:min))))
+  (cond ((flo:safe< x y) x)
+	((flo:safe> x y) y)
+	((flo:safe= x y) x)		;arbitrary
+	(else (flo:invalid-minmax x y 'flo:min))))
 
 (define (flo:max x y)
-  (cond ((flo:< x y) y)
-	((flo:> x y) x)
-	((flo:= x y) y)
-	(else (error:bad-range-argument (if (flo:finite? x) x y) 'flo:max))))
+  (cond ((flo:safe< x y) y)
+	((flo:safe> x y) x)
+	((flo:safe= x y) y)		;arbitrary
+	(else (flo:invalid-minmax x y 'flo:max))))
+
+(define (flo:min-mag x y)
+  (let ((xm (flo:abs x))
+	(ym (flo:abs y)))
+    (cond ((flo:safe< xm ym) x)
+	  ((flo:safe> xm ym) y)
+	  ((flo:safe= xm ym) (flo:min x y))
+	  (else (flo:invalid-minmax x y 'flo:min-mag)))))
+
+(define (flo:max-mag x y)
+  (let ((xm (flo:abs x))
+	(ym (flo:abs y)))
+    (cond ((flo:safe< xm ym) y)
+	  ((flo:safe> xm ym) x)
+	  ((flo:safe= xm ym) (flo:max x y))
+	  (else (flo:invalid-minmax x y 'flo:max-mag)))))
 
 (define (flo:eqv? x y)
   (and (not (flo:nan? x))
@@ -284,6 +317,21 @@ USA.
 	((flo:zero? x) 'zero)
 	((flo:normal? x) 'normal)
 	(else 'subnormal)))
+
+(define (flo:qnan #!optional payload)
+  (flo:make-nan #f #t (if (default-object? payload) 0 payload)))
+
+(define (flo:qnan? nan)
+  (and (flo:nan? nan)
+       (flo:nan-quiet? nan)))
+
+(define (flo:snan #!optional payload)
+  ;; Signalling NaN payload can't be zero -- that's an infinity.
+  (flo:make-nan #f #f (if (default-object? payload) 1 payload)))
+
+(define (flo:snan? nan)
+  (and (flo:nan? nan)
+       (not (flo:nan-quiet? nan))))
 
 ;;;; Exact integers
 

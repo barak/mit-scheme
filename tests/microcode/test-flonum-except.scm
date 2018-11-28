@@ -158,6 +158,20 @@ USA.
     (apply (no-op procedure)
 	   (no-op arguments))))
 
+;;; IEEE 754, Sec. 5.3.1 (see also Sec. 6.2)
+
+(for-each
+ (lambda (x)
+   (define-invop-trap-test 'min (applicator flo:min x (flo:snan)))
+   (define-invop-trap-test 'min (applicator flo:min (flo:snan) x))
+   (define-invop-trap-test 'min-mag (applicator flo:min-mag x (flo:snan)))
+   (define-invop-trap-test 'min-mag (applicator flo:min-mag (flo:snan) x))
+   (define-invop-trap-test 'max (applicator flo:max x (flo:snan)))
+   (define-invop-trap-test 'max (applicator flo:max (flo:snan) x))
+   (define-invop-trap-test 'max-mag (applicator flo:max-mag x (flo:snan)))
+   (define-invop-trap-test 'max-mag (applicator flo:max-mag (flo:snan) x)))
+ '(-inf.0 -1. -0. +0. +1. +inf.0))
+
 ;;; IEEE 754, Sec. 7.2
 
 (define-invop-flag-test 'flonum-multiply ;(b)

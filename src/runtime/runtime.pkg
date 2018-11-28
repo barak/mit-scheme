@@ -332,7 +332,9 @@ USA.
 	  flo:log1p
 	  flo:make-nan
 	  flo:max
+	  flo:max-mag
 	  flo:min
+	  flo:min-mag
 	  flo:modulo
 	  flo:nan-payload
 	  flo:nan-quiet?
@@ -342,6 +344,8 @@ USA.
 	  flo:nextafter
 	  flo:normal?
 	  flo:positive?
+	  flo:qnan
+	  flo:qnan?
 	  flo:round
 	  flo:round->exact
 	  flo:safe-negative?
@@ -354,6 +358,8 @@ USA.
 	  flo:safe>=
 	  flo:sin
 	  flo:sinh
+	  flo:snan
+	  flo:snan?
 	  flo:sqrt
 	  flo:subnormal?
 	  flo:tan
