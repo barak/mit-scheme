@@ -48,13 +48,6 @@ USA.
   ;; XXX Temporary workaround for my setup.
   (no-traps f))
 
-(define (flo:<> x y)                    ;XXX
-  (if (or (flo:nan? x) (flo:nan? y))
-      (begin
-        (flo:raise-exceptions! (flo:exception:invalid-operation))
-        #f)
-      (not (flo:= x y))))
-
 (define subnormal+ flo:smallest-positive-subnormal)
 (define subnormal- (no-traps (lambda () (- subnormal+))))
 

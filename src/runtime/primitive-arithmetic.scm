@@ -228,6 +228,7 @@ USA.
 
 (define (flo:<= x y) (or (flo:< x y) (flo:= x y)))
 (define (flo:>= x y) (or (flo:> x y) (flo:= x y)))
+(define (flo:<> x y) (or (flo:< x y) (flo:> x y)))
 
 (define (flo:min x y)
   (cond ((flo:< x y) x)
