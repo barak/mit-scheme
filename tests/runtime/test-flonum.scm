@@ -35,8 +35,23 @@ USA.
              (apply procedure arguments)))
          cases)))
 
+(define assert-exact-integer
+  (predicate-assertion exact-integer? "integer"))
+
 (define assert-flonum
   (predicate-assertion flo:flonum? "flonum"))
+
+(define (assert-zero- object)
+  (assert-eqv object -0.))
+
+(define (assert-zero+ object)
+  (assert-eqv object 0.))
+
+(define (assert-inf- object)
+  (assert-eqv object (flo:-inf.0)))
+
+(define (assert-inf+ object)
+  (assert-eqv object (flo:+inf.0)))
 
 (define assert-nan
   (predicate-assertion flo:nan? "NaN"))
@@ -46,6 +61,12 @@ USA.
 
 (define assert-snan
   (predicate-assertion flo:snan? "sNaN"))
+
+(define assert-normal
+  (predicate-assertion flo:normal? "normal floating-point number"))
+
+(define assert-subnormal
+  (predicate-assertion flo:subnormal? "subnormal floating-point number"))
 
 (define (eqv-nan? x y)
   (if (flo:nan? x)
@@ -79,6 +100,121 @@ USA.
 
 (define subnormal+ flo:smallest-positive-subnormal)
 (define subnormal- (no-traps (lambda () (- subnormal+))))
+
+(define-test 'radix
+  (lambda ()
+    (assert-exact-integer flo:radix)
+    (assert-flonum flo:radix.)
+    (assert-= flo:radix flo:radix.)))
+
+(define-test 'error-ulp
+  (lambda ()
+    (assert-flonum flo:ulp-of-one)
+    (assert-flonum flo:error-bound)
+    (assert-> flo:ulp-of-one 0)
+    (assert-< flo:ulp-of-one 1)
+    (assert-= (/ flo:ulp-of-one 2) flo:error-bound)))
+
+(define-test 'exponents
+  (lambda ()
+    (assert-exact-integer flo:normal-exponent-max)
+    (assert-exact-integer flo:normal-exponent-min)
+    (assert-exact-integer flo:subnormal-exponent-min)))
+
+(define-test 'extremes
+  (lambda ()
+    (assert-flonum flo:smallest-positive-subnormal)
+    (assert-flonum flo:smallest-positive-normal)
+    (assert-flonum flo:largest-positive-normal)
+    (assert-eqv flo:smallest-positive-subnormal
+                (flo:scalbn 1. flo:subnormal-exponent-min))
+    (assert-eqv flo:smallest-positive-normal
+                (flo:scalbn 1. flo:normal-exponent-min))
+    (assert-eqv flo:largest-positive-normal
+                (flo:scalbn (- flo:radix. flo:ulp-of-one)
+                            flo:normal-exponent-max))
+    (assert-subnormal flo:smallest-positive-subnormal)
+    (assert-zero+ (flo:nextafter flo:smallest-positive-subnormal (flo:-inf.0)))
+    (assert-normal flo:smallest-positive-normal)
+    (assert-subnormal
+     (flo:nextafter flo:smallest-positive-normal (flo:-inf.0)))
+    (assert-normal flo:largest-positive-normal)
+    (assert-inf+ (flo:nextafter flo:largest-positive-normal (flo:+inf.0)))))
+
+(define-test 'least-subnormal-exponents
+  (lambda ()
+    (assert-flonum flo:least-subnormal-exponent-base-2)
+    (assert-flonum flo:least-subnormal-exponent-base-e)
+    (assert-flonum flo:least-subnormal-exponent-base-10)
+    (assert-subnormal (expt 2. flo:least-subnormal-exponent-base-2))
+    (assert-subnormal (exp flo:least-subnormal-exponent-base-e))
+    (assert-subnormal (expt 10. flo:least-subnormal-exponent-base-10))
+    (assert-zero+
+     (expt 2.
+           (flo:nextafter flo:least-subnormal-exponent-base-2 (flo:-inf.0))))
+    (assert-zero+
+     (exp (flo:nextafter flo:least-subnormal-exponent-base-e (flo:-inf.0))))
+    (assert-zero+
+     (expt 10.
+           (flo:nextafter flo:least-subnormal-exponent-base-10
+                          (flo:-inf.0))))))
+
+(define-test 'least-normal-exponents
+  (lambda ()
+    (assert-flonum flo:least-normal-exponent-base-2)
+    (assert-flonum flo:least-normal-exponent-base-e)
+    (assert-flonum flo:least-normal-exponent-base-10)
+    (assert-normal (expt 2. flo:least-normal-exponent-base-2))
+    (assert-normal (exp flo:least-normal-exponent-base-e))
+    (assert-normal (expt 10. flo:least-normal-exponent-base-10))
+    (assert-subnormal
+     (expt 2.
+           (flo:nextafter flo:least-normal-exponent-base-2 (flo:-inf.0))))
+    (assert-subnormal
+     (exp (flo:nextafter flo:least-normal-exponent-base-e (flo:-inf.0))))
+    (assert-subnormal
+     (expt 10.
+           (flo:nextafter flo:least-normal-exponent-base-10 (flo:-inf.0))))))
+
+(define-test 'greatest-normal-exponents
+  (lambda ()
+    (assert-flonum flo:greatest-normal-exponent-base-2)
+    (assert-flonum flo:greatest-normal-exponent-base-e)
+    (assert-flonum flo:greatest-normal-exponent-base-10)
+    (assert-normal (expt 2. flo:greatest-normal-exponent-base-2))
+    (assert-normal (exp flo:greatest-normal-exponent-base-e))
+    (assert-normal (expt 10. flo:greatest-normal-exponent-base-10))
+    (assert-inf+
+     (expt 2.
+           (flo:nextafter flo:greatest-normal-exponent-base-2 (flo:+inf.0))))
+    (assert-inf+
+     (exp (flo:nextafter flo:greatest-normal-exponent-base-e (flo:+inf.0))))
+    (assert-inf+
+     (expt 10.
+           (flo:nextafter flo:greatest-normal-exponent-base-2 (flo:+inf.0))))))
+
+(define-enumerated-test 'flo:ulp
+  (list
+   (list (flo:-inf.0) (flo:+inf.0))
+   (list (+ -3. (* 2 flo:ulp-of-one)) (* 2 flo:ulp-of-one))
+   (list -3. (* 2 flo:ulp-of-one))
+   (list -2. (* 2 flo:ulp-of-one))
+   (list -1. flo:ulp-of-one)
+   (list -0. "4.9406564584124654e-324")
+   (list 0. "4.9406564584124654e-324")
+   (list 1. flo:ulp-of-one)
+   (list 2. (* 2 flo:ulp-of-one))
+   (list 3. (* 2 flo:ulp-of-one))
+   (list (- 3. (* 2 flo:ulp-of-one)) (* 2 flo:ulp-of-one))
+   (list (flo:+inf.0) (flo:+inf.0)))
+  (lambda (x u)
+    (flo:with-trapped-exceptions 0
+      (lambda ()
+        (let ((u
+               (if (string? u)
+                   (string->number u)
+                   u)))
+          (assert-eqv (flo:ulp x) u))))))
 
 (define-enumerated-test 'copysign
   '((0. 0. 0.)
@@ -123,6 +259,20 @@ USA.
     (-inf.0 0. ,(- flo:largest-positive-normal)))
   (lambda (x y z)
     (assert-eqv (no-traps (lambda () (flo:nextafter x y))) z)))
+
+(define-enumerated-test 'flo:classify
+  `((0. zero)
+    (-0. zero)
+    (,(flo:nextafter 0. 1.) subnormal)
+    (,flo:smallest-positive-subnormal subnormal)
+    (,flo:smallest-positive-normal normal)
+    (1. normal)
+    (+inf.0 infinite)
+    (-inf.0 infinite)
+    (+nan.0 nan)
+    (-nan.0 nan))
+  (lambda (x c)
+    (assert-eq (flo:classify x) c)))
 
 (define-enumerated-test 'zero?
   `((-inf.0 #f)
