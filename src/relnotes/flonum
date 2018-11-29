@@ -58,3 +58,30 @@ New flonum-related definitions:
   - nan
 . (flo:subnormal? x) is true if x is subnormal; false if zero, normal,
   infinite, or NaN
+- (flo:safe-zero? x) is true if x is zero; false if subnormal, normal,
+  infinite, or NaN.  flo:zero? may raise an exception; flo:safe-zero?
+  never does.
+- (flo:safe-negative? x) returns true if x has negative sign, false if
+  x has positive sign.  Note that (flo:negative? 0.) and (flo:negative?
+  -0.) both return false, while (flo:safe-negative? -0.) returns true.
+  Also, flo:negative? may raise a invalid-operation exception if an
+  input is NaN, while flo:safe-negative?  does not.
+- (flo:safe< x y), (flo:safe<= x y), (flo:safe> x y), (flo:safe>= x y),
+  (flo:safe= x y), (flo:safe<> x y), (flo:unordered? x y) perform
+  unordered floating-point comparisons and never raise exceptions.
+- (flo:compare x y) and (flo:safe-compare x y) return a four-way
+  comparison of two floating-point numbers: negative if x < y, zero if
+  x = y, positive if x > y, and #f if one or both arguments is NaN.
+  flo:compare may raise an invalid-operation exception;
+  flo:safe-compare never does.
+- (flo:<> x y) returns true if x is less or greater than y, false if
+  equal or unordered.  May raise an invalid-operation exception.
+- (flo:min-mag x y) and (flo:max-mag x y) return the number of lesser
+  or greater magnitude, as in minNumMag and maxNumMag of IEEE 754-2008.
+- (flo:make-nan negative? quiet? payload) returns a NaN with the
+  specified payload, which must not exceed (- (expt 2
+  flo:significand-digits-base-2 2) 1).
+- (flo:nan-quiet? nan) returns true for quiet NaNs, false for
+  signalling NaNs.
+- (flo:nan-payload nan) returns the payload of NaN, an integer between
+  0 (inclusive) and 2^51 (exclusive).
