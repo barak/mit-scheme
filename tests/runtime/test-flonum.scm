@@ -625,35 +625,23 @@ USA.
       (assert-nan
        (no-traps (lambda () (flo:max-mag (flo:snan) (flo:snan))))))))
 
-(define expect-failure-interpreted
-  (if (and (compiled-procedure? (lambda (x) x))
-           (compiled-procedure? flo:abs))
-      #!default
-      expect-failure))
-
-(define expect-error-interpreted
-  (if (and (compiled-procedure? (lambda (x) x))
-           (compiled-procedure? flo:abs))
-      #!default
-      expect-error))
-
 (define-enumerated-test 'abs
   `((-inf.0)
     (-1.)
-    (-0. ,expect-failure-interpreted)
+    (-0.)
     (+0.)
     (+1.)
     (+inf.0)
-    (,(flo:make-nan #t #t 0) ,expect-failure-interpreted)
+    (,(flo:make-nan #t #t 0))
     (,(flo:make-nan #f #t 0))
-    (,(flo:make-nan #t #t 1) ,expect-failure-interpreted)
+    (,(flo:make-nan #t #t 1))
     (,(flo:make-nan #f #t 1))
-    (,(flo:make-nan #t #t (- (expt 2 51) 1)) ,expect-failure-interpreted)
+    (,(flo:make-nan #t #t (- (expt 2 51) 1)))
     (,(flo:make-nan #f #t (- (expt 2 51) 1)))
-    (,(flo:make-nan #t #f 1) ,expect-error-interpreted)
-    (,(flo:make-nan #f #f 1) ,expect-error-interpreted)
-    (,(flo:make-nan #t #f (- (expt 2 51) 1)) ,expect-error-interpreted)
-    (,(flo:make-nan #f #f (- (expt 2 51) 1)) ,expect-error-interpreted))
+    (,(flo:make-nan #t #f 1))
+    (,(flo:make-nan #f #f 1))
+    (,(flo:make-nan #t #f (- (expt 2 51) 1)))
+    (,(flo:make-nan #f #f (- (expt 2 51) 1))))
   (lambda (x #!optional xfail)
     (with-expected-failure xfail
       (lambda ()

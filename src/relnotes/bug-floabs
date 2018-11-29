@@ -1,0 +1,2 @@
+Bug fix: abs now always correctly adjusts the sign of a NaN and never
+raises a floating-point exception, following IEEE 754-2008.

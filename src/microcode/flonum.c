@@ -103,7 +103,7 @@ DEFINE_PRIMITIVE ("FLONUM-ABS", Prim_flonum_abs, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     double x = (arg_flonum (1));
-    FLONUM_RESULT ((x < 0) ? (-x) : x);
+    FLONUM_RESULT (fabs (x));
   }
 }
 
