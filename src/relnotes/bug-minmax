@@ -1,0 +1,5 @@
+Bug fix: (flo:min x y) and (flo:max x y) now conform to IEEE 754-2008,
+as minNum/maxNum.
+
+When one input is a NaN, they return the other input.  These trap only
+when the floating-point invalid-operation exception is trapped.
