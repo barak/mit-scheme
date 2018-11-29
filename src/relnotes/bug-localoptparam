@@ -1,0 +1,13 @@
+Bug fix: LIAR previously miscompiled local procedures with optional
+parameters if they were never passed.
+
+Formerly MIT Scheme used unassigned reference traps for optional
+parameters without values; now it uses a #!default object.  But LIAR
+hadn't gotten the memo, and if every call site omitted the argument,
+LIAR would constant-fold an unassigned reference trap instead of
+#!default.
+
+(let ()
+  (define (test #!optional x)
+    (pp (map-reference-trap (lambda () x))))
+  (test))
