@@ -59,23 +59,32 @@ New flonum-related definitions:
 . (flo:subnormal? x) is true if x is subnormal; false if zero, normal,
   infinite, or NaN
 - (flo:safe-zero? x) is true if x is zero; false if subnormal, normal,
-  infinite, or NaN.  flo:zero? may raise an exception; flo:safe-zero?
-  never does.
+  infinite, or NaN.  flo:zero? raises an invalid-operation exception on
+  NaN; flo:safe-zero? never does even on signalling NaN.
 - (flo:safe-negative? x) returns true if x has negative sign, false if
   x has positive sign.  Note that (flo:negative? 0.) and (flo:negative?
   -0.) both return false, while (flo:safe-negative? -0.) returns true.
-  Also, flo:negative? may raise a invalid-operation exception if an
-  input is NaN, while flo:safe-negative?  does not.
+  Also, flo:negative? raises invalid-operation exception on NaN, while
+  flo:safe-negative? never does even on signalling NaN.
 - (flo:safe< x y), (flo:safe<= x y), (flo:safe> x y), (flo:safe>= x y),
   (flo:safe= x y), (flo:safe<> x y), (flo:unordered? x y) perform
-  unordered floating-point comparisons and never raise exceptions.
+  unordered floating-point comparisons and, unlike flo:< &c., do not
+  raise invalid-operation exceptions on quiet NaNs.  (However, they do
+  raise invalid-operation exceptions on signalling NaNs.)
+- (flo:<> x y) returns true if x is less or greater than y, false if
+  equal or unordered, and raises invalid-operation exceptions on any
+  NaNs.
 - (flo:compare x y) and (flo:safe-compare x y) return a four-way
   comparison of two floating-point numbers: negative if x < y, zero if
   x = y, positive if x > y, and #f if one or both arguments is NaN.
-  flo:compare may raise an invalid-operation exception;
-  flo:safe-compare never does.
-- (flo:<> x y) returns true if x is less or greater than y, false if
-  equal or unordered.  May raise an invalid-operation exception.
+  flo:compare raises invalid-operation exceptions on any NaN;
+  flo:safe-compare raises invalid-operations exceptions only on
+  signalling NaNs.
+- (flo:total< x y) is true if x < y in the total ordering defined in
+  IEEE 754-2008 Sec. 5.10; (flo:total-order x y) is a three-way
+  comparison, -1 if x < y, 0 if x = y, +1 if x > y.
+- (flo:total-mag< x y) = (flo:total< (flo:abs x) (flo:abs y))
+- (flo:total-order-mag x y) = (flo:total-order (flo:abs x) (flo:abs y))
 - (flo:min-mag x y) and (flo:max-mag x y) return the number of lesser
   or greater magnitude, as in minNumMag and maxNumMag of IEEE 754-2008.
 - (flo:make-nan negative? quiet? payload) returns a NaN with the

@@ -235,6 +235,87 @@ USA.
 (define (flo:>= x y) (or (flo:> x y) (flo:= x y)))
 (define (flo:<> x y) (or (flo:< x y) (flo:> x y)))
 
+(define (flo:total-order x y)
+  (if (or (flo:nan? x) (flo:nan? y))
+      ;; Must handle NaNs first and carefully to avoid exception on
+      ;; signalling NaN.
+      (cond ((not (flo:nan? y))
+             (assert (flo:nan? x))
+             (if (flo:safe-negative? x) -1 +1))
+            ((not (flo:nan? x))
+             (assert (flo:nan? y))
+             (if (flo:safe-negative? y) +1 -1))
+            (else
+             (assert (flo:nan? x))
+             (assert (flo:nan? y))
+             (let ((x- (flo:safe-negative? x))
+                   (xq (flo:nan-quiet? x))
+                   (xp (flo:nan-payload x))
+                   (y- (flo:safe-negative? y))
+                   (yq (flo:nan-quiet? y))
+                   (yp (flo:nan-payload y)))
+               (cond ((not (eq? x- y-)) (if x- -1 +1))
+                     ((not (eq? xq yq)) (if x- (if xq -1 +1) (if xq +1 -1)))
+                     ((not (int:= xp yp)) (if (int:< xp yp) -1 +1))
+                     (else 0)))))
+      ;; Neither one is NaN, so no need for the safety gloves.
+      (cond ((flo:< x y) -1)
+            ((flo:> x y) +1)
+            ;; From here on, they are numerically equal.
+            ((not (flo:zero? x))
+             (assert (not (flo:zero? y)))
+             0)
+            (else
+	     ;; -0. < +0.
+             (assert (flo:zero? y))
+             (if (flo:safe-negative? x)
+                 (if (flo:safe-negative? y) 0 -1)
+                 (if (flo:safe-negative? y) +1 0))))))
+
+(define (flo:total-order-mag x y)
+  (flo:total-order (flo:abs x) (flo:abs y)))
+
+(define (flo:total< x y)
+  (if (or (flo:nan? x) (flo:nan? y))
+      ;; Must handle NaNs first and carefully to avoid exception on
+      ;; signalling NaN.
+      (cond ((not (flo:nan? y))
+	     (assert (flo:nan? x))
+	     (flo:safe-negative? x))
+	    ((not (flo:nan? x))
+	     (assert (flo:nan? y))
+	     (not (flo:safe-negative? y)))
+	    (else
+	     (assert (flo:nan? x))
+	     (assert (flo:nan? y))
+	     (let ((x- (flo:safe-negative? x))
+		   (xq (flo:nan-quiet? x))
+		   (xp (flo:nan-payload x))
+		   (y- (flo:safe-negative? y))
+		   (yq (flo:nan-quiet? y))
+		   (yp (flo:nan-payload y)))
+	       (cond ((not (eq? x- y-)) (and x- (not y-)))
+		     ((not (eq? xq yq))
+		      (if x-
+			  (and xq (not yq))
+			  (and (not xq) yq)))
+		     (else (int:< xp yp))))))
+      ;; Neither one is NaN, so no need for the safety gloves.
+      (cond ((flo:< x y) #t)
+	    ((flo:> x y) #f)
+            ;; From here on, they are numerically equal.
+	    ((not (flo:zero? x))
+	     (assert (not (flo:zero? y)))
+	     #f)
+	    (else
+	     ;; -0. < +0.
+	     (assert (flo:zero? y))
+	     (and (flo:safe-negative? x)
+		  (not (flo:safe-negative? y)))))))
+
+(define (flo:total-mag< x y)
+  (flo:total< (flo:abs x) (flo:abs y)))
+
 (define (flo:invalid-minmax x y caller)
   caller
   (cond ((not (flo:nan? x))
@@ -287,7 +368,7 @@ USA.
        (or (not (flo:zero? x))
 	   (eq? (flo:safe-negative? x)
 		(flo:safe-negative? y)))))
-
+
 ;;; Measure the distance from x to the next floating-point number of
 ;;; the same sign as x and larger in magnitude.  For +/-0, this yields
 ;;; the smallest subnormal.  For +/-inf, this yields +inf.  For NaN

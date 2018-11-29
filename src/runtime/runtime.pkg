@@ -364,6 +364,10 @@ USA.
 	  flo:subnormal?
 	  flo:tan
 	  flo:tanh
+	  flo:total-mag<
+	  flo:total-order
+	  flo:total-order-mag
+	  flo:total<
 	  flo:truncate
 	  flo:truncate->exact
 	  flo:ulp

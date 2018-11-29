@@ -803,3 +803,50 @@ USA.
                 (assert-nan y)
                 (assert-eqv (flo:nan-quiet? x) (flo:nan-quiet? y))
                 (assert-eqv (flo:nan-payload x) (flo:nan-payload y)))))))))
+
+(let ((cases
+       (vector (flo:make-nan #t #t 0)
+               (flo:make-nan #t #t 1)
+               (flo:make-nan #t #t 2)
+               (flo:make-nan #t #t (- (expt 2 51) 1))
+               (flo:make-nan #t #f 1)
+               (flo:make-nan #t #f 2)
+               (flo:make-nan #t #f (- (expt 2 51) 1))
+               -inf.0
+               -1.
+               (- flo:smallest-positive-normal)
+               (no-traps (lambda () (- flo:smallest-positive-subnormal)))
+               -0.
+               +0.
+               flo:smallest-positive-subnormal
+               flo:smallest-positive-normal
+               +1.
+               +inf.0
+               (flo:make-nan #f #f 1)
+               (flo:make-nan #f #f 2)
+               (flo:make-nan #f #f (- (expt 2 51) 1))
+               (flo:make-nan #f #t 0)
+               (flo:make-nan #f #t 1)
+               (flo:make-nan #f #t 2)
+               (flo:make-nan #f #t (- (expt 2 51) 1)))))
+  ((lambda (f)
+     (for-each (lambda (i)
+                 (for-each (lambda (j)
+                             (let ((x (vector-ref cases i))
+                                   (y (vector-ref cases j)))
+                               (define-test (symbol 'total-order/ x '/ y)
+                                 (lambda ()
+                                   (f i j x y)))))
+                           (iota (vector-length cases))))
+               (iota (vector-length cases))))
+   (lambda (i j x y)
+     (yes-traps
+      (lambda ()
+        (if (< i j)
+            (assert-true (flo:total< x y))
+            (assert-false (flo:total< x y)))
+        (assert-eqv (flo:total-order x y)
+                    (cond ((< i j) -1) ((< j i) +1) (else 0)))
+        (assert-eqv (flo:total-mag< x y) (flo:total< (flo:abs x) (flo:abs y)))
+        (assert-eqv (flo:total-order-mag x y)
+                    (flo:total-order (flo:abs x) (flo:abs y))))))))
