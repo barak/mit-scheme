@@ -56,10 +56,30 @@ USA.
 (define assert-real
   (predicate-assertion real? "real number"))
 
+(define (eqv-nan? x y)
+  (if (and (flo:flonum? x) (flo:nan? x))
+      (and (flo:flonum? y)
+           (flo:nan? y)
+           (eqv? (flo:safe-negative? x) (flo:safe-negative? y))
+           (eqv? (flo:nan-quiet? x) (flo:nan-quiet? y))
+           (eqv? (flo:nan-payload x) (flo:nan-payload y)))
+      (and (not (and (flo:flonum? y) (flo:nan? y)))
+           (eqv? x y))))
+
+(define-comparator eqv-nan? 'eqv-nan?)
+
+(define assert-eqv-nan
+  (simple-binary-assertion eqv-nan? #f))
+
 (define (with-expected-failure xfail body)
   (if (default-object? xfail)
       (body)
       (xfail body)))
+
+(define (no-traps f)
+  (if (flo:have-trap-enable/disable?)
+      (flo:with-trapped-exceptions 0 f)
+      (f)))
 
 (define (define-enumerated-test prefix cases procedure)
   (for-each (lambda (arguments)
@@ -626,3 +646,28 @@ USA.
    (list -inf.0+inf.0i (* pi 3/4)))
   (lambda (z t)
     (assert-<= (relerr t (angle z)) 1e-15)))
+
+(define-enumerated-test 'sqrt
+  `((0 0)
+    (0. 0.)
+    (1 1)
+    (1. 1.)
+    (4 2)
+    (4. 2.)
+    (-inf.0 +inf.0i)
+    (+inf.0 +inf.0)
+    (-inf.0+1.i +inf.0i ,expect-failure)
+    (+inf.0+1.i +inf.0 ,expect-failure)
+    (-inf.0-1.i +inf.0i ,expect-failure)
+    (+inf.0-1.i +inf.0 ,expect-failure)
+    (-inf.0i -inf.0+inf.0i ,expect-failure)
+    (+inf.0i +inf.0+inf.0i)
+    (1.-inf.0i -inf.0+inf.0i ,expect-failure)
+    (1.+inf.0i +inf.0+inf.0i)
+    (-1.-inf.0i -inf.0+inf.0i ,expect-failure)
+    (-1.+inf.0i +inf.0+inf.0i)
+    (,(flo:qnan 1234) ,(flo:qnan 1234)))
+  (lambda (z r #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+        (assert-eqv-nan (no-traps (lambda () (sqrt z))) r)))))
