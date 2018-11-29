@@ -28,11 +28,12 @@ USA.
 
 (declare (usual-integrations))
 
-(define (define-enumerated-test name elements procedure)
+(define (define-enumerated-test name cases procedure)
   (define-test name
-    (map (lambda (element)
-           (lambda () (procedure element)))
-         elements)))
+    (map (lambda (arguments)
+           (lambda ()
+             (apply procedure arguments)))
+         cases)))
 
 (define ((test-ieee754-roundtrip w t bexp-inf/nan compose exact? decompose)
          bits)
@@ -62,15 +63,15 @@ USA.
         (test i)))))
 
 (define-enumerated-test 'binary64-roundtrip-selective
-  '(#x0000000000000000
-    #xffffffffffffffff
-    #x0000000000000001
-    #x1000000000000000
-    #x1000000000000001
-    #x7ff0000000000000
-    #xfff0000000000000
-    #x0123456789abcdef
-    #xfedcba9876543210)
+  '((#x0000000000000000)
+    (#xffffffffffffffff)
+    (#x0000000000000001)
+    (#x1000000000000000)
+    (#x1000000000000001)
+    (#x7ff0000000000000)
+    (#xfff0000000000000)
+    (#x0123456789abcdef)
+    (#xfedcba9876543210))
   (test-ieee754-roundtrip 11 52 2047
                           compose-ieee754-binary64
                           ieee754-binary64-exact?
@@ -98,39 +99,37 @@ USA.
     (,(flo:+inf.0) (infinity +))
     (,(flo:-inf.0) (infinity -))
     (,(flo:nan.0) (nan + s 1)))
-  (lambda (c)
-    (let ((x (list-ref c 0))
-          (y (list-ref c 1)))
-      (define (signify sign)
-        (case sign
-          ((0) '+)
-          ((1) '-)
-          (else (error "Invalid sign:" sign))))
-      (flo:with-trapped-exceptions 0
-        (lambda ()
-          ((lambda (z)
-             (assert-equal z y)
-             (flo:clear-exceptions! (flo:supported-exceptions)))
-           (let ((exponent-bits 11)
-                 (precision 53))
-             (receive (base emin emax bias exp-subnormal exp-inf/nan)
-                      (ieee754-binary-parameters exponent-bits precision)
-               emin bias exp-subnormal exp-inf/nan ;ignore
-               (decompose-ieee754 x base emax precision
-                 (lambda (sign) `(zero ,(signify sign)))
-                 (lambda (sign significand)
-                   `(subnormal ,(signify sign) ,significand))
-                 (lambda (sign exponent significand)
-                   `(normal ,(signify sign) ,exponent ,significand))
-                 (lambda (sign)
-                   `(infinity ,(signify sign)))
-                 (lambda (sign quiet payload)
-                   `(nan ,(signify sign)
-                         ,(case quiet
-                            ((0) 's)
-                            ((1) 'q)
-                            (else (error "Quiet bit:" quiet)))
-                         ,payload)))))))))))
+  (lambda (x y)
+    (define (signify sign)
+      (case sign
+        ((0) '+)
+        ((1) '-)
+        (else (error "Invalid sign:" sign))))
+    (flo:with-trapped-exceptions 0
+      (lambda ()
+        ((lambda (z)
+           (assert-equal z y)
+           (flo:clear-exceptions! (flo:supported-exceptions)))
+         (let ((exponent-bits 11)
+               (precision 53))
+           (receive (base emin emax bias exp-subnormal exp-inf/nan)
+                    (ieee754-binary-parameters exponent-bits precision)
+             emin bias exp-subnormal exp-inf/nan ;ignore
+             (decompose-ieee754 x base emax precision
+               (lambda (sign) `(zero ,(signify sign)))
+               (lambda (sign significand)
+                 `(subnormal ,(signify sign) ,significand))
+               (lambda (sign exponent significand)
+                 `(normal ,(signify sign) ,exponent ,significand))
+               (lambda (sign)
+                 `(infinity ,(signify sign)))
+               (lambda (sign quiet payload)
+                 `(nan ,(signify sign)
+                       ,(case quiet
+                          ((0) 's)
+                          ((1) 'q)
+                          (else (error "Quiet bit:" quiet)))
+                       ,payload))))))))))
 
 (define-enumerated-test 'ieee754-binary64-hex
   '((0 "0x0p+0")
@@ -142,7 +141,5 @@ USA.
     (12345 "0x1.81c8p+13")
     (123456 "0x1.e24p+16")
     (1.2061684984132626e-11 "0x1.a862p-37"))
-  (lambda (c)
-    (let ((x (list-ref c 0))
-          (s (list-ref c 1)))
-      (assert-string= (ieee754-binary64-hex-string x) s))))
+  (lambda (x s)
+    (assert-string= (ieee754-binary64-hex-string x) s)))
