@@ -1,0 +1,2 @@
+Bug fix: The (magnitude z) procedure no longer overflows with large and
+angles near odd multiples of pi/4.
