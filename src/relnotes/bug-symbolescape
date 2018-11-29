@@ -1,0 +1,2 @@
+Bug fix: The printer no longer spuriously escapes | in "string
+notation" or " in |symbol notation|.
