@@ -73,29 +73,102 @@ USA.
 	     (assert-eqv (flo:rounding-mode) mode)))
 	 (assert-eqv (flo:rounding-mode) mode*))))))
 
-(for-each-rounding-mode
- (lambda (mode)
-   (define inputs '(-2.0 -1.5 -1.0 -0.5 -0.0 0.0 0.5 1.0 1.5 2.0))
-   (define (define-rounding-test name operator outputs)
+(define-syntax define-rounding-test
+  (syntax-rules ()
+    ((define-rounding-test name operator mode inputs outputs)
      (define-test (symbol 'ROUNDING-MODE-INDEPENDENT ': mode '/ name)
        (map (lambda (input output)
-	      (lambda ()
-		(with-test-properties
-		    (lambda ()
-		      (assert-eqv
-		       (flo:with-rounding-mode mode
-			 (lambda () (operator input)))
-		       output))
-		  'EXPRESSION `(,name ,input))))
-	    inputs outputs)))
-   (define-rounding-test 'CEILING ceiling
-     '(-2.0 -1.0 -1.0 -0.0 -0.0 0.0 1.0 1.0 2.0 2.0))
-   (define-rounding-test 'FLOOR floor
-     '(-2.0 -2.0 -1.0 -1.0 -0.0 0.0 0.0 1.0 1.0 2.0))
-   (define-rounding-test 'ROUND round
-     '(-2.0 -2.0 -1.0 -0.0 -0.0 0.0 0.0 1.0 2.0 2.0))
-   (define-rounding-test 'TRUNCATE truncate
-     '(-2.0 -1.0 -1.0 -0.0 -0.0 0.0 0.0 1.0 1.0 2.0))))
+              (lambda ()
+                (with-test-properties
+                    (lambda ()
+                      (assert-eqv
+                       (flo:with-rounding-mode mode
+                                               (lambda () (operator input)))
+                       output))
+                    'EXPRESSION `(,name ,input))))
+            inputs outputs)))))
+
+(for-each-rounding-mode
+ (lambda (mode)
+   (define no-op identity-procedure)
+   (define inputs '(-2.0 -1.5 -1.0 -0.5 -0.0 0.0 0.5 1.0 1.5 2.0))
+   (define infs '(-inf.0 +inf.0))
+   ;; XXX Check NaNs without traps.
+   (let ((outputs '(-2.0 -1.0 -1.0 -0.0 -0.0 0.0 1.0 1.0 2.0 2.0)))
+     (define-rounding-test 'CEILING/INLINE ceiling mode inputs outputs)
+     (define-rounding-test 'CEILING/INLINE ceiling mode infs infs)
+     (define-rounding-test 'CEILING (no-op ceiling) mode inputs outputs)
+     (define-rounding-test 'CEILING (no-op ceiling) mode infs infs)
+     (define-rounding-test 'FLO:CEILING/INLINE flo:ceiling mode inputs outputs)
+     (define-rounding-test 'FLO:CEILING/INLINE flo:ceiling mode infs infs)
+     (define-rounding-test 'FLO:CEILING (no-op flo:ceiling) mode inputs
+       outputs)
+     (define-rounding-test 'FLO:CEILING (no-op flo:ceiling) mode infs infs)
+     (let ((outputs (map inexact->exact outputs)))
+       (define-rounding-test 'CEILING->EXACT/INLINE ceiling->exact mode inputs
+         outputs)
+       (define-rounding-test 'CEILING->EXACT (no-op ceiling->exact) mode inputs
+         outputs)
+       (define-rounding-test 'FLO:CEILING->EXACT/INLINE flo:ceiling->exact mode
+         inputs outputs)
+       (define-rounding-test 'FLO:CEILING->EXACT (no-op flo:ceiling->exact)
+         mode inputs outputs)))
+   (let ((outputs '(-2.0 -2.0 -1.0 -1.0 -0.0 0.0 0.0 1.0 1.0 2.0)))
+     (define-rounding-test 'FLOOR/INLINE floor mode inputs outputs)
+     (define-rounding-test 'FLOOR/INLINE floor mode infs infs)
+     (define-rounding-test 'FLOOR (no-op floor) mode inputs outputs)
+     (define-rounding-test 'FLOOR (no-op floor) mode infs infs)
+     (define-rounding-test 'FLO:FLOOR/INLINE flo:floor mode inputs outputs)
+     (define-rounding-test 'FLO:FLOOR/INLINE flo:floor mode infs infs)
+     (define-rounding-test 'FLO:FLOOR (no-op flo:floor) mode inputs outputs)
+     (define-rounding-test 'FLO:FLOOR (no-op flo:floor) mode infs infs)
+     (let ((outputs (map inexact->exact outputs)))
+       (define-rounding-test 'FLOOR->EXACT/INLINE floor->exact mode inputs
+         outputs)
+       (define-rounding-test 'FLOOR->EXACT (no-op floor->exact) mode inputs
+         outputs)
+       (define-rounding-test 'FLO:FLOOR->EXACT/INLINE flo:floor->exact mode
+         inputs outputs)
+       (define-rounding-test 'FLO:FLOOR->EXACT (no-op flo:floor->exact) mode
+         inputs outputs)))
+   (let ((outputs'(-2.0 -2.0 -1.0 -0.0 -0.0 0.0 0.0 1.0 2.0 2.0)))
+     (define-rounding-test 'ROUND/INLINE round mode inputs outputs)
+     (define-rounding-test 'ROUND/INLINE round mode infs infs)
+     (define-rounding-test 'ROUND (no-op round) mode inputs outputs)
+     (define-rounding-test 'ROUND (no-op round) mode infs infs)
+     (define-rounding-test 'FLO:ROUND/INLINE flo:round mode inputs outputs)
+     (define-rounding-test 'FLO:ROUND/INLINE flo:round mode infs infs)
+     (define-rounding-test 'FLO:ROUND (no-op flo:round) mode inputs outputs)
+     (define-rounding-test 'FLO:ROUND (no-op flo:round) mode infs infs)
+     (let ((outputs (map inexact->exact outputs)))
+       (define-rounding-test 'ROUND->EXACT/INLINE round->exact mode inputs
+         outputs)
+       (define-rounding-test 'ROUND->EXACT (no-op round->exact) mode inputs
+         outputs)
+       (define-rounding-test 'FLO:ROUND->EXACT/INLINE flo:round->exact mode
+         inputs outputs)
+       (define-rounding-test 'FLO:ROUND->EXACT (no-op flo:round->exact) mode
+         inputs outputs)))
+   (let ((outputs '(-2.0 -1.0 -1.0 -0.0 -0.0 0.0 0.0 1.0 1.0 2.0)))
+     (define-rounding-test 'TRUNCATE/INLINE truncate mode inputs outputs)
+     (define-rounding-test 'TRUNCATE/INLINE truncate mode infs infs)
+     (define-rounding-test 'TRUNCATE (no-op truncate) mode inputs outputs)
+     (define-rounding-test 'TRUNCATE (no-op truncate) mode infs infs)
+     (define-rounding-test 'FLO:TRUNCATE/INLINE flo:truncate mode inputs
+       outputs)
+     (define-rounding-test 'FLO:TRUNCATE/INLINE flo:truncate mode infs infs)
+     (define-rounding-test 'FLO:TRUNCATE (no-op flo:truncate) mode inputs
+       outputs)
+     (define-rounding-test 'FLO:TRUNCATE (no-op flo:truncate) mode infs infs)
+     (let ((outputs (map inexact->exact outputs)))
+       (define-rounding-test 'TRUNCATE->EXACT/INLINE truncate->exact mode
+         inputs outputs)
+       (define-rounding-test 'TRUNCATE->EXACT (no-op truncate->exact) mode
+         inputs outputs)
+       (define-rounding-test 'FLO:TRUNCATE->EXACT/INLINE flo:truncate->exact
+         mode inputs outputs)
+       (define-rounding-test 'FLO:TRUNCATE->EXACT (no-op flo:truncate->exact)
+         mode inputs outputs)))))
 
 ;++ Add tests for rounding-mode-dependent operations...
 
