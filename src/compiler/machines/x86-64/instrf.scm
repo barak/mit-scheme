@@ -116,7 +116,7 @@ USA.
   (define-packed-bitwise-instruction XORF       #x57)
   ;; Not really bitwise instruction, but these two fit the pattern.
   (define-packed-bitwise-instruction UNPCKHF    #x15)
-  (define-packed-bitwise-instruction UNPCKLF    #x15))
+  (define-packed-bitwise-instruction UNPCKLF    #x14))
 
 (define-instruction CMPF
   (((? comparator float-comparator)
