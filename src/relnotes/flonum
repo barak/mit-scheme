@@ -4,7 +4,10 @@ New flonum-related definitions:
   always 2 but useful for assertions if you want to future-proof code
   that assumes it with a noisy failure in case we ever violate the
   assumption.
-- flo:radix. - Floating-point radix as a flonum.
+. flo:radix. - Floating-point radix as a flonum.
+. flo:precision - Number of digits in a significand, including the hidden
+  one bit for normal binary floating-point numbers.  For binary64
+  floating-point, this is 53.
 . flo:error-bound - Greatest possible relative error in rounding to nearest.
 . flo:log-error-bound = (log flo:error-bound)
 . flo:ulp-of-one - Distance from 1 to next greater floating-point number.

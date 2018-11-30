@@ -943,7 +943,6 @@ USA.
                           (- z))))))
 
 (assert (= flo:radix 2))
-(define flo:precision flo:significand-digits-base-2)
 
 (define-enumerated-test 'exact->inexact
   `((,(+ 1 (expt flo:radix flo:precision))

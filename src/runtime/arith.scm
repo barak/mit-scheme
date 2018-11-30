@@ -95,6 +95,7 @@ USA.
 
 (define-integrable flo:radix 2)
 (define-integrable flo:radix. 2.)
+(define flo:precision)
 (define flo:ulp-of-one)
 (define flo:error-bound)
 (define flo:log-error-bound)
@@ -119,6 +120,7 @@ USA.
 
 (define (initialize-microcode-dependencies!)
   (let ((p microcode-id/floating-mantissa-bits))
+    (set! flo:precision p)
     (set! flo:significand-digits-base-2 p)
     ;; Add two here because first and last digits may be
     ;; "partial" in the sense that each represents less than the

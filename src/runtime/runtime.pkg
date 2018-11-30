@@ -3403,6 +3403,7 @@ USA.
 	  flo:log-error-bound
 	  flo:normal-exponent-max
 	  flo:normal-exponent-min
+	  flo:precision
 	  flo:radix
 	  flo:radix.
 	  flo:significand-digits-base-10
