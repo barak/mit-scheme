@@ -1316,6 +1316,11 @@ USA.
 		 (rat:negative? y))
 	     (- (rat:abs x))
 	     (rat:abs x)))))
+
+(define (real:safe-negative? x)
+  (if (flonum? x)
+      (flo:safe-negative? x)
+      ((copy rat:negative?) x)))
 
 (define-syntax define-transcendental-unary
   (sc-macro-transformer
@@ -1963,8 +1968,16 @@ USA.
 
 (define (complex:sqrt z)
   (cond ((recnum? z)
-	 (complex:%make-polar (real:sqrt (complex:magnitude z))
-			      (real:/ (complex:angle z) 2)))
+	 (let ((x (rec:real-part z))
+	       (y (rec:imag-part z)))
+	   (if (real:zero? x)
+	       ;; sqrt(+/- 2i x) = sqrt(x) +/- sqrt(x)i
+	       (let ((sqrt-abs-y/2 (real:sqrt (real:/ (real:abs y) 2))))
+		 (complex:%make-rectangular
+		  sqrt-abs-y/2
+		  (real:copysign sqrt-abs-y/2 y)))
+	       (complex:%make-polar (real:sqrt (complex:magnitude z))
+                                    (real:/ (complex:angle z) 2)))))
 	((real:negative? z)
 	 (complex:%make-rectangular 0 (real:sqrt (real:negate z))))
 	(else
