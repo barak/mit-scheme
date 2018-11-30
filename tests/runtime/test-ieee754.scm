@@ -35,6 +35,11 @@ USA.
              (apply procedure arguments)))
          cases)))
 
+(define (with-expected-failure xfail body)
+  (if (default-object? xfail)
+      (body)
+      (xfail body)))
+
 (define ((test-ieee754-roundtrip w t bexp-inf/nan compose exact? decompose)
          bits)
   (let ((sign (extract-bit-field 1 (+ w t) bits))
@@ -132,14 +137,48 @@ USA.
                        ,payload))))))))))
 
 (define-enumerated-test 'ieee754-binary64-hex
-  '((0 "0x0p+0")
+  `((0 "0x0p+0")
     (-0. "-0x0p+0")
-    (1 "0x1p+0")
-    (-1 "-0x1p+0")
+    (,(+ (expt 2 -1050) (* (expt 16 -2) (expt 2 -1050)))
+     "0x1.01p-1050"
+     ,expect-failure)
+    (,(- (+ (expt 2 -1050) (* (expt 16 -2) (expt 2 -1050))))
+     "-0x1.01p-1050"
+     ,expect-failure)
+    (,(+ (expt 2 -1022) (expt 2 -1074))
+     "0x1.0000000000001p-1022"
+     ,expect-failure)
+    (,(- (+ (expt 2 -1022) (expt 2 -1074)))
+     "-0x1.0000000000001p-1022"
+     ,expect-failure)
+    (,(+ (expt 2 -1021) (expt 2 -1073))
+     "0x1.0000000000001p-1021"
+     ,expect-failure)
+    (,(- (+ (expt 2 -1021) (expt 2 -1073)))
+     "-0x1.0000000000001p-1021"
+     ,expect-failure)
+    (,(+ (expt 2 -1021) (expt 2 -1072))
+     "0x1.0000000000002p-1021"
+     ,expect-failure)
+    (,(+ (expt 2 -1021) (expt 2 -1071))
+     "0x1.0000000000004p-1021"
+     ,expect-failure)
+    (,(+ (expt 2 -1021) (expt 2 -1070))
+     "0x1.0000000000008p-1021"
+     ,expect-failure)
+    (,(+ (expt 2 -1021) (expt 2 -1069))
+     "0x1.000000000001p-1021"
+     ,expect-failure)
     (1/2 "0x1p-1")
     (-1/2 "-0x1p-1")
+    (1 "0x1p+0")
+    (-1 "-0x1p+0")
+    (257/256 "0x1.01p+0" ,expect-failure)
+    (-257/256 "-0x1.01p+0" ,expect-failure)
     (12345 "0x1.81c8p+13")
     (123456 "0x1.e24p+16")
     (1.2061684984132626e-11 "0x1.a862p-37"))
-  (lambda (x s)
-    (assert-string= (ieee754-binary64-hex-string x) s)))
+  (lambda (x s #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+        (assert-string= (ieee754-binary64-hex-string x) s)))))
