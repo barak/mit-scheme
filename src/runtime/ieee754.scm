@@ -46,28 +46,27 @@ USA.
 (define (decompose-ieee754-binary x exponent-bits precision)
   (receive (base emin emax bias exp-subnormal exp-inf/nan)
            (ieee754-binary-parameters exponent-bits precision)
-    (decompose-ieee754 x base emax precision
-      (lambda (sign)                    ;if-zero
-        (values sign 0 0))
-      (lambda (sign significand)        ;if-subnormal
-        (assert (= 0 (shift-right significand (- precision 1))))
-        (values sign (+ exp-subnormal bias) significand))
-      (lambda (sign exponent significand) ;if-normal
-        (assert (<= emin exponent emax))
-        ;; The integer part is always 1.  Strip it for the binary
-        ;; interchange format.
-        (assert (= 1 (shift-right significand (- precision 1))))
-        (values sign
-                (+ exponent bias)
-                (extract-bit-field (- precision 1) 0 significand)))
-      (lambda (sign)                    ;if-infinite
-        (values sign exp-inf/nan 0))
-      (lambda (sign quiet payload)      ;if-nan
-        (assert (not (and (zero? quiet) (zero? payload))))
-        (assert (zero? (extract-bit-field (- precision 1) 1 payload)))
-        (values sign
-                exp-inf/nan
-                (replace-bit-field (- precision 1) 1 payload quiet))))))
+    (let ((t (- precision 1)))
+      (decompose-ieee754 x base emax precision
+        (lambda (sign)                  ;if-zero
+          (values sign 0 0))
+        (lambda (sign significand)      ;if-subnormal
+          (assert (= 0 (shift-right significand t)))
+          (values sign (+ exp-subnormal bias) significand))
+        (lambda (sign exponent significand) ;if-normal
+          (assert (<= emin exponent emax))
+          ;; The integer part is always 1.  Strip it for the binary
+          ;; interchange format.
+          (assert (= 1 (shift-right significand t)))
+          (values sign (+ exponent bias) (extract-bit-field t 0 significand)))
+        (lambda (sign)                  ;if-infinite
+          (values sign (+ exp-inf/nan bias) 0))
+        (lambda (sign quiet payload)    ;if-nan
+          (assert (not (and (zero? quiet) (zero? payload))))
+          (assert (zero? (extract-bit-field 1 (- t 1) payload)))
+          (values sign
+                  (+ exp-inf/nan bias)
+                  (replace-bit-field 1 (- t 1) payload quiet)))))))
 
 (define (ieee754-sign x)
   (cond ((< 0 x) 0)
@@ -82,12 +81,9 @@ USA.
 (define (decompose-ieee754 x base emax precision
           if-zero if-subnormal if-normal if-infinite if-nan)
   (cond ((not (= x x))
-         ;; There are, of course, b^p different NaNs.  There is no
-         ;; obvious way to computationally detect the sign of a NaN,
-         ;; and no portable way to get at the quiet bit or the payload
-         ;; bits, so we'll just assume every NaN is a trivial positive
-         ;; signalling NaN and hope the caller has a good story...
-         (if-nan 0 0 1))
+         (if-nan (if (flo:sign-negative? x) 1 0)
+                 (if (flo:nan-quiet? x) 1 0)
+                 (flo:nan-payload x)))
         ((and (< 1 (abs x)) (= x (/ x 2)))
          (if-infinite (if (< 0. x) 0 1)))
         (else
@@ -138,9 +134,9 @@ USA.
             ((= exponent exp-inf/nan)
              (if (zero? trailing-significand)
                  (compose-ieee754-infinity sign)
-                 (let ((quiet   (extract-bit-field 1 t trailing-significand))
-                       (payload (extract-bit-field t 0 trailing-significand)))
-                   (compose-ieee754-nan sign quiet payload))))
+                 (let ((q (extract-bit-field 1 (- t 1) trailing-significand))
+                       (p (extract-bit-field (- t 1) 0 trailing-significand)))
+                   (compose-ieee754-nan sign q p))))
             (else
              (assert (<= emin exponent emax))
              (let ((significand
@@ -165,8 +161,12 @@ USA.
      (flo:+inf.0)))
 
 (define (compose-ieee754-nan sign quiet payload)
-  (declare (ignore sign quiet payload))
-  (flo:nan.0))
+  ;; XXX Using the native microcode's idea of NaN is a little hokey:
+  ;; if, for example, we wanted to use this for cross-compilation of
+  ;; a Scheme with binary128 floating-point using a Scheme with
+  ;; binary64 floating-point, many NaNs that could appear in the
+  ;; source code would be unrepresentable in the host.
+  (flo:make-nan (= sign 1) (= quiet 1) payload))
 
 (define (ieee754-binary-parameters exponent-bits precision)
   (assert (zero? (modulo (+ exponent-bits precision) 32)))

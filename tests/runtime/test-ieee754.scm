@@ -43,23 +43,19 @@ USA.
 (define ((test-ieee754-roundtrip exponent-bits precision
                                  compose exact? decompose)
          bits)
-  (receive (base emin emax bias exp-subnormal exp-inf/nan)
-           (ieee754-binary-parameters exponent-bits precision)
-    base emin emax exp-subnormal
-    (let ((w exponent-bits)             ;Width of exponent
-          (t (- precision 1)))          ;Trailing significand width
-      (let ((sign (extract-bit-field 1 (+ w t) bits))
-            (biased-exponent (extract-bit-field w t bits))
-            (trailing-significand (extract-bit-field t 0 bits)))
-        (if (not (= (- biased-exponent bias) exp-inf/nan))
-            (let ((x (compose sign biased-exponent trailing-significand)))
-              (assert (exact? x))
-              ;; Confirm that it yields the same bits.
-              (receive (sign* biased-exponent* trailing-significand*)
-                       (decompose x)
-                (assert-= sign* sign)
-                (assert-= biased-exponent* biased-exponent)
-                (assert-= trailing-significand* trailing-significand))))))))
+  (let ((w exponent-bits)             ;Width of exponent
+        (t (- precision 1)))          ;Trailing significand width
+    (let ((sign (extract-bit-field 1 (+ w t) bits))
+          (biased-exponent (extract-bit-field w t bits))
+          (trailing-significand (extract-bit-field t 0 bits)))
+      (let ((x (compose sign biased-exponent trailing-significand)))
+        (assert (or (not (finite? x)) (exact? x)))
+        ;; Confirm that it yields the same bits.
+        (receive (sign* biased-exponent* trailing-significand*)
+                 (decompose x)
+          (assert-= sign* sign)
+          (assert-= biased-exponent* biased-exponent)
+          (assert-= trailing-significand* trailing-significand))))))
 
 (define-test 'binary32-roundtrip-exhaustive
   (lambda ()
@@ -110,7 +106,9 @@ USA.
     (-2 (normal - 1 #x10000000000000))
     (,(flo:+inf.0) (infinity +))
     (,(flo:-inf.0) (infinity -))
-    (,(flo:nan.0) (nan + s 1)))
+    (,(flo:qnan 12345) (nan + q 12345))
+    (,(flo:snan 54321) (nan + s 54321))
+    (,(flo:make-nan #t #t 0) (nan - q 0)))
   (lambda (x y)
     (define (signify sign)
       (case sign
