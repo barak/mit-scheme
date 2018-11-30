@@ -714,8 +714,6 @@ USA.
     (-0.i 0.-0.i)
     (-0.+0.i +0.+0.i)
     (-0.-0.i +0.-0.i)
-    (-4.+0.i 0.+2.i)
-    (-4.-0.i 0.-2.i)
     ;; Treat infinities carefully around branch cuts.
     (-inf.0 +inf.0i)
     (+inf.0 +inf.0)
