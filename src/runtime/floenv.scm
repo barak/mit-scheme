@@ -102,7 +102,10 @@ USA.
 	   ((ucode-primitive float-environment 0))
 	   fp-env))))
 
-(define (use-floating-point-environment!)
+(define-integrable (using-floating-point-environment?)
+  (and (thread-float-environment (current-thread)) #t))
+
+(define-integrable (use-floating-point-environment!)
   (set-thread-float-environment! (current-thread) #t))
 
 (define (flo:environment)
@@ -243,12 +246,12 @@ USA.
   (flo:trappable-exceptions trappable-float-exceptions 0))
 
 (define (flo:clear-exceptions! exceptions)
-  (use-floating-point-environment!)
-  ((ucode-primitive clear-float-exceptions 1) exceptions))
+  (if (using-floating-point-environment?)
+      ((ucode-primitive clear-float-exceptions 1) exceptions)))
 
 (define (flo:raise-exceptions! exceptions)
-  (use-floating-point-environment!)
-  ((ucode-primitive raise-float-exceptions 1) exceptions))
+  (if (using-floating-point-environment?)
+      ((ucode-primitive raise-float-exceptions 1) exceptions)))
 
 (define (flo:restore-exception-flags! fexcept exceptions)
   (use-floating-point-environment!)
