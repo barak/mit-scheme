@@ -647,13 +647,38 @@ USA.
   (lambda (z t)
     (assert-<= (relerr t (angle z)) 1e-15)))
 
-(define-enumerated-test 'sqrt
+(define-enumerated-test 'sqrt-exact
   `((0 0)
     (0. 0.)
     (1 1)
     (1. 1.)
+    ;; Square root of perfect square should be exact.
     (4 2)
     (4. 2.)
+    ;; Square root of perfect square x times 2i should be exactly x+xi.
+    (+2i 1+1i ,expect-failure)
+    (+8i 2+2i ,expect-failure)
+    (+18i 3+3i ,expect-failure)
+    (+32i 4+4i ,expect-failure)
+    (+2.i 1.+1.i ,expect-failure)
+    (+8.i 2.+2.i ,expect-failure)
+    (+18.i 3.+3.i ,expect-failure)
+    (+32.i 4.+4.i ,expect-failure)
+    ;; Likewise, sqrt of perfect square x times -2i should be x-xi.
+    (-2i 1-1i ,expect-failure)
+    (-8i 2-2i ,expect-failure)
+    (-18i 3-3i ,expect-failure)
+    (-32i 4-4i ,expect-failure)
+    (-2.i 1.-1.i ,expect-failure)
+    (-8.i 2.-2.i ,expect-failure)
+    (-18.i 3.-3.i ,expect-failure)
+    (-32.i 4.-4.i ,expect-failure)
+    ;; Handle signed zero carefully.
+    (+0.i 0.+0.i)
+    (-0.i 0.-0.i ,expect-failure)
+    (-0.+0.i +0.+0.i)
+    (-0.-0.i +0.-0.i ,expect-failure)
+    ;; Treat infinities carefully around branch cuts.
     (-inf.0 +inf.0i)
     (+inf.0 +inf.0)
     (-inf.0+1.i +inf.0i ,expect-failure)
@@ -666,6 +691,7 @@ USA.
     (1.+inf.0i +inf.0+inf.0i)
     (-1.-inf.0i -inf.0+inf.0i ,expect-failure)
     (-1.+inf.0i +inf.0+inf.0i)
+    ;; NaN should be preserved.
     (,(flo:qnan 1234) ,(flo:qnan 1234)))
   (lambda (z r #!optional xfail)
     (with-expected-failure xfail
