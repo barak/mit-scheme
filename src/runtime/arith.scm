@@ -1967,21 +1967,30 @@ USA.
       (real:abs z)))
 
 (define (complex:sqrt z)
+  (define (x>=0 x)
+    ((copy real:sqrt) x))
   (cond ((recnum? z)
 	 (let ((x (rec:real-part z))
 	       (y (rec:imag-part z)))
-	   (if (real:zero? x)
-	       ;; sqrt(+/- 2i x) = sqrt(x) +/- sqrt(x)i
-	       (let ((sqrt-abs-y/2 (real:sqrt (real:/ (real:abs y) 2))))
-		 (complex:%make-rectangular
-		  sqrt-abs-y/2
-		  (real:copysign sqrt-abs-y/2 y)))
-	       (complex:%make-polar (real:sqrt (complex:magnitude z))
-                                    (real:/ (complex:angle z) 2)))))
+	   (cond ((real:zero? x)
+		  ;; sqrt(+/- 2i x) = sqrt(x) +/- i sqrt(x)
+		  (let ((sqrt-abs-y/2 (x>=0 (real:/ (real:abs y) 2))))
+		    (complex:%make-rectangular
+		     sqrt-abs-y/2
+		     (real:copysign sqrt-abs-y/2 y))))
+		 ((real:zero? y)
+		  (if (real:negative? x)
+		      (complex:%make-rectangular
+		       0.
+		       (real:copysign (x>=0 (real:negate x)) y))
+		      (complex:%make-rectangular (x>=0 x) y)))
+		 (else
+		  (complex:%make-polar (x>=0 (complex:magnitude z))
+				       (real:/ (complex:angle z) 2))))))
 	((real:negative? z)
-	 (complex:%make-rectangular 0 (real:sqrt (real:negate z))))
+	 (complex:%make-rectangular 0 (x>=0 (real:negate z))))
 	(else
-	 ((copy real:sqrt) z))))
+	 (x>=0 z))))
 
 (define (complex:expt z1 z2)
   (cond ((complex:zero? z1)
