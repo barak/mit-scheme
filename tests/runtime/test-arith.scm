@@ -81,6 +81,12 @@ USA.
       (flo:with-trapped-exceptions 0 f)
       (f)))
 
+(define (yes-traps f)
+  (if (flo:have-trap-enable/disable?)
+      ;; XXX Should enable all traps.
+      (flo:with-trapped-exceptions (flo:exception:invalid-operation) f)
+      (f)))
+
 (define (define-enumerated-test prefix cases procedure)
   (for-each (lambda (arguments)
               (define-test (symbol prefix '/ arguments)
@@ -682,18 +688,43 @@ USA.
     (-inf.0 +inf.0i)
     (+inf.0 +inf.0)
     (-inf.0+1.i +inf.0i ,expect-failure)
-    (+inf.0+1.i +inf.0 ,expect-failure)
+    (+inf.0+1.i +inf.0 ,expect-error)
     (-inf.0-1.i +inf.0i ,expect-failure)
-    (+inf.0-1.i +inf.0 ,expect-failure)
+    (+inf.0-1.i +inf.0 ,expect-error)
     (-inf.0i -inf.0+inf.0i ,expect-failure)
     (+inf.0i +inf.0+inf.0i)
     (1.-inf.0i -inf.0+inf.0i ,expect-failure)
     (1.+inf.0i +inf.0+inf.0i)
     (-1.-inf.0i -inf.0+inf.0i ,expect-failure)
-    (-1.+inf.0i +inf.0+inf.0i)
-    ;; NaN should be preserved.
-    (,(flo:qnan 1234) ,(flo:qnan 1234)))
+    (-1.+inf.0i +inf.0+inf.0i))
   (lambda (z r #!optional xfail)
     (with-expected-failure xfail
       (lambda ()
-        (assert-eqv-nan (no-traps (lambda () (sqrt z))) r)))))
+        (assert-eqv (yes-traps (lambda () (sqrt z))) r)))))
+
+(define-test 'sqrt-qnan
+  (lambda ()
+    (let ((x (identity-procedure (flo:qnan 1234))))
+      (assert-eqv-nan (yes-traps (lambda () (sqrt x))) x)
+      (assert-eqv
+       (flo:preserving-environment
+        (lambda ()
+          (flo:clear-exceptions! (flo:supported-exceptions))
+          (sqrt x)
+          (flo:test-exceptions (flo:supported-exceptions))))
+       0))))
+
+(define-test 'sqrt-snan
+  (lambda ()
+    (let ((x (identity-procedure (flo:snan 4321))))
+      (assert-eqv-nan (no-traps (lambda () (sqrt x))) (flo:qnan 4321))
+      (assert-error (lambda () (yes-traps (lambda () (sqrt x)))))
+      (assert-eqv
+       (flo:preserving-environment
+        (lambda ()
+          (flo:clear-exceptions! (flo:supported-exceptions))
+          (no-traps
+           (lambda ()
+             (sqrt x)
+             (flo:test-exceptions (flo:supported-exceptions))))))
+       (flo:exception:invalid-operation)))))
