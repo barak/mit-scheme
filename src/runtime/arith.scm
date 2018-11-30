@@ -1999,14 +1999,32 @@ USA.
 		     sqrt-abs-y/2
 		     (real:copysign sqrt-abs-y/2 y))))
 		 ((real:zero? y)
+		  (assert (not (real:exact0= y)))
 		  (if (real:negative? x)
 		      (complex:%make-rectangular
 		       0.
 		       (real:copysign (x>=0 (real:negate x)) y))
 		      (complex:%make-rectangular (x>=0 x) y)))
-		 (else
+		 ((eq? (real:infinite? x) (real:infinite? y))
+		  ;; Standard formula.  Works when both inputs are
+		  ;; finite, when both inputs are infinite, and when
+		  ;; both inputs are NaN.
 		  (complex:%make-polar (x>=0 (complex:magnitude z))
-				       (real:/ (complex:angle z) 2))))))
+				       (real:/ (complex:angle z) 2)))
+		 ((real:finite? x)
+		  ;; Rotate from pi/2 to pi/4, or from -pi/2 to -pi/4,
+		  ;; or preserve NaN but keep real sign positive.
+		  (assert (or (real:infinite? y) (real:nan? y)))
+		  (complex:%make-rectangular (flo:abs y) y))
+		 ((and (real:infinite? x) (real:finite? y))
+		  (if (real:negative? x)
+		      (complex:%make-rectangular 0. (flo:copysign x y))
+		      (complex:%make-rectangular x (flo:copysign 0. y))))
+		 (else
+		  ;; Garbage in, garbage out.  Try to preserve as much
+		  ;; NaNity as possible.
+		  (assert (or (real:nan? x) (real:nan? y)))
+		  (complex:%make-rectangular (flo:abs x) y)))))
 	((real:negative? z)
 	 (complex:%make-rectangular 0 (x>=0 (real:negate z))))
 	(else
