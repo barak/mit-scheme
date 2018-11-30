@@ -740,7 +740,15 @@ USA.
     (+inf.0+inf.0i +inf.0+inf.0i)
     (+inf.0-inf.0i +inf.0-inf.0i)
     (-inf.0+inf.0i +inf.0+inf.0i)
-    (-inf.0-inf.0i +inf.0-inf.0i))
+    (-inf.0-inf.0i +inf.0-inf.0i)
+    ;; Square root of negative real should be purely imaginary, whether
+    ;; exact or inexact.
+    (-4 +2i)
+    (-4. +2.i)
+    ;; Square root of negative real with inexact zero imaginary part
+    ;; should be imaginary with inexact zero real part.
+    (-4.+0.i 0.+2.i ,expect-failure)
+    (-4.-0.i 0.-2.i ,expect-failure))
   (lambda (z r #!optional xfail)
     (with-expected-failure xfail
       (lambda ()
