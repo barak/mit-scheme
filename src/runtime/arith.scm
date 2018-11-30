@@ -1087,6 +1087,9 @@ USA.
 (define (real:zero? x)
   (if (flonum? x) (flo:zero? x) ((copy rat:zero?) x)))
 
+(define (real:safe-zero? x)
+  (if (flonum? x) (flo:safe-zero? x) ((copy rat:zero?) x)))
+
 (define (real:exact0= x)
   (if (flonum? x) #f ((copy rat:zero?) x)))
 
@@ -1994,19 +1997,19 @@ USA.
   (cond ((recnum? z)
 	 (let ((x (rec:real-part z))
 	       (y (rec:imag-part z)))
-	   (cond ((real:zero? x)
+	   (cond ((real:safe-zero? y)
+		  (assert (not (real:exact0= y)))
+		  (if (if (flonum? x) (flo:safe< x 0.) (rat:negative? x))
+		      (complex:%make-rectangular
+		       0.
+		       (real:copysign (x>=0 (real:negate x)) y))
+		      (complex:%make-rectangular (x>=0 (real:->inexact x)) y)))
+		 ((real:safe-zero? x)
 		  ;; sqrt(+/- 2i x) = sqrt(x) +/- i sqrt(x)
 		  (let ((sqrt-abs-y/2 (x>=0 (real:/ (real:abs y) 2))))
 		    (complex:%make-rectangular
 		     sqrt-abs-y/2
 		     (real:copysign sqrt-abs-y/2 y))))
-		 ((real:zero? y)
-		  (assert (not (real:exact0= y)))
-		  (if (real:negative? x)
-		      (complex:%make-rectangular
-		       0.
-		       (real:copysign (x>=0 (real:negate x)) y))
-		      (complex:%make-rectangular (x>=0 x) y)))
 		 ((eq? (real:infinite? x) (real:infinite? y))
 		  ;; Standard formula.  Works when both inputs are
 		  ;; finite, when both inputs are infinite, and when
@@ -2027,7 +2030,7 @@ USA.
 		  ;; NaNity as possible.
 		  (assert (or (real:nan? x) (real:nan? y)))
 		  (complex:%make-rectangular (flo:abs x) y)))))
-	((real:negative? z)
+	((if (flonum? z) (flo:safe< z 0.) (rat:negative? z))
 	 (complex:%make-rectangular 0 (x>=0 (real:negate z))))
 	(else
 	 (x>=0 z))))

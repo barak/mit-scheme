@@ -748,11 +748,15 @@ USA.
     (,(make-rectangular 0 (- (* 2 (expt 2 4000))))
      ,(make-rectangular (expt 2 2000) (- (expt 2 2000)))
      ,expect-error)
-    ;; Handle signed zero carefully.
+    ;; Handle signed zero carefully.  IEEE 754-2008 specifies that
+    ;; sqrt(-0) = -0, so I guess we'll keep that for the complex
+    ;; extension, but I'm not attached to that.
     (+0.i 0.+0.i)
     (-0.i 0.-0.i)
-    (-0.+0.i +0.+0.i)
-    (-0.-0.i +0.-0.i)
+    (+0.+0.i +0.+0.i)
+    (+0.-0.i +0.-0.i)
+    (-0.+0.i -0.+0.i)
+    (-0.-0.i -0.-0.i)
     ;; Treat infinities carefully around branch cuts.
     (-inf.0 +inf.0i)
     (+inf.0 +inf.0)
