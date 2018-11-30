@@ -1369,11 +1369,20 @@ USA.
 	(let ((n (flo:round->exact guess)))
 	  (if (int:= x (int:* n n))
 	      n
-	      guess))
+	      (receive (s e) (exact-integer-sqrt x)
+		(if (int:zero? e)
+		    s
+		    guess))))
 	(let ((q (flo:->rational guess)))
 	  (if (rat:= x (rat:square q))
 	      q
-	      guess)))))
+	      (receive (ns ne) (exact-integer-sqrt (rat:numerator x))
+		(if (int:zero? ne)
+		    (receive (ds de) (exact-integer-sqrt (rat:denominator x))
+		      (if (int:zero? de)
+			  (rat:/ ns ds)
+			  guess))
+		    guess)))))))
 
 (define (real:sqrt x)
   (if (flonum? x) (flo:sqrt x) (rat:sqrt x)))

@@ -664,8 +664,7 @@ USA.
     (4. 2.)
     ;; Square root of perfect square x times 2i should be exactly x+xi.
     (,(make-rectangular 0 (* 2 (expt 2 -4000)))
-     ,(make-rectangular (expt 2 -2000) (expt 2 -2000))
-     ,expect-failure)
+     ,(make-rectangular (expt 2 -2000) (expt 2 -2000)))
     (,(make-rectangular 0. (* 2 flo:smallest-positive-subnormal))
      ,(make-rectangular (expt 2. (/ flo:subnormal-exponent-min 2))
                         (expt 2. (/ flo:subnormal-exponent-min 2))))
@@ -687,8 +686,7 @@ USA.
      ,expect-error)
     ;; Likewise, sqrt of perfect square x times -2i should be x-xi.
     (,(make-rectangular 0 (* -2 (expt 2 -4000)))
-     ,(make-rectangular (expt 2 -2000) (- (expt 2 -2000)))
-     ,expect-failure)
+     ,(make-rectangular (expt 2 -2000) (- (expt 2 -2000))))
     (,(make-rectangular 0. (- (* 2 flo:smallest-positive-subnormal)))
      ,(make-rectangular
        (expt 2. (/ flo:subnormal-exponent-min 2))
