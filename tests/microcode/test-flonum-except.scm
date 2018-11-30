@@ -83,6 +83,7 @@ USA.
     (lambda ()
       (flo:preserving-environment
        (lambda ()
+	 (flo:clear-exceptions! (flo:supported-exceptions))
 	 (with-failure-expected
 	     (if (flo:have-trap-enable/disable?)
 		 xfail
