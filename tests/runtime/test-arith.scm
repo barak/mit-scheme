@@ -762,6 +762,14 @@ USA.
   (lambda ()
     (let ((x (identity-procedure (flo:qnan 1234))))
       (assert-eqv-nan (yes-traps (lambda () (sqrt x))) x)
+      (let ((x+0i (make-rectangular x +0.))
+            (x-0i (make-rectangular x -0.))
+            (xi+0 (make-rectangular +0. x))
+            (xi-0 (make-rectangular -0. x)))
+        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt x+0i)))) x)
+        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt x-0i)))) x)
+        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt xi+0)))) x)
+        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt xi-0)))) x))
       (assert-eqv
        (flo:preserving-environment
         (lambda ()
@@ -774,9 +782,22 @@ USA.
 
 (define-test 'sqrt-snan
   (lambda ()
-    (let ((x (identity-procedure (flo:snan 4321))))
-      (assert-eqv-nan (no-traps (lambda () (sqrt x))) (flo:qnan 4321))
+    (let ((x (identity-procedure (flo:snan 4321)))
+          (x* (flo:qnan 4321)))
+      (assert-eqv-nan (no-traps (lambda () (sqrt x))) x*)
       (assert-error (lambda () (yes-traps (lambda () (sqrt x)))))
+      (let ((x+0i (make-rectangular x +0.))
+            (x-0i (make-rectangular x -0.))
+            (xi+0 (make-rectangular +0. x))
+            (xi-0 (make-rectangular -0. x)))
+        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt x+0i)))) x*)
+        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt x-0i)))) x*)
+        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt xi+0)))) x*)
+        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt xi-0)))) x*)
+        (assert-error (lambda () (yes-traps (lambda () (sqrt x+0i)))))
+        (assert-error (lambda () (yes-traps (lambda () (sqrt x-0i)))))
+        (assert-error (lambda () (yes-traps (lambda () (sqrt xi+0)))))
+        (assert-error (lambda () (yes-traps (lambda () (sqrt xi-0))))))
       (assert-eqv
        (flo:preserving-environment
         (lambda ()
