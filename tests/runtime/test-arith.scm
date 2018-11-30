@@ -766,8 +766,10 @@ USA.
        (flo:preserving-environment
         (lambda ()
           (flo:clear-exceptions! (flo:supported-exceptions))
-          (sqrt x)
-          (flo:test-exceptions (flo:supported-exceptions))))
+          (yes-traps
+           (lambda ()
+             (sqrt x)
+             (flo:test-exceptions (flo:supported-exceptions))))))
        0))))
 
 (define-test 'sqrt-snan
