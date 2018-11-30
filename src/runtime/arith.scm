@@ -1099,6 +1099,9 @@ USA.
 (define (real:positive? x)
   (if (flonum? x) (flo:positive? x) ((copy rat:positive?) x)))
 
+(define (real:safe-negative? x)
+  (if (flonum? x) (flo:safe< x 0.) ((copy rat:negative?) x)))
+
 (define-syntax define-standard-unary
   (sc-macro-transformer
    (lambda (form environment)
@@ -1327,11 +1330,10 @@ USA.
 	((flonum? x)
 	 (flo:copysign x (real:->inexact y)))
 	(else
-	 (if (if (flonum? y)
-		 (flo:sign-negative? y)
-		 (rat:negative? y))
-	     (- (rat:abs x))
-	     (rat:abs x)))))
+	 (let ((xa (rat:abs x)))
+	   (if (real:sign-negative? y)
+	       (rat:negate xa)
+	       xa)))))
 
 (define (real:sign-negative? x)
   (if (flonum? x)
@@ -1999,7 +2001,7 @@ USA.
 	       (y (rec:imag-part z)))
 	   (cond ((real:safe-zero? y)
 		  (assert (not (real:exact0= y)))
-		  (if (if (flonum? x) (flo:safe< x 0.) (rat:negative? x))
+		  (if (real:safe-negative? x)
 		      (complex:%make-rectangular
 		       0.
 		       (real:copysign (x>=0 (real:negate x)) y))
@@ -2030,7 +2032,7 @@ USA.
 		  ;; NaNity as possible.
 		  (assert (or (real:nan? x) (real:nan? y)))
 		  (complex:%make-rectangular (flo:abs x) y)))))
-	((if (flonum? z) (flo:safe< z 0.) (rat:negative? z))
+	((real:safe-negative? z)
 	 (complex:%make-rectangular 0 (x>=0 (real:negate z))))
 	(else
 	 (x>=0 z))))
