@@ -3324,6 +3324,7 @@ USA.
 	  (ceiling->exact complex:ceiling->exact)
 	  (complex? complex:complex?)
 	  (conjugate complex:conjugate)
+	  (copysign complex:copysign)
 	  (cos complex:cos)
 	  (denominator complex:denominator)
 	  (denominator->exact complex:denominator->exact)

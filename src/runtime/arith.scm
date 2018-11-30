@@ -1304,6 +1304,18 @@ USA.
 
 (define-rational-exact-unary real:numerator->exact rat:numerator)
 (define-rational-exact-unary real:denominator->exact rat:denominator)
+
+(define (real:copysign x y)
+  (cond ((and (flonum? x) (flonum? y))
+	 (flo:copysign x y))
+	((flonum? x)
+	 (flo:copysign x (real:->inexact y)))
+	(else
+	 (if (if (flonum? y)
+		 (flo:safe-negative? y)
+		 (rat:negative? y))
+	     (- (rat:abs x))
+	     (rat:abs x)))))
 
 (define-syntax define-transcendental-unary
   (sc-macro-transformer
@@ -1737,6 +1749,10 @@ USA.
 
 (define (complex:denominator->exact q)
   (real:denominator->exact (complex:real-arg 'denominator->exact q)))
+
+(define (complex:copysign x y)
+  (real:copysign (complex:real-arg 'copysign x)
+		 (complex:real-arg 'copysign y)))
 
 (define (complex:floor x)
   (if (recnum? x)
