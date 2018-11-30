@@ -40,24 +40,31 @@ USA.
       (body)
       (xfail body)))
 
-(define ((test-ieee754-roundtrip w t bexp-inf/nan compose exact? decompose)
+(define ((test-ieee754-roundtrip exponent-bits precision
+                                 compose exact? decompose)
          bits)
-  (let ((sign (extract-bit-field 1 (+ w t) bits))
-        (biased-exponent (extract-bit-field w t bits))
-        (trailing-significand (extract-bit-field t 0 bits)))
-    (if (not (= biased-exponent bexp-inf/nan))
-        (let ((x (compose sign biased-exponent trailing-significand)))
-          (assert (exact? x))
-          (receive (sign* biased-exponent* trailing-significand*)
-                   (decompose x)
-            (assert-= sign* sign)
-            (assert-= biased-exponent* biased-exponent)
-            (assert-= trailing-significand* trailing-significand))))))
+  (receive (base emin emax bias exp-subnormal exp-inf/nan)
+           (ieee754-binary-parameters exponent-bits precision)
+    base emin emax exp-subnormal
+    (let ((w exponent-bits)             ;Width of exponent
+          (t (- precision 1)))          ;Trailing significand width
+      (let ((sign (extract-bit-field 1 (+ w t) bits))
+            (biased-exponent (extract-bit-field w t bits))
+            (trailing-significand (extract-bit-field t 0 bits)))
+        (if (not (= (- biased-exponent bias) exp-inf/nan))
+            (let ((x (compose sign biased-exponent trailing-significand)))
+              (assert (exact? x))
+              ;; Confirm that it yields the same bits.
+              (receive (sign* biased-exponent* trailing-significand*)
+                       (decompose x)
+                (assert-= sign* sign)
+                (assert-= biased-exponent* biased-exponent)
+                (assert-= trailing-significand* trailing-significand))))))))
 
 (define-test 'binary32-roundtrip-exhaustive
   (lambda ()
     (define test
-      (test-ieee754-roundtrip 8 23 255
+      (test-ieee754-roundtrip 8 24
                               compose-ieee754-binary32
                               ieee754-binary32-exact?
                               decompose-ieee754-binary32))
@@ -77,7 +84,7 @@ USA.
     (#xfff0000000000000)
     (#x0123456789abcdef)
     (#xfedcba9876543210))
-  (test-ieee754-roundtrip 11 52 2047
+  (test-ieee754-roundtrip 11 53
                           compose-ieee754-binary64
                           ieee754-binary64-exact?
                           decompose-ieee754-binary64))
