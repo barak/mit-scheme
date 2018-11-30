@@ -71,6 +71,12 @@ USA.
 (define assert-eqv-nan
   (simple-binary-assertion eqv-nan? #f))
 
+(define assert-exact
+  (predicate-assertion exact? "exact"))
+
+(define assert-inexact
+  (predicate-assertion inexact? "inexact"))
+
 (define (with-expected-failure xfail body)
   (if (default-object? xfail)
       (body)
@@ -880,3 +886,69 @@ USA.
           (assert-eqv-nan (yes-traps (lambda () (copysign x (- y)))) (- z))
           (assert-eqv-nan (yes-traps (lambda () (copysign (- x) (- y))))
                           (- z))))))
+
+(assert (= flo:radix 2))
+(define flo:precision flo:significand-digits-base-2)
+
+(define-enumerated-test 'exact->inexact
+  `((,(+ 1 (expt flo:radix flo:precision))
+     ,(expt flo:radix. flo:precision))
+    (,(+ 3 (expt flo:radix flo:precision))
+     ,(+ 4 (expt flo:radix. flo:precision)))
+    (,(- (+ 1 (expt flo:radix flo:precision)))
+     ,(- (expt flo:radix. flo:precision)))
+    (,(- (+ 3 (expt flo:radix flo:precision)))
+     ,(- (+ 4 (expt flo:radix. flo:precision))))
+    (,(expt flo:radix (+ 1 flo:normal-exponent-max))
+     +inf.0
+     ,expect-error)
+    (,(expt flo:radix (* 2 flo:normal-exponent-max))
+     +inf.0
+     ,expect-error)
+    (,(- (expt flo:radix (+ 1 flo:normal-exponent-max)))
+     -inf.0)
+    (,(- (expt flo:radix (* 2 flo:normal-exponent-max)))
+     -inf.0
+     ,expect-error)
+    (,(- (expt flo:radix (+ 1 flo:normal-exponent-max))
+         (expt flo:radix (- (+ 1 flo:normal-exponent-max) flo:precision)))
+     ,flo:largest-positive-normal)
+    (,(- (expt flo:radix (- (+ 1 flo:normal-exponent-max) flo:precision))
+         (expt 2 (+ 1 flo:normal-exponent-max)))
+     ,(- flo:largest-positive-normal))
+    ;; Halfway from b^emax (b - 2 eps) = b^emax (b - 1/b^{p - 1}) to
+    ;; b^{emax + 1} is b^{emax + 1} (1 - 2 eps/b) = b^{emax + 1} (1 -
+    ;; b^-p).  Make sure it gets rounded up to infinity, but one below
+    ;; it is rounded down to the largest normal.
+    (,(* (expt flo:radix (+ 1 flo:normal-exponent-max))
+         (- 1 (expt flo:radix (- flo:precision))))
+     +inf.0
+     ,expect-failure)
+    (,(+ (* (expt flo:radix (+ 1 flo:normal-exponent-max))
+            (- 1 (expt flo:radix (- flo:precision))))
+         1)
+     +inf.0
+     ,expect-failure)
+    (,(- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
+            (- 1 (expt flo:radix (- flo:precision))))
+         1)
+     ,flo:largest-positive-normal)
+    (,(- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
+            (- 1 (expt flo:radix (- flo:precision)))))
+     -inf.0
+     ,expect-failure)
+    (,(- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
+            (- 1 (expt flo:radix (- flo:precision))))
+         1)
+     -inf.0
+     ,expect-failure)
+    (,(- (- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
+               (- 1 (expt flo:radix (- flo:precision))))
+            1))
+     ,(- flo:largest-positive-normal)))
+  (lambda (x y #!optional xfail)
+    (assert-exact x)
+    (assert-inexact y)
+    (with-expected-failure xfail
+      (lambda ()
+        (assert-eqv (exact->inexact x) y)))))
