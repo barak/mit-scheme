@@ -71,7 +71,7 @@ USA.
 (define (eqv-nan? x y)
   (if (flo:nan? x)
       (and (flo:nan? y)
-           (eqv? (flo:safe-negative? x) (flo:safe-negative? y))
+           (eqv? (flo:sign-negative? x) (flo:sign-negative? y))
            (eqv? (flo:nan-quiet? x) (flo:nan-quiet? y))
            (eqv? (flo:nan-payload x) (flo:nan-payload y)))
       (and (not (flo:nan? y))
@@ -512,7 +512,7 @@ USA.
   (lambda (x v)
     (assert-eqv (yes-traps (lambda () (flo:nan? x))) v)))
 
-(define-enumerated-test 'safe-negative?   ;XXX Maybe call it signbit?
+(define-enumerated-test 'sign-negative?
   `((-inf.0 #t)
     (-1. #t)
     (,subnormal- #t)
@@ -524,7 +524,7 @@ USA.
     ;; (+nan.0 ...)  ; indeterminate
     )
   (lambda (x n?)
-    (assert-eqv (yes-traps (lambda () (flo:safe-negative? x))) n?)))
+    (assert-eqv (yes-traps (lambda () (flo:sign-negative? x))) n?)))
 
 (define-syntax define-comparison-test
   (syntax-rules ()
@@ -823,7 +823,7 @@ USA.
       (if quiet?
           (assert-qnan nan)
           (assert-snan nan))
-      (assert-eqv (flo:safe-negative? nan) negative?)
+      (assert-eqv (flo:sign-negative? nan) negative?)
       (assert-eqv (flo:nan-quiet? nan) quiet?)
       (assert-eqv (flo:nan-payload nan) payload))))
 
@@ -956,7 +956,7 @@ USA.
     (with-expected-failure xfail
       (lambda ()
         (let ((y (yes-traps (lambda () (flo:abs x)))))
-          (assert-false (flo:safe-negative? y))
+          (assert-false (flo:sign-negative? y))
           (assert-eqv (flo:classify y) (flo:classify x))
           (if (flo:nan? x)
               (begin
@@ -991,8 +991,8 @@ USA.
         (let ((y (yes-traps (lambda () (flo:negate x)))))
           (assert-eqv-nan y z)
           (assert-eqv-nan (flo:abs x) (flo:abs y))
-          (assert-eqv (flo:safe-negative? y)
-                      (not (flo:safe-negative? x)))
+          (assert-eqv (flo:sign-negative? y)
+                      (not (flo:sign-negative? x)))
           (assert-eqv (flo:classify y) (flo:classify x))
           (if (flo:nan? x)
               (begin

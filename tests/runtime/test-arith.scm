@@ -60,7 +60,7 @@ USA.
   (if (and (flo:flonum? x) (flo:nan? x))
       (and (flo:flonum? y)
            (flo:nan? y)
-           (eqv? (flo:safe-negative? x) (flo:safe-negative? y))
+           (eqv? (flo:sign-negative? x) (flo:sign-negative? y))
            (eqv? (flo:nan-quiet? x) (flo:nan-quiet? y))
            (eqv? (flo:nan-payload x) (flo:nan-payload y)))
       (and (not (and (flo:flonum? y) (flo:nan? y)))

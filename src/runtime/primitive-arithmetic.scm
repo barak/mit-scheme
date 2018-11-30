@@ -162,7 +162,7 @@ USA.
   (flo:infinite? flonum-is-infinite? 1)
   (flo:nan? flonum-is-nan? 1)
   (flo:normal? flonum-is-normal? 1)
-  (flo:safe-negative? flonum-is-negative? 1)
+  (flo:sign-negative? flonum-is-negative? 1)
   (flo:safe-zero? flonum-is-zero? 1)
   (flo:= flonum-equal? 2)
   (flo:< flonum-less? 2)
@@ -241,17 +241,17 @@ USA.
       ;; signalling NaN.
       (cond ((not (flo:nan? y))
              (assert (flo:nan? x))
-             (if (flo:safe-negative? x) -1 +1))
+             (if (flo:sign-negative? x) -1 +1))
             ((not (flo:nan? x))
              (assert (flo:nan? y))
-             (if (flo:safe-negative? y) +1 -1))
+             (if (flo:sign-negative? y) +1 -1))
             (else
              (assert (flo:nan? x))
              (assert (flo:nan? y))
-             (let ((x- (flo:safe-negative? x))
+             (let ((x- (flo:sign-negative? x))
                    (xq (flo:nan-quiet? x))
                    (xp (flo:nan-payload x))
-                   (y- (flo:safe-negative? y))
+                   (y- (flo:sign-negative? y))
                    (yq (flo:nan-quiet? y))
                    (yp (flo:nan-payload y)))
                (cond ((not (eq? x- y-)) (if x- -1 +1))
@@ -268,9 +268,9 @@ USA.
             (else
 	     ;; -0. < +0.
              (assert (flo:zero? y))
-             (if (flo:safe-negative? x)
-                 (if (flo:safe-negative? y) 0 -1)
-                 (if (flo:safe-negative? y) +1 0))))))
+             (if (flo:sign-negative? x)
+                 (if (flo:sign-negative? y) 0 -1)
+                 (if (flo:sign-negative? y) +1 0))))))
 
 (define (flo:total-order-mag x y)
   (flo:total-order (flo:abs x) (flo:abs y)))
@@ -281,17 +281,17 @@ USA.
       ;; signalling NaN.
       (cond ((not (flo:nan? y))
 	     (assert (flo:nan? x))
-	     (flo:safe-negative? x))
+	     (flo:sign-negative? x))
 	    ((not (flo:nan? x))
 	     (assert (flo:nan? y))
-	     (not (flo:safe-negative? y)))
+	     (not (flo:sign-negative? y)))
 	    (else
 	     (assert (flo:nan? x))
 	     (assert (flo:nan? y))
-	     (let ((x- (flo:safe-negative? x))
+	     (let ((x- (flo:sign-negative? x))
 		   (xq (flo:nan-quiet? x))
 		   (xp (flo:nan-payload x))
-		   (y- (flo:safe-negative? y))
+		   (y- (flo:sign-negative? y))
 		   (yq (flo:nan-quiet? y))
 		   (yp (flo:nan-payload y)))
 	       (cond ((not (eq? x- y-)) (and x- (not y-)))
@@ -310,8 +310,8 @@ USA.
 	    (else
 	     ;; -0. < +0.
 	     (assert (flo:zero? y))
-	     (and (flo:safe-negative? x)
-		  (not (flo:safe-negative? y)))))))
+	     (and (flo:sign-negative? x)
+		  (not (flo:sign-negative? y)))))))
 
 (define (flo:total-mag< x y)
   (flo:total< (flo:abs x) (flo:abs y)))
@@ -366,8 +366,8 @@ USA.
        (not (flo:nan? y))
        (flo:= x y)
        (or (not (flo:zero? x))
-	   (eq? (flo:safe-negative? x)
-		(flo:safe-negative? y)))))
+	   (eq? (flo:sign-negative? x)
+		(flo:sign-negative? y)))))
 
 ;;; Measure the distance from x to the next floating-point number of
 ;;; the same sign as x and larger in magnitude.  For +/-0, this yields

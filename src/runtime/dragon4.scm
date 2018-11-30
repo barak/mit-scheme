@@ -101,7 +101,7 @@ not much different to numbers within a few orders of magnitude of 1.
 		     "-inf.0"
 		     (string-append "-" (x>0 x)))))
 	      ((flo:zero? x)
-	       (if (flo:safe-negative? x) "-0." "0."))
+	       (if (flo:sign-negative? x) "-0." "0."))
 	      (else
 	       "+nan.0")))))
 

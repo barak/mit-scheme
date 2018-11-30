@@ -64,11 +64,11 @@ New flonum-related definitions:
 - (flo:safe-zero? x) is true if x is zero; false if subnormal, normal,
   infinite, or NaN.  flo:zero? raises an invalid-operation exception on
   NaN; flo:safe-zero? never does even on signalling NaN.
-- (flo:safe-negative? x) returns true if x has negative sign, false if
+- (flo:sign-negative? x) returns true if x has negative sign, false if
   x has positive sign.  Note that (flo:negative? 0.) and (flo:negative?
-  -0.) both return false, while (flo:safe-negative? -0.) returns true.
+  -0.) both return false, while (flo:sign-negative? -0.) returns true.
   Also, flo:negative? raises invalid-operation exception on NaN, while
-  flo:safe-negative? never does even on signalling NaN.
+  flo:sign-negative? never does even on signalling NaN.
 - (flo:safe< x y), (flo:safe<= x y), (flo:safe> x y), (flo:safe>= x y),
   (flo:safe= x y), (flo:safe<> x y), (flo:unordered? x y) perform
   unordered floating-point comparisons and, unlike flo:< &c., do not

@@ -1328,14 +1328,14 @@ USA.
 	 (flo:copysign x (real:->inexact y)))
 	(else
 	 (if (if (flonum? y)
-		 (flo:safe-negative? y)
+		 (flo:sign-negative? y)
 		 (rat:negative? y))
 	     (- (rat:abs x))
 	     (rat:abs x)))))
 
-(define (real:safe-negative? x)
+(define (real:sign-negative? x)
   (if (flonum? x)
-      (flo:safe-negative? x)
+      (flo:sign-negative? x)
       ((copy rat:negative?) x)))
 
 (define-syntax define-transcendental-unary
