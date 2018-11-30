@@ -77,6 +77,39 @@ USA.
 (define assert-inexact
   (predicate-assertion inexact? "inexact"))
 
+(define (assert-no-except/yes-traps procedure)
+  (assert-eqv
+   (flo:preserving-environment
+    (lambda ()
+      (flo:clear-exceptions! (flo:supported-exceptions))
+      (yes-traps
+       (lambda ()
+         (procedure)
+         (flo:test-exceptions (flo:supported-exceptions))))))
+   0))
+
+(define (assert-only-except/no-traps except procedure)
+  (assert-eqv
+   (flo:preserving-environment
+    (lambda ()
+      (flo:clear-exceptions! (flo:supported-exceptions))
+      (no-traps
+       (lambda ()
+         (procedure)
+         (flo:test-exceptions (flo:supported-exceptions))))))
+   except))
+
+(define (assert-except/no-traps except procedure)
+  (assert-eqv
+   (flo:preserving-environment
+    (lambda ()
+      (flo:clear-exceptions! (flo:supported-exceptions))
+      (no-traps
+       (lambda ()
+         (procedure)
+         (flo:test-exceptions except)))))
+   except))
+
 (define (with-expected-failure xfail body)
   (if (default-object? xfail)
       (body)
@@ -762,6 +795,7 @@ USA.
   (lambda ()
     (let ((x (identity-procedure (flo:qnan 1234))))
       (assert-eqv-nan (yes-traps (lambda () (sqrt x))) x)
+      (assert-no-except/yes-traps (lambda () (sqrt x)))
       (let ((x+0i (make-rectangular x +0.))
             (x-0i (make-rectangular x -0.))
             (xi+0 (make-rectangular +0. x))
@@ -769,16 +803,11 @@ USA.
         (assert-eqv-nan (no-traps (lambda () (real-part (sqrt x+0i)))) x)
         (assert-eqv-nan (no-traps (lambda () (real-part (sqrt x-0i)))) x)
         (assert-eqv-nan (no-traps (lambda () (real-part (sqrt xi+0)))) x)
-        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt xi-0)))) x))
-      (assert-eqv
-       (flo:preserving-environment
-        (lambda ()
-          (flo:clear-exceptions! (flo:supported-exceptions))
-          (yes-traps
-           (lambda ()
-             (sqrt x)
-             (flo:test-exceptions (flo:supported-exceptions))))))
-       0))))
+        (assert-eqv-nan (no-traps (lambda () (real-part (sqrt xi-0)))) x)
+        (assert-no-except/yes-traps (lambda () (sqrt x+0i)))
+        (assert-no-except/yes-traps (lambda () (sqrt x-0i)))
+        (assert-no-except/yes-traps (lambda () (sqrt xi+0)))
+        (assert-no-except/yes-traps (lambda () (sqrt xi-0)))))))
 
 (define-test 'sqrt-snan
   (lambda ()
@@ -786,6 +815,8 @@ USA.
           (x* (flo:qnan 4321)))
       (assert-eqv-nan (no-traps (lambda () (sqrt x))) x*)
       (assert-error (lambda () (yes-traps (lambda () (sqrt x)))))
+      (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                   (lambda () (sqrt x)))
       (let ((x+0i (make-rectangular x +0.))
             (x-0i (make-rectangular x -0.))
             (xi+0 (make-rectangular +0. x))
@@ -797,16 +828,15 @@ USA.
         (assert-error (lambda () (yes-traps (lambda () (sqrt x+0i)))))
         (assert-error (lambda () (yes-traps (lambda () (sqrt x-0i)))))
         (assert-error (lambda () (yes-traps (lambda () (sqrt xi+0)))))
-        (assert-error (lambda () (yes-traps (lambda () (sqrt xi-0))))))
-      (assert-eqv
-       (flo:preserving-environment
-        (lambda ()
-          (flo:clear-exceptions! (flo:supported-exceptions))
-          (no-traps
-           (lambda ()
-             (sqrt x)
-             (flo:test-exceptions (flo:supported-exceptions))))))
-       (flo:exception:invalid-operation)))))
+        (assert-error (lambda () (yes-traps (lambda () (sqrt xi-0)))))
+        (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                     (lambda () (sqrt x+0i)))
+        (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                     (lambda () (sqrt x-0i)))
+        (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                     (lambda () (sqrt xi+0)))
+        (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                     (lambda () (sqrt xi-0)))))))
 
 (define-enumerated-test 'copysign
   `((0. 0. 0.)
@@ -982,23 +1012,9 @@ USA.
               (assert-error
                (lambda ()
                  (yes-traps (lambda () (exact->inexact x)))))
-              (assert-eqv
-               (flo:preserving-environment
-                (lambda ()
-                  (flo:clear-exceptions! (flo:supported-exceptions))
-                  (no-traps
-                   (lambda ()
-                     (exact->inexact x)
-                     (flo:test-exceptions (flo:exception:overflow))))))
-               (flo:exception:overflow))))
+              (assert-except/no-traps (flo:exception:overflow)
+                                      (lambda () (exact->inexact x)))))
         (assert-eqv (exact->inexact x) y)
         (if (not (= x y))
-            (assert-eqv
-             (flo:preserving-environment
-              (lambda ()
-                (flo:clear-exceptions! (flo:supported-exceptions))
-                (no-traps
-                 (lambda ()
-                   (exact->inexact x)
-                   (flo:test-exceptions (flo:exception:inexact-result))))))
-             (flo:exception:inexact-result)))))))
+            (assert-except/no-traps (flo:exception:inexact-result)
+                                    (lambda () (exact->inexact x))))))))
