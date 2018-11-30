@@ -90,7 +90,9 @@ USA.
 (define (yes-traps f)
   (if (flo:have-trap-enable/disable?)
       ;; XXX Should enable all traps.
-      (flo:with-trapped-exceptions (flo:exception:invalid-operation) f)
+      (flo:with-trapped-exceptions
+          (fix:or (flo:exception:invalid-operation) (flo:exception:overflow))
+        f)
       (f)))
 
 (define (define-enumerated-test prefix cases procedure)
@@ -900,13 +902,19 @@ USA.
     (,(- (+ 3 (expt flo:radix flo:precision)))
      ,(- (+ 4 (expt flo:radix. flo:precision))))
     (,(expt flo:radix (+ 1 flo:normal-exponent-max))
-     +inf.0)
+     +inf.0
+     ;; Missing overflow exception.
+     ,expect-failure)
     (,(expt flo:radix (* 2 flo:normal-exponent-max))
-     +inf.0)
+     +inf.0
+     ;; Missing overflow exception.
+     ,expect-failure)
     (,(- (expt flo:radix (+ 1 flo:normal-exponent-max)))
      -inf.0)
     (,(- (expt flo:radix (* 2 flo:normal-exponent-max)))
-     -inf.0)
+     -inf.0
+     ;; Missing overflow exception.
+     ,expect-failure)
     (,(- (expt flo:radix (+ 1 flo:normal-exponent-max))
          (expt flo:radix (- (+ 1 flo:normal-exponent-max) flo:precision)))
      ,flo:largest-positive-normal)
@@ -920,32 +928,64 @@ USA.
     (,(* (expt flo:radix (+ 1 flo:normal-exponent-max))
          (- 1 (expt flo:radix (- flo:precision))))
      +inf.0
+     ;; Wrong answer.
      ,expect-failure)
     (,(+ (* (expt flo:radix (+ 1 flo:normal-exponent-max))
             (- 1 (expt flo:radix (- flo:precision))))
          1)
      +inf.0
+     ;; Wrong answer.
      ,expect-failure)
     (,(- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
             (- 1 (expt flo:radix (- flo:precision))))
          1)
-     ,flo:largest-positive-normal)
+     ,flo:largest-positive-normal
+     ;; Missing inexact-result exception.
+     ,expect-failure)
     (,(- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
             (- 1 (expt flo:radix (- flo:precision)))))
      -inf.0
+     ;; Wrong answer.
      ,expect-failure)
     (,(- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
             (- 1 (expt flo:radix (- flo:precision))))
          1)
      -inf.0
+     ;; Wrong answer.
      ,expect-failure)
     (,(- (- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
                (- 1 (expt flo:radix (- flo:precision))))
             1))
-     ,(- flo:largest-positive-normal)))
+     ,(- flo:largest-positive-normal)
+     ;; Missing inexact-result exception.
+     ,expect-failure))
   (lambda (x y #!optional xfail)
     (assert-exact x)
     (assert-inexact y)
     (with-expected-failure xfail
       (lambda ()
-        (assert-eqv (exact->inexact x) y)))))
+        (if (infinite? y)
+            (begin
+              (assert-error
+               (lambda ()
+                 (yes-traps (lambda () (exact->inexact x)))))
+              (assert-eqv
+               (flo:preserving-environment
+                (lambda ()
+                  (flo:clear-exceptions! (flo:supported-exceptions))
+                  (no-traps
+                   (lambda ()
+                     (exact->inexact x)
+                     (flo:test-exceptions (flo:exception:overflow))))))
+               (flo:exception:overflow))))
+        (assert-eqv (exact->inexact x) y)
+        (if (not (= x y))
+            (assert-eqv
+             (flo:preserving-environment
+              (lambda ()
+                (flo:clear-exceptions! (flo:supported-exceptions))
+                (no-traps
+                 (lambda ()
+                   (exact->inexact x)
+                   (flo:test-exceptions (flo:exception:inexact-result))))))
+             (flo:exception:inexact-result)))))))
