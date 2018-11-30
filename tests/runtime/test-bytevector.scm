@@ -53,6 +53,7 @@ USA.
 (define-test 'non-vector
   (lambda ()
     (let ((v (vector (reverse (iota 5)))))
+      (declare (type-checks))
       (assert-false (bytevector? v))
       (assert-type-error (lambda () (bytevector-length v)))
       (assert-type-error (lambda () (bytevector-u8-ref v 0)))
@@ -109,6 +110,7 @@ USA.
 		((> start end))
 	      (assert-equal (bytevector-copy v start end)
 			    (apply bytevector (sublist bytes start end)))))
+	  (declare (range-checks))
 	  (assert-range-error (lambda () (bytevector-copy v 0 (+ n 1))))
 	  (assert-range-error (lambda () (bytevector-copy v n (+ n 1))))
 	  (assert-range-error (lambda () (bytevector-copy v -1 n))))))))
@@ -134,6 +136,7 @@ USA.
 			    (append (make-list to n)
 				    (sublist bytes start end)
 				    (make-list (- extra to) n)))))))))
+	  (declare (range-checks))
 	  (assert-range-error
 	   (lambda ()
 	     (bytevector-copy! (make-bytevector n) 0 v 0 (+ n 1))))
@@ -170,6 +173,7 @@ USA.
 				   (append (sublist bytes 0 start)
 					   (make-list (- end start) 51)
 					   (sublist bytes end n))))))))
+      (declare (range-checks))
       (assert-range-error
        (lambda ()
 	 (bytevector-fill! (make-bytevector n) 51 0 (+ n 1))))
@@ -208,6 +212,7 @@ USA.
        (index 0 (+ index 1)))
       ((not (pair? bytes)))
     (assert-= (bytevector-u8-ref v index) (car bytes)))
+  (declare (range-checks))
   (assert-range-error (lambda () (bytevector-u8-ref v -1)))
   (assert-range-error (lambda () (bytevector-u8-ref v (length bytes)))))
 
@@ -228,6 +233,7 @@ USA.
 (define (test-bytevector-u16-ref bytes)
   (let ((bv (apply bytevector bytes))
 	(index-limit (- (length bytes) 1)))
+    (declare (range-checks))
     (assert-u16-refs bv bytes)
     (assert-range-error (lambda () (bytevector-u16be-ref bv -1)))
     (assert-range-error (lambda () (bytevector-u16le-ref bv -1)))
@@ -261,6 +267,7 @@ USA.
 		 (drop bytes (+ index-to-set 2)))))
     (setter bv index-to-set value-to-set)
     (assert-u16-refs bv expected-bytes)
+    (declare (range-checks))
     (assert-range-error (lambda () (setter bv -1 value-to-set)))
     (assert-range-error (lambda () (setter bv index-limit value-to-set)))))
 
@@ -292,6 +299,7 @@ USA.
   (let ((bv (apply bytevector bytes))
 	(index-limit (- (length bytes) 1)))
     (assert-u32-refs bv bytes)
+    (declare (range-checks))
     (assert-range-error (lambda () (bytevector-u32be-ref bv -1)))
     (assert-range-error (lambda () (bytevector-u32le-ref bv -1)))
     (assert-range-error (lambda () (bytevector-u32be-ref bv index-limit)))
@@ -326,6 +334,7 @@ USA.
 		 (drop bytes (+ index-to-set 4)))))
     (setter bv index-to-set value-to-set)
     (assert-u32-refs bv expected-bytes)
+    (declare (range-checks))
     (assert-range-error (lambda () (setter bv -1 value-to-set)))
     (assert-range-error (lambda () (setter bv index-limit value-to-set)))))
 
