@@ -77,12 +77,6 @@ New flonum-related definitions:
 - (flo:<> x y) returns true if x is less or greater than y, false if
   equal or unordered, and raises invalid-operation exceptions on any
   NaNs.
-- (flo:compare x y) and (flo:safe-compare x y) return a four-way
-  comparison of two floating-point numbers: negative if x < y, zero if
-  x = y, positive if x > y, and #f if one or both arguments is NaN.
-  flo:compare raises invalid-operation exceptions on any NaN;
-  flo:safe-compare raises invalid-operations exceptions only on
-  signalling NaNs.
 - (flo:total< x y) is true if x < y in the total ordering defined in
   IEEE 754-2008 Sec. 5.10; (flo:total-order x y) is a three-way
   comparison, -1 if x < y, 0 if x = y, +1 if x > y.
