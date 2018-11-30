@@ -413,6 +413,11 @@ USA.
 (define (flo:snan? nan)
   (and (flo:nan? nan)
        (not (flo:nan-quiet? nan))))
+
+(define (flo:logb x)
+  (if (and (flo:finite? x) (not (flo:safe-zero? x)))
+      (fix:- (cdr ((ucode-primitive flonum-normalize 1) x)) 1)
+      (begin (flo:raise-exceptions! (flo:exception:invalid-operation)) #f)))
 
 ;;;; Exact integers
 

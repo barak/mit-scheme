@@ -82,6 +82,17 @@ USA.
 (define assert-eqv-nan
   (simple-binary-assertion eqv-nan? #f))
 
+(define (assert-only-except/no-traps except procedure)
+  (assert-eqv
+   (flo:preserving-environment
+    (lambda ()
+      (flo:clear-exceptions! (flo:supported-exceptions))
+      (no-traps
+       (lambda ()
+         (procedure)
+         (flo:test-exceptions (flo:supported-exceptions))))))
+   except))
+
 (define (with-expected-failure xfail body)
   (if (default-object? xfail)
       (body)
@@ -1046,3 +1057,35 @@ USA.
         (assert-eqv (flo:total-mag< x y) (flo:total< (flo:abs x) (flo:abs y)))
         (assert-eqv (flo:total-order-mag x y)
                     (flo:total-order (flo:abs x) (flo:abs y))))))))
+
+(define-enumerated-test 'flo:logb/finite
+  `((1. 0)
+    (,flo:radix. 1)
+    (,(+ 1 flo:radix.) 1)
+    (,(expt flo:radix. 2) 2)
+    (,(+ 1 (expt flo:radix. 2)) 2)
+    (,flo:smallest-positive-subnormal ,flo:subnormal-exponent-min)
+    (,flo:smallest-positive-normal ,flo:normal-exponent-min)
+    (,flo:largest-positive-normal ,flo:normal-exponent-max))
+  (lambda (x l)
+    (assert-eqv (flo:logb x) l)
+    (assert->= (flo:scalbn x (- (flo:logb x))) 1)
+    (assert-< (flo:scalbn x (- (flo:logb x))) flo:radix)
+    (let ((y (flo:scalbn x (- (flo:logb x)))))
+      (assert-= (flo:scalbn y l) x))))
+
+(define-enumerated-test 'flo:logb/invalid
+  `((0.)
+    (+inf.0)
+    (,(flo:qnan))
+    (,(flo:snan)))
+  (lambda (x)
+    (assert-eqv (no-traps (lambda () (flo:logb x))) #f)
+    (assert-eqv (no-traps (lambda () (flo:logb (flo:negate x)))) #f)
+    (assert-error (lambda () (yes-traps (lambda () (flo:logb x)))))
+    (assert-error
+     (lambda () (yes-traps (lambda () (flo:logb (flo:negate x))))))
+    (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                 (lambda () (flo:logb x)))
+    (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                 (lambda () (flo:logb (flo:negate x))))))

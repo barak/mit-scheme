@@ -330,6 +330,7 @@ USA.
 	  flo:lgamma
 	  flo:log
 	  flo:log1p
+	  flo:logb
 	  flo:make-nan
 	  flo:max
 	  flo:max-mag
