@@ -16,3 +16,5 @@ New procedures:
 . (logistic-1/2 x) = (- (logistic x) 1/2), inverse of logit1/2+
 . (logsumexp (list x y z ...)) = log (e^x + e^y + e^z + ...),
   guaranteed not to overflow or underflow
+. (copysign m s) returns a real number with the magnitude of m and
+  the sign of s.
