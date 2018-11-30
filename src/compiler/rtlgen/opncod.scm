@@ -1530,7 +1530,8 @@ USA.
 	   expressions)))
       '(0 1)
       internal-close-coding-for-type-checks)))
- '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE FLONUM-ATAN2))
+ '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE FLONUM-ATAN2
+   FLONUM-COPYSIGN))
 
 (for-each
  (lambda (flonum-pred)

@@ -280,6 +280,62 @@ USA.
   (binary-operation FLONUM-MULTIPLY MULF #t)
   (binary-operation FLONUM-SUBTRACT SUBF #f))
 
+;;; It is tempting to use memory operands for the masks, but because
+;;; OR, AND, &c., are packed, not scalar, the memory operands must be
+;;; 128-bit-aligned, and right now compiled code blocks are only
+;;; guaranteed to be 64-bit aligned.  We could change that but it would
+;;; take a bit of work.
+
+(define-arithmetic-method 'FLONUM-COPYSIGN flonum-methods/2-args
+  (flonum-2-args/standard #f
+    (lambda (target source)
+      (let* ((bits (bit-string-not double-flobits:negative-zero))
+             (label (allocate-double-float-bits-label bits))
+             (temp (reference-temporary-register! 'FLOAT)))
+        (LAP
+         ;; Set temp := 0x7fff....
+         (MOVF S D ,temp (@PCR ,label))
+         ;; target holds arg1.  Set target := arg1 & 0x7fff....
+         (ANDF P D ,target ,temp)
+         ;; source holds arg2.  Set temp := arg2 & 0x1000....
+         (ANDNF P D ,temp ,source)
+         ;; Set target := (arg1 & 0x7fff...) & (arg2 & 0x1000...).
+         (ORF P D ,target ,temp))))))
+
+(define-arithmetic-method 'FLONUM-COPYSIGN flonum-methods/register*constant
+  (lambda (target source constant)
+    (let ((target (float-move-to-target! source target)))
+      (if (flo:sign-negative? constant)
+          (let* ((bits double-flobits:negative-zero)
+                 (label (allocate-double-float-bits-label bits))
+                 (temp (reference-temporary-register! 'FLOAT)))
+            (LAP (MOVF S D ,temp (@PCR ,label))
+                 (ORF P D ,target ,temp)))
+          (let* ((bits (bit-string-not double-flobits:negative-zero))
+                 (label (allocate-double-float-bits-label bits))
+                 (temp (reference-temporary-register! 'FLOAT)))
+            (LAP (MOVF S D ,temp (@PCR ,label))
+                 (ANDF P D ,target ,temp)))))))
+
+(define-arithmetic-method 'FLONUM-COPYSIGN flonum-methods/constant*register
+  (lambda (target constant source)
+    (with-float-operand (flo:abs constant)
+      (lambda (operand)
+        (let ((target (float-move-to-target! source target)))
+          (let* ((bits double-flobits:negative-zero)
+                 (label (allocate-double-float-bits-label bits))
+                 (temp (reference-temporary-register! 'FLOAT)))
+            ;; target holds arg2, which specifies the sign.
+            (LAP
+             ;; temp := 0x1000....
+             (MOVF S D ,temp (@PCR ,label))
+             ;; target := target & 0x1000...
+             (ANDF P D ,target ,temp)
+             ;; temp := abs(arg1)
+             (MOVF S D ,temp ,operand)
+             ;; target := (target & 0x1000...) | abs(arg1)
+             (ORF P D ,target ,temp))))))))
+
 ;;;; Flonum Predicates
 
 (define double-flobits:zero
@@ -492,3 +548,6 @@ USA.
      (let ((flonum-data-offset-in-bits (* 8 (bytes-per-object))))
        (read-bits! flonum flonum-data-offset-in-bits bit-string))
      bit-string)))
+
+(define (float-move-to-target! source target)
+  (register-reference (move-to-alias-register! source 'FLOAT target)))

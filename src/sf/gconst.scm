@@ -126,6 +126,7 @@ USA.
     (flo:atan2 flonum-atan2)
     (flo:ceiling flonum-ceiling)
     (flo:ceiling->exact flonum-ceiling->exact)
+    (flo:copysign flonum-copysign)
     (flo:cos flonum-cos)
     (flo:exp flonum-exp)
     (flo:expm1 flonum-expm1)
