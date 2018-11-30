@@ -900,16 +900,13 @@ USA.
     (,(- (+ 3 (expt flo:radix flo:precision)))
      ,(- (+ 4 (expt flo:radix. flo:precision))))
     (,(expt flo:radix (+ 1 flo:normal-exponent-max))
-     +inf.0
-     ,expect-error)
+     +inf.0)
     (,(expt flo:radix (* 2 flo:normal-exponent-max))
-     +inf.0
-     ,expect-error)
+     +inf.0)
     (,(- (expt flo:radix (+ 1 flo:normal-exponent-max)))
      -inf.0)
     (,(- (expt flo:radix (* 2 flo:normal-exponent-max)))
-     -inf.0
-     ,expect-error)
+     -inf.0)
     (,(- (expt flo:radix (+ 1 flo:normal-exponent-max))
          (expt flo:radix (- (+ 1 flo:normal-exponent-max) flo:precision)))
      ,flo:largest-positive-normal)

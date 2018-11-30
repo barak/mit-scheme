@@ -959,9 +959,9 @@ USA.
 	(else (slow-method n d))))
 
 (define (int:->inexact n)
-  (if (fixnum? n)
-      (fixnum->flonum n) ;; 8.0 compiler open-codes when is N fixnum (by test)
-      (integer->flonum n #b10)))
+  (cond ((fixnum? n) (fixnum->flonum n))
+	((integer->flonum n #b00))
+	(else (if (int:negative? n) (flo:-inf.0) (flo:+inf.0)))))
 
 (define (flo:significand-digits radix)
   (cond ((int:= radix 10)
