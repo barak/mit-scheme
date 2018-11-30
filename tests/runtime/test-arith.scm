@@ -902,19 +902,13 @@ USA.
     (,(- (+ 3 (expt flo:radix flo:precision)))
      ,(- (+ 4 (expt flo:radix. flo:precision))))
     (,(expt flo:radix (+ 1 flo:normal-exponent-max))
-     +inf.0
-     ;; Missing overflow exception.
-     ,expect-failure)
+     +inf.0)
     (,(expt flo:radix (* 2 flo:normal-exponent-max))
-     +inf.0
-     ;; Missing overflow exception.
-     ,expect-failure)
+     +inf.0)
     (,(- (expt flo:radix (+ 1 flo:normal-exponent-max)))
      -inf.0)
     (,(- (expt flo:radix (* 2 flo:normal-exponent-max)))
-     -inf.0
-     ;; Missing overflow exception.
-     ,expect-failure)
+     -inf.0)
     (,(- (expt flo:radix (+ 1 flo:normal-exponent-max))
          (expt flo:radix (- (+ 1 flo:normal-exponent-max) flo:precision)))
      ,flo:largest-positive-normal)
@@ -939,9 +933,7 @@ USA.
     (,(- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
             (- 1 (expt flo:radix (- flo:precision))))
          1)
-     ,flo:largest-positive-normal
-     ;; Missing inexact-result exception.
-     ,expect-failure)
+     ,flo:largest-positive-normal)
     (,(- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
             (- 1 (expt flo:radix (- flo:precision)))))
      -inf.0
@@ -956,9 +948,7 @@ USA.
     (,(- (- (* (expt flo:radix (+ 1 flo:normal-exponent-max))
                (- 1 (expt flo:radix (- flo:precision))))
             1))
-     ,(- flo:largest-positive-normal)
-     ;; Missing inexact-result exception.
-     ,expect-failure))
+     ,(- flo:largest-positive-normal)))
   (lambda (x y #!optional xfail)
     (assert-exact x)
     (assert-inexact y)

@@ -959,9 +959,20 @@ USA.
 	(else (slow-method n d))))
 
 (define (int:->inexact n)
-  (cond ((fixnum? n) (fixnum->flonum n))
-	((integer->flonum n #b00))
-	(else (if (int:negative? n) (flo:-inf.0) (flo:+inf.0)))))
+  (cond ((fixnum? n)
+	 ;; The primitive (via hardware) will raise inexact if necessary.
+	 (fixnum->flonum n))
+	((integer->flonum n #b00)
+	 => (lambda (x)
+	      ;; The primitive does not always raise inexact for us,
+	      ;; though it does raise overflow.
+	      (if (not (and (flo:finite? x) (int:= (flo:->integer x) n)))
+		  (flo:raise-exceptions! (flo:exception:inexact-result)))
+	      x))
+	(else
+	 (flo:raise-exceptions!
+	  (fix:or (flo:exception:overflow) (flo:exception:inexact-result)))
+	 (if (int:negative? n) (flo:-inf.0) (flo:+inf.0)))))
 
 (define (flo:significand-digits radix)
   (cond ((int:= radix 10)
