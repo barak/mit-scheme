@@ -656,6 +656,7 @@ USA.
 (define-enumerated-test 'sqrt-exact
   `((0 0)
     (0. 0.)
+    (-0. -0.)                           ;IEEE 754-2008, 5.4.1, p. 21
     (1 1)
     (1. 1.)
     ;; Square root of perfect square should be exact.
