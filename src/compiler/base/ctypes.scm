@@ -68,7 +68,7 @@ USA.
    (lambda (application)
      (case (application-type application)
        ((COMBINATION) '())
-       ((RETURN) (list (return/operand return)))
+       ((RETURN) (list (return/operand application)))
        (else (list (application-type application)))))))
 
 (define-integrable (application-block application)
