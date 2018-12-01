@@ -425,6 +425,7 @@ USA.
 	  flo:exception:inexact-result
 	  flo:exception:invalid-operation
 	  flo:exception:overflow
+	  flo:exception:subnormal-operand
 	  flo:exception:underflow
 	  flo:exceptions->names
 	  flo:have-environment?

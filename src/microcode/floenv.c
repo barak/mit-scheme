@@ -392,6 +392,15 @@ DEFINE_PRIMITIVE ("FLOAT-INEXACT-RESULT-EXCEPTION", Prim_float_inexact_result_ex
 #else
     UNIMPLEMENTED_FLOAT_EXCEPTIONS_PRIMITIVE ()
 #endif
+
+/* The subnormal operand exception is nonstandard but appears on x86.  */
+
+DEFINE_PRIMITIVE ("FLOAT-SUBNORMAL-OPERAND-EXCEPTION", Prim_float_subnormal_operand_exception, 0, 0, 0)
+#ifdef FE_DENORMAL
+    FLOAT_EXCEPTIONS_PRIMITIVE (FE_DENORMAL)
+#else
+    UNIMPLEMENTED_FLOAT_EXCEPTIONS_PRIMITIVE ()
+#endif
 
 DEFINE_PRIMITIVE ("FLOAT-EXCEPTIONS", Prim_float_exceptions, 0, 0, 0)
     FLOAT_EXCEPTIONS_PRIMITIVE (FE_ALL_EXCEPT)

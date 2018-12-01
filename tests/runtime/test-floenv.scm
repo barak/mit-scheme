@@ -292,6 +292,21 @@ USA.
       ;; (Note that if underflow is trapped, then the machine traps
       ;; whether or not the result is exact.  Go figure.)
       (flo:* (no-op .5000001) (flo:shift (no-op 1.) -1022)))))
+
+(if (not (zero? (flo:exception:subnormal-operand)))
+    (begin
+      (define-fpe-descriptor 'SUBNORMAL-OPERAND #t
+        flo:exception:subnormal-operand
+        ;; XXX Should have its own condition type, but this requires OS
+        ;; support for the siginfo code.
+        condition-type:inexact-floating-point-result)
+      (define-fpe-elicitor 'SUBNORMAL-OPERAND 'RAISE
+        (lambda ()
+          (flo:raise-exceptions! (flo:exception:subnormal-operand))))
+      (define-fpe-elicitor 'SUBNORMAL-OPERAND 'USE-A-SUBNORMAL-OPERAND
+        (let ((x (no-op flo:smallest-positive-subnormal)))
+          (lambda ()
+            (flo:+ x flo:smallest-positive-subnormal))))))
 
 (define (for-each-trappable-exception receiver)
   (for-each-exception
