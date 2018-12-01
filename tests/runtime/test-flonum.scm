@@ -93,6 +93,17 @@ USA.
          (flo:test-exceptions (flo:supported-exceptions))))))
    except))
 
+(define (assert-no-except/yes-traps procedure)
+  (assert-eqv
+   (flo:preserving-environment
+    (lambda ()
+      (flo:clear-exceptions! (flo:supported-exceptions))
+      (yes-traps
+       (lambda ()
+         (procedure)
+         (flo:test-exceptions (flo:supported-exceptions))))))
+   0))
+
 (define (with-expected-failure xfail body)
   (if (default-object? xfail)
       (body)
@@ -298,21 +309,29 @@ USA.
     (,(flo:make-nan #t #f 1) -0. ,(flo:make-nan #t #f 1)))
   (lambda (x y z)
     (assert-eqv-nan (yes-traps (lambda () (flo:copysign x y))) z)
+    (assert-no-except/yes-traps (lambda () (flo:copysign x y)))
     (assert-eqv-nan
      (yes-traps (lambda () (flo:copysign (flo:negate x) y)))
      z)
+    (assert-no-except/yes-traps (lambda () (flo:copysign (flo:negate x) y)))
     (assert-eqv-nan
      (yes-traps (lambda () (flo:copysign x (flo:negate y))))
      (flo:negate z))
+    (assert-no-except/yes-traps (lambda () (flo:copysign x (flo:negate y))))
     (assert-eqv-nan
      (yes-traps (lambda () (flo:copysign (flo:negate x) (flo:negate y))))
-     (flo:negate z))))
+     (flo:negate z))
+    (assert-no-except/yes-traps
+     (lambda ()
+       (flo:copysign (flo:negate x) (flo:negate y))))))
 
 (define-enumerated-test 'copysign-var/neg
   `((-inf.0 -inf.0)
     (-1. -1.)
+    (,subnormal- ,subnormal-)
     (-0. -0.)
     (0. -0.)
+    (,subnormal+ ,subnormal-)
     (1. -1.)
     (+inf.0 -inf.0)
     (,(flo:make-nan #t #t 1234) ,(flo:make-nan #t #t 1234))
@@ -320,13 +339,16 @@ USA.
     (,(flo:make-nan #t #f 1234) ,(flo:make-nan #t #f 1234))
     (,(flo:make-nan #f #f 1234) ,(flo:make-nan #t #f 1234)))
   (lambda (x z)
-    (assert-eqv-nan (yes-traps (lambda () (flo:copysign x -1.23))) z)))
+    (assert-eqv-nan (yes-traps (lambda () (flo:copysign x -1.23))) z)
+    (assert-no-except/yes-traps (lambda () (flo:copysign x -1.23)))))
 
 (define-enumerated-test 'copysign-var/pos
   `((-inf.0 +inf.0)
     (-1. +1.)
+    (,subnormal- ,subnormal+)
     (-0. +0.)
     (0. +0.)
+    (,subnormal+ ,subnormal+)
     (1. +1.)
     (+inf.0 +inf.0)
     (,(flo:make-nan #t #t 1234) ,(flo:make-nan #f #t 1234))
@@ -334,13 +356,16 @@ USA.
     (,(flo:make-nan #t #f 1234) ,(flo:make-nan #f #f 1234))
     (,(flo:make-nan #f #f 1234) ,(flo:make-nan #f #f 1234)))
   (lambda (x z)
-    (assert-eqv-nan (yes-traps (lambda () (flo:copysign x +1.23))) z)))
+    (assert-eqv-nan (yes-traps (lambda () (flo:copysign x +1.23))) z)
+    (assert-no-except/yes-traps (lambda () (flo:copysign x +1.23)))))
 
 (define-enumerated-test 'copysign-1.23/var
   `((-inf.0 -1.23)
     (-1. -1.23)
+    (,subnormal- -1.23)
     (-0. -1.23)
     (0. 1.23)
+    (,subnormal+ 1.23)
     (1. 1.23)
     (+inf.0 1.23)
     (,(flo:make-nan #t #t 1234) -1.23)
@@ -349,14 +374,18 @@ USA.
     (,(flo:make-nan #f #f 1234) 1.23))
   (lambda (x z)
     (assert-eqv-nan (yes-traps (lambda () (flo:copysign -1.23 x))) z)
-    (assert-eqv-nan (yes-traps (lambda () (flo:copysign +1.23 x))) z)))
+    (assert-eqv-nan (yes-traps (lambda () (flo:copysign +1.23 x))) z)
+    (assert-no-except/yes-traps (lambda () (flo:copysign -1.23 x)))
+    (assert-no-except/yes-traps (lambda () (flo:copysign +1.23 x)))))
 
 (define-enumerated-test 'copysign-0/var
   `((-inf.0 -0.)
     (-1. -0.)
+    (,subnormal- -0.)
     (-0. -0.)
     (0. +0.)
     (1. +0.)
+    (,subnormal+ +0.)
     (+inf.0 +0.)
     (,(flo:make-nan #t #t 1234) -0.)
     (,(flo:make-nan #f #t 1234) +0.)
@@ -364,13 +393,17 @@ USA.
     (,(flo:make-nan #f #f 1234) +0.))
   (lambda (x z)
     (assert-eqv-nan (yes-traps (lambda () (flo:copysign -0. x))) z)
-    (assert-eqv-nan (yes-traps (lambda () (flo:copysign +0. x))) z)))
+    (assert-eqv-nan (yes-traps (lambda () (flo:copysign +0. x))) z)
+    (assert-no-except/yes-traps (lambda () (flo:copysign -0. x)))
+    (assert-no-except/yes-traps (lambda () (flo:copysign +1. x)))))
 
 (define-enumerated-test 'copysign-inf/var
   `((-inf.0 -inf.0)
     (-1. -inf.0)
+    (,subnormal- -inf.0)
     (-0. -inf.0)
     (0. +inf.0)
+    (,subnormal+ +inf.0)
     (1. +inf.0)
     (+inf.0 +inf.0)
     (,(flo:make-nan #t #t 1234) -inf.0)
@@ -379,13 +412,17 @@ USA.
     (,(flo:make-nan #f #f 1234) +inf.0))
   (lambda (x z)
     (assert-eqv-nan (yes-traps (lambda () (flo:copysign -inf.0 x))) z)
-    (assert-eqv-nan (yes-traps (lambda () (flo:copysign +inf.0 x))) z)))
+    (assert-eqv-nan (yes-traps (lambda () (flo:copysign +inf.0 x))) z)
+    (assert-no-except/yes-traps (lambda () (flo:copysign -0. x)))
+    (assert-no-except/yes-traps (lambda () (flo:copysign +1. x)))))
 
 (define-enumerated-test 'copysign-qnan/var
   `((-inf.0 ,(flo:make-nan #t #t 54321))
     (-1. ,(flo:make-nan #t #t 54321))
+    (,subnormal- ,(flo:make-nan #t #t 54321))
     (-0. ,(flo:make-nan #t #t 54321))
     (0. ,(flo:make-nan #f #t 54321))
+    (,subnormal+ ,(flo:make-nan #f #t 54321))
     (1. ,(flo:make-nan #f #t 54321))
     (+inf.0 ,(flo:make-nan #f #t 54321))
     (,(flo:make-nan #t #t 1234) ,(flo:make-nan #t #t 54321))
@@ -401,8 +438,10 @@ USA.
 (define-enumerated-test 'copysign-snan/var
   `((-inf.0 ,(flo:make-nan #t #f 54321))
     (-1. ,(flo:make-nan #t #f 54321))
+    (,subnormal- ,(flo:make-nan #t #f 54321))
     (-0. ,(flo:make-nan #t #f 54321))
     (0. ,(flo:make-nan #f #f 54321))
+    (,subnormal+ ,(flo:make-nan #f #f 54321))
     (1. ,(flo:make-nan #f #f 54321))
     (+inf.0 ,(flo:make-nan #f #f 54321))
     (,(flo:make-nan #t #t 1234) ,(flo:make-nan #t #f 54321))
@@ -435,13 +474,15 @@ USA.
   `((0. zero)
     (-0. zero)
     (,(flo:nextafter 0. 1.) subnormal)
-    (,flo:smallest-positive-subnormal subnormal)
+    (,subnormal+ subnormal)
     (,flo:smallest-positive-normal normal)
     (1. normal)
     (+inf.0 infinite)
     (-inf.0 infinite)
     (+nan.0 nan)
-    (-nan.0 nan))
+    (-nan.0 nan)
+    (,(flo:qnan) nan)
+    (,(flo:snan) nan))
   (lambda (x c)
     (assert-eq (flo:classify x) c)))
 
@@ -454,7 +495,9 @@ USA.
     (,subnormal+ #f)
     (+1. #f)
     (+inf.0 #f)
-    (+nan.0 #f))
+    (+nan.0 #f)
+    (,(flo:qnan) #f)
+    (,(flo:snan) #f))
   (lambda (x v)
     (assert-eqv (yes-traps (lambda () (flo:safe-zero? x))) v)))
 
@@ -467,7 +510,9 @@ USA.
     (,subnormal+ #t)
     (+1. #f)
     (+inf.0 #f)
-    (+nan.0 #f))
+    (+nan.0 #f)
+    (,(flo:qnan) #f)
+    (,(flo:snan) #f))
   (lambda (x v)
     (assert-eqv (yes-traps (lambda () (flo:subnormal? x))) v)))
 
@@ -480,7 +525,9 @@ USA.
     (,subnormal+ #f)
     (+1. #t)
     (+inf.0 #f)
-    (+nan.0 #f))
+    (+nan.0 #f)
+    (,(flo:qnan) #f)
+    (,(flo:snan) #f))
   (lambda (x v)
     (assert-eqv (yes-traps (lambda () (flo:normal? x))) v)))
 
@@ -493,7 +540,9 @@ USA.
     (,subnormal+ #t)
     (+1. #t)
     (+inf.0 #f)
-    (+nan.0 #f))
+    (+nan.0 #f)
+    (,(flo:qnan) #f)
+    (,(flo:snan) #f))
   (lambda (x v)
     (assert-eqv (yes-traps (lambda () (flo:finite? x))) v)))
 
@@ -506,7 +555,9 @@ USA.
     (,subnormal+ #f)
     (+1. #f)
     (+inf.0 #t)
-    (+nan.0 #f))
+    (+nan.0 #f)
+    (,(flo:qnan) #f)
+    (,(flo:snan) #f))
   (lambda (x v)
     (assert-eqv (yes-traps (lambda () (flo:infinite? x))) v)))
 
@@ -519,7 +570,9 @@ USA.
     (,subnormal+ #f)
     (+1. #f)
     (+inf.0 #f)
-    (+nan.0 #t))
+    (+nan.0 #t)
+    (,(flo:qnan) #t)
+    (,(flo:snan) #t))
   (lambda (x v)
     (assert-eqv (yes-traps (lambda () (flo:nan? x))) v)))
 
@@ -533,9 +586,20 @@ USA.
     (+1. #f)
     (+inf.0 #f)
     ;; (+nan.0 ...)  ; indeterminate
-    )
+    (,(flo:make-nan #f #t 0) #f)
+    (,(flo:make-nan #t #t 0) #t)
+    (,(flo:make-nan #f #f 1) #f)
+    (,(flo:make-nan #t #f 1) #t))
   (lambda (x n?)
-    (assert-eqv (yes-traps (lambda () (flo:sign-negative? x))) n?)))
+    (assert-eqv (yes-traps (lambda () (flo:sign-negative? x))) n?)
+    (assert-eqv (yes-traps (lambda () (flo:sign-negative? (flo:abs x)))) #f)
+    (assert-eqv (yes-traps (lambda () (flo:sign-negative? (flo:negate x))))
+                (not n?))
+    (assert-no-except/yes-traps (lambda () (flo:sign-negative? x)))
+    (assert-no-except/yes-traps (lambda () (flo:sign-negative? (flo:abs x))))
+    (assert-no-except/yes-traps
+     (lambda ()
+       (flo:sign-negative? (flo:negate x))))))
 
 (define-syntax define-comparison-test
   (syntax-rules ()
@@ -1022,10 +1086,10 @@ USA.
                -inf.0
                -1.
                (- flo:smallest-positive-normal)
-               (no-traps (lambda () (- flo:smallest-positive-subnormal)))
+               subnormal-
                -0.
                +0.
-               flo:smallest-positive-subnormal
+               subnormal+
                flo:smallest-positive-normal
                +1.
                +inf.0
