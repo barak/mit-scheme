@@ -202,9 +202,7 @@ USA.
     bias exp-subnormal exp-inf/nan
     (define (symbolic sign name extra)
       (assert (or (= sign 0) (= sign 1)))
-      (assert (<= 0 extra))
-      (let ((extra (number->string extra #x10)))
-        (string-append (if (zero? sign) "+" "-") name "." extra)))
+      (string-append (if (zero? sign) "+" "-") name extra))
     (define (numeric sign integer width fractional exponent)
       (assert (or (= sign 0) (= sign 1)))
       (assert (or (= integer 0) (= integer 1)))
@@ -257,9 +255,10 @@ USA.
                (fractional (extract-bit-field width 0 significand)))
           (numeric sign 1 width fractional exponent)))
       (lambda (sign)
-        (symbolic sign "inf" 0))
+        (symbolic sign "inf" ""))
       (lambda (sign quiet payload)
-        (symbolic sign (if (zero? quiet) "sNaN" "qNaN") payload)))))
+        payload                         ;XXX Use this.
+        (symbolic sign (if (zero? quiet) "sNaN" "NaN") "")))))
 
 (define (ieee754-binary32-hex-string x #!optional mark)
   (ieee754-binary-hex-string x 8 24 mark))
