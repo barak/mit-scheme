@@ -64,7 +64,7 @@ USA.
                               compose-ieee754-binary32
                               ieee754-binary32-exact?
                               decompose-ieee754-binary32))
-    (let ((increment (if keep-it-fast!? 347911 1))
+    (let ((increment (if keep-it-fast!? 347911 123))
           (maximum (expt 2 32)))
       (do ((i 0 (+ i increment)))
           ((>= i maximum))
