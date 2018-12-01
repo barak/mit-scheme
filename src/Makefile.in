@@ -246,10 +246,46 @@ syntax-compiler: compile-sf
 	| $(HOST_RUNTIME_ONLY)
 
 .PHONY: compile-compiler
-compile-compiler: syntax-compiler
-	(echo '(with-working-directory-pathname "compiler"' && \
-	 echo '  (lambda () (load "compiler.cbf")))') \
-	| $(HOST_COMPILER)
+compile-compiler: compile-compiler-back
+compile-compiler: compile-compiler-base
+compile-compiler: compile-compiler-fggen
+compile-compiler: compile-compiler-fgopt
+compile-compiler: compile-compiler-machine
+compile-compiler: compile-compiler-rtlbase
+compile-compiler: compile-compiler-rtlgen
+compile-compiler: compile-compiler-rtlopt
+
+.PHONY: compile-compiler-back
+compile-compiler-back: syntax-compiler
+	echo '(compile-directory "compiler/back")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-base
+compile-compiler-base: syntax-compiler
+	echo '(compile-directory "compiler/base")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-fggen
+compile-compiler-fggen: syntax-compiler
+	echo '(compile-directory "compiler/fggen")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-fgopt
+compile-compiler-fgopt: syntax-compiler
+	echo '(compile-directory "compiler/fgopt")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-machine
+compile-compiler-machine: syntax-compiler
+	echo '(compile-directory "compiler/machine")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-rtlbase
+compile-compiler-rtlbase: syntax-compiler
+	echo '(compile-directory "compiler/rtlbase")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-rtlgen
+compile-compiler-rtlgen: syntax-compiler
+	echo '(compile-directory "compiler/rtlgen")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-rtlopt
+compile-compiler-rtlopt: syntax-compiler
+	echo '(compile-directory "compiler/rtlopt")' | $(HOST_COMPILER)
 
 .PHONY: bundle-compiler
 bundle-compiler: liarc-bundle-tools
