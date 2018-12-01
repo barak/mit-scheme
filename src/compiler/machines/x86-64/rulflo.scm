@@ -29,6 +29,15 @@ USA.
 
 (declare (usual-integrations))
 
+(define double-flobits:zero
+  (unsigned-integer->bit-string 64 #x0000000000000000))
+
+(define double-flobits:negative-zero
+  (unsigned-integer->bit-string 64 #x8000000000000000))
+
+(define double-flobits:positive-inf
+  (unsigned-integer->bit-string 64 #x7ff0000000000000))
+
 (define (flonum-source! source)
   (or (register-alias source 'FLOAT)
       (load-alias-register! source 'FLOAT)))
@@ -152,11 +161,6 @@ USA.
 (define ((flonum-unary-operation/target-bits bit-string operate) target source)
   (LAP (MOVF S D ,target (@PCR ,(allocate-double-float-bits-label bit-string)))
        ,@(operate target source)))
-
-(define double-flobits:negative-zero
-  (let ((bit-string (make-bit-string 64 #f)))
-    (bit-string-set! bit-string 63)
-    bit-string))
 
 (define-arithmetic-method 'FLONUM-ABS flonum-methods/1-arg
   (flonum-unary-operation/target-bits
@@ -338,9 +342,6 @@ USA.
 
 ;;;; Flonum Predicates
 
-(define double-flobits:zero
-  (make-bit-string 64 #f))
-
 (define-rule predicate
   (FLONUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
   (flonum-branch!
@@ -385,7 +386,7 @@ USA.
                       operand))))
 
 ;;; For a predicate giving (if (predicate x) a b), return predicate* so
-;;; that (if (predicate* x 0) a b) is equivalent.
+;;; that (if (predicate* x 0.) a b) is equivalent.
 
 (define (flonum-pred-1->2-args predicate)
   (case predicate
@@ -402,6 +403,7 @@ USA.
     ((FLONUM-EQUAL?) 'FLONUM-EQUAL?)
     ((FLONUM-LESS?) 'FLONUM-GREATER?)
     ((FLONUM-GREATER?) 'FLONUM-LESS?)
+    ((FLONUM-IS-EQUAL?) 'FLONUM-IS-EQUAL?)
     ((FLONUM-IS-LESS?) 'FLONUM-IS-GREATER?)
     ((FLONUM-IS-LESS-OR-EQUAL?) 'FLONUM-IS-GREATER-OR-EQUAL?)
     ((FLONUM-IS-GREATER?) 'FLONUM-IS-LESS?)
@@ -445,7 +447,7 @@ USA.
   (define (quiet-comparison)
     (LAP (UCOMIF S D ,source1 ,source2)))
   (case predicate
-    ((FLONUM-EQUAL?)
+    ((FLONUM-EQUAL? FLONUM-IS-EQUAL?)
      (set-current-branches! (lambda (label)
                               (let ((unordered (generate-label 'UNORDERED)))
                                 (LAP (JP (@PCR ,unordered))
@@ -454,7 +456,10 @@ USA.
                             (lambda (label)
                               (LAP (JNE (@PCR ,label))
                                    (JP (@PCR ,label)))))
-     (signalling-comparison))
+     (case predicate
+       ((FLONUM-EQUAL?) (signalling-comparison))
+       ((FLONUM-IS-EQUAL?) (quiet-comparison))
+       (else (assert #f))))
     ((FLONUM-LESS? FLONUM-IS-LESS?)
      (set-current-branches! (lambda (label)
                               (let ((unordered (generate-label 'UNORDERED)))
@@ -507,6 +512,123 @@ USA.
      (quiet-comparison))
     (else
      (error "flonum-branch!: Unknown predicate" predicate))))
+
+(define-rule predicate
+  (FLONUM-PRED-1-ARG FLONUM-IS-NORMAL? (REGISTER (? source)))
+  (set-current-branches! (lambda (label) (LAP (JNZ (@PCR ,label))))
+                         (lambda (label) (LAP (JZ (@PCR ,label)))))
+  (let* ((source (flonum-source-reference! source))
+         (posinf double-flobits:positive-inf)
+         (posinf-label (allocate-double-float-bits-label posinf))
+         (zero double-flobits:zero)
+         (zero-label (allocate-double-float-bits-label zero))
+         (tempf (reference-temporary-register! 'FLOAT))
+         (temp1 (reference-temporary-register! 'GENERAL))
+         (temp2 (reference-temporary-register! 'GENERAL)))
+    (LAP
+     ;; Set tempf := 0x7ff0..., the exponent mask.
+     (MOVF S D ,tempf (@PCR ,posinf-label))
+     ;; Set tempf := source & 0x7ff0....
+     (ANDF P D ,tempf ,source)
+     ;; If source & 0x7ff0... == +inf, then source is either inf or
+     ;; NaN, so set the low byte of temp1 to 0; otherwise set it to 1.
+     (UCOMIF S D ,tempf (@PCR ,posinf-label))
+     (SETNE ,temp1)
+     ;; If source & 0x7ff0... == 0, then source is either zero or
+     ;; subnormal, so set the low byte of temp2 to 0; otherwise set it
+     ;; to 1.
+     (UCOMIF S D ,tempf (@PCR ,zero-label))
+     (SETNE ,temp2)
+     ;; Test temp1 & temp2.
+     (TEST B ,temp1 ,temp2))))
+
+(define-rule predicate
+  (FLONUM-PRED-1-ARG FLONUM-IS-FINITE? (REGISTER (? source)))
+  (set-current-branches! (lambda (label) (LAP (JNE (@PCR ,label))))
+                         (lambda (label) (LAP (JE (@PCR ,label)))))
+  (let* ((source (flonum-source-reference! source))
+         (mask double-flobits:positive-inf)
+         (label (allocate-double-float-bits-label mask))
+         (temp (reference-temporary-register! 'FLOAT)))
+    (LAP
+     ;; Load +inf = 0x7ff0... into temp.
+     (MOVF S D ,temp (@PCR ,label))
+     ;; Set temp := source & 0x7ff0....
+     (ANDF P D ,temp ,source)
+     ;; If source was finite, temp will also be finite, and thus will
+     ;; compare not-equal to positive infinity.  If source was infinite
+     ;; or NaN, it will be equal to positive infinity.
+     ;;
+     ;; Exceptions: If source was normal, temp will also be normal, and
+     ;; if source was subnormal, temp will be zero, so this does not
+     ;; spuriously raise the subnormal operand exception.
+     (UCOMIF S D ,temp (@PCR ,label)))))
+
+(define-rule predicate
+  (FLONUM-PRED-1-ARG FLONUM-IS-ZERO? (REGISTER (? source)))
+  (set-current-branches! (lambda (label) (LAP (JZ (@PCR ,label))))
+                         (lambda (label) (LAP (JNZ (@PCR ,label)))))
+  ;; Test whether (source & 0x7fff...) == 0x0000....  Work in integer
+  ;; registers to avoid invalid operation and subnormal operand
+  ;; exceptions in case of signalling NaN or subnormal inputs.
+  (let* ((source (flonum-source-reference! source))
+         (temp1 (reference-temporary-register! 'GENERAL))
+         (temp2 (reference-temporary-register! 'GENERAL)))
+    (LAP (MOV Q ,temp1 (&U #x7fffffffffffffff))
+         (MOVD Q ,temp2 ,source)      ;source is xmm, can't AND with it
+         (TEST Q ,temp1 ,temp2))))
+
+(define-rule predicate
+  (FLONUM-PRED-1-ARG FLONUM-IS-INFINITE? (REGISTER (? source)))
+  (set-current-branches! (lambda (label) (LAP (JE (@PCR ,label))))
+                         (lambda (label) (LAP (JNE (@PCR ,label)))))
+  ;; Test whether (source & 0x7ff0...) == 0x7ff0....  Work in integer
+  ;; registers to avoid invalid operation and subnormal operand
+  ;; exceptions in case of signalling NaN or subnormal inputs.
+  (let* ((source (flonum-source-reference! source))
+         (temp1 (reference-temporary-register! 'GENERAL))
+         (temp2 (reference-temporary-register! 'GENERAL)))
+    (LAP (MOV Q ,temp1 (&U #x7fffffffffffffff))
+         (MOVD Q ,temp2 ,source)      ;source is xmm, can't AND with it
+         ;; Set temp2 := |source| = source & 0x7fff....
+         (AND Q ,temp2 ,temp1)
+         ;; Set temp1 := 0x7ff0... = positive infinity.
+         (MOV Q ,temp1 (&U #x7ff0000000000000))
+         ;; Compute flag bits of (source & 0x7fff...) - 0x7ff0...,
+         ;; which is zero iff source is +/-infinity.
+         (CMP Q ,temp1 ,temp2))))
+
+(define-rule predicate
+  (FLONUM-PRED-1-ARG FLONUM-IS-NAN? (REGISTER (? source)))
+  (set-current-branches! (lambda (label) (LAP (JNZ (@PCR ,label))))
+                         (lambda (label) (LAP (JZ (@PCR ,label)))))
+  ;; Test whether (source & 0x7ff0...) == 0x7ff0... _and_ not all of
+  ;; the low 52 bits are zero.  Work in integer registers to avoid
+  ;; invalid operation and subnormal operand exceptions in case of
+  ;; signalling NaN or subnormal inputs.
+  (let* ((source (flonum-source-reference! source))
+         (temp1 (reference-temporary-register! 'GENERAL))
+         (temp2 (reference-temporary-register! 'GENERAL)))
+    (LAP
+     ;; Set temp1 := source.
+     (MOVD Q ,temp1 ,source)
+     ;; Load the trailing significand mask into temp2.
+     (MOV Q ,temp2 (&U #x000fffffffffffff))
+     ;; Test the trailing significand of source.
+     (TEST Q ,temp1 ,temp2)
+     ;; Set temp2 := 1 if any bit is one, temp2 := 0 if all bits zero.
+     (SETNZ ,temp2)
+     ;; Set temp1 := high 16 bits of temp1.
+     (SHR Q ,temp1 (&U 48))
+     ;; Clear the sign bit and the high nybble of the trailing
+     ;; significand.
+     (AND Q ,temp1 (&U #x7ff0))
+     ;; Check whether what we have is the inf/nan exponent.
+     (CMP Q ,temp1 (&U #x7ff0))
+     ;; Set temp1 := 1 if yes, temp1 := 0 if no.
+     (SETE ,temp1)
+     ;; Test temp1 & temp2.
+     (TEST B ,temp1 ,temp2))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT (? fp-value))))
