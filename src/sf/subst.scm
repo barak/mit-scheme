@@ -334,7 +334,9 @@ USA.
                    (integrate/name expression expression info environment)))
               (if new-expression
                   (begin (variable/integrated! variable)
-                         new-expression)
+                         (integrate/expression operations
+                                               environment
+                                               new-expression))
                   (dont-integrate))))
 
 	   ((integrate-operator)
