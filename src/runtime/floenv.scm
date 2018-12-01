@@ -246,8 +246,8 @@ USA.
   (flo:trappable-exceptions trappable-float-exceptions 0))
 
 (define (flo:clear-exceptions! exceptions)
-  (if (using-floating-point-environment?)
-      ((ucode-primitive clear-float-exceptions 1) exceptions)))
+  (use-floating-point-environment!)
+  ((ucode-primitive clear-float-exceptions 1) exceptions))
 
 (define (flo:raise-exceptions! exceptions)
   (if (using-floating-point-environment?)
