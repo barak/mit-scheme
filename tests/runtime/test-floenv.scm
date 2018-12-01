@@ -528,3 +528,33 @@ USA.
       (lambda ()
 	(assert-eqv (flo:trapped-exceptions)
 		    (flo:default-trapped-exceptions)))))
+
+(define-test 'preserving-environment
+  (lambda ()
+    ;; Trigger a bunch of floating-point exceptions _before_ we have
+    ;; registered interest in the floating-point environment -- but
+    ;; block thread-switching so nobody else can get in -- and then
+    ;; confirm that within flo:preserving-environment,
+    ;; flo:clear-exceptions! actually clears the exceptions.
+    (expect-failure
+     (lambda ()
+       (assert-eqv
+        (without-interruption
+         (lambda ()
+           ;; Trigger as many floating-point exceptions as we can.  If
+           ;; they trap, ignore it.  Don't enable floating-point traps
+           ;; since we're testing what happens if we haven't done any
+           ;; operations that touch the floating-point environment.
+           (ignore-errors
+            (lambda ()
+              (flo:sqrt -1.)
+              (flo:/ flo:smallest-positive-normal 2.)
+              (flo:sqrt 2.)
+              (flo:exp (flo:* 2. flo:greatest-normal-exponent-base-e))))
+           (flo:preserving-environment
+            (lambda ()
+              ;; Clear the exceptions.
+              (flo:clear-exceptions! (flo:supported-exceptions))
+              ;; Test the exceptions.  They should actually be cleared.
+              (flo:test-exceptions (flo:supported-exceptions))))))
+        0)))))
