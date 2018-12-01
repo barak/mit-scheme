@@ -2022,16 +2022,16 @@ USA.
 		  ;; Rotate from pi/2 to pi/4, or from -pi/2 to -pi/4,
 		  ;; or preserve NaN but keep real sign positive.
 		  (assert (or (real:infinite? y) (real:nan? y)))
-		  (complex:%make-rectangular (flo:abs y) y))
+		  (complex:%make-rectangular (real:abs y) y))
 		 ((and (real:infinite? x) (real:finite? y))
 		  (if (real:negative? x)
-		      (complex:%make-rectangular 0. (flo:copysign x y))
-		      (complex:%make-rectangular x (flo:copysign 0. y))))
+		      (complex:%make-rectangular 0. (real:copysign x y))
+		      (complex:%make-rectangular x (real:copysign 0. y))))
 		 (else
 		  ;; Garbage in, garbage out.  Try to preserve as much
 		  ;; NaNity as possible.
 		  (assert (or (real:nan? x) (real:nan? y)))
-		  (complex:%make-rectangular (flo:abs x) y)))))
+		  (complex:%make-rectangular (real:abs x) y)))))
 	((real:safe-negative? z)
 	 (complex:%make-rectangular 0 (x>=0 (real:negate z))))
 	(else
