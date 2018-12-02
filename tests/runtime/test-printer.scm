@@ -43,7 +43,5 @@ USA.
       (set-car! c c)
       (set-cdr! c c)
       (let ((s (find-shared-objects c)))
-        (expect-failure
-         (lambda ()
-           (assert-= (length s) 1)
-           (assert-eq (car s) c)))))))
+        (assert-= (length s) 1)
+        (assert-eq (car s) c)))))

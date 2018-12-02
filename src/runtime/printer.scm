@@ -270,9 +270,11 @@ USA.
 
     (define (mark! object)
       (let ((value
-	     (case (hash-table-ref/default table object 'unseen)
-	       ((unseen) 'seen)
-	       ((seen) 'shared))))
+	     (let ((value (hash-table-ref/default table object 'unseen)))
+	       (case value
+		 ((unseen) 'seen)
+		 ((seen shared) 'shared)
+		 (else (error "Invalid sharing state:" value))))))
 	(hash-table-set! table object value)
 	(eq? 'seen value)))
 
