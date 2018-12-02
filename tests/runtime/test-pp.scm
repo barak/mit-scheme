@@ -28,6 +28,9 @@ USA.
 
 (declare (usual-integrations))
 
+(define assert-string
+  (predicate-assertion string? "string"))
+
 (define (carefully procedure if-overflow if-timeout)
   (let ((thread #f)
         (mutex (make-thread-mutex))
@@ -69,7 +72,7 @@ USA.
           (lambda () (do () (result) (suspend-current-thread)))
           (lambda () (deregister-timer-event (set! timer))))))))
 
-(define-test 'circular
+(define-test 'circular/simple
   (lambda ()
     (define (doit)
       (let ((c (cons 0 0)))
@@ -81,3 +84,24 @@ USA.
     (assert-equal
      (carefully doit (lambda () 'stack-overflow) (lambda () 'timeout))
      "(0 0 . #[circularity (current parenthetical level, downstream 1 cdr.)])\n")))
+
+(define-test 'circular/hairy
+  (lambda ()
+    (define (doit)
+      (let ((u (vector 1 2 3))
+            (v (vector 4 5 6)))
+        (vector-set! v 2 u)
+        (vector-set! u 1 v)
+        (let ((c (cons 0 0)))
+          (set-car! c u)
+          (set-cdr! c v)
+          (vector-set! v 1 c))
+        (call-with-output-string
+          (lambda (p)
+            (parameterize ((param:pp-avoid-circularity? #t))
+              (pp v p))))))
+    (expect-failure
+     (lambda ()
+       ;; XXX Figure out what string it should print by hand.
+       (assert-string
+        (carefully doit (lambda () 'stack-overflow) (lambda () 'timeout)))))))
