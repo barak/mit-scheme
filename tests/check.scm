@@ -83,6 +83,7 @@ USA.
     "runtime/test-optional.bin"
     "runtime/test-optional.com"
     ("runtime/test-parametric-predicate" (runtime parametric-predicate))
+    "runtime/test-pp"
     "runtime/test-predicate"
     ("runtime/test-predicate-dispatch" (runtime predicate-dispatch))
     "runtime/test-process"
