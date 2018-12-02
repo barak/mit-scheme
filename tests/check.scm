@@ -51,6 +51,7 @@ USA.
     "microcode/test-flonum-except"
     "microcode/test-keccak"
     "microcode/test-lookup"
+    "runtime/test-access"
     "runtime/test-arith"
     "runtime/test-ieee754"
     "runtime/test-binary-port"
