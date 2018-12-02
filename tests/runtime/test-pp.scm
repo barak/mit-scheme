@@ -105,3 +105,23 @@ USA.
        ;; XXX Figure out what string it should print by hand.
        (assert-string
         (carefully doit (lambda () 'stack-overflow) (lambda () 'timeout)))))))
+
+(define-test 'custom
+  (lambda ()
+    (expect-failure
+     (lambda ()
+       (let ((tag (cons 0 0)))
+         (define (loser? object)
+           (and (vector? object)
+                (<= 1 (vector-length object))
+                (eq? tag (vector-ref object 0))))
+         (register-predicate! loser? 'loser? '<= vector?)
+         (define-print-method loser?
+           (standard-print-method
+            (lambda (object) object "LOSER")
+            (lambda (object) object '(42))))
+         (let* ((loser (make-vector 1000 tag))
+                (hash (number->string (hash-object loser))))
+           (assert-equal
+            (call-with-output-string (lambda (port) (pp loser port)))
+            (string-append "#[LOSER " hash " 42]\n"))))))))
