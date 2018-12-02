@@ -86,6 +86,7 @@ USA.
     "runtime/test-pp"
     "runtime/test-predicate"
     ("runtime/test-predicate-dispatch" (runtime predicate-dispatch))
+    ("runtime/test-printer" (runtime printer))
     "runtime/test-process"
     "runtime/test-random"
     "runtime/test-readwrite"
