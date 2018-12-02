@@ -74,9 +74,10 @@ USA.
     (define (doit)
       (let ((c (cons 0 0)))
         (set-cdr! c c)
-        (call-with-output-string (lambda (p) (pp c p)))))
-    (expect-failure
-     (lambda ()
-       (assert-eqv
-        (carefully doit (lambda () 'stack-overflow) (lambda () 'timeout))
-        "#0=(0 . #0#)")))))
+        (call-with-output-string
+          (lambda (p)
+            (parameterize ((param:pp-avoid-circularity? #t))
+              (pp c p))))))
+    (assert-equal
+     (carefully doit (lambda () 'stack-overflow) (lambda () 'timeout))
+     "(0 0 . #[circularity (current parenthetical level, downstream 1 cdr.)])\n")))
