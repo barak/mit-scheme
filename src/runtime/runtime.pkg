@@ -4986,7 +4986,8 @@ USA.
 	  get-param:printer-list-breadth-limit
 	  get-param:printer-list-depth-limit
 	  prefix-pair?
-	  print-for-pp)
+	  print-for-pp
+	  get-print-method)
   (export (runtime swank)
 	  user-object-type))
 
