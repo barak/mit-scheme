@@ -946,7 +946,7 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `(,(let-bindings-pattern)
+	 `((subform (* (subform (list any ,(optional-value-pattern)))))
 	   (+ any))
        (lambda (bindings body-forms)
 	 (let ((ids (map car bindings))

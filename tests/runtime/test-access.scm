@@ -34,12 +34,10 @@ USA.
 
 (define-test 'fluid-let/access
   (lambda ()
-    (expect-failure
-     (lambda ()
-       (assert-eqv
-        ((eval '(lambda (env)
-                  (fluid-let (((access quagga env) 123))
-                    ((access eland env))))
-               system-global-environment)
-         loser-env)
-        123)))))
+    (assert-eqv
+     ((eval '(lambda (env)
+               (fluid-let (((access quagga env) 123))
+                 ((access eland env))))
+            system-global-environment)
+      loser-env)
+     123)))
