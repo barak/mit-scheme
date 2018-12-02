@@ -73,11 +73,10 @@ USA.
   (lambda ()
     (define (doit)
       (let ((c (cons 0 0)))
-        (set-car! c c)
         (set-cdr! c c)
         (call-with-output-string (lambda (p) (pp c p)))))
     (expect-failure
      (lambda ()
        (assert-eqv
         (carefully doit (lambda () 'stack-overflow) (lambda () 'timeout))
-        "#0=(#0# . #0#)")))))
+        "#0=(0 . #0#)")))))
