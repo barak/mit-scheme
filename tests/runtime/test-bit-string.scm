@@ -34,65 +34,47 @@ USA.
 (define-test 'bit-string-move!/type-error
   (lambda ()
     (let ((x (no-op #f)))
-      (expect-error
+      (assert-error
        (lambda ()
-         (assert-error
-          (lambda ()
-            (bit-string-move! x (make-bit-string 64 #f)))
-          (list condition-type:wrong-type-argument)))
-       (list condition-type:hardware-trap)))))
+         (bit-string-move! x (make-bit-string 64 #f)))
+       (list condition-type:wrong-type-argument)))))
 
 (define-test 'bit-string-movec!/type-error
   (lambda ()
     (let ((x (no-op #f)))
-      (expect-error
+      (assert-error
        (lambda ()
-         (assert-error
-          (lambda ()
-            (bit-string-movec! x (make-bit-string 64 #f)))
-          (list condition-type:wrong-type-argument)))
-       (list condition-type:hardware-trap)))))
+         (bit-string-movec! x (make-bit-string 64 #f)))
+       (list condition-type:wrong-type-argument)))))
 
 (define-test 'bit-string-or!/type-error
   (lambda ()
     (let ((x (no-op #f)))
-      (expect-error
+      (assert-error
        (lambda ()
-         (assert-error
-          (lambda ()
-            (bit-string-or! x (make-bit-string 64 #f)))
-          (list condition-type:wrong-type-argument)))
-       (list condition-type:hardware-trap)))))
+         (bit-string-or! x (make-bit-string 64 #f)))
+       (list condition-type:wrong-type-argument)))))
 
 (define-test 'bit-string-and!/type-error
   (lambda ()
     (let ((x (no-op #f)))
-      (expect-error
+      (assert-error
        (lambda ()
-         (assert-error
-          (lambda ()
-            (bit-string-and! x (make-bit-string 64 #f)))
-          (list condition-type:wrong-type-argument)))
-       (list condition-type:hardware-trap)))))
+         (bit-string-and! x (make-bit-string 64 #f)))
+       (list condition-type:wrong-type-argument)))))
 
 (define-test 'bit-string-andc!/type-error
   (lambda ()
     (let ((x (no-op #f)))
-      (expect-error
+      (assert-error
        (lambda ()
-         (assert-error
-          (lambda ()
-            (bit-string-andc! x (make-bit-string 64 #f)))
-          (list condition-type:wrong-type-argument)))
-       (list condition-type:hardware-trap)))))
+         (bit-string-andc! x (make-bit-string 64 #f)))
+       (list condition-type:wrong-type-argument)))))
 
 (define-test 'bit-string-xor!/type-error
   (lambda ()
     (let ((x (no-op #f)))
-      (expect-error
+      (assert-error
        (lambda ()
-         (assert-error
-          (lambda ()
-            (bit-string-xor! x (make-bit-string 64 #f)))
-          (list condition-type:wrong-type-argument)))
-       (list condition-type:hardware-trap)))))
+         (bit-string-xor! x (make-bit-string 64 #f)))
+       (list condition-type:wrong-type-argument)))))

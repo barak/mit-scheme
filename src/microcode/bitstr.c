@@ -273,6 +273,8 @@ Returns true iff the two bit strings contain the same bits.")
   long i;								\
   SCHEME_OBJECT *scan1, *scan2;						\
   PRIMITIVE_HEADER (2);							\
+  CHECK_ARG (1, BIT_STRING_P);						\
+  CHECK_ARG (2, BIT_STRING_P);						\
   bit_string_1 = (ARG_REF (1));						\
   bit_string_2 = (ARG_REF (2));						\
   if ((BIT_STRING_LENGTH (bit_string_1)) !=				\
