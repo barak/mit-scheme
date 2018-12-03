@@ -55,6 +55,7 @@ USA.
     "runtime/test-arith"
     "runtime/test-ieee754"
     "runtime/test-binary-port"
+    "runtime/test-bit-string"
     "runtime/test-bundle"
     "runtime/test-bytevector"
     ("runtime/test-char" (runtime))
