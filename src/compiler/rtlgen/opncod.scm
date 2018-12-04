@@ -960,62 +960,6 @@ USA.
 	'()
 	(cons index (loop (cdr operands) (1+ index))))))
 
-#|
-;; This is somewhat painful to implement.  The problem is that most of
-;; the open coding takes place in "rtlcon.scm", and the mechanism for
-;; doing such things is here.  We should probably try to remodularize
-;; the code that transforms "expression-style" RTL into
-;; "statement-style" RTL, so we can call it from here and then work in
-;; the "statement-style" domain.
-
-(define-open-coder/value 'STRING-ALLOCATE
-  (simple-open-coder
-   (lambda (combination expressions finish)
-     (let ((length (car expressions)))
-       (open-code:with-checks
-	combination
-	(list (open-code:nonnegative-check length
-					   'STRING-ALLOCATE
-					   (combination/block combination)))
-	(scfg*scfg->scfg!
-	 (finish
-	  (rtl:make-typed-cons:string
-	   (rtl:make-machine-constant (ucode-type string))
-	   length)))
-	finish
-	'STRING-ALLOCATE
-	expressions)))
-   '(0)
-   internal-close-coding-for-range-checks))
-|#
-
-;; The following are discretionally open-coded by the back-end.
-;; This allows the type and range checking to take place if
-;; the switch is set appropriately.  The back-end does not check.
-
-(define (define-allocator-open-coder name args)
-  (define-open-coder/value name
-    (simple-open-coder
-     (lambda (combination expressions finish)
-       (let ((length (car expressions)))
-	 (open-code:with-checks
-	  combination
-	  (list (open-code:index-fixnum-check length
-					      name
-					      (combination/block combination))
-		(make-false-pcfg))
-	  (make-null-cfg)
-	  finish
-	  name
-	  expressions)))
-     args
-     true)))
-
-(define-allocator-open-coder 'STRING-ALLOCATE '(0))
-(define-allocator-open-coder 'FLOATING-VECTOR-CONS '(0))
-(define-allocator-open-coder 'VECTOR-CONS '(0 1))
-(define-allocator-open-coder 'ALLOCATE-BYTEVECTOR '(0))
-
 (let ((user-ref
        (lambda (name make-fetch type index)
 	 (define-open-coder/value name
