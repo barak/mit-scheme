@@ -172,7 +172,6 @@ USA.
 		 (begin
 		   (add-control! sid ellipses)
 		   (sid-expression sid))
-		 ;; Template is a keyword:
 		 `(,r-rename ,(syntax-quote template)))))
 	  ((zero-or-more? rename compare template)
 	   (optimized-append rename compare
