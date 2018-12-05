@@ -343,6 +343,7 @@ DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
   PRIMITIVE_HEADER (1);
 
   print_object (ERROR_OUTPUT, ARG_REF (1));
+  outf_error ("\n");
   return (SHARP_F);
 }
 
