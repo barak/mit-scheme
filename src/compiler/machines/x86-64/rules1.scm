@@ -285,6 +285,10 @@ USA.
   (with-unsigned-immediate-operand (make-non-pointer-literal type datum)
     (lambda (operand)
       (LAP (PUSH Q ,operand)))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 4) -1) (? expression rtl:simple-offset?))
+  (LAP (PUSH Q ,(offset->reference! expression))))
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
