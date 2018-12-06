@@ -33,20 +33,16 @@ USA.
 
 (define-test 'local-define-syntax/syntax
   (lambda ()
-    (expect-error
-     (lambda ()
-       (assert-equal
+    (assert-matches
         (unsyntax
          (syntax '(let ()
                     (define-syntax test
                       (syntax-rules () ((test) (lambda (y) y))))
                     (list ((test) 1) ((test) 2)))
                  test-environment))
-        '(let () (list (let ((y 1)) y) (let ((y 2)) y))))))))
+     '(let () (list (let ((?y1 1)) ?y1) (let ((?y2 2)) ?y2))))))
 
 (define-test 'local-define-syntax/eval
-  (lambda ()
-    (expect-error
      (lambda ()
        (assert-equal
         (eval '(let ()
@@ -54,13 +50,11 @@ USA.
                    (syntax-rules () ((test) (lambda (y) y))))
                  (list ((test) 1) ((test) 2)))
               test-environment)
-        '(1 2))))))
+     '(1 2))))
 
 (define-test 'bug55090
   (lambda ()
-    (expect-failure
-     (lambda ()
-       (assert-equal
+    (assert-matches
         (unsyntax
          (cadr
           (scode-sequence-actions
@@ -84,18 +78,16 @@ USA.
                     test-environment)))))
         '(let ((input (vector 0 1 3)))
            (let ((array (make-vector 4)))
-             (let ((index 2))
-               (subvector-move-left! input 0 index array (+ 0 0))
-               (vector-set! array (+ 0 index) 2)
-               (let ((skew (1+ 0)))
-                 (let ((.index.1-0 (vector-length input)))
-                   (subvector-move-left! input index .index.1-0
-                                         array (+ index skew))
-                   array))))))))))
+	  (let ((?index1 2))
+	    (subvector-move-left! input 0 ?index1 array (+ 0 0))
+	    (vector-set! array (+ 0 ?index1) 2)
+	    (let ((?skew (1+ 0)))
+	      (let ((?index2 (vector-length input)))
+		(subvector-move-left! input ?index1 ?index2
+				      array (+ ?index1 ?skew))
+		array))))))))
 
 (define-test 'quoted-macro-name
-  (lambda ()
-    (expect-error
      (lambda ()
        (assert-equal
         (unsyntax
@@ -106,4 +98,4 @@ USA.
                          `(,(r 'quote) foo))))
                     (foo))
                  test-environment))
-        '(let () 'foo))))))
+     '(let () 'foo))))
