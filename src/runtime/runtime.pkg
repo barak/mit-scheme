@@ -4553,7 +4553,6 @@ USA.
 	  (make-synthetic-identifier new-identifier)
 	  capture-syntactic-environment
 	  close-syntax
-	  closed-identifier?
 	  identifier->symbol
 	  identifier=?
 	  identifier?
@@ -4593,7 +4592,6 @@ USA.
 	  hist-reduce
 	  hist-select
 	  initial-hist
-	  raw-identifier?
 	  serror
 	  serror-ctx
 	  serror-ctx-form
