@@ -4812,6 +4812,7 @@ USA.
   (files "syntax-declaration")
   (parent (runtime syntax))
   (export (runtime syntax)
+	  fold-decl-ids
 	  map-decl-ids))
 
 (define-package (runtime syntax mit)

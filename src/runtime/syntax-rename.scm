@@ -222,8 +222,21 @@ USA.
    (define-cs-handler scode-open-block?
      (lambda (expression mark-safe!)
        (mark-local-bindings (scode-open-block-names expression)
-			    (scode-open-block-actions expression)
+			    (make-scode-declaration
+			     (scode-open-block-declarations expression)
+			     (scode-open-block-actions expression))
 			    mark-safe!)))
+
+   (define-cs-handler scode-declaration?
+     (lambda (expression mark-safe!)
+       (fold (lambda (declaration ids)
+	       (fold-decl-ids (lambda (id ids)
+				(lset-adjoin eq? ids id))
+			      ids
+			      declaration))
+	     (compute-substitution (scode-declaration-expression expression)
+				   mark-safe!)
+	     (scode-declaration-text expression))))
 
    (define-cs-handler quoted-identifier?
      (simple-subexpression quoted-identifier-identifier))
