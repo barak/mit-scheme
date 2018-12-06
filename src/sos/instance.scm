@@ -168,7 +168,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (apply microcode-type (map strip-syntactic-closures (cdr form))))))
+     (apply microcode-type (map identifier->symbol (cdr form))))))
 
 (define (instance-constructor class slot-names #!optional init-arg-names)
   (if (not (subclass? class <instance>))
