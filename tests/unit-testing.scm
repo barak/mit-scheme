@@ -649,4 +649,4 @@ USA.
 			  (if+ "the same elements as" "different elements from")
 			  (marker)
 			  "comparing elements with" (name-of comparator)
-			  "in any order")))
+			  "in any order")))

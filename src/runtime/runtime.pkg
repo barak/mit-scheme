@@ -4604,6 +4604,7 @@ USA.
 	  subform-select)
   (export (runtime syntax low)
 	  reclassify
+	  rename-id
 	  with-error-context)
   (export (runtime syntax parser)
 	  with-error-context))

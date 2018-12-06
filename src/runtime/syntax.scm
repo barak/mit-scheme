@@ -133,12 +133,22 @@ USA.
 	   (pair? form)
 	   (identifier? form))))
 
+;; Renaming for er-macro-transformer.
+;; Required for uniqueness and proper lookup.
+(define (rename-id id senv)
+  (%make-syntactic-closure senv '() id))
+
 (define-record-type <syntactic-closure>
     (%make-syntactic-closure senv free form)
     syntactic-closure?
   (senv syntactic-closure-senv)
   (free syntactic-closure-free)
   (form syntactic-closure-form))
+
+(define-print-method syntactic-closure?
+  (standard-print-method 'syntactic-closure
+    (lambda (closure)
+      (list (syntactic-closure-form closure)))))
 
 (define (strip-syntactic-closures object)
   (if (let loop ((object object))

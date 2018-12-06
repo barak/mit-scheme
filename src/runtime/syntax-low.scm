@@ -85,8 +85,15 @@ USA.
 		hist)))
 
 (define (make-er-rename closing-senv)
-  (lambda (identifier)
-    (close-syntax identifier closing-senv)))
+  (let ((renames '()))
+    (lambda (id)
+      (guarantee identifier? id)
+      (let ((p (assq id renames)))
+	(if p
+	    (cdr p)
+	    (let ((rename (rename-id id closing-senv)))
+	      (set! renames (cons (cons id rename) renames))
+	      rename))))))
 
 (define (make-er-compare use-senv)
   (lambda (x y)
