@@ -121,9 +121,11 @@ USA.
 			  bound)))
     (for-each (lambda (rename)
 		(let ((original (rename->original rename)))
-		  (if (not (any (lambda (rename*)
-				  (eq? original (rename->original rename*)))
-				free))
+		  (if (and (symbol? original)
+			   (not (any (lambda (rename*)
+				       (eq? original
+					    (rename->original rename*)))
+				     free)))
 		      (mark-safe! rename original))))
 	      bound)
     free))
@@ -152,11 +154,11 @@ USA.
 	  (if entry
 	      (cdr entry)
 	      (let ((finalized
-		     (symbol "." original
+		     (symbol "." (identifier->symbol original)
 			     "." frame-id
 			     "-" (length (cdr bucket)))))
 		(set-cdr! bucket
-			  (cons (cons original finalized)
+			  (cons (cons frame-id finalized)
 				(cdr bucket)))
 		finalized)))))
 
