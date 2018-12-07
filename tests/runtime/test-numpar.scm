@@ -45,7 +45,7 @@ USA.
     (lambda ()
       (with-xfail xfail
         (lambda ()
-          (assert-error (lambda () (string->number s))))))))
+          (assert-false (string->number s)))))))
 
 (define (eqv-nan? x y)
   (if (and (flo:flonum? x) (flo:nan? x))
