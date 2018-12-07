@@ -114,9 +114,12 @@ USA.
 				sign))
 	       ((and (char-ci=? #\i char)
 		     (string-prefix-ci? "nf.0" string start end))
-		(parse-complex string (+ start 4) end
-			       (if (eq? #\- sign) (flo:-inf.0) (flo:+inf.0))
-			       exactness radix sign))
+		(and (not (eq? exactness 'exact))
+		     (parse-complex string (+ start 4) end
+				    (if (eq? #\- sign)
+					(flo:-inf.0)
+					(flo:+inf.0))
+				    exactness radix sign)))
 	       ((and (char-ci=? #\n char)
 		     (string-prefix-ci? "an." string start end))
                 (parse-nan-payload string (+ start 3) end exactness radix
@@ -318,20 +321,21 @@ USA.
 
 (define (parse-nan-payload string start end exactness radix quiet? sign)
   (let loop ((payload 0) (start start))
-    (define (finish)
+    (define (finish-nan)
       (and (or quiet? (not (zero? payload)))
-	   (apply-sign sign (flo:make-nan #f quiet? payload))))
+	   (not (eq? exactness 'exact))
+	   (flo:make-nan (if (eq? sign #\-) #t #f) quiet? payload)))
     (if (fix:< start end)
         (let ((char (string-ref string start)))
           (cond ((char->digit char radix)
                  => (lambda (digit)
                       (loop (+ (* payload radix) digit) (fix:+ start 1))))
-                ((finish)
+                ((finish-nan)
 		 => (lambda (nan)
 		      (parse-complex string start end nan
 				     exactness radix sign)))
 		(else #f)))
-        (finish))))
+        (finish-nan))))
 
 (define (finish-integer integer exactness sign)
   ;; State: result is integer, apply exactness and sign.

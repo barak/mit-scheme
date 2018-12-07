@@ -196,12 +196,12 @@ USA.
 (define-eqv-test "#i+inf.0" (flo:+inf.0))
 (define-eqv-test "#i-inf.0" (flo:-inf.0))
 
-(define-error-test "#e+nan.0" expect-failure)
-(define-error-test "#e-nan.0" expect-failure)
+(define-error-test "#e+nan.0")
+(define-error-test "#e-nan.0")
 (define-error-test "#e+snan.0")         ;correctly errors by accident
 (define-error-test "#e-snan.0")
-(define-error-test "#e+inf.0" expect-failure)
-(define-error-test "#e-inf.0" expect-failure)
+(define-error-test "#e+inf.0")
+(define-error-test "#e-inf.0")
 
 (define-error-test "+0+0" expect-failure)
 (define-error-test "0+0" expect-failure)
