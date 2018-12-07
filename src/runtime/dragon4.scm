@@ -90,7 +90,7 @@ not much different to numbers within a few orders of magnitude of 1.
     (or (and flonum-printer-hook
 	     (flonum-printer-hook x radix))
 	(cond ((flo:nan? x)
-	       "+nan.0")
+	       (if (flo:sign-negative? x) "-nan.0" "+nan.0"))
 	      ((flo:positive? x)
 	       (if (flo:infinite? x)
 		   "+inf.0"
