@@ -132,7 +132,12 @@ USA.
 				   #f sign comp))
 	       ((i? char)
 		(and (fix:= start end)
-		     (make-rectangular 0 (if (eq? #\- sign) -1 1))))
+		     (let ((v (if (eq? #\- sign) -1 1)))
+		       (case comp
+			 ((real) (make-rectangular 0 v))
+			 ((imag) v)
+			 ((angle) #f)
+			 (else (error "Invalid complex state:" comp))))))
 	       (else #f)))))
 
 (define (parse-integer string start end integer exactness radix sign comp)
@@ -313,22 +318,29 @@ USA.
 	(cond ((i? char)
 	       (and sign
 		    (fix:= start+1 end)
-		    (make-rectangular 0 real)))
+		    (case comp
+		      ((real) (make-rectangular 0 real))
+		      ((imag) real)
+		      ((angle) #f)
+		      (else (error "Invalid complex state:" comp)))))
 	      ((not (eq? comp 'real))
 	       #f)
 	      ((sign? char)
 	       (let ((imaginary
 		      (parse-top-level string start end exactness radix
 				       'imag)))
-		 (and (complex? imaginary)
-		      (= 0 (real-part imaginary))
-		      (make-rectangular real (imag-part imaginary)))))
+		 (and imaginary
+		      (begin
+			(assert (real? imaginary))
+			(make-rectangular real imaginary)))))
 	      ((char=? #\@ char)
 	       (let ((angle
 		      (parse-top-level string start+1 end exactness radix
 				       'angle)))
-		 (and (real? angle)
-		      (make-polar real angle))))
+		 (and angle
+		      (begin
+			(assert (real? angle))
+			(make-polar real angle)))))
 	      (else #f)))
       (and (not (eq? comp 'imag)) real)))
 
