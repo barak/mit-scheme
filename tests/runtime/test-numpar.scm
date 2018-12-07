@@ -180,6 +180,9 @@ USA.
 
 (define-eqv-test "1@0" 1)
 (define-relerr-test "1@3.141592653589793" -1 1e-15)
+(define-error-test "1@0i")
+(define-error-test "0@0i")
+(define-error-test "0/1@0i")
 
 (define-eqv-test "+nan.0" (flo:make-nan #f #t 0))
 (define-eqv-test "-nan.0" (flo:make-nan #t #t 0))
