@@ -40,6 +40,15 @@ USA.
         (lambda ()
           (assert-eqv-nan (string->number s) v))))))
 
+(define (define-relerr-test s v bound #!optional xfail)
+  (define-test s
+    (lambda ()
+      (with-xfail xfail
+        (lambda ()
+          (let ((u (string->number s)))
+            (assert-number u)
+            (assert-<= (magnitude (/ (- u v) v)) bound)))))))
+
 (define (define-error-test s #!optional xfail)
   (define-test s
     (lambda ()
@@ -61,6 +70,9 @@ USA.
 
 (define assert-eqv-nan
   (simple-binary-assertion eqv-nan? #f))
+
+(define assert-number
+  (predicate-assertion number? "number"))
 
 (define (with-xfail xfail body)
   (if (default-object? xfail)
@@ -165,6 +177,9 @@ USA.
 (define-eqv-test "-2+0.i" (make-rectangular -2 0.))
 (define-eqv-test "2-0.i" (make-rectangular 2 -0.))
 (define-eqv-test "-2-0.i" (make-rectangular -2 -0.))
+
+(define-eqv-test "1@0" 1 expect-failure)
+(define-relerr-test "1@3.141592653589793" -1 1e-15 expect-failure)
 
 (define-eqv-test "+nan.0" (flo:make-nan #f #t 0))
 (define-eqv-test "-nan.0" (flo:make-nan #t #t 0))
