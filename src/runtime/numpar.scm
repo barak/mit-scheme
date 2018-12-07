@@ -120,7 +120,7 @@ USA.
 	       ((and (char-ci=? #\n char)
 		     (string-prefix-ci? "an.0" string start end))
 		(parse-complex string (+ start 4) end
-			       (flo:nan.0)
+			       (apply-sign sign (flo:nan.0))
 			       exactness radix sign))
 	       ((i? char)
 		(and (fix:= start end)

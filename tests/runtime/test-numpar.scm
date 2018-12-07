@@ -167,12 +167,12 @@ USA.
 (define-eqv-test "-2-0.i" (make-rectangular -2 -0.))
 
 (define-eqv-test "+nan.0" (flo:make-nan #f #t 0))
-(define-eqv-test "-nan.0" (flo:make-nan #t #t 0) expect-failure)
+(define-eqv-test "-nan.0" (flo:make-nan #t #t 0))
 (define-eqv-test "+inf.0" (flo:+inf.0))
 (define-eqv-test "-inf.0" (flo:-inf.0))
 
 (define-eqv-test "#i+nan.0" (flo:make-nan #f #t 0))
-(define-eqv-test "#i-nan.0" (flo:make-nan #t #t 0) expect-failure)
+(define-eqv-test "#i-nan.0" (flo:make-nan #t #t 0))
 (define-eqv-test "#i+inf.0" (flo:+inf.0))
 (define-eqv-test "#i-inf.0" (flo:-inf.0))
 
