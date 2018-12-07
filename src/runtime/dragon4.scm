@@ -103,7 +103,7 @@ not much different to numbers within a few orders of magnitude of 1.
 	      ((flo:zero? x)
 	       (if (flo:sign-negative? x) "-0." "0."))
 	      (else
-	       "+nan.0")))))
+	       (error "Invalid floating-point value:" x))))))
 
 (define (flonum-printer:normal-output digits k radix)
   (let ((k+1 (+ k 1)))
