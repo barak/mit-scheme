@@ -174,7 +174,11 @@ USA.
 
 (define-enumerated-test 'read
   `(("+nan.0" ,assert-nan)
-    ("-nan.0" ,assert-nan))
+    ("-nan.0" ,assert-nan)
+    ("#i+nan.0" ,assert-nan)
+    ("#i-nan.0" ,assert-nan)
+    ("#i+inf.0" ,assert-inf+)
+    ("#i-inf.0" ,assert-inf-))
   (lambda (string assertion #!optional xfail)
     (with-expected-failure xfail
       (lambda ()
