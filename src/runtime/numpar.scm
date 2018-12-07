@@ -118,14 +118,18 @@ USA.
 			       (if (eq? #\- sign) (flo:-inf.0) (flo:+inf.0))
 			       exactness radix sign))
 	       ((and (char-ci=? #\n char)
-		     (string-prefix-ci? "an.0" string start end))
-		(parse-complex string (+ start 4) end
-			       (apply-sign sign (flo:nan.0))
-			       exactness radix sign))
+		     (string-prefix-ci? "an." string start end))
+                (parse-nan-payload string (+ start 3) end exactness radix
+                                   #t sign))
+	       ((and (char-ci=? #\s char)
+		     (string-prefix-ci? "nan." string start end))
+		(parse-nan-payload string (+ start 4) end exactness radix
+				   #f sign))
 	       ((i? char)
 		(and (fix:= start end)
 		     (make-rectangular 0 (if (eq? #\- sign) -1 1))))
 	       (else #f)))))
+
 
 (define (parse-integer string start end integer exactness radix sign)
   ;; State: at least one digit has been seen.
@@ -311,6 +315,23 @@ USA.
 		    (make-rectangular 0 real)))
 	      (else #f)))
       real))
+
+(define (parse-nan-payload string start end exactness radix quiet? sign)
+  (let loop ((payload 0) (start start))
+    (define (finish)
+      (and (or quiet? (not (zero? payload)))
+	   (apply-sign sign (flo:make-nan #f quiet? payload))))
+    (if (fix:< start end)
+        (let ((char (string-ref string start)))
+          (cond ((char->digit char radix)
+                 => (lambda (digit)
+                      (loop (+ (* payload radix) digit) (fix:+ start 1))))
+                ((finish)
+		 => (lambda (nan)
+		      (parse-complex string start end nan
+				     exactness radix sign)))
+		(else #f)))
+        (finish))))
 
 (define (finish-integer integer exactness sign)
   ;; State: result is integer, apply exactness and sign.
