@@ -179,3 +179,13 @@ USA.
     (with-expected-failure xfail
       (lambda ()
 	(assertion (read-from-string string))))))
+
+(define-enumerated-test 'read-error
+  `(("#e+nan.0" ,expect-failure)
+    ("#e-nan.0" ,expect-failure)
+    ("#e+inf.0" ,expect-failure)
+    ("#e-inf.0" ,expect-failure))
+  (lambda (string #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+        (assert-error (lambda () (read-from-string string)))))))
