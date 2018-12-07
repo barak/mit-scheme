@@ -1155,8 +1155,8 @@ USA.
                                  (lambda () (flo:logb (flo:negate x))))))
 
 (define-enumerated-test 'flo:make-nan/error
-  `((#f #f 0 ,expect-error)
-    (#t #f 0 ,expect-error))
+  `((#f #f 0)
+    (#t #f 0))
   (lambda (sign quiet? payload #!optional xfail)
     (with-expected-failure xfail
       (lambda ()

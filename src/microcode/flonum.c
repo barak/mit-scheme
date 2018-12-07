@@ -564,7 +564,7 @@ DEFINE_PRIMITIVE ("FLONUM-MAKE-NAN", Prim_flonum_make_nan, 3, 3, 0)
       uint64_t i;
     } u = { .i = 0 };
     if ((!quiet) && (payload == 0))
-      error_bad_range_arg (payload);
+      error_bad_range_arg (3);
     (u.i) |= (sign << 63);
     (u.i) |= ((UINT64_C (0x7ff)) << 52);
     (u.i) |= (quiet << 51);
