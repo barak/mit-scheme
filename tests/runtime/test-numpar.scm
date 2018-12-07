@@ -178,8 +178,8 @@ USA.
 (define-eqv-test "2-0.i" (make-rectangular 2 -0.))
 (define-eqv-test "-2-0.i" (make-rectangular -2 -0.))
 
-(define-eqv-test "1@0" 1 expect-failure)
-(define-relerr-test "1@3.141592653589793" -1 1e-15 expect-failure)
+(define-eqv-test "1@0" 1)
+(define-relerr-test "1@3.141592653589793" -1 1e-15)
 
 (define-eqv-test "+nan.0" (flo:make-nan #f #t 0))
 (define-eqv-test "-nan.0" (flo:make-nan #t #t 0))
