@@ -1153,3 +1153,14 @@ USA.
                                  (lambda () (flo:logb x)))
     (assert-only-except/no-traps (flo:exception:invalid-operation)
                                  (lambda () (flo:logb (flo:negate x))))))
+
+(define-enumerated-test 'flo:make-nan/error
+  `((#f #f 0 ,expect-error)
+    (#t #f 0 ,expect-error))
+  (lambda (sign quiet? payload #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+        (assert-error
+         (lambda ()
+           (flo:make-nan sign quiet? payload))
+         (list condition-type:bad-range-argument))))))
