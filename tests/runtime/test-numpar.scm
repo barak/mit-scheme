@@ -38,7 +38,29 @@ USA.
     (lambda ()
       (with-xfail xfail
         (lambda ()
-          (assert-eqv (string->number s) v))))))
+          (assert-eqv-nan (string->number s) v))))))
+
+(define (define-error-test s #!optional xfail)
+  (define-test s
+    (lambda ()
+      (with-xfail xfail
+        (lambda ()
+          (assert-error (lambda () (string->number s))))))))
+
+(define (eqv-nan? x y)
+  (if (and (flo:flonum? x) (flo:nan? x))
+      (and (flo:flonum? y)
+           (flo:nan? y)
+           (eqv? (flo:sign-negative? x) (flo:sign-negative? y))
+           (eqv? (flo:nan-quiet? x) (flo:nan-quiet? y))
+           (eqv? (flo:nan-payload x) (flo:nan-payload y)))
+      (and (not (and (flo:flonum? y) (flo:nan? y)))
+           (eqv? x y))))
+
+(define-comparator eqv-nan? 'eqv-nan?)
+
+(define assert-eqv-nan
+  (simple-binary-assertion eqv-nan? #f))
 
 (define (with-xfail xfail body)
   (if (default-object? xfail)
@@ -143,3 +165,25 @@ USA.
 (define-eqv-test "-2+0.i" (make-rectangular -2 0.))
 (define-eqv-test "2-0.i" (make-rectangular 2 -0.))
 (define-eqv-test "-2-0.i" (make-rectangular -2 -0.))
+
+(define-eqv-test "+nan.0" (flo:make-nan #f #t 0))
+(define-eqv-test "-nan.0" (flo:make-nan #t #t 0) expect-failure)
+(define-eqv-test "+inf.0" (flo:+inf.0))
+(define-eqv-test "-inf.0" (flo:-inf.0))
+
+(define-eqv-test "#i+nan.0" (flo:make-nan #f #t 0))
+(define-eqv-test "#i-nan.0" (flo:make-nan #t #t 0) expect-failure)
+(define-eqv-test "#i+inf.0" (flo:+inf.0))
+(define-eqv-test "#i-inf.0" (flo:-inf.0))
+
+(define-error-test "#e+nan.0" expect-failure)
+(define-error-test "#e-nan.0" expect-failure)
+(define-error-test "#e+inf.0" expect-failure)
+(define-error-test "#e-inf.0" expect-failure)
+
+(define-error-test "+0+0" expect-failure)
+(define-error-test "0+0" expect-failure)
+(define-error-test "+1+0" expect-failure)
+(define-error-test "1+0" expect-failure)
+(define-error-test "+0+0+i" expect-failure)
+(define-error-test "0+0+i" expect-failure)
