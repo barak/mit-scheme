@@ -191,26 +191,32 @@ USA.
 		       byte
 		       (builder)))
 		  ((fix:= 13 byte)
-		   (if (fix:= 10 (peek-u8 port))
-		       (read-u8 port)
-		       (parse-error port "Invalid line ending:"
-				    'read-ascii-line))
+		   (let ((byte (peek-u8 port)))
+		     (cond ((eof-object? byte)
+			    (parse-error port "Truncated line ending:"
+					 'read-ascii-line))
+			   ((fix:= 10 byte)
+			    (read-u8 port))
+			   (else
+			    (parse-error port "Invalid line ending:"
+					 'read-ascii-line))))
 		   (builder))
 		  ((fix:= 10 byte)
-		   (parse-error port "Invalid line ending:" 'read-ascii-line)
-		   (builder))
+		   (parse-error port "Invalid line ending:" 'read-ascii-line))
 		  ((and (fix:<= 32 byte) (fix:<= byte 126))
 		   (builder (integer->char byte))
 		   (loop))
 		  (else
 		   (parse-error port "Illegal character:" 'read-ascii-line)
-		   (loop)))))))))
+		   ))))))))
 
 (define (peek-ascii-char port)
   (let ((byte (peek-u8 port)))
-    (if (eof-object? byte)
-	byte
-	(integer->char byte))))
+    (cond ((eof-object? byte)
+	   byte)
+	  ((and (fix:<= 32 byte) (fix:<= byte 126))
+	   (integer->char byte))
+	  (else (parse-error port "Illegal character:" 'peek-ascii-char)))))
 
 (define (skip-wsp-left string start end)
   (let loop ((i start))
