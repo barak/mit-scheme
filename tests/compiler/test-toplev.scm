@@ -42,3 +42,21 @@ USA.
 	   (procedure (eval compiled-expression test-env)))
       (assert-compiled-procedure procedure)
       (assert-eqv (procedure 123.) 247.))))
+
+(define-test 'cross-example-with-flonum-data
+  (lambda ()
+    ;; XXX whattakludge
+    (define finish-cross-compilation:scode
+      (let ((env (make-top-level-environment)))
+	(load "../src/compiler/base/crsend" env)
+	(eval 'finish-cross-compilation:scode env)))
+    (let* ((code '(lambda (x) (flo:+ (flo:* 2. x) 1.)))
+	   (scode (syntax&integrate code '((usual-integrations)) test-env))
+	   (cross-compilation
+	    (fluid-let ((compiler:cross-compiling? #t))
+	      (compile-scode scode)))
+	   (compiled-expression
+	    (finish-cross-compilation:scode cross-compilation))
+	   (procedure (eval compiled-expression test-env)))
+      (assert-compiled-procedure procedure)
+      (assert-eqv (procedure 123.) 247.))))
