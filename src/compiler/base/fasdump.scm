@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-Copyright (C) 2013 Taylor R Campbell
+Copyright (C) 2013, 2018 Taylor R Campbell
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,6 +40,7 @@ USA.
   (bits-per-byte #f read-only #t)
   (bytes-per-word #f read-only #t)
   (words-per-float #f read-only #t)
+  (float-align-words #f read-only #t)
   (bits-per-bignum-digit #f read-only #t)
   (words-per-bignum-digit #f read-only #t)
   (greatest-fixnum #f read-only #t)
@@ -62,6 +63,7 @@ USA.
    'BITS-PER-BYTE       8
    'BYTES-PER-WORD      bytes-per-word
    'WORDS-PER-FLOAT     (/ 8 bytes-per-word)
+   'FLOAT-ALIGN-WORDS   (/ 8 bytes-per-word) ;XXX may want stricter
    'BITS-PER-BIGNUM-DIGIT       (- (* 8 bytes-per-word) 2)
    'WORDS-PER-BIGNUM-DIGIT      1
    'GREATEST-FIXNUM     (bit-mask (* bytes-per-word 8) 0)
@@ -76,28 +78,28 @@ USA.
                            write-std32be-word
                            write-std32be-untagged-word
                            write-std32be-bignum-digit
-                           write-ieee754-double-be))
+                           write-ieee754-binary64-be))
 
 (define (make-std32le-fasdump-format architecture)
   (make-std-fasdump-format architecture 4
                            write-std32le-word
                            write-std32le-untagged-word
                            write-std32le-bignum-digit
-                           write-ieee754-double-le))
+                           write-ieee754-binary64-le))
 
 (define (make-std64be-fasdump-format architecture)
   (make-std-fasdump-format architecture 8
                            write-std64be-word
                            write-std64be-untagged-word
                            write-std64be-bignum-digit
-                           write-ieee754-double-be))
+                           write-ieee754-binary64-be))
 
 (define (make-std64le-fasdump-format architecture)
   (make-std-fasdump-format architecture 8
                            write-std64le-word
                            write-std64le-untagged-word
                            write-std64le-bignum-digit
-                           write-ieee754-double-le))
+                           write-ieee754-binary64-le))
 
 ;;;; Bits
 
@@ -154,7 +156,7 @@ USA.
 (define (write-std64le-bignum-digit digit output-port)
   (write-64 write-le-halves digit output-port))
 
-(define (write-std32le-bignum-digit digit output-port)
+(define (write-std64be-bignum-digit digit output-port)
   (write-64 write-be-halves digit output-port))
 
 (define (write-halves* write-halves write-half bits n output-port)
@@ -186,18 +188,17 @@ USA.
   (write-octet n output-port))
 
 (define (write-octet octet output-port)
-  ;; XXX
-  (write-char (integer->char octet) output-port))
+  (write-u8 octet output-port))
 
-(define (write-ieee754-double-be x output-port)
-  (write-ieee754-double write-be-halves x output-port))
+(define (write-ieee754-binary64-be x output-port)
+  (write-ieee754-binary64 write-be-halves x output-port))
 
-(define (write-ieee754-double-le x output-port)
-  (write-ieee754-double write-le-halves x output-port))
+(define (write-ieee754-binary64-le x output-port)
+  (write-ieee754-binary64 write-le-halves x output-port))
 
-(define (write-ieee754-double write-halves x output-port)
+(define (write-ieee754-binary64 write-halves x output-port)
   (receive (sign biased-exponent trailing-significand)
-           (decompose-ieee754-double x)
+           (decompose-ieee754-binary64 x)
     (let ((low  (shiftout trailing-significand #x00000000ffffffff))
           (high (shiftout trailing-significand #x000fffff00000000)))
       (let* ((sign&exponent
@@ -229,6 +230,7 @@ USA.
    'BITS-PER-BYTE       36
    'BYTES-PER-WORD      1
    'WORDS-PER-FLOAT     42              ;XXX
+   'FLOAT-ALIGN-WORDS   ???
    'BITS-PER-BIGNUM-DIGIT       18      ;XXX
    'WORDS-PER-BIGNUM-DIGIT      1/2     ;XXX
    'GREATEST-FIXNUM     #x1fffffff
@@ -271,13 +273,15 @@ USA.
        (lambda ()
          (if done? (error "Re-entry into fasdump not allowed!"))))
      (lambda ()
-       (call-with-output-file temporary
+       (call-with-binary-output-file temporary
          (lambda (output-port)
            (let ((state (make-state format output-port)))
              (set-port-position! output-port
                                  (* fasl-header-n-words
                                     (format.bytes-per-word format)))
+             (assert (fasdump-at-address? state 0))
              (fasdump-object state object)
+             (assert (fasdump-at-address? state (format.bytes-per-word format)))
              (do () ((queue-empty? (state.queue state)))
                (let ((object.n-words (dequeue! (state.queue state))))
                  (let ((object (car object.n-words))
@@ -299,12 +303,12 @@ USA.
 (define (fasdump-primitive-table-entry state primitive)
   (let ((name (car primitive))
         (arity (cdr primitive)))
-    (let ((n-words (fasdump-string-n-words (state.format state) name)))
+    (let ((n-words (fasdump-legacy-string-n-words (state.format state) name)))
       (fasdump-word state tc:fixnum (fixnum->datum (state.format state) arity))
       ;; One word for number of bytes, one word for content.
       (fasdump-word state tc:manifest-nm-vector (+ 1 n-words))
       (fasdump-word state 0 (string-length name))
-      (fasdump-string state name))))
+      (fasdump-legacy-string state name))))
 
 (define (count-primitive-table-entries state)
   (length (state.primitives-reversed state)))
@@ -313,7 +317,7 @@ USA.
   (define (count-words entry)
     ;; One word for arity, one word for manifest-nm-vector, one word
     ;; for number of bytes.
-    (+ 3 (fasdump-string-n-words (state.format state) (car entry))))
+    (+ 3 (fasdump-legacy-string-n-words (state.format state) (car entry))))
   (reduce + 0 (map count-words (state.primitives-reversed state))))
 
 (define (fixnum->datum format fixnum)
@@ -340,7 +344,7 @@ USA.
     (tagged tc:broken-heart             ;1 heap size in words
             (state.n-words state))
     (tagged tc:broken-heart 0)          ;2 heap start address
-    (tagged tc:null 0)                  ;3 dumped object address
+    (tagged tc:false 0)                 ;3 dumped object address
     (tagged tc:broken-heart 0)          ;4 constant size in words
     (tagged tc:broken-heart 0)          ;5 constant start address
     (tagged 1                           ;6 fasl format version/architecture
@@ -353,8 +357,8 @@ USA.
             (count-primitive-table-entries state))
     (tagged tc:broken-heart             ;9 no. of words in primitive table
             (count-primitive-table-words state))
-    (tagged tc:null 0)                  ;10 compiled interface version (0, 0)
-    (tagged tc:null 0)                  ;11 compiled utilities address (#f)
+    (tagged tc:false 0)                 ;10 compiled interface version (0, 0)
+    (tagged tc:false 0)                 ;11 compiled utilities address (#f)
     (untagged 0)                        ;12 header and data checksum (not yet?)
     (tagged tc:broken-heart 0)          ;13 no. of entries in C code table
     (tagged tc:broken-heart 0)          ;14 no. of words in C code table
@@ -397,31 +401,90 @@ USA.
     (with-fasdump-words state n-words
       (lambda ()
         (do ((i 0 (+ i 1))) ((>= i n-words))
-          (fasdump-word state tc:null 0))))))
+          (fasdump-word state tc:false 0))))))
 
 (define (fasdump-float state value)
   (let ((format (state.format state)))
     ((format.write-float format) value (state.output-port state))))
 
-(define (fasdump-string-n-words format string)
-  ;; Add a terminating null byte.
-  (quotient (+ 1 (string-length string) (- (format.bytes-per-word format) 1))
-            (format.bytes-per-word format)))
+(define (fasdump-legacy-string-n-words format string)
+  (let ((n-cps (string-length string)))
+    (do ((i 0 (+ i 1)))
+        ((>= i n-cps))
+      (if (not (<= 0 (char->integer (string-ref string i)) 255))
+          (error "Non-byte string:" string)))
+    (let ((n-bytes n-cps))
+      ;; Add a terminating null byte.
+      (quotient (+ 1 n-bytes (- (format.bytes-per-word format) 1))
+                (format.bytes-per-word format)))))
 
-(define (fasdump-string state string)
+(define (fasdump-legacy-string state string)
   (let ((format (state.format state))
         (output-port (state.output-port state)))
     (let ((bytes (string-length string))
-          (n-words (fasdump-string-n-words format string))
+          (n-words (fasdump-legacy-string-n-words format string))
           (bytes-per-word (format.bytes-per-word format)))
       (with-fasdump-words state n-words
         (lambda ()
           (let ((n-zeros (- (* n-words bytes-per-word) bytes)))
-            (write-string string output-port)
+            (do ((i 0 (+ i 1)))
+                ((>= i (string-length string)))
+              (let ((cp (char->integer (string-ref string i))))
+                (assert (<= 0 cp 255))
+                (write-octet cp output-port)))
             (do ((i 0 (+ i 1))) ((>= i n-zeros))
               ;; XXX fasdump-byte, not write-octet
               (write-octet 0 output-port)))))
       (assert (zero? (modulo (port-position output-port) bytes-per-word))))))
+
+(define (fasdump-bytevector-n-words format bytevector)
+  (let ((n-bytes (bytevector-length bytevector)))
+    (quotient (+ n-bytes (- (format.bytes-per-word format) 1))
+              (format.bytes-per-word format))))
+
+(define (fasdump-bytevector state bytevector)
+  (let ((format (state.format state))
+        (output-port (state.output-port state)))
+    (let ((bytes (bytevector-length bytevector))
+          (n-words (fasdump-bytevector-n-words format bytevector))
+          (bytes-per-word (format.bytes-per-word format)))
+      (with-fasdump-words state n-words
+        (lambda ()
+          (let ((n-zeros (- (* n-words bytes-per-word) bytes)))
+            (do ((i 0 (+ i 1)))
+                ((>= i (bytevector-length bytevector)))
+              (write-octet (bytevector-u8-ref bytevector i) output-port))
+            (do ((i 0 (+ i 1))) ((>= i n-zeros))
+              ;; XXX fasdump-byte, not write-octet
+              (write-octet 0 output-port)))))
+      (assert (zero? (modulo (port-position output-port) bytes-per-word))))))
+
+(define (fasdump-ustring-n-words format string)
+  (let ((n-cps (string-length string))
+        (bpc (max-bytes-per-cp string)))
+    (let ((n-bytes (* n-cps bpc)))
+      ;; Add a terminating null byte.
+      (quotient (+ 1 n-bytes (- (format.bytes-per-word format) 1))
+                (format.bytes-per-word format)))))
+
+(define (fasdump-ustring-flags format string)
+  format string
+  1)
+
+(define (max-bytes-per-cp string)
+  (define (cp-bytes cp)
+    (let ((bytes (quotient (+ (integer-length cp) 7) 8)))
+      (assert (<= 0 bytes 3))
+      bytes))
+  (do ((i 0 (+ i 1))
+       (bpc 1 (max bpc (cp-bytes (char->integer (string-ref string i))))))
+      ((>= i (string-length string))
+       bpc)))
+
+(define (fasdump-ustring state string)
+  ;; XXX cop-out
+  (assert (= 1 (max-bytes-per-cp string)))
+  (fasdump-legacy-string state string))
 
 (define (fasdump-bit-string-n-words format bit-string)
   (let ((bits-per-byte (format.bits-per-byte format))
@@ -509,8 +572,8 @@ USA.
 
 (define (get-primitive-number state name arity)
   (let* ((primitive-name->number (state.primitive-name->number state))
-         (n (hash-table/count primitive-name->number)))
-    (hash-table/intern! primitive-name->number name
+         (n (hash-table-size primitive-name->number)))
+    (hash-table-intern! primitive-name->number name
       (lambda ()
         (set-state.primitives-reversed!
          state
@@ -518,7 +581,7 @@ USA.
         n))))
 
 (define (get-object-address state object n-words overhead alignment)
-  (hash-table/intern! (state.addresses state) object
+  (hash-table-intern! (state.addresses state) object
     (lambda ()
       (let* ((unaligned-address (state.n-words state))
              (aligned-address
@@ -528,7 +591,7 @@ USA.
         (set-state.n-words! state (+ aligned-address n-words))
         (do ((i 0 (+ i 1))) ((>= i n-padding-words))
           (enqueue! (state.queue state) (cons #f 1)))
-        (enqueue! (state.queue state) (cons object n-words))
+        (enqueue! (state.queue state) (cons object (+ overhead n-words)))
         (* (- aligned-address overhead)
            (format.bytes-per-word (state.format state)))))))
 
@@ -549,9 +612,13 @@ USA.
           ((vector? object)
            (if-pointer tc:vector (+ 1 (vector-length object))))
           ((string? object)
-           (if-pointer tc:character-string
-                       ;; One for the real length, one for the manifest.
-                       (+ 2 (fasdump-string-n-words format object))))
+           (if-pointer tc:unicode-string
+                       ;; manifest, length/flags
+                       (+ 1 1 (fasdump-ustring-n-words format object))))
+          ((bytevector? object)
+           (if-pointer tc:bytevector
+                       ;; manifest, length
+                       (+ 1 1 (fasdump-bytevector-n-words format object))))
           ((bit-string? object)
            (if-pointer tc:bit-string
                        ;; One for the real length, one for the manifest.
@@ -579,7 +646,7 @@ USA.
           ((scode? object)
            (fasdump-classify/scode state object if-pointer if-non-pointer))
           ((char? object) (if-non-pointer tc:character (char->integer object)))
-          ((eqv? object #f) (if-non-pointer tc:null null:false))
+          ((eqv? object #f) (if-non-pointer tc:false false:false))
           ((eqv? object #t) (if-non-pointer tc:constant constant:true))
           ((eqv? object (aux-object))
            (if-non-pointer tc:constant constant:aux))
@@ -613,11 +680,12 @@ USA.
                            (+ 1 (fasdump-bignum-n-words format object)))))
           ((exact-rational? object) (if-pointer tc:ratnum 2))
           ((inexact-real? object)
-           (let ((words-per-float (format.words-per-float format)))
+           (let ((words-per-float (format.words-per-float format))
+                 (float-align-words (format.float-align-words format)))
              (if-aligned-pointer tc:big-flonum
                                  words-per-float
                                  1
-                                 words-per-float)))
+                                 float-align-words)))
           ((complex? object) (if-pointer tc:complex 2))
           (else
            (fasdump-error state "Invalid number for fasdump:" object)))))
@@ -625,22 +693,23 @@ USA.
 ;;;;;; Scode classification
 
 (define (fasdump-classify/scode state scode if-pointer if-non-pointer)
-  (cond ((access? scode) (if-pointer tc:access 2))
-        ((assignment? scode) (if-pointer tc:assignment 2))
-        ((combination? scode)
+  (cond ((scode-access? scode) (if-pointer tc:access 2))
+        ((scode-assignment? scode) (if-pointer tc:assignment 2))
+        ((scode-combination? scode)
          (if-pointer tc:combination
                      ;; One for the manifest; one for the operator.
-                     (+ 2 (length (combination-operands scode)))))
-        ((comment? scode) (if-pointer tc:comment 2))
-        ((conditional? scode) (if-pointer tc:conditional 3))
-        ((definition? scode) (if-pointer tc:definition 2))
-        ((delay? scode) (if-pointer tc:delay 1))
-        ((disjunction? scode) (if-pointer tc:disjunction 2))
-        ((lambda? scode) (fasdump-classify/lambda state scode if-pointer))
-        ((quotation? scode) (if-pointer tc:scode-quote 1))
-        ((sequence? scode) (if-pointer tc:sequence 2))
-        ((the-environment? scode) (if-non-pointer tc:the-environment 0))
-        ((variable? scode) (if-pointer tc:variable 3))
+                     (+ 2 (length (scode-combination-operands scode)))))
+        ((scode-comment? scode) (if-pointer tc:comment 2))
+        ((scode-conditional? scode) (if-pointer tc:conditional 3))
+        ((scode-definition? scode) (if-pointer tc:definition 2))
+        ((scode-delay? scode) (if-pointer tc:delay 1))
+        ((scode-disjunction? scode) (if-pointer tc:disjunction 2))
+        ((scode-lambda? scode)
+         (fasdump-classify/lambda state scode if-pointer))
+        ((scode-quotation? scode) (if-pointer tc:scode-quote 1))
+        ((scode-sequence? scode) (if-pointer tc:sequence 2))
+        ((scode-the-environment? scode) (if-non-pointer tc:the-environment 0))
+        ((scode-variable? scode) (if-pointer tc:variable 3))
         (else (error "This is not scode!" scode))))
 
 (define (fasdump-classify/lambda state scode if-pointer)
@@ -659,11 +728,12 @@ USA.
 
 (define (fasdump-storage state object)
   (assert (let ((address
-                 (or (hash-table/get (state.addresses state) object #f)
+                 (or (hash-table-ref/default (state.addresses state) object #f)
                      (error "Unallocated queued object:" object))))
             (fasdump-at-address? state address))
     `(object ,object)
-    `(object address ,(hash-table/get (state.addresses state) object #f))
+    `(object address
+             ,(hash-table-ref/default (state.addresses state) object #f))
     `(current address ,(fasdump-address state)))
   (let ((format (state.format state)))
     (cond ((pair? object)
@@ -679,13 +749,21 @@ USA.
                          (lambda () (vector-ref object i)))))
                    (fasdump-object state element))))))
           ((string? object)
-           (let ((n-words (fasdump-string-n-words format object)))
+           (let ((n-words (fasdump-ustring-n-words format object))
+                 (flags (fasdump-ustring-flags format object)))
              ;; One word for number of bytes, one word for content.
              (fasdump-word state tc:manifest-nm-vector (+ 1 n-words))
              (with-fasdump-words state (+ 1 n-words)
                (lambda ()
-                 (fasdump-word state 0 (string-length object))
-                 (fasdump-string state object)))))
+                 (fasdump-word state flags (string-length object))
+                 (fasdump-ustring state object)))))
+          ((bytevector? object)
+           (let ((n-words (fasdump-bytevector-n-words format object)))
+             (fasdump-word state tc:manifest-nm-vector (+ 1 n-words))
+             (with-fasdump-words state (+ 1 n-words)
+               (lambda ()
+                 (fasdump-word state 0 (bytevector-length object))
+                 (fasdump-bytevector state object)))))
           ((bit-string? object)
            (let ((n-words (fasdump-bit-string-n-words format object)))
              ;; One word for number of bits, one word for content.
@@ -697,10 +775,11 @@ USA.
           ((symbol? object)
            (with-fasdump-words state 2
              (lambda ()
-               (fasdump-object state (symbol->string object))
+               (fasdump-object state (string->utf8 (symbol->string object)))
                (if (uninterned-symbol? object)
                    (fasdump-word state tc:reference-trap trap:unbound)
-                   ;; XXX Hysterical raisins...
+                   ;; Fasloader uses this to distinguish interned
+                   ;; symbols from uninterned ones.
                    (fasdump-word state tc:broken-heart 0)))))
           ((reference-trap? object)
            (assert (> (reference-trap-kind object) trap-max-immediate))
@@ -713,7 +792,7 @@ USA.
           ((scode? object)
            (fasdump-storage/scode state object))
           ((eqv? object #f)             ;XXX Alignment kludge...
-           (fasdump-word state tc:null 0))
+           (fasdump-word state tc:false 0))
           (else
            (error "Fasdump bug -- object should have been rejected:"
                   object)))))
@@ -752,82 +831,84 @@ USA.
 ;;;;; Fasdumping an scode pointer's storage
 
 (define (fasdump-storage/scode state scode)
-  (cond ((access? scode)
+  (cond ((scode-access? scode)
          (with-fasdump-words state 2
            (lambda ()
-             (fasdump-object state (access-environment scode))
-             (fasdump-object state (access-name scode)))))
-        ((assignment? scode)
+             (fasdump-object state (scode-access-environment scode))
+             (fasdump-object state (scode-access-name scode)))))
+        ((scode-assignment? scode)
          (with-fasdump-words state 2
            (lambda ()
-             (fasdump-object state (assignment-variable scode))
-             (fasdump-object state (assignment-value scode)))))
-        ((combination? scode)
-         (let* ((operands (combination-operands scode))
+             (fasdump-object state
+                             (make-scode-variable
+                              (scode-assignment-name scode)))
+             (fasdump-object state (scode-assignment-value scode)))))
+        ((scode-combination? scode)
+         (let* ((operands (scode-combination-operands scode))
                 (n-words (+ 1 (length operands))))
            (fasdump-word state tc:manifest-vector n-words)
            (with-fasdump-words state n-words
              (lambda ()
-               (fasdump-object state (combination-operator scode))
+               (fasdump-object state (scode-combination-operator scode))
                (for-each (lambda (operand)
                            (fasdump-object state operand))
                          operands)))))
-        ((comment? scode)
+        ((scode-comment? scode)
          (with-fasdump-words state 2
            (lambda ()
-             (fasdump-object state (comment-expression scode))
-             (fasdump-object state (comment-text scode)))))
-        ((conditional? scode)
+             (fasdump-object state (scode-comment-expression scode))
+             (fasdump-object state (scode-comment-text scode)))))
+        ((scode-conditional? scode)
          (with-fasdump-words state 3
            (lambda ()
-             (fasdump-object state (conditional-predicate scode))
-             (fasdump-object state (conditional-consequent scode))
-             (fasdump-object state (conditional-alternative scode)))))
-        ((definition? scode)
+             (fasdump-object state (scode-conditional-predicate scode))
+             (fasdump-object state (scode-conditional-consequent scode))
+             (fasdump-object state (scode-conditional-alternative scode)))))
+        ((scode-definition? scode)
          (with-fasdump-words state 2
            (lambda ()
-             (fasdump-object state (definition-name scode))
-             (fasdump-object state (definition-value scode)))))
-        ((delay? scode)
+             (fasdump-object state (scode-definition-name scode))
+             (fasdump-object state (scode-definition-value scode)))))
+        ((scode-delay? scode)
          (with-fasdump-words state 1
            (lambda ()
-             (fasdump-object state (delay-expression scode)))))
-        ((disjunction? scode)
+             (fasdump-object state (scode-delay-expression scode)))))
+        ((scode-disjunction? scode)
          (with-fasdump-words state 2
            (lambda ()
-             (fasdump-object state (disjunction-predicate scode))
-             (fasdump-object state (disjunction-alternative scode)))))
-        ((lambda? scode)
-         (lambda-components scode
+             (fasdump-object state (scode-disjunction-predicate scode))
+             (fasdump-object state (scode-disjunction-alternative scode)))))
+        ((scode-lambda? scode)
+         (scode-lambda-components scode
            (lambda (name required optional rest aux decls body)
              (let* ((body
                      (if (pair? decls)
-                         (make-sequence
-                          (list (make-block-declaration decls)
+                         (make-scode-sequence
+                          (list (make-scode-block-declaration decls)
                                 body))
                          body))
                     (body (make-auxiliary-lambda aux body)))
                (if (or (pair? optional) rest)
                    (fasdump-xlambda state name required optional rest body)
                    (fasdump-lambda state name required body))))))
-        ((quotation? scode)
+        ((scode-quotation? scode)
          (with-fasdump-words state 1
            (lambda ()
-             (fasdump-object state (quotation-expression scode)))))
-        ((sequence? scode)
+             (fasdump-object state (scode-quotation-expression scode)))))
+        ((scode-sequence? scode)
          (with-fasdump-words state 2
            (lambda ()
-             (let ((actions (sequence-actions scode)))
+             (let ((actions (scode-sequence-actions scode)))
                (assert (not (length<=? actions 1)))
                (fasdump-object state (car actions))
                (fasdump-object state
                                (if (length<=? actions 2)
                                    (cadr actions)
-                                   (make-sequence (cdr actions))))))))
-        ((variable? scode)
+                                   (make-scode-sequence (cdr actions))))))))
+        ((scode-variable? scode)
          (with-fasdump-words state 3
            (lambda ()
-             (fasdump-object state (variable-name scode))
+             (fasdump-object state (scode-variable-name scode))
              ;; XXX Hysterical raisins...
              (fasdump-object state #t)
              (fasdump-object state '()))))
@@ -868,7 +949,7 @@ USA.
 (define (make-auxiliary-lambda auxiliaries body)
   (if (not (pair? auxiliaries))
       body
-      (make-combination
+      (make-scode-combination
        ;; NOTE: The list of auxiliaries must be empty here to avoid
        ;; infinite recursion!
        (let ((name lambda-tag:internal-lambda)
@@ -878,7 +959,7 @@ USA.
              (aux '())
              (decls '())
              (body body))
-         (make-lambda name required optional rest aux decls body))
+         (make-scode-lambda name required optional rest aux decls body))
        (map (lambda (auxiliary)
               auxiliary                 ;ignore
               (make-unassigned-reference-trap))
@@ -892,6 +973,7 @@ USA.
 (define tc:big-flonum #x06)
 (define tc:bit-string #x2f)
 (define tc:broken-heart #x22)
+(define tc:bytevector #x33)
 (define tc:character #x02)
 (define tc:character-string #x1e)
 (define tc:combination #x26)
@@ -903,12 +985,12 @@ USA.
 (define tc:delay #x11)
 (define tc:disjunction #x35)
 (define tc:extended-lambda #x14)
+(define tc:false #x00)
 (define tc:fixnum #x1a)
 (define tc:interned-symbol #x1d)
 (define tc:lambda #x17)
 (define tc:list #x01)                   ;pair
 (define tc:manifest-nm-vector #x27)
-(define tc:null #x00)
 (define tc:primitive #x18)
 (define tc:ratnum #x3a)
 (define tc:reference-trap #x32)
@@ -916,13 +998,14 @@ USA.
 (define tc:scode-quote #x03)
 (define tc:sequence #x19)
 (define tc:the-environment #x2d)
+(define tc:unicode-string #x1b)
 (define tc:uninterned-symbol #x05)
 (define tc:variable #x2c)
 (define tc:vector #x0a)
 
-(define tc:manifest-vector tc:null)
+(define tc:manifest-vector tc:false)
 
-(define null:false 0)
+(define false:false 0)
 
 (define constant:true 0)
 (define constant:unspecific 1)
@@ -935,23 +1018,30 @@ USA.
 (define constant:null 9)
 
 (define trap:unbound 2)
+(define trap-max-immediate 9)
+
+(define (reference-trap-kind trap)
+  (error 'reference-trap-kind trap))
+
+(define (reference-trap-extra trap)
+  (error 'reference-trap-extra trap))
 
 ;;;; Utilities
 
 (define (scode? object)
-  (or (access? object)
-      (assignment? object)
-      (combination? object)
-      (comment? object)
-      (conditional? object)
-      (definition? object)
-      (delay? object)
-      (disjunction? object)
-      (lambda? object)
-      (quotation? object)
-      (sequence? object)
-      (the-environment? object)
-      (variable? object)))
+  (or (scode-access? object)
+      (scode-assignment? object)
+      (scode-combination? object)
+      (scode-comment? object)
+      (scode-conditional? object)
+      (scode-definition? object)
+      (scode-delay? object)
+      (scode-disjunction? object)
+      (scode-lambda? object)
+      (scode-quotation? object)
+      (scode-sequence? object)
+      (scode-the-environment? object)
+      (scode-variable? object)))
 
 (define (shiftout n mask)
   (shift-right (bitwise-and n mask) (first-set-bit mask)))
@@ -1001,143 +1091,11 @@ USA.
 (define (optional-object) #!optional)
 (define (rest-object) #!rest)
 (define (unspecific-object) #!unspecific)
-
-;;;; IEEE 754 utilities
 
-(define (decompose-ieee754-double x)
-  (decompose-ieee754-binary x 11 53))
+(define (port-position port)
+  ((access binary-port-position (->environment '(runtime binary-port))) port))
 
-(define (decompose-ieee754-binary x exponent-bits precision)
-  (receive (base emin emax bias exp-subnormal exp-inf/nan)
-           (ieee754-binary-parameters exponent-bits precision)
-    (decompose-ieee754 x base emax precision
-      (lambda (sign)                    ;if-zero
-        (values sign 0 0))
-      (lambda (sign scaled-significand) ;if-subnormal
-        (assert (= 0 (shift-right scaled-significand precision)))
-        (values sign exp-subnormal scaled-significand))
-      (lambda (sign exponent scaled-significand) ;if-normal
-        (assert (<= emin exponent emax))
-        ;; The integer part is always 1.  Strip it for the binary
-        ;; interchange format.
-        (assert (= 1 (shift-right scaled-significand (- precision 1))))
-        (values sign
-                (+ exponent bias)
-                (extract-bit-field (- precision 1) 0 scaled-significand)))
-      (lambda (sign)                    ;if-infinite
-        (values sign exp-inf/nan 0))
-      (lambda (sign quiet payload)      ;if-nan
-        (assert (not (and (zero? quiet) (zero? payload))))
-        (values sign
-                exp-inf/nan
-                (replace-bit-field (- precision 1) 1 payload quiet))))))
-
-(define (ieee754-sign x)
-  (cond ((< 0 x) 0)
-        ((< x 0) 1)
-        ;; Zero -- can't use < directly to detect sign.  Elicit a
-        ;; computational difference.
-        ((negative? (atan x -1)) 1)
-        (else 0)))
-
-(define (decompose-ieee754 x base emax precision
-          if-zero if-subnormal if-normal if-infinite if-nan)
-  (cond ((not (= x x))
-         ;; There are, of course, b^p different NaNs.  There is no
-         ;; obvious way to computationally detect the sign of a NaN,
-         ;; and no portable way to get at the quiet bit or the payload
-         ;; bits, so we'll just assume every NaN is a trivial positive
-         ;; signalling NaN and hope the caller has a good story...
-         (if-nan 0 0 1))
-        ((and (< 1. (abs x)) (= x (/ x 2)))
-         (if-infinite (if (< 0. x) 0 1)))
-        (else
-         (let ((sign (ieee754-sign x)) (x (abs x)) (emin (- 1 emax)))
-           (define (significand x)
-             (truncate->exact (* x (expt base (- precision 1)))))
-           (cond ((<= 1 x)              ;Nonnegative exponent (normal)
-                  (let loop ((exponent 0) (x x))
-                    (cond ((< emax exponent) (if-infinite sign))
-                          ((<= base x) (loop (+ exponent 1) (/ x base)))
-                          (else (if-normal sign exponent (significand x))))))
-                 ((< (expt base emin) x) ;Negative exponent, normal
-                  (let loop ((exponent 0) (x x))
-                    (assert (<= emin exponent))
-                    (if (<= 1 x)
-                        (if-normal sign exponent (significand x))
-                        (loop (- exponent 1) (* x base)))))
-                 ((< 0 x)               ;Negative exponent, subnormal
-                  (if (<= x (- (expt base emin) (expt base (- 0 precision))))
-                      (if-zero sign)
-                      (if-subnormal
-                       sign
-                       (significand (/ x (expt base emin))))))
-                 (else
-                  (if-zero sign)))))))
-
-(define (compose-ieee754-double sign biased-exponent trailing-significand)
-  (compose-ieee754-binary sign biased-exponent trailing-significand 11 53))
-
-(define (compose-ieee754-binary sign biased-exponent trailing-significand
-                                exponent-bits precision)
-  (receive (base emin emax bias exp-subnormal exp-inf/nan)
-           (ieee754-binary-parameters exponent-bits precision)
-    (let ((exponent (- biased-exponent bias)))
-      (cond ((= exponent exp-subnormal)
-             (if (zero? trailing-significand)
-                 (compose-ieee754-zero sign base emax precision)
-                 (compose-ieee754-subnormal sign trailing-significand
-                                            base emax precision)))
-            ((= exponent exp-inf/nan)
-             (if (zero? trailing-significand)
-                 (compose-ieee754-infinity sign base emax precision)
-                 (let ((p-1 (- precision 1))
-                       (T trailing-significand))
-                   (let ((quiet   (extract-bit-field 1 p-1 T))
-                         (payload (extract-bit-field p-1 0 T)))
-                     (compose-ieee754-nan sign quiet payload
-                                          base emax precision)))))
-            (else
-             (assert (<= emin exponent emax))
-             (let ((scaled-significand
-                    ;; Add the implied integer part of 1.
-                    (replace-bit-field 1 (- precision 1) trailing-significand
-                                       1)))
-               (compose-ieee754-normal sign exponent scaled-significand
-                                       base emax precision)))))))
-
-(define (compose-ieee754-zero sign base emax precision)
-  base emax precision                   ;ignore
-  (* (expt -1 sign) 0))
-
-(define (compose-ieee754-subnormal sign significand base emax precision)
-  (* (expt -1 sign)
-     (* significand (expt base (- precision emax)))))
-
-(define (compose-ieee754-normal sign exponent significand base emax precision)
-  (assert (<= (- 1 emax) exponent emax))
-  (* (expt -1 sign)
-     (expt base exponent)
-     (/ significand (expt base (- precision 1)))))
-
-(define (compose-ieee754-infinity sign)
-  (error "Can't compose an IEEE754 infinity!" sign))
-
-(define (compose-ieee754-nan sign quiet payload)
-  (error "Can't compose an IEEE754 NaN!" sign quiet payload))
-
-(define (ieee754-binary-parameters exponent-bits precision)
-  (assert (zero? (modulo (+ exponent-bits precision) 32)))
-  (let* ((base 2)
-         (emax (- (expt base (- exponent-bits 1)) 1)))
-    (let ((bias emax)
-          (emin (- 1 emax)))
-      (let ((exp-subnormal (- emin 1))
-            (exp-inf/nan (+ emax 1)))
-        (values base emin emax bias exp-subnormal exp-inf/nan)))))
-
-(define (ieee754-double-recomposable? x)
-  (= x
-     (receive (sign biased-exponent trailing-significand)
-              (decompose-ieee754-double x)
-       (compose-ieee754-double sign biased-exponent trailing-significand))))
+(define (set-port-position! port position)
+  ((access set-binary-port-position! (->environment '(runtime binary-port)))
+   port
+   position))
