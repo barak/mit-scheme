@@ -2656,6 +2656,7 @@ USA.
 	  binary-i/o-port?
 	  binary-input-port?
 	  binary-output-port?
+	  binary-port-position
 	  binary-port?
 	  call-with-output-bytevector
 	  get-output-bytevector
@@ -2665,6 +2666,7 @@ USA.
 	  read-bytevector
 	  read-bytevector!
 	  read-u8
+	  set-binary-port-position!
 	  textual->binary-port
 	  u8-ready?
 	  write-bytevector
