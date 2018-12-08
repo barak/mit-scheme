@@ -4558,6 +4558,7 @@ USA.
 	  identifier?
 	  make-syntactic-closure
 	  new-identifier
+	  param:trace-syntax?
 	  reverse-syntactic-environments
 	  strip-syntactic-closures
 	  syntactic-closure-form

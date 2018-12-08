@@ -43,6 +43,9 @@ USA.
 
 ;;;; Top level
 
+(define-deferred param:trace-syntax?
+  (make-settable-parameter #f))
+
 (define (syntax form environment)
   (syntax* (list form) environment))
 
