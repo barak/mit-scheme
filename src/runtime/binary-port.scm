@@ -301,11 +301,22 @@ USA.
 
 (define (binary-port-position port)
   (guarantee positionable-binary-port? port 'port-position)
-  (let ((ib (port-input-buffer port)))
-    (if ib
-	(- (channel-file-position (buffer-channel ib))
-	   (fix:- (buffer-end ib) (buffer-start ib)))
-	(channel-file-position (buffer-channel (port-output-buffer port))))))
+  (let ((ib (port-input-buffer port))
+	(ob (port-output-buffer port)))
+    (let ((buffered-input?
+	   (and ib (fix:< (buffer-start ib) (buffer-end ib))))
+	  (buffered-output?
+	   (and ob (fix:< (buffer-start ob) (buffer-end ob)))))
+      (define (channel-position buffer)
+	(channel-file-position (buffer-channel buffer)))
+      (define (buffer-position buffer)
+	(fix:- (buffer-end buffer) (buffer-start buffer)))
+      (cond ((and buffered-input? buffered-output?)
+	     (error "Input and output buffered simultaneously:" port))
+	    (ib (- (channel-position ib) (buffer-position ib)))
+	    (ob (+ (channel-position ob) (buffer-position ob)))
+	    (else
+	     (error "Port has neither input nor output buffer:" port))))))
 
 (define (set-binary-port-position! port position)
   (guarantee positionable-binary-port? port 'set-port-position!)

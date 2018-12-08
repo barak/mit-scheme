@@ -189,13 +189,9 @@ USA.
 	  (lambda (port)
 	    (assert-= (binary-port-position port) 0)
 	    (write-u8 42 port)
-	    (expect-failure
-	     (lambda ()
-	       (assert-= (binary-port-position port) 1)))
+	    (assert-= (binary-port-position port) 1)
 	    (write-bytevector (make-bytevector 1000 0) port)
-	    (expect-failure
-	     (lambda ()
-	       (assert-= (binary-port-position port) 1001)))))
+	    (assert-= (binary-port-position port) 1001)))
 	(call-with-binary-input-file pathname
 	  (lambda (port)
 	    (assert-= (binary-port-position port) 0)
