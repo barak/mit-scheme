@@ -41,6 +41,7 @@ USA.
 (define known-tests
   '(
     "compiler/test-fgopt-conect"
+    "compiler/test-toplev"
     "compiler/test-varname"
     "microcode/test-chacha"
     ;++ Kludge to run the flonum cast tests interpreted and compiled --
