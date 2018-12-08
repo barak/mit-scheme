@@ -1020,9 +1020,6 @@ USA.
 (define trap:unbound 2)
 (define trap-max-immediate 9)
 
-(define (reference-trap-kind trap)
-  (error 'reference-trap-kind trap))
-
 (define (reference-trap-extra trap)
   (error 'reference-trap-extra trap))
 

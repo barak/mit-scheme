@@ -43,6 +43,10 @@ USA.
                 (eqv? (flo:sign-negative? x) (flo:sign-negative? y))
                 (eqv? (flo:nan-quiet? x) (flo:nan-quiet? y))
                 (eqv? (flo:nan-payload x) (flo:nan-payload y))))
+          ((reference-trap? x)
+           (and (reference-trap? y)
+                (eqv? (reference-trap-kind x) (reference-trap-kind y))
+                (<= (reference-trap-kind x) trap-max-immediate)))
           ((scode-access? x)
            (and (scode-access? y)
                 (loop (scode-access-environment x)
@@ -217,8 +221,8 @@ USA.
     (xyz)
     ;; XXX uninterned symbols
     (,(make-primitive-procedure 'quagga 42))
-    ;; XXX reference trap
-    ;; XXX interpreter return address, wtf?
+    (,(make-unassigned-reference-trap))
+    (,(make-return-address 42))
     (#\U+0)
     (#\0)
     (#\U+1000)
@@ -277,7 +281,10 @@ USA.
             (lambda (pathname)
               (let ((format fasdump-format:amd64))
                 (portable-fasdump object pathname format))
-              (let ((object* (fasload pathname)))
+              (let ((object*
+                     (map-reference-trap
+                      (lambda ()
+                        (fasload pathname)))))
                 (if (not (equal-nan-scode? object object*))
                     (begin
                       (pp 'fail)
