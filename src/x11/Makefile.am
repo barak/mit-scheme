@@ -48,11 +48,12 @@ AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
 
 x11_shim_la_LIBADD = @MIT_LIBS@
-x11_shim_la_SOURCES = x11base.c x11color.c x11graph.c x11term.c x11-shim.c
+c_sources = x11base.c x11color.c x11graph.c x11term.c x11-shim.h x11.h
+x11_shim_la_SOURCES = $(c_sources) x11-shim.c
 x11_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = x11-const
-x11_const_SOURCES = x11-const.c x11-shim.h
+x11_const_SOURCES = x11-const.c x11-shim.h x11.h
 
 x11-shim.c: stamp-shim
 x11-const.c: stamp-shim
@@ -92,16 +93,6 @@ all_sources = $(sources) $(c_sources)
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
-EXTRA_DIST += $(all_sources) $(cdecls) compile.sh x11.pkg
+EXTRA_DIST += $(sources) $(cdecls) compile.sh compile.scm x11.pkg
 EXTRA_DIST += x11-check.sh x11-test.scm
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
-
-install-data-hook:
-
-install-html: install-html-am
-
-install-info-am:
-
-uninstall-info-am:
-
-uninstall-hook:
