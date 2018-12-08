@@ -138,6 +138,29 @@ USA.
 (define assert-equal-nan-scode
   (simple-binary-assertion equal-nan-scode? #f))
 
+(define fasdump-formats
+  `(("aarch64le" ,fasdump-format:aarch64le)
+    ("aarch64be" ,fasdump-format:aarch64be)
+    ("alpha" ,fasdump-format:alpha)
+    ("armbe" ,fasdump-format:arm32be)
+    ("armle" ,fasdump-format:arm32le)
+    ("ia-32" ,fasdump-format:i386)
+    ("mipsbe" ,fasdump-format:mips32be)
+    ("mipsle" ,fasdump-format:mips32le)
+    ("ppc32" ,fasdump-format:ppc32)
+    ("x86-64" ,fasdump-format:amd64)))
+
+(define (host-fasdump-format)
+  (define (try key)
+    (any (lambda (format)
+           (and (string-ci=? (car format) key)
+                (cadr format)))
+         fasdump-formats))
+  (or (try microcode-id/machine-type)
+      (try
+       (string-append microcode-id/machine-type
+                      (if (host-big-endian?) "be" "le")))))
+
 (define-enumerated-test 'fasdump-invariance
   `(((1 . 2))
     (#())
@@ -275,20 +298,21 @@ USA.
     (,(make-scode-the-environment))
     (,(make-scode-variable 'foo)))
   (lambda (object)
-    (with-test-properties
-        (lambda ()
-          (call-with-temporary-file-pathname
-            (lambda (pathname)
-              (let ((format fasdump-format:amd64))
-                (portable-fasdump object pathname format))
-              (let ((object*
-                     (map-reference-trap
-                      (lambda ()
-                        (fasload pathname)))))
-                (if (not (equal-nan-scode? object object*))
-                    (begin
-                      (pp 'fail)
-                      (pp object)
-                      (pp object*)))
-                (assert-equal-nan-scode (fasload pathname) object)))))
-      'SEED object)))
+    (let ((format (host-fasdump-format)))
+      (assert format '(unknown host fasdump format))
+      (with-test-properties
+          (lambda ()
+            (call-with-temporary-file-pathname
+              (lambda (pathname)
+                (portable-fasdump object pathname format)
+                (let ((object*
+                       (map-reference-trap
+                        (lambda ()
+                          (fasload pathname)))))
+                  (if (not (equal-nan-scode? object object*))
+                      (begin
+                        (pp 'fail)
+                        (pp object)
+                        (pp object*)))
+                  (assert-equal-nan-scode (fasload pathname) object)))))
+        'SEED object))))
