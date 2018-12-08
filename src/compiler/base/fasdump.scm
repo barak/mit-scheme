@@ -218,7 +218,10 @@ USA.
 (define fasdump-format:alpha    (make-std64le-fasdump-format 18))
 (define fasdump-format:ppc32    (make-std32be-fasdump-format 20))
 (define fasdump-format:amd64    (make-std64le-fasdump-format 21))
-(define fasdump-format:arm32    (make-std32le-fasdump-format 24))
+(define fasdump-format:arm32le  (make-std32le-fasdump-format 24))
+(define fasdump-format:arm32be  (make-std32le-fasdump-format 24))
+(define fasdump-format:aarch64le (make-std64le-fasdump-format 25))
+(define fasdump-format:aarch64be (make-std64be-fasdump-format 25))
 
 #;
 (define fasdump-format:pdp10
