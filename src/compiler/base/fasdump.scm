@@ -669,6 +669,8 @@ USA.
            (if-non-pointer tc:constant constant:unspecific))
           ((null? object)
            (if-non-pointer tc:constant constant:null))
+          ((eqv? object (weak-false))
+           (if-non-pointer tc:constant constant:weak-false))
           (else
            (fasdump-error state "Invalid object for fasdump:" object)))))
 
@@ -1019,6 +1021,7 @@ USA.
 (define constant:default 7)
 (define constant:aux 8)
 (define constant:null 9)
+(define constant:weak-false 10)
 
 (define trap:unbound 2)
 (define trap-max-immediate 9)
@@ -1091,6 +1094,8 @@ USA.
 (define (optional-object) #!optional)
 (define (rest-object) #!rest)
 (define (unspecific-object) #!unspecific)
+(define (weak-false)
+  (object-new-type (microcode-type 'constant) 10))
 
 (define (port-position port)
   ((access binary-port-position (->environment '(runtime binary-port))) port))
