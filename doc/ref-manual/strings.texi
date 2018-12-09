@@ -617,7 +617,7 @@ arguments as follows:
 
 @itemize @bullet
 @item
-Given a bitless character argument, the string builder appends that
+Given a character argument, the string builder appends that
 character to the string being built and returns an unspecified value.
 @item
 Given a string argument, the string builder appends that string to the

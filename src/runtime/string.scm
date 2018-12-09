@@ -167,7 +167,7 @@ USA.
   (integer->char (cp1-ref string index)))
 
 (define-integrable (ustring1-set! string index char)
-  (cp1-set! string index (char->integer char)))
+  (cp1-set! string index (char-code char)))
 
 (define-integrable (cp1-ref string index)
   (primitive-byte-ref string (cp1-index index)))
@@ -182,7 +182,7 @@ USA.
   (integer->char (cp2-ref string index)))
 
 (define-integrable (ustring2-set! string index char)
-  (cp2-set! string index (char->integer char)))
+  (cp2-set! string index (char-code char)))
 
 (define (cp2-ref string index)
   (let ((i (cp2-index index)))
@@ -201,7 +201,7 @@ USA.
   (integer->char (cp3-ref string index)))
 
 (define-integrable (ustring3-set! string index char)
-  (cp3-set! string index (char->integer char)))
+  (cp3-set! string index (char-code char)))
 
 (define (cp3-ref string index)
   (let ((i (cp3-index index)))
@@ -356,7 +356,7 @@ USA.
 (define (string-set! string index char)
   (guarantee mutable-string? string 'string-set!)
   (guarantee index-fixnum? index 'string-set!)
-  (guarantee bitless-char? char 'string-set!)
+  (guarantee char? char 'string-set!)
   (if (not (fix:< index (string-length string)))
       (error:bad-range-argument index 'string-set!))
   (if (slice? string)
@@ -560,11 +560,11 @@ USA.
 	  (append-string! (builder 'append-string!))
 	  (build (builder 'build)))
       (lambda (#!optional object)
-	(cond ((bitless-char? object) (append-char! object))
+	(cond ((char? object) (append-char! object))
 	      ((string? object) (append-string! object))
-	      ((list-of-type? object bitless-char?)
+	      ((list-of-type? object char?)
 	       (for-each append-char! object))
-	      ((vector-of-type? object bitless-char?)
+	      ((vector-of-type? object char?)
 	       (vector-for-each append-char! object))
 	      (else
 	       (case object
@@ -628,7 +628,7 @@ USA.
       (ustring3-set! buffer index char)
       (set! index (fix:+ index 1))
       (set! count (fix:+ count 1))
-      (set! max-cp (fix:max max-cp (char->integer char)))
+      (set! max-cp (fix:max max-cp (char-code char)))
       (if (not (fix:< index buffer-length))
 	  (begin
 	    (set! buffers (cons (get-partial) buffers))
@@ -1706,7 +1706,7 @@ USA.
 (define (list->string chars)
   (let ((builder (string-builder)))
     (for-each (lambda (char)
-		(guarantee bitless-char? char 'list->string)
+		(guarantee char? char 'list->string)
 		(builder char))
 	      chars)
     (builder 'immutable)))
@@ -1734,7 +1734,7 @@ USA.
     (do ((i start (fix:+ i 1)))
 	((not (fix:< i end)))
       (let ((char (vector-ref vector i)))
-	(guarantee bitless-char? char 'vector->string)
+	(guarantee char? char 'vector->string)
 	(builder char)))
     (builder 'immutable)))
 
@@ -1771,7 +1771,7 @@ USA.
     (for-each (lambda (object)
 		(if object
 		    (builder
-		     (cond ((bitless-char? object) object)
+		     (cond ((char? object) object)
 			   ((string? object) object)
 			   ((symbol? object) (symbol->string object))
 			   (else
@@ -2029,7 +2029,7 @@ USA.
 
 (define (string-fill! string char #!optional start end)
   (guarantee mutable-string? string 'string-fill)
-  (guarantee bitless-char? char 'string-fill!)
+  (guarantee char? char 'string-fill!)
   (let* ((end (fix:end-index end (string-length string) 'string-fill!))
 	 (start (fix:start-index start end 'string-fill!)))
     (translate-slice string start end
@@ -2039,8 +2039,8 @@ USA.
 	  (ustring-set! string index char))))))
 
 (define (string-replace string char1 char2)
-  (guarantee bitless-char? char1 'string-replace)
-  (guarantee bitless-char? char2 'string-replace)
+  (guarantee char? char1 'string-replace)
+  (guarantee char? char2 'string-replace)
   (string-map (lambda (char)
 		(if (char=? char char1) char2 char))
 	      string))
@@ -2197,8 +2197,8 @@ USA.
   (fix:= 0 (string-length string)))
 
 (define (char->string char)
-  (guarantee bitless-char? char 'char->string)
-  (let ((s (immutable-ustring-allocate 1 (char->integer char))))
+  (guarantee char? char 'char->string)
+  (let ((s (immutable-ustring-allocate 1 (char-code char))))
     (ustring-set! s 0 char)
     s))
 
