@@ -108,6 +108,9 @@ USA.
 ;;;; Post processing
 
 (define (post-process-output expression)
+  (if (param:trace-syntax?)
+      (parameterize ((param:pp-uninterned-symbols-by-name? #f))
+	(pp expression)))
   (let ((safe-set (make-strong-eq-hash-table)))
     (compute-substitution expression
 			  (lambda (rename original)
@@ -121,9 +124,11 @@ USA.
 			  bound)))
     (for-each (lambda (rename)
 		(let ((original (rename->original rename)))
-		  (if (not (any (lambda (rename*)
-				  (eq? original (rename->original rename*)))
-				free))
+		  (if (and (symbol? original)
+			   (not (any (lambda (rename*)
+				       (eq? original
+					    (rename->original rename*)))
+				     free)))
 		      (mark-safe! rename original))))
 	      bound)
     free))
@@ -152,11 +157,11 @@ USA.
 	  (if entry
 	      (cdr entry)
 	      (let ((finalized
-		     (symbol "." original
+		     (symbol "." (identifier->symbol original)
 			     "." frame-id
 			     "-" (length (cdr bucket)))))
 		(set-cdr! bucket
-			  (cons (cons original finalized)
+			  (cons (cons frame-id finalized)
 				(cdr bucket)))
 		finalized)))))
 
@@ -222,8 +227,21 @@ USA.
    (define-cs-handler scode-open-block?
      (lambda (expression mark-safe!)
        (mark-local-bindings (scode-open-block-names expression)
-			    (scode-open-block-actions expression)
+			    (make-scode-declaration
+			     (scode-open-block-declarations expression)
+			     (scode-open-block-actions expression))
 			    mark-safe!)))
+
+   (define-cs-handler scode-declaration?
+     (lambda (expression mark-safe!)
+       (fold (lambda (declaration ids)
+	       (fold-decl-ids (lambda (id ids)
+				(lset-adjoin eq? ids id))
+			      ids
+			      declaration))
+	     (compute-substitution (scode-declaration-expression expression)
+				   mark-safe!)
+	     (scode-declaration-text expression))))
 
    (define-cs-handler quoted-identifier?
      (simple-subexpression quoted-identifier-identifier))

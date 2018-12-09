@@ -220,6 +220,13 @@ USA.
 				  (%subst-args input senv output args)))
 	     failure)))
 
+(define (spar-funcall procedure . args)
+  (lambda (input senv output success failure)
+    (apply %call-out input senv
+	   procedure
+	   (%subst-args input senv output args))
+    (success input senv output failure)))
+
 (define (spar-error message . irritants)
   (lambda (input senv output success failure)
     (declare (ignore success failure))

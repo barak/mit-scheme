@@ -43,6 +43,11 @@ USA.
     quoted-identifier?
   (identifier quoted-identifier-identifier))
 
+(define-print-method quoted-identifier?
+  (standard-print-method 'quoted-identifier
+    (lambda (qid)
+      (list (quoted-identifier-identifier qid)))))
+
 (define (output/assignment name value)
   (make-scode-assignment name value))
 

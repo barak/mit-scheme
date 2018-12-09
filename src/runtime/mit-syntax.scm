@@ -178,11 +178,7 @@ USA.
    (delay
      (spar-call-with-values
 	 (lambda (ctx id item)
-	   (receive (id senv)
-	       (if (closed-identifier? id)
-		   (values (syntactic-closure-form id)
-			   (syntactic-closure-senv id))
-		   (values id (serror-ctx-senv ctx)))
+	   (let ((senv (serror-ctx-senv ctx)))
 	     (bind-keyword id senv item)
 	     ;; User-defined macros at top level are preserved in the output.
 	     (if (and (keyword-item-has-expr? item)
@@ -191,7 +187,10 @@ USA.
 		 (seq-item ctx '()))))
        (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-push-subform-if identifier? spar-arg:form)
+       (spar-subform
+	 (spar-match identifier? spar-arg:form)
+	 (spar-funcall reserve-identifier spar-arg:form spar-arg:senv)
+	 (spar-push spar-arg:form))
        (spar-subform
 	 spar-push-classified
 	 (spar-or (spar-match keyword-item? spar-arg:value)

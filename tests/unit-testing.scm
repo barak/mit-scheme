@@ -650,3 +650,43 @@ USA.
 			  (marker)
 			  "comparing elements with" (name-of comparator)
 			  "in any order")))
+
+(define (trivial-matcher pattern expression #!optional value=?)
+  (let ((value=? (if (default-object? value=?) equal? value=?)))
+    (let loop
+	((p pattern)
+	 (e expression)
+	 (dict '())
+	 (win (lambda (dict) dict #t)))
+      (cond ((match-var? p)
+	     (let ((binding (assq p dict)))
+	       (if binding
+		   (and (value=? e (cdr binding))
+			(win dict))
+		   (win (cons (cons p e) dict)))))
+	    ((pair? p)
+	     (and (pair? e)
+		  (loop (car p)
+			(car e)
+			dict
+			(lambda (dict*)
+			  (loop (cdr p)
+				(cdr e)
+				dict*
+				win)))))
+	    (else
+	     (and (eqv? p e)
+		  (win dict)))))))
+
+(define (match-var? object)
+  (and (symbol? object)
+       (string-prefix? "?" (symbol->string object))))
+
+(define (match-assertion negate?)
+  (binary-assertion negate?
+		    (lambda (value expected)
+		      (trivial-matcher expected value))
+		    (list "an object" (if- "not") "matching" (marker))))
+
+(define-for-tests assert-matches (match-assertion #f))
+(define-for-tests assert-!matches (match-assertion #t))

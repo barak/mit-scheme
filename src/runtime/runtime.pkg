@@ -4555,12 +4555,12 @@ USA.
 	  (make-synthetic-identifier new-identifier)
 	  capture-syntactic-environment
 	  close-syntax
-	  closed-identifier?
 	  identifier->symbol
 	  identifier=?
 	  identifier?
 	  make-syntactic-closure
 	  new-identifier
+	  param:trace-syntax?
 	  reverse-syntactic-environments
 	  strip-syntactic-closures
 	  syntactic-closure-form
@@ -4595,7 +4595,6 @@ USA.
 	  hist-reduce
 	  hist-select
 	  initial-hist
-	  raw-identifier?
 	  serror
 	  serror-ctx
 	  serror-ctx-form
@@ -4606,6 +4605,7 @@ USA.
 	  subform-select)
   (export (runtime syntax low)
 	  reclassify
+	  rename-id
 	  with-error-context)
   (export (runtime syntax parser)
 	  with-error-context))
@@ -4719,6 +4719,7 @@ USA.
 	  spar-error
 	  spar-fail
 	  spar-filter-map-values
+	  spar-funcall
 	  spar-if
 	  spar-map-values
 	  spar-match
@@ -4814,6 +4815,7 @@ USA.
   (files "syntax-declaration")
   (parent (runtime syntax))
   (export (runtime syntax)
+	  fold-decl-ids
 	  map-decl-ids))
 
 (define-package (runtime syntax mit)
