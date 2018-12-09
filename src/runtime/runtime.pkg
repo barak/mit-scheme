@@ -1304,6 +1304,7 @@ USA.
 	  ascii-char?
 	  bitless-char?
 	  char-8-bit?
+	  char->bitless-char
 	  char->digit
 	  char->integer
 	  char->name
