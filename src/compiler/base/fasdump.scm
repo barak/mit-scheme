@@ -279,9 +279,9 @@ USA.
        (call-with-binary-output-file temporary
          (lambda (output-port)
            (let ((state (make-state format output-port)))
-             (set-port-position! output-port
-                                 (* fasl-header-n-words
-                                    (format.bytes-per-word format)))
+             (set-binary-port-position! output-port
+                                        (* fasl-header-n-words
+                                           (format.bytes-per-word format)))
              (assert (fasdump-at-address? state 0))
              (fasdump-object state object)
              (assert (fasdump-at-address? state (format.bytes-per-word format)))
@@ -342,7 +342,7 @@ USA.
       (write-word type datum output-port))
     (define (untagged word)
       (write-untagged-word word output-port))
-    (set-port-position! output-port 0)
+    (set-binary-port-position! output-port 0)
     (untagged marker)                   ;0 fasl-marker
     (tagged tc:broken-heart             ;1 heap size in words
             (state.n-words state))
@@ -374,15 +374,15 @@ USA.
       (untagged 0))
     (assert
      (= (* fasl-header-n-words (format.bytes-per-word (state.format state)))
-        (port-position output-port)))))
+        (binary-port-position output-port)))))
 
 (define (with-fasdump-words state n-words procedure)
   (let ((format (state.format state))
         (output-port (state.output-port state)))
     (let ((bytes-per-word (format.bytes-per-word format))
-          (before (port-position output-port)))
+          (before (binary-port-position output-port)))
       (begin0 (procedure)
-        (let ((after (port-position output-port)))
+        (let ((after (binary-port-position output-port)))
           (assert (= (- after before) (* n-words bytes-per-word))
             `(n-words ,n-words)
             `(n-bytes ,(* n-words bytes-per-word))
@@ -438,7 +438,8 @@ USA.
             (do ((i 0 (+ i 1))) ((>= i n-zeros))
               ;; XXX fasdump-byte, not write-octet
               (write-octet 0 output-port)))))
-      (assert (zero? (modulo (port-position output-port) bytes-per-word))))))
+      (assert
+       (zero? (modulo (binary-port-position output-port) bytes-per-word))))))
 
 (define (fasdump-bytevector-n-words format bytevector)
   (let ((n-bytes (bytevector-length bytevector)))
@@ -460,7 +461,8 @@ USA.
             (do ((i 0 (+ i 1))) ((>= i n-zeros))
               ;; XXX fasdump-byte, not write-octet
               (write-octet 0 output-port)))))
-      (assert (zero? (modulo (port-position output-port) bytes-per-word))))))
+      (assert
+       (zero? (modulo (binary-port-position output-port) bytes-per-word))))))
 
 (define (fasdump-ustring-n-words format string)
   (let ((n-cps (string-length string))
@@ -599,7 +601,7 @@ USA.
            (format.bytes-per-word (state.format state)))))))
 
 (define (fasdump-address state)
-  (- (port-position (state.output-port state))
+  (- (binary-port-position (state.output-port state))
      (* fasl-header-n-words
         (format.bytes-per-word (state.format state)))))
 
@@ -1096,11 +1098,3 @@ USA.
 (define (unspecific-object) #!unspecific)
 (define (weak-false)
   (object-new-type (microcode-type 'constant) 10))
-
-(define (port-position port)
-  ((access binary-port-position (->environment '(runtime binary-port))) port))
-
-(define (set-port-position! port position)
-  ((access set-binary-port-position! (->environment '(runtime binary-port)))
-   port
-   position))
