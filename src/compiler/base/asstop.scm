@@ -36,7 +36,7 @@ USA.
 
 (define (compiler-file-output object pathname)
   (if compiler:cross-compiling?
-      (portable-fasdump object pathname (target-fasdump-format))
+      (portable-fasdump object pathname (target-fasl-format))
       (fasdump object pathname #t)))
 
 (define (compiler-output->procedure scode environment)

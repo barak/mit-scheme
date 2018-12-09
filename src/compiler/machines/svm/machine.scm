@@ -32,7 +32,7 @@ USA.
 ;;;; Architecture Parameters
 
 ;; XXX Invent an svm1 fasdump format.
-(define (target-fasdump-format) fasdump-format:amd64) ;XXX
+(define (target-fasl-format) fasl-format:amd64) ;XXX
 
 (define use-pre/post-increment? #t)
 (define-integrable endianness 'LITTLE)

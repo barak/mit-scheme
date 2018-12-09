@@ -397,14 +397,17 @@ USA.
   (files "base/fasdump")
   (parent ())			       	;** This code should be portable.
   (export (compiler)
-	  fasdump-format:alpha
-	  fasdump-format:amd64
-	  fasdump-format:arm32
-	  fasdump-format:i386
-	  fasdump-format:mips32be
-	  fasdump-format:mips32le
-	  fasdump-format:ppc32
-	  fasdump-format:sparc32
+	  fasl-format:aarch64be
+	  fasl-format:aarch64le
+	  fasl-format:alpha
+	  fasl-format:amd64
+	  fasl-format:arm32be
+	  fasl-format:arm32le
+	  fasl-format:i386
+	  fasl-format:mips32be
+	  fasl-format:mips32le
+	  fasl-format:ppc32
+	  fasl-format:sparc32
 	  portable-fasdump))
 
 (define-package (compiler constraints)

@@ -138,24 +138,24 @@ USA.
 (define assert-equal-nan-scode
   (simple-binary-assertion equal-nan-scode? #f))
 
-(define fasdump-formats
-  `(("aarch64le" ,fasdump-format:aarch64le)
-    ("aarch64be" ,fasdump-format:aarch64be)
-    ("alpha" ,fasdump-format:alpha)
-    ("armbe" ,fasdump-format:arm32be)
-    ("armle" ,fasdump-format:arm32le)
-    ("ia-32" ,fasdump-format:i386)
-    ("mipsbe" ,fasdump-format:mips32be)
-    ("mipsle" ,fasdump-format:mips32le)
-    ("ppc32" ,fasdump-format:ppc32)
-    ("x86-64" ,fasdump-format:amd64)))
+(define fasl-formats
+  `(("aarch64le" ,fasl-format:aarch64le)
+    ("aarch64be" ,fasl-format:aarch64be)
+    ("alpha" ,fasl-format:alpha)
+    ("armbe" ,fasl-format:arm32be)
+    ("armle" ,fasl-format:arm32le)
+    ("ia-32" ,fasl-format:i386)
+    ("mipsbe" ,fasl-format:mips32be)
+    ("mipsle" ,fasl-format:mips32le)
+    ("ppc32" ,fasl-format:ppc32)
+    ("x86-64" ,fasl-format:amd64)))
 
-(define (host-fasdump-format)
+(define (host-fasl-format)
   (define (try key)
     (any (lambda (format)
            (and (string-ci=? (car format) key)
                 (cadr format)))
-         fasdump-formats))
+         fasl-formats))
   (or (try microcode-id/machine-type)
       (try
        (string-append microcode-id/machine-type
@@ -298,7 +298,7 @@ USA.
     (,(make-scode-the-environment))
     (,(make-scode-variable 'foo)))
   (lambda (object)
-    (let ((format (host-fasdump-format)))
+    (let ((format (host-fasl-format)))
       (assert format '(unknown host fasdump format))
       (with-test-properties
           (lambda ()

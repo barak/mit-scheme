@@ -28,10 +28,10 @@ USA.
 
 ;;;; Fasdump formats
 
-(define-structure (fasdump-format
+(define-structure (fasl-format
                    (safe-accessors)
                    (conc-name format.)
-                   (keyword-constructor make-fasdump-format))
+                   (keyword-constructor make-fasl-format))
   (version #f read-only #t)
   (architecture #f read-only #t)
   (marker #f read-only #t)
@@ -50,9 +50,9 @@ USA.
   (write-bignum-digit #f read-only #t)
   (write-float #f read-only #t))
 
-(define (make-std-fasdump-format architecture bytes-per-word
+(define (make-std-fasl-format architecture bytes-per-word
           write-word write-untagged-word write-bignum-digit write-float)
-  (make-fasdump-format
+  (make-fasl-format
    'VERSION             10              ;FASL_VERSION_C_CODE
    'ARCHITECTURE        architecture
    'MARKER              (do ((i 0 (+ i 1)) ;#xfafafa...
@@ -73,33 +73,33 @@ USA.
    'WRITE-BIGNUM-DIGIT  write-bignum-digit
    'WRITE-FLOAT         write-float))
 
-(define (make-std32be-fasdump-format architecture)
-  (make-std-fasdump-format architecture 4
-                           write-std32be-word
-                           write-std32be-untagged-word
-                           write-std32be-bignum-digit
-                           write-ieee754-binary64-be))
+(define (make-std32be-fasl-format architecture)
+  (make-std-fasl-format architecture 4
+                        write-std32be-word
+                        write-std32be-untagged-word
+                        write-std32be-bignum-digit
+                        write-ieee754-binary64-be))
 
-(define (make-std32le-fasdump-format architecture)
-  (make-std-fasdump-format architecture 4
-                           write-std32le-word
-                           write-std32le-untagged-word
-                           write-std32le-bignum-digit
-                           write-ieee754-binary64-le))
+(define (make-std32le-fasl-format architecture)
+  (make-std-fasl-format architecture 4
+                        write-std32le-word
+                        write-std32le-untagged-word
+                        write-std32le-bignum-digit
+                        write-ieee754-binary64-le))
 
-(define (make-std64be-fasdump-format architecture)
-  (make-std-fasdump-format architecture 8
-                           write-std64be-word
-                           write-std64be-untagged-word
-                           write-std64be-bignum-digit
-                           write-ieee754-binary64-be))
+(define (make-std64be-fasl-format architecture)
+  (make-std-fasl-format architecture 8
+                        write-std64be-word
+                        write-std64be-untagged-word
+                        write-std64be-bignum-digit
+                        write-ieee754-binary64-be))
 
-(define (make-std64le-fasdump-format architecture)
-  (make-std-fasdump-format architecture 8
-                           write-std64le-word
-                           write-std64le-untagged-word
-                           write-std64le-bignum-digit
-                           write-ieee754-binary64-le))
+(define (make-std64le-fasl-format architecture)
+  (make-std-fasl-format architecture 8
+                        write-std64le-word
+                        write-std64le-untagged-word
+                        write-std64le-bignum-digit
+                        write-ieee754-binary64-le))
 
 ;;;; Bits
 
@@ -211,21 +211,21 @@ USA.
 
 ;;;;; Known formats
 
-(define fasdump-format:i386     (make-std32le-fasdump-format  6))
-(define fasdump-format:sparc32  (make-std32le-fasdump-format 14))
-(define fasdump-format:mips32be (make-std32be-fasdump-format 15))
-(define fasdump-format:mips32le (make-std32le-fasdump-format 15))
-(define fasdump-format:alpha    (make-std64le-fasdump-format 18))
-(define fasdump-format:ppc32    (make-std32be-fasdump-format 20))
-(define fasdump-format:amd64    (make-std64le-fasdump-format 21))
-(define fasdump-format:arm32le  (make-std32le-fasdump-format 24))
-(define fasdump-format:arm32be  (make-std32le-fasdump-format 24))
-(define fasdump-format:aarch64le (make-std64le-fasdump-format 25))
-(define fasdump-format:aarch64be (make-std64be-fasdump-format 25))
+(define fasl-format:i386     (make-std32le-fasl-format  6))
+(define fasl-format:sparc32  (make-std32le-fasl-format 14))
+(define fasl-format:mips32be (make-std32be-fasl-format 15))
+(define fasl-format:mips32le (make-std32le-fasl-format 15))
+(define fasl-format:alpha    (make-std64le-fasl-format 18))
+(define fasl-format:ppc32    (make-std32be-fasl-format 20))
+(define fasl-format:amd64    (make-std64le-fasl-format 21))
+(define fasl-format:arm32le  (make-std32le-fasl-format 24))
+(define fasl-format:arm32be  (make-std32le-fasl-format 24))
+(define fasl-format:aarch64le (make-std64le-fasl-format 25))
+(define fasl-format:aarch64be (make-std64be-fasl-format 25))
 
 #;
-(define fasdump-format:pdp10
-  (make-fasdump-format
+(define fasl-format:pdp10
+  (make-fasl-format
    'VERSION             10              ;FASL_VERSION_C_CODE
    'ARCHITECTURE        1
    'BITS-PER-TYPE       6

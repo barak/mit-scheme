@@ -31,7 +31,7 @@ USA.
 
 ;;;; Architecture Parameters
 
-(define (target-fasdump-format) fasdump-format:amd64)
+(define (target-fasl-format) fasl-format:amd64)
 
 (define use-pre/post-increment? false)
 (define-integrable endianness 'LITTLE)
