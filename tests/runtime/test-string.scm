@@ -3079,7 +3079,7 @@ USA.
 
 (define-test 'string-trim
   (lambda ()
-    (define-integrable = assert-string=)
+    (define-integrable (= expected value) (assert-string= value expected))
     (= "foo" (string-trim "foo   "))
     (= "foo" (string-trim "   foo"))
     (= "foo" (string-trim "   foo   "))
@@ -3091,3 +3091,63 @@ USA.
     (= "foo" (string-trim "aaafooaaa" (char-set #\f #\o)))
     (= "fooaaa" (string-trim-left "aaafooaaa" (char-set #\f #\o)))
     (= "aaafoo" (string-trim-right "aaafooaaa" (char-set #\f #\o)))))
+
+(define (string-copy!:all-indices to from)
+  (let ((to-length (string-length to))
+	(from-limit (+ (string-length from) 1)))
+    (append-map (lambda (s+e)
+		  (map (lambda (at)
+			 (cons at s+e))
+		       (iota (- to-length (- (cadr s+e) (car s+e))))))
+		(append-map (lambda (start)
+			      (map (lambda (end)
+				     (list start end))
+				   (iota (- from-limit start) start)))
+			    (iota from-limit)))))
+
+(define-test 'string-copy!:different-strings
+  (let ((s1 "abcdefghijklmnopqrstuvwxyz")
+	(s2 "0123456789"))
+    (map (lambda (indices)
+	   (let ((at (car indices))
+		 (start (cadr indices))
+		 (end (caddr indices)))
+	     (lambda ()
+	       (let ((sut (string-copy s1)))
+		 (string-copy! sut at s2 start end)
+		 (assert-string= sut
+				 (string-copy!:predict s1 at s2 start end)
+				 'expression
+				 `(string-copy! ,s1 ,at ,s2 ,start ,end))))))
+	 (string-copy!:all-indices s1 s2))))
+
+(define-test 'string-copy!:same-string
+  (let ((s1 "abcdefghijklmnopqrstuvwxyz"))
+    (map (lambda (indices)
+	   (let ((at (car indices))
+		 (start (cadr indices))
+		 (end (caddr indices)))
+	     (let ((expr `(string-copy! ,s1 ,at ,s1 ,start ,end)))
+	       (lambda ()
+		 (let ((sut (string-copy s1)))
+		   (string-copy! sut at sut start end)
+		   (assert-string= sut
+				   (string-copy!:predict s1 at s1 start end)
+				   'expression expr
+				   'expect-failure?
+				   (and (> at start)
+					(< at end))))))))
+	 (string-copy!:all-indices s1 s1))))
+
+(define (maybe-expect-failure expect-failure? body)
+  (if expect-failure?
+      (expect-failure body)
+      (body)))
+
+(define (string-copy!:predict s1 at s2 #!optional start end)
+  (list->string
+   (let ((l1 (string->list s1))
+	 (l2 (string->list s2 start end)))
+     (append (list-head l1 at)
+	     l2
+	     (list-tail l1 (+ at (length l2)))))))
