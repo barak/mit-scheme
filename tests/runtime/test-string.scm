@@ -3133,10 +3133,7 @@ USA.
 		   (string-copy! sut at sut start end)
 		   (assert-string= sut
 				   (string-copy!:predict s1 at s1 start end)
-				   'expression expr
-				   'expect-failure?
-				   (and (> at start)
-					(< at end))))))))
+				   'expression expr))))))
 	 (string-copy!:all-indices s1 s1))))
 
 (define (maybe-expect-failure expect-failure? body)

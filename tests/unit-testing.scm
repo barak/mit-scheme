@@ -409,8 +409,8 @@ USA.
 (define (%assert predicate value description properties)
   (apply maybe-fail
 	 (predicate value)
-	     'result-object value
-	     'expectation-description description
+	 'result-object value
+	 'expectation-description description
 	 properties)
   (assertion-index (+ (assertion-index) 1)))
 
@@ -428,12 +428,12 @@ USA.
 			     (list condition-type:error)
 			     condition-types)))
     (let ((result
-    (call-with-current-continuation
-     (lambda (k)
+	   (call-with-current-continuation
+	     (lambda (k)
 	       (cons #f
-	      (bind-condition-handler
-		  condition-types
-		  (lambda (condition)
+		     (bind-condition-handler
+			 condition-types
+			 (lambda (condition)
 			   (k (cons #t condition)))
 		       thunk))))))
       (apply maybe-fail
