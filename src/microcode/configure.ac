@@ -861,7 +861,7 @@ c)
     AUX_PROGRAMS="gen-nonce extract-liarc-decls"
     INSTALL_INCLUDE=install-include
     ;;
-svm1)
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
     ;;
 *)
@@ -880,10 +880,18 @@ if test x"${mit_scheme_compiler_target}" = xc; then
     AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
 fi
 
+case ${mit_scheme_native_code} in
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
+    cmpintmd=svm1
+    ;;
+*)
+    cmpintmd=${mit_scheme_native_code}
+    ;;
+esac
 AC_CONFIG_LINKS([
-    cmpintmd.h:cmpintmd/${mit_scheme_native_code}.h
-    cmpintmd.c:cmpintmd/${mit_scheme_native_code}.c
-    cmpintmd-config.h:cmpintmd/${mit_scheme_native_code}-config.h
+    cmpintmd.h:cmpintmd/${cmpintmd}.h
+    cmpintmd.c:cmpintmd/${cmpintmd}.c
+    cmpintmd-config.h:cmpintmd/${cmpintmd}-config.h
     ])
 
 for base in ${OPTIONAL_BASES}; do

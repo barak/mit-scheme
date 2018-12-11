@@ -51,6 +51,22 @@ USA.
 
 typedef SCHEME_OBJECT word_t;	/* convenience abbreviation */
 
+#if (SIZEOF_UNSIGNED_LONG == 4)
+#  ifdef WORDS_BIGENDIAN
+const fasl_arch_t svm_fasl_arch = FASL_SVM1_32BE;
+#  else
+const fasl_arch_t svm_fasl_arch = FASL_SVM1_32LE;
+#  endif
+#elif (SIZEOF_UNSIGNED_LONG == 8)
+#  ifdef WORDS_BIGENDIAN
+const fasl_arch_t svm_fasl_arch = FASL_SVM1_64BE;
+#  else
+const fasl_arch_t svm_fasl_arch = FASL_SVM1_64LE;
+#  endif
+#else
+#error Neither 32-bit nor 64-bit, what is this, a PDP-10?
+#endif
+
 #define N_WORD_REGISTERS 0x100
 #define N_FLOAT_REGISTERS 0x100
 

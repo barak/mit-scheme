@@ -36,6 +36,8 @@ USA.
 	 "base/sets"			;set abstraction
 	 "base/mvalue"			;multiple-value support
 	 "base/scode"			;SCode abstraction
+	 "machines/svm/endian"		;byte order
+	 "machines/svm/wordsize"	;word size
 	 "machines/svm/machine"		;machine dependent stuff
 	 "back/asutl"			;back-end odds and ends
 	 "base/utils"			;odds and ends
@@ -394,6 +396,10 @@ USA.
 	  fasl-format:mips32le
 	  fasl-format:ppc32
 	  fasl-format:sparc32
+	  fasl-format:svm1-32be
+	  fasl-format:svm1-32le
+	  fasl-format:svm1-64be
+	  fasl-format:svm1-64le
 	  portable-fasdump))
 
 (define-package (compiler constraints)

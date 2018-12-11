@@ -150,17 +150,20 @@ c)
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
     IF_LIARC=
     ;;
-svm1)
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     IF_SVM=
     ;;
 esac
 
 MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
-if test x"${mit_scheme_compiler_target}" = xsvm1; then
+case ${mit_scheme_compiler_target} in
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     IF_SVM_COMPILER=
-else
+    ;;
+*)
     IF_SVM_COMPILER='#!svm compiler: '
-fi
+    ;;
+esac
 
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
@@ -264,12 +267,11 @@ directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code
 fi
 
 # A 32bit host running LIAR/svm needs a large heap.
-if test x"${mit_scheme_native_code}" = xsvm1; then
-    AC_CHECK_SIZEOF([unsigned long])
-    if test ${ac_cv_sizeof_unsigned_long} -eq 4; then
-	HOST_COMPILER_HEAP="--heap 10000"
-    fi
-fi
+case ${mit_scheme_native_code} in
+svm1-32be|svm1-32le)
+    HOST_COMPILER_HEAP="--heap 10000"
+    ;;
+esac
 
 if test x"${enable_x11}" = x && test x"${enable_default_plugins}" = xyes; then
     AC_PATH_X

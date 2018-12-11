@@ -1,4 +1,4 @@
-/* -*-C-*-
+#| -*-Scheme-*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -22,15 +22,11 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
-*/
+|#
 
-#ifndef SCM_CMPINTMD_CONFIG_H_INCLUDED
-#define SCM_CMPINTMD_CONFIG_H_INCLUDED 1
+;;;; Machine Model for SVM: Word Size
+;;; package: (compiler)
 
-#define COMPILER_PROCESSOR_TYPE COMPILER_SVM_TYPE
-#define CC_IS_SVM 1
-#define CC_IS_GENERIC 1
-
-extern const fasl_arch_t svm_fasl_arch;
-
-#endif /* !SCM_CMPINTMD_CONFIG_H_INCLUDED */
+(declare (usual-integrations))
+
+(define-integrable scheme-object-width 32)

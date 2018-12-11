@@ -36,10 +36,11 @@ if test x"${TARGET_ARCH}" = xc; then
     exit 0
 fi
 
-if test x"${TARGET_ARCH}" = xsvm1; then
+case ${TARGET_ARCH} in
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     echo svm
     exit 0
-fi
+esac
 
 if test -d "${HERE}/machines/${TARGET_ARCH}"; then
     echo "${TARGET_ARCH}"

@@ -55,3 +55,22 @@ for FN in ${LINKS}; do
     CMDS="rm -f ${FN} && ln -s machine/${FN} ${FN}"
     echo "${CMDS}"; eval "${CMDS}"
 done
+
+case ${TARGET_ARCH} in
+svm1-32be|svm1-32le)
+    ln -sf wordsize-32.scm machine/wordsize.scm
+    ;;
+svm1-64be|svm1-64le)
+    ln -sf wordsize-64.scm machine/wordsize.scm
+    ;;
+esac
+
+case ${TARGET_ARCH} in
+svm1-32be|svm1-64be)
+    ln -sf big-endian.scm machine/endian.scm
+    ;;
+svm1-32le|svm1-64le)
+    ln -sf little-endian.scm machine/endian.scm
+    ;;
+esac
+

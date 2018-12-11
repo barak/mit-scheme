@@ -394,6 +394,10 @@ USA.
 	  fasl-format:mips32le
 	  fasl-format:ppc32
 	  fasl-format:sparc32
+	  fasl-format:svm1-32be
+	  fasl-format:svm1-32le
+	  fasl-format:svm1-64be
+	  fasl-format:svm1-64le
 	  portable-fasdump))
 
 (define-package (compiler constraints)

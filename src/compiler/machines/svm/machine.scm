@@ -31,15 +31,24 @@ USA.
 
 ;;;; Architecture Parameters
 
-;; XXX Invent an svm1 fasdump format.
-(define (target-fasl-format) fasl-format:amd64) ;XXX
+(define (target-fasl-format)
+  (cond ((and (eq? endianness 'BIG) (= scheme-object-width 32))
+	 fasl-format:svm1-32be)
+	((and (eq? endianness 'LITTLE) (= scheme-object-width 32))
+	 fasl-format:svm1-32le)
+	((and (eq? endianness 'BIG) (= scheme-object-width 64))
+	 fasl-format:svm1-64be)
+	((and (eq? endianness 'LITTLE) (= scheme-object-width 64))
+	 fasl-format:svm1-64le)
+	(else
+	 (error "Unknown byte order and object width:"
+		`(,endianness ENDIAN)
+		`(,scheme-object-width BITS)))))
 
 (define use-pre/post-increment? #t)
-(define-integrable endianness 'LITTLE)
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-type-width 6)
 (define-integrable scheme-type-limit #x40)
-(define-integrable scheme-object-width (if (fix:fixnum? #x100000000) 64 32))
 
 (define-integrable scheme-datum-width
   (- scheme-object-width scheme-type-width))

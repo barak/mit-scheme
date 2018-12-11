@@ -1,4 +1,6 @@
 assembler-db.scm
 assembler-rules.exp
+endian.scm
 svm1-defns.h
 svm1-opcodes.scm
+wordsize.scm

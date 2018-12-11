@@ -75,6 +75,8 @@ USA.
 	((access initialize-package! environment)))
       (sf-and-load "base/pmlook")
       (sf-and-load "base/pmpars")
+      (sf-and-load "machines/svm/endian")
+      (sf-and-load "machines/svm/wordsize")
       (sf-and-load "machines/svm/machine")
       (sf-and-load "back/syntax")
       (sf-and-load "base/scode")

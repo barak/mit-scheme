@@ -349,7 +349,8 @@ USA.
 			   "object" "proced" "rvalue"
 			   "scode" "subprb" "utils"))
 	 (machine-base
-	  (append (filename/append "machines/svm" "machine")
+	  (append (filename/append "machines/svm" "endian" "wordsize"
+				   "machine")
 		  (filename/append "back" "asutl")))
 	 (rtl-base
 	  (filename/append "rtlbase"

@@ -28,6 +28,8 @@ USA.
   (lambda ()
     (let ((environment (make-top-level-environment)))
       (load "../../base/macros" environment)
+      (load "endian" environment)
+      (load "wordsize" environment)
       (load "machine" environment)
       ;; Load assembler-compiler before -runtime.
       ;; It needs to create RULE-MATCHER anti-syntax.
