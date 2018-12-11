@@ -583,8 +583,12 @@ cross-target: stamp_cross-finished lib/runtime.com lib/all.com
 stamp_cross-finished: stamp_cross-host microcode/scheme
 	(echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
-	 echo '  ((access finish-cross-compilation:files env) ".."))') \
+	 echo '  ((access finish-cross-compilation:files env) "."))') \
 	| (cd runtime && ../run-build --batch-mode --fasl make.bin)
+	(echo '(let ((env (->environment (quote (runtime)))))' && \
+	 echo '  (load "../compiler/base/crsend" env)' && \
+	 echo '  ((access finish-cross-compilation:files env) ".."))') \
+	| (cd runtime && ../run-build --batch-mode --fasl make.com)
 	(echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
 	 echo '  ((access finish-cross-compilation:info-files env) ".."))') \
