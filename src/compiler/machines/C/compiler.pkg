@@ -396,7 +396,7 @@ USA.
 (define-package (compiler portable-fasdump)
   (files "base/fasdump")
   (parent ())			       	;** This code should be portable.
-  (export (compiler)
+  (export ()
 	  fasl-format:aarch64be
 	  fasl-format:aarch64le
 	  fasl-format:alpha

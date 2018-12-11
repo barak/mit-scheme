@@ -585,6 +585,16 @@ cross-host: compile-ssp
 cross-host: compile-star-parser
 cross-host: compile-win32
 cross-host: compile-xml
+	@(echo '(begin' && \
+	  echo '  (load "etc/crossbin")' && \
+	  echo '  (convert fasl-format:@mit_scheme_native_code@' && \
+	  echo '    "compiler" "compiler/base" "compiler/back"' && \
+	  echo '    "compiler/fgopt" "compiler/fggen" "compiler/fgopt"' && \
+	  echo '    "compiler/machine" "compiler/rtlbase"' && \
+	  echo '    "compiler/rtlgen" "compiler/rtlopt"' && \
+	  echo '    "cref" "ffi" "runtime" "sf" "sos" "ssp"' && \
+	  echo '    "ssp" "star-parser" "win32" "xml"))') \
+	| $(HOST_COMPILER)
 	echo "done" > stamp_$@
 
 .PHONY: cross-target
