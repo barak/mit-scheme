@@ -35,6 +35,11 @@ USA.
              (apply procedure arguments)))
          cases)))
 
+(define (with-expected-failure xfail body)
+  (if (default-object? xfail)
+      (body)
+      (xfail body)))
+
 (define (equal-nan-scode? x y)
   (let loop ((x x) (y y))
     (cond ((and (flo:flonum? x) (flo:nan? x))
@@ -132,6 +137,8 @@ USA.
                       (scode-variable-name y))))
           (else
            (equal? x y)))))
+
+(define trap-max-immediate 9)           ;XXX
 
 (define-comparator equal-nan-scode? 'equal-nan-scode?)
 
@@ -249,7 +256,29 @@ USA.
     (#\U+0)
     (#\0)
     (#\U+1000)
+    (1)
+    (10)
+    (100)
+    (1000)
+    (10000)
+    (100000)
+    (1000000)
+    (10000000)
+    (100000000)
+    (1000000000)
+    (10000000000)
+    (100000000000)
+    (1000000000000)
+    (10000000000000)
+    (100000000000000)
+    (1000000000000000)
+    (10000000000000000)
+    (100000000000000000)
+    (1000000000000000000 ,expect-failure)
+    (10000000000000000000 ,expect-failure)
+    (100000000000000000000)
     (,(expt 2 100))
+    (,(expt 3 100))
     (-inf.0)
     (-123.)
     (,(flo:negate flo:smallest-positive-subnormal))
@@ -297,22 +326,24 @@ USA.
              (make-scode-assignment 'bar 'baz))))
     (,(make-scode-the-environment))
     (,(make-scode-variable 'foo)))
-  (lambda (object)
+  (lambda (object #!optional xfail)
     (let ((format (host-fasl-format)))
       (assert format '(unknown host fasdump format))
-      (with-test-properties
-          (lambda ()
-            (call-with-temporary-file-pathname
-              (lambda (pathname)
-                (portable-fasdump object pathname format)
-                (let ((object*
-                       (map-reference-trap
-                        (lambda ()
-                          (fasload pathname)))))
-                  (if (not (equal-nan-scode? object object*))
-                      (begin
-                        (pp 'fail)
-                        (pp object)
-                        (pp object*)))
-                  (assert-equal-nan-scode (fasload pathname) object)))))
-        'SEED object))))
+      (with-expected-failure xfail
+        (lambda ()
+          (with-test-properties
+              (lambda ()
+                (call-with-temporary-file-pathname
+                  (lambda (pathname)
+                    (portable-fasdump object pathname format)
+                    (let ((object*
+                           (map-reference-trap
+                            (lambda ()
+                              (fasload pathname)))))
+                      (if (not (equal-nan-scode? object object*))
+                          (begin
+                            (pp 'fail)
+                            (pp object)
+                            (pp object*)))
+                      (assert-equal-nan-scode (fasload pathname) object)))))
+            'SEED object))))))
