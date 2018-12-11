@@ -210,9 +210,15 @@ all-runtime: compile-runtime
 @IF_LIARC@all-runtime: bundle-runtime
 
 .PHONY: compile-runtime
-compile-runtime:
+compile-runtime: syntax-runtime
 	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.sf") (load "runtime.cbf")))') \
+	 echo '  (lambda () (load "runtime.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-runtime
+syntax-runtime:
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.sf")))') \
 	| $(HOST_COMPILER)
 
 .PHONY: bundle-runtime
@@ -227,9 +233,15 @@ all-sf: compile-sf
 @IF_LIARC@all-sf: bundle-sf
 
 .PHONY: compile-sf
-compile-sf:
+compile-sf: syntax-sf
 	(echo '(with-working-directory-pathname "sf"' && \
-	 echo '  (lambda () (load "sf.sf") (load "sf.cbf")))') \
+	 echo '  (lambda () (load "sf.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-sf
+syntax-sf: syntax-runtime
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.sf")))') \
 	| $(HOST_COMPILER)
 
 .PHONY: bundle-sf
@@ -247,7 +259,8 @@ all-compiler: compile-compiler
 @IF_LIARC@all-compiler: bundle-compiler
 
 .PHONY: syntax-compiler
-syntax-compiler: compile-sf
+syntax-compiler: syntax-runtime
+syntax-compiler: syntax-sf
 @IF_SVM_COMPILER@syntax-compiler: compiler/machines/svm/svm1-defns.h
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda ()' && \
@@ -322,9 +335,15 @@ all-cref: compile-cref
 @IF_LIARC@all-cref: bundle-cref
 
 .PHONY: compile-cref
-compile-cref: compile-runtime
+compile-cref: syntax-cref
 	(echo '(with-working-directory-pathname "cref"' && \
-	 echo '  (lambda () (load "cref.sf") (load "cref.cbf")))') \
+	 echo '  (lambda () (load "cref.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-cref
+syntax-cref: syntax-runtime
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.sf")))') \
 	| $(HOST_COMPILER)
 
 .PHONY: bundle-cref
@@ -342,10 +361,14 @@ all-star-parser: compile-star-parser
 @IF_LIARC@all-star-parser: bundle-star-parser
 
 .PHONY: compile-star-parser
-compile-star-parser: compile-runtime
+compile-star-parser: syntax-runtime
 	(echo '(with-working-directory-pathname "star-parser"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+
+# No separate syntax step; compile step generates .pkd file.
+.PHONY: syntax-star-parser
+syntax-star-parser: compile-star-parser
 
 .PHONY: bundle-star-parser
 bundle-star-parser: liarc-bundle-tools
@@ -366,7 +389,7 @@ all-ffi: compile-ffi
 @IF_LIARC@all-ffi: bundle-ffi
 
 .PHONY: compile-ffi
-compile-ffi: compile-runtime
+compile-ffi: syntax-runtime
 	(echo '(with-working-directory-pathname "ffi"' && \
 	 echo '  (lambda () (load "compile.scm")))') \
 	| $(HOST_COMPILER)
@@ -386,10 +409,14 @@ all-sos: compile-sos
 @IF_LIARC@all-sos: bundle-sos
 
 .PHONY: compile-sos
-compile-sos: compile-runtime
+compile-sos: syntax-runtime
 	(echo '(with-working-directory-pathname "sos"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+
+# No separate syntax step; compile step generates .pkd file.
+.PHONY: syntax-sos
+syntax-sos: compile-sos
 
 .PHONY: bundle-sos
 bundle-sos: liarc-bundle-tools
@@ -406,7 +433,8 @@ all-ssp: compile-ssp
 @IF_LIARC@all-ssp: bundle-ssp
 
 .PHONY: compile-ssp
-compile-ssp: compile-runtime compile-xml
+compile-ssp: syntax-runtime
+compile-ssp: syntax-xml
 	(echo '(with-working-directory-pathname "ssp"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
@@ -425,9 +453,15 @@ bundle-ssp: ssp/ssp-unx.c
 all-win32: compile-win32
 
 .PHONY: compile-win32
-compile-win32: compile-runtime
+compile-win32: syntax-win32
 	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda () (load "win32.sf") (load "win32.cbf")))') \
+	 echo '  (lambda () (load "win32.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-win32
+syntax-win32: syntax-runtime
+	(echo '(with-working-directory-pathname "win32"' && \
+	 echo '  (lambda () (load "win32.sf")))') \
 	| $(HOST_COMPILER)
 
 ################
@@ -439,10 +473,16 @@ all-xml: compile-xml
 @IF_LIARC@all-xml: bundle-xml
 
 .PHONY: compile-xml
-compile-xml: compile-runtime compile-sos compile-star-parser
+compile-xml: syntax-runtime
+compile-xml: syntax-sos
+compile-xml: syntax-star-parser
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+
+# No separate syntax step; compile step generates .pkd file.
+.PHONY: syntax-xml
+syntax-xml: compile-xml
 
 .PHONY: bundle-xml
 bundle-xml: liarc-bundle-tools
