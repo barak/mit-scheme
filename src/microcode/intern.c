@@ -31,12 +31,12 @@ USA.
 #include "trap.h"
 
 static SCHEME_OBJECT *
-find_symbol_internal (unsigned long length, const char * string)
+find_symbol_internal (unsigned long length, const char * name)
 {
   SCHEME_OBJECT obarray = (VECTOR_REF (fixed_objects, OBARRAY));
   SCHEME_OBJECT * bucket
     = (VECTOR_LOC (obarray,
-		   ((memory_hash (length, string))
+		   ((memory_hash (length, name))
 		    % (VECTOR_LENGTH (obarray)))));
   while (true)
     {
@@ -46,9 +46,9 @@ find_symbol_internal (unsigned long length, const char * string)
 	  SCHEME_OBJECT symbol = (PAIR_CAR (list));
           if (INTERNED_SYMBOL_P (symbol))
             {
-              SCHEME_OBJECT name = (MEMORY_REF (symbol, SYMBOL_NAME));
-              if (((STRING_LENGTH (name)) == length)
-                  && ((memcmp ((STRING_POINTER (name)), string, length))
+              SCHEME_OBJECT name2 = (MEMORY_REF (symbol, SYMBOL_NAME));
+              if (((STRING_LENGTH (name2)) == length)
+                  && ((memcmp ((STRING_POINTER (name2)), name, length))
                       == 0))
                 return (PAIR_CAR_LOC (list));
               else
@@ -65,7 +65,7 @@ find_symbol_internal (unsigned long length, const char * string)
 static void
 replace_symbol_bucket_type (SCHEME_OBJECT symbol, unsigned int type)
 {
-  SCHEME_OBJECT obarray, string, *bucket;
+  SCHEME_OBJECT obarray, name, *bucket;
   long length;
   const char *char_pointer;
 
@@ -73,9 +73,9 @@ replace_symbol_bucket_type (SCHEME_OBJECT symbol, unsigned int type)
   assert (INTERNED_SYMBOL_P (symbol));
 
   obarray = (VECTOR_REF (fixed_objects, OBARRAY));
-  string = (MEMORY_REF (symbol, SYMBOL_NAME));
-  length = (STRING_LENGTH (string));
-  char_pointer = (STRING_POINTER (string));
+  name = (MEMORY_REF (symbol, SYMBOL_NAME));
+  length = (STRING_LENGTH (name));
+  char_pointer = (STRING_POINTER (name));
   bucket
     = (VECTOR_LOC (obarray,
                    ((memory_hash (length, char_pointer))
@@ -115,13 +115,13 @@ weaken_symbol (SCHEME_OBJECT symbol)
 }
 
 static SCHEME_OBJECT
-make_symbol (SCHEME_OBJECT string, SCHEME_OBJECT * cell)
+make_symbol (SCHEME_OBJECT name, SCHEME_OBJECT * cell)
 {
   Primitive_GC_If_Needed (4);
   {
     SCHEME_OBJECT symbol = (MAKE_POINTER_OBJECT (TC_INTERNED_SYMBOL, Free));
     Free += 2;
-    MEMORY_SET (symbol, SYMBOL_NAME, string);
+    MEMORY_SET (symbol, SYMBOL_NAME, name);
     MEMORY_SET (symbol, SYMBOL_GLOBAL_VALUE, UNBOUND_OBJECT);
     (*cell) = (system_pair_cons (TC_WEAK_CONS, symbol, EMPTY_LIST));
     return (symbol);
@@ -129,37 +129,37 @@ make_symbol (SCHEME_OBJECT string, SCHEME_OBJECT * cell)
 }
 
 SCHEME_OBJECT
-find_symbol (unsigned long length, const char * string)
+find_symbol (unsigned long length, const char * name)
 {
-  SCHEME_OBJECT * cell = (find_symbol_internal (length, string));
+  SCHEME_OBJECT * cell = (find_symbol_internal (length, name));
   return ((INTERNED_SYMBOL_P (*cell)) ? (*cell) : SHARP_F);
 }
 
 SCHEME_OBJECT
-memory_to_symbol (unsigned long length, const void * string)
+memory_to_symbol (unsigned long length, const void * name)
 {
-  SCHEME_OBJECT * cell = (find_symbol_internal (length, string));
+  SCHEME_OBJECT * cell = (find_symbol_internal (length, name));
   return
     ((INTERNED_SYMBOL_P (*cell))
      ? (*cell)
-     : (make_symbol ((memory_to_string (length, string)), cell)));
+     : (make_symbol ((memory_to_bytevector (length, name)), cell)));
 }
 
 SCHEME_OBJECT
-char_pointer_to_symbol (const char * string)
+char_pointer_to_symbol (const char * name)
 {
-  return (memory_to_symbol ((strlen (string)), string));
+  return (memory_to_symbol ((strlen (name)), name));
 }
 
 SCHEME_OBJECT
-string_to_symbol (SCHEME_OBJECT string)
+string_to_symbol (SCHEME_OBJECT name)
 {
   SCHEME_OBJECT * cell
-    = (find_symbol_internal ((STRING_LENGTH (string)),
-			     (STRING_POINTER (string))));
+    = (find_symbol_internal ((STRING_LENGTH (name)),
+			     (STRING_POINTER (name))));
   return ((INTERNED_SYMBOL_P (*cell))
 	  ? (*cell)
-	  : (make_symbol (string, cell)));
+	  : (make_symbol (name, cell)));
 }
 
 SCHEME_OBJECT
@@ -173,6 +173,12 @@ intern_symbol (SCHEME_OBJECT symbol)
     return (*cell);
   else
     {
+      /* Eliminate legacy strings as names. */
+      if (LEGACY_STRING_P (name))
+	{
+	  name = (OBJECT_NEW_TYPE (TC_BYTEVECTOR, name));
+	  MEMORY_SET (symbol, SYMBOL_NAME, name);
+	}
       SCHEME_OBJECT result = (OBJECT_NEW_TYPE (TC_INTERNED_SYMBOL, symbol));
       (*cell) = (system_pair_cons (TC_WEAK_CONS, result, EMPTY_LIST));
       return (result);

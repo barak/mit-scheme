@@ -47,15 +47,18 @@ USA.
 (define-integrable (%make-char code bits)
   (integer->char (fix:or (fix:lsh bits 21) code)))
 
-(define (char-code char)
+(define-integrable (char-code char)
   (fix:and (char->integer char) #x1FFFFF))
 
-(define (char-bits char)
+(define-integrable (char-bits char)
   (fix:lsh (char->integer char) -21))
 
 (define (bitless-char? object)
   (and (char? object)
        (fix:< (char->integer object) char-code-limit)))
+
+(define (char->bitless-char char)
+  (integer->char (char-code char)))
 
 (define (char-bits-set? bits char)
   (guarantee-limited-index-fixnum bits char-bits-limit 'char-bits-set?)

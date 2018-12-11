@@ -29,14 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define-deferred char-set:numeric
-  (compute-char-set
-   (lambda (sv)
-     (eq? 'decimal (ucd-nt-value (integer->char sv))))))
-
-(define-deferred char-numeric?
-  (char-set-predicate char-set:numeric))
-
 (define-deferred char-set:alphanumeric
   (char-set-union char-set:alphabetic char-set:numeric))
 
@@ -62,11 +54,9 @@ USA.
   (char-set-invert char-set:whitespace))
 
 (define-deferred char-set:unicode
-  (compute-char-set
-   (lambda (cp)
-     (case (code-point-general-category cp)
-       ((other:surrogate other:not-assigned) #f)
-       (else #t)))))
+  (char-set-difference (char-set-invert (char-set))
+		       char-set:gc=other:surrogate
+		       char-set:gc=other:not-assigned))
 
 (define-deferred unicode-char?
   (char-set-predicate char-set:unicode))
@@ -104,45 +94,65 @@ USA.
        (else #f)))))
 
 (define-deferred char-set:symbol-constituent
-  (compute-char-set symbol-constituent?))
+  (char-set-difference
+   (char-set-union char-set:gc=letter:lowercase
+		   char-set:gc=letter:modifier
+		   char-set:gc=letter:other
+		   char-set:gc=letter:titlecase
+		   char-set:gc=letter:uppercase
+		   char-set:gc=mark:enclosing
+		   char-set:gc=mark:nonspacing
+		   char-set:gc=mark:spacing-combining
+		   char-set:gc=number:decimal-digit
+		   char-set:gc=number:letter
+		   char-set:gc=number:other
+		   char-set:gc=other:private-use
+		   char-set:gc=punctuation:connector
+		   char-set:gc=punctuation:dash
+		   char-set:gc=punctuation:other
+		   char-set:gc=symbol:currency
+		   char-set:gc=symbol:math
+		   char-set:gc=symbol:modifier
+		   char-set:gc=symbol:other
+		   (char-set #\x200c #\x200d))
+   (char-set #\" #\# #\' #\, #\; #\\ #\` #\|)))
 
 (define-deferred char-set:folded-symbol-constituent
   (char-set-difference char-set:symbol-constituent
 		       char-set:changes-when-case-folded))
 
 (define-deferred char-set:symbol-initial
-  (compute-char-set (lambda (sv) (eq? #t (symbol-constituent? sv)))))
+  (char-set-difference
+   char-set:symbol-constituent
+   (char-set-union char-set:gc=mark:spacing-combining
+		   char-set:gc=mark:enclosing
+		   char-set:gc=number:decimal-digit)))
 
 (define-deferred char-set:folded-symbol-initial
   (char-set-difference char-set:symbol-initial
 		       char-set:changes-when-case-folded))
 
 (define-deferred char-set:normal-printing
-  (compute-char-set
-   (lambda (sv)
-     (case (code-point-general-category sv)
-       ((letter:uppercase
-	 letter:lowercase
-	 letter:titlecase
-	 letter:modifier
-	 letter:other
-	 mark:nonspacing
-	 mark:spacing-combining
-	 mark:enclosing
-	 number:decimal-digit
-	 number:letter
-	 number:other
-	 punctuation:connector
-	 punctuation:dash
-	 punctuation:open
-	 punctuation:close
-	 punctuation:initial-quote
-	 punctuation:final-quote
-	 punctuation:other
-	 separator:space
-	 symbol:math
-	 symbol:currency
-	 symbol:modifier
-	 symbol:other)
-	#t)
-       (else #f)))))
+  (char-set-union char-set:gc=letter:uppercase
+		  char-set:gc=letter:lowercase
+		  char-set:gc=letter:titlecase
+		  char-set:gc=letter:modifier
+		  char-set:gc=letter:other
+		  char-set:gc=mark:nonspacing
+		  char-set:gc=mark:spacing-combining
+		  char-set:gc=mark:enclosing
+		  char-set:gc=number:decimal-digit
+		  char-set:gc=number:letter
+		  char-set:gc=number:other
+		  char-set:gc=punctuation:connector
+		  char-set:gc=punctuation:dash
+		  char-set:gc=punctuation:open
+		  char-set:gc=punctuation:close
+		  char-set:gc=punctuation:initial-quote
+		  char-set:gc=punctuation:final-quote
+		  char-set:gc=punctuation:other
+		  char-set:gc=separator:space
+		  char-set:gc=symbol:math
+		  char-set:gc=symbol:currency
+		  char-set:gc=symbol:modifier
+		  char-set:gc=symbol:other))

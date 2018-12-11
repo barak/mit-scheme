@@ -486,11 +486,10 @@ USA.
 	     (rcons start #x110000 inverse)
 	     inverse))))
 
-  (if (pair? ilist)
-      (if (fix:< 0 (car ilist))
-	  (loop 0 ilist '())
-	  (loop (cadr ilist) (cddr ilist) '()))
-      '()))
+  (if (or (not (pair? ilist))
+	  (fix:< 0 (car ilist)))
+      (loop 0 ilist '())
+      (loop (cadr ilist) (cddr ilist) '())))
 
 (define (char-set-union . char-sets)
   (char-set-union* char-sets))

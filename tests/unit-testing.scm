@@ -52,7 +52,7 @@ USA.
       (reverse! (registered-tests)))))
 
 (define (register-test name test)
-  (guarantee-test test 'REGISTER-TEST)
+  (guarantee-test test 'register-test)
   (registered-tests (cons (cons name test) (registered-tests)))
   unspecific)
 
@@ -207,10 +207,10 @@ USA.
   (not (cdr sub-test-result)))
 
 (define condition-type:failure
-  (make-condition-type 'FAILURE #f '(FAILURE) #f))
+  (make-condition-type 'failure #f '(failure) #f))
 
 (define condition-failure
-  (condition-accessor condition-type:failure 'FAILURE))
+  (condition-accessor condition-type:failure 'failure))
 
 (define-record-type <failure>
     (%make-failure alist)
@@ -230,11 +230,11 @@ USA.
 
 (define (failure-feature feature failure)
   (let ((variants
-	 (cons (cons feature 'PATTERN)
+	 (cons (cons feature 'pattern)
 	       (map (lambda (variant-type)
 		      (cons (symbol feature '- variant-type)
 			    variant-type))
-		    '(DESCRIPTION OBJECT)))))
+		    '(description object)))))
     ;; Return the first instance of any variant.
     ;; The result is tagged by the variant type.
     (find-map (lambda (p)
@@ -250,31 +250,34 @@ USA.
 	  (write-string "assertion " port)
 	  (write (cdr p) port)
 	  (write-string ": " port))))
-  (cond ((failure-property 'SEED failure)
+  (cond ((failure-property 'seed failure)
 	 => (lambda (p)
 	      (write-string " (seed " port)
 	      (write (cdr p) port)
 	      (write-string ") " port))))
-  (cond ((failure-property 'CONDITION failure)
+  (if (let ((p (failure-property 'expect-failure? failure)))
+	(and p (cdr p)))
+      (write-string "expected failure didn't happen: " port))
+  (cond ((failure-property 'condition failure)
 	 => (lambda (p)
-	      (let ((expr (failure-property 'EXPRESSION failure)))
+	      (let ((expr (failure-property 'expression failure)))
 		(if expr
 		    (begin
 		      (write-expr-property #f expr port)
 		      (write-char #\space port))))
 	      (write-string "failed with error: " port)
 	      (write-condition-report (cdr p) port)))
-	((failure-feature 'RESULT failure)
+	((failure-feature 'result failure)
 	 => (lambda (result)
 	      (write-string "value" port)
-	      (let ((expr (failure-property 'EXPRESSION failure)))
+	      (let ((expr (failure-property 'expression failure)))
 		(if expr
 		    (write-expr-property "of" expr port)))
 	      (write-feature "was" result port)
-	      (let ((expectation (failure-feature 'EXPECTATION failure)))
+	      (let ((expectation (failure-feature 'expectation failure)))
 		(if expectation
 		    (write-feature "but expected" expectation port)))))
-	((failure-property 'DESCRIPTION failure)
+	((failure-property 'description failure)
 	 => (lambda (p)
 	      (write-string (cdr p) port)))
 	(else
@@ -324,22 +327,19 @@ USA.
 
 ;;;; Assertions
 
-(define (run-sub-test thunk . properties)
+(define (run-sub-test thunk)
   (call-with-current-continuation
    (lambda (k)
      (parameterize ((assertion-index 1))
        (bind-condition-handlers
 	(list condition-type:failure
 	      (lambda (condition)
-		(k (extend-failure (condition-failure condition)
-				   properties)))
+		(k (condition-failure condition)))
 	      condition-type:error
 	      (lambda (condition)
 		(if (not (throw-test-errors?))
-		    (k (apply make-failure
-			      'condition condition
-			      'assertion-index (assertion-index)
-			      properties)))))
+		    (k (make-failure 'condition condition
+				     'assertion-index (assertion-index))))))
 	(lambda ()
 	  (thunk)
 	  #f))))))
@@ -355,8 +355,10 @@ USA.
 			     properties))))
 	 condition-type:error
 	 (lambda (condition)
-	   (if (not (throw-test-errors?))
-	       (apply fail 'CONDITION condition properties))))
+	   (apply maybe-fail
+		  (throw-test-errors?)
+		  'condition condition
+		  properties)))
    thunk))
 
 (define throw-test-errors? (make-settable-parameter #f))
@@ -378,17 +380,22 @@ USA.
 				     'assertion-index (assertion-index)
 				     plist))))))
 
+(define (maybe-fail satisfied? . plist)
+  (if (boolean=? satisfied?
+		 (get-keyword-value plist 'expect-failure? #f))
+      (apply fail plist)))
+
 (define (make-failure-condition continuation failure)
   (make-condition condition-type:failure
 		  continuation
-		  'BOUND-RESTARTS
-		  (list 'FAILURE failure)))
+		  'bound-restarts
+		  (list 'failure failure)))
 
 (define (remake-failure-condition condition failure)
   (make-condition condition-type:failure
 		  (condition/continuation condition)
 		  (condition/restarts condition)
-		  (list 'FAILURE failure)))
+		  (list 'failure failure)))
 
 (define-for-tests (value-assert predicate description value . properties)
   (%assert predicate value description properties))
@@ -400,11 +407,11 @@ USA.
 (define assertion-index (make-settable-parameter #f))
 
 (define (%assert predicate value description properties)
-  (if (not (predicate value))
-      (apply fail
-	     'result-object value
-	     'expectation-description description
-	     properties))
+  (apply maybe-fail
+	 (predicate value)
+	 'result-object value
+	 'expectation-description description
+	 properties)
   (assertion-index (+ (assertion-index) 1)))
 
 (define-for-tests assert-true
@@ -420,18 +427,20 @@ USA.
   (let ((condition-types (if (default-object? condition-types)
 			     (list condition-type:error)
 			     condition-types)))
-    (call-with-current-continuation
-     (lambda (k)
-       (apply fail
-	      'RESULT-OBJECT
-	      (bind-condition-handler
-		  condition-types
-		  (lambda (condition)
-		    condition		;ignore
-		    (k #f))
-		thunk)
-	      'EXPECTATION-OBJECT condition-types
-	      properties)))))
+    (let ((result
+	   (call-with-current-continuation
+	     (lambda (k)
+	       (cons #f
+		     (bind-condition-handler
+			 condition-types
+			 (lambda (condition)
+			   (k (cons #t condition)))
+		       thunk))))))
+      (apply maybe-fail
+	     (car result)
+	     (if (car result) 'condition 'result-object) (cdr result)
+	     'expectation-object condition-types
+	     properties))))
 
 (define-for-tests (error-assertion . condition-types)
   (lambda (thunk . properties)
@@ -517,11 +526,11 @@ USA.
   (let ((test (if negate? (negate-test test) test))
 	(pattern (expand-pattern negate? pattern)))
     (lambda (value expected . properties)
-      (if (not (test value expected))
-	  (apply fail
-		 'RESULT-OBJECT value
-		 'EXPECTATION (list pattern expected)
-		 properties)))))
+      (apply maybe-fail
+	     (test value expected)
+	     'result-object value
+	     'expectation (list pattern expected)
+	     properties))))
 
 (define (negate-test test)
   (lambda (value expected)

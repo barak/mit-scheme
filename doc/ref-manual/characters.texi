@@ -399,6 +399,11 @@ Returns @code{#t} if @var{object} is a character with no bucky bits
 set, otherwise it returns @code{#f} .
 @end deffn
 
+@deffn procedure char->bitless-char char
+Returns @var{char} with any bucky bits removed.  The result is
+guaranteed to satisfy @code{bitless-char?}.
+@end deffn
+
 @deffn procedure char-predicate char
 Returns a procedure of one argument that returns @code{#t} if its
 argument is a character @code{char=?} to @var{char}, otherwise it

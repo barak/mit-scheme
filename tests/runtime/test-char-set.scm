@@ -113,15 +113,9 @@ USA.
     (map (lambda (svl)
 	   (with-test-properties
 	    (lambda ()
-	      ((lambda (body)
-		 (if (equal? svl '())
-		     ;; XXX Broken, please fix!
-		     (expect-failure body)
-		     body))
-	       (lambda ()
-		 (assert-equal
-		  (svl-invert-thru svl)
-		  (svl-invert-direct (trim-empty-segments svl))))))
+	      (assert-equal
+	       (svl-invert-thru svl)
+	       (svl-invert-direct (trim-empty-segments svl))))
 	    'EXPRESSION `(SVL-INVERT ,svl)))
 	 interesting-svls)))
 
