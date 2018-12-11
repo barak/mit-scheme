@@ -126,16 +126,21 @@ USA.
 			  (caddr metadata)
 			  (if (pair? (cdddr metadata))
 			      (cadddr metadata)
-			      #f)))
+			      #f)
+			  (car metadata)
+			  "Y"))
 	 properties)))
 
 (define-record-type <metadata>
-    (make-metadata name full-name type-spec note)
+    (make-metadata name full-name type-spec note
+		   prop-file-name boolean-key)
     metadata?
   (name metadata-name)
   (full-name metadata-full-name)
   (type-spec metadata-type-spec)
-  (note metadata-note))
+  (note metadata-note)
+  (prop-file-name metadata-prop-file-name)
+  (boolean-key metadata-boolean-key))
 
 (define ucd-property-metadata
   (read-ucd-property-metadata))
@@ -518,7 +523,8 @@ USA.
   (merge-pathnames "src/runtime/ucd-table" mit-scheme-root-pathname))
 
 (define (generate-standard-property-tables)
-  (for-each generate-property-table
+  (for-each (lambda (prop-name)
+	      (generate-property-table (prop-metadata prop-name)))
 	    '("Alpha"
 	      "CWCF"
 	      "CWL"
@@ -545,7 +551,32 @@ USA.
 	      "suc"
 	      "tc"
 	      "uc"))
+  (generate-extra-property-tables)
   (generate-canonical-cm-second))
+
+(define (generate-extra-property-tables)
+  (parameterize ((param:pp-lists-as-tables? #f))
+    (for-each generate-property-table
+	      (get-extra-property-table-metadata))))
+
+(define (get-extra-property-table-metadata)
+  (append (get-per-name-property-table-metadata "gc")
+	  (get-per-name-property-table-metadata "nt")))
+
+(define (get-per-name-property-table-metadata prop-name)
+  (let ((metadata (prop-metadata prop-name)))
+    (filter-map
+     (lambda (translation)
+       (and (cdr translation)
+	    (make-metadata (string-append prop-name "=" (car translation))
+			   (symbol (string->symbol (string-foldcase prop-name))
+				   '=
+				   (cdr translation))
+			   'boolean
+			   #f
+			   prop-name
+			   (car translation))))
+     (mapped-enum-type-translations (metadata-type-spec metadata)))))
 
 (define (generate-canonical-cm-second)
   (let ((strings
@@ -563,10 +594,10 @@ USA.
 	    (define ucd-canonical-cm-second-values
 	      ,(strings cdr))))))))
 
-(define (generate-property-table prop-name)
-  (generate-property-table-1 prop-name
+(define (generate-property-table metadata)
+  (generate-property-table-1 (metadata-name metadata)
     (lambda ()
-      (generate-property-table-code prop-name))))
+      (generate-property-table-code metadata))))
 
 (define (generate-property-table-1 prop-name get-exprs)
   (let ((ucd-version (read-ucd-version-file)))
@@ -609,13 +640,13 @@ USA.
 	(display (cadr expr) port))
       (pp expr port)))
 
-(define (generate-property-table-code prop-name)
-  (let* ((metadata (prop-metadata prop-name))
-	 (generator (metadata->code-generator metadata)))
+(define (generate-property-table-code metadata)
+  (let ((prop-name (metadata-name metadata))
+	(generator (metadata->code-generator metadata)))
     (generator prop-name
 	       metadata
-	       (read-prop-file prop-name)
-	       (symbol "ucd-" (string-downcase prop-name) "-value"))))
+	       (read-prop-file (metadata-prop-file-name metadata))
+	       (symbol 'ucd- (string-foldcase prop-name) '-value))))
 
 (define (metadata->code-generator metadata)
   (let ((type-spec (metadata-type-spec metadata)))
@@ -633,13 +664,14 @@ USA.
 (define (code-generator:boolean prop-name metadata prop-alist proc-name)
   (declare (ignore prop-name proc-name))
   (let* ((full-name (metadata-full-name metadata))
+	 (boolean-key (metadata-boolean-key metadata))
 	 (char-set-name (symbol "char-set:" full-name)))
     `((define (,(symbol "char-" full-name "?") char)
 	(char-in-set? char ,char-set-name))
       (define-deferred ,char-set-name
 	(char-set*
 	 ',(filter-map (lambda (value-map)
-			 (and (equal? "Y" (cdr value-map))
+			 (and (equal? boolean-key (cdr value-map))
 			      (car value-map)))
 		       prop-alist))))))
 

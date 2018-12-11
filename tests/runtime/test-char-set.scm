@@ -112,9 +112,9 @@ USA.
   (lambda ()
     (map (lambda (svl)
 	   (with-test-properties
-	       (lambda ()
-		 (assert-equal
-		  (svl-invert-thru svl)
+	    (lambda ()
+	      (assert-equal
+	       (svl-invert-thru svl)
 	       (svl-invert-direct (trim-empty-segments svl))))
 	    'EXPRESSION `(SVL-INVERT ,svl)))
 	 interesting-svls)))

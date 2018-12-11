@@ -488,7 +488,7 @@ USA.
 
   (if (or (not (pair? ilist))
 	  (fix:< 0 (car ilist)))
-	  (loop 0 ilist '())
+      (loop 0 ilist '())
       (loop (cadr ilist) (cddr ilist) '())))
 
 (define (char-set-union . char-sets)

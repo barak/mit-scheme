@@ -1382,12 +1382,45 @@ USA.
 	 "ucd-table-cwl"
 	 "ucd-table-cwu"
 	 "ucd-table-gc"
+	 "ucd-table-gc=cc"
+	 "ucd-table-gc=cf"
+	 "ucd-table-gc=cn"
+	 "ucd-table-gc=co"
+	 "ucd-table-gc=cs"
+	 "ucd-table-gc=ll"
+	 "ucd-table-gc=lm"
+	 "ucd-table-gc=lo"
+	 "ucd-table-gc=lt"
+	 "ucd-table-gc=lu"
+	 "ucd-table-gc=mc"
+	 "ucd-table-gc=me"
+	 "ucd-table-gc=mn"
+	 "ucd-table-gc=nd"
+	 "ucd-table-gc=nl"
+	 "ucd-table-gc=no"
+	 "ucd-table-gc=pc"
+	 "ucd-table-gc=pd"
+	 "ucd-table-gc=pe"
+	 "ucd-table-gc=pf"
+	 "ucd-table-gc=pi"
+	 "ucd-table-gc=po"
+	 "ucd-table-gc=ps"
+	 "ucd-table-gc=sc"
+	 "ucd-table-gc=sk"
+	 "ucd-table-gc=sm"
+	 "ucd-table-gc=so"
+	 "ucd-table-gc=zl"
+	 "ucd-table-gc=zp"
+	 "ucd-table-gc=zs"
 	 "ucd-table-gcb"
 	 "ucd-table-lc"
 	 "ucd-table-lower"
 	 "ucd-table-nfc_qc"
 	 "ucd-table-nfd_qc"
 	 "ucd-table-nt"
+	 "ucd-table-nt=de"
+	 "ucd-table-nt=di"
+	 "ucd-table-nt=nu"
 	 "ucd-table-nv"
 	 "ucd-table-scf"
 	 "ucd-table-slc"
@@ -1399,6 +1432,8 @@ USA.
 	 "ucd-table-wspace")
   (parent (runtime))
   (export ()
+	  (char-set:numeric char-set:nt=decimal)
+	  (char-numeric? char-nt=decimal?)
 	  char-alphabetic?
 	  char-cased?
 	  char-changes-when-case-folded?
@@ -1423,6 +1458,32 @@ USA.
 	  ucd-slc-value
 	  ucd-suc-value)
   (export (runtime ucd-glue)
+	  char-set:gc=letter:lowercase
+	  char-set:gc=letter:modifier
+	  char-set:gc=letter:other
+	  char-set:gc=letter:titlecase
+	  char-set:gc=letter:uppercase
+	  char-set:gc=mark:enclosing
+	  char-set:gc=mark:nonspacing
+	  char-set:gc=mark:spacing-combining
+	  char-set:gc=number:decimal-digit
+	  char-set:gc=number:letter
+	  char-set:gc=number:other
+	  char-set:gc=other:not-assigned
+	  char-set:gc=other:private-use
+	  char-set:gc=other:surrogate
+	  char-set:gc=punctuation:close
+	  char-set:gc=punctuation:connector
+	  char-set:gc=punctuation:dash
+	  char-set:gc=punctuation:final-quote
+	  char-set:gc=punctuation:initial-quote
+	  char-set:gc=punctuation:open
+	  char-set:gc=punctuation:other
+	  char-set:gc=separator:space
+	  char-set:gc=symbol:currency
+	  char-set:gc=symbol:math
+	  char-set:gc=symbol:modifier
+	  char-set:gc=symbol:other
 	  ucd-nt-value)
   (export (runtime string)
 	  char-full-composition-exclusion?
@@ -1445,7 +1506,6 @@ USA.
   (parent (runtime))
   (export ()
 	  char-alphanumeric?
-	  char-numeric?
 	  char-set:alphanumeric
 	  char-set:not-alphabetic
 	  char-set:not-alphanumeric
@@ -1453,7 +1513,6 @@ USA.
 	  char-set:not-numeric
 	  char-set:not-upper-case
 	  char-set:not-whitespace
-	  char-set:numeric
 	  char-set:unicode
 	  unicode-char?)
   (export (runtime)
