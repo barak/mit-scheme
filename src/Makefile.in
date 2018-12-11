@@ -65,6 +65,7 @@ LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) ffi sos ssp xml
 
 SUBDIRS = $(INSTALLED_SUBDIRS) win32 xdoc
 INSTALLED_SUBDIRS = microcode runtime $(OPTION_SUBDIRS) $(LIARC_BUNDLES)
+TOOLCHAIN_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 OPTION_SUBDIRS = @OPTION_SUBDIRS@
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
@@ -639,6 +640,10 @@ install: install-standard @INSTALL_LIARC_BUNDLES@
 .PHONY: install-standard
 install-standard: install-auxdir-top
 	@+$(MAKE_IN_SUBDIRS) install $(INSTALLED_SUBDIRS)
+
+.PHONY: install-toolchain
+install-toolchain: install-auxdir-top
+	@+$(MAKE_IN_SUBDIRS) install $(TOOLCHAIN_SUBDIRS)
 
 .PHONY: install-auxdir-top
 install-auxdir-top:
