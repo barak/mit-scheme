@@ -443,7 +443,10 @@ USA.
 
 (define (fasdump-bytevector-n-words format bytevector)
   (let ((n-bytes (bytevector-length bytevector)))
-    (quotient (+ n-bytes (- (format.bytes-per-word format) 1))
+    ;; Add a terminating null byte.  Bytevectors don't actually require
+    ;; this in general -- but the bytevectors that are symbol names do.
+    ;; This is pretty kludgey.
+    (quotient (+ 1 n-bytes (- (format.bytes-per-word format) 1))
               (format.bytes-per-word format))))
 
 (define (fasdump-bytevector state bytevector)
