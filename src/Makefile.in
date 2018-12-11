@@ -137,7 +137,10 @@ all-toolchain: all-cref
 all-toolchain: all-ffi
 all-toolchain: all-runtime
 all-toolchain: all-sf
+all-toolchain: all-sos
+all-toolchain: all-ssp
 all-toolchain: all-star-parser
+all-toolchain: all-xml
 
 # XXX This should really depend on microcode/gen-nonce and
 # microcode/extract-liarc-decls instead of microcode/scheme, but
