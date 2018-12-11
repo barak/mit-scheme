@@ -513,7 +513,8 @@ compile-blowfish-c:
 all-edwin: compile-edwin
 
 .PHONY: compile-edwin
-compile-edwin: all-toolchain compile-xml
+compile-edwin: all-toolchain
+compile-edwin: compile-xml
 @IF_BLOWFISH@compile-edwin: compile-blowfish
 @IF_GDBM@compile-edwin: compile-gdbm
 @IF_X11@compile-edwin: compile-x11
@@ -542,7 +543,9 @@ compile-gdbm-c:
 all-imail: compile-imail
 
 .PHONY: compile-imail
-compile-imail: all-toolchain compile-sos compile-edwin
+compile-imail: all-toolchain
+compile-imail: compile-edwin
+compile-imail: compile-sos
 	(cd imail && $(MAKE))
 
 ################
@@ -598,7 +601,9 @@ compile-x11-c:
 all-x11-screen: compile-x11-screen
 
 .PHONY: compile-x11-screen
-compile-x11-screen: all-toolchain compile-x11 compile-edwin
+compile-x11-screen: all-toolchain
+compile-x11-screen: compile-edwin
+compile-x11-screen: compile-x11
 	(cd x11-screen && $(MAKE))
 
 #####################
