@@ -66,8 +66,8 @@ USA.
    'FLOAT-ALIGN-WORDS   (/ 8 bytes-per-word) ;XXX may want stricter
    'BITS-PER-BIGNUM-DIGIT       (- (* 8 bytes-per-word) 2)
    'WORDS-PER-BIGNUM-DIGIT      1
-   'GREATEST-FIXNUM     (bit-mask (* bytes-per-word 8) 0)
-   'LEAST-FIXNUM        (- -1 (bit-mask (* bytes-per-word 8) 0))
+   'GREATEST-FIXNUM     (bit-mask (- (* bytes-per-word 8) 7) 0)
+   'LEAST-FIXNUM        (- -1 (bit-mask (- (* bytes-per-word 8) 7) 0))
    'WRITE-WORD          write-word
    'WRITE-UNTAGGED-WORD write-untagged-word
    'WRITE-BIGNUM-DIGIT  write-bignum-digit
