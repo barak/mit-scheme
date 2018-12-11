@@ -1,0 +1,8 @@
+The reader and printer now support notation for all distinct NaNs.
+
+The sequence is <sign> <type> "." <payload>, where <sign> is "+" or
+"-", <type> is "nan" for quiet NaNs and "snan" for signalling NaNs, and
+<payload> is an integer represented in the current radix.
+
+The notations +snan.0 and -snan.0 are forbidden because the bit pattern
+they would mean represents +inf.0 and -inf.0 instead.

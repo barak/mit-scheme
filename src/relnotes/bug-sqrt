@@ -1,0 +1,3 @@
+Bug fix: The sqrt procedure now correctly propagates NaNs, handles
+complex numbers with infinities, and raises floating-point exceptions
+only where appropriate.

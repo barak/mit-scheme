@@ -1,0 +1,2 @@
+The x86-specific floating-point subnormal operand exception is now
+supported, and can be tested and trapped on x86 systems.
