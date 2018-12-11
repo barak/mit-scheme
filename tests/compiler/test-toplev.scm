@@ -47,7 +47,8 @@ USA.
   (lambda ()
     ;; XXX whattakludge
     (define finish-cross-compilation:scode
-      (let ((env (make-top-level-environment)))
+      (let ((env
+             (extend-top-level-environment (->environment '(runtime)))))
 	(load "../src/compiler/base/crsend" env)
 	(eval 'finish-cross-compilation:scode env)))
     (let* ((code '(lambda (x) (flo:+ (flo:* 2. x) 1.)))
