@@ -163,10 +163,21 @@ USA.
            (and (string-ci=? (car format) key)
                 (cadr format)))
          fasl-formats))
-  (or (try microcode-id/machine-type)
-      (try
-       (string-append microcode-id/machine-type
-                      (if (host-big-endian?) "be" "le")))))
+  (if (eq? 'svm1 microcode-id/compiled-code-type)
+      (cond ((= 4 (bytes-per-object))
+             (if (host-big-endian?)
+                 fasl-format:svm1-32be
+                 fasl-format:svm1-32le))
+            ((= 8 (bytes-per-object))
+             (if (host-big-endian?)
+                 fasl-format:svm1-64be
+                 fasl-format:svm1-64le))
+            (else
+             (error "What is this machine, Сетунь?")))
+      (or (try microcode-id/machine-type)
+          (try
+           (string-append microcode-id/machine-type
+                          (if (host-big-endian?) "be" "le"))))))
 
 (define-enumerated-test 'fasdump-invariance
   `(((1 . 2))
