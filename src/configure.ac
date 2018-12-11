@@ -69,8 +69,10 @@ AC_ARG_ENABLE([cross-compiling],
 : ${enable_cross_compiling=no}
 if test "x${enable_cross_compiling}" = xyes; then
     IF_CROSS=
+    IF_NATIVE='#!native: '
 else
     IF_CROSS='#!cross-compiling: '
+    IF_NATIVE=
 fi
 
 AC_ARG_WITH([default-target],
@@ -374,6 +376,7 @@ AC_SUBST([IF_GDBM])
 AC_SUBST([IF_IMAIL])
 AC_SUBST([IF_LIARC])
 AC_SUBST([IF_MCRYPT])
+AC_SUBST([IF_NATIVE])
 AC_SUBST([IF_PGSQL])
 AC_SUBST([IF_SVM])
 AC_SUBST([IF_SVM_COMPILER])

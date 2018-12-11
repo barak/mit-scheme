@@ -179,7 +179,7 @@ microcode/svm1-defns.h: compiler/machines/svm/svm1-defns.h
 ################
 
 lib/runtime.com: microcode/scheme
-lib/runtime.com: all-runtime
+@IF_NATIVE@lib/runtime.com: all-runtime
 @IF_CROSS@lib/runtime.com: stamp_cross-finished
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \
@@ -187,9 +187,9 @@ lib/runtime.com: all-runtime
 
 lib/all.com: microcode/scheme
 lib/all.com: lib/runtime.com
-lib/all.com: all-compiler
-lib/all.com: all-sf
-lib/all.com: all-cref
+@IF_NATIVE@lib/all.com: all-compiler
+@IF_NATIVE@lib/all.com: all-sf
+@IF_NATIVE@lib/all.com: all-cref
 @IF_CROSS@lib/all.com: stamp_cross-finished
 	(echo '(begin' && \
 	 echo '  (load-option (quote compiler))' && \
