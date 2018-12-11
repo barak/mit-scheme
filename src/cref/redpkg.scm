@@ -174,8 +174,9 @@ USA.
 (define (cache-file-analysis! pmodel caches pathname changes?)
   (let ((cache (analysis-cache/lookup caches pathname))
 	(full-pathname
-	 (merge-pathnames (pathname-new-type pathname "bin")
-			  (pmodel/pathname pmodel))))
+	 (merge-pathnames
+	  (pathname-new-type pathname (if sf/cross-compiling? "nib" "bin"))
+	  (pmodel/pathname pmodel))))
     (let ((time (file-modification-time full-pathname)))
       (if (not time)
 	  (error "unable to open file" full-pathname))

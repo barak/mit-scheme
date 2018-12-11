@@ -46,6 +46,7 @@ USA.
 	  package/add-child!
 	  package/create
 	  package/children
+	  package/cross-compiling?
 	  package/environment
 	  package/name
 	  package/parent

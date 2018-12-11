@@ -38,7 +38,9 @@ USA.
 (define compiler:compile-data-files-as-expressions? #t)
 (define compile-file)
 (let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
-      (bin-pathname (lambda (path) (pathname-new-type path "bin")))
+      (bin-pathname
+       (lambda (path)
+	 (pathname-new-type path (if sf/cross-compiling? "nib" "bin"))))
       (ext-pathname (lambda (path) (pathname-default-type path "ext")))
       (ext-pathname? (lambda (path) (equal? (pathname-type path) "ext")))
       (com-pathname
@@ -133,7 +135,7 @@ USA.
   (compiler-pathnames
    input-string
    (and (not (default-object? output-string)) output-string)
-   (make-pathname #f #f #f #f "bin" 'NEWEST)
+   (make-pathname #f #f #f #f (if sf/cross-compiling? "nib" "bin") 'NEWEST)
    (lambda (input-pathname output-pathname)
      (fluid-let ((*compiler-input-pathname*
 		  (merge-pathnames input-pathname))
@@ -277,13 +279,14 @@ USA.
 
 ;;;; Alternate Entry Points
 
-(define compile-directory
-  (directory-processor
-   "bin"
-   (lambda ()
-     (compiler:compiled-code-pathname-type))
-   (lambda (pathname output-directory)
-     (compile-bin-file pathname output-directory))))
+(define (compile-directory input-directory #!optional output-directory force?)
+  ((directory-processor
+    (if sf/cross-compiling? "nib" "bin")
+    (lambda ()
+      (compiler:compiled-code-pathname-type))
+    (lambda (pathname output-directory)
+      (compile-bin-file pathname output-directory)))
+   input-directory output-directory force?))
 
 (define (compile-scode scode #!optional keep-debugging-info?)
   (compiler-output->compiled-expression

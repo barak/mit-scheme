@@ -72,10 +72,14 @@ AUXDIR_NAME = @AUXDIR_NAME@
 AUXDIR = @AUXDIR@
 
 @IF_CROSS@COMPILER_SETTINGS_CROSS = (set! compiler:cross-compiling? true)
+@IF_CROSS@SF_SETTINGS_CROSS = \
+@IF_CROSS@	(set! sf/cross-compiling? true) \
+@IF_CROSS@	(set! package/cross-compiling? true)
 @IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
 HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
 
 HOST_COMPILER_SETTINGS = \
+	$(SF_SETTINGS_CROSS) \
 	$(COMPILER_SETTINGS_CROSS) \
 	$(COMPILER_SETTINGS_LIARC)
 
@@ -242,8 +246,10 @@ all-compiler: compile-compiler
 syntax-compiler: compile-sf
 @IF_SVM_COMPILER@syntax-compiler: compiler/machines/svm/svm1-defns.h
 	(echo '(with-working-directory-pathname "compiler"' && \
-	 echo '  (lambda () (load "compiler.sf")))') \
-	| $(HOST_RUNTIME_ONLY)
+	 echo '  (lambda ()' && \
+	 echo '    $(SF_SETTINGS_CROSS)' && \
+	 echo '    (load "compiler.sf")))') \
+	| $(HOST_RUNTIME_ONLY) --eval '(load-option (quote SF))'
 
 .PHONY: compile-compiler
 compile-compiler: compile-compiler-back

@@ -34,7 +34,9 @@ USA.
 
 (fluid-let ((sf/default-syntax-table (->environment '(win32))))
   (sf-conditionally "ffimacro")
-  (load "ffimacro.bin" '(win32 ffi-macro))
+  (receive (scm bin spec) (sf/pathname-defaulting "ffimacro" #f #f)
+    scm spec
+    (load bin '(win32 ffi-macro)))
 
   (sf-conditionally "winuser")
   (sf-conditionally "wingdi")
