@@ -35,4 +35,9 @@ USA.
 ;;; the new runtime.  It contains temporary hacks that will be kept
 ;;; only until the new runtime is released.
 
+(if (lexical-unreferenceable? (->environment '()) 'target-bytes-per-object)
+    (environment-define (->environment '())
+			'target-bytes-per-object
+			bytes-per-object))
+
 unspecific

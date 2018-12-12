@@ -139,6 +139,9 @@ AC_ARG_ENABLE([mcrypt],
 
 AC_CANONICAL_HOST
 
+AC_CHECK_SIZEOF([unsigned long])
+mit_scheme_target_bytes_per_object=$ac_cv_sizeof_unsigned_long
+
 ALL_TARGET=all-native
 INSTALL_COM='$(INSTALL_DATA)'
 INSTALL_LIARC_BUNDLES=
@@ -386,6 +389,7 @@ AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([mit_scheme_native_code])
+AC_SUBST([mit_scheme_target_bytes_per_object])
 AC_SUBST([OPTION_SUBDIRS])
 
 AC_PROG_INSTALL

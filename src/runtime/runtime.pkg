@@ -203,6 +203,7 @@ USA.
 	  set-predicate<=!
 	  simple-parser-method
 	  standard-print-method
+	  target-bytes-per-object
 	  weak-car
 	  weak-cdr
 	  weak-cons

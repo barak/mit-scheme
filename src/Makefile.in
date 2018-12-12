@@ -75,7 +75,9 @@ AUXDIR = @AUXDIR@
 @IF_CROSS@COMPILER_SETTINGS_CROSS = (set! compiler:cross-compiling? true)
 @IF_CROSS@SF_SETTINGS_CROSS = \
 @IF_CROSS@	(set! sf/cross-compiling? true) \
-@IF_CROSS@	(set! package/cross-compiling? true)
+@IF_CROSS@	(set! package/cross-compiling? true) \
+@IF_CROSS@	(set! target-bytes-per-object \
+@IF_CROSS@	      (lambda () @mit_scheme_target_bytes_per_object@))
 @IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
 HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
 
@@ -85,7 +87,7 @@ HOST_COMPILER_SETTINGS = \
 	$(COMPILER_SETTINGS_LIARC)
 
 HOST_COMPILER = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) --no-init-file \
-  --eval '(begin $(HOST_COMPILER_SETTINGS))' --load runtime/host-adapter.scm
+  --load runtime/host-adapter.scm --eval '(begin $(HOST_COMPILER_SETTINGS))'
 
 HOST_RUNTIME_ONLY = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
   --band runtime.com --no-init-file --load runtime/host-adapter.scm

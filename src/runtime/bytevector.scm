@@ -205,9 +205,16 @@ USA.
    (lambda (form rename compare)
      rename compare
      (syntax-check '(_ expression expression) form)
+     ;; XXX This queries the host system rather than the target system.
+     ;; We should expose definitions of fix:fixnum? to macro expanders
+     ;; that reflect the target system instead.
+     #;
      (if (fix:fixnum? #xFFFFFFFF)
 	 (cadr form)
-	 (caddr form)))))
+	 (caddr form))
+     ;; XXX For now, we can use the number of bytes per word as a proxy
+     ;; for whether fixnums have 32 bits.
+     `(select-on-bytes-per-word ,(caddr form) ,(cadr form)))))
 
 (select-u32-code
  ;; Can use fixnums:

@@ -112,7 +112,7 @@ USA.
    (lambda (form rename compare)
      (declare (ignore rename compare))
      (syntax-check '(_ expression expression) form)
-     (let ((bpo (bytes-per-object)))
+     (let ((bpo (target-bytes-per-object)))
        (case bpo
 	 ((4) (cadr form))
 	 ((8) (caddr form))

@@ -509,3 +509,11 @@ USA.
 
 (define (bytes-per-object)
   (vector-ref (gc-space-status) 0))
+
+;;; XXX Cross-compilation kludge: We redefine this to return the
+;;; characteristic of the target system.  In the future, macro
+;;; expanders should just see a binding of bytes-per-object that
+;;; reflects the target system.
+
+(define (target-bytes-per-object)
+  (bytes-per-object))
