@@ -667,14 +667,14 @@ USA.
 	 (st2 (flonum-source! source2)))
     (cond ((zero? st1)
 	   (flonum-branch! predicate
-			   (LAP (FUCOM (ST 0) (ST ,st2)))))
+			   (LAP (FCOM (ST 0) (ST ,st2)))))
 	  ((zero? st2)
 	   (flonum-branch! (commute-flonum-predicate predicate)
-			   (LAP (FUCOM (ST 0) (ST ,st1)))))
+			   (LAP (FCOM (ST 0) (ST ,st1)))))
 	  (else
 	   (flonum-branch! predicate
 			   (LAP (FLD (ST ,st1))
-				(FUCOMP (ST 0) (ST ,(1+ st2)))))))))
+				(FCOMP (ST 0) (ST ,(1+ st2)))))))))
 
 (define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
@@ -704,13 +704,13 @@ USA.
   (let ((sti (flonum-source! source)))
     (flonum-branch! (commute-flonum-predicate predicate)
 		    (LAP (FLDZ)
-			 (FUCOMP (ST 0) (ST ,(1+ sti)))))))
+			 (FCOMP (ST 0) (ST ,(1+ sti)))))))
 
 (define (flonum-compare-one predicate source)
   (let ((sti (flonum-source! source)))
     (flonum-branch! (commute-flonum-predicate predicate)
 		    (LAP (FLD1)
-			 (FUCOMP (ST 0) (ST ,(1+ sti)))))))
+			 (FCOMP (ST 0) (ST ,(1+ sti)))))))
 
 ;;; For predicate giving (if (predicate x y) a b), return predicate* so
 ;;; that (if (predicate* y x) a b) is equivalent.

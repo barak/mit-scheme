@@ -291,7 +291,7 @@ USA.
 ;; XXX sinh, cosh, tanh, asinh, acosh, atanh
 
 (let ((expect-failure
-       (if (and (eq? microcode-id/compiled-code-type 'x86-64)
+       (if (and (memq microcode-id/compiled-code-type '(x86-64 i386))
 		(compiled-procedure? flo:=))
 	   #!default
 	   expect-failure)))
