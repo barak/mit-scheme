@@ -402,15 +402,6 @@ USA.
     (assert (<= 0 datum (bit-mask (format.bits-per-datum format) 0)))
     ((format.write-word format) type datum (state.output-port state))))
 
-(define (fasdump-align state overhead alignment)
-  (let* ((unaligned-address (fasdump-address state))
-         (aligned-address (round-up (+ unaligned-address overhead) alignment))
-         (n-words (- aligned-address (+ unaligned-address overhead))))
-    (with-fasdump-words state n-words
-      (lambda ()
-        (do ((i 0 (+ i 1))) ((>= i n-words))
-          (fasdump-word state tc:false 0))))))
-
 (define (fasdump-float state value)
   (let ((format (state.format state)))
     ((format.write-float format) value (state.output-port state))))
@@ -742,14 +733,16 @@ USA.
 ;;;; Fasdumping a pointer object's storage
 
 (define (fasdump-storage state object)
-  (assert (let ((address
-                 (or (hash-table-ref/default (state.addresses state) object #f)
-                     (error "Unallocated queued object:" object))))
-            (fasdump-at-address? state address))
-    `(object ,object)
-    `(object address
-             ,(hash-table-ref/default (state.addresses state) object #f))
-    `(current address ,(fasdump-address state)))
+  (assert
+   (or (eqv? object #f)
+       (let ((address
+              (or (hash-table-ref/default (state.addresses state) object #f)
+                  (error "Unallocated queued object:" object))))
+         (fasdump-at-address? state address)))
+   `(object ,object)
+   `(object address
+            ,(hash-table-ref/default (state.addresses state) object #f))
+   `(current address ,(fasdump-address state)))
   (let ((format (state.format state)))
     (cond ((pair? object)
            (fasdump-object state (car object))
@@ -821,15 +814,16 @@ USA.
              (fasdump-word state tc:manifest-nm-vector n-words)
              (with-fasdump-words state n-words
                (lambda ()
-                 (fasdump-bignum state object)))))
+                 (fasdump-bignum state object)))
+             (reference-barrier (list n-words object))))
           ((exact-rational? object)
            (with-fasdump-words state 2
              (lambda ()
                (fasdump-object state (numerator object))
-               (fasdump-object state (denominator object)))))
+               (fasdump-object state (denominator object))))
+           (reference-barrier object))
           ((inexact-real? object)
            (let ((words-per-float (format.words-per-float format)))
-             (fasdump-align state 1 words-per-float)
              (fasdump-word state tc:manifest-nm-vector words-per-float)
              (with-fasdump-words state words-per-float
                (lambda ()
@@ -838,7 +832,8 @@ USA.
            (with-fasdump-words state 2
              (lambda ()
                (fasdump-object state (real-part object))
-               (fasdump-object state (imag-part object)))))
+               (fasdump-object state (imag-part object))))
+           (reference-barrier object))
           (else
            (error "Fasdump bug -- number should have been rejected:"
                   object)))))
