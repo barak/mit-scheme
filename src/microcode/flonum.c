@@ -42,7 +42,17 @@ arg_flonum (int arg_number)
   return (FLONUM_TO_DOUBLE (argument));
 }
 
+uint64_t
+arg_flonum_binary64 (int arg_number)
+{
+  SCHEME_OBJECT argument = (ARG_REF (arg_number));
+  if (!FLONUM_P (argument))
+    error_wrong_type_arg (arg_number);
+  return (* ((uint64_t *) (FLOATING_VECTOR_LOC (argument, 0))));
+}
+
 #define FLONUM_RESULT(x) PRIMITIVE_RETURN (double_to_flonum (x))
+#define FLONUM_BINARY64_RESULT(x) PRIMITIVE_RETURN (binary64_to_flonum (x))
 #define BOOLEAN_RESULT(x) PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (x))
 
 SCHEME_OBJECT
@@ -54,6 +64,20 @@ double_to_flonum (double value)
     SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, Free));
     (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, FLONUM_SIZE));
     (*((double *) Free)) = value;
+    Free += FLONUM_SIZE;
+    return (result);
+  }
+}
+
+SCHEME_OBJECT
+binary64_to_flonum (uint64_t value)
+{
+  ALIGN_FLOAT (Free);
+  Primitive_GC_If_Needed (FLONUM_SIZE + 1);
+  {
+    SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, Free));
+    (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, FLONUM_SIZE));
+    (* ((uint64_t *) Free)) = value;
     Free += FLONUM_SIZE;
     return (result);
   }
@@ -559,17 +583,14 @@ DEFINE_PRIMITIVE ("FLONUM-MAKE-NAN", Prim_flonum_make_nan, 3, 3, 0)
     uint64_t quiet = (OBJECT_TO_BOOLEAN (ARG_REF (2)));
     uint64_t payload =
       (arg_index_integer_to_intmax (3, ((UINT64_C (1)) << 51)));
-    union {
-      double d;
-      uint64_t i;
-    } u = { .i = 0 };
+    uint64_t binary64 = 0;
     if ((!quiet) && (payload == 0))
       error_bad_range_arg (3);
-    (u.i) |= (sign << 63);
-    (u.i) |= ((UINT64_C (0x7ff)) << 52);
-    (u.i) |= (quiet << 51);
-    (u.i) |= payload;
-    FLONUM_RESULT (u.d);
+    binary64 |= (sign << 63);
+    binary64 |= ((UINT64_C (0x7ff)) << 52);
+    binary64 |= (quiet << 51);
+    binary64 |= payload;
+    FLONUM_BINARY64_RESULT (binary64);
   }
 }
 
@@ -579,13 +600,10 @@ DEFINE_PRIMITIVE ("FLONUM-NAN-QUIET?", Prim_flonum_nan_quiet_p, 1, 1, 0)
   CTASSERT (FLT_RADIX == 2);
   CTASSERT (DBL_MANT_DIG == 53);
   {
-    union {
-      double d;
-      uint64_t i;
-    } u = { .d = (arg_flonum (1)) };
-    if (((u.i) & ((UINT64_C (0x7ff)) << 52)) != ((UINT64_C (0x7ff)) << 52))
+    uint64_t binary64 = (arg_flonum_binary64 (1));
+    if ((binary64 & ((UINT64_C (0x7ff)) << 52)) != ((UINT64_C (0x7ff)) << 52))
       error_bad_range_arg (1);
-    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((u.i) & ((UINT64_C (1)) << 51)));
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (binary64 & ((UINT64_C (1)) << 51)));
   }
 }
 
@@ -595,14 +613,11 @@ DEFINE_PRIMITIVE ("FLONUM-NAN-PAYLOAD", Prim_flonum_nan_payload, 1, 1, 0)
   CTASSERT (FLT_RADIX == 2);
   CTASSERT (DBL_MANT_DIG == 53);
   {
-    union {
-      double d;
-      uint64_t i;
-    } u = { .d = (arg_flonum (1)) };
-    if (((u.i) & ((UINT64_C (0x7ff)) << 52)) != ((UINT64_C (0x7ff)) << 52))
+    uint64_t binary64 = (arg_flonum_binary64 (1));
+    if ((binary64 & ((UINT64_C (0x7ff)) << 52)) != ((UINT64_C (0x7ff)) << 52))
       error_bad_range_arg (1);
     PRIMITIVE_RETURN
-      (uintmax_to_integer ((u.i) & (((UINT64_C (1)) << 51) - 1)));
+      (uintmax_to_integer (binary64 & (((UINT64_C (1)) << 51) - 1)));
   }
 }
 
