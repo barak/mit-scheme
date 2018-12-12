@@ -131,31 +131,51 @@ DEFINE_PRIMITIVE ("FLONUM-ABS", Prim_flonum_abs, 1, 1, 0)
   }
 }
 
-#define FLONUM_BINARY_PREDICATE(operator)				\
+static void
+invalid_if_unordered (double x, double y)
+{
+  if (isunordered (x, y))
+    {
+#if (defined (HAVE_FERAISEEXCEPT)) && (defined (FE_INVALID))
+      feraiseexcept (FE_INVALID);
+#endif
+    }
+}
+
+#define FLONUM_ORDERED_BINARY_PREDICATE(operator)			\
 {									\
   PRIMITIVE_HEADER (2);							\
-  BOOLEAN_RESULT ((arg_flonum (1)) operator (arg_flonum (2)));		\
+  {									\
+    double x = (arg_flonum (1));					\
+    double y = (arg_flonum (2));					\
+    invalid_if_unordered (x, y);					\
+    BOOLEAN_RESULT (x operator y);					\
+  }									\
 }
 
 DEFINE_PRIMITIVE ("FLONUM-EQUAL?", Prim_flonum_equal_p, 2, 2, 0)
-     FLONUM_BINARY_PREDICATE (==)
+     FLONUM_ORDERED_BINARY_PREDICATE (==)
 DEFINE_PRIMITIVE ("FLONUM-LESS?", Prim_flonum_less_p, 2, 2, 0)
-     FLONUM_BINARY_PREDICATE (<)
+     FLONUM_ORDERED_BINARY_PREDICATE (<)
 DEFINE_PRIMITIVE ("FLONUM-GREATER?", Prim_flonum_greater_p, 2, 2, 0)
-     FLONUM_BINARY_PREDICATE (>)
+     FLONUM_ORDERED_BINARY_PREDICATE (>)
 
-#define FLONUM_UNARY_PREDICATE(operator)				\
+#define FLONUM_ORDERED_UNARY_PREDICATE(operator)			\
 {									\
   PRIMITIVE_HEADER (1);							\
-  BOOLEAN_RESULT ((arg_flonum (1)) operator 0);				\
+  {									\
+    double x = (arg_flonum (1));					\
+    invalid_if_unordered (x, 0);					\
+    BOOLEAN_RESULT (x operator 0);					\
+  }									\
 }
 
 DEFINE_PRIMITIVE ("FLONUM-ZERO?", Prim_flonum_zero_p, 1, 1, 0)
-     FLONUM_UNARY_PREDICATE (==)
+     FLONUM_ORDERED_UNARY_PREDICATE (==)
 DEFINE_PRIMITIVE ("FLONUM-POSITIVE?", Prim_flonum_positive_p, 1, 1, 0)
-     FLONUM_UNARY_PREDICATE (>)
+     FLONUM_ORDERED_UNARY_PREDICATE (>)
 DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
-     FLONUM_UNARY_PREDICATE (<)
+     FLONUM_ORDERED_UNARY_PREDICATE (<)
 
 #define SIMPLE_TRANSCENDENTAL_FUNCTION(function)			\
 {									\
