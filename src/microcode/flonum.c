@@ -119,16 +119,15 @@ DEFINE_PRIMITIVE ("FLONUM-MODULO", Prim_flonum_modulo, 2, 2, 0)
 DEFINE_PRIMITIVE ("FLONUM-NEGATE", Prim_flonum_negate, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  FLONUM_RESULT (- (arg_flonum (1)));
+  FLONUM_BINARY64_RESULT
+    ((UINT64_C (0x8000000000000000)) ^ (arg_flonum_binary64 (1)));
 }
 
 DEFINE_PRIMITIVE ("FLONUM-ABS", Prim_flonum_abs, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  {
-    double x = (arg_flonum (1));
-    FLONUM_RESULT (fabs (x));
-  }
+  FLONUM_BINARY64_RESULT
+    ((UINT64_C (0x7fffffffffffffff)) & (arg_flonum_binary64 (1)));
 }
 
 static void
@@ -647,9 +646,11 @@ DEFINE_PRIMITIVE ("FLONUM-COPYSIGN", Prim_flonum_copysign, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   {
-    double magnitude = (arg_flonum (1));
-    double sign = (arg_flonum (2));
-    FLONUM_RESULT (copysign (magnitude, sign));
+    uint64_t magnitude = (arg_flonum_binary64 (1));
+    uint64_t sign = (arg_flonum_binary64 (2));
+    FLONUM_BINARY64_RESULT
+      ((magnitude & (UINT64_C (0x7fffffffffffffff)))
+       | (sign & (UINT64_C (0x8000000000000000))));
   }
 }
 
