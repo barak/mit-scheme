@@ -118,8 +118,6 @@
 ###	If defined, do not generate SSE media instructions.
 ### VALGRIND_MODE
 ###	If defined, modify code to make it work with valgrind.
-
-define(DISABLE_SSE,1)
 
 ####	Utility macros and definitions
 
