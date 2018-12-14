@@ -498,27 +498,49 @@ DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-SINGLE", Prim_cast_integer_to_ieee754
 
 /* IEEE 754 quiet predicates */
 
+static bool
+arg_is_nan (int arg_number)
+{
+  const uint64_t exp_mask = (UINT64_C (0x7ff0000000000000));
+  const uint64_t exp_infnan = exp_mask;
+  const uint64_t sig_mask = (UINT64_C (0x000fffffffffffff));
+  uint64_t binary64 = (arg_flonum_binary64 (arg_number));
+  if ((binary64 & exp_mask) != exp_infnan)
+    return false;
+  if ((binary64 & sig_mask) == 0)
+    return false;
+  return true;
+}
+
 DEFINE_PRIMITIVE ("FLONUM-IS-FINITE?", Prim_flonum_is_finite_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
+  if (arg_is_nan (1))
+    PRIMITIVE_RETURN (SHARP_F);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isfinite (arg_flonum (1))));
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-INFINITE?", Prim_flonum_is_infinite_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
+  if (arg_is_nan (1))
+    PRIMITIVE_RETURN (SHARP_F);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isinf (arg_flonum (1))));
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-NAN?", Prim_flonum_is_nan_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isnan (arg_flonum (1))));
+  if (arg_is_nan (1))
+    PRIMITIVE_RETURN (SHARP_T);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-NORMAL?", Prim_flonum_is_normal_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
+  if (arg_is_nan (1))
+    PRIMITIVE_RETURN (SHARP_F);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isnormal (arg_flonum (1))));
 }
 
@@ -586,6 +608,8 @@ DEFINE_PRIMITIVE ("FLONUM-IS-EQUAL?", Prim_flonum_is_equal_p, 2, 2, 0)
 DEFINE_PRIMITIVE ("FLONUM-IS-ZERO?", Prim_flonum_is_zero_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
+  if (arg_is_nan (1))
+    PRIMITIVE_RETURN (SHARP_F);
   {
     double x = (arg_flonum (1));
     PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((fpclassify (x)) == FP_ZERO));
