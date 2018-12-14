@@ -357,6 +357,9 @@ USA.
 		  ;; <= pi/4.  Correct argument reduction requires a
 		  ;; better approximation of pi than the i387 has.
 		  FLONUM-SIN FLONUM-COS FLONUM-TAN
+		  ;; Disabled: exp is too much trouble to get right in
+		  ;; i387; need 64-bit precision.  Let libm do it.
+		  FLONUM-EXP
 		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
 		  FLONUM-IS-LESS? FLONUM-IS-LESS-OR-EQUAL?
 		  FLONUM-IS-GREATER? FLONUM-IS-GREATER-OR-EQUAL?

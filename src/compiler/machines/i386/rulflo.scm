@@ -335,7 +335,10 @@ USA.
      (LAP (FLDL2E)
 	  (FMULP (ST 1) (ST 0))
 	  (F2XM1)))))
+
+;; XXX This is disabled because it is inadequate in 53-bit precision.
 
+#;
 (define-arithmetic-method 'FLONUM-EXP flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
