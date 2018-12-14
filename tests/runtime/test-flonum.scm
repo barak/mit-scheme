@@ -117,7 +117,11 @@ USA.
 (define (yes-traps f)
   (if (flo:have-trap-enable/disable?)
       ;; XXX Should enable all traps.
-      (flo:with-trapped-exceptions (flo:exception:invalid-operation) f)
+      (begin
+        (flo:clear-exceptions! (flo:supported-exceptions))
+        (flo:with-trapped-exceptions
+            (fix:or (flo:exception:invalid-operation) (flo:exception:overflow))
+          f))
       (f)))
 
 (define subnormal+ flo:smallest-positive-subnormal)
