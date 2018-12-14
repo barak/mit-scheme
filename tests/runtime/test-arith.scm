@@ -282,9 +282,7 @@ USA.
   (list
    (list 0 0)
    (list (log 2) 1.)
-   (list 1 (- (exp 1) 1))
-   (list (expt 2 -53) (expt 2. -53))
-   (list (- (expt 2 -53)) (- (expt 2. -53))))
+   (list 1 (- (exp 1) 1)))
   (lambda (x y)
     (assert-eqv (expm1 x) y)))
 
@@ -300,7 +298,9 @@ USA.
    (list -0.6 -0.45118836390597356)
    (list 0.6 .8221188003905089)
    (list (log 2) 1.)
-   (list 0.7 1.0137527074704766))
+   (list 0.7 1.0137527074704766)
+   (list (expt 2 -53) (expt 2. -53))
+   (list (- (expt 2 -53)) (- (expt 2. -53))))
   (lambda (x y)
     (assert-<= (relerr y (expm1 x)) 1e-15)))
 
