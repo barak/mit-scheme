@@ -525,7 +525,9 @@ DEFINE_PRIMITIVE ("FLONUM-IS-NORMAL?", Prim_flonum_is_normal_p, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM-IS-NEGATIVE?", Prim_flonum_is_negative_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (signbit (arg_flonum (1))));
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT
+     ((UINT64_C (0x8000000000000000)) & (arg_flonum_binary64 (1))));
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-GREATER?", Prim_flonum_is_greater_p, 2, 2, 0)
