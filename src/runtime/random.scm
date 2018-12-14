@@ -453,7 +453,8 @@ USA.
        (let ((s0 (int:->flonum (%random-16 state)))
 	     (s1 (int:->flonum (%random-16 state)))
 	     (s2 (int:->flonum (%random-16 state)))
-	     (s3 (int:->flonum (fix:and (%random-16 state) #xf))))
+	     (s3
+	      (int:->flonum (fix:or #x10 (fix:and (%random-16 state) #xf)))))
 	 (let ((lo (flo:+ (flo:* 65536. s1) s0))
 	       (hi (flo:+ (flo:* 65536. s3) s2)))
 	   (declare (integrate lo hi))
