@@ -466,6 +466,4 @@ USA.
 
 (define-test 'SHIFT-RIGHT/TOO-MANY
   (lambda ()
-    (expect-failure
-     (lambda ()
-       (assert-= (shift-right (identity-procedure 1234567) 100) 0)))))
+    (assert-= (shift-right (identity-procedure 1234567) 100) 0)))

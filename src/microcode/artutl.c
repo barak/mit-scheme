@@ -696,6 +696,8 @@ integer_shift_right (SCHEME_OBJECT n, unsigned long m)
   if (FIXNUM_P (n))
     {
       long n1 = (FIXNUM_TO_LONG (n));
+      if (m >= (CHAR_BIT * (sizeof (n1))))
+	return (LONG_TO_FIXNUM ((n1 < 0) ? (-1) : 0));
       return (LONG_TO_FIXNUM ((n1 < 0) ? (~ ((~n1) >> m)) : (n1 >> m)));
     }
   else
