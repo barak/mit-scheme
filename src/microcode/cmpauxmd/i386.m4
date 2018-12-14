@@ -1238,6 +1238,7 @@ IFSSE(`	enter		IMM(4),IMM(0)
 	stmxcsr		IND(REG(esp))
 	OP(mov,l)	TW(IND(REG(esp)),REG(eax))
 	leave')
+IFNSSE(`OP(xor,l)	TW(REG(eax),REG(eax))')
 	ret
 
 define_c_label(sse_write_mxcsr)
@@ -1257,6 +1258,7 @@ IF387(`	enter		IMM(4),IMM(0)
 	fnstcw		IND(REG(esp))
 	OP(mov,w)	TW(INDW(REG(esp)),REG(ax))
 	leave')
+IFN387(`OP(xor,l)	TW(REG(eax),REG(eax))')
 	ret
 
 define_c_label(x87_write_control_word)
@@ -1268,6 +1270,7 @@ IF387(`	enter		IMM(4),IMM(0)
 	fnstsw		IND(REG(esp))
 	OP(mov,w)	TW(INDW(REG(esp)),REG(ax))
 	leave')
+IFN387(`OP(xor,l)	TW(REG(eax),REG(eax))')
 	ret
 
 define_c_label(x87_read_environment)
