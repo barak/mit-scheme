@@ -363,4 +363,9 @@ USA.
 		  FLONUM-IS-LESS-OR-GREATER? FLONUM-IS-UNORDERED?
 		  FLONUM-IS-NORMAL? FLONUM-IS-FINITE? FLONUM-IS-INFINITE?
 		  FLONUM-IS-NAN? FLONUM-IS-ZERO? FLONUM-IS-EQUAL?
-		  FLONUM-IS-NEGATIVE? FLONUM-COPYSIGN))
+		  FLONUM-IS-NEGATIVE?
+		  ;; Disabled: these require some care to handle
+		  ;; signalling NaN, which can't even be loaded onto
+		  ;; the i387 floating-point stack without raising an
+		  ;; exception.
+		  FLONUM-COPYSIGN FLONUM-NEGATE FLONUM-ABS))
