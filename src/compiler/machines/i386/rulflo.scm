@@ -670,14 +670,20 @@ USA.
 	 (st2 (flonum-source! source2)))
     (cond ((zero? st1)
 	   (flonum-branch! predicate
-			   (LAP (FCOM (ST 0) (ST ,st2)))))
+			   (lambda (fcom fcomp)
+			     fcomp
+			     (LAP (,fcom (ST 0) (ST ,st2))))))
 	  ((zero? st2)
 	   (flonum-branch! (commute-flonum-predicate predicate)
-			   (LAP (FCOM (ST 0) (ST ,st1)))))
+			   (lambda (fcom fcomp)
+			     fcomp
+			     (LAP (,fcom (ST 0) (ST ,st1))))))
 	  (else
 	   (flonum-branch! predicate
-			   (LAP (FLD (ST ,st1))
-				(FCOMP (ST 0) (ST ,(1+ st2)))))))))
+			   (lambda (fcom fcomp)
+			     fcom
+			     (LAP (FLD (ST ,st1))
+				  (,fcomp (ST 0) (ST ,(1+ st2))))))))))
 
 (define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
@@ -706,14 +712,18 @@ USA.
 (define (flonum-compare-zero predicate source)
   (let ((sti (flonum-source! source)))
     (flonum-branch! (commute-flonum-predicate predicate)
-		    (LAP (FLDZ)
-			 (FCOMP (ST 0) (ST ,(1+ sti)))))))
+		    (lambda (fcom fcomp)
+		      fcom
+		      (LAP (FLDZ)
+			   (,fcomp (ST 0) (ST ,(1+ sti))))))))
 
 (define (flonum-compare-one predicate source)
   (let ((sti (flonum-source! source)))
     (flonum-branch! (commute-flonum-predicate predicate)
-		    (LAP (FLD1)
-			 (FCOMP (ST 0) (ST ,(1+ sti)))))))
+		    (lambda (fcom fcomp)
+		      fcom
+		      (LAP (FLD1)
+			   (,fcomp (ST 0) (ST ,(1+ sti))))))))
 
 ;;; For predicate giving (if (predicate x y) a b), return predicate* so
 ;;; that (if (predicate* y x) a b) is equivalent.
@@ -723,12 +733,30 @@ USA.
     ((FLONUM-EQUAL?) 'FLONUM-EQUAL?)
     ((FLONUM-LESS?) 'FLONUM-GREATER?)
     ((FLONUM-GREATER?) 'FLONUM-LESS?)
+    ((FLONUM-IS-EQUAL?) 'FLONUM-IS-EQUAL?)
+    ((FLONUM-IS-LESS?) 'FLONUM-IS-GREATER?)
+    ((FLONUM-IS-LESS-OR-EQUAL?) 'FLONUM-IS-GREATER-OR-EQUAL?)
+    ((FLONUM-IS-GREATER?) 'FLONUM-IS-LESS?)
+    ((FLONUM-IS-GREATER-OR-EQUAL?) 'FLONUM-IS-LESS-OR-EQUAL?)
+    ((FLONUM-IS-UNORDERED?) 'FLONUM-IS-UNORDERED?)
+    ((FLONUM-IS-LESS-OR-GREATER?) 'FLONUM-IS-LESS-OR-GREATER?)
     (else
      (error "commute-flonum-predicate: Unknown predicate" pred))))
 
 (define (flonum-branch! predicate prefix)
+  (define (comparison fcom fcomp)
+    (flush-register! eax)
+    (LAP ,@(prefix fcom fcomp)
+	 ;; FCOMI &c. are not supported by all IA-32 CPUs -- only >=P6.
+	 ;; So explicitly convert condition codes via the status word.
+	 (FSTSW (R ,eax))
+	 (SAHF)))
+  (define (quiet-comparison)
+    (comparison 'FUCOM 'FUCOMP))
+  (define (signalling-comparison)
+    (comparison 'FCOM 'FCOMP))
   (case predicate
-    ((FLONUM-EQUAL?)
+    ((FLONUM-EQUAL? FLONUM-IS-EQUAL?)
      (set-current-branches! (lambda (label)
 			      (let ((unordered (generate-label 'UNORDERED)))
 				(LAP (JP (@PCR ,unordered))
@@ -736,8 +764,12 @@ USA.
 				     (LABEL ,unordered))))
 			    (lambda (label)
 			      (LAP (JNE (@PCR ,label))
-				   (JP (@PCR ,label))))))
-    ((FLONUM-LESS?)
+				   (JP (@PCR ,label)))))
+     (case predicate
+       ((FLONUM-EQUAL?) (signalling-comparison))
+       ((FLONUM-IS-EQUAL?) (quiet-comparison))
+       (else (assert #f))))
+    ((FLONUM-LESS? FLONUM-IS-LESS?)
      (set-current-branches! (lambda (label)
 			      (let ((unordered (generate-label 'UNORDERED)))
 				(LAP (JP (@PCR ,unordered))
@@ -745,18 +777,50 @@ USA.
 				     (LABEL ,unordered))))
 			    (lambda (label)
 			      (LAP (JAE (@PCR ,label))
-				   (JP (@PCR ,label))))))
-    ((FLONUM-GREATER?)
+				   (JP (@PCR ,label)))))
+     (case predicate
+       ((FLONUM-LESS?) (signalling-comparison))
+       ((FLONUM-IS-LESS?) (quiet-comparison))
+       (else (assert #f))))
+    ((FLONUM-GREATER? FLONUM-IS-GREATER?)
      (set-current-branches! (lambda (label)
 			      (LAP (JA (@PCR ,label))))
 			    (lambda (label)
-			      (LAP (JBE (@PCR ,label))))))
+			      (LAP (JBE (@PCR ,label)))))
+     (case predicate
+       ((FLONUM-GREATER?) (signalling-comparison))
+       ((FLONUM-IS-GREATER?) (quiet-comparison))
+       (else (assert #f))))
+    ((FLONUM-IS-LESS-OR-EQUAL?)
+     (set-current-branches! (lambda (label)
+                              (let ((unordered (generate-label 'UNORDERED)))
+                                (LAP (JP (@PCR ,unordered))
+                                     (JBE (@PCR ,label))
+                                     (LABEL ,unordered))))
+                            (lambda (label)
+                              (LAP (JA (@PCR ,label))
+                                   (JP (@PCR ,label)))))
+     (quiet-comparison))
+    ((FLONUM-IS-GREATER-OR-EQUAL?)
+     (set-current-branches! (lambda (label)
+                              (LAP (JAE (@PCR ,label))))
+                            (lambda (label)
+                              (LAP (JB (@PCR ,label)))))
+     (quiet-comparison))
+    ((FLONUM-IS-LESS-OR-GREATER?)
+     (set-current-branches! (lambda (label)
+                              (LAP (JNE (@PCR ,label))))
+                            (lambda (label)
+                              (LAP (JE (@PCR ,label)))))
+     (quiet-comparison))
+    ((FLONUM-IS-UNORDERED?)
+     (set-current-branches! (lambda (label)
+                              (LAP (JP (@PCR ,label))))
+                            (lambda (label)
+                              (LAP (JNP (@PCR ,label)))))
+     (quiet-comparison))
     (else
-     (error "flonum-branch!: Unknown predicate" predicate)))
-  (flush-register! eax)
-  (LAP ,@prefix
-       (FSTSW (R ,eax))
-       (SAHF)))
+     (error "flonum-branch!: Unknown predicate" predicate))))
 
 ;; This is endianness dependent!
 
