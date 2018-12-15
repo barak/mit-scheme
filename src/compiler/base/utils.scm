@@ -478,7 +478,12 @@ USA.
 ;; primitives here too.
 
 (define machine-dependent-primitives
-  (list (ucode-primitive primitive-object-ref 2)
+  (list (ucode-primitive fixnum? 1)
+	(ucode-primitive index-fixnum?)
+	(ucode-primitive object-type 1)
+	(ucode-primitive object-type? 2)
+	(ucode-primitive primitive-object-ref 2)
+	(ucode-primitive primitive-object-type 1)
 	(ucode-primitive system-vector-ref 2)
 	(ucode-primitive system-vector-size 1)))
 
