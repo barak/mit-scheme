@@ -116,7 +116,6 @@ USA.
     (flo:- flonum-subtract)
     (flo:/ flonum-divide)
     (flo:< flonum-less?)
-    (flo:<> flonum-is-less-or-greater?)
     (flo:= flonum-equal?)
     (flo:> flonum-greater?)
     (flo:abs flonum-abs)
