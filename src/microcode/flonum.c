@@ -130,7 +130,7 @@ DEFINE_PRIMITIVE ("FLONUM-ABS", Prim_flonum_abs, 1, 1, 0)
     ((UINT64_C (0x7fffffffffffffff)) & (arg_flonum_binary64 (1)));
 }
 
-static void
+static inline void
 invalid_if_unordered (double x, double y)
 {
   if (isunordered (x, y))
@@ -139,6 +139,36 @@ invalid_if_unordered (double x, double y)
       feraiseexcept (FE_INVALID);
 #endif
     }
+}
+
+static inline bool
+issnan (double x)
+{
+  union { uint64_t i; double d; } u;
+  if (!isnan (x))
+    return false;
+  (u.d) = x;
+  if ((u.i) & (UINT64_C (0x0008000000000000)))
+    return false;
+  return true;
+}
+
+static inline void
+invalid_if_signalling (double x, double y)
+{
+#ifdef __i386__
+  /* Merely loading signalling NaN onto the floating-point stack is
+     enough to raise an exception on i387.  */
+  (void) x;
+  (void) y;
+#else
+  if ((issnan (x)) || (issnan (y)))
+    {
+#if (defined (HAVE_FERAISEEXCEPT)) && (defined (FE_INVALID))
+      feraiseexcept (FE_INVALID);
+#endif
+    }
+#endif
 }
 
 #define FLONUM_ORDERED_BINARY_PREDICATE(operator)			\
@@ -555,43 +585,67 @@ DEFINE_PRIMITIVE ("FLONUM-IS-NEGATIVE?", Prim_flonum_is_negative_p, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM-IS-GREATER?", Prim_flonum_is_greater_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (isgreater ((arg_flonum (1)), (arg_flonum (2)))));
+  {
+    double x = (arg_flonum (1));
+    double y = (arg_flonum (2));
+    invalid_if_signalling (x, y);
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isgreater (x, y)));
+  }
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-GREATER-OR-EQUAL?", Prim_flonum_is_greater_or_equal_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (isgreaterequal ((arg_flonum (1)), (arg_flonum (2)))));
+  {
+    double x = (arg_flonum (1));
+    double y = (arg_flonum (2));
+    invalid_if_signalling (x, y);
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isgreaterequal (x, y)));
+  }
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-LESS-OR-EQUAL?", Prim_flonum_is_less_or_equal_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (islessequal ((arg_flonum (1)), (arg_flonum (2)))));
+  {
+    double x = (arg_flonum (1));
+    double y = (arg_flonum (2));
+    invalid_if_signalling (x, y);
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (islessequal (x, y)));
+  }
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-LESS?", Prim_flonum_is_less_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (isless ((arg_flonum (1)), (arg_flonum (2)))));
+  {
+    double x = (arg_flonum (1));
+    double y = (arg_flonum (2));
+    invalid_if_signalling (x, y);
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isless (x, y)));
+  }
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-LESS-OR-GREATER?", Prim_flonum_is_less_or_greater_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (islessgreater ((arg_flonum (1)), (arg_flonum (2)))));
+  {
+    double x = (arg_flonum (1));
+    double y = (arg_flonum (2));
+    invalid_if_signalling (x, y);
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (islessgreater (x, y)));
+  }
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-UNORDERED?", Prim_flonum_is_unordered_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (isunordered ((arg_flonum (1)), (arg_flonum (2)))));
+  {
+    double x = (arg_flonum (1));
+    double y = (arg_flonum (2));
+    invalid_if_signalling (x, y);
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isunordered (x, y)));
+  }
 }
 
 DEFINE_PRIMITIVE ("FLONUM-IS-EQUAL?", Prim_flonum_is_equal_p, 2, 2, 0)
@@ -600,6 +654,7 @@ DEFINE_PRIMITIVE ("FLONUM-IS-EQUAL?", Prim_flonum_is_equal_p, 2, 2, 0)
   {
     double x = (arg_flonum (1));
     double y = (arg_flonum (2));
+    invalid_if_signalling (x, y);
     PRIMITIVE_RETURN
       (BOOLEAN_TO_OBJECT ((islessequal (x, y)) && (isgreaterequal (x, y))));
   }
