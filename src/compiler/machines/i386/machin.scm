@@ -361,11 +361,11 @@ USA.
 		  ;; i387; need 64-bit precision.  Let libm do it.
 		  FLONUM-EXP
 		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
-		  FLONUM-IS-NORMAL? FLONUM-IS-FINITE? FLONUM-IS-INFINITE?
-		  FLONUM-IS-NAN? FLONUM-IS-ZERO?
-		  FLONUM-IS-NEGATIVE?
 		  ;; Disabled: these require some care to handle
 		  ;; signalling NaN, which can't even be loaded onto
 		  ;; the i387 floating-point stack without raising an
 		  ;; exception.
+		  FLONUM-IS-NORMAL? FLONUM-IS-FINITE? FLONUM-IS-INFINITE?
+		  FLONUM-IS-NAN? FLONUM-IS-ZERO?
+		  FLONUM-IS-NEGATIVE?
 		  FLONUM-COPYSIGN FLONUM-NEGATE FLONUM-ABS))
