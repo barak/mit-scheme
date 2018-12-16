@@ -264,6 +264,10 @@ USA.
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
   (LAP (PUSH W (&U ,(make-non-pointer-literal type datum)))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 4) -1) (? expression rtl:simple-offset?))
+  (LAP (PUSH ,(offset->reference! expression))))
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
