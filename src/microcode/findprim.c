@@ -1206,8 +1206,8 @@ strcmp_ci (const char * s1, const char * s2)
 
   while ((length--) > 0)
     {
-      int c1 = (*s1++);
-      int c2 = (*s2++);
+      int c1 = ((unsigned char) (*s1++));
+      int c2 = ((unsigned char) (*s2++));
       if (islower (c1)) c1 = (toupper (c1));
       if (islower (c2)) c2 = (toupper (c2));
       if (c1 < c2) return (-1);
