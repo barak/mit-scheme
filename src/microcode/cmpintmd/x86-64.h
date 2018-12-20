@@ -82,9 +82,8 @@ entry	8		symbol
 	0		16-bit arity
 	2		zero
 	7		0x1A
-entry	8		MOV RAX,imm64		0x48 0xB8
-	10		<address>
-	18		JMP (RAX)		0xFF 0xE0
+entry	8		MOV	RAX,imm64	48 b8 <addr64>
+	18		JMP	(RAX)		ff e0
 	19-23		<four bytes of padding>
 	24		<next cache>
 
@@ -98,12 +97,15 @@ nicely.
 	8		<entry count>
 	12		<type/arity info>       \__ format word
 	14		<gc offset>             /
-entry0	16		MOV RAX,imm64		0x48 0xB8
-	18		<address>
-	26		CALL (RAX)		0xFF 0xD0
-	28		<four bytes of padding or next format word>
+entry0	16		MOV	RAX,imm64	48 b8 <imm64>
+	26		CALL	[RIP+0]		e8 00 00 00 00
+	31		JMP	(RAX)		ff e0
+	33		<padding>		00 00 00
+	36		<type/arity info>
+	38		<gc offset>
+entry1	40		...
 	...
-	16*(n+1)	<variables>
+	16 + 24*n	<variables>
 
 
 - Trampoline encoding:
@@ -111,9 +113,13 @@ entry0	16		MOV RAX,imm64		0x48 0xB8
 	-8		<padding>
 	-4		<type/arity info>
 	-2		<gc offset>
-entry	0		MOV	AL,code		0xB0, code-byte
-	2		CALL	n(RSI)		0xFF 0x96 n-longword
-	8		<trampoline dependent storage>
+entry	0		MOV	AL,code		b0 <code8>
+	2		CALL	[RIP+0]		e8 00 00 00 00
+	7		JMP	n(RSI)		ff a6 <n32>
+	13		<padding>		00 00 00
+	16		<trampoline dependent storage>
+
+  Distance from address on stack to trampoline storage: 16 - 7 = 9.
 
 */
 
@@ -145,7 +151,9 @@ typedef uint8_t insn_t;
    instructions are stored.  This is an approximation: it matches only
    those non-closure procedures for which LIAR has generated interrupt
    checks, in which case there is one CALL n(RSI), which is encoded as
-   #xff #x96 <n>, where n is a longword (32 bits).  */
+   #xff #x96 <n>, where n is a longword (32 bits).
+
+   XXX Stop using CALL for this.  */
 #define CC_ENTRY_GC_TRAP_SIZE 6
 
 #define EMBEDDED_CLOSURE_ADDRS_P 1

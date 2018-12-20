@@ -518,18 +518,34 @@ USA.
   (let* ((procedure-label (rtl-procedure/external-label (label->object label)))
 	 (MOV-offset (+ offset address-units-per-entry-format-code))
 	 (imm64-offset (+ MOV-offset 2))
-	 (CALL-offset (+ imm64-offset 8)))
+	 (CALL-offset (+ imm64-offset 8))
+	 (CALL-rel32-offset (+ CALL-offset 1))
+	 (JMP-offset (+ CALL-rel32-offset 4))
+	 (padding-offset (+ JMP-offset 2)))
+    CALL-rel32-offset JMP-offset padding-offset
     (LAP (MOV L (@RO ,regnum:free-pointer ,offset)
 	      (&U ,(make-closure-code-longword min max MOV-offset)))
 	 (LEA Q ,temp (@PCR ,procedure-label))
-	 ;; (MOV Q (R ,rax) (&U <procedure-label>))
-	 ;; The instruction sequence is really `48 b8', but this is a
-	 ;; stupid little-endian architecture.  I want my afternoon
-	 ;; back.
+	 ;; (MOV Q (R ,rax) (&U <procedure-label>))	48 b8
 	 (MOV W (@RO ,regnum:free-pointer ,MOV-offset) (&U #xB848))
 	 (MOV Q (@RO ,regnum:free-pointer ,imm64-offset) ,temp)
-	 ;; (CALL (R ,rax))
-	 (MOV W (@RO ,regnum:free-pointer ,CALL-offset) (&U #xD0FF)))))
+	 ;; (CALL (@PCO 0))				e8 00 00 00 00
+	 ;; (JMP (R ,rax))				ff e0
+	 ;; (PADDING 0 8 #*00000000)			00
+	 (MOV Q ,temp (&U #x00E0FF00000000E8))
+	 (MOV Q (@RO ,regnum:free-pointer ,CALL-offset) ,temp)
+#|
+	 ;; (CALL (@PCO 0))				e8 00 00 00 00
+	 (MOV B (@RO ,regnum:free-pointer ,CALL-offset) (&U #xE8))
+	 (MOV Q (@RO ,regnum:free-pointer ,CALL-rel32-offset) (&U 0))
+	 ;; (JMP (R ,rax))				ff e0
+	 (MOV W (@RO ,regnum:free-pointer ,JMP-offset) (&U #xE0FF))
+	 #|
+	 ;; (PADDING 0 8 #*00000000)			00
+	 (MOV B (@RO ,regnum:free-pointer ,PAD-offset) (&U #x00))
+	 |#
+|#
+	 )))
 
 (define (generate/closure-header internal-label nentries)
   (let* ((rtl-proc (label->object internal-label))
@@ -570,7 +586,7 @@ USA.
 
 (define-integrable (closure-entry-magic)
   (- (make-non-pointer-literal (ucode-type COMPILED-ENTRY) 0)
-     address-units-per-closure-entry-instructions))
+     address-units-per-closure-entry-call-offset))
 
 (define-integrable (make-closure-manifest size)
   (make-multiclosure-manifest 1 size))

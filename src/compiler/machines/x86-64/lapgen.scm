@@ -711,8 +711,19 @@ USA.
 (define-integrable (invoke-hook entry)
   (LAP (JMP ,entry)))
 
-(define-integrable (invoke-hook/call entry)
-  (LAP (CALL ,entry)))
+(define (invoke-hook/call entry)
+  (let* ((get-pc (generate-label 'GET-PC))
+	 (hook-context (generate-label 'HOOK-CONTEXT)))
+    (LAP (CALL (@PCR ,get-pc))
+	(LABEL ,get-pc)
+	 ;; ADD r/m64,imm8		48 83 04 24 xx
+	 ;; JMP r/m64			ff 86 yy yy yy yy
+	 ;; Register displacement for JMP is always >=0x80, so can't
+	 ;; fit in signed byte and thus must use 32-bit displacement.
+	 ;; Hence xx = 0x0b = 11.
+	 (ADD Q (@R ,rsp) (& #x0b))
+	 (JMP ,entry)
+	(LABEL ,hook-context))))
 
 (define-integrable (invoke-interface code)
   (LAP (MOV B (R ,rax) (& ,code))

@@ -83,7 +83,7 @@ USA.
 
 ;;; See microcode/cmpintmd/x86-64.h for a description of the layout.
 
-(define-integrable closure-entry-size 2)
+(define-integrable closure-entry-size 3) ;units of objects
 
 (define-integrable address-units-per-closure-manifest address-units-per-object)
 (define-integrable address-units-per-entry-format-code 4)
@@ -91,8 +91,12 @@ USA.
 (define-integrable address-units-per-closure-padding 4)
 
 ;;; (MOV Q (R ,rax) (&U <entry>))	48 B8 <eight-byte immediate>
-;;; (CALL (R ,rax))			FF D0
-(define-integrable address-units-per-closure-entry-instructions 12)
+;;; (CALL (@PCR CALL-OFFSET))		E8 00 00 00 00
+;;; (LABEL CALL-OFFSET)
+;;; (JMP (R ,rax))			FF E0
+;;; <padding>				xx xx xx
+(define-integrable address-units-per-closure-entry-call-offset 15)
+(define-integrable address-units-per-closure-entry-instructions 20)
 
 (define-integrable address-units-per-closure-entry
   (+ address-units-per-entry-format-code
@@ -100,8 +104,8 @@ USA.
 
 ;;; Note:
 ;;;
-;;; (= address-units-per-closure-entry #| 16 |#
-;;;    (* closure-entry-size #| 2 |# address-units-per-object #| 8 |#))
+;;; (= address-units-per-closure-entry #| 24 |#
+;;;    (* closure-entry-size #| 3 |# address-units-per-object #| 8 |#))
 
 ;;; Given the number of entries in a closure, and the index of an
 ;;; entry, return the number of words from that entry's closure

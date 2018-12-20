@@ -104,7 +104,7 @@ compiled_closure_entry (insn_t * start)
 insn_t *
 compiled_closure_next (insn_t * start)
 {
-  return (start + CC_ENTRY_HEADER_SIZE + 12);
+  return (start + CC_ENTRY_HEADER_SIZE + 20);
 }
 
 SCHEME_OBJECT *
@@ -175,7 +175,7 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
 }
 
 #define BYTES_PER_TRAMPOLINE_ENTRY_PADDING 4
-#define OBJECTS_PER_TRAMPOLINE_ENTRY 2
+#define OBJECTS_PER_TRAMPOLINE_ENTRY 3
 
 #define RSI_TRAMPOLINE_TO_INTERFACE_OFFSET				\
   ((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE))		\
@@ -199,8 +199,13 @@ store_trampoline_insns (insn_t * entry, uint8_t code)
 {
   (*entry++) = 0xB0;		/* MOV AL,code */
   (*entry++) = code;
-  (*entry++) = 0xFF;		/* CALL /2 disp32(RSI) */
-  (*entry++) = 0x96;
+  (*entry++) = 0xE8;		/* CALL rel32 */
+  (*entry++) = 0x00;		/* zero displacement */
+  (*entry++) = 0x00;
+  (*entry++) = 0x00;
+  (*entry++) = 0x00;
+  (*entry++) = 0xFF;		/* JMP r/m64 */
+  (*entry++) = 0xA6;		/* disp32(RSI) */
   (* ((uint32_t *) entry)) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
   return (false);
 }

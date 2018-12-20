@@ -417,6 +417,8 @@ define_c_label(C_to_interface)
 define_hook_label(trampoline_to_interface)
 define_debugging_label(trampoline_to_interface)
 	OP(pop,q)	REG(rbx)			# trampoline storage
+	# See x86-64.h for trampoline encoding layout.
+	OP(add,q)	TW(IMM(9),REG(rbx))		# adjust ptr
 	jmp	scheme_to_interface
 
 define_hook_label(scheme_to_interface_call)
