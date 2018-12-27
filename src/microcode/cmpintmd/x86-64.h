@@ -74,18 +74,20 @@ modes and jump instructions are all 64 bits by default.
 	2		zero		  [TC_FIXNUM | arity]
 	7		0x1A		/
 entry	8		symbol
-	16		<eight bytes of padding>
-	24		<next cache>
+	16		<padding>
+	32		<next cache>
 
 		After linking
 
 	0		16-bit arity
 	2		zero
 	7		0x1A
-entry	8		MOV	RAX,imm64	48 b8 <addr64>
-	18		JMP	(RAX)		ff e0
-	19-23		<four bytes of padding>
-	24		<next cache>
+entry	8		MOV	RCX,imm64	48 b9 <addr64>  ; entry address
+	18		MOV	RAX,(RCX)	48 8b 01
+	21		ADD	RAX,RCX		48 01 c8
+	24		JMP	RAX		ff e0
+	26		<padding>
+	32		<next cache>
 
 
 - Closures:
@@ -97,15 +99,13 @@ nicely.
 	8		<entry count>
 	12		<type/arity info>       \__ format word
 	14		<gc offset>             /
-entry0	16		MOV	RAX,imm64	48 b8 <imm64>
-	26		CALL	[RIP+0]		e8 00 00 00 00
-	31		JMP	(RAX)		ff e0
-	33		<padding>		00 00 00
-	36		<type/arity info>
-	38		<gc offset>
-entry1	40		...
+entry0	16		<offset>
+	24		<padding>
+	28		<type/arity info>
+	30		<gc offset>
+entry1	32		...
 	...
-	16 + 24*n	<variables>
+	16 + 16*n	<variables>
 
 
 - Trampoline encoding:
@@ -113,13 +113,12 @@ entry1	40		...
 	-8		<padding>
 	-4		<type/arity info>
 	-2		<gc offset>
-entry	0		MOV	AL,code		b0 <code8>
-	2		CALL	[RIP+0]		e8 00 00 00 00
-	7		JMP	n(RSI)		ff a6 <n32>
-	13		<padding>		00 00 00
+entry	0		<offset>		08 00 00 00 00 00 00 00
+	8		MOV	AL,code		b0 <code8>
+	10		JMP	n(RSI)		ff a6 <n32>
 	16		<trampoline dependent storage>
 
-  Distance from address on stack to trampoline storage: 16 - 7 = 9.
+  Distance from address in rcx to storage: 16.
 
 */
 
@@ -158,18 +157,26 @@ typedef uint8_t insn_t;
 
 #define EMBEDDED_CLOSURE_ADDRS_P 1
 
-#define DECLARE_RELOCATION_REFERENCE(name)
+typedef struct
+{
+  insn_t * old_addr;
+  insn_t * new_addr;
+} reloc_ref_t;
 
-#define START_CLOSURE_RELOCATION(scan, ref)	do {} while (0)
-#define START_OPERATOR_RELOCATION(scan, ref)	do {} while (0)
+#define DECLARE_RELOCATION_REFERENCE(name) reloc_ref_t name
+
+#define START_CLOSURE_RELOCATION(scan, ref)				\
+  start_closure_relocation ((scan), (&ref))
+
+#define START_OPERATOR_RELOCATION(scan, ref)	do {(void)ref;} while (0)
 
 #define OPERATOR_RELOCATION_OFFSET 0
 
 #define READ_COMPILED_CLOSURE_TARGET(a, r)				\
-  read_compiled_closure_target (a)
+  read_compiled_closure_target ((a), (&r))
 
 /* Size of execution cache in SCHEME_OBJECTS.  */
-#define UUO_LINK_SIZE 3
+#define UUO_LINK_SIZE 4
 
 #define UUO_WORDS_TO_COUNT(nw) ((nw) / UUO_LINK_SIZE)
 #define UUO_COUNT_TO_WORDS(nc) ((nc) * UUO_LINK_SIZE)
@@ -243,7 +250,8 @@ extern void asm_scheme_to_interface_call (void);
 extern void asm_serialize_cache (void);
 extern void asm_trampoline_to_interface (void);
 
-extern insn_t * read_compiled_closure_target (insn_t *);
+extern void start_closure_relocation (SCHEME_OBJECT *, reloc_ref_t *);
+extern insn_t * read_compiled_closure_target (insn_t *, reloc_ref_t *);
 extern insn_t * read_uuo_target (SCHEME_OBJECT *);
 extern void x86_64_reset_hook (void);
 

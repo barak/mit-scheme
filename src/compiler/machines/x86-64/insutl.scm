@@ -181,6 +181,13 @@ USA.
    (R/M 5)
    (BITS (32 `(- ,label (+ *PC* 4)) SIGNED)))
 
+  ((@PCRO (? label) (? offset))
+   (CATEGORIES MEMORY)
+   (REX)
+   (MODE #b00)
+   (R/M 5)
+   (BITS (32 `(- (+ ,label ,offset) (+ *PC* 4)) SIGNED)))
+
   ((@PCO (? offset signed-long))
    (CATEGORIES MEMORY)
    (REX)

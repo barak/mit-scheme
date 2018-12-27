@@ -737,12 +737,11 @@ DEFINE_GC_HANDLER (gc_handle_manifest_closure)
     unsigned long count = (compiled_closure_count (scan));
     while (count > 0)
       {
-	write_compiled_closure_target
-	  ((GC_CC_ENTRY_TO_RAW_ADDRESS
-	    (GC_HANDLE_CC_ENTRY
-	     (GC_RAW_ADDRESS_TO_CC_ENTRY
-	      (READ_COMPILED_CLOSURE_TARGET (start, ref))))),
-	   start);
+	insn_t * otarget = (READ_COMPILED_CLOSURE_TARGET (start, ref));
+	SCHEME_OBJECT oentry = (GC_RAW_ADDRESS_TO_CC_ENTRY (otarget));
+	SCHEME_OBJECT nentry = (GC_HANDLE_CC_ENTRY (oentry));
+	insn_t * ntarget = (GC_CC_ENTRY_TO_RAW_ADDRESS (nentry));
+	write_compiled_closure_target (ntarget, start);
 	start = (compiled_closure_next (start));
 	count -= 1;
       }

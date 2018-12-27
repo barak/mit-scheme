@@ -114,7 +114,8 @@ USA.
   (set! *external-labels* (cons label *external-labels*))
   (LAP (WORD U ,code)
        (BLOCK-OFFSET ,label)
-       (LABEL ,label)))
+       (LABEL ,label)
+       (QUAD U 8)))
 
 (define-integrable (make-code-word min max)
   (+ (* #x100 min) max))
@@ -221,7 +222,7 @@ USA.
   (LAP (MOV Q ,target (@PCR ,label-expr))))
 
 (define (load-pc-relative-address target label-expr)
-  (LAP (LEA Q ,target (@PCR ,label-expr))))  
+  (LAP (LEA Q ,target (@PCR ,label-expr))))
 
 (define (compare/register*register reg1 reg2)
   (cond ((register-alias reg1 'GENERAL)

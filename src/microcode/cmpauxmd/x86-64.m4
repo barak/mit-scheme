@@ -416,9 +416,8 @@ define_c_label(C_to_interface)
 
 define_hook_label(trampoline_to_interface)
 define_debugging_label(trampoline_to_interface)
-	OP(pop,q)	REG(rbx)			# trampoline storage
-	# See x86-64.h for trampoline encoding layout.
-	OP(add,q)	TW(IMM(9),REG(rbx))		# adjust ptr
+	OP(add,q)	TW(IMM(16),REG(rcx))		# trampoline storage
+	OP(mov,q)	TW(REG(rcx),REG(rbx))		# argument in rbx
 	jmp	scheme_to_interface
 
 define_hook_label(scheme_to_interface_call)
@@ -486,7 +485,9 @@ ifdef(`WIN32',						# Register block = %rsi
 	OP(mov,q)	TW(REG(rax),REG(rcx))		# Preserve if used
 	OP(and,q)	TW(rmask,REG(rcx))		# Restore potential dynamic link
 	OP(mov,q)	TW(REG(rcx),QOF(REGBLOCK_DLINK(),regs))
-	jmp		IJMP(REG(rdx))
+	OP(mov,q)	TW(REG(rdx),REG(rcx))		# rcx := entry addr
+	OP(add,q)	TW(IND(REG(rcx)),REG(rdx))	# rcx := PC
+	jmp	IJMP(REG(rdx))			# Invoke
 
 IF_WIN32(`
 use_external_code(EFR(WinntExceptionTransferHook))
@@ -566,7 +567,9 @@ define_hook_label(sc_apply)
 	OP(movs,bq,x)	TW(BOF(-4,REG(rcx)),REG(rax))	# Extract frame size
 	OP(cmp,q)	TW(REG(rax),REG(rdx))		# Compare to nargs+1
 	jne	asm_sc_apply_generic
-	jmp	IJMP(REG(rcx))				# Invoke
+	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
+	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
+	jmp	IJMP(REG(rax))			# Invoke
 
 define_debugging_label(asm_sc_apply_generic)
 	OP(mov,q)	TW(IMM(HEX(14)),REG(rax))
@@ -583,7 +586,9 @@ define_hook_label(sc_apply_size_$1)
 	jne	asm_sc_apply_generic_$1
 	OP(cmp,b)	TW(IMM($1),BOF(-4,REG(rcx)))	# Compare frame size
 	jne	asm_sc_apply_generic_$1			# to nargs+1
-	jmp	IJMP(REG(rcx))
+	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
+	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
+	jmp	IJMP(REG(rax))			# Invoke
 
 asm_sc_apply_generic_$1:
 	OP(mov,q)	TW(IMM($1),REG(rdx))
@@ -606,38 +611,39 @@ define_apply_fixed_size(8)
 ###	(bignums, ratnums, recnums)
 
 declare_alignment(2)
+asm_generic_return_rax:
+	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
+	OP(pop,q)	REG(rcx)
+	OP(and,q)	TW(rmask,REG(rcx))
+	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))
+	OP(add,q)	TW(REG(rcx),REG(rax))
+	jmp	IJMP(REG(rax))
+
+declare_alignment(2)
 asm_generic_fixnum_result:
-	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(or,b)	TW(IMM(TC_FIXNUM),REG(al))
 	OP(ror,q)	TW(IMM(TC_LENGTH),REG(rax))
-	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
-	ret
+	jmp	asm_generic_return_rax
 
 declare_alignment(2)
 asm_generic_flonum_result:
-	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(mov,q)	TW(IMM_MANIFEST_NM_VECTOR_1,REG(rcx))
 	OP(mov,q)	TW(REG(rcx),IND(rfree))
 	movsd		TW(REG(xmm0),QOF(FLONUM_DATA_OFFSET,rfree))
 	OP(mov,q)	TW(IMM_FLONUM_0,REG(rax))
 	OP(or,q)	TW(rfree,REG(rax))
 	OP(lea,q)	TW(QOF(FLONUM_STORAGE_SIZE,rfree),rfree)
-	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
-	ret
+	jmp	asm_generic_return_rax
 
 declare_alignment(2)
 asm_generic_return_sharp_t:
-	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(mov,q)	TW(IMM_TRUE,REG(rax))
-	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
-	ret
+	jmp	asm_generic_return_rax
 
 declare_alignment(2)
 asm_generic_return_sharp_f:
-	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(mov,q)	TW(IMM_FALSE,REG(rax))
-	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
-	ret
+	jmp	asm_generic_return_rax
 
 define(define_unary_operation,
 `declare_alignment(2)
@@ -838,10 +844,8 @@ asm_generic_divide_zero_by_flo:
 	ucomisd		TW(REG(xmm1),REG(xmm0))
 	jp	asm_generic_divide_fail
 	je	asm_generic_divide_fail
-	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(mov,q)	TW(IMM_FIXNUM_0,REG(rax))
-	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
-	ret
+	jmp	asm_generic_return_rax
 
 asm_generic_divide_flo_by_flo:
 	# Numerator (rdx) and denominator (rbx) are both flonums.

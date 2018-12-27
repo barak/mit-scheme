@@ -66,18 +66,54 @@ write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 
 /* Compiled closures */
 
-/* MOV RAX,imm64 has two bytes of opcode cruft before the imm64.  */
+/* start_closure_reloation(scan, ref)
+
+   `scan' points at the manifest of a compiled closure.  Initialize
+   `ref' with whatever we need to relocate the entries in it.  */
+
+void
+start_closure_relocation (SCHEME_OBJECT * scan, reloc_ref_t * ref)
+{
+  /* The last element of the block is always the tagged first entry of
+     the closure, which tells us where the closure was in oldspace.  */
+  (ref->old_addr) = (CC_ENTRY_ADDRESS (* ((CC_BLOCK_ADDR_END (scan)) - 1)));
+  /* Find the address of the first entry in newspace.  */
+  (ref->new_addr)
+    = (tospace_to_newspace
+       (compiled_closure_entry (compiled_closure_start (scan + 1))));
+}
+
+/* read_compiled_closure_target(start, ref)
+
+   `start' points to the start of a closure entry in tospace, beginning
+   with the format word and block offset.  `ref' was initialized with
+   `start_closure_relocation'.  Return the untagged compiled entry
+   address in oldspace that the closure entry points to.  */
 
 insn_t *
-read_compiled_closure_target (insn_t * start)
+read_compiled_closure_target (insn_t * start, reloc_ref_t * ref)
 {
-  return (* ((insn_t **) (start + CC_ENTRY_HEADER_SIZE + 2)));
+  insn_t * addr = (start + CC_ENTRY_HEADER_SIZE);
+  insn_t * base = (tospace_to_newspace (addr));
+  /* If we're relocating, find where base was in the oldspace.  */
+  if (ref)
+    base += (ref->old_addr - ref->new_addr);
+  return (base + (* ((int64_t *) addr)) - 8);
 }
+
+/* write_compiled_closure_target(target, start)
+
+   `target' is an untagged compiled entry address in newspace.  `start'
+   points to the start of a closure entry in tospace, beginning with
+   the format word and block offset.  Set the closure entry at `start'
+   to go to `target'.  */
 
 void
 write_compiled_closure_target (insn_t * target, insn_t * start)
 {
-  (* ((insn_t **) (start + CC_ENTRY_HEADER_SIZE + 2))) = target;
+  insn_t * addr = (start + CC_ENTRY_HEADER_SIZE);
+  (* ((int64_t *) addr)) =
+    (target - ((insn_t *) (tospace_to_newspace (addr))) + 8);
 }
 
 unsigned long
@@ -104,7 +140,7 @@ compiled_closure_entry (insn_t * start)
 insn_t *
 compiled_closure_next (insn_t * start)
 {
-  return (start + CC_ENTRY_HEADER_SIZE + 20);
+  return (start + CC_ENTRY_HEADER_SIZE + 12);
 }
 
 SCHEME_OBJECT *
@@ -117,9 +153,7 @@ skip_compiled_closure_padding (insn_t * start)
 SCHEME_OBJECT
 compiled_closure_entry_to_target (insn_t * entry)
 {
-  /* `entry' points to the start of the MOV RAX,imm64 instruction,
-     which has two bytes of opcode cruft before the imm64.  */
-  return (MAKE_CC_ENTRY (* ((long *) (entry + 2))));
+  return (MAKE_CC_ENTRY (entry + (* ((int64_t *) entry)) - 8));
 }
 
 /* Execution caches (UUO links)
@@ -151,8 +185,12 @@ read_uuo_frame_size (SCHEME_OBJECT * saddr)
 insn_t *
 read_uuo_target (SCHEME_OBJECT * saddr)
 {
-  insn_t * mov_addr = ((insn_t *) (saddr + 1));
-  return (* ((insn_t **) (mov_addr + 2)));
+  /* Skip the arity.  */
+  insn_t * addr = ((insn_t *) (saddr + 1));
+  assert ((addr[0]) == 0x48);
+  assert ((addr[1]) == 0xb9);
+  /* 0x48 0xb9 <addr> */
+  return (* ((insn_t **) (&addr[2])));
 }
 
 insn_t *
@@ -166,12 +204,23 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
 {
   /* Skip the arity. */
   insn_t * addr = ((insn_t *) (saddr + 1));
-  (*addr++) = 0x48;		/* REX.W (64-bit operand size prefix) */
-  (*addr++) = 0xB8;		/* MOV RAX,imm64 */
-  (* ((insn_t **) addr)) = target;
-  addr += 8;
-  (*addr++) = 0xFF;		/* JMP reg/mem64 */
-  (*addr++) = 0xE0;		/* ModR/M for RAX */
+  (addr[0]) = 0x48;		/* MOV RCX,imm64 */
+  (addr[1]) = 0xb9;
+  (* ((insn_t **) (&addr[2]))) = target;
+  /* It is tempting to precompute the PC here, but this doesn't work
+     when the target is a compiled closure, because if we are doing
+     this during garbage collection, although the closure itself has
+     been relocated by now, the compiled code block to which it points
+     has not yet.  Maybe it would be worthwhile to arrange the GC to
+     give us the   */
+  (addr[10]) = 0x48;		/* MOV RAX,(RCX) */
+  (addr[11]) = 0x8b;
+  (addr[12]) = 0x01;
+  (addr[13]) = 0x48;		/* ADD RAX,RCX */
+  (addr[14]) = 0x01;
+  (addr[15]) = 0xc8;
+  (addr[16]) = 0xff;		/* JMP RAX */
+  (addr[17]) = 0xe0;
 }
 
 #define BYTES_PER_TRAMPOLINE_ENTRY_PADDING 4
@@ -197,16 +246,12 @@ trampoline_entry_addr (SCHEME_OBJECT * block, unsigned long index)
 bool
 store_trampoline_insns (insn_t * entry, uint8_t code)
 {
-  (*entry++) = 0xB0;		/* MOV AL,code */
-  (*entry++) = code;
-  (*entry++) = 0xE8;		/* CALL rel32 */
-  (*entry++) = 0x00;		/* zero displacement */
-  (*entry++) = 0x00;
-  (*entry++) = 0x00;
-  (*entry++) = 0x00;
-  (*entry++) = 0xFF;		/* JMP r/m64 */
-  (*entry++) = 0xA6;		/* disp32(RSI) */
-  (* ((uint32_t *) entry)) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
+  (* ((int64_t *) (&entry[0]))) = 8;
+  (entry[8]) = 0xb0;		/* MOVB RAX,imm8 */
+  (entry[9]) = code;
+  (entry[10]) = 0xff;		/* JMP r/m64 */
+  (entry[11]) = 0xa6;		/* disp32(RSI) */
+  (* ((uint32_t *) (&entry[12]))) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
   return (false);
 }
 

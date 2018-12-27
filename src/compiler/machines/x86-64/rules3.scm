@@ -39,8 +39,10 @@ USA.
     (cond ((null? checks)
 	   (current-bblock-continue!
 	    (make-new-sblock
-	     (LAP (POP Q (R ,rax))				; continuation
-		  (AND Q (R ,rax) (R ,regnum:datum-mask))	; clear type
+	     (LAP (POP Q (R ,rcx))				; continuation
+		  (AND Q (R ,rcx) (R ,regnum:datum-mask))	; clear type
+		  (MOV Q (R ,rax) (@R ,rcx)) ;rax := PC offset
+		  (ADD Q (R ,rax) (R ,rcx)) ;rax := PC
 		  (JMP (R ,rax))))))
 	  ((block-association 'POP-RETURN)
 	   => current-bblock-continue!)
@@ -50,8 +52,10 @@ USA.
 		   (let ((interrupt-label (generate-label 'INTERRUPT)))
 		     (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
 			  (JGE (@PCR ,interrupt-label))
-			  (POP Q (R ,rax)) ; continuation
-			  (AND Q (R ,rax) (R ,regnum:datum-mask)) ; clear type
+			  (POP Q (R ,rcx)) ; continuation
+			  (AND Q (R ,rcx) (R ,regnum:datum-mask)) ; clear type
+			  (MOV Q (R ,rax) (@R ,rcx)) ;rax := PC offset
+			  (ADD Q (R ,rax) (R ,rcx)) ;rax := PC
 			  (JMP (R ,rax))
 			  (LABEL ,interrupt-label)
 			  ,@(invoke-hook
@@ -88,7 +92,12 @@ USA.
   frame-size continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (JMP (@PCR ,label))))
+       ;; Every label for code we can jump to starts with a 64-bit
+       ;; offset to the actual code, always equal to 8.  We could
+       ;; invent the bookkeeping to map the external label to the
+       ;; actual code label, but that's more work than I want to do
+       ;; right now.
+       (JMP (@PCRO ,label 8))))
 
 (define-rule statement
   (INVOCATION:COMPUTED-JUMP (? frame-size) (? continuation))
@@ -96,8 +105,10 @@ USA.
   ;; It expects the procedure at the top of the stack
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (POP Q (R ,rax))
-       (AND Q (R ,rax) (R ,regnum:datum-mask)) ;clear type code
+       (POP Q (R ,rcx))
+       (AND Q (R ,rcx) (R ,regnum:datum-mask)) ;clear type code
+       (MOV Q (R ,rax) (@R ,rcx))	;rax := PC offset
+       (ADD Q (R ,rax) (R ,rcx))	;rax := PC
        (JMP (R ,rax))))
 
 (define-rule statement
@@ -471,8 +482,8 @@ USA.
 	     address-units-per-closure-entry-instructions
 	     address-units-per-closure-padding))
 	 (free-offset
-	  (+ slots-offset (* size address-units-per-object))))
-    (LAP (MOV Q ,temp (&U ,(make-closure-manifest size)))
+	  (+ slots-offset (* (+ 1 size) address-units-per-object))))
+    (LAP (MOV Q ,temp (&U ,(make-closure-manifest (+ 1 size))))
 	 (MOV Q (@R ,regnum:free-pointer) ,temp)
 	 ;; There's only one entry point here.
 	 (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U 1))
@@ -482,7 +493,12 @@ USA.
 	 ;; Bump FREE.
 	 ,@(with-signed-immediate-operand free-offset
 	     (lambda (addend)
-	       (LAP (ADD Q (R ,regnum:free-pointer) ,addend)))))))
+	       (LAP (ADD Q (R ,regnum:free-pointer) ,addend))))
+	 ;; Set the last component to be the relocation reference point.
+	 (MOV Q ,temp
+	      (&U ,(make-non-pointer-literal (ucode-type COMPILED-ENTRY) 0)))
+	 (OR Q ,temp ,target)
+	 (MOV Q (@RO ,regnum:free-pointer -8) ,temp))))
 
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((mtarget (target-register target))
@@ -504,62 +520,54 @@ USA.
 	   (free-offset
 	    (+ first-format-offset
 	       (* nentries address-units-per-closure-entry)
-	       (* size address-units-per-object))))
-      (LAP (MOV Q ,temp (&U ,(make-multiclosure-manifest nentries size)))
+	       (* (+ 1 size) address-units-per-object))))
+      (LAP (MOV Q ,temp (&U ,(make-multiclosure-manifest nentries (+ 1 size))))
 	   (MOV Q (@R ,regnum:free-pointer) ,temp)
 	   (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U ,nentries))
 	   ,@(generate-entries entries first-format-offset)
 	   (LEA Q ,target (@RO ,regnum:free-pointer ,first-pc-offset))
 	   ,@(with-signed-immediate-operand free-offset
 	       (lambda (addend)
-		 (LAP (ADD Q (R ,regnum:free-pointer) ,addend))))))))
+		 (LAP (ADD Q (R ,regnum:free-pointer) ,addend))))
+	   ;; Set the last component to be the relocation reference point.
+	   (MOV Q ,temp
+		(&U ,(make-non-pointer-literal (ucode-type COMPILED-ENTRY) 0)))
+	   (OR Q ,temp ,target)
+	   (MOV Q (@RO ,regnum:free-pointer -8) ,temp)))))
 
 (define (generate-closure-entry label min max offset temp)
   (let* ((procedure-label (rtl-procedure/external-label (label->object label)))
-	 (MOV-offset (+ offset address-units-per-entry-format-code))
-	 (imm64-offset (+ MOV-offset 2))
-	 (CALL-offset (+ imm64-offset 8))
-	 (CALL-rel32-offset (+ CALL-offset 1))
-	 (JMP-offset (+ CALL-rel32-offset 4))
-	 (padding-offset (+ JMP-offset 2)))
-    CALL-rel32-offset JMP-offset padding-offset
+	 (addr-offset (+ offset address-units-per-entry-format-code))
+	 (padding-offset (+ addr-offset 8)))
+    padding-offset
     (LAP (MOV L (@RO ,regnum:free-pointer ,offset)
-	      (&U ,(make-closure-code-longword min max MOV-offset)))
-	 (LEA Q ,temp (@PCR ,procedure-label))
-	 ;; (MOV Q (R ,rax) (&U <procedure-label>))	48 b8
-	 (MOV W (@RO ,regnum:free-pointer ,MOV-offset) (&U #xB848))
-	 (MOV Q (@RO ,regnum:free-pointer ,imm64-offset) ,temp)
-	 ;; (CALL (@PCO 0))				e8 00 00 00 00
-	 ;; (JMP (R ,rax))				ff e0
-	 ;; (PADDING 0 8 #*00000000)			00
-	 (MOV Q ,temp (&U #x00E0FF00000000E8))
-	 (MOV Q (@RO ,regnum:free-pointer ,CALL-offset) ,temp)
-#|
-	 ;; (CALL (@PCO 0))				e8 00 00 00 00
-	 (MOV B (@RO ,regnum:free-pointer ,CALL-offset) (&U #xE8))
-	 (MOV Q (@RO ,regnum:free-pointer ,CALL-rel32-offset) (&U 0))
-	 ;; (JMP (R ,rax))				ff e0
-	 (MOV W (@RO ,regnum:free-pointer ,JMP-offset) (&U #xE0FF))
-	 #|
-	 ;; (PADDING 0 8 #*00000000)			00
-	 (MOV B (@RO ,regnum:free-pointer ,PAD-offset) (&U #x00))
-	 |#
-|#
-	 )))
+	      (&U ,(make-closure-code-longword min max addr-offset)))
+	 ;; Set temp := procedure-label + 8 - addr-offset.
+	 (LEA Q ,temp (@PCR (- (+ ,procedure-label 8) ,addr-offset)))
+	 ;; Set temp := procedure-label + 8 - addr-offset - free.
+	 (SUB Q ,temp (R ,regnum:free-pointer))
+	 ;; Store temp = procedure-label + 8 - (free + addr-offset).
+	 (MOV Q (@RO ,regnum:free-pointer ,addr-offset) ,temp))))
 
 (define (generate/closure-header internal-label nentries)
   (let* ((rtl-proc (label->object internal-label))
 	 (external-label (rtl-procedure/external-label rtl-proc))
-	 (checks (get-entry-interrupt-checks)))
+	 (checks (get-entry-interrupt-checks))
+	 (type (ucode-type COMPILED-ENTRY)))
     (define (label+adjustment)
       (LAP ,@(make-external-label internal-entry-code-word external-label)
-	   ;; Assumption: RAX is not in use here.  (In fact, it is
-	   ;; used to store the absolute address of this header.)
-	   ;; See comment by CLOSURE-ENTRY-MAGIC to understand
-	   ;; what's going on here.
-	   (MOV Q (R ,rax) (&U ,(closure-entry-magic)))
-	   (ADD Q (@R ,rsp) (R ,rax))
-	   (LABEL ,internal-label)))
+	   ;; rcx holds the untagged entry address.  Push and tag it.
+	   ;; All other temporary registers, notably rax, are free.
+	   (MOV Q (R ,rax) (&U ,(make-non-pointer-literal type 0)))
+	   (OR Q (R ,rcx) (R ,rax))
+	   (PUSH Q (R ,rcx))
+	   ;; Jump past a bogus faux offset.  We need this because
+	   ;; INVOCATION:JUMP jumps to the label + 8, and at the moment
+	   ;; I haven't found a good way to make it skip the +8 part
+	   ;; for closures.
+	   (JMP (@PCRO ,internal-label 8))
+	   (LABEL ,internal-label)
+	   (QUAD U 8)))
     (cond ((zero? nentries)
 	   (LAP (EQUATE ,external-label ,internal-label)
 		,@(simple-procedure-header
@@ -574,19 +582,6 @@ USA.
 		  ,@(interrupt-check gc-label checks))))
 	  (else
 	   (label+adjustment)))))
-
-;;; On entry to a closure, the quadword at the top of the stack will
-;;; be an untagged pointer to the byte following the CALL instruction
-;;; that led the machine there.  CLOSURE-ENTRY-MAGIC returns a number
-;;; that, when added to this quadword, yields the tagged compiled
-;;; entry that was used to invoke the closure.  This is what the RTL
-;;; deals with, and this is what interrupt handlers want, particularly
-;;; for the garbage collector, which wants to find only nice tagged
-;;; pointers on the stack.
-
-(define-integrable (closure-entry-magic)
-  (- (make-non-pointer-literal (ucode-type COMPILED-ENTRY) 0)
-     address-units-per-closure-entry-call-offset))
 
 (define-integrable (make-closure-manifest size)
   (make-multiclosure-manifest 1 size))
@@ -811,8 +806,10 @@ USA.
 		   (lambda (cache)
 		     (let ((frame-size (car cache))
 			   (label (cdr cache)))
+		       ;; Must match UUO_LINK_SIZE in cmpintmd/x86-64.h.
 		       `((,frame-size . ,label)
 			 (,variable . ,(allocate-constant-label))
+			 (#F . ,(allocate-constant-label))
 			 (#F . ,(allocate-constant-label))))))
 		 (cdr variable.caches)))
    variable.caches-list))
