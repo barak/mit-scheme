@@ -350,6 +350,8 @@ USA.
 		      (parser-state/next-control-point state)
 		      (parser-state/previous-type state))))
 
+;; reflect_to_interface codes.  Matches enum reflect_code_t in
+;; microcode/cmpint.c.
 (define-integrable code/special-compiled/internal-apply 0)
 (define-integrable code/special-compiled/restore-interrupt-mask 1)
 (define-integrable code/special-compiled/stack-marker 2)

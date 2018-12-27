@@ -66,13 +66,18 @@ typedef struct
   unsigned long n_linked_entries;
 } link_cc_state_t;
 
-/* Ways to bypass the interpreter */
+/* Ways to bypass the interpreter.  Matches
+   code/special-compiled/... in runtime/conpar.scm.  */
 typedef enum
 {
   REFLECT_CODE_INTERNAL_APPLY,
   REFLECT_CODE_RESTORE_INTERRUPT_MASK,
   REFLECT_CODE_STACK_MARKER,
-  REFLECT_CODE_CC_BKPT
+  REFLECT_CODE_CC_BKPT,
+  REFLECT_CODE_UNUSED_4,	/* Formerly used for v8 microcode.  */
+  REFLECT_CODE_UNUSED_5,
+  REFLECT_CODE_APPLY_COMPILED,
+  REFLECT_CODE_UNUSED_7,
 } reflect_code_t;
 
 #define PUSH_REFLECTION(code) do					\
@@ -1528,9 +1533,8 @@ setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
 	}
       PRIMITIVE_ABORT (code);
     }
-  /* Pun: procedure is being invoked as a return address.  Assumes
-     that the primitive is being called from compiled code.  */
   STACK_PUSH (procedure);
+  PUSH_REFLECTION (REFLECT_CODE_APPLY_COMPILED);
 }
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns
@@ -2081,6 +2085,12 @@ DEFINE_TRAMPOLINE (comutil_reflect_to_interface)
 
   switch (OBJECT_DATUM (code))
     {
+    case REFLECT_CODE_APPLY_COMPILED:
+      {
+	SCHEME_OBJECT procedure = (STACK_POP ());
+	RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+      }
+
     case REFLECT_CODE_INTERNAL_APPLY:
       {
 	unsigned long frame_size = (OBJECT_DATUM (STACK_POP ()));
