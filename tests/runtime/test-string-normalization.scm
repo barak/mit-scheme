@@ -34,7 +34,7 @@ USA.
        (read-file
 	(merge-pathnames "test-string-normalization-data"
 			 (directory-pathname (current-load-pathname))))))
-
+
 (define (norm-tc-source tc) (car tc))
 (define (norm-tc-nfc tc) (cadr tc))
 (define (norm-tc-nfd tc) (caddr tc))
