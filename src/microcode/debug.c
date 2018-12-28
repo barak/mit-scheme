@@ -625,6 +625,15 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
     case TC_COMPILED_ENTRY:
       print_compiled_entry (stream, obj);
       return;
+
+    case TC_COMPILED_RETURN:
+      {
+	insn_t * ret_addr = (CC_RETURN_ADDRESS (obj));
+	insn_t * entry_addr = (CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr));
+	SCHEME_OBJECT entry =
+	  (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, entry_addr));
+	print_compiled_entry (stream, entry);
+      }
 #endif
 
     default:
@@ -1223,10 +1232,14 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 	  break;
 
 #ifdef CC_SUPPORT_P
-	case GC_COMPILED:
+	case GC_COMPILED_ENTRY:
 	  if (! verify_compiled (object, (unsigned long)area))
 	    complaints += 1;
 	  area += 1;
+	  break;
+	case GC_COMPILED_RETURN:
+	  outf_error ("%#lx: XXX not implemented", (unsigned long)area);
+	  complaints += 1;
 	  break;
 #endif
 

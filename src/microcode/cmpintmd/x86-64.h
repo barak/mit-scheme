@@ -154,6 +154,14 @@ typedef uint8_t insn_t;
 
    XXX Stop using CALL for this.  */
 #define CC_ENTRY_GC_TRAP_SIZE 6
+
+#define CC_ENTRY_ADDRESS_PTR(e)		(e)
+#define CC_ENTRY_ADDRESS_PC(e)		((e) + (* ((const int64_t *) (e))))
+
+#define CC_RETURN_ADDRESS_PTR(r)	0
+#define CC_RETURN_ADDRESS_PC(r)		(r)
+
+#define CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS(r)	(((insn_t *) (r)) - 8)
 
 #define EMBEDDED_CLOSURE_ADDRS_P 1
 

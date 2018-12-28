@@ -39,10 +39,8 @@ USA.
     (cond ((null? checks)
 	   (current-bblock-continue!
 	    (make-new-sblock
-	     (LAP (POP Q (R ,rcx))				; continuation
-		  (AND Q (R ,rcx) (R ,regnum:datum-mask))	; clear type
-		  (MOV Q (R ,rax) (@R ,rcx)) ;rax := PC offset
-		  (ADD Q (R ,rax) (R ,rcx)) ;rax := PC
+	     (LAP (POP Q (R ,rax))	; continuation
+		  (AND Q (R ,rax) (R ,regnum:datum-mask)) ; clear type
 		  (JMP (R ,rax))))))
 	  ((block-association 'POP-RETURN)
 	   => current-bblock-continue!)
@@ -52,10 +50,8 @@ USA.
 		   (let ((interrupt-label (generate-label 'INTERRUPT)))
 		     (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
 			  (JGE (@PCR ,interrupt-label))
-			  (POP Q (R ,rcx)) ; continuation
-			  (AND Q (R ,rcx) (R ,regnum:datum-mask)) ; clear type
-			  (MOV Q (R ,rax) (@R ,rcx)) ;rax := PC offset
-			  (ADD Q (R ,rax) (R ,rcx)) ;rax := PC
+			  (POP Q (R ,rax)) ; continuation
+			  (AND Q (R ,rax) (R ,regnum:datum-mask)) ; clear type
 			  (JMP (R ,rax))
 			  (LABEL ,interrupt-label)
 			  ,@(invoke-hook
@@ -155,7 +151,8 @@ USA.
 	 (set-address
 	  (begin (require-register! rdx)
 		 (load-pc-relative-address (INST-EA (R ,rdx))
-					   *block-label*))))
+					   *block-label*
+					   0))))
     (delete-dead-registers!)
     (LAP ,@set-extension
 	 ,@set-address

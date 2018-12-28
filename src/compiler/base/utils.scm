@@ -156,6 +156,7 @@ USA.
 (define-type-code unassigned)
 (define-type-code stack-environment)
 (define-type-code compiled-entry)
+(define-integrable type-code:compiled-return 4)
 
 (define (scode/procedure-type-code *lambda)
   (cond ((object-type? type-code:lambda *lambda)

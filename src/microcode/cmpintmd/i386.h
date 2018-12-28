@@ -211,6 +211,19 @@ typedef uint8_t insn_t;
 /* Number of insn_t units preceding entry header in which GC trap
    instructions are stored.  */
 #define CC_ENTRY_GC_TRAP_SIZE 3
+
+/* Entry address is the self pointer for closures _and_ the instruction
+   pointer to jump to, since closures have embedded instructions.  We
+   use only the self pointer so the `PC' is a dummy.  */
+#define CC_ENTRY_ADDRESS_PTR(e)		(e)
+#define CC_ENTRY_ADDRESS_PC(e)		(0) /* unused */
+
+/* Same for return addresses.  */
+#define CC_RETURN_ADDRESS_PTR(r)	(r)
+#define CC_RETURN_ADDRESS_PC(r)		(0) /* unused */
+
+/* Return addresses and entry addresses aren't distinguished here.  */
+#define CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS(r)	(r)
 
 #define EMBEDDED_CLOSURE_ADDRS_P 1
 

@@ -125,7 +125,7 @@ USA.
 
 (define (rtl:make-push-return continuation)
   (rtl:make-push
-   (rtl:make-cons-pointer (rtl:make-machine-constant type-code:compiled-entry)
+   (rtl:make-cons-pointer (rtl:make-machine-constant type-code:compiled-return)
 			  (rtl:make-entry:continuation continuation))))
 
 (define (rtl:make-push-link)

@@ -65,8 +65,10 @@ USA.
 
 ;;;; Compiled Code Entries
 
-(define-integrable (compiled-code-address? object)
-  (object-type? (ucode-type compiled-entry) object))
+(define (compiled-code-address? object)
+  (or (let ((type (microcode-type/name->code 'compiled-return)))
+	(and type (object-type? type object)))
+      (object-type? (ucode-type compiled-entry) object)))
 
 (define-integrable (stack-address? object)
   (object-type? (ucode-type stack-environment) object))

@@ -305,10 +305,11 @@ USA.
 (define (%encode-gc-type t)
   (if (not (and (fix:fixnum? t)
 		(fix:>= t -4)
-		(fix:<= t 4)))
+		(fix:<= t 5)))
       (error "Illegal GC-type value:" t))
+  ;; Must match enum gc_type_t in microcode/gc.h.
   (vector-ref '#(compiled-entry vector gc-internal undefined non-pointer
-				cell pair triple quadruple)
+				cell pair triple quadruple compiled-return)
 	      (fix:+ t 4)))
 
 (define (object-non-pointer? object)
@@ -337,7 +338,7 @@ USA.
 
 (define (pointer-type-code? code)
   (case (type-code->gc-type code)
-    ((cell pair triple quadruple vector compiled-entry) #t)
+    ((cell pair triple quadruple vector compiled-entry compiled-return) #t)
     ((gc-internal) (fix:= (ucode-type broken-heart) code))
     (else #f)))
 

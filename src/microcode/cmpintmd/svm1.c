@@ -347,6 +347,12 @@ trampoline_entry_addr (SCHEME_OBJECT * block, unsigned long index)
 	  + CC_ENTRY_HEADER_SIZE);
 }
 
+insn_t *
+trampoline_return_addr (SCHEME_OBJECT * block, unsigned long index)
+{
+  return (trampoline_entry_addr (block, index));
+}
+
 bool
 store_trampoline_insns (insn_t * entry, uint8_t code)
 {

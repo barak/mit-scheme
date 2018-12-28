@@ -170,39 +170,45 @@ USA.
   (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
   (load-pc-relative-address
    (target-register-reference target)
-   (rtl-procedure/external-label (label->object label))))
+   (rtl-procedure/external-label (label->object label))
+   0))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
-  (load-pc-relative-address (target-register-reference target) label))
+  (load-pc-relative-address (target-register-reference target) label 8))
 
 (define-rule statement
   ;; This is an intermediate rule -- not intended to produce code.
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:PROCEDURE (? label))))
+  (assert (= type type-code:compiled-entry))
   (load-pc-relative-address/typed (target-register-reference target)
 				  type
 				  (rtl-procedure/external-label
-				   (label->object label))))
+				   (label->object label))
+				  0))
 
 (define-rule statement
   ;; This is an intermediate rule -- not intended to produce code.
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:CONTINUATION (? label))))
+  (assert (= type type-code:compiled-return))
   (load-pc-relative-address/typed (target-register-reference target)
-				  type label))
+				  type label 8))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
   (load-pc-relative (target-register-reference target)
-		    (free-reference-label name)))
+		    (free-reference-label name)
+		    0))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
   (load-pc-relative (target-register-reference target)
-		    (free-assignment-label name)))
+		    (free-assignment-label name)
+		    0))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
@@ -398,13 +404,13 @@ USA.
 	 (target (target-register-reference target)))
     (LAP (LEA Q ,target ,source))))  
 
-(define (load-pc-relative-address/typed target type label)
+(define (load-pc-relative-address/typed target type label offset)
   ;++ This is pretty horrid, especially since it happens for every
   ;++ continuation pushed!  None of the alternatives is much good.
   ;; Twenty bytes, but only three instructions and no extra memory.
   (let ((temp (temporary-register-reference)))
     (LAP (MOV Q ,temp (&U ,(make-non-pointer-literal type 0)))
-	 (LEA Q ,target (@PCR ,label))
+	 (LEA Q ,target (@PCRO ,label ,offset))
 	 (OR Q ,target ,temp)))
   #|
   ;; Nineteen bytes, but rather complicated (and needs syntax for an

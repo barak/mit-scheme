@@ -326,7 +326,8 @@ initialize_gc_table (gc_table_t * table, bool transport_p)
       case GC_TRIPLE:      SIMPLE_HANDLER (gc_handle_triple);
       case GC_QUADRUPLE:   SIMPLE_HANDLER (gc_handle_quadruple);
       case GC_VECTOR:      SIMPLE_HANDLER (gc_handle_unaligned_vector);
-      case GC_COMPILED:    SIMPLE_HANDLER (gc_handle_cc_entry);
+      case GC_COMPILED_ENTRY: SIMPLE_HANDLER (gc_handle_cc_entry);
+      case GC_COMPILED_RETURN: SIMPLE_HANDLER (gc_handle_cc_return);
       case GC_UNDEFINED:   SIMPLE_HANDLER (gc_handle_undefined);
 
       case GC_SPECIAL:
@@ -360,6 +361,7 @@ initialize_gc_table (gc_table_t * table, bool transport_p)
   (GCT_TUPLE (table)) = gc_tuple;
   (GCT_VECTOR (table)) = gc_vector;
   (GCT_CC_ENTRY (table)) = gc_cc_entry;
+  (GCT_CC_RETURN (table)) = gc_cc_return;
   if (transport_p)
     {
       (GCT_PRECHECK_FROM (table)) = gc_precheck_from;
@@ -480,6 +482,20 @@ DEFINE_GC_OBJECT_HANDLER (gc_cc_entry)
   return (CC_ENTRY_NEW_BLOCK (object,
 			      (OBJECT_ADDRESS (new_block)),
 			      (OBJECT_ADDRESS (old_block))));
+#else
+  gc_no_cc_support ();
+  return (object);
+#endif
+}
+
+DEFINE_GC_OBJECT_HANDLER (gc_cc_return)
+{
+#ifdef CC_SUPPORT_P
+  SCHEME_OBJECT old_block = (cc_return_to_block (object));
+  SCHEME_OBJECT new_block = (GC_HANDLE_VECTOR (old_block, true));
+  return (CC_RETURN_NEW_BLOCK (object,
+			       (OBJECT_ADDRESS (new_block)),
+			       (OBJECT_ADDRESS (old_block))));
 #else
   gc_no_cc_support ();
   return (object);
@@ -616,6 +632,12 @@ DEFINE_GC_HANDLER (gc_handle_ephemeron)
 DEFINE_GC_HANDLER (gc_handle_cc_entry)
 {
   (*scan) = (GC_HANDLE_CC_ENTRY (object));
+  return (scan + 1);
+}
+
+DEFINE_GC_HANDLER (gc_handle_cc_return)
+{
+  (*scan) = (GC_HANDLE_CC_RETURN (object));
   return (scan + 1);
 }
 
@@ -805,9 +827,16 @@ weak_referent_address (SCHEME_OBJECT object)
     case GC_POINTER_NORMAL:
       return (OBJECT_ADDRESS (object));
 
-    case GC_POINTER_COMPILED:
+    case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P
       return (cc_entry_address_to_block_address (CC_ENTRY_ADDRESS (object)));
+#else
+      gc_no_cc_support ();
+#endif
+
+    case GC_POINTER_COMPILED_RETURN:
+#ifdef CC_SUPPORT_P
+      return (cc_return_address_to_block_address (CC_RETURN_ADDRESS (object)));
 #else
       gc_no_cc_support ();
 #endif
@@ -830,11 +859,21 @@ weak_referent_forward (SCHEME_OBJECT object)
 	return (MAKE_OBJECT_FROM_OBJECTS (object, (*addr)));
       return (SHARP_F);
 
-    case GC_POINTER_COMPILED:
+    case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P
       addr = (cc_entry_address_to_block_address (CC_ENTRY_ADDRESS (object)));
       if (BROKEN_HEART_P (*addr))
 	return (CC_ENTRY_NEW_BLOCK (object, (OBJECT_ADDRESS (*addr)), addr));
+#else
+      gc_no_cc_support ();
+#endif
+      return (SHARP_F);
+
+    case GC_POINTER_COMPILED_RETURN:
+#ifdef CC_SUPPORT_P
+      addr = (cc_return_address_to_block_address (CC_RETURN_ADDRESS (object)));
+      if (BROKEN_HEART_P (*addr))
+	return (CC_RETURN_NEW_BLOCK (object, (OBJECT_ADDRESS (*addr)), addr));
 #else
       gc_no_cc_support ();
 #endif
@@ -1253,7 +1292,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_PAIR,			/* TC_LIST */
   GC_NON_POINTER,		/* TC_CHARACTER */
   GC_PAIR,		   	/* TC_SCODE_QUOTE */
-  GC_UNDEFINED,		        /* was TC_PCOMB2 */
+  GC_COMPILED_RETURN,	        /* TC_COMPILED_RETURN */
   GC_PAIR,			/* TC_UNINTERNED_SYMBOL */
   GC_VECTOR,			/* TC_BIG_FLONUM */
   GC_UNDEFINED,			/* was TC_COMBINATION_1 */
@@ -1289,7 +1328,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_PAIR,			/* TC_TAGGED_OBJECT */
   GC_VECTOR,			/* TC_COMBINATION */
   GC_SPECIAL,			/* TC_MANIFEST_NM_VECTOR */
-  GC_COMPILED,			/* TC_COMPILED_ENTRY */
+  GC_COMPILED_ENTRY,		/* TC_COMPILED_ENTRY */
   GC_PAIR,			/* TC_LEXPR */
   GC_UNDEFINED,			/* was TC_PCOMB3 */
   GC_VECTOR,			/* TC_EPHEMERON */
@@ -1344,9 +1383,10 @@ gc_ptr_type (SCHEME_OBJECT object)
     case GC_VECTOR:
       return (GC_POINTER_NORMAL);
 
-    case GC_COMPILED:
-      return (GC_POINTER_COMPILED);
-      break;
+    case GC_COMPILED_ENTRY:
+      return (GC_POINTER_COMPILED_ENTRY);
+    case GC_COMPILED_RETURN:
+      return (GC_POINTER_COMPILED_RETURN);
 
     default:
       return (GC_POINTER_NOT);
@@ -1361,9 +1401,14 @@ get_object_address (SCHEME_OBJECT object)
     case GC_POINTER_NORMAL:
       return (OBJECT_ADDRESS (object));
 
-    case GC_POINTER_COMPILED:
+    case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P
       return (cc_entry_to_block_address (object));
+#endif
+
+    case GC_POINTER_COMPILED_RETURN:
+#ifdef CC_SUPPORT_P
+      return (cc_return_to_block_address (object));
 #endif
 
     default:

@@ -283,6 +283,7 @@ define(ADDRESS_MASK, HEX(3ffffffffffffff))
 #define(TAG, ($2 + ($1 * DATUM_SHIFT)))
 
 define(TC_FALSE,0)
+define(TC_COMPILED_RETURN,4)
 define(TC_FLONUM,6)
 define(TC_TRUE,8)
 define(TC_FIXNUM,26)
@@ -385,11 +386,13 @@ define_debugging_label(within_c_stack_from_c)
 	OP(mov,q)	TW(REG(rsi),REG(rdi))		# arg2 (arg) -> arg1
 	jmp		IJMP(REG(rax))			# tail-call fn(arg)
 
-# C_to_interface passes control from C into Scheme.  To C it is a
-# unary procedure; its one argument is passed in rdi.  It saves the
-# state of the C world (the C frame pointer and stack pointer) and
-# then passes control to interface_to_scheme to set up the state of
-# the Scheme world.
+# C_to_interface passes control from C into Scheme.
+#
+#       long C_to_interface (insn_t *ptr=rdi, insn_t *pc=rsi)
+#
+# It saves the state of the C world (the C frame pointer and stack
+# pointer) and then passes control to interface_to_scheme to set up the
+# state of the Scheme world.
 #
 # Note:  The AMD64 ABI mandates that on entry to a function, RSP - 8
 # must be a multiple of 0x10; that is, the stack must be 128-bit
@@ -399,6 +402,8 @@ define_debugging_label(within_c_stack_from_c)
 # which we must pop off in interface_to_C.
 
 define_c_label(C_to_interface)
+	# rdi = compiled entry address
+	# rsi = compiled PC
 	OP(push,q)	REG(rbp)			# Link according
 	OP(mov,q)	TW(REG(rsp),REG(rbp))		#  to C's conventions
 	OP(push,q)	REG(rbx)			# Save callee-saves
@@ -407,7 +412,8 @@ define_c_label(C_to_interface)
 	OP(push,q)	REG(r14)
 	OP(push,q)	REG(r15)
 	OP(push,q)	IMM(0)				# Align stack
-	OP(mov,q)	TW(REG(rdi),REG(rdx))		# Entry point
+	OP(mov,q)	TW(REG(rdi),REG(rcx))		# rcx := entry ptr
+	OP(mov,q)	TW(REG(rsi),REG(rdx))		# rcx := entry pc
 							# Preserve frame ptr
 	OP(mov,q)	TW(REG(rbp),ABS(EVR(C_Frame_Pointer)))
 							# Preserve stack ptr
@@ -448,7 +454,8 @@ define_debugging_label(scheme_to_interface)
 	# Signal to within_c_stack that we are now in C land.
 	OP(mov,q)	TW(IMM(0),ABS(EVR(C_Stack_Pointer)))
 
-	OP(sub,q)	TW(IMM(16),REG(rsp))	# alloc struct return
+	OP(sub,q)	TW(IMM(32),REG(rsp))	# alloc struct return;
+						# preserve 16-byte alignment
 	OP(mov,q)	TW(REG(rsp),REG(rdi))	# Structure is first argument.
 	OP(mov,q)	TW(REG(rbx),REG(rsi))	# rbx -> second argument.
 
@@ -464,11 +471,17 @@ define_debugging_label(scheme_to_interface)
 	call		IJMP(REG(rax))
 
 define_debugging_label(scheme_to_interface_return)
-	OP(pop,q)	REG(rax)		# pop struct return
-	OP(pop,q)	REG(rdx)
+	# pop utility_result_t contents
+	OP(pop,q)	REG(rax)		# interface_dispatch
+	OP(pop,q)	REG(rcx)		# interp code / compiled ptr
+	OP(pop,q)	REG(rdx)		# interp garbage / compiled pc
+	OP(add,q)	TW(IMM(8),REG(rsp))	# pop alignment padding
 	jmp		IJMP(REG(rax))		# Invoke handler
 
 define_c_label(interface_to_scheme)
+	# rax = interface_to_scheme
+	# rcx = compiled entry address, needed by compiled code; 0 if return
+	# rdx = compiled PC
 ifdef(`WIN32',						# Register block = %rsi
 `	OP(mov,q)	TW(ABS(EVR(RegistersPtr)),regs)',
 `	OP(lea,q)	TW(ABS(EVR(Registers)),regs)')
@@ -482,11 +495,9 @@ ifdef(`WIN32',						# Register block = %rsi
 	OP(mov,q)	TW(ABS(EVR(stack_pointer)),REG(rsp))
 	OP(mov,q)	TW(REG(rbp),ABS(EVR(C_Frame_Pointer)))
 	OP(mov,q)	TW(IMM(ADDRESS_MASK),rmask)	# = %rbp
-	OP(mov,q)	TW(REG(rax),REG(rcx))		# Preserve if used
-	OP(and,q)	TW(rmask,REG(rcx))		# Restore potential dynamic link
-	OP(mov,q)	TW(REG(rcx),QOF(REGBLOCK_DLINK(),regs))
-	OP(mov,q)	TW(REG(rdx),REG(rcx))		# rcx := entry addr
-	OP(add,q)	TW(IND(REG(rcx)),REG(rdx))	# rcx := PC
+	OP(mov,q)	TW(REG(rax),REG(r8))		# Preserve if used
+	OP(and,q)	TW(rmask,REG(r8))		# Restore potential dynamic link
+	OP(mov,q)	TW(REG(r8),QOF(REGBLOCK_DLINK(),regs))
 	jmp	IJMP(REG(rdx))			# Invoke
 
 IF_WIN32(`
@@ -497,7 +508,10 @@ define_code_label(EFR(callWinntExceptionTransferHook))
 ')
 
 define_c_label(interface_to_C)
-	OP(mov,q)	TW(REG(rdx),REG(rax))		# Set up result
+	# rax = interface_to_scheme
+	# rcx = interpreter code
+	# rdx = garbage
+	OP(mov,q)	TW(REG(rcx),REG(rax))		# Set up result
 	# We need a dummy register for the POP (which is three bytes
 	# shorter than ADD $8,RSP); since we're about to pop into r15
 	# anyway, we may as well use that.
@@ -569,7 +583,7 @@ define_hook_label(sc_apply)
 	jne	asm_sc_apply_generic
 	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
 	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
-	jmp	IJMP(REG(rax))			# Invoke
+	jmp	IJMP(REG(rax))			# Invoke entry
 
 define_debugging_label(asm_sc_apply_generic)
 	OP(mov,q)	TW(IMM(HEX(14)),REG(rax))
@@ -588,7 +602,7 @@ define_hook_label(sc_apply_size_$1)
 	jne	asm_sc_apply_generic_$1			# to nargs+1
 	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
 	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
-	jmp	IJMP(REG(rax))			# Invoke
+	jmp	IJMP(REG(rax))			# Invoke entry
 
 asm_sc_apply_generic_$1:
 	OP(mov,q)	TW(IMM($1),REG(rdx))
@@ -615,9 +629,7 @@ asm_generic_return_rax:
 	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
 	OP(pop,q)	REG(rcx)
 	OP(and,q)	TW(rmask,REG(rcx))
-	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))
-	OP(add,q)	TW(REG(rcx),REG(rax))
-	jmp	IJMP(REG(rax))
+	jmp	IJMP(REG(rcx))			# Invoke return
 
 declare_alignment(2)
 asm_generic_fixnum_result:

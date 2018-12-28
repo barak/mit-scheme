@@ -130,6 +130,17 @@ typedef SCHEME_OBJECT insn_t;
    instructions are stored.  */
 #define CC_ENTRY_GC_TRAP_SIZE 0
 
+/* We don't distinguish the self pointer from an `instruction' pointer.  */
+#define CC_ENTRY_ADDRESS_PTR(e)		(e)
+#define CC_ENTRY_ADDRESS_PC(e)		(0)
+
+/* Same for return addresses.  */
+#define CC_RETURN_ADDRESS_PTR(r)	(r)
+#define CC_RETURN_ADDRESS_PC(r)		(0)
+
+/* Return addresses and entry addresses aren't distinguished here.  */
+#define CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS(r)	(r)
+
 /* Size of execution cache in SCHEME_OBJECTS.  */
 #define UUO_LINK_SIZE 2
 #define READ_UUO_TARGET(a, r) read_uuo_target (a)

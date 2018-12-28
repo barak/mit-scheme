@@ -97,11 +97,15 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
     }
 
 #ifdef CC_SUPPORT_P
-    if (CC_ENTRY_P (STACK_REF (n_args)))
+    if (CC_RETURN_P (STACK_REF (n_args)))
       {
 	apply_compiled_from_primitive (n_args, procedure);
 	UN_POP_PRIMITIVE_FRAME (2);
 	PRIMITIVE_RETURN (UNSPECIFIC);
+      }
+    else
+      {
+	assert (RETURN_CODE_P (STACK_REF (n_args)));
       }
 #endif
 
@@ -491,7 +495,7 @@ and MARKER2 is data identifying the marker instance.")
   {
     SCHEME_OBJECT thunk = (ARG_REF (1));
 #ifdef CC_SUPPORT_P
-    if ((CC_ENTRY_P (STACK_REF (3))) && (CC_ENTRY_P (thunk)))
+    if ((CC_RETURN_P (STACK_REF (3))) && (CC_ENTRY_P (thunk)))
       {
 	(void) STACK_POP ();
 	compiled_with_stack_marker (thunk);
@@ -544,7 +548,7 @@ with_new_interrupt_mask (unsigned long new_mask)
   SCHEME_OBJECT receiver = (ARG_REF (2));
 
 #ifdef CC_SUPPORT_P
-  if ((CC_ENTRY_P (STACK_REF (2))) && (CC_ENTRY_P (receiver)))
+  if ((CC_RETURN_P (STACK_REF (2))) && (CC_ENTRY_P (receiver)))
     {
       unsigned long current_mask = GET_INT_MASK;
       POP_PRIMITIVE_FRAME (2);

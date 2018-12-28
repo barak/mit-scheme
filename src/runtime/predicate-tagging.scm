@@ -81,6 +81,8 @@ USA.
    (define-primitive-predicate 'cell cell?)
    (define-primitive-predicate 'character char?)
    (define-primitive-predicate 'compiled-code-block compiled-code-block?)
+   (if (microcode-type/name->code 'compiled-return)
+       (define-primitive-predicate 'compiled-return compiled-return-address?))
    (define-primitive-predicate 'conditional scode-conditional?)
    (define-primitive-predicate 'control-point control-point?)
    (define-primitive-predicate 'definition scode-definition?)

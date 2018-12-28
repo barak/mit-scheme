@@ -1132,8 +1132,9 @@ DEFINE_INST (enter_closure)
     SCHEME_OBJECT * targets
       = (skip_compiled_closure_padding
 	 (block + (CLOSURE_ENTRY_START + (count * CLOSURE_ENTRY_SIZE))));
-    push_object (MAKE_CC_ENTRY (((SCHEME_OBJECT *)
-				 (block + CLOSURE_ENTRY_OFFSET))));
+    push_object
+      (MAKE_CC_ENTRY
+       ((insn_t *) ((SCHEME_OBJECT *) (block + CLOSURE_ENTRY_OFFSET))));
     NEW_PC (BYTE_ADDR (OBJECT_ADDRESS (targets[index])));
   }
 }

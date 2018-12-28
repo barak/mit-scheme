@@ -218,11 +218,11 @@ USA.
   (move-to-alias-register! source (register-type target) target)
   (LAP))
 
-(define (load-pc-relative target label-expr)
-  (LAP (MOV Q ,target (@PCR ,label-expr))))
+(define (load-pc-relative target label-expr offset)
+  (LAP (MOV Q ,target (@PCRO ,label-expr ,offset))))
 
-(define (load-pc-relative-address target label-expr)
-  (LAP (LEA Q ,target (@PCR ,label-expr))))
+(define (load-pc-relative-address target label-expr offset)
+  (LAP (LEA Q ,target (@PCRO ,label-expr ,offset))))
 
 (define (compare/register*register reg1 reg2)
   (cond ((register-alias reg1 'GENERAL)
