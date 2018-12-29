@@ -573,6 +573,76 @@ USA.
 	   (LAP (SHR Q ,target (&U ,(- 0 n)))
 		,@(word->fixnum target))))))
 
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (add-immediate-and-tag target source n #f))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source))
+			  #f)))
+  (add-immediate-and-tag target source n #f))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-1-ARG ONE-PLUS-FIXNUM
+			 (REGISTER (? source))
+			 #f)))
+  (add-immediate-and-tag target source 1 #f))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS MINUS-FIXNUM
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (add-immediate-and-tag target source (- n) #f))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS MINUS-FIXNUM
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source))
+			  #f)))
+  (add-immediate-and-tag target source n #t))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-1-ARG MINUS-ONE-PLUS-FIXNUM
+			 (REGISTER (? source))
+			 #f)))
+  (add-immediate-and-tag target source -1 #f))
+
+(define (add-immediate-and-tag target source n negate?)
+  (fixnum-1-arg target source
+    (lambda (target)
+      (let ((n (+ (shift-left n scheme-type-width) type-code:fixnum)))
+	(define (add) (LAP (ADD Q ,target (& ,n))))
+	(define (sub) (LAP (SUB Q ,target (& ,(- n)))))
+	(define (general)
+	  (with-signed-immediate-operand n
+	    (lambda (operand)
+	      (LAP (ADD Q ,target ,operand)))))
+	(LAP ,@(if negate? (LAP (NEG Q ,target)) (LAP))
+	     ,@(cond ((fits-in-signed-byte? n) (add))
+		     ((fits-in-signed-byte? (- n)) (sub))
+		     ((fits-in-signed-long? n) (add))
+		     ((fits-in-signed-long? (- n)) (sub))
+		     (else (general)))
+	     (ROR Q ,target (&U ,scheme-type-width)))))))
+
 ;;; I don't think this rule is ever hit.  In any case, it does nothing
 ;;; useful over the other rules; formerly, it used a single OR to
 ;;; affix the type tag, since the two SHR's (one for the program, one
