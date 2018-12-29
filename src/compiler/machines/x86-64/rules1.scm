@@ -175,7 +175,12 @@ USA.
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
-  (load-pc-relative-address (target-register-reference target) label 8))
+  (let* ((target (target-register-reference target))
+	 (get-pc (generate-label 'GET-PC)))
+    (LAP (CALL (@PCR ,get-pc))
+	 (JMP (@PCRO ,label 8))
+	(LABEL ,get-pc)
+	 (POP Q ,target))))
 
 (define-rule statement
   ;; This is an intermediate rule -- not intended to produce code.
@@ -195,8 +200,28 @@ USA.
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:CONTINUATION (? label))))
   (assert (= type type-code:compiled-return))
-  (load-pc-relative-address/typed (target-register-reference target)
-				  type label 8))
+  (let* ((target (target-register-reference target))
+	 (temp (temporary-register-reference))
+	 (pushed (generate-label 'PUSHED)))
+    (LAP (CALL (@PCR ,pushed))
+	 (JMP (@PCRO ,label 8))
+	(LABEL ,pushed)
+	 (POP Q ,target)
+	 (MOV Q ,temp (&U ,(make-non-pointer-literal type 0)))
+	 (OR Q ,target ,temp))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 4) -1)
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(ENTRY:CONTINUATION (? label))))
+  (assert (= type type-code:compiled-return))
+  (let* ((temp (temporary-register-reference))
+	 (pushed (generate-label 'PUSHED)))
+    (LAP (CALL (@PCR ,pushed))
+	 (JMP (@PCRO ,label 8))
+	(LABEL ,pushed)
+	 (MOV Q ,temp (&U ,(make-non-pointer-literal type 0)))
+	 (OR Q (@R 4) ,temp))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))

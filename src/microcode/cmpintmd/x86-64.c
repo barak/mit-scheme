@@ -63,6 +63,17 @@ write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
     = (((ceo->offset) << 1) | ((ceo->continued_p) ? 1 : 0));
   return (false);
 }
+
+insn_t *
+cc_return_address_to_entry_address (insn_t * pc)
+{
+  if ((pc[0]) == 0xeb)		/* JMP rel8 */
+    return ((pc + 2) + (* ((int8_t *) &pc[1])) - 8);
+  else if ((pc[0]) == 0xe9)	/* JMP rel32 */
+    return ((pc + 5) + (* ((int32_t *) &pc[1])) - 8);
+  else
+    return (pc - 8);
+}
 
 /* Compiled closures */
 

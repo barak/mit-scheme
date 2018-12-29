@@ -161,7 +161,9 @@ typedef uint8_t insn_t;
 #define CC_RETURN_ADDRESS_PTR(r)	0
 #define CC_RETURN_ADDRESS_PC(r)		(r)
 
-#define CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS(r)	(((insn_t *) (r)) - 8)
+insn_t * cc_return_address_to_entry_address (insn_t *);
+
+#define CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS cc_return_address_to_entry_address
 
 #define EMBEDDED_CLOSURE_ADDRS_P 1
 

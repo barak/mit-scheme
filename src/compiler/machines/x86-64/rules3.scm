@@ -39,9 +39,8 @@ USA.
     (cond ((null? checks)
 	   (current-bblock-continue!
 	    (make-new-sblock
-	     (LAP (POP Q (R ,rax))	; continuation
-		  (AND Q (R ,rax) (R ,regnum:datum-mask)) ; clear type
-		  (JMP (R ,rax))))))
+	     (LAP (AND Q (@R ,rsp) (R ,regnum:datum-mask))
+		  (RET)))))
 	  ((block-association 'POP-RETURN)
 	   => current-bblock-continue!)
 	  (else
@@ -50,9 +49,8 @@ USA.
 		   (let ((interrupt-label (generate-label 'INTERRUPT)))
 		     (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
 			  (JGE (@PCR ,interrupt-label))
-			  (POP Q (R ,rax)) ; continuation
-			  (AND Q (R ,rax) (R ,regnum:datum-mask)) ; clear type
-			  (JMP (R ,rax))
+			  (AND Q (@R ,rsp) (R ,regnum:datum-mask))
+			  (RET)
 			  (LABEL ,interrupt-label)
 			  ,@(invoke-hook
 			     entry:compiler-interrupt-continuation-2))))))
