@@ -347,6 +347,15 @@ x86_64_reset_hook (void)
   SETUP_REGISTER (asm_interrupt_continuation_2);	/* 39 */
 
   SETUP_REGISTER (asm_fixnum_shift);			/* 40 */
+  SETUP_REGISTER (asm_apply_setup);			/* 41 */
+  SETUP_REGISTER (asm_apply_setup_size_1);		/* 42 */
+  SETUP_REGISTER (asm_apply_setup_size_2);		/* 43 */
+  SETUP_REGISTER (asm_apply_setup_size_3);		/* 44 */
+  SETUP_REGISTER (asm_apply_setup_size_4);		/* 45 */
+  SETUP_REGISTER (asm_apply_setup_size_5);		/* 46 */
+  SETUP_REGISTER (asm_apply_setup_size_6);		/* 47 */
+  SETUP_REGISTER (asm_apply_setup_size_7);		/* 48 */
+  SETUP_REGISTER (asm_apply_setup_size_8);		/* 49 */
 
 #ifdef _MACH_UNIX
   {

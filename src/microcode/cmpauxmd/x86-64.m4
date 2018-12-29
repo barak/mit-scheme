@@ -570,6 +570,63 @@ define_call_indirection(primitive_error,36)
 # 	OP(mov,b)	TW(IMM(HEX(14)),REG(al))
 # 	jmp	scheme_to_interface')
 
+# Stack has untagged return address, then tagged entry, rdx has
+# argument count.  If tagged entry is TC_COMPILED_ENTRY of the correct
+# arity, set condition codes for equal, store the untagged entry
+# address in rcx, and store the PC in rax.  Otherwise, set condition
+# codes for not-equal, and leave the stack alone.  Either way, pop and
+# return.
+declare_alignment(2)
+define_hook_label(apply_setup)
+	OP(mov,q)	TW(REG(rbx),REG(rax))		# Copy for type code
+	OP(mov,q)	TW(REG(rbx),REG(rcx))		# Copy for address
+	OP(shr,q)	TW(IMM(DATUM_LENGTH),REG(rax))	# Select type code
+	OP(and,q)	TW(rmask,REG(rcx))		# Select datum
+	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
+	jne	asm_apply_setup_fail
+	# We now have a compiled entry, so it is safe to compute the
+	# PC.  Do that first, because it sets flags, which are used by
+	# the caller.
+	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
+	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
+	# Now check the frame size.  The caller will test the flags
+	# again for another conditional jump.
+	OP(movs,bq,x)	TW(BOF(-4,REG(rcx)),REG(rax))	# Extract frame size
+	OP(cmp,q)	TW(REG(rax),REG(rdx))		# Compare to nargs+1
+	jne	asm_apply_setup_fail
+	ret
+
+asm_apply_setup_fail:
+	ret
+
+define(define_apply_setup_fixed_size,
+`declare_alignment(2)
+define_hook_label(apply_setup_size_$1)
+	OP(mov,q)	TW(REG(rbx),REG(rax))		# Copy for type code
+	OP(mov,q)	TW(REG(rbx),REG(rcx))		# Copy for address
+	OP(shr,q)	TW(IMM(DATUM_LENGTH),REG(rax))	# Select type code
+	OP(and,q)	TW(rmask,REG(rcx))		# Select datum
+	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
+	jne	asm_apply_setup_size_$1_fail
+	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
+	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
+	OP(cmp,b)	TW(IMM($1),BOF(-4,REG(rcx)))	# Compare frame size
+	jne	asm_apply_setup_size_$1_fail		# to nargs+1
+	ret
+
+asm_apply_setup_size_$1_fail:
+	OP(mov,q)	TW(IMM(HEX($1)),REG(rdx))
+	ret')
+
+define_apply_setup_fixed_size(1)
+define_apply_setup_fixed_size(2)
+define_apply_setup_fixed_size(3)
+define_apply_setup_fixed_size(4)
+define_apply_setup_fixed_size(5)
+define_apply_setup_fixed_size(6)
+define_apply_setup_fixed_size(7)
+define_apply_setup_fixed_size(8)
+
 declare_alignment(2)
 define_hook_label(sc_apply)
 	OP(mov,q)	TW(REG(rbx),REG(rax))		# Copy for type code

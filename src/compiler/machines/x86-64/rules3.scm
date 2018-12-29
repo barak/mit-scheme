@@ -62,24 +62,58 @@ USA.
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation
   (expect-no-exit-interrupt-checks)
-  (LAP ,@(clear-map!)
-       (POP Q (R ,rbx))
-       #|
-       (MOV Q (R ,rdx) (&U ,frame-size))
-       ,@(invoke-interface code:compiler-apply)
-       |#
-       ,@(case frame-size
-	   ((1) (invoke-hook entry:compiler-shortcircuit-apply-size-1))
-	   ((2) (invoke-hook entry:compiler-shortcircuit-apply-size-2))
-	   ((3) (invoke-hook entry:compiler-shortcircuit-apply-size-3))
-	   ((4) (invoke-hook entry:compiler-shortcircuit-apply-size-4))
-	   ((5) (invoke-hook entry:compiler-shortcircuit-apply-size-5))
-	   ((6) (invoke-hook entry:compiler-shortcircuit-apply-size-6))
-	   ((7) (invoke-hook entry:compiler-shortcircuit-apply-size-7))
-	   ((8) (invoke-hook entry:compiler-shortcircuit-apply-size-8))
-	   (else
-	    (LAP (MOV Q (R ,rdx) (&U ,frame-size))
-		 ,@(invoke-hook entry:compiler-shortcircuit-apply))))))
+  (let ((generic (generate-label 'GENERIC)))
+    (LAP ,@(clear-map!)
+	 (POP Q (R ,rbx))
+	 #|
+	 (MOV Q (R ,rdx) (&U ,frame-size))
+	 ,@(invoke-interface code:compiler-apply)
+	 |#
+	 #|
+	 ,@(case frame-size
+	     ((1) (invoke-hook entry:compiler-shortcircuit-apply-size-1))
+	     ((2) (invoke-hook entry:compiler-shortcircuit-apply-size-2))
+	     ((3) (invoke-hook entry:compiler-shortcircuit-apply-size-3))
+	     ((4) (invoke-hook entry:compiler-shortcircuit-apply-size-4))
+	     ((5) (invoke-hook entry:compiler-shortcircuit-apply-size-5))
+	     ((6) (invoke-hook entry:compiler-shortcircuit-apply-size-6))
+	     ((7) (invoke-hook entry:compiler-shortcircuit-apply-size-7))
+	     ((8) (invoke-hook entry:compiler-shortcircuit-apply-size-8))
+	     (else
+	      (LAP (MOV Q (R ,rdx) (&U ,frame-size))
+		   ,@(invoke-hook entry:compiler-shortcircuit-apply))))
+	 |#
+	 #|
+	 (POP Q (R ,rcx))		;Pop tagged entry into RCX.
+	 (MOV Q (R ,rax) (R ,rcx))	;Copy tagged entry into RAX.
+	 (SHR Q (R ,rax) (&U ,scheme-datum-width)) ;Select tag in RAX.
+	 (AND Q (R ,rcx) (R ,regnum:datum-mask)) ;Select datum in RCX.
+	 (CMP B (R ,rax) (&U ,(ucode-type COMPILED-ENTRY))) ;Check tag.
+	 (JNE (@PCR ,generic))		;Bail if not compiled entry.
+	 (CMP B (@RO ,rcx -4) (&U ,frame-size))	;Check arity.
+	 (JNE (@PCR ,generic))		;Bail if not exact arity match.
+	 (MOV Q (R ,rax) (@R ,rcx))	;Load offset into RAX.
+	 (ADD Q (R ,rax) (R ,rcx))	;Add offset to entry address in RAX.
+	 (JMP (R ,rax))
+	(LABEL ,generic)
+	 ,@(invoke-hook entry:compiler-shortcircuit-apply)
+	 |#
+	 ,@(case frame-size
+	     ((1) (LAP (CALL ,entry:compiler-apply-setup-size-1)))
+	     ((2) (LAP (CALL ,entry:compiler-apply-setup-size-2)))
+	     ((3) (LAP (CALL ,entry:compiler-apply-setup-size-3)))
+	     ((4) (LAP (CALL ,entry:compiler-apply-setup-size-4)))
+	     ((5) (LAP (CALL ,entry:compiler-apply-setup-size-5)))
+	     ((6) (LAP (CALL ,entry:compiler-apply-setup-size-6)))
+	     ((7) (LAP (CALL ,entry:compiler-apply-setup-size-7)))
+	     ((8) (LAP (CALL ,entry:compiler-apply-setup-size-8)))
+	     (else
+	      (LAP (MOV Q (R ,rdx) (&U ,frame-size))
+		   (CALL ,entry:compiler-apply-setup))))
+	 (JNE (@PCR ,generic))
+	 (JMP (R ,rax))
+	(LABEL ,generic)
+	 ,@(invoke-hook entry:compiler-shortcircuit-apply))))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))

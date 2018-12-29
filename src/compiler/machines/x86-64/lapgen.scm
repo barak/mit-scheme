@@ -788,7 +788,16 @@ USA.
   shortcircuit-apply-size-7
   shortcircuit-apply-size-8
   interrupt-continuation-2
-  fixnum-shift)
+  fixnum-shift
+  apply-setup
+  apply-setup-size-1
+  apply-setup-size-2
+  apply-setup-size-3
+  apply-setup-size-4
+  apply-setup-size-5
+  apply-setup-size-6
+  apply-setup-size-7
+  apply-setup-size-8)
 
 ;; Operation tables
 
