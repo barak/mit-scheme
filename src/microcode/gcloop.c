@@ -685,14 +685,12 @@ DEFINE_GC_HANDLER (gc_handle_linkage_section)
     case LINKAGE_SECTION_TYPE_ASSIGNMENT:
       while (count > 0)
 	{
-	  WRITE_REFERENCE_ADDRESS
-	    ((GC_OBJECT_TO_RAW_ADDRESS
-	      (GC_HANDLE_TUPLE
-	       ((GC_RAW_ADDRESS_TO_OBJECT
-		 (TC_HUNK3,
-		  (READ_REFERENCE_ADDRESS (scan)))),
-		3))),
-	     scan);
+	  SCHEME_OBJECT * oaddr = (READ_REFERENCE_ADDRESS (scan));
+	  SCHEME_OBJECT osection =
+	    (GC_RAW_ADDRESS_TO_OBJECT (TC_HUNK3, oaddr));
+	  SCHEME_OBJECT nsection = (GC_HANDLE_TUPLE (osection, 3));
+	  SCHEME_OBJECT * naddr = (GC_OBJECT_TO_RAW_ADDRESS (nsection));
+	  WRITE_REFERENCE_ADDRESS (naddr, scan);
 	  scan += 1;
 	  count -= 1;
 	}
@@ -705,12 +703,11 @@ DEFINE_GC_HANDLER (gc_handle_linkage_section)
 	START_OPERATOR_RELOCATION (scan, ref);
 	while (count > 0)
 	  {
-	    write_uuo_target
-	      ((GC_CC_ENTRY_TO_RAW_ADDRESS
-		(GC_HANDLE_CC_ENTRY
-		 (GC_RAW_ADDRESS_TO_CC_ENTRY
-		  (READ_UUO_TARGET (scan, ref))))),
-	       scan);
+	    insn_t * otarget = (READ_UUO_TARGET (scan, ref));
+	    SCHEME_OBJECT oentry = (GC_RAW_ADDRESS_TO_CC_ENTRY (otarget));
+	    SCHEME_OBJECT nentry = (GC_HANDLE_CC_ENTRY (oentry));
+	    insn_t * ntarget = (GC_CC_ENTRY_TO_RAW_ADDRESS (nentry));
+	    write_uuo_target (ntarget, scan);
 	    scan += UUO_LINK_SIZE;
 	    count -= 1;
 	  }
