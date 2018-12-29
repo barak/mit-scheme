@@ -426,10 +426,13 @@ define_debugging_label(trampoline_to_interface)
 	OP(mov,q)	TW(REG(rcx),REG(rbx))		# argument in rbx
 	jmp	scheme_to_interface
 
+# We used to CALL this to get the return address on the stack, but now
+# we use RIP-relative addressing to load directly into %rbx -- which
+# doesn't ruin the return address branch target prediction stack -- so
+# that this is no longer needed.
 define_hook_label(scheme_to_interface_call)
 define_debugging_label(scheme_to_interface_call)
-	OP(pop,q)	REG(rbx)			# arg1 = ret. add
-	OP(add,q)	TW(IMM(4),REG(rbx))		# Skip format info
+	nop
 #	jmp	scheme_to_interface
 
 # scheme_to_interface passes control from compiled Scheme code to a

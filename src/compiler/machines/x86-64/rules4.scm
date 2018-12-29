@@ -45,9 +45,10 @@ USA.
 		code:compiler-safe-reference-trap
 		code:compiler-reference-trap))
 	 |#
-	 ,@(invoke-hook/call (if safe?
-				 entry:compiler-safe-reference-trap
-				 entry:compiler-reference-trap)))))
+	 ,@(invoke-hook/reentry
+	    (if safe?
+		entry:compiler-safe-reference-trap
+		entry:compiler-reference-trap)))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
@@ -63,7 +64,7 @@ USA.
 	 #|
 	 ,@(invoke-interface/call code:compiler-assignment-trap)
 	 |#
-	 ,@(invoke-hook/call entry:compiler-assignment-trap))))
+	 ,@(invoke-hook/reentry entry:compiler-assignment-trap))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))

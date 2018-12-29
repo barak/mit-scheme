@@ -712,19 +712,20 @@ USA.
 (define-integrable (invoke-hook entry)
   (LAP (JMP ,entry)))
 
-(define (invoke-hook/call entry)
-  (let* ((get-pc (generate-label 'GET-PC))
-	 (hook-context (generate-label 'HOOK-CONTEXT)))
-    (LAP (CALL (@PCR ,get-pc))
-	(LABEL ,get-pc)
-	 ;; ADD r/m64,imm8		48 83 04 24 xx
-	 ;; JMP r/m64			ff 86 yy yy yy yy
-	 ;; Register displacement for JMP is always >=0x80, so can't
-	 ;; fit in signed byte and thus must use 32-bit displacement.
-	 ;; Hence xx = 0x0b = 11.
-	 (ADD Q (@R ,rsp) (& #x0b))
-	 (JMP ,entry)
-	(LABEL ,hook-context))))
+;; Invoke a hook that will pop an untagged return address off the stack
+;; and jump to it with RET, just like a C subroutine.
+
+(define-integrable (invoke-hook/subroutine entry)
+  (LAP (CALL ,entry)))
+
+;; Invoke a hook that expects a compiled entry address in rbx and will
+;; jump to it with JMP.
+
+(define (invoke-hook/reentry entry)
+  (let ((label (generate-label 'HOOK-REENTRY)))
+    (LAP (LEA Q (R ,rbx) (@PCRO ,label 4)) ;Skip format word.
+	 ,@(invoke-hook entry)
+	 (LABEL ,label))))
 
 (define-integrable (invoke-interface code)
   (LAP (MOV B (R ,r9) (& ,code))
@@ -732,7 +733,7 @@ USA.
 
 (define-integrable (invoke-interface/call code)
   (LAP (MOV B (R ,r9) (& ,code))
-       ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
+       ,@(invoke-hook/reentry entry:compiler-scheme-to-interface/call)))
 
 (define-syntax define-entries
   (sc-macro-transformer

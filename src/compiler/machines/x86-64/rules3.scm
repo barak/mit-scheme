@@ -99,17 +99,17 @@ USA.
 	 ,@(invoke-hook entry:compiler-shortcircuit-apply)
 	 |#
 	 ,@(case frame-size
-	     ((1) (LAP (CALL ,entry:compiler-apply-setup-size-1)))
-	     ((2) (LAP (CALL ,entry:compiler-apply-setup-size-2)))
-	     ((3) (LAP (CALL ,entry:compiler-apply-setup-size-3)))
-	     ((4) (LAP (CALL ,entry:compiler-apply-setup-size-4)))
-	     ((5) (LAP (CALL ,entry:compiler-apply-setup-size-5)))
-	     ((6) (LAP (CALL ,entry:compiler-apply-setup-size-6)))
-	     ((7) (LAP (CALL ,entry:compiler-apply-setup-size-7)))
-	     ((8) (LAP (CALL ,entry:compiler-apply-setup-size-8)))
+	     ((1) (invoke-hook/subroutine entry:compiler-apply-setup-size-1))
+	     ((2) (invoke-hook/subroutine entry:compiler-apply-setup-size-2))
+	     ((3) (invoke-hook/subroutine entry:compiler-apply-setup-size-3))
+	     ((4) (invoke-hook/subroutine entry:compiler-apply-setup-size-4))
+	     ((5) (invoke-hook/subroutine entry:compiler-apply-setup-size-5))
+	     ((6) (invoke-hook/subroutine entry:compiler-apply-setup-size-6))
+	     ((7) (invoke-hook/subroutine entry:compiler-apply-setup-size-7))
+	     ((8) (invoke-hook/subroutine entry:compiler-apply-setup-size-8))
 	     (else
 	      (LAP (MOV Q (R ,rdx) (&U ,frame-size))
-		   (CALL ,entry:compiler-apply-setup))))
+		   ,@(invoke-hook/subroutine entry:compiler-apply-setup))))
 	 (JNE (@PCR ,generic))
 	 (JMP (R ,rax))
 	(LABEL ,generic)
@@ -444,7 +444,7 @@ USA.
 	(LAP ,@(make-external-label code-word label))
 	(let ((gc-label (generate-label)))
 	  (LAP (LABEL ,gc-label)
-	       ,@(invoke-hook/call entry)
+	       ,@(invoke-hook/reentry entry)
 	       ,@(make-external-label code-word label)
 	       ,@(interrupt-check gc-label checks))))))
 
@@ -457,6 +457,10 @@ USA.
 (define-rule statement
   (CONTINUATION-HEADER (? internal-label))
   #|
+  ;; Note: This is wrong -- compiler-interrupt-continuation expects a
+  ;; compiled return address on the stack, but this will yield compiled
+  ;; entry addresses.  If you uncomment this, prepare to deal with the
+  ;; consequences.
   (simple-procedure-header (continuation-code-word internal-label)
 			   internal-label
 			   entry:compiler-interrupt-continuation)
@@ -679,7 +683,7 @@ USA.
        #|
        ,@(invoke-interface/call code:compiler-link)
        |#
-       ,@(invoke-hook/call entry:compiler-link)
+       ,@(invoke-hook/reentry entry:compiler-link)
        ,@(make-external-label (continuation-code-word #f)
 			      (generate-label))))
 
@@ -696,7 +700,7 @@ USA.
        #|
        ,@(invoke-interface/call code:compiler-link)
        |#
-       ,@(invoke-hook/call entry:compiler-link)
+       ,@(invoke-hook/reentry entry:compiler-link)
        ,@(make-external-label (continuation-code-word #f)
 			      (generate-label))))
 
@@ -745,7 +749,7 @@ USA.
 	      (@ROI ,rdx ,(* 2 address-units-per-object)
 		    ,rax ,address-units-per-object))
 	 ;; Invoke linker
-	 ,@(invoke-hook/call entry:compiler-link)
+	 ,@(invoke-hook/reentry entry:compiler-link)
 	 ,@(make-external-label (continuation-code-word false)
 				(generate-label))
 	 ;; Increment counter and loop
