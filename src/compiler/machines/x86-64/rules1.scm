@@ -110,10 +110,10 @@ USA.
 	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? datum))))
   (if (zero? type)
       (assign-register->register target datum)
-      (let* ((datum (source-register-reference datum))
-	     (target (target-register-reference target)))
-	(LAP (MOV Q ,target (&U ,(make-non-pointer-literal type 0)))
-	     (OR Q ,target ,datum)))))
+      (let* ((target (standard-move-to-target! datum target))
+	     (temp (temporary-register-reference)))
+	(LAP (MOV Q ,temp (&U ,(make-non-pointer-literal type 0)))
+	     (OR Q ,target ,temp)))))
 
 #| This doesn't work because immediate operands aren't big enough to
    fit the type tag.
