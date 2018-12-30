@@ -61,6 +61,20 @@ USA.
 (define (dont-need-registers! registers)
   (set! *needed-registers* (eqv-set-difference *needed-registers* registers)))
 
+;; `*target-machine-registers*' contains a set of machine registers
+;; that are targets for the current RTL instruction and as such must
+;; not be allocated as aliases for source registers.
+
+(define *target-machine-registers*)
+
+(define (target-machine-register! register)
+  (need-register! register)
+  (set! *target-machine-registers* (cons register *target-machine-registers*)))
+
+(define (untarget-machine-register! register)
+  (set! *target-machine-registers*
+	(delv! register *target-machine-registers*)))
+
 ;; `*dead-registers*' is initialized at the beginning of each RTL
 ;; instruction to the set of pseudo registers that become dead during
 ;; that instruction.  This information is used to decide whether or
@@ -90,6 +104,7 @@ USA.
   (set! *register-map*
 	(delete-pseudo-registers *register-map* *registers-to-delete*))
   (set! *registers-to-delete* '())
+  (set! *target-machine-registers* '())
   unspecific)
 
 ;; `*prefix-instructions*' is used to accumulate LAP instructions to
@@ -133,7 +148,10 @@ USA.
   ;; `register' may be any kind of register.
   (if (machine-register? register)
       (register-type? register type)
-      (pseudo-register-alias *register-map* type register)))
+      (pseudo-register-alias *register-map*
+			     type
+			     register
+			     *target-machine-registers*)))
 
 (define (alias-is-unique? alias)
   ;; `alias' must be a valid alias for some pseudo register.  This
@@ -163,7 +181,10 @@ USA.
   (if (machine-register? register)
       (and (register-type? register type) register)
       (maybe-need-register!
-       (pseudo-register-alias *register-map* type register))))
+       (pseudo-register-alias *register-map*
+			      type
+			      register
+			      *target-machine-registers*))))
 
 (define (guarantee-registers-compatible r1 r2)
   (if (not (registers-compatible? r1 r2))
@@ -368,6 +389,7 @@ USA.
   (if (and (machine-register? target)
 	   (register-type? target type))
       (begin
+	(untarget-machine-register! target)
 	(prefix-instructions!
 	 (reference->register-transfer
 	  (standard-register-reference source type true)

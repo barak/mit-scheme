@@ -179,7 +179,11 @@ USA.
   ;; Attempt to reuse source for target if it is in ST(0).
   ;; Otherwise we will target ST(0) by sorting the machine registers.
   (cond ((and (pseudo-register? target) (pseudo-register? source)
-	      (eqv? fr0 (pseudo-register-alias *register-map* 'FLOAT source)))
+	      (eqv? fr0
+		    (pseudo-register-alias *register-map*
+					   'FLOAT
+					   source
+					   *target-machine-registers*)))
 	 (reuse-pseudo-register-alias
 	  source 'FLOAT
 	  (lambda (alias)
@@ -222,7 +226,10 @@ USA.
   (cond ((pseudo-register? target)
 	 (let ((alias
 		(and (dead-register? source)
-		     (pseudo-register-alias *register-map* 'FLOAT source))))
+		     (pseudo-register-alias *register-map*
+					    'FLOAT
+					    source
+					    *target-machine-registers*))))
 	   (if alias
 	       (default)))
 	

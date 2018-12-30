@@ -69,7 +69,7 @@ USA.
 	     (= 2 (register-n-refs register)))
 	(let ((expression (rtl:assign-expression rtl)))
 	  (if (not (rtl:expression-contains? expression
-					     rtl:volatile-expression?))
+					     nonfoldable-expression?))
 	      (with-values
 		  (lambda ()
 		    (let ((next (rinst-next rinst)))
@@ -85,6 +85,16 @@ USA.
 					  next
 					  register
 					  expression)))))))))
+
+(define (nonfoldable-expression? expression)
+  ;; We can't fold expressions with side effects or references to
+  ;; machine registers that are available for allocation, since they
+  ;; both depend on where they are in the RTL.
+  (or (rtl:volatile-expression? expression)
+      (and (rtl:register? expression)
+	   (let ((register (rtl:register-number expression)))
+	     (and (machine-register? register)
+		  (memv register available-machine-registers))))))
 
 (define (find-reference-instruction next register expression)
   ;; Find the instruction that contains the single reference to

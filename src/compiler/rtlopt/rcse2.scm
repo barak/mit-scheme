@@ -101,8 +101,17 @@ USA.
 	(+ (symbol-hash type)
 	   (case type
 	     ((REGISTER)
-	      (quantity-number
-	       (get-register-quantity (rtl:register-number expression))))
+	      (let ((register (rtl:register-number expression)))
+		(if (memv register available-machine-registers)
+		    ;; This is a special-purpose register, like the
+		    ;; value register or an interpreter call result
+		    ;; register, which is also generally available
+		    ;; for allocation.  Since this may be assigned as
+		    ;; an alias for other pseudo-registers in the
+		    ;; future, don't let this get propagated past
+		    ;; their assignments.
+		    (set! do-not-record? true))
+		(quantity-number (get-register-quantity register))))
 	     ((OFFSET)
 	      ;; Note that stack-references do not get treated as
 	      ;; memory for purposes of invalidation.  This is because

@@ -179,7 +179,9 @@ USA.
 			  (*registers-to-delete* dead-registers)
 			  (*prefix-instructions* (LAP))
 			  (*suffix-instructions* (LAP))
-			  (*needed-registers* '()))
+			  (*needed-registers* '())
+			  (*target-machine-registers* '()))
+		(reserve-machine-targets! rtl)
 		(let ((instructions (match-result)))
 		  (delete-dead-registers!)
 		  (LAP ,@(if *insert-rtl?*
@@ -268,6 +270,15 @@ USA.
 		   *assign-rules*)))
 	(or (and rules (pattern-lookup (cdr rules) rtl))
 	    (pattern-lookup *assign-variable-rules* rtl)))))
+
+(define (reserve-machine-targets! rtl)
+  (if (rtl:assign? rtl)
+      (let ((address (rtl:assign-address rtl)))
+	(if (rtl:register? address)
+	    (let ((register (rtl:register-number address)))
+	      (if (and (machine-register? register)
+		       (memv register available-machine-registers))
+		  (target-machine-register! register)))))))
 
 ;;; Instruction sequence sharing mechanisms
 
