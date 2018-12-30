@@ -322,7 +322,12 @@ USA.
 					    expressions setup label)
 			cleanup
 			(if error-finish
-			    (error-finish (rtl:make-fetch register:value))
+			    (let ((temporary (rtl:make-pseudo-register)))
+			      (scfg*scfg->scfg!
+			       (rtl:make-assignment
+				temporary
+				(rtl:make-fetch register:value))
+			       (error-finish (rtl:make-fetch temporary))))
 			    (make-null-cfg)))
 		       #|
 		       ;; This code is preferable to the above
@@ -1680,11 +1685,14 @@ USA.
 	     (generate-primitive generic-op (length expressions)
 				 expressions setup label)
 	     cleanup
-	     (if predicate?
-		 (finish (rtl:make-true-test (rtl:make-fetch register:value)))
-		 (expression-simplify-for-statement
-		  (rtl:make-fetch register:value)
-		  finish))))))))
+	     (let ((temporary (rtl:make-pseudo-register)))
+	       (scfg*scfg->scfg!
+		(rtl:make-assignment temporary (rtl:make-fetch register:value))
+		(if predicate?
+		    (finish (rtl:make-true-test (rtl:make-fetch temporary)))
+		    (expression-simplify-for-statement
+		     (rtl:make-fetch temporary)
+		     finish))))))))))
 
 (define (generic->fixnum-op generic-op)
   (case generic-op
