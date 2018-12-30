@@ -32,6 +32,7 @@ USA.
 #include "errors.h"
 
 extern void * tospace_to_newspace (void *);
+extern void * newspace_to_tospace (void *);
 
 bool
 read_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
@@ -218,20 +219,40 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
   (addr[0]) = 0x48;		/* MOV RCX,imm64 */
   (addr[1]) = 0xb9;
   (* ((insn_t **) (&addr[2]))) = target;
-  /* It is tempting to precompute the PC here, but this doesn't work
-     when the target is a compiled closure, because if we are doing
-     this during garbage collection, although the closure itself has
-     been relocated by now, the compiled code block to which it points
-     has not yet.  Maybe it would be worthwhile to arrange the GC to
-     give us the   */
-  (addr[10]) = 0x48;		/* MOV RAX,(RCX) */
-  (addr[11]) = 0x8b;
-  (addr[12]) = 0x01;
-  (addr[13]) = 0x48;		/* ADD RAX,RCX */
-  (addr[14]) = 0x01;
-  (addr[15]) = 0xc8;
-  (addr[16]) = 0xff;		/* JMP RAX */
-  (addr[17]) = 0xe0;
+  /* If the target PC is right after the target offset, then the PC
+     requires no further relocation and we can jump to a fixed address.
+     But if the target is a compiled closure pointing into a block
+     somewhere else, the block may not have been relocated yet and so
+     we don't know where the PC will be in the newspace.  */
+  if ((* ((int64_t *) (newspace_to_tospace (target)))) == 8)
+    {
+      insn_t * pc = (target + 8);
+      ptrdiff_t jmprel32_offset = (pc - (&addr[15]));
+      if ((INT32_MIN <= jmprel32_offset) && (jmprel32_offset <= INT32_MAX))
+	{
+	  (addr[10]) = 0xe9;	/* JMP rel32 */
+	  (* ((int32_t *) (&addr[11]))) = jmprel32_offset;
+	}
+      else
+	{
+	  (addr[10]) = 0x48;	/* MOV RAX,imm64 */
+	  (addr[11]) = 0xb8;
+	  (* ((insn_t **) (&addr[12]))) = (target + 8);
+	  (addr[20]) = 0xff;	/* JMP RAX */
+	  (addr[21]) = 0xe0;
+	}
+    }
+  else
+    {
+      (addr[10]) = 0x48;	/* MOV RAX,(RCX) */
+      (addr[11]) = 0x8b;
+      (addr[12]) = 0x01;
+      (addr[13]) = 0x48;	/* ADD RAX,RCX */
+      (addr[14]) = 0x01;
+      (addr[15]) = 0xc8;
+      (addr[16]) = 0xff;	/* JMP RAX */
+      (addr[17]) = 0xe0;
+    }
 }
 
 #define BYTES_PER_TRAMPOLINE_ENTRY_PADDING 4
