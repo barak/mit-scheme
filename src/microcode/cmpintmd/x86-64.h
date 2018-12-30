@@ -114,11 +114,12 @@ entry1	32		...
 	-4		<type/arity info>
 	-2		<gc offset>
 entry	0		<offset>		08 00 00 00 00 00 00 00
-	8		MOV	AL,code		b0 <code8>
-	10		JMP	n(RSI)		ff a6 <n32>
-	16		<trampoline dependent storage>
+	8		MOVB	R9,code		41 b1 <code8>
+	11		JMP	n(RSI)		ff a6 <n32>
+	17		<padding>
+	24		<trampoline dependent storage>
 
-  Distance from address in rcx to storage: 16.
+  Distance from address in rcx to storage: 24.
 
 */
 

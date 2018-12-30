@@ -197,6 +197,7 @@ USA.
 (define-integrable regnum:datum-mask rbp)
 (define-integrable regnum:regs-pointer rsi)
 (define-integrable regnum:free-pointer rdi)
+(define-integrable regnum:value rax)
 
 (define-integrable (machine-register-known-value register)
   register				; ignored
@@ -281,12 +282,13 @@ USA.
 	 (and (rtl:machine-constant? offset)
 	      (= (rtl:machine-constant-value offset)
 		 offset-value)))))
-  
-(define-integrable (interpreter-value-register)
-  (interpreter-block-register register-block/value-offset))
+
+(define (interpreter-value-register)
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-value-register? expression)
-  (interpreter-block-register? expression register-block/value-offset))
+  (and (rtl:register? expression)
+       (= (rtl:register-number expression) regnum:value)))
 
 (define (interpreter-environment-register)
   (interpreter-block-register register-block/environment-offset))
@@ -325,10 +327,8 @@ USA.
   (case rtl-register
     ((STACK-POINTER)
      (interpreter-stack-pointer))
-    #|
     ((VALUE)
      (interpreter-value-register))
-    |#
     ((FREE)
      (interpreter-free-pointer))
     ((INTERPRETER-CALL-RESULT:ACCESS)
@@ -354,8 +354,10 @@ USA.
      register-block/int-mask-offset)
     ((STACK-GUARD)
      register-block/stack-guard-offset)
+    #|
     ((VALUE)
      register-block/value-offset)
+    |#
     ((ENVIRONMENT)
      register-block/environment-offset)
     ((DYNAMIC-LINK TEMPORARY)

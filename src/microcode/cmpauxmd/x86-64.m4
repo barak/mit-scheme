@@ -422,7 +422,7 @@ define_c_label(C_to_interface)
 
 define_hook_label(trampoline_to_interface)
 define_debugging_label(trampoline_to_interface)
-	OP(add,q)	TW(IMM(16),REG(rcx))		# trampoline storage
+	OP(add,q)	TW(IMM(24),REG(rcx))		# trampoline storage
 	OP(mov,q)	TW(REG(rcx),REG(rbx))		# argument in rbx
 	jmp	scheme_to_interface
 
@@ -433,19 +433,31 @@ define_debugging_label(scheme_to_interface_call)
 #	jmp	scheme_to_interface
 
 # scheme_to_interface passes control from compiled Scheme code to a
-# microcode utility.  The arguments for the utility go respectively in
-# rbx, rdx, rcx, and r8.  This loosely matches the AMD64 calling
-# convention, where arguments go respectively in rdi, rsi, rdx, rcx,
-# and r8.  The differences are that scheme_to_interface uses rdi as an
-# implicit first argument to the utility, and rsi is used in compiled
-# code for the registers block, since the compiler can't allocate it
-# as a general-purpose register because it doesn't admit byte-size
-# operations.  Moreover, Scheme uses rdi as the free pointer register,
-# which we have to save here in a location unknown to Scheme (the C
-# `Free' variable), so it can't be set by compiled code.
+# microcode utility.
+#
+# Arguments:
+#
+#       rax     return value
+#       r9b     utility number (upper 56 bits of r9 are garbage)
+#       rbx     first argument
+#       rdx     second argument
+#       rcx     third argument
+#       r8      fourth argument
+#
+# The microcode utility, a C function following the C amd64 calling
+# convention, takes arguments in rdi (utility_result_t pointer), rsi
+# (passed in as rbx), rdx, rcx, and r8.  rsi is used by compiled code
+# for the registers block, and rdi is used by compiled code for the
+# free pointer register, which we have to save here to a location
+# unknown to Scheme (the C `Free' variable).
+#
+# XXX Consider swapping the utility number and first argument, to save
+# a byte in the instruction when selecting the utility number in
+# trampolines, which saves a word per trampoline entry.
 
 define_hook_label(scheme_to_interface)
 define_debugging_label(scheme_to_interface)
+	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs)) # Save value
 	OP(mov,q)	TW(REG(rsp),ABS(EVR(stack_pointer)))
 	OP(mov,q)	TW(rfree,ABS(EVR(Free)))
 	OP(mov,q)	TW(ABS(EVR(C_Stack_Pointer)),REG(rsp))
@@ -460,13 +472,13 @@ define_debugging_label(scheme_to_interface)
 	OP(mov,q)	TW(REG(rbx),REG(rsi))	# rbx -> second argument.
 
 	# Find the utility.  rbx is now free as a temporary register
-	# to hold the utility table.  rax initially stores the utility
+	# to hold the utility table.  r9 initially stores the utility
 	# number in its low eight bits and possibly garbage in the
 	# rest; mask it off and then use it as an index into the
 	# utility table, scaled by 8 (bytes per pointer).
 	OP(lea,q)	TW(ABS(EVR(utility_table)),REG(rbx))
-	OP(and,q)	TW(IMM(HEX(ff)),REG(rax))
-	OP(mov,q)	TW(SDX(,REG(rbx),REG(rax),8),REG(rax))
+	OP(and,q)	TW(IMM(HEX(ff)),REG(r9))
+	OP(mov,q)	TW(SDX(,REG(rbx),REG(r9),8),REG(rax))
 
 	call		IJMP(REG(rax))
 
@@ -531,12 +543,12 @@ define_c_label(interface_to_C)
 
 define(define_jump_indirection,
 `define_hook_label($1)
-	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
+	OP(mov,b)	TW(IMM(HEX($2)),REG(r9b))
 	jmp	scheme_to_interface')
 
 define(define_call_indirection,
 `define_hook_label($1)
-	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
+	OP(mov,b)	TW(IMM(HEX($2)),REG(r9b))
 	jmp	scheme_to_interface_call')
 
 define_call_indirection(interrupt_procedure,1a)
@@ -546,7 +558,7 @@ define_jump_indirection(interrupt_continuation_2,3b)
 
 define_hook_label(interrupt_dlink)
 	OP(mov,q)	TW(QOF(REGBLOCK_DLINK(),regs),REG(rdx))
-	OP(mov,b)	TW(IMM(HEX(19)),REG(al))
+	OP(mov,b)	TW(IMM(HEX(19)),REG(r9b))
 	jmp	scheme_to_interface_call
 
 declare_alignment(2)
@@ -567,7 +579,7 @@ define_call_indirection(primitive_error,36)
 # define(define_apply_fixed_size,
 # `define_hook_label(sc_apply_size_$1)
 # 	OP(mov,q)	TW(IMM($1),REG(rdx))
-# 	OP(mov,b)	TW(IMM(HEX(14)),REG(al))
+# 	OP(mov,b)	TW(IMM(HEX(14)),REG(r9b))
 # 	jmp	scheme_to_interface')
 
 # Stack has untagged return address, then tagged entry, rdx has
@@ -575,7 +587,8 @@ define_call_indirection(primitive_error,36)
 # arity, set condition codes for equal, store the untagged entry
 # address in rcx, and store the PC in rax.  Otherwise, set condition
 # codes for not-equal, and leave the stack alone.  Either way, pop and
-# return.
+# return.  Uses r9 as a temporary register.  (rbx, rax, rcx, and rdx
+# are all in use already.)
 declare_alignment(2)
 define_hook_label(apply_setup)
 	OP(mov,q)	TW(REG(rbx),REG(rax))		# Copy for type code
@@ -591,8 +604,8 @@ define_hook_label(apply_setup)
 	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
 	# Now check the frame size.  The caller will test the flags
 	# again for another conditional jump.
-	OP(movs,bq,x)	TW(BOF(-4,REG(rcx)),REG(rax))	# Extract frame size
-	OP(cmp,q)	TW(REG(rax),REG(rdx))		# Compare to nargs+1
+	OP(movs,bq,x)	TW(BOF(-4,REG(rcx)),REG(r9))	# Extract frame size
+	OP(cmp,q)	TW(REG(r9),REG(rdx))		# Compare to nargs+1
 	jne	asm_apply_setup_fail
 	ret
 
@@ -643,8 +656,8 @@ define_hook_label(sc_apply)
 	jmp	IJMP(REG(rax))			# Invoke entry
 
 define_debugging_label(asm_sc_apply_generic)
-	OP(mov,q)	TW(IMM(HEX(14)),REG(rax))
-	jmp	scheme_to_interface	
+	OP(mov,b)	TW(IMM(HEX(14)),REG(r9b))
+	jmp	scheme_to_interface
 
 define(define_apply_fixed_size,
 `declare_alignment(2)
@@ -663,7 +676,7 @@ define_hook_label(sc_apply_size_$1)
 
 asm_sc_apply_generic_$1:
 	OP(mov,q)	TW(IMM($1),REG(rdx))
-	OP(mov,b)	TW(IMM(HEX(14)),REG(al))
+	OP(mov,b)	TW(IMM(HEX(14)),REG(r9b))
 	jmp	scheme_to_interface')
 
 define_apply_fixed_size(1)
@@ -683,7 +696,6 @@ define_apply_fixed_size(8)
 
 declare_alignment(2)
 asm_generic_return_rax:
-	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
 	OP(pop,q)	REG(rcx)
 	OP(and,q)	TW(rmask,REG(rcx))
 	jmp	IJMP(REG(rcx))			# Invoke return
@@ -739,7 +751,7 @@ asm_generic_$1_fix:
 
 asm_generic_$1_fail:
 	OP(push,q)	REG(rdx)
-	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
+	OP(mov,b)	TW(IMM(HEX($2)),REG(r9b))
 	jmp	scheme_to_interface')
 
 define(define_unary_predicate,
@@ -769,7 +781,7 @@ asm_generic_$1_fix:
 
 asm_generic_$1_fail:
 	OP(push,q)	REG(rdx)
-	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
+	OP(mov,b)	TW(IMM(HEX($2)),REG(r9b))
 	jmp	scheme_to_interface')
 
 define(define_binary_operation,
@@ -810,7 +822,7 @@ asm_generic_$1_fix:
 asm_generic_$1_fail:
 	OP(push,q)	REG(rbx)
 	OP(push,q)	REG(rdx)
-	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
+	OP(mov,b)	TW(IMM(HEX($2)),REG(r9b))
 	jmp	scheme_to_interface')
 
 define(define_binary_predicate,
@@ -851,7 +863,7 @@ asm_generic_$1_fix:
 asm_generic_$1_fail:
 	OP(push,q)	REG(rbx)
 	OP(push,q)	REG(rdx)
-	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
+	OP(mov,b)	TW(IMM(HEX($2)),REG(r9b))
 	jmp	scheme_to_interface')
 
 # Division is hairy.  I'm not sure whether this will do the right
@@ -933,7 +945,7 @@ asm_generic_divide_flo_by_flo:
 asm_generic_divide_fail:
 	OP(push,q)	REG(rbx)
 	OP(push,q)	REG(rdx)
-	OP(mov,b)	TW(IMM(HEX(23)),REG(al))
+	OP(mov,b)	TW(IMM(HEX(23)),REG(r9b))
 	jmp	scheme_to_interface
 
 define_unary_operation(decrement,22,sub,subsd)

@@ -727,11 +727,11 @@ USA.
 	(LABEL ,hook-context))))
 
 (define-integrable (invoke-interface code)
-  (LAP (MOV B (R ,rax) (& ,code))
+  (LAP (MOV B (R ,r9) (& ,code))
        ,@(invoke-hook entry:compiler-scheme-to-interface)))
 
 (define-integrable (invoke-interface/call code)
-  (LAP (MOV B (R ,rax) (& ,code))
+  (LAP (MOV B (R ,r9) (& ,code))
        ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
 
 (define-syntax define-entries

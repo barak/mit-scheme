@@ -256,7 +256,7 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
 }
 
 #define BYTES_PER_TRAMPOLINE_ENTRY_PADDING 4
-#define OBJECTS_PER_TRAMPOLINE_ENTRY 3
+#define OBJECTS_PER_TRAMPOLINE_ENTRY 4
 
 #define RSI_TRAMPOLINE_TO_INTERFACE_OFFSET				\
   ((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE))		\
@@ -285,11 +285,12 @@ bool
 store_trampoline_insns (insn_t * entry, uint8_t code)
 {
   (* ((int64_t *) (&entry[0]))) = 8;
-  (entry[8]) = 0xb0;		/* MOVB RAX,imm8 */
-  (entry[9]) = code;
-  (entry[10]) = 0xff;		/* JMP r/m64 */
-  (entry[11]) = 0xa6;		/* disp32(RSI) */
-  (* ((uint32_t *) (&entry[12]))) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
+  (entry[8]) = 0x41;		/* MOVB R9,imm8 */
+  (entry[9]) = 0xb1;
+  (entry[10]) = code;
+  (entry[11]) = 0xff;		/* JMP r/m64 */
+  (entry[12]) = 0xa6;		/* disp32(RSI) */
+  (* ((uint32_t *) (&entry[13]))) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
   return (false);
 }
 
