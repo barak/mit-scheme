@@ -541,8 +541,8 @@ USA.
 
 (define (constant-foldable-primitive? operator)
   (and (memq operator function-primitives)
-       (or (not compiler:cross-compiling?))
-       (not (memq operator machine-dependent-primitives))))
+       (not (and compiler:cross-compiling?
+		 (memq operator machine-dependent-primitives)))))
 
 (define-integrable (side-effect-free-primitive? operator)
   (memq operator side-effect-free-primitives))
