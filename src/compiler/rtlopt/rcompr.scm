@@ -121,6 +121,8 @@ USA.
 		 (if next
 		     (values next (wrap expression))
 		     (values false false)))))))
+      ;; XXX Not entirely clear when to use `recursion' and when to use
+      ;; `recurse-and-search'!
       (let ((recurse-and-search
 	     (lambda (unwrap wrap)
 	       (call-with-values (lambda () (recursion unwrap wrap))
@@ -216,6 +218,114 @@ USA.
 	      ((rtl:object->float? expression)
 	       (recurse-and-search rtl:object->float-expression
 				   rtl:make-object->float))
+	      ((rtl:fixnum->object? expression)
+	       (recurse-and-search rtl:fixnum->object-expression
+				   rtl:make-fixnum->object))
+	      ((rtl:float->object? expression)
+	       (recurse-and-search rtl:float->object-expression
+				   rtl:make-float->object))
+	      ((rtl:fixnum-1-arg? expression)
+	       (if (rtl:fixnum-1-arg-overflow? expression)
+		   (values false false)
+		   (recursion
+		    rtl:fixnum-1-arg-operand
+		    (lambda (operand)
+		      (rtl:make-fixnum-1-arg
+		       (rtl:fixnum-1-arg-operator expression)
+		       operand
+		       (rtl:fixnum-1-arg-overflow? expression))))))
+	      ((rtl:flonum-1-arg? expression)
+	       (if (rtl:flonum-1-arg-overflow? expression)
+		   (values false false)
+		   (recursion
+		    rtl:flonum-1-arg-operand
+		    (lambda (operand)
+		      (rtl:make-flonum-1-arg
+		       (rtl:flonum-1-arg-operator expression)
+		       operand
+		       (rtl:flonum-1-arg-overflow? expression))))))
+	      ((rtl:fixnum-2-args? expression)
+	       (if (rtl:fixnum-2-args-overflow? expression)
+		   (values false false)
+		   (receive (next expression*)
+			    (recursion
+			     rtl:fixnum-2-args-operand-1
+			     (lambda (operand-1)
+			       (rtl:make-fixnum-2-args
+				(rtl:fixnum-2-args-operator expression)
+				operand-1
+				(rtl:fixnum-2-args-operand-2 expression)
+				(rtl:fixnum-2-args-overflow? expression))))
+		     (if next
+			 (values next expression*)
+			 (recursion
+			  rtl:fixnum-2-args-operand-2
+			  (lambda (operand-2)
+			    (rtl:make-fixnum-2-args
+			     (rtl:fixnum-2-args-operator expression)
+			     (rtl:fixnum-2-args-operand-1 expression)
+			     operand-2
+			     (rtl:fixnum-2-args-overflow? expression))))))))
+	      ((rtl:flonum-2-args? expression)
+	       (if (rtl:flonum-2-args-overflow? expression)
+		   (values false false)
+		   (receive (next expression*)
+			    (recursion
+			     rtl:flonum-2-args-operand-1
+			     (lambda (operand-1)
+			       (rtl:make-flonum-2-args
+				(rtl:flonum-2-args-operator expression)
+				operand-1
+				(rtl:flonum-2-args-operand-2 expression)
+				(rtl:flonum-2-args-overflow? expression))))
+		     (if next
+			 (values next expression*)
+			 (recursion
+			  rtl:flonum-2-args-operand-2
+			  (lambda (operand-2)
+			    (rtl:make-flonum-2-args
+			     (rtl:flonum-2-args-operator expression)
+			     (rtl:flonum-2-args-operand-1 expression)
+			     operand-2
+			     (rtl:flonum-2-args-overflow? expression))))))))
+	      ((rtl:flonum-3-args? expression)
+	       (if (rtl:flonum-3-args-overflow? expression)
+		   (values false false)
+		   (receive (next expression*)
+			    (recursion
+			     rtl:flonum-3-args-operand-1
+			     (lambda (operand-1)
+			       (rtl:make-flonum-3-args
+				(rtl:flonum-3-args-operator expression)
+				operand-1
+				(rtl:flonum-3-args-operand-2 expression)
+				(rtl:flonum-3-args-operand-3 expression)
+				(rtl:flonum-3-args-overflow? expression))))
+		     (if next
+			 (values next expression*)
+			 (receive (next expression*)
+				  (recursion
+				   rtl:flonum-3-args-operand-2
+				   (lambda (operand-2)
+				     (rtl:make-flonum-3-args
+				      (rtl:flonum-3-args-operator expression)
+				      (rtl:flonum-3-args-operand-1 expression)
+				      operand-2
+				      (rtl:flonum-3-args-operand-3 expression)
+				      (rtl:flonum-3-args-overflow?
+				       expression))))
+			   (if next
+			       (values next expression*)
+			       (recursion
+				rtl:flonum-3-args-operand-3
+				(lambda (operand-3)
+				  (rtl:make-flonum-3-args
+				   (rtl:flonum-3-args-operator expression)
+				   (rtl:flonum-3-args-operand-1 expression)
+				   (rtl:flonum-3-args-operand-2 expression)
+				   operand-3
+				   (rtl:flonum-3-args-overflow?
+				    expression))))))))))
 	      (else
 	       (values false false)))))))
 
