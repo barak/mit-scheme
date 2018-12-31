@@ -37,19 +37,19 @@ extern void * newspace_to_tospace (void *);
 bool
 read_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 {
-  return (decode_old_style_format_word (cet, (((uint16_t *) address) [-2])));
+  return (decode_old_style_format_word (cet, (((uint16_t *) address) [-6])));
 }
 
 bool
 write_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 {
-  return (encode_old_style_format_word (cet, ((uint16_t *) address) - 2));
+  return (encode_old_style_format_word (cet, (((uint16_t *) address) - 6)));
 }
 
 bool
 read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
-  uint16_t n = (((uint16_t *) address) [-1]);
+  uint16_t n = (((uint16_t *) address) [-5]);
   (ceo->offset) = (n >> 1);
   (ceo->continued_p) = ((n & 1) != 0);
   return (false);
@@ -60,7 +60,7 @@ write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
   if (! ((ceo->offset) < 0x4000))
     return (true);
-  (((uint16_t *) address) [-1])
+  (((uint16_t *) address) [-5])
     = (((ceo->offset) << 1) | ((ceo->continued_p) ? 1 : 0));
   return (false);
 }
@@ -69,11 +69,11 @@ insn_t *
 cc_return_address_to_entry_address (insn_t * pc)
 {
   if ((pc[0]) == 0xeb)		/* JMP rel8 */
-    return ((pc + 2) + (* ((int8_t *) &pc[1])) - 8);
+    return ((pc + 2) + (* ((int8_t *) &pc[1])));
   else if ((pc[0]) == 0xe9)	/* JMP rel32 */
-    return ((pc + 5) + (* ((int32_t *) &pc[1])) - 8);
+    return ((pc + 5) + (* ((int32_t *) &pc[1])));
   else
-    return (pc - 8);
+    return (pc);
 }
 
 /* Compiled closures */
@@ -110,7 +110,7 @@ read_compiled_closure_target (insn_t * start, reloc_ref_t * ref)
   /* If we're relocating, find where base was in the oldspace.  */
   if (ref)
     base += (ref->old_addr - ref->new_addr);
-  return (base + (* ((int64_t *) addr)) - 8);
+  return (base + (((int64_t *) addr)[-1]));
 }
 
 /* write_compiled_closure_target(target, start)
@@ -124,8 +124,8 @@ void
 write_compiled_closure_target (insn_t * target, insn_t * start)
 {
   insn_t * addr = (start + CC_ENTRY_HEADER_SIZE);
-  (* ((int64_t *) addr)) =
-    (target - ((insn_t *) (tospace_to_newspace (addr))) + 8);
+  (((int64_t *) addr)[-1]) =
+    (target - ((insn_t *) (tospace_to_newspace (addr))));
 }
 
 unsigned long
@@ -152,20 +152,20 @@ compiled_closure_entry (insn_t * start)
 insn_t *
 compiled_closure_next (insn_t * start)
 {
-  return (start + CC_ENTRY_HEADER_SIZE + 12);
+  return (start + CC_ENTRY_HEADER_SIZE + 4);
 }
 
 SCHEME_OBJECT *
 skip_compiled_closure_padding (insn_t * start)
 {
-  /* The padding is the same size as the entry header (format word).  */
-  return ((SCHEME_OBJECT *) (start + CC_ENTRY_HEADER_SIZE));
+  /* The last entry is _not_ padded, so undo the padding skip.  */
+  return ((SCHEME_OBJECT *) (start - 4));
 }
 
 SCHEME_OBJECT
 compiled_closure_entry_to_target (insn_t * entry)
 {
-  return (MAKE_CC_ENTRY (entry + (* ((int64_t *) entry)) - 8));
+  return (MAKE_CC_ENTRY (entry + (((int64_t *) entry)[-1])));
 }
 
 /* Execution caches (UUO links)
@@ -224,10 +224,9 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
      But if the target is a compiled closure pointing into a block
      somewhere else, the block may not have been relocated yet and so
      we don't know where the PC will be in the newspace.  */
-  if ((* ((int64_t *) (newspace_to_tospace (target)))) == 8)
+  if ((((int64_t *) (newspace_to_tospace (target)))[-1]) == 0)
     {
-      insn_t * pc = (target + 8);
-      ptrdiff_t jmprel32_offset = (pc - (&addr[15]));
+      ptrdiff_t jmprel32_offset = (target - (&addr[15]));
       if ((INT32_MIN <= jmprel32_offset) && (jmprel32_offset <= INT32_MAX))
 	{
 	  (addr[10]) = 0xe9;	/* JMP rel32 */
@@ -237,21 +236,22 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
 	{
 	  (addr[10]) = 0x48;	/* MOV RAX,imm64 */
 	  (addr[11]) = 0xb8;
-	  (* ((insn_t **) (&addr[12]))) = (target + 8);
+	  (* ((insn_t **) (&addr[12]))) = target;
 	  (addr[20]) = 0xff;	/* JMP RAX */
 	  (addr[21]) = 0xe0;
 	}
     }
   else
     {
-      (addr[10]) = 0x48;	/* MOV RAX,(RCX) */
+      (addr[10]) = 0x48;	/* MOV RAX,-8(RCX) */
       (addr[11]) = 0x8b;
-      (addr[12]) = 0x01;
-      (addr[13]) = 0x48;	/* ADD RAX,RCX */
-      (addr[14]) = 0x01;
-      (addr[15]) = 0xc8;
-      (addr[16]) = 0xff;	/* JMP RAX */
-      (addr[17]) = 0xe0;
+      (addr[12]) = 0x41;
+      (addr[13]) = 0xf8;
+      (addr[14]) = 0x48;	/* ADD RAX,RCX */
+      (addr[15]) = 0x01;
+      (addr[16]) = 0xc8;
+      (addr[17]) = 0xff;	/* JMP RAX */
+      (addr[18]) = 0xe0;
     }
 }
 
@@ -278,19 +278,19 @@ trampoline_entry_addr (SCHEME_OBJECT * block, unsigned long index)
 insn_t *
 trampoline_return_addr (SCHEME_OBJECT * block, unsigned long index)
 {
-  return ((trampoline_entry_addr (block, index)) + 8);
+  return (trampoline_entry_addr (block, index));
 }
 
 bool
 store_trampoline_insns (insn_t * entry, uint8_t code)
 {
-  (* ((int64_t *) (&entry[0]))) = 8;
-  (entry[8]) = 0x41;		/* MOVB R9,imm8 */
-  (entry[9]) = 0xb1;
-  (entry[10]) = code;
-  (entry[11]) = 0xff;		/* JMP r/m64 */
-  (entry[12]) = 0xa6;		/* disp32(RSI) */
-  (* ((uint32_t *) (&entry[13]))) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
+  (((int64_t *) entry)[-1]) = 0;
+  (entry[0]) = 0x41;		/* MOVB R9,imm8 */
+  (entry[1]) = 0xb1;
+  (entry[2]) = code;
+  (entry[3]) = 0xff;		/* JMP r/m64 */
+  (entry[4]) = 0xa6;		/* disp32(RSI) */
+  (* ((uint32_t *) (&entry[5]))) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
   return (false);
 }
 

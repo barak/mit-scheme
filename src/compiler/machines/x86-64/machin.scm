@@ -88,14 +88,15 @@ USA.
 (define-integrable address-units-per-closure-manifest address-units-per-object)
 (define-integrable address-units-per-entry-format-code 4)
 (define-integrable address-units-per-closure-entry-count 4)
-(define-integrable address-units-per-closure-padding 4)
+(define-integrable address-units-per-closure-padding -4)
 
-;;; Just a 64-bit offset and four bytes of padding.
-(define-integrable address-units-per-closure-entry-instructions 12)
+(define-integrable address-units-per-closure-pc-offset 8)
+(define-integrable address-units-per-closure-entry-padding 4)
 
 (define-integrable address-units-per-closure-entry
   (+ address-units-per-entry-format-code
-     address-units-per-closure-entry-instructions))
+     address-units-per-closure-pc-offset
+     address-units-per-closure-entry-padding))
 
 ;;; Note:
 ;;;
@@ -119,7 +120,7 @@ USA.
 (define (closure-first-offset nentries entry)
   (if (zero? nentries)
       1
-      (* (- nentries entry) closure-entry-size)))
+      (* (- nentries entry 1) closure-entry-size)))
 
 ;;; Given the number of entry points in a closure, return the distance
 ;;; in objects from the address of the manifest closure to the address
@@ -128,9 +129,10 @@ USA.
 (define (closure-object-first-offset nentries)
   (if (zero? nentries)
       1					;One vector manifest.
-      ;; One object for the closure manifest, and one object for the
-      ;; leading entry count and the trailing padding.
-      (+ 2 (* nentries closure-entry-size))))
+      ;; One object for the closure manifest, half an object for the
+      ;; leading entry count, and minus half an object for the trailing
+      ;; non-padding.
+      (+ 1 (* nentries closure-entry-size))))
 
 ;;; Given the number of entries in a closure, and the indices of two
 ;;; entries, return the number of bytes separating the two entries.

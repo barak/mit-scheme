@@ -83,10 +83,10 @@ entry	8		symbol
 	2		zero
 	7		0x1A
 entry	8		MOV	RCX,imm64	48 b9 <addr64>  ; entry address
-	18		MOV	RAX,(RCX)	48 8b 01
-	21		ADD	RAX,RCX		48 01 c8
-	24		JMP	RAX		ff e0
-	26		<padding>
+	18		MOV	RAX,-8(RCX)	48 8b 41 f8
+	22		ADD	RAX,RCX		48 01 c8
+	25		JMP	RAX		ff e0
+	27		<padding>
 	32		<next cache>
 
 
@@ -99,27 +99,31 @@ nicely.
 	8		<entry count>
 	12		<type/arity info>       \__ format word
 	14		<gc offset>             /
-entry0	16		<offset>
-	24		<padding>
+	16		<pc offset>
+entry0	24		<padding>
 	28		<type/arity info>
 	30		<gc offset>
-entry1	32		...
-	...
-	16 + 16*n	<variables>
+	32		<pc offset>
+entry1	40		<padding>
+	44		<type/arity info>
+	46		<gc offset>
+	48		<pc offset>
+entry2	...
+	8 + 16*n	<variables>
 
 
 - Trampoline encoding:
 
-	-8		<padding>
-	-4		<type/arity info>
-	-2		<gc offset>
-entry	0		<offset>		08 00 00 00 00 00 00 00
-	8		MOVB	R9,code		41 b1 <code8>
-	11		JMP	n(RSI)		ff a6 <n32>
-	17		<padding>
-	24		<trampoline dependent storage>
+	-16		<padding>
+	-12		<type/arity info>
+	-10		<gc offset>
+	-8		<offset>		08 00 00 00 00 00 00 00
+entry	0		MOVB	R9,code		41 b1 <code8>
+	3		JMP	n(RSI)		ff a6 <n32>
+	9		<padding>
+	16		<trampoline dependent storage>
 
-  Distance from address in rcx to storage: 24.
+  Distance from address in rcx to storage: 16.
 
 */
 
@@ -143,9 +147,11 @@ typedef uint8_t insn_t;
 
 /* Number of insn_t units preceding entry address in which header
    (type and offset info) is stored.  */
-#define CC_ENTRY_HEADER_SIZE (CC_ENTRY_TYPE_SIZE + CC_ENTRY_OFFSET_SIZE)
+#define CC_ENTRY_HEADER_SIZE						\
+  (CC_ENTRY_TYPE_SIZE + CC_ENTRY_OFFSET_SIZE + CC_ENTRY_PC_OFFSET_SIZE)
 #define CC_ENTRY_TYPE_SIZE 2
 #define CC_ENTRY_OFFSET_SIZE 2
+#define CC_ENTRY_PC_OFFSET_SIZE 8
 
 /* Number of insn_t units preceding entry header in which GC trap
    instructions are stored.  This is an approximation: it matches only
@@ -157,7 +163,7 @@ typedef uint8_t insn_t;
 #define CC_ENTRY_GC_TRAP_SIZE 6
 
 #define CC_ENTRY_ADDRESS_PTR(e)		(e)
-#define CC_ENTRY_ADDRESS_PC(e)		((e) + (* ((const int64_t *) (e))))
+#define CC_ENTRY_ADDRESS_PC(e)		((e) + (((const int64_t *) (e))[-1]))
 
 #define CC_RETURN_ADDRESS_PTR(r)	0
 #define CC_RETURN_ADDRESS_PC(r)		(r)

@@ -114,8 +114,8 @@ USA.
   (set! *external-labels* (cons label *external-labels*))
   (LAP (WORD U ,code)
        (BLOCK-OFFSET ,label)
-       (LABEL ,label)
-       (QUAD U 8)))
+       (QUAD U 0)
+       (LABEL ,label)))
 
 (define-integrable (make-code-word min max)
   (+ (* #x100 min) max))
@@ -218,11 +218,11 @@ USA.
   (move-to-alias-register! source (register-type target) target)
   (LAP))
 
-(define (load-pc-relative target label-expr offset)
-  (LAP (MOV Q ,target (@PCRO ,label-expr ,offset))))
+(define (load-pc-relative target label-expr)
+  (LAP (MOV Q ,target (@PCR ,label-expr))))
 
-(define (load-pc-relative-address target label-expr offset)
-  (LAP (LEA Q ,target (@PCRO ,label-expr ,offset))))
+(define (load-pc-relative-address target label-expr)
+  (LAP (LEA Q ,target (@PCR ,label-expr))))
 
 (define (compare/register*register reg1 reg2)
   (cond ((register-alias reg1 'GENERAL)
@@ -723,7 +723,7 @@ USA.
 
 (define (invoke-hook/reentry entry)
   (let ((label (generate-label 'HOOK-REENTRY)))
-    (LAP (LEA Q (R ,rbx) (@PCRO ,label 4)) ;Skip format word.
+    (LAP (LEA Q (R ,rbx) (@PCRO ,label 12)) ;Skip format word and PC offset.
 	 ,@(invoke-hook entry)
 	 (LABEL ,label))))
 

@@ -177,15 +177,14 @@ USA.
   (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
   (load-pc-relative-address
    (target-register-reference target)
-   (rtl-procedure/external-label (label->object label))
-   0))
+   (rtl-procedure/external-label (label->object label))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
   (let* ((target (target-register-reference target))
 	 (get-pc (generate-label 'GET-PC)))
     (LAP (CALL (@PCR ,get-pc))
-	 (JMP (@PCRO ,label 8))
+	 (JMP (@PCR ,label))
 	(LABEL ,get-pc)
 	 (POP Q ,target))))
 
@@ -198,8 +197,7 @@ USA.
   (load-pc-relative-address/typed (target-register-reference target)
 				  type
 				  (rtl-procedure/external-label
-				   (label->object label))
-				  0))
+				   (label->object label))))
 
 (define-rule statement
   ;; This is an intermediate rule -- not intended to produce code.
@@ -210,7 +208,7 @@ USA.
   (let* ((target (target-register-reference target))
 	 (pushed (generate-label 'PUSHED)))
     (LAP (CALL (@PCR ,pushed))
-	 (JMP (@PCRO ,label 8))
+	 (JMP (@PCR ,label))
 	(LABEL ,pushed)
 	 (POP Q ,target)
 	 ,@(affix-type target type))))
@@ -222,21 +220,19 @@ USA.
   (assert (= type type-code:compiled-return))
   (let ((pushed (generate-label 'PUSHED)))
     (LAP (CALL (@PCR ,pushed))
-	 (JMP (@PCRO ,label 8))
+	 (JMP (@PCR ,label))
 	(LABEL ,pushed)
 	 ,@(affix-type (INST-EA (@R 4)) type))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
   (load-pc-relative (target-register-reference target)
-		    (free-reference-label name)
-		    0))
+		    (free-reference-label name)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
   (load-pc-relative (target-register-reference target)
-		    (free-assignment-label name)
-		    0))
+		    (free-assignment-label name)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
@@ -432,8 +428,8 @@ USA.
 	 (target (target-register-reference target)))
     (LAP (LEA Q ,target ,source))))  
 
-(define (load-pc-relative-address/typed target type label offset)
-  (LAP (LEA Q ,target (@PCRO ,label ,offset))
+(define (load-pc-relative-address/typed target type label)
+  (LAP (LEA Q ,target (@PCR ,label))
        ,@(affix-type target type))
   #|
   ;++ This is pretty horrid, especially since it happens for every

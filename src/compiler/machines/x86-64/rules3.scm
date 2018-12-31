@@ -62,67 +62,61 @@ USA.
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation
   (expect-no-exit-interrupt-checks)
-  (let ((generic (generate-label 'GENERIC)))
-    (LAP ,@(clear-map!)
-	 (POP Q (R ,rbx))
-	 #|
-	 (MOV Q (R ,rdx) (&U ,frame-size))
-	 ,@(invoke-interface code:compiler-apply)
-	 |#
-	 #|
-	 ,@(case frame-size
-	     ((1) (invoke-hook entry:compiler-shortcircuit-apply-size-1))
-	     ((2) (invoke-hook entry:compiler-shortcircuit-apply-size-2))
-	     ((3) (invoke-hook entry:compiler-shortcircuit-apply-size-3))
-	     ((4) (invoke-hook entry:compiler-shortcircuit-apply-size-4))
-	     ((5) (invoke-hook entry:compiler-shortcircuit-apply-size-5))
-	     ((6) (invoke-hook entry:compiler-shortcircuit-apply-size-6))
-	     ((7) (invoke-hook entry:compiler-shortcircuit-apply-size-7))
-	     ((8) (invoke-hook entry:compiler-shortcircuit-apply-size-8))
-	     (else
-	      (LAP (MOV Q (R ,rdx) (&U ,frame-size))
-		   ,@(invoke-hook entry:compiler-shortcircuit-apply))))
-	 |#
-	 #|
-	 (POP Q (R ,rcx))		;Pop tagged entry into RCX.
-	 (MOV Q (R ,rax) (R ,rcx))	;Copy tagged entry into RAX.
-	 (SHR Q (R ,rax) (&U ,scheme-datum-width)) ;Select tag in RAX.
-	 (AND Q (R ,rcx) (R ,regnum:datum-mask)) ;Select datum in RCX.
-	 (CMP B (R ,rax) (&U ,(ucode-type COMPILED-ENTRY))) ;Check tag.
-	 (JNE (@PCR ,generic))		;Bail if not compiled entry.
-	 (CMP B (@RO ,rcx -4) (&U ,frame-size))	;Check arity.
-	 (JNE (@PCR ,generic))		;Bail if not exact arity match.
-	 (MOV Q (R ,rax) (@R ,rcx))	;Load offset into RAX.
-	 (ADD Q (R ,rax) (R ,rcx))	;Add offset to entry address in RAX.
-	 (JMP (R ,rax))
-	(LABEL ,generic)
-	 ,@(invoke-hook entry:compiler-shortcircuit-apply)
-	 |#
-	 ,@(case frame-size
-	     ((1) (invoke-hook/subroutine entry:compiler-apply-setup-size-1))
-	     ((2) (invoke-hook/subroutine entry:compiler-apply-setup-size-2))
-	     ((3) (invoke-hook/subroutine entry:compiler-apply-setup-size-3))
-	     ((4) (invoke-hook/subroutine entry:compiler-apply-setup-size-4))
-	     ((5) (invoke-hook/subroutine entry:compiler-apply-setup-size-5))
-	     ((6) (invoke-hook/subroutine entry:compiler-apply-setup-size-6))
-	     ((7) (invoke-hook/subroutine entry:compiler-apply-setup-size-7))
-	     ((8) (invoke-hook/subroutine entry:compiler-apply-setup-size-8))
-	     (else
-	      (LAP (MOV Q (R ,rdx) (&U ,frame-size))
-		   ,@(invoke-hook/subroutine entry:compiler-apply-setup))))
-	 (JMP (R ,rax)))))
+  (LAP ,@(clear-map!)
+       (POP Q (R ,rbx))
+       #|
+       (MOV Q (R ,rdx) (&U ,frame-size))
+       ,@(invoke-interface code:compiler-apply)
+       |#
+       #|
+       ,@(case frame-size
+	   ((1) (invoke-hook entry:compiler-shortcircuit-apply-size-1))
+	   ((2) (invoke-hook entry:compiler-shortcircuit-apply-size-2))
+	   ((3) (invoke-hook entry:compiler-shortcircuit-apply-size-3))
+	   ((4) (invoke-hook entry:compiler-shortcircuit-apply-size-4))
+	   ((5) (invoke-hook entry:compiler-shortcircuit-apply-size-5))
+	   ((6) (invoke-hook entry:compiler-shortcircuit-apply-size-6))
+	   ((7) (invoke-hook entry:compiler-shortcircuit-apply-size-7))
+	   ((8) (invoke-hook entry:compiler-shortcircuit-apply-size-8))
+	   (else
+	    (LAP (MOV Q (R ,rdx) (&U ,frame-size))
+		 ,@(invoke-hook entry:compiler-shortcircuit-apply))))
+       |#
+       #|
+       (POP Q (R ,rcx))			;Pop tagged entry into RCX.
+       (MOV Q (R ,rax) (R ,rcx))	;Copy tagged entry into RAX.
+       (SHR Q (R ,rax) (&U ,scheme-datum-width)) ;Select tag in RAX.
+       (AND Q (R ,rcx) (R ,regnum:datum-mask)) ;Select datum in RCX.
+       (CMP B (R ,rax) (&U ,(ucode-type COMPILED-ENTRY))) ;Check tag.
+       (JNE (@PCR ,generic))		;Bail if not compiled entry.
+       (CMP B (@RO ,rcx -4) (&U ,frame-size))	;Check arity.
+       (JNE (@PCR ,generic))		;Bail if not exact arity match.
+       (MOV Q (R ,rax) (@RO ,rcx -8))	;Load offset into RAX.
+       (ADD Q (R ,rax) (R ,rcx))	;Add offset to entry address in RAX.
+       (JMP (R ,rax))
+      (LABEL ,generic)
+       ,@(invoke-hook entry:compiler-shortcircuit-apply)
+       |#
+       ,@(case frame-size
+	   ((1) (invoke-hook/subroutine entry:compiler-apply-setup-size-1))
+	   ((2) (invoke-hook/subroutine entry:compiler-apply-setup-size-2))
+	   ((3) (invoke-hook/subroutine entry:compiler-apply-setup-size-3))
+	   ((4) (invoke-hook/subroutine entry:compiler-apply-setup-size-4))
+	   ((5) (invoke-hook/subroutine entry:compiler-apply-setup-size-5))
+	   ((6) (invoke-hook/subroutine entry:compiler-apply-setup-size-6))
+	   ((7) (invoke-hook/subroutine entry:compiler-apply-setup-size-7))
+	   ((8) (invoke-hook/subroutine entry:compiler-apply-setup-size-8))
+	   (else
+	    (LAP (MOV Q (R ,rdx) (&U ,frame-size))
+		 ,@(invoke-hook/subroutine entry:compiler-apply-setup))))
+       (JMP (R ,rax))))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
   frame-size continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       ;; Every label for code we can jump to starts with a 64-bit
-       ;; offset to the actual code, always equal to 8.  We could
-       ;; invent the bookkeeping to map the external label to the
-       ;; actual code label, but that's more work than I want to do
-       ;; right now.
-       (JMP (@PCRO ,label 8))))
+       (JMP (@PCR ,label))))
 
 (define-rule statement
   (INVOCATION:COMPUTED-JUMP (? frame-size) (? continuation))
@@ -132,7 +126,7 @@ USA.
   (LAP ,@(clear-map!)
        (POP Q (R ,rcx))
        (AND Q (R ,rcx) (R ,regnum:datum-mask)) ;clear type code
-       (MOV Q (R ,rax) (@R ,rcx))	;rax := PC offset
+       (MOV Q (R ,rax) (@RO ,rcx -8))	;rax := PC offset
        (ADD Q (R ,rax) (R ,rcx))	;rax := PC
        (JMP (R ,rax))))
 
@@ -180,8 +174,7 @@ USA.
 	 (set-address
 	  (begin (require-register! rdx)
 		 (load-pc-relative-address (INST-EA (R ,rdx))
-					   *block-label*
-					   0))))
+					   *block-label*))))
     (delete-dead-registers!)
     (LAP ,@set-extension
 	 ,@set-address
@@ -506,10 +499,11 @@ USA.
 	 (temp (temporary-register-reference))
 	 (data-offset address-units-per-closure-manifest)
 	 (format-offset (+ data-offset address-units-per-closure-entry-count))
-	 (pc-offset (+ format-offset address-units-per-entry-format-code))
+	 (offset-offset (+ format-offset address-units-per-entry-format-code))
+	 (entry-offset (+ offset-offset address-units-per-closure-pc-offset))
 	 (slots-offset
-	  (+ pc-offset
-	     address-units-per-closure-entry-instructions
+	  (+ entry-offset
+	     address-units-per-closure-entry-padding
 	     address-units-per-closure-padding))
 	 (free-offset
 	  (+ slots-offset (* (+ 1 size) address-units-per-object))))
@@ -519,7 +513,7 @@ USA.
 	 (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U 1))
 	 ,@(generate-closure-entry procedure-label min max format-offset temp)
 	 ;; Load the address of the entry instruction into TARGET.
-	 (LEA Q ,target (@RO ,regnum:free-pointer ,pc-offset))
+	 (LEA Q ,target (@RO ,regnum:free-pointer ,entry-offset))
 	 ;; Bump FREE.
 	 ,@(with-signed-immediate-operand free-offset
 	     (lambda (addend)
@@ -545,8 +539,10 @@ USA.
     (let* ((data-offset address-units-per-closure-manifest)
 	   (first-format-offset
 	    (+ data-offset address-units-per-closure-entry-count))
-	   (first-pc-offset
+	   (first-offset-offset
 	    (+ first-format-offset address-units-per-entry-format-code))
+	   (first-entry-offset
+	    (+ first-offset-offset address-units-per-closure-pc-offset))
 	   (free-offset
 	    (+ first-format-offset
 	       (* nentries address-units-per-closure-entry)
@@ -555,7 +551,7 @@ USA.
 	   (MOV Q (@R ,regnum:free-pointer) ,temp)
 	   (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U ,nentries))
 	   ,@(generate-entries entries first-format-offset)
-	   (LEA Q ,target (@RO ,regnum:free-pointer ,first-pc-offset))
+	   (LEA Q ,target (@RO ,regnum:free-pointer ,first-entry-offset))
 	   ,@(with-signed-immediate-operand free-offset
 	       (lambda (addend)
 		 (LAP (ADD Q (R ,regnum:free-pointer) ,addend))))
@@ -567,17 +563,16 @@ USA.
 
 (define (generate-closure-entry label min max offset temp)
   (let* ((procedure-label (rtl-procedure/external-label (label->object label)))
-	 (addr-offset (+ offset address-units-per-entry-format-code))
-	 (padding-offset (+ addr-offset 8)))
-    padding-offset
+	 (offset-offset (+ offset address-units-per-entry-format-code))
+	 (entry-offset (+ offset-offset address-units-per-closure-pc-offset)))
     (LAP (MOV L (@RO ,regnum:free-pointer ,offset)
-	      (&U ,(make-closure-code-longword min max addr-offset)))
-	 ;; Set temp := procedure-label + 8 - addr-offset.
-	 (LEA Q ,temp (@PCR (- (+ ,procedure-label 8) ,addr-offset)))
-	 ;; Set temp := procedure-label + 8 - addr-offset - free.
+	      (&U ,(make-closure-code-longword min max entry-offset)))
+	 ;; Set temp := procedure-label - entry-offset.
+	 (LEA Q ,temp (@PCR (- ,procedure-label ,entry-offset)))
+	 ;; Set temp := procedure-label - entry-offset - free.
 	 (SUB Q ,temp (R ,regnum:free-pointer))
-	 ;; Store temp = procedure-label + 8 - (free + addr-offset).
-	 (MOV Q (@RO ,regnum:free-pointer ,addr-offset) ,temp))))
+	 ;; Store temp = procedure-label - (free + entry-offset).
+	 (MOV Q (@RO ,regnum:free-pointer ,offset-offset) ,temp))))
 
 (define (generate/closure-header internal-label nentries)
   (let* ((rtl-proc (label->object internal-label))
@@ -591,13 +586,7 @@ USA.
 	   (MOV Q (R ,rax) (&U ,(make-non-pointer-literal type 0)))
 	   (OR Q (R ,rcx) (R ,rax))
 	   (PUSH Q (R ,rcx))
-	   ;; Jump past a bogus faux offset.  We need this because
-	   ;; INVOCATION:JUMP jumps to the label + 8, and at the moment
-	   ;; I haven't found a good way to make it skip the +8 part
-	   ;; for closures.
-	   (JMP (@PCRO ,internal-label 8))
-	   (LABEL ,internal-label)
-	   (QUAD U 8)))
+	   (LABEL ,internal-label)))
     (cond ((zero? nentries)
 	   (LAP (EQUATE ,external-label ,internal-label)
 		,@(simple-procedure-header

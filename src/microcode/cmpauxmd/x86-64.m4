@@ -422,7 +422,7 @@ define_c_label(C_to_interface)
 
 define_hook_label(trampoline_to_interface)
 define_debugging_label(trampoline_to_interface)
-	OP(add,q)	TW(IMM(24),REG(rcx))		# trampoline storage
+	OP(add,q)	TW(IMM(16),REG(rcx))		# trampoline storage
 	OP(mov,q)	TW(REG(rcx),REG(rbx))		# argument in rbx
 	jmp	scheme_to_interface
 
@@ -603,11 +603,11 @@ define_hook_label(apply_setup)
 	# We now have a compiled entry, so it is safe to compute the
 	# PC.  Do that first, because it sets flags, which are used by
 	# the caller.
-	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
+	OP(mov,q)	TW(BOF(-8,REG(rcx)),REG(rax))	# rax := PC offset
 	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
 	# Now check the frame size.  The caller will test the flags
 	# again for another conditional jump.
-	OP(movs,bq,x)	TW(BOF(-4,REG(rcx)),REG(r9))	# Extract frame size
+	OP(movs,bq,x)	TW(BOF(-12,REG(rcx)),REG(r9))	# Extract frame size
 	OP(cmp,q)	TW(REG(r9),REG(rdx))		# Compare to nargs+1
 	jne	asm_apply_setup_fail
 	ret
@@ -627,9 +627,9 @@ define_hook_label(apply_setup_size_$1)
 	OP(and,q)	TW(rmask,REG(rcx))		# Select datum
 	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
 	jne	asm_apply_setup_size_$1_fail
-	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
+	OP(mov,q)	TW(BOF(-8,REG(rcx)),REG(rax))	# rax := PC offset
 	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
-	OP(cmp,b)	TW(IMM($1),BOF(-4,REG(rcx)))	# Compare frame size
+	OP(cmp,b)	TW(IMM($1),BOF(-12,REG(rcx)))	# Compare frame size
 	jne	asm_apply_setup_size_$1_fail		# to nargs+1
 	ret
 
@@ -655,10 +655,10 @@ define_hook_label(sc_apply)
 	OP(and,q)	TW(rmask,REG(rcx))		# Select datum
 	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
 	jne	asm_sc_apply_generic
-	OP(movs,bq,x)	TW(BOF(-4,REG(rcx)),REG(rax))	# Extract frame size
+	OP(movs,bq,x)	TW(BOF(-12,REG(rcx)),REG(rax))	# Extract frame size
 	OP(cmp,q)	TW(REG(rax),REG(rdx))		# Compare to nargs+1
 	jne	asm_sc_apply_generic
-	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
+	OP(mov,q)	TW(BOF(-8,REG(rcx)),REG(rax))	# rax := PC offset
 	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
 	jmp	IJMP(REG(rax))			# Invoke entry
 
@@ -675,9 +675,9 @@ define_hook_label(sc_apply_size_$1)
 	OP(and,q)	TW(rmask,REG(rcx))		# Select datum
 	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
 	jne	asm_sc_apply_generic_$1
-	OP(cmp,b)	TW(IMM($1),BOF(-4,REG(rcx)))	# Compare frame size
+	OP(cmp,b)	TW(IMM($1),BOF(-12,REG(rcx)))	# Compare frame size
 	jne	asm_sc_apply_generic_$1			# to nargs+1
-	OP(mov,q)	TW(IND(REG(rcx)),REG(rax))	# rax := PC offset
+	OP(mov,q)	TW(BOF(-8,REG(rcx)),REG(rax))	# rax := PC offset
 	OP(add,q)	TW(REG(rcx),REG(rax))		# rax := PC
 	jmp	IJMP(REG(rax))			# Invoke entry
 
