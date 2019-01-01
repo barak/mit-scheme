@@ -149,6 +149,51 @@ USA.
    (lambda (target)
      (multiply-fixnum-constant target (* n fixnum-1) #f))))
 
+;;; Intermediate rules -- no advantage but these pave the way to
+;;; combined detag-and-compare operations.
+;;;
+;;; (Maybe these aren't worth it.)
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS MINUS-FIXNUM
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 (REGISTER (? untagged-source))
+			 (? overflow?)))
+  overflow?
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (any-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (SUB Q ,target ,untagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS MINUS-FIXNUM
+			 (REGISTER (? untagged-source))
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((temp (standard-move-to-temporary! tagged-source))
+	 (target (standard-move-to-target! untagged-source target)))
+    (LAP ,@(object->fixnum temp)
+	 (SUB Q ,target ,temp))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS MINUS-FIXNUM
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (OBJECT->FIXNUM (REGISTER (? source2)))
+			 #f))
+  (if (eqv? source1 source2)
+      ;; XXX Should arrange upstream to ensure this doesn't happen.
+      (let ((target (target-register-reference target)))
+	(LAP (XOR L ,target ,target)))
+      (let* ((source2 (any-reference source2))
+	     (target (standard-move-to-target! source1 target)))
+	(LAP (SUB Q ,target ,source2)
+	     (SAL Q ,target (&U ,scheme-type-width))))))
+
 ;;;; Fixnum Predicates
 
 (define-rule predicate
@@ -204,7 +249,7 @@ USA.
 		      (REGISTER (? register)))
   (fixnum-branch! (commute-fixnum-predicate predicate))
   (compare/reference*fixnum (source-register-reference register) constant))
-
+
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (? expression rtl:simple-offset?)
@@ -218,11 +263,322 @@ USA.
 		      (? expression rtl:simple-offset?))
   (fixnum-branch! (commute-fixnum-predicate predicate))
   (compare/reference*fixnum (offset->reference! expression) constant))
+
+;;; Detag and compare.
+
+;; Predicates for which tagging preserves order.
+
+(define (fixnum-unsigned-predicate? predicate)
+  (or (eq? predicate 'EQUAL-FIXNUM?)
+      (eq? predicate 'UNSIGNED-LESS-THAN-FIXNUM?)
+      (eq? predicate 'UNSIGNED-GREATER-THAN-FIXNUM?)))
+
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      (REGISTER (? untagged-source)))
+  (QUALIFIER (fixnum-unsigned-predicate? predicate))
+  (detag-and-compare predicate tagged-source untagged-source))
+
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (REGISTER (? untagged-source))
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source))))
+  (QUALIFIER (fixnum-unsigned-predicate? predicate))
+  (detag-and-compare (commute-fixnum-predicate predicate)
+		     tagged-source
+		     untagged-source))
+
+(define (detag-and-compare predicate tagged-source untagged-source)
+  ;; Intermediate rule -- no particular advantage.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (assert (fixnum-unsigned-predicate? predicate))
+  (fixnum-branch! predicate)
+  (let* ((untagged-source (any-reference untagged-source))
+	 (temp (standard-move-to-temporary! tagged-source)))
+    (LAP ,@(object->fixnum temp)
+	 (CMP Q ,temp ,untagged-source))))
+
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (OBJECT->FIXNUM (REGISTER (? register-1)))
+		      (OBJECT->FIXNUM (REGISTER (? register-2))))
+  (QUALIFIER (fixnum-unsigned-predicate? predicate))
+  (fixnum-branch! predicate)
+  (compare/register*register register-1 register-2))
+
+;;; Convert (SUB x y) (CMP x 0) into (CMP x y).
+;;;
+;;; Would be nice to use a single rewriting rule for all of these, but
+;;; we can't -- this is worthwhile only if we don't use the difference
+;;; later on, and rewriting rules can't tell that, while RTL code
+;;; compression can but relies on us to have a code generation rule
+;;; rather than a rewriting rule.
+;;;
+;;; (Maybe code compression could apply rewriting rules too?)
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (REGISTER (? register-1))
+				    (REGISTER (? register-2))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (compare/register*register register-1 register-2))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG FIXNUM-ZERO?
+		     (FIXNUM-2-ARGS
+		      MINUS-FIXNUM
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      (REGISTER (? untagged-source))
+		      #f))
+  (detag-and-compare 'FIXNUM-EQUAL? tagged-source untagged-source))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG FIXNUM-ZERO?
+		     (FIXNUM-2-ARGS
+		      MINUS-FIXNUM
+		      (REGISTER (? untagged-source))
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      #f))
+  (detag-and-compare 'FIXNUM-EQUAL? tagged-source untagged-source))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG FIXNUM-ZERO?
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (OBJECT->FIXNUM (REGISTER (? register-1)))
+				    (OBJECT->FIXNUM (REGISTER (? register-2)))
+				    #f))
+  (fixnum-branch! 'FIXNUM-EQUAL?)
+  (compare/register*register register-1 register-2))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (REGISTER (? register))
+				    (? expression rtl:simple-offset?)
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (LAP (CMP Q ,(source-register-reference register)
+	    ,(offset->reference! expression))))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (? expression rtl:simple-offset?)
+				    (REGISTER (? register))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (LAP (CMP Q ,(offset->reference! expression)
+	    ,(source-register-reference register))))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (REGISTER (? register))
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (compare/reference*fixnum (source-register-reference register) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    (REGISTER (? register))
+				    #f))
+  (fixnum-branch!
+   (commute-fixnum-predicate (fixnum-predicate/unary->binary predicate)))
+  (compare/reference*fixnum (source-register-reference register) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (? expression rtl:simple-offset?)
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (compare/reference*fixnum (offset->reference! expression) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    (? expression rtl:simple-offset?)
+				    #f))
+  (fixnum-branch!
+   (commute-fixnum-predicate (fixnum-predicate/unary->binary predicate)))
+  (compare/reference*fixnum (offset->reference! expression) constant))
+
+;;; Use TEST for (FIX:ZERO/NEGATIVE/POSITIVE? (FIX:AND x y)).
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (REGISTER (? register-1))
+				    (REGISTER (? register-2))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/register*register register-1 register-2))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (REGISTER (? register))
+				    (? expression rtl:simple-offset?)))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (LAP (TEST Q ,(source-register-reference register)
+	     ,(offset->reference! expression))))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (? expression rtl:simple-offset?)
+				    (REGISTER (? register))))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (LAP (TEST Q ,(offset->reference! expression)
+	     ,(source-register-reference register))))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (REGISTER (? register))
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*fixnum (source-register-reference register) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    (REGISTER (? register))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*fixnum (source-register-reference register) constant))
+
+;; As long as the constant is nonnegative, the AND will clear any tag
+;; bits.
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (REGISTER (? register)))
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    #f))
+  (QUALIFIER (<= 0 constant))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*constant (source-register-reference register) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    (OBJECT->FIXNUM (REGISTER (? register)))
+				    #f))
+  (QUALIFIER (<= 0 constant))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*constant (source-register-reference register) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (? expression rtl:simple-offset?)
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*fixnum (offset->reference! expression) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    (? expression rtl:simple-offset?)
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*fixnum (offset->reference! expression) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS
+		      FIXNUM-AND
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      (REGISTER (? untagged-source))
+		      #f))
+  (detag-and-test predicate tagged-source untagged-source))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS
+		      FIXNUM-AND
+		      (REGISTER (? untagged-source))
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      #f))
+  (detag-and-test predicate tagged-source untagged-source))
+
+(define (detag-and-test predicate tagged-source untagged-source)
+  ;; Intermediate rule -- no particular advantage.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (fixnum-branch! predicate)
+  (let* ((untagged-source (any-reference untagged-source))
+	 (temp (standard-move-to-temporary! tagged-source)))
+    (LAP ,@(object->fixnum temp)
+	 (TEST Q ,temp ,untagged-source))))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (REGISTER (? register)))
+				    (OBJECT->FIXNUM (REGISTER (? register-2)))
+				    #f))
+  ;; XXX Should ensure upstream that we never wind up with (AND x x).
+  (QUALIFIER
+   (and (eqv? register register-2)
+	(or (eq? predicate 'ZERO-FIXNUM?)
+	    (eq? predicate 'NEGATIVE-FIXNUM?))))
+  (fixnum-branch! predicate)
+  ;; OBJECT->FIXNUM ends in SAL which sets ZF and SF as needed for
+  ;; ZERO-FIXNUM? and NEGATIVE-FIXNUM?.  However, we can't currently
+  ;; handle POSITIVE-FIXNUM? in one go, so don't try with this rule.
+  ;; (Mostly only ZERO-FIXNUM? is of interest anyway.)
+  (object->fixnum (standard-move-to-temporary! register)))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (REGISTER (? register-1)))
+				    (OBJECT->FIXNUM (REGISTER (? register-2)))
+				    #f))
+  (QUALIFIER (not (eqv? register-1 register-2)))
+  (define (and&compare temp source)
+    (LAP (AND Q ,temp ,source)
+	 (SAL Q ,temp (&U ,scheme-type-width))))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (cond ((temporary-copy-if-available register-1 'GENERAL)
+	 => (lambda (get-temp!)
+	      (let* ((source (any-reference register-2))
+		     (temp (get-temp!)))
+		(and&compare temp source))))
+	(else
+	 (let* ((source (any-reference register-1))
+		(temp (standard-move-to-temporary! register-2)))
+	   (and&compare temp source)))))
 
 (define (compare/reference*fixnum reference fixnum)
   (with-signed-immediate-operand (* fixnum fixnum-1)
     (lambda (operand)
       (LAP (CMP Q ,reference ,operand)))))
+
+(define (test/reference*fixnum reference fixnum)
+  (with-signed-immediate-operand (* fixnum fixnum-1)
+    (lambda (operand)
+      (LAP (TEST Q ,reference ,operand)))))
+
+(define (test/reference*constant reference constant)
+  (with-signed-immediate-operand constant
+    (lambda (operand)
+      (LAP (TEST Q ,reference ,operand)))))
 
 ;; This assumes that the immediately preceding instruction sets the
 ;; condition code bits correctly.

@@ -225,25 +225,43 @@ USA.
   (LAP (LEA Q ,target (@PCR ,label-expr))))
 
 (define (compare/register*register reg1 reg2)
+  (testcmp/register*register reg1 reg2 'CMP))
+
+(define (compare/reference*non-pointer register non-pointer)
+  (testcmp/reference*non-pointer register non-pointer 'CMP))
+
+(define (compare/reference*literal register literal)
+  (testcmp/reference*literal register literal 'CMP))
+
+(define (test/register*register reg1 reg2)
+  (testcmp/register*register reg1 reg2 'TEST))
+
+(define (test/reference*non-pointer register non-pointer)
+  (testcmp/reference*non-pointer register non-pointer 'TEST))
+
+(define (test/reference*literal register literal)
+  (testcmp/reference*literal register literal 'TEST))
+
+(define (testcmp/register*register reg1 reg2 op)
   (cond ((register-alias reg1 'GENERAL)
 	 =>
 	 (lambda (alias)
-	   (LAP (CMP Q ,(register-reference alias) ,(any-reference reg2)))))
+	   (LAP (,op Q ,(register-reference alias) ,(any-reference reg2)))))
 	((register-alias reg2 'GENERAL)
 	 =>
 	 (lambda (alias)
-	   (LAP (CMP Q ,(any-reference reg1) ,(register-reference alias)))))
+	   (LAP (,op Q ,(any-reference reg1) ,(register-reference alias)))))
 	(else
-	 (LAP (CMP Q ,(source-register-reference reg1)
+	 (LAP (,op Q ,(source-register-reference reg1)
 		   ,(any-reference reg2))))))
 
-(define (compare/reference*non-pointer register non-pointer)
-  (compare/reference*literal register (non-pointer->literal non-pointer)))
+(define (testcmp/reference*non-pointer register non-pointer op)
+  (testcmp/reference*literal register (non-pointer->literal non-pointer) op))
 
-(define (compare/reference*literal reference literal)
+(define (testcmp/reference*literal reference literal op)
   (with-unsigned-immediate-operand literal
     (lambda (operand)
-      (LAP (CMP Q ,reference ,operand)))))
+      (LAP (,op Q ,reference ,operand)))))
 
 ;;;; Literals and Constants
 
