@@ -224,6 +224,44 @@ USA.
 		(and (fix:fixnum? n)
 		     (predicate n)))))))
 
+;; For commutative operators, sort a constant operand to be second.
+
+(define-rule pre-cse-rewriting
+  (FIXNUM-2-ARGS (? operator) (? operand-1) (? operand-2) (? overflow?))
+  (QUALIFIER
+   (and (memq operator
+	      '(PLUS-FIXNUM MULTIPLY-FIXNUM FIXNUM-AND FIXNUM-OR FIXNUM-XOR))
+	(let ((match
+	       (constant-matcher rtl:object->fixnum?
+				 rtl:object->fixnum-expression)))
+	  (and (fix:fixnum? (match operand-1))
+	       (not (fix:fixnum? (match operand-2)))))))
+  (rtl:make-fixnum-2-args operator operand-2 operand-1 overflow?))
+
+(define-rule pre-cse-rewriting
+  (FLONUM-2-ARGS (? operator) (? operand-1) (? operand-2) (? overflow?))
+  (QUALIFIER
+   (and (memq operator '(FLONUM-ADD FLONUM-MULTIPLY FLONUM-HYPOT))
+	(let ((match
+	       (constant-matcher rtl:object->float?
+				 rtl:object->float-expression)))
+	  (and (flo:flonum? (match operand-1))
+	       (not (flo:flonum? (match operand-2)))))))
+  (rtl:make-flonum-2-args operator operand-2 operand-1 overflow?))
+
+(define ((constant-matcher predicate accessor) expression)
+  (define (deregister expression)
+    (if (rtl:register? expression)
+	(register-known-value (rtl:register-number expression))
+	expression))
+  (let ((expression (deregister expression)))
+    (and expression
+	 (predicate expression)
+	 (let ((subexpression (deregister (accessor expression))))
+	   (and subexpression
+		(rtl:constant? subexpression)
+		(rtl:constant-value subexpression))))))
+
 ;;;; Indexed addressing modes
 
 (define-rule rewriting
