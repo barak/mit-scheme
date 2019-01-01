@@ -147,6 +147,7 @@ USA.
      `(DEFINE-INTEGRABLE ,(symbol 'TYPE-CODE: (cadr form))
 	',(microcode-type (cadr form))))))
 
+(define-type-code fixnum)
 (define-type-code lambda)
 (define-type-code extended-lambda)
 (define-type-code procedure)
