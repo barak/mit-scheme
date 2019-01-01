@@ -573,6 +573,384 @@ USA.
 	   (LAP (SHR Q ,target (&U ,(- 0 n)))
 		,@(word->fixnum target))))))
 
+;; (+ x y <const>)
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (REGISTER (? source1))
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 #f))
+  (QUALIFIER (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (lea-addition target source1 source2 1 addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 (REGISTER (? source1))
+			 #f))
+  (QUALIFIER (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (lea-addition target source1 source2 1 addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (REGISTER (? source1))
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  #f)))
+  (QUALIFIER (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (lea-addition->object target source1 source2 1 addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  (REGISTER (? source1))
+			  #f)))
+  (QUALIFIER (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (lea-addition->object target source1 source2 1 addend))
+
+;; (+ x (* y {1,2,4,8}))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (REGISTER (? source1))
+			 (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? scale)))
+					#f)
+			 #f))
+  (QUALIFIER (memv scale '(1 2 4 8)))
+  (lea-addition target source1 source2 scale 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? scale)))
+					#f)
+			 (REGISTER (? source1))
+			 #f))
+  (QUALIFIER (memv scale '(1 2 4 8)))
+  (lea-addition target source1 source2 scale 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (REGISTER (? source1))
+			  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? scale)))
+					 #f)
+			  #f)))
+  (QUALIFIER (memv scale '(1 2 4 8)))
+  (lea-addition->object target source1 source2 scale 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? scale)))
+					 #f)
+			  (REGISTER (? source1))
+			  #f)))
+  (QUALIFIER (memv scale '(1 2 4 8)))
+  (lea-addition->object target source1 source2 scale 0))
+
+;; (+ x (lsh y {0,1,2,3}))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (REGISTER (? source1))
+			 (FIXNUM-2-ARGS FIXNUM-LSH
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? power)))
+					#f)
+			 #f))
+  (QUALIFIER (memv power '(0 1 2 3)))
+  (lea-addition target source1 source2 (expt 2 power) 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS FIXNUM-LSH
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? power)))
+					#f)
+			 (REGISTER (? source1))
+			 #f))
+  (QUALIFIER (memv power '(0 1 2 3)))
+  (lea-addition target source1 source2 (expt 2 power) 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (REGISTER (? source1))
+			  (FIXNUM-2-ARGS FIXNUM-LSH
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? power)))
+					 #f)
+			  #f)))
+  (QUALIFIER (memv power '(0 1 2 3)))
+  (lea-addition->object target source1 source2 (expt 2 power) 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS FIXNUM-LSH
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? power)))
+					 #f)
+			  (REGISTER (? source1))
+			  #f)))
+  (QUALIFIER (memv power '(0 1 2 3)))
+  (lea-addition->object target source1 source2 (expt 2 power) 0))
+
+;; (+ x (* y {1,2,4,8}) <const>)
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source1))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? scale)))
+					#f)
+			 #f))
+  (QUALIFIER
+   (and (memv scale '(1 2 4 8))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition target source1 source2 scale addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? scale)))
+					#f)
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source1))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 #f))
+  (QUALIFIER
+   (and (memv scale '(1 2 4 8))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition target source1 source2 scale addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source1))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? scale)))
+					 #f)
+			  #f)))
+  (QUALIFIER
+   (and (memv scale '(1 2 4 8))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition->object target source1 source2 scale addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? scale)))
+					 #f)
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source1))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  #f)))
+  (QUALIFIER
+   (and (memv scale '(1 2 4 8))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition->object target source1 source2 scale addend))
+
+;; (+ x (lsh y {0,1,2,3}) <const>)
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source1))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 (FIXNUM-2-ARGS FIXNUM-LSH
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? power)))
+					#f)
+			 #f))
+  (QUALIFIER
+   (and (memv power '(0 1 2 3))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition target source1 source2 (expt 2 power) addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS FIXNUM-LSH
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? power)))
+					#f)
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source1))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 #f))
+  (QUALIFIER
+   (and (memv power '(0 1 2 3))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition target source1 source2 (expt 2 power) addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source1))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  (FIXNUM-2-ARGS FIXNUM-LSH
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? power)))
+					 #f)
+			  #f)))
+  (QUALIFIER
+   (and (memv power '(0 1 2 3))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition->object target source1 source2 (expt 2 power) addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS FIXNUM-LSH
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? power)))
+					 #f)
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source1))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  #f)))
+  (QUALIFIER
+   (and (memv power '(0 1 2 3))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition->object target source1 source2 (expt 2 power) addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (REGISTER (? source1))
+			  (REGISTER (? source2))
+			  #f)))
+  (lea-addition->object target source1 source2 1 0))
+
+(define (lea-addition target source1 source2 scale addend)
+  (assert (memv scale '(1 2 4 8)))
+  (assert (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (let ((offset (shift-left addend scheme-type-width)))
+    (with-lea-addition target source1 offset source2 scale
+      (lambda (target addition)
+	target				;ignore
+	addition))))
+
+(define (lea-addition->object target source1 source2 scale addend)
+  (assert (memv scale '(1 2 4 8)))
+  (assert (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (let ((offset (+ (shift-left addend scheme-type-width) type-code:fixnum)))
+    (with-lea-addition target source1 offset source2 scale
+      (lambda (target addition)
+	(LAP ,@addition
+	     (ROR Q ,target (&U ,scheme-type-width)))))))
+
+(define (with-lea-addition target source1 offset source2 scale operate)
+  (assert (memv scale '(1 2 4 8)))
+  (assert (fits-in-signed-long? offset))
+  (define (two-way target source)
+    (operate
+     (register-reference target)
+     (cond ((and (zero? offset) (= scale 1))
+	    (LAP (ADD Q (R ,target) (R ,source))))
+	   ((zero? offset)
+	    (LAP (LEA Q (R ,target) (@RI ,target ,source ,scale))))
+	   (else
+	    (LAP (LEA Q (R ,target) (@ROI ,target ,offset ,source ,scale)))))))
+  (define (three-way target source1 source2)
+    (operate
+     (register-reference target)
+     (if (zero? offset)
+	 (LAP (LEA Q (R ,target) (@RI ,source1 ,source2 ,scale)))
+	 (LAP (LEA Q (R ,target) (@ROI ,source1 ,offset ,source2 ,scale))))))
+  (let* ((alias1 (register-alias source1 'GENERAL))
+	 (alias2 (register-alias source2 'GENERAL)))
+    ;; If one of the sources has no aliases, just load from its home
+    ;; into a new alias for the target.
+    (cond ((not alias1)
+	   (let* ((source (or alias2 (load-alias-register! source2 'GENERAL)))
+		  (target (move-to-alias-register! source1 'GENERAL target)))
+	     (two-way target source)))
+	  ((not alias2)
+	   (let* ((source alias1)
+		  (target (move-to-alias-register! source2 'GENERAL target)))
+	     (two-way target source)))
+	  ;; If one of the sources has an extra alias, let that one
+	  ;; become an alias for the target instead.
+	  ((register-copy-if-available source1 'GENERAL target)
+	   => (lambda (get-target)
+		(two-way (reference->register (get-target)) alias2)))
+	  ((register-copy-if-available source2 'GENERAL target)
+	   => (lambda (get-target)
+		(two-way (reference->register (get-target)) alias1)))
+	  ;; No copies of the sources available, so allocate an alias
+	  ;; for the target and use the three-operand version.
+	  (else
+	   (three-way (target-register target) alias1 alias2)))))
+
+(define (reference->register reference)
+  (if (not (and (pair? reference)
+		(eq? 'R (car reference))
+		(pair? (cdr reference))
+		(null? (cddr reference))))
+      (error "Invalid register reference:" reference))
+  (cadr reference))
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM->OBJECT
