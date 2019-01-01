@@ -570,7 +570,7 @@ USA.
 	  ((not (negative? n))
 	   (LAP (SHL Q ,target (&U ,n))))
 	  (else
-	   (LAP (SHR Q ,target (&U ,(- 0 n)))
+	   (LAP (SAR Q ,target (&U ,(- 0 n)))
 		,@(word->fixnum target))))))
 
 ;; (+ x y <const>)
@@ -1708,28 +1708,6 @@ USA.
 	(LAP (XOR Q ,target (R ,regnum:datum-mask))
 	     (AND Q ,target ,operand))))))
 
-;;; I don't think this rule is ever hit.  In any case, it does nothing
-;;; useful over the other rules; formerly, it used a single OR to
-;;; affix the type tag, since the two SHR's (one for the program, one
-;;; to make room for the type tag) could be merged by adding the
-;;; shift, but OR doesn't take 64-bit immediates, so that no longer
-;;; works.
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM->OBJECT
-	   (FIXNUM-2-ARGS FIXNUM-LSH
-			  (REGISTER (? source))
-			  (OBJECT->FIXNUM (CONSTANT (? n)))
-			  #f)))
-  (QUALIFIER (and (exact-integer? n) (< (- scheme-datum-width) n 0)))
-  (fixnum-1-arg target source
-    (lambda (target)
-      (LAP (SHR Q ,target (&U ,(- scheme-type-width n)))
-	   (SHL Q ,target (&U ,scheme-type-width))
-	   (OR Q ,target (&U ,(ucode-type FIXNUM)))
-	   (ROR Q ,target (&U ,scheme-type-width))))))
-
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS FIXNUM-LSH

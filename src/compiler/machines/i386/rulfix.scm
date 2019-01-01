@@ -592,23 +592,9 @@ USA.
 	  ((not (negative? n))
 	   (LAP (SHL W ,target (& ,n))))
 	  (else
-	   (LAP (SHR W ,target (& ,(- 0 n)))
+	   (LAP (SAR W ,target (& ,(- 0 n)))
 		,@(word->fixnum target))))))
 
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM->OBJECT
-	   (FIXNUM-2-ARGS FIXNUM-LSH
-			  (REGISTER (? source))
-			  (OBJECT->FIXNUM (CONSTANT (? n)))
-			  #f)))
-  (QUALIFIER (and (exact-integer? n) (< (- scheme-datum-width) n 0)))
-  (fixnum-1-arg target source
-    (lambda (target)
-      (LAP (SHR W ,target (& ,(- scheme-type-width n)))
-	   (OR W ,target
-	       (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))))))
-
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS FIXNUM-LSH

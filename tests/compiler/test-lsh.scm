@@ -62,12 +62,7 @@ USA.
 
 (define-test 'rsh3-123
   (lambda ()
-    (with-expected-failure
-        (if (memq microcode-id/compiled-code-type '(i386 x86-64))
-	    expect-failure
-	    #!default)
-      (lambda ()
-	(assert-eqv (fix:rsh3 -123) -16)))))
+    (assert-eqv (fix:rsh3 -123) -16)))
 
 (define-test 'lsh3-noop+123
   (lambda ()
@@ -83,9 +78,4 @@ USA.
 
 (define-test 'rsh3-noop-123
   (lambda ()
-    (with-expected-failure
-        (if (memq microcode-id/compiled-code-type '(i386 x86-64))
-	    expect-failure
-	    #!default)
-      (lambda ()
-	(assert-eqv (fix:rsh3-noop -123) -16)))))
+    (assert-eqv (fix:rsh3-noop -123) -16)))
