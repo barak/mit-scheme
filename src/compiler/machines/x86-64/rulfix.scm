@@ -643,6 +643,693 @@ USA.
 		     (else (general)))
 	     (ROR Q ,target (&U ,scheme-type-width)))))))
 
+;;; NOT tricks
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-1-ARG FIXNUM-NOT (OBJECT->FIXNUM (REGISTER (? source))) #f))
+  ;; Save a word->fixnum instruction: complement the word first before
+  ;; shifting off the tag, so that we'll get zeros rather than ones in
+  ;; the low order bits, as we want.
+  (let ((target (standard-move-to-target! source target)))
+    (LAP (NOT Q ,target)
+	 (SAL Q ,target (&U ,scheme-type-width)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT (FIXNUM-1-ARG FIXNUM-NOT (REGISTER (? source)) #f)))
+  ;; Use XOR with a sign-extended immediate operand to simultaneously
+  ;; (a) complement the value of the fixnum, and (b) set the tag bits.
+  (let ((target (standard-move-to-target! source target))
+	(magic-bits
+	 (+ (* -1 (expt 2 scheme-type-width)) type-code:fixnum)))
+    (assert (< magic-bits 0))		;Sign-extend with 1 to complement.
+    (LAP (XOR Q ,target (& ,magic-bits))
+	 (ROR Q ,target (&U ,scheme-type-width)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-1-ARG FIXNUM-NOT
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  ;; XOR with the datum mask to complement the value of the fixnum
+  ;; without affecting its tag.
+  (let ((target (standard-move-to-target! source target)))
+    (LAP (XOR Q ,target (R ,regnum:datum-mask)))))
+
+;;; OR tricks, part 1: mostly intermediate rules en route to good stuff.
+
+;; XXX Can we arrange to sort operands into a canonical order (say,
+;; constant first, then register) so that we don't need to duplicate
+;; every rule for commutative operations?
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 (REGISTER (? untagged-source))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-ior target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (REGISTER (? untagged-source))
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-ior target tagged-source untagged-source))
+
+(define (detag-and-ior target tagged-source untagged-source)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (source-register-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (OR Q ,target ,untagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (OBJECT->FIXNUM (REGISTER (? source2)))
+			 #f))
+  ;; Save a shift by ORing the tagged data first.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (OR Q ,target ,source)
+	  ,@(object->fixnum target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (detag-and-ior-immediate target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f))
+  (detag-and-ior-immediate target source n))
+
+(define (detag-and-ior-immediate target source n)
+  ;; Take advantage of the facts that we don't care what happens to the
+  ;; tag bits (which are all set to 1 if n is negative) and that
+  ;; unshifted operands are smaller.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n 0)
+	(object->fixnum target)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (OR Q ,target ,operand)
+		 ;; If n is negative, then we can use a short
+		 ;; sign-extended operand, but the tag will not be
+		 ;; intact so we can't rightly use OBJECT->FIXNUM --
+		 ;; the peephole optimizer might get confused by it.
+		 ,@(if (< n 0)
+		       (LAP (SAL Q ,target (&U ,scheme-type-width)))
+		       (object->fixnum target))))))))
+
+;;; OR tricks, part 2: detag/tag on registers.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  (REGISTER (? untagged-source))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-ior-tag target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (REGISTER (? untagged-source))
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-ior-tag target tagged-source untagged-source))
+
+(define (detag-ior-tag target tagged-source untagged-source)
+  ;; Take advantage of the tag in the tagged source to fill the
+  ;; zero-filled bits from shifting the untagged source into position.
+  (assert compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((tagged-source (source-register-reference tagged-source))
+	 (target (standard-move-to-target! untagged-source target)))
+    (LAP (SHR Q ,target (&U ,scheme-type-width))
+	 (OR Q ,target ,tagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (REGISTER (? source1)))
+			  (OBJECT->FIXNUM (REGISTER (? source2)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  ;; OR on two fixnum tags conveniently preserves them.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (OR Q ,target ,source)))))
+
+;;; OR tricks, part 3: taking advantage of constants.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (ior-immediate-and-tag target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source))
+			  #f)))
+  (ior-immediate-and-tag target source n))
+
+(define (ior-immediate-and-tag target source n)
+  ;; Use the low-order bits of the immediate with OR to set the tag
+  ;; before rotating it into place.
+  (let ((target (standard-move-to-target! source target)))
+    (with-signed-immediate-operand
+	(bitwise-ior (shift-left n scheme-type-width) type-code:fixnum)
+      (lambda (operand)
+	(LAP (OR Q ,target ,operand)
+	     (ROR Q ,target (&U ,scheme-type-width)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Sign-extension must not set tag bits.
+  (ior-immediate-in-place target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Sign-extension must not set tag bits.
+  (ior-immediate-in-place target source n))
+
+(define (ior-immediate-in-place target source n)
+  (assert compiler:assume-safe-fixnums?)
+  (assert (<= 0 n))		 ;Sign-extension must not set tag bits.
+  ;; OR preserves the tag, as long as the operand is not sign-extended
+  ;; into setting all the tag bits.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n 0)
+	(LAP)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (OR Q ,target ,operand)))))))
+
+;;; XOR tricks, part 1
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 (REGISTER (? untagged-source))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-xor target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (REGISTER (? untagged-source))
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-xor target tagged-source untagged-source))
+
+(define (detag-and-xor target tagged-source untagged-source)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (source-register-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (XOR Q ,target ,untagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  (REGISTER (? untagged-source))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-xor-tag target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (REGISTER (? untagged-source))
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-xor-tag target tagged-source untagged-source))
+
+(define (detag-xor-tag target tagged-source untagged-source)
+  ;; Take advantage of the tag in the tagged source and the
+  ;; zero-filling of shr in the untagged source, tag xor 0 = tag, to
+  ;; save some shifts, or's, and rotates.
+  (assert compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((tagged-source (source-register-reference tagged-source))
+	 (target (standard-move-to-target! untagged-source target)))
+    (LAP (SHR Q ,target (&U ,scheme-type-width))
+	 (XOR Q ,target ,tagged-source))))
+
+;;; XOR tricks, part 2
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (OBJECT->FIXNUM (REGISTER (? source2)))
+			 #f))
+  ;; Save a shift by XORing the tagged data first.  This zeros the tag,
+  ;; but we don't care because we're going to drop it anyway.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (XOR Q ,target ,source)
+	  ,@(object->fixnum target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (detag-and-xor-immediate target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f))
+  (detag-and-xor-immediate target source n))
+
+(define (detag-and-xor-immediate target source n)
+  ;; Take advantage of the facts that we don't care what happens to the
+  ;; tag bits (which are all toggled if n is negative) and that
+  ;; unshifted operands are smaller.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n 0)
+	(object->fixnum target)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (XOR Q ,target ,operand)
+		 ;; If n is negative, then we can use a short
+		 ;; sign-extended operand, but the tag will not be
+		 ;; intact so we can't rightly use OBJECT->FIXNUM --
+		 ;; the peephole optimizer might get confused by it.
+		 ,@(if (< n 0)
+		       (LAP (SAL Q ,target (&U ,scheme-type-width)))
+		       (object->fixnum target))))))))
+
+;;; XOR tricks, part 3
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (xor-immediate-and-tag target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source))
+			  #f)))
+  (xor-immediate-and-tag target source n))
+
+(define (xor-immediate-and-tag target source n)
+  ;; Use one XOR to do the user's bidding and set the tag, since the
+  ;; low bits are guaranteed to be zero at this point; then it's just a
+  ;; matter of a single rotate to turn it into a tagged object.
+  (let ((target (standard-move-to-target! source target)))
+    (with-signed-immediate-operand
+	(bitwise-xor (shift-left n scheme-type-width) type-code:fixnum)
+      (lambda (operand)
+	(LAP (XOR Q ,target ,operand)
+	     (ROR Q ,target (&U ,scheme-type-width)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Must not toggle tag.
+  (xor-immediate-in-place target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Must not toggle tag.
+  (xor-immediate-in-place target source n))
+
+(define (xor-immediate-in-place target source n)
+  (assert compiler:assume-safe-fixnums?)
+  (assert (<= 0 n))		   ;Sign-extension must not toggle tag.
+  ;; Take advantage of the facts that positive xor with any
+  ;; fixnum-sized integer will preserve the tag, and that unshifted
+  ;; operands are smaller.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n 0)
+	(LAP)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (XOR Q ,target ,operand)))))))
+
+;;; AND tricks, part 1: mostly intermediate rules en route to good stuff.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 (REGISTER (? untagged-source))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-and target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (REGISTER (? untagged-source))
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-and target tagged-source untagged-source))
+
+(define (detag-and-and target tagged-source untagged-source)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (source-register-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (AND Q ,target ,untagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (OBJECT->FIXNUM (REGISTER (? source2)))
+			 #f))
+  ;; Save a shift by ANDing the tagged data first.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (AND Q ,target ,source)
+	  ,@(object->fixnum target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (detag-and-and-immediate target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f))
+  (detag-and-and-immediate target source n))
+
+(define (detag-and-and-immediate target source n)
+  ;; Take advantage of the facts that we don't care what happens to the
+  ;; tag bits (which are all cleared if n is nonnegative) and that
+  ;; unshifted operands are smaller.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n -1)
+	(object->fixnum target)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (AND Q ,target ,operand)
+		 ;; If n is nonnegative, the tag will not be intact, so
+		 ;; we can't rightly use OBJECT->FIXNUM -- the peephole
+		 ;; optimizer might get confused by it.
+		 ,@(if (<= 0 n)
+		       (LAP (SAL Q ,target (&U ,scheme-type-width)))
+		       (object->fixnum target))))))))
+
+;;; AND tricks, part 2: detag/tag on registers.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  (REGISTER (? untagged-source))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-tag target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (REGISTER (? untagged-source))
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-tag target tagged-source untagged-source))
+
+(define (detag-and-tag target tagged-source untagged-source)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (source-register-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (AND Q ,target ,untagged-source)
+	 ,@(fixnum->object target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (REGISTER (? source1)))
+			  (OBJECT->FIXNUM (REGISTER (? source2)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  ;; AND on two fixnum tags conveniently preserves them.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (AND Q ,target ,source)))))
+
+;;; AND tricks, part 3: taking advantage of constants.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n))))))
+  (and-immediate-and-tag target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source)))))
+  (and-immediate-and-tag target source n))
+
+(define (and-immediate-and-tag target source n)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n -1)
+	(fixnum->object target)
+	(with-signed-immediate-operand (shift-left n scheme-type-width)
+	  (lambda (operand)
+	    (LAP (AND Q ,target ,operand)
+		 ,@(fixnum->object target)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+        (< n 0)))		    ;Sign-extension must not clear tag.
+  (and-immediate-in-place target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+        (< n 0)))		    ;Sign-extension must not clear tag.
+  (and-immediate-in-place target source n))
+
+(define (and-immediate-in-place target source n)
+  (assert (< n 0))		    ;Sign-extension must not clear tag.
+  ;; OR preserves the tag, as long as the operand is not sign-extended
+  ;; into clearing all the tag bits.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n -1)
+	(LAP)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (AND Q ,target ,operand)))))))
+
+;;; ANDC tricks
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-ANDC
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (REGISTER (? source2))
+			 #f))
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? source1 source2)))
+  (let* ((source2 (standard-move-to-temporary! source2))
+	 (target (standard-move-to-target! source1 target)))
+    (LAP ,@(object->fixnum target)
+	 (NOT Q ,source2)
+	 (AND Q ,target ,source2))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-ANDC
+			 (REGISTER (? source2))
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 #f))
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? source1 source2)))
+  (let* ((source1 (standard-move-to-temporary! source1))
+	 (target (standard-move-to-target! source2 target)))
+    (LAP ,@(object->fixnum source1)
+	 (NOT Q ,source1)
+	 (AND Q ,target ,source1))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-ANDC
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (detag-and-and-immediate target source (bitwise-not n)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+          (FIXNUM->OBJECT
+           (FIXNUM-2-ARGS FIXNUM-ANDC
+                          (REGISTER (? source))
+                          (OBJECT->FIXNUM (CONSTANT (? n)))
+                          #f)))
+  (and-immediate-and-tag target source (bitwise-not n)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-ANDC
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f))
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (let ((target (standard-move-to-target! source target)))
+    (with-signed-immediate-operand n
+      (lambda (operand)
+	(LAP (NOT Q ,target)
+	     (AND Q ,target ,operand)
+	     ,@(if (<= 0 n)
+		   ;; If n is nonnegative, the tag will not be intact,
+		   ;; so we can't rightly use OBJECT->FIXNUM -- the
+		   ;; peephole optimizer might get confused by it.
+		   (LAP (SAL Q ,target (&U ,scheme-type-width)))
+		   (object->fixnum target)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-ANDC
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Sign-extension must not clear tag.
+  (and-immediate-in-place target source (bitwise-not n)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-ANDC
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(< n 0)))			;Sign-extension must not clear tag.
+  (let ((target (standard-move-to-target! source target)))
+    (with-signed-immediate-operand n
+      (lambda (operand)
+	(LAP (XOR Q ,target (R ,regnum:datum-mask))
+	     (AND Q ,target ,operand))))))
+
 ;;; I don't think this rule is ever hit.  In any case, it does nothing
 ;;; useful over the other rules; formerly, it used a single OR to
 ;;; affix the type tag, since the two SHR's (one for the program, one
