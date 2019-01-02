@@ -59,6 +59,7 @@ USA.
 			    (eof? ,string-in/eof?)
 			    (input-line ,string-in/input-line)
 			    (peek-char ,string-in/peek-char)
+			    (position ,string-in/position)
 			    (read-char ,string-in/read-char)
 			    (read-substring ,string-in/read-substring)
 			    (unread-char ,string-in/unread-char)
@@ -72,6 +73,10 @@ USA.
 (define (string-in/eof? port)
   (let ((ss (textual-port-state port)))
     (not (fix:< (istate-next ss) (istate-end ss)))))
+
+(define (string-in/position port)
+  (let ((ss (textual-port-state port)))
+    (istate-next ss)))
 
 (define (string-in/peek-char port)
   (let ((ss (textual-port-state port)))
