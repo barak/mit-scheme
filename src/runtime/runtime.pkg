@@ -2656,6 +2656,7 @@ USA.
 	  binary-i/o-port?
 	  binary-input-port?
 	  binary-output-port?
+	  binary-port-length
 	  binary-port-position
 	  binary-port?
 	  call-with-output-bytevector
