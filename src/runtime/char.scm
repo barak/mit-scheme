@@ -164,7 +164,7 @@ USA.
      (lambda (char)
        (if (fix:= 0 (char-bits char))
 	   (mapper char)
-	   (%make-char (mapper (%make-char (char-code char) 0))
+	   (%make-char (char-code (mapper (%make-char (char-code char) 0)))
 		       (char-bits char)))))
 
    (set! char-downcase (char-mapper ucd-slc-value))
