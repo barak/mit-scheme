@@ -110,10 +110,7 @@ USA.
 	     (else
 	      (LAP (MOV Q (R ,rdx) (&U ,frame-size))
 		   ,@(invoke-hook/subroutine entry:compiler-apply-setup))))
-	 (JNE (@PCR ,generic))
-	 (JMP (R ,rax))
-	(LABEL ,generic)
-	 ,@(invoke-hook entry:compiler-shortcircuit-apply))))
+	 (JMP (R ,rax)))))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
