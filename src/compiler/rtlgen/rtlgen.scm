@@ -213,20 +213,21 @@ USA.
 	 (and (primitive-procedure? obj)
 	      (special-primitive-handler obj)))))
 
-(define (wrap-with-continuation-entry context scfg-gen)
-  (with-values (lambda () (generate-continuation-entry context))
+(define (wrap-with-continuation-entry context prefix scfg-gen)
+  (with-values (lambda () (generate-continuation-entry context prefix))
     (lambda (label setup cleanup)
       (scfg-append! setup
 		    (scfg-gen label)
 		    cleanup))))
 
-(define (generate-continuation-entry context)
+(define (generate-continuation-entry context prefix)
   (let ((label (generate-label))
 	(closing-block (reference-context/block context)))
     (let ((setup (push-continuation-extra closing-block))
 	  (cleanup
-	   (scfg*scfg->scfg!
+	   (scfg-append!
 	    (rtl:make-continuation-entry label)
+	    prefix
 	    (pop-continuation-extra closing-block))))
       (set! *extra-continuations*
 	    (cons (make-rtl-continuation

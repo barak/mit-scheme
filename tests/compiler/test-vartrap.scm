@@ -49,16 +49,11 @@ USA.
            (scode (syntax&integrate program '() env))
            (expr (compile-scode scode))
            (map1 (eval expr env)))
-      (with-expected-failure
-          (if (memq microcode-id/compiled-code-type '(i386 x86-64))
-              expect-failure
-              #!default)
-        (lambda ()
-          (assert-equal
-           (bind-condition-handler (list condition-type:unassigned-variable)
-               (lambda (condition)
-                 condition
-                 (use-value '()))
-             (lambda ()
-               (map1 - '(1 2 3))))
-           '(-1 -2 -3)))))))
+      (assert-equal
+       (bind-condition-handler (list condition-type:unassigned-variable)
+           (lambda (condition)
+             condition
+             (use-value '()))
+         (lambda ()
+           (map1 - '(1 2 3))))
+       '(-1 -2 -3)))))

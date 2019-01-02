@@ -71,20 +71,24 @@ USA.
 	       (find-variable/value context lvalue
 		 expression-value/simple
 		 (lambda (environment name)
-		   (expression-value/temporary
-		    (load-temporary-register scfg*scfg->scfg! environment
-		      (lambda (environment)
-			(wrap-with-continuation-entry
-			 context
-			 (lambda (cont-label)
-			   (rtl:make-interpreter-call:lookup
-			    cont-label
-			    environment
-			    (intern-scode-variable!
-			     (reference-context/block context)
-			     name)
-			    safe?)))))
-		    (rtl:interpreter-call-result:lookup)))
+		   (let ((temporary (rtl:make-pseudo-register)))
+		     (expression-value/temporary
+		      (load-temporary-register scfg*scfg->scfg! environment
+			(lambda (environment)
+			  (wrap-with-continuation-entry
+			   context
+			   (rtl:make-assignment
+			    temporary
+			    (rtl:interpreter-call-result:lookup))
+			   (lambda (cont-label)
+			     (rtl:make-interpreter-call:lookup
+			      cont-label
+			      environment
+			      (intern-scode-variable!
+			       (reference-context/block context)
+			       name)
+			      safe?)))))
+		      (rtl:make-fetch temporary))))
 		 (lambda (name)
 		   (if (memq 'IGNORE-REFERENCE-TRAPS
 			     (variable-declarations lvalue))
@@ -116,20 +120,22 @@ USA.
     (values
      (load-temporary-register scfg*scfg->scfg! (rtl:make-variable-cache name)
        (lambda (cell)
-	 (let ((reference (rtl:make-fetch cell)))
+	 (let ((reference (rtl:make-fetch cell))
+	       (temporary (rtl:make-pseudo-register)))
 	   (let ((n2 (rtl:make-type-test (rtl:make-object->type reference)
 					 (ucode-type reference-trap)))
 		 (n3 (rtl:make-assignment result reference))
 		 (n4
 		  (wrap-with-continuation-entry
 		   context
+		   (rtl:make-assignment
+		    temporary
+		    (rtl:interpreter-call-result:cache-reference))
 		   (lambda (cont-label)
 		     (rtl:make-interpreter-call:cache-reference
 		      cont-label cell safe?))))
 		 (n5
-		  (rtl:make-assignment
-		   result
-		   (rtl:interpreter-call-result:cache-reference))))
+		  (rtl:make-assignment result (rtl:make-fetch temporary))))
 	     (pcfg-alternative-connect! n2 n3)
 	     (scfg-next-connect! n4 n5)
 	     (if safe?

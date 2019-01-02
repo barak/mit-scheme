@@ -102,6 +102,7 @@ USA.
 		(lambda (expression)
 		  (wrap-with-continuation-entry
 		   context
+		   (make-null-cfg)
 		   (lambda (cont-label)
 		     (rtl:make-interpreter-call:set!
 		      cont-label
