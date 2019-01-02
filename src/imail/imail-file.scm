@@ -447,7 +447,7 @@ USA.
    folder
    ((imail-ui:message-wrapper "Parsing messages")
     (lambda ()
-      (call-with-input-string (file-folder-string folder) 0 reader)))))
+      (call-with-input-string (file-folder-string folder) reader)))))
 
 (define-method discard-folder-cache ((folder <file-folder>))
   (discard-file-folder-messages folder)

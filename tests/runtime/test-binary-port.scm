@@ -180,3 +180,23 @@ USA.
   (assert-false (input-port? port))
   (assert-true (output-port? port))
   (assert-false (i/o-port? port)))
+
+(define-test 'position
+  (lambda ()
+    (call-with-temporary-file-pathname
+      (lambda (pathname)
+	(call-with-binary-output-file pathname
+	  (lambda (port)
+	    (assert-= (binary-port-position port) 0)
+	    (write-u8 42 port)
+	    (assert-= (binary-port-position port) 1)
+	    (write-bytevector (make-bytevector 1000 0) port)
+	    (assert-= (binary-port-position port) 1001)))
+	(call-with-binary-input-file pathname
+	  (lambda (port)
+	    (assert-= (binary-port-position port) 0)
+	    (assert-= (read-u8 port) 42)
+	    (assert-= (binary-port-position port) 1)
+	    (assert-equal (read-bytevector 1000 port)
+			  (make-bytevector 1000 0))
+	    (assert-= (binary-port-position port) 1001)))))))
