@@ -419,162 +419,27 @@ USA.
     (lambda ()
       (file-directory? pathname))))
 
-;;;; Extended-string input port
+(define type-code:legacy-string (microcode-type 'character-string))
 
 (define (read-file-into-string pathname)
-  (call-with-input-file pathname
+  (call-with-binary-input-file pathname
     (lambda (port)
-      (port/set-coding port 'iso-8859-1)
-      (port/set-line-ending port 'newline)
-      (let ((n-bytes ((textual-port-operation port 'LENGTH) port)))
-	(let ((string (make-string n-bytes)))
-	  (let loop ((start 0))
-	    (if (< start n-bytes)
-		(let ((n-read (read-string! string port)))
-		  (if (= n-read 0)
-		      (error "Failed to read complete file:"
-			     (+ start n-read) n-bytes pathname))
-		  (loop (+ start n-read)))))
-	  string)))))
-
-(define (call-with-input-string string position receiver)
-  (let ((port (open-string-input-port string position)))
-    (let ((value (receiver port)))
-      (close-port port)
-      value)))
-
-(define (open-string-input-port string position)
-  (if (not (<= 0 position (string-length string)))
-      (error:bad-range-argument position 'OPEN-STRING-INPUT-PORT))
-  (let ((state (make-istate string position position position)))
-    (read-string-buffer state)
-    (make-port string-input-type state)))
-
-(define-structure (istate
-		   (constructor make-istate
-				(string position buffer-start buffer-end))
-		   (conc-name istate-))
-  string
-  position
-  (buffer (make-string #x10000) read-only #t)
-  buffer-start
-  buffer-end)
-
-(define (string-port/string port)
-  (istate-string (port/state port)))
+      ;; XXX Fail gracefully if this is not a regular file.
+      (let* ((length (binary-port-length port))
+	     ;; XXX Store in an external buffer like we used to.
+	     (buffer (make-bytevector length))
+	     (nread (read-bytevector! buffer port)))
+	;; Check to make sure that the length didn't change under us
+	;; while we were reading.  If it did, this is no good.
+	(and (= nread length)
+	     (object-new-type type-code:legacy-string buffer))))))
 
 (define (string-port/position port)
-  (istate-position (port/state port)))
-
-(define (read-string-buffer state)
-  (let ((string (istate-string state))
-	(start (istate-position state)))
-    (let ((xend (string-length string)))
-      (and (< start xend)
-	   (let* ((buffer (istate-buffer state))
-		  (end (min (+ start (string-length buffer)) xend)))
-	     (without-interrupts
-	      (lambda ()
-		(set-istate-buffer-start! state start)
-		(set-istate-buffer-end! state end)
-		(substring-move! string start end buffer 0)))
-	     #t)))))
-
-(define (string-input-port/discard-chars port delimiters)
-  (let ((state (port/state port)))
-    (if (or (< (istate-position state) (istate-buffer-end state))
-	    (read-string-buffer state))
-	(let loop ()
-	  (let* ((start (istate-buffer-start state))
-		 (index
-		  (substring-find-next-char-in-set
-		   (istate-buffer state)
-		   (- (istate-position state) start)
-		   (- (istate-buffer-end state) start)
-		   delimiters)))
-	    (if index
-		(set-istate-position! state (+ start index))
-		(begin
-		  (set-istate-position! state (istate-buffer-end state))
-		  (if (read-string-buffer state)
-		      (loop)))))))))
-
-(define (string-input-port/read-string port delimiters)
-  (let ((state (port/state port)))
-    (if (or (< (istate-position state) (istate-buffer-end state))
-	    (read-string-buffer state))
-	(let loop ((prefix #f))
-	  (let* ((start (istate-buffer-start state))
-		 (b (istate-buffer state))
-		 (si (- (istate-position state) start))
-		 (ei (- (istate-buffer-end state) start))
-		 (index (substring-find-next-char-in-set b si ei delimiters)))
-	    (if index
-		(begin
-		  (set-istate-position! state (+ start index))
-		  (let ((s (make-string (fix:- index si))))
-		    (substring-move! b si index s 0)
-		    (if prefix
-			(string-append prefix s)
-			s)))
-		(begin
-		  (set-istate-position! state (istate-buffer-end state))
-		  (let ((s (make-string (fix:- ei si))))
-		    (substring-move! b si ei s 0)
-		    (let ((p
-			   (if prefix
-			       (string-append prefix s)
-			       s)))
-		      (if (read-string-buffer state)
-			  (loop p)
-			  p)))))))
-	(eof-object))))
-
-(define string-input-type
-  (make-port-type
-   `((PEEK-CHAR
-      ,(lambda (port)
-	 (let ((state (port/state port)))
-	   (let ((position (istate-position state)))
-	     (if (or (< position (istate-buffer-end state))
-		     (read-string-buffer state))
-		 (string-ref (istate-buffer state)
-			     (- position (istate-buffer-start state)))
-		 (eof-object))))))
-     (READ-CHAR
-      ,(lambda (port)
-	 (let ((state (port/state port)))
-	   (let ((position (istate-position state)))
-	     (if (or (< position (istate-buffer-end state))
-		     (read-string-buffer state))
-		 (let ((char
-			(string-ref (istate-buffer state)
-				    (- position (istate-buffer-start state)))))
-		   (set-istate-position! state (+ position 1))
-		   char)
-		 (eof-object))))))
-     (UNREAD-CHAR
-      ,(lambda (port char)
-	 char
-	 (let ((state (port/state port)))
-	   (let ((position (istate-position state)))
-	     (if (> position (istate-buffer-start state))
-		 (set-istate-position! state (- position 1)))))))
-     (EOF?
-      ,(lambda (port)
-	 (let ((state (port/state port)))
-	   (>= (istate-position state)
-	       (string-length (istate-string state))))))
-     (CLOSE
-      ,(lambda (port)
-	 (let ((state (port/state port)))
-	   (without-interrupts
-	    (lambda ()
-	      (set-istate-string! state #f)
-	      (set-istate-position! state 0)
-	      (set-istate-buffer-start! state 0)
-	      (set-istate-buffer-end! state 0)))))))
-   #f))
+  (cond ((textual-port-operation port 'position)
+	 => (lambda (position)
+	      (position port)))
+	(else
+	 (error "Non-positionable port:" port))))
 
 ;;;; Properties
 
