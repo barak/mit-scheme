@@ -433,25 +433,25 @@ USA.
 
 (define (promise? object)
   (and (cell? object)
-       (object-type? (ucode-type delayed) (cell-contents object))))
+       (cell? (cell-contents object))
+       (object-type? (ucode-type delayed)
+		     (cell-contents (cell-contents object)))))
 
 (define (make-promise object)
-  (make-cell (system-pair-cons (ucode-type delayed) #t object)))
+  (make-cell (make-cell (system-pair-cons (ucode-type delayed) #t object))))
 
 (define (make-unforced-promise thunk)
   ;(guarantee thunk? thunk 'make-unforced-promise)
-  (make-cell (system-pair-cons (ucode-type delayed) #f thunk)))
+  (make-cell (make-cell (system-pair-cons (ucode-type delayed) #f thunk))))
 
 (define (%promise-parts promise)
-  (without-interrupts
-   (lambda ()
-     (let ((p (cell-contents promise)))
-       (values (system-pair-car p)
-	       (system-pair-cdr p))))))
+  (let ((p (cell-contents (cell-contents promise))))
+    (values (system-pair-car p)
+	    (system-pair-cdr p))))
 
 (define (promise-forced? promise)
   (guarantee promise? promise 'promise-forced?)
-  (system-pair-car (cell-contents promise)))
+  (system-pair-car (cell-contents (cell-contents promise))))
 
 (define (promise-value promise)
   (guarantee promise? promise 'promise-value)
@@ -472,12 +472,16 @@ USA.
 	  (guarantee promise? promise* 'force)
 	  (without-interrupts
 	   (lambda ()
-	     (let ((p (cell-contents promise)))
-	       (if (not (system-pair-car p))
-		   (let ((p* (cell-contents promise*)))
-		     (system-pair-set-car! p (system-pair-car p*))
-		     (system-pair-set-cdr! p (system-pair-cdr p*))
-		     (set-cell-contents! promise* p))))))
+	     (let ((q (cell-contents promise)))
+	       (if (not (system-pair-car (cell-contents q)))
+		   (let ((q* (cell-contents promise*)))
+		     ;; Reduce the chain of indirections by one link so
+		     ;; that we don't accumulate space.
+		     (set-cell-contents! q (cell-contents q*))
+		     ;; Point promise* at the same chain of
+		     ;; indirections as promise so that forcing
+		     ;; promise* will yield the same result.
+		     (set-cell-contents! promise* q))))))
 	  (%force promise)))))
 
 (define-print-method promise?
