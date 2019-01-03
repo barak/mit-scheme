@@ -176,7 +176,7 @@ USA.
                                integrated-predicate
                                consequent
                                alternative)
-  (cond ((scode-sequence? integrated-predicate)
+  (cond ((sequence? integrated-predicate)
          (sequence/make
           (and expression (object/scode expression))
           (append (except-last-pair (sequence/actions integrated-predicate))
@@ -263,7 +263,7 @@ USA.
                               (integrate/expression
                                operations environment alternative))))
 
-        ((scode-sequence? integrated-predicate)
+        ((sequence? integrated-predicate)
          (sequence/make
           (and expression (object/scode expression))
           (append (except-last-pair (sequence/actions integrated-predicate))
@@ -708,7 +708,7 @@ USA.
            (if (null? (constant/value operand))
                '()
                'fail))
-          ((not (scode-combination? operand))
+          ((not (combination? operand))
            'fail)
           (else
            (let ((rator (combination/operator operand)))
@@ -780,7 +780,7 @@ USA.
              (procedure-with-body body (encloser (procedure/body body))))
         (scan-operator body encloser)))
   (define (scan-operator operator encloser)
-    (cond ((scode-sequence? operator)
+    (cond ((sequence? operator)
            (let ((reversed-actions (reverse (sequence/actions operator))))
              (scan-body (car reversed-actions)
                         (let ((commands (cdr reversed-actions)))
@@ -789,7 +789,7 @@ USA.
                              (sequence-with-actions
                               operator
                               (reverse (cons expression commands)))))))))
-          ((scode-combination? operator)
+          ((combination? operator)
            (let ((descend
                   (lambda (operator*)
                     (and (not (open-block? (procedure/body operator*)))
@@ -807,7 +807,7 @@ USA.
                      (combination/operands operator))
                     => descend)
                    (else #f))))
-          ((scode-declaration? operator)
+          ((declaration? operator)
            (scan-body (declaration/expression operator)
                       (lambda (expression)
                         (encloser

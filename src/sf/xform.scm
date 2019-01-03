@@ -209,7 +209,7 @@ USA.
 ;; If procedure body is a sequence, scan the first elements and turn variable
 ;; references into IGNORE declarations.
 (define (build-procedure expression block name required optional rest body)
-  (if (scode-sequence? body)
+  (if (sequence? body)
       (do ((actions (sequence/actions body) (cdr actions))
 	   (ignores '()
 		    (cons (variable/name (reference/variable (car actions)))

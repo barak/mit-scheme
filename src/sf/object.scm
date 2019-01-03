@@ -263,7 +263,7 @@ USA.
 
 ;; True if expression is a call to one of the primitive-boolean-predicates.
 (define (expression/call-to-boolean-predicate? expression)
-  (and (scode-combination? expression)
+  (and (combination? expression)
        (let ((operator (combination/operator expression)))
          (and (constant? operator)
               (let ((operator-value (constant/value operator)))
@@ -296,7 +296,7 @@ USA.
 
 ;; True if expression is a call to one of the effect-free-primitives.
 (define (expression/call-to-effect-free-primitive? expression)
-  (and (scode-combination? expression)
+  (and (combination? expression)
        (let ((operator (combination/operator expression)))
          (and (constant? operator)
               (let ((operator-value (constant/value operator)))
@@ -308,7 +308,7 @@ USA.
 ;; True if expression is a call to NOT.
 ;; Used in conditional simplification.
 (define (expression/call-to-not? expression)
-  (and (scode-combination? expression)
+  (and (combination? expression)
        (let ((operator (combination/operator expression)))
          (and (constant? operator)
               (let ((operator-value (constant/value operator)))
@@ -319,7 +319,7 @@ USA.
 
 (define (expression/constant-eq? expression value)
   (cond ((constant? expression) (eq? (constant/value expression) value))
-        ((scode-declaration? expression)
+        ((declaration? expression)
          (expression/constant-eq? (declaration/expression expression) value))
         (else #f)))
 
@@ -330,7 +330,7 @@ USA.
                name))
 
 (define (global-ref? object)
-  (and (scode-access? object)
+  (and (access? object)
        (expression/constant-eq? (access/environment object)
 				system-global-environment)
        (access/name object)))
@@ -578,7 +578,7 @@ USA.
 (define (sequence/make scode actions)
   (define (sequence/collect-actions collected actions)
     (fold-left (lambda (reversed action)
-                 (if (scode-sequence? action)
+                 (if (sequence? action)
                      (sequence/collect-actions reversed
 					       (sequence/actions action))
                      (cons action reversed)))
