@@ -444,7 +444,7 @@ USA.
   ;(guarantee thunk? thunk 'make-unforced-promise)
   (make-cell (make-cell (system-pair-cons (ucode-type delayed) #f thunk))))
 
-(define (%promise-parts promise)
+(define-integrable (%promise-parts promise)
   (let ((p (cell-contents (cell-contents promise))))
     (values (system-pair-car p)
 	    (system-pair-cdr p))))
