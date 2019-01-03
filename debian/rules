@@ -61,7 +61,7 @@ override_dh_install:
 	dh_install
 	@echo All .bci files belong in -dbg, move them manually for robustness
 	mkdir -p debian/mit-scheme-dbg
-	tar -C debian/mit-scheme -cf - $$(cd debian/mit-scheme && find -name '*.bci') \
+	tar -C debian/mit-scheme --create --file - --files-from <(cd debian/mit-scheme && find -name '*.bci') \
 	 | tar -C debian/mit-scheme-dbg -xvf -
 	find debian/mit-scheme -name '*.bci' -delete
 	@echo remove empty directory
