@@ -436,9 +436,7 @@ USA.
        (object-type? (ucode-type delayed) (cell-contents object))))
 
 (define (make-promise object)
-  (if (promise? object)
-      object
-      (make-cell (system-pair-cons (ucode-type delayed) #t object))))
+  (make-cell (system-pair-cons (ucode-type delayed) #t object)))
 
 (define (make-unforced-promise thunk)
   ;(guarantee thunk? thunk 'make-unforced-promise)

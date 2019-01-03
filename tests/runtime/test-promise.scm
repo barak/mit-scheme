@@ -30,9 +30,7 @@ USA.
 
 (define-test 'force-force-delay-delay
   (lambda ()
-    (expect-error
-     (lambda ()
-       (assert-eqv (force (force (delay (delay 0)))) 0)))))
+    (assert-eqv (force (force (delay (delay 0)))) 0)))
 
 ;; Adapted from SRFI 45.
 
