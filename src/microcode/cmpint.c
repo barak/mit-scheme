@@ -459,28 +459,49 @@ DEFINE_SCHEME_ENTRY (apply_compiled_procedure)
   JUMP_TO_CC_ENTRY (procedure);
 }
 
+static bool
+compiled_continuation_p (insn_t * entry_addr)
+{
+  cc_entry_type_t cet;
+
+  if (read_cc_entry_type ((&cet), entry_addr))
+    return false;
+  if (! ((cet.marker == CET_CONTINUATION)
+	 || (cet.marker == CET_INTERNAL_CONTINUATION)
+	 || (cet.marker == CET_RETURN_TO_INTERPRETER)))
+    return false;
+  return true;
+}
+
 DEFINE_SCHEME_ENTRY (return_to_compiled_code)
 {
   RESTORE_LAST_RETURN_CODE ();
   {
     SCHEME_OBJECT cont = (STACK_POP ());
-    {
-      cc_entry_type_t cet;
-      if (! (CC_RETURN_P (cont)))
-	goto bad;
-      insn_t * ret_addr = (CC_RETURN_ADDRESS (cont));
-      insn_t * entry_addr = (CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr));
-      if ((read_cc_entry_type ((&cet), entry_addr))
-	  || (! ((cet.marker == CET_CONTINUATION)
-		 || (cet.marker == CET_INTERNAL_CONTINUATION)
-		 || (cet.marker == CET_RETURN_TO_INTERPRETER))))
-	{
-bad:	  STACK_PUSH (cont);
-	  SAVE_CONT ();
-	  return (ERR_INAPPLICABLE_OBJECT);
-	}
-    }
-    JUMP_TO_CC_RETURN (cont);
+    /* Due to a mistake, continuations for microcode utilities are
+       represented as compiled entries.  Should fix eventually.  */
+    if (CC_RETURN_P (cont))
+      {
+	insn_t * ret_addr = (CC_RETURN_ADDRESS (cont));
+	insn_t * entry_addr =
+	  (CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr));
+	if (!compiled_continuation_p (entry_addr))
+	  goto bad;
+	JUMP_TO_CC_RETURN (cont);
+      }
+    else if (CC_ENTRY_P (cont))
+      {
+	insn_t * entry_addr = (CC_ENTRY_ADDRESS (cont));
+	if (!compiled_continuation_p (entry_addr))
+	  goto bad;
+	JUMP_TO_CC_ENTRY (cont);
+      }
+    else
+      {
+bad:	STACK_PUSH (cont);
+	SAVE_CONT ();
+	return (ERR_INAPPLICABLE_OBJECT);
+      }
   }
 }
 
