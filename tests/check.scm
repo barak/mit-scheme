@@ -92,6 +92,7 @@ USA.
     ("runtime/test-predicate-dispatch" (runtime predicate-dispatch))
     ("runtime/test-printer" (runtime printer))
     "runtime/test-process"
+    "runtime/test-promise"
     "runtime/test-random"
     "runtime/test-readwrite"
     "runtime/test-regsexp"
