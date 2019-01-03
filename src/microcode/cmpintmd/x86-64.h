@@ -271,6 +271,7 @@ extern void asm_apply_setup_size_5 (void);
 extern void asm_apply_setup_size_6 (void);
 extern void asm_apply_setup_size_7 (void);
 extern void asm_apply_setup_size_8 (void);
+extern void asm_set_interrupt_enables (void);
 extern void asm_scheme_to_interface (void);
 extern void asm_scheme_to_interface_call (void);
 extern void asm_serialize_cache (void);

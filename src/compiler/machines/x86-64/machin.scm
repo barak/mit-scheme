@@ -228,6 +228,8 @@ USA.
 (define-integrable register-block/dynamic-link-offset 4) ; compiler temp
 (define-integrable register-block/lexpr-primitive-arity-offset 7)
 (define-integrable register-block/stack-guard-offset 11)
+(define-integrable register-block/int-code-offset 12)
+(define-integrable register-block/reflect-to-interface-offset 13)
 
 (define-integrable (fits-in-signed-byte? value)
   (<= #x-80 value #x7f))

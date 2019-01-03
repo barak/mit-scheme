@@ -67,8 +67,9 @@ typedef struct
   unsigned long n_linked_entries;
 } link_cc_state_t;
 
-/* Ways to bypass the interpreter.  Matches
-   code/special-compiled/... in runtime/conpar.scm.  */
+/* Ways to bypass the interpreter.  Sync with:
+   - runtime/conpar.scm, code/special-compiled/...
+   - compiler/machines/x86-64/rules3.scm, reflect-code:...  */
 typedef enum
 {
   REFLECT_CODE_INTERNAL_APPLY,

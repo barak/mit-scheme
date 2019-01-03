@@ -219,6 +219,130 @@ USA.
 		      (LAP (MOV Q (R ,rdx) (&U ,frame-size))
 			   ,@(invoke-interface code:compiler-apply))))))))
 
+;; Must match enum reflect_code_t in microcode/cmpint.c.
+(define-integrable reflect-code:internal-apply 0)
+(define-integrable reflect-code:restore-interrupt-mask 1)
+(define-integrable reflect-code:stack-marker 2)
+(define-integrable reflect-code:compiled-code-bkpt 3)
+(define-integrable reflect-code:apply-compiled 6)
+
+(define-rule statement
+  (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
+  (QUALIFIER (eq? primitive (ucode-primitive set-interrupt-enables! 1)))
+  continuation
+  (assert (= frame-size 2))
+  (let* ((prefix (clear-map!))
+	 (interrupt (generate-label 'INTERRUPT)))
+    (LAP ,@prefix
+	 ;; Load new interrupt mask into rdx.
+	 (POP Q (R ,rdx))		;rdx := new interrupt mask
+	 ;; Return value in rax is old interrupt mask.
+	 (MOV Q (R ,rax)		;rax := old interrupt mask, tagged
+	      (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))
+	 (OR Q (R ,rax) ,reg:int-mask)
+	 ;; Set the new interrupt mask.  (Preserves rax.)
+	 ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+	 ;; Interrupts may now be enabled that weren't before, so check.
+	 (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
+	 (JGE (@PCR ,interrupt))
+	 ;; Pop-return.  Return value is in rax.
+	 (AND Q (@R ,rsp) (R ,regnum:datum-mask))
+	 (RET)
+	(LABEL ,interrupt)
+	 ,@(invoke-hook entry:compiler-interrupt-continuation-2))))
+
+(define-rule statement
+  (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
+  (QUALIFIER
+   (or (eq? primitive (ucode-primitive with-interrupt-mask 2))
+       (eq? primitive (ucode-primitive with-interrupts-reduced 2))))
+  continuation
+  (assert (= frame-size 3))
+  (let* ((prefix (clear-map!))
+         (restore (generate-label 'RESTORE-INTERRUPTS))
+         (pushed (generate-label 'PUSHED))
+	 (interrupt (generate-label 'INTERRUPT))
+         (tag-continuation
+          (affix-type (INST-EA (@R ,rsp))
+		      type-code:compiled-return
+		      (lambda () rax))))
+    ;; Stack initially looks like:
+    ;;
+    ;;	rsp[0] = new-mask
+    ;;	rsp[1] = procedure
+    ;;
+    ;; Registers:
+    ;; - rbx: procedure, for apply-setup
+    ;; - rdx: new mask
+    ;; - rcx: fixnum tag
+    ;; - rax: continuation tag; jump target; return value.
+    ;;
+    (LAP ,@prefix
+	 (POP Q (R ,rdx))		;rdx := new-mask
+	 (POP Q (R ,rbx))		;rbx := procedure, for apply-setup
+	 (MOV Q (R ,rcx)		;rcx := fixnum tag, for convenience
+	      (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))
+	 ;; Push reflect-to-interface(restore-interrupt-mask, old-mask)
+	 ;; for the benefit of the continuation parser.
+	 (PUSH Q ,reg:int-mask)
+	 (OR Q (@R ,rsp) (R ,rcx))
+	 (PUSH Q (& ,reflect-code:restore-interrupt-mask))
+	 (OR Q (@R ,rsp) (R ,rcx))
+	 (PUSH Q ,reg:reflect-to-interface)
+	 ;; Push a continuation onto the stack.
+	 (CALL (@PCR ,pushed))
+	 (JMP (@PCR ,restore))
+	(LABEL ,pushed)
+	 ,@tag-continuation
+	 ;; Push old mask argument.
+	 (PUSH Q ,reg:int-mask)
+	 (OR Q (@R ,rsp) (R ,rcx))
+
+	 ;; Set new interrupt mask.  It is tempting to just AND the new
+	 ;; mask into the register for with-interrupts-reduced, but if
+	 ;; we're disabling GC or stack overflow interrupts we also
+	 ;; need to set MEMTOP and STACK_GUARD.
+	 ,@(if (eq? primitive (ucode-primitive with-interrupts-reduced))
+	       (LAP (AND Q (R ,rdx) ,reg:int-mask))
+	       (LAP))
+	 ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+	 ;; Apply the procedure in rbx.  Stack now looks like:
+	 ;;
+	 ;;	rsp[0] = new-mask
+	 ;;	rsp[1] = continuation
+	 ;;	rsp[2] = reflect-to-interface
+	 ;;	rsp[3] = reflect-code:restore-interrupt-mask
+	 ;;	rsp[4] = old-mask
+	 ;;	rsp[5] = continuation*
+	 ;;
+	 ;; Apply with a frame of size 2 = 1 (procedure) + 1 argument.
+	 ;; Hook sets rax to the jump target -- either the compiled
+	 ;; entry, or another hook to fall back to the interpreter.
+	 ,@(invoke-hook/subroutine entry:compiler-apply-setup-size-2)
+	 (JMP (R ,rax))
+	 ,@(make-external-label (continuation-code-word #f) restore)
+	 ;; Return value in rax, so don't overwrite it.  Stack now
+	 ;; looks like:
+	 ;;
+	 ;;	rsp[0] = reflect-to-interface
+	 ;;	rsp[1] = reflect-code:restore-interrupt-mask
+	 ;;	rsp[2] = old-mask
+	 ;;	rsp[3] = continuation*
+	 ;;
+	 ;; Pop reflect-to-interface -- we won't actually use it.
+	 (ADD Q (R ,rsp) (& #x10))
+	 ;; Restore interrupts mask.
+	 (POP Q (R ,rdx))
+	 ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+	 ;; Interrupts may be unmasked now, so check.
+	 (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
+	 (JGE (@PCR ,interrupt))
+	 ;; Pop-return.
+	 (AND Q (@R ,rsp) (R ,regnum:datum-mask))
+	 (RET)
+	(LABEL ,interrupt)
+	 ,@(invoke-hook entry:compiler-interrupt-continuation-2))))
+
 (let-syntax
     ((define-primitive-invocation
        (sc-macro-transformer

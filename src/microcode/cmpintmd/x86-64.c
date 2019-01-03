@@ -379,6 +379,8 @@ x86_64_reset_hook (void)
   SETUP_REGISTER (asm_apply_setup_size_7);		/* 48 */
   SETUP_REGISTER (asm_apply_setup_size_8);		/* 49 */
 
+  SETUP_REGISTER (asm_set_interrupt_enables);		/* 50 */
+
 #ifdef _MACH_UNIX
   {
     vm_address_t addr;

@@ -309,9 +309,17 @@ define(IMM_TRUE, `IMM(HEX(2000000000000000))')
 define(FLONUM_DATA_OFFSET,8)
 define(FLONUM_STORAGE_SIZE,16)
 
+define(INT_Stack_Overflow,HEX(1))
+define(INT_GC,HEX(4))
+define(INT_Mask,HEX(ffff))
+
+define(REGBLOCK_MEMTOP,0)
+define(REGBLOCK_INT_MASK,8)
 define(REGBLOCK_VAL,16)
 define(REGBLOCK_COMPILER_TEMP,32)
 define(REGBLOCK_DLINK,REGBLOCK_COMPILER_TEMP)
+define(REGBLOCK_STACK_GUARD,88)
+define(REGBLOCK_INT_CODE,96)
 
 define(regs,REG(rsi))
 define(rfree,REG(rdi))
@@ -324,7 +332,11 @@ DECLARE_DATA_SEGMENT()
 declare_alignment(2)
 
 use_external_data(EVR(Free))
+use_external_data(EVR(heap_alloc_limit))
+use_external_data(EVR(heap_end))
+use_external_data(EVR(stack_guard))
 use_external_data(EVR(stack_pointer))
+use_external_data(EVR(stack_start))
 use_external_data(EVR(utility_table))
 
 ifdef(`WIN32',`
@@ -694,6 +706,61 @@ define_apply_fixed_size(5)
 define_apply_fixed_size(6)
 define_apply_fixed_size(7)
 define_apply_fixed_size(8)
+
+# Interrupt checks hook.
+
+define_hook_label(set_interrupt_enables)
+	# stack: untagged return address
+	# rax = return value, must preserve
+	# rdx = tagged interrupt mask on entry, garbage on exit
+	# rcx = temp
+
+	# Mask off tag and other crud and set the interpreter register.
+	OP(and,q)	TW(IMM(INT_Mask),REG(rdx))
+	OP(mov,q)	TW(REG(rdx),QOF(REGBLOCK_INT_MASK(),regs))
+
+	# This logic more or less follows COMPILER_SETUP_INTERRUPT.
+
+define_debugging_label(set_interrupt_enables_determine_memtop)
+	# Set memtop:
+	# (a) to 0 if there's an interrupt pending,
+	# (b) to heap_end if GC is disabled, or
+	# (c) to heap_alloc_limit if GC is enabled.
+	# Forward branches for (a) or (b) so they are statically
+	# predicted not-taken.
+	OP(test,q)	TW(QOF(REGBLOCK_INT_CODE(),regs),REG(rdx))
+	jnz	set_interrupt_enables_pending_interrupt
+	OP(test,q)	TW(IMM(INT_GC),REG(rdx))
+	jz	set_interrupt_enables_no_gc
+	OP(mov,q)	TW(ABS(EVR(heap_alloc_limit)),REG(rcx))
+define_debugging_label(set_interrupt_enables_memtop)
+	OP(mov,q)	TW(REG(rcx),QOF(REGBLOCK_MEMTOP(),regs))
+
+define_debugging_label(set_interrupt_enables_determine_stack_guard)
+	# Set stack guard register:
+	# (a) to stack_start, if stack overflow interrupt is blocked, or
+	# (b) to stack_guard, if stack overflow interrupt is allowed.
+	OP(test,q)	TW(IMM(INT_Stack_Overflow),REG(rdx))
+	jz	set_interrupt_enables_no_stackoverflow
+	OP(mov,q)	TW(ABS(EVR(stack_guard)),REG(rcx))
+define_debugging_label(set_interrupt_enables_stack_guard)
+	OP(mov,q)	TW(REG(rcx),QOF(REGBLOCK_STACK_GUARD(),regs))
+
+	# All set!
+	ret
+
+define_debugging_label(set_interrupt_enables_pending_interrupt)
+	OP(mov,q)	TW(ABS(EVR(memory_block_start)),REG(rcx))
+	jmp	set_interrupt_enables_memtop
+
+define_debugging_label(set_interrupt_enables_no_gc)
+	OP(mov,q)	TW(ABS(EVR(heap_end)),REG(rcx))
+	jmp	set_interrupt_enables_memtop
+
+define_debugging_label(set_interrupt_enables_no_stackoverflow)
+	OP(mov,q)	TW(ABS(EVR(stack_start)),REG(rcx))
+	jmp	set_interrupt_enables_stack_guard
+
 
 ###	The following code is used by generic arithmetic
 ###	whether the fixnum case is open-coded in line or not.

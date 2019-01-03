@@ -683,6 +683,17 @@ USA.
   (offset-reference regnum:regs-pointer
 		    register-block/stack-guard-offset))
 
+(define reg:int-mask
+  (offset-reference regnum:regs-pointer
+		    register-block/int-mask-offset))
+
+(define reg:int-code
+  (offset-reference regnum:regs-pointer
+		    register-block/int-code-offset))
+
+(define reg:reflect-to-interface
+  (offset-reference regnum:regs-pointer
+		    register-block/reflect-to-interface-offset))
 
 (define-syntax define-codes
   (sc-macro-transformer
@@ -798,7 +809,8 @@ USA.
   apply-setup-size-5
   apply-setup-size-6
   apply-setup-size-7
-  apply-setup-size-8)
+  apply-setup-size-8
+  set-interrupt-enables!)
 
 ;; Operation tables
 

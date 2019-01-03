@@ -112,13 +112,16 @@ USA.
       (assign-register->register target datum)
       (affix-type (standard-move-to-target! datum target) type)))
 
-(define (affix-type target type)
+(define (affix-type target type #!optional get-temporary)
   (if (= 1 (bit-count type))
       (let ((bit (first-set-bit type)))
 	(assert (<= 0 bit))
 	(assert (< bit scheme-type-width))
 	(LAP (BTS Q ,target (&U ,(+ scheme-datum-width bit)))))
-      (let ((temp (temporary-register-reference)))
+      (let ((temp
+             (if (default-object? get-temporary)
+		 (temporary-register-reference)
+		 (get-temporary))))
 	(LAP (MOV Q ,temp (&U ,(make-non-pointer-literal type 0)))
 	     (OR Q ,target ,temp)))))
 
