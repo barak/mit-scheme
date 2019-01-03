@@ -470,6 +470,8 @@ USA.
 	value
 	(let ((promise* (value)))
 	  (guarantee promise? promise* 'force)
+	  (if (eq? promise* promise)
+	      (error "Infinite recursion in promise:" promise))
 	  (without-interrupts
 	   (lambda ()
 	     (let ((q (cell-contents promise)))

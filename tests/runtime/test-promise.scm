@@ -71,15 +71,13 @@ USA.
 
 (define-test 'delay-force-loop
   (lambda ()
-    (expect-failure
+    (assert-error
      (lambda ()
-       (assert-error
-        (lambda ()
-          (carefully (lambda ()
-                       (define p (delay-force p))
-                       (force p))
-                     (lambda () 'stack-overflow)
-                     (lambda () 'timeout))))))))
+       (carefully (lambda ()
+                    (define p (delay-force p))
+                    (force p))
+                  (lambda () 'stack-overflow)
+                  (lambda () 'timeout))))))
 
 (define-test 'force-force-delay-delay
   (lambda ()
