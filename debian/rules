@@ -13,13 +13,10 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 %:
 	dh $@ --no-parallel
 
-override_dh_autoreconf-arch:
+override_dh_autoreconf:
 	dh_autoreconf sh -- -e -x -c \
-	  'cd src && autoreconf -f -i'
-
-override_dh_autoreconf-indep:
-	dh_autoreconf sh -- -e -x -c \
-	  'cd doc && autoreconf -f -i'
+	  'for d in src doc; \
+	    do (cd $$d && autoreconf -f -i) done'
 
 CONF_FLAGS += --docdir=/usr/share/doc/mit-scheme-doc
 CONF_FLAGS += --enable-html=/usr/share/doc/mit-scheme-doc/html
