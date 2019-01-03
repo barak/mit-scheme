@@ -689,6 +689,7 @@ USA.
     (simple-type-test 'char?           (ucode-type character))
     (simple-type-test 'fixnum?         (ucode-type fixnum))
     (simple-type-test 'flonum?         (ucode-type flonum))
+    (simple-type-test 'cell?           (ucode-type cell))
     (simple-type-test 'pair?           (ucode-type pair))
     (simple-type-test 'string?         (ucode-type string))
     (simple-type-test 'vector?         (ucode-type vector))
@@ -901,6 +902,14 @@ USA.
    '(0)
    internal-close-coding-for-type-or-range-checks))
 
+(define-open-coder/value 'MAKE-CELL
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     combination
+     (finish (rtl:make-cell-cons (car expressions))))
+   '(0)
+   false))
+
 (let ((open-code/pair-cons
        (lambda (type)
 	 (lambda (combination expressions finish)
@@ -987,6 +996,7 @@ USA.
 	    rtl:floating-vector-length-fetch
 	    (ucode-type flonum)
 	    0)
+  (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
   (user-ref 'CAR rtl:make-fetch (ucode-type pair) 0)
   (user-ref 'CDR rtl:make-fetch (ucode-type pair) 1)
   (user-ref 'weak-car rtl:make-fetch (ucode-type weak-cons) 0)
@@ -1046,6 +1056,7 @@ USA.
 		 expressions)))
 	    '(0 1)
 	    internal-close-coding-for-type-checks)))))
+  (fixed-assignment 'SET-CELL-CONTENTS! (ucode-type cell) 0)
   (fixed-assignment 'SET-CAR! (ucode-type pair) 0)
   (fixed-assignment 'SET-CDR! (ucode-type pair) 1)
   (fixed-assignment 'weak-set-car! (ucode-type weak-cons) 0)
