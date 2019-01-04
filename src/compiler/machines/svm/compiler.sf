@@ -61,7 +61,10 @@ USA.
 			    (sf-conditionally file)))
 			files)
 	      (for-each (lambda (file)
-			  (load (pathname-new-type file "bin") (env file)))
+			  (receive (scm bin spec)
+				   (sf/pathname-defaulting file #f #f)
+			    scm spec
+			    (load bin (env file))))
 			files))))
 
       (fresh-line)
@@ -75,6 +78,8 @@ USA.
 	((access initialize-package! environment)))
       (sf-and-load "base/pmlook")
       (sf-and-load "base/pmpars")
+      (sf-and-load "machines/svm/endian")
+      (sf-and-load "machines/svm/wordsize")
       (sf-and-load "machines/svm/machine")
       (sf-and-load "back/syntax")
       (sf-and-load "base/scode")

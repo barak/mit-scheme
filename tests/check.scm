@@ -40,7 +40,9 @@ USA.
 
 (define known-tests
   '(
+    ("compiler/test-fasdump" (compiler portable-fasdump))
     "compiler/test-fgopt-conect"
+    "compiler/test-toplev"
     "compiler/test-varname"
     "compiler/test-y"
     "microcode/test-chacha"

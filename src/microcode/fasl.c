@@ -209,6 +209,8 @@ decode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
     (FASLHDR_VERSION (h)) = (FASL_VERSION (object));
     (FASLHDR_ARCH (h)) = (FASL_ARCH (object));
   }
+  if ((check_fasl_version (h)) != FASL_FILE_FINE)
+    return (false);
   {
     SCHEME_OBJECT object = (raw[FASL_OFFSET_CI_VERSION]);
     (FASLHDR_CC_VERSION (h)) = (CI_VERSION (object));

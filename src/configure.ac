@@ -69,8 +69,10 @@ AC_ARG_ENABLE([cross-compiling],
 : ${enable_cross_compiling=no}
 if test "x${enable_cross_compiling}" = xyes; then
     IF_CROSS=
+    IF_NATIVE='#!native: '
 else
     IF_CROSS='#!cross-compiling: '
+    IF_NATIVE=
 fi
 
 AC_ARG_WITH([default-target],
@@ -137,6 +139,9 @@ AC_ARG_ENABLE([mcrypt],
 
 AC_CANONICAL_HOST
 
+AC_CHECK_SIZEOF([unsigned long])
+mit_scheme_target_bytes_per_object=$ac_cv_sizeof_unsigned_long
+
 ALL_TARGET=all-native
 INSTALL_COM='$(INSTALL_DATA)'
 INSTALL_LIARC_BUNDLES=
@@ -150,17 +155,20 @@ c)
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
     IF_LIARC=
     ;;
-svm1)
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     IF_SVM=
     ;;
 esac
 
 MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
-if test x"${mit_scheme_compiler_target}" = xsvm1; then
+case ${mit_scheme_compiler_target} in
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     IF_SVM_COMPILER=
-else
+    ;;
+*)
     IF_SVM_COMPILER='#!svm compiler: '
-fi
+    ;;
+esac
 
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
@@ -264,12 +272,11 @@ directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code
 fi
 
 # A 32bit host running LIAR/svm needs a large heap.
-if test x"${mit_scheme_native_code}" = xsvm1; then
-    AC_CHECK_SIZEOF([unsigned long])
-    if test ${ac_cv_sizeof_unsigned_long} -eq 4; then
-	HOST_COMPILER_HEAP="--heap 10000"
-    fi
-fi
+case ${mit_scheme_native_code} in
+svm1-32be|svm1-32le)
+    HOST_COMPILER_HEAP="--heap 10000"
+    ;;
+esac
 
 if test x"${enable_x11}" = x && test x"${enable_default_plugins}" = xyes; then
     AC_PATH_X
@@ -372,6 +379,7 @@ AC_SUBST([IF_GDBM])
 AC_SUBST([IF_IMAIL])
 AC_SUBST([IF_LIARC])
 AC_SUBST([IF_MCRYPT])
+AC_SUBST([IF_NATIVE])
 AC_SUBST([IF_PGSQL])
 AC_SUBST([IF_SVM])
 AC_SUBST([IF_SVM_COMPILER])
@@ -380,6 +388,8 @@ AC_SUBST([IF_X11_SCREEN])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([mit_scheme_native_code])
+AC_SUBST([mit_scheme_target_bytes_per_object])
 AC_SUBST([OPTION_SUBDIRS])
 
 AC_PROG_INSTALL

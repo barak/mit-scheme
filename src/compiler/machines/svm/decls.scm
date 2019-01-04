@@ -198,11 +198,14 @@ USA.
   (for-each
    (lambda (node)
      (let ((modification-time
-	    (let ((source (modification-time node "scm"))
-		  (binary (modification-time node "bin")))
-	      (if (not source)
-		  (error "Missing source file" (source-node/filename node)))
-	      (and binary (< source binary) binary))))
+	    (receive (scm bin spec)
+		     (sf/pathname-defaulting (source-node/pathname node) #f #f)
+	      spec
+	      (let ((source (file-modification-time scm))
+		    (binary (file-modification-time bin)))
+		(if (not source)
+		    (error "Missing source file" (source-node/filename node)))
+		(and binary (< source binary) binary)))))
      (set-source-node/modification-time! node modification-time)
      (if (not modification-time)
 	 (write-notification-line
@@ -324,10 +327,6 @@ USA.
 	  (lambda (declarations)
 	    (remove integration-declaration? declarations)))
       (source-node/declarations node)))))
-
-(define (modification-time node type)
-  (file-modification-time
-   (pathname-new-type (source-node/pathname node) type)))
 
 ;;;; Integration Dependencies
 
@@ -349,7 +348,8 @@ USA.
 			   "object" "proced" "rvalue"
 			   "scode" "subprb" "utils"))
 	 (machine-base
-	  (append (filename/append "machines/svm" "machine")
+	  (append (filename/append "machines/svm" "endian" "wordsize"
+				   "machine")
 		  (filename/append "back" "asutl")))
 	 (rtl-base
 	  (filename/append "rtlbase"

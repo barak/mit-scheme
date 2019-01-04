@@ -58,6 +58,7 @@ USA.
   (parent (scode-optimizer))
   (export ()
           sf
+          sf/cross-compiling?
           sf/default-declarations
           sf/default-syntax-table
           sf/pathname-defaulting

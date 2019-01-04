@@ -82,7 +82,7 @@ USA.
 (define assert-eqv-nan
   (simple-binary-assertion eqv-nan? #f))
 
-(define (assert-only-except/no-traps except procedure)
+(define (assert-only-except/no-traps except procedure #!optional mask)
   (assert-eqv
    (flo:preserving-environment
     (lambda ()
@@ -90,7 +90,10 @@ USA.
       (no-traps
        (lambda ()
          (procedure)
-         (flo:test-exceptions (flo:supported-exceptions))))))
+         (flo:test-exceptions
+          (if (default-object? mask)
+              (flo:supported-exceptions)
+              mask))))))
    except))
 
 (define (assert-no-except/yes-traps procedure)
@@ -117,7 +120,11 @@ USA.
 (define (yes-traps f)
   (if (flo:have-trap-enable/disable?)
       ;; XXX Should enable all traps.
-      (flo:with-trapped-exceptions (flo:exception:invalid-operation) f)
+      (begin
+        (flo:clear-exceptions! (flo:supported-exceptions))
+        (flo:with-trapped-exceptions
+            (fix:or (flo:exception:invalid-operation) (flo:exception:overflow))
+          f))
       (f)))
 
 (define subnormal+ flo:smallest-positive-subnormal)
@@ -638,6 +645,56 @@ USA.
                    cases))
             cases)))))
 
+(define-syntax define-snan-comparison-test
+  (syntax-rules ()
+    ((define-snan-comparison-test name safe-compare unsafe-compare cases)
+     (define-test name
+       (map (lambda (x)
+              (lambda ()
+                (with-test-properties
+                    (lambda ()
+                      (let ((snan (identity-procedure (flo:snan 1234)))
+                            (mask
+                             (fix:andc (flo:supported-exceptions)
+                                       ;; Not reliable.
+                                       (flo:exception:subnormal-operand))))
+                        (assert-only-except/no-traps
+                         (flo:exception:invalid-operation)
+                         (lambda () (safe-compare x snan))
+                         mask)
+                        (assert-only-except/no-traps
+                         (flo:exception:invalid-operation)
+                         (lambda () (safe-compare snan x))
+                         mask)
+                        (assert-only-except/no-traps
+                         (flo:exception:invalid-operation)
+                         (lambda () (safe-compare snan snan)))
+                        (assert-false
+                         (no-traps (lambda () (safe-compare x snan))))
+                        (assert-false
+                         (no-traps (lambda () (safe-compare snan x))))
+                        (assert-false
+                         (no-traps (lambda () (safe-compare snan snan))))
+                        (assert-only-except/no-traps
+                         (flo:exception:invalid-operation)
+                         (lambda () (unsafe-compare x snan))
+                         mask)
+                        (assert-only-except/no-traps
+                         (flo:exception:invalid-operation)
+                         (lambda () (unsafe-compare snan x))
+                         mask)
+                        (assert-only-except/no-traps
+                         (flo:exception:invalid-operation)
+                         (lambda () (unsafe-compare snan snan)))
+                        (assert-false
+                         (no-traps (lambda () (unsafe-compare x snan))))
+                        (assert-false
+                         (no-traps (lambda () (unsafe-compare snan x))))
+                        (assert-false
+                         (no-traps (lambda () (unsafe-compare snan snan))))))
+                  'SEED x)))
+            cases)))))
+
 (let* ((subnormal+ flo:smallest-positive-subnormal)
        (subnormal- (no-traps (lambda () (- subnormal+))))
        (cases
@@ -648,6 +705,12 @@ USA.
   (define-comparison-test '<= flo:safe<= flo:<= cases)
   (define-comparison-test '<> flo:safe<> flo:<> cases)
   (define-comparison-test '= flo:safe= flo:= cases)
+  (define-snan-comparison-test '</snan flo:safe< flo:< cases)
+  (define-snan-comparison-test '>/snan flo:safe> flo:> cases)
+  (define-snan-comparison-test '>=/snan flo:safe>= flo:>= cases)
+  (define-snan-comparison-test '<=/snan flo:safe<= flo:<= cases)
+  (define-snan-comparison-test '<>/snan flo:safe<> flo:<> cases)
+  (define-snan-comparison-test '=/snan flo:safe= flo:= cases)
   (define-test 'unordered?
     (map (lambda (x)
            (map (lambda (y)

@@ -31,6 +31,8 @@ USA.
 
 ;;;; Architecture Parameters
 
+(define (target-fasl-format) fasl-format:i386)
+
 (define use-pre/post-increment? false)
 (define-integrable endianness 'LITTLE)
 (define-integrable addressing-granularity 8)
@@ -355,10 +357,15 @@ USA.
 		  ;; <= pi/4.  Correct argument reduction requires a
 		  ;; better approximation of pi than the i387 has.
 		  FLONUM-SIN FLONUM-COS FLONUM-TAN
+		  ;; Disabled: exp is too much trouble to get right in
+		  ;; i387; need 64-bit precision.  Let libm do it.
+		  FLONUM-EXP
 		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
-		  FLONUM-IS-LESS? FLONUM-IS-LESS-OR-EQUAL?
-		  FLONUM-IS-GREATER? FLONUM-IS-GREATER-OR-EQUAL?
-		  FLONUM-IS-LESS-OR-GREATER? FLONUM-IS-UNORDERED?
+		  ;; Disabled: these require some care to handle
+		  ;; signalling NaN, which can't even be loaded onto
+		  ;; the i387 floating-point stack without raising an
+		  ;; exception.
 		  FLONUM-IS-NORMAL? FLONUM-IS-FINITE? FLONUM-IS-INFINITE?
-		  FLONUM-IS-NAN? FLONUM-IS-ZERO? FLONUM-IS-EQUAL?
-		  FLONUM-IS-NEGATIVE? FLONUM-COPYSIGN))
+		  FLONUM-IS-NAN? FLONUM-IS-ZERO?
+		  FLONUM-IS-NEGATIVE?
+		  FLONUM-COPYSIGN FLONUM-NEGATE FLONUM-ABS))

@@ -31,6 +31,8 @@ USA.
 
 ;;;; Architecture Parameters
 
+(define (target-fasl-format) fasl-format:amd64)
+
 (define use-pre/post-increment? false)
 (define-integrable endianness 'LITTLE)
 (define-integrable addressing-granularity 8)

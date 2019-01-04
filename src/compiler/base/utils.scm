@@ -297,17 +297,17 @@ USA.
 	(ucode-primitive flonum-greater?)
 	(ucode-primitive flonum-integer?)
 	(ucode-primitive flonum-is-equal? 2)
-	(ucode-primitive flonum-is-finite?)
-	(ucode-primitive flonum-is-greater-or-equal?)
-	(ucode-primitive flonum-is-greater?)
-	(ucode-primitive flonum-is-infinite?)
-	(ucode-primitive flonum-is-less-or-equal?)
-	(ucode-primitive flonum-is-less-or-greater?)
-	(ucode-primitive flonum-is-less?)
-	(ucode-primitive flonum-is-nan?)
-	(ucode-primitive flonum-is-negative?)
-	(ucode-primitive flonum-is-normal?)
-	(ucode-primitive flonum-is-unordered?)
+	(ucode-primitive flonum-is-finite? 1)
+	(ucode-primitive flonum-is-greater-or-equal? 2)
+	(ucode-primitive flonum-is-greater? 2)
+	(ucode-primitive flonum-is-infinite? 1)
+	(ucode-primitive flonum-is-less-or-equal? 2)
+	(ucode-primitive flonum-is-less-or-greater? 2)
+	(ucode-primitive flonum-is-less? 2)
+	(ucode-primitive flonum-is-nan? 1)
+	(ucode-primitive flonum-is-negative? 1)
+	(ucode-primitive flonum-is-normal? 1)
+	(ucode-primitive flonum-is-unordered? 2)
 	(ucode-primitive flonum-is-zero? 1)
 	(ucode-primitive flonum-less?)
 	(ucode-primitive flonum-nan-quiet? 1)
@@ -469,6 +469,24 @@ USA.
 	(ucode-primitive weak-car 1)
 	(ucode-primitive weak-cdr 1)))
 
+;; These primitives vary from machine to machine in the microcode.  We
+;; could emulate them based on the system characteristics, but for now
+;; it will be easier to just avoid constant-folding them.
+;;
+;; XXX If we ever transition to a system where flonums are not IEEE 754
+;; binary64 floating-point, we'll have to list all the flonum
+;; primitives here too.
+
+(define machine-dependent-primitives
+  (list (ucode-primitive fixnum? 1)
+	(ucode-primitive index-fixnum?)
+	(ucode-primitive object-type 1)
+	(ucode-primitive object-type? 2)
+	(ucode-primitive primitive-object-ref 2)
+	(ucode-primitive primitive-object-type 1)
+	(ucode-primitive system-vector-ref 2)
+	(ucode-primitive system-vector-size 1)))
+
 ;;;; "Foldable" and side-effect-free operators
 
 (define boolean-valued-function-variables)
@@ -521,8 +539,10 @@ USA.
 (define-integrable (boolean-valued-function-primitive? operator)
   (memq operator boolean-valued-function-primitives))
 
-(define-integrable (constant-foldable-primitive? operator)
-  (memq operator function-primitives))
+(define (constant-foldable-primitive? operator)
+  (and (memq operator function-primitives)
+       (not (and compiler:cross-compiling?
+		 (memq operator machine-dependent-primitives)))))
 
 (define-integrable (side-effect-free-primitive? operator)
   (memq operator side-effect-free-primitives))

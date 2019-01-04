@@ -31,7 +31,8 @@ USA.
 
 ;;;; User Interface
 
-(define bin-pathname-type "bin")
+(define (bin-pathname-type)
+  (if sf/cross-compiling? "nib" "bin"))
 
 (define (integrate/procedure procedure)
   (procedure-components procedure
@@ -83,6 +84,9 @@ USA.
 
 (define sf/usual-integrations-default-deletions
   '())
+
+(define sf/cross-compiling?
+  #f)
 
 ;;;; File Syntaxer
 
@@ -113,7 +117,7 @@ USA.
 					 (if (> (string-length input-type) 2)
 					     (string-head input-type 2)
 					     input-type))
-			  bin-pathname-type)))))
+			  (bin-pathname-type))))))
 	      (if bin-string
 		  (merge-pathnames bin-string bin-path)
 		  bin-path))
@@ -155,29 +159,30 @@ USA.
 (define (sf/file->scode input-pathname output-pathname
 			environment declarations)
   (fluid-let ((sf/default-externs-pathname
-	       (make-pathname (pathname-host input-pathname)
-			      (pathname-device input-pathname)
-			      (pathname-directory input-pathname)
-			      #f
-			      externs-pathname-type
-			      'newest)))
+	       (lambda ()
+		 (make-pathname (pathname-host input-pathname)
+				(pathname-device input-pathname)
+				(pathname-directory input-pathname)
+				#f
+				(externs-pathname-type)
+				'newest))))
     (receive (expression externs-block externs)
 	(integrate/file input-pathname environment declarations)
       (if output-pathname
 	  (write-externs-file (pathname-new-type output-pathname
-						 externs-pathname-type)
+						 (externs-pathname-type))
 			      externs-block
 			      externs))
       expression)))
 
-(define externs-pathname-type
-  "ext")
+(define (externs-pathname-type)
+  (if sf/cross-compiling? "txe" "ext"))
 
-(define sf/default-externs-pathname
-  (make-pathname #f #f #f #f externs-pathname-type 'newest))
+(define (sf/default-externs-pathname)
+  (make-pathname #f #f #f #f (externs-pathname-type) 'newest))
 
 (define (read-externs-file pathname)
-  (let ((pathname (merge-pathnames pathname sf/default-externs-pathname)))
+  (let ((pathname (merge-pathnames pathname (sf/default-externs-pathname))))
     (let ((namestring (->namestring pathname)))
       (if (file-exists? pathname)
 	  (let ((object (fasload pathname #t))

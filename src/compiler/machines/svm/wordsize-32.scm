@@ -24,20 +24,9 @@ USA.
 
 |#
 
-;;;; Adapt host system.
-;;; package: (user)
+;;;; Machine Model for SVM: Word Size
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
-;;; This file is loaded by the cross-syntaxer and cross-compiler to
-;;; hack the host e.g. to add bindings that were added to the new
-;;; runtime AND used in the new CREF/SF/LIAR.  It is NOT loaded into
-;;; the new runtime.  It contains temporary hacks that will be kept
-;;; only until the new runtime is released.
-
-(if (lexical-unreferenceable? (->environment '()) 'target-bytes-per-object)
-    (environment-define (->environment '())
-			'target-bytes-per-object
-			bytes-per-object))
-
-unspecific
+(define-integrable scheme-object-width 32)

@@ -106,9 +106,9 @@ USA.
 	   ((ucode-primitive primitive-object-set-type 2)
 	    (ucode-type manifest-nm-vector)
 	    (fix:- n-words 1)))		;Subtract one for the manifest.
-	  (set-string-length! result (fix:+ n-chars 1))
-	  (string-set! result n-chars #\nul)
-	  (set-string-length! result n-chars)
+	  ((ucode-primitive set-string-length! 2) result (fix:+ n-chars 1))
+	  ((ucode-primitive string-set! 3) result n-chars #\nul)
+	  ((ucode-primitive set-string-length! 2) result n-chars)
 	  ((ucode-primitive primitive-increment-free 1) n-words)
 	  (set-interrupt-enables! mask)
 	  result)))))

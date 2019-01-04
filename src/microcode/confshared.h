@@ -222,6 +222,10 @@ typedef enum
   FASL_IA64,
   FASL_ARM,
   FASL_AARCH64,
+  FASL_SVM1_32BE,
+  FASL_SVM1_32LE,
+  FASL_SVM1_64BE,
+  FASL_SVM1_64LE,
 } fasl_arch_t;
 
 /* Possible values for COMPILER_PROCESSOR_TYPE.  This identifies the
@@ -655,6 +659,11 @@ extern void win32_stack_reset (void);
    extern void * mmap_heap_malloc (unsigned long);
 #  define HEAP_MALLOC mmap_heap_malloc
 #  define HEAP_FREE(address)
+#endif
+
+#ifdef CC_IS_SVM
+#  undef CURRENT_FASL_ARCH
+#  define CURRENT_FASL_ARCH svm_fasl_arch
 #endif
 
 #endif /* SCM_CONFSHARED_H */

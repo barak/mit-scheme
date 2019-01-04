@@ -31,4 +31,6 @@ USA.
 #define CC_IS_SVM 1
 #define CC_IS_GENERIC 1
 
+extern const fasl_arch_t svm_fasl_arch;
+
 #endif /* !SCM_CMPINTMD_CONFIG_H_INCLUDED */

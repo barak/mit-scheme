@@ -393,6 +393,27 @@ USA.
 	  dbg-label/offset
 	  set-dbg-label/external?!))
 
+(define-package (compiler portable-fasdump)
+  (files "base/fasdump")
+  (parent ())			       	;** This code should be portable.
+  (export ()
+	  fasl-format:aarch64be
+	  fasl-format:aarch64le
+	  fasl-format:alpha
+	  fasl-format:amd64
+	  fasl-format:arm32be
+	  fasl-format:arm32le
+	  fasl-format:i386
+	  fasl-format:mips32be
+	  fasl-format:mips32le
+	  fasl-format:ppc32
+	  fasl-format:sparc32
+	  fasl-format:svm1-32be
+	  fasl-format:svm1-32le
+	  fasl-format:svm1-64be
+	  fasl-format:svm1-64le
+	  portable-fasdump))
+
 (define-package (compiler constraints)
    (files "base/constr")
    (parent (compiler))

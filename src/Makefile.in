@@ -65,6 +65,7 @@ LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) ffi sos ssp xml
 
 SUBDIRS = $(INSTALLED_SUBDIRS) win32 xdoc
 INSTALLED_SUBDIRS = microcode runtime $(OPTION_SUBDIRS) $(LIARC_BUNDLES)
+TOOLCHAIN_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 OPTION_SUBDIRS = @OPTION_SUBDIRS@
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
@@ -72,15 +73,21 @@ AUXDIR_NAME = @AUXDIR_NAME@
 AUXDIR = @AUXDIR@
 
 @IF_CROSS@COMPILER_SETTINGS_CROSS = (set! compiler:cross-compiling? true)
+@IF_CROSS@SF_SETTINGS_CROSS = \
+@IF_CROSS@	(set! sf/cross-compiling? true) \
+@IF_CROSS@	(set! package/cross-compiling? true) \
+@IF_CROSS@	(set! target-bytes-per-object \
+@IF_CROSS@	      (lambda () @mit_scheme_target_bytes_per_object@))
 @IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
 HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
 
 HOST_COMPILER_SETTINGS = \
+	$(SF_SETTINGS_CROSS) \
 	$(COMPILER_SETTINGS_CROSS) \
 	$(COMPILER_SETTINGS_LIARC)
 
 HOST_COMPILER = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) --no-init-file \
-  --eval '(begin $(HOST_COMPILER_SETTINGS))' --load runtime/host-adapter.scm
+  --load runtime/host-adapter.scm --eval '(begin $(HOST_COMPILER_SETTINGS))'
 
 HOST_RUNTIME_ONLY = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
   --band runtime.com --no-init-file --load runtime/host-adapter.scm
@@ -133,7 +140,10 @@ all-toolchain: all-cref
 all-toolchain: all-ffi
 all-toolchain: all-runtime
 all-toolchain: all-sf
+all-toolchain: all-sos
+all-toolchain: all-ssp
 all-toolchain: all-star-parser
+all-toolchain: all-xml
 
 # XXX This should really depend on microcode/gen-nonce and
 # microcode/extract-liarc-decls instead of microcode/scheme, but
@@ -175,7 +185,7 @@ microcode/svm1-defns.h: compiler/machines/svm/svm1-defns.h
 ################
 
 lib/runtime.com: microcode/scheme
-lib/runtime.com: all-runtime
+@IF_NATIVE@lib/runtime.com: all-runtime
 @IF_CROSS@lib/runtime.com: stamp_cross-finished
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \
@@ -183,9 +193,9 @@ lib/runtime.com: all-runtime
 
 lib/all.com: microcode/scheme
 lib/all.com: lib/runtime.com
-lib/all.com: all-compiler
-lib/all.com: all-sf
-lib/all.com: all-cref
+@IF_NATIVE@lib/all.com: all-compiler
+@IF_NATIVE@lib/all.com: all-sf
+@IF_NATIVE@lib/all.com: all-cref
 @IF_CROSS@lib/all.com: stamp_cross-finished
 	(echo '(begin' && \
 	 echo '  (load-option (quote compiler))' && \
@@ -202,9 +212,15 @@ all-runtime: compile-runtime
 @IF_LIARC@all-runtime: bundle-runtime
 
 .PHONY: compile-runtime
-compile-runtime:
+compile-runtime: syntax-runtime
 	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.sf") (load "runtime.cbf")))') \
+	 echo '  (lambda () (load "runtime.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-runtime
+syntax-runtime:
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.sf")))') \
 	| $(HOST_COMPILER)
 
 .PHONY: bundle-runtime
@@ -219,9 +235,15 @@ all-sf: compile-sf
 @IF_LIARC@all-sf: bundle-sf
 
 .PHONY: compile-sf
-compile-sf:
+compile-sf: syntax-sf
 	(echo '(with-working-directory-pathname "sf"' && \
-	 echo '  (lambda () (load "sf.sf") (load "sf.cbf")))') \
+	 echo '  (lambda () (load "sf.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-sf
+syntax-sf: syntax-runtime
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.sf")))') \
 	| $(HOST_COMPILER)
 
 .PHONY: bundle-sf
@@ -239,11 +261,14 @@ all-compiler: compile-compiler
 @IF_LIARC@all-compiler: bundle-compiler
 
 .PHONY: syntax-compiler
-syntax-compiler: compile-sf
+syntax-compiler: syntax-runtime
+syntax-compiler: syntax-sf
 @IF_SVM_COMPILER@syntax-compiler: compiler/machines/svm/svm1-defns.h
 	(echo '(with-working-directory-pathname "compiler"' && \
-	 echo '  (lambda () (load "compiler.sf")))') \
-	| $(HOST_RUNTIME_ONLY)
+	 echo '  (lambda ()' && \
+	 echo '    $(SF_SETTINGS_CROSS)' && \
+	 echo '    (load "compiler.sf")))') \
+	| $(HOST_RUNTIME_ONLY) --eval '(load-option (quote SF))'
 
 .PHONY: compile-compiler
 compile-compiler: compile-compiler-back
@@ -312,9 +337,15 @@ all-cref: compile-cref
 @IF_LIARC@all-cref: bundle-cref
 
 .PHONY: compile-cref
-compile-cref: compile-runtime
+compile-cref: syntax-cref
 	(echo '(with-working-directory-pathname "cref"' && \
-	 echo '  (lambda () (load "cref.sf") (load "cref.cbf")))') \
+	 echo '  (lambda () (load "cref.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-cref
+syntax-cref: syntax-runtime
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.sf")))') \
 	| $(HOST_COMPILER)
 
 .PHONY: bundle-cref
@@ -332,10 +363,14 @@ all-star-parser: compile-star-parser
 @IF_LIARC@all-star-parser: bundle-star-parser
 
 .PHONY: compile-star-parser
-compile-star-parser: compile-runtime
+compile-star-parser: syntax-runtime
 	(echo '(with-working-directory-pathname "star-parser"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+
+# No separate syntax step; compile step generates .pkd file.
+.PHONY: syntax-star-parser
+syntax-star-parser: compile-star-parser
 
 .PHONY: bundle-star-parser
 bundle-star-parser: liarc-bundle-tools
@@ -356,7 +391,7 @@ all-ffi: compile-ffi
 @IF_LIARC@all-ffi: bundle-ffi
 
 .PHONY: compile-ffi
-compile-ffi: compile-runtime
+compile-ffi: syntax-runtime
 	(echo '(with-working-directory-pathname "ffi"' && \
 	 echo '  (lambda () (load "compile.scm")))') \
 	| $(HOST_COMPILER)
@@ -376,10 +411,14 @@ all-sos: compile-sos
 @IF_LIARC@all-sos: bundle-sos
 
 .PHONY: compile-sos
-compile-sos: compile-runtime
+compile-sos: syntax-runtime
 	(echo '(with-working-directory-pathname "sos"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+
+# No separate syntax step; compile step generates .pkd file.
+.PHONY: syntax-sos
+syntax-sos: compile-sos
 
 .PHONY: bundle-sos
 bundle-sos: liarc-bundle-tools
@@ -396,7 +435,8 @@ all-ssp: compile-ssp
 @IF_LIARC@all-ssp: bundle-ssp
 
 .PHONY: compile-ssp
-compile-ssp: compile-runtime compile-xml
+compile-ssp: syntax-runtime
+compile-ssp: syntax-xml
 	(echo '(with-working-directory-pathname "ssp"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
@@ -415,9 +455,15 @@ bundle-ssp: ssp/ssp-unx.c
 all-win32: compile-win32
 
 .PHONY: compile-win32
-compile-win32: compile-runtime
+compile-win32: syntax-win32
 	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda () (load "win32.sf") (load "win32.cbf")))') \
+	 echo '  (lambda () (load "win32.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-win32
+syntax-win32: syntax-runtime
+	(echo '(with-working-directory-pathname "win32"' && \
+	 echo '  (lambda () (load "win32.sf")))') \
 	| $(HOST_COMPILER)
 
 ################
@@ -429,10 +475,16 @@ all-xml: compile-xml
 @IF_LIARC@all-xml: bundle-xml
 
 .PHONY: compile-xml
-compile-xml: compile-runtime compile-sos compile-star-parser
+compile-xml: syntax-runtime
+compile-xml: syntax-sos
+compile-xml: syntax-star-parser
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+
+# No separate syntax step; compile step generates .pkd file.
+.PHONY: syntax-xml
+syntax-xml: compile-xml
 
 .PHONY: bundle-xml
 bundle-xml: liarc-bundle-tools
@@ -463,7 +515,8 @@ compile-blowfish-c:
 all-edwin: compile-edwin
 
 .PHONY: compile-edwin
-compile-edwin: all-toolchain compile-xml
+compile-edwin: all-toolchain
+compile-edwin: compile-xml
 @IF_BLOWFISH@compile-edwin: compile-blowfish
 @IF_GDBM@compile-edwin: compile-gdbm
 @IF_X11@compile-edwin: compile-x11
@@ -492,7 +545,9 @@ compile-gdbm-c:
 all-imail: compile-imail
 
 .PHONY: compile-imail
-compile-imail: all-toolchain compile-sos compile-edwin
+compile-imail: all-toolchain
+compile-imail: compile-edwin
+compile-imail: compile-sos
 	(cd imail && $(MAKE))
 
 ################
@@ -548,7 +603,9 @@ compile-x11-c:
 all-x11-screen: compile-x11-screen
 
 .PHONY: compile-x11-screen
-compile-x11-screen: all-toolchain compile-x11 compile-edwin
+compile-x11-screen: all-toolchain
+compile-x11-screen: compile-edwin
+compile-x11-screen: compile-x11
 	(cd x11-screen && $(MAKE))
 
 #####################
@@ -575,6 +632,16 @@ cross-host: compile-ssp
 cross-host: compile-star-parser
 cross-host: compile-win32
 cross-host: compile-xml
+	@(echo '(begin' && \
+	  echo '  (load "etc/crossbin")' && \
+	  echo '  (convert fasl-format:@mit_scheme_native_code@' && \
+	  echo '    "compiler" "compiler/base" "compiler/back"' && \
+	  echo '    "compiler/fgopt" "compiler/fggen" "compiler/fgopt"' && \
+	  echo '    "compiler/machine" "compiler/rtlbase"' && \
+	  echo '    "compiler/rtlgen" "compiler/rtlopt"' && \
+	  echo '    "cref" "ffi" "runtime" "sf" "sos" "ssp"' && \
+	  echo '    "ssp" "star-parser" "win32" "xml"))') \
+	| $(HOST_COMPILER)
 	echo "done" > stamp_$@
 
 .PHONY: cross-target
@@ -583,8 +650,12 @@ cross-target: stamp_cross-finished lib/runtime.com lib/all.com
 stamp_cross-finished: stamp_cross-host microcode/scheme
 	(echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
-	 echo '  ((access finish-cross-compilation:files env) ".."))') \
+	 echo '  ((access finish-cross-compilation:files env) "."))') \
 	| (cd runtime && ../run-build --batch-mode --fasl make.bin)
+	(echo '(let ((env (->environment (quote (runtime)))))' && \
+	 echo '  (load "../compiler/base/crsend" env)' && \
+	 echo '  ((access finish-cross-compilation:files env) ".."))') \
+	| (cd runtime && ../run-build --batch-mode --fasl make.com)
 	(echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
 	 echo '  ((access finish-cross-compilation:info-files env) ".."))') \
@@ -626,6 +697,10 @@ install: install-standard @INSTALL_LIARC_BUNDLES@
 .PHONY: install-standard
 install-standard: install-auxdir-top
 	@+$(MAKE_IN_SUBDIRS) install $(INSTALLED_SUBDIRS)
+
+.PHONY: install-toolchain
+install-toolchain: install-auxdir-top
+	@+$(MAKE_IN_SUBDIRS) install $(TOOLCHAIN_SUBDIRS)
 
 .PHONY: install-auxdir-top
 install-auxdir-top:

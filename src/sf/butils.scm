@@ -62,7 +62,7 @@ USA.
 (define sf-directory
   (directory-processor
    "scm"
-   (lambda () "bin")
+   (lambda () (if sf/cross-compiling? "nib" "bin"))
    (lambda (pathname output-directory)
      (sf pathname output-directory))))
 

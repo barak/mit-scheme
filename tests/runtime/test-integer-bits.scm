@@ -463,3 +463,7 @@ USA.
 
 (define-test 'UTF8-N:5 (lambda () (assert-= 5 (utf8-n #b11111001))))
 (define-test 'UTF8-N:6 (lambda () (assert-= 6 (utf8-n #b11111101))))
+
+(define-test 'SHIFT-RIGHT/TOO-MANY
+  (lambda ()
+    (assert-= (shift-right (identity-procedure 1234567) 100) 0)))
