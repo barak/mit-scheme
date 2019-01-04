@@ -134,17 +134,11 @@ USA.
 	  ((%record-type-proxy? marker) (%proxy->record-type marker))
 	  (else #f))))
 
-;; Temporary definition for cold load.
 (define (%record-type<= t1 t2)
   (or (eq? t1 t2)
       (let ((parent (%record-type-parent t1)))
 	(and parent
 	     (%record-type<= parent t2)))))
-
-(defer-boot-action 'predicate-relations
-  (lambda ()
-    (set! %record-type<= dispatch-tag<=)
-    unspecific))
 
 (define %record-metatag)
 (define record-type?)
