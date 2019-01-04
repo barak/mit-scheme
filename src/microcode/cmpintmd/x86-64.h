@@ -165,8 +165,8 @@ typedef uint8_t insn_t;
 #define CC_ENTRY_ADDRESS_PTR(e)		(e)
 #define CC_ENTRY_ADDRESS_PC(e)		((e) + (((const int64_t *) (e))[-1]))
 
-#define CC_RETURN_ADDRESS_PTR(r)	0
-#define CC_RETURN_ADDRESS_PC(r)		(r)
+#define CC_RETURN_ADDRESS_PTR(r)	(r)
+#define CC_RETURN_ADDRESS_PC(r)		((insn_t *) interface_to_scheme_return)
 
 insn_t * cc_return_address_to_entry_address (insn_t *);
 

@@ -210,6 +210,7 @@ static long make_apply_trampoline
 
 extern c_func_t ASM_ENTRY_POINT (interface_to_C);
 extern c_func_t ASM_ENTRY_POINT (interface_to_scheme);
+extern c_func_t ASM_ENTRY_POINT (interface_to_scheme_return);
 
 #define ENTER_SCHEME_ENTRY(ep) do					\
 {									\

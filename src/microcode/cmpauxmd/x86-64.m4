@@ -507,8 +507,8 @@ define_debugging_label(scheme_to_interface_return)
 
 define_c_label(interface_to_scheme)
 	# rax = interface_to_scheme
-	# rcx = compiled entry address, needed by compiled code; 0 if return
-	# rdx = compiled PC
+	# rcx = compiled entry/return address, needed by compiled code
+	# rdx = compiled PC, or interface_to_scheme_return
 ifdef(`WIN32',						# Register block = %rsi
 `	OP(mov,q)	TW(ABS(EVR(RegistersPtr)),regs)',
 `	OP(lea,q)	TW(ABS(EVR(Registers)),regs)')
@@ -525,7 +525,12 @@ ifdef(`WIN32',						# Register block = %rsi
 	OP(mov,q)	TW(REG(rax),REG(r8))		# Preserve if used
 	OP(and,q)	TW(rmask,REG(r8))		# Restore potential dynamic link
 	OP(mov,q)	TW(REG(r8),QOF(REGBLOCK_DLINK(),regs))
-	jmp	IJMP(REG(rdx))			# Invoke
+	jmp	IJMP(REG(rdx))			# Invoke entry or handler
+
+define_c_label(interface_to_scheme_return)
+	# rcx = compiled return address
+	OP(push,q)	REG(rcx)
+	ret					# Invoke return
 
 IF_WIN32(`
 use_external_code(EFR(WinntExceptionTransferHook))
@@ -770,9 +775,8 @@ define_debugging_label(set_interrupt_enables_no_stackoverflow)
 
 declare_alignment(2)
 asm_generic_return_rax:
-	OP(pop,q)	REG(rcx)
-	OP(and,q)	TW(rmask,REG(rcx))
-	jmp	IJMP(REG(rcx))			# Invoke return
+	OP(and,q)	TW(rmask,IND(REG(rsp)))
+	ret					# Invoke return
 
 declare_alignment(2)
 asm_generic_fixnum_result:
