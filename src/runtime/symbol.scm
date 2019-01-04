@@ -28,6 +28,7 @@ USA.
 ;;; package: (runtime symbol)
 
 (declare (usual-integrations))
+(declare (integrate-external "string"))
 
 (declare (integrate-operator symbol?))
 (define (symbol? object)
