@@ -44,6 +44,7 @@ USA.
     "compiler/test-fgopt-conect"
     "compiler/test-toplev"
     "compiler/test-varname"
+    "compiler/test-vartrap"
     "compiler/test-y"
     "microcode/test-chacha"
     ;++ Kludge to run the flonum cast tests interpreted and compiled --
