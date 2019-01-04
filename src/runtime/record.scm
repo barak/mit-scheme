@@ -31,6 +31,7 @@ USA.
 ;;; conforms to R4RS proposal
 
 (declare (usual-integrations))
+(declare (integrate-external "dispatch-tag"))
 
 (define-primitives
   (vector-cons 2))
@@ -161,7 +162,7 @@ USA.
   (dispatch-tag-extra-ref record-type 2))
 
 (define-integrable (%record-type-instance-marker record-type)
-  (dispatch-tag-extra-ref record-type 3))
+  (%dispatch-tag-extra-ref record-type 3))
 
 (define-integrable (%set-record-type-instance-marker! record-type marker)
   (%dispatch-tag-extra-set! record-type 3 marker))

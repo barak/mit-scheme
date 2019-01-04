@@ -5377,6 +5377,7 @@ USA.
 	  probe-cache-4)
   (export (runtime record)
 	  %dispatch-tag-extra-index
+	  %dispatch-tag-extra-ref
 	  %dispatch-tag-extra-set!))
 
 (define-package (runtime crypto)
