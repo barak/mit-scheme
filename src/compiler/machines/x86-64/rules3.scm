@@ -33,30 +33,33 @@ USA.
 
 (define-rule statement
   (POP-RETURN)
+  (let* ((checks (get-exit-interrupt-checks))
+	 (prefix (clear-map!))
+	 (suffix
+	  (if (pair? checks)
+	      (pop-return/interrupt-check)
+	      (pop-return))))
+    (LAP ,@prefix
+	 ,@suffix)))
+
+(define (pop-return)
   ;; The continuation is on the stack.
   ;; The type code needs to be cleared first.
-  (let ((checks (get-exit-interrupt-checks)))
-    (cond ((null? checks)
-	   (current-bblock-continue!
-	    (make-new-sblock
-	     (LAP (AND Q (@R ,rsp) (R ,regnum:datum-mask))
-		  (RET)))))
-	  ((block-association 'POP-RETURN)
-	   => current-bblock-continue!)
-	  (else
-	   (let ((bblock
-		  (make-new-sblock
-		   (let ((interrupt-label (generate-label 'INTERRUPT)))
-		     (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
-			  (JGE (@PCR ,interrupt-label))
-			  (AND Q (@R ,rsp) (R ,regnum:datum-mask))
-			  (RET)
-			  (LABEL ,interrupt-label)
-			  ,@(invoke-hook
-			     entry:compiler-interrupt-continuation-2))))))
-	     (block-associate! 'POP-RETURN bblock)
-	     (current-bblock-continue! bblock))))
-    (clear-map!)))
+  (LAP (AND Q (@R ,rsp) (R ,regnum:datum-mask))
+       (RET)))
+
+(define (pop-return/interrupt-check)
+  (share-instruction-sequence! 'POP-RETURN
+    (lambda (label) (LAP (JMP (@PCR ,label))))
+    (lambda (label)
+      (let ((interrupt-label (generate-label 'INTERRUPT)))
+	(LAP (LABEL ,label)
+	     (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
+	     ;; Forward branch -> statically predicted not-taken.
+	     (JGE (@PCR ,interrupt-label))
+	     ,@(pop-return)
+	     (LABEL ,interrupt-label)
+	     ,@(invoke-hook entry:compiler-interrupt-continuation-2))))))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -232,7 +235,7 @@ USA.
   continuation
   (assert (= frame-size 2))
   (let* ((prefix (clear-map!))
-	 (interrupt (generate-label 'INTERRUPT)))
+	 (suffix (pop-return/interrupt-check)))
     (LAP ,@prefix
 	 ;; Load new interrupt mask into rdx.
 	 (POP Q (R ,rdx))		;rdx := new interrupt mask
@@ -242,14 +245,9 @@ USA.
 	 (OR Q (R ,rax) ,reg:int-mask)
 	 ;; Set the new interrupt mask.  (Preserves rax.)
 	 ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
-	 ;; Interrupts may now be enabled that weren't before, so check.
-	 (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
-	 (JGE (@PCR ,interrupt))
-	 ;; Pop-return.  Return value is in rax.
-	 (AND Q (@R ,rsp) (R ,regnum:datum-mask))
-	 (RET)
-	(LABEL ,interrupt)
-	 ,@(invoke-hook entry:compiler-interrupt-continuation-2))))
+	 ;; Return value is in rax.  Pop-return, but check for
+	 ;; interrupts that may be enabled now.
+	 ,@suffix)))
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
@@ -259,13 +257,13 @@ USA.
   continuation
   (assert (= frame-size 3))
   (let* ((prefix (clear-map!))
-         (restore (generate-label 'RESTORE-INTERRUPTS))
-         (pushed (generate-label 'PUSHED))
-	 (interrupt (generate-label 'INTERRUPT))
-         (tag-continuation
-          (affix-type (INST-EA (@R ,rsp))
+	 (restore (generate-label 'RESTORE-INTERRUPTS))
+	 (pushed (generate-label 'PUSHED))
+	 (tag-continuation
+	  (affix-type (INST-EA (@R ,rsp))
 		      type-code:compiled-return
-		      (lambda () rax))))
+		      (lambda () rax)))
+	 (suffix (pop-return/interrupt-check)))
     ;; Stack initially looks like:
     ;;
     ;;	rsp[0] = new-mask
@@ -334,14 +332,9 @@ USA.
 	 ;; Restore interrupts mask.
 	 (POP Q (R ,rdx))
 	 ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
-	 ;; Interrupts may be unmasked now, so check.
-	 (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
-	 (JGE (@PCR ,interrupt))
-	 ;; Pop-return.
-	 (AND Q (@R ,rsp) (R ,regnum:datum-mask))
-	 (RET)
-	(LABEL ,interrupt)
-	 ,@(invoke-hook entry:compiler-interrupt-continuation-2))))
+	 ;; Return value is in rax.  Pop-return, but check for
+	 ;; interrupts that may be enabled now.
+	 ,@suffix)))
 
 (let-syntax
     ((define-primitive-invocation
@@ -532,32 +525,30 @@ USA.
 ;;; interrupt handler that saves and restores the dynamic link
 ;;; register.
 
-(define (interrupt-check checks invoke)
-  ;; This always does interrupt checks in line.
-  (let ((branch-target (generate-label 'INTERRUPT)))
+(define (interrupt-check checks label)
+  (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
+	     (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
+		  (JGE (@PCR ,label)))
+	     (LAP))
+       ,@(if (memq 'STACK checks)
+	     (LAP (CMP Q (R ,regnum:stack-pointer) ,reg:stack-guard)
+		  (JL (@PCR ,label)))
+	     (LAP))))
+
+(define (simple-procedure-header code-word label entry)
+  (let ((checks (get-entry-interrupt-checks))
+	(interrupt-label (generate-label 'INTERRUPT)))
     ;; Put the interrupt check branch target after the branch so that
     ;; it is a forward branch, which Intel and AMD CPUs will predict
     ;; not taken by default, in the absence of dynamic branch
-    ;; prediction profile data.  Also probably worthwhile to keep it
-    ;; far away so that it doesn't occupy space in the instruction
-    ;; cache.
-    (add-end-of-block-code!
-     (lambda ()
-       (LAP (LABEL ,branch-target)
-	    ,@invoke)))
-    (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
-	       (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
-		    (JGE (@PCR ,branch-target)))
-	       (LAP))
-	 ,@(if (memq 'STACK checks)
-	       (LAP (CMP Q (R ,regnum:stack-pointer) ,reg:stack-guard)
-		    (JL (@PCR ,branch-target)))
-	       (LAP)))))
-
-(define (simple-procedure-header code-word label entry)
-  (let ((checks (get-entry-interrupt-checks)))
+    ;; prediction profile data.
+    (if (pair? checks)
+	(add-end-of-block-code!
+	 (lambda ()
+	   (LAP (LABEL ,interrupt-label)
+		,@(invoke-hook/reentry entry label)))))
     (LAP ,@(make-external-label code-word label)
-	 ,@(interrupt-check checks (invoke-hook/reentry entry label)))))
+	 ,@(interrupt-check checks interrupt-label))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -581,16 +572,21 @@ USA.
 
 (define-rule statement
   (IC-PROCEDURE-HEADER (? internal-label))
-  (let ((procedure (label->object internal-label)))
-    (let ((external-label (rtl-procedure/external-label procedure))
-	  (checks (get-entry-interrupt-checks)))
-      (LAP (ENTRY-POINT ,external-label)
-	   (EQUATE ,external-label ,internal-label)
-	   ,@(make-external-label expression-code-word internal-label)
-	   ,@(interrupt-check
-	      checks
-	      (invoke-interface/reentry code:compiler-interrupt-ic-procedure
-					internal-label))))))
+  (let* ((procedure (label->object internal-label))
+	 (external-label (rtl-procedure/external-label procedure))
+	 (checks (get-entry-interrupt-checks))
+	 (interrupt-label (generate-label 'INTERRUPT)))
+    (if (pair? checks)
+	(add-end-of-block-code!
+	 (lambda ()
+	   (LAP (LABEL ,interrupt-label)
+		,@(invoke-interface/reentry
+		   code:compiler-interrupt-ic-procedure
+		   internal-label)))))
+    (LAP (ENTRY-POINT ,external-label)
+	 (EQUATE ,external-label ,internal-label)
+	 ,@(make-external-label expression-code-word internal-label)
+	 ,@(interrupt-check checks interrupt-label))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -715,11 +711,19 @@ USA.
 		   entry:compiler-interrupt-procedure)))
 	  ((pair? checks)
 	   (LAP ,@(label+adjustment)
-		,@(interrupt-check
-		   checks
-		   (invoke-hook entry:compiler-interrupt-closure))))
+		,@(interrupt-check checks (closure-interrupt-label))))
 	  (else
 	   (label+adjustment)))))
+
+(define (closure-interrupt-label)
+  (or (block-association 'INTERRUPT-CLOSURE)
+      (let ((label (generate-label 'INTERRUPT-CLOSURE)))
+	(add-end-of-block-code!
+	 (lambda ()
+	   (LAP (LABEL ,label)
+		,@(invoke-hook entry:compiler-interrupt-closure))))
+	(block-associate! 'INTERRUPT-CLOSURE label)
+	label)))
 
 (define-integrable (make-closure-manifest size)
   (make-multiclosure-manifest 1 size))
