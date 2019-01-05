@@ -438,13 +438,10 @@ define_debugging_label(trampoline_to_interface)
 	OP(mov,q)	TW(REG(rcx),REG(rbx))		# argument in rbx
 	jmp	scheme_to_interface
 
-# We used to CALL this to get the return address on the stack, but now
-# we use RIP-relative addressing to load directly into %rbx -- which
-# doesn't ruin the return address branch target prediction stack -- so
-# that this is no longer needed.
 define_hook_label(scheme_to_interface_call)
 define_debugging_label(scheme_to_interface_call)
-	nop
+	OP(pop,q)	REG(rbx)			# pop untagged ret addr
+define_debugging_label(scheme_to_interface_reentry)
 #	jmp	scheme_to_interface
 
 # scheme_to_interface passes control from compiled Scheme code to a
@@ -571,19 +568,25 @@ define(define_call_indirection,
 	OP(mov,b)	TW(IMM(HEX($2)),REG(r9b))
 	jmp	scheme_to_interface_call')
 
-define_call_indirection(interrupt_procedure,1a)
-define_call_indirection(interrupt_continuation,1b)
+# Expects compiled entry address (with zero offset) in rbx.
+define(define_reentry_indirection,
+`define_hook_label($1)
+	OP(mov,b)	TW(IMM(HEX($2)),REG(r9b))
+	jmp	scheme_to_interface')
+
+define_reentry_indirection(interrupt_procedure,1a)
+define_reentry_indirection(interrupt_continuation,1b)
 define_jump_indirection(interrupt_closure,18)
 define_jump_indirection(interrupt_continuation_2,3b)
 
+# Expects compiled entry address (with zero offset) in rbx.
 define_hook_label(interrupt_dlink)
 	OP(mov,q)	TW(QOF(REGBLOCK_DLINK(),regs),REG(rdx))
 	OP(mov,b)	TW(IMM(HEX(19)),REG(r9b))
-	jmp	scheme_to_interface_call
+	jmp	scheme_to_interface_reentry
 
 declare_alignment(2)
 define_jump_indirection(primitive_apply,12)
-
 define_jump_indirection(primitive_lexpr_apply,13)
 define_jump_indirection(error,15)
 define_call_indirection(link,17)

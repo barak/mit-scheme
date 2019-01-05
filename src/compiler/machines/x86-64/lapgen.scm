@@ -724,27 +724,47 @@ USA.
   (LAP (JMP ,entry)))
 
 ;; Invoke a hook that will pop an untagged return address off the stack
-;; and jump to it with RET, just like a C subroutine.
+;; and jump to it with RET, just like a C subroutine.  To be used for
+;; super-cheap assembly hooks that never fail but are a little too
+;; large to copy in every caller.
 
 (define-integrable (invoke-hook/subroutine entry)
   (LAP (CALL ,entry)))
 
-;; Invoke a hook that expects a compiled entry address in rbx and will
-;; jump to it with JMP.
+;; Invoke a hook that expects a compiled return address on the stack,
+;; may examine it, and will eventually pop it and return to it with
+;; RET.  It is worthwhile to use paired CALL/RET here because in the
+;; fast path, non-error case, the hook will just return to Scheme; only
+;; in error or complicated cases will it return to C.  To be used for
+;; compiler utilities that are usually cheap but may have error cases
+;; and may call back into C.
 
-(define (invoke-hook/reentry entry)
-  (let ((label (generate-label 'HOOK-REENTRY)))
-    (LAP (LEA Q (R ,rbx) (@PCRO ,label 12)) ;Skip format word and PC offset.
-	 ,@(invoke-hook entry)
-	 (LABEL ,label))))
+(define-integrable (invoke-hook/call entry label)
+  (LAP (CALL ,entry)
+       (JMP (@PCR ,label))))
+
+;; Invoke a hook that expects a compiled entry address in rbx (first
+;; utility argument) and will later jump to it with JMP.  It is not
+;; worthwhile to use paired CALL/RET here because the microcode will
+;; RET back into C code on the C stack to handle it, which wrecks the
+;; return address branch target predictor anyway.  To be used for,
+;; e.g., interrupts, which are assumed to be always expensive.
+
+(define-integrable (invoke-hook/reentry entry label)
+  (LAP (LEA Q (R ,rbx) (@PCR ,label))
+       ,@(invoke-hook entry)))
 
 (define-integrable (invoke-interface code)
   (LAP (MOV B (R ,r9) (& ,code))
        ,@(invoke-hook entry:compiler-scheme-to-interface)))
 
-(define-integrable (invoke-interface/call code)
+(define-integrable (invoke-interface/call code label)
   (LAP (MOV B (R ,r9) (& ,code))
-       ,@(invoke-hook/reentry entry:compiler-scheme-to-interface/call)))
+       ,@(invoke-hook/call entry:compiler-scheme-to-interface/call label)))
+
+(define-integrable (invoke-interface/reentry code label)
+  (LAP (MOV B (R ,r9) (& ,code))
+       ,@(invoke-hook/reentry entry:compiler-scheme-to-interface label)))
 
 (define-syntax define-entries
   (sc-macro-transformer

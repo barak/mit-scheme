@@ -851,7 +851,7 @@ DEFINE_SCHEME_UTILITY_4 (comutil_link,
     if (result != PRIM_DONE)
       RETURN_TO_C (result);
   }
-  RETURN_TO_SCHEME_ENTRY (s.return_address);
+  RETURN_TO_SCHEME_CONTINUATION (s.return_address);
 }
 
 /* comp_link_caches_restart is used to continue the linking process
@@ -875,7 +875,7 @@ DEFINE_SCHEME_ENTRY (comp_link_caches_restart)
   if (result != PRIM_DONE)
     return (result);
 
-  ENTER_SCHEME_ENTRY (s.return_address);
+  ENTER_SCHEME_CONTINUATION (s.return_address);
 }
 
 static long
@@ -921,7 +921,7 @@ update_cache_after_link (link_cc_state_t * s)
 {
 #if defined(FLUSH_I_CACHE_REGION) || defined(PUSH_D_CACHE_REGION)
   SCHEME_OBJECT * addr = (s->block_address);
-  if ((cc_entry_address_to_block_address (s->return_address)) == addr)
+  if ((cc_return_address_to_block_address (s->return_address)) == addr)
 #ifdef FLUSH_I_CACHE_REGION
     FLUSH_I_CACHE_REGION (addr, (CC_BLOCK_ADDR_LENGTH (addr)));
 #else
@@ -1047,7 +1047,7 @@ static void
 back_out_of_link_section (link_cc_state_t * s)
 {
   /* Save enough state to restart.  */
-  STACK_PUSH (MAKE_CC_ENTRY (s->return_address));
+  STACK_PUSH (MAKE_CC_RETURN (s->return_address));
   STACK_PUSH (ULONG_TO_FIXNUM ((s->n_sections) - (s->n_linked_sections)));
   STACK_PUSH (ULONG_TO_FIXNUM ((s->scan0) - (s->block_address)));
   STACK_PUSH (ULONG_TO_FIXNUM ((s->scan) - (s->block_address)));
@@ -1067,7 +1067,7 @@ restore_link_cc_state (link_cc_state_t * s)
   (s->scan) = ((s->block_address) + (OBJECT_DATUM (STACK_POP ())));
   (s->scan0) = ((s->block_address) + (OBJECT_DATUM (STACK_POP ())));
   (s->n_sections) = (OBJECT_DATUM (STACK_POP ()));
-  (s->return_address) = (CC_ENTRY_ADDRESS (STACK_POP ()));
+  (s->return_address) = (CC_RETURN_ADDRESS (STACK_POP ()));
 
   (s->n_linked_sections) = 0;
   (s->type) = (linkage_section_type (* (s->scan0)));
@@ -1172,6 +1172,8 @@ section_execute_p (SCHEME_OBJECT h)
    continuation is a piece of state that will be returned to
    GET_VAL and GET_ENV (both) upon return.  */
 
+/* Stack has invocation frame with tagged closure on top.  */
+
 DEFINE_SCHEME_UTILITY_0 (comutil_interrupt_closure)
 {
   compiler_interrupt_common (DSU_result, 0, SHARP_F);
@@ -1194,10 +1196,10 @@ DEFINE_SCHEME_UTILITY_1 (comutil_interrupt_procedure, entry_point)
 
 /* GET_VAL has live data, and there is no entry address on the stack */
 
-DEFINE_SCHEME_UTILITY_1 (comutil_interrupt_continuation, return_addr)
+DEFINE_SCHEME_UTILITY_1 (comutil_interrupt_continuation, entry_point)
 {
-  DECLARE_UTILITY_ARG (insn_t *, return_addr);
-  compiler_interrupt_common (DSU_result, return_addr, GET_VAL);
+  DECLARE_UTILITY_ARG (insn_t *, entry_point);
+  compiler_interrupt_common (DSU_result, entry_point, GET_VAL);
 }
 
 /* GET_ENV has live data; no entry point on the stack */
@@ -1208,6 +1210,8 @@ DEFINE_SCHEME_UTILITY_1 (comutil_interrupt_ic_procedure, entry_point)
   compiler_interrupt_common (DSU_result, entry_point, GET_ENV);
 }
 
+/* GET_VAL has live data, and the tagged continuation is on top of stack.  */
+
 DEFINE_SCHEME_UTILITY_0 (comutil_interrupt_continuation_2)
 {
   compiler_interrupt_return_to_entry ();
@@ -1216,7 +1220,9 @@ DEFINE_SCHEME_UTILITY_0 (comutil_interrupt_continuation_2)
 
 /* Convert the compiled return address on the stack to a compiled
    entry.  This is easier than adding a different interpreter return
-   code, &c.  */
+   code, or creating a stub compiled entry that just does pop-return.
+   It's OK if we ruin return address branch target prediction:
+   servicing interrupts is expensive anyway.  */
 
 static void
 compiler_interrupt_return_to_entry (void)
@@ -1231,14 +1237,14 @@ compiler_interrupt_return_to_entry (void)
 
 void
 compiler_interrupt_common (utility_result_t * DSU_result,
-			   insn_t * address,
+			   insn_t * entry_address,
 			   SCHEME_OBJECT state)
 {
   if (!FREE_OK_P (Free))
     REQUEST_GC (Free - heap_alloc_limit);
   STACK_CHECK (0);
-  if (address != 0)
-    STACK_PUSH (MAKE_CC_ENTRY (address));
+  if (entry_address != 0)
+    STACK_PUSH (MAKE_CC_ENTRY (entry_address));
   assert (CC_ENTRY_P (STACK_REF (0)));
   STACK_PUSH (state);
   SAVE_LAST_RETURN_CODE (RC_COMP_INTERRUPT_RESTART);
@@ -1271,8 +1277,8 @@ DEFINE_SCHEME_UTILITY_3 (comutil_assignment_trap,
   long code = (compiler_assignment_trap (cache, new_val, (&old_val)));
   if (code != PRIM_DONE)
     {
-      SCHEME_OBJECT sra = (MAKE_CC_ENTRY (ret_addr));
-      SCHEME_OBJECT block = (cc_entry_to_block (sra));
+      SCHEME_OBJECT sra = (MAKE_CC_RETURN (ret_addr));
+      SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (new_val);
       STACK_PUSH (cc_block_environment (block));
@@ -1282,7 +1288,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_assignment_trap,
       RETURN_TO_C (code);
     }
   SET_VAL (old_val);
-  RETURN_TO_SCHEME_ENTRY (ret_addr);
+  RETURN_TO_SCHEME_CONTINUATION (ret_addr);
 }
 
 DEFINE_SCHEME_ENTRY (comp_assignment_trap_restart)
@@ -1303,7 +1309,7 @@ DEFINE_SCHEME_ENTRY (comp_assignment_trap_restart)
 	return (code);
       }
     SET_VAL (old_val);
-    JUMP_TO_CC_ENTRY (STACK_POP ());
+    JUMP_TO_CC_RETURN (STACK_POP ());
   }
 }
 
@@ -1372,8 +1378,8 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lookup_trap, ret_addr, cache_addr)
   long code = (compiler_lookup_trap (cache, (&val)));
   if (code != PRIM_DONE)
     {
-      SCHEME_OBJECT sra = (MAKE_CC_ENTRY (ret_addr));
-      SCHEME_OBJECT block = (cc_entry_to_block (sra));
+      SCHEME_OBJECT sra = (MAKE_CC_RETURN (ret_addr));
+      SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (cc_block_environment (block));
       STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_LOOKUP));
@@ -1381,7 +1387,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lookup_trap, ret_addr, cache_addr)
       RETURN_TO_C (code);
     }
   SET_VAL (val);
-  RETURN_TO_SCHEME_ENTRY (ret_addr);
+  RETURN_TO_SCHEME_CONTINUATION (ret_addr);
 }
 
 DEFINE_SCHEME_ENTRY (comp_lookup_trap_restart)
@@ -1400,7 +1406,7 @@ DEFINE_SCHEME_ENTRY (comp_lookup_trap_restart)
 	return (code);
       }
     SET_VAL (val);
-    JUMP_TO_CC_ENTRY (STACK_POP ());
+    JUMP_TO_CC_RETURN (STACK_POP ());
   }
 }
 
@@ -1413,8 +1419,8 @@ DEFINE_SCHEME_UTILITY_2 (comutil_safe_lookup_trap, ret_addr, cache_addr)
   long code = (compiler_safe_lookup_trap (cache, (&val)));
   if (code != PRIM_DONE)
     {
-      SCHEME_OBJECT sra = (MAKE_CC_ENTRY (ret_addr));
-      SCHEME_OBJECT block = (cc_entry_to_block (sra));
+      SCHEME_OBJECT sra = (MAKE_CC_RETURN (ret_addr));
+      SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (cc_block_environment (block));
       STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_LOOKUP));
@@ -1422,7 +1428,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_safe_lookup_trap, ret_addr, cache_addr)
       RETURN_TO_C (code);
     }
   SET_VAL (val);
-  RETURN_TO_SCHEME_ENTRY (ret_addr);
+  RETURN_TO_SCHEME_CONTINUATION (ret_addr);
 }
 
 DEFINE_SCHEME_ENTRY (comp_safe_lookup_trap_restart)
@@ -1441,7 +1447,7 @@ DEFINE_SCHEME_ENTRY (comp_safe_lookup_trap_restart)
 	return (code);
       }
     SET_VAL (val);
-    JUMP_TO_CC_ENTRY (STACK_POP ());
+    JUMP_TO_CC_RETURN (STACK_POP ());
   }
 }
 
@@ -1454,8 +1460,8 @@ DEFINE_SCHEME_UTILITY_2 (comutil_unassigned_p_trap, ret_addr, cache_addr)
   long code = (compiler_unassigned_p_trap (cache, (&val)));
   if (code != PRIM_DONE)
     {
-      SCHEME_OBJECT sra = (MAKE_CC_ENTRY (ret_addr));
-      SCHEME_OBJECT block = (cc_entry_to_block (sra));
+      SCHEME_OBJECT sra = (MAKE_CC_RETURN (ret_addr));
+      SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (cc_block_environment (block));
       STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_LOOKUP));
@@ -1463,7 +1469,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_unassigned_p_trap, ret_addr, cache_addr)
       RETURN_TO_C (code);
     }
   SET_VAL (val);
-  RETURN_TO_SCHEME_ENTRY (ret_addr);
+  RETURN_TO_SCHEME_CONTINUATION (ret_addr);
 }
 
 DEFINE_SCHEME_ENTRY (comp_unassigned_p_trap_restart)
@@ -1482,7 +1488,7 @@ DEFINE_SCHEME_ENTRY (comp_unassigned_p_trap_restart)
 	return (code);
       }
     SET_VAL (val);
-    JUMP_TO_CC_ENTRY (STACK_POP ());
+    JUMP_TO_CC_RETURN (STACK_POP ());
   }
 }
 

@@ -532,17 +532,19 @@ USA.
 ;;; interrupt handler that saves and restores the dynamic link
 ;;; register.
 
-(define (interrupt-check interrupt-label checks)
+(define (interrupt-check checks invoke)
   ;; This always does interrupt checks in line.
   (let ((branch-target (generate-label 'INTERRUPT)))
     ;; Put the interrupt check branch target after the branch so that
     ;; it is a forward branch, which Intel and AMD CPUs will predict
     ;; not taken by default, in the absence of dynamic branch
-    ;; prediction profile data.
+    ;; prediction profile data.  Also probably worthwhile to keep it
+    ;; far away so that it doesn't occupy space in the instruction
+    ;; cache.
     (add-end-of-block-code!
      (lambda ()
        (LAP (LABEL ,branch-target)
-	    (JMP (@PCR ,interrupt-label)))))
+	    ,@invoke)))
     (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
 	       (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
 		    (JGE (@PCR ,branch-target)))
@@ -554,13 +556,8 @@ USA.
 
 (define (simple-procedure-header code-word label entry)
   (let ((checks (get-entry-interrupt-checks)))
-    (if (null? checks)
-	(LAP ,@(make-external-label code-word label))
-	(let ((gc-label (generate-label)))
-	  (LAP (LABEL ,gc-label)
-	       ,@(invoke-hook/reentry entry)
-	       ,@(make-external-label code-word label)
-	       ,@(interrupt-check gc-label checks))))))
+    (LAP ,@(make-external-label code-word label)
+	 ,@(interrupt-check checks (invoke-hook/reentry entry label)))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -571,10 +568,6 @@ USA.
 (define-rule statement
   (CONTINUATION-HEADER (? internal-label))
   #|
-  ;; Note: This is wrong -- compiler-interrupt-continuation expects a
-  ;; compiled return address on the stack, but this will yield compiled
-  ;; entry addresses.  If you uncomment this, prepare to deal with the
-  ;; consequences.
   (simple-procedure-header (continuation-code-word internal-label)
 			   internal-label
 			   entry:compiler-interrupt-continuation)
@@ -583,18 +576,21 @@ USA.
   (make-external-label (continuation-code-word internal-label)
 		       internal-label))
 
+;;; XXX This rule has obviously never been exercised, since it was
+;;; broken for a decade and nobody noticed.  Maybe we should delete it.
+
 (define-rule statement
   (IC-PROCEDURE-HEADER (? internal-label))
-  (get-entry-interrupt-checks)		; force search
   (let ((procedure (label->object internal-label)))
     (let ((external-label (rtl-procedure/external-label procedure))
-	  (gc-label (generate-label)))
+	  (checks (get-entry-interrupt-checks)))
       (LAP (ENTRY-POINT ,external-label)
 	   (EQUATE ,external-label ,internal-label)
-	   (LABEL ,gc-label)
-	   ,@(invoke-interface/call code:compiler-interrupt-ic-procedure)
 	   ,@(make-external-label expression-code-word internal-label)
-	   ,@(interrupt-check gc-label)))))
+	   ,@(interrupt-check
+	      checks
+	      (invoke-interface/reentry code:compiler-interrupt-ic-procedure
+					internal-label))))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -718,11 +714,10 @@ USA.
 		   internal-label
 		   entry:compiler-interrupt-procedure)))
 	  ((pair? checks)
-	   (let ((gc-label (generate-label 'GC-LABEL)))
-	     (LAP (LABEL ,gc-label)
-		  ,@(invoke-hook entry:compiler-interrupt-closure)
-		  ,@(label+adjustment)
-		  ,@(interrupt-check gc-label checks))))
+	   (LAP ,@(label+adjustment)
+		,@(interrupt-check
+		   checks
+		   (invoke-hook entry:compiler-interrupt-closure))))
 	  (else
 	   (label+adjustment)))))
 
@@ -785,41 +780,44 @@ USA.
 ;;; This is invoked by the top level of the LAP generator.
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
-  (LAP (MOV Q (R ,rax) ,reg:environment)
-       (MOV Q (@PCR ,environment-label) (R ,rax))
-       (LEA Q (R ,rdx) (@PCR ,*block-label*))
-       (LEA Q (R ,rcx) (@PCR ,free-ref-label))
-       (MOV Q (R ,r8) (&U ,n-sections))
-       #|
-       ,@(invoke-interface/call code:compiler-link)
-       |#
-       ,@(invoke-hook/reentry entry:compiler-link)
-       ,@(make-external-label (continuation-code-word #f)
-			      (generate-label))))
+  (let ((continuation-label (generate-label 'LINKED)))
+    (LAP (MOV Q (R ,rax) ,reg:environment)
+	 (MOV Q (@PCR ,environment-label) (R ,rax))
+	 (LEA Q (R ,rdx) (@PCR ,*block-label*))
+	 (LEA Q (R ,rcx) (@PCR ,free-ref-label))
+	 (MOV Q (R ,r8) (&U ,n-sections))
+	 #|
+	 ,@(invoke-interface/call code:compiler-link continuation-label)
+	 |#
+	 ,@(invoke-hook/call entry:compiler-link continuation-label)
+	 ,@(make-external-label (continuation-code-word #f)
+				continuation-label))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
 			      free-ref-offset
 			      n-sections)
-  (LAP (MOV Q (R ,rdx) (@PCR ,code-block-label))
-       (AND Q (R ,rdx) (R ,regnum:datum-mask))
-       (LEA Q (R ,rcx) (@RO ,rdx ,free-ref-offset))
-       (MOV Q (R ,rax) ,reg:environment)
-       (MOV Q (@RO ,rdx ,environment-offset) (R ,rax))
-       (MOV Q (R ,r8) (&U ,n-sections))
-       #|
-       ,@(invoke-interface/call code:compiler-link)
-       |#
-       ,@(invoke-hook/reentry entry:compiler-link)
-       ,@(make-external-label (continuation-code-word #f)
-			      (generate-label))))
+  (let ((continuation-label (generate-label 'LINKED)))
+    (LAP (MOV Q (R ,rdx) (@PCR ,code-block-label))
+	 (AND Q (R ,rdx) (R ,regnum:datum-mask))
+	 (LEA Q (R ,rcx) (@RO ,rdx ,free-ref-offset))
+	 (MOV Q (R ,rax) ,reg:environment)
+	 (MOV Q (@RO ,rdx ,environment-offset) (R ,rax))
+	 (MOV Q (R ,r8) (&U ,n-sections))
+	 #|
+	 ,@(invoke-interface/call code:compiler-link continuation-label)
+	 |#
+	 ,@(invoke-hook/call entry:compiler-link continuation-label)
+	 ,@(make-external-label (continuation-code-word #f)
+				continuation-label))))
 
 (define (generate/remote-links n-blocks vector-label nsects)
   (if (zero? n-blocks)
       (LAP)
       (let ((loop (generate-label))
 	    (bytes (generate-label))
-	    (end (generate-label)))
+	    (end (generate-label))
+	    (continuation (generate-label 'LINKED)))
 	(LAP
 	 ;; Push counter
 	 (PUSH Q (& 0))
@@ -859,9 +857,9 @@ USA.
 	      (@ROI ,rdx ,(* 2 address-units-per-object)
 		    ,rax ,address-units-per-object))
 	 ;; Invoke linker
-	 ,@(invoke-hook/reentry entry:compiler-link)
+	 ,@(invoke-hook/call entry:compiler-link continuation)
 	 ,@(make-external-label (continuation-code-word false)
-				(generate-label))
+				continuation)
 	 ;; Increment counter and loop
 	 (ADD Q (@R ,rsp) (&U 1))
 	 ,@(receive (temp prefix comparand)
