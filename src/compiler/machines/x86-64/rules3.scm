@@ -251,6 +251,63 @@ USA.
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
+  (QUALIFIER (eq? primitive (ucode-primitive with-stack-marker 3)))
+  continuation
+  (assert (= frame-size 4))		;primitive, procedure, type, instance
+  (let* ((prefix (clear-map!))
+	 (pushed (generate-label 'PUSHED))
+	 (pop-pop-return (generate-label 'POP-POP-RETURN))
+	 (tag-continuation
+	  (affix-type (INST-EA (@R ,rsp))
+		      type-code:compiled-return
+		      (lambda () rax)))
+	 (suffix (pop-return/interrupt-check)))
+    (LAP ,@prefix
+	 ;; Stack initially looks like:
+	 ;;
+	 ;;	rsp[0] = procedure
+	 ;;	rsp[1] = type
+	 ;;	rsp[2] = instance
+	 ;;	rsp[3] = continuation*
+	 ;;
+	 ;; We want:
+	 ;;
+	 ;;	rsp[0] = continuation that pops it all
+	 ;;	rsp[1] = reflect-to-interface
+	 ;;	rsp[2] = fixnum reflect-code:stack-marker
+	 ;;	rsp[3] = type
+	 ;;	rsp[4] = instance
+	 ;;	rsp[5] = continuation*
+	 ;;
+	 (POP Q (R ,rbx))		;procedure
+	 (MOV Q (R ,rcx) (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))
+	 (OR Q (R ,rcx) (& ,reflect-code:stack-marker))
+	 (PUSH Q (R ,rcx))
+	 (PUSH Q ,reg:reflect-to-interface)
+	 ;; Push a continuation onto the stack.
+	 (CALL (@PCR ,pushed))
+	 (JMP (@PCR ,pop-pop-return))
+	(LABEL ,pushed)
+	 ,@tag-continuation
+	 ;; Inovke rbx.  One procedure, zero arguments: frame size 1.
+	 ,@(invoke-hook/subroutine entry:compiler-apply-setup-size-1)
+	 (JMP (R ,rax))
+	 ,@(make-external-label (continuation-code-word #f) pop-pop-return)
+	 ;; Return value is in rax, so don't overwrite it.  Stack now looks
+	 ;; like:
+	 ;;
+	 ;;	rsp[0] = reflect-to-interface
+	 ;;	rsp[1] = fixnum reflect-code:stack-marker
+	 ;;	rsp[2] = type
+	 ;;	rsp[3] = instance
+	 ;;	rsp[4] = continuation*
+	 ;;
+	 ;; Pop it all off and return.
+	 (ADD Q (R ,rsp) (& ,(* 4 address-units-per-object)))
+	 ,@suffix)))
+
+(define-rule statement
+  (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   (QUALIFIER
    (or (eq? primitive (ucode-primitive with-interrupt-mask 2))
        (eq? primitive (ucode-primitive with-interrupts-reduced 2))))
