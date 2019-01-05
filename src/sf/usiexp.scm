@@ -566,7 +566,74 @@ USA.
 			    (list (first operands) (constant/make #f #f))))
 	    (else (make-combination expr block (ucode-primitive not) operands)))
       #f))
-
+
+(define (guarantee-expansion expr operands block)
+  (if (and (pair? operands)
+	   (pair? (cdr operands))
+	   (or (null? (cddr operands))
+	       (and (pair? (cddr operands))
+		    (null? (cdddr operands)))))
+      (let ((predicate-expr (car operands))
+	    (object-expr (cadr operands))
+	    (caller-expr (and (pair? (cddr operands)) (caddr operands))))
+	(combination/make
+	 expr
+	 block
+	 (let ((block (block/make block #t '())))
+	   (define (*const v) (constant/make #f v))
+	   (define (*ref var) (reference/make #f block var))
+	   (define (*begin . actions) (sequence/make #f actions))
+	   (define (*app operator operands)
+	     (combination/make #f block operator operands))
+	   (define (*lambda name variables body)
+	     (procedure/make #f block name variables '() #f body))
+	   (define (*declare declarations body)
+	     (declaration/make #f
+			       (declarations/parse block declarations)
+			       body))
+	   (define (*if predicate consequent alternative)
+	     (conditional/make #f predicate consequent alternative))
+	   (define (make-variable name)
+	     (variable/make&bind!
+	      block
+	      (string->uninterned-symbol (symbol->string name))))
+	   (let ((predicate-var (make-variable 'predicate))
+		 (object-var (make-variable 'object))
+		 (caller-var (and caller-expr (make-variable 'caller))))
+	     (let* ((variables
+		     (cons* predicate-var
+			    object-var
+			    (if caller-var (list caller-var) '()))))
+	       (*lambda scode-lambda-name:let variables
+		 (*declare
+		   ;; This declaration is not generally valid in
+		   ;; substituting the definition of GUARANTEE as
+		   ;; written; it encodes the assumption that
+		   ;; predicates do not modify their own definitions.
+		   ;; For example,
+		   ;;
+		   ;;	(define (foo? x) (set! foo? (lambda (x) #f)) #t)
+		   ;;	(guarantee foo? x)
+		   ;;
+		   ;; violates the assumption.
+		   (if (reference? predicate-expr)
+		       `((INTEGRATE ,(variable/name predicate-var)))
+		       '())
+		   (*begin
+		     (*if (*app (*ref predicate-var) (list (*ref object-var)))
+			  (*const unspecific)
+			  (*app (access/make #f block (*const #f) 'error:not-a)
+				(cons* (*ref predicate-var)
+				       (*ref object-var)
+				       (if caller-var
+					   (list (*ref caller-var))
+					   '()))))
+		     (*ref object-var)))))))
+	 (cons* predicate-expr
+		object-expr
+		(if caller-expr (list caller-expr) '()))))
+      #f))
+
 (define (type-test-expansion type)
   (lambda (expr operands block)
     (if (and (pair? operands)
@@ -741,6 +808,7 @@ USA.
 	    fix:=
 	    fix:>=
 	    fourth
+	    guarantee
 	    int:->flonum
 	    int:integer?
 	    intern
@@ -823,6 +891,7 @@ USA.
 	   fix:=-expansion
 	   fix:>=-expansion
 	   fourth-expansion
+	   guarantee-expansion
 	   int:->flonum-expansion
 	   exact-integer?-expansion
 	   intern-expansion

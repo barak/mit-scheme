@@ -405,7 +405,9 @@ USA.
     (lambda ()
       (set-predicate<=! p1 p2))))
 
+(declare (integrate-operator guarantee))
 (define (guarantee predicate object #!optional caller)
+  (declare (integrate-operator predicate))
   (if (not (predicate object))
       (error:not-a predicate object caller))
   object)
