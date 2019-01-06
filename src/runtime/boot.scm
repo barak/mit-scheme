@@ -436,6 +436,7 @@ USA.
 
 ;;;; Promises
 
+(declare (integrate-operator promise?))
 (define (promise? object)
   (and (cell? object)
        (cell? (cell-contents object))
