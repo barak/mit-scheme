@@ -521,15 +521,14 @@ USA.
 (define-print-method record?
   (standard-print-method
    (lambda (record)
-     (strip-angle-brackets
-      (dispatch-tag-name (record-type-descriptor record))))))
+     (dispatch-tag-print-name (record-type-descriptor record)))))
 
 (add-boot-init!
  (lambda ()
    (define-print-method record-type?
      (standard-print-method 'record-type
        (lambda (type)
-	 (list (dispatch-tag-name type)))))))
+	 (list (dispatch-tag-print-name type)))))))
 
 (define-pp-describer %record?
   (lambda (record)
