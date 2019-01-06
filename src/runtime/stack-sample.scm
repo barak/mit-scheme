@@ -244,7 +244,7 @@
 
 (define (record-waiting profile stack-frame time-stamp)
   (let ((entry (intern-entry profile stack-frame)))
-    (if (and entry (not (eqv? time-stamp (entry.time-stamp entry))))
+    (if entry
         (begin
           (set-entry.waiting-count! entry (+ 1 (entry.waiting-count entry)))
           (set-entry.time-stamp! entry time-stamp)))))
