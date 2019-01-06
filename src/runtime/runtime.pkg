@@ -5035,6 +5035,7 @@ USA.
   (export ()
 	  param:print-char-in-unicode-syntax?
 	  param:print-compound-procedure-names?
+	  param:print-hash-number-in-objects?
 	  param:print-primitives-by-name?
 	  param:print-streams?
 	  param:print-uninterned-symbols-by-name?

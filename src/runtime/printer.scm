@@ -65,6 +65,9 @@ USA.
 (define-deferred param:printer-abbreviate-quotations?
   (make-unsettable-parameter #f boolean-converter))
 
+(define-deferred param:print-hash-number-in-objects?
+  (make-settable-parameter #t boolean-converter))
+
 (define-deferred param:printer-list-breadth-limit
   (make-unsettable-parameter #f limit-converter))
 
@@ -423,8 +426,10 @@ USA.
 	  (if (string? name)
 	      (*print-string name context*)
 	      (print-object name context*))
-	  (*print-char #\space context*)
-	  (*print-hash object context*)
+	  (if (param:print-hash-number-in-objects?)
+	      (begin
+		(*print-char #\space context*)
+		(*print-hash object context*)))
 	  (cond (procedure
 		 (procedure context*))
 		((get-param:print-with-datum?)

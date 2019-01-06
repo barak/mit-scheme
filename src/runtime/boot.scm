@@ -344,8 +344,11 @@ USA.
 	(begin
 	  (write-string "#[" port)
 	  (display (if (procedure? name) (name object) name) port)
-	  (write-char #\space port)
-	  (write (hash-object object) port)
+	  (if (or (param:print-hash-number-in-objects?)
+		  (not printer))
+	      (begin
+		(write-char #\space port)
+		(write (hash-object object) port)))
 	  (if printer (printer object port))
 	  (write-char #\] port)))))
 
