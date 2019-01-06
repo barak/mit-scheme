@@ -938,7 +938,8 @@ USA.
   (let ((lose (lambda () (error:not-a list? items caller))))
     (let loop ((items items))
       (if (pair? items)
-	  (if (= (car items) item)
+	  (if (or (eq? (car items) item)
+		  (= (car items) item))
 	      items
 	      (loop (cdr items)))
 	  (begin
@@ -965,14 +966,16 @@ USA.
 	(let ((head (cons (car items) '())))
 	  (let loop ((items (cdr items)) (previous head))
 	    (cond ((pair? items)
-		   (if (= (car items) item)
+		   (if (or (eq? (car items) item)
+			   (= (car items) item))
 		       (loop (cdr items) previous)
 		       (let ((new (cons (car items) '())))
 			 (set-cdr! previous new)
 			 (loop (cdr items) new))))
 		  ((not (null? items))
 		   (lose))))
-	  (if (= (car items) item)
+	  (if (or (eq? (car items) item)
+		  (= (car items) item))
 	      (cdr head)
 	      head))
 	(begin
@@ -995,7 +998,8 @@ USA.
       ((trim-initial-segment
 	(lambda (items)
 	  (if (pair? items)
-	      (if (= item (car items))
+	      (if (or (eq? item (car items))
+		      (= item (car items)))
 		  (trim-initial-segment (cdr items))
 		  (begin
 		    (locate-initial-segment items (cdr items))
@@ -1007,7 +1011,8 @@ USA.
        (locate-initial-segment
 	(lambda (last this)
 	  (if (pair? this)
-	      (if (= item (car this))
+	      (if (or (eq? item (car this))
+		      (= item (car this)))
 		  (set-cdr! last
 			    (trim-initial-segment (cdr this)))
 		  (locate-initial-segment this (cdr this)))
@@ -1081,7 +1086,8 @@ USA.
 	  (begin
 	    (if (not (pair? (car alist)))
 		(lose))
-	    (if (= (car (car alist)) key)
+	    (if (or (eq? (car (car alist)) key)
+		    (= (car (car alist)) key))
 		(car alist)
 		(loop (cdr alist))))
 	  (begin
@@ -1113,14 +1119,16 @@ USA.
 	      (cond ((pair? alist)
 		     (if (not (pair? (car alist)))
 			 (lose))
-		     (if (= (car (car alist)) key)
+		     (if (or (eq? (car (car alist)) key)
+			     (= (car (car alist)) key))
 			 (loop (cdr alist) previous)
 			 (let ((new (cons (car alist) '())))
 			   (set-cdr! previous new)
 			   (loop (cdr alist) new))))
 		    ((not (null? alist))
 		     (lose))))
-	    (if (= (car (car alist)) key)
+	    (if (or (eq? (car (car alist)) key)
+		    (= (car (car alist)) key))
 		(cdr head)
 		head)))
 	(begin
@@ -1149,7 +1157,8 @@ USA.
 	      (begin
 		(if (not (pair? (car items)))
 		    (lose))
-		(if (= (car (car items)) item)
+		(if (or (eq? (car (car items)) item)
+			(= (car (car items)) item))
 		    (trim-initial-segment (cdr items))
 		    (begin
 		      (locate-initial-segment items (cdr items))
@@ -1163,7 +1172,8 @@ USA.
 	  (cond ((pair? this)
 		 (if (not (pair? (car this)))
 		     (lose))
-		 (if (= (car (car this)) item)
+		 (if (or (eq? (car (car this)) item)
+			 (= (car (car this)) item))
 		     (set-cdr!
 		      last
 		      (trim-initial-segment (cdr this)))
