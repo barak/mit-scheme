@@ -1758,9 +1758,6 @@ notification is turned on, turns it off; otherwise turns it on.
 @node Compiling Programs
 @chapter Compiling Programs
 
-Note: the procedures described in this section are only available when
-the @option{--compiler} command-line option is specified.
-
 @menu
 * Compilation Procedures::
 * Declarations::
