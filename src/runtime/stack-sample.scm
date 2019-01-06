@@ -78,9 +78,6 @@
 
 ;;;; Miscellaneous Kludgerosity
 
-(define (compiled-entry? object)
-  (object-type? (ucode-type compiled-entry) object))
-
 (define event-return-address 'uninitialized)
 
 (define (initialize-package!)
@@ -181,8 +178,8 @@
          (if (eq? stack-frame-type/compiled-return-address
                   (stack-frame/type stack-frame))
              (parameterize ((stack-sampling-return-address
-			     (stack-frame/return-address stack-frame)))
-	       (thunk))
+                             (stack-frame/return-address stack-frame)))
+               (thunk))
              (thunk)))))))
 
 ;;;; Profile Data
@@ -231,7 +228,7 @@
           (else (find-subproblem stack-frame)))))
 
 (define (find-subproblem stack-frame)
-  (if (compiled-entry? (stack-frame/return-address stack-frame))
+  (if (compiled-code-address? (stack-frame/return-address stack-frame))
       stack-frame
       (find-next-subproblem stack-frame)))
 
@@ -254,7 +251,7 @@
 
 (define (intern-entry profile stack-frame)
   (let ((return-address (stack-frame/return-address stack-frame)))
-    (if (compiled-entry? return-address)
+    (if (compiled-code-address? return-address)
         (let ((return-address
                (if (compiled-closure? return-address)
                    (compiled-closure->entry return-address)
@@ -289,7 +286,7 @@
   (let ((entries (hash-table-values (profile.entries profile))))
     (define (sortem entry.count)
       (sort (remove (lambda (e) (zero? (entry.count e)))
-		    entries)
+                    entries)
             (lambda (a b) (< (entry.count a) (entry.count b)))))
     (let ((sampled (sortem entry.sampled-count))
           (waiting (sortem entry.waiting-count)))
@@ -397,9 +394,9 @@
 (define (profile-pp expression output-port)
   ;; Random parametrization.
   (parameterize ((param:printer-list-breadth-limit 5)
-		 (param:printer-list-depth-limit 3)
-		 (param:printer-string-length-limit 40)
-		 (param:print-primitives-by-name? #t)
-		 (param:pp-save-vertical-space? #t)
-		 (param:pp-default-as-code? #t))
+                 (param:printer-list-depth-limit 3)
+                 (param:printer-string-length-limit 40)
+                 (param:print-primitives-by-name? #t)
+                 (param:pp-save-vertical-space? #t)
+                 (param:pp-default-as-code? #t))
     (pp expression output-port)))
