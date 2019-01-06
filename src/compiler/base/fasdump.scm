@@ -223,6 +223,8 @@ USA.
 (define fasl-format:aarch64le (make-std64le-fasl-format 25))
 (define fasl-format:aarch64be (make-std64be-fasl-format 25))
 
+(define fasl-format:x86-64 fasl-format:amd64)
+
 (define fasl-format:svm1-32be (make-std32be-fasl-format 26))
 (define fasl-format:svm1-32le (make-std32le-fasl-format 27))
 (define fasl-format:svm1-64be (make-std64be-fasl-format 28))

@@ -412,6 +412,7 @@ USA.
 	  fasl-format:svm1-32le
 	  fasl-format:svm1-64be
 	  fasl-format:svm1-64le
+	  fasl-format:x86-64
 	  portable-fasdump))
 
 (define-package (compiler constraints)
