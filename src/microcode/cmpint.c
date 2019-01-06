@@ -78,8 +78,9 @@ typedef enum
   REFLECT_CODE_CC_BKPT,
   REFLECT_CODE_UNUSED_4,	/* Formerly used for v8 microcode.  */
   REFLECT_CODE_UNUSED_5,
-  REFLECT_CODE_APPLY_COMPILED,
+  REFLECT_CODE_UNUSED_6,
   REFLECT_CODE_UNUSED_7,
+  REFLECT_CODE_COMPILED_INVOCATION,
 } reflect_code_t;
 
 #define PUSH_REFLECTION(code) do					\
@@ -1620,7 +1621,7 @@ setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
       PRIMITIVE_ABORT (code);
     }
   STACK_PUSH (procedure);
-  PUSH_REFLECTION (REFLECT_CODE_APPLY_COMPILED);
+  PUSH_REFLECTION (REFLECT_CODE_COMPILED_INVOCATION);
 }
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns
@@ -2198,7 +2199,7 @@ DEFINE_TRAMPOLINE (comutil_reflect_to_interface)
 
   switch (OBJECT_DATUM (code))
     {
-    case REFLECT_CODE_APPLY_COMPILED:
+    case REFLECT_CODE_COMPILED_INVOCATION:
       {
 	SCHEME_OBJECT procedure = (STACK_POP ());
 	RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));

@@ -227,7 +227,7 @@ USA.
 (define-integrable reflect-code:restore-interrupt-mask 1)
 (define-integrable reflect-code:stack-marker 2)
 (define-integrable reflect-code:compiled-code-bkpt 3)
-(define-integrable reflect-code:apply-compiled 6)
+(define-integrable reflect-code:compiled-invocation 8)
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
