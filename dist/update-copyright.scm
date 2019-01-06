@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018 Massachusetts Institute of Technology
+    2017, 2018, 2019 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,7 +40,7 @@ USA.
 				     root-dir
 				     translation))
 	      '("dist" "doc" "etc" "html" "src" "tests"))))
-
+
 (define (translate-directory source suffix root-dir translation)
   (let ((source (pathname-as-directory source)))
     (let loop ((pathnames (list source)))
@@ -68,42 +68,102 @@ USA.
 				   (enough-namestring input root-dir))
 				  (newline))))))
 		  (loop (cdr pathnames)))))))))
-
-(define (match-path pathname root-dir res)
-  (any (let ((ns (enough-namestring pathname root-dir)))
-	 (lambda (re)
-	   (re-string-match re ns)))
-       res))
+
+(define (match-path pathname root-dir pattern)
+  (regsexp-match-string pattern (enough-namestring pathname root-dir)))
 
 (define dirs-to-skip
-  '("\\(.*/\\)?\\.$"
-    "\\(.*/\\)?\\.\\.$"
-    "\\(.*/\\)?\\.git$"
-    "\\(.*/\\)?CVS$"
-    ))
+  (compile-regsexp
+   '(seq (alt (seq (? (seq (* (any-char)) "/"))
+		   (alt "." ".." ".git" "CVS"))
+	      "src/etc/iso8859-mapping"
+	      "src/etc/ucd-raw-props"
+	      "src/relnotes")
+	 (line-end))))
 
 (define files-to-skip
-  '("src/microcode/svm1-defns\\.h$"
-    ".+\\.png$"
-    ".+\\.pdf$"
-    "html/.+\\.html$"
-    ))
+  (compile-regsexp
+   '(seq (alt (seq (+ (any-char))
+		   "."
+		   (alt "bci"
+			"bin"
+			"com"
+			"cur"
+			"ext"
+			"icns"
+			"ico"
+			"pdf"
+			"png"))
+	      (seq (? (seq (* (any-char)) "/"))
+		   (alt "aclocal.m4"
+			"config.guess"
+			"config.sub"
+			"install-sh"
+			"mkinstalldirs"))
+	      (seq "html/"
+		   (+ (any-char))
+		   ".html")
+	      "src/microcode/svm1-defns.h")
+	 (line-end))))
 
 (define suppress-warnings-for
-  '("\\(.*/\\)?\\.gitignore$"
-    "\\(.*/\\)?CVS/.+$"
-    "\\(.*/\\)?ChangeLog$"
-    "\\(.*/\\)?COPYING$"
-    "\\(.*/\\)?INSTALL$"
-    "\\(.*/\\)?LOG$"
-    "\\(.*/\\)?Makefile-fragment$"
-    "\\(.*/\\)?README$"
-    "\\(.*/\\)?TAGS$"
-    "\\(.*/\\)?TODO$"
-    "src/swat/"
-    ".+\\.ico$"
-    ".+\\.sh$"
-    ".+\\.txt$"))
+  (compile-regsexp
+   '(seq (alt (seq (? (seq (* (any-char)) "/"))
+		   (alt ".gitignore"
+			"AUTHORS"
+			"ChangeLog"
+			"COPYING"
+			"INSTALL"
+			"LOG"
+			"Makefile-fragment"
+			"README"
+			"TAGS"
+			"TODO"
+			"ed-ffi.scm"
+			(seq "CVS/" (+ (any-char)))))
+	      (seq (+ (any-char))
+		   (alt ".ico"
+			".sh"
+			".txt"))
+	      (seq (alt "doc/ffi/prhello"
+			"doc/ref-manual/"
+			"etc/"
+			"src/compiler/documentation"
+			"src/compiler/improvements"
+			"src/etc/"
+			"src/microcode/ntutl/"
+			"src/swat/"
+			"src/win32/dibutils/"
+			"tests/ffi/"
+			"tests/runtime/test-library-data/")
+		   (+ (any-char)))
+	      (seq "src/"
+		   (alt "berkeley-db"
+			"blowfish"
+			"ffi"
+			"gdbm"
+			"mcrypt"
+			"pgsql"
+			"x11"
+			"x11-screen")
+		   "/"
+		   (alt "compile.scm"
+			"make.scm"
+			"optiondb.scm"))
+	      "dist/index.html"
+	      "dist/make-upload-files"
+	      "dist/scheme-inst.nsi"
+	      "doc/index.html"
+	      "doc/info-dir"
+	      "doc/mit-scheme.1"
+	      "src/edwin/TUTORIAL"
+	      "src/etc/TUTORIAL"
+	      "src/imail/fake-env.scm"
+	      "src/microcode/liarc-gendeps.c"
+	      "src/run-build"
+	      "src/win32/tests/CLIPBRD.SCM"
+	      "tests/runtime/test-string-normalization-data")
+	 (line-end))))
 
 (define (read-file-leader pathname)
   (call-with-input-file pathname
@@ -175,11 +235,11 @@ USA.
 		   (let loop ((le le))
 		     (let ((ls (string-next-line-start leader le)))
 		       (if ls
-			   (let ((regs
-				  (re-substring-match copyright-line-regexp
-						      leader ls end)))
-			     (if regs
-				 (loop (re-match-end-index 0 regs))
+			   (let ((result
+				  (regsexp-match-string copyright-line-regexp
+							leader ls end)))
+			     (if result
+				 (loop (cadr result))
 				 ls))
 			   le)))))
 	      (let ((prefix1 (string-replace prefix #\tab #\space)))
@@ -198,50 +258,83 @@ USA.
 		       results))))
 	    (translate-suffix leader start end results))))))
 
-(define (translate-suffix leader start end results)
-  (let ((regs (re-substring-search-forward
-	       "^[(]define last-copyright-year [0-9]+ *[)].*$\n"
-	       leader start end)))
-    (if regs
-	(reverse
-	 (cons
-	  (list (re-match-start-index 0 regs)
-		(re-match-end-index 0 regs)
-		"" "" (list
-		       (list
-			"(define" "last-copyright-year"
-			(number->string (this-year)) ")"))
-		#f)
-	  results))
-	(and (pair? results)
-	     (reverse results)))))
-
 (define (match-copyright leader start end)
-  (let ((regs
-	 (re-substring-search-forward copyright-line-regexp leader start end)))
-    (if regs
-	(values (re-match-start-index 0 regs)
-		(re-match-end-index 0 regs)
-		(re-match-extract leader regs 1)
-		(let ((cmark (re-match-extract leader regs 3)))
-		  (if (or (string-null? cmark)
-			  (string-ci=? cmark "(c)"))
-		      "(C)"
-		      cmark)))
+  (let ((result
+	 (regsexp-search-string-forward copyright-line-regexp
+					leader start end)))
+    (if result
+	(values (car result)
+		(cadr result)
+		(let ((p (assq 'prefix (cddr result))))
+		  (if (not p)
+		      (error "Prefix not matched:" result))
+		  (cdr p))
+		(let ((p (assq 'marker (cddr result))))
+		  (if (not p)
+		      (error "Marker not matched:" result))
+		  (let ((marker (cdr p)))
+		    (if (string=? marker "(c)")
+			"(C)"
+			marker))))
 	(values #f #f #f #f))))
 
 (define copyright-line-regexp
-  (re-compile-pattern
-   (string-append
-    "^\\(\\[?\\(.*\\)\\)Copyright \\(@copyright{}\\|&copy;\\|(C)\\|\\) [0-9]+"
-    "\\(,\\(\n\\2\\)? *[0-9]+\\)*"
-    (decorated-string-append
-     "\\(\n\\2\\)? *"
-     ""
-     ""
-     (list "Massachusetts" "Institute" "of" "Technology"))
-    " *\\(@\\*\\)?$")
-   #t))
+  (compile-regsexp
+   `(seq (line-start)
+	 (group prefix
+		(seq (? "[")
+		     (group line-starter
+			    (*? (any-char)))))
+	 "Copyright "
+	 (? (seq (group marker
+			(alt "@copyright{}"
+			     "&copy;"
+			     "(C)"
+			     "(c)"))
+		 " "))
+	 (+ (char-in "0123456789"))
+	 (* (seq ","
+		 (? (seq "\n" (group-ref line-starter)))
+		 (* " ")
+		 (+ (char-in "0123456789"))))
+	 ,@(append-map (lambda (word)
+			 `((? (seq "\n" (group-ref line-starter)))
+			   (* " ")
+			   ,word))
+		       '("Massachusetts" "Institute" "of" "Technology"))
+	 (* " ")
+	 (?? "@*")
+	 (line-end))))
+
+(define (translate-suffix leader start end results)
+  (let ((result
+	 (regsexp-search-string-forward suffix-pattern leader start end)))
+    (if result
+	(reverse
+	 (cons (list (car result)
+		     (cadr result)
+		     ""
+		     ""
+		     (list (list
+			    "(define"
+			    "last-copyright-year"
+			    (number->string (this-year))
+			    ")"))
+		     #f)
+	       results))
+	(and (pair? results)
+	     (reverse results)))))
+
+(define suffix-pattern
+  (compile-regsexp
+   '(seq (line-start)
+	 "(define last-copyright-year "
+	 (+ (char-in "0123456789"))
+	 (* " ")
+	 ")"
+	 (* (any-char))
+	 (line-end)
+	 "\n")))
 
 (define (copyright-years y0)
   (let loop ((y 1986))
@@ -442,4 +535,11 @@ USA.")))
     (fix:+ index n)))
 
 (define (sentence-end? word)
-  (re-string-match ".+[.?!][]\"')}]*$" word))
+  (regsexp-match-string sentence-end-pattern word))
+
+(define sentence-end-pattern
+  (compile-regsexp
+   '(seq (+ (any-char))
+	 (char-in ".?!")
+	 (* (char-in "\")]}"))
+	 (line-end))))
