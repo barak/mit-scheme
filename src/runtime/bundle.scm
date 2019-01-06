@@ -78,6 +78,10 @@ USA.
 (define <bundle>
   (make-record-type '<bundle> '(alist)))
 
+(defer-boot-action 'record-procedures
+  (lambda ()
+    (set-record-type-applicator! <bundle> %bundle-applicator)))
+
 (define bundle?
   (record-predicate <bundle>))
 
