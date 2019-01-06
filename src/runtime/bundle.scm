@@ -57,16 +57,21 @@ USA.
 
 (define (alist->bundle predicate alist)
   (guarantee %bundle-alist? alist 'alist->bundle)
-  ((record-constructor (%predicate->record-type predicate)) (alist-copy alist)))
+  ((record-constructor
+    (if predicate
+	(%bundle-predicate->record-type predicate)
+	<bundle>))
+   (alist-copy alist)))
+
+(define %bundle-predicate->record-type
+  %predicate->record-type)
 
 (defer-boot-action 'predicate-relations
   (lambda ()
-    (set! alist->bundle
-	  (named-lambda (alist->bundle predicate alist)
+    (set! %bundle-predicate->record-type
+	  (named-lambda (%bundle-predicate->record-type predicate)
 	    (guarantee bundle-predicate? predicate 'alist->bundle)
-	    (guarantee %bundle-alist? alist 'alist->bundle)
-	    ((record-constructor (%predicate->record-type predicate))
-	     (alist-copy alist))))
+	    (%predicate->record-type predicate)))
     unspecific))
 
 (define (%bundle-alist? object)
