@@ -28,10 +28,22 @@ USA.
 
 (declare (usual-integrations))
 
+(define cref/source-root #!default)
+(define cref/object-root #!default)
+
+(define (cref/source-pathname pathname)
+  ;; This assumes we're sitting in the source directory.
+  (merge-pathnames pathname))
+
+(define (cref/object-pathname pathname)
+  ;; This assumes we're sitting in the source directory.
+  (merge-pathnames (enough-pathname pathname cref/source-root)
+		   cref/object-root))
+
 (define (generate/common kernel)
   (lambda (filename #!optional os-type)
     (for-each-os-type os-type
-      (let ((pathname (merge-pathnames filename)))
+      (let ((pathname (cref/source-pathname filename)))
 	(lambda (os-type)
 	  (let ((pmodel (read-package-model pathname os-type)))
 	    (let ((changes? (read-file-analyses! pmodel os-type)))
@@ -40,7 +52,7 @@ USA.
 
 (define (cref/generate-trivial-constructor filename #!optional os-type)
   (for-each-os-type os-type
-    (let ((pathname (merge-pathnames filename)))
+    (let ((pathname (cref/source-pathname filename)))
       (lambda (os-type)
 	(write-external-descriptions pathname
 				     (read-package-model pathname os-type)
@@ -89,15 +101,18 @@ USA.
      (write-external-descriptions pathname pmodel changes? os-type))))
 
 (define (write-external-descriptions pathname pmodel changes? os-type)
-  (let ((package-set (package-set-pathname pathname os-type)))
+  (let* ((object-pathname (cref/object-pathname pathname))
+	 (package-set (package-set-pathname object-pathname os-type)))
     (if (or changes?
 	    (file-modification-time<? package-set
 				      (pathname-default-type pathname "pkg")))
 	(fasdump (construct-external-descriptions pmodel) package-set))))
 
 (define (write-cref pathname pmodel changes? os-type)
-  (let ((cref-pathname
-	 (pathname-new-type (package-set-pathname pathname os-type) "crf")))
+  (let* ((object-pathname (cref/object-pathname pathname))
+	 (cref-pathname
+	  (pathname-new-type (package-set-pathname object-pathname os-type)
+			     "crf")))
     (if (or changes?
 	    (file-modification-time<? cref-pathname
 				      (pathname-default-type pathname "pkg")))
@@ -106,8 +121,10 @@ USA.
 	    (format-packages pmodel port))))))
 
 (define (write-cref-unusual pathname pmodel changes? os-type)
-  (let ((cref-pathname
-	 (pathname-new-type (package-set-pathname pathname os-type) "crf")))
+  (let* ((object-pathname (cref/object-pathname pathname))
+	 (cref-pathname
+	  (pathname-new-type (package-set-pathname object-pathname os-type)
+			     "crf")))
     (if (or changes?
 	    (file-modification-time<? cref-pathname
 				      (pathname-default-type pathname "pkg")))

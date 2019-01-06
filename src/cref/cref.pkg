@@ -39,7 +39,9 @@ USA.
 	  cref/generate-cref
 	  cref/generate-cref-unusual
 	  cref/generate-trivial-constructor
-	  cref/package-files))
+	  cref/object-root
+	  cref/package-files
+	  cref/source-root))
 
 (define-package (cross-reference analyze-file)
   (files "anfile")

@@ -71,7 +71,11 @@ USA.
   unspecific)
 
 (define (pathname/normalize pathname)
+  ;; This assumes we're sitting in the source directory.
   (pathname-default-type (merge-pathnames pathname) "scm"))
+
+(define (sf/object-pathname pathname)
+  (merge-pathnames (enough-pathname pathname sf/source-root) sf/object-root))
 
 (define sf/default-syntax-table
   system-global-environment)
@@ -87,6 +91,12 @@ USA.
 
 (define sf/cross-compiling?
   #f)
+
+(define sf/source-root
+  #!default)
+
+(define sf/object-root
+  #!default)
 
 ;;;; File Syntaxer
 
@@ -108,16 +118,17 @@ USA.
   (let ((input-path (pathname/normalize input-string)))
     (values input-path
 	    (let ((bin-path
-		   (pathname-new-type
-		    input-path
-		    (let ((input-type (pathname-type input-path)))
-		      (if (and (string? input-type)
-			       (not (string=? "scm" input-type)))
-			  (string-append "b"
-					 (if (> (string-length input-type) 2)
-					     (string-head input-type 2)
-					     input-type))
-			  (bin-pathname-type))))))
+		   (sf/object-pathname
+		    (pathname-new-type
+		     input-path
+		     (let ((input-type (pathname-type input-path)))
+		       (if (and (string? input-type)
+				(not (string=? "scm" input-type)))
+			   (string-append "b"
+					  (if (> (string-length input-type) 2)
+					      (string-head input-type 2)
+					      input-type))
+			   (bin-pathname-type)))))))
 	      (if bin-string
 		  (merge-pathnames bin-string bin-path)
 		  bin-path))
@@ -182,7 +193,9 @@ USA.
   (make-pathname #f #f #f #f (externs-pathname-type) 'newest))
 
 (define (read-externs-file pathname)
-  (let ((pathname (merge-pathnames pathname (sf/default-externs-pathname))))
+  (let ((pathname
+	 (sf/object-pathname
+	  (merge-pathnames pathname (sf/default-externs-pathname)))))
     (let ((namestring (->namestring pathname)))
       (if (file-exists? pathname)
 	  (let ((object (fasload pathname #t))

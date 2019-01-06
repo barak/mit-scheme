@@ -30,7 +30,7 @@ USA.
 	 (integrate-external "object"))
 
 (define (read-package-model filename os-type)
-  (let ((model-pathname (merge-pathnames filename)))
+  (let ((model-pathname (cref/source-pathname filename)))
     (receive (packages extensions loads globals)
 	(sort-descriptions (read-and-parse-model model-pathname os-type))
       (descriptions->pmodel
@@ -65,9 +65,16 @@ USA.
 			    (system-library-pathname pkd)))))
 	   (and (not (condition? pathname))
 		pathname))
-	 (let ((pathname (merge-pathnames pkd model-pathname)))
-	   (and (file-exists? pathname)
-		pathname)))
+	 (or (let* ((object-model-pathname
+		     (merge-pathnames
+		      (enough-pathname model-pathname cref/source-root)
+		      cref/object-root))
+		    (pathname (merge-pathnames pkd object-model-pathname)))
+	       (and (file-exists? pathname)
+		    pathname))
+	     (let ((pathname (merge-pathnames pkd model-pathname)))
+	       (and (file-exists? pathname)
+		    pathname))))
      (begin
        (warn "Could not find global definitions:" pkd)
        #f))))
@@ -146,9 +153,9 @@ USA.
 
 (define (cache-file-analyses! pmodel os-type)
   (let ((pathname
-	 (pathname-new-type (package-set-pathname (pmodel/pathname pmodel)
-						  os-type)
-			    "fre"))
+	 (pathname-new-type
+	  (package-set-pathname (pmodel/object-pathname pmodel) os-type)
+	  "fre"))
 	(changes? (list #f)))
     (let ((result
 	   (let ((caches
@@ -176,7 +183,7 @@ USA.
 	(full-pathname
 	 (merge-pathnames
 	  (pathname-new-type pathname (if sf/cross-compiling? "nib" "bin"))
-	  (pmodel/pathname pmodel))))
+	  (pmodel/object-pathname pmodel))))
     (let ((time (file-modification-time full-pathname)))
       (if (not time)
 	  (error "unable to open file" full-pathname))
