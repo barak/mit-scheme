@@ -67,7 +67,9 @@ EOF
     exit 1
 fi
 
-if [ ! -x configure ]; then
+if [ ! -x configure \
+	-o configure.ac -nt configure \
+	-o microcode/aclocal.m4 -nt configure ]; then
     configure=clean
     echo "autoconf --include=microcode"
     autoconf --include=microcode
