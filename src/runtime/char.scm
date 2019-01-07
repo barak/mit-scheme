@@ -384,8 +384,8 @@ USA.
     n))
 
 (define (char-general-category char)
-  (guarantee bitless-char? char 'char-general-category)
-  (ucd-gc-value char))
+  (guarantee char? char 'char-general-category)
+  (code-point-general-category (char-code char)))
 
 (define (code-point-general-category cp)
   (guarantee unicode-code-point? cp 'code-point-general-category)

@@ -52,10 +52,9 @@ USA.
 	  (delay
 	    (let ((predicate
 		   (lambda (char)
-		     (and (bitless-char? char)
+		     (and (char? char)
 			  (char-in-set? char char-set)))))
-	      (register-predicate! predicate 'char-set-predicate
-				   '<= bitless-char?)
+	      (register-predicate! predicate 'char-set-predicate '<= char?)
 	      predicate)))))
     char-set))
 
@@ -303,7 +302,7 @@ USA.
 
 (define (%cpl-element->ranges elt)
   (cond ((%range? elt) (list elt))
-	((bitless-char? elt) (list (char->integer elt)))
+	((char? elt) (list (char-code elt)))
 	((string? elt) (map char->integer (string->list elt)))
 	(else #f)))
 
@@ -355,7 +354,7 @@ USA.
 
 (define (cpl-element? object)
   (or (%range? object)
-      (bitless-char? object)
+      (char? object)
       (string? object)
       (char-set? object)
       (name->char-set object)))
@@ -416,8 +415,7 @@ USA.
 
 (define (char-in-set? char char-set)
   (guarantee char? char 'char-in-set?)
-  (and (bitless-char? char)
-       (%code-point-in-char-set? (char->integer char) char-set)))
+  (%code-point-in-char-set? (char-code char) char-set))
 
 (define (code-point-in-char-set? cp char-set)
   (guarantee unicode-code-point? cp 'code-point-in-char-set?)
