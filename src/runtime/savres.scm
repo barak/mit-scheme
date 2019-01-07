@@ -143,11 +143,16 @@ USA.
 	  (write-string " at " port)
 	  (write-string (decoded-time/time-string time-world-saved) port)
 	  (newline port)))
-    (write-strings-in-columns (map get-subsystem-identification-string
-				   (get-subsystem-names))
+    (write-strings-in-columns (subsystem-summary)
 			      port
 			      #t
 			      1
 			      "  "
 			      " || "
 			      "")))
+
+(define (subsystem-summary)
+  (cons (get-subsystem-identification-string "Release")
+	(lset-difference string=?
+			 (get-subsystem-names)
+			 '("Release" "Microcode" "Runtime"))))
