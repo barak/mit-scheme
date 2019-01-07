@@ -5,6 +5,7 @@
 *.com
 *.crf
 *.diff
+*.dkp
 *.dll
 *.err
 *.exe
@@ -16,11 +17,13 @@
 *.lo
 *.map
 *.moc
+*.nib
 *.o
 *.obj
 *.pdf
 *.pkd
 *.res
+*.txe
 *~
 .edwin-ffi
 /C-*/
