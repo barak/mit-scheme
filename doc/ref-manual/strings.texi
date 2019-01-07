@@ -95,7 +95,8 @@ allow characters U+0001 to U+00FF (the Latin-1 repertoire without
 
 Implementation note: MIT/GNU Scheme allows any ``bitless'' character
 to be stored in a string.  In effect this means any character with a
-Unicode code point, including surrogates.
+Unicode code point, including surrogates.  String operations that
+accept characters automatically strip their bucky bits.
 
 It is an error to pass such a forbidden character to
 @code{make-string}, @code{string}, @code{string-set!}, or
