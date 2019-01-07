@@ -57,7 +57,7 @@ AC_ARG_WITH([compiler-target],
 AC_ARG_ENABLE([host-scheme-test],
     AS_HELP_STRING([--enable-host-scheme-test],
 	[Test for working scheme on build host [[if necessary]]]))
-if test x"${IS_NATIVE_RELEASE}" != x || test -f lib/all.com; then
+if test x"${IS_NATIVE_RELEASE}" != x; then
     : ${enable_host_scheme_test=no}
 else
     : ${enable_host_scheme_test=yes}
