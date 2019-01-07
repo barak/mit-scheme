@@ -142,7 +142,6 @@ AC_CANONICAL_HOST
 AC_CHECK_SIZEOF([unsigned long])
 mit_scheme_target_bytes_per_object=$ac_cv_sizeof_unsigned_long
 
-ALL_TARGET=all-native
 INSTALL_COM='$(INSTALL_DATA)'
 INSTALL_LIARC_BUNDLES=
 IF_LIARC='#!liarc: '
@@ -367,7 +366,6 @@ else
     AC_MSG_RESULT([no])
 fi
 
-AC_SUBST([ALL_TARGET])
 AC_SUBST([AUXDIR])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([DEFAULT_TARGET])
@@ -440,6 +438,7 @@ fi
 
 AC_CONFIG_FILES([
 Makefile
+Makefile.tools
 6001/Makefile
 compiler/Makefile
 cref/Makefile

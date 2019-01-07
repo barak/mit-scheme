@@ -1,0 +1,311 @@
+# -*- Mode: Makefile -*-
+
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+#     2015, 2016, 2017, 2018 Massachusetts Institute of Technology
+#
+# This file is part of MIT/GNU Scheme.
+#
+# MIT/GNU Scheme is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# MIT/GNU Scheme is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MIT/GNU Scheme; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datarootdir = @datarootdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = @top_builddir@
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+LN_S = @LN_S@
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/microcode/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+.PHONY: default-target
+default-target: all
+
+srcdir = .
+objdir = tools
+
+COMPILER_BACKEND = "`./compiler/choose-machine.sh @mit_scheme_native_code@`"
+
+COMPILER_SETTINGS = \
+  # end of COMPILER_SETTINGS
+SF_SETTINGS = \
+  (set! sf/object-root (pathname-simplify (merge-pathnames "$(objdir)/"))) \
+  (set! sf/source-root (pathname-simplify (merge-pathnames "$(srcdir)/"))) \
+  # end of SF_SETTINGS
+CREF_SETTINGS = \
+  (set! cref/object-root (pathname-simplify (merge-pathnames "$(objdir)/"))) \
+  (set! cref/source-root (pathname-simplify (merge-pathnames "$(srcdir)/"))) \
+  # end of CREF_SETTINGS
+HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
+
+# Set CCTYPE to syntax for an interpreted toolchain.
+CCTYPE = compile
+FASL = `case $(CCTYPE) in compile) echo com;; syntax) echo bin;; esac`
+
+MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+
+HOST_COMPILER = '$(MIT_SCHEME_EXE)' $(HOST_COMPILER_HEAP) \
+  --batch-mode --no-init-file \
+  --load runtime/host-adapter.scm \
+  --eval '(load-option (quote CREF))' \
+  --eval '(begin $(COMPILER_SETTINGS))' \
+  --eval '(begin $(CREF_SETTINGS))' \
+  --eval '(begin $(SF_SETTINGS))' \
+  # end of HOST_COMPILER
+
+HOST_SYNTAXER = '$(MIT_SCHEME_EXE)' --band runtime.com $(HOST_COMPILER_HEAP) \
+  --batch-mode --no-init-file \
+  --load runtime/host-adapter.scm \
+  --eval '(load-option (quote CREF))' \
+  --eval '(load-option (quote SF))' \
+  --eval '(begin $(CREF_SETTINGS))' \
+  --eval '(begin $(SF_SETTINGS))' \
+  # end of HOST_SYNTAXER
+
+.PHONY: all
+all: tools/compiler.com
+all: tools/syntaxer.com
+
+.PHONY: clean
+clean:
+
+SCHEME_OBJECTS_PATTERN = *.bci *.bin *.crf *.com *.ext *.fre *.lap *.pkd *.rtl
+
+SYMLINK = link () { test -h "$$2" || ln -sfh "$$1" "$$2"; }; link
+
+.PHONY: tooldir
+tooldir:
+	mkdir -p tools/compiler/back
+	mkdir -p tools/compiler/base
+	mkdir -p tools/compiler/fggen
+	mkdir -p tools/compiler/fgopt
+	mkdir -p tools/compiler/machines/$(COMPILER_BACKEND)
+	mkdir -p tools/compiler/rtlbase
+	mkdir -p tools/compiler/rtlgen
+	mkdir -p tools/compiler/rtlopt
+	mkdir -p tools/cref
+	mkdir -p tools/runtime
+	mkdir -p tools/sf
+	mkdir -p tools/star-parser
+	$(SYMLINK) machines/$(COMPILER_BACKEND) tools/compiler/machine
+	$(SYMLINK) machine/compiler.cbf tools/compiler/compiler.cbf
+	$(SYMLINK) machine/compiler.pkg tools/compiler/compiler.pkg
+	$(SYMLINK) machine/compiler.sf tools/compiler/compiler.sf
+	$(SYMLINK) machine/make.bin tools/compiler/make.bin
+	$(SYMLINK) machine/make.com tools/compiler/make.com
+	$(SYMLINK) ../../../compiler/base/make.scm tools/compiler/base/make.scm
+	$(SYMLINK) ../../cref/make.scm tools/cref/make.scm
+	$(SYMLINK) ../../sf/make.scm tools/sf/make.scm
+	$(SYMLINK) ../../star-parser/load.scm tools/star-parser/make.scm
+	$(SYMLINK) ../etc/optiondb.scm tools/optiondb.scm
+
+# XXX The only reason we build a fresh runtime is to get macro
+# definitions.  (Same reason we build a fresh star-parser.)
+
+tools/runtime.com: $(CCTYPE)-runtime
+	echo '(disk-save "../../$@")' \
+	| (cd tools/runtime && \
+		'$(MIT_SCHEME_EXE)' --batch-mode --library ../../tools \
+		--fasl make.$(FASL))
+
+tools/syntaxer.com: $(CCTYPE)-cref
+tools/syntaxer.com: $(CCTYPE)-sf
+tools/syntaxer.com: $(CCTYPE)-star-parser
+tools/syntaxer.com: tools/runtime.com
+	(echo '(begin' && \
+	 echo '  (with-working-directory-pathname "tools/cref"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (with-working-directory-pathname "tools/sf"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (with-working-directory-pathname "tools/star-parser"' && \
+	 echo '    (lambda () (load "load")))' && \
+	 echo '  (disk-save "$@"))') \
+	| '$(MIT_SCHEME_EXE)' --library tools --band tools/runtime.com \
+		--batch-mode --no-init-file
+
+tools/compiler.com: $(CCTYPE)-compiler
+tools/compiler.com: $(CCTYPE)-cref
+tools/compiler.com: $(CCTYPE)-sf
+tools/compiler.com: $(CCTYPE)-star-parser
+tools/compiler.com: tools/runtime.com
+	(echo '(begin' && \
+	 echo '  (with-working-directory-pathname "tools/cref"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (with-working-directory-pathname "tools/sf"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (with-working-directory-pathname "tools/star-parser"' && \
+	 echo '    (lambda () (load "load")))' && \
+	 echo '  (with-working-directory-pathname "tools/compiler"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (disk-save "$@"))') \
+	| '$(MIT_SCHEME_EXE)' --library tools --band tools/runtime.com \
+		--batch-mode --no-init-file
+
+.PHONY: clean-coms
+clean-coms:
+	-rm -f tools/compiler.com
+	-rm -f tools/syntaxer.com
+	-rm -f tools/runtime.com
+clean: clean-coms
+
+.PHONY: syntax-runtime
+syntax-runtime: tooldir
+	echo '(begin (cd "runtime") (load "runtime.sf"))' | $(HOST_SYNTAXER)
+
+.PHONY: compile-runtime
+compile-runtime: syntax-runtime
+	echo '(compile-directory "tools/runtime")' | $(HOST_COMPILER)
+
+.PHONY: clean-runtime
+clean-runtime:
+	-cd tools/runtime && rm -f $(SCHEME_OBJECTS_PATTERN)
+clean: clean-runtime
+
+.PHONY: syntax-cref
+syntax-cref: syntax-runtime
+syntax-cref: tooldir
+	echo '(begin (cd "cref") (load "cref.sf"))' | $(HOST_SYNTAXER)
+
+.PHONY: compile-cref
+compile-cref: syntax-cref
+	echo '(compile-directory "tools/cref")' | $(HOST_COMPILER)
+
+.PHONY: clean-cref
+clean-cref:
+	-cd tools/cref && rm -f $(SCHEME_OBJECTS_PATTERN)
+clean: clean-cref
+
+.PHONY: syntax-sf
+syntax-sf: syntax-runtime
+syntax-sf: tooldir
+	echo '(begin (cd "sf") (load "sf.sf"))' | $(HOST_SYNTAXER)
+
+.PHONY: compile-sf
+compile-sf: syntax-sf
+	echo '(compile-directory "tools/sf")' | $(HOST_COMPILER)
+
+.PHONY: clean-sf
+clean-sf:
+	-cd tools/sf && rm -f $(SCHEME_OBJECTS_PATTERN)
+clean: clean-sf
+
+.PHONY: syntax-star-parser
+syntax-star-parser: syntax-runtime
+syntax-star-parser: tooldir
+	echo '(sf-directory "star-parser")' | $(HOST_SYNTAXER)
+	echo '(cref/generate-constructors "star-parser/parser")' \
+	| $(HOST_SYNTAXER)
+
+.PHONY: compile-star-parser
+compile-star-parser: syntax-star-parser
+	echo '(compile-directory "tools/star-parser")' | $(HOST_COMPILER)
+
+.PHONY: clean-star-parser
+clean-star-parser:
+	-cd tools/star-parser && rm -f $(SCHEME_OBJECTS_PATTERN)
+clean: clean-star-parser
+
+.PHONY: syntax-compiler
+syntax-compiler: syntax-runtime
+syntax-compiler: syntax-sf
+syntax-compiler: tooldir
+	echo '(begin (cd "compiler") (load "compiler.sf"))' \
+	| $(HOST_SYNTAXER)
+
+.PHONY: compile-compiler
+compile-compiler: compile-compiler-back
+compile-compiler: compile-compiler-base
+compile-compiler: compile-compiler-fggen
+compile-compiler: compile-compiler-fgopt
+compile-compiler: compile-compiler-machine
+compile-compiler: compile-compiler-rtlbase
+compile-compiler: compile-compiler-rtlgen
+compile-compiler: compile-compiler-rtlopt
+
+.PHONY: compile-compiler-back
+compile-compiler-back: syntax-compiler
+	echo '(compile-directory "tools/compiler/back")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-base
+compile-compiler-base: syntax-compiler
+	echo '(compile-directory "tools/compiler/base")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-fggen
+compile-compiler-fggen: syntax-compiler
+	echo '(compile-directory "tools/compiler/fggen")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-fgopt
+compile-compiler-fgopt: syntax-compiler
+	echo '(compile-directory "tools/compiler/fgopt")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-machine
+compile-compiler-machine: syntax-compiler
+	echo '(compile-directory "tools/compiler/machine")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-rtlbase
+compile-compiler-rtlbase: syntax-compiler
+	echo '(compile-directory "tools/compiler/rtlbase")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-rtlgen
+compile-compiler-rtlgen: syntax-compiler
+	echo '(compile-directory "tools/compiler/rtlgen")' | $(HOST_COMPILER)
+
+.PHONY: compile-compiler-rtlopt
+compile-compiler-rtlopt: syntax-compiler
+	echo '(compile-directory "tools/compiler/rtlopt")' | $(HOST_COMPILER)
+
+.PHONY: clean-compiler
+clean-compiler:
+	-cd tools/compiler/back && rm -f $(SCHEME_OBJECTS_PATTERN)
+	-cd tools/compiler/base && rm -f $(SCHEME_OBJECTS_PATTERN)
+	-cd tools/compiler/fggen && rm -f $(SCHEME_OBJECTS_PATTERN)
+	-cd tools/compiler/fgopt && rm -f $(SCHEME_OBJECTS_PATTERN)
+	-cd tools/compiler/machine && rm -f $(SCHEME_OBJECTS_PATTERN)
+	-cd tools/compiler/rtlbase && rm -f $(SCHEME_OBJECTS_PATTERN)
+	-cd tools/compiler/rtlgen && rm -f $(SCHEME_OBJECTS_PATTERN)
+	-cd tools/compiler/rtlopt && rm -f $(SCHEME_OBJECTS_PATTERN)
+clean: clean-compiler
