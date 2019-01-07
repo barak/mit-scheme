@@ -654,5 +654,3 @@ USA.
 		     (or (not (fix:< i le))
 			 (and (fix:= 0 (bytevector-u8-ref low i))
 			      (loop (fix:+ i 1))))))))))))
-
-(define-guarantee 8-bit-char-set "an 8-bit char-set")

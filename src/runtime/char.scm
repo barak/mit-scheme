@@ -37,8 +37,6 @@ USA.
 (define-integrable char-code-limit #x110000)
 (define-integrable char-bits-limit #x10)
 
-(define-guarantee char "character")
-
 (define (make-char code bits)
   (guarantee-limited-index-fixnum code char-code-limit 'make-char)
   (guarantee-limited-index-fixnum bits char-bits-limit 'make-char)
@@ -180,8 +178,6 @@ USA.
   (and (index-fixnum? object)
        (fix:<= 2 object)
        (fix:<= object 36)))
-
-(define-guarantee radix "radix")
 
 (define (digit->char digit #!optional radix)
   (let ((radix
@@ -374,9 +370,6 @@ USA.
 (define (unicode-code-point? object)
   (and (index-fixnum? object)
        (fix:< object char-code-limit)))
-
-(define-guarantee unicode-char "a Unicode character")
-(define-guarantee unicode-scalar-value "a Unicode scalar value")
 
 (define (%char->scalar-value char #!optional caller)
   (let ((n (char->integer char)))
