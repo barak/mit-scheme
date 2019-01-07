@@ -31,7 +31,12 @@ USA.
 
 ;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(compiler)))
-    (let ((package-set (package-set-pathname "compiler")))
+    (let ((package-set
+	   (merge-pathnames
+	    (enough-pathname
+	     (merge-pathnames (package-set-pathname "compiler"))
+	     cref/source-root)
+	    cref/object-root)))
       (if (not (file-exists? package-set))
 	  (cref/generate-trivial-constructor "compiler"))
       (construct-packages-from-file (fasload package-set))))

@@ -40,4 +40,14 @@ USA.
 			'target-bytes-per-object
 			bytes-per-object))
 
+(if (lexical-unreferenceable? (->environment '()) 'cref/source-root)
+    (environment-define (->environment '())
+			'cref/source-root
+			#!default))
+
+(if (lexical-unreferenceable? (->environment '()) 'cref/object-root)
+    (environment-define (->environment '())
+			'cref/object-root
+			#!default))
+
 unspecific
