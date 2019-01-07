@@ -310,10 +310,9 @@ USA.
 	    object
 	    context
 	    (lambda (context*)
-	      (for-each (lambda (part)
-			  (*print-char #\space context*)
-			  (print-object part context*))
-			(standard-print-method-parts print-method object)))))
+	      (*print-items (standard-print-method-parts print-method object)
+			    context*
+			    print-object))))
 	  (print-method
 	   (call-print-method print-method object context))
 	  (else
@@ -416,6 +415,38 @@ USA.
 
 (define (allowed-char? char context)
   (char-in-set? char (context-char-set context)))
+
+(define (limit-print-depth context kernel)
+  (let ((context* (context-down-list context))
+	(limit (context-list-depth-limit context)))
+    (if (and limit
+	     (> (context-list-depth context*) limit))
+	(*print-string "..." context*)
+	(kernel context*))))
+
+(define (limit-print-breadth context n-printed kernel)
+  (if (let ((limit (context-list-breadth-limit context)))
+	(and limit
+	     (>= n-printed limit)))
+      (*print-string " ..." context)
+      (kernel)))
+
+(define (*general-print-items items context print-item n-printed split)
+  (let loop ((items items) (n-printed n-printed))
+    (split items
+      (lambda (item rest)
+	(limit-print-breadth context n-printed
+	  (lambda ()
+	    (if (> n-printed 0)
+		(*print-char #\space context))
+	    (print-item item context)
+	    (loop rest (+ n-printed 1))))))))
+
+(define (*print-items items context print-item)
+  (*general-print-items items context print-item 0
+    (lambda (items k)
+      (if (pair? items)
+	  (k (car items) (cdr items))))))
 
 (define (*print-with-brackets name object context procedure)
   (if (get-param:print-with-maximum-readability?)
@@ -648,25 +679,14 @@ USA.
 (define (print-vector vector context)
   (limit-print-depth context
     (lambda (context*)
+      (*print-string "#(" context*)
       (let ((end (vector-length vector)))
-	(if (fix:> end 0)
-	    (begin
-	      (*print-string "#(" context*)
-	      (print-object (safe-vector-ref vector 0) context*)
-	      (let loop ((index 1))
-		(if (fix:< index end)
-		    (if (let ((limit
-			       (context-list-breadth-limit context*)))
-			  (and limit
-			       (>= index limit)))
-			(*print-string " ...)" context*)
-			(begin
-			  (*print-char #\space context*)
-			  (print-object (safe-vector-ref vector index)
-					context*)
-			  (loop (fix:+ index 1))))))
-	      (*print-char #\) context*))
-	    (*print-string "#()" context*))))))
+	(*general-print-items 0 context* print-object 0
+	  (lambda (index k)
+	    (if (fix:< index end)
+		(k (safe-vector-ref vector index)
+		   (fix:+ index 1))))))
+      (*print-char #\) context*))))
 
 (define (safe-vector-ref vector index)
   (if (with-absolutely-no-interrupts
@@ -679,24 +699,14 @@ USA.
 (define (print-bytevector bytevector context)
   (limit-print-depth context
     (lambda (context*)
+      (*print-string "#u8(" context*)
       (let ((end (bytevector-length bytevector)))
-	(if (fix:> end 0)
-	    (begin
-	      (*print-string "#u8(" context*)
-	      (print-number (bytevector-u8-ref bytevector 0) context*)
-	      (let loop ((index 1))
-		(if (fix:< index end)
-		    (if (let ((limit (get-param:printer-list-breadth-limit)))
-			  (and limit
-			       (>= index limit)))
-			(*print-string " ..." context*)
-			(begin
-			  (*print-char #\space context*)
-			  (print-number (bytevector-u8-ref bytevector index)
-					context*)
-			  (loop (fix:+ index 1))))))
-	      (*print-char #\) context*))
-	    (*print-string "#u8()" context*))))))
+	(*general-print-items 0 context* print-object 0
+	  (lambda (index k)
+	    (if (fix:< index end)
+		(k (bytevector-u8-ref bytevector index)
+		   (fix:+ index 1))))))
+      (*print-char #\) context*))))
 
 (define (print-record record context)
   (cond ((string? record) (print-string record context))
@@ -724,36 +734,20 @@ USA.
     (lambda (context*)
       (*print-char #\( context*)
       (print-object (safe-car list) context*)
-      (print-tail (safe-cdr list) 2 context*)
+      (*general-print-items (safe-cdr list) context* print-object 1
+	(lambda (tail k)
+	  (cond ((datum-label tail context*)
+		 => (lambda (label)
+		      (*print-string " . " context*)
+		      (if (print-datum-label label context*)
+			  (print-object-1 tail context*))))
+		((pair? tail)
+		 (k (safe-car tail) (safe-cdr tail)))
+		((not (null? tail))
+		 (*print-string " . " context*)
+		 (print-object-1 tail context*)))))
       (*print-char #\) context*))))
 
-(define (limit-print-depth context kernel)
-  (let ((context* (context-down-list context))
-	(limit (context-list-depth-limit context)))
-    (if (and limit
-	     (> (context-list-depth-limit context*) limit))
-	(*print-string "..." context*)
-	(kernel context*))))
-
-(define (print-tail l n context)
-  (cond ((datum-label l context)
-	 => (lambda (label)
-	      (*print-string " . " context)
-	      (if (print-datum-label label context)
-                  (print-object-1 l context))))
-	((pair? l)
-	 (*print-char #\space context)
-	 (print-object (safe-car l) context)
-	 (if (let ((limit (context-list-breadth-limit context)))
-	       (and limit
-		    (>= n limit)
-		    (pair? (safe-cdr l))))
-	     (*print-string " ..." context)
-	     (print-tail (safe-cdr l) (+ n 1) context)))
-        ((not (null? l))
-         (*print-string " . " context)
-         (print-object l context))))
-
 (define (prefix-pair? object)
   (and (get-param:printer-abbreviate-quotations?)
        (pair? (safe-cdr object))
@@ -774,29 +768,22 @@ USA.
     (lambda (context*)
       (*print-char #\{ context*)
       (print-object (safe-car stream-pair) context*)
-      (print-stream-tail (safe-cdr stream-pair) 2 context*)
+      (*general-print-items (safe-cdr stream-pair) context* print-object 1
+	(lambda (tail k)
+	  (cond ((not (promise? tail))
+		 (*print-string " . " context*)
+		 (print-object tail context*))
+		((not (promise-forced? tail))
+		 (*print-string " ..." context*))
+		(else
+		 (let ((value (promise-value tail)))
+		   (cond ((empty-stream? value))
+			 ((stream-pair? value)
+			  (k (safe-car value) (safe-cdr value)))
+			 (else
+			  (*print-string " . " context*)
+			  (print-object value context*))))))))
       (*print-char #\} context*))))
-
-(define (print-stream-tail tail n context)
-  (cond ((not (promise? tail))
-         (*print-string " . " context)
-         (print-object tail context))
-        ((not (promise-forced? tail))
-         (*print-string " ..." context))
-        (else
-	 (let ((value (promise-value tail)))
-	   (cond ((empty-stream? value))
-		 ((stream-pair? value)
-		  (*print-char #\space context)
-		  (print-object (safe-car value) context)
-		  (if (let ((limit (context-list-breadth-limit context)))
-			(and limit
-			     (>= n limit)))
-		      (*print-string " ..." context)
-		      (print-stream-tail (safe-cdr value) (+ n 1) context)))
-		 (else
-		  (*print-string " . " context)
-		  (print-object value context)))))))
 
 (define (safe-car pair)
   (map-reference-trap (lambda () (car pair))))
