@@ -163,7 +163,8 @@ extern SCHEME_OBJECT * memory_base;
 #endif
 
 #ifndef ADDRESS_TO_DATUM
-#  define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - MEMBASE))
+#  define ADDRESS_TO_DATUM(address)					\
+  ((SCHEME_OBJECT) (((SCHEME_OBJECT *) (address)) - MEMBASE))
 #endif
 
 #endif /* not HEAP_IN_LOW_MEMORY */
