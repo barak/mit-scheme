@@ -300,12 +300,13 @@ compile-compiler-rtlopt: syntax-compiler
 
 .PHONY: clean-compiler
 clean-compiler:
-	-cd tools/compiler/back && rm -f $(SCHEME_OBJECTS_PATTERN)
-	-cd tools/compiler/base && rm -f $(SCHEME_OBJECTS_PATTERN)
-	-cd tools/compiler/fggen && rm -f $(SCHEME_OBJECTS_PATTERN)
-	-cd tools/compiler/fgopt && rm -f $(SCHEME_OBJECTS_PATTERN)
-	-cd tools/compiler/machine && rm -f $(SCHEME_OBJECTS_PATTERN)
-	-cd tools/compiler/rtlbase && rm -f $(SCHEME_OBJECTS_PATTERN)
-	-cd tools/compiler/rtlgen && rm -f $(SCHEME_OBJECTS_PATTERN)
-	-cd tools/compiler/rtlopt && rm -f $(SCHEME_OBJECTS_PATTERN)
+	-(cd tools/compiler && rm -f $(SCHEME_OBJECTS_PATTERN))
+	-(cd tools/compiler/back && rm -f $(SCHEME_OBJECTS_PATTERN))
+	-(cd tools/compiler/base && rm -f $(SCHEME_OBJECTS_PATTERN))
+	-(cd tools/compiler/fggen && rm -f $(SCHEME_OBJECTS_PATTERN))
+	-(cd tools/compiler/fgopt && rm -f $(SCHEME_OBJECTS_PATTERN))
+	-(cd tools/compiler/machine && rm -f $(SCHEME_OBJECTS_PATTERN))
+	-(cd tools/compiler/rtlbase && rm -f $(SCHEME_OBJECTS_PATTERN))
+	-(cd tools/compiler/rtlgen && rm -f $(SCHEME_OBJECTS_PATTERN))
+	-(cd tools/compiler/rtlopt && rm -f $(SCHEME_OBJECTS_PATTERN))
 clean: clean-compiler
