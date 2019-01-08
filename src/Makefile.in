@@ -79,10 +79,12 @@ AUXDIR = @AUXDIR@
 MAKE_IN_SUBDIRS = \
 	f () { t=$$1; shift; for d; do (cd "$$d" && $(MAKE) "$$t"); done; }; f
 
-@IF_CROSS@COMPILER_SETTINGS_CROSS = (set! compiler:cross-compiling? true)
+@IF_LIARC@NO_LIARC = \#;
+@IF_CROSS@COMPILER_SETTINGS_CROSS = \
+@IF_CROSS@	$(NO_LIARC)(set! compiler:cross-compiling? true)
 @IF_CROSS@SF_SETTINGS_CROSS = \
-@IF_CROSS@	(set! sf/cross-compiling? true) \
-@IF_CROSS@	(set! package/cross-compiling? true) \
+@IF_CROSS@	$(NO_LIARC)(set! sf/cross-compiling? true) \
+@IF_CROSS@	$(NO_LIARC)(set! package/cross-compiling? true) \
 @IF_CROSS@	(set! target-bytes-per-object \
 @IF_CROSS@	      (lambda () @mit_scheme_target_bytes_per_object@))
 @IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
@@ -123,8 +125,8 @@ TOOL_RUNTIME_ONLY = $(TOOL_MIT_SCHEME) $(TOOL_RUNTIME_ONLY_BAND) \
 
 # Convert host fasl files to target fasl files.
 TOOL_CROSS_HOST = $(TOOL_COMPILER) \
-  --eval '(load "etc/crossbin")' \
-  --eval '(apply convert fasl-format:@mit_scheme_native_code@ (cdr (member "--" (command-line))))' \
+  --eval '(begin $(NO_LIARC)(load "etc/crossbin"))' \
+  --eval '(begin $(NO_LIARC)(apply convert fasl-format:@mit_scheme_native_code@ (cdr (member "--" (command-line)))))' \
   --eval '(%exit 0)' \
   --
 
