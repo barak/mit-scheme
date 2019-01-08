@@ -162,6 +162,9 @@ OPTIONAL_SOURCES=
 OPTIONAL_OBJECTS=
 SCHEME_DEFS=-DMIT_SCHEME
 SCHEME_LDFLAGS=
+LIARC_CFLAGS=
+LIARC_LDFLAGS=
+LIARC_LOADER='${SCHEME_EXE}'
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
@@ -216,6 +219,7 @@ if test x"${GCC}" = xyes; then
 	LDFLAGS="${LDFLAGS} -g"
     fi
     CFLAGS_WERROR=-Werror
+    CFLAGS_WNOERROR=-Wno-error
 
     for flag in \
 	-frounding-math \
@@ -355,6 +359,7 @@ darwin*)
     CFLAGS="${CFLAGS} ${MACOS_CFLAGS}"
     LDFLAGS="${LDFLAGS} ${MACOS_CFLAGS} -Wl,-syslibroot,${MACOS_SYSROOT}"
     LDFLAGS="${LDFLAGS} -framework CoreFoundation"
+    LIARC_LDFLAGS="${LIARC_LDFLAGS} -bundle -bundle_loader ${LIARC_LOADER}"
     AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
 netbsd*)
@@ -380,6 +385,8 @@ if test "${DO_GCC_TESTS}" = yes; then
     if test "${GNU_LD}" = yes; then
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-export-dynamic"
     fi
+    LIARC_CFLAGS="${LIARC_CFLAGS} -fPIC"
+    LIARC_LDFLAGS="${LIARC_LDFLAGS} -shared -fPIC"
     AC_MSG_CHECKING([for ELF binaries])
     AC_EGREP_CPP([yes],
 	[
@@ -900,6 +907,7 @@ for base in ${OPTIONAL_BASES}; do
 done
 
 CFLAGS="${CFLAGS} ${CFLAGS_WERROR}"
+LIARC_CFLAGS="${LIARC_CFLAGS} ${CFLAGS_WNOERROR}"
 
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])
@@ -909,6 +917,9 @@ AC_SUBST([OPTIONAL_SOURCES])
 AC_SUBST([OPTIONAL_OBJECTS])
 AC_SUBST([SCHEME_DEFS])
 AC_SUBST([SCHEME_LDFLAGS])
+AC_SUBST([LIARC_CFLAGS])
+AC_SUBST([LIARC_LDFLAGS])
+AC_SUBST([LIARC_LOADER])
 AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([AUX_PROGRAMS])
