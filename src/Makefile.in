@@ -84,7 +84,7 @@ MAKE_IN_SUBDIRS = \
 @IF_CROSS@	(set! sf/cross-compiling? true) \
 @IF_CROSS@	(set! package/cross-compiling? true) \
 @IF_CROSS@	(set! target-bytes-per-object \
-@IF_CROSS@	      (lambda () @mit_scheme_target_bytes_per_object@)) \
+@IF_CROSS@	      (lambda () @mit_scheme_target_bytes_per_object@))
 @IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
 
 TOOL_COMPILER_HEAP = @HOST_COMPILER_HEAP@   # XXX rename
