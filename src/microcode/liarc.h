@@ -64,6 +64,12 @@ union machine_word_u
 typedef union machine_word_u machine_word;
 typedef unsigned long entry_count_t;
 
+#ifdef __GNUC__
+#define LIARC_UNINITIALIZED(name) = name
+#else
+#define LIARC_UNINITIALIZED(name)
+#endif
+
 #define ADDRESS_UNITS_PER_OBJECT SIZEOF_SCHEME_OBJECT
 #define ADDRESS_UNITS_PER_FLOAT (sizeof (double))
 

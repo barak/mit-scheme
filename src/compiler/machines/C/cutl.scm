@@ -410,7 +410,9 @@ USA.
 
 (define (c:decl type var #!optional val)
   (c:line (c:type type) " " (c:var var)
-	  (if (default-object? val) "" (string-append " = " (c:expr val)))
+	  (if (default-object? val)
+	      (string-append " LIARC_UNINITIALIZED(" (c:var var) ")")
+	      (string-append " = " (c:expr val)))
 	  ";"))
 
 (define (c:decl-unused type var #!optional val)
