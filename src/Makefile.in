@@ -228,6 +228,8 @@ syntax-runtime: $(TOOLCHAIN)
 	 echo '  (lambda () (load "runtime.sf")))') \
 	| $(TOOL_COMPILER)
 
+runtime/runtime-unx.pkd: $(RUNTIME_CREF_TARGETS)
+
 ################
 # SF
 ################
@@ -258,6 +260,7 @@ bundle-sf: $(LIARC_TOOLCHAIN)
 bundle-sf: compile-sf
 bundle-sf: sf/sf-unx.c
 	+(cd sf && $(MAKE) compile-liarc-bundle)
+sf/sf-unx.pkd: $(SF_CREF_TARGETS)
 
 #################
 # Compiler (LIAR)
@@ -344,6 +347,7 @@ bundle-compiler: $(LIARC_TOOLCHAIN)
 bundle-compiler: compile-compiler
 bundle-compiler: compiler/compiler-unx.c
 	+(cd compiler && $(MAKE) compile-liarc-bundle)
+compiler/compiler-unx.pkd: $(COMPILER_CREF_TARGETS)
 
 compiler/machines/svm/svm1-defns.h: \
 	  compiler/machines/svm/assembler-rules.scm \
@@ -385,6 +389,7 @@ bundle-cref: $(LIARC_TOOLCHAIN)
 bundle-cref: compile-cref
 bundle-cref: cref/cref-unx.c
 	+(cd cref && $(MAKE) compile-liarc-bundle)
+cref/cref-unx.pkd: $(CREF_CREF_TARGETS)
 
 ################
 # *PARSER
@@ -409,6 +414,7 @@ bundle-star-parser: $(LIARC_TOOLCHAIN)
 bundle-star-parser: compile-star-parser
 bundle-star-parser: star-parser/parser-unx.c
 	+(cd star-parser && $(MAKE) compile-liarc-bundle)
+star-parser/parser-unx.pkd: $(STAR_PARSER_CREF_TARGETS)
 
 ### More stuff we build with tools.  We could build it with the newly
 ### built compiler in the native case, but we want to avoid having to
@@ -437,6 +443,7 @@ bundle-ffi: $(LIARC_TOOLCHAIN)
 bundle-ffi: compile-ffi
 bundle-ffi: ffi/ffi-unx.c
 	+(cd ffi && $(MAKE) compile-liarc-bundle)
+ffi/ffi-unx.pkd: $(FFI_CREF_TARGETS)
 
 ################
 # SOS
@@ -461,6 +468,7 @@ bundle-sos: $(LIARC_TOOLCHAIN)
 bundle-sos: compile-sos
 bundle-sos: sos/sos-unx.c
 	+(cd sos && $(MAKE) compile-liarc-bundle)
+sos/sos-unx.pkd: $(SOS_CREF_TARGETS)
 
 ################
 # Windows FFI
@@ -512,6 +520,7 @@ bundle-xml: $(LIARC_TOOLCHAIN)
 bundle-xml: compile-xml
 bundle-xml: xml/xml-unx.c
 	+(cd xml && $(MAKE) compile-liarc-bundle)
+xml/xml-unx.pkd: $(XML_CREF_TARGETS)
 
 ################
 # SSP
@@ -537,6 +546,7 @@ bundle-ssp: $(LIARC_TOOLCHAIN)
 bundle-ssp: compile-ssp
 bundle-ssp: ssp/ssp-unx.c
 	+(cd ssp && $(MAKE) compile-liarc-bundle)
+ssp/ssp-unx.pkd: $(SSP_CREF_TARGETS)
 
 ### Targets built on the target by the native compiler because we don't
 ### have a way to load macro definitions of an object-program into a
