@@ -309,10 +309,7 @@ USA.
 	    (standard-print-method-name print-method object)
 	    object
 	    context
-	    (lambda (context*)
-	      (*print-items (standard-print-method-parts print-method object)
-			    context*
-			    print-object))))
+	    (standard-print-method-parts print-method object)))
 	  (print-method
 	   (call-print-method print-method object context))
 	  (else
@@ -441,32 +438,66 @@ USA.
 		(*print-char #\space context))
 	    (print-item item context)
 	    (loop rest (+ n-printed 1))))))))
+
+(define (*print-with-brackets name object context items)
+  (if (get-param:print-with-maximum-readability?)
+      (*print-readable-hash object context)
+      (let ((context* (context-in-brackets context)))
+	(*print-string "#[" context*)
+	(*print-items (cons*-if (if (string? name)
+				    (printing-item *print-string name)
+				    name)
+				(and (or (param:print-hash-number-in-objects?)
+					 (null? items))
+				     (printing-item *print-hash object))
+				items)
+		      context*)
+	(*print-char #\] context*))))
 
-(define (*print-items items context print-item)
-  (*general-print-items items context print-item 0
+(define (*print-items items context)
+  (*general-print-items items context *print-item 0
     (lambda (items k)
       (if (pair? items)
 	  (k (car items) (cdr items))))))
 
-(define (*print-with-brackets name object context procedure)
-  (if (get-param:print-with-maximum-readability?)
-      (*print-readable-hash object context)
-      (begin
-	(*print-string "#[" context)
-	(let ((context* (context-in-brackets context)))
-	  (if (string? name)
-	      (*print-string name context*)
-	      (print-object name context*))
-	  (if (param:print-hash-number-in-objects?)
-	      (begin
-		(*print-char #\space context*)
-		(*print-hash object context*)))
-	  (cond (procedure
-		 (procedure context*))
-		((get-param:print-with-datum?)
-		 (*print-char #\space context*)
-		 (*print-datum object context*))))
-	(*print-char #\] context))))
+(define (*print-item item context)
+  (cond ((printing-item? item)
+	 ((printing-item-printer item)
+	  (printing-item-object item)
+	  context))
+	((and (list? item)
+	      (any printing-item? item))
+	 (limit-print-depth context
+	   (lambda (context*)
+	     (*print-char #\( context*)
+	     (*print-items item context*)
+	     (*print-char #\) context*))))
+	(else
+	 (print-object item context))))
+
+(define-record-type <printing-item>
+    (printing-item printer object)
+    printing-item?
+  (printer printing-item-printer)
+  (object printing-item-object))
+
+(define (maybe-print-datum object)
+  (list-if (and (get-param:print-with-datum?)
+		(printing-item *print-datum object))))
+
+(define (list-if . items)
+  (remove not items))
+
+(define (cons-if car cdr)
+  (if car
+      (cons car cdr)
+      cdr))
+
+(define (cons*-if arg . args)
+  (let loop ((arg arg) (args args))
+    (if (pair? args)
+	(cons-if arg (loop (car args) (cdr args)))
+	arg)))
 
 ;;;; Printer methods
 
@@ -474,31 +505,19 @@ USA.
   (let ((type (user-object-type object)))
     (case (object-gc-type object)
       ((cell pair triple quadruple vector compiled-entry)
-       (*print-with-brackets type object context #f))
-      ((non-pointer)
-       (*print-with-brackets type object context
-         (lambda (context*)
-	   (*print-char #\space context*)
-           (*print-datum object context*))))
-      (else                             ;UNDEFINED, GC-INTERNAL
-       (*print-with-brackets type #f context
-         (lambda (context*)
-	   (*print-char #\space context*)
-           (*print-datum object context*)))))))
+       (*print-with-brackets type object context '()))
+      (else                             ;non-pointer, undefined, gc-internal
+       (*print-with-brackets type object context (maybe-print-datum object))))))
 
 (define (user-object-type object)
   (let ((type-code (object-type object)))
     (let ((type-name (microcode-type/code->name type-code)))
       (if type-name
-          (rename-user-object-type type-name)
-          (intern
-           (string-append "undefined-type:" (number->string type-code)))))))
-
-(define (rename-user-object-type type-name)
-  (let ((entry (assq type-name renamed-user-object-types)))
-    (if entry
-        (cdr entry)
-        type-name)))
+	  (let ((entry (assq type-name renamed-user-object-types)))
+	    (if entry
+		(cdr entry)
+		type-name))
+          (string-append "undefined-type:" (number->string type-code))))))
 
 (define renamed-user-object-types
   '((access . scode-access)
@@ -554,9 +573,7 @@ USA.
   (if (get-param:print-uninterned-symbols-by-name?)
       (print-symbol-name (symbol->string symbol) context)
       (*print-with-brackets 'uninterned-symbol symbol context
-        (lambda (context*)
-	  (*print-char #\space context*)
-	  (*print-string (symbol->string symbol) context*)))))
+	(list (printing-item print-symbol-name (symbol->string symbol))))))
 
 (define (print-symbol symbol context)
   (if (keyword? symbol)
@@ -654,14 +671,13 @@ USA.
     ((#\\)
      (*print-char #\\ context)
      (*print-char #\\ context))
-    ((#\" #\|)
-     (if (eqv? char quote-char)
-         (*print-char #\\ context))
-     (*print-char char context))
     (else
      (if (and (char-in-set? char char-set:normal-printing)
 	      (allowed-char? char context))
-	 (*print-char char context)
+	 (begin
+	   (if (eqv? char quote-char)
+	       (*print-char #\\ context))
+	   (*print-char char context))
 	 (begin
 	   (*print-char #\\ context)
 	   (*print-char #\x context)
@@ -711,10 +727,7 @@ USA.
 (define (print-record record context)
   (cond ((string? record) (print-string record context))
 	((uri? record) (print-uri record context))
-	((get-param:print-with-maximum-readability?)
-	 (*print-readable-hash record context))
-	(else
-	 (*print-with-brackets 'record record context #f))))
+	(else (*print-with-brackets 'record record context '()))))
 
 (define (print-uri uri context)
   (*print-string "#<" context)
@@ -795,29 +808,17 @@ USA.
 
 (define (print-compound-procedure procedure context)
   (*print-with-brackets 'compound-procedure procedure context
-    (and (get-param:print-compound-procedure-names?)
-	 (lambda-components* (procedure-lambda procedure)
-	   (lambda (name required optional rest body)
-	     required optional rest body
-	     (and (not (eq? name scode-lambda-name:unnamed))
-		  (lambda (context*)
-		    (*print-char #\space context*)
-		    (print-object name context*))))))))
+    (let ((name (scode-lambda-name (procedure-lambda procedure))))
+      (list-if (and (get-param:print-compound-procedure-names?)
+		    (not (eq? name scode-lambda-name:unnamed))
+		    name)))))
 
 (define (print-primitive-procedure procedure context)
-  (let ((print-name
-	 (lambda (context)
-	   (print-object (primitive-procedure-name procedure) context))))
-    (cond ((get-param:print-primitives-by-name?)
-	   (print-name context))
-	  ((get-param:print-with-maximum-readability?)
-	   (*print-readable-hash procedure context))
-	  (else
-	   (*print-with-brackets 'primitive-procedure #f context
-	     (lambda (context*)
-	       (*print-char #\space context*)
-	       (print-name context*)))))))
-
+  (if (get-param:print-primitives-by-name?)
+      (print-object (primitive-procedure-name procedure) context)
+      (*print-with-brackets 'primitive-procedure procedure context
+	(list (primitive-procedure-name procedure)))))
+
 (define (print-compiled-entry entry context)
   (let* ((type (compiled-entry-type entry))
          (procedure? (eq? type 'compiled-procedure))
@@ -826,88 +827,54 @@ USA.
                (compiled-code-block/manifest-closure?
                 (compiled-code-address->block entry)))))
     (*print-with-brackets (if closure? 'compiled-closure type)
-			    entry
-			    context
-      (lambda (context*)
-	(let ((name (and procedure? (compiled-procedure/name entry))))
-	  (receive (filename block-number library)
-	      (compiled-entry/filename-and-index entry)
-	    (*print-char #\space context*)
-	    (*print-char #\( context*)
-	    (if name
-		(*print-string name context*))
-	    (if filename
-		(begin
-		  (if name
-		      (*print-char #\space context*))
-		  (print-block-info filename block-number library context*)))
-	    (*print-char #\) context*)))
-	(*print-char #\space context*)
-	(*print-hex (compiled-entry/offset entry) context*)
-	(if closure?
-	    (begin
-	      (*print-char #\space context*)
-	      (*print-datum (compiled-closure->entry entry)
-			    context*)))
-	(*print-char #\space context*)
-	(*print-datum entry context*)))))
+			  entry
+			  context
+      (cons* (let ((name (and procedure? (compiled-procedure/name entry))))
+	       (cons-if (and name (printing-item *print-string name))
+			(cc-block-info (compiled-entry/block entry))))
+	     (printing-item *print-hex (compiled-entry/offset entry))
+	     (list-if (and closure?
+			   (printing-item *print-datum
+					  (compiled-closure->entry entry)))
+		      (printing-item *print-datum entry))))))
 
 (define (print-compiled-code-block block context)
   (*print-with-brackets 'compiled-code-block block context
-    (lambda (context*)
-      (receive (filename block-number library)
-	  (compiled-code-block/filename-and-index block)
-	(*print-char #\space context*)
-	(if filename
-	    (begin
-	      (*print-char #\( context*)
-	      (print-block-info filename block-number library context*)
-	      (*print-char #\) context*))))
-      (*print-char #\space context*)
-      (*print-datum block context*))))
+    (list (cc-block-info block)
+	  (list (printing-item *print-datum block)))))
 
-(define (print-block-info filename block-number library context*)
-  (print-object (pathname-name filename) context*)
-  (if block-number
-      (begin
-	(*print-char #\space context*)
-	(*print-hex block-number context*)))
-  (if (library-name? library)
-      (begin
-	(*print-char #\space context*)
-	(print-object library context*))))
+(define (cc-block-info block)
+  (receive (filename block-number library)
+      (compiled-code-block/filename-and-index block)
+    (if filename
+	(list-if (pathname-name filename)
+		 (and block-number
+		      (printing-item *print-hex block-number))
+		 (and (library-name? library)
+		      library))
+	'())))
 
 ;;;; Miscellaneous
 
 (define (print-return-address return-address context)
   (*print-with-brackets 'return-address return-address context
-    (lambda (context*)
-      (*print-char #\space context*)
-      (print-object (return-address/name return-address) context*))))
+    (list (return-address/name return-address))))
 
 (define (print-assignment assignment context)
   (*print-with-brackets 'assignment assignment context
-    (lambda (context*)
-      (*print-char #\space context*)
-      (print-object (scode-assignment-name assignment) context*))))
+    (list (scode-assignment-name assignment))))
 
 (define (print-definition definition context)
   (*print-with-brackets 'definition definition context
-    (lambda (context*)
-      (*print-char #\space context*)
-      (print-object (scode-definition-name definition) context*))))
+    (list (scode-definition-name definition))))
 
 (define (print-lambda lambda-object context)
   (*print-with-brackets 'lambda lambda-object context
-    (lambda (context*)
-      (*print-char #\space context*)
-      (print-object (scode-lambda-name lambda-object) context*))))
+    (list (scode-lambda-name lambda-object))))
 
 (define (print-variable variable context)
   (*print-with-brackets 'variable variable context
-    (lambda (context*)
-      (*print-char #\space context*)
-      (print-object (scode-variable-name variable) context*))))
+    (list (scode-variable-name variable))))
 
 (define (print-number object context)
   (*print-string (number->string
@@ -933,36 +900,19 @@ USA.
       (print-floating-vector flonum context)))
 
 (define (print-floating-vector v context)
-  (let ((length ((ucode-primitive floating-vector-length) v)))
-    (*print-with-brackets "floating-vector" v context
-      (and (not (zero? length))
-           (lambda (context*)
-             (let ((limit
-		    (let ((limit (get-param:printer-list-breadth-limit)))
-		      (if limit
-			  (min length limit)
-			  length))))
-               (*print-char #\space context*)
-	       (print-flonum ((ucode-primitive floating-vector-ref) v 0)
-			       context*)
-               (do ((i 1 (+ i 1)))
-                   ((>= i limit))
-                 (*print-char #\space context*)
-                 (print-flonum ((ucode-primitive floating-vector-ref) v i)
-				 context*))
-               (if (< limit length)
-                   (*print-string " ..." context*))))))))
+  (*print-with-brackets 'floating-vector v context
+    (map (lambda (index)
+	   (printing-item print-number (flo:vector-ref v index)))
+	 (iota (flo:vector-length v)))))
 
 (define (print-entity entity context)
 
   (define (plain name)
-    (*print-with-brackets name entity context #f))
+    (*print-with-brackets name entity context '()))
 
   (define (named-arity-dispatched-procedure name)
     (*print-with-brackets 'arity-dispatched-procedure entity context
-      (lambda (context*)
-        (*print-char #\space context*)
-	(*print-string name context*))))
+      (list (printing-item *print-string name))))
 
   (cond ((continuation? entity)
          (plain 'continuation))
@@ -974,19 +924,15 @@ USA.
                        (compiled-procedure? proc)
                        (compiled-procedure/name proc))
                   => named-arity-dispatched-procedure)
-                 (else (plain 'arity-dispatched-procedure)))))
-        ((get-param:print-with-maximum-readability?)
-         (*print-readable-hash entity context))
-        (else (plain 'entity))))
+                 (else
+		  (plain 'arity-dispatched-procedure)))))
+        (else
+	 (plain 'entity))))
 
 (define (print-tagged-object object context)
   (*print-with-brackets 'tagged-object object context
-    (lambda (context*)
-      (*print-char #\space context*)
-      (print-object (let ((tag (%tagged-object-tag object)))
-		       (if (dispatch-tag? tag)
-			   (dispatch-tag-name tag)
-			   tag))
-		     context*)
-      (*print-char #\space context*)
-      (print-object (%tagged-object-datum object) context*))))
+    (list (let ((tag (%tagged-object-tag object)))
+	    (if (dispatch-tag? tag)
+		(dispatch-tag-print-name tag)
+		tag))
+	  (%tagged-object-datum object))))
