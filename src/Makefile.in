@@ -461,31 +461,6 @@ bundle-sos: sos/sos-unx.c
 	+(cd sos && $(MAKE) compile-liarc-bundle)
 
 ################
-# SSP
-################
-
-SSP_BUILD_TARGETS = compile-ssp $(SSP_LIARC_TARGETS)
-@IF_LIARC@SSP_LIARC_TARGETS = bundle-ssp
-SSP_CREF_TARGETS = compile-ssp # no separate syntax step
-@IF_NATIVE@SSP_DEPEND_TARGETS = compile-ssp
-@IF_CROSS@SSP_DEPEND_TARGETS = stamp_cross-finished
-
-.PHONY: compile-ssp
-compile-ssp: $(RUNTIME_CREF_TARGETS)
-compile-ssp: $(XML_CREF_TARGETS)
-compile-ssp: $(TOOLCHAIN)
-	(echo '(with-working-directory-pathname "ssp"' && \
-	 echo '  (lambda () (load "compile")))') \
-	| $(TOOL_COMPILER)
-	$(CROSS_HOST) ssp
-
-.PHONY: bundle-ssp
-bundle-ssp: $(LIARC_TOOLCHAIN)
-bundle-ssp: compile-ssp
-bundle-ssp: ssp/ssp-unx.c
-	+(cd ssp && $(MAKE) compile-liarc-bundle)
-
-################
 # Windows FFI
 ################
 
@@ -535,6 +510,31 @@ bundle-xml: $(LIARC_TOOLCHAIN)
 bundle-xml: compile-xml
 bundle-xml: xml/xml-unx.c
 	+(cd xml && $(MAKE) compile-liarc-bundle)
+
+################
+# SSP
+################
+
+SSP_BUILD_TARGETS = compile-ssp $(SSP_LIARC_TARGETS)
+@IF_LIARC@SSP_LIARC_TARGETS = bundle-ssp
+SSP_CREF_TARGETS = compile-ssp # no separate syntax step
+@IF_NATIVE@SSP_DEPEND_TARGETS = compile-ssp
+@IF_CROSS@SSP_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-ssp
+compile-ssp: $(RUNTIME_CREF_TARGETS)
+compile-ssp: $(XML_CREF_TARGETS)
+compile-ssp: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "ssp"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) ssp
+
+.PHONY: bundle-ssp
+bundle-ssp: $(LIARC_TOOLCHAIN)
+bundle-ssp: compile-ssp
+bundle-ssp: ssp/ssp-unx.c
+	+(cd ssp && $(MAKE) compile-liarc-bundle)
 
 ### Targets built on the target by the native compiler because we don't
 ### have a way to load macro definitions of an object-program into a
