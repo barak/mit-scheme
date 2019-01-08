@@ -209,7 +209,7 @@ LIARC_TOOLCHAIN = microcode/scheme
 ################
 
 RUNTIME_BUILD_TARGETS = compile-runtime $(RUNTIME_LIARC_TARGETS)
-@IF_LIARC@RUNTIME_LIARC_TARGETS = runtime/runtime-unx.c
+@IF_LIARC@RUNTIME_LIARC_TARGETS = runtime/runtime-unx.c compile-runtime
 RUNTIME_CREF_TARGETS = syntax-runtime
 @IF_NATIVE@RUNTIME_DEPEND_TARGETS = compile-runtime
 @IF_CROSS@RUNTIME_DEPEND_TARGETS = stamp_cross-finished
