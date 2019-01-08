@@ -174,13 +174,13 @@ PLUGINS_TOOLCHAIN = lib/all.com lib/runtime.com microcode/scheme \
 # LIARC bundle rules depend on $(LIARC_TOOLCHAIN) for
 # extract-liarc-decls.
 #
-# XXX This should really depend on microcode/gen-nonce and
-# microcode/extract-liarc-decls instead of microcode/scheme, but
-# splitting up dependencies within the microcode subdirectory is more
-# trouble than it's worth right now.  Later, we should reorganize the
-# directory structure to better reflect the build rather than just
-# shoving all the C code into microcode/.
-LIARC_TOOLCHAIN = microcode/scheme
+# XXX WARNING: The rules for gen-nonce and extract-liarc-decls do not
+# intersect with any others.  If they did, this would be unsafe with
+# parallel makes.
+LIARC_TOOLCHAIN = stamp_liarc-toolchain
+stamp_liarc-toolchain:
+	+(cd microcode && $(MAKE) gen-nonce extract-liarc-decls)
+	echo done > $@
 
 ### For the subsystems, we have several rules:
 ###
@@ -209,7 +209,7 @@ LIARC_TOOLCHAIN = microcode/scheme
 ################
 
 RUNTIME_BUILD_TARGETS = compile-runtime $(RUNTIME_LIARC_TARGETS)
-@IF_LIARC@RUNTIME_LIARC_TARGETS = runtime/runtime-unx.c compile-runtime
+@IF_LIARC@RUNTIME_LIARC_TARGETS = runtime/runtime-unx.c
 RUNTIME_CREF_TARGETS = syntax-runtime
 @IF_NATIVE@RUNTIME_DEPEND_TARGETS = compile-runtime
 @IF_CROSS@RUNTIME_DEPEND_TARGETS = stamp_cross-finished
