@@ -125,6 +125,7 @@ TOOL_RUNTIME_ONLY = $(TOOL_MIT_SCHEME) $(TOOL_RUNTIME_ONLY_BAND) \
 TOOL_CROSS_HOST = $(TOOL_COMPILER) \
   --eval '(load "etc/crossbin")' \
   --eval '(apply convert fasl-format:@mit_scheme_native_code@ (cdr (member "--" (command-line))))' \
+  --eval '(%exit 0)' \
   --
 
 @IF_CROSS@CROSS_HOST = $(TOOL_CROSS_HOST)
