@@ -80,6 +80,9 @@ typedef unsigned long entry_count_t;
 #define C_STRING_TO_SCHEME_STRING(len, str)				\
   (MEMORY_TO_STRING ((len), ((const uint8_t *) (str))))
 
+#define C_STRING_TO_SCHEME_BYTEVECTOR(len, str)				\
+  (MEMORY_TO_BYTEVECTOR ((len), ((const uint8_t *) (str))))
+
 #define C_SYM_INTERN(len, str)						\
   (MEMORY_TO_SYMBOL ((len), ((const uint8_t *) (str))))
 
@@ -440,6 +443,7 @@ extern int multiply_with_overflow (long, long, long *);
 #define MAKE_PRIMITIVE(str, arity)					\
   (make_primitive (((const char *) (str)), ((int) (arity))))
 
+#define MEMORY_TO_BYTEVECTOR memory_to_bytevector
 #define MEMORY_TO_STRING memory_to_string
 #define MEMORY_TO_SYMBOL memory_to_symbol
 #define MAKE_VECTOR make_vector

@@ -149,7 +149,8 @@ typedef enum
   stackify_opcode_push_primitive_5 = 0305,
   stackify_opcode_push_primitive_6 = 0306,
   stackify_opcode_push_primitive_7 = 0307,
-  N_STACKIFY_OPCODE = 0310
+  stackify_opcode_push_bytevector = 0310,
+  N_STACKIFY_OPCODE = 0311
 } stackify_opcode_t;
 
 #endif /* !STACKOPS_H */

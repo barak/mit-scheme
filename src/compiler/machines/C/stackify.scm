@@ -133,6 +133,7 @@ USA.
       (flo:flonum? obj)
       (symbol? obj)
       (string? obj)
+      (bytevector? obj)
       (bit-string? obj)
       (scode/primitive-procedure? obj)
       ;; The runtime system needs the following
@@ -509,6 +510,15 @@ USA.
 			   (bit-string->unsigned-integer obj)
 			   16))))
 		       (build/push-nat (bit-string-length obj) prog)))
+	((bytevector? obj)
+	 (build/string stackify-opcode/push-bytevector
+		       (let ((string
+			      (make-vector-8b (bytevector-length obj))))
+			 (do ((i 0 (+ i 1)))
+			     ((>= i (bytevector-length obj)))
+			   (vector-8b-set! string i (bytevector-u8-ref obj i)))
+			 string)
+		       prog))
 	((scode/primitive-procedure? obj)
 	 (let ((arity (primitive-procedure-arity obj))
 	       (name (symbol->string (primitive-procedure-name obj))))

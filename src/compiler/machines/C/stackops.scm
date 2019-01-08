@@ -243,6 +243,8 @@ push-primitive-5			; name in string table
 push-primitive-6			; name in string table
 push-primitive-7			; name in string table
 ;; 8
+
+push-bytevector				; in string table
 )
 
 (define stackify/fast-fixnum-opcodes
