@@ -121,76 +121,602 @@ TOOL_SYNTAXER = $(TOOL_MIT_SCHEME) $(TOOL_SYNTAXER_BAND) $(TOOL_OPTIONS) \
 TOOL_RUNTIME_ONLY = $(TOOL_MIT_SCHEME) $(TOOL_RUNTIME_ONLY_BAND) \
   $(TOOL_OPTIONS)
 
-# The basics and everything that can be cross-compiled -- anything that
-# uses $(TOOL_...) -- depends on this target.
-.PHONY: toolchain
-@IF_SVM_COMPILER@toolchain: compiler/machines/svm/svm1-defns.h
-toolchain:
-@IF_CROSS@	$(MAKE) -f Makefile.tools
+# Convert host fasl files to target fasl files.
+TOOL_CROSS_HOST = $(TOOL_COMPILER) \
+  --eval '(load "etc/crossbin")' \
+  --eval '(apply convert fasl-format:@mit_scheme_native_code@ (cdr (member "--" (command-line))))' \
+  --
+
+@IF_CROSS@CROSS_HOST = $(TOOL_CROSS_HOST)
+@IF_NATIVE@CROSS_HOST = @:
 
 # This rule is for LIARC.
 .SUFFIXES: .bld .pkd .c
-.pkd.c .bld.c: toolchain
+.pkd.c .bld.c: $(TOOLCHAIN)
 	echo '(cbf "$<")' | $(TOOL_COMPILER)
 
 .PHONY: all
-all: all-basics
-all: all-plugins
 all: lib/all.com
 all: lib/runtime.com
 all: microcode/scheme
 
-.PHONY: all-basics
-@IF_CROSS@all-basics: stamp_cross-finished
-@IF_NATIVE@all-basics: all-compiler
-@IF_NATIVE@all-basics: all-cref
-@IF_NATIVE@all-basics: all-ffi
-@IF_NATIVE@all-basics: all-runtime
-@IF_NATIVE@all-basics: all-sf
-@IF_NATIVE@all-basics: all-sos
-@IF_NATIVE@all-basics: all-ssp
-@IF_NATIVE@all-basics: all-star-parser
-@IF_NATIVE@all-basics: all-xml
-@IF_NATIVE@all-basics: all-win32	# XXX ?
+# The basics and everything that can be cross-compiled -- anything that
+# uses $(TOOL_...) -- depends on $(TOOLCHAIN).
+@IF_CROSS@TOOLCHAIN = stamp_toolchain
 
-.PHONY: all-plugins
-all-plugins: # in case none
-@IF_BLOWFISH@all-plugins: all-blowfish
-@IF_EDWIN@all-plugins: all-edwin
-@IF_GDBM@all-plugins: all-gdbm
-@IF_IMAIL@all-plugins: all-imail
-@IF_MCRYPT@all-plugins: all-mcrypt
-@IF_PGSQL@all-plugins: all-pgsql
-@IF_X11@all-plugins: all-x11
-@IF_X11_SCREEN@all-plugins: all-x11-screen
+@IF_SVM_COMPILER@stamp_toolchain: compiler/machines/svm/svm1-defns.h
+stamp_toolchain:
+	+$(MAKE) toolchain
 
-# Plugins all depend on this target to make sure that they can use the
-# newly built system to compile themselves.
+.PHONY: toolchain
+toolchain:
+	+$(MAKE) -f Makefile.tools
+	echo done > stamp_toolchain
+
+.PHONY: toolclean
+toolclean:
+	+$(MAKE) -f Makefile.tools clean
+	-rm -f stamp_toolchain
+
+# Plugins all depend on $(PLUGINS_TOOLCHAIN) to make sure that they can
+# use the newly built system to compile themselves.
 #
 # XXX We should be able to cross-compile plugins too.
-.PHONY: plugins-toolchain
-plugins-toolchain: lib/all.com
-plugins-toolchain: lib/runtime.com
-plugins-toolchain: microcode/scheme
-@IF_CROSS@plugins-toolchain: stamp_cross-finished
-@IF_NATIVE@plugins-toolchain: all-basics
+PLUGINS_TOOLCHAIN = lib/all.com lib/runtime.com microcode/scheme \
+	$(CREF_DEPENDS_TARGET) \
+	$(FFI_DEPENDS_TARGET) \
+	$(STAR_PARSER_DEPENDS_TARGET) \
+	# end of PLUGINS_TOOLCHAIN
 
+# LIARC bundle rules depend on $(LIARC_TOOLCHAIN) for
+# extract-liarc-decls.
+#
 # XXX This should really depend on microcode/gen-nonce and
 # microcode/extract-liarc-decls instead of microcode/scheme, but
 # splitting up dependencies within the microcode subdirectory is more
 # trouble than it's worth right now.  Later, we should reorganize the
 # directory structure to better reflect the build rather than just
 # shoving all the C code into microcode/.
-.PHONY: liarc-bundle-tools
-liarc-bundle-tools: microcode/scheme
+LIARC_TOOLCHAIN = microcode/scheme
+
+### For the subsystems, we have several rules:
+###
+###	compile-SUBSYS: compile to .coms; needed for this to be loadable
+###	syntax-SUBSYS: syntax; needed, in principle, to use macros from this
+###	bundle-SUBSYS: generate LIARC bundle
+###
+### We also define:
+###
+###	<SUBSYS>_BUILD_TARGETS: targets to build the subsystem, if included
+###	<SUBSYS>_LIARC_TARGETS: whatever LIARC needs
+###	<SUBSYS>_CREF_TARGETS: dependencies for users of the cref
+###	<SUBSYS>_DEPEND_TARGETS: dependencies for using macros from it
+###
+### Conditionally setting the variable <SUBSYS>_DEPEND_TARGETS to
+### compile-SUBSYS or stamp_cross-finished is a kludge that arises
+### because we don't have a reasonable way for a cross-compiler to load
+### macros from upstream subsystems.
+###
+### Since make expands variables on dependency lines as it reads them,
+### the subsystems must be written topologically sorted in dependency
+### order, not alphabetically.  Sorry.
+
+################
+# Runtime
+################
+
+RUNTIME_BUILD_TARGETS = compile-runtime $(RUNTIME_LIARC_TARGETS)
+@IF_LIARC@RUNTIME_LIARC_TARGETS = runtime/runtime-unx.c
+RUNTIME_CREF_TARGETS = syntax-runtime
+@IF_NATIVE@RUNTIME_DEPEND_TARGETS = compile-runtime
+@IF_CROSS@RUNTIME_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-runtime
+compile-runtime: syntax-runtime
+compile-runtime: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.cbf")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) runtime
+
+.PHONY: syntax-runtime
+syntax-runtime: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.sf")))') \
+	| $(TOOL_COMPILER)
+
+################
+# SF
+################
+
+SF_BUILD_TARGETS = compile-sf $(SF_LIARC_TARGETS)
+@IF_LIARC@SF_LIARC_TARGETS = bundle-sf
+SF_CREF_TARGETS = syntax-sf
+@IF_NATIVE@SF_DEPEND_TARGETS = compile-sf
+@IF_CROSS@SF_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-sf
+compile-sf: syntax-sf
+compile-sf: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.cbf")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) sf
+
+.PHONY: syntax-sf
+syntax-sf: $(RUNTIME_CREF_TARGETS)
+syntax-sf: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.sf")))') \
+	| $(TOOL_COMPILER)
+
+.PHONY: bundle-sf
+bundle-sf: $(LIARC_TOOLCHAIN)
+bundle-sf: compile-sf
+bundle-sf: sf/sf-unx.c
+	+(cd sf && $(MAKE) compile-liarc-bundle)
+
+#################
+# Compiler (LIAR)
+#################
+
+COMPILER_BUILD_TARGETS = compile-compiler $(COMPILER_LIARC_TARGETS)
+@IF_LIARC@COMPILER_LIARC_TARGETS = bundle-compiler
+COMPILER_CREF_TARGETS = syntax-compiler
+@IF_NATIVE@COMPILER_DEPEND_TARGETS = compile-compiler
+@IF_CROSS@COMPILER_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: syntax-compiler
+syntax-compiler: $(RUNTIME_CREF_TARGETS)
+syntax-compiler: $(SF_CREF_TARGETS)
+syntax-compiler: $(TOOLCHAIN)
+@IF_SVM_COMPILER@syntax-compiler: compiler/machines/svm/svm1-defns.h
+	(echo '(with-working-directory-pathname "compiler"' && \
+	 echo '  (lambda ()' && \
+	 echo '    $(SF_SETTINGS_CROSS)' && \
+	 echo '    (load "compiler.sf")))') \
+	| $(TOOL_SYNTAXER)
+
+.PHONY: compile-compiler
+compile-compiler: compile-compiler-back
+compile-compiler: compile-compiler-base
+compile-compiler: compile-compiler-fggen
+compile-compiler: compile-compiler-fgopt
+compile-compiler: compile-compiler-machine
+compile-compiler: compile-compiler-rtlbase
+compile-compiler: compile-compiler-rtlgen
+compile-compiler: compile-compiler-rtlopt
+	$(CROSS_HOST) compiler
+
+.PHONY: compile-compiler-back
+compile-compiler-back: syntax-compiler
+compile-compiler-back: $(TOOLCHAIN)
+	echo '(compile-directory "compiler/back")' | $(TOOL_COMPILER)
+	$(CROSS_HOST) compiler/back
+
+.PHONY: compile-compiler-base
+compile-compiler-base: syntax-compiler
+compile-compiler-base: $(TOOLCHAIN)
+	echo '(compile-directory "compiler/base")' | $(TOOL_COMPILER)
+	$(CROSS_HOST) compiler/base
+
+.PHONY: compile-compiler-fggen
+compile-compiler-fggen: syntax-compiler
+compile-compiler-fggen: $(TOOLCHAIN)
+	echo '(compile-directory "compiler/fggen")' | $(TOOL_COMPILER)
+	$(CROSS_HOST) compiler/fggen
+
+.PHONY: compile-compiler-fgopt
+compile-compiler-fgopt: syntax-compiler
+compile-compiler-fgopt: $(TOOLCHAIN)
+	echo '(compile-directory "compiler/fgopt")' | $(TOOL_COMPILER)
+	$(CROSS_HOST) compiler/fgopt
+
+.PHONY: compile-compiler-machine
+compile-compiler-machine: syntax-compiler
+compile-compiler-machine: $(TOOLCHAIN)
+	echo '(compile-directory "compiler/machine")' | $(TOOL_COMPILER)
+	$(CROSS_HOST) compiler/machine
+
+.PHONY: compile-compiler-rtlbase
+compile-compiler-rtlbase: syntax-compiler
+compile-compiler-rtlbase: $(TOOLCHAIN)
+	echo '(compile-directory "compiler/rtlbase")' | $(TOOL_COMPILER)
+	$(CROSS_HOST) compiler/rtlbase
+
+.PHONY: compile-compiler-rtlgen
+compile-compiler-rtlgen: syntax-compiler
+compile-compiler-rtlgen: $(TOOLCHAIN)
+	echo '(compile-directory "compiler/rtlgen")' | $(TOOL_COMPILER)
+	$(CROSS_HOST) compiler/rtlgen
+
+.PHONY: compile-compiler-rtlopt
+compile-compiler-rtlopt: syntax-compiler
+compile-compiler-rtlopt: $(TOOLCHAIN)
+	echo '(compile-directory "compiler/rtlopt")' | $(TOOL_COMPILER)
+	$(CROSS_HOST) compiler/rtlopt
+
+.PHONY: bundle-compiler
+bundle-compiler: $(LIARC_TOOLCHAIN)
+bundle-compiler: compile-compiler
+bundle-compiler: compiler/compiler-unx.c
+	+(cd compiler && $(MAKE) compile-liarc-bundle)
+
+compiler/machines/svm/svm1-defns.h: \
+	  compiler/machines/svm/assembler-rules.scm \
+	  compiler/machines/svm/machine.scm \
+	  compiler/machines/svm/assembler-compiler.scm \
+	  compiler/machines/svm/assembler-runtime.scm \
+	  compiler/machines/svm/compile-assembler.scm
+	(echo '(with-working-directory-pathname "compiler/machines/svm"' && \
+	 echo '  (lambda () (load "compile-assembler")))') \
+	| '$(MIT_SCHEME_EXE)' --band runtime.com --batch-mode --no-init-file
+
+################
+# CREF
+################
+
+CREF_BUILD_TARGETS = compile-cref $(CREF_LIARC_TARGETS)
+@IF_LIARC@CREF_LIARC_TARGETS = bundle-cref
+CREF_CREF_TARGETS = syntax-cref
+@IF_NATIVE@CREF_DEPEND_TARGETS = compile-cref
+@IF_CROSS@CREF_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-cref
+compile-cref: syntax-cref
+compile-cref: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.cbf")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) cref
+
+.PHONY: syntax-cref
+syntax-cref: $(RUNTIME_CREF_TARGETS)
+syntax-cref: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.sf")))') \
+	| $(TOOL_COMPILER)
+
+.PHONY: bundle-cref
+bundle-cref: $(LIARC_TOOLCHAIN)
+bundle-cref: compile-cref
+bundle-cref: cref/cref-unx.c
+	+(cd cref && $(MAKE) compile-liarc-bundle)
+
+################
+# *PARSER
+################
+
+STAR_PARSER_BUILD_TARGETS = compile-star-parser $(STAR_PARSER_LIARC_TARGETS)
+@IF_LIARC@STAR_PARSER_LIARC_TARGETS = bundle-star-parser
+STAR_PARSER_CREF_TARGETS = compile-star-parser # no separate syntax step
+@IF_NATIVE@STAR_PARSER_DEPEND_TARGETS = compile-star-parser
+@IF_CROSS@STAR_PARSER_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-star-parser
+compile-star-parser: $(RUNTIME_CREF_TARGETS)
+compile-star-parser: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "star-parser"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) star-parser
+
+.PHONY: bundle-star-parser
+bundle-star-parser: $(LIARC_TOOLCHAIN)
+bundle-star-parser: compile-star-parser
+bundle-star-parser: star-parser/parser-unx.c
+	+(cd star-parser && $(MAKE) compile-liarc-bundle)
+
+### More stuff we build with tools.  We could build it with the newly
+### built compiler in the native case, but we want to avoid having to
+### do that to encourage cross-compilation.
+
+################
+# FFI
+################
+
+FFI_BUILD_TARGETS = compile-ffi $(FFI_LIARC_TARGETS)
+@IF_LIARC@FFI_LIARC_TARGETS = bundle-ffi
+FFI_CREF_TARGETS = compile-ffi # no separate syntax step
+@IF_NATIVE@FFI_DEPEND_TARGETS = compile-ffi
+@IF_CROSS@FFI_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-ffi
+compile-ffi: $(RUNTIME_CREF_TARGETS)
+compile-ffi: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "ffi"' && \
+	 echo '  (lambda () (load "compile.scm")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) ffi
+
+.PHONY: bundle-ffi
+bundle-ffi: $(LIARC_TOOLCHAIN)
+bundle-ffi: compile-ffi
+bundle-ffi: ffi/ffi-unx.c
+	+(cd ffi && $(MAKE) compile-liarc-bundle)
+
+################
+# SOS
+################
+
+SOS_BUILD_TARGETS = compile-sos $(SOS_LIARC_TARGETS)
+@IF_LIARC@SOS_LIARC_TARGETS = bundle-sos
+SOS_CREF_TARGETS = compile-sos # no separate syntax step
+@IF_NATIVE@SOS_DEPEND_TARGETS = compile-sos
+@IF_CROSS@SOS_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-sos
+compile-sos: $(RUNTIME_CREF_TARGETS)
+compile-sos: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "sos"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) sos
+
+.PHONY: bundle-sos
+bundle-sos: $(LIARC_TOOLCHAIN)
+bundle-sos: compile-sos
+bundle-sos: sos/sos-unx.c
+	+(cd sos && $(MAKE) compile-liarc-bundle)
+
+################
+# SSP
+################
+
+SSP_BUILD_TARGETS = compile-ssp $(SSP_LIARC_TARGETS)
+@IF_LIARC@SSP_LIARC_TARGETS = bundle-ssp
+SSP_CREF_TARGETS = compile-ssp # no separate syntax step
+@IF_NATIVE@SSP_DEPEND_TARGETS = compile-ssp
+@IF_CROSS@SSP_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-ssp
+compile-ssp: $(RUNTIME_CREF_TARGETS)
+compile-ssp: $(XML_CREF_TARGETS)
+compile-ssp: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "ssp"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) ssp
+
+.PHONY: bundle-ssp
+bundle-ssp: $(LIARC_TOOLCHAIN)
+bundle-ssp: compile-ssp
+bundle-ssp: ssp/ssp-unx.c
+	+(cd ssp && $(MAKE) compile-liarc-bundle)
+
+################
+# Windows FFI
+################
+
+WIN32_BUILD_TARGETS = compile-win32
+# no LIARC on Windows
+WIN32_CREF_TARGETS = syntax-win32
+@IF_NATIVE@WIN32_DEPEND_TARGETS = compile-win32
+@IF_CROSS@WIN32_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-win32
+compile-win32: syntax-win32
+compile-win32: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "win32"' && \
+	 echo '  (lambda () (load "win32.cbf")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) win32
+
+.PHONY: syntax-win32
+syntax-win32: $(RUNTIME_CREF_TARGETS)
+syntax-win32: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "win32"' && \
+	 echo '  (lambda () (load "win32.sf")))') \
+	| $(TOOL_COMPILER)
+
+################
+# XML
+################
+
+XML_BUILD_TARGETS = compile-xml $(XML_LIARC_TARGETS)
+@IF_LIARC@XML_LIARC_TARGETS = bundle-xml
+XML_CREF_TARGETS = compile-xml # no separate syntax step
+@IF_NATIVE@XML_DEPEND_TARGETS = compile-xml
+@IF_CROSS@XML_DEPEND_TARGETS = stamp_cross-finished
+
+.PHONY: compile-xml
+compile-xml: $(RUNTIME_CREF_TARGETS)
+compile-xml: $(SOS_CREF_TARGETS)
+compile-xml: $(STAR_PARSER_CREF_TARGETS)
+compile-xml: $(TOOLCHAIN)
+	(echo '(with-working-directory-pathname "xml"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(TOOL_COMPILER)
+	$(CROSS_HOST) xml
+
+.PHONY: bundle-xml
+bundle-xml: $(LIARC_TOOLCHAIN)
+bundle-xml: compile-xml
+bundle-xml: xml/xml-unx.c
+	+(cd xml && $(MAKE) compile-liarc-bundle)
+
+### Targets built on the target by the native compiler because we don't
+### have a way to load macro definitions of an object-program into a
+### cross-compiler.  We should have a way to do that, and eliminate
+### these.
+
+################
+# blowfish
+################
+
+@IF_BLOWFISH@BLOWFISH_BUILD_TARGETS = compile-blowfish
+BLOWFISH_DEPEND_TARGETS = compile-blowfish
+
+.PHONY: compile-blowfish
+compile-blowfish: $(PLUGINS_TOOLCHAIN)
+	+(cd blowfish && $(MAKE))
+
+.PHONY: compile-blowfish-c
+compile-blowfish-c:
+	+(cd blowfish && $(MAKE))
+
+################
+# gdbm
+################
+
+@IF_GDBM@GDBM_BUILD_TARGETS = compile-gdbm
+GDBM_DEPEND_TARGETS = compile-gdbm
+
+.PHONY: compile-gdbm
+compile-gdbm: $(PLUGINS_TOOLCHAIN)
+	+(cd gdbm && $(MAKE))
+
+.PHONY: compile-gdbm-c
+compile-gdbm-c:
+	+(cd gdbm && $(MAKE))
+
+################
+# mcrypt
+################
+
+@IF_MCRYPT@MCRYPT_BUILD_TARGETS = compile-mcrypt
+MCRYPT_DEPEND_TARGETS = compile-mcrypt
+
+.PHONY: compile-mcrypt
+compile-mcrypt: $(PLUGINS_TOOLCHAIN)
+	+(cd mcrypt && $(MAKE))
+
+.PHONY: compile-mcrypt-c
+compile-mcrypt-c:
+	+(cd mcrypt && $(MAKE))
+
+################
+# pgsql
+################
+
+@IF_PGSQL@PGSQL_BUILD_TARGETS = compile-pgsql
+PGSQL_DEPEND_TARGETS = compile-pgsql
+
+.PHONY: compile-pgsql
+compile-pgsql: $(PLUGINS_TOOLCHAIN)
+	+(cd pgsql && $(MAKE))
+
+.PHONY: compile-pgsql-c
+compile-pgsql-c:
+	+(cd pgsql && $(MAKE))
+
+################
+# X11
+################
+
+@IF_X11@X11_BUILD_TARGETS = compile-x11
+X11_DEPEND_TARGETS = compile-x11
+
+.PHONY: compile-x11
+compile-x11: $(PLUGINS_TOOLCHAIN)
+	+(cd x11 && $(MAKE))
+
+.PHONY: compile-x11-c
+compile-x11-c:
+	+(cd x11 && $(MAKE))
+
+################
+# edwin
+################
+
+@IF_EDWIN@EDWIN_BUILD_TARGETS = compile-edwin
+EDWIN_DEPEND_TARGETS = compile-edwin
+
+.PHONY: compile-edwin
+compile-edwin: $(PLUGINS_TOOLCHAIN)
+compile-edwin: $(XML_DEPEND_TARGETS)
+@IF_BLOWFISH@compile-edwin: $(BLOWFISH_DEPEND_TARGETS)
+@IF_GDBM@compile-edwin: $(GDBM_DEPEND_TARGETS)
+@IF_X11@compile-edwin: $(X11_DEPEND_TARGETS)
+	+(cd edwin && $(MAKE))
+
+################
+# imail
+################
+
+@IF_IMAIL@IMAIL_BUILD_TARGETS = compile-imail
+IMAIL_DEPEND_TARGETS = compile-imail
+
+.PHONY: compile-imail
+compile-imail: $(PLUGINS_TOOLCHAIN)
+compile-imail: $(EDWIN_DEPEND_TARGETS)
+compile-imail: $(SOS_DEPEND_TARGETS)
+	+(cd imail && $(MAKE))
+
+################
+# X11-screen
+################
+
+@IF_X11_SCREEN@X11_SCREEN_BUILD_TARGETS = compile-x11-screen
+X11_SCREEN_DEPEND_TARGETS = compile-x11-screen
+
+.PHONY: compile-x11-screen
+compile-x11-screen: $(PLUGINS_TOOLCHAIN)
+compile-x11-screen: $(EDWIN_DEPEND_TARGETS)
+compile-x11-screen: $(X11_DEPEND_TARGETS)
+	+(cd x11-screen && $(MAKE))
+
+#####################
+### Subsystems
+#####################
+
+@IF_CROSS@BUILD_TARGET = cross-host
+@IF_NATIVE@BUILD_TARGET = all
+PLUGINS_BUILD_TARGET = all
+
+$(BUILD_TARGET): $(COMPILER_BUILD_TARGETS)
+$(BUILD_TARGET): $(CREF_BUILD_TARGETS)
+$(BUILD_TARGET): $(FFI_BUILD_TARGETS)
+$(BUILD_TARGET): $(RUNTIME_BUILD_TARGETS)
+$(BUILD_TARGET): $(SF_BUILD_TARGETS)
+$(BUILD_TARGET): $(SOS_TARGETS)
+$(BUILD_TARGET): $(SSP_BUILD_TARGETS)
+$(BUILD_TARGET): $(STAR_PARSER_BUILD_TARGETS)
+$(BUILD_TARGET): $(WIN32_BUILD_TARGETS)
+$(BUILD_TARGET): $(XML_BUILD_TARGETS)
+
+$(PLUGINS_BUILD_TARGET): $(BLOWFISH_BUILD_TARGETS)
+$(PLUGINS_BUILD_TARGET): $(EDWIN_BUILD_TARGETS)
+$(PLUGINS_BUILD_TARGET): $(GDBM_BUILD_TARGETS)
+$(PLUGINS_BUILD_TARGET): $(IMAIL_BUILD_TARGETS)
+$(PLUGINS_BUILD_TARGET): $(MCRYPT_BUILD_TARGETS)
+$(PLUGINS_BUILD_TARGET): $(PGSQL_BUILD_TARGETS)
+$(PLUGINS_BUILD_TARGET): $(X11_BUILD_TARGETS)
+$(PLUGINS_BUILD_TARGET): $(X11_SCREEN_BUILD_TARGETS)
+
+#####################
+### Cross compilation
+#####################
+
+# Run `make cross-host' on the cross-compiling host to prepare a tree;
+# then transmit it over to the target system and run `make all' to
+# finish the job.
+
+.PHONY: cross-host
+cross-host:
+	echo done > stamp_cross-host
+
+stamp_cross-finished: stamp_cross-host microcode/scheme
+	(echo '(let ((env (->environment (quote (runtime)))))' && \
+	 echo '  (load "../compiler/base/crsend" env)' && \
+	 echo '  ((access finish-cross-compilation:files env) "."))') \
+	| (cd runtime && ../run-build --batch-mode --fasl make.bin)
+	(echo '(let ((env (->environment (quote (runtime)))))' && \
+	 echo '  (load "../compiler/base/crsend" env)' && \
+	 echo '  ((access finish-cross-compilation:files env) ".."))') \
+	| (cd runtime && ../run-build --batch-mode --fasl make.com)
+	(echo '(let ((env (->environment (quote (runtime)))))' && \
+	 echo '  (load "../compiler/base/crsend" env)' && \
+	 echo '  ((access finish-cross-compilation:info-files env) ".."))') \
+	 | (cd runtime && ../run-build --batch-mode --fasl make.com)
+	echo "done" > $@
 
 ################
 # Microcode
 ################
 
-@IF_LIARC@microcode/scheme: all-runtime
+microcode/scheme: $(RUNTIME_LIARC_TARGETS)
 @IF_SVM@microcode/scheme: microcode/svm1-defns.h
-microcode/scheme:
 	+(cd microcode && $(MAKE) all)
 
 .PHONY: compile-microcode
@@ -215,584 +741,21 @@ microcode/svm1-defns.h: compiler/machines/svm/svm1-defns.h
 ################
 
 lib/runtime.com: microcode/scheme
-@IF_NATIVE@lib/runtime.com: all-runtime
-@IF_CROSS@lib/runtime.com: stamp_cross-finished
+lib/runtime.com: $(RUNTIME_DEPEND_TARGETS)
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \
 	       | ../run-build --batch-mode --fasl "$${FASL}"))
 
 lib/all.com: microcode/scheme
 lib/all.com: lib/runtime.com
-@IF_NATIVE@lib/all.com: all-compiler
-@IF_NATIVE@lib/all.com: all-sf
-@IF_NATIVE@lib/all.com: all-cref
-@IF_CROSS@lib/all.com: stamp_cross-finished
+lib/all.com: $(COMPILER_DEPEND_TARGETS)
+lib/all.com: $(SF_DEPEND_TARGETS)
+lib/all.com: $(CREF_DEPEND_TARGETS)
 	(echo '(begin' && \
 	 echo '  (load-option (quote compiler))' && \
 	 echo '  (load-option (quote sf))' && \
 	 echo '  (disk-save "$@"))') \
 	| ./run-build --batch-mode --band runtime.com
-
-### For the subsystems, we have several rules:
-###
-###	all-SUBSYS: everything that needs to be done
-###	compile-SUBSYS: compile to .coms; needed for this to be loadable
-###	syntax-SUBSYS: syntax; needed, in principle, to use macros from this
-###	depends-on-SUBSYS: used by native-only targets that load this
-###	bundle-SUBSYS: generate LIARC bundle
-###
-### The use of depends-on-SUBSYS is a crock arising because we have
-### subsystems that can't yet be cross-compiled, which is the case
-### because we don't have a reasonable system for macros across
-### subsystems that works with cross-compilation.
-###
-### Really it should be enough to do syntax-SUBSYS, but the downstream
-### syntaxer scripts might try to load upstream coms, and when
-### cross-compiling we want to depend on stamp_cross-finished, so we
-### conditionally set depends-on-SUBSYS either to compile-SUBSYS or to
-### stamp_cross-finished.
-
-################
-# Runtime
-################
-
-.PHONY: all-runtime
-all-runtime: compile-runtime
-@IF_LIARC@all-runtime: bundle-runtime
-
-.PHONY: compile-runtime
-compile-runtime: syntax-runtime
-compile-runtime: toolchain
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.cbf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: syntax-runtime
-syntax-runtime: toolchain
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.sf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: depends-on-runtime
-@IF_NATIVE@depends-on-runtime: compile-runtime
-@IF_CROSS@depends-on-runtime: stamp_cross-finished
-
-.PHONY: bundle-runtime
-bundle-runtime: runtime/runtime-unx.c
-
-################
-# SF
-################
-
-.PHONY: all-sf
-all-sf: compile-sf
-@IF_LIARC@all-sf: bundle-sf
-
-.PHONY: compile-sf
-compile-sf: syntax-sf
-compile-sf: toolchain
-	(echo '(with-working-directory-pathname "sf"' && \
-	 echo '  (lambda () (load "sf.cbf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: syntax-sf
-syntax-sf: syntax-runtime
-syntax-sf: toolchain
-	(echo '(with-working-directory-pathname "sf"' && \
-	 echo '  (lambda () (load "sf.sf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: depends-on-sf
-@IF_NATIVE@depends-on-sf: compile-sf
-@IF_CROSS@depends-on-sf: stamp_cross-finished
-
-.PHONY: bundle-sf
-bundle-sf: liarc-bundle-tools
-bundle-sf: compile-sf
-bundle-sf: sf/sf-unx.c
-	+(cd sf && $(MAKE) compile-liarc-bundle)
-
-#################
-# Compiler (LIAR)
-#################
-
-.PHONY: all-compiler
-all-compiler: compile-compiler
-@IF_LIARC@all-compiler: bundle-compiler
-
-.PHONY: syntax-compiler
-syntax-compiler: syntax-runtime
-syntax-compiler: syntax-sf
-syntax-compiler: toolchain
-@IF_SVM_COMPILER@syntax-compiler: compiler/machines/svm/svm1-defns.h
-	(echo '(with-working-directory-pathname "compiler"' && \
-	 echo '  (lambda ()' && \
-	 echo '    $(SF_SETTINGS_CROSS)' && \
-	 echo '    (load "compiler.sf")))') \
-	| $(TOOL_SYNTAXER)
-
-.PHONY: depends-on-compiler
-@IF_NATIVE@depends-on-compiler: compiler-compiler
-@IF_CROSS@depends-on-compiler: stamp_cross-finished
-
-.PHONY: compile-compiler
-compile-compiler: compile-compiler-back
-compile-compiler: compile-compiler-base
-compile-compiler: compile-compiler-fggen
-compile-compiler: compile-compiler-fgopt
-compile-compiler: compile-compiler-machine
-compile-compiler: compile-compiler-rtlbase
-compile-compiler: compile-compiler-rtlgen
-compile-compiler: compile-compiler-rtlopt
-
-.PHONY: compile-compiler-back
-compile-compiler-back: syntax-compiler
-compile-compiler-back: toolchain
-	echo '(compile-directory "compiler/back")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-base
-compile-compiler-base: syntax-compiler
-compile-compiler-base: toolchain
-	echo '(compile-directory "compiler/base")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-fggen
-compile-compiler-fggen: syntax-compiler
-compile-compiler-fggen: toolchain
-	echo '(compile-directory "compiler/fggen")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-fgopt
-compile-compiler-fgopt: syntax-compiler
-compile-compiler-fgopt: toolchain
-	echo '(compile-directory "compiler/fgopt")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-machine
-compile-compiler-machine: syntax-compiler
-compile-compiler-machine: toolchain
-	echo '(compile-directory "compiler/machine")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-rtlbase
-compile-compiler-rtlbase: syntax-compiler
-compile-compiler-rtlbase: toolchain
-	echo '(compile-directory "compiler/rtlbase")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-rtlgen
-compile-compiler-rtlgen: syntax-compiler
-compile-compiler-rtlgen: toolchain
-	echo '(compile-directory "compiler/rtlgen")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-rtlopt
-compile-compiler-rtlopt: syntax-compiler
-compile-compiler-rtlopt: toolchain
-	echo '(compile-directory "compiler/rtlopt")' | $(TOOL_COMPILER)
-
-.PHONY: bundle-compiler
-bundle-compiler: liarc-bundle-tools
-bundle-compiler: compile-compiler
-bundle-compiler: compiler/compiler-unx.c
-	+(cd compiler && $(MAKE) compile-liarc-bundle)
-
-compiler/machines/svm/svm1-defns.h: \
-	  compiler/machines/svm/assembler-rules.scm \
-	  compiler/machines/svm/machine.scm \
-	  compiler/machines/svm/assembler-compiler.scm \
-	  compiler/machines/svm/assembler-runtime.scm \
-	  compiler/machines/svm/compile-assembler.scm
-	(echo '(with-working-directory-pathname "compiler/machines/svm"' && \
-	 echo '  (lambda () (load "compile-assembler")))') \
-	| '$(MIT_SCHEME_EXE)' --band runtime.com --batch-mode --no-init-file
-
-################
-# CREF
-################
-
-.PHONY: all-cref
-all-cref: compile-cref
-@IF_LIARC@all-cref: bundle-cref
-
-.PHONY: compile-cref
-compile-cref: syntax-cref
-compile-cref: toolchain
-	(echo '(with-working-directory-pathname "cref"' && \
-	 echo '  (lambda () (load "cref.cbf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: syntax-cref
-syntax-cref: syntax-runtime
-syntax-cref: toolchain
-	(echo '(with-working-directory-pathname "cref"' && \
-	 echo '  (lambda () (load "cref.sf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: depends-on-cref
-@IF_NATIVE@depends-on-cref: compile-cref
-@IF_CROSS@depends-on-cref: stamp_cross-finished
-
-.PHONY: bundle-cref
-bundle-cref: liarc-bundle-tools
-bundle-cref: compile-cref
-bundle-cref: cref/cref-unx.c
-	+(cd cref && $(MAKE) compile-liarc-bundle)
-
-################
-# *PARSER
-################
-
-.PHONY: all-star-parser
-all-star-parser: compile-star-parser
-@IF_LIARC@all-star-parser: bundle-star-parser
-
-.PHONY: compile-star-parser
-compile-star-parser: syntax-runtime
-compile-star-parser: toolchain
-	(echo '(with-working-directory-pathname "star-parser"' && \
-	 echo '  (lambda () (load "compile")))') \
-	| $(TOOL_COMPILER)
-
-# No separate syntax step; compile step generates .pkd file.
-.PHONY: syntax-star-parser
-syntax-star-parser: compile-star-parser
-
-.PHONY: depends-on-star-parser
-@IF_NATIVE@depends-on-star-parser: compile-star-parser
-@IF_CROSS@depends-on-star-parser: stamp_cross-finished
-
-.PHONY: bundle-star-parser
-bundle-star-parser: liarc-bundle-tools
-bundle-star-parser: compile-star-parser
-bundle-star-parser: star-parser/parser-unx.c
-	+(cd star-parser && $(MAKE) compile-liarc-bundle)
-
-### More stuff we build with tools.  We could build it with the newly
-### built compiler in the native case, but we want to avoid having to
-### do that to encourage cross-compilation.
-
-################
-# FFI
-################
-
-.PHONY: all-ffi
-all-ffi: compile-ffi
-@IF_LIARC@all-ffi: bundle-ffi
-
-.PHONY: compile-ffi
-compile-ffi: syntax-runtime
-compile-ffi: toolchain
-	(echo '(with-working-directory-pathname "ffi"' && \
-	 echo '  (lambda () (load "compile.scm")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: depends-on-ffi
-@IF_NATIVE@depends-on-ffi: compile-ffi
-@IF_CROSS@depends-on-ffi: stamp_cross-finished
-
-.PHONY: bundle-ffi
-bundle-ffi: liarc-bundle-tools
-bundle-ffi: compile-ffi
-bundle-ffi: ffi/ffi-unx.c
-	+(cd ffi && $(MAKE) compile-liarc-bundle)
-
-################
-# SOS
-################
-
-.PHONY: all-sos
-all-sos: compile-sos
-@IF_LIARC@all-sos: bundle-sos
-
-.PHONY: compile-sos
-compile-sos: syntax-runtime
-compile-sos: toolchain
-	(echo '(with-working-directory-pathname "sos"' && \
-	 echo '  (lambda () (load "compile")))') \
-	| $(TOOL_COMPILER)
-
-# No separate syntax step; compile step generates .pkd file.
-.PHONY: syntax-sos
-syntax-sos: compile-sos
-
-.PHONY: depends-on-sos
-@IF_NATIVE@depends-on-sos: compile-sos
-@IF_CROSS@depends-on-sos: stamp_cross-finished
-
-.PHONY: bundle-sos
-bundle-sos: liarc-bundle-tools
-bundle-sos: compile-sos
-bundle-sos: sos/sos-unx.c
-	+(cd sos && $(MAKE) compile-liarc-bundle)
-
-################
-# SSP
-################
-
-.PHONY: all-ssp
-all-ssp: compile-ssp
-@IF_LIARC@all-ssp: bundle-ssp
-
-.PHONY: compile-ssp
-compile-ssp: syntax-runtime
-compile-ssp: syntax-xml
-compile-ssp: toolchain
-	(echo '(with-working-directory-pathname "ssp"' && \
-	 echo '  (lambda () (load "compile")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: depends-on-ssp
-@IF_NATIVE@depends-on-ssp: compile-ssp
-@IF_CROSS@depends-on-ssp: stamp_cross-finished
-
-.PHONY: bundle-ssp
-bundle-ssp: liarc-bundle-tools
-bundle-ssp: compile-ssp
-bundle-ssp: ssp/ssp-unx.c
-	+(cd ssp && $(MAKE) compile-liarc-bundle)
-
-################
-# Windows FFI
-################
-
-.PHONY: all-win32
-all-win32: compile-win32
-
-.PHONY: compile-win32
-compile-win32: syntax-win32
-compile-win32: toolchain
-	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda () (load "win32.cbf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: syntax-win32
-syntax-win32: syntax-runtime
-syntax-win32: toolchain
-	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda () (load "win32.sf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: depends-on-win32
-@IF_NATIVE@depends-on-win32: compile-win32
-@IF_CROSS@depends-on-win32: stamp_cross-finished
-
-################
-# XML
-################
-
-.PHONY: all-xml
-all-xml: compile-xml
-@IF_LIARC@all-xml: bundle-xml
-
-.PHONY: compile-xml
-compile-xml: syntax-runtime
-compile-xml: syntax-sos
-compile-xml: syntax-star-parser
-compile-xml: toolchain
-	(echo '(with-working-directory-pathname "xml"' && \
-	 echo '  (lambda () (load "compile")))') \
-	| $(TOOL_COMPILER)
-
-# No separate syntax step; compile step generates .pkd file.
-.PHONY: syntax-xml
-syntax-xml: compile-xml
-
-.PHONY: depends-on-xml
-@IF_NATIVE@depends-on-xml: compile-xml
-@IF_CROSS@depends-on-xml: stamp_cross-finished
-
-.PHONY: bundle-xml
-bundle-xml: liarc-bundle-tools
-bundle-xml: compile-xml
-bundle-xml: xml/xml-unx.c
-	+(cd xml && $(MAKE) compile-liarc-bundle)
-
-### Targets built on the target by the native compiler because we don't
-### have a way to load macro definitions of an object-program into a
-### cross-compiler.  We should have a way to do that, and eliminate
-### these, and the depends-on-* cross/native conditional targets.
-
-################
-# blowfish
-################
-
-.PHONY: all-blowfish
-all-blowfish: compile-blowfish
-
-.PHONY: compile-blowfish
-compile-blowfish: plugins-toolchain
-	+(cd blowfish && $(MAKE))
-
-.PHONY: depends-on-blowfish
-depends-on-blowfish: compile-blowfish
-
-.PHONY: compile-blowfish-c
-compile-blowfish-c:
-	+(cd blowfish && $(MAKE))
-
-################
-# edwin
-################
-
-.PHONY: all-edwin
-all-edwin: compile-edwin
-
-.PHONY: compile-edwin
-compile-edwin: plugins-toolchain
-compile-edwin: depends-on-xml
-@IF_BLOWFISH@compile-edwin: depends-on-blowfish
-@IF_GDBM@compile-edwin: depends-on-gdbm
-@IF_X11@compile-edwin: depends-on-x11
-	+(cd edwin && $(MAKE))
-
-.PHONY: depends-on-edwin
-depends-on-edwin: compile-edwin
-
-################
-# gdbm
-################
-
-.PHONY: all-gdbm
-all-gdbm: compile-gdbm
-
-.PHONY: compile-gdbm
-compile-gdbm: plugins-toolchain
-	+(cd gdbm && $(MAKE))
-
-.PHONY: depends-on-gdbm
-depends-on-gdbm: compile-gdbm
-
-.PHONY: compile-gdbm-c
-compile-gdbm-c:
-	+(cd gdbm && $(MAKE))
-
-################
-# imail
-################
-
-.PHONY: all-imail
-all-imail: compile-imail
-
-.PHONY: compile-imail
-compile-imail: plugins-toolchain
-compile-imail: depends-on-edwin
-compile-imail: depends-on-sos
-	+(cd imail && $(MAKE))
-
-.PHONY: depends-on-imail
-depends-on-imail: compile-imail
-
-################
-# mcrypt
-################
-
-.PHONY: all-mcrypt
-all-mcrypt: compile-mcrypt
-
-.PHONY: compile-mcrypt
-compile-mcrypt: plugins-toolchain
-	+(cd mcrypt && $(MAKE))
-
-.PHONY: depends-on-mcrypt
-depends-on-mcrypt: compile-mcrypt
-
-.PHONY: compile-mcrypt-c
-compile-mcrypt-c:
-	+(cd mcrypt && $(MAKE))
-
-################
-# pgsql
-################
-
-.PHONY: all-pgsql
-all-pgsql: compile-pgsql
-
-.PHONY: compile-pgsql
-compile-pgsql: plugins-toolchain
-	+(cd pgsql && $(MAKE))
-
-.PHONY: depends-on-pgsql
-depends-on-pgsql: compile-pgsql
-
-.PHONY: compile-pgsql-c
-compile-pgsql-c:
-	+(cd pgsql && $(MAKE))
-
-################
-# X11
-################
-
-.PHONY: all-x11
-all-x11: compile-x11
-
-.PHONY: compile-x11
-compile-x11: plugins-toolchain
-	+(cd x11 && $(MAKE))
-
-.PHONY: depends-on-x11
-depends-on-x11: compile-x11
-
-.PHONY: compile-x11-c
-compile-x11-c:
-	+(cd x11 && $(MAKE))
-
-################
-# X11-screen
-################
-
-.PHONY: all-x11-screen
-all-x11-screen: compile-x11-screen
-
-.PHONY: compile-x11-screen
-compile-x11-screen: plugins-toolchain
-compile-x11-screen: depends-on-edwin
-compile-x11-screen: depends-on-x11
-	+(cd x11-screen && $(MAKE))
-
-.PHONY: depends-on-x11-screen
-depends-on-x11-screen: compile-x11-screen
-
-#####################
-### Cross compilation
-#####################
-
-# Run `make cross-host' on the cross-compiling host to prepare a tree;
-# then transmit it over to the target system and run `make all' to
-# finish the job.
-
-.PHONY: cross-host
-cross-host: compile-compiler
-cross-host: compile-cref
-cross-host: compile-ffi
-cross-host: compile-runtime
-cross-host: compile-sf
-cross-host: compile-sos
-cross-host: compile-ssp
-cross-host: compile-star-parser
-cross-host: compile-win32
-cross-host: compile-xml
-cross-host: toolchain
-	@(echo '(begin' && \
-	  echo '  (load "etc/crossbin")' && \
-	  echo '  (convert fasl-format:@mit_scheme_native_code@' && \
-	  echo '    "compiler" "compiler/base" "compiler/back"' && \
-	  echo '    "compiler/fgopt" "compiler/fggen" "compiler/fgopt"' && \
-	  echo '    "compiler/machine" "compiler/rtlbase"' && \
-	  echo '    "compiler/rtlgen" "compiler/rtlopt"' && \
-	  echo '    "cref" "ffi" "runtime" "sf" "sos" "ssp"' && \
-	  echo '    "ssp" "star-parser" "win32" "xml"))') \
-	| $(TOOL_COMPILER)
-	echo "done" > stamp_$@
-
-stamp_cross-finished: stamp_cross-host microcode/scheme
-	(echo '(let ((env (->environment (quote (runtime)))))' && \
-	 echo '  (load "../compiler/base/crsend" env)' && \
-	 echo '  ((access finish-cross-compilation:files env) "."))') \
-	| (cd runtime && ../run-build --batch-mode --fasl make.bin)
-	(echo '(let ((env (->environment (quote (runtime)))))' && \
-	 echo '  (load "../compiler/base/crsend" env)' && \
-	 echo '  ((access finish-cross-compilation:files env) ".."))') \
-	| (cd runtime && ../run-build --batch-mode --fasl make.com)
-	(echo '(let ((env (->environment (quote (runtime)))))' && \
-	 echo '  (load "../compiler/base/crsend" env)' && \
-	 echo '  ((access finish-cross-compilation:info-files env) ".."))') \
-	 | (cd runtime && ../run-build --batch-mode --fasl make.com)
-	echo "done" > $@
 
 ################
 # Miscellany
