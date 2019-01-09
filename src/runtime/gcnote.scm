@@ -108,31 +108,37 @@ USA.
     (and entry (weak-cdr entry))))
 
 (define (signal-gc-events)
-  (let ((statistic last-statistic)
-	(signaled? #f))
+  (without-interrupts
+   (lambda ()
+     (let ((statistic last-statistic))
 
-    (define (signal-event thread event)
-      (if (and thread (not (eq? 'dead (thread-execution-state thread))))
-	  (begin
-	    (%signal-thread-event thread event)
-	    (set! signaled? #t))))
+       (define (signal-event thread event)
+	 (if (and thread (not (eq? 'dead (thread-execution-state thread))))
+	     (begin
+	       (%signal-thread-event thread event)
+	       #t)
+	     #f))
 
-    (without-interrupts
-     (lambda ()
-       (if (< (gc-statistic/heap-left statistic) 4096)
-	   (if first-running-thread
-	       (signal-event first-running-thread abort-heap-low)
-	       (let ((thread (console-thread)))
-		 (if thread
-		     (signal-event thread abort-heap-low))))
-	   (for-each
-	     (lambda (entry)
-	       (let ((thread (weak-car entry))
-		     (event (weak-cdr entry)))
-		 (signal-event thread (named-lambda (gc-event)
-					(event statistic)))))
-	     gc-events))
-       (if signaled? (%maybe-toggle-thread-timer))))))
+       (let ((signaled?
+	      (if (< (gc-statistic/heap-left statistic) 4096)
+		  (if first-running-thread
+		      (signal-event first-running-thread abort-heap-low)
+		      (let ((thread (console-thread)))
+			(if thread
+			    (signal-event thread abort-heap-low)
+			    #f)))
+		  (let ((signaled? #f))
+		    (for-each
+		     (lambda (entry)
+		       (let ((thread (weak-car entry))
+			     (event (weak-cdr entry)))
+			 (if (signal-event thread (named-lambda (gc-event)
+						    (event statistic)))
+			     (set! signaled? #t))))
+		     gc-events)
+		    signaled?))))
+	 (if signaled?
+	     (%maybe-toggle-thread-timer)))))))
 
 (define (weak-assq obj alist)
   (let loop ((alist alist))
