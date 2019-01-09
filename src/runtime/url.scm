@@ -546,7 +546,7 @@ USA.
 (define (%write-uri scheme authority path query fragment port)
   (if scheme
       (begin
-	(write scheme port)
+	(write-string (symbol->string scheme) port)
 	(write-char #\: port)))
   (if authority
       (write-uri-authority authority port))
@@ -587,7 +587,7 @@ USA.
   (if port
       (begin
 	(write-char #\: output)
-	(write port output))))
+	(write-string (number->string port #d10) output))))
 
 (define (write-segment segment port)
   (write-encoded segment char-set:uri-segment port))
