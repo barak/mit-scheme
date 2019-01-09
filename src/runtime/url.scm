@@ -41,6 +41,11 @@ USA.
   (fragment uri-fragment)
   (string uri->string))
 
+(define-print-method uri?
+  (standard-print-method 'uri
+    (lambda (uri)
+      (list (uri->string uri)))))
+
 (define (make-uri scheme authority path query fragment)
   (let ((path (if (equal? path '("")) '() path)))
     (if scheme (guarantee uri-scheme? scheme 'make-uri))
