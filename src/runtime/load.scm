@@ -427,7 +427,9 @@ USA.
 (define (pathname->standard-uri pathname)
   (let ((uri
 	 (pathname->uri
-	  (enough-pathname pathname (standard-library-directory-pathname)))))
+	  (enough-pathname
+	   (pathname-simplify pathname)
+	   (pathname-simplify (standard-library-directory-pathname))))))
     (if (uri-absolute? uri)
 	uri
 	(system-library-uri uri))))
