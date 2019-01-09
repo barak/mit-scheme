@@ -344,12 +344,27 @@ USA.
 	    (last-reference *start-label*)
 	    (last-reference *lap*)
 	    (cond ((eq? pathname 'RECURSIVE)
-		   (cons *info-output-filename*
-			 *recursive-compilation-number*))
+		   (vector 'debugging-info-wrapper
+			   3
+			   *debugging-key*
+			   (if (pathname? *info-output-filename*)
+			       (->namestring *info-output-filename*)
+			       *info-output-filename*)
+			   *recursive-compilation-number*
+			   #f
+			   *library-name*))
 		  ((eq? pathname 'KEEP)
 		   #f)
 		  (else
-		   pathname))))
+		   (vector 'debugging-info-wrapper
+			   3
+			   *debugging-key*
+			   (if (pathname? *info-output-filename*)
+			       (->namestring *info-output-filename*)
+			       *info-output-filename*)
+			   0
+			   #f
+			   *library-name*)))))
        (lambda (code-name data-name ntags labels code proxy)
 	 (set! *C-code-name* code-name)
 	 (set! *C-data-name* data-name)
@@ -431,13 +446,16 @@ USA.
 			   *recursive-compilation-results*))
 	       #f)
 	      (else
-	       (let ((others (recursive-compilation-results)))
-		 (if (null? others)
-		     info
-		     (list->vector
-		      (cons info
-			    (map (lambda (other) (vector-ref other 1))
-				 others)))))))))))
+	       (vector 'debugging-file-wrapper
+		       3
+		       *debugging-key*
+		       (list->vector
+			(cons
+			 info
+			 (map (lambda (other)
+				(vector-ref other 1))
+			      (recursive-compilation-results))))
+		       *library-name*)))))))
 
 (define (compiler:dump-bci-file binf pathname)
   (dump-compressed binf (pathname-new-type pathname "bci")))
