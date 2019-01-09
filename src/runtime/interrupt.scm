@@ -120,16 +120,17 @@ USA.
     (named-lambda (after-gc-interrupt-handler interrupt-code interrupt-enables)
       (declare (ignore interrupt-code interrupt-enables))
       (clear-interrupts! interrupt-bit/after-gc)
-      (set-interrupt-enables! interrupt-mask/timer-ok)
       ;; By checking that this handler is not still running we ignore
       ;; GCs that occur while we are running the daemons.  This helps
       ;; prevent us from getting into a loop just running the daemons.
       (if (not running?)
 	  (begin
 	    (set! running? #t)
+	    (set-interrupt-enables! interrupt-mask/timer-ok)
 	    (trigger-gc-daemons!)
 	    (set! running? #f)
-	    (handle-current-thread-events))))))
+	    (handle-current-thread-events))
+	  (set-interrupt-enables! interrupt-mask/timer-ok)))))
 
 (define event:console-resize)
 (define (console-resize-handler interrupt-code interrupt-enables)
