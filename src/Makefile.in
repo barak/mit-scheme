@@ -191,7 +191,7 @@ stamp_liarc-toolchain:
 ### We also define:
 ###
 ###	<SUBSYS>_BUILD_TARGETS: targets to build the subsystem, if included
-###	<SUBSYS>_LIARC_TARGETS: whatever LIARC needs
+###	<SUBSYS>_LIARC_TARGETS: whatever LIARC needs (on the host)
 ###	<SUBSYS>_CREF_TARGETS: dependencies for users of the cref
 ###	<SUBSYS>_DEPEND_TARGETS: dependencies for using macros from it
 ###
@@ -209,7 +209,7 @@ stamp_liarc-toolchain:
 ################
 
 RUNTIME_BUILD_TARGETS = compile-runtime $(RUNTIME_LIARC_TARGETS)
-@IF_LIARC@RUNTIME_LIARC_TARGETS = runtime/runtime-unx.c
+@IF_LIARC@RUNTIME_LIARC_TARGETS = bundle-runtime
 RUNTIME_CREF_TARGETS = syntax-runtime
 @IF_NATIVE@RUNTIME_DEPEND_TARGETS = compile-runtime
 @IF_CROSS@RUNTIME_DEPEND_TARGETS = stamp_cross-finished
@@ -227,6 +227,11 @@ syntax-runtime: $(TOOLCHAIN)
 	(echo '(with-working-directory-pathname "runtime"' && \
 	 echo '  (lambda () (load "runtime.sf")))') \
 	| $(TOOL_COMPILER)
+
+.PHONY: bundle-runtime
+bundle-runtime: compile-runtime
+bundle-runtime: runtime/runtime-unx.c
+# No bundle to build because this is statically linked into the ucode.
 
 runtime/runtime-unx.pkd: $(RUNTIME_CREF_TARGETS)
 
@@ -731,8 +736,10 @@ stamp_cross-finished: stamp_cross-host microcode/scheme
 # Microcode
 ################
 
-microcode/scheme: $(RUNTIME_LIARC_TARGETS)
+@IF_LIARC@@IF_CROSS@microcode/scheme: stamp_cross-host
+@IF_LIARC@@IF_NATIVE@microcode/scheme: $(RUNTIME_LIARC_TARGETS)
 @IF_SVM@microcode/scheme: microcode/svm1-defns.h
+microcode/scheme:
 	+(cd microcode && $(MAKE) all)
 
 .PHONY: compile-microcode
