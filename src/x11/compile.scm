@@ -24,13 +24,10 @@ USA.
 
 |#
 
-
 (load-option 'cref)
+(load-option 'ffi)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (with-working-directory-pathname (merge-pathnames "../ffi")
-      (lambda ()
-	(load "make")))
     (for-each (let ((env (->environment '(runtime))))
 		(lambda (filename)
 		  (compile-file filename '() env)))
