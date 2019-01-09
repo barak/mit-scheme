@@ -36,13 +36,28 @@ USA.
 
 (define (compiler-file-output compiler-output pathname)
   (let ((code (cdr (vector-ref compiler-output 1))))
-    (call-with-output-file pathname
+    (call-with-temporary-output-file pathname (directory-pathname pathname)
       (lambda (port)
 	(c:write-group code port)))
     (if compiler:invoke-c-compiler?
 	(c-compile pathname
 		   (pathname-new-type pathname "o")
 		   (pathname-new-type pathname (c-output-extension))))))
+
+(define (call-with-temporary-output-file pathname directory receiver)
+  (let ((temporary (temporary-file-pathname directory))
+	(done? #f))
+    (dynamic-wind
+      (lambda ()
+	(if done?
+	    (error "Re-entry into temporary file creation is not allowed.")))
+      (lambda ()
+	(let ((result (call-with-output-file temporary receiver)))
+	  (rename-file temporary pathname)
+	  result))
+      (lambda ()
+	(set! done? #t)
+	(deallocate-temporary-file temporary)))))
 
 (define (compile-data-from-file object pathname)
   pathname				;ignore
