@@ -56,9 +56,10 @@ allocate_bytevector (unsigned long nbytes)
   SCHEME_OBJECT result
     = (allocate_non_marked_vector
        (TC_BYTEVECTOR,
-        ((BYTES_TO_WORDS (nbytes)) + BYTEVECTOR_LENGTH_SIZE),
+        ((BYTES_TO_WORDS (nbytes + 1)) + BYTEVECTOR_LENGTH_SIZE),
         true));
   SET_BYTEVECTOR_LENGTH (result, nbytes);
+  ((BYTEVECTOR_POINTER (result)) [nbytes]) = '\0';
   return (result);
 }
 
