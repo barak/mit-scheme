@@ -27,17 +27,11 @@ USA.
 ;;;; IMAIL mail reader: compilation
 
 (load-option 'cref)
+(load-option 'sos)
+(load-option '*parser)
+(load-option 'edwin)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (with-working-directory-pathname (merge-pathnames "../sos")
-      (lambda ()
-	(load "load")))
-    (with-working-directory-pathname (merge-pathnames "../star-parser")
-      (lambda ()
-	(load "load")))
-    (with-working-directory-pathname (merge-pathnames "../edwin")
-      (lambda ()
-	(load "make")))
     (for-each (lambda (filename)
 		(compile-file filename '() (->environment '(edwin))))
 	      '("imail-browser"
