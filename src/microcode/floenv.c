@@ -29,6 +29,7 @@ USA.
 #include "scheme.h"
 #include "osscheme.h"
 #include "prims.h"
+#include "ctassert.h"
 
 #include "floenv.h"
 
@@ -289,8 +290,37 @@ DEFINE_PRIMITIVE ("SET-FLOAT-ROUNDING-MODE", Prim_set_float_rounding_mode, 1, 1,
    machine-dependent but OS-independent, and (c) it would be nice to
    open-code all the floating-point environment hackery.  */
 
+#ifdef __powerpc__
+/* powerpc uses bits [8,30], which interferes with our tags.  */
+CTASSERT ((FE_ALL_EXCEPT & 0xff) == 0);
+CTASSERT (ULONG_TO_FIXNUM_P (FE_ALL_EXCEPT >> 8));
+#else
+CTASSERT (ULONG_TO_FIXNUM_P (FE_ALL_EXCEPT));
+#endif
+
+static inline int
+exceptions_machine_to_scheme (int except_machine)
+{
+#ifdef __powerpc__
+  return (except_machine >> 8);
+#else
+  return (except_machine);
+#endif
+}
+
+static inline int
+exceptions_scheme_to_machine (int except_scheme)
+{
+#ifdef __powerpc__
+  return (except_scheme << 8);
+#else
+  return (except_scheme);
+#endif
+}
+
 #define FLOAT_EXCEPTIONS_RESULT(EXCEPTIONS)			\
-  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (EXCEPTIONS))
+  PRIMITIVE_RETURN						\
+    (ULONG_TO_FIXNUM (exceptions_machine_to_scheme (EXCEPTIONS)))
 
 static int
 arg_float_exceptions (int n)
@@ -298,9 +328,9 @@ arg_float_exceptions (int n)
   CHECK_ARG (n, UNSIGNED_FIXNUM_P);
   {
     unsigned long scheme_exceptions = (FIXNUM_TO_ULONG (ARG_REF (n)));
-    if (scheme_exceptions &~ FE_ALL_EXCEPT)
+    if (scheme_exceptions &~ (exceptions_machine_to_scheme (FE_ALL_EXCEPT)))
       error_bad_range_arg (n);
-    return (scheme_exceptions);
+    return (exceptions_scheme_to_machine (scheme_exceptions));
   }
 }
 
