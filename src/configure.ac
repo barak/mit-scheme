@@ -465,7 +465,7 @@ if test x"${mit_scheme_native_code}" = xc; then
     for BN in star-parser; do
         (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
     done
-    mkdir lib/lib
+    mkdir -p lib/lib
     for BUNDLE in 6001 compiler cref ffi sf sos ssp star-parser \
 		  xdoc xml; do
     	SO=${BUNDLE}.so
