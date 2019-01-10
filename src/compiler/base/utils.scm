@@ -541,7 +541,11 @@ USA.
 
 (define (constant-foldable-primitive? operator)
   (and (memq operator function-primitives)
-       (not (and compiler:cross-compiling?
+       (not (and (or compiler:cross-compiling?
+		     ;; C back end never sets COMPILER:CROSS-COMPILING?
+		     ;; but it has a nonconstant SCHEME-OBJECT-WIDTH
+		     ;; which serves as a proxy.
+		     (not (number? scheme-object-width)))
 		 (memq operator machine-dependent-primitives)))))
 
 (define-integrable (side-effect-free-primitive? operator)
