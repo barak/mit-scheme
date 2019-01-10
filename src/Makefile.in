@@ -138,11 +138,6 @@ TOOL_CROSS_HOST = $(TOOL_COMPILER) \
 .pkd.c .bld.c: $(TOOLCHAIN)
 	echo '(cbf "$<")' | $(TOOL_COMPILER)
 
-.PHONY: all
-all: lib/all.com
-all: lib/runtime.com
-all: microcode/scheme
-
 # The basics and everything that can be cross-compiled -- anything that
 # uses $(TOOL_...) -- depends on $(TOOLCHAIN).
 @IF_CROSS@TOOLCHAIN = stamp_toolchain
@@ -190,9 +185,9 @@ stamp_liarc-toolchain:
 ###
 ### We also define:
 ###
-###	<SUBSYS>_BUILD_TARGETS: targets to build the subsystem, if included
-###	<SUBSYS>_LIARC_TARGETS: whatever LIARC needs (on the host)
 ###	<SUBSYS>_CREF_TARGETS: dependencies for users of the cref
+###	<SUBSYS>_HOST_TARGETS: targets to make on the cross-compiler host
+###	<SUBSYS>_LIARC_TARGETS: liarc targets to make on the target system
 ###	<SUBSYS>_DEPEND_TARGETS: dependencies for using macros from it
 ###
 ### Conditionally setting the variable <SUBSYS>_DEPEND_TARGETS to
@@ -208,10 +203,11 @@ stamp_liarc-toolchain:
 # Runtime
 ################
 
-RUNTIME_BUILD_TARGETS = compile-runtime $(RUNTIME_LIARC_TARGETS)
-@IF_LIARC@RUNTIME_LIARC_TARGETS = bundle-runtime
 RUNTIME_CREF_TARGETS = syntax-runtime
-@IF_NATIVE@RUNTIME_DEPEND_TARGETS = compile-runtime
+RUNTIME_HOST_TARGETS = compile-runtime $(RUNTIME_HOST_LIARC_TARGETS)
+@IF_LIARC@RUNTIME_HOST_LIARC_TARGETS = runtime/runtime-unx.c
+@IF_LIARC@RUNTIME_LIARC_TARGETS = # nothing, statically linked into microcode
+@IF_NATIVE@RUNTIME_DEPEND_TARGETS = $(RUNTIME_HOST_TARGETS) $(RUNTIME_LIARC_TARGETS)
 @IF_CROSS@RUNTIME_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: compile-runtime
@@ -228,21 +224,17 @@ syntax-runtime: $(TOOLCHAIN)
 	 echo '  (lambda () (load "runtime.sf")))') \
 	| $(TOOL_COMPILER)
 
-.PHONY: bundle-runtime
-bundle-runtime: compile-runtime
-bundle-runtime: runtime/runtime-unx.c
-# No bundle to build because this is statically linked into the ucode.
-
 runtime/runtime-unx.pkd: $(RUNTIME_CREF_TARGETS)
 
 ################
 # SF
 ################
 
-SF_BUILD_TARGETS = compile-sf $(SF_LIARC_TARGETS)
-@IF_LIARC@SF_LIARC_TARGETS = bundle-sf
 SF_CREF_TARGETS = syntax-sf
-@IF_NATIVE@SF_DEPEND_TARGETS = compile-sf
+SF_HOST_TARGETS = compile-sf $(SF_HOST_LIARC_TARGETS)
+@IF_LIARC@SF_HOST_LIARC_TARGETS = sf/sf-unx.c
+@IF_LIARC@SF_LIARC_TARGETS = bundle-sf
+@IF_NATIVE@SF_DEPEND_TARGETS = $(SF_HOST_TARGETS) $(SF_LIARC_TARGETS)
 @IF_CROSS@SF_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: compile-sf
@@ -262,8 +254,8 @@ syntax-sf: $(TOOLCHAIN)
 
 .PHONY: bundle-sf
 bundle-sf: $(LIARC_TOOLCHAIN)
-bundle-sf: compile-sf
-bundle-sf: sf/sf-unx.c
+@IF_NATIVE@bundle-sf: $(SF_HOST_TARGETS)
+@IF_CROSS@bundle-sf: stamp_cross-host
 	+(cd sf && $(MAKE) compile-liarc-bundle)
 sf/sf-unx.pkd: $(SF_CREF_TARGETS)
 
@@ -271,10 +263,11 @@ sf/sf-unx.pkd: $(SF_CREF_TARGETS)
 # Compiler (LIAR)
 #################
 
-COMPILER_BUILD_TARGETS = compile-compiler $(COMPILER_LIARC_TARGETS)
-@IF_LIARC@COMPILER_LIARC_TARGETS = bundle-compiler
 COMPILER_CREF_TARGETS = syntax-compiler
-@IF_NATIVE@COMPILER_DEPEND_TARGETS = compile-compiler
+COMPILER_HOST_TARGETS = compile-compiler $(COMPILER_HOST_LIARC_TARGETS)
+@IF_LIARC@COMPILER_HOST_LIARC_TARGETS = compiler/compiler-unx.c
+@IF_LIARC@COMPILER_LIARC_TARGETS = bundle-compiler
+@IF_NATIVE@COMPILER_DEPEND_TARGETS = $(COMPILER_HOST_TARGETS) $(COMPILER_LIARC_TARGETS)
 @IF_CROSS@COMPILER_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: syntax-compiler
@@ -349,8 +342,8 @@ compile-compiler-rtlopt: $(TOOLCHAIN)
 
 .PHONY: bundle-compiler
 bundle-compiler: $(LIARC_TOOLCHAIN)
-bundle-compiler: compile-compiler
-bundle-compiler: compiler/compiler-unx.c
+@IF_NATIVE@bundle-compiler: $(COMPILER_HOST_TARGETS)
+@IF_CROSS@bundle-compiler: stamp_cross-host
 	+(cd compiler && $(MAKE) compile-liarc-bundle)
 compiler/compiler-unx.pkd: $(COMPILER_CREF_TARGETS)
 
@@ -368,10 +361,11 @@ compiler/machines/svm/svm1-defns.h: \
 # CREF
 ################
 
-CREF_BUILD_TARGETS = compile-cref $(CREF_LIARC_TARGETS)
-@IF_LIARC@CREF_LIARC_TARGETS = bundle-cref
 CREF_CREF_TARGETS = syntax-cref
-@IF_NATIVE@CREF_DEPEND_TARGETS = compile-cref
+CREF_HOST_TARGETS = compile-cref $(CREF_HOST_LIARC_TARGETS)
+@IF_LIARC@CREF_HOST_LIARC_TARGETS = cref/cref-unx.c
+@IF_LIARC@CREF_LIARC_TARGETS = bundle-cref
+@IF_NATIVE@CREF_DEPEND_TARGETS = $(CREF_HOST_TARGETS) $(CREF_LIARC_TARGETS)
 @IF_CROSS@CREF_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: compile-cref
@@ -391,8 +385,8 @@ syntax-cref: $(TOOLCHAIN)
 
 .PHONY: bundle-cref
 bundle-cref: $(LIARC_TOOLCHAIN)
-bundle-cref: compile-cref
-bundle-cref: cref/cref-unx.c
+@IF_NATIVE@bundle-cref: $(CREF_HOST_TARGETS)
+@IF_CROSS@bundle-cref: stamp_cross-host
 	+(cd cref && $(MAKE) compile-liarc-bundle)
 cref/cref-unx.pkd: $(CREF_CREF_TARGETS)
 
@@ -400,10 +394,11 @@ cref/cref-unx.pkd: $(CREF_CREF_TARGETS)
 # *PARSER
 ################
 
-STAR_PARSER_BUILD_TARGETS = compile-star-parser $(STAR_PARSER_LIARC_TARGETS)
-@IF_LIARC@STAR_PARSER_LIARC_TARGETS = bundle-star-parser
 STAR_PARSER_CREF_TARGETS = compile-star-parser # no separate syntax step
-@IF_NATIVE@STAR_PARSER_DEPEND_TARGETS = compile-star-parser
+STAR_PARSER_HOST_TARGETS = compile-star-parser $(STAR_PARSER_HOST_LIARC_TARGETS)
+@IF_LIARC@STAR_PARSER_HOST_LIARC_TARGETS = star-parser/parser-unx.c
+@IF_LIARC@STAR_PARSER_LIARC_TARGETS = bundle-star-parser
+@IF_NATIVE@STAR_PARSER_DEPEND_TARGETS = $(STAR_PARSER_HOST_TARGETS) $(STAR_PARSER_LIARC_TARGETS)
 @IF_CROSS@STAR_PARSER_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: compile-star-parser
@@ -416,8 +411,8 @@ compile-star-parser: $(TOOLCHAIN)
 
 .PHONY: bundle-star-parser
 bundle-star-parser: $(LIARC_TOOLCHAIN)
-bundle-star-parser: compile-star-parser
-bundle-star-parser: star-parser/parser-unx.c
+@IF_NATIVE@bundle-star-parser: $(STAR_PARSER_HOST_TARGETS)
+@IF_CROSS@bundle-star-parser: stamp_cross-host
 	+(cd star-parser && $(MAKE) compile-liarc-bundle)
 star-parser/parser-unx.pkd: $(STAR_PARSER_CREF_TARGETS)
 
@@ -429,10 +424,11 @@ star-parser/parser-unx.pkd: $(STAR_PARSER_CREF_TARGETS)
 # FFI
 ################
 
-FFI_BUILD_TARGETS = compile-ffi $(FFI_LIARC_TARGETS)
-@IF_LIARC@FFI_LIARC_TARGETS = bundle-ffi
 FFI_CREF_TARGETS = compile-ffi # no separate syntax step
-@IF_NATIVE@FFI_DEPEND_TARGETS = compile-ffi
+FFI_HOST_TARGETS = compile-ffi $(FFI_HOST_LIARC_TARGETS)
+@IF_LIARC@FFI_HOST_LIARC_TARGETS = ffi/ffi-unx.c
+@IF_LIARC@FFI_LIARC_TARGETS = bundle-ffi
+@IF_NATIVE@FFI_DEPEND_TARGETS = $(FFI_HOST_TARGETS) $(FFI_LIARC_TARGETS)
 @IF_CROSS@FFI_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: compile-ffi
@@ -445,8 +441,8 @@ compile-ffi: $(TOOLCHAIN)
 
 .PHONY: bundle-ffi
 bundle-ffi: $(LIARC_TOOLCHAIN)
-bundle-ffi: compile-ffi
-bundle-ffi: ffi/ffi-unx.c
+@IF_NATIVE@bundle-ffi: $(FFI_HOST_TARGETS)
+@IF_CROSS@bundle-ffi: stamp_cross-host
 	+(cd ffi && $(MAKE) compile-liarc-bundle)
 ffi/ffi-unx.pkd: $(FFI_CREF_TARGETS)
 
@@ -454,10 +450,11 @@ ffi/ffi-unx.pkd: $(FFI_CREF_TARGETS)
 # SOS
 ################
 
-SOS_BUILD_TARGETS = compile-sos $(SOS_LIARC_TARGETS)
-@IF_LIARC@SOS_LIARC_TARGETS = bundle-sos
 SOS_CREF_TARGETS = compile-sos # no separate syntax step
-@IF_NATIVE@SOS_DEPEND_TARGETS = compile-sos
+SOS_HOST_TARGETS = compile-sos $(SOS_HOST_LIARC_TARGETS)
+@IF_LIARC@FFI_HOST_LIARC_TARGETS = sos/sos-unx.c
+@IF_LIARC@SOS_LIARC_TARGETS = bundle-sos
+@IF_NATIVE@SOS_DEPEND_TARGETS = $(SOS_HOST_TARGETS) $(SOS_LIARC_TARGETS)
 @IF_CROSS@SOS_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: compile-sos
@@ -470,8 +467,8 @@ compile-sos: $(TOOLCHAIN)
 
 .PHONY: bundle-sos
 bundle-sos: $(LIARC_TOOLCHAIN)
-bundle-sos: compile-sos
-bundle-sos: sos/sos-unx.c
+@IF_NATIVE@bundle-sos: $(SOS_HOST_TARGETS)
+@IF_CROSS@bundle-sos: stamp_cross-host
 	+(cd sos && $(MAKE) compile-liarc-bundle)
 sos/sos-unx.pkd: $(SOS_CREF_TARGETS)
 
@@ -479,10 +476,10 @@ sos/sos-unx.pkd: $(SOS_CREF_TARGETS)
 # Windows FFI
 ################
 
-WIN32_BUILD_TARGETS = compile-win32
-# no LIARC on Windows
 WIN32_CREF_TARGETS = syntax-win32
-@IF_NATIVE@WIN32_DEPEND_TARGETS = compile-win32
+WIN32_HOST_TARGETS = compile-win32
+# no LIARC on Windows
+@IF_NATIVE@WIN32_DEPEND_TARGETS = $(WIN32_HOST_TARGETS)
 @IF_CROSS@WIN32_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: compile-win32
@@ -504,10 +501,11 @@ syntax-win32: $(TOOLCHAIN)
 # XML
 ################
 
-XML_BUILD_TARGETS = compile-xml $(XML_LIARC_TARGETS)
-@IF_LIARC@XML_LIARC_TARGETS = bundle-xml
 XML_CREF_TARGETS = compile-xml # no separate syntax step
-@IF_NATIVE@XML_DEPEND_TARGETS = compile-xml
+XML_HOST_TARGETS = compile-xml $(XML_HOST_LIARC_TARGETS)
+@IF_LIARC@XML_HOST_LIARC_TARGETS = xml/xml-unx.c
+@IF_LIARC@XML_LIARC_TARGETS = bundle-xml
+@IF_NATIVE@XML_DEPEND_TARGETS = $(XML_HOST_TARGETS) $(XML_LIARC_TARGETS)
 @IF_CROSS@XML_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: compile-xml
@@ -522,8 +520,8 @@ compile-xml: $(TOOLCHAIN)
 
 .PHONY: bundle-xml
 bundle-xml: $(LIARC_TOOLCHAIN)
-bundle-xml: compile-xml
-bundle-xml: xml/xml-unx.c
+@IF_NATIVE@bundle-xml: $(XML_HOST_TARGETS)
+@IF_CROSS@bundle-xml: stamp_cross-host
 	+(cd xml && $(MAKE) compile-liarc-bundle)
 xml/xml-unx.pkd: $(XML_CREF_TARGETS)
 
@@ -531,10 +529,11 @@ xml/xml-unx.pkd: $(XML_CREF_TARGETS)
 # SSP
 ################
 
-SSP_BUILD_TARGETS = compile-ssp $(SSP_LIARC_TARGETS)
-@IF_LIARC@SSP_LIARC_TARGETS = bundle-ssp
 SSP_CREF_TARGETS = compile-ssp # no separate syntax step
-@IF_NATIVE@SSP_DEPEND_TARGETS = compile-ssp
+SSP_HOST_TARGETS = compile-ssp $(SSP_HOST_LIARC_TARGETS)
+@IF_LIARC@SSP_HOST_LIARC_TARGETS = ssp/ssp-unx.c
+@IF_LIARC@SSP_LIARC_TARGETS = bundle-ssp
+@IF_NATIVE@SSP_DEPEND_TARGETS = $(SSP_HOST_TARGETS) $(SSP_LIARC_TARGETS)
 @IF_CROSS@SSP_DEPEND_TARGETS = stamp_cross-finished
 
 .PHONY: compile-ssp
@@ -548,8 +547,8 @@ compile-ssp: $(TOOLCHAIN)
 
 .PHONY: bundle-ssp
 bundle-ssp: $(LIARC_TOOLCHAIN)
-bundle-ssp: compile-ssp
-bundle-ssp: ssp/ssp-unx.c
+@IF_NATIVE@bundle-ssp: $(SSP_HOST_TARGETS)
+@IF_CROSS@bundle-ssp: stamp_cross-host
 	+(cd ssp && $(MAKE) compile-liarc-bundle)
 ssp/ssp-unx.pkd: $(SSP_CREF_TARGETS)
 
@@ -675,45 +674,57 @@ compile-x11-screen: $(X11_DEPEND_TARGETS)
 	+(cd x11-screen && $(MAKE))
 
 #####################
-### Subsystems
+### Main targets
 #####################
 
-@IF_CROSS@BUILD_TARGET = cross-host
-@IF_NATIVE@BUILD_TARGET = all
-PLUGINS_BUILD_TARGET = all
+# all
+#
+#	Build the whole system, with the host's tools, an intermediate
+#	cross-toolchain if cross-compiling, and the newly built target
+#	tools.  Same as cross-host and then cross-target.
+#
+.PHONY: all
+all: cross-host
+	$(MAKE) cross-target
 
-$(BUILD_TARGET): $(COMPILER_BUILD_TARGETS)
-$(BUILD_TARGET): $(CREF_BUILD_TARGETS)
-$(BUILD_TARGET): $(FFI_BUILD_TARGETS)
-$(BUILD_TARGET): $(RUNTIME_BUILD_TARGETS)
-$(BUILD_TARGET): $(SF_BUILD_TARGETS)
-$(BUILD_TARGET): $(SOS_BUILD_TARGETS)
-$(BUILD_TARGET): $(SSP_BUILD_TARGETS)
-$(BUILD_TARGET): $(STAR_PARSER_BUILD_TARGETS)
-$(BUILD_TARGET): $(WIN32_BUILD_TARGETS)
-$(BUILD_TARGET): $(XML_BUILD_TARGETS)
-
-$(PLUGINS_BUILD_TARGET): $(BLOWFISH_BUILD_TARGETS)
-$(PLUGINS_BUILD_TARGET): $(EDWIN_BUILD_TARGETS)
-$(PLUGINS_BUILD_TARGET): $(GDBM_BUILD_TARGETS)
-$(PLUGINS_BUILD_TARGET): $(IMAIL_BUILD_TARGETS)
-$(PLUGINS_BUILD_TARGET): $(MCRYPT_BUILD_TARGETS)
-$(PLUGINS_BUILD_TARGET): $(PGSQL_BUILD_TARGETS)
-$(PLUGINS_BUILD_TARGET): $(X11_BUILD_TARGETS)
-$(PLUGINS_BUILD_TARGET): $(X11_SCREEN_BUILD_TARGETS)
-
-#####################
-### Cross compilation
-#####################
-
-# Run `make cross-host' on the cross-compiling host to prepare a tree;
-# then transmit it over to the target system and run `make all' to
-# finish the job.
-
+# cross-host
+#
+#	Do the host part of a cross-build: build a cross-toolchain if
+#	cross-compiling, compile everything that can be cross-compiled
+#	with it, and leave a stamp of approval.
+#
 .PHONY: cross-host
-cross-host:
+cross-host: $(COMPILER_HOST_TARGETS)
+cross-host: $(CREF_HOST_TARGETS)
+cross-host: $(FFI_HOST_TARGETS)
+cross-host: $(RUNTIME_HOST_TARGETS)
+cross-host: $(SF_HOST_TARGETS)
+cross-host: $(SOS_HOST_TARGETS)
+cross-host: $(SSP_HOST_TARGETS)
+cross-host: $(STAR_PARSER_HOST_TARGETS)
+cross-host: $(WIN32_HOST_TARGETS)
+cross-host: $(XML_HOST_TARGETS)
 	echo done > stamp_cross-host
 
+# stamp_cross-finished
+#
+#	Finish whatever work the cross-compiler left: compiling LIARC
+#	bundles with the target's C toolchain, converting moc files to
+#	com files.
+#
+#	THIS MUST DEPEND ONLY ON REAL TARGETS, NOT ON PHONY TARGETS
+#	THAT MAY RUN ON THE HOST.
+#
+stamp_cross-finished: $(COMPILER_LIARC_TARGETS)
+stamp_cross-finished: $(CREF_LIARC_TARGETS)
+stamp_cross-finished: $(FFI_LIARC_TARGETS)
+stamp_cross-finished: $(RUNTIME_LIARC_TARGETS)
+stamp_cross-finished: $(SF_LIARC_TARGETS)
+stamp_cross-finished: $(SOS_LIARC_TARGETS)
+stamp_cross-finished: $(SSP_LIARC_TARGETS)
+stamp_cross-finished: $(STAR_PARSER_LIARC_TARGETS)
+stamp_cross-finished: $(WIN32_LIARC_TARGETS)
+stamp_cross-finished: $(XML_LIARC_TARGETS)
 stamp_cross-finished: stamp_cross-host microcode/scheme
 	(echo '$(NO_LIARC)' && \
 	 echo '(let ((env (->environment (quote (runtime)))))' && \
@@ -731,6 +742,36 @@ stamp_cross-finished: stamp_cross-host microcode/scheme
 	 echo '  ((access finish-cross-compilation:info-files env) ".."))') \
 	 | (cd runtime && ../run-build --batch-mode --fasl make.com)
 	echo "done" > $@
+
+# cross-target
+#
+#	Do the target part of a cross-build: all the plugins that are
+#	built with the newly built target tools, and the microcode, and
+#	the bands.
+#
+#	This step is necessarily separate for three reasons:
+#
+#	1. We don't have a reasonable way to cross-compile subsystems
+#	   that use macros from other cross-compiled subsystems.
+#
+#	2. We don't assume the user has a C cross-compiler (although if
+#	   they did, they could in principle use it here).
+#
+#	3. We don't have a static linker for bands that can run as part
+#	   of a cross-toolchain.
+#
+.PHONY: cross-target
+cross-target: $(BLOWFISH_BUILD_TARGETS)
+cross-target: $(EDWIN_BUILD_TARGETS)
+cross-target: $(GDBM_BUILD_TARGETS)
+cross-target: $(IMAIL_BUILD_TARGETS)
+cross-target: $(MCRYPT_BUILD_TARGETS)
+cross-target: $(PGSQL_BUILD_TARGETS)
+cross-target: $(X11_BUILD_TARGETS)
+cross-target: $(X11_SCREEN_BUILD_TARGETS)
+cross-target: lib/all.com
+cross-target: lib/runtime.com
+cross-target: microcode/scheme
 
 ################
 # Microcode
