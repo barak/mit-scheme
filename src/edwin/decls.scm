@@ -28,8 +28,9 @@ USA.
 
 (declare (usual-integrations))
 
-(let* ((scm-file (lambda (file) (string-append file ".scm")))
-       (bin-file (lambda (file) (string-append file ".bin")))
+(let* ((sf-names (lambda (file) (sf/pathname-defaulting file #f #f)))
+       (scm-file (lambda (file) (receive (scm bin spec) (sf-names file) scm)))
+       (bin-file (lambda (file) (receive (scm bin spec) (sf-names file) bin)))
        (bin-time (lambda (file) (file-modification-time (bin-file file))))
        (sf-dependent
 	(lambda (environment)
@@ -37,9 +38,10 @@ USA.
 	    (let ((reasons
 		   (let ((source-time (bin-time source)))
 		     (append
-		      (if (not (file-processed? source "scm" "bin"))
-			  (list (scm-file source))
-			  '())
+		      (receive (scm bin spec) (sf-names source)
+			(if (file-modification-time<=? scm bin)
+			    '()
+			    (list scm)))
 		      (map bin-file
 			   (if source-time
 			       (filter (lambda (dependency)

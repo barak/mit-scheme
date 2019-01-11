@@ -37,7 +37,9 @@ USA.
     (begin
       (fluid-let ((sf/default-syntax-table (->environment '(edwin))))
 	(sf-conditionally "string"))
-      (load "string.bin" '(edwin string))))
+      (receive (scm bin spec) (sf/pathname-defaulting "string" #f #f)
+	scm spec
+	(load bin '(edwin string)))))
 
 (if (lexical-unreferenceable? (->environment '(edwin class-constructor))
 			      'class-descriptors)
@@ -47,7 +49,10 @@ USA.
 	       (fluid-let ((sf/default-syntax-table (->environment '())))
 		 (sf-conditionally files))
 	       (for-each (lambda (file)
-			   (load (string-append file ".bin") package))
+			   (receive (scm bin spec)
+				    (sf/pathname-defaulting file #f #f)
+			     scm spec
+			     (load bin package)))
 			 files))))
 	(sf-and-load '("macros") '(edwin macros))
 	(sf-and-load '("clsmac") '(edwin class-macros))
