@@ -321,7 +321,7 @@ md5_selftest(void)
 
 		md5_init(&m0);
 		md5_update(&m0, s, i/2);
-		md5_update(&m0, s + i/2, i);
+		md5_update(&m0, s + i/2, i - i/2);
 		md5_final(&m0, h);
 		md5_update(&m, h, 16);
 	}
