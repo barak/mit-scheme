@@ -651,16 +651,16 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       ,@(inst:jump (ea:uuo-entry-address
-		     (free-uuo-link-label name frame-size)))))
+       ,@(inst:indirect-jump
+	  (ea:address (free-uuo-link-label name frame-size)))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       ,@(inst:jump (ea:uuo-entry-address
-		     (global-uuo-link-label name frame-size)))))
+       ,@(inst:indirect-jump
+	  (ea:address (global-uuo-link-label name frame-size)))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
@@ -1347,16 +1347,8 @@ USA.
 		   (lambda (cache)
 		     (let ((frame-size (car cache))
 			   (label (cdr cache)))
-		       (case endianness
-			 ((BIG)
-			  `((,name . ,label)
-			    (#f . ,(allocate-constant-label))
-			    (,frame-size . ,(allocate-constant-label))))
-			 ((LITTLE)
-			  `((,frame-size . ,label)
-			    (,name . ,(allocate-constant-label))))
-			 (else
-			  (error "Unknown endianness:" endianness))))))
+		       `((,frame-size . ,(allocate-constant-label))
+			 (,name . ,label)))))
 		 (cdr name.caches)))
 	      name.caches-list))
 

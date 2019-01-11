@@ -62,11 +62,7 @@ typedef uint8_t insn_t;
 #define CLOSURE_ENTRY_SIZE 5
 
 /* Size of execution cache in SCHEME_OBJECTS.  */
-#ifdef WORDS_BIGENDIAN
-#define UUO_LINK_SIZE 3
-#else
 #define UUO_LINK_SIZE 2
-#endif
 #define READ_UUO_TARGET(a, r) read_uuo_target (a)
 
 #define UTILITY_RESULT_DEFINED 1

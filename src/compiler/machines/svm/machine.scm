@@ -141,6 +141,7 @@ USA.
 (define-inst entry-point label)
 
 (define-inst jump address)
+(define-inst indirect-jump offset)
 
 (define (inst:trap n . args)
   (list (cons* 'TRAP n args)))
@@ -221,14 +222,6 @@ USA.
 
 (define (ea:address label)
   (ea:pc-relative `(- ,label *PC*)))
-
-(define ea:uuo-entry-address
-  (let ((offset
-	 ;; LABEL is the uuo-link-label, but the PC to jump to is two
-	 ;; opcode bytes before the following word (the link address).
-	 (- address-units-per-object 2)))
-    (named-lambda (ea:uuo-entry-address label)
-      (ea:pc-relative `(- (+ ,label ,offset) *PC*)))))
 
 (define (ea:stack-pop)
   (ea:post-increment rref:stack-pointer 'WORD))

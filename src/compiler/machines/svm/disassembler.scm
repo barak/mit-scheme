@@ -348,21 +348,17 @@ USA.
 	      (vector-ref result 0))))))
 
 (define (read-procedure-cache block index)
-  (let ((word (system-vector-ref block index)))
-    (if (object-type? (ucode-type fixnum) word)
+  (let ((frame-size (system-vector-ref block index)))
+    (assert (object-type? (ucode-type fixnum) frame-size))
+    (if (object-type? (ucode-type interned-symbol)
+		      (system-vector-ref block (1+ index)))
 	;; Unlinked.
-	(vector 'INTERPRETED (system-vector-ref block (1+ index)) word)
+	(let ((name (system-vector-ref block (1+ index))))
+	  (vector 'INTERPRETED name frame-size))
 	;; Linked.
-	(let ((offset (compiled-code-block/index->offset index))
-	      (bytes address-units-per-object))
-	  (let ((arity (read-unsigned-integer block offset 16))
-		(opcode (read-unsigned-integer block (+ offset bytes -2) 8))
-		(operand (read-unsigned-integer block (+ offset bytes -1) 8)))
-	    (if (and (= opcode svm1-inst:ijump-u8) (= operand 0))
-		(vector 'COMPILED (read-procedure block (+ offset bytes)) arity)
-		(error (string-append "disassembler/read-procedure-cache:"
-				      " Unexpected instruction")
-		       opcode operand)))))))
+	(let* ((offset (compiled-code-block/index->offset (1+ index)))
+	       (procedure (read-procedure block offset)))
+	  (vector 'COMPILED procedure frame-size)))))
 
 (define (read-procedure block offset)
   (with-absolutely-no-interrupts

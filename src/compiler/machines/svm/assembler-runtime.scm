@@ -163,6 +163,7 @@ USA.
   (add-instruction-assembler! 'LOAD (load-assembler))
   (add-instruction-assembler! 'LOAD-ADDRESS (load-address-assembler))
   (add-instruction-assembler! 'JUMP (jump-assembler))
+  (add-instruction-assembler! 'INDIRECT-JUMP (indirect-jump-assembler))
   (add-instruction-assembler! 'CONDITIONAL-JUMP (cjump1-assembler))
   (add-instruction-assembler! 'CONDITIONAL-JUMP (cjump2-assembler)))
 
@@ -268,6 +269,35 @@ USA.
       ;; Does not fit into a smaller number of bytes; no fixing necessary.
       offset))
 
+(define (pc-relative-stats-unsigned nbits make-sample)
+  (let ((high (-1+ (expt 2 nbits)))
+	(low 0))
+    (let* ((bit-width (fixed-instruction-width (make-sample high)))
+	   (byte-width (/ bit-width 8)))
+      (list nbits byte-width bit-width
+	    (+ low byte-width) (+ high byte-width)))))
+
+(define (pc-relative-selector-unsigned stats make-inst)
+  (let ((nbits (car stats))
+	(byte-width (cadr stats))
+	(bit-width (caddr stats)))
+    (cons
+     (named-lambda (pc-relative-selector-handler offset)
+       (let ((operand (fix-offset-unsigned (- offset byte-width) nbits)))
+	 (assemble-fixed-instruction bit-width (make-inst operand))))
+     (cddr stats))))
+
+(define-integrable (fix-offset-unsigned offset nbits)
+  (if (or (and (= nbits 16)
+	       (let ((low 0) (high #xFF))
+		 (and (<= low offset) (<= offset high))))
+	  (and (= nbits 32)
+	       (let ((low 0) (high #xFFFF))
+		 (and (<= low offset) (<= offset high)))))
+      (unsigned-integer->bit-string nbits offset)
+      ;; Does not fit into a smaller number of bytes; no fixing necessary.
+      offset))
+
 (define (store-assembler)
   (let ((make-sample (lambda (offset)
 		       (inst:store 'WORD rref:word-0
@@ -337,6 +367,22 @@ USA.
 	    ,(pc-relative-selector  8bit-stats make-inst)
 	    ,(pc-relative-selector 16bit-stats make-inst)
 	    ,(pc-relative-selector 32bit-stats make-inst))))))))
+
+(define (indirect-jump-assembler)
+  (let ((make-sample (lambda (offset)
+		       (inst:indirect-jump (ea:pc-relative offset)))))
+    (let (( 8bit-stats (pc-relative-stats-unsigned  8 make-sample))
+	  (16bit-stats (pc-relative-stats-unsigned 16 make-sample))
+	  (32bit-stats (pc-relative-stats-unsigned 32 make-sample)))
+      (rule-matcher
+       ((PC-RELATIVE (- (? label) *PC*)))
+       (let ((make-inst (lambda (offset)
+			  (inst:indirect-jump (ea:pc-relative offset)))))
+	 `((VARIABLE-WIDTH-EXPRESSION
+	    (- ,label *PC*)
+	    ,(pc-relative-selector-unsigned  8bit-stats make-inst)
+	    ,(pc-relative-selector-unsigned 16bit-stats make-inst)
+	    ,(pc-relative-selector-unsigned 32bit-stats make-inst))))))))
 
 (define (cjump2-assembler)
   (let ((make-sample (lambda (offset)
@@ -668,8 +714,10 @@ USA.
     (let ((limit (expt 2 n-bits)))
       (define-pvt (symbol 'UNSIGNED- n-bits) (symbol 'U n-bits) 'INTEGER
 	(lambda (object)
-	  (and (exact-nonnegative-integer? object)
-	       (< object limit)))
+	  (or (and (bit-string? object)
+		   (= n-bits (bit-string-length object)))
+	      (and (exact-nonnegative-integer? object)
+		   (< object limit))))
 	(symbol 'ENCODE-UNSIGNED-INTEGER- n-bits)
 	(symbol 'DECODE-UNSIGNED-INTEGER- n-bits)))))
 
@@ -724,19 +772,30 @@ USA.
 ;;;; Primitive codecs
 
 (define (encode-unsigned-integer-8 n write-byte)
-  (write-byte n))
+  (if (bit-string? n)
+      (write-bytes n 1 write-byte)
+      (write-byte n)))
 
 (define (encode-unsigned-integer-16 n write-byte)
-  (write-byte (remainder n #x100))
-  (write-byte (quotient n #x100)))
+  (if (bit-string? n)
+      (write-bytes n 2 write-byte)
+      (begin
+	(write-byte (remainder n #x100))
+	(write-byte (quotient n #x100)))))
 
 (define (encode-unsigned-integer-32 n write-byte)
-  (encode-unsigned-integer-16 (remainder n #x10000) write-byte)
-  (encode-unsigned-integer-16 (quotient n #x10000) write-byte))
+  (if (bit-string? n)
+      (write-bytes n 4 write-byte)
+      (begin
+	(encode-unsigned-integer-16 (remainder n #x10000) write-byte)
+	(encode-unsigned-integer-16 (quotient n #x10000) write-byte))))
 
 (define (encode-unsigned-integer-64 n write-byte)
-  (encode-unsigned-integer-32 (remainder n #x100000000) write-byte)
-  (encode-unsigned-integer-32 (quotient n #x100000000) write-byte))
+  (if (bit-string? n)
+      (write-bytes n 8 write-byte)
+      (begin
+	(encode-unsigned-integer-32 (remainder n #x100000000) write-byte)
+	(encode-unsigned-integer-32 (quotient n #x100000000) write-byte))))
 
 (define (decode-unsigned-integer-8 read-byte)
   (read-byte))

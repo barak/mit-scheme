@@ -294,80 +294,27 @@ compiled_closure_entry_to_target (insn_t * entry)
    the calling process without having to find and change all the
    places in the compiled code that refer to it.
 
-   Prior to linking, the execution cache has two pieces of
-   information: (1) the name of the procedure being called (a symbol),
-   and (2) the number of arguments that will be passed to the
-   procedure.  It is laid out in memory like this (on a 32-bit
-   little-endian machine):
+   Initially, the execution cache stores the frame size and the name of
+   the procedure being called (a symbol); after linking, the name is
+   replaced by the (untagged) address of the code to execute.
 
-   0x00    frame-size (fixnum)
-   0x04    name encoded as symbol
-
-   After linking, the cache is changed as follows:
-
-   0x00    frame-size (u16)
-   0x02    SVM1_INST_IJUMP_U8
-   0x03    offset = 0
-   0x04    32-bit address
-
-   On a 64-bit machine, the post-linking layout is:
-
-   0x00    frame-size (u16)
-   0x02    4 padding bytes
-   0x06    SVM1_INST_IJUMP_U8
-   0x07    offset = 0
-   0x08    64-bit address
-
-   On a big-endian machine, the frame size comes after the
-   name/instructions:
-
-   (unlinked, Scheme objects, any word size)
-           name encoded as symbol
-           padding #f
-           frame-size (fixnum below 2^16)
-
-   (linked, 32-bit)
-   0x00    2 padding bytes
-   0x02    SVM1_INST_IJUMP_U8
-   0x03    offset = 0
-   0x04    32-bit address
-   0x08    2 padding bytes
-   0x0a    frame-size (u16)
-
-   (linked, 64-bit)
-   0x00    6 padding bytes
-   0x06    SVM1_INST_IJUMP_U8
-   0x07    offset = 0
-   0x08    64-bit address
-   0x10    6 padding bytes
-   0x1e    frame-size (fixnum below 2^16)
-   */
+   On real machines, execute caches usually have machine instructions
+   that perform the jump, but we have no need for that in SVM1 where we
+   already have an instruction to make an indirect jump to the address
+   stored at a PC-relative location in memory.  */
 
 unsigned int
 read_uuo_frame_size (SCHEME_OBJECT * saddr)
 {
-#ifdef WORDS_BIGENDIAN
-  insn_t * addr = (((insn_t *) (saddr + 3)) - 2);
-  unsigned hi = (addr[0]);
-  unsigned lo = (addr[1]);
-#else
-  insn_t * addr = ((insn_t *) saddr);
-  unsigned lo = (addr[0]);
-  unsigned hi = (addr[1]);
-#endif
-  return ((hi << 8) | lo);
+  return (OBJECT_DATUM (saddr[0]));
 }
 
 SCHEME_OBJECT
 read_uuo_symbol (SCHEME_OBJECT * saddr)
 {
-#ifdef WORDS_BIGENDIAN
-  return (saddr[0]);
-#else
   return (saddr[1]);
-#endif
 }
-
+
 insn_t *
 read_uuo_target (SCHEME_OBJECT * saddr)
 {
@@ -383,40 +330,7 @@ read_uuo_target_no_reloc (SCHEME_OBJECT * saddr)
 void
 write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
 {
-  unsigned long frame_size = (read_uuo_frame_size (saddr));
-  insn_t * addr = ((insn_t *) saddr);
-  insn_t * end = ((insn_t *) (saddr + 1));
-
-#ifndef WORDS_BIGENDIAN
-  /* Write the frame size.  */
-  (*addr++) = (frame_size & 0x00FF);
-  (*addr++) = ((frame_size & 0xFF00) >> 8);
-#endif
-
-  /* Pad to a word boundary, minus two bytes.  */
-  while (addr < (end - 2))
-    (*addr++) = 0;
-
-  /* Write the instruction prefix.  */
-  (*addr++) = SVM1_INST_IJUMP_U8;
-  (*addr++) = 0;
-
-  /* We now have a word-aligned address.  Write the target here.  */
-  assert (addr == ((insn_t *) (saddr + 1)));
   (saddr[1]) = ((SCHEME_OBJECT) target);
-
-#ifdef WORDS_BIGENDIAN
-  /* Pad to a word boundary, minus one 16-bit quantity.  */
-  addr = ((insn_t *) (saddr + 2));
-  end = ((insn_t *) (saddr + 3));
-  while (addr < (end - 2))
-    (*addr++) = 0;
-
-  /* Write the frame size.  */
-  (*addr++) = ((frame_size & 0xFF00) >> 8);
-  (*addr++) = (frame_size & 0x00FF);
-  assert (addr == ((insn_t *) (saddr + 3)));
-#endif
 }
 
 unsigned long
