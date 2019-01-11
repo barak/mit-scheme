@@ -246,7 +246,7 @@ USA.
 (define (write-constant constant cursor)
   (write-string (cdr (write-to-string constant 60)))
   (cond ((scode-lambda? constant)
-	 (let ((expression (lambda-body constant)))
+	 (let ((expression (scode-lambda-body constant)))
 	   (if (and (compiled-code-address? expression)
 		    (eq? (compiled-code-address->block expression)
 			 (cursor-block cursor)))
