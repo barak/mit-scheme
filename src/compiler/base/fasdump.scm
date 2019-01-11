@@ -48,10 +48,12 @@ USA.
   (write-word #f read-only #t)
   (write-untagged-word #f read-only #t)
   (write-bignum-digit #f read-only #t)
-  (write-float #f read-only #t))
+  (write-float #f read-only #t)
+  (write-bit-string #f read-only #t))
 
 (define (make-std-fasl-format architecture bytes-per-word
-          write-word write-untagged-word write-bignum-digit write-float)
+          write-word write-untagged-word
+          write-bignum-digit write-float write-bit-string)
   (make-fasl-format
    'VERSION             10              ;FASL_VERSION_C_CODE
    'ARCHITECTURE        architecture
@@ -71,35 +73,40 @@ USA.
    'WRITE-WORD          write-word
    'WRITE-UNTAGGED-WORD write-untagged-word
    'WRITE-BIGNUM-DIGIT  write-bignum-digit
-   'WRITE-FLOAT         write-float))
+   'WRITE-FLOAT         write-float
+   'WRITE-BIT-STRING    write-bit-string))
 
 (define (make-std32be-fasl-format architecture)
   (make-std-fasl-format architecture 4
                         write-std32be-word
                         write-std32be-untagged-word
                         write-std32be-bignum-digit
-                        write-ieee754-binary64-be))
+                        write-ieee754-binary64-be
+                        write-std32be-bit-string))
 
 (define (make-std32le-fasl-format architecture)
   (make-std-fasl-format architecture 4
                         write-std32le-word
                         write-std32le-untagged-word
                         write-std32le-bignum-digit
-                        write-ieee754-binary64-le))
+                        write-ieee754-binary64-le
+                        write-std32le-bit-string))
 
 (define (make-std64be-fasl-format architecture)
   (make-std-fasl-format architecture 8
                         write-std64be-word
                         write-std64be-untagged-word
                         write-std64be-bignum-digit
-                        write-ieee754-binary64-be))
+                        write-ieee754-binary64-be
+                        write-std64be-bit-string))
 
 (define (make-std64le-fasl-format architecture)
   (make-std-fasl-format architecture 8
                         write-std64le-word
                         write-std64le-untagged-word
                         write-std64le-bignum-digit
-                        write-ieee754-binary64-le))
+                        write-ieee754-binary64-le
+                        write-std64le-bit-string))
 
 ;;;; Bits
 
@@ -208,6 +215,46 @@ USA.
               (bitwise-ior sign&exponent
                            (shiftin high            #x000fffff))))
         (write-halves write-halves write-32 low high output-port)))))
+
+(define (write-std32be-bit-string bit-string port)
+  (write-std-be-bit-string 32 write-std32be-untagged-word bit-string port))
+
+(define (write-std32le-bit-string bit-string port)
+  (write-std-le-bit-string 32 write-std32le-untagged-word bit-string port))
+
+(define (write-std64be-bit-string bit-string port)
+  (write-std-be-bit-string 64 write-std64be-untagged-word bit-string port))
+
+(define (write-std64le-bit-string bit-string port)
+  (write-std-le-bit-string 64 write-std64le-untagged-word bit-string port))
+
+(define (write-std-be-bit-string bpw write-untagged-word bit-string port)
+  (let ((n (quotient (+ (bit-string-length bit-string) (- bpw 1)) bpw)))
+    (let loop ((i n))
+      (if (< 0 i)
+          (let* ((i-1 (- i 1))
+                 (word (make-bit-string bpw #f)))
+            (bit-substring-move-right! bit-string
+                                       (* i-1 bpw)
+                                       (min (bit-string-length bit-string)
+                                            (* i bpw))
+                                       word 0)
+            (write-untagged-word (bit-string->unsigned-integer word) port)
+            (loop i-1))))))
+
+(define (write-std-le-bit-string bpw write-untagged-word bit-string port)
+  (let ((n (quotient (+ (bit-string-length bit-string) (- bpw 1)) bpw)))
+    (let loop ((i 0))
+      (if (< i n)
+          (let* ((i+1 (+ i 1))
+                 (word (make-bit-string bpw #f)))
+            (bit-substring-move-right! bit-string
+                                       (* i bpw)
+                                       (min (bit-string-length bit-string)
+                                            (* i+1 bpw))
+                                       word 0)
+            (write-untagged-word (bit-string->unsigned-integer word) port)
+            (loop i+1))))))
 
 ;;;;; Known formats
 
@@ -501,23 +548,11 @@ USA.
 
 (define (fasdump-bit-string state bit-string)
   (let ((format (state.format state))
-        (port (state.output-port state))
-        (n (bit-string-length bit-string)))
-    (let ((write-untagged-word (format.write-untagged-word format))
-          (bits-per-byte (format.bits-per-byte format))
-          (bytes-per-word (format.bytes-per-word format)))
-      (let ((bits-per-word (* bits-per-byte bytes-per-word)))
-        (with-fasdump-words state
-            (fasdump-bit-string-n-words format bit-string)
-          (lambda ()
-            (let loop ((i 0))
-              (if (< i n)
-                  (let ((i* (min n (+ i bits-per-word)))
-                        (word (make-bit-string bits-per-word #f)))
-                    (bit-substring-move-right! bit-string i i* word 0)
-                    (let ((integer (bit-string->unsigned-integer word)))
-                      (write-untagged-word integer port))
-                    (loop i*))))))))))
+        (port (state.output-port state)))
+    (with-fasdump-words state
+        (fasdump-bit-string-n-words format bit-string)
+      (lambda ()
+        ((format.write-bit-string format) bit-string port)))))
 
 (define (fasdump-bignum-n-digits format integer)
   (assert (exact-integer? integer))
