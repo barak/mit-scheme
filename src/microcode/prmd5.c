@@ -31,6 +31,17 @@ USA.
 
 #include "md5.h"
 
+static void
+do_md5_selftest (void)
+{
+  static bool passed = false;
+  if (passed)
+    return;
+  if ((md5_selftest ()) != 0)
+    error_external_return ();
+  passed = true;
+}
+
 DEFINE_PRIMITIVE ("MD5", Prim_md5, 1, 1,
   "(BYTEVECTOR)\n\
 Generate an MD5 digest of bytevector.\n\
@@ -38,6 +49,7 @@ The digest is returned as a 16-byte bytevector.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, BYTEVECTOR_P);
+  do_md5_selftest ();
   {
     SCHEME_OBJECT bytevector = (ARG_REF (1));
     SCHEME_OBJECT result = (allocate_bytevector (16));
@@ -56,6 +68,7 @@ DEFINE_PRIMITIVE ("MD5-INIT", Prim_md5_init, 0, 0,
 Create and return an MD5 digest context.")
 {
   PRIMITIVE_HEADER (0);
+  do_md5_selftest ();
   {
     SCHEME_OBJECT context = (allocate_bytevector (sizeof (struct md5)));
     md5_init ((struct md5 *) (BYTEVECTOR_POINTER (context)));
@@ -69,6 +82,7 @@ md5_context_arg (int arg)
   CHECK_ARG (arg, BYTEVECTOR_P);
   if ((BYTEVECTOR_LENGTH (ARG_REF (arg))) != (sizeof (struct md5)))
     error_bad_range_arg (arg);
+  do_md5_selftest ();
   return ((struct md5 *) (BYTEVECTOR_POINTER (ARG_REF (arg))));
 }
 
