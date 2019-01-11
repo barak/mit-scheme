@@ -580,6 +580,7 @@ extern void win32_stack_reset (void);
 #  define MACHINE_TYPE		"PowerPC-32"
 #  define CURRENT_FASL_ARCH	FASL_PPC32
 #  define FLOATING_ALIGNMENT	0x7
+#  define HEAP_IN_LOW_MEMORY
 #endif
 
 #ifdef __ppc64__
