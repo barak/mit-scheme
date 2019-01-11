@@ -69,6 +69,7 @@ EXE_NAME = @EXE_NAME@
 AUXDIR = $(libdir)/$(AUXDIR_NAME)
 
 CC = @CC@
+HOST_CC = @HOST_CC@
 CCLD = @CCLD@
 M4 = $(srcdir)/makegen/m4.sh @M4@
 AS = as
@@ -172,7 +173,11 @@ usrdef.c: $(STD_SOURCES) findprim Makefile
 
 findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
 	-rm -f $@
-	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
+	$(HOST_CC) -o $@ $(findprim_LDFLAGS) $(findprim_OBJECTS) \
+		$(findprim_LIBS)
+
+findprim.o: findprim.c config.h
+	$(HOST_CC) -o $@ $(findprim_CFLAGS) -c findprim.c
 
 gen-nonce: gen-nonce.o
 	$(LINK) gen-nonce.o

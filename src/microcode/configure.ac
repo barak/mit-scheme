@@ -203,6 +203,8 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
+: ${HOST_CC:=${CC}}
+
 if test x"${GCC}" = xyes; then
 
     dnl Discard flags computed by AC_PROG_CC; we'll use our own.
@@ -928,6 +930,7 @@ AC_SUBST([AUXDIR_NAME])
 AC_SUBST([EXE_NAME])
 AC_SUBST([INSTALL_INCLUDE])
 AC_SUBST([CCLD])
+AC_SUBST([HOST_CC])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
