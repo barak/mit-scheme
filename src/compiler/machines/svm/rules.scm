@@ -1341,14 +1341,23 @@ USA.
 	(LAP))))
 
 (define (generate/uuos name.caches-list)
-  (append-map (lambda (name.caches)
-		(append-map (let ((name (car name.caches)))
-			      (lambda (cache)
-				(let ((frame-size (car cache))
-				      (label (cdr cache)))
-				  `((,frame-size . ,label)
-				    (,name . ,(allocate-constant-label))))))
-			    (cdr name.caches)))
+  (append-map
+   (lambda (name.caches)
+     (append-map (let ((name (car name.caches)))
+		   (lambda (cache)
+		     (let ((frame-size (car cache))
+			   (label (cdr cache)))
+		       (case endianness
+			 ((BIG)
+			  `((,name . ,label)
+			    (#f . ,(allocate-constant-label))
+			    (,frame-size . ,(allocate-constant-label))))
+			 ((LITTLE)
+			  `((,frame-size . ,label)
+			    (,name . ,(allocate-constant-label))))
+			 (else
+			  (error "Unknown endianness:" endianness))))))
+		 (cdr name.caches)))
 	      name.caches-list))
 
 (define (make-linkage-type-marker linkage-type n-entries)

@@ -298,7 +298,7 @@ compiled_closure_entry_to_target (insn_t * entry)
    information: (1) the name of the procedure being called (a symbol),
    and (2) the number of arguments that will be passed to the
    procedure.  It is laid out in memory like this (on a 32-bit
-   machine):
+   little-endian machine):
 
    0x00    frame-size (fixnum)
    0x04    name encoded as symbol
@@ -318,34 +318,60 @@ compiled_closure_entry_to_target (insn_t * entry)
    0x07    offset = 0
    0x08    64-bit address
 
+   On a big-endian machine, the frame size comes after the
+   name/instructions:
+
+   (unlinked, Scheme objects, any word size)
+           name encoded as symbol
+           padding #f
+           frame-size (fixnum below 2^16)
+
+   (linked, 32-bit)
+   0x00    2 padding bytes
+   0x02    SVM1_INST_IJUMP_U8
+   0x03    offset = 0
+   0x04    32-bit address
+   0x08    2 padding bytes
+   0x0a    frame-size (u16)
+
+   (linked, 64-bit)
+   0x00    6 padding bytes
+   0x06    SVM1_INST_IJUMP_U8
+   0x07    offset = 0
+   0x08    64-bit address
+   0x10    6 padding bytes
+   0x1e    frame-size (fixnum below 2^16)
    */
 
 unsigned int
 read_uuo_frame_size (SCHEME_OBJECT * saddr)
 {
-  return (read_u16 ((insn_t *) saddr));
+#ifdef WORDS_BIGENDIAN
+  insn_t * addr = (((insn_t *) (saddr + 3)) - 2);
+  unsigned hi = (addr[0]);
+  unsigned lo = (addr[1]);
+#else
+  insn_t * addr = ((insn_t *) saddr);
+  unsigned lo = (addr[0]);
+  unsigned hi = (addr[1]);
+#endif
+  return ((hi << 8) | lo);
 }
 
 SCHEME_OBJECT
 read_uuo_symbol (SCHEME_OBJECT * saddr)
 {
+#ifdef WORDS_BIGENDIAN
+  return (saddr[0]);
+#else
   return (saddr[1]);
+#endif
 }
 
 insn_t *
 read_uuo_target (SCHEME_OBJECT * saddr)
 {
-  insn_t * addr = ((insn_t *) (saddr + 2));
-  insn_t * end = ((insn_t *) (saddr + 1));
-  unsigned long eaddr = 0;
-
-  while (true)
-    {
-      eaddr |= (*--addr);
-      if (addr == end)
-	return ((insn_t *) eaddr);
-      eaddr <<= 8;
-    }
+  return ((insn_t *) (saddr[1]));
 }
 
 insn_t *
@@ -357,28 +383,42 @@ read_uuo_target_no_reloc (SCHEME_OBJECT * saddr)
 void
 write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
 {
-  unsigned long eaddr = ((unsigned long) target);
-  unsigned long frame_size = (OBJECT_DATUM (saddr[0]));
+  unsigned long frame_size = (read_uuo_frame_size (saddr));
   insn_t * addr = ((insn_t *) saddr);
   insn_t * end = ((insn_t *) (saddr + 1));
 
+#ifndef WORDS_BIGENDIAN
+  /* Write the frame size.  */
   (*addr++) = (frame_size & 0x00FF);
   (*addr++) = ((frame_size & 0xFF00) >> 8);
+#endif
+
+  /* Pad to a word boundary, minus two bytes.  */
   while (addr < (end - 2))
     (*addr++) = 0;
+
+  /* Write the instruction prefix.  */
   (*addr++) = SVM1_INST_IJUMP_U8;
   (*addr++) = 0;
 
-  end = ((insn_t *) (saddr + 2));
-  while (true)
-    {
-      (*addr++) = (eaddr & 0xFF);
-      if (addr == end)
-	break;
-      eaddr >>= 8;
-    }
-}
+  /* We now have a word-aligned address.  Write the target here.  */
+  assert (addr == ((insn_t *) (saddr + 1)));
+  (saddr[1]) = ((SCHEME_OBJECT) target);
 
+#ifdef WORDS_BIGENDIAN
+  /* Pad to a word boundary, minus one 16-bit quantity.  */
+  addr = ((insn_t *) (saddr + 2));
+  end = ((insn_t *) (saddr + 3));
+  while (addr < (end - 2))
+    (*addr++) = 0;
+
+  /* Write the frame size.  */
+  (*addr++) = ((frame_size & 0xFF00) >> 8);
+  (*addr++) = (frame_size & 0x00FF);
+  assert (addr == ((insn_t *) (saddr + 3)));
+#endif
+}
+
 unsigned long
 trampoline_entry_size (unsigned long n_entries)
 {
