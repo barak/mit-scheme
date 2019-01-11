@@ -447,23 +447,74 @@ USA.
 (define maximum-block-offset
   (- (expt 2 (-1+ block-offset-width)) 1))
 
-(define-integrable (block-offset->bit-string offset start?)
+;;; This is endian-dependent because the microcode always reads it as
+;;; little-endian, no matter what the system byte order is.
+
+(define-integrable (block-offset->bit-string/le offset start?)
   (unsigned-integer->bit-string block-offset-width
 				(+ (* 2 offset)
 				   (if start? 0 1))))
 
+(define-integrable (block-offset->bit-string/be offset start?)
+  (unsigned-integer->bit-string
+   block-offset-width
+   (let ((offset
+	  (+ (* 2 offset)
+	     (if start? 0 1))))
+     (bitwise-ior (shift-left (bitwise-and offset #x00ff) 8)
+		  (shift-right (bitwise-and offset #xff00) 8)))))
+
+(define block-offset->bit-string
+  (case endianness
+    ((BIG) block-offset->bit-string/be)
+    ((LITTLE) block-offset->bit-string/le)
+    (else (error "Unknown endianness:" endianness))))
+
 ;;; Machine dependent instruction order
 
-(define (instruction-insert! bits block position receiver)
+;;; This is endian-dependent because bit strings are entirely msb-first
+;;; on big-endian systems, and entirely lsb-first on little-endian
+;;; systems, so they must be assembled in reverse order.
+
+(define (instruction-insert!/be bits block position receiver)
+  (let* ((l (bit-string-length bits))
+	 (new-position (- position l)))
+    (bit-substring-move-right! bits 0 l block new-position)
+    (receiver new-position)))
+
+(define-integrable (instruction-initial-position/be block)
+  (bit-string-length block))
+
+(define-integrable instruction-append/be bit-string-append-reversed)
+
+(define (instruction-insert!/le bits block position receiver)
   (let ((l (bit-string-length bits)))
     (bit-substring-move-right! bits 0 l block position)
     (receiver (+ position l))))
 
-(define-integrable (instruction-initial-position block)
+(define-integrable (instruction-initial-position/le block)
   block					; ignored
   0)
 
-(define-integrable instruction-append bit-string-append)
+(define-integrable instruction-append/le bit-string-append)
+
+(define instruction-insert!
+  (case endianness
+    ((BIG) instruction-insert!/be)
+    ((LITTLE) instruction-insert!/le)
+    (else (error "Unknown endianness:" endianness))))
+
+(define instruction-initial-position
+  (case endianness
+    ((BIG) instruction-initial-position/be)
+    ((LITTLE) instruction-initial-position/le)
+    (else (error "Unknown endianness:" endianness))))
+
+(define instruction-append
+  (case endianness
+    ((BIG) instruction-append/be)
+    ((LITTLE) instruction-append/le)
+    (else (error "Unknown endianness:" endianness))))
 
 ;;;; Patterns
 
