@@ -2432,8 +2432,8 @@ USA.
 	 1.)))
 
 ;;; Logistic function, translated in output by 1/2: logistic(x) - 1/2 =
-;;; 1/(1 + e^{-x}) - 1/2. Well-conditioned on the entire real plane,
-;;; with maximum condition number 1 at 0.
+;;; 1/(1 + e^{-x}) - 1/2 = 1/2 - 1/(1 + e^x). Well-conditioned on the
+;;; entire real plane, with maximum condition number 1 at 0.
 ;;;
 ;;; This implementation gives relative error bounded by 5 eps.
 
@@ -2441,45 +2441,58 @@ USA.
   ;; Suppose exp has error d0, + has error d1, expm1 has error d2, and
   ;; / has error d3, so we evaluate
   ;;
-  ;;	-(1 + d2) (1 + d3) (e^{-x} - 1)
-  ;;	  / [2 (1 + d1) (1 + (1 + d0) e^{-x})].
+  ;;	(1 + d2) (1 + d3) (e^x - 1)
+  ;;	  / [2 (1 + d1) (1 + (1 + d0) e^x)].
   ;;
   ;; In the denominator,
   ;;
-  ;;	1 + (1 + d0) e^{-x}
-  ;;	= 1 + e^{-x} + d0 e^{-x}
-  ;;	= (1 + e^{-x}) (1 + d0 e^{-x}/(1 + e^{-x})),
+  ;;	1 + (1 + d0) e^x
+  ;;	= 1 + e^x + d0 e^x
+  ;;	= (1 + e^x) (1 + d0 e^x/(1 + e^x)),
   ;;
   ;; so the relative error of the numerator is
   ;;
   ;;	d' = d2 + d3 + d2 d3,
   ;; and of the denominator,
-  ;;	d'' = d1 + d0 e^{-x}/(1 + e^{-x}) + d0 d1 e^{-x}/(1 + e^{-x})
-  ;;	    = d1 + d0 L(-x) + d0 d1 L(-x),
+  ;;	d'' = d1 + d0 e^x/(1 + e^x) + d0 d1 e^x/(1 + e^x)
+  ;;	    = d1 + d0 L(x) + d0 d1 L(x),
   ;;
-  ;; where L(-x) is logistic(-x).  By Lemma 1 the relative error of the
+  ;; where L(x) is logistic(x).  By Lemma 2 the relative error of the
   ;; quotient is bounded by
   ;;
-  ;;	2|d2 + d3 + d2 d3 - d1 - d0 L(x) + d0 d1 L(x)|,
+  ;;	2|d2 + d3 + d2 d3 - d1 - d0 L(x) - d0 d1 L(x)|,
   ;;
   ;; Since 0 < L(x) < 1, this is bounded by
   ;;
   ;;	2|d2| + 2|d3| + 2|d2 d3| + 2|d1| + 2|d0| + 2|d0 d1|
   ;;	<= 4 eps + 2 eps^2.
   ;;
-  ;; However, if x is a large negative, e^{-x} might overflow.  When
+  ;; logistic(x) = 1 - 2^-54
+  ;; x = logit(1 - 2^-54) = -logit(2^-54)
   ;;
-  ;;    x < log(eps) - 2 < log(eps) - log(4) = log(eps/4)
-  ;;      < log(eps/4) - log(1 - eps/4)
-  ;;      = logit(eps/4),
+  ;; However, if x is large, the intermediate e^x might overflow.
+  ;; Fortunately, if
   ;;
-  ;; we have logistic(x) < eps/4.  Hence the relative error of
-  ;; logistic(x) - 1/2 from -1/2 is bounded by eps/2, and so the
-  ;; relative error of -1/2 from logistic(x) - 1/2 is bounded by eps.
+  ;;	x > 2 - log(eps)
+  ;;	  > log(4) - log(eps)
+  ;;	  = -log(eps/4)
+  ;;	  > log(1 - eps/4) - log(eps/4)
+  ;;	  = -logit(eps/4)
+  ;;	  = logit(1 - eps/4),
   ;;
-  (if (< x (flo:- flo:log-error-bound 2.))
-      -0.5
-      (- (/ (expm1 (- x)) (* 2 (+ 1 (exp (- x))))))))
+  ;; we have logistic(x) > 1 - eps/4.  Hence the relative error of
+  ;; logistic(x) - 1/2 from 1/2 is bounded by eps/2, and so the
+  ;; relative error of 1/2 from logistic(x) - 1/2 is bounded by eps.
+  ;;
+  ;; Since logistic(x) - 1/2 is an odd function, we arrange to compute
+  ;; it only on nonnegative inputs and copy the sign so that its
+  ;; magnitude agrees bit-for-bit on positive and negative inputs.
+  ;;
+  (define (x>=0 x)
+    (if (flo:safe> (real:->inexact x) (flo:- 2. flo:log-error-bound))
+	0.5		;Always inexact -- 0.5 is never actually attained.
+	(/ (expm1 x) (* 2 (+ 1 (exp x))))))
+  (copysign (x>=0 (abs x)) x))
 
 (define-integrable logit-boundary-lo	;logistic(-1)
   (flo:/ (flo:exp -1.) (flo:+ 1. (flo:exp -1.))))
