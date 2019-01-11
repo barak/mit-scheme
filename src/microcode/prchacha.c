@@ -29,7 +29,9 @@ USA.
 
 static void
 do_chacha_core (void (*core) (uint8_t *, const uint8_t *, const uint8_t *,
-			      const uint8_t *))
+			      const uint8_t *),
+		int (*selftest) (void),
+		bool * selftestedp)
 {
   unsigned long noutput;
   uint8_t * output = (arg_bytevector (1, (&noutput)));
@@ -53,6 +55,13 @@ do_chacha_core (void (*core) (uint8_t *, const uint8_t *, const uint8_t *,
   if (nconstant != 16)
     error_bad_range_arg (5);
 
+  if (! (*selftestedp))
+    {
+      if (((*selftest) ()) != 0)
+	error_external_return ();
+      (*selftestedp) = true;
+    }
+
   (*core) ((output + offset), input, key, constant);
 }
 
@@ -62,7 +71,8 @@ Compute the ChaCha8 core hash function:\n\
 OUTPUT[OFFSET, OFFSET+1, ..., OFFSET+63] := ChaCha8(INPUT, KEY, CONST).")
 {
   PRIMITIVE_HEADER (5);
-  do_chacha_core (&chacha8_core);
+  static bool selftestedp = false;
+  do_chacha_core ((&chacha8_core), (&chacha8_core_selftest), (&selftestedp));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -72,7 +82,8 @@ Compute the ChaCha12 core hash function:\n\
 OUTPUT[OFFSET, OFFSET+1, ..., OFFSET+63] := ChaCha12(INPUT, KEY, CONST).")
 {
   PRIMITIVE_HEADER (5);
-  do_chacha_core (&chacha12_core);
+  static bool selftestedp = false;
+  do_chacha_core ((&chacha12_core), (&chacha12_core_selftest), (&selftestedp));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -82,6 +93,7 @@ Compute the ChaCha20 core hash function:\n\
 OUTPUT[OFFSET, OFFSET+1, ..., OFFSET+63] := ChaCha20(INPUT, KEY, CONST).")
 {
   PRIMITIVE_HEADER (5);
-  do_chacha_core (&chacha20_core);
+  static bool selftestedp = false;
+  do_chacha_core ((&chacha20_core), (&chacha20_core_selftest), (&selftestedp));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
