@@ -130,3 +130,23 @@ USA.
 			"#u8(2 3 5 ...)")
       (assert-prints-as '(2 3 5 7 11 13 17 19 . foo)
 			"(2 3 5 ...)"))))
+
+(define-primitives
+  primitive-type-set!)
+
+(define (insert-nmv! v i n)
+  (vector-set! v i n)
+  (primitive-type-set! v (+ i 1) (ucode-type manifest-nm-vector)))
+
+(define-test 'partially-marked-vector
+  (lambda ()
+    (let ((v (make-vector 10)))
+      (insert-nmv! v 2 5)
+      (assert-prints-as v "#(#f #f |#[non-marked section of length 5]| #f #f)"))
+    (let ((v (make-vector 10)))
+      (insert-nmv! v 0 5)
+      (assert-prints-as v "#(|#[non-marked section of length 5]| #f #f #f #f)"))
+    (let ((v (make-vector 10)))
+      (insert-nmv! v 4 5)
+      (assert-prints-as v "#(#f #f #f #f |#[non-marked section of length 5]|)"))
+    ))

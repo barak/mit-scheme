@@ -265,11 +265,29 @@ USA.
 	    ((pair? object)
 	     (if (mark! object)
 		 (begin
-		   (walk (car object))
-		   (walk (cdr object)))))
+		   (walk (safe-car object))
+		   (walk (safe-cdr object)))))
 	    ((vector? object)
 	     (if (mark! object)
-		 (vector-for-each walk object)))))
+		 (let ((end (vector-length object)))
+		   (let loop ((i 0))
+		     (if (< i end)
+			 (if (nmv-header? object i)
+			     ;; An embedded non-marked vector: skip over and
+			     ;; continue.
+			     (loop (+ i 1 (nmv-header-length object i)))
+			     (begin
+			       (walk (safe-vector-ref object i))
+			       (loop (+ i 1)))))))))
+	    ((promise? object)
+	     (if (mark! object)
+		 (if (promise-forced? object)
+		     (walk (promise-value object)))))
+	    ((%tagged-object? object)
+	     (if (mark! object)
+		 (begin
+		   (walk (%tagged-object-tag object))
+		   (walk (%tagged-object-datum object)))))))
 
     (define (mark! object)
       (let ((value
@@ -409,6 +427,22 @@ USA.
 (define (*print-readable-hash object context)
   (*print-string "#@" context)
   (*print-hash object context))
+
+(define (safe-car pair)
+  (map-reference-trap (lambda () (car pair))))
+
+(define (safe-cdr pair)
+  (map-reference-trap (lambda () (cdr pair))))
+
+(define (nmv-header? vector index)
+  (fix:= (ucode-type manifest-nm-vector)
+	 ((ucode-primitive primitive-type-ref 2) vector (fix:+ 1 index))))
+
+(define (nmv-header-length vector index)
+  ((ucode-primitive primitive-datum-ref 2) vector (fix:+ 1 index)))
+
+(define (safe-vector-ref vector index)
+  (map-reference-trap (lambda () (vector-ref vector index))))
 
 (define (allowed-char? char context)
   (char-in-set? char (context-char-set context)))
@@ -700,18 +734,15 @@ USA.
       (let ((end (vector-length vector)))
 	(*general-print-items 0 context* print-object 0
 	  (lambda (index k)
-	    (if (fix:< index end)
-		(k (safe-vector-ref vector index)
-		   (fix:+ index 1))))))
+	    (if (< index end)
+		(if (nmv-header? vector index)
+		    ;; An embedded non-marked vector: skip over and continue.
+		    (let ((length (nmv-header-length vector index)))
+		      (k (symbol "#[non-marked section of length " length "]")
+			 (+ index 1 length)))
+		    (k (safe-vector-ref vector index)
+		       (+ index 1)))))))
       (*print-char #\) context*))))
-
-(define (safe-vector-ref vector index)
-  (if (with-absolutely-no-interrupts
-       (lambda ()
-         (object-type? (ucode-type manifest-nm-vector)
-                       (vector-ref vector index))))
-      (error "Attempt to print partially marked vector."))
-  (map-reference-trap (lambda () (vector-ref vector index))))
 
 (define (print-bytevector bytevector context)
   (limit-print-depth context
@@ -798,12 +829,6 @@ USA.
 			  (*print-string " . " context*)
 			  (print-object value context*))))))))
       (*print-char #\} context*))))
-
-(define (safe-car pair)
-  (map-reference-trap (lambda () (car pair))))
-
-(define (safe-cdr pair)
-  (map-reference-trap (lambda () (cdr pair))))
 
 ;;;; Procedures
 
