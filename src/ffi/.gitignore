@@ -8,3 +8,10 @@ prhello-const
 prhello-const.c
 prhello-const.scm
 prhello-shim.c
+
+# LIARC build products
+/*.c
+/*.o
+/ffi-init.h
+/ffi.a
+/ffi.so

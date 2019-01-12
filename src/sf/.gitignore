@@ -1,0 +1,6 @@
+# LIARC build products
+/*.c
+/*.o
+/sf-init.h
+/sf.a
+/sf.so

@@ -1,0 +1,6 @@
+# LIARC build products
+/*.c
+/*.o
+/xml-init.h
+/xml.a
+/xml.so

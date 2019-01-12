@@ -4,5 +4,9 @@
 /config.log
 /config.status
 
-/stamp_install-microcode
 /makefiles_created
+/stamp_cross-finished
+/stamp_cross-host
+/stamp_install-microcode
+/stamp_liarc-toolchain
+/stamp_toolchain

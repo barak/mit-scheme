@@ -1,0 +1,6 @@
+# LIARC build products
+/*.c
+/*.o
+/cref-init.h
+/cref.a
+/cref.so
