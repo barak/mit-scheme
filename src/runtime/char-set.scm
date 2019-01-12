@@ -446,6 +446,10 @@ USA.
 			      (%char-set-high char-set))))
 	 char-sets))
 
+(define (char-set-empty? cs)
+  (and (fix:= 0 (bytevector-length (%char-set-low cs)))
+       (fix:= 0 (bytevector-length (%char-set-high cs)))))
+
 (define (char-set-hash char-set)
   (primitive-object-hash-2 (%char-set-low char-set)
 			   (%char-set-high char-set)))
@@ -457,9 +461,6 @@ USA.
 	      (cons (%make-range (car ilist) (cadr ilist))
 		    ranges))
 	(reverse! ranges))))
-
-(define (char-set-empty? cs)
-  (char-set=? (char-set) cs))
 
 (define (char-sets-disjoint? char-set . char-sets)
   (every (lambda (char-set*)
