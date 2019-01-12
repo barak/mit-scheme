@@ -28,36 +28,90 @@ USA.
 
 (declare (usual-integrations))
 
+(define (make-segment start end)
+  (if (= (- end start) 1)
+      start
+      (cons start end)))
+
+(define (segment-start segment)
+  (if (pair? segment)
+      (car segment)
+      segment))
+
+(define (segment-end segment)
+  (if (pair? segment)
+      (cdr segment)
+      (+ segment 1)))
+
+(define (append-map-tail! procedure items)
+  (if (pair? items)
+      (append! (procedure items)
+	       (append-map-tail! procedure (cdr items)))
+      '()))
+
+(define (every-tail pred items)
+  (if (pair? items)
+      (and (pred items)
+	   (every-tail pred (cdr items)))
+      (pred items)))
+
+(define interesting-points
+  (list 0
+	1
+	(- char-code-limit 1)
+	char-code-limit))
+
+(define (mapper->generator mapper)
+  (lambda (points)
+    (let loop ((points points))
+      (if (pair? points)
+	  (append! (mapper (car points) points)
+		   (loop (cdr points)))
+	  '()))))
+
+(define 1-generator
+  (mapper->generator
+   (lambda (start ends)
+     (map (lambda (end)
+	    (list (make-segment start end)))
+	  ends))))
+
+(define (n+1-generator n-generator)
+  (mapper->generator
+   (lambda (start tails)
+     (append-map-tail! (lambda (tail)
+			 (let ((segment (make-segment start (car tail))))
+			   (map (lambda (segments)
+				  (cons segment segments))
+				(n-generator (cdr tail)))))
+		       tails))))
+
+(define 2-generator
+  (n+1-generator 1-generator))
+
+(define 3-generator
+  (n+1-generator 2-generator))
+
+(define interesting-svls
+  (cons (list)
+	(if keep-it-fast!?
+	    (1-generator interesting-points)
+	    (append! (1-generator interesting-points)
+		     (2-generator interesting-points)
+		     (3-generator interesting-points)))))
+
 (define-test 'interesting-svl-round-trip
-  (lambda ()
-    (map (lambda (svl)
+  (map (lambda (svl)
+	 (lambda ()
 	   (with-test-properties
 	    (lambda ()
 	      (assert-equal-canonical-svls (trim-empty-segments svl)
 					   (svl-round-trip svl)))
-	    'EXPRESSION `(SVL-ROUND-TRIP ,svl)))
-	 interesting-svls)))
+	    'EXPRESSION `(SVL-ROUND-TRIP ,svl))))
+       interesting-svls))
 
 (define (svl-round-trip svl)
   (char-set->code-points (char-set* svl)))
-
-(define-test 'random-svl-round-trip
-  (lambda ()
-    (map (lambda (svl)
-	   (with-test-properties
-	    (lambda ()
-	      (guarantee code-point-list? svl)
-	      (assert-equal-canonical-svls (canonicalize-svl svl)
-					   (svl-round-trip svl)))))
-	 (append! (append-map! (lambda (i)
-				 (make-random-svls i 100))
-			       (iota 4 1))
-		  (make-random-svls 100 100)))))
-
-(define (canonicalize-svl svl)
-  (named-call 'NORMALIZE-RANGES
-	      normalize-ranges
-	      svl))
 
 (define (make-random-svls n-ranges n-iter)
   (map (lambda (i)
@@ -77,9 +131,27 @@ USA.
 		  n
 		  (cons n (+ n m))))))))))
 
+(define-test 'random-svl-round-trip
+  (map (lambda (svl)
+	 (lambda ()
+	   (with-test-properties
+	    (lambda ()
+	      (guarantee code-point-list? svl)
+	      (assert-equal-canonical-svls (canonicalize-svl svl)
+					   (svl-round-trip svl))))))
+       (append! (append-map! (lambda (i)
+			       (make-random-svls i 100))
+			     (iota 4 1))
+		(make-random-svls 100 100))))
+
+(define (canonicalize-svl svl)
+  (named-call 'NORMALIZE-RANGES
+	      normalize-ranges
+	      svl))
+
 (define-test 'membership
-  (lambda ()
-    (map (lambda (svl)
+  (map (lambda (svl)
+	 (lambda ()
 	   (map (lambda (value)
 		  (with-test-properties
 		   (lambda ()
@@ -90,8 +162,8 @@ USA.
 		      (code-point-in-char-set? value (char-set* svl))
 		      (named-call 'SVL-MEMBER? svl-member? svl value)))
 		   'EXPRESSION `(CHAR-IN-SET? ,value ,svl)))
-		(enumerate-test-values)))
-	 interesting-svls)))
+		(enumerate-test-values))))
+       interesting-svls))
 
 (define (enumerate-test-values)
   (append (iota #x808)
@@ -109,15 +181,15 @@ USA.
 	#f)))
 
 (define-test 'invert
-  (lambda ()
-    (map (lambda (svl)
+  (map (lambda (svl)
+	 (lambda ()
 	   (with-test-properties
 	    (lambda ()
 	      (assert-equal
 	       (svl-invert-thru svl)
 	       (svl-invert-direct (trim-empty-segments svl))))
-	    'EXPRESSION `(SVL-INVERT ,svl)))
-	 interesting-svls)))
+	    'EXPRESSION `(SVL-INVERT ,svl))))
+       interesting-svls))
 
 (define (svl-invert-thru svl)
   (char-set->code-points (char-set-invert (char-set* svl))))
@@ -141,9 +213,9 @@ USA.
       (go svl 0)))
 
 (define (make-binary-test name operation svl-direct)
-  (lambda ()
-    (map (lambda (svl1)
-	   (map (lambda (svl2)
+  (map (lambda (svl1)
+	 (map (lambda (svl2)
+		(lambda ()
 		  (with-test-properties
 		   (lambda ()
 		     (assert-equal
@@ -152,9 +224,9 @@ USA.
 				  (char-set* svl2)))
 		      (svl-direct (trim-empty-segments svl1)
 				  (trim-empty-segments svl2))))
-		   'EXPRESSION `(,name ,svl1 ,svl2)))
-		interesting-svls))
-	 interesting-svls)))
+		   'EXPRESSION `(,name ,svl1 ,svl2))))
+	      interesting-svls))
+       interesting-svls))
 
 (define-test 'union
   (make-binary-test 'CHAR-SET-UNION
@@ -310,75 +382,3 @@ USA.
 			    (segment-start (cadr tail)))
 			 #t))
 		   items)))
-
-(define (make-segment start end)
-  (if (= (- end start) 1)
-      start
-      (cons start end)))
-
-(define (segment-start segment)
-  (if (pair? segment)
-      (car segment)
-      segment))
-
-(define (segment-end segment)
-  (if (pair? segment)
-      (cdr segment)
-      (+ segment 1)))
-
-(define (append-map-tail! procedure items)
-  (if (pair? items)
-      (append! (procedure items)
-	       (append-map-tail! procedure (cdr items)))
-      '()))
-
-(define (every-tail pred items)
-  (if (pair? items)
-      (and (pred items)
-	   (every-tail pred (cdr items)))
-      (pred items)))
-
-(define interesting-points
-  (list 0
-	1
-	(- char-code-limit 1)
-	char-code-limit))
-
-(define (mapper->generator mapper)
-  (lambda (points)
-    (let loop ((points points))
-      (if (pair? points)
-	  (append! (mapper (car points) points)
-		   (loop (cdr points)))
-	  '()))))
-
-(define 1-generator
-  (mapper->generator
-   (lambda (start ends)
-     (map (lambda (end)
-	    (list (make-segment start end)))
-	  ends))))
-
-(define (n+1-generator n-generator)
-  (mapper->generator
-   (lambda (start tails)
-     (append-map-tail! (lambda (tail)
-			 (let ((segment (make-segment start (car tail))))
-			   (map (lambda (segments)
-				  (cons segment segments))
-				(n-generator (cdr tail)))))
-		       tails))))
-
-(define 2-generator
-  (n+1-generator 1-generator))
-
-(define 3-generator
-  (n+1-generator 2-generator))
-
-(define interesting-svls
-  (cons (list)
-	(if keep-it-fast!?
-	    (1-generator interesting-points)
-	    (append! (1-generator interesting-points)
-		     (2-generator interesting-points)
-		     (3-generator interesting-points)))))
