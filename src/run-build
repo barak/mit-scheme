@@ -12,4 +12,4 @@ HERE=`dirname "${MIT_SCHEME_EXE}"`
 MITSCHEME_LIBRARY_PATH=${HERE}/lib
 export MIT_SCHEME_EXE
 export MITSCHEME_LIBRARY_PATH
-"${HERE}"/microcode/scheme "${@}"
+exec "${HERE}"/microcode/scheme "${@}"
