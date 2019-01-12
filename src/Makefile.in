@@ -452,7 +452,7 @@ ffi/ffi-unx.pkd: $(FFI_CREF_TARGETS)
 
 SOS_CREF_TARGETS = compile-sos # no separate syntax step
 SOS_HOST_TARGETS = compile-sos $(SOS_HOST_LIARC_TARGETS)
-@IF_LIARC@FFI_HOST_LIARC_TARGETS = sos/sos-unx.c
+@IF_LIARC@SOS_HOST_LIARC_TARGETS = sos/sos-unx.c
 @IF_LIARC@SOS_LIARC_TARGETS = bundle-sos
 @IF_NATIVE@SOS_DEPEND_TARGETS = $(SOS_HOST_TARGETS) $(SOS_LIARC_TARGETS)
 @IF_CROSS@SOS_DEPEND_TARGETS = stamp_cross-finished
