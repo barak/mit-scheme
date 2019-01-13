@@ -67,6 +67,8 @@ USA.
 	((access initialize-package! environment)))
       (sf-and-load '("base/pmlook") '(compiler pattern-matcher/lookup))
       (sf-and-load '("base/pmpars") '(compiler pattern-matcher/parser))
+      (sf-and-load '("rtlbase/valclass") '(compiler))
+      (sf-and-load '("machines/aarch64/endian") '(compiler))
       (sf-and-load '("machines/aarch64/machine") '(compiler))
       (fluid-let ((sf/default-declarations
 		   '((integrate-external "insseq")

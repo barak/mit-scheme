@@ -302,7 +302,7 @@ USA.
   (QUALIFIER (not (= offset rsp)))
   (standard-binary-effect source base
     (lambda (source base)
-      (LAP (STR B ,target (+ ,base (&U ,offset)))))))
+      (LAP (STR B ,source (+ ,base (&U ,offset)))))))
 
 ;;; Detag and store byte with displacement
 
@@ -313,4 +313,4 @@ USA.
   (QUALIFIER (not (= offset rsp)))
   (standard-binary-effect source base
     (lambda (source base)
-      (LAP (STR B ,target (+ ,base (&U ,offset)))))))
+      (LAP (STR B ,source (+ ,base (&U ,offset)))))))

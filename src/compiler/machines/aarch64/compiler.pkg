@@ -36,6 +36,8 @@ USA.
          "base/sets"                    ;set abstraction
          "base/mvalue"                  ;multiple-value support
          "base/scode"                   ;SCode abstraction
+         "rtlbase/valclass"             ;RTL: value classes
+         "machines/aarch64/endian"      ;byte order
          "machines/aarch64/machine"     ;machine dependent stuff
          "back/asutl"                   ;back-end odds and ends
          "base/utils"                   ;odds and ends
@@ -63,7 +65,6 @@ USA.
          "rtlbase/rtlcfg"               ;RTL: CFG types
          "rtlbase/rtlobj"               ;RTL: CFG objects
          "rtlbase/regset"               ;RTL: register sets
-         "rtlbase/valclass"             ;RTL: value classes
 
          "back/insseq"                  ;LAP instruction sequences
          )
@@ -766,6 +767,7 @@ USA.
   (export (compiler top-level)
           assemble))
 
+#;
 (define-package (compiler disassembler)
   (files "machines/aarch64/dassm1"
          "machines/aarch64/dassm2"

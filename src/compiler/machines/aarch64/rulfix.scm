@@ -35,7 +35,7 @@ USA.
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (CONSTANT (? constant))))
-  (load-immediate (standard-target! target) (* constant fixnum-1) #t))
+  (load-signed-immediate (standard-target! target) (* constant fixnum-1)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (FIXNUM->OBJECT (REGISTER (? source))))
@@ -70,6 +70,9 @@ USA.
 
 (define (word->fixnum target source)
   (LAP (AND X ,target ,source (&U ,(- (expt 2 scheme-type-width) 1)))))
+
+(define-integrable fixnum-1
+  (shift-left 1 scheme-type-width))
 
 ;;;; Unary Fixnum Operations
 

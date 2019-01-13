@@ -219,37 +219,35 @@ write_uuo_insns (const insn_t * target, insn_t * iaddr, int pcrel)
      we don't know where the PC will be in the newspace.  */
   if ((((const int64_t *) (newspace_to_tospace (target)))[-1]) == 0)
     {
-      ptrdiff_t offset = (target - (&iaddr[1]));
+      ptrdiff_t offset = (((uintptr_t) target) - ((uintptr_t) (&iaddr[1])));
       if ((-0x40000 <= offset) && (offset <= 0x3ffff))
 	{
-	  uint32_t immlo = (offset & 3);
-	  uint32_t immhi = ((((uint32_t) offset) & 0x7fffc) >> 2);
+	  unsigned immlo2 = (offset & 3);
+	  unsigned immhi19 = ((((unsigned) offset) >> 2) & 0x1ffff);
+	  assert (offset == ((ptrdiff_t) ((immhi19 << 2) | immlo2)));
 	  /* adr x1, target */
-	  (addr[1]) = (0x10000001UL | (immlo << 29) | (immhi << 5));
+	  (addr[1]) = (0x10000001UL | (immlo2 << 29) | (immhi19 << 5));
 	  /* br x1 */
 	  (addr[2]) = 0xd61f0020UL;
 	}
-      else
+      else if (((- (INT64_C (0x200000000))) <= offset) &&
+	       (offset <= (INT64_C (0x1ffffffff))))
 	{
-	  uintptr_t target_page = (((uintptr_t) target) >> 12);
-	  uintptr_t iaddr_page = (((uintptr_t) (&iaddr[1])) >> 12);
-	  ptrdiff_t offset_page = (target_page - iaddr_page);
-	  if ((-0x40000 <= offset_page) && (offset_page <= 0x3ffff))
-	    {
-	      uint32_t immlo = (offset_page & 3);
-	      uint32_t immhi = ((((uint32_t) offset_page) & 0x7fffc) >> 2);
-	      uint32_t imm12 = (((uintptr_t) target) - target_page);
-	      /* adrp x1, target */
-	      (iaddr[1]) = (0x90000001UL | (immlo << 29) | (immhi << 5));
-	      /* add x1, x1, #off */
-	      (iaddr[2]) = (0x91000021UL | (imm12 << 10));
-	      /* br x1 */
-	      (iaddr[3]) = 0xd61f0020UL;
-	    }
-	  else
-	    /* You have too much memory.  */
-	    error_external_return ();
+	  unsigned long lo12 = (offset & 0xfff);
+	  unsigned long pglo2 = ((((unsigned long) offset) >> 12) & 3);
+	  unsigned long pghi19 = ((((unsigned long) offset) >> 14) & 0x1ffff);
+	  assert
+	    (offset == ((ptrdiff_t) ((pghi19 << 14) | (pglo2 << 12) | lo12)));
+	  /* adrp x1, target */
+	  (iaddr[1]) = (0x90000001UL | (pglo2 << 29) | (pghi19 << 5));
+	  /* add x1, x1, #off */
+	  (iaddr[2]) = (0x91000021UL | (lo12 << 10));
+	  /* br x1 */
+	  (iaddr[3]) = 0xd61f0020UL;
 	}
+      else
+	/* You have too much memory.  */
+	error_external_return ();
     }
   else
     {

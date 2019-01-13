@@ -74,7 +74,7 @@ USA.
 
 (define-rule predicate
   (TYPE-TEST (REGISTER (? register)) (? type))
-  (immediate-equal-test! (standard-source! register) type))
+  (eq-test/register*immediate! (standard-source! register) type))
 
 ;; Test tag and sign in one swell foop.
 

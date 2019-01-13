@@ -1,8 +1,5 @@
 - Make it work.
-  [ ] assmd
   [ ] cmpauxmd
-  [ ] coerce
-  [ ] insmac
   [ ] instr: branch tensioning, review it all, simd, float
   [ ] insutl
   [ ] logical immediate encoding

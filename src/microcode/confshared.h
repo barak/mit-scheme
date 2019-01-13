@@ -221,11 +221,12 @@ typedef enum
   FASL_PPC64,
   FASL_IA64,
   FASL_ARM,
-  FASL_AARCH64,
+  FASL_AARCH64LE,
   FASL_SVM1_32BE,
   FASL_SVM1_32LE,
   FASL_SVM1_64BE,
   FASL_SVM1_64LE,
+  FASL_AARCH64BE,
 } fasl_arch_t;
 
 /* Possible values for COMPILER_PROCESSOR_TYPE.  This identifies the
@@ -240,6 +241,7 @@ typedef enum
   COMPILER_C_TYPE = 12,
   COMPILER_SVM_TYPE = 13,
   COMPILER_X86_64_TYPE = 14,
+  COMPILER_AARCH64_TYPE = 15,
 } cc_arch_t;
 
 #include "cmpintmd-config.h"

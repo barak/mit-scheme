@@ -189,7 +189,7 @@ USA.
 (define-integrable r20 20) ;free pointer        callee-saved
 (define-integrable r21 21) ;dynamic link        callee-saved
 (define-integrable r22 22) ;memtop (XXX why?)   callee-saved
-(define-integrable r23 23) ;temporary           callee-saved
+(define-integrable r23 23) ;scheme-to-interface callee-saved
 (define-integrable r24 24) ;temporary           callee-saved
 (define-integrable r25 25) ;temporary           callee-saved
 (define-integrable r26 26) ;temporary           callee-saved
@@ -261,6 +261,7 @@ USA.
 (define-integrable regnum:free-pointer r20)
 (define-integrable regnum:dynamic-link r21) ;Pointer to parent stack frame.
 (define-integrable regnum:memtop r22)
+(define-integrable regnum:scheme-to-interface r23)
 (define-integrable regnum:c-frame-pointer r29)
 (define-integrable regnum:link-register rlr) ;Return address.
 (define-integrable regnum:stack-pointer rsp)
@@ -269,6 +270,7 @@ USA.
 ;; these.
 (define-integrable regnum:apply-target regnum:scratch-0)
 (define-integrable regnum:apply-pc regnum:scratch-1)
+(define-integrable regnum:utility-index regnum:scratch-1)
 
 (define-integrable (machine-register-known-value register)
   register                              ;ignore
@@ -400,6 +402,7 @@ USA.
         (cost:imm32 2)                  ;MOVZ/MOVN + 1*MOVK
         (cost:imm48 3)                  ;MOVZ/MOVN + 2*MOVK
         (cost:imm64 4)                  ;MOVZ/MOVN + 3*MOVK
+        (cost:add 1)
         (cost:adr 1)
         (cost:ldr 10)
         (cost:bl 2))
@@ -426,7 +429,6 @@ USA.
     (define (branch-and-link-cost)
       cost:bl)
     (define (offset-cost base offset scale)
-      scale
       (let ((base-cost (rtl:expression-cost base)))
         (and base-cost
              (+ base-cost

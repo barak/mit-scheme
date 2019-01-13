@@ -64,7 +64,7 @@ USA.
   (let* ((prefix (clear-map!))
          (setup (apply-setup frame-size)))
     (LAP ,@prefix
-         ,@(pop ,regnum:apply-target)
+         ,@(pop regnum:apply-target)
          ,@setup
          (BR ,regnum:apply-pc))))
 
@@ -108,14 +108,16 @@ USA.
        (BR ,regnum:apply-pc)))
 
 (define-rule statement
-  (INVOCATION:LEXPR (? number-pushed) (? continuation) (? labe))
+  (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
+  continuation
   (LAP ,@(clear-map!)
        ,@(load-pc-relative-address regnum:utility-arg0 label)
        ,@(load-unsigned-immediate regnum:utility-arg1 number-pushed)
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
 (define-rule statement
-  (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation) (? labe))
+  (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
+  continuation
   (LAP ,@(clear-map!)
        ,@(pop regnum:utility-arg0)
        ,@(object->address regnum:utility-arg0 regnum:utility-arg0)
@@ -283,8 +285,8 @@ USA.
 (define (generate/move-frame-up frame-size address)
   (assert (not (= register regnum:stack-pointer)))
   (if (<= frame-size 6)                 ;Covers vast majority of cases.
-      (generate/move-frame-up/unrolled frame-size register)
-      (generate/move-frame-up/loop frame-size register)))
+      (generate/move-frame-up/unrolled frame-size address)
+      (generate/move-frame-up/loop frame-size address)))
 
 (define (generate/move-frame-up/loop frame-size address)
   (assert (not (= register regnum:stack-pointer)))
@@ -302,8 +304,8 @@ USA.
     (LAP (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
                    (&U ,(* 8 frame-size)))
          ,@(if (odd? frame-size)
-               (LAP (LDR X ,temp (PRE- ,regnum:stack-pointer (&U 8)))
-                    (STR X ,temp (PRE- ,address (&U 8))))
+               (LAP (LDR X ,temp1 (PRE- ,regnum:stack-pointer (&U 8)))
+                    (STR X ,temp1 (PRE- ,address (&U 8))))
                (LAP))
          ,@(load-unsigned-immediate index loop-count)
         (LABEL ,label)
@@ -327,7 +329,7 @@ USA.
     (LAP ,@(let loop ((temps temps))
              ;; (pop2 r1 r2) (pop2 r3 r4) (pop r5)
              (if (pair? temps)
-                 (if (pair (cdr? temps))
+                 (if (pair? (cdr temps))
                      (LAP ,@(pop2 (car temps) (cadr temps))
                           ,@(loop (cddr temps)))
                      (pop (car temps)))
@@ -538,7 +540,7 @@ USA.
 (define (generate/cons-closure target label min max size)
   (let* ((target (standard-target! target))
          (temp (allocate-temporary-register! 'GENERAL))
-         (manifest-type type-code:closure-manifest)
+         (manifest-type type-code:manifest-closure)
          (manifest-size (closure-manifest-size size))
          (Free Free))
     (LAP ,@(load-tagged-immediate manifest-type manifest-size temp)
@@ -550,9 +552,7 @@ USA.
          ;; the next object.  We do this because we need to set the
          ;; last component here, but we do not have negative load/store
          ;; offsets without pre/post-increment.
-         ,@(with-immediate-unsigned-12 (* 8 size)
-             (lambda (addend)
-               (LAP (ADD X ,Free ,Free ,addend))))
+	 ,@(add-immediate Free Free (* 8 size))
          ;; Set the last component to be the relocation reference point.
          ,@(affix-type temp type-code:compiled-entry target)
          (STR X ,temp (POST+ ,Free (& 8))))))
@@ -560,7 +560,7 @@ USA.
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((target (standard-target! target))
          (temp (allocate-temporary-register! 'GENERAL))
-         (manifest-type type-code:closure-manifest)
+         (manifest-type type-code:manifest-closure)
          (manifest-size (multiclosure-manifest-size nentries size))
          ;; 8 for manifest, 8 for padding & format word, 8 for PC offset.
          (offset0 #x18)
@@ -574,24 +574,22 @@ USA.
             (max (caddr entry))
             (offset (+ offset0 (* n address-units-per-closure-entry))))
         (generate-closure-entry label 0 min max offset temp)))
-    (define generate-subsidiary-entries entries
+    (define (generate-subsidiary-entries entries n)
       (assert (pair? entries))
-      (LAP ,@(generate-subsidiary-entry (car entries))
+      (LAP ,@(generate-subsidiary-entry (car entries) n)
            ,@(if (pair? (cdr entries))
-                 (generate-subsidiary-entries (cdr entries))
+                 (generate-subsidiary-entries (cdr entries) (+ n 1))
                  (LAP))))
     (LAP ,@(load-tagged-immediate manifest-type manifest-size temp)
          (STR X ,temp (POST+ ,Free (& 8)))
          ,@(generate-primary-entry (car entries))
          ,@(register->register-transfer Free target)
-         ,@(generate-subsidiary-entries (cdr entries))
+         ,@(generate-subsidiary-entries (cdr entries) 1)
          ;; Bump Free to point at the last component, one word before
          ;; the next object.  We do this because we need to set the
          ;; last component here, but we do not have negative load/store
          ;; offsets without pre/post-increment.
-         ,@(with-immediate-unsigned-12 (* 8 size)
-             (lambda (addend)
-               (LAP ADD X ,Free ,Free ,addend)))
+	 ,@(add-immediate Free Free (* 8 size))
          ;; Set the last component to be the relocation reference point.
          ,@(affix-type temp type-code:compiled-entry target)
          (STR X ,temp (POST+ ,Free (& 8))))))
@@ -636,7 +634,7 @@ USA.
 ;;;; Entry Header
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
-  (let ((continuation-label (generate-label /LINKED)))
+  (let ((continuation-label (generate-label 'LINKED)))
     (LAP (LDR X ,r0 ,reg:environment)
          (ADR X ,r1 (@PCR ,environment-label))
          (STR X ,r0 ,r1)
@@ -650,9 +648,10 @@ USA.
 ;;; XXX Why is this hand-coded assembly and not a C function?
 
 (define (generate/remote-links n-blocks vector-label nsects)
+  vector-label nsects
   (if (zero? n-blocks)
       (LAP)
-      ...))
+      (error "XXX not yet implemented")))
 
 (define (generate/constants-block constants references assignments
                                   uuo-links global-links static-vars)

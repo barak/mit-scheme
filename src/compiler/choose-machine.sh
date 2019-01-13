@@ -43,6 +43,12 @@ svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     exit 0
 esac
 
+case ${TARGET_ARCH} in
+aarch64be|aarch64le)
+    echo aarch64
+    exit 0
+esac
+
 if test -d "${HERE}/machines/${TARGET_ARCH}"; then
     echo "${TARGET_ARCH}"
     exit 0

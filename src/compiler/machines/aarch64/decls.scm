@@ -343,7 +343,8 @@ USA.
                               "lapgn1" "lapgn2" "lapgn3" "linear" "regmap"
                               "symtab" "syntax")
              (filename/append "machines/aarch64"
-                              "dassm1" "insmac" "lapopt" "machine" "rgspcm"
+                              #;"dassm1"
+                              "insmac" "lapopt" "machine" "rgspcm"
                               "rulrew")
              (filename/append "fggen"
                               "declar" "fggen" "canon")
