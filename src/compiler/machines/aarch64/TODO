@@ -10,9 +10,12 @@
   . trampoline code, if necessary
   . wherever else
 - Verify the branch condition codes.
+- Verify variable-width cases.
+- Logical immediate encoding.
 - Open-coded flonum arithmetic.
 - Better fixnum operations with constant operands.
 - Fast division by multiplication.
 - Fixnum multiply-add/sub/negate.
 - Consider NaN-tagging.
 - Write a disassembler.
+- Share interrupt hook invocations.

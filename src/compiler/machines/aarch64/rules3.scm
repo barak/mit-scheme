@@ -33,7 +33,7 @@ USA.
 
 (define-rule statement
   (POP-RETURN)
-  (let* ((checks (get-interrupt-checks))
+  (let* ((checks (get-exit-interrupt-checks))
          (prefix (clear-map!))
          (suffix
           (if (pair? checks)
@@ -49,11 +49,11 @@ USA.
 
 (define (pop-return/interrupt-check)
   (share-instruction-sequence! 'POP-RETURN
-    (lambda (shared-label) (LAP (B (@PCR ,shared-label))))
+    (lambda (shared-label) (LAP (B (@PCR ,shared-label ,regnum:scratch-0))))
     (lambda (shared-label)
       (let ((interrupt-label (generate-label 'INTERRUPT)))
         (LAP (LABEL ,shared-label)
-             ,@(interrupt-check '(HEAP) label)
+             ,@(interrupt-check '(HEAP) interrupt-label)
              ,@(pop-return)
              (LABEL ,interrupt-label)
              ,@(invoke-hook entry:compiler-interrupt-continuation-2))))))
@@ -87,7 +87,7 @@ USA.
   frame-size continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (B (@PCR ,label))))
+       (B (@PCR ,label ,regnum:scratch-0))))
 
 (define (entry->pc pc entry)
   ;; XXX Would be nice to skip the SUB, but LDR doesn't have a signed
@@ -129,16 +129,18 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (B (@PCRO ,(free-uuo-link-label name frame-size)
-                 ,(uuo-link-label-offset)))))
+       (B (@PCR (+ ,(free-uuo-link-label name frame-size)
+                   (* 4 ,(uuo-link-label-instruction-offset)))
+                 ,regnum:scratch-0))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (B (@PCRO ,(global-uuo-link-label name frame-size)
-                 ,(uuo-link-label-offset)))))
+       (B (@PCR (+ ,(global-uuo-link-label name frame-size)
+                   (* 4 ,(uuo-link-label-instruction-offset)))
+                ,regnum:scratch-0))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
@@ -172,7 +174,7 @@ USA.
 
 (define (generate/generic-primitive frame-size primitive)
   (let* ((prefix (clear-map!))
-         (arg0 (load-constant primitive regnum:utility-arg0)))
+         (arg0 (load-constant regnum:utility-arg0 primitive)))
     (LAP ,@prefix
          ,@arg0
          ,@(let ((arity (primitive-procedure-arity primitive)))
@@ -191,7 +193,7 @@ USA.
           (load-unsigned-immediate regnum:scratch-0 (- frame-size 1)))
          (invocation (invoke-hook entry:compiler-primitive-lexpr-apply)))
     (LAP ,@load-nargs
-         (STR X ,regnum:scratch-0 ,reg:lexpr-primitive-apply)
+         (STR X ,regnum:scratch-0 ,reg:lexpr-primitive-arity)
          ,@invocation)))
 
 (define (generate/generic-apply frame-size)
@@ -264,7 +266,7 @@ USA.
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER (? address)))
   (let ((address (standard-source! address)))
-    (assert (not (= register regnum:stack-pointer)))
+    (assert (not (= address regnum:stack-pointer)))
     (generate/move-frame-up frame-size address)))
 
 (define-rule statement
@@ -279,17 +281,17 @@ USA.
     (assert (not (= address regnum:stack-pointer)))
     (assert (not (= dynamic-link regnum:stack-pointer)))
     (LAP (CMP X ,address ,dynamic-link)
-         (CSEL.GT ,address ,address ,dynamic-link)
+         (CSEL X GT ,address ,address ,dynamic-link)
          ,@(generate/move-frame-up frame-size address))))
 
 (define (generate/move-frame-up frame-size address)
-  (assert (not (= register regnum:stack-pointer)))
+  (assert (not (= address regnum:stack-pointer)))
   (if (<= frame-size 6)                 ;Covers vast majority of cases.
       (generate/move-frame-up/unrolled frame-size address)
       (generate/move-frame-up/loop frame-size address)))
 
 (define (generate/move-frame-up/loop frame-size address)
-  (assert (not (= register regnum:stack-pointer)))
+  (assert (not (= address regnum:stack-pointer)))
   (assert (>= frame-size 2))
   (assert (fits-in-unsigned-12? (* 8 frame-size))) ;XXX
   (assert (= 8 address-units-per-object))
@@ -302,17 +304,17 @@ USA.
          (loop-count (- frame-size (remainder frame-size 2))))
     (assert (= loop-count (* (quotient frame-size 2) 2)))
     (LAP (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
-                   (&U ,(* 8 frame-size)))
+              (&U ,(* 8 frame-size)))
          ,@(if (odd? frame-size)
-               (LAP (LDR X ,temp1 (PRE- ,regnum:stack-pointer (&U 8)))
-                    (STR X ,temp1 (PRE- ,address (&U 8))))
+               (LAP (LDR X ,temp1 (PRE+ ,regnum:stack-pointer (& (* 8 -1))))
+                    (STR X ,temp1 (PRE+ ,address (& (* 8 -1)))))
                (LAP))
          ,@(load-unsigned-immediate index loop-count)
         (LABEL ,label)
          (SUB X ,index (&U #x10))
-         (LDRP X ,temp1 ,temp2 (PRE- ,regnum:stack-pointer (&U #x10)))
-         (STRP X ,temp1 ,temp2 (PRE- ,address (&U #x10)))
-         (CBNZ X ,index (@PCR ,label))
+         (LDRP X ,temp1 ,temp2 (PRE+ ,regnum:stack-pointer (& (* 8 -2))))
+         (STRP X ,temp1 ,temp2 (PRE+ ,address (& (* 8 -2))))
+         (CBNZ X ,index (@PCR ,label ,regnum:scratch-0))
          ,@(register->register-transfer address regnum:stack-pointer))))
 
 (define (generate/move-frame-up/unrolled frame-size address)
@@ -407,12 +409,12 @@ USA.
   (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
              (LAP (LDR X ,regnum:scratch-0 ,reg:memtop)
                   (CMP X ,regnum:free-pointer ,regnum:scratch-0)
-                  (B.GE (@PCR ,label)))
+                  (B. GE (@PCR ,label ,regnum:scratch-0)))
              (LAP))
        ,@(if (memq 'STACK checks)
              (LAP (LDR X ,regnum:scratch-0 ,reg:stack-guard)
                   (CMP X ,regnum:stack-pointer ,regnum:scratch-0)
-                  (B.LT (@PCR ,label)))
+                  (B. LT (@PCR ,label ,regnum:scratch-0)))
              (LAP))))
 
 (define (simple-procedure-header code-word label entry)
@@ -542,17 +544,17 @@ USA.
          (temp (allocate-temporary-register! 'GENERAL))
          (manifest-type type-code:manifest-closure)
          (manifest-size (closure-manifest-size size))
-         (Free Free))
+         (Free regnum:free-pointer))
     (LAP ,@(load-tagged-immediate manifest-type manifest-size temp)
          (STR X ,temp (POST+ ,Free (& 8)))
-         ,@(generate-closure-entry label min max 1 temp)
+         ,@(generate-closure-entry label 1 min max 1 temp)
          ;; Free now points at the entry.  Save it in target.
          ,@(register->register-transfer Free target)
          ;; Bump Free to point at the last component, one word before
          ;; the next object.  We do this because we need to set the
          ;; last component here, but we do not have negative load/store
          ;; offsets without pre/post-increment.
-	 ,@(add-immediate Free Free (* 8 size))
+         ,@(add-immediate Free Free (* 8 size))
          ;; Set the last component to be the relocation reference point.
          ,@(affix-type temp type-code:compiled-entry target)
          (STR X ,temp (POST+ ,Free (& 8))))))
@@ -589,7 +591,7 @@ USA.
          ;; the next object.  We do this because we need to set the
          ;; last component here, but we do not have negative load/store
          ;; offsets without pre/post-increment.
-	 ,@(add-immediate Free Free (* 8 size))
+         ,@(add-immediate Free Free (* 8 size))
          ;; Set the last component to be the relocation reference point.
          ,@(affix-type temp type-code:compiled-entry target)
          (STR X ,temp (POST+ ,Free (& 8))))))
@@ -616,7 +618,7 @@ USA.
     (LAP ,@(load-unsigned-immediate temp (padded-word))
          (STR X ,temp (POST+ ,Free (& 8)))
          ;; Set temp := label - 8.
-         (ADR X ,temp (@PCR (- ,label* 8)))
+         (ADR X ,temp (@PCR (- ,label* 8) ,regnum:scratch-0))
          ;; Set temp := label - 8 - free = label - (free + 8).
          (SUB X ,temp ,temp ,Free)
          ;; Store the PC offset.
@@ -633,25 +635,116 @@ USA.
 
 ;;;; Entry Header
 
+;;; XXX Why are these hand-coded assembly routines and not C functions?
+;;; For that matter, why aren't they just the job of the loader?
+
+;;; (GENERATE/QUOTATION-HEADER <environment-label> <free-ref-label> <nsects>)
+;;;
+;;;     Store the interpreter's environment register in this block's
+;;;     environment slot; then call link(block_addr, constants_addr,
+;;;     nsects).
+
 (define (generate/quotation-header environment-label free-ref-label n-sections)
   (let ((continuation-label (generate-label 'LINKED)))
     (LAP (LDR X ,r0 ,reg:environment)
-         (ADR X ,r1 (@PCR ,environment-label))
+         (ADR X ,r1 (@PCR ,environment-label ,regnum:scratch-0))
          (STR X ,r0 ,r1)
-         (ADR X ,regnum:utility-arg0 (@PCR ,*block-label*))
-         (ADR X ,regnum:utility-arg1 (@PCR ,free-ref-label))
-         ,@(load-unsigned-immediate regnum:utility-arg2 n-sections)
+         (ADR X ,regnum:utility-arg1 (@PCR ,*block-label* ,regnum:scratch-0))
+         (ADR X ,regnum:utility-arg2 (@PCR ,free-ref-label ,regnum:scratch-0))
+         ,@(load-unsigned-immediate regnum:utility-arg3 n-sections)
          ,@(invoke-hook/call entry:compiler-link continuation-label)
          ,@(make-external-label (continuation-code-word #f)
                                 continuation-label))))
 
-;;; XXX Why is this hand-coded assembly and not a C function?
-
+(define (generate/remote-link code-block-label
+                              environment-offset
+                              free-ref-offset
+                              n-sections)
+  (let ((continuation-label (generate-label 'LINKED))
+        ;; arg0 will be the return address.
+        (arg1 regnum:utility-arg1)
+        (arg2 regnum:utility-arg2)
+        (arg3 regnum:utility-arg3)
+        (temp r1))
+    (LAP (LDR X ,temp ,reg:environment)
+         ;; arg1 := block address
+         ,@(load-pc-relative arg1 code-block-label)
+         ,@(object->address arg1 arg1)
+         ;; Set this block's environment.
+         (STR X ,temp (+ ,arg1 (&U (* 8 ,environment-offset))))
+         ;; arg2 := constants address
+         ,@(add-immediate arg2 arg1 free-ref-offset)
+         ;; arg3 := n sections
+         ,@(load-unsigned-immediate arg3 n-sections)
+         ,@(invoke-interface/call code:compiler-link continuation-label)
+         ,@(make-external-label (continuation-code-word #f)
+                                continuation-label))))
+
 (define (generate/remote-links n-blocks vector-label nsects)
-  vector-label nsects
   (if (zero? n-blocks)
       (LAP)
-      (error "XXX not yet implemented")))
+      (let* ((loop-label (generate-label 'LOOP))
+             (nsects-label (generate-label 'NSECTS))
+             (end-label (generate-label 'END))
+             (continuation-label (generate-label 'LINKED))
+             (counter r24)              ;unallocated, callee-saves
+             (temp1 r1)                 ;unallocated
+             (temp2 r2)                 ;unallocated
+             ;; arg0 will be return address.
+             (arg1 regnum:utility-arg1)
+             (arg2 regnum:utility-arg2)
+             (arg3 regnum:utility-arg3))
+        (LAP ,@(load-unsigned-immediate counter n-blocks)
+            (LABEL ,loop-label)
+             ,@(load-pc-relative arg1 vector-label)     ;arg1 := vector
+             ,@(object->address arg1 arg1)              ;arg1 := vector addr
+             (LDR X ,arg1 (+ ,arg1 (LSL ,counter 3)))   ;arg1 := vector[ctr-1]
+             ,@(object->address arg1 arg1)              ;arg1 := block addr
+             (LDR X ,temp1 ,reg:environment)            ;temp1 := environment
+             (LDR X ,temp2 ,arg1)                       ;temp2 := manifest
+             ,@(object->datum temp2 temp2)              ;temp2 := block length
+             (STR X ,temp1 (+ ,arg1 (LSL ,temp2 3)))    ;set block environment
+             (LDR X ,temp1 (+ ,arg1 (&U (* 8 1))))      ;temp1 := manifest-nmv
+             ,@(object->datum temp1 temp1)              ;temp1 := unmarked size
+             (ADD X ,temp1 ,temp1 (&U #x10))            ;temp1 := consts offset
+             (ADD X ,arg2 ,arg1 ,temp1)                 ;temp1 := consts addr
+             (SUB X ,counter (&U 1))                    ;ctr := ctr - 1
+             (ADR X ,arg3 (@PCR ,nsects ,regnum:scratch-0)) ;arg3 := nsects
+             (LDR B ,arg3 (+ ,arg3 ,counter))           ;arg3 := nsects[ctr]
+             ,@(invoke-interface/call code:compiler-link continuation-label)
+             ,@(make-external-label (continuation-code-word #f)
+                                    continuation-label)
+             (CBNZ X ,counter                           ;repeat if ctr != 0
+                   (@PCR ,loop-label ,regnum:scratch-0))
+             (B (@PCR ,end-label ,regnum:scratch-0))    ;otherwise go on
+            (LABEL ,nsects-label)
+             ,@(generate/nsects nsects)
+            (LABEL ,end-label)))))
+
+(define (generate/nsects nsects)
+  (let ((n (vector-length nsects)))
+    (define (adjoin/be byte word bits)
+      (bitwise-ior (shift-left byte bits) word))
+    (define (adjoin/le byte word bits)
+      bits
+      (bitwise-ior byte (shift-left word 8)))
+    (define adjoin
+      (case endianness
+        ((BIG) adjoin/be)
+        ((LITTLE) adjoin/le)
+        (else (error "Unknown endianness:" endianness))))
+    (let loop
+        ((i (* (quotient (+ n 7) 8) 8))
+         (words (LAP)))
+      (if (< 0 i)
+          (let subloop ((j 0) (word 0))
+            (if (< j 8)
+                (let ((byte (if (< (+ i j) n) (vector-ref nsects (+ i j)) 0)))
+                  (subloop (+ j 1) (adjoin byte word (* j 8))))
+                (loop (- i 8)
+                      (LAP (DATA 64 U ,word)
+                           ,@words))))
+          words))))
 
 (define (generate/constants-block constants references assignments
                                   uuo-links global-links static-vars)
@@ -729,7 +822,7 @@ USA.
                  (cdr variable.caches)))
    variable.caches-list))
 
-(define (uuo-link-label-offset)
+(define (uuo-link-label-instruction-offset)
   (case endianness
     ;; On big-endian systems, the label points exactly at the code,
     ;; aligned on an object boundary.
@@ -737,5 +830,5 @@ USA.
     ;; On little-endian systems, the code starts halfway in the middle
     ;; of the frame size object, clobbering the fixnum tag but leaving
     ;; the 16-bit value intact.
-    ((LITTLE) 4)
+    ((LITTLE) 1)
     (else (error "Unknown endianness:" endianness))))

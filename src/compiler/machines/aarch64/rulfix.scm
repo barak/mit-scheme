@@ -59,7 +59,8 @@ USA.
   (LAP (LSL X ,target ,source (&U ,scheme-type-width))))
 
 (define (fixnum->object target source)
-  (LAP (ORR X ,target ,source (&U ,type-code:fixnum))
+  ;; XXX See if ORR can do the trick.
+  (LAP (ADD X ,target ,source (&U ,type-code:fixnum))
        (ROR X ,target ,target (&U ,scheme-type-width))))
 
 (define (address->fixnum target source)
@@ -102,18 +103,6 @@ USA.
   (lambda (target source overflow?)
     (fixnum-add-constant target source -1 overflow?)))
 
-(define (set-always-branches!)
-  (set-current-branches! (lambda (label) (LAP (B (@PCR ,label))))
-                         (lambda (label) label (LAP))))
-
-(define (set-never-branches!)
-  (set-current-branches! (lambda (label) label (LAP))
-                         (lambda (label) (LAP (B (@PCR ,label))))))
-
-(define (set-carry-branches!)
-  (set-current-branches! (lambda (label) (LAP (B.CS (@PCR ,label))))
-                         (lambda (label) (LAP (B.CC (@PCR ,label))))))
-
 (define (fixnum-add-constant target source n overflow?)
   (let ((imm (* fixnum-1 n)))
     (cond ((not overflow?)
@@ -122,7 +111,7 @@ USA.
            (set-never-branches!)
            (register->register-transfer source target))
           (else
-           (set-carry-branches!)
+           (set-overflow-branches!)
            (add-immediate-with-flags target source imm)))))
 
 (define (load-fixnum-constant target n)
@@ -150,13 +139,13 @@ USA.
          target source1 source2 overflow?)
   (if overflow?
       (begin
-        (set-carry-branches!)
-        (LAP (,flags ,target ,source1 ,source2)))
-      (LAP (,no-flags ,target ,source1 ,source2))))
+        (set-overflow-branches!)
+        (LAP (,flags X ,target ,source1 ,source2)))
+      (LAP (,no-flags X ,target ,source1 ,source2))))
 
 (define ((fixnum-2-args/bitwise op) target source1 source2 overflow?)
   (assert (not overflow?))
-  (LAP (,op ,target ,source1 ,source2)))
+  (LAP (,op X ,target ,source1 ,source2)))
 
 (define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args
   (fixnum-2-args/additive 'ADDS 'ADD))
@@ -195,9 +184,9 @@ USA.
           ;; overflow.
           (LAP (MOVZ X ,mask (&U 0))
                (CMP X ,source1 (&U 0))
-               (CINV.LT X ,mask ,mask)
+               (CINV X LT ,mask ,mask)
                (CMP X ,source2 (&U 0))
-               (CINV.LT X ,mask ,mask)
+               (CINV X LT ,mask ,mask)
                (ASR X ,regnum:scratch-0 ,source1 (&U ,scheme-type-width))
                (SMULH ,hi ,regnum:scratch-0 ,source2)
                (MUL X ,target ,regnum:scratch-0 ,source2)
@@ -228,9 +217,15 @@ USA.
 ;;;; Fixnum Predicates
 
 (define-rule predicate
+  (OVERFLOW-TEST)
+  ;; Preceding RTL instruction is always a fixnum operation with
+  ;; OVERFLOW? set to true which will generate the right branch.
+  (LAP))
+
+(define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
   (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (CMP X ,(standard-source! register) (& 0))))
+  (LAP (CMP X ,(standard-source! register) (&U 0))))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG FIXNUM-ZERO? (REGISTER (? register)))
@@ -241,8 +236,8 @@ USA.
                       (REGISTER (? source1))
                       (REGISTER (? source2)))
   (fixnum-branch! predicate)
-  (standard-unary-effect source1 source2
-    (lambda ()
+  (standard-binary-effect source1 source2
+    (lambda (source1 source2)
       (LAP (CMP X ,source1 ,source2)))))
 
 (define (fixnum-predicate/unary->binary predicate)
@@ -257,16 +252,13 @@ USA.
     ((EQUAL-FIXNUM?)
      (set-equal-branches!))
     ((LESS-THAN-FIXNUM?)
-     (set-current-branches! (lambda (label) (LAP (B.LT (@PCR ,label))))
-                            (lambda (label) (LAP (B.GE (@PCR ,label))))))
-    ((GREATER-THAN-THAN-FIXNUM?)
-     (set-current-branches! (lambda (label) (LAP (B.GT (@PCR ,label))))
-                            (lambda (label) (LAP (B.LE (@PCR ,label))))))
+     (set-condition-branches! 'LT 'GE))
+    ((GREATER-THAN-FIXNUM?)
+     (set-condition-branches! 'GT 'LE))
     ((UNSIGNED-LESS-THAN-FIXNUM?)
-     (set-current-branches! (lambda (label) (LAP (B.MI (@PCR ,label))))
-                            (lambda (label) (LAP (B.PL (@PCR ,label))))))
-    ((UNSIGNED-LESS-THAN-FIXNUM?)
-     (set-current-branches! (lambda (label) (LAP (B.PL (@PCR ,label))))
-                            (lambda (label) (LAP (B.MI (@PCR ,label))))))
+     (set-condition-branches! 'MI 'PL))
+    #; ;XXX broken but not sure this ever appears
+    ((UNSIGNED-GREATER-THAN-FIXNUM?)
+     (set-condition-branches! 'PL 'MI))
     (else
      (error "Unknown fixnum predicate:" predicate))))

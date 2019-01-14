@@ -56,78 +56,40 @@ USA.
 
 ;;; C3.1.1 Conditional branch
 
-(let-syntax
-    ((define-conditional-branch-instruction
-      (sc-macro-transformer
-       (lambda (form environment)
-         environment
-         (let ((mnemonic (list-ref form 1))
-               (o0 (list-ref form 2))
-               (o1 (list-ref form 3))
-               (condition (list-ref form 4)))
-           `(define-instruction ,mnemonic
-              (((@PCO (? offset)))
-               (BITS (7 #b0101010)
-                     (1 ,o1)
-                     (19 offset SIGNED)
-                     (1 ,o0)
-                     (4 ,condition)))
-              (((@PCR (? target) (? temp register<31)))
-               (VARIABLE-WIDTH offset `(/ (- ,target *PC*) 4)
-                 ;; If it fits in a signed 19-bit displacement, great.
-                 ((#x-40000 #x3ffff)
-                  (MACRO 32 (,mnemonic (@PCO ,',offset))))
-                 ;; If not, we have to use ADRP and ADD with a
-                 ;; temporary register.  Preserve forward or backward
-                 ;; branches to preserve static branch predictions.
-                 ;; The PC relative to which we compute the target
-                 ;; address is marked with (*) to explain the curious
-                 ;; bounds.
-                 ((0 #x100000001)
-                  ;; Forward branch.
-                  (MACRO 32 (,mnemonic (@PCO 2))) ;1f
-                  (MACRO 32 (B (@PCO 4)))         ;2f
-                  ;; 1:
-                  (MACRO 64 (ADRP-ADD X ,',temp (@PCO ,',(- offset 2)))) ;(*)
-                  (MACRO 32 (BR ,',temp))
-                  ;; 2:
-                  )
-                 ((#x-fffffffe -1)
-                  ;; Backward branch.
-                  (MACRO 32 (B (@PCO 4))) ;1f
-                  ;; 2:
-                  (MACRO 64 (ADRP-ADD X ,',temp (@PCO ,',(- offset 2)))) ;(*)
-                  (MACRO 32 (BR ,',temp))
-                  ;; 1:
-                  (MACRO 32 (,mnemonic (@PCO -3))) ;2b
-                  )))))))))
-  ;; PSTATE condition bits:
-  ;; .n = negative
-  ;; .z = zero
-  ;; .c = carry
-  ;; .v = overflow
-  ;; Branch if...
-  (define-conditional-branch-instruction B.EQ 0 0 #b0000) ;equal
-  (define-conditional-branch-instruction B.NE 0 0 #b0001) ;not equal
-  (define-conditional-branch-instruction B.CS 0 0 #b0010) ;carry set
-  (define-conditional-branch-instruction B.CC 0 0 #b0011) ;carry clear
-  (define-conditional-branch-instruction B.MI 0 0 #b0100) ;negative `minus'
-  (define-conditional-branch-instruction B.PL 0 0 #b0101) ;nonnegative `plus'
-  (define-conditional-branch-instruction B.VS 0 0 #b0110) ;overflow set
-  (define-conditional-branch-instruction B.VC 0 0 #b0111) ;overflow clear
-  (define-conditional-branch-instruction B.HI 0 0 #b1000) ;carry and nonzero
-  (define-conditional-branch-instruction B.LS 0 0 #b1001) ;!carry or zero
-  (define-conditional-branch-instruction B.GE 0 0 #b1010) ;greater or equal
-                                        ;n = v
-  (define-conditional-branch-instruction B.LT 0 0 #b1011) ;less
-                                        ;n != v
-  (define-conditional-branch-instruction B.GT 0 0 #b1100) ;greater
-                                        ;n = v and !z
-  (define-conditional-branch-instruction B.LE 0 0 #b1101) ;less or equal
-                                        ;n != v or z
-  (define-conditional-branch-instruction B.AL 0 0 #b1110) ;always
-  #;  ;never?
-  (define-conditional-branch-instruction B.<never> 0 0 #b1111))
+(define-instruction B.
+  (((? condition branch-condition) (@PCO (* 4 (? offset signed-19))))
+   (BITS (7 #b0101010)
+         (1 0)                          ;o1
+         (19 offset SIGNED)
+         (1 0)                          ;o0
+         (4 condition)))
+  (((? condition) (@PCR (? target) (? temp register<31)))
+   (VARIABLE-WIDTH offset `(/ (- ,target *PC*) 4)
+     ;; If it fits in a signed 19-bit displacement, great.
+     ((#x-40000 #x3ffff)
+      (MACRO 32 (B. ,condition (@PCO (* 4 ,offset)))))
+     ;; If not, we have to use ADRP and ADD with a temporary register.
+     ;; Preserve forward or backward branches to preserve static branch
+     ;; predictions.  The PC relative to which we compute the target
+     ;; address is marked with (*) to explain the curious bounds.
+     ((0 #x100000001)
+      ;; Forward branch.
+      (MACRO 32 (B. ,condition (@PCO (* 4 2)))) ;1f
+      (MACRO 32 (B (@PCO (* 4 4))))             ;2f
+      ;; 1:
+      (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 (- offset 2))))) ;(*)
+      (MACRO 32 (BR ,temp))
+      ;; 2:
+      )
+     ((#x-fffffffe -1)
+      ;; Backward branch.
+      (MACRO 32 (B (@PCO (* 4 4))))             ;1f
+      ;; 2:
+      (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 (- offset 2))))) ;(*)
+      (MACRO 32 (BR ,temp))
+      ;; 1:
+      (MACRO 32 (B. ,condition (@PCO (* 4 -3)))) ;2b
+      ))))
 
 (let-syntax
     ((define-compare&branch-instruction
@@ -136,7 +98,9 @@ USA.
          environment
          (receive (mnemonic op) (apply values (cdr form))
            `(define-instruction ,mnemonic
-              (((? sf sf-size) (? Rt register-31=z) (@PCO (? offset)))
+              (((? sf sf-size)
+                (? Rt register-31=z)
+                (@PCO (* 4 (? offset signed-19))))
                (BITS (1 sf)
                      (6 #b011010)
                      (1 ,op)
@@ -145,24 +109,26 @@ USA.
               (((? sf) (? Rt) (@PCR (? target) (? temp register<31)))
                (VARIABLE-WIDTH offset `(/ (- ,target *PC*) 4)
                  ((#x-40000 #x3ffff)
-                  (MACRO 32 (,mnemonic (@PCO ,',offset))))
-                 ((0 #x100000001)
+                  (MACRO 32 (,mnemonic ,',sf ,',Rt (@PCO (* 4 ,',offset)))))
+                 ((0 #x40000001)
                   ;; Forward branch.
-                  (MACRO 32 (,mnemonic ,',sf ,',Rt (@PCO 2))) ;1f
-                  (MACRO 32 (B (@PCO 4))) ;2f
+                  (MACRO 32 (,mnemonic ,',sf ,',Rt (@PCO (* 4 2)))) ;1f
+                  (MACRO 32 (B (@PCO (* 4 4)))) ;2f
                   ;; 1:
-                  (MACRO 64 (ADRP-ADD X ,',temp (@PCO ,',(- offset 2)))) ;(*)
+                  (MACRO 64 (ADRP-ADD X ,',temp
+                                      (@PCO ,',(* 4 (- offset 2))))) ;(*)
                   (MACRO 32 (BR ,',temp))
                   ;; 2:
                   )
-                 ((#x-fffffffe -1)
+                 ((#x-3ffffffe -1)
                   ;; Backward branch.
-                  (MACRO 32 (B (@PCO 4))) ;1f
+                  (MACRO 32 (B (@PCO (* 4 4)))) ;1f
                   ;; 2:
-                  (MACRO 64 (ADRP-ADD X ,',temp (@PCO ,',(- offset 2)))) ;(*)
+                  (MACRO 64 (ADRP-ADD X ,',temp
+                                      (@PCO ,',(* 4 (- offset 2))))) ;(*)
                   (MACRO 32 (BR ,',temp))
                   ;; 1:
-                  (MACRO 32 (,mnemonic ,',sf ,',Rt (@PCO -3))) ;2b
+                  (MACRO 32 (,mnemonic ,',sf ,',Rt (@PCO (* 4 -3)))) ;2b
                   )))))))))
   ;; Compare and branch on zero
   (define-compare&branch-instruction CBZ 0)
@@ -178,7 +144,7 @@ USA.
            `(define-instruction ,mnemonic
               ((W (? Rt register-31=z)
                   (&U (? bit unsigned-5))
-                  (@PCO (? offset)))
+                  (@PCO (* 4 (? offset))))
                (BITS (1 0)              ;b5, fifth bit of bit index
                      (6 #b011011)
                      (1 ,op)
@@ -187,7 +153,7 @@ USA.
                      (5 Rt)))
               ((X (? Rt register-31=z)
                   (&U (? bit unsigned-6))
-                  (@PCO (? offset)))
+                  (@PCO (* 4 (? offset))))
                (BITS (1 (shift-right bit 5))
                      (6 #b011011)
                      (5 (bitwise-and bit #b1111))
@@ -197,27 +163,31 @@ USA.
                 (? Rt)
                 (&U (? bit))
                 (@PCR (? target) (? temp register<31)))
-               (VARIABLE-WIDTH offset (/ `(- ,target *PC*) 4)
+               (VARIABLE-WIDTH offset `(/ (- ,target *PC*) 4)
                  ((#x-2000 #x1fff)
                   (MACRO 32
-                         (,mnemonic ,',sf ,',Rt (&U ,',bit) (@PCO ,',offset))))
+                         (,mnemonic ,',sf ,',Rt (&U ,',bit)
+                                    (@PCO (* 4 ,',offset)))))
                  ((0 #x100000001)
                   ;; Forward branch.
-                  (MACRO 32 (,mnemonic ,',sf ,',Rt (&U ,',bit) (@PCO 2))) ;1f
+                  (MACRO 32 (,mnemonic ,',sf ,',Rt (&U ,',bit)
+                                       (@PCO (* 4 2)))) ;1f
                   (MACRO 32 (B (@PCO 4))) ;2f
                   ;; 1:
-                  (MACRO 64 (ADRP-ADD X ,',temp (@PCO ,',(- offset 2)))) ;(*)
+                  (MACRO 64 (ADRP-ADD X ,',temp
+                                      (@PCO ,',(* 4 (- offset 2))))) ;(*)
                   (MACRO 32 (BR ,',temp))
                   ;; 2:
                   )
                  ((#x-fffffffe -1)
                   ;; Backward branch.
-                  (MACRO 32 (B (@PCO 4))) ;1f
+                  (MACRO 32 (B (@PCO (* 4 4)))) ;1f
                   ;; 2:
-                  (MACRO 64 (ADRP-ADD X ,',temp (@PCO ,',(- offset 2)))) ;(*)
+                  (MACRO 64 (ADRP-ADD X ,',temp
+                                      (@PCO ,',(* 4 (- offset 2))))) ;(*)
                   (MACRO 32 (BR ,',temp))
                   ;; 1:
-                  (MACRO 32 (,mnemonic ,',sf ,',Rt (@PCO -3))) ;2b
+                  (MACRO 32 (,mnemonic ,',sf ,',Rt (@PCO (* 4 -3)))) ;2b
                   )))))))))
   ;; Test and branch if zero
   (define-test&branch-instruction TBZ 0)
@@ -229,31 +199,38 @@ USA.
 ;; Branch unconditional to PC-relative.
 
 (define-instruction B
-  (((@PCO (? offset)))
+  (((@PCO (* 4 (? offset))))
    (BITS (1 0)                          ;no link
          (5 #b00101)
          (26 offset SIGNED)))
   (((@PCR (? target) (? temp register<31)))
-   (VARIABLE-WIDTH offset (/ `(- ,target *PC*) 4)
+   (VARIABLE-WIDTH offset `(/ (- ,target *PC*) 4)
      ((#x-2000000 #x1ffffff)
-      (MACRO 32 (B (@PCO ,offset))))
+      (MACRO 32 (B (@PCO (* 4 ,offset)))))
      ((#x-100000000 #xffffffff)
-      (MACRO 64 (ADRP-ADD X ,temp (@PCO ,offset))) ;(*)
+      (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
+      (MACRO 32 (BR ,temp)))))
+  (((@PCR (+ (? target) (* 4 (? addend))) (? temp register<31)))
+   (VARIABLE-WIDTH offset `(+ (/ (- ,target *PC*) 4) ,addend)
+     ((#x-2000000 #x1ffffff)
+      (MACRO 32 (B (@PCO (* 4 ,offset)))))
+     ((#x-100000000 #xffffffff)
+      (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
       (MACRO 32 (BR ,temp))))))
 
 ;; Branch and link unconditional to PC-relative
 
 (define-instruction BL
-  (((@PCO (? offset)))
+  (((@PCO (* 4 (? offset))))
    (BITS (1 1)                          ;link
          (5 #b00101)
          (26 offset SIGNED)))
   (((@PCR (? target) (? temp register<31)))
-   (VARIABLE-WIDTH offset (/ `(- ,target *PC*) 4)
+   (VARIABLE-WIDTH offset `(/ (- ,target *PC*) 4)
      ((#x-2000000 #x1ffffff)
-      (MACRO 32 (BL (@PCO ,offset))))
+      (MACRO 32 (BL (@PCO (* 4 ,offset)))))
      ((#x-100000000 #xffffffff)
-      (MACRO 64 (ADRP-ADD X ,temp (@PCO ,offset))) ;(*)
+      (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
       (MACRO 32 (BLR ,temp))))))
 
 ;;; C.3.1.3 Unconditional branch (register)
@@ -752,7 +729,9 @@ USA.
   (define-load/store-instruction STR 0)
   (define-load/store-instruction LDR 1
     ;; LDR PC-relative literal (C6.2.120).
-    (((? opc ldr-literal-size) (? Rt register-31=z) (@PCO (? offset)))
+    (((? opc ldr-literal-size)
+      (? Rt register-31=z)
+      (@PCO (* 4 (? offset signed-19))))
      (BITS (2 opc)
            (3 #b011)
            (1 0)                        ;general
@@ -762,12 +741,12 @@ USA.
     (((? size) (? Rt) (@PCR (? label) (? temp register<31)))
      (VARIABLE-WIDTH offset `(/ (- ,label *PC*) 4)
        ((#x-40000 #x3ffff)
-        (MACRO 32 (LDR ,size ,Rt (@PCO ,offset))))
+        (MACRO 32 (LDR ,size ,Rt (@PCO (* 4 ,offset)))))
        ((#x-100000000 #xffffffff)
         ;; Could maybe use ADRP and LDR with unsigned 8-byte offset,
         ;; but only if the offset is even because this instruction is
         ;; aligned, wich the assembler can't handle easily.
-        (MACRO 64 (ADRP-ADD X ,temp (@PCO ,offset))) ;(*)
+        (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
         (MACRO 32 (LDR X ,Rt ,temp)))))))
 
 ;;; C3.2.9 Load/Store scalar SIMD and floating-point
@@ -1026,7 +1005,9 @@ USA.
   (define-simd/fp-load/store-instruction STR.V 0)
   (define-simd/fp-load/store-instruction LDR.V 1
     ;; LDR PC-relative literal, SIMD&FP (C7.2.177)
-    (((? opc ldr-literal-simd/fp-size) (? Vt vregister) (@PCO (? offset)))
+    (((? opc ldr-literal-simd/fp-size)
+      (? Vt vregister)
+      (@PCO (? offset signed-19)))
      (BITS (2 opc)
            (3 #b011)
            (1 1)                        ;SIMD/FP
@@ -1036,84 +1017,71 @@ USA.
     (((? size) (? Vt) (@PCR (? label) (? temp register<31)))
      (VARIABLE-WIDTH offset `(/ (- ,label *PC*) 4)
        ((#x-40000 #x3ffff)
-        (MACRO 32 (LDR.V ,size ,Vt (@PCO ,offset))))
+        (MACRO 32 (LDR.V ,size ,Vt (@PCO (* 4 ,offset)))))
        ((#x-100000000 #xffffffff)
-        (MACRO 64 (ADRP-ADD X ,temp (@PCO ,offset))) ;(*)
+        (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
         (MACRO 32 (LDR.V X ,Vt ,temp)))))))
 
-;; Load register signed
+;; Load register signed (i.e., sign-extended).  This does not detect
+;; the nonsensical (LDRS W W ...) operand combination -- it will
+;; assemble into a possibly different instruction.
 
 (define-instruction LDRS
   ;; Immediate, zero unsigned offset
-  (((? Rt register-31=z) (? Rn register-31=sp))
-   (BITS (2 #b10)                       ;size
+  (((? size load-signed-size)
+    (? opc load-signed-opc)
+    (? Rt register-31=z)
+    (? Rn register-31=sp))
+   (BITS (2 size)
          (3 #b111)
          (1 0)
          (2 #b01)
-         (2 #b10)                       ;opc
+         (2 opc)
          (12 0)                         ;imm12
          (5 Rn)
          (5 Rt)))
   ;; Immediate, unsigned offset
-  (((? Rt register-31=z)
+  (((? size load-signed-size)
+    (? opc load-signed-opc)
+    (? Rt register-31=z)
     (+ (? Rn register-31=sp) (&U (? offset unsigned-12))))
-   (BITS (2 #b10)                       ;size
+   (BITS (2 size)
          (3 #b111)
          (1 0)
          (2 #b01)
-         (2 #b10)                       ;opc
+         (2 opc)
          (12 offset)                    ;imm12
          (5 Rn)
          (5 Rt)))
-  ;; Post-indexed signed offset
-  (((? Rt register-31=z)
-    (POST+ (? Rn register-31=sp) (& (? offset signed-9))))
-   (BITS (2 #b10)                       ;size
+  ;; Pre/post-indexed signed offset
+  (((? opc load-signed-opc)
+    (? size load-signed-size)
+    (? Rt register-31=z)
+    ((? pre/post load/store-pre/post-index)
+     (? Rn register-31=sp)
+     (& (? offset signed-9))))
+   (BITS (2 size)
          (3 #b111)
          (1 0)
          (2 #b00)
-         (2 #b10)                       ;opc
+         (2 opc)
          (1 0)
          (9 offset SIGNED)
-         (2 #b01)                       ;post-index
-         (5 Rn)
-         (5 Rt)))
-  ;; Pre-indexed signed offset
-  (((? Rt register-31=z)
-    (POST+ (? Rn register-31=sp) (& (? offset signed-9))))
-   (BITS (2 #b10)                       ;size
-         (3 #b111)
-         (1 0)
-         (2 #b00)
-         (2 #b10)                       ;opc
-         (1 0)
-         (9 offset SIGNED)
-         (2 #b11)                       ;pre-index
+         (2 pre/post)
          (5 Rn)
          (5 Rt)))
 
-  ;; Literal
-  (((? Rt register-31=z) (@PCO (? offset)))
-   (BITS (2 #b10)                       ;opc
-         (3 #b011)
-         (1 0)                          ;general
-         (2 #b00)
-         (19 offset SIGNED)
-         (5 Rt)))
-  (((? Rt register-31=z) (@PCR (? label) (? temp register<31)))
-   (VARIABLE-WIDTH offset `(/ (- ,label *PC*) 4)
-       ((#x-40000 #x3ffff)
-        (MACRO 32 (LDRS ,Rt (@PCO ,offset))))
-       ((#x-100000000 #xffffffff)
-        (MACRO 64 (ADRP-ADD X ,temp (@PCO ,offset))) ;(*)
-        (MACRO 32 (LDRS ,Rt ,temp)))))
   ;; Register, no extend
-  (((? Rt register-31=z) (? Rn register-31=sp) (? Rm register-31=z))
-   (BITS (2 #b10)                       ;size
+  (((? size load-signed-size)
+    (? opc load-signed-opc)
+    (? Rt register-31=z)
+    (+ (? Rn register-31=sp)
+       (? Rm register-31=z)))
+   (BITS (2 size)
          (3 #b111)
          (1 0)
          (2 #b00)
-         (2 #b10)                       ;opc
+         (2 opc)
          (1 1)
          (5 Rm)
          (3 #b011)                      ;option=LSL
@@ -1121,23 +1089,100 @@ USA.
          (5 Rn)
          (5 Rt)))
   ;; Extended register
-  (((? Rt register-31=z)
-    (? Rn register-31=sp)
-    (? Rm register-31=z)
-    (? option ldrsw-extend-type)
-    (? S ldrsw-extend-amount))
-   (BITS (2 #b10)                       ;size
+  (((? size load-signed-size)
+    (? opc load-signed-opc)
+    (? Rt register-31=z)
+    (+ (? Rn register-31=sp)
+       ((? option load/store-extend-type)
+        (? Rm register-31=z)
+        (? S load/store32-extend-amount))))
+   (BITS (2 size)
          (3 #b111)
          (1 0)
          (2 #b00)
-         (2 #b10)                       ;opc
+         (2 opc)
          (1 1)
          (5 Rm)
          (3 option)
          (1 S)
          (2 #b10)
          (5 Rn)
-         (5 Rt))))
+         (5 Rt)))
+  ;; Literal -- only loading W into X.
+  ((X W (? Rt register-31=z) (@PCO (* 4 (? offset signed-19))))
+   (BITS (2 #b10)                       ;opc
+         (3 #b011)
+         (1 0)                          ;general
+         (2 #b00)
+         (19 offset SIGNED)
+         (5 Rt)))
+  ((X W (? Rt register-31=z) (@PCR (? label) (? temp register<31)))
+   (VARIABLE-WIDTH offset `(/ (- ,label *PC*) 4)
+       ((#x-40000 #x3ffff)
+        (MACRO 32 (LDRS ,Rt (@PCO (* 4 ,offset)))))
+       ((#x-100000000 #xffffffff)
+        (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
+        (MACRO 32 (LDRS ,Rt ,temp))))))
+
+;;; C3.4.11 Conditional select
+
+(let-syntax
+    ((define-conditional-select-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic op o2) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              (((? sf sf-size)
+                (? condition branch-condition)
+                (? Rd register-31=z)
+                (? Rn register-31=z)
+                (? Rm register-31=z))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 0)
+                     (1 1)
+                     (4 #b1010)
+                     (3 #b100)
+                     (5 Rm)
+                     (4 condition)
+                     (1 0)
+                     (1 ,o2)
+                     (5 Rn)
+                     (5 Rd)))))))))
+  ;; Rd := Rn if condition else Rm
+  (define-conditional-select-instruction CSEL 0 0)
+  ;; Rd := Rn if condition else (Rm + 1)
+  (define-conditional-select-instruction CSINC 0 1)
+  ;; Rd := Rn if condition else ~Rn
+  (define-conditional-select-instruction CSINV 1 0)
+  ;; Rd := Rn if condition else -Rn
+  (define-conditional-select-instruction CSNEG 1 1))
+
+;; Rd := 1 if condition else 0
+(define-instruction CSET
+  (((? sf) (? condition) (? Rd))
+   (MACRO 32 (CSINC ,sf ,condition ,Rd Z Z))))
+
+;; Rd := -1 if condition else 0
+(define-instruction CSETM
+  (((? sf) (? condition) (? Rd))
+   (MACRO 32 (CSINV ,sf ,condition ,Rd Z Z))))
+
+;; Rd := (Rn + 1) if condition else Rn
+(define-instruction CINC
+  (((? sf) (? condition) (? Rd) (? Rn))
+   (MACRO 32 (CSINC ,sf ,(invert-branch-condition condition) ,Rd ,Rn ,Rn))))
+
+;; Rd := (~Rn) if condition else Rn
+(define-instruction CINV
+  (((? sf) (? condition) (? Rd) (? Rn))
+   (MACRO 32 (CSINV ,sf ,(invert-branch-condition condition) ,Rd ,Rn ,Rn))))
+
+;; Rd := (-Rn) if condition else Rn
+(define-instruction CNEG
+  (((? sf) (? condition) (? Rd) (? Rn))
+   (MACRO 32 (CSNEG ,sf ,(invert-branch-condition condition) ,Rd ,Rn ,Rn))))
 
 ;;; Local Variables:
 ;;; eval: (put 'variable-width 'scheme-indent-function 2)

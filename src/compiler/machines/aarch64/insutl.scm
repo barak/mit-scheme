@@ -28,9 +28,29 @@ USA.
 
 (declare (usual-integrations))
 
+(define (signed-7 x)
+  (and (exact-integer? x)
+       (<= #x-40 x #x3f)
+       x))
+
 (define (signed-9 x)
   (and (exact-integer? x)
        (<= #x-200 x #x1ff)
+       x))
+
+(define (signed-19 x)
+  (and (exact-integer? x)
+       (<= #x-40000 x #x3ffff)
+       x))
+
+(define (signed-21 x)
+  (and (exact-integer? x)
+       (<= #x-100000 x #xfffff)
+       x))
+
+(define (signed-33 x)
+  (and (exact-integer? x)
+       (<= #x-100000000 x #xffffffff)
        x))
 
 (define (unsigned-2 x)
@@ -63,6 +83,11 @@ USA.
        (<= 0 x #x3f)
        x))
 
+(define (unsigned-6+1 x)
+  (and (exact-nonnegative-integer? x)
+       (<= 1 x #x40)
+       x))
+
 (define (unsigned-7 x)
   (and (exact-nonnegative-integer? x)
        (<= 0 x #x7f)
@@ -77,6 +102,52 @@ USA.
   (and (exact-nonnegative-integer? x)
        (<= 0 x #xffff)
        x))
+
+(define (branch-condition condition)
+  ;; PSTATE condition bits:
+  ;; .n = negative
+  ;; .z = zero
+  ;; .c = carry
+  ;; .v = overflow
+  ;; Branch if...
+  (case condition
+    ((EQ) #b0000)                       ;equal (z)
+    ((NE) #b0001)                       ;not equal (!z)
+    ((CS) #b0010)                       ;carry set (c)
+    ((CC) #b0011)                       ;carry clear (!c)
+    ((MI) #b0100)                       ;negative `minus' (n)
+    ((PL) #b0101)                       ;nonnegative `plus' (!n)
+    ((VS) #b0110)                       ;overflow set (v)
+    ((VC) #b0111)                       ;overflow clear (!v)
+    ((HI) #b1000)                       ;carry and nonzero (c & !z)
+    ((LS) #b1001)                       ;!carry or zero (!c | z)
+    ((GE) #b1010)                       ;greater or equal (n = v)
+    ((LT) #b1011)                       ;less (n != v)
+    ((GT) #b1100)                       ;greater ((n = v) & !z)
+    ((LE) #b1101)                       ;less or equal ((n != v) | z)
+    ((AL) #b1110)                       ;always
+    ;((<never>) #b1111)                 ;never?
+    (else #f)))
+
+(define (invert-branch-condition condition)
+  (case condition
+    ((EQ) 'NE)
+    ((NE) 'EQ)
+    ((CS) 'CC)
+    ((CC) 'CS)
+    ((MI) 'PL)
+    ((PL) 'MI)
+    ((VS) 'VC)
+    ((VC) 'VS)
+    ((HI) 'LS)
+    ((LS) 'HI)
+    ((GE) 'LT)
+    ((LT) 'GE)
+    ((GT) 'LE)
+    ((LE) 'GT)
+    ((AL) 'NV)
+    ((NV) 'AL)
+    (else #f)))
 
 (define (sf-size size)
   (case size
@@ -85,20 +156,22 @@ USA.
     (else #f)))
 
 (define (vregister v)
-  (and (<= 0 v 31)
+  (and (exact-integer? v)
+       (<= 0 v 31)
        v))
 
 (define (register<31 r)
-  (and (<= 0 r 30)
+  (and (exact-integer? r)
+       (<= 0 r 30)
        r))
 
 (define (register-31=z r)
   (cond ((eq? r 'Z) 31)
-        ((<= 0 r 30) r)
+        ((and (exact-nonnegative-integer? r) (<= 0 r 30)) r)
         (else #f)))
 
 (define (register-31=sp r)
-  (cond ((<= 0 r 31) r)
+  (cond ((and (exact-nonnegative-integer? r) (<= 0 r 31)) r)
         (else #f)))
 
 (define (msr-pstatefield x)
@@ -269,4 +342,17 @@ USA.
     ((OSH) #b0011)
     ((OSHST) #b0010)
     ((OSHLD) #b0001)
+    (else #f)))
+
+(define (load-signed-opc size)          ;operand size
+  (case size
+    ((W) #b11)
+    ((X) #b10)
+    (else #f)))
+
+(define (load-signed-size sz)           ;memory load size
+  (case sz
+    ((B) #b00)
+    ((H) #b01)
+    ((W) #b10)
     (else #f)))

@@ -38,12 +38,12 @@ USA.
          environment
          (receive (mnemonic op divisor) (apply values (cdr form))
            `(define-instruction ,mnemonic
-              ((X (? Rd register-31=z) (@PCO (? offset)))
+              ((X (? Rd register-31=z) (@PCO (? offset signed-21)))
                (BITS (1 ,op)
                      (2 (bitwise-and offset #b11))
                      (1 1)
                      (4 #b0000)
-                     (19 (bitwise-and (shift-right offset 2) #x1ffff))
+                     (19 (shift-right offset 2) SIGNED)
                      (5 Rd)))))))))
   ;; PC-relative byte offset
   (define-adr-instruction %ADR 0 1)
@@ -51,19 +51,19 @@ USA.
   (define-adr-instruction %ADRP 1 4096))
 
 (define-instruction ADRP-ADD
-  ((X (? Rd) (@PCO ,offset))
+  ((X (? Rd) (@PCO (? offset signed-33)))
    (MACRO 32 (ADRP X ,Rd ,(shift-right offset 12)))
    (MACRO 32 (ADD X ,Rd ,Rd ,(bitwise-and offset #xfff)))))
 
 (define-instruction ADR
-  ((X (? Rd) (@PCO (? offset)))
+  ((X (? Rd) (@PCO (? offset signed-21)))
    (MACRO 32 (%ADR X ,Rd (@PCO ,offset))))
   ((X (? Rd) (@PCR (? label) (? temp register<31)))
    (VARIABLE-WIDTH offset `(/ (- ,label *PC*) 4)
      ((#x-40000 #x3ffff)
       (MACRO 32 (ADR X ,Rd (@PCO ,offset))))
      ((#x-100000000 #xffffffff)
-      (MACRO 64 (ADRP-ADD X ,Rd (@PCO ,offset)))))))
+      (MACRO 64 (ADRP-ADD X ,Rd (@PCO ,(* 4 offset))))))))
 
 (let-syntax
     ((define-addsub-instruction
@@ -240,7 +240,7 @@ USA.
                    (? Rm register-31=z)
                    (? type logical-shift/rotate-type)
                    (? amount unsigned-5))
-                (BITS (1 sf)
+                (BITS (1 0)           ;sf=0, 32-bit operand size
                       (2 ,opc)
                       (1 0)
                       (4 #b1010)
@@ -256,7 +256,7 @@ USA.
                    (? Rm register-31=z)
                    (? type logical-shift/rotate-type)
                    (? amount unsigned-6))
-                (BITS (1 sf)
+                (BITS (1 1)           ;sf=1, 64-bit operand size
                       (2 ,opc)
                       (1 0)
                       (4 #b1010)
@@ -399,7 +399,7 @@ USA.
                      (1 0)
                      (1 0)              ;N, must match sf
                      (1 0)              ;high bit of r
-                     (5 `(REMAINDER (- ,shift) 32))
+                     (5 `(MODULO (- 0 ,shift) 32))
                      (1 0)              ;high bit of s
                      (5 `(- 31 ,shift))
                      (5 Rn)
@@ -414,7 +414,7 @@ USA.
                      (4 #b0011)
                      (1 0)
                      (1 1)              ;N, must match sf
-                     (6 `(REMAINDER (- ,shift) 64))
+                     (6 `(MODULO (- 0 ,shift) 64))
                      (6 `(- 63 ,shift))
                      (5 Rn)
                      (5 Rd)))))))))
@@ -521,8 +521,8 @@ USA.
                        (5 Rd)))
                 ((X (? Rd register-31=z)
                     ,@(if Rn '() `((? Rn ,register-31=src)))
-                    (&U (? lsb unsigned-5))
-                    (&U (? width unsigned-5+1)))
+                    (&U (? lsb unsigned-6))
+                    (&U (? width unsigned-6+1)))
                  (BITS (1 1)            ;sf=1, 32-bit operand size
                        (2 ,opc)
                        (1 1)
@@ -545,29 +545,29 @@ USA.
     `(- (+ ,lsb ,width) 1))             ;s
   ;; Signed bitfield insert in zeros, alias for SBFM
   (define-bitfield-insert/extract-instruction SFBIZ #b00
-    `(REMAINDER (- ,lsb) 32)            ;r32
-    `(REMAINDER (- ,lsb) 64)            ;r64
+    `(MODULO (- 0 ,lsb) 32)             ;r32
+    `(MODULO (- 0 ,lsb) 64)             ;r64
     `(- ,width 1))                      ;s
   ;; Bitfield extract and insert low copies
   (define-bitfield-insert/extract-instruction BFXIL #b01
-    `(REMAINDER (- ,lsb) 32)            ;r32
-    `(REMAINDER (- ,lsb) 64)            ;r64
+    `(MODULO (- 0 ,lsb) 32)             ;r32
+    `(MODULO (- 0 ,lsb) 64)             ;r64
     (- width 1))                        ;s
   ;; Bitfield insert: copy <width> bits at <lsb> from source
   (define-bitfield-insert/extract-instruction BFI #b01
-    `(REMAINDER (- ,lsb) 32)            ;r32
-    `(REMAINDER (- ,lsb) 64)            ;r64
+    `(MODULO (- 0 ,lsb) 32)             ;r32
+    `(MODULO (- 0 ,lsb) 64)             ;r64
     `(- ,width 1)                       ;s
     register<31)                        ;Rn must not be 31
   ;; Bitfield clear: clear <width> bit positions at <lsb>
   (define-bitfield-insert/extract-instruction BFC #b01
-    `(REMAINDER (- ,lsb) 32)            ;r32
-    `(REMAINDER (- ,lsb) 64)            ;r64
+    `(MODULO (- 0 ,lsb) 32)             ;r32
+    `(MODULO (- 0 ,lsb) 64)             ;r64
     `(- ,width 1)                       ;s
     #f 31)                              ;Rn is 31
   (define-bitfield-insert/extract-instruction UFBIZ #b10
-    `(REMAINDER (- ,lsb) 32)            ;r32
-    `(REMAINDER (- ,lsb) 64)            ;r64
+    `(MODULO (- 0 ,lsb) 32)             ;r32
+    `(MODULO (- 0 ,lsb) 64)             ;r64
     `(- ,width 1)))                     ;s
 
 (let-syntax
@@ -589,7 +589,7 @@ USA.
                      (1 1)
                      (4 #b0011)
                      (1 1)
-                     (1 sf)             ;N, must match sf
+                     (1 0)              ;N, must match sf
                      (1 ,o0)
                      (5 ,(if m=n? 'Rn 'Rm))
                      (1 0)              ;high bit of lsb index, 0 for 32-bit
@@ -605,7 +605,7 @@ USA.
                      (1 1)
                      (4 #b0011)
                      (1 1)
-                     (1 sf)             ;N, must match sf
+                     (1 0)              ;N, must match sf
                      (1 ,o0)
                      (5 ,(if m=n? 'Rn 'Rm))
                      (6 s)
@@ -655,11 +655,23 @@ USA.
                      (5 Rn)
                      (5 Rt1)))
               ;; No write back, signed increment.
-              (((? sf sf-size)
-                (? Rt1 register-31=z)
-                (? Rt2 register-31=z)
-                (+ (? Rn register-31=sp)) (& (? imm signed-7*4)))
-               (BITS (1 sf)
+              ((W (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  (+ (? Rn register-31=sp)) (& (* 4 (? imm signed-7))))
+               (BITS (1 0)              ;sf=0, 32-bit operand size
+                     (1 0)              ;opc[1]
+                     (3 #b101)
+                     (1 0)
+                     (3 #b010)
+                     (1 ,L)
+                     (7 imm SIGNED)
+                     (5 Rt2)
+                     (5 Rn)
+                     (5 Rt1)))
+              ((X (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  (+ (? Rn register-31=sp)) (& (* 8 (? imm signed-7))))
+               (BITS (1 1)              ;sf=1, 64-bit operand size
                      (1 0)              ;opc[1]
                      (3 #b101)
                      (1 0)
@@ -670,11 +682,10 @@ USA.
                      (5 Rn)
                      (5 Rt1)))
               ;; Pre-index signed offset.
-              (((? sf sf-size)
-                (? Rt1 register-31=z)
-                (? Rt2 register-31=z)
-                (PRE+ (? Rn register-31=sp) (& (? imm signed-7*4))))
-               (BITS (1 sf)
+              ((W (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  (PRE+ (? Rn register-31=sp) (& (* 4 (? imm signed-7)))))
+               (BITS (1 0)              ;sf=0, 32-bit operand size
                      (1 0)              ;opc[1]
                      (3 #b101)
                      (1 0)
@@ -683,13 +694,25 @@ USA.
                      (7 imm SIGNED)
                      (5 Rt2)
                      (5 Rn)
-                     (5 Rt)))
+                     (5 Rt1)))
+              ((X (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  (PRE+ (? Rn register-31=sp) (& (* 8 (? imm signed-7)))))
+               (BITS (1 1)              ;sf=1, 64-bit operand size
+                     (1 0)              ;opc[1]
+                     (3 #b101)
+                     (1 0)
+                     (3 #b011)
+                     (1 ,L)
+                     (7 imm SIGNED)
+                     (5 Rt2)
+                     (5 Rn)
+                     (5 Rt1)))
               ;; Post-index signed offset.
-              (((? sf sf-size)
-                (? Rt1 register-31=z)
-                (? Rt2 register-31=z)
-                (POST+ (? Rn register-31=sp) (& (? imm signed-7*4))))
-               (BITS (1 sf)
+              ((W (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  (POST+ (? Rn register-31=sp) (& (* 4 (? imm signed-7)))))
+               (BITS (1 0)              ;sf=0, 32-bit operand size
                      (1 0)              ;opc[1]
                      (3 #b101)
                      (1 0)
@@ -698,17 +721,22 @@ USA.
                      (7 imm SIGNED)
                      (5 Rt2)
                      (5 Rn)
-                     (5 Rt)))))))))
+                     (5 Rt1)))
+              ((W (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  (POST+ (? Rn register-31=sp) (& (* 8 (? imm signed-7)))))
+               (BITS (1 1)              ;sf=1, 64-bit operand size
+                     (1 0)              ;opc[1]
+                     (3 #b101)
+                     (1 0)
+                     (3 #b001)
+                     (1 ,L)
+                     (7 imm SIGNED)
+                     (5 Rt2)
+                     (5 Rn)
+                     (5 Rt1)))))))))
   (define-load/store-pair-instruction LDP 1)
   (define-load/store-pair-instruction STP 1))
-
-(define (load/store-size sz)
-  (case sz
-    ((B) #b00)
-    ((H) #b01)
-    ((W) #b10)
-    ((X) #b11)
-    (else #f)))
 
 (let-syntax
     ((define-load/store-exclusive-instruction
@@ -721,7 +749,7 @@ USA.
                 (? Rs register-31=z)
                 (? Rt register-31=z)
                 (? Rn register-31=sp))
-               (BITS (2 size)
+               (BITS (2 sz)
                      (2 #b00)
                      (4 #b1000)
                      (1 ,o2)

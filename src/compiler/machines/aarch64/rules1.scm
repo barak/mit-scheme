@@ -109,8 +109,8 @@ USA.
   (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
   (rtl-target:=machine-register! target regnum:link-register)
   (let ((linked (generate-label 'LINKED)))
-    (LAP (BL (@PCR ,linked))
-         (B (@PCR ,label))
+    (LAP (BL (@PCR ,linked ,regnum:scratch-0))
+         (B (@PCR ,label ,regnum:scratch-0))
         (LABEL ,linked))))
 
 (define-rule statement
@@ -207,41 +207,43 @@ USA.
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (PRE-INCREMENT (REGISTER (? sp)) (? offset)))
-  (QUALIFIER (<= -64 (* offset (quotient address-units-per-object 4)) 63))
+  (QUALIFIER (fits-in-signed-9? (* address-units-per-object offset)))
   (standard-unary target sp
     (lambda (target sp)
-      (LAP (LDR X ,target (PRE+ ,sp (& ,offset)))))))
+      (LAP (LDR X ,target
+		(PRE+ ,sp (& ,(* address-units-per-object offset))))))))
 
 ;;; Load with post-increment: *x++
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER (? sp)) (? offset)))
-  (QUALIFIER (<= -64 (* offset (quotient address-units-per-object 4)) 63))
+  (QUALIFIER (fits-in-signed-9? (* address-units-per-object offset)))
   (standard-unary target sp
     (lambda (target sp)
-      (LAP (LDR X ,target (POST+ ,sp (& ,offset)))))))
+      (LAP (LDR X ,target
+		(POST+ ,sp (& ,(* address-units-per-object offset))))))))
 
 ;;; Store with pre-increment: *++x = y
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER (? sp)) (? offset))
           (? source register-expression))
-  (QUALIFIER (<= -64 (* offset (quotient address-units-per-object 4)) 63))
-  (standard-binary-effect sp source
-    (lambda (sp source)
-      (let ((offset (* offset (quotient address-units-per-object 4))))
-        (LAP (STR X ,source (PRE+ ,sp (& ,offset))))))))
+  (QUALIFIER (fits-in-signed-9? (* address-units-per-object offset)))
+  (standard-binary-effect source sp
+    (lambda (source sp)
+      (LAP (STR X ,source
+		(PRE+ ,sp (& ,(* address-units-per-object offset))))))))
 
 ;;; Store with post-increment: *x++ = y
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER (? sp)) (? offset))
           (? source register-expression))
-  (QUALIFIER (<= -64 (* offset (quotient address-units-per-object 4)) 63))
-  (standard-binary-effect sp source
-    (lambda (sp source)
-      (let ((offset (* offset (quotient address-units-per-object 4))))
-        (LAP (STR X ,source (POST+ ,sp (& ,offset))))))))
+  (QUALIFIER (fits-in-signed-9? (* address-units-per-object offset)))
+  (standard-binary-effect source sp
+    (lambda (source sp)
+      (LAP (STR X ,source
+		(POST+ ,sp (& ,(* address-units-per-object offset))))))))
 
 ;;;; Byte access
 

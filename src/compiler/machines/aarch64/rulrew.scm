@@ -191,6 +191,7 @@ USA.
   (QUALIFIER (and (rtl:register? operand-1)
                   (rtl:constant-fixnum-test operand-2 (lambda (n) n true))))
   (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 #F))
+|#
 
 (define (rtl:constant-fixnum? expression)
   (and (rtl:constant? expression)
@@ -204,4 +205,3 @@ USA.
               (let ((n (rtl:constant-value expression)))
                 (and (fix:fixnum? n)
                      (predicate n)))))))
-|#

@@ -194,10 +194,10 @@ USA.
 (define-integrable r25 25) ;temporary           callee-saved
 (define-integrable r26 26) ;temporary           callee-saved
 (define-integrable r27 27) ;temporary           callee-saved
-(define-integrable r28 28) ;temporary           callee-saved
+(define-integrable r28 28) ;stack pointer       callee-saved
 (define-integrable r29 29) ;C frame pointer     frame pointer
 (define-integrable rlr 30) ;link register       link register
-(define-integrable rsp 31) ;stack pointer       stack pointer
+(define-integrable rsp 31) ;C stack pointer     stack pointer
 
 ;; Note: Register 31 is alternately the stack pointer or the zero
 ;; register, depending on instruction.
@@ -260,11 +260,12 @@ USA.
 (define-integrable regnum:regs-pointer r19)
 (define-integrable regnum:free-pointer r20)
 (define-integrable regnum:dynamic-link r21) ;Pointer to parent stack frame.
-(define-integrable regnum:memtop r22)
+;; (define-integrable regnum:memtop r22)
 (define-integrable regnum:scheme-to-interface r23)
+(define-integrable regnum:stack-pointer r27)
 (define-integrable regnum:c-frame-pointer r29)
 (define-integrable regnum:link-register rlr) ;Return address.
-(define-integrable regnum:stack-pointer rsp)
+(define-integrable regnum:c-stack-pointer rsp)
 
 ;; XXX Maybe we're playing a dangerous game to use the scratch registers for
 ;; these.
@@ -290,9 +291,11 @@ USA.
     (vector-set! classes regnum:regs-pointer value-class=address)
     (vector-set! classes regnum:free-pointer value-class=address)
     (vector-set! classes regnum:dynamic-link value-class=address)
-    (vector-set! classes regnum:memtop value-class=address)
-    (vector-set! classes regnum:c-frame-pointer value-class=address)
+    ;; (vector-set! classes regnum:memtop value-class=address)
     (vector-set! classes regnum:stack-pointer value-class=address)
+    (vector-set! classes regnum:c-frame-pointer value-class=address)
+    (vector-set! classes regnum:link-register value-class=address)
+    (vector-set! classes regnum:c-stack-pointer value-class=address)
     (named-lambda (machine-register-value-class register)
       (assert (<= 0 register))
       (assert (< register number-of-machine-registers))
@@ -365,7 +368,7 @@ USA.
   (case register-name
     ((DYNAMIC-LINK) (interpreter-dynamic-link))
     ((FREE) (interpreter-free-pointer))
-    ((MEMORY-TOP) (rtl:make-machine-register regnum:memtop))
+    ;; ((MEMORY-TOP) (rtl:make-machine-register regnum:memtop))
     ((STACK-POINTER) (interpreter-stack-pointer))
     ((VALUE) (interpreter-value-register))
     ((INTERPRETER-CALL-RESULT:ACCESS)
@@ -386,13 +389,13 @@ USA.
   (case rtl-register
     ((INT-MASK) register-block/int-mask-offset)
     ((ENVIRONMENT) register-block/environment-offset)
-    ((DYNAMIC-LINK) register-block/dynamic-link-offset)
+    ((MEMORY-TOP) register-block/memtop-offset)
     (else #f)))
 
 (define (rtl:interpreter-register->offset locative)
   (or (rtl:interpreter-register? locative)
       (error "Unknown interpreter register:" locative)))
-
+
 (define (rtl:constant-cost expression)
   ;; XXX Justify this by reference to cycle counts, &c.  This really
   ;; depends on which instruction we're talking about -- sometimes
@@ -415,6 +418,7 @@ USA.
             ((or (fits-in-unsigned-32? immediate)
                  (fits-in-unsigned-32? (- immediate)))
              cost:imm32)
+            ;; XXX logical immediate
             ((or (fits-in-unsigned-48? immediate)
                  (fits-in-unsigned-48? (- immediate)))
              cost:imm48)
@@ -446,6 +450,7 @@ USA.
                              (+ (immediate-cost offset)
                                 cost:add))))
                     cost:add)))))
+
     (case (rtl:expression-type expression)
       ((MACHINE-CONSTANT)
        (immediate-cost (rtl:machine-constant-value expression)))
@@ -482,6 +487,39 @@ USA.
                 (tagged-immediate-cost type datum)))))
       (else #f))))
 
+(define (fits-in-signed-9? x)
+  (<= #x-100 x #xff))
+
+(define (fits-in-unsigned-12? x)
+  (<= 0 x #xfff))
+
+(define (fits-in-unsigned-16? x)
+  (<= 0 x #xffff))
+
+(define (fits-in-unsigned-32? x)
+  (<= 0 x #xffffffff))
+
+(define (fits-in-unsigned-48? x)
+  (<= 0 x #xffffffffffff))
+
+;; XXX doesn't belong here
+
+(define-integrable type-code:fixnum #x1a)
+(define-integrable type-code:manifest-closure #x0d)
+(define-integrable type-code:manifest-vector #x00)
+
+;; XXX
+
+(define (non-pointer->literal object)
+  (make-non-pointer-literal (back-end:object-type object)
+			    (back-end:object-datum object)))
+
+(define (back-end:object-type object)
+  (object-type object))
+
+(define (back-end:object-datum object)
+  (object-datum object))
+
 (define compiler:open-code-floating-point-arithmetic?
   ;; XXX not yet
   #f)

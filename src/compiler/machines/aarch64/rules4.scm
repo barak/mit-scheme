@@ -32,51 +32,47 @@ USA.
 ;;;; Variable cache trap handling.
 
 (define-rule statement
-  (INTERPRETER-CALL:CACHE-REFERENCE (? cont) (? extension) (? safe?))
-  (QUALIFIER (interpreter-call-argument? extension))
-  (define (get-argument value register)
-    (interpreter-call-argument->machine-register! value register))
-  (let ((set-extension (get-argument extension regnum:utility-arg1)))
+  (INTERPRETER-CALL:CACHE-REFERENCE (? continuation)
+                                    (REGISTER (? extension))
+                                    (? safe?))
+  ;; arg0 will be the return address.
+  (require-register! regnum:utility-arg1)
+  (let* ((set-extension (load-machine-register! extension regnum:utility-arg1))
+         (prefix (clear-map!)))
     (LAP ,@set-extension
-         ,@(clear-map!)
-         #|
+         ,@prefix
          ,@(invoke-interface/call
             (if safe?
                 code:compiler-safe-reference-trap
                 code:compiler-reference-trap)
-            cont)
-         |#
-         ,@(invoke-hook/call
-            (if safe?
-                entry:compiler-safe-reference-trap
-                entry:compiler-reference-trap)
-            cont))))
+            continuation))))
 
 (define-rule statement
-  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
-  (QUALIFIER (and (interpreter-call-argument? extension)
-                  (interpreter-call-argument? value)))
-  (define (get-argument value register)
-    (interpreter-call-argument->machine-register! value register))
-  (let* ((set-extension (get-argument extension regnum:utility-arg1))
-         (set-value (get-argument extension regnum:utility-arg2)))
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? continuation)
+                                     (REGISTER (? extension))
+                                     (REGISTER (? value)))
+  ;; arg0 will be the return address.
+  (require-register! regnum:utility-arg1)
+  (require-register! regnum:utility-arg2)
+  (let* ((set-extension (load-machine-register! extension regnum:utility-arg1))
+         (set-value (load-machine-register! value regnum:utility-arg1))
+         (prefix (clear-map!)))
     (LAP ,@set-extension
          ,@set-value
-         ,@(clear-map!)
-         #|
-         ,@(invoke-interface/call code:compiler-assignment-trap cont)
-         |#
-         ,@(invoke-hook/call entry:compiler-assignment-trap cont))))
+         ,@prefix
+         ,@(invoke-interface/call code:compiler-reference-trap continuation))))
 
 (define-rule statement
-  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
-  (QUALIFIER (interpreter-call-argument? extension))
-  (define (get-argument value register)
-    (interpreter-call-argument->machine-register! value register))
-  (let ((set-extension (get-argument extension regnum:utility-arg1)))
+  (INTERPRETER-CALL:CACHE-UNASSIGNED? (? continuation)
+                                      (REGISTER (? extension)))
+  ;; arg0 will be the return address.
+  (require-register! regnum:utility-arg1)
+  (let* ((set-extension (load-machine-register! extension regnum:utility-arg1))
+         (prefix (clear-map!)))
     (LAP ,@set-extension
-         ,@(clear-map!)
-         ,@(invoke-interface/call code:compiler-unassigned?-trap cont))))
+         ,@prefix
+         ,@(invoke-interface/call code:compiler-unassigned?-trap
+                                  continuation))))
 
 ;;; Obsolete interpreter calls, should be flushed.
 

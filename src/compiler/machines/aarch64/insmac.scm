@@ -65,7 +65,9 @@ USA.
 
 (define (process-fixed form environment)
   (receive (expansion bits) (expand-fields (cdr form) environment)
-    (values (optimize-group-syntax expansion #f environment) bits)))
+    (values `(,(close-syntax 'LIST environment)
+              ,(optimize-group-syntax expansion #f environment))
+            bits)))
 
 (define (process-variable form environment)
   (let ((variable (cadr form))
@@ -77,24 +79,27 @@ USA.
                                                  expression
                                                  environment
                                                  options)))
-        (values expression #f)))))
+        (values `(,(close-syntax 'LIST environment) ,expression) #f)))))
 
 (define ((process-variable-clause environment) clause)
   (let ((range (car clause))
         (forms (cdr clause)))
-    (receive (expansion bits) (process* (car forms) (cdr forms) environment)
-      (assert bits "Variable within variable prohibited!")
-      (assert (zero? (remainder bits 32)) "Wrong number of bits!")
-      `(,expansion ,bits ,range))))
+    (let ((lo (car range))
+          (hi (cadr range)))
+      (receive (expansion bits) (process* (car forms) (cdr forms) environment)
+        (assert bits "Variable within variable prohibited!")
+        (assert (zero? (remainder bits 32)) "Wrong number of bits!")
+        `(,expansion ,bits ,lo ,hi)))))
 
 (define (process-macro form environment)
   (let ((width (cadr form))
         (expansion (caddr form)))
-    (values ;; XXX Check the width here.  Check for cycles.
-            `((,(close-syntax 'INSTRUCTION-LOOKUP environment)
-               (,(close-syntax 'QUASIQUOTE environment)
-                ,expansion)))
-            width)))
+    (values
+     ;; XXX Check the width here.  Check for cycles.
+     `((,(close-syntax 'INSTRUCTION-LOOKUP environment)
+        (,(close-syntax 'QUASIQUOTE environment)
+         ,expansion)))
+     width)))
 
 (define (expand-fields fields environment)
   (let loop ((fields fields) (elements '()) (bits 0))

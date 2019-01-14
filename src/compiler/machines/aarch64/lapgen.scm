@@ -55,17 +55,16 @@ USA.
    ;r19 - interpreter register block
    ;r20 - free pointer
    ;r21 - dynamic link
-   ;r22 - memtop
+   r22 ;XXX memtop?
    ;r23 - scheme-to-interface
    r24
    r25
    r26
    r27
-   r28
+   ;r28 - stack pointer
    ;r29 - C frame pointer, callee-saved and left alone by Scheme
    ;r30 - link register (could maybe allocate)
-   ;r31 - stack pointer or zero register, depending on instruction
-   ;      XXX could pick another one for our stack and leave this alone?
+   ;r31 - C stack pointer or zero register, depending on instruction
    ;; Vector registers, always available.
    v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
    v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31))
@@ -79,6 +78,12 @@ USA.
         ((register-value-class=word? register) 'GENERAL)
         ((register-value-class=float? register) 'FLOAT)
         (else (error "Unknown register type:" register))))
+
+;;; References, for machine register allocator.  Not used by LAP
+;;; syntax.
+
+;; Following assumes objects and floats have the same indexing.
+(assert (= scheme-object-width float-width 64))
 
 (define register-reference
   (let ((references (make-vector number-of-machine-registers)))
@@ -90,83 +95,20 @@ USA.
       (vector-set! references register (INST-EA (V ,(- register 32)))))
     (named-lambda (register-reference register)
       (vector-ref references register))))
-
-(define (register=? a b)
-  (= a b))
-
-(define (register->register-transfer source target)
-  (guarantee-registers-compatible source target)
-  (if (register=? source target)
-      (LAP)
-      (case (register-type source)
-        ((GENERAL)
-         (if (or (= source rsp) (= target rsp))
-             (LAP (ADD X ,target ,source (&U 0)))
-             (LAP (ORR X ,target ,source (&U 0)))))
-        ((FLOAT)
-         (LAP (FMOV D ,target ,source)))
-        (else
-         (error "Unknown register type:" source target)))))
 
 (define (pseudo-register-home register)
-  (INST-EA (OFFSET ,regnum:regs-pointer ,(register-renumber register))))
-
-(define (home->register-transfer source target)
-  (memory->register-transfer regnum:regs-pointer
-                             (pseudo-register-byte-offset source)
-                             target))
-
-(define (register->home-transfer source target)
-  (register->memory-transfer source
-                             regnum:regs-pointer
-                             (pseudo-register-byte-offset target)))
-
-(define (reference->register-transfer source target)
-  (case (ea/mode source)
-    ((R) (register->register-transfer (register-ea/register source) target))
-    ((V) (register->register-transfer (vector-ea/register source) target))
-    ((OFFSET)
-     (memory->register-transfer (offset-ea/offset source)
-                                (offset-ea/register source)
-                                target))
-    (else
-     (error "Unknown effective address mode:" source target))))
-
-(define (memory->register-transfer offset base target)
-  (case (register-type target)
-    ((GENERAL)
-     (LAP (LDR X ,target (OFFSET ,base ,offset))))
-    ((FLOAT)
-     (LAP (LDR D ,target (OFFSET ,base ,offset))))
-    (else
-     (error "Unknown register type:" target))))
-
-(define (register->memory-transfer source offset base)
-  (case (register-type source)
-    ((GENERAL)
-     (LAP (STR X ,source (OFFSET ,base ,offset))))
-    ((FLOAT)
-     (LAP (STR D ,source (OFFSET ,base ,offset))))
-    (else
-     (error "Unknown register type:" source))))
-
-;;; References, for machine register allocator.
+  (let ((number (register-renumber register)))
+    (assert number)
+    (INST-EA (HOME ,number))))
 
 (define (ea/mode ea) (car ea))
 
-(define (offset-reference register offset)
-  (INST-EA (OFFSET ,register ,offset)))
+(define (home-ea? ea)
+  (eq? 'HOME (ea/mode ea)))
 
-(define (offset-ea? ea)
-  (eq? 'OFFSET (ea/mode ea)))
-
-(define (offset-ea/register ea)
-  (guarantee offset-ea? ea)
+(define (home-ea/index ea)
+  (guarantee home-ea? ea)
   (cadr ea))
-
-(define (offset-ea/offset ea)
-  (guarantee offset-ea? ea)
-  (caddr ea))
 
 (define (register-ea? ea)
   (eq? 'R (ea/mode ea)))
@@ -181,6 +123,53 @@ USA.
 (define (vector-ea/register ea)
   (guarantee vector-ea? ea)
   (cadr ea))
+
+(define (register=? a b)
+  (= a b))
+
+(define (register->register-transfer source target)
+  (guarantee-registers-compatible source target)
+  (if (register=? source target)
+      (LAP)
+      (case (register-type source)
+        ((GENERAL)
+         (if (or (= source rsp) (= target rsp))
+             (LAP (ADD X ,target ,source (&U 0)))
+             (LAP (ORR X ,target Z ,source))))
+        ((FLOAT)
+         (LAP (FMOV D ,target ,source)))
+        (else
+         (error "Unknown register type:" source target)))))
+
+(define (spill-ea index)
+  ;; XXX fix register block indexing
+  (regblock-ea (+ 16 80 index)))
+
+(define (home->register-transfer register alias)
+  (load-register alias (spill-ea (register-renumber register))))
+
+(define (register->home-transfer alias register)
+  (store-register alias (spill-ea (register-renumber register))))
+
+(define (reference->register-transfer source target)
+  (case (ea/mode source)
+    ((R) (register->register-transfer (register-ea/register source) target))
+    ((V) (register->register-transfer (vector-ea/register source) target))
+    ((HOME) (load-register target (spill-ea (home-ea/index source))))
+    (else
+     (error "Unknown effective address mode:" source target))))
+
+(define (load-register register ea)
+  (case (register-type register)
+    ((GENERAL) (LAP (LDR X ,register ,ea)))
+    ((FLOAT) (LAP (LDR D ,register ,ea)))
+    (else (error "Unknown register type:" register))))
+
+(define (store-register register ea)
+  (case (register-type register)
+    ((GENERAL) (LAP (STR X ,register ,ea)))
+    ((FLOAT) (LAP (STR D ,register ,ea)))
+    (else (error "Unknown register type:" register))))
 
 ;;; Utilities
 
@@ -272,40 +261,26 @@ USA.
 
 (define (pop register)
   (LAP (LDR X ,register
-            (POST+ ,regnum:stack-pointer ,address-units-per-object))))
+            (POST+ ,regnum:stack-pointer
+		   (& ,(* address-units-per-object 1))))))
 
 (define (push register)
   (LAP (STR X ,register
-            (PRE- ,regnum:stack-pointer ,address-units-per-object))))
+            (PRE+ ,regnum:stack-pointer
+		  (& ,(* address-units-per-object -1))))))
 
 (define (pop2 reg1 reg2)
   ;; (LAP ,@(pop reg1) ,@(pop reg2))
-  (LAP (LDRP X ,reg1 ,reg2
-             (POST+ ,regnum:stack-pointer
-                    ,(* 2 address-units-per-object)))))
+  (LAP (LDP X ,reg1 ,reg2
+	    (POST+ ,regnum:stack-pointer
+		   (& (* ,address-units-per-object 2))))))
 
 (define (push2 reg1 reg2)
   ;; (LAP ,@(push reg2) ,@(push reg1))
-  (LAP (STRP X ,reg2 ,reg1
-             (PRE- ,regnum:stack-pointer ,(* 2 address-units-per-object)))))
+  (LAP (STP X ,reg2 ,reg1
+	    (PRE+ ,regnum:stack-pointer
+		  (& (* ,address-units-per-object -2))))))
 
-(define (fits-in-unsigned-12? x)
-  (<= 0 x #xfff))
-
-(define (fits-in-unsigned-16? x)
-  (<= 0 x #xffff))
-
-(define (fits-in-unsigned-32? x)
-  (<= 0 x #xffffffff))
-
-(define (fits-in-unsigned-48? x)
-  (<= 0 x #xffffffffffff))
-
-;; XXX doesn't belong here
-
-(define-integrable type-code:fixnum #x1a)
-(define-integrable type-code:manifest-closure #x0d)
-
 (define (scale->shift scale)
   (case scale
     ((1) 0)
@@ -324,6 +299,21 @@ USA.
     (lambda (target base offset)
       (LAP (ADD X ,target ,base (LSL ,offset ,(scale->shift scale)))))))
 
+(define (load-pc-relative-address target label)
+  (LAP (ADR X ,target (@PCR ,label ,regnum:scratch-0))))
+
+(define (load-pc-relative target label)
+  (LAP ,@(load-pc-relative-address target label)
+       (LDR X ,target ,target)))
+
+(define (load-tagged-immediate target type datum)
+  (load-unsigned-immediate target (make-non-pointer-literal type datum)))
+
+(define (load-constant target object)
+  (if (non-pointer-object? object)
+      (load-unsigned-immediate target (non-pointer->literal object))
+      (load-pc-relative target (constant->label object))))
+
 (define (load-signed-immediate target imm)
   (load-unsigned-immediate target (bitwise-and imm #xffffffffffffffff)))
 
@@ -338,10 +328,11 @@ USA.
         (try-shift imm 32)
         (try-shift imm 48)))
   (define (chunk16 pos)
-    (bitwise-and (shift-right imm 16) pos))
+    (bitwise-and (shift-right imm pos) #xffff))
   (cond ((find-shift imm)
          => (lambda (shift)
-              (LAP (MOVZ X ,target (LSL (&U ,imm) ,shift)))))
+              (LAP (MOVZ X ,target
+			 (LSL (&U ,(shift-right imm shift)) ,shift)))))
         ((find-shift (bitwise-not imm))
          => (lambda (shift)
               (LAP (MOVN X ,target (LSL (&U ,(bitwise-not imm)) ,shift)))))
@@ -364,21 +355,10 @@ USA.
 	      (MOVK X ,target (LSL (&U ,(chunk16 32)) 32))
 	      (MOVK X ,target (LSL (&U ,(chunk16 48)) 48))))))
 
-(define (load-pc-relative-address target label)
-  ;; XXX What happens if label is >1 MB away?
-  (LAP (ADR X ,target (@PCR ,label))))
-
-(define (load-pc-relative target label)
-  (LAP ,@(load-pc-relative-address target label)
-       (LDR X ,target ,target)))
-
-(define (load-tagged-immediate target type datum)
-  (load-unsigned-immediate target (make-non-pointer-literal type datum)))
-
-(define (load-constant target object)
-  (if (non-pointer-object? object)
-      (load-unsigned-immediate target (non-pointer->literal object))
-      (load-pc-relative target (constant->label object))))
+(define (logical-immediate? x)
+  x
+  ;; XXX
+  #f)
 
 (define (add-immediate target source imm)
   (define (add addend) (LAP (ADD X ,target ,source ,addend)))
@@ -401,16 +381,16 @@ USA.
   (cond ((fits-in-unsigned-12? imm)
          (add `(&U ,imm)))
         ((and (zero? (bitwise-and imm (bit-mask 12 0)))
-              (fits-in-unsigned-12? (shift-right immediate 12)))
+              (fits-in-unsigned-12? (shift-right imm 12)))
          (add `(&U ,imm LSL 12)))
-        ((fits-in-unsigned-12? (- immediate))
-         (sub `(&U ,(- immediate))))
+        ((fits-in-unsigned-12? (- imm))
+         (sub `(&U ,(- imm))))
         ((and (zero? (bitwise-and imm (bit-mask 12 0)))
-              (fits-in-unsigned-12? (shift-right (- immediate) 12)))
-         (sub `(&U ,(- immediate) LSL 12)))
+              (fits-in-unsigned-12? (shift-right (- imm) 12)))
+         (sub `(&U ,(- imm) LSL 12)))
         (else
          (let ((temp (allocate-temporary-register! 'GENERAL)))
-           (LAP ,@(load-unsigned-immediate temp immediate)
+           (LAP ,@(load-unsigned-immediate temp imm)
                 ,@(add temp))))))
 
 (define (affix-type target type datum)
@@ -423,13 +403,7 @@ USA.
         ((logical-immediate? (make-non-pointer-literal type 0))
          ;; Works for tags with only contiguous one bits, including
          ;; tags with only one bit set.
-         (LAP (ORR ,target ,datum (&U ,(make-non-pointer-literal type 0)))))
-        ((fits-in-unsigned-12?
-          (shift-left type (- scheme-datum-width 48)))
-         ;; Works for 2-bit tags.
-         (let ((imm (shift-left type (- scheme-datum-width 48)))
-               (shift 48))
-           (LAP (ADD ,target ,datum (LSL (&U ,imm) ,shift)))))
+         (LAP (ORR X ,target ,datum (&U ,(make-non-pointer-literal type 0)))))
         (else
          ;; Works for all tags up to 16 bits, but costs two
          ;; instructions.
@@ -438,8 +412,8 @@ USA.
          ;; could use a single MOVK instruction.
          (let ((imm (shift-left type (- 16 scheme-type-width)))
                (shift 48))
-           (LAP (MOVZ ,target (LSL (&U ,imm) ,shift))
-                (ORR ,target ,target ,datum))))))
+           (LAP (MOVZ X ,target (LSL (&U ,imm) ,shift))
+                (ORR X ,target ,target ,datum))))))
 
 (define (object->type target source)
   (let ((lsb scheme-datum-width)
@@ -468,9 +442,12 @@ USA.
   (LAP (ENTRY-POINT ,label)
        ,@(make-external-label expression-code-word label)))
 
+(define entry-padding-bit-string
+  (unsigned-integer->bit-string 32 0))
+
 (define (make-external-label type/arity label)
   (set! *external-labels* (cons label *external-labels*))
-  (LAP (PADDING 32 64 0)
+  (LAP (PADDING 32 64 ,entry-padding-bit-string)
        (EXTERNAL-LABEL ,type/arity ,label)
        (DATA 64 U 0)
        (LABEL ,label)))
@@ -483,34 +460,20 @@ USA.
 
 ;;;; Named registers, codes, and entries
 
-(define reg:memtop
-  (offset-reference regnum:regs-pointer
-                    register-block/memtop-offset))
+(define (regblock-ea offset)
+  ;; LDR/STR operand.
+  (INST-EA (+ ,regnum:regs-pointer (&U (* 8 ,offset)))))
 
-(define reg:environment
-  (offset-reference regnum:regs-pointer
-                    register-block/environment-offset))
-
+(define reg:memtop (regblock-ea register-block/memtop-offset))
+(define reg:environment (regblock-ea register-block/environment-offset))
 (define reg:lexpr-primitive-arity
-  (offset-reference regnum:regs-pointer
-                    register-block/lexpr-primitive-arity-offset))
-
-(define reg:stack-guard
-  (offset-reference regnum:regs-pointer
-                    register-block/stack-guard-offset))
-
-(define reg:int-mask
-  (offset-reference regnum:regs-pointer
-                    register-block/int-mask-offset))
-
-(define reg:int-code
-  (offset-reference regnum:regs-pointer
-                    register-block/int-code-offset))
-
+  (regblock-ea register-block/lexpr-primitive-arity-offset))
+(define reg:stack-guard (regblock-ea register-block/stack-guard-offset))
+(define reg:int-mask (regblock-ea register-block/int-mask-offset))
+(define reg:int-code (regblock-ea register-block/int-code-offset))
 (define reg:reflect-to-interface
-  (offset-reference regnum:regs-pointer
-                    register-block/reflect-to-interface-offset))
-
+  (regblock-ea register-block/reflect-to-interface-offset))
+
 (define-syntax define-codes
   (sc-macro-transformer
    (lambda (form environment)
@@ -565,7 +528,7 @@ USA.
   quotient
   remainder
   modulo)
-
+
 (define-syntax define-entries
   (sc-macro-transformer
    (lambda (form environment)
@@ -621,7 +584,7 @@ USA.
   apply-setup-size-7
   apply-setup-size-8
   set-interrupt-enables!)
-
+
 (define-integrable (invoke-hook entry)
   (LAP (LDR X ,regnum:scratch-0 (+ ,regnum:regs-pointer (&U (* 8 ,entry))))
        (BR ,regnum:scratch-0)))
@@ -689,11 +652,3 @@ USA.
                           (determine-interrupt-checks (edge-right-node edge)))
                         (rgraph-entry-edges rgraph)))
             rgraphs))
-
-;; XXX
-
-(define (back-end:object-type object)
-  (object-type object))
-
-(define (back-end:object-datum object)
-  (object-datum object))

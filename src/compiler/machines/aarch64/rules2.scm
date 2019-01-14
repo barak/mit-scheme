@@ -85,18 +85,6 @@ USA.
     (LAP (LSR X ,temp (&U ,(- scheme-datum-width 1)))
          (CMP X ,temp (&U ,(* 2 type-code:fixnum))))))
 
-(define (set-equal-branches!)
-  (set-current-branches! (lambda (label) (LAP (B.EQ (@PCR ,label))))
-                         (lambda (label) (LAP (B.NE (@PCR ,label))))))
-
-(define (set-not-equal-branches!)
-  (set-current-branches! (lambda (label) (LAP (B.NE (@PCR ,label))))
-                         (lambda (label) (LAP (B.EQ (@PCR ,label))))))
-
-(define (set-equal-zero-branches! source)
-  (set-current-branches! (lambda (label) (LAP (CBZ ,source (@PCR ,label))))
-                         (lambda (label) (LAP (CBNZ ,source (@PCR ,label))))))
-
 (define (zero-test! register)
   (set-equal-zero-branches! register)
   (LAP))
@@ -110,3 +98,35 @@ USA.
       (begin
         (set-equal-branches!)
         (cmp-immediate register immediate))))
+
+(define (set-always-branches!)
+  (set-current-branches!
+   (lambda (label) (LAP (B (@PCR ,label ,regnum:scratch-0))))
+   (lambda (label) label (LAP))))
+
+(define (set-never-branches!)
+  (set-current-branches!
+   (lambda (label) label (LAP))
+   (lambda (label) (LAP (B (@PCR ,label ,regnum:scratch-0))))))
+
+(define (set-equal-zero-branches! source)
+  (set-current-branches!
+   (lambda (label) (LAP (CBZ X ,source (@PCR ,label ,regnum:scratch-0))))
+   (lambda (label) (LAP (CBNZ X ,source (@PCR ,label ,regnum:scratch-0))))))
+
+(define (set-condition-branches! cc ~cc)
+  (set-current-branches!
+   (lambda (label) (LAP (B. ,cc (@PCR ,label ,regnum:scratch-0))))
+   (lambda (label) (LAP (B. ,~cc (@PCR ,label ,regnum:scratch-0))))))
+
+(define (set-carry-branches!)
+  (set-condition-branches! 'CS 'CC))
+
+(define (set-overflow-branches!)
+  (set-condition-branches! 'VS 'VC))
+
+(define (set-equal-branches!)
+  (set-condition-branches! 'EQ 'NE))
+
+(define (set-not-equal-branches!)
+  (set-condition-branches! 'NE 'EQ))
