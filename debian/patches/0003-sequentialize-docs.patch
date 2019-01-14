@@ -10,7 +10,7 @@ diff --git a/doc/make-common.in b/doc/make-common.in
 index 1d59446..af2c036 100644
 --- a/doc/make-common.in
 +++ b/doc/make-common.in
-@@ -134,5 +134,8 @@ install-pdf: $(PDF_TARGET)
+@@ -135,5 +135,8 @@ install-pdf: $(PDF_TARGET)
  install-ps: $(PS_TARGET)
  	$(INSTALL_DATA) $(PS_TARGET) $(DESTDIR)$(psdir)/.
  
