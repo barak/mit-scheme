@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018 Massachusetts Institute of Technology
+    2017, 2018, 2019 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -160,17 +160,11 @@ USA.
 	  ((%record-type-proxy? marker) (%proxy->record-type marker))
 	  (else #f))))
 
-;; Temporary definition for cold load.
 (define (%record-type<= t1 t2)
   (or (eq? t1 t2)
       (let ((parent (%record-type-parent t1)))
 	(and parent
 	     (%record-type<= parent t2)))))
-
-(defer-boot-action 'predicate-relations
-  (lambda ()
-    (set! %record-type<= dispatch-tag<=)
-    unspecific))
 
 (define %record-metatag)
 (define record-type?)

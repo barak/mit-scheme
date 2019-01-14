@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018 Massachusetts Institute of Technology
+    2017, 2018, 2019 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -62,6 +62,7 @@ USA.
 (define byte0-index
   (fix:* 2 (bytes-per-object)))
 
+(declare (integrate-operator string?))
 (define (string? object)
   (or (object-type? (ucode-type string) object)
       (bytevector? object)
@@ -75,12 +76,13 @@ USA.
 (define-integrable (%string-length string)
   (primitive-datum-ref string 1))
 
-(define (string-ref string index)
+(define-integrable (string-ref string index)
   (integer->char (vector-8b-ref string index)))
 
-(define (string-set! string index char)
+(define-integrable (string-set! string index char)
   (vector-8b-set! string index (char->integer char)))
 
+(declare (integrate-operator vector-8b-ref))
 (define (vector-8b-ref string index)
   (if (not (string? string))
       (error:not-a string? string 'vector-8b-ref))
@@ -90,6 +92,7 @@ USA.
       (error:bad-range-argument index 'vector-8b-ref))
   (primitive-byte-ref string (fix:+ byte0-index index)))
 
+(declare (integrate-operator vector-8b-set!))
 (define (vector-8b-set! string index u8)
   (if (not (string? string))
       (error:not-a string? string 'vector-8b-set!))
@@ -97,7 +100,7 @@ USA.
       (error:not-a index-fixnum? index 'vector-8b-set!))
   (if (not (fix:< index (%string-length string)))
       (error:bad-range-argument index 'vector-8b-set!))
-  (if (not (u8? u8))
+  (if (not (and (index-fixnum? u8) (fix:<= u8 #xff)))
       (error:not-a u8? u8 'vector-8b-set!))
   (primitive-byte-set! string (fix:+ byte0-index index) u8))
 

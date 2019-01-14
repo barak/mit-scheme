@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018 Massachusetts Institute of Technology
+    2017, 2018, 2019 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1349,14 +1349,11 @@ USA.
    (set-equality-predicate-properties! equal? hash-by-equal #t)
    (set-equality-predicate-properties! string=? string-hash #f)
    (set-equality-predicate-properties! string-ci=? string-ci-hash #f)
-   (set-equality-predicate-properties! int:= int:modulo #f)))
+   (set-equality-predicate-properties! int:= int:modulo #f)
+   (register-predicate! equality-predicate? 'equality-predicate)))
 
 (define (equality-predicate-keylist equality-predicate)
-  (let ((props (%equality-predicate-properties equality-predicate #f)))
-    (if (not props)
-        (error:not-a equality-predicate? equality-predicate
-		     'equality-predicate-keylist))
-    props))
+  (%equality-predicate-properties equality-predicate '()))
 
 (define (equality-predicate-property-names equality-predicate)
   (let loop ((keylist (equality-predicate-keylist equality-predicate)))
@@ -1364,14 +1361,25 @@ USA.
 	(cons (car keylist) (loop (cddr keylist)))
 	'())))
 
-(define (equality-predicate-property equality-predicate name)
-  (get-keyword-value (equality-predicate-keylist equality-predicate) name))
+(define (equality-predicate-property equality-predicate name
+				     #!optional default-value)
+  (let ((value
+	 (get-keyword-value (equality-predicate-keylist equality-predicate)
+			    name)))
+    (if (default-object? value)
+	(begin
+	  (if (default-object? default-value)
+	      (error "Equality predicate missing property" name))
+	  default-value)
+	value)))
 
 (define (equality-predicate-hasher equality-predicate)
   (equality-predicate-property equality-predicate 'hasher))
 
 (define (equality-predicate-rehash-after-gc? equality-predicate)
-  (equality-predicate-property equality-predicate 'rehash-after-gc?))
+  (equality-predicate-property equality-predicate
+			       'rehash-after-gc?
+			       #t))
 
 (define (set-equality-predicate-properties! equality-predicate hasher
 					    rehash-after-gc? . keylist)
