@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018 Massachusetts Institute of Technology
+    2017, 2018, 2019 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,19 +30,32 @@ USA.
 
 (define-test 'simple
   (lambda ()
-    (define foo? (make-bundle-predicate 'foo))
-    (assert-true (bundle-predicate? foo?))
+    (define (x) 10)
+    (define (y) 20)
+    (define (z) 40)
 
-    (let ((x 10)
-	  (y 20)
-	  (z 40))
-      (let ((b (bundle foo? x y z)))
-	(assert-true (foo? b))
-	(assert-eqv (bundle-ref b 'x) x)
-	(assert-eqv (bundle-ref b 'y) y)
-	(assert-eqv (bundle-ref b 'z) z)
-	(assert-eqv (bundle-ref b 'w #f) #f)
-	(assert-error (lambda () (bundle-ref foo 'w)))))))
+    (define (simple-tests b)
+      (assert-true (bundle? b))
+      (assert-eqv (bundle-ref b 'x) x)
+      (assert-eqv (bundle-ref b 'y) y)
+      (assert-eqv (bundle-ref b 'z) z)
+      (assert-eqv (bundle-ref b 'w #f) #f)
+
+      (assert-eqv (b 'x) (x))
+      (assert-eqv (b 'y) (y))
+      (assert-eqv (b 'z) (z))
+      (assert-error (lambda () (b 'w))))
+
+    (simple-tests (bundle #f x y z))
+
+    (assert-true (bundle-predicate? bundle?))
+    (simple-tests (bundle bundle? x y z))
+
+    (let ((predicate (make-bundle-predicate 'foo)))
+      (assert-true (bundle-predicate? predicate))
+      (let ((b (bundle predicate x y z)))
+	(assert-true (predicate b))
+	(simple-tests b)))))
 
 (define-test 'metadata-table
   (lambda ()

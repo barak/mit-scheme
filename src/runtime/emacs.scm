@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018 Massachusetts Institute of Technology
+    2017, 2018, 2019 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -178,22 +178,21 @@ USA.
 
 (define (emacs/gc-start port)
   (output-port/flush-output port)
-  (cwb (output-port-channel port) gc-start-bytes))
+  (cwb console-output-channel gc-start-bytes))
 
 (define (emacs/gc-finish port)
-  (cwb (output-port-channel port) gc-end-bytes))
+  (declare (ignore port))
+  (cwb console-output-channel gc-end-bytes))
 
 (define (transmit-signal port type)
-  (let ((channel (output-port-channel port))
-	(buffer (string->utf8 (string #\esc type))))
+  (let ((buffer (string->utf8 (string #\esc type))))
     (output-port/flush-output port)
     (with-absolutely-no-interrupts
      (lambda ()
-       (cwb channel buffer)))))
+       (cwb console-output-channel buffer)))))
 
 (define (transmit-signal-with-argument port type string)
-  (let ((channel (output-port-channel port))
-	(buffer
+  (let ((buffer
 	 (let ((builder (bytevector-builder)))
 	   (builder (char->integer #\esc))
 	   (builder (char->integer type))
@@ -203,7 +202,7 @@ USA.
     (output-port/flush-output port)
     (with-absolutely-no-interrupts
      (lambda ()
-       (cwb channel buffer)))))
+       (cwb console-output-channel buffer)))))
 
 (define (cwb channel bytes)
   ;; This is a private copy of CHANNEL-WRITE-BLOCK that bypasses all
@@ -226,6 +225,7 @@ USA.
 
 (define gc-start-bytes)
 (define gc-end-bytes)
+(define console-output-channel)
 (define vanilla-console-port-type)
 (define emacs-console-port-type)
 
@@ -236,6 +236,7 @@ USA.
   (set! gc-end-bytes
 	(bytevector (char->integer #\esc)
 		    (char->integer #\e)))
+  (set! console-output-channel (output-port-channel the-console-port))
   (set! vanilla-console-port-type (textual-port-type the-console-port))
   (set! emacs-console-port-type
 	(make-textual-port-type

@@ -2,8 +2,8 @@
 
 Load the X11-Screen option. |#
 
-(load-option 'X11)
-(load-option 'Edwin)
+(load-option 'x11)
+(load-option 'edwin)
 (with-loader-base-uri (system-library-uri "x11-screen/")
   (lambda ()
     (load-package-set "x11-screen")))
