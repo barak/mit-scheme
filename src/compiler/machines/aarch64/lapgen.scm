@@ -393,9 +393,7 @@ USA.
            (LAP ,@(load-unsigned-immediate temp imm)
                 ,@(add temp))))))
 
-(define (affix-type target type datum)
-  ;; Note: This must NOT use regnum:scratch-0 or regnum:scratch-1!
-  ;; This is used by closure headers to tag the incoming entry.
+(define (affix-type target type datum get-temporary)
   (assert (<= scheme-type-width 16))
   (assert (<= 48 scheme-datum-width))
   (cond ((zero? type)
@@ -410,10 +408,11 @@ USA.
          ;;
          ;; XXX If we know the top few bits of the datum are zero, we
          ;; could use a single MOVK instruction.
-         (let ((imm (shift-left type (- 16 scheme-type-width)))
+         (let ((temp (if (= target datum) (get-temporary) target))
+               (imm (shift-left type (- 16 scheme-type-width)))
                (shift 48))
-           (LAP (MOVZ X ,target (LSL (&U ,imm) ,shift))
-                (ORR X ,target ,target ,datum))))))
+           (LAP (MOVZ X ,temp (LSL (&U ,imm) ,shift))
+                (ORR X ,target ,temp ,datum))))))
 
 (define (object->type target source)
   (let ((lsb scheme-datum-width)

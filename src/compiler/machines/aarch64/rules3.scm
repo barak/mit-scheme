@@ -527,7 +527,8 @@ USA.
       (LAP ,@(make-external-label internal-entry-code-word external-label)
            ;; regnum:applicand holds the untagged entry address.
            ;; Push and tag it.
-           ,@(affix-type regnum:applicand type regnum:applicand)
+           ,@(affix-type regnum:applicand type regnum:applicand
+                         (lambda () regnum:scratch-0))
            ,@(push regnum:applicand)
           (LABEL ,internal-label)))
     (cond ((zero? nentries)
@@ -602,7 +603,8 @@ USA.
          ;; offsets without pre/post-increment.
          ,@(add-immediate Free Free (* 8 size))
          ;; Set the last component to be the relocation reference point.
-         ,@(affix-type temp type-code:compiled-entry target)
+         ,@(affix-type temp type-code:compiled-entry target
+                       (lambda () (allocate-temporary-register! 'GENERAL)))
          (STR X ,temp (POST+ ,Free (& 8))))))
 
 (define (generate/cons-multiclosure target nentries size entries)
@@ -639,7 +641,8 @@ USA.
          ;; offsets without pre/post-increment.
          ,@(add-immediate Free Free (* 8 size))
          ;; Set the last component to be the relocation reference point.
-         ,@(affix-type temp type-code:compiled-entry target)
+         ,@(affix-type temp type-code:compiled-entry target
+                       (lambda () (allocate-temporary-register! 'GENERAL)))
          (STR X ,temp (POST+ ,Free (& 8))))))
 
 (define (generate-closure-entry label padding min max offset temp)
