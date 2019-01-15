@@ -35,7 +35,7 @@ USA.
 ;;;   (&U ...) 3), or (&U (LSL ... 3))?
 
 (define-instruction EXTERNAL-LABEL
-  (((? type/arity) (? label))
+  (((? type/arity unsigned-16) (? label))
    (if (eq? endianness 'BIG)
        (BITS (16 label BLOCK-OFFSET)
              (16 type/arity))
@@ -156,7 +156,8 @@ USA.
                   (@PCO (* 4 (? offset))))
                (BITS (1 (shift-right bit 5))
                      (6 #b011011)
-                     (5 (bitwise-and bit #b1111))
+                     (1 ,op)
+                     (5 (bitwise-and bit #b11111))
                      (14 offset)
                      (5 Rt)))
               (((? sf)
@@ -749,6 +750,98 @@ USA.
         (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
         (MACRO 32 (LDR X ,Rt ,temp)))))))
 
+;;; C3.2.3 Load/Store Pair
+
+(let-syntax
+    ((define-load/store-pair-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic L) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              ;; Zero offset.
+              (((? sf sf-size)
+                (? Rt1 register-31=z)
+                (? Rt2 register-31=z)
+                (? Rn register-31=sp))
+               (BITS (1 sf)
+                     (1 0)              ;opc[1]
+                     (3 #b101)
+                     (1 0)
+                     (1 0)
+                     (2 #b10)
+                     (1 ,L)
+                     (7 0)              ;offset=0
+                     (5 Rt2)
+                     (5 Rn)
+                     (5 Rt1)))
+              ;; Signed offset, 32-bit operand size.
+              ((W (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  (+ (? Rn register-31=sp)) (& (* 4 (? imm signed-7))))
+               (BITS (1 0)              ;sf=0, 32-bit operand size
+                     (1 0)              ;opc[1]
+                     (3 #b101)
+                     (1 0)
+                     (1 0)
+                     (2 #b10)
+                     (1 ,L)
+                     (7 imm SIGNED)
+                     (5 Rt2)
+                     (5 Rn)
+                     (5 Rt1)))
+
+              ;; Signed offset, 64-bit operand size.
+              ((X (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  (+ (? Rn register-31=sp)) (& (* 8 (? imm signed-7))))
+               (BITS (1 1)              ;sf=1, 64-bit operand size
+                     (1 0)              ;opc[1]
+                     (3 #b101)
+                     (1 0)
+                     (1 0)
+                     (2 #b10)
+                     (1 ,L)
+                     (7 imm SIGNED)
+                     (5 Rt2)
+                     (5 Rn)
+                     (5 Rt1)))
+              ;; Pre/post-index signed offset.
+              ((W (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  ((? pre/post load/store-pre/post-index)
+                   (? Rn register-31=sp)
+                   (& (* 4 (? imm signed-7)))))
+               (BITS (1 0)              ;sf=0, 32-bit operand size
+                     (1 0)              ;opc[1]
+                     (3 #b101)
+                     (1 0)
+                     (1 0)
+                     (2 pre/post)
+                     (1 ,L)
+                     (7 imm SIGNED)
+                     (5 Rt2)
+                     (5 Rn)
+                     (5 Rt1)))
+              ((X (? Rt1 register-31=z)
+                  (? Rt2 register-31=z)
+                  ((? pre/post load/store-pre/post-index)
+                   (? Rn register-31=sp)
+                   (& (* 8 (? imm signed-7)))))
+               (BITS (1 1)              ;sf=1, 64-bit operand size
+                     (1 0)              ;opc[1]
+                     (3 #b101)
+                     (1 0)
+                     (1 0)
+                     (2 pre/post)
+                     (1 ,L)
+                     (7 imm SIGNED)
+                     (5 Rt2)
+                     (5 Rn)
+                     (5 Rt1)))))))))
+  (define-load/store-pair-instruction LDP 1)
+  (define-load/store-pair-instruction STP 0))
+
 ;;; C3.2.9 Load/Store scalar SIMD and floating-point
 
 (let-syntax
@@ -889,11 +982,13 @@ USA.
                      (3 #b111)
                      (1 1)              ;SIMD/FP
                      (2 #b00)
-                     (1 sz LOAD/STORE-SIMD/FP-OPCHI)
+                     (1 sz LOAD/STORE-SIMD/FP-OPCHI) ;opc[1]
                      (1 ,load/store)    ;opc[0]
+                     (1 1)
                      (5 Rm)
                      (3 #b011)          ;option=LSL
                      (1 0)              ;shift=0
+                     (2 #b10)
                      (5 Rn)
                      (5 Vt)))
               ;; LDR register, SIMD&FP (B), (C7.2.178)
@@ -1027,7 +1122,7 @@ USA.
 ;; assemble into a possibly different instruction.
 
 (define-instruction LDRS
-  ;; Immediate, zero unsigned offset
+  ;; Immediate, zero offset (C6.2.127, C6.2.129, C6.2.131)
   (((? size load-signed-size)
     (? opc load-signed-opc)
     (? Rt register-31=z)
@@ -1040,7 +1135,7 @@ USA.
          (12 0)                         ;imm12
          (5 Rn)
          (5 Rt)))
-  ;; Immediate, unsigned offset
+  ;; Immediate, unsigned offset (C6.2.127, C6.2.129, C6.2.131)
   (((? size load-signed-size)
     (? opc load-signed-opc)
     (? Rt register-31=z)
@@ -1053,7 +1148,7 @@ USA.
          (12 offset)                    ;imm12
          (5 Rn)
          (5 Rt)))
-  ;; Pre/post-indexed signed offset
+  ;; Pre/post-indexed signed offset (C6.2.127, C6.2.129, C6.2.131)
   (((? opc load-signed-opc)
     (? size load-signed-size)
     (? Rt register-31=z)
@@ -1071,7 +1166,7 @@ USA.
          (5 Rn)
          (5 Rt)))
 
-  ;; Register, no extend
+  ;; Register, no extend (C6.2.128, C6.2.130, C6.2.132)
   (((? size load-signed-size)
     (? opc load-signed-opc)
     (? Rt register-31=z)
@@ -1086,9 +1181,10 @@ USA.
          (5 Rm)
          (3 #b011)                      ;option=LSL
          (1 0)                          ;shift=0
+         (2 #b10)
          (5 Rn)
          (5 Rt)))
-  ;; Extended register
+  ;; Extended register (C6.2.128, C6.2.130, C6.2.132)
   (((? size load-signed-size)
     (? opc load-signed-opc)
     (? Rt register-31=z)
@@ -1108,7 +1204,7 @@ USA.
          (2 #b10)
          (5 Rn)
          (5 Rt)))
-  ;; Literal -- only loading W into X.
+  ;; Literal -- only loading W into X (C6.2.132)
   ((X W (? Rt register-31=z) (@PCO (* 4 (? offset signed-19))))
    (BITS (2 #b10)                       ;opc
          (3 #b011)
@@ -1118,11 +1214,530 @@ USA.
          (5 Rt)))
   ((X W (? Rt register-31=z) (@PCR (? label) (? temp register<31)))
    (VARIABLE-WIDTH offset `(/ (- ,label *PC*) 4)
-       ((#x-40000 #x3ffff)
-        (MACRO 32 (LDRS ,Rt (@PCO (* 4 ,offset)))))
-       ((#x-100000000 #xffffffff)
-        (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
-        (MACRO 32 (LDRS ,Rt ,temp))))))
+     ((#x-40000 #x3ffff)
+      (MACRO 32 (LDRS ,Rt (@PCO (* 4 ,offset)))))
+     ((#x-100000000 #xffffffff)
+      (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
+      (MACRO 32 (LDRS ,Rt ,temp))))))
+
+;;; C3.3 and C3.4: Data processing - immediate and register
+
+;;; C3.3.3 Move (wide immediate)
+
+(let-syntax
+    ((define-move-wide-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic opc) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              (((? sf sf-size)
+                (? Rd register-31=z)
+                (&U (? imm unsigned-16)))
+               (BITS (1 sf)
+                     (2 ,opc)
+                     (1 1)
+                     (4 #b0010)
+                     (1 1)
+                     (2 0)              ;hw shift=0
+                     (16 imm)
+                     (5 Rd)))
+              ((W (? Rd register-31=z)
+                  (LSL (&U (? imm unsigned-16)) (? hw hw-shift32)))
+               (BITS (1 0)              ;sf=0, 32-bit operand size
+                     (2 ,opc)
+                     (1 1)
+                     (4 #b0010)
+                     (1 1)
+                     (2 hw)
+                     (16 imm)
+                     (5 Rd)))
+              ((X (? Rd register-31=z)
+                  (LSL (&U (? imm unsigned-16)) (? hw hw-shift64)))
+               (BITS (1 1)              ;sf=1, 64-bit operand size
+                     (2 ,opc)
+                     (1 1)
+                     (4 #b0010)
+                     (1 1)
+                     (2 hw)
+                     (16 imm)
+                     (5 Rd)))))))))
+  ;; Move wide with NOT
+  (define-move-wide-instruction MOVN #b00)
+  ;; Move wide with zero
+  (define-move-wide-instruction MOVZ #b10)
+  ;; Move wide with keep
+  (define-move-wide-instruction MOVK #b11))
+
+;;; C3.3.5 PC-relative address calculation
+
+(define-instruction ADR
+  ((X (? Rd register-31=z) (@PCO (? offset signed-21)))
+   (BITS (1 0)                          ;op=ADR, byte offset
+         (2 (bitwise-and offset #b11))
+         (1 1)
+         (4 #b0000)
+         (19 (shift-right offset 2) SIGNED)
+         (5 Rd)))
+  ((X (? Rd) (@PCR (? label) (? temp register<31)))
+   (VARIABLE-WIDTH offset `(- ,label *PC*)
+     ((#x-100000 #xfffff)               ;21-bit signed _byte_ offset
+      (MACRO 32 (ADR X ,Rd (@PCO ,offset))))
+     ((#x-100000000 #xffffffff)         ;33-bit signed _byte_ offset
+      (MACRO 64 (ADRP-ADD X ,Rd (@PCO ,offset)))))))
+
+(define-instruction ADRP
+  ((X (? Rd register-31=z) (@PCO (LSL (? offset signed-21) 12)))
+   (BITS (1 1)                          ;op=ADRP, page offset
+         (2 (bitwise-and offset #b11))
+         (1 1)
+         (4 #b0000)
+         (19 (shift-right offset 2) SIGNED)
+         (5 Rd)))
+  ((X (? Rd) (@PCR (? label)))
+   (MACRO 32 (ADRP X ,Rd (@PCO ,`(QUOTIENT (- ,label *PC*) #x1000))))))
+
+;; Macro used for assembling variable-width instructions which can't
+;; just defer to the variable-width ADR because we prohibit variable
+;; width within variable width.
+
+(define-instruction ADRP-ADD
+  ((X (? Rd) (@PCO (? offset signed-33)))
+   (MACRO 32 (ADRP X ,Rd (@PCO (LSL ,(shift-right offset 12) 12)))) ;(*)
+   (MACRO 32 (ADD X ,Rd ,Rd (&U ,(bitwise-and offset #xfff))))))
+
+;;; C3.3.2 Logical (immediate) and C3.4.5 Logical (shifted register)
+
+(let-syntax
+    ((define-logical-instruction
+       (sc-macro-transformer
+        (lambda (form environment)
+          environment
+          (receive (mnemonic opc register-31=dst Rd) (apply values (cdr form))
+            `(define-instruction ,mnemonic
+               ;; Immediate, 32-bit operand size
+               ((W ,@(if Rd '() `((? Rd ,register-31=dst)))
+                   (? Rn register-31=z)
+                   (&U (? imm logical-imm-32)))
+                (BITS (1 0)           ;sf=0, 32-bit operand size
+                      (2 ,opc)
+                      (1 1)
+                      (4 #b0010)
+                      (1 0)
+                      (1 0)           ;N=0
+                      (6 imm BITMASK32-IMMR)
+                      (6 imm BITMASK32-IMMS)
+                      (5 Rn)
+                      (5 ,(or Rd 'Rd))))
+               ;; Immediate, 64-bit operand size
+               ((X ,@(if Rd '() '((? Rd register-31=sp)))
+                   (? Rn register-31=z)
+                   (&U (? imm logical-imm-64)))
+                (BITS (1 1)           ;sf=1, 64-bit operand size
+                      (2 ,opc)
+                      (1 1)
+                      (4 #b0010)
+                      (1 0)
+                      (1 imm BITMASK64-N)
+                      (6 imm BITMASK64-IMMR)
+                      (6 imm BITMASK64-IMMS)
+                      (5 Rn)
+                      (5 ,(or Rd 'Rd))))
+               ;; Shifted register, no shift amount.
+               (((? sf sf-size)
+                 ,@(if Rd '() '((? Rd register-31=z)))
+                 (? Rn register-31=z)
+                 (? Rm register-31=z))
+                (BITS (1 sf)
+                      (2 ,opc)
+                      (1 0)
+                      (4 #b1010)
+                      (2 #b00)        ;shift type=LSL
+                      (1 0)           ;N=0
+                      (5 Rm)
+                      (6 0)           ;shift amount=0
+                      (5 Rn)
+                      (5 ,(or Rd 'Rd))))
+
+               ;; Shifted register, 32-bit operand size.
+               ((W ,@(if Rd '() '((? Rd register-31=z)))
+                   (? Rn register-31=z)
+                   ((? type logical-shift/rotate-type)
+                    (? Rm register-31=z)
+                    (? amount unsigned-5)))
+                (BITS (1 0)           ;sf=0, 32-bit operand size
+                      (2 ,opc)
+                      (1 0)
+                      (4 #b1010)
+                      (2 type)
+                      (1 0)           ;N=0
+                      (5 Rm)
+                      (6 amount)
+                      (5 Rn)
+                      (5 ,(or Rd 'Rd))))
+               ;; Shifted register, 64-bit operand size.
+               ((X ,@(if Rd '() '((? Rd register-31=z)))
+                   (? Rn register-31=z)
+                   ((? type logical-shift/rotate-type)
+                    (? Rm register-31=z)
+                    (? amount unsigned-6)))
+                (BITS (1 1)           ;sf=1, 64-bit operand size
+                      (2 ,opc)
+                      (1 0)
+                      (4 #b1010)
+                      (2 type)
+                      (1 0)           ;N=0
+                      (5 Rm)
+                      (6 amount)
+                      (5 Rn)
+                      (5 ,(or Rd 'Rd))))))))))
+  ;; Logical AND
+  (define-logical-instruction AND #b00 register-31=sp #f)
+  ;; Logical inclusive OR
+  (define-logical-instruction ORR #b01 register-31=sp #f)
+  ;; Logical exclusive OR
+  (define-logical-instruction EOR #b10 register-31=sp #f)
+  ;; Logical AND and set flags
+  (define-logical-instruction ANDS #b11 register-31=z #f)
+  ;; Test: ANDS(Rd=z)
+  (define-logical-instruction TST #b11 register-31=z 31))
+
+;;; C3.4.5 Logical (shifted register)
+
+;; No immediates because these are all with complement, which would be
+;; redundant with immediates.
+
+(let-syntax
+    ((define-logical-complement-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic opc) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              ;; Shifted register, no shift amount.
+              (((? sf sf-size)
+                (? Rd register-31=z)
+                (? Rn register-31=z)
+                (? Rm register-31=z))
+               (BITS (1 sf)
+                     (2 ,opc)
+                     (5 #b01010)
+                     (2 0)              ;shift type=LSL
+                     (1 1)              ;N=1
+                     (5 Rm)
+                     (6 0)              ;shift amount=0
+                     (5 Rn)
+                     (5 Rd)))
+              ;; Shifted register, 32-bit operand size
+              ((W (? Rd register-31=z)
+                  (? Rn register-31=z)
+                  ((? type logical-shift/rotate-type)
+                   (? Rm register-31=z)
+                   (? amount unsigned-5)))
+               (BITS (1 0)              ;sf=0, 32-bit operand size
+                     (2 ,opc)
+                     (5 #b01010)
+                     (2 type)
+                     (1 1)              ;N=1
+                     (5 Rm)
+                     (1 0)              ;high 0 bit of 6-bit immediate
+                     (5 amount)
+                     (5 Rn)
+                     (5 Rd)))
+              ;; Shifted register, 64-bit operand size
+              ((X (? Rd register-31=z)
+                  (? Rn register-31=z)
+                  ((? type logical-shift/rotate-type)
+                   (? Rm register-31=z)
+                   (? amount unsigned-6)))
+               (BITS (1 0)              ;sf=0, 32-bit operand size
+                     (2 ,opc)
+                     (5 #b01010)
+                     (2 type)
+                     (1 1)              ;N=1
+                     (5 Rm)
+                     (6 amount)
+                     (5 Rn)
+                     (5 Rd)))))))))
+  ;; Bitwise bit clear (AND with complement)
+  (define-logical-complement-instruction BIC #b00)
+  ;; Bitwise bit clear (AND with complement) and set flags
+  (define-logical-complement-instruction BICS #b11)
+  ;; Bitwise exclusive OR NOT
+  (define-logical-complement-instruction EON #b10)
+  ;; Bitwise inclusive OR NOT
+  (define-logical-complement-instruction ORN #b01))
+
+;; Bitwise NOT (or, `move with NOT?')
+
+(define-instruction MVN
+  (((? sf) (? Rd) (? Rm))
+   (MACRO 32 (ORN ,sf ,Rd Z ,Rm))))
+
+;;; C3.3.1, C3.4.1, C3.4.1: Arithmetic (immediate, shifted register,
+;;; extended register)
+
+(let-syntax
+    ((define-addsub-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic op S register-31=dst Rd) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              ;; Immediate, shift=0
+              (((? sf sf-size)
+                ,@(if Rd '() '((? Rd register-31=sp)))
+                (? Rn register-31=sp)
+                (&U (? imm unsigned-12)))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 ,S)
+                     (1 1)
+                     (4 #b0001)
+                     (2 #b00)
+                     (12 imm)
+                     (5 Rn)
+                     (5 ,(or Rd 'Rd))))
+              ;; Immediate, shift=12
+              (((? sf sf-size)
+                ,@(if Rd '() '((? Rd register-31=sp)))
+                (? Rn register-31=sp)
+                (LSL (&U (? imm unsigned-12)) 12))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 ,S)
+                     (1 1)
+                     (4 #b0001)
+                     (2 #b01)
+                     (12 imm)
+                     (5 Rn)
+                     (5 ,(or Rd 'Rd))))
+              ;; Shifted register, no shift amount.  Could also be
+              ;; encoded by extended register as long as Rm is not the
+              ;; zero register.
+              (((? sf sf-size)
+                ,@(if Rd '() '((? Rd register-31=z)))
+                (? Rn register-31=z)
+                (? Rm register-31=z))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 ,S)
+                     (1 0)
+                     (4 #b1011)
+                     (2 #b00)           ;shift type=LSL
+                     (1 0)
+                     (5 Rm)
+                     (6 0)              ;shift amount=0
+                     (5 Rn)
+                     (5 ,(or Rd 'Rd))))
+              ;; Shifted register, 32-bit
+              ((W ,@(if Rd '() '((? Rd register-31=z)))
+                  (? Rn register-31=z)
+                  ((? type add/sub-shift-type)
+                   (? Rm register-31=z)
+                   (? amount unsigned-5)))
+               (BITS (1 0)              ;sf=0, 32-bit operand size
+                     (1 ,op)
+                     (1 ,S)
+                     (1 0)
+                     (4 #b1011)
+                     (2 type)
+                     (1 0)
+                     (5 Rm)
+                     (6 amount)
+                     (5 Rn)
+                     (5 ,(or Rd 'Rd))))
+
+              ;; Shifted register, 64-bit
+              ((X ,@(if Rd '() '((? Rd register-31=z)))
+                  (? Rn register-31=z)
+                  ((? type add/sub-shift-type)
+                   (? Rm register-31=z)
+                   (? amount unsigned-6)))
+               (BITS (1 1)              ;sf=1, 64-bit operand size
+                     (1 ,op)
+                     (1 ,S)
+                     (1 0)
+                     (4 #b1011)
+                     (2 type)
+                     (1 0)
+                     (5 Rm)
+                     (6 amount)
+                     (5 Rn)
+                     (5 ,(or Rd 'Rd))))
+              ;; Extended register
+              (((? sf sf-size)
+                ,@(if Rd '() `((? Rd ,register-31=dst)))
+                (? Rn register-31=sp)
+                ((? option add/sub-extend-type)
+                 (? Rm register-31=z)
+                 (? amount unsigned-2)))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 ,S)
+                     (1 0)
+                     (4 #b1011)
+                     (2 #b00)
+                     (1 1)
+                     (5 Rm)
+                     (3 option)
+                     (3 amount)
+                     (5 Rn)
+                     (5 ,(or Rd 'Rd))))))))))
+  ;; Add
+  (define-addsub-instruction ADD 0 0 register-31=sp #f)
+  ;; Add and set flags
+  (define-addsub-instruction ADDS 0 1 register-31=z #f)
+  ;; Compare negation: ADDS(Rd=z)
+  (define-addsub-instruction CMN 0 1 #f 31)
+  ;; Subtract
+  (define-addsub-instruction SUB 1 0 register-31=sp #f)
+  ;; Subtract and set flags
+  (define-addsub-instruction SUBS 1 1 register-31=z #f)
+  ;; Compare: SUBS(Rd=z)
+  (define-addsub-instruction CMP 1 1 #f 31))
+
+;; Negate
+
+(define-instruction NEG
+  (((? sf) (? Rd) (? Rm))
+   (MACRO 32 (SUB ,sf ,Rd Z ,Rm))))
+
+;; Negate and set flags
+
+(define-instruction NEGS
+  (((? sf) (? Rd) (? Rm))
+   (MACRO 32 (SUBS ,sf ,Rd Z ,Rm))))
+
+;;; C3.4.3 Arithmetic with carry
+
+(let-syntax
+    ((define-addsub/carry-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic op S) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              (((? sf sf-size)
+                (? Rd register-31=z)
+                (? Rn register-31=z)
+                (? Rm register-31=z))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 ,S)
+                     (5 #b11010)
+                     (3 #b000)
+                     (5 Rm)
+                     (6 0)
+                     (5 Rn)
+                     (5 Rd)))))))))
+  ;; Add with carry
+  (define-addsub/carry-instruction ADC 0 0)
+  ;; Add with carry and set flags
+  (define-addsub/carry-instruction ADCS 0 1)
+  ;; Subtract with borrow
+  (define-addsub/carry-instruction SBC 1 0)
+  ;; Subtract with borrow and set flags
+  (define-addsub/carry-instruction SBCS 1 1))
+
+;;; C3.4.8 Multiply and divide
+
+(let-syntax
+    ((define-muladdsub-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic op31 o0) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              (((? sf sf-size)
+                (? Rd register-31=z)
+                (? Rn register-31=z)
+                (? Rm register-31=z)
+                (? Ra register-31=z))
+               (BITS (1 sf)
+                     (2 #b00)           ;op54
+                     (5 #b11011)
+                     (3 ,op31)
+                     (5 Rm)
+                     (1 ,o0)
+                     (5 Ra)
+                     (5 Rn)
+                     (5 Rd)))))))))
+  (define-muladdsub-instruction madd #b000 0) ;Multiply-Add
+  (define-muladdsub-instruction msub #b000 1)) ;Multiply-Subtract
+
+(let-syntax
+    ((define-widemul-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic op31 o0) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              ((X (? Rd register-31=z)
+                  (? Rn register-31=z)
+                  (? Rm register-31=z))
+               (BITS (1 1)              ;sf=1, 64-bit operand size
+                     (2 #b00)           ;op54
+                     (5 #b11011)
+                     (3 ,op31)
+                     (5 Rm)
+                     (1 ,o0)
+                     (5 #b11111)
+                     (5 Rn)
+                     (5 Rd)))))))))
+  (define-widemul-instruction SMADDL #b001 0) ;Signed Mul/Add 32x32->64 lo
+  (define-widemul-instruction SMSUBL #b001 1) ;Signed Mul/Sub 32x32->64 lo
+  (define-widemul-instruction SMULH #b010 0) ;Signed Mul/Add 64x64->128 hi
+  (define-widemul-instruction UMADDL #b101 0) ;Unsigned Mul/Add 32x32->64 lo
+  (define-widemul-instruction UMSUBL #b101 1) ;Unsigned Mul/Add 32x32->64 lo
+  (define-widemul-instruction UMULH #b110 0)) ;Unsigned Mul/Add 64x64->128 hi
+
+(define-instruction MUL                 ;Multiply
+  (((? size) (? Rd) (? Rn) (? Rm))
+   (MACRO 32 (MADD ,size ,Rd ,Rn ,Rm Z))))
+
+(define-instruction MNEG                ;Multiply-Negate
+  (((? size) (? Rd) (? Rn) (? Rm))
+   (MACRO 32 (MSUB ,size ,Rd ,Rn ,Rm Z))))
+
+(define-instruction SMULL               ;Signed Multiply 32x32->64
+  ((X (? Rd) (? Rn) (? Rm))
+   (MACRO 32 (SMADDL X ,Rd ,Rn ,Rm Z))))
+
+(define-instruction SMNEGL              ;Signed Multiply-Negate 32x32->64
+  ((X (? Rd) (? Rn) (? Rm))
+   (MACRO 32 (SMSUBL X ,Rd ,Rn ,Rm Z))))
+
+(define-instruction UMULL               ;Unsigned Multiply 32x32->64
+  ((X (? Rd) (? Rn) (? Rm))
+   (MACRO 32 (SMADDL X ,Rd ,Rn ,Rm Z))))
+
+(define-instruction UMNEGL              ;Unsigned Multiply-Negate 32x32->64
+  ((X (? Rd) (? Rn) (? Rm))
+   (MACRO 32 (UMSUBL X ,Rd ,Rn ,Rm Z))))
+
+(let-syntax
+    ((define-div-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic o1) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              (((? sf sf-size)
+                (? Rd register-31=z)
+                (? Rn register-31=z)
+                (? Rm register-31=z))
+               (BITS (1 sf)
+                     (2 #b00)
+                     (5 #b11010)
+                     (3 #b110)
+                     (5 Rm)
+                     (5 #b00001)
+                     (1 ,o1)
+                     (5 Rn)
+                     (5 Rd)))))))))
+  (define-div-instruction UDIV 0)
+  (define-div-instruction SDIV 1))
 
 ;;; C3.4.11 Conditional select
 
