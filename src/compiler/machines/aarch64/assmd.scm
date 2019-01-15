@@ -41,12 +41,12 @@ USA.
   16)
 
 (define-integrable maximum-block-offset
-  ;; PC always aligned on 32-bit boundary
+  ;; PC always aligned on 32-bit boundary.  Use the extra bit.
   (- (expt 2 (1+ block-offset-width)) 4))
 
 (define-integrable (block-offset->bit-string offset start?)
   (unsigned-integer->bit-string block-offset-width
-                                (+ (* 2 offset)
+                                (+ (shift-left (quotient offset 4) 1)
                                    (if start? 0 1))))
 
 ;;; Machine dependent instruction order
