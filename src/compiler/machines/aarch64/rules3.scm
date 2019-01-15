@@ -338,11 +338,11 @@ USA.
                  (LAP)))
          ,@(register->register-transfer address regnum:stack-pointer)
          ,@(let loop ((temps temps))
-             ;; (push r5) (push r3 r4) (push r1 r2)
+             ;; (push r5) (push2 r4 r3) (push2 r2 r1)
              (if (pair? temps)
                  (if (pair? (cdr temps))
                      (LAP ,@(loop (cddr temps))
-                          ,@(push2 (car temps) (cadr temps)))
+                          ,@(push2 (cadr temps) (car temps)))
                      (push (car temps)))
                  (LAP))))))
 

@@ -276,7 +276,7 @@ USA.
 		   (& (* ,address-units-per-object 2))))))
 
 (define (push2 reg1 reg2)
-  ;; (LAP ,@(push reg2) ,@(push reg1))
+  ;; (LAP ,@(push reg1) ,@(push reg2))
   (LAP (STP X ,reg2 ,reg1
 	    (PRE+ ,regnum:stack-pointer
 		  (& (* ,address-units-per-object -2))))))
