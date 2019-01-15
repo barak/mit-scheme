@@ -535,6 +535,8 @@ USA.
     DIVIDE-FIXNUM       ;nobody open-codes this
     FIXNUM-LSH          ;open-coding not useful without constant operands
     FLOATING-VECTOR-CONS;nobody open-codes this
+    FLOATING-VECTOR-REF ;no flonum arithmetic yet
+    FLOATING-VECTOR-SET!;no flonum arithmetic yet
     FLONUM-ABS          ;no flonum arithmetic yet
     FLONUM-ACOS         ;not useful to open-code hairy math
     FLONUM-ADD          ;no flonum arithmetic yet
