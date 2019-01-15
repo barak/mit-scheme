@@ -894,6 +894,9 @@ case ${mit_scheme_native_code} in
 svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     cmpintmd=svm1
     ;;
+aarch64be|aarch64le)
+    cmpintmd=aarch64
+    ;;
 *)
     cmpintmd=${mit_scheme_native_code}
     ;;

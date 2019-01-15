@@ -151,7 +151,7 @@ x86-64|x86_64|amd64)
     mit_scheme_architecture=x86-64
     ;;
 aarch64le|aarch64be)
-    mit_scheme_architecture=aarch64
+    mit_scheme_architecture=${_mit_scheme_architecture_spec}
     ;;
 *)
     AC_MSG_ERROR([unknown compiler architecture: ${_mit_scheme_architecture_spec}])
