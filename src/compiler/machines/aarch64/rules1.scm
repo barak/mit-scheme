@@ -43,25 +43,24 @@ USA.
   (ASSIGN (REGISTER (? target))
           (CONS-POINTER (REGISTER (? type))
                         (REGISTER (? datum))))
-  (cond ((let ((type (register-known-value type)))
-           (and type (zero? type)))
-         (assign-register->register target datum))
-        ((register-copy-if-available datum 'GENERAL target)
-         => (lambda (get-target!)
-              ;; If we already have a suitable register for the target,
-              ;; use bit field insertion to set the type.
-              (let* ((type (standard-source! type))
-                     (target (get-target!))
-                     (lsb scheme-datum-width)
-                     (width scheme-type-width))
-                (LAP (BFI X ,target ,type (&U ,lsb) (&U ,width))))))
-        (else
-         ;; Otherwise, no advantage to using bit field insertion since
-         ;; we'd need two instructions anyway, so just shift and or.
-         (standard-binary target type datum
-           (lambda (target type datum)
-             (LAP (LSL X ,target ,type (&U ,scheme-datum-width))
-                  (ORR X ,target ,target ,datum)))))))
+  (reuse-pseudo-register-alias! datum 'GENERAL
+    (lambda (alias)
+      ;; If we already have a reusable machine register loaded with the
+      ;; datum, use bit field insertion to set the type, and treat it
+      ;; as an alias for the target.
+      (let ((type (standard-source! type))
+            (lsb scheme-datum-width)
+            (width scheme-type-width))
+        (delete-dead-registers!)
+        (add-pseudo-register-alias! target alias)
+        (LAP (BFI X ,alias ,type (&U ,lsb) (&U ,width)))))
+    (lambda ()
+      ;; No advantage to using bit field insertion since we'd need two
+      ;; instructions anyway, so just shift and or.
+      (standard-binary target type datum
+        (lambda (target type datum)
+          (LAP (LSL X ,target ,type (&U ,scheme-datum-width))
+               (ORR X ,target ,target ,datum)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))

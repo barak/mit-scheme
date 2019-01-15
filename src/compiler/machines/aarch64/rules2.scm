@@ -80,10 +80,20 @@ USA.
 
 (define-rule predicate
   (PRED-1-ARG INDEX-FIXNUM? (REGISTER (? register)))
-  (let ((temp (standard-move-to-temporary! register)))
+  (define (operate temp source)
     (set-equal-branches!)
-    (LAP (LSR X ,temp (&U ,(- scheme-datum-width 1)))
-         (CMP X ,temp (&U ,(* 2 type-code:fixnum))))))
+    (LAP (LSR X ,temp ,source (&U ,(- scheme-datum-width 1)))
+         (CMP X ,temp (&U ,(* 2 type-code:fixnum)))))
+  ;; This basically is WITH-TEMPORARY-REGISTER-COPY! but without
+  ;; register references getting in the way.
+  (reuse-pseudo-register-alias! register 'GENERAL
+    (lambda (temp)
+      (need-register! temp)
+      (operate temp temp))
+    (lambda ()
+      (let* ((source (standard-source! register))
+             (temp (allocate-temporary-register! 'GENERAL)))
+        (operate temp source)))))
 
 (define (zero-test! register)
   (set-equal-zero-branches! register)
