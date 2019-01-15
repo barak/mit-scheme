@@ -397,18 +397,22 @@ USA.
       (error "Unknown interpreter register:" locative)))
 
 (define (rtl:constant-cost expression)
+  ;; Register reference costs 1.  If a cost is less than 1, CSE will
+  ;; always choose the constant over the register reference, which may
+  ;; not always work and is not always helpful even when it does work.
+  ;;
   ;; XXX Justify this by reference to cycle counts, &c.  This really
   ;; depends on which instruction we're talking about -- sometimes
   ;; immediates are cheaper.
-  (let ((cost:zero 0)
-        (cost:imm16 1)                  ;MOVZ/MOVN
-        (cost:imm32 2)                  ;MOVZ/MOVN + 1*MOVK
-        (cost:imm48 3)                  ;MOVZ/MOVN + 2*MOVK
-        (cost:imm64 4)                  ;MOVZ/MOVN + 3*MOVK
-        (cost:add 1)
-        (cost:adr 1)
+  (let ((cost:zero 1)
+        (cost:imm16 2)                  ;MOVZ/MOVN
+        (cost:imm32 3)                  ;MOVZ/MOVN + 1*MOVK
+        (cost:imm48 4)                  ;MOVZ/MOVN + 2*MOVK
+        (cost:imm64 5)                  ;MOVZ/MOVN + 3*MOVK
+        (cost:add 2)
+        (cost:adr 2)
         (cost:ldr 10)
-        (cost:bl 2))
+        (cost:bl 3))
     (define (immediate-cost immediate)
       (cond ((zero? immediate)
              cost:zero)
