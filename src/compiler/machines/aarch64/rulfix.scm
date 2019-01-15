@@ -170,8 +170,8 @@ USA.
     ;; We have x 2^t and y 2^t, and we want x y 2^t, so divide one of
     ;; them first by 2^t.
     (if (not overflow?)
-        (LAP (ASR ,regnum:scratch-0 ,source1 (&U ,scheme-type-width))
-             (MUL ,target ,regnum:scratch-0 ,source2))
+        (LAP (ASR X ,regnum:scratch-0 ,source1 (&U ,scheme-type-width))
+             (MUL X ,target ,regnum:scratch-0 ,source2))
         (let* ((mask (allocate-temporary-register! 'GENERAL))
                (hi (allocate-temporary-register! 'GENERAL)))
           ;; We're going to test whether the high 64-bits is equal to
@@ -188,7 +188,7 @@ USA.
                (CMP X ,source2 (&U 0))
                (CINV X LT ,mask ,mask)
                (ASR X ,regnum:scratch-0 ,source1 (&U ,scheme-type-width))
-               (SMULH ,hi ,regnum:scratch-0 ,source2)
+               (SMULH X ,hi ,regnum:scratch-0 ,source2)
                (MUL X ,target ,regnum:scratch-0 ,source2)
                (CMP X ,mask ,hi))))))
 

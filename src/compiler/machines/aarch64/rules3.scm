@@ -306,14 +306,14 @@ USA.
     (LAP (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
               (&U ,(* 8 frame-size)))
          ,@(if (odd? frame-size)
-               (LAP (LDR X ,temp1 (PRE+ ,regnum:stack-pointer (& (* 8 -1))))
-                    (STR X ,temp1 (PRE+ ,address (& (* 8 -1)))))
+               (LAP (LDR X ,temp1 (PRE+ ,regnum:stack-pointer (& -8)))
+                    (STR X ,temp1 (PRE+ ,address (& -8))))
                (LAP))
          ,@(load-unsigned-immediate index loop-count)
         (LABEL ,label)
-         (SUB X ,index (&U #x10))
-         (LDRP X ,temp1 ,temp2 (PRE+ ,regnum:stack-pointer (& (* 8 -2))))
-         (STRP X ,temp1 ,temp2 (PRE+ ,address (& (* 8 -2))))
+         (SUB X ,index ,index (&U #x10))
+         (LDP X ,temp1 ,temp2 (PRE+ ,regnum:stack-pointer (& (* 8 -2))))
+         (STP X ,temp1 ,temp2 (PRE+ ,address (& (* 8 -2))))
          (CBNZ X ,index (@PCR ,label ,regnum:scratch-0))
          ,@(register->register-transfer address regnum:stack-pointer))))
 
@@ -708,7 +708,7 @@ USA.
              ,@(object->datum temp1 temp1)              ;temp1 := unmarked size
              (ADD X ,temp1 ,temp1 (&U #x10))            ;temp1 := consts offset
              (ADD X ,arg2 ,arg1 ,temp1)                 ;temp1 := consts addr
-             (SUB X ,counter (&U 1))                    ;ctr := ctr - 1
+             (SUB X ,counter ,counter (&U 1))           ;ctr := ctr - 1
              (ADR X ,arg3 (@PCR ,nsects ,regnum:scratch-0)) ;arg3 := nsects
              (LDR B ,arg3 (+ ,arg3 ,counter))           ;arg3 := nsects[ctr]
              ,@(invoke-interface/call code:compiler-link continuation-label)
