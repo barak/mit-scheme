@@ -27,6 +27,7 @@ USA.
 /* Compiled code interface for AArch64.  */
 
 #include "cmpint.h"
+#include "prims.h"
 
 extern void * tospace_to_newspace (void *);
 extern void * newspace_to_tospace (void *);
@@ -207,7 +208,7 @@ read_uuo_target_no_reloc (SCHEME_OBJECT * saddr)
 }
 
 static void
-write_uuo_insns (const insn_t * target, insn_t * iaddr, int pcrel)
+write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
 {
   /* ldr x0, pc-pcrel */
   (iaddr[0]) = (0x58000000UL | ((((unsigned) pcrel) & 0x7ffff) << 5));
@@ -226,9 +227,9 @@ write_uuo_insns (const insn_t * target, insn_t * iaddr, int pcrel)
 	  unsigned immhi19 = ((((unsigned) offset) >> 2) & 0x1ffff);
 	  assert (offset == ((ptrdiff_t) ((immhi19 << 2) | immlo2)));
 	  /* adr x1, target */
-	  (addr[1]) = (0x10000001UL | (immlo2 << 29) | (immhi19 << 5));
+	  (iaddr[1]) = (0x10000001UL | (immlo2 << 29) | (immhi19 << 5));
 	  /* br x1 */
-	  (addr[2]) = 0xd61f0020UL;
+	  (iaddr[2]) = 0xd61f0020UL;
 	}
       else if (((- (INT64_C (0x200000000))) <= offset) &&
 	       (offset <= (INT64_C (0x1ffffffff))))
@@ -317,22 +318,11 @@ store_trampoline_insns (insn_t * entry, uint8_t code)
   }
   /* br x17 */
   (entry[3]) = 0xd61f0220UL;
+  return (false);		/* no error */
 }
 
-#define SETUP_REGISTER(hook) do			\
-{						\
-  Registers[offset++] = ((unsigned long) hook);	\
-  declare_builtin (((unsigned long) hook), #hook);
-} while (0)
-
 void
 aarch64_reset_hook (void)
 {
-  unsigned offset = COMPILER_REGBLOCK_N_FIXED;
-
-  /* Must agree with compiler/machines/aarch64/lapgen.scm.  */
-  SETUP_REGISTER (asm_scheme_to_interface);		/* 0 */
-  ...
-
   /* XXX Make sure we're mapped write and execute.  (Such is the state...)  */
 }

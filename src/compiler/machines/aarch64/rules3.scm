@@ -56,7 +56,7 @@ USA.
              ,@(interrupt-check '(HEAP) interrupt-label)
              ,@(pop-return)
              (LABEL ,interrupt-label)
-             ,@(invoke-hook entry:compiler-interrupt-continuation-2))))))
+             ,@(invoke-interface code:compiler-interrupt-continuation-2))))))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -64,9 +64,9 @@ USA.
   (let* ((prefix (clear-map!))
          (setup (apply-setup frame-size)))
     (LAP ,@prefix
-         ,@(pop regnum:apply-target)
+         ,@(pop regnum:applicand)
          ,@setup
-         (BR ,regnum:apply-pc))))
+         (BR ,regnum:applicand-pc))))
 
 (define (apply-setup frame-size)
   (case frame-size
@@ -79,7 +79,7 @@ USA.
     ((7) (invoke-hook/subroutine entry:compiler-apply-setup-size-7))
     ((8) (invoke-hook/subroutine entry:compiler-apply-setup-size-8))
     (else
-     (LAP ,@(load-unsigned-immediate regnum:utility-arg0 frame-size)
+     (LAP ,@(load-unsigned-immediate regnum:utility-arg1 frame-size)
           ,@(invoke-hook/subroutine entry:compiler-apply-setup)))))
 
 (define-rule statement
@@ -102,27 +102,29 @@ USA.
   (expect-no-exit-interrupt-checks)
   ;; Tagged entry is on top of stack.
   (LAP ,@(clear-map!)
-       ,@(pop regnum:apply-target)
-       ,@(object->address regnum:apply-target regnum:apply-target)
-       ,@(entry->pc regnum:apply-pc regnum:apply-target)
-       (BR ,regnum:apply-pc)))
+       ,@(pop regnum:applicand)
+       ,@(object->address regnum:applicand regnum:applicand)
+       ,@(entry->pc regnum:applicand-pc regnum:applicand)
+       (BR ,regnum:applicand-pc)))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation
   (LAP ,@(clear-map!)
-       ,@(load-pc-relative-address regnum:utility-arg0 label)
-       ,@(load-unsigned-immediate regnum:utility-arg1 number-pushed)
-       ,@(invoke-interface code:compiler-lexpr-apply)))
+       ,@(load-pc-relative-address regnum:utility-arg1 label)
+       ,@(load-unsigned-immediate regnum:utility-arg2 number-pushed)
+       ,@(invoke-interface/shared 'COMPILER-LEXPR-APPLY
+                                  code:compiler-lexpr-apply)))
 
 (define-rule statement
   (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
   continuation
   (LAP ,@(clear-map!)
-       ,@(pop regnum:utility-arg0)
-       ,@(object->address regnum:utility-arg0 regnum:utility-arg0)
-       ,@(load-unsigned-immediate regnum:utility-arg1 number-pushed)
-       ,@(invoke-interface code:compiler-lexpr-apply)))
+       ,@(pop regnum:utility-arg1)
+       ,@(object->address regnum:utility-arg1 regnum:utility-arg1)
+       ,@(load-unsigned-immediate regnum:utility-arg2 number-pushed)
+       ,@(invoke-interface/shared 'COMPILER-LEXPR-APPLY
+                                  code:compiler-lexpr-apply)))
 
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
@@ -166,17 +168,18 @@ USA.
 
 (define (generate/compiled-error frame-size)
   (let* ((prefix (clear-map!))
-         (arg0 (load-unsigned-immediate regnum:utility-arg0 frame-size))
-         (invocation (invoke-hook entry:compiler-error)))
+         (arg1 (load-unsigned-immediate regnum:utility-arg1 frame-size))
+         (invocation
+          (invoke-interface/shared 'COMPILER-ERROR code:compiler-error)))
     (LAP ,@prefix
-         ,@arg0
+         ,@arg1
          ,@invocation)))
 
 (define (generate/generic-primitive frame-size primitive)
   (let* ((prefix (clear-map!))
-         (arg0 (load-constant regnum:utility-arg0 primitive)))
+         (arg1 (load-constant regnum:utility-arg1 primitive)))
     (LAP ,@prefix
-         ,@arg0
+         ,@arg1
          ,@(let ((arity (primitive-procedure-arity primitive)))
              (cond ((not (negative? arity))
                     (generate/primitive-apply))
@@ -186,20 +189,24 @@ USA.
                     (generate/generic-apply frame-size)))))))
 
 (define (generate/primitive-apply)
-  (invoke-hook entry:compiler-primitive-apply))
+  (invoke-interface/shared 'COMPILER-PRIMITIVE-APPLY
+                           code:compiler-primitive-apply))
 
 (define (generate/primitive-lexpr-apply frame-size)
   (let* ((load-nargs
           (load-unsigned-immediate regnum:scratch-0 (- frame-size 1)))
-         (invocation (invoke-hook entry:compiler-primitive-lexpr-apply)))
+         (invocation
+          (invoke-interface/shared 'COMPILER-PRIMITIVE-LEXPR-APPLY
+                                   code:compiler-primitive-lexpr-apply)))
     (LAP ,@load-nargs
          (STR X ,regnum:scratch-0 ,reg:lexpr-primitive-arity)
          ,@invocation)))
 
 (define (generate/generic-apply frame-size)
-  (let* ((arg1 (load-unsigned-immediate regnum:utility-arg1 frame-size))
-         (invocation (invoke-interface code:compiler-apply)))
-    (LAP ,@arg1
+  (let* ((arg2 (load-unsigned-immediate regnum:utility-arg2 frame-size))
+         (invocation
+          (invoke-interface/shared 'COMPILER-APPLY code:compiler-apply)))
+    (LAP ,@arg2
          ,@invocation)))
 
 (let-syntax
@@ -240,7 +247,7 @@ USA.
 
 (define (special-primitive-invocation code)
   (let* ((prefix (clear-map!))
-         (invocation (invoke-interface code)))
+         (invocation (invoke-interface/shared code)))
     (LAP ,@prefix
          ,@invocation)))
 
@@ -417,7 +424,7 @@ USA.
                   (B. LT (@PCR ,label ,regnum:scratch-0)))
              (LAP))))
 
-(define (simple-procedure-header code-word label entry)
+(define (generate-procedure-header code-word label generate-interrupt-stub)
   (let ((checks (get-entry-interrupt-checks))
         (interrupt-label (generate-label 'INTERRUPT)))
     ;; Put the interrupt check branch target after the branch so that
@@ -428,9 +435,40 @@ USA.
         (add-end-of-block-code!
          (lambda ()
            (LAP (LABEL ,interrupt-label)
-                ,@(invoke-hook/reentry entry label)))))
+                ,@(generate-interrupt-stub)))))
     (LAP ,@(make-external-label code-word label)
          ,@(interrupt-check checks interrupt-label))))
+
+(define (simple-procedure-header code-word label name code)
+  (generate-procedure-header
+   code-word
+   label
+   (lambda ()
+     (invoke-interface/shared-reentry name code label))))
+
+(define (dlink-procedure-header code-word label)
+  (generate-procedure-header
+   code-word
+   label
+   (lambda ()
+     ;; Save the dynamic link to an interpreter register, and then ask
+     ;; for help from the microcode.
+     ;;
+     ;; XXX The goal of sharing here is to reduce code size; it would
+     ;; be nice if we could ask the assembler to not share if we're so
+     ;; far away from the label that we require an indirect branch.
+     (LAP (ADR X ,regnum:utility-arg1 (@PCR ,label ,regnum:scratch-0))
+          ,@(interrupt-procedure-dlink)))))
+
+(define (interrupt-procedure-dlink)
+  ;; Caller must arrange to load the entry into arg1.
+  (share-instruction-sequence! 'INTERRUPT-PROCEDURE-DLINK
+    (lambda (subroutine)
+      (LAP (B (@PCR ,subroutine ,regnum:scratch-0))))
+    (lambda (subroutine)
+      (LAP (LABEL ,subroutine)
+           (STR X ,regnum:dynamic-link ,reg:dynamic-link)
+           ,@(invoke-interface code:compiler-interrupt-dlink)))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -443,7 +481,8 @@ USA.
   #|
   (simple-procedure-header (continuation-code-word internal-label)
                            internal-label
-                           entry:compiler-interrupt-continuation)
+                           'INTERRUPT-CONTINUATION
+                           code:compiler-interrupt-continuation)
   |#
   (expect-no-entry-interrupt-checks)
   (make-external-label (continuation-code-word internal-label)
@@ -456,13 +495,15 @@ USA.
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
-  (let ((rtl-proc (label->object internal-label)))
+  (let* ((rtl-proc (label->object internal-label))
+         (code-word (internal-procedure-code-word rtl-proc)))
     (LAP (EQUATE ,(rtl-procedure/external-label rtl-proc) ,internal-label)
-         ,@(simple-procedure-header (internal-procedure-code-word rtl-proc)
-                                    internal-label
-                                    (if (rtl-procedure/dynamic-link? rtl-proc)
-                                        entry:compiler-interrupt-dlink
-                                        entry:compiler-interrupt-procedure)))))
+         ,@(if (rtl-procedure/dynamic-link? rtl-proc)
+               (dlink-procedure-header code-word internal-label)
+               (simple-procedure-header code-word
+                                        internal-label
+                                        'INTERRUPT-PROCEDURE
+                                        code:compiler-interrupt-procedure)))))
 
 (define-rule statement
   (PROCEDURE-HEADER (? internal-label) (? min) (? max))
@@ -470,7 +511,8 @@ USA.
                ,internal-label)
        ,@(simple-procedure-header (make-procedure-code-word min max)
                                   internal-label
-                                  entry:compiler-interrupt-procedure)))
+                                  'INTERRUPT-PROCEDURE
+                                  code:compiler-interrupt-procedure)))
 
 ;;;; Closures
 
@@ -483,17 +525,18 @@ USA.
          (type type-code:compiled-entry))
     (define (label+adjustment)
       (LAP ,@(make-external-label internal-entry-code-word external-label)
-           ;; regnum:apply-target holds the untagged entry address.
+           ;; regnum:applicand holds the untagged entry address.
            ;; Push and tag it.
-           ,@(affix-type regnum:apply-target type regnum:apply-target)
-           ,@(push regnum:apply-target)
+           ,@(affix-type regnum:applicand type regnum:applicand)
+           ,@(push regnum:applicand)
           (LABEL ,internal-label)))
     (cond ((zero? nentries)
            (LAP (EQUATE ,external-label ,internal-label)
                 ,@(simple-procedure-header
                    (internal-procedure-code-word rtl-proc)
                    internal-label
-                   entry:compiler-interrupt-procedure)))
+                   'INTERRUPT-PROCEDURE
+                   code:compiler-interrupt-procedure)))
           ((pair? checks)
            (LAP ,@(label+adjustment)
                 ,@(interrupt-check checks (closure-interrupt-label))))
@@ -501,12 +544,15 @@ USA.
            (label+adjustment)))))
 
 (define (closure-interrupt-label)
+  ;; XXX Would be nice if we could ask the assembler to duplicate this
+  ;; whenever we're getting far enough that the conditional branch
+  ;; target requires branch tensioning.
   (or (block-association 'INTERRUPT-CLOSURE)
       (let ((label (generate-label 'INTERRUPT-CLOSURE)))
         (add-end-of-block-code!
          (lambda ()
            (LAP (LABEL ,label)
-                ,@(invoke-hook entry:compiler-interrupt-closure))))
+                ,@(invoke-interface code:compiler-interrupt-closure))))
         (block-associate! 'INTERRUPT-CLOSURE label)
         label)))
 
@@ -649,10 +695,10 @@ USA.
     (LAP (LDR X ,r0 ,reg:environment)
          (ADR X ,r1 (@PCR ,environment-label ,regnum:scratch-0))
          (STR X ,r0 ,r1)
-         (ADR X ,regnum:utility-arg1 (@PCR ,*block-label* ,regnum:scratch-0))
-         (ADR X ,regnum:utility-arg2 (@PCR ,free-ref-label ,regnum:scratch-0))
-         ,@(load-unsigned-immediate regnum:utility-arg3 n-sections)
-         ,@(invoke-hook/call entry:compiler-link continuation-label)
+         (ADR X ,regnum:utility-arg2 (@PCR ,*block-label* ,regnum:scratch-0))
+         (ADR X ,regnum:utility-arg3 (@PCR ,free-ref-label ,regnum:scratch-0))
+         ,@(load-unsigned-immediate regnum:utility-arg4 n-sections)
+         ,@(invoke-interface/call code:compiler-link continuation-label)
          ,@(make-external-label (continuation-code-word #f)
                                 continuation-label))))
 
@@ -661,21 +707,21 @@ USA.
                               free-ref-offset
                               n-sections)
   (let ((continuation-label (generate-label 'LINKED))
-        ;; arg0 will be the return address.
-        (arg1 regnum:utility-arg1)
+        ;; arg1 will be the return address.
         (arg2 regnum:utility-arg2)
         (arg3 regnum:utility-arg3)
+        (arg4 regnum:utility-arg4)
         (temp r1))
     (LAP (LDR X ,temp ,reg:environment)
-         ;; arg1 := block address
-         ,@(load-pc-relative arg1 code-block-label)
-         ,@(object->address arg1 arg1)
+         ;; arg2 := block address
+         ,@(load-pc-relative arg2 code-block-label)
+         ,@(object->address arg2 arg2)
          ;; Set this block's environment.
-         (STR X ,temp (+ ,arg1 (&U (* 8 ,environment-offset))))
-         ;; arg2 := constants address
-         ,@(add-immediate arg2 arg1 free-ref-offset)
-         ;; arg3 := n sections
-         ,@(load-unsigned-immediate arg3 n-sections)
+         (STR X ,temp (+ ,arg2 (&U (* 8 ,environment-offset))))
+         ;; arg3 := constants address
+         ,@(add-immediate arg3 arg2 free-ref-offset)
+         ;; arg4 := n sections
+         ,@(load-unsigned-immediate arg4 n-sections)
          ,@(invoke-interface/call code:compiler-link continuation-label)
          ,@(make-external-label (continuation-code-word #f)
                                 continuation-label))))
@@ -690,27 +736,27 @@ USA.
              (counter r24)              ;unallocated, callee-saves
              (temp1 r1)                 ;unallocated
              (temp2 r2)                 ;unallocated
-             ;; arg0 will be return address.
-             (arg1 regnum:utility-arg1)
+             ;; arg1 will be return address.
              (arg2 regnum:utility-arg2)
-             (arg3 regnum:utility-arg3))
+             (arg3 regnum:utility-arg3)
+             (arg4 regnum:utility-arg4))
         (LAP ,@(load-unsigned-immediate counter n-blocks)
             (LABEL ,loop-label)
-             ,@(load-pc-relative arg1 vector-label)     ;arg1 := vector
-             ,@(object->address arg1 arg1)              ;arg1 := vector addr
-             (LDR X ,arg1 (+ ,arg1 (LSL ,counter 3)))   ;arg1 := vector[ctr-1]
-             ,@(object->address arg1 arg1)              ;arg1 := block addr
+             ,@(load-pc-relative arg2 vector-label)     ;arg2 := vector
+             ,@(object->address arg2 arg2)              ;arg2 := vector addr
+             (LDR X ,arg2 (+ ,arg2 (LSL ,counter 3)))   ;arg2 := vector[ctr-1]
+             ,@(object->address arg2 arg2)              ;arg2 := block addr
              (LDR X ,temp1 ,reg:environment)            ;temp1 := environment
-             (LDR X ,temp2 ,arg1)                       ;temp2 := manifest
+             (LDR X ,temp2 ,arg2)                       ;temp2 := manifest
              ,@(object->datum temp2 temp2)              ;temp2 := block length
-             (STR X ,temp1 (+ ,arg1 (LSL ,temp2 3)))    ;set block environment
-             (LDR X ,temp1 (+ ,arg1 (&U (* 8 1))))      ;temp1 := manifest-nmv
+             (STR X ,temp1 (+ ,arg2 (LSL ,temp2 3)))    ;set block environment
+             (LDR X ,temp1 (+ ,arg2 (&U (* 8 1))))      ;temp1 := manifest-nmv
              ,@(object->datum temp1 temp1)              ;temp1 := unmarked size
              (ADD X ,temp1 ,temp1 (&U #x10))            ;temp1 := consts offset
-             (ADD X ,arg2 ,arg1 ,temp1)                 ;temp1 := consts addr
+             (ADD X ,arg3 ,arg2 ,temp1)                 ;temp1 := consts addr
              (SUB X ,counter ,counter (&U 1))           ;ctr := ctr - 1
-             (ADR X ,arg3 (@PCR ,nsects ,regnum:scratch-0)) ;arg3 := nsects
-             (LDR B ,arg3 (+ ,arg3 ,counter))           ;arg3 := nsects[ctr]
+             (ADR X ,arg4 (@PCR ,nsects ,regnum:scratch-0)) ;arg4 := nsects
+             (LDR B ,arg4 (+ ,arg4 ,counter))           ;arg4 := nsects[ctr]
              ,@(invoke-interface/call code:compiler-link continuation-label)
              ,@(make-external-label (continuation-code-word #f)
                                     continuation-label)

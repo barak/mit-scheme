@@ -153,14 +153,12 @@ void aarch64_reset_hook (void);
 
 #define CMPINT_USE_STRUCS 1
 
-/* Must agree with cmpauxmd/aarch64.s.  */
-#define COMPILER_REGBLOCK_N_FIXED ...
+/* Must agree with cmpauxmd/aarch64.m4 and aarch64/machine.scm.  */
+#define COMPILER_REGBLOCK_N_FIXED 16 /* XXX why? */
 #define COMPILER_TEMP_SIZE 1 /* size in objects of largest RTL registers */
 #define COMPILER_REGBLOCK_N_TEMPS 256
-#define COMPILER_REGBLOCK_N_HOOKS ...
-#define COMPILER_HOOK_SIZE 1
-
-#define COMPILER_REGBLOCK_EXTRA_SIZE ...
+#define COMPILER_REGBLOCK_N_HOOKS 0 /* we'll use a machine register instead */
+#define COMPILER_HOOK_SIZE (-1)
 
 /* All aarch64 instructions are 32-bit-aligned.  */
 typedef uint32_t insn_t;
@@ -239,5 +237,8 @@ insn_t * read_compiled_closure_target (insn_t *, reloc_ref_t *);
 #define READ_UUO_TARGET(a, r) read_uuo_target (a)
 
 insn_t * read_uuo_target (SCHEME_OBJECT *);
+
+/* C stack is completely separate.  */
+#define within_c_stack(fn, cookie) (fn)(cookie)
 
 #endif /* SCM_CMPINTMD_H_INCLUDED */

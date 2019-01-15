@@ -36,8 +36,8 @@ USA.
                                     (REGISTER (? extension))
                                     (? safe?))
   ;; arg0 will be the return address.
-  (require-register! regnum:utility-arg1)
-  (let* ((set-extension (load-machine-register! extension regnum:utility-arg1))
+  (require-register! regnum:utility-arg2)
+  (let* ((set-extension (load-machine-register! extension regnum:utility-arg2))
          (prefix (clear-map!)))
     (LAP ,@set-extension
          ,@prefix
@@ -52,10 +52,10 @@ USA.
                                      (REGISTER (? extension))
                                      (REGISTER (? value)))
   ;; arg0 will be the return address.
-  (require-register! regnum:utility-arg1)
   (require-register! regnum:utility-arg2)
-  (let* ((set-extension (load-machine-register! extension regnum:utility-arg1))
-         (set-value (load-machine-register! value regnum:utility-arg1))
+  (require-register! regnum:utility-arg3)
+  (let* ((set-extension (load-machine-register! extension regnum:utility-arg2))
+         (set-value (load-machine-register! value regnum:utility-arg2))
          (prefix (clear-map!)))
     (LAP ,@set-extension
          ,@set-value
@@ -66,8 +66,8 @@ USA.
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? continuation)
                                       (REGISTER (? extension)))
   ;; arg0 will be the return address.
-  (require-register! regnum:utility-arg1)
-  (let* ((set-extension (load-machine-register! extension regnum:utility-arg1))
+  (require-register! regnum:utility-arg2)
+  (let* ((set-extension (load-machine-register! extension regnum:utility-arg2))
          (prefix (clear-map!)))
     (LAP ,@set-extension
          ,@prefix

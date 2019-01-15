@@ -159,18 +159,16 @@ USA.
 ;;; 64-bit general purpose registers, variously named Wn or Xn in the
 ;;; ARM assembler depending on the operand size, 32-bit or 64-bit.
 ;;; We'll name the operand size separately.
-;;;
-;;; XXX To allocate: regnum:apply-pc, regnum:apply-target
 
 ;; register             Scheme purpose          C purpose
 (define-integrable r0 0) ;result, temporary     first argument, result
-(define-integrable r1 1) ;temporary, utilarg0   second argument
-(define-integrable r2 2) ;temporary, utilarg1   third argument
-(define-integrable r3 3) ;temporary, utilarg2   fourth argument
-(define-integrable r4 4) ;temporary, utilarg3   fifth argument
-(define-integrable r5 5) ;temporary, utilarg4   sixth argument
-(define-integrable r6 6) ;temporary, utilarg6   seventh argument
-(define-integrable r7 7) ;temporary, utilarg6   eighth argument
+(define-integrable r1 1) ;temporary, utilarg1   second argument
+(define-integrable r2 2) ;temporary, utilarg2   third argument
+(define-integrable r3 3) ;temporary, utilarg3   fourth argument
+(define-integrable r4 4) ;temporary, utilarg4   fifth argument
+(define-integrable r5 5) ;temporary             sixth argument
+(define-integrable r6 6) ;temporary             seventh argument
+(define-integrable r7 7) ;temporary             eighth argument
 (define-integrable r8 8) ;temporary             indirect result location
 (define-integrable r9 9) ;temporary             temporary
 (define-integrable r10 10) ;temporary           temporary
@@ -179,17 +177,18 @@ USA.
 (define-integrable r13 13) ;temporary           temporary
 (define-integrable r14 14) ;temporary           temporary
 (define-integrable r15 15) ;temporary           temporary
-(define-integrable r16 16) ;temporary,          first PLT scratch register
-                           ;  indirect jump callee,
+(define-integrable r16 16) ;scratch,            first PLT scratch register
+                           ;  applicand (entry address)
                            ;  scheme-to-interface code
-(define-integrable r17 17) ;temporary,          second PLT scratch register
-                           ;  indirect jump pc
+(define-integrable r17 17) ;scratch,            second PLT scratch register
+                           ;  applicand PC,
+                           ;  utility index
 (define-integrable r18 18) ;reserved            platform ABI register
 (define-integrable r19 19) ;interpreter regs    callee-saved
 (define-integrable r20 20) ;free pointer        callee-saved
 (define-integrable r21 21) ;dynamic link        callee-saved
 (define-integrable r22 22) ;memtop (XXX why?)   callee-saved
-(define-integrable r23 23) ;scheme-to-interface callee-saved
+(define-integrable r23 23) ;assembly hook table callee-saved
 (define-integrable r24 24) ;temporary           callee-saved
 (define-integrable r25 25) ;temporary           callee-saved
 (define-integrable r26 26) ;temporary           callee-saved
@@ -248,29 +247,26 @@ USA.
 ;; in the transition to and from C.
 
 (define-integrable regnum:value-register r0)
-(define-integrable regnum:utility-arg0 r1)
-(define-integrable regnum:utility-arg1 r2)
-(define-integrable regnum:utility-arg2 r3)
-(define-integrable regnum:utility-arg3 r4)
-(define-integrable regnum:utility-arg4 r5)
-(define-integrable regnum:utility-arg5 r6)
-(define-integrable regnum:utility-arg6 r7)
+(define-integrable regnum:utility-arg1 r1)
+(define-integrable regnum:utility-arg2 r2)
+(define-integrable regnum:utility-arg3 r3)
+(define-integrable regnum:utility-arg4 r4)
 (define-integrable regnum:scratch-0 r16)
 (define-integrable regnum:scratch-1 r17)
 (define-integrable regnum:regs-pointer r19)
 (define-integrable regnum:free-pointer r20)
 (define-integrable regnum:dynamic-link r21) ;Pointer to parent stack frame.
 ;; (define-integrable regnum:memtop r22)
-(define-integrable regnum:scheme-to-interface r23)
+(define-integrable regnum:hooks r23)
 (define-integrable regnum:stack-pointer r27)
 (define-integrable regnum:c-frame-pointer r29)
 (define-integrable regnum:link-register rlr) ;Return address.
 (define-integrable regnum:c-stack-pointer rsp)
 
-;; XXX Maybe we're playing a dangerous game to use the scratch registers for
-;; these.
-(define-integrable regnum:apply-target regnum:scratch-0)
-(define-integrable regnum:apply-pc regnum:scratch-1)
+;; XXX Maybe we're playing a dangerous game to use one of the scratch
+;; registers for these.
+(define-integrable regnum:applicand regnum:utility-arg1)
+(define-integrable regnum:applicand-pc regnum:scratch-1)
 (define-integrable regnum:utility-index regnum:scratch-1)
 
 (define-integrable (machine-register-known-value register)

@@ -61,7 +61,7 @@ USA.
    r25
    r26
    r27
-   ;r28 - stack pointer
+   ;r28 - Scheme stack pointer, not r31 so we can use CMP for interrupt checks
    ;r29 - C frame pointer, callee-saved and left alone by Scheme
    ;r30 - link register (could maybe allocate)
    ;r31 - C stack pointer or zero register, depending on instruction
@@ -466,6 +466,7 @@ USA.
 
 (define reg:memtop (regblock-ea register-block/memtop-offset))
 (define reg:environment (regblock-ea register-block/environment-offset))
+(define reg:dynamic-link (regblock-ea register-block/dynamic-link-offset))
 (define reg:lexpr-primitive-arity
   (regblock-ea register-block/lexpr-primitive-arity-offset))
 (define reg:stack-guard (regblock-ea register-block/stack-guard-offset))
@@ -488,46 +489,51 @@ USA.
 
 ;; Must match utility_table in cmpint.c.
 (define-codes #x012
-  primitive-apply
-  primitive-lexpr-apply
-  apply
-  error
-  lexpr-apply
-  link
-  interrupt-closure
-  interrupt-dlink
-  interrupt-procedure
-  interrupt-continuation
-  interrupt-ic-procedure
-  assignment-trap
-  cache-reference-apply
-  reference-trap
-  safe-reference-trap
-  unassigned?-trap
-  -1+
-  &/
-  &=
-  &>
-  1+
-  &<
-  &-
-  &*
-  negative?
-  &+
-  positive?
-  zero?
-  access
-  lookup
-  safe-lookup
-  unassigned?
-  unbound?
-  set!
-  define
-  lookup-apply
-  primitive-error
-  quotient
-  remainder
-  modulo)
+  primitive-apply                       ;12
+  primitive-lexpr-apply                 ;13
+  apply                                 ;14
+  error                                 ;15
+  lexpr-apply                           ;16
+  link                                  ;17
+  interrupt-closure                     ;18
+  interrupt-dlink                       ;19
+  interrupt-procedure                   ;1a
+  interrupt-continuation                ;1b
+  interrupt-ic-procedure                ;1c
+  assignment-trap                       ;1d
+  cache-reference-apply                 ;1e
+  reference-trap                        ;1f
+  safe-reference-trap                   ;20
+  unassigned?-trap                      ;21
+  -1+                                   ;22
+  &/                                    ;23
+  &=                                    ;24
+  &>                                    ;25
+  1+                                    ;26
+  &<                                    ;27
+  &-                                    ;28
+  &*                                    ;29
+  negative?                             ;2a
+  &+                                    ;2b
+  positive?                             ;2c
+  zero?                                 ;2d
+  access                                ;2e (obsolete)
+  lookup                                ;2f (obsolete)
+  safe-lookup                           ;30 (obsolete)
+  unassigned?                           ;31 (obsolete)
+  unbound?                              ;32 (obsolete)
+  set!                                  ;33 (obsolete)
+  define                                ;34 (obsolete)
+  lookup-apply                          ;35 (obsolete)
+  primitive-error                       ;36
+  quotient                              ;37
+  remainder                             ;38
+  modulo                                ;39
+  reflect-to-interface                  ;3a
+  interrupt-continuation-2              ;3b
+  compiled-code-bkpt                    ;3c
+  compiled-closure-bkpt                 ;3d
+  )
 
 (define-syntax define-entries
   (sc-macro-transformer
@@ -542,59 +548,52 @@ USA.
                       (loop (cdr names) (+ index 1)))
                 '()))))))
 
-;; Must match aarch64_reset_hook in cmpintmd/aarch64.c.
-(define-entries 16
-  scheme-to-interface                   ; Main entry point (only one necessary)
-  interrupt-procedure
-  interrupt-continuation
-  interrupt-continuation-2
-  interrupt-closure
-  interrupt-dlink
-  primitive-apply
-  primitive-lexpr-apply
-  assignment-trap
-  reference-trap
-  safe-reference-trap
-  link
-  error
-  primitive-error
-  &+
-  &-
-  &*
-  &/
-  &=
-  &<
-  &>
-  1+
-  -1+
-  zero?
-  positive?
-  negative?
-  quotient
-  remainder
-  modulo
-  fixnum-shift
-  apply-setup
-  apply-setup-size-1
-  apply-setup-size-2
-  apply-setup-size-3
-  apply-setup-size-4
-  apply-setup-size-5
-  apply-setup-size-6
-  apply-setup-size-7
-  apply-setup-size-8
-  set-interrupt-enables!)
+;; Must match hooks in cmpauxmd/aarch64.m4.
+(define-entries 0
+  scheme-to-interface                   ;00 Main entry point (only necessary)
+  &+                                    ;01
+  &-                                    ;02
+  &*                                    ;03
+  &/                                    ;04
+  &=                                    ;05
+  &<                                    ;06
+  &>                                    ;07
+  1+                                    ;08
+  -1+                                   ;09
+  zero?                                 ;0a
+  positive?                             ;0b
+  negative?                             ;0c
+  quotient                              ;0d
+  remainder                             ;0e
+  modulo                                ;0f
+  fixnum-shift                          ;10
+  apply-setup                           ;11
+  apply-setup-size-1                    ;12
+  apply-setup-size-2                    ;13
+  apply-setup-size-3                    ;14
+  apply-setup-size-4                    ;15
+  apply-setup-size-5                    ;16
+  apply-setup-size-6                    ;17
+  apply-setup-size-7                    ;18
+  apply-setup-size-8                    ;19
+  set-interrupt-enables!                ;1a
+  )
 
-(define-integrable (invoke-hook entry)
-  (LAP (LDR X ,regnum:scratch-0 (+ ,regnum:regs-pointer (&U (* 8 ,entry))))
-       (BR ,regnum:scratch-0)))
+;; Jump to an assembly hook.  No link register setup or anything.  May
+;; clobber r16, r17.
+
+(define (invoke-hook entry)
+  (if (zero? entry)                     ;scheme-to-interface
+      (LAP (BR ,regnum:hooks))
+      (LAP (ADD X ,regnum:scratch-0 ,regnum:hooks (&U ,(* 8 entry)))
+           (BR ,regnum:scratch-0))))
 
 ;; Invoke a hook that will return to the address in the link register
 ;; with RET.  To be used for super-cheap assembly hooks that never fail
 ;; but are a little too large to copy in every caller.
 
 (define-integrable (invoke-hook/subroutine entry)
-  (LAP (LDR X ,regnum:scratch-0 (+ ,regnum:regs-pointer (&U (* 8 ,entry))))
+  (LAP (ADD X ,regnum:scratch-0 ,regnum:hooks (&U ,(* 8 entry)))
        (BLR ,regnum:scratch-0)))
 
 ;; Invoke a hook that expects an untagged compiled return address in
@@ -605,9 +604,9 @@ USA.
 ;; To be used for compiler utilities that are usually cheap but may
 ;; have error cases and may call back into C.
 
-(define-integrable (invoke-hook/call entry label)
+(define-integrable (invoke-hook/call entry continuation)
   (LAP ,@(invoke-hook/subroutine entry)
-       (B (@PCR ,label ,regnum:scratch-0))))
+       (B (@PCR ,continuation ,regnum:scratch-0))))
 
 ;; Invoke a hook that expects a compiled entry address as the first
 ;; utility argument, and will later jump to it with BR.  It is not
@@ -617,21 +616,49 @@ USA.
 ;; e.g., interrupts, which are assumed to be always expensive.
 
 (define-integrable (invoke-hook/reentry entry label)
-  (LAP (ADR X ,regnum:utility-arg0 (@PCR ,label ,regnum:scratch-0))
+  (LAP (ADR X ,regnum:utility-arg1 (@PCR ,label ,regnum:scratch-0))
        ,@(invoke-hook entry)))
 
 (define-integrable (invoke-interface code)
   (LAP (MOVZ X ,regnum:utility-index (&U ,code))
-       (BR ,regnum:scheme-to-interface)))
+       ,@(invoke-hook entry:compiler-scheme-to-interface)))
 
-(define-integrable (invoke-interface/call code label)
-  (LAP (MOVZ X ,regnum:utility-index (&U ,code))
-       (BLR ,regnum:scheme-to-interface)
-       (B (@PCR ,label ,regnum:scratch-0))))
+(define (invoke-interface/shared name code)
+  (share-instruction-sequence! name
+    (lambda (label) (LAP (B (@PCR ,label ,regnum:scratch-0))))
+    (lambda (label)
+      (LAP (LABEL ,label)
+           ,@(invoke-interface code)))))
+
+;; If this assumption is violated, then the definition below is silly
+;; and should be replaced.
+(assert (not (= rlr regnum:utility-arg1)))
+
+(define (invoke-interface/call code continuation)
+  (define (invoke subroutine)
+    (LAP (MOVZ X ,regnum:utility-index (&U ,code))
+         (BL (@PCR ,subroutine ,regnum:scratch-0))
+         (B (@PCR ,continuation ,regnum:scratch-0))))
+  (share-instruction-sequence! 'SCHEME-TO-INTERFACE/CALL
+    (lambda (subroutine) (invoke subroutine))
+    (lambda (subroutine)
+      (LAP ,@(invoke subroutine)
+           (LABEL ,subroutine)
+           ,@(register->register-transfer rlr regnum:utility-arg1)
+           ,@(invoke-hook entry:compiler-scheme-to-interface)))))
 
 (define-integrable (invoke-interface/reentry code label)
-  (LAP (ADR X ,regnum:utility-arg0 (@PCR ,label ,regnum:scratch-0))
+  (LAP (ADR X ,regnum:utility-arg1 (@PCR ,label ,regnum:scratch-0))
        ,@(invoke-interface code)))
+
+(define (invoke-interface/shared-reentry name code label)
+  (LAP (ADR X ,regnum:utility-arg1 (@PCR ,label ,regnum:scratch-0))
+       ,@(share-instruction-sequence! name
+           (lambda (label)
+             (LAP (B (@PCR ,label ,regnum:scratch-0))))
+           (lambda (label)
+             (LAP (LABEL ,label)
+                  ,@(invoke-interface code))))))
 
 ;; Operation tables
 
