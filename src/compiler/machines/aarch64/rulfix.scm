@@ -182,9 +182,8 @@ USA.
           ;; mask is equal to the high 64 bits of a non-overflowing
           ;; multiply, so its xor with the high 64 bits is zero iff no
           ;; overflow.
-          (LAP (MOVZ X ,mask (&U 0))
-               (CMP X ,source1 (&U 0))
-               (CINV X LT ,mask ,mask)
+          (LAP (CMP X ,source1 (&U 0))
+               (CSETM X LT ,mask)
                (CMP X ,source2 (&U 0))
                (CINV X LT ,mask ,mask)
                (ASR X ,regnum:scratch-0 ,source1 (&U ,scheme-type-width))
