@@ -162,7 +162,8 @@ USA.
 
 ;; register             Scheme purpose          C purpose
 (define-integrable r0 0) ;result, temporary     first argument, result
-(define-integrable r1 1) ;temporary, utilarg1   second argument
+(define-integrable r1 1) ;temporary, utilarg1,  second argument
+                         ;  applicand (entry address)
 (define-integrable r2 2) ;temporary, utilarg2   third argument
 (define-integrable r3 3) ;temporary, utilarg3   fourth argument
 (define-integrable r4 4) ;temporary, utilarg4   fifth argument
@@ -177,9 +178,7 @@ USA.
 (define-integrable r13 13) ;temporary           temporary
 (define-integrable r14 14) ;temporary           temporary
 (define-integrable r15 15) ;temporary           temporary
-(define-integrable r16 16) ;scratch,            first PLT scratch register
-                           ;  applicand (entry address)
-                           ;  scheme-to-interface code
+(define-integrable r16 16) ;scratch             first PLT scratch register
 (define-integrable r17 17) ;scratch,            second PLT scratch register
                            ;  applicand PC,
                            ;  utility index

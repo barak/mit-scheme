@@ -57,13 +57,13 @@ define(ADRL,`
 	UARG2		.req x2
 	UARG3		.req x3
 	UARG4		.req x4
-	UINDEX		.req x17
+	UIDX		.req x17
 	APPLICAND	.req x1
 	APPLICAND_PC	.req x17
 	REGS		.req x19
 	FREE		.req x20
 	DYNLINK		.req x21
-	HOOKS		.req x22
+	HOOKS		.req x23
 	SSP		.req x28// Note: Scheme and C use separate stacks!
 
 	// Interpreter register block offsets.  Must agree with
@@ -164,8 +164,8 @@ END(interface_to_C)
 	//
 	//	Compiled Scheme code needs help from the microcode.
 	//	Possible return value or dynamic link is in x0;
-	//	arguments are in x1,x2,x3,x4,x5,x6,x7; utility index
-	//	is in ip1 = x17.
+	//	arguments are in x1,x2,x3,x4; utility index is in ip1 =
+	//	x17.  ip0 = x16 is free as a temporary.
 	//
 	//	Steps:
 	//
@@ -178,38 +178,39 @@ END(interface_to_C)
 GLOBAL(scheme_to_interface)
 	// Save value, Free, and stack_pointer.
 	str	x0, [REGS,#REGBLOCK_VAL]
-	ADRL(x8,Free)			// address of Free pointer
-	str	FREE, [x8]		// store current Free pointer
-	ADRL(x8,stack_pointer)		// address of stack pointer
-	str	SSP, [x8]		// store current stack pointer
+	ADRL(ip0,Free)			// address of Free pointer
+	str	FREE, [ip0]		// store current Free pointer
+	ADRL(ip0,stack_pointer)		// address of stack pointer
+	str	SSP, [ip0]		// store current stack pointer
 
-	// Allocate a struct on the stack for return values in x0.  Keep
-	// the stack 32-byte aligned just in case.
+	// Allocate a struct on the C stack for return values in x0,
+	// first argument to utility function.  Keep the stack 32-byte
+	// aligned just in case.
 	sub	sp, sp, #32
 	mov	x0, sp
 
 	// Call the function in utility_table.
-	ADRL(x8,utility_table)		// address of utility table
-	ldr	x8, [x8,UINDEX,lsl #3]	// load utility function pointer
-	blr	x8			// call
+	ADRL(ip0,utility_table)		// address of utility table
+	ldr	ip0, [ip0,UIDX,lsl #3]	// load utility function pointer
+	blr	ip0			// call
 
 scheme_to_interface_return:
 	// Pop the utility_result_t contents:
-	//	ip1 := interface_dispatch (x17)
-	//	x0 := interpreter code / compiled applicand
-	//	x1 := interpreter garbage / compiled applicand PC
-	ldp	ip1, x0, [sp]
-	ldr	x1, [sp],#32
+	//	ip0 := interface_dispatch (x16)
+	//	x1 := interpreter code / compiled applicand
+	//	ip1 := interpreter garbage / compiled applicand PC (x17)
+	ldp	ip0, APPLICAND, [sp],#16
+	ldr	APPLICAND_PC, [sp],#16
 
 	// Jump to interface_dispatch.
-	br	ip1
+	br	ip0
 END(scheme_to_interface)
 
 ///////////////////////////////////////////////////////////////////////////////
 // Returning from a C subroutine back into Scheme
 ///////////////////////////////////////////////////////////////////////////////
 
-	// void interface_to_scheme (insn_t * entry@x0, insn_t * pc@x1)
+	// void interface_to_scheme (insn_t * entry@x1, insn_t * pc@x17)
 	//
 	//	When a utility wants to return control to Scheme at an
 	//	entry, it directs scheme_to_interface_return to jump
@@ -225,7 +226,7 @@ GLOBAL(interface_to_scheme)
 	br	APPLICAND_PC
 END(interface_to_scheme)
 
-	// void interface_to_scheme_return (insn_t * entry@x0, insn_t * pc@x1)
+	// void interface_to_scheme_return (insn_t * entry@x1, insn_t * pc@x17)
 	//
 	//	When a utility wants to return to a Scheme return
 	//	address, it directs scheme_to_interface_return to
@@ -245,34 +246,30 @@ GLOBAL(interface_to_scheme_return)
 END(interface_to_scheme_return)
 
 	// insn_t *
-	// interface_to_scheme_setup (insn_t * entry@x0, insn_t * pc@x1)
+	// interface_to_scheme_setup (insn_t * entry@x1, insn_t * pc@x17)
 	//
 	//	Set up a transition to compiled Scheme code after a
 	//	utility return, whether we are jumping to a Scheme
 	//	entry or returning to a Scheme return address.
 	//
 	//	- Sets x0 to be the preserved return value, if any.
-	//	- Sets x1 (APPLICAND) to be the entry address.
-	//	- Sets x17 (APPLICAND_PC) to be the entry PC.
-	//	- Uses x8 as a temporary.
 	//	- Sets up x20 (FREE) and x28 (Scheme SP).
+	//	- Preserves x1 (APPLICAND) and x17 (APPLICAND_PC).
+	//	- Does not touch REGS (x19) or HOOKS (x23) because
+	//	  those are callee-saves and unmodified by C.
+	//	- XXX Should we restore DYNLINK (x21)?
 	//
-	//	This is NOT a normal APCS2 subroutine.  Meant to be
+	//	This is NOT a normal ARM ABI subroutine.  Meant to be
 	//	used only from interface_to_scheme or
 	//	interface_to_scheme_return.
 	//
 LOCAL(interface_to_scheme_setup)
-	// Move the arguments to the destinations expected by the
-	// caller and future callee.
-	mov	APPLICAND_PC, x1	// x17 := x1
-	mov	APPLICAND, x0		// x1 := x0
-
 	// Restore value, Free, and stack_pointer.
 	ldr	x0, [REGS,#REGBLOCK_VAL]
-	ADRL(x8,Free)			// address of Free pointer
-	ldr	FREE, [x8]		// load current Free pointer
-	ADRL(x8,stack_pointer)		// address of stack pointer
-	ldr	SSP, [x8]		// load current stack pointer
+	ADRL(FREE,Free)			// address of Free pointer
+	ldr	FREE, [FREE]		// load current Free pointer
+	ADRL(SSP,stack_pointer)		// address of stack pointer
+	ldr	SSP, [SSP]		// load current stack pointer
 
 	// Done setting up.  Return to caller.
 	ret
@@ -304,7 +301,7 @@ END(apply_setup)
 	//	utility.
 	//
 LOCAL(apply_setup_fail)
-	mov	UINDEX, #0x14	// comutil_apply
+	mov	UIDX, #0x14	// comutil_apply
 	b	SYMBOL(scheme_to_interface)
 END(apply_setup)
 
@@ -352,7 +349,7 @@ $1:
 	//
 define(UTILITY_HOOK, `
 $1:
-	mov	UINDEX, #$2
+	mov	UIDX, #$2
 	b	SYMBOL(scheme_to_interface)
 	nop
 	nop')
