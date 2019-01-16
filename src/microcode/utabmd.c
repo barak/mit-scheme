@@ -106,11 +106,7 @@ make_microcode_identification_vector (void)
   VECTOR_SET (v, ID_FLONUM_EXP_MAX, (LONG_TO_FIXNUM (DBL_MAX_EXP - 1)));
   VECTOR_SET (v, ID_NONNEG_FIXNUM_LENGTH, (ULONG_TO_FIXNUM (FIXNUM_LENGTH)));
   VECTOR_SET (v, ID_NONNEG_FIXNUM_MASK, (ULONG_TO_FIXNUM (FIXNUM_MASK)));
-  {
-    const char * name = (cc_arch_name ());
-    if (name != 0)
-      VECTOR_SET (v, ID_CC_ARCH, (char_pointer_to_string (name)));
-  }
+  VECTOR_SET (v, ID_CC_ARCH, (char_pointer_to_string (cc_arch_name ())));
   return (v);
 }
 
@@ -124,7 +120,8 @@ cc_arch_name (void)
     case COMPILER_C_TYPE: return ("c");
     case COMPILER_SVM_TYPE: return ("svm1");
     case COMPILER_X86_64_TYPE: return ("x86-64");
-    default: return (0);
+    case COMPILER_AARCH64_TYPE: return ("aarch64");
+    default: return ("unknown");
     }
 }
 
