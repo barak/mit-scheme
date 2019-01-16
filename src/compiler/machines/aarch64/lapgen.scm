@@ -143,7 +143,7 @@ USA.
 
 (define (spill-ea index)
   ;; XXX fix register block indexing
-  (regblock-ea (+ 16 80 index)))
+  (regblock-ea (+ 16 index)))
 
 (define (home->register-transfer register alias)
   (load-register alias (spill-ea (register-renumber register))))

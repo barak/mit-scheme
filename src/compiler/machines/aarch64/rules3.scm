@@ -310,6 +310,7 @@ USA.
          ;; number of iterations.
          (loop-count (- frame-size (remainder frame-size 2))))
     (assert (= loop-count (* (quotient frame-size 2) 2)))
+    (assert (not (= index regnum:scratch-0)))
     (LAP (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
               (&U ,(* 8 frame-size)))
          ,@(if (odd? frame-size)
@@ -524,6 +525,7 @@ USA.
          (checks (get-entry-interrupt-checks))
          (type type-code:compiled-entry))
     (define (label+adjustment)
+      (assert (not (= regnum:applicand regnum:scratch-0)))
       (LAP ,@(make-external-label internal-entry-code-word external-label)
            ;; regnum:applicand holds the untagged entry address.
            ;; Push and tag it.
@@ -664,6 +666,7 @@ USA.
                                    (shift-left offset 48))))
         (else
          (error "Unknown endianness:" endianness))))
+    (assert (not (= temp regnum:scratch-0)))
     (LAP ,@(load-unsigned-immediate temp (padded-word))
          (STR X ,temp (POST+ ,Free (& 8)))
          ;; Set temp := label - 8.
@@ -695,6 +698,8 @@ USA.
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
   (let ((continuation-label (generate-label 'LINKED)))
+    (assert (not (= r0 regnum:scratch-0)))
+    (assert (not (= r1 regnum:scratch-0)))
     (LAP (LDR X ,r0 ,reg:environment)
          (ADR X ,r1 (@PCR ,environment-label ,regnum:scratch-0))
          (STR X ,r0 ,r1)
@@ -743,6 +748,7 @@ USA.
              (arg2 regnum:utility-arg2)
              (arg3 regnum:utility-arg3)
              (arg4 regnum:utility-arg4))
+        (assert (not (= counter regnum:scratch-0)))
         (LAP ,@(load-unsigned-immediate counter n-blocks)
             (LABEL ,loop-label)
              ,@(load-pc-relative arg2 vector-label)     ;arg2 := vector
