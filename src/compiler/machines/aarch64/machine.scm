@@ -257,7 +257,7 @@ USA.
 (define-integrable regnum:dynamic-link r21) ;Pointer to parent stack frame.
 ;; (define-integrable regnum:memtop r22)
 (define-integrable regnum:hooks r23)
-(define-integrable regnum:stack-pointer r27)
+(define-integrable regnum:stack-pointer r28)
 (define-integrable regnum:c-frame-pointer r29)
 (define-integrable regnum:link-register rlr) ;Return address.
 (define-integrable regnum:c-stack-pointer rsp)
