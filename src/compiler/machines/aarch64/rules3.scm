@@ -452,8 +452,7 @@ USA.
    code-word
    label
    (lambda ()
-     ;; Save the dynamic link to an interpreter register, and then ask
-     ;; for help from the microcode.
+     ;; Pass the dynamic link as utility argument 2.
      ;;
      ;; XXX The goal of sharing here is to reduce code size; it would
      ;; be nice if we could ask the assembler to not share if we're so
@@ -468,7 +467,8 @@ USA.
       (LAP (B (@PCR ,subroutine ,regnum:scratch-0))))
     (lambda (subroutine)
       (LAP (LABEL ,subroutine)
-           (STR X ,regnum:dynamic-link ,reg:dynamic-link)
+           ,@(register->register-transfer regnum:dynamic-link
+                                          regnum:utility-arg2)
            ,@(invoke-interface code:compiler-interrupt-dlink)))))
 
 (define-rule statement

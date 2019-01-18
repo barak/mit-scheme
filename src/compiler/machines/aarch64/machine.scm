@@ -300,7 +300,6 @@ USA.
 (define-integrable register-block/int-mask-offset 1)
 (define-integrable register-block/value-offset 2)
 (define-integrable register-block/environment-offset 3)
-(define-integrable register-block/dynamic-link-offset 4) ; compiler temp
 (define-integrable register-block/lexpr-primitive-arity-offset 7)
 (define-integrable register-block/stack-guard-offset 11)
 (define-integrable register-block/int-code-offset 12)

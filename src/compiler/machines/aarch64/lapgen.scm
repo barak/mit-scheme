@@ -465,7 +465,6 @@ USA.
 
 (define reg:memtop (regblock-ea register-block/memtop-offset))
 (define reg:environment (regblock-ea register-block/environment-offset))
-(define reg:dynamic-link (regblock-ea register-block/dynamic-link-offset))
 (define reg:lexpr-primitive-arity
   (regblock-ea register-block/lexpr-primitive-arity-offset))
 (define reg:stack-guard (regblock-ea register-block/stack-guard-offset))

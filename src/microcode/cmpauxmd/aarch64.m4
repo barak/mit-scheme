@@ -53,6 +53,7 @@ define(ADRL,`
 
 	// Scheme machine registers.  Must agree with
 	// aarch64/machine.scm, aarch64/lapgen.scm.
+	VAL		.req x0
 	UARG1		.req x1
 	UARG2		.req x2
 	UARG3		.req x3
@@ -69,7 +70,6 @@ define(ADRL,`
 	// Interpreter register block offsets.  Must agree with
 	// const.h.
 	.equiv	REGBLOCK_VAL,		2
-	.equiv	REGBLOCK_DYNLINK,	4	// REGBLOCK_CC_TEMP
 
 ///////////////////////////////////////////////////////////////////////////////
 // Entering Scheme from C
@@ -170,14 +170,15 @@ END(interface_to_C)
 	//	Steps:
 	//
 	//	1. Save value, Free, and stack_pointer.
-	//	   => No need to save REGS because it's callee-saves.
+	//	   => No need to save REGS or HOOKS because callee-saves.
+	//	   => If DYNLINK is active, will be utility argument 2.
 	//	2. Allocate a struct on the stack for return values in x0.
 	//	3. Call the function in utility_table.
 	//	4. Go to wherever the microcode directed us.
 	//
 GLOBAL(scheme_to_interface)
 	// Save value, Free, and stack_pointer.
-	str	x0, [REGS,#REGBLOCK_VAL]
+	str	VAL, [REGS,#(REGBLOCK_VAL*8)]
 	ADRL(ip0,Free)			// address of Free pointer
 	str	FREE, [ip0]		// store current Free pointer
 	ADRL(ip0,stack_pointer)		// address of stack pointer
@@ -253,6 +254,8 @@ END(interface_to_scheme_return)
 	//	entry or returning to a Scheme return address.
 	//
 	//	- Sets x0 to be the preserved return value, if any.
+	//	- Sets x21 to be the preserved dynamic link, if any.
+	//	  (Both were in REGBLOCK_VAL.)
 	//	- Sets up x20 (FREE) and x28 (Scheme SP).
 	//	- Preserves x1 (APPLICAND) and x17 (APPLICAND_PC).
 	//	- Does not touch REGS (x19) or HOOKS (x23) because
@@ -264,8 +267,10 @@ END(interface_to_scheme_return)
 	//	interface_to_scheme_return.
 	//
 LOCAL(interface_to_scheme_setup)
-	// Restore value, Free, and stack_pointer.
-	ldr	x0, [REGS,#REGBLOCK_VAL]
+	// Restore value if it was in use, dynamic link if it was in
+	// use, Free, and stack_pointer.
+	ldr	VAL, [REGS,#(REGBLOCK_VAL*8)]
+	mov	DYNLINK, VAL
 	ADRL(FREE,Free)			// address of Free pointer
 	ldr	FREE, [FREE]		// load current Free pointer
 	ADRL(SSP,stack_pointer)		// address of stack pointer
@@ -344,8 +349,11 @@ $1:
 	// UTILITY_HOOK(name, number)
 	//
 	//	Hook that jumps to the utility with the specified
-	//	number.  Reduces caller code size.  The number must
-	//	match utility_table in cmpint.c.
+	//	number.  Does not reduce caller code size, so use this
+	//	only as an interim for cases where we are likely to
+	//	add some extra logic here soon that would help to
+	//	reduce caller code size.  The number must match
+	//	utility_table in cmpint.c.
 	//
 define(UTILITY_HOOK, `
 $1:
