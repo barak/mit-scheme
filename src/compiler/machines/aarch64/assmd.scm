@@ -44,7 +44,8 @@ USA.
   ;; PC always aligned on 32-bit boundary.  Use the extra bit.
   (- (expt 2 (1+ block-offset-width)) 4))
 
-(define-integrable (block-offset->bit-string offset start?)
+(define (block-offset->bit-string offset start?)
+  (assert (zero? (remainder offset 4)))
   (unsigned-integer->bit-string block-offset-width
                                 (+ (shift-left (quotient offset 4) 1)
                                    (if start? 0 1))))
