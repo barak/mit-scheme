@@ -36,11 +36,8 @@ USA.
 
 (define-instruction EXTERNAL-LABEL
   (((? type/arity unsigned-16) (? label))
-   (if (eq? endianness 'BIG)
-       (BITS (16 label BLOCK-OFFSET)
-             (16 type/arity))
-       (BITS (16 type/arity)
-             (16 label BLOCK-OFFSET)))))
+   (BITS (16 label BLOCK-OFFSET)
+         (16 type/arity))))
 
 (define-instruction DATA
   ((32 S (? value))

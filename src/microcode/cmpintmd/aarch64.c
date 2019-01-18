@@ -32,23 +32,36 @@ USA.
 extern void * tospace_to_newspace (void *);
 extern void * newspace_to_tospace (void *);
 
+#define TYPE_ARITY_MASK	(UINT32_C (0x0000ffff))
+#define TYPE_ARITY_SHIFT 0
+#define BLOCK_OFFSET_MASK (UINT32_C (0xffff0000))
+#define BLOCK_OFFSET_SHIFT 16
+
 bool
 read_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 {
-  return
-    (decode_old_style_format_word (cet, (((const uint16_t *) address) [-6])));
+  uint32_t word = (address[-3]);
+  uint16_t type_arity = ((word & TYPE_ARITY_MASK) >> TYPE_ARITY_SHIFT);
+  return (decode_old_style_format_word (cet, type_arity));
 }
 
 bool
 write_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 {
-  return (encode_old_style_format_word (cet, (((uint16_t *) address) - 6)));
+  uint16_t type_arity;
+  bool error = (encode_old_style_format_word (cet, (&type_arity)));
+  if (error)
+    return (error);
+  (address[-3]) &=~ TYPE_ARITY_MASK;
+  (address[-3]) |= (type_arity << TYPE_ARITY_SHIFT);
+  return (false);
 }
 
 bool
 read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
-  uint16_t n = (((const uint16_t *) address) [-5]);
+  uint32_t word = (address[-3]);
+  uint16_t n = ((word & BLOCK_OFFSET_MASK) >> BLOCK_OFFSET_SHIFT);
   (ceo->offset) = (n >> 1);
   (ceo->continued_p) = ((n & 1) != 0);
   return (false);
@@ -59,8 +72,10 @@ write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
   if (! ((ceo->offset) < 0x4000))
     return (true);
-  (((uint16_t *) address) [-5])
-    = (((ceo->offset) << 1) | ((ceo->continued_p) ? 1 : 0));
+  (address[-3]) &=~ BLOCK_OFFSET_MASK;
+  (address[-3]) |=
+    ((((ceo->offset) << 1) | ((ceo->continued_p) ? 1 : 0))
+     << BLOCK_OFFSET_SHIFT);
   return (false);
 }
 
