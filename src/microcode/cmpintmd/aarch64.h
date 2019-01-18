@@ -42,30 +42,29 @@ USA.
 	(after linking, pointing to near open procedure)
 target	0x00	8 <entry address>
 	0x08	4 <frame size>
-uuo	0x0c	4 ldr x0, target		; Load entry address.
-	0x10	4 adr x1, target_pc		; Load PC-relative address.
-	0x14	4 br x1
-	0x18	8 (padding)
+uuo	0x0c	4 ldr x1, target		; Load entry address.
+	0x10	4 b target_pc			; Branch to PC-relative.
+	0x14	12 (padding)
 	0x20
 
 	(after linking, pointing to far open procedure)
 target	0x00	8 <entry address>
 	0x08	4 <frame size>
-uuo	0x0c	4 ldr x0, target		; Load entry address.
-	0x10	4 adrp x1, target_pc		; Load PC-relative page addr.
-	0x14	4 add x1, x1, #page_offset	: Add page offset.
-	0x18	4 br x1
+uuo	0x0c	4 ldr x1, target		; Load entry address.
+	0x10	4 adrp x17, target_pc		; Load PC-relative page addr.
+	0x14	4 add x17, x17, #page_offset	: Add page offset.
+	0x18	4 br x17
 	0x1c	4 (padding)
 	0x20
 
 	(after linking, pointing to closure)
 target	0x00	8 <entry address>
 	0x08	4 <frame size>
-uuo	0x0c	4 ldr x0, target		; Load entry address.
-	0x10	4 sub x1, x0, #8		; Get address of PC offset.
-	0x14	4 ldr x1, [x1]			; Load PC offset.
-	0x18	4 add x1, x1, x0		; Compute PC = entry + offset.
-	0x1c	4 br x1
+uuo	0x0c	4 ldr x1, target		; Load entry address.
+	0x10	4 sub x17, x1, #8		; Get address of PC offset.
+	0x14	4 ldr x17, [x17]		; Load PC offset.
+	0x18	4 add x17, x17, x1		; Compute PC = entry + offset.
+	0x1c	4 br x17
 	0x20
 
 - Execute cache, big-endian:
@@ -78,30 +77,29 @@ uuo	0x0c	4 ldr x0, target		; Load entry address.
 
 	(after linking, pointing to near open procedure)
 target	0x00	8 <entry address>
-uuo	0x08	4 ldr x0, target		; Load entry address.
-	0x0c	4 adr x1, target_pc		; Load PC-relative address.
-	0x10	4 br x1
-	0x14	8 (padding)
+uuo	0x08	4 ldr x1, target		; Load entry address.
+	0x0c	4 b target_pc			; Branch PC-relative.
+	0x10	12 (padding)
 	0x1c	4 <frame size>
 	0x20
 
 	(after linking, pointing to far open procedure)
 target	0x00	8 <entry address>
-uuo	0x08	4 ldr x0, target		; Load entry address.
-	0x0c	4 adrp x1, target_pc		; Load PC-relative page addr.
-	0x10	4 add x1, x1, #page_offset	; Add page offset.
-	0x14	4 br x1
+uuo	0x08	4 ldr x1, target		; Load entry address.
+	0x0c	4 adrp x17, target_pc		; Load PC-relative page addr.
+	0x10	4 add x17, x17, #page_offset	; Add page offset.
+	0x14	4 br x17
 	0x18	4 (padding)
 	0x1c	4 <frame size>
 	0x20
 
 	(after linking, pointing to closure)
 target	0x00	8 <entry address>
-uuo	0x08	4 ldr x0, target		; Load entry address.
-	0x0c	4 sub x1, x0, #8		; Get address of PC offset.
-	0x10	4 ldr x1, [x1]			; Load PC offset.
-	0x14	4 add x1, x1, x0		; Compute PC = entry + offset.
-	0x18	4 br x1
+uuo	0x08	4 ldr x1, target		; Load entry address.
+	0x0c	4 sub x17, x1, #8		; Get address of PC offset.
+	0x10	4 ldr x17, [x17]		; Load PC offset.
+	0x14	4 add x17, x17, x1		; Compute PC = entry + offset.
+	0x18	4 br x17
 	0x1c	4 <frame size>
 	0x20
 
@@ -137,10 +135,10 @@ slots	0x38	8 [tag: first object]
 	-0x0c	2 <type/arity info>
 	-0x0a	2 <block offset>
 	-0x08	8 <PC offset = 0>		00 00 00 00 00 00 00 00
-entry	0x00	4 movz x16, #<code>		; Set utility number.
+entry	0x00	4 movz x17, #<code>		; Set utility index.
 	0x04	4 adr x1, storage		; Set x1 to storage pointer.
-	0x08	4 ldr x17, [x19, #<scheme_to_interface>]
-	0x0c	4 br x17
+	0x08	4 br x23			; Jump to scheme-to-interface.
+	0x0c	4 (padding)
 storage	0x10	8 [tag: first trampoline datum]
 	0x18	8 [tag: second trampoline datum]
 	...

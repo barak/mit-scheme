@@ -225,8 +225,8 @@ read_uuo_target_no_reloc (SCHEME_OBJECT * saddr)
 static void
 write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
 {
-  /* ldr x0, pc-pcrel */
-  (iaddr[0]) = (0x58000000UL | ((((unsigned) pcrel) & 0x7ffff) << 5));
+  /* ldr x1, pc-pcrel */
+  (iaddr[0]) = (0x58000001UL | ((((unsigned) pcrel) & 0x7ffff) << 5));
 
   /* If the target PC is right after the target offset, then the PC
      requires no further relocation and we can jump to a fixed address.
@@ -236,15 +236,12 @@ write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
   if ((((const int64_t *) (newspace_to_tospace (target)))[-1]) == 0)
     {
       ptrdiff_t offset = (((uintptr_t) target) - ((uintptr_t) (&iaddr[1])));
-      if ((-0x40000 <= offset) && (offset <= 0x3ffff))
+      assert ((offset & 3) == 0);
+      if ((-0x10000000 <= offset) && (offset <= 0xfffffff))
 	{
-	  unsigned immlo2 = (offset & 3);
-	  unsigned immhi19 = ((((unsigned) offset) >> 2) & 0x1ffff);
-	  assert (offset == ((ptrdiff_t) ((immhi19 << 2) | immlo2)));
-	  /* adr x1, target */
-	  (iaddr[1]) = (0x10000001UL | (immlo2 << 29) | (immhi19 << 5));
-	  /* br x1 */
-	  (iaddr[2]) = 0xd61f0020UL;
+	  unsigned imm26 = ((offset >> 2) & 0x03ffffff);
+	  /* b target */
+	  (iaddr[1]) = (0x14000000UL | imm26);
 	}
       else if (((- (INT64_C (0x200000000))) <= offset) &&
 	       (offset <= (INT64_C (0x1ffffffff))))
@@ -256,10 +253,10 @@ write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
 	    (offset == ((ptrdiff_t) ((pghi19 << 14) | (pglo2 << 12) | lo12)));
 	  /* adrp x1, target */
 	  (iaddr[1]) = (0x90000001UL | (pglo2 << 29) | (pghi19 << 5));
-	  /* add x1, x1, #off */
-	  (iaddr[2]) = (0x91000021UL | (lo12 << 10));
-	  /* br x1 */
-	  (iaddr[3]) = 0xd61f0020UL;
+	  /* add x17, x17, #off */
+	  (iaddr[2]) = (0x91000031UL | (lo12 << 10));
+	  /* br x17 */
+	  (iaddr[3]) = 0xd61f0022UL;
 	}
       else
 	/* You have too much memory.  */
@@ -267,10 +264,10 @@ write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
     }
   else
     {
-      (iaddr[1]) = 0xd1002001UL; /* sub x1, x0, #8 */
-      (iaddr[2]) = 0xf9400021UL; /* ldr x1, [x1] */
-      (iaddr[3]) = 0x8b000021UL; /* add x1, x1, x0 */
-      (iaddr[4]) = 0xd61f0020UL; /* br x1 */
+      (iaddr[1]) = 0xd1002031UL; /* sub x17, x1, #8 */
+      (iaddr[2]) = 0xf9400231UL; /* ldr x17, [x17] */
+      (iaddr[3]) = 0x8b010231UL; /* add x17, x17, x1 */
+      (iaddr[4]) = 0xd61f0022UL; /* br x17 */
     }
 }
 
@@ -313,26 +310,17 @@ trampoline_return_addr (SCHEME_OBJECT * block, unsigned long index)
   return (trampoline_entry_addr (block, index));
 }
 
-#define REGNUM_REGS_POINTER		19
-#define	REGBLOCK_SCHEME_TO_INTERFACE	0
-
 bool
 store_trampoline_insns (insn_t * entry, uint8_t code)
 {
   (entry[-2]) = 0;		/* PC offset, first half */
   (entry[-1]) = 0;		/* PC offset, other half */
-  /* movz x16, #code */
-  (entry[0]) = (0xd2800010UL | (((unsigned) code) << 5));
-  /* adr x1, storage */
+  /* movz x17, #code */
+  (entry[0]) = (0xd2800011UL | (((unsigned) code) << 5));
+  /* adr x1, storage (pc + 12) */
   (entry[1]) = 0x10000061UL;
-  /* ldr x17, [x19, #<scheme_to_interface>] */
-  {
-    unsigned Rn = REGNUM_REGS_POINTER;
-    unsigned imm12 = REGBLOCK_SCHEME_TO_INTERFACE;
-    (entry[2]) = (0xf9400011UL | (imm12 << 10) | (Rn << 5));
-  }
-  /* br x17 */
-  (entry[3]) = 0xd61f0220UL;
+  /* br x23 (scheme-to-interface) */
+  (entry[2]) = 0xd61f02e0UL;
   return (false);		/* no error */
 }
 
