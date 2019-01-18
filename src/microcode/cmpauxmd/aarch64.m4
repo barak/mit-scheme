@@ -213,60 +213,23 @@ END(scheme_to_interface)
 
 	// void interface_to_scheme (insn_t * entry@x1, insn_t * pc@x17)
 	//
-	//	When a utility wants to return control to Scheme at an
-	//	entry, it directs scheme_to_interface_return to jump
-	//	here, with x0 set to the entry address (such as a
-	//	pointer to a compiled closure) and x1 set to the entry
-	//	PC (the actual instructions to execute).
-	//
-GLOBAL(interface_to_scheme)
-	// Set up the transition.
-	bl	SYMBOL(interface_to_scheme_setup)
-
-	// Jump to Scheme.
-	br	APPLICAND_PC
-END(interface_to_scheme)
-
-	// void interface_to_scheme_return (insn_t * entry@x1, insn_t * pc@x17)
-	//
-	//	When a utility wants to return to a Scheme return
-	//	address, it directs scheme_to_interface_return to
-	//	return here.  We then RET to the specified pc.  This
-	//	ensures that if the utility was called via
-	//	branch-and-link, we will use RET to return so that
-	//	calls and returns are paired, which enables the CPU's
-	//	return address branch target predictor to work.
-	//
-GLOBAL(interface_to_scheme_return)
-	// Set up the transition.
-	bl	SYMBOL(interface_to_scheme_setup)
-
-	// Return to Scheme.
-	mov	lr, APPLICAND_PC
-	ret
-END(interface_to_scheme_return)
-
-	// insn_t *
-	// interface_to_scheme_setup (insn_t * entry@x1, insn_t * pc@x17)
-	//
 	//	Set up a transition to compiled Scheme code after a
 	//	utility return, whether we are jumping to a Scheme
 	//	entry or returning to a Scheme return address.
 	//
-	//	- Sets x0 to be the preserved return value, if any.
-	//	- Sets x21 to be the preserved dynamic link, if any.
+	//	- Set x0 to be the preserved return value, if any.
+	//	- Set x21 to be the preserved dynamic link, if any.
 	//	  (Both were in REGBLOCK_VAL.)
-	//	- Sets up x20 (FREE) and x28 (Scheme SP).
-	//	- Preserves x1 (APPLICAND) and x17 (APPLICAND_PC).
-	//	- Does not touch REGS (x19) or HOOKS (x23) because
+	//	- Set up x20 (FREE) and x28 (Scheme SP).
+	//	- Preserve x1 (APPLICAND).
+	//	- Preserve not touch REGS (x19) or HOOKS (x23) because
 	//	  those are callee-saves and unmodified by C.
-	//	- XXX Should we restore DYNLINK (x21)?
 	//
-	//	This is NOT a normal ARM ABI subroutine.  Meant to be
-	//	used only from interface_to_scheme or
-	//	interface_to_scheme_return.
+	//	Finally, jump to pc, x17, which is either the first PC
+	//	of a compiled entry, or interface_to_scheme_return if
+	//	we are returning to a Scheme continuation.
 	//
-LOCAL(interface_to_scheme_setup)
+GLOBAL(interface_to_scheme)
 	// Restore value if it was in use, dynamic link if it was in
 	// use, Free, and stack_pointer.
 	ldr	VAL, [REGS,#(REGBLOCK_VAL*8)]
@@ -276,9 +239,18 @@ LOCAL(interface_to_scheme_setup)
 	ADRL(SSP,stack_pointer)		// address of stack pointer
 	ldr	SSP, [SSP]		// load current stack pointer
 
-	// Done setting up.  Return to caller.
+	// Jump to Scheme, or to scheme_to_interface.
+	br	APPLICAND_PC
+END(interface_to_scheme)
+
+	// void interface_to_scheme_return (insn_t * entry@x1)
+	//
+	//	Issue a RET to entry, x1.
+	//
+GLOBAL(interface_to_scheme_return)
+	mov	lr, APPLICAND
 	ret
-END(interface_to_scheme_setup)
+END(interface_to_scheme_return)
 
 ///////////////////////////////////////////////////////////////////////////////
 // Scheme unknown procedure application setup
