@@ -283,7 +283,7 @@ END(apply_setup)
 LOCAL(apply_setup_fail)
 	mov	UIDX, #0x14	// comutil_apply
 	b	SYMBOL(scheme_to_interface)
-END(apply_setup)
+END(apply_setup_fail)
 
 ///////////////////////////////////////////////////////////////////////////////
 // Scheme miscellaneous primitive subroutine hooks
@@ -315,11 +315,12 @@ END(set_interrupt_enables)
 	//	Hook that just jumps to target, no questions asked.
 	//
 define(JUMP_HOOK, `
-$1:
+LOCAL($1)
 	b	SYMBOL($2)
 	nop
 	nop
-	nop')
+	nop
+END($1)')
 
 	// UTILITY_HOOK(name, number)
 	//
@@ -331,11 +332,12 @@ $1:
 	//	utility_table in cmpint.c.
 	//
 define(UTILITY_HOOK, `
-$1:
+LOCAL($1)
 	mov	UIDX, #$2
 	b	SYMBOL(scheme_to_interface)
 	nop
-	nop')
+	nop
+END($1)')
 
 	// APPLY_HOOK(name, label, n)
 	//
@@ -346,11 +348,12 @@ $1:
 	//	callee.
 	//
 define(APPLY_HOOK, `
-$1:
+LOCAL($1)
 	mov	UARG2, #$3
 	b	SYMBOL(apply_setup)
 	nop
-	nop')
+	nop
+END($1)')
 
 	// hooks
 	//
