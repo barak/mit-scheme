@@ -337,12 +337,14 @@ $1:
 	// APPLY_HOOK(name, label, n)
 	//
 	//	Application setup hook, to be implemented at label.
-	//	Currently not implemented, so just loads n into x1 and
-	//	defers to apply_setup.
+	//	Currently not implemented, so just loads n (frame size,
+	//	i.e. number of arguments + 1) into UARG2 and defers to
+	//	apply_setup.  Caller ensures UARG1 already has the
+	//	callee.
 	//
 define(APPLY_HOOK, `
 $1:
-	mov	x1, #$3
+	mov	UARG2, #$3
 	b	SYMBOL(apply_setup)
 	nop
 	nop')
