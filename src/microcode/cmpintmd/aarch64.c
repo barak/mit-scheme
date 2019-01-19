@@ -90,7 +90,7 @@ cc_return_address_to_entry_address (insn_t * pc)
 {
   insn_t insn = (pc[0]);
   if ((insn & 0xfc000000UL) == 0x14000000UL) /* B */
-    return (pc + (insn & 0x3fffffff));
+    return (pc + (insn & 0x03ffffff));
   else
     /* XXX What if it got branch-tensioned?  */
     error_external_return ();
