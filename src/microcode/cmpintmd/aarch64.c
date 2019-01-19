@@ -183,7 +183,7 @@ skip_compiled_closure_padding (insn_t * start)
 SCHEME_OBJECT
 compiled_closure_entry_to_target (insn_t * entry)
 {
-  return (MAKE_CC_ENTRY (entry + (((int64_t *) entry)[-1])));
+  return (MAKE_CC_ENTRY (CC_ENTRY_ADDRESS_PC (entry)));
 }
 
 /* Execution caches (UUO links)

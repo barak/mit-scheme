@@ -182,16 +182,19 @@ struct cc_entry
 /* We don't put GC trap code before an entry any more.  */
 #define CC_ENTRY_GC_TRAP_SIZE 0
 
-/* A compiled entry address points to _after_ the PC offset that, when
-   added to the entry address, gives the address of instructions for
-   the CPU to execute.
+/* A compiled entry address points to _after_ the PC byte offset that,
+   when added to the entry address, gives the address of instructions
+   for the CPU to execute.
 
-   XXX This is suboptimal because aarch64 does not have immediate
-   negative load offsets, but putting the offset after the label causes
-   other annoying issues.  */
+  PC offset is in units of bytes, not instruction words.  Since it's 64
+  bits, there's no advantage to using units of words.  There's no
+  disadvantage either, except that we'd have to update all the code
+  that assumes byte offsets rather than word (or object) offsets to
+  scale them appropriately.  */
 
 #define CC_ENTRY_ADDRESS_PTR(e)		(e)
-#define CC_ENTRY_ADDRESS_PC(e)		((e) + (((const int64_t *) (e))[-1]))
+#define CC_ENTRY_ADDRESS_PC(e)			\
+  ((insn_t *) (((char *) (e)) + (((const int64_t *) (e))[-1])))
 
 /* A compiled return address points to a jump instruction that jumps to
    the continuation's body.  */
