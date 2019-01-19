@@ -574,7 +574,7 @@ USA.
      ;; initialize it before we can GC.
      (let* ((target (standard-target! target))
             (Free regnum:free-pointer))
-       (LAP ,@(load-tagged-immediate type-code:manifest-vector size target)
+       (LAP ,@(load-tagged-immediate target type-code:manifest-vector size)
             (STR X ,target ,Free)
             ,@(register->register-transfer Free target)
             ,@(add-immediate Free Free
@@ -596,7 +596,7 @@ USA.
          (Free regnum:free-pointer)
          ;; 1 for manifest, 1 for padding & format word, 1 for PC offset.
          (offset 3))
-    (LAP ,@(load-tagged-immediate manifest-type manifest-size temp)
+    (LAP ,@(load-tagged-immediate temp manifest-type manifest-size)
          (STR X ,temp (POST+ ,Free (& 8)))
          ,@(generate-closure-entry label 1 min max offset temp)
          ;; Free now points at the entry.  Save it in target.
@@ -634,7 +634,7 @@ USA.
            ,@(if (pair? (cdr entries))
                  (generate-subsidiary-entries (cdr entries) (+ n 1))
                  (LAP))))
-    (LAP ,@(load-tagged-immediate manifest-type manifest-size temp)
+    (LAP ,@(load-tagged-immediate temp manifest-type manifest-size)
          (STR X ,temp (POST+ ,Free (& 8)))
          ,@(generate-primary-entry (car entries))
          ,@(register->register-transfer Free target)
