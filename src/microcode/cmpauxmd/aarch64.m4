@@ -87,7 +87,7 @@ define(ADRL,`
 	//	1. Save the return address, frame pointer, and
 	//	   callee-saves registers.
 	//	2. Set up the Scheme registers.
-	//	3. Jump.
+	//	3. Defer to interface_to_scheme.
 	//
 GLOBAL(C_to_interface)
 	// Push frame and save frame pointer and return address.
@@ -103,18 +103,21 @@ GLOBAL(C_to_interface)
 	stp	x25, x26, [sp,#64]
 	stp	x27, x28, [sp,#80]
 
-	// Set up Scheme registers.
+	// Set up Scheme registers:
+	// - interpreter registers
+	// - hook table
+	// The others -- VAL, DYNLINK, FREE, SSP -- are set up by
+	// interface_to_scheme.
 	ADRL(REGS,Registers)		// address of register block
-	ADRL(FREE,Free)			// address of Free pointer
-	ldr	FREE, [FREE]		// load current Free pointer
 	ADRL(HOOKS,hooks)		// address of hook table
-	ADRL(SSP,stack_pointer)		// address of stack pointer
-	ldr	SSP, [SSP]		// load current stack pointer
 
-	// Jump!
+	// Set parameters for interface_to_scheme.  Note
+	// APPLICAND_PC=x17, APPLICAND=x0, so ordering is important
+	// here.
 	mov	APPLICAND_PC, x1
 	mov	APPLICAND, x0
-	br	APPLICAND_PC
+
+	b	SYMBOL(interface_to_scheme)
 END(C_to_interface)
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -222,8 +225,8 @@ END(scheme_to_interface)
 	//	  (Both were in REGBLOCK_VAL.)
 	//	- Set up x20 (FREE) and x28 (Scheme SP).
 	//	- Preserve x1 (APPLICAND).
-	//	- Preserve not touch REGS (x19) or HOOKS (x23) because
-	//	  those are callee-saves and unmodified by C.
+	//	- Preserve REGS (x19) and HOOKS (x23) because those are
+	//	  callee-saves and unmodified by C.
 	//
 	//	Finally, jump to pc, x17, which is either the first PC
 	//	of a compiled entry, or interface_to_scheme_return if
