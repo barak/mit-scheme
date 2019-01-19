@@ -124,7 +124,7 @@ END(C_to_interface)
 // Returning to C from Scheme
 ///////////////////////////////////////////////////////////////////////////////
 
-	// void interface_to_C (long code@x0)
+	// void interface_to_C (long code@x1, void * garbage@x17)
 	//
 	//	When a utility returns and it needs to fall back to the
 	//	interpreter, it directs scheme_to_interface_return to
@@ -133,17 +133,17 @@ END(C_to_interface)
 	//
 	//	Steps:
 	//
-	//	1. Tear down the Scheme registers.
-	//	2. Restore the return address, frame pointer, and
+	//	1. Restore the return address, frame pointer, and
 	//	   callee-saves registers.
-	//	3. Return.
+	//	2. Return.
+	//
+	//	The mutable Scheme registers -- FREE, SSP -- will have
+	//	alreay been saved by scheme_to_interface on earlier
+	//	entry to C.
 	//
 GLOBAL(interface_to_C)
-	// Tear down the Scheme registers.
-	ADRL(x1,Free)			// address of Free pointer
-	str	FREE, [x1]		// store current Free pointer
-	ADRL(x1,stack_pointer)		// address of stack pointer
-	str	SSP, [x1]		// store current stack pointer
+	// Set return value.
+	mov	x0, x1
 
 	// Restore callee-saves registers.
 	ldp	x19, x20, [sp,#16]
