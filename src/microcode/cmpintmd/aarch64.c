@@ -210,9 +210,9 @@ unsigned int
 read_uuo_frame_size (SCHEME_OBJECT * saddr)
 {
 #ifdef WORDS_BIGENDIAN
-  return ((saddr[1]) & 0xffff);
-#else
   return ((saddr[2]) & 0xffff);
+#else
+  return ((saddr[1]) & 0xffff);
 #endif
 }
 
