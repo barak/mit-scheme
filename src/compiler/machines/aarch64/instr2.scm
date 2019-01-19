@@ -293,7 +293,7 @@ USA.
                   (? Rn)
                   ,@(if m=n? '() '((? Rm)))
                   (&U (? s unsigned-5)))
-               (BITS (1 0)              ;sf=0
+               (BITS (1 0)              ;sf=0, 32-bit operand size
                      (2 ,op21)
                      (1 1)
                      (4 #b0011)
@@ -309,12 +309,12 @@ USA.
                   (? Rn)
                   ,@(if m=n? '() '((? Rm)))
                   (&U (? s unsigned-6)))
-               (BITS (1 0)              ;sf=0
+               (BITS (1 1)              ;sf=1, 64-bit operand size
                      (2 ,op21)
                      (1 1)
                      (4 #b0011)
                      (1 1)
-                     (1 0)              ;N, must match sf
+                     (1 1)              ;N, must match sf
                      (1 ,o0)
                      (5 ,(if m=n? 'Rn 'Rm))
                      (6 s)
