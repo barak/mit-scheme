@@ -581,10 +581,14 @@ USA.
 ;; Jump to an assembly hook.  No link register setup or anything.  May
 ;; clobber r16, r17.
 
+(define-integrable (hook-offset entry)
+  ;; Four instructions per hook, four bytes per instruction.
+  (* 16 entry))
+
 (define (invoke-hook entry)
   (if (zero? entry)                     ;scheme-to-interface
       (LAP (BR ,regnum:hooks))
-      (LAP (ADD X ,regnum:scratch-0 ,regnum:hooks (&U ,(* 8 entry)))
+      (LAP (ADD X ,regnum:scratch-0 ,regnum:hooks (&U ,(hook-offset entry)))
            (BR ,regnum:scratch-0))))
 
 ;; Invoke a hook that will return to the address in the link register
@@ -592,7 +596,7 @@ USA.
 ;; but are a little too large to copy in every caller.
 
 (define-integrable (invoke-hook/subroutine entry)
-  (LAP (ADD X ,regnum:scratch-0 ,regnum:hooks (&U ,(* 8 entry)))
+  (LAP (ADD X ,regnum:scratch-0 ,regnum:hooks (&U ,(hook-offset entry)))
        (BLR ,regnum:scratch-0)))
 
 ;; Invoke a hook that expects an untagged compiled return address in
