@@ -60,9 +60,12 @@ write_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 bool
 read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
+  const size_t units = ((sizeof (SCHEME_OBJECT)) / (sizeof (insn_t)));
+  assert (units == 2);
   uint32_t word = (address[-3]);
   uint16_t n = ((word & BLOCK_OFFSET_MASK) >> BLOCK_OFFSET_SHIFT);
-  (ceo->offset) = (n >> 1);
+  /* Block offsets are stored in units of Scheme objects.  */
+  (ceo->offset) = (units * (n >> 1));
   (ceo->continued_p) = ((n & 1) != 0);
   return (false);
 }
@@ -70,11 +73,14 @@ read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 bool
 write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
+  const size_t units = ((sizeof (SCHEME_OBJECT)) / (sizeof (insn_t)));
+  assert (units == 2);
+  assert (((ceo->offset) % units) == 0);
   if (! ((ceo->offset) < 0x4000))
     return (true);
   (address[-3]) &=~ BLOCK_OFFSET_MASK;
   (address[-3]) |=
-    ((((ceo->offset) << 1) | ((ceo->continued_p) ? 1 : 0))
+    (((((ceo->offset) / units) << 1) | ((ceo->continued_p) ? 1 : 0))
      << BLOCK_OFFSET_SHIFT);
   return (false);
 }

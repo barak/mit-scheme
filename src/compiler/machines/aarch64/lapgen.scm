@@ -446,9 +446,10 @@ USA.
 
 (define (make-external-label type/arity label)
   (set! *external-labels* (cons label *external-labels*))
-  (LAP (PADDING 32 64 ,entry-padding-bit-string)
+  ;; Pad to 4 modulo 8 bytes so the PC offset is 8-byte-aligned.
+  (LAP (PADDING 4 8 ,entry-padding-bit-string)
        (EXTERNAL-LABEL ,type/arity ,label)
-       (DATA 64 U 0)
+       (DATA 64 U 0)                    ;PC offset
        (LABEL ,label)))
 
 (define (make-code-word min max)

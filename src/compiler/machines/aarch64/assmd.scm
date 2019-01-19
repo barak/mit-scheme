@@ -41,13 +41,15 @@ USA.
   16)
 
 (define-integrable maximum-block-offset
-  ;; PC always aligned on 32-bit boundary.  Use the extra bit.
-  (- (expt 2 (1+ block-offset-width)) 4))
+  ;; Starting PC always aligned on 64-bit boundary.
+  ;; - One bit is reserved for the continuation bit.
+  ;; - Three bits are always zero.
+  (- (expt 2 (+ (- 3 1) block-offset-width)) 8))
 
 (define (block-offset->bit-string offset start?)
-  (assert (zero? (remainder offset 4)))
+  (assert (zero? (remainder offset 8)))
   (unsigned-integer->bit-string block-offset-width
-                                (+ (shift-left (quotient offset 4) 1)
+                                (+ (shift-left (quotient offset 8) 1)
                                    (if start? 0 1))))
 
 ;;; Machine dependent instruction order

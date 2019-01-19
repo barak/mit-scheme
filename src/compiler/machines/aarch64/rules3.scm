@@ -593,10 +593,12 @@ USA.
          (temp (allocate-temporary-register! 'GENERAL))
          (manifest-type type-code:manifest-closure)
          (manifest-size (closure-manifest-size size))
-         (Free regnum:free-pointer))
+         (Free regnum:free-pointer)
+         ;; 1 for manifest, 1 for padding & format word, 1 for PC offset.
+         (offset 3))
     (LAP ,@(load-tagged-immediate manifest-type manifest-size temp)
          (STR X ,temp (POST+ ,Free (& 8)))
-         ,@(generate-closure-entry label 1 min max 1 temp)
+         ,@(generate-closure-entry label 1 min max offset temp)
          ;; Free now points at the entry.  Save it in target.
          ,@(register->register-transfer Free target)
          ;; Bump Free to point at the last component, one word before
@@ -614,8 +616,8 @@ USA.
          (temp (allocate-temporary-register! 'GENERAL))
          (manifest-type type-code:manifest-closure)
          (manifest-size (multiclosure-manifest-size nentries size))
-         ;; 8 for manifest, 8 for padding & format word, 8 for PC offset.
-         (offset0 #x18)
+         ;; 1 for manifest, 1 for padding & format word, 1 for PC offset.
+         (offset0 3)
          (Free regnum:free-pointer))
     (define (generate-primary-entry entry)
       (let ((label (car entry)) (min (cadr entry)) (max (caddr entry)))
@@ -649,25 +651,10 @@ USA.
 
 (define (generate-closure-entry label padding min max offset temp)
   (let* ((label* (rtl-procedure/external-label (label->object label)))
-         (code-word (make-procedure-code-word min max))
+         (format (make-closure-padded-format padding min max offset))
          (Free regnum:free-pointer))
-    ;; Could avoid zeroing the padding if we don't need it, but there's
-    ;; no advantage.
-    (define (padded-word)
-      ;; padding(32) || code-word(16) || offset(16)
-      (case endianness
-        ((BIG)
-         (bitwise-ior (shift-left padding 32)
-                      (bitwise-ior (shift-left code-word 16)
-                                   offset)))
-        ((LITTLE)
-         (bitwise-ior padding
-                      (bitwise-ior (shift-left code-word 32)
-                                   (shift-left offset 48))))
-        (else
-         (error "Unknown endianness:" endianness))))
     (assert (not (= temp regnum:scratch-0)))
-    (LAP ,@(load-unsigned-immediate temp (padded-word))
+    (LAP ,@(load-unsigned-immediate temp format)
          (STR X ,temp (POST+ ,Free (& 8)))
          ;; Set temp := label - 8.
          (ADR X ,temp (@PCR (- ,label* 8) ,regnum:scratch-0))
@@ -675,6 +662,21 @@ USA.
          (SUB X ,temp ,temp ,Free)
          ;; Store the PC offset.
          (STR X ,temp (POST+ ,Free (& 8))))))
+
+(define (make-closure-padded-format padding min max offset)
+  ;; Entries are 64-bit-aligned, so offset is units of Scheme objects,
+  ;; limited to 15 bits.  Low bit of the block offset is 0 because it
+  ;; always refers to the start of the block, not to a continuation
+  ;; offset.
+  (assert (< offset (expt 2 15)) "Your closure has too many entries.")
+  (let ((word
+         (bitwise-ior (shift-left offset (+ 16 1))
+                      (make-procedure-code-word min max))))
+    ;; Padding (or entry count) comes first in memory.
+    (case endianness
+      ((BIG) (bitwise-ior padding (shift-left word 32)))
+      ((LITTLE) (bitwise-ior (shift-left word 32) padding))
+      (else (error "Unknown endianness:" endianness)))))
 
 (define (closure-manifest-size size)
   (multiclosure-manifest-size 1 size))
