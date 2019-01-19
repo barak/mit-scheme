@@ -93,7 +93,7 @@ cc_return_address_to_entry_address (insn_t * pc)
     return (pc + (insn & 0x03ffffff));
   else
     /* XXX What if it got branch-tensioned?  */
-    error_external_return ();
+    return (pc);
 }
 
 /* Compiled closures */
