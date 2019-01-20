@@ -125,7 +125,7 @@ start_closure_relocation (SCHEME_OBJECT * scan, reloc_ref_t * ref)
 insn_t *
 read_compiled_closure_target (insn_t * start, reloc_ref_t * ref)
 {
-  insn_t * addr = (start + CC_ENTRY_HEADER_SIZE);
+  insn_t * addr = (start + CC_ENTRY_PADDING_SIZE + CC_ENTRY_HEADER_SIZE);
   insn_t * base = (tospace_to_newspace (addr));
   /* If we're relocating, find where base was in the oldspace.  */
   if (ref)
@@ -143,7 +143,7 @@ read_compiled_closure_target (insn_t * start, reloc_ref_t * ref)
 void
 write_compiled_closure_target (insn_t * target, insn_t * start)
 {
-  insn_t * addr = (start + CC_ENTRY_HEADER_SIZE);
+  insn_t * addr = (start + CC_ENTRY_PADDING_SIZE + CC_ENTRY_HEADER_SIZE);
   (((int64_t *) addr)[-1]) =
     (target - ((insn_t *) (tospace_to_newspace (addr))));
 }
