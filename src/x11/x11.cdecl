@@ -712,7 +712,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (extern void
 	x_graphics_set_clip_rectangle
 	(xw (* (struct xwindow)))
-	(x_left int) (y_bottom int) (x_right int) (y_top int))
+	(x_left float) (y_bottom float) (x_right float) (y_top float))
 
 (extern void
 	x_graphics_reconfigure
