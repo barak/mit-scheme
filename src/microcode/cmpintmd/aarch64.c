@@ -130,7 +130,9 @@ read_compiled_closure_target (insn_t * start, reloc_ref_t * ref)
   /* If we're relocating, find where base was in the oldspace.  */
   if (ref)
     base += (ref->old_addr - ref->new_addr);
-  return (base + (((int64_t *) addr)[-1]));
+  assert (((((int64_t *) addr)[-1]) % (sizeof (insn_t))) == 0);
+  assert (((((int64_t *) addr)[-1]) % (sizeof (SCHEME_OBJECT))) == 0);
+  return ((insn_t *) (((char *) base) + (((int64_t *) addr)[-1])));
 }
 
 /* write_compiled_closure_target(target, start)
@@ -144,8 +146,9 @@ void
 write_compiled_closure_target (insn_t * target, insn_t * start)
 {
   insn_t * addr = (start + CC_ENTRY_PADDING_SIZE + CC_ENTRY_HEADER_SIZE);
-  (((int64_t *) addr)[-1]) =
-    (target - ((insn_t *) (tospace_to_newspace (addr))));
+  char * from_pc = ((char *) (tospace_to_newspace (addr)));
+  char * to_pc = ((char *) target);
+  (((int64_t *) addr)[-1]) = ((int64_t) (to_pc - from_pc));
 }
 
 unsigned long
