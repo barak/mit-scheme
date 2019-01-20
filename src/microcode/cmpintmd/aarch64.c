@@ -241,7 +241,9 @@ write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
      we don't know where the PC will be in the newspace.  */
   if ((((const int64_t *) (newspace_to_tospace (target)))[-1]) == 0)
     {
-      ptrdiff_t offset = (((uintptr_t) target) - ((uintptr_t) (&iaddr[1])));
+      char * from_pc = (tospace_to_newspace ((char *) (&iaddr[1])));
+      char * to_pc = ((char *) target);
+      ptrdiff_t offset = (to_pc - from_pc);
       assert ((offset & 3) == 0);
       if ((-0x10000000 <= offset) && (offset <= 0xfffffff))
 	{
