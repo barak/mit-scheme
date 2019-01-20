@@ -742,8 +742,8 @@ USA.
         (MACRO 32 (LDR ,size ,Rt (@PCO (* 4 ,offset)))))
        ((#x-100000000 #xffffffff)
         ;; Could maybe use ADRP and LDR with unsigned 8-byte offset,
-        ;; but only if the offset is even because this instruction is
-        ;; aligned, wich the assembler can't handle easily.
+        ;; but only if the offset is or this instruction is aligned,
+        ;; which the assembler can't handle easily.
         (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
         (MACRO 32 (LDR X ,Rt ,temp)))))))
 
