@@ -69,6 +69,7 @@ USA.
          (BR ,regnum:applicand-pc))))
 
 (define (apply-setup frame-size)
+  (assert (= regnum:applicand regnum:utility-arg1))
   (case frame-size
     ((1) (invoke-hook/subroutine entry:compiler-apply-setup-size-1))
     ((2) (invoke-hook/subroutine entry:compiler-apply-setup-size-2))
@@ -79,7 +80,7 @@ USA.
     ((7) (invoke-hook/subroutine entry:compiler-apply-setup-size-7))
     ((8) (invoke-hook/subroutine entry:compiler-apply-setup-size-8))
     (else
-     (LAP ,@(load-unsigned-immediate regnum:utility-arg1 frame-size)
+     (LAP ,@(load-unsigned-immediate regnum:utility-arg2 frame-size)
           ,@(invoke-hook/subroutine entry:compiler-apply-setup)))))
 
 (define-rule statement
