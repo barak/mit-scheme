@@ -85,12 +85,19 @@ write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
   return (false);
 }
 
+static long
+sign_extend(long word, unsigned bits)
+{
+  const long magic = (1L << (bits - 1));
+  return ((word ^ magic) - magic);
+}
+
 insn_t *
 cc_return_address_to_entry_address (insn_t * pc)
 {
   insn_t insn = (pc[0]);
   if ((insn & 0xfc000000UL) == 0x14000000UL) /* B */
-    return (pc + (insn & 0x03ffffff));
+    return (pc + (sign_extend ((insn & 0x03ffffff), 26)));
   else
     /* XXX What if it got branch-tensioned?  */
     return (pc);
