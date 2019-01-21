@@ -242,4 +242,13 @@ insn_t * read_uuo_target (SCHEME_OBJECT *);
 /* C stack is completely separate.  */
 #define within_c_stack(fn, cookie) (fn)(cookie)
 
+#define FLUSH_I_CACHE_REGION(ptr, nwords)	\
+  aarch64_flush_i_cache_region ((ptr), (nwords))
+
+#define FLUSH_I_CACHE()				\
+  aarch64_flush_i_cache ()
+
+void aarch64_flush_i_cache_region (SCHEME_OBJECT *, size_t);
+void aarch64_flush_i_cache (void);
+
 #endif /* SCM_CMPINTMD_H_INCLUDED */

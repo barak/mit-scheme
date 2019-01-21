@@ -346,3 +346,50 @@ aarch64_reset_hook (void)
 {
   /* XXX Make sure we're mapped write and execute.  (Such is the state...)  */
 }
+
+static inline void
+aarch64_cache_line_sizes (unsigned *dsize, unsigned *isize)
+{
+  uint64_t ctr_el0;
+
+  asm volatile ("\n\
+    mrs %0, ctr_el0\n\
+    ubfx %1, %0, #16, #4\n\
+    ubfx %2, %0, #0, #4\n\
+  " : "=r"(ctr_el0), "=r"(*dsize), "=r"(*isize));
+}
+
+void
+aarch64_flush_i_cache_region (SCHEME_OBJECT * start, size_t nwords)
+{
+  unsigned dsize, isize;
+  size_t nbytes = (nwords * (sizeof (SCHEME_OBJECT)));
+  char * p;
+  size_t n;
+
+  /* Get the cache line sizes.  */
+  aarch64_cache_line_sizes ((&dsize), (&isize));
+
+  /* Flush the data cache lines.  */
+  n = ((nbytes + (dsize - 1)) / dsize);
+  for (p = ((char *) start); n --> 0; p += dsize)
+    asm volatile ("dc cvau, %0" : : "r"(p));
+
+  /* All data writes must complete before any following data reads.  */
+  asm volatile ("dsb ish");
+
+  /* Flush the instruction cache lines.  */
+  n = ((nbytes + (isize - 1)) / isize);
+  for (p = ((char *) start); n --> 0; p += isize)
+    asm volatile ("ic ivau, %0" : : "r"(p));
+
+  /* All cache flushes happen before any following instruction fetches.  */
+  asm volatile ("isb");
+}
+
+void
+aarch64_flush_i_cache (void)
+{
+  /* Can't do `ic iallu' because that's privileged.  */
+  aarch64_flush_i_cache_region (constant_start, Free - constant_start);
+}
