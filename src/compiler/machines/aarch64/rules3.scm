@@ -322,7 +322,7 @@ USA.
                (LAP))
          ,@(load-unsigned-immediate index loop-count)
         (LABEL ,label)
-         (SUB X ,index ,index (&U #x10))
+         (SUB X ,index ,index (&U 2))
          (LDP X ,temp1 ,temp2 (PRE+ ,regnum:stack-pointer (& (* 8 -2))))
          (STP X ,temp1 ,temp2 (PRE+ ,address (& (* 8 -2))))
          (CBNZ X ,index (@PCR ,label ,regnum:scratch-0))
