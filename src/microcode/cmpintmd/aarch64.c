@@ -284,7 +284,7 @@ write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
       (iaddr[1]) = 0xd1002031UL; /* sub x17, x1, #8 */
       (iaddr[2]) = 0xf9400231UL; /* ldr x17, [x17] */
       (iaddr[3]) = 0x8b010231UL; /* add x17, x17, x1 */
-      (iaddr[4]) = 0xd61f0022UL; /* br x17 */
+      (iaddr[4]) = 0xd61f0220UL; /* br x17 */
     }
 }
 
