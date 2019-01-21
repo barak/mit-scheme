@@ -1660,8 +1660,8 @@ USA.
                      (5 Ra)
                      (5 Rn)
                      (5 Rd)))))))))
-  (define-muladdsub-instruction madd #b000 0) ;Multiply-Add
-  (define-muladdsub-instruction msub #b000 1)) ;Multiply-Subtract
+  (define-muladdsub-instruction MADD #b000 0) ;Multiply-Add
+  (define-muladdsub-instruction MSUB #b000 1)) ;Multiply-Subtract
 
 (let-syntax
     ((define-widemul-instruction

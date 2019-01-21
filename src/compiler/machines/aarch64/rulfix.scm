@@ -197,6 +197,8 @@ USA.
     (if (= source1 source2)             ;XXX Avoid this earlier on.
         (load-fixnum-constant target 1)
         (LAP (SDIV X ,target ,source1 ,source2)
+             ;; source1 = n 2^t, source2 = d 2^t, target = q
+             ;; target := q 2^t
              (LSL X ,target ,target (&U ,scheme-type-width))))))
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
@@ -205,10 +207,9 @@ USA.
     (if (= source1 source2)             ;XXX Avoid this earlier on.
         (load-fixnum-constant target 0)
         (LAP (SDIV X ,target ,source1 ,source2)
-             ;; source1 = n, source2 = d, target = q
-             ;; target := n - d*q
-             (MSUB X ,target ,source1 ,source2 ,target)
-             (LSL X ,target ,target (&U ,scheme-type-width))))))
+             ;; source1 = n 2^t, source2 = d 2^t, target = q
+             ;; target := (n - d*q) 2^t
+             (MSUB X ,target ,source2 ,target ,source1)))))
 
 ;; XXX Constant operands.
 ;; XXX Fast division by multiplication.
