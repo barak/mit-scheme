@@ -55,12 +55,13 @@ USA.
   (require-register! regnum:utility-arg2)
   (require-register! regnum:utility-arg3)
   (let* ((set-extension (load-machine-register! extension regnum:utility-arg2))
-         (set-value (load-machine-register! value regnum:utility-arg2))
+         (set-value (load-machine-register! value regnum:utility-arg3))
          (prefix (clear-map!)))
     (LAP ,@set-extension
          ,@set-value
          ,@prefix
-         ,@(invoke-interface/call code:compiler-reference-trap continuation))))
+         ,@(invoke-interface/call code:compiler-assignment-trap
+                                  continuation))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? continuation)
