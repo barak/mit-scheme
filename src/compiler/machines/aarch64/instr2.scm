@@ -80,7 +80,7 @@ USA.
       (sc-macro-transformer
        (lambda (form environment)
          environment
-         (receive (mnemonic opc op2) (apply values (cdr form))
+         (receive (mnemonic opc op2 r s) (apply values (cdr form))
            `(define-instruction ,mnemonic
               (((? sf sf-size)
                 (? Rd register-31=z)
@@ -108,9 +108,9 @@ USA.
                      (1 0)
                      (1 0)              ;N, must match sf
                      (1 0)              ;high bit of r
-                     (5 (modulo (- 0 shift) 32))
+                     (5 (let ((width 32)) (declare (ignorable width)) ,r))
                      (1 0)              ;high bit of s
-                     (5 (- 31 shift))
+                     (5 (let ((width 32)) ,s))
                      (5 Rn)
                      (5 Rd)))
               ;; Alias for SBFM/UBFM, 64-bit operand size.
@@ -123,16 +123,22 @@ USA.
                      (4 #b0011)
                      (1 0)
                      (1 1)              ;N, must match sf
-                     (6 (modulo (- 0 shift) 64))
-                     (6 (- 63 shift))
+                     (6 (let ((width 64)) (declare (ignorable width)) ,r))
+                     (6 (let ((width 64)) ,s))
                      (5 Rn)
                      (5 Rd)))))))))
   ;; Arithmetic shift right (replicate sign bit), alias for SBFM
-  (define-shift-instruction ASR #b00 #b10)
+  (define-shift-instruction ASR #b00 #b10
+    shift
+    (- width 1))
   ;; Logical shift left, alias for UBFM
-  (define-shift-instruction LSL #b10 #b00)
+  (define-shift-instruction LSL #b10 #b00
+    (modulo (- 0 shift) width)
+    (- (- width 1) shift))
   ;; Logical shift right (fill with zeros), alias for UBFM
-  (define-shift-instruction LSR #b10 #b01))
+  (define-shift-instruction LSR #b10 #b01
+    shift
+    (- width 1)))
 
 (let-syntax
     ((define-signed-extend-instruction
