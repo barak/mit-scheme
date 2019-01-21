@@ -286,7 +286,7 @@ USA.
     ((1) 0)
     ((2) 1)
     ((4) 2)
-    ((8) 4)
+    ((8) 3)
     (else (error "Invalid scale:" scale))))
 
 (define (load-displaced-address target base offset scale)
