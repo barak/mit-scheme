@@ -1972,7 +1972,7 @@ void
 declare_compiled_code_block (SCHEME_OBJECT block)
 {
 #ifdef PUSH_D_CACHE_REGION
-  PUSH_D_CACHE_REGION ((OBJECT_ADDRESS (block)), (CC_BLOCK_END (block)));
+  PUSH_D_CACHE_REGION ((OBJECT_ADDRESS (block)), (CC_BLOCK_LENGTH (block)));
 #endif
 }
 
