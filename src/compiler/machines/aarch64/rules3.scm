@@ -757,6 +757,8 @@ USA.
         (LAP ,@(load-unsigned-immediate counter n-blocks)
             (LABEL ,loop-label)
              ,@(load-pc-relative arg2 vector-label)     ;arg2 := vector
+             ;; Remember that a vector points to the manifest, so
+             ;; effectively it is 1-based indexing.
              ,@(object->address arg2 arg2)              ;arg2 := vector addr
              (LDR X ,arg2 (+ ,arg2 (LSL ,counter 3)))   ;arg2 := vector[ctr-1]
              ,@(object->address arg2 arg2)              ;arg2 := block addr
@@ -769,7 +771,8 @@ USA.
              (ADD X ,temp1 ,temp1 (&U #x10))            ;temp1 := consts offset
              (ADD X ,arg3 ,arg2 ,temp1)                 ;temp1 := consts addr
              (SUB X ,counter ,counter (&U 1))           ;ctr := ctr - 1
-             (ADR X ,arg4 (@PCR ,nsects ,regnum:scratch-0)) ;arg4 := nsects
+             (ADR X ,arg4                               ;arg4 := nsects
+                  (@PCR ,nsects-label ,regnum:scratch-0))
              (LDR B ,arg4 (+ ,arg4 ,counter))           ;arg4 := nsects[ctr]
              ,@(invoke-interface/call code:compiler-link continuation-label)
              ,@(make-external-label (continuation-code-word #f)
