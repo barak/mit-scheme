@@ -749,13 +749,17 @@ USA.
              (end-label (generate-label 'END))
              (continuation-label (generate-label 'LINKED))
              (counter r24)              ;unallocated, callee-saves
-             (temp1 r1)                 ;unallocated
-             (temp2 r2)                 ;unallocated
+             (temp1 r5)                 ;unallocated
+             (temp2 r6)                 ;unallocated
              ;; arg1 will be return address.
              (arg2 regnum:utility-arg2)
              (arg3 regnum:utility-arg3)
              (arg4 regnum:utility-arg4))
         (assert (not (= counter regnum:scratch-0)))
+        (assert (not (= counter regnum:utility-arg1)))
+        (assert
+         (null? (eqv-set-intersection (list counter temp1 temp2)
+                                      (list arg2 arg3 arg3))))
         (LAP ,@(load-unsigned-immediate counter n-blocks)
             (LABEL ,loop-label)
              ,@(load-pc-relative arg2 vector-label)     ;arg2 := vector
