@@ -721,18 +721,23 @@ USA.
                               environment-offset
                               free-ref-offset
                               n-sections)
-  (let ((continuation-label (generate-label 'LINKED))
+  ;; These are byte offsets.
+  (assert (zero? (remainder environment-offset 8)))
+  (assert (zero? (remainder free-ref-offset 8)))
+  (let ((environment-index (quotient environment-offset 8))
+        (continuation-label (generate-label 'LINKED))
         ;; arg1 will be the return address.
         (arg2 regnum:utility-arg2)
         (arg3 regnum:utility-arg3)
         (arg4 regnum:utility-arg4)
-        (temp r1))
+        (temp r5))
+    (assert (not (memv temp (list regnum:utility-arg1 arg2 arg3 arg4))))
     (LAP (LDR X ,temp ,reg:environment)
          ;; arg2 := block address
          ,@(load-pc-relative arg2 code-block-label)
          ,@(object->address arg2 arg2)
          ;; Set this block's environment.
-         (STR X ,temp (+ ,arg2 (&U (* 8 ,environment-offset))))
+         (STR X ,temp (+ ,arg2 (&U (* 8 ,environment-index))))
          ;; arg3 := constants address
          ,@(add-immediate arg3 arg2 free-ref-offset)
          ;; arg4 := n sections
@@ -774,8 +779,8 @@ USA.
              (STR X ,temp1 (+ ,arg2 (LSL ,temp2 3)))    ;set block environment
              (LDR X ,temp1 (+ ,arg2 (&U (* 8 1))))      ;temp1 := manifest-nmv
              ,@(object->datum temp1 temp1)              ;temp1 := unmarked size
-             (ADD X ,temp1 ,temp1 (&U #x10))            ;temp1 := consts offset
-             (ADD X ,arg3 ,arg2 ,temp1)                 ;temp1 := consts addr
+             (ADD X ,temp1 ,temp1 (&U 2))               ;move past 2 manifests
+             (ADD X ,arg3 ,arg2 (LSL ,temp1 3))         ;temp1 := consts addr
              (SUB X ,counter ,counter (&U 1))           ;ctr := ctr - 1
              (ADR X ,arg4                               ;arg4 := nsects
                   (@PCR ,nsects-label ,regnum:scratch-0))
