@@ -793,10 +793,10 @@ USA.
 (define (generate/nsects nsects)
   (let ((n (vector-length nsects)))
     (define (adjoin/be byte word bits)
-      (bitwise-ior (shift-left byte bits) word))
-    (define (adjoin/le byte word bits)
       bits
       (bitwise-ior byte (shift-left word 8)))
+    (define (adjoin/le byte word bits)
+      (bitwise-ior (shift-left byte bits) word))
     (define adjoin
       (case endianness
         ((BIG) adjoin/be)
@@ -806,13 +806,15 @@ USA.
         ((i (* (quotient (+ n 7) 8) 8))
          (words (LAP)))
       (if (< 0 i)
-          (let subloop ((j 0) (word 0))
-            (if (< j 8)
-                (let ((byte (if (< (+ i j) n) (vector-ref nsects (+ i j)) 0)))
-                  (subloop (+ j 1) (adjoin byte word (* j 8))))
-                (loop (- i 8)
-                      (LAP (DATA 64 U ,word)
-                           ,@words))))
+          (let ((i (- i 8)))
+            (let subloop ((j 0) (word 0))
+              (if (< j 8)
+                  (let ((byte
+                         (if (< (+ i j) n) (vector-ref nsects (+ i j)) 0)))
+                    (subloop (+ j 1) (adjoin byte word (* j 8))))
+                  (loop i
+                        (LAP (DATA 64 U ,word)
+                             ,@words)))))
           words))))
 
 (define (generate/constants-block constants references assignments
