@@ -291,8 +291,8 @@ USA.
           (BYTE-OFFSET (REGISTER (? base))
                        (MACHINE-CONSTANT (? offset))))
   (QUALIFIER (not (= offset rsp)))
-  (standard-binary target base offset
-    (lambda (target base offset)
+  (standard-unary target base
+    (lambda (target base)
       (LAP (LDR B ,target (+ ,base (&U ,offset)))))))
 
 ;;; Store byte with displacement
