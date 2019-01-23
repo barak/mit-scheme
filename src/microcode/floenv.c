@@ -594,7 +594,22 @@ DEFINE_PRIMITIVE ("HAVE-FLOAT-TRAP-ENABLE/DISABLE?", Prim_have_float_trap_enable
 {
   PRIMITIVE_HEADER (0);
 #if ((defined (HAVE_FEENABLEEXCEPT)) && (defined (HAVE_FEDISABLEEXCEPT)))
-  PRIMITIVE_RETURN (SHARP_T);
+  static int have = -1;
+  if (have == -1)
+    {
+      fenv_t fenv;
+      int excepts = (fegetexcept ());
+      /* Prevent traps while we futz with stuff.  */
+      feholdexcept (&fenv);
+      /* Reverse the sense.  */
+      feenableexcept (FE_ALL_EXCEPT &~ excepts);
+      fedisableexcept (excepts);
+      /* Check whether that had any effect.  */
+      have = ((fegetexcept ()) != excepts);
+      /* Restore the environment without raising exceptions.  */
+      fesetenv (&fenv);
+    }
+  PRIMITIVE_RETURN (have ? SHARP_T : SHARP_F);
 #else
   PRIMITIVE_RETURN (SHARP_F);
 #endif
