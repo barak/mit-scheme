@@ -333,9 +333,11 @@ USA.
          => (lambda (shift)
               (LAP (MOVZ X ,target
 			 (LSL (&U ,(shift-right imm shift)) ,shift)))))
-        ((find-shift (bitwise-not imm))
+        ((find-shift (bitwise-andc1 imm #xffffffffffffffff))
          => (lambda (shift)
-              (LAP (MOVN X ,target (LSL (&U ,(bitwise-not imm)) ,shift)))))
+              (let ((imm (bitwise-andc1 imm #xffffffffffffffff)))
+                (LAP (MOVN X ,target
+                           (LSL (&U ,(shift-right imm shift)) ,shift))))))
         ((logical-immediate? imm)
          (LAP (ORR X ,target Z (&U ,imm))))
         ;; XXX try splitting in halves, quarters
@@ -346,8 +348,6 @@ USA.
                  (hi-shift (find-shift hi)))
              (and lo-shift hi-shift (cons lo-shift hi-shift))))
          => (lambda))
-        ((fits-in-unsigned-16? (bitwise-not imm))
-         (LAP (MOVN X ,target (&U ,(bitwise-not imm)))))
 	(else
 	 ;; XXX give up
 	 (LAP (MOVZ X ,target (&U ,(chunk16 0)))
