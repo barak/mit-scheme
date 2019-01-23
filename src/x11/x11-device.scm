@@ -48,7 +48,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (initialize-package!)
   (set! x-graphics-device-type
 	(make-graphics-device-type
-	 'x11
+	 'x
 	 `((available? ,x-graphics/available?)
 	   (clear ,x-graphics/clear)
 	   (close ,x-graphics/close-window)
