@@ -1,24 +1,11 @@
-- Make it work.
-  [ ] cmpauxmd
-  [ ] instr: branch tensioning, review it all, simd, float
-  [ ] insutl
-  [ ] logical immediate encoding
-- Confirm apply target/pc registers match in:
-  . rules3 (invocation:computed-jump)
-  . cmpauxmd
-  . uuo link code in aarch64.c (currently uses x0/x1, should use x16/x17)
-  . trampoline code, if necessary
-  . wherever else
 - Verify the branch condition codes.
 - Verify variable-width cases.
-- Logical immediate encoding.
 - Open-coded flonum arithmetic.
 - Better fixnum operations with constant operands.
 - Fast division by multiplication.
 - Fixnum multiply-add/sub/negate.
 - Consider NaN-tagging.
 - Write a disassembler.
-- Share interrupt hook invocations.
 - Change TYPED-CONS to tag Free into a temporary _before_ writing to it.
   Currently we do
     str x1,[x20],#8     // *Free++ = x1
