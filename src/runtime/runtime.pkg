@@ -3801,8 +3801,6 @@ USA.
 	  channel-descriptor)
   (export (runtime microcode-errors)
 	  port-error-test)
-  (export (runtime x-graphics)
-	  have-select?)
   (export (runtime thread)
 	  add-to-select-registry!
 	  have-select?
@@ -4387,9 +4385,7 @@ USA.
 	  image/width
 	  image?
 	  make-graphics-device
-	  make-graphics-device-type)
-  (export (runtime x-graphics)
-	  make-image-type))
+	  make-graphics-device-type))
 
 (define-package (runtime x-graphics)
   (file-case os-type
