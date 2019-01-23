@@ -111,22 +111,22 @@ USA.
   ;; .v = overflow
   ;; Branch if...
   (case condition
-    ((EQ) #b0000)                       ;equal (z)
-    ((NE) #b0001)                       ;not equal (!z)
-    ((CS) #b0010)                       ;carry set (c)
-    ((CC) #b0011)                       ;carry clear (!c)
-    ((MI) #b0100)                       ;negative `minus' (n)
-    ((PL) #b0101)                       ;nonnegative `plus' (!n)
-    ((VS) #b0110)                       ;overflow set (v)
-    ((VC) #b0111)                       ;overflow clear (!v)
-    ((HI) #b1000)                       ;carry and nonzero (c & !z)
-    ((LS) #b1001)                       ;!carry or zero (!c | z)
-    ((GE) #b1010)                       ;greater or equal (n = v)
-    ((LT) #b1011)                       ;less (n != v)
-    ((GT) #b1100)                       ;greater ((n = v) & !z)
-    ((LE) #b1101)                       ;less or equal ((n != v) | z)
-    ((AL) #b1110)                       ;always
-    ;((<never>) #b1111)                 ;never?
+    ((EQ) #b0000)               ;equal (z)
+    ((NE) #b0001)               ;not equal (!z)
+    ((CS HS) #b0010)            ;carry set / unsigned higher|same (c)
+    ((CC LO) #b0011)            ;carry clear / unsigned lower (!c)
+    ((MI) #b0100)               ;negative `minus' (n)
+    ((PL) #b0101)               ;nonnegative `plus' (!n)
+    ((VS) #b0110)               ;overflow set (v)
+    ((VC) #b0111)               ;overflow clear (!v)
+    ((HI) #b1000)               ;carry&nonzero / unsigned higher (c & !z)
+    ((LS) #b1001)               ;(!carry)|zero / unsigned lower|same (!c | z)
+    ((GE) #b1010)               ;greater or equal (n = v)
+    ((LT) #b1011)               ;less (n != v)
+    ((GT) #b1100)               ;greater ((n = v) & !z)
+    ((LE) #b1101)               ;less or equal ((n != v) | z)
+    ((AL) #b1110)               ;always
+    ;((<never>) #b1111)         ;never?
     (else #f)))
 
 (define (invert-branch-condition condition)

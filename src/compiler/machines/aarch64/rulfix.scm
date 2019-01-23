@@ -256,9 +256,8 @@ USA.
     ((GREATER-THAN-FIXNUM?)
      (set-condition-branches! 'GT 'LE))
     ((UNSIGNED-LESS-THAN-FIXNUM?)
-     (set-condition-branches! 'MI 'PL))
-    #; ;XXX broken but not sure this ever appears
+     (set-condition-branches! 'LO 'HS))
     ((UNSIGNED-GREATER-THAN-FIXNUM?)
-     (set-condition-branches! 'PL 'MI))
+     (set-condition-branches! 'HI 'LS))
     (else
      (error "Unknown fixnum predicate:" predicate))))
