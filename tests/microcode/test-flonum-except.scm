@@ -87,7 +87,7 @@ USA.
 	 (with-failure-expected
 	     (if (flo:have-trap-enable/disable?)
 		 xfail
-		 assert-error)
+		 expect-failure)
 	   (lambda ()
 	     (assert-error
 	      (lambda ()
