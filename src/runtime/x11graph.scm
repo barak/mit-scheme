@@ -40,8 +40,7 @@ USA.
        (or linked?
 	   (begin
 	     (load-option 'x11)
-	     (link!)
-	     #t))))
+	     linked?))))
 
 (define (link!)
   (for-each
