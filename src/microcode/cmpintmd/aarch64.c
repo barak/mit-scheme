@@ -260,31 +260,42 @@ write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
       char * from_pc = (tospace_to_newspace ((char *) (&iaddr[1])));
       char * to_pc = ((char *) target);
       ptrdiff_t offset = (to_pc - from_pc);
-      assert ((offset & 3) == 0);
-      if ((-0x10000000 <= offset) && (offset <= 0xfffffff))
+      assert ((offset % 4) == 0); /* Must be instruction-aligned.  */
+      if ((-0x08000000 <= offset) && (offset <= 0x07ffffff))
 	{
-	  unsigned imm26 = ((offset >> 2) & 0x03ffffff);
+	  /* Branch takes 26-bit signed instruction (4-byte) offset.  */
+	  unsigned imm26 = ((((unsigned) offset) >> 2) & 0x03ffffff);
 	  /* b target */
 	  (iaddr[1]) = (0x14000000UL | imm26);
 	}
-      else if (((- (INT64_C (0x200000000))) <= offset) &&
-	       (offset <= (INT64_C (0x1ffffffff))))
-	{
-	  unsigned long lo12 = (offset & 0xfff);
-	  unsigned long pglo2 = ((((unsigned long) offset) >> 12) & 3);
-	  unsigned long pghi19 = ((((unsigned long) offset) >> 14) & 0x1ffff);
-	  assert
-	    (offset == ((ptrdiff_t) ((pghi19 << 14) | (pglo2 << 12) | lo12)));
-	  /* adrp x1, target */
-	  (iaddr[1]) = (0x90000001UL | (pglo2 << 29) | (pghi19 << 5));
-	  /* add x17, x17, #off */
-	  (iaddr[2]) = (0x91000031UL | (lo12 << 10));
-	  /* br x17 */
-	  (iaddr[3]) = 0xd61f0022UL;
-	}
       else
-	/* You have too much memory.  */
-	error_external_return ();
+	{
+	  /* ADRP takes 21-bit signed number of 4096-byte pages, and
+	     adds that many 4096-byte pages to the PC.  We then need to
+	     add the offset within a page of the target.  */
+	  uintptr_t from_pg = (((uintptr_t) from_pc) >> 12);
+	  uintptr_t to_pg = (((uintptr_t) to_pc) >> 12);
+	  ptrdiff_t pgoff = (((intptr_t) to_pg) - ((intptr_t) from_pg));
+	  if ((-0x00100000 <= pgoff) && (pgoff <= 0x000fffff))
+	    {
+	      unsigned lo12 =
+		(((uintptr_t) to_pc) - (((uintptr_t) to_pg) << 12));
+	      unsigned pglo2 = (((unsigned long) pgoff) & 3);
+	      unsigned pghi19 = (((unsigned long) pgoff) >> 2);
+	      assert (to_pc == ((char *) (to_pg + lo12)));
+	      assert
+		(to_pg == (from_pg + (((unsigned long) pghi19 << 2) | pglo2)));
+	      /* adrp x17, target */
+	      (iaddr[1]) = (0x90000011UL | (pglo2 << 29) | (pghi19 << 5));
+	      /* add x17, x17, #off */
+	      (iaddr[2]) = (0x91000231UL | (lo12 << 10));
+	      /* br x17 */
+	      (iaddr[3]) = 0xd61f0220UL;
+	    }
+	  else
+	    /* You have too much memory.  */
+	    error_external_return ();
+	}
     }
   else
     {
