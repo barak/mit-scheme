@@ -93,7 +93,7 @@ USA.
 (define-arithmetic-method 'FIXNUM-NOT fixnum-methods/1-arg
   (lambda (target source overflow?)
     (assert (not overflow?))
-    (LAP (MVN X ,target ,source))))
+    (LAP (EOR X ,target ,source (& ,(shift-left -1 scheme-type-width))))))
 
 (define-arithmetic-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (target source overflow?)
