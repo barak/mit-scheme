@@ -31,8 +31,7 @@ USA.
     (for-each (let ((env (->environment '(runtime))))
 		(lambda (filename)
 		  (compile-file filename '() env)))
-	      '("x11"
-		"x11-base"
+	      '("x11-base"
 		"x11-color"
 		"x11-graphics"
 		"x11-device"
