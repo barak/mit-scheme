@@ -1,3 +1,4 @@
+- Fix ADR assembly -- ADRP doesn't actually do what I thought.
 - Verify the branch condition codes.
 - Verify variable-width cases.
 - Open-coded flonum arithmetic.
