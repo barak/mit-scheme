@@ -315,6 +315,7 @@ USA.
       (load-pc-relative target (constant->label object))))
 
 (define (load-signed-immediate target imm)
+  (assert (<= (bit-antimask 63 0) imm (bit-mask 63 0)))
   (load-unsigned-immediate target (bitwise-and imm #xffffffffffffffff)))
 
 (define (load-unsigned-immediate target imm)
@@ -329,6 +330,7 @@ USA.
         (try-shift imm 48)))
   (define (chunk16 pos)
     (bitwise-and (shift-right imm pos) #xffff))
+  (assert (<= 0 imm (bit-mask 64 0)))
   (cond ((find-shift imm)
          => (lambda (shift)
               (LAP (MOVZ X ,target
@@ -338,7 +340,7 @@ USA.
               (let ((imm (bitwise-andc1 imm #xffffffffffffffff)))
                 (LAP (MOVN X ,target
                            (LSL (&U ,(shift-right imm shift)) ,shift))))))
-        ((logical-immediate? imm)
+        ((logical-imm-u64 imm)
          (LAP (ORR X ,target Z (&U ,imm))))
         ;; XXX try splitting in halves, quarters
 	#;
@@ -354,11 +356,6 @@ USA.
 	      (MOVK X ,target (LSL (&U ,(chunk16 16)) 16))
 	      (MOVK X ,target (LSL (&U ,(chunk16 32)) 32))
 	      (MOVK X ,target (LSL (&U ,(chunk16 48)) 48))))))
-
-(define (logical-immediate? x)
-  x
-  ;; XXX
-  #f)
 
 (define (add-immediate target source imm)
   (define (add addend) (LAP (ADD X ,target ,source ,addend)))
@@ -398,7 +395,7 @@ USA.
   (assert (<= 48 scheme-datum-width))
   (cond ((zero? type)
          (assign-register->register target datum))
-        ((logical-immediate? (make-non-pointer-literal type 0))
+        ((logical-imm-u64 (make-non-pointer-literal type 0))
          ;; Works for tags with only contiguous one bits, including
          ;; tags with only one bit set.
          (LAP (ORR X ,target ,datum (&U ,(make-non-pointer-literal type 0)))))

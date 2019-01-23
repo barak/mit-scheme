@@ -43,6 +43,7 @@ USA.
 (define coerce-8-bit-unsigned (make-coercion 'UNSIGNED 8))
 
 (define coerce-12-bit-unsigned (make-coercion 'UNSIGNED 12))
+(define coerce-13-bit-unsigned (make-coercion 'UNSIGNED 13))
 (define coerce-14-bit-unsigned (make-coercion 'UNSIGNED 14))
 (define coerce-16-bit-unsigned (make-coercion 'UNSIGNED 16))
 (define coerce-32-bit-unsigned (make-coercion 'UNSIGNED 32))

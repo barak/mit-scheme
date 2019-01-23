@@ -281,15 +281,87 @@ USA.
     ((ROR) #b11)
     (else #f)))
 
-(define (logical-imm-32 imm)
-  ;; XXX
-  imm
-  (error "XXX not yet implemented"))
+(define (logical-immediate-signed imm width)
+  (let ((magmask (bit-mask (- width 1) 0)))
+    (and (<= imm magmask)
+         (<= (bitwise-not magmask) imm)
+         (logical-immediate-unsigned
+          (bitwise-and imm (bit-mask width 0))
+          width))))
 
-(define (logical-imm-64 imm)
-  ;; XXX
-  imm
-  (error "XXX not yet implemented"))
+(define (logical-immediate-unsigned imm width)
+  (define (find-smallest-period)
+    ;; Find the smallest candidate period, at least 2 since we need at
+    ;; least one 1 and at least one 0.
+    (let loop ((p width))
+      (let* ((h (quotient p 2))
+             (mask (bit-mask h 0)))
+        (if (and (= (bitwise-and imm mask)
+                    (bitwise-and (shift-right imm h) mask))
+                 (> h 2))
+            (loop h)
+            p))))
+  (define (generate period phase count)
+    ;; Given the phase, period, and count of bits, compute and encode
+    ;; the n, immr, and imms representation.
+    (assert (< phase period))
+    (let* ((immr (- period phase))
+           (nimms (bitwise-ior (shift-left (- period) 1) (- count 1)))
+           (n (bitwise-xor 1 (bitwise-and 1 (shift-right nimms 6))))
+           (imms (bitwise-and nimms #x3f)))
+      (encode n immr imms)))
+  (define (encode n immr imms)
+    ;; Given the n, immr, and imms fields, encode them as:
+    ;; n(1) || immr(6) || imms(6)
+    (assert (= n (bitwise-and n 1)))
+    (assert (= immr (bitwise-and immr #x3f)))
+    (assert (= imms (bitwise-and imms #x3f)))
+    (bitwise-ior (shift-left n 12)
+                 (bitwise-ior (shift-left immr 6) imms)))
+  (define (contiguous-ones? x)
+    ;; True if the one bits in x are contiguous.  E.g.,
+    ;;
+    ;;  00111000 - 1 = 001101111
+    ;;  (00111000 - 1) | 0011000 = 00111111
+    ;;  00111111 + 1 = 01000000
+    ;;  (00111111 + 1) & 01000000 = 0
+    (let* ((y (bitwise-ior (- x 1) x))
+           (z (bitwise-and (+ y 1) x)))
+      (zero? z)))
+  (let ((wmask (bit-mask width 0)))
+    (and (not (= imm 0))
+         (not (= imm wmask))
+         (= imm (bitwise-and imm wmask))
+         (let* ((period (find-smallest-period))
+                (pmask (bit-mask period 0))
+                (imm+ (bitwise-and imm pmask))
+                (imm- (bitwise-orc2 imm pmask)))
+           (cond ((contiguous-ones? imm+)
+                  ;; E.g.: 00011100 -> phase = 2, count = 3
+                  (let* ((phase (first-set-bit imm+))
+                         (count (integer-length (shift-right imm+ phase))))
+                    (generate period phase count)))
+                 ((contiguous-ones? (bitwise-not imm-))
+                  ;; E.g.: 11100011 -> phase = -2 = 8 - 2 = 6, count = 5
+                  (let* ((phase (- width (find-first-set (bitwise-not imm-))))
+                         (count (- width (bit-count (bitwise-not imm-)))))
+                    (generate period phase count)))
+                 (else
+                  ;; It is not the replication of the rotation of a
+                  ;; contiguous sequence of one bits.
+                  #f))))))
+
+(define (logical-imm-s32 imm)
+  (logical-immediate-signed imm 32))
+
+(define (logical-imm-s64 imm)
+  (logical-immediate-signed imm 64))
+
+(define (logical-imm-u32 imm)
+  (logical-immediate-unsigned imm 32))
+
+(define (logical-imm-u64 imm)
+  (logical-immediate-unsigned imm 64))
 
 (define (hw-shift32 shift)
   (and (exact-nonnegative-integer? shift)
