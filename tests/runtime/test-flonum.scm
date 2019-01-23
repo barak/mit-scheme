@@ -1212,9 +1212,15 @@ USA.
   (lambda (x)
     (assert-eqv (no-traps (lambda () (flo:logb x))) #f)
     (assert-eqv (no-traps (lambda () (flo:logb (flo:negate x)))) #f)
-    (assert-error (lambda () (yes-traps (lambda () (flo:logb x)))))
-    (assert-error
-     (lambda () (yes-traps (lambda () (flo:logb (flo:negate x))))))
+    (with-expected-failure
+	(if (flo:have-trap-enable/disable?) #!default expect-failure)
+      (lambda ()
+	(assert-error (lambda () (yes-traps (lambda () (flo:logb x)))))))
+    (with-expected-failure
+	(if (flo:have-trap-enable/disable?) #!default expect-failure)
+      (lambda ()
+	(assert-error
+	 (lambda () (yes-traps (lambda () (flo:logb (flo:negate x))))))))
     (assert-only-except/no-traps (flo:exception:invalid-operation)
                                  (lambda () (flo:logb x)))
     (assert-only-except/no-traps (flo:exception:invalid-operation)
