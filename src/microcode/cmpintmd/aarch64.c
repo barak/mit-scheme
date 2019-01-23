@@ -280,8 +280,8 @@ write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
 	    {
 	      unsigned lo12 =
 		(((uintptr_t) to_pc) - (((uintptr_t) to_pg) << 12));
-	      unsigned pglo2 = (((unsigned long) pgoff) & 3);
-	      unsigned pghi19 = (((unsigned long) pgoff) >> 2);
+	      unsigned pglo2 = (pgoff & 3);
+	      unsigned pghi19 = ((pgoff & 0x001fffff) >> 2);
 	      assert (to_pc == ((char *) (to_pg + lo12)));
 	      assert
 		(to_pg == (from_pg + (((unsigned long) pghi19 << 2) | pglo2)));
