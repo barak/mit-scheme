@@ -168,8 +168,8 @@ extern void x_graphics_set_vdc_extent (struct xwindow * xw,
 extern void x_graphics_vdc_extent (struct xwindow * xw, float * results);
 extern void x_graphics_reset_clip_rectangle (struct xwindow * xw);
 extern void x_graphics_set_clip_rectangle (struct xwindow * xw,
-					   int x_left, int y_bottom,
-					   int x_right, int y_top);
+					   float x_left, float y_bottom,
+					   float x_right, float y_top);
 extern void x_graphics_reconfigure (struct xwindow * xw,
 				    unsigned int width, unsigned int height);
 extern struct xwindow * x_graphics_open_window (struct xdisplay * xd,
