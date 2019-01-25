@@ -32,3 +32,6 @@ Usage:
 
 2. Run the tests.
    % for t in *.com; do scheme --fasl $t || echo $t failed; done
+
+3. Read the .rtl and .lap files to make sure they match what the
+   comment at the top of each .scm file explains.
