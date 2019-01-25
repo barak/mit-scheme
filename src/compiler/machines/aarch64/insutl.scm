@@ -282,12 +282,9 @@ USA.
     (else #f)))
 
 (define (logical-immediate-signed imm width)
-  (let ((magmask (bit-mask (- width 1) 0)))
-    (and (<= imm magmask)
-         (<= (bitwise-not magmask) imm)
-         (logical-immediate-unsigned
-          (bitwise-and imm (bit-mask width 0))
-          width))))
+  (and (<= (bit-antimask (- width 1) 0) imm (bit-mask (- width 1) 0))
+       (logical-immediate-unsigned (bitwise-and imm (bit-mask width 0))
+                                   width)))
 
 (define (logical-immediate-unsigned imm width)
   (define (find-smallest-period)
@@ -302,7 +299,7 @@ USA.
             (loop h)
             p))))
   (define (generate period phase count)
-    ;; Given the phase, period, and count of bits, compute and encode
+    ;; Given the period, phase, and count of bits, compute and encode
     ;; the n, immr, and imms representation.
     (assert (< phase period))
     (let* ((immr (- period phase))
@@ -324,32 +321,31 @@ USA.
     ;;  00111000 - 1 = 001101111
     ;;  (00111000 - 1) | 0011000 = 00111111
     ;;  00111111 + 1 = 01000000
-    ;;  (00111111 + 1) & 01000000 = 0
+    ;;  (00111111 + 1) & 00111111 = 0
     (let* ((y (bitwise-ior (- x 1) x))
-           (z (bitwise-and (+ y 1) x)))
+           (z (bitwise-and (+ y 1) y)))
       (zero? z)))
   (let ((wmask (bit-mask width 0)))
     (and (not (= imm 0))
          (not (= imm wmask))
          (= imm (bitwise-and imm wmask))
          (let* ((period (find-smallest-period))
-                (pmask (bit-mask period 0))
-                (imm+ (bitwise-and imm pmask))
-                (imm- (bitwise-orc2 imm pmask)))
-           (cond ((contiguous-ones? imm+)
-                  ;; E.g.: 00011100 -> phase = 2, count = 3
-                  (let* ((phase (first-set-bit imm+))
-                         (count (integer-length (shift-right imm+ phase))))
-                    (generate period phase count)))
-                 ((contiguous-ones? (bitwise-not imm-))
-                  ;; E.g.: 11100011 -> phase = -2 = 8 - 2 = 6, count = 5
-                  (let* ((phase (- width (find-first-set (bitwise-not imm-))))
-                         (count (- width (bit-count (bitwise-not imm-)))))
-                    (generate period phase count)))
-                 (else
-                  ;; It is not the replication of the rotation of a
-                  ;; contiguous sequence of one bits.
-                  #f))))))
+                (pmask (bit-mask period 0)))
+           (let ((imm+ (bitwise-and imm pmask))
+                 (imm- (bitwise-andc1 imm pmask)))
+             (define (use-phase phase)
+               (generate period phase (bit-count imm+)))
+             (cond ((contiguous-ones? imm+)
+                    ;; E.g.: 00011100 -> phase = 2, count = 3
+                    (use-phase (first-set-bit imm+)))
+                   ((contiguous-ones? imm-)
+                    ;; E.g.: 11100011 -> phase = 5, count = 5
+                    ;; Note imm- is the p-bit complement of imm+.
+                    (use-phase (integer-length imm-)))
+                   (else
+                    ;; It is not the replication of the rotation of a
+                    ;; contiguous sequence of one bits.
+                    #f)))))))
 
 (define (logical-imm-s32 imm)
   (logical-immediate-signed imm 32))
