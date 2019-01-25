@@ -244,11 +244,26 @@ read_uuo_target_no_reloc (SCHEME_OBJECT * saddr)
   return (read_uuo_target (saddr));
 }
 
-static void
-write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
+void
+write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
 {
-  /* ldr x1, pc-pcrel */
-  (iaddr[0]) = (0x58000001UL | ((((unsigned) pcrel) & 0x7ffff) << 5));
+  insn_t * iaddr;
+  int ioff;
+
+  /* Set the target.  */
+  (saddr[0]) = ((SCHEME_OBJECT) target);
+
+  /* Determine where the instructions start relative where we store the
+     target.  */
+#ifdef WORDS_BIGENDIAN
+  ioff = 2;
+#else
+  ioff = 3;
+#endif
+  iaddr = (((insn_t *) saddr) + ioff);
+
+  /* ldr x1, PC-ioff */
+  (iaddr[0]) = (0x58000001UL | ((((unsigned) ioff) & 0x7ffff) << 5));
 
   /* If the target PC is right after the target offset, then the PC
      requires no further relocation and we can jump to a fixed address.
@@ -304,23 +319,6 @@ write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
       (iaddr[3]) = 0x8b010231UL; /* add x17, x17, x1 */
       (iaddr[4]) = 0xd61f0220UL; /* br x17 */
     }
-}
-
-void
-write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
-{
-  insn_t * iaddr;
-  int ioff;
-
-#ifdef WORDS_BIGENDIAN
-  ioff = 2;
-#else
-  ioff = 3;
-#endif
-
-  (saddr[0]) = ((SCHEME_OBJECT) target);
-  iaddr = (((insn_t *) saddr) + ioff);
-  write_uuo_insns (target, iaddr, -ioff);
 }
 
 #define TRAMPOLINE_ENTRY_PADDING_SIZE 1
