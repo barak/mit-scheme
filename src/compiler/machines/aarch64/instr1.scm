@@ -1297,6 +1297,14 @@ USA.
 ;; Macro used for assembling variable-width instructions which can't
 ;; just defer to the variable-width ADR because we prohibit variable
 ;; width within variable width.
+;;
+;; XXX OOPS!  This doesn't actually work, because ADRP actually
+;; computes PC - (PC mod 2^12) + 2^12*offset, not PC + 2^12*offset.
+;; Either we need to know where we are in a page (which can change from
+;; GC to GC because compiled blocks are only float-aligned, not
+;; page-aligned), or we need to generate extra code to find and add PC
+;; mod 2^12, which looks like it'll require another temporary register.
+;; Ugh!
 
 (define-instruction ADRP-ADD
   ((X (? Rd) (@PCO (? offset signed-33)))
