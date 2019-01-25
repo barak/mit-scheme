@@ -270,9 +270,9 @@ write_uuo_insns (insn_t * target, insn_t * iaddr, int pcrel)
 	}
       else
 	{
-	  /* ADRP takes 21-bit signed number of 4096-byte pages, and
-	     adds that many 4096-byte pages to the PC.  We then need to
-	     add the offset within a page of the target.  */
+	  /* ADRP computes PC - (PC mod 2^12) + 2^12*offset.  We know
+	     target - PC, and we want target.  First we add the page
+	     offset; then we add target's location in its page.  */
 	  uintptr_t from_pg = (((uintptr_t) from_pc) >> 12);
 	  uintptr_t to_pg = (((uintptr_t) to_pc) >> 12);
 	  ptrdiff_t pgoff = (((intptr_t) to_pg) - ((intptr_t) from_pg));
