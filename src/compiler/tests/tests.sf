@@ -1,0 +1,45 @@
+; -*- Mode: Scheme -*-
+
+(declare (usual-integrations))
+
+(let ((environment (make-top-level-environment)))
+  (eval '(begin
+           (define-syntax ucode-primitive
+             (sc-macro-transformer
+              (lambda (form environment)
+                environment
+                (apply make-primitive-procedure (cdr form)))))
+           (define-syntax identity
+             (sc-macro-transformer
+              (lambda (form environment)
+                `((UCODE-PRIMITIVE VECTOR-REF 2)
+                  ((UCODE-PRIMITIVE VECTOR-CONS 2)
+                   1
+                   ,(close-syntax (cadr form) environment))
+                  0))))
+           (define-syntax prelude
+             (sc-macro-transformer
+              (lambda (form environment)
+                '((ucode-primitive local-assignment)
+                  #f                    ;global environment
+                  'define-multiple
+                  (lambda (env names values)
+                    (if (or (not (vector? names))
+                            (not (vector? values))
+                            (not (fix:= (vector-length names)
+                                        (vector-length values))))
+                        (error "DEFINE-MULTIPLE: Invalid arguments"
+                               names
+                               values))
+                    (let ((len (vector-length names)))
+                      (let loop ((i 0) (val unspecific))
+                        (if (fix:< i len)
+                            (loop (fix:+ i 1)
+                                  ((ucode-primitive local-assignment)
+                                   env
+                                   (vector-ref names i)
+                                   (vector-ref values i)))
+                            val)))))))))
+        environment)
+  (fluid-let ((sf/default-syntax-table environment))
+    (sf-directory ".")))
