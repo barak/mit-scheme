@@ -40,7 +40,7 @@ USA.
   (make-unsettable-parameter #f boolean-converter))
 
 (define-deferred param:reader-fold-case?
-  (make-unsettable-parameter #t boolean-converter))
+  (make-settable-parameter #t boolean-converter))
 
 (define-deferred param:reader-enable-attributes?
   (make-unsettable-parameter #t boolean-converter))
