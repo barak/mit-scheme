@@ -285,12 +285,6 @@ USA.
 
 (define (unbind-variable environment name)
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
-
-(define (simple-top-level-environment fold-case?)
-  (make-top-level-environment (list 'param:reader-fold-case?
-				    '*parser-canonicalize-symbols?*)
-			      (list (make-settable-parameter fold-case?)
-				    #!default)))
 
 (define (object-gc-type object)
   (%encode-gc-type ((ucode-primitive object-gc-type 1) object)))

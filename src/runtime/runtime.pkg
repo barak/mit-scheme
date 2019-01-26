@@ -631,7 +631,6 @@ USA.
 	  set-ephemeron-key!
 	  set-interrupt-enables!
 	  show-time
-	  simple-top-level-environment
 	  system-hunk3-cons
 	  system-hunk3-cxr0
 	  system-hunk3-cxr1
