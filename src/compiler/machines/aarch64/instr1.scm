@@ -197,7 +197,7 @@ USA.
 ;; Branch unconditional to PC-relative.
 
 (define-instruction B
-  (((@PCO (* 4 (? offset))))
+  (((@PCO (* 4 (? offset signed-26))))
    (BITS (1 0)                          ;no link
          (5 #b00101)
          (26 offset SIGNED)))

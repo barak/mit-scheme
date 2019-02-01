@@ -48,6 +48,11 @@ USA.
        (<= #x-100000 x #xfffff)
        x))
 
+(define (signed-26 x)
+  (and (exact-integer? x)
+       (<= #x-04000000 x #x03ffffff)
+       x))
+
 (define (signed-33 x)
   (and (exact-integer? x)
        (<= #x-100000000 x #xffffffff)
