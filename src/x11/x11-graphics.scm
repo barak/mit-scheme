@@ -34,26 +34,29 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   ;; Set the virtual device coordinates to the given values.
   (C-call "x_graphics_set_vdc_extent" window x-left y-bottom x-right y-top))
 
-(define (x-graphics-vdc-extent window vector)
-  (let* ((floats (malloc (* 4 (C-sizeof "float")) 'float))
+(define (x-graphics-vdc-extent window)
+  (let* ((limits (make-vector 4))
+	 (floats (malloc (* 4 (C-sizeof "float")) 'float))
 	 (scan (copy-alien floats)))
-    (C-call "x_graphics_vdc_extent" window floats)
-    (vector-set! vector 0 (C-> floats "float"))
+    (C-call "x_graphics_vdc_extent" window scan)
+    (vector-set! limits 0 (C-> scan "float"))
     (alien-byte-increment! scan (C-sizeof "float"))
-    (vector-set! vector 1 (C-> floats "float"))
+    (vector-set! limits 1 (C-> scan "float"))
     (alien-byte-increment! scan (C-sizeof "float"))
-    (vector-set! vector 2 (C-> floats "float"))
+    (vector-set! limits 2 (C-> scan "float"))
     (alien-byte-increment! scan (C-sizeof "float"))
-    (vector-set! vector 3 (C-> floats "float"))
-    (free floats)))
+    (vector-set! limits 3 (C-> scan "float"))
+    (free floats)
+    limits))
 
 (define (x-graphics-reset-clip-rectangle window)
   (C-call "x_graphics_reset_clip_rectangle" window))
 
 (define (x-graphics-set-clip-rectangle window x-left y-bottom x-right y-top)
   ;; Set the clip rectangle to the given coordinates.
-  (C-call "x_graphics_set_clip_rectangle"
-	  window x-left y-bottom x-right y-top))
+  (C-call "x_graphics_set_clip_rectangle" window
+	  (->flonum x-left) (->flonum y-bottom)
+	  (->flonum x-right) (->flonum y-top)))
 
 (define (x-graphics-reconfigure window width height)
   (C-call "x_graphics_reconfigure" window width height))

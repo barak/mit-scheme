@@ -22,6 +22,12 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-x11 1.3 - Matt Birkholz, 2019-01-23
+==============================================
+
+Fix the x-graphics-vdc-extent and x-graphics-set-clip-rectangle
+procedures.  Rename the device type "x".
+
 mit-scheme-x11 1.2 - Matt Birkholz, 2018-07-29
 ==============================================
 
