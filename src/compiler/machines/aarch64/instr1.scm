@@ -1305,7 +1305,12 @@ USA.
 ;; page-aligned), or we need to generate extra code to find and add PC
 ;; mod 2^12, which looks like it'll require another temporary register.
 ;; Ugh!
+;;
+;; The way that assemblers usually get around this is either by always
+;; relying on relocations or by always aligning code on page boundaries
+;; so that we know PC mod 2^12 anyway.
 
+#;
 (define-instruction ADRP-ADD
   ((X (? Rd) (@PCO (? offset signed-33)))
    (MACRO 32 (ADRP X ,Rd (@PCO (LSL ,(shift-right offset 12) 12)))) ;(*)
