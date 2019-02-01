@@ -215,7 +215,8 @@ x_graphics_reset_clip_rectangle (struct xwindow * xw)
 
 void
 x_graphics_set_clip_rectangle (struct xwindow * xw,
-			       int x_left, int y_bottom, int x_right, int y_top)
+			       float x_left, float y_bottom,
+			       float x_right, float y_top)
 {
   set_clip_rectangle (xw,
 		      (X_COORDINATE (x_left, xw, -1)),

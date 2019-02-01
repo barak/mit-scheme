@@ -44,7 +44,12 @@ USA.
 ;;;; Top level
 
 (define (syntax form environment)
-  (syntax* (list form) environment))
+  (let ((result (syntax* (list form) environment)))
+    (if (scode-open-block? result)
+	(unscan-defines (scode-open-block-names result)
+			(scode-open-block-declarations result)
+			(scode-open-block-actions result))
+	result)))
 
 (define (syntax* forms environment)
   (guarantee list? forms 'syntax*)

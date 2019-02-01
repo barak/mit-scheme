@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
 AC_INIT([MIT/GNU Scheme x11 plugin],
-        [1.2],
+        [1.3],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-x11])
 AC_CONFIG_SRCDIR([x11.pkg])
@@ -124,7 +124,7 @@ fi
 
 MIT_SCHEME_PKD="x11-${MIT_SCHEME_OS_SUFFIX}.pkd"
 
-for f in x11 x11-base x11-color x11-graphics x11-terminal x11-device; do
+for f in x11-base x11-color x11-graphics x11-terminal x11-device; do
     MIT_SCHEME_SCMs="${MIT_SCHEME_SCMs} ${f}.scm"
     MIT_SCHEME_BCIs="${MIT_SCHEME_BCIs} ${f}.bci"
     MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}

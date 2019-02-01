@@ -24,18 +24,13 @@ creating a short optiondb file.
     mkdir ~/.mit-scheme-x86-64
     echo "(further-load-options #t)" > ~/.mit-scheme-x86-64/optiondb.scm
     export MITSCHEME_LIBRARY_PATH=\
-	~/.mit-scheme-x86-64:/usr/local/lib/mit-scheme-x86-64
+        ~/.mit-scheme-x86-64:/usr/local/lib/mit-scheme-x86-64
     make install
 
 To use:
 
     (load-option 'x11)
-    (import-x11)
-
-Import-x11 will modify the REPL's current environment by adding
-bindings linked to the plugin's exports.  They are not exported to the
-global environment because they would conflict with the deprecated
-exports from (runtime x-graphics).
+    (define dev (make-graphics-device 'x))
 
 To import into a CREF package set, add this to your .pkg file:
 
