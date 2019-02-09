@@ -1339,7 +1339,7 @@ USA.
 
 (define-integrable (%substring-find-next-char-in-set string start end char-set)
   ((ucode-primitive substring-find-next-char-in-set)
-   string start end (char-set-table char-set)))
+   string start end (cached-char-set-table char-set)))
 
 (define (string-find-previous-char-in-set string char-set)
   (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR-IN-SET)
@@ -1354,7 +1354,28 @@ USA.
 
 (define (%substring-find-previous-char-in-set string start end char-set)
   ((ucode-primitive substring-find-previous-char-in-set)
-   string start end (char-set-table char-set)))
+   string start end (cached-char-set-table char-set)))
+
+;; Kludge!  These used to be cached in the record when the char-set was
+;; constructed; now they are not.
+
+(define char-set-table-lock
+  (make-thread-mutex))
+
+(define char-set-table-table
+  (make-weak-eq-hash-table))
+
+(define (cached-char-set-table char-set)
+  (or (begin (lock-thread-mutex char-set-table-lock)
+	(begin0 (hash-table-ref char-set-table-table char-set (lambda () #f))
+	  (unlock-thread-mutex char-set-table-lock)))
+      (let ((table (char-set-table char-set)))
+	(lock-thread-mutex char-set-table-lock)
+	;; If we raced with someone else, no problem -- if there's a
+	;; duplicate table then it'll be GC'd at the end.
+	(hash-table-set! char-set-table-table char-set table)
+	(unlock-thread-mutex char-set-table-lock)
+	table)))
 
 ;;;; String search
 
