@@ -852,23 +852,77 @@ USA.
 		    (scons-define pred-name
 		      (scons-call (scons-close 'record-predicate) type-name))
 		    (default-object))
-		(append-map (lambda (field-spec)
+		(append-map (lambda (field-spec index)
 			      (let ((name (car field-spec))
 				    (accessor (cadr field-spec))
 				    (modifier (caddr field-spec)))
-				(list (scons-define accessor
-					(scons-call
-					 (scons-close 'record-accessor)
-					 type-name
-					 (scons-quote name)))
-				      (if modifier
-					  (scons-define modifier
-					    (scons-call
-					     (scons-close 'record-modifier)
-					     type-name
-					     (scons-quote name)))
-					  (default-object)))))
-			    field-specs)))))))
+				(append
+				 (scons-record-accessor
+				  accessor
+				  type-name
+				  parent
+				  pred-name
+				  name
+				  index)
+				 (if modifier
+				     (scons-record-modifier
+				      modifier
+				      type-name
+				      parent
+				      pred-name
+				      name
+				      index)
+				     '()))))
+			    field-specs
+			    ;; Start at 1, after the record type descriptor.
+			    (iota (length field-specs) 1))))))))
+
+(define (scons-record-accessor accessor type-name parent pred-name name index)
+  (if (and (not parent)
+	   pred-name)
+      (list
+       (scons-declare (list 'integrate-operator accessor))
+       (scons-define accessor
+	 (let ((object (new-identifier 'object)))
+	   (scons-named-lambda (list accessor object)
+	     (scons-if
+	      (scons-and (scons-call (scons-close '%record?) object)
+			 (scons-call
+			  (scons-close 'eq?)
+			  type-name
+			  (scons-call (scons-close '%record-ref) object 0)))
+	      (unspecific-expression)
+	      (scons-call (scons-close 'guarantee) pred-name object accessor))
+	     (scons-call (scons-close '%record-ref) object index)))))
+      (list
+       (scons-define
+	(scons-call (scons-close 'record-accessor)
+		    type-name
+		    (scons-quote name))))))
+
+(define (scons-record-modifier modifier type-name parent pred-name name index)
+  (if (and (not parent)
+	   pred-name)
+      (list
+       (scons-declare (list 'integrate-operator modifier))
+       (scons-define modifier
+	 (let ((object (new-identifier 'object))
+	       (value (new-identifier 'value)))
+	   (scons-named-lambda (list modifier object value)
+	     (scons-if
+	      (scons-and (scons-call (scons-close '%record?) object)
+			 (scons-call
+			  (scons-close 'eq?)
+			  type-name
+			  (scons-call (scons-close '%record-ref) object 0)))
+	      (unspecific-expression)
+	      (scons-call (scons-close 'guarantee) pred-name object modifier))
+	     (scons-call (scons-close '%record-set!) object index value)))))
+      (list
+       (scons-define modifier
+	 (scons-call (scons-close 'record-modifier)
+		     type-name
+		     (scons-quote name))))))
 
 ;;;; MIT/GNU Scheme custom syntax
 
