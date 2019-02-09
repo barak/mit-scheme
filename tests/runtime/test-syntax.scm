@@ -34,22 +34,22 @@ USA.
 (define-test 'local-define-syntax/syntax
   (lambda ()
     (assert-matches
-        (unsyntax
-         (syntax '(let ()
-                    (define-syntax test
-                      (syntax-rules () ((test) (lambda (y) y))))
-                    (list ((test) 1) ((test) 2)))
-                 test-environment))
-     '(let () (list (let ((?y1 1)) ?y1) (let ((?y2 2)) ?y2))))))
-
-(define-test 'local-define-syntax/eval
-     (lambda ()
-       (assert-equal
-        (eval '(let ()
+     (unsyntax
+      (syntax '(let ()
                  (define-syntax test
                    (syntax-rules () ((test) (lambda (y) y))))
                  (list ((test) 1) ((test) 2)))
-              test-environment)
+              test-environment))
+     '(let () (list (let ((?y1 1)) ?y1) (let ((?y2 2)) ?y2))))))
+
+(define-test 'local-define-syntax/eval
+  (lambda ()
+    (assert-equal
+     (eval '(let ()
+              (define-syntax test
+                (syntax-rules () ((test) (lambda (y) y))))
+              (list ((test) 1) ((test) 2)))
+           test-environment)
      '(1 2))))
 
 (define-test 'bug55090
@@ -87,14 +87,14 @@ USA.
                 array))))))))
 
 (define-test 'quoted-macro-name
-     (lambda ()
-       (assert-equal
-        (unsyntax
-         (syntax '(let ()
-                    (define-syntax foo
-                      (er-macro-transformer
-                       (lambda (f r c)
-                         `(,(r 'quote) foo))))
-                    (foo))
-                 test-environment))
+  (lambda ()
+    (assert-equal
+     (unsyntax
+      (syntax '(let ()
+                 (define-syntax foo
+                   (er-macro-transformer
+                    (lambda (f r c)
+                      `(,(r 'quote) foo))))
+                 (foo))
+              test-environment))
      '(let () 'foo))))
