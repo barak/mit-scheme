@@ -55,37 +55,36 @@ USA.
 (define-test 'bug55090
   (lambda ()
     (assert-matches
-        (unsyntax
-         (cadr
-          (scode-sequence-actions
-           (scode-open-block-actions
-            (syntax '(begin
-                       (define-syntax vector-edit-code
-                         (syntax-rules ()
-                           ((_ v r o s)
-                            (let ((index (vector-length v)))
-                              (subvector-move-left! v o index r (+ o s))
-                              r))
-                           ((_ v r o s i e)
-                            (let ((index i))
-                              (subvector-move-left! v o index r (+ o s))
-                              (vector-set! r (+ s index) e)
-                              (let ((skew (1+ s)))
-                                (vector-edit-code v r index skew))))))
-                       (let ((input (vector 0 1 3)))
-                         (let ((array (make-vector 4)))
-                           (vector-edit-code input array 0 0 2 2))))
-                    test-environment)))))
-        '(let ((input (vector 0 1 3)))
-           (let ((array (make-vector 4)))
-	  (let ((?index1 2))
-	    (subvector-move-left! input 0 ?index1 array (+ 0 0))
-	    (vector-set! array (+ 0 ?index1) 2)
-	    (let ((?skew (1+ 0)))
-	      (let ((?index2 (vector-length input)))
-		(subvector-move-left! input ?index1 ?index2
-				      array (+ ?index1 ?skew))
-		array))))))))
+     (unsyntax
+      (cadr
+       (scode-sequence-actions
+        (syntax '(begin
+                   (define-syntax vector-edit-code
+                     (syntax-rules ()
+                       ((_ v r o s)
+                        (let ((index (vector-length v)))
+                          (subvector-move-left! v o index r (+ o s))
+                          r))
+                       ((_ v r o s i e)
+                        (let ((index i))
+                          (subvector-move-left! v o index r (+ o s))
+                          (vector-set! r (+ s index) e)
+                          (let ((skew (1+ s)))
+                            (vector-edit-code v r index skew))))))
+                   (let ((input (vector 0 1 3)))
+                     (let ((array (make-vector 4)))
+                       (vector-edit-code input array 0 0 2 2))))
+                test-environment))))
+     '(let ((input (vector 0 1 3)))
+        (let ((array (make-vector 4)))
+          (let ((?index1 2))
+            (subvector-move-left! input 0 ?index1 array (+ 0 0))
+            (vector-set! array (+ 0 ?index1) 2)
+            (let ((?skew (1+ 0)))
+              (let ((?index2 (vector-length input)))
+                (subvector-move-left! input ?index1 ?index2
+                                      array (+ ?index1 ?skew))
+                array))))))))
 
 (define-test 'quoted-macro-name
      (lambda ()
