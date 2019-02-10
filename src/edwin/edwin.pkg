@@ -155,7 +155,7 @@ USA.
   (files "string")
   (parent (edwin))
   (import (runtime character-set)
-	  (char-set-table %char-set-table))
+	  char-set-table)
   (export (edwin)
 	  (set-vector-8b-length! set-string-length!)
 	  (vector-8b-length string-length)

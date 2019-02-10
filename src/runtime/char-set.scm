@@ -39,11 +39,13 @@ USA.
 ;;; The HIGH range sequence is a u24 bytevector implementing an inversion list.
 
 (define-record-type <char-set>
-    (%make-char-set low high predicate)
+    (%make-char-set low high predicate table)
     char-set?
   (low %char-set-low)
   (high %char-set-high)
-  (predicate %char-set-predicate))
+  (predicate %char-set-predicate)
+  ;; backwards compatibility for Edwin:
+  (table %char-set-table))
 
 (define (make-char-set low high)
   (letrec
@@ -55,7 +57,16 @@ USA.
 		     (and (char? char)
 			  (char-in-set? char char-set)))))
 	      (register-predicate! predicate 'char-set-predicate '<= char?)
-	      predicate)))))
+	      predicate))
+	  (delay
+	    (let ((table (make-bytevector #x100)))
+	      (do ((cp 0 (fix:+ cp 1)))
+		  ((not (fix:< cp #x100)))
+		(bytevector-u8-set! table cp
+				    (if (%code-point-in-char-set? cp char-set)
+					1
+					0)))
+	      table)))))
     char-set))
 
 (define-integrable %low-cps-per-byte 8)
@@ -438,6 +449,9 @@ USA.
 (define (char-set-predicate char-set)
   (force (%char-set-predicate char-set)))
 
+(define (char-set-table char-set)
+  (force (%char-set-table char-set)))
+
 (define (char-set=? char-set . char-sets)
   (every (lambda (char-set*)
 	   (and (bytevector=? (%char-set-low char-set*)
@@ -634,14 +648,6 @@ USA.
   (if (not (fix:<= end #x100))
       (error:bad-range-argument end 'ascii-range->char-set))
   (char-set (cons start end)))
-
-(define (%char-set-table char-set)
-  (let ((table (make-bytevector #x100)))
-    (do ((cp 0 (fix:+ cp 1)))
-	((not (fix:< cp #x100)))
-      (bytevector-u8-set! table cp
-			  (if (%code-point-in-char-set? cp char-set) 1 0)))
-    table))
 
 (define (8-bit-char-set? char-set)
   (and (char-set? char-set)

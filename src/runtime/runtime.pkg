@@ -1572,9 +1572,7 @@ USA.
 	  re-compile-char-set
 	  string->char-set)
   (export (runtime regular-sexpression)
-	  normalize-ranges)
-  (export (runtime legacy-string)
-	  (char-set-table %char-set-table)))
+	  normalize-ranges))
 
 (define-package (runtime compiler-info)
   (files "infstr" "infutl")
