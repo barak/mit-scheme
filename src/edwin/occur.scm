@@ -50,29 +50,26 @@ Applies to all lines after point."
 	(start (mark-index start))
 	(anchor (mark-left-inserting-copy start))
 	(end (mark-left-inserting-copy end)))
-    (letrec
-	((loop
-	  (lambda (start point)
-	    (let ((point
-		   (re-search-buffer-forward pattern syntax-table
-					     group point (mark-index end))))
-	      (if point
-		  (begin
-		    (set-mark-index! anchor point)
-		    (let ((end
-			   (line-start-index group (re-match-start-index 0))))
-		      (if (< start end)
-			  (group-delete! group start end)))
-		    (continue (mark-index anchor)))
-		  (group-delete! group start (mark-index end))))))
-	 (continue
-	  (lambda (point)
-	    (let ((start (line-end-index group point)))
-	      (if (< start (mark-index end))
-		  (loop (+ start 1) point))))))
-      (if (line-start-index? group start)
-	  (loop start start)
-	  (continue start)))
+    (define (loop start point)
+      (let ((point
+	     (re-search-buffer-forward pattern syntax-table
+				       group point (mark-index end))))
+	(if point
+	    (begin
+	      (set-mark-index! anchor point)
+	      (let ((end
+		     (line-start-index group (re-match-start-index 0))))
+		(if (< start end)
+		    (group-delete! group start end)))
+	      (continue (mark-index anchor)))
+	    (group-delete! group start (mark-index end)))))
+    (define (continue point)
+      (let ((start (line-end-index group point)))
+	(if (< start (mark-index end))
+	    (loop (+ start 1) point))))
+    (if (line-start-index? group start)
+	(loop start start)
+	(continue start))
     (mark-temporary! anchor)
     (mark-temporary! end)))
 
