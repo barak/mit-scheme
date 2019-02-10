@@ -156,21 +156,29 @@ USA.
 	 `(,(let-bindings-pattern)
 	   (+ any))
        (lambda (bindings body-forms)
-	 (let* ((ids (map car bindings))
-		(vals (map cadr bindings))
-		(temps (map new-identifier ids)))
-	   (scons-let (map (lambda (id)
-			     (list id (unassigned-expression)))
-			   ids)
-	     (cond ((not (pair? ids))
-		    (default-object))
-		   ((not (pair? (cdr ids)))
-		    (scons-set! (car ids) (car vals)))
-		   (else
-		    (apply scons-let
-			   (map list temps vals)
-			   (map scons-set! ids temps))))
-	     (scons-call (apply scons-lambda '() body-forms)))))))))
+	 (let ((ids (map car bindings))
+	       (vals (map cadr bindings))
+	       ;; Create a distinct nested scope for definitions in the
+	       ;; body.
+	       (body (scons-call (apply scons-lambda '() body-forms))))
+	   (cond ((not (pair? ids))
+		  body)
+		 ((not (pair? (cdr ids)))
+		  ;; Internal definitions have LETREC* semantics, but
+		  ;; for a single binding, LETREC* is equivalent to
+		  ;; LETREC.
+		  (scons-let '()
+		    (scons-define (car ids) (car vals))
+		    body))
+		 (else
+		  (let ((temps (map new-identifier ids)))
+		    (scons-let (map (lambda (id)
+				      (list id (unassigned-expression)))
+				    ids)
+		      (apply scons-let
+			     (map list temps vals)
+			     (map scons-set! ids temps))
+		      body))))))))))
 
 (define $letrec*
   (spar-transformer->runtime
@@ -181,10 +189,11 @@ USA.
        (lambda (bindings body-forms)
 	 (let ((ids (map car bindings))
 	       (vals (map cadr bindings)))
-	   (scons-let (map (lambda (id)
-			     (list id (unassigned-expression)))
-			   ids)
-	     (apply scons-begin (map scons-set! ids vals))
+	   ;; Internal definitions in scode have LETREC* semantics.
+	   (scons-let '()
+	     (apply scons-begin (map scons-define ids vals))
+	     ;; Create a distinct nested scope for definitions in the
+	     ;; body.
 	     (scons-call (apply scons-lambda '() body-forms)))))))))
 
 (define $let-values
