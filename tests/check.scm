@@ -77,6 +77,7 @@ USA.
     "runtime/test-flonum.com"
     "runtime/test-hash-table"
     "runtime/test-integer-bits"
+    "runtime/test-letrec"
     ("runtime/test-library-parser" (runtime library))
     ("runtime/test-library-standard" (runtime library))
     ("runtime/test-library-imports" (runtime library))
