@@ -274,32 +274,27 @@ USA.
 (define prime-numbers-stream)
 
 (define (make-prime-numbers-stream)
-  (cons-stream
-   2
-   (letrec
-       ((primes (cons-stream 3 (fixnum-filter 5)))
-	(fixnum-filter
-	 (let ((limit (fix:- (fix:largest-value) 2)))
-	   (lambda (n)
-	     (if (fix:<= n limit)
-		 (let loop ((ps primes))
-		   (cond ((fix:< n (fix:* (car ps) (car ps)))
-			  (cons-stream n (fixnum-filter (fix:+ n 2))))
-			 ((fix:= 0 (fix:remainder n (car ps)))
-			  (fixnum-filter (fix:+ n 2)))
-			 (else
-			  (loop (force (cdr ps))))))
-		 (generic-filter n)))))
-	(generic-filter
-	 (lambda (n)
-	   (let loop ((ps primes))
-	     (cond ((< n (square (car ps)))
-		    (cons-stream n (generic-filter (+ n 2))))
-		   ((= 0 (remainder n (car ps)))
-		    (generic-filter (+ n 2)))
-		   (else
-		    (loop (force (cdr ps)))))))))
-     primes)))
+  (let ((limit (fix:- (fix:largest-value) 2)))
+    (define odd-primes (cons-stream 3 (fixnum-filter 5)))
+    (define (fixnum-filter n)
+      (if (fix:<= n limit)
+	  (let loop ((ps odd-primes))
+	    (cond ((fix:< n (fix:* (car ps) (car ps)))
+		   (cons-stream n (fixnum-filter (fix:+ n 2))))
+		  ((fix:= 0 (fix:remainder n (car ps)))
+		   (fixnum-filter (fix:+ n 2)))
+		  (else
+		   (loop (force (cdr ps))))))
+	  (generic-filter n)))
+    (define (generic-filter n)
+      (let loop ((ps odd-primes))
+	(cond ((< n (square (car ps)))
+	       (cons-stream n (generic-filter (+ n 2))))
+	      ((= 0 (remainder n (car ps)))
+	       (generic-filter (+ n 2)))
+	      (else
+	       (loop (force (cdr ps)))))))
+    (cons-stream 2 odd-primes)))
 
 (define (initialize-package!)
   (let ((reset-primes!
