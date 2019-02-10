@@ -91,30 +91,26 @@ USA.
   (let ((line (compute-primary-cache-line cache tags)))
     (and line
 	 (let ((limit (cache-limit cache)))
-	   (letrec
-	       ((search-lines
-		 (lambda (line i)
-		   (cond ((match (cache-line-tags cache line))
-			  (cache-line-value cache line))
-			 ((fix:= i limit)
-			  (search-overflow (cache-overflow cache)))
-			 (else
-			  (search-lines (cache-next-line cache line)
-					(fix:+ i 1))))))
-		(search-overflow
-		 (lambda (overflow)
-		   (and (not (null? overflow))
-			(if (match (caar overflow))
-			    (cdar overflow)
-			    (search-overflow (cdr overflow))))))
-		(match
-		 (lambda (tags*)
-		   (let loop ((w1 tags*) (w2 tags))
-		     (and (eq? (system-pair-car w1) (system-pair-car w2))
-			  (or (null? (system-pair-cdr w1))
-			      (loop (system-pair-cdr w1)
-				    (system-pair-cdr w2))))))))
-	     (search-lines line 0))))))
+	   (define (search-lines line i)
+	     (cond ((match (cache-line-tags cache line))
+		    (cache-line-value cache line))
+		   ((fix:= i limit)
+		    (search-overflow (cache-overflow cache)))
+		   (else
+		    (search-lines (cache-next-line cache line)
+				  (fix:+ i 1)))))
+	   (define (search-overflow overflow)
+	     (and (not (null? overflow))
+		  (if (match (caar overflow))
+		      (cdar overflow)
+		      (search-overflow (cdr overflow)))))
+	   (define (match tags*)
+	     (let loop ((w1 tags*) (w2 tags))
+	       (and (eq? (system-pair-car w1) (system-pair-car w2))
+		    (or (null? (system-pair-cdr w1))
+			(loop (system-pair-cdr w1)
+			      (system-pair-cdr w2))))))
+	   (search-lines line 0)))))
 
 (define (compute-primary-cache-line cache tags)
   (let ((index (cache-tag-index cache))
@@ -320,90 +316,80 @@ USA.
 	   (make-cache (cache-tag-index cache)
 		       (cache-n-tags cache)
 		       length)))
-      (letrec
-	  ((fill-lines
-	    (lambda (line)
-	      (cond ((fix:= line length)
-		     (fill-overflow (cache-overflow cache)))
-		    ((try-entry (cache-line-tags cache line)
-				(cache-line-value cache line))
-		     (fill-lines (fix:+ line 1)))
-		    (else
-		     (try-next-tag-index)))))
-	   (fill-overflow
-	    (lambda (entries)
-	      (cond ((null? entries)
-		     (or (fill-cache-if-possible new-cache tags value)
-			 (try-next-tag-index)))
-		    ((try-entry (caar entries) (cdar entries))
-		     (fill-overflow (cdr entries)))
-		    (else
-		     (try-next-tag-index)))))
-	   (try-entry
-	    (lambda (tags* value)
-	      (or (cache-entry-reusable? tags* tags)
-		  (fill-cache-if-possible new-cache tags* value))))
-	   (try-next-tag-index
-	    (lambda ()
-	      (let ((index (fix:+ (cache-tag-index new-cache) 1)))
-		(and (fix:< index dispatch-tag-index-end)
-		     (begin
-		       (set-cache-tag-index! new-cache index)
-		       (fill-lines 0)))))))
-	(fill-lines 0)))))
+      (define (fill-lines line)
+	(cond ((fix:= line length)
+	       (fill-overflow (cache-overflow cache)))
+	      ((try-entry (cache-line-tags cache line)
+			  (cache-line-value cache line))
+	       (fill-lines (fix:+ line 1)))
+	      (else
+	       (try-next-tag-index))))
+      (define (fill-overflow entries)
+	(cond ((null? entries)
+	       (or (fill-cache-if-possible new-cache tags value)
+		   (try-next-tag-index)))
+	      ((try-entry (caar entries) (cdar entries))
+	       (fill-overflow (cdr entries)))
+	      (else
+	       (try-next-tag-index))))
+      (define (try-entry tags* value)
+	(or (cache-entry-reusable? tags* tags)
+	    (fill-cache-if-possible new-cache tags* value)))
+      (define (try-next-tag-index)
+	(let ((index (fix:+ (cache-tag-index new-cache) 1)))
+	  (and (fix:< index dispatch-tag-index-end)
+	       (begin
+		 (set-cache-tag-index! new-cache index)
+		 (fill-lines 0)))))
+      (fill-lines 0))))
 
 (define (expand-cache cache tags value)
   ;; Create a new cache that is twice the length of CACHE, rehash the
   ;; contents of CACHE into the new cache, and make the new entry.
   ;; Permits overflows to occur in the new cache.
   (let ((length (cache-length cache)))
-    (letrec
-	((fill-lines
-	  (lambda (new-cache line)
-	    (if (fix:= line length)
-		(fill-overflow new-cache (cache-overflow cache))
-		(fill-lines (maybe-do-fill new-cache
-					   (cache-line-tags cache line)
-					   (cache-line-value cache line))
-			    (fix:+ line 1)))))
-	 (fill-overflow
-	  (lambda (new-cache overflow)
-	    (if (null? overflow)
-		(do-fill new-cache tags value)
-		(fill-overflow (maybe-do-fill new-cache
-					      (caar overflow)
-					      (cdar overflow))
-			       (cdr overflow)))))
-	 (maybe-do-fill
-	  (lambda (cache tags* value)
-	    (if (cache-entry-reusable? tags* tags)
-		cache
-		(do-fill cache tags* value))))
-	 (do-fill
-	  (lambda (cache tags value)
-	    (let ((primary (compute-primary-cache-line cache tags)))
-	      (if primary
-		  (let ((free (find-free-cache-line cache primary tags)))
-		    (if free
-			(begin
-			  (set-cache-line-tags! cache free tags)
-			  (set-cache-line-value! cache free value)
-			  cache)
-			(or (adjust-cache cache tags value)
-			    (begin
-			      (set-cache-overflow!
-			       cache
-			       (cons (cons (cache-line-tags cache primary)
-					   (cache-line-value cache primary))
-				     (cache-overflow cache)))
-			      (set-cache-line-tags! cache primary tags)
-			      (set-cache-line-value! cache primary value)
-			      cache))))
-		  cache)))))
-      (fill-lines (make-cache (cache-tag-index cache)
-			      (cache-n-tags cache)
-			      (fix:+ length length))
-		  0))))
+    (define (fill-lines new-cache line)
+      (if (fix:= line length)
+	  (fill-overflow new-cache (cache-overflow cache))
+	  (fill-lines (maybe-do-fill new-cache
+				     (cache-line-tags cache line)
+				     (cache-line-value cache line))
+		      (fix:+ line 1))))
+    (define (fill-overflow new-cache overflow)
+      (if (null? overflow)
+	  (do-fill new-cache tags value)
+	  (fill-overflow (maybe-do-fill new-cache
+					(caar overflow)
+					(cdar overflow))
+			 (cdr overflow))))
+    (define (maybe-do-fill cache tags* value)
+      (if (cache-entry-reusable? tags* tags)
+	  cache
+	  (do-fill cache tags* value)))
+    (define (do-fill cache tags value)
+      (let ((primary (compute-primary-cache-line cache tags)))
+	(if primary
+	    (let ((free (find-free-cache-line cache primary tags)))
+	      (if free
+		  (begin
+		    (set-cache-line-tags! cache free tags)
+		    (set-cache-line-value! cache free value)
+		    cache)
+		  (or (adjust-cache cache tags value)
+		      (begin
+			(set-cache-overflow!
+			 cache
+			 (cons (cons (cache-line-tags cache primary)
+				     (cache-line-value cache primary))
+			       (cache-overflow cache)))
+			(set-cache-line-tags! cache primary tags)
+			(set-cache-line-value! cache primary value)
+			cache))))
+	    cache)))
+    (fill-lines (make-cache (cache-tag-index cache)
+			    (cache-n-tags cache)
+			    (fix:+ length length))
+		0)))
 
 (define (find-free-cache-line cache primary tags)
   ;; This procedure searches CACHE for a free line to hold an entry
