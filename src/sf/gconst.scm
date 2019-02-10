@@ -163,6 +163,7 @@ USA.
     (flo:vector-ref floating-vector-ref)
     (flo:vector-set! floating-vector-set!)
     (flo:zero? flonum-zero?)
+    (general-car-cdr general-car-cdr)
     (get-fixed-objects-vector get-fixed-objects-vector)
     (get-interrupt-enables get-interrupt-enables)
     (hunk3-cons hunk3-cons)
