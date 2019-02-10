@@ -259,23 +259,21 @@ USA.
 	'())))
 
 (define (remove-if! predicate items)
-  (letrec ((trim-initial-segment
-	    (lambda (items)
-	      (if (pair? items)
-		  (if (predicate (car items))
-		      (trim-initial-segment (cdr items))
-		      (begin
-			(locate-initial-segment items (cdr items))
-			items))
-		  items)))
-	   (locate-initial-segment
-	    (lambda (last this)
-	      (if (pair? this)
-		  (if (predicate (car this))
-		      (set-cdr! last (trim-initial-segment (cdr this)))
-		      (locate-initial-segment this (cdr this)))
-		  this))))
-    (trim-initial-segment items)))
+  (define (trim-initial-segment items)
+    (if (pair? items)
+	(if (predicate (car items))
+	    (trim-initial-segment (cdr items))
+	    (begin
+	      (locate-initial-segment items (cdr items))
+	      items))
+	items))
+  (define (locate-initial-segment last this)
+    (if (pair? this)
+	(if (predicate (car this))
+	    (set-cdr! last (trim-initial-segment (cdr this)))
+	    (locate-initial-segment this (cdr this)))
+	this))
+  (trim-initial-segment items))
 
 (define (remove-item! item items)
   (if (pair? items)
