@@ -427,29 +427,27 @@ USA.
 
 (define (weak-delq! item items)
   (let ((item (%false->weak-false item)))
-    (letrec ((trim-initial-segment
-	      (lambda (items*)
-		(if (weak-pair? items*)
-		    (if (or (eq? item (%weak-car items*))
-			    (eq? #f (%weak-car items*)))
-			(trim-initial-segment (weak-cdr items*))
-			(begin
-			  (locate-initial-segment items* (weak-cdr items*))
-			  items*))
-		    (begin
-		      (if (not (null? items*))
-			  (error:not-a weak-list? items 'weak-delq!))
-		      '()))))
-	     (locate-initial-segment
-	      (lambda (last this)
-		(if (weak-pair? this)
-		    (if (or (eq? item (%weak-car this))
-			    (eq? #f (%weak-car this)))
-			(set-cdr! last (trim-initial-segment (weak-cdr this)))
-			(locate-initial-segment this (weak-cdr this)))
-		    (if (not (null? this))
-			(error:not-a weak-list? items 'weak-delq!))))))
-      (trim-initial-segment items))))
+    (define (trim-initial-segment items*)
+      (if (weak-pair? items*)
+	  (if (or (eq? item (%weak-car items*))
+		  (eq? #f (%weak-car items*)))
+	      (trim-initial-segment (weak-cdr items*))
+	      (begin
+		(locate-initial-segment items* (weak-cdr items*))
+		items*))
+	  (begin
+	    (if (not (null? items*))
+		(error:not-a weak-list? items 'weak-delq!))
+	    '())))
+    (define (locate-initial-segment last this)
+      (if (weak-pair? this)
+	  (if (or (eq? item (%weak-car this))
+		  (eq? #f (%weak-car this)))
+	      (set-cdr! last (trim-initial-segment (weak-cdr this)))
+	      (locate-initial-segment this (weak-cdr this)))
+	  (if (not (null? this))
+	      (error:not-a weak-list? items 'weak-delq!))))
+    (trim-initial-segment items)))
 
 ;;;; General CAR CDR
 
@@ -1003,34 +1001,30 @@ USA.
     (%delete! item items = 'delete!)))
 
 (define-integrable (%delete! item items = caller)
-  (letrec
-      ((trim-initial-segment
-	(lambda (items)
-	  (if (pair? items)
-	      (if (or (eq? item (car items))
-		      (= item (car items)))
-		  (trim-initial-segment (cdr items))
-		  (begin
-		    (locate-initial-segment items (cdr items))
-		    items))
-	      (begin
-		(if (not (null? items))
-		    (lose))
-		'()))))
-       (locate-initial-segment
-	(lambda (last this)
-	  (if (pair? this)
-	      (if (or (eq? item (car this))
-		      (= item (car this)))
-		  (set-cdr! last
-			    (trim-initial-segment (cdr this)))
-		  (locate-initial-segment this (cdr this)))
-	      (if (not (null? this))
-		  (error:not-a list? items caller)))))
-       (lose
-	(lambda ()
-	  (error:not-a list? items caller))))
-    (trim-initial-segment items)))
+  (define (trim-initial-segment items)
+    (if (pair? items)
+	(if (or (eq? item (car items))
+		(= item (car items)))
+	    (trim-initial-segment (cdr items))
+	    (begin
+	      (locate-initial-segment items (cdr items))
+	      items))
+	(begin
+	  (if (not (null? items))
+	      (lose))
+	  '())))
+  (define (locate-initial-segment last this)
+    (if (pair? this)
+	(if (or (eq? item (car this))
+		(= item (car this)))
+	    (set-cdr! last
+		      (trim-initial-segment (cdr this)))
+	    (locate-initial-segment this (cdr this)))
+	(if (not (null? this))
+	    (error:not-a list? items caller))))
+  (define (lose)
+    (error:not-a list? items caller))
+  (trim-initial-segment items))
 
 ;;;; Association lists
 
@@ -1159,40 +1153,36 @@ USA.
     (%alist-delete! key alist = 'alist-delete!)))
 
 (define-integrable (%alist-delete! item items = caller)
-  (letrec
-      ((trim-initial-segment
-	(lambda (items)
-	  (if (pair? items)
+  (define (trim-initial-segment items)
+    (if (pair? items)
+	(begin
+	  (if (not (pair? (car items)))
+	      (lose))
+	  (if (or (eq? (car (car items)) item)
+		  (= (car (car items)) item))
+	      (trim-initial-segment (cdr items))
 	      (begin
-		(if (not (pair? (car items)))
-		    (lose))
-		(if (or (eq? (car (car items)) item)
-			(= (car (car items)) item))
-		    (trim-initial-segment (cdr items))
-		    (begin
-		      (locate-initial-segment items (cdr items))
-		      items)))
-	      (begin
-		(if (not (null? items))
-		    (lose))
-		'()))))
-       (locate-initial-segment
-	(lambda (last this)
-	  (cond ((pair? this)
-		 (if (not (pair? (car this)))
-		     (lose))
-		 (if (or (eq? (car (car this)) item)
-			 (= (car (car this)) item))
-		     (set-cdr!
-		      last
-		      (trim-initial-segment (cdr this)))
-		     (locate-initial-segment this (cdr this))))
-		((not (null? this))
-		 (lose)))))
-       (lose
-	(lambda ()
-	  (error:not-a alist? items caller))))
-    (trim-initial-segment items)))
+		(locate-initial-segment items (cdr items))
+		items)))
+	(begin
+	  (if (not (null? items))
+	      (lose))
+	  '())))
+  (define (locate-initial-segment last this)
+    (cond ((pair? this)
+	   (if (not (pair? (car this)))
+	       (lose))
+	   (if (or (eq? (car (car this)) item)
+		   (= (car (car this)) item))
+	       (set-cdr!
+		last
+		(trim-initial-segment (cdr this)))
+	       (locate-initial-segment this (cdr this))))
+	  ((not (null? this))
+	   (lose))))
+  (define (lose)
+    (error:not-a alist? items caller))
+  (trim-initial-segment items))
 
 ;;;; Keyword lists
 
