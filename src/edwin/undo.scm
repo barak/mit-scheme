@@ -195,34 +195,31 @@ which includes both the saved text and other data."
 (add-event-receiver! event:after-restore truncate-buffer-undo-lists!)
 
 (define (truncate-undo-data! items min-size max-size)
+  (define (loop items prev size boundary)
+    (if (and boundary (fix:> size max-size))
+	;; If we've exceeded MAX-SIZE, truncate at the
+	;; previous boundary.
+	(set-cdr! boundary '())
+	(if (pair? items)
+	    (if (eq? #f (car items))
+		;; If this is the first boundary, continue
+		;; regardless of size, otherwise continue
+		;; only if we haven't yet reached MIN-SIZE.
+		(if (and boundary (fix:> size min-size))
+		    (set-cdr! prev '())
+		    (continue items size prev))
+		(continue items size boundary)))))
+  (define (continue items size boundary)
+    (loop (cdr items)
+	  items
+	  (fix:+ size (undo-item-size (car items)))
+	  boundary))
   (if (pair? items)
-      (letrec
-	  ((loop
-	    (lambda (items prev size boundary)
-	      (if (and boundary (fix:> size max-size))
-		  ;; If we've exceeded MAX-SIZE, truncate at the
-		  ;; previous boundary.
-		  (set-cdr! boundary '())
-		  (if (pair? items)
-		      (if (eq? #f (car items))
-			  ;; If this is the first boundary, continue
-			  ;; regardless of size, otherwise continue
-			  ;; only if we haven't yet reached MIN-SIZE.
-			  (if (and boundary (fix:> size min-size))
-			      (set-cdr! prev '())
-			      (continue items size prev))
-			  (continue items size boundary))))))
-	   (continue
-	    (lambda (items size boundary)
-	      (loop (cdr items)
-		    items
-		    (fix:+ size (undo-item-size (car items)))
-		    boundary))))
-	(if (eq? #f (car items))
-	    ;; If list starts with a boundary, skip over it.  We want
-	    ;; to include the first undo operation in the result.
-	    (continue items 0 #f)
-	    (loop items #f 0 #f)))))
+      (if (eq? #f (car items))
+	  ;; If list starts with a boundary, skip over it.  We want
+	  ;; to include the first undo operation in the result.
+	  (continue items 0 #f)
+	  (loop items #f 0 #f))))
 
 (define (undo-item-size item)
   (if (pair? item)
