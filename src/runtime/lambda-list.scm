@@ -90,56 +90,51 @@ USA.
 	   (error:not-a r4rs-lambda-list? bvl)))))
 
 (define (mit-lambda-list? object)
-  (letrec
-      ((parse-required
-	(lambda (object seen)
-	  (or (null? object)
-	      (if (identifier? object)
-		  (not (memq object seen))
-		  (and (pair? object)
-		       (cond ((eq? (car object) lambda-tag:optional)
-			      (and (pair? (cdr object))
-				   (parse-parameter (cadr object) seen
-				     (lambda (seen)
-				       (parse-optional (cddr object) seen)))))
-			     ((eq? (car object) lambda-tag:rest)
-			      (parse-rest (cdr object) seen))
-			     (else
-			      (parse-parameter (car object) seen
-				(lambda (seen)
-				  (parse-required (cdr object) seen))))))))))
-       (parse-optional
-	(lambda (object seen)
-	  (or (null? object)
-	      (if (identifier? object)
-		  (not (memq object seen))
-		  (and (pair? object)
-		       (cond ((eq? (car object) lambda-tag:optional)
-			      #f)
-			     ((eq? (car object) lambda-tag:rest)
-			      (parse-rest (cdr object) seen))
-			     (else
-			      (parse-parameter (car object) seen
-				(lambda (seen)
-				  (parse-optional (cdr object) seen))))))))))
-       (parse-rest
-	(lambda (object seen)
-	  (and (pair? object)
-	       (parse-parameter (car object) seen
-		 (lambda (seen)
-		   seen
-		   (null? (cdr object)))))))
-       (parse-parameter
-	(lambda (object seen k)
-	  (if (identifier? object)
-	      (and (not (memq object seen))
-		   (k (cons object seen)))
-	      (and (pair? object)
-		   (identifier? (car object))
-		   (list? (cdr object))
-		   (not (memq (car object) seen))
-		   (k (cons (car object) seen)))))))
-    (parse-required object '())))
+  (define (parse-required object seen)
+    (or (null? object)
+	(if (identifier? object)
+	    (not (memq object seen))
+	    (and (pair? object)
+		 (cond ((eq? (car object) lambda-tag:optional)
+			(and (pair? (cdr object))
+			     (parse-parameter (cadr object) seen
+			       (lambda (seen)
+				 (parse-optional (cddr object) seen)))))
+		       ((eq? (car object) lambda-tag:rest)
+			(parse-rest (cdr object) seen))
+		       (else
+			(parse-parameter (car object) seen
+			  (lambda (seen)
+			    (parse-required (cdr object) seen)))))))))
+  (define (parse-optional object seen)
+    (or (null? object)
+	(if (identifier? object)
+	    (not (memq object seen))
+	    (and (pair? object)
+		 (cond ((eq? (car object) lambda-tag:optional)
+			#f)
+		       ((eq? (car object) lambda-tag:rest)
+			(parse-rest (cdr object) seen))
+		       (else
+			(parse-parameter (car object) seen
+			  (lambda (seen)
+			    (parse-optional (cdr object) seen)))))))))
+  (define (parse-rest object seen)
+    (and (pair? object)
+	 (parse-parameter (car object) seen
+	   (lambda (seen)
+	     seen
+	     (null? (cdr object))))))
+  (define (parse-parameter object seen k)
+    (if (identifier? object)
+	(and (not (memq object seen))
+	     (k (cons object seen)))
+	(and (pair? object)
+	     (identifier? (car object))
+	     (list? (cdr object))
+	     (not (memq (car object) seen))
+	     (k (cons (car object) seen)))))
+  (parse-required object '()))
 
 (define lambda-tag:optional (object-new-type (ucode-type constant) 3))
 (define lambda-tag:rest (object-new-type (ucode-type constant) 4))
