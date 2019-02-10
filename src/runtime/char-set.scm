@@ -43,21 +43,18 @@ USA.
     char-set?
   (low %char-set-low)
   (high %char-set-high)
-  (predicate %char-set-predicate)
+  (predicate char-set-predicate)
   ;; backwards compatibility for Edwin:
   (table %char-set-table))
 
 (define (make-char-set low high)
-  (letrec
-      ((char-set
-	(%make-char-set low high
-	  (delay
-	    (let ((predicate
-		   (lambda (char)
-		     (and (char? char)
-			  (char-in-set? char char-set)))))
-	      (register-predicate! predicate 'char-set-predicate '<= char?)
-	      predicate))
+  (letrec*
+      ((predicate
+	(lambda (char)
+	  (and (char? char)
+	       (char-in-set? char char-set))))
+       (char-set
+	(%make-char-set low high predicate
 	  (delay
 	    (let ((table (make-bytevector #x100)))
 	      (do ((cp 0 (fix:+ cp 1)))
@@ -67,6 +64,7 @@ USA.
 					1
 					0)))
 	      table)))))
+    (register-predicate! predicate 'char-set-predicate '<= char?)
     char-set))
 
 (define-integrable %low-cps-per-byte 8)
@@ -445,9 +443,6 @@ USA.
 		       (loop (fix:+ i 2) upper))
 		      (else #t)))
 	      #f)))))
-
-(define (char-set-predicate char-set)
-  (force (%char-set-predicate char-set)))
 
 (define (char-set-table char-set)
   (force (%char-set-table char-set)))
