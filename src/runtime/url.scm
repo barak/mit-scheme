@@ -200,45 +200,41 @@ USA.
   ;; At all times, (APPEND INPUT (REVERSE OUTPUT)) must be well
   ;; formed.  If both INPUT and OUTPUT are non-null, the slash
   ;; separating them is assumed to be in INPUT.
-  (letrec
-      ((no-output
-	(lambda (input)
-	  (if (pair? input)
-	      (let ((segment (car input))
-		    (input (cdr input)))
-		(if (or (string=? segment "..")
-			(string=? segment "."))
-		    ;; Rules A and D
-		    (no-output input)
-		    ;; Rule E
-		    (some-output input (list segment))))
-	      '())))
-       (some-output
-	(lambda (input output)
-	  (if (pair? input)
-	      (let ((segment (car input))
-		    (input (cdr input)))
-		(cond ((string=? segment ".")
-		       ;; Rule B
-		       (maybe-done input output))
-		      ((string=? segment "..")
-		       ;; Rule C
-		       (maybe-done input
-				   (if (pair? (cdr output))
-				       (cdr output)
-				       (list ""))))
-		      (else
-		       ;; Rule E
-		       (some-output input (cons segment output)))))
-	      output)))
-       (maybe-done
-	(lambda (input output)
-	  (if (pair? input)
-	      (some-output input output)
-	      (cons "" output)))))
-    (if (path-absolute? path)
-	(reverse! (no-output path))
-	path)))
+  (define (no-output input)
+    (if (pair? input)
+	(let ((segment (car input))
+	      (input (cdr input)))
+	  (if (or (string=? segment "..")
+		  (string=? segment "."))
+	      ;; Rules A and D
+	      (no-output input)
+	      ;; Rule E
+	      (some-output input (list segment))))
+	'()))
+  (define (some-output input output)
+    (if (pair? input)
+	(let ((segment (car input))
+	      (input (cdr input)))
+	  (cond ((string=? segment ".")
+		 ;; Rule B
+		 (maybe-done input output))
+		((string=? segment "..")
+		 ;; Rule C
+		 (maybe-done input
+			     (if (pair? (cdr output))
+				 (cdr output)
+				 (list ""))))
+		(else
+		 ;; Rule E
+		 (some-output input (cons segment output)))))
+	output))
+  (define (maybe-done input output)
+    (if (pair? input)
+	(some-output input output)
+	(cons "" output)))
+  (if (path-absolute? path)
+      (reverse! (no-output path))
+      path))
 
 ;;;; Merging
 
