@@ -282,6 +282,7 @@ USA.
 (define (not-pair? x)
   (not (pair? x)))
 
+(declare (integrate-operator null-list?))
 (define (null-list? l #!optional caller)
   (cond ((pair? l) #f)
 	((null? l) #t)

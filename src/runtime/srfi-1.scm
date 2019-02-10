@@ -36,6 +36,7 @@ USA.
 ;;;; SRFI-1 list-processing library
 
 (declare (usual-integrations))
+(declare (integrate-external "list"))
 
 ;;; [Olin's original notes]
 
