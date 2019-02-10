@@ -81,28 +81,24 @@ USA.
 (define (match-ordered-subvector vector start end key item-key order match)
   (let ((perform-search
 	 (lambda (index)
-	   (letrec
-	       ((scan-up
-		 (lambda (upper gcm)
-		   (if (fix:= upper end)
-		       (values upper gcm)
-		       (let ((m (mc upper)))
-			 (if m
-			     (scan-up (fix:+ upper 1) (min gcm m))
-			     (values upper gcm))))))
-		(scan-down
-		 (lambda (lower gcm)
-		   (if (fix:= lower start)
-		       (values lower gcm)
-		       (let* ((index (fix:- lower 1))
-			      (m (mc index)))
-			 (if m
-			     (scan-down index (min gcm m))
-			     (values lower gcm))))))
-		(mc
-		 (let ((close (item-key (vector-ref vector index))))
-		   (lambda (index)
-		     (match close (item-key (vector-ref vector index)))))))
+	   (let ((close (item-key (vector-ref vector index))))
+	     (define (scan-up upper gcm)
+	       (if (fix:= upper end)
+		   (values upper gcm)
+		   (let ((m (mc upper)))
+		     (if m
+			 (scan-up (fix:+ upper 1) (min gcm m))
+			 (values upper gcm)))))
+	     (define (scan-down lower gcm)
+	       (if (fix:= lower start)
+		   (values lower gcm)
+		   (let* ((index (fix:- lower 1))
+			  (m (mc index)))
+		     (if m
+			 (scan-down index (min gcm m))
+			 (values lower gcm)))))
+	     (define (mc index)
+	       (match close (item-key (vector-ref vector index))))
 	     (call-with-values (lambda () (scan-up (fix:+ index 1) (mc index)))
 	       (lambda (upper gcm)
 		 (call-with-values (lambda () (scan-down index gcm))
