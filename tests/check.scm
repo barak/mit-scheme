@@ -82,6 +82,7 @@ USA.
     ("runtime/test-library-standard" (runtime library))
     ("runtime/test-library-imports" (runtime library))
     ("runtime/test-library-loader" (runtime library))
+    "runtime/test-list"
     "runtime/test-md5"
     "runtime/test-mime-codec"
     "runtime/test-numpar"
