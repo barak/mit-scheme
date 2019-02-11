@@ -1,0 +1,1 @@
+Bug fix: Floating-point exceptions now work on PowerPC.
