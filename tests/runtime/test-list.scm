@@ -149,3 +149,13 @@ USA.
 		     (lambda () 'overflow)
 		     (lambda () 'timeout))
 	  (list (quotient n 2) (quotient n 2))))))))
+
+(define-test 'delv-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (list-tabulate (* 2 n) (lambda (i) (remainder i 2)))))
+      (assert-equal
+       (carefully (lambda () (length (delv 0 l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
