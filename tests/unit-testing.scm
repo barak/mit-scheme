@@ -699,3 +699,33 @@ USA.
 
 (define-for-tests assert-matches (match-assertion #f))
 (define-for-tests assert-!matches (match-assertion #t))
+
+(define-for-tests (carefully procedure if-overflow if-timeout)
+  (let ((gc-env (->environment '(runtime garbage-collector))))
+    (define (start-it)
+      (let ((default/stack-overflow (access default/stack-overflow gc-env))
+	    (thread (current-thread)))
+        (define (give-up)
+          (if (eq? thread (current-thread))
+              (exit-current-thread (if-overflow))
+              (default/stack-overflow)))
+        (call-with-current-continuation
+          (lambda (abort)
+            (fluid-let (((access hook/stack-overflow gc-env)
+                         (lambda () (within-continuation abort give-up))))
+              (exit-current-thread (procedure)))))))
+    (let ((thread (create-thread #f start-it)))
+      (define (stop-it)
+	(signal-thread-event thread
+	  (lambda ()
+	    (exit-current-thread (if-timeout)))))
+      (let ((result #f))
+	(define (done-it thread* value)
+	  (assert (eq? thread* thread))
+	  (set! result value))
+	(join-thread thread done-it)
+	(let ((timer))
+	  (dynamic-wind
+	    (lambda () (set! timer (register-timer-event 1000 stop-it)))
+	    (lambda () (do () (result) (suspend-current-thread)))
+	    (lambda () (deregister-timer-event (set! timer)))))))))
