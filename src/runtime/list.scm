@@ -427,27 +427,11 @@ USA.
 
 (define (weak-delq! item items)
   (let ((item (%false->weak-false item)))
-    (define (trim-initial-segment items*)
-      (if (weak-pair? items*)
-	  (if (or (eq? item (%weak-car items*))
-		  (eq? #f (%weak-car items*)))
-	      (trim-initial-segment (weak-cdr items*))
-	      (begin
-		(locate-initial-segment items* (weak-cdr items*))
-		items*))
-	  (begin
-	    (if (not (null? items*))
-		(error:not-a weak-list? items 'weak-delq!))
-	    '())))
-    (define (locate-initial-segment last this)
-      (if (weak-pair? this)
-	  (if (or (eq? item (%weak-car this))
-		  (eq? #f (%weak-car this)))
-	      (set-cdr! last (trim-initial-segment (weak-cdr this)))
-	      (locate-initial-segment this (weak-cdr this)))
-	  (if (not (null? this))
-	      (error:not-a weak-list? items 'weak-delq!))))
-    (trim-initial-segment items)))
+    (define-integrable (delete? item*)
+      (or (eq? item item*) (eq? #f item*)))
+    (define (lose)
+      (error:not-a weak-list? items 'weak-delq!))
+    (%remove! delete? items weak-pair? %weak-car weak-cdr weak-set-cdr! lose)))
 
 ;;;; General CAR CDR
 
@@ -956,7 +940,7 @@ USA.
 
 (define ((delete-member-procedure deletor predicate) item items)
   ((deletor (lambda (match) (predicate match item))) items))
-
+
 (define (delq item items)
   (%delete item items eq? 'delq))
 
@@ -968,27 +952,12 @@ USA.
     (%delete item items = 'delete)))
 
 (define-integrable (%delete item items = caller)
-  (let ((lose (lambda () (error:not-a list? items caller))))
-    (if (pair? items)
-	(let ((head (cons (car items) '())))
-	  (let loop ((items (cdr items)) (previous head))
-	    (cond ((pair? items)
-		   (if (or (eq? (car items) item)
-			   (= (car items) item))
-		       (loop (cdr items) previous)
-		       (let ((new (cons (car items) '())))
-			 (set-cdr! previous new)
-			 (loop (cdr items) new))))
-		  ((not (null? items))
-		   (lose))))
-	  (if (or (eq? (car items) item)
-		  (= (car items) item))
-	      (cdr head)
-	      head))
-	(begin
-	  (if (not (null? items))
-	      (lose))
-	  items))))
+  (define-integrable (delete? item*)
+    (or (eq? item item*)
+	(= item item*)))
+  (define (lose)
+    (error:not-a list? items caller))
+  (%remove delete? items pair? cons car cdr set-cdr! lose))
 
 (define (delq! item items)
   (%delete! item items eq? 'delq!))
@@ -1001,30 +970,79 @@ USA.
     (%delete! item items = 'delete!)))
 
 (define-integrable (%delete! item items = caller)
-  (define (trim-initial-segment items)
-    (if (pair? items)
-	(if (or (eq? item (car items))
-		(= item (car items)))
-	    (trim-initial-segment (cdr items))
-	    (begin
-	      (locate-initial-segment items (cdr items))
-	      items))
-	(begin
-	  (if (not (null? items))
-	      (lose))
-	  '())))
-  (define (locate-initial-segment last this)
-    (if (pair? this)
-	(if (or (eq? item (car this))
-		(= item (car this)))
-	    (set-cdr! last
-		      (trim-initial-segment (cdr this)))
-	    (locate-initial-segment this (cdr this)))
-	(if (not (null? this))
-	    (error:not-a list? items caller))))
   (define (lose)
     (error:not-a list? items caller))
-  (trim-initial-segment items))
+  (define-integrable (delete? item*)
+    (or (eq? item item*)
+	(= item item*)))
+  (%remove! delete? items pair? car cdr set-cdr! lose))
+
+(define-integrable (%remove delete? items pair? cons car cdr set-cdr! lose)
+  (define (scan items prev)
+    ;; Set the cdr of prev to be a copy of items with the specified
+    ;; elements deleted.  This implementation does _not_ share a common
+    ;; tail -- it is a complete copy.
+    (cond ((not (pair? items))
+	   (if (not (null? items)) (lose)))
+	  ((delete? (car items))
+	   (scan (cdr items) prev))
+	  (else
+	   (let ((pair (cons (car items) '())))
+	     (set-cdr! prev pair)
+	     (scan (cdr items) pair)))))
+  (let skip ((items items))
+    ;; Skip an initial run of items to delete.
+    (cond ((not (pair? items))
+	   (if (not (null? items)) (lose))
+	   '())
+	  ((delete? (car items))
+	   (skip (cdr items)))
+	  (else
+	   (let ((head (cons (car items) '())))
+	     (scan (cdr items) head)
+	     head)))))
+
+(define-integrable (%remove! delete? items pair? car cdr set-cdr! lose)
+  (define (scan items)
+    ;; Find the next run of items to delete and remember what
+    ;; pair's cdr it started at.
+    ;;
+    ;; (assert (not (delete? (car items))))
+    (let ((items (cdr items)) (prev items))
+      ;; (assert (not (delete? (car prev))))
+      (cond ((not (pair? items))
+	     (if (not (null? items)) (lose)))
+	    ((not (delete? (car items)))
+	     (scan items))
+	    (else
+	     (let trim ((items items))
+	       ;; Skip a run of items to delete, and set the
+	       ;; cdr of prev to the first pair past it.
+	       ;;
+	       ;; (assert (delete? (car items)))
+	       (let ((items (cdr items)))
+		 (cond ((not (pair? items))
+			(if (not (null? items)) (lose))
+			(set-cdr! prev '()))
+		       ((delete? (car items))
+			(trim items))
+		       (else
+			(set-cdr! prev items)
+			(scan items)))))))))
+  (let skip ((items items))
+    ;; Skip an initial run of items to delete and find the first pair
+    ;; with an item not to delete, or return null if we're to delete
+    ;; them all.
+    (cond ((not (pair? items))
+	   (if (not (null? items)) (lose))
+	   '())
+	  ((delete? (car items))
+	   (skip (cdr items)))
+	  (else
+	   ;; We have found the first pair without item, which is the
+	   ;; one we will return.  Scrub the rest of the list in place.
+	   (scan items)
+	   items))))
 
 ;;;; Association lists
 
@@ -1112,32 +1130,14 @@ USA.
     (%alist-delete key alist = 'alist-delete)))
 
 (define-integrable (%alist-delete key alist = caller)
-  (let ((lose (lambda () (error:not-a alist? alist caller))))
-    (if (pair? alist)
-	(begin
-	  (if (not (pair? (car alist)))
-	      (lose))
-	  (let ((head (cons (car alist) '())))
-	    (let loop ((alist (cdr alist)) (previous head))
-	      (cond ((pair? alist)
-		     (if (not (pair? (car alist)))
-			 (lose))
-		     (if (or (eq? (car (car alist)) key)
-			     (= (car (car alist)) key))
-			 (loop (cdr alist) previous)
-			 (let ((new (cons (car alist) '())))
-			   (set-cdr! previous new)
-			   (loop (cdr alist) new))))
-		    ((not (null? alist))
-		     (lose))))
-	    (if (or (eq? (car (car alist)) key)
-		    (= (car (car alist)) key))
-		(cdr head)
-		head)))
-	(begin
-	  (if (not (null? alist))
-	      (lose))
-	  alist))))
+  (define (lose)
+    (error:not-a alist? alist caller))
+  (define-integrable (delete? item)
+    (if (not (pair? item))
+	(lose))
+    (or (eq? key (car item))
+	(= key (car item))))
+  (%remove delete? alist pair? cons car cdr set-cdr! lose))
 
 (define (del-assq! key alist)
   (%alist-delete! key alist eq? 'del-assq!))
@@ -1152,37 +1152,15 @@ USA.
   (let ((= (if (default-object? =) equal? =)))
     (%alist-delete! key alist = 'alist-delete!)))
 
-(define-integrable (%alist-delete! item items = caller)
-  (define (trim-initial-segment items)
-    (if (pair? items)
-	(begin
-	  (if (not (pair? (car items)))
-	      (lose))
-	  (if (or (eq? (car (car items)) item)
-		  (= (car (car items)) item))
-	      (trim-initial-segment (cdr items))
-	      (begin
-		(locate-initial-segment items (cdr items))
-		items)))
-	(begin
-	  (if (not (null? items))
-	      (lose))
-	  '())))
-  (define (locate-initial-segment last this)
-    (cond ((pair? this)
-	   (if (not (pair? (car this)))
-	       (lose))
-	   (if (or (eq? (car (car this)) item)
-		   (= (car (car this)) item))
-	       (set-cdr!
-		last
-		(trim-initial-segment (cdr this)))
-	       (locate-initial-segment this (cdr this))))
-	  ((not (null? this))
-	   (lose))))
+(define-integrable (%alist-delete! key items = caller)
+  (define-integrable (delete? item*)
+    (if (not (pair? item*))
+	(lose))
+    (or (eq? key (car item*))
+	(= key (car item*))))
   (define (lose)
     (error:not-a alist? items caller))
-  (trim-initial-segment items))
+  (%remove! delete? items pair? car cdr set-cdr! lose))
 
 ;;;; Keyword lists
 
