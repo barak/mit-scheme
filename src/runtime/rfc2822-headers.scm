@@ -105,24 +105,21 @@ USA.
 (define (write-name name port)
   (let* ((name (symbol->string name))
          (end (string-length name)))
+    (define (start-word i)
+      (if (fix:< i end)
+	  (begin
+	    (write-char (char-upcase (string-ref name i)) port)
+	    (finish-word (fix:+ i 1)))))
+    (define (finish-word i)
+      (if (fix:< i end)
+	  (let ((char (string-ref name i))
+		(i (fix:+ i 1)))
+	    (write-char char port)
+	    (if (char=? char #\-)
+		(start-word i)
+		(finish-word i)))))
     (if (char-alphabetic? (string-ref name 0))
-	(letrec
-	    ((start-word
-	      (lambda (i)
-		(if (fix:< i end)
-		    (begin
-		      (write-char (char-upcase (string-ref name i)) port)
-		      (finish-word (fix:+ i 1))))))
-	     (finish-word
-	      (lambda (i)
-		(if (fix:< i end)
-		    (let ((char (string-ref name i))
-			  (i (fix:+ i 1)))
-		      (write-char char port)
-		      (if (char=? char #\-)
-			  (start-word i)
-			  (finish-word i)))))))
-	  (start-word 0))
+	(start-word 0)
         (write-string name port))))
 
 ;;;;; Input

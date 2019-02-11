@@ -148,32 +148,27 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 	     (mark/paragraph-fill-prefix mark)
 	     fill-prefix)))
     (and (mark< mark limit)
-	 (let ((end (group-end mark))
-	       (next-ls
-		(lambda (ls)
-		  (let ((le (line-end ls 0)))
-		    (if (mark< le limit)
-			(mark1+ le)
-			limit)))))
-	   (let ((separator?
-		  (lambda (ls)
-		    (prefixed-paragraph-separator? ls end fill-prefix))))
-	     (letrec
-		 ((skip-separators
-		   (lambda (ls)
-		     (cond ((mark= ls limit) #f)
-			   ((separator? ls) (skip-separators (next-ls ls)))
-			   (else (skip-body ls)))))
-		  (skip-body
-		   (lambda (ls)
-		     (let ((ls (next-ls ls)))
-		       (if (or (mark= ls limit)
-			       (prefixed-paragraph-start? ls end fill-prefix))
-			   ls
-			   (skip-body ls))))))
-	       (if (separator? (line-start mark 0))
-		   (skip-separators (next-ls mark))
-		   (skip-body mark))))))))
+	 (let ((end (group-end mark)))
+	   (define (next-ls ls)
+	     (let ((le (line-end ls 0)))
+	       (if (mark< le limit)
+		   (mark1+ le)
+		   limit)))
+	   (define (separator? ls)
+	     (prefixed-paragraph-separator? ls end fill-prefix))
+	   (define (skip-separators ls)
+	     (cond ((mark= ls limit) #f)
+		   ((separator? ls) (skip-separators (next-ls ls)))
+		   (else (skip-body ls))))
+	   (define (skip-body ls)
+	     (let ((ls (next-ls ls)))
+	       (if (or (mark= ls limit)
+		       (prefixed-paragraph-start? ls end fill-prefix))
+		   ls
+		   (skip-body ls))))
+	   (if (separator? (line-start mark 0))
+	       (skip-separators (next-ls mark))
+	       (skip-body mark))))))
 
 (define (backward-one-paragraph mark #!optional limit fill-prefix)
   (let ((limit
@@ -187,42 +182,38 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 	 (if (default-object? fill-prefix)
 	     (mark/paragraph-fill-prefix mark)
 	     fill-prefix)))
-    (let ((prev-ls
-	   (lambda (ls)
-	     (let ((ls (line-start ls -1 'LIMIT)))
-	       (if (mark< ls limit)
-		   limit
-		   ls))))
-	  (end (group-end mark)))
-      (let ((separator?
-	     (lambda (ls)
-	       (prefixed-paragraph-separator? ls end fill-prefix))))
-	(letrec ((skip-separators
-		  (lambda (ls)
-		    (and (mark< limit ls)
-			 (let ((ls (prev-ls ls)))
-			   (cond ((separator? ls) (skip-separators ls))
-				 ((mark= ls limit) ls)
-				 (else (skip-body ls)))))))
-		 (skip-body
-		  (lambda (ls)
-		    (if (mark<= ls limit)
-			limit
-			(let ((ls* (prev-ls ls)))
-			  (cond ((separator? ls*) ls*)
-				((prefixed-paragraph-start? ls* end
-							    fill-prefix)
-				 (let ((ls** (prev-ls ls*)))
-				   (if (separator? ls**)
-				       ls**
-				       ls*)))
-				(else (skip-body ls*))))))))
-	  (and (mark< limit mark)
-	       (let ((ls (line-start mark (if (line-start? mark) -1 0))))
-		 (and (mark<= limit ls)
-		      (cond ((separator? ls) (skip-separators ls))
-			    ((mark= limit ls) ls)
-			    (else (skip-body ls)))))))))))
+    (let ((end (group-end mark)))
+      (define (prev-ls ls)
+	(let ((ls (line-start ls -1 'LIMIT)))
+	  (if (mark< ls limit)
+	      limit
+	      ls)))
+      (define (separator? ls)
+	(prefixed-paragraph-separator? ls end fill-prefix))
+      (define (skip-separators ls)
+	(and (mark< limit ls)
+	     (let ((ls (prev-ls ls)))
+	       (cond ((separator? ls) (skip-separators ls))
+		     ((mark= ls limit) ls)
+		     (else (skip-body ls))))))
+      (define (skip-body ls)
+	(if (mark<= ls limit)
+	    limit
+	    (let ((ls* (prev-ls ls)))
+	      (cond ((separator? ls*) ls*)
+		    ((prefixed-paragraph-start? ls* end
+						fill-prefix)
+		     (let ((ls** (prev-ls ls*)))
+		       (if (separator? ls**)
+			   ls**
+			   ls*)))
+		    (else (skip-body ls*))))))
+      (and (mark< limit mark)
+	   (let ((ls (line-start mark (if (line-start? mark) -1 0))))
+	     (and (mark<= limit ls)
+		  (cond ((separator? ls) (skip-separators ls))
+			((mark= limit ls) ls)
+			(else (skip-body ls)))))))))
 
 (define forward-paragraph)
 (define backward-paragraph)
@@ -242,68 +233,56 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 (define (paragraph-text-start mark)
   (let ((start (group-start mark))
 	(fill-prefix (mark/paragraph-fill-prefix mark)))
-    (let ((prev-ls
-	   (lambda (ls)
-	     (let ((ls (line-start ls -1 'LIMIT)))
-	       (if (mark< ls start)
-		   start
-		   ls))))
-	  (end (group-end mark)))
-      (let ((separator?
-	     (lambda (ls)
-	       (prefixed-paragraph-separator? ls end fill-prefix))))
-	(letrec ((skip-separators
-		  (lambda (ls)
-		    (cond ((not (separator? ls)) (skip-body ls))
-			  ((mark<= ls start) #f)
-			  (else (skip-separators (prev-ls ls))))))
-		 (skip-body
-		  (lambda (ls)
-		    (if (mark<= ls start)
-			start
-			(let ((ls* (prev-ls ls)))
-			  (cond ((separator? ls*) ls)
-				((prefixed-paragraph-start? ls* end
-							    fill-prefix)
-				 ls*)
-				(else (skip-body ls*))))))))
-	  (skip-separators (line-start mark 0)))))))
+    (let ((end (group-end mark)))
+      (define (prev-ls ls)
+	(let ((ls (line-start ls -1 'LIMIT)))
+	  (if (mark< ls start)
+	      start
+	      ls)))
+      (define (separator? ls)
+	(prefixed-paragraph-separator? ls end fill-prefix))
+      (define (skip-separators ls)
+	(cond ((not (separator? ls)) (skip-body ls))
+	      ((mark<= ls start) #f)
+	      (else (skip-separators (prev-ls ls)))))
+      (define (skip-body ls)
+	(if (mark<= ls start)
+	    start
+	    (let ((ls* (prev-ls ls)))
+	      (cond ((separator? ls*) ls)
+		    ((prefixed-paragraph-start? ls* end fill-prefix) ls*)
+		    (else (skip-body ls*))))))
+      (skip-separators (line-start mark 0)))))
 
 (define (paragraph-text-end mark)
   (let ((end (group-end mark))
 	(fill-prefix (mark/paragraph-fill-prefix mark)))
-    (let ((next-ls
-	   (lambda (ls)
-	     (let ((le (line-end ls 0)))
-	       (if (mark< le end)
-		   (mark1+ le)
-		   end)))))
-      (let ((separator?
-	     (lambda (ls)
-	       (prefixed-paragraph-separator? ls end fill-prefix))))
-	(letrec
-	    ((skip-separators
-	      (lambda (ls)
-		(cond ((mark= ls end) #f)
-		      ((separator? ls) (skip-separators (next-ls ls)))
-		      (else (skip-body ls)))))
-	     (skip-body
-	      (lambda (ls)
-		(finish
-		 (let loop ((ls ls))
-		   (let ((ls (next-ls ls)))
-		     (if (or (mark= ls end)
-			     (prefixed-paragraph-start? ls end fill-prefix))
-			 ls
-			 (loop ls)))))))
-	     (finish
-	      (lambda (ls)
-		(if (and (mark< mark ls) (line-start? ls))
-		    (mark-1+ ls)
-		    ls))))
-	  (if (separator? (line-start mark 0))
-	      (skip-separators (next-ls mark))
-	      (skip-body mark)))))))
+    (define (next-ls ls)
+      (let ((le (line-end ls 0)))
+	(if (mark< le end)
+	    (mark1+ le)
+	    end)))
+    (define (separator? ls)
+      (prefixed-paragraph-separator? ls end fill-prefix))
+    (define (skip-separators ls)
+      (cond ((mark= ls end) #f)
+	    ((separator? ls) (skip-separators (next-ls ls)))
+	    (else (skip-body ls))))
+    (define (skip-body ls)
+      (finish
+       (let loop ((ls ls))
+	 (let ((ls (next-ls ls)))
+	   (if (or (mark= ls end)
+		   (prefixed-paragraph-start? ls end fill-prefix))
+	       ls
+	       (loop ls))))))
+    (define (finish ls)
+      (if (and (mark< mark ls) (line-start? ls))
+	  (mark-1+ ls)
+	  ls))
+    (if (separator? (line-start mark 0))
+	(skip-separators (next-ls mark))
+	(skip-body mark))))
 
 ;;;; Sentences
 

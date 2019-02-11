@@ -142,47 +142,44 @@ USA.
 	    (set-interrupt-enables! interrupt-mask))))))
 
 (define (intervals-to-modify group start end modify?)
-  (letrec
-      ((find-start
-	(lambda (interval)
-	  (if (fix:<= end (interval-end interval))
-	      (values #f #f)
-	      (let ((interval (next-interval interval)))
-		(if (modify? (interval-properties interval))
-		    (find-end interval)
-		    (find-start interval))))))
-       (find-end
-	(lambda (start-interval)
-	  (let loop ((prev start-interval) (interval start-interval))
-	    (let ((end* (interval-end interval)))
-	      (if (fix:< end end*)
-		  (if (modify? (interval-properties interval))
-		      (let ((end-interval
-			     (split-interval-left interval end group)))
-			(values (if (eq? interval start-interval)
-				    end-interval
-				    start-interval)
-				end-interval))
-		      (values start-interval prev))
-		  (let ((prev
-			 (if (modify? (interval-properties interval))
-			     interval
-			     prev)))
-		    (if (fix:= end end*)
-			(values start-interval prev)
-			(loop prev (next-interval interval))))))))))
-    (if (fix:< start end)
-	(let ((interval
-	       (if (group-text-properties group)
-		   (find-interval group start)
-		   (make-initial-interval group))))
+  (define (find-start interval)
+    (if (fix:<= end (interval-end interval))
+	(values #f #f)
+	(let ((interval (next-interval interval)))
 	  (if (modify? (interval-properties interval))
-	      (find-end
-	       (if (fix:= start (interval-start interval))
-		   interval
-		   (split-interval-right interval start group)))
-	      (find-start interval)))
-	(values #f #f))))
+	      (find-end interval)
+	      (find-start interval)))))
+  (define (find-end start-interval)
+    (let loop ((prev start-interval) (interval start-interval))
+      (let ((end* (interval-end interval)))
+	(if (fix:< end end*)
+	    (if (modify? (interval-properties interval))
+		(let ((end-interval
+		       (split-interval-left interval end group)))
+		  (values (if (eq? interval start-interval)
+			      end-interval
+			      start-interval)
+			  end-interval))
+		(values start-interval prev))
+	    (let ((prev
+		   (if (modify? (interval-properties interval))
+		       interval
+		       prev)))
+	      (if (fix:= end end*)
+		  (values start-interval prev)
+		  (loop prev (next-interval interval))))))))
+  (if (fix:< start end)
+      (let ((interval
+	     (if (group-text-properties group)
+		 (find-interval group start)
+		 (make-initial-interval group))))
+	(if (modify? (interval-properties interval))
+	    (find-end
+	     (if (fix:= start (interval-start interval))
+		 interval
+		 (split-interval-right interval start group)))
+	    (find-start interval)))
+      (values #f #f)))
 
 (define (prepare-to-modify-intervals group start-interval end-interval)
   (undo-record-intervals group start-interval end-interval)
@@ -357,29 +354,27 @@ USA.
 (define (update-intervals-for-deletion! group start end)
   ;; Assumes that (GROUP-TEXT-PROPERTIES GROUP) is not #F.
   ;; Assumes that (FIX:< START END).
-  (letrec
-      ((deletion-loop
-	(lambda (interval length)
+  (define (deletion-loop interval length)
+    (let ((length* (interval-length interval)))
+      (cond ((fix:< length length*)
+	     (decrement-interval-length interval length))
+	    ((fix:= length length*)
+	     (delete-interval interval group))
+	    (else
+	     (deletion-loop (delete-interval interval group)
+			    (fix:- length length*))))))
+  (let ((interval (find-interval group start))
+	(length (fix:- end start)))
+    (let ((start* (interval-start interval)))
+      (if (fix:= start start*)
+	  (deletion-loop interval length)
 	  (let ((length* (interval-length interval)))
-	    (cond ((fix:< length length*)
-		   (decrement-interval-length interval length))
-		  ((fix:= length length*)
-		   (delete-interval interval group))
-		  (else
-		   (deletion-loop (delete-interval interval group)
-				  (fix:- length length*))))))))
-    (let ((interval (find-interval group start))
-	  (length (fix:- end start)))
-      (let ((start* (interval-start interval)))
-	(if (fix:= start start*)
-	    (deletion-loop interval length)
-	    (let ((length* (interval-length interval)))
-	      (if (fix:<= end (fix:+ start* length*))
-		  (decrement-interval-length interval length)
-		  (let ((delta (fix:- (fix:+ start* length*) start)))
-		    (decrement-interval-length interval delta)
-		    (deletion-loop (next-interval interval)
-				   (fix:- length delta))))))))))
+	    (if (fix:<= end (fix:+ start* length*))
+		(decrement-interval-length interval length)
+		(let ((delta (fix:- (fix:+ start* length*) start)))
+		  (decrement-interval-length interval delta)
+		  (deletion-loop (next-interval interval)
+				 (fix:- length delta)))))))))
 
 (define (update-intervals-for-replacement! group start end)
   ;; Assumes that (GROUP-TEXT-PROPERTIES GROUP) is not #F.

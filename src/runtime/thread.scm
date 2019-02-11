@@ -674,30 +674,28 @@ USA.
 (define (permanently-register-io-thread-event descriptor mode thread event)
   (let ((stop? #f)
 	(registration #f))
-    (letrec ((handler
-	      (named-lambda (permanent-io-event mode*)
-		(if (not stop?)
-		    (event mode*))
-		(if (not (or stop? (memq mode* '(error hangup #f))))
-		    (register))))
-	     (register
-	      (lambda ()
-		(deregister)
-		(if (not stop?)
-		    (set! registration
-			  (register-io-thread-event descriptor mode
-						    thread handler)))))
-	     (deregister
-	      (lambda ()
-		(if registration
-		    (begin
-		      (deregister-io-thread-event registration)
-		      (set! registration #f))))))
-      (register)
-      (cons 'deregister-permanent-io-event
-	    (lambda ()
-	      (set! stop? #t)
-	      (deregister))))))
+    (define handler
+      (named-lambda (permanent-io-event mode*)
+	(if (not stop?)
+	    (event mode*))
+	(if (not (or stop? (memq mode* '(error hangup #f))))
+	    (register))))
+    (define (register)
+      (deregister)
+      (if (not stop?)
+	  (set! registration
+		(register-io-thread-event descriptor mode
+					  thread handler))))
+    (define (deregister)
+      (if registration
+	  (begin
+	    (deregister-io-thread-event registration)
+	    (set! registration #f))))
+    (register)
+    (cons 'deregister-permanent-io-event
+	  (lambda ()
+	    (set! stop? #t)
+	    (deregister)))))
 
 (define (register-io-thread-event descriptor mode thread event)
   (guarantee-select-mode mode 'register-io-thread-event)
