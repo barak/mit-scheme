@@ -541,49 +541,52 @@ USA.
 ;;; clever compiler could optimize this into the obvious loop that
 ;;; everyone would write in assembly language.
 
-(define (append . lists) (%append lists))
-(define (append! . lists) (%append! lists))
+(define (%append-2 l1 l2)
+  (if (pair? l1)
+      (let ((root (cons (car l1) #f)))
+	(let loop ((cell root) (next (cdr l1)))
+	  (if (pair? next)
+	      (let ((cell* (cons (car next) #f)))
+		(set-cdr! cell cell*)
+		(loop cell* (cdr next)))
+	      (begin
+		(if (not (null? next))
+		    (error:not-a list? l1 'append))
+		(set-cdr! cell l2)
+		root))))
+      (begin (if (not (null? l1)) (error:not-a list? l1 'append))
+	     l2)))
 
-(define (%append lists)
-  (let ((lists (reverse! lists)))
-    (if (pair? lists)
-	(let loop ((accum (car lists)) (rest (cdr lists)))
-	  (if (pair? rest)
-	      (loop (let ((l1 (car rest)))
-		      (cond ((pair? l1)
-			     (let ((root (cons (car l1) #f)))
-			       (let loop ((cell root) (next (cdr l1)))
-				 (cond ((pair? next)
-					(let ((cell* (cons (car next) #f)))
-					  (set-cdr! cell cell*)
-					  (loop cell* (cdr next))))
-				       ((null? next)
-					(set-cdr! cell accum))
-				       (else
-					(error:not-a list? (car rest)
-						     'append))))
-			       root))
-			    ((null? l1)
-			     accum)
-			    (else
-			     (error:not-a list? (car rest) 'append))))
-		    (cdr rest))
-	      accum))
-	'())))
+(define append
+  (make-arity-dispatched-procedure
+   (named-lambda (append self . lists)
+     self
+     (let recur ((lists lists))
+       (if (pair? lists)		; Recursion limited by number of args.
+	   (%append-2 (car lists) (recur (cdr lists)))
+	   '())))
+   (lambda () '())
+   (lambda (l) l)
+   %append-2))
 
-(define (%append! lists)
-  (if (pair? lists)
-      (let loop ((head (car lists)) (tail (cdr lists)))
-	(cond ((not (pair? tail))
-	       head)
-	      ((pair? head)
-	       (set-cdr! (last-pair head) (loop (car tail) (cdr tail)))
-	       head)
-	      (else
-	       (if (not (null? head))
-		   (error:not-a list? (car lists) 'append!))
-	       (loop (car tail) (cdr tail)))))
-      '()))
+(define (%append-2! l1 l2)
+  (if (pair? l1)
+      (begin (set-cdr! (last-pair l1) l2)
+	     l1)
+      (begin (if (not (null? l1)) (error:not-a list? l1 'append!))
+	     l2)))
+
+(define append!
+  (make-arity-dispatched-procedure
+   (named-lambda (append! self . lists)
+     self
+     (let recur ((lists lists))
+       (if (pair? lists)		; Recursion limited by number of args.
+	   (%append-2! (car lists) (recur (cdr lists)))
+	   '())))
+   (lambda () '())
+   (lambda (l) l)
+   %append-2!))
 
 (define (reverse l) (reverse* l '()))
 (define (reverse! l) (reverse*! l '()))
