@@ -1,0 +1,36 @@
+Support for cross-compilation has been improved.
+
+On your x86 workstation, with mit-scheme-x86-64 in $PATH:
+
+   ./configure \
+     --enable-native-code=aarch64le \
+     --enable-cross-compiling
+   make toolchain
+   make cross-host
+
+On your aarch64 laptop:
+
+   make cross-target
+
+Eventually, it ought to be possible to run entirely on your x86
+workstation, if you have aarch64--netbsd-gcc in $PATH too and a
+prepopulated installation of the target OS at /path/to/destir.aarch64:
+
+   ./configure \
+     --host=x86_64--netbsd \
+     --build=aarch64--netbsd \
+     --enable-native-code=aarch64le \
+     --enable-cross-compiling \
+     CFLAGS=--sysroot=/path/to/destdir.aarch64 \
+     LDFLAGS=--sysroot=/path/to/destdir.aarch64 \
+     ac_cv_func_setpgrp_void=no \
+     ac_cv_func_mmap_fixed_mapped=yes \
+     HOST_CC=cc
+   make toolchain
+   make cross-host
+   make cross-target
+
+(The ac_cv_* stuff is because autoconf can't detect some features when
+cross-compiling.)  However, currently Scheme does not support static
+linking, only cold-loading code and dumping an image on the target
+machine.
