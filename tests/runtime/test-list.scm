@@ -36,6 +36,22 @@ USA.
       (let ((n-bytes (- stack-end stack-start)))
 	(quotient n-bytes bytes-per-word)))))
 
+(define-test 'append-dotted
+  (lambda ()
+    (assert-equal (append 'x) 'x)
+    (assert-equal (append '(x) 'y) '(x . y))
+    (expect-error
+     (lambda ()
+       (assert-equal (append '(x) '(y) 'z) '(x y . z))))))
+
+(define-test 'append!-dotted
+  (lambda ()
+    (assert-equal (append! 'x) 'x)
+    (assert-equal (append! (list 'x) 'y) '(x . y))
+    (expect-error
+     (lambda ()
+       (assert-equal (append! (list 'x) (list 'y) 'z) '(x y . z))))))
+
 (define-test 'map-long
   (lambda ()
     (let* ((n (words-in-stack))
