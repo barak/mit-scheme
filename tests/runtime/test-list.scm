@@ -40,17 +40,13 @@ USA.
   (lambda ()
     (assert-equal (append 'x) 'x)
     (assert-equal (append '(x) 'y) '(x . y))
-    (expect-error
-     (lambda ()
-       (assert-equal (append '(x) '(y) 'z) '(x y . z))))))
+    (assert-equal (append '(x) '(y) 'z) '(x y . z))))
 
 (define-test 'append!-dotted
   (lambda ()
     (assert-equal (append! 'x) 'x)
     (assert-equal (append! (list 'x) 'y) '(x . y))
-    (expect-error
-     (lambda ()
-       (assert-equal (append! (list 'x) (list 'y) 'z) '(x y . z))))))
+    (assert-equal (append! (list 'x) (list 'y) 'z) '(x y . z))))
 
 (define-test 'map-long
   (lambda ()

@@ -561,14 +561,19 @@ USA.
   (make-arity-dispatched-procedure
    (named-lambda (append self . lists)
      self
-     (let recur ((lists lists))
-       (if (pair? lists)		; Recursion limited by number of args.
-	   (%append-2 (car lists) (recur (cdr lists)))
-	   '())))
+     (if (pair? lists)
+	 (let recur ((lists lists))
+	   ;; Recursion limited by number of arguments.
+	   (let ((list0 (car lists))
+		 (lists (cdr lists)))
+	     (if (pair? lists)
+		 (%append-2 list0 (recur lists))
+		 list0)))
+	 '()))
    (lambda () '())
    (lambda (l) l)
    %append-2))
-
+
 (define (%append-2! l1 l2)
   (if (pair? l1)
       (begin (set-cdr! (last-pair l1) l2)
@@ -580,10 +585,15 @@ USA.
   (make-arity-dispatched-procedure
    (named-lambda (append! self . lists)
      self
-     (let recur ((lists lists))
-       (if (pair? lists)		; Recursion limited by number of args.
-	   (%append-2! (car lists) (recur (cdr lists)))
-	   '())))
+     (if (pair? lists)
+	 (let recur ((lists lists))
+	   ;; Recursion limited by number of arguments.
+	   (let ((list0 (car lists))
+		 (lists (cdr lists)))
+	     (if (pair? lists)
+		 (%append-2! list0 (recur lists))
+		 list0)))
+	 '()))
    (lambda () '())
    (lambda (l) l)
    %append-2!))
