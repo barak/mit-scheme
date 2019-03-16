@@ -1176,7 +1176,9 @@ USA.
 	  %ustring1?
 	  cp1-ref
 	  cp1-set!
-	  ustring-length))
+	  ustring-length)
+  (export (runtime printer)
+	  (string-slice? slice?)))
 
 (define-package (runtime bytevector)
   (files "bytevector")

@@ -321,20 +321,22 @@ USA.
     def?))
 
 (define (print-object-1 object context)
-  (let ((print-method (get-print-method object)))
-    (cond ((standard-print-method? print-method)
-	   (*print-with-brackets
-	    (standard-print-method-name print-method object)
-	    object
-	    context
-	    (standard-print-method-parts print-method object)))
-	  (print-method
-	   (call-print-method print-method object context))
-	  (else
-	   ((vector-ref dispatch-table
-			((ucode-primitive primitive-object-type 1) object))
-	    object
-	    context)))))
+  (cond ((string-slice? object)
+	 (print-string object context))
+	((get-print-method object)
+	 => (lambda (print-method)
+	      (if (standard-print-method? print-method)
+		  (*print-with-brackets
+		   (standard-print-method-name print-method object)
+		   object
+		   context
+		   (standard-print-method-parts print-method object))
+		  (call-print-method print-method object context))))
+	(else
+	 ((vector-ref dispatch-table
+		      ((ucode-primitive primitive-object-type 1) object))
+	  object
+	  context))))
 
 (define (call-print-method print-method object context)
   (parameterize ((initial-context context))
@@ -757,8 +759,7 @@ USA.
       (*print-char #\) context*))))
 
 (define (print-record record context)
-  (cond ((string? record) (print-string record context))
-	((uri? record) (print-uri record context))
+  (cond ((uri? record) (print-uri record context))
 	(else (*print-with-brackets 'record record context '()))))
 
 (define (print-uri uri context)
