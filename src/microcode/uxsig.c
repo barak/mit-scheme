@@ -343,7 +343,7 @@ initialize_signal_descriptors (void)
   defsignal (SIGSYS, "SIGSYS",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGPIPE, "SIGPIPE",	dfl_terminate,	0);
   defsignal (SIGALRM, "SIGALRM",	dfl_terminate,	ASYNC);
-  defsignal (SIGTERM, "SIGTERM",	dfl_terminate,	ASYNC);
+  defsignal (SIGTERM, "SIGTERM",	dfl_terminate,	(ASYNC | NOCATCH));
   defsignal (SIGUSR1, "SIGUSR1",	dfl_terminate,	ASYNC);
   defsignal (SIGUSR2, "SIGUSR2",	dfl_terminate,	ASYNC);
   defsignal (SIGABRT, "SIGABRT",	dfl_terminate,	(ASYNC | CORE_DUMP));
@@ -542,10 +542,7 @@ DEFUN_STD_HANDLER (sighnd_save_then_terminate,
 
 static
 DEFUN_STD_HANDLER (sighnd_terminate,
-  (termination_signal
-   ((! (option_emacs_subprocess && (signo == SIGHUP)))
-    ? (find_signal_name (signo))
-    : 0)))
+  (termination_signal (find_signal_name (signo))))
 
 extern void clear_float_exceptions (void);
 
@@ -671,8 +668,6 @@ UX_initialize_signals (void)
   bind_handler (SIGFPE,		sighnd_fpe);
   bind_handler (SIGALRM,	sighnd_timer);
   bind_handler (SIGVTALRM,	sighnd_timer);
-  bind_handler (SIGTERM,	sighnd_control_g);
-  bind_handler (SIGHUP,		sighnd_control_g);
   bind_handler (SIGUSR1,	sighnd_save_then_terminate);
 #ifdef HAVE_NICE
   bind_handler (SIGUSR2,	sighnd_renice);
@@ -686,8 +681,6 @@ UX_initialize_signals (void)
     {
       if (getenv ("USE_SCHEMATIK_STYLE_INTERRUPTS"))
         bind_handler (SIGHUP,   sighnd_control_b);
-      else if (!option_emacs_subprocess)
-	bind_handler (SIGHUP,	sighnd_save_then_terminate);
       if (getenv ("USE_SCHEMATIK_STYLE_INTERRUPTS"))
         bind_handler (SIGQUIT,  sighnd_control_u);
       else
