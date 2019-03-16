@@ -3093,17 +3093,20 @@ USA.
     (= "aaafoo" (string-trim-right "aaafooaaa" (char-set #\f #\o)))))
 
 (define (string-copy!:all-indices to from)
-  (let ((to-length (string-length to))
-	(from-limit (+ (string-length from) 1)))
+  (let ((to-length (string-length to)))
     (append-map (lambda (s+e)
 		  (map (lambda (at)
 			 (cons at s+e))
 		       (iota (- to-length (- (cadr s+e) (car s+e))))))
-		(append-map (lambda (start)
-			      (map (lambda (end)
-				     (list start end))
-				   (iota (- from-limit start) start)))
-			    (iota from-limit)))))
+		(substring:all-indices from))))
+
+(define (substring:all-indices string)
+  (let ((limit (+ (string-length string) 1)))
+    (append-map (lambda (start)
+		  (map (lambda (end)
+			 (list start end))
+		       (iota (- limit start) start)))
+		(iota limit))))
 
 (define-test 'string-copy!:different-strings
   (let ((s1 "abcdefghijklmnopqrstuvwxyz")
@@ -3136,11 +3139,6 @@ USA.
 				   'expression expr))))))
 	 (string-copy!:all-indices s1 s1))))
 
-(define (maybe-expect-failure expect-failure? body)
-  (if expect-failure?
-      (expect-failure body)
-      (body)))
-
 (define (string-copy!:predict s1 at s2 #!optional start end)
   (list->string
    (let ((l1 (string->list s1))
@@ -3148,3 +3146,22 @@ USA.
      (append (list-head l1 at)
 	     l2
 	     (list-tail l1 (+ at (length l2)))))))
+
+(define-test 'string-slice
+  (let ((s "abcdefghijklmnopqrstuvwxyz"))
+    (map (lambda (indices)
+	   (let ((start (car indices))
+		 (end (cadr indices)))
+	     (let ((expr `(string-slice ,s ,start ,end)))
+	       (lambda ()
+		 (let ((sut (string-slice s start end))
+		       (expected (substring:predict s start end)))
+		   (assert-string= sut expected 'expression expr)
+		   (assert-string= (call-with-output-string
+				     (lambda (port)
+				       (write sut port)))
+				   (string-append "\"" expected "\"")))))))
+	 (substring:all-indices s))))
+
+(define (substring:predict s i j)
+  (list->string (sublist (string->list s) i j)))
