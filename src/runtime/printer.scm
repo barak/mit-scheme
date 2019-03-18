@@ -759,13 +759,7 @@ USA.
       (*print-char #\) context*))))
 
 (define (print-record record context)
-  (cond ((uri? record) (print-uri record context))
-	(else (*print-with-brackets 'record record context '()))))
-
-(define (print-uri uri context)
-  (*print-string "#<" context)
-  (*print-string (uri->string uri) context)
-  (*print-string ">" context))
+  (*print-with-brackets 'record record context '()))
 
 (define (print-pair pair context)
   (cond ((prefix-pair? pair)
