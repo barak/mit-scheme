@@ -3035,7 +3035,7 @@ It does not restrict users to a particular naming convention.
 
 @item
 Tools like @command{grep} and the GNU Emacs tag facility will see the
-defining occurance of each identifier.
+defining occurrence of each identifier.
 @end itemize
 
 @deffn {special form} define-record-type type-name (constructor-name field-tag @dots{}) predicate-name field-spec @dots{}
