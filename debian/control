@@ -2,7 +2,7 @@ Source: mit-scheme
 Section: lisp
 Priority: optional
 Maintainer: Barak A. Pearlmutter <bap@debian.org>
-Build-Depends: debhelper (>= 12),
+Build-Depends: debhelper-compat (= 12),
 		mit-scheme (>= 10),
 		libssl-dev, libmhash-dev, libmcrypt-dev,
 		libgdbm-dev, libpq-dev,
