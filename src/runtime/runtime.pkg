@@ -1146,7 +1146,9 @@ USA.
 	  %ustring1?
 	  cp1-ref
 	  cp1-set!
-	  ustring-length))
+	  ustring-length)
+  (export (runtime printer)
+	  (string-slice? slice?)))
 
 (define-package (runtime bytevector)
   (files "bytevector")
@@ -1483,9 +1485,7 @@ USA.
 	  re-compile-char-set
 	  string->char-set)
   (export (runtime regular-sexpression)
-	  normalize-ranges)
-  (export (runtime legacy-string)
-	  (char-set-table %char-set-table)))
+	  normalize-ranges))
 
 (define-package (runtime compiler-info)
   (files "infstr" "infutl")
