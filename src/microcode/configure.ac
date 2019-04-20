@@ -861,6 +861,15 @@ fi
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
 
 case ${mit_scheme_native_code} in
+aarch64be|aarch64le)
+    cmpauxmd="aarch64"
+    ;;
+*)
+    cmpauxmd="${mit_scheme_native_code}"
+    ;;
+esac
+
+case ${mit_scheme_native_code} in
 none)
     ;;
 c)
@@ -879,7 +888,7 @@ svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     if test "x${M4}" = x; then
 	AC_MSG_ERROR([m4 not found])
     fi
-    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${mit_scheme_native_code}.m4])
+    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${cmpauxmd}.m4])
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     ;;
