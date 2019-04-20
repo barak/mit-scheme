@@ -307,8 +307,8 @@ USA.
   (assert (>= frame-size 2))
   (assert (fits-in-unsigned-12? (* 8 frame-size))) ;XXX
   (assert (= 8 address-units-per-object))
-  (let* ((temp1 (allocate-temporary-register! 'GENERAL))
-         (temp2 (allocate-temporary-register! 'GENERAL))
+  (let* ((temp1 regnum:scratch-0)
+         (temp2 regnum:scratch-1)
          (index (allocate-temporary-register! 'GENERAL))
          (label (generate-label 'MOVE-LOOP))
          ;; Unroll an odd element if there is one; then do an even
