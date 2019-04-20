@@ -203,9 +203,14 @@ USA.
   (set! microcode-id/floating-exponent-max
         (microcode-identification-item 'flonum-exponent-max))
   (set! microcode-id/nonnegative-fixnum-length
-	(microcode-identification-item 'nonnegative-fixnum-length))
+	(or (microcode-identification-item 'nonnegative-fixnum-length #f)
+	    (let loop ((i 1) (n 0))
+	      (if (fix:fixnum? i)
+		  (loop (* i 2) (+ n 1))
+		  n))))
   (set! microcode-id/nonnegative-fixnum-mask
-	(microcode-identification-item 'nonnegative-fixnum-mask))
+	(or (microcode-identification-item 'nonnegative-fixnum-mask #f)
+	    (fix:not (fix:lsh -1 microcode-id/nonnegative-fixnum-length))))
   (set! microcode-id/operating-system-name
 	(microcode-identification-item 'os-name-string))
   (set! microcode-id/operating-system
