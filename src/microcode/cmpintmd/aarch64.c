@@ -263,7 +263,7 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
   iaddr = (((insn_t *) saddr) + ioff);
 
   /* ldr x1, PC-ioff */
-  (iaddr[0]) = (0x58000001UL | ((((unsigned) ioff) & 0x7ffff) << 5));
+  (iaddr[0]) = (0x58000001UL | ((((unsigned) (-ioff)) & 0x7ffff) << 5));
 
   /* If the target PC is right after the target offset, then the PC
      requires no further relocation and we can jump to a fixed address.
