@@ -112,13 +112,14 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   ;; Subsequently move the graphics cursor to those coordinates.
   (C-call "x_graphics_draw_point" window x y))
 
-(define (x-graphics-draw-arc window x y start-angle sweep-angle fill?)
+(define (x-graphics-draw-arc window x y radius-x radius-y
+			     start-angle sweep-angle fill?)
   ;; Draw an arc at the given coordinates, with given X and Y radii.
   ;; START-ANGLE and SWEEP-ANGLE are in degrees, anti-clocwise.
   ;; START-ANGLE is from 3 o'clock, and SWEEP-ANGLE is relative to the
   ;; START-ANGLE.  If FILL? is true, the arc is filled.
   (C-call "x_graphics_draw_arc" window
-	  x y start-angle sweep-angle (if fill? 1 0)))
+	  x y radius-x radius-y start-angle sweep-angle (if fill? 1 0)))
 
 (define (x-graphics-draw-string window x y string)
   ;; Draw characters in the current font at the given coordinates, with
