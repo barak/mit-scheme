@@ -37,8 +37,10 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	     (x-window (graphics-device/descriptor dev))
 	     (x-display (x-window/display x-window)))
 
-	(if (not (eq? 'X11 (graphics-type-name (graphics-type dev))))
-	    (error "The X11 graphics type is NOT the default."))
+	(if (not (eq? 'X (graphics-type-name (graphics-type dev))))
+	    (error "The X graphics type is NOT the default."))
+
+	(sleep-current-thread 500)
 
 	(test-graphics dev)
 
@@ -55,14 +57,16 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (test-graphics dev)
   (display "Drawing...\n")
-  (graphics-draw-point dev 0 .1)
-  (graphics-draw-point dev 0 .2)
-  (graphics-draw-point dev 0 .3)
-  (graphics-erase-point dev 0 .2)
+  (graphics-draw-point dev 0 .10)
+  (graphics-draw-point dev 0 .15)
+  (graphics-draw-point dev 0 .20)
+  (graphics-draw-point dev 0 .25)
+  (graphics-erase-point dev 0 .15)
   (graphics-draw-text dev 0. .4 "Hello!")
   (graphics-draw-line dev -.5 -.5 .5 .5)
   (graphics-move-cursor dev -.5 .5)
-  (graphics-drag-cursor dev .5 -.5))
+  (graphics-drag-cursor dev .5 -.5)
+  (x-graphics/draw-arc dev 0. 0. .5 .3 300. 300. #f))
 
 (define (test-properties xd window-id)
   (display "Getting/putting properties...\n")
