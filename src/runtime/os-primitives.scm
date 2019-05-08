@@ -54,7 +54,8 @@ USA.
 (define (reset-environment-variables!)
   (hash-table-clear! %env-cache)
   (vector-for-each (lambda (s)
-		     (let ((i (string-find-next-char s #\=)))
+		     (let ((s (string-from-primitive s))
+			   (i (string-find-next-char s #\=)))
 		       (if i
 			   (hash-table-set! %env-cache
 					    (string-head s i)

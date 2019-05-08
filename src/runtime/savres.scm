@@ -106,7 +106,9 @@ USA.
 	 (->namestring
 	  (if (default-object? filename)
 	      (merge-pathnames
-	       (let ((filename ((ucode-primitive reload-band-name))))
+	       (let ((filename
+		      (string-from-primitive
+		       ((ucode-primitive reload-band-name)))))
 		 (if (not filename)
 		     (error "no default band name available"))
 		 filename))
