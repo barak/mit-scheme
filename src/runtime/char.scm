@@ -414,6 +414,8 @@ USA.
 
 (define-integrable (insert-bits word mask shift)
   (fix:and (fix:lsh word shift) mask))
+
+(define char:replacement (integer->char #xfffd))
 
 ;;;; UTF-{8,16,32} encoders
 
@@ -499,43 +501,41 @@ USA.
 	((utf8-initial-byte-2? b0) 2)
 	((utf8-initial-byte-3? b0) 3)
 	((utf8-initial-byte-4? b0) 4)
-	(else (error "Illegal UTF-8 initial byte:" b0))))
+	(else 1)))			;error, eat byte
 
 (define (next-char-length:utf8 bv bs be)
   (and (fix:<= (fix:+ bs 1) be)
        (initial-byte->utf8-char-length (bytevector-u8-ref bv bs))))
 
 (define (decode-utf8-char bytes index)
-  (integer->char
-   (let ((b0 (bytevector-u8-ref bytes index)))
-     (cond ((utf8-initial-byte-1? b0)
-	    b0)
-	   ((utf8-initial-byte-2? b0)
-	    (let ((b1 (bytevector-u8-ref bytes (fix:+ index 1))))
-	      (if (not (valid-utf8-sequence-2? b0 b1))
-		  (error "Ill-formed UTF-8 sequence:" b0 b1))
-	      (fix:or (extract-bits b0 #x1F 6)
-		      (extract-bits b1 #x3F 0))))
-	   ((utf8-initial-byte-3? b0)
-	    (let ((b1 (bytevector-u8-ref bytes (fix:+ index 1)))
-		  (b2 (bytevector-u8-ref bytes (fix:+ index 2))))
-	      (if (not (valid-utf8-sequence-3? b0 b1 b2))
-		  (error "Ill-formed UTF-8 sequence:" b0 b1 b2))
-	      (fix:or (fix:or (extract-bits b0 #x0F 12)
-			      (extract-bits b1 #x3F 6))
-		      (extract-bits b2 #x3F 0))))
-	   ((utf8-initial-byte-4? b0)
-	    (let ((b1 (bytevector-u8-ref bytes (fix:+ index 1)))
-		  (b2 (bytevector-u8-ref bytes (fix:+ index 2)))
-		  (b3 (bytevector-u8-ref bytes (fix:+ index 3))))
-	      (if (not (valid-utf8-sequence-4? b0 b1 b2 b3))
-		  (error "Ill-formed UTF-8 sequence:" b0 b1 b2 b3))
-	      (fix:or (fix:or (extract-bits b0 #x07 18)
-			      (extract-bits b1 #x3F 12))
-		      (fix:or (extract-bits b2 #x3F 6)
-			      (extract-bits b3 #x3F 0)))))
-	   (else
-	    (error "Illegal UTF-8 initial byte:" b0))))))
+  (let ((b0 (bytevector-u8-ref bytes index)))
+    (cond ((utf8-initial-byte-1? b0)
+	   (integer->char b0))
+	  ((utf8-initial-byte-2? b0)
+	   (let ((b1 (bytevector-u8-ref bytes (fix:+ index 1))))
+	     (and (valid-utf8-sequence-2? b0 b1)
+		  (integer->char
+		   (fix:or (extract-bits b0 #x1F 6)
+			   (extract-bits b1 #x3F 0))))))
+	  ((utf8-initial-byte-3? b0)
+	   (let ((b1 (bytevector-u8-ref bytes (fix:+ index 1)))
+		 (b2 (bytevector-u8-ref bytes (fix:+ index 2))))
+	     (and (valid-utf8-sequence-3? b0 b1 b2)
+		  (integer->char
+		   (fix:or (fix:or (extract-bits b0 #x0F 12)
+				   (extract-bits b1 #x3F 6))
+			   (extract-bits b2 #x3F 0))))))
+	  ((utf8-initial-byte-4? b0)
+	   (let ((b1 (bytevector-u8-ref bytes (fix:+ index 1)))
+		 (b2 (bytevector-u8-ref bytes (fix:+ index 2)))
+		 (b3 (bytevector-u8-ref bytes (fix:+ index 3))))
+	     (and (valid-utf8-sequence-4? b0 b1 b2 b3)
+		  (integer->char
+		   (fix:or (fix:or (extract-bits b0 #x07 18)
+				   (extract-bits b1 #x3F 12))
+			   (fix:or (extract-bits b2 #x3F 6)
+				   (extract-bits b3 #x3F 0)))))))
+	  (else #f))))
 
 (define-integrable (utf8-initial-byte-1? byte)
   (fix:= #x00 (fix:and #x80 byte)))
@@ -608,9 +608,8 @@ USA.
 
 (define (initial-u16->utf16-char-length u16)
   (guarantee u16? u16 'initial-u16->utf16-char-length)
-  (if (utf16-low-surrogate? u16)
-      (error "Illegal initial UTF-16 unit:" u16))
-  (if (utf16-high-surrogate? u16)
+  (if (and (not (utf16-low-surrogate? u16))
+	   (utf16-high-surrogate? u16))
       4
       2))
 
@@ -624,18 +623,16 @@ USA.
 
 (define (utf16-char-decoder getter)
   (lambda (bytes index)
-    (integer->char
-     (let ((d0 (getter bytes index)))
-       (if (utf16-low-surrogate? d0)
-	   (error "Illegal initial UTF-16 unit:" d0))
-       (if (utf16-high-surrogate? d0)
-	   (let ((d1 (getter bytes (fix:+ index 2))))
-	     (if (not (utf16-low-surrogate? d1))
-		 (error "Ill-formed UTF-16 sequence:" d0 d1))
-	     (fix:+ (fix:or (extract-bits d0 #x3FF 10)
-			    (extract-bits d1 #x3FF 0))
-		    #x10000))
-	   d0)))))
+    (let ((d0 (getter bytes index)))
+      (and (not (utf16-low-surrogate? d0))
+	   (if (utf16-high-surrogate? d0)
+	       (let ((d1 (getter bytes (fix:+ index 2))))
+		 (and (utf16-low-surrogate? d1)
+		      (integer->char
+		       (fix:+ (fix:or (extract-bits d0 #x3FF 10)
+				      (extract-bits d1 #x3FF 0))
+			      #x10000))))
+	       (integer->char d0))))))
 
 (define decode-utf16be-char
   (utf16-char-decoder bytevector-u16be-ref))
@@ -644,7 +641,7 @@ USA.
   (utf16-char-decoder bytevector-u16le-ref))
 
 (define (initial-u32->utf32-char-length u32)
-  (guarantee unicode-scalar-value? u32 'initial-u32->utf32-char-length)
+  (guarantee u32? u32 'initial-u32->utf32-char-length)
   4)
 
 (define (next-char-length:utf32le bv bs be)
@@ -658,8 +655,8 @@ USA.
 (define (utf32-char-decoder getter)
   (lambda (bytes index)
     (let ((u32 (getter bytes index)))
-      (guarantee unicode-scalar-value? u32 'utf32-char-decoder)
-      (integer->char u32))))
+      (and (unicode-scalar-value? u32)
+	   (integer->char u32)))))
 
 (define decode-utf32be-char
   (utf32-char-decoder bytevector-u32be-ref))
@@ -702,7 +699,8 @@ USA.
 	   (k #f bs)
 	   (let ((bs* (fix:+ bs n)))
 	     (k (and (fix:<= bs* be)
-		     (decode-char bv bs))
+		     (or (decode-char bv bs)
+			 char:replacement))
 		bs*)))))))
 
 (define-char-codec 'utf8

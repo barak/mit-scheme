@@ -1361,6 +1361,7 @@ USA.
 	  char-utf16-byte-length
 	  char-utf32-byte-length
 	  char-utf8-byte-length
+	  char:replacement
 	  decode-utf16be-char
 	  decode-utf16le-char
 	  decode-utf32be-char
