@@ -615,6 +615,7 @@ USA.
 		  (open-tcp-stream-socket (imap-url-host url)
 					  (or (imap-url-port url) "imap2"))))))
 	  (port/set-line-ending port 'NEWLINE)
+	  (port/set-coding port 'ISO-8859-1)
 	  (let ((response
 		 (imap:catch-no-response #f
 		   (lambda ()
@@ -1930,6 +1931,7 @@ USA.
 		(guarantee-init-file-directory temporary-directory)
 		(call-with-temporary-output-file pathname temporary-directory
 		  (lambda (output-port)
+		    (port/set-coding output-port 'ISO-8859-1)
 		    (imap:bind-fetch-body-part-port output-port
 		      (lambda ()
 			(fetch-message-body-part-1 message
@@ -1952,7 +1954,9 @@ USA.
 		  (guarantee-init-file-directory pathname)
 		  (guarantee-init-file-directory temporary-directory)
 		  (call-with-temporary-output-file pathname temporary-directory
-		    fetch-to-port)))
+		    (lambda (port)
+		      (port/set-coding port 'ISO-8859-1)
+		      (fetch-to-port port)))))
 	    (file->port pathname port)))
 	(lambda ()
 	  (fetch-to-port port))))))
@@ -2126,6 +2130,7 @@ USA.
 (define (string->file string pathname #!optional temporary-directory)
   (call-with-temporary-output-file pathname temporary-directory
     (lambda (port)
+      (port/set-coding port 'ISO-8859-1)
       (write-string string port))))
 
 (define (call-with-temporary-output-file pathname temporary-directory receiver)
@@ -2154,6 +2159,7 @@ USA.
 (define (file->port pathname output-port)
   (call-with-input-file pathname
     (lambda (input-port)
+      (port/set-coding input-port 'ISO-8859-1)
       (let ((buffer (make-string #x1000)))
 	(let loop ()
 	  (let ((n (read-string! buffer input-port)))
