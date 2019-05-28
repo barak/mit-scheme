@@ -352,26 +352,38 @@ USA.
 
 (define-integrable (bytes-decoder getter initial->length decode-char step noun
 				  caller)
-  (lambda (bytevector #!optional start end)
+  (lambda (bytevector #!optional start end replace?)
     (let* ((end (fix:end-index end (bytevector-length bytevector) caller))
 	   (start (fix:start-index start end caller))
 	   (builder (string-builder)))
       (let ((truncated
-	     (lambda (index)
-	       (error (string "Truncated " noun " sequence:")
-		      (bytevector-copy bytevector
-				       index
-				       (fix:min (fix:+ index 4) end))))))
+	     (if (or (default-object? replace?) (not replace?))
+		 (lambda (index)
+		   (error (string "Truncated " noun " sequence:")
+			  (bytevector-copy bytevector
+					   index
+					   (fix:min (fix:+ index 4) end))))
+		 (lambda (index) index char:replacement)))
+	    (ill-formed
+	     (if (or (default-object? replace?) (not replace?))
+		 (lambda (index)
+		   (error (string "Ill-formed " noun " sequence:")
+			  (bytevector-copy bytevector
+					   index
+					   (fix:min (fix:+ index 4) end))))
+		 (lambda (index) index char:replacement))))
 	(let loop ((index start))
 	  (if (fix:<= (fix:+ index step) end)
 	      (let ((n (initial->length (getter bytevector index))))
 		(let ((index* (fix:+ index n)))
-		  (if (not (fix:<= index* end))
-		      (truncated index))
-		  (builder (decode-char bytevector index))
+		  (builder
+		   (if (not (fix:<= index* end))
+		       (truncated index)
+		       (or (decode-char bytevector index)
+			   (ill-formed index))))
 		  (loop index*)))
 	      (if (fix:< index end)
-		  (truncated index)))))
+		  (builder (truncated index))))))
       (builder))))
 
 (define utf8->string)

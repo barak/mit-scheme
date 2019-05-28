@@ -1354,7 +1354,8 @@ USA.
   (lambda (ib)
     (let ((n (initial-byte->utf8-char-length (peek-byte ib))))
       (read-bytes! ib 0 n)
-      (decode-utf8-char (input-buffer-bytes ib) 0))))
+      (or (decode-utf8-char (input-buffer-bytes ib) 0)
+	  char:replacement))))
 
 (define-encoder 'utf-8
   (lambda (ob char)
@@ -1372,7 +1373,8 @@ USA.
 	    (bytevector-u16be-ref (input-buffer-bytes ib) 0))))
       (if (fix:> n 2)
 	  (read-bytes! ib 2 n))
-      (decode-utf16be-char (input-buffer-bytes ib) 0))))
+      (or (decode-utf16be-char (input-buffer-bytes ib) 0)
+	  char:replacement))))
 
 (define-decoder 'utf-16le
   (lambda (ib)
@@ -1382,7 +1384,8 @@ USA.
 	    (bytevector-u16le-ref (input-buffer-bytes ib) 0))))
       (if (fix:> n 2)
 	  (read-bytes! ib 2 n))
-      (decode-utf16le-char (input-buffer-bytes ib) 0))))
+      (or (decode-utf16le-char (input-buffer-bytes ib) 0)
+	  char:replacement))))
 
 (define-encoder 'utf-16be
   (lambda (ob char)
@@ -1399,12 +1402,14 @@ USA.
 (define-decoder 'utf-32be
   (lambda (ib)
     (read-bytes! ib 0 4)
-    (decode-utf32be-char (input-buffer-bytes ib) 0)))
+    (or (decode-utf32be-char (input-buffer-bytes ib) 0)
+	char:replacement)))
 
 (define-decoder 'utf-32le
   (lambda (ib)
     (read-bytes! ib 0 4)
-    (decode-utf32le-char (input-buffer-bytes ib) 0)))
+    (or (decode-utf32le-char (input-buffer-bytes ib) 0)
+	char:replacement)))
 
 (define-encoder 'utf-32be
   (lambda (ob char)
