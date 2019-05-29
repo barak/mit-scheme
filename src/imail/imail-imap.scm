@@ -2060,7 +2060,7 @@ USA.
 
 (define (imap-message-cache-specifier message)
   `(,@(imap-folder-cache-specifier (message-folder message))
-    ,(write-to-string (imap-message-uid message))))
+    ,(number->string (imap-message-uid message) #d10)))
 
 (define (imap-message-temporary-directory-pathname message)
   (imap-folder-temporary-directory-pathname (message-folder message)))
