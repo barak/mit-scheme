@@ -111,10 +111,10 @@ USA.
 	    (loop (cdr items) items))))))
 
 (define (with-finalizer-lock finalizer thunk)
-  (with-thread-mutex-lock
-      (gc-finalizer-mutex finalizer)
-    (lambda ()
-      (without-interruption thunk))))
+  (without-interruption
+   (lambda ()
+     (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
+       thunk))))
 
 (define (with-gc-finalizer-lock finalizer thunk)
   (guarantee-gc-finalizer finalizer 'with-gc-finalizer-lock)
