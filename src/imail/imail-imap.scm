@@ -2128,12 +2128,21 @@ USA.
       (newline port))))
 
 (define (string->file string pathname #!optional temporary-directory)
-  (call-with-temporary-output-file pathname temporary-directory
-    (lambda (port)
-      (port/set-coding port 'ISO-8859-1)
-      (write-string string port))))
+  (call-with-temporary-file-pathname temporary-directory
+    (lambda (temporary-pathname)
+      (let ((channel
+	     (file-open-output-channel (->namestring temporary-pathname))))
+	(channel-write-block channel string 0 (string-length string))
+	(channel-close channel)
+	(rename-file temporary-pathname pathname)))))
 
 (define (call-with-temporary-output-file pathname temporary-directory receiver)
+  (call-with-temporary-file-pathname temporary-directory
+    (lambda (temporary-pathname)
+      (begin0 (call-with-output-file temporary-pathname receiver)
+	(rename-file temporary-pathname pathname)))))
+
+(define (call-with-temporary-file-pathname temporary-directory receiver)
   (if (or (not temporary-directory)
 	  (default-object? temporary-directory))
       (call-with-output-file temporary-directory receiver)
@@ -2144,17 +2153,18 @@ USA.
 	   (if done?
 	       (error "Re-entry prohibited into temporary file creation.")))
 	 (lambda ()
-	   (let ((result (call-with-output-file temporary-pathname receiver)))
-	     (rename-file temporary-pathname pathname)
-	     result))
+	   (receiver temporary-pathname))
 	 (lambda ()
 	   (set! done? #t)
 	   (deallocate-temporary-file temporary-pathname))))))
 
 (define (file->string pathname)
-  (call-with-output-string
-    (lambda (port)
-      (file->port pathname port))))
+  (let* ((channel (file-open-input-channel (->namestring pathname)))
+	 (length (channel-file-length channel))
+	 (buffer (string-allocate length)))
+    (channel-read-block channel buffer 0 length)
+    (channel-close channel)
+    buffer))
 
 (define (file->port pathname output-port)
   (call-with-input-file pathname
