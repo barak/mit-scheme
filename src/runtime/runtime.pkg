@@ -5961,7 +5961,7 @@ USA.
   (parent (runtime))
   (export ()
 	  stack-sampler:debug-internal-errors?
-	  stack-sampler:show-expressions?
+	  stack-sampler:topmost-expressions
 	  with-stack-sampling)
   (initialization (initialize-package!)))
 

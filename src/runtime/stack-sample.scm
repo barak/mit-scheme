@@ -96,7 +96,7 @@
         (unblock-thread-events))))
 
 (define stack-sampler:debug-internal-errors? #f)
-(define stack-sampler:show-expressions? #t)
+(define stack-sampler:topmost-expressions 2)
 
 ;;;; Running with Stack Sampling
 
@@ -284,11 +284,12 @@
                 (let loop ((pframes pframes))
                   (let ((pframe (car pframes)))
                     (display-pframe pframe output-port)
-                    (if (pair? (cdr pframes))
-                        (loop (cdr pframes))
-                        (show-expression (pframe.expression pframe)
+		    (if (<= (length pframes) stack-sampler:topmost-expressions)
+			(show-expression (pframe.expression pframe)
                                          (pframe.subexpression pframe)
-                                         output-port))))
+                                         output-port))
+                    (if (pair? (cdr pframes))
+                        (loop (cdr pframes)))))
                 (write count output-port)
                 (newline output-port)))
             (sort (hash-table->alist (profile.histogram profile))
@@ -296,6 +297,7 @@
                     (< (cdr a) (cdr b))))))
 
 (define (display-pframe pframe output-port)
+  (display "-> " output-port)
   (let ((environment-names (pframe.environment-names pframe)))
     (if (pair? environment-names)
         (show-environment-names environment-names output-port)
