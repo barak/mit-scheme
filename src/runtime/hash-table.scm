@@ -1050,7 +1050,7 @@ USA.
 
 (define-deferred hash-table-type-options
   (keyword-option-parser
-   (list (list 'hash-function unary-procedure? default-object)
+   (list (list 'hash-function binary-procedure? default-object)
 	 (list 'rehash-after-gc? boolean? default-object)
 	 (list 'entry-type entry-type-name? (lambda () 'strong)))))
 
