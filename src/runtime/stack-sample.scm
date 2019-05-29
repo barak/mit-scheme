@@ -21,21 +21,8 @@
 
 (declare (usual-integrations))
 
-;;; This rudimentary stack sampler periodically interrupts the program
-;;; and records two numbers for each interrupted compiled[*] entry
-;;; found on the stack:
-;;;
-;;; 1. The `sampled' count, which is the number of times that the
-;;;    compiled entry was the interrupted one.  This tells you how
-;;;    often a particular part of the code is hit, which approximately
-;;;    tells you how important it is for that code to be fast.
-;;;
-;;; 2. The `waiting' count, which is the number of times that the
-;;;    compiled entry was found on the stack as the return address of a
-;;;    continuation.  This tells you how much often the sampler hit
-;;;    something involved in computing a particular expression, which
-;;;    approximately tells you how much time is spent computing that
-;;;    expression.
+;;; This rudimentary stack sampler periodically interrupts the program and
+;;; records a histogram of return address stacks.
 ;;;
 ;;; To sample the evaluation an expression <expression>, interrupting
 ;;; at every <sample-interval> millisceonds, and then to display the
@@ -186,37 +173,76 @@
 
 (define-structure (profile
                    (conc-name profile.)
-                   (constructor make-profile ()))
-  (entries (make-strong-eq-hash-table) read-only #t))
+                   (constructor %make-profile (histogram)))
+  (histogram #f read-only #t)
+  (pframes (make-strong-eq-hash-table) read-only #t))
 
-(define-structure (entry
-                   (conc-name entry.)
-                   (constructor make-entry
-                                (return-address
-                                 expression
-                                 subexpression
-                                 environment-names)))
-  (sampled-count 0)
-  (waiting-count 0)
-  (time-stamp #f)
+(define (make-profile)
+  (let* ((n 33554393)
+         (r (random-integer n))
+         (s (random-integer n)))
+    (define (hash pframes modulus)
+      ;; Horner's rule
+      (let loop ((pframes pframes) (h 0))
+        (if (pair? pframes)
+            (loop (cdr pframes)
+                  (let ((key (pframe.return-address (car pframes))))
+                    (modulo (* r (+ h (eq-hash-mod key n))) n)))
+            (modulo (modulo (+ h s) n) modulus))))
+    (define (= x y)
+      (list= eq? x y))
+    (%make-profile (make-hash-table = hash 'rehash-after-gc? #t))))
+
+(define-structure (pframe
+                   (conc-name pframe.)
+                   (constructor make-pframe
+                                (return-address expression subexpression
+                                                environment-names)))
   (return-address #f read-only #t)
   (expression #f read-only #t)
   (subexpression #f read-only #t)
   (environment-names #f read-only #t))
 
 (define (record-sample profile continuation)
-  (let ((time-stamp (real-time-clock))
-        (stack-frame
+  (let ((pframes (continuation->pframes continuation profile)))
+    (if pframes
+        (hash-table-update! (profile.histogram profile) pframes
+          (lambda (n) (+ n 1))
+          (lambda () 0)))))
+
+(define (continuation->pframes continuation profile)
+  (let ((stack-frame
          (find-first-subproblem (continuation->stack-frame continuation))))
-    (if stack-frame
-        (begin
-          (record-sampled profile stack-frame time-stamp)
-          (let loop ((stack-frame stack-frame))
-            (let ((stack-frame (find-next-subproblem stack-frame)))
-              (if (and stack-frame
-                       (not (stack-sampling-stack-frame? stack-frame)))
-                  (begin (record-waiting profile stack-frame time-stamp)
-                         (loop stack-frame)))))))))
+    (and stack-frame
+         (let loop ((stack-frame stack-frame) (pframes '()))
+           (let* ((pframe (intern-pframe stack-frame profile))
+                  ;; XXX Stick in a dummy record?
+                  (pframes (if pframe (cons pframe pframes) pframes)))
+             (let ((stack-frame (find-next-subproblem stack-frame)))
+               (if (and stack-frame
+                        (not (stack-sampling-stack-frame? stack-frame)))
+                   (loop stack-frame pframes)
+                   pframes)))))))
+
+(define (intern-pframe stack-frame profile)
+  (let ((return-address (stack-frame/return-address stack-frame)))
+    (if (compiled-code-address? return-address)
+        (let ((return-address
+               (if (compiled-closure? return-address)
+                   (compiled-closure->entry return-address)
+                   return-address)))
+          (hash-table-intern! (profile.pframes profile) return-address
+            (lambda ()
+              (receive (expression environment subexpression)
+                       (stack-frame/debugging-info stack-frame)
+                (make-pframe return-address
+                             expression
+                             subexpression
+                             (environment-ancestry-names environment))))))
+        ;; What to do for interpreted code?  Fetch the debugging
+        ;; information and use the expression, subexpression, and
+        ;; environment ancestry names as the key?
+        #f)))
 
 (define (find-first-subproblem stack-frame)
   (let loop ((next (stack-frame/skip-non-subproblems stack-frame)))
@@ -236,39 +262,6 @@
   (cond ((stack-frame/next-subproblem stack-frame) => find-subproblem)
         (else #f)))
 
-(define (record-sampled profile stack-frame time-stamp)
-  time-stamp                            ;ignore
-  (let ((entry (intern-entry profile stack-frame)))
-    (if entry
-        (set-entry.sampled-count! entry (+ 1 (entry.sampled-count entry))))))
-
-(define (record-waiting profile stack-frame time-stamp)
-  (let ((entry (intern-entry profile stack-frame)))
-    (if entry
-        (begin
-          (set-entry.waiting-count! entry (+ 1 (entry.waiting-count entry)))
-          (set-entry.time-stamp! entry time-stamp)))))
-
-(define (intern-entry profile stack-frame)
-  (let ((return-address (stack-frame/return-address stack-frame)))
-    (if (compiled-code-address? return-address)
-        (let ((return-address
-               (if (compiled-closure? return-address)
-                   (compiled-closure->entry return-address)
-                   return-address)))
-          (hash-table-intern! (profile.entries profile) return-address
-            (lambda ()
-              (receive (expression environment subexpression)
-                       (stack-frame/debugging-info stack-frame)
-                (make-entry return-address
-                            expression
-                            subexpression
-                            (environment-ancestry-names environment))))))
-        ;; What to do for interpreted code?  Fetch the debugging
-        ;; information and use the expression, subexpression, and
-        ;; environment ancestry names as the key?
-        #f)))
-
 ;;;; Display
 
 (define (with-stack-sampling sample-interval thunk)
@@ -283,58 +276,31 @@
     value))
 
 (define (display-profile profile output-port)
-  (let ((entries (hash-table-values (profile.entries profile))))
-    (define (sortem entry.count)
-      (sort (remove (lambda (e) (zero? (entry.count e)))
-                    entries)
-            (lambda (a b) (< (entry.count a) (entry.count b)))))
-    (let ((sampled (sortem entry.sampled-count))
-          (waiting (sortem entry.waiting-count)))
-      (let ((total-sampled (reduce + 0 (map entry.sampled-count sampled)))
-            (total-waiting (reduce + 0 (map entry.waiting-count waiting))))
-        (define (d title entries total selector)
-          (display-profile-entries title entries total selector output-port))
-        (write total-sampled output-port)
-        (display " samples" output-port)
-        (newline output-port)
-        (d "Waiting" waiting total-waiting entry.waiting-count)
-        (d "Sampled" sampled total-sampled entry.sampled-count)))))
+  (for-each (lambda (pframes.count)
+              (let ((pframes (car pframes.count))
+                    (count (cdr pframes.count)))
+                (newline output-port)
+                (assert (pair? pframes))
+                (let loop ((pframes pframes))
+                  (let ((pframe (car pframes)))
+                    (display-pframe pframe output-port)
+                    (if (pair? (cdr pframes))
+                        (loop (cdr pframes))
+                        (show-expression (pframe.expression pframe)
+                                         (pframe.subexpression pframe)
+                                         output-port))))
+                (write count output-port)
+                (newline output-port)))
+            (sort (hash-table->alist (profile.histogram profile))
+                  (lambda (a b)
+                    (< (cdr a) (cdr b))))))
 
-(define (display-profile-entries title entries total entry.count output-port)
-  total                                 ;ignore
-  (newline output-port)
-  (display "*** " output-port)
-  (display title output-port)
-  (newline output-port)
-  (newline output-port)
-  (for-each (lambda (count-string entry)
-              (write-string count-string output-port)
-              (write-string " sample" output-port)
-              (if (not (= 1 (entry.count entry)))
-                  (write-char #\s output-port))
-              (write-string " in " output-port)
-              (let ((environment-names (entry.environment-names entry)))
-                (if (pair? environment-names)
-                    (show-environment-names environment-names output-port)
-                    (write (entry.return-address entry) output-port)))
-              (if stack-sampler:show-expressions?
-                  (begin
-                    (write-char #\: output-port)
-                    (newline output-port)
-                    (show-expression (entry.expression entry)
-                                     (entry.subexpression entry)
-                                     output-port)))
-              (newline output-port))
-            (entry-count-strings entries entry.count)
-            entries))
-
-(define (entry-count-strings entries entry.count)
-  (let ((count-strings
-         (map (lambda (entry) (number->string (entry.count entry))) entries)))
-    (map (let ((width (reduce max 0 (map string-length count-strings))))
-           (lambda (count-string)
-             (string-pad-left count-string width #\space)))
-         count-strings)))
+(define (display-pframe pframe output-port)
+  (let ((environment-names (pframe.environment-names pframe)))
+    (if (pair? environment-names)
+        (show-environment-names environment-names output-port)
+        (write (pframe.return-address pframe) output-port)))
+  (newline output-port))
 
 (define (environment-ancestry-names environment)
   (let recur ((environment environment))
@@ -356,11 +322,11 @@
         '())))
 
 (define (show-environment-names environment-names output-port)
-  (if (pair? environment-names)
-      (write-string
-       (decorated-string-append "" ", " ""
-         (map write-to-string (reverse environment-names)))
-       output-port)))
+  (assert (pair? environment-names))
+  (write-string
+   (decorated-string-append "" ", " ""
+                            (map write-to-string (reverse environment-names)))
+   output-port))
 
 (define (show-expression expression subexpression output-port)
   (write-string " evaluating" output-port)
