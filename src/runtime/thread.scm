@@ -1178,7 +1178,8 @@ USA.
 ;;; populations, queues, etc.  The following define-structure is
 ;;; hand-expanded as a tagged vector (not record) in thread-low.scm.
 
-#;(define-structure (thread-mutex
+#;
+(define-structure (thread-mutex
 		   (constructor make-thread-mutex ())
 		   (conc-name thread-mutex/))
   (waiting-threads (make-ring) read-only #t)

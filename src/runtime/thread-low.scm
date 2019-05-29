@@ -47,7 +47,8 @@ USA.
 
 ;;;; Circular Rings
 
-#;(define-structure (link (conc-name link/))
+#;
+(define-structure (link (conc-name link/))
   prev
   next
   item)

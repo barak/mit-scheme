@@ -108,7 +108,7 @@ USA.
 (define-integrable db_txn_sync		#x00002000)
 
 ;; Flags for DB4:DB-GET, DB4:DB-PUT, DB4:DB-DEL
-#;(define-integrable db_dirty_read	#x02000000)
+;(define-integrable db_dirty_read	#x02000000)
 (define-integrable db_multiple		#x04000000)
 (define-integrable db_multiple_key	#x08000000)
 (define-integrable db_rmw		#x10000000)

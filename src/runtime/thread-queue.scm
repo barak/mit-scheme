@@ -64,7 +64,8 @@ USA.
     ((_ condition)
      #f)))
 
-#;(define-syntax %assert
+#;
+(define-syntax %assert
   (syntax-rules ()
     ((_ condition)
      (if (not condition)

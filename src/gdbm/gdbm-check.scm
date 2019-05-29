@@ -72,7 +72,8 @@ USA.
     (gdbm-store dbf "AString" "Testing 1 2 3." GDBM_INSERT)
     (gdbm-store dbf "ASecondString" "Testing 1 2 3." GDBM_REPLACE)
     (gdbm-store dbf "AThirdString" "Testing 1 2 3." GDBM_INSERT)
-    #;(let ((keys (sort (gdbm-keys dbf) string<?)))
+    #;
+    (let ((keys (sort (gdbm-keys dbf) string<?)))
       (if (not (equal? keys '("ASecondString" "AString" "AThirdString")))
 	  (error "keys:" keys)))
 

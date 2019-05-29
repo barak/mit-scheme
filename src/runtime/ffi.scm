@@ -386,7 +386,8 @@ USA.
 	  (flo:set-environment! saved)
 	  value))))))
 
-#;(define-integrable (call-alien* alien-function args)
+#;
+(define-integrable (call-alien* alien-function args)
   (apply (ucode-primitive c-call -1) alien-function args))
 
 ;; Use this definition to maintain a callout/back stack.
@@ -548,7 +549,8 @@ USA.
     (normalize-aliens! args)
     (callback-handler* procedure args)))
 
-#;(define-integrable (callback-handler* procedure args)
+#;
+(define-integrable (callback-handler* procedure args)
   (apply-callback-proc procedure args))
 
 ;; Use this definition to maintain a callout/back stack.
@@ -659,7 +661,8 @@ USA.
   (add-gc-daemon! free-malloced-aliens)
   unspecific)
 
-#;(define-syntax %assert
+#;
+(define-syntax %assert
   (syntax-rules ()
     ((_ test . msg)
      #f)))
@@ -671,7 +674,8 @@ USA.
 	 (error . msg)))))
 
 ;; Use this definition to avoid frequently checking %trace?.
-#;(define-syntax %trace
+#;
+(define-syntax %trace
   (syntax-rules ()
     ((_ . msg)
      #f)))
