@@ -2088,27 +2088,66 @@ USA.
 			 "_"
 			 (number->string (imap-url-port url)))
 	  (encode-cache-namestring (imap-url-mailbox url)))))
+
+(define namestring-safe
+  (let ((s (make-vector-8b 256 0)))
+    (define (set c)
+      (vector-8b-set! s (char->integer c) 1))
+    (define (range lo hi)
+      (do ((i (char->integer lo) (+ i 1)))
+	  ((> i (char->integer hi)))
+	(vector-8b-set! s i 1)))
+    (range #\a #\z)
+    (range #\A #\Z)
+    (range #\0 #\9)
+    (set #\-)
+    (set #\_)
+    (set #\.)
+    s))
 
 (define (encode-cache-namestring string)
-  (call-with-output-string
-   (lambda (port)
-     (let ((n (string-length string)))
-       (do ((i 0 (fix:+ i 1)))
-	   ((fix:= i n))
-	 (let ((char (string-ref string i)))
-	   (cond ((char-in-set? char char-set:cache-namestring-safe)
-		  (write-char char port))
-		 ((char=? char #\/)
-		  (write-char #\# port))
-		 (else
-		  (write-char #\% port)
-		  (let ((n (char->integer char)))
-		    (if (fix:< n #x10)
-			(write-char #\0 port))
-		    (write-string (number->string n 16) port))))))))))
-
-(define char-set:cache-namestring-safe
-  (char-set-union char-set:alphanumeric (string->char-set "-_.")))
+  (define (safe? char)
+    (not (zero? (vector-8b-ref namestring-safe (char->integer char)))))
+  (define (hex i)
+    (string-ref "0123456789abcdef" i))
+  (define (width char)
+    (cond ((safe? char) 1)
+	  ((char=? char #\\) 2)		;\\
+	  ((char-8-bit? char) 3)	;%HH
+	  (else (error "Non-encodable!" char))))
+  (define (encode char s i)
+    (cond ((safe? char)
+	   (assert (<= (+ i 1) (string-length s)))
+	   (string-set! s i char)
+	   1)
+	  ((char=? char #\\)
+	   (assert (<= (+ i 2) (string-length s)))
+	   (string-set! s i #\\)
+	   (string-set! s (+ i 1) char)
+	   2)
+	  ((char-8-bit? char)
+	   (assert (<= (+ i 3) (string-length s)))
+	   (string-set! s i #\%)
+	   (string-set! s (+ i 1) (hex (fix:lsh (char->integer char) -4)))
+	   (string-set! s (+ i 2) (hex (fix:and (char->integer char) #xf)))
+	   3)
+	  (else
+	   (error "Non-encodable!" char))))
+  (let* ((n (string-length string))
+	 (n*
+	  (let loop ((i 0) (n* 0))
+	    (if (< i n)
+		(loop (+ i 1) (+ n* (width (string-ref string i))))
+		n*)))
+	 (string* (string-allocate n*)))
+    (let loop ((i 0) (j 0))
+      (assert (<= i (string-length string)))
+      (assert (<= j (string-length string*)))
+      (if (< i n)
+	  (loop (+ i 1)
+		(+ j (encode (string-ref string i) string* j)))
+	  (assert (= j n*))))
+    string*))
 
 (define (read-cached-message-item message keyword pathname)
   (let ((item
