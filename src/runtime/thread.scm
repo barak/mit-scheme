@@ -897,9 +897,7 @@ USA.
 			value))
 		    'with-thread-events-blocked
 		    block-events?)))
-	      (let ((thread first-running-thread))
-		(if thread
-		    (set-thread/block-events?! thread block-events?)))
+	      (%set-thread-event-block! block-events?)
 	      (set-interrupt-enables! interrupt-mask)
 	      value))
 	  (begin
@@ -917,10 +915,16 @@ USA.
 (define (set-thread-event-block! block?)
   (without-interrupts
    (lambda ()
-     (let ((thread first-running-thread))
-       (if thread
-	   (set-thread/block-events?! thread block?)))
-     unspecific)))
+     (%set-thread-event-block! block?))))
+
+(define (%set-thread-event-block! block?)
+  (let ((thread first-running-thread))
+    (if thread
+	(begin
+	  (if (not block?)
+	      (handle-thread-events thread))
+	  (set-thread/block-events?! thread block?))))
+  unspecific)
 
 (define (signal-thread-event thread event #!optional no-error?)
   (guarantee thread? thread 'signal-thread-event)
