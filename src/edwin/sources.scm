@@ -40,7 +40,7 @@ USA.
 	"dosshell" "ed-ffi" "editor" "edtfrm" "edtstr" "evlcom" "eystep"
 	"filcom" "fileio" "fill" "grpops" "hlpcom" "htmlmode" "image"
 	"info" "input" "intmod" "iserch" "javamode" "key-w32" "keymap"
-	"keyparse" "kilcom" "kmacro" "lincom" "linden" "lisppaste"
+	"keyparse" "kilcom" "kmacro" "lincom" "linden"
 	"loadef" "lspcom" "macros" "make" "malias" "manual" "midas"
 	"modefs" "modes" "modlin" "modwin" "motcom" "motion" "mousecom"
 	"nntp" "notify" "nvector" "occur" "outline" "paredit" "pasmod"

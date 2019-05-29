@@ -102,7 +102,6 @@ USA.
     ("kmacro"	(edwin))
     ("lincom"	(edwin))
     ("linden"	(edwin lisp-indentation))
-    ("lisppaste" (edwin lisppaste))
     ("loadef"	(edwin))
     ("lspcom"	(edwin))
     ("macros"	(edwin macros))

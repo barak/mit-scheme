@@ -349,57 +349,6 @@ This is usually 103 or 2627."
 
 ;;; ****************
 
-(define-library 'LISPPASTE
-  '("lisppaste" (EDWIN LISPPASTE)))
-
-(define-autoload-command 'lisppaste-channels 'LISPPASTE
-  "List all the channels supported by lisppaste in a temporary buffer.")
-
-(define-autoload-command 'lisppaste-insert-paste 'LISPPASTE
-  "Insert the numbered paste at the point.
-With a prefix argument, also show a header describing the paste.")
-
-(define-autoload-command 'lisppaste-insert-annotation 'LISPPASTE
-  "Insert the annotation of the numbered paste at the point.
-With a prefix argument, also show a header describing the annotation.")
-
-(define-autoload-command 'lisppaste-buffer 'LISPPASTE
-  "Create a new paste of the current buffer.")
-
-(define-autoload-command 'lisppaste-region 'LISPPASTE
-  "Create a new paste of the current region.")
-
-(define-autoload-command 'lisppaste-annotate-with-buffer 'LISPPASTE
-  "Annotate an existing paste with the current buffer.")
-
-(define-autoload-command 'lisppaste-annotate-with-region 'LISPPASTE
-  "Annotate an existing paste with the region.")
-
-(define-autoload-command 'lisppaste-list-pastes 'LISPPASTE
-  "List the headers of the last number of pastes.
-With a prefix argument, list pastes starting at a certain number.")
-
-(define-autoload-command 'lisppaste-list-channel-pastes 'LISPPASTE
-  "List the headers of the last few pastes in a certain channel.
-With a prefix argument, list pastes starting at a certain number.")
-
-(define-variable lisppaste-rpc-uri
-  "URI of the lisppaste XML-RPC service."
-  "http://common-lisp.net:8185/RPC2"
-  ->uri)
-
-(define-variable lisppaste-default-channel
-  "Default channel for lisppaste requests."
-  #f
-  string?)
-
-(define-variable lisppaste-default-nickname
-  "Default IRC nickname for lisppaste requests."
-  #f
-  string?)
-
-;;; ****************
-
 (define-library 'PASSWORD-EDIT
   '("pwedit" (EDWIN PASSWORD-EDIT))
   '("pwparse" (EDWIN PASSWORD-EDIT)))

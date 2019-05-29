@@ -168,7 +168,6 @@ USA.
 		"kmacro"
 		"lincom"
 		"linden"
-		"lisppaste"
 		"loadef"
 		"lspcom"
 		"malias"
