@@ -227,7 +227,7 @@ USA.
 
 (define (sit-for interval)
   (guarantee fixnum? interval 'sit-for)
-  (update-screens! 'ignore-input)
+  (update-screens! '(ignore-input))
   (keyboard-peek-no-hang interval))
 
 (define sleep-for

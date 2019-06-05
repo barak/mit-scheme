@@ -285,6 +285,7 @@ USA.
 
 ;;;; String slices
 
+(declare (integrate-operator slice?))
 (define (slice? object)
   (and (%record? object)
        (fix:= 4 (%record-length object))
@@ -300,17 +301,20 @@ USA.
 (define-integrable (slice-start slice) (%record-ref slice 2))
 (define-integrable (slice-length slice) (%record-ref slice 3))
 
+(declare (integrate-operator slice-end))
 (define (slice-end slice)
   (fix:+ (slice-start slice) (slice-length slice)))
 
 (define (slice-mutable? slice)
   (ustring-mutable? (slice-string slice)))
 
+(declare (integrate-operator unpack-slice))
 (define (unpack-slice string k)
   (if (slice? string)
       (k (slice-string string) (slice-start string) (slice-end string))
       (k string 0 (ustring-length string))))
 
+(declare (integrate-operator translate-slice))
 (define (translate-slice string start end k)
   (if (slice? string)
       (k (slice-string string)
@@ -2086,6 +2090,11 @@ USA.
 			 cp1-ref string 0 end)))
       string
       (string->utf8 string)))
+
+(define (string-from-primitive string)
+  (if (legacy-string? string)
+      (utf8->string (legacy-string->bytevector string))
+      string))
 
 (define-integrable (every-loop proc ref string start end)
   (let loop ((i start))

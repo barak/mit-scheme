@@ -557,6 +557,7 @@ USA.
 
 (define (start-imap-transcript pathname)
   (set! imap-transcript-port (open-output-file pathname))
+  (port/set-coding imap-transcript-port 'ISO-8859-1)
   unspecific)
 
 (define (stop-imap-transcript)

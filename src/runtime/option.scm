@@ -40,7 +40,8 @@ USA.
 	    (else #f)))
 
     (define (load-entry entry)
-      (for-each (lambda (thunk) (thunk)) (cdr entry))
+      (fluid-let ((package/cross-compiling? #f))
+	(for-each (lambda (thunk) (thunk)) (cdr entry)))
       (set! loaded-options (cons name loaded-options))
       name)
 

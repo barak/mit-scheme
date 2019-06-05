@@ -184,7 +184,8 @@ USA.
 	      (or (try-fasl-file pathname)
 		  (try-fasl-file (pathname-new-type pathname "com"))
 		  (try-object-file (pathname-new-type pathname "so"))
-		  (try-fasl-file (pathname-new-type pathname "bin"))))))
+		  (let ((bin-type (if package/cross-compiling? "nib" "bin")))
+		    (try-fasl-file (pathname-new-type pathname bin-type)))))))
     (if thunk
 	(receive (pathname loader notifier) (thunk)
 	  (values pathname

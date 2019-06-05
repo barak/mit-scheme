@@ -44,7 +44,10 @@ USA.
 	     (fluid-let ((sf/default-syntax-table (->environment package)))
 	       (sf-conditionally files))
 	     (for-each (lambda (file)
-			 (load (string-append file ".bin") package))
+			 (receive (scm bin spec)
+				  (sf/pathname-defaulting file #f #f)
+			   scm spec
+			   (load bin package)))
 		       files))))
       (load-option 'hash-table)
       (fresh-line)

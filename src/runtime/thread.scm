@@ -901,9 +901,7 @@ USA.
 			value))
 		    'with-thread-events-blocked
 		    block-events?)))
-	      (let ((thread first-running-thread))
-		(if thread
-		    (set-thread/block-events?! thread block-events?)))
+	      (%set-thread-event-block! block-events?)
 	      (set-interrupt-enables! interrupt-mask)
 	      value))
 	  (begin
@@ -921,10 +919,16 @@ USA.
 (define (set-thread-event-block! block?)
   (without-interrupts
    (lambda ()
-     (let ((thread first-running-thread))
-       (if thread
-	   (set-thread/block-events?! thread block?)))
-     unspecific)))
+     (%set-thread-event-block! block?))))
+
+(define (%set-thread-event-block! block?)
+  (let ((thread first-running-thread))
+    (if thread
+	(begin
+	  (if (not block?)
+	      (handle-thread-events thread))
+	  (set-thread/block-events?! thread block?))))
+  unspecific)
 
 (define (signal-thread-event thread event #!optional no-error?)
   (guarantee thread? thread 'signal-thread-event)
@@ -1143,12 +1147,20 @@ USA.
       (cond (timer-records
 	     (let ((next-event-time (timer-record/time timer-records)))
 	       (if (<= next-event-time now)
-		   ;; Don't set the timer to non-positive values.
-		   ;; Instead signal the interrupt now.  This is ugly
-		   ;; but much simpler than refactoring the scheduler
-		   ;; so that we can do the right thing here.
-		   ((ucode-primitive request-interrupts! 1)
-		    interrupt-bit/timer)
+		   ;; We're due.  If the timer is already scheduled for
+		   ;; the next event time, let it fire when it is ready
+		   ;; -- it's a difference of microseconds.  Otherwise,
+		   ;; if we're overdue, request a timer interrupt now.
+		   (if (or (not next-scheduled-timeout)
+			   (< next-event-time next-scheduled-timeout))
+		       (begin
+			 ;; Don't set the timer to non-positive values.
+			 ;; Instead signal the interrupt now.  This is ugly
+			 ;; but much simpler than refactoring the scheduler
+			 ;; so that we can do the right thing here.
+			 (set! next-scheduled-timeout now)
+			 ((ucode-primitive request-interrupts! 1)
+			  interrupt-bit/timer)))
 		   (start
 		    (if (and consider-non-timers? timer-interval)
 			(min next-event-time (+ now timer-interval))

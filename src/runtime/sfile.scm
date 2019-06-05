@@ -45,8 +45,6 @@ USA.
 	#f
 	result)))
 
-(define file-exists? file-exists-indirect?)
-
 (define file-type-direct)
 (define file-type-indirect)
 (let ((make-file-type
@@ -82,9 +80,9 @@ USA.
   (eq? 'directory (file-type-indirect filename)))
 
 (define (file-symbolic-link? filename)
-  ((ucode-primitive file-symlink? 1)
-   (string-for-primitive (->namestring (merge-pathnames filename)))))
-(define file-soft-link? file-symbolic-link?)
+  (string-from-primitive
+   ((ucode-primitive file-symlink? 1)
+    (string-for-primitive (->namestring (merge-pathnames filename))))))
 
 (define (file-access filename amode)
   ((ucode-primitive file-access 2)
@@ -102,7 +100,6 @@ USA.
 	   filename
 	   (string-for-primitive (directory-namestring pathname)))))
    2))
-(define file-writable? file-writeable?) ;upwards compatability
 
 (define (file-executable? filename)
   (file-access filename 1))

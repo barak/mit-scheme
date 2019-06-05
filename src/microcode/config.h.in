@@ -151,11 +151,8 @@ USA.
 /* Define to 1 if you have the `fpathconf' function. */
 #undef HAVE_FPATHCONF
 
-/* Define to 1 if you have the `fpgetround' function. */
-#undef HAVE_FPGETROUND
-
-/* Define to 1 if you have the `fpsetround' function. */
-#undef HAVE_FPSETROUND
+/* Define to 1 if the system has the type `fpgetround fpsetround'. */
+#undef HAVE_FPGETROUND_FPSETROUND
 
 /* Define to 1 if you have the `frexp' function. */
 #undef HAVE_FREXP

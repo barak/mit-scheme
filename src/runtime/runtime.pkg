@@ -46,6 +46,7 @@ USA.
 	  package/add-child!
 	  package/create
 	  package/children
+	  package/cross-compiling?
 	  package/environment
 	  package/name
 	  package/parent
@@ -699,7 +700,11 @@ USA.
 (define-package (runtime simple-file-ops)
   (files "sfile")
   (parent (runtime))
+  (export () deprecated:simple-file-ops
+	  (file-writable? file-writeable?))
   (export ()
+	  (file-exists? file-exists-indirect?)
+	  (file-soft-link? file-symbolic-link?)
 	  <mime-type>
 	  allocate-temporary-file
 	  associate-pathname-type-with-mime-type
@@ -719,18 +724,15 @@ USA.
 	  file-executable?
 	  file-exists-direct?
 	  file-exists-indirect?
-	  file-exists?
 	  file-modification-time<=?
 	  file-modification-time<?
 	  file-processed?
 	  file-readable?
 	  file-regular?
-	  file-soft-link?
 	  file-symbolic-link?
 	  file-touch
 	  file-type-direct
 	  file-type-indirect
-	  file-writable?
 	  file-writeable?
 	  guarantee-init-file-directory
 	  hard-link-file
@@ -893,6 +895,7 @@ USA.
   (parent (runtime))
   (files "os-primitives")
   (export ()
+	  (file-attributes file-attributes-direct)
 	  copy-file
 	  current-home-directory
 	  current-user-name
@@ -903,7 +906,6 @@ USA.
 	  file-access-time
 	  file-access-time-direct
 	  file-access-time-indirect
-	  file-attributes
 	  file-attributes-direct
 	  file-attributes-indirect
 	  file-attributes/access-time
@@ -1140,6 +1142,8 @@ USA.
 	  substring
 	  substring?
 	  vector->string)
+  (export (runtime)
+	  string-from-primitive)
   (export (runtime symbol)
 	  %ascii-ustring!
 	  %ascii-ustring-allocate
@@ -3192,6 +3196,7 @@ USA.
 	  argument-command-line-parser
 	  command-line
 	  command-line-arguments
+	  scheme-program-name
 	  set-command-line-parser!
 	  simple-command-line-parser))
 
@@ -5846,7 +5851,7 @@ USA.
   (parent (runtime))
   (export ()
 	  stack-sampler:debug-internal-errors?
-	  stack-sampler:show-expressions?
+	  stack-sampler:topmost-expressions
 	  with-stack-sampling)
   (initialization (initialize-package!)))
 
