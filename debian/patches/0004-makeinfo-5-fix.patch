@@ -7,7 +7,7 @@ Subject: makeinfo 5 fix
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/doc/ffi/ffi.texinfo b/doc/ffi/ffi.texinfo
-index dd28f09..42dbb36 100644
+index 695f4e9..fe4d9eb 100644
 --- a/doc/ffi/ffi.texinfo
 +++ b/doc/ffi/ffi.texinfo
 @@ -12,7 +12,9 @@

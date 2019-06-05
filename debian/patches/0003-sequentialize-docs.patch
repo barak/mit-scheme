@@ -7,7 +7,7 @@ Subject: sequentialize docs
  1 file changed, 3 insertions(+)
 
 diff --git a/doc/make-common.in b/doc/make-common.in
-index 1d59446..af2c036 100644
+index bcf6ef1..51ae23a 100644
 --- a/doc/make-common.in
 +++ b/doc/make-common.in
 @@ -135,5 +135,8 @@ install-pdf: $(PDF_TARGET)
