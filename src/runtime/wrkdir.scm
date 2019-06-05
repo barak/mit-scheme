@@ -50,7 +50,8 @@ USA.
   (working-directory-pathname
    (pathname-simplify
     (pathname-as-directory
-     ((ucode-primitive working-directory-pathname))))))
+     (string-from-primitive
+      ((ucode-primitive working-directory-pathname)))))))
 
 (define (set-working-directory-pathname! name)
   (let ((pathname (new-pathname name)))

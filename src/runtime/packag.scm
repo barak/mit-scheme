@@ -179,6 +179,9 @@ USA.
 ;; Obsolete and ignored:
 (define system-loader/enable-query? #f)
 
+(define package/cross-compiling?
+  #f)
+
 (define (package-set-pathname pathname #!optional os-type)
   (let ((p (->pathname pathname)))
     (pathname-new-type
@@ -195,7 +198,9 @@ USA.
 				   "")))
 			 "-"
 			 (microcode-id/operating-system-suffix os-type)))
-     "pkd")))
+     (if package/cross-compiling?
+	 "dkp"
+	 "pkd"))))
 
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))

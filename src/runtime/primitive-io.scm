@@ -420,8 +420,8 @@ USA.
    (lambda ()
      (let ((result ((ucode-primitive open-pty-master 0))))
        (values (make-channel (vector-ref result 0))
-	       (vector-ref result 1)
-	       (vector-ref result 2))))))
+	       (string-from-primitive (vector-ref result 1))
+	       (string-from-primitive (vector-ref result 2)))))))
 
 (define (pty-master-send-signal channel signal)
   ((ucode-primitive pty-master-send-signal 2) (channel-descriptor channel)
@@ -464,13 +464,15 @@ USA.
   (remove-from-gc-finalizer! open-directories channel))
 
 (define (directory-channel-read channel)
-  ((ucode-primitive new-directory-read 1)
-   (directory-channel/descriptor channel)))
+  (string-from-primitive
+   ((ucode-primitive new-directory-read 1)
+    (directory-channel/descriptor channel))))
 
 (define (directory-channel-read-matching channel prefix)
-  ((ucode-primitive new-directory-read-matching 2)
-   (directory-channel/descriptor channel)
-   (string-for-primitive prefix)))
+  (string-from-primitive
+   ((ucode-primitive new-directory-read-matching 2)
+    (directory-channel/descriptor channel)
+    (string-for-primitive prefix))))
 
 ;;;; Select registry
 

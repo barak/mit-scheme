@@ -33,8 +33,12 @@ USA.
  (lambda ()
    (add-event-receiver! event:after-restart process-command-line)))
 
+(define (scheme-program-name)
+  (string-from-primitive ((ucode-primitive scheme-program-name 0))))
+
 (define (command-line)
-  (vector->list ((ucode-primitive get-command-line 0))))
+  (map string-from-primitive
+       (vector->list ((ucode-primitive get-command-line 0)))))
 
 (define-deferred param:load-init-file?
   (make-settable-parameter #t))
@@ -80,7 +84,7 @@ USA.
     (set! *command-line-arguments* '())
     (let ((unused (or ((ucode-primitive get-unused-command-line 0)) '#())))
       (parameterize ((param:load-init-file? #t))
-	(process-keyword (vector->list unused) '())
+	(process-keyword (map string-from-primitive (vector->list unused)) '())
 	(for-each (lambda (act) (act))
 		  (reverse after-parsing-actions))
 	(if (and (param:load-init-file?)

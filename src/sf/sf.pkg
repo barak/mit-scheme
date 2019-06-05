@@ -58,10 +58,13 @@ USA.
   (parent (scode-optimizer))
   (export ()
           sf
+          sf/cross-compiling?
           sf/default-declarations
           sf/default-syntax-table
+          sf/object-root
           sf/pathname-defaulting
           sf/set-usual-integrations-default-deletions!
+          sf/source-root
           sf/top-level-definitions
           sf/usual-integrations-default-deletions
           sf:noisy?

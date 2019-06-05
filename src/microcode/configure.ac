@@ -290,6 +290,7 @@ darwin*)
     fi
     MACOS_SDKS=
     for dir in /Developer/SDKs \
+    	/Library/Developer/CommandLineTools/SDKs \
     	/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
     do
 	if test -d "${dir}"; then
@@ -541,6 +542,14 @@ define([SCM_INC_FENV],
 if test "x$ac_cv_header_fenv_h" = "xyes"; then
   AC_CHECK_TYPES([fenv_t], [], [], [SCM_INC_FENV])
   AC_CHECK_TYPES([fexcept_t], [], [], [SCM_INC_FENV])
+  AC_CHECK_FUNCS([feclearexcept fedisableexcept feenableexcept])
+  AC_CHECK_FUNCS([fegetenv fegetexcept fegetexceptflag fegetround feholdexcept])
+  AC_CHECK_FUNCS([feraiseexcept fesetenv fesetexceptflag fesetround])
+  AC_CHECK_FUNCS([fetestexcept feupdateenv])
+fi
+
+if test "x$ac_cv_header_ieeefp_h" = "xyes"; then
+  AC_CHECK_TYPES([fpgetround fpsetround])
 fi
 
 AC_CHECK_SIZEOF([time_t])
@@ -686,11 +695,9 @@ AC_FUNC_WAIT3
 AC_CHECK_FUNCS([clock_gettime closefrom ctermid])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([expm1])
-AC_CHECK_FUNCS([fcntl fdatasync feclearexcept fedisableexcept feenableexcept])
-AC_CHECK_FUNCS([fegetenv fegetexcept fegetexceptflag fegetround feholdexcept])
-AC_CHECK_FUNCS([feraiseexcept fesetenv fesetexceptflag fesetround])
-AC_CHECK_FUNCS([fetestexcept feupdateenv floor fmod fpathconf fpgetround])
-AC_CHECK_FUNCS([fpsetround frexp fsync fsync_range ftruncate])
+AC_CHECK_FUNCS([fcntl fdatasync])
+AC_CHECK_FUNCS([floor fmod fpathconf])
+AC_CHECK_FUNCS([frexp fsync fsync_range ftruncate])
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpagesize getpgrp])
 AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])

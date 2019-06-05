@@ -45,7 +45,10 @@ USA.
   (packages #f read-only #t)
   (extra-packages #f read-only #t)
   (loads #f read-only #t)
-  (pathname #f read-only #t))
+  (source-pathname #f read-only #t))
+
+(define (pmodel/object-pathname pmodel)
+  (cref/object-pathname (pmodel/source-pathname pmodel)))
 
 (define-structure (package
 		   (constructor make-package (name parent))

@@ -61,7 +61,10 @@ USA.
 			    (sf-conditionally file)))
 			files)
 	      (for-each (lambda (file)
-			  (load (pathname-new-type file "bin") (env file)))
+			  (receive (scm bin spec)
+				   (sf/pathname-defaulting file #f #f)
+			    scm spec
+			    (load bin (env file))))
 			files))))
 
       (fresh-line)

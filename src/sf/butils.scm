@@ -29,7 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (directory-processor input-type output-type process-file)
+(define (directory-processor input-type output-type process-file
+			     #!optional map-pathname)
   (let ((directory-read
 	 (let ((input-pattern
 		(make-pathname #f #f #f 'wild input-type 'newest)))
@@ -37,7 +38,11 @@ USA.
 	     (directory-read
 	      (merge-pathnames
 	       (pathname-as-directory (merge-pathnames directory))
-	       input-pattern))))))
+	       input-pattern)))))
+	(map-pathname
+	 (if (default-object? map-pathname)
+	     (lambda (pathname) pathname)
+	     map-pathname)))
     (lambda (input-directory #!optional output-directory force?)
       (let ((output-directory
 	     (if (default-object? output-directory) #f output-directory))
@@ -47,13 +52,14 @@ USA.
 		    (if (or force?
 			    (not (file-modification-time<=?
 				  (pathname-default-type pathname input-type)
-				  (let ((output-pathname
-					 (pathname-new-type pathname
-							    output-type)))
-				    (if output-directory
-					(merge-pathnames output-directory
-							 output-pathname)
-					output-pathname)))))
+				  (map-pathname
+				   (let ((output-pathname
+					  (pathname-new-type pathname
+							     output-type)))
+				     (if output-directory
+					 (merge-pathnames output-directory
+							  output-pathname)
+					 output-pathname))))))
 			(process-file pathname output-directory)))
 		  (if (pair? input-directory)
 		      (append-map! directory-read input-directory)
@@ -62,9 +68,13 @@ USA.
 (define sf-directory
   (directory-processor
    "scm"
-   (lambda () "bin")
+   (lambda () (if sf/cross-compiling? "nib" "bin"))
    (lambda (pathname output-directory)
-     (sf pathname output-directory))))
+     (sf pathname output-directory))
+   (lambda (pathname)
+     (merge-pathnames
+      (enough-pathname (merge-pathnames pathname) sf/source-root)
+      sf/object-root))))
 
 (define (sf-conditionally filename #!optional echo-up-to-date?)
   (let ((kernel

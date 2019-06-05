@@ -32,6 +32,7 @@ USA.
 "pruxio"
 "ux"
 "uxctty"
+"uxentropy"
 "uxenv"
 "uxfile"
 "uxfs"

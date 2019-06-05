@@ -173,6 +173,11 @@ prchacha.o: prchacha.c bignum.h bkpt.h chacha.h cmpint.h cmpintmd-config.h \
 	  errors.h extern.h fixobj.h gc.h interp.h intrpt.h memmag.h object.h \
 	  obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
 	  stack.h types.h
+prentropy.o: prentropy.c bignum.h bkpt.h cmpint.h cmpintmd-config.h \
+	  cmpintmd.h config.h confshared.h const.h critsec.h dstack.h \
+	  errors.h extern.h fixobj.h gc.h interp.h intrpt.h memmag.h object.h \
+	  obstack.h osentropy.h outf.h prim.h prims.h returns.h scheme.h \
+	  scode.h sdata.h stack.h types.h
 prim.o: prim.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h critsec.h dstack.h errors.h extern.h fixobj.h \
 	  gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h prim.h \
@@ -347,6 +352,11 @@ ux.o: ux.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  syscall.h types.h ux.h
 uxctty.o: uxctty.c cmpintmd-config.h config.h confshared.h dstack.h intext.h \
 	  os.h osctty.h osscheme.h ossig.h outf.h syscall.h ux.h
+uxentropy.o: uxentropy.c bignum.h bkpt.h cmpint.h cmpintmd-config.h \
+	  cmpintmd.h config.h confshared.h const.h critsec.h dstack.h \
+	  errors.h extern.h fixobj.h gc.h interp.h intext.h intrpt.h memmag.h \
+	  object.h obstack.h os.h osscheme.h outf.h prim.h prims.h returns.h \
+	  scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h
 uxenv.o: uxenv.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intext.h intrpt.h memmag.h object.h \

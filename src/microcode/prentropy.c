@@ -1,9 +1,9 @@
-#| -*-Scheme-*-
+/* -*-C-*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -22,71 +22,20 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
-|#
+*/
 
-;;;; Core C files used on all platforms.
+#include "osentropy.h"
+#include "prims.h"
 
-"artutl"
-"avltree"
-"bkpt"
-"bignum"
-"bigprm"
-"bitstr"
-"boot"
-"bytevector"
-"chacha12"
-"chacha20"
-"chacha8"
-"char"
-"daemon"
-"debug"
-"dfloat"
-"error"
-"extern"
-"fasdump"
-"fasl"
-"fasload"
-"fixnum"
-"floenv"
-"flonum"
-"gcloop"
-"generic"
-"hooks"
-"hunk"
-"intern"
-"interp"
-"intprm"
-"keccak"
-"list"
-"lookprm"
-"lookup"
-"md5"
-"memmag"
-"missing"
-"obstack"
-"option"
-"osscheme"
-"ostty"
-"outf"
-"prchacha"
-"prentropy"
-"prim"
-"primutl"
-"prkeccak"
-"prmd5"
-"ptrvec"
-"purify"
-"purutl"
-"regex"
-"rgxprim"
-"step"
-"storage"
-"string"
-"syntax"
-"sysprim"
-"term"
-"transact"
-"utabmd"
-"utils"
-"vector"
-"wind"
+DEFINE_PRIMITIVE ("GET-ENTROPY", Prim_get_entropy, 1, 1,
+  "(BYTEVECTOR)\n\
+Randomize the 32-byte vector BYTEVECTOR from the system entropy pool.")
+{
+  PRIMITIVE_HEADER (1);
+  unsigned long nbytes;
+  uint8_t * buf = (arg_bytevector (1, (&nbytes)));
+  if (nbytes != 32)
+    error_bad_range_arg (1);
+  OS_get_entropy (buf);
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}

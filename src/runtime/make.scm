@@ -331,6 +331,7 @@ USA.
   (export 'package-set-pathname)
   (export 'package/add-child!)
   (export 'package/children)
+  (export 'package/cross-compiling?)
   (export 'package/environment)
   (export 'package/name)
   (export 'package/parent)

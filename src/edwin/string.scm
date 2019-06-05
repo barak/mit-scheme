@@ -589,7 +589,7 @@ USA.
 
 (define (decorated-string-append prefix infix suffix strings)
   (let ((infix (string-append suffix infix prefix)))
-    (string-append*
+    (%string-append
      (if (pair? strings)
 	 (cons* prefix
 		(car strings)

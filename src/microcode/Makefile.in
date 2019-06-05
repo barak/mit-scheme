@@ -1,4 +1,4 @@
-# This file automatically generated at 2019-03-16T01:18:01-07.
+# This file automatically generated at 2019-06-02T19:28:22-07.
 
 # -*- Makefile -*-
 #
@@ -98,14 +98,15 @@ STD_SOURCES = artutl.c avltree.c bkpt.c bignum.c bigprm.c bitstr.c boot.c \
 	  fixnum.c floenv.c flonum.c gcloop.c generic.c hooks.c hunk.c \
 	  intern.c interp.c intprm.c keccak.c list.c lookprm.c lookup.c md5.c \
 	  memmag.c missing.c obstack.c option.c osscheme.c ostty.c outf.c \
-	  prchacha.c prim.c primutl.c prkeccak.c prmd5.c ptrvec.c purify.c \
-	  purutl.c regex.c rgxprim.c step.c storage.c string.c syntax.c \
-	  sysprim.c term.c transact.c utabmd.c utils.c vector.c wind.c \
+	  prchacha.c prentropy.c prim.c primutl.c prkeccak.c prmd5.c ptrvec.c \
+	  purify.c purutl.c regex.c rgxprim.c step.c storage.c string.c \
+	  syntax.c sysprim.c term.c transact.c utabmd.c utils.c vector.c \
+	  wind.c \
 	prosenv.c prosfile.c prosfs.c prosio.c prosproc.c prospty.c \
 	  prosterm.c prostty.c pruxsock.c \
-	intext.c pruxenv.c pruxfs.c pruxio.c ux.c uxctty.c uxenv.c uxfile.c \
-	  uxfs.c uxio.c uxproc.c uxsig.c uxsock.c uxterm.c uxtop.c uxtrap.c \
-	  uxtty.c uxutil.c \
+	intext.c pruxenv.c pruxfs.c pruxio.c ux.c uxctty.c uxentropy.c \
+	  uxenv.c uxfile.c uxfs.c uxio.c uxproc.c uxsig.c uxsock.c uxterm.c \
+	  uxtop.c uxtrap.c uxtty.c uxutil.c \
 	$(OPTIONAL_SOURCES)
 STD_OBJECTS = artutl.o avltree.o bkpt.o bignum.o bigprm.o bitstr.o boot.o \
 	  bytevector.o chacha12.o chacha20.o chacha8.o char.o daemon.o \
@@ -113,14 +114,15 @@ STD_OBJECTS = artutl.o avltree.o bkpt.o bignum.o bigprm.o bitstr.o boot.o \
 	  fixnum.o floenv.o flonum.o gcloop.o generic.o hooks.o hunk.o \
 	  intern.o interp.o intprm.o keccak.o list.o lookprm.o lookup.o md5.o \
 	  memmag.o missing.o obstack.o option.o osscheme.o ostty.o outf.o \
-	  prchacha.o prim.o primutl.o prkeccak.o prmd5.o ptrvec.o purify.o \
-	  purutl.o regex.o rgxprim.o step.o storage.o string.o syntax.o \
-	  sysprim.o term.o transact.o utabmd.o utils.o vector.o wind.o \
+	  prchacha.o prentropy.o prim.o primutl.o prkeccak.o prmd5.o ptrvec.o \
+	  purify.o purutl.o regex.o rgxprim.o step.o storage.o string.o \
+	  syntax.o sysprim.o term.o transact.o utabmd.o utils.o vector.o \
+	  wind.o \
 	prosenv.o prosfile.o prosfs.o prosio.o prosproc.o prospty.o \
 	  prosterm.o prostty.o pruxsock.o \
-	intext.o pruxenv.o pruxfs.o pruxio.o ux.o uxctty.o uxenv.o uxfile.o \
-	  uxfs.o uxio.o uxproc.o uxsig.o uxsock.o uxterm.o uxtop.o uxtrap.o \
-	  uxtty.o uxutil.o \
+	intext.o pruxenv.o pruxfs.o pruxio.o ux.o uxctty.o uxentropy.o \
+	  uxenv.o uxfile.o uxfs.o uxio.o uxproc.o uxsig.o uxsock.o uxterm.o \
+	  uxtop.o uxtrap.o uxtty.o uxutil.o \
 	$(OPTIONAL_OBJECTS)
 
 GC_HEAD_FILES = @GC_HEAD_FILES@
@@ -455,6 +457,11 @@ prchacha.o: prchacha.c bignum.h bkpt.h chacha.h cmpint.h cmpintmd-config.h \
 	  errors.h extern.h fixobj.h gc.h interp.h intrpt.h memmag.h object.h \
 	  obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
 	  stack.h types.h
+prentropy.o: prentropy.c bignum.h bkpt.h cmpint.h cmpintmd-config.h \
+	  cmpintmd.h config.h confshared.h const.h critsec.h dstack.h \
+	  errors.h extern.h fixobj.h gc.h interp.h intrpt.h memmag.h object.h \
+	  obstack.h osentropy.h outf.h prim.h prims.h returns.h scheme.h \
+	  scode.h sdata.h stack.h types.h
 prim.o: prim.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h critsec.h dstack.h errors.h extern.h fixobj.h \
 	  gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h prim.h \
@@ -629,6 +636,11 @@ ux.o: ux.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  syscall.h types.h ux.h
 uxctty.o: uxctty.c cmpintmd-config.h config.h confshared.h dstack.h intext.h \
 	  os.h osctty.h osscheme.h ossig.h outf.h syscall.h ux.h
+uxentropy.o: uxentropy.c bignum.h bkpt.h cmpint.h cmpintmd-config.h \
+	  cmpintmd.h config.h confshared.h const.h critsec.h dstack.h \
+	  errors.h extern.h fixobj.h gc.h interp.h intext.h intrpt.h memmag.h \
+	  object.h obstack.h os.h osscheme.h outf.h prim.h prims.h returns.h \
+	  scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h
 uxenv.o: uxenv.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intext.h intrpt.h memmag.h object.h \

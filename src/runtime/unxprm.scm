@@ -97,15 +97,17 @@ USA.
 	  (error "Can't find temporary directory.")))))
 
 (define (file-attributes-direct filename)
-  ((ucode-primitive file-attributes 1)
-   (string-for-primitive (->namestring (merge-pathnames filename)))))
+  (let ((v
+	 ((ucode-primitive file-attributes 1)
+	  (string-for-primitive (->namestring (merge-pathnames filename))))))
+    (and v
+	 (begin
+	   (vector-set! v 0 (string-from-primitive (vector-ref v 0)))
+	   v))))
 
 (define (file-attributes-indirect filename)
   ((ucode-primitive file-attributes-indirect 1)
    (string-for-primitive (->namestring (merge-pathnames filename)))))
-
-(define file-attributes
-  file-attributes-direct)
 
 (define-structure (file-attributes
 		   (type vector)
@@ -245,7 +247,7 @@ USA.
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
     (if (not directory)
 	(error "Can't find user's home directory:" user-name))
-    (pathname-as-directory directory)))
+    (pathname-as-directory (string-from-primitive directory))))
 
 (define (current-home-directory)
   (let ((home (get-environment-variable "HOME")))

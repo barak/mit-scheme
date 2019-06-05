@@ -615,6 +615,7 @@ USA.
 		  (open-tcp-stream-socket (imap-url-host url)
 					  (or (imap-url-port url) "imap2"))))))
 	  (port/set-line-ending port 'NEWLINE)
+	  (port/set-coding port 'ISO-8859-1)
 	  (let ((response
 		 (imap:catch-no-response #f
 		   (lambda ()
@@ -1930,6 +1931,7 @@ USA.
 		(guarantee-init-file-directory temporary-directory)
 		(call-with-temporary-output-file pathname temporary-directory
 		  (lambda (output-port)
+		    (port/set-coding output-port 'ISO-8859-1)
 		    (imap:bind-fetch-body-part-port output-port
 		      (lambda ()
 			(fetch-message-body-part-1 message
@@ -1952,7 +1954,9 @@ USA.
 		  (guarantee-init-file-directory pathname)
 		  (guarantee-init-file-directory temporary-directory)
 		  (call-with-temporary-output-file pathname temporary-directory
-		    fetch-to-port)))
+		    (lambda (port)
+		      (port/set-coding port 'ISO-8859-1)
+		      (fetch-to-port port)))))
 	    (file->port pathname port)))
 	(lambda ()
 	  (fetch-to-port port))))))
@@ -2056,7 +2060,7 @@ USA.
 
 (define (imap-message-cache-specifier message)
   `(,@(imap-folder-cache-specifier (message-folder message))
-    ,(write-to-string (imap-message-uid message))))
+    ,(number->string (imap-message-uid message) #d10)))
 
 (define (imap-message-temporary-directory-pathname message)
   (imap-folder-temporary-directory-pathname (message-folder message)))
@@ -2084,27 +2088,66 @@ USA.
 			 "_"
 			 (number->string (imap-url-port url)))
 	  (encode-cache-namestring (imap-url-mailbox url)))))
+
+(define namestring-safe
+  (let ((s (make-vector-8b 256 0)))
+    (define (set c)
+      (vector-8b-set! s (char->integer c) 1))
+    (define (range lo hi)
+      (do ((i (char->integer lo) (+ i 1)))
+	  ((> i (char->integer hi)))
+	(vector-8b-set! s i 1)))
+    (range #\a #\z)
+    (range #\A #\Z)
+    (range #\0 #\9)
+    (set #\-)
+    (set #\_)
+    (set #\.)
+    s))
 
 (define (encode-cache-namestring string)
-  (call-with-output-string
-   (lambda (port)
-     (let ((n (string-length string)))
-       (do ((i 0 (fix:+ i 1)))
-	   ((fix:= i n))
-	 (let ((char (string-ref string i)))
-	   (cond ((char-in-set? char char-set:cache-namestring-safe)
-		  (write-char char port))
-		 ((char=? char #\/)
-		  (write-char #\# port))
-		 (else
-		  (write-char #\% port)
-		  (let ((n (char->integer char)))
-		    (if (fix:< n #x10)
-			(write-char #\0 port))
-		    (write-string (number->string n 16) port))))))))))
-
-(define char-set:cache-namestring-safe
-  (char-set-union char-set:alphanumeric (string->char-set "-_.")))
+  (define (safe? char)
+    (not (zero? (vector-8b-ref namestring-safe (char->integer char)))))
+  (define (hex i)
+    (string-ref "0123456789abcdef" i))
+  (define (width char)
+    (cond ((safe? char) 1)
+	  ((char=? char #\\) 2)		;\\
+	  ((char-8-bit? char) 3)	;%HH
+	  (else (error "Non-encodable!" char))))
+  (define (encode char s i)
+    (cond ((safe? char)
+	   (assert (<= (+ i 1) (string-length s)))
+	   (string-set! s i char)
+	   1)
+	  ((char=? char #\\)
+	   (assert (<= (+ i 2) (string-length s)))
+	   (string-set! s i #\\)
+	   (string-set! s (+ i 1) char)
+	   2)
+	  ((char-8-bit? char)
+	   (assert (<= (+ i 3) (string-length s)))
+	   (string-set! s i #\%)
+	   (string-set! s (+ i 1) (hex (fix:lsh (char->integer char) -4)))
+	   (string-set! s (+ i 2) (hex (fix:and (char->integer char) #xf)))
+	   3)
+	  (else
+	   (error "Non-encodable!" char))))
+  (let* ((n (string-length string))
+	 (n*
+	  (let loop ((i 0) (n* 0))
+	    (if (< i n)
+		(loop (+ i 1) (+ n* (width (string-ref string i))))
+		n*)))
+	 (string* (string-allocate n*)))
+    (let loop ((i 0) (j 0))
+      (assert (<= i (string-length string)))
+      (assert (<= j (string-length string*)))
+      (if (< i n)
+	  (loop (+ i 1)
+		(+ j (encode (string-ref string i) string* j)))
+	  (assert (= j n*))))
+    string*))
 
 (define (read-cached-message-item message keyword pathname)
   (let ((item
@@ -2124,11 +2167,21 @@ USA.
       (newline port))))
 
 (define (string->file string pathname #!optional temporary-directory)
-  (call-with-temporary-output-file pathname temporary-directory
-    (lambda (port)
-      (write-string string port))))
+  (call-with-temporary-file-pathname temporary-directory
+    (lambda (temporary-pathname)
+      (let ((channel
+	     (file-open-output-channel (->namestring temporary-pathname))))
+	(channel-write-block channel string 0 (string-length string))
+	(channel-close channel)
+	(rename-file temporary-pathname pathname)))))
 
 (define (call-with-temporary-output-file pathname temporary-directory receiver)
+  (call-with-temporary-file-pathname temporary-directory
+    (lambda (temporary-pathname)
+      (begin0 (call-with-output-file temporary-pathname receiver)
+	(rename-file temporary-pathname pathname)))))
+
+(define (call-with-temporary-file-pathname temporary-directory receiver)
   (if (or (not temporary-directory)
 	  (default-object? temporary-directory))
       (call-with-output-file temporary-directory receiver)
@@ -2139,21 +2192,23 @@ USA.
 	   (if done?
 	       (error "Re-entry prohibited into temporary file creation.")))
 	 (lambda ()
-	   (let ((result (call-with-output-file temporary-pathname receiver)))
-	     (rename-file temporary-pathname pathname)
-	     result))
+	   (receiver temporary-pathname))
 	 (lambda ()
 	   (set! done? #t)
 	   (deallocate-temporary-file temporary-pathname))))))
 
 (define (file->string pathname)
-  (call-with-output-string
-    (lambda (port)
-      (file->port pathname port))))
+  (let* ((channel (file-open-input-channel (->namestring pathname)))
+	 (length (channel-file-length channel))
+	 (buffer (string-allocate length)))
+    (channel-read-block channel buffer 0 length)
+    (channel-close channel)
+    buffer))
 
 (define (file->port pathname output-port)
   (call-with-input-file pathname
     (lambda (input-port)
+      (port/set-coding input-port 'ISO-8859-1)
       (let ((buffer (make-string #x1000)))
 	(let loop ()
 	  (let ((n (read-string! buffer input-port)))
