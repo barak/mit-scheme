@@ -1,3 +1,9 @@
+mit-scheme (10.1.7-1) unstable; urgency=medium
+
+  * new upstream version
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Wed, 05 Jun 2019 20:27:44 +0100
+
 mit-scheme (10.1.6-1) unstable; urgency=medium
 
   * new upstream release
