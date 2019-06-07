@@ -106,6 +106,7 @@ USA.
     (let ((class (assq package classes)))
       (if class
 	  (format-package/bindings port indentation width package (cdr class)))
+      (format-package/inherited port indentation width package)
       (for-each (lambda (class)
 		  (if (not (eq? package (car class)))
 		      (format-package/imports port indentation width package
@@ -196,6 +197,20 @@ USA.
 			   (map expression/file expressions))
 			  ")")
 	   name)))))
+
+(define (format-package/inherited port indentation width package)
+  (let ((inherited
+         (filter (lambda (reference)
+                   (let ((binding (reference/binding reference)))
+                     (and binding
+                          (ancestor-package? (binding/package binding)
+                                             package))))
+                 (package/references package))))
+    (if (pair? inherited)
+        (begin
+          (newline port)
+          (format-references port indentation width "Inherited" package
+                             (sort inherited reference<?))))))
 
 (define (format-package/imports port indentation width local-package
 				remote-package bindings)

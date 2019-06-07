@@ -87,6 +87,12 @@ USA.
   (set-package/bindings! package
 			 (cons binding (package/bindings package))))
 
+(define (ancestor-package? p1 p2)
+  (let ((parent (package/parent p2)))
+    (and parent
+         (or (eq? p1 parent)
+             (ancestor-package? p1 parent)))))
+
 (define-integrable (file-case/type file-case)
   (car file-case))
 
