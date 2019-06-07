@@ -81,6 +81,7 @@ USA.
 
       (let ((environment (->environment '(edwin))))
 	(load "utils" environment)
+	(load "adapters" (->environment '(edwin adapters)))
 	(load "string" (->environment '(edwin string)))
 	(load "nvector" environment)
 	(load "ring" environment)

@@ -30,6 +30,7 @@ USA.
 
 (standard-scheme-find-file-initialization
  '#(("abbrev"	(edwin))
+    ("adapters"	(edwin adapters))
     ("ansi"	(edwin screen console-screen))
     ("argred"	(edwin command-argument))
     ("artdebug"	(edwin debugger))
@@ -150,6 +151,7 @@ USA.
     ("simple"	(edwin))
     ("snr"	(edwin news-reader))
     ("sort"	(edwin))
+    ("string"	(edwin string))
     ("strpad"	(edwin))
     ("strtab"	(edwin))
     ("struct"	(edwin))

@@ -151,6 +151,14 @@ USA.
   (export (edwin class-macros)
 	  class-instance-transforms))
 
+(define-package (edwin adapters)
+  (files "adapters")
+  (parent ())
+  (export (edwin)
+          (call-with-append-file edwin:call-with-append-file)
+          (call-with-input-file edwin:call-with-input-file)
+          (call-with-output-file edwin:call-with-output-file)))
+
 (define-package (edwin string)
   (files "string")
   (parent (edwin))

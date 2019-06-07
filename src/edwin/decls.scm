@@ -111,6 +111,7 @@ USA.
     (for-each (lambda (filename)
 		(apply sf-edwin filename includes))
 	      '("abbrev"
+                "adapters"
 		"argred"
 		"artdebug"
 		"autold"
