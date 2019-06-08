@@ -898,6 +898,7 @@ USA.
   (set-db-property! db 'reader-enable-attributes? #f)
   ;; Save all the attributes; this helps with testing.
   (set-db-property! db 'reader-file-attributes file-attribute-alist)
+  (process-coding-attribute file-attribute-alist db)
   (process-keyword-attribute file-attribute-alist db)
   (process-mode-attribute file-attribute-alist db)
   (process-studly-case-attribute file-attribute-alist db))
@@ -906,6 +907,18 @@ USA.
   (assoc attribute file-attribute-alist
 	 (lambda (left right)
 	   (string-ci=? (symbol->string left) (symbol->string right)))))
+
+;;; Allow file to specify its character coding.
+(define (process-coding-attribute file-attribute-alist db)
+  (let ((entry (lookup-file-attribute file-attribute-alist 'coding)))
+    (if (pair? entry)
+        (let ((coding (cdr entry))
+              (port (db-port db)))
+          (if (and (symbol? coding) (known-input-port-coding? coding))
+              (if (and (port/supports-coding? port)
+                       (port/known-coding? port coding))
+                  (port/set-coding port coding))
+              (warn "Unrecognized value for coding:" coding))))))
 
 ;;; Look for keyword-style: prefix or keyword-style: suffix
 (define (process-keyword-attribute file-attribute-alist db)
@@ -925,7 +938,7 @@ USA.
 		 (set-db-property! db 'reader-keyword-style 'suffix))
 		(else
 		 (warn "Unrecognized value for keyword-style" value)))))))
-
+
 ;;; Don't do anything with the mode, but warn if it isn't scheme.
 (define (process-mode-attribute file-attribute-alist db)
   (declare (ignore db))
