@@ -23,7 +23,7 @@ for FILE in "${@}"; do
 
     rm -f "${FILE}".directive
     cat > "${FILE}".directive <<EOF
-version: 1.1
+version: 1.2
 directory: mit-scheme/stable.pkg/${VERSION}
 filename: ${FILE}
 EOF
