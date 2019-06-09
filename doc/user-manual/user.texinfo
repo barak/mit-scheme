@@ -175,7 +175,7 @@ Debian-like systems: @code{gcc} @code{make} @code{libncurses-dev}
 @item
 CentOS-like systems: @code{gcc} @code{make} @code{ncurses-devel}
 @item
-macOS systems: @code{Xcode}
+macOS systems: Command line developer tools @samp{xcode-select --install}
 @end itemize
 
 Additionally, if you want support for X11 graphics, you'll need:
