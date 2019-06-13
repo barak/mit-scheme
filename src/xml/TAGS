@@ -1,0 +1,781 @@
+
+parser-macro.scm,265
+(define-*matcher-macro S 31,1067
+(define-*parser-macro S 32,1133
+(define-*matcher-macro S? 34,1170
+(define-*parser-macro S? 35,1237
+(define-*parser-macro (bracket 37,1276
+(define-*parser-macro (sbracket 52,1654
+(define-*parser-macro (require-success 56,1804
+
+rdf-nt.scm,861
+(define (read-rdf/nt-file 33,1095
+(define (rdf/nt-file->source 42,1337
+(define (read-rdf/nt 50,1527
+(define parse-one-line64,1885
+(define parse-triple70,2003
+(define parse-comment85,2359
+(define parse-uri-ref88,2447
+(define parse-node-id91,2516
+(define match-bnode-name97,2660
+(define parse-literal108,2961
+(define parse-language119,3209
+(define (parse-string 122,3283
+(define match-ws*168,4653
+(define match-ws+171,4713
+(define char-set:ws174,4773
+(define char-set:character177,4822
+(define char-set:hex180,4887
+(define char-set:unescaped184,5001
+(define (write-rdf/nt-file 189,5107
+(define (write-rdf/nt 196,5285
+(define (write-rdf/nt-uri 210,5801
+(define (write-rdf/nt-bnode 215,5914
+(define (write-rdf/nt-literal 219,6028
+(define (write-rdf/nt-literal-text 230,6396
+(define (write-literal-char 241,6696
+(define (write-hex 260,7257
+
+rdf-struct.scm,2592
+(define-record-type <rdf-triple>36,1210
+(define-guarantee rdf-triple 44,1437
+(define (make-rdf-triple 46,1481
+(define (for-each-rdf-triple 57,1976
+(define next-index61,2078
+(define rdf-triples 68,2204
+(define event:new-rdf-triple 69,2249
+(define (rdf-subject? 71,2305
+(define (rdf-predicate? 76,2415
+(define (rdf-object? 79,2472
+(define-guarantee rdf-subject 85,2608
+(define-guarantee rdf-predicate 86,2653
+(define-guarantee rdf-object 87,2702
+(define (canonicalize-rdf-subject 89,2746
+(define (canonicalize-rdf-predicate 94,2952
+(define (canonicalize-rdf-object 97,3061
+(define (canonicalize-rdf-uri 102,3260
+(define-record-type <rdf-graph>109,3414
+(define-guarantee rdf-graph 114,3523
+(define (make-rdf-graph 116,3565
+(define rdf-graphs 143,4316
+(define event:new-rdf-graph 144,4360
+(define-record-type <rdf-bnode>148,4434
+(define-guarantee rdf-bnode 152,4505
+(define-print-method rdf-bnode?154,4547
+(define (make-rdf-bnode 159,4675
+(define (rdf-bnode-name 166,4892
+(define (%decode-bnode-uri 169,4984
+(define parse-bnode177,5210
+(define (with-rdf-input-port 185,5435
+(define *rdf-bnode-registry*)191,5619
+(define-record-type <rdf-literal>195,5666
+(define-guarantee rdf-literal 201,5806
+(define (make-rdf-literal 203,5852
+(define rdf-literals214,6157
+(define (rdf-literal-type 217,6206
+(define (rdf-literal-language 222,6326
+(define-print-method rdf-literal?227,6456
+(define (rdf-literal=233,6634
+(define (language? 236,6680
+(define match-language240,6788
+(define (register-rdf-prefix 251,7080
+(define (merge-rdf-prefix-registry! 259,7362
+(define (%register-rdf-prefix 267,7755
+(define (rdf-prefix-expansion 278,8137
+(define (uri->rdf-prefix 287,8381
+(define (uri->rdf-qname 305,8926
+(define (rdf-qname->uri 313,9214
+(define (make-rdf-qname 322,9562
+(define (rdf-qname-prefix 329,9819
+(define (rdf-qname-local 334,10008
+(define (split-rdf-qname 339,10186
+(define (rdf-qname? 346,10428
+(define-guarantee rdf-qname 350,10534
+(define match-qname352,10576
+(define (match-tail 355,10641
+(define (rdf-prefix? 361,10742
+(define-guarantee rdf-prefix 365,10850
+(define match-prefix367,10894
+(define-record-type <rdf-prefix-registry>370,10958
+(define-guarantee rdf-prefix-registry 375,11121
+(define (rdf-prefix-registry->alist 377,11189
+(define (copy-rdf-prefix-registry 382,11344
+(define (check-registry 387,11522
+(define (new-rdf-prefix-registry)400,11963
+(define default-prefixes403,12058
+(define *default-rdf-prefix-registry*409,12294
+(define (port/set-rdf-prefix-registry 412,12362
+(define (port/rdf-prefix-registry 419,12633
+
+turtle.scm,3574
+(define (read-rdf/turtle-file 33,1085
+(define (read-rdf/turtle 46,1531
+(define parse-turtle-doc54,1802
+(define parse:directive66,2047
+(define parse:triples79,2398
+(define parse:predicate-object-list89,2596
+(define parse:predicate-object-list-196,2811
+(define parse:subject108,3205
+(define parse:object-required111,3286
+(define parse:object116,3382
+(define parse:resource119,3476
+(define parse:blank126,3671
+(define parse:graph149,4295
+(define parse:name160,4546
+(define match:name163,4598
+(define parse:prefix168,4712
+(define match:prefix-name173,4787
+(define parse:literal180,4938
+(define parse:language203,5533
+(define parse:integer210,5716
+(define parse:double227,6183
+(define parse:decimal246,6714
+(define parse:boolean258,7060
+(define char-set:turtle-hex265,7203
+(define char-set:turtle-digit268,7273
+(define char-set:turtle-ws271,7339
+(define char-set:turtle-lower274,7399
+(define char-set:turtle-lower+digit277,7481
+(define char-set:name-start-char281,7586
+(define char-set:name-char299,7972
+(define char-set:prefix-name-start-char308,8165
+(define char-set:character311,8271
+(define char-set:ucharacter314,8349
+(define char-set:scharacter317,8437
+(define char-set:lcharacter320,8525
+(define (delimited-region-parser 325,8652
+(define (simple-escape-parser 376,10123
+(define parse:scharacter-escape384,10354
+(define parse:ucharacter-escape395,10593
+(define parse:unicode-escape403,10765
+(define parse:string409,10998
+(define parse:long-string416,11136
+(define parse:uriref423,11292
+(define parse:ws*432,11452
+(define parse:ws+435,11505
+(define match:ws438,11558
+(define match:comment443,11644
+(define (post-process-parser-output 458,11942
+(define (post-process-triples 484,12646
+(define (post-process-pols 492,12881
+(define (post-process-resource 509,13382
+(define (post-process-qname 551,14590
+(define (post-process-collection 560,14827
+(define (write-rdf/turtle-file 576,15358
+(define (write-rdf/turtle 583,15594
+(define (write-prefixes 590,15829
+(define (write-rdf/turtle-prefix 621,16809
+(define (write-rdf/turtle-triple 630,17127
+(define (write-rdf/turtle-subgraph 638,17384
+(define (write-rdf/turtle-triples 644,17650
+(define (write-triples 649,17827
+(define (inline-bnode-triples 662,18195
+(define (all-triples 680,18695
+(define (group-triples-by-subject 706,19188
+(define (write-top-level 709,19284
+(define (groups-to-write 723,19720
+(define (write-group 730,19924
+(define (linear-object-string 755,20740
+(define (write-pgroups 787,21577
+(define (write-pgroups-tail 791,21760
+(define (write-pgroup 797,21959
+(define (write-object 816,22521
+(define (write-inline-bnode 840,23271
+(define (maybe-break 849,23547
+(define (write-subject 857,23792
+(define (write-graph 878,24299
+(define (write-predicate 887,24644
+(define (write-rdf/turtle-literal 892,24770
+(define (write-literal-text 914,25460
+(define (write-rdf/turtle-uri 929,25900
+(define (write-uri 933,26082
+(define (sort-triples 946,26516
+(define (group-triples 969,27013
+(define (uri<? 979,27350
+(define (rdf-bnode<? 982,27417
+(define (rdf-list->list 985,27496
+(define (space 1002,28081
+(define (write-symbol 1005,28132
+(define (write-parens 1008,28215
+(define (write-indentation 1014,28408
+(define (indent+ 1024,28685
+(define (classify-list 1027,28737
+(define rdf:type1041,29192
+(define rdf:List1044,29277
+(define rdf:first1047,29362
+(define rdf:rest1050,29449
+(define rdf:nil1053,29534
+(define xsd:integer1056,29617
+(define xsd:double1059,29698
+(define xsd:decimal1062,29777
+(define xsd:boolean1065,29858
+
+xhtml-entities.scm,104
+(define html-entity-alist31,1075
+(define html-entities282,12850
+(define html-char->name-map291,13053
+
+xhtml.scm,4119
+(define html-uri-string 31,1064
+(define html-uri 32,1120
+(define (html-element? 34,1172
+(define (guarantee-html-element 38,1294
+(define (error:not-html-element 42,1424
+(define (html-element-name? 45,1532
+(define (guarantee-html-element-name 49,1637
+(define (error:not-html-element-name 53,1782
+(define-syntax define-html-id56,1900
+(define-html-id "1.0"75,2593
+(define-html-id "1.1"79,2708
+(define (html-public-id? 83,2811
+(define (html-external-id? 87,2911
+(define (html-dtd? 91,3035
+(define (html-1.0-document 97,3226
+(define (html-1.1-document 100,3314
+(define (%make-document 103,3402
+(define (parse-decl 118,3780
+(define (parse-styles 124,3971
+(define-syntax define-html-element133,4282
+(define (define-html-element-context 149,4838
+(define (html-element-context 155,4989
+(define (html-element-name-context 159,5152
+(define (html-element-names)163,5314
+(define element-context-map166,5385
+(define-html-element a	169,5445
+(define-html-element abbr	170,5477
+(define-html-element acronym	171,5511
+(define-html-element address	172,5548
+(define-html-element area	173,5584
+(define-html-element b	174,5621
+(define-html-element base	175,5653
+(define-html-element bdo	176,5691
+(define-html-element big	177,5724
+(define-html-element blockquote	178,5757
+(define-html-element body	179,5796
+(define-html-element br	180,5828
+(define-html-element button	181,5867
+(define-html-element caption	182,5903
+(define-html-element cite	183,5939
+(define-html-element code	184,5973
+(define-html-element col	185,6007
+(define-html-element colgroup	186,6045
+(define-html-element dd	187,6082
+(define-html-element del	188,6111
+(define-html-element dfn	189,6144
+(define-html-element div	190,6177
+(define-html-element dl	191,6209
+(define-html-element dt	192,6241
+(define-html-element em	194,6272
+(define-html-element fieldset	195,6305
+(define-html-element form	196,6342
+(define-html-element h1	197,6375
+(define-html-element h2	198,6407
+(define-html-element h3	199,6439
+(define-html-element h4	200,6471
+(define-html-element h5	201,6503
+(define-html-element h6	202,6535
+(define-html-element head	203,6567
+(define-html-element hr	204,6599
+(define-html-element html	205,6637
+(define-html-element i	206,6669
+(define-html-element img	207,6701
+(define-html-element input	208,6740
+(define-html-element ins	209,6781
+(define-html-element kbd	210,6814
+(define-html-element label	211,6847
+(define-html-element legend	212,6882
+(define-html-element li	213,6920
+(define-html-element link	214,6951
+(define-html-element map	215,6989
+(define-html-element meta	216,7022
+(define-html-element noscript	217,7060
+(define-html-element object	218,7097
+(define-html-element ol	219,7133
+(define-html-element optgroup	220,7165
+(define-html-element option	221,7203
+(define-html-element p	222,7239
+(define-html-element param	223,7270
+(define-html-element pre	224,7311
+(define-html-element q	225,7343
+(define-html-element rb	226,7375
+(define-html-element rbc	227,7406
+(define-html-element rp	228,7437
+(define-html-element rt	229,7468
+(define-html-element rtc	230,7499
+(define-html-element ruby	231,7530
+(define-html-element samp	232,7564
+(define-html-element script	233,7598
+(define-html-element select	234,7634
+(define-html-element small	235,7670
+(define-html-element span	236,7705
+(define-html-element strong	237,7739
+(define-html-element style	238,7775
+(define-html-element sub	239,7808
+(define-html-element sup	240,7841
+(define-html-element table	241,7874
+(define-html-element tbody	242,7908
+(define-html-element td	243,7942
+(define-html-element textarea	244,7974
+(define-html-element tfoot	245,8012
+(define-html-element th	246,8046
+(define-html-element thead	247,8078
+(define-html-element title	248,8112
+(define-html-element tr	249,8145
+(define-html-element tt	250,8177
+(define-html-element ul	251,8210
+(define-html-element var	252,8242
+(define (html:href 254,8277
+(define (html:id-def 259,8366
+(define (html:id-ref 265,8471
+(define (html:rel-link 268,8563
+(define (html:style-link 272,8636
+(define (html:http-equiv 277,8739
+(define (html:style-attr 281,8830
+
+xml-chars.scm,507
+(define char-set:xml-base-char31,1064
+(define char-set:xml-ideographic236,5186
+(define char-set:xml-combining-char242,5294
+(define char-set:xml-digit340,7213
+(define char-set:xml-extender358,7602
+(define char-set:xml-char372,7814
+(define xml-char?381,7965
+(define char-set:char-data384,8026
+(define char-set:name-initial388,8130
+(define char-set:name-subsequent	393,8261
+(define char-set:ncname-initial401,8484
+(define char-set:ncname-subsequent405,8596
+(define char-set:xml-whitespace409,8714
+
+xml-names.scm,1650
+(define (make-xml-name 31,1060
+(define (%make-xml-name 54,2017
+(define expanded-names66,2418
+(define (xml-name? 69,2473
+(define (xml-name-string 73,2562
+(define (xml-name->symbol 76,2638
+(define (xml-name=81,2813
+(define-record-type <combo-name>86,3007
+(define-print-method combo-name?92,3155
+(define-record-type <expanded-name>97,3283
+(define (name-matcher 106,3492
+(define match-ncname114,3718
+(define match:xml-name118,3811
+(define match:xml-nmtoken122,3902
+(define match:xml-qname126,3999
+(define (string-matcher 129,4084
+(define string-is-xml-qname? 133,4215
+(define string-is-xml-name? 134,4278
+(define string-is-xml-nmtoken? 135,4339
+(define (name-constructor 137,4407
+(define make-xml-name-symbol150,4811
+(define make-xml-nmtoken153,4905
+(define make-xml-qname156,4994
+(define (name-predicate 159,5077
+(define xml-name-symbol? 164,5213
+(define xml-nmtoken? 165,5276
+(define xml-qname? 166,5338
+(define (xml-namespace-conformant-name? 170,5422
+(define (xml-name-uri 174,5526
+(define (xml-name-uri=179,5751
+(define (xml-name-prefix 182,5821
+(define (null-xml-name-prefix? 189,6037
+(define (null-xml-name-prefix)192,6097
+(define (xml-name-prefix=195,6136
+(define (xml-name-local 198,6216
+(define (xml-name-local=204,6448
+(define (null-xml-namespace-uri? 207,6524
+(define (null-xml-namespace-uri)211,6630
+(define null-namespace-uri 214,6686
+(define xml-uri-string 215,6725
+(define xml-uri 216,6788
+(define xmlns-uri-string 217,6828
+(define xmlns-uri 218,6886
+(define (xml-qname-prefix 220,6931
+(define (%xml-qname-prefix 224,7043
+(define (xml-qname-local 231,7239
+(define (%xml-qname-local 235,7348
+
+xml-output.scm,1921
+(define (write-xml 31,1061
+(define (write-xml-file 38,1217
+(define (xml->string 43,1358
+(define (xml->bytevector 48,1480
+(define (write-xml* 53,1645
+(define (set-coding 57,1742
+(define (write-xml-1 69,2081
+(define (make-ctx 79,2345
+(define-record-type <ctx>85,2575
+(define-print-method ctx?93,2795
+(define (emit-char 96,2869
+(define (emit-string 105,3128
+(define (emit-newline 111,3279
+(define (ctx-start-col 114,3335
+(define (ctx-x-size 117,3403
+(define (dtd-start-col 120,3468
+(define %write-xml124,3556
+(define-predicate-dispatch-handler %write-xml 127,3632
+(define-predicate-dispatch-handler %write-xml 141,4249
+(define-predicate-dispatch-handler %write-xml 158,4874
+(define-predicate-dispatch-handler %write-xml 177,5480
+(define-predicate-dispatch-handler %write-xml183,5685
+(define-predicate-dispatch-handler %write-xml 197,6159
+(define-predicate-dispatch-handler %write-xml 219,6843
+(define-predicate-dispatch-handler %write-xml 281,8587
+(define-predicate-dispatch-handler %write-xml 340,10702
+(define-predicate-dispatch-handler %write-xml 349,11036
+(define-predicate-dispatch-handler %write-xml 360,11495
+(define-predicate-dispatch-handler %write-xml 370,11888
+(define-predicate-dispatch-handler %write-xml 379,12230
+(define-predicate-dispatch-handler %write-xml 386,12411
+(define-predicate-dispatch-handler %write-xml392,12611
+(define (write-xml-attributes 399,12836
+(define (xml-attributes-columns 422,13436
+(define (write-xml-attribute 427,13614
+(define (write-xml-attribute-value 432,13787
+(define (xml-attribute-columns 437,13910
+(define (write-xml-string 442,14060
+(define (xml-string-columns 449,14203
+(define (write-xml-name 463,14471
+(define (xml-name-columns 466,14550
+(define (write-xml-nmtoken 469,14625
+(define (write-entity-value 472,14712
+(define (write-xml-external-id 489,15113
+(define (write-indent 510,15707
+(define (write-escaped-string 523,16023
+
+xml-parser.scm,4766
+(define (perror 37,1263
+(define (coalesce-elements 54,1658
+(define (coalesce-strings! 57,1744
+(define (string-parser 70,2111
+(define (read-xml-file 79,2452
+(define (read-xml 84,2637
+(define (bytevector->xml 90,2871
+(define (string->xml 94,3025
+(define (guarantee-pi-handlers 99,3210
+(define (determine-coding 116,3647
+(define (determine-coding-1 127,3976
+(define (finish-coding 178,5152
+(define (normalize-coding 200,5782
+(define (coding-requires-bom? 211,6084
+(define (parse-xml 216,6210
+(define *standalone?*)253,7375
+(define *internal-dtd?*)254,7398
+(define *elt-decls*)255,7423
+(define *att-decls*)256,7444
+(define *pi-handlers* 257,7465
+(define *in-dtd?*)258,7492
+(define *prefix-bindings*)259,7511
+(define (xml-processing-instructions-handlers)261,7539
+(define parse-misc	264,7604
+(define (xml-declaration-parser 274,7808
+(define parse-declaration	286,8084
+(define parse-text-decl	289,8176
+(define (transform-declaration 292,8263
+(define match-xml-version	339,9911
+(define match-encoding	343,10059
+(define (parse-element 351,10265
+(define parse-start-tag	365,10705
+(define (namespace-processing! 373,10879
+(define (parse-element-content 391,11526
+(define parse-end-tag	411,12255
+(define parse-content	418,12391
+(define (process-attr-decls 430,12632
+(define (process-attr-defn 442,13009
+(define (bracketed-region-parser 468,13791
+(define (terminated-region-parser 473,13988
+(define (terminated-region-matcher 478,14208
+(define parse-char-data	496,14734
+(define parse-comment	509,15023
+(define parse-cdata-section	519,15285
+(define parse-required-element-name524,15406
+(define parse-element-name527,15518
+(define parse-attribute-name530,15607
+(define parse-unexpanded-name	533,15700
+(define (simple-name-parser 539,15847
+(define parse-entity-name 543,16016
+(define parse-pi-name 544,16073
+(define parse-notation-name 545,16143
+(define parse-required-nmtoken	547,16205
+(define (process-namespace-decls 554,16376
+(define (expand-element-name 589,17591
+(define (expand-attribute-name 590,17651
+(define (expand-name 592,17714
+(define (lookup-namespace-prefix 603,18012
+(define (pi-parser 623,18551
+(define parse-pi:misc652,19460
+(define parse-pi:element655,19521
+(define parse-pi:internal-markup-decl658,19580
+(define parse-char-reference	670,19845
+(define match-decimal691,20514
+(define match-hexadecimal694,20583
+(define parse-reference	697,20651
+(define parse-reference-deferred706,20858
+(define parse-entity-reference-name	716,21032
+(define parse-entity-reference-deferred721,21152
+(define parse-parameter-entity-reference-name 724,21243
+(define parse-parameter-entity-reference729,21383
+(define (attribute-list-parser 736,21533
+(define (attribute-parser 755,22109
+(define parse-attribute-list767,22390
+(define parse-declaration-attributes771,22494
+(define (attribute-value-parser 775,22632
+(define parse-entity-value	791,23217
+(define *external-expansion?* 807,23735
+(define parse-attribute-value	809,23770
+(define (normalize-attribute-value 824,24221
+(define (trim-attribute-whitespace 858,25108
+(define (normalize-line-endings 884,25914
+(define (make-parameter-entity 912,26742
+(define (make-entity 919,27016
+(define (make-unparsed-entity 926,27254
+(define (dereference-parameter-entity 933,27522
+(define (find-parameter-entity 948,27962
+(define *parameter-entities*)953,28100
+(define (dereference-entity 957,28162
+(define (reparse-entity-value-string 978,28985
+(define (expand-entity-value 987,29214
+(define (find-entity 992,29372
+(define (add-html-entities!)1002,29672
+(define (predefined-entities)1008,29832
+(define *general-entities*)1015,30041
+(define *entity-expansion-nesting* 1016,30069
+(define (make-external-id 1018,30110
+(define parse-dtd	1025,30304
+(define (parse-internal-subset 1048,30891
+(define parse-decl-separator	1058,31191
+(define parse-internal-markup-decl	1073,31554
+(define parse-!element	1082,31728
+(define parse-!attlist	1142,33274
+(define parse-!attlist-type	1172,34065
+(define parse-!attlist-default	1197,34691
+(define parse-!entity	1207,35053
+(define parse-!notation	1235,35751
+(define parse-external-id	1251,36169
+(define parse-system-literal	1269,36548
+(define parse-public-id-literal	1272,36639
+(define parse-external-subset-decl	1286,37186
+(define external-decl-parser1292,37336
+(define (reparse-text 1313,38073
+(define parse-external-markup-decl	1327,38461
+(define parse-conditional-section	1349,39077
+(define-integrable conditional-start 1355,39219
+(define-integrable conditional-end 1356,39263
+(define parse-!include-section	1358,39306
+(define parse-!ignore-section	1369,39550
+(define match-!ignore-contents	1380,39799
+(define match-!ignore	1388,39981
+(define parse-parameterized-conditional1392,40123
+
+xml-rpc.scm,1948
+(define (xml-rpc 31,1057
+(define (->request 41,1491
+(define (xml-rpc:request 50,1732
+(define (xml-rpc:response 56,1926
+(define (xml-rpc:fault 59,2029
+(define (xml-rpc:simple-fault 69,2368
+(define (xml-rpc:condition->fault 75,2550
+(define (xml-rpc:parse-request 78,2661
+(define (valid-method-name? 91,3122
+(define char-set:method-name95,3272
+(define (xml-rpc:parse-response 104,3601
+(define (parse-params 124,4481
+(define *document*)129,4617
+(define *caller*)130,4637
+(define (require 132,4656
+(define (lose)136,4718
+(define condition-type:bad-xml-rpc-message139,4786
+(define error:bad-xml-rpc-message147,5090
+(define condition-type:xml-rpc-fault152,5245
+(define error:xml-rpc-fault161,5623
+(define (named-children 166,5762
+(define (all-children 182,6152
+(define (named-child 196,6471
+(define (%named-child 201,6576
+(define (single-child 207,6742
+(define (single-named-child 212,6890
+(define (decode-value 217,7035
+(define (decode-value-1 228,7359
+(define (content-string 270,8578
+(define (safe-call 278,8757
+(define *xml-rpc:decode-value-handler* 283,8924
+(define (encode-param 285,8969
+(define (encode-value 288,9041
+(define (encode-string 328,10282
+(define *xml-rpc:encode-value-handler* 338,10594
+(define (rpc-elt 340,10639
+(define rpc-elt:array 351,10885
+(define rpc-elt:base64 352,10928
+(define rpc-elt:boolean 353,10973
+(define rpc-elt:data 354,11020
+(define rpc-elt:date-time 355,11061
+(define rpc-elt:double 356,11121
+(define rpc-elt:fault 357,11166
+(define rpc-elt:i4 358,11209
+(define rpc-elt:int 359,11246
+(define rpc-elt:member 360,11285
+(define rpc-elt:method-call 361,11330
+(define rpc-elt:method-name 362,11386
+(define rpc-elt:method-response 363,11442
+(define rpc-elt:name 364,11506
+(define rpc-elt:nil 365,11547
+(define rpc-elt:param 366,11586
+(define rpc-elt:params 367,11629
+(define rpc-elt:string 368,11674
+(define rpc-elt:struct 369,11719
+(define rpc-elt:value 370,11764
+
+xml-struct.scm,2531
+(define-syntax define-xml-type31,1070
+(define-xml-type document95,3024
+(define-xml-type declaration103,3301
+(define-xml-type attribute108,3450
+(define-xml-type element112,3544
+(define-xml-type comment117,3671
+(define-xml-type processing-instructions120,3743
+(define-xml-type dtd127,3932
+(define-xml-type external-id144,4425
+(define-xml-type !element153,4634
+(define-xml-type !attlist187,5548
+(define-xml-type !entity210,6164
+(define-xml-type unparsed-!entity214,6266
+(define-xml-type parameter-!entity219,6382
+(define-xml-type !notation223,6494
+(define-xml-type entity-ref227,6573
+(define-xml-type parameter-entity-ref230,6629
+(define (string-composed-of? 233,6696
+(define (xml-whitespace-string? 237,6828
+(define xml-misc-content-item?241,7005
+(define xml-misc-content?246,7123
+(define (xml-version? 249,7189
+(define char-set:xml-version254,7379
+(define (xml-encoding? 257,7477
+(define char-set:xml-encoding267,7816
+(define (string-of-xml-chars? 270,7914
+(define xml-char-data?274,8079
+(define (canonicalize-char-data 277,8147
+(define (xml-attribute-list? 283,8357
+(define xml-content-item?295,8768
+(define xml-content?301,8890
+(define (canonicalize-content 304,8947
+(define (xml-element-child 337,9819
+(define (xml-element-children 348,10211
+(define (find-xml-attr 355,10452
+(define (xml-name-arg 370,10955
+(define (public-id? 377,11092
+(define char-set:xml-public-id381,11232
+(define (!attlist-type? 385,11356
+(define (!attlist-default? 401,11892
+(define (canonicalize-entity-value 410,12186
+(define-syntax define-xml-printer423,12579
+(define-xml-printer processing-instructions 437,13058
+(define-xml-printer dtd 438,13136
+(define-xml-printer !element 439,13174
+(define-xml-printer !attlist 440,13222
+(define-xml-printer !entity 441,13270
+(define-xml-printer unparsed-!entity 442,13316
+(define-xml-printer parameter-!entity 443,13380
+(define-xml-printer !notation 444,13446
+(define-xml-printer element446,13497
+(define-xml-printer external-id450,13590
+(define (xml-attribute-namespace-decl? 455,13703
+(define (xml-element-namespace-decls 460,13860
+(define (xml-element-namespace-uri 464,13977
+(define (xml-element-namespace-prefix 475,14237
+(define (xml-comment 489,14658
+(define (xml-stylesheet 500,14976
+(define (standard-xml-element-constructor 515,15416
+(define (standard-xml-element-predicate 525,15738
+(define (xml-attrs 531,15939
+(define (flatten-xml-element-content 571,17061
+(define (convert-xml-string-value 589,17543
+(define (nmtokens->string 597,17870
+
+xpath.scm,2728
+(define-generic nodify-item 31,1071
+(define-generic node-item 32,1120
+(define-generic parent-node 33,1154
+(define-generic node-children 34,1190
+(define-generic next-node 35,1228
+(define-generic prev-node 36,1262
+(define-generic node-attrs 37,1296
+(define-generic node-ns-decls 38,1331
+(define-generic parent-index 39,1369
+(define-generic node-name 40,1406
+(define-generic node-string 41,1440
+(define-class <node> 43,1477
+(define-method parent-node 46,1531
+(define-method node-children 47,1583
+(define-method next-node 48,1638
+(define-method prev-node 49,1688
+(define-method node-attrs 50,1738
+(define-method node-ns-decls 51,1790
+(define-method node-name 52,1845
+(define-class <parent-node> 54,1896
+(define-class <parented-node> 57,1971
+(define-class <content-node> 60,2044
+(define-method next-node 63,2125
+(define-method prev-node 75,2463
+(define nodify-children!87,2877
+(define (keep-matching 98,3218
+(define (delete-matching 106,3421
+(define (expand-name 114,3626
+(define (expand-prefix 120,3802
+(define-class <root-node> 131,4161
+(define make-root-node133,4205
+(define-method node-string 149,4663
+(define-class <element-node> 155,4861
+(define-method node-name 179,5785
+(define-method node-string 182,5874
+(define-class <attribute-node> 193,6196
+(define-class <namespace-node> 194,6246
+(define make-attribute-node196,6298
+(define make-namespace-node199,6385
+(define-method node-name 202,6472
+(define-method node-string 205,6565
+(define-method node-name 208,6661
+(define-method nodify-item 214,6862
+(define-syntax define-simple-content221,7062
+(define-simple-content <processing-instructions-node>236,7580
+(define-method node-name 239,7668
+(define-method node-string 242,7789
+(define-simple-content <comment-node> 246,7897
+(define-method node-string 248,7951
+(define-simple-content <string> 252,8043
+(define-method node-string 254,8089
+(define (axis:self 259,8173
+(define (axis:child 262,8225
+(define (axis:descendant 265,8276
+(define (axis:descendant-or-self 268,8373
+(define (axis:parent 271,8458
+(define (axis:ancestor 276,8569
+(define (axis:ancestor-or-self 281,8688
+(define (axis:following-sibling 284,8769
+(define (axis:preceding-sibling 290,8937
+(define (axis:following 301,9256
+(define (axis:preceding 307,9383
+(define (axis:attribute 313,9510
+(define (axis:namespace 316,9562
+(define (node-test:* 334,10082
+(define ((node-test:name 340,10272
+(define ((node-test:prefix:* 357,10771
+(define (node-test:text 372,11228
+(define (node-test:comment 378,11422
+(define ((node-test:processing-instruction 384,11625
+(define (node-test:node 396,12003
+(define (null-node-test 401,12158
+(define (all-node-test 402,12200
+(define ((simple-node-test 403,12237
+
+xml.pkg,221
+MIT/GNU Scheme is free software;10,323
+the Free Software Foundation;12,463
+the Free Software Foundation; either version 2 of the License,12,463
+the Free Software Foundation; either version 2 of the License, or 12,463
+
+load.scm,0
+
+ed-ffi.scm,0
+
+compile.scm,0

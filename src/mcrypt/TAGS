@@ -1,0 +1,66 @@
+
+mcrypt-check.scm,32
+(define (random-string 29,1041
+
+mcrypt.scm,1893
+(define (import-mcrypt)88,3403
+(define mcrypt-initialized? 116,4066
+(define mcrypt-algorithm-names-vector)117,4098
+(define mcrypt-mode-names-vector)118,4137
+(define (init!)120,4172
+(define (mcrypt-list-algorithms)128,4420
+(define (mcrypt-list-modes)135,4647
+(define (reset-mcrypt-variables!)142,4864
+(define (mcrypt-algorithm-names)149,5038
+(define (mcrypt-mode-names)153,5130
+(define-structure mcrypt-context 157,5213
+(define (guarantee-mcrypt-context 159,5269
+(define (guarantee-subbytevector 165,5521
+(define (mcrypt-open-module 174,5888
+(define (make-mcrypt-context-cleanup 186,6353
+(define (mcrypt-init 190,6482
+(define-integrable (make-mcrypt-transform! 203,6940
+(define mcrypt-encrypt!211,7269
+(define mcrypt-decrypt!218,7487
+(define (mcrypt-encrypt 225,7709
+(define (mcrypt-end 236,8111
+(define (mcrypt-generic-unary 245,8413
+(define mcrypt-self-test258,8758
+(define mcrypt-block-algorithm-mode?266,9058
+(define mcrypt-block-algorithm?275,9432
+(define mcrypt-block-mode?284,9775
+(define mcrypt-key-size293,10087
+(define mcrypt-supported-key-sizes302,10399
+(define (mcrypt-init-vector-size 320,11112
+(define (mcrypt-algorithm-name 324,11285
+(define (mcrypt-mode-name 328,11424
+(define (mcrypt-encrypt-port 332,11548
+(define (port-transformer 344,11928
+(define (call-with-buffer 360,12457
+(define (mcrypt-size-list-elements 372,12688
+(define (make-mcrypt-size-list)386,13085
+(define (make-mcrypt-size-list-cleanup 395,13434
+(define (free-mcrypt-size-list 404,13747
+(define (mcrypt-name-list-elements 415,14053
+(define (make-mcrypt-name-list)426,14393
+(define (make-mcrypt-name-list-cleanup 435,14742
+(define (free-mcrypt-name-list 445,15114
+(define cleanups 457,15477
+(define (add-cleanup 459,15500
+(define (remove-cleanup 462,15600
+(define (weak-assq 469,15758
+(define (cleanup-mcrypt-objects)477,15960
+(define (reset-cleanups!)492,16326
+
+optiondb.scm,33
+(define-load-option 'MCRYPT3,20
+
+mcrypt.pkg,221
+MIT/GNU Scheme is free software;10,323
+the Free Software Foundation;12,463
+the Free Software Foundation; either version 2 of the License,12,463
+the Free Software Foundation; either version 2 of the License, or 12,463
+
+make.scm,0
+
+compile.scm,0

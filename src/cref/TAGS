@@ -1,0 +1,181 @@
+
+anfile.scm,914
+(define (analyze-file 31,1079
+(define (analyze/top-level 34,1157
+(define (sort-expressions 45,1534
+(define (process-top-level 56,1965
+(define (analyze/top-level/definition 64,2235
+(define (analyze-and-compress 78,2722
+(define (analyze/expression 81,2816
+(define (analyze/expressions 84,2914
+(define (analyze/uninteresting 90,3101
+(define (analyze/error 93,3209
+(define (analyze/access 96,3288
+(define (analyze/variable 101,3462
+(define (analyze/assignment 104,3544
+(define (analyze/combination 108,3699
+(define (analyze/lambda 112,3884
+(define (analyze/error-combination 122,4191
+(define (analyze/delay 127,4426
+(define (analyze/sequence 130,4522
+(define (analyze/conditional 133,4622
+(define (analyze/disjunction 139,4829
+(define (analyze/comment 144,4992
+(define analyze/dispatch147,5092
+(define (eq-set-adjoin 163,5598
+(define (eq-set-union 168,5671
+(define (eq-set-difference 179,5860
+
+conpkg.scm,372
+(define (construct-external-descriptions 32,1131
+(define (new-extension-packages 56,1911
+(define (new-internal-binding? 62,2124
+(define (package/ancestry 70,2382
+(define (package-ancestry<? 78,2621
+(define (package->external 85,2849
+(define (split-links 126,4244
+(define (package-load->external 138,4669
+(define (map-clauses 150,5151
+(define (map-files 160,5400
+
+forpkg.scm,1124
+(define (format-packages 32,1106
+(define (format-packages-unusual 47,1553
+(define (write-separator 92,2926
+(define (format-package 96,3004
+(define (format-value-cells 127,4154
+(define (get-value-cells/unusual 140,4567
+(define (get-value-cells 151,4974
+(define (write-package-name 166,5453
+(define (format-package/files 172,5627
+(define (format-package/bindings 184,5964
+(define (format-package/inherited 201,6450
+(define (format-package/imports 215,7051
+(define (format-package/exports 220,7267
+(define (format-exports 224,7465
+(define (local-map/export 243,8194
+(define (local-map/import 246,8272
+(define (format-bindings 249,8350
+(define (classify-bindings-by-package 261,8726
+(define (format-references 275,9162
+(define (format-expressions 284,9459
+(define (classify-expression-names 305,10186
+(define (expression->name 313,10466
+(define (write-label 332,11109
+(define (write-strings/compact 337,11215
+(define (write-items/miser 357,11786
+(define (new-indentation 365,11979
+(define (binding/name-string 368,12056
+(define (package/name-string 371,12136
+(define (package-name->string 374,12224
+
+mset.scm,70
+(define (multiset->set 31,1069
+(define (multiset-difference 39,1261
+
+object.scm,1353
+(define-structure (package-description31,1080
+(define-structure (pmodel 42,1367
+(define (pmodel/object-pathname 50,1613
+(define-structure (package53,1712
+(define-integrable (package/n-files 68,2051
+(define-integrable (package/root? 71,2133
+(define-integrable (package/find-reference 74,2211
+(define-integrable (package/put-reference! 78,2356
+(define-integrable (package/find-binding 82,2508
+(define-integrable (package/put-binding! 86,2647
+(define (ancestor-package? 90,2787
+(define-integrable (file-case/type 96,2952
+(define-integrable (file-case/clauses 99,3018
+(define-integrable (file-case-clause/keys 102,3087
+(define-integrable (file-case-clause/files 105,3154
+(define-structure (package-load108,3223
+(define-structure (binding115,3380
+(define (make-binding 131,3820
+(define-integrable (binding/expressions 138,4051
+(define-integrable (binding/source-binding 141,4158
+(define (binding/internal? 144,4271
+(define-structure (value-cell147,4358
+(define-structure (link154,4517
+(define (make-link 162,4739
+(define-structure (expression169,5044
+(define-structure (reference178,5276
+(define (symbol-list=191,5658
+(define (symbol-list<? 198,5811
+(define (package<? 205,5984
+(define (name->string 209,6106
+(define-integrable (name<? 214,6224
+(define-integrable (binding<? 217,6305
+(define-integrable (reference<? 220,6387
+
+redpkg.scm,1496
+(define (read-package-model 32,1103
+(define (find-global-definitions 55,1804
+(define (sort-descriptions 82,2707
+(define (interesting-package-to-load? 131,4178
+(define (read-file-analyses! 136,4418
+(define-structure (analysis-cache146,4738
+(define (cache-file-analyses! 154,4940
+(define (cache-file-analysis! 181,5750
+(define (analysis-cache/lookup 204,6491
+(define (record-file-analysis! 211,6717
+(define (resolve-references! 241,7726
+(define (resolve-reference! 247,7896
+(define (read-and-parse-model 260,8233
+(define (parse-package-expressions 266,8390
+(define (parse-package-expression 271,8570
+(define (parse-package-definition 327,10344
+(define (parse-package-extension 346,10992
+(define (check-package-options 355,11311
+(define (process-package-options 365,11627
+(define (parse-name 427,13647
+(define (parse-filenames 432,13755
+(define (parse-file-case 437,13937
+(define-integrable (parse-filename 453,14419
+(define (parse-initialization 456,14490
+(define (parse-import/export 463,14710
+(define (check-list 481,15270
+(define (descriptions->pmodel 487,15378
+(define (process-globals-info 550,17270
+(define (for-each-exported-name 600,19010
+(define (package-lookup 618,19586
+(define (name->package 624,19801
+(define (process-package-description 629,19926
+(define primitive-package-name654,20874
+(define (process-package-load 657,20973
+(define (bind! 665,21249
+(define (link! 672,21546
+(define (intern-binding! 700,22556
+(define (make-reference 714,22993
+
+toplev.scm,599
+(define cref/source-root 31,1075
+(define cref/object-root 32,1111
+(define (cref/source-pathname 34,1148
+(define (cref/object-pathname 38,1276
+(define (generate/common 43,1461
+(define (cref/generate-trivial-constructor 53,1849
+(define (for-each-os-type 62,2148
+(define (cref/package-files 68,2419
+(define os-types78,2709
+(define cref/generate-cref81,2742
+(define cref/generate-cref-unusual86,2889
+(define cref/generate-constructors91,3052
+(define cref/generate-all97,3283
+(define (write-external-descriptions 103,3497
+(define (write-cref 111,3874
+(define (write-cref-unusual 123,4304
+
+cref.pkg,221
+MIT/GNU Scheme is free software;10,323
+the Free Software Foundation;12,463
+the Free Software Foundation; either version 2 of the License,12,463
+the Free Software Foundation; either version 2 of the License, or 12,463
+
+triv.pkg,221
+MIT/GNU Scheme is free software;10,323
+the Free Software Foundation;12,463
+the Free Software Foundation; either version 2 of the License,12,463
+the Free Software Foundation; either version 2 of the License, or 12,463
+
+make.scm,0
