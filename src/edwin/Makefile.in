@@ -271,13 +271,13 @@ scmlib_subdir = $(scmlibdir)edwin
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
 scmlib_sub_DATA = $(sources) $(binaries) loadef.scm edwin.bld make.scm \
 	edwin.pkg edwin-@MIT_SCHEME_OS_SUFFIX@.pkd TUTORIAL
-sources = abbrev.scm ansi.scm argred.scm artdebug.scm autold.scm \
-	autosv.scm basic.scm bios.scm bufcom.scm buffer.scm buffrm.scm \
-	bufinp.scm bufmnu.scm bufout.scm bufset.scm bufwfs.scm \
-	bufwin.scm bufwiu.scm bufwmc.scm c-mode.scm calias.scm \
-	cinden.scm class.scm clscon.scm clsmac.scm comatch.scm \
-	comhst.scm comint.scm comman.scm compile.scm comred.scm \
-	comtab.scm comwin.scm curren.scm dabbrev.scm \
+sources = abbrev.scm adapters.scm ansi.scm argred.scm artdebug.scm \
+	autold.scm autosv.scm basic.scm bios.scm bufcom.scm buffer.scm \
+	buffrm.scm bufinp.scm bufmnu.scm bufout.scm bufset.scm \
+	bufwfs.scm bufwin.scm bufwiu.scm bufwmc.scm c-mode.scm \
+	calias.scm cinden.scm class.scm clscon.scm clsmac.scm \
+	comatch.scm comhst.scm comint.scm comman.scm compile.scm \
+	comred.scm comtab.scm comwin.scm curren.scm dabbrev.scm \
 	debian-changelog.scm debug.scm debuge.scm diff.scm dired.scm \
 	dirunx.scm dirw32.scm display.scm docstr.scm dos.scm \
 	doscom.scm dosfile.scm dosproc.scm dosshell.scm ed-ffi.scm \
@@ -303,68 +303,69 @@ sources = abbrev.scm ansi.scm argred.scm artdebug.scm autold.scm \
 	verilog.scm vhdl.scm webster.scm win32.scm win32com.scm \
 	wincom.scm window.scm winout.scm world-monitor.scm xform.scm \
 	xterm.scm
-binaries = abbrev.bci abbrev.com ansi.bci ansi.com argred.bci \
-	argred.com artdebug.bci artdebug.com autold.bci autold.com \
-	autosv.bci autosv.com basic.bci basic.com bios.bci bios.com \
-	bufcom.bci bufcom.com buffer.bci buffer.com buffrm.bci \
-	buffrm.com bufinp.bci bufinp.com bufmnu.bci bufmnu.com \
-	bufout.bci bufout.com bufset.bci bufset.com bufwfs.bci \
-	bufwfs.com bufwin.bci bufwin.com bufwiu.bci bufwiu.com \
-	bufwmc.bci bufwmc.com c-mode.bci c-mode.com calias.bci \
-	calias.com cinden.bci cinden.com class.bci class.com \
-	clscon.bci clscon.com clsmac.bci clsmac.com comatch.bci \
-	comatch.com comhst.bci comhst.com comint.bci comint.com \
-	comman.bci comman.com compile.bci compile.com comred.bci \
-	comred.com comtab.bci comtab.com comwin.bci comwin.com \
-	curren.bci curren.com dabbrev.bci dabbrev.com \
-	debian-changelog.bci debian-changelog.com debug.bci debug.com \
-	debuge.bci debuge.com diff.bci diff.com dired.bci dired.com \
-	dirunx.bci dirunx.com dirw32.bci dirw32.com display.bci \
-	display.com docstr.bci docstr.com dos.bci dos.com doscom.bci \
-	doscom.com dosfile.bci dosfile.com dosproc.bci dosproc.com \
-	dosshell.bci dosshell.com ed-ffi.bci ed-ffi.com editor.bci \
-	editor.com edtfrm.bci edtfrm.com edtstr.bci edtstr.com \
-	evlcom.bci evlcom.com eystep.bci eystep.com filcom.bci \
-	filcom.com fileio.bci fileio.com fill.bci fill.com grpops.bci \
-	grpops.com hlpcom.bci hlpcom.com htmlmode.bci htmlmode.com \
-	image.bci image.com info.bci info.com input.bci input.com \
-	intmod.bci intmod.com iserch.bci iserch.com javamode.bci \
-	javamode.com key-w32.bci key-w32.com keymap.bci keymap.com \
-	keyparse.bci keyparse.com kilcom.bci kilcom.com kmacro.bci \
-	kmacro.com lincom.bci lincom.com linden.bci linden.com \
-	lisppaste.bci lisppaste.com loadef.bci loadef.com lspcom.bci \
-	lspcom.com macros.bci macros.com make.bci make.com malias.bci \
-	malias.com manual.bci manual.com midas.bci midas.com \
-	modefs.bci modefs.com modes.bci modes.com modlin.bci \
-	modlin.com modwin.bci modwin.com motcom.bci motcom.com \
-	motion.bci motion.com mousecom.bci mousecom.com nntp.bci \
-	nntp.com notify.bci notify.com nvector.bci nvector.com \
-	occur.bci occur.com outline.bci outline.com paredit.bci \
-	paredit.com pasmod.bci pasmod.com paths.bci paths.com \
-	print.bci print.com process.bci process.com prompt.bci \
-	prompt.com pwedit.bci pwedit.com pwparse.bci pwparse.com \
-	rcsparse.bci rcsparse.com reccom.bci reccom.com regcom.bci \
-	regcom.com regexp.bci regexp.com regops.bci regops.com \
-	replaz.bci replaz.com rfc822.bci rfc822.com ring.bci ring.com \
-	rmail.bci rmail.com rmailsrt.bci rmailsrt.com rmailsum.bci \
-	rmailsum.com schmod.bci schmod.com scrcom.bci scrcom.com \
-	screen.bci screen.com search.bci search.com sendmail.bci \
-	sendmail.com sercom.bci sercom.com shell.bci shell.com \
-	simple.bci simple.com snr.bci snr.com sort.bci sort.com \
-	string.bci string.com strpad.bci strpad.com strtab.bci \
-	strtab.com struct.bci struct.com syntax.bci syntax.com \
-	tagutl.bci tagutl.com techinfo.bci techinfo.com telnet.bci \
-	telnet.com termcap.bci termcap.com texcom.bci texcom.com \
-	things.bci things.com tparse.bci tparse.com tterm.bci \
-	tterm.com tximod.bci tximod.com txtprp.bci txtprp.com undo.bci \
-	undo.com unix.bci unix.com utils.bci utils.com utlwin.bci \
-	utlwin.com vc.bci vc.com vc-bzr.bci vc-bzr.com vc-cvs.bci \
-	vc-cvs.com vc-git.bci vc-git.com vc-rcs.bci vc-rcs.com \
-	vc-svn.bci vc-svn.com verilog.bci verilog.com vhdl.bci \
-	vhdl.com webster.bci webster.com win32.bci win32.com \
-	win32com.bci win32com.com wincom.bci wincom.com window.bci \
-	window.com winout.bci winout.com world-monitor.bci \
-	world-monitor.com xform.bci xform.com xterm.bci xterm.com
+binaries = abbrev.bci abbrev.com adapters.bci adapters.com ansi.bci \
+	ansi.com argred.bci argred.com artdebug.bci artdebug.com \
+	autold.bci autold.com autosv.bci autosv.com basic.bci \
+	basic.com bios.bci bios.com bufcom.bci bufcom.com buffer.bci \
+	buffer.com buffrm.bci buffrm.com bufinp.bci bufinp.com \
+	bufmnu.bci bufmnu.com bufout.bci bufout.com bufset.bci \
+	bufset.com bufwfs.bci bufwfs.com bufwin.bci bufwin.com \
+	bufwiu.bci bufwiu.com bufwmc.bci bufwmc.com c-mode.bci \
+	c-mode.com calias.bci calias.com cinden.bci cinden.com \
+	class.bci class.com clscon.bci clscon.com clsmac.bci \
+	clsmac.com comatch.bci comatch.com comhst.bci comhst.com \
+	comint.bci comint.com comman.bci comman.com compile.bci \
+	compile.com comred.bci comred.com comtab.bci comtab.com \
+	comwin.bci comwin.com curren.bci curren.com dabbrev.bci \
+	dabbrev.com debian-changelog.bci debian-changelog.com \
+	debug.bci debug.com debuge.bci debuge.com diff.bci diff.com \
+	dired.bci dired.com dirunx.bci dirunx.com dirw32.bci \
+	dirw32.com display.bci display.com docstr.bci docstr.com \
+	dos.bci dos.com doscom.bci doscom.com dosfile.bci dosfile.com \
+	dosproc.bci dosproc.com dosshell.bci dosshell.com ed-ffi.bci \
+	ed-ffi.com editor.bci editor.com edtfrm.bci edtfrm.com \
+	edtstr.bci edtstr.com evlcom.bci evlcom.com eystep.bci \
+	eystep.com filcom.bci filcom.com fileio.bci fileio.com \
+	fill.bci fill.com grpops.bci grpops.com hlpcom.bci hlpcom.com \
+	htmlmode.bci htmlmode.com image.bci image.com info.bci \
+	info.com input.bci input.com intmod.bci intmod.com iserch.bci \
+	iserch.com javamode.bci javamode.com key-w32.bci key-w32.com \
+	keymap.bci keymap.com keyparse.bci keyparse.com kilcom.bci \
+	kilcom.com kmacro.bci kmacro.com lincom.bci lincom.com \
+	linden.bci linden.com lisppaste.bci lisppaste.com loadef.bci \
+	loadef.com lspcom.bci lspcom.com macros.bci macros.com \
+	make.bci make.com malias.bci malias.com manual.bci manual.com \
+	midas.bci midas.com modefs.bci modefs.com modes.bci modes.com \
+	modlin.bci modlin.com modwin.bci modwin.com motcom.bci \
+	motcom.com motion.bci motion.com mousecom.bci mousecom.com \
+	nntp.bci nntp.com notify.bci notify.com nvector.bci \
+	nvector.com occur.bci occur.com outline.bci outline.com \
+	paredit.bci paredit.com pasmod.bci pasmod.com paths.bci \
+	paths.com print.bci print.com process.bci process.com \
+	prompt.bci prompt.com pwedit.bci pwedit.com pwparse.bci \
+	pwparse.com rcsparse.bci rcsparse.com reccom.bci reccom.com \
+	regcom.bci regcom.com regexp.bci regexp.com regops.bci \
+	regops.com replaz.bci replaz.com rfc822.bci rfc822.com \
+	ring.bci ring.com rmail.bci rmail.com rmailsrt.bci \
+	rmailsrt.com rmailsum.bci rmailsum.com schmod.bci schmod.com \
+	scrcom.bci scrcom.com screen.bci screen.com search.bci \
+	search.com sendmail.bci sendmail.com sercom.bci sercom.com \
+	shell.bci shell.com simple.bci simple.com snr.bci snr.com \
+	sort.bci sort.com string.bci string.com strpad.bci strpad.com \
+	strtab.bci strtab.com struct.bci struct.com syntax.bci \
+	syntax.com tagutl.bci tagutl.com techinfo.bci techinfo.com \
+	telnet.bci telnet.com termcap.bci termcap.com texcom.bci \
+	texcom.com things.bci things.com tparse.bci tparse.com \
+	tterm.bci tterm.com tximod.bci tximod.com txtprp.bci \
+	txtprp.com undo.bci undo.com unix.bci unix.com utils.bci \
+	utils.com utlwin.bci utlwin.com vc.bci vc.com vc-bzr.bci \
+	vc-bzr.com vc-cvs.bci vc-cvs.com vc-git.bci vc-git.com \
+	vc-rcs.bci vc-rcs.com vc-svn.bci vc-svn.com verilog.bci \
+	verilog.com vhdl.bci vhdl.com webster.bci webster.com \
+	win32.bci win32.com win32com.bci win32com.com wincom.bci \
+	wincom.com window.bci window.com winout.bci winout.com \
+	world-monitor.bci world-monitor.com xform.bci xform.com \
+	xterm.bci xterm.com
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd \
 	*.bld stamp-scheme
 
@@ -782,6 +783,8 @@ uninstall-am: uninstall-scmlib_subDATA
 
 abbrev.bci: stamp-scheme
 abbrev.com: stamp-scheme
+adapters.bci: stamp-scheme
+adapters.com: stamp-scheme
 ansi.bci: stamp-scheme
 ansi.com: stamp-scheme
 argred.bci: stamp-scheme
