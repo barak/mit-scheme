@@ -431,7 +431,7 @@ USA.
 	     (nread (read-bytevector! buffer port)))
 	;; Check to make sure that the length didn't change under us
 	;; while we were reading.  If it did, this is no good.
-	(and (= nread length)
+	(and (eqv? nread length)
 	     (object-new-type type-code:legacy-string buffer))))))
 
 (define (string-port/position port)
