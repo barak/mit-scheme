@@ -1971,8 +1971,26 @@ This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
 @deffnx procedure flo:asin flonum
 @deffnx procedure flo:acos flonum
 @deffnx procedure flo:atan flonum
+@deffnx procedure flo:sinh flonum
+@deffnx procedure flo:cosh flonum
+@deffnx procedure flo:tanh flonum
+@deffnx procedure flo:asinh flonum
+@deffnx procedure flo:acosh flonum
+@deffnx procedure flo:atanh flonum
 @deffnx procedure flo:sqrt flonum
+@deffnx procedure flo:cbrt flonum
 @deffnx procedure flo:expt flonum1 flonum2
+@deffnx procedure flo:erf flonum
+@deffnx procedure flo:erfc flonum
+@deffnx procedure flo:hypot flonum1 flonum2
+@deffnx procedure flo:j0 flonum
+@deffnx procedure flo:j1 flonum
+@deffnx procedure flo:jn flonum
+@deffnx procedure flo:y0 flonum
+@deffnx procedure flo:y1 flonum
+@deffnx procedure flo:yn flonum
+@deffnx procedure flo:gamma flonum
+@deffnx procedure flo:lgamma flonum
 @deffnx procedure flo:floor flonum
 @deffnx procedure flo:ceiling flonum
 @deffnx procedure flo:truncate flonum
@@ -1985,11 +2003,39 @@ These procedures are flonum versions of the corresponding procedures.
 When compiled, they do not check the types of their arguments.
 @end deffn
 
+@deffn procedure flo:expm1 flonum
+@deffnx procedure flo:log1p flonum
+Flonum versions of @code{expm1} and @code{log1p} with restricted
+domains: @code{flo:expm1} is defined only on inputs bounded below
+@iftex
+@tex
+$\log 2$
+@end tex
+@end iftex
+@ifnottex
+log(2)
+@end ifnottex
+in magnitude, and @code{flo:log1p} is defined only on inputs bounded
+below
+@iftex
+@tex
+$1 - \sqrt{1/2}$
+@end tex
+@end iftex
+@ifnottex
+@math{1 - sqrt(1/2)}
+@end ifnottex
+in magnitude.
+Callers must use @code{(- (flo:exp x) 1)} or @code{(flo:log (+ 1 x))}
+outside these ranges.
+@end deffn
+
 @deffn procedure flo:atan2 flonum1 flonum2
 @findex atan
 This is the flonum version of @code{atan} with two arguments.  When
 compiled, it does not check the types of its arguments.
 @end deffn
+
 
 @deffn procedure flo:min x1 x2
 @deffnx procedure flo:max x1 x2
@@ -2030,6 +2076,45 @@ scalbn x e := x * r^e.
 @end ifnottex
 In MIT/GNU Scheme, these procedures are the same; they are both
 provided to make it clearer which operation is meant.
+@end deffn
+
+@deffn procedure flo:logb x
+For nonzero finite @var{x}, returns
+@iftex
+@tex
+$\lfloor \log_r x\rfloor$
+@end tex
+@end iftex
+@ifnottex
+@math{floor(log(x)/log(r))}
+@end ifnottex
+as an exact integer, where @math{r} is the floating-point radix.
+
+For all other inputs, raises invalid-operation and returns @code{#f}.
+@end deffn
+
+@deffn procedure flo:nextafter x1 x2
+Returns the next floating-point number after @var{x1} in the direction
+of @var{x2}.
+
+@example
+(flo:nextafter 0. -1.)         @result{} -4.9406564584124654e-324
+@end example
+@end deffn
+
+@deffn procedure flo:copysign x1 x2
+Returns a floating-point number with the magnitude of @var{x1} and the
+sign of @var{x2}.
+
+@example
+@group
+(flo:copysign 123. 456.)       @result{} 123.
+(flo:copysign +inf.0 -1)       @result{} -inf.0
+(flo:copysign 0. -1)           @result{} -0.
+(flo:copysign -0. 0.)          @result{} 0.
+(flo:copysign -nan.123 0.)     @result{} +nan.123
+@end group
+@end example
 @end deffn
 
 @defvr constant flo:radix
