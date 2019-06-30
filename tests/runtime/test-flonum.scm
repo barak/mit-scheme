@@ -235,15 +235,18 @@ USA.
    (list 2. (* 2 flo:ulp-of-one))
    (list 3. (* 2 flo:ulp-of-one))
    (list (- 3. (* 2 flo:ulp-of-one)) (* 2 flo:ulp-of-one))
-   (list (flo:+inf.0) (flo:+inf.0)))
-  (lambda (x u)
+   (list (flo:+inf.0) (flo:+inf.0))
+   (list +nan.123 +nan.123 expect-failure))
+  (lambda (x u #!optional xfail)
     (flo:with-trapped-exceptions 0
       (lambda ()
         (let ((u
                (if (string? u)
                    (string->number u)
                    u)))
-          (assert-eqv (flo:ulp x) u))))))
+          (with-expected-failure xfail
+            (lambda ()
+              (assert-eqv-nan (flo:ulp x) u))))))))
 
 (define-enumerated-test 'copysign
   `((0. 0. 0.)
