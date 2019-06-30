@@ -2036,6 +2036,41 @@ This is the flonum version of @code{atan} with two arguments.  When
 compiled, it does not check the types of its arguments.
 @end deffn
 
+@deffn procedure flo:signed-lgamma x
+Returns two values,
+@iftex
+@tex
+$$m = \log \left|\Gamma(x)\right| \quad\hbox{and}\quad s = \mathop{\rm sign} \Gamma(x),$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+@group
+m = log(|Gamma(@var{x})|)
+
+and
+
+s = sign(Gamma(@var{x})),
+@end group
+@end example
+
+@end ifnottex
+respectively a flonum and an exact integer either @code{-1} or
+@code{1}, so that
+@iftex
+@tex
+$$\Gamma(x) = s \cdot e^m.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+Gamma(x) = s * e^m.
+@end example
+
+@end ifnottex
+@end deffn
 
 @deffn procedure flo:min x1 x2
 @deffnx procedure flo:max x1 x2

@@ -334,6 +334,26 @@ DEFINE_PRIMITIVE ("FLONUM-LGAMMA", Prim_flonum_lgamma, 1, 1, 0)
   FLONUM_RESULT (result);
 }
 
+DEFINE_PRIMITIVE ("FLONUM-SIGNED-LGAMMA", Prim_flonum_signed_lgamma, 1, 1, 0)
+{
+  double x;
+  double result;
+  int sign;
+  PRIMITIVE_HEADER (1);
+
+  x = (arg_flonum (1));
+#ifdef HAVE_LGAMMA_R
+  result = (lgamma_r (x, (&sign)));
+#else
+  result = (lgamma (x));
+  sign = signgam;
+#endif
+
+  assert (LONG_TO_FIXNUM_P (sign));
+  PRIMITIVE_RETURN
+    (cons ((double_to_flonum (result)), (LONG_TO_FIXNUM (sign))));
+}
+
 DEFINE_PRIMITIVE ("FLONUM-GAMMA", Prim_flonum_gamma, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (tgamma)
 DEFINE_PRIMITIVE ("FLONUM-ERF", Prim_flonum_erf, 1, 1, 0)

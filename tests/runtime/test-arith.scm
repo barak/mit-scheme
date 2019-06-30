@@ -1098,3 +1098,11 @@ USA.
         (if (not (= x y))
             (assert-except/no-traps (flo:exception:inexact-result)
                                     (lambda () (exact->inexact x))))))))
+
+(define-enumerated-test 'flo:lgamma
+  (list (list -0.123))
+  (lambda (x)
+    (receive (log-gamma sign) (flo:signed-lgamma x)
+      (assert-eqv (flo:lgamma x) log-gamma)
+      (let ((gamma (* sign (exp log-gamma))))
+	(assert-<= (relerr (flo:gamma x) gamma) 1e-15)))))

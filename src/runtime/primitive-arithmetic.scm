@@ -274,7 +274,7 @@ USA.
 
 (define (flo:total-order-mag x y)
   (flo:total-order (flo:abs x) (flo:abs y)))
-
+
 (define (flo:total< x y)
   (if (or (flo:nan? x) (flo:nan? y))
       ;; Must handle NaNs first and carefully to avoid exception on
@@ -420,6 +420,10 @@ USA.
   (if (and (flo:finite? x) (not (flo:safe-zero? x)))
       (fix:- (cdr ((ucode-primitive flonum-normalize 1) x)) 1)
       (begin (flo:raise-exceptions! (flo:exception:invalid-operation)) #f)))
+
+(define (flo:signed-lgamma x)
+  (let ((p ((ucode-primitive flonum-signed-lgamma 1) x)))
+    (values (car p) (cdr p))))
 
 ;;;; Exact integers
 

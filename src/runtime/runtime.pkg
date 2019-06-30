@@ -359,6 +359,7 @@ USA.
 	  flo:safe>
 	  flo:safe>=
 	  flo:sign-negative?
+	  flo:signed-lgamma
 	  flo:sin
 	  flo:sinh
 	  flo:snan
