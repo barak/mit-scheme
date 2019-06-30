@@ -375,11 +375,13 @@ USA.
 ;;; this yields some NaN.
 
 (define (flo:ulp x)
-  (if (flo:finite? x)
-      (let* ((x0 (flo:abs x))
-             (x1 (flo:nextafter x0 (flo:+inf.0))))
-        (flo:- x1 x0))
-      (flo:+inf.0)))
+  (cond ((flo:finite? x)
+	 (let* ((x0 (flo:abs x))
+		(x1 (flo:nextafter x0 (flo:+inf.0))))
+	   (flo:- x1 x0)))
+	((flo:infinite? x)
+	 (flo:+inf.0))
+	(else x)))
 
 (define (int:->flonum n)
   ((ucode-primitive integer->flonum 2) n #b10))

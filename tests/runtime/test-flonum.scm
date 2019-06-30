@@ -236,7 +236,7 @@ USA.
    (list 3. (* 2 flo:ulp-of-one))
    (list (- 3. (* 2 flo:ulp-of-one)) (* 2 flo:ulp-of-one))
    (list (flo:+inf.0) (flo:+inf.0))
-   (list +nan.123 +nan.123 expect-failure))
+   (list +nan.123 +nan.123))
   (lambda (x u #!optional xfail)
     (flo:with-trapped-exceptions 0
       (lambda ()
