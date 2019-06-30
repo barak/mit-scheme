@@ -206,7 +206,7 @@ Numbers
 * Numerical operations::
 * Numerical input and output::
 * Fixnum and Flonum Operations::
-* Random Numbers::
+* Random Number Generation::
 
 Fixnum and Flonum Operations
 
