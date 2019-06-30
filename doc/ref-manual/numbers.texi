@@ -2140,8 +2140,8 @@ These procedures implement the @acronym{IEEE 754-2008} total ordering
 on floating-point values and their magnitudes.
 Here the ``magnitude'' of a floating-point value is a floating-point
 value with positive sign bit and everything else the same; e.g.,
-@code{+nan.123} is the ``magnitude'' of @code{-nan.123} and @code{0.}
-is the ``magnitude'' of @code{-0.}.
+@code{+nan.123} is the ``magnitude'' of @code{-nan.123} and @code{0.0}
+is the ``magnitude'' of @code{-0.0}.
 
 @itemize @bullet
 @item
