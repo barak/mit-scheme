@@ -415,6 +415,10 @@ USA.
 (define-enumerated-test 'logsumexp-edges
   (list
    (list '() (flo:-inf.0))
+   (list '(1) 1)
+   (list '(1/2) 1/2)
+   (list '(-1) -1)
+   (list '(-1/2) -1/2)
    (list '(-1000) -1000)
    (list '(-1000.) -1000.)
    (list (list (flo:-inf.0)) (flo:-inf.0))
