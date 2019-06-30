@@ -1298,6 +1298,20 @@ inexact numbers are representable as exact numbers.
 The procedure @code{inexact->exact} has been deprecated by @urseven{}.
 @end deffn
 
+@deffn procedure copysign x1 x2
+Returns a real number with the magnitude of @var{x1} and the sign of
+@var{x2}.
+
+@example
+@group
+(copysign 123 -1)              @result{} -123
+(copysign 0. -1)               @result{} -0.
+(copysign -0. 0.)              @result{} 0.
+(copysign -nan.123 0.)         @result{} +nan.123
+@end group
+@end example
+@end deffn
+
 @node Numerical input and output, Fixnum and Flonum Operations, Numerical operations, Numbers
 @section Numerical input and output
 @cindex numerical input and output
