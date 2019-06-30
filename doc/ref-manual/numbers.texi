@@ -1703,6 +1703,97 @@ floating-point number.  In MIT/GNU Scheme, all inexact real numbers are
 flonums.  For this reason, constants such as @code{0.} and @code{2.3}
 are guaranteed to be flonums.
 
+MIT/GNU Scheme follows the @acronym{IEEE 754-2008} floating-point
+standard, using binary64 arithmetic for flonums.
+All floating-point values are classified into:
+
+@table @strong
+@item normal
+@cindex floating-point number, normal
+@cindex normal floating-point number
+Numbers of the form
+@iftex
+@tex
+$$r^e (1 + f/r^p)$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+r^e (1 + f/r^p)
+@end example
+
+@end ifnottex
+where @math{r}, the radix, is a positive integer, here always @math{2};
+@math{p}, the precision, is a positive integer, here always @math{53};
+@math{e}, the exponent, is an integer within a limited range, here
+always @math{-1022} to @math{1023} (inclusive); and @math{f}, the
+fractional part of the significand, is a @math{(p-1)}-bit unsigned
+integer,
+
+@item subnormal
+@cindex floating-point number, subnormal
+@cindex subnormal floating-point number
+@cindex denormal
+Fixed-point numbers near zero that allow for gradual underflow.
+Every subnormal number is an integer multiple of the smallest
+subnormal number.
+Subnormals were also historically called ``denormal''.
+
+@item zero
+@cindex floating-point number, zero
+@cindex zero
+@cindex signed zero
+There are two distinguished zero values, one with ``negative'' sign
+bit and one with ``positive'' sign bit.
+
+The two zero values are considered numerically equal, but serve to
+distinguish paths converging to zero along different branch cuts and
+so some operations yield different results for differently signed
+zero values.
+
+@item infinity
+@vindex +inf.0
+@vindex -inf.0
+@cindex positive infinity (@code{+inf.0})
+@cindex negative infinity (@code{-inf.0})
+@cindex floating-point number, infinite
+@cindex infinity (@code{+inf.0}, @code{-inf.0})
+@cindex extended real line
+There are two distinguished infinity values, negative infinity or
+@code{-inf.0} and positive infinity or @code{+inf.0}, representing
+overflow on the real line.
+
+@item NaN
+@vindex NaN (not a number)
+@vindex +nan.0
+@vindex -nan.0
+@vindex +snan.1
+@vindex -snan.1
+@cindex floating-point number, not a number
+@cindex not a number (NaN, @code{+nan.0})
+@cindex NaN
+There are @math{4 r^{p-2} - 2} distinguished not-a-number values,
+representing invalid operations or uninitialized data, distinguished
+by their negative/positive sign bit, a quiet/signalling bit, and a
+@math{(p-2)}-digit unsigned integer payload which must not be zero for
+signalling NaNs.
+
+@cindex quiet NaN
+@cindex signalling NaN
+@cindex invalid-operation exception
+Arithmetic on @strong{quiet} NaNs propagates them without raising any
+floating-point exceptions.
+In contrast, arithmetic on @strong{signalling} NaNs raises the
+floating-point invalid-operation exception.
+Quiet NaNs are written @code{+nan.123}, @code{-nan.0}, etc.
+Signalling NaNs are written @code{+snan.123}, @code{-snan.1}, etc.
+The notation @code{+snan.0} and @code{-snan.0} is not allowed: what
+would be the encoding for them actually means @code{+inf.0} and
+@code{-inf.0}.
+
+@end table
+
 @deffn procedure flo:flonum? object
 @cindex type predicate, for flonum
 Returns @code{#t} if @var{object} is a flonum; otherwise returns @code{#f}.
@@ -1710,10 +1801,47 @@ Returns @code{#t} if @var{object} is a flonum; otherwise returns @code{#f}.
 
 @deffn procedure flo:= flonum1 flonum2
 @deffnx procedure flo:< flonum1 flonum2
+@deffnx procedure flo:<= flonum1 flonum2
 @deffnx procedure flo:> flonum1 flonum2
+@deffnx procedure flo:>= flonum1 flonum2
+@deffnx procedure flo:<> flonum1 flonum2
 @cindex equivalence predicate, for flonums
+@cindex ordered comparison
+@cindex floating-point comparison, ordered
+@cindex trichotomy
 These procedures are the standard order and equality predicates on
 flonums.  When compiled, they do not check the types of their arguments.
+These predicates raise floating-point invalid-operation exceptions on
+NaN arguments; in other words, they are ``ordered comparisons''.
+When floating-point exception traps are disabled, they return false
+when any argument is NaN.
+
+Every pair of floating-point numbers --- excluding NaN --- exhibits
+ordered trichotomy: they are related either by @code{flo:=},
+@code{flo:<}, or @code{flo:>}.
+@end deffn
+
+@deffn procedure flo:safe= flonum1 flonum2
+@deffnx procedure flo:safe< flonum1 flonum2
+@deffnx procedure flo:safe<= flonum1 flonum2
+@deffnx procedure flo:safe> flonum1 flonum2
+@deffnx procedure flo:safe>= flonum1 flonum2
+@deffnx procedure flo:safe<> flonum1 flonum2
+@deffnx procedure flo:unordered? flonum1 flonum2
+@cindex equivalence predicate, for flonums
+@cindex unordered comparison
+@cindex floating-point comparison, unordered
+@cindex tetrachotomy
+These procedures are the standard order and equality predicates on
+flonums.  When compiled, they do not check the types of their arguments.
+These predicates do not raise floating-point exceptions, and simply
+return false on NaN arguments, except @code{flo:unordered?} which
+returns true iff at least one argument is NaN; in other words, they
+are ``unordered comparisons''.
+
+Every pair of floating-point numbers --- excluding NaN --- exhibits
+unordered tetrachotomy: they are related either by @code{flo:safe=},
+@code{flo:safe<}, @code{flo:safe>}, or @code{flo:unordered?}.
 @end deffn
 
 @deffn procedure flo:zero? flonum
@@ -1721,6 +1849,83 @@ flonums.  When compiled, they do not check the types of their arguments.
 @deffnx procedure flo:negative? flonum
 Each of these procedures compares its argument to zero.  When compiled,
 they do not check the type of their argument.
+These predicates raise floating-point invalid-operation exceptions on
+NaN arguments; in other words, they are ``ordered comparisons''.
+
+@example
+@group
+(flo:zero? -0.)                @result{} #t
+(flo:negative? -0.)            @result{} #f
+(flo:negative? -1.)            @result{} #t
+
+(flo:zero? 0.)                 @result{} #t
+(flo:positive? 0.)             @result{} #f
+(flo:positive? 1.)             @result{} #f
+
+(flo:zero? +nan.123)           @result{} #f  @r{; (raises invalid-operation)}
+@end group
+@end example
+@end deffn
+
+@deffn procedure flo:normal? flonum
+@deffnx procedure flo:subnormal? flonum
+@deffnx procedure flo:safe-zero? flonum
+@deffnx procedure flo:infinite? flonum
+@deffnx procedure flo:nan? flonum
+Floating-point classification predicates.
+For any flonum, exactly one of these predicates returns true.
+These predicates never raise floating-point exceptions.
+
+@example
+(flo:normal? 1.23)             @result{} #t
+(flo:subnormal? 4e-124)        @result{} #t
+(flo:safe-zero? -0.)           @result{} #t
+(flo:infinite? +inf.0)         @result{} #t
+(flo:nan? -nan.123)            @result{} #t
+@end example
+@end deffn
+
+@deffn procedure flo:finite? flonum
+Equivalent to:
+
+@example
+@group
+(or (flo:safe-zero? @var{flonum})
+    (flo:subnormal? @var{flonum})
+    (flo:normal? @var{flonum}))
+; or
+(and (not (flo:infinite? @var{flonum}))
+     (not (flo:nan? @var{flonum})))
+@end group
+@end example
+
+True for normal, subnormal, and zero floating-point values; false for
+infinity and NaN.
+@end deffn
+
+@deffn procedure flo:classify flonum
+Returns a symbol representing the classification of the flonum, one
+of @code{normal}, @code{subnormal}, @code{zero}, @code{infinity}, or
+@code{nan}.
+@end deffn
+
+@deffn procedure flo:sign-negative? flonum
+Returns true if the sign bit of @var{flonum} is negative, and false
+otherwise.
+Never raises a floating-point exception.
+
+@example
+@group
+(flo:sign-negative? +0.)       @result{} #f
+(flo:sign-negative? -0.)       @result{} #t
+(flo:sign-negative? -1.)       @result{} #t
+(flo:sign-negative? +inf.0)    @result{} #f
+(flo:sign-negative? +nan.123)  @result{} #f
+
+(flo:negative? -0.)            @result{} #f
+(flo:negative? +nan.123)       @result{} #f  @r{; (raises invalid-operation)}
+@end group
+@end example
 @end deffn
 
 @deffn procedure flo:+ flonum1 flonum2
@@ -1731,24 +1936,27 @@ These procedures are the standard arithmetic operations on flonums.
 When compiled, they do not check the types of their arguments.
 @end deffn
 
-@deffn procedure flo:finite? flonum
-@vindex +inf
-@vindex -inf
-@vindex NaN
-@cindex positive infinity (@code{+inf})
-@cindex negative infinity (@code{-inf})
-@cindex not a number (@code{NaN})
-The @acronym{IEEE} floating-point number specification supports three
-special ``numbers'': positive infinity (@code{+inf}), negative infinity
-(@code{-inf}), and not-a-number (@code{NaN}).  This predicate returns
-@code{#f} if @var{flonum} is one of these objects, and @code{#t} if it
-is any other floating-point number.
-@end deffn
-
 @deffn procedure flo:negate flonum
 This procedure returns the negation of its argument.  When compiled, it
-does not check the type of its argument.  Equivalent to @code{(flo:- 0.
-@var{flonum})}.
+does not check the type of its argument.
+
+This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
+
+@example
+@group
+(flo:negate 1.2)               @result{} -1.2
+(flo:negate -nan.123)          @result{} +nan.123
+(flo:negate +inf.0)            @result{} -inf.0
+(flo:negate 0.)                @result{} -0.
+(flo:negate -0.)               @result{} 0.
+
+(flo:- 0. 1.2)                 @result{} -1.2
+(flo:- 0. -nan.123)            @result{} -nan.123
+(flo:- 0. +inf.0)              @result{} -inf.0
+(flo:- 0. 0.)                  @result{} 0.
+(flo:- 0. -0.)                 @result{} 0.
+@end group
+@end example
 @end deffn
 
 @deffn procedure flo:abs flonum
@@ -1778,6 +1986,205 @@ When compiled, they do not check the types of their arguments.
 @findex atan
 This is the flonum version of @code{atan} with two arguments.  When
 compiled, it does not check the types of its arguments.
+@end deffn
+
+@deffn procedure flo:min x1 x2
+@deffnx procedure flo:max x1 x2
+Returns the min or max of two floating-point numbers.
+If either argument is NaN, raises the floating-point invalid-operation
+exception and returns the other one if it is not NaN, or the first
+argument if they are both NaN.
+@end deffn
+
+@deffn procedure flo:min-mag x1 x2
+@deffnx procedure flo:max-mag x1 x2
+Returns the argument that has the smallest or largest magnitude, as in
+minNumMag or maxNumMag of @acronym{IEEE 754-2008}.
+If either argument is NaN, raises the floating-point invalid-operation
+exception and returns the other one if it is not NaN, or the first
+argument if they are both NaN.
+@end deffn
+
+@deffn procedure flo:ldexp x1 x2
+@deffnx procedure flo:scalbn x1 x2
+@code{Flo:ldexp} scales by a power of two; @code{flo:scalbn} scales by
+a power of the floating-point radix.
+@iftex
+@tex
+$$\eqalign{
+  \mathop{\rm ldexp} x \, e &:= x \cdot 2^e, \cr
+  \mathop{\rm scalbn} x \, e &:= x \cdot r^e.
+}$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+ldexp x e := x * 2^e,
+scalbn x e := x * r^e.
+@end example
+
+@end ifnottex
+In MIT/GNU Scheme, these procedures are the same; they are both
+provided to make it clearer which operation is meant.
+@end deffn
+
+@defvr constant flo:radix
+@defvrx constant flo:radix.
+@defvrx constant flo:precision
+Floating-point system parameters.
+@code{Flo:radix} is the floating-point radix as an integer, and
+@code{flo:precision} is the floating-point precision as an integer;
+@code{flo:radix.} is the flotaing-point radix as a flonum.
+@end defvr
+
+@defvr constant flo:error-bound
+@defvrx constant flo:log-error-bound
+@defvrx constant flo:ulp-of-one
+@defvrx constant flo:log-ulp-of-one
+@code{Flo:error-bound}, sometimes called the machine epsilon, is the
+maximum relative error of rounding to nearest:
+@iftex
+@tex
+$$\max_x {|x - \mathop{\rm fl}(x)| \over |x|} = {1 \over 2 r^{p-1}},$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+max |x - fl(x)|/|x| = 1/(2 r^(p-1)),
+@end example
+
+@end ifnottex
+where @math{r} is the floating-point radix and @math{p} is the
+floating-point precision.
+
+@code{Flo:ulp-of-one} is the distance from @math{1} to the next larger
+floating-point number, and is equal to @math{1/r^{p-1}}.
+
+@code{Flo:error-bound} is half @code{flo:ulp-of-one}.
+
+@code{Flo:log-error-bound} is the logarithm of @code{flo:error-bound},
+and @code{flo:log-ulp-of-one} is the logarithm of
+@code{flo:log-ulp-of-one}.
+@end defvr
+
+@deffn procedure flo:ulp flonum
+Returns the distance from @var{flonum} to the next floating-point
+number larger in magnitude with the same sign.
+For zero, this returns the smallest subnormal.
+For infinities, this returns positive infinity.
+For NaN, this returns the same NaN.
+
+@example
+(flo:ulp 1.)                    @result{} 2.220446049250313e-16
+(= (flo:ulp 1.) flo:ulp-of-one) @result{} #t
+@end example
+@end deffn
+
+@defvr constant flo:normal-exponent-max
+@defvrx constant flo:normal-exponent-min
+@defvrx constant flo:subnormal-exponent-min
+Largest and smallest positive integer exponents of the radix in normal
+and subnormal floating-point numbers.
+
+@itemize @bullet
+@item
+@code{Flo:normal-exponent-max} is the largest positive integer such
+that @code{(expt flo:radix. flo:normal-exponent-max)} does not
+overflow.
+
+@item
+@code{Flo:normal-exponent-min} is the smallest positive integer such
+that @code{(expt flo:radix. flo:normal-exponent-min)} is a normal
+floating-point number.
+
+@item
+@code{Flo:subnormal-exponent-min} is the smallest positive integer such
+that @code{(expt flo:radix. flo:subnormal-exponent-min)} is nonzero;
+this is also the smallest positive floating-point number.
+@end itemize
+@end defvr
+
+@defvr constant flo:largest-positive-normal
+@defvrx constant flo:smallest-positive-normal
+@defvrx constant flo:smallest-positive-subnormal
+Smallest and largest normal and subnormal numbers in magnitude.
+@end defvr
+
+@defvr constant flo:greatest-normal-exponent-base-e
+@defvrx constant flo:greatest-normal-exponent-base-2
+@defvrx constant flo:greatest-normal-exponent-base-10
+@defvrx constant flo:least-normal-exponent-base-e
+@defvrx constant flo:least-normal-exponent-base-2
+@defvrx constant flo:least-normal-exponent-base-10
+@defvrx constant flo:least-subnormal-exponent-base-e
+@defvrx constant flo:least-subnormal-exponent-base-2
+@defvrx constant flo:least-subnormal-exponent-base-10
+Least and greatest exponents of normal and subnormal floating-point
+numbers, as floating-point numbers.
+For example, @code{flo:greatest-normal-exponent-base-2} is the
+greatest floating-point number such that @code{(expt
+2. flo:greatest-normal-exponent-base-2)} does not overflow and is a
+normal floating-point number.
+@end defvr
+
+@deffn procedure flo:total< x1 x2
+@deffnx procedure flo:total-mag< x1 x2
+@deffnx procedure flo:total-order x1 x2
+@deffnx procedure flo:total-order-mag x1 x2
+These procedures implement the @acronym{IEEE 754-2008} total ordering
+on floating-point values and their magnitudes.
+Here the ``magnitude'' of a floating-point value is a floating-point
+value with positive sign bit and everything else the same; e.g.,
+@code{+nan.123} is the ``magnitude'' of @code{-nan.123} and @code{0.}
+is the ``magnitude'' of @code{-0.}.
+
+@itemize @bullet
+@item
+@code{Flo:total<} returns true if @var{x1} precedes @var{x2}.
+
+@item
+@code{Flo:total-mag<} returns true if the magnitude of @var{x1}
+precedes the magnitude of @var{x2}.
+
+@item
+@code{Flo:total-order} returns @math{-1} if @var{x1} precedes
+@var{x2}, @math{0} if they are the same floating-point value
+(including sign of zero, or sign and payload of NaN), and @math{+1} if
+@var{x1} follows @var{x2}.
+
+@item
+@code{Flo:total-order-mag} returns @math{-1} if the magnitude of
+@var{x1} precedes the magnitude of @var{x2}, etc.
+@end itemize
+@end deffn
+
+@deffn procedure flo:make-nan negative? quiet? payload
+@deffnx procedure flo:nan-quiet? nan
+@deffnx procedure flo:nan-payload nan
+@code{Flo:make-nan} creates a NaN given the sign bit, quiet bit, and
+payload.
+@var{Negative?} and @var{quiet?} must be booleans, and @var{payload}
+must be an unsigned @math{(p-2)}-bit integer, where @math{p} is the
+floating-point precision.
+If @var{quiet?} is false, @var{payload} must be nonzero.
+
+@example
+@group
+(flo:sign-negative? (flo:make-nan @var{negative?} @var{quiet?} @var{payload}))
+                               @result{} @var{negative?}
+(flo:nan-quiet? (flo:make-nan @var{negative?} @var{quiet?} @var{payload}))
+                               @result{} @var{quiet?}
+(flo:nan-payload (flo:make-nan @var{negative?} @var{quiet?} @var{payload}))
+                               @result{} @var{payload}
+
+(flo:make-nan #t #f 42)        @result{} -snan.42
+(flo:sign-negative? +nan.123)  @result{} #f
+(flo:quiet? +nan.123)          @result{} #t
+(flo:payload +nan.123)         @result{} 123
+@end group
+@end example
 @end deffn
 
 @node Random Numbers,  , Fixnum and Flonum Operations, Numbers
