@@ -2519,14 +2519,25 @@ currently trapped.
 exceptions altogether by @var{excepts}.
 
 @example
+@group
 (define (flo:trap-exceptions! excepts)
   (flo:set-trapped-exceptions!
-   (fix:or excepts (fix:trapped-exceptions))))
+   (fix:or (flo:trapped-exceptions) excepts)))
+
+(define (flo:untrap-exceptions! excepts)
+  (flo:set-trapped-exceptions!
+   (fix:andc (flo:trapped-exceptions) excepts)))
+
+(define (flo:set-trapped-exceptions! excepts)
+  (flo:trap-exceptions! excepts)
+  (flo:untrap-exceptions!
+   (fix:andc (flo:supported-exceptions) excepts)))
+@end group
 @end example
 @end deffn
 
 @deffn procedure flo:with-exceptions-trapped excepts thunk
-@deffnx procedure flo:with-exceptions-trapped excepts thunk
+@deffnx procedure flo:with-exceptions-untrapped excepts thunk
 @deffnx procedure flo:with-trapped-exceptions excepts thunk
 Dynamic-extent analogues of @code{flo:trap-exceptions!},
 @code{flo:untrap-exceptions!}, and @code{flo:set-trapped-exceptions!}.
