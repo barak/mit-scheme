@@ -2222,26 +2222,277 @@ USA.
 (define (cube z)
   (complex:* z (complex:* z z)))
 
+;;; Some lemmas for the bounds below.
+;;;
+;;; Lemma 1.  If |d| < 1 - 1/2^n, then 1/(1 + d) <= 2^n for n > 1.
+;;;
+;;; Proof.  If d is nonnegative, then 1 + d >= 1, so that 1/(1 + d)
+;;; <= 1.  If d is negative, then 1 - 1/2^n <= d <= 0, so that 1 + d
+;;; >= 1/2^n, and hence 1/(1 + d) <= 2^n.  QED.
+;;;
+;;; Lemma 2. If b = a*(1 + d)/(1 + d') for |d'| < 1/2 and nonzero a, b,
+;;; then b = a*(1 + e) for |e| <= 2|d' - d|.
+;;;
+;;; Proof.  |a - b|/|a|
+;;;		= |a - a*(1 + d)/(1 + d')|/|a|
+;;;		= |1 - (1 + d)/(1 + d')|
+;;;		= |(1 + d' - 1 - d)/(1 + d')|
+;;;		= |(d' - d)/(1 + d')|
+;;;	       <= 2|d' - d|, by Lemma 1,
+;;;
+;;; QED.
+;;;
+;;; Lemma 3.  For |d - d'| < 1/2^{n+1} and |d'| < 1 - 1/2^n,
+;;;
+;;;	|log((1 + d)/(1 + d'))| <= 2^{n+1} |d - d'|.
+;;;
+;;; Proof.  Write
+;;;
+;;;	log((1 + d)/(1 + d'))
+;;;	 = log(1 + (1 + d)/(1 + d') - 1)
+;;;	 = log(1 + (1 + d - 1 - d')/(1 + d')
+;;;	 = log(1 + (d - d')/(1 + d')).
+;;;
+;;; By Lemma 1, |(d - d')/(1 + d')| < 2^n |d' - d| < 1, so the Taylor
+;;; series of log(1 + x) converges absolutely for (d - d')/(1 + d'),
+;;; and thus we have
+;;;
+;;;	|log(1 + (d - d')/(1 + d'))|
+;;;	 = |\sum_{k=1}^\infty ((d - d')/(1 + d'))^k/k|
+;;;	<= \sum_{k=1}^\infty |(d - d')/(1 + d')|^k/k
+;;;	<= \sum_{k=1}^\infty |2^n (d' - d)|^k/k
+;;;	<= \sum_{k=1}^\infty |2^n (d' - d)|^k
+;;;	 = 1/(1 - |2^n (d' - d)|) - 1	(geometric series)
+;;;	<= 2^{n+1} |d' - d|,		(since |2^n (d' - d)| < 1/2)
+;;;
+;;; QED.
+
+;;; Lemma 4.  If 1/2^n < 1 + x and |d| < 1/2^{n+1} for n >= 1, then
+;;;
+;;;	log(1 + (1 + d) x) = (1 + d') log(1 + x)
+;;;
+;;; for |d'| < 2^{n+2} |d|.
+;;;
+;;; Proof.  Case I: x < 1 - 1/2^n.  Write the relative error as
+;;;
+;;;	|log(1 + (1 + d) x) - log(1 + x)|/|log(1 + x)|
+;;;	 = |log[(1 + (1 + d) x)/(1 + x)]/log(1 + x)|
+;;;	<= 2^{n+1} |(1 + d) x - x|/|log(1 + x)|, by Lemma 3,
+;;;	 = 2^{n+1} |d x/log(1 + x)|,
+;;;
+;;; since |(1 + d) x - x| = |d x| <= 1/2^{n+1} and |x| < 1 - 1/2^n.
+;;; Note that x/log(1 + x) is a nonnegative function -- the numerator
+;;; is negative iff the denominator is negative, and the limit at
+;;; zero is zero.  Further, x/log(1 + x) is increasing -- the
+;;; derivative is
+;;;
+;;;	[log(1 + x) - x/(1 + x)]/(log(1 + x))^2,
+;;;
+;;; whose denominator (log(1 + x))^2 is nonnegative, and whose
+;;; numerator log(1 + x) - x/(1 + x) is also nonnegative since its
+;;; derivative x/(1 + x)^2 is zero only at zero, so its only critical
+;;; point is zero, and its second derivative (1 - x)/(1 + x)^3 is
+;;; positive at zero, so zero is its minimum.
+;;;
+;;; Finally, we have x/log(1 + x) < 1/log(1 + 1) < 2, from which we
+;;; can conclude that the relative error is bounded by
+;;;
+;;;	2^{n+1} |d x/log(1 + x)|
+;;;	<= 2^{n+2} |d|
+;;;
+;;; as desired.
+;;;
+;;; Case II: x >= 1 - 1/2^n.  Write
+;;;
+;;;	1 + (1 + d) x
+;;;	 = 1 + x + d x
+;;;	 = (1 + x) (1 + d x/(1 + x)),
+;;;
+;;; so that the relative error is
+;;;
+;;;	|log(1 + (1 + d) x) - log(1 + x)|/|log(1 + x)|
+;;;	 = |log[(1 + x) (1 + d x/(1 + x))/(1 + x)]/log(1 + x)|
+;;;	 = |log(1 + d x/(1 + x))/log(1 + x)|.
+;;;
+;;; For fixed d, log(1 + d x/(1 + x)) is a monotone function of x
+;;; with the sign of d which converges to log(1 + d) as x grows
+;;; without bound -- i.e., positive and increasing if d > 0, negative
+;;; and decreasing if d < 0.  Finally, since |d| < 1/2, |log(1 + d)|
+;;; <= 3|d|/2, and since x >= 1/2, |log(1 + x)| >= 1/4, so the
+;;; relative error is
+;;;
+;;;	|log(1 + d x/(1 + x))/log(1 + x)|
+;;;	<= |log(1 + d)/log(1 + x)|
+;;;	<= (3|d|/2)/(1/4)
+;;;	 = 6|d|
+;;;	<= 8|d|
+;;;	<= 2^{n+2} |d|,
+;;;
+;;; QED.
+
 ;;; log(1 - e^x), defined only on negative x.  Useful for computing the
 ;;; complement of a probability in log-space.
 
 (define (log1mexp x)
   (guarantee-real x 'log1mexp)
-  (guarantee-negative x 'log1mexp)
-  (if (< (- flo:log2) x)
-      (log (- (expm1 x)))
-      (log1p (- (exp x)))))
-
+  ;; It is hard to imagine that this function maps any rational
+  ;; numbers to rational numbers.  (XXX Proof?)
+  ;;
+  (let ((x (real:->inexact x)))
+    ;; Carve up the interval: arrange for the intermediate quantity
+    ;; to always lie in [-1/2, +1/2], since in +/-[1/2, 1] we have
+    ;; only fixed-point precision.
+    ;;
+    (cond ((flo:safe< x (flo:negate flo:log2))
+	   ;; Let d0 be the error of exp, and d1 the error of log1p.
+	   ;; Since x <= log(1/2), we have e^x <= 1/2 = 1 - 1/2, and
+	   ;; thus 1/2 <= 1 - e^x, so that by Lemma 4,
+	   ;;
+	   ;;	(1 + d1) log(1 - (1 + d0) e^x)
+	   ;;	= (1 + d1) (1 + d') log(1 - e^x)
+	   ;;
+	   ;; for |d'| < 8|d0|.  Consequently, the relative error is
+	   ;; bounded by
+	   ;;
+	   ;;	|d1| + |d'| + |d1| |d'|
+	   ;;	<= 9 eps + 8 eps^2.
+	   ;;
+	   (flo:log1p-guarded (flo:negate (flo:exp x))))
+	  ((flo:safe< x 0.)
+	   ;; Let d0 be the error of expm1, and d1 the error of log.
+	   ;; We have:
+	   ;;
+	   ;;	(1 + d1) log((1 + d0) (1 - e^x))
+	   ;;	= (1 + d1) [log(1 + d0) + log(1 - e^x)]
+	   ;;	= (1 + d1) [1 + log(1 + d0)/log(1 - e^x)] log(1 - e^x)
+	   ;;
+	   ;; Since log(1/2) <= x, we have 1/2 <= e^x, or 1 - e^x <=
+	   ;; 1 - 1/2 = 1/2, so that log(1 - e^x) < -1/2; hence
+	   ;; |1/log(1 - e^x)| <= |1/(-1/2)| = 2.  Finally, |log(1 +
+	   ;; d0)| <= 2 |d0| as long as |d0| <= eps < 1/2, so when we
+	   ;; collect terms in the relative error, we find it is
+	   ;; bounded by
+	   ;;
+	   ;;	|d1| + 2 |d0/log(1 - e^x)| + 2 |d1 d0/log(1 - e^x)|
+	   ;;	<= |d1| + 4 |d0| + 4 |d1 d0|
+	   ;;	<= 5 eps + 4 eps^2.
+	   ;;
+	   (flo:log (flo:negate (flo:expm1-guarded x))))
+	  ((flo:safe-zero? x)
+	   ;; Negative infinity.
+	   (flo:/ (identity-procedure -1.) 0.))
+	  ((flo:safe<= x +inf.0)
+	   ;; Invalid operation.
+	   (flo:/ (identity-procedure 0.) 0.))
+	  (else
+	   ;; Propagate NaN.
+	   (assert (flo:nan? x))
+	   x))))
+
 ;;; log(1 + e^x)
 
 (define (log1pexp x)
   (guarantee-real x 'log1pexp)
-  (cond ((< x flo:least-subnormal-exponent-base-e) 0.)
-	((<= x flo:log-error-bound) (exp x))
-	((<= x 18) (log1p (exp x)))
-	((<= x 33.3) (+ x (exp (- x))))
-	(else (exact->inexact x))))
-
+  ;; It is hard to imagine that this function maps any rational
+  ;; numbers to rational numbers.  (XXX Proof?)
+  ;;
+  (let ((x (real:->inexact x)))
+    ;; Carve up the interval to avoid overflow in any intermediate
+    ;; quantities and to save computation.
+    ;;
+    (cond ((flo:safe< x flo:least-subnormal-exponent-base-e)
+	   ;; log(1 + e^x) < e^x < smallest positive subnormal
+	   (flo:raise-exceptions!
+	    (fix:or (flo:exception:inexact-result)
+		    (flo:exception:underflow)))
+	   0.)
+	  ((flo:safe<= x flo:log-error-bound)
+	   ;; 0 < e^x < eps < 1, so log(1 + e^x) >= e^x/2, and the
+	   ;; Taylor series of log(1 + y) converges absolutely at y =
+	   ;; e^x, so
+	   ;;
+	   ;;	|e^x - log(1 + e^x)|/|log(1 + e^x)|
+	   ;;	<= |e^x - log(1 + e^x)|/(e^x/2)
+	   ;;	 = 2|e^x - \sum_{i=1}^\infty (-1)^{i+1} (e^x)^i/i|/e^x
+	   ;;	 = 2|-\sum_{i=2}^\infty (-1)^{i+1} (e^x)^i/i|/e^x
+	   ;;	 = 2|-\sum_{i=2}^\infty (-1)^{i+1} (e^x)^{i-1}/i|
+	   ;;	 = 2|-\sum_{i=1}^\infty (-1)^{i+2} (e^x)^i/(i + 1)|
+	   ;;	 = 2|\sum_{i=1}^\infty (-1)^{i+1} (e^x)^i/(i + 1)|
+	   ;;	 = 2|e^x/2 + \sum_{i=2}^\infty (-1)^{i+1} (e^x)^i/(i + 1)|
+	   ;;	<= 2|e^x/2|
+	   ;;	<= eps.
+	   ;;
+	   (flo:exp x))
+	  ((flo:safe<= x (flo:/ flo:log-error-bound -2.))
+	   ;; Let d0 be the error of exp, and d1 the error of log1p;
+	   ;; then by Lemma 4,
+	   ;;
+	   ;;	(1 + d1) log(1 + (1 + d0) e^x)
+	   ;;	= (1 + d1) (1 + d') log(1 + e^x)
+	   ;;
+	   ;; for |d'| <= 8|d0|, so the relative error is bounded by
+	   ;;
+	   ;;	|d1 + d' + d1 d'|
+	   ;;	<= |d1| + |d'| + |d1 d'|
+	   ;;	<= |d1| + 8|d0| + 8|d0 d1|
+	   ;;	<= 9 eps + 8 eps^2
+	   ;;
+	   ;; provided e^x does not overflow.
+	   ;;
+	   (flo:log1p-guarded (flo:exp x)))
+
+	  ;; log1pexp, continued: x >= log(1/sqrt(eps)) so far
+	  ((flo:<= x (flo:negate flo:log-error-bound))
+	   ;; If x >= log(1/sqrt(eps)), then e^{-2x} <= eps.
+	   ;; Write
+	   ;;
+	   ;;	log(1 + e^x)
+	   ;;	 = log(e^x (1 + e^{-x}))
+	   ;;	 = log(e^x) + log(1 + e^{-x})
+	   ;;	 = x + log(1 + e^{-x}).
+	   ;;
+	   ;; From the alternating Taylor series of log(1 + y) at y =
+	   ;; e^{-x}, this lies between
+	   ;;
+	   ;;	x + e^{-x}
+	   ;;
+	   ;; and
+	   ;;
+	   ;;	x + e^{-x} - e^{-2x}/2,
+	   ;;
+	   ;; which are both greater than 1, so the relative error is
+	   ;; bounded by the larger of
+	   ;;
+	   ;;	|x + e^{-x} - (x + e^{-2x}/2)|/|x + e^{-x}|
+	   ;;	 = |e^{-2x}/2|/|x + e^{-x}|
+	   ;;	<= eps/2.
+	   ;;
+	   ;; and
+	   ;;
+	   ;;	|x + e^{-x} - (x + e^{-2x}/2)|/|x + e^{-x} + e^{-2x}/2|
+	   ;;	 = |e^{-2x}/2|/|x + e^{-x} + e^{-2x}/2|
+	   ;;	<= eps/2,
+	   ;;
+	   ;; since in both cases the denominator is >=1.  In this
+	   ;; range, e^{-x} cannot underflow.
+	   ;;
+	   (flo:+ x (flo:exp (flo:negate x))))
+	  (else
+	   ;; If x >= log(1/eps), then e^{-x} <= eps.  As above, write
+	   ;;
+	   ;;	log(1 + e^x) = x + log(1 + e^{-x}).
+	   ;;
+	   ;; Note that log(1 + e^{-x}) < e^{-x}, so we are computing
+	   ;; a quantity between x and x + eps for x > 1, so the
+	   ;; relative error is bounded by eps.
+	   ;;
+	   ;; If it's NaN, just propagate it; otherwise raise
+	   ;; inexact-result.
+	   ;;
+	   (if (flo:safe<= x +inf.0)
+	       (flo:raise-exceptions! (flo:exception:inexact-result)))
+	   x))))
+
 ;;; log(e^x + e^y + ...)
 ;;;
 ;;; Caller can minimize error by passing inputs ascending from -inf to
@@ -2285,74 +2536,7 @@ USA.
 	     (lambda ()
 	       (+ m
 		  (log (reduce + 0 (map (lambda (x) (exp (- x m))) l))))))))))
-
-;;; Some lemmas for the bounds below.
-;;;
-;;; Lemma 1.  If |d| < 1/2, then 1/(1 + d) <= 2.
-;;;
-;;; Proof.  If 0 <= d <= 1/2, then 1 + d >= 1, so that 1/(1 + d) <= 1.
-;;; If -1/2 <= d <= 0, then 1 + d >= 1/2, so that 1/(1 + d) <= 2.  QED.
-;;;
-;;; Lemma 2. If b = a*(1 + d)/(1 + d') for |d'| < 1/2 and nonzero a, b,
-;;; then b = a*(1 + e) for |e| <= 2|d' - d|.
-;;;
-;;; Proof.  |a - b|/|a|
-;;;		= |a - a*(1 + d)/(1 + d')|/|a|
-;;;		= |1 - (1 + d)/(1 + d')|
-;;;		= |(1 + d' - 1 - d)/(1 + d')|
-;;;		= |(d' - d)/(1 + d')|
-;;;	       <= 2|d' - d|, by Lemma 1,
-;;;
-;;; QED.
-;;;
-;;; Lemma 3.  For |d|, |d'| < 1/4,
-;;;
-;;;	|log((1 + d)/(1 + d'))| <= 4|d - d'|.
-;;;
-;;; Proof.  Write
-;;;
-;;;	log((1 + d)/(1 + d'))
-;;;	 = log(1 + (1 + d)/(1 + d') - 1)
-;;;	 = log(1 + (1 + d - 1 - d')/(1 + d')
-;;;	 = log(1 + (d - d')/(1 + d')).
-;;;
-;;; By Lemma 1, |(d - d')/(1 + d')| < 2|d' - d| < 1, so the Taylor
-;;; series of log(1 + x) converges absolutely for (d - d')/(1 + d'),
-;;; and thus we have
-;;;
-;;;	|log(1 + (d - d')/(1 + d'))|
-;;;	 = |\sum_{n=1}^\infty ((d - d')/(1 + d'))^n/n|
-;;;	<= \sum_{n=1}^\infty |(d - d')/(1 + d')|^n/n
-;;;	<= \sum_{n=1}^\infty |2(d' - d)|^n/n
-;;;	<= \sum_{n=1}^\infty |2(d' - d)|^n
-;;;	 = 1/(1 - |2(d' - d)|)
-;;;	<= 4|d' - d|,
-;;;
-;;; QED.
-;;;
-;;; Lemma 4.  If 1/e <= 1 + x <= e, then
-;;;
-;;;	log(1 + (1 + d) x) = (1 + d') log(1 + x)
-;;;
-;;; for |d'| < 8|d|.
-;;;
-;;; Proof.  Write
-;;;
-;;;	log(1 + (1 + d) x)
-;;;	= log(1 + x + x*d)
-;;;	= log((1 + x) (1 + x + x*d)/(1 + x))
-;;;	= log(1 + x) + log((1 + x + x*d)/(1 + x))
-;;;	= log(1 + x) (1 + log((1 + x + x*d)/(1 + x))/log(1 + x)).
-;;;
-;;; The relative error is bounded by
-;;;
-;;;	|log((1 + x + x*d)/(1 + x))/log(1 + x)|
-;;;	<= 4|x + x*d - x|/|log(1 + x)|, by Lemma 3,
-;;;	 = 4|x*d|/|log(1 + x)|
-;;;	 < 8|d|,
-;;;
-;;; since in this range 0 < 1 - 1/e < x/log(1 + x) <= e - 1 < 2.  QED.
-
+
 ;;; Logistic function: 1/(1 + e^{-x}) = e^x/(1 + e^x).	Maps a
 ;;; log-odds-space probability in [-\infty, +\infty] into a
 ;;; direct-space probability in [0,1].	Inverse of logit.
@@ -2365,9 +2549,12 @@ USA.
 
 (define (logistic x)
   (guarantee-real x 'logistic)
-  (cond ((< x flo:least-subnormal-exponent-base-e)
-	 ;; e^x/(1 + e^x) < e^x < smallest positive float.  (XXX Should
-	 ;; raise inexact and underflow here.)
+  (cond ((real:nan? x) x)		;Propagate NaN.
+	((< x flo:least-subnormal-exponent-base-e)
+	 ;; e^x/(1 + e^x) < e^x < smallest positive subnormal.
+	 (flo:raise-exceptions!
+	  (fix:or (flo:exception:underflow)
+		  (flo:exception:inexact-result)))
 	 0.)
 	((<= x flo:log-error-bound)
 	 ;; e^x < eps, so
@@ -2424,8 +2611,9 @@ USA.
 	 ;;	 = |e^{-x}|
 	 ;;	<= eps.
 	 ;;
+	 (flo:raise-exceptions! (flo:exception:inexact-result))
 	 1.)))
-
+
 ;;; Logistic function, translated in output by 1/2: logistic(x) - 1/2 =
 ;;; 1/(1 + e^{-x}) - 1/2 = 1/2 - 1/(1 + e^x). Well-conditioned on the
 ;;; entire real plane, with maximum condition number 1 at 0.
@@ -2485,10 +2673,13 @@ USA.
   ;;
   (define (x>=0 x)
     (if (flo:safe> (real:->inexact x) (flo:- 2. flo:log-error-bound))
-	0.5		;Always inexact -- 0.5 is never actually attained.
+	(begin
+	  ;; Always inexact -- 0.5 is never actually attained.
+	  (flo:raise-exceptions! (flo:exception:inexact-result))
+	  0.5)
 	(/ (expm1 x) (* 2 (+ 1 (exp x))))))
   (copysign (x>=0 (abs x)) x))
-
+
 (define-integrable logit-boundary-lo	;logistic(-1)
   (flo:/ (flo:exp -1.) (flo:+ 1. (flo:exp -1.))))
 (define-integrable logit-boundary-hi	;logistic(+1)
@@ -2520,7 +2711,17 @@ USA.
   ;;
   ;; to get an intermediate quotient near zero.
   ;;
-  (cond ((<= logit-boundary-lo p logit-boundary-hi)
+  (cond ((real:nan? p) p)		;Propagate NaN.
+	((not (<= 0 p 1))
+	 ;; p outside [0, 1] is invalid-operation.  If input is
+	 ;; exact, then this is an error; if input is inexact, this
+	 ;; is merely a floating-point exception.
+	 (if (not (flo:flonum? p))
+	     (error:bad-range-argument p 'logit))
+	 (real:/ (identity-procedure 0.) 0.))
+
+	;; logit, continued: p in [0, 1]
+	((<= logit-boundary-lo p logit-boundary-hi)
 	 ;; Since p = 2p/2 <= 1 <= 2*2p = 4p, the floating-point
 	 ;; evaluation of 1 - 2p is exact; the only error arises from
 	 ;; division and log1p.	 First, note that if logistic(-1) <= p
@@ -2553,7 +2754,8 @@ USA.
 	 ;;	    + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))]
 	 ;;
 	 ;; Since 0 <= p < logistic(-1) or logistic(+1) < p <= 1, we
-	 ;; have |log(p/(1 - p))| > 1.	Hence this error is bounded by
+	 ;; have |log(p/(1 - p))| > 1.  Hence, provided |d0|, |d1| <
+	 ;; 1/8, this error is bounded by
 	 ;;
 	 ;;	|d2 + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
 	 ;;	<= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
@@ -2564,7 +2766,7 @@ USA.
 	 ;;	<= 9 eps + 8 eps^2.
 	 ;;
 	 (log (/ p (- 1 p))))))
-
+
 ;;; Logit function, translated in input by 1/2: (logit1/2+ p-1/2) =
 ;;; (logit (+ 1/2 p-1/2)).  Defined on [-1/2, 1/2].  Inverse of
 ;;; logistic-1/2.
@@ -2575,7 +2777,16 @@ USA.
 ;;; bounded by 34 eps.
 
 (define (logit1/2+ p-1/2)
-  (cond ((<= (abs p-1/2) (- 1/2 (/ 1 (+ 1 (exp 1)))))
+  (guarantee-real p-1/2 'logit1/2+)
+  (cond ((real:nan? p-1/2) p-1/2)
+	((not (<= -1/2 p-1/2 +1/2))
+	 ;; Outside [-1/2, +1/2] is invalid-operation.  If input is
+	 ;; exact, then this is an error; if input is inexact, this
+	 ;; is merely a floating-point exception.
+	 (if (not (flo:flonum? p-1/2))
+	     (error:bad-range-argument p-1/2 'logit))
+	 (real:/ (identity-procedure 0.) 0.))
+	((<= (abs p-1/2) (- 1/2 (/ 1 (+ 1 (exp 1)))))
 	 ;; If p' = p - 1/2, then p = 1/2 + p', so we compute:
 	 ;;
 	 ;; log(p/(1 - p))
@@ -2609,6 +2820,8 @@ USA.
 	 ;;	<= 33 eps + 32 eps^2.
 	 ;;
 	 (log1p (/ (* 2 p-1/2) (- 1/2 p-1/2))))
+
+	;; logit1/2+ continued, 1/2 - 1/(1 + e) < |p - 1/2|
 	(else
 	 ;; We have a choice of computing logit(1/2 + p') or -logit(1 -
 	 ;; (1/2 + p')) = -logit(1/2 - p').  It doesn't matter which
@@ -2631,7 +2844,7 @@ USA.
 	 ;;	     + d1 log((1 + d0)/(1 + d2))/logit(1/2 + p').
 	 ;;
 	 ;; For |p| > 1/2 - 1/(1 + e), logit(1/2 + p') > 1.  Provided
-	 ;; |d0|, |d2| < 1/4, by Lemma 3 we have
+	 ;; |d0|, |d2| < 1/8, by Lemma 3 we have
 	 ;;
 	 ;;	|log((1 + d0)/(1 + d2))| <= 4|d0 - d2|.
 	 ;;
@@ -2642,19 +2855,11 @@ USA.
 	 ;;	     <= 9 eps + 8 eps^2.
 	 ;;
 	 (log (/ (+ 1/2 p-1/2) (- 1/2 p-1/2))))))
-
-;;; log logistic(x) = log (1/(1 + e^{-x})) = -log (1 + e^{-x})
-;;;
-;;; This is the log density of the logistic distribution.
-
-(define (log-logistic x)
-  (guarantee-real x 'log-logistic)
-  (- (log1pexp (- x))))
-
+
 (define logit-exp-boundary-lo		;log logistic(-1)
-  (flo:- 0. (flo:log (flo:+ 1. (flo:exp +1.)))))
+  (flo:negate (flo:log (flo:+ 1. (flo:exp +1.)))))
 (define logit-exp-boundary-hi		;log logistic(+1)
-  (flo:- 0. (flo:log (flo:+ 1. (flo:exp -1.)))))
+  (flo:negate (flo:log (flo:+ 1. (flo:exp -1.)))))
 
 ;;; logit(e^t) = log e^t/(1 - e^t)
 ;;;
@@ -2662,7 +2867,8 @@ USA.
 
 (define (logit-exp t)
   (guarantee-real t 'logit-exp)
-  (cond ((<= t flo:log-error-bound)
+  (cond ((real:nan? t) t)		;Propagate NaN.
+	((<= t flo:log-error-bound)
 	 ;; e^t < eps, so since log(e^t/(1 - e^t)) = t - log(1 - e^t),
 	 ;; and |log(1 - e^t)| < 1 < |t|, we have
 	 ;;
@@ -2719,6 +2925,8 @@ USA.
 	 ;;
 	 (let ((e^t (exp t)))
 	   (- (log1p (/ (- 1 (* 2 e^t)) e^t)))))
+
+	;; logit-exp, continued: t <= -log(1 + e) or -log(1 + 1/e) <= t
 	(else
 	 ;; We use the identity
 	 ;;
@@ -2749,6 +2957,14 @@ USA.
 	 ;;	<= 3 eps + 2 eps^2.
 	 ;;
 	 (- (log (expm1 (- t)))))))
+
+;;; log logistic(x) = log (1/(1 + e^{-x})) = -log (1 + e^{-x})
+;;;
+;;; This is the log density of the logistic distribution.
+
+(define (log-logistic x)
+  (guarantee-real x 'log-logistic)
+  (- (log1pexp (- x))))
 
 ;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 

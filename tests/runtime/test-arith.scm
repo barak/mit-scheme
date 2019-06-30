@@ -328,18 +328,51 @@ USA.
     (assert-inf- (log1p -1))
     (assert-inf- (log1p -1.))))
 
+(define-enumerated-test 'log1mexp-invalid
+  (list
+   (list flo:smallest-positive-subnormal)
+   (list flo:smallest-positive-normal)
+   (list flo:ulp-of-one)
+   (list 1.)
+   (list 2.)
+   (list +inf.0))
+  (lambda (x)
+    (assert-nan (flo:with-trapped-exceptions 0 (lambda () (log1mexp x))))
+    (assert-only-except/no-traps
+     (fix:or (flo:exception:invalid-operation)
+             (if (flo:subnormal? x)
+                 (flo:exception:subnormal-operand)
+                 0))
+     (lambda () (log1mexp x)))
+    (assert-flo-error (lambda () (yes-traps (lambda () (log1mexp x)))))))
+
+(define-enumerated-test 'log1mexp-nan
+  (list
+   (list +nan.0)
+   (list -nan.0)
+   (list +nan.1234)
+   (list -nan.1234))
+  (lambda (x)
+    (assert-eqv-nan (no-traps (lambda () (log1mexp x))) x)))
+
 (define-enumerated-test 'log1mexp
   (list
+   (list 0 -inf.0)
+   (list 0. -inf.0)
+   (list -0. -inf.0)
    (list -1e-17 -39.1439465808987777)
    (list -0.69 -0.696304297144056727)
    (list (- (log 2)) (- (log 2)))
    (list -0.70 -0.686341002808385170)
-   (list -708 -3.30755300363840783e-308))
+   (list -708 -3.30755300363840783e-308)
+   (list -746 -0.)
+   (list -inf.0 -0.))
   (lambda (x y)
     (assert-<= (relerr y (log1mexp x)) 1e-15)))
 
 (define-enumerated-test 'log1pexp
   (list
+   (list -inf.0 0.)
    (list -1000 0.)
    (list -708 3.30755300363840783e-308)
    (list -38 3.13913279204802960e-17)
@@ -350,9 +383,25 @@ USA.
    (list 18 18.0000000152299791)
    (list 19 19.0000000056027964)
    (list 33 33.0000000000000071)
-   (list 34 34.))
+   (list 34 34.)
+   (list 35 35.)
+   (list 36 36.)
+   (list 37 37.)
+   (list 709 709.)
+   (list 710 710.)
+   (list 1000 1000.)
+   (list +inf.0 +inf.0))
   (lambda (x y)
     (assert-<= (relerr y (log1pexp x)) 1e-15)))
+
+(define-enumerated-test 'log1pexp-invalid
+  (list
+   (list +nan.0)
+   (list -nan.0)
+   (list +nan.1234)
+   (list -nan.1234))
+  (lambda (x)
+    (assert-eqv-nan (no-traps (lambda () (log1pexp x))) x)))
 
 (define-enumerated-test 'logsumexp-values
   (list
