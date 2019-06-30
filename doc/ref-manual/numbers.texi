@@ -800,6 +800,413 @@ possible these procedures produce a real result from a real
 argument.
 @end deffn
 
+@deffn procedure expm1 z
+@deffnx procedure log1p z
+Equivalent to:
+@iftex
+@tex
+$$\mathop{\rm expm1} z = \exp (z) - 1,$$
+$$\mathop{\rm log1p} z = \log (1 + z).$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+@group
+expm1 z = exp(z) - 1,
+log1p z = log(1 + z).
+@end group
+@end example
+
+@end ifnottex
+
+However, for real numbers close to zero, these provide better
+approximations than @code{(- (exp @var{z}) 1)} or @code{(log (+ 1
+@var{z}))}:
+
+@itemize @bullet
+@item
+Floating-point numbers have much higher density around @math{0} than
+around @math{1}, so naive translation from near @math{0} to near
+@math{1} loses precision, and naive computation of a number near
+@math{1} loses precision even if it is followed by translation to near
+@math{0}.
+
+@item
+The condition number of log near @math{1} is unbounded, while the
+condition number of log1p near @math{0} is near @math{1}:
+
+@iftex
+@tex
+$$x f'(x)/f(x) = {x/(1 + x) \over \log(1 + x)}.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x f'(x)/f(x) = [x/(1 + x)]/log(1 + x).
+@end example
+
+@end ifnottex
+(Conversely, the condition number of log near @math{0} approaches
+@math{0}, while the condition number of log1p near @math{-1} is
+unbounded, so for inputs near @math{0} it is better to compute them
+via log rather than via log1p.)
+
+@item
+Similarly, although the condition number of exp near @math{0} is near
+@math{0}, its @emph{value} near @math{0} is near @math{1}, and the
+condition number of @math{y - 1} is unbounded for @math{y} near
+@math{1}; in contrast, the condition number of expm1 near @math{0} is
+near @math{1}:
+
+@iftex
+@tex
+$$x f'(x)/f(x) = {x e^x \over e^x - 1}.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x f'(x)/f(x) = x e^x/(e^x - 1).
+@end example
+
+@end ifnottex
+@end itemize
+
+The forward relative error of this implementation is determined by the
+system's math library, usually below 1ulp.
+@end deffn
+
+@deffn procedure log1mexp x
+@deffnx procedure log1pexp x
+Equivalent to:
+@iftex
+@tex
+$$\mathop{\rm log1mexp} x = \log (1 - e^x),$$
+$$\mathop{\rm log1pexp} x = \log (1 + e^x).$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+@group
+log1mexp x = log (1 - e^x),
+log1pexp x = log (1 + e^x).
+@end group
+@end example
+
+@end ifnottex
+
+Like log1p and expm1, these avoid numerical pathologies with the
+intermediate quantities @math{1 - e^x} and @math{1 + e^x} and inputs
+to log near @math{1}.
+
+@itemize @bullet
+@item
+log1mexp computes the complement of a probability @math{p} in
+log-space @math{\log p}, and as such is a self-inverse.
+It is finite when @math{x < 0}; negative infinity when @math{x =
+0}; and invalid otherwise.
+
+@item
+log1pexp is related to the logistic function @math{1/(1 + e^{-x})} ---
+specifically, it differs from the logarithm of the logistic function
+only by the sign of the input and the output.
+@end itemize
+
+This implementation gives forward relative error bounded by ten times
+the forward relative error bound of the system math library's log and
+exp, which is usually below 1ulp.
+@end deffn
+
+@deffn procedure logistic x
+@deffnx procedure logit x
+Logistic and logit functions.
+Equivalent to:
+@iftex
+@tex
+$$\mathop{\rm logistic} x = {e^x \over 1 + e^x} = {1 \over 1 + e^{-x}} = \mathop{\rm logit}\nolimits^{-1} x,$$
+$$\mathop{\rm logit} p = \log {p \over 1 - p} = \mathop{\rm logistic}\nolimits^{-1} p.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+@group
+logistic x = exp(x)/[1 + exp(x)] = 1/[1 + exp(-x)],
+logit p = log p/(1 - p).
+@end group
+@end example
+
+@end ifnottex
+
+These functions are inverses of one another.
+The logit function maps a probablity @math{p} in @math{[0, 1]} into
+log-odds @math{x} in the extended real line, and the logistic function
+maps back from log-odds to probabilities.
+
+@itemize @bullet
+@item
+The logistic function is defined on the entire real line, but is
+ill-conditioned for large @var{x}, with condition number
+@iftex
+@tex
+$$x f'(x)/f(x) = {x e^{-x} \over 1 + e^{-x}}.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x f'(x)/f(x) = x exp(-x)/[1 + exp(-x)].
+@end example
+
+@end ifnottex
+The identity
+@iftex
+@tex
+$$\mathop{\rm logistic}(-x) = 1 - \mathop{\rm logistic}(x)$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+logistic(-x) = 1 - logistic(x)
+@end example
+
+@end ifnottex
+may help to rearrange a computation, along with the logistic-1/2
+function which ranges from @math{-1/2} to @math{+1/2} and centered at
+zero rather than from @math{0} to @math{1} and centered at @math{1/2}.
+
+This implementation gives forward relative error bounded by at most
+seven times the forward relative error bound of the system math
+library's exp, which is usually below 1ulp.
+
+@item
+The logit function is defined on the closed unit interval @math{[0,
+1]}, but is ill-conditioned near @math{1/2} and @math{1}, with
+condition number
+@iftex
+@tex
+$$x f'(x)/f(x) = {1/(1 - p) \over \log (p/(1 - p))}.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x f'(x)/f(x) = 1/[(1 - p) log(p/(1 - p))].
+@end example
+
+@end ifnottex
+The identity
+@iftex
+@tex
+$$\mathop{\rm logit}(1 - p) = -\mathop{\rm logit}(p)$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+logit(1 - p) = -logit(p)
+@end example
+
+@end ifnottex
+may help to rearrange a computation, along with the logit1/2+ function
+which is defined on @math{-1/2} to @math{+1/2} and centered at zero
+rather than on @math{0} to @math{1} and centered at @math{1/2}.
+
+This implementation gives forward relative error bounded by at most
+ten times the forward relative error bound of the system math
+library's log, which is usually below 1ulp.
+@end itemize
+@end deffn
+
+@deffn procedure logistic-1/2 x
+@deffnx procedure logit1/2+ x
+Equivalent to:
+@iftex
+@tex
+$$\mathop{\hbox{\rm logistic-1/2}} x = \mathop{\rm logistic}(x) - 1/2,$$
+$$\mathop{\hbox{\rm logit1/2+}} p = \mathop{\rm logit}(1/2 + p).$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+@group
+logistic-1/2 x = logistic(x) - 1/2,
+logit1/2+ p = logit(1/2 + p).
+@end group
+@end example
+
+@end ifnottex
+
+Like @code{logistic} and @code{logit}, these functions are inverses of
+one another; unlike @code{logistic} and @code{logit}, their domains
+and codomains are both centered at zero.
+
+
+@itemize @bullet
+@item
+The logistic-1/2 function is well-conditioned on the entire real line,
+with maximum condition number @math{1} at @math{0}:
+@iftex
+@tex
+$$x f'(x)/f(x) = {2x e^{-x} \over 1 - e^{-2x}}.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x f'(x)/f(x) = 2 x e^-x / (1 - (e^-x)^2).
+@end example
+
+@end ifnottex
+This implementation gives forward relative error bounded by 5 times
+the forward relative error bound of the system math library's exp,
+which is usually below 1ulp.
+
+@item
+The logit1/2+ function is defined on @math{[-1/2, +1/2]}, and is
+ill-conditioned near @math{-1/2} and @math{+1/2}:
+@iftex
+@tex
+$$x f'(x)/f(x) = {x / (1 - 4 x^2) \over \mathop{\rm logit}(1/2 + x)}.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x f'(x)/f(x) = x/[(1 - 4 x^2) logit(1/2 + x)].
+@end example
+
+@end ifnottex
+For points near @math{-1/2} or @math{+1/2}, it may be better to
+compute logit of a point near @math{0} instead.
+This implementation gives forward relative error bounded by 34 times
+the forward relative error bound of the system math library's log,
+which is usually below 1ulp.
+@end itemize
+@end deffn
+
+@deffn procedure log-logistic x
+@deffnx procedure logit-exp x
+Equivalent to:
+@iftex
+@tex
+$$\mathop{\hbox{\rm log-logistic}} x = \log \mathop{\rm logistic}(x) = \log [1/(1 + e^{-x})],$$
+$$\mathop{\hbox{\rm logit-exp}} x = \mathop{\rm logit}(e^x) = \log [e^x/(1 - e^x)].$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+@group
+log-logistic x = log(logistic(x)) = log [1/(1 + exp(-x))]
+logit-exp x = logit(exp(x)) = log [exp(x)/(1 - exp(x))]
+@end group
+@end example
+
+@end ifnottex
+
+Like @code{logistic} and @code{logit}, these functions are inverses of
+one another.
+
+@itemize @bullet
+@item
+The log-logistic function maps log-odds on the extended real line to
+log-probability on the nonpositive half of the extended real line, and
+is ill-conditioned for positive @var{x}:
+@iftex
+@tex
+$$x f'(x)/f(x) = {-x e^{-x} \over (1 + e^{-x}) \log (1 + e^{-x})}.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x f'(x)/f(x) = (-x exp(-x))/[(1 + exp(-x)) log(1 + exp(-x))]
+@end example
+
+@end ifnottex
+
+@item
+The logit-exp function maps log-probability on the nonpositive half of
+the extended real line to log-odds on the extended real line, and is
+ill-conditioned near zero:
+@iftex
+@tex
+$$x f'(x)/f(x) = {x \over (1 - e^x) \log [e^x/(1 - e^x)]}.$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x f'(x)/f(x) = x/[(1 - exp(x)) log(exp(x)/(1 - exp(x)))]
+@end example
+
+@end ifnottex
+@end itemize
+
+This implementation gives forwar relative error bounded by ten times
+the forward relative error bound of the system math library's log and
+exp, which is usually below 1ulp.
+@end deffn
+
+@deffn procedure logsumexp list
+@var{List} must be a list of real numbers
+@iftex
+@tex
+$x_1, x_2, \ldots, x_n$.
+@end tex
+@end iftex
+@ifnottex
+@var{x1}, @var{x2}, @dots{}, @var{xn}.
+@end ifnottex
+Returns an approximation to:
+@iftex
+@tex
+$$\log (e^{x_1} + e^{x_2} + \cdots + e^{x_n}).$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+log(exp(@var{x1}) + exp(@var{x2}) + @dots{} + exp(@var{xn})).
+@end example
+
+@end ifnottex
+The approximation avoids intermediate overflow and underflow.
+To minimize error, the caller should arrange for the numbers to be
+sorted from least to greatest.
+
+Edge cases:
+
+@itemize @bullet
+@item
+If @var{list} is empty, the result is @code{-inf}, as if the
+intermediate sum were zero.
+
+@item
+If @var{list} contains only finite numbers and @code{-inf}, the
+@code{-inf} elements are ignored, since the exponential of @code{-inf}
+is zero.
+
+@item
+If @var{list} contains only finite numbers and @code{+inf}, the result
+is @code{+inf} as if the sum had overflowed.
+(Otherwise, overflow is not possible.)
+
+@item
+If @var{list} contains both @code{-inf} and @code{+inf}, or if
+@var{list} contains any NaNs, the result is a NaN.
+@end itemize
+
+@code{Logsumexp} never raises any of the standard @sc{ieee 754}
+floating-point exceptions other than invalid-operation.
+@end deffn
+
 @deffn procedure sqrt z
 Returns the principal square root of @var{z}.  The result will have
 either positive real part, or zero real part and non-negative imaginary
