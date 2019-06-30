@@ -212,6 +212,9 @@ Fixnum and Flonum Operations
 
 * Fixnum Operations::
 * Flonum Operations::
+* Floating-Point Environment::
+* Floating-Point Exceptions::
+* Floating-Point Rounding Mode::
 
 Characters
 

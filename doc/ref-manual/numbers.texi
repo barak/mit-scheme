@@ -1203,7 +1203,7 @@ If @var{list} contains both @code{-inf} and @code{+inf}, or if
 @var{list} contains any NaNs, the result is a NaN.
 @end itemize
 
-@code{Logsumexp} never raises any of the standard @sc{ieee 754}
+@code{Logsumexp} never raises any of the standard @acronym{IEEE 754-2008}
 floating-point exceptions other than invalid-operation.
 @end deffn
 
@@ -1415,8 +1415,8 @@ positional notation if it is ``small enough'', otherwise it is printed
 in scientific notation.  A number is ``small enough'' when the number of
 digits that would be printed using positional notation does not exceed
 the number of digits of precision in the underlying floating-point
-number representation; @sc{ieee} double-precision floating-point numbers
-have 17 digits of precision.
+number representation; @acronym{IEEE 754-2008} binary64 floating-point
+numbers have 17 digits of precision.
 @end table
 
 @noindent
@@ -1520,6 +1520,9 @@ malformed objects that confuse the garbage collector.
 @menu
 * Fixnum Operations::
 * Flonum Operations::
+* Floating-Point Environment::
+* Floating-Point Exceptions::
+* Floating-Point Rounding Mode::
 @end menu
 
 @node Fixnum Operations, Flonum Operations, Fixnum and Flonum Operations, Fixnum and Flonum Operations
@@ -1694,7 +1697,7 @@ not check the types of its arguments, nor the validity of its result.
 @end example
 @end deffn
 
-@node Flonum Operations,  , Fixnum Operations, Fixnum and Flonum Operations
+@node Flonum Operations, Floating-Point Environment, Fixnum Operations, Fixnum and Flonum Operations
 @subsection Flonum Operations
 
 @cindex flonum (defn)
@@ -2185,6 +2188,330 @@ If @var{quiet?} is false, @var{payload} must be nonzero.
 (flo:payload +nan.123)         @result{} 123
 @end group
 @end example
+@end deffn
+
+@node Floating-Point Environment, Floating-Point Exceptions, Flonum Operations, Fixnum and Flonum Operations
+@subsection Floating-Point Environment
+
+The @acronym{IEEE 754-2008} computation model includes a persistent
+rounding mode and exception flags.
+In MIT/GNU Scheme, every thread has its own floating-point
+environment, initialized to the default @acronym{IEEE 754-2008}
+environment, with no exceptions trapped, with no exceptions raised,
+and with round-to-nearest/ties-to-even.
+
+@cindex floating-point environment
+A @strong{floating-point environment} descriptor is a
+machine-dependent object representing the @acronym{IEEE 754-2008}
+floating-point exception flags, exception-handling mode (trap or no
+trap), and rounding mode.
+Users should not inspect a floating-point environment descriptor other
+than to use it with the procedures here; its representation may vary
+from system to system.
+
+@deffn procedure flo:default-environment
+Returns a descriptor for the default floating-point environment, with
+no exceptions trapped, no exceptions raised, and
+round-to-nearest/ties-to-even.
+@end deffn
+
+@deffn procedure flo:environment
+@deffnx procedure flo:set-environment! floenv
+@deffnx procedure flo:update-environment! floenv
+@code{Flo:environment} returns a descriptor for the current
+floating-point environment.
+@code{Flo:set-environment!} replaces the current floating-point
+environment by @var{floenv}.
+@code{Flo:update-environment!} does likewise, but re-raises any
+exceptions that were already raised in the current floating-point
+environment, which may cause a trap if @var{floenv} also traps them.
+
+@code{Flo:update-environment!} is usually used together with
+@code{flo:defer-exception-traps!} to defer potentially trapping on
+exceptions in a large intermediate computation until the end.
+@end deffn
+
+@deffn procedure flo:preserving-environment thunk
+Saves the current floating-point environment and calls @var{thunk}.
+On exit from @var{thunk}, including non-local exit, saves
+@var{thunk}'s floating-point environment and restores the original
+floating-point environment as if with @code{flo:set-environment!}.
+On re-entry into @var{thunk}, restores @var{thunk}'s floating-point
+environment.
+@end deffn
+
+@node Floating-Point Exceptions, Floating-Point Rounding Mode, Floating-Point Environment, Fixnum and Flonum Operations
+@subsection Floating-Point Exceptions
+
+Floating-point computations such as arithmetic may raise exceptions.
+This sets a flag in the floating-point environment that is maintained
+until it is cleared, and, if the exception is trapped, signals a
+Scheme condition.
+Most machines support trapping exceptions, but not all --- for
+example, most ARM CPUs do not.
+In the default floating-point environment, no exceptions are trapped
+and no exceptions are raised.
+
+Floating-point exceptions and sets of floating-point exceptions are
+represented by small integers, whose interpretation is
+machine-dependent --- for example, the invalid-operation exception may
+be represented differently on PowerPC and AMD x86-64 CPUs.
+The number for a floating-point exception is the same as the number
+for a set of exceptions containing only that one; the bitwise-AND of
+two sets is their intersection, the bitwise-IOR is their union, etc.
+The procedures @code{flo:exceptions->names} and
+@code{flo:names->exceptions} convert between machine-dependent integer
+representations and machine-independent lists of human-readable
+symbols.
+
+The following exceptions are recognized by MIT/GNU Scheme:
+
+@table @strong
+@item inexact-result
+@cindex inexact-result exception
+Raised when the result of a floating-point computation is not a
+floating-point number and therefore must be rounded.
+
+The inexact-result exception is never trappable.
+
+@item underflow
+@cindex underflow exception
+Raised when the result of a floating-point computation is too small in
+magnitude to be represented by a normal floating-point number, and is
+therefore rounded to a subnormal or zero.
+
+@item overflow
+@cindex overflow exception
+Raised when the result of a floating-point computation is too large in
+magnitude to be represented by a floating-point number, and is
+therefore rounded to infinity.
+
+@item divide-by-zero
+@cindex divide-by-zero exception
+Raised on division of a nonzero finite real number by a zero real
+number, or logarithm of zero.
+
+@item invalid-operation
+@cindex invalid-operation exception
+@cindex signalling NaN
+@cindex quiet NaN
+Raised when the input to a floating-point computation is nonsensical,
+such as division of zero by zero, or real logarithm of a negative
+number.
+The result of an invalid-operation is a NaN.
+Also raised when the input to a floating-point operation is a
+@strong{signalling} NaN, but not for a @strong{quiet} NaN.
+
+@item subnormal-operand
+@cindex subnormal-operand exception
+Raised when an operand in a floating-point operation is subnormal.
+
+(This is not a standard @acronym{IEEE 754-2008} exception.
+It is supported by Intel CPUs.)
+@end table
+
+@deffn procedure flo:supported-exceptions
+Returns the set of exceptions that are supported on the current
+machine.
+@end deffn
+
+@deffn procedure flo:exception:divide-by-zero
+@deffnx procedure flo:exception:inexact-result
+@deffnx procedure flo:exception:invalid-operation
+@deffnx procedure flo:exception:overflow
+@deffnx procedure flo:exception:subnormal-operand
+@deffnx procedure flo:exception:underflow
+Returns the specified floating-point exception number.
+On machines that do not support a particular exception, the
+corresponding procedure simply returns @code{0}.
+@end deffn
+
+@deffn procedure flo:exceptions->names excepts
+@deffnx procedure flo:names->exceptions list
+These procedures convert between a machine-dependent small integer
+representation of a set of exceptions, and a representation of a set
+of exceptions by a list of human-readable symbols naming them.
+
+@example
+(flo:preserving-environment
+ (lambda ()
+   (flo:clear-exceptions! (flo:supported-exceptions))
+   (flo:/ (identity-procedure 1.) 0.)
+   (flo:exceptions->names
+    (flo:test-exceptions (flo:supported-exceptions)))))
+                               @result{} (divide-by-zero)
+@end example
+@end deffn
+
+@deffn procedure flo:test-exceptions excepts
+Returns the set of exceptions in @var{excepts} that are currently
+raised.
+@end deffn
+
+@deffn procedure flo:clear-exceptions! excepts
+@deffnx procedure flo:raise-exceptions! excepts
+Clears and raises the exceptions in @var{excepts}.
+Other exceptions are unaffected.
+@end deffn
+
+@deffn procedure flo:save-exception-flags
+@deffnx procedure flo:restore-exception-flags! exceptflags
+@deffnx procedure flo:test-exception-flags exceptflags excepts
+@code{Flo:save-exception-flags} returns a machine-dependent
+representation of the currently trapped and raised exceptions.
+@code{Flo:restore-exception-flags!} restores it.
+@code{Flo:test-exception-flags} returns the set of exceptions in
+@var{excepts} that are raised in @var{exceptflags}.
+
+@var{Exceptflags} is @emph{not} the same as a set of exceptions.
+It is opaque and machine-dependent and should not be used except with
+@code{flo:restore-exception-flags!} and
+@code{flo:test-exception-flags}.
+
+@strong{Bug:} @code{Flo:test-exception-flags} is unimplemented.
+@end deffn
+
+@deffn procedure flo:have-trap-enable/disable?
+Returns true if trapping floating-point exceptions is supported on
+this machine.
+@end deffn
+
+@deffn procedure flo:default-trapped-exceptions
+Returns the set of exceptions that are trapped in the default
+floating-point environment.
+Equivalent to @code{(flo:names->exceptions '())}, or simply @code{0},
+since by default, no exceptions are trapped.
+@end deffn
+
+@deffn procedure flo:trapped-exceptions
+Returns the set of exceptions that are currently trapped.
+@end deffn
+
+@deffn procedure flo:trap-exceptions! excepts
+@deffnx procedure flo:untrap-exceptions! excepts
+@deffnx procedure flo:set-trapped-exceptions! excepts
+@code{Flo:trap-exceptions!} requests that any exceptions in the set
+@var{excepts} be trapped, in addition to all of the ones that are
+currently trapped.
+@code{Flo:untrap-exceptions!} requests that any exceptions in the set
+@var{excepts} not be trapped.
+@code{Flo:set-trapped-exceptions!} replaces the set of trapped
+exceptions altogether by @var{excepts}.
+
+@example
+(define (flo:trap-exceptions! excepts)
+  (flo:set-trapped-exceptions!
+   (fix:or excepts (fix:trapped-exceptions))))
+@end example
+@end deffn
+
+@deffn procedure flo:with-exceptions-trapped excepts thunk
+@deffnx procedure flo:with-exceptions-trapped excepts thunk
+@deffnx procedure flo:with-trapped-exceptions excepts thunk
+Dynamic-extent analogues of @code{flo:trap-exceptions!},
+@code{flo:untrap-exceptions!}, and @code{flo:set-trapped-exceptions!}.
+These call @var{thunk} with their respective changes to the set of
+trapped exceptions, and restore it on return or non-local exit.
+@end deffn
+
+@deffn procedure flo:defer-exception-traps!
+Saves the current floating-point environment, clears all raised
+exceptions, disables all exception traps, and returns a descriptor for
+the saved floating-point environment.
+
+This is typically used together with @code{flo:update-environment!},
+to trap any exceptions that the caller had wanted trapped only after a
+long intermediate computation.
+This pattern is captured in @code{flo:deferring-exception-traps}.
+@end deffn
+
+@deffn procedure flo:deferring-exception-traps thunk
+Calls @var{thunk}, but defers trapping on any exceptions it raises
+until it returns.
+Equivalent to:
+
+@example
+(flo:preserving-environment
+ (lambda ()
+   (let ((environment (flo:defer-exception-traps!)))
+     (begin0 (@var{thunk})
+       (flo:update-environment! environment)))))
+@end example
+@end deffn
+
+@deffn procedure flo:ignoring-exception-traps thunk
+Calls @var{thunk} with all exceptions untrapped and unraised.
+Equivalent to:
+
+@example
+@group
+(flo:preserving-environment
+ (lambda ()
+   (flo:defer-exception-traps!)
+   (@var{thunk})))
+@end group
+@end example
+@end deffn
+
+@node Floating-Point Rounding Mode,  , Floating-Point Exceptions, Fixnum and Flonum Operations
+@subsection Floating-Point Rounding Mode
+
+@acronym{IEEE 754-2008} supports four rounding modes, which determine
+the answer given by a floating-point computation when the exact result
+lies between two floating-point numbers but is not a floating-point
+number itself:
+
+@table @code
+@item to-nearest
+Round to the nearest floating-point number.
+If there are two equidistant ones, choose the one whose least
+significant digit is even.
+Also known as ``round-to-nearest/ties-to-even''.
+
+@item toward-zero
+Round to the floating-point number closest to zero.
+
+@item downward
+Round to the greatest floating-point number below.
+
+@item upward
+Round to the least floating-point number above.
+@end table
+
+@strong{Warning:} Not all procedures in MIT/GNU Scheme respect the
+rounding mode.
+Only the basic arithmetic operations --- @math{+}, @math{-}, @math{*},
+@math{/}, and sqrt --- will reliably respect it.
+The main purpose of changing the rounding mode is to diagnose
+numerical instability by injecting small perturbations throughout the
+computation.
+
+@strong{Bug:} It would be nice if we had
+``round-to-nearest/ties-to-odd''.
+But we don't.
+Sorry.
+
+@deffn procedure flo:default-rounding-mode
+Returns a symbol for the default rounding mode, which is always
+@code{to-nearest}.
+@end deffn
+
+@deffn procedure flo:rounding-modes
+Returns a list of the supported rounding modes as symbols.
+@end deffn
+
+@deffn procedure flo:rounding-mode
+@deffnx procedure flo:set-rounding-mode! mode
+Gets or sets the current rounding mode as a symbol.
+@end deffn
+
+@deffn procedure flo:with-rounding-mode mode thunk
+Call @var{thunk} with the rounding mode set to @var{mode}.
+On return, the rounding mode is restored to what it was before.
+
+Non-local exit from and re-entrance to @var{thunk} behaves as if the
+call is surrounded by @code{flo:preserving-environment}
+(@pxref{Floating-Point Environment}).
 @end deffn
 
 @node Random Numbers,  , Fixnum and Flonum Operations, Numbers
