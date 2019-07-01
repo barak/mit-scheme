@@ -2263,6 +2263,10 @@ value with positive sign bit and everything else the same; e.g.,
 @code{+nan.123} is the ``magnitude'' of @code{-nan.123} and @code{0.0}
 is the ``magnitude'' of @code{-0.0}.
 
+The total ordering has little to no numerical meaning and should be
+used only when an arbitrary choice of total ordering is required for
+some non-numerical reason.
+
 @itemize @bullet
 @item
 @code{Flo:total<} returns true if @var{x1} precedes @var{x2}.
