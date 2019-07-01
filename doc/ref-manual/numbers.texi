@@ -1710,7 +1710,7 @@ MIT/GNU Scheme follows the @acronym{IEEE 754-2008} floating-point
 standard, using binary64 arithmetic for flonums.
 All floating-point values are classified into:
 
-@table @strong
+@table @asis
 @item normal
 @cindex floating-point number, normal
 @cindex normal floating-point number
@@ -2386,7 +2386,7 @@ symbols.
 
 The following exceptions are recognized by MIT/GNU Scheme:
 
-@table @strong
+@table @asis
 @item inexact-result
 @cindex inexact-result exception
 Raised when the result of a floating-point computation is not a
@@ -2420,7 +2420,7 @@ such as division of zero by zero, or real logarithm of a negative
 number.
 The result of an invalid-operation is a NaN.
 Also raised when the input to a floating-point operation is a
-@strong{signalling} NaN, but not for a @strong{quiet} NaN.
+signalling NaN, but not for a quiet NaN.
 
 @item subnormal-operand
 @cindex subnormal-operand exception
@@ -2725,7 +2725,7 @@ downstream.
 @end deffn
 
 @deffn procedure flo:random-unit state
-Deprecated alias for @code{flo:random-unit-open}.
+@strong{Deprecated} alias for @code{flo:random-unit-open}.
 @end deffn
 
 @deffn procedure random-bytevector n [state]
