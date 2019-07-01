@@ -1149,7 +1149,7 @@ x f'(x)/f(x) = x/[(1 - exp(x)) log(exp(x)/(1 - exp(x)))]
 @end ifnottex
 @end itemize
 
-This implementation gives forwar relative error bounded by ten times
+This implementation gives forward relative error bounded by ten times
 the forward relative error bound of the system math library's log and
 exp, which is usually below 1ulp.
 @end deffn
