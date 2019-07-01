@@ -1842,7 +1842,7 @@ return false on NaN arguments, except @code{flo:unordered?} which
 returns true iff at least one argument is NaN; in other words, they
 are ``unordered comparisons''.
 
-Every pair of floating-point numbers --- excluding NaN --- exhibits
+Every pair of floating-point numbers --- including NaN --- exhibits
 unordered tetrachotomy: they are related either by @code{flo:safe=},
 @code{flo:safe<}, @code{flo:safe>}, or @code{flo:unordered?}.
 @end deffn
