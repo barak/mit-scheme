@@ -2381,7 +2381,7 @@ USA.
 	  ((flo:safe-zero? x)
 	   ;; Negative infinity.
 	   (flo:/ (identity-procedure -1.) 0.))
-	  ((flo:safe<= x +inf.0)
+	  ((flo:safe<= x (flo:+inf.0))
 	   ;; Invalid operation.
 	   (flo:/ (identity-procedure 0.) 0.))
 	  (else
@@ -2489,7 +2489,7 @@ USA.
 	   ;; If it's NaN, just propagate it; otherwise raise
 	   ;; inexact-result.
 	   ;;
-	   (if (flo:safe<= x +inf.0)
+	   (if (flo:safe<= x (flo:+inf.0))
 	       (flo:raise-exceptions! (flo:exception:inexact-result)))
 	   x))))
 
