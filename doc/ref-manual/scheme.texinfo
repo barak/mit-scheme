@@ -62,8 +62,52 @@ Documentation License.''
 @contents
 
 @tex
-\global\urefurlonlylinktrue
-\global\def\urlcolor{0 0 1}   % blue
+\ifx\urefurlonlylinktrue\undefined\else
+  \global\urefurlonlylinktrue
+  \global\def\urlcolor{0 0 1}   % blue
+\fi
+
+% \eqimage{foo}{$$f_{a,b}(x) = \int_0^1 e^{-2\pi i t} \,dt.$$}
+%
+%       Displays foo.eps to the right of the equation.
+%
+\global\long\def\eqimage#1#2{%
+  \par\leavevmode%
+  % Load up the image into box 0.
+  \setbox0=\hbox{\image{#1}}%
+  % Calculate the width available to us for the pair as \dimen0.
+  \dimen0=\hsize%
+    \advance\dimen0 by -\leftskip%
+    \advance\dimen0 by -\hangindent%
+    \advance\dimen0 by -\rightskip%
+  % Calculate the width available for the display alone as \dimen1.
+  \dimen1=\dimen0 \advance\dimen1 by -\wd0
+  % Set the display into box 1.
+  \setbox1=\vbox{
+    % Narrow ourselves to \dimen1-2em.
+    \hsize\dimen1 \advance\hsize by -2em
+    % Avoid interline skips for displays.
+    \abovedisplayskip=0pt
+    \belowdisplayskip=0pt
+    \abovedisplayshortskip=0pt
+    \belowdisplayshortskip=0pt
+    % Set the display.
+    #2
+  }%
+  % Calculate the higher of the two for the height of our vboxes as
+  % \dimen2.
+  \ifdim\ht0>\ht1 \dimen2=\ht0 \else \dimen2=\ht1 \fi
+  % Set the display (\box1) and figure (\box0) into an hbox as wide as
+  % we can (\dimen0) and as high the higher of the two (\dimen2), with
+  % fill between them and on either side, and vertically centred.
+  \hbox to \dimen0{%
+    \hfill%
+    \vbox to \dimen2{\vss\box1\vss}%
+    \hfill%
+    \vbox to \dimen2{\vss\box0\vss}%
+    \hfill%
+  }%
+}
 @end tex
 
 @ifnottex

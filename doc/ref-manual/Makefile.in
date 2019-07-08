@@ -54,4 +54,27 @@ SOURCES = \
     vectors.texi \
     win32-packaging.texi
 
+FIGURES_EPS = \
+	fig/cn-expm1.eps \
+	fig/cn-log1mexp.eps \
+	fig/cn-log1p.eps \
+	fig/cn-log1pexp.eps \
+	fig/cn-logistic.eps \
+	fig/cn-logistichalf.eps \
+	fig/cn-logit.eps \
+	fig/cn-logitexp.eps \
+	fig/cn-logithalf.eps \
+	fig/cn-loglogistic.eps \
+	fig/expm1.eps \
+	fig/log1mexp.eps \
+	fig/log1p.eps \
+	fig/log1pexp.eps \
+	fig/logistic.eps \
+	fig/logistichalf.eps \
+	fig/logit.eps \
+	fig/logitexp.eps \
+	fig/logithalf.eps \
+	fig/loglogistic.eps \
+	# end of FIGURES_EPS
+
 include $(top_srcdir)/make-common

@@ -1,0 +1,506 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 0 0 180 60
+%%BeginProlog
+
+% Bounding box parameters.
+/llx 0 def /lly 0 def /urx 180 def /ury 60 def
+/bbwidth urx llx sub def /bbheight ury lly sub def
+newpath
+llx lly moveto llx ury lineto urx ury lineto urx lly lineto closepath
+clip
+
+% Axes.
+/axmin -0.75 def /axmax 0.75 def /aymin -3.2 def /aymax 3.2 def
+
+% Interpolation parameters.
+/nspline 90 def			  % must be even here to avoid zero
+/splinterpoint { chebypoint } def  % i n => s_{i,n}
+
+% Derived axis parameters.
+/awidth axmax axmin sub def
+/aheight aymax aymin sub def
+
+% 1pt margin on either side for arrow heads.
+/a2bbx bbwidth 2 sub awidth div def
+/a2bby bbheight 2 sub aheight div def
+
+/a2bb                           % xa ya => xbb ybb
+{
+    exch a2bbx mul              % ya xbb
+    exch a2bby mul              % xbb ybb
+} def
+
+/Ta2bb                          % Txa Tya => Txbb Tybb
+{
+    exch a2bbx Tconst Tmul      % Tyf Tx2bb
+    exch a2bby Tconst Tmul      % Txbb Tybb
+} def
+
+% Math utilities.
+
+/eps 1.0 { dup 2 div dup 1.0 add 1.0 eq { pop exit } if exch pop } loop def
+/sqrteps eps sqrt def
+/cbrteps eps 1 3 div exp def
+
+/ln1p                           % x => log(1+x)
+{
+    dup 1.0 add                 % x 1+x
+    dup 1.0 eq { pop } {
+        dup ln                  % x 1+x log(1+x)
+        3 -1 roll               % 1+x log(1+x) x
+        mul                     % 1+x x*log(1+x)
+        exch                    % x*log(1+x) 1+x
+        1.0 sub                 % x*log(1+x) (1+x)-1
+        div                     % x*log(1+x)/[(1+x)-1]
+    } ifelse
+} def
+
+/expm1
+{
+    dup abs cbrteps gt {
+        % e^x - 1
+        2.718281828 exch exp 1 sub
+    } { dup abs sqrteps gt {
+        % x + x^2/2 + x^3/3
+        dup dup dup dup         % x x x x
+        mul mul 6 div           % x x x^3/6
+        exch dup mul 2 div      % x x^3/6 x^2/2
+        add add                 % x+x^2/2+x^3/6
+    } { dup abs eps gt {
+        % x + x^2/2
+        dup dup mul 2 div add
+    } {
+        % nothing
+    } ifelse } ifelse } ifelse
+} def
+
+/logithalf			% p => log((1/2+p)/(1/2-p))
+{
+    dup abs 0.5 1.0 3.718281828 div sub le {
+	dup 2 mul		% p 2p
+	exch 0.5 exch sub	% 2p 1/2-p
+	div ln1p		% log(1+2p/(1/2-p))
+    } {
+	dup 0.5 add		% p 1/2+p
+	exch 0.5 exch sub	% 1/2+p 1/2-p
+	div ln			% log((1/2+p)/(1/2-p))
+    } ifelse
+} def
+
+% Automatic differentiation.
+
+/T { 2 array astore } def       % x dx => [x dx]
+/Tq { 0 get } def               % Tx => x (`position')
+/Tv { 1 get } def               % Tx => dx (`velocity')
+/Tqv { dup 0 get exch 1 get } def % [x dx] => x dx
+/Tvar { 1.0 T } def             % x => [x 1]
+/Tconst { 0.0 T } def           % x => [x 0]
+
+/Tadd                           % Tx Ty => T(x+y)
+{
+    Tqv                         % Tx y dy
+    3 -1 roll                   % y dy Tx
+    Tqv                         % y dy x dx
+    exch                        % y dy dx x
+    4 -1 roll add               % dy dx x+y
+    3 1 roll add                % x+y dx+dy
+    T                           % T(x+y)
+} def
+
+/Tmul                           % Tx Ty => T(x*y)
+{
+    Tqv                         % Tx y dy
+    3 -1 roll                   % y dy Tx
+    Tqv                         % y dy x dx
+    3 -1 roll                   % y x dx dy
+    2 index mul                 % y x dx x*dy
+    exch                        % y x x*dy dx
+    3 index mul                 % y x x*dy y*dx
+    add                         % y x y*dx+x*dy
+    3 1 roll mul                % y*dx+x*dy x*y
+    exch                        % x*y y*dx+x*dy
+    T                           % T(x*y)
+} def
+
+/Tneg                           % Tx => T(-x)
+{
+    Tqv                         % x dx
+    0 exch sub                  % x -dx
+    exch                        % -dx x
+    0 exch sub                  % -dx -x
+    exch                        % -x -dx
+    T                           % T(-x)
+} def
+
+/Trecip                         % Tx => T(1/x)
+{
+    Tqv exch                    % x dx
+    1 exch div                  % dx 1/x
+    dup dup                     % dx 1/x 1/x 1/x
+    4 1 roll                    % 1/x dx 1/x 1/x
+    0 exch sub                  % 1/x dx 1/x -1/x
+    mul mul                     % 1/x -dx/x^2
+    T                           % T(1/x)
+} def
+
+/Tsub { Tneg Tadd } def         % Tx Ty => T(x-y)
+/Tdiv { Trecip Tmul } def       % Tx Ty => T(x/y)
+
+/Tln                            % Tx => T(log x)
+{
+    Tqv                         % x dx
+    exch dup ln                 % dx x log(x)
+    3 1 roll                    % log(x) dx x
+    div                         % log(x) dx/x
+    T                           % T(log x)
+} def
+
+/Tln1p                          % Tx => T(log(1+x))
+{
+    Tqv                         % x dx
+    exch dup                    % dx x x
+    ln1p                        % dx x log(1+x)
+    3 1 roll                    % log(1+x) dx x
+    1 add                       % log(1+x) dx 1+x
+    div                         % log(1+x) dx/(1+x)
+    T                           % T(log(1+x))
+} def
+
+/Texp {
+    Tqv                         % x dx
+    exch 2.718281828 exch exp exch % e^x dx
+    1 index mul                 % e^x e^x*dx
+    T                           % T(e^x)
+} def
+
+/Texpm1
+{
+    Tqv                         % x dx
+    exch dup expm1              % dx x e^x-1
+    3 1 roll                    % e^x-1 dx x
+    2.718281828 exch exp        % e^x-1 dx e^x
+    mul                         % e^x-1 e^x*dx
+    T                           % T(e^x-1)
+} def
+
+/Tsin                           % Tx => T(sin(x))
+{
+    Tqv                         % x dx
+    exch dup                    % dx x x
+    sin exch cos                % dx sin(x) cos(x)
+    3 -1 roll                   % sin(x) cos(x) dx
+    0.017453292519943295 mul
+    mul                         % sin(x) cos(x)*dx
+    T                           % T(sin(x))
+} def
+
+/Tcos                           % Tx => T(cos(x))
+{
+    Tqv                         % x dx
+    exch dup                    % dx x x
+    cos exch sin                % dx cos(x) sin(x)
+    3 -1 roll                   % cos(x) sin(x) dx
+    0.017453292519943295 mul
+    mul 1 exch sub              % cos(x) -sin(x)*dx
+    T                           % T(cos(x))
+} def
+
+/Tlogithalf			% Tp => T(log((1/2+p)/(1/2-p)))
+{
+    dup Tq abs 0.5 1.0 3.718281828 div sub le {
+	dup 2.0 Tconst Tmul	% Tp T(2p)
+	exch 0.5 Tconst exch Tsub % T(2p) T(1/2-p)
+	Tdiv Tln1p		% T(log(1+2p/(1/2-p)))
+    } {
+	dup 0.5 Tconst Tadd	% T(p) T(1/2+p)
+	exch 0.5 Tconst exch Tsub % T(1/2+p) T(1/2-p)
+	Tdiv Tln		% T(log((1/2+p)/(1/2-p)))
+    } ifelse
+} def
+
+/Tlerp                          % Tt fxmin fxmax => Tx
+{
+    1 index sub Tconst          % Tt fxmin T(fxmax-fxmin)
+    3 -1 roll Tmul              % fxmin T((fxmax-fxmin)*t)
+    exch Tconst Tadd            % T(fxmin+(fxmax-fxmin)*t)
+} def
+
+% Interpolation points.
+
+/linpoint { div } def           % i n => s_{n,i}
+
+/chebypoint                     % i n => s_{n,i}
+{
+    exch                        % n i
+    dup 0 eq {
+        pop pop 0.0
+    } {
+        2 copy eq {
+            pop pop 1.0
+        } {
+            2 mul 1 sub                 % n 2i-1
+            exch 2 mul                  % 2i-1 2n
+            div                         % (2i-1)/(2i)
+            180 mul cos                 % cos(pi*(2i-1)/(2n))
+            1 exch sub                  % 1-cos(pi*(2i-1)/(2n))
+            2 div                       % [1-cos(pi*(2i-1)/(2n))]/2
+        } ifelse
+    } ifelse
+} def
+
+% Spline interpolation.
+
+% Compute the tangent vector of a piecewise linear interpolation
+% between two consecutive spline interpolation nodes:
+%
+%       c_i(t) := xmin + (xmax - xmin)*(x_i + (x_{i+1} - x_i)*t)
+%       c_i(1) = c_{i-1}(0)
+%
+/splinter                       % t i n => T(c_i(t))
+{
+    2 copy                      % t i n i n
+    splinterpoint               % t i n x0
+    3 1 roll                    % t x0 i n
+    exch 1 add exch             % t x0 i+1 n
+    splinterpoint               % t x0 x1
+    1 index sub Tconst          % t x0 T(x1-x0)
+    3 -1 roll Tvar              % x0 T(x1-x0) Tt
+    Tmul                        % x0 T((x1-x0)*t)
+    exch Tconst                 % T((x1-x0)*t) Tx0
+    Tadd                        % T(x0+(x1-x0)*t)
+} def
+
+% Evaluate the tangent vector f(fxmin + (fxmax - fxmin)*c_i(t)).
+/splinterpoval                  % fxmin fxmax Tf t i n => x0 y0
+{
+    splinter                    % fxmin fxmax Tf Tc
+    4 2 roll                    % Tf Tc fxmin fxmax
+    Tlerp                       % Tf Tx0a
+    dup 3 -1 roll               % Tx0a Tx0a Tf
+    exec                        % Tx0a Ty0a
+    Ta2bb                       % Tx0 Ty0
+} def
+
+% Compute control points of a cubic spline matching the starting and
+% ending tangent vectors.  Pops the starting vectors, keeps the ending.
+%
+%       c(t) = (1-t)^3 p0 + 3 t (1-t)^2 p1 + 3 t^2 (1-t) p2 + t^3 p3,
+%
+% Note that
+%
+%       c(0) = p0,  c'(0) = 3 p1 - 3 p0,
+%       c(1) = p1,  c'(1) = 3 p3 - 3 p2,
+%
+% so p0 = c(0) = (x0, y0), p3 = c(1) = (x1, y1), and
+%
+%       p1 = p0 + c'(0)/3,
+%       p2 = p3 - c'(1)/3.
+%
+/cubicsplinterpocontrol         % Tx0 Ty0 Tx3 Ty3 => Tx3 Ty3 x1 y1 x2 y2
+{
+    4 2 roll                    % Tx3 Ty3 Tx0 Ty0
+    % Compute x1 = x1 + dx1/3.
+    exch Tqv                    % Tx3 Ty3 Ty0 x0 dx0
+    3 div add                   % Tx3 Ty3 Ty0 x1
+    % Compute y1 = y0 + dy0/3.
+    exch Tqv                    % Tx3 Ty3 x1 y0 dy0
+    3 div add                   % Tx3 Ty3 x1 y1
+    % Compute x2 = x3 - dx3/3.
+    3 index Tqv                 % Tx3 Ty3 x1 y1 x3 dx3
+    3 div sub                   % Tx3 Ty3 x1 y1 x2
+    % Compute y2 = y3 - dy3/3.
+    3 index Tqv                 % Tx3 Ty3 x1 y1 x2 y3 dy3
+    3 div sub                   % Tx3 Ty3 x1 y1 x2 y2
+} def
+
+/cubicsplinterpostart           % n fxmin fxmax Tf => Tx0 Ty0 x0 y0
+{
+    0.0 0                       % n fxmin fxmax Tf t i
+    6 -1 roll                   % fxmin fxmax Tf t i n
+    splinterpoval               % Tx0 Ty0
+    1 index Tq 1 index Tq       % Tx0 Ty0 x0 y0
+} def
+
+/cubicsplinterpostep            % Tx0 Ty0 i n fxmin fxmax Tf
+                                % => Tx3 Ty3 x1 y1 x2 y2 x3 y3
+{
+    1.0                         % Tx0 Ty0 i n fxmin fxmax Tf t
+    6 -2 roll                   % Tx0 Ty0 fxmin fxmax Tf t i n
+    splinterpoval               % Tx0 Ty0 Tx3 Ty3
+    cubicsplinterpocontrol      % Tx3 Ty3 x1 y1 x2 y2
+    5 index Tq 5 index Tq       % Tx3 Ty3 x1 y1 x2 y2 x3 y3
+} def
+
+/cubicsplinterpostop            % Tx3 Ty3 => ---
+{
+    pop pop
+} def
+
+/cubicsplinterpolate            % n fxmin fxmax Tf => ---
+{
+    5 dict begin
+        /Tf exch def
+        /fxmax exch def
+        /fxmin exch def
+        /n exch def
+        /fxwidth fxmax fxmin sub def
+        newpath
+        n fxmin fxmax {Tf} cubicsplinterpostart moveto % Tx0 Ty0
+        0 1 n 1 sub { n fxmin fxmax {Tf} cubicsplinterpostep curveto } for
+        cubicsplinterpostop
+        stroke
+    end
+} def
+
+% Graphics.
+
+/arrowhead                      % x y angle => ---
+{
+    gsave
+        1 setlinecap
+        newpath
+        3 1 roll                % angle x y
+        moveto rotate
+        -2 2 rmoveto 2 -2 rlineto -2 -2 rlineto
+        stroke
+    grestore
+} def
+
+/ticku 5 def                    % tick size in pt
+
+/tick                           % xa ya tx ty => ---
+{
+    exch ticku mul              % xa ya ty dxbb
+    exch ticku mul              % xa ya dxbb dybb
+    4 2 roll a2bb               % dxbb dybb xbb ybb
+    gsave newpath moveto rlineto stroke grestore
+} def
+
+/ticklabel                      % v xa ya dxbb dybb => ---
+{
+    4 2 roll a2bb               % v dxbb dybb xbb ybb
+    newpath moveto rlineto show
+} def
+
+/xticklabel                     % x ty => ---
+{
+    exch dup                    % ty x x
+    4 string cvs                % ty x xs
+    gsave
+        newpath 0 0 moveto
+        dup true charpath
+        pathbbox                % ty x xs llx lly urx ury
+    grestore
+    3 -1 roll sub               % ty x xs llx urx ury-lly
+    3 1 roll exch add           % ty x xs ury-lly urx+llx
+    2 div                       % ty x xs ury-lly (urx+llx)/2
+    0 exch sub                  % ty x xs ury-lly -(urx+llx)/2
+    exch                        % ty x xs -(urx+llx)/2 ury-lly
+    ticku 2 mul add             % ty x xs -w/2 h
+    5 -1 roll mul               % x xs -w/2 h*ty
+    4 -1 roll                   % xs -w/2 h*ty x
+    0                           % xs -w/2 h*ty x y
+    4 2 roll                    % xs x y -w/2 h*ty
+    ticklabel
+} def
+
+/yticklabel                     % y tx => ---
+{
+    exch dup                    % tx y y
+    4 string cvs                % tx y ys
+    gsave
+        newpath 0 0 moveto
+        dup true charpath
+        pathbbox                % tx y ys llx lly urx ury
+    grestore
+    3 -1 roll add 2 div         % tx y ys llx urx (ury+lly)/2
+    0 exch sub                  % tx y ys llx urx -(ury+lly)/2
+    3 1 roll exch sub           % tx y ys -(ury+lly)/2 urx-llx
+    4 index 0 lt {
+        ticku 2 mul add
+    } {
+        pop ticku 2 mul
+    } ifelse                    % tx y ys -h/2 w
+    5 -1 roll mul               % y ys -h/2 w*tx
+    exch                        % y ys w*tx -h/2
+    4 -1 roll                   % ys w*tx -h/2 y
+    0                           % ys w*tx -h/2 y x
+    exch                        % ys w*tx -h/2 x y
+    4 2 roll                    % ys x y w*tx -h/2
+    ticklabel
+} def
+
+/reencodefont                   % name font proc => font'
+{
+    exch dup length dict copy   % name proc font'
+    dup /Encoding get           % name proc font' encoding
+    dup length array copy       % name proc font' encoding'
+    3 -1 roll exec              % name font' encoding'
+    1 index exch                % name font' encoding' font'
+    /Encoding exch put          % name font'
+    definefont
+} def
+
+%%EndProlog
+
+% Center coordinates with 1pt margin for arrow heads.
+0 axmin sub 0 aymin sub a2bb 1 add exch 1 add exch translate
+
+% Draw reference asymptotes.
+gsave
+    0.5 setgray
+    0.25 setlinewidth
+    [2 3] 0 setdash
+    newpath
+    -0.5 aymin a2bb moveto
+    -0.5 aymax a2bb lineto
+    stroke
+    newpath
+    0.5 aymin a2bb moveto
+    0.5 aymax a2bb lineto
+    stroke
+grestore
+
+% Draw axes.
+gsave
+    0.125 setlinewidth
+    /Times-Roman-Numeric
+        /Times-Roman findfont
+        { dup 45 /minus put } reencodefont   % replace hyphen by minus
+    10 scalefont setfont
+
+    newpath axmin 0 a2bb moveto axmax 0 a2bb lineto stroke
+    axmax 0 a2bb 0 arrowhead
+    axmin 0 a2bb 180 arrowhead
+    newpath 0 aymin a2bb moveto 0 aymax a2bb lineto stroke
+    0 aymax a2bb 90 arrowhead
+    0 aymin a2bb -90 arrowhead
+
+    % x ticks
+     0.5   0 0 -1    tick  0.5 -1 xticklabel
+     0.375 0 0 -0.25 tick
+     0.25  0 0 -0.5  tick
+     0.125 0 0 -0.25 tick
+    -0.125 0 0 -0.25 tick
+    -0.25  0 0 -0.5  tick
+    -0.375 0 0 -0.25 tick
+    -0.5   0 0 -1    tick -0.5 -1 xticklabel
+
+    % y ticks
+    0  5 -0.5 0 tick
+    0  4 -1   0 tick  4 -1 yticklabel
+    0  3 -0.5 0 tick
+    0  2 -1   0 tick  2 -1 yticklabel
+    0  1 -0.5 0 tick
+    0 -1 -0.5 0 tick
+    0 -2 -1   0 tick -2 -1 yticklabel
+grestore
+
+gsave
+    0 0 1 setrgbcolor
+    0.5 setlinewidth
+    1 setlinecap
+    nspline -.499 .499 {Tlogithalf} cubicsplinterpolate
+grestore
+
+showpage

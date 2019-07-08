@@ -800,29 +800,32 @@ possible these procedures produce a real result from a real
 argument.
 @end deffn
 
-@deffn procedure expm1 z
-@deffnx procedure log1p z
+@deffn procedure log1p z
+@deffnx procedure expm1 z
 Equivalent to:
 @iftex
 @tex
-$$\mathop{\rm expm1} z = \exp (z) - 1,$$
-$$\mathop{\rm log1p} z = \log (1 + z).$$
+\eqimage{fig/log1p}{$$\mathop{\rm log1p} z = \log (1 + z).$$}
+\eqimage{fig/expm1}{$$\mathop{\rm expm1} z = \exp (z) - 1,$$}
 @end tex
 @end iftex
 @ifnottex
 
 @example
 @group
-expm1 z = exp(z) - 1,
 log1p z = log(1 + z).
+expm1 z = exp(z) - 1,
 @end group
 @end example
+
+@image{fig/log1p}
+@image{fig/expm1}
 
 @end ifnottex
 
 However, for real numbers close to zero, these provide better
-approximations than @code{(- (exp @var{z}) 1)} or @code{(log (+ 1
-@var{z}))}:
+approximations than @code{(log (+ 1 @var{z}))} or @code{(- (exp
+@var{z}) 1)}:
 
 @itemize @bullet
 @item
@@ -838,7 +841,8 @@ condition number of log1p near @math{0} is near @math{1}:
 
 @iftex
 @tex
-$$x f'(x)/f(x) = {x/(1 + x) \over \log(1 + x)}.$$
+\eqimage{fig/cn-log1p}
+  {$$x f'(x)/f(x) = {x/(1 + x) \over \log(1 + x)}.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -846,6 +850,8 @@ $$x f'(x)/f(x) = {x/(1 + x) \over \log(1 + x)}.$$
 @example
 x f'(x)/f(x) = [x/(1 + x)]/log(1 + x).
 @end example
+
+@image{fig/cn-log1p}
 
 @end ifnottex
 (Conversely, the condition number of log near @math{0} approaches
@@ -862,7 +868,8 @@ near @math{1}:
 
 @iftex
 @tex
-$$x f'(x)/f(x) = {x e^x \over e^x - 1}.$$
+\eqimage{fig/cn-expm1}
+  {$$x f'(x)/f(x) = {x e^x \over e^x - 1}.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -871,6 +878,7 @@ $$x f'(x)/f(x) = {x e^x \over e^x - 1}.$$
 x f'(x)/f(x) = x e^x/(e^x - 1).
 @end example
 
+@image{fig/cn-expm1}
 @end ifnottex
 @end itemize
 
@@ -883,8 +891,8 @@ system's math library, usually below 1ulp.
 Equivalent to:
 @iftex
 @tex
-$$\mathop{\rm log1mexp} x = \log (1 - e^x),$$
-$$\mathop{\rm log1pexp} x = \log (1 + e^x).$$
+\eqimage{fig/log1mexp}{$$\mathop{\rm log1mexp} x = \log (1 - e^x),$$}
+\eqimage{fig/log1pexp}{$$\mathop{\rm log1pexp} x = \log (1 + e^x).$$}
 @end tex
 @end iftex
 @ifnottex
@@ -896,8 +904,10 @@ log1pexp x = log (1 + e^x).
 @end group
 @end example
 
-@end ifnottex
+@image{fig/log1mexp}
+@image{fig/log1pexp}
 
+@end ifnottex
 Like log1p and expm1, these avoid numerical pathologies with the
 intermediate quantities @math{1 - e^x} and @math{1 + e^x} and inputs
 to log near @math{1}.
@@ -918,6 +928,50 @@ only by the sign of the input and the output.
 This implementation gives forward relative error bounded by ten times
 the forward relative error bound of the system math library's log and
 exp, which is usually below 1ulp.
+
+Beware that although the forward relative error of the MIT/GNU Scheme
+@emph{implementations} of these functions is bounded, these
+@emph{functions} are ill-conditioned for large negative inputs:
+@iftex
+@tex
+\nobreak\par\nobreak%
+$$x f'(x)/f(x) = {\pm x e^x \over (1 \pm e^x) \log(1 \pm e^x)}
+  \approx x, \quad\hbox{for $x \ll 0$.}$$
+\nobreak\par\nobreak\leavevmode%
+\begingroup%
+  % Load up the two figures into \box0 and \box1.
+  \setbox0=\hbox{\image{fig/cn-log1pexp}}%
+  \setbox1=\hbox{\image{fig/cn-log1mexp}}%
+  % Compute the width we have to work with here in \dimen0.
+  \dimen0=\hsize%
+    \advance\dimen0 by -\leftskip%
+    \advance\dimen0 by -\hangindent%
+    \advance\dimen0 by -\rightskip%
+  % Create an hbox of that width for the two figures with horizontal
+  % space before, between, and after.
+  \hbox to \dimen0{%
+    \hfill%
+    \vbox{\dimen0=\wd0 \box0    % Save width and dispense with box.
+      \hbox to\dimen0{\hfill Condition number of log1pexp\hfill}}%
+    \hfill%
+    \vbox{\dimen1=\wd1 \box1    % Save width and dispense with box.
+      \hbox to\dimen1{\hfill Condition number of log1mexp\hfill}}%
+    \hfill%
+  }%
+\endgroup
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x f'(x)/f(x) = (+/- x exp(x))/((1 +/- e^x) log(1 +/- e^x)),
+  --> x,  for x << 0.
+@end example
+
+@image{fig/cn-log1mexp}
+@image{fig/cn-log1pexp}
+
+@end ifnottex
 @end deffn
 
 @deffn procedure logistic x
@@ -926,8 +980,10 @@ Logistic and logit functions.
 Equivalent to:
 @iftex
 @tex
-$$\mathop{\rm logistic} x = {e^x \over 1 + e^x} = {1 \over 1 + e^{-x}} = \mathop{\rm logit}\nolimits^{-1} x,$$
-$$\mathop{\rm logit} p = \log {p \over 1 - p} = \mathop{\rm logistic}\nolimits^{-1} p.$$
+\eqimage{fig/logistic}
+  {$$\mathop{\rm logistic} x = {e^x \over 1 + e^x} = {1 \over 1 + e^{-x}},$$}
+\eqimage{fig/logit}
+  {$$\mathop{\rm logit} p = \log {p \over 1 - p} = \log {1 \over {1\over p} - 1}.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -949,10 +1005,11 @@ maps back from log-odds to probabilities.
 @itemize @bullet
 @item
 The logistic function is defined on the entire real line, but is
-ill-conditioned for large @var{x}, with condition number
+ill-conditioned for large negative @var{x}, with condition number
 @iftex
 @tex
-$$x f'(x)/f(x) = {x e^{-x} \over 1 + e^{-x}}.$$
+\eqimage{fig/cn-logistic}
+  {$$x f'(x)/f(x) = {x e^{-x} \over 1 + e^{-x}}.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -960,6 +1017,8 @@ $$x f'(x)/f(x) = {x e^{-x} \over 1 + e^{-x}}.$$
 @example
 x f'(x)/f(x) = x exp(-x)/[1 + exp(-x)].
 @end example
+
+@image{fig/cn-logistic}
 
 @end ifnottex
 The identity
@@ -989,7 +1048,8 @@ The logit function is defined on the closed unit interval @math{[0,
 condition number
 @iftex
 @tex
-$$x f'(x)/f(x) = {1/(1 - p) \over \log (p/(1 - p))}.$$
+\eqimage{fig/cn-logit}
+  {$$x f'(x)/f(x) = {1/(1 - p) \over \log (p/(1 - p))}.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -997,6 +1057,8 @@ $$x f'(x)/f(x) = {1/(1 - p) \over \log (p/(1 - p))}.$$
 @example
 x f'(x)/f(x) = 1/[(1 - p) log(p/(1 - p))].
 @end example
+
+@image{fig/cn-logit}
 
 @end ifnottex
 The identity
@@ -1027,8 +1089,10 @@ library's log, which is usually below 1ulp.
 Equivalent to:
 @iftex
 @tex
-$$\mathop{\hbox{\rm logistic-1/2}} x = \mathop{\rm logistic}(x) - 1/2,$$
-$$\mathop{\hbox{\rm logit1/2+}} p = \mathop{\rm logit}(1/2 + p).$$
+\eqimage{fig/logistichalf}
+  {$$\mathop{\hbox{\rm logistic-1/2}} x = \mathop{\rm logistic}(x) - 1/2,$$}
+\eqimage{fig/logithalf}
+  {$$\mathop{\hbox{\rm logit1/2+}} p = \mathop{\rm logit}(1/2 + p).$$}
 @end tex
 @end iftex
 @ifnottex
@@ -1040,12 +1104,14 @@ logit1/2+ p = logit(1/2 + p).
 @end group
 @end example
 
+@image{fig/logistichalf}
+@image{fig/logithalf}
+
 @end ifnottex
 
 Like @code{logistic} and @code{logit}, these functions are inverses of
 one another; unlike @code{logistic} and @code{logit}, their domains
 and codomains are both centered at zero.
-
 
 @itemize @bullet
 @item
@@ -1053,7 +1119,8 @@ The logistic-1/2 function is well-conditioned on the entire real line,
 with maximum condition number @math{1} at @math{0}:
 @iftex
 @tex
-$$x f'(x)/f(x) = {2x e^{-x} \over 1 - e^{-2x}}.$$
+\eqimage{fig/cn-logistichalf}
+  {$$x f'(x)/f(x) = {2x e^{-x} \over 1 - e^{-2x}}.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -1061,6 +1128,8 @@ $$x f'(x)/f(x) = {2x e^{-x} \over 1 - e^{-2x}}.$$
 @example
 x f'(x)/f(x) = 2 x e^-x / (1 - (e^-x)^2).
 @end example
+
+@image{fig/cn-logistichalf}
 
 @end ifnottex
 This implementation gives forward relative error bounded by 5 times
@@ -1072,7 +1141,8 @@ The logit1/2+ function is defined on @math{[-1/2, +1/2]}, and is
 ill-conditioned near @math{-1/2} and @math{+1/2}:
 @iftex
 @tex
-$$x f'(x)/f(x) = {x / (1 - 4 x^2) \over \mathop{\rm logit}(1/2 + x)}.$$
+\eqimage{fig/cn-logithalf}
+  {$$x f'(x)/f(x) = {x / (1 - 4 x^2) \over \mathop{\rm logit}(1/2 + x)}.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -1080,6 +1150,8 @@ $$x f'(x)/f(x) = {x / (1 - 4 x^2) \over \mathop{\rm logit}(1/2 + x)}.$$
 @example
 x f'(x)/f(x) = x/[(1 - 4 x^2) logit(1/2 + x)].
 @end example
+
+@image{fig/cn-logithalf}
 
 @end ifnottex
 For points near @math{-1/2} or @math{+1/2}, it may be better to
@@ -1095,8 +1167,10 @@ which is usually below 1ulp.
 Equivalent to:
 @iftex
 @tex
-$$\mathop{\hbox{\rm log-logistic}} x = \log \mathop{\rm logistic}(x) = \log [1/(1 + e^{-x})],$$
-$$\mathop{\hbox{\rm logit-exp}} x = \mathop{\rm logit}(e^x) = \log [e^x/(1 - e^x)].$$
+\eqimage{fig/loglogistic}
+  {$$\eqalign{\mathop{\hbox{\rm log-logistic}} x &= \log \mathop{\rm logistic}(x) \cr&= \log [1/(1 + e^{-x})],}$$}
+\eqimage{fig/logitexp}
+  {$$\eqalign{\mathop{\hbox{\rm logit-exp}} x &= \mathop{\rm logit}(e^x) \cr&= \log [e^x/(1 - e^x)].}$$}
 @end tex
 @end iftex
 @ifnottex
@@ -1117,10 +1191,11 @@ one another.
 @item
 The log-logistic function maps log-odds on the extended real line to
 log-probability on the nonpositive half of the extended real line, and
-is ill-conditioned for positive @var{x}:
+is ill-conditioned for large positive @var{x}:
 @iftex
 @tex
-$$x f'(x)/f(x) = {-x e^{-x} \over (1 + e^{-x}) \log (1 + e^{-x})}.$$
+\eqimage{fig/cn-loglogistic}
+  {$$x f'(x)/f(x) = {-x e^{-x}/(1 + e^{-x}) \over \log (1 + e^{-x})}.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -1129,15 +1204,18 @@ $$x f'(x)/f(x) = {-x e^{-x} \over (1 + e^{-x}) \log (1 + e^{-x})}.$$
 x f'(x)/f(x) = (-x exp(-x))/[(1 + exp(-x)) log(1 + exp(-x))]
 @end example
 
+@image{fig/cn-loglogistic}
+
 @end ifnottex
 
 @item
 The logit-exp function maps log-probability on the nonpositive half of
 the extended real line to log-odds on the extended real line, and is
-ill-conditioned near zero:
+ill-conditioned near @math{\log(1/2)}:
 @iftex
 @tex
-$$x f'(x)/f(x) = {x \over (1 - e^x) \log [e^x/(1 - e^x)]}.$$
+\eqimage{fig/cn-logitexp}
+  {$$x f'(x)/f(x) = {x/(1 - e^x) \over \log [e^x/(1 - e^x)]}.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -1145,6 +1223,8 @@ $$x f'(x)/f(x) = {x \over (1 - e^x) \log [e^x/(1 - e^x)]}.$$
 @example
 x f'(x)/f(x) = x/[(1 - exp(x)) log(exp(x)/(1 - exp(x)))]
 @end example
+
+@image{fig/cn-logitexp}
 
 @end ifnottex
 @end itemize
