@@ -1932,6 +1932,7 @@ USA.
 	  primitive-procedure-name
 	  primitive-procedure?
 	  procedure-arity
+	  procedure-arity-intersection
 	  procedure-arity-max
 	  procedure-arity-min
 	  procedure-arity-valid?

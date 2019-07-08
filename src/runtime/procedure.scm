@@ -220,6 +220,15 @@ USA.
 		(fix:<= (procedure-arity-max arity1)
 			(procedure-arity-max arity2))))))
 
+(define (procedure-arity-intersection a1 a2)
+  (make-procedure-arity (fix:max (procedure-arity-min a1)
+				 (procedure-arity-min a2))
+                        (let ((m1 (procedure-arity-max a1))
+                              (m2 (procedure-arity-max a2)))
+			  (if m1
+			      (if m2 (fix:min m1 m2) m1)
+			      m2))))
+
 (define-integrable (simple-arity? object)
   (index-fixnum? object))
 
