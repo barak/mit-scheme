@@ -82,8 +82,10 @@ USA.
 	(let ((i
 	       (list-index (lambda (name*) (eq? name* name))
 			   names)))
-	  (remove-at-index! i names set-names!)
-	  (remove-at-index! i (get-vals) set-vals!))))
+	  (if i
+	      (begin
+		(remove-at-index! i names set-names!)
+		(remove-at-index! i (get-vals) set-vals!))))))
 
     (remove-one 'call-with-values)
     (remove-one 'with-values)
