@@ -564,7 +564,7 @@ USA.
 
 (define (handler:close-bracket db ctx char)
   db
-  (if (close-bracket-ok? ctx)
+  (if (not (close-bracket-ok? ctx))
       (error:unbalanced-close char))
   (close-bracket-token))
 
