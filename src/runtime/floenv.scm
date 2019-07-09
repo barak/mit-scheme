@@ -372,22 +372,21 @@ USA.
 (define flo:+inf.0)
 (define flo:-inf.0)
 (define (initialize-flonum-infinities!)
-  (let ((zero (lambda () (identity-procedure ))))
-    (if (flo:have-trap-enable/disable?)
-	(begin
-	  (set! flo:+inf.0
-		(named-lambda (flo:+inf.0)
-		  (flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-		    (lambda ()
-		      (flo:/ +1. 0.)))))
-	  (set! flo:-inf.0
-		(named-lambda (flo:-inf.0)
-		  (flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-		    (lambda ()
-		      (flo:/ -1. 0.)))))
-	  unspecific)
-	;; This works on macOS.  YMMV.
-	(begin
-	  (set! flo:+inf.0 (named-lambda (flo:+inf.0) (flo:/ +1. 0.)))
-	  (set! flo:-inf.0 (named-lambda (flo:-inf.0) (flo:/ -1. 0.)))
-	  unspecific))))
+  (if (flo:have-trap-enable/disable?)
+      (begin
+	(set! flo:+inf.0
+	      (named-lambda (flo:+inf.0)
+		(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
+					       (lambda ()
+						 (flo:/ +1. 0.)))))
+	(set! flo:-inf.0
+	      (named-lambda (flo:-inf.0)
+		(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
+					       (lambda ()
+						 (flo:/ -1. 0.)))))
+	unspecific)
+      ;; This works on macOS.  YMMV.
+      (begin
+	(set! flo:+inf.0 (named-lambda (flo:+inf.0) (flo:/ +1. 0.)))
+	(set! flo:-inf.0 (named-lambda (flo:-inf.0) (flo:/ -1. 0.)))
+	unspecific)))
