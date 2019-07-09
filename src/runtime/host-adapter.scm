@@ -50,4 +50,49 @@ USA.
 			'cref/object-root
 			#!default))
 
+
+(let ((env (->environment '(scode-optimizer expansion))))
+
+  (define (remove-at-index! index items setter)
+    (if (= index 0)
+	(setter (cdr items))
+	(remove-at-index! (- index 1)
+			  (cdr items)
+			  (pair-setter items))))
+
+  (define (pair-setter pair)
+    (lambda (tail)
+      (set-cdr! pair tail)))
+
+  (define (env-getter env name)
+    (lambda ()
+      (environment-lookup env name)))
+
+  (define (env-setter env name)
+    (lambda (tail)
+      (environment-assign! env name tail)))
+
+  (let ((get-names (env-getter env 'usual-integrations/expansion-names))
+	(set-names! (env-setter env 'usual-integrations/expansion-names))
+	(get-vals (env-getter env 'usual-integrations/expansion-values))
+	(set-vals! (env-setter env 'usual-integrations/expansion-values)))
+
+    (define (remove-one name)
+      (let ((names (get-names)))
+	(let ((i
+	       (list-index (lambda (name*) (eq? name* name))
+			   names)))
+	  (remove-at-index! i names set-names!)
+	  (remove-at-index! i (get-vals) set-vals!))))
+
+    (remove-one 'call-with-values)
+    (remove-one 'with-values)
+    (remove-one 'values)
+
+    (environment-assign! env
+			 'usual-integrations/expansion-alist
+			 (map cons
+			      (get-names)
+			      (get-vals)))))
+
 unspecific

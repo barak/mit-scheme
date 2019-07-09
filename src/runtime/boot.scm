@@ -450,10 +450,12 @@ USA.
   ;(guarantee thunk? thunk 'make-unforced-promise)
   (make-cell (make-cell (system-pair-cons (ucode-type delayed) #f thunk))))
 
-(define-integrable (%promise-parts promise)
+;;; Don't use multiple-values here because this gets called before they are
+;;; defined.
+(define-integrable (%promise-parts promise k)
   (let ((p (cell-contents (cell-contents promise))))
-    (values (system-pair-car p)
-	    (system-pair-cdr p))))
+    (k (system-pair-car p)
+       (system-pair-cdr p))))
 
 (define (promise-forced? promise)
   (guarantee promise? promise 'promise-forced?)
@@ -461,36 +463,38 @@ USA.
 
 (define (promise-value promise)
   (guarantee promise? promise 'promise-value)
-  (receive (forced? value) (%promise-parts promise)
-    (if (not forced?)
-	(error "Promise not yet forced:" promise))
-    value))
+  (%promise-parts promise
+    (lambda (forced? value)
+      (if (not forced?)
+	  (error "Promise not yet forced:" promise))
+      value)))
 
 (define (force promise)
   (guarantee promise? promise 'force)
   (%force promise))
 
 (define (%force promise)
-  (receive (forced? value) (%promise-parts promise)
-    (if forced?
-	value
-	(let ((promise* (value)))
-	  (guarantee promise? promise* 'force)
-	  (if (eq? promise* promise)
-	      (error "Infinite recursion in promise:" promise))
-	  (without-interrupts
-	   (lambda ()
-	     (let ((q (cell-contents promise)))
-	       (if (not (system-pair-car (cell-contents q)))
-		   (let ((q* (cell-contents promise*)))
-		     ;; Reduce the chain of indirections by one link so
-		     ;; that we don't accumulate space.
-		     (set-cell-contents! q (cell-contents q*))
-		     ;; Point promise* at the same chain of
-		     ;; indirections as promise so that forcing
-		     ;; promise* will yield the same result.
-		     (set-cell-contents! promise* q))))))
-	  (%force promise)))))
+  (%promise-parts promise
+    (lambda (forced? value)
+      (if forced?
+	  value
+	  (let ((promise* (value)))
+	    (guarantee promise? promise* 'force)
+	    (if (eq? promise* promise)
+		(error "Infinite recursion in promise:" promise))
+	    (without-interrupts
+	     (lambda ()
+	       (let ((q (cell-contents promise)))
+		 (if (not (system-pair-car (cell-contents q)))
+		     (let ((q* (cell-contents promise*)))
+		       ;; Reduce the chain of indirections by one link so
+		       ;; that we don't accumulate space.
+		       (set-cell-contents! q (cell-contents q*))
+		       ;; Point promise* at the same chain of
+		       ;; indirections as promise so that forcing
+		       ;; promise* will yield the same result.
+		       (set-cell-contents! promise* q))))))
+	    (%force promise))))))
 
 (define-print-method promise?
   (standard-print-method 'promise
