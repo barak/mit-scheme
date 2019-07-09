@@ -170,6 +170,7 @@ USA.
 	     (let ((fp-env* ((ucode-primitive float-environment 0))))
 	       ((ucode-primitive set-float-environment 1) fp-env)
 	       fp-env*)))))
+  (initialize-flonum-infinities!)
   unspecific)
 
 (define (initialize-package!)
@@ -370,24 +371,23 @@ USA.
 
 (define flo:+inf.0)
 (define flo:-inf.0)
-;;; ZERO can be eliminated after 9.3 is released.  It works around
-;;; overly-aggressive constant folding in SF and LIAR.
-(let ((zero (lambda () (identity-procedure 0.))))
-  (if (flo:have-trap-enable/disable?)
-      (begin
-	(set! flo:+inf.0
-	      (named-lambda (flo:+inf.0)
-		(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-		  (lambda ()
-		    (flo:/ +1. (zero))))))
-	(set! flo:-inf.0
-	      (named-lambda (flo:-inf.0)
-		(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-		  (lambda ()
-		    (flo:/ -1. (zero))))))
-	unspecific)
-      ;; This works on macOS.  YMMV.
-      (begin
-	(set! flo:+inf.0 (named-lambda (flo:+inf.0) (flo:/ +1. (zero))))
-	(set! flo:-inf.0 (named-lambda (flo:-inf.0) (flo:/ -1. (zero))))
-	unspecific)))
+(define (initialize-flonum-infinities!)
+  (let ((zero (lambda () (identity-procedure ))))
+    (if (flo:have-trap-enable/disable?)
+	(begin
+	  (set! flo:+inf.0
+		(named-lambda (flo:+inf.0)
+		  (flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
+		    (lambda ()
+		      (flo:/ +1. 0.)))))
+	  (set! flo:-inf.0
+		(named-lambda (flo:-inf.0)
+		  (flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
+		    (lambda ()
+		      (flo:/ -1. 0.)))))
+	  unspecific)
+	;; This works on macOS.  YMMV.
+	(begin
+	  (set! flo:+inf.0 (named-lambda (flo:+inf.0) (flo:/ +1. 0.)))
+	  (set! flo:-inf.0 (named-lambda (flo:-inf.0) (flo:/ -1. 0.)))
+	  unspecific))))
