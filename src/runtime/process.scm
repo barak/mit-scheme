@@ -79,6 +79,9 @@ USA.
 (define (subprocess-remove! process key)
   (1d-table/remove! (subprocess-properties process) key))
 
+(define (subprocess-binary-i/o-port process)
+  (%subprocess-binary-i/o-port process 'subprocess-binary-i/o-port))
+
 (define (subprocess-i/o-port process)
   (%subprocess-i/o-port process 'subprocess-i/o-port))
 
@@ -96,18 +99,26 @@ USA.
   (without-interruption
    (lambda ()
      (or (subprocess-%i/o-port process)
+	 (let* ((binary-port (%subprocess-binary-i/o-port process caller))
+		(port (and binary-port
+			   (make-generic-i/o-port binary-port (default-object)
+						  caller))))
+	   (set-subprocess-%i/o-port! process port)
+	   port)))))
+
+(define (%subprocess-binary-i/o-port process caller)
+  (without-interruption
+   (lambda ()
+     (or (subprocess-%i/o-port process)
 	 (let ((port
 		(let ((input-channel (subprocess-input-channel process))
 		      (output-channel (subprocess-output-channel process)))
 		  (and (or input-channel output-channel)
-		       (make-generic-i/o-port
-			(make-binary-port
-			 (and input-channel
-			      (make-channel-input-source input-channel))
-			 (and output-channel
-			      (make-channel-output-sink output-channel))
-			 caller)
-			(default-object)
+		       (make-binary-port
+			(and input-channel
+			     (make-channel-input-source input-channel))
+			(and output-channel
+			     (make-channel-output-sink output-channel))
 			caller)))))
 	   (set-subprocess-%i/o-port! process port)
 	   port)))))

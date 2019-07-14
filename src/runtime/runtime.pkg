@@ -4289,6 +4289,7 @@ USA.
 	  start-pty-subprocess
 	  start-subprocess-in-background
 	  subprocess-arguments
+	  subprocess-binary-i/o-port
 	  subprocess-continue-background
 	  subprocess-continue-foreground
 	  subprocess-delete
