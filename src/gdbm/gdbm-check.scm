@@ -28,25 +28,25 @@ USA.
 
 (let ((filename.db "gdbm-check.db"))
   (ignore-errors (lambda () (delete-file filename.db)))
-  (let ((dbf (gdbm-open filename.db 0 GDBM_WRCREAT #o660)))
+  (let ((dbf (gdbm-open filename.db 0 gdbm_wrcreat #o660)))
     ;; Must be set before first store.
-    (gdbm-setopt dbf GDBM_CACHESIZE 101)
+    (gdbm-setopt dbf 'cachesize 101)
 
-    (gdbm-store dbf "Silly String" "Testing 1 2 3." GDBM_REPLACE)
+    (gdbm-store dbf "Silly String" "Testing 1 2 3." gdbm_replace)
     (if (not (condition?
 	      (ignore-errors
-	       (lambda () (gdbm-store dbf "NullString" "" GDBM_INSERT)))))
+	       (lambda () (gdbm-store dbf "NullString" "" gdbm_insert)))))
 	(error "storing null content did not signal"))
     (if (not (condition?
 	      (ignore-errors
-	       (lambda () (gdbm-store dbf "" "NullString" GDBM_INSERT)))))
+	       (lambda () (gdbm-store dbf "" "NullString" gdbm_insert)))))
 	(error "storing null key did not signal"))
-    (if (not (eq? #t (gdbm-store dbf "Silly String" "Ahoy!" GDBM_REPLACE)))
+    (if (not (eq? #t (gdbm-store dbf "Silly String" "Ahoy!" gdbm_replace)))
 	(error "replace produced wrong indication"))
-    (if (not (eq? #f (gdbm-store dbf "Silly String" "Oy!" GDBM_INSERT)))
+    (if (not (eq? #f (gdbm-store dbf "Silly String" "Oy!" gdbm_insert)))
 	(error "double insert produced no indication"))
 
-    (gdbm-setopt dbf GDBM_SYNCMODE 1)
+    (gdbm-setopt dbf 'syncmode 1)
 
     (let ((content (gdbm-fetch dbf "Silly String")))
       (if (not (string=? "Ahoy!" content))
@@ -69,9 +69,9 @@ USA.
     (let ((k (gdbm-firstkey dbf)))
       (if k
 	  (error "empty database returned a firstkey:" k)))
-    (gdbm-store dbf "AString" "Testing 1 2 3." GDBM_INSERT)
-    (gdbm-store dbf "ASecondString" "Testing 1 2 3." GDBM_REPLACE)
-    (gdbm-store dbf "AThirdString" "Testing 1 2 3." GDBM_INSERT)
+    (gdbm-store dbf "AString" "Testing 1 2 3." gdbm_insert)
+    (gdbm-store dbf "ASecondString" "Testing 1 2 3." gdbm_replace)
+    (gdbm-store dbf "AThirdString" "Testing 1 2 3." gdbm_insert)
     #;
     (let ((keys (sort (gdbm-keys dbf) string<?)))
       (if (not (equal? keys '("ASecondString" "AString" "AThirdString")))
@@ -79,15 +79,15 @@ USA.
 
     (gdbm-reorganize dbf)
     (gdbm-sync dbf)
-    (gdbm-setopt dbf 'SYNCMODE #f)
+    (gdbm-setopt dbf 'syncmode #f)
     (gdbm-version)
     (gdbm-close dbf))
 
   (if (not (condition?
 	    (ignore-errors
-	     (lambda () (gdbm-open "notfound.db" 0 GDBM_READER 0)))))
+	     (lambda () (gdbm-open "notfound.db" 0 gdbm_reader 0)))))
       (error "opened a nonexistent database file:" gdbf))
-  (let ((dbf2 (gdbm-open filename.db 0 GDBM_READER 0)))
+  (let ((dbf2 (gdbm-open filename.db 0 gdbm_reader 0)))
     (let ((keys (sort (gdbm-keys dbf2) string<?)))
       (if (not (equal? keys '("ASecondString" "AString" "AThirdString")))
 	  (error "bogus keys:" keys))
