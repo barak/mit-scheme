@@ -4743,10 +4743,11 @@ USA.
 	  bind-variable
 	  lookup-identifier
 	  make-internal-senv
+	  make-keyword-internal-senv
 	  make-keyword-senv
 	  make-partial-senv
 	  make-sealed-senv
-	  reserve-identifier
+	  reserve-keyword
 	  senv->runtime
 	  senv-top-level?))
 

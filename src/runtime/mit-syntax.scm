@@ -189,7 +189,7 @@ USA.
        (spar-push spar-arg:ctx)
        (spar-subform
 	 (spar-match identifier? spar-arg:form)
-	 (spar-funcall reserve-identifier spar-arg:form spar-arg:senv)
+	 (spar-funcall reserve-keyword spar-arg:form spar-arg:senv)
 	 (spar-push spar-arg:form))
        (spar-subform
 	 spar-push-classified
@@ -209,7 +209,7 @@ USA.
        (spar-subform)
        (spar-push spar-arg:ctx)
        (spar-push-subform-if mit-lambda-list? spar-arg:form)
-       (spar-push-body)))))
+       (spar-push-body make-internal-senv)))))
 
 (define $named-lambda
   (spar-classifier->runtime
@@ -222,7 +222,7 @@ USA.
        (spar-subform
 	 (spar-push-subform-if identifier? spar-arg:form)
 	 (spar-push-form-if mit-lambda-list? spar-arg:form))
-       (spar-push-body)))))
+       (spar-push-body make-internal-senv)))))
 
 (define (assemble-lambda-item ctx name bvl body)
   (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx))))
@@ -235,11 +235,11 @@ USA.
 		   (receive (body-ctx body-items) (body frame-senv)
 		     (body-item body-ctx body-items))))))
 
-(define (spar-push-body)
+(define (spar-push-body make-senv)
   (spar-call-with-values
       (lambda (ctx . elts)
 	(lambda (frame-senv)
-	  (let ((body-senv (make-internal-senv frame-senv)))
+	  (let ((body-senv (make-senv frame-senv)))
 	    (values (serror-ctx (serror-ctx-form ctx)
 				body-senv
 				(serror-ctx-hist ctx))
@@ -255,7 +255,7 @@ USA.
   (delay
     (spar-call-with-values
 	(lambda (ctx bindings body)
-	  (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx))))
+	  (let ((frame-senv (make-keyword-internal-senv (serror-ctx-senv ctx))))
 	    (for-each (lambda (binding)
 			(bind-keyword (car binding) frame-senv (cdr binding)))
 		      bindings)
@@ -271,7 +271,7 @@ USA.
 			   (spar-subform spar-push-classified)
 			   (spar-match-null)))))
 	(spar-match-null))
-       (spar-push-body))))
+       (spar-push-body make-keyword-internal-senv))))
 
 (define $let-syntax
   (spar-classifier->runtime spar-promise:let-syntax))
@@ -284,10 +284,11 @@ USA.
    (delay
      (spar-call-with-values
 	 (lambda (ctx bindings body)
-	   (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx)))
+	   (let ((frame-senv
+		  (make-keyword-internal-senv (serror-ctx-senv ctx)))
 		 (ids (map car bindings)))
 	     (for-each (lambda (id)
-			 (reserve-identifier id frame-senv))
+			 (reserve-keyword id frame-senv))
 		       ids)
 	     (for-each (lambda (id item)
 			 (bind-keyword id frame-senv item))
@@ -307,7 +308,7 @@ USA.
 			     (spar-subform spar-push-open-classified)
 			     (spar-match-null)))))
 	 (spar-match-null))
-       (spar-push-body)))))
+       (spar-push-body make-keyword-internal-senv)))))
 
 ;;;; Pseudo keywords
 

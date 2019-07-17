@@ -66,3 +66,21 @@ USA.
 		    '(let ((.car.1 13))
 		       (let ((.car.2 15))
 			 (cons .car.2 (list car .car.1))))))))
+
+(define-test 'keyword-environments
+  (lambda ()
+    (assert-equal (unsyntax
+		   (syntax* '((let-syntax
+				  ((foobar
+				    (er-macro-transformer
+				     (lambda (form rename compare)
+				       `(,(rename 'define)
+					 ,(cadr form)
+					 ,(caddr form))))))
+				(foobar a 3)
+				(foobar b 4))
+
+			      (define (c x)
+				(+ a x)))
+			    system-global-environment))
+		  '(begin (define a 3) (define b 4) (define (c x) (+ a x))))))

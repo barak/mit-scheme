@@ -82,20 +82,20 @@ USA.
 		  (syntactic-closure-senv id))
 	    (var-item id)))))
 
-(define (reserve-identifier identifier senv)
-  (guarantee identifier? identifier 'reserve-identifier)
-		   ((senv-store senv) identifier (reserved-name-item)))
+(define (reserve-keyword identifier senv)
+  (guarantee identifier? identifier 'reserve-keyword)
+  ((senv-store senv) identifier #t (reserved-name-item)))
 
 (define (bind-keyword identifier senv item)
   (guarantee identifier? identifier 'bind-keyword)
   (guarantee keyword-item? item 'bind-keyword)
-		    ((senv-store senv) identifier item))
+  ((senv-store senv) identifier #t item))
 
 (define (bind-variable identifier senv)
   (guarantee identifier? identifier 'bind-variable)
-		   (let ((rename ((senv-rename senv) identifier)))
-		     ((senv-store senv) identifier (var-item rename))
-		     rename))
+  (let ((rename ((senv-rename senv) identifier)))
+    ((senv-store senv) identifier #f (var-item rename))
+    rename))
 
 (define-record-type <syntactic-environment>
     (make-senv get-type get-runtime lookup store rename describe)
@@ -134,7 +134,8 @@ USA.
 	    (cdr binding)
 	    (runtime-lookup identifier env))))
 
-    (define (store identifier item)
+    (define (store identifier keyword? item)
+      (declare (ignore keyword?))
       (let ((binding (assq identifier bound)))
 	(if binding
 	    (set-cdr! binding item)
@@ -163,7 +164,8 @@ USA.
   (define (lookup identifier)
     (runtime-lookup identifier env))
 
-  (define (store identifier item)
+  (define (store identifier keyword? item)
+    (declare (ignore keyword?))
     (error "Can't bind in non-top-level runtime environment:" identifier item))
 
   (define (rename identifier)
@@ -188,7 +190,8 @@ USA.
     (and (eq? name identifier)
 	 item))
 
-  (define (store identifier item)
+  (define (store identifier keyword? item)
+    (declare (ignore keyword?))
     (error "Can't bind in keyword environment:" identifier item))
 
   (define (rename identifier)
@@ -225,7 +228,8 @@ USA.
 	      (set! free (cons (cons identifier item) free))
 	      item))))
 
-    (define (store identifier item)
+    (define (store identifier keyword? item)
+      (declare (ignore keyword?))
       (cond ((assq identifier bound)
 	     => (lambda (binding)
 		  (set-cdr! binding item)))
@@ -234,6 +238,48 @@ USA.
 	    (else
 	     (set! bound (cons (cons identifier item) bound))
 	     unspecific)))
+
+    (define (describe)
+      `((bound ,bound)
+	(free ,free)
+	(parent ,parent)))
+
+    (make-senv get-type get-runtime lookup store rename describe)))
+
+;;; Internal keyword syntactic environments represent environments created by
+;;; syntactic scopes, such as let-syntax.
+
+(define (make-keyword-internal-senv parent)
+  (guarantee syntactic-environment? parent 'make-keyword-internal-senv)
+  (let ((bound '())
+	(free '())
+	(get-runtime (senv-get-runtime parent))
+	(rename (senv-rename parent)))
+
+    (define (get-type)
+      'keyword-internal)
+
+    (define (lookup identifier)
+      (let ((binding
+	     (or (assq identifier bound)
+		 (assq identifier free))))
+	(if binding
+	    (cdr binding)
+	    (let ((item ((senv-lookup parent) identifier)))
+	      (set! free (cons (cons identifier item) free))
+	      item))))
+
+    (define (store identifier keyword? item)
+      (if keyword?
+	  (cond ((assq identifier bound)
+		 => (lambda (binding)
+		      (set-cdr! binding item)))
+		((assq identifier free)
+		 (error "Can't define name; already free:" identifier))
+		(else
+		 (set! bound (cons (cons identifier item) bound))
+		 unspecific))
+	  ((senv-store parent) identifier keyword? item)))
 
     (define (describe)
       `((bound ,bound)
@@ -265,7 +311,8 @@ USA.
 	(define (lookup identifier)
 	  ((senv-lookup (select-env identifier)) identifier))
 
-	(define (store identifier item)
+	(define (store identifier keyword? item)
+	  (declare (ignore keyword?))
 	  ;; **** Shouldn't this be a syntax error?  It can happen as the
 	  ;; result of a misplaced definition.  ****
 	  (error "Can't bind identifier in partial syntactic environment:"
@@ -314,7 +361,8 @@ USA.
 	       (set! free (cons (cons identifier item) free))
 	       item))))
 
-    (define (store identifier item)
+    (define (store identifier keyword? item)
+      (declare (ignore keyword?))
       (cond ((assq identifier bound)
 	     => (lambda (binding)
 		  (set-cdr! binding item)))
