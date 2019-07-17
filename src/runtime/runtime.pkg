@@ -2042,6 +2042,7 @@ USA.
   (export ()
 	  alist->bundle
 	  bundle->alist
+	  bundle-delegate
 	  bundle-names
 	  bundle-predicate
 	  bundle-predicate?

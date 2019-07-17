@@ -57,11 +57,21 @@ USA.
 
 (define (alist->bundle predicate alist)
   (guarantee %bundle-alist? alist 'alist->bundle)
-  ((record-constructor
-    (if predicate
-	(%bundle-predicate->record-type predicate)
-	<bundle>))
-   (alist-copy alist)))
+  (let ((constructor
+	 (record-constructor
+	  (if predicate
+	      (%bundle-predicate->record-type predicate)
+	      <bundle>))))
+   (let* ((alist (alist-copy alist))
+	  (p (assq delegate-name alist)))
+     (if p
+	 (begin
+	   (guarantee binary-procedure? (cdr p) 'alist->bundle)
+	   (constructor (delq delegate-name alist) (cdr p)))
+	 (constructor alist #f)))))
+
+(define delegate-name
+  '.delegate)
 
 (define %bundle-predicate->record-type
   %predicate->record-type)
@@ -81,7 +91,7 @@ USA.
               object)))
 
 (define <bundle>
-  (make-record-type '<bundle> '(alist)))
+  (make-record-type '<bundle> '(alist delegate)))
 
 (defer-boot-action 'record-procedures
   (lambda ()
@@ -92,6 +102,9 @@ USA.
 
 (define bundle-alist
   (record-accessor <bundle> 'alist))
+
+(define bundle-delegate
+  (record-accessor <bundle> 'delegate))
 
 (define-print-method bundle?
   (standard-print-method
@@ -121,11 +134,25 @@ USA.
 (define (bundle-names bundle)
   (map car (bundle-alist bundle)))
 
-(define (bundle-ref bundle operator #!optional default)
-  (let ((p (assq operator (bundle-alist bundle))))
-    (if p
-        (cdr p)
-        (begin
-          (if (default-object? default)
-              (error "Unknown bundle operator:" operator))
-          default))))
+(define (bundle-ref bundle operator #!optional get-default)
+  (let ((get-default
+	 (cond ((not get-default)
+		(lambda () #f))
+	       ((default-object? get-default)
+		(lambda ()
+		  (error "Unknown bundle operator:" operator)))
+	       (else
+		get-default))))
+    (let ((p (assq operator (bundle-alist bundle))))
+      (cond (p (cdr p))
+	    ((bundle-delegate bundle)
+	     ((bundle-delegate bundle) operator get-default))
+	    (else
+	     (get-default))))))
+
+(define (bundle-ref/default bundle operator #!optional default)
+  (bundle-ref bundle
+	      operator
+	      (if (default-object? default)
+		  default
+		  (lambda () default))))
