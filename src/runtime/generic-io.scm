@@ -1450,7 +1450,6 @@ USA.
 	     ((#\u+000A)
 	      #\newline)
 	     ((#f)
-	      (unread-decoded-char ib c1)
 	      (unread-decoded-char ib c0)
 	      #f)
 	     (else
@@ -1480,7 +1479,6 @@ USA.
 	     ((#\u+000A)
 	      #\newline)
 	     ((#f)
-	      (unread-decoded-char ib c1)
 	      (unread-decoded-char ib c0)
 	      #f)
 	     (else
@@ -1502,7 +1500,6 @@ USA.
 	     ((#\u+000A #\u+0085)
 	      #\newline)
 	     ((#f)
-	      (unread-decoded-char ib c1)
 	      (unread-decoded-char ib c0)
 	      #f)
 	     (else
