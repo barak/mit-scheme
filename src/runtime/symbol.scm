@@ -91,12 +91,8 @@ USA.
   (string-hash (symbol->string symbol) modulus))
 
 (define (symbol<? x y)
-  (let ((sx (symbol->string x))
-	(sy (symbol->string y)))
-    (or (string<? sx sy)
-	(and (string=? sx sy)
-	     (interned-symbol? sx)
-	     (uninterned-symbol? sy)))))
+  (bytevector<? (->bytes (system-pair-car x))
+		(->bytes (system-pair-car y))))
 
 (define (symbol>? x y)
   (symbol<? y x))
