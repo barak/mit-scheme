@@ -462,6 +462,25 @@ USA.
 					 (bytevector-copy bv 11 22)
 					 bv1))))))
 
+(define-test 'bytevector<?
+  (lambda ()
+    (let ((lists (random-byte-lists 16 64)))
+      (for-each (lambda (l1)
+		  (for-each (lambda (l2)
+			      (assert-eqv (bytevector<? (bytes->bv l1)
+							(bytes->bv l2))
+					  (byte-list<? l1 l2)))
+			    lists))
+		lists))))
+
+(define (byte-list<? l1 l2)
+  (if (and (pair? l1) (pair? l2))
+      (if (fix:= (car l1) (car l2))
+	  (byte-list<? (cdr l1) (cdr l2))
+	  (fix:< (car l1) (car l2)))
+      (and (null? l1)
+	   (not (null? l2)))))
+
 (define (build-bytevector objects)
   (let ((builder (bytevector-builder)))
     (for-each builder objects)
@@ -482,3 +501,15 @@ USA.
 	(if (fix:<= start* end)
 	    (loop start* (cons (bytevector-copy bv start start*) bvs))
 	    (reverse! bvs))))))
+
+(define (random-byte-lists n max-length)
+  (map (lambda (i)
+	 (declare (ignore i))
+	 (random-byte-list max-length))
+       (iota n)))
+
+(define (random-byte-list max-length)
+  (map (lambda (i)
+	 (declare (ignore i))
+	 (random #x100))
+       (iota (random (+ max-length 1)))))
