@@ -88,8 +88,7 @@ CLEANFILES += stamp-scheme
 
 #TESTS = imail-check.sh
 
-ETAGS_ARGS = $(sources)
-TAGS_DEPENDENCIES = $(sources)
+TAGS_FILES = $(sources)
 
 EXTRA_DIST += $(sources) compile.sh make.scm compile.scm imail.pkg
 

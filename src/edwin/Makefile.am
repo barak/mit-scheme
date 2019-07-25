@@ -51,11 +51,11 @@ CLEANFILES += stamp-scheme
 
 #TESTS = edwin-check.sh
 
-ETAGS_ARGS = $(sources) edwin.ldr
-TAGS_DEPENDENCIES = $(sources) edwin.ldr
+TAGS_FILES = $(sources) edwin.ldr
 
-EXTRA_DIST += $(sources) TUTORIAL
-EXTRA_DIST += sources.sh compile.sh decls.scm edwin.ldr 
+EXTRA_DIST += $(sources) edwin.ldr
+EXTRA_DIST += TUTORIAL
+EXTRA_DIST += sources.sh compile.sh decls.scm
 EXTRA_DIST += edwin.sf edwin.cbf edwin.pkg
 
 install-data-hook:

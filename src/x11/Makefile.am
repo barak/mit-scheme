@@ -6,22 +6,22 @@
 ##     2015, 2016, 2017, 2018, 2019 Massachusetts Institute of
 ##     Technology
 ##
-## This file is part of an x11 plugin for MIT/GNU Scheme.
+## This file is part of MIT/GNU Scheme.
 ##
-## This plugin is free software; you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published
-## by the Free Software Foundation; either version 2 of the License,
-## or (at your option) any later version.
+## MIT/GNU Scheme is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 2 of the License, or (at
+## your option) any later version.
 ##
-## This plugin is distributed in the hope that it will be useful, but
+## MIT/GNU Scheme is distributed in the hope that it will be useful, but
 ## WITHOUT ANY WARRANTY; without even the implied warranty of
 ## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ## General Public License for more details.
 ##
 ## You should have received a copy of the GNU General Public License
-## along with this plugin; if not, write to the Free Software
-## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-## 02110-1301, USA.
+## along with MIT/GNU Scheme; if not, write to the Free Software
+## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+## USA.
 
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = autogen.sh
@@ -53,13 +53,13 @@ c_sources = x11base.c x11color.c x11graph.c x11term.c x11-shim.h x11.h
 x11_shim_la_SOURCES = $(c_sources) x11-shim.c
 x11_shim_la_LDFLAGS = -module -avoid-version -shared
 
-noinst_PROGRAMS = x11-const
+noinst_PROGRAMS = x11-const$(EXEEXT)
 x11_const_SOURCES = x11-const.c x11-shim.h x11.h
 
 x11-shim.c: stamp-shim
 x11-const.c: stamp-shim
 x11-types.bin: stamp-shim
-stamp-shim: $(c_sources) $(cdecls)
+stamp-shim: x11-shim.h x11.h $(cdecls)
 	echo '(generate-shim "x11" "#include \"x11-shim.h\"")' \
 	    | $(MIT_SCHEME_EXE) --batch-mode
 	echo "done" > $@
@@ -71,11 +71,11 @@ x11-const.scm: x11-const$(EXEEXT)
 	./x11-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) x11-const.bin x11.pkg
+stamp-scheme: stamp-shim $(sources) x11.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 
-MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) x11-const
+MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) x11-const$(EXEEXT)
 
 mostlyclean-local:
 	-rm -rf .libs
@@ -90,10 +90,9 @@ TESTS = x11-check.sh
 tags: tags-am
 	./tags-fix.sh x11
 
-all_sources = $(sources) $(c_sources)
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
+TAGS_FILES = $(sources) $(cdecls)
 
-EXTRA_DIST += $(sources) $(cdecls) compile.sh compile.scm x11.pkg
+EXTRA_DIST += $(sources) $(cdecls)
+EXTRA_DIST += compile.sh compile.scm x11.pkg
 EXTRA_DIST += x11-check.sh x11-test.scm
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
