@@ -52,7 +52,8 @@ gdbm_shim_la_LIBADD = gdbm-adapter.lo
 gdbm_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = gdbm-const$(EXEEXT)
-gdbm_const_SOURCES = gdbm-const.c gdbm-shim.h
+gdbm_const_SOURCES = gdbm-shim.h
+nodist_gdbm_const_SOURCES = gdbm-const.c
 
 gdbm-shim.c: stamp-shim
 gdbm-const.c: stamp-shim

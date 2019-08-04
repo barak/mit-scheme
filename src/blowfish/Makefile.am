@@ -52,7 +52,8 @@ blowfish_shim_la_LIBADD = blowfish-adapter.lo
 blowfish_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = blowfish-const$(EXEEXT)
-blowfish_const_SOURCES = blowfish-const.c blowfish-shim.h
+blowfish_const_SOURCES = blowfish-shim.h
+nodist_blowfish_const_SOURCES = blowfish-const.c
 
 blowfish-shim.c: stamp-shim
 blowfish-const.c: stamp-shim

@@ -54,7 +54,8 @@ x11_shim_la_SOURCES = $(c_sources) x11-shim.c
 x11_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = x11-const$(EXEEXT)
-x11_const_SOURCES = x11-const.c x11-shim.h x11.h
+x11_const_SOURCES = x11-shim.h x11.h
+nodist_x11_const_SOURCES = x11-const.c
 
 x11-shim.c: stamp-shim
 x11-const.c: stamp-shim

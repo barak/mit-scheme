@@ -52,7 +52,8 @@ mcrypt_shim_la_LIBADD = mcrypt-adapter.lo
 mcrypt_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = mcrypt-const$(EXEEXT)
-mcrypt_const_SOURCES = mcrypt-const.c mcrypt-shim.h
+mcrypt_const_SOURCES = mcrypt-shim.h
+nodist_mcrypt_const_SOURCES = mcrypt-const.c
 
 mcrypt-shim.c: stamp-shim
 mcrypt-const.c: stamp-shim

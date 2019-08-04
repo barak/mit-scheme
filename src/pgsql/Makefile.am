@@ -52,7 +52,8 @@ AM_LIBS = `pkg-config --libs libpq`
 pgsql_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = pgsql-const$(EXEEXT)
-pgsql_const_SOURCES = pgsql-const.c pgsql-shim.h
+pgsql_const_SOURCES = pgsql-shim.h
+nodist_pgsql_const_SOURCES = pgsql-const.c
 
 pgsql-shim.c: stamp-shim
 pgsql-const.c: stamp-shim
