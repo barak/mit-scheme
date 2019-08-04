@@ -55,15 +55,5 @@ TAGS_FILES = $(sources) edwin.ldr
 
 EXTRA_DIST += $(sources) edwin.ldr
 EXTRA_DIST += TUTORIAL
-EXTRA_DIST += sources.sh compile.sh decls.scm
+EXTRA_DIST += sources.scm sources.sh compile.sh decls.scm
 EXTRA_DIST += edwin.sf edwin.cbf edwin.pkg
-
-install-data-hook:
-
-install-html: install-html-am
-
-install-info-am:
-
-uninstall-info-am:
-
-uninstall-hook:
