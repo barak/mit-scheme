@@ -69,7 +69,7 @@ gdbm-const.scm: gdbm-const$(EXEEXT)
 	./gdbm-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) gdbm.pkg
+stamp-scheme: stamp-shim $(sources) gdbm-const.bin gdbm.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 

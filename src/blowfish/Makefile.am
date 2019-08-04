@@ -69,7 +69,7 @@ blowfish-const.scm: blowfish-const$(EXEEXT)
 	./blowfish-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) blowfish.pkg
+stamp-scheme: stamp-shim $(sources) blowfish-const.bin blowfish.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 

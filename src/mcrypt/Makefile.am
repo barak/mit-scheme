@@ -69,7 +69,7 @@ mcrypt-const.scm: mcrypt-const$(EXEEXT)
 	./mcrypt-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) mcrypt.pkg
+stamp-scheme: stamp-shim $(sources) mcrypt-const.bin mcrypt.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 

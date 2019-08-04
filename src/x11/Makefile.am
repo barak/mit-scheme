@@ -71,7 +71,7 @@ x11-const.scm: x11-const$(EXEEXT)
 	./x11-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) x11.pkg
+stamp-scheme: stamp-shim $(sources) x11-const.bin x11.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 

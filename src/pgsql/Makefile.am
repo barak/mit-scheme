@@ -69,7 +69,7 @@ pgsql-const.scm: pgsql-const$(EXEEXT)
 	./pgsql-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) pgsql.pkg
+stamp-scheme: stamp-shim $(sources) pgsql-const.bin pgsql.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 
