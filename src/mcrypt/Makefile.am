@@ -48,7 +48,8 @@ scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
 
-mcrypt_shim_la_LIBADD = mcrypt-adapter.lo
+mcrypt_shim_la_SOURCES = mcrypt-adapter.c mcrypt-shim.h
+nodist_mcrypt_shim_la_SOURCES = mcrypt-shim.c
 mcrypt_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = mcrypt-const$(EXEEXT)
@@ -92,7 +93,7 @@ tags: tags-am
 
 TAGS_FILES = $(sources) mcrypt-adapter.c $(cdecls)
 
-EXTRA_DIST += $(sources) mcrypt-adapter.c $(cdecls)
+EXTRA_DIST += $(sources) $(cdecls)
 EXTRA_DIST += compile.sh compile.scm mcrypt.pkg
 EXTRA_DIST += mcrypt-check.scm mcrypt-check.sh
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh

@@ -48,7 +48,8 @@ AM_MAKEINFOHTMLFLAGS = --no-split
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
 
-gdbm_shim_la_LIBADD = gdbm-adapter.lo
+gdbm_shim_la_SOURCES = gdbm-adapter.c gdbm-shim.h
+nodist_gdbm_shim_la_SOURCES = gdbm-shim.c
 gdbm_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = gdbm-const$(EXEEXT)
@@ -92,7 +93,7 @@ tags: tags-am
 
 TAGS_FILES = $(sources) gdbm-adapter.c $(cdecls)
 
-EXTRA_DIST += $(sources) gdbm-adapter.c $(cdecls)
+EXTRA_DIST += $(sources) $(cdecls)
 EXTRA_DIST += compile.sh compile.scm gdbm.pkg
 EXTRA_DIST += gdbm-check.scm gdbm-check.sh
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh

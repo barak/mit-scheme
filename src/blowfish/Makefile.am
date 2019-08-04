@@ -48,7 +48,8 @@ AM_MAKEINFOHTMLFLAGS = --no-split
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
 
-blowfish_shim_la_LIBADD = blowfish-adapter.lo
+blowfish_shim_la_SOURCES = blowfish-adapter.c blowfish-shim.h
+nodist_blowfish_shim_la_SOURCES = blowfish-shim.c
 blowfish_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = blowfish-const$(EXEEXT)
@@ -92,7 +93,7 @@ tags: tags-am
 
 TAGS_FILES = $(sources) blowfish-adapter.c $(cdecls)
 
-EXTRA_DIST += $(sources) blowfish-adapter.c $(cdecls)
+EXTRA_DIST += $(sources) $(cdecls)
 EXTRA_DIST += compile.sh compile.scm blowfish.pkg
 EXTRA_DIST += blowfish-test.scm blowfish-check.scm blowfish-check.sh
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
