@@ -73,7 +73,7 @@ stamp-scheme: stamp-shim $(sources) mcrypt.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 
-MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) mcyrpt-const$(EXEEXT)
+MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) mcrypt-const$(EXEEXT)
 
 mostlyclean-local:
 	-rm -rf .libs
