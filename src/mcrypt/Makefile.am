@@ -88,10 +88,9 @@ CLEANFILES += @MIT_SCHEME_CLEAN@
 TESTS = mcrypt-check.sh
 CLEANFILES += encrypted decrypted
 
-tags: tags-am
-	./tags-fix.sh mcrypt
-
-TAGS_FILES = $(sources) mcrypt-adapter.c $(cdecls)
+tags: tags-am $(sources) $(cdecls)
+	$(ETAGS) -a $(sources) -r '/^([^iI].*/' $(cdecls)
+	./tags-fix.sh
 
 EXTRA_DIST += $(sources) $(cdecls)
 EXTRA_DIST += compile.sh compile.scm mcrypt.pkg

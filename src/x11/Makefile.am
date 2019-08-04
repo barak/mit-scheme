@@ -88,10 +88,9 @@ CLEANFILES += @MIT_SCHEME_CLEAN@
 
 TESTS = x11-check.sh
 
-tags: tags-am
-	./tags-fix.sh x11
-
-TAGS_FILES = $(sources) $(cdecls)
+tags: tags-am $(sources) $(cdecls)
+	$(ETAGS) -a $(sources) -r '/^([^iI].*/' $(cdecls)
+	./tags-fix.sh
 
 EXTRA_DIST += $(sources) $(cdecls)
 EXTRA_DIST += compile.sh compile.scm x11.pkg

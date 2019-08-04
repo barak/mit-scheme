@@ -88,10 +88,9 @@ CLEANFILES += @MIT_SCHEME_CLEAN@
 TESTS = gdbm-check.sh
 CLEANFILES += gdbm-check.db
 
-tags: tags-am
-	./tags-fix.sh gdbm
-
-TAGS_FILES = $(sources) gdbm-adapter.c $(cdecls)
+tags: tags-am $(sources) $(cdecls)
+	$(ETAGS) -a $(sources) -r '/^([^iI].*/' $(cdecls)
+	./tags-fix.sh
 
 EXTRA_DIST += $(sources) $(cdecls)
 EXTRA_DIST += compile.sh compile.scm gdbm.pkg

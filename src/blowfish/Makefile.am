@@ -88,10 +88,9 @@ CLEANFILES += @MIT_SCHEME_CLEAN@
 TESTS = blowfish-check.sh
 CLEANFILES += test
 
-tags: tags-am
-	./tags-fix.sh blowfish
-
-TAGS_FILES = $(sources) blowfish-adapter.c $(cdecls)
+tags: tags-am $(sources) $(cdecls)
+	$(ETAGS) -a $(sources) -r '/^([^iI].*/' $(cdecls)
+	./tags-fix.sh
 
 EXTRA_DIST += $(sources) $(cdecls)
 EXTRA_DIST += compile.sh compile.scm blowfish.pkg
