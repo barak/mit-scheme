@@ -113,5 +113,5 @@ done
 
 for SUBDIR in ${PLUGIN_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
-    (cd ${SUBDIR} && ./autogen.sh >/dev/null 2>&1)
+    (cd ${SUBDIR} && ./autogen.sh)
 done
