@@ -122,16 +122,15 @@ if test x"${MIT_SCHEME_INCLUDEDIR}" = x; then
                              echo '            "mit-scheme.h"))))' ) \
                            | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
-if test x"${MIT_SCHEME_OS_SUFFIX}" = x; then
-    MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
-                          | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
+if test x"${MIT_SCHEME_PKD}" = x; then
+    os_suffix=`echo "(display (microcode-id/operating-system-suffix))" \
+               | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
+    MIT_SCHEME_PKD="pgsql-${os_suffix}.pkd"
 fi
 if test x"${MIT_SCHEME_CC_TYPE}" = x; then
     MIT_SCHEME_CC_TYPE=`echo "(display microcode-id/compiled-code-type)" \
                         | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
-
-MIT_SCHEME_PKD="pgsql-${MIT_SCHEME_OS_SUFFIX}.pkd"
 
 for f in pgsql; do
     MIT_SCHEME_SCMs="${MIT_SCHEME_SCMs} ${f}.scm"

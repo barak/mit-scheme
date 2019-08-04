@@ -41,9 +41,10 @@ if test x"${MIT_SCHEME_LIBDIR}" = x; then
 			 echo "          (system-library-directory-pathname)))" ) \
 		       | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
-if test x"${MIT_SCHEME_OS_SUFFIX}" = x; then
-    MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
-                          | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
+if test x"${MIT_SCHEME_PKD}" = x; then
+    os_suffix=`echo "(display (microcode-id/operating-system-suffix))" \
+               | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
+    MIT_SCHEME_PKD="imail-${os_suffix}.pkd"
 fi
 
 # Install plugin docs in Scheme's docdir.
@@ -52,6 +53,6 @@ docdir='$(datarootdir)/doc/$(MIT_SCHEME_PROJECT)'
 AC_SUBST([MIT_SCHEME_PROJECT])
 AC_SUBST([MIT_SCHEME_TOOLCHAIN_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])
-AC_SUBST([MIT_SCHEME_OS_SUFFIX])
+AC_SUBST([MIT_SCHEME_PKD])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

@@ -49,7 +49,7 @@ binaries += imap-syntax.bci imap-syntax.com
 
 scmlib_sub_DATA = $(sources)
 scmlib_sub_DATA += $(binaries)
-scmlib_sub_DATA += make.scm imail.pkg imail-@MIT_SCHEME_OS_SUFFIX@.pkd
+scmlib_sub_DATA += make.scm imail.pkg @MIT_SCHEME_PKD@
 
 info_TEXINFOS = mit-scheme-imail.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -78,7 +78,7 @@ imap-response.bci: stamp-scheme
 imap-response.com: stamp-scheme
 imap-syntax.bci: stamp-scheme
 imap-syntax.com: stamp-scheme
-imail-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+@MIT_SCHEME_PKD@: stamp-scheme
 stamp-scheme: $(sources) imail.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@

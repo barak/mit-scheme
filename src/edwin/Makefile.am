@@ -33,7 +33,7 @@ scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
 scmlib_sub_DATA = $(sources)
 scmlib_sub_DATA += $(binaries)
 scmlib_sub_DATA += loadef.scm edwin.bld
-scmlib_sub_DATA += make.scm edwin.pkg edwin-@MIT_SCHEME_OS_SUFFIX@.pkd
+scmlib_sub_DATA += make.scm edwin.pkg @MIT_SCHEME_PKD@
 scmlib_sub_DATA += TUTORIAL
 
 #info_TEXINFOS = mit-scheme-edwin.texi
@@ -41,7 +41,7 @@ scmlib_sub_DATA += TUTORIAL
 
 include $(srcdir)/source-dependencies.am
 edwin.bld: stamp-scheme
-edwin-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+@MIT_SCHEME_PKD@: stamp-scheme
 stamp-scheme: $(sources) edwin.ldr edwin.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
