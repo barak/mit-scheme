@@ -2043,7 +2043,11 @@ USA.
   (export ()
 	  alist->bundle
 	  bundle->alist
-	  bundle-delegate
+	  bundle-combine
+	  bundle-combine*
+	  bundle-combiner:first
+	  bundle-map
+	  bundle-map*
 	  bundle-names
 	  bundle-predicate
 	  bundle-predicate?

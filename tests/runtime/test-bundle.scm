@@ -40,7 +40,6 @@ USA.
       (assert-eqv (bundle-ref b 'y) y)
       (assert-eqv (bundle-ref b 'z) z)
       (assert-eqv (bundle-ref b 'w #f) #f)
-      (assert-eqv (bundle-delegate b) #f)
 
       (assert-eqv (b 'x) (x))
       (assert-eqv (b 'y) (y))
@@ -145,13 +144,12 @@ USA.
 
     (let ((b1 (bundle #f x y z)))
       (let ((b2
-	     (let ()
-	       (define (y) 25)
-
-	       (define (.delegate operator k)
-		 (bundle-ref b1 operator k))
-
-	       (bundle #f y .delegate))))
+	     (bundle-combine #f
+			     bundle-combiner:first
+			     (let ()
+			       (define (y) 25)
+			       (bundle #f y))
+			     b1)))
 
 	(assert-eqv (b1 'x) 10)
 	(assert-eqv (b1 'y) 20)
@@ -178,18 +176,18 @@ USA.
       (assert-eqv (b1 'z 2) 42)
 
       (let ((b2
-	     (let ()
-	       (define (y n) (+ 25 n))
+	     (bundle-combine #f
+			     bundle-combiner:first
+			     (let ()
+			       (define (x n)
+				 (if (odd? n)
+				     (b1 'y n)
+				     (b1 'z n)))
 
-	       (define (.delegate operator k)
-		 (if (eq? operator 'x)
-		     (lambda (n)
-		       (if (odd? n)
-			   (b1 'y n)
-			   (b1 'z n)))
-		     (bundle-ref b1 operator k)))
+			       (define (y n) (+ 25 n))
 
-	       (bundle #f y .delegate))))
+			       (bundle #f x y))
+			     b1)))
 
 	(assert-eqv (b2 'x 1) 21)
 	(assert-eqv (b2 'x 2) 42)
