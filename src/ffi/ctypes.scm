@@ -31,13 +31,13 @@ USA.
 ;;; C Types
 
 (define (ctype/basic? ctype)
-  ;; Returns #t iff CTYPE is a basic C type, e.g. char, int or double.
+  ;; Returns #t iff ctype is a basic C type, e.g. char, int or double.
   (and (symbol? ctype)
        (not (eq? ctype '*))
        (assq ctype peek-poke-primitives)))
 
 (define (ctype/pointer? ctype)
-  ;; Returns #t iff CTYPE is a pointer type, e.g. (* GtkWidget).
+  ;; Returns #t iff ctype is a pointer type, e.g. (* |GtkWidget|).
   (or (eq? ctype '*)
       (and (pair? ctype) (eq? '* (car ctype))
 	   (pair? (cdr ctype)) (null? (cddr ctype)))))
@@ -45,30 +45,30 @@ USA.
 (define ctype-pointer/target-type cadr)
 
 (define (ctype/void? ctype)
-  (eq? ctype 'VOID))
+  (eq? ctype 'void))
 
 (define (ctype/const? ctype)
-  (and (pair? ctype) (eq? 'CONST (car ctype))
+  (and (pair? ctype) (eq? 'const (car ctype))
        (pair? (cdr ctype)) (null? (cddr ctype))))
 
 (define ctype-const/qualified-type cadr)
 
 (define (ctype/struct-name? ctype)
-  ;; Returns #t iff CTYPE is a struct name, e.g. (struct _GValue).
-  (and (pair? ctype) (eq? 'STRUCT (car ctype))
+  ;; Returns #t iff ctype is a struct name, e.g. (struct _GValue).
+  (and (pair? ctype) (eq? 'struct (car ctype))
        (pair? (cdr ctype)) (symbol? (cadr ctype))
        (null? (cddr ctype))))
 
 (define (ctype/struct-anon? ctype)
-  ;; Returns #t iff CTYPE is an anonymous struct
-  ;; -- (struct (MEMBER . TYPE)...).
-  (and (pair? ctype) (eq? 'STRUCT (car ctype))
+  ;; Returns #t iff ctype is an anonymous struct
+  ;; -- (struct (member . type)...).
+  (and (pair? ctype) (eq? 'struct (car ctype))
        (pair? (cdr ctype)) (pair? (cadr ctype))))
 
 (define (ctype/struct-named? ctype)
-  ;; Returns #t iff CTYPE is a named struct
-  ;; -- (struct NAME (MEMBER VALUE)...).
-  (and (pair? ctype) (eq? 'STRUCT (car ctype))
+  ;; Returns #t iff ctype is a named struct
+  ;; -- (struct name (member value)...).
+  (and (pair? ctype) (eq? 'struct (car ctype))
        (pair? (cdr ctype)) (symbol? (cadr ctype))
        (pair? (cddr ctype)) (pair? (caddr ctype))))
 
@@ -86,7 +86,7 @@ USA.
 
 (define (ctype-struct/name ctype)
   ;; This works on a struct name as well as definitions.
-  (and (or (and (eq? 'STRUCT (car ctype))
+  (and (or (and (eq? 'struct (car ctype))
 		(pair? (cdr ctype)))
 	   (error:wrong-type-argument ctype "C struct type" 'ctype-struct/name))
        (symbol? (cadr ctype))
@@ -94,25 +94,25 @@ USA.
 
 (define (make-ctype-struct name members)
   (if name
-      (cons* 'STRUCT name members)
-      (cons 'STRUCT members)))
+      (cons* 'struct name members)
+      (cons 'struct members)))
 
 (define (ctype/union-name? ctype)
-  ;; Returns #t iff CTYPE is a union name, e.g. (union _GdkEvent).
-  (and (pair? ctype) (eq? 'UNION (car ctype))
+  ;; Returns #t iff ctype is a union name, e.g. (union |_GdkEvent|).
+  (and (pair? ctype) (eq? 'union (car ctype))
        (pair? (cdr ctype)) (symbol? (cadr ctype))
        (null? (cddr ctype))))
 
 (define (ctype/union-anon? ctype)
-  ;; Returns #t iff CTYPE is an anonymous union
-  ;; -- (union (MEMBER . TYPE)...).
-  (and (pair? ctype) (eq? 'UNION (car ctype))
+  ;; Returns #t iff ctype is an anonymous union
+  ;; -- (union (member . type)...).
+  (and (pair? ctype) (eq? 'union (car ctype))
        (pair? (cdr ctype)) (pair? (cadr ctype))))
 
 (define (ctype/union-named? ctype)
-  ;; Returns #t iff CTYPE is a named union
-  ;; -- (union NAME (MEMBER TYPE)...).
-  (and (pair? ctype) (eq? 'UNION (car ctype))
+  ;; Returns #t iff ctype is a named union
+  ;; -- (union name (member type)...).
+  (and (pair? ctype) (eq? 'union (car ctype))
        (pair? (cdr ctype)) (symbol? (cadr ctype))
        (pair? (cddr ctype)) (pair? (caddr ctype))))
 
@@ -130,7 +130,7 @@ USA.
 
 (define (ctype-union/name ctype)
   ;; This works on union names as well as definitions.
-  (and (or (and (eq? 'UNION (car ctype))
+  (and (or (and (eq? 'union (car ctype))
 		(pair? (cdr ctype)))
 	   (error:wrong-type-argument ctype "C union type" 'ctype-union/name))
        (symbol? (cadr ctype))
@@ -138,25 +138,25 @@ USA.
 
 (define (make-ctype-union name members)
   (if name
-      (cons* 'UNION name members)
-      (cons 'UNION members)))
+      (cons* 'union name members)
+      (cons 'union members)))
 
 (define (ctype/enum-name? ctype)
-  ;; Returns #t iff CTYPE is an enum name, e.g. (enum GdkEventType).
-  (and (pair? ctype) (eq? 'ENUM (car ctype))
+  ;; Returns #t iff ctype is an enum name, e.g. (enum |GdkEventType|).
+  (and (pair? ctype) (eq? 'enum (car ctype))
        (pair? (cdr ctype)) (symbol? (cadr ctype))
        (null? (cddr ctype))))
 
 (define (ctype/enum-anon? ctype)
-  ;; Returns #t iff CTYPE is an anonymous enum
-  ;; -- (enum (CONSTANT . VALUE)...).
-  (and (pair? ctype) (eq? 'ENUM (car ctype))
+  ;; Returns #t iff ctype is an anonymous enum
+  ;; -- (enum (constant . value)...).
+  (and (pair? ctype) (eq? 'enum (car ctype))
        (pair? (cdr ctype)) (pair? (cadr ctype))))
 
 (define (ctype/enum-named? ctype)
-  ;; Returns #t iff CTYPE is a named enum
-  ;; -- (enum NAME (CONSTANT . VALUE)...).
-  (and (pair? ctype) (eq? 'ENUM (car ctype))
+  ;; Returns #t iff ctype is a named enum
+  ;; -- (enum name (constant . value)...).
+  (and (pair? ctype) (eq? 'enum (car ctype))
        (pair? (cdr ctype)) (symbol? (cadr ctype))
        (pair? (cddr ctype)) (pair? (caddr ctype))))
 
@@ -174,7 +174,7 @@ USA.
 
 (define (ctype-enum/name ctype)
   ;; This works on enum names as well as definitions.
-  (and (or (and (eq? 'ENUM (car ctype))
+  (and (or (and (eq? 'enum (car ctype))
 		(pair? (cdr ctype)))
 	   (error:wrong-type-argument ctype "C enum type" 'ctype-enum/name))
        (symbol? (cadr ctype))
@@ -182,12 +182,12 @@ USA.
 
 (define (make-ctype-enum name constants)
   (if name
-      (cons* 'ENUM name constants)
-      (cons 'ENUM constants)))
+      (cons* 'enum name constants)
+      (cons 'enum constants)))
 
 (define (ctype/array? ctype)
-  ;; Returns #t iff CTYPE is an array type, e.g. (ARRAY (* GtkWidget) 5).
-  (and (pair? ctype) (eq? 'ARRAY (car ctype))
+  ;; Returns #t iff ctype is an array type, e.g. (array (* |GtkWidget|) 5).
+  (and (pair? ctype) (eq? 'array (car ctype))
        (pair? (cdr ctype))
        (or (null? (cddr ctype))
 	   (and (pair? (cddr ctype)) (null? (cdddr ctype))))))
@@ -198,16 +198,16 @@ USA.
   (and (pair? (cddr ctype)) (caddr ctype)))
 
 (define (make-ctype-array ctype size)
-  (list 'ARRAY ctype size))
+  (list 'array ctype size))
 
 (define (ctype/primitive-accessor ctype)
-  ;; Returns the primitive to use when reading from CTYPE, a basic ctype.
+  ;; Returns the primitive to use when reading from ctype, a basic ctype.
   (let ((entry (assq ctype peek-poke-primitives)))
     (and entry
 	 (car (cdr entry)))))
 
 (define (ctype/primitive-modifier ctype)
-  ;; Returns the primitive to use when writing to CTYPE, a basic ctype.
+  ;; Returns the primitive to use when writing to ctype, a basic ctype.
   (let ((entry (assq ctype peek-poke-primitives)))
     (and entry
 	 (cadr (cdr entry)))))
@@ -234,12 +234,12 @@ USA.
 ;;; C Type Lookup
 
 (define (definite-ctype ctype includes)
-  ;; Returns a definite C type equivalent to CTYPE.  If CTYPE is a
+  ;; Returns a definite C type equivalent to ctype.  If ctype is a
   ;; name, e.g.
   ;;
   ;; |GdkColor|, (struct |_GdkColor|), (union |_GdkEvent|)
   ;;
-  ;; returns the definite C type of its definition per INCLUDES.  A
+  ;; returns the definite C type of its definition per includes.  A
   ;; definite C type is a basic type name, array or pointer type, or
   ;; struct, union or enum names or definitions.
 
@@ -247,7 +247,7 @@ USA.
 	     (ctype ctype))
     (cond ((or (ctype/basic? ctype)
 	       (ctype/void? ctype)
-	       (eq? 'ENUM ctype)
+	       (eq? 'enum ctype)
 	       (eq? '* ctype)) ctype)
 	  ((symbol? ctype)
 	   (if (memq ctype stack)
@@ -276,7 +276,7 @@ USA.
 	       (ctype/union-defn? type)
 	       (ctype/enum-defn? type)
 	       ;; Enum constants are not enumerated in -const.scm files.
-	       (eq? 'ENUM type)) type)
+	       (eq? 'enum type)) type)
 	  ((ctype/struct-name? type)
 	   (let ((entry (assq (cadr type) (c-includes/structs includes))))
 	     (if (not entry)

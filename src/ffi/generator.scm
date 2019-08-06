@@ -79,14 +79,14 @@ USA.
 (define (gen-callout-trampolines includes)
   (for-each
    (lambda (name.alienf)
-     (with-simple-restart 'CONTINUE "Continue generating callout trampolines."
+     (with-simple-restart 'continue "Continue generating callout trampolines."
        (lambda ()
 	 (bind-condition-handler
 	  (list condition-type:simple-error)
 	  (lambda (condition)
-	    (let ((restart (find-restart 'CONTINUE condition))
-		  (msg (access-condition condition 'MESSAGE))
-		  (irr (access-condition condition 'IRRITANTS)))
+	    (let ((restart (find-restart 'continue condition))
+		  (msg (access-condition condition 'message))
+		  (irr (access-condition condition 'irritants)))
 	      (apply warn msg irr)
 	      (if restart
 		  (invoke-restart restart))))
@@ -152,7 +152,7 @@ Scm_"name" (void)
 
 (define (new-variable root-name params)
   ;; Returns a name (string) for a variable that must be distinct from
-  ;; those in the PARAMS alist.
+  ;; those in the params alist.
   (let loop ((n 0))
     (let ((name (string-append root-name (number->string n))))
       (if (not (matching-param? name params))
@@ -163,7 +163,7 @@ Scm_"name" (void)
 
 (define (callout-part2-decls tos-var ret-var ret-ctype includes)
   ;; Returns a multi-line string declaring the variables to be used in
-  ;; the second part of a callout trampoline.  See the Owner's Manual.
+  ;; the second part of a callout trampoline.  (See the FFI Manual.)
   (let ((ctype (definite-ctype ret-ctype includes))
 	(decl (decl-string ret-ctype)))
     (string-append "
@@ -268,7 +268,7 @@ Scm_"name" (void)
 
 (define (callout-arg-converter name arg-ctype includes)
   ;; Returns the name of the C function that takes an argument index
-  ;; and returns it as the C type ARG-CTYPE.  May have a cast
+  ;; and returns it as the C type arg-ctype.  May have a cast
   ;; expression at the beginning.  Handles args named CALLBACK and ID
   ;; specially.
   (let ((ctype (definite-ctype arg-ctype includes))
@@ -282,9 +282,9 @@ Scm_"name" (void)
 	  ((ctype/enum? ctype) "arg_long")
 	  ((ctype/basic? ctype)
 	   (case ctype
-	     ((CHAR SHORT INT LONG) "arg_long")
-	     ((UCHAR USHORT UINT ULONG) "arg_ulong")
-	     ((FLOAT DOUBLE) "arg_double")
+	     ((char short int long) "arg_long")
+	     ((uchar ushort uint ulong) "arg_ulong")
+	     ((float double) "arg_double")
 	     (else (error "Unexpected parameter type:" arg-ctype))))
 	  ((or (ctype/struct? ctype) (ctype/union? ctype))
 	   (string-append "*("decl"*) arg_pointer"))
@@ -292,20 +292,20 @@ Scm_"name" (void)
 
 (define (basic-scm-converter ctype)
   ;; Returns the name of a C function that converts from the definite
-  ;; C type CTYPE to the analogous Scheme object.
+  ;; C type ctype to the analogous Scheme object.
   (cond ((ctype/enum? ctype) "ulong_to_scm")
 	((ctype/basic? ctype)
 	 (case ctype
-	   ((CHAR SHORT INT LONG) "long_to_scm")
-	   ((UCHAR USHORT UINT ULONG) "ulong_to_scm")
-	   ((FLOAT DOUBLE) "double_to_scm")
-	   ((VOID) #f)
+	   ((char short int long) "long_to_scm")
+	   ((uchar ushort uint ulong) "ulong_to_scm")
+	   ((float double) "double_to_scm")
+	   ((void) #f)
 	   (else (error "Unexpected C type:" ctype))))
 	(else (error "Unexpected C type:" ctype))))
 
 (define (callout-return-variable params)
   ;; Returns a name (string) for a variable that will hold the return
-  ;; value.  Checks for two name collisions with the PARAMS, e.g. ret0
+  ;; value.  Checks for two name collisions with the params, e.g. ret0
   ;; and ret0s, the latter being the SCM version of the return value.
   (let loop ((n 0))
     (let* ((ns (number->string n))
@@ -319,7 +319,7 @@ Scm_"name" (void)
 	      (loop (1+ n)))))))
 
 (define (decl-string ctype)
-  ;; Returns a string in C syntax declaring the C type CTYPE.
+  ;; Returns a string in C syntax declaring the C type ctype.
   ;; E.g. given (* |GtkWidget|), returns "GtkWidget *".
   (cond	((eq? ctype '*) "void*")
 	((eq? ctype 'uchar) "unsigned char")
@@ -348,14 +348,14 @@ Scm_"name" (void)
 (define (gen-callback-trampolines includes)
   (for-each
    (lambda (name.alienf)
-     (with-simple-restart 'CONTINUE "Continue generating callback trampolines."
+     (with-simple-restart 'continue "Continue generating callback trampolines."
        (lambda ()
 	 (bind-condition-handler
 	  (list condition-type:simple-error)
 	  (lambda (condition)
-	    (let ((restart (find-restart 'CONTINUE condition))
-		  (msg (access-condition condition 'MESSAGE))
-		  (irr (access-condition condition 'IRRITANTS)))
+	    (let ((restart (find-restart 'continue condition))
+		  (msg (access-condition condition 'message))
+		  (irr (access-condition condition 'irritants)))
 	      (apply warn msg irr)
 	      (if restart
 		  (invoke-restart restart))))
@@ -463,7 +463,7 @@ Scm_"name" ("arglist")
 
 (define (callback-return ret-type includes)
   ;; Returns a multi-line string that returns from a callback
-  ;; trampoline with a value of type RET-TYPE, converted from
+  ;; trampoline with a value of type ret-type, converted from
   ;; val_register.
   (let ((funcast (callback-return-converter ret-type includes)))
     (if (not funcast) "
@@ -473,7 +473,7 @@ Scm_"name" ("arglist")
 
 (define (callback-arg-cons arg-name arg-ctype includes)
   ;; Returns a function call that applies the appropriate Scheme
-  ;; constructor to the ARG-CTYPE variable ARG-NAME.
+  ;; constructor to the arg-ctype variable arg-name.
   (let ((ctype (definite-ctype arg-ctype includes)))
     (cond ((ctype/pointer? ctype)
 	   (string-append "cons_alien((void*)"arg-name")"))
@@ -487,7 +487,7 @@ Scm_"name" ("arglist")
 
 (define (callback-return-converter ret-type includes)
   ;; Returns the name of the C function that takes no arguments and
-  ;; returns the interpreter's VAL register as the C type RET-CTYPE.
+  ;; returns the interpreter's Val register as the C type ret-ctype.
   (let ((ctype (definite-ctype ret-type includes)))
     (cond ((ctype/pointer? ctype)
 	   (string-append "("(decl-string ret-type)")pointer_value"))
@@ -495,9 +495,9 @@ Scm_"name" ("arglist")
 	  ((ctype/void? ctype) #f)
 	  ((ctype/basic? ctype)
 	   (case ctype
-	     ((CHAR SHORT INT LONG) "long_value")
-	     ((UCHAR USHORT UINT ULONG) "ulong_value")
-	     ((FLOAT DOUBLE) "double_value")
+	     ((char short int long) "long_value")
+	     ((uchar ushort uint ulong) "ulong_value")
+	     ((float double) "double_value")
 	     (else (error "Unexpected callback return type:" ctype))))
 	  (else (error "Unexpected callback return type:" ctype)))))
 
@@ -590,7 +590,7 @@ grovel_enums (FILE * out)
   (append-map*!
    (map (lambda (name.info)
 	  ;; The named structs, top-level OR internal.
-	  (let ((name (list 'STRUCT (car name.info))))
+	  (let ((name (list 'struct (car name.info))))
 	    (gen-struct-union-grovel-func name includes)))
 	(c-includes/structs includes))
    (lambda (name.info)
@@ -607,7 +607,7 @@ grovel_enums (FILE * out)
   (append-map*!
    (map (lambda (name.info)
 	  ;; The named unions, top-level OR internal.
-	  (let ((name (list 'UNION (car name.info))))
+	  (let ((name (list 'union (car name.info))))
 	    (gen-struct-union-grovel-func name includes)))
 	(c-includes/unions includes))
    (lambda (name.info)
@@ -620,7 +620,7 @@ grovel_enums (FILE * out)
    (c-includes/type-names includes)))
 
 (define (gen-struct-union-grovel-func name includes)
-  ;; Generate C code for a grovel_NAME function.
+  ;; Generate C code for a grovel_<name> function.
   (let ((fname (cond ((ctype/struct-name? name)
 		      (string-append "grovel_struct_"
 				     (symbol->string (ctype-struct/name name))))
@@ -633,7 +633,7 @@ grovel_enums (FILE * out)
 	(ctype (definite-ctype name includes))
 	(decl (decl-string name))
 	(_ (lambda args (for-each write-string args))))
-    (let ((key (list 'SIZEOF name)))
+    (let ((key (list 'sizeof name)))
       (_ "
 void
 "fname" (FILE * out)
@@ -645,7 +645,7 @@ void
      (lambda (path brief-type)
        (let ((path (decorated-string-append
 		    "" "." "" (map symbol->string path)))
-	     (key (cons* 'OFFSET name path)))
+	     (key (cons* 'offset name path)))
 	 (_ "
   fprintf (out, \"   (")(write key)(_" %ld . ")(write brief-type)(_")\\n\", (long)((char*)&(S."path") - (char*)&S));"))))
     (_ "
@@ -654,12 +654,12 @@ void
     fname))
 
 (define (for-each-member-path ctype includes receiver)
-  ;; Calls RECEIVER with a path and an abbreviated type for each
-  ;; member (and nested member) of the struct or union CTYPE (a C
-  ;; struct or union type).  Each path is a list of member names
-  ;; (symbols) -- one name for immediate members, multiple names for
-  ;; nested members.  An abbreviated type is a Ctype, but is 'ENUM if
-  ;; the actual type is (ENUM ...).
+  ;; Calls receiver with a path and an abbreviated type for each
+  ;; member (and nested member) of ctype, a C struct or union type.
+  ;; Each path is a list of member names (symbols) -- one name for
+  ;; immediate members, multiple names for nested members.  An
+  ;; abbreviated type is a C type, but is 'enum if the actual type is
+  ;; (enum ...).
 
   (let ((type (ctype-definition ctype includes)))
     (cond ((ctype/struct-defn? type)
@@ -688,7 +688,7 @@ void
 		 (ctype/array? ctype))
 	     (receiver (list name) type))
 	    ((ctype/enum? ctype)
-	     (receiver (list name) 'ENUM))
+	     (receiver (list name) 'enum))
 	    ((ctype/struct-defn? ctype)
 	     (receiver (list name) type)
 	     (let ((new-stack (cons type stack)))
