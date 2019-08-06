@@ -49,6 +49,8 @@ AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@ `pkg-config --cflags libpq`
 AM_LIBS = `pkg-config --libs libpq`
 
+pgsql_shim_la_SOURCES = pgsql-shim.h
+nodist_pgsql_shim_la_SOURCES = pgsql-shim.c
 pgsql_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = pgsql-const$(EXEEXT)
