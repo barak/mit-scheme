@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Test the MCRYPT option.
+;;;; Test the Mcrypt option.
 
 (define (random-string length)
   (list->string (make-initialized-list length

@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; The mcrypt option.
+;;;; The Mcrypt option.
 ;;; package: (mcrypt)
 
 (declare (usual-integrations))
@@ -331,7 +331,7 @@ USA.
 
 (define (mcrypt-encrypt-port algorithm mode input output key init-vector
 			     encrypt?)
-  ;; Assumes that INPUT is in blocking mode.
+  ;; Assumes that input is in blocking mode.
   ((port-transformer (lambda ()
 		       (let ((context (mcrypt-open-module algorithm mode)))
 			 (mcrypt-init context key init-vector)

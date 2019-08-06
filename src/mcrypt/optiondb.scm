@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-(define-load-option 'MCRYPT
+(define-load-option 'mcrypt
   (standard-system-loader "."))
 
 (further-load-options #t)
