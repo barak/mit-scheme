@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([MIT/GNU Scheme blowfish plugin],
+AC_INIT([MIT/GNU Scheme Blowfish plugin],
         [1.1],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-blowfish])

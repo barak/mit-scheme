@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the BLOWFISH option.
+;;;; Compile the Blowfish option.
 
 (load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))

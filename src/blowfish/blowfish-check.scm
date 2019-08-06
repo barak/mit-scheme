@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Test the BLOWFISH option.
+;;;; Test the Blowfish option.
 
 (let ((sample (string->utf8 "Some text to encrypt and decrypt.")))
   (call-with-binary-output-file "test"

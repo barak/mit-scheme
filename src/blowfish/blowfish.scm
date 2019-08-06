@@ -160,7 +160,7 @@ USA.
       (error:bad-range-argument end operator)))
 
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
-  ;; Assumes that INPUT is in blocking mode.
+  ;; Assumes that input is in blocking mode.
   (let ((key (blowfish-set-key key))
 	(input-buffer (make-bytevector 4096))
 	(output-buffer (make-bytevector 4096)))

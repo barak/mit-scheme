@@ -1,9 +1,9 @@
 #!/bin/sh
 #
-# Test the BLOWFISH option.
+# Test the Blowfish option.
 
 set -e
 ${MIT_SCHEME_EXE} --prepend-library . <<\EOF
-(load-option 'BLOWFISH)
+(load-option 'blowfish)
 (load "blowfish-check" (->environment '(blowfish)))
 EOF
