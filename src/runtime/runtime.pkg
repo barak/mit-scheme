@@ -113,7 +113,7 @@ USA.
 (define-package (runtime blowfish)
   (files "blowfish")
   (parent (runtime))
-  (export () deprecated:blowfish
+  (export deprecated ()
 	  blowfish-available?
 	  blowfish-cbc
 	  blowfish-cfb64
@@ -142,7 +142,7 @@ USA.
 (define-package (runtime boot-definitions)
   (files "boot")
   (parent (runtime))
-  (export () deprecated:boot-definitions
+  (export deprecated ()
 	  (define-unparser-method define-print-method)
 	  (simple-unparser-method standard-print-method)
 	  (standard-unparser-method bracketed-print-method)
@@ -247,7 +247,7 @@ USA.
 (define-package (runtime primitive-arithmetic)
   (files "primitive-arithmetic")
   (parent (runtime))
-  (export () deprecated:primitive-arithmetic
+  (export deprecated ()
 	  (largest-fixnum fix:largest-value)
 	  (smallest-fixnum fix:smallest-value))
   (export ()
@@ -546,7 +546,7 @@ USA.
 (define-package (runtime miscellaneous-global)
   (files "global")
   (parent (runtime))
-  (export () deprecated:miscellaneous-global
+  (export deprecated ()
 	  (%exit exit)
 	  (quit suspend)
 	  (with-values call-with-values))
@@ -729,7 +729,7 @@ USA.
 (define-package (runtime simple-file-ops)
   (files "sfile")
   (parent (runtime))
-  (export () deprecated:simple-file-ops
+  (export deprecated ()
 	  (file-writable? file-writeable?))
   (export ()
 	  (file-exists? file-exists-indirect?)
@@ -795,7 +795,7 @@ USA.
 (define-package (runtime symbol)
   (files "symbol")
   (parent (runtime))
-  (export () deprecated:symbol
+  (export deprecated ()
 	  (substring->symbol string->symbol)
 	  (symbol-append symbol)
 	  (symbol-name symbol->string))
@@ -1035,7 +1035,7 @@ USA.
 (define-package (runtime legacy-string)
   (files "legacy-string")
   (parent (runtime))
-  (export () deprecated:legacy-string
+  (export deprecated ()
 	  (vector-8b? legacy-string?)
 	  legacy-string?
 	  make-legacy-string
@@ -1047,7 +1047,7 @@ USA.
 (define-package (runtime string)
   (files "string")
   (parent (runtime))
-  (export () deprecated:string
+  (export deprecated ()
 	  (string-hash-ci string-ci-hash)
 	  (string-hash-mod string-hash)
 	  (substring->list string->list)
@@ -1186,7 +1186,7 @@ USA.
 (define-package (runtime bytevector)
   (files "bytevector")
   (parent (runtime))
-  (export () deprecated:bytevector
+  (export deprecated ()
 	  legacy-string->bytevector)
   (export ()
 	  (byte? u8?)
@@ -1304,7 +1304,7 @@ USA.
 (define-package (runtime character)
   (files "char")
   (parent (runtime))
-  (export () deprecated:character
+  (export deprecated ()
 	  (code->char integer->char))
   (export ()
 	  8-bit-char?
@@ -1533,7 +1533,7 @@ USA.
 (define-package (runtime character-set)
   (files "char-set")
   (parent (runtime))
-  (export () deprecated:character-set
+  (export deprecated ()
 	  (char-set->scalar-values char-set->code-points)
 	  (chars->char-set char-set*)
 	  (scalar-values->char-set char-set*)
@@ -2267,7 +2267,7 @@ USA.
 (define-package (runtime file-i/o-port)
   (files "file-io")
   (parent (runtime))
-  (export () deprecated:file-i/o-port
+  (export deprecated ()
 	  call-with-exclusive-legacy-binary-output-file
 	  call-with-legacy-binary-append-file
 	  call-with-legacy-binary-input-file
@@ -2466,7 +2466,7 @@ USA.
 (define-package (runtime global-database)
   (files "gdatab")
   (parent (runtime))
-  (export () deprecated:global-database
+  (export deprecated ()
 	  unparser/set-tagged-pair-method!
 	  unparser/set-tagged-vector-method!)
   (export ()
@@ -2480,7 +2480,7 @@ USA.
 (define-package (runtime hash)
   (files "hash")
   (parent (runtime))
-  (export () deprecated:hash
+  (export deprecated ()
 	  (hash hash-object)
 	  (hash-table/make make-object-hasher)
 	  (object-hash hash-object)
@@ -2499,7 +2499,7 @@ USA.
   (parent (runtime))
   (import (runtime population)
 	  add-to-population!/unsafe)
-  (export () deprecated:hash-table
+  (export deprecated ()
 	  (eq-hash-table-type key-weak-eq-hash-table-type)
 	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
 	  (hash-table-entry-type:key/datum-weak
@@ -2745,7 +2745,7 @@ USA.
 (define-package (runtime port)
   (files "textual-port")
   (parent (runtime))
-  (export () deprecated:port
+  (export deprecated ()
 	  (i/o-port-type? textual-i/o-port-type?)
 	  (input-port-type? textual-input-port-type?)
 	  (make-port make-textual-port)
@@ -2872,7 +2872,7 @@ USA.
 (define-package (runtime input-port)
   (files "input-port")
   (parent (runtime))
-  (export () deprecated:input-port
+  (export deprecated ()
 	  make-eof-object
 	  read-substring!)
   (export ()
@@ -2906,7 +2906,7 @@ USA.
 (define-package (runtime output-port)
   (files "output-port")
   (parent (runtime))
-  (export () deprecated:output-port
+  (export deprecated ()
 	  (flush-output flush-output-port)
 	  write-substring)
   (export ()
@@ -2999,7 +2999,7 @@ USA.
 (define-package (runtime list)
   (files "list")
   (parent (runtime))
-  (export () deprecated:list
+  (export deprecated ()
 	  (list-search-negative find-non-matching-item)
 	  (list-search-positive find-matching-item)
 	  (list-transform-negative delete-matching-items)
@@ -3190,7 +3190,7 @@ USA.
 (define-package (runtime srfi-1)
   (files "srfi-1")
   (parent (runtime))
-  (export () deprecated:srfi-1
+  (export deprecated ()
 	  for-all?
 	  there-exists?)
   (export ()
@@ -3260,7 +3260,7 @@ USA.
 (define-package (runtime load)
   (files "load")
   (parent (runtime))
-  (export () deprecated:load
+  (export deprecated ()
 	  load/loading?
 	  load/suppress-loading-message?)
   (export ()
@@ -3324,7 +3324,7 @@ USA.
 (define-package (runtime microcode-tables)
   (files "microcode-tables")
   (parent (runtime))
-  (export () deprecated:microcode-tables
+  (export deprecated ()
 	  microcode-id/operating-system-name)
   (export ()
 	  microcode-id/compiled-code-type
@@ -3383,7 +3383,7 @@ USA.
 (define-package (runtime number)
   (files "arith" "dragon4")
   (parent (runtime))
-  (export () deprecated:number
+  (export deprecated ()
 	  (flonum-unparser:engineering-output flonum-printer:engineering-output)
 	  (flonum-unparser:normal-output flonum-printer:normal-output)
 	  (flonum-unparser:scientific-output flonum-printer:scientific-output))
@@ -3561,7 +3561,7 @@ USA.
 (define-package (runtime reader)
   (files "reader")
   (parent (runtime))
-  (export () deprecated:parser
+  (export deprecated ()
 	  (param:parser-canonicalize-symbols? param:reader-fold-case?)
 	  *parser-associate-positions?*
 	  *parser-canonicalize-symbols?*
@@ -3885,7 +3885,7 @@ USA.
 (define-package (runtime random-number)
   (files "random")
   (parent (runtime))
-  (export () deprecated:random
+  (export deprecated ()
 	  (flo:random-unit flo:random-unit-open))
   (export ()
 	  (random-source-state-ref export-random-state)
@@ -3914,7 +3914,7 @@ USA.
 (define-package (runtime record)
   (files "record")
   (parent (runtime))
-  (export () deprecated:record
+  (export deprecated ()
 	  (new-make-record-type make-record-type) ;RELNOTE: delete
 	  set-record-type-unparser-method!)
   (export ()
@@ -4400,7 +4400,7 @@ USA.
     ((unix) "x11graph")
     (else))
   (parent (runtime))
-  (export () deprecated:x11graph
+  (export deprecated ()
 	  create-x-colormap
 	  create-x-image
 	  x-character-bounds/ascent
@@ -4594,7 +4594,7 @@ USA.
 (define-package (runtime string-i/o-port)
   (files "string-io")
   (parent (runtime))
-  (export () deprecated:string-i/o-port
+  (export deprecated ()
 	  (get-output-from-accumulator get-output-string!)
 	  (make-accumulator-output-port open-output-string)
 	  (string->input-port open-input-string)
@@ -4981,7 +4981,7 @@ USA.
 (define-package (runtime system-macros)
   (files "sysmac")
   (parent (runtime))
-  (export () deprecated:system-macros
+  (export deprecated ()
 	  define-guarantee)
   (export (runtime)
 	  define-deferred
@@ -5024,7 +5024,7 @@ USA.
 (define-package (runtime printer)
   (files "printer")
   (parent (runtime))
-  (export () deprecated:printer
+  (export deprecated ()
 	  *unparse-abbreviate-quotations?*
 	  *unparse-compound-procedure-names?*
 	  *unparse-primitives-by-name?*
@@ -5334,7 +5334,7 @@ USA.
     ((load) "gdbm")
     (else))
   (parent (runtime))
-  (export () deprecated:gdbm
+  (export deprecated ()
 	  gdbm-available?
 	  gdbm-close
 	  gdbm-delete
@@ -5392,7 +5392,7 @@ USA.
 (define-package (runtime crypto)
   (files "crypto")
   (parent (runtime))
-  (export () deprecated:crypto
+  (export deprecated ()
 	  mcrypt-algorithm-name
 	  mcrypt-algorithm-names
 	  mcrypt-available?
@@ -5567,7 +5567,7 @@ USA.
 (define-package (runtime parser-buffer)
   (files "parser-buffer")
   (parent (runtime))
-  (export () deprecated:parser-buffer
+  (export deprecated ()
 	  (input-port->parser-buffer textual-input-port->parser-buffer))
   (export ()
 	  *match-string
@@ -5871,7 +5871,7 @@ USA.
     ((load) "pgsql")
     (else))
   (parent (runtime))
-  (export () deprecated:postgresql
+  (export deprecated ()
 	  call-with-pgsql-conn
 	  close-pgsql-conn
 	  condition-type:pgsql-connection-error

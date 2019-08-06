@@ -380,27 +380,12 @@ USA.
 			(cond ((and (pair? (cdr option))
 				    (eq? 'deprecated (cadr option)))
 			       (parse-import/export (cddr option) #t))
-			      ;; 9.2 compatibility
-			      ((and (pair? (cdr option))
-				    (pair? (cddr option))
-				    (symbol? (caddr option))
-				    (string-prefix-ci?
-				     "deprecated:"
-				     (symbol->string (caddr option))))
-			       (parse-import/export (cons (cadr option)
-							  (cdddr option))
-						    #t))
 			      (else
 			       (parse-import/export (cdr option) #f)))))
 		   (set-package-description/exports!
 		    package
 		    (append! (package-description/exports package)
 			     (list export)))))
-		((export-deprecated)
-		 (set-package-description/exports!
-		  package
-		  (append! (package-description/exports package)
-			   (list (parse-import/export (cdr option) #t)))))
 		((import)
 		 (set-package-description/imports!
 		  package
