@@ -5,21 +5,22 @@ Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
     2017, 2018, 2019 Massachusetts Institute of Technology
 
-This file is part of an x11 plugin for MIT/GNU Scheme.
+This file is part of MIT/GNU Scheme.
 
-This plugin is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2 of the License, or (at your
-option) any later version.
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
 
-This plugin is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this plugin; if not, write to the Free Software Foundation,
-Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
 
 |#
 
@@ -135,7 +136,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
       ((5) (error:bad-range-argument highlight 'xterm-clear-rectangle)))))
 
 (define (xterm-scroll-lines-up xterm x-start x-end y-start y-end lines)
-  ;; Scroll the contents of the region up by LINES.
+  ;; Scroll the contents of the region up by lines.
   (let ((code (c-call "xterm_scroll_lines_up"
 		      xterm x-start x-end y-start y-end lines)))
     (case code
@@ -146,7 +147,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
       ((5) (error:bad-range-argument lines 'xterm-scroll-lines-up)))))
 
 (define (xterm-scroll-lines-down xterm x-start x-end y-start y-end lines)
-  ;; Scroll the contents of the region down by LINES.
+  ;; Scroll the contents of the region down by lines.
   (let ((code (c-call "xterm_scroll_lines_down"
 		      xterm x-start x-end y-start y-end lines)))
     (case code
@@ -158,8 +159,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (xterm-save-contents xterm x-start x-end y-start y-end)
   ;; Get the contents of the terminal screen rectangle as a bytevector.
-  ;; The bytevector contains alternating (CHARACTER, HIGHLIGHT) pairs.
-  ;; The pairs are organized in row-major order from (X-START, Y-START).
+  ;; The bytevector contains alternating (character, highlight) pairs.
+  ;; The pairs are organized in row-major order from (x-start, y-start).
   (let* ((bytevector (make-bytevector (* 2
 					 (- x-end x-start)
 					 (- y-end y-start))))
@@ -173,8 +174,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     bytevector))
 
 (define (xterm-restore-contents xterm x-start x-end y-start y-end contents)
-  ;; Replace the terminal screen rectangle with CONTENTS.
-  ;; See `XTERM-SCREEN-CONTENTS' for the format of CONTENTS.
+  ;; Replace the terminal screen rectangle with contents.
+  ;; See `xterm-screen-contents' for the format of contents.
   (if (not (= (bytevector-length contents)
 	      (* 2
 		 (- x-end x-start)

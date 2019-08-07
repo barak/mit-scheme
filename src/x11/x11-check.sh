@@ -11,7 +11,7 @@ ${MIT_SCHEME_EXE} --prepend-library . <<\EOF
 	    (string-null? display)))
       (warn "DISPLAY not set")
       (begin
-	(load-option 'X11)
+	(load-option 'x11)
 	(load "x11-test.scm" (->environment '(x11)))))
   )
 EOF

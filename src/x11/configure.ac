@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([MIT/GNU Scheme x11 plugin],
+AC_INIT([MIT/GNU Scheme X11 plugin],
         [1.3],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-x11])
@@ -14,7 +14,7 @@ AC_COPYRIGHT(
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
     2017, 2018, 2019 Massachusetts Institute of Technology
 
-This file is part of an x11 plugin for MIT/GNU Scheme.
+This file is part of MIT/GNU Scheme.
 
 MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
