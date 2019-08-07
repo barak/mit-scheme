@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Test the PGSQL option.
+;;;; Test the PostgreSQL option.
 
 (let ((conn (ignore-errors (lambda () (open-pgsql-conn "")))))
 

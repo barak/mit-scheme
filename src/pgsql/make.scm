@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Load the PGSQL option.
+;;;; Load the PostgreSQL option.
 
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()

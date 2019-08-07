@@ -283,46 +283,46 @@ USA.
    (lambda (form environment)
      environment
      (if (syntax-match? '(identifier * identifier) (cdr form))
-	 `(BEGIN
+	 `(begin
 	    ,@(let loop ((names (cddr form)) (index 0))
 		(if (pair? names)
-		     `((DEFINE ,(car names) ,index)
+		     `((define ,(car names) ,index)
 		       ,@(loop (cdr names) (+ index 1)))
 		     '()))
-	    (DEFINE ,(cadr form) '#(,@(cddr form))))
+	    (define ,(cadr form) '#(,@(cddr form))))
 	 (ill-formed-syntax form)))))
 
 (define (index->name index enum)
-  (guarantee index-fixnum? index 'INDEX->NAME)
+  (guarantee index-fixnum? index 'index->name)
   (if (not (fix:< index (vector-length enum)))
-      (error:bad-range-argument index 'INDEX->NAME))
+      (error:bad-range-argument index 'index->name))
   (vector-ref enum index))
 
 (define-enum connection-status
-  PGSQL-CONNECTION-OK
-  PGSQL-CONNECTION-BAD
-  PGSQL-CONNECTION-STARTED
-  PGSQL-CONNECTION-MADE
-  PGSQL-CONNECTION-AWAITING-RESPONSE
-  PGSQL-CONNECTION-AUTH-OK
-  PGSQL-CONNECTION-SETENV)
+  pgsql-connection-ok
+  pgsql-connection-bad
+  pgsql-connection-started
+  pgsql-connection-made
+  pgsql-connection-awaiting-response
+  pgsql-connection-auth-ok
+  pgsql-connection-setenv)
 
 (define-enum postgres-polling-status
-  PGSQL-POLLING-FAILED
-  PGSQL-POLLING-READING
-  PGSQL-POLLING-WRITING
-  PGSQL-POLLING-OK
-  PGSQL-POLLING-ACTIVE)
+  pgsql-polling-failed
+  pgsql-polling-reading
+  pgsql-polling-writing
+  pgsql-polling-ok
+  pgsql-polling-active)
 
 (define-enum exec-status
-  PGSQL-EMPTY-QUERY
-  PGSQL-COMMAND-OK
-  PGSQL-TUPLES-OK
-  PGSQL-COPY-OUT
-  PGSQL-COPY-IN
-  PGSQL-BAD-RESPONSE
-  PGSQL-NONFATAL-ERROR
-  PGSQL-FATAL-ERROR)
+  pgsql-empty-query
+  pgsql-command-ok
+  pgsql-tuples-ok
+  pgsql-copy-out
+  pgsql-copy-in
+  pgsql-bad-response
+  pgsql-nonfatal-error
+  pgsql-fatal-error)
 
 (define pgsql-initialized? #f)
 (define connections)
@@ -340,20 +340,20 @@ USA.
      (if (syntax-match? '(symbol expression) (cdr form))
 	 (let ((type (cadr form)))
 	   (let ((type? (symbol type '?))
-		 (guarantee-type (symbol 'GUARANTEE- type))
-		 (error:not-type (symbol 'ERROR:NOT- type))
-		 (guarantee-valid-type (symbol 'GUARANTEE-VALID- type))
-		 (type-handle (symbol type '-HANDLE)))
-	     `(BEGIN
-		(DEFINE-INTEGRABLE (,guarantee-type OBJECT CALLER)
-		  (IF (NOT (,type? OBJECT))
-		      (,error:not-type OBJECT CALLER)))
-		(DEFINE (,error:not-type OBJECT CALLER)
-		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT ,(caddr form) CALLER))
-		(DEFINE-INTEGRABLE (,guarantee-valid-type OBJECT CALLER)
-		  (IF (AND (,type? OBJECT) (,type-handle OBJECT))
-		      (,type-handle OBJECT)
-		      (,error:not-type OBJECT CALLER))))))
+		 (guarantee-type (symbol 'guarantee- type))
+		 (error:not-type (symbol 'error:not- type))
+		 (guarantee-valid-type (symbol 'guarantee-valid- type))
+		 (type-handle (symbol type '-handle)))
+	     `(begin
+		(define-integrable (,guarantee-type object caller)
+		  (if (not (,type? object))
+		      (,error:not-type object caller)))
+		(define (,error:not-type object caller)
+		  (error:wrong-type-argument object ,(caddr form) caller))
+		(define-integrable (,guarantee-valid-type object caller)
+		  (if (and (,type? object) (,type-handle object))
+		      (,type-handle object)
+		      (,error:not-type object caller))))))
 	 (ill-formed-syntax form)))))
 
 (define-guarantee connection "PostgreSQL connection")
@@ -380,35 +380,35 @@ USA.
 	(set! pgsql-initialized? #t))))
 
 (define condition-type:pgsql-error
-  (make-condition-type 'PGSQL-ERROR condition-type:error '()
+  (make-condition-type 'pgsql-error condition-type:error '()
     (lambda (condition port)
       condition
       (write-string "Unknown PostgreSQL error." port))))
 
 (define condition-type:pgsql-connection-error
-  (make-condition-type 'PGSQL-CONNECTION-ERROR condition-type:pgsql-error
-      '(MESSAGE)
+  (make-condition-type 'pgsql-connection-error condition-type:pgsql-error
+      '(message)
     (lambda (condition port)
       (write-string "Unable to connect to PostgreSQL server" port)
-      (write-message (access-condition condition 'MESSAGE) port))))
+      (write-message (access-condition condition 'message) port))))
 
 (define error:pgsql-connection
   (condition-signaller condition-type:pgsql-connection-error
-		       '(MESSAGE)
+		       '(message)
 		       standard-error-handler))
 
 (define condition-type:pgsql-query-error
-  (make-condition-type 'PGSQL-QUERY-ERROR condition-type:pgsql-error
-      '(QUERY RESULT)
+  (make-condition-type 'pgsql-query-error condition-type:pgsql-error
+      '(query result)
     (lambda (condition port)
       (write-string "PostgreSQL query error" port)
       (write-message
-       (pgsql-result-error-message (access-condition condition 'RESULT))
+       (pgsql-result-error-message (access-condition condition 'result))
        port))))
 
 (define error:pgsql-query
   (condition-signaller condition-type:pgsql-query-error
-		       '(QUERY RESULT)
+		       '(query result)
 		       standard-error-handler))
 
 (define (write-message string port)
@@ -444,7 +444,7 @@ USA.
      (lambda (handle)
        (cond ((alien-null? handle)
 	      (error:pgsql-connection #f))
-	     ((= PGSQL-CONNECTION-BAD (pq-status handle))
+	     ((= pgsql-connection-bad (pq-status handle))
 	      (let ((msg (pq-error-message handle)))
 		(pq-finish handle)
 		(error:pgsql-connection msg))))
@@ -466,11 +466,11 @@ USA.
 		    unspecific))))
 
 (define (pgsql-conn-open? connection)
-  (guarantee-connection connection 'PGSQL-CONN-OPEN?)
+  (guarantee-connection connection 'pgsql-conn-open?)
   (if (connection-handle connection) #t #f))
 
 (define-integrable (connection->handle connection)
-  (guarantee-valid-connection connection 'CONNECTION->HANDLE))
+  (guarantee-valid-connection connection 'connection->handle))
 
 (define (poll-pgsql-conn connection)
   (index->name (pq-connect-poll (connection->handle connection))
@@ -486,8 +486,8 @@ USA.
      environment
      (if (syntax-match? '(symbol) (cdr form))
 	 (let ((field (cadr form)))
-	   `(DEFINE (,(symbol 'PGSQL-CONN- field) OBJECT)
-	      (,(symbol 'PQ- field) (CONNECTION->HANDLE OBJECT))))
+	   `(define (,(symbol 'pgsql-conn- field) object)
+	      (,(symbol 'pq- field) (connection->handle object))))
 	 (ill-formed-syntax form)))))
 
 (define-connection-accessor db)
@@ -531,7 +531,7 @@ USA.
   (pq-unescape-bytea string))
 
 (define (exec-pgsql-query connection query)
-  (guarantee string? query 'EXEC-PGSQL-QUERY)
+  (guarantee string? query 'exec-pgsql-query)
   (let ((result
 	 (let ((handle (connection->handle connection)))
 	   (make-gc-finalized-object
@@ -543,10 +543,10 @@ USA.
 		  (error "Unable to execute PostgreSQL query:" query))
 	      (make-result result-handle))))))
     (if (not (memq (pgsql-result-status result)
-		   '(PGSQL-COMMAND-OK
-		     PGSQL-TUPLES-OK
-		     PGSQL-COPY-OUT
-		     PGSQL-COPY-IN)))
+		   '(pgsql-command-ok
+		     pgsql-tuples-ok
+		     pgsql-copy-out
+		     pgsql-copy-in)))
 	(error:pgsql-query query result))
     result))
 
@@ -570,9 +570,9 @@ USA.
      environment
      (if (syntax-match? '(symbol) (cdr form))
 	 (let* ((field (cadr form))
-		(operator (symbol 'PGSQL- field)))
-	   `(DEFINE (,operator OBJECT)
-	      (,(symbol 'PQ- field) (RESULT->HANDLE OBJECT ',operator))))
+		(operator (symbol 'pgsql- field)))
+	   `(define (,operator object)
+	      (,(symbol 'pq- field) (result->handle object ',operator))))
 	 (ill-formed-syntax form)))))
 
 (define-result-accessor result-error-message)
