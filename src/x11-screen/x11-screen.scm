@@ -53,7 +53,7 @@ USA.
   (selected? #t)
   (name #f)
   (icon-name #f)
-  (x-visibility 'VISIBLE)
+  (x-visibility 'visible)
   (mapped? #f)
   (unexposed? #t))
 
@@ -130,10 +130,10 @@ USA.
 ;;; on the window until the first Expose event arrives.  The manual
 ;;; says nothing about the relationship between this event and the
 ;;; MapNotify event associated with that mapping.  We use the fields
-;;; UNEXPOSED? and MAPPED? to track the arrival of those events.
-;;; The screen's visibility remains 'UNMAPPED until both have arrived.
-;;; Meanwhile, X-VISIBILITY tracks Visibility events.  When the window
-;;; is both exposed and mapped, VISIBILITY reflects X-VISIBILITY.
+;;; unexposed? and mapped? to track the arrival of those events.
+;;; The screen's visibility remains 'unmapped until both have arrived.
+;;; Meanwhile, x-visibility tracks Visibility events.  When the window
+;;; is both exposed and mapped, visibility reflects x-visibility.
 
 (define (screen-x-visibility screen)
   (xterm-screen-state/x-visibility (screen-state screen)))
@@ -166,7 +166,7 @@ USA.
 	      (begin
 		(set-screen-unexposed?! screen #f)
 		(update-visibility! screen)
-		(if (eq? 'ENTERED unexposed?)
+		(if (eq? 'entered unexposed?)
 		    (xterm-screen/enter! screen))))))))
 
 (define (update-visibility! screen)
@@ -175,7 +175,7 @@ USA.
 			      (if (and (screen-mapped? screen)
 				       (screen-exposed? screen))
 				  (screen-x-visibility screen)
-				  'UNMAPPED))))
+				  'unmapped))))
 
 (define (screen-xterm screen)
   (xterm-screen-state/xterm (screen-state screen)))
@@ -258,7 +258,7 @@ USA.
 
 (define (xterm-screen/enter! screen)
   (if (screen-unexposed? screen)
-      (set-screen-unexposed?! screen 'ENTERED)
+      (set-screen-unexposed?! screen 'entered)
       (begin
 	(set-screen-selected?! screen #t)
 	(let ((xterm (screen-xterm screen)))
@@ -284,11 +284,11 @@ USA.
 
 (define (xterm-screen/scroll-lines-down! screen xl xu yl yu amount)
   (xterm-scroll-lines-down (screen-xterm screen) xl xu yl yu amount)
-  'UNCHANGED)
+  'unchanged)
 
 (define (xterm-screen/scroll-lines-up! screen xl xu yl yu amount)
   (xterm-scroll-lines-up (screen-xterm screen) xl xu yl yu amount)
-  'UNCHANGED)
+  'unchanged)
 
 (define (xterm-screen/beep screen)
   (x-window-beep (screen-xterm screen))
@@ -368,7 +368,7 @@ USA.
 		   (process-special-event event))))
 	    (pce-event
 	     (lambda (flag)
-	       (make-input-event (if (eq? flag 'FORCE-RETURN) 'RETURN 'UPDATE)
+	       (make-input-event (if (eq? flag 'force-return) 'return 'update)
 				 update-screens!
 				 #f))))
 	(let ((get-next-event
@@ -537,7 +537,7 @@ USA.
      (define (register!)
        (set! previewer-registration
 	     (register-io-thread-event (x-display-descriptor x-display-data)
-				       'READ (current-thread) preview-events))
+				       'read (current-thread) preview-events))
        unspecific)
 
      (define (preview-events mode)
@@ -655,13 +655,13 @@ USA.
 (define-event-handler event-type:button-down
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 5))
-    (if (eq? ignore-button-state 'IGNORE-BUTTON-DOWN)
+    (if (eq? ignore-button-state 'ignore-button-down)
 	(begin
-	  (set! ignore-button-state 'IGNORE-BUTTON-UP)
+	  (set! ignore-button-state 'ignore-button-up)
 	  #f)
 	(let ((xterm (screen-xterm screen)))
 	  (make-input-event
-	   'BUTTON
+	   'button
 	   execute-button-command
 	   screen
 	   (let ((n (vector-ref event 4)))
@@ -673,13 +673,13 @@ USA.
 (define-event-handler event-type:button-up
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 5))
-    (if (eq? ignore-button-state 'IGNORE-BUTTON-UP)
+    (if (eq? ignore-button-state 'ignore-button-up)
 	(begin
 	  (set! ignore-button-state #f)
 	  #f)
 	(let ((xterm (screen-xterm screen)))
 	  (make-input-event
-	   'BUTTON
+	   'button
 	   execute-button-command
 	   screen
 	   (let ((n (vector-ref event 4)))
@@ -690,7 +690,7 @@ USA.
 
 (define-event-handler event-type:configure
   (lambda (screen event)
-    (make-input-event 'SET-SCREEN-SIZE
+    (make-input-event 'set-screen-size
 		      (lambda (screen event)
 			(let ((xterm (screen-xterm screen))
 			      (x-size (vector-ref event 2))
@@ -711,9 +711,9 @@ USA.
   (lambda (screen event)
     event
     (if x-screen-ignore-focus-button?
-	(set! ignore-button-state 'IGNORE-BUTTON-DOWN))
+	(set! ignore-button-state 'ignore-button-down))
     (and (not (selected-screen? screen))
-	 (make-input-event 'SELECT-SCREEN
+	 (make-input-event 'select-screen
 			   (lambda (screen)
 			     (fluid-let ((last-focus-time #f))
 			       (select-screen screen)))
@@ -723,7 +723,7 @@ USA.
   (lambda (screen event)
     event
     (and (not (screen-deleted? screen))
-	 (make-input-event 'DELETE-SCREEN delete-screen! screen))))
+	 (make-input-event 'delete-screen delete-screen! screen))))
 
 ;; Note that this handler is run in an interrupt (IO event).
 (define-event-handler event-type:map
@@ -733,7 +733,7 @@ USA.
 	 (begin
 	   (set-screen-mapped?! screen #t)
 	   (screen-force-update screen)
-	   (make-input-event 'UPDATE update-screen! screen #f)))))
+	   (make-input-event 'update update-screen! screen #f)))))
 
 ;; Note that this handler is run in an interrupt (IO event).
 (define-event-handler event-type:unmap
@@ -749,91 +749,91 @@ USA.
     (and (not (screen-deleted? screen))
 	 (let ((old-visibility (screen-x-visibility screen)))
 	   (case (vector-ref event 2)
-	     ((0) (set-screen-x-visibility! screen 'VISIBLE))
-	     ((1) (set-screen-x-visibility! screen 'PARTIALLY-OBSCURED))
-	     ((2) (set-screen-x-visibility! screen 'OBSCURED)))
-	   (and (eq? old-visibility 'OBSCURED)
+	     ((0) (set-screen-x-visibility! screen 'visible))
+	     ((1) (set-screen-x-visibility! screen 'partially-obscured))
+	     ((2) (set-screen-x-visibility! screen 'obscured)))
+	   (and (eq? old-visibility 'obscured)
 		(begin
 		  (screen-force-update screen)
-		  (make-input-event 'UPDATE update-screen! screen #f)))))))
+		  (make-input-event 'update update-screen! screen #f)))))))
 
 (define-event-handler event-type:take-focus
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 2))
-    (make-input-event 'SELECT-SCREEN select-screen screen)))
+    (make-input-event 'select-screen select-screen screen)))
 
 ;;;; Atoms
 
 (define built-in-atoms
   '#(#F
-     PRIMARY
-     SECONDARY
-     ARC
-     ATOM
-     BITMAP
-     CARDINAL
-     COLORMAP
-     CURSOR
-     CUT_BUFFER0
-     CUT_BUFFER1
-     CUT_BUFFER2
-     CUT_BUFFER3
-     CUT_BUFFER4
-     CUT_BUFFER5
-     CUT_BUFFER6
-     CUT_BUFFER7
-     DRAWABLE
-     FONT
-     INTEGER
-     PIXMAP
-     POINT
-     RECTANGLE
-     RESOURCE_MANAGER
-     RGB_COLOR_MAP
-     RGB_BEST_MAP
-     RGB_BLUE_MAP
-     RGB_DEFAULT_MAP
-     RGB_GRAY_MAP
-     RGB_GREEN_MAP
-     RGB_RED_MAP
-     STRING
-     VISUALID
-     WINDOW
-     WM_COMMAND
-     WM_HINTS
-     WM_CLIENT_MACHINE
-     WM_ICON_NAME
-     WM_ICON_SIZE
-     WM_NAME
-     WM_NORMAL_HINTS
-     WM_SIZE_HINTS
-     WM_ZOOM_HINTS
-     MIN_SPACE
-     NORM_SPACE
-     MAX_SPACE
-     END_SPACE
-     SUPERSCRIPT_X
-     SUPERSCRIPT_Y
-     SUBSCRIPT_X
-     SUBSCRIPT_Y
-     UNDERLINE_POSITION
-     UNDERLINE_THICKNESS
-     STRIKEOUT_ASCENT
-     STRIKEOUT_DESCENT
-     ITALIC_ANGLE
-     X_HEIGHT
-     QUAD_WIDTH
-     WEIGHT
-     POINT_SIZE
-     RESOLUTION
-     COPYRIGHT
-     NOTICE
-     FONT_NAME
-     FAMILY_NAME
-     FULL_NAME
-     CAP_HEIGHT
-     WM_CLASS
-     WM_TRANSIENT_FOR))
+     |PRIMARY|
+     |SECONDARY|
+     |ARC|
+     |ATOM|
+     |BITMAP|
+     |CARDINAL|
+     |COLORMAP|
+     |CURSOR|
+     |CUT_BUFFER0|
+     |CUT_BUFFER1|
+     |CUT_BUFFER2|
+     |CUT_BUFFER3|
+     |CUT_BUFFER4|
+     |CUT_BUFFER5|
+     |CUT_BUFFER6|
+     |CUT_BUFFER7|
+     |DRAWABLE|
+     |FONT|
+     |INTEGER|
+     |PIXMAP|
+     |POINT|
+     |RECTANGLE|
+     |RESOURCE_MANAGER|
+     |RGB_COLOR_MAP|
+     |RGB_BEST_MAP|
+     |RGB_BLUE_MAP|
+     |RGB_DEFAULT_MAP|
+     |RGB_GRAY_MAP|
+     |RGB_GREEN_MAP|
+     |RGB_RED_MAP|
+     |STRING|
+     |VISUALID|
+     |WINDOW|
+     |WM_COMMAND|
+     |WM_HINTS|
+     |WM_CLIENT_MACHINE|
+     |WM_ICON_NAME|
+     |WM_ICON_SIZE|
+     |WM_NAME|
+     |WM_NORMAL_HINTS|
+     |WM_SIZE_HINTS|
+     |WM_ZOOM_HINTS|
+     |MIN_SPACE|
+     |NORM_SPACE|
+     |MAX_SPACE|
+     |END_SPACE|
+     |SUPERSCRIPT_X|
+     |SUPERSCRIPT_Y|
+     |SUBSCRIPT_X|
+     |SUBSCRIPT_Y|
+     |UNDERLINE_POSITION|
+     |UNDERLINE_THICKNESS|
+     |STRIKEOUT_ASCENT|
+     |STRIKEOUT_DESCENT|
+     |ITALIC_ANGLE|
+     |X_HEIGHT|
+     |QUAD_WIDTH|
+     |WEIGHT|
+     |POINT_SIZE|
+     |RESOLUTION|
+     |COPYRIGHT|
+     |NOTICE|
+     |FONT_NAME|
+     |FAMILY_NAME|
+     |FULL_NAME|
+     |CAP_HEIGHT|
+     |WM_CLASS|
+     |WM_TRANSIENT_FOR|))
 
 (define (symbol->x-atom display name soft?)
   (or (hash-table-ref/default built-in-atoms-table name #f)
@@ -1034,9 +1034,9 @@ In either case, it is copied to the primary selection."
 				 (x-window-id xterm)
 				 last-focus-time
 				 string))))
-	   (own-selection 'PRIMARY)
+	   (own-selection '|PRIMARY|)
 	   (if (ref-variable x-cut-to-clipboard context)
-	       (own-selection 'CLIPBOARD))))))
+	       (own-selection '|CLIPBOARD|))))))
 
 (define (own-selection display selection window time value)
   (and (eqv? window
@@ -1059,9 +1059,9 @@ In either case, it is copied to the primary selection."
 	      (hash-table-set! table key result)
 	      result))))))
 
-;;; In the next two procedures, we must allow TIME to be 0, even
+;;; In the next two procedures, we must allow time to be 0, even
 ;;; though the ICCCM forbids this, because existing clients use that
-;;; value.  An example of a broken client is GTK+ version 1.2.6.
+;;; value.  An example of a broken client is Gtk+ version 1.2.6.
 
 (define (display/selection-record display name time)
   (let ((record
@@ -1145,18 +1145,18 @@ In either case, it is copied to the primary selection."
 				     data)
 		target))))
     (case target
-      ((STRING)
+      ((|STRING|)
        (win 8 (selection-record/value record)))
-      ((TARGETS)
-       (win 32 (atoms->property-data '(STRING TIMESTAMP) display)))
-      ((TIMESTAMP)
+      ((|TARGETS|)
+       (win 32 (atoms->property-data '(|STRING| |TIMESTAMP|) display)))
+      ((|TIMESTAMP|)
        (win 32 (timestamp->property-data (selection-record/time record))))
-      ((MULTIPLE)
+      ((|MULTIPLE|)
        (and multiple?
 	    (let ((alist
 		   (property-data->atom-alist
 		    (or (get-window-property display requestor property
-					     'MULTIPLE #f)
+					     '|MULTIPLE| #f)
 			(error "Missing MULTIPLE property:" property))
 		    display)))
 	      (for-each (lambda (entry)
@@ -1180,7 +1180,7 @@ In either case, it is copied to the primary selection."
 
 (define (property-data->atom-alist data display)
   (if (not (even? (vector-length data)))
-      (error:bad-range-argument data 'PROPERTY-DATA->ATOM-ALIST))
+      (error:bad-range-argument data 'property-data->atom-alist))
   (let loop ((atoms
 	      (map (lambda (atom) (x-atom->symbol display atom))
 		   (vector->list data))))
@@ -1212,21 +1212,21 @@ Otherwise, it is copied from the primary selection."
 
 (define (xterm/interprogram-paste xterm context)
   (or (and (ref-variable x-paste-from-clipboard context)
-	   (xterm/interprogram-paste-1 xterm 'CLIPBOARD))
-      (xterm/interprogram-paste-1 xterm 'PRIMARY)))
+	   (xterm/interprogram-paste-1 xterm '|CLIPBOARD|))
+      (xterm/interprogram-paste-1 xterm '|PRIMARY|)))
 
 (define (xterm/interprogram-paste-1 xterm selection)
   (with-thread-events-blocked
    (lambda ()
-     (let ((property '_EDWIN_TMP_)
+     (let ((property '|_EDWIN_TMP_|)
 	   (time last-focus-time))
        (cond ((display/selection-record (x-window-display xterm)
 					selection time)
 	      => selection-record/value)
-	     ((request-selection xterm selection 'STRING property time)
-	      (receive-selection xterm property 'STRING time))
-	     ((request-selection xterm selection 'C_STRING property time)
-	      (receive-selection xterm property 'C_STRING time))
+	     ((request-selection xterm selection '|STRING| property time)
+	      (receive-selection xterm property '|STRING| time))
+	     ((request-selection xterm selection '|C_STRING| property time)
+	      (receive-selection xterm property '|C_STRING| time))
 	     (else #f))))))
 
 (define (request-selection xterm selection target property time)
@@ -1238,7 +1238,7 @@ Otherwise, it is copied from the primary selection."
       (x-delete-property display window property)
       (x-convert-selection display selection target property window time)
       (x-display-flush display)
-      (eq? 'REQUEST-GRANTED
+      (eq? 'request-granted
 	   (wait-for-event x-selection-timeout
 	     (lambda (event)
 	       (fix:= event-type:selection-notify (vector-ref event 0)))
@@ -1248,8 +1248,8 @@ Otherwise, it is copied from the primary selection."
 		    (= target (selection-notify/target event))
 		    (= time (selection-notify/time event))
 		    (if (= property (selection-notify/property event))
-			'REQUEST-GRANTED
-			'REQUEST-DENIED))))))))
+			'request-granted
+			'request-denied))))))))
 
 (define-structure (selection-notify (type vector)
 				    (initial-offset 2)
@@ -1264,7 +1264,7 @@ Otherwise, it is copied from the primary selection."
   (let ((value (get-xterm-property xterm property #f #t)))
     (if (not value)
 	(error "Missing selection value."))
-    (if (eq? 'INCR (car value))
+    (if (eq? 'incr (car value))
 	(receive-incremental-selection xterm property target time)
 	(and (eq? target (car value))
 	     (cdr value)))))
@@ -1280,10 +1280,10 @@ Otherwise, it is copied from the primary selection."
 	   (wait-for-window-property-change xterm property time
 					    x-property-state:new-value)))
       (if (not time)
-	  (error "Timeout waiting for PROPERTY-NOTIFY event."))
+	  (error "Timeout waiting for property-notify event."))
       (let ((value (get-xterm-property xterm property target #t)))
 	(if (not value)
-	    (error "Missing property after PROPERTY-NOTIFY event."))
+	    (error "Missing property after property-notify event."))
 	(if (string-null? value)
 	    (apply string-append (reverse! accum))
 	    (loop time (cons value accum)))))))
@@ -1366,16 +1366,16 @@ Otherwise, it is copied from the primary selection."
   unspecific)
 
 (define (get-x-display)
-  ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
+  ;; x-open-display hangs, uninterruptibly, when the X server is
   ;; running the login loop of xdm.  Can this be fixed?
   (or x-display-data
       (and (or x-display-name
-	       (let ((DISPLAY (get-environment-variable "DISPLAY")))
-		 (and (string? DISPLAY)
-		      (not (string-null? DISPLAY)))))
+	       (let ((display (get-environment-variable "DISPLAY")))
+		 (and (string? display)
+		      (not (string-null? display)))))
 	   (plugin-available? "x11")
 	   (begin
-	     (load-option 'X11)
+	     (load-option 'x11)
 	     (let ((display (x-open-display x-display-name)))
 	       (set! x-display-data display)
 	       (set! x-display-events (make-queue))

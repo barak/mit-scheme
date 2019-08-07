@@ -12,7 +12,7 @@ AC_COPYRIGHT(
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
     2017, 2018, 2019 Massachusetts Institute of Technology
 
-This file is part of an X11-screen plugin for MIT/GNU Scheme.
+This file is part of MIT/GNU Scheme.
 
 MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

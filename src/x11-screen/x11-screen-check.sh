@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-Scheme-*-
 #
-# Test the X11-SCREEN option.
+# Test the X11 Screen option.
 
 set -e
 ${MIT_SCHEME_EXE} --prepend-library . <<\EOF

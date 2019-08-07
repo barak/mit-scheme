@@ -1,4 +1,4 @@
-The X11-SCREEN option.
+The X11 Screen option.
 
 This option creates an (edwin screen x11-screen) package that is
 autoloaded by Edwin's X display type.  It is built in the GNU standard

@@ -5,21 +5,22 @@ Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
     2017, 2018, 2019 Massachusetts Institute of Technology
 
-This file is part of an X11-screen plugin for MIT/GNU Scheme.
+This file is part of MIT/GNU Scheme.
 
-This plugin is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2 of the License, or (at your
-option) any later version.
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
 
-This plugin is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this plugin; if not, write to the Free Software Foundation,
-Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
 
 |#
 
@@ -28,6 +29,6 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 ;; This list must be kept in alphabetical order by filename.
 
 (standard-scheme-find-file-initialization
- '#(("x11-key"		(edwin x-keys))
-    ("x11-command"	(edwin x-commands))
+ '#(("x11-key"		(edwin x11-keys))
+    ("x11-command"	(edwin x11-commands))
     ("x11-screen"	(edwin screen x11-screen))))
