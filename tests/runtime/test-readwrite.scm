@@ -260,3 +260,20 @@ USA.
     (with-expected-failure xfail
       (lambda ()
         (assert-error (lambda () (read-from-string string)))))))
+
+(define-structure twonky
+  fnord)
+
+(define-test 'hash
+  (lambda ()
+    (let* ((object (make-twonky 123))
+	   (hash (hash-object object))
+	   (string (string-append "#[twonky " (number->string hash) "]"))
+	   (abbrev (string-append "#@" (number->string hash))))
+      (assert-equal (write-to-string object) string)
+      (expect-error
+       (lambda ()
+	 (assert-eq (eval (read-from-string string) system-global-environment)
+		    object)))
+      (assert-eq (eval (read-from-string abbrev) system-global-environment)
+		 object))))
