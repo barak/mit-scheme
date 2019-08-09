@@ -856,7 +856,7 @@ USA.
 		   (let ((string (x-get-atom-name display atom)))
 		     (if (not (string? string))
 			 (error "X error (XGetAtomName):" string atom))
-		     (intern string))))
+		     (string->symbol string))))
 	      (hash-table-set! table atom symbol)
 	      symbol)))))
 
