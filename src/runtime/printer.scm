@@ -231,9 +231,8 @@ USA.
   (let ((shared-objects
 	 (case label-mode
 	   ((#f) '())
-	   ;; There's little advantage to treating circularity specially since
-	   ;; it's more expensive than finding all sharing.
-	   ((sharing circularity) (find-shared-objects object))
+	   ((sharing) (find-shared-objects object #f))
+	   ((circularity) (find-shared-objects object #t))
 	   (else (error "Unsupported datum labeling mode:" label-mode)))))
     (if (pair? shared-objects)
 	(let ((table (make-strong-eq-hash-table))
@@ -254,40 +253,47 @@ USA.
 	  (declare (ignore object))
 	  #f))))
 
-(define (find-shared-objects object)
+(define (find-shared-objects object cycles-only?)
   (let ((table (make-strong-eq-hash-table)))
 
     (define (walk object)
       (cond ((get-print-method-parts object)
 	     => (lambda (parts)
 		  (if (mark! object)
-		      (for-each walk parts))))
+		      (begin
+			(for-each walk parts)
+			(maybe-unmark! object)))))
 	    ((pair? object)
 	     (if (mark! object)
 		 (begin
 		   (walk (safe-car object))
-		   (walk (safe-cdr object)))))
+		   (walk (safe-cdr object))
+		   (maybe-unmark! object))))
 	    ((vector? object)
 	     (if (mark! object)
-		 (let ((end (vector-length object)))
-		   (let loop ((i 0))
-		     (if (< i end)
-			 (if (nmv-header? object i)
-			     ;; An embedded non-marked vector: skip over and
-			     ;; continue.
-			     (loop (+ i 1 (nmv-header-length object i)))
-			     (begin
-			       (walk (safe-vector-ref object i))
-			       (loop (+ i 1)))))))))
-	    ((promise? object)
+		 (begin
+		   (let ((end (vector-length object)))
+		     (let loop ((i 0))
+		       (if (< i end)
+			   (if (nmv-header? object i)
+			       ;; An embedded non-marked vector: skip over and
+			       ;; continue.
+			       (loop (+ i 1 (nmv-header-length object i)))
+			       (begin
+				 (walk (safe-vector-ref object i))
+				 (loop (+ i 1)))))))
+		   (maybe-unmark! object))))
+	    ((and (promise? object) (promise-forced? object))
 	     (if (mark! object)
-		 (if (promise-forced? object)
-		     (walk (promise-value object)))))
+		 (begin
+		   (walk (promise-value object))
+		   (maybe-unmark! object))))
 	    ((%tagged-object? object)
 	     (if (mark! object)
 		 (begin
 		   (walk (%tagged-object-tag object))
-		   (walk (%tagged-object-datum object)))))))
+		   (walk (%tagged-object-datum object))
+		   (maybe-unmark! object))))))
 
     (define (mark! object)
       (let ((value
@@ -298,6 +304,16 @@ USA.
 		 (else (error "Invalid sharing state:" value))))))
 	(hash-table-set! table object value)
 	(eq? 'seen value)))
+
+    (define maybe-unmark!
+      (if cycles-only?
+	  (lambda (object)
+	    (let ((value (hash-table-ref/default table object 'unseen)))
+	      (if (not (eq? value 'shared))
+		  (hash-table-delete! table object))))
+	  (lambda (object)
+	    (declare (ignore object))
+	    unspecific)))
 
     (walk object)
     (hash-table-fold table
