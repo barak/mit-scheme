@@ -79,7 +79,7 @@ returned.  If @var{procedure} does not return, then the port must not
 be closed automatically unless it is possible to prove that the port
 will never again be used for a read or write operation.
 
-@emph{Rationale}: Because Scheme’s escape procedures have unlimited
+@emph{Rationale}: Because Scheme's escape procedures have unlimited
 extent, it is possible to escape from the current continuation but
 later to resume it.  If implementations were permitted to close the
 port on any escape from the current continuation, then it would be
@@ -583,7 +583,7 @@ If an end of file is encountered in the input before any characters
 are found that can begin an object, then an end-of-file object is
 returned.  The port remains open, and further attempts to read will
 also return an end-of-file object.  If an end of file is encountered
-after the beginning of an object’s external representation, but the
+after the beginning of an object's external representation, but the
 external representation is incomplete and therefore not parsable, an
 error that satisfies @code{read-error?} is signaled.
 

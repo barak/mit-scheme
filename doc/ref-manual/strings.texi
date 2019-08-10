@@ -389,7 +389,7 @@ It is important to recognize that what the user thinks of as a
 not be just a single Unicode code point.  Instead, that basic unit may
 be made up of multiple Unicode code points.  To avoid ambiguity with
 the computer use of the term character, this is called a
-user-perceived character.  For example, “G” + acute-accent is a
+user-perceived character.  For example, ``G'' + acute-accent is a
 user-perceived character: users think of it as a single character, yet
 is actually represented by two Unicode code points.  These
 user-perceived characters are approximated by what is called a
