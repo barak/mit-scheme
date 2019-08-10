@@ -99,9 +99,9 @@ HOST_COMPILER = '$(MIT_SCHEME_EXE)' $(HOST_COMPILER_HEAP) \
 
 HOST_SYNTAXER = '$(MIT_SCHEME_EXE)' --band runtime.com $(HOST_COMPILER_HEAP) \
   --batch-mode --no-init-file \
+  --eval '(load-option (quote SF))' \
   --load runtime/host-adapter.scm \
   --eval '(load-option (quote CREF))' \
-  --eval '(load-option (quote SF))' \
   --eval '(begin $(CREF_SETTINGS))' \
   --eval '(begin $(SF_SETTINGS))' \
   # end of HOST_SYNTAXER
