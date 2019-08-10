@@ -283,10 +283,11 @@ USA.
 				 (walk (safe-vector-ref object i))
 				 (loop (+ i 1)))))))
 		   (maybe-unmark! object))))
-	    ((and (promise? object) (promise-forced? object))
+	    ((promise? object)
 	     (if (mark! object)
 		 (begin
-		   (walk (promise-value object))
+		   (if (promise-forced? object)
+		       (walk (promise-value object)))
 		   (maybe-unmark! object))))
 	    ((%tagged-object? object)
 	     (if (mark! object)
