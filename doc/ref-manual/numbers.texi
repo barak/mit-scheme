@@ -805,8 +805,8 @@ argument.
 Equivalent to:
 @iftex
 @tex
-\eqimage{fig/log1p}{$$\mathop{\rm log1p} z = \log (1 + z).$$}
-\eqimage{fig/expm1}{$$\mathop{\rm expm1} z = \exp (z) - 1,$$}
+\eqimage{fig/log1p}{$$\mathop{\rm log1p} z = \log (1 + z),$$}
+\eqimage{fig/expm1}{$$\mathop{\rm expm1} z = \exp (z) - 1.$$}
 @end tex
 @end iftex
 @ifnottex
