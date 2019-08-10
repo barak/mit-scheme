@@ -108,7 +108,17 @@ Documentation License.''
     \hfill%
   }%
 }
+
+% Explicit hyphen that doesn't block automatic hyphenation, in words
+% like `log-probability'.
+\gdef\hy{-\penalty0\hskip0pt\relax}
 @end tex
+
+@ifnottex
+@macro hy {n}
+\n\
+@end macro
+@end ifnottex
 
 @ifnottex
 @node Top, Acknowledgements, (dir), (dir)

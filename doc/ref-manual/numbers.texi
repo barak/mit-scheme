@@ -1192,9 +1192,11 @@ one another.
 
 @itemize @bullet
 @item
-The log-logistic function maps log-odds on the extended real line to
-log-probability on the nonpositive half of the extended real line, and
-is ill-conditioned for large positive @var{x}:
+@cindex log-probability
+@cindex log-odds
+The log@hy{}logistic function maps log-odds on the extended real line
+to log@hy{}probability on the nonpositive half of the extended real
+line, and is ill@hy{}conditioned for large positive @var{x}:
 @iftex
 @tex
 \eqimage{fig/cn-loglogistic}
@@ -1212,9 +1214,11 @@ x f'(x)/f(x) = (-x exp(-x))/[(1 + exp(-x)) log(1 + exp(-x))]
 @end ifnottex
 
 @item
-The logit-exp function maps log-probability on the nonpositive half of
-the extended real line to log-odds on the extended real line, and is
-ill-conditioned near @math{\log(1/2)}:
+@cindex log-probability
+@cindex log-odds
+The logit@hy{}exp function maps log-probability on the nonpositive
+half of the extended real line to log-odds on the extended real line,
+and is ill@hy{}conditioned near @math{\log(1/2)}:
 @iftex
 @tex
 \eqimage{fig/cn-logitexp}
