@@ -863,8 +863,11 @@ via log rather than via log1p.)
 Similarly, although the condition number of exp near @math{0} is near
 @math{0}, its @emph{value} near @math{0} is near @math{1}, and the
 condition number of @math{y - 1} is unbounded for @math{y} near
-@math{1}; in contrast, the condition number of expm1 near @math{0} is
-near @math{1}:
+@math{1}, so the intermediate error introduced by @code{(exp @var{z})}
+may be amplified arbitrarily by then computing @code{(- (exp @var{z})
+1)}.
+In contrast, the condition number of expm1 itself near @math{0} is
+near @math{1}, so it does not inherently amplify errors:
 
 @iftex
 @tex
