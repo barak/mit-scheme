@@ -114,19 +114,17 @@ USA.
 (define (large-random-integer m state)
   ;; This also uses the rejection method, but this time to select a
   ;; subset of B^N where N is the smallest integer s.t. (<= M B^N).
-  (receive (n b^n)
-      (let loop ((n 2) (b^n (int:* b b)))
-	(if (int:<= m b^n)
-	    (values n b^n)
-	    (loop (fix:+ n 1) (int:* b^n b))))
-    (let ((scale-factor (int:quotient b^n m)))
-      (int:quotient (let ((limit (int:* scale-factor m)))
-		      (let loop ()
-			(let ((elt (int:large-random-element state n)))
-			  (if (int:< elt limit)
-			      elt
-			      (loop)))))
-		    scale-factor))))
+  (let loop ((n 2) (b^n (int:* b b)))
+    (if (int:<= m b^n)
+        (let ((scale-factor (int:quotient b^n m)))
+          (int:quotient (let ((limit (int:* scale-factor m)))
+                          (let loop ()
+                            (let ((elt (int:large-random-element state n)))
+                              (if (int:< elt limit)
+                                  elt
+                                  (loop)))))
+                        scale-factor))
+        (loop (fix:+ n 1) (int:* b^n b)))))
 
 (define (int:large-random-element state n)
   (let loop ((i 1) (elt (int:random-element state)))

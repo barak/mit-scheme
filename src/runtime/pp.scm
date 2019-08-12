@@ -728,7 +728,9 @@ USA.
 
 (define (numerical-walk object list-depth)
   (define (numerical-walk-no-auto-highlight object list-depth)
-    (cond ((and (pair? object)
+    (cond ((get-print-method object)
+           (walk-custom object list-depth))
+          ((and (pair? object)
 		(not (named-list? object)))
 	   (let ((prefix (prefix-pair? object)))
 	     (if prefix

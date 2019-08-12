@@ -1183,6 +1183,7 @@ USA.
 	  bytevector-u32le-set!
 	  bytevector-u8-ref
 	  bytevector-u8-set!
+	  bytevector<?
 	  bytevector=?
 	  bytevector?
 	  exact-nonnegative-integer->bytevector
@@ -1952,10 +1953,16 @@ USA.
   (export ()
 	  alist->bundle
 	  bundle->alist
+	  bundle-combine
+	  bundle-combine*
+	  bundle-combiner:first
+	  bundle-map
+	  bundle-map*
 	  bundle-names
 	  bundle-predicate
 	  bundle-predicate?
 	  bundle-ref
+	  bundle-ref/default
 	  bundle?
 	  make-bundle-predicate))
 
@@ -4635,10 +4642,11 @@ USA.
 	  bind-variable
 	  lookup-identifier
 	  make-internal-senv
+	  make-keyword-internal-senv
 	  make-keyword-senv
 	  make-partial-senv
 	  make-sealed-senv
-	  reserve-identifier
+	  reserve-keyword
 	  senv->runtime
 	  senv-top-level?))
 
@@ -4946,7 +4954,8 @@ USA.
 	  get-param:printer-list-breadth-limit
 	  get-param:printer-list-depth-limit
 	  prefix-pair?
-	  print-for-pp)
+	  print-for-pp
+          get-print-method)
   (export (runtime swank)
 	  user-object-type))
 

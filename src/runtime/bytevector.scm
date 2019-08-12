@@ -102,6 +102,19 @@ USA.
 			   (bytevector-u8-ref b2 index))
 		    (loop (fix:+ index 1))))))))
 
+(define (bytevector<? b1 b2)
+  (let ((l1 (bytevector-length b1))
+	(l2 (bytevector-length b2)))
+    (let ((end (fix:min l1 l2)))
+      (let loop ((index 0))
+	(if (fix:< index end)
+	    (let ((u1 (bytevector-u8-ref b1 index))
+		  (u2 (bytevector-u8-ref b2 index)))
+	      (if (fix:= u1 u2)
+		  (loop (fix:+ index 1))
+		  (fix:< u1 u2)))
+	    (fix:< l1 l2))))))
+
 ;; String hash primitives work on bytevectors too.
 (define (bytevector-hash bytevector #!optional modulus)
   (if (default-object? modulus)

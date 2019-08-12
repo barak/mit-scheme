@@ -28,11 +28,12 @@
 
 set -e
 : ${MIT_SCHEME_EXE=mit-scheme}
-${MIT_SCHEME_EXE} --prepend-library . --batch-mode <<\EOF
+: ${MIT_SCHEME_FLAGS=}
+${MIT_SCHEME_EXE} --prepend-library . --batch-mode --no-init-file ${MIT_SCHEME_FLAGS} <<\EOF
 (load "compile.scm")
 EOF
 suffix=`echo "(display (microcode-id/operating-system-suffix))" \
-	| ${MIT_SCHEME_EXE} --batch-mode`
+	| ${MIT_SCHEME_EXE} --batch-mode --no-init-file`
 report=x11-$suffix.crf
 if [ -s "$report" ]; then
     echo "$0: warning: $report is not empty"

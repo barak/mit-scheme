@@ -1464,7 +1464,7 @@ the user from the mailer."
 		  (let ((buffer (make-bytevector 4096)))
 		    (let loop ()
 		      (let ((n-read (read-bytevector! buffer input-port)))
-			(if (> n-read 0)
+			(if (exact-positive-integer? n-read)
 			    (begin
 			      (encode-base64:update context buffer 0 n-read)
 			      (loop))))))))

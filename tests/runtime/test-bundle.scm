@@ -135,3 +135,63 @@ USA.
     (assert-eqv (foo 'get 'x 33) 55)
     (assert-equal (foo 'get-alist) '((x . 55)))
     ))
+
+(define-test 'delegation
+  (lambda ()
+    (define (x) 10)
+    (define (y) 20)
+    (define (z) 40)
+
+    (let ((b1 (bundle #f x y z)))
+      (let ((b2
+	     (bundle-combine #f
+			     bundle-combiner:first
+			     (let ()
+			       (define (y) 25)
+			       (bundle #f y))
+			     b1)))
+
+	(assert-eqv (b1 'x) 10)
+	(assert-eqv (b1 'y) 20)
+	(assert-eqv (b1 'z) 40)
+	(assert-error (lambda () (b1 'foo)))
+
+	(assert-eqv (b2 'x) 10)
+	(assert-eqv (b2 'y) 25)
+	(assert-eqv (b2 'z) 40)
+	(assert-error (lambda () (b2 'foo)))))))
+
+(define-test 'lazy-delegation
+  (lambda ()
+    (define (x n) (+ 10 n))
+    (define (y n) (+ 20 n))
+    (define (z n) (+ 40 n))
+
+    (let ((b1 (bundle #f x y z)))
+      (assert-eqv (b1 'x 1) 11)
+      (assert-eqv (b1 'x 2) 12)
+      (assert-eqv (b1 'y 1) 21)
+      (assert-eqv (b1 'y 2) 22)
+      (assert-eqv (b1 'z 1) 41)
+      (assert-eqv (b1 'z 2) 42)
+
+      (let ((b2
+	     (bundle-combine #f
+			     bundle-combiner:first
+			     (let ()
+			       (define (x n)
+				 (if (odd? n)
+				     (b1 'y n)
+				     (b1 'z n)))
+
+			       (define (y n) (+ 25 n))
+
+			       (bundle #f x y))
+			     b1)))
+
+	(assert-eqv (b2 'x 1) 21)
+	(assert-eqv (b2 'x 2) 42)
+	(assert-eqv (b2 'y 1) 26)
+	(assert-eqv (b2 'y 2) 27)
+	(assert-eqv (b2 'z 1) 41)
+	(assert-eqv (b2 'z 2) 42)))))

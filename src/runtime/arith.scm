@@ -68,8 +68,11 @@ USA.
   (object-type? (ucode-type big-flonum) object))
 
 (define (flo:normalize x)
-  (let ((r ((ucode-primitive flonum-normalize 1) x)))
+  (let ((r (%flo:normalize x)))
     (values (car r) (cdr r))))
+
+(define-integrable (%flo:normalize x)
+  ((ucode-primitive flonum-normalize 1) x))
 
 (define-integrable flo:->integer
   flo:truncate->exact)
@@ -937,8 +940,11 @@ USA.
 	  (else (flo:->rational x)))))
 
 (define (flo:->rational x)
-  (with-values (lambda () (flo:normalize x))
-    (lambda (f e-p)
+;;; Don't use multiple-values here because this gets called before they are
+;;; defined.
+  (let ((p (%flo:normalize x)))
+    (let ((f (car p))
+	  (e-p (cdr p)))
       (let ((p flo:significand-digits-base-2))
 	(rat:* (flo:->integer (flo:denormalize f p))
 	       (rat:expt 2 (int:- e-p p)))))))
