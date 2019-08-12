@@ -8,7 +8,7 @@ Subject: AUXDIR_NAME sans arch
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 00e5fa3..b0ba447 100644
+index 236e270..49364b7 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
 @@ -166,7 +166,7 @@ else
