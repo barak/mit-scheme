@@ -93,7 +93,7 @@ USA.
 					      (number->string m))
 			    headers)
 		      body))))
-      (values headers "")))
+      (values headers (bytevector))))
 
 (define (simple-http-request? object)
   (and (http-request? object)
@@ -103,7 +103,7 @@ USA.
 
 (define (make-simple-http-request uri)
   (guarantee simple-http-request-uri? uri 'make-http-request)
-  (%make-http-request '|GET| uri #f '() ""))
+  (%make-http-request '|GET| uri #f '() (bytevector)))
 
 (define (simple-http-response? object)
   (and (http-response? object)
@@ -300,7 +300,7 @@ USA.
     (let loop ((n n))
       (if (> n 0)
 	  (let ((m (read-bytevector! buffer port 0 (min n len))))
-	    (if (= m 0)
+	    (if (not (exact-positive-integer? m))
 		(error "Premature EOF in HTTP message body."))
 	    (do ((i 0 (+ i 1)))
 		((not (< i m)))
@@ -329,7 +329,7 @@ USA.
      (let ((buffer (make-bytevector #x1000)))
        (let loop ()
 	 (let ((n (read-bytevector! buffer port)))
-	   (if (> n 0)
+	   (if (exact-positive-integer? n)
 	       (begin
 		 (do ((i 0 (+ i 1)))
 		     ((not (< i n)))

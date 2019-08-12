@@ -87,8 +87,11 @@ HOST_COMPILER_SETTINGS = \
 HOST_COMPILER = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) --no-init-file \
   --eval '(begin $(HOST_COMPILER_SETTINGS))' --load runtime/host-adapter.scm
 
-HOST_RUNTIME_ONLY = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
-  --band runtime.com --no-init-file --load runtime/host-adapter.scm
+HOST_SF_ONLY = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
+  --band runtime.com --no-init-file --eval '(load-option (quote sf))' \
+  --load runtime/host-adapter.scm
+
+MODULE_SCHEME_FLAGS = --load ../runtime/host-adapter.scm
 
 # This rule is for LIARC.
 .SUFFIXES: .bld .pkd .c
@@ -234,7 +237,7 @@ syntax-compiler: compile-sf
 	 echo '  (lambda ()' && \
 	 echo '    $(SF_SETTINGS_CROSS)' && \
 	 echo '    (load "compiler.sf")))') \
-	| $(HOST_RUNTIME_ONLY) --eval '(load-option (quote SF))'
+	| $(HOST_SF_ONLY)
 
 .PHONY: compile-compiler
 compile-compiler: syntax-compiler
@@ -256,7 +259,7 @@ compiler/machines/svm/svm1-defns.h: \
 	  compiler/machines/svm/compile-assembler.scm
 	(echo '(with-working-directory-pathname "compiler/machines/svm"' && \
 	 echo '  (lambda () (load "compile-assembler")))') \
-	| $(HOST_RUNTIME_ONLY)
+	| $(HOST_SF_ONLY)
 
 ################
 # CREF
@@ -404,7 +407,7 @@ all-blowfish: compile-blowfish
 
 .PHONY: compile-blowfish
 compile-blowfish: compile-runtime compile-ffi
-	(cd blowfish && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+	(cd blowfish && MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' MIT_SCHEME_FLAGS='$(MODULE_SCHEME_FLAGS)' $(MAKE))
 
 .PHONY: compile-blowfish-c
 compile-blowfish-c:
@@ -422,7 +425,7 @@ compile-edwin: compile-runtime compile-xml
 @IF_BLOWFISH@compile-edwin: compile-blowfish
 @IF_GDBM@compile-edwin: compile-gdbm
 @IF_X11@compile-edwin: compile-x11
-	(cd edwin && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+	(cd edwin && MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' MIT_SCHEME_FLAGS='$(MODULE_SCHEME_FLAGS)' $(MAKE))
 
 ################
 # gdbm
@@ -433,7 +436,7 @@ all-gdbm: compile-gdbm
 
 .PHONY: compile-gdbm
 compile-gdbm: compile-runtime compile-ffi
-	(cd gdbm && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+	(cd gdbm && MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' MIT_SCHEME_FLAGS='$(MODULE_SCHEME_FLAGS)' $(MAKE))
 
 .PHONY: compile-gdbm-c
 compile-gdbm-c:
@@ -448,7 +451,7 @@ all-imail: compile-imail
 
 .PHONY: compile-imail
 compile-imail: compile-runtime compile-sos compile-edwin compile-star-parser
-	(cd imail && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+	(cd imail && MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' MIT_SCHEME_FLAGS='$(MODULE_SCHEME_FLAGS)' $(MAKE))
 
 ################
 # mcrypt
@@ -459,7 +462,7 @@ all-mcrypt: compile-mcrypt
 
 .PHONY: compile-mcrypt
 compile-mcrypt: compile-runtime compile-ffi
-	(cd mcrypt && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+	(cd mcrypt && MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' MIT_SCHEME_FLAGS='$(MODULE_SCHEME_FLAGS)' $(MAKE))
 
 .PHONY: compile-mcrypt-c
 compile-mcrypt-c:
@@ -474,7 +477,7 @@ all-pgsql: compile-pgsql
 
 .PHONY: compile-pgsql
 compile-pgsql: compile-runtime compile-ffi
-	(cd pgsql && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+	(cd pgsql && MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' MIT_SCHEME_FLAGS='$(MODULE_SCHEME_FLAGS)' $(MAKE))
 
 .PHONY: compile-pgsql-c
 compile-pgsql-c:
@@ -489,7 +492,7 @@ all-x11: compile-x11
 
 .PHONY: compile-x11
 compile-x11: compile-runtime compile-ffi
-	(cd x11 && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+	(cd x11 && MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' MIT_SCHEME_FLAGS='$(MODULE_SCHEME_FLAGS)' $(MAKE))
 
 .PHONY: compile-x11-c
 compile-x11-c:
@@ -504,7 +507,7 @@ all-x11-screen: compile-x11-screen
 
 .PHONY: compile-x11-screen
 compile-x11-screen: compile-runtime compile-x11 compile-edwin
-	(cd x11-screen && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+	(cd x11-screen && MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' MIT_SCHEME_FLAGS='$(MODULE_SCHEME_FLAGS)' $(MAKE))
 
 #####################
 ### Cross compilation

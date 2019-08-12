@@ -159,6 +159,12 @@ Initialized from the SHELL environment variable."
 	   (let ((channel (subprocess-input-channel subprocess)))
 	     (if channel
 		 (channel-nonblocking channel)))
+           (let ((fix-port
+                  (lambda (port)
+                    (if (and port (port/supports-coding? port))
+                        (port/set-coding port 'iso-8859-1)))))
+             (fix-port (subprocess-input-port subprocess))
+             (fix-port (subprocess-output-port subprocess)))
 	   (set-process-status-registration!
 	    process
 	    (register-subprocess-event

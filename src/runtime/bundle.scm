@@ -41,8 +41,8 @@ USA.
     (set-record-type-applicator! type %bundle-applicator)
     (record-predicate type)))
 
-(define (%bundle-applicator bundle operator . args)
-  (apply (bundle-ref bundle operator) args))
+(define (%bundle-applicator bundle name . args)
+  (apply (bundle-ref bundle name) args))
 
 (define-integrable (%predicate->record-type predicate)
   (predicate->dispatch-tag predicate))
@@ -79,7 +79,7 @@ USA.
        (every (lambda (p)
                 (symbol? (car p)))
               object)))
-
+
 (define <bundle>
   (new-make-record-type '<bundle> '(alist)))
 
@@ -110,7 +110,7 @@ USA.
 	  (handler)
 	  (map (lambda (p) `(,(car p) ,(cdr p)))
 	       (bundle-alist bundle))))))
-
+
 (define (bundle-predicate bundle)
   (guarantee bundle? bundle 'bundle-type)
   (record-predicate (record-type-descriptor bundle)))
@@ -121,11 +121,57 @@ USA.
 (define (bundle-names bundle)
   (map car (bundle-alist bundle)))
 
-(define (bundle-ref bundle operator #!optional default)
-  (let ((p (assq operator (bundle-alist bundle))))
-    (if p
-        (cdr p)
-        (begin
-          (if (default-object? default)
-              (error "Unknown bundle operator:" operator))
-          default))))
+(define (bundle-ref bundle name #!optional get-default)
+  (guarantee symbol? name 'bundle-ref)
+  (let ((get-default
+	 (cond ((not get-default)
+		(lambda () #f))
+	       ((default-object? get-default)
+		(lambda ()
+		  (error "Unknown bundle name:" name)))
+	       (else
+		get-default))))
+    (let ((p (assq name (bundle-alist bundle))))
+      (if p
+	  (cdr p)
+	  (get-default)))))
+
+(define (bundle-ref/default bundle name #!optional default)
+  (bundle-ref bundle
+	      name
+	      (if (default-object? default)
+		  default
+		  (lambda () default))))
+
+(define (bundle-map predicate procedure . bundles)
+  (bundle-map* predicate procedure bundles))
+
+(define (bundle-map* predicate procedure bundles)
+  (alist->bundle
+   predicate
+   (filter-map (lambda (name)
+                 (let ((value
+                        (apply procedure
+                               name
+                               (map (lambda (bundle)
+                                      (bundle-ref bundle name default-object))
+                                    bundles))))
+                   (and (not (default-object? value))
+			(cons name value))))
+	       (apply lset-union eq? (map bundle-names bundles)))))
+
+(define (bundle-combine predicate combiner . bundles)
+  (bundle-combine* predicate combiner bundles))
+
+(define (bundle-combine* predicate combiner bundles)
+  (bundle-map* predicate
+	       (lambda (name . vals)
+		 (let ((vals (remove default-object? vals)))
+		   (if (pair? (cdr vals))
+		       (combiner name vals)
+		       (car vals))))
+	       bundles))
+
+(define (bundle-combiner:first name vals)
+  (declare (ignore name))
+  (car vals))

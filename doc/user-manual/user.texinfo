@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-user
-@set VERSION 10.1.9
+@set VERSION 10.1.10
 @set UPDATED 2018-11-22
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header

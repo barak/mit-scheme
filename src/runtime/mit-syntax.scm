@@ -211,7 +211,7 @@ USA.
        (spar-subform)
        (spar-push spar-arg:ctx)
        (spar-push-subform-if mit-lambda-list? spar-arg:form)
-       (spar-push-body)))))
+       (spar-push-body make-internal-senv)))))
 
 (define $named-lambda
   (spar-classifier->runtime
@@ -225,15 +225,15 @@ USA.
        (spar-subform
 	 (spar-push-subform-if identifier? spar-arg:form)
 	 (spar-push-form-if mit-lambda-list? spar-arg:form))
-       (spar-push-body)))))
+       (spar-push-body make-internal-senv)))))
 
-(define (spar-push-body)
+(define (spar-push-body make-senv)
   (spar-and
     (spar-push spar-arg:ctx)
     (spar-encapsulate-values
 	(lambda (elts)
 	  (lambda (frame-senv)
-	    (let ((body-senv (make-internal-senv frame-senv)))
+	    (let ((body-senv (make-senv frame-senv)))
 	      (map-in-order (lambda (elt) (elt body-senv))
 			    elts))))
       (spar+ (spar-subform spar-push-open-classified))
@@ -255,7 +255,8 @@ USA.
   (delay
     (spar-call-with-values
 	(lambda (ctx bindings body-ctx body)
-	  (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx))))
+	  (let ((frame-senv
+                 (make-keyword-internal-senv (serror-ctx-senv ctx))))
 	    (for-each (lambda (binding)
 			(bind-keyword (car binding) frame-senv (cdr binding)))
 		      bindings)
@@ -270,7 +271,7 @@ USA.
 			   (spar-subform spar-push-classified)
 			   (spar-match-null)))))
 	(spar-match-null))
-       (spar-push-body))))
+       (spar-push-body make-keyword-internal-senv))))
 
 (define $let-syntax
   (spar-classifier->runtime spar-promise:let-syntax))
@@ -283,10 +284,11 @@ USA.
    (delay
      (spar-call-with-values
 	 (lambda (ctx bindings body-ctx body)
-	   (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx)))
+	   (let ((frame-senv
+                  (make-keyword-internal-senv (serror-ctx-senv ctx)))
 		 (ids (map car bindings)))
 	     (for-each (lambda (id)
-			 (reserve-identifier id frame-senv))
+			 (reserve-keyword id frame-senv))
 		       ids)
 	     (for-each (lambda (id item)
 			 (bind-keyword id frame-senv item))
@@ -305,7 +307,7 @@ USA.
 			     (spar-subform spar-push-open-classified)
 			     (spar-match-null)))))
 	 (spar-match-null))
-       (spar-push-body)))))
+       (spar-push-body make-keyword-internal-senv)))))
 
 ;;;; Pseudo keywords
 

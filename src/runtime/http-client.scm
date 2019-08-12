@@ -30,10 +30,10 @@ USA.
 (declare (usual-integrations))
 
 (define (http-get uri headers)
-  (http-client-exchange "GET" (->uri uri) headers (bytevector)))
+  (http-client-exchange "GET" (->uri uri) headers #f))
 
 (define (http-head uri headers)
-  (http-client-exchange "HEAD" (->uri uri) headers (bytevector)))
+  (http-client-exchange "HEAD" (->uri uri) headers #f))
 
 (define (http-post uri headers body)
   (http-client-exchange "POST" (->uri uri) headers body))

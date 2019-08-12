@@ -861,32 +861,31 @@ throughout an implementation-dependent range.
 @deffn procedure inexact z
 @deffnx procedure exact->inexact z
 @code{inexact} returns an inexact representation of @var{z}.  The
-value returned is the inexact number that is numerically closest to the
-argument.  If an exact argument has no reasonably close inexact
-equivalent, then a violation of an implementation restriction may be
-reported; MIT/GNU Scheme signals an error of type
-@code{condition-type:bad-range-argument} in this case.
-@findex condition-type:bad-range-argument
+value returned is the inexact number that is numerically closest to
+the argument.  For inexact arguments, the result is the same as the
+argument.  For exact complex numbers, the result is a complex number
+whose real and imaginary parts are the result of applying
+@code{inexact} to the real and imaginary parts of the argument,
+respectively.  If an exact argument has no reasonably close inexact
+equivalent (in the sense of @code{=}), then a violation of an
+implementation restriction may be reported.
 
 The procedure @code{exact->inexact} has been deprecated by @urseven{}.
 @end deffn
 
-@deffn procedure inexact z
-@deffnx procedure exact->inexact z
-@code{inexact} returns an inexact representation of @var{z}.  The
-value returned is the inexact number that is numerically closest to the
-argument.  If an exact argument has no reasonably close inexact
-equivalent, then a violation of an implementation restriction may be
-reported; MIT/GNU Scheme signals an error of type
-@code{condition-type:bad-range-argument} in this case.
-@findex condition-type:bad-range-argument
-
+@deffn procedure exact z
+@deffnx procedure inexact->exact z
 @code{exact} returns an exact representation of @var{z}.  The value
 returned is the exact number that is numerically closest to the
-argument.  If an inexact argument has no reasonably close exact
-equivalent, then a violation of an implementation restriction may be
-reported; in MIT/GNU Scheme this case does not occur because all
-inexact numbers are representable as exact numbers.
+argument.  For exact arguments, the result is the same as the
+argument. For inexact non-integral real arguments, the implementation
+may return a rational approximation, or may report an implementation
+violation.  For inexact complex arguments, the result is a complex
+number whose real and imaginary parts are the result of applying
+@code{exact} to the real and imaginary parts of the argument,
+respectively.  If an inexact argument has no reasonably close exact
+equivalent (in the sense of @code{=}), then a violation of an
+implementation restriction may be reported.
 
 The procedure @code{inexact->exact} has been deprecated by @urseven{}.
 @end deffn
