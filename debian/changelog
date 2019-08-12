@@ -1,3 +1,9 @@
+mit-scheme (10.1.10-1) unstable; urgency=medium
+
+  * new upstream version
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Mon, 12 Aug 2019 11:31:26 +0200
+
 mit-scheme (10.1.9-2) unstable; urgency=medium
 
   * bump policy
