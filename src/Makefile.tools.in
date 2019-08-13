@@ -115,7 +115,7 @@ clean:
 
 SCHEME_OBJECTS_PATTERN = *.bci *.bin *.crf *.com *.ext *.fre *.lap *.pkd *.rtl
 
-SYMLINK = link () { test -h "$$2" || ln -sfh "$$1" "$$2"; }; link
+SYMLINK = link () { test -h "$$2" || ln -sfn "$$1" "$$2"; }; link
 
 .PHONY: tooldir
 tooldir:
