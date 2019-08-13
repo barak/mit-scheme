@@ -1106,3 +1106,12 @@ USA.
       (assert-eqv (flo:lgamma x) log-gamma)
       (let ((gamma (* sign (exp log-gamma))))
 	(assert-<= (relerr (flo:gamma x) gamma) 1e-15)))))
+
+(define-enumerated-test 'flo:fma
+  (list (list 1.2e100 2e208 -1.4e308  1e308))
+  (lambda (x y z w)
+    (assert-<= (relerr (no-traps (lambda () (flo:*+ x y z))) w) 1e-15)))
+
+(define-test 'flo:fast-fma?
+  (lambda ()
+    ((predicate-assertion boolean? "boolean") (flo:fast-fma?))))

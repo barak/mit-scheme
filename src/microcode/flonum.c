@@ -32,6 +32,7 @@ USA.
 #include "osscheme.h"		/* error_unimplemented_primitive -- foo */
 #include "prims.h"
 #include "ctassert.h"
+#include "fma.h"
 
 double
 arg_flonum (int arg_number)
@@ -130,6 +131,22 @@ DEFINE_PRIMITIVE ("FLONUM-ABS", Prim_flonum_abs, 1, 1, 0)
     ((UINT64_C (0x7fffffffffffffff)) & (arg_flonum_binary64 (1)));
 }
 
+DEFINE_PRIMITIVE ("FLONUM-FMA", Prim_flonum_fma, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  FLONUM_RESULT (fma ((arg_flonum (1)), (arg_flonum (2)), (arg_flonum (3))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-FAST-FMA?", Prim_flonum_fast_fma_p, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+#ifdef FP_FAST_FMA
+  BOOLEAN_RESULT (1);
+#else
+  BOOLEAN_RESULT (0);
+#endif
+}
+
 static inline void
 invalid_if_unordered (double x, double y)
 {

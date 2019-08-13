@@ -2025,6 +2025,33 @@ These procedures are the standard arithmetic operations on flonums.
 When compiled, they do not check the types of their arguments.
 @end deffn
 
+@deffn procedure flo:*+ flonum1 flonum2 flonum3
+@deffnx procedure flo:fma flonum1 flonum2 flonum3
+@deffnx procedure flo:fast-fma?
+Fused multiply-add:
+@code{(flo:*+ @var{u} @var{v} @var{a})} computes @math{uv+a} correctly
+rounded, with no intermediate overflow or underflow arising from
+@math{uv}.
+In contrast, @code{(flo:+ (flo:* @var{u} @var{v}) @var{a})} may have
+two rounding errors, and can overflow or underflow if @math{uv} is too
+large or too small even if @math{uv + a} is normal.
+@code{Flo:fma} is an alias for @code{flo:*+} with the more familiar
+name used in other languages like C.
+
+@code{Flo:fast-fma?} returns true if the implementation of fused
+multiply-add is supported by fast hardware, and false if it is
+emulated using Dekker's double-precision algorithm in software.
+
+@example
+@group
+(flo:+ (flo:* 1.2e100 2e208) -1.4e308)
+                               @result{} +inf.0  @r{; (raises overflow)}
+(flo:*+ 1.2e100 2e208  -1.4e308)
+                               @result{} 1e308
+@end group
+@end example
+@end deffn
+
 @deffn procedure flo:negate flonum
 This procedure returns the negation of its argument.  When compiled, it
 does not check the type of its argument.

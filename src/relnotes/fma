@@ -1,0 +1,8 @@
+New procedures for floating-point fused-multiply/add:
+
+- (flo:*+ u v a) computes u*v + a correctly rounded with no
+  intermediate overflow or underflow
+- (flo:fma u v) is the same, with a more familiar name
+- (flo:fast-fma?) returns true if fma is hardware-supported and false
+  if it is emulated in software with Dekker's double-precision
+  algorithm

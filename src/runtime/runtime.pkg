@@ -289,6 +289,7 @@ USA.
 	  fix:zero?
 	  fixnum?
 	  flo:*
+	  flo:*+
 	  flo:+
 	  flo:-
 	  flo:/
@@ -319,10 +320,12 @@ USA.
 	  flo:exp
 	  flo:expm1
 	  flo:expt
+	  flo:fast-fma?
 	  flo:finite?
 	  flo:flonum?
 	  flo:floor
 	  flo:floor->exact
+	  flo:fma
 	  flo:gamma
 	  flo:hypot
 	  flo:infinite?
