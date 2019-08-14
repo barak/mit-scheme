@@ -183,7 +183,22 @@ USA.
   (applicator flo:* 0. (flo:+inf.0)))
 (define-invop-trap-test 'flonum-multiply ;(b)
   (applicator flo:* (flo:+inf.0) 0.))
-;; XXX fma (c)
+(define-invop-flag-test 'flonum-fma	;(c)
+  (applicator flo:*+ (flo:+inf.0) 0. 123.))
+(define-invop-flag-test 'flonum-fma	;(c)
+  (applicator flo:*+ 0. (flo:+inf.0) 123.))
+(define-invop-trap-test 'flonum-fma	;(c)
+  (applicator flo:*+ (flo:+inf.0) 0. 123.))
+(define-invop-trap-test 'flonum-fma	;(c)
+  (applicator flo:*+ 0. (flo:+inf.0) 123.))
+(define-invop-flag-test 'flonum-fma+-inf	;(d)
+  (applicator flo:*+ 1. (flo:+inf.0) (flo:-inf.0)))
+(define-invop-flag-test 'flonum-fma-+inf	;(d)
+  (applicator flo:*+ 1. (flo:-inf.0) (flo:+inf.0)))
+(define-invop-trap-test 'flonum-fma+-inf	;(d)
+  (applicator flo:*+ 1. (flo:+inf.0) (flo:-inf.0)))
+(define-invop-trap-test 'flonum-fma-+inf	;(d)
+  (applicator flo:*+ 1. (flo:-inf.0) (flo:+inf.0)))
 (define-invop-flag-test 'flonum-add+-inf	;(d)
   (applicator flo:+ (flo:+inf.0) (flo:-inf.0)))
 (define-invop-flag-test 'flonum-add-+inf	;(d)
@@ -234,6 +249,10 @@ USA.
   (applicator flo:* flo:radix. (flo:scalbn 1. flo:normal-exponent-max)))
 (define-overflow-trap-test 'flonum-multiply
   (applicator flo:* flo:radix. (flo:scalbn 1. flo:normal-exponent-max)))
+(define-overflow-flag-test 'flonum-fma
+  (applicator flo:*+ flo:radix. (flo:scalbn 1. flo:normal-exponent-max) 1.))
+(define-overflow-trap-test 'flonum-fma
+  (applicator flo:*+ flo:radix. (flo:scalbn 1. flo:normal-exponent-max) 1.))
 
 ;;; IEEE 754-2008, Sec. 7.5
 
@@ -241,11 +260,17 @@ USA.
   (applicator flo:* .50000001 (flo:scalbn 1. flo:normal-exponent-min)))
 (define-underflow-trap-test 'flonum-multiply
   (applicator flo:* .50000001 (flo:scalbn 1. flo:normal-exponent-min)))
+(define-underflow-flag-test 'flonum-fma
+  (applicator flo:*+ .50000001 (flo:scalbn 1. flo:normal-exponent-min) 0.))
+(define-underflow-trap-test 'flonum-fma
+  (applicator flo:*+ .50000001 (flo:scalbn 1. flo:normal-exponent-min) 0.))
 
 ;;; IEEE 754-2008, Sec. 7.6
 
 (define-inexact-flag-test 'flonum-multiply
   (applicator flo:* .50000001 (flo:scalbn 1. flo:normal-exponent-min)))
+(define-inexact-flag-test 'flonum-fma
+  (applicator flo:*+ .50000001 (flo:scalbn 1. flo:normal-exponent-min) 0.))
 
 ;;; Miscellaneous inexact results
 
