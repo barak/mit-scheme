@@ -2788,7 +2788,7 @@ must be written using the @code{er-macro-transformer} syntax:
 
 @cindex SRFI syntax
 Several special forms have been introduced to support some of the
-@uref{http://srfi.schemers.org/,Scheme Requests for Implementation}
+@uref{https://srfi.schemers.org/,Scheme Requests for Implementation}
 (@acronym{SRFI}).  Note that MIT/GNU Scheme has for some time
 supported @usrfi{23} (error-reporting mechanism) and @usrfi{30} (nested
 multi-line comments), since these @acronym{SRFI}s reflect existing
@@ -2806,7 +2806,7 @@ practice rather than introducing new functionality.
 
 @cindex SRFI 0
 @usrfi{0} is a mechanism for portably determining the availability of
-@uref{http://srfi.schemers.org/,@acronym{SRFI}} @dfn{features}.  The
+@uref{https://srfi.schemers.org/,@acronym{SRFI}} @dfn{features}.  The
 @code{cond-expand} special form conditionally expands according to the
 features available.
 

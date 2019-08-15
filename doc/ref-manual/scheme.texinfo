@@ -132,7 +132,7 @@ Documentation License.''
 @end macro
 
 @macro usrfi {n}
-@uref{http://srfi.schemers.org/srfi-\n\/srfi-\n\.html,@asrfi{\n\}}
+@uref{https://srfi.schemers.org/srfi-\n\/srfi-\n\.html,@asrfi{\n\}}
 @end macro
 
 @macro rseven {}
