@@ -633,6 +633,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 	SCHEME_OBJECT entry =
 	  (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, entry_addr));
 	print_compiled_entry (stream, entry);
+	return;
       }
 #endif
 
