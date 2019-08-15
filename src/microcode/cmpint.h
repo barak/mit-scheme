@@ -32,7 +32,7 @@ USA.
 #include "config.h"
 #include "object.h"
 
-#define COMPILER_INTERFACE_VERSION 3
+#define COMPILER_INTERFACE_VERSION 4
 
 typedef struct cc_entry_type_s cc_entry_type_t;
 typedef struct cc_entry_offset_s cc_entry_offset_t;
