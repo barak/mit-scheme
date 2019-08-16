@@ -1,0 +1,20 @@
+% Linear `spline' interpolation.
+
+/linearsplinterpolate           % n fxmin fxmax Tf => ---
+{
+    6 dict begin
+    /Tf exch def
+    /fxmax exch def
+    /fxmin exch def
+    /n exch def
+    /fxwidth fxmax fxmin sub def
+    newpath
+    0 1 n {/i exch def
+        i n linearsplinterpoint Tconst
+        fxwidth Tconst Tmul fxmin Tconst Tadd
+        dup Tf Ta2bb Tq exch Tq exch
+        i 0 eq { moveto } { lineto } ifelse
+    } for
+    stroke
+    end
+} def

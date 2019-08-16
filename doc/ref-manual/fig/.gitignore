@@ -1,0 +1,4 @@
+# The master copies are in .eps.in files.
+/*.eps
+/*.pdf
+/*.png

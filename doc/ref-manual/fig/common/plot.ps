@@ -1,0 +1,161 @@
+% Derived axis parameters.
+/awidth axmax axmin sub def
+/aheight aymax aymin sub def
+
+% 1pt margin on either side for arrow heads.
+/a2bbx bbwidth 2 sub awidth div def
+/a2bby bbheight 2 sub aheight div def
+
+/a2bb                           % xa ya => xbb ybb
+{
+    exch a2bbx mul              % ya xbb
+    exch a2bby mul              % xbb ybb
+} def
+
+/Ta2bb                          % Txa Tya => Txbb Tybb
+{
+    exch a2bbx Tconst Tmul      % Tyf Tx2bb
+    exch a2bby Tconst Tmul      % Txbb Tybb
+} def
+
+/arrowhead                      % x y angle => ---
+{
+    gsave
+        1 setlinecap
+        newpath
+        3 1 roll                % angle x y
+        moveto rotate
+        -2 2 rmoveto 2 -2 rlineto -2 -2 rlineto
+        stroke
+    grestore
+} def
+
+/ticku 5 def                    % tick size in pt
+
+/tick                           % xa ya tx ty => ---
+{
+    exch ticku mul              % xa ya ty dxbb
+    exch ticku mul              % xa ya dxbb dybb
+    4 2 roll a2bb               % dxbb dybb xbb ybb
+    gsave newpath moveto rlineto stroke grestore
+} def
+
+/ticklabel                      % v xa ya dxbb dybb => ---
+{
+    4 2 roll a2bb               % v dxbb dybb xbb ybb
+    newpath moveto rlineto show
+} def
+
+/xticklabel                     % x ty => ---
+{
+    exch dup                    % ty x x
+    4 string cvs                % ty x xs
+    gsave
+        newpath 0 0 moveto
+        dup true charpath
+        pathbbox                % ty x xs llx lly urx ury
+    grestore
+    3 -1 roll sub               % ty x xs llx urx ury-lly
+    3 1 roll exch add           % ty x xs ury-lly urx+llx
+    2 div                       % ty x xs ury-lly (urx+llx)/2
+    0 exch sub                  % ty x xs ury-lly -(urx+llx)/2
+    exch                        % ty x xs -(urx+llx)/2 ury-lly
+    4 index 0 lt {
+        ticku 2 mul add
+    } {
+        pop ticku 2 mul
+    } ifelse                    % ty x xs -w/2 h
+    5 -1 roll mul               % x xs -w/2 h*ty
+    4 -1 roll                   % xs -w/2 h*ty x
+    0                           % xs -w/2 h*ty x y
+    4 2 roll                    % xs x y -w/2 h*ty
+    ticklabel
+} def
+
+/yticklabel                     % y tx => ---
+{
+    exch dup                    % tx y y
+    4 string cvs                % tx y ys
+    gsave
+        newpath 0 0 moveto
+        dup true charpath
+        pathbbox                % tx y ys llx lly urx ury
+    grestore
+    3 -1 roll add 2 div         % tx y ys llx urx (ury+lly)/2
+    0 exch sub                  % tx y ys llx urx -(ury+lly)/2
+    3 1 roll exch sub           % tx y ys -(ury+lly)/2 urx-llx
+    4 index 0 lt {
+        ticku 2 mul add
+    } {
+        pop ticku 2 mul
+    } ifelse                    % tx y ys -h/2 w
+    5 -1 roll mul               % y ys -h/2 w*tx
+    exch                        % y ys w*tx -h/2
+    4 -1 roll                   % ys w*tx -h/2 y
+    0                           % ys w*tx -h/2 y x
+    exch                        % ys w*tx -h/2 x y
+    4 2 roll                    % ys x y w*tx -h/2
+    ticklabel
+} def
+
+/reencodefont                   % name font proc => font'
+{
+    exch dup length dict copy   % name proc font'
+    dup /Encoding get           % name proc font' encoding
+    dup length array copy       % name proc font' encoding'
+    3 -1 roll exec              % name font' encoding'
+    1 index exch                % name font' encoding' font'
+    /Encoding exch put          % name font'
+    definefont
+} def
+
+/setupplotbbox
+{
+    % Clip to bounding box.
+    newpath
+    llx lly moveto llx ury lineto urx ury lineto urx lly lineto closepath
+    clip
+
+    % Center coordinates with 1pt margin for arrow heads.
+    0 axmin sub 0 aymin sub a2bb 1 add exch 1 add exch translate
+} def
+
+/setupasymptote
+{
+    0.5 setgray
+    0.4 setlinewidth
+    [4 4] 1 setdash
+} def
+
+/setupaxes
+{
+    0.4 setlinewidth
+    /Times-Roman-Numeric
+        /Times-Roman findfont
+        { dup 45 /minus put } reencodefont % replace hyphen by minus
+    10 scalefont setfont
+} def
+
+/drawaxes
+{
+    newpath axmin 0 a2bb moveto axmax 0 a2bb lineto stroke
+    axmax 0 a2bb 0 arrowhead
+    axmin 0 a2bb 180 arrowhead
+    newpath 0 aymin a2bb moveto 0 aymax a2bb lineto stroke
+    0 aymax a2bb 90 arrowhead
+    0 aymin a2bb -90 arrowhead
+} def
+
+/setupfunctionplot
+{
+    0 0 1 setrgbcolor
+    0.6 setlinewidth
+    1 setlinecap
+} def
+
+/setupconditionnumberplot
+{
+    1 0 0 setrgbcolor
+    0.6 setlinewidth
+    1 setlinecap
+} def

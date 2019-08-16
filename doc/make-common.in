@@ -76,6 +76,7 @@ PDF_TARGET = $(TARGET_ROOT).pdf
 PS_TARGET = $(TARGET_ROOT).ps
 
 GS = gs
+EPS2EPS = eps2eps
 PS2PDF = ps2pdf
 PS2PNG = $(GS) -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r300
 
@@ -104,8 +105,12 @@ $(PS_TARGET): $(SOURCES) $(FIGURES_EPS)
 	rm -f $(DVI_TARGET)
 
 .SUFFIXES: .eps
+.SUFFIXES: .eps.in
 .SUFFIXES: .pdf
 .SUFFIXES: .png
+
+.eps.in.eps:
+	$(EPS2EPS) $(EPS2EPSFLAGS) $< $@.tmp && mv -f $@.tmp $@
 
 .eps.pdf:
 	$(PS2PDF) -dEPSCrop -sOutputFile=$@.tmp $< && mv -f $@.tmp $@

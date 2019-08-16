@@ -1,0 +1,42 @@
+
+/point                          % x y greyness => ...
+{
+    gsave
+        newpath
+        3 1 roll                % greyness x y
+        1 0 360 arc
+        gsave setgray fill grestore
+        stroke
+    grestore
+} def
+
+/showcurveto                    % x1 y1 x2 y2 x3 y3 => ---
+{
+    gsave
+        .5 setlinewidth
+        .5 setgray
+        currentpoint
+        newpath moveto
+        5 index 5 index
+        lineto
+        stroke
+        2 copy
+        newpath
+        moveto
+        3 index 3 index
+        lineto
+        stroke
+    grestore
+    gsave
+        .1 setlinewidth
+        0 setgray
+        currentpoint 0 point
+        5 index 5 index
+        1 point
+        3 index 3 index
+        1 point
+        2 copy
+        0 point
+    grestore
+    curveto
+} def
