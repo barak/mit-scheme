@@ -7,7 +7,7 @@
 /bbwidth urx llx sub def /bbheight ury lly sub def
 
 % Axes.
-/axmin -0.75 def /axmax 0.75 def /aymin -3.2 def /aymax 6.2 def
+/axmin -0.75 def /axmax 0.75 def /aymin -1.2 def /aymax 1.8 def
 
 % Interpolation parameters.
 /nspline 90 def			  % must be even here to avoid zero
@@ -33,6 +33,10 @@ gsave
     0.5 aymin a2bb moveto
     0.5 aymax a2bb lineto
     stroke
+    newpath
+    axmin 0.25 a2bb moveto
+    axmax 0.25 a2bb lineto
+    stroke
 grestore
 
 % Draw axes.
@@ -51,13 +55,10 @@ gsave
     -0.5   0 0 -1    tick -0.5 -1 xticklabel
 
     % y ticks
-    0  5 -0.5 0 tick
-    0  4 -1   0 tick  4 -1 yticklabel
-    0  3 -0.5 0 tick
-    0  2 -1   0 tick  2 -1 yticklabel
-    0  1 -0.5 0 tick
-    0 -1 -0.5 0 tick
-    0 -2 -1   0 tick -2 -1 yticklabel
+    0 1    -1   0 tick  1    -1 yticklabel
+
+    % Label the asymptote.
+    newpath 0.125 0.4 a2bb moveto (1/4) show
 grestore
 
 gsave
