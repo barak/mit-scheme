@@ -74,6 +74,40 @@ clip
     } ifelse } ifelse } ifelse
 } def
 
+/logistic                       % x => 1/(1+e^{-x})
+{
+    0 exch sub 2.718281828 exch exp 1 add 1 exch div
+} def
+
+/logit                          % p => log(p/(1-p))
+{
+    dup -1.0 logistic lt        % p (p<logistic(-1))
+    1 index 1.0 logistic gt     % p (p<logistic(-1)) (p>logistic(1))
+    or {
+        dup 1.0 exch sub        % p 1-p
+        div ln                  % log(p/(1-p))
+    } {
+        dup 2.0 mul             % p 2p
+        1.0 exch sub            % p 1-2p
+        exch div                % (1-2p)/p
+        ln1p                    % log1p((1-2p)/p)
+        0.0 exch sub            % -log1p((1-2p)/p)
+    } ifelse
+} def
+
+/logithalf			% p => log((1/2+p)/(1/2-p))
+{
+    dup abs 0.5 1.0 3.718281828 div sub le {
+	dup 2 mul		% p 2p
+	exch 0.5 exch sub	% 2p 1/2-p
+	div ln1p		% log(1+2p/(1/2-p))
+    } {
+	dup 0.5 add		% p 1/2+p
+	exch 0.5 exch sub	% 1/2+p 1/2-p
+	div ln			% log((1/2+p)/(1/2-p))
+    } ifelse
+} def
+
 % Automatic differentiation.
 
 /T { 2 array astore } def       % x dx => [x dx]
@@ -153,14 +187,15 @@ clip
     T                           % T(log(1+x))
 } def
 
-/Texp {
+/Texp                           % Tx => T(e^x)
+{
     Tqv                         % x dx
     exch 2.718281828 exch exp exch % e^x dx
     1 index mul                 % e^x e^x*dx
     T                           % T(e^x)
 } def
 
-/Texpm1
+/Texpm1                         % Tx => T(e^x-1)
 {
     Tqv                         % x dx
     exch dup expm1              % dx x e^x-1
@@ -190,6 +225,42 @@ clip
     0.017453292519943295 mul
     mul 1 exch sub              % cos(x) -sin(x)*dx
     T                           % T(cos(x))
+} def
+
+/Tlogistic                      % Tx => T(1/(1+e^{-x}))
+{
+    0.0 Tconst exch Tsub Texp	% T(e^{-x})
+    1.0 Tconst Tadd		% T(1+e^{-x})
+    1.0 Tconst exch Tdiv	% T(1/(1+e^{-x}))
+} def
+
+/Tlogit                         % Tp => T(log(p/(1-p)))
+{
+    dup Tq -1.0 logistic lt     % Tp (p<logistic(-1))
+    1 index Tq 1.0 logistic gt  % Tp (p<logistic(-1)) (p>logistic(1))
+    or {
+        dup 1.0 Tconst exch Tsub % Tp T(1-p)
+        Tdiv Tln                 % T(log(p/(1-p)))
+    } {
+        dup 2.0 Tconst Tmul     % Tp T2p
+        1.0 Tconst exch Tsub    % Tp T(1-2p)
+        exch Tdiv               % T((1-2p)/p)
+        Tln1p                   % T(log1p((1-2p)/p))
+        0.0 Tconst exch Tsub    % T(-log1p((1-2p)/p))
+    } ifelse
+} def
+
+/Tlogithalf                     % Tp => T(log((1/2+p)/(1/2-p)))
+{
+    dup Tq abs 0.5 1.0 3.718281828 div sub le {
+        dup 2.0 Tconst Tmul     % Tp T(2p)
+        exch 0.5 Tconst exch Tsub % T(2p) T(1/2-p)
+        Tdiv Tln1p              % T(log(1+2p/(1/2-p)))
+    } {
+        dup 0.5 Tconst Tadd     % T(p) T(1/2+p)
+        exch 0.5 Tconst exch Tsub % T(1/2+p) T(1/2-p)
+        Tdiv Tln                % T(log((1/2+p)/(1/2-p)))
+    } ifelse
 } def
 
 /Tlerp                          % Tt fxmin fxmax => Tx
@@ -359,7 +430,7 @@ clip
 /xticklabel                     % x ty => ---
 {
     exch dup                    % ty x x
-    3 string cvs                % ty x xs
+    4 string cvs                % ty x xs
     gsave
         newpath 0 0 moveto
         dup true charpath
@@ -370,7 +441,11 @@ clip
     2 div                       % ty x xs ury-lly (urx+llx)/2
     0 exch sub                  % ty x xs ury-lly -(urx+llx)/2
     exch                        % ty x xs -(urx+llx)/2 ury-lly
-    ticku 2 mul add             % ty x xs -w/2 h
+    4 index 0 lt {
+        ticku 2 mul add
+    } {
+        pop ticku 2 mul
+    } ifelse                    % ty x xs -w/2 h
     5 -1 roll mul               % x xs -w/2 h*ty
     4 -1 roll                   % xs -w/2 h*ty x
     0                           % xs -w/2 h*ty x y
@@ -381,7 +456,7 @@ clip
 /yticklabel                     % y tx => ---
 {
     exch dup                    % tx y y
-    3 string cvs                % tx y ys
+    4 string cvs                % tx y ys
     gsave
         newpath 0 0 moveto
         dup true charpath
@@ -423,8 +498,8 @@ clip
 % Draw reference asymptote.
 gsave
     0.5 setgray
-    0.25 setlinewidth
-    [2 3] 0 setdash
+    0.4 setlinewidth
+    [4 4] 0 setdash
     newpath
     axmin axmin a2bb moveto
     axmax axmax a2bb lineto
@@ -433,7 +508,7 @@ grestore
 
 % Draw axes.
 gsave
-    0.125 setlinewidth
+    0.4 setlinewidth
     /Times-Roman-Numeric
         /Times-Roman findfont
         { dup 45 /minus put } reencodefont   % replace hyphen by minus
@@ -465,7 +540,7 @@ grestore
 
 gsave
     1 0 0 setrgbcolor
-    0.5 setlinewidth
+    0.6 setlinewidth
     1 setlinecap
     5 dict begin
         /Tf {
