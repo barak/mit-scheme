@@ -32,23 +32,24 @@ USA.
 #include "errors.h"
 
 extern void * tospace_to_newspace (void *);
+extern void * newspace_to_tospace (void *);
 
 bool
 read_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 {
-  return (decode_old_style_format_word (cet, (((uint16_t *) address) [-2])));
+  return (decode_old_style_format_word (cet, (((uint16_t *) address) [-6])));
 }
 
 bool
 write_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 {
-  return (encode_old_style_format_word (cet, ((uint16_t *) address) - 2));
+  return (encode_old_style_format_word (cet, (((uint16_t *) address) - 6)));
 }
 
 bool
 read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
-  uint16_t n = (((uint16_t *) address) [-1]);
+  uint16_t n = (((uint16_t *) address) [-5]);
   (ceo->offset) = (n >> 1);
   (ceo->continued_p) = ((n & 1) != 0);
   return (false);
@@ -59,25 +60,72 @@ write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
   if (! ((ceo->offset) < 0x4000))
     return (true);
-  (((uint16_t *) address) [-1])
+  (((uint16_t *) address) [-5])
     = (((ceo->offset) << 1) | ((ceo->continued_p) ? 1 : 0));
   return (false);
+}
+
+insn_t *
+cc_return_address_to_entry_address (insn_t * pc)
+{
+  if ((pc[0]) == 0xeb)		/* JMP rel8 */
+    return ((pc + 2) + (* ((int8_t *) &pc[1])));
+  else if ((pc[0]) == 0xe9)	/* JMP rel32 */
+    return ((pc + 5) + (* ((int32_t *) &pc[1])));
+  else
+    return (pc);
 }
 
 /* Compiled closures */
 
-/* MOV RAX,imm64 has two bytes of opcode cruft before the imm64.  */
+/* start_closure_reloation(scan, ref)
+
+   `scan' points at the manifest of a compiled closure.  Initialize
+   `ref' with whatever we need to relocate the entries in it.  */
+
+void
+start_closure_relocation (SCHEME_OBJECT * scan, reloc_ref_t * ref)
+{
+  /* The last element of the block is always the tagged first entry of
+     the closure, which tells us where the closure was in oldspace.  */
+  (ref->old_addr) = (CC_ENTRY_ADDRESS (* ((CC_BLOCK_ADDR_END (scan)) - 1)));
+  /* Find the address of the first entry in newspace.  */
+  (ref->new_addr)
+    = (tospace_to_newspace
+       (compiled_closure_entry (compiled_closure_start (scan + 1))));
+}
+
+/* read_compiled_closure_target(start, ref)
+
+   `start' points to the start of a closure entry in tospace, beginning
+   with the format word and block offset.  `ref' was initialized with
+   `start_closure_relocation'.  Return the untagged compiled entry
+   address in oldspace that the closure entry points to.  */
 
 insn_t *
-read_compiled_closure_target (insn_t * start)
+read_compiled_closure_target (insn_t * start, reloc_ref_t * ref)
 {
-  return (* ((insn_t **) (start + CC_ENTRY_HEADER_SIZE + 2)));
+  insn_t * addr = (start + CC_ENTRY_HEADER_SIZE);
+  insn_t * base = (tospace_to_newspace (addr));
+  /* If we're relocating, find where base was in the oldspace.  */
+  if (ref)
+    base += (ref->old_addr - ref->new_addr);
+  return (base + (((int64_t *) addr)[-1]));
 }
+
+/* write_compiled_closure_target(target, start)
+
+   `target' is an untagged compiled entry address in newspace.  `start'
+   points to the start of a closure entry in tospace, beginning with
+   the format word and block offset.  Set the closure entry at `start'
+   to go to `target'.  */
 
 void
 write_compiled_closure_target (insn_t * target, insn_t * start)
 {
-  (* ((insn_t **) (start + CC_ENTRY_HEADER_SIZE + 2))) = target;
+  insn_t * addr = (start + CC_ENTRY_HEADER_SIZE);
+  (((int64_t *) addr)[-1]) =
+    (target - ((insn_t *) (tospace_to_newspace (addr))));
 }
 
 unsigned long
@@ -104,22 +152,20 @@ compiled_closure_entry (insn_t * start)
 insn_t *
 compiled_closure_next (insn_t * start)
 {
-  return (start + CC_ENTRY_HEADER_SIZE + 12);
+  return (start + CC_ENTRY_HEADER_SIZE + 4);
 }
 
 SCHEME_OBJECT *
 skip_compiled_closure_padding (insn_t * start)
 {
-  /* The padding is the same size as the entry header (format word).  */
-  return ((SCHEME_OBJECT *) (start + CC_ENTRY_HEADER_SIZE));
+  /* The last entry is _not_ padded, so undo the padding skip.  */
+  return ((SCHEME_OBJECT *) (start - 4));
 }
 
 SCHEME_OBJECT
 compiled_closure_entry_to_target (insn_t * entry)
 {
-  /* `entry' points to the start of the MOV RAX,imm64 instruction,
-     which has two bytes of opcode cruft before the imm64.  */
-  return (MAKE_CC_ENTRY (* ((long *) (entry + 2))));
+  return (MAKE_CC_ENTRY (entry + (((int64_t *) entry)[-1])));
 }
 
 /* Execution caches (UUO links)
@@ -151,8 +197,12 @@ read_uuo_frame_size (SCHEME_OBJECT * saddr)
 insn_t *
 read_uuo_target (SCHEME_OBJECT * saddr)
 {
-  insn_t * mov_addr = ((insn_t *) (saddr + 1));
-  return (* ((insn_t **) (mov_addr + 2)));
+  /* Skip the arity.  */
+  insn_t * addr = ((insn_t *) (saddr + 1));
+  assert ((addr[0]) == 0x48);
+  assert ((addr[1]) == 0xb9);
+  /* 0x48 0xb9 <addr> */
+  return (* ((insn_t **) (&addr[2])));
 }
 
 insn_t *
@@ -166,16 +216,47 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
 {
   /* Skip the arity. */
   insn_t * addr = ((insn_t *) (saddr + 1));
-  (*addr++) = 0x48;		/* REX.W (64-bit operand size prefix) */
-  (*addr++) = 0xB8;		/* MOV RAX,imm64 */
-  (* ((insn_t **) addr)) = target;
-  addr += 8;
-  (*addr++) = 0xFF;		/* JMP reg/mem64 */
-  (*addr++) = 0xE0;		/* ModR/M for RAX */
+  (addr[0]) = 0x48;		/* MOV RCX,imm64 */
+  (addr[1]) = 0xb9;
+  (* ((insn_t **) (&addr[2]))) = target;
+  /* If the target PC is right after the target offset, then the PC
+     requires no further relocation and we can jump to a fixed address.
+     But if the target is a compiled closure pointing into a block
+     somewhere else, the block may not have been relocated yet and so
+     we don't know where the PC will be in the newspace.  */
+  if ((((int64_t *) (newspace_to_tospace (target)))[-1]) == 0)
+    {
+      ptrdiff_t jmprel32_offset = (target - (&addr[15]));
+      if ((INT32_MIN <= jmprel32_offset) && (jmprel32_offset <= INT32_MAX))
+	{
+	  (addr[10]) = 0xe9;	/* JMP rel32 */
+	  (* ((int32_t *) (&addr[11]))) = jmprel32_offset;
+	}
+      else
+	{
+	  (addr[10]) = 0x48;	/* MOV RAX,imm64 */
+	  (addr[11]) = 0xb8;
+	  (* ((insn_t **) (&addr[12]))) = target;
+	  (addr[20]) = 0xff;	/* JMP RAX */
+	  (addr[21]) = 0xe0;
+	}
+    }
+  else
+    {
+      (addr[10]) = 0x48;	/* MOV RAX,-8(RCX) */
+      (addr[11]) = 0x8b;
+      (addr[12]) = 0x41;
+      (addr[13]) = 0xf8;
+      (addr[14]) = 0x48;	/* ADD RAX,RCX */
+      (addr[15]) = 0x01;
+      (addr[16]) = 0xc8;
+      (addr[17]) = 0xff;	/* JMP RAX */
+      (addr[18]) = 0xe0;
+    }
 }
 
 #define BYTES_PER_TRAMPOLINE_ENTRY_PADDING 4
-#define OBJECTS_PER_TRAMPOLINE_ENTRY 2
+#define OBJECTS_PER_TRAMPOLINE_ENTRY 4
 
 #define RSI_TRAMPOLINE_TO_INTERFACE_OFFSET				\
   ((COMPILER_REGBLOCK_N_FIXED + (2 * COMPILER_HOOK_SIZE))		\
@@ -194,14 +275,22 @@ trampoline_entry_addr (SCHEME_OBJECT * block, unsigned long index)
 	  + BYTES_PER_TRAMPOLINE_ENTRY_PADDING + CC_ENTRY_HEADER_SIZE);
 }
 
+insn_t *
+trampoline_return_addr (SCHEME_OBJECT * block, unsigned long index)
+{
+  return (trampoline_entry_addr (block, index));
+}
+
 bool
 store_trampoline_insns (insn_t * entry, uint8_t code)
 {
-  (*entry++) = 0xB0;		/* MOV AL,code */
-  (*entry++) = code;
-  (*entry++) = 0xFF;		/* CALL /2 disp32(RSI) */
-  (*entry++) = 0x96;
-  (* ((uint32_t *) entry)) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
+  (((int64_t *) entry)[-1]) = 0;
+  (entry[0]) = 0x41;		/* MOVB R9,imm8 */
+  (entry[1]) = 0xb1;
+  (entry[2]) = code;
+  (entry[3]) = 0xff;		/* JMP r/m64 */
+  (entry[4]) = 0xa6;		/* disp32(RSI) */
+  (* ((uint32_t *) (&entry[5]))) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
   return (false);
 }
 
@@ -280,6 +369,17 @@ x86_64_reset_hook (void)
   SETUP_REGISTER (asm_interrupt_continuation_2);	/* 39 */
 
   SETUP_REGISTER (asm_fixnum_shift);			/* 40 */
+  SETUP_REGISTER (asm_apply_setup);			/* 41 */
+  SETUP_REGISTER (asm_apply_setup_size_1);		/* 42 */
+  SETUP_REGISTER (asm_apply_setup_size_2);		/* 43 */
+  SETUP_REGISTER (asm_apply_setup_size_3);		/* 44 */
+  SETUP_REGISTER (asm_apply_setup_size_4);		/* 45 */
+  SETUP_REGISTER (asm_apply_setup_size_5);		/* 46 */
+  SETUP_REGISTER (asm_apply_setup_size_6);		/* 47 */
+  SETUP_REGISTER (asm_apply_setup_size_7);		/* 48 */
+  SETUP_REGISTER (asm_apply_setup_size_8);		/* 49 */
+
+  SETUP_REGISTER (asm_set_interrupt_enables);		/* 50 */
 
 #ifdef _MACH_UNIX
   {

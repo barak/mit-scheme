@@ -84,14 +84,21 @@ USA.
 	      (generate/continuation-entry/pop-extra continuation)))
 	 operand
 	 continuation)
-	(scfg-append!
-	 (if (and continuation (continuation/effect? continuation))
-	     (effect-prefix operand)
-	     ((return-operand/value-generator operand)
-	      (lambda (expression)
-		(rtl:make-assignment register:value expression))))
-	 (return-operator/pop-frames context operator 0)
-	 (rtl:make-pop-return)))))
+        (receive (rising-action conclusion)
+		 (if (and continuation (continuation/effect? continuation))
+		     (values (effect-prefix operand) (make-null-cfg))
+		     (let ((temporary (rtl:make-pseudo-register)))
+		       (values
+			((return-operand/value-generator operand)
+			 (lambda (expression)
+			   (rtl:make-assignment temporary expression)))
+			(rtl:make-assignment register:value
+					     (rtl:make-fetch temporary)))))
+	  (scfg-append!
+	   rising-action
+	   (return-operator/pop-frames context operator 0)
+	   conclusion
+	   (rtl:make-pop-return))))))
 
 (define-integrable (continuation/effect? continuation)
   (eq? continuation-type/effect (continuation/type continuation)))

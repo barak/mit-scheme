@@ -473,7 +473,7 @@ USA.
 	   ;; Clearing the map is not necessary because the hook uses
 	   ;; only rax and rcx.  If the hook were changed, it would be
 	   ;; necessary to clear the map first.
-	   ,@(invoke-hook/call entry:compiler-fixnum-shift)))))
+	   ,@(invoke-hook/subroutine entry:compiler-fixnum-shift)))))
 
 (define (do-division target source1 source2 result-reg)
   (prefix-instructions! (load-machine-register! source1 rax))

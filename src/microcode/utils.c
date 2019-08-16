@@ -217,7 +217,7 @@ canonicalize_primitive_context (void)
   n_args = (PRIMITIVE_N_ARGUMENTS (primitive));
 
 #ifdef CC_SUPPORT_P
-  if (CC_ENTRY_P (STACK_REF (n_args)))
+  if (CC_RETURN_P (STACK_REF (n_args)))
     {
       /* The primitive has been invoked from compiled code. */
       STACK_PUSH (primitive);
@@ -228,6 +228,8 @@ canonicalize_primitive_context (void)
       /*NOTREACHED*/
     }
 #endif
+
+  assert (RETURN_CODE_P (STACK_REF (n_args)));
 }
 
 /* back_out_of_primitive sets the registers up so that the backout

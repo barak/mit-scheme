@@ -34,7 +34,6 @@ USA.
 (define-rule statement
   (INTERPRETER-CALL:CACHE-REFERENCE (? cont) (? extension) (? safe?))
   (QUALIFIER (interpreter-call-argument? extension))
-  cont					; ignored
   (let ((set-extension
 	 (interpreter-call-argument->machine-register! extension rdx)))
     (LAP ,@set-extension
@@ -43,17 +42,19 @@ USA.
 	 ,@(invoke-interface/call
 	    (if safe?
 		code:compiler-safe-reference-trap
-		code:compiler-reference-trap))
+		code:compiler-reference-trap)
+	    cont)
 	 |#
-	 ,@(invoke-hook/call (if safe?
-				 entry:compiler-safe-reference-trap
-				 entry:compiler-reference-trap)))))
+	 ,@(invoke-hook/call
+	    (if safe?
+		entry:compiler-safe-reference-trap
+		entry:compiler-reference-trap)
+	    cont))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
   (QUALIFIER (and (interpreter-call-argument? extension)
 		  (interpreter-call-argument? value)))
-  cont					; ignored
   (let* ((set-extension
 	  (interpreter-call-argument->machine-register! extension rdx))
 	 (set-value (interpreter-call-argument->machine-register! value rcx)))
@@ -61,19 +62,18 @@ USA.
 	 ,@set-value
 	 ,@(clear-map!)
 	 #|
-	 ,@(invoke-interface/call code:compiler-assignment-trap)
+	 ,@(invoke-interface/call code:compiler-assignment-trap cont)
 	 |#
-	 ,@(invoke-hook/call entry:compiler-assignment-trap))))
+	 ,@(invoke-hook/call entry:compiler-assignment-trap cont))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
   (QUALIFIER (interpreter-call-argument? extension))
-  cont					; ignored
   (let ((set-extension
 	 (interpreter-call-argument->machine-register! extension rdx)))
     (LAP ,@set-extension
 	 ,@(clear-map!)
-	 ,@(invoke-interface/call code:compiler-unassigned?-trap))))
+	 ,@(invoke-interface/call code:compiler-unassigned?-trap cont))))
 
 ;;;; Interpreter Calls
 
@@ -84,51 +84,45 @@ USA.
 (define-rule statement
   (INTERPRETER-CALL:ACCESS (? cont) (? environment) (? name))
   (QUALIFIER (interpreter-call-argument? environment))
-  cont					; ignored
-  (lookup-call code:compiler-access environment name))
+  (lookup-call code:compiler-access environment name cont))
 
 (define-rule statement
   (INTERPRETER-CALL:LOOKUP (? cont) (? environment) (? name) (? safe?))
   (QUALIFIER (interpreter-call-argument? environment))
-  cont					; ignored
   (lookup-call (if safe? code:compiler-safe-lookup code:compiler-lookup)
-	       environment name))
+	       environment name cont))
 
 (define-rule statement
   (INTERPRETER-CALL:UNASSIGNED? (? cont) (? environment) (? name))
   (QUALIFIER (interpreter-call-argument? environment))
-  cont					; ignored
-  (lookup-call code:compiler-unassigned? environment name))
+  (lookup-call code:compiler-unassigned? environment name cont))
 
 (define-rule statement
   (INTERPRETER-CALL:UNBOUND? (? cont) (? environment) (? name))
   (QUALIFIER (interpreter-call-argument? environment))
-  cont					; ignored
-  (lookup-call code:compiler-unbound? environment name))
+  (lookup-call code:compiler-unbound? environment name cont))
 
-(define (lookup-call code environment name)
+(define (lookup-call code environment name cont)
   (let ((set-environment
 	  (interpreter-call-argument->machine-register! environment rdx)))
     (LAP ,@set-environment
 	 ,@(clear-map (clear-map!))
 	 ,@(load-constant (INST-EA (R ,rcx)) name)
-	 ,@(invoke-interface/call code))))
+	 ,@(invoke-interface/call code cont))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? cont) (? environment) (? name) (? value))
   (QUALIFIER (and (interpreter-call-argument? environment)
 		  (interpreter-call-argument? value)))
-  cont					; ignored
-  (assignment-call code:compiler-define environment name value))
+  (assignment-call code:compiler-define environment name value cont))
 
 (define-rule statement
   (INTERPRETER-CALL:SET! (? cont) (? environment) (? name) (? value))
   (QUALIFIER (and (interpreter-call-argument? environment)
 		  (interpreter-call-argument? value)))
-  cont					; ignored
-  (assignment-call code:compiler-set! environment name value))
+  (assignment-call code:compiler-set! environment name value cont))
 
-(define (assignment-call code environment name value)
+(define (assignment-call code environment name value cont)
   (let* ((set-environment
 	  (interpreter-call-argument->machine-register! environment rdx))
 	 (set-value (interpreter-call-argument->machine-register! value r8)))
@@ -136,4 +130,4 @@ USA.
 	 ,@set-value
 	 ,@(clear-map!)
 	 ,@(load-constant (INST-EA (R ,rcx)) name)
-	 ,@(invoke-interface/call code))))
+	 ,@(invoke-interface/call code cont))))

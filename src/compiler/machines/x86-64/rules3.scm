@@ -33,32 +33,33 @@ USA.
 
 (define-rule statement
   (POP-RETURN)
+  (let* ((checks (get-exit-interrupt-checks))
+	 (prefix (clear-map!))
+	 (suffix
+	  (if (pair? checks)
+	      (pop-return/interrupt-check)
+	      (pop-return))))
+    (LAP ,@prefix
+	 ,@suffix)))
+
+(define (pop-return)
   ;; The continuation is on the stack.
   ;; The type code needs to be cleared first.
-  (let ((checks (get-exit-interrupt-checks)))
-    (cond ((null? checks)
-	   (current-bblock-continue!
-	    (make-new-sblock
-	     (LAP (POP Q (R ,rax))				; continuation
-		  (AND Q (R ,rax) (R ,regnum:datum-mask))	; clear type
-		  (JMP (R ,rax))))))
-	  ((block-association 'POP-RETURN)
-	   => current-bblock-continue!)
-	  (else
-	   (let ((bblock
-		  (make-new-sblock
-		   (let ((interrupt-label (generate-label 'INTERRUPT)))
-		     (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
-			  (JGE (@PCR ,interrupt-label))
-			  (POP Q (R ,rax)) ; continuation
-			  (AND Q (R ,rax) (R ,regnum:datum-mask)) ; clear type
-			  (JMP (R ,rax))
-			  (LABEL ,interrupt-label)
-			  ,@(invoke-hook
-			     entry:compiler-interrupt-continuation-2))))))
-	     (block-associate! 'POP-RETURN bblock)
-	     (current-bblock-continue! bblock))))
-    (clear-map!)))
+  (LAP (AND Q (@R ,rsp) (R ,regnum:datum-mask))
+       (RET)))
+
+(define (pop-return/interrupt-check)
+  (share-instruction-sequence! 'POP-RETURN
+    (lambda (label) (LAP (JMP (@PCR ,label))))
+    (lambda (label)
+      (let ((interrupt-label (generate-label 'INTERRUPT)))
+	(LAP (LABEL ,label)
+	     (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
+	     ;; Forward branch -> statically predicted not-taken.
+	     (JGE (@PCR ,interrupt-label))
+	     ,@(pop-return)
+	     (LABEL ,interrupt-label)
+	     ,@(invoke-hook entry:compiler-interrupt-continuation-2))))))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -70,6 +71,7 @@ USA.
        (MOV Q (R ,rdx) (&U ,frame-size))
        ,@(invoke-interface code:compiler-apply)
        |#
+       #|
        ,@(case frame-size
 	   ((1) (invoke-hook entry:compiler-shortcircuit-apply-size-1))
 	   ((2) (invoke-hook entry:compiler-shortcircuit-apply-size-2))
@@ -81,7 +83,36 @@ USA.
 	   ((8) (invoke-hook entry:compiler-shortcircuit-apply-size-8))
 	   (else
 	    (LAP (MOV Q (R ,rdx) (&U ,frame-size))
-		 ,@(invoke-hook entry:compiler-shortcircuit-apply))))))
+		 ,@(invoke-hook entry:compiler-shortcircuit-apply))))
+       |#
+       #|
+       (POP Q (R ,rcx))			;Pop tagged entry into RCX.
+       (MOV Q (R ,rax) (R ,rcx))	;Copy tagged entry into RAX.
+       (SHR Q (R ,rax) (&U ,scheme-datum-width)) ;Select tag in RAX.
+       (AND Q (R ,rcx) (R ,regnum:datum-mask)) ;Select datum in RCX.
+       (CMP B (R ,rax) (&U ,(ucode-type COMPILED-ENTRY))) ;Check tag.
+       (JNE (@PCR ,generic))		;Bail if not compiled entry.
+       (CMP B (@RO ,rcx -4) (&U ,frame-size))	;Check arity.
+       (JNE (@PCR ,generic))		;Bail if not exact arity match.
+       (MOV Q (R ,rax) (@RO ,rcx -8))	;Load offset into RAX.
+       (ADD Q (R ,rax) (R ,rcx))	;Add offset to entry address in RAX.
+       (JMP (R ,rax))
+      (LABEL ,generic)
+       ,@(invoke-hook entry:compiler-shortcircuit-apply)
+       |#
+       ,@(case frame-size
+	   ((1) (invoke-hook/subroutine entry:compiler-apply-setup-size-1))
+	   ((2) (invoke-hook/subroutine entry:compiler-apply-setup-size-2))
+	   ((3) (invoke-hook/subroutine entry:compiler-apply-setup-size-3))
+	   ((4) (invoke-hook/subroutine entry:compiler-apply-setup-size-4))
+	   ((5) (invoke-hook/subroutine entry:compiler-apply-setup-size-5))
+	   ((6) (invoke-hook/subroutine entry:compiler-apply-setup-size-6))
+	   ((7) (invoke-hook/subroutine entry:compiler-apply-setup-size-7))
+	   ((8) (invoke-hook/subroutine entry:compiler-apply-setup-size-8))
+	   (else
+	    (LAP (MOV Q (R ,rdx) (&U ,frame-size))
+		 ,@(invoke-hook/subroutine entry:compiler-apply-setup))))
+       (JMP (R ,rax))))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
@@ -96,8 +127,10 @@ USA.
   ;; It expects the procedure at the top of the stack
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (POP Q (R ,rax))
-       (AND Q (R ,rax) (R ,regnum:datum-mask)) ;clear type code
+       (POP Q (R ,rcx))
+       (AND Q (R ,rcx) (R ,regnum:datum-mask)) ;clear type code
+       (MOV Q (R ,rax) (@RO ,rcx -8))	;rax := PC offset
+       (ADD Q (R ,rax) (R ,rcx))	;rax := PC
        (JMP (R ,rax))))
 
 (define-rule statement
@@ -189,6 +222,177 @@ USA.
 		      (LAP (MOV Q (R ,rdx) (&U ,frame-size))
 			   ,@(invoke-interface code:compiler-apply))))))))
 
+;; Must match enum reflect_code_t in microcode/cmpint.c.
+(define-integrable reflect-code:internal-apply 0)
+(define-integrable reflect-code:restore-interrupt-mask 1)
+(define-integrable reflect-code:stack-marker 2)
+(define-integrable reflect-code:compiled-code-bkpt 3)
+(define-integrable reflect-code:compiled-invocation 8)
+
+(define-rule statement
+  (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
+  (QUALIFIER (eq? primitive (ucode-primitive set-interrupt-enables! 1)))
+  continuation
+  (assert (= frame-size 2))
+  (let* ((prefix (clear-map!))
+	 (suffix (pop-return/interrupt-check)))
+    (LAP ,@prefix
+	 ;; Load new interrupt mask into rdx.
+	 (POP Q (R ,rdx))		;rdx := new interrupt mask
+	 ;; Return value in rax is old interrupt mask.
+	 (MOV Q (R ,rax)		;rax := old interrupt mask, tagged
+	      (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))
+	 (OR Q (R ,rax) ,reg:int-mask)
+	 ;; Set the new interrupt mask.  (Preserves rax.)
+	 ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+	 ;; Return value is in rax.  Pop-return, but check for
+	 ;; interrupts that may be enabled now.
+	 ,@suffix)))
+
+(define-rule statement
+  (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
+  (QUALIFIER (eq? primitive (ucode-primitive with-stack-marker 3)))
+  continuation
+  (assert (= frame-size 4))		;primitive, procedure, type, instance
+  (let* ((prefix (clear-map!))
+	 (pushed (generate-label 'PUSHED))
+	 (pop-pop-return (generate-label 'POP-POP-RETURN))
+	 (tag-continuation
+	  (affix-type (INST-EA (@R ,rsp))
+		      type-code:compiled-return
+		      (lambda () rax)))
+	 (suffix (pop-return/interrupt-check)))
+    (LAP ,@prefix
+	 ;; Stack initially looks like:
+	 ;;
+	 ;;	rsp[0] = procedure
+	 ;;	rsp[1] = type
+	 ;;	rsp[2] = instance
+	 ;;	rsp[3] = continuation*
+	 ;;
+	 ;; We want:
+	 ;;
+	 ;;	rsp[0] = continuation that pops it all
+	 ;;	rsp[1] = reflect-to-interface
+	 ;;	rsp[2] = fixnum reflect-code:stack-marker
+	 ;;	rsp[3] = type
+	 ;;	rsp[4] = instance
+	 ;;	rsp[5] = continuation*
+	 ;;
+	 (POP Q (R ,rbx))		;procedure
+	 (MOV Q (R ,rcx) (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))
+	 (OR Q (R ,rcx) (& ,reflect-code:stack-marker))
+	 (PUSH Q (R ,rcx))
+	 (PUSH Q ,reg:reflect-to-interface)
+	 ;; Push a continuation onto the stack.
+	 (CALL (@PCR ,pushed))
+	 (JMP (@PCR ,pop-pop-return))
+	(LABEL ,pushed)
+	 ,@tag-continuation
+	 ;; Inovke rbx.  One procedure, zero arguments: frame size 1.
+	 ,@(invoke-hook/subroutine entry:compiler-apply-setup-size-1)
+	 (JMP (R ,rax))
+	 ,@(make-external-label (continuation-code-word #f) pop-pop-return)
+	 ;; Return value is in rax, so don't overwrite it.  Stack now looks
+	 ;; like:
+	 ;;
+	 ;;	rsp[0] = reflect-to-interface
+	 ;;	rsp[1] = fixnum reflect-code:stack-marker
+	 ;;	rsp[2] = type
+	 ;;	rsp[3] = instance
+	 ;;	rsp[4] = continuation*
+	 ;;
+	 ;; Pop it all off and return.
+	 (ADD Q (R ,rsp) (& ,(* 4 address-units-per-object)))
+	 ,@suffix)))
+
+(define-rule statement
+  (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
+  (QUALIFIER
+   (or (eq? primitive (ucode-primitive with-interrupt-mask 2))
+       (eq? primitive (ucode-primitive with-interrupts-reduced 2))))
+  continuation
+  (assert (= frame-size 3))
+  (let* ((prefix (clear-map!))
+	 (restore (generate-label 'RESTORE-INTERRUPTS))
+	 (pushed (generate-label 'PUSHED))
+	 (tag-continuation
+	  (affix-type (INST-EA (@R ,rsp))
+		      type-code:compiled-return
+		      (lambda () rax)))
+	 (suffix (pop-return/interrupt-check)))
+    ;; Stack initially looks like:
+    ;;
+    ;;	rsp[0] = new-mask
+    ;;	rsp[1] = procedure
+    ;;
+    ;; Registers:
+    ;; - rbx: procedure, for apply-setup
+    ;; - rdx: new mask
+    ;; - rcx: fixnum tag
+    ;; - rax: continuation tag; jump target; return value.
+    ;;
+    (LAP ,@prefix
+	 (POP Q (R ,rdx))		;rdx := new-mask
+	 (POP Q (R ,rbx))		;rbx := procedure, for apply-setup
+	 (MOV Q (R ,rcx)		;rcx := fixnum tag, for convenience
+	      (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))
+	 ;; Push reflect-to-interface(restore-interrupt-mask, old-mask)
+	 ;; for the benefit of the continuation parser.
+	 (PUSH Q ,reg:int-mask)
+	 (OR Q (@R ,rsp) (R ,rcx))
+	 (PUSH Q (& ,reflect-code:restore-interrupt-mask))
+	 (OR Q (@R ,rsp) (R ,rcx))
+	 (PUSH Q ,reg:reflect-to-interface)
+	 ;; Push a continuation onto the stack.
+	 (CALL (@PCR ,pushed))
+	 (JMP (@PCR ,restore))
+	(LABEL ,pushed)
+	 ,@tag-continuation
+	 ;; Push old mask argument.
+	 (PUSH Q ,reg:int-mask)
+	 (OR Q (@R ,rsp) (R ,rcx))
+
+	 ;; Set new interrupt mask.  It is tempting to just AND the new
+	 ;; mask into the register for with-interrupts-reduced, but if
+	 ;; we're disabling GC or stack overflow interrupts we also
+	 ;; need to set MEMTOP and STACK_GUARD.
+	 ,@(if (eq? primitive (ucode-primitive with-interrupts-reduced))
+	       (LAP (AND Q (R ,rdx) ,reg:int-mask))
+	       (LAP))
+	 ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+	 ;; Apply the procedure in rbx.  Stack now looks like:
+	 ;;
+	 ;;	rsp[0] = new-mask
+	 ;;	rsp[1] = continuation
+	 ;;	rsp[2] = reflect-to-interface
+	 ;;	rsp[3] = reflect-code:restore-interrupt-mask
+	 ;;	rsp[4] = old-mask
+	 ;;	rsp[5] = continuation*
+	 ;;
+	 ;; Apply with a frame of size 2 = 1 (procedure) + 1 argument.
+	 ;; Hook sets rax to the jump target -- either the compiled
+	 ;; entry, or another hook to fall back to the interpreter.
+	 ,@(invoke-hook/subroutine entry:compiler-apply-setup-size-2)
+	 (JMP (R ,rax))
+	 ,@(make-external-label (continuation-code-word #f) restore)
+	 ;; Return value in rax, so don't overwrite it.  Stack now
+	 ;; looks like:
+	 ;;
+	 ;;	rsp[0] = reflect-to-interface
+	 ;;	rsp[1] = reflect-code:restore-interrupt-mask
+	 ;;	rsp[2] = old-mask
+	 ;;	rsp[3] = continuation*
+	 ;;
+	 ;; Pop reflect-to-interface -- we won't actually use it.
+	 (ADD Q (R ,rsp) (& #x10))
+	 ;; Restore interrupts mask.
+	 (POP Q (R ,rdx))
+	 ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+	 ;; Return value is in rax.  Pop-return, but check for
+	 ;; interrupts that may be enabled now.
+	 ,@suffix)))
+
 (let-syntax
     ((define-primitive-invocation
        (sc-macro-transformer
@@ -378,35 +582,30 @@ USA.
 ;;; interrupt handler that saves and restores the dynamic link
 ;;; register.
 
-(define (interrupt-check interrupt-label checks)
-  ;; This always does interrupt checks in line.
-  (let ((branch-target (generate-label 'INTERRUPT)))
+(define (interrupt-check checks label)
+  (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
+	     (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
+		  (JGE (@PCR ,label)))
+	     (LAP))
+       ,@(if (memq 'STACK checks)
+	     (LAP (CMP Q (R ,regnum:stack-pointer) ,reg:stack-guard)
+		  (JL (@PCR ,label)))
+	     (LAP))))
+
+(define (simple-procedure-header code-word label entry)
+  (let ((checks (get-entry-interrupt-checks))
+	(interrupt-label (generate-label 'INTERRUPT)))
     ;; Put the interrupt check branch target after the branch so that
     ;; it is a forward branch, which Intel and AMD CPUs will predict
     ;; not taken by default, in the absence of dynamic branch
     ;; prediction profile data.
-    (add-end-of-block-code!
-     (lambda ()
-       (LAP (LABEL ,branch-target)
-	    (JMP (@PCR ,interrupt-label)))))
-    (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
-	       (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
-		    (JGE (@PCR ,branch-target)))
-	       (LAP))
-	 ,@(if (memq 'STACK checks)
-	       (LAP (CMP Q (R ,regnum:stack-pointer) ,reg:stack-guard)
-		    (JL (@PCR ,branch-target)))
-	       (LAP)))))
-
-(define (simple-procedure-header code-word label entry)
-  (let ((checks (get-entry-interrupt-checks)))
-    (if (null? checks)
-	(LAP ,@(make-external-label code-word label))
-	(let ((gc-label (generate-label)))
-	  (LAP (LABEL ,gc-label)
-	       ,@(invoke-hook/call entry)
-	       ,@(make-external-label code-word label)
-	       ,@(interrupt-check gc-label checks))))))
+    (if (pair? checks)
+	(add-end-of-block-code!
+	 (lambda ()
+	   (LAP (LABEL ,interrupt-label)
+		,@(invoke-hook/reentry entry label)))))
+    (LAP ,@(make-external-label code-word label)
+	 ,@(interrupt-check checks interrupt-label))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -425,18 +624,26 @@ USA.
   (make-external-label (continuation-code-word internal-label)
 		       internal-label))
 
+;;; XXX This rule has obviously never been exercised, since it was
+;;; broken for a decade and nobody noticed.  Maybe we should delete it.
+
 (define-rule statement
   (IC-PROCEDURE-HEADER (? internal-label))
-  (get-entry-interrupt-checks)		; force search
-  (let ((procedure (label->object internal-label)))
-    (let ((external-label (rtl-procedure/external-label procedure))
-	  (gc-label (generate-label)))
-      (LAP (ENTRY-POINT ,external-label)
-	   (EQUATE ,external-label ,internal-label)
-	   (LABEL ,gc-label)
-	   ,@(invoke-interface/call code:compiler-interrupt-ic-procedure)
-	   ,@(make-external-label expression-code-word internal-label)
-	   ,@(interrupt-check gc-label)))))
+  (let* ((procedure (label->object internal-label))
+	 (external-label (rtl-procedure/external-label procedure))
+	 (checks (get-entry-interrupt-checks))
+	 (interrupt-label (generate-label 'INTERRUPT)))
+    (if (pair? checks)
+	(add-end-of-block-code!
+	 (lambda ()
+	   (LAP (LABEL ,interrupt-label)
+		,@(invoke-interface/reentry
+		   code:compiler-interrupt-ic-procedure
+		   internal-label)))))
+    (LAP (ENTRY-POINT ,external-label)
+	 (EQUATE ,external-label ,internal-label)
+	 ,@(make-external-label expression-code-word internal-label)
+	 ,@(interrupt-check checks interrupt-label))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -465,24 +672,30 @@ USA.
 	 (temp (temporary-register-reference))
 	 (data-offset address-units-per-closure-manifest)
 	 (format-offset (+ data-offset address-units-per-closure-entry-count))
-	 (pc-offset (+ format-offset address-units-per-entry-format-code))
+	 (offset-offset (+ format-offset address-units-per-entry-format-code))
+	 (entry-offset (+ offset-offset address-units-per-closure-pc-offset))
 	 (slots-offset
-	  (+ pc-offset
-	     address-units-per-closure-entry-instructions
+	  (+ entry-offset
+	     address-units-per-closure-entry-padding
 	     address-units-per-closure-padding))
 	 (free-offset
-	  (+ slots-offset (* size address-units-per-object))))
-    (LAP (MOV Q ,temp (&U ,(make-closure-manifest size)))
+	  (+ slots-offset (* (+ 1 size) address-units-per-object))))
+    (LAP (MOV Q ,temp (&U ,(make-closure-manifest (+ 1 size))))
 	 (MOV Q (@R ,regnum:free-pointer) ,temp)
 	 ;; There's only one entry point here.
 	 (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U 1))
 	 ,@(generate-closure-entry procedure-label min max format-offset temp)
 	 ;; Load the address of the entry instruction into TARGET.
-	 (LEA Q ,target (@RO ,regnum:free-pointer ,pc-offset))
+	 (LEA Q ,target (@RO ,regnum:free-pointer ,entry-offset))
 	 ;; Bump FREE.
 	 ,@(with-signed-immediate-operand free-offset
 	     (lambda (addend)
-	       (LAP (ADD Q (R ,regnum:free-pointer) ,addend)))))))
+	       (LAP (ADD Q (R ,regnum:free-pointer) ,addend))))
+	 ;; Set the last component to be the relocation reference point.
+	 (MOV Q ,temp
+	      (&U ,(make-non-pointer-literal (ucode-type COMPILED-ENTRY) 0)))
+	 (OR Q ,temp ,target)
+	 (MOV Q (@RO ,regnum:free-pointer -8) ,temp))))
 
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((mtarget (target-register target))
@@ -499,50 +712,53 @@ USA.
     (let* ((data-offset address-units-per-closure-manifest)
 	   (first-format-offset
 	    (+ data-offset address-units-per-closure-entry-count))
-	   (first-pc-offset
+	   (first-offset-offset
 	    (+ first-format-offset address-units-per-entry-format-code))
+	   (first-entry-offset
+	    (+ first-offset-offset address-units-per-closure-pc-offset))
 	   (free-offset
 	    (+ first-format-offset
 	       (* nentries address-units-per-closure-entry)
-	       (* size address-units-per-object))))
-      (LAP (MOV Q ,temp (&U ,(make-multiclosure-manifest nentries size)))
+	       (* (+ 1 size) address-units-per-object))))
+      (LAP (MOV Q ,temp (&U ,(make-multiclosure-manifest nentries (+ 1 size))))
 	   (MOV Q (@R ,regnum:free-pointer) ,temp)
 	   (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U ,nentries))
 	   ,@(generate-entries entries first-format-offset)
-	   (LEA Q ,target (@RO ,regnum:free-pointer ,first-pc-offset))
+	   (LEA Q ,target (@RO ,regnum:free-pointer ,first-entry-offset))
 	   ,@(with-signed-immediate-operand free-offset
 	       (lambda (addend)
-		 (LAP (ADD Q (R ,regnum:free-pointer) ,addend))))))))
+		 (LAP (ADD Q (R ,regnum:free-pointer) ,addend))))
+	   ;; Set the last component to be the relocation reference point.
+	   (MOV Q ,temp
+		(&U ,(make-non-pointer-literal (ucode-type COMPILED-ENTRY) 0)))
+	   (OR Q ,temp ,target)
+	   (MOV Q (@RO ,regnum:free-pointer -8) ,temp)))))
 
 (define (generate-closure-entry label min max offset temp)
   (let* ((procedure-label (rtl-procedure/external-label (label->object label)))
-	 (MOV-offset (+ offset address-units-per-entry-format-code))
-	 (imm64-offset (+ MOV-offset 2))
-	 (CALL-offset (+ imm64-offset 8)))
+	 (offset-offset (+ offset address-units-per-entry-format-code))
+	 (entry-offset (+ offset-offset address-units-per-closure-pc-offset)))
     (LAP (MOV L (@RO ,regnum:free-pointer ,offset)
-	      (&U ,(make-closure-code-longword min max MOV-offset)))
-	 (LEA Q ,temp (@PCR ,procedure-label))
-	 ;; (MOV Q (R ,rax) (&U <procedure-label>))
-	 ;; The instruction sequence is really `48 b8', but this is a
-	 ;; stupid little-endian architecture.  I want my afternoon
-	 ;; back.
-	 (MOV W (@RO ,regnum:free-pointer ,MOV-offset) (&U #xB848))
-	 (MOV Q (@RO ,regnum:free-pointer ,imm64-offset) ,temp)
-	 ;; (CALL (R ,rax))
-	 (MOV W (@RO ,regnum:free-pointer ,CALL-offset) (&U #xD0FF)))))
+	      (&U ,(make-closure-code-longword min max entry-offset)))
+	 ;; Set temp := procedure-label - entry-offset.
+	 (LEA Q ,temp (@PCR (- ,procedure-label ,entry-offset)))
+	 ;; Set temp := procedure-label - entry-offset - free.
+	 (SUB Q ,temp (R ,regnum:free-pointer))
+	 ;; Store temp = procedure-label - (free + entry-offset).
+	 (MOV Q (@RO ,regnum:free-pointer ,offset-offset) ,temp))))
 
 (define (generate/closure-header internal-label nentries)
   (let* ((rtl-proc (label->object internal-label))
 	 (external-label (rtl-procedure/external-label rtl-proc))
-	 (checks (get-entry-interrupt-checks)))
+	 (checks (get-entry-interrupt-checks))
+	 (type (ucode-type COMPILED-ENTRY)))
     (define (label+adjustment)
       (LAP ,@(make-external-label internal-entry-code-word external-label)
-	   ;; Assumption: RAX is not in use here.  (In fact, it is
-	   ;; used to store the absolute address of this header.)
-	   ;; See comment by CLOSURE-ENTRY-MAGIC to understand
-	   ;; what's going on here.
-	   (MOV Q (R ,rax) (&U ,(closure-entry-magic)))
-	   (ADD Q (@R ,rsp) (R ,rax))
+	   ;; rcx holds the untagged entry address.  Push and tag it.
+	   ;; All other temporary registers, notably rax, are free.
+	   (MOV Q (R ,rax) (&U ,(make-non-pointer-literal type 0)))
+	   (OR Q (R ,rcx) (R ,rax))
+	   (PUSH Q (R ,rcx))
 	   (LABEL ,internal-label)))
     (cond ((zero? nentries)
 	   (LAP (EQUATE ,external-label ,internal-label)
@@ -551,26 +767,20 @@ USA.
 		   internal-label
 		   entry:compiler-interrupt-procedure)))
 	  ((pair? checks)
-	   (let ((gc-label (generate-label 'GC-LABEL)))
-	     (LAP (LABEL ,gc-label)
-		  ,@(invoke-hook entry:compiler-interrupt-closure)
-		  ,@(label+adjustment)
-		  ,@(interrupt-check gc-label checks))))
+	   (LAP ,@(label+adjustment)
+		,@(interrupt-check checks (closure-interrupt-label))))
 	  (else
 	   (label+adjustment)))))
 
-;;; On entry to a closure, the quadword at the top of the stack will
-;;; be an untagged pointer to the byte following the CALL instruction
-;;; that led the machine there.  CLOSURE-ENTRY-MAGIC returns a number
-;;; that, when added to this quadword, yields the tagged compiled
-;;; entry that was used to invoke the closure.  This is what the RTL
-;;; deals with, and this is what interrupt handlers want, particularly
-;;; for the garbage collector, which wants to find only nice tagged
-;;; pointers on the stack.
-
-(define-integrable (closure-entry-magic)
-  (- (make-non-pointer-literal (ucode-type COMPILED-ENTRY) 0)
-     address-units-per-closure-entry-instructions))
+(define (closure-interrupt-label)
+  (or (block-association 'INTERRUPT-CLOSURE)
+      (let ((label (generate-label 'INTERRUPT-CLOSURE)))
+	(add-end-of-block-code!
+	 (lambda ()
+	   (LAP (LABEL ,label)
+		,@(invoke-hook entry:compiler-interrupt-closure))))
+	(block-associate! 'INTERRUPT-CLOSURE label)
+	label)))
 
 (define-integrable (make-closure-manifest size)
   (make-multiclosure-manifest 1 size))
@@ -631,41 +841,44 @@ USA.
 ;;; This is invoked by the top level of the LAP generator.
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
-  (LAP (MOV Q (R ,rax) ,reg:environment)
-       (MOV Q (@PCR ,environment-label) (R ,rax))
-       (LEA Q (R ,rdx) (@PCR ,*block-label*))
-       (LEA Q (R ,rcx) (@PCR ,free-ref-label))
-       (MOV Q (R ,r8) (&U ,n-sections))
-       #|
-       ,@(invoke-interface/call code:compiler-link)
-       |#
-       ,@(invoke-hook/call entry:compiler-link)
-       ,@(make-external-label (continuation-code-word #f)
-			      (generate-label))))
+  (let ((continuation-label (generate-label 'LINKED)))
+    (LAP (MOV Q (R ,rax) ,reg:environment)
+	 (MOV Q (@PCR ,environment-label) (R ,rax))
+	 (LEA Q (R ,rdx) (@PCR ,*block-label*))
+	 (LEA Q (R ,rcx) (@PCR ,free-ref-label))
+	 (MOV Q (R ,r8) (&U ,n-sections))
+	 #|
+	 ,@(invoke-interface/call code:compiler-link continuation-label)
+	 |#
+	 ,@(invoke-hook/call entry:compiler-link continuation-label)
+	 ,@(make-external-label (continuation-code-word #f)
+				continuation-label))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
 			      free-ref-offset
 			      n-sections)
-  (LAP (MOV Q (R ,rdx) (@PCR ,code-block-label))
-       (AND Q (R ,rdx) (R ,regnum:datum-mask))
-       (LEA Q (R ,rcx) (@RO ,rdx ,free-ref-offset))
-       (MOV Q (R ,rax) ,reg:environment)
-       (MOV Q (@RO ,rdx ,environment-offset) (R ,rax))
-       (MOV Q (R ,r8) (&U ,n-sections))
-       #|
-       ,@(invoke-interface/call code:compiler-link)
-       |#
-       ,@(invoke-hook/call entry:compiler-link)
-       ,@(make-external-label (continuation-code-word #f)
-			      (generate-label))))
+  (let ((continuation-label (generate-label 'LINKED)))
+    (LAP (MOV Q (R ,rdx) (@PCR ,code-block-label))
+	 (AND Q (R ,rdx) (R ,regnum:datum-mask))
+	 (LEA Q (R ,rcx) (@RO ,rdx ,free-ref-offset))
+	 (MOV Q (R ,rax) ,reg:environment)
+	 (MOV Q (@RO ,rdx ,environment-offset) (R ,rax))
+	 (MOV Q (R ,r8) (&U ,n-sections))
+	 #|
+	 ,@(invoke-interface/call code:compiler-link continuation-label)
+	 |#
+	 ,@(invoke-hook/call entry:compiler-link continuation-label)
+	 ,@(make-external-label (continuation-code-word #f)
+				continuation-label))))
 
 (define (generate/remote-links n-blocks vector-label nsects)
   (if (zero? n-blocks)
       (LAP)
       (let ((loop (generate-label))
 	    (bytes (generate-label))
-	    (end (generate-label)))
+	    (end (generate-label))
+	    (continuation (generate-label 'LINKED)))
 	(LAP
 	 ;; Push counter
 	 (PUSH Q (& 0))
@@ -705,9 +918,9 @@ USA.
 	      (@ROI ,rdx ,(* 2 address-units-per-object)
 		    ,rax ,address-units-per-object))
 	 ;; Invoke linker
-	 ,@(invoke-hook/call entry:compiler-link)
+	 ,@(invoke-hook/call entry:compiler-link continuation)
 	 ,@(make-external-label (continuation-code-word false)
-				(generate-label))
+				continuation)
 	 ;; Increment counter and loop
 	 (ADD Q (@R ,rsp) (&U 1))
 	 ,@(receive (temp prefix comparand)
@@ -795,8 +1008,10 @@ USA.
 		   (lambda (cache)
 		     (let ((frame-size (car cache))
 			   (label (cdr cache)))
+		       ;; Must match UUO_LINK_SIZE in cmpintmd/x86-64.h.
 		       `((,frame-size . ,label)
 			 (,variable . ,(allocate-constant-label))
+			 (#F . ,(allocate-constant-label))
 			 (#F . ,(allocate-constant-label))))))
 		 (cdr variable.caches)))
    variable.caches-list))

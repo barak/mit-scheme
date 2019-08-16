@@ -110,10 +110,20 @@ USA.
 	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? datum))))
   (if (zero? type)
       (assign-register->register target datum)
-      (let* ((datum (source-register-reference datum))
-	     (target (target-register-reference target)))
-	(LAP (MOV Q ,target (&U ,(make-non-pointer-literal type 0)))
-	     (OR Q ,target ,datum)))))
+      (affix-type (standard-move-to-target! datum target) type)))
+
+(define (affix-type target type #!optional get-temporary)
+  (if (= 1 (bit-count type))
+      (let ((bit (first-set-bit type)))
+	(assert (<= 0 bit))
+	(assert (< bit scheme-type-width))
+	(LAP (BTS Q ,target (&U ,(+ scheme-datum-width bit)))))
+      (let ((temp
+             (if (default-object? get-temporary)
+		 (temporary-register-reference)
+		 (get-temporary))))
+	(LAP (MOV Q ,temp (&U ,(make-non-pointer-literal type 0)))
+	     (OR Q ,target ,temp)))))
 
 #| This doesn't work because immediate operands aren't big enough to
    fit the type tag.
@@ -174,13 +184,19 @@ USA.
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
-  (load-pc-relative-address (target-register-reference target) label))
+  (let* ((target (target-register-reference target))
+	 (get-pc (generate-label 'GET-PC)))
+    (LAP (CALL (@PCR ,get-pc))
+	 (JMP (@PCR ,label))
+	(LABEL ,get-pc)
+	 (POP Q ,target))))
 
 (define-rule statement
   ;; This is an intermediate rule -- not intended to produce code.
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:PROCEDURE (? label))))
+  (assert (= type type-code:compiled-entry))
   (load-pc-relative-address/typed (target-register-reference target)
 				  type
 				  (rtl-procedure/external-label
@@ -191,8 +207,25 @@ USA.
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:CONTINUATION (? label))))
-  (load-pc-relative-address/typed (target-register-reference target)
-				  type label))
+  (assert (= type type-code:compiled-return))
+  (let* ((target (target-register-reference target))
+	 (pushed (generate-label 'PUSHED)))
+    (LAP (CALL (@PCR ,pushed))
+	 (JMP (@PCR ,label))
+	(LABEL ,pushed)
+	 (POP Q ,target)
+	 ,@(affix-type target type))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 4) -1)
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(ENTRY:CONTINUATION (? label))))
+  (assert (= type type-code:compiled-return))
+  (let ((pushed (generate-label 'PUSHED)))
+    (LAP (CALL (@PCR ,pushed))
+	 (JMP (@PCR ,label))
+	(LABEL ,pushed)
+	 ,@(affix-type (INST-EA (@R 4)) type))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
@@ -399,13 +432,17 @@ USA.
     (LAP (LEA Q ,target ,source))))  
 
 (define (load-pc-relative-address/typed target type label)
+  (LAP (LEA Q ,target (@PCR ,label))
+       ,@(affix-type target type))
+  #|
   ;++ This is pretty horrid, especially since it happens for every
   ;++ continuation pushed!  None of the alternatives is much good.
   ;; Twenty bytes, but only three instructions and no extra memory.
   (let ((temp (temporary-register-reference)))
     (LAP (MOV Q ,temp (&U ,(make-non-pointer-literal type 0)))
-	 (LEA Q ,target (@PCR ,label))
+	 (LEA Q ,target (@PCRO ,label ,offset))
 	 (OR Q ,target ,temp)))
+  |#
   #|
   ;; Nineteen bytes, but rather complicated (and needs syntax for an
   ;; addressing mode not presently supported).

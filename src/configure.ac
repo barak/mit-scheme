@@ -80,8 +80,6 @@ AC_ARG_WITH([default-target],
 	[Set the default make target [[all]]]))
 if test x"${IS_NATIVE_RELEASE}" != x; then
     DEFAULT_DEFAULT_TARGET=compile-microcode
-elif test "x${enable_cross_compiling}" = xyes; then
-    DEFAULT_DEFAULT_TARGET=cross-host
 else
     DEFAULT_DEFAULT_TARGET=all
 fi

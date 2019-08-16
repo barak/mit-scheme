@@ -61,6 +61,17 @@ typedef uint8_t insn_t;
 /* Size of closure entry in insn_t units.  */
 #define CLOSURE_ENTRY_SIZE 5
 
+/* We don't distinguish the self pointer from an `instruction' pointer.  */
+#define CC_ENTRY_ADDRESS_PTR(e)		(e)
+#define CC_ENTRY_ADDRESS_PC(e)		(0)
+
+/* Same for return addresses.  */
+#define CC_RETURN_ADDRESS_PTR(r)	(r)
+#define CC_RETURN_ADDRESS_PC(r)		(0)
+
+/* Return addresses and entry addresses aren't distinguished here.  */
+#define CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS(r)	(r)
+
 /* Size of execution cache in SCHEME_OBJECTS.  */
 #define UUO_LINK_SIZE 2
 #define READ_UUO_TARGET(a, r) read_uuo_target (a)
@@ -80,14 +91,16 @@ typedef struct
   return;								\
 } while (false)
 
-#define RETURN_TO_SCHEME(ep) do						\
+#define RETURN_TO_SCHEME_ENTRY(ep) do					\
 {									\
   (DSU_result->scheme_p) = true;					\
   ((DSU_result->arg) . new_pc) = (ep);					\
   return;								\
 } while (false)
+#define RETURN_TO_SCHEME_CONTINUATION RETURN_TO_SCHEME_ENTRY
 
-#define ENTER_SCHEME(ep) return (C_to_interface (ep))
+#define ENTER_SCHEME_ENTRY(ep) return (C_to_interface (ep))
+#define ENTER_SCHEME_CONTINUATION ENTER_SCHEME_ENTRY
 
 extern long C_to_interface (void *);
 extern void initialize_svm1 (void);

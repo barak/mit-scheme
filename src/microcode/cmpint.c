@@ -40,15 +40,16 @@ USA.
 /* Two special classes of procedures are used in this file:
 
    Scheme interface entries.  These procedures are called from C and
-   ultimately invoke 'ENTER_SCHEME' to enter compiled code, or return
-   a status code.
+   ultimately invoke 'ENTER_SCHEME_ENTRY'/'ENTER_SCHEME_CONTINUATION'
+   to enter compiled code, or return a status code.
 
    Scheme interface utilities.  These procedures are called from the
    Scheme interface and perform tasks that the compiler does not code
    inline.  They are referenced from compiled Scheme code by index,
    and the assembly language interface fetches them from an array.
    They are defined with 'SCHEME_UTILITY_n' for some 'n', and
-   ultimately invoke either 'RETURN_TO_SCHEME' (in the normal case) or
+   ultimately invoke either 'RETURN_TO_SCHEME_ENTRY' /
+   'RETURN_TO_SCHEME_CONTINUATION' (in the normal case) or
    'RETURN_TO_C' (in the error case).  */
 
 typedef long cache_handler_t (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
@@ -66,13 +67,20 @@ typedef struct
   unsigned long n_linked_entries;
 } link_cc_state_t;
 
-/* Ways to bypass the interpreter */
+/* Ways to bypass the interpreter.  Sync with:
+   - runtime/conpar.scm, code/special-compiled/...
+   - compiler/machines/x86-64/rules3.scm, reflect-code:...  */
 typedef enum
 {
   REFLECT_CODE_INTERNAL_APPLY,
   REFLECT_CODE_RESTORE_INTERRUPT_MASK,
   REFLECT_CODE_STACK_MARKER,
-  REFLECT_CODE_CC_BKPT
+  REFLECT_CODE_CC_BKPT,
+  REFLECT_CODE_UNUSED_4,	/* Formerly used for v8 microcode.  */
+  REFLECT_CODE_UNUSED_5,
+  REFLECT_CODE_UNUSED_6,
+  REFLECT_CODE_UNUSED_7,
+  REFLECT_CODE_COMPILED_INVOCATION,
 } reflect_code_t;
 
 #define PUSH_REFLECTION(code) do					\
@@ -134,6 +142,7 @@ static void count_linkage_sections
 static SCHEME_OBJECT read_linkage_sections
   (SCHEME_OBJECT *, SCHEME_OBJECT *, unsigned long, unsigned long);
 static bool section_execute_p (SCHEME_OBJECT);
+static void compiler_interrupt_return_to_entry (void);
 static void setup_compiled_invocation_from_primitive
   (SCHEME_OBJECT, unsigned long);
 static long setup_compiled_invocation (SCHEME_OBJECT, unsigned long);
@@ -182,18 +191,45 @@ static long make_apply_trampoline
   return;								\
 } while (false)
 
-#define RETURN_TO_SCHEME(ep) do						\
+#define RETURN_TO_SCHEME_ENTRY(ep) do					\
 {									\
+  insn_t * ep_ = (ep);							\
   (DSU_result->interface_dispatch) = interface_to_scheme;		\
-  ((DSU_result->extra) . entry_point) = (ep);				\
+  ((DSU_result->extra) . compiled_code . ptr) = (CC_ENTRY_ADDRESS_PTR (ep_)); \
+  ((DSU_result->extra) . compiled_code . pc) = (CC_ENTRY_ADDRESS_PC (ep_)); \
+  return;								\
+} while (false)
+
+#define RETURN_TO_SCHEME_CONTINUATION(c) do				\
+{									\
+  insn_t * c_ = (c);							\
+  (DSU_result->interface_dispatch) = interface_to_scheme;		\
+  ((DSU_result->extra) . compiled_code . ptr) = (CC_RETURN_ADDRESS_PTR (c_)); \
+  ((DSU_result->extra) . compiled_code . pc) = (CC_RETURN_ADDRESS_PC (c_)); \
   return;								\
 } while (false)
 
 extern c_func_t ASM_ENTRY_POINT (interface_to_C);
 extern c_func_t ASM_ENTRY_POINT (interface_to_scheme);
+extern c_func_t ASM_ENTRY_POINT (interface_to_scheme_return);
 
-#define ENTER_SCHEME(ep) return (C_to_interface (ep))
-extern long ASM_ENTRY_POINT (C_to_interface) (insn_t *);
+#define ENTER_SCHEME_ENTRY(ep) do					\
+{									\
+  insn_t * ep_ = (ep);							\
+  return								\
+    (C_to_interface							\
+     ((CC_ENTRY_ADDRESS_PTR (ep_)), (CC_ENTRY_ADDRESS_PC (ep_))));	\
+} while (false)
+
+#define ENTER_SCHEME_CONTINUATION(c) do					\
+{									\
+  insn_t * c_ = (c);							\
+  return								\
+    (C_to_interface							\
+     ((CC_RETURN_ADDRESS_PTR (c_)), (CC_RETURN_ADDRESS_PC (c_))));	\
+} while (false)
+
+extern long ASM_ENTRY_POINT (C_to_interface) (insn_t *, insn_t *);
 
 #else /* !CMPINT_USE_STRUCS */
 
@@ -204,17 +240,21 @@ extern long ASM_ENTRY_POINT (C_to_interface) (insn_t *);
   return;								\
 } while (false)
 
-#define RETURN_TO_SCHEME(ep) do						\
+/* Assume entries and returns have the same address representation.  */
+
+#define RETURN_TO_SCHEME_ENTRY(ep) do					\
 {									\
   (*DSU_result) = (ep);							\
   return;								\
 } while (false)
+#define RETURN_TO_SCHEME_CONTINUATION RETURN_TO_SCHEME_ENTRY
 
-#define ENTER_SCHEME(ep) do						\
+#define ENTER_SCHEME_ENTRY(ep) do					\
 {									\
   C_to_interface (ep);							\
   return (C_return_value);						\
 } while (false)
+#define ENTER_SCHEME_CONTINUATION ENTER_SCHEME_ENTRY
 
 extern utility_result_t interface_to_C_hook;
 extern void ASM_ENTRY_POINT (C_to_interface) (insn_t *);
@@ -223,7 +263,9 @@ long C_return_value;
 #endif /* !CMPINT_USE_STRUCS */
 #endif /* !UTILITY_RESULT_DEFINED */
 
-#define JUMP_TO_CC_ENTRY(entry) ENTER_SCHEME (CC_ENTRY_ADDRESS (entry))
+#define JUMP_TO_CC_ENTRY(entry) ENTER_SCHEME_ENTRY (CC_ENTRY_ADDRESS (entry))
+#define JUMP_TO_CC_RETURN(ret)						\
+  ENTER_SCHEME_CONTINUATION (CC_RETURN_ADDRESS (ret))
 
 #ifndef COMPILER_REGBLOCK_N_FIXED
 #  define COMPILER_REGBLOCK_N_FIXED REGBLOCK_MINIMUM_LENGTH
@@ -379,8 +421,8 @@ compiler_reset (SCHEME_OBJECT new_block)
 
   nbp = (OBJECT_ADDRESS (new_block));
   compiler_utilities = new_block;
-  return_to_interpreter = (MAKE_CC_ENTRY (trampoline_entry_addr (nbp, 0)));
-  reflect_to_interface = (MAKE_CC_ENTRY (trampoline_entry_addr (nbp, 1)));
+  return_to_interpreter = (MAKE_CC_RETURN (trampoline_return_addr (nbp, 0)));
+  reflect_to_interface = (MAKE_CC_RETURN (trampoline_return_addr (nbp, 1)));
   SET_CLOSURE_FREE (0);
   SET_CLOSURE_SPACE (0);
   SET_REFLECTOR (reflect_to_interface);
@@ -420,31 +462,56 @@ DEFINE_SCHEME_ENTRY (apply_compiled_procedure)
   JUMP_TO_CC_ENTRY (procedure);
 }
 
+static bool
+compiled_continuation_p (insn_t * entry_addr)
+{
+  cc_entry_type_t cet;
+
+  if (read_cc_entry_type ((&cet), entry_addr))
+    return false;
+  if (! ((cet.marker == CET_CONTINUATION)
+	 || (cet.marker == CET_INTERNAL_CONTINUATION)
+	 || (cet.marker == CET_RETURN_TO_INTERPRETER)))
+    return false;
+  return true;
+}
+
 DEFINE_SCHEME_ENTRY (return_to_compiled_code)
 {
   RESTORE_LAST_RETURN_CODE ();
   {
     SCHEME_OBJECT cont = (STACK_POP ());
-    {
-      cc_entry_type_t cet;
-      if ((read_cc_entry_type ((&cet), (CC_ENTRY_ADDRESS (cont))))
-	  || (! ((cet.marker == CET_CONTINUATION)
-		 || (cet.marker == CET_INTERNAL_CONTINUATION)
-		 || (cet.marker == CET_RETURN_TO_INTERPRETER))))
-	{
-	  STACK_PUSH (cont);
-	  SAVE_CONT ();
-	  return (ERR_INAPPLICABLE_OBJECT);
-	}
-    }
-    JUMP_TO_CC_ENTRY (cont);
+    /* Due to a mistake, continuations for microcode utilities are
+       represented as compiled entries.  Should fix eventually.  */
+    if (CC_RETURN_P (cont))
+      {
+	insn_t * ret_addr = (CC_RETURN_ADDRESS (cont));
+	insn_t * entry_addr =
+	  (CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr));
+	if (!compiled_continuation_p (entry_addr))
+	  goto bad;
+	JUMP_TO_CC_RETURN (cont);
+      }
+    else if (CC_ENTRY_P (cont))
+      {
+	insn_t * entry_addr = (CC_ENTRY_ADDRESS (cont));
+	if (!compiled_continuation_p (entry_addr))
+	  goto bad;
+	JUMP_TO_CC_ENTRY (cont);
+      }
+    else
+      {
+bad:	STACK_PUSH (cont);
+	SAVE_CONT ();
+	return (ERR_INAPPLICABLE_OBJECT);
+      }
   }
 }
 
 void
 guarantee_cc_return (unsigned long offset)
 {
-  if (CC_ENTRY_P (STACK_REF (offset)))
+  if (CC_RETURN_P (STACK_REF (offset)))
     return;
   assert (RETURN_CODE_P (CONT_RET (offset)));
   if (CHECK_RETURN_CODE (RC_REENTER_COMPILED_CODE, offset))
@@ -470,7 +537,7 @@ guarantee_interp_return (void)
   unsigned long offset = (1 + (APPLY_FRAME_SIZE ()));
   if (RETURN_CODE_P (CONT_RET (offset)))
     return;
-  assert (CC_ENTRY_P (STACK_REF (offset)));
+  assert (CC_RETURN_P (STACK_REF (offset)));
   if ((STACK_REF (offset)) == return_to_interpreter)
     {
       assert (RETURN_CODE_P (CONT_RET (offset + 1)));
@@ -576,10 +643,12 @@ ASM_ENTRY_POINT (pname)							\
 {									\
   if (Free >= GET_MEMTOP)						\
     {									\
+      compiler_interrupt_return_to_entry ();				\
       compiler_interrupt_common (DSU_result, 0, GET_VAL);		\
       return;								\
     }									\
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (STACK_POP ()));			\
+  assert (CC_RETURN_P (STACK_REF (0)));					\
+  RETURN_TO_SCHEME_CONTINUATION (CC_RETURN_ADDRESS (STACK_POP ()));	\
 } while (false)
 
 #define TAIL_CALL_1(pname, a1) do					\
@@ -648,7 +717,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_apply, procedure, frame_size)
 	  if (code != PRIM_DONE)
 	    RETURN_TO_C (code);
 	}
-	RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+	RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 
       case TC_PRIMITIVE:
 	if (IMPLEMENTED_PRIMITIVE_P (procedure))
@@ -706,7 +775,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lexpr_apply, address, n_args)
     if (code != PRIM_DONE)
       RETURN_TO_C (code);
   }
-  RETURN_TO_SCHEME (address);
+  RETURN_TO_SCHEME_ENTRY (address);
 }
 
 /* comutil_primitive_apply is used to invoked a C primitive.  Note
@@ -783,7 +852,7 @@ DEFINE_SCHEME_UTILITY_4 (comutil_link,
     if (result != PRIM_DONE)
       RETURN_TO_C (result);
   }
-  RETURN_TO_SCHEME (s.return_address);
+  RETURN_TO_SCHEME_CONTINUATION (s.return_address);
 }
 
 /* comp_link_caches_restart is used to continue the linking process
@@ -807,7 +876,7 @@ DEFINE_SCHEME_ENTRY (comp_link_caches_restart)
   if (result != PRIM_DONE)
     return (result);
 
-  ENTER_SCHEME (s.return_address);
+  ENTER_SCHEME_CONTINUATION (s.return_address);
 }
 
 static long
@@ -853,7 +922,7 @@ update_cache_after_link (link_cc_state_t * s)
 {
 #if defined(FLUSH_I_CACHE_REGION) || defined(PUSH_D_CACHE_REGION)
   SCHEME_OBJECT * addr = (s->block_address);
-  if ((cc_entry_address_to_block_address (s->return_address)) == addr)
+  if ((cc_return_address_to_block_address (s->return_address)) == addr)
 #ifdef FLUSH_I_CACHE_REGION
     FLUSH_I_CACHE_REGION (addr, (CC_BLOCK_ADDR_LENGTH (addr)));
 #else
@@ -979,7 +1048,7 @@ static void
 back_out_of_link_section (link_cc_state_t * s)
 {
   /* Save enough state to restart.  */
-  STACK_PUSH (MAKE_CC_ENTRY (s->return_address));
+  STACK_PUSH (MAKE_CC_RETURN (s->return_address));
   STACK_PUSH (ULONG_TO_FIXNUM ((s->n_sections) - (s->n_linked_sections)));
   STACK_PUSH (ULONG_TO_FIXNUM ((s->scan0) - (s->block_address)));
   STACK_PUSH (ULONG_TO_FIXNUM ((s->scan) - (s->block_address)));
@@ -999,7 +1068,7 @@ restore_link_cc_state (link_cc_state_t * s)
   (s->scan) = ((s->block_address) + (OBJECT_DATUM (STACK_POP ())));
   (s->scan0) = ((s->block_address) + (OBJECT_DATUM (STACK_POP ())));
   (s->n_sections) = (OBJECT_DATUM (STACK_POP ()));
-  (s->return_address) = (CC_ENTRY_ADDRESS (STACK_POP ()));
+  (s->return_address) = (CC_RETURN_ADDRESS (STACK_POP ()));
 
   (s->n_linked_sections) = 0;
   (s->type) = (linkage_section_type (* (s->scan0)));
@@ -1104,6 +1173,8 @@ section_execute_p (SCHEME_OBJECT h)
    continuation is a piece of state that will be returned to
    GET_VAL and GET_ENV (both) upon return.  */
 
+/* Stack has invocation frame with tagged closure on top.  */
+
 DEFINE_SCHEME_UTILITY_0 (comutil_interrupt_closure)
 {
   compiler_interrupt_common (DSU_result, 0, SHARP_F);
@@ -1126,10 +1197,10 @@ DEFINE_SCHEME_UTILITY_1 (comutil_interrupt_procedure, entry_point)
 
 /* GET_VAL has live data, and there is no entry address on the stack */
 
-DEFINE_SCHEME_UTILITY_1 (comutil_interrupt_continuation, return_addr)
+DEFINE_SCHEME_UTILITY_1 (comutil_interrupt_continuation, entry_point)
 {
-  DECLARE_UTILITY_ARG (insn_t *, return_addr);
-  compiler_interrupt_common (DSU_result, return_addr, GET_VAL);
+  DECLARE_UTILITY_ARG (insn_t *, entry_point);
+  compiler_interrupt_common (DSU_result, entry_point, GET_VAL);
 }
 
 /* GET_ENV has live data; no entry point on the stack */
@@ -1140,21 +1211,42 @@ DEFINE_SCHEME_UTILITY_1 (comutil_interrupt_ic_procedure, entry_point)
   compiler_interrupt_common (DSU_result, entry_point, GET_ENV);
 }
 
+/* GET_VAL has live data, and the tagged continuation is on top of stack.  */
+
 DEFINE_SCHEME_UTILITY_0 (comutil_interrupt_continuation_2)
 {
+  compiler_interrupt_return_to_entry ();
   compiler_interrupt_common (DSU_result, 0, GET_VAL);
+}
+
+/* Convert the compiled return address on the stack to a compiled
+   entry.  This is easier than adding a different interpreter return
+   code, or creating a stub compiled entry that just does pop-return.
+   It's OK if we ruin return address branch target prediction:
+   servicing interrupts is expensive anyway.  */
+
+static void
+compiler_interrupt_return_to_entry (void)
+{
+  SCHEME_OBJECT ret = (STACK_POP ());
+  assert (CC_RETURN_P (ret));
+  insn_t * ret_addr = (CC_RETURN_ADDRESS (ret));
+  insn_t * entry_addr = (CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr));
+  SCHEME_OBJECT entry = (MAKE_CC_ENTRY (entry_addr));
+  STACK_PUSH (entry);
 }
 
 void
 compiler_interrupt_common (utility_result_t * DSU_result,
-			   insn_t * address,
+			   insn_t * entry_address,
 			   SCHEME_OBJECT state)
 {
   if (!FREE_OK_P (Free))
     REQUEST_GC (Free - heap_alloc_limit);
   STACK_CHECK (0);
-  if (address != 0)
-    STACK_PUSH (MAKE_CC_ENTRY (address));
+  if (entry_address != 0)
+    STACK_PUSH (MAKE_CC_ENTRY (entry_address));
+  assert (CC_ENTRY_P (STACK_REF (0)));
   STACK_PUSH (state);
   SAVE_LAST_RETURN_CODE (RC_COMP_INTERRUPT_RESTART);
   RETURN_TO_C (PRIM_INTERRUPT);
@@ -1186,8 +1278,8 @@ DEFINE_SCHEME_UTILITY_3 (comutil_assignment_trap,
   long code = (compiler_assignment_trap (cache, new_val, (&old_val)));
   if (code != PRIM_DONE)
     {
-      SCHEME_OBJECT sra = (MAKE_CC_ENTRY (ret_addr));
-      SCHEME_OBJECT block = (cc_entry_to_block (sra));
+      SCHEME_OBJECT sra = (MAKE_CC_RETURN (ret_addr));
+      SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (new_val);
       STACK_PUSH (cc_block_environment (block));
@@ -1197,7 +1289,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_assignment_trap,
       RETURN_TO_C (code);
     }
   SET_VAL (old_val);
-  RETURN_TO_SCHEME (ret_addr);
+  RETURN_TO_SCHEME_CONTINUATION (ret_addr);
 }
 
 DEFINE_SCHEME_ENTRY (comp_assignment_trap_restart)
@@ -1218,7 +1310,7 @@ DEFINE_SCHEME_ENTRY (comp_assignment_trap_restart)
 	return (code);
       }
     SET_VAL (old_val);
-    JUMP_TO_CC_ENTRY (STACK_POP ());
+    JUMP_TO_CC_RETURN (STACK_POP ());
   }
 }
 
@@ -1287,8 +1379,8 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lookup_trap, ret_addr, cache_addr)
   long code = (compiler_lookup_trap (cache, (&val)));
   if (code != PRIM_DONE)
     {
-      SCHEME_OBJECT sra = (MAKE_CC_ENTRY (ret_addr));
-      SCHEME_OBJECT block = (cc_entry_to_block (sra));
+      SCHEME_OBJECT sra = (MAKE_CC_RETURN (ret_addr));
+      SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (cc_block_environment (block));
       STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_LOOKUP));
@@ -1296,7 +1388,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lookup_trap, ret_addr, cache_addr)
       RETURN_TO_C (code);
     }
   SET_VAL (val);
-  RETURN_TO_SCHEME (ret_addr);
+  RETURN_TO_SCHEME_CONTINUATION (ret_addr);
 }
 
 DEFINE_SCHEME_ENTRY (comp_lookup_trap_restart)
@@ -1315,7 +1407,7 @@ DEFINE_SCHEME_ENTRY (comp_lookup_trap_restart)
 	return (code);
       }
     SET_VAL (val);
-    JUMP_TO_CC_ENTRY (STACK_POP ());
+    JUMP_TO_CC_RETURN (STACK_POP ());
   }
 }
 
@@ -1328,8 +1420,8 @@ DEFINE_SCHEME_UTILITY_2 (comutil_safe_lookup_trap, ret_addr, cache_addr)
   long code = (compiler_safe_lookup_trap (cache, (&val)));
   if (code != PRIM_DONE)
     {
-      SCHEME_OBJECT sra = (MAKE_CC_ENTRY (ret_addr));
-      SCHEME_OBJECT block = (cc_entry_to_block (sra));
+      SCHEME_OBJECT sra = (MAKE_CC_RETURN (ret_addr));
+      SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (cc_block_environment (block));
       STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_LOOKUP));
@@ -1337,7 +1429,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_safe_lookup_trap, ret_addr, cache_addr)
       RETURN_TO_C (code);
     }
   SET_VAL (val);
-  RETURN_TO_SCHEME (ret_addr);
+  RETURN_TO_SCHEME_CONTINUATION (ret_addr);
 }
 
 DEFINE_SCHEME_ENTRY (comp_safe_lookup_trap_restart)
@@ -1356,7 +1448,7 @@ DEFINE_SCHEME_ENTRY (comp_safe_lookup_trap_restart)
 	return (code);
       }
     SET_VAL (val);
-    JUMP_TO_CC_ENTRY (STACK_POP ());
+    JUMP_TO_CC_RETURN (STACK_POP ());
   }
 }
 
@@ -1369,8 +1461,8 @@ DEFINE_SCHEME_UTILITY_2 (comutil_unassigned_p_trap, ret_addr, cache_addr)
   long code = (compiler_unassigned_p_trap (cache, (&val)));
   if (code != PRIM_DONE)
     {
-      SCHEME_OBJECT sra = (MAKE_CC_ENTRY (ret_addr));
-      SCHEME_OBJECT block = (cc_entry_to_block (sra));
+      SCHEME_OBJECT sra = (MAKE_CC_RETURN (ret_addr));
+      SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (cc_block_environment (block));
       STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_LOOKUP));
@@ -1378,7 +1470,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_unassigned_p_trap, ret_addr, cache_addr)
       RETURN_TO_C (code);
     }
   SET_VAL (val);
-  RETURN_TO_SCHEME (ret_addr);
+  RETURN_TO_SCHEME_CONTINUATION (ret_addr);
 }
 
 DEFINE_SCHEME_ENTRY (comp_unassigned_p_trap_restart)
@@ -1397,7 +1489,7 @@ DEFINE_SCHEME_ENTRY (comp_unassigned_p_trap_restart)
 	return (code);
       }
     SET_VAL (val);
-    JUMP_TO_CC_ENTRY (STACK_POP ());
+    JUMP_TO_CC_RETURN (STACK_POP ());
   }
 }
 
@@ -1528,9 +1620,8 @@ setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
 	}
       PRIMITIVE_ABORT (code);
     }
-  /* Pun: procedure is being invoked as a return address.  Assumes
-     that the primitive is being called from compiled code.  */
   STACK_PUSH (procedure);
+  PUSH_REFLECTION (REFLECT_CODE_COMPILED_INVOCATION);
 }
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns
@@ -1703,6 +1794,26 @@ cc_entry_address_to_block_address (insn_t * entry)
 	}
     }
 }
+
+SCHEME_OBJECT
+cc_return_to_block (SCHEME_OBJECT ret)
+{
+  return (MAKE_CC_BLOCK (cc_return_to_block_address (ret)));
+}
+
+SCHEME_OBJECT *
+cc_return_to_block_address (SCHEME_OBJECT ret)
+{
+  return (cc_return_address_to_block_address (CC_RETURN_ADDRESS (ret)));
+}
+
+SCHEME_OBJECT *
+cc_return_address_to_block_address (insn_t * addr)
+{
+  return
+    (cc_entry_address_to_block_address
+     (CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (addr)));
+}
 
 static bool
 plausible_first_cc_entry_p (insn_t * entry, insn_t * zero)
@@ -1820,6 +1931,13 @@ cc_entry_to_block_offset (SCHEME_OBJECT entry)
 {
   return ((CC_ENTRY_ADDRESS (entry))
 	  - ((insn_t *) (cc_entry_to_block_address (entry))));
+}
+
+unsigned long
+cc_return_to_block_offset (SCHEME_OBJECT ret)
+{
+  return ((CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (CC_RETURN_ADDRESS (ret)))
+	  - ((insn_t *) (cc_return_to_block_address (ret))));
 }
 
 bool
@@ -2081,6 +2199,12 @@ DEFINE_TRAMPOLINE (comutil_reflect_to_interface)
 
   switch (OBJECT_DATUM (code))
     {
+    case REFLECT_CODE_COMPILED_INVOCATION:
+      {
+	SCHEME_OBJECT procedure = (STACK_POP ());
+	RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
+      }
+
     case REFLECT_CODE_INTERNAL_APPLY:
       {
 	unsigned long frame_size = (OBJECT_DATUM (STACK_POP ()));
@@ -2113,7 +2237,7 @@ DEFINE_TRAMPOLINE (comutil_reflect_to_interface)
 	    STACK_PUSH (code);
 	    RETURN_TO_C (code);
 	  }
-	RETURN_TO_SCHEME (addr);
+	RETURN_TO_SCHEME_ENTRY (addr);
       }
 
     default:
@@ -2152,7 +2276,7 @@ DEFINE_TRAMPOLINE (comutil_operator_1_0_trap)
 {
   INIT_TRAMPOLINE_1 (procedure);
   STACK_PUSH (DEFAULT_OBJECT);
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_2_0_trap)
@@ -2160,7 +2284,7 @@ DEFINE_TRAMPOLINE (comutil_operator_2_0_trap)
   INIT_TRAMPOLINE_1 (procedure);
   STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (DEFAULT_OBJECT);
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_2_1_trap)
@@ -2171,7 +2295,7 @@ DEFINE_TRAMPOLINE (comutil_operator_2_1_trap)
     STACK_PUSH (DEFAULT_OBJECT);
     STACK_PUSH (a1);
   }
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_3_0_trap)
@@ -2180,7 +2304,7 @@ DEFINE_TRAMPOLINE (comutil_operator_3_0_trap)
   STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (DEFAULT_OBJECT);
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_3_1_trap)
@@ -2192,7 +2316,7 @@ DEFINE_TRAMPOLINE (comutil_operator_3_1_trap)
     STACK_PUSH (DEFAULT_OBJECT);
     STACK_PUSH (a1);
   }
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_3_2_trap)
@@ -2205,7 +2329,7 @@ DEFINE_TRAMPOLINE (comutil_operator_3_2_trap)
     STACK_PUSH (a2);
     STACK_PUSH (a1);
   }
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_4_0_trap)
@@ -2215,7 +2339,7 @@ DEFINE_TRAMPOLINE (comutil_operator_4_0_trap)
   STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (DEFAULT_OBJECT);
   STACK_PUSH (DEFAULT_OBJECT);
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_4_1_trap)
@@ -2228,7 +2352,7 @@ DEFINE_TRAMPOLINE (comutil_operator_4_1_trap)
     STACK_PUSH (DEFAULT_OBJECT);
     STACK_PUSH (a1);
   }
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_4_2_trap)
@@ -2242,7 +2366,7 @@ DEFINE_TRAMPOLINE (comutil_operator_4_2_trap)
     STACK_PUSH (a2);
     STACK_PUSH (a1);
   }
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_4_3_trap)
@@ -2257,7 +2381,7 @@ DEFINE_TRAMPOLINE (comutil_operator_4_3_trap)
     STACK_PUSH (a2);
     STACK_PUSH (a1);
   }
-  RETURN_TO_SCHEME (CC_ENTRY_ADDRESS (procedure));
+  RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 }
 
 /* The linker either couldn't find a binding or the binding was
@@ -2304,7 +2428,7 @@ DEFINE_SCHEME_ENTRY (comp_op_lookup_trap_restart)
       = (trampoline_storage (cc_entry_to_block_address (STACK_POP ())));
     SCHEME_OBJECT block = (store[1]);
     unsigned long offset = (OBJECT_DATUM (store[2]));
-    ENTER_SCHEME (read_uuo_target_no_reloc (MEMORY_LOC (block, offset)));
+    ENTER_SCHEME_ENTRY (read_uuo_target_no_reloc (MEMORY_LOC (block, offset)));
   }
 }
 
@@ -2577,8 +2701,8 @@ make_apply_trampoline (SCHEME_OBJECT * slot,
 SCHEME_OBJECT
 bkpt_proceed (insn_t * ep, SCHEME_OBJECT handle, SCHEME_OBJECT state)
 {
-  if (! ((CC_ENTRY_P (STACK_REF (BKPT_PROCEED_FRAME_SIZE)))
-	 && ((CC_ENTRY_ADDRESS (STACK_REF (BKPT_PROCEED_FRAME_SIZE))) == ep)))
+  if (! ((CC_RETURN_P (STACK_REF (BKPT_PROCEED_FRAME_SIZE)))
+	 && ((CC_RETURN_ADDRESS (STACK_REF (BKPT_PROCEED_FRAME_SIZE))) == ep)))
     error_external_return ();
   PUSH_REFLECTION (REFLECT_CODE_CC_BKPT);
   stack_pointer = (STACK_LOC (-BKPT_PROCEED_FRAME_SIZE));

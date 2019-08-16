@@ -335,7 +335,7 @@ USA.
       (block-offset start)
       (label start)
       (pea (@pcr proc))
-      (or b (& ,(* (microcode-type 'compiled-entry) 4)) (@a 7))
+      (or b (& ,(* (microcode-type 'compiled-return) 4)) (@a 7))
       (mov l (@a+ 7) (@ao 6 8))
       (and b (& #x3) (@a 7))
       (rts)

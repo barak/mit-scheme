@@ -350,6 +350,8 @@ USA.
 		      (parser-state/next-control-point state)
 		      (parser-state/previous-type state))))
 
+;; reflect_to_interface codes.  Matches enum reflect_code_t in
+;; microcode/cmpint.c.
 (define-integrable code/special-compiled/internal-apply 0)
 (define-integrable code/special-compiled/restore-interrupt-mask 1)
 (define-integrable code/special-compiled/stack-marker 2)
@@ -358,6 +360,7 @@ USA.
 (define-integrable code/restore-regs 5)
 (define-integrable code/apply-compiled 6)
 (define-integrable code/continue-linking 7)
+(define-integrable code/special-compiled/compiled-invocation 8)
 
 (define (parser/special-compiled type elements state)
   (let ((code (vector-ref elements 1)))
@@ -374,7 +377,8 @@ USA.
 	       (fix:= code code/interrupt-restart)
 	       (fix:= code code/restore-regs)
 	       (fix:= code code/apply-compiled)
-	       (fix:= code code/continue-linking))
+	       (fix:= code code/continue-linking)
+	       (fix:= code code/special-compiled/compiled-invocation))
 	   (parse/standard-next type elements state #f #f))
 	  (else
 	   (error "Unknown special compiled frame code:" code)))))
@@ -645,6 +649,13 @@ USA.
 	   ;; block, environment, offset, last header offset,sections,
 	   ;; return address
 	   (fix:- 10 1))
+	  ((fix:= code code/special-compiled/compiled-invocation)
+	   ;; Stream[2] is compiled entry, followed by arguments.
+	   (let ((procedure (stream-ref stream 2)))
+	     (cond ((compiled-code-address/frame-size procedure)
+		    => (lambda (frame-size)
+			 (+ 2 frame-size)))
+		   (else (lose)))))
 	  (else
 	   (lose)))))
 

@@ -638,7 +638,7 @@ scheme_to_interface_proceed:
 	# Signal to within_c_stack that we are now in C land.
 	OP(mov,l)	TW(IMM(0),EVR(C_Stack_Pointer))
 
-	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc struct return
+	OP(sub,l)	TW(IMM(12),REG(esp))	# alloc struct return
 
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # push utility args
 	OP(push,l)	REG(ebx)
@@ -657,7 +657,9 @@ scheme_to_interface_proceed:
 define_debugging_label(scheme_to_interface_return)
 	OP(add,l)	TW(IMM(20),REG(esp))	# pop utility args
 	OP(pop,l)	REG(eax)		# pop struct return
-	OP(pop,l)	REG(edx)
+	OP(pop,l)	REG(edx)		# interp code / compiled ptr
+	OP(pop,l)	REG(ecx)		# interp garbage / compiled pc
+						# (currently unused on i386)
 	jmp		IJMP(REG(eax))		# Invoke handler
 
 define_c_label(interface_to_scheme)

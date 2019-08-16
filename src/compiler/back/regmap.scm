@@ -497,8 +497,7 @@ registers into some interesting sorting order.
   ;; contents into that register.
   (or (let ((entry (map-entries:find-home map home)))
 	(and entry
-	     (let ((alias (find (register-type-predicate type)
-				(map-entry-aliases entry))))
+	     (let ((alias (map-entry:find-alias entry type needed-registers)))
 	       (and alias
 		    (allocator-values alias map (LAP))))))
       (bind-allocator-values (make-free-register map type needed-registers)
@@ -561,13 +560,13 @@ the same value as REGISTER.  If no such register exists, returns #F."
 		      (register-type? type register*)))
 	       (map-entry-aliases entry)))))
 
-(define (pseudo-register-alias map type register)
+(define (pseudo-register-alias map type register needed-registers)
   "Returns a machine register, of the given TYPE, which is an alias
-for REGISTER.  If no such register exists, returns #F."
+for REGISTER, except those in NEEDED-REGISTERS.  If no such register
+exists, returns #F."
   (let ((entry (map-entries:find-home map register)))
     (and entry
-	 (find (register-type-predicate type)
-	       (map-entry-aliases entry)))))
+	 (map-entry:find-alias entry type needed-registers))))
 
 (define (machine-register-is-unique? map register)
   "True if REGISTER has no other aliases."

@@ -164,3 +164,9 @@ trampoline_entry_addr (SCHEME_OBJECT * block, unsigned long index)
 {
   return (((insn_t *) (block + 2 + (index * 2))) + CC_ENTRY_HEADER_SIZE);
 }
+
+insn_t *
+trampoline_return_addr (SCHEME_OBJECT * block, unsigned long index)
+{
+  return (trampoline_entry_addr (block, index));
+}

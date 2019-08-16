@@ -311,38 +311,42 @@ USA.
 					      (length expressions)
 					      '() false false)))
 		     (make-scfg (cfg-entry-node scfg) '()))
-		   (with-values
-		       (lambda ()
-			 (generate-continuation-entry
-			  (combination/context combination)))
-		     (lambda (label setup cleanup)
-		       (scfg-append!
-			(generate-primitive primitive-name
-					    (length expressions)
-					    expressions setup label)
-			cleanup
-			(if error-finish
-			    (error-finish (rtl:make-fetch register:value))
-			    (make-null-cfg)))
-		       #|
-		       ;; This code is preferable to the above
-		       ;; expression in some circumstances.  It
-		       ;; creates a continuation, but the continuation
-		       ;; is left dangling instead of being hooked
-		       ;; back into the subsequent code.  This avoids
-		       ;; a merge in the RTL and allows the CSE to do
-		       ;; a better job -- but the cost is that it
-		       ;; creates a continuation that, if invoked, has
-		       ;; unpredictable behavior.
-		       (let ((scfg
-			      (scfg*scfg->scfg!
-			       (generate-primitive primitive-name
-						   (length expressions)
-						   expressions setup label)
-			       cleanup)))
-			 (make-scfg (cfg-entry-node scfg) '()))
-		       |#
-		       )))))
+		   (let ((temporary (rtl:make-pseudo-register)))
+		     (with-values
+			 (lambda ()
+			   (generate-continuation-entry
+			    (combination/context combination)
+			    (rtl:make-assignment
+			     temporary
+			     (rtl:make-fetch register:value))))
+		       (lambda (label setup cleanup)
+			 (scfg-append!
+			  (generate-primitive primitive-name
+					      (length expressions)
+					      expressions setup label)
+			  cleanup
+			  (if error-finish
+			      (error-finish (rtl:make-fetch temporary))
+			      (make-null-cfg)))
+			 #|
+			 ;; This code is preferable to the above
+			 ;; expression in some circumstances.  It
+			 ;; creates a continuation, but the continuation
+			 ;; is left dangling instead of being hooked
+			 ;; back into the subsequent code.  This avoids
+			 ;; a merge in the RTL and allows the CSE to do
+			 ;; a better job -- but the cost is that it
+			 ;; creates a continuation that, if invoked, has
+			 ;; unpredictable behavior.
+			 (let ((scfg
+				(scfg*scfg->scfg!
+				 (generate-primitive primitive-name
+						     (length expressions)
+						     expressions setup label)
+				 cleanup)))
+			   (make-scfg (cfg-entry-node scfg) '()))
+			 |#
+			 ))))))
 	  (let loop ((checks checks))
 	    (if (null? checks)
 		non-error-cfg
@@ -1672,19 +1676,24 @@ USA.
 	(let ((scfg (generate-primitive generic-op (length expressions) '()
 					false false)))
 	  (make-scfg (cfg-entry-node scfg) '()))
-	(with-values
-	    (lambda ()
-	      (generate-continuation-entry (combination/context combination)))
-	  (lambda (label setup cleanup)
-	    (scfg-append!
-	     (generate-primitive generic-op (length expressions)
-				 expressions setup label)
-	     cleanup
-	     (if predicate?
-		 (finish (rtl:make-true-test (rtl:make-fetch register:value)))
-		 (expression-simplify-for-statement
-		  (rtl:make-fetch register:value)
-		  finish))))))))
+	(let* ((temporary (rtl:make-pseudo-register))
+	       (preamble
+		(rtl:make-assignment temporary
+				     (rtl:make-fetch register:value))))
+	  (with-values
+	      (lambda ()
+		(generate-continuation-entry (combination/context combination)
+					     preamble))
+	    (lambda (label setup cleanup)
+	      (scfg-append!
+	       (generate-primitive generic-op (length expressions)
+				   expressions setup label)
+	       cleanup
+	       (if predicate?
+		   (finish (rtl:make-true-test (rtl:make-fetch temporary)))
+		   (expression-simplify-for-statement
+		    (rtl:make-fetch temporary)
+		    finish)))))))))
 
 (define (generic->fixnum-op generic-op)
   (case generic-op

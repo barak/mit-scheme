@@ -1,0 +1,8 @@
+The AMD x86-64 ABI has been changed.
+
+- Newer Scheme versions must be cross-compiled from older ones using
+  `./configure --enable-cross-compiling'.
+- Old .com files must be recompiled.
+- The changes have performance improvements on many workloads, by
+  reducing the amount of self-modifying code and by making better use
+  of the CPU branch predictor.

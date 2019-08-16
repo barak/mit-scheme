@@ -30,7 +30,7 @@ USA.
 #define TC_LIST				0x01
 #define TC_CHARACTER			0x02
 #define	TC_SCODE_QUOTE			0x03
-/* #define TC_PCOMB2			0x04 */
+#define	TC_COMPILED_RETURN		0x04
 #define TC_UNINTERNED_SYMBOL		0x05
 #define TC_BIG_FLONUM			0x06
 /* #define TC_COMBINATION_1		0x07 */
@@ -108,7 +108,7 @@ USA.
   /* 0x01 */			"pair",					\
   /* 0x02 */			"character",				\
   /* 0x03 */			"quotation",				\
-  /* 0x04 */			0,					\
+  /* 0x04 */			"compiled-return",			\
   /* 0x05 */			"uninterned-symbol",			\
   /* 0x06 */			"flonum",				\
   /* 0x07 */			0,					\
