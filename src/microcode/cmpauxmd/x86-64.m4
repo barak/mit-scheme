@@ -635,7 +635,7 @@ define_hook_label(apply_setup)
 asm_apply_setup_fail:
 	# Load the fallback address into rax, where compiled code will
 	# jump.
-	OP(lea,q)	TW(ABS(EVR(asm_sc_apply_generic)),REG(rax))
+	OP(lea,q)	TW(ABS(asm_sc_apply_generic),REG(rax))
 	ret
 
 define(define_apply_setup_fixed_size,
@@ -654,7 +654,7 @@ define_hook_label(apply_setup_size_$1)
 	ret
 
 asm_apply_setup_size_$1_fail:
-	OP(lea,q)	TW(ABS(EVR(asm_sc_apply_generic)),REG(rax))
+	OP(lea,q)	TW(ABS(asm_sc_apply_generic),REG(rax))
 	OP(mov,q)	TW(IMM(HEX($1)),REG(rdx))
 	ret')
 
