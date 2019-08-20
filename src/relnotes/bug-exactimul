@@ -1,0 +1,8 @@
+Bug fix: Multiplying by purely imaginary numbers preserves zero sign.
+
+- (* +i (make-rectangular x y)) = (make-rectangular (* -1 y) x)
+- (* (make-rectangular x y) +i) = (make-rectangular (* -1 y) x)
+- (/ (make-rectangular x y) -i) = (make-rectangular (* -1 y) x)
+- (* -1 (make-rectangular x y)) = (make-rectangular y (* -1 x))
+- (* (make-rectangular x y) -i) = (make-rectangular y (* -1 x))
+- (/ (make-rectangular x y) +i) = (make-rectangular y (* -1 x))
