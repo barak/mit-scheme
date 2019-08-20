@@ -735,24 +735,69 @@ USA.
   (lambda (z)
     (assert-inf+ (magnitude z))))
 
-(define-enumerated-test 'infinite-angle
+(define-enumerated-test 'angle-edge
   (list
+   ;; angle(+0 +/- 0i) = +/-0
+   (list 0 0)
+   (list 0. 0.)
+   (list +0.i 0.)
+   (list -0.i -0. expect-failure)
+   (list +0.+0.i 0.)
+   (list +0.-0.i -0. expect-failure)
+   ;; angle(+inf +/- y i) = +/- 0 for finite y
    (list +inf.0 0.)   ;XXX Why not exact, if imag-part is exact 0?
-   (list -inf.0 pi)
+   (list +inf.0+0.i 0.)
+   (list +inf.0-0.i -0.)
    (list +inf.0+i 0.)
    (list +inf.0-i -0.)
-   (list -inf.0-i (- pi))
-   (list -inf.0+i pi)
+   ;; angle(+inf +/- inf i) = +/- pi/4
+   (list +inf.0+inf.0i (* pi 1/4))
+   (list +inf.0-inf.0i (* pi -1/4))
+   ;; angle(x +/- inf i) = +/- pi/2
+   (list +inf.0i (* pi 1/2))
+   (list -inf.0i (* pi -1/2))
+   (list +0.+inf.0i (* pi 1/2))
+   (list +0.-inf.0i (* pi -1/2))
+   (list -0.+inf.0i (* pi 1/2))
+   (list -0.-inf.0i (* pi -1/2))
    (list 1+inf.0i (* pi 1/2))
    (list 1-inf.0i (* pi -1/2))
    (list -1-inf.0i (* pi -1/2))
    (list -1+inf.0i (* pi 1/2))
-   (list +inf.0+inf.0i (* pi 1/4))
-   (list +inf.0-inf.0i (* pi -1/4))
+   ;; angle(-inf +/- inf i) = +/- 3pi/4
    (list -inf.0-inf.0i (* pi -3/4))
-   (list -inf.0+inf.0i (* pi 3/4)))
-  (lambda (z t)
-    (assert-<= (relerr t (angle z)) 1e-15)))
+   (list -inf.0+inf.0i (* pi 3/4))
+   ;; angle(-inf +/- y i) = +/- pi for finite y
+   (list -inf.0 pi)
+   (list -inf.0+0.i pi)
+   (list -inf.0-0.i (- pi))
+   (list -inf.0+i pi)
+   (list -inf.0-i (- pi))
+   ;; angle(-0 +/- 0i) = +/- pi
+   (list -0. pi expect-failure)
+   (list -0.+0.i pi expect-failure)
+   (list -0.-0.i (- pi) expect-failure))
+  (lambda (z t #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-<= (relerr t (angle z)) 1e-15)))))
+
+(define-enumerated-test 'angle-nan
+  (list
+   (list +nan.0i)
+   (list 1+nan.0i)
+   (list 0.+nan.0i)
+   (list -0.+nan.0i)
+   (list +inf.0+nan.0i)
+   (list -inf.0+nan.0i)
+   (list +nan.0+i)
+   (list +nan.0+0.i)
+   (list +nan.0-0.i)
+   (list +nan.0+inf.0i)
+   (list +nan.0-inf.0i)
+   (list +nan.123+nan.456i))
+  (lambda (z)
+    (assert-nan (no-traps (lambda () (angle z))))))
 
 (define-enumerated-test 'sqrt-exact
   `((0 0)
