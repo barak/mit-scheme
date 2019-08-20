@@ -1972,11 +1972,12 @@ USA.
 
 (define (complex:angle z)
   (cond ((recnum? z)
-	 (if (and (real:zero? (rec:real-part z))
+	 (if (and (complex:exact? z)
+		  (real:zero? (rec:real-part z))
 		  (real:zero? (rec:imag-part z)))
-	     (real:0 (complex:exact? z))
+	     0
 	     (real:atan2 (rec:imag-part z) (rec:real-part z))))
-	((real:negative? z) rec:pi)
+	((real:sign-negative? z) rec:pi)
 	(else (real:0 (real:exact? z)))))
 
 (define (complex:magnitude z)

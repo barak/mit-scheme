@@ -1,0 +1,1 @@
+Bug fix: (angle z) now correctly handles edge cases with signed zero.

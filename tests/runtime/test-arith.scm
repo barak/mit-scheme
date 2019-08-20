@@ -741,9 +741,9 @@ USA.
    (list 0 0)
    (list 0. 0.)
    (list +0.i 0.)
-   (list -0.i -0. expect-failure)
+   (list -0.i -0.)
    (list +0.+0.i 0.)
-   (list +0.-0.i -0. expect-failure)
+   (list +0.-0.i -0.)
    ;; angle(+inf +/- y i) = +/- 0 for finite y
    (list +inf.0 0.)   ;XXX Why not exact, if imag-part is exact 0?
    (list +inf.0+0.i 0.)
@@ -774,9 +774,9 @@ USA.
    (list -inf.0+i pi)
    (list -inf.0-i (- pi))
    ;; angle(-0 +/- 0i) = +/- pi
-   (list -0. pi expect-failure)
-   (list -0.+0.i pi expect-failure)
-   (list -0.-0.i (- pi) expect-failure))
+   (list -0. pi)
+   (list -0.+0.i pi)
+   (list -0.-0.i (- pi)))
   (lambda (z t #!optional xfail)
     (with-expected-failure xfail
       (lambda ()
