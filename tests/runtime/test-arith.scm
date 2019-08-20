@@ -256,6 +256,38 @@ USA.
   (lambda (x y)
     (assert-nan (* x y))))
 
+(define-enumerated-test 'i*
+  (list
+   (list 3+4i -4+3i)
+   (list +0. +0.i)
+   (list -0. -0.i)
+   (list +0.i -0. expect-failure)
+   (list -0.i +0.)
+   (list +0.+0.i -0.+0.i expect-failure)
+   (list -0.+0.i -0.-0.i expect-failure)
+   (list +0.-0.i +0.+0.i)
+   (list -0.-0.i +0.-0.i expect-failure))
+  (lambda (z w #!optional xfail)
+    (with-expected-failure xfail (lambda () (assert-eqv (* +i z) w)))
+    (with-expected-failure xfail (lambda () (assert-eqv (* z +i) w)))
+    (with-expected-failure xfail (lambda () (assert-eqv (/ z -i) w)))))
+
+(define-enumerated-test '/i
+  (list
+   (list 3+4i +4-3i)
+   (list +0. -0.i)
+   (list -0. +0.i)
+   (list +0.i +0.)
+   (list -0.i -0. expect-failure)
+   (list +0.+0.i +0.-0.i expect-failure)
+   (list -0.+0.i +0.+0.i)
+   (list +0.-0.i -0.-0.i expect-failure)
+   (list -0.-0.i -0.+0.i expect-failure))
+  (lambda (z w #!optional xfail)
+    (with-expected-failure xfail (lambda () (assert-eqv (/ z +i) w)))
+    (with-expected-failure xfail (lambda () (assert-eqv (* -i z) w)))
+    (with-expected-failure xfail (lambda () (assert-eqv (* z -i) w)))))
+
 (define-enumerated-test 'polar0-real
   (list
    (list 0)
