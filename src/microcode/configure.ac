@@ -180,6 +180,7 @@ SAVED_CFLAGS=${CFLAGS}
 SAVED_LDFLAGS=${LDFLAGS}
 
 dnl Checks for programs.
+AC_CHECK_TOOL(AS, as)
 AC_PROG_CC
 AC_PROG_CC_STDC
 if test "x${ac_cv_prog_cc_c99}" != xno; then
@@ -271,6 +272,15 @@ CCLD=${CC}
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
 MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
+
+case $mit_scheme_native_code in
+c|svm1-be|svm1-le);;
+*)
+    if test "x${AS}" = x; then
+        AC_MSG_ERROR([Unable to find assembler for native code interface])
+    fi
+    ;;
+esac
 
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 EXE_NAME=mit-scheme-${mit_scheme_native_code}

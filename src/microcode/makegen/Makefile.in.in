@@ -72,7 +72,7 @@ CC = @CC@
 HOST_CC = @HOST_CC@
 CCLD = @CCLD@
 M4 = $(srcdir)/makegen/m4.sh @M4@
-AS = as
+AS = @AS@
 TAR = tar
 GZIP_ENV = --best
 
