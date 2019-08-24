@@ -571,3 +571,24 @@ USA.
            ;; Test the exceptions.  They should actually be cleared.
            (flo:test-exceptions (flo:supported-exceptions))))))
      0)))
+
+(define-test 'set-environment
+  (lambda ()
+    (define x0)
+    (define x1)
+    (define x2)
+    (define x3)
+    (flo:preserving-environment
+     (lambda ()
+       (flo:clear-exceptions! (flo:supported-exceptions))
+       (set! x0 (flo:test-exceptions (flo:supported-exceptions)))
+       (let ((env (flo:environment)))
+         (set! x1 (flo:test-exceptions (flo:supported-exceptions)))
+         (flo:raise-exceptions! (flo:exception:divide-by-zero))
+         (set! x2 (flo:test-exceptions (flo:supported-exceptions)))
+         (flo:set-environment! env)
+         (set! x3 (flo:test-exceptions (flo:supported-exceptions))))))
+    (assert-eqv x0 0)
+    (assert-eqv x1 0)
+    (assert-eqv x2 (flo:exception:divide-by-zero))
+    (expect-failure (lambda () (assert-eqv x3 0)))))
