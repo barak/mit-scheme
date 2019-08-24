@@ -75,10 +75,12 @@ USA.
   ;; unwind the thread's state space when it is exited.
 
   (floating-point-environment #f)
-  ;; A floating-point environment descriptor, or #T if the thread is
-  ;; running and has modified its floating-point environment since it
-  ;; was last cached.  While a thread is running, this is a cache of
-  ;; the machine's floating-point environment.
+  ;; For the current thread: #t if the thread is using the
+  ;; floating-point environment, via flo:use-environment or
+  ;; flo:preserving-environment; #f if not.
+  ;;
+  ;; For any other thread: a floating-point environment descriptor if
+  ;; the floating-point environment is in use; #f if not.
 
   (mutexes '())
   ;; List of mutexes that this thread owns or is waiting to own.  Used

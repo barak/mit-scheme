@@ -591,4 +591,4 @@ USA.
     (assert-eqv x0 0)
     (assert-eqv x1 0)
     (assert-eqv x2 (flo:exception:divide-by-zero))
-    (expect-failure (lambda () (assert-eqv x3 0)))))
+    (assert-eqv x3 0)))
