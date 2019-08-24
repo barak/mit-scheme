@@ -26,6 +26,9 @@ USA.
 
 /* C99 <fenv.h> emulation for x86 (shared between i386 and amd64) */
 
+#ifndef SCHEME_CMPINTMD_X86_FENV_H
+#define SCHEME_CMPINTMD_X86_FENV_H
+
 #define HAVE_FENV_T
 #define HAVE_FEXCEPT_T
 
@@ -117,3 +120,5 @@ extern int fegetenv (fenv_t *);
 extern int fesetenv (const fenv_t *);
 extern int feholdexcept (fenv_t *);
 extern int feupdateenv (const fenv_t *);
+
+#endif  /* SCHEME_CMPINTMD_X86_FENV_H */
