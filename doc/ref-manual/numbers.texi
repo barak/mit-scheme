@@ -2779,8 +2779,9 @@ The main purpose of changing the rounding mode is to diagnose
 numerical instability by injecting small perturbations throughout the
 computation.
 
-@strong{Bug:} It would be nice if we had
-``round-to-nearest/ties-to-odd''.
+@strong{Bug:} It would be nice if we had ``round-to-odd'', where any
+inexact result is rounded to the nearest @emph{odd} floating-point
+number, for implementing ``doubled''-precision algorithms.
 But we don't.
 Sorry.
 
