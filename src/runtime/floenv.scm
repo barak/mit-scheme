@@ -134,19 +134,9 @@ USA.
       ((ucode-primitive set-float-environment 1) fp-env)))
 
 (define (flo:update-environment! fp-env)
-  ;; Prevent thread-switching between when we notify the thread
-  ;; scheduler that the environment has changed and when we actually
-  ;; trigger the update, which must happen when the machine is in the
-  ;; *old* environment.
-  ;;
-  ;; XXX We could just disable preemption, but we'd have to do that
-  ;; in DYNAMIC-WIND in case UPDATE-FLOAT-ENVIRONMENT signals an
-  ;; error, and DYNAMIC-WIND is super-expensive.
-  (without-interrupts
-   (lambda ()
-     (set-thread-float-environment! (current-thread) (if fp-env #t #f))
-     ((ucode-primitive update-float-environment 1)
-      (or fp-env default-environment)))))
+  (use-floating-point-environment!)
+  ((ucode-primitive update-float-environment 1)
+   (or fp-env default-environment)))
 
 (define default-environment)
 
