@@ -583,7 +583,8 @@ USA.
             (STR X ,target ,Free)
             ,@(register->register-transfer Free target)
             ,@(add-immediate Free Free
-                             (* address-units-per-object (+ 1 size))))))
+                             (* address-units-per-object (+ 1 size))
+                             general-temporary!))))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (generate/cons-closure target
@@ -610,7 +611,7 @@ USA.
          ;; the next object.  We do this because we need to set the
          ;; last component here, but we do not have negative load/store
          ;; offsets without pre/post-increment.
-         ,@(add-immediate Free Free (* 8 size))
+         ,@(add-immediate Free Free (* 8 size) general-temporary!)
          ;; Set the last component to be the relocation reference point.
          ,@(affix-type temp type-code:compiled-entry target general-temporary!)
          (STR X ,temp (POST+ ,Free (& 8))))))
@@ -647,7 +648,7 @@ USA.
          ;; the next object.  We do this because we need to set the
          ;; last component here, but we do not have negative load/store
          ;; offsets without pre/post-increment.
-         ,@(add-immediate Free Free (* 8 size))
+         ,@(add-immediate Free Free (* 8 size) general-temporary!)
          ;; Set the last component to be the relocation reference point.
          ,@(affix-type temp type-code:compiled-entry target general-temporary!)
          (STR X ,temp (POST+ ,Free (& 8))))))
@@ -737,7 +738,7 @@ USA.
          ;; Set this block's environment.
          (STR X ,temp (+ ,arg2 (&U (* 8 ,environment-index))))
          ;; arg3 := constants address
-         ,@(add-immediate arg3 arg2 free-ref-offset)
+         ,@(add-immediate arg3 arg2 free-ref-offset (lambda () temp))
          ;; arg4 := n sections
          ,@(load-unsigned-immediate arg4 n-sections)
          ,@(invoke-interface/call code:compiler-link continuation-label)

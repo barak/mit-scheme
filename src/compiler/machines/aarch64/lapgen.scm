@@ -297,7 +297,7 @@ USA.
 (define (load-displaced-address target base offset scale)
   (standard-unary target base
     (lambda (target base)
-      (add-immediate target base (* offset scale)))))
+      (add-immediate target base (* offset scale) general-temporary!))))
 
 (define (load-indexed-address target base offset scale)
   (standard-binary target base offset
@@ -362,23 +362,23 @@ USA.
 	      (MOVK X ,target (LSL (&U ,(chunk16 32)) 32))
 	      (MOVK X ,target (LSL (&U ,(chunk16 48)) 48))))))
 
-(define (add-immediate target source imm)
+(define (add-immediate target source imm get-temporary)
   (define (add addend) (LAP (ADD X ,target ,source ,addend)))
   (define (sub addend) (LAP (SUB X ,target ,source ,addend)))
-  (immediate-addition imm add sub))
+  (immediate-addition imm add sub get-temporary))
 
-(define (add-immediate-with-flags target source imm)
+(define (add-immediate-with-flags target source imm get-temporary)
   (define (adds addend) (LAP (ADDS X ,target ,source ,addend)))
   (define (subs addend) (LAP (SUBS X ,target ,source ,addend)))
-  (immediate-addition imm adds subs))
+  (immediate-addition imm adds subs get-temporary))
 
-(define (cmp-immediate source imm)
+(define (cmp-immediate source imm get-temporary)
   ;; Same as above but with zero destination.
   (define (cmp operand) (LAP (CMP X ,source ,operand)))
   (define (cmn operand) (LAP (CMN X ,source ,operand)))
-  (immediate-addition imm cmp cmn))
+  (immediate-addition imm cmp cmn get-temporary))
 
-(define (immediate-addition imm add sub)
+(define (immediate-addition imm add sub get-temporary)
   ;; XXX Use INST-EA instead of quasiquote?  Dunno...
   (cond ((fits-in-unsigned-12? imm)
          (add `(&U ,imm)))

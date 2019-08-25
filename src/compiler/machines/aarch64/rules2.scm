@@ -98,7 +98,7 @@ USA.
       (zero-test! register)
       (begin
         (set-equal-branches!)
-        (cmp-immediate register immediate))))
+        (cmp-immediate register immediate general-temporary!))))
 
 (define (set-always-branches!)
   (set-current-branches!

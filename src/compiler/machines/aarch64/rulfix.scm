@@ -106,13 +106,13 @@ USA.
 (define (fixnum-add-constant target source n overflow?)
   (let ((imm (* fixnum-1 n)))
     (cond ((not overflow?)
-           (add-immediate target source imm))
+           (add-immediate target source imm general-temporary!))
           ((zero? n)
            (set-never-branches!)
            (register->register-transfer source target))
           (else
            (set-overflow-branches!)
-           (add-immediate-with-flags target source imm)))))
+           (add-immediate-with-flags target source imm general-temporary!)))))
 
 (define (load-fixnum-constant target n)
   (load-signed-immediate target (* n fixnum-1)))
