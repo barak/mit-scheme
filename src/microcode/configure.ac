@@ -204,6 +204,16 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
+case $host_os in
+netbsd*)
+    AC_CHECK_TOOL([PAXCTL], [paxctl], [:])
+    ;;
+*)
+    PAXCTL=:
+    AC_SUBST([PAXCTL])
+    ;;
+esac
+
 : ${HOST_CC:=${CC}}
 
 if test x"${GCC}" = xyes; then
