@@ -183,9 +183,14 @@ USA.
   (delete-dead-registers!)
   (allocate-alias-register! register (register-type register)))
 
+(define (general-temporary!)
+  (allocate-temporary-register! 'GENERAL))
+
 (define (standard-move-to-temporary! source)
   (if (eq? source 'Z)
-      (let ((temp (allocate-temporary-register! 'GENERAL)))
+      ;; XXX What about float?  Should maybe rename this to
+      ;; GENERAL-MOVE-TO-TEMPORARY!.
+      (let ((temp (general-temporary!)))
         (prefix-instructions! (LAP (MOVZ X ,temp (&U 0))))
         temp)
       (move-to-temporary-register! source (register-type source))))
@@ -386,7 +391,7 @@ USA.
               (fits-in-unsigned-12? (shift-right (- imm) 12)))
          (sub `(LSL (&U ,(- imm)) 12)))
         (else
-         (let ((temp (allocate-temporary-register! 'GENERAL)))
+         (let ((temp (get-temporary)))
            (LAP ,@(load-unsigned-immediate temp imm)
                 ,@(add temp))))))
 

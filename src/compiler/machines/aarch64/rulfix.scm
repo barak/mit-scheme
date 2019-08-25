@@ -174,7 +174,7 @@ USA.
              (MUL X ,target ,regnum:scratch-0 ,source2))
         (let* ((mask regnum:scratch-0)
                (hi regnum:scratch-1)
-               (temp (allocate-temporary-register! 'GENERAL)))
+               (temp (general-temporary!)))
           ;; We're going to test whether the high 64-bits is equal to
           ;; the -1 or 0 we expect it to be.  Overflow if not equal, no
           ;; overflow if equal.

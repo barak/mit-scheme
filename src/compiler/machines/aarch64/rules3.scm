@@ -309,7 +309,7 @@ USA.
   (assert (= 8 address-units-per-object))
   (let* ((temp1 regnum:scratch-0)
          (temp2 regnum:scratch-1)
-         (index (allocate-temporary-register! 'GENERAL))
+         (index (general-temporary!))
          (label (generate-label 'MOVE-LOOP))
          ;; Unroll an odd element if there is one; then do an even
          ;; number of iterations.
@@ -339,7 +339,7 @@ USA.
          (let loop ((n frame-size) (temps '()))
            (if (zero? n)
                temps
-               (let ((temp (allocate-temporary-register! 'GENERAL)))
+               (let ((temp (general-temporary!)))
                  (loop (- n 1) (cons temp temps)))))))
     (LAP ,@(let loop ((temps temps))
              ;; (pop2 r1 r2) (pop2 r3 r4) (pop r5)
@@ -595,7 +595,7 @@ USA.
 
 (define (generate/cons-closure target label min max size)
   (let* ((target (standard-target! target))
-         (temp (allocate-temporary-register! 'GENERAL))
+         (temp (general-temporary!))
          (manifest-type type-code:manifest-closure)
          (manifest-size (closure-manifest-size size))
          (Free regnum:free-pointer)
@@ -612,13 +612,12 @@ USA.
          ;; offsets without pre/post-increment.
          ,@(add-immediate Free Free (* 8 size))
          ;; Set the last component to be the relocation reference point.
-         ,@(affix-type temp type-code:compiled-entry target
-                       (lambda () (allocate-temporary-register! 'GENERAL)))
+         ,@(affix-type temp type-code:compiled-entry target general-temporary!)
          (STR X ,temp (POST+ ,Free (& 8))))))
 
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((target (standard-target! target))
-         (temp (allocate-temporary-register! 'GENERAL))
+         (temp (general-temporary!))
          (manifest-type type-code:manifest-closure)
          (manifest-size (multiclosure-manifest-size nentries size))
          ;; 1 for manifest, 1 for padding & format word, 1 for PC offset.
@@ -650,8 +649,7 @@ USA.
          ;; offsets without pre/post-increment.
          ,@(add-immediate Free Free (* 8 size))
          ;; Set the last component to be the relocation reference point.
-         ,@(affix-type temp type-code:compiled-entry target
-                       (lambda () (allocate-temporary-register! 'GENERAL)))
+         ,@(affix-type temp type-code:compiled-entry target general-temporary!)
          (STR X ,temp (POST+ ,Free (& 8))))))
 
 (define (generate-closure-entry label padding min max offset temp)

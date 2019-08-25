@@ -68,8 +68,7 @@ USA.
                         (REGISTER (? datum))))
   (standard-unary target datum
     (lambda (target datum)
-      (affix-type target type datum
-                  (lambda () (allocate-temporary-register! 'GENERAL))))))
+      (affix-type target type datum general-temporary!))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
