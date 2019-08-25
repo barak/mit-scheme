@@ -180,7 +180,7 @@ SAVED_CFLAGS=${CFLAGS}
 SAVED_LDFLAGS=${LDFLAGS}
 
 dnl Checks for programs.
-AC_CHECK_TOOL(AS, as)
+AC_CHECK_TOOL([AS], [as])
 AC_PROG_CC
 AC_PROG_CC_STDC
 if test "x${ac_cv_prog_cc_c99}" != xno; then
