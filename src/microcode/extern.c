@@ -198,3 +198,13 @@ whether the corresponding primitive is implemented or not.")
     (find_primitive
      ((MEMORY_REF (name, SYMBOL_NAME)), intern_p, allow_p, arity));
 }
+
+DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-OPEN-CODED?", Prim_primitive_procedure_open_coded, 1, 1,
+  "(PRIMITIVE)\n\
+Returns #t iff PRIMITIVE is open-coded by the compiler.\n\
+Only returns #t if constant-folded by the same compiler.")
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, PRIMITIVE_P);
+  PRIMITIVE_RETURN (SHARP_F);
+}

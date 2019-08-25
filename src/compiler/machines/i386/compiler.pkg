@@ -586,6 +586,7 @@ USA.
   (files "rtlgen/opncod")
   (parent (compiler rtl-generator))
   (export (compiler rtl-generator) combination/inline)
+  (export (compiler fg-optimizer) primitive-procedure-open-coded?)
   (export (compiler top-level) open-coding-analysis))
 
 (define-package (compiler rtl-generator find-block)

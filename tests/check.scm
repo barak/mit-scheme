@@ -42,6 +42,7 @@ USA.
   '(
     ("compiler/test-fasdump" (compiler portable-fasdump))
     "compiler/test-fgopt-conect"
+    "compiler/test-open-code"
     "compiler/test-toplev"
     "compiler/test-varname"
     "compiler/test-vartrap"

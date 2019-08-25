@@ -73,6 +73,12 @@ USA.
 		  (and entry
 		       (try-handler combination value entry))))))))
 
+(define (primitive-procedure-open-coded? primitive)
+  (guarantee primitive-procedure? primitive 'PRIMITIVE-PROCEDURE-OPEN-CODED?)
+  (let ((name (primitive-procedure-name primitive)))
+    (and (hash-table-ref name->open-coders name (lambda () #f))
+	 #t)))
+
 (define (try-handler combination primitive entry)
   (let ((operands (combination/operands combination)))
     (and (primitive-arity-correct? primitive (length operands))

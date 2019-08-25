@@ -236,7 +236,11 @@ USA.
 (define (constant-foldable-operator-value rv)
   (if (rvalue/reference? rv)
       (variable-usual-definition (variable-name (reference-lvalue rv)))
-      (rvalue-constant-value rv)))  
+      (let ((primitive (rvalue-constant-value rv)))
+	(assert (primitive-procedure? primitive))
+	(if (eq? primitive (ucode-primitive primitive-procedure-open-coded? 1))
+	    primitive-procedure-open-coded?
+	    primitive))))
 
 (define (arity-correct? proc n)
   (let ((arity (procedure-arity proc)))

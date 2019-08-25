@@ -332,6 +332,7 @@ USA.
 	(ucode-primitive pair?)
 	(ucode-primitive positive-fixnum?)
 	(ucode-primitive positive?)
+	(ucode-primitive primitive-procedure-open-coded? 1)
 	(ucode-primitive string?)
 	(ucode-primitive vector?)
 	(ucode-primitive weak-pair? 1)
