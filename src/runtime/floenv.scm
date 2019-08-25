@@ -156,7 +156,6 @@ USA.
 	   ((ucode-primitive set-trapped-float-exceptions 1)
 	    (flo:default-trapped-exceptions))
 	   ((ucode-primitive float-environment 0)))))
-  (initialize-flonum-infinities!)
   unspecific)
 
 (define (initialize-package!)
@@ -355,24 +354,5 @@ USA.
 (define (flo:nan.0)
   (flo:make-nan #f #t 0))
 
-(define flo:+inf.0)
-(define flo:-inf.0)
-(define (initialize-flonum-infinities!)
-  (if (flo:have-trap-enable/disable?)
-      (begin
-	(set! flo:+inf.0
-	      (named-lambda (flo:+inf.0)
-		(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-					       (lambda ()
-						 (flo:/ +1. 0.)))))
-	(set! flo:-inf.0
-	      (named-lambda (flo:-inf.0)
-		(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-					       (lambda ()
-						 (flo:/ -1. 0.)))))
-	unspecific)
-      ;; This works on macOS.  YMMV.
-      (begin
-	(set! flo:+inf.0 (named-lambda (flo:+inf.0) (flo:/ +1. 0.)))
-	(set! flo:-inf.0 (named-lambda (flo:-inf.0) (flo:/ -1. 0.)))
-	unspecific)))
+(define (flo:+inf.0) +inf.0)
+(define (flo:-inf.0) -inf.0)
