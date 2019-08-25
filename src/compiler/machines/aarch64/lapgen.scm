@@ -78,6 +78,17 @@ USA.
         ((register-value-class=word? register) 'GENERAL)
         ((register-value-class=float? register) 'FLOAT)
         (else (error "Unknown register type:" register))))
+
+;;; Convert between RTL repersentation of machine (not pseudo)
+;;; registers, and LAP syntax for register numbers.
+
+(define (float-register->fpr register)
+  (assert (<= v0 register))
+  (assert (<= register v31))
+  (- register 32))
+
+(define (fpr->float-register fpr)
+  (+ fpr 32))
 
 ;;; References, for machine register allocator.  Not used by LAP
 ;;; syntax.
@@ -137,7 +148,9 @@ USA.
              (LAP (ADD X ,target ,source (&U 0)))
              (LAP (ORR X ,target Z ,source))))
         ((FLOAT)
-         (LAP (FMOV D ,target ,source)))
+         (let ((source (float-register->fpr source))
+               (target (float-register->fpr target)))
+           (LAP (FMOV D ,target ,source))))
         (else
          (error "Unknown register type:" source target)))))
 
@@ -162,13 +175,13 @@ USA.
 (define (load-register register ea)
   (case (register-type register)
     ((GENERAL) (LAP (LDR X ,register ,ea)))
-    ((FLOAT) (LAP (LDR D ,register ,ea)))
+    ((FLOAT) (LAP (LDR D ,(float-register->fpr register) ,ea)))
     (else (error "Unknown register type:" register))))
 
 (define (store-register register ea)
   (case (register-type register)
     ((GENERAL) (LAP (STR X ,register ,ea)))
-    ((FLOAT) (LAP (STR D ,register ,ea)))
+    ((FLOAT) (LAP (STR D ,(float-register->fpr register) ,ea)))
     (else (error "Unknown register type:" register))))
 
 ;;; Utilities
@@ -311,6 +324,10 @@ USA.
   (LAP ,@(load-pc-relative-address target label)
        (LDR X ,target ,target)))
 
+(define (load-pc-relative-float target temp label)
+  (LAP ,@(load-pc-relative-address temp label)
+       (LDR.V D ,target ,temp)))
+
 (define (load-tagged-immediate target type datum)
   (load-unsigned-immediate target (make-non-pointer-literal type datum)))
 
@@ -434,6 +451,28 @@ USA.
 
 (define (object->address target source)
   (object->datum target source))
+
+;;;; Data labels
+
+(define (allocate-data-label datum block-name offset alignment data)
+  (let* ((block
+          (or (find-extra-code-block block-name)
+              (let ((block
+                     (declare-extra-code-block! block-name 'ANYWHERE '())))
+                (add-extra-code!
+                 block
+                 (LAP (PADDING ,offset ,alignment ,padding-string)))
+                block)))
+         (pairs (extra-code-block/xtra block))
+         (place (assoc datum pairs)))
+    (if place
+        (cdr place)
+        (let ((label (generate-label block-name)))
+          (set-extra-code-block/xtra!
+           block
+           (cons (cons datum label) pairs))
+          (add-extra-code! block (LAP (LABEL ,label) ,@data))
+          label))))
 
 ;;;; Linearizer interface
 

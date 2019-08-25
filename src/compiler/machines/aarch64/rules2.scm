@@ -115,6 +115,20 @@ USA.
    (lambda (label) (LAP (CBZ X ,source (@PCR ,label ,regnum:scratch-0))))
    (lambda (label) (LAP (CBNZ X ,source (@PCR ,label ,regnum:scratch-0))))))
 
+(define (set-test-bit-set-branches! source bit)
+  (set-current-branches!
+   (lambda (label)
+     (LAP (TBNZ X ,source (&U ,bit) (@PCR ,label ,regnum:scratch-0))))
+   (lambda (label)
+     (LAP (TBZ X ,source (&U ,bit) (@PCR ,label ,regnum:scratch-0))))))
+
+(define (set-test-bit-clear-branches! source bit)
+  (set-current-branches!
+   (lambda (label)
+     (LAP (TBZ X ,source (&U ,bit) (@PCR ,label ,regnum:scratch-0))))
+   (lambda (label)
+     (LAP (TBNZ X ,source (&U ,bit) (@PCR ,label ,regnum:scratch-0))))))
+
 (define (set-condition-branches! cc ~cc)
   (set-current-branches!
    (lambda (label) (LAP (B. ,cc (@PCR ,label ,regnum:scratch-0))))

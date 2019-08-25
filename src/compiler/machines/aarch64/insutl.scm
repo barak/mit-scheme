@@ -98,6 +98,11 @@ USA.
        (<= 0 x #x7f)
        x))
 
+(define (unsigned-8 x)
+  (and (exact-nonnegative-integer? x)
+       (<= 0 x #xff)
+       x))
+
 (define (unsigned-12 x)
   (and (exact-nonnegative-integer? x)
        (<= 0 x #xfff)
@@ -153,6 +158,11 @@ USA.
     ((AL) 'NV)
     ((NV) 'AL)
     (else #f)))
+
+(define (nzcv-value x)
+  (and (exact-integer? x)
+       (<= 0 x #xf)
+       x))
 
 (define (sf-size size)
   (case size
@@ -219,6 +229,13 @@ USA.
     ;; No byte or halfword, only word and extended word.
     ((W) #b00)
     ((X) #b01)
+    (else #f)))
+
+(define (ldr-literal-simd/fp-size t)
+  (case t
+    ((S) #b00)
+    ((D) #b01)
+    ((Q) #b10)
     (else #f)))
 
 (define (load/store-extend-type t)
@@ -429,3 +446,103 @@ USA.
     ((H) #b01)
     ((W) #b10)
     (else #f)))
+
+(define (fp-scalar-size t)
+  (case t
+    ((H) #b11)
+    ((S) #b00)
+    ((D) #b01)
+    (else #f)))
+
+(define (fp-vector-size t)
+  ;; Low bit is Q, next five bits are opcode, high bit is sz.
+  (case t
+    ((H4) #b1111000)
+    ((H8) #b1111001)
+    ((S2) #b0100000)
+    ((S4) #b0100001)
+    ((D2) #b1100001)
+    (else #f)))
+
+(define (fp16-vector-size t)
+  ;; Q
+  (case t
+    ((H4) 0)
+    ((H8) 1)
+    (else #f)))
+
+(define (fp32/64-vector-size t)
+  (case t
+    ((S2) #b00)
+    ((S4) #b01)
+    ((D2) #b11)
+    (else #f)))
+
+(define (simd-byte-vector-size t)
+  ;; Q
+  (case t
+    ((B8) 0)
+    ((B16) 1)
+    (else #f)))
+
+(define (simd-integer-vector-size t)
+  ;; Low bit is Q, high two bits are sz.
+  (case t
+    ((B8) #b000)
+    ((B16) #b001)
+    ((H4) #b010)
+    ((H8) #b011)
+    ((S2) #b100)
+    ((S4) #b101)
+    (else #f)))
+
+(define (simd-double-integer-vector-size t)
+  ;; Low bit is Q, high two bits are sz.
+  (case t
+    ((B8) #b000)
+    ((B16) #b001)
+    ((H4) #b010)
+    ((H8) #b011)
+    ((S2) #b100)
+    ((S4) #b101)
+    ((D2) #b111)
+    (else #f)))
+
+(define (fmov-vector-immediate-size t)
+  ;; #b{U}{op}{Q}
+  (case t
+    ((H4) #b100)
+    ((H8) #b101)
+    ((S2) #b000)
+    ((S4) #b001)
+    ((D2) #b010)
+    (else #f)))
+
+(define (fmov-general-size t)
+  ;; Low two bits are type; high two bits are rmode.
+  (case t
+    ((H) #b0011)
+    ((S) #b0000)
+    ((D) #b0001)
+    ((D1) #b0110)
+    (else #f)))
+
+(define (fmov-abc x)
+  (and (exact-nonnegative-integer? x)
+       (<= 0 x #b111)
+       x))
+
+(define (fmov-defgh x)
+  (and (exact-nonnegative-integer? x)
+       (<= 0 x #b11111)
+       x))
+
+;; XXX fixed-point
+(define (fmov-abcdefgh x)
+  x
+  #f)
+
+;; XXX 8-bit floating-point
+(define (fp-binary8 x)
+  x
+  #f)

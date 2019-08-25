@@ -503,6 +503,7 @@ USA.
 ;; XXX doesn't belong here
 
 (define-integrable type-code:fixnum #x1a)
+(define-integrable type-code:flonum #x06)
 (define-integrable type-code:manifest-closure #x0d)
 (define-integrable type-code:manifest-vector #x00)
 
@@ -519,7 +520,6 @@ USA.
   (object-datum object))
 
 (define compiler:open-code-floating-point-arithmetic?
-  ;; XXX not yet
   #f)
 
 (define compiler:primitives-with-no-open-coding
@@ -529,30 +529,17 @@ USA.
     DIVIDE-FIXNUM       ;nobody open-codes this
     FIXNUM-LSH          ;open-coding not useful without constant operands
     FLOATING-VECTOR-CONS;nobody open-codes this
-    FLOATING-VECTOR-REF ;no flonum arithmetic yet
-    FLOATING-VECTOR-SET!;no flonum arithmetic yet
-    FLONUM-ABS          ;no flonum arithmetic yet
     FLONUM-ACOS         ;not useful to open-code hairy math
-    FLONUM-ADD          ;no flonum arithmetic yet
     FLONUM-ASIN         ;not useful to open-code hairy math
     FLONUM-ATAN         ;not useful to open-code hairy math
     FLONUM-ATAN2        ;not useful to open-code hairy math
-    FLONUM-CEILING      ;no flonum arithmetic yet
     FLONUM-COS          ;not useful to open-code hairy math
-    FLONUM-DIVIDE       ;no flonum arithmetic yet
     FLONUM-EXP          ;not useful to open-code hairy math
     FLONUM-EXPM1        ;not useful to open-code hairy math
-    FLONUM-FLOOR        ;no flonum arithmetic yet
     FLONUM-LOG          ;not useful to open-code hairy math
     FLONUM-LOG1P        ;not useful to open-code hairy math
-    FLONUM-MULTIPLY     ;no flonum arithmetic yet
-    FLONUM-NEGATE       ;no flonum arithmetic yet
-    FLONUM-ROUND        ;no flonum arithmetic yet
     FLONUM-SIN          ;not useful to open-code hairy math
-    FLONUM-SQRT         ;no flonum arithmetic yet
-    FLONUM-SUBTRACT     ;no flonum arithmetic yet
     FLONUM-TAN          ;not useful to open-code hairy math
-    FLONUM-TRUNCATE     ;no flonum arithmetic yet
     GCD-FIXNUM          ;nobody open-codes this
     VECTOR-CONS         ;nobody open-codes this
     ))
