@@ -316,10 +316,13 @@ USA.
 ;; XXX sinh, cosh, tanh, asinh, acosh, atanh
 
 (let ((expect-failure
-       (if (and (memq microcode-id/compiled-code-type '(x86-64 i386))
+       ;; XXX This really depends on what the C compiler does: GCC
+       ;; and Clang have started issuing the correct ordered
+       ;; comparison instructions.
+       (if (and (memq microcode-id/compiled-code-type '(c svm))
 		(compiled-procedure? flo:=))
-	   #!default
-	   expect-failure)))
+	   expect-failure
+	   #!default)))
   (define-invop-compare-test 'flo:= (applicator flo:= 0. +nan.0) expect-failure)
   (define-invop-compare-test 'flo:= (applicator flo:= +nan.0 0.) expect-failure)
   (define-invop-compare-test 'flo:= (applicator flo:= +nan.0 +nan.0) expect-failure)
