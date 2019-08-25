@@ -333,13 +333,18 @@ USA.
         (try-shift imm 16)
         (try-shift imm 32)
         (try-shift imm 48)))
-  (define (chunk16 pos)
-    (bitwise-and (shift-right imm pos) #xffff))
+  (define (mov-chunk16 pos)
+    (let ((chunk (bitwise-and (shift-right imm pos) #xffff))
+          (below (bitwise-and imm (bit-mask pos 0))))
+      (cond ((zero? chunk) (LAP))
+            ((zero? pos) (LAP (MOVZ X ,target (&U ,chunk))))
+            ((zero? below) (LAP (MOVZ X ,target (LSL (&U ,chunk) ,pos))))
+            (else (LAP (MOVK X ,target (LSL (&U ,chunk) ,pos)))))))
   (assert (<= 0 imm (bit-mask 64 0)))
   (cond ((find-shift imm)
          => (lambda (shift)
               (LAP (MOVZ X ,target
-			 (LSL (&U ,(shift-right imm shift)) ,shift)))))
+                         (LSL (&U ,(shift-right imm shift)) ,shift)))))
         ((find-shift (bitwise-andc1 imm #xffffffffffffffff))
          => (lambda (shift)
               (let ((imm (bitwise-andc1 imm #xffffffffffffffff)))
@@ -348,19 +353,19 @@ USA.
         ((logical-imm-u64 imm)
          (LAP (ORR X ,target Z (&U ,imm))))
         ;; XXX try splitting in halves, quarters
-	#;
+        #;
         ((let ((lo (extract-bit-field 32 0 imm))
                (hi (extract-bit-field 32 32 imm)))
            (let ((lo-shift (find-shift lo))
                  (hi-shift (find-shift hi)))
              (and lo-shift hi-shift (cons lo-shift hi-shift))))
          => (lambda))
-	(else
-	 ;; XXX give up
-	 (LAP (MOVZ X ,target (&U ,(chunk16 0)))
-	      (MOVK X ,target (LSL (&U ,(chunk16 16)) 16))
-	      (MOVK X ,target (LSL (&U ,(chunk16 32)) 32))
-	      (MOVK X ,target (LSL (&U ,(chunk16 48)) 48))))))
+        (else
+         ;; XXX give up
+         (LAP ,@(mov-chunk16 0)
+              ,@(mov-chunk16 16)
+              ,@(mov-chunk16 32)
+              ,@(mov-chunk16 48)))))
 
 (define (add-immediate target source imm get-temporary)
   (define (add addend) (LAP (ADD X ,target ,source ,addend)))
