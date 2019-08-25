@@ -67,10 +67,10 @@ svm1-64be|svm1-64le)
 esac
 
 case ${TARGET_ARCH} in
-svm1-32be|svm1-64be)
+svm1-32be|svm1-64be|aarch64be)
     ln -sf big-endian.scm machine/endian.scm
     ;;
-svm1-32le|svm1-64le)
+svm1-32le|svm1-64le|aarch64le)
     ln -sf little-endian.scm machine/endian.scm
     ;;
 esac

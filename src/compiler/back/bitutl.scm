@@ -100,6 +100,10 @@ USA.
 (define (evaluate expression pc-value)
   (define (inner exp)
     (cond ((pair? exp)
+	   (if (not (and (pair? (cdr exp))
+			 (pair? (cddr exp))
+			 (null? (cdddr exp))))
+	       (error "evaluate: bad expression:" exp))
 	   ((find-operator (car exp))
 	    (inner (cadr exp))
 	    (inner (caddr exp))))
@@ -126,7 +130,8 @@ USA.
     (* . ,(lambda () interval:*))
     (/ . ,(lambda () interval:/))
     (QUOTIENT . ,(lambda () interval:quotient))
-    (REMAINDER . ,(lambda () interval:remainder))))
+    (REMAINDER . ,(lambda () interval:remainder))
+    (MODULO . ,(lambda () interval:modulo))))
 
 (define-integrable (->machine-pc pc)
   (paranoid-quotient pc addressing-granularity))
@@ -267,6 +272,11 @@ USA.
   (if (or (interval? a) (interval? b))
       (error "REMAINDER doesn't do intervals:" a b))
   (remainder a b))
+
+(define (interval:modulo a b)
+  (if (or (interval? a) (interval? b))
+      (error "MODULO doesn't do intervals:" a b))
+  (modulo a b))
 
 ;;; A segment consists of an ending point and a coefficient.
 ;;; The ending point has a minimum and maximum non-negative integer value.

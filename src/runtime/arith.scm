@@ -965,9 +965,12 @@ USA.
 	((integer->flonum n #b00)
 	 => (lambda (x)
 	      ;; The primitive does not always raise inexact for us,
-	      ;; though it does raise overflow.
+	      ;; and on some broken libms feraiseexcept clears
+	      ;; existing exceptions so explicitly specify overflow.
 	      (if (not (and (flo:finite? x) (int:= (flo:->integer x) n)))
-		  (flo:raise-exceptions! (flo:exception:inexact-result)))
+		  (flo:raise-exceptions!
+		   (fix:or (flo:exception:overflow)
+			   (flo:exception:inexact-result))))
 	      x))
 	(else
 	 (flo:raise-exceptions!

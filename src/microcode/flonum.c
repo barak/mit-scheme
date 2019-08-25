@@ -33,6 +33,7 @@ USA.
 #include "prims.h"
 #include "ctassert.h"
 #include "fma.h"
+#include "floenv.h"
 
 double
 arg_flonum (int arg_number)

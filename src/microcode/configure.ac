@@ -180,6 +180,7 @@ SAVED_CFLAGS=${CFLAGS}
 SAVED_LDFLAGS=${LDFLAGS}
 
 dnl Checks for programs.
+AC_CHECK_TOOL(AS, as)
 AC_PROG_CC
 AC_PROG_CC_STDC
 if test "x${ac_cv_prog_cc_c99}" != xno; then
@@ -271,6 +272,15 @@ CCLD=${CC}
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
 MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
+
+case $mit_scheme_native_code in
+c|svm1-be|svm1-le);;
+*)
+    if test "x${AS}" = x; then
+        AC_MSG_ERROR([Unable to find assembler for native code interface])
+    fi
+    ;;
+esac
 
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 EXE_NAME=mit-scheme-${mit_scheme_native_code}
@@ -861,6 +871,15 @@ fi
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
 
 case ${mit_scheme_native_code} in
+aarch64be|aarch64le)
+    cmpauxmd="aarch64"
+    ;;
+*)
+    cmpauxmd="${mit_scheme_native_code}"
+    ;;
+esac
+
+case ${mit_scheme_native_code} in
 none)
     ;;
 c)
@@ -879,7 +898,7 @@ svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     if test "x${M4}" = x; then
 	AC_MSG_ERROR([m4 not found])
     fi
-    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${mit_scheme_native_code}.m4])
+    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${cmpauxmd}.m4])
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     ;;
@@ -893,6 +912,9 @@ fi
 case ${mit_scheme_native_code} in
 svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     cmpintmd=svm1
+    ;;
+aarch64be|aarch64le)
+    cmpintmd=aarch64
     ;;
 *)
     cmpintmd=${mit_scheme_native_code}

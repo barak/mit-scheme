@@ -1,4 +1,1 @@
-Scheme can now run on aarch64 with the SVM backend.
-
-XXX Cross-compilation is currently busted even with the SVM backend, so
-making a release that runs on aarch64 requires some manual hacks.
+MIT Scheme now has native code (and SVM) support on aarch64.

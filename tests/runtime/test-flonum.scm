@@ -618,33 +618,36 @@ USA.
        (map (lambda (x)
               (map (lambda (y)
                      (lambda ()
-                       (assert-eqv
-                        (yes-traps (lambda () (safe-compare x y)))
-                        (if (or (flo:nan? x) (flo:nan? y))
-                            #f
-                            (unsafe-compare x y)))
-                       (assert-eqv
-                        (yes-traps (lambda () (not (safe-compare x y))))
-                        (if (or (flo:nan? x) (flo:nan? y))
-                            #t
-                            (not (unsafe-compare x y))))
-                       (if (safe-compare x y)
-                           (begin
-                             (assert-true (not (flo:nan? x)))
-                             (assert-true (not (flo:nan? y)))
-                             (assert-true (unsafe-compare x y))))
-                       (if (not (safe-compare x y))
-                           (begin
-                             (assert-true
-                              (or (flo:nan? x)
-                                  (flo:nan? y)
-                                  (not (unsafe-compare x y))))))
-                       (if (not (or (flo:nan? x) (flo:nan? y)))
-                           (begin
-                             (if (unsafe-compare x y)
-                                 (assert-true (safe-compare x y)))
-                             (if (not (unsafe-compare x y))
-                                 (assert-false (safe-compare x y)))))))
+                       (with-test-properties
+			   (lambda ()
+			     (assert-eqv
+			      (yes-traps (lambda () (safe-compare x y)))
+			      (if (or (flo:nan? x) (flo:nan? y))
+				  #f
+				  (unsafe-compare x y)))
+			     (assert-eqv
+			      (yes-traps (lambda () (not (safe-compare x y))))
+			      (if (or (flo:nan? x) (flo:nan? y))
+				  #t
+				  (not (unsafe-compare x y))))
+			     (if (safe-compare x y)
+				 (begin
+				   (assert-true (not (flo:nan? x)))
+				   (assert-true (not (flo:nan? y)))
+				   (assert-true (unsafe-compare x y))))
+			     (if (not (safe-compare x y))
+				 (begin
+				   (assert-true
+				    (or (flo:nan? x)
+					(flo:nan? y)
+					(not (unsafe-compare x y))))))
+			     (if (not (or (flo:nan? x) (flo:nan? y)))
+				 (begin
+				   (if (unsafe-compare x y)
+				       (assert-true (safe-compare x y)))
+				   (if (not (unsafe-compare x y))
+				       (assert-false (safe-compare x y))))))
+			 'SEED (list x y))))
                    cases))
             cases)))))
 
@@ -1212,9 +1215,15 @@ USA.
   (lambda (x)
     (assert-eqv (no-traps (lambda () (flo:logb x))) #f)
     (assert-eqv (no-traps (lambda () (flo:logb (flo:negate x)))) #f)
-    (assert-error (lambda () (yes-traps (lambda () (flo:logb x)))))
-    (assert-error
-     (lambda () (yes-traps (lambda () (flo:logb (flo:negate x))))))
+    (with-expected-failure
+	(if (flo:have-trap-enable/disable?) #!default expect-failure)
+      (lambda ()
+	(assert-error (lambda () (yes-traps (lambda () (flo:logb x)))))))
+    (with-expected-failure
+	(if (flo:have-trap-enable/disable?) #!default expect-failure)
+      (lambda ()
+	(assert-error
+	 (lambda () (yes-traps (lambda () (flo:logb (flo:negate x))))))))
     (assert-only-except/no-traps (flo:exception:invalid-operation)
                                  (lambda () (flo:logb x)))
     (assert-only-except/no-traps (flo:exception:invalid-operation)
