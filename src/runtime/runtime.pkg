@@ -1703,6 +1703,7 @@ USA.
 	  stack-frame/dynamic-state
 	  stack-frame/elements
 	  stack-frame/interrupt-mask
+	  stack-frame/last-return-code
 	  stack-frame/length
 	  stack-frame/next
 	  stack-frame/next-subproblem
