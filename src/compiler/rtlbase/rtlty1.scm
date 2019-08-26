@@ -116,6 +116,8 @@ USA.
   operator operand overflow?)
 (define-rtl-expression flonum-2-args rtl:
   operator operand-1 operand-2 overflow?)
+(define-rtl-expression flonum-3-args rtl:
+  operator operand-1 operand-2 operand-3 overflow?)
 
 (define-rtl-predicate fixnum-pred-1-arg %
   predicate operand)

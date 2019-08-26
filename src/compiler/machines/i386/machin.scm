@@ -357,6 +357,9 @@ USA.
 		  ;; <= pi/4.  Correct argument reduction requires a
 		  ;; better approximation of pi than the i387 has.
 		  FLONUM-SIN FLONUM-COS FLONUM-TAN
+		  ;; Disabled: need to futz with cpuid flags to
+		  ;; determine whether we can use it.
+		  FLONUM-FMA
 		  ;; Disabled: exp is too much trouble to get right in
 		  ;; i387; need 64-bit precision.  Let libm do it.
 		  FLONUM-EXP

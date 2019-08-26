@@ -260,6 +260,83 @@ USA.
             ;; target[i] := source2[i] if signbit[i] else source1[i]
             (BSL B8 ,target ,source2 ,source1))))))
 
+;;;; Fused multiply/add/negate
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+          (FLONUM-3-ARGS FLONUM-FMA
+                         (REGISTER (? factor1))
+                         (REGISTER (? factor2))
+                         (REGISTER (? addend))
+                         (? overflow?)))
+  overflow?                             ;ignore
+  ((flonum-3-args/standard
+    (lambda (target factor1 factor2 addend)
+      (LAP (FMADD D ,target ,factor1 ,factor2 ,addend))))
+   target factor1 factor2 addend))
+
+;;; XXX The following rules are busted because RTL instruction folding
+;;; (rcompr.scm) doesn't know how to search through flonum operations
+;;; or something -- and FIND-REFERENCE-INSTRUCTION is too mysterious
+;;; for me to understand at this hour!
+
+;;; XXX What about (fma x y (- 0. z)) or (- 0. (fma x y z))?  Need to
+;;; check sign of zero for results.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+          (FLONUM-3-ARGS FLONUM-FMA
+                         (REGISTER (? factor1))
+                         (REGISTER (? factor2))
+                         (FLONUM-1-ARG FLONUM-NEGATE
+                                       (REGISTER (? subtrahend))
+                                       (? overflow0?))
+                         (? overflow1?)))
+  overflow0? overflow1?                 ;ignore
+  ((flonum-3-args/standard
+    (lambda (target factor1 factor2 subtrahend)
+      (LAP (FMSUB D ,target ,factor1 ,factor2 ,subtrahend))))
+   target factor1 factor2 subtrahend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+          (FLONUM-1-ARG FLONUM-NEGATE
+                        (FLONUM-3-ARGS FLONUM-FMA
+                                       (REGISTER (? factor1))
+                                       (REGISTER (? factor2))
+                                       (REGISTER (? addend))
+                                       (? overflow0?))
+                        (? overflow1?)))
+  overflow0? overflow1?                 ;ignore
+  ((flonum-3-args/standard
+    (lambda (target factor1 factor2 addend)
+      (LAP (FNMADD D ,target ,factor1 ,factor2 ,addend))))
+   target factor1 factor2 addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+          (FLONUM-1-ARG FLONUM-NEGATE
+                        (FLONUM-3-ARGS FLONUM-FMA
+                                       (REGISTER (? factor1))
+                                       (REGISTER (? factor2))
+                                       (FLONUM-1-ARG FLONUM-NEGATE
+                                                     (REGISTER (? subtrahend))
+                                                     (? overflow0?))
+                                       (? overflow1?))
+                        (? overflow2?)))
+  overflow0? overflow1? overflow2?      ;ignore
+  ((flonum-3-args/standard
+    (lambda (target factor1 factor2 subtrahend)
+      (LAP (FNMSUB D ,target ,factor1 ,factor2 ,subtrahend))))
+   target factor1 factor2 subtrahend))
+
+(define ((flonum-3-args/standard operate) target source1 source2 source3)
+  (let* ((source1 (float-source-fpr! source1))
+         (source2 (float-source-fpr! source2))
+         (source3 (float-source-fpr! source3))
+         (target (float-target-fpr! target)))
+    (operate target source1 source2 source3)))
+
 ;;;; Flonum Predicates
 
 (define-rule predicate

@@ -75,7 +75,7 @@ USA.
      value-class=fixnum)
     ((OBJECT->TYPE)
      value-class=type)
-    ((OBJECT->FLOAT FLONUM-1-ARG FLONUM-2-ARGS FLOAT-OFFSET)
+    ((OBJECT->FLOAT FLONUM-1-ARG FLONUM-2-ARGS FLONUM-3-ARGS FLOAT-OFFSET)
      value-class=float)
     (else
      (error "unknown RTL expression type" expression))))
@@ -275,6 +275,7 @@ USA.
       FLOAT-OFFSET-ADDRESS
       FLONUM-1-ARG
       FLONUM-2-ARGS
+      FLONUM-3-ARGS
       GENERIC-BINARY
       GENERIC-UNARY
       OBJECT->ADDRESS

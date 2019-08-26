@@ -1499,6 +1499,36 @@ USA.
    FLONUM-COPYSIGN))
 
 (for-each
+ (lambda (flonum-operator)
+   (define-open-coder/value flonum-operator
+     (floating-point-open-coder
+      (lambda (combination expressions finish)
+	(let ((arg1 (car expressions))
+	      (arg2 (cadr expressions))
+	      (arg3 (caddr expressions)))
+	  (open-code:with-checks
+	   combination
+	   (let ((name flonum-operator)
+		 (block (combination/block combination)))
+	     (list (open-code:type-check arg1 (ucode-type flonum) name block)
+		   (open-code:type-check arg2 (ucode-type flonum) name block)
+		   (open-code:type-check arg3 (ucode-type flonum) name block)))
+	   (finish
+	    (rtl:make-float->object
+	     (rtl:make-flonum-3-args
+	      flonum-operator
+	      (rtl:make-object->float arg1)
+	      (rtl:make-object->float arg2)
+	      (rtl:make-object->float arg3)
+	      false)))
+	   finish
+	   flonum-operator
+	   expressions)))
+      '(0 1 2)
+      internal-close-coding-for-type-checks)))
+ '(FLONUM-FMA))
+
+(for-each
  (lambda (flonum-pred)
    (define-open-coder/predicate flonum-pred
      (floating-point-open-coder

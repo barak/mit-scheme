@@ -706,7 +706,7 @@ USA.
 				     operand1
 				     operand2
 				     overflow?))))))))
-
+
 (define-expression-method 'FIXNUM-1-ARG
   (lambda (receiver scfg-append! operator operand overflow?)
     (expression-simplify operand scfg-append!
@@ -733,6 +733,21 @@ USA.
 		       s-operand1
 		       s-operand2
 		       overflow?))))))))
+
+(define-expression-method 'FLONUM-3-ARGS
+  (lambda (receiver scfg-append! operator operand1 operand2 operand3 overflow?)
+    (expression-simplify operand1 scfg-append!
+      (lambda (s-operand1)
+	(expression-simplify operand2 scfg-append!
+	  (lambda (s-operand2)
+	    (expression-simplify operand3 scfg-append!
+	      (lambda (s-operand3)
+		(receiver (rtl:make-flonum-3-args
+			   operator
+			   s-operand1
+			   s-operand2
+			   s-operand3
+			   overflow?))))))))))
 
 ;;; end EXPRESSION-SIMPLIFY package
 )

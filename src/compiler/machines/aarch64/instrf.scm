@@ -478,6 +478,34 @@ USA.
   (define-fp-binary-instruction FMINNM #b0111 0 1 1 #b000))
 
 (let-syntax
+    ((define-fp-ternary-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic o1 o0) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              (((? type fp-scalar-size)
+                (? Rd vregister)
+                (? Rn vregister)
+                (? Rm vregister)
+                (? Ra vregister))
+               (BITS (1 0)
+                     (1 0)
+                     (1 0)
+                     (5 #b11111)
+                     (2 type)
+                     (1 ,o1)
+                     (5 Rm)
+                     (1 ,o0)
+                     (5 Ra)
+                     (5 Rn)
+                     (5 Rd)))))))))
+  (define-fp-ternary-instruction FMADD 0 0)
+  (define-fp-ternary-instruction FMSUB 0 1)
+  (define-fp-ternary-instruction FNMADD 1 0)
+  (define-fp-ternary-instruction FNMSUB 1 1))
+
+(let-syntax
     ((define-fp-compare-instruction
       (sc-macro-transformer
        (lambda (form environment)
