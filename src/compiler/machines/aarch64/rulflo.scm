@@ -404,4 +404,6 @@ USA.
       FLONUM-IS-LESS-OR-GREATER?
       FLONUM-IS-UNORDERED?)
      ;; floating-point quiet compare
-     (LAP (FCMP D ,source1 ,source2)))))
+     (LAP (FCMP D ,source1 ,source2)))
+    (else
+     (error "Invalid float comparison:" predicate source1 source2))))
