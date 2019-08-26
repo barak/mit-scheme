@@ -245,15 +245,20 @@ USA.
   ((ucode-primitive restore-float-exception-flags 2) fexcept exceptions))
 
 (define (flo:set-trapped-exceptions! exceptions)
-  (use-floating-point-environment!)
+  (if (not (using-floating-point-environment?))
+      (begin
+	((ucode-primitive clear-float-exceptions 1) exceptions)
+	(use-floating-point-environment!)))
   ((ucode-primitive set-trapped-float-exceptions 1) exceptions))
 
 (define (flo:trap-exceptions! exceptions)
-  (use-floating-point-environment!)
+  (if (not (using-floating-point-environment?))
+      (begin
+	((ucode-primitive clear-float-exceptions 1) exceptions)
+	(use-floating-point-environment!)))
   ((ucode-primitive trap-float-exceptions 1) exceptions))
 
 (define (flo:untrap-exceptions! exceptions)
-  (use-floating-point-environment!)
   ((ucode-primitive untrap-float-exceptions 1) exceptions))
 
 (define (flo:defer-exception-traps!)
