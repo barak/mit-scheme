@@ -90,6 +90,7 @@ clear_float_exceptions (void)
 {
 #ifdef HAVE_FECLEAREXCEPT
   (void) feclearexcept (FE_ALL_EXCEPT);
+  cache_float_environment ();
 #endif
 }
 
