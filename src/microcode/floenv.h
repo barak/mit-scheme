@@ -41,11 +41,19 @@ USA.
 #    define scheme_fexcept_t fexcept_t
 #  endif
 #  ifdef __APPLE__
-#    undef HAVE_FEGETEXCEPT
+#    ifndef HAVE_FEGETEXCEPT
+#      define HAVE_FEGETEXCEPT
+#    endif
 #    define HAVE_FEENABLEEXCEPT
 #    define HAVE_FEDISABLEEXCEPT
 
 // From http://www-personal.umich.edu/~williams/archive/computation/fe-handling-example.c
+
+inline int fegetexcept(void)
+{
+  fenv_t fenv;
+  return (fegetenv (&fenv)) ? -1 : (fenv.__control & FE_ALL_EXCEPT);
+}
 
 inline int feenableexcept(unsigned int excepts)
 {
