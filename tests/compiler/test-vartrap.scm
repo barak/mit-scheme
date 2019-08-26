@@ -33,27 +33,40 @@ USA.
       (body)
       (xfail body)))
 
-(define-test 'restart-unassigned
-  (lambda ()
-    (define program
-      '(begin
-         (declare (usual-integrations))
-         (define null)                  ;unassigned
-         (define (map1 f l)
-           (let loop ((l l))
-             (if (pair? l)
-                 (cons (f (car l)) (loop (cdr l)))
-                 null)))
-         map1))
-    (let* ((env (make-top-level-environment))
-           (scode (syntax&integrate program '() env))
-           (expr (compile-scode scode))
-           (map1 (eval expr env)))
-      (assert-equal
-       (bind-condition-handler (list condition-type:unassigned-variable)
-           (lambda (condition)
-             condition
-             (use-value '()))
-         (lambda ()
-           (map1 - '(1 2 3))))
-       '(-1 -2 -3)))))
+(define (define-restart-test name definitions condition-type restarter)
+  (define-test name
+    (lambda ()
+      (define program
+        `(begin
+           (declare (usual-integrations))
+           ,@definitions
+           (define (map1 f l)
+             (let loop ((l l))
+               (if (pair? l)
+                   (cons (f (car l)) (loop (cdr l)))
+                   null)))
+           map1))
+      (let* ((env (make-top-level-environment))
+             (scode (syntax&integrate program '() env))
+             (expr (compile-scode scode))
+             (map1 (eval expr env)))
+        (assert-equal
+         (bind-condition-handler (list condition-type)
+             (lambda (condition)
+               condition
+               (restarter '()))
+           (lambda ()
+             (map1 - '(1 2 3))))
+         '(-1 -2 -3))))))
+
+(define-restart-test 'unbound/use-value '()
+  condition-type:unbound-variable use-value)
+
+(define-restart-test 'unbound/store-value '()
+  condition-type:unbound-variable store-value)
+
+(define-restart-test 'unassigned/use-value '((define null))
+  condition-type:unassigned-variable use-value)
+
+(define-restart-test 'unassigned/store-value '((define null))
+  condition-type:unassigned-variable store-value)

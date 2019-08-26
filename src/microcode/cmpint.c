@@ -1395,7 +1395,7 @@ DEFINE_SCHEME_ENTRY (comp_lookup_trap_restart)
 {
   RESTORE_LAST_RETURN_CODE ();
   {
-    SCHEME_OBJECT name = GET_EXP;
+    SCHEME_OBJECT name = (STACK_POP ());
     SCHEME_OBJECT environment = (STACK_POP ());
     SCHEME_OBJECT val;
     long code = (lookup_variable (environment, name, (&val)));
@@ -1436,7 +1436,7 @@ DEFINE_SCHEME_ENTRY (comp_safe_lookup_trap_restart)
 {
   RESTORE_LAST_RETURN_CODE ();
   {
-    SCHEME_OBJECT name = GET_EXP;
+    SCHEME_OBJECT name = (STACK_POP ());
     SCHEME_OBJECT environment = (STACK_POP ());
     SCHEME_OBJECT val;
     long code = (safe_lookup_variable (environment, name, (&val)));
@@ -1477,7 +1477,7 @@ DEFINE_SCHEME_ENTRY (comp_unassigned_p_trap_restart)
 {
   RESTORE_LAST_RETURN_CODE ();
   {
-    SCHEME_OBJECT name = GET_EXP;
+    SCHEME_OBJECT name = (STACK_POP ());
     SCHEME_OBJECT environment = (STACK_POP ());
     SCHEME_OBJECT val;
     long code = (variable_unassigned_p (environment, name, (&val)));
