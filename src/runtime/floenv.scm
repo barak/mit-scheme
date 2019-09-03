@@ -247,15 +247,15 @@ USA.
 (define (flo:set-trapped-exceptions! exceptions)
   (if (not (using-floating-point-environment?))
       (begin
-	((ucode-primitive clear-float-exceptions 1) exceptions)
-	(use-floating-point-environment!)))
+	(use-floating-point-environment!)
+	((ucode-primitive clear-float-exceptions 1) exceptions)))
   ((ucode-primitive set-trapped-float-exceptions 1) exceptions))
 
 (define (flo:trap-exceptions! exceptions)
   (if (not (using-floating-point-environment?))
       (begin
-	((ucode-primitive clear-float-exceptions 1) exceptions)
-	(use-floating-point-environment!)))
+	(use-floating-point-environment!)
+	((ucode-primitive clear-float-exceptions 1) exceptions)))
   ((ucode-primitive trap-float-exceptions 1) exceptions))
 
 (define (flo:untrap-exceptions! exceptions)
