@@ -787,8 +787,10 @@ mmap_heap_malloc_search (unsigned long request,
   addr = (mmap_heap_malloc_try (min_result, request, MAP_FIXED));
 #else
   addr = (mmap_heap_malloc_search_procfs (request, min_result, max_result));
+#if (MAP_TRYFIXED != 0)
   if (addr == 0)
     addr = (mmap_heap_malloc_try (min_result, request, MAP_TRYFIXED));
+#endif
   if (addr == 0)
     addr = (mmap_heap_malloc_try (0, request, 0));
 #endif
