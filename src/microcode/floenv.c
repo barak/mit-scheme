@@ -33,6 +33,49 @@ USA.
 
 #include "floenv.h"
 
+#ifdef NEED_FEEXCEPT_WORKAROUND
+
+// From http://www-personal.umich.edu/~williams/archive/computation/fe-handling-example.c
+
+int fegetexcept(void)
+{
+  fenv_t fenv;
+  return (fegetenv (&fenv)) ? -1 : (fenv.__control & FE_ALL_EXCEPT);
+}
+
+int feenableexcept(unsigned int excepts)
+{
+    fenv_t fenv;
+    if (fegetenv (&fenv))
+      return -1;
+
+    unsigned int new_excepts = excepts & FE_ALL_EXCEPT;
+    unsigned int old_excepts = fenv.__control & FE_ALL_EXCEPT;
+
+    // unmask
+    fenv.__control &= ~new_excepts;
+    fenv.__mxcsr   &= ~(new_excepts << 7);
+
+    return (fesetenv (&fenv)) ? -1 : old_excepts;
+}
+
+int fedisableexcept(unsigned int excepts)
+{
+    fenv_t fenv;
+    if (fegetenv (&fenv))
+      return -1;
+
+    unsigned int new_excepts = excepts & FE_ALL_EXCEPT;
+    unsigned int old_excepts = fenv.__control & FE_ALL_EXCEPT;
+
+    // mask
+    fenv.__control |= new_excepts;
+    fenv.__mxcsr   |= new_excepts << 7;
+
+    return (fesetenv (&fenv)) ? -1 : old_excepts;
+}
+#endif // NEED_FEEXCEPT_WORKAROUND
+
 #ifndef __GNUC__
 #  pragma STDC FENV_ACCESS ON
 #endif
