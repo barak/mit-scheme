@@ -425,7 +425,7 @@ define_c_label(C_to_interface)
 	OP(push,q)	REG(r15)
 	OP(push,q)	IMM(0)				# Align stack
 	OP(mov,q)	TW(REG(rdi),REG(rcx))		# rcx := entry ptr
-	OP(mov,q)	TW(REG(rsi),REG(rdx))		# rcx := entry pc
+	OP(mov,q)	TW(REG(rsi),REG(rdx))		# rdx := entry pc
 							# Preserve frame ptr
 	OP(mov,q)	TW(REG(rbp),ABS(EVR(C_Frame_Pointer)))
 							# Preserve stack ptr
@@ -503,7 +503,7 @@ define_debugging_label(scheme_to_interface_return)
 	jmp		IJMP(REG(rax))		# Invoke handler
 
 define_c_label(interface_to_scheme)
-	# rax = interface_to_scheme
+	# rax = interface_to_scheme [??? -- not referred to]
 	# rcx = compiled entry/return address, needed by compiled code
 	# rdx = compiled PC, or interface_to_scheme_return
 ifdef(`WIN32',						# Register block = %rsi
