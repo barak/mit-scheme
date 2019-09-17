@@ -317,6 +317,17 @@ fasl_cc_address (SCHEME_OBJECT o, fasl_header_t * h)
   return (0);
 }
 
+insn_t *
+fasl_cc_return (SCHEME_OBJECT o, fasl_header_t * h)
+{
+  if ((FASLHDR_MEMORY_BASE (h)) != 0)
+    return (((insn_t *) (FASLHDR_MEMORY_BASE (h))) + (OBJECT_DATUM (o)));
+  if ((FASLHDR_ARCH (h)) == CURRENT_FASL_ARCH)
+    return (CC_RETURN_ADDRESS (o));
+  abort ();
+  return (0);
+}
+
 SCHEME_OBJECT
 fasl_raw_address_to_object (unsigned int type,
 			    SCHEME_OBJECT * address,

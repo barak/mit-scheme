@@ -203,6 +203,7 @@ extern bool read_fasl_header (fasl_header_t *, fasl_file_handle_t);
 extern bool read_from_fasl_file (void *, size_t, fasl_file_handle_t);
 extern SCHEME_OBJECT * fasl_object_address (SCHEME_OBJECT, fasl_header_t *);
 extern insn_t * fasl_cc_address (SCHEME_OBJECT, fasl_header_t *);
+extern insn_t * fasl_cc_return (SCHEME_OBJECT, fasl_header_t *);
 extern SCHEME_OBJECT fasl_raw_address_to_object
   (unsigned int, SCHEME_OBJECT *, fasl_header_t *);
 extern SCHEME_OBJECT fasl_raw_address_to_cc_entry (insn_t *, fasl_header_t *);
