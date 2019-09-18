@@ -226,7 +226,8 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
      we don't know where the PC will be in the newspace.  */
   if ((((int64_t *) (newspace_to_tospace (target)))[-1]) == 0)
     {
-      ptrdiff_t jmprel32_offset = (target - (&addr[15]));
+      ptrdiff_t jmprel32_offset =
+	(target - ((const insn_t *) (tospace_to_newspace (&addr[15]))));
       if ((INT32_MIN <= jmprel32_offset) && (jmprel32_offset <= INT32_MAX))
 	{
 	  (addr[10]) = 0xe9;	/* JMP rel32 */
