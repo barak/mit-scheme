@@ -224,26 +224,25 @@ write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
      But if the target is a compiled closure pointing into a block
      somewhere else, the block may not have been relocated yet and so
      we don't know where the PC will be in the newspace.  */
-
-  // **** For unknown reasons this optimization doesn't work right on macOS.
-  // if ((((int64_t *) (newspace_to_tospace (target)))[-1]) == 0)
-  //   {
-  //     ptrdiff_t jmprel32_offset = (target - (&addr[15]));
-  //     if ((INT32_MIN <= jmprel32_offset) && (jmprel32_offset <= INT32_MAX))
-  // 	{
-  // 	  (addr[10]) = 0xe9;	/* JMP rel32 */
-  // 	  (* ((int32_t *) (&addr[11]))) = jmprel32_offset;
-  // 	}
-  //     else
-  // 	{
-  // 	  (addr[10]) = 0x48;	/* MOV RAX,imm64 */
-  // 	  (addr[11]) = 0xb8;
-  // 	  (* ((insn_t **) (&addr[12]))) = target;
-  // 	  (addr[20]) = 0xff;	/* JMP RAX */
-  // 	  (addr[21]) = 0xe0;
-  // 	}
-  //   }
-  // else
+  if ((((int64_t *) (newspace_to_tospace (target)))[-1]) == 0)
+    {
+      ptrdiff_t jmprel32_offset =
+	(target - ((const insn_t *) (tospace_to_newspace (&addr[15]))));
+      if ((INT32_MIN <= jmprel32_offset) && (jmprel32_offset <= INT32_MAX))
+	{
+	  (addr[10]) = 0xe9;	/* JMP rel32 */
+	  (* ((int32_t *) (&addr[11]))) = jmprel32_offset;
+	}
+      else
+	{
+	  (addr[10]) = 0x48;	/* MOV RAX,imm64 */
+	  (addr[11]) = 0xb8;
+	  (* ((insn_t **) (&addr[12]))) = target;
+	  (addr[20]) = 0xff;	/* JMP RAX */
+	  (addr[21]) = 0xe0;
+	}
+    }
+  else
     {
       (addr[10]) = 0x48;	/* MOV RAX,-8(RCX) */
       (addr[11]) = 0x8b;
