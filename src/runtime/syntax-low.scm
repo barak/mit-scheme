@@ -91,7 +91,7 @@ USA.
       (let ((p (assq id renames)))
 	(if p
 	    (cdr p)
-	    (let ((rename (rename-id id closing-senv)))
+	    (let ((rename (close-syntax id closing-senv)))
 	      (set! renames (cons (cons id rename) renames))
 	      rename))))))
 

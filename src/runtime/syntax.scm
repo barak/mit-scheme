@@ -141,11 +141,6 @@ USA.
 	   (pair? form)
 	   (identifier? form))))
 
-;; Renaming for er-macro-transformer.
-;; Required for uniqueness and proper lookup.
-(define (rename-id id senv)
-  (%make-syntactic-closure senv '() id))
-
 (define-record-type <syntactic-closure>
     (%make-syntactic-closure senv free form)
     syntactic-closure?
