@@ -915,6 +915,22 @@ USA.
 
 (define ((list-deletor! predicate) items)
   (remove! predicate items))
+
+(define (any-duplicates? items #!optional = get-key)
+  (let ((= (if (default-object? =) equal? =)))
+    (if (default-object? get-key)
+	(let loop ((items items))
+	  (and (pair? items)
+	       (if (%member (car items) (cdr items) = 'any-duplicates?)
+		   #t
+		   (loop (cdr items)))))
+	(let loop ((items items))
+	  (and (pair? items)
+	       (or (any (let ((key (get-key (car items))))
+			  (lambda (item)
+			    (= key (get-key item))))
+			(cdr items))
+		   (loop (cdr items))))))))
 
 ;;;; Membership lists
 

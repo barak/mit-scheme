@@ -51,16 +51,8 @@ USA.
 (define (valid-field-specs? object)
   (and (list? object)
        (every field-spec? object)
-       (not (duplicate-fields? object))))
+       (not (any-duplicates? object eq? field-spec-name))))
 (register-predicate! valid-field-specs? 'valid-field-specs '<= list?)
-
-(define (duplicate-fields? field-specs)
-  (and (pair? field-specs)
-       (or (any (let ((name (field-spec-name (car field-specs))))
-		  (lambda (field-spec)
-		    (eq? name (field-spec-name field-spec))))
-		(cdr field-specs))
-	   (duplicate-fields? (cdr field-specs)))))
 
 (define (field-spec? object)
   (or (symbol? object)

@@ -3033,6 +3033,7 @@ USA.
 	  alist-delete			;SRFI-1
 	  alist-delete!			;SRFI-1
 	  alist?
+	  any-duplicates?
 	  append
 	  append!			;SRFI-1
 	  append-map			;SRFI-1
