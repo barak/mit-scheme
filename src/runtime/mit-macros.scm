@@ -904,10 +904,10 @@ USA.
 	      (scons-call (scons-close 'guarantee) pred-name object accessor))
 	     (scons-call (scons-close '%record-ref) object index)))))
       (list
-       (scons-define
-	(scons-call (scons-close 'record-accessor)
-		    type-name
-		    (scons-quote name))))))
+       (scons-define accessor
+	 (scons-call (scons-close 'record-accessor)
+		     type-name
+		     (scons-quote name))))))
 
 (define (scons-record-modifier modifier type-name parent pred-name name index)
   (if (and (not parent)

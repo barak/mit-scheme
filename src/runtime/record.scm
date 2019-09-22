@@ -28,7 +28,7 @@ USA.
 ;;; package: (runtime record)
 
 ;;; adapted from JAR's implementation
-;;; conforms to R4RS proposal
+;;; conforms to R7RS and SRFI 131
 
 (declare (usual-integrations))
 (declare (integrate-external "dispatch-tag"))
@@ -43,12 +43,6 @@ USA.
 	(%make-record-type type-name field-specs #f)
 	(begin
 	  (guarantee record-type? parent-type 'make-record-type)
-	  (for-each (lambda (field-spec)
-		      (let ((name (field-spec-name field-spec)))
-			(if (%record-type-field-by-name-no-error parent-type
-								 name)
-			    (error "Duplicate child name:" name))))
-		    field-specs)
 	  (%make-record-type type-name field-specs parent-type)))))
 
 (define (valid-field-specs? object)
@@ -131,12 +125,7 @@ USA.
 			      start-index
 			      end-index
 			      fields-by-index
-			      (let ((v (vector-copy fields-by-index)))
-				(sort! v
-				       (lambda (f1 f2)
-					 (symbol<? (field-name f1)
-						   (field-name f2))))
-				v)
+			      (generate-fields-by-name fields-by-index)
 			      parent-type
 			      #f
 			      #f)))
@@ -146,6 +135,23 @@ USA.
 			    (record-predicate parent-type)
 			    record?))
       type)))
+
+(define (generate-fields-by-name fields-by-index)
+  (let loop ((fields (reverse (vector->list fields-by-index))) (filtered '()))
+    (if (pair? fields)
+	(loop (cdr fields)
+	      (if (any (let ((name (field-name (car fields))))
+			 (lambda (field)
+			   (eq? (field-name field) name)))
+		       filtered)
+		  filtered
+		  (cons (car fields) filtered)))
+	(let ((v (list->vector filtered)))
+	  (sort! v
+		 (lambda (f1 f2)
+		   (symbol<? (field-name f1)
+			     (field-name f2))))
+	  v))))
 
 (define-integrable (make-field name init index)
   (vector name init index))
@@ -364,7 +370,7 @@ USA.
     (let ((type*
 	   (let ((end (%record-type-end-index type)))
 	     (and (fix:> (%record-length record) end)
-		  (%record-type-ref type end)))))
+		  (%record-type-ref record end)))))
       (if type*
 	  (loop type*)
 	  type))))
@@ -513,14 +519,14 @@ USA.
 		   (vector->list (%record-type-fields-by-index record-type)))))
 
 	(define (set-value! name value)
-	  (let loop ((fields (cdr all-fields)) (prev all-fields))
-	    (if (pair? fields)
-		(if (eq? name (field-name (car fields)))
-		    (begin
-		      (%record-set! record (field-index (car fields)) value)
-		      (set-cdr! prev (cdr fields)))
-		    (loop (cdr fields) fields))
-		(error "Duplicate keyword:" name))))
+	  (let ((field (%record-type-field-by-name record-type name)))
+	    (let loop ((fields (cdr all-fields)) (prev all-fields))
+	      (if (pair? fields)
+		  (if (eq? field (car fields))
+		      (set-cdr! prev (cdr fields))
+		      (loop (cdr fields) fields))
+		  (error "Duplicate keyword:" name)))
+	    (%record-set! record (field-index field) value)))
 
 	(do ((kl keyword-list (cddr kl)))
 	    ((not (pair? kl)) unspecific)
@@ -608,18 +614,6 @@ USA.
 (define-print-method %record?
   (standard-print-method '%record))
 
-(define-print-method record?
-  (standard-print-method
-   (lambda (record)
-     (dispatch-tag-print-name (record-type-descriptor record)))))
-
-(add-boot-init!
- (lambda ()
-   (define-print-method record-type?
-     (standard-print-method 'record-type
-       (lambda (type)
-	 (list (dispatch-tag-print-name type)))))))
-
 (define-pp-describer %record?
   (lambda (record)
     (let loop ((i (fix:- (%record-length record) 1)) (d '()))
@@ -628,13 +622,39 @@ USA.
 	  (loop (fix:- i 1)
 		(cons (list i (%record-ref record i)) d))))))
 
+(define-print-method record?
+  (standard-print-method
+   (lambda (record)
+     (dispatch-tag-print-name (record-type-descriptor record)))))
+
 (define-pp-describer record?
   (lambda (record)
     (let ((type (record-type-descriptor record)))
-      (map (lambda (field-name)
-	     `(,field-name
-	       ,((record-accessor type field-name) record)))
-	   (record-type-field-names type)))))
+      (map (lambda (field)
+	     `(,(field-name field)
+	       ,(%record-ref record (field-index field))))
+	   (vector->list (%record-type-fields-by-index type))))))
+
+(add-boot-init!
+ (lambda ()
+   (define-print-method record-type? %print-record-type)
+   (define-pp-describer record-type? %pp-record-type)))
+
+(define %print-record-type
+  (standard-print-method 'record-type
+    (lambda (type)
+      (list (dispatch-tag-print-name type)))))
+
+(define (%pp-record-type record-type)
+  `((name ,(%dispatch-tag-name record-type))
+    (predicate ,(%dispatch-tag->predicate record-type))
+    (start-index ,(%record-type-start-index record-type))
+    (end-index ,(%record-type-end-index record-type))
+    (fields-by-index ,(%record-type-fields-by-index record-type))
+    (fields-by-name ,(%record-type-fields-by-name record-type))
+    (parent ,(%record-type-parent record-type))
+    (instance-marker ,(%record-type-instance-marker record-type))
+    (applicator ,(%record-type-applicator record-type))))
 
 ;;; For backwards compatibility:
 (define (set-record-type-unparser-method! record-type method)

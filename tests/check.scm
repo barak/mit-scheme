@@ -99,6 +99,7 @@ USA.
     "runtime/test-promise"
     "runtime/test-random"
     "runtime/test-readwrite"
+    "runtime/test-record"
     "runtime/test-regsexp"
     "runtime/test-rgxcmp"
     "runtime/test-sha3"
