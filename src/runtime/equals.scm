@@ -29,6 +29,9 @@ USA.
 
 (declare (usual-integrations))
 
+(define-primitives
+  eq?)
+
 (define (eqv? x y)
   ;; EQV? is officially supposed to work on booleans, characters, and
   ;; numbers specially, but it turns out that EQ? does the right thing

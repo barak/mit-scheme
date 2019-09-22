@@ -64,6 +64,3 @@ USA.
 		      (vector-set! v p (vector-ref temp p2))
 		      (merge (fix:+ p 1) p1 (fix:+ p2 1)))))))))
   v)
-
-(define sort merge-sort)
-(define sort! merge-sort!)

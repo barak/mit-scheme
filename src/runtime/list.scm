@@ -931,6 +931,10 @@ USA.
 			    (= key (get-key item))))
 			(cdr items))
 		   (loop (cdr items))))))))
+
+(define (list-of-unique-symbols? object)
+  (and (list-of-type? object symbol?)
+       (not (any-duplicates? object eq?))))
 
 ;;;; Membership lists
 

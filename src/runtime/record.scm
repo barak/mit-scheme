@@ -43,10 +43,13 @@ USA.
 	(%make-record-type type-name field-specs #f)
 	(begin
 	  (guarantee record-type? parent-type 'make-record-type)
-	  (%make-record-type type-name
-			     (append (record-type-field-specs parent-type)
-				     field-specs)
-			     parent-type)))))
+	  (for-each (lambda (field-spec)
+		      (let ((name (field-spec-name field-spec)))
+			(if (%record-type-field-by-name-no-error parent-type
+								 name)
+			    (error "Duplicate child name:" name))))
+		    field-specs)
+	  (%make-record-type type-name field-specs parent-type)))))
 
 (define (valid-field-specs? object)
   (and (list? object)
@@ -61,6 +64,11 @@ USA.
 	   (pair? (cdr object))
 	   (%valid-default-init? (cadr object))
 	   (null? (cddr object)))))
+
+(define (make-field-spec name init)
+  (if init
+      (list name init)
+      name))
 
 (define (field-spec-name spec)
   (if (pair? spec) (car spec) spec))
@@ -82,56 +90,74 @@ USA.
 
 (define (initialize-record-procedures!)
   (run-deferred-boot-actions 'record-procedures))
+
+(define (->type-name object caller)
+  (cond ((string? object) (string->symbol object))
+	((symbol? object) object)
+	(else (error:wrong-type-argument object "type name" caller))))
 
-(define (list-of-unique-symbols? object)
-  (and (list-of-type? object symbol?)
-       (let loop ((elements object))
-	 (if (pair? elements)
-	     (and (not (memq (car elements) (cdr elements)))
-		  (loop (cdr elements)))
-	     #t))))
-
-(define (make-field-spec name init)
-  (if init
-      (list name init)
-      name))
-
 (define (%make-record-type type-name field-specs parent-type)
-  (letrec*
-      ((predicate
-	(lambda (object)
-	  (and (%record? object)
-	       (or (eq? (%record-type-instance-marker type)
-			(%record-ref object 0))
-		   (let ((type* (%record->type object)))
-		     (and type*
-			  (%record-type<= type* type)))))))
-       (type
-	(%%make-record-type type-name
-			    predicate
-			    (list->vector (map field-spec-name field-specs))
-			    (list->vector (map field-spec-init field-specs))
-			    parent-type
-			    #f
-			    #f)))
-    (%set-record-type-instance-marker! type type)
-    (set-predicate<=! predicate
-		      (if parent-type
-			  (record-predicate parent-type)
-			  record?))
-    type))
+  (let* ((start-index (if parent-type (%record-type-end-index parent-type) 0))
+	 (end-index (+ start-index 1 (length field-specs)))
+	 (partial-fields
+	  (list->vector
+	   (map (lambda (spec index)
+		  (make-field (field-spec-name spec)
+			      (field-spec-init spec)
+			      index))
+		field-specs
+		(iota (length field-specs) (+ start-index 1)))))
+	 (fields-by-index
+	  (if parent-type
+	      (vector-append (%record-type-fields-by-index parent-type)
+			     partial-fields)
+	      partial-fields)))
 
-(define (%record->type record)
-  (let ((marker (%record-ref record 0)))
-    (cond ((record-type? marker) marker)
-	  ((%record-type-proxy? marker) (%proxy->record-type marker))
-	  (else #f))))
+    (letrec*
+	((predicate
+	  (if parent-type
+	      (lambda (object)
+		(and (%record? object)
+		     (fix:>= (%record-length object) end-index)
+		     (eq? (%record-type-instance-marker type)
+			  (%record-ref object start-index))))
+	      (lambda (object)
+		(and (%record? object)
+		     (eq? (%record-type-instance-marker type)
+			  (%record-ref object 0))))))
+	 (type
+	  (%%make-record-type type-name
+			      predicate
+			      start-index
+			      end-index
+			      fields-by-index
+			      (let ((v (vector-copy fields-by-index)))
+				(sort! v
+				       (lambda (f1 f2)
+					 (symbol<? (field-name f1)
+						   (field-name f2))))
+				v)
+			      parent-type
+			      #f
+			      #f)))
+      (%set-record-type-instance-marker! type type)
+      (set-predicate<=! predicate
+			(if parent-type
+			    (record-predicate parent-type)
+			    record?))
+      type)))
 
-(define (%record-type<= t1 t2)
-  (or (eq? t1 t2)
-      (let ((parent (%record-type-parent t1)))
-	(and parent
-	     (%record-type<= parent t2)))))
+(define-integrable (make-field name init index)
+  (vector name init index))
+
+(define-integrable (field-name field)
+  (vector-ref field 0))
+
+(define-integrable (field-init field)
+  (vector-ref field 1))
+
+(define-integrable (field-index field)
+  (vector-ref field 2))
 
 (define %record-metatag)
 (define record-type?)
@@ -144,82 +170,121 @@ USA.
 	 (dispatch-metatag-constructor %record-metatag 'make-record-type))
    unspecific))
 
-(define-integrable (%record-type-field-names record-type)
-  (dispatch-tag-extra-ref record-type 0))
+(define-integrable (%record-type-start-index record-type)
+  (%dispatch-tag-extra-ref record-type 0))
 
-(define-integrable (%record-type-default-inits record-type)
-  (dispatch-tag-extra-ref record-type 1))
+(define-integrable (%record-type-end-index record-type)
+  (%dispatch-tag-extra-ref record-type 1))
 
-(define-integrable (%record-type-parent record-type)
-  (dispatch-tag-extra-ref record-type 2))
+(define-integrable (%record-type-fields-by-index record-type)
+  (%dispatch-tag-extra-ref record-type 2))
 
-(define-integrable (%record-type-instance-marker record-type)
+(define-integrable (%record-type-fields-by-name record-type)
   (%dispatch-tag-extra-ref record-type 3))
 
+(define-integrable (%record-type-parent record-type)
+  (%dispatch-tag-extra-ref record-type 4))
+
+(define-integrable (%record-type-instance-marker record-type)
+  (%dispatch-tag-extra-ref record-type 5))
+
 (define-integrable (%set-record-type-instance-marker! record-type marker)
-  (%dispatch-tag-extra-set! record-type 3 marker))
+  (%dispatch-tag-extra-set! record-type 5 marker))
 
 (define-integrable (%record-type-applicator record-type)
-  (dispatch-tag-extra-ref record-type 4))
+  (%dispatch-tag-extra-ref record-type 6))
 
 (define-integrable (%set-record-type-applicator! record-type applicator)
-  (%dispatch-tag-extra-set! record-type 4 applicator))
+  (%dispatch-tag-extra-set! record-type 6 applicator))
 
 (defer-boot-action 'fixed-objects
   (lambda ()
     (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
     (set-fixed-objects-item! 'record-applicator-index
-			     (%dispatch-tag-extra-index 4))))
+			     (%dispatch-tag-extra-index 6))))
 
-(define-integrable (%record-type-n-fields record-type)
-  (vector-length (%record-type-field-names record-type)))
+(define (%record-type-field-by-name record-type name)
+  (or (%record-type-field-by-name-no-error record-type name)
+      (%record-type-field-by-name record-type
+				  (error:no-such-slot record-type name))))
 
-(define-integrable (%record-type-length record-type)
-  (fix:+ 1 (%record-type-n-fields record-type)))
+(define-integrable (%record-type-field-by-name-no-error record-type name)
+  (vector-binary-search (%record-type-fields-by-name record-type)
+			symbol<?
+			field-name
+			name))
 
+(define (%record-type-field-by-index record-type index)
+  (or (%record-type-field-by-index-no-error record-type index)
+      (%record-type-field-by-index record-type
+				   (error:no-such-slot record-type index))))
+
+(define-integrable (%record-type-field-by-index-no-error record-type index)
+  (vector-binary-search (%record-type-fields-by-index record-type)
+			fix:<
+			field-index
+			index))
+
 (define (record-type-name record-type)
   (guarantee record-type? record-type 'record-type-name)
-  (symbol->string (dispatch-tag-name record-type)))
+  (symbol->string (%dispatch-tag-name record-type)))
 
 (define (record-type-field-names record-type)
   (guarantee record-type? record-type 'record-type-field-names)
-  (vector->list (%record-type-field-names record-type)))
+  (%record-type-field-names record-type))
+
+(define (%record-type-field-names record-type)
+  (%map-record-type-fields field-name
+			   (%record-type-fields-by-index record-type)))
 
 (define (record-type-field-specs record-type)
   (guarantee record-type? record-type 'record-type-field-specs)
-  (map make-field-spec
-       (vector->list (%record-type-field-names record-type))
-       (vector->list (%record-type-default-inits record-type))))
+  (%map-record-type-fields (lambda (field)
+			     (make-field-spec (field-name field)
+					      (field-init field)))
+			   (%record-type-fields-by-index record-type)))
+
+(define (%map-record-type-fields procedure fields)
+  (let loop ((i (fix:- (vector-length fields) 1)) (tail '()))
+    (if (fix:>= i 0)
+	(loop (fix:- i 1)
+	      (cons (procedure (vector-ref fields i))
+		    tail))
+	tail)))
+
+(define (record-type-field-index record-type name)
+  (guarantee record-type? record-type 'record-type-field-index)
+  (guarantee symbol? name 'record-type-field-index)
+  (let ((field (%record-type-field-by-name-no-error record-type name)))
+    (and field
+	 (field-index field))))
 
 (define (record-type-parent record-type)
   (guarantee record-type? record-type 'record-type-parent)
   (%record-type-parent record-type))
 
-(define (set-record-type-applicator! record-type applicator)
-  (guarantee record-type? record-type 'set-record-type-applicator!)
-  (guarantee procedure? applicator 'set-record-type-applicator!)
-  (%set-record-type-applicator! record-type applicator))
+(define (applicable-record? object)
+  (and (%record->applicator object) #t))
+
+(define (%record->applicator object)
+  (and (%record? object)
+       (let ((record-type (%record->root-type object)))
+	 (and record-type
+	      (%record-type-applicator record-type)))))
 
 (define (record-applicator record)
-  (or (%record-type-applicator (record-type-descriptor record))
-      (error:not-a applicable-record? record 'record-applicator)))
+  (let ((applicator (%record->applicator record)))
+    (if (not applicator)
+	(error:not-a applicable-record? record 'record-applicator))
+    applicator))
+
+(define (set-record-type-applicator! record-type applicator)
+  (guarantee record-type? record-type 'set-record-type-applicator!)
+  (if (%record-type-parent record-type)
+      (error:bad-range-argument record-type 'set-record-type-applicator!))
+  (guarantee procedure? applicator 'set-record-type-applicator!)
+  (%set-record-type-applicator! record-type applicator))
 
-(define (record? object)
-  (and (%record? object)
-       (%record->type object)
-       #t))
-
-(define (applicable-record? object)
-  (and (%record? object)
-       (let ((record-type (%record->type object)))
-	 (and record-type
-	      (%record-type-applicator record-type)
-	      #t))))
-
-(define (record-type-descriptor record)
-  (or (%record->type record)
-      (error:not-a record? record 'record-type-descriptor)))
-
 (define (%record-type-fasdumpable? type)
   (%record-type-proxy? (%record-type-instance-marker type)))
 
@@ -282,16 +347,68 @@ USA.
 		   (iota (length (cdr form)))))))))
   (enumerate-proxies pathname host))
 
-;;;; Constructors
+(define (record? object)
+  (and (%record? object)
+       (%record->root-type object)
+       #t))
 
+(define (record-type-descriptor record)
+  (guarantee record? record 'record-type-descriptor)
+  (%record->leaf-type record))
+
+(define-integrable (%record->root-type record)
+  (%record-type-ref record 0))
+
+(define (%record->leaf-type record)
+  (let loop ((type (%record-type-ref record 0)))
+    (let ((type*
+	   (let ((end (%record-type-end-index type)))
+	     (and (fix:> (%record-length record) end)
+		  (%record-type-ref type end)))))
+      (if type*
+	  (loop type*)
+	  type))))
+
+(define (%record-type-ref record index)
+  (let ((marker (%record-ref record index)))
+    (cond ((record-type? marker) marker)
+	  ((%record-type-proxy? marker) (%proxy->record-type marker))
+	  (else #f))))
+
 (define (record-constructor record-type #!optional field-names)
   (guarantee record-type? record-type 'record-constructor)
   (if (or (default-object? field-names)
-	  (equal? field-names (record-type-field-names record-type)))
+	  (%default-field-names? record-type field-names))
       (%record-constructor-default-names record-type)
       (begin
 	(guarantee list? field-names 'record-constructor)
+	(if (any-duplicates? field-names eq?)
+	    (error:bad-range-argument field-names 'record-constructor))
 	(%record-constructor-given-names record-type field-names))))
+
+(define (%default-field-names? record-type field-names)
+  (let* ((fields (%record-type-fields-by-index record-type))
+	 (n-fields (vector-length fields)))
+    (let loop ((names field-names) (i 0))
+      (if (and (pair? names) (fix:< i n-fields))
+	  (and (eq? (car names) (field-name (vector-ref fields i)))
+	       (loop (cdr names) (fix:+ i 1)))
+	  (and (null? names) (fix:= i n-fields))))))
+
+(define (%typed-record-maker record-type)
+  (if (%record-type-parent record-type)
+      (lambda ()
+	(let ((record (%make-record #f (%record-type-end-index record-type))))
+	  (let loop ((type record-type))
+	    (%record-set! record
+			  (%record-type-start-index type)
+			  (%record-type-instance-marker type))
+	    (if (%record-type-parent type)
+		(loop (%record-type-parent type))))
+	  record))
+      (lambda ()
+	(%make-record (%record-type-instance-marker record-type)
+		      (%record-type-end-index record-type)))))
 
 (define %record-constructor-default-names
   (let-syntax
@@ -314,108 +431,112 @@ USA.
 			       (append names (list (make-name i)))))
 		   default)))))))
     (lambda (record-type)
-      (let ((n-fields (%record-type-n-fields record-type)))
-	(expand-cases record-type n-fields 16
-	  (let ((reclen (fix:+ 1 n-fields)))
-	    (letrec
-		((constructor
-		  (lambda field-values
-		    (let ((record
-			   (%make-record
-			    (%record-type-instance-marker record-type)
-			    reclen))
-			  (lose
-			   (lambda ()
-			     (error:wrong-number-of-arguments constructor
-							      n-fields
-							      field-values))))
-		      (do ((i 1 (fix:+ i 1))
-			   (vals field-values (cdr vals)))
-			  ((not (fix:< i reclen))
-			   (if (not (null? vals)) (lose)))
-			(if (not (pair? vals)) (lose))
-			(%record-set! record i (car vals)))
-		      record))))
-	      constructor)))))))
+      (let* ((indices
+	      (vector-map field-index
+			  (%record-type-fields-by-index record-type)))
+	     (arity (vector-length indices))
+	     (%make-typed-record (%typed-record-maker record-type)))
+
+	(define (general-case)
+	  (define (constructor . field-values)
+	    (if (not (fix:= arity (length field-values)))
+		(error:wrong-number-of-arguments constructor
+						 arity
+						 field-values))
+
+	    (let ((record (%make-typed-record)))
+	      (do ((i 0 (fix:+ i 1))
+		   (vals field-values (cdr vals)))
+		  ((not (fix:< i arity)) unspecific)
+		(%record-set! record
+			      (vector-ref indices i)
+			      (car vals)))
+	      record))
+	  constructor)
+
+	(if (%record-type-parent record-type)
+	    (general-case)
+	    (expand-cases record-type arity 16
+			  (general-case)))))))
 
 (define (%record-constructor-given-names record-type field-names)
-  (let* ((indexes
+  (let* ((fields
 	  (map (lambda (field-name)
-		 (record-type-field-index record-type field-name #t))
+		 (%record-type-field-by-name record-type field-name))
 	       field-names))
 	 (defaults
-	   (let* ((n (%record-type-length record-type))
-		  (seen? (vector-cons n #f)))
-	     (do ((indexes indexes (cdr indexes)))
-		 ((not (pair? indexes)))
-	       (vector-set! seen? (car indexes) #t))
-	     (do ((i 1 (fix:+ i 1))
-		  (k 0 (if (vector-ref seen? i) k (fix:+ k 1))))
-		 ((not (fix:< i n))
-		  (let ((v (vector-cons k #f)))
-		    (do ((i 1 (fix:+ i 1))
-			 (j 0
-			    (if (vector-ref seen? i)
-				j
-				(begin
-				  (vector-set! v j i)
-				  (fix:+ j 1)))))
-			((not (fix:< i n))))
-		    v))))))
-    (letrec
-	((constructor
-	  (lambda field-values
-	    (let ((lose
-		   (lambda ()
-		     (error:wrong-number-of-arguments constructor
-						      (length indexes)
-						      field-values))))
-	      (let ((record
-		     (%make-record
-		      (%record-type-instance-marker record-type)
-		      (%record-type-length record-type))))
-		(do ((indexes indexes (cdr indexes))
-		     (values field-values (cdr values)))
-		    ((not (pair? indexes))
-		     (if (not (null? values)) (lose)))
-		  (if (not (pair? values)) (lose))
-		  (%record-set! record (car indexes) (car values)))
-		(let ((v (%record-type-default-inits record-type))
-		      (n (vector-length defaults)))
-		  (do ((i 0 (fix:+ i 1)))
-		      ((not (fix:< i n)))
-		    (let* ((index (vector-ref defaults i))
-			   (init (vector-ref v (fix:- index 1))))
-		      (and init (%record-set! record index (init))))))
-		record)))))
-      constructor)))
+	  (list->vector
+	   (filter field-init
+		   (lset-difference
+		    eq?
+		    (vector->list
+		     (%record-type-fields-by-index record-type))
+		    fields))))
+	 (indices (list->vector (map field-index fields)))
+	 (arity (vector-length indices))
+	 (%make-typed-record (%typed-record-maker record-type)))
+
+    (define (constructor . field-values)
+      (if (not (fix:= arity (length field-values)))
+	  (error:wrong-number-of-arguments constructor arity field-values))
+
+      (let ((record (%make-typed-record)))
+
+	(do ((i 0 (fix:+ i 1))
+	     (vals field-values (cdr vals)))
+	    ((not (fix:< i arity)) unspecific)
+	  (%record-set! record (vector-ref indices i) (car vals)))
+
+	(let ((n (vector-length defaults)))
+	  (do ((i 0 (fix:+ i 1)))
+	      ((not (fix:< i n)) unspecific)
+	    (let ((field (vector-ref defaults i)))
+	      (%record-set! record
+			    (field-index field)
+			    ((field-init field))))))
+	record))
+
+    constructor))
 
 (define (record-keyword-constructor record-type)
-  (letrec
-      ((constructor
-	(lambda keyword-list
-	  (let ((n (%record-type-length record-type)))
-	    (let ((record
-		   (%make-record (%record-type-instance-marker record-type) n))
-		  (seen? (vector-cons n #f)))
-	      (do ((kl keyword-list (cddr kl)))
-		  ((not (and (pair? kl)
-			     (symbol? (car kl))
-			     (pair? (cdr kl))))
-		   (if (not (null? kl))
-		       (error:not-a keyword-list? keyword-list constructor)))
-		(let ((i (record-type-field-index record-type (car kl) #t)))
-		  (if (not (vector-ref seen? i))
-		      (begin
-			(%record-set! record i (cadr kl))
-			(vector-set! seen? i #t)))))
-	      (let ((v (%record-type-default-inits record-type)))
-		(do ((i 1 (fix:+ i 1)))
-		    ((not (fix:< i n)))
-		  (if (not (vector-ref seen? i))
-		      (let ((init (vector-ref v (fix:- i 1))))
-			(and init (%record-set! record i (init)))))))
-	      record)))))
+  (guarantee record-type? record-type 'record-keyword-constructor)
+  (let ((names (%record-type-field-names record-type))
+	(%make-typed-record (%typed-record-maker record-type)))
+
+    (define (constructor . keyword-list)
+      (if (not (restricted-keyword-list? keyword-list names))
+	  (error:not-a keyword-list? keyword-list constructor))
+
+      (let ((record (%make-typed-record))
+	    (all-fields
+	     (cons #f
+		   (vector->list (%record-type-fields-by-index record-type)))))
+
+	(define (set-value! name value)
+	  (let loop ((fields (cdr all-fields)) (prev all-fields))
+	    (if (pair? fields)
+		(if (eq? name (field-name (car fields)))
+		    (begin
+		      (%record-set! record (field-index (car fields)) value)
+		      (set-cdr! prev (cdr fields)))
+		    (loop (cdr fields) fields))
+		(error "Duplicate keyword:" name))))
+
+	(do ((kl keyword-list (cddr kl)))
+	    ((not (pair? kl)) unspecific)
+	  (set-value! (car kl) (cadr kl)))
+
+	(let loop ((fields (cdr all-fields)))
+	  (if (pair? fields)
+	      (begin
+		(if (field-init (car fields))
+		    (%record-set! record
+				  (field-index (car fields))
+				  ((field-init (car fields)))))
+		(loop (cdr fields)))))
+
+	record))
+
     constructor))
 
 (define (copy-record record)
@@ -426,18 +547,19 @@ USA.
   (let ((length (%record-length record)))
     (let ((result (%make-record (%record-ref record 0) length)))
       (do ((index 1 (fix:+ index 1)))
-	  ((fix:= index length))
+	  ((not (fix:< index length)) unspecific)
 	(%record-set! result index (%record-ref record index)))
       result)))
 
 (define (record-predicate record-type)
   (guarantee record-type? record-type 'record-predicate)
-  (dispatch-tag->predicate record-type))
+  (%dispatch-tag->predicate record-type))
 
 (define (record-accessor record-type field-name)
   (guarantee record-type? record-type 'record-accessor)
   (let ((predicate (record-predicate record-type))
-	(index (record-type-field-index record-type field-name #t)))
+	(index
+	 (field-index (%record-type-field-by-name record-type field-name))))
     (let-syntax
 	((expand-cases
 	  (sc-macro-transformer
@@ -460,7 +582,8 @@ USA.
 (define (record-modifier record-type field-name)
   (guarantee record-type? record-type 'record-modifier)
   (let ((predicate (record-predicate record-type))
-	(index (record-type-field-index record-type field-name #t)))
+	(index
+	 (field-index (%record-type-field-by-name record-type field-name))))
     (let-syntax
 	((expand-cases
 	  (sc-macro-transformer
@@ -479,31 +602,6 @@ USA.
 			  ,(loop (fix:+ i 1)))
 		     (gen-accessor 'index))))))))
       (expand-cases 16))))
-
-(define record-copy copy-record)
-(define record-updater record-modifier)
-
-(define (record-type-field-index record-type name error?)
-  (let ((names (%record-type-field-names record-type)))
-    ;; Search from end because a child field must override an ancestor field of
-    ;; the same name.
-    (let loop ((i (fix:- (vector-length names) 1)))
-      (if (fix:>= i 0)
-	  (if (eq? (vector-ref names i) name)
-	      (fix:+ i 1)
-	      (loop (fix:- i 1)))
-	  (and error?
-	       (record-type-field-index record-type
-					(error:no-such-slot record-type name)
-					error?))))))
-
-(define (->type-name object caller)
-  (cond ((string? object) (string->symbol object))
-	((symbol? object) object)
-	(else (error:wrong-type-argument object "type name" caller))))
-
-(define-guarantee record-type "record type")
-(define-guarantee record "record")
 
 ;;;; Printing
 
@@ -658,9 +756,9 @@ USA.
   ((structure-type/default-init-by-index type field-name-index)))
 
 (define (record-type-default-value-by-index record-type field-index)
+  (guarantee record-type? record-type 'record-type-default-value-by-index)
   (let ((init
-	 (vector-ref (%record-type-default-inits record-type)
-		     (fix:- field-index 1))))
+	 (field-init (%record-type-field-by-index record-type field-index))))
     (and init
 	 (init))))
 
@@ -677,7 +775,7 @@ USA.
 	      (vector-set! v 0 tag))
 	  (let ((seen? (make-vector n #f)))
 	    (do ((args arguments (cddr args)))
-		((not (pair? args)))
+		((not (pair? args)) unspecific)
 	      (if (not (pair? (cdr args)))
 		  (error:not-a keyword-list? arguments #f))
 	      (let ((field-name (car args)))
@@ -693,7 +791,7 @@ USA.
 			    (vector-set! seen? i #t)))
 		      (loop (fix:+ i 1))))))
 	    (do ((i 0 (fix:+ i 1)))
-		((not (fix:< i n)))
+		((not (fix:< i n)) unspecific)
 	      (if (not (vector-ref seen? i))
 		  (let ((init (vector-ref inits i)))
 		    (and init (vector-set! v (vector-ref indexes i) (init)))))))
@@ -839,12 +937,11 @@ USA.
   unspecific)
 
 (define (%record-field-name record index)
-  (or (and (fix:> index 0)
-	   (record? record)
-	   (let ((names
-		  (%record-type-field-names (record-type-descriptor record))))
-	     (and (fix:<= index (vector-length names))
-		  (vector-ref names (fix:- index 1)))))
+  (or (let ((type (and (record? record) (%record->leaf-type record))))
+	(and type
+	     (let ((field (%record-type-field-by-index-no-error type index)))
+	       (and field
+		    (field-name field)))))
       index))
 
 (define (store-value-restart location k thunk)

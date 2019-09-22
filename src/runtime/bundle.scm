@@ -37,9 +37,7 @@ USA.
 (declare (usual-integrations))
 
 (define (make-bundle-predicate name)
-  (let ((type (make-record-type name '() <bundle>)))
-    (set-record-type-applicator! type %bundle-applicator)
-    (record-predicate type)))
+  (record-predicate (make-record-type name '() <bundle>)))
 
 (define (%bundle-applicator bundle name . args)
   (apply (bundle-ref bundle name) args))
@@ -82,10 +80,7 @@ USA.
 
 (define <bundle>
   (make-record-type '<bundle> '(alist)))
-
-(defer-boot-action 'record-procedures
-  (lambda ()
-    (set-record-type-applicator! <bundle> %bundle-applicator)))
+(set-record-type-applicator! <bundle> %bundle-applicator)
 
 (define bundle?
   (record-predicate <bundle>))

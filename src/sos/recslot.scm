@@ -109,8 +109,7 @@ USA.
     (and (record-type? (car tags))
 	 (lambda (record name)
 	   (record-type-field-index (record-type-descriptor record)
-				    name
-				    #f)))))
+				    name)))))
 (define %record-slot-names
   (make-generic-procedure 1 '%record-slot-names))
 

@@ -48,7 +48,6 @@ USA.
   (object-type? 2)
   (object-new-type object-set-type 2)
   make-non-pointer-object
-  eq?
 
   ;; Cells
   make-cell cell? cell-contents set-cell-contents!

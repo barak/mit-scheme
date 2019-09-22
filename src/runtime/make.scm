@@ -367,7 +367,9 @@ USA.
 	 ("srfi-1" . (runtime srfi-1))
 	 ("thread-low" . (runtime thread))))
       (files1
-       '(("string" . (runtime string))
+       '(("msort" . (runtime merge-sort))
+	 ("string" . (runtime string))
+	 ("bytevector-low" . (runtime bytevector))
 	 ("symbol" . (runtime symbol))
 	 ("random" . (runtime random-number))
 	 ("dispatch-tag" . (runtime tagged-dispatch))

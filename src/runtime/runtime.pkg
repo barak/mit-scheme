@@ -240,6 +240,7 @@ USA.
   (files "equals")
   (parent (runtime))
   (export ()
+	  eq?
 	  equal-hash
 	  equal?
 	  eqv?))
@@ -572,7 +573,6 @@ USA.
 	  ephemeron-datum
 	  ephemeron-key
 	  ephemeron?
-	  eq?
 	  error-procedure
 	  eval
 	  exit				;R7RS
@@ -675,10 +675,10 @@ USA.
   (files "msort")
   (parent (runtime))
   (export ()
+	  (sort merge-sort)
+	  (sort! merge-sort!)
 	  merge-sort
-	  merge-sort!
-	  sort
-	  sort!))
+	  merge-sort!))
 
 (define-package (runtime quick-sort)
   (files "qsort")
@@ -1187,7 +1187,7 @@ USA.
 	  (string-slice? slice?)))
 
 (define-package (runtime bytevector)
-  (files "bytevector")
+  (files "bytevector-low" "bytevector")
   (parent (runtime))
   (export deprecated ()
 	  legacy-string->bytevector)
@@ -3130,6 +3130,7 @@ USA.
 	  list-head
 	  list-of-type?
 	  list-of-type?->length
+	  list-of-unique-symbols?
 	  list-ref
 	  list-set!
 	  list-tail			;use SRFI-1 drop
@@ -3924,7 +3925,8 @@ USA.
   (files "record")
   (parent (runtime))
   (export deprecated ()
-	  (new-make-record-type make-record-type) ;RELNOTE: delete
+	  (record-copy copy-record)
+	  (record-updater record-modifier)
 	  set-record-type-unparser-method!)
   (export ()
 	  applicable-record?
@@ -3938,7 +3940,6 @@ USA.
 	  define-structure/list-modifier
 	  define-structure/vector-accessor
 	  define-structure/vector-modifier
-	  list-of-unique-symbols?
 	  make-define-structure-type
 	  make-record-type
 	  named-list?
@@ -3948,7 +3949,6 @@ USA.
 	  record-accessor
 	  record-applicator
 	  record-constructor
-	  record-copy
 	  record-keyword-constructor
 	  record-modifier
 	  record-predicate
@@ -3959,7 +3959,6 @@ USA.
 	  record-type-name
 	  record-type-parent
 	  record-type?
-	  record-updater
 	  record?
 	  set-record-type-applicator!)
   (export (runtime)
@@ -5393,9 +5392,11 @@ USA.
 	  probe-cache-3
 	  probe-cache-4)
   (export (runtime record)
+	  %dispatch-tag->predicate
 	  %dispatch-tag-extra-index
 	  %dispatch-tag-extra-ref
-	  %dispatch-tag-extra-set!))
+	  %dispatch-tag-extra-set!
+	  %dispatch-tag-name))
 
 (define-package (runtime crypto)
   (files "crypto")
