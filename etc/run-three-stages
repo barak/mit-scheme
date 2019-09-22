@@ -65,7 +65,7 @@ echo "CONFIG_ARGS =" "${CONFIG_ARGS[@]}"
 
 # Hack for cph
 if which cpx > /dev/null; then
-    : ${COPY:="cpx -sq"}
+    : ${COPY:="cpx -sqE"}
 fi
 
 run_stage ()
