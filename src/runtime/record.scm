@@ -109,16 +109,36 @@ USA.
 
     (letrec*
 	((predicate
-	  (if parent-type
-	      (lambda (object)
-		(and (%record? object)
-		     (fix:>= (%record-length object) end-index)
-		     (eq? (%record-type-instance-marker type)
-			  (%record-ref object start-index))))
-	      (lambda (object)
-		(and (%record? object)
-		     (eq? (%record-type-instance-marker type)
-			  (%record-ref object 0))))))
+	  (case (count-ancestors parent-type)
+	    ((0)
+	     (lambda (object)
+	       (and (%record? object)
+		    (check-marker type object 0))))
+	    ((1)
+	     (lambda (object)
+	       (and (%record? object)
+		    (fix:>= (%record-length object) end-index)
+		    (check-marker type object start-index)
+		    (check-marker parent-type object 0))))
+	    ((2)
+	     (let ((parent-start (%record-type-start-index parent-type))
+		   (grandparent-type (%record-type-parent parent-type)))
+	       (lambda (object)
+		 (and (%record? object)
+		      (fix:>= (%record-length object) end-index)
+		      (check-marker type object start-index)
+		      (check-marker parent-type object parent-start)
+		      (check-marker grandparent-type object 0)))))
+	    (else
+	     (lambda (object)
+	       (and (%record? object)
+		    (fix:>= (%record-length object) end-index)
+		    (check-marker type object start-index)
+		    (let loop ((t parent-type))
+		      (and (check-marker t object (%record-type-start-index t))
+			   (if (%record-type-parent t)
+			       (loop (%record-type-parent t))
+			       #t))))))))
 	 (type
 	  (%%make-record-type type-name
 			      predicate
@@ -135,6 +155,16 @@ USA.
 			    (record-predicate parent-type)
 			    record?))
       type)))
+
+(define (count-ancestors parent-type)
+  (let loop ((type parent-type) (n 0))
+    (if type
+	(loop (%record-type-parent type) (+ n 1))
+	n)))
+
+(define-integrable (check-marker type object index)
+  (eq? (%record-type-instance-marker type)
+       (%record-ref object index)))
 
 (define (generate-fields-by-name fields-by-index)
   (let loop ((fields (reverse (vector->list fields-by-index))) (filtered '()))

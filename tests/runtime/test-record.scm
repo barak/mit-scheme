@@ -96,3 +96,18 @@ USA.
       (assert-eqv (t2-a t2) 2)
       (assert-eqv (record-type-descriptor t2) <t2>)
       (assert-equal (pp-description t2) '((a #f) (b 3) (c 5) (a 2))))))
+
+(define-record-type (<t3> <t2>) make-t3 t3? (d t3-d))
+(define-record-type (<t4> <t1>) make-t4 t4? (w t3-w) (x t3-x) (y t3-y) (z t3-z))
+
+(define-test 'sub-record-predicates
+  (lambda ()
+    (let ((t3 (make-t3 2 3 5 7 11)))
+      (assert-true (t1? t3))
+      (assert-true (t2? t3))
+      (assert-true (t3? t3)))
+    (let ((t4 (make-t4 2 3 5 7 <t3> 11)))
+      (assert-true (t1? t4))
+      (assert-false (t2? t4))
+      (assert-false (t3? t4))
+      (assert-true (t4? t4)))))
