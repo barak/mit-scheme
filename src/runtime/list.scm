@@ -1303,8 +1303,10 @@ USA.
 		keyword-option-specs))))
 
 (define (keyword-option-spec? object)
-  (and (list? object)
-       (memv (length object) '(2 3))
+  (and (let ((n (list?->length object)))
+	 (and n
+	      (or (fix:= 2 n)
+		  (fix:= 3 n))))
        (interned-symbol? (car object))
        (or (and (unary-procedure? (cadr object))
 		(or (null? (cddr object))

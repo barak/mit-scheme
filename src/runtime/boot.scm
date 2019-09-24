@@ -503,6 +503,41 @@ USA.
 	  (list '(evaluated) (promise-value promise))
 	  (list '(unevaluated))))))
 
+;;;; Multiple values
+
+(define <multi-values>
+  (list '<multi-values>))
+
+(define (make-multi-values objects)
+  (cons <multi-values> objects))
+
+(define (multi-values? object)
+  (and (pair? object)
+       (eq? <multi-values> (car object))))
+
+(define (multi-values-list mv)
+  (cdr mv))
+
+(defer-boot-action 'make-record-type
+  (lambda ()
+    (set! <multi-values> (make-record-type '<multi-values> '(list)))
+    (set! make-multi-values (record-constructor <multi-values>))
+    (set! multi-values? (record-predicate <multi-values>))
+    (set! multi-values-list (record-accessor <multi-values> 'list))
+    unspecific))
+
+(define (values . objects)
+  (if (and (pair? objects)
+	   (null? (cdr objects)))
+      (car objects)
+      (make-multi-values objects)))
+
+(define (call-with-values thunk receiver)
+  (let ((v (thunk)))
+    (if (multi-values? v)
+	(apply receiver (multi-values-list v))
+	(receiver v))))
+
 ;;;; Miscellany
 
 (define (object-constant? object)

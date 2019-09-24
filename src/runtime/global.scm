@@ -128,23 +128,6 @@ USA.
 (define bind-cell-contents!
   (object-component-binder cell-contents set-cell-contents!))
 
-(define-record-type <multi-values>
-    (make-multi-values list)
-    multi-values?
-  (list multi-values-list))
-
-(define (values . objects)
-  (if (and (pair? objects)
-	   (null? (cdr objects)))
-      (car objects)
-      (make-multi-values objects)))
-
-(define (call-with-values thunk receiver)
-  (let ((v (thunk)))
-    (if (multi-values? v)
-	(apply receiver (multi-values-list v))
-	(receiver v))))
-
 (define (write-to-string object #!optional max)
   (if (or (default-object? max) (not max))
       (call-with-output-string

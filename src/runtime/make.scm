@@ -486,7 +486,6 @@ USA.
    (runtime continuation-parser)
    (runtime program-copier)
    ;; Finish records
-   ((runtime record) initialize-record-procedures!)
    ((package) finalize-package-record-type!)
    ((runtime random-number) finalize-random-state-type!)
    ;; Condition System

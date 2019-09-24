@@ -97,18 +97,19 @@ these rules:
 
 |#
 
-(define-record-type <pathname>
-    (%make-pathname host device directory name type version)
-    pathname?
-  (host %pathname-host)
-  (device %pathname-device)
-  (directory %pathname-directory)
-  (name %pathname-name)
-  (type %pathname-type)
-  (version %pathname-version))
-(set-record-type-fasdumpable! <pathname> record-type-proxy:pathname)
+(define <pathname>
+  (make-record-type '<pathname>
+		    '(host device directory name type version)
+		    'instance-marker record-type-proxy:pathname))
 
-(define-guarantee pathname "pathname")
+(define %make-pathname (record-constructor <pathname>))
+(define pathname? (record-predicate <pathname>))
+(define %pathname-host (record-accessor <pathname> 'host))
+(define %pathname-device (record-accessor <pathname> 'device))
+(define %pathname-directory (record-accessor <pathname> 'directory))
+(define %pathname-name (record-accessor <pathname> 'name))
+(define %pathname-type (record-accessor <pathname> 'type))
+(define %pathname-version (record-accessor <pathname> 'version))
 
 (define-print-method pathname?
   (standard-print-method 'pathname
@@ -561,12 +562,15 @@ these rules:
   (operation/init-file-pathname #f read-only #t)
   (operation/pathname-simplify #f read-only #t))
 
-(define-record-type <host>
-    (%make-host type-index name)
-    host?
-  (type-index host/type-index)
-  (name host/name))
-(set-record-type-fasdumpable! <host> record-type-proxy:host)
+(define <host>
+  (make-record-type '<host>
+		    '(type-index name)
+		    'instance-marker record-type-proxy:host))
+
+(define %make-host (record-constructor <host>))
+(define host? (record-predicate <host>))
+(define host/type-index (record-accessor <host> 'type-index))
+(define host/name (record-accessor <host> 'name))
 
 (define (make-host type name)
   (%make-host (host-type/index type) name))

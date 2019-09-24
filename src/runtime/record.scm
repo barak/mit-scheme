@@ -36,14 +36,25 @@ USA.
 (define-primitives
   (vector-cons 2))
 
-(define (make-record-type type-name field-specs #!optional parent-type)
+(define (make-record-type type-name field-specs . options)
   (guarantee valid-field-specs? field-specs 'make-record-type)
   (let ((type-name (->type-name type-name 'make-record-type)))
-    (if (default-object? parent-type)
-	(%make-record-type type-name field-specs #f)
-	(begin
-	  (guarantee record-type? parent-type 'make-record-type)
-	  (%make-record-type type-name field-specs parent-type)))))
+    (receive (parent-type applicator instance-marker)
+	(make-record-type-options (if (and (pair? options)
+					   (null? (cdr options)))
+				      ;; SRFI 131 compatibility
+				      (cons 'parent-type options)
+				      options)
+				  'make-record-type)
+      (if parent-type
+	  (begin
+	    (if applicator
+		(error:bad-range-argument applicator 'make-record-type))
+	    (if (and instance-marker
+		     (not (%record-type-fasdumpable? parent-type)))
+		(error:bad-range-argument instance-marker 'make-record-type))))
+      (%make-record-type type-name field-specs parent-type
+			 applicator instance-marker))))
 
 (define (valid-field-specs? object)
   (and (list? object)
@@ -71,100 +82,74 @@ USA.
   (if (pair? spec) (cadr spec) #f))
 
 (define (%valid-default-init? object)
-  (declare (ignore object))
-  #t)
+  (or (not object)
+      (thunk? object)))
 
-(defer-boot-action 'record-procedures
-  (lambda ()
-    (set! %valid-default-init?
-	  (named-lambda (%valid-default-init? object)
-	    (or (not object)
-		(thunk? object))))
-    unspecific))
-
-(define (initialize-record-procedures!)
-  (run-deferred-boot-actions 'record-procedures))
+(define %record-metatag)
+(define record-type?)
+(define %%make-record-type)
+(define make-record-type-options)
+(add-boot-init!
+ (lambda ()
+   (set! %record-metatag (make-dispatch-metatag 'record-tag))
+   (set! record-type? (dispatch-tag->predicate %record-metatag))
+   (set! %%make-record-type
+	 (dispatch-metatag-constructor %record-metatag 'make-record-type))
+   (set! make-record-type-options
+	 (keyword-option-parser
+	  (list (list 'parent-type record-type? (lambda () #f))
+		(list 'applicator procedure? (lambda () #f))
+		(list 'instance-marker %record-type-proxy? (lambda () #f)))))
+   (run-deferred-boot-actions 'make-record-type)))
 
 (define (->type-name object caller)
   (cond ((string? object) (string->symbol object))
 	((symbol? object) object)
 	(else (error:wrong-type-argument object "type name" caller))))
 
-(define (%make-record-type type-name field-specs parent-type)
+(define (%make-record-type type-name field-specs parent-type
+			   applicator instance-marker)
   (let* ((start-index (if parent-type (%record-type-end-index parent-type) 0))
-	 (end-index (+ start-index 1 (length field-specs)))
-	 (partial-fields
-	  (list->vector
-	   (map (lambda (spec index)
-		  (make-field (field-spec-name spec)
-			      (field-spec-init spec)
-			      index))
-		field-specs
-		(iota (length field-specs) (+ start-index 1)))))
-	 (fields-by-index
-	  (if parent-type
-	      (vector-append (%record-type-fields-by-index parent-type)
-			     partial-fields)
-	      partial-fields)))
+	 (end-index (+ start-index 1 (length field-specs))))
 
-    (letrec*
-	((predicate
-	  (case (count-ancestors parent-type)
-	    ((0)
-	     (lambda (object)
-	       (and (%record? object)
-		    (check-marker type object 0))))
-	    ((1)
-	     (lambda (object)
-	       (and (%record? object)
-		    (fix:>= (%record-length object) end-index)
-		    (check-marker type object start-index)
-		    (check-marker parent-type object 0))))
-	    ((2)
-	     (let ((parent-start (%record-type-start-index parent-type))
-		   (grandparent-type (%record-type-parent parent-type)))
-	       (lambda (object)
-		 (and (%record? object)
-		      (fix:>= (%record-length object) end-index)
-		      (check-marker type object start-index)
-		      (check-marker parent-type object parent-start)
-		      (check-marker grandparent-type object 0)))))
-	    (else
-	     (lambda (object)
-	       (and (%record? object)
-		    (fix:>= (%record-length object) end-index)
-		    (check-marker type object start-index)
-		    (let loop ((t parent-type))
-		      (and (check-marker t object (%record-type-start-index t))
-			   (if (%record-type-parent t)
-			       (loop (%record-type-parent t))
-			       #t))))))))
-	 (type
-	  (%%make-record-type type-name
-			      predicate
-			      start-index
-			      end-index
-			      fields-by-index
-			      (generate-fields-by-name fields-by-index)
-			      parent-type
-			      #f
-			      #f)))
-      (%set-record-type-instance-marker! type type)
-      (set-predicate<=! predicate
+    (define (make-type predicate)
+      (let ((fields-by-index
+	     (generate-fields-by-index field-specs parent-type start-index)))
+	(%%make-record-type type-name
+			    predicate
+			    start-index
+			    end-index
+			    fields-by-index
+			    (generate-fields-by-name fields-by-index)
+			    parent-type
+			    applicator
+			    instance-marker)))
+
+    (let ((type
+	   (if instance-marker
+	       (%make-marked-type start-index end-index parent-type
+				  instance-marker make-type)
+	       (%make-normal-type start-index end-index parent-type
+				  make-type))))
+      (set-predicate<=! (record-predicate type)
 			(if parent-type
 			    (record-predicate parent-type)
 			    record?))
       type)))
-
-(define (count-ancestors parent-type)
-  (let loop ((type parent-type) (n 0))
-    (if type
-	(loop (%record-type-parent type) (+ n 1))
-	n)))
 
-(define-integrable (check-marker type object index)
-  (eq? (%record-type-instance-marker type)
-       (%record-ref object index)))
+(define (generate-fields-by-index field-specs parent-type start-index)
+  (let ((partial-fields
+	 (list->vector
+	  (map (lambda (spec index)
+		 (make-field (field-spec-name spec)
+			     (field-spec-init spec)
+			     index))
+	       field-specs
+	       (iota (length field-specs) (+ start-index 1))))))
+    (if parent-type
+	(vector-append (%record-type-fields-by-index parent-type)
+		       partial-fields)
+	partial-fields)))
 
 (define (generate-fields-by-name fields-by-index)
   (let loop ((fields (reverse (vector->list fields-by-index))) (filtered '()))
@@ -195,17 +180,77 @@ USA.
 (define-integrable (field-index field)
   (vector-ref field 2))
 
-(define %record-metatag)
-(define record-type?)
-(define %%make-record-type)
-(add-boot-init!
- (lambda ()
-   (set! %record-metatag (make-dispatch-metatag 'record-tag))
-   (set! record-type? (dispatch-tag->predicate %record-metatag))
-   (set! %%make-record-type
-	 (dispatch-metatag-constructor %record-metatag 'make-record-type))
-   unspecific))
+(define (%make-marked-type start-index end-index parent-type instance-marker
+			   make-type)
+  (make-type
+   (cond ((not parent-type)
+	  (lambda (object)
+	    (%pred=0 instance-marker object)))
+	 ((not (%record-type-parent parent-type))
+	  (let ((marker2 (%record-type-instance-marker parent-type)))
+	    (lambda (object)
+	      (%pred=1 start-index end-index instance-marker marker2 object))))
+	 (else
+	  (let ((index2 (%record-type-start-index parent-type))
+		(marker2 (%record-type-instance-marker parent-type))
+		(type3 (%record-type-parent parent-type)))
+	    (let ((marker3 (%record-type-instance-marker type3)))
+	      (lambda (object)
+		(%pred>1 start-index end-index instance-marker index2 marker2
+			 marker3 type3 object))))))))
 
+(define (%make-normal-type start-index end-index parent-type make-type)
+  (letrec
+      ((type
+	(make-type
+	 (cond ((not parent-type)
+		(lambda (object)
+		  (%pred=0 type object)))
+	       ((not (%record-type-parent parent-type))
+		(let ((marker2 (%record-type-instance-marker parent-type)))
+		  (lambda (object)
+		    (%pred=1 start-index end-index type marker2 object))))
+	       (else
+		(let ((index2 (%record-type-start-index parent-type))
+		      (marker2 (%record-type-instance-marker parent-type))
+		      (type3 (%record-type-parent parent-type)))
+		  (let ((marker3 (%record-type-instance-marker type3)))
+		    (lambda (object)
+		      (%pred>1 start-index end-index type index2 marker2
+			       marker3 type3 object)))))))))
+    (%set-record-type-instance-marker! type type)
+    type))
+
+(define-integrable (%pred=0 marker1 object)
+  (and (%record? object)
+       (%pred-check-marker 0 marker1 object)))
+
+(define-integrable (%pred=1 start-index end-index marker1 marker2 object)
+  (and (%pred-prefix end-index object)
+       (%pred-check-marker start-index marker1 object)
+       (%pred-check-marker 0 marker2 object)))
+
+(define-integrable (%pred>1 start-index end-index marker1 start2 marker2
+			    marker3 type3 object)
+  (and (%pred-prefix end-index object)
+       (%pred-check-marker start-index marker1 object)
+       (%pred-check-marker start2 marker2 object)
+       (%pred-check-marker 0 marker3 object)
+       (let loop ((type (%record-type-parent type3)))
+	 (if type
+	     (and (check-type (%record-type-start-index type)
+			      (%record-type-instance-marker type)
+			      object)
+		  (loop (%record-type-parent type)))
+	     #t))))
+
+(define-integrable (%pred-prefix end-index object)
+  (and (%record? object)
+       (fix:>= (%record-length object) end-index)))
+
+(define-integrable (%pred-check-marker index marker object)
+  (eq? marker (%record-ref object index)))
+
 (define-integrable (%record-type-start-index record-type)
   (%dispatch-tag-extra-ref record-type 0))
 
@@ -221,30 +266,27 @@ USA.
 (define-integrable (%record-type-parent record-type)
   (%dispatch-tag-extra-ref record-type 4))
 
-(define-integrable (%record-type-instance-marker record-type)
-  (%dispatch-tag-extra-ref record-type 5))
-
-(define-integrable (%set-record-type-instance-marker! record-type marker)
-  (%dispatch-tag-extra-set! record-type 5 marker))
-
 (define-integrable (%record-type-applicator record-type)
-  (%dispatch-tag-extra-ref record-type 6))
-
-(define-integrable (%set-record-type-applicator! record-type applicator)
-  (%dispatch-tag-extra-set! record-type 6 applicator))
+  (%dispatch-tag-extra-ref record-type 5))
 
 (defer-boot-action 'fixed-objects
   (lambda ()
     (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
     (set-fixed-objects-item! 'record-applicator-index
-			     (%dispatch-tag-extra-index 6))))
+			     (%dispatch-tag-extra-index 5))))
+
+(define-integrable (%record-type-instance-marker record-type)
+  (%dispatch-tag-extra-ref record-type 6))
+
+(define (%set-record-type-instance-marker! record-type marker)
+  (%dispatch-tag-extra-set! record-type 6 marker))
 
 (define (%record-type-field-by-name record-type name)
   (or (%record-type-field-by-name-no-error record-type name)
       (%record-type-field-by-name record-type
 				  (error:no-such-slot record-type name))))
 
-(define-integrable (%record-type-field-by-name-no-error record-type name)
+(define (%record-type-field-by-name-no-error record-type name)
   (vector-binary-search (%record-type-fields-by-name record-type)
 			symbol<?
 			field-name
@@ -255,11 +297,14 @@ USA.
       (%record-type-field-by-index record-type
 				   (error:no-such-slot record-type index))))
 
-(define-integrable (%record-type-field-by-index-no-error record-type index)
+(define (%record-type-field-by-index-no-error record-type index)
   (vector-binary-search (%record-type-fields-by-index record-type)
 			fix:<
 			field-index
 			index))
+
+(define (%record-type-fasdumpable? type)
+  (%record-type-proxy? (%record-type-instance-marker type)))
 
 (define (record-type-name record-type)
   (guarantee record-type? record-type 'record-type-name)
@@ -313,44 +358,13 @@ USA.
     (if (not applicator)
 	(error:not-a applicable-record? record 'record-applicator))
     applicator))
-
-(define (set-record-type-applicator! record-type applicator)
-  (guarantee record-type? record-type 'set-record-type-applicator!)
-  (if (%record-type-parent record-type)
-      (error:bad-range-argument record-type 'set-record-type-applicator!))
-  (guarantee procedure? applicator 'set-record-type-applicator!)
-  (%set-record-type-applicator! record-type applicator))
 
-(define (%record-type-fasdumpable? type)
-  (%record-type-proxy? (%record-type-instance-marker type)))
-
 (define (%record-type-proxy? object)
   (and (object-type? (ucode-type constant) object)
        (let ((v (object-new-type (ucode-type fixnum) object)))
 	 (and (fix:>= v #x100)
 	      (fix:< v #x200)))))
 (register-predicate! %record-type-proxy? 'record-type-proxy)
-
-(define (set-record-type-fasdumpable! type proxy)
-  (defer-boot-action 'record-procedures
-    (lambda ()
-      (set-record-type-fasdumpable! type proxy))))
-
-(defer-boot-action 'record-procedures
-  (lambda ()
-    (set! set-record-type-fasdumpable!
-	  (named-lambda (set-record-type-fasdumpable! type proxy)
-	    (guarantee record-type? type 'set-record-type-fasdumpable!)
-	    (guarantee %record-type-proxy? proxy 'set-record-type-fasdumpable!)
-	    (without-interrupts
-	     (lambda ()
-	       (if (%record-type-fasdumpable? type)
-		   (error "Record type already fasdumpable:" type))
-	       (if (%proxy->record-type proxy)
-		   (error "Record-type proxy already in use:" proxy))
-	       (%set-proxied-record-type! proxy type)
-	       (%set-record-type-instance-marker! type proxy)))))
-    unspecific))
 
 (define-integrable (%record-type-proxy->index marker)
   (fix:- (object-new-type (ucode-type fixnum) marker) #x100))
@@ -382,7 +396,7 @@ USA.
 		   (cdr form)
 		   (iota (length (cdr form)))))))))
   (enumerate-proxies pathname host))
-
+
 (define (record? object)
   (and (%record? object)
        (%record->root-type object)

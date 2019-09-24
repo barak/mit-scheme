@@ -146,6 +146,7 @@ USA.
 	  (define-unparser-method define-print-method)
 	  (simple-unparser-method standard-print-method)
 	  (standard-unparser-method bracketed-print-method)
+	  (with-values call-with-values)
 	  without-interrupts)
   (export ()
 	  %false->weak-false
@@ -166,6 +167,7 @@ USA.
 	  %weak-set-car!
 	  bracketed-print-method
 	  bytes-per-object
+	  call-with-values
 	  default-object
 	  default-object?
 	  define-pp-describer
@@ -204,6 +206,7 @@ USA.
 	  simple-parser-method
 	  standard-print-method
 	  target-bytes-per-object
+	  values
 	  weak-car
 	  weak-cdr
 	  weak-cons
@@ -552,15 +555,13 @@ USA.
   (parent (runtime))
   (export deprecated ()
 	  (%exit exit)
-	  (quit suspend)
-	  (with-values call-with-values))
+	  (quit suspend))
   (export ()
 	  (*the-non-printing-object* unspecific)
 	  <hook-list>
 	  append-hook-to-list
 	  apply
 	  bind-cell-contents!
-	  call-with-values
 	  cd
 	  cell-contents
 	  cell?
@@ -661,7 +662,6 @@ USA.
 	  unspecific
 	  user-initial-environment
 	  user-initial-prompt
-	  values
 	  wait-interval
 	  with-history-disabled
 	  with-interrupt-mask
@@ -3959,13 +3959,11 @@ USA.
 	  record-type-name
 	  record-type-parent
 	  record-type?
-	  record?
-	  set-record-type-applicator!)
+	  record?)
   (export (runtime)
 	  error:no-such-slot
 	  error:uninitialized-slot
-	  record-type-field-index
-	  set-record-type-fasdumpable!)
+	  record-type-field-index)
   (export (runtime pathname)
 	  record-type-proxy:host
 	  record-type-proxy:pathname)

@@ -39,9 +39,6 @@ USA.
 (define (make-bundle-predicate name)
   (record-predicate (make-record-type name '() <bundle>)))
 
-(define (%bundle-applicator bundle name . args)
-  (apply (bundle-ref bundle name) args))
-
 (define-integrable (%predicate->record-type predicate)
   (predicate->dispatch-tag predicate))
 
@@ -79,8 +76,10 @@ USA.
               object)))
 
 (define <bundle>
-  (make-record-type '<bundle> '(alist)))
-(set-record-type-applicator! <bundle> %bundle-applicator)
+  (make-record-type '<bundle> '(alist)
+		    'applicator
+		    (lambda (bundle name . args)
+		      (apply (bundle-ref bundle name) args))))
 
 (define bundle?
   (record-predicate <bundle>))
