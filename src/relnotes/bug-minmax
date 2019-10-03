@@ -3,5 +3,11 @@ as minNum/maxNum.
 
 When one input is a quiet NaN, they return the other input.  Only when
 both inputs are NaN or one input is a signalling NaN do they return a
-NaN, and in either case, it is a quiet NaN.  These trap only when the
-floating-point invalid-operation exception is trapped.
+NaN, and in either case, it is a quiet NaN[*].  These trap only when
+the floating-point invalid-operation exception is trapped.
+
+[*] Caveat: The IEEE 754 committee is considering changing the
+behaviour of these operations on signalling NaN, because the current
+semantics is nonassociative: min(1, min(2, sNaN)) = 1, whereas
+min(min(1, 2), sNaN) = qNaN.  So don't go around relying on this
+semantics for sNaN inputs too heavily!
