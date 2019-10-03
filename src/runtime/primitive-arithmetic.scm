@@ -319,22 +319,44 @@ USA.
 (define (flo:total-mag< x y)
   (flo:total< (flo:abs x) (flo:abs y)))
 
+(define (flo:quieten-nan n)
+  (flo:make-nan (flo:sign-negative? n)
+		#t			;quiet
+		(flo:nan-payload n)))
+
 (define (flo:invalid-minmax x y caller)
   caller
   (cond ((not (flo:nan? x))
 	 (assert (flo:nan? y))
-	 (if (not (flo:nan-quiet? y))
-	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
-	 x)
+	 (if (flo:nan-quiet? y)
+	     x
+	     (begin
+	       (flo:raise-exceptions! (flo:exception:invalid-operation))
+	       (flo:quieten-nan y))))
 	((not (flo:nan? y))
 	 (assert (flo:nan? x))
-	 (if (not (flo:nan-quiet? x))
-	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
-	 y)
+	 (if (flo:nan-quiet? x)
+	     y
+	     (begin
+	       (flo:raise-exceptions! (flo:exception:invalid-operation))
+	       (flo:quieten-nan x))))
+	;; Both are NaN.
+	((not (or (flo:nan-quiet? x) (flo:nan-quiet? y)))
+	 (flo:raise-exceptions! (flo:exception:invalid-operation))
+	 (flo:quieten-nan (if (flo:total< x y) x y)))
+	((not (flo:nan-quiet? x))
+	 (flo:raise-exceptions! (flo:exception:invalid-operation))
+	 (flo:quieten-nan x))
+	((not (flo:nan-quiet? y))
+	 (flo:raise-exceptions! (flo:exception:invalid-operation))
+	 (flo:quieten-nan y))
+	;; Both are quiet NaN.
 	(else
-	 (if (not (and (flo:nan-quiet? x) (flo:nan-quiet? y)))
-	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
-	 x)))
+	 ;; The choice is arbitrary; using the minimum in the
+	 ;; standard total ordering keeps the result invariant under
+	 ;; permutation of arguments.  (XXX Maybe reverse this for
+	 ;; min vs max?)
+	 (if (flo:total< x y) x y))))
 
 (define (flo:min x y)
   (cond ((flo:safe< x y) x)

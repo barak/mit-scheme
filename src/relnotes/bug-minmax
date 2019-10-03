@@ -1,5 +1,7 @@
 Bug fix: (flo:min x y) and (flo:max x y) now conform to IEEE 754-2008,
 as minNum/maxNum.
 
-When one input is a NaN, they return the other input.  These trap only
-when the floating-point invalid-operation exception is trapped.
+When one input is a quiet NaN, they return the other input.  Only when
+both inputs are NaN or one input is a signalling NaN do they return a
+NaN, and in either case, it is a quiet NaN.  These trap only when the
+floating-point invalid-operation exception is trapped.
