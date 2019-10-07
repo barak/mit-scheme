@@ -166,13 +166,33 @@ static void
 print_vector (outf_channel stream, SCHEME_OBJECT vector)
 {
   outf (stream, "#(");
-  unsigned long end = (VECTOR_LENGTH (vector));
+  unsigned long length = (VECTOR_LENGTH (vector));
+  unsigned long end = ((length < MAX_LIST_PRINT) ? length : MAX_LIST_PRINT);
   for (unsigned long i = 0; i < end; i++)
     {
       if (i > 0)
 	outf (stream, " ");
       print_object (stream, (VECTOR_REF (vector, i)));
     }
+  if (end < length)
+    outf (stream, "...[%ld more]", (length - end));
+  outf (stream, ")");
+}
+
+static void
+print_bytevector (outf_channel stream, SCHEME_OBJECT vector)
+{
+  outf (stream, "#u8(");
+  unsigned long length = (BYTEVECTOR_LENGTH (vector));
+  unsigned long end = ((length < 20) ? length : 20);
+  for (unsigned long i = 0; i < end; i++)
+    {
+      if (i > 0)
+	outf (stream, " ");
+      outf (stream, "%d", (BYTEVECTOR_REF (vector, i)));
+    }
+  if (end < length)
+    outf (stream, "...[%ld more]", (length - end));
   outf (stream, ")");
 }
 
@@ -238,7 +258,7 @@ print_char (outf_channel stream, unsigned int cp)
       if ((cp >= ' ') && (cp <= '~'))
 	outf (stream, "%c", cp);
       else
-	outf (stream, "\\%03o", cp);
+	outf (stream, "\\x%x;", cp);
       break;
     }
 }
@@ -264,17 +284,10 @@ print_string (outf_channel stream, SCHEME_OBJECT string)
 static void
 print_ustring (outf_channel stream, SCHEME_OBJECT string)
 {
-  long length, long_enough;
-  long i;
-  unsigned char * next;
-  unsigned int cp;
-  unsigned char cp_size;
-
-  length = (STRING_LENGTH (string));
-  long_enough = (length < 100 ? length : 90);
-  next = (STRING_LOC (string, 0));
-
-  cp_size
+  unsigned long length = (STRING_LENGTH (string));
+  unsigned long long_enough = (length < 100 ? length : 90);
+  unsigned char * next = (STRING_LOC (string, 0));
+  unsigned char cp_size
     = ((OBJECT_TYPE (MEMORY_REF (string, BYTEVECTOR_LENGTH_INDEX))) & 0x03);
   if (cp_size == 0)
     {
@@ -283,8 +296,9 @@ print_ustring (outf_channel stream, SCHEME_OBJECT string)
     }
 
   outf (stream, "\"");
-  for (i = 0; (i < long_enough); i += 1)
+  for (unsigned long i = 0; (i < long_enough); i += 1)
     {
+      unsigned int cp;
       switch (cp_size) {
       case 1:
 	cp = *next++;
@@ -359,23 +373,6 @@ DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
   print_object (ERROR_OUTPUT, ARG_REF (1));
   outf_error ("\n");
   return (SHARP_F);
-}
-
-static void
-print_objects (SCHEME_OBJECT * objects, int n)
-{
-  SCHEME_OBJECT * scan;
-  SCHEME_OBJECT * end;
-
-  scan = objects;
-  end = (objects + n);
-  while (scan < end)
-    {
-      outf_error ("%#lx: ", ((unsigned long) scan));
-      print_object (ERROR_OUTPUT, (*scan++));
-      outf_error ("\n");
-    }
-  outf_flush_error();
 }
 
 static void
@@ -509,8 +506,11 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       return;
 
     case TC_CHARACTER_STRING:
-    case TC_BYTEVECTOR:
       print_string (stream, obj);
+      return;
+
+    case TC_BYTEVECTOR:
+      print_bytevector (stream, obj);
       return;
 
     case TC_UNICODE_STRING:
