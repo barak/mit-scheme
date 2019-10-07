@@ -3925,6 +3925,7 @@ USA.
   (files "record")
   (parent (runtime))
   (export deprecated ()
+	  (new-make-record-type make-record-type) ;RELNOTE: delete
 	  (record-copy copy-record)
 	  (record-updater record-modifier)
 	  set-record-type-unparser-method!)

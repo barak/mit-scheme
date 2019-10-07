@@ -139,13 +139,16 @@ USA.
 
 (define (generate-fields-by-index field-specs parent-type start-index)
   (let ((partial-fields
-	 (list->vector
-	  (map (lambda (spec index)
-		 (make-field (field-spec-name spec)
-			     (field-spec-init spec)
-			     index))
-	       field-specs
-	       (iota (length field-specs) (+ start-index 1))))))
+	 (let ((v (make-vector (length field-specs)))
+	       (offset (fix:+ start-index 1)))
+	   (do ((specs field-specs (cdr specs))
+		(index 0 (fix:+ index 1)))
+	       ((not (pair? specs)) v)
+	     (vector-set! v
+			  index
+			  (make-field (field-spec-name (car specs))
+				      (field-spec-init (car specs))
+				      (fix:+ offset index)))))))
     (if parent-type
 	(vector-append (%record-type-fields-by-index parent-type)
 		       partial-fields)
