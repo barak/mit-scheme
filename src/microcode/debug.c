@@ -163,6 +163,20 @@ print_list (outf_channel stream, SCHEME_OBJECT pair)
 }
 
 static void
+print_vector (outf_channel stream, SCHEME_OBJECT vector)
+{
+  outf (stream, "#(");
+  unsigned long end = (VECTOR_LENGTH (vector));
+  for (unsigned long i = 0; i < end; i++)
+    {
+      if (i > 0)
+	outf (stream, " ");
+      print_object (stream, (VECTOR_REF (vector, i)));
+    }
+  outf (stream, ")");
+}
+
+static void
 print_return_name (outf_channel stream, SCHEME_OBJECT Ptr)
 {
   unsigned long index = (OBJECT_DATUM (Ptr));
@@ -363,18 +377,6 @@ print_objects (SCHEME_OBJECT * objects, int n)
     }
   outf_flush_error();
 }
-
-/* This is useful because `print_object' doesn't print the contents of
-   vectors.  The reason that it doesn't is because vectors are used to
-   represent named structures, and most named structures don't want to
-   be printed out explicitly.  */
-
-void
-Print_Vector (SCHEME_OBJECT vector)
-{
-  print_objects
-    ((MEMORY_LOC (vector, 1)), (OBJECT_DATUM (VECTOR_LENGTH (vector))));
-}
 
 static void
 print_expression (outf_channel stream,
@@ -526,6 +528,10 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
     case TC_WEAK_CONS:
     case TC_LIST:
       print_list (stream, obj);
+      return;
+
+    case TC_VECTOR:
+      print_vector (stream, obj);
       return;
 
     case TC_FALSE:
