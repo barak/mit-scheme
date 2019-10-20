@@ -34,6 +34,7 @@ USA.
   ;; cold load sequence in "make.scm".
   (files "packag")
   (parent ())
+  ;; All these exports must match those in "make.scm".
   (export ()
 	  *allow-package-redefinition?*
 	  construct-packages-from-file
@@ -54,9 +55,9 @@ USA.
 	  package?
 	  all-packages)
   (export (runtime library standard)
-	  link-description/inner-name
 	  link-description/outer-name
 	  link-description/package
+	  link-description/status
 	  package-description/exports
 	  package-description/name
 	  package-file/descriptions)

@@ -585,6 +585,7 @@ USA.
 	  '(link-description/inner-name
 	    link-description/outer-name
 	    link-description/package
+	    link-description/status
 	    package-description/exports
 	    package-description/name
 	    package-file/descriptions)))
