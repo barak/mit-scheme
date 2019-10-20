@@ -241,9 +241,9 @@ USA.
        (%pred-check-marker 0 marker3 object)
        (let loop ((type (%record-type-parent type3)))
 	 (if type
-	     (and (check-type (%record-type-start-index type)
-			      (%record-type-instance-marker type)
-			      object)
+	     (and (%pred-check-marker (%record-type-start-index type)
+				      (%record-type-instance-marker type)
+				      object)
 		  (loop (%record-type-parent type)))
 	     #t))))
 
