@@ -4830,6 +4830,7 @@ USA.
 	  scons-begin
 	  scons-call
 	  scons-close
+	  scons-cond
 	  scons-declare
 	  scons-define
 	  scons-delay

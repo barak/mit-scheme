@@ -344,7 +344,7 @@ USA.
    (delay
      (scons-rule
 	 `((subform (* (subform (list id any (? any)))))
-	   ,cond-clause-pattern
+	   (subform (+ any))
 	   (* any))
        (lambda (bindings test-clause actions)
 	 (let ((loop-name (new-identifier 'do-loop)))
@@ -353,16 +353,16 @@ USA.
 		      (list (car binding)
 			    (cadr binding)))
 		    bindings)
-	     (expand-cond-clause test-clause
-				 (scons-begin
-				   (apply scons-begin actions)
-				   (apply scons-call
-					  loop-name
-					  (map (lambda (binding)
-						 (if (pair? (cddr binding))
-						     (caddr binding)
-						     (car binding)))
-					       bindings)))))))))))
+	     (scons-cond test-clause
+			 (list (scons-close 'else)
+			       (apply scons-begin actions)
+			       (apply scons-call
+				      loop-name
+				      (map (lambda (binding)
+					     (if (pair? (cddr binding))
+						 (caddr binding)
+						 (car binding)))
+					   bindings)))))))))))
 
 (define $case
   (spar-transformer->runtime

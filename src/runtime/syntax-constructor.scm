@@ -78,6 +78,14 @@ USA.
      (cons (close-part close operator)
 	   (close-parts close operands)))))
 
+(define (scons-cond . clauses)
+  (make-open-expr
+   (lambda (close)
+     (cons (close 'cond)
+	   (map (lambda (clause)
+		  (close-parts close clause))
+		clauses)))))
+
 (define (scons-declare . decls)
   (make-open-expr
    (lambda (close)
@@ -96,7 +104,7 @@ USA.
    (lambda (close)
      (list (close 'delay)
 	   (close-part close expr)))))
-
+
 (define (scons-if predicate consequent alternative)
   (make-open-expr
    (lambda (close)
@@ -104,7 +112,7 @@ USA.
 	   (close-part close predicate)
 	   (close-part close consequent)
 	   (close-part close alternative)))))
-
+
 (define (scons-lambda bvl . body-forms)
   (make-open-expr
    (lambda (close)
