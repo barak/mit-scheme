@@ -29,12 +29,15 @@ USA.
 
 (declare (usual-integrations))
 
-(define (parsed-import-expandable? import db)
-  (let ((name (parsed-import-library import)))
-    (and (registered-library? name db)
-	 ((registered-library name db) 'has? 'exports))))
-
 (define (expand-parsed-imports imports db)
+  (let ((unusable
+	 (remove (lambda (import)
+		   (let ((name (parsed-import-library import)))
+		     (and (registered-library? name db)
+			  ((registered-library name db) 'has? 'exports))))
+		 imports)))
+    (if (pair? unusable)
+	(error "Unknown imports:" (map parsed-import-library unusable))))
   (reduce-right append!
 		'()
 		(map (lambda (import)
@@ -42,10 +45,7 @@ USA.
 		     imports)))
 
 (define-automatic-property 'imports '(parsed-imports db)
-  (lambda (imports db)
-    (every (lambda (import)
-	     (parsed-import-expandable? import db))
-	   imports))
+  #f
   expand-parsed-imports)
 
 ;;; Returns a list of library-import elements.

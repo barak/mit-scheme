@@ -6086,8 +6086,7 @@ USA.
   (files "library-imports")
   (parent (runtime library))
   (export (runtime library)
-	  expand-parsed-imports
-	  parsed-import-expandable?))
+	  expand-parsed-imports))
 
 (define-package (runtime library scode)
   (files "library-scode")

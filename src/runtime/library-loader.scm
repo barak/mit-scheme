@@ -130,12 +130,6 @@ USA.
 (define (environment . import-sets)
   (let ((parsed (map parse-import-set import-sets))
 	(db host-library-db))
-    (let ((unusable
-	   (remove (lambda (import)
-		     (parsed-import-expandable? import db))
-		   parsed)))
-      (if (pair? unusable)
-	  (error "Imports not usable:" unusable)))
     (let ((imports (expand-parsed-imports parsed db)))
       (let ((unavailable
 	     (remove (lambda (import)

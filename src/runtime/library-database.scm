@@ -36,7 +36,10 @@ USA.
       (hash-table-exists? table name))
 
     (define (get name)
-      (hash-table-ref table name))
+      (let ((library (hash-table-ref/default table name #f)))
+	(if (not library)
+	    (error "No library of this name in database:" name this))
+	library))
 
     (define (put! library)
       (if (and (library 'has? 'db)
@@ -115,7 +118,7 @@ USA.
 	      (if (not auto)
 		  (error "Unknown property:" key))
 	      (if (not (auto-runnable? auto this))
-		  (error "Auto property not ready:" auto))
+		  (error "Auto property not ready:" key))
 	      (let ((bindings (run-auto auto this)))
 		(set-cdr! alist (append bindings (cdr alist)))
 		(cdr (assq key bindings)))))))
