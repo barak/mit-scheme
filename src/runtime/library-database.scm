@@ -118,7 +118,10 @@ USA.
 	      (if (not auto)
 		  (error "Unknown property:" key))
 	      (if (not (auto-runnable? auto this))
-		  (error "Auto property not ready:" key))
+		  (error "Auto property not ready:"
+			 key
+			 (error-irritant/noise " because of")
+			 (auto-unready-deps auto this)))
 	      (let ((bindings (run-auto auto this)))
 		(set-cdr! alist (append bindings (cdr alist)))
 		(cdr (assq key bindings)))))))
@@ -212,6 +215,18 @@ USA.
 		  (map (lambda (key)
 			 (library 'get key))
 		       (auto-deps auto))))))
+
+(define (auto-unready-deps auto library)
+  (if (every (lambda (key)
+	       (library 'has? key))
+	     (auto-deps auto))
+      (list "guard expr")
+      (map (lambda (key)
+	     (let ((auto* (automatic-property key)))
+	       (if auto*
+		   (cons key (auto-unready-deps auto* library))
+		   key)))
+	   (auto-deps auto))))
 
 (define (run-auto auto library)
   (let ((runner
