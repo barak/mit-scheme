@@ -1576,7 +1576,6 @@ USA.
 	  char-standard?
 	  char-wsp?
 	  code-point-list?
-	  char-set*
 	  code-point-in-char-set?
 	  compute-char-set
 	  re-char-pattern->code-points
