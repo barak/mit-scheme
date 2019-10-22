@@ -6007,18 +6007,22 @@ USA.
 	  library-contents
 	  library-db?
 	  library-environment
-	  library-imports-used
-	  library-imports
-	  library-name
 	  library-export-from
 	  library-export-to
 	  library-export=?
 	  library-export?
+	  library-filename
 	  library-import-from
 	  library-import-from-library
 	  library-import-to
 	  library-import=?
 	  library-import?
+	  library-imports
+	  library-imports-environment
+	  library-imports-used
+	  library-name
+	  library-parsed-contents
+	  library-parsed-imports
 	  library?
 	  registered-libraries
 	  registered-library
@@ -6032,12 +6036,9 @@ USA.
 	  library-exporter
 	  library-export->list
 	  library-exports
-	  library-filename
 	  library-imports-from
 	  library-import->list
 	  library-imports-environment
-	  library-parsed-contents
-	  library-parsed-imports
 	  library-preregistered?
 	  library-syntaxed-contents
 	  list->library-export

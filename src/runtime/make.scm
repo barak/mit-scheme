@@ -621,7 +621,7 @@ USA.
   (write-string "done" (console-i/o-port)))
 
 ((lexical-reference (->environment '(runtime library standard))
-		    'initialize-legacy-libraries!)
+		    'initialize-synthetic-libraries!)
  packages-file)
 
 )

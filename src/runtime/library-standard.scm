@@ -975,28 +975,60 @@ USA.
 (define-standard-library '(srfi 131)
   '(define-record-type))
 
-;;;; Legacy packages
+;;;; Synthetic libraries
 
-(define (initialize-legacy-libraries! package-file)
-  (register-library! (make-library '(mit legacy runtime)
+;;; A synthetic library is one that's derived from legacy packages, much like a
+;;; standard library, with a little more flexibility in where the exports come
+;;; from.
+
+(define (define-synthetic-library name source-package package-pred)
+  (set! synthetic-libraries
+	(cons (list name source-package package-pred)
+	      synthetic-libraries))
+  unspecific)
+
+(define synthetic-libraries '())
+
+(define (package-predicate:name-prefix prefix)
+  (lambda (pd)
+    (let ((name (package-description/name pd)))
+      (and (>= (length name) (length prefix))
+	   (equal? (take name (length prefix)) prefix)))))
+
+(define-synthetic-library '(mit legacy runtime) '()
+  (package-predicate:name-prefix '(runtime)))
+
+(define-synthetic-library '(mit library) '(runtime)
+  (package-predicate:name-prefix '(runtime library)))
+
+(define (initialize-synthetic-libraries! package-file)
+  (for-each (lambda (p)
+	      (let ((name (car p))
+		    (source-package (cadr p))
+		    (package-pred (caddr p)))
+		(make-synthetic-library name
+		  (get-exports package-file source-package package-pred)
+		  (->environment source-package))))
+	    synthetic-libraries))
+
+(define (make-synthetic-library name exports environment)
+  (register-library! (make-library name
 				   'parsed-imports '()
-				   'exports (runtime-exports package-file)
+				   'exports exports
 				   'parsed-contents '()
 				   'filename #f
-				   'environment system-global-environment)
+				   'environment environment)
 		     host-library-db))
 
-(define (runtime-exports package-file)
-  (append-map package-exports
-	      (filter (lambda (pd)
-			(let ((name (package-description/name pd)))
-			  (and (pair? name)
-			       (eq? (car name) 'runtime))))
+(define (get-exports package-file source-package package-pred)
+  (append-map (lambda (pd)
+		(package-exports pd source-package))
+	      (filter package-pred
 		      (vector->list (package-file/descriptions package-file)))))
 
-(define (package-exports pd)
+(define (package-exports pd source-package)
   (filter-map (lambda (link)
-		(and (null? (link-description/package link))
+		(and (equal? source-package (link-description/package link))
 		     (not (link-description/status link))
 		     (make-library-export (link-description/outer-name link))))
 	      (vector->list (package-description/exports pd))))
