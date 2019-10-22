@@ -51,7 +51,7 @@ USA.
 		    '(foo bar))
       (assert-lset= equal?
 		    (library-parsed-imports library)
-		    (map convert-import ex1-imports))
+		    ex1-imports)
       (assert-lset= library-export=?
 		    (library-exports library)
 		    (map convert-export ex1-exports))
@@ -68,7 +68,7 @@ USA.
 		    '(foo bar))
       (assert-lset= equal?
 		    (library-parsed-imports library)
-		    (map convert-import (append ex1-imports ex2-extra-imports)))
+		    (append ex1-imports ex2-extra-imports))
       (assert-lset= library-export=?
 		    (library-exports library)
 		    (map convert-export (append ex1-exports ex2-extra-exports)))
@@ -105,10 +105,10 @@ USA.
 			(example life))))
       (let ((program (r7rs-source-program source)))
 	(assert-equal (library-parsed-imports program)
-		      '((library (scheme base))
-			(only (library (example life)) life)
-			(rename (prefix (library (example grid)) grid-)
-				(grid-make . make-grid))))
+		      '((scheme base)
+			(only (example life) life)
+			(rename (prefix (example grid) grid-)
+				(grid-make make-grid))))
 	(assert-equal (library-parsed-contents program)
 		      '((begin
 			  (define grid (make-grid 24 24))

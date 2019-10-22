@@ -53,14 +53,6 @@ USA.
   (let ((converted-set
 	 (let loop ((import-set import-set) (filter (lambda (name) name)))
 	   (case (car import-set)
-	     ((library)
-	      (let ((name (cadr import-set)))
-		(filter-map (lambda (export)
-			      (let* ((to (library-export-to export))
-				     (filtered (filter to)))
-				(and filtered
-				     (make-library-import name to filtered))))
-			    ((registered-library name db) 'get 'exports))))
 	     ((only)
 	      (loop (cadr import-set)
 		    (let ((names (cddr import-set)))
@@ -85,10 +77,20 @@ USA.
 			(filter
 			 (let ((p (assq name renames)))
 			   (if p
-			       (cdr p)
+			       (cadr p)
 			       name)))))))
 	     (else
-	      (error "Unrecognized import set:" import-set))))))
+	      (if (not (library-name? import-set))
+		  (error "Unrecognized import set:" import-set))
+	      (filter-map (lambda (export)
+			    (let* ((to (library-export-to export))
+				   (filtered (filter to)))
+			      (and filtered
+				   (make-library-import import-set
+							to
+							filtered))))
+			  ((registered-library import-set db)
+			   'get 'exports)))))))
     (if (duplicate-names? (map library-import-to converted-set))
 	(error "Import set has duplicate names:" import-set))
     converted-set))

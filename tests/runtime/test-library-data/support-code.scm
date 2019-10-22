@@ -35,21 +35,6 @@ USA.
 (define-comparator library-export=? 'library-export=?)
 (define-comparator library-import=? 'library-import=?)
 
-(define (convert-import import)
-  (case (car import)
-    ((only except prefix)
-     `(,(car import)
-       ,(convert-import (cadr import))
-       ,@(cddr import)))
-    ((rename)
-     `(,(car import)
-       ,(convert-import (cadr import))
-       ,@(map (lambda (p)
-		(cons (car p) (cadr p)))
-	      (cddr import))))
-    (else
-     `(library ,import))))
-
 (define (convert-export export)
   (if (symbol? export)
       (make-library-export export)

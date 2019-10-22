@@ -219,8 +219,7 @@ USA.
 
 (define import-set-parser
   (object-parser
-   (alt (encapsulate (lambda (library-name) (list 'library library-name))
-          (match-if library-name?))
+   (alt (match-if library-name?)
         (encapsulate list
           (alt (list (alt (match only) (match except))
                      (object import-set-parser)
@@ -230,7 +229,7 @@ USA.
                      (match-if symbol?))
                (list (match rename)
                      (object import-set-parser)
-                     (* (encapsulate cons
+                     (* (encapsulate list
                           (list (match-if symbol?)
                                 (match-if symbol?)))))))
         (sexp (parsing-error "import set")))))
@@ -311,13 +310,13 @@ USA.
          lose)))
 
 (define (parsed-import-library import)
-  (case (car import)
-    ((library) (cadr import))
-    ((only except prefix rename) (parsed-import-library (cadr import)))
-    (else (error "Unrecognized import:" import))))
+  (if (memq (car import) '(only except prefix rename))
+      (parsed-import-library (cadr import))
+      import))
 
 (define (library-name? object)
-  (and (list? object)
+  (and (pair? object)
+       (list? (cdr object))
        (every (lambda (elt)
 		(or (interned-symbol? elt)
 		    (exact-nonnegative-integer? elt)))
