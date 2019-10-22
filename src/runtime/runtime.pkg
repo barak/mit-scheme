@@ -6075,6 +6075,7 @@ USA.
   (export (runtime)
 	  current-library-db
 	  host-library-db
+	  initial-host-library-db
 	  standard-library-globals)
   (export (runtime library)
 	  add-standard-libraries!

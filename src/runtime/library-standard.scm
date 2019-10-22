@@ -1001,6 +1001,7 @@ USA.
 (define-synthetic-library '(mit library) '(runtime)
   (package-predicate:name-prefix '(runtime library)))
 
+(define initial-host-library-db)
 (define (initialize-synthetic-libraries! package-file)
   (for-each (lambda (p)
 	      (let ((name (car p))
@@ -1009,7 +1010,9 @@ USA.
 		(make-synthetic-library name
 		  (get-exports package-file source-package package-pred)
 		  (->environment source-package))))
-	    synthetic-libraries))
+	    synthetic-libraries)
+  (set! initial-host-library-db (copy-library-db host-library-db))
+  unspecific)
 
 (define (make-synthetic-library name exports environment)
   (register-library! (make-library name
