@@ -221,12 +221,13 @@ USA.
 	       (library 'has? key))
 	     (auto-deps auto))
       (list "guard expr")
-      (map (lambda (key)
-	     (let ((auto* (automatic-property key)))
-	       (if auto*
-		   (cons key (auto-unready-deps auto* library))
-		   key)))
-	   (auto-deps auto))))
+      (filter-map (lambda (key)
+		    (and (not (library 'has? key))
+			 (let ((auto* (automatic-property key)))
+			   (if auto*
+			       (cons key (auto-unready-deps auto* library))
+			       key))))
+		  (auto-deps auto))))
 
 (define (run-auto auto library)
   (let ((runner
