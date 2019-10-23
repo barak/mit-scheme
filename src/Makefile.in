@@ -68,7 +68,7 @@ LIARC_BOOT_BUNDLES = compiler cref sf star-parser
 LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) ffi sos ssp xml
 
 SUBDIRS = $(INSTALLED_SUBDIRS) win32 xdoc
-INSTALLED_SUBDIRS = microcode runtime $(OPTION_SUBDIRS) $(LIARC_BUNDLES)
+INSTALLED_SUBDIRS = microcode runtime libraries $(OPTION_SUBDIRS) $(LIARC_BUNDLES)
 BASICS_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 OPTION_SUBDIRS = @OPTION_SUBDIRS@
 
@@ -558,6 +558,17 @@ ssp/ssp-unx.pkd: $(SSP_CREF_TARGETS)
 ### these.
 
 ################
+# Libraries
+################
+
+.PHONY: compile-libraries
+compile-libraries: lib/all.com
+compile-libraries: microcode/scheme
+	(echo '(with-working-directory-pathname "libraries"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| ./run-build --batch-mode --no-init-file
+
+################
 # blowfish
 ################
 
@@ -772,6 +783,7 @@ cross-target: $(X11_SCREEN_BUILD_TARGETS)
 cross-target: lib/all.com
 cross-target: lib/runtime.com
 cross-target: microcode/scheme
+cross-target: compile-libraries
 
 ################
 # Microcode

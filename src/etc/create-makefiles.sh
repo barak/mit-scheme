@@ -57,7 +57,7 @@ EOF
 
 run_cmd rm -f compiler/machine compiler/compiler.pkg
 
-for SUBDIR in ${BUNDLES} runtime win32; do
+for SUBDIR in ${BUNDLES} runtime libraries win32; do
     echo "creating ${SUBDIR}/Makefile.in"
     rm -f ${SUBDIR}/Makefile.in
     cat etc/std-makefile-prefix ${SUBDIR}/Makefile-fragment \

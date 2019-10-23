@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [10.1.2], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [10.90], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
 AC_PROG_MAKE_SET
@@ -441,6 +441,7 @@ Makefile.tools
 compiler/Makefile
 cref/Makefile
 ffi/Makefile
+libraries/Makefile
 runtime/Makefile
 sf/Makefile
 sos/Makefile
@@ -464,7 +465,7 @@ if test x"${mit_scheme_native_code}" = xc; then
         (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
     done
     mkdir -p lib/lib
-    for BUNDLE in 6001 compiler cref ffi sf sos ssp star-parser \
+    for BUNDLE in 6001 compiler cref ffi libraries sf sos ssp star-parser \
 		  xdoc xml; do
     	SO=${BUNDLE}.so
 	(cd lib/lib; rm -f ${SO}; ${LN_S} ../../${BUNDLE}/${SO} .)

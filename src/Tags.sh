@@ -37,6 +37,7 @@ DEFAULT_SUBDIRS=( \
     ffi \
     gdbm \
     imail \
+    libraries \
     mcrypt \
     microcode \
     pgsql \
