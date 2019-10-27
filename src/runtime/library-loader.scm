@@ -196,6 +196,19 @@ USA.
 	      (error "Not an exported name:" name))
 	  (cdr p))))))
 
+(define (preregister-standard-libraries!)
+  (parameterize ((param:hide-notifications? #t))
+    (let ((pn (system-library-directory-pathname "libraries")))
+      (if pn
+	  (find-scheme-libraries! pn)))
+    (let ((pn (init-file-specifier->pathname '("libraries"))))
+      (if (file-directory? pn)
+	  (find-scheme-libraries! (pathname-as-directory pn))))))
+
+(add-boot-init!
+ (lambda ()
+   (add-event-receiver! event:after-restart preregister-standard-libraries!)))
+
 (define (find-scheme-libraries! pathname)
   (preregister-libraries! pathname (current-library-db)))
 

@@ -478,6 +478,7 @@ USA.
    (runtime hash)
    (runtime dynamic)
    (runtime regular-sexpression)
+   (runtime library loader)
    (runtime library standard)
    ;; Microcode data structures
    (runtime history)
