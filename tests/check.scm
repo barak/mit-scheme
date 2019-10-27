@@ -66,6 +66,7 @@ USA.
     ("runtime/test-char" (runtime))
     ("runtime/test-char-set" (runtime character-set))
     ("runtime/test-compound-predicate" (runtime compound-predicate))
+    ("runtime/test-digraph" (runtime))
     "runtime/test-division"
     "runtime/test-dragon4"
     "runtime/test-dynamic-env"

@@ -483,10 +483,14 @@ USA.
   (set-comparator-metadata! comparator (cons name (string name " to"))))
 
 (define (name-of comparator)
-  (car (comparator-metadata comparator)))
+  (if (comparator? comparator)
+      (car (comparator-metadata comparator))
+      comparator))
 
 (define (text-of comparator)
-  (cdr (comparator-metadata comparator)))
+  (if (comparator? comparator)
+      (cdr (comparator-metadata comparator))
+      comparator))
 
 (define-comparator eq? 'eq?)
 (define-comparator eqv? 'eqv?)

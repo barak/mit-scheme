@@ -6126,6 +6126,13 @@ USA.
 	  eval-r7rs-source
 	  syntax-r7rs-source))
 
+(define-package (runtime directed-graph)
+  (files "digraph")
+  (parent (runtime))
+  (export ()
+	  digraph?
+	  make-digraph))
+
 (define-package (runtime ieee754)
   (files "ieee754")
   (parent (runtime))
