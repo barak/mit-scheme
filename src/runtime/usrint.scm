@@ -369,41 +369,47 @@ USA.
 ;;;; Activity notification
 
 (define (with-notification message #!optional thunk)
-  (if (or (default-object? thunk) (not thunk))
-      (let ((port (notification-output-port)))
-	(fresh-line port)
-	(write-notification-prefix port)
-	(message (wrap-notification-port port)))
-      (let ((done? #f)
-	    (n))
-	(dynamic-wind
-	 (lambda ()
-	   (let ((port (notification-output-port)))
-	     (fresh-line port)
-	     (write-notification-prefix port)
-	     (message (wrap-notification-port port))
-	     (write-string "..." port)
-	     (set! n (output-port/bytes-written port))
-	     unspecific))
-	 (lambda ()
-	   (let ((v
-		  (parameterize ((*notification-depth*
-				  (1+ (*notification-depth*))))
-		    (thunk))))
-	     (set! done? #t)
-	     v))
-	 (lambda ()
-	   (let ((port (notification-output-port)))
-	     (if (if n
-		     (> (output-port/bytes-written port) n)
-		     (output-port/line-start? port))
-		 (begin
-		   (fresh-line port)
-		   (write-notification-prefix port)
-		   (write-string "..." port)))
-	     (set! n)
-	     (write-string (if done? " done" " aborted") port)
-	     (newline port)))))))
+  (if (param:hide-notifications?)
+      (if (and thunk (not (default-object? thunk)))
+	  (thunk))
+      (if (or (default-object? thunk) (not thunk))
+	  (let ((port (notification-output-port)))
+	    (fresh-line port)
+	    (write-notification-prefix port)
+	    (message (wrap-notification-port port)))
+	  (let ((done? #f)
+		(n))
+	    (dynamic-wind
+	     (lambda ()
+	       (let ((port (notification-output-port)))
+		 (fresh-line port)
+		 (write-notification-prefix port)
+		 (message (wrap-notification-port port))
+		 (write-string "..." port)
+		 (set! n (output-port/bytes-written port))
+		 unspecific))
+	     (lambda ()
+	       (let ((v
+		      (parameterize ((*notification-depth*
+				      (1+ (*notification-depth*))))
+			(thunk))))
+		 (set! done? #t)
+		 v))
+	     (lambda ()
+	       (let ((port (notification-output-port)))
+		 (if (if n
+			 (> (output-port/bytes-written port) n)
+			 (output-port/line-start? port))
+		     (begin
+		       (fresh-line port)
+		       (write-notification-prefix port)
+		       (write-string "..." port)))
+		 (set! n)
+		 (write-string (if done? " done" " aborted") port)
+		 (newline port))))))))
+
+(define-deferred param:hide-notifications?
+  (make-unsettable-parameter #f))
 
 (define (wrap-notification-port port)
   (make-textual-port wrapped-notification-port-type port))
@@ -460,12 +466,11 @@ USA.
      (* (string-length indentation-atom)
 	(*notification-depth*))))
 
-(define *notification-depth*)
-(define indentation-atom)
-(define wrapped-notification-port-type)
+(define indentation-atom
+  "  ")
 
-(define (initialize-package!)
-  (set! *notification-depth* (make-unsettable-parameter 0))
-  (set! indentation-atom "  ")
-  (set! wrapped-notification-port-type (make-wrapped-notification-port-type))
-  unspecific)
+(define-deferred *notification-depth*
+  (make-unsettable-parameter 0))
+
+(define-deferred wrapped-notification-port-type
+  (make-wrapped-notification-port-type))

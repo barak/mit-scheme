@@ -5096,6 +5096,7 @@ USA.
   (parent (runtime))
   (export ()
 	  (write-notification-line with-notification)
+	  param:hide-notifications?
 	  prompt-for-command-char
 	  prompt-for-command-expression
 	  prompt-for-confirmation
