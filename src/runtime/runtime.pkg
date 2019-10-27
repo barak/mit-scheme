@@ -6117,6 +6117,7 @@ USA.
   (export ()
 	  environment			;R7RS
 	  find-scheme-libraries!
+	  import!
 	  null-environment		;R7RS
 	  scheme-report-environment	;R7RS
 	  )

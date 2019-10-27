@@ -85,31 +85,49 @@ USA.
   (let ((env
 	 (make-root-top-level-environment
 	  (delete-duplicates (map library-import-to imports) eq?))))
-    (for-each (lambda (import)
-		(let ((value
-		       ((library-exporter
-			 (registered-library
-			  (library-import-from-library import)
-			  db))
-			(library-import-from import)))
-		      (name (library-import-to import)))
-		  (if (or (not (environment-bound? env name))
-			  (let ((value* (environment-safe-lookup env name)))
-			    (and (not (values-equivalent? value value*))
-				 (or (unassigned-reference-trap? value*)
-				     (error "Conflicting imports:"
-					    name value* value)))))
-		      (cond ((macro-reference-trap? value)
-			     (environment-define-macro
-			      env name
-			      (macro-reference-trap-transformer value)))
-			    ((unassigned-reference-trap? value)
-			     ;; nothing to do
-			     )
-			    (else
-			     (environment-define env name value))))))
-	      imports)
+    (add-imports-to-env! imports env db)
     env))
+
+(define (add-imports-to-env! imports env db)
+  (for-each
+   (lambda (group)
+     (for-each (let ((exporter
+		      (library-exporter
+		       (registered-library
+			(library-import-from-library (car group))
+			db))))
+		 (lambda (import)
+		   (let ((value (exporter (library-import-from import)))
+			 (name (library-import-to import)))
+		     (if (or (not (environment-bound? env name))
+			     (let ((value* (environment-safe-lookup env name)))
+			       (and (not (values-equivalent? value value*))
+				    (or (unassigned-reference-trap? value*)
+					(error "Conflicting imports:"
+					       name value* value)))))
+			 (cond ((macro-reference-trap? value)
+				(environment-define-macro
+				 env name
+				 (macro-reference-trap-transformer value)))
+			       ((unassigned-reference-trap? value)
+				;; nothing to do
+				)
+			       (else
+				(environment-define env name value)))))))
+	       group))
+   (group-imports-by-source imports)))
+
+(define (group-imports-by-source imports)
+  (let ((table (make-equal-hash-table)))
+    (for-each (lambda (import)
+		(hash-table-update! table
+				    (library-import-from-library import)
+				    (lambda (imports)
+				      (cons import imports))
+				    (lambda ()
+				      '())))
+	      imports)
+    (hash-table-values table)))
 
 (define (values-equivalent? v1 v2)
   (cond ((unassigned-reference-trap? v1)
@@ -128,17 +146,28 @@ USA.
   make-environment-from-imports)
 
 (define (environment . import-sets)
-  (let ((parsed (map parse-import-set import-sets))
-	(db host-library-db))
-    (let ((imports (expand-parsed-imports parsed db)))
-      (let ((unavailable
-	     (remove (lambda (import)
-		       (import-environment-available? import db))
-		     imports)))
-	(if (pair? unavailable)
-	    (error "Imported libraries unavailable:"
-		   (library-imports-from unavailable))))
-      (make-environment-from-imports imports db))))
+  (let ((db (current-library-db)))
+    (make-environment-from-imports (import-sets->imports import-sets db)
+				   db)))
+
+(define (import! import-set #!optional env)
+  (let ((db (current-library-db)))
+    (add-imports-to-env! (import-sets->imports (list import-set) db)
+			 (if (default-object? env)
+			     (nearest-repl/environment)
+			     (guarantee environment? env 'import!))
+			 db)))
+
+(define (import-sets->imports import-sets db)
+  (let ((imports (expand-parsed-imports (map parse-import-set import-sets) db)))
+    (let ((unavailable
+	   (remove (lambda (import)
+		     (import-environment-available? import db))
+		   imports)))
+      (if (pair? unavailable)
+	  (error "Imported libraries unavailable:"
+		 (library-imports-from unavailable))))
+    imports))
 
 (define (scheme-report-environment version)
   (if (not (eqv? version 5))
