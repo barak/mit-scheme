@@ -6004,7 +6004,6 @@ USA.
   (parent (runtime library))
   (export (runtime)
 	  copy-library-db
-	  library-bound-names
 	  library-contents
 	  library-db?
 	  library-environment
@@ -6012,6 +6011,7 @@ USA.
 	  library-export-to
 	  library-export=?
 	  library-export?
+	  library-exports
 	  library-filename
 	  library-import-from
 	  library-import-from-library
@@ -6036,10 +6036,8 @@ USA.
 	  library-eval-result
 	  library-exporter
 	  library-export->list
-	  library-exports
 	  library-imports-from
 	  library-import->list
-	  library-imports-environment
 	  library-preregistered?
 	  library-syntaxed-contents
 	  list->library-export

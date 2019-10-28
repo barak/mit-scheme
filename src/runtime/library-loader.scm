@@ -35,7 +35,7 @@ USA.
   (register-r7rs-source! source (copy-library-db db))
   (r7rs-source->scode-file source))
 
-(define-automatic-property '(contents bound-names imports-used)
+(define-automatic-property '(contents imports-used)
     '(parsed-contents imports exports imports-environment)
   #f
   (lambda (contents imports exports env)
@@ -52,7 +52,6 @@ USA.
 	    (warn "Library has free references not provided by imports:"
 		  (lset-difference eq? free imports-to))))
       (values body
-	      bound
 	      (filter (lambda (import)
 			(memq (library-import-to import) free))
 		      imports)))))
@@ -85,36 +84,45 @@ USA.
   (let ((env
 	 (make-root-top-level-environment
 	  (delete-duplicates (map library-import-to imports) eq?))))
-    (add-imports-to-env! imports env db)
+    (add-imports-to-env! imports env db #f)
     env))
 
-(define (add-imports-to-env! imports env db)
+(define (add-imports-to-env! imports env db allow-conflicts?)
   (for-each
    (lambda (group)
-     (for-each (let ((exporter
-		      (library-exporter
-		       (registered-library
-			(library-import-from-library (car group))
-			db))))
-		 (lambda (import)
+     (let ((exporter
+	    (library-exporter
+	     (registered-library
+	      (library-import-from-library (car group))
+	      db))))
+       (if (not allow-conflicts?)
+	   (let ((conflicts
+		  (let ((bindings (environment-bindings env)))
+		    (filter (lambda (import)
+			      (let ((value
+				     (exporter (library-import-from import)))
+				    (name (library-import-to import)))
+				(let ((b (assq name bindings)))
+				  (and b
+				       (pair? (cdr b))
+				       (not
+					(values-equivalent? value (cadr b)))))))
+			    group))))
+	     (if (pair? conflicts)
+		 (error "Conflcting imports:" conflicts))))
+       (for-each (lambda (import)
 		   (let ((value (exporter (library-import-from import)))
 			 (name (library-import-to import)))
-		     (if (or (not (environment-bound? env name))
-			     (let ((value* (environment-safe-lookup env name)))
-			       (and (not (values-equivalent? value value*))
-				    (or (unassigned-reference-trap? value*)
-					(error "Conflicting imports:"
-					       name value* value)))))
-			 (cond ((macro-reference-trap? value)
-				(environment-define-macro
-				 env name
-				 (macro-reference-trap-transformer value)))
-			       ((unassigned-reference-trap? value)
-				;; nothing to do
-				)
-			       (else
-				(environment-define env name value)))))))
-	       group))
+		     (cond ((macro-reference-trap? value)
+			    (environment-define-macro
+			     env name
+			     (macro-reference-trap-transformer value)))
+			   ((unassigned-reference-trap? value)
+			    ;; nothing to do
+			    )
+			   (else
+			    (environment-define env name value)))))
+		 group)))
    (group-imports-by-source imports)))
 
 (define (group-imports-by-source imports)
@@ -156,10 +164,12 @@ USA.
 			 (if (default-object? env)
 			     (nearest-repl/environment)
 			     (guarantee environment? env 'import!))
-			 db)))
+			 db
+			 #t)))
 
 (define (import-sets->imports import-sets db)
   (let ((imports (expand-parsed-imports (map parse-import-set import-sets) db)))
+    (maybe-load-libraries! imports db)
     (let ((unavailable
 	   (remove (lambda (import)
 		     (import-environment-available? import db))
@@ -366,3 +376,41 @@ USA.
 	  (if (not source)
 	      (error "No scheme files:" file-group))
 	  (handle-source source)))))
+
+(define (maybe-load-libraries! imports db)
+  (let ((libraries (dependency-libraries imports db)))
+    (if (any library-preregistered? libraries)
+	(for-each (lambda (library)
+		    (load (library-filename library)))
+		  (reverse
+		   (filter library-preregistered?
+			   ((compute-dependency-graph libraries db)
+			    'topological-sort)))))))
+
+(define (dependency-libraries imports db)
+  (let ((names
+	 (delete-duplicates! (map library-import-from-library imports)
+			     equal?)))
+    (let ((unregistered
+	   (remove (lambda (name)
+		     (registered-library? name db))
+		   names)))
+      (if (pair? unregistered)
+	  (error "Unknown libraries:" unregistered)))
+    (map (lambda (name) (registered-library name db))
+	 names)))
+
+(define (compute-dependency-graph libraries db)
+  (let ((table (make-key-weak-eq-hash-table)))
+
+    (define (trace library)
+      (if (not (hash-table-exists? table library))
+	  (let ((deps
+		 (dependency-libraries (library-imports library)
+				       db)))
+	    (hash-table-set! table library deps)
+	    (for-each trace deps))))
+
+    (for-each trace libraries)
+    (make-digraph (hash-table-keys table)
+		  (lambda (library) (hash-table-ref table library)))))
