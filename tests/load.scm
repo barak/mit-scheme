@@ -27,12 +27,14 @@ USA.
 (let ((environment (make-top-level-environment)))
   (load (merge-pathnames "unit-testing" (current-load-pathname))
 	environment)
+  (import! '(mit inline-testing) environment)
   (for-each (lambda (name)
 	      (if (environment-bound? system-global-environment name)
 		  (unbind-variable system-global-environment name))
 	      (link-variables system-global-environment name
 			      environment name))
-	    '(run-unit-test
+	    '(run-inline-tests
+	      run-unit-test
 	      run-unit-tests
 	      show-passing-results?
 	      throw-test-errors?)))

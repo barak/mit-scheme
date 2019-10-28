@@ -115,6 +115,7 @@ USA.
     ("runtime/test-wttree" (runtime wt-tree))
     "ffi/test-ffi"
     "sos/test-genmult"
+    ("libraries/test-srfi-133" inline)
     ))
 
 (with-working-directory-pathname
@@ -123,38 +124,59 @@ USA.
     (load "load")
     (let ((results
 	   (map (lambda (entry)
-		  (receive (pathname environment)
-		      (if (pair? entry)
-			  (values (car entry) (->environment (cadr entry)))
-			  (values entry #!default))
+
+		  (define (parse-entry)
+		    (cond ((not (pair? entry))
+			   (values entry #!default #f))
+			  ((eq? (cadr entry) 'inline)
+			   (values (car entry) #!default #t))
+			  (else
+			   (values (car entry)
+				   (->environment (cadr entry))
+				   #f))))
+
+		  (define (normal-test pathname environment)
+		    (if (not (pathname-type pathname))
+			(with-working-directory-pathname
+			 (directory-pathname pathname)
+			 (lambda ()
+			   ;;++ Kludge around a bug in SF...
+			   (compile-file (file-pathname pathname)
+					 '()
+					 environment))))
+		    (let* ((t (pathname-type pathname))
+			   (p
+			    (if (and t
+				     (string=? "com" t)
+				     (eq? 'C
+					  microcode-id/compiled-code-type))
+				(pathname-new-type pathname "so")
+				pathname)))
+		      (cons pathname
+			    (run-unit-tests p environment))))
+
+		  (define (inline-test pathname)
+		    (cons pathname
+			  (run-inline-tests pathname
+					    'notify? #f
+					    'summarize? #f)))
+
+		  (receive (pathname environment inline?) (parse-entry)
 		    (with-notification
-		     (lambda (output-port)
-		       (write-string "Running tests in " output-port)
-		       (write pathname output-port)
-		       (if (not (default-object? environment))
-			   (begin
-			     (write-string " in environment " output-port)
-			     (write (cond ((environment->package environment)
-					   => package/name)
-					  (else environment))
-				    output-port))))
-		     (lambda ()
-		       (if (not (pathname-type pathname))
-			   (with-working-directory-pathname
-			    (directory-pathname pathname)
-			    (lambda ()
-			      ;;++ Kludge around a bug in SF...
-			      (compile-file (file-pathname pathname)
-					    '()
-					    environment))))
-		       (let* ((t (pathname-type pathname))
-			      (p (if (and t (string=? "com" t)
-					  (eq? 'C
-					       microcode-id/compiled-code-type))
-				     (pathname-new-type pathname "so")
-				     pathname)))
-			 (cons pathname
-			       (run-unit-tests p environment)))))))
+			(lambda (output-port)
+			  (write-string "Running tests in " output-port)
+			  (write pathname output-port)
+			  (if (not (default-object? environment))
+			      (begin
+				(write-string " in environment " output-port)
+				(write (cond ((environment->package environment)
+					      => package/name)
+					     (else environment))
+				       output-port))))
+		      (lambda ()
+			(if inline?
+			    (inline-test pathname)
+			    (normal-test pathname environment))))))
 		(let ((test-name (get-environment-variable "TEST")))
 		  (if test-name
 		      (let ((e
