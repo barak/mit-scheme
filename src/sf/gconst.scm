@@ -33,6 +33,9 @@ USA.
   '(char-bits-limit
     char-code-limit
     false
+    fx-greatest
+    fx-least
+    fx-width
     scode-lambda-name:unnamed		;needed for cold load
     system-global-environment		;suppresses warnings about (access ...)
     the-empty-stream
@@ -50,8 +53,8 @@ USA.
     (%tagged-object-datum %tagged-object-datum 1)
     (%tagged-object-tag %tagged-object-tag 1)
     (%tagged-object? %tagged-object? 1)
-    (%weak-cons weak-cons 2)
     (%weak-car weak-car 1)
+    (%weak-cons weak-cons 2)
     (%weak-set-car! weak-set-car! 2)
     (bit-string->unsigned-integer bit-string->unsigned-integer)
     (bit-string-allocate bit-string-allocate)
@@ -166,6 +169,26 @@ USA.
     (flo:vector-ref floating-vector-ref)
     (flo:vector-set! floating-vector-set!)
     (flo:zero? flonum-zero?)
+    (fx* multiply-fixnum 2)
+    (fx+ plus-fixnum 2)
+    (fx- minus-fixnum 2)
+    (fx<? less-than-fixnum? 2)
+    (fx=? equal-fixnum? 2)
+    (fx>? greater-than-fixnum? 2)
+    (fxand fixnum-and 2)
+    (fxandc fixnum-andc 2)
+    (fxarithmetic-shift fixnum-lsh 2)
+    (fxarithmetic-shift-left fixnum-lsh 2)
+    (fxdecr minus-one-plus-fixnum 1)
+    (fxincr one-plus-fixnum 1)
+    (fxior fixnum-or 2)
+    (fxnegative? negative-fixnum? 1)
+    (fxnot fixnum-not 1)
+    (fxpositive? positive-fixnum? 1)
+    (fxquotient fixnum-quotient 2)
+    (fxremainder fixnum-remainder 2)
+    (fxxor fixnum-xor 2)
+    (fxzero? zero-fixnum? 1)
     (general-car-cdr general-car-cdr)
     (get-fixed-objects-vector get-fixed-objects-vector)
     (get-interrupt-enables get-interrupt-enables)
@@ -197,6 +220,7 @@ USA.
     (make-bit-string make-bit-string)
     (make-cell make-cell)
     (make-non-pointer-object make-non-pointer-object)
+    (non-negative-fixnum? index-fixnum? 1)
     (not not)
     (null? null?)
     (object-datum object-datum)
@@ -237,8 +261,8 @@ USA.
     (vector-set! vector-set!)
     (vector? vector?)
     (weak-cdr weak-cdr 1)
-    (weak-pair? weak-pair? 1)
     (weak-pair/car? weak-car 1)
+    (weak-pair? weak-pair? 1)
     (weak-set-cdr! weak-set-cdr! 2)
     (with-history-disabled with-history-disabled)
     (with-interrupt-mask with-interrupt-mask)

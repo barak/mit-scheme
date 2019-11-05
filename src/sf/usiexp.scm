@@ -128,12 +128,6 @@ USA.
 
 ;;;; Fixnum Operations
 
-(define (fix:zero?-expansion expr operands block)
-  (if (and (pair? operands) (null? (cdr operands)))
-      (make-combination expr block (ucode-primitive eq?)
-			(list (car operands) (constant/make #f 0)))
-      #f))
-
 (define (fix:=-expansion expr operands block)
   (if (and (pair? operands)
 	   (pair? (cdr operands))
@@ -170,6 +164,31 @@ USA.
 			       block
 			       (ucode-primitive less-than-fixnum?)
 			       operands)))
+      #f))
+
+(define (fxneg-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (make-combination expr
+			block
+			(ucode-primitive minus-fixnum)
+			(constant/make #f 0)
+			(car operands))
+      #f))
+
+(define (fxarithmetic-shift-right-expansion expr operands block)
+  (if (and (pair? operands)
+	   (pair? (cdr operands))
+	   (null? (cddr operands)))
+      (make-combination expr
+			block
+			(ucode-primitive fixnum-lsh)
+			(car operands)
+			(make-combination #f
+					  block
+					  (ucode-primitive minus-fixnum)
+					  (constant/make #f 0)
+					  (cadr operands)))
       #f))
 
 ;;;; N-ary Arithmetic Field Operations
@@ -763,6 +782,11 @@ USA.
 	    fix:=
 	    fix:>=
 	    fourth
+	    fx<=?
+	    fx=?
+	    fx>=?
+	    fxarithmetic-shift-right
+	    fxneg
 	    guarantee
 	    int:->flonum
 	    int:integer?
@@ -843,6 +867,11 @@ USA.
 	   fix:=-expansion
 	   fix:>=-expansion
 	   fourth-expansion
+	   fix:<=-expansion
+	   fix:=-expansion
+	   fix:>=-expansion
+	   fxarithmetic-shift-right-expansion
+	   fxneg-expansion
 	   guarantee-expansion
 	   int:->flonum-expansion
 	   exact-integer?-expansion
