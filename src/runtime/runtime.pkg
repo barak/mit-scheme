@@ -257,42 +257,70 @@ USA.
 	  (smallest-fixnum fix:smallest-value))
   (export ()
 	  (exact-integer? int:integer?)
+	  (fix:* fx*)
+	  (fix:+ fx+)
+	  (fix:- fx-)
+	  (fix:-1+ fxdecr)
+	  (fix:1+ fxincr)
+	  (fix:< fx<?)
+	  (fix:<= fx<=?)
+	  (fix:= fx=?)
+	  (fix:> fx>?)
+	  (fix:>= fx>=?)
+	  (fix:and fxand)
+	  (fix:andc fxandc)
+	  (fix:andc fxandc)
+	  (fix:fixnum? fixnum?)
+	  (fix:lsh fxarithmetic-shift)
+	  (fix:max fxmax)
+	  (fix:min fxmin)
+	  (fix:negative? fxnegative?)
+	  (fix:not fxnot)
+	  (fix:or fxior)
+	  (fix:positive? fxpositive?)
+	  (fix:quotient fxquotient)
+	  (fix:remainder fxremainder)
+	  (fix:xor fxxor)
+	  (fix:zero? fxzero?)
 	  (flo:ldexp flo:denormalize)
 	  (flo:scalbn flo:denormalize)
+	  (fxarithmetic-shift-left fxarithmetic-shift) ;SRFI-143
+	  (index-fixnum? non-negative-fixnum?)
 	  ->flonum
 	  exact-integer-sqrt
-	  fix:*
-	  fix:+
-	  fix:-
-	  fix:-1+
-	  fix:1+
-	  fix:<
-	  fix:<=
-	  fix:=
-	  fix:>
-	  fix:>=
-	  fix:and
-	  fix:andc
 	  fix:divide
 	  fix:end-index
-	  fix:fixnum?
 	  fix:gcd
 	  fix:iota
 	  fix:largest-value
-	  fix:lsh
-	  fix:max
-	  fix:min
-	  fix:negative?
-	  fix:not
-	  fix:or
-	  fix:positive?
-	  fix:quotient
-	  fix:remainder
 	  fix:smallest-value
 	  fix:start-index
-	  fix:xor
-	  fix:zero?
-	  fixnum?
+	  fixnum?			;SRFI-143
+	  fx*				;SRFI-143
+	  fx+				;SRFI-143
+	  fx-				;SRFI-143
+	  fx-greatest			;SRFI-143
+	  fx-least			;SRFI-143
+	  fx-width			;SRFI-143
+	  fxabs				;SRFI-143
+	  fxand				;SRFI-143
+	  fxandc
+	  fxarithmetic-shift		;SRFI-143
+	  fxarithmetic-shift-right	;SRFI-143
+	  fxdecr
+	  fxincr
+	  fxior				;SRFI-143
+	  fxmax				;SRFI-143
+	  fxmin				;SRFI-143
+	  fxneg				;SRFI-143
+	  fxnegative?			;SRFI-143
+	  fxnot				;SRFI-143
+	  fxpositive?			;SRFI-143
+	  fxquotient			;SRFI-143
+	  fxremainder			;SRFI-143
+	  fxsquare			;SRFI-143
+	  fxxor				;SRFI-143
+	  fxzero?			;SRFI-143
 	  flo:*
 	  flo:*+
 	  flo:+
@@ -393,7 +421,6 @@ USA.
 	  flo:yn
 	  flo:zero?
 	  guarantee-limited-index-fixnum
-	  index-fixnum?
 	  int:*
 	  int:+
 	  int:-

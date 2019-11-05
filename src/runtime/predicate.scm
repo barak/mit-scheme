@@ -201,9 +201,6 @@ USA.
    (register-predicate! exact-rational? 'exact-rational '<= rational?)
 
    (register-predicate! fix:fixnum? 'fixnum '<= exact-integer?)
-   (register-predicate! index-fixnum? 'index-fixnum
-			'<= fix:fixnum?
-			'<= exact-nonnegative-integer?)
    (register-predicate! negative-fixnum? 'negative-fixnum '<= fix:fixnum?)
    (register-predicate! positive-fixnum? 'positive-fixnum
 			'<= fix:fixnum?
