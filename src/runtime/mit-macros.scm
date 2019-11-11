@@ -800,6 +800,8 @@ USA.
 (define-feature 'srfi-62 always) ;S-expression comments
 (define-feature 'srfi-69 always) ;Basic Hash Tables
 (define-feature 'srfi-131 always) ;ERR5RS Record Syntax (reduced)
+(define-feature 'srfi-133 always) ;Vector Library (R7RS-compatible)
+(define-feature 'srfi-143 always) ;Fixnums
 
 (define ((os? value))
   (eq? value microcode-id/operating-system))
