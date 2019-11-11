@@ -116,6 +116,7 @@ USA.
     "ffi/test-ffi"
     "sos/test-genmult"
     ("libraries/test-srfi-133" inline)
+    ("libraries/test-srfi-143" inline)
     ))
 
 (with-working-directory-pathname

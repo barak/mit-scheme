@@ -268,8 +268,6 @@ USA.
 	  (fix:> fx>?)
 	  (fix:>= fx>=?)
 	  (fix:and fxand)
-	  (fix:andc fxandc)
-	  (fix:andc fxandc)
 	  (fix:fixnum? fixnum?)
 	  (fix:lsh fxarithmetic-shift)
 	  (fix:max fxmax)
@@ -288,6 +286,7 @@ USA.
 	  (index-fixnum? non-negative-fixnum?)
 	  ->flonum
 	  exact-integer-sqrt
+	  fix:andc
 	  fix:divide
 	  fix:end-index
 	  fix:gcd
@@ -297,27 +296,47 @@ USA.
 	  fix:start-index
 	  fixnum?			;SRFI-143
 	  fx*				;SRFI-143
+	  fx*/carry			;SRFI-143
 	  fx+				;SRFI-143
+	  fx+/carry			;SRFI-143
 	  fx-				;SRFI-143
+	  fx-/carry			;SRFI-143
 	  fx-greatest			;SRFI-143
 	  fx-least			;SRFI-143
 	  fx-width			;SRFI-143
+	  fx<=?				;SRFI-143
+	  fx<?				;SRFI-143
+	  fx=?				;SRFI-143
+	  fx>=?				;SRFI-143
+	  fx>?				;SRFI-143
 	  fxabs				;SRFI-143
 	  fxand				;SRFI-143
 	  fxandc
 	  fxarithmetic-shift		;SRFI-143
 	  fxarithmetic-shift-right	;SRFI-143
+	  fxbit-count			;SRFI-143
+	  fxbit-field			;SRFI-143
+	  fxbit-field-reverse		;SRFI-143
+	  fxbit-field-rotate		;SRFI-143
+	  fxbit-set?			;SRFI-143
+	  fxcopy-bit			;SRFI-143
 	  fxdecr
+	  fxeven?			;SRFI-143
+	  fxfirst-set-bit		;SRFI-143
+	  fxif				;SRFI-143
 	  fxincr
 	  fxior				;SRFI-143
+	  fxlength			;SRFI-143
 	  fxmax				;SRFI-143
 	  fxmin				;SRFI-143
 	  fxneg				;SRFI-143
 	  fxnegative?			;SRFI-143
 	  fxnot				;SRFI-143
+	  fxodd?			;SRFI-143
 	  fxpositive?			;SRFI-143
 	  fxquotient			;SRFI-143
 	  fxremainder			;SRFI-143
+	  fxsqrt			;SRFI-143
 	  fxsquare			;SRFI-143
 	  fxxor				;SRFI-143
 	  fxzero?			;SRFI-143

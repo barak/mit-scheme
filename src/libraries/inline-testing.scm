@@ -264,6 +264,7 @@ USA.
 
 (define (summarize-test-results results)
   (let ((failing-results (filter failing-test-result? results)))
+    (for-each show-failing-result failing-results)
     (if (summarize?)
 	(begin
 	  (let ((failures (length failing-results))
@@ -278,14 +279,13 @@ USA.
 	    (write failures)
 	    (display " failure")
 	    (if (not (= 1 failures))
-		(display "s")))
-	  (for-each summarize-failing-result failing-results)))
+		(display "s")))))
     (null? failing-results)))
 
 (define (failing-test-result? result)
   (pair? (cdr result)))
 
-(define (summarize-failing-result failure)
+(define (show-failing-result failure)
   (newline)
   (newline)
   (display "evaluating ")

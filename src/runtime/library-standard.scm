@@ -975,6 +975,52 @@ USA.
 (define-standard-library '(srfi 131)
   '(define-record-type))
 
+(define-standard-library '(srfi 143)
+  '(fixnum?
+    fx*
+    fx*/carry
+    fx+
+    fx+/carry
+    fx-
+    fx-/carry
+    fx-greatest
+    fx-least
+    fx-width
+    fx<=?
+    fx<?
+    fx=?
+    fx>=?
+    fx>?
+    fxabs
+    fxand
+    fxarithmetic-shift
+    fxarithmetic-shift-left
+    fxarithmetic-shift-right
+    fxbit-count
+    fxbit-field
+    fxbit-field-reverse
+    fxbit-field-rotate
+    fxbit-set?
+    fxcopy-bit
+    fxeven?
+    fxfirst-set-bit
+    fxif
+    fxior
+    fxlength
+    fxmax
+    fxmin
+    fxneg
+    fxnegative?
+    fxnot
+    fxodd?
+    fxpositive?
+    fxquotient
+    fxremainder
+    fxsqrt
+    fxsquare
+    fxxor
+    fxzero?))
+
 ;;;; Synthetic libraries
 
 ;;; A synthetic library is one that's derived from legacy packages, much like a

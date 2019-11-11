@@ -210,7 +210,7 @@ USA.
 			'<= exact-nonnegative-integer?)
    (register-predicate! non-positive-fixnum? 'non-positive-fixnum
 			'<= fix:fixnum?)
-   (register-predicate! radix? 'radix '<= index-fixnum?)
+   (register-predicate! radix? 'radix '<= non-negative-fixnum?)
 
    (register-predicate! flo:flonum? 'flonum '<= real?)
 
@@ -274,7 +274,7 @@ USA.
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
    (register-predicate! unicode-code-point? 'unicode-code-point
-			'<= index-fixnum?)
+			'<= non-negative-fixnum?)
    (register-predicate! unicode-scalar-value? 'unicode-scalar-value
 			'<= unicode-code-point?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
