@@ -311,7 +311,6 @@ USA.
 	  fx>?				;SRFI-143
 	  fxabs				;SRFI-143
 	  fxand				;SRFI-143
-	  fxandc
 	  fxarithmetic-shift		;SRFI-143
 	  fxarithmetic-shift-right	;SRFI-143
 	  fxbit-count			;SRFI-143
