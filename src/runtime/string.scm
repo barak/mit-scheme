@@ -420,7 +420,7 @@ USA.
 
 (define (substring string #!optional start end)
   (let* ((len (string-length string))
-	 (end (fix:end-index end (string-length string) 'substring))
+	 (end (fix:end-index end len 'substring))
 	 (start (fix:start-index start end 'substring)))
     ;; It shouldn't be necessary to copy immutable substrings, but some of these
     ;; find their way to Edwin so we can't return a slice here.  We will
