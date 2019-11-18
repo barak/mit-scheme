@@ -1930,10 +1930,10 @@ USA.
 ;;;; Splitter
 
 (define (string-splitter . options)
-  (receive (delimiter allow-runs? copy?)
+  (receive (delimiter allow-runs? copier copy?)
       (string-splitter-options options 'string-splitter)
     (let ((predicate (char-matcher->predicate delimiter 'string-splitter))
-	  (get-part (if copy? substring string-slice)))
+	  (copier (get-copier copier copy?)))
 
       (lambda (string #!optional start end)
 	(let* ((end (fix:end-index end (string-length string) 'string-splitter))
@@ -1953,10 +1953,10 @@ USA.
 	    (let loop ((index index))
 	      (if (fix:< index end)
 		  (if (predicate (string-ref string index))
-		      (cons (get-part string start index)
+		      (cons (copier string start index)
 			    (find-start (fix:+ index 1)))
 		      (loop (fix:+ index 1)))
-		  (list (get-part string start end)))))
+		  (list (copier string start end)))))
 
 	  (find-start start))))))
 
@@ -1964,7 +1964,8 @@ USA.
   (keyword-option-parser
    (list (list 'delimiter char-matcher? (lambda () char-whitespace?))
 	 (list 'allow-runs? boolean? (lambda () #t))
-	 (list 'copy? boolean? (lambda () #f)))))
+	 (list 'copier string-copier? (lambda () string-slice))
+	 (list 'copy? boolean? (lambda () #!default)))))
 
 (define (char-matcher->predicate matcher caller)
   (cond ((char? matcher) (char=-predicate matcher))
@@ -1976,14 +1977,26 @@ USA.
   (or (char? object)
       (char-set? object)
       (unary-procedure? object)))
+
+(define (string-copier? object)
+  (procedure-of-arity? object 3))
+
+(define (optional-boolean? object)
+  (or (boolean? object)
+      (default-object? object)))
+
+(define (get-copier copier copy?)
+  (if (default-object? copy?)
+      copier
+      (if copy? substring string-slice)))
 
 ;;;; Trimmer/Padder
 
 (define (string-trimmer . options)
-  (receive (where to-trim copy?)
+  (receive (where to-trim copier copy?)
       (string-trimmer-options options 'string-trimmer)
     (let ((predicate (char-matcher->predicate to-trim 'string-trimmer))
-	  (get-trimmed (if copy? substring string-slice)))
+	  (copier (get-copier copier copy?)))
       (lambda (string)
 	(let* ((end (string-length string))
 	       (start
@@ -1994,21 +2007,22 @@ USA.
 			       (predicate (string-ref string index)))
 			  (loop (fix:+ index 1))
 			  index)))))
-	  (get-trimmed string
-		       start
-		       (if (eq? where 'leading)
-			   end
-			   (let loop ((index end))
-			     (if (and (fix:> index start)
-				      (predicate
-				       (string-ref string (fix:- index 1))))
-				 (loop (fix:- index 1))
-				 index)))))))))
+	  (copier string
+		  start
+		  (if (eq? where 'leading)
+		      end
+		      (let loop ((index end))
+			(if (and (fix:> index start)
+				 (predicate
+				  (string-ref string (fix:- index 1))))
+			    (loop (fix:- index 1))
+			    index)))))))))
 
 (define-deferred string-trimmer-options
   (keyword-option-parser
    (list (list 'where '(leading trailing both) 'both)
 	 (list 'to-trim char-matcher? (lambda () char-whitespace?))
+	 (list 'copier string-copier? (lambda () string-slice))
 	 (list 'copy? boolean? (lambda () #f)))))
 
 (define (string-padder . options)
@@ -2233,7 +2247,7 @@ USA.
 (define (legacy-string-trimmer where)
   (lambda (string #!optional char-set)
     ((string-trimmer 'where where
-		     'copy? #t
+		     'copier substring
 		     'to-trim
 		     (if (default-object? char-set)
 			 char-set:whitespace
@@ -2264,5 +2278,5 @@ USA.
 (define (burst-string string delimiter allow-runs?)
   ((string-splitter 'delimiter delimiter
 		    'allow-runs? allow-runs?
-		    'copy? #t)
+		    'copier substring)
    string))
