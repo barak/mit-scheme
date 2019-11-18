@@ -1271,16 +1271,20 @@ USA.
 	  list->bytevector
 	  make-bytevector
 	  string->iso8859-1
+	  string->utf16
 	  string->utf16be
 	  string->utf16le
+	  string->utf32
 	  string->utf32be
 	  string->utf32le
 	  string->utf8
 	  u16?
 	  u32?
 	  u8?
+	  utf16->string
 	  utf16be->string
 	  utf16le->string
+	  utf32->string
 	  utf32be->string
 	  utf32le->string
 	  utf8->string
