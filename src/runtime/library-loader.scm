@@ -41,16 +41,15 @@ USA.
   (lambda (contents imports exports env)
     (receive (body bound free)
 	(syntax-library-forms (expand-contents contents) env)
-      (let ((exports-from (map library-export-from exports)))
-	(if (not (lset<= eq? exports-from (lset-union eq? bound free)))
-	    (warn "Library export refers to unbound identifiers:"
-		  (lset-difference eq?
-				   exports-from
-				   (lset-union eq? bound free)))))
       (let ((imports-to (map library-import-to imports)))
 	(if (not (lset<= eq? free imports-to))
 	    (warn "Library has free references not provided by imports:"
-		  (lset-difference eq? free imports-to))))
+		  (lset-difference eq? free imports-to)))
+	(let ((exports-from (map library-export-from exports))
+	      (bound* (lset-union eq? bound imports-to)))
+	  (if (not (lset<= eq? exports-from bound*))
+	      (warn "Library export refers to unbound identifiers:"
+		    (lset-difference eq? exports-from bound*)))))
       (values body
 	      (filter (lambda (import)
 			(memq (library-import-to import) free))
