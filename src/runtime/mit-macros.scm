@@ -708,10 +708,12 @@ USA.
      (scons-rule `((value id=?)
 		   (* (subform (cons ,(feature-requirement-pattern)
 				     (* any))))
-		   (opt (subform (cons (keep-if id=? else)
-				       (* any)))))
-       (lambda (id=? clauses)
-	 (apply scons-begin (evaluate-cond-expand id=? clauses)))))))
+		   (or (subform (ignore-if id=? else)
+				(* any))
+		       (value '())))
+       (lambda (id=? clauses else-forms)
+	 (apply scons-begin
+		(evaluate-cond-expand id=? clauses else-forms)))))))
 
 (define (feature-requirement-pattern)
   (spar-pattern-fixed-point
@@ -729,15 +731,14 @@ USA.
 (define (library-name-pattern)
   `(subform (* (or symbol ,exact-nonnegative-integer?))))
 
-(define (evaluate-cond-expand id=? clauses)
+(define (evaluate-cond-expand id=? clauses else-forms)
   (let ((clause
 	 (find (lambda (clause)
-		 (or (id=? 'else (car clause))
-		     (evaluate-feature-requirement id=? (car clause))))
+		 (evaluate-feature-requirement id=? (car clause)))
 	       clauses)))
     (if clause
 	(cdr clause)
-	'())))
+	else-forms)))
 
 (define (evaluate-feature-requirement id=? feature-requirement)
 
