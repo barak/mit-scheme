@@ -588,7 +588,7 @@ USA.
   (let ((builder
 	 (%make-string-builder
 	  (if (default-object? buffer-length)
-	      16
+	      1024
 	      (begin
 		(guarantee positive-fixnum? buffer-length 'string-builder)
 		buffer-length)))))
@@ -611,90 +611,77 @@ USA.
 		 ((empty? count max-cp reset!) ((builder object)))
 		 (else (error "Unsupported argument:" object)))))))))
 
-(define (build-string:nfc strings count max-cp)
-  (string->nfc (build-string:immutable strings count max-cp)))
+(define (build-string:nfc chars count max-cp)
+  (string->nfc (build-string:immutable chars count max-cp)))
 
-(define (build-string:immutable strings count max-cp)
-  (let ((result (immutable-ustring-allocate count max-cp)))
-    (fill-result! strings result)
-    result))
+(define (build-string:immutable chars count max-cp)
+  (fill-result! chars count (immutable-ustring-allocate count max-cp)))
 
-(define (build-string:mutable strings count max-cp)
+(define (build-string:mutable chars count max-cp)
   (declare (ignore max-cp))
-  (let ((result (mutable-ustring-allocate count)))
-    (fill-result! strings result)
-    result))
+  (fill-result! chars count (mutable-ustring-allocate count)))
 
-(define (build-string:legacy strings count max-cp)
+(define (build-string:legacy chars count max-cp)
   (if (not (fix:< max-cp #x100))
       (error "Can't build legacy string:" max-cp))
-  (let ((result (legacy-string-allocate count)))
-    (fill-result! strings result)
-    result))
+  (fill-result! chars count (legacy-string-allocate count)))
 
-(define (fill-result! strings result)
-  (do ((strings strings (cdr strings))
-       (i 0 (fix:+ i (string-length (car strings)))))
-      ((not (pair? strings)))
-    (unpack-slice (car strings)
-      (lambda (string start end)
-	(%general-copy! result i string start end)))))
+(define (fill-result! chars count result)
+  (case (ustring-cp-size result)
+    ((1)
+     (do ((i 0 (fix:+ i 1)))
+	 ((not (fix:< i count)) unspecific)
+       (cp1-set! result i (vector-ref chars i))))
+    ((2)
+     (do ((i 0 (fix:+ i 1)))
+	 ((not (fix:< i count)) unspecific)
+       (cp2-set! result i (vector-ref chars i))))
+    (else
+     (do ((i 0 (fix:+ i 1)))
+	 ((not (fix:< i count)) unspecific)
+       (cp3-set! result i (vector-ref chars i)))))
+  result)
 
-(define (%make-string-builder buffer-length)
-  (let ((buffers)
-	(buffer)
-	(start)
+(define (%make-string-builder initial-buffer-length)
+  (let ((buffer)
 	(index)
-	(count)
 	(max-cp))
 
     (define (reset!)
-      (set! buffers '())
-      (set! buffer (mutable-ustring-allocate buffer-length))
-      (set! start 0)
+      (set! buffer (make-vector initial-buffer-length))
       (set! index 0)
-      (set! count 0)
       (set! max-cp 0)
       unspecific)
 
-    (define (get-partial)
-      (string-slice buffer start index))
-
     (define (append-char! char)
-      (ustring3-set! buffer index char)
+      (vector-set! buffer index char)
       (set! index (fix:+ index 1))
-      (set! count (fix:+ count 1))
       (set! max-cp (fix:max max-cp (char-code char)))
-      (if (not (fix:< index buffer-length))
+      (if (not (fix:< index (vector-length buffer)))
 	  (begin
-	    (set! buffers (cons (get-partial) buffers))
-	    (set! buffer (mutable-ustring-allocate buffer-length))
-	    (set! start 0)
-	    (set! index 0)
+	    (set! buffer (vector-grow buffer (fix:* 2 (vector-length buffer))))
 	    unspecific)))
 
     (define (append-string! string)
-      (let ((length (string-length string)))
-	(if (fix:> length 0)
-	    (begin
-	      (if (fix:> index start)
-		  (begin
-		    (set! buffers (cons (get-partial) buffers))
-		    (set! start index)))
-	      (set! buffers (cons string buffers))
-	      (set! count (fix:+ count length))
-	      (set! max-cp
-		    (fix:max max-cp
-			     (unpack-slice string %general-max-cp)))
-	      unspecific))))
+      (let ((index* (fix:+ index (string-length string)))
+	    (length (vector-length buffer)))
+	(if (fix:>= index* length)
+	    (set! buffer
+		  (vector-grow buffer
+			       (let loop ((length (fix:* 2 length)))
+				 (if (fix:< index* length)
+				     length
+				     (loop (fix:* 2 length)))))))
+	(do ((i index (fix:+ i 1))
+	     (j 0 (fix:+ j 1)))
+	    ((not (fix:< i index*)) unspecific)
+	  (vector-set! buffer i (string-ref string j)))
+	(set! index index*)
+	(set! max-cp (fix:max max-cp (unpack-slice string %general-max-cp)))
+	unspecific))
 
     (define (build finish)
-      (finish (reverse
-	       (if (fix:> index start)
-		   (cons (get-partial) buffers)
-		   buffers))
-	      count
-	      max-cp))
+      (finish buffer index max-cp))
 
     (reset!)
     (lambda (operator)
@@ -702,8 +689,8 @@ USA.
 	((append-char!) append-char!)
 	((append-string!) append-string!)
 	((build) build)
-	((empty?) (lambda () (fix:= count 0)))
-	((count) (lambda () count))
+	((empty?) (lambda () (fix:= index 0)))
+	((count) (lambda () index))
 	((max-cp) (lambda () max-cp))
 	((reset!) reset!)
 	(else (error "Unknown operator:" operator))))))
