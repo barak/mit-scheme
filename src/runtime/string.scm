@@ -1726,12 +1726,16 @@ USA.
 
 ;;;; Sequence converters
 
-(define (list->string chars)
-  (let ((builder (string-builder)))
-    (for-each (lambda (char)
-		(guarantee char? char 'list->string)
-		(builder char))
-	      chars)
+(define (list->string chars #!optional start end)
+  (let* ((end (fix:end-index end (length chars) 'list->string))
+	 (start (fix:start-index start end 'list->string))
+	 (n (fix:- end start))
+	 (builder (string-builder n)))
+    (do ((i 0 (fix:+ i 1))
+	 (chars (list-tail chars start) (cdr chars)))
+	((not (fix:< i n)))
+      (guarantee char? (car chars) 'list->string)
+      (builder (car chars)))
     (builder 'immutable)))
 
 (define (string->list string #!optional start end)
@@ -1753,7 +1757,7 @@ USA.
 (define (vector->string vector #!optional start end)
   (let* ((end (fix:end-index end (vector-length vector) 'vector->string))
 	 (start (fix:start-index start end 'vector->string))
-	 (builder (string-builder)))
+	 (builder (string-builder (fix:- end start))))
     (do ((i start (fix:+ i 1)))
 	((not (fix:< i end)))
       (let ((char (vector-ref vector i)))
