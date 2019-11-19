@@ -590,8 +590,8 @@ USA.
 	  (if (default-object? buffer-length)
 	      1024
 	      (begin
-		(guarantee positive-fixnum? buffer-length 'string-builder)
-		buffer-length)))))
+		(guarantee non-negative-fixnum? buffer-length 'string-builder)
+		(fix:max 1 buffer-length))))))
     (let ((append-char! (builder 'append-char!))
 	  (append-string! (builder 'append-string!))
 	  (build (builder 'build)))
