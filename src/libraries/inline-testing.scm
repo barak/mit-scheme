@@ -64,6 +64,7 @@ USA.
 		call-with-output-string
 		call-with-truncated-output-string
 		call-with-truncated-output-string
+		condition/report-string
 		condition?
 		default-object
 		default-object?
@@ -288,7 +289,7 @@ USA.
 (define (show-failing-result failure)
   (newline)
   (newline)
-  (display "evaluating ")
+  (display "evaluating")
   (newline)
   (pp (car failure))
   (display "failed the following expectations:")
@@ -331,7 +332,7 @@ USA.
     (lambda (context . args)
       (if (context 'is-error?)
 	  (string-append "Expected non-error but instead got error: "
-			 (write-to-string (context 'get-condition)))
+			 (condition/report-string (context 'get-condition)))
 	  (apply handler (context 'get-value) args)))))
 
 (define (define-output-expectation keyword n-args handler)
@@ -339,7 +340,7 @@ USA.
     (lambda (context . args)
       (if (context 'is-error?)
 	  (string-append "Expected non-error but instead got error: "
-			 (write-to-string (context 'get-condition)))
+			 (condition/report-string (context 'get-condition)))
 	  (let ((objects (read-objects (context 'get-port))))
 	    (if (condition? objects)
 		"Error while reading output"
