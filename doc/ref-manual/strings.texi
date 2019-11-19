@@ -691,7 +691,7 @@ Some examples:
 @end example
 @end deffn
 
-@deffn procedure string-splitter delimiter allow-runs? copy?
+@deffn procedure string-splitter delimiter allow-runs? copier copy?
 @cindex splitting, of string
 This procedure's arguments are keyword arguments; that is, each
 argument is a symbol of the same name followed by its value.  The
@@ -720,10 +720,14 @@ end of the delimiters.  If @var{allow-runs?} is @code{#f}, then
 adjacent delimiters are treated as if they were separate with an empty
 string between them.  The default value of this argument is @code{#t}.
 @item
-@code{copy?} is a boolean: if it is @code{#t}, then the returned
-strings are immutable copies, but if it is @code{#f} the returned
-strings are slices of the original string.  The default value of this
-argument is @code{#f}.
+@var{copier} is a procedure that accepts three arguments: a string, a
+start index, and an end index, returning the specified substring as a
+string.  It defaults to @code{string-slice}.
+@item
+@var{copy?} is a boolean, for backwards compatibility; instead use
+@var{copier}.  A value of @code{#t} is equivalent to a @var{copier} of
+@code{substring}, while a value of @code{#f} is equivalent to a
+@var{copier} of @code{string-slice}.
 @end itemize
 
 Some examples:
@@ -835,7 +839,7 @@ indices).
 @end example
 @end deffn
 
-@deffn procedure string-trimmer where to-trim copy?
+@deffn procedure string-trimmer where to-trim copier copy?
 @cindex trimming, of string
 This procedure's arguments are keyword arguments; that is, each
 argument is a symbol of the same name followed by its value.  The
@@ -864,9 +868,14 @@ returns a boolean value.  The trimmer uses this to identify characters
 to remove.  The default value of this argument is
 @code{char-whitespace?}.
 @item
-@var{copy?} is a boolean: if @code{#t}, the trimmer returns an
-immutable copy of the trimmed string, if @code{#f} it returns a slice.
-The default value of this argument is @code{#f}.
+@var{copier} is a procedure that accepts three arguments: a string, a
+start index, and an end index, returning the specified substring as a
+string.  It defaults to @code{string-slice}.
+@item
+@var{copy?} is a boolean, for backwards compatibility; instead use
+@var{copier}.  A value of @code{#t} is equivalent to a @var{copier} of
+@code{substring}, while a value of @code{#f} is equivalent to a
+@var{copier} of @code{string-slice}.
 @end itemize
 
 Some examples:
