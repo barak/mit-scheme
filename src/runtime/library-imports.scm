@@ -29,20 +29,45 @@ USA.
 
 (declare (usual-integrations))
 
-(define (expand-parsed-imports imports db)
+(define (expand-parsed-imports import-sets db)
   (let ((unusable
-	 (remove (lambda (import)
-		   (let ((name (parsed-import-library import)))
+	 (remove (lambda (import-set)
+		   (let ((name (parsed-import-library import-set)))
 		     (and (registered-library? name db)
 			  ((registered-library name db) 'has? 'exports))))
-		 imports)))
+		 import-sets)))
     (if (pair? unusable)
 	(error "Unknown imports:" (map parsed-import-library unusable))))
-  (reduce-right append!
-		'()
-		(map (lambda (import)
-		       (expand-parsed-import import db))
-		     imports)))
+  (let ((imports
+	 (reduce-right append!
+		       '()
+		       (map (lambda (import-set)
+			      (expand-parsed-import import-set db))
+			    import-sets))))
+    (let ((dupes (find-duplicate-imports imports)))
+      (if (pair? dupes)
+	  (error "Duplicate imports:"
+		 (sort dupes
+		       (lambda (a b)
+			 (symbol<? (car a) (car b)))))))
+    imports))
+
+(define (find-duplicate-imports imports)
+  (let ((table (make-strong-eq-hash-table)))
+    (for-each
+     (lambda (import)
+       (hash-table-update! table
+			   (library-import-to import)
+			   (lambda (libraries)
+			     (lset-adjoin library-name=?
+					  libraries
+					  (library-import-from-library import)))
+			   (lambda ()
+			     '())))
+     imports)
+    (filter (lambda (p)
+	      (pair? (cddr p)))
+	    (hash-table->alist table))))
 
 (define-automatic-property 'imports '(parsed-imports db)
   #f
@@ -50,54 +75,43 @@ USA.
 
 ;;; Returns a list of library-import elements.
 (define (expand-parsed-import import-set db)
-  (let ((converted-set
-	 (let loop ((import-set import-set) (filter (lambda (name) name)))
-	   (case (car import-set)
-	     ((only)
-	      (loop (cadr import-set)
-		    (let ((names (cddr import-set)))
-		      (lambda (name)
-			(and (memq name names)
-			     (filter name))))))
-	     ((except)
-	      (loop (cadr import-set)
-		    (let ((names (cddr import-set)))
-		      (lambda (name)
-			(and (not (memq name names))
-			     (filter name))))))
-	     ((prefix)
-	      (loop (cadr import-set)
-		    (let ((prefix (caddr import-set)))
-		      (lambda (name)
-			(filter (symbol prefix name))))))
-	     ((rename)
-	      (loop (cadr import-set)
-		    (let ((renames (cddr import-set)))
-		      (lambda (name)
-			(filter
-			 (let ((p (assq name renames)))
-			   (if p
-			       (cadr p)
-			       name)))))))
-	     (else
-	      (if (not (library-name? import-set))
-		  (error "Unrecognized import set:" import-set))
-	      (filter-map (lambda (export)
-			    (let* ((to (library-export-to export))
-				   (filtered (filter to)))
-			      (and filtered
-				   (make-library-import import-set
-							to
-							filtered))))
-			  ((registered-library import-set db)
-			   'get 'exports)))))))
-    (if (duplicate-names? (map library-import-to converted-set))
-	(error "Import set has duplicate names:" import-set))
-    converted-set))
-
-(define (duplicate-names? names)
-  (and (pair? names)
-       (let loop ((names (sort names symbol<?)))
-	 (and (pair? (cdr names))
-	      (or (eq? (car names) (cadr names))
-		  (loop (cdr names)))))))
+  (let loop ((import-set import-set) (filter (lambda (name) name)))
+    (case (car import-set)
+      ((only)
+       (loop (cadr import-set)
+	     (let ((names (cddr import-set)))
+	       (lambda (name)
+		 (and (memq name names)
+		      (filter name))))))
+      ((except)
+       (loop (cadr import-set)
+	     (let ((names (cddr import-set)))
+	       (lambda (name)
+		 (and (not (memq name names))
+		      (filter name))))))
+      ((prefix)
+       (loop (cadr import-set)
+	     (let ((prefix (caddr import-set)))
+	       (lambda (name)
+		 (filter (symbol prefix name))))))
+      ((rename)
+       (loop (cadr import-set)
+	     (let ((renames (cddr import-set)))
+	       (lambda (name)
+		 (filter
+		  (let ((p (assq name renames)))
+		    (if p
+			(cadr p)
+			name)))))))
+      (else
+       (if (not (library-name? import-set))
+	   (error "Unrecognized import set:" import-set))
+       (filter-map (lambda (export)
+		     (let* ((to (library-export-to export))
+			    (filtered (filter to)))
+		       (and filtered
+			    (make-library-import import-set
+						 to
+						 filtered))))
+		   ((registered-library import-set db)
+		    'get 'exports))))))

@@ -31,7 +31,8 @@ USA.
 (define-library (srfi 133)
   (import (scheme base)
 	  (scheme cxr)
-	  (srfi 8)
+	  (only (srfi 8)
+		receive)
 	  (only (mit legacy runtime)
 		error:bad-range-argument
 		fix:+

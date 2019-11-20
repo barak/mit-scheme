@@ -54,8 +54,10 @@ USA.
 	  (scheme eval)
 	  (scheme read)
 	  (scheme write)
-	  (srfi 1)
-	  (srfi 6)
+	  (only (srfi 1)
+		filter
+		filter-map
+		find-tail)
 	  (mit library)
 	  (only (mit legacy runtime)
 		->namestring
