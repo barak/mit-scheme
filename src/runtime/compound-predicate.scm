@@ -55,6 +55,10 @@ USA.
   (and (compound-tag? object)
        (eq? 'conjoin (compound-tag-operator object))))
 
+(define (tag-is-complement? object)
+  (and (compound-tag? object)
+       (eq? 'complement (compound-tag-operator object))))
+
 (add-boot-init!
  (lambda ()
 
@@ -108,6 +112,12 @@ USA.
 		  'conjoin
 		  predicates))
 
+(define (complement predicate)
+  (make-predicate (lambda (object)
+		    (not (predicate object)))
+		  'complement
+		  (list predicate)))
+
 (define (make-predicate datum-test operator operands)
   (if (every predicate? operands)
       (dispatch-tag->predicate
@@ -157,4 +167,14 @@ USA.
      (make-joinish-memoizer dispatch-tag-is-top?))
 
    (define-compound-operator 'conjoin
-     (make-joinish-memoizer dispatch-tag-is-bottom?))))
+     (make-joinish-memoizer dispatch-tag-is-bottom?))
+
+   (define-compound-operator 'complement
+     (let ((table (make-key-weak-eqv-hash-table)))
+       (lambda (datum-test operator tags)
+	 (hash-table-intern! table
+			     (car tags)
+			     (lambda ()
+			       (make-compound-tag datum-test operator tags))))))
+
+   ))

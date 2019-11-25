@@ -2032,6 +2032,7 @@ USA.
   (files "compound-predicate")
   (parent (runtime))
   (export ()
+	  complement
 	  conjoin
 	  conjoin*
 	  disjoin
