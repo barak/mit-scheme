@@ -25,47 +25,34 @@ USA.
 |#
 
 ;;;; Regular s-expressions
-;;; package: (runtime regular-sexpression)
-
-;;; The compiler takes a regular sexpression and returns an
-;;; instruction.  An instruction is a procedure that accepts a success
-;;; continuation, and returns a "linked instruction".  But success
-;;; continuations and linked instructions have the same signature,
-;;; which encourages the use of a combinator language.
+;;; package: (runtime regexp regsexp)
 
 (declare (usual-integrations))
 
+(define (regsexp? object)
+  (and (find-rule object) #t))
+(register-predicate! regsexp? 'regular-sexpression)
+
 (define (compile-regsexp regsexp)
   (%link-insn
-   (bind-condition-handler (list condition-type:error)
-       (lambda (condition)
-	 (signal-compile-error regsexp condition))
-     (lambda ()
-       (%compile-regsexp regsexp)))))
+   (parameterize ((%input-pattern regsexp))
+     (%compile-regsexp regsexp))))
+
+(define %input-pattern
+  (make-unsettable-parameter #f))
 
 (define (%compile-regsexp regsexp)
-  (cond ((unicode-char? regsexp)
-	 (insn:char regsexp #f))
-	((string? regsexp)
-	 (insn:string regsexp #f))
-	((and (pair? regsexp)
-	      (symbol? (car regsexp))
-	      (find (lambda (rule)
-		      (and (eq? (caar rule) (car regsexp))
-			   (syntax-match? (cdar rule) (cdr regsexp))))
-		    %compile-regsexp-rules))
-	 => (lambda (rule)
-	      (apply (cdr rule) (cdr regsexp))))
-	(else
-	 (error "Ill-formed regular s-expression:" regsexp))))
+  (let ((rule (find-rule regsexp)))
+    (if (not rule)
+	(compile-error (%input-pattern) regsexp))
+    ((rule-operation rule) regsexp)))
 
 (define (%link-insn insn)
   (make-compiled-regsexp
    (insn
     (lambda (position groups fail)
-      fail
-      (cons (get-index position)
-	    ((groups 'get-all)))))))
+      (declare (ignore fail))
+      (cons position (all-groups groups))))))
 
 (define-record-type <compiled-regsexp>
     (make-compiled-regsexp impl)
@@ -77,543 +64,190 @@ USA.
 	 ((compiled-regsexp-impl crsexp)
 	  start-position (make-groups) (lambda () #f))))
     (and result
-	 (cons (get-index start-position)
-	       result))))
+	 (cons* (pos-index start-position)
+		(pos-index (car result))
+		(map (lambda (group)
+		       (cons (group-key group)
+			     (group-value group)))
+		     (cdr result))))))
 
-(define (group-key? object)
+(define (regsexp-group-key? object)
   (or (fix:fixnum? object)
       (unicode-char? object)
       (symbol? object)))
 
 (define condition-type:compile-regsexp)
-(define signal-compile-error)
+(define compile-error)
 (define (initialize-conditions!)
   (set! condition-type:compile-regsexp
 	(make-condition-type 'compile-regsexp condition-type:error
-	    '(pattern cause)
+	    '(pattern element)
 	  (lambda (condition port)
-	    (write (access-condition condition 'pattern) port)
-	    (write-string ": " port)
-	    (write-condition-report (access-condition condition 'cause) port))))
-  (set! signal-compile-error
+	    (write-string "Ill-formed regular s-expression: " port)
+	    (write (access-condition condition 'element) port)
+	    (write-string " from pattern: " port)
+	    (write (access-condition condition 'pattern) port))))
+  (set! compile-error
 	(condition-signaller condition-type:compile-regsexp
-			     '(pattern cause)
+			     '(pattern element)
 			     standard-error-handler))
   unspecific)
 
 ;;;; Compiler rules
 
-(define (define-rule pattern compiler)
-  (add-boot-init!
-   (lambda ()
-     (if (not (and (pair? pattern)
-		   (symbol? (car pattern))))
-	 (error:bad-range-argument pattern 'define-rule))
-     (let ((p
-	    (find (lambda (p)
-		    (eq? (car p) (car pattern)))
-		  %compile-regsexp-rules)))
-       (if p
-	   (set-cdr! p compiler)
-	   (begin
-	     (set! %compile-regsexp-rules
-		   (cons (cons pattern compiler)
-			 %compile-regsexp-rules))
-	     unspecific))))))
+(define regsexp-rules)
+(defer-boot-action 'regexp-rules
+  (lambda ()
+    (set! regsexp-rules (make-rules 'regsexp))
+    unspecific))
 
-(define %compile-regsexp-rules '())
+(define-deferred-procedure find-rule 'regexp-rules
+  (rules-matcher regsexp-rules))
+
+(define-deferred-procedure define-rule 'regexp-rules
+  (rules-definer regsexp-rules))
+
+(define (any-char? object)
+  (unicode-char? object))
+
+(define (min-arity? object)
+  (exact-nonnegative-integer? object))
+
+(define (max-arity? object)
+  (or (not object)
+      (exact-nonnegative-integer? object)))
+
+(define-rule "char"
+  (lambda (char) (insn:char char #f))
+  any-char?)
+
+(define-rule "string"
+  (lambda (string) (insn:string string #f))
+  string?)
 
 (define-rule '(any-char)
   (lambda ()
-    (insn:char-matching (negate (char=-predicate #\newline)))))
+    (insn:char-matching (complement (char=-predicate #\newline)))))
 
-(define-rule `(char-ci datum)
-  (lambda (char)
-    (guarantee unicode-char? char)
-    (insn:char char #t)))
+(define-rule `(char-ci ,any-char?)
+  (lambda (char) (insn:char char #t)))
 
-(define-rule `(string-ci datum)
-  (lambda (string)
-    (guarantee string? string)
-    (insn:string string #t)))
+(define-rule `(string-ci ,string?)
+  (lambda (string) (insn:string string #t)))
 
-(define-rule '(char-matching expression)
-  (lambda (predicate)
-    (insn:char-matching
-     (cond ((unary-procedure? predicate)
-	    predicate)
-	   ((and (syntax-match? '('not expression) predicate)
-		 (unary-procedure? (cadr predicate)))
-	    (cadr predicate))
-	   (else
-	    (error:not-a unary-procedure? predicate))))))
+(define-rule `(char-matching ,unary-procedure?)
+  (lambda (predicate) (insn:char-matching predicate)))
 
-(define-rule '(char-in * datum)
-  (lambda items
-    (insn:char-set (char-set* items))))
+(define-rule `(char-matching (not ,unary-procedure?))
+  (lambda (expr) (insn:char-matching (complement (cadr expr)))))
 
-(define-rule '(char-not-in * datum)
-  (lambda items
-    (insn:inverse-char-set (char-set* items))))
+(define-rule `(char-in . ,cpl-element?)
+  (lambda items (insn:char-set (char-set* items))))
 
-(define-rule '(legacy-char-syntax datum)
+(define-rule `(char-not-in . ,cpl-element?)
+  (lambda items (insn:inverse-char-set (char-set* items))))
+
+(define (syntax-code? object)
+  (or (eqv? object #\-)
+      (eqv? object #\space)
+      (char-syntax-code? object)))
+
+(define-rule `(legacy-char-syntax ,syntax-code?)
   (lambda (code)
-    (insn:char-matching
-     (if (or (char=? code #\-) (char=? code #\space))
-	 char-whitespace?
-	 (syntax-code-predicate code)))))
+    (insn:char-matching (syntax-code-predicate code))))
 
-(define-rule '(inverse-legacy-char-syntax datum)
+(define-rule `(inverse-legacy-char-syntax ,syntax-code?)
   (lambda (code)
-    (insn:char-matching
-     (negate
-      (if (or (char=? code #\-) (char=? code #\space))
-	  char-whitespace?
-	  (syntax-code-predicate code))))))
-
-(define (negate predicate)
-  (lambda (object)
-    (not (predicate object))))
-
+    (insn:char-matching (complement (syntax-code-predicate code)))))
+
 (define-rule '(line-start) (lambda () (insn:line-start)))
 (define-rule '(line-end) (lambda () (insn:line-end)))
 (define-rule '(string-start) (lambda () (insn:string-start)))
 (define-rule '(string-end) (lambda () (insn:string-end)))
-
-(define-rule '(? form)			;greedy 0 or 1
+
+(define-rule `(? ,regsexp?)		;greedy 0 or 1
   (lambda (regsexp)
     (insn:? (%compile-regsexp regsexp))))
 
-(define-rule '(* form)			;greedy 0 or more
+(define-rule `(* ,regsexp?)		;greedy 0 or more
   (lambda (regsexp)
     (insn:* (%compile-regsexp regsexp))))
 
-(define-rule '(+ form)			;greedy 1 or more
+(define-rule `(+ ,regsexp?)		;greedy 1 or more
   (lambda (regsexp)
-    (%compile-regsexp `(** 1 #f ,regsexp))))
+    (insn:** 1 #f (%compile-regsexp regsexp))))
 
-(define-rule '(?? form)			;shy 0 or 1
+(define-rule `(?? ,regsexp?)		;shy 0 or 1
   (lambda (regsexp)
     (insn:?? (%compile-regsexp regsexp))))
 
-(define-rule '(*? form)			;shy 0 or more
+(define-rule `(*? ,regsexp?)		;shy 0 or more
   (lambda (regsexp)
     (insn:*? (%compile-regsexp regsexp))))
 
-(define-rule '(+? form)			;shy 1 or more
+(define-rule `(+? ,regsexp?)		;shy 1 or more
   (lambda (regsexp)
-    (%compile-regsexp `(**? 1 #f ,regsexp))))
+    (insn:**? 1 #f (%compile-regsexp regsexp))))
 
-(define-rule '(** datum form)		;greedy exactly N
+(define-rule `(** ,min-arity? ,regsexp?) ;greedy exactly N
   (lambda (n regsexp)
-    (guarantee exact-nonnegative-integer? n)
     (insn:** n n (%compile-regsexp regsexp))))
 
-(define-rule '(**? datum form)		;shy exactly N
+(define-rule `(**? ,min-arity? ,regsexp?) ;shy exactly N
   (lambda (n regsexp)
-    (guarantee exact-nonnegative-integer? n)
     (insn:**? n n (%compile-regsexp regsexp))))
 
-(define-rule '(** datum datum form)	;greedy between N and M
+(define-rule `(** ,min-arity? ,max-arity? ,regsexp?) ;greedy between N and M
+  (lambda (n m regsexp) (insn:** n m (%compile-regsexp regsexp)))
   (lambda (n m regsexp)
-    (check-repeat-2-args n m)
-    (insn:** n m (%compile-regsexp regsexp))))
+    (declare (ignore regsexp))
+    (or (not m)
+	(<= n m))))
 
-(define-rule '(**? datum datum form)	;shy begin N and M
+(define-rule `(**? ,min-arity? ,max-arity? ,regsexp?) ;shy between N and M
+  (lambda (n m regsexp) (insn:**? n m (%compile-regsexp regsexp)))
   (lambda (n m regsexp)
-    (check-repeat-2-args n m)
-    (insn:**? n m (%compile-regsexp regsexp))))
+    (declare (ignore regsexp))
+    (or (not m)
+	(<= n m))))
 
-(define (check-repeat-2-args n m)
-  (guarantee exact-nonnegative-integer? n)
-  (if m
-      (begin
-	(guarantee exact-nonnegative-integer? m)
-	(if (not (<= n m))
-	    (error "Repeat lower limit greater than upper limit:" n m)))))
-
-(define-rule '(alt * form)
+(define-rule `(alt . ,regsexp?)
   (lambda regsexps
-    (insn:alt (map %compile-regsexp regsexps))))
+    (insn:alt (map-in-order %compile-regsexp regsexps))))
 
-(define-rule '(seq * form)
+(define-rule `(seq . ,regsexp?)
   (lambda regsexps
-    (insn:seq (map %compile-regsexp regsexps))))
+    (insn:seq (map-in-order %compile-regsexp regsexps))))
 
-(define-rule `(group datum form)
+(define-rule `(group ,regsexp-group-key? ,regsexp?)
   (lambda (key regsexp)
-    (guarantee group-key? key)
     (insn:group key (%compile-regsexp regsexp))))
 
-(define-rule `(group-ref datum)
+(define-rule `(group-ref ,regsexp-group-key?)
   (lambda (key)
-    (guarantee group-key? key)
     (insn:group-ref key)))
 
-;;;; Instructions
-
-(define (insn:always-succeed)
-  (lambda (succeed)
-    succeed))
-
-(define (insn:always-fail)
-  (lambda (succeed)
-    succeed
-    (lambda (position groups fail)
-      position groups
-      (fail))))
-
-(define (insn:string-start)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (if (not (prev-char position))
-	  (succeed position groups fail)
-	  (fail)))))
-
-(define (insn:string-end)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (if (not (next-char position))
-	  (succeed position groups fail)
-	  (fail)))))
-
-(define (insn:line-start)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (if (let ((char (prev-char position)))
-	    (or (not char)
-		(char=? char #\newline)))
-	  (succeed position groups fail)
-	  (fail)))))
-
-(define (insn:line-end)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (if (let ((char (next-char position)))
-	    (or (not char)
-		(char=? char #\newline)))
-	  (succeed position groups fail)
-	  (fail)))))
-
-(define (insn:char-matching predicate)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (if (let ((char (next-char position)))
-	    (and char
-		 (predicate char)))
-	  (succeed (next-position position) groups fail)
-	  (fail)))))
-
-(define (insn:char char fold-case?)
-  (insn:char-matching
-   ((if fold-case? char-ci=-predicate char=-predicate) char)))
-
-(define (insn:char-set char-set)
-  (insn:char-matching (char-set-predicate char-set)))
-
-(define (insn:inverse-char-set char-set)
-  (insn:char-matching (negate (char-set-predicate char-set))))
-
-(define (insn:string string fold-case?)
-  (let ((end (string-length string)))
-    (cond ((fix:= end 0)
-	   (insn:always-succeed))
-	  ((fix:= end 1)
-	   (insn:char (string-ref string 0) fold-case?))
-	  (else
-	   (let ((c= (if fold-case? char-ci=? char=?)))
-	     (lambda (succeed)
-	       (lambda (position groups fail)
-		 (let loop ((i 0) (position position))
-		   (if (fix:< i end)
-		       (if (let ((char (next-char position)))
-			     (and char
-				  (c= char (string-ref string i))))
-			   (loop (fix:+ i 1) (next-position position))
-			   (fail))
-		       (succeed position groups fail))))))))))
-
-(define (insn:group key insn)
-  (let ((start
-	 (lambda (succeed)
-	   (lambda (position groups fail)
-	     (succeed position
-		      ((groups 'start) key position)
-		      fail))))
-	(end
-	 (lambda (succeed)
-	   (lambda (position groups fail)
-	     (succeed position
-		      ((groups 'end) key position)
-		      fail)))))
-    (lambda (succeed)
-      (start (insn (end succeed))))))
-
-(define (insn:group-ref key)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      ((let ((value ((groups 'get-value) key)))
-	 (if value
-	     ((insn:string value #f) succeed)
-	     ;; This can happen with (* (GROUP ...)), but in other cases it
-	     ;; would be an error.
-	     succeed))
-       position groups fail))))
-
-(define (insn:seq insns)
-  (lambda (succeed)
-    (fold-right (lambda (insn next)
-		  (insn next))
-		succeed
-		insns)))
-
-(define (insn:alt insns)
-  (reduce-right (lambda (insn1 insn2)
-		  (lambda (succeed)
-		    (%failure-chain (insn1 succeed)
-				    (insn2 succeed))))
-		(insn:always-fail)
-		insns))
-
-(define (insn:? insn)
-  (lambda (succeed)
-    (%failure-chain (insn succeed) succeed)))
-
-(define (insn:?? insn)
-  (lambda (succeed)
-    (%failure-chain succeed (insn succeed))))
-
-;;; The next two operations must fail when the instruction makes no
-;;; progress in a given iteration.  Otherwise patterns like (* (SEQ))
-;;; will loop forever.
-
-(define (insn:* insn)
-  (lambda (succeed)
-    (define (loop position groups fail)
-      ((%failure-chain (insn
-			(lambda (position* groups* fail*)
-			  (if (same-positions? position* position)
-			      (fail*)
-			      (loop position* groups* fail*))))
-		       succeed)
-       position groups fail))
-    loop))
-
-(define (insn:*? insn)
-  (lambda (succeed)
-    (define (loop position groups fail)
-      ((%failure-chain succeed
-		       (insn
-			(lambda (position* groups* fail*)
-			  (if (same-positions? position* position)
-			      (fail*)
-			      (loop position* groups* fail*)))))
-       position groups fail))
-    loop))
-
-(define (%failure-chain s1 s2)
-  (lambda (position groups fail)
-    (s1 position
-	groups
-	(lambda () (s2 position groups fail)))))
-
-(define (insn:** n m insn)
-  (%repeat n m insn
-	   (lambda (limit insn)
-	     (%hybrid-chain limit
-			    (lambda (succeed)
-			      (lambda (continue)
-				(%failure-chain (insn continue) succeed)))))
-	   insn:*))
-
-(define (insn:**? n m insn)
-  (%repeat n m insn
-	   (lambda (limit insn)
-	     (%hybrid-chain limit
-			    (lambda (succeed)
-			      (lambda (continue)
-				(%failure-chain succeed (insn continue))))))
-	   insn:*?))
-
-(define (%repeat n m insn repeat-limited repeat-unlimited)
-  (let ((insn1 (%repeat-exactly n insn))
-	(insn2
-	 (if m
-	     (repeat-limited (- m n) insn)
-	     (repeat-unlimited insn))))
-    (lambda (succeed)
-      (insn1 (insn2 succeed)))))
-
-(define (%repeat-exactly n insn)
-  (%hybrid-chain n
-		 (lambda (succeed)
-		   succeed
-		   insn)))
-
-(define (%hybrid-chain limit pre-linker)
-  (if (<= limit 8)
-      (%immediate-chain limit pre-linker)
-      (%delayed-chain limit pre-linker)))
-
-(define (%immediate-chain limit pre-linker)
-  (lambda (succeed)
-    (let ((linker (pre-linker succeed)))
-      (let loop ((i 0))
-	(if (< i limit)
-	    (linker (loop (+ i 1)))
-	    succeed)))))
-
-(define (%delayed-chain limit pre-linker)
-  (lambda (succeed)
-    (let ((linker (pre-linker succeed)))
-      (let loop ((i 0))
-	(if (< i limit)
-	    (lambda (position groups fail)
-	      ((linker (loop (+ i 1))) position groups fail))
-	    succeed)))))
-
-;;;; Positions
-
-(define (get-index position)
-  ((position 'get-index)))
-
-(define (next-char position)
-  ((position 'next-char)))
-
-(define (next-position position)
-  ((position 'next-position)))
-
-(define (prev-char position)
-  ((position 'prev-char)))
-
-(define (prev-position position)
-  ((position 'prev-position)))
-
-(define (same-positions? p1 p2)
-  (and (eq? ((p1 'get-marker)) ((p2 'get-marker)))
-       (fix:= ((p1 'get-index)) ((p2 'get-index)))))
-
-(define (make-source-position source)
-  (let ((marker (list 'source-position)))
-
-    (define (at-index index next-char prev-char prev-position)
-
-      (define (next-position)
-	(at-index (fix:+ index 1) (source) next-char this))
-
-      (define (this operator)
-	(case operator
-	  ((get-marker) (lambda () marker))
-	  ((get-index) (lambda () index))
-	  ((next-char) (lambda () next-char))
-	  ((next-position) next-position)
-	  ((prev-char) (lambda () prev-char))
-	  ((prev-position) (lambda () prev-position))
-	  (else (error "Unknown operator:" operator))))
-
-      this)
-
-    (at-index 0 (source) #f #f)))
-
-(define (make-string-position string start end)
-  (let ((marker (list 'string-position)))
-
-    (define (at-index index)
-
-      (define (next-char)
-	(and (fix:< index end)
-	     (string-ref string index)))
-
-      (define (next-position)
-	(at-index (fix:+ index 1)))
-
-      (define (prev-char)
-	(and (fix:> index start)
-	     (string-ref string (fix:- index 1))))
-
-      (define (prev-position)
-	(at-index (fix:- index 1)))
-
-      (lambda (operator)
-	(case operator
-	  ((get-marker) (lambda () marker))
-	  ((get-index) (lambda () index))
-	  ((next-char) next-char)
-	  ((next-position) next-position)
-	  ((prev-char) prev-char)
-	  ((prev-position) prev-position)
-	  (else (error "Unknown operator:" operator)))))
-
-    (at-index start)))
-
-;;;; Groups
-
-(define (make-groups)
-
-  (define (state started-groups ended-groups)
-
-    (define (start key position)
-      (if (assv key started-groups)
-	  (error "Incorrectly nested group:" key))
-      (state (cons (cons key position) started-groups)
-	     ended-groups))
-
-    (define (end key position)
-      (if (not (and (pair? started-groups)
-		    (eqv? (caar started-groups) key)))
-	  (error "Incorrectly nested group:" key))
-      (state (cdr started-groups)
-	     (cons (finish-group key
-				 (cdar started-groups)
-				 position)
-		   ended-groups)))
-
-    (define (finish-group key start-position end-position)
-      (cons key
-	    (let loop ((position end-position) (chars '()))
-	      (if (same-positions? position start-position)
-		  (list->string chars)
-		  (let ((char (prev-char position)))
-		    (loop (prev-position position)
-			  (cons char chars)))))))
-
-    (define (get-value key)
-      (if (assv key started-groups)
-	  (error "Can't refer to unfinished group:" key))
-      (let ((p (assv key ended-groups)))
-	(and p
-	     (cdr p))))
-
-    (lambda (operator)
-      (case operator
-	((start) start)
-	((end) end)
-	((get-value) get-value)
-	((get-all) (lambda () (reverse ended-groups)))
-	(else (error "Unknown operator:" operator)))))
-
-  (state '() '()))
-
-;;;; Match and search
+;;;; Match, search, and replace
 
 (define (regsexp-match-string crsexp string #!optional start end)
-  (let* ((caller 'regsexp-match-string)
-	 (end (fix:end-index end (string-length string) caller))
-	 (start (fix:start-index start end caller)))
+  (let ((caller 'regsexp-match-string))
     (guarantee nfc-string? string caller)
-    (top-level-match crsexp (make-string-position string start end))))
+    (let* ((end (fix:end-index end (string-length string) caller))
+	   (start (fix:start-index start end caller)))
+      (top-level-match crsexp (make-string-position string start end)))))
 
 (define (regsexp-search-string-forward crsexp string #!optional start end)
-  (let* ((caller 'regsexp-search-string-forward)
-	 (end (fix:end-index end (string-length string) caller))
-	 (start (fix:start-index start end caller)))
+  (let ((caller 'regsexp-search-string-forward))
     (guarantee nfc-string? string caller)
-    (let loop ((position (make-string-position string start end)))
-      (or (top-level-match crsexp position)
-	  (and (next-char position)
-	       (loop (next-position position)))))))
+    (let* ((end (fix:end-index end (string-length string) caller))
+	   (start (fix:start-index start end caller)))
+      (let loop ((position (make-string-position string start end)))
+	(or (top-level-match crsexp position)
+	    (and (next-char position)
+		 (loop (next-position position))))))))
 
 (define (regsexp-match-input-port crsexp port)
+  (guarantee textual-input-port? port 'regsexp-match-input-port)
   (top-level-match crsexp
 		   (make-source-position
 		    (lambda ()
@@ -621,6 +255,57 @@ USA.
 			(if (eof-object? char)
 			    #f
 			    char))))))
+
+(define (regsexp-match? object)
+  (and (pair? object)
+       (exact-nonnegative-integer? (car object))
+       (pair? (cdr object))
+       (exact-nonnegative-integer? (cadr object))
+       (<= (car object) (cadr object))
+       (list? (cddr object))
+       (every (lambda (elt)
+		(and (pair? elt)
+		     (regsexp-group-key? (car elt))
+		     (string? (cdr elt))))
+	      (cddr object))))
+(register-predicate! regsexp-match? 'regsexp-match)
+
+(define (match-value key match caller)
+  (let ((p (assv key (cddr match))))
+    (if (not p)
+	(error:bad-range-argument key caller))
+    (cdr p)))
+
+(define (regsexp-replacement? object)
+  (or (string? object)
+      (regsexp-group-key? object)
+      (and (list? object)
+	   (every regsexp-replacement? object))))
+(register-predicate! regsexp-replacement? 'regsexp-replacement)
+
+(define (regsexp-replacer replacement)
+  (let ((replacer (%regsexp-replacer replacement 'regsexp-replacer)))
+    (lambda (match)
+      (guarantee regsexp-match? match 'regsexp-replacer)
+      (let ((builder (string-builder)))
+	(replacer builder match)
+	(builder)))))
+
+(define (%regsexp-replacer replacement caller)
+  (let loop ((r replacement))
+    (cond ((string? r)
+	   (lambda (builder match)
+	     (declare (ignore match))
+	     (builder r)))
+	  ((regsexp-group-key? r)
+	   (lambda (builder match)
+	     (builder (match-value r match caller))))
+	  ((list? r)
+	   (let ((elts (map loop r)))
+	     (lambda (builder match)
+	       (for-each (lambda (elt) (elt builder match)) elts))))
+	  (else
+	   (error:not-a regsexp-replacement? r caller)))))
 
 ;;;; Convert regexp pattern to regsexp
 

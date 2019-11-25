@@ -477,7 +477,7 @@ USA.
    (runtime parametric-predicate)
    (runtime hash)
    (runtime dynamic)
-   (runtime regular-sexpression)
+   (runtime regexp rules)
    (runtime library loader)
    (runtime library standard)
    ;; Microcode data structures
@@ -494,7 +494,7 @@ USA.
    (runtime microcode-errors)
    ((runtime record) initialize-conditions!)
    ((runtime stream) initialize-conditions!)
-   ((runtime regular-sexpression) initialize-conditions!)
+   ((runtime regexp regsexp) initialize-conditions!)
    ;; System dependent stuff
    (runtime os-primitives)
    ;; Floating-point environment -- needed by threads.

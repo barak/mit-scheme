@@ -1630,7 +1630,8 @@ USA.
 	  re-char-pattern->code-points
 	  re-compile-char-set
 	  string->char-set)
-  (export (runtime regular-sexpression)
+  (export (runtime regexp regsexp)
+	  cpl-element?
 	  normalize-ranges))
 
 (define-package (runtime compiler-info)
@@ -5481,17 +5482,77 @@ USA.
 	  md5-string)
   (initialization (initialize-package!)))
 
-(define-package (runtime regular-sexpression)
+(define-package (runtime regexp)
+  (files)
+  (parent (runtime)))
+
+(define-package (runtime regexp regsexp)
   (files "regsexp")
-  (parent (runtime))
+  (parent (runtime regexp))
   (export ()
 	  compile-regsexp
 	  compiled-regsexp?
 	  condition-type:compile-regsexp
 	  re-pattern->regsexp
+	  regsexp-group-key?
 	  regsexp-match-input-port
 	  regsexp-match-string
-	  regsexp-search-string-forward))
+	  regsexp-match?
+	  regsexp-replacement?
+	  regsexp-replacer
+	  regsexp-search-string-forward
+	  regsexp?))
+
+(define-package (runtime regexp rules)
+  (files "regexp-rules")
+  (parent (runtime))
+  (export (runtime regexp)
+	  make-rules
+	  general-rule
+	  pattern-rule
+	  pattern?
+	  rule-key
+	  rule-operation
+	  rule-predicate
+	  rules-adder
+	  rules-definer
+	  rules-matcher
+	  rules-rewriter
+	  rules?
+	  rule?))
+
+(define-package (runtime regexp recursive)
+  (files "regexp-recursive")
+  (parent (runtime))
+  (export (runtime regexp)
+	  all-groups
+	  group-key
+	  group-value
+	  insn:*
+	  insn:**
+	  insn:**?
+	  insn:*?
+	  insn:?
+	  insn:??
+	  insn:alt
+	  insn:char
+	  insn:char-matching
+	  insn:char-set
+	  insn:group
+	  insn:group-ref
+	  insn:inverse-char-set
+	  insn:line-end
+	  insn:line-start
+	  insn:seq
+	  insn:string
+	  insn:string-end
+	  insn:string-start
+	  make-groups
+	  make-source-position
+	  make-string-position
+	  next-char
+	  next-position
+	  pos-index))
 
 (define-package (runtime regular-expression)
   (file-case options
@@ -5575,6 +5636,7 @@ USA.
   (export ()
 	  char->syntax-code
 	  char-syntax->string
+	  char-syntax-code?
 	  char-syntax-table?
 	  get-char-syntax
 	  make-char-syntax-table
