@@ -631,15 +631,15 @@ USA.
     ((1)
      (do ((i 0 (fix:+ i 1)))
 	 ((not (fix:< i count)) unspecific)
-       (cp1-set! result i (vector-ref chars i))))
+       (cp1-set! result i (char->integer (vector-ref chars i)))))
     ((2)
      (do ((i 0 (fix:+ i 1)))
 	 ((not (fix:< i count)) unspecific)
-       (cp2-set! result i (vector-ref chars i))))
+       (cp2-set! result i (char->integer (vector-ref chars i)))))
     (else
      (do ((i 0 (fix:+ i 1)))
 	 ((not (fix:< i count)) unspecific)
-       (cp3-set! result i (vector-ref chars i)))))
+       (cp3-set! result i (char->integer (vector-ref chars i))))))
   result)
 
 (define (%make-string-builder initial-buffer-length)
