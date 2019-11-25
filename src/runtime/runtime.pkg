@@ -1494,6 +1494,7 @@ USA.
   (parent (runtime))
   (export ()
 	  (char-set:numeric char-set:nt=decimal)
+	  (char-set:title-case char-set:gc=letter:titlecase)
 	  (char-numeric? char-nt=decimal?)
 	  char-alphabetic?
 	  char-cased?
@@ -1530,6 +1531,8 @@ USA.
 	  char-set:gc=number:decimal-digit
 	  char-set:gc=number:letter
 	  char-set:gc=number:other
+	  char-set:gc=other:control
+	  char-set:gc=other:format
 	  char-set:gc=other:not-assigned
 	  char-set:gc=other:private-use
 	  char-set:gc=other:surrogate
@@ -1567,14 +1570,27 @@ USA.
   (parent (runtime))
   (export ()
 	  char-alphanumeric?
+	  char-graphic?
+	  char-printing?
 	  char-set:alphanumeric
+	  char-set:control
+	  char-set:graphic
+	  char-set:no-newline
 	  char-set:not-alphabetic
 	  char-set:not-alphanumeric
+	  char-set:not-graphic
 	  char-set:not-lower-case
 	  char-set:not-numeric
+	  char-set:not-printing
+	  char-set:not-standard
 	  char-set:not-upper-case
 	  char-set:not-whitespace
+	  char-set:printing
+	  char-set:punctuation
+	  char-set:standard
+	  char-set:symbol
 	  char-set:unicode
+	  char-standard?
 	  unicode-char?)
   (export (runtime)
 	  char-set:folded-symbol-constituent
@@ -1596,7 +1612,6 @@ USA.
 	  8-bit-char-set?
 	  ascii-range->char-set
 	  char-ctl?
-	  char-graphic?
 	  char-in-set?
 	  char-set
 	  char-set*
@@ -1613,16 +1628,12 @@ USA.
 	  char-set-union*
 	  char-set:ascii
 	  char-set:ctls
-	  char-set:graphic
+	  char-set:hex-digit
 	  char-set:newline
-	  char-set:not-graphic
-	  char-set:not-standard
-	  char-set:standard
 	  char-set:wsp
 	  char-set=?
 	  char-set?
 	  char-sets-disjoint?
-	  char-standard?
 	  char-wsp?
 	  code-point-list?
 	  code-point-in-char-set?

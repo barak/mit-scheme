@@ -35,6 +35,13 @@ USA.
 (define-deferred char-alphanumeric?
   (char-set-predicate char-set:alphanumeric))
 
+(define-deferred char-set:control
+  (char-set-union char-set:gc=other:control
+		  char-set:gc=other:format
+		  char-set:gc=other:surrogate
+		  char-set:gc=other:private-use
+		  char-set:gc=other:not-assigned))
+
 (define-deferred char-set:not-alphabetic
   (char-set-invert char-set:alphabetic))
 
@@ -53,6 +60,21 @@ USA.
 (define-deferred char-set:not-whitespace
   (char-set-invert char-set:whitespace))
 
+(define-deferred char-set:punctuation
+  (char-set-union char-set:gc=punctuation:connector
+		  char-set:gc=punctuation:dash
+		  char-set:gc=punctuation:open
+		  char-set:gc=punctuation:close
+		  char-set:gc=punctuation:initial-quote
+		  char-set:gc=punctuation:final-quote
+		  char-set:gc=punctuation:other))
+
+(define-deferred char-set:symbol
+  (char-set-union char-set:gc=symbol:math
+		  char-set:gc=symbol:currency
+		  char-set:gc=symbol:modifier
+		  char-set:gc=symbol:other))
+
 (define-deferred char-set:unicode
   (char-set-difference (char-set-invert (char-set))
 		       char-set:gc=other:surrogate
@@ -60,6 +82,27 @@ USA.
 
 (define-deferred unicode-char?
   (char-set-predicate char-set:unicode))
+
+(define-deferred char-set:graphic
+  (char-set-union char-set:alphabetic
+		  char-set:punctuation
+		  char-set:symbol))
+(define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
+(define-deferred char-graphic? (char-set-predicate char-set:graphic))
+
+(define-deferred char-set:no-newline
+  (char-set-difference char-set:unicode (char-set #\newline #\return)))
+
+(define-deferred char-set:printing
+  (char-set-union char-set:graphic
+		  char-set:whitespace))
+(define-deferred char-set:not-printing (char-set-invert char-set:printing))
+(define-deferred char-printing? (char-set-predicate char-set:printing))
+
+(define-deferred char-set:standard
+  (char-set-union char-set:graphic (char-set #\newline)))
+(define-deferred char-set:not-standard (char-set-invert char-set:standard))
+(define-deferred char-standard? (char-set-predicate char-set:standard))
 
 ;;;; Scheme language:
 

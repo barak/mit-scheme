@@ -370,14 +370,23 @@ USA.
 
 (define (name->char-set name)
   (case name
-    ((alphabetic) char-set:alphabetic)
-    ((alphanumeric) char-set:alphanumeric)
+    ((alphabetic alpha) char-set:alphabetic)
+    ((alphanumeric alphanum alnum) char-set:alphanumeric)
+    ((ascii) char-set:ascii)
     ((cased) char-set:cased)
-    ((lower-case) char-set:lower-case)
-    ((numeric) char-set:numeric)
-    ((unicode) char-set:unicode)
-    ((upper-case) char-set:upper-case)
-    ((whitespace) char-set:whitespace)
+    ((control cntrl) char-set:control)
+    ((graphic graph) char-set:graphic)
+    ((hex-digit xdigit) char-set:hex-digit)
+    ((lower-case lower) char-set:lower-case)
+    ((no-newline nonl) char-set:no-newline)
+    ((numeric num) char-set:numeric)
+    ((printing print) char-set:printing)
+    ((punctuation punct) char-set:punctuation)
+    ((symbol) char-set:symbol)
+    ((title-case title) char-set:title-case)
+    ((unicode any) char-set:unicode)
+    ((upper-case upper) char-set:upper-case)
+    ((whitespace white space) char-set:whitespace)
     (else #f)))
 
 (define (%range? object)
@@ -575,29 +584,17 @@ USA.
 ;;;; Miscellaneous character sets
 
 (define char-ctl?)
-(define char-graphic?)
 (define char-set:ascii)
 (define char-set:ctls)
-(define char-set:graphic)
+(define char-set:hex-digit)
 (define char-set:newline)
-(define char-set:not-graphic)
-(define char-set:not-standard)
-(define char-set:standard)
 (define char-set:wsp)
-(define char-standard?)
 (define char-wsp?)
 (add-boot-init!
  (lambda ()
-   (set! char-set:graphic (%inversion-list->char-set '(#x20 #x7F #xA0 #x100)))
-   (set! char-set:not-graphic (char-set-invert char-set:graphic))
-   (set! char-graphic? (char-set-predicate char-set:graphic))
-
-   (set! char-set:standard
-	 (char-set-union char-set:graphic (char-set #\newline)))
-   (set! char-set:not-standard (char-set-invert char-set:standard))
-   (set! char-standard? (char-set-predicate char-set:standard))
 
    (set! char-set:newline (char-set #\newline))
+   (set! char-set:hex-digit (char-set "0123456789abcdefABCDEF"))
 
    ;; Used in RFCs:
 
