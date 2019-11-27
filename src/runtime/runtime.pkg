@@ -5042,6 +5042,7 @@ USA.
 	  define-guarantee)
   (export (runtime)
 	  define-deferred
+	  define-deferred-procedure
 	  define-primitives
 	  select-on-bytes-per-word
 	  ucode-primitive
