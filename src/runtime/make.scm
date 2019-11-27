@@ -495,6 +495,7 @@ USA.
    ((runtime record) initialize-conditions!)
    ((runtime stream) initialize-conditions!)
    ((runtime regexp regsexp) initialize-conditions!)
+   ((runtime regexp srfi-115) initialize-conditions!)
    ;; System dependent stuff
    (runtime os-primitives)
    ;; Floating-point environment -- needed by threads.

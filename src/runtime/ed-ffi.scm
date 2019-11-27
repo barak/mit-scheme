@@ -154,6 +154,7 @@ USA.
     ("sfile"	(runtime simple-file-ops))
     ("socket"	(runtime socket))
     ("srfi-1"	(runtime srfi-1))
+    ("srfi-115"	(runtime regexp srfi-115))
     ("stack-sample" (runtime stack-sampler))
     ("stream"	(runtime stream))
     ("string"	(runtime string))
