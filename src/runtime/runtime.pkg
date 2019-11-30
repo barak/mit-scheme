@@ -1571,10 +1571,12 @@ USA.
   (export ()
 	  char-alphanumeric?
 	  char-graphic?
+	  char-newline?
 	  char-printing?
 	  char-set:alphanumeric
 	  char-set:control
 	  char-set:graphic
+	  char-set:newline
 	  char-set:no-newline
 	  char-set:not-alphabetic
 	  char-set:not-alphanumeric
@@ -1624,12 +1626,12 @@ USA.
 	  char-set-invert
 	  char-set-members
 	  char-set-predicate
+	  char-set-size
 	  char-set-union
 	  char-set-union*
 	  char-set:ascii
 	  char-set:ctls
 	  char-set:hex-digit
-	  char-set:newline
 	  char-set:wsp
 	  char-set=?
 	  char-set?

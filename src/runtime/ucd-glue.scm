@@ -90,8 +90,10 @@ USA.
 (define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
 (define-deferred char-graphic? (char-set-predicate char-set:graphic))
 
+(define-deferred char-set:newline (char-set #\newline #\return))
 (define-deferred char-set:no-newline
-  (char-set-difference char-set:unicode (char-set #\newline #\return)))
+  (char-set-difference char-set:unicode char-set:newline))
+(define-deferred char-newline? (char-set-predicate char-set:newline))
 
 (define-deferred char-set:printing
   (char-set-union char-set:graphic

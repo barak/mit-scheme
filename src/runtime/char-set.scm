@@ -224,6 +224,39 @@ USA.
 
 (define-integrable (rcons start end ilist)
   (cons end (cons start ilist)))
+
+(define (char-set-size char-set)
+  (fix:+ (%low-size (%char-set-low char-set))
+	 (%high-size (%char-set-high char-set))))
+
+(define (%low-size low)
+  (let ((low-limit (%low-limit low)))
+
+    (define (find-start i size)
+      (if (fix:< i low-limit)
+	  (if (%low-ref low i)
+	      (let ((end (find-end (fix:+ i 1))))
+		(find-start end (fix:+ size (fix:- end i))))
+	      (find-start (fix:+ i 1) size))
+	  size))
+
+    (define (find-end i)
+      (if (fix:< i low-limit)
+	  (if (%low-ref low i)
+	      (find-end (fix:+ i 1))
+	      i)
+	  low-limit))
+
+    (find-start 0 0)))
+
+(define (%high-size high)
+  (let ((end (%high-length high)))
+    (do ((index 0 (fix:+ index 2))
+	 (size 0
+		(fix:+ size
+		       (fix:- (%high-ref high (fix:+ index 1))
+			      (%high-ref high index)))))
+	((not (fix:< index end)) size))))
 
 (define (make-inversion-list-combiner combine)
 
@@ -378,6 +411,7 @@ USA.
     ((graphic graph) char-set:graphic)
     ((hex-digit xdigit) char-set:hex-digit)
     ((lower-case lower) char-set:lower-case)
+    ((newline nl) char-set:newline)
     ((no-newline nonl) char-set:no-newline)
     ((numeric num) char-set:numeric)
     ((printing print) char-set:printing)
@@ -587,13 +621,10 @@ USA.
 (define char-set:ascii)
 (define char-set:ctls)
 (define char-set:hex-digit)
-(define char-set:newline)
 (define char-set:wsp)
 (define char-wsp?)
 (add-boot-init!
  (lambda ()
-
-   (set! char-set:newline (char-set #\newline))
    (set! char-set:hex-digit (char-set "0123456789abcdefABCDEF"))
 
    ;; Used in RFCs:
