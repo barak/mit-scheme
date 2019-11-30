@@ -804,6 +804,10 @@ USA.
 (define-feature 'srfi-133 always) ;Vector Library (R7RS-compatible)
 (define-feature 'srfi-143 always) ;Fixnums
 
+;; SRFI 115:
+(define-feature 'regexp-unicode always)
+(define-feature 'regexp-non-greedy always)
+
 (define ((os? value))
   (eq? value microcode-id/operating-system))
 

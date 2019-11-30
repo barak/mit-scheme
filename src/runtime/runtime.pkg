@@ -5522,7 +5522,9 @@ USA.
   (export ()
 	  condition-type:compile-regexp
 	  cset-sre?
+	  print-regexp
 	  regexp
+	  regexp->nfa
 	  regexp-match->list
 	  regexp-match-count
 	  regexp-match-keys
@@ -5554,10 +5556,43 @@ USA.
 	  rules?
 	  rule?))
 
+(define-package (runtime regexp nfa)
+  (files "regexp-nfa")
+  (parent (runtime))
+  (export (runtime regexp srfi-115)
+	  generate-matcher
+	  group-end
+	  group-key
+	  group-start
+	  group-value
+	  insn:*
+	  insn:**
+	  insn:**?
+	  insn:*?
+	  insn:=
+	  insn:>=
+	  insn:>=?
+	  insn:?
+	  insn:??
+	  insn:alt
+	  insn:char
+	  insn:char-set
+	  insn:group
+	  insn:line-end
+	  insn:line-start
+	  insn:seq
+	  insn:string
+	  insn:string-end
+	  insn:string-start
+	  matcher->nfa
+	  run-matcher)
+  (export ()
+	  param:trace-regexp-nfa?))
+
 (define-package (runtime regexp recursive)
   (files "regexp-recursive")
   (parent (runtime))
-  (export (runtime regexp)
+  (export (runtime regexp regsexp)
 	  all-groups
 	  group-end
 	  group-key

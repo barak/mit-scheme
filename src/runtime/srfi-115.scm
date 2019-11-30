@@ -41,10 +41,12 @@ USA.
 (register-predicate! cset-sre? 'char-set-regexp)
 
 (define (compile-sre-top-level sre)
-  (%link-insn
+  (make-regexp
    (parameterize ((%input-pattern sre)
 		  (%submatch-next 1))
-     (compile-sre sre))))
+     (generate-matcher
+      (lambda ()
+	(compile-sre sre))))))
 
 (define %input-pattern (make-unsettable-parameter #f))
 (define %submatch-next (make-settable-parameter #f))
@@ -53,13 +55,6 @@ USA.
   (let ((n (%submatch-next)))
     (%submatch-next (+ n 1))
     n))
-
-(define (%link-insn insn)
-  (make-regexp
-   (insn
-    (lambda (position groups fail)
-      (declare (ignore fail))
-      (cons position (all-groups groups))))))
 
 (define-record-type <regexp>
     (make-regexp impl)
@@ -89,41 +84,55 @@ USA.
   (guarantee nfc-string? string 'regexp-matches)
   (let* ((end (fix:end-index end (string-length string) 'regexp-matches))
 	 (start (fix:start-index start end 'regexp-matches)))
-    (%regexp-match (regexp re) (make-string-position string start end))))
+    (%regexp-match (regexp re) string start end)))
 
 (define (regexp-matches? re string #!optional start end)
   (guarantee nfc-string? string 'regexp-matches?)
   (let* ((end (fix:end-index end (string-length string) 'regexp-matches?))
 	 (start (fix:start-index start end 'regexp-matches?)))
-    (%regexp-match (regexp re) (make-string-position string start end))))
+    (%regexp-match (regexp re) string start end)))
 
 (define (regexp-search re string #!optional start end)
   (guarantee nfc-string? string 'regexp-search)
   (let* ((end (fix:end-index end (string-length string) 'regexp-search))
 	 (start (fix:start-index start end 'regexp-search)))
-    (let ((cre (regexp re)))
-      (let loop ((position (make-string-position string start end)))
-	(or (%regexp-match cre position)
-	    (and (next-char position)
-		 (loop (next-position position))))))))
+    (let ((regexp (regexp re)))
+      (let loop ((index start))
+	(if (fix:< index end)
+	    (or (%regexp-match regexp string index end)
+		(loop (fix:+ index 1)))
+	    (%regexp-match regexp string index end))))))
 
 (define (regexp re)
   (if (regexp? re)
       re
       (compile-sre-top-level re)))
 
-(define (%regexp-match cre start-position)
-  (let ((result
-	 ((regexp-impl cre) start-position (make-groups) (lambda () #f))))
-    (and result
-	 (make-regexp-match (make-group 0 start-position (car result))
-			    (cdr result)))))
+(define (regexp->nfa regexp)
+  (matcher->nfa (regexp-impl regexp)))
+
+(define (print-regexp regexp #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (fresh-line port)
+    (for-each (lambda (object)
+		(write-line object port))
+	      (regexp->nfa regexp))))
+
+(define (%regexp-match regexp string start end)
+  (let ((groups (run-matcher (regexp-impl regexp) string start end)))
+    (and groups
+	 (make-regexp-match (car groups) (cdr groups)))))
 
 (define-record-type <regexp-match>
     (make-regexp-match group0 groups)
     regexp-match?
   (group0 %regexp-match-group0)
   (groups %regexp-match-groups))
+
+(define-print-method regexp-match?
+  (standard-print-method 'regexp-match
+    (lambda (match)
+      (list (group-value (%regexp-match-group0 match))))))
 
 (define (regexp-match-count match)
   (length (%regexp-match-groups match)))
@@ -220,7 +229,7 @@ USA.
 (define (compile-sre sre)
   (cond ((find-cset-sre-rule sre)
 	 => (lambda (rule)
-	      (insn:char-set ((rule-operation rule) sre))))
+	      (insn:char-set ((rule-operation rule) sre) #f)))
 	((find-sre-rule sre)
 	 => (lambda (rule)
 	      ((rule-operation rule) sre)))
@@ -268,7 +277,7 @@ USA.
 (define-sre-alias 'zero-or-more '*)
 
 (define-sre-rule `(+ . ,sre?)
-  (lambda sres (insn:** 1 #f (compile-sres sres))))
+  (lambda sres (insn:>= 1 (compile-sres sres))))
 (define-sre-alias 'one-or-more '+)
 
 (define-sre-rule `(? . ,sre?)
@@ -276,11 +285,11 @@ USA.
 (define-sre-alias 'optional '?)
 
 (define-sre-rule `(= ,min-arity? . ,sre?)
-  (lambda (n . sres) (insn:** n n (compile-sres sres))))
+  (lambda (n . sres) (insn:= n (compile-sres sres))))
 (define-sre-alias 'exactly '=)
 
 (define-sre-rule `(>= ,min-arity? . ,sre?)
-  (lambda (n . sres) (insn:** n #f (compile-sres sres))))
+  (lambda (n . sres) (insn:>= n (compile-sres sres))))
 (define-sre-alias 'at-least '>=)
 
 (define-sre-rule `(** ,min-arity? ,max-arity? . ,sre?)
@@ -324,9 +333,6 @@ USA.
   (lambda (n m . sres) (insn:**? n m (compile-sres sres)))
   (lambda (n m . sres) (declare (ignore sres)) (<= n m)))
 (define-sre-alias 'non-greedy-repeated '**?)
-
-(define-sre-rule `(backref ,backref-key?)
-  (lambda (key) (insn:group-ref key)))
 
 ;;;; <cset-sre>
 

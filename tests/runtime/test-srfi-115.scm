@@ -55,7 +55,7 @@ USA.
       (with-test-properties
           (lambda ()
             (assert-equal (thunk) expected))
-        'expression `(match-string ',pattern ,string)))))
+        'expression `(regexp-matches ',pattern ,string)))))
 
 (define (translate-regexp-match match)
   (and match
@@ -94,7 +94,7 @@ USA.
       (with-test-properties
           (lambda ()
             (assert-equal (thunk) expected))
-        'expression `(search-string ',pattern ,string)))))
+        'expression `(regexp-search ',pattern ,string)))))
 
 (define-test 'match-nonl
   (match-strings-test 'nonl
@@ -326,74 +326,6 @@ USA.
 
    ))
 
-(define-test 'match-palindromes
-  (list
-   (match-strings-test '(: (-> a nonl)
-			   (-> b nonl)
-			   nonl
-			   (backref b)
-			   (backref a))
-		       '(("radar" (0 5 (a . "r") (b . "a")))))
-   (match-strings-test '(: bos
-			   ($ (? nonl))
-			   ($ (? nonl))
-			   ($ (? nonl))
-			   ($ (? nonl))
-			   ($ (? nonl))
-			   ($ (? nonl))
-			   ($ (? nonl))
-			   ($ (? nonl))
-			   ($ (? nonl))
-			   (? nonl)
-			   (backref 9)
-			   (backref 8)
-			   (backref 7)
-			   (backref 6)
-			   (backref 5)
-			   (backref 4)
-			   (backref 3)
-			   (backref 2)
-			   (backref 1)
-			   eos)
-		       '(("civic" (0 5
-				     (1 . "c") (2 . "i") (3 . "") (4 . "")
-				     (5 . "") (6 . "") (7 . "") (8 . "")
-				     (9 . "")))
-			 ("abba" (0 4
-				    (1 . "a") (2 . "b") (3 . "") (4 . "")
-				    (5 . "") (6 . "") (7 . "") (8 . "")
-				    (9 . "")))))
-   (match-strings-test '(: bos
-			   ($ (?? nonl))
-			   ($ (?? nonl))
-			   ($ (?? nonl))
-			   ($ (?? nonl))
-			   ($ (?? nonl))
-			   ($ (?? nonl))
-			   ($ (?? nonl))
-			   ($ (?? nonl))
-			   ($ (?? nonl))
-			   (?? nonl)
-			   (backref 9)
-			   (backref 8)
-			   (backref 7)
-			   (backref 6)
-			   (backref 5)
-			   (backref 4)
-			   (backref 3)
-			   (backref 2)
-			   (backref 1)
-			   eos)
-		       '(("civic" (0 5
-				     (1 . "") (2 . "") (3 . "") (4 . "")
-				     (5 . "") (6 . "") (7 . "") (8 . "c")
-				     (9 . "i")))
-			 ("abba" (0 4
-				    (1 . "") (2 . "") (3 . "") (4 . "")
-				    (5 . "") (6 . "") (7 . "") (8 . "a")
-				    (9 . "b")))))
-   ))
-
 ;;; Ripped off from "grep/tests/bre.tests".
 (define-test 'match-grep-bre
   (multi-match-strings-test
@@ -407,54 +339,6 @@ USA.
       "b")
      ((:)
       ("abc" (0 0)))
-     ((: "a"
-	 (-> x (* "b"))
-	 "c"
-	 (backref x)
-	 "d")
-      ("abbcbd" #f)
-      ("abbcbbd" (0 7 (x . "bb")))
-      ("abbcbbbd" #f))
-     ((: bos
-	 (-> x nonl)
-	 (backref x))
-      ("abc" #f))
-     ((: "a"
-	 (* (-> x ("bc")) (backref x))
-	 "d")
-      ("abbccd" (0 6 (x . "b") (x . "c")))
-      ("abbcbd" #f))
-     ((: "a"
-	 (* (* (-> x "b")) (backref x))
-	 "d")
-      ("abbbd" (0 5 (x . "b") (x . "b"))))
-     ((: (-> x "a")
-	 (backref x)
-	 "bcd")
-      ("aabcd" (0 5 (x . "a"))))
-     ((: (-> x "a")
-	 (backref x)
-	 "b"
-	 (* "c")
-	 "d")
-      ("aabcd" (0 5 (x . "a")))
-      ("aabd" (0 4 (x . "a")))
-      ("aabcccd" (0 7 (x . "a"))))
-     ((: (-> x "a")
-	 (backref x)
-	 "b"
-	 (* "c")
-	 ("ce")
-	 "d")
-      ("aabcccd" (0 7 (x . "a"))))
-     ((: bos
-	 (-> x "a")
-	 (backref x)
-	 "b"
-	 (* "c")
-	 "cd"
-	 eos)
-      ("aabcccd" (0 7 (x . "a"))))
      ((: (= 1 "a") "b")
       "ab")
      ((: (>= 1 "a") "b")
@@ -489,12 +373,6 @@ USA.
       "abbc")
      ((: "a" (** 2 4 "b") "c")
       ("abcabbc" #f))
-     ((: "a"
-	 (? (-> x "b"))
-	 "c"
-	 (backref x)
-	 "d")
-      "acd")
      ((: (** 0 1 "-")
 	 (+ ("0123456789"))
 	 eos)
@@ -755,8 +633,4 @@ USA.
      ("multiple words of text"
       ("uh-uh" #f))
      ("multiple words"
-      ("multiple words, yeah" (0 14)))
-     ((: (-> x nonl nonl nonl nonl)
-	 (* nonl)
-	 (backref x))
-      ("beriberi" (0 8 (x . "beri")))))))
+      ("multiple words, yeah" (0 14))))))
