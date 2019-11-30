@@ -399,74 +399,81 @@ USA.
   (make-settable-parameter #f))
 
 (define (match-nodes initial-state string start end)
-  (let loop ((states (list initial-state)) (index start) (prev-char #f))
-    (trace-matcher (lambda (port) (write (cons* 'index index states) port)))
-    (let ((next-char
-	   (and (fix:< index end)
-		(string-ref string index))))
-      (let ((states (follow-epsilons states next-char prev-char)))
-	(cond ((not (pair? states)) #f)
-	      ((terminal-state? (car states)) (car states))
-	      (else
-	       (let ((states (follow-matchers states next-char)))
-		 (if next-char
-		     (loop states (fix:+ index 1) next-char)
-		     (let ((states
-			    (follow-epsilons states next-char prev-char)))
-		       (and (pair? states)
-			    ;; If a terminal state is present, it's always last.
-			    ;; The follow-X procedures guarantee this.
-			    (let ((state (last states)))
-			      (and (terminal-state? state)
-				   state))))))))))))
-
-(define (follow-epsilons states next-char prev-char)
-  (trace-matcher (lambda (port) (pp (cons 'follow-epsilons states) port)))
   (let ((seen (make-strong-eq-hash-table)))
+    (let loop ((states (list initial-state)) (index start) (prev-char #f))
+      (trace-matcher (lambda (port) (write (cons* 'index index states) port)))
+      (let ((next-char
+	     (and (fix:< index end)
+		  (string-ref string index))))
+	(let ((states (follow-epsilons states seen next-char prev-char)))
+	  (cond ((not (pair? states)) #f)
+		((terminal-state? (car states)) (car states))
+		(else
+		 (let ((states (follow-matchers states next-char)))
+		   (if next-char
+		       (loop states (fix:+ index 1) next-char)
+		       (let ((states
+			      (follow-epsilons states
+					       seen
+					       next-char
+					       prev-char)))
+			 (and (pair? states)
+			      ;; If a terminal state is present, it's always last.
+			      ;; The follow-X procedures guarantee this.
+			      (let ((state (last states)))
+				(and (terminal-state? state)
+				     state)))))))))))))
+
+(define (follow-epsilons states seen next-char prev-char)
+  (trace-matcher (lambda (port) (pp (cons 'follow-epsilons states) port)))
 
-    (define (loop inputs outputs)
-      (if (pair? inputs)
-	  (follow-state (car inputs) (cdr inputs) outputs)
-	  (reverse! outputs)))
+  (define (loop inputs outputs)
+    (if (pair? inputs)
+	(follow-state (car inputs) (cdr inputs) outputs)
+	(done outputs)))
 
-    (define (follow-state state inputs outputs)
-      (if (seen? state)
-	  (loop inputs outputs)
-	  (let ((node (state-node state))
-		(ctx (state-ctx state)))
-	    (trace-matcher (lambda (port) (write state port)))
-	    (case (node-type node)
-	      ((fork)
-	       (loop (fold-right (lambda (node* inputs)
-				   (cons (make-state node* ctx)
-					 inputs))
-				 inputs
-				 (node-next node))
-		     outputs))
-	      ((lookaround)
-	       (if ((node-datum node) next-char prev-char)
-		   (follow-state (make-state (node-next node) ctx)
-				 inputs
-				 outputs)
-		   (loop inputs outputs)))
-	      ((ctx-only)
-	       (follow-state (make-state (node-next node)
-					 ((node-datum node) ctx))
-			     inputs
-			     outputs))
-	      ((fail) (loop inputs outputs))
-	      ((terminal) (reverse! (cons state outputs)))
-	      (else (loop inputs (cons state outputs)))))))
+  (define (follow-state state inputs outputs)
+    (if (seen? state)
+	(loop inputs outputs)
+	(let ((node (state-node state))
+	      (ctx (state-ctx state)))
+	  (trace-matcher (lambda (port) (write state port)))
+	  (case (node-type node)
+	    ((fork)
+	     (loop (fold-right (lambda (node* inputs)
+				 (cons (make-state node* ctx)
+				       inputs))
+			       inputs
+			       (node-next node))
+		   outputs))
+	    ((lookaround)
+	     (if ((node-datum node) next-char prev-char)
+		 (follow-state (make-state (node-next node) ctx)
+			       inputs
+			       outputs)
+		 (loop inputs outputs)))
+	    ((ctx-only)
+	     (follow-state (make-state (node-next node)
+				       ((node-datum node) ctx))
+			   inputs
+			   outputs))
+	    ((fail) (loop inputs outputs))
+	    ((terminal) (done (cons state outputs)))
+	    (else (loop inputs (cons state outputs)))))))
 
-    (define (seen? state)
-      (let ((p (hash-table-intern! seen state (lambda () (list #f)))))
-	(if (car p)
-	    #t
-	    (begin
-	      (set-car! p #t)
-	      #f))))
+  (define (seen? state)
+    (let ((p (hash-table-intern! seen state (lambda () (list #f)))))
+      (if (car p)
+	  #t
+	  (begin
+	    (set-car! p #t)
+	    #f))))
 
-    (loop states '())))
+  (define (done outputs)
+    (hash-table-clear! seen)
+    (reverse! outputs))
+
+  (loop states '()))
 
 (define (follow-matchers states next-char)
   (trace-matcher (lambda (port) (pp (cons 'follow-matchers states) port)))
