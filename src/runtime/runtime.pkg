@@ -5532,7 +5532,6 @@ USA.
   (parent (runtime regexp))
   (export ()
 	  condition-type:compile-regexp
-	  cset-sre?
 	  print-regexp
 	  regexp
 	  regexp->nfa
@@ -5547,7 +5546,8 @@ USA.
 	  regexp-matches?
 	  regexp-search
 	  regexp?
-	  sre?))
+	  valid-cset-sre?
+	  valid-sre?))
 
 (define-package (runtime regexp rules)
   (files "regexp-rules")

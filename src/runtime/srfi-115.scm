@@ -29,16 +29,16 @@ USA.
 
 (declare (usual-integrations))
 
-(define (sre? object)
+(define (valid-sre? object)
   (and (or (find-cset-sre-rule object)
 	   (find-sre-rule object))
        #t))
-(register-predicate! sre? 'source-regexp)
+(register-predicate! valid-sre? 'source-regexp)
 
-(define (cset-sre? object)
+(define (valid-cset-sre? object)
   (and (find-cset-sre-rule object)
        #t))
-(register-predicate! cset-sre? 'char-set-regexp)
+(register-predicate! valid-cset-sre? 'char-set-regexp)
 
 (define (compile-sre-top-level sre)
   (make-regexp
@@ -272,46 +272,46 @@ USA.
   (lambda (string) (insn:string string #f))
   string?)
 
-(define-sre-rule `(* . ,sre?)
+(define-sre-rule `(* . ,valid-sre?)
   (lambda sres (insn:* (compile-sres sres))))
 (define-sre-alias 'zero-or-more '*)
 
-(define-sre-rule `(+ . ,sre?)
+(define-sre-rule `(+ . ,valid-sre?)
   (lambda sres (insn:>= 1 (compile-sres sres))))
 (define-sre-alias 'one-or-more '+)
 
-(define-sre-rule `(? . ,sre?)
+(define-sre-rule `(? . ,valid-sre?)
   (lambda sres (insn:? (compile-sres sres))))
 (define-sre-alias 'optional '?)
 
-(define-sre-rule `(= ,min-arity? . ,sre?)
+(define-sre-rule `(= ,min-arity? . ,valid-sre?)
   (lambda (n . sres) (insn:= n (compile-sres sres))))
 (define-sre-alias 'exactly '=)
 
-(define-sre-rule `(>= ,min-arity? . ,sre?)
+(define-sre-rule `(>= ,min-arity? . ,valid-sre?)
   (lambda (n . sres) (insn:>= n (compile-sres sres))))
 (define-sre-alias 'at-least '>=)
 
-(define-sre-rule `(** ,min-arity? ,max-arity? . ,sre?)
+(define-sre-rule `(** ,min-arity? ,max-arity? . ,valid-sre?)
   (lambda (n m . sres) (insn:** n m (compile-sres sres)))
   (lambda (n m . sres) (declare (ignore sres)) (<= n m)))
 (define-sre-alias 'repeated '**)
 
-(define-sre-rule `(|\|| . ,sre?)
+(define-sre-rule `(|\|| . ,valid-sre?)
   (lambda sres (insn:alt (map-in-order compile-sre sres))))
 (define-sre-alias 'or '|\||)
 
-(define-sre-rule `(: . ,sre?)
+(define-sre-rule `(: . ,valid-sre?)
   (lambda sres (compile-sres sres)))
 (define-sre-alias 'seq ':)
 
-(define-sre-rule `($ . ,sre?)
+(define-sre-rule `($ . ,valid-sre?)
   (lambda sres
     (insn:group (next-submatch-number)
 		(compile-sres sres))))
 (define-sre-alias 'submatch '$)
 
-(define-sre-rule `(-> ,interned-symbol? . ,sre?)
+(define-sre-rule `(-> ,interned-symbol? . ,valid-sre?)
   (lambda (key . sres)
     (insn:group key (compile-sres sres))))
 (define-sre-alias 'submatch-named '->)
@@ -321,15 +321,15 @@ USA.
 (define-sre-rule 'bol (lambda () (insn:line-start)))
 (define-sre-rule 'eol (lambda () (insn:line-end)))
 
-(define-sre-rule `(?? . ,sre?)
+(define-sre-rule `(?? . ,valid-sre?)
   (lambda sres (insn:?? (compile-sres sres))))
 (define-sre-alias 'non-greedy-optional '??)
 
-(define-sre-rule `(*? . ,sre?)
+(define-sre-rule `(*? . ,valid-sre?)
   (lambda sres (insn:*? (compile-sres sres))))
 (define-sre-alias 'non-greedy-zero-or-more '*?)
 
-(define-sre-rule `(**? ,min-arity? ,max-arity? . ,sre?)
+(define-sre-rule `(**? ,min-arity? ,max-arity? . ,valid-sre?)
   (lambda (n m . sres) (insn:**? n m (compile-sres sres)))
   (lambda (n m . sres) (declare (ignore sres)) (<= n m)))
 (define-sre-alias 'non-greedy-repeated '**?)
@@ -384,19 +384,19 @@ USA.
   (lambda rs (char-set* (append-map range-spec->ranges rs))))
 (define-cset-sre-alias 'char-range '/)
 
-(define-cset-sre-rule `(or  . ,cset-sre?)
+(define-cset-sre-rule `(or  . ,valid-cset-sre?)
   (lambda cset-sres (char-set-union* (compile-cset-sres cset-sres))))
 (define-cset-sre-alias '|\|| 'or)
 
-(define-cset-sre-rule `(and  . ,cset-sre?)
+(define-cset-sre-rule `(and  . ,valid-cset-sre?)
   (lambda cset-sres (char-set-intersection* (compile-cset-sres cset-sres))))
 (define-cset-sre-alias '& 'and)
 
-(define-cset-sre-rule `(-  . ,cset-sre?)
+(define-cset-sre-rule `(-  . ,valid-cset-sre?)
   (lambda cset-sres (apply char-set-difference (compile-cset-sres cset-sres))))
 (define-cset-sre-alias 'difference '-)
 
-(define-cset-sre-rule `(~  . ,cset-sre?)
+(define-cset-sre-rule `(~  . ,valid-cset-sre?)
   (lambda cset-sres
     (char-set-difference char-set:unicode
 			 (char-set-union* (compile-cset-sres cset-sres)))))
