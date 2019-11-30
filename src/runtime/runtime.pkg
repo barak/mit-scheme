@@ -5571,7 +5571,7 @@ USA.
   (files "regexp-nfa")
   (parent (runtime))
   (export (runtime regexp srfi-115)
-	  generate-matcher
+	  compile-matcher
 	  group-end
 	  group-key
 	  group-start

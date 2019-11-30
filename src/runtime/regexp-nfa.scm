@@ -31,28 +31,33 @@ USA.
 
 ;;;; Compiler
 
-(define (generate-matcher thunk)
-  (parameterize ((shared-state (make-shared-state)))
+(define (compile-matcher thunk)
+  (parameterize ((compiler-shared-state (make-compiler-shared-state)))
     (let ((insn (thunk)))
-      (make-matcher (link-insn insn (terminal-node))))))
+      (let ((initial-node (link-insn insn (terminal-node))))
+	(make-matcher initial-node
+		      (number-of-nodes)
+		      (number-of-groups))))))
 
-;; This structure is overkill for now but allows adding additional information
-;; from the compiler that can be used to make interpretation more efficient.
 (define-record-type <matcher>
-    (make-matcher initial-node)
+    (make-matcher initial-node n-nodes n-groups)
     matcher?
-  (initial-node matcher-initial-node))
+  (initial-node matcher-initial-node)
+  (n-nodes matcher-n-nodes)
+  (n-groups matcher-n-groups))
 
-(define shared-state
+(define compiler-shared-state
   (make-parameter #f))
 
-(define-record-type <shared-state>
-    (%make-shared-state group-indices)
-    shared-state?
+(define-record-type <compiler-shared-state>
+    (%make-compiler-shared-state node-indices group-indices)
+    compiler-shared-state?
+  (node-indices node-indices)
   (group-indices group-indices))
 
-(define (make-shared-state)
-  (%make-shared-state (make-index-generator 1)))
+(define (make-compiler-shared-state)
+  (%make-compiler-shared-state (node-index-generator)
+			       (group-index-generator)))
 
 (define (make-index-generator n)
   (lambda ()
@@ -60,8 +65,23 @@ USA.
       (set! n (fix:+ n 1))
       n*)))
 
+(define (node-index-generator)
+  (make-index-generator 0))
+
+(define (next-node-index)
+  ((node-indices (compiler-shared-state))))
+
+(define (number-of-nodes)
+  (next-node-index))
+
+(define (group-index-generator)
+  (make-index-generator 1))
+
 (define (next-group-index)
-  ((group-indices (shared-state))))
+  ((group-indices (compiler-shared-state))))
+
+(define (number-of-groups)
+  (- (next-group-index) 1))
 
 ;;;; Instructions
 
@@ -107,18 +127,21 @@ USA.
 ;;;; Nodes
 
 (define-record-type <node>
-    (%make-node type id datum next)
+    (%make-node type index id datum next)
     node?
   (type node-type)
+  (index node-index)
   (id %node-id)
   (datum node-datum)
   (next node-next %set-node-next!))
 
 (define (make-node type id datum nodes)
-  (%make-node type id datum nodes))
+  (%make-node type (next-node-index) id datum nodes))
 
 (define (node-id node)
-  (cons (node-type node) (%node-id node)))
+  (cons* (node-type node)
+	 (node-index node)
+	 (%node-id node)))
 
 (define-print-method node?
   (standard-print-method 'node node-id))
@@ -336,84 +359,30 @@ USA.
 ;;;; Interpreter
 
 (define (run-matcher matcher string start end)
+  (parameterize ((run-shared-state (make-run-shared-state matcher)))
+    (let ((initial
+	   (make-state (matcher-initial-node matcher)
+		       (initial-ctx start))))
+      (trace-matcher (lambda (port) (write (list 'initial-state initial) port)))
+      (let ((final (match-nodes initial string start end)))
+	(trace-matcher (lambda (port) (write (list 'final-state final) port)))
+	(and final
+	     (all-groups string start (state-ctx final)))))))
 
-  (define (finish state)
-    (trace-matcher (lambda (port) (write (list 'success state) port)))
-    (all-groups string start (state-ctx state)))
+(define run-shared-state
+  (make-parameter #f))
 
-  (let per-index
-      ((states
-	(append-state (make-state (matcher-initial-node matcher)
-				  (initial-ctx start))
-		      (make-state-set)))
-       (index start)
-       (prev-char #f))
-    (trace-matcher (lambda (port) (pp (cons index (all-elts states)) port)))
-    (cond ((no-elts? states)
-	   #f)
-	  ((let ((state (first-elt states)))
-	     (and (terminal-state? state)
-		  state))
-	   => finish)
-	  ((fix:< index end)
-	   (let ((next-char (string-ref string index)))
-	     (per-index (interpret-states states next-char prev-char)
-			(fix:+ index 1)
-			next-char)))
-	  (else
-	   (let ((state
-		  (find terminal-state?
-			(all-elts (interpret-states states #f prev-char)))))
-	     (and state
-		  (finish state)))))))
+(define-record-type <run-shared-state>
+    (%make-run-shared-state state-memoizer)
+    run-shared-state?
+  (state-memoizer %state-memoizer))
 
-(define (interpret-states states next-char prev-char)
+(define (make-run-shared-state matcher)
+  (%make-run-shared-state (make-state-memoizer matcher)))
 
-  (define (loop inputs outputs)
-    (if (no-elts? inputs)
-	outputs
-	(interpret-state (first-elt inputs) (rest-elts inputs) outputs)))
+(define (state-memoizer)
+  (%state-memoizer (run-shared-state)))
 
-  (define (interpret-state state inputs outputs)
-    (trace-matcher (lambda (port) (write state port)))
-    (let ((node (state-node state))
-	  (ctx (state-ctx state)))
-      (case (node-type node)
-	((lookaround)
-	 (if ((node-datum node) next-char prev-char)
-	     (continue node ctx inputs outputs)
-	     (loop inputs outputs)))
-	((ctx-only)
-	 (continue node ((node-datum node) ctx) inputs outputs))
-	((char)
-	 (match char=? node ctx inputs outputs))
-	((char-ci)
-	 (match char-ci=? node ctx inputs outputs))
-	((char-set)
-	 (match char-set-contains? node ctx inputs outputs))
-	((fail)
-	 (loop inputs outputs))
-	((terminal)
-	 (loop inputs (append-state state outputs)))
-	(else
-	 (error "Unknown node type:" node)))))
-
-  (define (continue node ctx inputs outputs)
-    (let* ((next (node-next node))
-	   (state (make-state next ctx)))
-      (if (fork-node? next)
-	  (loop (prepend-state state inputs) outputs)
-	  (interpret-state state inputs outputs))))
-
-  (define (match pred node ctx inputs outputs)
-    (if (and next-char (pred (node-datum node) next-char))
-	(loop inputs
-	      (append-state (make-state (node-next node) (++index ctx))
-			    outputs))
-	(loop inputs outputs)))
-
-  (loop states (make-state-set)))
-
 (define (succeed next-node ctx)
   (make-state next-node ctx))
 
@@ -429,100 +398,136 @@ USA.
 (define param:trace-regexp-nfa?
   (make-settable-parameter #f))
 
+(define (match-nodes initial-state string start end)
+  (let loop ((states (list initial-state)) (index start) (prev-char #f))
+    (trace-matcher (lambda (port) (write (cons* 'index index states) port)))
+    (let ((next-char
+	   (and (fix:< index end)
+		(string-ref string index))))
+      (let ((states (follow-epsilons states next-char prev-char)))
+	(cond ((not (pair? states)) #f)
+	      ((terminal-state? (car states)) (car states))
+	      (else
+	       (let ((states (follow-matchers states next-char)))
+		 (if next-char
+		     (loop states (fix:+ index 1) next-char)
+		     (let ((states
+			    (follow-epsilons states next-char prev-char)))
+		       (and (pair? states)
+			    ;; If a terminal state is present, it's always last.
+			    ;; The follow-X procedures guarantee this.
+			    (let ((state (last states)))
+			      (and (terminal-state? state)
+				   state))))))))))))
+
+(define (follow-epsilons states next-char prev-char)
+  (trace-matcher (lambda (port) (pp (cons 'follow-epsilons states) port)))
+  (let ((seen (make-strong-eq-hash-table)))
+
+    (define (loop inputs outputs)
+      (if (pair? inputs)
+	  (follow-state (car inputs) (cdr inputs) outputs)
+	  (reverse! outputs)))
+
+    (define (follow-state state inputs outputs)
+      (if (seen? state)
+	  (loop inputs outputs)
+	  (let ((node (state-node state))
+		(ctx (state-ctx state)))
+	    (trace-matcher (lambda (port) (write state port)))
+	    (case (node-type node)
+	      ((fork)
+	       (loop (fold-right (lambda (node* inputs)
+				   (cons (make-state node* ctx)
+					 inputs))
+				 inputs
+				 (node-next node))
+		     outputs))
+	      ((lookaround)
+	       (if ((node-datum node) next-char prev-char)
+		   (follow-state (make-state (node-next node) ctx)
+				 inputs
+				 outputs)
+		   (loop inputs outputs)))
+	      ((ctx-only)
+	       (follow-state (make-state (node-next node)
+					 ((node-datum node) ctx))
+			     inputs
+			     outputs))
+	      ((fail) (loop inputs outputs))
+	      ((terminal) (reverse! (cons state outputs)))
+	      (else (loop inputs (cons state outputs)))))))
+
+    (define (seen? state)
+      (let ((p (hash-table-intern! seen state (lambda () (list #f)))))
+	(if (car p)
+	    #t
+	    (begin
+	      (set-car! p #t)
+	      #f))))
+
+    (loop states '())))
+
+(define (follow-matchers states next-char)
+  (trace-matcher (lambda (port) (pp (cons 'follow-matchers states) port)))
+
+  (define (loop inputs outputs)
+    (if (pair? inputs)
+	(follow-state (car inputs) (cdr inputs) outputs)
+	(reverse! outputs)))
+
+  (define (follow-state state inputs outputs)
+    (trace-matcher (lambda (port) (write state port)))
+    (let ((node (state-node state))
+	  (ctx (state-ctx state)))
+      (case (node-type node)
+	((char) (match char=? node ctx inputs outputs))
+	((char-ci) (match char-ci=? node ctx inputs outputs))
+	((char-set) (match char-set-contains? node ctx inputs outputs))
+	((fail) (loop inputs outputs))
+	((terminal) (reverse! (cons state outputs)))
+	(else (error "Unknown node type:" node)))))
+
+  (define (match pred node ctx inputs outputs)
+    (loop inputs
+	  (if (and next-char (pred (node-datum node) next-char))
+	      (cons (make-state (node-next node) (++index ctx)) outputs)
+	      outputs)))
+
+  (loop states '()))
+
+;;;; States
+
 (define-record-type <state>
-    (make-state node ctx)
+    (%make-state node ctx)
     state?
   (node state-node)
   (ctx state-ctx))
 
+(define (make-state node ctx)
+  (let ((memoizer (state-memoizer)))
+    (let ((states (vector-ref memoizer (node-index node))))
+      (or (find (lambda (state)
+		  (eq? ctx (state-ctx state)))
+		states)
+	  (let ((state (%make-state node ctx)))
+	    (vector-set! memoizer (node-index node) (cons state states))
+	    state)))))
+
+(define (make-state-memoizer matcher)
+  (make-vector (matcher-n-nodes matcher) '()))
+
+(define (state=? s1 s2)
+  (eq? s1 s2))
+
 (define-print-method state?
   (standard-print-method 'state
     (lambda (state)
-      (cons (hash-object (state-node state))
-	    (node-id (state-node state))))))
+      (node-id (state-node state)))))
 
 (define (terminal-state? state)
   (terminal-node? (state-node state)))
 
-(define (fork-state? state)
-  (fork-node? (state-node state)))
-
-(define (fork-state-threads state)
-  (map (let ((ctx (state-ctx state)))
-	 (lambda (node)
-	   (make-state node ctx)))
-       (node-next (state-node state))))
-
-(define (make-state-set)
-  (let loop ((seen '()) (states '()))
-
-    (define (add-to-end state)
-      (if (fork-state? state)
-	  (if (seen? state)
-	      this
-	      (fold append-state
-		    (loop (cons state seen) states)
-		    (fork-state-threads state)))
-	  (if (seen? state)
-	      this
-	      (loop (cons state seen)
-		    (cons state states)))))
-
-    (define (add-to-start state)
-      (if (fork-state? state)
-	  (if (seen? state)
-	      this
-	      (fold-right prepend-state
-			  (loop (cons state seen) states)
-			  (fork-state-threads state)))
-	  (if (seen? state)
-	      this
-	      (loop (cons state seen)
-		    (append states (list state))))))
-
-    (define (seen? state)
-      (any (lambda (state*)
-	     (state=? state state*))
-	   seen))
-
-    (define (empty?)
-      (null? states))
-
-    (define (first)
-      (last states))
-
-    (define (rest)
-      (loop seen (except-last-pair states)))
-
-    (define (all)
-      (reverse states))
-
-    (define this
-      (%make-state-set add-to-end add-to-start empty? first rest all))
-
-    this))
-
-(define-record-type <state-set>
-    (%make-state-set append prepend empty? first rest all)
-    state-set?
-  (append %state-set-append)
-  (prepend %state-set-prepend)
-  (empty? %state-set-empty?)
-  (first %state-set-first)
-  (rest %state-set-rest)
-  (all %state-set-all))
-
-(define (append-state state states) ((%state-set-append states) state))
-(define (prepend-state state states) ((%state-set-prepend states) state))
-(define (no-elts? states) ((%state-set-empty? states)))
-(define (first-elt states) ((%state-set-first states)))
-(define (rest-elts states) ((%state-set-rest states)))
-(define (all-elts states) ((%state-set-all states)))
-
-(define (state=? s1 s2)
-  (and (eq? (state-node s1) (state-node s2))
-       (eq? (state-ctx s1) (state-ctx s2))))
-
 ;;;; Context
 
 (define-record-type <ctx>

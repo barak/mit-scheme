@@ -44,7 +44,7 @@ USA.
   (make-regexp
    (parameterize ((%input-pattern sre)
 		  (%submatch-next 1))
-     (generate-matcher
+     (compile-matcher
       (lambda ()
 	(compile-sre sre))))))
 
