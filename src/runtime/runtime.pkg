@@ -1493,8 +1493,10 @@ USA.
 	 "ucd-table-wspace")
   (parent (runtime))
   (export ()
+	  (char-set:digit char-set:nt=decimal)	;SRFI 14
+	  (char-set:letter char-set:alphabetic) ;SRFI 14
 	  (char-set:numeric char-set:nt=decimal)
-	  (char-set:title-case char-set:gc=letter:titlecase)
+	  (char-set:title-case char-set:gc=letter:titlecase) ;SRFI 14
 	  (char-numeric? char-nt=decimal?)
 	  char-alphabetic?
 	  char-cased?
@@ -1507,9 +1509,9 @@ USA.
 	  char-set:changes-when-case-folded
 	  char-set:changes-when-lower-cased
 	  char-set:changes-when-upper-cased
-	  char-set:lower-case
-	  char-set:upper-case
-	  char-set:whitespace
+	  char-set:lower-case		;SRFI 14
+	  char-set:upper-case		;SRFI 14
+	  char-set:whitespace		;SRFI 14
 	  char-upper-case?
 	  char-whitespace?)
   (export (runtime character)
@@ -1569,13 +1571,15 @@ USA.
   (files "ucd-glue")
   (parent (runtime))
   (export ()
+	  (char-set:full char-set:unicode) ;SRFI 14
+	  (char-set:letter+digit char-set:alphanumeric) ;SRFI 14
 	  char-alphanumeric?
 	  char-graphic?
 	  char-newline?
 	  char-printing?
 	  char-set:alphanumeric
 	  char-set:control
-	  char-set:graphic
+	  char-set:graphic		;SRFI 14
 	  char-set:newline
 	  char-set:no-newline
 	  char-set:not-alphabetic
@@ -1587,10 +1591,10 @@ USA.
 	  char-set:not-standard
 	  char-set:not-upper-case
 	  char-set:not-whitespace
-	  char-set:printing
-	  char-set:punctuation
-	  char-set:standard
-	  char-set:symbol
+	  char-set:printing		;SRFI 14
+	  char-set:punctuation		;SRFI 14
+	  char-set:standard		;SRFI 14
+	  char-set:symbol		;SRFI 14
 	  char-set:unicode
 	  char-standard?
 	  unicode-char?)
@@ -1609,32 +1613,38 @@ USA.
 	  (chars->char-set char-set*)
 	  (scalar-values->char-set char-set*)
 	  (well-formed-scalar-value-list? code-point-list?)
-	  char-set-member?)
+	  (char-set-member? char-set-contains?)
+	  char-set-members)
   (export ()
+	  (char-set-invert char-set-complement)
+	  (char-set=? char-set=)
 	  8-bit-char-set?
 	  ascii-range->char-set
 	  char-ctl?
 	  char-in-set?
-	  char-set
+	  char-set			;SRFI 14
 	  char-set*
 	  char-set->code-points
-	  char-set-difference
+	  char-set-complement		;SRFI 14
+	  char-set-contains?		;SRFI 14
+	  char-set-difference		;SRFI 14
 	  char-set-empty?
-	  char-set-hash
-	  char-set-intersection
+	  char-set-hash			;SRFI 14
+	  char-set-intersection		;SRFI 14
 	  char-set-intersection*
-	  char-set-invert
-	  char-set-members
 	  char-set-predicate
-	  char-set-size
-	  char-set-union
+	  char-set-size			;SRFI 14
+	  char-set-union		;SRFI 14
 	  char-set-union*
-	  char-set:ascii
+	  char-set:ascii		;SRFI 14
+	  char-set:blank		;SRFI 14
 	  char-set:ctls
-	  char-set:hex-digit
+	  char-set:empty		;SRFI 14
+	  char-set:hex-digit		;SRFI 14
+	  char-set:iso-control		;SRFI 14
 	  char-set:wsp
-	  char-set=?
-	  char-set?
+	  char-set=			;SRFI 14
+	  char-set?			;SRFI 14
 	  char-sets-disjoint?
 	  char-wsp?
 	  code-point-list?
@@ -1642,7 +1652,8 @@ USA.
 	  compute-char-set
 	  re-char-pattern->code-points
 	  re-compile-char-set
-	  string->char-set)
+	  string->char-set		;SRFI 14
+	  )
   (export (runtime regexp regsexp)
 	  cpl-element?
 	  normalize-ranges))

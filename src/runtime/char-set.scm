@@ -369,6 +369,9 @@ USA.
 		      (loop ranges)))))))
     ranges))
 
+(define (string->char-set string)
+  (char-set* (map char->integer (string->list string))))
+
 (define (compute-char-set procedure)
 
   (define (find-start cp end ilist)
@@ -386,8 +389,7 @@ USA.
 	(scons end start ilist)))
 
   (%inversion-list->char-set
-   (reverse! (find-start #xE000 #x110000
-			 (find-start 0 #xD800 '())))))
+   (reverse! (find-start #xE000 #x110000 (find-start 0 #xD800 '())))))
 
 ;;;; Code-point lists
 
@@ -465,9 +467,12 @@ USA.
 
 ;;;; Accessors
 
-(define (char-in-set? char char-set)
-  (guarantee char? char 'char-in-set?)
+(define (char-set-contains? char-set char)
+  (guarantee char? char 'char-set-contains?)
   (%code-point-in-char-set? (char-code char) char-set))
+
+(define (char-in-set? char char-set)
+  (char-set-contains? char-set char))
 
 (define (code-point-in-char-set? cp char-set)
   (guarantee unicode-code-point? cp 'code-point-in-char-set?)
@@ -490,7 +495,7 @@ USA.
 (define (char-set-table char-set)
   (force (%char-set-table char-set)))
 
-(define (char-set=? char-set . char-sets)
+(define (char-set= char-set . char-sets)
   (every (lambda (char-set*)
 	   (and (bytevector=? (%char-set-low char-set*)
 			      (%char-set-low char-set))
@@ -502,9 +507,16 @@ USA.
   (and (fix:= 0 (bytevector-length (%char-set-low cs)))
        (fix:= 0 (bytevector-length (%char-set-high cs)))))
 
-(define (char-set-hash char-set)
-  (primitive-object-hash-2 (%char-set-low char-set)
-			   (%char-set-high char-set)))
+(define (char-set-hash char-set #!optional modulus)
+  (let ((get-hash
+	 (lambda ()
+	   (primitive-object-hash-2 (%char-set-low char-set)
+				    (%char-set-high char-set)))))
+    (if (default-object? modulus)
+	(get-hash char-set)
+	(begin
+	  (guarantee positive-fixnum? modulus 'char-set-hash)
+	  (fix:remainder (get-hash char-set) modulus)))))
 
 (define (char-set->code-points char-set)
   (let loop ((ilist (%char-set->inversion-list char-set)) (ranges '()))
@@ -521,7 +533,7 @@ USA.
 
 ;;;; Combinations
 
-(define (char-set-invert char-set)
+(define (char-set-complement char-set)
   (%inversion-list->char-set
    (inversion-list-invert (%char-set->inversion-list char-set))))
 
@@ -591,7 +603,7 @@ USA.
       (re-char-pattern->code-points pattern)
     (let ((char-set (char-set* scalar-values)))
       (if (if negate? (not negate?*) negate?*)
-	  (char-set-invert char-set)
+	  (char-set-complement char-set)
 	  char-set))))
 
 (define (re-char-pattern->code-points pattern)
@@ -619,13 +631,20 @@ USA.
 
 (define char-ctl?)
 (define char-set:ascii)
+(define char-set:blank)
 (define char-set:ctls)
+(define char-set:empty)
 (define char-set:hex-digit)
+(define char-set:iso-control)
 (define char-set:wsp)
 (define char-wsp?)
 (add-boot-init!
  (lambda ()
+   (set! char-set:blank (char-set #\space #\tab))
+   (set! char-set:empty (char-set))
    (set! char-set:hex-digit (char-set "0123456789abcdefABCDEF"))
+   (set! char-set:iso-control
+	 (%inversion-list->char-set '(#x00 #x20 #x7F #x80)))
 
    ;; Used in RFCs:
 
@@ -640,12 +659,6 @@ USA.
    unspecific))
 
 ;;;; Backwards compatibility
-
-(define (char-set-member? char-set char)
-  (char-in-set? char char-set))
-
-(define (string->char-set string)
-  (char-set* (map char->integer (string->list string))))
 
 ;; Returns ASCII string:
 (define (char-set->string char-set)

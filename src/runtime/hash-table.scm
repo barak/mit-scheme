@@ -1375,6 +1375,7 @@ USA.
    (set-equality-predicate-properties! string=? string-hash #f)
    (set-equality-predicate-properties! string-ci=? string-ci-hash #f)
    (set-equality-predicate-properties! int:= int:modulo #f)
+   (set-equality-predicate-properties! char-set= char-set-hash #f)
    (register-predicate! equality-predicate? 'equality-predicate)))
 
 (define (equality-predicate-keylist equality-predicate)
