@@ -229,7 +229,7 @@ USA.
 (define (compile-sre sre)
   (cond ((find-cset-sre-rule sre)
 	 => (lambda (rule)
-	      (insn:char-set ((rule-operation rule) sre) #f)))
+	      (insn:char-set ((rule-operation rule) sre))))
 	((find-sre-rule sre)
 	 => (lambda (rule)
 	      ((rule-operation rule) sre)))

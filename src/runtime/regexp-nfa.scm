@@ -47,14 +47,12 @@ USA.
   (make-parameter #f))
 
 (define-record-type <shared-state>
-    (%make-shared-state node-indices group-indices)
+    (%make-shared-state group-indices)
     shared-state?
-  (node-indices node-indices)
   (group-indices group-indices))
 
 (define (make-shared-state)
-  (%make-shared-state (make-index-generator 0)
-		      (make-index-generator 1)))
+  (%make-shared-state (make-index-generator 1)))
 
 (define (make-index-generator n)
   (lambda ()
@@ -62,11 +60,10 @@ USA.
       (set! n (fix:+ n 1))
       n*)))
 
-(define (next-node-index)
-  ((node-indices (shared-state))))
-
 (define (next-group-index)
   ((group-indices (shared-state))))
+
+;;;; Instructions
 
 (define-record-type <insn>
     (make-insn linker)
@@ -76,15 +73,25 @@ USA.
 (define (link-insn insn next-node)
   ((insn-linker insn) next-node))
 
-(define (matcher-insn id procedure)
+(define (normal-insn type id datum)
   (make-insn
    (lambda (next-node)
-     (normal-node 'matcher id procedure next-node))))
+     (make-node type id datum next-node))))
 
-(define (looker-insn id procedure)
-  (make-insn
-   (lambda (next-node)
-     (normal-node 'looker id procedure next-node))))
+(define (lookaround-insn id predicate)
+  (normal-insn 'lookaround id predicate))
+
+(define (ctx-only-insn id procedure)
+  (normal-insn 'ctx-only id procedure))
+
+(define (char-insn char)
+  (normal-insn 'char (list char) char))
+
+(define (char-ci-insn char)
+  (normal-insn 'char-ci (list char) char))
+
+(define (char-set-insn char-set)
+  (normal-insn 'char-set (list char-set) char-set))
 
 (define null-insn
   (make-insn
@@ -92,21 +99,23 @@ USA.
      next-node)))
 
 (define fail-insn
-  (looker-insn '(fail)
-    (lambda (next-node next-char prev-char ctx)
-      (declare (ignore next-node next-char prev-char ctx))
-      (fail))))
+  (make-insn
+   (lambda (next-node)
+     (declare (ignore next-node))
+     (make-node 'fail '() #f #f))))
 
+;;;; Nodes
+
 (define-record-type <node>
-    (%make-node type id procedure nodes)
+    (%make-node type id datum next)
     node?
   (type node-type)
   (id %node-id)
-  (procedure node-procedure)
-  (nodes next-nodes %set-next-nodes!))
+  (datum node-datum)
+  (next node-next %set-node-next!))
 
-(define (make-node type id procedure nodes)
-  (%make-node type (cons (next-node-index) id) procedure nodes))
+(define (make-node type id datum nodes)
+  (%make-node type id datum nodes))
 
 (define (node-id node)
   (cons (node-type node) (%node-id node)))
@@ -114,30 +123,52 @@ USA.
 (define-print-method node?
   (standard-print-method 'node node-id))
 
-(define (normal-node type id procedure next-node)
-  (make-node type id procedure (list next-node)))
-
 (define (terminal-node)
-  (make-node 'terminal '() #f '()))
+  (make-node 'terminal '() #f #f))
 
 (define (fork-node nodes)
   (make-node 'fork '() #f nodes))
 
 (define (cyclic-fork-node get-nodes)
   (let ((node (fork-node '())))
-    (%set-next-nodes! node (get-nodes node))
+    (%set-node-next! node (get-nodes node))
     node))
+
+(define (epsilon-node? node)
+  (let ((type (node-type node)))
+    (or (eq? type 'fork)
+	(eq? type 'lookaround)
+	(eq? type 'ctx-only))))
+
+(define (normal-node? node)
+  (let ((type (node-type node)))
+    (or (eq? type 'lookaround)
+	(eq? type 'ctx-only)
+	(eq? type 'char)
+	(eq? type 'char-ci)
+	(eq? type 'char-set))))
+
+(define (fork-node? node)
+  (eq? 'fork (node-type node)))
+
+(define (terminal-node? node)
+  (eq? 'terminal (node-type node)))
+
+(define (final-node? node)
+  (let ((type (node-type node)))
+    (or (eq? type 'terminal)
+	(eq? type 'fail))))
+
+;;;; Graph printer
 
 (define (matcher->nfa matcher)
   (let ((table (make-strong-eq-hash-table)))
 
     (define (handle-node node)
       (maybe-call (lambda (node)
-		    (case (node-type node)
-		      ((matcher looker) (handle-normal node))
-		      ((fork) (handle-fork node))
-		      ((terminal) '())
-		      (else (error "Unknown node type:" node))))
+		    (cond ((normal-node? node) (handle-normal node))
+			  ((fork-node? node) (handle-fork node))
+			  (else '())))
 		  node))
 
     (define (maybe-call proc node)
@@ -150,94 +181,68 @@ USA.
     (define (handle-normal node)
       (let loop ((node node) (chain '()))
 	(let ((chain (cons node chain)))
-	  (case (node-type node)
-	    ((matcher looker)
-	     (loop (car (next-nodes node)) chain))
-	    ((fork)
-	     (cons (reverse chain)
-		   (maybe-call handle-fork node)))
-	    ((terminal)
-	     (list (reverse chain)))
-	    (else
-	     (error "Unknown node type:" node))))))
+	  (cond ((normal-node? node)
+		 (loop (node-next node) chain))
+		((fork-node? node)
+		 (cons (reverse chain)
+		       (maybe-call handle-fork node)))
+		(else
+		 (list (reverse chain)))))))
 
     (define (handle-fork node)
-      (cons (cons node (next-nodes node))
-	    (append-map handle-node (next-nodes node))))
+      (cons (cons node (node-next node))
+	    (append-map handle-node (node-next node))))
 
     (let ((node (matcher-initial-node matcher)))
-      (if (eq? 'terminal (node-type node))
+      (if (final-node? node)
 	  (list (list node))
 	  (handle-node node)))))
 
-;;;; Instructions
+;;;; Instruction builders
 
 (define (insn:string-start)
-  (looker-insn '(bos)
-    (lambda (next-node next-char prev-char ctx)
+  (lookaround-insn '(bos)
+    (lambda (next-char prev-char)
       (declare (ignore next-char))
-      (if (not prev-char)
-	  (succeed next-node ctx)
-	  (fail)))))
+      (not prev-char))))
 
 (define (insn:string-end)
-  (looker-insn '(eos)
-    (lambda (next-node next-char prev-char ctx)
+  (lookaround-insn '(eos)
+    (lambda (next-char prev-char)
       (declare (ignore prev-char))
-      (if (not next-char)
-	  (succeed next-node ctx)
-	  (fail)))))
+      (not next-char))))
 
 (define (insn:line-start)
-  (looker-insn '(bol)
-    (lambda (next-node next-char prev-char ctx)
+  (lookaround-insn '(bol)
+    (lambda (next-char prev-char)
       (declare (ignore next-char))
-      (if (or (not prev-char)
-	      (char-newline? prev-char))
-	  (succeed next-node ctx)
-	  (fail)))))
+      (or (not prev-char)
+	  (char-newline? prev-char)))))
 
 (define (insn:line-end)
-  (looker-insn '(eol)
-    (lambda (next-node next-char prev-char ctx)
+  (lookaround-insn '(eol)
+    (lambda (next-char prev-char)
       (declare (ignore prev-char))
-      (if (or (not next-char)
-	      (char-newline? next-char))
-	  (succeed next-node ctx)
-	  (fail)))))
+      (or (not next-char)
+	  (char-newline? next-char)))))
 
 (define (insn:char char ci?)
-  (matcher-insn (ci-id char ci?)
-    (let ((pred (if ci? char-ci=? char=?)))
-      (lambda (next-node next-char prev-char ctx)
-	(declare (ignore prev-char))
-	(if (and next-char (pred char next-char))
-	    (succeed next-node (++index ctx))
-	    (fail))))))
+  (if ci?
+      (char-ci-insn char)
+      (char-insn char)))
 
-(define (insn:char-set char-set ci?)
+(define (insn:char-set char-set)
   (case (char-set-size char-set)
     ((0) fail-insn)
-    ((1) (insn:char (integer->char (car (char-set->code-points char-set))) ci?))
-    (else
-     (matcher-insn (ci-id char-set ci?)
-       (lambda (next-node next-char prev-char ctx)
-	 (declare (ignore prev-char))
-	 (if (and next-char (char-in-set? next-char char-set))
-	     (succeed next-node (++index ctx))
-	     (fail)))))))
-
-(define (ci-id object ci?)
-  (if ci?
-      (list 'ci object)
-      (list object)))
+    ((1) (insn:char (integer->char (car (char-set->code-points char-set))) #f))
+    (else (char-set-insn char-set))))
 
 (define (insn:string string ci?)
   (insn:seq
    (map (lambda (char)
 	  (insn:char char ci?))
 	(string->list string))))
-
+
 (define (insn:seq insns)
   (case (length insns)
     ((0) null-insn)
@@ -261,7 +266,7 @@ USA.
 	 (map (lambda (insn)
 		(link-insn insn next))
 	      insns)))))))
-
+
 (define (insn:? insn)
   (insn:alt (list insn null-insn)))
 
@@ -304,15 +309,29 @@ USA.
 (define (insn:group key insn)
   (let ((n (next-group-index)))
     (insn:seq
-     (list (looker-insn (list 'start-group n key)
-	     (lambda (next-node next-char prev-char ctx)
-	       (declare (ignore next-char prev-char))
-	       (succeed next-node (start-group ctx))))
+     (list (start-group-insn n key)
 	   insn
-	   (looker-insn (list 'end-group n key)
-	     (lambda (next-node next-char prev-char ctx)
-	       (declare (ignore next-char prev-char))
-	       (succeed next-node (finish-group key ctx))))))))
+	   (end-group-insn n key)))))
+
+(define (start-group-insn n key)
+  (ctx-only-insn (list 'start-group n key)
+    (lambda (ctx)
+      (let ((index (ctx-index ctx)))
+	(make-ctx index
+		  (cons index (ctx-stack ctx))
+		  (ctx-groups ctx))))))
+
+(define (end-group-insn n key)
+  (ctx-only-insn (list 'end-group n key)
+    (lambda (ctx)
+      (let ((index (ctx-index ctx))
+	    (stack (ctx-stack ctx)))
+	(make-ctx index
+		  (cdr stack)
+		  (cons (let ((start (car stack)))
+			  (lambda (string)
+			    (make-group key string start index)))
+			(ctx-groups ctx)))))))
 
 ;;;; Interpreter
 
@@ -357,34 +376,41 @@ USA.
 
   (define (interpret-state state inputs outputs)
     (trace-matcher (lambda (port) (write state port)))
-    (case (state-type state)
-      ((matcher) (interpret-matcher state inputs outputs))
-      ((looker) (interpret-looker state inputs outputs))
-      (else (loop inputs (append-state state outputs)))))
+    (let ((node (state-node state))
+	  (ctx (state-ctx state)))
+      (case (node-type node)
+	((lookaround)
+	 (if ((node-datum node) next-char prev-char)
+	     (continue node ctx inputs outputs)
+	     (loop inputs outputs)))
+	((ctx-only)
+	 (continue node ((node-datum node) ctx) inputs outputs))
+	((char)
+	 (match char=? node ctx inputs outputs))
+	((char-ci)
+	 (match char-ci=? node ctx inputs outputs))
+	((char-set)
+	 (match char-set-contains? node ctx inputs outputs))
+	((fail)
+	 (loop inputs outputs))
+	((terminal)
+	 (loop inputs (append-state state outputs)))
+	(else
+	 (error "Unknown node type:" node)))))
 
-  (define (interpret-matcher state inputs outputs)
-    (let ((state* (run-normal-state state)))
-      (trace-matcher (lambda (port) (write (list '-> state*) port)))
-      (loop inputs
-	    (if state*
-		(append-state state* outputs)
-		outputs))))
+  (define (continue node ctx inputs outputs)
+    (let* ((next (node-next node))
+	   (state (make-state next ctx)))
+      (if (fork-node? next)
+	  (loop (prepend-state state inputs) outputs)
+	  (interpret-state state inputs outputs))))
 
-  (define (interpret-looker state inputs outputs)
-    (let ((state* (run-normal-state state)))
-      (if state*
-	  (if (fork-state? state*)
-	      (loop (prepend-state state* inputs) outputs)
-	      (interpret-state state* inputs outputs))
-	  (loop inputs outputs))))
-
-  (define (run-normal-state state)
-    (let ((node (state-node state)))
-      ((node-procedure node)
-       (car (next-nodes node))
-       next-char
-       prev-char
-       (state-ctx state))))
+  (define (match pred node ctx inputs outputs)
+    (if (and next-char (pred (node-datum node) next-char))
+	(loop inputs
+	      (append-state (make-state (node-next node) (++index ctx))
+			    outputs))
+	(loop inputs outputs)))
 
   (loop states (make-state-set)))
 
@@ -412,22 +438,20 @@ USA.
 (define-print-method state?
   (standard-print-method 'state
     (lambda (state)
-      (node-id (state-node state)))))
-
-(define (state-type state)
-  (node-type (state-node state)))
+      (cons (hash-object (state-node state))
+	    (node-id (state-node state))))))
 
 (define (terminal-state? state)
-  (eq? 'terminal (state-type state)))
+  (terminal-node? (state-node state)))
 
 (define (fork-state? state)
-  (eq? 'fork (state-type state)))
+  (fork-node? (state-node state)))
 
 (define (fork-state-threads state)
   (map (let ((ctx (state-ctx state)))
 	 (lambda (node)
 	   (make-state node ctx)))
-       (next-nodes (state-node state))))
+       (node-next (state-node state))))
 
 (define (make-state-set)
   (let loop ((seen '()) (states '()))
@@ -515,22 +539,6 @@ USA.
   (make-ctx (fix:+ (ctx-index ctx) 1)
 	    (ctx-stack ctx)
 	    (ctx-groups ctx)))
-
-(define (start-group ctx)
-  (let ((index (ctx-index ctx)))
-    (make-ctx index
-	      (cons index (ctx-stack ctx))
-	      (ctx-groups ctx))))
-
-(define (finish-group key ctx)
-  (let ((index (ctx-index ctx))
-	(stack (ctx-stack ctx)))
-    (make-ctx index
-	      (cdr stack)
-	      (cons (let ((start (car stack)))
-		      (lambda (string)
-			(make-group key string start index)))
-		    (ctx-groups ctx)))))
 
 (define (all-groups string start ctx)
   (cons (make-group 0 string start (ctx-index ctx))
