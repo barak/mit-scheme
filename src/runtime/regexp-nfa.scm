@@ -93,25 +93,19 @@ USA.
 (define (link-insn insn next-node)
   ((insn-linker insn) next-node))
 
-(define (normal-insn type id datum)
+(define (normal-insn type id procedure datum)
   (make-insn
    (lambda (next-node)
-     (make-node type id datum next-node))))
+     (make-node type id procedure datum next-node))))
 
 (define (lookaround-insn id predicate)
-  (normal-insn 'lookaround id predicate))
+  (normal-insn 'lookaround id predicate #f))
 
 (define (ctx-only-insn id procedure)
-  (normal-insn 'ctx-only id procedure))
+  (normal-insn 'ctx-only id procedure #f))
 
-(define (char-insn char)
-  (normal-insn 'char (list char) char))
-
-(define (char-ci-insn char)
-  (normal-insn 'char-ci (list char) char))
-
-(define (char-set-insn char-set)
-  (normal-insn 'char-set (list char-set) char-set))
+(define (match-insn predicate datum)
+  (normal-insn 'match (list datum) predicate datum))
 
 (define null-insn
   (make-insn
@@ -122,21 +116,22 @@ USA.
   (make-insn
    (lambda (next-node)
      (declare (ignore next-node))
-     (make-node 'fail '() #f #f))))
+     (make-node 'fail '() #f #f #f))))
 
 ;;;; Nodes
 
 (define-record-type <node>
-    (%make-node type index id datum next)
+    (%make-node type index id procedure datum next)
     node?
   (type node-type)
   (index node-index)
   (id %node-id)
+  (procedure node-procedure)
   (datum node-datum)
   (next node-next %set-node-next!))
 
-(define (make-node type id datum nodes)
-  (%make-node type (next-node-index) id datum nodes))
+(define (make-node type id procedure datum nodes)
+  (%make-node type (next-node-index) id procedure datum nodes))
 
 (define (node-id node)
   (cons* (node-type node)
@@ -147,10 +142,10 @@ USA.
   (standard-print-method 'node node-id))
 
 (define (terminal-node)
-  (make-node 'terminal '() #f #f))
+  (make-node 'terminal '() #f #f #f))
 
 (define (fork-node nodes)
-  (make-node 'fork '() #f nodes))
+  (make-node 'fork '() #f #f nodes))
 
 (define (cyclic-fork-node get-nodes)
   (let ((node (fork-node '())))
@@ -167,9 +162,7 @@ USA.
   (let ((type (node-type node)))
     (or (eq? type 'lookaround)
 	(eq? type 'ctx-only)
-	(eq? type 'char)
-	(eq? type 'char-ci)
-	(eq? type 'char-set))))
+	(eq? type 'match))))
 
 (define (fork-node? node)
   (eq? 'fork (node-type node)))
@@ -250,15 +243,13 @@ USA.
 	  (char-newline? next-char)))))
 
 (define (insn:char char ci?)
-  (if ci?
-      (char-ci-insn char)
-      (char-insn char)))
+  (match-insn (if ci? char-ci=? char=?) char))
 
 (define (insn:char-set char-set)
   (case (char-set-size char-set)
     ((0) fail-insn)
     ((1) (insn:char (integer->char (car (char-set->code-points char-set))) #f))
-    (else (char-set-insn char-set))))
+    (else (match-insn char-set-contains? char-set))))
 
 (define (insn:string string ci?)
   (insn:seq
@@ -418,8 +409,8 @@ USA.
 					       next-char
 					       prev-char)))
 			 (and (pair? states)
-			      ;; If a terminal state is present, it's always last.
-			      ;; The follow-X procedures guarantee this.
+			      ;; If a terminal state is present, it's always
+			      ;; last.  The follow-X procedures guarantee this.
 			      (let ((state (last states)))
 				(and (terminal-state? state)
 				     state)))))))))))))
@@ -447,14 +438,14 @@ USA.
 			       (node-next node))
 		   outputs))
 	    ((lookaround)
-	     (if ((node-datum node) next-char prev-char)
+	     (if ((node-procedure node) next-char prev-char)
 		 (follow-state (make-state (node-next node) ctx)
 			       inputs
 			       outputs)
 		 (loop inputs outputs)))
 	    ((ctx-only)
 	     (follow-state (make-state (node-next node)
-				       ((node-datum node) ctx))
+				       ((node-procedure node) ctx))
 			   inputs
 			   outputs))
 	    ((fail) (loop inputs outputs))
@@ -488,18 +479,15 @@ USA.
     (let ((node (state-node state))
 	  (ctx (state-ctx state)))
       (case (node-type node)
-	((char) (match char=? node ctx inputs outputs))
-	((char-ci) (match char-ci=? node ctx inputs outputs))
-	((char-set) (match char-set-contains? node ctx inputs outputs))
+	((match) (loop inputs (match node ctx outputs)))
 	((fail) (loop inputs outputs))
 	((terminal) (reverse! (cons state outputs)))
 	(else (error "Unknown node type:" node)))))
 
-  (define (match pred node ctx inputs outputs)
-    (loop inputs
-	  (if (and next-char (pred (node-datum node) next-char))
-	      (cons (make-state (node-next node) (++index ctx)) outputs)
-	      outputs)))
+  (define (match node ctx outputs)
+    (if (and next-char ((node-procedure node) (node-datum node) next-char))
+	(cons (make-state (node-next node) (++index ctx)) outputs)
+	outputs))
 
   (loop states '()))
 
