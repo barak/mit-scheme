@@ -5554,8 +5554,6 @@ USA.
   (parent (runtime))
   (export (runtime regexp)
 	  make-rules
-	  general-rule
-	  pattern-rule
 	  pattern?
 	  rule-key
 	  rule-operation

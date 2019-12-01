@@ -179,46 +179,31 @@ USA.
     (set! cset-sre-rewrite-rules (make-rules 'cset-sre-rewrite))
     unspecific))
 
-(define (rule-finder rules rewrite-rules)
-  (let ((matcher (rules-matcher rules))
-	(rewriter (rules-rewriter rewrite-rules)))
-    (lambda (object)
-      (matcher (rewriter object)))))
-
 (define-deferred-procedure find-sre-rule 'regexp-rules
-  (rule-finder sre-rules sre-rewrite-rules))
+  (rules-rewriter sre-rewrite-rules (rules-matcher sre-rules)))
 
 (define-deferred-procedure find-cset-sre-rule 'regexp-rules
-  (rule-finder cset-sre-rules cset-sre-rewrite-rules))
-
-(define (pattern-rule-definer rules)
-  (let ((adder (rules-adder rules)))
-    (lambda (pattern operation #!optional predicate)
-      (adder
-       (if (pattern? pattern)
-	   (pattern-rule pattern operation predicate)
-	   (general-rule pattern predicate operation))))))
+  (rules-rewriter cset-sre-rewrite-rules (rules-matcher cset-sre-rules)))
 
 (define-deferred-procedure define-sre-rule 'regexp-rules
-  (pattern-rule-definer sre-rules))
+  (rules-definer sre-rules))
 
 (define-deferred-procedure define-sre-rewriter 'regexp-rules
-  (pattern-rule-definer sre-rewrite-rules))
+  (rules-definer sre-rewrite-rules))
 
 (define-deferred-procedure define-cset-sre-rule 'regexp-rules
-  (pattern-rule-definer cset-sre-rules))
+  (rules-definer cset-sre-rules))
 
 (define-deferred-procedure define-cset-sre-rewriter 'regexp-rules
-  (pattern-rule-definer cset-sre-rewrite-rules))
+  (rules-definer cset-sre-rewrite-rules))
 
 (define (alias-rule-definer rules)
-  (let ((adder (rules-adder rules)))
+  (let ((definer (rules-definer rules)))
     (lambda (from to)
       (guarantee interned-symbol? from)
       (guarantee interned-symbol? to)
-      (adder
-       (pattern-rule `(,from . ,any-object?)
-		     (lambda args (cons to args)))))))
+      (definer `(,from . ,any-object?)
+	(lambda args (cons to args))))))
 
 (define-deferred-procedure define-sre-alias 'regexp-rules
   (alias-rule-definer sre-rewrite-rules))
