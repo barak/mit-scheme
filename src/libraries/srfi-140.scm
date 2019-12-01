@@ -48,6 +48,8 @@ USA.
 			string->utf16le
 			string-append*
 			string-builder
+			string-fold
+			string-fold-right
 			string-joiner*
 			string-null?
 			string-padder
@@ -420,24 +422,6 @@ USA.
        ((string-joiner* 'prefix delimiter) strings))
       (else
        (error:bad-range-argument grammar 'string-join)))))
-
-(define (string-fold kons knil string #!optional start end)
-  (let* ((end (fix:end-index end (string-length string) 'string-fold))
-	 (start (fix:start-index start end 'string-fold)))
-    (let loop ((index start) (knil knil))
-      (if (fx<? index end)
-	  (loop (fx+ index 1)
-		(kons (string-ref string index) knil))
-	  knil))))
-
-(define (string-fold-right kons knil string #!optional start end)
-  (let* ((end (fix:end-index end (string-length string) 'string-fold-right))
-	 (start (fix:start-index start end 'string-fold-right)))
-    (let loop ((index (fx- end 1)) (knil knil))
-      (if (fx>=? index start)
-	  (loop (fx- index 1)
-		(kons (string-ref string index) knil))
-	  knil))))
 
 (define (string-map-index proc string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string-map-index))

@@ -1810,6 +1810,24 @@ USA.
 
 ;;;; Mapping
 
+(define (string-fold kons knil string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string-fold))
+	 (start (fix:start-index start end 'string-fold)))
+    (let loop ((index start) (knil knil))
+      (if (fix:< index end)
+	  (loop (fix:+ index 1)
+		(kons (string-ref string index) knil))
+	  knil))))
+
+(define (string-fold-right kons knil string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string-fold-right))
+	 (start (fix:start-index start end 'string-fold-right)))
+    (let loop ((index (fx- end 1)) (knil knil))
+      (if (fix:>= index start)
+	  (loop (fix:- index 1)
+		(kons (string-ref string index) knil))
+	  knil))))
+
 (define (mapper-values proc string strings)
   (cond ((null? strings)
 	 (values (string-length string)

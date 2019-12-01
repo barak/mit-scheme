@@ -1169,6 +1169,8 @@ USA.
 	  string-find-previous-char
 	  string-find-previous-char-ci
 	  string-find-previous-char-in-set
+	  string-fold			;SRFI 140
+	  string-fold-right		;SRFI 140
 	  string-foldcase
 	  string-for-each
 	  string-hash			;SRFI-69
