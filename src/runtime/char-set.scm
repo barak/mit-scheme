@@ -513,10 +513,10 @@ USA.
 	   (primitive-object-hash-2 (%char-set-low char-set)
 				    (%char-set-high char-set)))))
     (if (default-object? modulus)
-	(get-hash char-set)
+	(get-hash)
 	(begin
 	  (guarantee positive-fixnum? modulus 'char-set-hash)
-	  (fix:remainder (get-hash char-set) modulus)))))
+	  (fix:remainder (get-hash) modulus)))))
 
 (define (char-set->code-points char-set)
   (let loop ((ilist (%char-set->inversion-list char-set)) (ranges '()))
