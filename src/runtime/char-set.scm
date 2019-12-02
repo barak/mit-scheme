@@ -508,15 +508,14 @@ USA.
        (fix:= 0 (bytevector-length (%char-set-high cs)))))
 
 (define (char-set-hash char-set #!optional modulus)
-  (let ((get-hash
-	 (lambda ()
-	   (primitive-object-hash-2 (%char-set-low char-set)
-				    (%char-set-high char-set)))))
+  (let ((hash
+	 (primitive-object-hash-2 (%char-set-low char-set)
+				  (%char-set-high char-set))))
     (if (default-object? modulus)
-	(get-hash)
+	hash
 	(begin
 	  (guarantee positive-fixnum? modulus 'char-set-hash)
-	  (fix:remainder (get-hash) modulus)))))
+	  (fix:remainder hash modulus)))))
 
 (define (char-set->code-points char-set)
   (let loop ((ilist (%char-set->inversion-list char-set)) (ranges '()))
