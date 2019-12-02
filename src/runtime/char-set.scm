@@ -179,6 +179,60 @@ USA.
 	(%high-set! high i (car ilist)))
       high)))
 
+(define (ilist-fold proc init ilist)
+  (let loop ((ilist ilist) (value init))
+    (if (pair? ilist)
+	(loop (cddr ilist)
+	      (proc (car ilist) (cadr ilist) value))
+	value)))
+
+(define (ilist-fold-right proc init ilist)
+  (let loop ((ilist (reverse ilist)) (value init))
+    (if (pair? ilist)
+	(loop (cddr ilist)
+	      (proc (cadr ilist) (car ilist) value))
+	value)))
+
+(define (range-fold-char-mapper proc)
+  (lambda (start end value)
+    (let loop ((i start) (value value))
+      (if (fix:< i end)
+	  (loop (fix:+ i 1)
+		(proc (integer->char i) value))
+	  value))))
+
+(define (range-fold-right-char-mapper proc)
+  (lambda (start end value)
+    (let loop ((i (fix:- end 1)) (value value))
+      (if (fix:>= i start)
+	  (loop (fix:- i 1)
+		(proc (integer->char i) value))
+	  value))))
+
+(define (ilist-map proc ilist)
+  (ilist-fold-right (range-fold-right-char-mapper proc) '() ilist))
+
+(define (chars->ilist chars)
+
+  (define (find-end cps ilist)
+    (if (pair? cps)
+	(let ((cp (car cps)))
+	  (find-start (cdr cps) cp (fix:+ cp 1) ilist))
+	ilist))
+
+  (define (find-start cps start end ilist)
+    (if (pair? cps)
+	(let ((cp (car cps)))
+	  (cond ((fix:= cp start)
+		 (find-start (cdr cps) start end ilist))
+		((fix:= cp (fix:- start 1))
+		 (find-start (cdr cps) cp end ilist))
+		(else
+		 (find-end cps (ilist-cons start end ilist)))))
+	(ilist-cons start end ilist)))
+
+  (find-end (sort (map char-code chars) fix:>) '()))
+
 (define (ilist-invert ilist)
 
   (define (loop start ilist inverse)
@@ -192,7 +246,7 @@ USA.
 	     inverse))))
 
   (if (or (not (pair? ilist))
-	  (fix:< 0 (car ilist)))
+	  (fix:> (car ilist) 0))
       (loop 0 ilist '())
       (loop (cadr ilist) (cddr ilist) '())))
 
@@ -263,6 +317,9 @@ USA.
 
 (define ilist-difference
   (ilist-combiner (lambda (a b) (and a (not b)))))
+
+(define ilist-xor
+  (ilist-combiner (lambda (a b) (if a (not b) b))))
 
 ;;;; Ranges
 
@@ -272,12 +329,16 @@ USA.
 	   (index-fixnum? (cdr object))
            (fix:<= (cdr object) #x110000)
 	   (fix:<= (car object) (cdr object)))
-      (unicode-code-point? object)))
+      (and (index-fixnum? object)
+	   (fix:< object #x110000))))
 
 (define (make-range start end)
   (if (fix:= (fix:- end start) 1)
       start
       (cons start end)))
+
+(define (char->range char)
+  (char-code char))
 
 (define (range-start range)
   (if (pair? range)
@@ -306,6 +367,14 @@ USA.
 				  ilist))
 	(ilist->char-set (reverse! ilist)))))
 
+(define (ranges->ilist ranges)
+  (fold-right (lambda (range ilist)
+		(ilist-cons (range-start range)
+			    (range-end range)
+			    ilist))
+	      '()
+	      (normalize-ranges ranges)))
+
 (define (normalize-ranges ranges)
   (let ((ranges
 	 (filter! (lambda (range)
@@ -326,6 +395,12 @@ USA.
 		      (set-cdr! ranges (cddr ranges))
 		      (loop ranges)))))))
     ranges))
+
+(define (ilist->ranges ilist)
+  (ilist-fold-right (lambda (start end ranges)
+		      (cons (make-range start end) ranges))
+		    '()
+		    ilist))
 
 ;;;; Code-point lists
 
