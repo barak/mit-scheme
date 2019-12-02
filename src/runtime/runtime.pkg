@@ -1645,6 +1645,7 @@ USA.
 	  char-set->string		;SRFI 14
 	  char-set-adjoin		;SRFI 14
 	  char-set-any			;SRFI 14
+	  char-set-ci-predicate
 	  char-set-complement		;SRFI 14
 	  char-set-contains?		;SRFI 14
 	  char-set-copy                 ;SRFI 14
@@ -1654,11 +1655,13 @@ USA.
 	  char-set-delete		;SRFI 14
 	  char-set-diff+intersection	;SRFI 14
 	  char-set-difference		;SRFI 14
+	  char-set-downcase
 	  char-set-empty?
 	  char-set-every		;SRFI 14
 	  char-set-filter		;SRFI 14
 	  char-set-fold			;SRFI 14
 	  char-set-fold-right
+	  char-set-foldcase
 	  char-set-for-each		;SRFI 14
 	  char-set-hash			;SRFI 14
 	  char-set-intersection		;SRFI 14
@@ -1673,6 +1676,7 @@ USA.
 	  char-set-unfold		;SRFI 14
 	  char-set-union		;SRFI 14
 	  char-set-union*
+	  char-set-upcase
 	  char-set-xor			;SRFI 14
 	  char-set-xor*
 	  char-set:ascii		;SRFI 14

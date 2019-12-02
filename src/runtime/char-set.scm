@@ -508,6 +508,11 @@ USA.
 		    (cdr ilists))
 	     (loop (cdr ilists)))
 	#t)))
+
+(define (char-set-ci-predicate char-set)
+  (let ((char-set (char-set-foldcase char-set)))
+    (lambda (char)
+      (char-set-contains? char-set (char-foldcase char)))))
 
 ;;;; Iterators
 
@@ -860,6 +865,27 @@ USA.
 	(values (ilist->char-set (ilist-difference* ilist ilists))
 		(ilist->char-set (fold ilist-intersection ilist ilists))))
       (values char-set char-set)))
+
+(define (domain-mapper proc proc-domain)
+  (let ((domain (char-set->ilist proc-domain)))
+    (lambda (char-set)
+      (ilist->char-set
+       (let ((ilist (char-set->ilist char-set)))
+	 (ilist-union (ilist-difference ilist domain)
+		      (ilist-map proc (ilist-intersection ilist domain))))))))
+
+(define char-set-foldcase)
+(define char-set-downcase)
+(define char-set-upcase)
+(defer-boot-action 'ucd
+  (lambda ()
+    (set! char-set-foldcase
+	  (domain-mapper char-foldcase char-set:changes-when-case-folded))
+    (set! char-set-downcase
+	  (domain-mapper char-downcase char-set:changes-when-lower-cased))
+    (set! char-set-upcase
+	  (domain-mapper char-upcase char-set:changes-when-upper-cased))
+    unspecific))
 
 ;;;; Char-Set Compiler
 
