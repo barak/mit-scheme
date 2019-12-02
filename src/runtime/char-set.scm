@@ -491,6 +491,9 @@ USA.
 
 ;;;; Constructors
 
+(define (char-set-copy char-set)
+  (guarantee char-set? char-set 'char-set-copy))
+
 (define (char-set . cpl)
   (char-set* cpl))
 
@@ -498,8 +501,21 @@ USA.
   (guarantee code-point-list? cpl 'char-set*)
   (ilist->char-set (cpl->ilist cpl)))
 
-(define (string->char-set string)
-  (char-set* (map char->integer (string->list string))))
+(define (->char-set object)
+  (cond ((char? object) (char-set object))
+	((string? object) (string->char-set object))
+	((char-set? object) object)
+	(else (error:bad-range-argument object '->char-set))))
+
+(define (list->char-set chars #!optional base-set)
+  (ilist->char-set
+   (let ((ilist (chars->ilist chars)))
+     (if (default-object? base-set)
+	 ilist
+	 (ilist-union ilist (char-set->ilist base-set))))))
+
+(define (string->char-set string #!optional base-set)
+  (list->char-set (string->list string) base-set))
 
 (define (compute-char-set procedure)
 
@@ -519,6 +535,20 @@ USA.
 
   (ilist->char-set
    (reverse! (find-start #xE000 #x110000 (find-start 0 #xD800 '())))))
+
+(define (ucs-range->char-set lower upper #!optional error? base-set)
+  (declare (ignore error?))
+  (guarantee index-fixnum? lower 'ucs-range->char-set)
+  (guarantee index-fixnum? upper 'ucs-range->char-set)
+  (if (not (fix:<= lower upper))
+      (error:bad-range-argument lower 'ucs-range->char-set))
+  (if (not (fix:<= upper #x110000))
+      (error:bad-range-argument upper 'ucs-range->char-set))
+  (ilist->char-set
+   (if (default-object? base-set)
+       (list lower upper)
+       (ilist-union (list lower upper)
+		    (char-set->ilist base-set)))))
 
 ;;;; Queries
 
@@ -631,8 +661,25 @@ USA.
 
 ;;;; Algebra
 
+(define (char-set-adjoin char-set . chars)
+  (if (pair? chars)
+      (ilist->char-set
+       (ilist-union (char-set->ilist char-set)
+		    (chars->ilist chars)))
+      char-set))
+
+(define (char-set-delete char-set . chars)
+  (if (pair? chars)
+      (ilist->char-set
+       (ilist-difference (char-set->ilist char-set)
+			 (chars->ilist chars)))
+      char-set))
+
 (define (char-set-invert char-set)
   (ilist->char-set (ilist-invert (char-set->ilist char-set))))
+
+(define (char-set-complement char-set)
+  (char-set-difference char-set:full char-set))
 
 (define (char-set-union . char-sets)
   (char-set-union* char-sets))
@@ -665,11 +712,34 @@ USA.
 (define (char-set-difference char-set . char-sets)
   (if (pair? char-sets)
       (ilist->char-set
-       (fold (lambda (cs1 cs2)
-	       (ilist-difference cs2 cs1))
-	     (char-set->ilist char-set)
-	     (map char-set->ilist char-sets)))
+       (ilist-difference* (char-set->ilist char-set)
+			  (map char-set->ilist char-sets)))
       char-set))
+
+(define (ilist-difference* ilist ilists)
+  (fold (lambda (ilist1 ilist2)
+	  (ilist-difference ilist2 ilist1))
+	ilist
+	ilists))
+
+(define (char-set-xor . char-sets)
+  (char-set-xor* char-sets))
+
+(define (char-set-xor* char-sets)
+  (guarantee list? char-sets 'char-set-xor*)
+  (if (pair? char-sets)
+      (ilist->char-set
+       (fold ilist-xor
+	     (char-set->ilist (car char-sets))
+	     (map char-set->ilist (cdr char-sets))))))
+
+(define (char-set-diff+intersection char-set . char-sets)
+  (if (pair? char-sets)
+      (let ((ilist (char-set->ilist char-set))
+	    (ilists (map char-set->ilist char-sets)))
+	(values (ilist->char-set (ilist-difference* ilist ilists))
+		(ilist->char-set (fold ilist-intersection ilist ilists))))
+      (values char-set char-set)))
 
 ;;;; Char-Set Compiler
 
