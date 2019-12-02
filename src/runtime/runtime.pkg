@@ -1618,7 +1618,7 @@ USA.
 	  (char-set-member? char-set-contains?)
 	  char-set-members)
   (export ()
-	  (char-set-invert char-set-complement)
+	  (char-set-complement char-set-invert)
 	  (char-set=? char-set=)
 	  8-bit-char-set?
 	  ascii-range->char-set
@@ -1627,13 +1627,13 @@ USA.
 	  char-set			;SRFI 14
 	  char-set*
 	  char-set->code-points
-	  char-set-complement		;SRFI 14
 	  char-set-contains?		;SRFI 14
 	  char-set-difference		;SRFI 14
 	  char-set-empty?
 	  char-set-hash			;SRFI 14
 	  char-set-intersection		;SRFI 14
 	  char-set-intersection*
+	  char-set-invert
 	  char-set-predicate
 	  char-set-size			;SRFI 14
 	  char-set-union		;SRFI 14
