@@ -243,13 +243,15 @@ USA.
 	  (char-newline? next-char)))))
 
 (define (insn:char char ci?)
-  (match-insn (if ci? char-ci=? char=?) char))
+  (if ci?
+      (match-insn char-ci=-predicate (cons 'ci char))
+      (match-insn (char=-predicate char) char)))
 
 (define (insn:char-set char-set)
   (case (char-set-size char-set)
     ((0) fail-insn)
-    ((1) (insn:char (integer->char (car (char-set->code-points char-set))) #f))
-    (else (match-insn char-set-contains? char-set))))
+    ((1) (insn:char (char-set-ref char-set (char-set-cursor char-set)) #f))
+    (else (match-insn (char-set-predicate char-set) char-set))))
 
 (define (insn:string string ci?)
   (insn:seq
@@ -485,7 +487,7 @@ USA.
 	(else (error "Unknown node type:" node)))))
 
   (define (match node ctx outputs)
-    (if (and next-char ((node-procedure node) (node-datum node) next-char))
+    (if (and next-char ((node-procedure node) next-char))
 	(cons (make-state (node-next node) (++index ctx)) outputs)
 	outputs))
 

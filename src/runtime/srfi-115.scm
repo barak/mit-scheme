@@ -30,36 +30,49 @@ USA.
 (declare (usual-integrations))
 
 (define (valid-sre? object)
-  (and (or (find-cset-sre-rule object)
-	   (find-sre-rule object))
+  (and (or (find-cset-sre-rule initial-ctx object)
+	   (find-sre-rule initial-ctx object))
        #t))
 (register-predicate! valid-sre? 'source-regexp)
 
 (define (valid-cset-sre? object)
-  (and (find-cset-sre-rule object)
+  (and (find-cset-sre-rule initial-ctx object)
        #t))
 (register-predicate! valid-cset-sre? 'char-set-regexp)
 
 (define (compile-sre-top-level sre)
   (make-regexp
    (parameterize ((%input-pattern sre)
-		  (%submatch-next 1))
+		  (%submatch-next (make-index-generator 1)))
      (compile-matcher
       (lambda ()
-	(compile-sre sre))))))
+	(compile-sre initial-ctx sre))))))
 
-(define %input-pattern (make-unsettable-parameter #f))
-(define %submatch-next (make-settable-parameter #f))
+(define %input-pattern (make-parameter #f))
+(define %submatch-next (make-parameter #f))
 
 (define (next-submatch-number)
-  (let ((n (%submatch-next)))
-    (%submatch-next (+ n 1))
-    n))
+  ((%submatch-next)))
 
 (define-record-type <regexp>
     (make-regexp impl)
     regexp?
   (impl regexp-impl))
+
+(define (regexp re)
+  (if (regexp? re)
+      re
+      (compile-sre-top-level re)))
+
+(define (regexp->nfa regexp)
+  (matcher->nfa (regexp-impl regexp)))
+
+(define (print-regexp regexp #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (fresh-line port)
+    (for-each (lambda (object)
+		(write-line object port))
+	      (regexp->nfa regexp))))
 
 (define condition-type:compile-regexp)
 (define compile-error)
@@ -80,16 +93,17 @@ USA.
 
 ;;;; Procedures
 
-(define (regexp-matches re string #!optional start end)
-  (guarantee nfc-string? string 'regexp-matches)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-matches))
-	 (start (fix:start-index start end 'regexp-matches)))
-    (%regexp-match (regexp re) string start end)))
-
 (define (regexp-matches? re string #!optional start end)
   (guarantee nfc-string? string 'regexp-matches?)
   (let* ((end (fix:end-index end (string-length string) 'regexp-matches?))
 	 (start (fix:start-index start end 'regexp-matches?)))
+    (and (run-matcher (regexp-impl (regexp re)) string start end)
+	 #t)))
+
+(define (regexp-matches re string #!optional start end)
+  (guarantee nfc-string? string 'regexp-matches)
+  (let* ((end (fix:end-index end (string-length string) 'regexp-matches))
+	 (start (fix:start-index start end 'regexp-matches)))
     (%regexp-match (regexp re) string start end)))
 
 (define (regexp-search re string #!optional start end)
@@ -102,21 +116,6 @@ USA.
 	    (or (%regexp-match regexp string index end)
 		(loop (fix:+ index 1)))
 	    (%regexp-match regexp string index end))))))
-
-(define (regexp re)
-  (if (regexp? re)
-      re
-      (compile-sre-top-level re)))
-
-(define (regexp->nfa regexp)
-  (matcher->nfa (regexp-impl regexp)))
-
-(define (print-regexp regexp #!optional port)
-  (let ((port (if (default-object? port) (current-output-port) port)))
-    (fresh-line port)
-    (for-each (lambda (object)
-		(write-line object port))
-	      (regexp->nfa regexp))))
 
 (define (%regexp-match regexp string start end)
   (let ((groups (run-matcher (regexp-impl regexp) string start end)))
@@ -173,17 +172,20 @@ USA.
 (define cset-sre-rewrite-rules)
 (defer-boot-action 'regexp-rules
   (lambda ()
-    (set! sre-rules (make-rules 'sre))
-    (set! sre-rewrite-rules (make-rules 'sre-rewrite))
-    (set! cset-sre-rules (make-rules 'cset-sre))
-    (set! cset-sre-rewrite-rules (make-rules 'cset-sre-rewrite))
+    (set! sre-rules (make-rules 'sre 1))
+    (set! sre-rewrite-rules (make-rules 'sre-rewrite 1))
+    (set! cset-sre-rules (make-rules 'cset-sre 1))
+    (set! cset-sre-rewrite-rules (make-rules 'cset-sre-rewrite 1))
     unspecific))
 
+(define (rule-finder match-rules rewrite-rules)
+  (rules-rewriter rewrite-rules (rules-matcher match-rules)))
+
 (define-deferred-procedure find-sre-rule 'regexp-rules
-  (rules-rewriter sre-rewrite-rules (rules-matcher sre-rules)))
+  (rule-finder sre-rules sre-rewrite-rules))
 
 (define-deferred-procedure find-cset-sre-rule 'regexp-rules
-  (rules-rewriter cset-sre-rewrite-rules (rules-matcher cset-sre-rules)))
+  (rule-finder cset-sre-rules cset-sre-rewrite-rules))
 
 (define-deferred-procedure define-sre-rule 'regexp-rules
   (rules-definer sre-rules))
@@ -203,7 +205,9 @@ USA.
       (guarantee interned-symbol? from)
       (guarantee interned-symbol? to)
       (definer `(,from . ,any-object?)
-	(lambda args (cons to args))))))
+	(lambda (ctx . args)
+	  (declare (ignore ctx))
+	  (cons to args))))))
 
 (define-deferred-procedure define-sre-alias 'regexp-rules
   (alias-rule-definer sre-rewrite-rules))
@@ -211,28 +215,53 @@ USA.
 (define-deferred-procedure define-cset-sre-alias 'regexp-rules
   (alias-rule-definer cset-sre-rewrite-rules))
 
-(define (compile-sre sre)
-  (cond ((find-cset-sre-rule sre)
+(define (compile-sre ctx sre)
+  (cond ((find-cset-sre-rule ctx sre)
 	 => (lambda (rule)
-	      (insn:char-set ((rule-operation rule) sre))))
-	((find-sre-rule sre)
+	      (insn:char-set
+	       (maybe-xform ctx ((rule-operation rule) ctx sre)))))
+	((find-sre-rule ctx sre)
 	 => (lambda (rule)
-	      ((rule-operation rule) sre)))
+	      ((rule-operation rule) ctx sre)))
 	(else
 	 (compile-error (%input-pattern) sre))))
 
-(define (compile-sres sres)
-  (insn:seq (map-in-order compile-sre sres)))
+(define (compile-sres ctx sres)
+  (insn:seq
+   (map-in-order (lambda (sre)
+		   (compile-sre ctx sre))
+		 sres)))
 
-(define (compile-cset-sre cset-sre)
-  (cond ((find-cset-sre-rule cset-sre)
+(define (compile-cset-sre ctx cset-sre)
+  (cond ((find-cset-sre-rule ctx cset-sre)
 	 => (lambda (rule)
-	      ((rule-operation rule) cset-sre)))
+	      ((rule-operation rule) ctx cset-sre)))
 	(else
 	 (compile-error (%input-pattern) cset-sre))))
 
-(define (compile-cset-sres cset-sres)
-  (map-in-order compile-cset-sre cset-sres))
+(define (compile-cset-sres ctx cset-sres)
+  (map-in-order (lambda (cset-sre)
+		  (compile-cset-sre ctx cset-sre))
+		cset-sres))
+
+(define-record-type <ctx>
+    (make-ctx fold? ascii? no-capture?)
+    ctx?
+  (fold? ctx-fold?)
+  (ascii? ctx-ascii?)
+  (no-capture? ctx-no-capture?))
+
+(define initial-ctx
+  (make-ctx #f #f #f))
+
+(define (fold-ctx fold? ctx)
+  (make-ctx fold? (ctx-ascii? ctx) (ctx-no-capture? ctx)))
+
+(define (ascii-ctx ascii? ctx)
+  (make-ctx (ctx-fold? ctx) ascii? (ctx-no-capture? ctx)))
+
+(define (no-capture-ctx no-capture? ctx)
+  (make-ctx (ctx-fold? ctx) (ctx-ascii? ctx) no-capture?))
 
 (define (any-char? object)
   (unicode-char? object))
@@ -250,96 +279,107 @@ USA.
 ;;;; <sre>
 
 (define-sre-rule "char"
-  (lambda (char) (insn:char char #f))
-  any-char?)
+  (lambda (ctx char) (insn:char char (ctx-fold? ctx)))
+  (lambda (ctx object) (declare (ignore ctx)) (unicode-char? object)))
 
 (define-sre-rule "string"
-  (lambda (string) (insn:string string #f))
-  string?)
+  (lambda (ctx string) (insn:string string (ctx-fold? ctx)))
+  (lambda (ctx object) (declare (ignore ctx)) (string? object)))
 
 (define-sre-rule `(* . ,valid-sre?)
-  (lambda sres (insn:* (compile-sres sres))))
+  (lambda (ctx . sres) (insn:* (compile-sres ctx sres))))
 (define-sre-alias 'zero-or-more '*)
 
 (define-sre-rule `(+ . ,valid-sre?)
-  (lambda sres (insn:>= 1 (compile-sres sres))))
+  (lambda (ctx . sres) (insn:>= 1 (compile-sres ctx sres))))
 (define-sre-alias 'one-or-more '+)
 
 (define-sre-rule `(? . ,valid-sre?)
-  (lambda sres (insn:? (compile-sres sres))))
+  (lambda (ctx . sres) (insn:? (compile-sres ctx sres))))
 (define-sre-alias 'optional '?)
 
 (define-sre-rule `(= ,min-arity? . ,valid-sre?)
-  (lambda (n . sres) (insn:= n (compile-sres sres))))
+  (lambda (ctx n . sres) (insn:= n (compile-sres ctx sres))))
 (define-sre-alias 'exactly '=)
 
 (define-sre-rule `(>= ,min-arity? . ,valid-sre?)
-  (lambda (n . sres) (insn:>= n (compile-sres sres))))
+  (lambda (ctx n . sres) (insn:>= n (compile-sres ctx sres))))
 (define-sre-alias 'at-least '>=)
 
 (define-sre-rule `(** ,min-arity? ,max-arity? . ,valid-sre?)
-  (lambda (n m . sres) (insn:** n m (compile-sres sres)))
-  (lambda (n m . sres) (declare (ignore sres)) (<= n m)))
+  (lambda (ctx n m . sres) (insn:** n m (compile-sres ctx sres)))
+  (lambda (ctx n m . sres) (declare (ignore ctx sres)) (<= n m)))
 (define-sre-alias 'repeated '**)
 
 (define-sre-rule `(|\|| . ,valid-sre?)
-  (lambda sres (insn:alt (map-in-order compile-sre sres))))
+  (lambda (ctx . sres)
+    (insn:alt
+     (map-in-order (lambda (sre)
+		     (compile-sre ctx sre))
+		   sres))))
 (define-sre-alias 'or '|\||)
 
 (define-sre-rule `(: . ,valid-sre?)
-  (lambda sres (compile-sres sres)))
+  (lambda (ctx . sres) (compile-sres ctx sres)))
 (define-sre-alias 'seq ':)
 
 (define-sre-rule `($ . ,valid-sre?)
-  (lambda sres
-    (insn:group (next-submatch-number)
-		(compile-sres sres))))
+  (lambda (ctx . sres)
+    (let ((insn (compile-sres ctx sres)))
+      (if (ctx-no-capture? ctx)
+	  insn
+	  (insn:group (next-submatch-number) insn)))))
 (define-sre-alias 'submatch '$)
 
 (define-sre-rule `(-> ,interned-symbol? . ,valid-sre?)
-  (lambda (key . sres)
-    (insn:group key (compile-sres sres))))
+  (lambda (ctx key . sres)
+    (let ((insn (compile-sres ctx sres)))
+      (if (ctx-no-capture? ctx)
+	  insn
+	  (insn:group key insn)))))
 (define-sre-alias 'submatch-named '->)
 
-(define-sre-rule 'bos (lambda () (insn:string-start)))
-(define-sre-rule 'eos (lambda () (insn:string-end)))
-(define-sre-rule 'bol (lambda () (insn:line-start)))
-(define-sre-rule 'eol (lambda () (insn:line-end)))
+(define-sre-rule 'bos (lambda (ctx) (declare (ignore ctx)) (insn:string-start)))
+(define-sre-rule 'eos (lambda (ctx) (declare (ignore ctx)) (insn:string-end)))
+(define-sre-rule 'bol (lambda (ctx) (declare (ignore ctx)) (insn:line-start)))
+(define-sre-rule 'eol (lambda (ctx) (declare (ignore ctx)) (insn:line-end)))
 
 (define-sre-rule `(?? . ,valid-sre?)
-  (lambda sres (insn:?? (compile-sres sres))))
+  (lambda (ctx . sres) (insn:?? (compile-sres ctx sres))))
 (define-sre-alias 'non-greedy-optional '??)
 
 (define-sre-rule `(*? . ,valid-sre?)
-  (lambda sres (insn:*? (compile-sres sres))))
+  (lambda (ctx . sres) (insn:*? (compile-sres ctx sres))))
 (define-sre-alias 'non-greedy-zero-or-more '*?)
 
 (define-sre-rule `(**? ,min-arity? ,max-arity? . ,valid-sre?)
-  (lambda (n m . sres) (insn:**? n m (compile-sres sres)))
-  (lambda (n m . sres) (declare (ignore sres)) (<= n m)))
+  (lambda (ctx n m . sres) (insn:**? n m (compile-sres ctx sres)))
+  (lambda (ctx n m . sres) (declare (ignore ctx sres)) (<= n m)))
 (define-sre-alias 'non-greedy-repeated '**?)
+
+(let ((proc
+       (lambda (keyword proc value)
+	 (define-sre-rule `(,keyword . ,valid-sre?)
+	   (lambda (ctx . sres)
+	     (compile-sres (proc value ctx) sres))))))
+  (proc 'w/case fold-ctx #f)
+  (proc 'w/nocase fold-ctx #t)
+  (proc 'w/unicode ascii-ctx #f)
+  (proc 'w/ascii ascii-ctx #t)
+  (proc 'w/nocapture no-capture-ctx #t))
 
 ;;;; <cset-sre>
 
-(define-cset-sre-rule "char"
-  (lambda (char) (char-set char))
-  any-char?)
-
-(define-cset-sre-rule "string"
-  (lambda (string) (char-set string))
-  (lambda (object)
-    (and (string? object)
-	 (fix:= 1 (string-length object)))))
-
-(define-cset-sre-rule "char-set"
-  (lambda (cs) cs)
-  (lambda (object) (char-set? object)))
-
-(define-cset-sre-rule `(,string?)
-  (lambda (s) (char-set s)))
-
-(define-cset-sre-rule `(char-set ,string?)
-  (lambda (s) (char-set s)))
+(define (maybe-xform ctx cset)
+  (let ((cset
+	 (if (ctx-ascii? ctx)
+	     (char-set-intersection char-set:ascii cset)
+	     cset)))
+    (if (ctx-fold? ctx)
+	(char-set-union cset
+			(char-set-upcase cset)
+			(char-set-downcase cset))
+	cset)))
 
 (define (range-spec? object)
   (or (unicode-char? object)
@@ -365,30 +405,58 @@ USA.
 			  ranges))
 	      ranges)))))
 
+(define-cset-sre-rule "char"
+  (lambda (ctx char) (maybe-xform ctx (char-set char)))
+  (lambda (ctx object) (declare (ignore ctx)) (unicode-char? object)))
+
+(define-cset-sre-rule "string"
+  (lambda (ctx string) (maybe-xform ctx (char-set string)))
+  (lambda (ctx object)
+    (declare (ignore ctx))
+    (and (string? object)
+	 (fix:= 1 (string-length object)))))
+
+(define-cset-sre-rule "char-set"
+  (lambda (ctx cs) (maybe-xform ctx cs))
+  (lambda (ctx object) (declare (ignore ctx)) (char-set? object)))
+
+(define-cset-sre-rule `(,string?)
+  (lambda (ctx s) (maybe-xform ctx (char-set s))))
+
+(define-cset-sre-rule `(char-set ,string?)
+  (lambda (ctx s) (maybe-xform ctx (char-set s))))
+
 (define-cset-sre-rule `(/ . ,range-spec?)
-  (lambda rs (char-set* (append-map range-spec->ranges rs))))
+  (lambda (ctx . rs)
+    (maybe-xform ctx (char-set* (append-map range-spec->ranges rs)))))
 (define-cset-sre-alias 'char-range '/)
 
 (define-cset-sre-rule `(or  . ,valid-cset-sre?)
-  (lambda cset-sres (char-set-union* (compile-cset-sres cset-sres))))
+  (lambda (ctx . cset-sres)
+    (char-set-union* (compile-cset-sres ctx cset-sres))))
 (define-cset-sre-alias '|\|| 'or)
 
 (define-cset-sre-rule `(and  . ,valid-cset-sre?)
-  (lambda cset-sres (char-set-intersection* (compile-cset-sres cset-sres))))
+  (lambda (ctx . cset-sres)
+    (char-set-intersection* (compile-cset-sres ctx cset-sres))))
 (define-cset-sre-alias '& 'and)
 
 (define-cset-sre-rule `(-  . ,valid-cset-sre?)
-  (lambda cset-sres (apply char-set-difference (compile-cset-sres cset-sres))))
+  (lambda (ctx . cset-sres)
+    (apply char-set-difference (compile-cset-sres ctx cset-sres))))
 (define-cset-sre-alias 'difference '-)
 
 (define-cset-sre-rule `(~  . ,valid-cset-sre?)
-  (lambda cset-sres
-    (char-set-difference char-set:unicode
-			 (char-set-union* (compile-cset-sres cset-sres)))))
+  (lambda (ctx . cset-sres)
+    (apply char-set-difference
+	   (if (ctx-ascii? ctx) char-set:ascii char-set:full)
+	   (compile-cset-sres ctx cset-sres))))
 (define-cset-sre-alias 'complement '~)
 
 (for-each (lambda (names)
-	    (let ((operation (lambda () (char-set (car names)))))
+	    (let ((operation
+		   (lambda (ctx)
+		     (maybe-xform ctx (char-set (car names))))))
 	      (for-each (lambda (name)
 			  (define-cset-sre-rule name operation))
 			names)))
@@ -408,3 +476,13 @@ USA.
 	    (printing print)
 	    (control cntrl)
 	    (hex-digit xdigit)))
+
+(let ((proc
+       (lambda (keyword proc value)
+	 (define-cset-sre-rule `(,keyword . ,valid-cset-sre?)
+	   (lambda (ctx . cset-sres)
+	     (compile-cset-sres (proc value ctx) cset-sres))))))
+  (proc 'w/case fold-ctx #f)
+  (proc 'w/nocase fold-ctx #t)
+  (proc 'w/unicode ascii-ctx #f)
+  (proc 'w/ascii ascii-ctx #t))

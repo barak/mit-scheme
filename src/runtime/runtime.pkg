@@ -5640,6 +5640,7 @@ USA.
 	  insn:string
 	  insn:string-end
 	  insn:string-start
+	  make-index-generator
 	  matcher->nfa
 	  run-matcher)
   (export ()
