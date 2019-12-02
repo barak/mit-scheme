@@ -23,9 +23,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Utility to make TAGS file for the MIT/GNU Scheme compiler directory.
-# The working directory must be the compiler directory.
+# Utility to make TAGS file for an MIT/GNU Scheme build directory.
+# The working directory must be the build directory.
 
-etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm \
-      rtlbase/*.scm rtlgen/*.scm rtlopt/*.scm \
-      machines/*/*.scm machines/*/*.pkg
+etags *.scm
