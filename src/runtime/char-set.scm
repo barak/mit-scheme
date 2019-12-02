@@ -255,6 +255,16 @@ USA.
 
 (define-integrable (reverse-ilist-cons start end ilist)
   (cons end (cons start ilist)))
+
+(define (ilist= ilist1 ilist2)
+  (if (and (pair? ilist1) (pair? ilist2))
+      (and (fix:= (car ilist1) (car ilist2))
+	   (ilist= (cdr ilist1) (cdr ilist2)))
+      (and (null? ilist1) (null? ilist2))))
+
+(define (ilist<= ilist1 ilist2)
+  (ilist= (ilist-union (ilist-difference ilist2 ilist1) ilist1)
+	  ilist2))
 
 (define (ilist-combiner combine)
 
@@ -463,6 +473,16 @@ USA.
 		      (bytevector=? (%char-set-high char-set*)
 				    (%char-set-high char-set)))))
 	     (cdr char-sets))
+      #t))
+
+(define (char-set<= . char-sets)
+  (if (and (pair? char-sets)
+	   (pair? (cdr char-sets)))
+      (let loop ((ilists (map char-set->list char-sets)))
+	(and (ilist<= (car ilists) (cadr ilists))
+	     (if (pair? (cdr ilists))
+		 (loop (cdr ilists))
+		 #t)))
       #t))
 
 (define (char-set-hash char-set #!optional modulus)
@@ -675,24 +695,8 @@ USA.
 		      (char-set->list base-set))
 		  char-set)))
 
-(define (compute-char-set procedure)
-
-  (define (find-start cp end ilist)
-    (if (fix:< cp end)
-	(if (procedure cp)
-	    (find-end (fix:+ cp 1) end cp ilist)
-	    (find-start (fix:+ cp 1) end ilist))
-	ilist))
-
-  (define (find-end cp end start ilist)
-    (if (fix:< cp end)
-	(if (procedure cp)
-	    (find-end (fix:+ cp 1) end start ilist)
-	    (find-start (fix:+ cp 1) end (ilist-cons cp start ilist)))
-	(ilist-cons end start ilist)))
-
-  (ilist->char-set
-   (reverse! (find-start #xE000 #x110000 (find-start 0 #xD800 '())))))
+(define (compute-char-set proc)
+  (char-set-filter proc char-set:full))
 
 (define (ucs-range->char-set lower upper #!optional error? base-set)
   (declare (ignore error?))
@@ -717,85 +721,19 @@ USA.
   (list->string (char-set->list char-set)))
 
 (define (char-set->ilist char-set)
-  (reverse!
-   (%high->ilist (%char-set-high char-set)
-		 (%low->ilist (%char-set-low char-set)))))
-
-(define (%low->ilist low)
-  (let ((low-limit (%low-limit low)))
-
-    (define (find-start i result)
-      (if (fix:< i low-limit)
-	  (if (%low-ref low i)
-	      (find-end i result)
-	      (find-start (fix:+ i 1) result))
-	  result))
-
-    (define (find-end start result)
-      (let loop ((i (fix:+ start 1)))
-	(if (fix:< i low-limit)
-	    (if (%low-ref low i)
-		(loop (fix:+ i 1))
-		(find-start i (reverse-ilist-cons start i result)))
-	    (reverse-ilist-cons start low-limit result))))
-
-    (find-start 0 '())))
-
-(define (%high->ilist high result)
-  (let ((n (%high-limit high)))
-
-    (define (loop i result)
-      (if (fix:< i n)
-	  (loop (fix:+ i 1)
-		(cons (%high-ref high i) result))
-	  result))
-
-    (if (and (fix:> n 0)
-	     (pair? result)
-	     (fix:= (%high-ref high 0) (car result)))
-	(loop 1 (cdr result))
-	(loop 0 result))))
+  (char-set-range-fold-right ilist-cons '() char-set))
 
 (define (char-set->code-points char-set)
-  (let loop ((ilist (char-set->ilist char-set)) (ranges '()))
-    (if (pair? ilist)
-	(loop (cddr ilist)
-	      (cons (make-range (car ilist) (cadr ilist))
-		    ranges))
-	(reverse! ranges))))
-
+  (char-set-range-fold-right (lambda (start end cpl)
+			       (cons (make-range start end) cpl))
+			     '()
+			     char-set))
+
 (define (char-set-size char-set)
-  (fix:+ (%low-size (%char-set-low char-set))
-	 (%high-size (%char-set-high char-set))))
-
-(define (%low-size low)
-  (let ((low-limit (%low-limit low)))
-
-    (define (find-start i size)
-      (if (fix:< i low-limit)
-	  (if (%low-ref low i)
-	      (let ((end (find-end (fix:+ i 1))))
-		(find-start end (fix:+ size (fix:- end i))))
-	      (find-start (fix:+ i 1) size))
-	  size))
-
-    (define (find-end i)
-      (if (fix:< i low-limit)
-	  (if (%low-ref low i)
-	      (find-end (fix:+ i 1))
-	      i)
-	  low-limit))
-
-    (find-start 0 0)))
-
-(define (%high-size high)
-  (let ((end (%high-limit high)))
-    (do ((index 0 (fix:+ index 2))
-	 (size 0
-		(fix:+ size
-		       (fix:- (%high-ref high (fix:+ index 1))
-			      (%high-ref high index)))))
-	((not (fix:< index end)) size))))
+  (char-set-range-fold (lambda (start end size)
+			 (fix:+ (fix:- end start) size))
+		       0
+		       char-set))
 
 (define (char-set-count pred char-set)
   (char-set-fold-right (lambda (char count)

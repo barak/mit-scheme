@@ -1682,6 +1682,7 @@ USA.
 	  char-set:hex-digit		;SRFI 14
 	  char-set:iso-control		;SRFI 14
 	  char-set:wsp
+	  char-set<=			;SRFI 14
 	  char-set=			;SRFI 14
 	  char-set?			;SRFI 14
 	  char-sets-disjoint?

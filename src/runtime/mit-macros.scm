@@ -794,6 +794,7 @@ USA.
 (define-feature 'srfi-6 always)  ;Basic String Ports
 (define-feature 'srfi-8 always)  ;RECEIVE
 (define-feature 'srfi-9 always)  ;DEFINE-RECORD-TYPE
+(define-feature 'srfi-14 always) ;Character-set Library
 (define-feature 'srfi-23 always) ;ERROR
 (define-feature 'srfi-27 always) ;Sources of Random Bits
 (define-feature 'srfi-30 always) ;Nested Multi-Line Comments (#| ... |#)
