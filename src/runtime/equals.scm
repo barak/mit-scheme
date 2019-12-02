@@ -81,7 +81,7 @@ USA.
 		  (pathname=? x y)))
 	    ((char-set? x)
 	     (and (char-set? y)
-		  (char-set=? x y)))
+		  (char-set= x y)))
 	    (else #f))))
 
 (define (equal-hash key)

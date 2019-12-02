@@ -1614,9 +1614,11 @@ USA.
 	  (ascii-range->char-set ucs-range->char-set)
 	  (char-set->scalar-values char-set->code-points)
 	  (char-set-member? char-set-contains?)
-	  (chars->char-set char-set*)
+	  (char-set=? char-set=)
+	  (chars->char-set list->char-set)
 	  (scalar-values->char-set char-set*)
 	  (well-formed-scalar-value-list? code-point-list?)
+	  char-set->ascii-string
 	  char-set-members)
   (export ()
 	  (char-set-adjoin! char-set-adjoin)
@@ -1624,10 +1626,11 @@ USA.
 	  (char-set-delete! char-set-delete)
 	  (char-set-diff+intersection! char-set-diff+intersection)
 	  (char-set-difference! char-set-difference)
+	  (char-set-filter! char-set-filter)
 	  (char-set-intersection! char-set-intersection)
+	  (char-set-unfold! char-set-unfold)
 	  (char-set-union! char-set-union)
 	  (char-set-xor! char-set-xor)
-	  (char-set=? char-set=)
           (list->char-set! list->char-set)
           (string->char-set! string->char-set)
           (ucs-range->char-set! ucs-range->char-set)
@@ -1638,20 +1641,36 @@ USA.
 	  char-set			;SRFI 14 (extended)
 	  char-set*
 	  char-set->code-points
+	  char-set->list		;SRFI 14
+	  char-set->string		;SRFI 14
 	  char-set-adjoin		;SRFI 14
+	  char-set-any			;SRFI 14
 	  char-set-complement		;SRFI 14
 	  char-set-contains?		;SRFI 14
 	  char-set-copy                 ;SRFI 14
+	  char-set-count		;SRFI 14
+	  char-set-cursor		;SRFI 14
+	  char-set-cursor-next		;SRFI 14
 	  char-set-delete		;SRFI 14
 	  char-set-diff+intersection	;SRFI 14
 	  char-set-difference		;SRFI 14
 	  char-set-empty?
+	  char-set-every		;SRFI 14
+	  char-set-filter		;SRFI 14
+	  char-set-fold			;SRFI 14
+	  char-set-fold-right
+	  char-set-for-each		;SRFI 14
 	  char-set-hash			;SRFI 14
 	  char-set-intersection		;SRFI 14
 	  char-set-intersection*
 	  char-set-invert
+	  char-set-map			;SRFI 14
 	  char-set-predicate
+	  char-set-range-fold
+	  char-set-range-fold-right
+	  char-set-ref			;SRFI 14
 	  char-set-size			;SRFI 14
+	  char-set-unfold		;SRFI 14
 	  char-set-union		;SRFI 14
 	  char-set-union*
 	  char-set-xor			;SRFI 14
@@ -1670,6 +1689,7 @@ USA.
 	  code-point-list?
 	  code-point-in-char-set?
 	  compute-char-set
+	  end-of-char-set?		;SRFI 14
 	  list->char-set		;SRFI 14
 	  re-char-pattern->code-points
 	  re-compile-char-set

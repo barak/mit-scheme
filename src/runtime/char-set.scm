@@ -489,6 +489,153 @@ USA.
 	     (loop (cdr ilists)))
 	#t)))
 
+;;;; Iterators
+
+(define (char-set-range-fold proc init char-set)
+  (let ((low (%char-set-low char-set))
+	(high (%char-set-high char-set)))
+    (let ((low-limit (%low-limit low))
+	  (high-limit (%high-limit high)))
+
+      (define (low-start i value)
+	(if (fix:< i low-limit)
+	    (if (%low-ref low i)
+		(let low-end ((j (fix:+ i 1)))
+		  (if (fix:< j low-limit)
+		      (if (%low-ref low j)
+			  (low-end (fix:+ j 1))
+			  (low-start (fix:+ j 1) (proc i j value)))
+		      (maybe-splice i j value)))
+		(low-start (fix:+ i 1) value))
+	    (high-loop 0 value)))
+
+      (define (maybe-splice start end value)
+	(if (and (fix:< 0 high-limit)
+		 (fix:= end (%high-ref high 0)))
+	    (high-loop 2 (proc start (%high-ref high 1) value))
+	    (high-loop 0 (proc start end value))))
+
+      (define (high-loop i value)
+	(if (fix:< i high-limit)
+	    (high-loop (fix:+ i 2)
+		       (proc (%high-ref high i)
+			     (%high-ref high (fix:+ i 1))
+			     value))
+	    value))
+
+      (low-start 0 init))))
+
+(define (char-set-range-fold-right proc init char-set)
+  (let ((low (%char-set-low char-set))
+	(high (%char-set-high char-set)))
+    (let ((low-limit (%low-limit low))
+	  (high-limit (%high-limit high)))
+
+      (define (high-loop i value)
+	(if (fix:> i 0)
+	    (high-loop (fix:- i 2)
+		       (proc (%high-ref high i)
+			     (%high-ref high (fix:+ i 1))
+			     value))
+	    (maybe-splice (%high-ref high 0)
+			  (%high-ref high 1)
+			  value)))
+
+      (define (maybe-splice start end value)
+	(if (fix:= start low-limit)
+	    (low-start (fix:- low-limit 1) end value)
+	    (low-end (fix:- low-limit 1) (proc start end value))))
+
+      (define (low-end i value)
+	(if (fix:>= i 0)
+	    (if (%low-ref low i)
+		(low-start (fix:- i 1) (fix:+ i 1) value)
+		(low-end (fix:- i 1) value))
+	    value))
+
+      (define (low-start i end value)
+	(if (fix:>= i 0)
+	    (if (%low-ref low i)
+		(low-start (fix:- i 1) end value)
+		(low-end (fix:- i 1) (proc (fix:+ i 1) end value)))
+	    (proc 0 end value)))
+
+      (if (fix:>= high-limit 2)
+	  (high-loop (fix:- high-limit 2) init)
+	  (low-end (fix:- low-limit 1) init)))))
+
+(define-record-type <cursor>
+    (make-cursor ref next)
+    cursor?
+  (ref cursor-ref)
+  (next cursor-next))
+
+(define end-cursor
+  (make-cursor #f #f))
+
+(define (char-set-cursor char-set)
+
+  (define (scan-ilist ilist)
+    (if (pair? ilist)
+	(scan-range (car ilist) (cadr ilist) (cddr ilist))
+	end-cursor))
+
+  (define (scan-range start end ilist)
+    (let loop ((i start))
+      (if (fix:< i end)
+	  (make-cursor
+	   (lambda (char-set*)
+	     (if (not (eq? char-set char-set*))
+		 (error:bad-range-argument char-set* 'char-set-ref))
+	     (integer->char i))
+	   (lambda ()
+	     (if (not (eq? char-set char-set*))
+		 (error:bad-range-argument char-set* 'char-set-cursor-next))
+	     (loop (fix:+ i 1))))
+	  (scan-ilist ilist))))
+
+  (scan-ilist (char-set->ilist char-set)))
+
+(define (char-set-ref char-set cursor)
+  ((cursor-ref cursor) char-set))
+
+(define (char-set-cursor-next char-set cursor)
+  ((cursor-next cursor) char-set))
+
+(define (end-of-char-set? cursor)
+  (eq? end-cursor cursor))
+
+(define (char-set-fold kons knil char-set)
+  (char-set-range-fold (range-fold-char-mapper kons) knil char-set))
+
+(define (char-set-fold-right kons knil char-set)
+  (char-set-range-fold (range-fold-right-char-mapper kons) knil char-set))
+
+(define (char-set-unfold f p g seed #!optional base-set)
+  (list->char-set
+   (let loop
+       ((seed seed)
+	(chars
+	 (if (default-object? base-set)
+	     '()
+	     (char-set->list base-set))))
+     (if (p seed)
+	 (loop (g seed) (cons (f seed) chars))
+	 chars))))
+
+(define (char-set-for-each proc char-set)
+  (char-set-fold-right (lambda (char x)
+			 (declare (ignore x))
+			 (proc char))
+		       unspecific
+		       char-set))
+
+(define (char-set-map proc char-set)
+  (char-set-fold-right (lambda (char mapped)
+			 (cons (proc char) mapped))
+		       '()
+		       char-set))
+
 ;;;; Constructors
 
 (define (char-set-copy char-set)
@@ -516,6 +663,17 @@ USA.
 
 (define (string->char-set string #!optional base-set)
   (list->char-set (string->list string) base-set))
+
+(define (char-set-filter pred char-set #!optional base-set)
+  (list->char-set
+   (char-set-fold (lambda (char chars)
+		    (if (pred char)
+			(cons char chars)
+			chars))
+		  (if (default-object? base-set)
+		      '()
+		      (char-set->list base-set))
+		  char-set)))
 
 (define (compute-char-set procedure)
 
@@ -551,6 +709,12 @@ USA.
 		    (char-set->ilist base-set)))))
 
 ;;;; Queries
+
+(define (char-set->list char-set)
+  (char-set-fold-right cons '() char-set))
+
+(define (char-set->string char-set)
+  (list->string (char-set->list char-set)))
 
 (define (char-set->ilist char-set)
   (reverse!
@@ -633,6 +797,12 @@ USA.
 			      (%high-ref high index)))))
 	((not (fix:< index end)) size))))
 
+(define (char-set-count pred char-set)
+  (char-set-fold-right (lambda (char count)
+			 (if (pred char) (fix:+ count 1) count))
+		       0
+		       char-set))
+
 (define (char-set-contains? char-set char)
   (guarantee char? char 'char-set-contains?)
   (%code-point-in-char-set? (char-code char) char-set))
@@ -658,6 +828,18 @@ USA.
 			 (loop (fix:+ i 2) upper))
 			(else #t)))
 		#f))))))
+
+(define (char-set-every pred char-set)
+  (char-set-fold (lambda (char result)
+		   (and result (pred char)))
+		 #t
+		 char-set))
+
+(define (char-set-any pred char-set)
+  (char-set-fold (lambda (char result)
+		   (or result (pred char)))
+		 #f
+		 char-set))
 
 ;;;; Algebra
 
@@ -813,30 +995,11 @@ USA.
 
 ;;;; Backwards compatibility
 
-;; Returns ASCII string:
-(define (char-set->string char-set)
+(define (char-set->ascii-string char-set)
   (list->string (char-set-members char-set)))
 
-;; Returns only ASCII members:
 (define (char-set-members char-set)
-  (let loop ((cp 0))
-    (if (fix:< cp #x80)
-	(if (%code-point-in-char-set? cp char-set)
-	    (cons (integer->char cp)
-		  (loop (fix:+ cp 1)))
-	    (loop (fix:+ cp 1)))
-	'())))
-
-(define (ascii-range->char-set start end)
-  (if (not (index-fixnum? start))
-      (error:wrong-type-argument start "index fixnum" 'ascii-range->char-set))
-  (if (not (index-fixnum? end))
-      (error:wrong-type-argument end "index fixnum" 'ascii-range->char-set))
-  (if (not (fix:<= start end))
-      (error:bad-range-argument start 'ascii-range->char-set))
-  (if (not (fix:<= end #x100))
-      (error:bad-range-argument end 'ascii-range->char-set))
-  (char-set (cons start end)))
+  (char-set->list (char-set-intersection char-set char-set:ascii)))
 
 (define (8-bit-char-set? char-set)
   (and (char-set? char-set)
