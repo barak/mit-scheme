@@ -179,84 +179,28 @@ USA.
 	(%high-set! high i (car ilist)))
       high)))
 
-(define (char-set->ilist char-set)
-  (reverse!
-   (%high->ilist (%char-set-high char-set)
-		 (%low->ilist (%char-set-low char-set)))))
+(define (ilist-invert ilist)
 
-(define (%low->ilist low)
-  (let ((low-limit (%low-limit low)))
+  (define (loop start ilist inverse)
+    (if (pair? ilist)
+	(loop (cadr ilist)
+	      (cddr ilist)
+	      (reverse-ilist-cons start (car ilist) inverse))
+	(reverse!
+	 (if (fix:< start #x110000)
+	     (reverse-ilist-cons start #x110000 inverse)
+	     inverse))))
 
-    (define (find-start i result)
-      (if (fix:< i low-limit)
-	  (if (%low-ref low i)
-	      (find-end i result)
-	      (find-start (fix:+ i 1) result))
-	  result))
-
-    (define (find-end start result)
-      (let loop ((i (fix:+ start 1)))
-	(if (fix:< i low-limit)
-	    (if (%low-ref low i)
-		(loop (fix:+ i 1))
-		(find-start i (reverse-ilist-cons start i result)))
-	    (reverse-ilist-cons start low-limit result))))
-
-    (find-start 0 '())))
-
-(define (%high->ilist high result)
-  (let ((n (%high-limit high)))
-
-    (define (loop i result)
-      (if (fix:< i n)
-	  (loop (fix:+ i 1)
-		(cons (%high-ref high i) result))
-	  result))
-
-    (if (and (fix:> n 0)
-	     (pair? result)
-	     (fix:= (%high-ref high 0) (car result)))
-	(loop 1 (cdr result))
-	(loop 0 result))))
+  (if (or (not (pair? ilist))
+	  (fix:< 0 (car ilist)))
+      (loop 0 ilist '())
+      (loop (cadr ilist) (cddr ilist) '())))
 
 (define-integrable (ilist-cons start end ilist)
   (cons start (cons end ilist)))
 
 (define-integrable (reverse-ilist-cons start end ilist)
   (cons end (cons start ilist)))
-
-(define (char-set-size char-set)
-  (fix:+ (%low-size (%char-set-low char-set))
-	 (%high-size (%char-set-high char-set))))
-
-(define (%low-size low)
-  (let ((low-limit (%low-limit low)))
-
-    (define (find-start i size)
-      (if (fix:< i low-limit)
-	  (if (%low-ref low i)
-	      (let ((end (find-end (fix:+ i 1))))
-		(find-start end (fix:+ size (fix:- end i))))
-	      (find-start (fix:+ i 1) size))
-	  size))
-
-    (define (find-end i)
-      (if (fix:< i low-limit)
-	  (if (%low-ref low i)
-	      (find-end (fix:+ i 1))
-	      i)
-	  low-limit))
-
-    (find-start 0 0)))
-
-(define (%high-size high)
-  (let ((end (%high-limit high)))
-    (do ((index 0 (fix:+ index 2))
-	 (size 0
-		(fix:+ size
-		       (fix:- (%high-ref high (fix:+ index 1))
-			      (%high-ref high index)))))
-	((not (fix:< index end)) size))))
 
 (define (ilist-combiner combine)
 
@@ -310,120 +254,17 @@ USA.
 
   (lambda (il1 il2)
     (loop 0 0 il1 il2 '())))
+
+(define ilist-union
+  (ilist-combiner (lambda (a b) (or a b))))
+
+(define ilist-intersection
+  (ilist-combiner (lambda (a b) (and a b))))
+
+(define ilist-difference
+  (ilist-combiner (lambda (a b) (and a (not b)))))
 
-;;;; Constructors
-
-(define (char-set . chars)
-  (char-set* chars))
-
-(define (char-set* cpl)
-  (guarantee-list-of cpl-element? cpl 'char-set*)
-  (char-set-union* (%cpl->char-sets cpl)))
-
-(define (%cpl->char-sets cpl)
-  (let loop ((cpl cpl) (ranges '()) (char-sets '()))
-    (cond ((not (pair? cpl))
-	   (cons (ranges->char-set (normalize-ranges ranges))
-		 char-sets))
-	  ((%cpl-element->ranges (car cpl))
-	   => (lambda (ranges*)
-		(loop (cdr cpl)
-		      (append ranges* ranges)
-		      char-sets)))
-	  ((char-set? (car cpl))
-	   (loop (cdr cpl)
-		 ranges
-		 (cons (car cpl) char-sets)))
-	  ((name->char-set (car cpl))
-	   => (lambda (char-set)
-		(loop (cdr cpl)
-		      ranges
-		      (cons char-set char-sets))))
-	  (else
-	   (error:not-a cpl-element? (car cpl))))))
-
-(define (%cpl-element->ranges elt)
-  (cond ((range? elt) (list elt))
-	((char? elt) (list (char-code elt)))
-	((string? elt) (map char->integer (string->list elt)))
-	(else #f)))
-
-(define (normalize-ranges ranges)
-  (let ((ranges
-	 (filter! (lambda (range)
-		    (fix:< (range-start range)
-			   (range-end range)))
-		  (sort ranges range<?))))
-    (if (pair? ranges)
-	(let loop ((ranges ranges))
-	  (if (pair? (cdr ranges))
-	      (let ((s1 (range-start (car ranges)))
-		    (e1 (range-end (car ranges)))
-		    (s2 (range-start (cadr ranges)))
-		    (e2 (range-end (cadr ranges))))
-		(if (fix:< e1 s2)
-		    (loop (cdr ranges))
-		    (begin
-		      (set-car! ranges (make-range s1 (fix:max e1 e2)))
-		      (set-cdr! ranges (cddr ranges))
-		      (loop ranges)))))))
-    ranges))
-
-(define (string->char-set string)
-  (char-set* (map char->integer (string->list string))))
-
-(define (compute-char-set procedure)
-
-  (define (find-start cp end ilist)
-    (if (fix:< cp end)
-	(if (procedure cp)
-	    (find-end (fix:+ cp 1) end cp ilist)
-	    (find-start (fix:+ cp 1) end ilist))
-	ilist))
-
-  (define (find-end cp end start ilist)
-    (if (fix:< cp end)
-	(if (procedure cp)
-	    (find-end (fix:+ cp 1) end start ilist)
-	    (find-start (fix:+ cp 1) end (ilist-cons cp start ilist)))
-	(ilist-cons end start ilist)))
-
-  (ilist->char-set
-   (reverse! (find-start #xE000 #x110000 (find-start 0 #xD800 '())))))
-
-;;;; Code-point lists
-
-(define (code-point-list? object)
-  (list-of-type? object cpl-element?))
-
-(define (cpl-element? object)
-  (or (range? object)
-      (char? object)
-      (string? object)
-      (char-set? object)
-      (name->char-set object)))
-
-(define (name->char-set name)
-  (case name
-    ((alphabetic alpha) char-set:alphabetic)
-    ((alphanumeric alphanum alnum) char-set:alphanumeric)
-    ((ascii) char-set:ascii)
-    ((cased) char-set:cased)
-    ((control cntrl) char-set:control)
-    ((graphic graph) char-set:graphic)
-    ((hex-digit xdigit) char-set:hex-digit)
-    ((lower-case lower) char-set:lower-case)
-    ((newline nl) char-set:newline)
-    ((no-newline nonl) char-set:no-newline)
-    ((numeric num) char-set:numeric)
-    ((printing print) char-set:printing)
-    ((punctuation punct) char-set:punctuation)
-    ((symbol) char-set:symbol)
-    ((title-case title) char-set:title-case)
-    ((unicode any) char-set:unicode)
-    ((upper-case upper) char-set:upper-case)
-    ((whitespace white space) char-set:whitespace)
-    (else #f)))
+;;;; Ranges
 
 (define (range? object)
   (or (and (pair? object)
@@ -464,8 +305,232 @@ USA.
 				  (range-end (car ranges))
 				  ilist))
 	(ilist->char-set (reverse! ilist)))))
+
+(define (normalize-ranges ranges)
+  (let ((ranges
+	 (filter! (lambda (range)
+		    (fix:< (range-start range)
+			   (range-end range)))
+		  (sort ranges range<?))))
+    (if (pair? ranges)
+	(let loop ((ranges ranges))
+	  (if (pair? (cdr ranges))
+	      (let ((s1 (range-start (car ranges)))
+		    (e1 (range-end (car ranges)))
+		    (s2 (range-start (cadr ranges)))
+		    (e2 (range-end (cadr ranges))))
+		(if (fix:< e1 s2)
+		    (loop (cdr ranges))
+		    (begin
+		      (set-car! ranges (make-range s1 (fix:max e1 e2)))
+		      (set-cdr! ranges (cddr ranges))
+		      (loop ranges)))))))
+    ranges))
 
-;;;; Accessors
+;;;; Code-point lists
+
+(define (code-point-list? object)
+  (list-of-type? object cpl-element?))
+
+(define (cpl-element? object)
+  (or (range? object)
+      (char? object)
+      (string? object)
+      (char-set? object)
+      (name->char-set object)))
+
+(define (name->char-set name)
+  (case name
+    ((alphabetic alpha) char-set:alphabetic)
+    ((alphanumeric alphanum alnum) char-set:alphanumeric)
+    ((ascii) char-set:ascii)
+    ((cased) char-set:cased)
+    ((control cntrl) char-set:control)
+    ((graphic graph) char-set:graphic)
+    ((hex-digit xdigit) char-set:hex-digit)
+    ((lower-case lower) char-set:lower-case)
+    ((newline nl) char-set:newline)
+    ((no-newline nonl) char-set:no-newline)
+    ((numeric num) char-set:numeric)
+    ((printing print) char-set:printing)
+    ((punctuation punct) char-set:punctuation)
+    ((symbol) char-set:symbol)
+    ((title-case title) char-set:title-case)
+    ((unicode any) char-set:unicode)
+    ((upper-case upper) char-set:upper-case)
+    ((whitespace white space) char-set:whitespace)
+    (else #f)))
+
+(define (%cpl->char-sets cpl)
+  (let loop ((cpl cpl) (ranges '()) (char-sets '()))
+    (cond ((not (pair? cpl))
+	   (cons (ranges->char-set (normalize-ranges ranges))
+		 char-sets))
+	  ((%cpl-element->ranges (car cpl))
+	   => (lambda (ranges*)
+		(loop (cdr cpl)
+		      (append ranges* ranges)
+		      char-sets)))
+	  ((char-set? (car cpl))
+	   (loop (cdr cpl)
+		 ranges
+		 (cons (car cpl) char-sets)))
+	  ((name->char-set (car cpl))
+	   => (lambda (char-set)
+		(loop (cdr cpl)
+		      ranges
+		      (cons char-set char-sets))))
+	  (else
+	   (error:not-a cpl-element? (car cpl))))))
+
+(define (%cpl-element->ranges elt)
+  (cond ((range? elt) (list elt))
+	((char? elt) (list (char-code elt)))
+	((string? elt) (map char->integer (string->list elt)))
+	(else #f)))
+
+;;;; Predicates
+
+(define (char-set= char-set . char-sets)
+  (every (lambda (char-set*)
+	   (and (bytevector=? (%char-set-low char-set*)
+			      (%char-set-low char-set))
+		(bytevector=? (%char-set-high char-set*)
+			      (%char-set-high char-set))))
+	 char-sets))
+
+(define (char-set-hash char-set #!optional modulus)
+  (let ((hash
+	 (primitive-object-hash-2 (%char-set-low char-set)
+				  (%char-set-high char-set))))
+    (if (default-object? modulus)
+	hash
+	(begin
+	  (guarantee positive-fixnum? modulus 'char-set-hash)
+	  (fix:remainder hash modulus)))))
+
+(define (char-set-empty? cs)
+  (and (fix:= 0 (bytevector-length (%char-set-low cs)))
+       (fix:= 0 (bytevector-length (%char-set-high cs)))))
+
+(define (char-sets-disjoint? char-set . char-sets)
+  (every (lambda (char-set*)
+	   (char-set-empty? (char-set-intersection char-set char-set*)))
+	 char-sets))
+
+;;;; Constructors
+
+(define (char-set . cpl)
+  (char-set* cpl))
+
+(define (char-set* cpl)
+  (guarantee-list-of cpl-element? cpl 'char-set*)
+  (char-set-union* (%cpl->char-sets cpl)))
+
+(define (string->char-set string)
+  (char-set* (map char->integer (string->list string))))
+
+(define (compute-char-set procedure)
+
+  (define (find-start cp end ilist)
+    (if (fix:< cp end)
+	(if (procedure cp)
+	    (find-end (fix:+ cp 1) end cp ilist)
+	    (find-start (fix:+ cp 1) end ilist))
+	ilist))
+
+  (define (find-end cp end start ilist)
+    (if (fix:< cp end)
+	(if (procedure cp)
+	    (find-end (fix:+ cp 1) end start ilist)
+	    (find-start (fix:+ cp 1) end (ilist-cons cp start ilist)))
+	(ilist-cons end start ilist)))
+
+  (ilist->char-set
+   (reverse! (find-start #xE000 #x110000 (find-start 0 #xD800 '())))))
+
+;;;; Queries
+
+(define (char-set->ilist char-set)
+  (reverse!
+   (%high->ilist (%char-set-high char-set)
+		 (%low->ilist (%char-set-low char-set)))))
+
+(define (%low->ilist low)
+  (let ((low-limit (%low-limit low)))
+
+    (define (find-start i result)
+      (if (fix:< i low-limit)
+	  (if (%low-ref low i)
+	      (find-end i result)
+	      (find-start (fix:+ i 1) result))
+	  result))
+
+    (define (find-end start result)
+      (let loop ((i (fix:+ start 1)))
+	(if (fix:< i low-limit)
+	    (if (%low-ref low i)
+		(loop (fix:+ i 1))
+		(find-start i (reverse-ilist-cons start i result)))
+	    (reverse-ilist-cons start low-limit result))))
+
+    (find-start 0 '())))
+
+(define (%high->ilist high result)
+  (let ((n (%high-limit high)))
+
+    (define (loop i result)
+      (if (fix:< i n)
+	  (loop (fix:+ i 1)
+		(cons (%high-ref high i) result))
+	  result))
+
+    (if (and (fix:> n 0)
+	     (pair? result)
+	     (fix:= (%high-ref high 0) (car result)))
+	(loop 1 (cdr result))
+	(loop 0 result))))
+
+(define (char-set->code-points char-set)
+  (let loop ((ilist (char-set->ilist char-set)) (ranges '()))
+    (if (pair? ilist)
+	(loop (cddr ilist)
+	      (cons (make-range (car ilist) (cadr ilist))
+		    ranges))
+	(reverse! ranges))))
+
+(define (char-set-size char-set)
+  (fix:+ (%low-size (%char-set-low char-set))
+	 (%high-size (%char-set-high char-set))))
+
+(define (%low-size low)
+  (let ((low-limit (%low-limit low)))
+
+    (define (find-start i size)
+      (if (fix:< i low-limit)
+	  (if (%low-ref low i)
+	      (let ((end (find-end (fix:+ i 1))))
+		(find-start end (fix:+ size (fix:- end i))))
+	      (find-start (fix:+ i 1) size))
+	  size))
+
+    (define (find-end i)
+      (if (fix:< i low-limit)
+	  (if (%low-ref low i)
+	      (find-end (fix:+ i 1))
+	      i)
+	  low-limit))
+
+    (find-start 0 0)))
+
+(define (%high-size high)
+  (let ((end (%high-limit high)))
+    (do ((index 0 (fix:+ index 2))
+	 (size 0
+		(fix:+ size
+		       (fix:- (%high-ref high (fix:+ index 1))
+			      (%high-ref high index)))))
+	((not (fix:< index end)) size))))
 
 (define (char-set-contains? char-set char)
   (guarantee char? char 'char-set-contains?)
@@ -491,66 +556,11 @@ USA.
 		       (loop (fix:+ i 2) upper))
 		      (else #t)))
 	      #f)))))
-
-(define (char-set-table char-set)
-  (force (%char-set-table char-set)))
-
-(define (char-set= char-set . char-sets)
-  (every (lambda (char-set*)
-	   (and (bytevector=? (%char-set-low char-set*)
-			      (%char-set-low char-set))
-		(bytevector=? (%char-set-high char-set*)
-			      (%char-set-high char-set))))
-	 char-sets))
-
-(define (char-set-empty? cs)
-  (and (fix:= 0 (bytevector-length (%char-set-low cs)))
-       (fix:= 0 (bytevector-length (%char-set-high cs)))))
-
-(define (char-set-hash char-set #!optional modulus)
-  (let ((hash
-	 (primitive-object-hash-2 (%char-set-low char-set)
-				  (%char-set-high char-set))))
-    (if (default-object? modulus)
-	hash
-	(begin
-	  (guarantee positive-fixnum? modulus 'char-set-hash)
-	  (fix:remainder hash modulus)))))
-
-(define (char-set->code-points char-set)
-  (let loop ((ilist (char-set->ilist char-set)) (ranges '()))
-    (if (pair? ilist)
-	(loop (cddr ilist)
-	      (cons (make-range (car ilist) (cadr ilist))
-		    ranges))
-	(reverse! ranges))))
-
-(define (char-sets-disjoint? char-set . char-sets)
-  (every (lambda (char-set*)
-	   (char-set-empty? (char-set-intersection char-set char-set*)))
-	 char-sets))
 
-;;;; Combinations
+;;;; Algebra
 
 (define (char-set-invert char-set)
   (ilist->char-set (ilist-invert (char-set->ilist char-set))))
-
-(define (ilist-invert ilist)
-
-  (define (loop start ilist inverse)
-    (if (pair? ilist)
-	(loop (cadr ilist)
-	      (cddr ilist)
-	      (reverse-ilist-cons start (car ilist) inverse))
-	(reverse!
-	 (if (fix:< start #x110000)
-	     (reverse-ilist-cons start #x110000 inverse)
-	     inverse))))
-
-  (if (or (not (pair? ilist))
-	  (fix:< 0 (car ilist)))
-      (loop 0 ilist '())
-      (loop (cadr ilist) (cddr ilist) '())))
 
 (define (char-set-union . char-sets)
   (char-set-union* char-sets))
@@ -578,15 +588,6 @@ USA.
    (fold-left ilist-difference
 	      (char-set->ilist char-set)
 	      (map char-set->ilist char-sets))))
-
-(define ilist-union
-  (ilist-combiner (lambda (a b) (or a b))))
-
-(define ilist-intersection
-  (ilist-combiner (lambda (a b) (and a b))))
-
-(define ilist-difference
-  (ilist-combiner (lambda (a b) (and a (not b)))))
 
 ;;;; Char-Set Compiler
 
@@ -624,6 +625,9 @@ USA.
 	     (char=? (car pattern) #\^))
 	(values (loop (cdr pattern) '()) #t)
 	(values (loop pattern '()) #f))))
+
+(define (char-set-table char-set)
+  (force (%char-set-table char-set)))
 
 ;;;; Miscellaneous character sets
 
