@@ -98,8 +98,11 @@ USA.
    (lambda (next-node)
      (make-node type id procedure datum next-node))))
 
-(define (lookaround-insn id predicate)
-  (normal-insn 'lookaround id predicate #f))
+(define (char-zero-width-insn id predicate)
+  (normal-insn 'char-zero-width id predicate #f))
+
+(define (string-zero-width-insn id predicate)
+  (normal-insn 'string-zero-width id predicate #f))
 
 (define (ctx-only-insn id procedure)
   (normal-insn 'ctx-only id procedure #f))
@@ -155,12 +158,14 @@ USA.
 (define (epsilon-node? node)
   (let ((type (node-type node)))
     (or (eq? type 'fork)
-	(eq? type 'lookaround)
+	(eq? type 'char-zero-width)
+	(eq? type 'string-zero-width)
 	(eq? type 'ctx-only))))
 
 (define (normal-node? node)
   (let ((type (node-type node)))
-    (or (eq? type 'lookaround)
+    (or (eq? type 'char-zero-width)
+	(eq? type 'string-zero-width)
 	(eq? type 'ctx-only)
 	(eq? type 'match))))
 
@@ -216,32 +221,54 @@ USA.
 
 ;;;; Instruction builders
 
+(define (insn:char-zero-width pred)
+  (char-zero-width-insn 'general pred))
+
+(define (insn:string-zero-width pred)
+  (string-zero-width-insn 'general pred))
+
 (define (insn:string-start)
-  (lookaround-insn '(bos)
+  (char-zero-width-insn '(bos)
     (lambda (next-char prev-char)
       (declare (ignore next-char))
       (not prev-char))))
 
 (define (insn:string-end)
-  (lookaround-insn '(eos)
+  (char-zero-width-insn '(eos)
     (lambda (next-char prev-char)
       (declare (ignore prev-char))
       (not next-char))))
 
-(define (insn:line-start)
-  (lookaround-insn '(bol)
+(define (insn:start-boundary char-set)
+  (char-zero-width-insn (list 'start-boundary char-set)
     (lambda (next-char prev-char)
-      (declare (ignore next-char))
-      (or (not prev-char)
-	  (char-newline? prev-char)))))
+      (and (matches? char-set next-char)
+	   (not (matches? char-set prev-char))))))
 
-(define (insn:line-end)
-  (lookaround-insn '(eol)
+(define (insn:end-boundary char-set)
+  (char-zero-width-insn (list 'end-boundary char-set)
     (lambda (next-char prev-char)
-      (declare (ignore prev-char))
-      (or (not next-char)
-	  (char-newline? next-char)))))
+      (and (not (matches? char-set next-char))
+	   (matches? char-set prev-char)))))
 
+(define (insn:boundary char-set)
+  (char-zero-width-insn (list 'boundary char-set)
+    (lambda (next-char prev-char)
+      (if (matches? char-set next-char)
+	  (not (matches? char-set prev-char))
+	  (matches? char-set prev-char)))))
+
+(define (insn:non-boundary char-set)
+  (char-zero-width-insn (list 'non-boundary char-set)
+    (lambda (next-char prev-char)
+      (if (matches? char-set next-char)
+	  (matches? char-set prev-char)
+	  (not (matches? char-set prev-char))))))
+
+(define (matches? char char-set)
+  (and char
+       (char-set-contains? char-set char)))
+
 (define (insn:char char ci?)
   (if ci?
       (match-insn char-ci=-predicate (cons 'ci char))
@@ -390,15 +417,16 @@ USA.
 
 (define param:trace-regexp-nfa?
   (make-settable-parameter #f))
-
+
 (define (match-nodes initial-state string start end)
-  (let ((seen (make-strong-eq-hash-table)))
+  (let* ((seen (make-strong-eq-hash-table))
+	 (follow-epsilons (follow-epsilons string start end seen)))
     (let loop ((states (list initial-state)) (index start) (prev-char #f))
       (trace-matcher (lambda (port) (write (cons* 'index index states) port)))
       (let ((next-char
 	     (and (fix:< index end)
 		  (string-ref string index))))
-	(let ((states (follow-epsilons states seen next-char prev-char)))
+	(let ((states (follow-epsilons next-char states index prev-char)))
 	  (cond ((not (pair? states)) #f)
 		((terminal-state? (car states)) (car states))
 		(else
@@ -406,9 +434,9 @@ USA.
 		   (if next-char
 		       (loop states (fix:+ index 1) next-char)
 		       (let ((states
-			      (follow-epsilons states
-					       seen
-					       next-char
+			      (follow-epsilons next-char
+					       states
+					       index
 					       prev-char)))
 			 (and (pair? states)
 			      ;; If a terminal state is present, it's always
@@ -416,57 +444,6 @@ USA.
 			      (let ((state (last states)))
 				(and (terminal-state? state)
 				     state)))))))))))))
-
-(define (follow-epsilons states seen next-char prev-char)
-  (trace-matcher (lambda (port) (pp (cons 'follow-epsilons states) port)))
-
-  (define (loop inputs outputs)
-    (if (pair? inputs)
-	(follow-state (car inputs) (cdr inputs) outputs)
-	(done outputs)))
-
-  (define (follow-state state inputs outputs)
-    (if (seen? state)
-	(loop inputs outputs)
-	(let ((node (state-node state))
-	      (ctx (state-ctx state)))
-	  (trace-matcher (lambda (port) (write state port)))
-	  (case (node-type node)
-	    ((fork)
-	     (loop (fold-right (lambda (node* inputs)
-				 (cons (make-state node* ctx)
-				       inputs))
-			       inputs
-			       (node-next node))
-		   outputs))
-	    ((lookaround)
-	     (if ((node-procedure node) next-char prev-char)
-		 (follow-state (make-state (node-next node) ctx)
-			       inputs
-			       outputs)
-		 (loop inputs outputs)))
-	    ((ctx-only)
-	     (follow-state (make-state (node-next node)
-				       ((node-procedure node) ctx))
-			   inputs
-			   outputs))
-	    ((fail) (loop inputs outputs))
-	    ((terminal) (done (cons state outputs)))
-	    (else (loop inputs (cons state outputs)))))))
-
-  (define (seen? state)
-    (let ((p (hash-table-intern! seen state (lambda () (list #f)))))
-      (if (car p)
-	  #t
-	  (begin
-	    (set-car! p #t)
-	    #f))))
-
-  (define (done outputs)
-    (hash-table-clear! seen)
-    (reverse! outputs))
-
-  (loop states '()))
 
 (define (follow-matchers states next-char)
   (trace-matcher (lambda (port) (pp (cons 'follow-matchers states) port)))
@@ -492,6 +469,64 @@ USA.
 	outputs))
 
   (loop states '()))
+
+(define (follow-epsilons string start end seen)
+  (lambda (next-char states index prev-char)
+    (trace-matcher (lambda (port) (pp (cons 'follow-epsilons states) port)))
+
+    (define (loop inputs outputs)
+      (if (pair? inputs)
+	  (follow-state (car inputs) (cdr inputs) outputs)
+	  (done outputs)))
+
+    (define (follow-state state inputs outputs)
+      (if (seen? state)
+	  (loop inputs outputs)
+	  (let ((node (state-node state))
+		(ctx (state-ctx state)))
+	    (trace-matcher (lambda (port) (write state port)))
+	    (case (node-type node)
+	      ((fork)
+	       (loop (fold-right (lambda (node* inputs)
+				   (cons (make-state node* ctx)
+					 inputs))
+				 inputs
+				 (node-next node))
+		     outputs))
+	      ((char-zero-width)
+	       (if ((node-procedure node) next-char prev-char)
+		   (follow-state (make-state (node-next node) ctx)
+				 inputs
+				 outputs)
+		   (loop inputs outputs)))
+	      ((string-zero-width)
+	       (if ((node-procedure node) index string start end)
+		   (follow-state (make-state (node-next node) ctx)
+				 inputs
+				 outputs)
+		   (loop inputs outputs)))
+	      ((ctx-only)
+	       (follow-state (make-state (node-next node)
+					 ((node-procedure node) ctx))
+			     inputs
+			     outputs))
+	      ((fail) (loop inputs outputs))
+	      ((terminal) (done (cons state outputs)))
+	      (else (loop inputs (cons state outputs)))))))
+
+    (define (seen? state)
+      (let ((p (hash-table-intern! seen state (lambda () (list #f)))))
+	(if (car p)
+	    #t
+	    (begin
+	      (set-car! p #t)
+	      #f))))
+
+    (define (done outputs)
+      (hash-table-clear! seen)
+      (reverse! outputs))
+
+    (loop states '())))
 
 ;;;; States
 

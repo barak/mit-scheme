@@ -5649,15 +5649,19 @@ USA.
 	  insn:?
 	  insn:??
 	  insn:alt
+	  insn:boundary
 	  insn:char
 	  insn:char-set
+	  insn:char-zero-width
+	  insn:end-boundary
 	  insn:group
-	  insn:line-end
-	  insn:line-start
+	  insn:non-boundary
 	  insn:seq
+	  insn:start-boundary
 	  insn:string
 	  insn:string-end
 	  insn:string-start
+	  insn:string-zero-width
 	  make-index-generator
 	  matcher->nfa
 	  run-matcher)
