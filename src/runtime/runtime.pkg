@@ -1129,9 +1129,6 @@ USA.
 	  burst-string
 	  char->string
 	  decorated-string-append
-	  grapheme-cluster-breaks
-	  grapheme-cluster-length
-	  grapheme-cluster-slice
 	  immutable-string?
 	  list->string
 	  make-string
@@ -1211,7 +1208,6 @@ USA.
 	  string-trimmer
 	  string-upcase
 	  string-upper-case?
-	  string-word-breaks
 	  string<=?
 	  string<?
 	  string=?
@@ -1553,6 +1549,10 @@ USA.
 	  char-set:gc=symbol:modifier
 	  char-set:gc=symbol:other
 	  ucd-nt-value)
+  (export (runtime ucd-segmentation grapheme)
+	  ucd-gcb-value)
+  (export (runtime ucd-segmentation word)
+	  ucd-wb-value)
   (export (runtime string)
 	  char-full-composition-exclusion?
 	  char-nfd-quick-check?
@@ -1562,12 +1562,10 @@ USA.
 	  ucd-canonical-dm-value
 	  ucd-ccc-value
 	  ucd-cf-value
-	  ucd-gcb-value
 	  ucd-lc-value
 	  ucd-nfc_qc-value
 	  ucd-tc-value
-	  ucd-uc-value
-	  ucd-wb-value))
+	  ucd-uc-value))
 
 (define-package (runtime ucd-glue)
   (files "ucd-glue")
@@ -1606,6 +1604,32 @@ USA.
 	  char-set:normal-printing
 	  char-set:symbol-constituent
 	  char-set:symbol-initial))
+
+(define-package (runtime ucd-segmentation)
+  (files "ucd-segmentation")
+  (parent (runtime)))
+
+(define-package (runtime ucd-segmentation grapheme)
+  (files "ucd-grapheme")
+  (parent (runtime ucd-segmentation))
+  (export ()
+	  gcb-at-index?
+	  grapheme-cluster-breaks
+	  grapheme-cluster-length
+	  grapheme-cluster-slice
+	  string->grapheme-clusters
+	  string-gcb-fold
+	  string-gcb-fold-right))
+
+(define-package (runtime ucd-segmentation word)
+  (files "ucd-word")
+  (parent (runtime ucd-segmentation))
+  (export ()
+	  string-wb-fold
+	  string-wb-fold-right
+	  string-word-breaks)
+  (export (runtime string)
+	  find-word-breaks))
 
 (define-package (runtime character-set)
   (files "char-set")

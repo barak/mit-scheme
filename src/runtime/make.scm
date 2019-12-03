@@ -470,6 +470,8 @@ USA.
    (runtime memoizer)
    (runtime ucd-tables)
    (runtime ucd-glue)
+   (runtime ucd-segmentation grapheme)
+   (runtime ucd-segmentation word)
    (runtime predicate)
    (runtime predicate-tagging)
    (runtime predicate-dispatch)

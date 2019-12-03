@@ -112,6 +112,8 @@ USA.
     "runtime/test-syntax"
     "runtime/test-syntax-rename"
     "runtime/test-thread-queue"
+    "runtime/test-ucd-grapheme"
+    "runtime/test-ucd-word"
     "runtime/test-url"
     ("runtime/test-wttree" (runtime wt-tree))
     "ffi/test-ffi"
