@@ -5083,7 +5083,7 @@ USA.
   (parent (runtime))
   (export ()
 	  (and $and)			;R7RS
-	  (and-let* $and-let*)
+	  (and-let* $and-let*)		;SRFI 2
 	  (assert $assert)
 	  (begin0 $begin0)
 	  (bundle $bundle)
@@ -5114,8 +5114,9 @@ USA.
 	  (letrec* $letrec*)		;R7RS
 	  (local-declare $local-declare)
 	  (parameterize $parameterize)	;R7RS
+	  (rx $rx)			;SRFI 115
 	  (quasiquote $quasiquote)	;R7RS
-	  (receive $receive)
+	  (receive $receive)		;SRFI 8
 	  (unless $unless)		;R7RS
 	  (when $when)			;R7RS
 	  features			;R7RS
@@ -5606,6 +5607,7 @@ USA.
   (files "srfi-115")
   (parent (runtime regexp))
   (export ()
+	  char-set->sre
 	  condition-type:compile-regexp	;extension
 	  print-regexp			;extension
 	  regexp

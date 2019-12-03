@@ -284,6 +284,16 @@ USA.
 		  (scons-and conjunct (apply scons-begin body-exprs)))
 		 (else
 		  conjunct))))))))
+
+;;; SRFI 115: rx
+
+(define $rx
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((* any))
+       (lambda (sres)
+	 (scons-call 'regexp
+		     (apply scons-call 'quasiquote (scons-close ':) sres)))))))
 
 ;;;; Conditionals
 
@@ -801,6 +811,7 @@ USA.
 (define-feature 'srfi-39 always) ;Parameter objects
 (define-feature 'srfi-62 always) ;S-expression comments
 (define-feature 'srfi-69 always) ;Basic Hash Tables
+(define-feature 'srfi-115 always) ;Scheme Regular Expressions
 (define-feature 'srfi-131 always) ;ERR5RS Record Syntax (reduced)
 (define-feature 'srfi-133 always) ;Vector Library (R7RS-compatible)
 (define-feature 'srfi-143 always) ;Fixnums

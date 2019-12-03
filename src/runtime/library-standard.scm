@@ -971,10 +971,33 @@ USA.
     make-hash-table
     string-ci-hash
     string-hash))
+
+(define-standard-library '(srfi 115)
+  '(char-set->sre
+    regexp
+    regexp-extract
+    regexp-fold
+    regexp-match->list
+    regexp-match-count
+    regexp-match-submatch
+    regexp-match-submatch-end
+    regexp-match-submatch-start
+    regexp-match?
+    regexp-matches
+    regexp-matches?
+    regexp-partition
+    regexp-replace
+    regexp-replace-all
+    regexp-search
+    regexp-split
+    regexp?
+    rx
+    valid-sre?))
+
 
 (define-standard-library '(srfi 131)
   '(define-record-type))
-
+
 (define-standard-library '(srfi 143)
   '(fixnum?
     fx*

@@ -44,7 +44,8 @@ USA.
   (parameterize ((input-pattern sre)
 		 (submatch-next (make-index-generator 1))
 		 (submatch-keys (make-submatch-keys)))
-    (make-regexp (compile-matcher
+    (make-regexp sre
+		 (compile-matcher
 		  (lambda ()
 		    (compile-sre initial-ctx sre)))
 		 (submatch-keys->list (submatch-keys)))))
@@ -56,8 +57,9 @@ USA.
   ((submatch-next)))
 
 (define-record-type <regexp>
-    (make-regexp impl submatch-keys)
+    (make-regexp sre impl submatch-keys)
     regexp?
+  (sre regexp->sre)
   (impl regexp-impl)
   (submatch-keys regexp-submatch-keys))
 
@@ -487,7 +489,7 @@ USA.
 
 (define (no-capture-ctx no-capture? ctx)
   (make-ctx (ctx-fold? ctx) (ctx-ascii? ctx) no-capture?))
-
+
 (define (any-char? object)
   (unicode-char? object))
 
@@ -496,6 +498,15 @@ USA.
 
 (define (max-arity? object)
   (exact-nonnegative-integer? object))
+
+(define (gcb? index string start end)
+  (string-gcb-fold (lambda (break prev-break break?)
+		     (declare (ignore prev-break))
+		     (if (fix:> break index)
+			 break?
+			 (fix:= break index)))
+		   #f
+		   string start end))
 
 (define (submatch key insn)
   (hash-table-set! (submatch-keys) key #t)
@@ -511,6 +522,12 @@ USA.
   (receive (numbered named)
       (partition exact-nonnegative-integer? (hash-table-keys table))
     (append (sort numbered <) named)))
+
+(define char-set:word)
+(defer-boot-action 'ucd
+  (lambda ()
+    (set! char-set:word (char-set-adjoin char-set:alphabetic #\_))
+    unspecific))
 
 ;;;; <sre>
 
@@ -574,12 +591,78 @@ USA.
 	  insn
 	  (submatch key insn)))))
 (define-sre-alias 'submatch-named '->)
+
+(define-sre-rule 'bos
+  (lambda (ctx)
+    (declare (ignore ctx))
+    (insn:string-start)))
 
-(define-sre-rule 'bos (lambda (ctx) (declare (ignore ctx)) (insn:string-start)))
-(define-sre-rule 'eos (lambda (ctx) (declare (ignore ctx)) (insn:string-end)))
-(define-sre-rule 'bol (lambda (ctx) (declare (ignore ctx)) (insn:line-start)))
-(define-sre-rule 'eol (lambda (ctx) (declare (ignore ctx)) (insn:line-end)))
+(define-sre-rule 'eos
+  (lambda (ctx)
+    (declare (ignore ctx))
+    (insn:string-end)))
 
+(define-sre-rule 'bol
+  (lambda (ctx)
+    (declare (ignore ctx))
+    (insn:start-boundary char-set:newline)))
+
+(define-sre-rule 'eol
+  (lambda (ctx)
+    (declare (ignore ctx))
+    (insn:end-boundary char-set:newline)))
+
+(define-sre-rule 'bow
+  (lambda (ctx)
+    (declare (ignore ctx))
+    (insn:start-boundary char-set:word)))
+
+(define-sre-rule 'eow
+  (lambda (ctx)
+    (declare (ignore ctx))
+    (insn:end-boundary char-set:word)))
+
+(define-sre-rule 'nwb
+  (lambda (ctx)
+    (declare (ignore ctx))
+    (insn:non-boundary char-set:word)))
+
+(define-sre-rewriter `(word . ,valid-sre?)
+  (lambda (ctx . sres)
+    (declare (ignore ctx))
+    `(: bow ,@sres eow)))
+
+(define-sre-rewriter `(word+ . ,valid-cset-sre?)
+  (lambda (ctx . cset-sres)
+    (declare (ignore ctx))
+    `(: bow (+ (and ,char-set:word (or ,@cset-sres))) eow)))
+
+(define-sre-rewriter 'word
+  (lambda (ctx)
+    (declare (ignore ctx))
+    `(: bow (+ ,char-set:word) eow)))
+
+(define-sre-rule 'bog
+  (lambda (ctx)
+    (declare (ignore ctx))
+    (insn:string-zero-width
+     (lambda (index string start end)
+       (and (fix:< index end)
+	    (gcb? index string start end))))))
+
+(define-sre-rule 'eog
+  (lambda (ctx)
+    (declare (ignore ctx))
+    (insn:string-zero-width
+     (lambda (index string start end)
+       (and (fix:> index start)
+	    (gcb? index string start end))))))
+
+(define-sre-rewriter 'grapheme
+  (lambda (ctx)
+    (declare (ignore ctx))
+    `(: bog (* any) any eog)))
+
 (define-sre-rule `(?? . ,valid-sre?)
   (lambda (ctx . sres) (insn:?? (compile-sres ctx sres))))
 (define-sre-alias 'non-greedy-optional '??)
@@ -641,6 +724,31 @@ USA.
 			  ranges))
 	      ranges)))))
 
+(define (char-set->sre char-set)
+  (receive (matched char-set*) (pull-out-names char-set)
+    (if char-set*
+	(let ((ranges
+	       (cons '/
+		     (char-set-range-fold-right
+		      (lambda (start end tail)
+			(let ((last (fix:- end 1)))
+			  (if (fix:= last start)
+			      (cons (integer->char start) tail)
+			      (let ((s
+				     (string (integer->char start)
+					     (integer->char last))))
+				(if (and (pair? tail)
+					 (string? (car tail)))
+				    (cons (string-append s (car tail))
+					  (cdr tail))
+				    (cons s tail))))))
+		      '()
+		      char-set*))))
+	  (if (pair? matched)
+	      `(or ,@matched ,ranges)
+	      ranges))
+	matched)))
+
 (define-cset-sre-rule "char"
   (lambda (ctx char) (maybe-xform ctx (char-set char)))
   (lambda (ctx object) (declare (ignore ctx)) (unicode-char? object)))
@@ -688,30 +796,54 @@ USA.
 	   (if (ctx-ascii? ctx) char-set:ascii char-set:full)
 	   (compile-cset-sres ctx cset-sres))))
 (define-cset-sre-alias 'complement '~)
+
+(define char-set-names
+  '((any)
+    (nonl)
+    (ascii)
+    (lower-case lower)
+    (upper-case upper)
+    (title-case title)
+    (alphabetic alpha)
+    (numeric num)
+    (alphanumeric alphanum alnum)
+    (punctuation punct)
+    (symbol)
+    (graphic graph)
+    (whitespace white space)
+    (printing print)
+    (control cntrl)
+    (hex-digit xdigit)))
 
 (for-each (lambda (names)
 	    (let ((operation
 		   (lambda (ctx)
-		     (maybe-xform ctx (char-set (car names))))))
+		     (maybe-xform ctx (name->char-set (car names))))))
 	      (for-each (lambda (name)
 			  (define-cset-sre-rule name operation))
 			names)))
-	  '((any)
-	    (nonl)
-	    (ascii)
-	    (lower-case lower)
-	    (upper-case upper)
-	    (title-case title)
-	    (alphabetic alpha)
-	    (numeric num)
-	    (alphanumeric alphanum alnum)
-	    (punctuation punct)
-	    (symbol)
-	    (graphic graph)
-	    (whitespace white space)
-	    (printing print)
-	    (control cntrl)
-	    (hex-digit xdigit)))
+	  char-set-names)
+
+(define (pull-out-names char-set)
+  (let ((name (char-set->name char-set)))
+    (if (and name
+	     (any (lambda (names)
+		    (memq name names))
+		  char-set-names))
+	(values name #f)
+	(let loop
+	    ((names '(alphanumeric alphabetic lower-case upper-case numeric
+				   punctuation symbol whitespace control))
+	     (matched '())
+	     (char-set char-set))
+	  (if (pair? names)
+	      (let ((char-set* (name->char-set (car names))))
+		(if (char-set<= char-set* char-set)
+		    (loop (cdr names)
+			  (cons (car names) matched)
+			  (char-set-difference char-set char-set*))
+		    (loop (cdr names) matched char-set)))
+	      (values matched char-set))))))
 
 (let ((proc
        (lambda (keyword proc value)
