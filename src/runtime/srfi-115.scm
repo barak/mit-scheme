@@ -97,7 +97,12 @@ USA.
   (guarantee nfc-string? string 'regexp-matches?)
   (let* ((end (fix:end-index end (string-length string) 'regexp-matches?))
 	 (start (fix:start-index start end 'regexp-matches?)))
-    (and (run-matcher (regexp-impl (regexp re)) string start end)
+    (and (run-matcher (regexp-impl
+		       (if (regexp? re)
+			   re
+			   ;; Disable captures to speed up match.
+			   (compile-sre-top-level `(w/nocapture ,re))))
+		      string start end)
 	 #t)))
 
 (define (regexp-matches re string #!optional start end)
@@ -106,21 +111,23 @@ USA.
 	 (start (fix:start-index start end 'regexp-matches)))
     (%regexp-match (regexp re) string start end)))
 
-(define (regexp-search re string #!optional start end)
-  (guarantee nfc-string? string 'regexp-search)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-search))
-	 (start (fix:start-index start end 'regexp-search)))
-    (let ((regexp (regexp re)))
-      (let loop ((index start))
-	(if (fix:< index end)
-	    (or (%regexp-match regexp string index end)
-		(loop (fix:+ index 1)))
-	    (%regexp-match regexp string index end))))))
-
 (define (%regexp-match regexp string start end)
   (let ((groups (run-matcher (regexp-impl regexp) string start end)))
     (and groups
 	 (make-regexp-match (car groups) (cdr groups)))))
+
+(define (regexp-search re string #!optional start end)
+  (guarantee nfc-string? string 'regexp-search)
+  (let* ((end (fix:end-index end (string-length string) 'regexp-search))
+	 (start (fix:start-index start end 'regexp-search)))
+    (%regexp-search (regexp re) string start end)))
+
+(define (%regexp-search regexp string start end)
+  (let loop ((index start))
+    (if (fix:< index end)
+	(or (%regexp-match regexp string index end)
+	    (loop (fix:+ index 1)))
+	(%regexp-match regexp string index end))))
 
 (define-record-type <regexp-match>
     (make-regexp-match group0 groups)
@@ -163,6 +170,107 @@ USA.
 (define (regexp-match-keys match)
   (cons (group-key (%regexp-match-group0 match))
 	(map group-key (%regexp-match-groups match))))
+
+(define (regexp-replace re string subst #!optional start end count)
+  (guarantee regexp-replace-subst? subst 'regexp-replace)
+  (let* ((len (string-length string))
+	 (end (if end (fix:end-index end len 'regexp-replace) len))
+	 (start (fix:start-index start end 'regexp-replace))
+	 (regexp (regexp re))
+	 (count
+	  (if (default-object? count)
+	      0
+	      (guarantee exact-nonnegative-integer? count 'regexp-replace))))
+
+    (define (find-match index n)
+      (let ((match (%regexp-search regexp string index end)))
+	(if match
+	    (if (< n count)
+		(find-match (regexp-match-submatch-start match 0)
+			    (- n 1))
+		(string-append (subst-match 'pre match string start end)
+			       (subst-match subst match string start end)
+			       (subst-match 'post match string start end)))
+	    (substring string start end))))
+
+    (find-match start 0)))
+
+(define (regexp-replace-all re string subst #!optional start end)
+  (guarantee regexp-replace-subst? subst 'regexp-replace-all)
+  (let* ((len (string-length string))
+	 (end (if end (fix:end-index end len 'regexp-replace-all) len))
+	 (start (fix:start-index start end 'regexp-replace-all))
+	 (regexp (regexp re)))
+
+    (define (find-matches index)
+      (let ((match (%regexp-search regexp string index end)))
+	(if match
+	    (cons match
+		  (find-matches (regexp-match-submatch-start match 0)))
+	    '())))
+
+    (define (subst-matches matches start)
+      (if (pair? matches)
+	  (let ((match (car matches))
+		(matches (cdr matches)))
+	    (cons* (subst-match 'pre match string start end)
+		   (subst-match subst match string start
+				(if (pair? matches)
+				    (regexp-match-submatch-start (car matches)
+								 0)
+				    end))
+		   (subst-matches matches (regexp-match-submatch-end match 0))))
+	  '()))
+
+    (let ((matches (find-matches start)))
+      (if (pair? matches)
+	  (string-append* (subst-matches matches start))
+	  (substring string start end)))))
+
+(define (regexp-replace-subst? object)
+  (or (string? object)
+      (regexp-match-key? object)
+      (eq? 'pre object)
+      (eq? 'post object)))
+(register-predicate! regexp-replace-subst? 'regexp-replace-subst)
+
+(define (subst-match match subst string start end)
+  (cond ((string? subst)
+	 subst)
+	((eq? 'pre subst)
+	 (string-slice string start (regexp-match-submatch-start match 0)))
+	((eq? 'post subst)
+	 (string-slice starting (regexp-match-submatch-end match 0) end))
+	(else
+	 (or (regexp-match-submatch match subst) ""))))
+
+(define (regexp-match-key? object)
+  (or (exact-nonnegative-integer? object)
+      (interned-symbol? object)))
+(register-predicate! regexp-match-key? 'regexp-match-key)
+
+(define (regexp-match-replace-template? object)
+  (or (string? object)
+      (regexp-match-key? object)
+      (and (list? object)
+	   (every subst-template? object))))
+(register-predicate! regexp-match-replace-template?
+		     'regexp-match-replace-template)
+
+(define (regexp-match-replace match template)
+  (guarantee regexp-match? match 'regexp-match-replace)
+  (let ((builder (string-builder)))
+    (let loop ((template template))
+      (cond ((string? template)
+	     (builder template))
+	    ((regexp-match-key? template)
+	     (builder (or (regexp-match-submatch match template) "")))
+	    ((list? template)
+	     (for-each loop template))
+	    (else
+	     (error:not-a regexp-match-replace-template? template
+			  'regexp-match-replace))))
+    (builder)))
 
 ;;;; Compiler rules
 
@@ -271,10 +379,6 @@ USA.
 
 (define (max-arity? object)
   (exact-nonnegative-integer? object))
-
-(define (backref-key? object)
-  (or (exact-positive-integer? object)
-      (interned-symbol? object)))
 
 ;;;; <sre>
 

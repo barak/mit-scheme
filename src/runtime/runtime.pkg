@@ -5578,22 +5578,26 @@ USA.
   (files "srfi-115")
   (parent (runtime regexp))
   (export ()
-	  condition-type:compile-regexp
-	  print-regexp
+	  condition-type:compile-regexp	;extension
+	  print-regexp			;extension
 	  regexp
-	  regexp->nfa
+	  regexp->nfa			;extension
 	  regexp-match->list
 	  regexp-match-count
 	  regexp-match-keys
+	  regexp-match-replace		;extension
+	  regexp-match-replace-template? ;extension
 	  regexp-match-submatch
 	  regexp-match-submatch-end
 	  regexp-match-submatch-start
 	  regexp-match?
 	  regexp-matches
 	  regexp-matches?
+	  regexp-replace
+	  regexp-replace-all
 	  regexp-search
 	  regexp?
-	  valid-cset-sre?
+	  valid-cset-sre?		;extension
 	  valid-sre?))
 
 (define-package (runtime regexp rules)
