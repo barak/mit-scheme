@@ -413,29 +413,7 @@ USA.
       (char? object)
       (string? object)
       (char-set? object)
-      (name->char-set object)))
-
-(define (name->char-set name)
-  (case name
-    ((alphabetic alpha) char-set:alphabetic)
-    ((alphanumeric alphanum alnum) char-set:alphanumeric)
-    ((ascii) char-set:ascii)
-    ((cased) char-set:cased)
-    ((control cntrl) char-set:control)
-    ((graphic graph) char-set:graphic)
-    ((hex-digit xdigit) char-set:hex-digit)
-    ((lower-case lower) char-set:lower-case)
-    ((newline nl) char-set:newline)
-    ((no-newline nonl) char-set:no-newline)
-    ((numeric num) char-set:numeric)
-    ((printing print) char-set:printing)
-    ((punctuation punct) char-set:punctuation)
-    ((symbol) char-set:symbol)
-    ((title-case title) char-set:title-case)
-    ((unicode any) char-set:unicode)
-    ((upper-case upper) char-set:upper-case)
-    ((whitespace white space) char-set:whitespace)
-    (else #f)))
+      (char-set-name? object)))
 
 (define (cpl->ilist cpl)
   (let loop ((cpl cpl) (ranges '()) (ilist '()))
@@ -461,6 +439,57 @@ USA.
 		(else
 		 (error:not-a cpl-element? elt))))
 	(ilist-union (ranges->ilist ranges) ilist))))
+
+;;;; Named char sets
+
+(define (char-set-name? object)
+  (and (find-named-char-set object) #t))
+
+(define (char-set-names)
+  (map caar (named-char-sets)))
+
+(define (name->char-set name)
+  (let ((p (find-named-char-set name)))
+    (and p
+	 (cdr p))))
+
+(define (char-set->name char-set)
+  (let ((p
+	 (find (lambda (p)
+		 (char-set= char-set (cdr p)))
+	       (named-char-sets))))
+    (and p
+	 (caar p))))
+
+(define (find-named-char-set name)
+  (find (lambda (p)
+	  (memq name (car p)))
+	(named-char-sets)))
+
+(define (named-char-sets)
+  (force %named-char-sets))
+
+;; DELAY compensates for boot dependencies.
+(define %named-char-sets
+  (delay
+    `(((alphabetic alpha) . ,char-set:alphabetic)
+      ((alphanumeric alphanum alnum) . ,char-set:alphanumeric)
+      ((ascii) . ,char-set:ascii)
+      ((cased) . ,char-set:cased)
+      ((control cntrl) . ,char-set:control)
+      ((graphic graph) . ,char-set:graphic)
+      ((hex-digit xdigit) . ,char-set:hex-digit)
+      ((lower-case lower) . ,char-set:lower-case)
+      ((newline nl) . ,char-set:newline)
+      ((no-newline nonl) . ,char-set:no-newline)
+      ((numeric num) . ,char-set:numeric)
+      ((printing print) . ,char-set:printing)
+      ((punctuation punct) . ,char-set:punctuation)
+      ((symbol) . ,char-set:symbol)
+      ((title-case title) . ,char-set:title-case)
+      ((unicode any) . ,char-set:unicode)
+      ((upper-case upper) . ,char-set:upper-case)
+      ((whitespace white space) . ,char-set:whitespace))))
 
 ;;;; Predicates
 
@@ -634,7 +663,7 @@ USA.
   (char-set-range-fold (range-fold-char-mapper kons) knil char-set))
 
 (define (char-set-fold-right kons knil char-set)
-  (char-set-range-fold (range-fold-right-char-mapper kons) knil char-set))
+  (char-set-range-fold-right (range-fold-right-char-mapper kons) knil char-set))
 
 (define (char-set-unfold f p g seed #!optional base-set)
   (list->char-set

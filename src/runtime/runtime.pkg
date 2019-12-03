@@ -1642,6 +1642,7 @@ USA.
 	  char-set*
 	  char-set->code-points
 	  char-set->list		;SRFI 14
+	  char-set->name
 	  char-set->string		;SRFI 14
 	  char-set-adjoin		;SRFI 14
 	  char-set-any			;SRFI 14
@@ -1668,6 +1669,8 @@ USA.
 	  char-set-intersection*
 	  char-set-invert
 	  char-set-map			;SRFI 14
+	  char-set-name?
+	  char-set-names
 	  char-set-predicate
 	  char-set-range-fold
 	  char-set-range-fold-right
@@ -1696,6 +1699,7 @@ USA.
 	  compute-char-set
 	  end-of-char-set?		;SRFI 14
 	  list->char-set		;SRFI 14
+	  name->char-set
 	  re-char-pattern->code-points
 	  re-compile-char-set
 	  string->char-set		;SRFI 14
