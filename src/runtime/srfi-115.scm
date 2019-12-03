@@ -129,6 +129,19 @@ USA.
 	    (loop (fix:+ index 1)))
 	(%regexp-match regexp string index end))))
 
+(define (regexp-search-all re string #!optional start end)
+  (guarantee nfc-string? string 'regexp-search)
+  (let* ((end (fix:end-index end (string-length string) 'regexp-search))
+	 (start (fix:start-index start end 'regexp-search)))
+    (%regexp-search-all (regexp re) string start end)))
+
+(define (%regexp-search-all regexp string start end)
+  (let loop ((index start))
+    (let ((match (%regexp-search regexp string index end)))
+      (if match
+	  (cons match (loop (regexp-match-submatch-start match 0)))
+	  '()))))
+
 (define-record-type <regexp-match>
     (make-regexp-match group0 groups)
     regexp-match?
@@ -202,13 +215,6 @@ USA.
 	 (start (fix:start-index start end 'regexp-replace-all))
 	 (regexp (regexp re)))
 
-    (define (find-matches index)
-      (let ((match (%regexp-search regexp string index end)))
-	(if match
-	    (cons match
-		  (find-matches (regexp-match-submatch-start match 0)))
-	    '())))
-
     (define (subst-matches matches start)
       (if (pair? matches)
 	  (let ((match (car matches))
@@ -222,7 +228,7 @@ USA.
 		   (subst-matches matches (regexp-match-submatch-end match 0))))
 	  '()))
 
-    (let ((matches (find-matches start)))
+    (let ((matches (%regexp-search regexp string start end)))
       (if (pair? matches)
 	  (string-append* (subst-matches matches start))
 	  (substring string start end)))))
@@ -240,7 +246,7 @@ USA.
 	((eq? 'pre subst)
 	 (string-slice string start (regexp-match-submatch-start match 0)))
 	((eq? 'post subst)
-	 (string-slice starting (regexp-match-submatch-end match 0) end))
+	 (string-slice string (regexp-match-submatch-end match 0) end))
 	(else
 	 (or (regexp-match-submatch match subst) ""))))
 
@@ -253,7 +259,7 @@ USA.
   (or (string? object)
       (regexp-match-key? object)
       (and (list? object)
-	   (every subst-template? object))))
+	   (every regexp-match-replace-template? object))))
 (register-predicate! regexp-match-replace-template?
 		     'regexp-match-replace-template)
 
