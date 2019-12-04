@@ -24,488 +24,374 @@ USA.
 
 |#
 
-;;;; Informal tests of SRFI-1 implementation
+(import (except (scheme base)
+		append assoc assq assv caar cadr car cdar cddr cdr cons for-each
+		length list list-copy list-ref make-list map member memq memv
+		null? pair? reverse set-car! set-cdr!)
+	(scheme write)
+	(srfi 1)
+	(except (srfi 8) call-with-values lambda))
 
-(declare (usual-integrations))
-
-;;; xcons
 (xcons (list 1) 2)
-;Value 1: (2 1)
+'(expect equal? '(2 1))
 
-;;; make-list
 (make-list 3)
-;Value 2: (#f #f #f)
-
+'(expect (lambda (expected value)
+	   (and (pair? value)
+		(pair? (cdr value))
+		(pair? (cddr value))
+		(null? (cdddr value))))
+	 #f)
 (make-list 3 5)
-;Value 3: (5 5 5)
+'(expect equal? '(5 5 5))
 
-;;; list-tablulate
 (list-tabulate 5 (lambda (x) (+ x 1)))
-;Value 7: (1 2 3 4 5)
-
+'(expect equal? '(1 2 3 4 5))
 (list-tabulate 5 square)
-;Value 6: (0 1 4 9 16)
+'(expect equal? '(0 1 4 9 16))
 
-;;; cons*
 (cons* 'a 'b (iota 3))
-;Value 8: (a b 0 1 2)
+'(expect equal? '(a b 0 1 2))
 
-;;; list-copy
 (let* ((foo (iota 5))
        (bar foo)
        (baz (list-copy foo)))
   (list (eq? foo bar)
 	(eq? foo baz)))
-;Value 9: (#t #f)
+'(expect equal? '(#t #f))
 
-;;; iota,
 (iota 5)
-;Value 10: (0 1 2 3 4)
-
+'(expect equal? '(0 1 2 3 4))
 (iota 5 10)
-;Value 11: (10 11 12 13 14)
-
+'(expect equal? '(10 11 12 13 14))
 (iota 5 10 2)
-;Value 12: (10 12 14 16 18)
+'(expect equal? '(10 12 14 16 18))
 
-;;; iota-
-(iota- 5)
-;Value 13: (1 2 3 4 5)
+;; (iota- 5)
+;; '(expect equal? '(1 2 3 4 5))
+;; (iota- 5 10)
+;; '(expect equal? '(6 7 8 9 10))
+;; (iota- 5 10 2)
+;; '(expect equal? '(7 9))
 
-(iota- 5 10)
-;Value 14: (6 7 8 9 10)
+;; (-iota 5)
+;; '(expect equal? '(0 1 2 3 4))
+;; (-iota 5 10)
+;; '(expect equal? '(5 6 7 8 9))
+;; (-iota 5 10 2)
+;; '(expect equal? '(5 7 9))
 
-(iota- 5 10 2)
-;Value 15: (7 9)
-
-;;; -iota
-(-iota 5)
-;Value 16: (0 1 2 3 4)
-
-(-iota 5 10)
-;Value 17: (5 6 7 8 9)
-
-(-iota 5 10 2)
-;Value 18: (5 7 9)
-
-;;; circular-list
 (fourth (circular-list 1 2 3))
-;Value: 1
+'(expect equal? '1)
 
-;;; proper-list?
-(proper-list? (cons 1 (list 2)))
-;Value: #t
+(proper-list? (cons 1 (list 2))) 'expect-true
+(proper-list? (cons 1 2)) 'expect-false
+(proper-list? (circular-list 1 2 3)) 'expect-false
 
-(proper-list? (cons 1 2))
-;Value: #f
+(dotted-list? (cons 1 (list 2))) 'expect-false
+(dotted-list? (cons 1 2)) 'expect-true
+(dotted-list? (circular-list 1 2 3)) 'expect-false
 
-(proper-list? (circular-list 1 2 3))
-;Value: #f
+(circular-list? (cons 1 (list 2))) 'expect-false
+(circular-list? (cons 1 2)) 'expect-false
+(circular-list? (circular-list 1 2 3)) 'expect-true
 
-;;; dotted-list?
-(dotted-list? (cons 1 (list 2)))
-;Value: #f
-
-(dotted-list? (cons 1 2))
-;Value: #t
-
-(dotted-list? (circular-list 1 2 3))
-;Value: #f
-
-;;; circular-list?
-(circular-list? (cons 1 (list 2)))
-;Value: #f
-
-(circular-list? (cons 1 2))
-;Value: #f
-
-(circular-list? (circular-list 1 2 3))
-;Value: #t
-
-;;; not-pair?
-(not-pair? 5)
-;Value: #t
-
-(not-pair? '())
-;Value: #t
-
-(not-pair? (circular-list 1 2 3))
-;Value: #f
+(not-pair? 5) 'expect-true
+(not-pair? '()) 'expect-true
+(not-pair? (circular-list 1 2 3)) 'expect-false
 
 ;;; list= (altered)
 (list= eq?
        '(a b c)
        '(a b c)
        '(a b c))
-;Value: #t
+'expect-true
 
 (list= eq?
        '("a")
        '("a"))
-;Value: #f
+'expect-false
 
 (list= equal?
        '("a")
        '("a"))
-;Value: #t
+'expect-true
 
 ;;; length+
 (length (circular-list 1 2 3))
-;The object (1 2 3 1 2 3 1 2 3...), passed as an argument to length, is not a list.
-;To continue, call RESTART with an option number:
-; (RESTART 2) => Return to read-eval-print level 2.
-; (RESTART 1) => Return to read-eval-print level 1.
+'expect-error
 
 (length+ (circular-list 1 2 3))
-;Value: #f
+'expect-false
 
 (length+ (list 1 2 3))
-;Value: 3
+'(expect equal? '3)
 
-;;; zip
 (zip '(1 2 3) '(1 2 3))
-;Value 2: ((1 1) (2 2) (3 3))
+'(expect equal? '((1 1) (2 2) (3 3)))
 
-
-;;; take-right
 (take-right '(a b c d e) 2)
-;Value 5: (d e)
-
+'(expect equal? '(d e))
 
 ;;; drop-right
 (drop-right '(a b c d e) 2)
-;Value 6: (a b c)
-
+'(expect equal? '(a b c))
 
 ;;; drop-right!
 (let ((foo '(a b c d e)))
   (let ((bar (drop-right! foo 2)))
     foo))
-;Value 7: (a b c)
-
+'(expect equal? '(a b c))
 
 ;;; take
 (take '(a b c d e) 2)
-;Value 8: (a b)
+'(expect equal? '(a b))
 
 (take '(a b c d e) -2)
-;Value 9: (d e)
-
+'expect-error
 
 ;;; drop
 (drop '(a b c d e) 2)
-;Value 15: (c d e)
+'(expect equal? '(c d e))
 
 (drop '(a b c d e) -2)
-;Value 16: (a b c)
-
+'expect-error
 
 ;;; take!
 (let ((foo '(a b c d e)))
   (let ((bar (take! foo 2)))
     foo))
-;Value 10: (a b)
+'(expect equal? '(a b))
 
 ;;; drop! (linear updates not guaranteed to modify their arguments)
-(let ((foo '(a b c d e)))
-  (let ((bar (drop! foo 2)))
-    (list foo
-	  bar)))
-;Value 14: ((a b c d e) (c d e))
+;; (let ((foo '(a b c d e)))
+;;   (let ((bar (drop! foo 2)))
+;;     (list foo
+;; 	  bar)))
+;; '(expect equal? '((a b c d e) (c d e)))
 
 ;;; split-at
 (let ((foo '(a b c d e)))
   (receive (x y)
 	   (split-at foo 2)
 	   (list x y)))
-;Value 17: ((a b) (c d e))
+'(expect equal? '((a b) (c d e)))
 
 ;;; split-at!
 (let ((foo '(a b c d e)))
   (receive (x y)
 	   (split-at! foo 2)
 	   (list x y foo)))
-;Value 18: ((a b) (c d e) (a b))
-
+'(expect equal? '((a b) (c d e) (a b)))
 
 ;;; last
 (last '(a b c d e))
-;Value: e
-
+'(expect equal? 'e)
 
 ;;; unzip1-5
 (unzip1 '((a b)
 	  (c d)
 	  (e f)))
-;Value 19: (a c e)
+'(expect equal? '(a c e))
 
 (receive (a b)
-	 (unzip2 (list (iota 10 0)
-		       (iota 10 10)
-		       (iota 10 20)))
-	 (list a b))
-;Value 34: ((0 10 20) (1 11 21))
+    (unzip2 (list (iota 10 0)
+		  (iota 10 10)
+		  (iota 10 20)))
+  (list a b))
+'(expect equal? '((0 10 20) (1 11 21)))
 
 
 (receive (a b c)
-	 (unzip3 (list (iota 10 0)
-		       (iota 10 10)
-		       (iota 10 20)))
-	 (list a b c))
-;Value 35: ((0 10 20) (1 11 21) (2 12 22))
+    (unzip3 (list (iota 10 0)
+		  (iota 10 10)
+		  (iota 10 20)))
+  (list a b c))
+'(expect equal? '((0 10 20) (1 11 21) (2 12 22)))
 
 (receive (a b c d)
-	 (unzip4 (list (iota 10 0)
-		       (iota 10 10)
-		       (iota 10 20)))
-	 (list a b c d))
-;Value 39: ((0 10 20) (1 11 21) (2 12 22) (3 13 23))
+    (unzip4 (list (iota 10 0)
+		  (iota 10 10)
+		  (iota 10 20)))
+  (list a b c d))
+'(expect equal? '((0 10 20) (1 11 21) (2 12 22) (3 13 23)))
 
 (receive (a b c d e)
-	 (unzip5 (list (iota 10 0)
-		       (iota 10 10)
-		       (iota 10 20)))
-	 (list a b c d e))
-;Value 40: ((0 10 20) (1 11 21) (2 12 22) (3 13 23) (4 14 24))
-
+    (unzip5 (list (iota 10 0)
+		  (iota 10 10)
+		  (iota 10 20)))
+  (list a b c d e))
+'(expect equal? '((0 10 20) (1 11 21) (2 12 22) (3 13 23) (4 14 24)))
 
 ;;; append! append-reverse append-reverse! concatenate concatenate!
 (append! '(a b c)
 	 '(d e f)
 	 '(g h i))
-;Value 41: (a b c d e f g h i)
+'(expect equal? '(a b c d e f g h i))
 
 (append-reverse '(a b c)
 		'(d e f))
-;Value 42: (c b a d e f)
+'(expect equal? '(c b a d e f))
 
 (append-reverse! '(a b c)
 		 '(d e f))
-;Value 43: (c b a d e f)
+'(expect equal? '(c b a d e f))
 
 (concatenate '((a b c)
 	       (d e f)
 	       (g h i)))
-;Value 47: (a b c d e f g h i)
+'(expect equal? '(a b c d e f g h i))
 
 (concatenate! '((a b c)
 		(d e f)
 		(g h i)))
-;Value 48: (a b c d e f g h i)
+'(expect equal? '(a b c d e f g h i))
 
-
-;;; fold/map internal utilities
-(%cdrs '((a b c)
-	 (d e f)
-	 (g h i)))
-;Value 49: ((b c) (e f) (h i))
-
-(%cars+ '((a b c)
-	  (d e f)
-	  (g h i))
-	0)
-;Value 51: (a d g 0)
-
-(receive (x y)
-	 (%cars+cdrs '((a b c)
-		       (d e f)
-		       (g h i)))
-	 (list x y))
-;Value 53: ((a d g) ((b c) (e f) (h i)))
-
-(receive (x y)
-	 (%cars+cdrs '((a b c)
-		       (d e f)
-		       ()))
-	 (list x y))
-;Value 5: (() ())
-
-
-(receive (x y)
-	 (%cars+cdrs+ '((a b c)
-			(d e f)
-			(g h i))
-		      0)
-	 (list x y))
-;Value 54: ((a d g 0) ((b c) (e f) (h i)))
-
-(receive (x y)
-	 (%cars+cdrs+ '((a b c)
-			(d e f)
-			())
-		      0)
-	 (list x y))
-;Value 6: (() ())
-
-
-(receive (x y)
-	 (%cars+cdrs/no-test '((a b c)
-			       (d e f)
-			       (g h i)))
-	 (list x y))
-;Value 55: ((a d g) ((b c) (e f) (h i)))
-
-
-(receive (x y)
-	 (%cars+cdrs/no-test '((a b c)
-			       (d e f)
-			       ()))
-	 (list x y))
-
-;The object (), passed as the first argument to cdr, is not the correct type.
-;To continue, call RESTART with an option number:
-; (RESTART 2) => Specify an argument to use in its place.
-; (RESTART 1) => Return to read-eval-print level 1.
 
 ;;; count
 (count even? (iota 10))
-;Value: 5
+'(expect equal? '5)
 
 (count (lambda (x y) (even? (+ x y)))
        (iota 10)
        (iota 10))
-;Value: 10
+'(expect equal? '10)
 
 ;;; fold/unfold
 (unfold-right null-list? car cdr (iota 10))
-;Value 59: (9 8 7 6 5 4 3 2 1 0)
+'(expect equal? '(9 8 7 6 5 4 3 2 1 0))
 
 (unfold null-list? car cdr (iota 10) (lambda (x) (cons 'foo x)))
-;Value 60: (0 1 2 3 4 5 6 7 8 9 foo)
-
+'(expect equal? '(0 1 2 3 4 5 6 7 8 9 foo))
 
 (fold cons* '() '(a b c) '(1 2 3 4 5))
-;Value 7: (c 3 b 2 a 1)
-
+'(expect equal? '(c 3 b 2 a 1))
 
 (fold-right + 0 (iota 5 1) (iota 5 6))
-;Value: 55
+'(expect equal? '55)
 
 (fold-right cons* '() (iota 10) (iota 20))
-;Value 69: (0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9)
-
+'(expect equal? '(0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9))
 
 (pair-fold cons* '() '(a b c) '(1 2 3 4 5))
-;Value 8: ((c) (3 4 5) (b c) (2 3 4 5) (a b c) (1 2 3 4 5))
+'(expect equal? '((c) (3 4 5) (b c) (2 3 4 5) (a b c) (1 2 3 4 5)))
 
 (pair-fold-right cons* '() '(a b c) '(1 2 3 4 5))
-;Value 9: ((a b c) (1 2 3 4 5) (b c) (2 3 4 5) (c) (3 4 5))
+'(expect equal? '((a b c) (1 2 3 4 5) (b c) (2 3 4 5) (c) (3 4 5)))
 
 (reduce + 'none (iota 10))
-;Value: 45
+'(expect equal? '45)
 
 (reduce + 'none '())
-;Value: none
+'(expect equal? 'none)
 
 (reduce-right + 'none (iota 10))
-;Value: 45
+'(expect equal? '45)
 
 (reduce-right + 'none '())
-;Value: none
+'(expect equal? 'none)
 
 (append-map (lambda (x) (list x (- x))) '(1 3 8))
-;Value 12: (1 -1 3 -3 8 -8)
+'(expect equal? '(1 -1 3 -3 8 -8))
 
 (append-map list
 	    (iota 5)
 	    (iota 5 5))
-;Value 15: (0 5 1 6 2 7 3 8 4 9)
+'(expect equal? '(0 5 1 6 2 7 3 8 4 9))
 
 (append-map! (lambda (x) (list x (- x))) '(1 3 8))
-;Value 13: (1 -1 3 -3 8 -8)
+'(expect equal? '(1 -1 3 -3 8 -8))
 
+(pair-for-each (lambda (x)
+		 (write x)
+		 (newline))
+	       (iota 3))
+'(expect-output equal?
+		'((0 1 2)
+		  (1 2)
+		  (2)))
 
-(pair-for-each write-line (iota 3))
-; (0 1 2)
-; (1 2)
-; (2)
-; ;Unspecified return value
-
-(pair-for-each (lambda (x y) (write-line (list x y)))
+(pair-for-each (lambda (x y)
+		 (write (list x y))
+		 (newline))
 	       (iota 3)
 	       (iota 3 3))
-; ((0 1 2) (3 4 5))
-; ((1 2) (4 5))
-; ((2) (5))
-; ;Unspecified return value
+'(expect-output equal?
+		'(((0 1 2) (3 4 5))
+		  ((1 2) (4 5))
+		  ((2) (5))))
 
 (map! +
       (iota 5)
       (iota 10))
-;Value 16: (0 2 4 6 8)
+'(expect equal? '(0 2 4 6 8))
 
 (map! +
       (iota 10)
       (iota 5))
-;The object (), passed as the first argument to cdr, is not the correct type.
-;To continue, call RESTART with an option number:
-; (RESTART 2) => Specify an argument to use in its place.
-; (RESTART 1) => Return to read-eval-print level 1.
+'expect-error
 
-(filter-map (lambda (x) (and (even? x)
-			(square x)))
+(filter-map (lambda (x)
+	      (and (even? x)
+		   (square x)))
 	    (iota 10))
-;Value 17: (0 4 16 36 64)
+'(expect equal? '(0 4 16 36 64))
 
 (let ((foo '()))
-  (map-in-order (lambda (x) (set! foo (cons x foo)))
+  (map-in-order (lambda (x)
+		  (set! foo (cons x foo)))
 		(iota 10))
   foo)
-;Value 19: (9 8 7 6 5 4 3 2 1 0)
-
+'(expect equal? '(9 8 7 6 5 4 3 2 1 0))
 
 ;;; filter, remove, partition
 
 (filter even? (iota 10))
-;Value 20: (0 2 4 6 8)
+'(expect equal? '(0 2 4 6 8))
 
 (filter! even? (iota 10))
-;Value 22: (0 2 4 6 8)
+'(expect equal? '(0 2 4 6 8))
 
 (remove even? (iota 10))
-;Value 21: (1 3 5 7 9)
+'(expect equal? '(1 3 5 7 9))
 
 (remove! even? (iota 10))
-;Value 23: (1 3 5 7 9)
+'(expect equal? '(1 3 5 7 9))
 
 (receive (x y)
-	 (partition even? (iota 10))
-	 (list x y))
-;Value 24: ((0 2 4 6 8) (1 3 5 7 9))
+    (partition even? (iota 10))
+  (list x y))
+'(expect equal? '((0 2 4 6 8) (1 3 5 7 9)))
 
 (receive (x y)
-	 (partition! even? (iota 10))
-	 (list x y))
-;Value 25: ((0 2 4 6 8) (1 3 5 7 9))
-
+    (partition! even? (iota 10))
+  (list x y))
+'(expect equal? '((0 2 4 6 8) (1 3 5 7 9)))
 
 ;;; delete, assoc, member
 (delete 3 (iota 5))
-;Value 26: (0 1 2 4)
+'(expect equal? '(0 1 2 4))
 
 (delete 3 (iota 5) eqv?)
-;Value 49: (0 1 2 4)
+'(expect equal? '(0 1 2 4))
 
 (delete! 3 (iota 5))
-;Value 27: (0 1 2 4)
+'(expect equal? '(0 1 2 4))
 
 (delete! 3 (iota 5) eqv?)
-;Value 50: (0 1 2 4)
-
+'(expect equal? '(0 1 2 4))
 
 (member "b" (list "a" "b" "c"))
-;Value 29: ("b" "c")
+'(expect equal? '("b" "c"))
 
 (member "b" (list "a" "b" "c") eqv?)
-;Value: #f
-
+'expect-false
 
 (delete-duplicates '(0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9))
-;Value 52: (0 1 2 3 4 5 6 7 8 9)
+'(expect equal? '(0 1 2 3 4 5 6 7 8 9))
 
 (delete-duplicates '(0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9) eqv?)
-;Value 53: (0 1 2 3 4 5 6 7 8 9)
-
+'(expect equal? '(0 1 2 3 4 5 6 7 8 9))
 
 ;;; alist stuff
 
@@ -513,123 +399,105 @@ USA.
   (list (assq 'a e)
 	(assq 'b e)
 	(assq 'd e)))
-;Value 54: ((a 1) (b 2) #f)
-
+'(expect equal? '((a 1) (b 2) #f))
 
 (assq (list 'a) '(((a)) ((b)) ((c))))
-;Value: #f
+'expect-false
 
 (assoc (list 'a) '(((a)) ((b)) ((c))))
-;Value 55: ((a))
-
+'(expect equal? '((a)))
 
 (assq 5 '((2 3) (5 7) (11 13)))
-;Value 56: (5 7)
+'(expect equal? '(5 7))
 ;;; this is R5RS unspecified though
 
 (assv 5 '((2 3) (5 7) (11 13)))
-;Value 57: (5 7)
+'(expect equal? '(5 7))
 ;;; but not this
 
-
-;;; find find-tail take-while drop-while span break any every list-index
-
-
 (find even? (iota 10 5))
-;Value: 6
+'(expect equal? '6)
 
 (find-tail even? (iota 10 5))
-;Value 58: (6 7 8 9 10 11 12 13 14)
+'(expect equal? '(6 7 8 9 10 11 12 13 14))
 
 (drop-while even? '(2 18 3 10 22 9))
-;Value 59: (3 10 22 9)
+'(expect equal? '(3 10 22 9))
 
 (take-while even? '(2 18 3 10 22 9))
-;Value 60: (2 18)
+'(expect equal? '(2 18))
 
 (receive (x y)
-	 (span even? '(2 18 3 10 22 9))
-	 (list x y))
-;Value 61: ((2 18) (3 10 22 9))
-
+    (span even? '(2 18 3 10 22 9))
+  (list x y))
+'(expect equal? '((2 18) (3 10 22 9)))
 
 (receive (x y)
-	 (span! even? '(2 18 3 10 22 9))
-	 (list x y))
-;Value 62: ((2 18) (3 10 22 9))
-
+    (span! even? '(2 18 3 10 22 9))
+  (list x y))
+'(expect equal? '((2 18) (3 10 22 9)))
 
 (any even? (iota 5 1 2))
-;Value: #f
+'expect-false
 
 (any (lambda (x y) (odd? (+ x y)))
      (iota 10)
      (iota 10))
-;Value: #f
+'expect-false
 
 (every odd? (iota 5 1 2))
-;Value: #t
+'expect-true
 
 (every (lambda (x y) (even? (+ x y)))
        (iota 10)
        (iota 10))
-;Value: #t
+'expect-true
 
 (list-index odd? '(2 18 3 10 22 9))
-;Value: 2
-
-
-;;; reverse!
+'(expect equal? '2)
 
 (reverse! (iota 10))
-;Value 66: (9 8 7 6 5 4 3 2 1 0)
-
+'(expect equal? '(9 8 7 6 5 4 3 2 1 0))
 
 ;;; lset-*
 
-(lset<= eq? '(a) '(a b a) '(a b c c))
-;Value: #t
-
-(lset= eq? '(b e a) '(a e b) '(e e b a)) => #t
-;Value: #t
-
+(lset<= eq? '(a) '(a b a) '(a b c c)) 'expect-true
+(lset= eq? '(b e a) '(a e b) '(e e b a)) 'expect-true
 
 (lset-adjoin eq? '(a b c d c e) 'a 'e 'i 'o 'u)
-;Value 67: (u o i a b c d c e)
+'(expect equal? '(u o i a b c d c e))
+
+(lset-union eq? '(a a c) '(x a x))
+'(expect equal? '(x a a c))
 
 
 (lset-union eq? '(a a c) '(x a x))
-;Value 68: (x a a c)
-
-
-(lset-union eq? '(a a c) '(x a x))
-;Value 69: (x a a c)
+'(expect equal? '(x a a c))
 
 
 (lset-intersection eq? '(a x y a) '(x a x z))
-;Value 70: (a x a)
+'(expect equal? '(a x a))
 
 
 (lset-difference eq? '(a b c d e) '(a e i o u))
-;Value 71: (b c d)
+'(expect equal? '(b c d))
 
 
 (lset-xor eq? '(a b c d e) '(a e i o u))
-;Value 72: (u o i b c d)
-
-
-(receive (x y)
-	 (lset-diff+intersection eq?
-				 '(a b c d)
-				 '(a e)
-				 '(c e))
-	 (list x y))
-;Value 75: ((b d) (a c))
+'(expect equal? '(u o i b c d))
 
 (receive (x y)
-	 (lset-diff+intersection! eq?
-				  '(a b c d)
-				  '(a e)
-				  '(c e))
-	 (list x y))
-;Value 76: ((b d) (a c))
+    (lset-diff+intersection eq?
+			    '(a b c d)
+			    '(a e)
+			    '(c e))
+  (list x y))
+'(expect equal? '((b d) (a c)))
+
+(receive (x y)
+    (lset-diff+intersection! eq?
+			     '(a b c d)
+			     '(a e)
+			     '(c e))
+  (list x y))
+'(expect equal? '((b d) (a c)))

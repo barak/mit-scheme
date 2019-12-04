@@ -104,6 +104,7 @@ USA.
     "runtime/test-regsexp"
     "runtime/test-rgxcmp"
     "runtime/test-sha3"
+    ("runtime/test-srfi-1" inline)
     "runtime/test-srfi-115"
     "runtime/test-string"
     "runtime/test-string-normalization"
