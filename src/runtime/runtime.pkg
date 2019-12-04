@@ -3164,14 +3164,20 @@ USA.
 	  (list-transform-positive keep-matching-items)
 	  (mapcan append-map!)
 	  (mapcan* append-map*!)
+	  append-map*
+	  append-map*!
 	  count-matching-items
 	  count-non-matching-items
 	  delete-matching-items
 	  delete-matching-items!
 	  find-matching-item
 	  find-non-matching-item
+	  fold-left
 	  keep-matching-items
-	  keep-matching-items!)
+	  keep-matching-items!
+	  list-head
+	  map*
+	  reduce-left)
   (export ()
 	  (improper-list? dotted-list?)
 	  (list-tabulate make-initialized-list)	;SRFI-1
@@ -3188,8 +3194,6 @@ USA.
 	  append!			;SRFI-1
 	  append-map			;SRFI-1
 	  append-map!			;SRFI-1
-	  append-map*
-	  append-map*!
 	  assoc
 	  association-procedure
 	  assq
@@ -3253,7 +3257,6 @@ USA.
 	  fifth
 	  first
 	  fold				;SRFI-1
-	  fold-left
 	  fold-right			;SRFI-1
 	  for-each
 	  fourth
@@ -3277,7 +3280,6 @@ USA.
 	  list-copy			;SRFI-1
 	  list-deletor
 	  list-deletor!
-	  list-head
 	  list-of-type?
 	  list-of-type?->length
 	  list-of-unique-symbols?
@@ -3291,7 +3293,6 @@ USA.
 	  make-initialized-list
 	  make-list			;SRFI-1
 	  map
-	  map*
 	  member
 	  member-procedure
 	  memq
@@ -3303,7 +3304,6 @@ USA.
 	  null?
 	  pair?
 	  reduce			;SRFI-1
-	  reduce-left
 	  reduce-right			;SRFI-1
 	  restricted-keyword-list?
 	  reverse

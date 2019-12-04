@@ -766,121 +766,114 @@ USA.
   (mapper append-map! () append! '())
   (mapper append-map*! (initial-value) append! initial-value))
 
-(declare (integrate-operator %fold-left))
+;;;; Fold and reduce
 
-(define (%fold-left caller procedure initial list)
-  (declare (integrate caller procedure initial))
-  (let %fold-left-step ((state initial) (remaining list))
-    (if (pair? remaining)
-	(%fold-left-step (procedure state (car remaining))
-			 (cdr remaining))
-	(begin
-	  (if (not (null? remaining))
-	      (error:not-a list? list caller))
-	  state))))
+(define (fold kons knil first . rest)
+  (case (length rest)
+    ((0)
+     (guarantee list? first 'fold)
+     (%fold kons knil first))
+    ((1)
+     (let loop ((elts1 first) (elts2 (car rest)) (acc knil))
+       (if (and (pair? elts1) (pair? elts2))
+	   (loop (cdr elts1)
+		 (cdr elts2)
+		 (kons (car elts1) (car elts2) acc))
+	   (begin
+	     (if (not (or (pair? elts1) (null? elts1)))
+		 (error:not-a list? elts1 'fold))
+	     (if (not (or (pair? elts2) (null? elts2)))
+		 (error:not-a list? elts2 'fold))
+	     acc))))
+    (else
+     (let loop ((lists (cons first rest)) (acc knil))
+       (%cars+cdrs 'fold lists (list acc)
+	 (lambda (cars cdrs)
+	   (if (pair? cdrs)
+	       (loop cdrs (apply kons cars))
+	       acc)))))))
 
-;; N-ary version
-;; Invokes (PROCEDURE state arg1 arg2 ...) on the all the lists in parallel.
-;; State is returned as soon as any list is exhausted.
-(define (%fold-left-lists caller procedure initial arglists)
-  (let fold-left-step ((state initial) (lists arglists))
-    (let collect-arguments ((arglists (reverse lists)) (cars '()) (cdrs '()))
-      (if (pair? arglists)
-	  (let ((first-list (car arglists)))
-	    (if (pair? first-list)
-		(collect-arguments (cdr arglists)
-				   (cons (car first-list) cars)
-				   (cons (cdr first-list) cdrs))
-		(begin
-		  (if (not (null? first-list))
-		      (mapper-error arglists caller))
-		  state)))
-	  (begin
-	    (if (not (null? arglists))
-		(mapper-error arglists caller))
-	    (fold-left-step (apply procedure state cars)
-			    cdrs))))))
+(define-integrable (%fold kons knil elts)
+  (let loop ((elts elts) (acc knil))
+    (if (pair? elts)
+	(loop (cdr elts) (kons (car elts) acc))
+	acc)))
 
-(define (fold-left procedure initial first . rest)
-  (if (pair? rest)
-      (%fold-left-lists 'fold-left procedure initial (cons first rest))
-      (%fold-left 'fold-left procedure initial first)))
+(define (fold-right kons knil first . rest)
+  (case (length rest)
+    ((0)
+     (guarantee list? first 'fold-right)
+     (%fold-right kons knil first))
+    ((1)
+     (let loop ((elts1 first) (elts2 (car rest)))
+       (if (and (pair? elts1) (pair? elts2))
+	   (kons (car elts1)
+		 (car elts2)
+		 (loop (cdr elts1) (cdr elts2)))
+	   (begin
+	     (if (not (or (pair? elts1) (null? elts1)))
+		 (error:not-a list? elts1 'fold-right))
+	     (if (not (or (pair? elts2) (null? elts2)))
+		 (error:not-a list? elts2 'fold-right))
+	     knil))))
+    (else
+     (let loop ((lists (cons first rest)))
+       (%cars+cdrs 'fold-right lists '()
+	 (lambda (cars cdrs)
+	   (if (pair? cdrs)
+	       (apply kons (append cars (list (loop cdrs))))
+	       knil)))))))
+
+(define-integrable (%fold-right kons knil elts)
+  (let loop ((elts elts))
+    (if (pair? elts)
+	(kons (car elts) (loop (cdr elts)))
+	knil)))
 
-;;; Variants of FOLD-LEFT that should probably be avoided.
-
-;; Like FOLD-LEFT, but
-;;    PROCEDURE takes the arguments with the state at the right-hand end.
-(define (fold procedure initial first . rest)
-  (if (pair? rest)
-      (%fold-left-lists 'fold
-			(lambda (state . arguments)
-			  (apply procedure (append arguments (list state))))
-			initial
-			(cons first rest))
-      (%fold-left 'fold
-		  (lambda (state item)
-		    (declare (integrate state item))
-		    (procedure item state))
-		  initial
-		  first)))
-
-;; Like FOLD-LEFT, with four differences.
-;;    1. Not n-ary
-;;    2. INITIAL is first element in list.
-;;    3. DEFAULT is only used if the list is empty
-;;    4. PROCEDURE takes arguments in the wrong order.
-(define (reduce procedure default list)
+(define (reduce kons knil list)
+  (guarantee list? list 'reduce)
   (if (pair? list)
-      (%fold-left 'reduce
-		  (lambda (state item)
-		    (declare (integrate state item))
-		    (procedure item state))
-		  (car list)
-		  (cdr list))
-      (begin
-	(if (not (null? list))
-	    (error:not-a list? list 'reduce))
-	default)))
+      (%fold kons (car list) (cdr list))
+      knil))
 
-(define (reduce-left procedure initial list)
-  (reduce (lambda (a b) (procedure b a)) initial list))
-
-(define (reduce-right procedure initial list)
+(define (reduce-right kons knil list)
+  (guarantee list? list 'reduce-right)
   (if (pair? list)
-      (let loop ((first (car list)) (rest (cdr list)))
-	(if (pair? rest)
-	    (procedure first (loop (car rest) (cdr rest)))
-	    (begin
-	      (if (not (null? rest))
-		  (error:not-a list? list 'reduce-right))
-	      first)))
-      (begin
-	(if (not (null? list))
-	    (error:not-a list? list 'reduce-right))
-	initial)))
+      (let loop ((head (car list)) (tail (cdr list)))
+	(if (pair? tail)
+	    (kons head (loop (car tail) (cdr tail)))
+	    head))
+      knil))
 
-(define (fold-right procedure initial first . rest)
-  (if (pair? rest)
-      (let loop ((lists (cons first rest)))
-	(let split ((lists lists) (cars '()) (cdrs '()))
-	  (if (pair? lists)
-	      (if (pair? (car lists))
-		  (split (cdr lists)
-			 (cons (car (car lists)) cars)
-			 (cons (cdr (car lists)) cdrs))
-		  (begin
-		    (if (not (null? (car lists)))
-			(mapper-error (cons first rest) 'fold-right))
-		    initial))
-	      (apply procedure
-		     (reverse! (cons (loop (reverse! cdrs)) cars))))))
-      (let loop ((list first))
-	(if (pair? list)
-	    (procedure (car list) (loop (cdr list)))
-	    (begin
-	      (if (not (null? list))
-		  (error:not-a list? first 'fold-right))
-	      initial)))))
+(define (%cars+cdrs caller lists knil k0)
+  (let loop ((lists lists) (k k0))
+    (if (pair? lists)
+	(let ((list (car lists)))
+	  (if (pair? list)
+	      (loop (cdr lists)
+		(lambda (cars cdrs)
+		  (k (cons (car list) cars)
+		     (cons (cdr list) cdrs))))
+	      (begin
+		(if (not (null? list))
+		    (error:not-a list? list caller))
+		(k0 knil '()))))
+	(k knil '()))))
+
+;;; FOLD-LEFT and REDUCE-LEFT are deprecated.
+
+(define (fold-left proc knil first . rest)
+  (apply fold (%fold-left-wrapper proc) knil first rest))
+
+(define (reduce-left proc knil list)
+  (guarantee list? list 'reduce-left)
+  (if (pair? list)
+      (fold-left proc (car list) (cdr list))
+      knil))
+
+(define (%fold-left-wrapper proc)
+  (lambda args
+    (apply proc (last args) (except-last-pair args))))
 
 ;;;; Generalized list operations -- mostly deprecated in favor of SRFI-1
 
