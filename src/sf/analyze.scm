@@ -248,10 +248,10 @@ USA.
   ((expression/method free-variables-dispatch-vector expression) expression))
 
 (define (expressions/free-variables expressions)
-  (fold-left (lambda (answer expression)
-               (lset-union eq? answer (expression/free-variables expression)))
-             (no-free-variables)
-             expressions))
+  (fold (lambda (expression answer)
+          (lset-union eq? answer (expression/free-variables expression)))
+        (no-free-variables)
+        expressions))
 
 (define free-variables-dispatch-vector
   (expression/make-dispatch-vector))
@@ -313,20 +313,20 @@ USA.
 (define-method/free-variables 'open-block
   (lambda (expression)
     (let ((omit (block/bound-variables (open-block/block expression))))
-     (fold-left (lambda (variables action)
-                  (if (eq? action open-block/value-marker)
-                      variables
-                      (lset-union eq?
-				  variables
-				  (lset-difference
-				   eq?
-				   (expression/free-variables action)
-				   omit))))
-                (lset-difference eq?
-				 (expressions/free-variables
-				  (open-block/values expression))
-				 omit)
-                (open-block/actions expression)))))
+     (fold (lambda (action variables)
+             (if (eq? action open-block/value-marker)
+                 variables
+                 (lset-union eq?
+			     variables
+			     (lset-difference
+			      eq?
+			      (expression/free-variables action)
+			      omit))))
+           (lset-difference eq?
+			    (expressions/free-variables
+			     (open-block/values expression))
+			    omit)
+           (open-block/actions expression)))))
 
 (define-method/free-variables 'procedure
   (lambda (expression)
@@ -368,11 +368,11 @@ USA.
   ((expression/method is-free-dispatch-vector expression) expression variable))
 
 (define (expressions/free-variable? expressions variable)
-  (fold-left (lambda (answer expression)
-               (or answer
-                   (expression/free-variable? expression variable)))
-             #f
-             expressions))
+  (fold (lambda (expression answer)
+          (or answer
+              (expression/free-variable? expression variable)))
+        #f
+        expressions))
 
 (define is-free-dispatch-vector
   (expression/make-dispatch-vector))
@@ -430,13 +430,13 @@ USA.
 
 (define-method/free-variable? 'open-block
   (lambda (expression variable)
-    (fold-left (lambda (answer action)
-                 (or answer
-                     (if (eq? action open-block/value-marker)
-                         #f
-                         (expression/free-variable? action variable))))
-               #f
-               (open-block/actions expression))))
+    (fold (lambda (action answer)
+            (or answer
+                (if (eq? action open-block/value-marker)
+                    #f
+                    (expression/free-variable? action variable))))
+          #f
+          (open-block/actions expression))))
 
 (define-method/free-variable? 'procedure
   (lambda (expression variable)
@@ -450,13 +450,13 @@ USA.
 
 (define-method/free-variable? 'sequence
   (lambda (expression variable)
-  (fold-left (lambda (answer action)
-               (or answer
-                   (if (eq? action open-block/value-marker)
-                       #f
-                       (expression/free-variable? action variable))))
-             #f
-             (sequence/actions expression))))
+  (fold (lambda (action answer)
+          (or answer
+              (if (eq? action open-block/value-marker)
+                  #f
+                  (expression/free-variable? action variable))))
+        #f
+        (sequence/actions expression))))
 
 (define-method/free-variable? 'the-environment false-procedure)
 
@@ -476,11 +476,11 @@ USA.
    expression variable info))
 
 (define (expressions/free-variable-info expressions variable info)
-  (fold-left (lambda (answer expression)
-               (expression/free-variable-info-dispatch expression variable
-						       answer))
-             info
-             expressions))
+  (fold (lambda (expression answer)
+          (expression/free-variable-info-dispatch expression variable
+						  answer))
+        info
+        expressions))
 
 (define free-info-dispatch-vector
   (expression/make-dispatch-vector))
@@ -546,13 +546,13 @@ USA.
 
 (define-method/free-variable-info 'open-block
   (lambda (expression variable info)
-    (fold-left (lambda (info action)
-                 (if (eq? action open-block/value-marker)
-                     info
-                     (expression/free-variable-info-dispatch action variable
-							     info)))
-               info
-               (open-block/actions expression))))
+    (fold (lambda (action info)
+            (if (eq? action open-block/value-marker)
+                info
+                (expression/free-variable-info-dispatch action variable
+							info)))
+          info
+          (open-block/actions expression))))
 
 (define-method/free-variable-info 'procedure
   (lambda (expression variable info)
@@ -811,10 +811,10 @@ USA.
 
 (define-method/size 'combination
   (lambda (expression)
-    (fold-left (lambda (total operand)
-                 (fix:+ total (expression/size operand)))
-               (fix:1+ (expression/size (combination/operator expression)))
-               (combination/operands expression))))
+    (fold (lambda (operand total)
+            (fix:+ total (expression/size operand)))
+          (fix:1+ (expression/size (combination/operator expression)))
+          (combination/operands expression))))
 
 (define-method/size 'conditional
   (lambda (expression)
@@ -842,12 +842,12 @@ USA.
 
 (define-method/size 'open-block
   (lambda (expression)
-    (fold-left (lambda (total action)
-                (if (eq? action open-block/value-marker)
-                    total
-                    (fix:+ total (expression/size action))))
-              1
-              (open-block/actions expression))))
+    (fold (lambda (action total)
+            (if (eq? action open-block/value-marker)
+                total
+                (fix:+ total (expression/size action))))
+          1
+          (open-block/actions expression))))
 
 (define-method/size 'procedure
   (lambda (expression)
@@ -864,10 +864,10 @@ USA.
 
 (define-method/size 'sequence
   (lambda (expression)
-    (fold-left (lambda (total action)
-                 (fix:+ total (expression/size action)))
-               1
-               (sequence/actions expression))))
+    (fold (lambda (action total)
+            (fix:+ total (expression/size action)))
+          1
+          (sequence/actions expression))))
 
 ;;; EXPRESSION->list <expr>
 ;;

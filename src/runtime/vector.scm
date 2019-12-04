@@ -204,10 +204,10 @@ USA.
   (let ((n (vector-length vector)))
     (if (pair? vectors)
 	(let ((n
-	       (fold-left (lambda (n v)
-			    (fix:min (vector-length v) n))
-			  n
-			  vectors)))
+	       (fold (lambda (v n)
+		       (fix:min (vector-length v) n))
+		     n
+		     vectors)))
 	  (let loop ((i 0))
 	    (if (fix:< i n)
 		(or (apply procedure
@@ -227,10 +227,10 @@ USA.
   (let ((n (vector-length vector)))
     (if (pair? vectors)
 	(let ((n
-	       (fold-left (lambda (n v)
-			    (fix:min (vector-length v) n))
-			  n
-			  vectors)))
+	       (fold (lambda (v n)
+		       (fix:min (vector-length v) n))
+		     n
+		     vectors)))
 	  (let loop ((i 0))
 	    (if (fix:< i n)
 		(and (apply procedure

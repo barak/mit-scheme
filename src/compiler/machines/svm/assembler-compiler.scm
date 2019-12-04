@@ -594,13 +594,13 @@ USA.
   (let ((names (map defn-name defns)))
     (let ((n
 	   (length
-	    (fold-left (lambda (a b)
-			 (let join ((a a) (b b))
-			   (if (and (pair? a) (pair? b) (eqv? (car a) (car b)))
-			       (cons (car a) (join (cdr a) (cdr b)))
-			       '())))
-		       (car names)
-		       (cdr names)))))
+	    (fold (lambda (a b)
+		    (let join ((a a) (b b))
+		      (if (and (pair? a) (pair? b) (eqv? (car a) (car b)))
+			  (cons (car a) (join (cdr a) (cdr b)))
+			  '())))
+		  (car names)
+		  (cdr names)))))
       (for-each (lambda (defn name)
 		  (set-defn-name! defn (cons (car name) (list-tail name n))))
 		defns

@@ -2226,10 +2226,10 @@ USA.
 (define-integrable integer-divide-remainder cdr)
 
 (define (gcd . integers)
-  (fold-left complex:gcd 0 integers))
+  (reduce complex:gcd 0 integers))
 
 (define (lcm . integers)
-  (fold-left complex:lcm 1 integers))
+  (reduce complex:lcm 1 integers))
 
 (define (atan z #!optional x)
   (if (default-object? x)

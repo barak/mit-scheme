@@ -577,22 +577,22 @@ USA.
 ;;  Ensure that sequences are always flat.
 (define (sequence/make scode actions)
   (define (sequence/collect-actions collected actions)
-    (fold-left (lambda (reversed action)
-                 (if (sequence? action)
-                     (sequence/collect-actions reversed
-					       (sequence/actions action))
-                     (cons action reversed)))
-               collected
-               actions))
+    (fold (lambda (action reversed)
+            (if (sequence? action)
+                (sequence/collect-actions reversed
+					  (sequence/actions action))
+                (cons action reversed)))
+          collected
+          actions))
   (let ((filtered-actions
-         (fold-left (lambda (filtered action)
-                      (if (expression/effect-free? action)
-                          (if (null? filtered)
-                              (list action)
-                              filtered)
-                          (cons action filtered)))
-                    '()
-                    (sequence/collect-actions '() actions))))
+         (fold (lambda (action filtered)
+                 (if (expression/effect-free? action)
+                     (if (null? filtered)
+                         (list action)
+                         filtered)
+                     (cons action filtered)))
+               '()
+               (sequence/collect-actions '() actions))))
     (cond ((not (pair? filtered-actions))
 	   (constant/make unspecific unspecific))
 	  ((not (pair? (cdr filtered-actions)))
