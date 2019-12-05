@@ -132,8 +132,8 @@ USA.
 							overwritten-block)
 			     subproblems))))))
 	      (if (< n-targets n-subproblems)
-		  (values (make-nodes (list-head subproblems n-targets))
-			  (list-tail subproblems n-targets))
+		  (values (make-nodes (take subproblems n-targets))
+			  (drop subproblems n-targets))
 		  (values (make-nodes subproblems) '()))))))
     (lambda (nodes extra-subproblems)
       (call-with-values
@@ -157,7 +157,7 @@ USA.
 	       (append! (block-layout block) (loop (block-parent block)))))))
     (let ((n-items (length stack-layout)))
       (if (< overwriting-size n-items)
-	  (list-tail stack-layout (- n-items overwriting-size))
+	  (drop stack-layout (- n-items overwriting-size))
 	  stack-layout))))
 
 (define (block-layout block)

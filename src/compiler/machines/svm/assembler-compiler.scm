@@ -604,7 +604,7 @@ USA.
 		  (car names)
 		  (cdr names)))))
       (for-each (lambda (defn name)
-		  (set-defn-name! defn (cons (car name) (list-tail name n))))
+		  (set-defn-name! defn (cons (car name) (drop name n))))
 		defns
 		names))))
 

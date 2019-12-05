@@ -193,7 +193,7 @@ USA.
 		(cond ((assq elicitor-name elicitors)
 		       => (lambda (pair) (set-cdr! pair procedure)))
 		      (else
-		       (set-car! (list-tail descriptor 4)
+		       (set-car! (drop descriptor 4)
 				 (cons (cons elicitor-name procedure)
 				       elicitors)))))))
 	(else

@@ -263,7 +263,7 @@ USA.
 		 parameters
 		 (let ((n-parameters (length parameters)))
 		   (if (> (length arguments) n-parameters)
-		       (list-head arguments n-parameters)
+		       (take arguments n-parameters)
 		       arguments)))))
 	'())))
 

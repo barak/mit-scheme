@@ -1615,7 +1615,7 @@ USA.
 		  (intern (list-ref body 5))
 		  (list-ref body 6)
 		  (list-ref body 7)
-		  (parse-mime-body:extensions (list-tail body 8))))
+		  (parse-mime-body:extensions (drop body 8))))
 	  ((and (string-ci=? "message" (car body))
 		(string-ci=? "rfc822" (cadr body)))
 	   (if (not (fix:>= n 10))
@@ -1632,7 +1632,7 @@ USA.
 			  (parse-mime-envelope (list-ref body 7))
 			  enclosed
 			  (list-ref body 9)
-			  (parse-mime-body:extensions (list-tail body 10)))))
+			  (parse-mime-body:extensions (drop body 10)))))
 	     (set-mime-body-enclosure! enclosed enclosure)
 	     enclosure))
 	  (else
@@ -1646,7 +1646,7 @@ USA.
 		  (list-ref body 4)
 		  (intern (list-ref body 5))
 		  (list-ref body 6)
-		  (parse-mime-body:extensions (list-tail body 7)))))))
+		  (parse-mime-body:extensions (drop body 7)))))))
 
 (define (parse-mime-body:extensions tail)
   (if (pair? tail)

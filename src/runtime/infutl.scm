@@ -249,8 +249,8 @@ USA.
 	  (pathname-new-directory
 	   (file-pathname pathname)
 	   (cons 'relative
-		 (list-tail (pathname-directory pathname)
-			    (length (pathname-directory (car rule))))))
+		 (drop (pathname-directory pathname)
+		       (length (pathname-directory (car rule))))))
 	  (cdr rule))
 	 pathname))))
 

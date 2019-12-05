@@ -191,8 +191,8 @@ USA.
 
 (define (%open-block-actions open-block)
   (make-scode-sequence
-   (list-tail (cdr (scode-sequence-actions open-block))
-	      (length (%open-block-names open-block)))))
+   (drop (cdr (scode-sequence-actions open-block))
+	 (length (%open-block-names open-block)))))
 
 (define-integrable (make-open-block-descriptor names declarations)
   (vector open-block-tag names declarations))

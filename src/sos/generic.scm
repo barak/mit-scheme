@@ -220,7 +220,7 @@ USA.
 	       (and (fix:> n-args arity-min)
 		    (or (not arity-max)
 			(fix:<= n-args arity-max))
-		    (generator procedure (list-head tags arity-min))))))))
+		    (generator procedure (take tags arity-min))))))))
 
 (define (apply-generic-1 record)
   (lambda (a1)

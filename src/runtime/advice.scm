@@ -287,7 +287,7 @@ USA.
 		  (write-args arguments)
 		  (write-string "]" port))
 		(begin
-		  (write-args (list-head arguments 10))
+		  (write-args (take arguments 10))
 		  (newline port)
 		  (write-string "          ...]" port))))))
     (newline port)))

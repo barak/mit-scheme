@@ -437,7 +437,7 @@ USA.
 (define (standard-uri->pathname uri)
   (or (uri->pathname uri #f)
       (merge-pathnames
-       (uri->pathname (make-uri #f #f (list-tail (uri-path uri) 4) #f #f))
+       (uri->pathname (make-uri #f #f (drop (uri-path uri) 4) #f #f))
        (standard-library-directory-pathname))))
 
 (define (system-uri #!optional rel-uri)

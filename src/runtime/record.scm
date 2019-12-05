@@ -905,10 +905,10 @@ USA.
     (if (structure-type/tag type)
 	(lambda (structure value)
 	  (check-list-tagged structure type)
-	  (set-car! (list-tail structure index) value))
+	  (set-car! (drop structure index) value))
 	(lambda (structure value)
 	  (check-list-untagged structure type)
-	  (set-car! (list-tail structure index) value)))))
+	  (set-car! (drop structure index) value)))))
 
 (define-integrable (check-vector-tagged structure type)
   (if (not (and (vector? structure)

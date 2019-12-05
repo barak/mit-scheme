@@ -654,8 +654,8 @@ differences:
 							   value))
 		       ((list)
 			`(,(absolute 'set-car! context)
-			  (,(absolute 'list-tail context) structure
-							  ,(slot/index slot))
+			  (,(absolute 'drop context) structure
+						     ,(slot/index slot))
 			  value)))))))
 	 (remove slot/read-only? (structure/slots structure)))))
 

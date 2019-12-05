@@ -74,7 +74,7 @@ USA.
   (loop set))
 
 ;;; The dataflow analyzer assumes that
-;;; (eq? (list-tail (eq-set-union x y) n) y) for some n.
+;;; (eq? (drop (eq-set-union x y) n) y) for some n.
 
 (define (eq-set-union x y)
   (if (null? y)

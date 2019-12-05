@@ -1241,8 +1241,8 @@ Prefix argument means do not kill the debugger buffer."
 	(delta (- subproblem-number (dstate/subproblem-number dstate))))
     (if (negative? delta)
 	(let ((subproblems
-	       (list-tail (dstate/previous-subproblems dstate)
-			  (-1+ (- delta)))))
+	       (drop (dstate/previous-subproblems dstate)
+		     (-1+ (- delta)))))
 	  (set-current-subproblem! dstate (car subproblems) (cdr subproblems))
 	  (finish-move-to-subproblem! dstate))
 	(let loop

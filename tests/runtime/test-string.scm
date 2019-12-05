@@ -105,7 +105,7 @@ USA.
     (let ((end (length latin-alphabet)))
       (do ((i 0 (fix:+ i 1)))
 	  ((not (fix:< i end)))
-	(let ((chars (list-head latin-alphabet i)))
+	(let ((chars (take latin-alphabet i)))
 	  (let ((result (build-string chars)))
 	    (assert-true (legacy-string? result))
 	    (assert-string= result (chars->string chars))))
@@ -120,7 +120,7 @@ USA.
     (let ((end (length greek-alphabet)))
       (do ((i 0 (fix:+ i 1)))
 	  ((not (fix:< i end)))
-	(let ((chars (list-head greek-alphabet i)))
+	(let ((chars (take greek-alphabet i)))
 	  (assert-string= (build-string chars)
 			  (chars->string chars)))
 	(let ((strings (make-test-strings i greek-alphabet #f)))
@@ -161,7 +161,7 @@ USA.
   (let loop ((k 0) (strings '()))
     (if (fix:< k n)
 	(loop (fix:+ k 1)
-	      (cons (chars->string (list-head alphabet k))
+	      (cons (chars->string (take alphabet k))
 		    strings))
 	(if reverse?
 	    strings
@@ -233,9 +233,9 @@ USA.
   (list->string
    (let ((l1 (string->list s1))
 	 (l2 (string->list s2 start end)))
-     (append (list-head l1 at)
+     (append (take l1 at)
 	     l2
-	     (list-tail l1 (+ at (length l2)))))))
+	     (drop l1 (+ at (length l2)))))))
 
 (define-test 'string-slice
   (let ((s "abcdefghijklmnopqrstuvwxyz"))

@@ -231,9 +231,9 @@ USA.
 		    (n-strings (length strings))
 		    (cols '()))
 		 (if (> n-strings n-rows)
-		     (loop (list-tail strings n-rows)
+		     (loop (drop strings n-rows)
 			   (- n-strings n-rows)
-			   (cons (list-head strings n-rows) cols))
+			   (cons (take strings n-rows) cols))
 		     (reverse!
 		      (if (> n-strings 0) (cons strings cols) cols)))))
 	     (lambda ()

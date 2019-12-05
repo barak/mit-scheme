@@ -771,7 +771,7 @@ USA.
 (define (repl-history/replace-current! history object)
   (let ((elements (repl-history/elements history)))
     (if (pair? elements)
-	(set-car! (list-tail elements (- (repl-history/size history) 1))
+	(set-car! (drop elements (- (repl-history/size history) 1))
 		  object))))
 
 (define (repl-history/read history n)

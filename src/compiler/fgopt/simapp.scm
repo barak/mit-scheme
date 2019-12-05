@@ -68,7 +68,7 @@ USA.
     (let ((new (lvalue-values-cache (reference-lvalue operator))))
       (let loop ((operators new))
 	;; We can use `eq?' here because we assume that
-	;; (eq? (list-tail (eq-set-union x y) n) y) for some n.
+	;; (eq? (drop (eq-set-union x y) n) y) for some n.
 	;; This is also noted at the definition of `eq-set-union'.
 	(if (eq? operators old)
 	    new

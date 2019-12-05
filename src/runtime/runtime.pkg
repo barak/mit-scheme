@@ -3175,7 +3175,6 @@ USA.
 	  fold-left
 	  keep-matching-items
 	  keep-matching-items!
-	  list-head
 	  map*
 	  reduce-left)
   (export ()
@@ -3190,48 +3189,48 @@ USA.
 	  alist-delete!			;SRFI-1
 	  alist?
 	  any-duplicates?
-	  append
+	  append			;SRFI-1
 	  append!			;SRFI-1
 	  append-map			;SRFI-1
 	  append-map!			;SRFI-1
-	  assoc
+	  assoc				;SRFI-1
 	  association-procedure
-	  assq
-	  assv
-	  caaaar
-	  caaadr
-	  caaar
-	  caadar
-	  caaddr
-	  caadr
-	  caar
-	  cadaar
-	  cadadr
-	  cadar
-	  caddar
-	  cadddr
-	  caddr
-	  cadr
-	  car
+	  assq				;SRFI-1
+	  assv				;SRFI-1
+	  caaaar			;SRFI-1
+	  caaadr			;SRFI-1
+	  caaar				;SRFI-1
+	  caadar			;SRFI-1
+	  caaddr			;SRFI-1
+	  caadr				;SRFI-1
+	  caar				;SRFI-1
+	  cadaar			;SRFI-1
+	  cadadr			;SRFI-1
+	  cadar				;SRFI-1
+	  caddar			;SRFI-1
+	  cadddr			;SRFI-1
+	  caddr				;SRFI-1
+	  cadr				;SRFI-1
+	  car				;SRFI-1
 	  car+cdr			;SRFI-1
-	  cdaaar
-	  cdaadr
-	  cdaar
-	  cdadar
-	  cdaddr
-	  cdadr
-	  cdar
-	  cddaar
-	  cddadr
-	  cddar
-	  cdddar
-	  cddddr
-	  cdddr
-	  cddr
-	  cdr
+	  cdaaar			;SRFI-1
+	  cdaadr			;SRFI-1
+	  cdaar				;SRFI-1
+	  cdadar			;SRFI-1
+	  cdaddr			;SRFI-1
+	  cdadr				;SRFI-1
+	  cdar				;SRFI-1
+	  cddaar			;SRFI-1
+	  cddadr			;SRFI-1
+	  cddar				;SRFI-1
+	  cdddar			;SRFI-1
+	  cddddr			;SRFI-1
+	  cdddr				;SRFI-1
+	  cddr				;SRFI-1
+	  cdr				;SRFI-1
 	  circular-list			;SRFI-1
 	  circular-list?		;SRFI-1
-	  cons
+	  cons				;SRFI-1
 	  cons*				;SRFI-1
 	  decode-general-car-cdr
 	  del-assoc
@@ -3249,17 +3248,17 @@ USA.
 	  delv
 	  delv!
 	  dotted-list?			;SRFI-1
-	  eighth
+	  eighth			;SRFI-1
 	  encode-general-car-cdr
 	  error:not-restricted-keyword-list
 	  except-last-pair
 	  except-last-pair!
-	  fifth
-	  first
+	  fifth				;SRFI-1
+	  first				;SRFI-1
 	  fold				;SRFI-1
 	  fold-right			;SRFI-1
-	  for-each
-	  fourth
+	  for-each			;SRFI-1
+	  fourth			;SRFI-1
 	  general-car-cdr
 	  get-keyword-value
 	  get-keyword-values
@@ -3273,9 +3272,9 @@ USA.
 	  keyword-option-parser
 	  last				;SRFI-1
 	  last-pair			;SRFI-1
-	  length
+	  length			;SRFI-1
 	  length=?
-	  list
+	  list				;SRFI-1
 	  list->weak-list
 	  list-copy			;SRFI-1
 	  list-deletor
@@ -3283,41 +3282,36 @@ USA.
 	  list-of-type?
 	  list-of-type?->length
 	  list-of-unique-symbols?
-	  list-ref
+	  list-ref			;SRFI-1
 	  list-set!
-	  list-tail			;use SRFI-1 drop
 	  list=				;SRFI-1
 	  list?
 	  list?->length
 	  make-circular-list
 	  make-initialized-list
 	  make-list			;SRFI-1
-	  map
-	  member
+	  map				;SRFI-1
+	  member			;SRFI-1
 	  member-procedure
-	  memq
-	  memv
-	  ninth
+	  memq				;SRFI-1
+	  memv				;SRFI-1
+	  ninth				;SRFI-1
 	  non-empty-list?
 	  not-pair?			;SRFI-1
 	  null-list?			;SRFI-1
-	  null?
-	  pair?
+	  null?				;SRFI-1
+	  pair?				;SRFI-1
 	  reduce			;SRFI-1
 	  reduce-right			;SRFI-1
 	  restricted-keyword-list?
-	  reverse
-	  reverse!			;SRFI-1
-	  reverse*
-	  reverse*!
-	  second
-	  set-car!
-	  set-cdr!
-	  seventh
-	  sixth
+	  second			;SRFI-1
+	  set-car!			;SRFI-1
+	  set-cdr!			;SRFI-1
+	  seventh			;SRFI-1
+	  sixth				;SRFI-1
 	  sublist
-	  tenth
-	  third
+	  tenth				;SRFI-1
+	  third				;SRFI-1
 	  tree-copy			;SRFI-1
 	  unique-keyword-list?
 	  weak-delq!
@@ -3351,9 +3345,13 @@ USA.
   (files "srfi-1")
   (parent (runtime))
   (export deprecated ()
+	  (list-head take)
+	  (reverse* append-reverse)
+	  (reverse*! append-reverse!)
 	  for-all?
 	  there-exists?)
   (export ()
+	  (list-tail drop)
 	  any
 	  append-reverse
 	  append-reverse!
@@ -3399,6 +3397,8 @@ USA.
 	  partition!
 	  remove
 	  remove!
+	  reverse
+	  reverse!
 	  span
 	  span!
 	  split-at

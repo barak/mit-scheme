@@ -153,7 +153,7 @@ USA.
 	     (write brief-bindings-limit port)
 	     (write-string " shown):" port)
 	     (newline port)
-	     (finish (list-head bindings brief-bindings-limit)))
+	     (finish (take bindings brief-bindings-limit)))
 	    (else
 	     (write-string " has bindings:" port)
 	     (newline port)

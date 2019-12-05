@@ -319,8 +319,8 @@ Examples:
 	    #f
 	    (reassign
 	     expr
-	     (let ((l1 (list-head operands spare-args))
-		   (l2 (map2 (list-tail operands spare-args))))
+	     (let ((l1 (take operands spare-args))
+		   (l2 (map2 (drop operands spare-args))))
 	       (cond ((null? l2)
 		      (wrap block l1 (none block)))
 		     ((null? (cdr l2))

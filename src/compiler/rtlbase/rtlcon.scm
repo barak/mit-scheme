@@ -583,9 +583,9 @@ USA.
 	      (do-chunk elements
 			offset
 			(finish))
-	      (do-chunk (list-head elements chunk-size)
+	      (do-chunk (take elements chunk-size)
 			offset
-			(process (list-tail elements chunk-size)
+			(process (drop elements chunk-size)
 				 (+ offset chunk-size)
 				 (1+ chunk)))))))))
 

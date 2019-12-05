@@ -594,15 +594,15 @@ USA.
 
 	(define (choose i)
 	  (let ((choice (assv i choices))
-		(args* (list-head args i)))
+		(args* (take args i)))
 	    (if choice
 		(apply scons-call (cdr choice) args*)
 		(scons-call 'error "No matching case-lambda clause:"
 			    (apply scons-call 'list args*)))))
 
-	(scons-lambda (append (list-head args low)
+	(scons-lambda (append (take args low)
 			      (list #!optional)
-			      (list-tail args low))
+			      (drop args low))
 	  (let loop ((i low))
 	    (if (fix:< i high)
 		(scons-if (scons-call 'default-object? (list-ref args i))

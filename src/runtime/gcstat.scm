@@ -187,8 +187,8 @@ USA.
 (define (copy-to-size l size)
   (let ((max (length l)))
     (if (>= max size)
-	(list-head l size)
-	(append (list-head l max)
+	(take l size)
+	(append (take l max)
 		(make-list (- size max) '())))))
 
 (define (bounded:install-history!)

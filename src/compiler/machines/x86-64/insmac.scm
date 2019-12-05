@@ -60,7 +60,7 @@ USA.
 		  (rex (list-ref actions 1))
 		  (mode (list-ref actions 2))
 		  (r/m (list-ref actions 3))
-		  (extra (list-tail actions 4)))
+		  (extra (drop actions 4)))
 	      `(,(close-syntax 'MAKE-EFFECTIVE-ADDRESS environment)
 		(,(close-syntax 'QUOTE environment) ,keyword)
 		,(parse-categories categories environment pattern)

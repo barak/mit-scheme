@@ -321,39 +321,13 @@ USA.
       #t))
 
 (define (list-ref list index)
-  (let ((tail (list-tail list index)))
-    (if (not (pair? tail))
-	(error:bad-range-argument index 'list-ref))
-    (car tail)))
+  (car (drop list index)))
 
 (define (list-set! list index new-value)
-  (let ((tail (list-tail list index)))
-    (if (not (pair? tail))
-	(error:bad-range-argument index 'list-set!))
-    (set-car! tail new-value)))
-
-(define (list-tail list index)
-  (guarantee index-fixnum? index 'list-tail)
-  (let loop ((list list) (index* index))
-    (if (fix:zero? index*)
-	list
-	(begin
-	  (if (not (pair? list))
-	      (error:bad-range-argument index 'list-tail))
-	  (loop (cdr list) (fix:- index* 1))))))
-
-(define (list-head list index)
-  (guarantee index-fixnum? index 'list-head)
-  (let loop ((list list) (index* index))
-    (if (fix:zero? index*)
-	'()
-	(begin
-	  (if (not (pair? list))
-	      (error:bad-range-argument index 'list-head))
-	  (cons (car list) (loop (cdr list) (fix:- index* 1)))))))
+  (set-car! (drop list index) new-value))
 
 (define (sublist list start end)
-  (list-head (list-tail list start) (- end start)))
+  (take (drop list start) (- end start)))
 
 (define (list-copy items)
   (let ((lose (lambda () (error:not-a list? items 'list-copy))))
@@ -573,7 +547,7 @@ USA.
    (lambda () '())
    (lambda (l) l)
    %append-2))
-
+
 (define (%append-2! l1 l2)
   (if (pair? l1)
       (begin (set-cdr! (last-pair l1) l2)
@@ -597,29 +571,6 @@ USA.
    (lambda () '())
    (lambda (l) l)
    %append-2!))
-
-(define (reverse l) (reverse* l '()))
-(define (reverse! l) (reverse*! l '()))
-
-(define (reverse* l tail)
-  (let loop ((rest l) (so-far tail))
-    (if (pair? rest)
-	(loop (cdr rest) (cons (car rest) so-far))
-	(begin
-	  (if (not (null? rest))
-	      (error:not-a list? l 'reverse*))
-	  so-far))))
-
-(define (reverse*! l tail)
-  (let loop ((current l) (new-cdr tail))
-    (if (pair? current)
-	(let ((next (cdr current)))
-	  (set-cdr! current new-cdr)
-	  (loop next current))
-	(begin
-	  (if (not (null? current))
-	      (error:not-a list? l 'reverse*!))
-	  new-cdr))))
 
 ;;;; Mapping Procedures
 

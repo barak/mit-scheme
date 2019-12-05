@@ -1004,7 +1004,7 @@ USA.
 		      (message msg "done")
 		      (reverse! replies))
 		    (let* ((rxd (min rxn n-chunk))
-			   (rxlist* (list-tail rxlist rxd))
+			   (rxlist* (drop rxlist rxd))
 			   (replies (receive-replies rxlist rxlist* replies))
 			   (txd (min txn n-chunk)))
 		      (loop (- txn txd)

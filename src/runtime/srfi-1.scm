@@ -340,11 +340,17 @@ USA.
 	      len))
 	len)))
 
+(define (reverse l)
+  (append-reverse l '()))
+
 (define (append-reverse rev-head tail)
   (let lp ((rev-head rev-head) (tail tail))
     (if (null-list? rev-head 'append-reverse)
 	tail
 	(lp (cdr rev-head) (cons (car rev-head) tail)))))
+
+(define (reverse! l)
+  (append-reverse! l '()))
 
 (define (append-reverse! rev-head tail)
   (let lp ((rev-head rev-head) (tail tail))

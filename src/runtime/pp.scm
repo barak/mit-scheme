@@ -504,7 +504,7 @@ USA.
 	  (and (>= available-space (+ (-1+ n-cols) (reduce + 0 widths)))
 	       (let ((last-n-1 (remainder (-1+ n-nodes) n-cols)))
 		 (>= available-space
-		     (+ (+ last-n-1 (reduce + 0 (list-head widths last-n-1)))
+		     (+ (+ last-n-1 (reduce + 0 (take widths last-n-1)))
 			(+ last-size depth))))))
 
 	(define (find-max-width posn step)

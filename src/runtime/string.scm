@@ -1387,7 +1387,7 @@ USA.
 	 (n (fix:- end start))
 	 (builder (string-builder n)))
     (do ((i 0 (fix:+ i 1))
-	 (chars (list-tail chars start) (cdr chars)))
+	 (chars (drop chars start) (cdr chars)))
 	((not (fix:< i n)))
       (guarantee char? (car chars) 'list->string)
       (builder (car chars)))

@@ -537,7 +537,7 @@ USA.
 	   (- (prompt-for-nonnegative-integer "Subproblem number" false port)
 	      (dstate/subproblem-number dstate))))
       (if (negative? delta)
-	  (list-tail (dstate/previous-subproblems dstate) (-1+ (- delta)))
+	  (drop (dstate/previous-subproblems dstate) (-1+ (- delta)))
 	  (let loop
 	      ((subproblem (dstate/subproblem dstate))
 	       (subproblems (dstate/previous-subproblems dstate))
