@@ -236,7 +236,9 @@ USA.
 	  standard-print-method-parts
 	  standard-print-method?)
   (export (runtime rep)
-	  finished-booting!)
+	  finished-booting!
+	  multi-values-list
+	  multi-values?)
   (export (runtime tagged-dispatch)
 	  set-predicate-tag!))
 
@@ -4187,6 +4189,9 @@ USA.
 	  cmdl?
 	  condition-type:breakpoint
 	  condition/breakpoint?
+	  default/repl-eval
+	  default/repl-read
+	  default/repl-write
 	  ge
 	  hook/repl-eval
 	  hook/repl-read
@@ -4221,6 +4226,7 @@ USA.
 	  repl-read
 	  repl-reader-history-size
 	  repl-scode-eval
+	  repl-get-hash-number
 	  repl-write
 	  repl/base
 	  repl/condition
@@ -5259,7 +5265,7 @@ USA.
 	  with-notification)
   (export (runtime rep)
 	  port/set-default-environment
-	  port/write-result)
+	  port/write-values)
   (export (runtime rep)
 	  port/set-default-directory)
   (export (runtime debugger-command-loop)
@@ -5273,7 +5279,7 @@ USA.
 	  port/read-finish
 	  port/read-start)
   (export (runtime swank)
-	  port/write-result)
+	  port/write-values)
   (initialization (initialize-package!)))
 
 (define-package (runtime thread)

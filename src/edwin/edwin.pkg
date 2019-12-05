@@ -858,7 +858,7 @@ USA.
 	  set-local-repl-buffer!
 	  start-inferior-repl!)
   (import (runtime user-interface)
-	  default/write-result))
+	  default/write-values))
 
 (define-package (edwin dired)
   (files "dired")

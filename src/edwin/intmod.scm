@@ -902,20 +902,25 @@ If this is an error, the debugger examines the error condition."
 	   (and (not (null? windows))
 		(apply min (map window-x-size windows)))))))
 
-(define (operation/write-result port expression value hash-number)
+(define (operation/write-values port expression vals)
   (let ((buffer (port/buffer port))
 	(other-buffer?
 	 (memq (operation/current-expression-context port expression)
-	       '(OTHER-BUFFER EXPRESSION))))
+	       '(other-buffer expression))))
     (if (and other-buffer?
 	     (not (ref-variable inferior-repl-write-results buffer)))
-	(transcript-write value
-			  (and (ref-variable enable-transcript-buffer buffer)
-			       (transcript-buffer)))
+	(let ((tbuffer
+	       (and (ref-variable enable-transcript-buffer buffer)
+		    (transcript-buffer))))
+	  (for-each (lambda (object)
+		      (transcript-write object tbuffer))
+		    vals))
 	(begin
-	  (default/write-result port expression value hash-number)
+	  (default/write-values port expression vals)
 	  (if (and other-buffer? (not (mark-visible? (port/mark port))))
-	      (transcript-write value #f))))))
+	      (for-each (lambda (val)
+			  (transcript-write val #f))
+			vals))))))
 
 (define (mark-visible? mark)
   (any (lambda (window)
@@ -1178,5 +1183,5 @@ If this is an error, the debugger examines the error condition."
      (READ-CHAR ,operation/read-char)
      (READ ,operation/read)
      (CURRENT-EXPRESSION-CONTEXT ,operation/current-expression-context)
-     (WRITE-RESULT ,operation/write-result))
+     (WRITE-VALUES ,operation/write-values))
    #f))

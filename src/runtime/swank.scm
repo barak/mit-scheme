@@ -278,10 +278,10 @@ USA.
   'nil)
 
 (define (interactive-eval sexp socket nl?)
-  (let ((value (repl-eval sexp socket)))
+  (receive vals (repl-eval sexp socket)
     (call-with-output-string
       (lambda (port)
-	(port/write-result port sexp value (hash-object value))
+	(port/write-values port sexp vals)
 	(if nl? (newline port))))))
 
 (define (for-each-sexp procedure string)

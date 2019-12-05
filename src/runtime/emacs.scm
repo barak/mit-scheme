@@ -123,26 +123,41 @@ USA.
 
 ;;;; Miscellaneous Hooks
 
-(define (emacs/write-result port expression object hash-number)
-  expression
-  (cond ((undefined-value? object)
-	 (transmit-signal-with-argument port #\v ""))
-	(hash-number
-	 ;; The #\P command used to do something useful, but now
-	 ;; it just sets the Emacs variable `xscheme-prompt' to
-	 ;; its string argument.  We use this to advantage here.
-	 (transmit-signal-with-argument port #\P (write-to-string object))
-	 (emacs-eval
-	  port
-	  "(xscheme-write-message-1 xscheme-prompt (format \";Value "
-	  (number->string hash-number)
-	  ": %s\" xscheme-prompt))"))
-	(else
-	 (transmit-signal-with-argument
-	  port #\v
-	  (call-with-output-string
-	    (lambda (port)
-	      (write object port)))))))
+(define (emacs/write-values port expression vals)
+  (declare (ignore expression))
+
+  (define (write-one val)
+    (let ((hash-number (repl-get-hash-number val)))
+      (if hash-number
+	  (begin
+	    ;; The #\P command used to do something useful, but now it just sets
+	    ;; the Emacs variable `xscheme-prompt' to its string argument.  We
+	    ;; use this to advantage here so that we can pass a string in
+	    ;; Scheme's syntax to Emac's eval.
+	    (transmit-signal-with-argument port #\P
+	      (call-with-output-string
+		(lambda (port)
+		  (write val port))))
+	    (emacs-eval
+	     port
+	     "(xscheme-write-message-1 xscheme-prompt (format \";Value "
+	     (number->string hash-number)
+	     ": %s\" xscheme-prompt))"))
+	  (transmit-signal-with-argument port #\v
+	    (call-with-output-string
+	      (lambda (port)
+		(write val port)))))))
+
+  (case (length vals)
+    ((0)
+     (emacs-eval port
+		 "(xscheme-write-message-1 \"(no values)\" \";No values\")"))
+    ((1)
+     (if (undefined-value? (car vals))
+	 (transmit-signal-with-argument port #\v "")
+	 (write-one (car vals))))
+    (else
+     (for-each write-one vals))))
 
 (define (emacs/error-decision repl condition)
   condition
@@ -247,7 +262,7 @@ USA.
 	   (debugger-failure ,emacs/debugger-failure)
 	   (debugger-message ,emacs/debugger-message)
 	   (debugger-presentation ,emacs/debugger-presentation)
-	   (write-result ,emacs/write-result)
+	   (write-values ,emacs/write-values)
 	   (set-default-directory ,emacs/set-default-directory)
 	   (read-start ,emacs/read-start)
 	   (read-finish ,emacs/read-finish)

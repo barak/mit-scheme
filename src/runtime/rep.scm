@@ -469,19 +469,25 @@ USA.
 
 (define (%repl-eval s-expression environment repl)
   (repl-history/record! (repl/reader-history repl) s-expression)
-  (let ((value (hook/repl-eval s-expression environment repl)))
-    (repl-history/record! (repl/printer-history repl) value)
-    value))
+  (receive vals (hook/repl-eval s-expression environment repl)
+    (for-each (let ((history (repl/printer-history repl)))
+		(lambda (val)
+		  (repl-history/record! history val)))
+	      vals)
+    (apply values vals)))
 
 (define hook/repl-eval)
 (define (default/repl-eval s-expression environment repl)
+
+  (define (do-eval expr env)
+    (%repl-scode-eval (syntax expr env) env repl))
+
   (if (and (pair? s-expression)
 	   (eq? 'unquote (car s-expression))
 	   (pair? (cdr s-expression))
 	   (null? (cddr s-expression)))
-      (let ((env (->environment '(user))))
-	(%repl-scode-eval (syntax (cadr s-expression) env) env repl))
-      (%repl-scode-eval (syntax s-expression environment) environment repl)))
+      (do-eval (cadr s-expression) (->environment '(user)))
+      (do-eval s-expression environment)))
 
 (define (repl-scode-eval scode #!optional environment repl)
   (receive (environment repl) (optional-er environment repl 'repl-scode-eval)
@@ -498,8 +504,8 @@ USA.
    with-repl-eval-boundary
    repl))
 
-(define (repl-write value s-expression #!optional repl)
-  (hook/repl-write value
+(define (repl-write vals s-expression #!optional repl)
+  (hook/repl-write vals
 		   s-expression
 		   (if (default-object? repl)
 		       (nearest-repl)
@@ -508,24 +514,23 @@ USA.
 			 repl))))
 
 (define hook/repl-write)
-(define (default/repl-write object s-expression repl)
-  (port/write-result (cmdl/port repl)
-		     s-expression
-		     object
-		     (and repl:write-result-hash-numbers?
-			  (object-pointer? object)
-			  (not (interned-symbol? object))
-			  (not (number? object))
-			  (hash-object object))))
+(define (default/repl-write vals s-expression repl)
+  (port/write-values (cmdl/port repl) s-expression vals))
+
+(define (repl-get-hash-number object)
+  (and repl:write-result-hash-numbers?
+       (object-pointer? object)
+       (not (interned-symbol? object))
+       (not (number? object))
+       (hash-object object)))
 
 (define (repl-eval/write s-expression #!optional environment repl)
   (receive (environment repl) (optional-er environment repl 'repl-eval/write)
     (%repl-eval/write s-expression environment repl)))
 
 (define (%repl-eval/write s-expression environment repl)
-  (hook/repl-write (%repl-eval s-expression environment repl)
-		   s-expression
-		   repl))
+  (receive vals (%repl-eval s-expression environment repl)
+    (hook/repl-write vals s-expression repl)))
 
 (define (optional-er environment repl caller)
   (let ((repl

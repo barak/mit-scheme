@@ -309,30 +309,42 @@ USA.
 
 ;;;; Miscellaneous Hooks
 
-(define (port/write-result port expression value hash-number)
-  (let ((operation (textual-port-operation port 'write-result)))
+(define (port/write-values port expression vals)
+  (let ((operation (textual-port-operation port 'write-values)))
     (if operation
-	(operation port expression value hash-number)
-	(default/write-result port expression value hash-number))))
+	(operation port expression vals)
+	(default/write-values port expression vals))))
 
-(define (default/write-result port expression object hash-number)
-  expression
+(define (default/write-values port expression vals)
+  (declare (ignore expression))
   (if (not (nearest-cmdl/batch-mode?))
       (with-output-port-terminal-mode port 'cooked
 	(lambda ()
-	  (fresh-line port)
-	  (write-string ";" port)
-	  (if (and write-result:undefined-value-is-special?
-		   (undefined-value? object))
-	      (write-string "Unspecified return value" port)
-	      (begin
-		(write-string "Value" port)
-		(if hash-number
-		    (begin
-		      (write-string " " port)
-		      (write hash-number port)))
-		(write-string ": " port)
-		(write object port)))))))
+
+	  (define (write-one val)
+	    (fresh-line port)
+	    (write-string ";Value" port)
+	    (let ((hash-number (repl-get-hash-number val)))
+	      (if hash-number
+		  (begin
+		    (write-string " " port)
+		    (write hash-number port))))
+	    (write-string ": " port)
+	    (write val port))
+
+	  (case (length vals)
+	    ((0)
+	     (fresh-line port)
+	     (write-string ";No values" port))
+	    ((1)
+	     (if (and write-result:undefined-value-is-special?
+		      (undefined-value? (car vals)))
+		 (begin
+		   (fresh-line port)
+		   (write-string ";Unspecified return value" port))
+		 (write-one (car vals))))
+	    (else
+	     (for-each write-one vals)))))))
 
 (define write-result:undefined-value-is-special? true)
 
