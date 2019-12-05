@@ -2,8 +2,8 @@
 @comment %**start of header
 @setfilename mit-scheme-ref
 @set EDITION 1.106
-@set VERSION 10.1.2
-@set UPDATED 2017-02-15
+@set VERSION 10.1.90
+@set UPDATED 2019-12-04
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -295,7 +295,7 @@ Lists
 * Filtering Lists::
 * Searching Lists::
 * Mapping of Lists::
-* Reduction of Lists::
+* Folding of Lists::
 * Miscellaneous List Operations::
 
 Vectors
@@ -531,3 +531,4 @@ Device Independent Bitmap Utilities
 @include concept-index.texi
 
 @bye
+gggg
