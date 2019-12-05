@@ -327,7 +327,7 @@ USA.
 
 (define char-set:qp-encoded
   (char-set-invert
-   (char-set-union (char-set-difference (ascii-range->char-set #x21 #x7F)
+   (char-set-union (char-set-difference (ucs-range->char-set #x21 #x7F)
 					(char-set #\=))
 		   (char-set #\space #\tab))))
 

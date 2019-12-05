@@ -96,11 +96,11 @@ USA.
 
 (define match-bnode-name
   (let* ((name-head
-	  (char-set-union (ascii-range->char-set #x41 #x5B)
-			  (ascii-range->char-set #x61 #x7B)))
+	  (char-set-union (ucs-range->char-set #x41 #x5B)
+			  (ucs-range->char-set #x61 #x7B)))
 	 (name-tail
 	  (char-set-union name-head
-			  (ascii-range->char-set #x30 #x3A))))
+			  (ucs-range->char-set #x30 #x3A))))
     (*matcher
      (seq (char-set name-head)
 	  (* (char-set name-tail))))))
@@ -175,11 +175,11 @@ USA.
   (char-set #\space #\tab))
 
 (define char-set:character
-  (ascii-range->char-set #x20 #x7F))
+  (ucs-range->char-set #x20 #x7F))
 
 (define char-set:hex
-  (char-set-union (ascii-range->char-set #x30 #x3A)
-		  (ascii-range->char-set #x41 #x47)))
+  (char-set-union (ucs-range->char-set #x30 #x3A)
+		  (ucs-range->char-set #x41 #x47)))
 
 (define char-set:unescaped
   (char-set-difference char-set:character (char-set #\" #\\)))

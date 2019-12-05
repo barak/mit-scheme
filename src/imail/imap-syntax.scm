@@ -29,10 +29,10 @@ USA.
 (declare (usual-integrations))
 
 (define imap:char-set:char
-  (ascii-range->char-set #x01 #x80))
+  (ucs-range->char-set #x01 #x80))
 
 (define imap:char-set:ctl
-  (char-set-union (ascii-range->char-set #x00 #x20)
+  (char-set-union (ucs-range->char-set #x00 #x20)
 		  (char-set #\rubout)))
 
 (define imap:char-set:list-wildcards

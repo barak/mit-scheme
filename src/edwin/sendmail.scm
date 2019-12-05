@@ -1375,7 +1375,7 @@ the user from the mailer."
 		 (loop ls)))))))
 
 (define char-set:printable-7bit
-  (char-set-union (ascii-range->char-set #x20 #x7F)
+  (char-set-union (ucs-range->char-set #x20 #x7F)
                   (char-set #\tab #\page #\linefeed)))
 
 (define char-set:non-printable-7bit

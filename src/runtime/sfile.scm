@@ -345,7 +345,7 @@ USA.
 		    top-level-mime-types))
   (set! unusual-interned-mime-types (make-equal-hash-table))
   (set! char-set:mime-token
-	(char-set-difference (ascii-range->char-set #x21 #x7F)
+	(char-set-difference (ucs-range->char-set #x21 #x7F)
 			     (string->char-set "()<>@,;:\\\"/[]?=")))
   (set! local-type-map (make-string-hash-table))
   (associate-pathname-type-with-mime-type "scm"

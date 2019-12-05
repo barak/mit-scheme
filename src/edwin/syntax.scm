@@ -32,8 +32,8 @@ USA.
 
 (define (modify-syntax-entries! syntax-table cl ch string)
   (set-char-syntax! syntax-table
-		    (ascii-range->char-set (char->integer cl)
-					   (char->integer ch))
+		    (ucs-range->char-set (char->integer cl)
+					 (char->integer ch))
 		    string))
 
 (define (group-syntax-table-entries group)

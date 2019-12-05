@@ -591,7 +591,7 @@ USA.
   (char-set-union
    ;; Not char-set:not-graphic
    (char-set-invert
-    (char-set-intersection char-set:graphic (ascii-range->char-set 0 #x7f)))
+    (char-set-intersection char-set:graphic (ucs-range->char-set 0 #x7f)))
    (char-set #\\ #\" #\? (integer->char #xA0))))
 
 (define char-set:C-named-chars

@@ -93,12 +93,12 @@ USA.
        (string-every (char-set-predicate char-set:method-name) string)))
 
 (define char-set:method-name
-  (char-set-union (ascii-range->char-set (char->integer #\a)
-					 (fix:+ (char->integer #\z) 1))
-		  (ascii-range->char-set (char->integer #\A)
-					 (fix:+ (char->integer #\Z) 1))
-		  (ascii-range->char-set (char->integer #\0)
-					 (fix:+ (char->integer #\9) 1))
+  (char-set-union (ucs-range->char-set (char->integer #\a)
+				       (fix:+ (char->integer #\z) 1))
+		  (ucs-range->char-set (char->integer #\A)
+				       (fix:+ (char->integer #\Z) 1))
+		  (ucs-range->char-set (char->integer #\0)
+				       (fix:+ (char->integer #\9) 1))
 		  (char-set #\_ #\. #\: #\/)))
 
 (define (xml-rpc:parse-response document)

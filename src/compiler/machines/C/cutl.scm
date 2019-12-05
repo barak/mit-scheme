@@ -381,8 +381,8 @@ USA.
 	  #t))))
 
 (define c:decimal-chars
-  (ascii-range->char-set (char->integer #\0)
-			 (+ (char->integer #\9) 1)))
+  (ucs-range->char-set (char->integer #\0)
+		       (+ (char->integer #\9) 1)))
 
 (define (c:type type)
   (or (and (symbol? type)
@@ -464,12 +464,12 @@ USA.
 	  #t))))
 
 (define c:identifier-chars
-  (char-set-union (ascii-range->char-set (char->integer #\A)
-					 (+ (char->integer #\Z) 1))
-		  (ascii-range->char-set (char->integer #\a)
-					 (+ (char->integer #\z) 1))
-		  (ascii-range->char-set (char->integer #\0)
-					 (+ (char->integer #\9) 1))
+  (char-set-union (ucs-range->char-set (char->integer #\A)
+				       (+ (char->integer #\Z) 1))
+		  (ucs-range->char-set (char->integer #\a)
+				       (+ (char->integer #\z) 1))
+		  (ucs-range->char-set (char->integer #\0)
+				       (+ (char->integer #\9) 1))
 		  (char-set #\_)))
 
 (define (c:%parenthesized? e)

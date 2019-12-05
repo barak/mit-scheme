@@ -953,8 +953,8 @@ USA.
   (char-set-difference char-set:http-text (char-set #\")))
 
 (define-deferred char-set:alpha
-  (char-set-union (ascii-range->char-set #x41 #x5B)
-		  (ascii-range->char-set #x61 #x7B)))
+  (char-set-union (ucs-range->char-set #x41 #x5B)
+		  (ucs-range->char-set #x61 #x7B)))
 
 (define-tokenizer-state tokenize
   (eof done)
