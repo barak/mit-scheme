@@ -40,7 +40,7 @@ USA.
 	(procedure (block-procedure block)))
     (let ((delete-integrations
 	   (lambda (get-names set-names!)
-	     (with-values
+	     (call-with-values
 		 (lambda ()
 		   (find-integrated-variables (get-names procedure)))
 	       (lambda (not-integrated integrated)
@@ -60,7 +60,7 @@ USA.
 	  (begin
 	    (set! deletions (eq-set-adjoin rest deletions))
 	    (set-procedure-rest! procedure false))))
-    (with-values
+    (call-with-values
 	(lambda ()
 	  (find-integrated-bindings (procedure-names procedure)
 				    (procedure-values procedure)))
@@ -76,7 +76,7 @@ USA.
 (define (find-integrated-bindings names vals)
   (if (null? names)
       (values '() '() '())
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (find-integrated-bindings (cdr names) (cdr vals)))
 	(lambda (names* values* integrated)
@@ -89,7 +89,7 @@ USA.
 (define (find-integrated-variables variables)
   (if (null? variables)
       (values '() '())
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (find-integrated-variables (cdr variables)))
 	(lambda (not-integrated integrated)

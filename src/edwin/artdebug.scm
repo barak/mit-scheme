@@ -990,7 +990,7 @@ Prefix argument means do not kill the debugger buffer."
   string?)
 
 (define (print-subproblem number frame port)
-  (with-values (lambda () (stack-frame/debugging-info frame))
+  (call-with-values (lambda () (stack-frame/debugging-info frame))
     (lambda (expression environment subexpression)
       (print-history-level
        (stack-frame/compiled-code? frame)

@@ -562,7 +562,7 @@ USA.
 		      (dbg-block/length block))))
 	       (let ((stack-link (dbg-block/stack-link block)))
 		 (cond ((not stack-link)
-			(with-values
+			(call-with-values
 			    (lambda ()
 			      (stack-frame/resolve-stack-address
 			       frame

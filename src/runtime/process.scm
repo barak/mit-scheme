@@ -423,9 +423,9 @@ USA.
 		   #f #f #f))
 
 (define (start-pipe-subprocess filename arguments environment)
-  (with-values make-pipe
+  (call-with-values make-pipe
     (lambda (child-read parent-write)
-      (with-values make-pipe
+      (call-with-values make-pipe
 	(lambda (parent-read child-write)
 	  (let ((process
 		 (make-subprocess filename arguments environment
@@ -436,7 +436,7 @@ USA.
 	    process))))))
 
 (define (start-pty-subprocess filename arguments environment)
-  (with-values open-pty-master
+  (call-with-values open-pty-master
     (lambda (master-channel master-name slave-name)
       master-name
       (make-subprocess filename arguments environment

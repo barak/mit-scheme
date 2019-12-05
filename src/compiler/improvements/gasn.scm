@@ -30,7 +30,7 @@
 	       (deallocate-registers nodes pushed registers))))))
 
   (define (deallocate-registers nodes pushed registers)
-    (with-values
+    (call-with-values
 	(lambda ()
 	  (discriminate-items registers
 	    (lambda (register)

@@ -105,7 +105,7 @@ USA.
 	(rvalue (definition-rvalue definition)))
     (generate/rvalue rvalue scfg*scfg->scfg!
       (lambda (expression)
-	(with-values (lambda () (find-definition-variable context lvalue))
+	(call-with-values (lambda () (find-definition-variable context lvalue))
 	  (lambda (environment name)
 	    (load-temporary-register scfg*scfg->scfg! environment
 	      (lambda (environment)

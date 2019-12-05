@@ -98,7 +98,7 @@ with the next possible expansion not yet tried."
 			  (current-point))))
 	    (if (zero? n)
 		(values (mark-permanent-copy start) expansion)
-		(with-values
+		(call-with-values
 		    (lambda ()
 		      (dabbrevs-search start pattern direction do-case))
 		  (lambda (loc expansion)
@@ -159,8 +159,8 @@ with the next possible expansion not yet tried."
 	  (if (or expansion (> which 0))
 	      (step3 loc expansion)
 	      ;; Look forward
-	      (with-values (lambda ()
-			     (search&setup-table (max 1 (- which)) false))
+	      (call-with-values
+		  (lambda () (search&setup-table (max 1 (- which)) false))
 		(lambda (loc expansion)
 		  (set-variable! last-dabbrevs-direction -1)
 		  (step3 loc expansion)))))
@@ -168,8 +168,8 @@ with the next possible expansion not yet tried."
 	;; Try looking backward unless inhibited.
 	(if (< which 0)
 	    (step2 loc false)
-	    (with-values (lambda ()
-			   (search&setup-table (max 1 which) true))
+	    (call-with-values
+		(lambda () (search&setup-table (max 1 which) true))
 	      (lambda (loc expansion)
 		(if (not expansion)
 		    (set-variable! last-dabbrevs-expansion-location

@@ -207,7 +207,7 @@ USA.
       (values locative (variable-name lvalue)))))
 
 (define (find-block/variable context variable if-known if-ic)
-  (with-values
+  (call-with-values
       (lambda ()
 	(find-block context
 		    0
@@ -227,7 +227,7 @@ USA.
        block locative))))
 
 (define (nearest-ic-block-expression context)
-  (with-values
+  (call-with-values
       (lambda ()
 	(find-block context 0 (lambda (block) (not (block-parent block)))))
     (lambda (block locative)
@@ -236,7 +236,7 @@ USA.
       locative)))
 
 (define (closure-ic-locative context block)
-  (with-values
+  (call-with-values
       (lambda ()
 	(find-block context 0 (lambda (block*) (eq? block* block))))
     (lambda (block locative)
@@ -246,7 +246,7 @@ USA.
 
 (define (block-ancestor-or-self->locative context block prefix suffix)
   (stack-locative-offset
-   (with-values
+   (call-with-values
        (lambda ()
 	 (find-block context prefix (lambda (block*) (eq? block* block))))
      (lambda (block* locative)

@@ -69,7 +69,7 @@ USA.
 			  unspecific)
 			remote-links))
 
-	  (with-values prepare-constants-block
+	  (call-with-values prepare-constants-block
 	    (or process-constants-block
 		(lambda (constants-code environment-label free-ref-label
 					n-sections)

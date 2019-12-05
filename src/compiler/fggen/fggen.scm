@@ -64,7 +64,7 @@ USA.
 	       (make-expression
 		block
 		continuation
-		(with-values
+		(call-with-values
 		    (lambda ()
 		      (let ((collect
 			     (lambda (names declarations body)

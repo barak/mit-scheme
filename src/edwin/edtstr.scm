@@ -50,7 +50,7 @@ USA.
     (let ((bufferset (make-bufferset initial-buffer))
 	  (screen (display-type/make-screen display-type make-screen-args)))
       (initialize-screen-root-window! screen bufferset initial-buffer)
-      (with-values
+      (call-with-values
 	  (lambda () (display-type/get-input-operations display-type screen))
 	(lambda (halt-update? peek-no-hang peek read)
 	  (%make-editor name

@@ -268,7 +268,7 @@ USA.
       (LAP (LEA ,target (@RO W ,pc-register (- ,label-expr ,pc-label)))))))
 
 (define (with-pc recvr)
-  (with-values (lambda () (get-cached-label))
+  (call-with-values (lambda () (get-cached-label))
     (lambda (label reg)
       (if label
 	  (recvr label reg)

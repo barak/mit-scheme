@@ -550,7 +550,7 @@ USA.
 		     #f))
 
 (define (stack-frame->control-point stack-frame)
-  (with-values (lambda () (print-stack-frame stack-frame))
+  (call-with-values (lambda () (print-stack-frame stack-frame))
     (lambda (element-stream next-control-point)
       (make-control-point
        (stack-frame/interrupt-mask stack-frame)
@@ -575,7 +575,7 @@ USA.
   (if (eq? (stack-frame/return-address stack-frame)
 	   return-address/join-stacklets)
       (values (stream) (vector-ref (stack-frame/elements stack-frame) 1))
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (let ((next (stack-frame/%next stack-frame)))
 	      (cond ((stack-frame? next)

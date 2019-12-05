@@ -163,7 +163,7 @@ parameters in registers.
 	    (or (node/bad-variables node)
 		(let ((bad-variables
 		       (eq-set-union
-			(with-values (lambda () (find-node-values node))
+			(call-with-values (lambda () (find-node-values node))
 			  values->variables)
 			(walk-next node walk-node-for-variables))))
 		  (set-node/bad-variables! node bad-variables)
@@ -223,7 +223,8 @@ parameters in registers.
 			rvalues))))
 
 (define (complex-parallel-constraints subproblems vars-referenced-later)
-  (with-values (lambda () (discriminate-items subproblems subproblem-simple?))
+  (call-with-values
+      (lambda () (discriminate-items subproblems subproblem-simple?))
     (lambda (simple complex)
       (let ((discriminate-by-bad-vars
 	     (lambda (subproblems)
@@ -233,9 +234,9 @@ parameters in registers.
 			  (memq var vars-referenced-later))
 			(subproblem-free-variables subproblem))))))
 	    (constraint-graph (make-constraint-graph)))
-	(with-values (lambda () (discriminate-by-bad-vars simple))
+	(call-with-values (lambda () (discriminate-by-bad-vars simple))
 	  (lambda (good-simples bad-simples)
-	    (with-values (lambda () (discriminate-by-bad-vars complex))
+	    (call-with-values (lambda () (discriminate-by-bad-vars complex))
 	      (lambda (good-complex bad-complex)
 		(add-constraint-set! good-simples
 				     good-complex

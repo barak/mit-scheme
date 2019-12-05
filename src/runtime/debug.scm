@@ -439,7 +439,7 @@ USA.
 	(let loop ((frame top-subproblem) (level 0))
 	  (if frame
 	      (begin
-		(with-values (lambda () (stack-frame/debugging-info frame))
+		(call-with-values (lambda () (stack-frame/debugging-info frame))
 		  (lambda (expression environment subexpression)
 		    subexpression
 		    (terse-print-expression level
@@ -868,7 +868,7 @@ USA.
   (set-dstate/number-of-reductions!
    dstate
    (improper-list-length (stack-frame/reductions stack-frame)))
-  (with-values (lambda () (stack-frame/debugging-info stack-frame))
+  (call-with-values (lambda () (stack-frame/debugging-info stack-frame))
     (lambda (expression environment subexpression)
       (set-dstate/expression! dstate expression)
       (set-dstate/subexpression! dstate subexpression)

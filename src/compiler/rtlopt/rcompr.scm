@@ -70,7 +70,7 @@ USA.
 	(let ((expression (rtl:assign-expression rtl)))
 	  (if (not (rtl:expression-contains? expression
 					     nonfoldable-expression?))
-	      (with-values
+	      (call-with-values
 		  (lambda ()
 		    (let ((next (rinst-next rinst)))
 		      (if (rinst-dead-register? next register)
@@ -114,7 +114,7 @@ USA.
 	     (phi-1 next)))
 	  (recursion
 	   (lambda (unwrap wrap)
-	     (with-values
+	     (call-with-values
 		 (lambda ()
 		   (loop (unwrap expression)))
 	       (lambda (next expression)
@@ -123,8 +123,7 @@ USA.
 		     (values false false)))))))
       (let ((recurse-and-search
 	     (lambda (unwrap wrap)
-	       (with-values (lambda ()
-			      (recursion unwrap wrap))
+	       (call-with-values (lambda () (recursion unwrap wrap))
 		 (lambda (next expression*)
 		   (if next
 		       (values next expression*)
@@ -132,7 +131,7 @@ USA.
 					   (lambda (rtl)
 					     rtl ; ignored
 					     false))))))))
-	       
+
 	(cond ((interpreter-value-register? expression)
 	       (search-stopping-at expression
 				   (lambda (rtl)

@@ -82,7 +82,7 @@ USA.
 		  (eq? (car adjustment) 'KNOWN)
 		  (cdr adjustment)))))
       (if overwritten-block
-	  (with-values
+	  (call-with-values
 	      (lambda ()
 		(subproblems->nodes subproblems
 				    caller-block
@@ -92,7 +92,7 @@ USA.
 		  (begin
 		    (set-combination/reuse-existing-frame?! combination
 							    overwritten-block)
-		    (with-values
+		    (call-with-values
 			(lambda ()
 			  (order-subproblems/overwrite-block
 			   caller-block
@@ -113,7 +113,7 @@ USA.
 (define reuse-size-limit 7)
 
 (define (subproblems->nodes subproblems caller-block overwritten-block)
-  (with-values
+  (call-with-values
       (lambda ()
 	(let ((n-subproblems (length subproblems)))
 	  (let ((targets
@@ -136,7 +136,7 @@ USA.
 			  (list-tail subproblems n-targets))
 		  (values (make-nodes subproblems) '()))))))
     (lambda (nodes extra-subproblems)
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (discriminate-items nodes
 	      (lambda (node)

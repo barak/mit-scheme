@@ -40,7 +40,7 @@ USA.
 	((scode-constant? expression)
 	 expression)
 	(else
-	 (with-values (lambda () (split-environment environment))
+	 (call-with-values (lambda () (split-environment environment))
 	   (lambda (bound-names interpreter-environment)
 	     (hook/extended-scode-eval
 	      (cond ((null? bound-names)

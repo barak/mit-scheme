@@ -98,7 +98,7 @@ USA.
 	      (vector-set! info 2 #t))
 	  (vector-set! info 0 new)
 	  info))))
-    
+
 (define (stackify/count/decrement! obj)
   (let ((info (stackify/table/lookup obj)))
     (cond ((not info)
@@ -686,7 +686,7 @@ USA.
 		      (fix:+ curr-depth* 1)
 		      max-depth*
 		      regmap*))))))))
-  
+
 
 (define (build/unique obj prog curr-depth max-depth regmap)
   ;; Returns <program max-depth regmap>
@@ -897,12 +897,13 @@ USA.
 		 (fix:max (fix:+ curr-depth 1) max-depth)
 		 regmap))
 	((fake-compiled-procedure? obj)
-	 (with-values (lambda ()
-			(build (fake-procedure/block obj)
-			       prog
-			       curr-depth
-			       max-depth
-			       regmap))
+	 (call-with-values
+	     (lambda ()
+	       (build (fake-procedure/block obj)
+		      prog
+		      curr-depth
+		      max-depth
+		      regmap))
 	   (lambda (prog* max-depth* regmap*)
 	     (values
 	      (build/natural stackify-opcode/cc-block-to-entry
@@ -941,7 +942,7 @@ USA.
 		   (conc-name stackify-escape/))
   (kind false read-only true)
   (contents false read-only true))
-		   
+
 (define (stackify/make-uuo-arity arity)
   (stackify-escape/make 'arity arity))
 

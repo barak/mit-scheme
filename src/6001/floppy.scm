@@ -449,7 +449,7 @@ then answer \"yes\" to the prompt below.")
   (append-string "Copying files from working directory to floppy.\n")
   (let* ((working-directory (read-working-directory))
 	 (floppy-directory (read-floppy-directory)))
-    (with-values
+    (call-with-values
 	(lambda ()
 	  (three-way-sort file-record/name=?
 			  working-directory
@@ -620,7 +620,7 @@ M-x rename-file, or use the `r' command in Dired.")
 	      (let ((eol
 		     (or (string-find-next-char string #\newline start end)
 			 end)))
-		(with-values
+		(call-with-values
 		    (lambda ()
 		      (parse-dosls-line string start eol offset))
 		  (lambda (filename time)
@@ -867,13 +867,13 @@ M-x rename-file, or use the `r' command in Dired.")
 	  (values '() '() set*)
 	  (let ((item (member? (car set) set*)))
 	    (if item
-		(with-values
+		(call-with-values
 		    (lambda () (loop (cdr set) (delq! (car item) set*)))
 		  (lambda (set-only both set*-only)
 		    (values set-only
 			    (cons (cons (car set) (car item)) both)
 			    set*-only)))
-		(with-values (lambda () (loop (cdr set) set*))
+		(call-with-values (lambda () (loop (cdr set) set*))
 		  (lambda (set-only both set*-only)
 		    (values (cons (car set) set-only)
 			    both

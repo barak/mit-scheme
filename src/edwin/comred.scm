@@ -385,7 +385,7 @@ USA.
 	     (set-car! history (cons (command-name command) arguments))
 	     (set! command-history (cdr history))))))
     (cond ((string? specification)
-	   (with-values
+	   (call-with-values
 	       (lambda ()
 		 (let ((end (string-length specification)))
 		   (let loop
@@ -403,7 +403,7 @@ USA.
 							  index
 							  end
 							  #\newline)))
-			   (with-values
+			   (call-with-values
 			       (lambda ()
 				 (interactive-argument
 				  (string-ref specification index)
@@ -411,7 +411,7 @@ USA.
 					     (+ index 1)
 					     (or newline end))))
 			     (lambda (argument expression from-tty?)
-			       (with-values
+			       (call-with-values
 				   (lambda ()
 				     (if newline
 					 (loop (+ newline 1))

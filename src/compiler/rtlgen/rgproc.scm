@@ -64,7 +64,7 @@ USA.
 				 nentries
 				 (closure-block-entry-number block)))))
 			 (needs-entry?
-			  (with-values
+			  (call-with-values
 			      (lambda () (procedure-arity-encoding procedure))
 			    (lambda (min max)
 			      (rtl:make-procedure-header
@@ -76,7 +76,8 @@ USA.
 			  (rtl:make-open-procedure-header
 			   (procedure-label procedure))))))
 		((procedure-rest procedure)
-		 (with-values (lambda () (procedure-arity-encoding procedure))
+		 (call-with-values
+		     (lambda () (procedure-arity-encoding procedure))
 		   (lambda (min max)
 		     (if (open-procedure-needs-dynamic-link? procedure)
 			 (scfg*scfg->scfg!
@@ -188,7 +189,7 @@ USA.
 			    (rtl:make-constant
 			     (make-unassigned-reference-trap)))))))))
 	   ((IC)
-	    (with-values (lambda () (make-ic-cons value 'USE-ENV)) recvr))
+	    (call-with-values (lambda () (make-ic-cons value 'USE-ENV)) recvr))
 	   ((TRIVIAL-CLOSURE)
 	    ;; This is not an error.
 	    ;; It can be the consequence of bad style.

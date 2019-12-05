@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (generate/rvalue operand scfg*cfg->cfg! generator)
-  (with-values (lambda () (generate/rvalue* operand))
+  (call-with-values (lambda () (generate/rvalue* operand))
     (lambda (prefix expression)
       (scfg*cfg->cfg! prefix (generator expression)))))
 
@@ -217,7 +217,7 @@ USA.
 		  *ic-procedure-headers*))
       (let ((context (procedure-closure-context procedure)))
 	(if (reference? context)
-	    (with-values (lambda () (generate/rvalue* context))
+	    (call-with-values (lambda () (generate/rvalue* context))
 	      kernel)
 	    ;; Is this right if the procedure is being closed
 	    ;; inside another IC procedure?
@@ -288,7 +288,7 @@ USA.
 	  ((= (block-entry-number block*) 1)
 	   ;; Single entry point.  This could use the multiclosure case
 	   ;; below, but this is simpler.
-	   (with-values (lambda () (procedure-arity-encoding procedure))
+	   (call-with-values (lambda () (procedure-arity-encoding procedure))
 	     (lambda (min max)
 	       (rtl:make-typed-cons:procedure
 		(rtl:make-cons-closure
@@ -320,7 +320,7 @@ USA.
 		     (cons procedure children)))
 		  (entries
 		   (map (lambda (proc)
-			  (with-values
+			  (call-with-values
 			      (lambda () (procedure-arity-encoding proc))
 			    (lambda (min max)
 			      (list (procedure-label proc) min max))))

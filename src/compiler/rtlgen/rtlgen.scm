@@ -86,7 +86,7 @@ USA.
 	unspecific)))
 
 (define (generate/expression expression)
-  (with-values
+  (call-with-values
       (lambda ()
 	(generate/rgraph (expression-entry-node expression) generate/node))
     (lambda (rgraph entry-edge)
@@ -96,7 +96,7 @@ USA.
 		     (expression-debugging-info expression)))))
 
 (define (generate/procedure procedure)
-  (with-values
+  (call-with-values
       (lambda ()
 	(generate/rgraph
 	 (procedure-entry-node procedure)
@@ -146,7 +146,7 @@ USA.
 
 (define (generate/continuation continuation)
   (let ((label (continuation/label continuation)))
-    (with-values
+    (call-with-values
 	(lambda ()
 	  (generate/rgraph
 	   (continuation/entry-node continuation)
@@ -214,7 +214,7 @@ USA.
 	      (special-primitive-handler obj)))))
 
 (define (wrap-with-continuation-entry context prefix scfg-gen)
-  (with-values (lambda () (generate-continuation-entry context prefix))
+  (call-with-values (lambda () (generate-continuation-entry context prefix))
     (lambda (label setup cleanup)
       (scfg-append! setup
 		    (scfg-gen label)

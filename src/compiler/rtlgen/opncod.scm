@@ -318,7 +318,7 @@ USA.
 					      '() false false)))
 		     (make-scfg (cfg-entry-node scfg) '()))
 		   (let ((temporary (rtl:make-pseudo-register)))
-		     (with-values
+		     (call-with-values
 			 (lambda ()
 			   (generate-continuation-entry
 			    (combination/context combination)
@@ -1716,7 +1716,7 @@ USA.
 	       (preamble
 		(rtl:make-assignment temporary
 				     (rtl:make-fetch register:value))))
-	  (with-values
+	  (call-with-values
 	      (lambda ()
 		(generate-continuation-entry (combination/context combination)
 					     preamble))

@@ -42,7 +42,7 @@ USA.
 	  (begin
 	    (edges-disconnect-right! previous-edges)
 	    (edge-disconnect! next-edge)
-	    (with-values
+	    (call-with-values
 		(lambda ()
 		  (order-subproblems/application
 		   (parallel-application-node parallel)
@@ -127,7 +127,7 @@ USA.
 	  (operands
 	   (list-filter-indices (cdr subproblems) (inliner/operands inliner))))
       (set-inliner/operands! inliner operands)
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (discriminate-items operands subproblem-simple?))
 	(lambda (simple complex)
@@ -195,14 +195,14 @@ USA.
 
 (define (order-subproblems/out-of-line combination subproblems rest)
   (let ((alist (add-defaulted-subproblems! combination subproblems)))
-    (with-values
+    (call-with-values
 	(combination-ordering (combination/context combination)
 			      (car subproblems)
 			      (cdr subproblems)
 			      (combination/model combination))
       (lambda (effect-subproblems push-subproblems)
 	(set-combination/frame-size! combination (length push-subproblems))
-	(with-values
+	(call-with-values
 	    (lambda ()
 	      (order-subproblems/maybe-overwrite-block
 	       combination push-subproblems rest alist
@@ -295,7 +295,7 @@ USA.
 		(if (and (procedure/open? model)
 			 (stack-block/static-link? model-block))
 		    (lambda ()
-		      (with-values thunk
+		      (call-with-values thunk
 			(lambda (effect-subproblems push-subproblems)
 			  (values
 			   effect-subproblems
@@ -306,7 +306,7 @@ USA.
 	standard)))
 
 (define (optimized-combination-ordering context operator operands callee)
-  (with-values
+  (call-with-values
       (lambda ()
 	(sort-subproblems/out-of-line operands callee))
     (lambda (integrated non-integrated)
@@ -362,14 +362,14 @@ USA.
 	    subproblems))
 
 (define (sort-subproblems/out-of-line all-subproblems callee)
-  (with-values
+  (call-with-values
       (lambda ()
 	(sort-integrated (cdr (procedure-original-required callee))
 			 all-subproblems
 			 '()
 			 '()))
     (lambda (subproblems integrated non-integrated)
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (sort-integrated (procedure-original-optional callee)
 			     subproblems

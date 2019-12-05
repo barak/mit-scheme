@@ -46,7 +46,7 @@ USA.
 	    (loop))))))
 
 (define (merge-suffixes! rgraph suffixes)
-  (with-values
+  (call-with-values
       (lambda ()
 	(discriminate-items suffixes
 	  (lambda (suffix)
@@ -169,7 +169,7 @@ USA.
   (let loop ((bblocks bblocks))
     (if (null? bblocks)
 	'()
-	(with-values (lambda () (matching-suffixes bblock (car bblocks)))
+	(call-with-values (lambda () (matching-suffixes bblock (car bblocks)))
 	  (lambda (sx sy adjustments)
 	    (if (or (interesting-suffix? bblock sx)
 		    (interesting-suffix? (car bblocks) sy))
@@ -215,7 +215,7 @@ USA.
        (adjustments '()))
     (if (or (null? rx) (null? ry))
 	(values wx wy adjustments)
-	(with-values
+	(call-with-values
 	    (lambda ()
 	      (match-rtl (rinst-rtl (car rx)) (rinst-rtl (car ry)) e))
 	  (lambda (e adjustment)

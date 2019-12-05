@@ -333,7 +333,7 @@ USA.
   (compiler-phase
    "Pseudo-Assembly"			; garbage collection
    (lambda ()
-     (with-values
+     (call-with-values
 	 (lambda ()
 	   (stringify
 	    (if (not (zero? *recursive-compilation-number*))

@@ -105,7 +105,7 @@ USA.
 	(let ((end-block?
 	       (let ((end-block (block-parent block)))
 		 (lambda (block) (eq? block end-block)))))
-	  (with-values
+	  (call-with-values
 	      (lambda ()
 		(find-block/loop
 		 link

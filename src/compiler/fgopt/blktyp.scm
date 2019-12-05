@@ -95,7 +95,7 @@ USA.
 	  (set-procedure-closure-context!
 	   procedure
 	   (make-reference-context original-parent))
-	  (with-values
+	  (call-with-values
 	      (lambda ()
 		(let ((uninteresting-variable?
 		       (lambda (variable)
@@ -465,7 +465,7 @@ USA.
 				 bound-variables
 				 variables-nontransitively-free)
 	     true)))
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (filter-bound-variables (block-bound-variables block)
 				    free-variables
