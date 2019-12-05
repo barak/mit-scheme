@@ -665,11 +665,12 @@ USA.
 	      (make-unassigned-reference-trap))
    '()
    (scode/make-sequence
-    (map* body
-	  (lambda (binding)
-	    (scode/make-assignment (scode/binding-variable binding)
-				   (scode/binding-value binding)))
-	  bindings))))
+    (fold-right (lambda (binding exprs)
+		  (cons (scode/make-assignment (scode/binding-variable binding)
+					       (scode/binding-value binding))
+			exprs))
+		body
+		bindings))))
 
 (define (scode/make-case-expression expression default clauses)
   (define (kernel case-selector)

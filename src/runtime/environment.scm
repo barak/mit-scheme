@@ -629,12 +629,14 @@ USA.
 		       (stack-ccenv/safe-lookup
 			environment
 			(dbg-variable/name variable)))))))
-	  (map* (map* (let ((rest (dbg-procedure/rest procedure)))
-			(if rest (lookup rest) '()))
-		      lookup
-		      (dbg-procedure/optional procedure))
-		lookup
-		(dbg-procedure/required procedure)))
+	  (fold-right (lambda (variable values)
+			(cons (lookup variable) values))
+		      (fold-right (lambda (variable values)
+				    (cons (lookup variable) values))
+				  (let ((rest (dbg-procedure/rest procedure)))
+				    (if rest (lookup rest) '()))
+				  (dbg-procedure/optional procedure))
+		      (dbg-procedure/required procedure)))
 	'unknown)))
 
 (define (stack-ccenv/bound-names environment)

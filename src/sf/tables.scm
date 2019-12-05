@@ -44,7 +44,11 @@ USA.
   (alist-cons variable value environment))
 
 (define-integrable (environment/bind-multiple environment variables values)
-  (map* environment cons variables values))
+  (fold-right (lambda (var val env)
+		(cons (cons var val) env))
+	      environment
+	      variables
+	      values))
 
 (define (environment/lookup environment variable if-found if-unknown if-not)
   (let ((association (assq variable environment)))
@@ -217,11 +221,11 @@ USA.
 	(if-not))))
 
 (define (operations/shadow operations variables)
-  (vector (map* (vector-ref operations 0)
-		(lambda (variable)
-		  (guarantee-variable variable 'operations/shadow)
-		  (cons variable false))
-		variables)
+  (vector (fold-right (lambda (variable operations)
+			(guarantee-variable variable 'operations/shadow)
+			(cons (cons variable false) operations))
+		      (vector-ref operations 0)
+		      variables)
 	  (vector-ref operations 1)
 	  (vector-ref operations 2)))
 

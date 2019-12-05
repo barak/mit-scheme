@@ -67,7 +67,11 @@ USA.
   '())
 
 (define (environment/bind environment variables values)
-  (map* environment cons variables values))
+  (fold-right (lambda (var val env)
+		(cons (cons var val) env))
+	      environment
+	      variables
+	      values))
 
 (define (environment/lookup environment variable if-found if-not)
   (guarantee-variable variable 'environment/lookup)

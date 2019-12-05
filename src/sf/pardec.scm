@@ -233,19 +233,21 @@ USA.
 	  (for-each (constructor 'integrate)
 		    constant-names
 		    constant-values)))
-      (map* declarations
-	    (let ((top-level-block
-		   (let loop ((block block))
-		     (if (block/parent block)
-			 (loop (block/parent block))
-			 block))))
-	      (lambda (remaining)
-		(make-declaration
-		 (vector-ref remaining 0)
-		 (variable/make&bind! top-level-block (vector-ref remaining 1))
-		 (vector-ref remaining 2)
-		 'global)))
-	    remaining))))
+      (fold-right (let ((top-level-block
+			 (let loop ((block block))
+			   (if (block/parent block)
+			       (loop (block/parent block))
+			       block))))
+		    (lambda (remaining decls)
+		      (cons (make-declaration
+			     (vector-ref remaining 0)
+			     (variable/make&bind! top-level-block
+						  (vector-ref remaining 1))
+			     (vector-ref remaining 2)
+			     'global)
+			    decls)))
+		  declarations
+		  remaining))))
 
 ;;; The corresponding case for R7RS is much simpler since the imports are
 ;;; explicit.

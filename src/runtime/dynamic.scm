@@ -102,9 +102,11 @@ USA.
 (define (parameterize* new-bindings thunk)
   (guarantee alist? new-bindings 'parameterize*)
   (let ((temp
-	 (map* bindings
-	       (lambda (p) (create-binding (car p) (cdr p)))
-	       new-bindings)))
+	 (fold-right (lambda (p bindings)
+		       (cons (create-binding (car p) (cdr p))
+			     bindings))
+		     bindings
+		     new-bindings)))
     (let ((swap!
 	   (lambda ()
 	     (set! bindings (set! temp (set! bindings)))

@@ -311,9 +311,11 @@ registers into some interesting sorting order.
   (if (null? entries)
       regmap
       (make-register-map
-       (map* (map-entries:delete* regmap entries)
-	     pseudo-register-entry->temporary-entry
-	     entries)
+       (fold-right (lambda (reg entries)
+		     (cons (pseudo-register-entry->temporary-entry reg)
+			   entries))
+		   (map-entries:delete* regmap entries)
+		   entries)
        (map-registers regmap))))
 
 (define (register-map:keep-live-entries map live-registers)

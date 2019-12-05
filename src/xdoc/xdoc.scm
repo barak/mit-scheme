@@ -1275,17 +1275,19 @@ USA.
   (filter preserved-attribute? (xml-element-attributes elt)))
 
 (define (merge-attributes attrs defaults)
-  (map* (remove (lambda (attr)
-		  (%find-attribute (xml-attribute-name attr) attrs))
-		defaults)
-	(lambda (attr)
-	  (let ((attr*
-		 (and (merged-attribute? attr)
-		      (%find-attribute (xml-attribute-name attr) defaults))))
-	    (if attr*
-		(merge-attribute attr attr*)
-		attr)))
-	attrs))
+  (fold-right (lambda (attr attrs)
+		(cons (let ((attr*
+			     (and (merged-attribute? attr)
+				  (%find-attribute (xml-attribute-name attr)
+						   defaults))))
+			(if attr*
+			    (merge-attribute attr attr*)
+			    attr))
+		      attrs))
+	      (remove (lambda (attr)
+			(%find-attribute (xml-attribute-name attr) attrs))
+		      defaults)
+	      attrs))
 
 (define (preserved-attribute? attr)
   (let ((name (xml-attribute-name attr)))

@@ -509,11 +509,19 @@ USA.
   (let ((names (global-valued function-additional-names)))
     (let ((procedures (map global-value names)))
       (set! function-variables
-	    (map* boolean-valued-function-variables cons names procedures))))
+	    (fold-right (lambda (name proc vars)
+			  (cons (cons name proc) vars))
+			boolean-valued-function-variables
+			names
+			procedures))))
   (let ((names (global-valued side-effect-free-additional-names)))
     (let ((procedures (map global-value names)))
       (set! side-effect-free-variables
-	    (map* function-variables cons names procedures))))
+	    (fold-right (lambda (name proc vars)
+			  (cons (cons name proc) vars))
+			function-variables
+			names
+			procedures))))
   unspecific)
 
 (define function-primitives

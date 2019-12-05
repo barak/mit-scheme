@@ -2307,14 +2307,16 @@ WARNING: With a prefix argument, this command may take a very long
 	   (cond ((ref-variable imail-kept-headers context)
 		  => (lambda (regexps)
 		       (remove-duplicates!
-			(append-map*!
+			(fold-right
+			 (lambda (regexp result)
+			   (append! (filter (lambda (header)
+					      (re-string-match
+					       regexp
+					       (header-field-name header)
+					       #t))
+					    headers)
+				    result))
 			 (mime-headers)
-			 (lambda (regexp)
-			   (filter (lambda (header)
-				     (re-string-match regexp
-						      (header-field-name header)
-						      #t))
-				   headers))
 			 regexps)
 			(lambda (a b) (eq? a b)))))
 		 ((ref-variable imail-ignored-headers context)

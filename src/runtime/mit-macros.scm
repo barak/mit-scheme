@@ -535,11 +535,12 @@ USA.
 			       (scons-lambda '() expr)
 			       (apply scons-lambda
 				      temp-bvl
-				      (map* (list (unspecific-expression))
-					    (lambda (name temp)
-					      (scons-set! name temp))
-					    names
-					    temps))))))))))))
+				      (fold-right (lambda (name temp exprs)
+						    (cons (scons-set! name temp)
+							  exprs))
+						  (list (unspecific-expression))
+						  names
+						  temps))))))))))))
 
 ;;; This optimizes some simple cases, but it could be better.  Among other
 ;;; things it could take advantage of arity-dispatched procedures in the right

@@ -587,36 +587,38 @@ grovel_enums (FILE * out)
 
 (define (gen-struct-grovel-funcs includes)
   ;; Returns the names of the generated functions.
-  (append-map*!
+  (fold-right
+   (lambda (name.info result)
+     ;; Typedefs giving names to struct types.
+     (let* ((name (car name.info))
+	    (ctype (definite-ctype name includes)))
+       (if (ctype/struct? ctype)
+	   (cons (gen-struct-union-grovel-func name includes)
+		 result)
+	   result)))
    (map (lambda (name.info)
 	  ;; The named structs, top-level OR internal.
 	  (let ((name (list 'struct (car name.info))))
 	    (gen-struct-union-grovel-func name includes)))
 	(c-includes/structs includes))
-   (lambda (name.info)
-     ;; Typedefs giving names to struct types.
-     (let* ((name (car name.info))
-	    (ctype (definite-ctype name includes)))
-       (if (ctype/struct? ctype)
-	   (list (gen-struct-union-grovel-func name includes))
-	   '())))
    (c-includes/type-names includes)))
 
 (define (gen-union-grovel-funcs includes)
   ;; Returns the names of the generated functions.
-  (append-map*!
+  (fold-right
+   (lambda (name.info result)
+     ;; Typedefs giving names to union types.
+     (let* ((name (car name.info))
+	    (ctype (definite-ctype name includes)))
+       (if (ctype/union? ctype)
+	   (cons (gen-struct-union-grovel-func name includes)
+		 result)
+	   result)))
    (map (lambda (name.info)
 	  ;; The named unions, top-level OR internal.
 	  (let ((name (list 'union (car name.info))))
 	    (gen-struct-union-grovel-func name includes)))
 	(c-includes/unions includes))
-   (lambda (name.info)
-     ;; Typedefs giving names to union types.
-     (let* ((name (car name.info))
-	    (ctype (definite-ctype name includes)))
-       (if (ctype/union? ctype)
-	   (list (gen-struct-union-grovel-func name includes))
-	   '())))
    (c-includes/type-names includes)))
 
 (define (gen-struct-union-grovel-func name includes)

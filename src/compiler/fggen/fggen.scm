@@ -455,7 +455,12 @@ USA.
 		     (scode/make-lambda
 		      scode-lambda-name:let auxiliary '() #f names '()
 		      (scode/make-sequence
-		       (map* actions scode/make-assignment names values)))
+		       (fold-right (lambda (name value exprs)
+				     (cons (scode/make-assignment name value)
+					   exprs))
+				   actions
+				   names
+				   values)))
 		     (map (lambda (name)
 			    name ;; ignored
 			    (make-unassigned-reference-trap))

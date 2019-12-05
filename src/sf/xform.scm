@@ -114,10 +114,11 @@ USA.
 	    (variable/make&bind! top-level-block name)))))
 
 (define (environment/bind environment variables)
-  (map* environment
-	(lambda (variable)
-	  (cons (variable/name variable) variable))
-	variables))
+  (fold-right (lambda (variable env)
+		(cons (cons (variable/name variable) variable)
+		      env))
+	      environment
+	      variables))
 
 (define (transform/open-block block environment expression)
   (transform/open-block* expression

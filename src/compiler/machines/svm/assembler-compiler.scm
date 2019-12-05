@@ -249,12 +249,14 @@ USA.
 (define (expand-abbrevs inputs abbrevs)
   (receive (abbrev-defs inputs) (split-list inputs abbrev-def?)
     (let ((abbrevs
-	   (map* abbrevs
-		 (lambda (abbrev-def)
-		   (cons `(',(caadr abbrev-def) ,@(cdadr abbrev-def))
-			 (eval (caddr abbrev-def)
-			       (make-top-level-environment))))
-		 abbrev-defs))
+	   (fold-right (lambda (abbrev-def abbrevs)
+			 (cons (cons `(',(caadr abbrev-def)
+				       ,@(cdadr abbrev-def))
+				     (eval (caddr abbrev-def)
+					   (make-top-level-environment)))
+			       abbrevs))
+		       abbrevs
+		       abbrev-defs))
 	  (any-expansions? #f))
       (let ((outputs
 	     (append-map (lambda (input)
