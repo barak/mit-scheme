@@ -179,7 +179,8 @@ USA.
 	(append! (cdr ranges) (list char))
 	ranges))
 
-  (let ((chars (char-set-members char-set)))
+  (let ((chars
+	 (char-set->list (char-set-intersection char-set char-set:ascii))))
     (if (pair? chars)
 	(if (pair? (cdr chars))
 	    (let ((builder (string-builder)))

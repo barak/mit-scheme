@@ -55,9 +55,10 @@ USA.
     (cond ((char? char)
 	   (vector-set! entries (char->integer char) entry))
 	  ((char-set? char)
-	   (for-each (lambda (char)
-		       (vector-set! entries (char->integer char) entry))
-		     (char-set-members char)))
+	   (char-set-for-each
+	    (lambda (char)
+	      (vector-set! entries (char->integer char) entry))
+	    (char-set-intersection char char-set:ascii)))
 	  (else
 	   (error:wrong-type-argument char "character" 'set-char-syntax!)))))
 

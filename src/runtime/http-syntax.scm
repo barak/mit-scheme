@@ -844,11 +844,12 @@ USA.
 	(cond ((char? key)
 	       (vector-set! table (char->integer key) handler))
 	      ((char-set? key)
-	       (for-each (lambda (char)
-			   (let ((i (char->integer char)))
-			     (if (eq? (vector-ref table i) else-action)
-				 (vector-set! table i handler))))
-			 (char-set-members key)))
+	       (char-set-for-each
+		(lambda (char)
+		  (let ((i (char->integer char)))
+		    (if (eq? (vector-ref table i) else-action)
+			(vector-set! table i handler))))
+		(char-set-intersection key char-set:ascii)))
 	      (else
 	       (error:wrong-type-argument key "char or char-set")))))
     (lambda (port emit fifo)

@@ -888,7 +888,7 @@ Both must be lists, strings, or atoms; error if there is mismatch."
                       end))
 
 (define (char-set->ascii-string char-set)
-  (list->string (char-set-members char-set)))
+  (char-set->string (char-set-intersection char-set char-set:ascii)))
 
 (define (undo-record-point! #!optional buffer)
   (let ((group (buffer-group (if (default-object? buffer)

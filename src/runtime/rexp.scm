@@ -232,15 +232,10 @@ USA.
 			  parts))))))))
 
 (define (case-fold-char-set c)
-  (let loop ((chars (char-set-members c)) (chars* '()))
-    (if (pair? chars)
-	(loop (cdr chars)
-	      (if (char-alphabetic? (car chars))
-		  (cons* (char-upcase (car chars))
-			 (char-downcase (car chars))
-			 chars*)
-		  chars*))
-	(apply char-set chars*))))
+  (let ((char-set (char-set-intersection c char-set:ascii)))
+    (char-set-union char-set
+		    (char-upcase char-set)
+		    (char-downcase char-set))))
 
 (define (rexp-n*m n m . rexps)
   (guarantee exact-nonnegative-integer? n 'rexp-n*m)

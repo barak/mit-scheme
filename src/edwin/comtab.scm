@@ -296,7 +296,7 @@ USA.
     (cond ((or (key? key) (button? key))
 	   (put! key))
 	  ((char-set? key)
-	   (for-each put! (char-set-members key)))
+	   (char-set-for-each put! (char-set-intersection key char-set:ascii)))
 	  ((prefixed-key? key)
 	   (let ((prefix (except-last-pair key)))
 	     (comtab-put! (if (null? prefix)
