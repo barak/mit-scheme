@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; SRFI 133
+;;;; SRFI 133: Vector Library
 
 ;;; Loosely based on the SRFI's sample implementation.
 
