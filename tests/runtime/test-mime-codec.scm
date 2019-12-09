@@ -71,9 +71,10 @@ USA.
     (builder 'immutable)))
 
 (define text-characters
-  (list->string
-   (append '(#\tab #\newline)
-	   (char-set-members char-set:graphic))))
+  (char-set->string
+   (char-set-union (ucs-range->char-set #x20 #x7F)
+		   (ucs-range->char-set #xA0 #x100)
+		   (char-set #\tab #\newline))))
 
 (define (test-codec n-packets packet-length text? filename binary-codec?
 		    encode:initialize encode:finalize encode:update

@@ -589,9 +589,7 @@ USA.
 
 (define char-set:C-string-quoted
   (char-set-union
-   ;; Not char-set:not-graphic
-   (char-set-invert
-    (char-set-intersection char-set:graphic (ucs-range->char-set 0 #x7f)))
+   (char-set-invert (ucs-range->char-set #x20 #x7F))
    (char-set #\\ #\" #\? (integer->char #xA0))))
 
 (define char-set:C-named-chars

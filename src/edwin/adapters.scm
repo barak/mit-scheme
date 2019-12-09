@@ -58,3 +58,7 @@ USA.
 
 (define edwin:call-with-output-file
   (call-with-file-adapter call-with-output-file))
+
+(define char-set:graphic
+  (char-set-union (ucs-range->char-set #x20 #x7F)
+		  (ucs-range->char-set #xA0 #x100)))

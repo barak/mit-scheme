@@ -157,7 +157,8 @@ USA.
   (export (edwin)
           (call-with-append-file edwin:call-with-append-file)
           (call-with-input-file edwin:call-with-input-file)
-          (call-with-output-file edwin:call-with-output-file)))
+          (call-with-output-file edwin:call-with-output-file)
+	  char-set:graphic))
 
 (define-package (edwin string)
   (files "string")
