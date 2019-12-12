@@ -40,30 +40,29 @@ USA.
 
 	(define (loop state i ctx prev-break acc)
 	  (if (fix:< i end)
-	      (evolve state (get-code i) i ctx prev-break
-		(lambda (state i+ ctx break break1 break2)
-		  (loop state i+ ctx break
-			(fold-breaks break break1 break2 acc))))
-	      (finalize state i ctx prev-break
-		(lambda (state i+ ctx break break1 break2)
+	      (evolve state (get-code i) i ctx
+		(lambda (state i+ ctx break1 break2)
+		  (loop state i+ ctx (or break1 prev-break)
+			(fold-breaks break1 break2 prev-break acc))))
+	      (finalize state i ctx
+		(lambda (state i+ ctx break1 break2)
 		  (declare (ignore state i+ ctx))
-		  (fold-breaks break break1 break2 acc)))))
+		  (fold-breaks break1 break2 prev-break acc)))))
 
 	(define-integrable (get-code i)
 	  (char->code (string-ref string i)))
 
-	(define-integrable (fold-breaks break break1 break2 acc)
+	(define-integrable (fold-breaks break1 break2 prev-break acc)
 	  (if break1
 	      (if break2
-		  (kons break break1 (kons break1 break2 acc))
-		  (kons break break1 acc))
+		  (kons break1 break2 (kons break2 prev-break acc))
+		  (kons break1 prev-break acc))
 	      acc))
 
 	(if (fix:< start end)
 	    (initialize (get-code start) start
-	      (lambda (state i+ ctx break break1 break2)
-		(declare (ignore break1 break2))
-		(loop state i+ ctx break (if break (kons break #f knil) knil))))
+	      (lambda (state i+ ctx break1 break2)
+		(loop state i+ ctx break1 (fold-breaks break1 break2 #f knil))))
 	    knil)))))
 
 (define (right-folder evolver caller)
@@ -77,31 +76,29 @@ USA.
 
 	(define (loop state i ctx prev-break)
 	  (if (fix:< i end)
-	      (evolve state (get-code i) i ctx prev-break
-		(lambda (state i+ ctx break break1 break2)
-		  (fold-breaks break break1 break2 (loop state i+ ctx break))))
-	      (finalize state i ctx prev-break
-		(lambda (state i+ ctx break break1 break2)
+	      (evolve state (get-code i) i ctx
+		(lambda (state i+ ctx break1 break2)
+		  (fold-breaks break1 break2 prev-break
+			       (loop state i+ ctx (or break1 prev-break)))))
+	      (finalize state i ctx
+		(lambda (state i+ ctx break1 break2)
 		  (declare (ignore state i+ ctx))
-		  (fold-breaks break break1 break2 knil)))))
+		  (fold-breaks break1 break2 prev-break knil)))))
 
 	(define-integrable (get-code i)
 	  (char->code (string-ref string i)))
 
-	(define-integrable (fold-breaks break break1 break2 acc)
+	(define-integrable (fold-breaks break1 break2 prev-break acc)
 	  (if break1
 	      (if break2
-		  (kons break1 break2 (kons break break1 acc))
-		  (kons break break1 acc))
+		  (kons break2 prev-break (kons break1 break2 acc))
+		  (kons break1 prev-break acc))
 	      acc))
 
 	(if (fix:< start end)
 	    (initialize (get-code start) start
-	      (lambda (state i+ ctx break break1 break2)
-		(declare (ignore break1 break2))
-		(if break
-		    (kons break #f (loop state i+ ctx break))
-		    (loop state i+ break ctx))))
+	      (lambda (state i+ ctx break1 break2)
+		(fold-breaks break1 break2 #f (loop state i+ ctx break1))))
 	    knil)))))
 
 (define (make-evolver codes extra-states char->code transitions)
@@ -124,12 +121,12 @@ USA.
     (%make-evolver codes states char->code transitions save-states diagram
       (let ((state (name->index 'sot states)))
 	(lambda (code i k)
-	  ((vector-ref (vector-ref v state) code) i #f #f k)))
-      (lambda (state code i prev-break ctx k)
-	((vector-ref (vector-ref v state) code) i prev-break ctx k))
+	  ((vector-ref (vector-ref v state) code) i #f k)))
+      (lambda (state code i ctx k)
+	((vector-ref (vector-ref v state) code) i ctx k))
       (let ((code (name->index 'eot codes)))
-	(lambda (state i prev-break ctx k)
-	  ((vector-ref (vector-ref v state) code) i prev-break ctx k))))))
+	(lambda (state i ctx k)
+	  ((vector-ref (vector-ref v state) code) i ctx k))))))
 
 (define-record-type <evolver>
     (%make-evolver codes states char->code transitions save-states diagram
@@ -188,38 +185,38 @@ USA.
   (case action
     ((no-ctx preserve)
      (if break?
-	 (lambda (i ctx prev-break k)
-	   (k to (fix:+ i 1) ctx i prev-break #f))
-	 (lambda (i ctx prev-break k)
-	   (k to (fix:+ i 1) ctx prev-break #f #f))))
+	 (lambda (i ctx k)
+	   (k to (fix:+ i 1) ctx i #f))
+	 (lambda (i ctx k)
+	   (k to (fix:+ i 1) ctx #f #f))))
     ((save)
-     (lambda (i ctx prev-break k)
+     (lambda (i ctx k)
        (declare (ignore ctx))
-       (k to (fix:+ i 1) (cons i break?) prev-break #f #f)))
+       (k to (fix:+ i 1) (cons i break?) #f #f)))
     ((restore)
      (if break?
-	 (lambda (i ctx prev-break k)
+	 (lambda (i ctx k)
 	   (if (cdr ctx)
-	       (k to (fix:+ i 1) #f i (car ctx) prev-break)
-	       (k to (fix:+ i 1) #f i prev-break #f)))
-	 (lambda (i ctx prev-break k)
+	       (k to (fix:+ i 1) #f i (car ctx))
+	       (k to (fix:+ i 1) #f i #f)))
+	 (lambda (i ctx k)
 	   (if (cdr ctx)
-	       (k to (fix:+ i 1) #f (car ctx) prev-break #f)
-	       (k to (fix:+ i 1) #f prev-break #f #f)))))
+	       (k to (fix:+ i 1) #f (car ctx) #f)
+	       (k to (fix:+ i 1) #f #f #f)))))
     ((restore-break)
      (if break?
-	 (lambda (i ctx prev-break k)
-	   (k to (fix:+ i 1) #f i (car ctx) prev-break))
-	 (lambda (i ctx prev-break k)
-	   (k to (fix:+ i 1) #f (car ctx) prev-break #f))))
+	 (lambda (i ctx k)
+	   (k to (fix:+ i 1) #f i (car ctx)))
+	 (lambda (i ctx k)
+	   (k to (fix:+ i 1) #f (car ctx) #f))))
     ((restore-no-break)
      (if break?
-	 (lambda (i ctx prev-break k)
+	 (lambda (i ctx k)
 	   (declare (ignore ctx))
-	   (k to (fix:+ i 1) #f i prev-break #f))
-	 (lambda (i ctx prev-break k)
+	   (k to (fix:+ i 1) #f i #f))
+	 (lambda (i ctx k)
 	   (declare (ignore ctx))
-	   (k to (fix:+ i 1) #f prev-break #f #f))))
+	   (k to (fix:+ i 1) #f #f #f))))
     (else
      (error "Unrecognized action:" action))))
 
