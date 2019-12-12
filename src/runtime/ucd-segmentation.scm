@@ -101,6 +101,39 @@ USA.
 		(fold-breaks break1 break2 #f (loop state i+ ctx break1))))
 	    knil)))))
 
+(define (streamer evolver caller)
+  (let ((char->code (evolver-char->code evolver))
+	(initialize (evolver-initialize evolver))
+	(evolve (evolver-evolve evolver))
+	(finalize (evolver-finalize evolver)))
+    (lambda (string #!optional start end)
+      (let* ((end (fix:end-index end (string-length string) caller))
+	     (start (fix:start-index start end caller)))
+
+	(define (loop state i ctx)
+	  (if (fix:< i end)
+	      (evolve state (get-code i) i ctx (translate loop))
+	      (finalize state i ctx (translate done))))
+
+	(define-integrable (get-code i)
+	  (char->code (string-ref string i)))
+
+	(define (translate k)
+	  (lambda (state i+ ctx break1 break2)
+	    (if break1
+		(if break2
+		    (cons break2 (delay (cons break1 (delay (k state i+ ctx)))))
+		    (cons break1 (delay (k state i+ ctx))))
+		(k state i+ ctx))))
+
+	(define (done state i+ ctx)
+	  (declare (ignore state i+ ctx))
+	  '())
+
+	(if (fix:< start end)
+	    (initialize (get-code start) start (translate loop))
+	    '())))))
+
 (define (make-evolver codes extra-states char->code transitions)
   (let* ((codes (append codes '(eot)))
 	 (states (append codes '(sot) extra-states))

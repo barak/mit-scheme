@@ -79,6 +79,7 @@ USA.
 (define evolver)
 (define string-gcb-fold)
 (define string-gcb-fold-right)
+(define string-gcb-stream)
 (define string->gcb-names)
 (define show-transitions)
 (add-boot-init!
@@ -86,25 +87,11 @@ USA.
    (set! evolver (make-evolver codes extra-states ucd-gcb-value transitions))
    (set! string-gcb-fold (folder evolver 'string-gcb-fold))
    (set! string-gcb-fold-right (right-folder evolver 'string-gcb-fold-right))
+   (set! string-gcb-stream (streamer evolver 'string-gcb-stream))
    (set! string->gcb-names (evolver-string->code-names evolver))
    (set! show-transitions (evolver-show-transitions evolver))
    unspecific))
 
-(define (gcb-at-index? index string #!optional start end)
-  (let* ((caller 'gcb-at-index?)
-	 (end (fix:end-index end (string-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (guarantee index-fixnum? index caller)
-    (if (not (and (fix:<= start index) (fix:<= index end)))
-	(error:bad-range-argument index caller))
-    (string-gcb-fold (lambda (break prev-break break?)
-		       (declare (ignore prev-break))
-		       (if (fix:< break index)
-			   break?
-			   (fix:= break index)))
-		     #f
-		     string start end)))
-
 (define (string->grapheme-clusters string #!optional start end)
   (string-gcb-fold-right (lambda (break prev-break acc)
 			   (if prev-break
@@ -136,8 +123,7 @@ USA.
 		  (list-ref breaks end))))
 
 (define (grapheme-cluster-breaks string #!optional start end)
-  (string-gcb-fold-right (lambda (break prev-break acc)
-			   (declare (ignore prev-break))
-			   (cons break acc))
-			 '()
-			 string start end))
+  (let loop ((stream (string-gcb-stream string start end)))
+    (if (pair? stream)
+	(cons (car stream) (loop (force (cdr stream))))
+	'())))

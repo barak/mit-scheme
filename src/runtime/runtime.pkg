@@ -1615,13 +1615,13 @@ USA.
   (files "ucd-grapheme")
   (parent (runtime ucd-segmentation))
   (export ()
-	  gcb-at-index?
 	  grapheme-cluster-breaks
 	  grapheme-cluster-length
 	  grapheme-cluster-slice
 	  string->grapheme-clusters
 	  string-gcb-fold
-	  string-gcb-fold-right))
+	  string-gcb-fold-right
+	  string-gcb-stream))
 
 (define-package (runtime ucd-segmentation word)
   (files "ucd-word")
@@ -1629,6 +1629,7 @@ USA.
   (export ()
 	  string-wb-fold
 	  string-wb-fold-right
+	  string-wb-stream
 	  string-word-breaks)
   (export (runtime string)
 	  find-word-breaks))
