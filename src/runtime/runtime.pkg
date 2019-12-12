@@ -5682,11 +5682,13 @@ USA.
 	  insn:?
 	  insn:??
 	  insn:alt
+	  insn:bog
 	  insn:boundary
 	  insn:char
 	  insn:char-set
 	  insn:char-zero-width
 	  insn:end-boundary
+	  insn:eog
 	  insn:group
 	  insn:non-boundary
 	  insn:seq

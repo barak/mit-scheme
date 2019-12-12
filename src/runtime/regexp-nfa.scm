@@ -37,27 +37,31 @@ USA.
       (let ((initial-node (link-insn insn (terminal-node))))
 	(make-matcher initial-node
 		      (number-of-nodes)
-		      (number-of-groups))))))
+		      (number-of-groups)
+		      (gcb-insns-seen? (compiler-shared-state)))))))
 
 (define-record-type <matcher>
-    (make-matcher initial-node n-nodes n-groups)
+    (make-matcher initial-node n-nodes n-groups need-gcb?)
     matcher?
   (initial-node matcher-initial-node)
   (n-nodes matcher-n-nodes)
-  (n-groups matcher-n-groups))
+  (n-groups matcher-n-groups)
+  (need-gcb? matcher-need-gcb?))
 
 (define compiler-shared-state
   (make-parameter #f))
 
 (define-record-type <compiler-shared-state>
-    (%make-compiler-shared-state node-indices group-indices)
+    (%make-compiler-shared-state node-indices group-indices gcb-insns-seen?)
     compiler-shared-state?
   (node-indices node-indices)
-  (group-indices group-indices))
+  (group-indices group-indices)
+  (gcb-insns-seen? gcb-insns-seen? %set-gcb-insns-seen!))
 
 (define (make-compiler-shared-state)
   (%make-compiler-shared-state (node-index-generator)
-			       (group-index-generator)))
+			       (group-index-generator)
+			       #f))
 
 (define (make-index-generator n)
   (lambda ()
@@ -82,6 +86,9 @@ USA.
 
 (define (number-of-groups)
   (- (next-group-index) 1))
+
+(define (gcb-insns-seen!)
+  (%set-gcb-insns-seen! (compiler-shared-state) #t))
 
 ;;;; Instructions
 
@@ -103,6 +110,9 @@ USA.
 
 (define (string-zero-width-insn id predicate)
   (normal-insn 'string-zero-width id predicate #f))
+
+(define (full-zero-width-insn id predicate)
+  (normal-insn 'full-zero-width id predicate #f))
 
 (define (ctx-only-insn id procedure)
   (normal-insn 'ctx-only id procedure #f))
@@ -160,12 +170,14 @@ USA.
     (or (eq? type 'fork)
 	(eq? type 'char-zero-width)
 	(eq? type 'string-zero-width)
+	(eq? type 'full-zero-width)
 	(eq? type 'ctx-only))))
 
 (define (normal-node? node)
   (let ((type (node-type node)))
     (or (eq? type 'char-zero-width)
 	(eq? type 'string-zero-width)
+	(eq? type 'full-zero-width)
 	(eq? type 'ctx-only)
 	(eq? type 'match))))
 
@@ -265,6 +277,26 @@ USA.
 	  (matches? char-set prev-char)
 	  (not (matches? char-set prev-char))))))
 
+(define (insn:bog)
+  (gcb-insns-seen!)
+  (full-zero-width-insn '(bog)
+    (lambda (index string start end ctx)
+      (declare (ignore string start))
+      (and (fix:< index end)
+	   (let ((gcbs (ctx-gcbs ctx)))
+	     (and (pair? gcbs)
+		  (fix:= (car gcbs) index)))))))
+
+(define (insn:eog)
+  (gcb-insns-seen!)
+  (full-zero-width-insn '(eog)
+    (lambda (index string start end ctx)
+      (declare (ignore string end))
+      (and (fix:> index start)
+	   (let ((gcbs (ctx-gcbs ctx)))
+	     (and (pair? gcbs)
+		  (fix:= (car gcbs) index)))))))
+
 (define (matches? char char-set)
   (and char
        (char-set-contains? char-set char)))
@@ -361,6 +393,7 @@ USA.
     (lambda (ctx)
       (let ((index (ctx-index ctx)))
 	(make-ctx index
+		  (ctx-gcbs ctx)
 		  (cons index (ctx-stack ctx))
 		  (ctx-groups ctx))))))
 
@@ -370,6 +403,7 @@ USA.
       (let ((index (ctx-index ctx))
 	    (stack (ctx-stack ctx)))
 	(make-ctx index
+		  (ctx-gcbs ctx)
 		  (cdr stack)
 		  (cons (let ((start (car stack)))
 			  (lambda (string)
@@ -382,7 +416,10 @@ USA.
   (parameterize ((run-shared-state (make-run-shared-state matcher)))
     (let ((initial
 	   (make-state (matcher-initial-node matcher)
-		       (initial-ctx start))))
+		       (initial-ctx start
+				    (if (matcher-need-gcb? matcher)
+					(string-gcb-stream string start end)
+					'())))))
       (trace-matcher (lambda (port) (write (list 'initial-state initial) port)))
       (let ((final (match-nodes initial string start end)))
 	(trace-matcher (lambda (port) (write (list 'final-state final) port)))
@@ -505,6 +542,12 @@ USA.
 				 inputs
 				 outputs)
 		   (loop inputs outputs)))
+	      ((full-zero-width)
+	       (if ((node-procedure node) index string start end ctx)
+		   (follow-state (make-state (node-next node) ctx)
+				 inputs
+				 outputs)
+		   (loop inputs outputs)))
 	      ((ctx-only)
 	       (follow-state (make-state (node-next node)
 					 ((node-procedure node) ctx))
@@ -563,19 +606,25 @@ USA.
 ;;;; Context
 
 (define-record-type <ctx>
-    (make-ctx index stack groups)
+    (make-ctx index gcbs stack groups)
     ctx?
   (index ctx-index)
+  (gcbs ctx-gcbs)
   (stack ctx-stack)
   (groups ctx-groups))
 
-(define (initial-ctx start)
-  (make-ctx start '() '()))
+(define (initial-ctx start gcbs)
+  (make-ctx start gcbs '() '()))
 
 (define (++index ctx)
-  (make-ctx (fix:+ (ctx-index ctx) 1)
-	    (ctx-stack ctx)
-	    (ctx-groups ctx)))
+  (let ((index* (fix:+ (ctx-index ctx) 1)))
+    (make-ctx index*
+	      (let loop ((gcbs (ctx-gcbs ctx)))
+		(if (and (pair? gcbs) (fix:< (car gcbs) index*))
+		    (loop (force (cdr gcbs)))
+		    gcbs))
+	      (ctx-stack ctx)
+	      (ctx-groups ctx))))
 
 (define (all-groups string start ctx)
   (cons (make-group 0 string start (ctx-index ctx))

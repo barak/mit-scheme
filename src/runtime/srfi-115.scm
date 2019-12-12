@@ -489,7 +489,7 @@ USA.
 
 (define (no-capture-ctx no-capture? ctx)
   (make-ctx (ctx-fold? ctx) (ctx-ascii? ctx) no-capture?))
-
+
 (define (any-char? object)
   (unicode-char? object))
 
@@ -498,15 +498,6 @@ USA.
 
 (define (max-arity? object)
   (exact-nonnegative-integer? object))
-
-(define (gcb? index string start end)
-  (string-gcb-fold (lambda (break prev-break break?)
-		     (declare (ignore prev-break))
-		     (if (fix:> break index)
-			 break?
-			 (fix:= break index)))
-		   #f
-		   string start end))
 
 (define (submatch key insn)
   (hash-table-set! (submatch-keys) key #t)
@@ -645,18 +636,12 @@ USA.
 (define-sre-rule 'bog
   (lambda (ctx)
     (declare (ignore ctx))
-    (insn:string-zero-width
-     (lambda (index string start end)
-       (and (fix:< index end)
-	    (gcb? index string start end))))))
+    (insn:bog)))
 
 (define-sre-rule 'eog
   (lambda (ctx)
     (declare (ignore ctx))
-    (insn:string-zero-width
-     (lambda (index string start end)
-       (and (fix:> index start)
-	    (gcb? index string start end))))))
+    (insn:eog)))
 
 (define-sre-rewriter 'grapheme
   (lambda (ctx)
