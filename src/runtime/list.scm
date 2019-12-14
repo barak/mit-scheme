@@ -283,10 +283,10 @@ USA.
   (not (pair? x)))
 
 (declare (integrate-operator null-list?))
-(define (null-list? l #!optional caller)
-  (cond ((pair? l) #f)
-	((null? l) #t)
-	(else (error:not-a list? l caller))))
+(define (null-list? object #!optional caller)
+  (cond ((null? object) #t)
+	((pair? object) #f)
+	(else (error:not-a list? object caller))))
 
 (define (list= predicate . lists)
 
@@ -1138,6 +1138,27 @@ USA.
   (define (lose)
     (error:not-a alist? items caller))
   (%remove! delete? items pair? car cdr set-cdr! lose))
+
+(define ((alist-adjoiner key= kons knil) key datum alist)
+  (let loop ((alist alist))
+    (if (null-list? alist)
+	(list (cons key (kons datum knil)))
+	(let ((p (car alist)))
+	  (if (key= key (car p))
+	      (cons (cons (car p) (kons datum (cdr p)))
+		    (cdr alist))
+	      (cons p (loop (cdr alist))))))))
+
+(define ((alist-adjoiner! key= kons knil) key datum alist)
+  (let ((p
+	 (find (lambda (p)
+		 (key= key (car p)))
+	       alist)))
+    (if p
+	(begin
+	  (set-cdr! p (kons datum (cdr p)))
+	  alist)
+	(cons (cons key (kons datum knil)) alist))))
 
 ;;;; Keyword lists
 
@@ -1306,3 +1327,9 @@ USA.
 	      (set-cdr! list '())))
 	list)
       '()))
+
+(define (cons-last item items)
+  (let loop ((items* items))
+    (if (null-list? items*)
+	(list item)
+	(cons (car items*) (cons-last item (cdr items*))))))

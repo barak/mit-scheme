@@ -3186,6 +3186,8 @@ USA.
 	  (proper-list? list?)		;SRFI-1
 	  add-member-procedure
 	  alist->keyword-list
+	  alist-adjoiner
+	  alist-adjoiner!
 	  alist-cons			;SRFI-1
 	  alist-copy			;SRFI-1
 	  alist-delete			;SRFI-1
@@ -3235,6 +3237,7 @@ USA.
 	  circular-list?		;SRFI-1
 	  cons				;SRFI-1
 	  cons*				;SRFI-1
+	  cons-last
 	  decode-general-car-cdr
 	  del-assoc
 	  del-assoc!
