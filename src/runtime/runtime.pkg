@@ -3443,9 +3443,19 @@ USA.
 	  fasload
 	  file-fasloadable?
 	  file-loadable?
+	  file-type-bin
+	  file-type-com
+	  file-type-moc
+	  file-type-nib
+	  file-type-src
+	  file-types->list
+	  file-types-contains?
+	  file-types:library
+	  file-types:program
 	  load
 	  load-library-object-file
 	  load/push-hook!
+	  loadable-source-pathname
 	  param:loading?
 	  param:suppress-loading-message?
 	  system-library-uri
@@ -6434,6 +6444,7 @@ USA.
   (export (runtime)
 	  eval-r7rs-scode-file
 	  eval-r7rs-source
+	  make-environment-from-parsed-imports
 	  syntax-r7rs-source))
 
 (define-package (runtime directed-graph)

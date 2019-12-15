@@ -123,17 +123,21 @@ USA.
 	  (values pathname*
 		  (wrap-loader pathname (fasloader->loader pathname loader))
 		  notifier)
-	  (let ((pathname*
-		 (if (file-regular? pathname)
-		     pathname
-		     (let ((pathname (pathname-default-type pathname "scm")))
-		       (and (file-regular? pathname)
-			    pathname)))))
+	  (let ((pathname* (loadable-source-pathname pathname)))
 	    (if pathname*
 		(values pathname*
 			(wrap-loader pathname* (source-loader pathname*))
 			(loading-notifier pathname*))
 		(values #f #f #f)))))))
+
+(define (loadable-source-pathname pathname)
+  (if (pathname-type pathname)
+      (openable-pathname pathname)
+      (try-types openable-pathname pathname file-type-src)))
+
+(define (openable-pathname pathname)
+  (and (file-regular? pathname)
+       pathname))
 
 (define (fasloader->loader pathname loader)
   (lambda (environment purify?)
@@ -180,12 +184,16 @@ USA.
 	 (thunk
 	  (if (pathname-type pathname)
 	      (or (try-object-file pathname)
-		  (try-fasl-file pathname))
-	      (or (try-fasl-file pathname)
-		  (try-fasl-file (pathname-new-type pathname "com"))
+		  (try-fasl-file pathname #f))
+	      (or (try-fasl-file pathname #f)
+		  (try-types try-fasl-file pathname file-type-com file-type-src)
 		  (try-object-file (pathname-new-type pathname "so"))
-		  (let ((bin-type (if package/cross-compiling? "nib" "bin")))
-		    (try-fasl-file (pathname-new-type pathname bin-type)))))))
+		  (try-types try-fasl-file
+			     pathname
+			     (if package/cross-compiling?
+				 file-type-nib
+				 file-type-bin)
+			     file-type-src)))))
     (if thunk
 	(receive (pathname loader notifier) (thunk)
 	  (values pathname
@@ -196,7 +204,7 @@ USA.
 		  notifier))
 	(values #f #f #f))))
 
-(define (try-fasl-file pathname)
+(define (try-fasl-file pathname src-pathname)
   (and (fasl-file? pathname)
        (lambda ()
 	 (values pathname
@@ -205,9 +213,8 @@ USA.
 		    (string-for-primitive (->namestring pathname))))
 		 (let ((notifier (loading-notifier pathname)))
 		   (lambda (thunk)
-		     (if (file-modification-time<?
-			  pathname
-			  (pathname-new-type pathname "scm"))
+		     (if (and src-pathname
+			      (file-modification-time<? pathname src-pathname))
 			 (warn "Source file newer than binary:" pathname))
 		     (notifier thunk)))))))
 
@@ -307,6 +314,45 @@ USA.
 			       procedure
 			       (cons pathname arguments))
 	 arguments))
+
+(define-record-type <file-types>
+    (file-types src bin com nib moc)
+    file-types?
+  (src file-type-src)
+  (bin file-type-bin)
+  (com file-type-com)
+  (nib file-type-nib)
+  (moc file-type-moc))
+
+(define (file-types-contains? types type)
+  (and (string? type)
+       (or (string=? type (file-type-src types))
+	   (string=? type (file-type-bin types))
+	   (string=? type (file-type-com types))
+	   (string=? type (file-type-nib types))
+	   (string=? type (file-type-moc types)))))
+
+(define (file-types->list types)
+  (list (file-type-src types)
+	(file-type-bin types)
+	(file-type-com types)
+	(file-type-nib types)
+	(file-type-moc types)))
+
+(define file-types:program (file-types "scm" "bin" "com" "nib" "moc"))
+(define file-types:library (file-types "sld" "bsld" "csld" "dlsb" "dlsc"))
+
+(define (try-types proc pathname . selectors)
+  (find-map (lambda (types)
+	      (apply proc
+		     (map (lambda (selector)
+			    (pathname-new-type pathname (selector types)))
+			  selectors)))
+	    file-types-in-order))
+
+(define file-types-in-order
+  (list file-types:library
+	file-types:program))
 
 (define (fasload-object-file pathname)
   (let ((pathname (object-file-pathname pathname)))
