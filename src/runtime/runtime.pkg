@@ -666,6 +666,7 @@ USA.
 	  pa
 	  param:exit-hook
 	  param:suspend-hook
+	  partition-generator
 	  pointer-type-code?
 	  primitive-memory-hash
 	  primitive-object-hash

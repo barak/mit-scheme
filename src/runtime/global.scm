@@ -706,3 +706,69 @@ USA.
 (define (ephemeron-broken? ephemeron)
   (guarantee-ephemeron ephemeron 'ephemeron-broken?)
   (not (primitive-object-ref ephemeron 1)))
+
+;;;; Partitioning
+
+(define (partition-generator classifier cls= kons knil . options)
+
+  (define (impl:hybrid)
+    (let ((alist-type (impl:mutable-alist))
+	  (hash-table-type (impl:hash-table)))
+      (lambda (items)
+	(if (fix:<= (length items) 128)
+	    (alist-type items)
+	    (hash-table-type items)))))
+
+  (define (impl:immutable-alist)
+    (alist-type alist-adjoiner))
+
+  (define (impl:mutable-alist)
+    (alist-type alist-adjoiner!))
+
+  (define (alist-type alist-adjoiner)
+    (let ((adjoiner (alist-adjoiner cls= kons knil)))
+      (lambda (items)
+	(let ((alist
+	       (fold (lambda (item alist)
+		       (adjoiner (classifier item) item alist))
+		     '()
+		     items)))
+	  (lambda (#!optional cls)
+	    (if (default-object? cls)
+		(map car alist)
+		(let ((p (assoc cls alist cls=)))
+		  (if p
+		      (cdr p)
+		      knil))))))))
+
+  (define (impl:hash-table)
+    (let ((table-type (delay (make-hash-table-type* cls=)))
+	  (knil-thunk (lambda () knil)))
+      (lambda (items)
+	(let ((table (make-hash-table* (force table-type))))
+	  (for-each (lambda (item)
+		      (hash-table-update! table
+					  (classifier item)
+					  kons
+					  knil-thunk))
+		    items)
+	  (lambda (#!optional cls)
+	    (if (default-object? cls)
+		(hash-table-keys table)
+		(hash-table-ref table cls knil-thunk)))))))
+
+  (receive (implementation)
+      (partition-generator-options options 'partition-generator)
+    (case implementation
+      ((#!default hybrid) (impl:hybrid))
+      ((immutable-alist) (impl:immutable-alist))
+      ((mutable-alist) (impl:mutable-alist))
+      ((hash-table) (impl:hash-table))
+      (else (error "Unsupported implementation:" implementation)))))
+
+
+(define partition-generator-options
+  (keyword-option-parser
+   (list (list 'implementation
+	       '(hybrid immutable-alist mutable-alist hash-table)
+	       'hybrid))))
