@@ -668,6 +668,18 @@ USA.
 			  operand))))
       #f))
 
+(define (interned-symbol?-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (make-type-test expr block (ucode-type interned-symbol) (car operands))
+      #f))
+
+(define (uninterned-symbol?-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (make-type-test expr block (ucode-type uninterned-symbol) (car operands))
+      #f))
+
 (define (default-object?-expansion expr operands block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
@@ -727,186 +739,102 @@ USA.
 
 ;;;; Tables
 
-(define usual-integrations/expansion-names
-  (append '(*
-	    +
-	    -
-	    -1+
-	    /
-	    1+
-	    <
-	    =
-	    >
-	    apply
-	    caaaar
-	    caaadr
-	    caaar
-	    caadar
-	    caaddr
-	    caadr
-	    caar
-	    cadaar
-	    cadadr
-	    cadar
-	    caddar
-	    cadddr
-	    caddr
-	    cadr
-	    car
-	    cdaaar
-	    cdaadr
-	    cdaar
-	    cdadar
-	    cdaddr
-	    cdadr
-	    cdar
-	    cddaar
-	    cddadr
-	    cddar
-	    cdddar
-	    cddddr
-	    cdddr
-	    cddr
-	    cdr
-	    char=?
-	    complex?
-	    cons*
-	    default-object?
-	    eighth
-	    exact-integer?
-	    exact-rational?
-	    expt
-	    eq?
-	    fifth
-	    first
-	    fix:<=
-	    fix:=
-	    fix:>=
-	    fourth
-	    fx<?
-	    fx<=?
-	    fx=?
-	    fx>?
-	    fx>=?
-	    fxarithmetic-shift-right
-	    fxneg
-	    guarantee
-	    int:->flonum
-	    int:integer?
-	    intern
-	    list
-	    make-bytevector
-	    ;; modulo	; Compiler does not currently open-code it.
-	    negative?
-	    not
-	    number?
-	    positive?
-	    quotient
-	    remainder
-	    second
-	    seventh
-	    sixth
-	    string->symbol
-	    symbol?
-	    third
-	    weak-pair?
-	    zero?)
-	  (map car global-primitives)))
-
-(define usual-integrations/expansion-values
-  (append (list
-	   *-expansion
-	   +-expansion
-	   --expansion
-	   -1+-expansion
-	   /-expansion
-	   1+-expansion
-	   <-expansion
-	   =-expansion
-	   >-expansion
-	   apply*-expansion
-	   caaaar-expansion
-	   caaadr-expansion
-	   caaar-expansion
-	   caadar-expansion
-	   caaddr-expansion
-	   caadr-expansion
-	   caar-expansion
-	   cadaar-expansion
-	   cadadr-expansion
-	   cadar-expansion
-	   caddar-expansion
-	   cadddr-expansion
-	   caddr-expansion
-	   cadr-expansion
-	   car-expansion
-	   cdaaar-expansion
-	   cdaadr-expansion
-	   cdaar-expansion
-	   cdadar-expansion
-	   cdaddr-expansion
-	   cdadr-expansion
-	   cdar-expansion
-	   cddaar-expansion
-	   cddadr-expansion
-	   cddar-expansion
-	   cdddar-expansion
-	   cddddr-expansion
-	   cdddr-expansion
-	   cddr-expansion
-	   cdr-expansion
-	   char=?-expansion
-	   complex?-expansion
-	   cons*-expansion
-	   default-object?-expansion
-	   eighth-expansion
-	   exact-integer?-expansion
-	   exact-rational?-expansion
-	   expt-expansion
-	   eq?-expansion
-	   fifth-expansion
-	   first-expansion
-	   fx<=?-expansion
-	   fx=?-expansion
-	   fx>=?-expansion
-	   fourth-expansion
-	   fx<?-expansion
-	   fx<=?-expansion
-	   fx=?-expansion
-	   fx>?-expansion
-	   fx>=?-expansion
-	   fxarithmetic-shift-right-expansion
-	   fxneg-expansion
-	   guarantee-expansion
-	   int:->flonum-expansion
-	   exact-integer?-expansion
-	   intern-expansion
-	   list-expansion
-	   make-bytevector-expansion
-	   ;; modulo-expansion
-	   negative?-expansion
-	   not-expansion
-	   complex?-expansion
-	   positive?-expansion
-	   quotient-expansion
-	   remainder-expansion
-	   second-expansion
-	   seventh-expansion
-	   sixth-expansion
-	   string->symbol-expansion
-	   symbol?-expansion
-	   third-expansion
-	   weak-pair?-expansion
-	   zero?-expansion)
-	  (map (lambda (p)
-		 (make-primitive-expander
-		  (apply make-primitive-procedure (cdr p))))
-	       global-primitives)))
-
 (define usual-integrations/expansion-alist
-  (map cons
-       usual-integrations/expansion-names
-       usual-integrations/expansion-values))
+  (cons* (cons '* *-expansion)
+	 (cons '+ +-expansion)
+	 (cons '- --expansion)
+	 (cons '-1+ -1+-expansion)
+	 (cons '/ /-expansion)
+	 (cons '|1+| |1+-expansion|)
+	 (cons '< <-expansion)
+	 (cons '= =-expansion)
+	 (cons '> >-expansion)
+	 (cons 'apply apply*-expansion)
+	 (cons 'caaaar caaaar-expansion)
+	 (cons 'caaadr caaadr-expansion)
+	 (cons 'caaar caaar-expansion)
+	 (cons 'caadar caadar-expansion)
+	 (cons 'caaddr caaddr-expansion)
+	 (cons 'caadr caadr-expansion)
+	 (cons 'caar caar-expansion)
+	 (cons 'cadaar cadaar-expansion)
+	 (cons 'cadadr cadadr-expansion)
+	 (cons 'cadar cadar-expansion)
+	 (cons 'caddar caddar-expansion)
+	 (cons 'cadddr cadddr-expansion)
+	 (cons 'caddr caddr-expansion)
+	 (cons 'cadr cadr-expansion)
+	 (cons 'car car-expansion)
+	 (cons 'cdaaar cdaaar-expansion)
+	 (cons 'cdaadr cdaadr-expansion)
+	 (cons 'cdaar cdaar-expansion)
+	 (cons 'cdadar cdadar-expansion)
+	 (cons 'cdaddr cdaddr-expansion)
+	 (cons 'cdadr cdadr-expansion)
+	 (cons 'cdar cdar-expansion)
+	 (cons 'cddaar cddaar-expansion)
+	 (cons 'cddadr cddadr-expansion)
+	 (cons 'cddar cddar-expansion)
+	 (cons 'cdddar cdddar-expansion)
+	 (cons 'cddddr cddddr-expansion)
+	 (cons 'cdddr cdddr-expansion)
+	 (cons 'cddr cddr-expansion)
+	 (cons 'cdr cdr-expansion)
+	 (cons 'char=? char=?-expansion)
+	 (cons 'complex? complex?-expansion)
+	 (cons 'cons* cons*-expansion)
+	 (cons 'default-object? default-object?-expansion)
+	 (cons 'eighth eighth-expansion)
+	 (cons 'exact-integer? exact-integer?-expansion)
+	 (cons 'exact-rational? exact-rational?-expansion)
+	 (cons 'expt expt-expansion)
+	 (cons 'eq? eq?-expansion)
+	 (cons 'fifth fifth-expansion)
+	 (cons 'first first-expansion)
+	 (cons 'fix:<= fx<=?-expansion)
+	 (cons 'fix:= fx=?-expansion)
+	 (cons 'fix:>= fx>=?-expansion)
+	 (cons 'fourth fourth-expansion)
+	 (cons 'fx<? fx<?-expansion)
+	 (cons 'fx<=? fx<=?-expansion)
+	 (cons 'fx=? fx=?-expansion)
+	 (cons 'fx>? fx>?-expansion)
+	 (cons 'fx>=? fx>=?-expansion)
+	 (cons 'fxarithmetic-shift-right fxarithmetic-shift-right-expansion)
+	 (cons 'fxneg fxneg-expansion)
+	 (cons 'guarantee guarantee-expansion)
+	 (cons 'int:->flonum int:->flonum-expansion)
+	 (cons 'int:integer? exact-integer?-expansion)
+	 (cons 'intern intern-expansion)
+	 (cons 'interned-symbol? interned-symbol?-expansion)
+	 (cons 'list list-expansion)
+	 (cons 'make-bytevector make-bytevector-expansion)
+	 (cons 'negative? negative?-expansion)
+	 (cons 'not not-expansion)
+	 (cons 'number? complex?-expansion)
+	 (cons 'positive? positive?-expansion)
+	 (cons 'quotient quotient-expansion)
+	 (cons 'remainder remainder-expansion)
+	 (cons 'second second-expansion)
+	 (cons 'seventh seventh-expansion)
+	 (cons 'sixth sixth-expansion)
+	 (cons 'string->symbol string->symbol-expansion)
+	 (cons 'symbol? symbol?-expansion)
+	 (cons 'third third-expansion)
+	 (cons 'uninterned-symbol? uninterned-symbol?-expansion)
+	 (cons 'weak-pair? weak-pair?-expansion)
+	 (cons 'zero? zero?-expansion)
+	 (map (lambda (p)
+		(cons (car p)
+		      (make-primitive-expander
+		       (apply make-primitive-procedure (cdr p)))))
+	      global-primitives)))
+
+(define usual-integrations/expansion-names
+  (map car usual-integrations/expansion-alist))
+
+(define usual-integrations/expansion-values
+  (map cdr usual-integrations/expansion-alist))
 
 ;;;;  Hooks and utilities for user defined reductions and expanders
 
