@@ -1128,6 +1128,8 @@ USA.
 	  substring<?
 	  substring=?)
   (export ()
+	  (istring? immutable-string?)
+	  (string-append* string-concatenate)
 	  8-bit-string?
 	  burst-string
 	  char->string
@@ -1146,7 +1148,6 @@ USA.
 	  string->vector
 	  string-any
 	  string-append
-	  string-append*
 	  string-builder
 	  string-ci<=?
 	  string-ci<?
@@ -1155,6 +1156,7 @@ USA.
 	  string-ci>?
 	  string-compare
 	  string-compare-ci
+	  string-concatenate
 	  string-copy
 	  string-copy!
 	  string-count

@@ -33,37 +33,35 @@ USA.
 		drop-right
 		last)
 	  (srfi 143)
-	  (rename (only (mit legacy runtime)
-			char->string
-			default-object?
-			error:bad-range-argument
-			fix:end-index
-			fix:start-index
-			guarantee
-			immutable-string?
-			non-negative-fixnum?
-			string->immutable
-			string->utf16
-			string->utf16be
-			string->utf16le
-			string-append*
-			string-builder
-			string-fold
-			string-fold-right
-			string-joiner*
-			string-null?
-			string-padder
-			string-search-backward
-			string-search-forward
-			string-slice
-			string-titlecase
-			string-trimmer
-			unspecific
-			utf16->string
-			utf16be->string
-			utf16le->string)
-		  (immutable-string? istring?)
-		  (string-append* string-concatenate)))
+	  (only (mit legacy runtime)
+		char->string
+		default-object?
+		error:bad-range-argument
+		fix:end-index
+		fix:start-index
+		guarantee
+		istring?
+		non-negative-fixnum?
+		string->immutable
+		string->utf16
+		string->utf16be
+		string->utf16le
+		string-concatenate
+		string-builder
+		string-fold
+		string-fold-right
+		string-joiner*
+		string-null?
+		string-padder
+		string-search-backward
+		string-search-forward
+		string-slice
+		string-titlecase
+		string-trimmer
+		unspecific
+		utf16->string
+		utf16be->string
+		utf16le->string))
   (export istring?
 	  list->string
 	  ;make-string

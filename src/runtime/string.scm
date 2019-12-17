@@ -1431,16 +1431,20 @@ USA.
 	      ((not (fix:< i end)))
 	    (vector-set! to j (ustring-ref string i)))
 	  to)))))
-
+
 ;;;; Append
 
 (define (string-append . strings)
-  (string-append* strings))
+  (%string-concatenate strings 'string-append)
+  (string-concatenate strings))
 
-(define (string-append* strings)
+(define (string-concatenate strings)
+  (%string-concatenate strings 'string-concatenate))
+
+(define (%string-concatenate strings caller)
   (let ((builder (string-builder)))
     (for-each (lambda (string)
-		(guarantee string? string 'string-append)
+		(guarantee string? string caller)
 		(builder string))
 	      strings)
     (builder)))
