@@ -175,7 +175,8 @@ USA.
 (define (guarantee-procedure-of-arity object arity caller)
   (guarantee procedure? object caller)
   (if (not (procedure-arity-valid? object arity))
-      (error:bad-range-argument object caller)))
+      (error:bad-range-argument object caller))
+  object)
 
 (define (make-procedure-arity min #!optional max simple-ok?)
   (guarantee index-fixnum? min 'make-procedure-arity)
