@@ -30,13 +30,13 @@ USA.
 (declare (usual-integrations))
 
 (define (valid-sre? object)
-  (and (or (find-cset-sre-rule initial-ctx object)
-	   (find-sre-rule initial-ctx object))
+  (and (or (match-cset-sre-rule initial-ctx object)
+	   (match-sre-rule initial-ctx object))
        #t))
 (register-predicate! valid-sre? 'source-regexp)
 
 (define (valid-cset-sre? object)
-  (and (find-cset-sre-rule initial-ctx object)
+  (and (match-cset-sre-rule initial-ctx object)
        #t))
 (register-predicate! valid-cset-sre? 'char-set-regexp)
 
@@ -71,12 +71,12 @@ USA.
 (define (regexp->nfa regexp)
   (matcher->nfa (regexp-impl regexp)))
 
-(define (print-regexp regexp #!optional port)
+(define (print-regexp re #!optional port)
   (let ((port (if (default-object? port) (current-output-port) port)))
     (fresh-line port)
     (for-each (lambda (object)
 		(write-line object port))
-	      (regexp->nfa regexp))))
+	      (regexp->nfa (regexp re)))))
 
 (define condition-type:compile-regexp)
 (define compile-error)
@@ -97,26 +97,35 @@ USA.
 
 ;;;; Match and search
 
-(define (regexp-matches? re string #!optional start end)
-  (guarantee nfc-string? string 'regexp-matches?)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-matches?))
-	 (start (fix:start-index start end 'regexp-matches?)))
-    (and (run-matcher (regexp-impl
-		       (if (regexp? re)
-			   re
-			   ;; Disable captures to speed up match.
-			   (compile-sre-top-level `(w/nocapture ,re))))
-		      string start end)
+(define (regexp-matches-all? re string #!optional start end)
+  (%regexp-matches? re #t string start end 'regexp-matches-all?))
+
+(define (regexp-matches-some? re string #!optional start end)
+  (%regexp-matches? re #f string start end 'regexp-matches-some?))
+
+(define-integrable (%regexp-matches? re match-all? string start end caller)
+  (guarantee nfc-string? string caller)
+  (let* ((end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (and (run-matcher (regexp re) match-all? #f start string start end)
 	 #t)))
 
-(define (regexp-matches re string #!optional start end)
-  (guarantee nfc-string? string 'regexp-matches)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-matches))
-	 (start (fix:start-index start end 'regexp-matches)))
-    (%regexp-match (regexp re) string start end)))
+(define (regexp-matches-all re string #!optional start end)
+  (%regexp-matches re #t string start end 'regexp-matches-all))
 
-(define (%regexp-match regexp string start end)
-  (let ((groups (run-matcher (regexp-impl regexp) string start end)))
+(define (regexp-matches-some re string #!optional start end)
+  (%regexp-matches re #f string start end 'regexp-matches-some))
+
+(define-integrable (%regexp-matches re match-all? string start end caller)
+  (guarantee nfc-string? string caller)
+  (let* ((end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (%regexp-match (regexp re) match-all? #t start string start end)))
+
+(define (%regexp-match regexp match-all? capture? index string start end)
+  (let ((groups
+	 (run-matcher (regexp-impl regexp) match-all? capture? index
+		      string start end)))
     (and groups
 	 (make-regexp-match (car groups)
 			    (cdr groups)
@@ -126,27 +135,23 @@ USA.
   (guarantee nfc-string? string 'regexp-search)
   (let* ((end (fix:end-index end (string-length string) 'regexp-search))
 	 (start (fix:start-index start end 'regexp-search)))
-    (%regexp-search (regexp re) string start end)))
+    (%regexp-search (regexp re) start string start end)))
 
-(define (%regexp-search regexp string start end)
-  (let loop ((index start))
+(define (%regexp-search regexp index string start end)
+  (let loop ((index index))
     (if (fix:< index end)
-	(or (%regexp-match regexp string index end)
+	(or (%regexp-match regexp #f #t index string start end)
 	    (loop (fix:+ index 1)))
-	(%regexp-match regexp string index end))))
+	(and (fix:= index end)
+	     (%regexp-match regexp #f #t index string start end)))))
 
 (define (regexp-search-all re string #!optional start end)
-  (guarantee nfc-string? string 'regexp-search)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-search))
-	 (start (fix:start-index start end 'regexp-search)))
-    (%regexp-search-all (regexp re) string start end)))
-
-(define (%regexp-search-all regexp string start end)
-  (let loop ((index start))
-    (let ((match (%regexp-search regexp string index end)))
-      (if match
-	  (cons match (loop (regexp-match-start match)))
-	  '()))))
+  (regexp-fold-right re
+		     (lambda (index match string acc)
+		       (declare (ignore index string))
+		       (cons match acc))
+		     '()
+		     string (default-object) start end))
 
 ;;;; Match datatype
 
@@ -165,6 +170,12 @@ USA.
 
 (define (regexp-match-end match)
   (group-end (regexp-match-group match)))
+
+(define (regexp-match-empty? match)
+  (group-empty? (regexp-match-group match)))
+
+(define (regexp-match-length match)
+  (group-length (regexp-match-group match)))
 
 (define (regexp-match-access proc match key caller)
   (if (eqv? key 0)
@@ -223,11 +234,12 @@ USA.
 	      (guarantee exact-nonnegative-integer? count 'regexp-replace))))
 
     (define (find-match index n)
-      (let ((match (%regexp-search regexp string index end)))
+      (let ((match (%regexp-search regexp index string index end)))
 	(if match
 	    (if (< n count)
-		(find-match (regexp-match-start match)
-			    (- n 1))
+		(find-match (fix:max (regexp-match-end match)
+				     (fix:+ index 1))
+			    (+ n 1))
 		(string-append (subst-match 'pre match string start end)
 			       (subst-match subst match string start end)
 			       (subst-match 'post match string start end)))
@@ -237,27 +249,23 @@ USA.
 
 (define (regexp-replace-all re string subst #!optional start end)
   (guarantee regexp-replace-subst? subst 'regexp-replace-all)
-  (let* ((len (string-length string))
-	 (end (if end (fix:end-index end len 'regexp-replace-all) len))
-	 (start (fix:start-index start end 'regexp-replace-all))
-	 (regexp (regexp re)))
-
-    (define (subst-matches matches start)
-      (if (pair? matches)
-	  (let ((match (car matches))
-		(matches (cdr matches)))
-	    (cons* (subst-match 'pre match string start end)
-		   (subst-match subst match string start
-				(if (pair? matches)
-				    (regexp-match-start (car matches))
-				    end))
-		   (subst-matches matches (regexp-match-end match))))
-	  '()))
-
-    (let ((matches (%regexp-search regexp string start end)))
-      (if (pair? matches)
-	  (string-append* (subst-matches matches start))
-	  (substring string start end)))))
+  (let ((matches (regexp-search-all re string start end)))
+    (if (pair? matches)
+	(string-append*
+	 (let ((start (if (default-object? start) 0 start))
+	       (end (if (default-object? end) (string-length string) end)))
+	   (let loop ((matches matches) (start start))
+	     (if (pair? matches)
+		 (let ((match (car matches))
+		       (matches (cdr matches)))
+		   (cons* (subst-match 'pre match string start end)
+			  (subst-match subst match string start
+				       (if (pair? matches)
+					   (regexp-match-start (car matches))
+					   end))
+			  (loop matches (regexp-match-end match))))
+		 '()))))
+	(substring string start end))))
 
 (define (regexp-replace-subst? object)
   (or (string? object)
@@ -266,7 +274,7 @@ USA.
       (eq? 'post object)))
 (register-predicate! regexp-replace-subst? 'regexp-replace-subst)
 
-(define (subst-match match subst string start end)
+(define (subst-match subst match string start end)
   (cond ((string? subst)
 	 subst)
 	((eq? 'pre subst)
@@ -282,114 +290,136 @@ USA.
 (register-predicate! regexp-match-key? 'regexp-match-key)
 
 (define (regexp-match-replacement? object)
-  (or (string? object)
-      (regexp-match-key? object)
-      (and (list? object)
-	   (every regexp-match-replacement? object))))
+  (and (list? object)
+       (every (lambda (elt)
+		(or (string? elt)
+		    (regexp-match-key? elt)))
+	      object)))
 (register-predicate! regexp-match-replacement? 'regexp-match-replacement)
 
 (define (regexp-match-replace match repl)
   (guarantee regexp-match? match 'regexp-match-replace)
-  (let ((builder (string-builder)))
-    (let loop ((repl repl))
-      (cond ((string? repl)
-	     (builder repl))
-	    ((regexp-match-key? repl)
-	     (builder (or (regexp-match-submatch match repl) "")))
-	    ((list? repl)
-	     (for-each loop repl))
-	    (else
-	     (error:not-a regexp-match-replacement? repl
-			  'regexp-match-replace))))
-    (builder)))
+  (guarantee regexp-match-replacement? repl 'regexp-match-replace)
+  (string-append*
+   (map (lambda (item)
+	  (if (string? item)
+	      item
+	      (or (regexp-match-submatch match repl) "")))
+	repl)))
 
 ;;;; Fold
 
-(define (regexp-fold re kons knil string #!optional finish start end)
+(define (regexp-fold re kons knil string #!optional finish start end ignore?)
   (guarantee nfc-string? string 'regexp-fold)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-fold))
-	 (start (fix:start-index start end 'regexp-fold)))
-    (%regexp-fold kons knil finish re string start end)))
+  (let ((regexp (regexp re))
+	(end (fix:end-index end (string-length string) 'regexp-fold))
+	(ignore? (if (default-object? ignore?) #f ignore?)))
+    (let ((start (fix:start-index start end 'regexp-fold)))
 
-(define (%regexp-fold kons knil finish re string start end)
-  (let ((regexp (regexp re)))
-    (let loop ((index start) (acc knil))
-      (let ((match (%regexp-search regexp string index end)))
-	(cond (match (loop (regexp-match-end match) (kons index match acc)))
-	      ((default-object? finish) acc)
-	      (else (finish index #f acc)))))))
+      (define (loop index last-match-end acc)
+	(let ((match (%regexp-search regexp index string start end)))
+	  (if match
+	      (if (and ignore? (ignore? match))
+		  (skip index last-match-end match acc)
+		  (continue index match (kons last-match-end match string acc)))
+	      (done last-match-end acc))))
 
-(define (regexp-fold-right re kons knil string #!optional finish start end)
+      (define (skip index last-match-end match acc)
+	(loop (fix:max (regexp-match-end match) (fix:+ index 1))
+	      last-match-end
+	      acc))
+
+      (define (continue index match acc)
+	(let ((last-match-end (regexp-match-end match)))
+	  (loop (fix:max last-match-end (fix:+ index 1))
+		last-match-end
+		acc)))
+
+      (define (done last-match-end acc)
+	(if (default-object? finish)
+	    acc
+	    (finish last-match-end #f string acc)))
+
+      (loop start start knil))))
+
+(define (regexp-fold-right re kons knil string
+			   #!optional finish start end ignore?)
   (guarantee nfc-string? string 'regexp-fold-right)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-fold-right))
-	 (start (fix:start-index start end 'regexp-fold-right)))
-    (if (default-object? finish)
-	(%regexp-fold-right-1 kons knil re string start end)
-	(%regexp-fold-right kons knil finish re string start end))))
+  (let ((regexp (regexp re))
+	(end (fix:end-index end (string-length string) 'regexp-fold-right))
+	(ignore? (if (default-object? ignore?) #f ignore?)))
+    (let ((start (fix:start-index start end 'regexp-fold-right)))
 
-(define (%regexp-fold-right-1 kons knil re string start end)
-  ;; No need to propagate the final index, making the loop simpler and faster.
-  (let ((regexp (regexp re)))
-    (let loop ((index start))
-      (let ((match (%regexp-search regexp string index end)))
-	(if match
-	    (kons index match (loop (regexp-match-end match)))
-	    knil)))))
+      (define (loop index last-match-end)
+	(let ((match (%regexp-search regexp index string start end)))
+	  (if match
+	      (if (and ignore? (ignore? match))
+		  (skip index last-match-end match)
+		  (kons last-match-end match string (continue index match)))
+	      (done last-match-end))))
 
-(define (%regexp-fold-right kons knil finish re string start end)
-  (let ((regexp (regexp re)))
-    (let loop ((index start) (k (lambda (index acc) (finish index #f acc))))
-      (let ((match (%regexp-search regexp string index end)))
-	(if match
-	    (loop (regexp-match-end match)
-		  (lambda (final-index acc)
-		    (k final-index (kons index match acc))))
-	    (k index knil))))))
+      (define (skip index last-match-end match)
+	(loop (fix:max (regexp-match-end match) (fix:+ index 1))
+	      last-match-end))
+
+      (define (continue index match)
+	(let ((last-match-end (regexp-match-end match)))
+	  (loop (fix:max last-match-end (fix:+ index 1))
+		last-match-end)))
+
+      (define (done last-match-end)
+	(if (default-object? finish)
+	    knil
+	    (finish last-match-end #f string knil)))
+
+      (loop start start))))
 
 ;;;; Cut
 
 (define (regexp-extract re string #!optional start end)
-  (guarantee nfc-string? string 'regexp-extract)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-extract))
-	 (start (fix:start-index start end 'regexp-extract)))
-    (%regexp-fold-right-1 (lambda (index match strings)
-			    (declare (ignore index))
-			    (cons (regexp-match-value match) strings))
-			  '()
-			  re string start end)))
+  (regexp-fold-right re
+		     (lambda (last-match-end match string strings)
+		       (declare (ignore last-match-end string))
+		       (if (regexp-match-empty? match)
+			   strings
+			   (cons (regexp-match-value match) strings)))
+		     '()
+		     string (default-object) start end))
 
 (define (regexp-split re string #!optional start end)
-  (guarantee nfc-string? string 'regexp-split)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-split))
-	 (start (fix:start-index start end 'regexp-split)))
-    (%regexp-fold-right (lambda (index match strings)
-			  (cons (substring string index
+  (regexp-fold-right re
+		     (lambda (last-match-end match string strings)
+		       (cons (string-slice string last-match-end
 					   (regexp-match-start match))
-				strings))
-			'()
-			(lambda (index match strings)
-			  (declare (ignore match))
-			  (cons (substring string index end)
-				strings))
-			re string start end)))
+			     strings))
+		     '()
+		     string
+		     (lambda (last-match-end match string strings)
+		       (declare (ignore match))
+		       (cons (string-slice string last-match-end end)
+			     strings))
+		     start end regexp-match-empty?))
 
 (define (regexp-partition re string #!optional start end)
-  (guarantee nfc-string? string 'regexp-partition)
-  (let* ((end (fix:end-index end (string-length string) 'regexp-partition))
-	 (start (fix:start-index start end 'regexp-partition)))
-    (%regexp-fold-right (lambda (index match strings)
-			  (cons* (substring string index
-					    (regexp-match-start match))
-				 (regexp-match-value match)
-				 strings))
-			'()
-			(lambda (index match strings)
-			  (declare (ignore match))
-			  (if (fix:< index end)
-			      (cons (substring string index end)
-				    strings)
-			      strings))
-			re string start end)))
+  (let ((start (if (default-object? start) 0 start))
+	(end (if (default-object? end) (string-length string) end)))
+    (if (fix:< start end)
+	(regexp-fold-right re
+			   (lambda (last-match-end match string strings)
+			     (cons* (string-slice string last-match-end
+						  (regexp-match-start match))
+				    (regexp-match-value match)
+				    strings))
+			   '()
+			   string
+			   (lambda (last-match-end match string strings)
+			     (declare (ignore match))
+			     (let ((s (string-slice string last-match-end end)))
+			       (if (string-null? s)
+				   strings
+				   (cons s strings))))
+			   start end regexp-match-empty?)
+	(list ""))))
 
 ;;;; Compiler rules
 
@@ -408,10 +438,10 @@ USA.
 (define (rule-finder match-rules rewrite-rules)
   (rules-rewriter rewrite-rules (rules-matcher match-rules)))
 
-(define-deferred-procedure find-sre-rule 'regexp-rules
+(define-deferred-procedure match-sre-rule 'regexp-rules
   (rule-finder sre-rules sre-rewrite-rules))
 
-(define-deferred-procedure find-cset-sre-rule 'regexp-rules
+(define-deferred-procedure match-cset-sre-rule 'regexp-rules
   (rule-finder cset-sre-rules cset-sre-rewrite-rules))
 
 (define-deferred-procedure define-sre-rule 'regexp-rules
@@ -443,13 +473,12 @@ USA.
   (alias-rule-definer cset-sre-rewrite-rules))
 
 (define (compile-sre ctx sre)
-  (cond ((find-cset-sre-rule ctx sre)
-	 => (lambda (rule)
-	      (insn:char-set
-	       (maybe-xform ctx ((rule-operation rule) ctx sre)))))
-	((find-sre-rule ctx sre)
-	 => (lambda (rule)
-	      ((rule-operation rule) ctx sre)))
+  (cond ((match-cset-sre-rule ctx sre)
+	 => (lambda (thunk)
+	      (insn:char-set (maybe-xform ctx (thunk))
+			     (ctx-fold? ctx))))
+	((match-sre-rule ctx sre)
+	 => (lambda (thunk) (thunk)))
 	(else
 	 (compile-error (input-pattern) sre))))
 
@@ -460,9 +489,8 @@ USA.
 		 sres)))
 
 (define (compile-cset-sre ctx cset-sre)
-  (cond ((find-cset-sre-rule ctx cset-sre)
-	 => (lambda (rule)
-	      ((rule-operation rule) ctx cset-sre)))
+  (cond ((match-cset-sre-rule ctx cset-sre)
+	 => (lambda (thunk) (thunk)))
 	(else
 	 (compile-error (input-pattern) cset-sre))))
 
@@ -596,12 +624,12 @@ USA.
 (define-sre-rule 'bol
   (lambda (ctx)
     (declare (ignore ctx))
-    (insn:start-boundary char-set:newline)))
+    (insn:start-boundary (char-set-invert char-set:newline))))
 
 (define-sre-rule 'eol
   (lambda (ctx)
     (declare (ignore ctx))
-    (insn:end-boundary char-set:newline)))
+    (insn:end-boundary (char-set-invert char-set:newline))))
 
 (define-sre-rule 'bow
   (lambda (ctx)
@@ -646,7 +674,7 @@ USA.
 (define-sre-rewriter 'grapheme
   (lambda (ctx)
     (declare (ignore ctx))
-    `(: bog (* any) any eog)))
+    `(: bog (*? any) any eog)))
 
 (define-sre-rule `(?? . ,valid-sre?)
   (lambda (ctx . sres) (insn:?? (compile-sres ctx sres))))
@@ -704,8 +732,10 @@ USA.
 	(let loop ((i 0) (ranges '()))
 	  (if (fix:< i end)
 	      (loop (fix:+ i 2)
-		    (cons (list (char->integer (string-ref rs i))
-				(char->integer (string-ref rs (fix:+ i 1))))
+		    (cons (cons (char->integer (string-ref rs i))
+				(fix:+
+				 (char->integer (string-ref rs (fix:+ i 1)))
+				 1))
 			  ranges))
 	      ranges)))))
 

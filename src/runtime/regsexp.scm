@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (regsexp? object)
-  (and (find-rule object) #t))
+  (and (match-rule object) #t))
 (register-predicate! regsexp? 'regular-sexpression)
 
 (define (compile-regsexp regsexp)
@@ -42,10 +42,10 @@ USA.
   (make-unsettable-parameter #f))
 
 (define (%compile-regsexp regsexp)
-  (let ((rule (find-rule regsexp)))
-    (if (not rule)
+  (let ((thunk (match-rule regsexp)))
+    (if (not thunk)
 	(compile-error (%input-pattern) regsexp))
-    ((rule-operation rule) regsexp)))
+    (thunk)))
 
 (define (%link-insn insn)
   (make-compiled-regsexp
@@ -101,7 +101,7 @@ USA.
     (set! regsexp-rules (make-rules 'regsexp))
     unspecific))
 
-(define-deferred-procedure find-rule 'regexp-rules
+(define-deferred-procedure match-rule 'regexp-rules
   (rules-matcher regsexp-rules))
 
 (define-deferred-procedure define-rule 'regexp-rules

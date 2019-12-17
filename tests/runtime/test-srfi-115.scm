@@ -27,35 +27,18 @@ USA.
 ;;;; Tests of regular s-expressions
 
 (declare (usual-integrations))
+
 
-(define (match-strings-test pattern entries)
-  (if (equal? entries '(pattern-error))
+(define (single-test proc name)
+  (lambda (expected re string #!optional start end)
+    (let ((thunk
+	   (lambda ()
+	     (translate-regexp-match (proc re string start end)))))
       (lambda ()
-        (assert-error (lambda () (regexp pattern))
-                      (list condition-type:compile-regexp)))
-      (let ((cr (regexp pattern)))
-	(map (lambda (p)
-	       (if (string? p)
-		   (%match-string-test pattern cr p
-                                       (list 0 (string-length p)))
-		   (%match-string-test pattern cr (car p) (cadr p))))
-	     entries))))
-
-(define (match-strings-test* patterns entries)
-  (append-map (lambda (pattern)
-		(match-strings-test pattern entries))
-	      patterns))
-
-(define (match-string-test pattern string expected)
-  (%match-string-test pattern (regexp pattern) string expected))
-
-(define (%match-string-test pattern cr string expected)
-  (let ((thunk (lambda () (translate-regexp-match (regexp-matches cr string)))))
-    (lambda ()
-      (with-test-properties
-          (lambda ()
-            (assert-equal (thunk) expected))
-        'expression `(regexp-matches ',pattern ,string)))))
+	(with-test-properties
+	    (lambda ()
+	      (assert-equal (thunk) expected))
+	  'expression `(,name ',re ,string))))))
 
 (define (translate-regexp-match match)
   (and match
@@ -65,93 +48,87 @@ USA.
 		   (cdr (regexp-match-keys match))
 		   (cdr (regexp-match->list match))))))
 
-(define (multi-match-strings-test entries)
+(define match-some-test (single-test regexp-matches-some 'regexp-matches-some))
+(define match-all-test (single-test regexp-matches-all 'regexp-matches-all))
+(define search-test (single-test regexp-search 'regexp-search))
+
+(define (match-some-test* sre entries)
   (map (lambda (entry)
-	 (match-strings-test (car entry) (cdr entry)))
+	 (if (string? entry)
+	     (match-some-test (list 0 (string-length entry)) sre entry)
+	     (match-some-test (cadr entry) sre (car entry))))
        entries))
 
-(define (search-strings-test pattern entries)
-  (if (equal? entries '(pattern-error))
-      (lambda ()
-	(assert-error (lambda () (regexp pattern))
-		      (list condition-type:compile-regexp)))
-      (let ((cr (regexp pattern)))
-	(map (lambda (p)
-	       (%search-string-test pattern cr (car p) (cadr p)))
-	     entries))))
+(define (search-test* sre entries)
+  (map (lambda (p)
+	 (search-test (cadr p) sre (car p)))
+       entries))
 
-(define (search-strings-test* patterns entries)
-  (append-map (lambda (pattern)
-		(search-strings-test pattern entries))
-	      patterns))
-
-(define (search-string-test pattern string expected)
-  (%search-string-test pattern (regexp pattern) string expected))
-
-(define (%search-string-test pattern cr string expected)
-  (let ((thunk (lambda () (translate-regexp-match (regexp-search cr string)))))
-    (lambda ()
-      (with-test-properties
-          (lambda ()
-            (assert-equal (thunk) expected))
-        'expression `(regexp-search ',pattern ,string)))))
+(define (pattern-error-test sre)
+  (lambda ()
+    (assert-error (lambda () (regexp sre))
+		  (list condition-type:compile-regexp))))
 
 (define-test 'match-nonl
-  (match-strings-test 'nonl
-		      '(("" #f)
-			("a" (0 1))
-			("b" (0 1))
-			("\n" #f))))
+  (match-some-test* 'nonl
+		    '(("" #f)
+		      ("a" (0 1))
+		      ("b" (0 1))
+		      ("\n" #f))))
 
 (define-test 'search-nonl
-  (search-strings-test 'nonl
-		       '(("" #f)
-			 ("a" (0 1))
-			 ("b" (0 1))
-			 ("\n" #f)
-			 ("ab" (0 1))
-			 ("\na" (1 2)))))
+  (search-test* 'nonl
+		'(("" #f)
+		  ("a" (0 1))
+		  ("b" (0 1))
+		  ("\n" #f)
+		  ("ab" (0 1))
+		  ("\na" (1 2)))))
 
 (define-test 'match-*nonl
-  (match-strings-test '(* nonl)
-		      '(("" (0 0))
-			("a" (0 1))
-			("ab" (0 2))
-			("abc" (0 3))
-			("ab\n" (0 2))
-			("a\nb" (0 1)))))
+  (match-some-test* '(* nonl)
+		    '(("" (0 0))
+		      ("a" (0 1))
+		      ("ab" (0 2))
+		      ("abc" (0 3))
+		      ("ab\n" (0 2))
+		      ("a\nb" (0 1)))))
 
 (define-test 'search-+nonl
-  (search-strings-test '(+ nonl)
-		       '(("" #f)
-			 ("a" (0 1))
-			 ("ab" (0 2))
-			 ("abc" (0 3))
-			 ("ab\n" (0 2))
-			 ("a\nb" (0 1))
-			 ("\nab" (1 3)))))
+  (search-test* '(+ nonl)
+		'(("" #f)
+		  ("a" (0 1))
+		  ("ab" (0 2))
+		  ("abc" (0 3))
+		  ("ab\n" (0 2))
+		  ("a\nb" (0 1))
+		  ("\nab" (1 3)))))
 
 (define-test 'match-simple-seq
-  (match-strings-test* '((: "a" "b") (seq "a" "b"))
-		       '(("ab" (0 2)))))
+  (map (lambda (sre)
+	 (match-some-test '(0 2) sre "ab"))
+       '((: "a" "b")
+	 (seq "a" "b"))))
 
 (define-test 'search-simple-seq
-  (search-strings-test* '((: "a" "b") (seq "a" "b"))
-			'(("1914ab37" (4 6)))))
+  (map (lambda (sre)
+	 (search-test '(4 6) sre "1914ab37"))
+       '((: "a" "b")
+	 (seq "a" "b"))))
 
 (define-test 'match/repeat-equivalences-test
   (let ((equivalents
-	 (lambda (indices . patterns)
+	 (lambda (indices . sres)
 	   (map (let ((strings '("" "a" "b" "ab" "ba" "aab")))
-		  (lambda (pattern)
-		    (match-strings-test
-		     pattern
+		  (lambda (sre)
+		    (match-some-test*
+		     sre
 		     (map (lambda (string index)
 			    (list string
 				  (and index (list 0 index))))
 			  strings
 			  indices))))
-		patterns))))
+		sres))))
     (list
      (equivalents '(0 0 0 0 0 0)
 		  ""
@@ -227,275 +204,270 @@ USA.
 		  '(non-greedy-repeated 0 1 "a")))))
 
 (define-test 'match-more-repeat-tests
-  (list
-   (match-string-test '(: (? "a") "a") "aab" '(0 2))
-   (match-string-test '(: (? "a") "ab") "aab" '(0 3))
+  (match-some-test '(0 2) '(: (? "a") "a") "aab")
+  (match-some-test '(0 3) '(: (? "a") "ab") "aab")
 
-   (match-string-test '(: (?? "a") "a") "aab" '(0 1))
-   (match-string-test '(: (?? "a") "ab") "aab" '(0 3))
+  (match-some-test '(0 1) '(: (?? "a") "a") "aab")
+  (match-some-test '(0 3) '(: (?? "a") "ab") "aab")
 
-   (match-string-test '(** 1 2 "a") "aab" '(0 2))
-   (match-string-test '(: (** 1 2 "a") "b") "aab" '(0 3))
+  (match-some-test '(0 2) '(** 1 2 "a") "aab")
+  (match-some-test '(0 3) '(: (** 1 2 "a") "b") "aab")
 
-   (match-string-test '(**? 1 2 "a") "aab" '(0 1))
-   (match-string-test '(: (**? 1 2 "a") "b") "aab" '(0 3))
+  (match-some-test '(0 1) '(**? 1 2 "a") "aab")
+  (match-some-test '(0 3) '(: (**? 1 2 "a") "b") "aab")
 
-   (match-string-test '(** 1 3 "a") "aaab" '(0 3))
-   (match-string-test '(: (** 1 3 "a") "b") "aaab" '(0 4))
+  (match-some-test '(0 3) '(** 1 3 "a") "aaab")
+  (match-some-test '(0 4) '(: (** 1 3 "a") "b") "aaab")
 
-   (match-string-test '(**? 1 3 "a") "aaab" '(0 1))
-   (match-string-test '(: (**? 1 3 "a") "b") "aaab" '(0 4))
+  (match-some-test '(0 1) '(**? 1 3 "a") "aaab")
+  (match-some-test '(0 4) '(: (**? 1 3 "a") "b") "aaab")
 
-   (match-string-test '(: (-> foo (? "a")) "a") "aab" '(0 2 (foo . "a")))
-   (match-string-test '(: (-> foo (? "a")) "ab") "aab" '(0 3 (foo . "a")))
-   (match-string-test '(: (-> foo (? "a")) "aab") "aab" '(0 3 (foo . "")))
+  (match-some-test '(0 2 (foo . "a")) '(: (-> foo (? "a")) "a") "aab")
+  (match-some-test '(0 3 (foo . "a")) '(: (-> foo (? "a")) "ab") "aab")
+  (match-some-test '(0 3 (foo . "")) '(: (-> foo (? "a")) "aab") "aab")
 
-   (match-string-test '(: (-> foo (?? "a")) "a") "aab" '(0 1 (foo . "")))
-   (match-string-test '(: (-> foo (?? "a")) "ab") "aab" '(0 3 (foo . "a")))
-   (match-string-test '(: (-> foo (?? "a")) "aab") "aab" '(0 3 (foo . "")))
+  (match-some-test '(0 1 (foo . "")) '(: (-> foo (?? "a")) "a") "aab")
+  (match-some-test '(0 3 (foo . "a")) '(: (-> foo (?? "a")) "ab") "aab")
+  (match-some-test '(0 3 (foo . "")) '(: (-> foo (?? "a")) "aab") "aab")
 
-   (match-string-test '(: (-> foo (* "a")) "b") "aab" '(0 3 (foo . "aa")))
-   (match-string-test '(: (-> foo (* "a")) "ab") "aab" '(0 3 (foo . "a")))
-   (match-string-test '(: (-> foo (* "a")) "aab") "aab" '(0 3 (foo . "")))
+  (match-some-test '(0 3 (foo . "aa")) '(: (-> foo (* "a")) "b") "aab")
+  (match-some-test '(0 3 (foo . "a")) '(: (-> foo (* "a")) "ab") "aab")
+  (match-some-test '(0 3 (foo . "")) '(: (-> foo (* "a")) "aab") "aab")
 
-   (match-string-test '(: (-> foo (*? "a")) "b") "aab" '(0 3 (foo . "aa")))
-   (match-string-test '(: (-> foo (*? "a")) "ab") "aab" '(0 3 (foo . "a")))
-   (match-string-test '(: (-> foo (*? "a")) "aab") "aab" '(0 3 (foo . "")))
+  (match-some-test '(0 3 (foo . "aa")) '(: (-> foo (*? "a")) "b") "aab")
+  (match-some-test '(0 3 (foo . "a")) '(: (-> foo (*? "a")) "ab") "aab")
+  (match-some-test '(0 3 (foo . "")) '(: (-> foo (*? "a")) "aab") "aab")
 
-   ))
+  )
 
 (define-test 'search-repeat-tests
-  (list
-   (search-string-test '(: (? "a") "a") "aab" '(0 2))
-   (search-string-test '(: (? "a") "a") "xaab" '(1 3))
-   (search-string-test '(: (? "a") "ab") "aab" '(0 3))
-   (search-string-test '(: (? "a") "ab") "xaab" '(1 4))
+  (search-test '(0 2) '(: (? "a") "a") "aab")
+  (search-test '(1 3) '(: (? "a") "a") "xaab")
+  (search-test '(0 3) '(: (? "a") "ab") "aab")
+  (search-test '(1 4) '(: (? "a") "ab") "xaab")
 
-   (search-string-test '(: (?? "a") "a") "aab" '(0 1))
-   (search-string-test '(: (?? "a") "a") "xaab" '(1 2))
-   (search-string-test '(: (?? "a") "ab") "aab" '(0 3))
-   (search-string-test '(: (?? "a") "ab") "xaab" '(1 4))
+  (search-test '(0 1) '(: (?? "a") "a") "aab")
+  (search-test '(1 2) '(: (?? "a") "a") "xaab")
+  (search-test '(0 3) '(: (?? "a") "ab") "aab")
+  (search-test '(1 4) '(: (?? "a") "ab") "xaab")
 
-   (search-string-test '(** 1 2 "a") "aab" '(0 2))
-   (search-string-test '(** 1 2 "a") "xaab" '(1 3))
-   (search-string-test '(: (** 1 2 "a") "b") "aab" '(0 3))
-   (search-string-test '(: (** 1 2 "a") "b") "xaab" '(1 4))
+  (search-test '(0 2) '(** 1 2 "a") "aab")
+  (search-test '(1 3) '(** 1 2 "a") "xaab")
+  (search-test '(0 3) '(: (** 1 2 "a") "b") "aab")
+  (search-test '(1 4) '(: (** 1 2 "a") "b") "xaab")
 
-   (search-string-test '(**? 1 2 "a") "aab" '(0 1))
-   (search-string-test '(**? 1 2 "a") "xaab" '(1 2))
-   (search-string-test '(: (**? 1 2 "a") "b") "aab" '(0 3))
-   (search-string-test '(: (**? 1 2 "a") "b") "xaab" '(1 4))
+  (search-test '(0 1) '(**? 1 2 "a") "aab")
+  (search-test '(1 2) '(**? 1 2 "a") "xaab")
+  (search-test '(0 3) '(: (**? 1 2 "a") "b") "aab")
+  (search-test '(1 4) '(: (**? 1 2 "a") "b") "xaab")
 
-   (search-string-test '(** 1 3 "a") "aaab" '(0 3))
-   (search-string-test '(** 1 3 "a") "xaaab" '(1 4))
-   (search-string-test '(: (** 1 3 "a") "b") "aaab" '(0 4))
-   (search-string-test '(: (** 1 3 "a") "b") "xaaab" '(1 5))
+  (search-test '(0 3) '(** 1 3 "a") "aaab")
+  (search-test '(1 4) '(** 1 3 "a") "xaaab")
+  (search-test '(0 4) '(: (** 1 3 "a") "b") "aaab")
+  (search-test '(1 5) '(: (** 1 3 "a") "b") "xaaab")
 
-   (search-string-test '(**? 1 3 "a") "aaab" '(0 1))
-   (search-string-test '(**? 1 3 "a") "xaaab" '(1 2))
-   (search-string-test '(: (**? 1 3 "a") "b") "aaab" '(0 4))
-   (search-string-test '(: (**? 1 3 "a") "b") "xaaab" '(1 5))
+  (search-test '(0 1) '(**? 1 3 "a") "aaab")
+  (search-test '(1 2) '(**? 1 3 "a") "xaaab")
+  (search-test '(0 4) '(: (**? 1 3 "a") "b") "aaab")
+  (search-test '(1 5) '(: (**? 1 3 "a") "b") "xaaab")
 
-   (search-string-test '(: (-> foo (? "a")) "a") "aab" '(0 2 (foo . "a")))
-   (search-string-test '(: (-> foo (? "a")) "a") "xaab" '(1 3 (foo . "a")))
-   (search-string-test '(: (-> foo (? "a")) "ab") "aab" '(0 3 (foo . "a")))
-   (search-string-test '(: (-> foo (? "a")) "ab") "xaab" '(1 4 (foo . "a")))
-   (search-string-test '(: (-> foo (? "a")) "aab") "aab" '(0 3 (foo . "")))
-   (search-string-test '(: (-> foo (? "a")) "aab") "xaab" '(1 4 (foo . "")))
+  (search-test '(0 2 (foo . "a")) '(: (-> foo (? "a")) "a") "aab")
+  (search-test '(1 3 (foo . "a")) '(: (-> foo (? "a")) "a") "xaab")
+  (search-test '(0 3 (foo . "a")) '(: (-> foo (? "a")) "ab") "aab")
+  (search-test '(1 4 (foo . "a")) '(: (-> foo (? "a")) "ab") "xaab")
+  (search-test '(0 3 (foo . "")) '(: (-> foo (? "a")) "aab") "aab")
+  (search-test '(1 4 (foo . "")) '(: (-> foo (? "a")) "aab") "xaab")
 
-   (search-string-test '(: (-> foo (?? "a")) "a") "aab" '(0 1 (foo . "")))
-   (search-string-test '(: (-> foo (?? "a")) "a") "xaab" '(1 2 (foo . "")))
-   (search-string-test '(: (-> foo (?? "a")) "ab") "aab" '(0 3 (foo . "a")))
-   (search-string-test '(: (-> foo (?? "a")) "ab") "xaab" '(1 4 (foo . "a")))
-   (search-string-test '(: (-> foo (?? "a")) "aab") "aab" '(0 3 (foo . "")))
-   (search-string-test '(: (-> foo (?? "a")) "aab") "xaab" '(1 4 (foo . "")))
+  (search-test '(0 1 (foo . "")) '(: (-> foo (?? "a")) "a") "aab")
+  (search-test '(1 2 (foo . "")) '(: (-> foo (?? "a")) "a") "xaab")
+  (search-test '(0 3 (foo . "a")) '(: (-> foo (?? "a")) "ab") "aab")
+  (search-test '(1 4 (foo . "a")) '(: (-> foo (?? "a")) "ab") "xaab")
+  (search-test '(0 3 (foo . "")) '(: (-> foo (?? "a")) "aab") "aab")
+  (search-test '(1 4 (foo . "")) '(: (-> foo (?? "a")) "aab") "xaab")
 
-   (search-string-test '(: (-> foo (* "a")) "b") "aab" '(0 3 (foo . "aa")))
-   (search-string-test '(: (-> foo (* "a")) "b") "xaab" '(1 4 (foo . "aa")))
-   (search-string-test '(: (-> foo (* "a")) "ab") "aab" '(0 3 (foo . "a")))
-   (search-string-test '(: (-> foo (* "a")) "ab") "xaab" '(1 4 (foo . "a")))
-   (search-string-test '(: (-> foo (* "a")) "aab") "aab" '(0 3 (foo . "")))
-   (search-string-test '(: (-> foo (* "a")) "aab") "xaab" '(1 4 (foo . "")))
+  (search-test '(0 3 (foo . "aa")) '(: (-> foo (* "a")) "b") "aab")
+  (search-test '(1 4 (foo . "aa")) '(: (-> foo (* "a")) "b") "xaab")
+  (search-test '(0 3 (foo . "a")) '(: (-> foo (* "a")) "ab") "aab")
+  (search-test '(1 4 (foo . "a")) '(: (-> foo (* "a")) "ab") "xaab")
+  (search-test '(0 3 (foo . "")) '(: (-> foo (* "a")) "aab") "aab")
+  (search-test '(1 4 (foo . "")) '(: (-> foo (* "a")) "aab") "xaab")
 
-   (search-string-test '(: (-> foo (*? "a")) "b") "aab" '(0 3 (foo . "aa")))
-   (search-string-test '(: (-> foo (*? "a")) "b") "xaab" '(1 4 (foo . "aa")))
-   (search-string-test '(: (-> foo (*? "a")) "ab") "aab" '(0 3 (foo . "a")))
-   (search-string-test '(: (-> foo (*? "a")) "ab") "xaab" '(1 4 (foo . "a")))
-   (search-string-test '(: (-> foo (*? "a")) "aab") "aab" '(0 3 (foo . "")))
-   (search-string-test '(: (-> foo (*? "a")) "aab") "xaab" '(1 4 (foo . "")))
+  (search-test '(0 3 (foo . "aa")) '(: (-> foo (*? "a")) "b") "aab")
+  (search-test '(1 4 (foo . "aa")) '(: (-> foo (*? "a")) "b") "xaab")
+  (search-test '(0 3 (foo . "a")) '(: (-> foo (*? "a")) "ab") "aab")
+  (search-test '(1 4 (foo . "a")) '(: (-> foo (*? "a")) "ab") "xaab")
+  (search-test '(0 3 (foo . "")) '(: (-> foo (*? "a")) "aab") "aab")
+  (search-test '(1 4 (foo . "")) '(: (-> foo (*? "a")) "aab") "xaab")
 
-   ))
+  )
 
 ;;; Ripped off from "grep/tests/bre.tests".
 (define-test 'match-grep-bre
-  (multi-match-strings-test
-   '(((: "a" (: "b") "c")
-      "abc")
-     ((: "a" (:) "b")
-      "ab")
-     ((: (* "a")
-	 (: bos "b" eos)
-	 (* "c"))
-      "b")
-     ((:)
-      ("abc" (0 0)))
-     ((: (= 1 "a") "b")
-      "ab")
-     ((: (>= 1 "a") "b")
-      "ab")
-     ((: (** 1 2 "a") "b")
-      "aab")
-     ((: "a" (= 0 "b") "c")
-      "ac"
-      ("abc" #f))
-     ((: "a" (** 0 1 "b") "c")
-      "ac"
-      "abc"
-      ("abbc" #f))
-     ((: "a" (** 0 3 "b") "c")
-      "ac"
-      "abc"
-      "abbc"
-      "abbbc"
-      ("abbbbc" #f))
-     ((: "a" (** 1 0 "b") "c")
-      pattern-error)
-     ((: "a" (** #f 1 "b") "c")
-      pattern-error)
-     ((: "a" (= 1 "b") "c")
-      ("ac" #f)
-      "abc")
-     ((: "a" (** 1 3 "b") "c")
-      ("ac" #f)
-      "abc")
-     ((: "a" (= 2 "b") "c")
-      ("abc" #f)
-      "abbc")
-     ((: "a" (** 2 4 "b") "c")
-      ("abcabbc" #f))
-     ((: (** 0 1 "-")
-	 (+ ("0123456789"))
-	 eos)
-      "-5"))))
+  (match-some-test* '(: "a" (: "b") "c")
+		    '("abc"))
+  (match-some-test* '(: "a" (:) "b")
+		    '("ab"))
+  (match-some-test* '(: (* "a")
+			(: bos "b" eos)
+			(* "c"))
+		    '("b"))
+  (match-some-test* '(:)
+		    '(("abc" (0 0))))
+  (match-some-test* '(: (= 1 "a") "b")
+		    '("ab"))
+  (match-some-test* '(: (>= 1 "a") "b")
+		    '("ab"))
+  (match-some-test* '(: (** 1 2 "a") "b")
+		    '("aab"))
+  (match-some-test* '(: "a" (= 0 "b") "c")
+		    '("ac"
+		      ("abc" #f)))
+  (match-some-test* '(: "a" (** 0 1 "b") "c")
+		    '("ac"
+		      "abc"
+		      ("abbc" #f)))
+  (match-some-test* '(: "a" (** 0 3 "b") "c")
+		    '("ac"
+		      "abc"
+		      "abbc"
+		      "abbbc"
+		      ("abbbbc" #f)))
+  (match-some-test* '(: "a" (= 1 "b") "c")
+		    '(("ac" #f)
+		      "abc"))
+  (match-some-test* '(: "a" (** 1 3 "b") "c")
+		    '(("ac" #f)
+		      "abc"))
+  (match-some-test* '(: "a" (= 2 "b") "c")
+		    '(("abc" #f)
+		      "abbc"))
+  (match-some-test* '(: "a" (** 2 4 "b") "c")
+		    '(("abcabbc" #f)))
+  (match-some-test* '(: (** 0 1 "-")
+			(+ ("0123456789"))
+			eos)
+		    '("-5"))
+  (pattern-error-test '(: "a" (** 1 0 "b") "c"))
+  (pattern-error-test '(: "a" (** #f 1 "b") "c")))
 
 ;;; Ripped off from "grep/tests/ere.tests".
 (define-test 'match-grep-ere
-  (multi-match-strings-test
-   '(((or "abc" "de")
-      "abc")
-     ((or "a" "b" "c")
-      ("abc" (0 1)))
-     ((: "a" nonl "c")
-      "abc")
-     ((: "a" ("bc") "d")
-      "abd")
-     ((: "a" (* "b") "c")
-      "abc")
-     ((: "a" (+ "b") "c")
-      "abc")
-     ((: "a" (? "b") "c")
-      "abc")
-     ((: "a" ("b") "c")
-      "abc")
-     ((: "a" ("ab") "c")
-      "abc")
-     ((: "a" (~ ("ab")) "c")
-      ("abc" #f)
-      "adc")
-     ((: "a" alphabetic "c")
-      "abc"
-      "adc")
-     ((: "a" (+ numeric) "c")
-      "a019c")
-     ((: "A" (+ lower-case) "C")
-      "AabC")
-     ((: "a" (+ upper-case) "c")
-      "aBCc")
-     ((: "a" (= 20 ("ab")))
-      "aaaaabaaaabaaaabaaaab")
-     ((: "a"
-	 ("ab") ("ab") ("ab") ("ab")
-	 ("ab") ("ab") ("ab") ("ab")
-	 ("ab") ("ab") ("ab") ("ab")
-	 ("ab") ("ab") ("ab") ("ab")
-	 ("ab") ("ab") ("ab") ("ab"))
-      "aaaaabaaaabaaaabaaaab")
-     ((: "a"
-	 ("ab") ("ab") ("ab") ("ab")
-	 ("ab") ("ab") ("ab") ("ab")
-	 ("ab") ("ab") ("ab") ("ab")
-	 ("ab") ("ab") ("ab") ("ab")
-	 ("ab") ("ab") ("ab") ("ab")
-	 (or "wee" "week")
-	 (or "knights" "night"))
-      "aaaaabaaaabaaaabaaaabweeknights")
-     ((: ("ab") ("cd") ("ef") ("gh")
-	 ("ij") ("kl") ("mn"))
-      ("acegikmoq" (0 7)))
-     ((: ("ab") ("cd") ("ef") ("gh")
-	 ("ij") ("kl") ("mn") ("op"))
-      ("acegikmoq" (0 8)))
-     ((: ("ab") ("cd") ("ef") ("gh")
-	 ("ij") ("kl") ("mn") ("op")
-	 ("qr"))
-      ("acegikmoqy" (0 9)))
-     ((: ("ab") ("cd") ("ef") ("gh")
-	 ("ij") ("kl") ("mn") ("op")
-	 ("q"))
-      ("acegikmoqy" (0 9)))
-     ("aBc"
-      ("Abc" #f))
-     ((: "a" (* ("Bc")) "d")
-      "acBd"
-      "aBcd"
-      "aBcBcBd"
-      ("aBCd" #f)
-      ("abcd" #f)
-      ("abBCcd" #f))
-     ((: "a" (~ ("b")) "c")
-      ("abc" #f)
-      "aBc"
-      "adc")
-     ((: ("a") "b" ("c"))
-      "abc")
-     ((: ("a") "b" ("a"))
-      "aba")
-     ((: ("abc") "b" ("abc"))
-      "abc")
-     ((: ("abc") "b" ("abd"))
-      ("abc" #f)
-      "abd")
-     ((: "a" (+ (? "b") "c") "d")
-      "accd")
-     ((* "a")
-      ("b" (0 0)))
-     ((: (or "wee" "week") (or "knights" "night"))
-      "weeknights")
-     ((: (or "we" "wee" "week" "frob") (or "knights" "night" "day"))
-      "weeknights")
-     ("abcdefghijklmnop"
-      "abcdefghijklmnop")
-     ("abcdefghijklmnopqrstuv"
-      "abcdefghijklmnopqrstuv")
-     ((or (: "CC" ("13") "1")
-	  (: (= 21 "a")
-	     ("23")
-	     ("EO")
-	     ("123")
-	     ("Es")
-	     ("12")
-	     (= 15 "a")
-	     "aa"
-	     ("34")
-	     ("EW")
-	     "aaaaaaa"
-	     ("X")
-	     "a"))
-      "CC11"))))
+  (match-some-test* '(or "abc" "de")
+		    '("abc"))
+  (match-some-test* '(or "a" "b" "c")
+		    '(("abc" (0 1))))
+  (match-some-test* '(: "a" nonl "c")
+		    '("abc"))
+  (match-some-test* '(: "a" ("bc") "d")
+		    '("abd"))
+  (match-some-test* '(: "a" (* "b") "c")
+		    '("abc"))
+  (match-some-test* '(: "a" (+ "b") "c")
+		    '("abc"))
+  (match-some-test* '(: "a" (? "b") "c")
+		    '("abc"))
+  (match-some-test* '(: "a" ("b") "c")
+		    '("abc"))
+  (match-some-test* '(: "a" ("ab") "c")
+		    '("abc"))
+  (match-some-test* '(: "a" (~ ("ab")) "c")
+		    '(("abc" #f)
+		      "adc"))
+  (match-some-test* '(: "a" alphabetic "c")
+		    '("abc"
+		      "adc"))
+  (match-some-test* '(: "a" (+ numeric) "c")
+		    '("a019c"))
+  (match-some-test* '(: "A" (+ lower-case) "C")
+		    '("AabC"))
+  (match-some-test* '(: "a" (+ upper-case) "c")
+		    '("aBCc"))
+  (match-some-test* '(: "a" (= 20 ("ab")))
+		    '("aaaaabaaaabaaaabaaaab"))
+  (match-some-test* '(: "a"
+			("ab") ("ab") ("ab") ("ab")
+			("ab") ("ab") ("ab") ("ab")
+			("ab") ("ab") ("ab") ("ab")
+			("ab") ("ab") ("ab") ("ab")
+			("ab") ("ab") ("ab") ("ab"))
+		    '("aaaaabaaaabaaaabaaaab"))
+  (match-some-test* '(: "a"
+			("ab") ("ab") ("ab") ("ab")
+			("ab") ("ab") ("ab") ("ab")
+			("ab") ("ab") ("ab") ("ab")
+			("ab") ("ab") ("ab") ("ab")
+			("ab") ("ab") ("ab") ("ab")
+			(or "wee" "week")
+			(or "knights" "night"))
+		    '("aaaaabaaaabaaaabaaaabweeknights"))
+  (match-some-test* '(: ("ab") ("cd") ("ef") ("gh")
+			("ij") ("kl") ("mn"))
+		    '(("acegikmoq" (0 7))))
+  (match-some-test* '(: ("ab") ("cd") ("ef") ("gh")
+			("ij") ("kl") ("mn") ("op"))
+		    '(("acegikmoq" (0 8))))
+  (match-some-test* '(: ("ab") ("cd") ("ef") ("gh")
+			("ij") ("kl") ("mn") ("op")
+			("qr"))
+		    '(("acegikmoqy" (0 9))))
+  (match-some-test* '(: ("ab") ("cd") ("ef") ("gh")
+			("ij") ("kl") ("mn") ("op")
+			("q"))
+		    '(("acegikmoqy" (0 9))))
+  (match-some-test* '"aBc"
+		    '(("Abc" #f)))
+  (match-some-test* '(: "a" (* ("Bc")) "d")
+		    '("acBd"
+		      "aBcd"
+		      "aBcBcBd"
+		      ("aBCd" #f)
+		      ("abcd" #f)
+		      ("abBCcd" #f)))
+  (match-some-test* '(: "a" (~ ("b")) "c")
+		    '(("abc" #f)
+		      "aBc"
+		      "adc"))
+  (match-some-test* '(: ("a") "b" ("c"))
+		    '("abc"))
+  (match-some-test* '(: ("a") "b" ("a"))
+		    '("aba"))
+  (match-some-test* '(: ("abc") "b" ("abc"))
+		    '("abc"))
+  (match-some-test* '(: ("abc") "b" ("abd"))
+		    '(("abc" #f)
+		      "abd"))
+  (match-some-test* '(: "a" (+ (? "b") "c") "d")
+		    '("accd"))
+  (match-some-test* '(* "a")
+		    '(("b" (0 0))))
+  (match-some-test* '(: (or "wee" "week") (or "knights" "night"))
+		    '("weeknights"))
+  (match-some-test* '(: (or "we" "wee" "week" "frob")
+			(or "knights" "night" "day"))
+		    '("weeknights"))
+  (match-some-test* '"abcdefghijklmnop"
+		    '("abcdefghijklmnop"))
+  (match-some-test* '"abcdefghijklmnopqrstuv"
+		    '("abcdefghijklmnopqrstuv"))
+  (match-some-test* '(or (: "CC" ("13") "1")
+			 (: (= 21 "a")
+			    ("23")
+			    ("EO")
+			    ("123")
+			    ("Es")
+			    ("12")
+			    (= 15 "a")
+			    "aa"
+			    ("34")
+			    ("EW")
+			    "aaaaaaa"
+			    ("X")
+			    "a"))
+		    '("CC11")))
 
 ;; Ripped off from "grep/tests/khadafy.*".
 (define-test 'match-grep-muammar-qaddafi
-  (match-strings-test
+  (match-some-test*
    '(: "M"
        ("ou")
        (? "'")
@@ -546,91 +518,298 @@ USA.
 
 ;; Ripped off from "grep/tests/spencer1.*".
 (define-test 'match-grep-spencer
-  (multi-match-strings-test
-   '(("abc"
-      "abc"
-      ("xbc" #f)
-      ("axc" #f)
-      ("abx" #f))
-     ((: "a" (* "b") "c")
-      "abc")
-     ((: "a" (* "b") "bc")
-      "abc"
-      "abbc"
-      "abbbbc")
-     ((: "a" (+ "b") "bc")
-      ("abc" #f)
-      "abbc"
-      "abbbbc"
-      ("abq" #f))
-     ((: "a" (? "b") "bc")
-      "abc"
-      "abbc"
-      ("abbbbc" #f))
-     ((: "a" (? "b") "c")
-      "abc")
-     ((: bos "abc" eos)
-      "abc"
-      ("abcc" #f))
-     ((: bos "abc")
-      ("abcc" (0 3)))
-     (bos
-      ("abc" (0 0)))
-     (eos
-      ""
-      ("a" #f))
-     ((: "a" nonl "c")
-      "abc"
-      "axc")
-     ((: "a" (* nonl) "c")
-      "axyzc"
-      ("axyzd" #f))
-     ((: "a" ("bc") "d")
-      ("abc" #f)
-      "abd")
-     ((: "a" ("bcd") "e")
-      ("abd" #f)
-      "ace")
-     ((: "a" ("bcd"))
-      "ac"
-      ("aac" #f))
-     ((: "a" (~ ("bc")) "d")
-      "aed"
-      ("abd" #f))
-     ((: (+ "a") (+ "b") "c")
-      "abc"
-      "aabbc"
-      ("aabbabc" #f))
-     ((* (* "a"))
-      ("-" (0 0)))
-     ((+ (* "a"))
-      ("-" (0 0)))
-     ((? (* "a"))
-      ("-" (0 0)))
-     ((* (or "a" (:)))
-      ("-" (0 0)))
-     ((* (or (* "a") "b"))
-      ("-" (0 0)))
-     ((* (or (+ "a") "b"))
-      "ab")
-     ((+ (or (+ "a") "b"))
-      "ab")
-     ((? (or (+ "a") "b"))
-      ("ba" (0 1))
-      ("ab" (0 1)))
-     ((* (~ ("ab")))
-      "cde")
-     ((: (* ("abc")) "d")
-      "abbbcd")
-     ((: (* ("abc")) "bcd")
-      "abcd")
-     ((or "a" "b" "c" "d" "e")
-      "e")
-     ((: (or "a" "b" "c" "d" "e") "f")
-      "ef")
-     ((: "abc" (* "d") "efg")
-      "abcdefg")
-     ("multiple words of text"
-      ("uh-uh" #f))
-     ("multiple words"
-      ("multiple words, yeah" (0 14))))))
+  (match-some-test* '"abc"
+		    '("abc"
+		      ("xbc" #f)
+		      ("axc" #f)
+		      ("abx" #f)))
+  (match-some-test* '(: "a" (* "b") "c")
+		    '("abc"))
+  (match-some-test* '(: "a" (* "b") "bc")
+		    '("abc"
+		      "abbc"
+		      "abbbbc"))
+  (match-some-test* '(: "a" (+ "b") "bc")
+		    '(("abc" #f)
+		      "abbc"
+		      "abbbbc"
+		      ("abq" #f)))
+  (match-some-test* '(: "a" (? "b") "bc")
+		    '("abc"
+		      "abbc"
+		      ("abbbbc" #f)))
+  (match-some-test* '(: "a" (? "b") "c")
+		    '("abc"))
+  (match-some-test* '(: bos "abc" eos)
+		    '("abc"
+		      ("abcc" #f)))
+  (match-some-test* '(: bos "abc")
+		    '(("abcc" (0 3))))
+  (match-some-test* 'bos
+		    '(("abc" (0 0))))
+  (match-some-test* 'eos
+		    '(""
+		      ("a" #f)))
+  (match-some-test* '(: "a" nonl "c")
+		    '("abc"
+		      "axc"))
+  (match-some-test* '(: "a" (* nonl) "c")
+		    '("axyzc"
+		      ("axyzd" #f)))
+  (match-some-test* '(: "a" ("bc") "d")
+		    '(("abc" #f)
+		      "abd"))
+  (match-some-test* '(: "a" ("bcd") "e")
+		    '(("abd" #f)
+		      "ace"))
+  (match-some-test* '(: "a" ("bcd"))
+		    '("ac"
+		      ("aac" #f)))
+  (match-some-test* '(: "a" (~ ("bc")) "d")
+		    '("aed"
+		      ("abd" #f)))
+  (match-some-test* '(: (+ "a") (+ "b") "c")
+		    '("abc"
+		      "aabbc"
+		      ("aabbabc" #f)))
+  (match-some-test* '(* (* "a"))
+		    '(("-" (0 0))))
+  (match-some-test* '(+ (* "a"))
+		    '(("-" (0 0))))
+  (match-some-test* '(? (* "a"))
+		    '(("-" (0 0))))
+  (match-some-test* '(* (or "a" (:)))
+		    '(("-" (0 0))))
+  (match-some-test* '(* (or (* "a") "b"))
+		    '(("-" (0 0))))
+  (match-some-test* '(* (or (+ "a") "b"))
+		    '("ab"))
+  (match-some-test* '(+ (or (+ "a") "b"))
+		    '("ab"))
+  (match-some-test* '(? (or (+ "a") "b"))
+		    '(("ba" (0 1))
+		      ("ab" (0 1))))
+  (match-some-test* '(* (~ ("ab")))
+		    '("cde"))
+  (match-some-test* '(: (* ("abc")) "d")
+		    '("abbbcd"))
+  (match-some-test* '(: (* ("abc")) "bcd")
+		    '("abcd"))
+  (match-some-test* '(or "a" "b" "c" "d" "e")
+		    '("e"))
+  (match-some-test* '(: (or "a" "b" "c" "d" "e") "f")
+		    '("ef"))
+  (match-some-test* '(: "abc" (* "d") "efg")
+		    '("abcdefg"))
+  (match-some-test* '"multiple words of text"
+		    '(("uh-uh" #f)))
+  (match-some-test* '"multiple words"
+		    '(("multiple words, yeah" (0 14)))))
+
+;; Ripped off from Chibi 0.8.0.
+
+(define-test 'chibi-match/search
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: ($ (* "ab")) "c")
+		  "ababc")
+  (match-all-test '(1 6 (1 . "abab"))
+		  '(: ($ (* "ab")) "c")
+		  "xababc" 1)
+  (search-test '(1 2) '(: "y") "xy")
+  (search-test '(1 6 (1 . "abab"))
+	       '(: ($ (* "ab")) "c")
+	       "xababc")
+  (match-all-test #f
+		  '(: (* any) ($ "foo" (* any)) ($ "bar" (* any)))
+		  "fooxbafba")
+  (match-all-test '(0 11 (1 . "fooxbarf") (2 . "bar"))
+		  '(: (* any) ($ "foo" (* any)) ($ "bar" (* any)))
+		  "fooxbarfbar")
+  (match-all-test '(0 4 (1 . "abcd"))
+		  '($ (* (or "ab" "cd")))
+		  "abcd")
+  (match-all-test '(0 2 (foo . "ab"))
+		  '(or (-> foo "ab") (-> foo "cd"))
+		  "ab")
+  (match-all-test '(0 2 (foo . "cd"))
+		  '(or (-> foo "ab") (-> foo "cd"))
+		  "cd")
+
+  ;; non-deterministic case from issue #229
+  (let* ((elapsed
+	  '(: (** 1 2 numeric) ":" numeric numeric (? ":" numeric numeric)))
+         (span `(: ,elapsed "-" ,elapsed)))
+    (search-test '(1 16) span " 1:45:02-2:06:13 "))
+
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: bos ($ (* "ab")) "c")
+		  "ababc")
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: ($ (* "ab")) "c" eos)
+		  "ababc")
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: bos ($ (* "ab")) "c" eos)
+		  "ababc")
+  (match-all-test #f
+		  '(: bos ($ (* "ab")) eos "c")
+		  "ababc")
+  (match-all-test #f
+		  '(: ($ (* "ab")) bos "c" eos)
+		  "ababc")
+
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: bol ($ (* "ab")) "c")
+		  "ababc")
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: ($ (* "ab")) "c" eol)
+		  "ababc")
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: bol ($ (* "ab")) "c" eol)
+		  "ababc")
+  (match-all-test #f
+		  '(: bol ($ (* "ab")) eol "c")
+		  "ababc")
+  (match-all-test #f
+		  '(: ($ (* "ab")) bol "c" eol)
+		  "ababc")
+  (match-all-test '(0 5 (1 . "abc"))
+		  '(: (* #\newline) bol ($ (* alpha)) eol (* #\newline))
+		  "\nabc\n")
+  (match-all-test #f
+		  '(: (* #\newline) bol ($ (* alpha)) eol (* #\newline))
+		  "\n'abc\n")
+  (match-all-test #f
+		  '(: (* #\newline) bol ($ (* alpha)) eol (* #\newline))
+		  "\nabc.\n")
+
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: bow ($ (* "ab")) "c")
+		  "ababc")
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: ($ (* "ab")) "c" eow)
+		  "ababc")
+  (match-all-test '(0 5 (1 . "abab"))
+		  '(: bow ($ (* "ab")) "c" eow)
+		  "ababc")
+  (match-all-test #f
+		  '(: bow ($ (* "ab")) eow "c")
+		  "ababc")
+  (match-all-test #f
+		  '(: ($ (* "ab")) bow "c" eow)
+		  "ababc")
+  (match-all-test '(0 7 (1 . "abc"))
+		  '(: (* space) bow ($ (* alpha)) eow (* space))
+		  "  abc  ")
+  (match-all-test #f
+		  '(: (* space) bow ($ (* alpha)) eow (* space))
+		  " 'abc  ")
+  (match-all-test #f
+		  '(: (* space) bow ($ (* alpha)) eow (* space))
+		  " abc.  ")
+  (match-all-test '(0 5 (1 . "abc"))
+		  '(: ($ (* alpha)) (* any))
+		  "abc  ")
+  (match-all-test '(0 5 (1 . ""))
+		  '(: ($ (*? alpha)) (* any))
+		  "abc  ")
+  (match-all-test '(0 20 (1 . "em>Hello World</em"))
+		  '(: "<" ($ (* any)) ">" (* any))
+		  "<em>Hello World</em>")
+  (match-all-test '(0 20 (1 . "em"))
+		  '(: "<" ($ (*? any)) ">" (* any))
+		  "<em>Hello World</em>")
+  (search-test '(1 4) '(: "foo") " foo ")
+  (search-test #f '(: nwb "foo" nwb) " foo ")
+  (search-test '(1 4) '(: nwb "foo" nwb) "xfoox")
+
+  (match-all-test '(0 4) '(* (/ "af")) "beef")
+
+  (match-all-test '(0 9 (1 . "beef"))
+		  '(: (* numeric) ($ (* (/ "af"))))
+		  "12345beef")
+
+  (let ((number '($ (+ numeric))))
+    (list
+     (search-test '(0 12 (1 . "555") (2 . "867") (3 . "5309"))
+		  `(: ,number "-" ,number "-" ,number)
+		  "555-867-5309")
+     (search-test '(0 12 (1 . "555") (2 . "5309"))
+		  `(: ,number "-" (w/nocapture ,number) "-" ,number)
+		  "555-867-5309")))
+
+  (match-all-test '(0 9 (1 . "BeeF"))
+		  '(: (* numeric) (w/nocase ($ (* (/ "af")))))
+		  "12345BeeF")
+
+  (match-all-test #f '(* lower) "abcD")
+  (match-all-test '(0 4) '(w/nocase (* lower)) "abcD")
+  (match-all-test '(0 2) '(* lower) "σζ")
+  (match-all-test '(0 1) '(* upper) "Σ")
+  (match-all-test '(0 1) '(* title) "\x01C5;")
+  (match-all-test '(0 3) '(w/nocase (* lower)) "σζ\x01C5;")
+
+  (match-all-test '(0 9) '(* alpha) "кириллица")
+  (match-all-test #f '(w/ascii (* alpha)) "кириллица")
+  (match-all-test '(0 9) '(w/nocase "КИРИЛЛИЦА") "кириллица")
+
+  (match-all-test '(0 5) '(* numeric) "１２３４５")
+  (match-all-test #f '(w/ascii (* numeric)) "１２３４５")
+
+  (match-all-test '(0 1) 'grapheme "한")
+  (match-all-test '(0 1) 'grapheme "글")
+
+  (match-all-test '(0 1) '(: bog grapheme eog) "한")
+  (match-all-test #f '(: "ᄒ" bog grapheme eog "ᆫ") "한"))
+
+(define-test 'chibi-extract
+  (lambda ()
+    (assert-equal (regexp-extract '(+ numeric) "abc123def456ghi789")
+		  '("123" "456" "789"))
+    (assert-equal (regexp-extract '(* numeric) "abc123def456ghi789")
+		  '("123" "456" "789"))
+    (assert-equal (regexp-extract
+		   'grapheme
+		   (utf8->string
+		    '#u8(#xe1 #x84 #x92 #xe1 #x85 #xa1 #xe1 #x86 #xab
+			      #xe1 #x84 #x80 #xe1 #x85 #xb3 #xe1 #x86 #xaf)))
+		  '("한" "글"))))
+
+(define-test 'chibi-split
+  (lambda ()
+    (assert-equal (regexp-split '(+ numeric) "abc123def456ghi789")
+		  '("abc" "def" "ghi" ""))
+    (assert-equal (regexp-split '(* numeric) "abc123def456ghi789")
+		  '("abc" "def" "ghi" ""))
+    (assert-equal (regexp-split '(+ whitespace) "a b") '("a" "b"))
+    (assert-equal (regexp-split '(",;") "a,,b")
+		  '("a" "" "b"))
+    (assert-equal (regexp-split '(",;") "a,,b,")
+		  '("a" "" "b" ""))))
+
+(define-test 'chibi-partition
+  (lambda ()
+    (assert-equal (regexp-partition '(* numeric) "")
+		  '(""))
+    (assert-equal (regexp-partition '(* numeric) "abc123def456ghi")
+		  '("abc" "123" "def" "456" "ghi"))
+    (assert-equal (regexp-partition '(* numeric) "abc123def456ghi789")
+		  '("abc" "123" "def" "456" "ghi" "789"))))
+
+(define-test 'chibi-replace
+  (lambda ()
+    (assert-equal (regexp-replace '(+ space) "abc \t\n def" " ") "abc def")
+
+    (assert-equal (regexp-replace '(+ space) "  abc \t\n d ef  " "-" 0)
+		  "-abc \t\n d ef  ")
+    (assert-equal (regexp-replace '(+ space) "  abc \t\n d ef  " "-" 0 #f 0)
+		  "-abc \t\n d ef  ")
+    (assert-equal (regexp-replace '(+ space) "  abc \t\n d ef  " "-" 0 #f 1)
+		  "  abc-d ef  ")
+    (assert-equal (regexp-replace '(+ space) "  abc \t\n d ef  " "-" 0 #f 2)
+		  "  abc \t\n d-ef  ")
+    (assert-equal (regexp-replace '(+ space) "  abc \t\n d ef  " "-" 0 #f 3)
+		  "  abc \t\n d ef-")
+    (assert-equal (regexp-replace '(+ space) "  abc \t\n d ef  " "-" 0 #f 4)
+		  "  abc \t\n d ef  ")
+    (assert-equal (regexp-replace-all '(+ space) "  abc \t\n d ef  " " ")
+		  " abc d ef ")))

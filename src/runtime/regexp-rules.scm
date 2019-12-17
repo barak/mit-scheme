@@ -39,6 +39,11 @@ USA.
   (predicate rule-predicate)
   (operation rule-operation))
 
+(define-print-method rule?
+  (standard-print-method 'rule
+    (lambda (rule)
+      (list (rule-key rule)))))
+
 (define (pattern? object)
   (if (pair? object)
       (and (pattern? (car object))
@@ -60,39 +65,39 @@ USA.
 
 (define (pattern-rule extra-args pattern operation #!optional guard-pred)
   (guarantee exact-nonnegative-integer? extra-args 'pattern-rule)
-  (let ((pattern-pred (pattern->predicate pattern 'pattern-rule))
-	(guard-pred (if (default-object? guard-pred) #f guard-pred)))
+  (let ((pattern-pred (pattern->predicate pattern 'pattern-rule)))
     (receive (wrapper arity)
 	(pattern-calling-convention pattern extra-args 'pattern-rule)
       (guarantee-procedure-of-arity operation arity 'pattern-rule)
-      (if guard-pred
-	  (guarantee-procedure-of-arity guard-pred arity 'pattern-rule))
-      (general-rule pattern
-		    (if guard-pred
-			(join-preds extra-args
-				    pattern-pred
-				    (wrapper guard-pred))
-			(wrap-pattern-pred extra-args pattern-pred))
-		    (wrapper operation)))))
+      (general-rule
+       pattern
+       (join-preds extra-args
+		   pattern-pred
+		   (if (default-object? guard-pred)
+		       #f
+		       (wrapper
+			(guarantee-procedure-of-arity guard-pred arity
+						      'pattern-rule))))
+       (wrapper operation)))))
 
 (define (join-preds extra-args pattern-pred guard-pred)
   (case extra-args
     ((0)
-     (lambda (object)
-       (and (pattern-pred object)
-	    (guard-pred object))))
+     (if guard-pred
+	 (lambda (object)
+	   (and (pattern-pred object)
+		(guard-pred object)))
+	 pattern-pred))
     ((1)
-     (lambda (arg object)
-       (and (pattern-pred object)
-	    (guard-pred arg object))))
+     (if guard-pred
+	 (lambda (arg object)
+	   (and (pattern-pred object)
+		(guard-pred arg object)))
+	 (lambda (arg object)
+	   (declare (ignore arg))
+	   (pattern-pred object))))
     (else
      (error "Unsupported extra-args:" extra-args))))
-
-(define (wrap-pattern-pred extra-args predicate)
-  (case extra-args
-    ((0) predicate)
-    ((1) (lambda (arg object) (declare (ignore arg)) (predicate object)))
-    (else (error "Unsupported extra-args:" extra-args))))
 
 (define (pattern->predicate pattern caller)
   (cond ((or (pair? pattern) (null? pattern))
@@ -139,9 +144,9 @@ USA.
 (define (pattern-calling-convention pattern extra-args caller)
   (cond ((pair? pattern)
 	 (if (pattern-constant? (car pattern))
-	     (values (pair-wrapper extra-args cdr)
+	     (values (pair-wrapper extra-args non-empty-list? cdr)
 		     (pattern-arity (cdr pattern) extra-args))
-	     (values (pair-wrapper extra-args (lambda (x) x))
+	     (values (pair-wrapper extra-args list? (lambda (x) x))
 		     (pattern-arity pattern extra-args))))
 	((pattern-constant? pattern)
 	 (values (constant-wrapper extra-args)
@@ -152,14 +157,18 @@ USA.
 	(else
 	 (error:not-a pattern? pattern caller))))
 
-(define (pair-wrapper extra-args proc)
+(define (pair-wrapper extra-args pred proc)
   (case extra-args
     ((0)
      (lambda (procedure)
-       (lambda (object) (apply procedure (proc object)))))
+       (lambda (object)
+	 (and (pred object)
+	      (apply procedure (proc object))))))
     ((1)
      (lambda (procedure)
-       (lambda (arg object) (apply procedure arg (proc object)))))
+       (lambda (arg object)
+	 (and (pred object)
+	      (apply procedure arg (proc object))))))
     (else
      (error "Unsupported extra-args:" extra-args))))
 
@@ -224,22 +233,32 @@ USA.
 	   (general-rule pattern predicate operation))))))
 
 (define (rules-matcher rules)
-  (let ((match
-	 (let ((getter (rules-getter rules)))
-	   (lambda (predicate)
-	     (let ((matched (filter predicate (getter))))
-	       (and (pair? matched)
-		    (begin
-		      (if (pair? (cdr matched))
-			  (error "Multiple rule matches:" matched))
-		      (car matched))))))))
+  (let ((getter (rules-getter rules)))
     (case (rules-extra-args rules)
       ((0)
        (lambda (object)
-	 (match (lambda (rule) ((rule-predicate rule) object)))))
+	 (let ((matched
+		(filter (lambda (rule) ((rule-predicate rule) object))
+			(getter))))
+	   (and (pair? matched)
+		(begin
+		  (if (pair? (cdr matched))
+		      (error "Multiple rule matches:" matched))
+		  (let ((operation (rule-operation (car matched))))
+		    (lambda ()
+		      (operation object))))))))
       ((1)
        (lambda (arg object)
-	 (match (lambda (rule) ((rule-predicate rule) arg object)))))
+	 (let ((matched
+		(filter (lambda (rule) ((rule-predicate rule) arg object))
+			(getter))))
+	   (and (pair? matched)
+		(begin
+		  (if (pair? (cdr matched))
+		      (error "Multiple rule matches:" matched))
+		  (let ((operation (rule-operation (car matched))))
+		    (lambda ()
+		      (operation arg object))))))))
       (else
        (error "Unsupported extra-args:" (rules-extra-args rules))))))
 
@@ -251,9 +270,9 @@ USA.
 	   ((rewrite
 	     (let ((k (if (default-object? k) (lambda (object) object) k)))
 	       (lambda (object)
-		 (let ((rule (matcher object)))
-		   (if rule
-		       (rewrite ((rule-operation rule) object))
+		 (let ((thunk (matcher object)))
+		   (if thunk
+		       (rewrite (thunk))
 		       (k object)))))))
 	 rewrite))
       ((1)
@@ -264,9 +283,9 @@ USA.
 			(lambda (arg object) (declare (ignore arg)) object)
 			k)))
 	       (lambda (arg object)
-		 (let ((rule (matcher arg object)))
-		   (if rule
-		       (rewrite arg ((rule-operation rule) arg object))
+		 (let ((thunk (matcher arg object)))
+		   (if thunk
+		       (rewrite arg (thunk))
 		       (k arg object)))))))
 	 rewrite))
       (else

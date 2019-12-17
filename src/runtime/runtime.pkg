@@ -5620,6 +5620,8 @@ USA.
   (files "srfi-115")
   (parent (runtime regexp))
   (export ()
+	  (regexp-matches regexp-matches-all)
+	  (regexp-matches? regexp-matches-all?)
 	  char-set->sre
 	  condition-type:compile-regexp	;extension
 	  print-regexp			;extension
@@ -5630,9 +5632,11 @@ USA.
 	  regexp-fold-right		;extension
 	  regexp-match->list
 	  regexp-match-count
+	  regexp-match-empty?		;extension
 	  regexp-match-end		;extension
 	  regexp-match-key?		;extension
 	  regexp-match-keys
+	  regexp-match-length		;extension
 	  regexp-match-replace		;extension
 	  regexp-match-replacement?	;extension
 	  regexp-match-start		;extension
@@ -5641,8 +5645,10 @@ USA.
 	  regexp-match-submatch-start
 	  regexp-match-value		;extension
 	  regexp-match?
-	  regexp-matches
-	  regexp-matches?
+	  regexp-matches-all		;extension
+	  regexp-matches-all?		;extension
+	  regexp-matches-some		;extension
+	  regexp-matches-some?		;extension
 	  regexp-partition
 	  regexp-replace
 	  regexp-replace-all
@@ -5674,8 +5680,10 @@ USA.
   (parent (runtime))
   (export (runtime regexp srfi-115)
 	  compile-matcher
+	  group-empty?
 	  group-end
 	  group-key
+	  group-length
 	  group-start
 	  group-value
 	  insn:*

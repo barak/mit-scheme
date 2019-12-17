@@ -266,7 +266,8 @@ USA.
 		      (write-expr-property #f expr port)
 		      (write-char #\space port))))
 	      (write-string "failed with error: " port)
-	      (write-condition-report (cdr p) port)))
+	      (write-condition-report (cdr p) port)
+	      (if debug-errors? (debug (cdr p)))))
 	((failure-feature 'result failure)
 	 => (lambda (result)
 	      (write-string "value" port)
@@ -467,6 +468,11 @@ USA.
 	  (warn "To avoid long run times, export FAST=y.")
 	  #f)
 	#t)))
+
+(define debug-errors?
+  (let ((v (get-environment-variable "DEBUG")))
+    (and v
+	 (not (string-null? v)))))
 
 (define comparator?)
 (define comparator-metadata)

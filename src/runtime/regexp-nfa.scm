@@ -297,7 +297,7 @@ USA.
 	     (and (pair? gcbs)
 		  (fix:= (car gcbs) index)))))))
 
-(define (matches? char char-set)
+(define (matches? char-set char)
   (and char
        (char-set-contains? char-set char)))
 
@@ -306,11 +306,15 @@ USA.
       (match-insn char-ci=-predicate (cons 'ci char))
       (match-insn (char=-predicate char) char)))
 
-(define (insn:char-set char-set)
+(define (insn:char-set char-set ci?)
   (case (char-set-size char-set)
     ((0) fail-insn)
-    ((1) (insn:char (char-set-ref char-set (char-set-cursor char-set)) #f))
-    (else (match-insn (char-set-predicate char-set) char-set))))
+    ((1) (insn:char (char-set-ref char-set (char-set-cursor char-set)) ci?))
+    (else
+     (match-insn (if ci?
+		     (char-set-ci-predicate char-set)
+		     (char-set-predicate char-set))
+		 char-set))))
 
 (define (insn:string string ci?)
   (insn:seq
@@ -391,40 +395,29 @@ USA.
 (define (start-group-insn n key)
   (ctx-only-insn (list 'start-group n key)
     (lambda (ctx)
-      (let ((index (ctx-index ctx)))
-	(make-ctx index
-		  (ctx-gcbs ctx)
-		  (cons index (ctx-stack ctx))
-		  (ctx-groups ctx))))))
+      (start-group ctx))))
 
 (define (end-group-insn n key)
   (ctx-only-insn (list 'end-group n key)
     (lambda (ctx)
-      (let ((index (ctx-index ctx))
-	    (stack (ctx-stack ctx)))
-	(make-ctx index
-		  (ctx-gcbs ctx)
-		  (cdr stack)
-		  (cons (let ((start (car stack)))
-			  (lambda (string)
-			    (make-group key string start index)))
-			(ctx-groups ctx)))))))
+      (end-group ctx key))))
 
 ;;;; Interpreter
 
-(define (run-matcher matcher string start end)
+(define (run-matcher matcher match-all? capture? index string start end)
   (parameterize ((run-shared-state (make-run-shared-state matcher)))
     (let ((initial
 	   (make-state (matcher-initial-node matcher)
-		       (initial-ctx start
+		       (initial-ctx index
 				    (if (matcher-need-gcb? matcher)
 					(string-gcb-stream string start end)
-					'())))))
+					'())
+				    capture?))))
       (trace-matcher (lambda (port) (write (list 'initial-state initial) port)))
-      (let ((final (match-nodes initial string start end)))
+      (let ((final (match-nodes initial match-all? index string start end)))
 	(trace-matcher (lambda (port) (write (list 'final-state final) port)))
 	(and final
-	     (all-groups string start (state-ctx final)))))))
+	     (all-groups string index (state-ctx final)))))))
 
 (define run-shared-state
   (make-parameter #f))
@@ -455,11 +448,20 @@ USA.
 (define param:trace-regexp-nfa?
   (make-settable-parameter #f))
 
-(define (match-nodes initial-state string start end)
+(define (match-nodes initial-state match-all? index string start end)
   (let* ((seen (make-strong-eq-hash-table))
-	 (follow-epsilons (follow-epsilons string start end seen)))
-    (let loop ((states (list initial-state)) (index start) (prev-char #f))
-      (trace-matcher (lambda (port) (write (cons* 'index index states) port)))
+	 (follow-epsilons
+	  (follow-epsilons match-all? string start end seen)))
+    (let loop
+	((states (list initial-state))
+	 (index index)
+	 (prev-char
+	  (and (fix:> index start)
+	       (fix:<= index end)
+	       (string-ref string (fix:- index 1)))))
+      (trace-matcher
+       (lambda (port)
+	 (pp (cons* 'match-nodes index prev-char states) port)))
       (let ((next-char
 	     (and (fix:< index end)
 		  (string-ref string index))))
@@ -507,9 +509,11 @@ USA.
 
   (loop states '()))
 
-(define (follow-epsilons string start end seen)
+(define (follow-epsilons match-all? string start end seen)
   (lambda (next-char states index prev-char)
-    (trace-matcher (lambda (port) (pp (cons 'follow-epsilons states) port)))
+    (trace-matcher
+     (lambda (port)
+       (pp (cons* 'follow-epsilons index prev-char next-char states) port)))
 
     (define (loop inputs outputs)
       (if (pair? inputs)
@@ -553,8 +557,11 @@ USA.
 					 ((node-procedure node) ctx))
 			     inputs
 			     outputs))
+	      ((terminal)
+	       (if (and match-all? next-char)
+		   (loop inputs outputs)
+		   (done (cons state outputs))))
 	      ((fail) (loop inputs outputs))
-	      ((terminal) (done (cons state outputs)))
 	      (else (loop inputs (cons state outputs)))))))
 
     (define (seen? state)
@@ -566,6 +573,8 @@ USA.
 	      #f))))
 
     (define (done outputs)
+      (trace-matcher
+       (lambda (port) (pp (cons 'follow-epsilons:done outputs) port)))
       (hash-table-clear! seen)
       (reverse! outputs))
 
@@ -602,7 +611,7 @@ USA.
 
 (define (terminal-state? state)
   (terminal-node? (state-node state)))
-
+
 ;;;; Context
 
 (define-record-type <ctx>
@@ -613,21 +622,48 @@ USA.
   (stack ctx-stack)
   (groups ctx-groups))
 
-(define (initial-ctx start gcbs)
-  (make-ctx start gcbs '() '()))
+(define (initial-ctx index gcbs capture?)
+  (make-ctx index
+	    (chase-gcbs index gcbs)
+	    '()
+	    (if capture? '() #f)))
 
 (define (++index ctx)
   (let ((index* (fix:+ (ctx-index ctx) 1)))
     (make-ctx index*
-	      (let loop ((gcbs (ctx-gcbs ctx)))
-		(if (and (pair? gcbs) (fix:< (car gcbs) index*))
-		    (loop (force (cdr gcbs)))
-		    gcbs))
+	      (chase-gcbs index* (ctx-gcbs ctx))
 	      (ctx-stack ctx)
 	      (ctx-groups ctx))))
 
-(define (all-groups string start ctx)
-  (cons (make-group 0 string start (ctx-index ctx))
+(define (start-group ctx)
+  (if (ctx-groups ctx)
+      (let ((index (ctx-index ctx)))
+	(make-ctx index
+		  (ctx-gcbs ctx)
+		  (cons index (ctx-stack ctx))
+		  (ctx-groups ctx)))
+      ctx))
+
+(define (end-group ctx key)
+  (if (ctx-groups ctx)
+      (let ((index (ctx-index ctx))
+	    (stack (ctx-stack ctx)))
+	(make-ctx index
+		  (ctx-gcbs ctx)
+		  (cdr stack)
+		  (cons (let ((start (car stack)))
+			  (lambda (string)
+			    (make-group key string start index)))
+			(ctx-groups ctx))))
+      ctx))
+
+(define (chase-gcbs index gcbs)
+  (if (and (pair? gcbs) (fix:< (car gcbs) index))
+      (chase-gcbs index (force (cdr gcbs)))
+      gcbs))
+
+(define (all-groups string index ctx)
+  (cons (make-group 0 string index (ctx-index ctx))
 	(map (lambda (p) (p string))
 	     (reverse (ctx-groups ctx)))))
 
@@ -643,6 +679,12 @@ USA.
   (string-slice (group-string group)
 		(group-start group)
 		(group-end group)))
+
+(define (group-empty? group)
+  (fix:= (group-start group) (group-end group)))
+
+(define (group-length group)
+  (fix:- (group-end group) (group-start group)))
 
 (define-print-method group?
   (standard-print-method 'group

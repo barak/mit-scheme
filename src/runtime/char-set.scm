@@ -179,39 +179,6 @@ USA.
 	(%high-set! high i (car ilist)))
       high)))
 
-(define (ilist-fold proc init ilist)
-  (let loop ((ilist ilist) (value init))
-    (if (pair? ilist)
-	(loop (cddr ilist)
-	      (proc (car ilist) (cadr ilist) value))
-	value)))
-
-(define (ilist-fold-right proc init ilist)
-  (let loop ((ilist (reverse ilist)) (value init))
-    (if (pair? ilist)
-	(loop (cddr ilist)
-	      (proc (cadr ilist) (car ilist) value))
-	value)))
-
-(define (range-fold-char-mapper proc)
-  (lambda (start end value)
-    (let loop ((i start) (value value))
-      (if (fix:< i end)
-	  (loop (fix:+ i 1)
-		(proc (integer->char i) value))
-	  value))))
-
-(define (range-fold-right-char-mapper proc)
-  (lambda (start end value)
-    (let loop ((i (fix:- end 1)) (value value))
-      (if (fix:>= i start)
-	  (loop (fix:- i 1)
-		(proc (integer->char i) value))
-	  value))))
-
-(define (ilist-map proc ilist)
-  (ilist-fold-right (range-fold-right-char-mapper proc) '() ilist))
-
 (define (chars->ilist chars)
 
   (define (find-end cps ilist)
@@ -396,12 +363,6 @@ USA.
 		      (set-cdr! ranges (cddr ranges))
 		      (loop ranges)))))))
     ranges))
-
-(define (ilist->ranges ilist)
-  (ilist-fold-right (lambda (start end ranges)
-		      (cons (make-range start end) ranges))
-		    '()
-		    ilist))
 
 ;;;; Code-point lists
 
@@ -660,10 +621,24 @@ USA.
   (eq? end-cursor cursor))
 
 (define (char-set-fold kons knil char-set)
-  (char-set-range-fold (range-fold-char-mapper kons) knil char-set))
+  (char-set-range-fold (lambda (start end acc)
+			 (let loop ((i start) (acc acc))
+			   (if (fix:< i end)
+			       (loop (fix:+ i 1)
+				     (kons (integer->char i) acc))
+			       acc)))
+		       knil
+		       char-set))
 
 (define (char-set-fold-right kons knil char-set)
-  (char-set-range-fold-right (range-fold-right-char-mapper kons) knil char-set))
+  (char-set-range-fold-right (lambda (start end acc)
+			       (let loop ((i (fix:- end 1)) (acc acc))
+				 (if (fix:>= i start)
+				     (loop (fix:- i 1)
+					   (kons (integer->char i) acc))
+				     acc)))
+			     knil
+			     char-set))
 
 (define (char-set-unfold f p g seed #!optional base-set)
   (list->char-set
@@ -776,7 +751,6 @@ USA.
 		       char-set))
 
 (define (char-set-contains? char-set char)
-  (guarantee char? char 'char-set-contains?)
   (%code-point-in-char-set? (char-code char) char-set))
 
 (define (char-in-set? char char-set)
@@ -895,13 +869,11 @@ USA.
 		(ilist->char-set (fold ilist-intersection ilist ilists))))
       (values char-set char-set)))
 
-(define (domain-mapper proc proc-domain)
-  (let ((domain (char-set->ilist proc-domain)))
-    (lambda (char-set)
-      (ilist->char-set
-       (let ((ilist (char-set->ilist char-set)))
-	 (ilist-union (ilist-difference ilist domain)
-		      (ilist-map proc (ilist-intersection ilist domain))))))))
+(define ((domain-mapper proc proc-domain) char-set)
+  (let-values (((difference intersection)
+		(char-set-diff+intersection char-set proc-domain)))
+    (char-set-union difference
+		    (char-set* (char-set-map proc intersection)))))
 
 (define char-set-foldcase)
 (define char-set-downcase)
