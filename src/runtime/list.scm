@@ -1333,3 +1333,13 @@ USA.
     (if (null-list? items*)
 	(list item)
 	(cons (car items*) (cons-last item (cdr items*))))))
+
+(define (cons-last! item items)
+  (if (null-list? items)
+      (list item)
+      (begin
+	(let loop ((items items))
+	  (if (null-list? (cdr items))
+	      (set-cdr! items (list item))
+	      (loop (cdr items))))
+	items)))
