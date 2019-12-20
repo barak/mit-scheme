@@ -107,7 +107,8 @@ USA.
   (guarantee nfc-string? string caller)
   (let* ((end (fix:end-index end (string-length string) caller))
 	 (start (fix:start-index start end caller)))
-    (and (run-matcher (regexp re) match-all? #f start string start end)
+    (and (run-matcher (regexp-impl (regexp re)) match-all? #f start
+		      string start end)
 	 #t)))
 
 (define (regexp-matches-all re string #!optional start end)
