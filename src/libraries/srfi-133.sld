@@ -24,9 +24,54 @@ USA.
 
 |#
 
-(for-each (lambda (pn)
-	    (if (not (string=? "compile" (pathname-name pn)))
-		(compile-file pn)))
-	  (directory-read
-	   (merge-pathnames "*.sld"
-			    (directory-pathname (current-load-pathname)))))
+;;;; SRFI 133: Vector Library
+
+(define-library (srfi 133)
+  (import (scheme base)
+	  (scheme cxr)
+	  (only (srfi 8)
+		receive)
+	  (only (mit legacy runtime)
+		error:bad-range-argument
+		fix:+
+		fix:-
+		fix:<
+		fix:<=
+		fix:=
+		fix:>
+		fix:>=
+		fix:end-index
+		fix:min
+		fix:quotient
+		fix:start-index
+		guarantee
+		index-fixnum?
+		unspecific))
+  (export reverse-list->vector
+	  reverse-vector->list
+	  vector-any
+	  vector-append-subvectors
+	  vector-cumulate
+	  vector-empty?
+	  vector-every
+	  vector-fold
+	  vector-fold-right
+	  vector-index
+	  vector-index-right
+	  vector-map!
+	  vector-partition
+	  vector-reverse!
+	  vector-reverse-copy
+	  vector-skip
+	  vector-skip-right
+	  vector-swap!
+	  vector-unfold
+	  vector-unfold!
+	  vector-unfold-right
+	  vector-unfold-right!
+	  vector=
+          vector-binary-search
+          vector-concatenate
+          vector-count
+          vector-reverse-copy!)
+  (include "srfi-133-impl.scm"))

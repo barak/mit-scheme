@@ -46,47 +46,6 @@ USA.
 ;;; This was developed as a response to GJS's dislike of the standard testing
 ;;; framework.  Gerry prefers to just type at the interpreter and keep a
 ;;; transcript of the results around; this closely mirrors his testing style.
-
-(define-library (mit inline-testing)
-  (import (scheme base)
-	  (scheme char)
-	  (scheme cxr)
-	  (scheme eval)
-	  (scheme read)
-	  (scheme write)
-	  (only (srfi 1)
-		filter
-		filter-map
-		find-tail)
-	  (mit library)
-	  (only (mit legacy runtime)
-		->namestring
-		alist->bundle
-		bundle
-		call-with-output-string
-		call-with-truncated-output-string
-		call-with-truncated-output-string
-		condition/report-string
-		condition?
-		default-object
-		default-object?
-		environment?
-		fresh-line
-		keyword-option-parser
-		make-bundle-predicate
-		make-settable-parameter
-		nearest-repl/environment
-		pathname-default-type
-		pp
-		read-file
-		warn
-		with-notification
-		write-to-string))
-  (export define-error-expectation
-	  define-output-expectation
-	  define-value-expectation
-	  run-inline-tests)
-  (begin
 
 (define (run-inline-tests filename . options)
   (let-values (((*eval *env *notify? *summarize?)
@@ -451,6 +410,3 @@ USA.
 	#f
 	(string-append "expected no output but found "
 		       objects))))
-
-;; end of library
-))

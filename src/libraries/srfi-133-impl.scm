@@ -27,59 +27,7 @@ USA.
 ;;;; SRFI 133: Vector Library
 
 ;;; Loosely based on the SRFI's sample implementation.
-
-(define-library (srfi 133)
-  (import (scheme base)
-	  (scheme cxr)
-	  (only (srfi 8)
-		receive)
-	  (only (mit legacy runtime)
-		error:bad-range-argument
-		fix:+
-		fix:-
-		fix:<
-		fix:<=
-		fix:=
-		fix:>
-		fix:>=
-		fix:end-index
-		fix:min
-		fix:quotient
-		fix:start-index
-		guarantee
-		index-fixnum?
-		unspecific))
-  (export reverse-list->vector
-	  reverse-vector->list
-	  vector-any
-	  vector-append-subvectors
-	  vector-cumulate
-	  vector-empty?
-	  vector-every
-	  vector-fold
-	  vector-fold-right
-	  vector-index
-	  vector-index-right
-	  vector-map!
-	  vector-partition
-	  vector-reverse!
-	  vector-reverse-copy
-	  vector-skip
-	  vector-skip-right
-	  vector-swap!
-	  vector-unfold
-	  vector-unfold!
-	  vector-unfold-right
-	  vector-unfold-right!
-	  vector=
-          vector-binary-search
-          vector-concatenate
-          vector-count
-          vector-reverse-copy!)
-  (begin
 
-;;; Constructors
-
 (define (vector-unfold proc n . initial-seeds)
   (let ((v (make-vector n)))
     (apply vector-unfold! proc v 0 n initial-seeds)
@@ -558,6 +506,3 @@ USA.
     (if (not (fix:<= n limit))
 	(error:bad-range-argument start caller))
     end))
-
-;; end of library
-))
