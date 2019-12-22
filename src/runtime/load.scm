@@ -190,9 +190,8 @@ USA.
 		  (try-object-file (pathname-new-type pathname "so"))
 		  (try-types try-fasl-file
 			     pathname
-			     (if package/cross-compiling?
-				 file-type-nib
-				 file-type-bin)
+			     (lambda (types)
+			       (file-type-bin types package/cross-compiling?))
 			     file-type-src)))))
     (if thunk
 	(receive (pathname loader notifier) (thunk)
@@ -315,33 +314,6 @@ USA.
 			       (cons pathname arguments))
 	 arguments))
 
-(define-record-type <file-types>
-    (file-types src bin com nib moc)
-    file-types?
-  (src file-type-src)
-  (bin file-type-bin)
-  (com file-type-com)
-  (nib file-type-nib)
-  (moc file-type-moc))
-
-(define (file-types-contains? types type)
-  (and (string? type)
-       (or (string=? type (file-type-src types))
-	   (string=? type (file-type-bin types))
-	   (string=? type (file-type-com types))
-	   (string=? type (file-type-nib types))
-	   (string=? type (file-type-moc types)))))
-
-(define (file-types->list types)
-  (list (file-type-src types)
-	(file-type-bin types)
-	(file-type-com types)
-	(file-type-nib types)
-	(file-type-moc types)))
-
-(define file-types:program (file-types "scm" "bin" "com" "nib" "moc"))
-(define file-types:library (file-types "sld" "bsld" "csld" "dlsb" "dlsc"))
-
 (define (try-types proc pathname . selectors)
   (find-map (lambda (types)
 	      (apply proc
@@ -349,6 +321,76 @@ USA.
 			    (pathname-new-type pathname (selector types)))
 			  selectors)))
 	    file-types-in-order))
+
+(define-record-type <file-types>
+    (file-types src bin ext com inf bci)
+    file-types?
+  (src %file-type-src)
+  (bin %file-type-bin)
+  (ext %file-type-ext)
+  (com %file-type-com)
+  (inf %file-type-inf)
+  (bci %file-type-bci))
+
+(define (file-type-src types #!optional cross-compiling?)
+  (declare (ignore cross-compiling?))
+  (%file-type-src types))
+
+(define ((file-types-selector selector) types #!optional cross-compiling?)
+  (let ((s (selector types)))
+    (if (if (default-object? cross-compiling?) #f cross-compiling?)
+	(list->string (reverse (string->list s)))
+	s)))
+
+(define file-type-bin (file-types-selector %file-type-bin))
+(define file-type-ext (file-types-selector %file-type-ext))
+(define file-type-com (file-types-selector %file-type-com))
+(define file-type-inf (file-types-selector %file-type-inf))
+(define file-type-bci (file-types-selector %file-type-bci))
+
+(define ((file-types-mapper selector) #!optional cross-compiling?)
+  (map (lambda (types) (selector types cross-compiling?))
+       file-types-in-order))
+
+(define file-types:all-bin (file-types-mapper %file-type-bin))
+(define file-types:all-ext (file-types-mapper %file-type-ext))
+(define file-types:all-com (file-types-mapper %file-type-com))
+(define file-types:all-inf (file-types-mapper %file-type-inf))
+(define file-types:all-bci (file-types-mapper %file-type-bci))
+
+(define ((pathname-typer selector) pathname types #!optional cross-compiling?)
+  (pathname-new-type pathname (selector types cross-compiling?)))
+
+(define pathname-new-type-src (pathname-typer file-type-src))
+(define pathname-new-type-bin (pathname-typer file-type-bin))
+(define pathname-new-type-ext (pathname-typer file-type-ext))
+(define pathname-new-type-com (pathname-typer file-type-com))
+(define pathname-new-type-inf (pathname-typer file-type-inf))
+(define pathname-new-type-bci (pathname-typer file-type-bci))
+
+(define (pathname-new-type-map pathname from to #!optional cross-compiling?)
+  (pathname-new-type pathname
+		     (to (or (find-file-types pathname from cross-compiling?)
+			     file-types:program)
+			 cross-compiling?)))
+
+(define (find-file-types pathname #!optional selector cross-compiling?)
+  (let ((type (pathname-type pathname)))
+    (and (string? type)
+	 (let ((selector
+		(if (default-object? selector)
+		    file-type-src
+		    selector)))
+	   (find (lambda (types)
+		   (string=? type (selector types cross-compiling?)))
+		 file-types-in-order)))))
+
+(define file-types:program
+  (file-types "scm" "bin" "ext" "com" "inf" "bci"))
+
+(define file-types:library
+  ;; No special ext type for libraries -- they don't have them.
+  (file-types "sld" "binld" "ext" "comld" "infld" "bcild"))
 
 (define file-types-in-order
   (list file-types:library

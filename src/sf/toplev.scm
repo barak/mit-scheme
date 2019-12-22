@@ -31,9 +31,6 @@ USA.
 
 ;;;; User Interface
 
-(define (bin-pathname-type)
-  (if sf/cross-compiling? "nib" "bin"))
-
 (define (integrate/procedure procedure)
   (procedure-components procedure
     (lambda (*lambda environment)
@@ -121,14 +118,17 @@ USA.
 		   (sf/object-pathname
 		    (pathname-new-type
 		     input-path
-		     (let ((input-type (pathname-type input-path)))
-		       (if (and (string? input-type)
-				(not (string=? "scm" input-type)))
-			   (string-append "b"
-					  (if (> (string-length input-type) 2)
-					      (string-head input-type 2)
-					      input-type))
-			   (bin-pathname-type)))))))
+		     (let ((types (find-file-types input-path)))
+		       (if types
+			   (file-type-bin types sf/cross-compiling?)
+			   (let ((type (pathname-type input-path)))
+			     (if (string? type)
+				 (string-append "b"
+						(if (> (string-length type) 2)
+						    (string-head type 2)
+						    type))
+				 (file-type-bin file-types:program
+						sf/cross-compiling?)))))))))
 	      (if bin-string
 		  (merge-pathnames bin-string bin-path)
 		  bin-path))
@@ -169,28 +169,31 @@ USA.
 
 (define (sf/file->scode input-pathname output-pathname
 			environment declarations)
-  (fluid-let ((sf/default-externs-pathname
-	       (lambda ()
-		 (make-pathname (pathname-host input-pathname)
-				(pathname-device input-pathname)
-				(pathname-directory input-pathname)
-				#f
-				(externs-pathname-type)
-				'newest))))
-    (receive (expression externs-block externs)
-	(integrate/file input-pathname environment declarations)
-      (if output-pathname
-	  (write-externs-file (pathname-new-type output-pathname
-						 (externs-pathname-type))
-			      externs-block
-			      externs))
-      expression)))
-
-(define (externs-pathname-type)
-  (if sf/cross-compiling? "txe" "ext"))
+  (let ((types
+	 (or (find-file-types input-pathname file-type-src sf/cross-compiling?)
+	     file-types:program)))
+    (fluid-let ((sf/default-externs-pathname
+		 (lambda ()
+		   (make-pathname (pathname-host input-pathname)
+				  (pathname-device input-pathname)
+				  (pathname-directory input-pathname)
+				  #f
+				  (file-type-ext types sf/cross-compiling?)
+				  'newest))))
+      (receive (expression externs-block externs)
+	  (integrate/file input-pathname environment declarations)
+	(if output-pathname
+	    (write-externs-file (pathname-new-type-ext output-pathname
+						       types
+						       sf/cross-compiling?)
+				externs-block
+				externs))
+	expression))))
 
 (define (sf/default-externs-pathname)
-  (make-pathname #f #f #f #f (externs-pathname-type) 'newest))
+  (make-pathname #f #f #f #f
+		 (file-type-ext file-types:program sf/cross-compiling?)
+		 'newest))
 
 (define (read-externs-file pathname)
   (let ((pathname

@@ -36,19 +36,50 @@ USA.
 (define compile-file:force? #f)
 (define compile-file:show-dependencies? #f)
 (define compiler:compile-data-files-as-expressions? #t)
-(define compile-file)
-(let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
-      (bin-pathname
-       (lambda (path)
-	 (pathname-new-type path (if sf/cross-compiling? "nib" "bin"))))
-      (ext-pathname (lambda (path) (pathname-default-type path "ext")))
-      (ext-pathname? (lambda (path) (equal? (pathname-type path) "ext")))
-      (com-pathname
-       (lambda (path)
-	 (pathname-new-type path (compiler:compiled-code-pathname-type)))))
 
-  (define (process-file input-file output-file dependencies processor)
-    (let ((doit (lambda () (processor input-file output-file dependencies))))
+(define (compile-file file #!optional dependencies environment)
+  (let ((types
+	 (or (find-file-types file)
+	     file-types:program))
+	(new-type
+	 (lambda (type)
+	   (pathname-new-type file type))))
+    (let ((bin-path (pathname-new-type-bin file types sf/cross-compiling?))
+	  (com-path (new-type (compiler:compiled-code-pathname-type types)))
+	  (ext-type (file-type-ext types sf/cross-compiling?)))
+      (process-file (pathname-new-type-src file types sf/cross-compiling?)
+		    bin-path
+		    (map (lambda (dep)
+			   (pathname-default-type file ext-type))
+			 (if (default-object? dependencies)
+			     '()
+			     dependencies))
+	(lambda (input-file output-file dependencies)
+	  (fluid-let ((sf/default-syntax-table
+		       (if (default-object? environment)
+			   #f
+			   (guarantee environment? environment)))
+		      (sf/default-declarations
+		       `((usual-integrations
+			  ,@compile-file:override-usual-integrations)
+			 ,@(let ((deps
+				  (filter (lambda (dep)
+					    (equal? ext-type
+						    (pathname-type dep)))
+					  dependencies)))
+			     (if (null? deps)
+				 '()
+				 `((integrate-external ,@deps)))))))
+	    (sf input-file output-file))))
+      (if (not compile-file:sf-only?)
+	  (process-file bin-path com-path '()
+	    (lambda (input-file output-file dependencies)
+	      (declare (ignore dependencies))
+	      (fluid-let ((compiler:coalescing-constant-warnings? #f))
+		(compile-bin-file input-file output-file))))))))
+
+(define (process-file input-file output-file dependencies processor)
+  (let ((doit (lambda () (processor input-file output-file dependencies))))
     (if compile-file:force?
 	(doit)
 	(let ((reasons
@@ -78,38 +109,6 @@ USA.
 				   (write (->namestring reason) port))
 				 reasons))))
 		(doit)))))))
-
-  (set! compile-file
-	(named-lambda (compile-file file #!optional dependencies environment)
-	  (process-file (scm-pathname file) (bin-pathname file)
-			(map ext-pathname
-			     (if (default-object? dependencies)
-				 '()
-				 dependencies))
-	    (lambda (input-file output-file dependencies)
-	      (fluid-let ((sf/default-syntax-table
-			   (if (default-object? environment)
-			       #f
-			       (begin
-				 (if (not (environment? environment))
-				     (error:wrong-type-argument environment
-								"environment"
-								'compile-file))
-				 environment)))
-			  (sf/default-declarations
-			   `((usual-integrations
-			      ,@compile-file:override-usual-integrations)
-			     ,@(let ((deps (filter ext-pathname? dependencies)))
-				 (if (null? deps)
-				     '()
-				     `((integrate-external ,@deps)))))))
-		(sf input-file output-file))))
-	  (if (not compile-file:sf-only?)
-	      (process-file (bin-pathname file) (com-pathname file) '()
-		(lambda (input-file output-file dependencies)
-		  dependencies
-		  (fluid-let ((compiler:coalescing-constant-warnings? #f))
-		    (compile-bin-file input-file output-file))))))))
 
 ;;;; Non-Incremental File Compiler
 
@@ -135,7 +134,7 @@ USA.
   (compiler-pathnames
    input-string
    (and (not (default-object? output-string)) output-string)
-   (make-pathname #f #f #f #f (if sf/cross-compiling? "nib" "bin") 'NEWEST)
+   file-type-bin
    (lambda (input-pathname output-pathname)
      (fluid-let ((*compiler-input-pathname*
 		  (merge-pathnames input-pathname))
@@ -160,9 +159,10 @@ USA.
 		      (lambda ()
 			(compile-bin-file-1
 			 scode
-			 (pathname-new-type
-			  output-pathname
-			  (compiler:compiled-inf-pathname-type))
+			 (pathname-new-type-map output-pathname
+						file-type-com
+						file-type-inf
+						compiler:cross-compiling?)
 			 rtl-output-port
 			 lap-output-port)))))))))))))
   unspecific)
@@ -216,40 +216,43 @@ USA.
   (if open?
       (call-with-output-file pathname receiver)
       (receiver #f)))
-
-(define (compiler:compiled-inf-pathname-type)
-  (if compiler:cross-compiling? "fni" "inf"))
 
-(define (compiler-pathnames input-string output-string default transform)
-  (let* ((core
-	  (lambda (input-string)
-	    (let ((input-pathname (merge-pathnames input-string default)))
-	      (let ((output-pathname
-		     (let ((output-pathname
-			    (pathname-new-type
-			     input-pathname
-			     (compiler:compiled-code-pathname-type))))
-		       (if output-string
-			   (merge-pathnames output-string output-pathname)
-			   output-pathname))))
-		(let ((do-it
-		       (lambda ()
-			 (compiler-file-output
-			  (transform input-pathname output-pathname)
-			  output-pathname))))
-		  (if compiler:noisy?
-		      (with-notification
-			  (lambda (port)
-			    (write-string "Compiling file: " port)
-			    (write (enough-namestring input-pathname) port)
-			    (write-string " => " port)
-			    (write (enough-namestring output-pathname) port))
-			do-it)
-		      (do-it)))))))
-	 (kernel
-	  (if compiler:batch-mode?
-	      (batch-kernel core)
-	      core)))
+(define (compiler-pathnames input-string output-string selector transform)
+
+  (define (process-one-file input-string)
+    (let* ((types
+	    (or (find-file-types input-string
+				 selector
+				 sf/cross-compiling?)
+		file-types:program))
+	   (input-pathname
+	    (pathname-new-type input-string (selector types)))
+	   (output-pathname
+	    (let ((output-pathname
+		   (pathname-new-type
+		    input-pathname
+		    (compiler:compiled-code-pathname-type types))))
+	      (if output-string
+		  (merge-pathnames output-string output-pathname)
+		  output-pathname))))
+
+      (define (do-it)
+	(compiler-file-output (transform input-pathname output-pathname)
+			      output-pathname))
+      (if compiler:noisy?
+	  (with-notification
+	      (lambda (port)
+		(write-string "Compiling file: " port)
+		(write (enough-namestring input-pathname) port)
+		(write-string " => " port)
+		(write (enough-namestring output-pathname) port))
+	    do-it)
+	  (do-it))))
+
+  (let ((kernel
+	 (if compiler:batch-mode?
+	     (batch-kernel process-one-file)
+	     process-one-file)))
     (if (pair? input-string)
 	(for-each kernel input-string)
 	(kernel input-string))))
@@ -281,9 +284,9 @@ USA.
 
 (define (compile-directory input-directory #!optional output-directory force?)
   ((directory-processor
-    (if sf/cross-compiling? "nib" "bin")
+    (file-type-bin file-types:program sf/cross-compiling?)
     (lambda ()
-      (compiler:compiled-code-pathname-type))
+      (compiler:compiled-code-pathname-type file-types:program))
     (lambda (pathname output-directory)
       (compile-bin-file pathname output-directory)))
    input-directory output-directory force?))

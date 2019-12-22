@@ -31,8 +31,8 @@ USA.
 
 ;;;; Exports to the compiler
 
-(define (compiler:compiled-code-pathname-type)
-  (if compiler:cross-compiling? "moc" "com"))
+(define (compiler:compiled-code-pathname-type types)
+  (file-type-com types compiler:cross-compiling?))
 
 (define (compiler-file-output object pathname)
   (if compiler:cross-compiling?
@@ -305,7 +305,13 @@ USA.
   (compiler-file-output binf pathname))
 
 (define (compiler:dump-bci-file binf pathname)
-  (dump-compressed binf (pathname-new-type pathname "bci")))
+  (let ((types
+	 (or (find-file-types pathname file-type-inf compiler:cross-compiling?)
+	     file-types:program)))
+    (dump-compressed binf
+		     (pathname-new-type-bci pathname
+					    types
+					    compiler:cross-compiling?))))
 
 (define (dump-compressed object path)
   (call-with-temporary-filename

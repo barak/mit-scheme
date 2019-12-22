@@ -316,8 +316,12 @@ USA.
 
 (define (scheme-pathname? pathname)
   (let ((type (pathname-type pathname)))
-    (or (file-types-contains? file-types:library type)
-	(file-types-contains? file-types:program type))))
+    (or (equal? (file-type-src file-types:library) type)
+	(equal? (file-type-bin file-types:library) type)
+	(equal? (file-type-com file-types:library) type)
+	(equal? (file-type-src file-types:program) type)
+	(equal? (file-type-bin file-types:program) type)
+	(equal? (file-type-com file-types:program) type))))
 
 (define-deferred group-scheme-files
   (partition-generator pathname-name string=? cons '()))

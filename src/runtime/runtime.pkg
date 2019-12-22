@@ -3444,21 +3444,33 @@ USA.
 	  fasload
 	  file-fasloadable?
 	  file-loadable?
+	  file-type-bci
 	  file-type-bin
 	  file-type-com
-	  file-type-moc
-	  file-type-nib
+	  file-type-ext
+	  file-type-inf
 	  file-type-src
-	  file-types->list
-	  file-types-contains?
+	  file-types:all-bci
+	  file-types:all-bin
+	  file-types:all-com
+	  file-types:all-ext
+	  file-types:all-inf
 	  file-types:library
 	  file-types:program
+	  find-file-types
 	  load
 	  load-library-object-file
 	  load/push-hook!
 	  loadable-source-pathname
 	  param:loading?
 	  param:suppress-loading-message?
+	  pathname-new-type-map
+	  pathname-new-type-bci
+	  pathname-new-type-bin
+	  pathname-new-type-com
+	  pathname-new-type-ext
+	  pathname-new-type-inf
+	  pathname-new-type-src
 	  system-library-uri
 	  system-uri
 	  with-loader-base-uri)
