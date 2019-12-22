@@ -6403,10 +6403,11 @@ USA.
 (define-package (runtime library standard)
   (files "library-standard")
   (parent (runtime library))
-  (export (runtime)
+  (export ()
 	  current-library-db
 	  host-library-db
-	  new-library-db
+	  new-library-db)
+  (export (runtime)
 	  standard-library-globals))
 
 (define-package (runtime library import/export)

@@ -26,7 +26,8 @@ USA.
 
 (for-each (lambda (pn)
 	    (if (not (string=? "compile" (pathname-name pn)))
-		(compile-file pn)))
+		(parameterize ((current-library-db (new-library-db)))
+		  (compile-file pn))))
 	  (directory-read
 	   (merge-pathnames "*.sld"
 			    (directory-pathname (current-load-pathname)))))
