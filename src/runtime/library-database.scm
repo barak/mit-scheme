@@ -35,9 +35,11 @@ USA.
   (name %db-name)
   (table %db-table))
 
-(define (make-library-db name)
-  (guarantee symbol? name 'make-library-db)
-  (%make-library-db name (make-equal-hash-table)))
+(define (make-library-db #!optional name)
+  (%make-library-db (if (or (default-object? name) (not name))
+			#f
+			(guarantee symbol? name 'make-library-db))
+		    (make-equal-hash-table)))
 
 (define (registered-library? name db)
   (hash-table-exists? (%db-table db) name))
@@ -86,9 +88,7 @@ USA.
     (%set-library-db! library #f)))
 
 (define (copy-library-db db #!optional new-name)
-  (let ((db*
-	 (make-library-db
-	  (if (default-object? new-name) (%db-name db) new-name))))
+  (let ((db* (make-library-db new-name)))
     (for-each (lambda (library)
 		(register-library! (copy-library library) db*))
 	      (registered-libraries db))
@@ -97,7 +97,7 @@ USA.
 (define-print-method library-db?
   (standard-print-method 'library-db
     (lambda (db)
-      (list (%db-name db)))))
+      (if (%db-name db) (list (%db-name db)) '()))))
 
 (define-record-type <library>
     (%make-library name db alist)

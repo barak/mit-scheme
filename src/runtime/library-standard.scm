@@ -1082,7 +1082,7 @@ USA.
   (check-standard-libraries!))
 
 (define (new-library-db #!optional name)
-  (copy-library-db initial-host-library-db (if (default-object? name) #f name)))
+  (copy-library-db initial-host-library-db name))
 
 (define (make-synthetic-library library exports environment)
   (register-library! (make-library library
