@@ -144,7 +144,7 @@ USA.
     (let ((scode (loader)))
       (if purify? (purify (load/purification-root scode)))
       (if (r7rs-scode-file? scode)
-	  (eval-r7rs-scode-file scode pathname (current-library-db))
+	  (eval-r7rs-scode-file scode pathname)
 	  (extended-scode-eval scode environment)))))
 
 (define (source-loader pathname)
@@ -152,7 +152,7 @@ USA.
     (declare (ignore purify?))
     (let ((source (read-r7rs-source pathname)))
       (if source
-	  (eval-r7rs-source source (current-library-db))
+	  (eval-r7rs-source source)
 	  (call-with-input-file pathname
 	    (lambda (port)
 	      (let loop ((value unspecific))

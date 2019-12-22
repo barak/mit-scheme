@@ -33,8 +33,7 @@ USA.
 (define-test 'read-r7rs-source:r7rs-example
   (lambda ()
     (let ((source (read-r7rs-source r7rs-example-filename))
-	  (db (make-library-db 'test)))
-      (add-standard-libraries! db)
+	  (db (new-library-db 'test)))
       (let ((program (register-r7rs-source! source db)))
 	(assert-equal (unsyntax (library-contents program))
 		      '(begin
@@ -48,5 +47,5 @@ USA.
 	(let ((env (library-imports-environment program)))
 	  (assert-lset= eq?
 			(environment-bound-names env)
-			(map library-import-to
+			(map library-ixport-to
 			     (library-imports program))))))))

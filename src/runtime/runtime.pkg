@@ -6327,26 +6327,24 @@ USA.
   (parent (runtime library))
   (export (runtime)
 	  copy-library-db
+	  library-bound-names
 	  library-contents
+	  library-db
 	  library-db?
 	  library-environment
-	  library-export-from
-	  library-export-to
-	  library-export=?
-	  library-export?
 	  library-exports
 	  library-filename
-	  library-import-from
-	  library-import-from-library
-	  library-import-to
-	  library-import=?
-	  library-import?
+	  library-free-names
+	  library-get
+	  library-has?
 	  library-imports
 	  library-imports-environment
 	  library-imports-used
 	  library-name
 	  library-parsed-contents
+	  library-parsed-exports
 	  library-parsed-imports
+	  library-registered?
 	  library?
 	  registered-libraries
 	  registered-library
@@ -6355,30 +6353,28 @@ USA.
 	  library->environment-helper)
   (export (runtime library)
 	  define-automatic-property
-	  library-contents
+	  deregister-library!
 	  library-eval-result
-	  library-exporter
-	  library-export->list
-	  library-imports-from
-	  library-import->list
 	  library-preregistered?
-	  library-syntaxed-contents
-	  list->library-export
-	  list->library-import
+	  load-preregistered-library!
 	  make-library
-	  make-library-db
-	  make-library-export
-	  make-library-import
 	  preregister-library!
 	  register-libraries!
-	  register-library!))
+	  register-library!)
+  (export (runtime library standard)
+	  make-library-db))
 
 (define-package (runtime library parser)
   (files "library-parser")
   (parent (runtime library))
   (export (runtime)
+	  library-name-elt<?
+	  library-name-elt=?
+	  library-name-elt?
+	  library-name<?
 	  library-name=?
 	  library-name?
+	  parse-r7rs-source
 	  r7rs-source-elements
 	  r7rs-source-libraries
 	  r7rs-source-program
@@ -6386,9 +6382,10 @@ USA.
 	  read-r7rs-source
 	  register-r7rs-source!)
   (export (runtime library)
-	  parsed-import-library
+	  library-name-adjoin
+	  ;; Next two exported for testing only.
 	  parse-define-library-form
-	  parse-import-form
+	  parse-define-library*-form
 	  parse-import-set))
 
 (define-package (runtime library standard)
@@ -6397,20 +6394,43 @@ USA.
   (export (runtime)
 	  current-library-db
 	  host-library-db
-	  initial-host-library-db
-	  standard-library-globals)
-  (export (runtime library)
-	  add-standard-libraries!
-	  check-standard-libraries!
-	  make-standard-libraries
-	  standard-library-exports
-	  standard-library-names))
+	  new-library-db
+	  standard-library-globals))
 
-(define-package (runtime library imports)
-  (files "library-imports")
+(define-package (runtime library import/export)
+  (files "library-ixports")
   (parent (runtime library))
+  (export (runtime)
+	  library-ixport-from
+	  library-ixport-from-library
+	  library-ixport-to
+	  library-ixport=?
+	  library-ixport?
+	  make-library-ixport)
   (export (runtime library)
-	  expand-parsed-imports))
+	  expand-parsed-imports
+	  library-ixport->list
+	  library-ixports->libraries
+	  library-ixports->library-names
+	  list->library-ixport))
+
+(define-package (runtime library import/export r7rs)
+  (files "library-ixports-r7rs")
+  (parent (runtime library import/export))
+  (export (runtime library import/export)
+	  r7rs-expand-parsed-export
+	  r7rs-expand-parsed-import
+	  r7rs-parsed-export-libraries
+	  r7rs-parsed-import-libraries))
+
+(define-package (runtime library import/export mit)
+  (files "library-ixports-mit")
+  (parent (runtime library import/export))
+  (export (runtime library import/export)
+	  mit-expand-parsed-export
+	  mit-expand-parsed-import
+	  mit-parsed-export-libraries
+	  mit-parsed-import-libraries))
 
 (define-package (runtime library scode)
   (files "library-scode")
@@ -6418,17 +6438,19 @@ USA.
   (export (runtime)
 	  map-r7rs-scode-file
 	  map-scode-library
+	  r7rs-scode-file-elements
+	  r7rs-scode-file-libraries
+	  r7rs-scode-file-program
 	  r7rs-scode-file?
 	  scode-library-imports
 	  scode-library-imports-used
 	  scode-library-name
+	  scode-library-version
+	  scode-library-version-current?
 	  scode-library?)
   (export (runtime library)
 	  library->scode-library
 	  make-r7rs-scode-file
-	  r7rs-scode-file-elements
-	  r7rs-scode-file-libraries
-	  r7rs-scode-file-program
 	  r7rs-source->scode-file
 	  scode-library->library))
 

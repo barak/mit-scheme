@@ -29,146 +29,225 @@ USA.
 
 (declare (usual-integrations))
 
+(define-record-type <library-db>
+    (%make-library-db name table)
+    library-db?
+  (name %db-name)
+  (table %db-table))
+
 (define (make-library-db name)
-  (let loop ((table (make-equal-hash-table)))
+  (guarantee symbol? name 'make-library-db)
+  (%make-library-db name (make-equal-hash-table)))
 
-    (define (has? name)
-      (hash-table-exists? table name))
+(define (registered-library? name db)
+  (hash-table-exists? (%db-table db) name))
 
-    (define (get name)
-      (let ((library (hash-table-ref/default table name #f)))
-	(if (not library)
-	    (error "No library of this name in database:" name this))
-	library))
+(define (registered-library name db)
+  (let ((library (hash-table-ref/default (%db-table db) name #f)))
+    (if (not library)
+	(error "No library of this name in database:" name db))
+    library))
 
-    (define (put! library)
-      (if (and (library 'has? 'db)
-	       (not (eqv? (library 'get 'db) this)))
-	  (error "Can't use library in multiple databases:" library this))
-      (library 'put! 'db this)
-      (let ((name (library 'get 'name)))
-	(if name
-	    (begin
-	      (if (has? name)
-		  (let ((library* (get name)))
-		    (if (not (library-preregistered? library*))
-			(warn "Replacing library:" library* this))
-		    (library* 'delete! 'db)))
-	      (hash-table-set! table name library)))))
+(define (registered-libraries db)
+  (hash-table-values (%db-table db)))
 
-    (define (delete! name)
-      (if (not (has? name))
-	  (error "No library of this name in database:" name this))
-      (let ((library (get name)))
-	(if (not (library-preregistered? library))
-	    (warn "Removing library:" library this))
-	(library 'delete! 'db))
-      (hash-table-delete! table name))
+(define (register-library! library db)
+  (if (library-registered? library)
+      (error "Library already registered:" library))
+  (let ((name (library-name library))
+	(table (%db-table db)))
+    (let ((library* (hash-table-ref/default table name #f)))
+      (cond ((not library*)
+	     (%set-library-db! library db)
+	     (hash-table-set! table name library)
+	     library)
+	    ((library-preregistered? library*)
+	     (%set-library-alist! library* library)
+	     library*)
+	    (else
+	     (warn "Replacing library:" library* db)
+	     (%set-library-db! library db)
+	     (hash-table-set! table name library)
+	     (%set-library-db! library* #f)
+	     library)))))
 
-    (define (get-names)
-      (hash-table-keys table))
+(define (register-libraries! libraries db)
+  (for-each (lambda (library)
+	      (register-library! library db))
+	    libraries))
 
-    (define (get-all)
-      (hash-table-values table))
+(define (deregister-library! library db)
+  (let ((name (library-name library)))
+    (if (not (registered-library? name db))
+	(error "Library not registered here:" library db))
+    (if (not (library-preregistered? library))
+	(warn "Removing library:" library db))
+    (hash-table-delete! (%db-table db) name)
+    (%set-library-db! library #f)))
 
-    (define (get-copy)
-      (loop (hash-table-copy table)))
+(define (copy-library-db db #!optional new-name)
+  (let ((db*
+	 (make-library-db
+	  (if (default-object? new-name) (%db-name db) new-name))))
+    (for-each (lambda (library)
+		(register-library! (copy-library library) db*))
+	      (registered-libraries db))
+    db*))
 
-    (define (summarize-self)
-      (list name))
-
-    (define (describe-self)
-      (map (lambda (library)
-	     (list 'library library))
-	   (get-all)))
-
-    (define this
-      (bundle library-db?
-	      has? get put! delete! get-names get-all get-copy
-	      summarize-self describe-self))
-    this))
-
-(define library-db?
-  (make-bundle-predicate 'library-database))
-
-(define (copy-library-db db)
-  (guarantee library-db? db 'copy-library-db)
-  (db 'get-copy))
+(define-print-method library-db?
+  (standard-print-method 'library-db
+    (lambda (db)
+      (list (%db-name db)))))
 
+(define-record-type <library>
+    (%make-library name db alist)
+    library?
+  (name library-name)
+  (db %library-db %set-library-db!)
+  (alist %library-alist))
+
 (define (make-library name . keylist)
-  (if name
-      (guarantee library-name? name 'make-library))
-  (let ((alist
-	 (cons* 'library
-		(cons 'name name)
-		(keyword-list->alist keylist))))
+  (if name (guarantee library-name? name 'make-library))
+  (%make-library name #f (cons 'library (convert-library-keylist keylist))))
 
-    (define (has? key)
-      (if (assq key (cdr alist))
-	  #t
-	  (let ((auto (automatic-property key)))
-	    (and auto
-		 (auto-runnable? auto this)))))
+(define (convert-library-keylist keylist)
+  (fold-right (lambda (key value alist)
+		(if (assq key alist)
+		    alist
+		    (cons (cons key value) alist)))
+	      (keyword-list->alist keylist)
+	      (map car library-defaults)
+	      (map cadr library-defaults)))
 
-    (define (get key)
-      (let ((p (assq key (cdr alist))))
-	(if p
-	    (cdr p)
-	    (let ((auto (automatic-property key)))
-	      (if (not auto)
-		  (error "Unknown property:" key))
-	      (if (not (auto-runnable? auto this))
-		  (error "Auto property not ready:"
-			 key
-			 (error-irritant/noise " because of")
-			 (auto-unready-deps auto this)))
-	      (let ((bindings (run-auto auto this)))
-		(set-cdr! alist (append bindings (cdr alist)))
-		(cdr (assq key bindings)))))))
+(define library-defaults
+  '((parsed-imports ())
+    (parsed-exports ())
+    (parsed-defines ())
+    (parsed-contents ())
+    (filename #f)))
 
-    (define (put! key value)
-      (if (automatic-property? key)
-	  (warn "Overwriting automatic property:" key))
-      (let ((p (assq key (cdr alist))))
-	(if p
-	    (begin
-	      (warn "Overwriting property:" key)
-	      (set-cdr! p value))
-	    (set-cdr! alist (cons (cons key value) (cdr alist))))))
+(define (library-registered? library)
+  (and (%library-db library) #t))
 
-    (define (intern! key get-value)
-      (let ((p (assq key (cdr alist))))
-	(if p
-	    (cdr p)
-	    (let ((value (get-value)))
-	      (set-cdr! alist (cons (cons key value) (cdr alist)))
-	      value))))
+(define (library-db library)
+  (let ((db (%library-db library)))
+    (if (not db) (error "Library not registered:" library))
+    db))
 
-    (define (delete! key)
-      (set-cdr! alist (del-assq! key (cdr alist))))
+(define (library-has? key library)
+  (if (and (memq key properties-requiring-load)
+	   (library-preregistered? library))
+      (load-preregistered-library! library))
+  (cond ((assq key (cdr (%library-alist library))) #t)
+	((auto-property key)
+	 => (lambda (auto) (auto-runnable? auto library)))
+	(else #f)))
 
-    (define (summarize-self)
-      (if name
-	  (list name)
-	  '()))
+(define (library-get key library)
+  (if (and (memq key properties-requiring-load)
+	   (library-preregistered? library))
+      (load-preregistered-library! library))
+  (let ((alist (%library-alist library)))
+    (cond ((assq key (cdr alist)) => cdr)
+	  ((auto-property key)
+	   => (lambda (auto)
+		(if (not (auto-runnable? auto library))
+		    (error "Automatic property not ready:"
+			   key
+			   (error-irritant/noise " because of")
+			   (auto-unready-deps auto library)))
+		(let ((bindings (run-auto auto library)))
+		  (set-cdr! alist (append bindings (cdr alist)))
+		  (cdr (assq key bindings)))))
+	  (else (error "Unknown property:" key)))))
 
-    (define (describe-self)
-      (map (lambda (p)
-	     (list (car p) (cdr p)))
-	   (cdr alist)))
+(define properties-requiring-load
+  '(contents))
+
+(define (%library-put! key value library)
+  (if (auto-property key)
+      (error "Overwriting automatic property:" key))
+  (let* ((alist (%library-alist library))
+	 (p (assq key (cdr alist))))
+    (if p
+	(begin
+	  (warn "Overwriting property:" key)
+	  (set-cdr! p value))
+	(set-cdr! alist (cons (cons key value) (cdr alist))))))
 
-    (define this
-      (bundle library?
-	      has? get put! intern! delete! summarize-self describe-self))
-    this))
+(define (%library-delete! key library)
+  (let ((alist (%library-alist library)))
+    (set-cdr! alist (del-assq! key (cdr alist)))))
 
-(define library?
-  (make-bundle-predicate 'library))
+(define (copy-library library)
+  (%make-library (library-name library)
+		 #f
+		 (cons 'library (alist-copy (cdr (%library-alist library))))))
+
+(define (%set-library-alist! library library*)
+  (set-cdr! (%library-alist library)
+	    (alist-copy (cdr (%library-alist library*)))))
+
+(define-print-method library?
+  (standard-print-method 'library
+    (lambda (library)
+      (let ((name (library-name library)))
+	(if name
+	    (list name)
+	    '())))))
+
+(define-pp-describer library?
+  (lambda (library)
+    (cons (list 'db (%library-db library))
+	  (map (lambda (p)
+		 (list (car p) (cdr p)))
+	       (cdr (%library-alist library))))))
+
+(define (library-accessor key)
+  (lambda (library)
+    (library-get key library)))
+
+(define library-bound-names (library-accessor 'bound-names))
+(define library-contents (library-accessor 'contents))
+(define library-environment (library-accessor 'environment))
+(define library-eval-result (library-accessor 'eval-result))
+(define library-exports (library-accessor 'exports))
+(define library-filename (library-accessor 'filename))
+(define library-free-names (library-accessor 'free-names))
+(define library-imports (library-accessor 'imports))
+(define library-imports-environment (library-accessor 'imports-environment))
+(define library-imports-used (library-accessor 'imports-used))
+(define library-parsed-contents (library-accessor 'parsed-contents))
+(define library-parsed-imports (library-accessor 'parsed-imports))
+(define library-parsed-exports (library-accessor 'parsed-exports))
+
+(define (library->environment-helper name)
+  (if (library? name)
+      (and (library-has? 'environment name)
+	   name)
+      (and (library-name? name)
+	   (registered-library? name host-library-db)
+	   (let ((library (registered-library name host-library-db)))
+	     (and (library-has? 'environment library)
+		  library)))))
+
+(define (preregister-library! library db)
+  (%library-delete! 'parsed-contents library)
+  (%library-delete! 'contents library)
+  (%library-put! 'preregistration? #t library)
+  (register-library! library db))
+
+(define (library-preregistered? library)
+  (library-has? 'preregistration? library))
+
+(define (load-preregistered-library! library)
+  (parameterize ((current-library-db (library-db library)))
+    (load (library-filename library))))
 
 ;;;; Automatic properties
 
 (define (define-automatic-property prop deps guard generator)
-  (guarantee automatic-property-key? prop 'define-automatic-property)
+  (guarantee auto-property-key? prop 'define-automatic-property)
   (guarantee-list-of symbol? deps 'define-automatic-property)
   (set! automatic-properties
 	(cons (make-auto (if (symbol? prop) (list prop) prop)
@@ -176,209 +255,64 @@ USA.
 	      automatic-properties))
   unspecific)
 
-(define (automatic-property-key? object)
+(define (auto-property-key? object)
   (or (symbol? object)
       (and (non-empty-list? object)
 	   (every symbol? object))))
-(register-predicate! automatic-property-key? 'automatic-property-key)
+(register-predicate! auto-property-key? 'automatic-property-key)
 
-(define-integrable make-auto cons*)
-(define-integrable auto-keys car)
-(define-integrable auto-generator cadr)
-(define-integrable auto-guard caddr)
-(define-integrable auto-deps cdddr)
+(define-record-type <auto>
+    (make-auto keys generator guard deps)
+    auto?
+  (keys auto-keys)
+  (generator auto-generator)
+  (guard auto-guard)
+  (deps auto-deps))
 
-(define-integrable (auto-key auto)
-  (car (auto-keys auto)))
-
-(define-integrable (auto-multi-valued? auto)
-  (pair? (cdr (auto-keys auto))))
-
-(define (automatic-property? key)
-  (any (lambda (auto)
-	 (memq key (auto-keys auto)))
-       automatic-properties))
-
-(define (automatic-property key)
-  (find (lambda (auto)
-	  (memq key (auto-keys auto)))
+(define (auto-property key)
+  (find (lambda (auto) (memq key (auto-keys auto)))
 	automatic-properties))
 
 (define automatic-properties '())
 
 (define (auto-runnable? auto library)
-  (and (every (lambda (key)
-		(library 'has? key))
-	      (auto-deps auto))
+  (and (auto-deps-available? auto library)
        (or (not (auto-guard auto))
-	   (apply (auto-guard auto)
-		  (map (lambda (key)
-			 (library 'get key))
-		       (auto-deps auto))))))
+	   (apply-auto (auto-guard auto) auto library))))
 
 (define (auto-unready-deps auto library)
-  (if (every (lambda (key)
-	       (library 'has? key))
-	     (auto-deps auto))
+  (if (auto-deps-available? auto library)
       (list "guard expr")
       (filter-map (lambda (key)
-		    (and (not (library 'has? key))
-			 (let ((auto* (automatic-property key)))
+		    (and (not (auto-dep-available? key library))
+			 (let ((auto* (auto-property key)))
 			   (if auto*
 			       (cons key (auto-unready-deps auto* library))
 			       key))))
 		  (auto-deps auto))))
 
 (define (run-auto auto library)
-  (let ((runner
-	 (lambda ()
-	   (apply (auto-generator auto)
-		  (map (lambda (key)
-			 (library 'get key))
-		       (auto-deps auto))))))
-    (if (auto-multi-valued? auto)
-	(receive all-values (runner)
-	  (if (not (= (length (auto-keys auto))
-		      (length all-values)))
-	      (error "Wrong number of values returned:"
-		     (auto-keys auto)
-		     all-values))
-	  (map cons (auto-keys auto) all-values))
-	(list (cons (auto-key auto) (runner))))))
-
-;;;; Imports and exports
+  (let-values ((all-values (apply-auto (auto-generator auto) auto library)))
+    (if (not (= (length (auto-keys auto)) (length all-values)))
+	(error "Wrong number of values returned:" (auto-keys auto) all-values))
+    (map cons (auto-keys auto) all-values)))
 
-(define (make-library-import from-library from #!optional to)
-  (guarantee library-name? from-library 'make-library-import)
-  (guarantee symbol? from 'make-library-import)
-  (%make-library-import from-library from
-			(if (default-object? to)
-			    from
-			    (begin
-			      (guarantee symbol? to 'make-library-import)
-			      to))))
+(define (auto-deps-available? auto library)
+  (every (lambda (key) (auto-dep-available? key library))
+	 (auto-deps auto)))
 
-(define-record-type <library-import>
-    (%make-library-import from-library from to)
-    library-import?
-  (from-library library-import-from-library)
-  (from library-import-from)
-  (to library-import-to))
+(define (auto-dep-available? key library)
+  (case key
+    ((library name) #t)
+    ((db) (library-registered? library))
+    (else (library-has? key library))))
 
-(define (library-import=? e1 e2)
-  (and (library-name=? (library-import-from-library e1)
-		       (library-import-from-library e2))
-       (eq? (library-import-from e1)
-	    (library-import-from e2))
-       (eq? (library-import-to e1)
-	    (library-import-to e2))))
-
-(define (library-import->list import)
-  (cons* (library-import-from-library import)
-	 (library-import-from import)
-	 (if (eq? (library-import-from import) (library-import-to import))
-	     '()
-	     (list (library-import-to import)))))
-
-(define (list->library-import list)
-  (apply make-library-import list))
-
-(define (library-imports-from imports)
-  (delete-duplicates (map library-import-from-library imports)
-		     library-name=?))
-
-(define-print-method library-import?
-  (standard-print-method 'library-import
-    library-import->list))
-
-(define (make-library-export from #!optional to)
-  (guarantee symbol? from 'make-library-export)
-  (if (default-object? to)
-      (%make-library-export from from)
-      (begin
-	(guarantee symbol? to 'make-library-export)
-	(%make-library-export from to))))
-
-(define-record-type <library-export>
-    (%make-library-export from to)
-    library-export?
-  (from library-export-from)
-  (to library-export-to))
-
-(define (library-export=? e1 e2)
-  (and (eq? (library-export-from e1)
-	    (library-export-from e2))
-       (eq? (library-export-to e1)
-	    (library-export-to e2))))
-
-(define (library-export->list export)
-  (cons (library-export-from export)
-	(if (eq? (library-export-from export) (library-export-to export))
-	    '()
-	    (list (library-export-to export)))))
-
-(define (list->library-export list)
-  (apply make-library-export list))
-
-(define-print-method library-export?
-  (standard-print-method 'library-export
-    library-export->list))
-
-;;;; Library accessors
-
-(define (registered-library? name db)
-  (db 'has? name))
-
-(define (registered-library name db)
-  (db 'get name))
-
-(define (registered-libraries db)
-  (db 'get-all))
-
-(define (register-library! library db)
-  (guarantee library? library 'register-library!)
-  (guarantee library-db? db 'register-library!)
-  (db 'put! library))
-
-(define (register-libraries! libraries db)
-  (for-each (lambda (library)
-	      (register-library! library db))
-	    libraries))
-
-(define (preregister-library! library db)
-  (library 'delete! 'parsed-contents)
-  (library 'delete! 'contents)
-  (library 'put! 'preregistration? #t)
-  (register-library! library db))
-
-(define (library-preregistered? library)
-  (library 'has? 'preregistration?))
-
-(define (library-accessor key)
-  (lambda (library)
-    (library 'get key)))
-
-(define library-bound-names (library-accessor 'bound-names))
-(define library-contents (library-accessor 'contents))
-(define library-environment (library-accessor 'environment))
-(define library-eval-result (library-accessor 'eval-result))
-(define library-exporter (library-accessor 'exporter))
-(define library-exports (library-accessor 'exports))
-(define library-filename (library-accessor 'filename))
-(define library-imports (library-accessor 'imports))
-(define library-imports-environment (library-accessor 'imports-environment))
-(define library-imports-used (library-accessor 'imports-used))
-(define library-name (library-accessor 'name))
-(define library-parsed-contents (library-accessor 'parsed-contents))
-(define library-parsed-imports (library-accessor 'parsed-imports))
-(define library-syntaxed-contents (library-accessor 'syntaxed-contents))
-
-(define (library->environment-helper name)
-  (if (library? name)
-      (and (name 'has? 'environment)
-	   name)
-      (and (library-name? name)
-	   (registered-library? name host-library-db)
-	   (let ((library (registered-library name host-library-db)))
-	     (and (library 'has? 'environment)
-		  library)))))
+(define (apply-auto proc auto library)
+  (apply proc
+	 (map (lambda (key)
+		(case key
+		  ((library) library)
+		  ((name) (library-name library))
+		  ((db) (library-db library))
+		  (else (library-get key library))))
+	      (auto-deps auto))))

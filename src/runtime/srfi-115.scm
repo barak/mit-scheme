@@ -305,7 +305,7 @@ USA.
    (map (lambda (item)
 	  (if (string? item)
 	      item
-	      (or (regexp-match-submatch match repl) "")))
+	      (or (regexp-match-submatch match item) "")))
 	repl)))
 
 ;;;; Fold

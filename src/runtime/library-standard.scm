@@ -38,20 +38,14 @@ USA.
       (guarantee library-db? value))))
 
 (define (finish-host-library-db!)
-  (add-standard-libraries! host-library-db))
-
-(define (add-standard-libraries! db)
-  (register-libraries! (make-standard-libraries) db))
+  (register-libraries! (make-standard-libraries) host-library-db))
 
 (define (make-standard-libraries)
   (map (lambda (p)
-	 (let ((name (car p))
+	 (let ((library (car p))
 	       (exports (cdr p)))
-	   (make-library name
-			 'parsed-imports '()
-			 'exports (map make-library-export exports)
-			 'parsed-contents '()
-			 'filename #f
+	   (make-library library
+			 'exports (convert-exports exports)
 			 'environment system-global-environment)))
        standard-libraries))
 
@@ -60,7 +54,7 @@ USA.
 	      (check-standard-library! (car p) (cdr p)))
 	    standard-libraries))
 
-(define (check-standard-library! name exports)
+(define (check-standard-library! library exports)
   (let ((missing
 	 (remove (lambda (name)
 		   (memq (environment-reference-type system-global-environment
@@ -68,13 +62,7 @@ USA.
 			 '(normal macro)))
 		 exports)))
     (if (pair? missing)
-	(warn "Missing definitions for library:" name missing))))
-
-(define (standard-library-names)
-  (map car standard-libraries))
-
-(define (standard-library-exports name)
-  (cdr (assoc name standard-libraries)))
+	(warn "Missing definitions for library:" library missing))))
 
 ;; Filters the given imports to find those that are equivalent to global
 ;; variables, and for each one returns a pair of the "to" identifier and the
@@ -84,93 +72,103 @@ USA.
 (define (standard-library-globals imports)
   (filter-map (lambda (import)
 		(let ((p
-		       (assoc (library-import-from-library import)
-			      standard-libraries)))
+		       (assoc (library-ixport-from-library import)
+			      standard-libraries
+			      library-name=?)))
 		  (and p
-		       (memq (library-import-from import)
+		       (memq (library-ixport-from import)
 			     (cdr p))
-		       (cons (library-import-to import)
-			     (library-import-from import)))))
+		       (cons (library-ixport-to import)
+			     (library-ixport-from import)))))
 	      imports))
 
-(define (define-standard-library name exports)
-  (let ((p (assoc name standard-libraries))
-	(exports (extend-with-macro-deps exports)))
+(define (define-standard-library library exports)
+  (let ((p (assoc library standard-libraries library-name=?)))
     (if p
 	(set-cdr! p exports)
 	(begin
 	  (set! standard-libraries
-		(cons (cons name exports)
+		(cons (cons library exports)
 		      standard-libraries))
 	  unspecific)))
-  name)
+  library)
 
 (define standard-libraries '())
 
 ;; Make sure that the names introduced by macro expansions are also included.
 ;; This is a kludge to work around our inability to address names globally.
-(define (extend-with-macro-deps names)
-  (define (scan-new to-scan new names)
-    (cond ((pair? to-scan)
-	   (let ((name (car to-scan))
-		 (rest (cdr to-scan)))
-	     (let ((p (assq name macro-dependencies)))
-	       (if p
-		   (scan-deps (cdr p) rest new names)
-		   (scan-new rest new names)))))
-	  ((pair? new)
-	   (scan-new new '() names))
-	  (else names)))
+(define (convert-exports names)
+  (map (lambda (name)
+	 (make-library-ixport '(mit legacy runtime) name))
+       (lset-union eq?
+		   names
+		   (fold (lambda (name extra)
+			   (let ((deps (macro-deps name)))
+			     (if deps
+				 (lset-union eq? deps extra)
+				 extra)))
+			 '()
+			 names))))
 
-  (define (scan-deps deps rest new names)
-    (if (pair? deps)
-	(let ((dep (car deps)))
-	  (if (memq dep names)
-	      (scan-deps (cdr deps) rest new names)
-	      (scan-deps (cdr deps)
-			 rest
-			 (cons dep new)
-			 (cons dep names))))
-	(scan-new rest new names)))
+(define-deferred macro-deps
+  (flatten-macro-deps
+   '((and if)
+     (and-let* and begin let)
+     (assert error if not)
+     (begin0 let)
+     (case begin eq? eqv? if let or quote)
+     (case-lambda apply default-object? error fix:= fix:>= if lambda length let)
+     (circular-stream cons delay letrec)
+     (cond begin if let)
+     (cond-expand begin)
+     (cons-stream cons delay)
+     (cons-stream* cons delay)
+     (define lambda named-lambda)
+     (define-record-type %record? %record-ref %record-set! define eq?
+			 guarantee make-record-type quote record-accessor
+			 record-constructor record-modifier record-predicate)
+     (define-values begin call-with-values define lambda set!)
+     (delay delay-force make-promise)
+     (delay-force lambda make-unforced-promise)
+     (do begin if let)
+     (guard begin call-with-current-continuation if lambda let raise-continuable
+	    with-exception-handler)
+     (include begin)
+     (include-ci begin)
+     (let declare lambda letrec letrec* named-lambda)
+     (let* let)
+     (let-syntax* let-syntax)
+     (letrec lambda let set!)
+     (letrec* begin lambda let)
+     (local-declare declare let)
+     (parameterize cons lambda list parameterize*)
+     (quasiquote append cons list list->vector quote vector)
+     (receive call-with-values lambda)
+     (unless begin if not)
+     (when begin if))))
 
-  (scan-new names '() names))
+(define (flatten-macro-deps alist)
 
-(define macro-dependencies
-  '((and if)
-    (and-let* and begin let)
-    (assert error if not)
-    (begin0 let)
-    (bundle alist->bundle cons list)
-    (case begin eq? eqv? if let or quote)
-    (case-lambda apply default-object? error fix:= fix:>= if lambda length let)
-    (circular-stream cons delay letrec)
-    (cond begin if let)
-    (cond-expand begin)
-    (cons-stream cons delay)
-    (cons-stream* cons delay)
-    (define lambda named-lambda)
-    (define-integrable begin lambda let set! shallow-fluid-bind)
-    (define-record-type define make-record-type quote record-accessor
-			record-constructor record-modifier record-predicate)
-    (define-values begin call-with-values define lambda set!)
-    (delay delay-force make-promise)
-    (delay-force lambda make-unforced-promise)
-    (do begin if let)
-    (guard begin call-with-current-continuation if lambda let raise-continuable
-	   with-exception-handler)
-    (include begin)
-    (include-ci begin)
-    (let declare lambda letrec letrec* named-lambda)
-    (let* let)
-    (let-syntax* let-syntax)
-    (letrec lambda let set!)
-    (letrec* begin lambda let)
-    (local-declare declare let)
-    (parameterize cons lambda list parameterize*)
-    (quasiquote append cons list list->vector quote vector)
-    (receive call-with-values lambda)
-    (unless begin if not)
-    (when begin if)))
+  (define (expand-deps deps expanded)
+    (fold (lambda (dep expanded)
+	    (if (memq dep expanded)
+		expanded
+		(let ((expanded* (cons dep expanded))
+		      (p (assq dep alist)))
+		  (if p
+		      (expand-deps (cdr p) expanded*)
+		      expanded*))))
+	  expanded
+	  deps))
+
+  (let ((expanded
+	 (map (lambda (p)
+		(cons (car p) (expand-deps (cdr p) '())))
+	      alist)))
+    (lambda (name)
+      (let ((p (assq name expanded)))
+	(and p
+	     (cdr p))))))
 
 (define-standard-library '(scheme base)
   '(*
@@ -1073,34 +1071,35 @@ USA.
 (define initial-host-library-db)
 (define (initialize-synthetic-libraries! package-file)
   (for-each (lambda (p)
-	      (let ((name (car p))
+	      (let ((library (car p))
 		    (source-package (cadr p))
 		    (package-pred (caddr p)))
-		(make-synthetic-library name
-		  (get-exports package-file source-package package-pred)
+		(make-synthetic-library library
+		  (get-exports package-file library source-package package-pred)
 		  (->environment source-package))))
 	    synthetic-libraries)
-  (set! initial-host-library-db (copy-library-db host-library-db))
-  unspecific)
+  (set! initial-host-library-db (copy-library-db host-library-db 'initial-host))
+  (check-standard-libraries!))
 
-(define (make-synthetic-library name exports environment)
-  (register-library! (make-library name
-				   'parsed-imports '()
+(define (new-library-db #!optional name)
+  (copy-library-db initial-host-library-db (if (default-object? name) #f name)))
+
+(define (make-synthetic-library library exports environment)
+  (register-library! (make-library library
 				   'exports exports
-				   'parsed-contents '()
-				   'filename #f
 				   'environment environment)
 		     host-library-db))
 
-(define (get-exports package-file source-package package-pred)
+(define (get-exports package-file library source-package package-pred)
   (append-map (lambda (pd)
-		(package-exports pd source-package))
+		(package-exports pd library source-package))
 	      (filter package-pred
 		      (vector->list (package-file/descriptions package-file)))))
 
-(define (package-exports pd source-package)
+(define (package-exports pd library source-package)
   (filter-map (lambda (link)
 		(and (equal? source-package (link-description/package link))
 		     (not (link-description/status link))
-		     (make-library-export (link-description/outer-name link))))
+		     (make-library-ixport library
+					  (link-description/outer-name link))))
 	      (vector->list (package-description/exports pd))))

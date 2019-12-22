@@ -35,25 +35,34 @@ USA.
   (register-r7rs-source! source (copy-library-db db))
   (r7rs-source->scode-file source))
 
-(define-automatic-property '(contents imports-used)
-    '(parsed-contents imports exports imports-environment)
+(define-automatic-property '(contents bound-names free-names)
+    '(parsed-contents imports-environment)
   #f
-  (lambda (contents imports exports env)
-    (receive (body bound free)
-	(syntax-library-forms (expand-contents contents) env)
-      (let ((imports-to (map library-import-to imports)))
-	(if (not (lset<= eq? free imports-to))
+  (lambda (parsed-contents env)
+    (syntax-library-forms (expand-contents parsed-contents) env)))
+
+(define-automatic-property 'imports-used
+    '(imports exports free-names bound-names)
+  #f
+  (lambda (imports exports free-names bound-names)
+    (let ((imports-to
+	   (lset-difference eq?
+			    (map library-ixport-to imports)
+			    bound-names)))
+      (let ((missing (lset-difference eq? free-names imports-to)))
+	(if (pair? missing)
 	    (warn "Library has free references not provided by imports:"
-		  (lset-difference eq? free imports-to)))
-	(let ((exports-from (map library-export-from exports))
-	      (bound* (lset-union eq? bound imports-to)))
-	  (if (not (lset<= eq? exports-from bound*))
-	      (warn "Library export refers to unbound identifiers:"
-		    (lset-difference eq? exports-from bound*)))))
-      (values body
-	      (filter (lambda (import)
-			(memq (library-import-to import) free))
-		      imports)))))
+		  missing)))
+      (let ((used
+	     (lset-intersection eq?
+				imports-to
+				(lset-union eq?
+					    free-names
+					    (map library-ixport-from
+						 exports)))))
+	(filter (lambda (import)
+		  (memq (library-ixport-to import) used))
+		imports)))))
 
 (define (expand-contents contents)
   (append-map (lambda (directive)
@@ -74,67 +83,58 @@ USA.
 
 ;;;; Imports environment
 
-(define (import-environment-available? import db)
-  (let ((name (library-import-from-library import)))
+(define (environment-available? import db)
+  (let ((name (library-ixport-from-library import)))
     (and (registered-library? name db)
-	 ((registered-library name db) 'has? 'environment))))
+	 (library-has? 'environment (registered-library name db)))))
 
 (define (make-environment-from-imports imports db)
   (let ((env
 	 (make-root-top-level-environment
-	  (delete-duplicates (map library-import-to imports) eq?))))
+	  (delete-duplicates (map library-ixport-to imports) eq?))))
     (add-imports-to-env! imports env db #f)
     env))
 
 (define (add-imports-to-env! imports env db allow-conflicts?)
-  (for-each
-   (lambda (group)
-     (let ((exporter
-	    (library-exporter
-	     (registered-library
-	      (library-import-from-library (car group))
-	      db))))
-       (if (not allow-conflicts?)
-	   (let ((conflicts
-		  (let ((bindings (environment-bindings env)))
-		    (filter (lambda (import)
-			      (let ((value
-				     (exporter (library-import-from import)))
-				    (name (library-import-to import)))
-				(let ((b (assq name bindings)))
-				  (and b
-				       (pair? (cdr b))
-				       (not
-					(values-equivalent? value (cadr b)))))))
-			    group))))
-	     (if (pair? conflicts)
-		 (error "Conflcting imports:" conflicts))))
-       (for-each (lambda (import)
-		   (let ((value (exporter (library-import-from import)))
-			 (name (library-import-to import)))
-		     (cond ((macro-reference-trap? value)
-			    (environment-define-macro
-			     env name
-			     (macro-reference-trap-transformer value)))
-			   ((unassigned-reference-trap? value)
-			    ;; nothing to do
-			    )
-			   (else
-			    (environment-define env name value)))))
-		 group)))
-   (group-imports-by-source imports)))
+  (if (not allow-conflicts?)
+      (let ((conflicts
+	     (let ((bindings (environment-bindings env)))
+	       (filter (lambda (import)
+			 (let ((b (assq (library-ixport-to import) bindings)))
+			   (and b
+				(pair? (cdr b))
+				(not
+				 (values-equivalent?
+				  (cadr b)
+				  (library-import-value import db))))))
+		       imports))))
+	(if (pair? conflicts)
+	    (error "Conflicting imports:" conflicts))))
+  (for-each (lambda (import)
+	      (let ((name (library-ixport-to import))
+		    (value (library-import-value import db)))
+		(cond ((macro-reference-trap? value)
+		       (environment-define-macro
+			env name
+			(macro-reference-trap-transformer value)))
+		      ((unassigned-reference-trap? value)
+		       ;; nothing to do
+		       )
+		      (else
+		       (environment-define env name value)))))
+	    imports))
 
-(define (group-imports-by-source imports)
-  (let ((table (make-equal-hash-table)))
-    (for-each (lambda (import)
-		(hash-table-update! table
-				    (library-import-from-library import)
-				    (lambda (imports)
-				      (cons import imports))
-				    (lambda ()
-				      '())))
-	      imports)
-    (hash-table-values table)))
+(define (library-import-value import db)
+  (let ((name (library-ixport-from import))
+	(library (registered-library (library-ixport-from-library import) db)))
+    (let ((export
+	   (find (lambda (export)
+		   (eq? name (library-ixport-from export)))
+		 (library-exports library))))
+      (if (not export)
+	  (error "Not an exported name:" name))
+      (environment-safe-lookup (library-environment library)
+			       (library-ixport-from export)))))
 
 (define (values-equivalent? v1 v2)
   (cond ((unassigned-reference-trap? v1)
@@ -148,7 +148,7 @@ USA.
 (define-automatic-property 'imports-environment '(imports db)
   (lambda (imports db)
     (every (lambda (import)
-	     (import-environment-available? import db))
+	     (environment-available? import db))
 	   imports))
   make-environment-from-imports)
 
@@ -167,16 +167,47 @@ USA.
 			 #t)))
 
 (define (import-sets->imports import-sets db)
-  (let ((imports (expand-parsed-imports (map parse-import-set import-sets) db)))
+  (parsed-imports->imports (map parse-import-set import-sets) db))
+
+(define (make-environment-from-parsed-imports parsed-imports)
+  (let ((db (current-library-db)))
+    (make-environment-from-imports (parsed-imports->imports parsed-imports db)
+				   db)))
+
+(define (parsed-imports->imports parsed-imports db)
+  (let ((imports (expand-parsed-imports parsed-imports db)))
     (maybe-load-libraries! imports db)
     (let ((unavailable
 	   (remove (lambda (import)
-		     (import-environment-available? import db))
+		     (environment-available? import db))
 		   imports)))
       (if (pair? unavailable)
 	  (error "Imported libraries unavailable:"
-		 (library-imports-from unavailable))))
+		 (library-ixports->library-names unavailable))))
     imports))
+
+(define (maybe-load-libraries! imports db)
+  (let ((libraries (library-ixports->libraries imports db)))
+    (if (any library-preregistered? libraries)
+	(for-each load-preregistered-library!
+		  (reverse
+		   (filter library-preregistered?
+			   ((compute-dependency-graph libraries db)
+			    'topological-sort)))))))
+
+(define (compute-dependency-graph libraries db)
+  (let ((table (make-key-weak-eq-hash-table)))
+
+    (define (trace library)
+      (if (not (hash-table-exists? table library))
+	  (let ((deps
+		 (library-ixports->libraries (library-imports library) db)))
+	    (hash-table-set! table library deps)
+	    (for-each trace deps))))
+
+    (for-each trace libraries)
+    (make-digraph (hash-table-keys table)
+		  (lambda (library) (hash-table-ref table library)))))
 
 (define (scheme-report-environment version)
   (if (not (eqv? version 5))
@@ -193,23 +224,22 @@ USA.
 
 ;;;; Evaluation
 
-(define (eval-r7rs-source source db)
-  (let ((program (register-r7rs-source! source db)))
+(define (eval-r7rs-source source)
+  (let ((program (register-r7rs-source! source (current-library-db))))
     (if program
 	(library-eval-result program))))
 
-(define (eval-r7rs-scode-file scode pathname db)
-  (let ((libraries
-	 (let ((filename (->namestring pathname)))
-	   (map (lambda (library)
-		  (scode-library->library library filename))
-		(r7rs-scode-file-elements scode)))))
-    (register-libraries! libraries db)
-    (let loop ((libraries libraries) (result unspecific))
-      (if (pair? libraries)
-	  (loop (cdr libraries)
-		(library-eval-result (car libraries)))
-	  result))))
+(define (eval-r7rs-scode-file scode pathname)
+  (fold (lambda (library result)
+	  (declare (ignore result))
+	  (library-eval-result library))
+	unspecific
+	(let ((filename (->namestring pathname))
+	      (db (current-library-db)))
+	  (map (lambda (library)
+		 (register-library! (scode-library->library library filename)
+				    db))
+	       (r7rs-scode-file-elements scode)))))
 
 (define-automatic-property '(eval-result environment)
     '(contents imports-environment name)
@@ -218,22 +248,9 @@ USA.
     (let ((result (scode-eval contents env)))
       (values (or name result)
 	      env))))
-
-(define-automatic-property 'exporter '(exports environment)
-  #f
-  (lambda (exports environment)
-    (let ((export-alist
-	   (map (lambda (export)
-		  (cons (library-export-to export)
-			(environment-safe-lookup environment
-						 (library-export-from export))))
-		exports)))
-      (lambda (name)
-	(let ((p (assq name export-alist)))
-	  (if (not p)
-	      (error "Not an exported name:" name))
-	  (cdr p))))))
 
+;;;; Preregistration
+
 (define (preregister-standard-libraries!)
   (parameterize ((param:hide-notifications? #t))
     (let ((pn (system-library-directory-pathname "libraries")))
@@ -248,18 +265,17 @@ USA.
    (add-event-receiver! event:after-restart preregister-standard-libraries!)))
 
 (define (find-scheme-libraries! pathname)
-  (preregister-libraries! pathname (current-library-db)))
-
-(define (preregister-libraries! pathname db)
-  (let ((pattern (get-directory-read-pattern pathname)))
+    (let ((pattern (get-directory-read-pattern pathname)))
     (if pattern
 	(let ((root (directory-pathname pattern)))
 	  (let loop ((pattern pattern))
 	    (receive (files subdirs)
 		(find-matching-files scheme-pathname? pattern)
-	      (for-each (lambda (group)
-			  (preregister-scheme-file! group root db))
-			(group-scheme-files files))
+	      (let ((groups (group-scheme-files files))
+		    (db (current-library-db)))
+		(for-each (lambda (name)
+			    (preregister-scheme-file! (groups name) root db))
+			  (groups)))
 	      (for-each (lambda (subdir)
 			  (loop (pathname-as-directory subdir)))
 			subdirs)))))))
@@ -299,117 +315,99 @@ USA.
 	(values files directories))))
 
 (define (scheme-pathname? pathname)
-  (member (pathname-type pathname) '("scm" "bin" "com")))
+  (let ((type (pathname-type pathname)))
+    (or (file-types-contains? file-types:library type)
+	(file-types-contains? file-types:program type))))
 
-(define (group-scheme-files files)
-  (let ((table (make-string-hash-table)))
-    (for-each (lambda (file)
-		(hash-table-update! table
-				    (pathname-name file)
-				    (lambda (files) (cons file files))
-				    (lambda () '())))
-	      files)
-    (hash-table-values table)))
+(define-deferred group-scheme-files
+  (partition-generator pathname-name string=? cons '()))
 
 (define (preregister-scheme-file! file-group root db)
+
+  (define (try-types types fail)
+    (let ((com (find-file (file-type-com types)))
+	  (bin (find-file (file-type-bin types)))
+	  (src (find-file (file-type-src types))))
+      (if (or com bin src)
+	  (try-scode com
+	    (lambda ()
+	      (try-scode bin
+		(lambda ()
+		  (try-source src
+		    (lambda () #f))))))
+	  (fail))))
 
   (define (find-file type)
     (find (lambda (file)
 	    (string=? type (pathname-type file)))
 	  file-group))
 
-  (define (handle-compiled compiled)
-    (let ((scode (fasload compiled)))
-      (if (r7rs-scode-file? scode)
-	  (finish (map (lambda (scode-library)
-			 (scode-library->library scode-library
-						 (->namestring compiled)))
-		       (r7rs-scode-file-libraries scode))
-		  compiled))))
+  (define (try-scode file fail)
+    (if file
+	(let ((scode (fasload file)))
+	  (if (r7rs-scode-file? scode)
+	      (let ((libs (r7rs-scode-file-libraries scode)))
+		(if (every scode-library-version-current? libs)
+		    (succeed (let ((ns (->namestring file)))
+			       (map (lambda (lib)
+				      (scode-library->library lib ns))
+				    libs))
+			     file)
+		    (begin
+		      (warn "Compiled library has old version:"
+			    (scode-library-version (car libs))
+			    file)
+		      (fail))))
+	      (fail)))
+	(fail)))
 
-  (define (handle-source source)
-    (let ((parsed (read-r7rs-source source)))
-      (if parsed
-	  (finish (r7rs-source-libraries parsed) source))))
+  (define (try-source file fail)
+    (if file
+	(let ((parsed (read-r7rs-source file)))
+	  (if parsed
+	      (succeed (r7rs-source-libraries parsed) file)
+	      (fail)))
+	(fail)))
 
-  (define (finish libraries filename)
-    (let ((display-filename (enough-namestring filename root)))
-      ;; Remove any previously registed libraries from this file.
-      (for-each (let ((no-type (pathname-new-type filename #f)))
-		  (lambda (library)
-		    (if (let ((filename* (library-filename library)))
-			  (and filename*
-			       (pathname=? (pathname-new-type filename* #f)
-					   no-type)))
-			(with-notification
-			    (lambda (port)
-			      (write-string "Deregistering library " port)
-			      (write (library-name library) port)
-			      (write-string " from \"" port)
-			      (write-string
-			       (enough-namestring (library-filename library)
-						  root)
-			       port)
-			      (write-string "\"" port))
-			  (lambda ()
-			    (db 'delete! (library-name library)))))))
-		(db 'get-all))
-      ;; Now register the current file contents.
-      (for-each (lambda (library)
-		  (with-notification
-		      (lambda (port)
-			(write-string "Registering library " port)
-			(write (library-name library) port)
-			(write-string " from \"" port)
-			(write-string display-filename port)
-			(write-string "\"" port))
-		    (lambda ()
-		      (preregister-library! library db))))
-		libraries)))
+  (define (succeed libs file)
+    (preregister-libraries! libs file root db))
 
-  (let ((compiled (or (find-file "com") (find-file "bin")))
-	(source (find-file "scm")))
-    (if compiled
-	(handle-compiled compiled)
-	(begin
-	  (if (not source)
-	      (error "No scheme files:" file-group))
-	  (handle-source source)))))
+  (try-types file-types:library
+    (lambda ()
+      (try-types file-types:program
+	(lambda () #f)))))
 
-(define (maybe-load-libraries! imports db)
-  (let ((libraries (dependency-libraries imports db)))
-    (if (any library-preregistered? libraries)
-	(for-each (lambda (library)
-		    (load (library-filename library)))
-		  (reverse
-		   (filter library-preregistered?
-			   ((compute-dependency-graph libraries db)
-			    'topological-sort)))))))
-
-(define (dependency-libraries imports db)
-  (let ((names
-	 (delete-duplicates! (map library-import-from-library imports)
-			     equal?)))
-    (let ((unregistered
-	   (remove (lambda (name)
-		     (registered-library? name db))
-		   names)))
-      (if (pair? unregistered)
-	  (error "Unknown libraries:" unregistered)))
-    (map (lambda (name) (registered-library name db))
-	 names)))
-
-(define (compute-dependency-graph libraries db)
-  (let ((table (make-key-weak-eq-hash-table)))
-
-    (define (trace library)
-      (if (not (hash-table-exists? table library))
-	  (let ((deps
-		 (dependency-libraries (library-imports library)
-				       db)))
-	    (hash-table-set! table library deps)
-	    (for-each trace deps))))
-
-    (for-each trace libraries)
-    (make-digraph (hash-table-keys table)
-		  (lambda (library) (hash-table-ref table library)))))
+(define (preregister-libraries! libraries filename root db)
+  (let ((display-filename (enough-namestring filename root)))
+    ;; Remove any previously registed libraries from this file.
+    (for-each (let ((no-type (pathname-new-type filename #f)))
+		(lambda (library)
+		  (if (let ((filename* (library-filename library)))
+			(and filename*
+			     (pathname=? (pathname-new-type filename* #f)
+					 no-type)))
+		      (with-notification
+			  (lambda (port)
+			    (write-string "Deregistering library " port)
+			    (write (library-name library) port)
+			    (write-string " from \"" port)
+			    (write-string
+			     (enough-namestring (library-filename library)
+						root)
+			     port)
+			    (write-string "\"" port))
+			(lambda ()
+			  (deregister-library! library db))))))
+	      (registered-libraries db))
+    ;; Now register the current file contents.
+    (for-each (lambda (library)
+		(with-notification
+		    (lambda (port)
+		      (write-string "Registering library " port)
+		      (write (library-name library) port)
+		      (write-string " from \"" port)
+		      (write-string display-filename port)
+		      (write-string "\"" port))
+		  (lambda ()
+		    (preregister-library! library db))))
+	      libraries)))

@@ -32,13 +32,13 @@ USA.
 (define test-directory
   (directory-pathname test-pathname))
 
-(define-comparator library-export=? 'library-export=?)
-(define-comparator library-import=? 'library-import=?)
+(define-comparator library-ixport=? 'library-ixport=?)
+(define-comparator library-ixport=? 'library-ixport=?)
 
-(define (convert-export export)
+(define (convert-export library export)
   (if (symbol? export)
-      (make-library-export export)
-      (make-library-export (cadr export) (caddr export))))
+      (make-library-ixport library export)
+      (make-library-ixport library (cadr export) (caddr export))))
 
 (define (convert-content content)
   (case (car content)
@@ -52,7 +52,8 @@ USA.
     (else (error "Unknown content:" content))))
 
 (define ex1-imports
-  '((foo mumble)
+  '((scheme base)
+    (foo mumble)
     (only (foo bletch) make-bletch bletch? bletch-thing)
     (prefix (foo grumble) grumble-)
     (except (foo quux) make-foo-quux)
@@ -66,8 +67,8 @@ USA.
     (rename set-bar-v1! bar-v1!)))
 
 (define ex1-contents
-  '((include "foo-bar-1")
-    (include-ci "foo-bar-2")
+  '((include "test-library-data/foo-bar-1.scm")
+    (include-ci "test-library-data/foo-bar-2.scm")
     (begin
       (define-record-type <bar>
 	  (make-bar v1 v2)
@@ -97,7 +98,7 @@ USA.
   `(define-library (foo bar)
      (import ,@ex1-imports)
      (export ,@ex1-exports)
-     (include-library-declarations "test-library-data/foo-foo")
+     (include-library-declarations "test-library-data/foo-foo.scm")
      ,@ex1-contents))
 
 (define (read-dependencies)
@@ -112,3 +113,30 @@ USA.
   (->namestring
    (merge-pathnames "test-library-data/r7rs-example.scm"
 		    test-directory)))
+
+(define srfi-140-example-filename
+  (->namestring
+   (merge-pathnames "test-library-data/srfi-140-example.scm"
+		    test-directory)))
+
+(define (exports-of name db)
+  (library-exports (registered-library name db)))
+
+(define (ixport-union . ixports)
+  (apply lset-union library-ixport=? ixports))
+
+(define (drop-collisions set1 set2)
+  (remove (lambda (ixport)
+	    (any (lambda (ixport*)
+		   (eq? (library-ixport-to ixport)
+			(library-ixport-to ixport*)))
+		 set2))
+	  set1))
+
+(define (take-collisions set1 set2)
+  (filter (lambda (ixport)
+	    (any (lambda (ixport*)
+		   (eq? (library-ixport-to ixport)
+			(library-ixport-to ixport*)))
+		 set2))
+	  set1))

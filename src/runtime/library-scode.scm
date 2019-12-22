@@ -29,26 +29,62 @@ USA.
 
 (declare (usual-integrations))
 
+(define current-scode-library-version 2)
+
 (define (make-scode-library metadata contents)
-  (make-scode-declaration `((target-metadata ,metadata))
+  (make-scode-declaration `((version ,current-scode-library-version)
+			    (target-metadata ,metadata))
 			  (make-scode-quotation contents)))
 
 (define (scode-library? object)
   (and (scode-declaration? object)
-       (let ((text (scode-declaration-text object)))
-	 (and (singleton-list? text)
-	      (target-metadata? (car text))
-	      (let ((metadata-values (metadata-elt-values (car text))))
-		(and (singleton-list? metadata-values)
-		     (scode-library-metadata? (car metadata-values))))))
+       (parse-declaration-text (scode-declaration-text object))
        (scode-quotation? (scode-declaration-expression object))))
 
+(define (scode-library-version-current? library)
+  (= (scode-library-version library) current-scode-library-version))
+
+(define (scode-library-version library)
+  ((parse-declaration-text (scode-declaration-text library)) 'version))
+
 (define (scode-library-metadata library)
-  (car (metadata-elt-values (car (scode-declaration-text library)))))
+  ((parse-declaration-text (scode-declaration-text library)) 'metadata))
 
 (define (scode-library-contents library)
   (scode-quotation-expression (scode-declaration-expression library)))
 
+(define (parse-declaration-text text)
+
+  (define (parse-version object)
+    (and (pair? object)
+	 (eq? 'version (car object))
+	 (pair? (cdr object))
+	 (exact-integer? (cadr object))
+	 (> (cadr object) 1)
+	 (null? (cddr object))
+	 (cadr object)))
+
+  (define (parse-metadata object)
+    (and (target-metadata? object)
+	 (let ((metadata-values (metadata-elt-values object)))
+	   (and (singleton-list? metadata-values)
+		(scode-library-metadata? (car metadata-values))
+		(car metadata-values)))))
+
+  (define (finish version metadata)
+    (and version metadata
+	 (lambda (key)
+	   (case key
+	     ((version) version)
+	     ((metadata) metadata)
+	     (else (error "Unknown key:" key))))))
+
+  (and (non-empty-list? text)
+       (case (length text)
+	 ((1) (finish 1 (parse-metadata (car text))))
+	 ((2) (finish (parse-version (car text)) (parse-metadata (cadr text))))
+	 (else #f))))
+
 (define (map-scode-library procedure library)
   (make-scode-library (scode-library-metadata library)
 		      (procedure (scode-library-contents library))))
@@ -63,13 +99,13 @@ USA.
   (car (scode-library-property 'name library)))
 
 (define (scode-library-imports library)
-  (map list->library-import (scode-library-property 'imports library)))
+  (map list->library-ixport (scode-library-property 'imports library)))
 
 (define (scode-library-imports-used library)
-  (map list->library-import (scode-library-property 'imports-used library)))
+  (map list->library-ixport (scode-library-property 'imports-used library)))
 
 (define (scode-library-exports library)
-  (map list->library-export (scode-library-property 'exports library)))
+  (map list->library-ixport (scode-library-property 'exports library)))
 
 (define (singleton-list? object)
   (and (pair? object)
@@ -107,9 +143,9 @@ USA.
   (make-scode-library
    `(scode-library
      (name ,(library-name library))
-     (imports ,@(map library-import->list (library-imports library)))
-     (imports-used ,@(map library-import->list (library-imports-used library)))
-     (exports ,@(map library-export->list (library-exports library))))
+     (imports ,@(map library-ixport->list (library-imports library)))
+     (imports-used ,@(map library-ixport->list (library-imports-used library)))
+     (exports ,@(map library-ixport->list (library-exports library))))
    (library-contents library)))
 
 (define (scode-library->library library filename)

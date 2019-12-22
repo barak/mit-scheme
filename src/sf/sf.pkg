@@ -41,7 +41,7 @@ USA.
           sf:enable-constant-folding?)
   (import (runtime)
 	  current-library-db
-	  library-import-to
+	  library-ixport-to
 	  map-r7rs-scode-file
 	  map-scode-library
 	  r7rs-scode-file?

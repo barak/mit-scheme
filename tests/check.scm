@@ -81,8 +81,7 @@ USA.
     "runtime/test-integer-bits"
     "runtime/test-letrec"
     ("runtime/test-library-parser" (runtime library))
-    ("runtime/test-library-standard" (runtime library))
-    ("runtime/test-library-imports" (runtime library))
+    ("runtime/test-library-ixports" (runtime library))
     ("runtime/test-library-loader" (runtime library))
     "runtime/test-list"
     "runtime/test-md5"

@@ -43,7 +43,7 @@ USA.
 (define (transform/r7rs-library imports expression)
   (let ((block (block/make #f #f '())))
     (for-each (lambda (import)
-		(variable/make&bind! block (library-import-to import)))
+		(variable/make&bind! block (library-ixport-to import)))
 	      imports)
     (set-block/declarations! block (r7rs-usual-integrations block imports))
     (values block

@@ -94,9 +94,10 @@ USA.
 	       ((exprs imports) (read-test-file filename)))
     (let ((groups (parse-expression-groups exprs)))
       (parameterize ((test-eval *eval)
-		     (test-env (if imports
-				   (apply environment imports)
-				   *env))
+		     (test-env
+		      (if imports
+			  (make-environment-from-parsed-imports imports)
+			  *env))
 		     (notify? *notify?)
 		     (summarize? *summarize?))
 	(summarize-test-results
