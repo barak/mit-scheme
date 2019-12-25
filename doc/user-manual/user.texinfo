@@ -1511,7 +1511,8 @@ source code have a pathname type of @code{"scm"}, and files of binary
 SCode have pathname type @code{"bin"}.  Native-code binaries have
 pathname type @code{"com"}.  (See the description of
 @code{pathname-type} in @ref{Components of Pathnames, Pathname Type,
-Components of Pathnames, scheme, MIT/GNU Scheme Reference Manual}.)
+Components of Pathnames, mit-scheme-ref, MIT/GNU Scheme Reference
+Manual}.)
 @end deffn
 
 @cindex working directory
@@ -1520,9 +1521,10 @@ Components of Pathnames, scheme, MIT/GNU Scheme Reference Manual}.)
 All pathnames are interpreted relative to a working directory, which is
 initialized when Scheme is started.  The working directory can be
 obtained by calling the procedure @code{pwd} or modified by calling the
-procedure @code{cd}; @pxref{Working Directory, , , scheme, MIT/GNU
-Scheme Reference Manual}.  Files may be loaded when Scheme first starts;
-see the @option{--load} command-line option for details.
+procedure @code{cd}; @pxref{Working Directory, , , mit-scheme-ref,
+MIT/GNU Scheme Reference Manual}.
+Files may be loaded when Scheme first starts; see the @option{--load}
+command-line option for details.
 
 @deffn procedure load-option symbol [no-error?]
 Loads the option specified by @var{symbol}; if already loaded, does
@@ -1539,8 +1541,8 @@ file @file{runtime/cpress.scm}.  Used by the runtime system for
 compression of compiled-code debugging information.
 
 @item format
-The @code{format} procedure.  @xref{Format, , , scheme, MIT/GNU Scheme
-Reference Manual}.
+The @code{format} procedure.
+@xref{Format, , , mit-scheme-ref, MIT/GNU Scheme Reference Manual}.
 
 @item gdbm
 Support to access @code{gdbm} databases.  Undocumented; see the source
@@ -1551,12 +1553,14 @@ Support to search and do completion on vectors of ordered elements.
 Undocumented; see the source file @file{runtime/ordvec.scm}.
 
 @item rb-tree
-The red-black tree data type.  @xref{Red-Black Trees, , , scheme,
-MIT/GNU Scheme Reference Manual}.
+The red-black tree data type.
+@xref{Red-Black Trees, , , mit-scheme-ref, MIT/GNU Scheme Reference
+Manual}.
 
 @item regular-expression
 Support to search and match strings for regular expressions.
-@xref{Regular Expressions, , , scheme, MIT/GNU Scheme Reference Manual}.
+@xref{Regular Expressions, , , mit-scheme-ref, MIT/GNU Scheme
+Reference Manual}.
 
 @item stepper
 Support to step through the evaluation of Scheme expressions.
@@ -1569,12 +1573,14 @@ Undocumented; see the source file @file{runtime/process.scm}.  Used
 extensively by Edwin.
 
 @item synchronous-subprocess
-Support to run synchronous subprocesses.  @xref{Subprocesses, , ,
-scheme, MIT/GNU Scheme Reference Manual}.
+Support to run synchronous subprocesses.
+@xref{Subprocesses, , , mit-scheme-ref, MIT/GNU Scheme Reference
+Manual}.
 
 @item wt-tree
-The weight-balanced tree data type.  @xref{Weight-Balanced Trees, , ,
-scheme, MIT/GNU Scheme Reference Manual}.
+The weight-balanced tree data type.
+@xref{Weight-Balanced Trees, , , mit-scheme-ref, MIT/GNU Scheme
+Reference Manual}.
 @end table
 @end deffn
 
@@ -2730,8 +2736,9 @@ If you know that a value is always a small fixnum, you can substitute
 the equivalent fixnum operation for the generic operation.  However,
 care should be exercised: if used improperly, these operations can
 return incorrect answers, or even malformed objects that confuse the
-garbage collector.  For a listing of all fixnum operations, see
-@ref{Fixnum Operations, , , scheme, MIT/GNU Scheme Reference Manual}.
+garbage collector.
+For a listing of all fixnum operations, see @ref{Fixnum Operations, ,
+, mit-scheme-ref, MIT/GNU Scheme Reference Manual}.
 
 A fruitful area for inserting fixnum operations is in the index
 operations in tight loops.
@@ -3318,9 +3325,10 @@ bar
 
 @deffn procedure pp object [output-port [as-code?]]
 The @code{pp} procedure is described in @ref{Output Procedures, , ,
-scheme, MIT/GNU Scheme Reference Manual}.  However, since this is a very
-useful debugging tool, we also mention it here.  @code{pp} provides two
-very useful functions:
+mit-scheme-ref, MIT/GNU Scheme Reference Manual}.
+However, since this is a very useful debugging tool, we also mention
+it here.
+@code{pp} provides two very useful functions:
 
 @enumerate
 @item
