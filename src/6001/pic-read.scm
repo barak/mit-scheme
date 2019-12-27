@@ -31,6 +31,7 @@ USA.
 (define (pgm-file->picture filename)
   (call-with-input-file (standard-pathname filename "pgm")
     (lambda (port)
+      (port/set-coding port 'BINARY)
       (get-body port (get-header port)))))
 
 (define (standard-pathname filename type)
