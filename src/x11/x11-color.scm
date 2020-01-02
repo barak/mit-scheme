@@ -55,7 +55,8 @@ USA.
   ;;         Colormap size
   ;;         Bits per RGB
   (let ((display (if (not screen-number)
-		     (C-call "x_window_display" window/display)
+		     (C-call "x_window_display" (make-alien '(struct xdisplay))
+			     window/display)
 		     window/display))
 	(screen-number (if (not screen-number)
 			   (C-call "x_window_screen_number" window/display)

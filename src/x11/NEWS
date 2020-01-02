@@ -22,6 +22,11 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-x11 1.4 - Matt Birkholz, 2020-01-02
+==============================================
+
+Fix number of arguments to x_window_display in x-get-visual-info.
+
 mit-scheme-x11 1.3 - Matt Birkholz, 2019-01-23
 ==============================================
 
