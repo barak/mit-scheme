@@ -295,10 +295,6 @@ esac
 : "${MIT_SCHEME_VERSION:=${PACKAGE_VERSION}}"
 : "${AUXDIR_NAME:=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}}"
 
-echo "MIT_SCHEME_ARCH=${MIT_SCHEME_ARCH}"
-echo "MIT_SCHEME_VERSION=${MIT_SCHEME_VERSION}"
-echo "AUXDIR_NAME=${AUXDIR_NAME}"
-
 dnl Add OS-dependent customizations.  This must happen before checking
 dnl any headers or library routines, because it may add CFLAGS or
 dnl LDFLAGS that the subsequent checks require.
