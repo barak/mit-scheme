@@ -167,7 +167,9 @@ svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     ;;
 esac
 
-AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
+MIT_SCHEME_ARCH=${mit_scheme_native_code}
+MIT_SCHEME_VERSION=${PACKAGE_VERSION}
+AUXDIR_NAME=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 MIT_SCHEME_LIBDIR=${AUXDIR}/
 MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
@@ -383,7 +385,9 @@ AC_SUBST([IF_X11])
 AC_SUBST([IF_X11_SCREEN])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
+AC_SUBST([MIT_SCHEME_ARCH])
 AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([MIT_SCHEME_VERSION])
 AC_SUBST([mit_scheme_native_code])
 AC_SUBST([mit_scheme_target_bytes_per_object])
 AC_SUBST([OPTION_SUBDIRS])
@@ -398,11 +402,16 @@ compiler/configure "${mit_scheme_compiler_target}" || exit $?
 
 # configure scripts for subdirs care about these
 export IS_NATIVE_RELEASE
+export MIT_SCHEME_ARCH
 export MIT_SCHEME_EXE
+export MIT_SCHEME_VERSION
 export MIT_SCHEME_LIBDIR
 export MIT_SCHEME_INCLUDEDIR
 export MIT_SCHEME_OS_SUFFIX
 export MIT_SCHEME_CC_TYPE
+
+# Microcode uses this
+export AUXDIR_NAME
 
 # Plugins use this one
 MIT_SCHEME_TOOLCHAIN_EXE=../run-build

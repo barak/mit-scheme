@@ -64,8 +64,10 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** Tool configuration ****
 
+MIT_SCHEME_ARCH = @MIT_SCHEME_ARCH@
+MIT_SCHEME_VERSION = @MIT_SCHEME_VERSION@
 AUXDIR_NAME = @AUXDIR_NAME@
-EXE_NAME = @EXE_NAME@
+EXE_NAME = mit-scheme-$(MIT_SCHEME_ARCH)-$(MIT_SCHEME_VERSION)
 AUXDIR = $(libdir)/$(AUXDIR_NAME)
 
 CC = @CC@
@@ -216,7 +218,7 @@ c-clean: clean
 install: install-auxPROGRAMS install-auxLIBS install-auxDATA @INSTALL_INCLUDE@
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
 	$(INSTALL_PROGRAM) scheme $(DESTDIR)$(bindir)/$(EXE_NAME)
-	../etc/install-bin-symlinks.sh $(DESTDIR)$(bindir) $(EXE_NAME)
+	../etc/install-bin-symlinks.sh $(DESTDIR)$(bindir) $(EXE_NAME) $(MIT_SCHEME_ARCH)
 
 install-auxPROGRAMS: $(aux_PROGRAMS)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)

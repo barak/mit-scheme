@@ -169,7 +169,6 @@ LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
 AUX_DATA=
-AUXDIR_NAME=
 EXE_NAME=
 INSTALL_INCLUDE=
 
@@ -292,8 +291,13 @@ c|svm1-be|svm1-le);;
     ;;
 esac
 
-AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
-EXE_NAME=mit-scheme-${mit_scheme_native_code}
+: "${MIT_SCHEME_ARCH:=${mit_scheme_native_code}}"
+: "${MIT_SCHEME_VERSION:=${PACKAGE_VERSION}}"
+: "${AUXDIR_NAME:=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}}"
+
+echo "MIT_SCHEME_ARCH=${MIT_SCHEME_ARCH}"
+echo "MIT_SCHEME_VERSION=${MIT_SCHEME_VERSION}"
+echo "AUXDIR_NAME=${AUXDIR_NAME}"
 
 dnl Add OS-dependent customizations.  This must happen before checking
 dnl any headers or library routines, because it may add CFLAGS or
@@ -959,8 +963,9 @@ AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([AUX_PROGRAMS])
 AC_SUBST([AUX_DATA])
+AC_SUBST([MIT_SCHEME_ARCH])
+AC_SUBST([MIT_SCHEME_VERSION])
 AC_SUBST([AUXDIR_NAME])
-AC_SUBST([EXE_NAME])
 AC_SUBST([INSTALL_INCLUDE])
 AC_SUBST([CCLD])
 AC_SUBST([HOST_CC])
