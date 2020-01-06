@@ -49,7 +49,7 @@ USA.
 	  (ext-type (file-type-ext types sf/cross-compiling?))
 	  (dependencies
 	   (map (lambda (dep)
-		  (pathname-default-type file ext-type))
+		  (pathname-default-type dep ext-type))
 		(if (default-object? dependencies)
 		    '()
 		    dependencies))))
