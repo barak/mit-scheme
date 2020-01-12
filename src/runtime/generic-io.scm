@@ -151,7 +151,7 @@ USA.
 		 (make-output-buffer binary-port
 				     (gstate-coder-name gstate)
 				     (gstate-normalizer-name gstate)
-				     'gstate-replace-binary-port!)))
+				     'replace-binary-port!)))
 	    (set-output-buffer-port! buffer port)
 	    buffer)))))
 
