@@ -1,8 +1,11 @@
 !/src/TAGS
 #*
 *.bci
+*.bcild
 *.bin
+*.binld
 *.com
+*.comld
 *.crf
 *.diff
 *.dkp
@@ -12,6 +15,7 @@
 *.ext
 *.fni
 *.fre
+*.icb
 *.la
 *.lap
 *.lo
