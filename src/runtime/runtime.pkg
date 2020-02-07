@@ -2614,7 +2614,14 @@ USA.
   (export (runtime file-i/o-port)
 	  generic-i/o-port->binary-port
 	  generic-i/o-port-type
-	  make-generic-i/o-port)
+	  make-generic-i/o-port
+	  port-input-buffer
+	  port-output-buffer
+	  set-input-buffer-decoded-chars!
+	  set-input-buffer-line!
+	  set-input-buffer-peeked!
+	  set-output-buffer-column!
+	  set-output-buffer-line!)
   (export (runtime socket)
 	  generic-i/o-port-type
 	  generic-io/close-input

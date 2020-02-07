@@ -66,7 +66,17 @@ USA.
   (binary-port-position (generic-i/o-port->binary-port port)))
 
 (define (operation/set-position! port position)
-  (set-binary-port-position! (generic-i/o-port->binary-port port) position))
+  (set-binary-port-position! (generic-i/o-port->binary-port port) position)
+  (cond ((port-input-buffer port)
+	 => (lambda (ib)
+	      (set-input-buffer-decoded-chars! ib '())
+	      (set-input-buffer-line! ib 0)
+	      (set-input-buffer-peeked! ib #f))))
+  (cond ((port-output-buffer port)
+	 => (lambda (ob)
+	      (set-output-buffer-column! ob 0)
+	      (set-output-buffer-line! ob 0))))
+  unspecific)
 
 (define (input-file-opener caller make-port)
   (lambda (filename)
