@@ -113,3 +113,29 @@ USA.
                     (flatten list (0 1) (2 3) (4)))
                  test-environment))
         '(list 0 1 2 3 4))))))
+
+(define-test 'rename-of-compound-identifier
+  (lambda ()
+    (assert-equal
+     (unsyntax
+      (syntax '(lambda ()
+
+		 (define-syntax bat
+                   (syntax-rules ()
+                     ((_ body ...)
+                      ((lambda (md) (bar md)) 'quux))))
+
+		 (define-syntax bar
+                   (sc-macro-transformer
+                    (lambda (exp env)
+                      `(let ((,(cadr exp)
+                              ,(close-syntax (cadr exp) env)))
+			 (list ,(close-syntax (cadr exp) env)
+                               'x)))))
+
+		 (bat x))
+              test-environment))
+     '(lambda ()
+	(let ((.md.1-0 'quux))
+	  (let ((.md.2-1 .md.1-0))
+	    (list .md.1-0 'x)))))))

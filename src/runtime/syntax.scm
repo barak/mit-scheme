@@ -132,7 +132,8 @@ USA.
   (if (or (memq form free)		;LOOKUP-IDENTIFIER assumes this.
 	  (constant-form? form)
 	  (and (syntactic-closure? form)
-	       (null? (syntactic-closure-free form))))
+	       (null? (syntactic-closure-free form))
+	       (not (closed-identifier? form))))
       form
       (%make-syntactic-closure senv free form)))
 
