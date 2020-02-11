@@ -75,12 +75,17 @@ USA.
 
 (define (lookup-identifier identifier senv)
   (guarantee identifier? identifier 'lookup-identifier)
-  (let loop ((id identifier) (senv senv))
-    (or ((senv-lookup senv) id)
-	(if (syntactic-closure? id)
-	    (loop (syntactic-closure-form id)
-		  (syntactic-closure-senv id))
-	    (var-item id)))))
+  (let ((item
+	 (let loop ((id identifier) (senv senv))
+	   (or ((senv-lookup senv) id)
+	       (if (syntactic-closure? id)
+		   (loop (syntactic-closure-form id)
+			 (syntactic-closure-senv id))
+		   (var-item id))))))
+    (if (param:trace-syntax?)
+	(parameterize ((param:pp-uninterned-symbols-by-name? #f))
+	  (pp (list (list 'lookup-identifier identifier senv) item))))
+    item))
 
 (define (reserve-keyword identifier senv)
   (guarantee identifier? identifier 'reserve-keyword)
