@@ -139,3 +139,23 @@ USA.
 	(let ((.md.1-0 'quux))
 	  (let ((.md.2-1 .md.1-0))
 	    (list .md.1-0 'x)))))))
+
+(define-test 'syntax-rules-rename-of-compound-identifier
+  (lambda ()
+    (assert-equal
+     (unsyntax
+      (syntax '(lambda ()
+
+		 (define-syntax foo
+		   (syntax-rules ()
+		     ((_ (x y z))
+		      (letrec-syntax
+			  ((bar (syntax-rules (q)
+				  ((_ q w)
+				   '()))))
+			(bar y z)))))
+
+		 (foo (x1 q z1)))
+              test-environment))
+     '(lambda ()
+	'()))))
