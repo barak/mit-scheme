@@ -159,3 +159,94 @@ USA.
               test-environment))
      '(lambda ()
 	'()))))
+
+;;;; Tests of syntax-rules, from Larceny:
+
+#|
+;; Broken: "Missing ellipsis in expansion."
+(define-test 'be-like-begin
+  (lambda ()
+
+    (define-syntax be-like-begin
+      (syntax-rules ()
+	((be-like-begin name)
+	 (define-syntax name
+	   (syntax-rules ()
+	     ((name expr (... ...))
+	      (begin expr (... ...))))))))
+
+    (be-like-begin sequence)
+
+    (assert-equal (sequence 1 2 3 4)
+		  4)))
+|#
+
+#|
+;; Feature not implemented
+(define-test 'be-like-begin-alt
+  (lambda ()
+
+    (define-syntax be-like-begin-alt
+      (syntax-rules &etc ()
+	((be-like-begin-alt name)
+	 (define-syntax name
+	   (syntax-rules ()
+	     ((name expr (&etc ...))
+	      (begin expr (&etc ...))))))))
+
+    (be-like-begin-alt sequence)
+
+    (assert-equal (sequence 1 2 3 4) 4)))
+|#
+
+(define-test 'shadow-=>
+  (lambda ()
+    (assert-equal (let ((=> #f))
+		    (cond (#t => 'ok)))
+		  'ok)))
+
+;; The next two macros were contributed by Alex Shinn, who reported them as bugs
+;; in Larceny v0.98.
+
+(define-test 'underscore-as-literal
+  (lambda ()
+
+    (define-syntax underscore-as-literal
+      (syntax-rules (_)
+	((underscore-as-literal _) 'under)
+	((underscore-as-literal x) 'other)))
+
+    (assert-eqv (underscore-as-literal _) 'under)
+    (assert-eqv (underscore-as-literal 5) 'other)))
+
+;; Fails: assertion 1: value was under but expected an object eqv? to other
+(define-test 'ellipses-as-literal
+  (lambda ()
+
+    (define-syntax ellipses-as-literal
+      (syntax-rules (...)
+	((ellipses-as-literal ...) 'under)
+	((ellipses-as-literal x) 'other)))
+
+    (assert-eqv (ellipses-as-literal ...) 'under)
+    (assert-eqv (ellipses-as-literal 6) 'other)))
+
+(define-test 'override-ellipsis
+  (lambda ()
+
+    (assert-equal (let ((... 19))
+		    (declare (ignore ...))
+		    (define-syntax bar
+		      (syntax-rules ()
+			((bar x y ...)
+			 (list y x ...))))
+		    (bar 1 2 3))
+		  '(2 1 3))
+
+    (assert-equal (let ((... 19))
+		    (define-syntax bar
+		      (syntax-rules ()
+			((bar x y)
+			 (list y x ...))))
+		    (bar 1 2))
+		  '(2 1 19))))
