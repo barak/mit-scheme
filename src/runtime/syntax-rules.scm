@@ -38,12 +38,15 @@ USA.
 (define-syntax syntax-rules
   (er-macro-transformer
    (lambda (form rename compare)
-     (syntax-check '(_ (* identifier) * ((identifier . datum) expression)) form)
-     (let ((keywords (cadr form))
-	   (clauses (cddr form)))
+
+     (define (process ellipsis keywords clauses)
        (if (any-duplicates? keywords eq?)
 	   (syntax-error "Keywords list contains duplicates:" keywords))
-       (let ((r-form (new-identifier 'form))
+       (let ((ellipsis
+	      (if (memq ellipsis keywords)
+		  #f
+		  ellipsis))
+	     (r-form (new-identifier 'form))
 	     (rr-rename (new-identifier 'rename))
 	     (r-rename (new-identifier 'rename))
 	     (r-compare (new-identifier 'compare)))
@@ -59,43 +62,63 @@ USA.
 		(if (pair? clauses)
 		    (let ((pattern (caar clauses)))
 		      (let ((sids
-			     (parse-pattern rename compare keywords
+			     (parse-pattern rename compare ellipsis keywords
 					    pattern r-form)))
 			`(,(rename 'if)
-			  ,(generate-match rename compare keywords
+			  ,(generate-match rename compare ellipsis keywords
 					   r-rename r-compare
 					   pattern r-form)
-			  ,(generate-output rename compare r-rename
-					    sids (cadar clauses))
+			  ,(generate-output rename compare ellipsis
+					    r-rename sids (cadar clauses))
 			  ,(loop (cdr clauses)))))
-		    `(,(rename 'ill-formed-syntax) ,r-form)))))))))))
+		    `(,(rename 'ill-formed-syntax) ,r-form))))))))
 
-(define (parse-pattern rename compare keywords pattern expression)
+     (cond ((syntax-match? '((* identifier)
+			     * ((identifier . datum) expression))
+			   (cdr form))
+	    (process '... (cadr form) (cddr form)))
+	   ((syntax-match? '(identifier
+			     (* identifier)
+			     * ((identifier . datum) expression))
+			   (cdr form))
+	    (process (cadr form) (caddr form) (cdddr form)))
+	   (else
+	    (ill-formed-syntax form))))))
+
+(define (parse-pattern rename compare ellipsis keywords pattern expression)
   (let loop
       ((pattern pattern)
        (expression expression)
        (sids '())
-       (control #f))
+       (control #f)
+       (ellipsis ellipsis))
     (cond ((identifier? pattern)
+	   (if (and ellipsis (compare pattern (rename ellipsis)))
+	       (syntax-error "Misplaced ellipsis:" pattern))
 	   (if (memq pattern keywords)
 	       sids
 	       (cons (make-sid pattern expression control) sids)))
-	  ((zero-or-more? rename compare pattern)
+	  ((ellipsis-quote? rename compare ellipsis pattern)
+	   (loop (cadr pattern) expression sids control #f))
+	  ((zero-or-more? rename compare ellipsis pattern)
 	   (if (not (null? (cddr pattern)))
 	       (syntax-error "Misplaced ellipsis:" pattern))
 	   (let ((variable (new-identifier 'control)))
 	     (loop (car pattern)
 		   variable
 		   sids
-		   (make-sid variable expression control))))
+		   (make-sid variable expression control)
+		   ellipsis)))
 	  ((pair? pattern)
 	   (loop (car pattern)
 		 `(,(rename 'car) ,expression)
 		 (loop (cdr pattern)
 		       `(,(rename 'cdr) ,expression)
 		       sids
-		       control)
-		 control))
+		       control
+		       ellipsis)
+		 control
+		 ellipsis))
 	  (else sids))))
 
 (define-record-type <sid>
@@ -105,11 +128,11 @@ USA.
   (expression sid-expression)
   (control sid-control))
 
-(define (generate-match rename compare keywords r-rename r-compare
+(define (generate-match rename compare ellipsis keywords r-rename r-compare
 			pattern expression)
   (letrec
       ((loop
-	(lambda (pattern expression)
+	(lambda (pattern expression ellipsis)
 	  (cond ((identifier? pattern)
 		 (if (memq pattern keywords)
 		     (let-ify rename expression
@@ -119,25 +142,29 @@ USA.
 			   (,r-compare ,expr
 				       (,r-rename ,(syntax-quote pattern))))))
 		     `#t))
-		((zero-or-more? rename compare pattern)
+		((ellipsis-quote? rename compare ellipsis pattern)
+		 (loop (cadr pattern) expression #f))
+		((zero-or-more? rename compare ellipsis pattern)
 		 ;; (cddr pattern) guaranteed null by parser above.
-		 (do-list (car pattern) expression))
+		 (do-list (car pattern) expression ellipsis))
 		((pair? pattern)
 		 (let-ify rename expression
 		   (lambda (expr)
 		     `(,(rename 'and)
 		       (,(rename 'pair?) ,expr)
 		       ,(loop (car pattern)
-			      `(,(rename 'car) ,expr))
+			      `(,(rename 'car) ,expr)
+			      ellipsis)
 		       ,(loop (cdr pattern)
-			      `(,(rename 'cdr) ,expr))))))
+			      `(,(rename 'cdr) ,expr)
+			      ellipsis)))))
 		((null? pattern)
 		 `(,(rename 'null?) ,expression))
 		(else
 		 `(,(rename 'equal?) ,expression
 				     (,(rename 'quote) ,pattern))))))
        (do-list
-	(lambda (pattern expression)
+	(lambda (pattern expression ellipsis)
 	  (let ((r-loop (new-identifier 'loop))
 		(r-l (new-identifier 'l)))
 	    `((,(rename 'let)
@@ -149,11 +176,11 @@ USA.
 		 #t
 		 (,(rename 'and)
 		  (,(rename 'pair?) ,r-l)
-		  ,(loop pattern `(,(rename 'car) ,r-l))
+		  ,(loop pattern `(,(rename 'car) ,r-l) ellipsis)
 		  (,r-loop (,(rename 'cdr) ,r-l)))))
 	       ,r-loop)
 	      ,expression)))))
-    (loop pattern expression)))
+    (loop pattern expression ellipsis)))
 
 (define (let-ify rename expression generate-body)
   (if (identifier? expression)
@@ -161,8 +188,8 @@ USA.
       (let ((temp (new-identifier 'temp)))
 	`(,(rename 'let) ((,temp ,expression)) ,(generate-body temp)))))
 
-(define (generate-output rename compare r-rename sids template)
-  (let loop ((template template) (ellipses '()))
+(define (generate-output rename compare ellipsis r-rename sids template)
+  (let loop ((template template) (ellipses '()) (ellipsis* ellipsis))
     (cond ((identifier? template)
 	   (let ((sid
 		  (find (lambda (sid)
@@ -173,19 +200,21 @@ USA.
 		   (add-control! sid ellipses)
 		   (sid-expression sid))
 		 `(,r-rename ,(syntax-quote template)))))
-	  ((zero-or-more? rename compare template)
+	  ((ellipsis-quote? rename compare ellipsis* template)
+	   (loop (cadr template) ellipses #f))
+	  ((zero-or-more? rename compare ellipsis* template)
 	   (optimized-append rename compare
 			     (let ((ellipsis (make-ellipsis '())))
 			       (generate-ellipsis rename
 						  ellipsis
 						  (loop (car template)
-							(cons ellipsis
-							      ellipses))))
-			     (loop (cddr template) ellipses)))
+							(cons ellipsis ellipses)
+							ellipsis*)))
+			     (loop (cddr template) ellipses ellipsis*)))
 	  ((pair? template)
 	   (optimized-cons rename compare
-			   (loop (car template) ellipses)
-			   (loop (cdr template) ellipses)))
+			   (loop (car template) ellipses ellipsis*)
+			   (loop (cdr template) ellipses ellipsis*)))
 	  (else
 	   `(,(rename 'quote) ,template)))))
 
@@ -240,11 +269,20 @@ USA.
 	(else
 	 `(,(rename 'cons) ,a ,d))))
 
-(define (zero-or-more? rename compare pattern)
-  (and (pair? pattern)
+(define (ellipsis-quote? rename compare ellipsis pattern)
+  (and ellipsis
+       (pair? pattern)
+       (identifier? (car pattern))
+       (compare (car pattern) (rename ellipsis))
+       (pair? (cdr pattern))
+       (null? (cddr pattern))))
+
+(define (zero-or-more? rename compare ellipsis pattern)
+  (and ellipsis
+       (pair? pattern)
        (pair? (cdr pattern))
        (identifier? (cadr pattern))
-       (compare (cadr pattern) (rename '...))))
+       (compare (cadr pattern) (rename ellipsis))))
 
 (define (syntax-quote expression)
   `(,(classifier->keyword

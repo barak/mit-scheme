@@ -120,11 +120,6 @@ USA.
      (unsyntax
       (syntax '(lambda ()
 
-		 (define-syntax bat
-                   (syntax-rules ()
-                     ((_ body ...)
-                      ((lambda (md) (bar md)) 'quux))))
-
 		 (define-syntax bar
                    (sc-macro-transformer
                     (lambda (exp env)
@@ -132,6 +127,11 @@ USA.
                               ,(close-syntax (cadr exp) env)))
 			 (list ,(close-syntax (cadr exp) env)
                                'x)))))
+
+		 (define-syntax bat
+                   (syntax-rules ()
+                     ((_ body ...)
+                      ((lambda (md) (bar md)) 'quux))))
 
 		 (bat x))
               test-environment))
@@ -159,11 +159,32 @@ USA.
               test-environment))
      '(lambda ()
 	'()))))
+
+;; Fails: assertion 1: value was (lambda () (bar1 (else* start)))
+;; but expected an object equal? to (lambda () (start))
+(define-test 'syntax-rules-letrec-syntax
+  (lambda ()
+    (assert-equal
+     (unsyntax
+      (syntax '(lambda ()
+		 (define-syntax foo
+		   (syntax-rules ()
+		     ((_ xy)
+		      (letrec-syntax
+			  ((bar1 (syntax-rules ()
+				   ((_ (else* destination))
+				    (destination))))
+			   (bar2 (syntax-rules ()
+				   ((_ z)
+				    (bar1 z)))))
+			(bar2 xy)))))
+		 (foo (else* start)))
+	      test-environment))
+     '(lambda ()
+	(start)))))
 
 ;;;; Tests of syntax-rules, from Larceny:
 
-#|
-;; Broken: "Missing ellipsis in expansion."
 (define-test 'be-like-begin
   (lambda ()
 
@@ -179,10 +200,7 @@ USA.
 
     (assert-equal (sequence 1 2 3 4)
 		  4)))
-|#
 
-#|
-;; Feature not implemented
 (define-test 'be-like-begin-alt
   (lambda ()
 
@@ -197,7 +215,6 @@ USA.
     (be-like-begin-alt sequence)
 
     (assert-equal (sequence 1 2 3 4) 4)))
-|#
 
 (define-test 'shadow-=>
   (lambda ()
