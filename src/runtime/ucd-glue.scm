@@ -84,7 +84,7 @@ USA.
   (char-set-predicate char-set:unicode))
 
 (define-deferred char-set:graphic
-  (char-set-union char-set:alphabetic
+  (char-set-union char-set:alphanumeric
 		  char-set:punctuation
 		  char-set:symbol))
 (define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
