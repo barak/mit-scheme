@@ -52,7 +52,7 @@ USA.
            test-environment)
      '(1 2))))
 
-(define-test 'bug55090
+(define-test 'bug-55090
   (lambda ()
     (assert-matches
      (unsyntax
@@ -114,7 +114,7 @@ USA.
                  test-environment))
         '(list 0 1 2 3 4))))))
 
-(define-test 'rename-of-compound-identifier
+(define-test 'bug-57785
   (lambda ()
     (assert-equal
      (unsyntax
@@ -140,7 +140,7 @@ USA.
 	  (let ((.md.2-1 .md.1-0))
 	    (list .md.1-0 'x)))))))
 
-(define-test 'syntax-rules-rename-of-compound-identifier
+(define-test 'bug-57793
   (lambda ()
     (assert-equal
      (unsyntax
@@ -162,7 +162,7 @@ USA.
 
 ;; Fails: assertion 1: value was (lambda () (bar1 (else* start)))
 ;; but expected an object equal? to (lambda () (start))
-(define-test 'syntax-rules-letrec-syntax
+(define-test 'bug-57833
   (lambda ()
     (assert-equal
      (unsyntax
