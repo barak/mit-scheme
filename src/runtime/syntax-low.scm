@@ -158,9 +158,3 @@ USA.
 
 (define-deferred top-level-senv
   (make-unsettable-parameter #f))
-
-(define (syntactic-keyword->item keyword environment)
-  (let ((item (environment-lookup-macro environment keyword)))
-    (if (not item)
-	(error:bad-range-argument keyword 'syntactic-keyword->item))
-    item))

@@ -4884,8 +4884,7 @@ USA.
 	  rsc-macro-transformer->expander
 	  sc-macro-transformer->expander
 	  spar-macro-transformer->expander
-	  spar-transformer->runtime
-	  syntactic-keyword->item)
+	  spar-transformer->runtime)
   (export (runtime syntax)
 	  classifier->keyword
 	  classifier->runtime
