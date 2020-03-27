@@ -183,7 +183,7 @@ USA.
 
 ;;; Keyword environments are used to make keywords that represent items.
 
-(define (make-keyword-senv name item)
+(define (make-classifier-senv name item)
 
   (define (get-type)
     'keyword)
@@ -207,7 +207,7 @@ USA.
       (item ,item)))
 
   (guarantee identifier? name 'make-keyword-environment)
-  (guarantee keyword-item? item 'make-keyword-environment)
+  (guarantee classifier-item? item 'make-keyword-environment)
   (make-senv get-type get-runtime lookup store rename describe))
 
 ;;; Internal syntactic environments represent environments created by

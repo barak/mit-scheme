@@ -28,7 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
-;;; These items (and keyword-item) can be stored in a syntactic environment.
+;;; These items can be stored in a syntactic environment.
 
 ;;; Variable items represent run-time variables.
 
@@ -45,6 +45,11 @@ USA.
   (standard-print-method 'var-item
     (lambda (item)
       (list (var-item-id item)))))
+
+;;; Keyword items represent syntactic keywords.
+
+(define-deferred-procedure keyword-item? 'compound-predicates
+  (disjoin classifier-item? transformer-item?))
 
 ;;; Reserved name items do not represent any form, but instead are
 ;;; used to reserve a particular name in a syntactic environment.  If
@@ -191,5 +196,8 @@ USA.
 (define-item-compiler reserved-name-item?
   (illegal-expression-compiler "Reserved name"))
 
-(define-item-compiler keyword-item?
-  (illegal-expression-compiler "Syntactic keyword"))
+(define-item-compiler classifier-item?
+  (illegal-expression-compiler "Classifier"))
+
+(define-item-compiler transformer-item?
+  (illegal-expression-compiler "Transformer"))

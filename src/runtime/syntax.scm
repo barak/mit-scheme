@@ -99,16 +99,24 @@ USA.
 		     hist))
 	((pair? form)
 	 (let ((item (classify-form (car form) senv (hist-car hist))))
-	   (if (keyword-item? item)
-	       ((keyword-item-impl item) form senv hist)
-	       (let ((ctx (serror-ctx form senv hist)))
-		  (if (not (list? (cdr form)))
-		      (serror ctx "Combination must be a proper list:" form))
-		  (combination-item ctx
-				    item
-				    (classify-forms (cdr form)
-						    senv
-						    (hist-cdr hist)))))))
+	   (cond ((classifier-item? item)
+		  ((classifier-item-impl item) form senv hist))
+		 ((transformer-item? item)
+		  (reclassify (let ((impl (transformer-item-impl item)))
+				(with-error-context form senv hist
+				  (lambda ()
+				    (impl form senv hist))))
+			      senv
+			      hist))
+		 (else
+		  (let ((ctx (serror-ctx form senv hist)))
+		    (if (not (list? (cdr form)))
+			(serror ctx "Combination must be a proper list:" form))
+		    (combination-item ctx
+				      item
+				      (classify-forms (cdr form)
+						      senv
+						      (hist-cdr hist))))))))
 	(else
 	 (constant-item (serror-ctx form senv hist) form))))
 

@@ -4871,8 +4871,7 @@ USA.
 	  smap
 	  subform-select)
   (export (runtime syntax low)
-	  reclassify
-	  with-error-context)
+	  reclassify)
   (export (runtime syntax parser)
 	  with-error-context))
 
@@ -4888,18 +4887,20 @@ USA.
   (export (runtime syntax)
 	  classifier->keyword
 	  classifier->runtime
-	  er-macro-transformer->keyword-item
-	  keyword-item
-	  keyword-item-expr
-	  keyword-item-has-expr?
-	  keyword-item-impl
-	  keyword-item?
-	  rsc-macro-transformer->keyword-item
-	  sc-macro-transformer->keyword-item
+	  classifier-item-impl
+	  classifier-item?
+	  er-macro-transformer->item
+	  rsc-macro-transformer->item
+	  sc-macro-transformer->item
 	  spar-classifier->keyword
 	  spar-classifier->runtime
-	  spar-macro-transformer->keyword-item
-	  top-level-senv))
+	  spar-macro-transformer->item
+	  top-level-senv
+	  transformer-item
+	  transformer-item-expr
+	  transformer-item-has-expr?
+	  transformer-item-impl
+	  transformer-item?))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
@@ -4922,6 +4923,7 @@ USA.
 	  expr-item?
 	  flatten-items
 	  item->list
+	  keyword-item?
 	  reserved-name-item
 	  reserved-name-item?
 	  seq-item
@@ -4942,9 +4944,9 @@ USA.
 	  bind-keyword
 	  bind-variable
 	  lookup-identifier
+	  make-classifier-senv
 	  make-internal-senv
 	  make-keyword-internal-senv
-	  make-keyword-senv
 	  make-partial-senv
 	  make-sealed-senv
 	  reserve-keyword

@@ -134,10 +134,7 @@ USA.
    (let ((table (make-alist-metadata-table)))
      (set! compound-operator-builder (bundle-ref table 'get))
      (set! define-compound-operator (bundle-ref table 'put!))
-     unspecific)))
-
-(add-boot-init!
- (lambda ()
+     unspecific)
 
    (define (make-joinish-memoizer tag-is-limit?)
      (let ((memoizer
@@ -177,4 +174,4 @@ USA.
 			     (lambda ()
 			       (make-compound-tag datum-test operator tags))))))
 
-   ))
+   (run-deferred-boot-actions 'compound-predicates)))

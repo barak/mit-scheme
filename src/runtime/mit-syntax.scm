@@ -31,7 +31,7 @@ USA.
 
 ;;;; Macro transformers
 
-(define (transformer-classifier transformer->keyword-item
+(define (transformer-classifier transformer->item
 				transformer->expander-name)
   (lambda (form senv hist)
     (scheck '(_ expression) form senv hist)
@@ -39,7 +39,7 @@ USA.
 	   (compile-expr-item (classify-form (cadr form)
 					     senv
 					     (hist-cadr hist)))))
-      (transformer->keyword-item
+      (transformer->item
        (transformer-eval transformer senv)
        senv
        (expr-item (serror-ctx form senv hist)
@@ -50,25 +50,25 @@ USA.
 (define $sc-macro-transformer
   ;; "Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-classifier sc-macro-transformer->keyword-item
+   (transformer-classifier sc-macro-transformer->item
 			   'sc-macro-transformer->expander)))
 
 (define $rsc-macro-transformer
   ;; "Reversed Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-classifier rsc-macro-transformer->keyword-item
+   (transformer-classifier rsc-macro-transformer->item
 			   'rsc-macro-transformer->expander)))
 
 (define $er-macro-transformer
   ;; "Explicit Renaming" transformer
   (classifier->runtime
-   (transformer-classifier er-macro-transformer->keyword-item
+   (transformer-classifier er-macro-transformer->item
 			   'er-macro-transformer->expander)))
 
 (define $spar-macro-transformer
   ;; "Syntax PARser" transformer
   (classifier->runtime
-   (transformer-classifier spar-macro-transformer->keyword-item
+   (transformer-classifier spar-macro-transformer->item
 			   'spar-macro-transformer->expander)))
 
 ;;;; Core primitives
@@ -181,9 +181,9 @@ USA.
 	   (let ((senv (serror-ctx-senv ctx)))
 	     (bind-keyword id senv item)
 	     ;; User-defined macros at top level are preserved in the output.
-	     (if (and (keyword-item-has-expr? item)
+	     (if (and (transformer-item-has-expr? item)
 		      (senv-top-level? senv))
-		 (syntax-defn-item ctx id (keyword-item-expr item))
+		 (syntax-defn-item ctx id (transformer-item-expr item))
 		 (seq-item ctx '()))))
        (spar-subform)
        (spar-push spar-arg:ctx)
@@ -193,7 +193,7 @@ USA.
 	 (spar-push spar-arg:form))
        (spar-subform
 	 spar-push-classified
-	 (spar-or (spar-match keyword-item? spar-arg:value)
+	 (spar-or (spar-match transformer-item? spar-arg:value)
 		  (spar-error "Keyword binding value must be a keyword:"
 			      spar-arg:form)))
        (spar-match-null)))))
