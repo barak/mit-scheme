@@ -31,12 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-;;; These optional arguments are needed for cross-compiling 9.2->9.3.
-;;; They can become required after 9.3 release.
-
-(define (sc-macro-transformer->expander transformer env #!optional expr)
-  (keyword-item (sc-wrapper transformer (runtime-getter env))
-		expr))
+(define (sc-macro-transformer->expander transformer env)
+  (keyword-item (sc-wrapper transformer (runtime-getter env))))
 
 (define (sc-macro-transformer->keyword-item transformer closing-senv expr)
   (keyword-item (sc-wrapper transformer (lambda () closing-senv))
@@ -50,9 +46,8 @@ USA.
 		(get-closing-senv)
 		hist)))
 
-(define (rsc-macro-transformer->expander transformer env #!optional expr)
-  (keyword-item (rsc-wrapper transformer (runtime-getter env))
-		expr))
+(define (rsc-macro-transformer->expander transformer env)
+  (keyword-item (rsc-wrapper transformer (runtime-getter env))))
 
 (define (rsc-macro-transformer->keyword-item transformer closing-senv expr)
   (keyword-item (rsc-wrapper transformer (lambda () closing-senv))
@@ -66,9 +61,8 @@ USA.
 		use-senv
 		hist)))
 
-(define (er-macro-transformer->expander transformer env #!optional expr)
-  (keyword-item (er-wrapper transformer (runtime-getter env))
-		expr))
+(define (er-macro-transformer->expander transformer env)
+  (keyword-item (er-wrapper transformer (runtime-getter env))))
 
 (define (er-macro-transformer->keyword-item transformer closing-senv expr)
   (keyword-item (er-wrapper transformer (lambda () closing-senv))
