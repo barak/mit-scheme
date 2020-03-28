@@ -310,9 +310,9 @@ USA.
   (import (runtime syntax)
 	  classifier->runtime
 	  classify-form
-	  compile-expr-item
-	  compile-item
-	  expr-item))
+	  expr-item
+	  hist-car
+	  hist-cddr))
 
 (define-package (edwin class-macros transform-instance-variables)
   (files "xform")

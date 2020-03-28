@@ -4909,7 +4909,6 @@ USA.
 	  body-item
 	  combination-item
 	  compile-expr-item
-	  compile-item
 	  constant-item
 	  define-item-compiler
 	  defn-item
@@ -4924,6 +4923,7 @@ USA.
 	  flatten-items
 	  item->list
 	  keyword-item?
+	  render-item
 	  reserved-name-item
 	  reserved-name-item?
 	  seq-item
@@ -4932,7 +4932,9 @@ USA.
 	  syntax-defn-item
 	  var-item
 	  var-item-id
-	  var-item?))
+	  var-item?)
+  (export (runtime syntax top-level)
+	  compile-item))
 
 (define-package (runtime syntax environment)
   (files "syntax-environment")

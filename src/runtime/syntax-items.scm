@@ -28,6 +28,43 @@ USA.
 
 (declare (usual-integrations))
 
+(define compile-item)
+(define compile-expr-item)
+(define render-item)
+(add-boot-init!
+ (lambda ()
+   (set! compile-item
+	 (cached-standard-predicate-dispatcher 'compile-item 1))
+   (set! compile-expr-item
+	 (cached-standard-predicate-dispatcher 'compile-expr-item 1))
+   (run-deferred-boot-actions 'define-item-compiler)
+   (set! render-item
+	 (cached-standard-predicate-dispatcher 'render-item 1))
+   (run-deferred-boot-actions 'define-item-renderer)))
+
+(define (define-item-compiler predicate compiler #!optional expr-compiler)
+  (defer-boot-action 'define-item-compiler
+    (lambda ()
+      (define-predicate-dispatch-handler compile-item
+	(list predicate)
+	compiler)
+      (if expr-compiler
+	  (define-predicate-dispatch-handler compile-expr-item
+	    (list predicate)
+	    (if (default-object? expr-compiler) compiler expr-compiler))))))
+
+(define (define-item-renderer predicate renderer)
+  (defer-boot-action 'define-item-renderer
+    (lambda ()
+      (define-predicate-dispatch-handler render-item
+	(list predicate)
+	renderer))))
+
+(define (illegal-expression-compiler description)
+  (let ((message (string description " may not be used as an expression:")))
+    (lambda (item)
+      (error message item))))
+
 ;;; These items can be stored in a syntactic environment.
 
 ;;; Variable items represent run-time variables.
@@ -46,10 +83,24 @@ USA.
     (lambda (item)
       (list (var-item-id item)))))
 
+(define-item-compiler var-item?
+  (lambda (item)
+    (output/variable (var-item-id item))))
+
+(define-item-renderer var-item?
+  (lambda (item)
+    `(:var ,(var-item-id item))))
+
 ;;; Keyword items represent syntactic keywords.
 
 (define-deferred-procedure keyword-item? 'compound-predicates
   (disjoin classifier-item? transformer-item?))
+
+(define-item-compiler classifier-item?
+  (illegal-expression-compiler "Classifier"))
+
+(define-item-compiler transformer-item?
+  (illegal-expression-compiler "Transformer"))
 
 ;;; Reserved name items do not represent any form, but instead are
 ;;; used to reserve a particular name in a syntactic environment.  If
@@ -61,6 +112,9 @@ USA.
 (define-record-type <reserved-name-item>
     (reserved-name-item)
     reserved-name-item?)
+
+(define-item-compiler reserved-name-item?
+  (illegal-expression-compiler "Reserved name"))
 
 ;;; These items can't be stored in a syntactic environment.
 
@@ -94,6 +148,23 @@ USA.
       (list (defn-item-id item)
 	    (defn-item-value item)))))
 
+(define-item-compiler defn-item?
+  (lambda (item)
+    (let ((name (defn-item-id item))
+	  (value (compile-expr-item (defn-item-value item))))
+      (if (defn-item-syntax? item)
+	  (output/syntax-definition name value)
+	  (output/definition name value))))
+  (illegal-expression-compiler "Definition"))
+
+(define-item-renderer defn-item?
+  (lambda (item)
+    `(,(if (defn-item-syntax? item)
+	   'define-syntax
+	   'define)
+      ,(defn-item-id item)
+      ,(render-item (defn-item-value item)))))
+
 ;;; Sequence items.
 
 (define (seq-item ctx elements)
@@ -117,87 +188,71 @@ USA.
       (seq-item-elements item)
       (list item)))
 
-;;; Expression items represent any kind of expression other than a
-;;; run-time variable or a sequence.
-
-(define-record-type <expr-item>
-    (expr-item ctx compiler)
-    expr-item?
-  (ctx expr-item-ctx)
-  (compiler expr-item-compiler))
-
-(define (body-item ctx items)
-  (expr-item ctx
-    (lambda ()
-      (output/body (map compile-item (flatten-items items))))))
-
-(define (combination-item ctx operator operands)
-  (expr-item ctx
-    (lambda ()
-      (output/combination (compile-expr-item operator)
-			  (map compile-expr-item operands)))))
-
-(define (constant-item ctx datum)
-  (expr-item ctx
-    (lambda ()
-      (output/constant datum))))
-
-;;;; Compiler
-
-(define compile-item)
-(define compile-expr-item)
-(add-boot-init!
- (lambda ()
-   (set! compile-item
-	 (cached-standard-predicate-dispatcher 'compile-item 1))
-   (set! compile-expr-item
-	 (cached-standard-predicate-dispatcher 'compile-expr-item 1))
-   (run-deferred-boot-actions 'define-item-compiler)))
-
-(define (define-item-compiler predicate compiler #!optional expr-compiler)
-  (defer-boot-action 'define-item-compiler
-    (lambda ()
-      (define-predicate-dispatch-handler compile-item
-	(list predicate)
-	compiler)
-      (if expr-compiler
-	  (define-predicate-dispatch-handler compile-expr-item
-	    (list predicate)
-	    (if (default-object? expr-compiler) compiler expr-compiler))))))
-
-(define-item-compiler var-item?
-  (lambda (item)
-    (output/variable (var-item-id item))))
-
-(define-item-compiler expr-item?
-  (lambda (item)
-    ((expr-item-compiler item))))
-
 (define-item-compiler seq-item?
   (lambda (item)
     (output/sequence (map compile-item (seq-item-elements item))))
   (lambda (item)
     (output/sequence (map compile-expr-item (seq-item-elements item)))))
 
-(define (illegal-expression-compiler description)
-  (let ((message (string description " may not be used as an expression:")))
-    (lambda (item)
-      (error message item))))
-
-(define-item-compiler defn-item?
+(define-item-renderer seq-item?
   (lambda (item)
-    (let ((name (defn-item-id item))
-	  (value (compile-expr-item (defn-item-value item))))
-      (if (defn-item-syntax? item)
-	  (output/syntax-definition name value)
-	  (output/definition name value))))
-  (illegal-expression-compiler "Definition"))
+    `(begin ,@(map render-item (seq-item-elements item)))))
 
-(define-item-compiler reserved-name-item?
-  (illegal-expression-compiler "Reserved name"))
+(define (body-item ctx forms)
+  (%body-item ctx (flatten-items forms)))
 
-(define-item-compiler classifier-item?
-  (illegal-expression-compiler "Classifier"))
+(define-record-type <body-item>
+    (%body-item ctx forms)
+    body-item?
+  (ctx body-item-ctx)
+  (forms body-item-forms))
 
-(define-item-compiler transformer-item?
-  (illegal-expression-compiler "Transformer"))
+(define-item-compiler body-item?
+  (lambda (item)
+    (output/body (map compile-item (body-item-forms item)))))
+
+(define-item-renderer body-item?
+  (lambda (item)
+    `(begin ,@(map render-item (body-item-forms item)))))
+
+;;; Expression items represent any kind of expression other than a
+;;; run-time variable or a sequence.
+
+(define-record-type <expr-item>
+    (expr-item ctx parts compiler renderer)
+    expr-item?
+  (ctx expr-item-ctx)
+  (parts %expr-item-parts)
+  (compiler expr-item-compiler)
+  (renderer expr-item-renderer))
+
+(define (expr-item-parts item)
+  (map (lambda (part)
+	 (if (promise? part)
+	     (force part)
+	     part))
+       (%expr-item-parts item)))
+
+(define-item-compiler expr-item?
+  (lambda (item)
+    (apply (expr-item-compiler item)
+	   (map compile-expr-item (expr-item-parts item)))))
+
+(define-item-renderer expr-item?
+  (lambda (item)
+    (apply (expr-item-renderer item)
+	   (map render-item (expr-item-parts item)))))
+
+(define (combination-item ctx operator operands)
+  (expr-item ctx (cons operator operands)
+    (lambda (operator . operands)
+      (output/combination operator operands))
+    (lambda (operator . operands)
+      `(call ,operator ,@operands))))
+
+(define (constant-item ctx datum)
+  (expr-item ctx '()
+    (lambda ()
+      (output/constant datum))
+    (lambda ()
+      `',datum)))

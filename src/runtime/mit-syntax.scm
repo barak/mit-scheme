@@ -42,10 +42,12 @@ USA.
       (transformer->item
        (transformer-eval transformer senv)
        senv
-       (expr-item (serror-ctx form senv hist)
+       (expr-item (serror-ctx form senv hist) '()
 	 (lambda ()
 	   (output/top-level-syntax-expander transformer->expander-name
-					     transformer)))))))
+					     transformer))
+	 (lambda ()
+	   `(,transformer->expander-name ,transformer)))))))
 
 (define $sc-macro-transformer
   ;; "Syntactic Closures" transformer
@@ -231,7 +233,7 @@ USA.
 		 (map-mit-lambda-list (lambda (id)
 					(bind-variable id frame-senv))
 				      bvl)
-		 (lambda ()
+		 (delay
 		   (receive (body-ctx body-items) (body frame-senv)
 		     (body-item body-ctx body-items))))))
 
@@ -401,7 +403,7 @@ USA.
 	   (let ((senv (serror-ctx-senv ctx))
 		 (hist (serror-ctx-hist ctx)))
 	     (decl-item ctx
-	       (lambda ()
+	       (delay
 		 (smap (lambda (decl hist)
 			 (map-decl-ids (lambda (id selector)
 					 (classify-id id
@@ -432,49 +434,64 @@ USA.
 ;;;; Specific expression items
 
 (define (access-assignment-item ctx name env-item rhs-item)
-  (expr-item ctx
-    (lambda ()
-      (output/access-assignment name
-				(compile-expr-item env-item)
-				(compile-expr-item rhs-item)))))
+  (expr-item ctx (list env-item rhs-item)
+    (lambda (env rhs)
+      (output/access-assignment name env rhs))
+    (lambda (env rhs)
+      `(set! (access ,name ,env) ,rhs))))
 
 (define (assignment-item ctx id rhs-item)
-  (expr-item ctx
-    (lambda ()
-      (output/assignment id (compile-expr-item rhs-item)))))
+  (expr-item ctx (list rhs-item)
+    (lambda (rhs)
+      (output/assignment id rhs))
+    (lambda (rhs)
+      `(set! ,id ,rhs))))
 
 (define (decl-item ctx classify)
-  (expr-item ctx
+  (expr-item ctx '()
     (lambda ()
-      (output/declaration (classify)))))
+      (output/declaration (force classify)))
+    (lambda ()
+      `(declare ,@(force classify)))))
 
 (define (if-item ctx predicate consequent alternative)
-  (expr-item ctx
-    (lambda ()
-      (output/conditional (compile-expr-item predicate)
-			  (compile-expr-item consequent)
-			  (compile-expr-item alternative)))))
+  (expr-item ctx (list predicate consequent alternative)
+    output/conditional
+    (lambda (predicate consequent alternative)
+      `(if ,predicate ,consequent ,alternative))))
 
 (define (lambda-item ctx name bvl classify-body)
-  (expr-item ctx
-    (lambda ()
-      (output/lambda name bvl (compile-item (classify-body))))))
+  (expr-item ctx (list classify-body)
+    (lambda (body)
+      (output/lambda name bvl body))
+    (lambda (body)
+      `(lambda ,name ,bvl ,body))))
 
 (define (or-item ctx . items)
-  (expr-item ctx
-    (lambda ()
-      (output/disjunction (map compile-expr-item items)))))
+  (expr-item ctx items
+    (lambda exprs
+      (output/disjunction exprs))
+    (lambda exprs
+      `(or ,@exprs))))
 
 (define (quoted-id-item ctx var-item)
-  (expr-item ctx
+  (expr-item ctx '()
     (lambda ()
-      (output/quoted-identifier (var-item-id var-item)))))
+      (output/quoted-identifier (var-item-id var-item)))
+    (lambda ()
+      `(quote-identifier ,(var-item-id var-item)))))
 
 (define (the-environment-item ctx)
-  (expr-item ctx output/the-environment))
+  (expr-item ctx '()
+	     output/the-environment
+	     (lambda () '(the-environment))))
 
 (define (unspecific-item ctx)
-  (expr-item ctx output/unspecific))
+  (expr-item ctx '()
+	     output/unspecific
+	     (lambda () '(unspecific))))
 
 (define (unassigned-item ctx)
-  (expr-item ctx output/unassigned))
+  (expr-item ctx '()
+	     output/unassigned
+	     (lambda () '(unassigned))))
