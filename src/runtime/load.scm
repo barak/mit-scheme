@@ -131,9 +131,9 @@ USA.
 		(values #f #f #f)))))))
 
 (define (loadable-source-pathname pathname)
-  (if (pathname-type pathname)
-      (openable-pathname pathname)
-      (try-types openable-pathname pathname file-type-src)))
+  (cond ((file-regular? pathname) pathname)
+	((pathname-type pathname) #f)
+	(else (try-types openable-pathname pathname file-type-src))))
 
 (define (openable-pathname pathname)
   (and (file-regular? pathname)
