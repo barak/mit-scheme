@@ -438,60 +438,63 @@ USA.
     (lambda (env rhs)
       (output/access-assignment name env rhs))
     (lambda (env rhs)
-      `(set! (access ,name ,env) ,rhs))))
+      `(set!-access-item ,name ,env ,rhs))))
 
 (define (assignment-item ctx id rhs-item)
   (expr-item ctx (list rhs-item)
     (lambda (rhs)
       (output/assignment id rhs))
     (lambda (rhs)
-      `(set! ,id ,rhs))))
+      `(set!-item ,id ,rhs))))
 
 (define (decl-item ctx classify)
   (expr-item ctx '()
     (lambda ()
       (output/declaration (force classify)))
     (lambda ()
-      `(declare ,@(force classify)))))
+      `(declare-item
+	,@(if (promise-forced? classify)
+	      (force classify)
+	      classify)))))
 
 (define (if-item ctx predicate consequent alternative)
   (expr-item ctx (list predicate consequent alternative)
     output/conditional
     (lambda (predicate consequent alternative)
-      `(if ,predicate ,consequent ,alternative))))
+      `(if-item ,predicate ,consequent ,alternative))))
 
 (define (lambda-item ctx name bvl classify-body)
   (expr-item ctx (list classify-body)
     (lambda (body)
       (output/lambda name bvl body))
     (lambda (body)
-      `(lambda ,name ,bvl ,body))))
+      `(lambda-item ,name ,bvl ,body))))
 
 (define (or-item ctx . items)
   (expr-item ctx items
     (lambda exprs
       (output/disjunction exprs))
     (lambda exprs
-      `(or ,@exprs))))
+      `(or-item ,@exprs))))
 
 (define (quoted-id-item ctx var-item)
   (expr-item ctx '()
     (lambda ()
       (output/quoted-identifier (var-item-id var-item)))
     (lambda ()
-      `(quote-identifier ,(var-item-id var-item)))))
+      `(quoted-id-item ,(var-item-id var-item)))))
 
 (define (the-environment-item ctx)
   (expr-item ctx '()
 	     output/the-environment
-	     (lambda () '(the-environment))))
+	     (lambda () '(the-environment-item))))
 
 (define (unspecific-item ctx)
   (expr-item ctx '()
 	     output/unspecific
-	     (lambda () '(unspecific))))
+	     (lambda () '(unspecific-item))))
 
 (define (unassigned-item ctx)
   (expr-item ctx '()
 	     output/unassigned
-	     (lambda () '(unassigned))))
+	     (lambda () '(unassigned-item))))

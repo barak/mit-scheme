@@ -33,13 +33,12 @@ USA.
 (define render-item)
 (add-boot-init!
  (lambda ()
-   (set! compile-item
-	 (cached-standard-predicate-dispatcher 'compile-item 1))
+   (set! compile-item (cached-standard-predicate-dispatcher 'compile-item 1))
    (set! compile-expr-item
 	 (cached-standard-predicate-dispatcher 'compile-expr-item 1))
    (run-deferred-boot-actions 'define-item-compiler)
-   (set! render-item
-	 (cached-standard-predicate-dispatcher 'render-item 1))
+   (set! render-item (cached-standard-predicate-dispatcher 'render-item 1))
+   (define-predicate-dispatch-default-handler render-item (lambda (item) item))
    (run-deferred-boot-actions 'define-item-renderer)))
 
 (define (define-item-compiler predicate compiler #!optional expr-compiler)
@@ -89,7 +88,7 @@ USA.
 
 (define-item-renderer var-item?
   (lambda (item)
-    `(:var ,(var-item-id item))))
+    `(var-item ,(var-item-id item))))
 
 ;;; Keyword items represent syntactic keywords.
 
@@ -160,8 +159,8 @@ USA.
 (define-item-renderer defn-item?
   (lambda (item)
     `(,(if (defn-item-syntax? item)
-	   'define-syntax
-	   'define)
+	   'define-syntax-item
+	   'define-item)
       ,(defn-item-id item)
       ,(render-item (defn-item-value item)))))
 
@@ -196,7 +195,7 @@ USA.
 
 (define-item-renderer seq-item?
   (lambda (item)
-    `(begin ,@(map render-item (seq-item-elements item)))))
+    `(seq-item ,@(map render-item (seq-item-elements item)))))
 
 (define (body-item ctx forms)
   (%body-item ctx (flatten-items forms)))
@@ -213,7 +212,7 @@ USA.
 
 (define-item-renderer body-item?
   (lambda (item)
-    `(begin ,@(map render-item (body-item-forms item)))))
+    `(body-item ,@(map render-item (body-item-forms item)))))
 
 ;;; Expression items represent any kind of expression other than a
 ;;; run-time variable or a sequence.
@@ -222,37 +221,41 @@ USA.
     (expr-item ctx parts compiler renderer)
     expr-item?
   (ctx expr-item-ctx)
-  (parts %expr-item-parts)
+  (parts expr-item-parts)
   (compiler expr-item-compiler)
   (renderer expr-item-renderer))
-
-(define (expr-item-parts item)
-  (map (lambda (part)
-	 (if (promise? part)
-	     (force part)
-	     part))
-       (%expr-item-parts item)))
 
 (define-item-compiler expr-item?
   (lambda (item)
     (apply (expr-item-compiler item)
-	   (map compile-expr-item (expr-item-parts item)))))
+	   (map (lambda (part)
+		  (compile-expr-item
+		   (if (promise? part)
+		       (force part)
+		       part)))
+		(expr-item-parts item)))))
 
 (define-item-renderer expr-item?
   (lambda (item)
     (apply (expr-item-renderer item)
-	   (map render-item (expr-item-parts item)))))
+	   (map (lambda (part)
+		  (if (promise? part)
+		      (if (promise-forced? part)
+			  (render-item (force part))
+			  part)
+		      (render-item part)))
+		(expr-item-parts item)))))
 
 (define (combination-item ctx operator operands)
   (expr-item ctx (cons operator operands)
     (lambda (operator . operands)
       (output/combination operator operands))
     (lambda (operator . operands)
-      `(call ,operator ,@operands))))
+      `(call-item ,operator ,@operands))))
 
 (define (constant-item ctx datum)
   (expr-item ctx '()
     (lambda ()
       (output/constant datum))
     (lambda ()
-      `',datum)))
+      `(quote-item ,datum))))

@@ -108,9 +108,7 @@ USA.
 ;;;; Post processing
 
 (define (post-process-output expression)
-  (if (param:trace-syntax?)
-      (parameterize ((param:pp-uninterned-symbols-by-name? #f))
-	(pp (list 'post-process-output expression))))
+  (trace-reduce expression)
   (let ((safe-set (make-strong-eq-hash-table)))
     (compute-substitution expression
 			  (lambda (rename original)

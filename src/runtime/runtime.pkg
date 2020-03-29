@@ -4869,7 +4869,8 @@ USA.
 	  serror-ctx-senv
 	  serror-ctx?
 	  smap
-	  subform-select)
+	  subform-select
+	  trace-reduce)
   (export (runtime syntax low)
 	  reclassify)
   (export (runtime syntax parser)
