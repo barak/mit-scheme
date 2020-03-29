@@ -216,7 +216,6 @@ USA.
 (define (make-internal-senv parent)
   (guarantee syntactic-environment? parent 'make-internal-senv)
   (let ((bound '())
-	(free '())
 	(get-runtime (senv-get-runtime parent))
 	(rename (make-local-identifier-renamer)))
 
@@ -224,29 +223,22 @@ USA.
       'internal)
 
     (define (lookup identifier)
-      (let ((binding
-	     (or (assq identifier bound)
-		 (assq identifier free))))
+      (let ((binding (assq identifier bound)))
 	(if binding
 	    (cdr binding)
-	    (let ((item ((senv-lookup parent) identifier)))
-	      (set! free (cons (cons identifier item) free))
-	      item))))
+	    ((senv-lookup parent) identifier))))
 
     (define (store identifier keyword? item)
       (declare (ignore keyword?))
       (cond ((assq identifier bound)
 	     => (lambda (binding)
 		  (set-cdr! binding item)))
-	    ((assq identifier free)
-	     (error "Can't define name; already free:" identifier))
 	    (else
 	     (set! bound (cons (cons identifier item) bound))
 	     unspecific)))
 
     (define (describe)
       `((bound ,bound)
-	(free ,free)
 	(parent ,parent)))
 
     (make-senv get-type get-runtime lookup store rename describe)))
@@ -257,7 +249,6 @@ USA.
 (define (make-keyword-internal-senv parent)
   (guarantee syntactic-environment? parent 'make-keyword-internal-senv)
   (let ((bound '())
-	(free '())
 	(get-runtime (senv-get-runtime parent))
 	(rename (senv-rename parent)))
 
@@ -265,22 +256,16 @@ USA.
       'keyword-internal)
 
     (define (lookup identifier)
-      (let ((binding
-	     (or (assq identifier bound)
-		 (assq identifier free))))
+      (let ((binding (assq identifier bound)))
 	(if binding
 	    (cdr binding)
-	    (let ((item ((senv-lookup parent) identifier)))
-	      (set! free (cons (cons identifier item) free))
-	      item))))
+	    ((senv-lookup parent) identifier))))
 
     (define (store identifier keyword? item)
       (if keyword?
 	  (cond ((assq identifier bound)
 		 => (lambda (binding)
 		      (set-cdr! binding item)))
-		((assq identifier free)
-		 (error "Can't define name; already free:" identifier))
 		(else
 		 (set! bound (cons (cons identifier item) bound))
 		 unspecific))
@@ -288,7 +273,6 @@ USA.
 
     (define (describe)
       `((bound ,bound)
-	(free ,free)
 	(parent ,parent)))
 
     (make-senv get-type get-runtime lookup store rename describe)))
