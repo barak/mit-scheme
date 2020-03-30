@@ -160,8 +160,6 @@ USA.
      '(lambda ()
 	'()))))
 
-;; Fails: assertion 1: value was (lambda () (bar1 (else* start)))
-;; but expected an object equal? to (lambda () (start))
 (define-test 'bug-57833
   (lambda ()
     (assert-equal

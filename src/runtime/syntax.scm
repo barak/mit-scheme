@@ -244,7 +244,7 @@ USA.
 	  (constant-form? form)
 	  (and (syntactic-closure? form)
 	       (null? (syntactic-closure-free form))
-	       (not (closed-identifier? form))))
+	       (not (identifier? (syntactic-closure-form form)))))
       form
       (%make-syntactic-closure senv free form)))
 
@@ -294,7 +294,7 @@ USA.
 (define (closed-identifier? object)
   (and (syntactic-closure? object)
        (null? (syntactic-closure-free object))
-       (raw-identifier? (syntactic-closure-form object))))
+       (identifier? (syntactic-closure-form object))))
 
 (register-predicate! identifier? 'identifier)
 (register-predicate! raw-identifier? 'raw-identifier '<= identifier?)
@@ -304,9 +304,13 @@ USA.
   (string->uninterned-symbol (symbol->string (identifier->symbol identifier))))
 
 (define (identifier->symbol identifier)
-  (cond ((raw-identifier? identifier) identifier)
-	((closed-identifier? identifier) (syntactic-closure-form identifier))
-	(else (error:not-a identifier? identifier 'identifier->symbol))))
+  (cond ((raw-identifier? identifier)
+	 identifier)
+	((and (syntactic-closure? identifier)
+	      (null? (syntactic-closure-free identifier)))
+	 (identifier->symbol (syntactic-closure-form identifier)))
+	(else
+	 (error:not-a identifier? identifier 'identifier->symbol))))
 
 (define (identifier=? senv-1 identifier-1 senv-2 identifier-2)
   (let ((item-1 (lookup-identifier identifier-1 senv-1))
