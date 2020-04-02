@@ -82,11 +82,15 @@ USA.
 
 (define (restore-float-environment-from-default fp-env)
   (if fp-env
-      ((ucode-primitive set-float-environment 1) fp-env)))
+      (enter-float-environment fp-env)))
 
 ;;; Enter a floating-point environment for switching to a thread.
+;;;
+;;; XXX This does not currently take advantage of switching from the
+;;; default environment to the default environment by doing nothing.
 
 (define (enter-float-environment fp-env)
+  (set-thread-float-environment! (current-thread) (if fp-env #t #f))
   ((ucode-primitive set-float-environment 1) (or fp-env default-environment)))
 
 ;;; Save a floating-point environment when a thread yields or is
