@@ -329,6 +329,7 @@ USA.
 	(wait-for-io))))
 
 (define (run-thread thread)
+  (assert (eq? thread first-running-thread))
   (let ((continuation (thread/continuation thread))
 	(fp-env (thread/floating-point-environment thread)))
     (set-thread/continuation! thread #f)
