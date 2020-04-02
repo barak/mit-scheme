@@ -163,17 +163,50 @@ USA.
 
 ;;;; Definitions
 
-(define keyword:define
-  (spar-classifier->keyword
+(define classifier-item:define
+  (spar-classifier-item
    (delay
-     (spar-call-with-values defn-item
-       (spar-subform)
-       (spar-push spar-arg:ctx)
-       (spar-subform
-	 (spar-match identifier? spar-arg:form)
-	 (spar-push-value bind-variable spar-arg:form spar-arg:senv))
-       (spar-subform spar-push-classified)
-       (spar-match-null)))))
+     (spar-or
+       (spar-call-with-values defn-item
+	 (spar-subform)
+	 (spar-push spar-arg:ctx)
+	 (spar-subform
+	   (spar-match identifier? spar-arg:form)
+	   (spar-push-value bind-variable spar-arg:form spar-arg:senv))
+	 (spar-or (spar-subform spar-push-classified)
+		  (spar-push-value unassigned-item spar-arg:ctx))
+	 (spar-match-null))
+       (spar-call-with-values
+	   (lambda (senv hist id bvl . body)
+	     (apply-classifier-item classifier-item:define
+	       `(_ ,id (,keyword:named-lambda (,id . ,bvl) ,@body))
+	       senv
+	       hist))
+	 (spar-subform)
+	 (spar-push spar-arg:senv)
+	 (spar-push spar-arg:hist)
+	 (spar-subform
+	   (spar-push-subform-if identifier? spar-arg:form)
+	   (spar-push-form-if mit-lambda-list? spar-arg:form))
+	 (spar+ (spar-push-subform))
+	 (spar-match-null))
+       (spar-call-with-values
+	   (lambda (senv hist form bvl . body)
+	     (apply-classifier-item classifier-item:define
+	       `(_ ,form (,keyword:lambda ,bvl ,@body))
+	       senv
+	       hist))
+	 (spar-subform)
+	 (spar-push spar-arg:senv)
+	 (spar-push spar-arg:hist)
+	 (spar-subform
+	   (spar-push-subform)
+	   (spar-push-form-if mit-lambda-list? spar-arg:form))
+	 (spar+ (spar-push-subform))
+	 (spar-match-null))))))
+
+(define $define
+  (classifier-item->runtime classifier-item:define))
 
 (define $define-syntax
   (spar-classifier->runtime
@@ -202,8 +235,8 @@ USA.
 
 ;;;; Lambdas
 
-(define $lambda
-  (spar-classifier->runtime
+(define classifier-item:lambda
+  (spar-classifier-item
    (delay
      (spar-call-with-values
 	 (lambda (ctx bvl body)
@@ -213,8 +246,14 @@ USA.
        (spar-push-subform-if mit-lambda-list? spar-arg:form)
        (spar-push-body make-internal-senv)))))
 
-(define $named-lambda
-  (spar-classifier->runtime
+(define $lambda
+  (classifier-item->runtime classifier-item:lambda))
+
+(define keyword:lambda
+  (classifier-item->keyword classifier-item:lambda))
+
+(define classifier-item:named-lambda
+  (spar-classifier-item
    (delay
      (spar-call-with-values
 	 (lambda (ctx name bvl body)
@@ -225,6 +264,12 @@ USA.
 	 (spar-push-subform-if identifier? spar-arg:form)
 	 (spar-push-form-if mit-lambda-list? spar-arg:form))
        (spar-push-body make-internal-senv)))))
+
+(define $named-lambda
+  (classifier-item->runtime classifier-item:named-lambda))
+
+(define keyword:named-lambda
+  (classifier-item->keyword classifier-item:named-lambda))
 
 (define (assemble-lambda-item ctx name bvl body)
   (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx))))

@@ -27,34 +27,6 @@ USA.
 ;;;; MIT/GNU Scheme macros
 
 (declare (usual-integrations))
-
-;;;; Definitions
-
-(define $define
-  (spar-transformer->runtime
-   (delay
-     (spar-or
-       (scons-rule `(id ,(optional-value-pattern))
-	 (lambda (name value)
-	   (scons-call keyword:define name value)))
-       (scons-rule
-	   `((spar
-	      ,(spar-subform
-		 (spar-push-subform-if identifier? spar-arg:form)
-		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
-	     (+ any))
-	 (lambda (name bvl body-forms)
-	   (scons-define name
-	     (apply scons-named-lambda (cons name bvl) body-forms))))
-       (scons-rule
-	   `((spar
-	      ,(spar-subform
-		 (spar-push-subform)
-		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
-	     (+ any))
-	 (lambda (nested bvl body-forms)
-	   (scons-define nested
-	     (apply scons-lambda bvl body-forms))))))))
 
 (define (optional-value-pattern)
   `(or any (value-of ,unassigned-expression)))

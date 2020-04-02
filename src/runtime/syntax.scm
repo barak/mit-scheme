@@ -202,8 +202,7 @@ USA.
 	((pair? form)
 	 (let ((item (classify-form (car form) senv (hist-car hist))))
 	   (cond ((classifier-item? item)
-		  (trace-reduce `(classify ,item ,form ,senv))
-		  ((classifier-item-impl item) form senv hist))
+		  (apply-classifier-item item form senv hist))
 		 ((transformer-item? item)
 		  (let ((key `(transform ,item ,form ,senv)))
 		    (trace-start-subproblem key)
@@ -225,6 +224,10 @@ USA.
 						      (hist-cdr hist))))))))
 	(else
 	 (constant-item (serror-ctx form senv hist) form))))
+
+(define (apply-classifier-item item form senv hist)
+  (trace-reduce `(classify ,item ,form ,senv))
+  ((classifier-item-impl item) form senv hist))
 
 (define (classify-forms forms senv hist)
   (smap (lambda (expr hist)

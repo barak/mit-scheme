@@ -122,23 +122,28 @@ USA.
     classifier-item?
   (impl classifier-item-impl))
 
+(define (classifier-item->runtime item)
+  (make-unmapped-macro-reference-trap item))
+
+(define (classifier-item->keyword item)
+  (close-syntax 'keyword (make-classifier-senv 'keyword item)))
+
 (define (classifier->runtime classifier)
-  (make-unmapped-macro-reference-trap (classifier-item classifier)))
+  (classifier-item->runtime (classifier-item classifier)))
 
 (define (classifier->keyword classifier)
-  (close-syntax 'keyword
-		(make-classifier-senv 'keyword
-				      (classifier-item classifier))))
+  (classifier-item->keyword (classifier-item classifier)))
 
 (define (spar-classifier->runtime promise)
-  (classifier->runtime (spar-classifier-promise-caller promise)))
+  (classifier-item->runtime (spar-classifier-item promise)))
 
 (define (spar-classifier->keyword promise)
-  (classifier->keyword (spar-classifier-promise-caller promise)))
+  (classifier-item->keyword (spar-classifier-item promise)))
 
-(define (spar-classifier-promise-caller promise)
-  (lambda (form senv hist)
-    (spar-call (force promise) form senv hist senv)))
+(define (spar-classifier-item promise)
+  (classifier-item
+   (lambda (form senv hist)
+     (spar-call (force promise) form senv hist senv))))
 
 (define (spar-transformer->runtime promise)
   (make-unmapped-macro-reference-trap

@@ -4840,6 +4840,7 @@ USA.
   (export (runtime library)
 	  syntax-library-forms)
   (export (runtime syntax)
+	  apply-classifier-item
 	  biselect-cadr
 	  biselect-car
 	  biselect-cddr
@@ -4862,6 +4863,7 @@ USA.
 	  hist-reduce
 	  hist-select
 	  initial-hist
+	  reclassify
 	  serror
 	  serror-ctx
 	  serror-ctx-form
@@ -4871,8 +4873,6 @@ USA.
 	  smap
 	  subform-select
 	  trace-reduce)
-  (export (runtime syntax low)
-	  reclassify)
   (export (runtime syntax parser)
 	  with-error-context))
 
@@ -4888,6 +4888,9 @@ USA.
   (export (runtime syntax)
 	  classifier->keyword
 	  classifier->runtime
+	  classifier-item
+	  classifier-item->keyword
+	  classifier-item->runtime
 	  classifier-item-impl
 	  classifier-item?
 	  er-macro-transformer->item
@@ -4895,6 +4898,7 @@ USA.
 	  sc-macro-transformer->item
 	  spar-classifier->keyword
 	  spar-classifier->runtime
+	  spar-classifier-item
 	  spar-macro-transformer->item
 	  top-level-senv
 	  transformer-item
@@ -5100,6 +5104,7 @@ USA.
 	  (access $access)
 	  (begin $begin)		;R7RS
 	  (declare $declare)
+	  (define $define)		;R7RS
 	  (define-syntax $define-syntax) ;R7RS
 	  (else $else)			;R7RS
 	  (er-macro-transformer $er-macro-transformer)
@@ -5120,7 +5125,6 @@ USA.
 	  (unquote-splicing $unquote-splicing) ;R7RS
 	  )
   (export (runtime mit-macros)
-	  keyword:define
 	  keyword:let-syntax
 	  keyword:unassigned
 	  keyword:unspecific))
@@ -5141,7 +5145,6 @@ USA.
 	  (cond-expand $cond-expand)	;R7RS
 	  (cons-stream $cons-stream)
 	  (cons-stream* $cons-stream*)
-	  (define $define)		;R7RS
 	  (define-integrable $define-integrable)
 	  (define-record-type $define-record-type)
 	  (define-values $define-values) ;R7RS
