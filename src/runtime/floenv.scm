@@ -55,58 +55,52 @@ USA.
 ;;; The routines on this page are hooks for the thread system.
 
 ;;; Save the floating-point environment and enter the default
-;;; environment for the thread timer interrupt handler.
+;;; environment for the thread scheduler.
 
-(define (enter-default-float-environment interrupted-thread)
-  (let ((fp-env
-	 (if interrupted-thread
-	     (let ((fp-env? (thread-float-environment interrupted-thread)))
+(define (save-float-environment thread)
+  (let ((fp-env?
+	 (if thread
+	     (let ((fp-env? (thread-float-environment thread)))
 	       ;; If the thread was just interrupted, it can't have a
 	       ;; saved environment -- only a marker indicating
 	       ;; whether it is in use or not.
 	       (assert (or (eqv? fp-env? #t) (eqv? fp-env? #f)))
+	       ;; If the thread is using the environment, save the
+	       ;; machine state in the thread structure.
 	       (if fp-env?
-		   (let ((fp-env ((ucode-primitive float-environment 0))))
-		     (set-thread-float-environment! interrupted-thread fp-env)
-		     fp-env)
-		   #f))
-	     ;; No idea what environment we're in.  Assume the worst.
-	     ((ucode-primitive float-environment 0)))))
-    (if fp-env
-	((ucode-primitive set-float-environment 1) default-environment))
-    fp-env))
+		   (set-thread-float-environment!
+		    thread
+		    ((ucode-primitive float-environment 0))))
+	       fp-env?)
+	     ;; No idea what environment we're in.  Assume it were as
+	     ;; if we were in a thread that's using one.
+	     #t)))
+    ;; If we don't know that we're in the default environment,
+    ;; explicitly transition to it.
+    (if fp-env?
+	((ucode-primitive set-float-environment 1) default-environment)))
+  unspecific)
 
-;;; Restore the environment saved by ENTER-DEFAULT-FLOAT-ENVIRONMENT
-;;; when resuming a thread from the thread timer interrupt handler
-;;; without switching.
+;;; Restore thread's floating-point environment in the machine state,
+;;; optionally given knowledge FP-ENV of the current machine state.
 
-(define (restore-float-environment-from-default fp-env)
-  (if fp-env
-      (enter-float-environment fp-env)))
+(define (restore-float-environment thread #!optional fp-env)
+  (let ((fp-env* (thread-float-environment thread)))
+    (set-thread-float-environment! thread (if fp-env* #t #f))
+    ;; If we don't know what the machine's floating-point environment
+    ;; is, or if we exited from or are now entering a non-default
+    ;; floating-point environment, set the machine's environment.
+    (if (or (default-object? fp-env)
+	    fp-env
+	    fp-env*)
+	((ucode-primitive set-float-environment 1)
+	 (or fp-env* default-environment)))))
 
-;;; Enter a floating-point environment for switching to a thread.
-;;;
-;;; XXX This does not currently take advantage of switching from the
-;;; default environment to the default environment by doing nothing.
+;;; Thread is exiting.  Restore the default environment if needed.
 
-(define (enter-float-environment fp-env)
-  (set-thread-float-environment! (current-thread) (if fp-env #t #f))
-  ((ucode-primitive set-float-environment 1) (or fp-env default-environment)))
-
-;;; Save a floating-point environment when a thread yields or is
-;;; preempted and must let another thread run.  FP-ENV is absent when
-;;; explicitly yielding with YIELD-CURRENT-THREAD, or is the result of
-;;; ENTER-DEFAULT-FLOAT-ENVIRONMENT from the thread timer interrupt
-;;; handler.
-
-(define (maybe-save-thread-float-environment! thread #!optional fp-env)
-  (if (eqv? #t (thread-float-environment thread))
-      (set-thread-float-environment!
-       thread
-       (if (or (default-object? fp-env)
-	       (eqv? #t fp-env))
-	   ((ucode-primitive float-environment 0))
-	   fp-env))))
+(define (discard-float-environment thread)
+  (if (thread-float-environment thread)
+      ((ucode-primitive set-float-environment 1) default-environment)))
 
 (define-integrable (using-floating-point-environment?)
   (thread-float-environment (current-thread)))

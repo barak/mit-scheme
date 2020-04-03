@@ -514,10 +514,9 @@ USA.
 	  flo:with-rounding-mode
 	  flo:with-trapped-exceptions)
   (export (runtime thread)
-	  enter-default-float-environment
-	  enter-float-environment
-	  maybe-save-thread-float-environment!
-	  restore-float-environment-from-default)
+	  discard-float-environment
+	  save-float-environment
+	  restore-float-environment)
   (initialization (initialize-package!)))
 
 (define-package (runtime integer-bits)

@@ -328,14 +328,13 @@ USA.
 	(set! last-running-thread #f)
 	(wait-for-io))))
 
-(define (run-thread thread)
+(define (run-thread thread #!optional fp-env)
   (assert (eq? thread first-running-thread))
-  (let ((continuation (thread/continuation thread))
-	(fp-env (thread/floating-point-environment thread)))
+  (restore-float-environment thread fp-env)
+  (let ((continuation (thread/continuation thread)))
     (set-thread/continuation! thread #f)
     (%within-continuation continuation #t
       (lambda ()
-	(enter-float-environment fp-env)
 	(record-start-times! thread)
 	(%resume-current-thread thread)))))
 
@@ -362,22 +361,23 @@ USA.
 	      (begin
 		(set-thread/block-events?! thread block-events?)
 		(%maybe-toggle-thread-timer))
-	      (call-with-current-continuation
-	       (lambda (continuation)
-		 (set-thread/continuation! thread continuation)
-		 (maybe-save-thread-float-environment! thread)
-		 (account-for-times thread (get-system-times))
-		 (thread-not-running thread 'waiting)))))))))
+	      (begin
+		(save-float-environment thread)
+		(call-with-current-continuation
+		  (lambda (continuation)
+		    (set-thread/continuation! thread continuation)
+		    (account-for-times thread (get-system-times))
+		    (thread-not-running thread 'waiting))))))))))
 
 (define (stop-current-thread)
   (without-interrupts
    (lambda ()
      (call-with-current-thread #f
        (lambda (thread)
+	 (save-float-environment thread)
 	 (call-with-current-continuation
 	  (lambda (continuation)
 	    (set-thread/continuation! thread continuation)
-	    (maybe-save-thread-float-environment! thread)
 	    (account-for-times thread (get-system-times))
 	    (thread-not-running thread 'stopped))))))))
 
@@ -403,11 +403,8 @@ USA.
   (set-thread/execution-state! (current-thread) 'running))
 
 (define (thread-timer-interrupt-handler)
-  ;; Preserve the floating-point environment here to guarantee that the
-  ;; thread timer won't raise or clear exceptions (particularly the
-  ;; inexact result exception) that the interrupted thread cares about.
-  (let* ((times (get-system-times))
-	 (fp-env (enter-default-float-environment first-running-thread)))
+  (save-float-environment first-running-thread)
+  (let ((times (get-system-times)))
     (set! next-scheduled-timeout #f)
     (set-interrupt-enables! interrupt-mask/gc-ok)
     (account-for-times first-running-thread times)
@@ -417,12 +414,12 @@ USA.
       (cond ((not thread)
 	     (%maybe-toggle-thread-timer))
 	    ((thread/continuation thread)
-	     (run-thread thread))
+	     (run-thread thread (flo:default-environment)))
 	    ((not (eq? 'running-without-preemption
 		       (thread/execution-state thread)))
-	     (yield-thread thread fp-env))
+	     (yield-thread thread))
 	    (else
-	     (restore-float-environment-from-default fp-env)
+	     (restore-float-environment thread (flo:default-environment))
 	     (record-start-times! thread)
 	     (%resume-current-thread thread))))))
 
@@ -459,6 +456,7 @@ USA.
    (lambda ()
      (call-with-current-thread #t
        (lambda (thread)
+	 (save-float-environment thread)
 	 (account-for-times thread (get-system-times))
 	 ;; Allow preemption now, since the current thread has
 	 ;; volunteered to yield control.
@@ -466,23 +464,21 @@ USA.
 	 (maybe-signal-io-thread-events)
 	 (yield-thread thread))))))
 
-(define (yield-thread thread #!optional fp-env)
+(define (yield-thread thread)
   (let ((next (thread/next thread)))
     (if (not next)
 	(begin
-	  (if (not (default-object? fp-env))
-	      (restore-float-environment-from-default fp-env))
+	  (restore-float-environment thread (flo:default-environment))
 	  (record-start-times! thread)
 	  (%resume-current-thread thread))
 	(call-with-current-continuation
 	 (lambda (continuation)
 	   (set-thread/continuation! thread continuation)
-	   (maybe-save-thread-float-environment! thread fp-env)
 	   (set-thread/next! thread #f)
 	   (set-thread/next! last-running-thread thread)
 	   (set! last-running-thread thread)
 	   (set! first-running-thread next)
-	   (run-thread next))))))
+	   (run-thread next (flo:default-environment)))))))
 
 (define (thread-float-environment thread)
   (thread/floating-point-environment thread))
@@ -496,6 +492,7 @@ USA.
     (set-thread/block-events?! thread #t)
     (ring/discard-all (thread/pending-events thread))
     (translate-to-state-point (thread/root-state-point thread))
+    (discard-float-environment thread)
     (%deregister-io-thread-events thread)
     (%discard-thread-timer-records thread)
     (%deregister-subprocess-events thread)
