@@ -23,7 +23,7 @@ This chapter describes the basic Scheme special forms.
 @node Lambda Expressions, Lexical Binding, Special Forms, Special Forms
 @section Lambda Expressions
 
-@deffn {special form} lambda formals expression expression @dots{}
+@deffn {extended standard special form} lambda formals expr expr @dots{}
 @cindex lambda expression (defn)
 @cindex procedure, construction
 @cindex procedure, closing environment (defn)
@@ -45,13 +45,12 @@ this process is referred to as the @dfn{invocation environment}.
 
 @cindex region of variable binding, lambda
 @cindex variable binding, lambda
-Once the invocation environment has been constructed, the
-@var{expression}s in the body of the @code{lambda} expression are
-evaluated sequentially in it.  This means that the region of the
-variables bound by the @code{lambda} expression is all of the
-@var{expression}s in the body.  The result of evaluating the last
-@var{expression} in the body is returned as the result of the procedure
-call.
+Once the invocation environment has been constructed, the @var{expr}s
+in the body of the @code{lambda} expression are evaluated sequentially
+in it.  This means that the region of the variables bound by the
+@code{lambda} expression is all of the @var{expr}s in the body.  The
+result of evaluating the last @var{expr} in the body is returned as
+the result of the procedure call.
 
 @cindex lambda list (defn)
 @cindex parameter list, of lambda (defn)
@@ -191,24 +190,29 @@ that means ``unnamed''.
 @cindex lexical binding expression
 @cindex binding expression, lexical
 @cindex block structure
-The three binding constructs @code{let}, @code{let*}, and @code{letrec},
-give Scheme block structure.  The syntax of the three constructs is
-identical, but they differ in the regions they establish for their
-variable bindings.  In a @code{let} expression, the initial values are
-computed before any of the variables become bound.  In a @code{let*}
-expression, the evaluations and bindings are sequentially interleaved.
-And in a @code{letrec} expression, all the bindings are in effect while
-the initial values are being computed (thus allowing mutually recursive
-definitions).
+The binding constructs @code{let}, @code{let*}, @code{letrec},
+@code{letrec*}, @code{let-values}, and @code{let*-values} give Scheme
+block structure, like Algol 60.  The syntax of the first four
+constructs is identical, but they differ in the regions they establish
+for their variable bindings.  In a @code{let} expression, the initial
+values are computed before any of the variables become bound; in a
+@code{let*} expression, the bindings and evaluations are performed
+sequentially; while in @code{letrec} and @code{letrec*} expressions,
+all the bindings are in effect while their initial values are being
+computed, thus allowing mutually recursive definitions.  The
+@code{let-values} and @code{let*-values} constructs are analogous to
+@code{let} and @code{let*} respectively, but are designed to handle
+multiple-valued expressions, binding different identifiers to the
+returned values.
 
-@deffn {special form} let ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@deffn {extended standard special form} let ((@var{variable} @var{init}) @dots{}) expr expr @dots{}
 @cindex region of variable binding, let
 @cindex variable binding, let
 The @var{init}s are evaluated in the current environment (in some
 unspecified order), the @var{variable}s are bound to fresh locations
-holding the results, the @var{expression}s are evaluated sequentially in
-the extended environment, and the value of the last @var{expression} is
-returned.  Each binding of a @var{variable} has the @var{expression}s as
+holding the results, the @var{expr}s are evaluated sequentially in
+the extended environment, and the value of the last @var{expr} is
+returned.  Each binding of a @var{variable} has the @var{expr}s as
 its region.
 
 MIT/GNU Scheme allows any of the @var{init}s to be omitted, in which
@@ -219,8 +223,8 @@ Note that the following are equivalent:
 
 @example
 @group
-(let ((@var{variable} @var{init}) @dots{}) @var{expression} @var{expression} @dots{})
-((lambda (@var{variable} @dots{}) @var{expression} @var{expression} @dots{}) @var{init} @dots{})
+(let ((@var{variable} @var{init}) @dots{}) @var{expr} @var{expr} @dots{})
+((lambda (@var{variable} @dots{}) @var{expr} @var{expr} @dots{}) @var{init} @dots{})
 @end group
 @end example
 
@@ -243,7 +247,7 @@ Some examples:
 @xref{Iteration}, for information on ``named @code{let}''.
 @end deffn
 
-@deffn {special form} let* ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@deffn {extended standard special form} let* ((@var{variable} @var{init}) @dots{}) expr expr @dots{}
 @cindex region of variable binding, let*
 @cindex variable binding, let*
 @code{let*} is similar to @code{let}, but the bindings are performed
@@ -260,8 +264,8 @@ Note that the following are equivalent:
        (@var{variable2} @var{init2})
        @dots{}
        (@var{variableN} @var{initN}))
-   @var{expression}
-   @var{expression} @dots{})
+   @var{expr}
+   @var{expr} @dots{})
 @end group
 
 @group
@@ -269,8 +273,8 @@ Note that the following are equivalent:
   (let ((@var{variable2} @var{init2}))
     @dots{}
       (let ((@var{variableN} @var{initN}))
-        @var{expression}
-        @var{expression} @dots{})
+        @var{expr}
+        @var{expr} @dots{})
     @dots{}))
 @end group
 @end example
@@ -287,15 +291,15 @@ An example:
 @end example
 @end deffn
 
-@deffn {special form} letrec ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@deffn {extended standard special form} letrec ((@var{variable} @var{init}) @dots{}) expr expr @dots{}
 @cindex region of variable binding, letrec
 @cindex variable binding, letrec
 The @var{variable}s are bound to fresh locations holding unassigned
 values, the @var{init}s are evaluated in the extended environment (in
 some unspecified order), each @var{variable} is assigned to the result
-of the corresponding @var{init}, the @var{expression}s are evaluated
+of the corresponding @var{init}, the @var{expr}s are evaluated
 sequentially in the extended environment, and the value of the last
-@var{expression} is returned.  Each binding of a @var{variable} has the
+@var{expr} is returned.  Each binding of a @var{variable} has the
 entire @code{letrec} expression as its region, making it possible to
 define mutually recursive procedures.
 
@@ -329,11 +333,96 @@ all the @var{init}s are @code{lambda} or @code{delay} expressions and
 the restriction is satisfied automatically.
 @end deffn
 
+@deffn {extended standard special form} letrec* ((@var{variable} @var{init}) @dots{}) expr expr @dots{}
+The @var{variable}s are bound to fresh locations, each @var{variable}
+is assigned in left-to-right order to the result of evaluating the
+corresponding @var{init} (interleaving evaluations and assignments),
+the @var{expr}s are evaluated in the resulting environment, and
+the values of the last @var{expr} are returned.  Despite the
+left-to-right evaluation and assignment order, each binding of a
+@var{variable} has the entire @code{letrec*} expression as its region,
+making it possible to define mutually recursive procedures.
+
+If it is not possible to evaluate each @var{init} without assigning or
+referring to the value of the corresponding @var{variable} or the
+@var{variable} of any of the bindings that follow it in
+@var{bindings}, it is an error.  Another restriction is that it is an
+error to invoke the continuation of an @var{init} more than once.
+
+@example
+@group
+;; Returns the arithmetic, geometric, and
+;; harmonic means of a nested list of numbers
+(define (means ton)
+  (letrec*
+     ((mean
+        (lambda (f g)
+          (f (/ (sum g ton) n))))
+      (sum
+        (lambda (g ton)
+          (if (null? ton)
+            (+)
+            (if (number? ton)
+                (g ton)
+                (+ (sum g (car ton))
+                   (sum g (cdr ton)))))))
+      (n (sum (lambda (x) 1) ton)))
+    (values (mean values values)
+            (mean exp log)
+            (mean / /))))
+@end group
+@end example
+Evaluating @code{(means '(3 (1 4)))} returns three values: @code{8/3},
+@code{2.28942848510666} (approximately), and @code{36/19}.
+@end deffn
+
+@deffn {standard special form} let-values ((@var{formals} @var{init}) @dots{}) expr expr @dots{}
+The @var{init}s are evaluated in the current environment (in some
+unspecified order) as if by invoking @code{call-with-values}, and the
+variables occurring in the @var{formals} are bound to fresh locations
+holding the values returned by the @var{init}s, where the
+@var{formals} are matched to the return values in the same way that
+the @var{formals} in a @code{lambda} expression are matched to the
+arguments in a procedure call.  Then, the @var{expr}s are
+evaluated in the extended environment, and the values of the last
+@var{expr} are returned.  Each binding of a @var{variable} has
+the @var{expr}s as its region.
+
+It is an error if the @var{formals} do not match the number of values
+returned by the corresponding @var{init}.
+
+@example
+@group
+(let-values (((root rem) (exact-integer-sqrt 32)))
+  (* root rem))         @result{}  35
+@end group
+@end example
+@end deffn
+
+@deffn {standard special form} let*-values ((@var{formals} @var{init}) @dots{}) expr expr @dots{}
+The @code{let*-values} construct is similar to @code{let-values}, but the
+@var{init}s are evaluated and bindings created sequentially from
+left to right, with the region of the bindings of each @var{formals}
+including the @var{init}s to its right as well as @var{body}.  Thus the
+second @var{init} is evaluated in an environment in which the first
+set of bindings is visible and initialized, and so on.
+
+@example
+@group
+(let ((a 'a) (b 'b) (x 'x) (y 'y))
+  (let*-values (((a b) (values x y))
+                ((x y) (values a b)))
+    (list a b x y)))    @result{}  (x y x y)
+@end group
+@end example
+@end deffn
+
+
 @node Dynamic Binding, Definitions, Lexical Binding, Special Forms
 @section Dynamic Binding
 
 @anchor{parameterize}
-@deffn {special form} parameterize ((@var{parameter} @var{value}) @dots{}) expression expression @dots{}
+@deffn {standard special form} parameterize ((@var{parameter} @var{value}) @dots{}) expr expr @dots{}
 Note that both @var{parameter} and @var{value} are expressions.
 It is an error if the value of any @var{parameter} expression is not a
 parameter object.
@@ -350,7 +439,7 @@ procedure specified when the @var{parameter} was created.
 Then the previous value of @var{parameter} is restored
 without passing it to the conversion procedure.
 The value of the parameterize expression is the value of the last
-body @var{expression}.
+body @var{expr}.
 
 The @code{parameterize} special form is standardized by @usrfi{39} and
 by @urseven{}.
@@ -510,8 +599,8 @@ any of the @var{variable}s are unbound.  However, because
 @section Definitions
 @cindex definition
 
-@deffn {special form} define variable [expression]
-@deffnx {special form} define @var{formals} expression expression @dots{}
+@deffn {extended standard special form} define variable [expression]
+@deffnx {standard special form} define @var{formals} expression expression @dots{}
 @cindex variable, adding to environment
 @cindex definition, top-level (defn)
 @cindex definition, internal (defn)
@@ -521,15 +610,19 @@ any of the @var{variable}s are unbound.  However, because
 @findex let
 @findex let*
 @findex letrec
-@findex fluid-let
-Definitions are valid in some but not all contexts where expressions are
-allowed.  Definitions may only occur at the top level of a program and
-at the beginning of a lambda body (that is, the body of a @code{lambda},
-@code{let}, @code{let*}, @code{letrec}, @code{fluid-let}, or ``procedure
-@code{define}'' expression).  A definition that occurs at the top level
-of a program is called a @dfn{top-level definition}, and a definition
-that occurs at the beginning of a body is called an @dfn{internal
-definition}.
+@findex letrec*
+@findex let-values
+@findex let*-values
+@findex parameterize
+Definitions are valid in some but not all contexts where expressions
+are allowed.  Definitions may only occur at the top level of a program
+and at the beginning of a lambda body (that is, the body of a
+@code{lambda}, @code{let}, @code{let*}, @code{letrec},
+@code{letrec*}, @code{let-values}, @code{let*-values},
+@code{parameterize}, or ``procedure @code{define}'' expression).  A
+definition that occurs at the top level of a program is called a
+@dfn{top-level definition}, and a definition that occurs at the
+beginning of a body is called an @dfn{internal definition}.
 
 @cindex lambda, implicit in define
 @cindex procedure define (defn)
@@ -610,19 +703,24 @@ bar                                     @error{} Unassigned variable
 @cindex definition, internal
 @cindex region of variable binding, internal definition
 @cindex variable binding, internal definition
+@findex define
 @findex lambda
 @findex let
 @findex let*
 @findex letrec
-@findex fluid-let
-@findex define
+@findex letrec*
+@findex let-values
+@findex let*-values
+@findex parameterize
 An @dfn{internal definition} is a definition that occurs at the
 beginning of a @var{body} (that is, the body of a @code{lambda},
-@code{let}, @code{let*}, @code{letrec}, @code{fluid-let}, or ``procedure
-@code{define}'' expression), rather than at the top level of a program.
-The variable defined by an internal definition is local to the
-@var{body}.  That is, @var{variable} is bound rather than assigned, and
-the region of the binding is the entire @var{body}.  For example,
+@code{let}, @code{let*}, @code{letrec}, @code{letrec*},
+@code{let-values}, @code{let*-values}, @code{parameterize}, or
+``procedure @code{define}'' expression), rather than at the top level
+of a program.  The variable defined by an internal definition is local
+to the @var{body}.  That is, @var{variable} is bound rather than
+assigned, and the region of the binding is the entire @var{body}.  For
+example,
 
 @example
 @group
@@ -635,15 +733,15 @@ the region of the binding is the entire @var{body}.  For example,
 
 @findex letrec
 A @var{body} containing internal definitions can always be converted
-into a completely equivalent @code{letrec} expression.  For example, the
+into a completely equivalent @code{letrec*} expression.  For example, the
 @code{let} expression in the above example is equivalent to
 
 @cindex letrec, implicit in define
 @example
 @group
 (let ((x 5))
-  (letrec ((foo (lambda (y) (bar x y)))
-           (bar (lambda (a b) (+ (* a b) a))))
+  (letrec* ((foo (lambda (y) (bar x y)))
+            (bar (lambda (a b) (+ (* a b) a))))
     (foo (+ x 3))))
 @end group
 @end example
@@ -653,7 +751,7 @@ into a completely equivalent @code{letrec} expression.  For example, the
 @section Assignments
 @cindex assignment
 
-@deffn {special form} set! variable [expression]
+@deffn {extended standard special form} set! variable [expression]
 @cindex variable, assigning values to
 @cindex unassigned variable, and assignment
 If @var{expression} is specified, evaluates @var{expression} and stores
@@ -701,7 +799,7 @@ y                                       @result{}  a
 This section describes the expressions that are used to modify or
 prevent the evaluation of objects.
 
-@deffn {special form} quote datum
+@deffn {standard special form} quote datum
 @cindex external representation, and quote
 @cindex literal, and quote
 @cindex constant, and quote
@@ -753,7 +851,7 @@ constants evaluate to themselves, so they don't need to be quoted.
 @end example
 @end deffn
 
-@deffn {special form} quasiquote template
+@deffn {standard special form} quasiquote template
 @cindex external representation, and quasiquote
 @cindex literal, and quasiquote
 @cindex constant, and quasiquote
@@ -860,7 +958,7 @@ value'' or ``is true'' when the conditional expressions treat it as
 true, and we say that an object has ``a false value'' or ``is false''
 when the conditional expressions treat it as false.
 
-@deffn {special form} if predicate consequent [alternative]
+@deffn {standard special form} if predicate consequent [alternative]
 @var{Predicate}, @var{consequent}, and @var{alternative} are
 expressions.  An @code{if} expression is evaluated as follows: first,
 @var{predicate} is evaluated.  If it yields a true value, then
@@ -884,7 +982,7 @@ of an @code{if} expression that has no @var{alternative}.
 @end example
 @end deffn
 
-@deffn {special form} cond clause clause @dots{}
+@deffn {standard special form} cond clause clause @dots{}
 @cindex cond clause
 @cindex clause, of cond expression
 Each @var{clause} has this form:
@@ -968,7 +1066,7 @@ of the @var{predicate}.
 @end example
 @end deffn
 
-@deffn {special form} case key clause clause @dots{}
+@deffn {standard special form} case key clause clause @dots{}
 @cindex case clause
 @cindex clause, of case expression
 @var{Key} may be any expression.  Each @var{clause} has this
@@ -1034,7 +1132,7 @@ For example,
 @end example
 @end deffn
 
-@deffn {special form} and expression @dots{}
+@deffn {standard special form} and expression @dots{}
 The @var{expression}s are evaluated from left to right, and the value of
 the first @var{expression} that evaluates to a false value is returned.
 Any remaining @var{expression}s are not evaluated.  If all the
@@ -1052,7 +1150,7 @@ Any remaining @var{expression}s are not evaluated.  If all the
 @end example
 @end deffn
 
-@deffn {special form} or expression @dots{}
+@deffn {standard special form} or expression @dots{}
 The @var{expression}s are evaluated from left to right, and the value of
 the first @var{expression} that evaluates to a true value is returned.
 Any remaining @var{expression}s are not evaluated.  If all
@@ -1077,7 +1175,7 @@ Any remaining @var{expression}s are not evaluated.  If all
 The @code{begin} special form is used to evaluate expressions in a
 particular order.
 
-@deffn {special form} begin expression expression @dots{}
+@deffn {standard special form} begin expression expression @dots{}
 The @var{expression}s are evaluated sequentially from left to right, and
 the value of the last @var{expression} is returned.  This expression
 type is used to sequence side effects such as input and output.
@@ -1106,28 +1204,30 @@ case
 cond
 define          @r{;``procedure @code{define}'' only}
 do
-fluid-let
 lambda
 let
 let*
 letrec
+letrec*
+let-values
+let*-values
 named-lambda
+parameterize
 @end group
 @end example
 @findex case
 @findex cond
 @findex define
 @findex do
-@findex fluid-let
 @findex lambda
 @findex let
 @findex let*
 @findex letrec
+@findex letrec*
+@findex let-values
+@findex let*-values
 @findex named-lambda
-
-@findex sequence
-The obsolete special form @code{sequence} is identical to @code{begin}.
-It should not be used in new code.
+@findex parameterize
 @end deffn
 
 @node Iteration, Structure Definitions, Sequencing, Special Forms
@@ -1143,17 +1243,17 @@ iteration expressions.  Because Scheme is properly tail-recursive, you
 don't need to use these special forms to express iteration; you can
 simply use appropriately written ``recursive'' procedure calls.
 
-@deffn {special form} let name ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@deffn {extended standard special form} let name ((@var{variable} @var{init}) @dots{}) expr expr @dots{}
 @cindex named let (defn)
 MIT/GNU Scheme permits a variant on the syntax of @code{let} called
 ``named @code{let}'' which provides a more general looping construct
 than @code{do}, and may also be used to express recursions.
 
 Named @code{let} has the same syntax and semantics as ordinary
-@code{let} except that @var{name} is bound within the @var{expression}s
+@code{let} except that @var{name} is bound within the @var{expr}s
 to a procedure whose formal arguments are the @var{variable}s and whose
-body is the @var{expression}s.  Thus the execution of the
-@var{expression}s may be repeated by invoking the procedure named by
+body is the @var{expr}s.  Thus the execution of the
+@var{expr}s may be repeated by invoking the procedure named by
 @var{name}.
 
 @cindex unassigned variable, and named let
@@ -1165,13 +1265,13 @@ Note: the following expressions are equivalent:
 @example
 @group
 (let @var{name} ((@var{variable} @var{init}) @dots{})
-  @var{expression}
-  @var{expression} @dots{})
+  @var{expr}
+  @var{expr} @dots{})
 
 ((letrec ((@var{name}
            (named-lambda (@var{name} @var{variable} @dots{})
-             @var{expression}
-             @var{expression} @dots{})))
+             @var{expr}
+             @var{expr} @dots{})))
    @var{name})
  @var{init} @dots{})
 @end group
@@ -1201,7 +1301,7 @@ Here is an example:
 @end example
 @end deffn
 
-@deffn {special form} do ((@var{variable} @var{init} @var{step}) @dots{}) (@var{test} @var{expression} @dots{}) command @dots{}
+@deffn {extended standard special form} do ((@var{variable} @var{init} @var{step}) @dots{}) (@var{test} @var{expression} @dots{}) command @dots{}
 @code{do} is an iteration construct.  It specifies a set of variables to
 be bound, how they are to be initialized at the start, and how they are
 to be updated on each iteration.  When a termination condition is met,
@@ -1794,7 +1894,7 @@ A syntactic keyword bound in the enclosing environment.  This is used
 to bind another name to an existing macro transformer.
 @end itemize
 
-@deffn {special form} let-syntax bindings expression expression @dots{}
+@deffn {standard special form} let-syntax bindings expression expression @dots{}
 @var{Bindings} should have the form
 
 @example
@@ -1832,7 +1932,7 @@ the specified transformers.  Each binding of a @var{keyword} has the
 @end example
 @end deffn
 
-@deffn {special form} letrec-syntax bindings expression expression @dots{}
+@deffn {standard special form} letrec-syntax bindings expression expression @dots{}
 The syntax of @code{letrec-syntax} is the same as for @code{let-syntax}.
 
 The @var{expression}s are expanded in the syntactic environment obtained
@@ -1867,7 +1967,7 @@ introduced by the @code{letrec-syntax} expression.
 @end example
 @end deffn
 
-@deffn {special form} let*-syntax bindings expression expression @dots{}
+@deffn {standard special form} let*-syntax bindings expression expression @dots{}
 The syntax of @code{let*-syntax} is the same as for @code{let-syntax}.
 
 The @var{expression}s are expanded in the syntactic environment obtained
@@ -1898,7 +1998,7 @@ is equivalent to
 @end example
 @end deffn
 
-@deffn {special form} define-syntax keyword transformer-spec
+@deffn {standard special form} define-syntax keyword transformer-spec
 @var{Keyword} is an identifier, and @var{transformer-spec} is a macro
 transformer expression.  The syntactic environment is extended by
 binding the @var{keyword} to the specified transformer.
@@ -1952,9 +2052,10 @@ and is portable to other conforming Scheme implementations.  To use the
 pattern language, specify a @var{transformer-spec} as a
 @code{syntax-rules} form:
 
-@deffn {special form} syntax-rules literals syntax-rule @dots{}
-@var{Literals} is a list of identifiers and each @var{syntax-rule}
-should be of the form
+@deffn {standard special form} syntax-rules [ellipsis] literals syntax-rule @dots{}
+@var{Ellipsis} is an identifier, and if omitted defaults to
+@code{...}.  @var{Literals} is a list of identifiers and each
+@var{syntax-rule} should be of the form
 
 @example
 (@var{pattern} @var{template})
@@ -2810,7 +2911,7 @@ practice rather than introducing new functionality.
 @code{cond-expand} special form conditionally expands according to the
 features available.
 
-@deffn {special form} cond-expand clause clause dots{}
+@deffn {standard special form} cond-expand clause clause dots{}
 Each @var{clause} has the form
 
 @example
@@ -3038,7 +3139,7 @@ Tools like @command{grep} and the GNU Emacs tag facility will see the
 defining occurrence of each identifier.
 @end itemize
 
-@deffn {special form} define-record-type type-name (constructor-name field-tag @dots{}) predicate-name field-spec @dots{}
+@deffn {extended standard special form} define-record-type type-name (constructor-name field-tag @dots{}) predicate-name field-spec @dots{}
 @var{Type-name}, @var{contructor-name}, @var{field-tag}, and
 @var{predicate-name} are identifiers.  @var{Field-spec} has one of these
 two forms:
