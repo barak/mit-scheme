@@ -301,8 +301,11 @@ USA.
 
 ;;;; Printing
 
+(define seq:print-methods
+  (boot-sequencer))
+
 (define (define-print-method predicate print-method)
-  (defer-boot-action 'print-methods
+  (seq:print-methods 'add-action!
     (lambda ()
       (define-print-method predicate print-method))))
 
@@ -352,8 +355,11 @@ USA.
 	  (if printer (printer object port))
 	  (write-char #\] port)))))
 
+(define seq:pp-describers
+  (boot-sequencer))
+
 (define (define-pp-describer predicate describer)
-  (defer-boot-action 'pp-describers
+  (seq:pp-describers 'add-action!
     (lambda ()
       (define-pp-describer predicate describer))))
 

@@ -380,7 +380,7 @@ USA.
      (lambda (object)
        (declare (ignore object))
        #f))
-   (run-deferred-boot-actions 'print-methods)))
+   (seq:print-methods 'trigger!)))
 
 (define dispatch-table)
 (add-boot-init!

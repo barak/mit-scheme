@@ -189,7 +189,7 @@ USA.
 	     (list predicate)
 	     describer)))
 
-   (run-deferred-boot-actions 'pp-describers)
+   (seq:pp-describers 'trigger!)
 
    (define-pp-describer weak-pair?
      (lambda (wp)

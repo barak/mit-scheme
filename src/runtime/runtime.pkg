@@ -66,7 +66,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime)
-  (files "version")
+  (files "boot-seq" "version")
   (parent ())
   (export ()
 	  write-mit-scheme-copyright
@@ -231,7 +231,10 @@ USA.
 	  %weak-car)
   (export (runtime predicate)
 	  set-predicate-tag!)
+  (export (runtime pretty-printer)
+	  seq:pp-describers)
   (export (runtime printer)
+	  seq:print-methods
 	  standard-print-method-name
 	  standard-print-method-parts
 	  standard-print-method?)

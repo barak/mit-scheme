@@ -357,6 +357,7 @@ USA.
 (let ((files0
        '(("gcdemn" . (runtime gc-daemons))
 	 ("gc" . (runtime garbage-collector))
+	 ("boot-seq" . (runtime))
 	 ("boot" . (runtime boot-definitions))
 	 ("queue" . (runtime simple-queue))
 	 ("equals" . (runtime equality))
