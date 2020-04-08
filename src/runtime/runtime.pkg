@@ -224,17 +224,12 @@ USA.
 	  %weak-set->list
 	  %weak-set-any
 	  %weak-set-for-each
-	  add-boot-init!
-	  defer-boot-action
-	  run-deferred-boot-actions)
+	  add-boot-init!)
   (export (runtime equality)
 	  %weak-car)
   (export (runtime predicate)
 	  set-predicate-tag!)
-  (export (runtime pretty-printer)
-	  seq:pp-describers)
   (export (runtime printer)
-	  seq:print-methods
 	  standard-print-method-name
 	  standard-print-method-parts
 	  standard-print-method?)
@@ -5195,8 +5190,8 @@ USA.
 	  define-guarantee)
   (export (runtime)
 	  define-deferred
-	  define-deferred-procedure
 	  define-primitives
+	  define-sequenced-procedure
 	  select-on-bytes-per-word
 	  ucode-primitive
 	  ucode-return-address

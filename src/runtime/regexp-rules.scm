@@ -291,4 +291,4 @@ USA.
       (else
        (error "Unsupported extra-args:" (rules-extra-args rules))))))
 
-(add-boot-init! (lambda () (run-deferred-boot-actions 'regexp-rules)))
+(add-boot-init! (lambda () (seq:regexp-rules 'trigger!)))

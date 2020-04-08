@@ -226,7 +226,7 @@ USA.
 (add-boot-init!
  (lambda ()
    (read-microcode-identification!)
-   (run-deferred-boot-actions 'fixed-objects)))
+   (seq:fixed-objects 'trigger!)))
 
 (define (microcode-identification-item name #!optional default-value)
   (let ((index (microcode-table-search identifications-slot name)))

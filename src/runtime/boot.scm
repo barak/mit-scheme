@@ -256,53 +256,18 @@ USA.
 	     (for-each (lambda (init) (init))
 		       inits))))))
 
-(define (defer-boot-action group-name thunk)
-  (if booting?
-      (let ((group (%get-boot-action-group group-name)))
-	(set-cdr! group
-		  (cons thunk
-			(cdr group))))
-      (thunk)))
-
-(define (run-deferred-boot-actions group-name)
-  (let ((group (%find-boot-action-group group-name)))
-    (if group
-	(begin
-	  (set! boot-action-groups (delq! group boot-action-groups))
-	  (for-each (lambda (thunk) (thunk))
-		    (reverse! (cdr group)))))))
-
-(define (%get-boot-action-group group-name)
-  (or (%find-boot-action-group group-name)
-      (let ((group (cons group-name '())))
-	(set! boot-action-groups (cons group boot-action-groups))
-	group)))
-
-(define (%find-boot-action-group group-name)
-  (let loop ((groups boot-action-groups))
-    (and (pair? groups)
-	 (if (eq? group-name (caar groups))
-	     (car groups)
-	     (loop (cdr groups))))))
-
 (define (finished-booting!)
   (set! booting? #f)
   (if (pair? boot-inits)
       (warn "boot-inits not saved:" boot-inits))
   (if (pair? saved-boot-inits)
-      (warn "saved-boot-inits not run:" saved-boot-inits))
-  (if (pair? boot-action-groups)
-      (warn "boot-action-groups not run:" boot-action-groups)))
+      (warn "saved-boot-inits not run:" saved-boot-inits)))
 
 (define booting? #t)
 (define boot-inits #f)
 (define saved-boot-inits '())
-(define boot-action-groups '())
 
 ;;;; Printing
-
-(define seq:print-methods
-  (boot-sequencer))
 
 (define (define-print-method predicate print-method)
   (seq:print-methods 'add-action!
@@ -355,9 +320,6 @@ USA.
 	  (if printer (printer object port))
 	  (write-char #\] port)))))
 
-(define seq:pp-describers
-  (boot-sequencer))
-
 (define (define-pp-describer predicate describer)
   (seq:pp-describers 'add-action!
     (lambda ()
@@ -385,7 +347,7 @@ USA.
 	      #f)))
   (set! register-predicate!
 	(lambda (predicate name . keylist)
-	  (defer-boot-action 'predicate-registrations
+	  (seq:predicate-relations 'add-action!
 	    (lambda ()
 	      (apply register-predicate! predicate name keylist)))
 	  (set! predicates (cons predicate predicates))
@@ -396,18 +358,18 @@ USA.
   (set! set-predicate-tag!
 	(lambda (predicate tag)
 	  (set! associations (cons (cons predicate tag) associations))
-	  (defer-boot-action 'set-predicate-tag!
+	  (seq:set-predicate-tag! 'add-action!
 	    (lambda ()
 	      (set-predicate-tag! predicate tag)))))
   unspecific)
 
 (define (set-dispatch-tag<=! t1 t2)
-  (defer-boot-action 'predicate-relations
+  (seq:predicate-relations 'add-action!
     (lambda ()
       (set-dispatch-tag<=! t1 t2))))
 
 (define (set-predicate<=! p1 p2)
-  (defer-boot-action 'predicate-relations
+  (seq:predicate-relations 'add-action!
     (lambda ()
       (set-predicate<=! p1 p2))))
 
@@ -524,7 +486,7 @@ USA.
 (define (multi-values-list mv)
   (cdr mv))
 
-(defer-boot-action 'make-record-type
+(seq:make-record-type 'add-action!
   (lambda ()
     (set! <multi-values> (make-record-type '<multi-values> '(list)))
     (set! make-multi-values (record-constructor <multi-values>))

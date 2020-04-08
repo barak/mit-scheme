@@ -174,4 +174,4 @@ USA.
 			     (lambda ()
 			       (make-compound-tag datum-test operator tags))))))
 
-   (run-deferred-boot-actions 'compound-predicates)))
+   (seq:compound-predicates 'trigger!)))

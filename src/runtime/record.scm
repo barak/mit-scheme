@@ -100,7 +100,7 @@ USA.
 	  (list (list 'parent-type record-type? (lambda () #f))
 		(list 'applicator procedure? (lambda () #f))
 		(list 'instance-marker %record-type-proxy? (lambda () #f)))))
-   (run-deferred-boot-actions 'make-record-type)))
+   (seq:make-record-type 'trigger!)))
 
 (define (->type-name object caller)
   (cond ((string? object) (string->symbol object))
@@ -272,7 +272,7 @@ USA.
 (define-integrable (%record-type-applicator record-type)
   (%dispatch-tag-extra-ref record-type 5))
 
-(defer-boot-action 'fixed-objects
+(seq:fixed-objects 'add-action!
   (lambda ()
     (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
     (set-fixed-objects-item! 'record-applicator-index
@@ -382,7 +382,7 @@ USA.
   (vector-set! %proxied-record-types (%record-type-proxy->index proxy) type))
 
 (define %proxied-record-types)
-(defer-boot-action 'fixed-objects
+(seq:fixed-objects 'add-action!
   (lambda ()
     (set! %proxied-record-types (fixed-objects-item 'proxied-record-types))
     unspecific))

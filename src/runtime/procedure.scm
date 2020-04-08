@@ -476,7 +476,7 @@ USA.
 (define-integrable arity-dispatcher-tag
   '|#[(microcode)arity-dispatcher-tag]|)
 
-(defer-boot-action 'fixed-objects
+(seq:fixed-objects 'add-action!
   (lambda ()
     (set-fixed-objects-item! 'arity-dispatcher-tag arity-dispatcher-tag)))
 

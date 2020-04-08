@@ -121,7 +121,7 @@ USA.
 	     (if (not tag)
 		 (error:not-a predicate? predicate))
 	     tag)))
-   (run-deferred-boot-actions 'set-predicate-tag!)
+   (seq:set-predicate-tag! 'trigger!)
    (set! register-predicate!
 	 (let ((make-simple-tag
 		(dispatch-metatag-constructor
@@ -281,5 +281,4 @@ USA.
    (register-predicate! weak-list? 'weak-list)
    (register-predicate! weak-pair? 'weak-pair)
 
-   (run-deferred-boot-actions 'predicate-registrations)
-   (run-deferred-boot-actions 'predicate-relations)))
+   (seq:predicate-relations 'trigger!)))

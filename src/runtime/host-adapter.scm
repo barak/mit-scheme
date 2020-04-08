@@ -51,26 +51,26 @@ USA.
 			#!default))
 
 (let ((env (->environment '(runtime))))
-  (if (not (environment-bound? env 'define-deferred-procedure))
-      (eval '(define-syntax define-deferred-procedure
+  (if (not (environment-bound? env 'define-sequenced-procedure))
+      (eval '(define-syntax define-sequenced-procedure
 	       (er-macro-transformer
 		(lambda (form rename compare)
 		  (declare (ignore compare))
 		  (syntax-check '(_ identifier expression expression) form)
 		  (let ((name (cadr form))
-			(dependency (caddr form))
+			(seq (caddr form))
 			(expr (cadddr form))
 			(args (new-identifier 'args)))
 		    `(,(rename 'begin)
 		      (,(rename 'define) ,name
 		       (,(rename 'lambda) ,args
-			(,(rename 'defer-boot-action) ,dependency
-			 (,(rename 'lambda) ()
-			  (,(rename 'apply) ,name ,args)))))
-		      (,(rename 'defer-boot-action) ,dependency
-		       (,(rename 'lambda) ()
-			(,(rename 'set!) ,name ,expr)
-			,(rename 'unspecific))))))))
+			(,seq 'add-action!
+			      (,(rename 'lambda) ()
+			       (,(rename 'apply) ,name ,args)))))
+		      (,seq 'add-action!
+			    (,(rename 'lambda) ()
+			     (,(rename 'set!) ,name ,expr)
+			     ,(rename 'unspecific))))))))
 	    env)))
 
 (let ((env (->environment '(scode-optimizer expansion))))

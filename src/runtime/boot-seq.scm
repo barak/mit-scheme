@@ -102,3 +102,15 @@ USA.
 	(else (error "Unknown operator:" operator))))
 
     this))
+
+;;; Define these early so that load order doesn't matter.
+
+(define seq:compound-predicates (boot-sequencer))
+(define seq:fixed-objects (boot-sequencer))
+(define seq:make-record-type (boot-sequencer))
+(define seq:pp-describers (boot-sequencer))
+(define seq:predicate-relations (boot-sequencer))
+(define seq:print-methods (boot-sequencer))
+(define seq:regexp-rules (boot-sequencer))
+(define seq:set-predicate-tag! (boot-sequencer))
+(define seq:ucd (boot-sequencer))

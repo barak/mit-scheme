@@ -46,7 +46,7 @@ USA.
   (and (predicate? object)
        (predicate<= object bundle?)))
 
-(defer-boot-action 'predicate-relations
+(seq:predicate-relations 'add-action!
   (lambda ()
     (register-predicate! bundle-predicate? 'bundle-predicate '<= predicate?)))
 
@@ -61,7 +61,7 @@ USA.
 (define %bundle-predicate->record-type
   %predicate->record-type)
 
-(defer-boot-action 'predicate-relations
+(seq:predicate-relations 'add-action!
   (lambda ()
     (set! %bundle-predicate->record-type
 	  (named-lambda (%bundle-predicate->record-type predicate)
