@@ -175,9 +175,9 @@ USA.
 	   (and package
 		(let ((env (package/environment package)))
 		  (if (not procedure-name)
-		      (if (lexical-unreferenceable? env 'initialize-package!)
-			  ((access get-boot-init-runner boot-defs) env)
-			  (lexical-reference env 'initialize-package!))
+		      (let ((seq (package->sequencer package)))
+			(and (seq 'has-actions?)
+			     (lambda () (seq 'trigger!))))
 		      (and (not (lexical-unreferenceable? env procedure-name))
 			   (lexical-reference env procedure-name))))))
 	 => (lambda (procedure)
@@ -322,12 +322,14 @@ USA.
 	 (link-variables system-global-environment name
 			 environment-for-package name))))
   (export '*allow-package-redefinition?*)
+  (export 'all-packages)
   (export 'construct-packages-from-file)
   (export 'environment->package)
   (export 'find-package)
   (export 'load-package-set)
   (export 'load-packages-from-file)
   (export 'name->package)
+  (export 'package-name=?)
   (export 'package-set-pathname)
   (export 'package/add-child!)
   (export 'package/children)
@@ -353,7 +355,7 @@ USA.
  packages-file)
 
 ;;; Global databases.  Load, then initialize.
-(define boot-defs)
+(define package->sequencer)
 (let ((files0
        '(("gcdemn" . (runtime gc-daemons))
 	 ("gc" . (runtime garbage-collector))
@@ -385,26 +387,45 @@ USA.
 	 ("events" . (runtime event-distributor))
 	 ("gdatab" . (runtime global-database))
 	 ("gcfinal" . (runtime gc-finalizer))))
-      (load-files
-       (lambda (files)
-	 (do ((files files (cdr files)))
-	     ((null? files))
-	   (eval (file->object (car (car files)) #t #t)
-		 (package-reference (cdr (car files)))))))
-      (load-files-with-boot-inits
-       (lambda (files)
-	 (do ((files files (cdr files)))
-	     ((null? files))
-	   ((access init-boot-inits! boot-defs))
-	   (let ((environment (package-reference (cdr (car files)))))
-	     (eval (file->object (car (car files)) #t #t)
-		   environment)
-	     ((access save-boot-inits! boot-defs) environment))))))
+      (runtime-env (package-reference '(runtime))))
+
+  (define (load-files files)
+    (do ((files files (cdr files)))
+	((null? files))
+      (eval (file->object (car (car files)) #t #t)
+	    (package-reference (cdr (car files))))))
 
   (load-files files0)
 
-  (set! boot-defs
-	(package/environment (name->package '(runtime boot-definitions))))
+  (set! package->sequencer
+	(lexical-reference runtime-env 'package->sequencer))
+
+  (define (link-default-initializer! package)
+    (let ((env (package/environment package))
+	  (name 'initialize-package!))
+      (if (not (lexical-unreferenceable? env name))
+	  ((package->sequencer package)
+	   'add-action!
+	   (lexical-reference env name)))))
+
+  (link-default-initializer! (find-package '(runtime gc-daemons)))
+  (link-default-initializer! (find-package '(runtime garbage-collector)))
+
+  (define with-current-package
+    (lexical-reference runtime-env 'with-current-package))
+
+  (define (load-files-with-boot-inits files)
+    (do ((files files (cdr files)))
+	((null? files))
+      (load-file-with-boot-inits (car (car files))
+				 (find-package (cdr (car files))))))
+
+  (define (load-file-with-boot-inits file-name package)
+    (let ((file-object (file->object file-name #t #t)))
+      (with-current-package package
+	(lambda ()
+	  (eval file-object (package/environment package))))
+      (link-default-initializer! package)))
 
   (load-files-with-boot-inits files1)
   (package-initialize '(runtime gc-daemons) #f #t)
@@ -434,17 +455,13 @@ USA.
 	      (and (pair? files)
 		   (or (string=? (car (car files)) filename)
 		       (loop (cdr files))))))))
-     (lambda (filename environment)
+     (lambda (filename package)
        (if (not (or (string=? filename "make")
 		    (string=? filename "packag")
 		    (file-member? filename files0)
 		    (file-member? filename files1)
 		    (file-member? filename files2)))
-	   (begin
-	     ((access init-boot-inits! boot-defs))
-	     (eval (file->object filename #t #t)
-		   environment)
-	     ((access save-boot-inits! boot-defs) environment)))
+	   (load-file-with-boot-inits filename package))
        unspecific))))
 
 ;;; Funny stuff is done.  Rest of sequence is standardized.

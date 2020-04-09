@@ -96,6 +96,7 @@ USA.
 	((add-action!) (apply add-action! args))
 	((trigger!) (apply trigger! args))
 	((triggered?) triggered?)
+	((has-actions?) (pair? actions-head))
 	;; Private:
 	((%add-after!) (apply add-after! args))
 	((%remove-before!) (apply remove-before! args))
@@ -114,3 +115,40 @@ USA.
 (define seq:regexp-rules (boot-sequencer))
 (define seq:set-predicate-tag! (boot-sequencer))
 (define seq:ucd (boot-sequencer))
+
+(define (add-boot-init! thunk)
+  ((current-package-sequencer) 'add-action! thunk))
+
+(define (current-package-sequencer)
+  (package->sequencer (current-package)))
+
+(define with-current-package)
+(define current-package)
+(let ((*package* #f))
+  (set! with-current-package
+	(lambda (package thunk)
+	  (set! *package* package)
+	  (let ((value (thunk)))
+	    (set! *package* #f)
+	    value)))
+  (set! current-package
+	(lambda ()
+	  (if (not *package*)
+	      (error "Package only available during cold load."))
+	  *package*)))
+
+(define (package-name->sequencer package-name)
+  (package->sequencer (find-package package-name)))
+
+(define package->sequencer
+  (let ((alist '()))
+    (lambda (package)
+      (let loop ((scan alist))
+	(if (pair? scan)
+	    (let ((p (car scan)))
+	      (if (eq? package (car p))
+		  (cdr p)
+		  (loop (cdr scan))))
+	    (let ((seq (boot-sequencer)))
+	      (set! alist (cons (cons package seq) alist))
+	      seq))))))

@@ -790,7 +790,7 @@ USA.
 (define binhex40:digit->char-table
   "!\"#$%&\'()*+,-012345689@ABCDEFGHIJKLMNPQRSTUVXYZ[`abcdefhijklmpqr")
 
-(define-deferred binhex40:char->digit-table
+(define binhex40:char->digit-table
   (let ((table (make-bytevector #x80 #xFF)))
     (do ((digit 0 (fix:+ digit 1)))
 	((not (fix:< digit #x40)))

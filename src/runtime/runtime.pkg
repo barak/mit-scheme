@@ -37,23 +37,23 @@ USA.
   ;; All these exports must match those in "make.scm".
   (export ()
 	  *allow-package-redefinition?*
+	  all-packages
 	  construct-packages-from-file
 	  environment->package
 	  find-package
 	  load-package-set
 	  load-packages-from-file
 	  name->package
+	  package-name=?
 	  package-set-pathname
 	  package/add-child!
-	  package/create
 	  package/children
 	  package/cross-compiling?
 	  package/environment
 	  package/name
 	  package/parent
 	  package/reference
-	  package?
-	  all-packages)
+	  package?)
   (export (runtime library standard)
 	  link-description/outer-name
 	  link-description/package
@@ -223,8 +223,7 @@ USA.
 	  %remove-from-weak-set
 	  %weak-set->list
 	  %weak-set-any
-	  %weak-set-for-each
-	  add-boot-init!)
+	  %weak-set-for-each)
   (export (runtime equality)
 	  %weak-car)
   (export (runtime predicate)
@@ -234,7 +233,6 @@ USA.
 	  standard-print-method-parts
 	  standard-print-method?)
   (export (runtime rep)
-	  finished-booting!
 	  multi-values-list
 	  multi-values?)
   (export (runtime tagged-dispatch)

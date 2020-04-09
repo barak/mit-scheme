@@ -222,51 +222,6 @@ USA.
 (define (with-limited-interrupts limit-mask procedure)
   ((ucode-primitive with-interrupts-reduced) limit-mask procedure))
 
-;;;; Boot-time initializers
-
-(define (init-boot-inits!)
-  (set! boot-inits '())
-  unspecific)
-
-(define (add-boot-init! thunk)
-  (if (and booting? boot-inits)
-      (set! boot-inits (cons thunk boot-inits))
-      (thunk))
-  unspecific)
-
-(define (save-boot-inits! environment)
-  (if (pair? boot-inits)
-      (let ((inits (reverse! boot-inits)))
-	(set! boot-inits #f)
-	(let ((p (assq environment saved-boot-inits)))
-	  (if p
-	      (set-cdr! p (append! (cdr p) inits))
-	      (begin
-		(set! saved-boot-inits
-		      (cons (cons environment inits)
-			    saved-boot-inits))
-		unspecific))))))
-
-(define (get-boot-init-runner environment)
-  (let ((p (assq environment saved-boot-inits)))
-    (and p
-	 (let ((inits (cdr p)))
-	   (set! saved-boot-inits (delq! p saved-boot-inits))
-	   (lambda ()
-	     (for-each (lambda (init) (init))
-		       inits))))))
-
-(define (finished-booting!)
-  (set! booting? #f)
-  (if (pair? boot-inits)
-      (warn "boot-inits not saved:" boot-inits))
-  (if (pair? saved-boot-inits)
-      (warn "saved-boot-inits not run:" saved-boot-inits)))
-
-(define booting? #t)
-(define boot-inits #f)
-(define saved-boot-inits '())
-
 ;;;; Printing
 
 (define (define-print-method predicate print-method)

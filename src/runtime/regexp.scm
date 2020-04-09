@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define-deferred registers (make-vector 20 #f))
+(define registers (make-vector 20 #f))
 
 (define (re-register? object)
   (and (index-fixnum? object)
