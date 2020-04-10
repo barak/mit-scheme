@@ -59,7 +59,6 @@ USA.
 (define-primitives
   (clear-interrupts! 1)
   (tty-next-interrupt-char 0)
-  set-fixed-objects-vector!
   (process-timer-clear 0)
   (real-timer-clear 0))
 
@@ -270,6 +269,4 @@ USA.
 
 	(vector-set! fov index:interrupt-mask-vector interrupt-mask-vector)
 
-	(vector-set! fov index:termination-vector termination-vector)
-
-	(set-fixed-objects-vector! fov)))))
+	(vector-set! fov index:termination-vector termination-vector)))))

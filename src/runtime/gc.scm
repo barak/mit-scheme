@@ -44,8 +44,7 @@ USA.
     (let ((interrupt-vector (vector-ref fixed-objects 1)))
       (vector-set! interrupt-vector 0 condition-handler/stack-overflow)
       (vector-set! interrupt-vector 2 condition-handler/gc))
-    (vector-set! fixed-objects #x0C condition-handler/hardware-trap)
-    ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
+    (vector-set! fixed-objects #x0C condition-handler/hardware-trap)))
 
 (define (condition-handler/gc interrupt-code interrupt-enables)
   interrupt-code interrupt-enables

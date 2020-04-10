@@ -44,9 +44,9 @@ USA.
   (set! add-secondary-gc-daemon! (make-adder secondary-gc-daemons))
   (set! add-secondary-gc-daemon!/unsafe
 	(make-adder/unsafe secondary-gc-daemons))
-  (let ((fixed-objects ((ucode-primitive get-fixed-objects-vector))))
-    (vector-set! fixed-objects #x0B trigger-primitive-gc-daemons!)
-    ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
+  (vector-set! ((ucode-primitive get-fixed-objects-vector))
+	       #x0B
+	       trigger-primitive-gc-daemons!))
 
 ;;; PRIMITIVE-GC-DAEMONS are executed during the GC.  They must not
 ;;; allocate any storage and they must be prepared to run at times

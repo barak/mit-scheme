@@ -101,9 +101,6 @@ USA.
 (define-integrable lexical-unreferenceable?
   (ucode-primitive lexical-unreferenceable?))
 
-(define-integrable set-fixed-objects-vector!
-  (ucode-primitive set-fixed-objects-vector!))
-
 (define-integrable set-interrupt-enables!
   (ucode-primitive set-interrupt-enables!))
 
@@ -150,8 +147,7 @@ USA.
   (let ((interrupt-vector (vector-ref fixed-objects 1)))
     (vector-set! interrupt-vector 0 condition-handler/stack-overflow)
     (vector-set! interrupt-vector 2 condition-handler/gc))
-  (vector-set! fixed-objects #x0C condition-handler/hardware-trap)
-  (set-fixed-objects-vector! fixed-objects))
+  (vector-set! fixed-objects #x0C condition-handler/hardware-trap))
 
 (set-interrupt-enables! #x0005)
 
