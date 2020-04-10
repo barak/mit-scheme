@@ -396,6 +396,7 @@ print_compiled_entry (outf_channel stream, SCHEME_OBJECT entry)
   bool closure_p = false;
   cc_entry_type_t cet;
   const char * type_string;
+  SCHEME_OBJECT original_entry;
   SCHEME_OBJECT filename;
 
   if (read_cc_entry_type ((&cet), (CC_ENTRY_ADDRESS (entry))))
@@ -408,6 +409,7 @@ print_compiled_entry (outf_channel stream, SCHEME_OBJECT entry)
 	if (cc_entry_closure_p (entry))
 	  {
 	    type_string = "compiled-closure";
+            original_entry = entry;
 	    entry = (cc_closure_to_entry (entry));
 	    closure_p = true;
 	  }
@@ -446,7 +448,7 @@ print_compiled_entry (outf_channel stream, SCHEME_OBJECT entry)
 	(cc_entry_to_block_offset (entry)),
 	(OBJECT_DATUM (entry)));
   if (closure_p)
-    outf (stream, " address: %#lx", (OBJECT_DATUM (entry)));
+    outf (stream, " address: %#lx", (OBJECT_DATUM (original_entry)));
 
   filename = (compiled_entry_debug_filename (entry));
   if (STRING_P (filename))
