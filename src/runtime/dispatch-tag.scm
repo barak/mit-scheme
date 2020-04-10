@@ -99,6 +99,9 @@ USA.
   ;; primary cache locations from multiple tags.
   4)
 
+((current-package-sequencer)
+ 'add-before!
+ (package-name->sequencer '(runtime random-number)))
 (define-deferred get-tag-cache-number
   (let ((modulus
 	 (int:quotient

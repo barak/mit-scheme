@@ -427,7 +427,8 @@ USA.
   (package-initialize '(runtime gc-daemons) #f #t)
   (package-initialize '(runtime garbage-collector) #f #t)
   (package-initialize '(runtime random-number) #f #t)
-  (package-initialize '(runtime tagged-dispatch) #f #t)
+  ;; Handled via dependency:
+  ;;(package-initialize '(runtime tagged-dispatch) #f #t)
   (package-initialize '(runtime population) #f #t)
   (package-initialize '(runtime record) #f #t)
 
