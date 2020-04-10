@@ -187,7 +187,6 @@ USA.
     (fxremainder fixnum-remainder 2)
     (fxzero? zero-fixnum? 1)
     (general-car-cdr general-car-cdr)
-    (get-fixed-objects-vector get-fixed-objects-vector)
     (get-interrupt-enables get-interrupt-enables)
     (hunk3-cons hunk3-cons)
     (index-fixnum? index-fixnum?)

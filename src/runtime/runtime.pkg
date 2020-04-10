@@ -623,7 +623,6 @@ USA.
 	  false-procedure
 	  fasdump
 	  for-each-interned-symbol
-	  get-fixed-objects-vector
 	  get-interrupt-enables
 	  hook-in-list?
 	  hook-list?
@@ -711,6 +710,7 @@ USA.
 	  with-interrupt-mask
 	  write-to-string)
   (export (runtime)
+	  get-fixed-objects-vector
 	  strip-angle-brackets)
   (import (runtime thread)
 	  with-obarray-lock))
