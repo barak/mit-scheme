@@ -107,12 +107,14 @@ USA.
 ;;; Define these early so that load order doesn't matter.
 
 (define seq:after-compound-predicate (boot-sequencer))
+(define seq:after-files-loaded (boot-sequencer))
 (define seq:after-microcode-tables (boot-sequencer))
 (define seq:after-pretty-printer (boot-sequencer))
 (define seq:after-printer (boot-sequencer))
 (define seq:after-predicate (boot-sequencer))
 (define seq:after-record (boot-sequencer))
 (define seq:after-regexp-rules (boot-sequencer))
+(define seq:after-thread-low (boot-sequencer))
 (define seq:after-syntax-items (boot-sequencer))
 (define seq:after-ucd-glue (boot-sequencer))
 (define seq:set-predicate-tag! (boot-sequencer))

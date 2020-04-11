@@ -136,7 +136,8 @@ USA.
     (set-thread/root-state-point! first
 				  (current-state-point state-space:local))
     (add-to-population!/unsafe thread-population first)
-    (%thread-running first)))
+    (%thread-running first))
+  (seq:after-thread-low 'trigger!))
 
 (define (initialize-high!)
   ;; Called later in the cold load, when more of the runtime is initialized.

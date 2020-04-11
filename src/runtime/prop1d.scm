@@ -29,15 +29,12 @@ USA.
 
 (declare (usual-integrations))
 
-(define-deferred population-of-1d-tables
+(define population-of-1d-tables
   (make-serial-population/unsafe))
-
-(add-boot-init!
- (lambda ()
-   (add-secondary-gc-daemon!/unsafe clean-1d-tables!)))
 
 (define (clean-1d-tables!)
   (for-each-inhabitant population-of-1d-tables 1d-table/clean!))
+(add-secondary-gc-daemon!/unsafe clean-1d-tables!)
 
 (define (make-1d-table)
   (let ((table (list 1d-table-tag)))

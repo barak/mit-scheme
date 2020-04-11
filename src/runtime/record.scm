@@ -100,6 +100,7 @@ USA.
 	  (list (list 'parent-type record-type? (lambda () #f))
 		(list 'applicator procedure? (lambda () #f))
 		(list 'instance-marker %record-type-proxy? (lambda () #f)))))))
+(add-boot-deps! '(runtime tagged-dispatch))
 
 (define (->type-name object caller)
   (cond ((string? object) (string->symbol object))
@@ -817,6 +818,18 @@ USA.
 	     `(,field-name ,(vector-ref vector index)))
 	   (vector->list (structure-type/field-names type))
 	   (vector->list (structure-type/field-indexes type))))))
+
+(define named-structure-descriptions)
+(seq:after-thread-low 'add-action!
+  (lambda ()
+    (set! named-structure-descriptions (make-1d-table))
+    unspecific))
+
+(define (named-structure/get-tag-description tag)
+  (1d-table/get named-structure-descriptions tag #f))
+
+(define (named-structure/set-tag-description! tag description)
+  (1d-table/put! named-structure-descriptions tag description))
 
 (define (define-structure/default-value-by-index type field-name-index)
   ((structure-type/default-init-by-index type field-name-index)))

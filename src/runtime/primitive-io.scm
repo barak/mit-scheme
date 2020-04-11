@@ -29,25 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define open-channels)
-(define open-directories)
-
-(define (initialize-package!)
-  (set! open-channels
-	(make-gc-finalizer (ucode-primitive channel-close 1)
-			   channel?
-			   channel-descriptor
-			   set-channel-descriptor!))
-  (set! open-directories
-	(make-gc-finalizer (ucode-primitive new-directory-close 1)
-			   directory-channel?
-			   directory-channel/descriptor
-			   set-directory-channel/descriptor!))
-  (initialize-select-registry!)
-  (reset-dld-handles!)
-  (add-event-receiver! event:after-restore reset-dld-handles!)
-  unspecific)
-
 (define-structure (channel (constructor %make-channel))
   ;; This structure serves two purposes.  First, because a descriptor
   ;; is a non-pointer, it is necessary to store it in an allocated
@@ -56,6 +37,12 @@ USA.
   descriptor
   (type #f read-only #t)
   port)
+
+(define open-channels
+  (make-gc-finalizer (ucode-primitive channel-close 1)
+		     channel?
+		     channel-descriptor
+		     set-channel-descriptor!))
 
 (define-guarantee channel "I/O channel")
 
@@ -450,6 +437,12 @@ USA.
 (define-structure (directory-channel (conc-name directory-channel/))
   descriptor)
 
+(define open-directories
+  (make-gc-finalizer (ucode-primitive new-directory-close 1)
+		     directory-channel?
+		     directory-channel/descriptor
+		     set-directory-channel/descriptor!))
+
 (define-guarantee directory-channel "directory channel")
 
 (define (directory-channel-open name)
@@ -477,31 +470,29 @@ USA.
 ;;;; Select registry
 
 (define have-select?)
-(define select-registry-finalizer)
-(define select-registry-result-vectors)
-
-(define (initialize-select-registry!)
+(define (reset-have-select)
   (set! have-select? ((ucode-primitive have-select? 0)))
-  (set! select-registry-finalizer
-	(make-gc-finalizer (ucode-primitive deallocate-select-registry 1)
-			   select-registry?
-			   select-registry-handle
-			   set-select-registry-handle!))
-  (let ((reset-rv!
-	 (lambda ()
-	   (set! select-registry-result-vectors '())
-	   unspecific)))
-    (reset-rv!)
-    (add-event-receiver! event:after-restart reset-rv!))
-  (add-event-receiver! event:after-restore
-    (lambda ()
-      (set! have-select? ((ucode-primitive have-select? 0)))
-      unspecific)))
+  unspecific)
+(reset-have-select)
+(add-event-receiver! event:after-restore reset-have-select)
+
+(define select-registry-result-vectors)
+(define (reset-rv!)
+  (set! select-registry-result-vectors '())
+  unspecific)
+(reset-rv!)
+(add-event-receiver! event:after-restart reset-rv!)
 
 (define-structure (select-registry
 		   (constructor %make-select-registry (handle)))
   handle
   (length #f))
+
+(define select-registry-finalizer
+  (make-gc-finalizer (ucode-primitive deallocate-select-registry 1)
+		     select-registry?
+		     select-registry-handle
+		     set-select-registry-handle!))
 
 (define (make-select-registry)
   (without-interruption
@@ -711,11 +702,12 @@ USA.
 
 (define dld-handles)
 (define dld-handles-mutex)
-
 (define (reset-dld-handles!)
   (set! dld-handles '())
   (set! dld-handles-mutex (make-thread-mutex))
   unspecific)
+(reset-dld-handles!)
+(add-event-receiver! event:after-restore reset-dld-handles!)
 
 (define (dld-unload-file handle)
   (guarantee-dld-handle handle 'dld-unload-file)

@@ -373,15 +373,14 @@ USA.
 	 ("random" . (runtime random-number))
 	 ("dispatch-tag" . (runtime tagged-dispatch))
 	 ("poplat" . (runtime population))
+	 ("prop1d" . (runtime 1d-property))
 	 ("record" . (runtime record))))
       (files2
        '(("bundle" . (runtime bundle))
 	 ("syntax-low" . (runtime syntax low))
 	 ("thread" . (runtime thread))
 	 ("wind" . (runtime state-space))
-	 ("prop1d" . (runtime 1d-property))
 	 ("events" . (runtime event-distributor))
-	 ("gdatab" . (runtime global-database))
 	 ("gcfinal" . (runtime gc-finalizer))))
       (runtime-env (package-reference '(runtime))))
 
@@ -430,17 +429,10 @@ USA.
 
   (load-files-with-boot-inits files1)
   (package-initialize '(runtime random-number) #f #t)
-  ;; Handled via dependency:
-  ;;(package-initialize '(runtime tagged-dispatch) #f #t)
-  (package-initialize '(runtime population) #f #t)
-  (package-initialize '(runtime record) #f #t)
 
   (load-files-with-boot-inits files2)
-  (package-initialize '(runtime 1d-property) #f #t)
   (package-initialize '(runtime state-space) #f #t)
   (package-initialize '(runtime thread) 'initialize-low! #t) ;First 1d-table.
-  (package-initialize '(runtime event-distributor) #f #t)
-  (package-initialize '(runtime global-database) #f #t)
   (package-initialize '(runtime gc-finalizer) #f #t)
 
   ;; Load everything else.
@@ -462,17 +454,15 @@ USA.
 		    (file-member? filename files1)
 		    (file-member? filename files2)))
 	   (load-file-with-boot-inits filename package))
-       unspecific))))
+       unspecific)))
+  ((lexical-reference runtime-env 'seq:after-files-loaded) 'trigger!))
 
 ;;; Funny stuff is done.  Rest of sequence is standardized.
 (package-initialization-sequence
  '(
    ;; Microcode interface
    (runtime microcode-tables)
-   (runtime apply)
-   (runtime primitive-io)
    (runtime system-clock)
-   ((runtime gc-finalizer) initialize-events!)
    ;; Basic data structures
    (runtime number)
    ((runtime number) initialize-dragon4!)

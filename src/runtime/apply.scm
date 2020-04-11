@@ -29,20 +29,6 @@ USA.
 
 (declare (usual-integrations apply))
 
-;;;  This is not a definition because APPLY is needed to boot,
-;;;  so there is a binary (primitive) version of apply installed
-;;;  at boot time, and this code replaces it.
-
-(add-boot-init!
- (lambda ()
-   (set! apply
-	 (make-arity-dispatched-procedure
-	  apply-entity-procedure
-	  (lambda () (error:wrong-number-of-arguments apply '(1 . #f) '()))
-	  (lambda (f) (f))
-	  apply-2))
-   unspecific))
-
 (define (apply-2 f a0)
   (let ((fail (lambda () (error "apply: Improper argument list" a0))))
     (let-syntax
@@ -103,3 +89,13 @@ USA.
 		     args)
 		   (car args))
 	       '())))
+
+;;;  This is not a definition because APPLY is needed to boot,
+;;;  so there is a binary (primitive) version of apply installed
+;;;  at boot time, and this code replaces it.
+(set! apply
+      (make-arity-dispatched-procedure
+       apply-entity-procedure
+       (lambda () (error:wrong-number-of-arguments apply '(1 . #f) '()))
+       (lambda (f) (f))
+       apply-2))

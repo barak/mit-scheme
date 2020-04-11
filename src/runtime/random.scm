@@ -503,31 +503,24 @@ USA.
 ;;;; Initialization
 
 (define *random-state* #f)
-(define default-random-source)
-(define default-random-source-mutex)
-(define random-integer)
-(define random-real)
-(define zero16)
-(define chacha-const)
+(define default-random-source (make-random-source))
+(define default-random-source-mutex (make-thread-mutex))
+(define random-integer (random-source-make-integers default-random-source))
+(define random-real (random-source-make-reals default-random-source))
+(define zero16(make-bytevector 16 0))
+(define chacha-const (allocate-bytevector 16))
+(let ((c "expand 32-byte k"))
+  (do ((i 0 (fix:+ i 1)))
+      ((fix:>= i 16) unspecific)
+    (bytevector-u8-set! chacha-const i (char->integer (string-ref c i)))))
 
-(define (initialize-package!)
-  (set! zero16 (make-bytevector 16 0))
-  (set! default-random-source-mutex (make-thread-mutex))
-  (set! default-random-source (make-random-source))
-  (random-source-randomize! default-random-source)
-  (set! random-integer (random-source-make-integers default-random-source))
-  (set! random-real (random-source-make-reals default-random-source))
-  (set! chacha-const (allocate-bytevector 16))
-  (let ((c "expand 32-byte k"))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:>= i 16))
-      (bytevector-u8-set! chacha-const i (char->integer (string-ref c i)))))
-  unspecific)
+(define (reset-default-random-source!)
+  (random-source-randomize! default-random-source))
+
+(reset-default-random-source!)
+(seq:after-files-loaded 'add-action! reset-default-random-source!)
 
 (define (finalize-random-state-type!)
-  (add-event-receiver! event:after-restart
-    (lambda ()
-      (random-source-randomize! default-random-source)))
   (named-structure/set-tag-description! random-state-tag
     (new-make-define-structure-type 'vector
 				    'random-state

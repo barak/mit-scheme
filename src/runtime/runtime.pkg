@@ -2411,9 +2411,14 @@ USA.
 	  event-distributor/invoke!
 	  event-distributor/receivers
 	  event-distributor?
+	  event:after-restart
+	  event:after-restore
+	  event:before-exit
 	  make-event-distributor
 	  remove-event-receiver!)
-  (initialization (initialize-package!)))
+  (export (runtime)
+	  run-now-and-after-restart!
+	  run-now-and-after-restore!))
 
 (define-package (runtime extended-scode-eval)
   (files "xeval")
@@ -2628,20 +2633,6 @@ USA.
 	  make-generic-i/o-port)
   (export (runtime subprocess)
 	  make-generic-i/o-port))
-
-(define-package (runtime global-database)
-  (files "gdatab")
-  (parent (runtime))
-  (export deprecated ()
-	  unparser/set-tagged-pair-method!
-	  unparser/set-tagged-vector-method!)
-  (export ()
-	  event:after-restart
-	  event:after-restore
-	  event:before-exit
-	  named-structure/set-tag-description!)
-  (export (runtime record)
-	  named-structure/get-tag-description))
 
 (define-package (runtime hash)
   (files "hash")
@@ -4128,6 +4119,7 @@ USA.
 	  make-define-structure-type
 	  make-record-type
 	  named-list?
+	  named-structure/set-tag-description!
 	  named-structure?
 	  named-vector?
 	  new-make-define-structure-type ;RELNOTE: rename without "new-"

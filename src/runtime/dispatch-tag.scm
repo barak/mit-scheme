@@ -99,7 +99,6 @@ USA.
   ;; primary cache locations from multiple tags.
   4)
 
-(add-boot-deps! '(runtime random-number))
 (define-deferred get-tag-cache-number
   (let ((modulus
 	 (int:quotient
@@ -108,6 +107,7 @@ USA.
 	(state (make-random-state #t)))
     (lambda ()
       (random modulus state))))
+(add-boot-deps! '(runtime random-number))
 
 (define (make-dispatch-metatag name)
   (guarantee tag-name? name 'make-dispatch-metatag)

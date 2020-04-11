@@ -29,11 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! add-event-receiver! (make-receiver-modifier 'add-receiver))
-  (set! remove-event-receiver! (make-receiver-modifier 'remove-receiver))
-  unspecific)
-
 (define-structure (event-distributor
 		   (constructor make-event-distributor ())
 		   (conc-name event-distributor/))
@@ -54,8 +49,24 @@ USA.
 	      (cons keyword receiver))
     (process-events! event-distributor)))
 
-(define add-event-receiver!)
-(define remove-event-receiver!)
+;; add-event-receiver! defined earlier in boot.scm
+(define-sequenced-procedure add-event-receiver! seq:after-files-loaded
+  (make-receiver-modifier 'add-receiver))
+
+(define remove-event-receiver!
+  (make-receiver-modifier 'remove-receiver))
+
+(define event:after-restore (make-event-distributor))
+(define event:after-restart (make-event-distributor))
+(define event:before-exit (make-event-distributor))
+
+(define (run-now-and-after-restore! thunk)
+  (thunk)
+  (add-event-receiver! event:after-restore thunk))
+
+(define (run-now-and-after-restart! thunk)
+  (thunk)
+  (add-event-receiver! event:after-restart thunk))
 
 (define (process-events! event-distributor)
   (let ((old-lock))

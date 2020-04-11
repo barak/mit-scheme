@@ -191,13 +191,14 @@ USA.
 	     ((gc-finalizer-procedure finalizer) (weak-cdr p))
 	     (weak-set-cdr! p #f)))))))
 
-(define gc-finalizers)
-(define gc-finalizers-mutex)
+(define gc-finalizers '())
+(define gc-finalizers-mutex (make-thread-mutex))
 
 (define (reset-gc-finalizers)
   (walk-gc-finalizers-list/unsafe
    (lambda (finalizer)
      (set-gc-finalizer-items! finalizer '()))))
+(add-event-receiver! event:after-restore reset-gc-finalizers)
 
 (define (run-gc-finalizers)
   (with-thread-mutex-try-lock
@@ -226,6 +227,9 @@ USA.
 	    unspecific)))))
    (lambda ()
      unspecific)))
+(add-boot-init!
+ (lambda ()
+   (add-gc-daemon! run-gc-finalizers)))
 
 (define (walk-gc-finalizers-list/unsafe procedure)
   (let loop ((finalizers gc-finalizers) (prev #f))
@@ -240,11 +244,3 @@ USA.
 		    (weak-set-cdr! prev next)
 		    (set! gc-finalizers next))
 		(loop next prev)))))))
-
-(define (initialize-package!)
-  (set! gc-finalizers '())
-  (set! gc-finalizers-mutex (make-thread-mutex))
-  (add-gc-daemon! run-gc-finalizers))
-
-(define (initialize-events!)
-  (add-event-receiver! event:after-restore reset-gc-finalizers))
