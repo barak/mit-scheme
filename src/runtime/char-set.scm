@@ -878,7 +878,7 @@ USA.
 (define char-set-foldcase)
 (define char-set-downcase)
 (define char-set-upcase)
-(seq:ucd 'add-action!
+(seq:after-ucd-glue 'add-action!
   (lambda ()
     (set! char-set-foldcase
 	  (domain-mapper char-foldcase char-set:changes-when-case-folded))

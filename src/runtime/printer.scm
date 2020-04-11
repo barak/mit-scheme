@@ -379,8 +379,7 @@ USA.
    (define-predicate-dispatch-default-handler get-print-method
      (lambda (object)
        (declare (ignore object))
-       #f))
-   (seq:print-methods 'trigger!)))
+       #f))))
 
 (define dispatch-table)
 (add-boot-init!

@@ -99,8 +99,7 @@ USA.
 	 (keyword-option-parser
 	  (list (list 'parent-type record-type? (lambda () #f))
 		(list 'applicator procedure? (lambda () #f))
-		(list 'instance-marker %record-type-proxy? (lambda () #f)))))
-   (seq:make-record-type 'trigger!)))
+		(list 'instance-marker %record-type-proxy? (lambda () #f)))))))
 
 (define (->type-name object caller)
   (cond ((string? object) (string->symbol object))
@@ -272,7 +271,7 @@ USA.
 (define-integrable (%record-type-applicator record-type)
   (%dispatch-tag-extra-ref record-type 5))
 
-(seq:fixed-objects 'add-action!
+(seq:after-microcode-tables 'add-action!
   (lambda ()
     (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
     (set-fixed-objects-item! 'record-applicator-index
@@ -382,7 +381,7 @@ USA.
   (vector-set! %proxied-record-types (%record-type-proxy->index proxy) type))
 
 (define %proxied-record-types)
-(seq:fixed-objects 'add-action!
+(seq:after-microcode-tables 'add-action!
   (lambda ()
     (set! %proxied-record-types (fixed-objects-item 'proxied-record-types))
     unspecific))

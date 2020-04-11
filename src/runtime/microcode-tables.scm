@@ -223,10 +223,7 @@ USA.
 	(intern (microcode-identification-item 'cc-arch-string "unknown")))
   unspecific)
 
-(add-boot-init!
- (lambda ()
-   (read-microcode-identification!)
-   (seq:fixed-objects 'trigger!)))
+(add-boot-init! read-microcode-identification!)
 
 (define (microcode-identification-item name #!optional default-value)
   (let ((index (microcode-table-search identifications-slot name)))

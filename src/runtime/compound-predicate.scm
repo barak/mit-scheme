@@ -169,9 +169,6 @@ USA.
    (define-compound-operator 'complement
      (let ((table (make-key-weak-eqv-hash-table)))
        (lambda (datum-test operator tags)
-	 (hash-table-intern! table
-			     (car tags)
-			     (lambda ()
-			       (make-compound-tag datum-test operator tags))))))
-
-   (seq:compound-predicates 'trigger!)))
+	 (hash-table-intern! table (car tags)
+	   (lambda ()
+	     (make-compound-tag datum-test operator tags))))))))

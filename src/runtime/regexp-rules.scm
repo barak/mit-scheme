@@ -290,5 +290,3 @@ USA.
 	 rewrite))
       (else
        (error "Unsupported extra-args:" (rules-extra-args rules))))))
-
-(add-boot-init! (lambda () (seq:regexp-rules 'trigger!)))

@@ -28,9 +28,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define seq:define-item-compiler (boot-sequencer))
-(define seq:define-item-renderer (boot-sequencer))
-
 (define compile-item)
 (define compile-expr-item)
 (define render-item)
@@ -39,13 +36,12 @@ USA.
    (set! compile-item (cached-standard-predicate-dispatcher 'compile-item 1))
    (set! compile-expr-item
 	 (cached-standard-predicate-dispatcher 'compile-expr-item 1))
-   (seq:define-item-compiler 'trigger!)
    (set! render-item (cached-standard-predicate-dispatcher 'render-item 1))
-   (define-predicate-dispatch-default-handler render-item (lambda (item) item))
-   (seq:define-item-renderer 'trigger!)))
+   (define-predicate-dispatch-default-handler render-item
+     (lambda (item) item))))
 
 (define (define-item-compiler predicate compiler #!optional expr-compiler)
-  (seq:define-item-compiler 'add-action!
+  (seq:after-syntax-items 'add-action!
     (lambda ()
       (define-predicate-dispatch-handler compile-item
 	(list predicate)
@@ -56,7 +52,7 @@ USA.
 	    (if (default-object? expr-compiler) compiler expr-compiler))))))
 
 (define (define-item-renderer predicate renderer)
-  (seq:define-item-renderer 'add-action!
+  (seq:after-syntax-items 'add-action!
     (lambda ()
       (define-predicate-dispatch-handler render-item
 	(list predicate)
@@ -95,7 +91,7 @@ USA.
 
 ;;; Keyword items represent syntactic keywords.
 
-(define-sequenced-procedure keyword-item? seq:compound-predicates
+(define-sequenced-procedure keyword-item? seq:after-compound-predicate
   (disjoin classifier-item? transformer-item?))
 
 (define-item-compiler classifier-item?

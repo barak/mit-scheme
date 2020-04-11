@@ -201,5 +201,3 @@ USA.
 		  char-set:gc=symbol:currency
 		  char-set:gc=symbol:modifier
 		  char-set:gc=symbol:other))
-
-(add-boot-init! (lambda () (seq:ucd 'trigger!)))

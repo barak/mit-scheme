@@ -225,7 +225,7 @@ USA.
 ;;;; Printing
 
 (define (define-print-method predicate print-method)
-  (seq:print-methods 'add-action!
+  (seq:after-printer 'add-action!
     (lambda ()
       (define-print-method predicate print-method))))
 
@@ -276,7 +276,7 @@ USA.
 	  (write-char #\] port)))))
 
 (define (define-pp-describer predicate describer)
-  (seq:pp-describers 'add-action!
+  (seq:after-pretty-printer 'add-action!
     (lambda ()
       (define-pp-describer predicate describer))))
 
@@ -302,7 +302,7 @@ USA.
 	      #f)))
   (set! register-predicate!
 	(lambda (predicate name . keylist)
-	  (seq:predicate-relations 'add-action!
+	  (seq:after-predicate 'add-action!
 	    (lambda ()
 	      (apply register-predicate! predicate name keylist)))
 	  (set! predicates (cons predicate predicates))
@@ -319,12 +319,12 @@ USA.
   unspecific)
 
 (define (set-dispatch-tag<=! t1 t2)
-  (seq:predicate-relations 'add-action!
+  (seq:after-predicate 'add-action!
     (lambda ()
       (set-dispatch-tag<=! t1 t2))))
 
 (define (set-predicate<=! p1 p2)
-  (seq:predicate-relations 'add-action!
+  (seq:after-predicate 'add-action!
     (lambda ()
       (set-predicate<=! p1 p2))))
 
@@ -441,7 +441,7 @@ USA.
 (define (multi-values-list mv)
   (cdr mv))
 
-(seq:make-record-type 'add-action!
+(seq:after-record 'add-action!
   (lambda ()
     (set! <multi-values> (make-record-type '<multi-values> '(list)))
     (set! make-multi-values (record-constructor <multi-values>))

@@ -279,6 +279,4 @@ USA.
 			'<= unicode-code-point?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
    (register-predicate! weak-list? 'weak-list)
-   (register-predicate! weak-pair? 'weak-pair)
-
-   (seq:predicate-relations 'trigger!)))
+   (register-predicate! weak-pair? 'weak-pair)))

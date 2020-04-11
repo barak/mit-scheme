@@ -171,8 +171,8 @@ USA.
 	   (and package
 		(let ((env (package/environment package)))
 		  (if (not procedure-name)
-		      (let ((seq (package->sequencer package)))
-			(and (seq 'has-actions?)
+		      (let ((seq (package-sequencer package)))
+			(and (not (seq 'inert?))
 			     (lambda () (seq 'trigger!))))
 		      (and (not (lexical-unreferenceable? env procedure-name))
 			   (lexical-reference env procedure-name))))))
@@ -351,7 +351,7 @@ USA.
  packages-file)
 
 ;;; Global databases.  Load, then initialize.
-(define package->sequencer)
+(define package-sequencer)
 (let ((files0
        '(("gcdemn" . (runtime gc-daemons))
 	 ("gc" . (runtime garbage-collector))
@@ -393,19 +393,24 @@ USA.
 
   (load-files files0)
 
-  (set! package->sequencer
-	(lexical-reference runtime-env 'package->sequencer))
+  ((lexical-reference runtime-env 'initialize-after-sequencers!))
+
+  (set! package-sequencer
+	(lexical-reference runtime-env 'package-sequencer))
 
   (define (link-default-initializer! package)
     (let ((env (package/environment package))
 	  (name 'initialize-package!))
       (if (not (lexical-unreferenceable? env name))
-	  ((package->sequencer package)
+	  ((package-sequencer package)
 	   'add-action!
 	   (lexical-reference env name)))))
 
   (link-default-initializer! (find-package '(runtime gc-daemons)))
   (link-default-initializer! (find-package '(runtime garbage-collector)))
+
+  (package-initialize '(runtime gc-daemons) #f #t)
+  (package-initialize '(runtime garbage-collector) #f #t)
 
   (define with-current-package
     (lexical-reference runtime-env 'with-current-package))
@@ -424,8 +429,6 @@ USA.
       (link-default-initializer! package)))
 
   (load-files-with-boot-inits files1)
-  (package-initialize '(runtime gc-daemons) #f #t)
-  (package-initialize '(runtime garbage-collector) #f #t)
   (package-initialize '(runtime random-number) #f #t)
   ;; Handled via dependency:
   ;;(package-initialize '(runtime tagged-dispatch) #f #t)
@@ -433,7 +436,7 @@ USA.
   (package-initialize '(runtime record) #f #t)
 
   (load-files-with-boot-inits files2)
-  (package-initialize '(runtime 1d-property) #f #t)	     ;First population.
+  (package-initialize '(runtime 1d-property) #f #t)
   (package-initialize '(runtime state-space) #f #t)
   (package-initialize '(runtime thread) 'initialize-low! #t) ;First 1d-table.
   (package-initialize '(runtime event-distributor) #f #t)

@@ -96,15 +96,15 @@ USA.
 ;;;; Compiler rules
 
 (define regsexp-rules)
-(seq:regexp-rules 'add-action!
+(seq:after-regexp-rules 'add-action!
   (lambda ()
     (set! regsexp-rules (make-rules 'regsexp))
     unspecific))
 
-(define-sequenced-procedure match-rule seq:regexp-rules
+(define-sequenced-procedure match-rule seq:after-regexp-rules
   (rules-matcher regsexp-rules))
 
-(define-sequenced-procedure define-rule seq:regexp-rules
+(define-sequenced-procedure define-rule seq:after-regexp-rules
   (rules-definer regsexp-rules))
 
 (define (any-char? object)

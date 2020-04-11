@@ -189,8 +189,6 @@ USA.
 	     (list predicate)
 	     describer)))
 
-   (seq:pp-describers 'trigger!)
-
    (define-pp-describer weak-pair?
      (lambda (wp)
        `((weak-car ,(weak-car wp))

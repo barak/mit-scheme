@@ -96,7 +96,7 @@ USA.
 	((add-action!) (apply add-action! args))
 	((trigger!) (apply trigger! args))
 	((triggered?) triggered?)
-	((has-actions?) (pair? actions-head))
+	((inert?) (and (null? actions-head) (null? afters-head)))
 	;; Private:
 	((%add-after!) (apply add-after! args))
 	((%remove-before!) (apply remove-before! args))
@@ -106,21 +106,41 @@ USA.
 
 ;;; Define these early so that load order doesn't matter.
 
-(define seq:compound-predicates (boot-sequencer))
-(define seq:fixed-objects (boot-sequencer))
-(define seq:make-record-type (boot-sequencer))
-(define seq:pp-describers (boot-sequencer))
-(define seq:predicate-relations (boot-sequencer))
-(define seq:print-methods (boot-sequencer))
-(define seq:regexp-rules (boot-sequencer))
+(define seq:after-compound-predicate (boot-sequencer))
+(define seq:after-microcode-tables (boot-sequencer))
+(define seq:after-pretty-printer (boot-sequencer))
+(define seq:after-printer (boot-sequencer))
+(define seq:after-predicate (boot-sequencer))
+(define seq:after-record (boot-sequencer))
+(define seq:after-regexp-rules (boot-sequencer))
+(define seq:after-syntax-items (boot-sequencer))
+(define seq:after-ucd-glue (boot-sequencer))
 (define seq:set-predicate-tag! (boot-sequencer))
-(define seq:ucd (boot-sequencer))
+
+(define (initialize-after-sequencers!)
+  (for-each (lambda (p)
+	      ((car p) 'add-before! (package-name->sequencer (cadr p))))
+	    `((,seq:after-compound-predicate (runtime compound-predicate))
+	      (,seq:after-microcode-tables (runtime microcode-tables))
+	      (,seq:after-pretty-printer (runtime pretty-printer))
+	      (,seq:after-printer (runtime printer))
+	      (,seq:after-predicate (runtime predicate))
+	      (,seq:after-record (runtime record))
+	      (,seq:after-regexp-rules (runtime regexp rules))
+	      (,seq:after-syntax-items (runtime syntax items))
+	      (,seq:after-ucd-glue (runtime ucd-glue)))))
 
 (define (add-boot-init! thunk)
   ((current-package-sequencer) 'add-action! thunk))
 
+(define (add-boot-deps! . package-names)
+  (let ((seq (current-package-sequencer)))
+    (for-each (lambda (package-name)
+		(seq 'add-before! (package-name->sequencer package-name)))
+	      package-names)))
+
 (define (current-package-sequencer)
-  (package->sequencer (current-package)))
+  (package-sequencer (current-package)))
 
 (define with-current-package)
 (define current-package)
@@ -138,9 +158,9 @@ USA.
 	  *package*)))
 
 (define (package-name->sequencer package-name)
-  (package->sequencer (find-package package-name)))
+  (package-sequencer (find-package package-name)))
 
-(define package->sequencer
+(define package-sequencer
   (let ((alist '()))
     (lambda (package)
       (let loop ((scan alist))

@@ -428,7 +428,7 @@ USA.
 (define sre-rewrite-rules)
 (define cset-sre-rules)
 (define cset-sre-rewrite-rules)
-(seq:regexp-rules 'add-action!
+(seq:after-regexp-rules 'add-action!
   (lambda ()
     (set! sre-rules (make-rules 'sre 1))
     (set! sre-rewrite-rules (make-rules 'sre-rewrite 1))
@@ -439,22 +439,22 @@ USA.
 (define (rule-finder match-rules rewrite-rules)
   (rules-rewriter rewrite-rules (rules-matcher match-rules)))
 
-(define-sequenced-procedure match-sre-rule seq:regexp-rules
+(define-sequenced-procedure match-sre-rule seq:after-regexp-rules
   (rule-finder sre-rules sre-rewrite-rules))
 
-(define-sequenced-procedure match-cset-sre-rule seq:regexp-rules
+(define-sequenced-procedure match-cset-sre-rule seq:after-regexp-rules
   (rule-finder cset-sre-rules cset-sre-rewrite-rules))
 
-(define-sequenced-procedure define-sre-rule seq:regexp-rules
+(define-sequenced-procedure define-sre-rule seq:after-regexp-rules
   (rules-definer sre-rules))
 
-(define-sequenced-procedure define-sre-rewriter seq:regexp-rules
+(define-sequenced-procedure define-sre-rewriter seq:after-regexp-rules
   (rules-definer sre-rewrite-rules))
 
-(define-sequenced-procedure define-cset-sre-rule seq:regexp-rules
+(define-sequenced-procedure define-cset-sre-rule seq:after-regexp-rules
   (rules-definer cset-sre-rules))
 
-(define-sequenced-procedure define-cset-sre-rewriter seq:regexp-rules
+(define-sequenced-procedure define-cset-sre-rewriter seq:after-regexp-rules
   (rules-definer cset-sre-rewrite-rules))
 
 (define (alias-rule-definer rules)
@@ -467,10 +467,10 @@ USA.
 	  (declare (ignore ctx))
 	  (cons to args))))))
 
-(define-sequenced-procedure define-sre-alias seq:regexp-rules
+(define-sequenced-procedure define-sre-alias seq:after-regexp-rules
   (alias-rule-definer sre-rewrite-rules))
 
-(define-sequenced-procedure define-cset-sre-alias seq:regexp-rules
+(define-sequenced-procedure define-cset-sre-alias seq:after-regexp-rules
   (alias-rule-definer cset-sre-rewrite-rules))
 
 (define (compile-sre ctx sre)
@@ -544,7 +544,7 @@ USA.
     (append (sort numbered <) named)))
 
 (define char-set:word)
-(seq:ucd 'add-action!
+(seq:after-ucd-glue 'add-action!
   (lambda ()
     (set! char-set:word (char-set-adjoin char-set:alphabetic #\_))
     unspecific))
