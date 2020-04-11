@@ -466,15 +466,36 @@ print_compiled_entry (outf_channel stream, SCHEME_OBJECT entry)
   outf (stream, "]");
 }
 
+static const char*
+constant_string (SCHEME_OBJECT obj)
+{
+  switch (obj)
+    {
+    case SHARP_F: return "#f";
+    case SHARP_T: return "#t";
+    case UNSPECIFIC: return "#!unspecific";
+    case OPTIONAL_MARKER: return "#!optional";
+    case REST_MARKER: return "#!rest";
+    case KEY_MARKER: return "#!key";
+    case EOF_OBJECT: return "#!eof";
+    case DEFAULT_OBJECT: return "#!default";
+    case AUX_MARKER: return "#!aux";
+    case EMPTY_LIST: return "()";
+    case WEAK_SHARP_F: return "[weak #f]";
+    default: return 0;
+    }
+}
+
 static void
 print_object (outf_channel stream, SCHEME_OBJECT obj)
 {
-  if (EMPTY_LIST_P (obj))	{ outf (stream, "()");	return; }
-  else if (obj == SHARP_F)	{ outf (stream, "#F");	return; }
-  else if (obj == SHARP_T)	{ outf (stream, "#T");	return; }
-  else if (obj == UNSPECIFIC){ outf (stream, "[unspecific]"); return; }
-
-  else if (obj == return_to_interpreter)
+  const char* s = (constant_string (obj));
+  if (s != 0)
+    {
+      outf (stream, "%s", s);
+      return;
+    }
+  if (obj == return_to_interpreter)
     {
       outf (stream, "[return-to-interpreter]");
       return;
