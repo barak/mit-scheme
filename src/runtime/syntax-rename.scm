@@ -191,12 +191,10 @@ USA.
 		    (get-subexpressions expression)))))
 
    (set! compute-substitution
-	 (cached-standard-predicate-dispatcher 'compute-substitution 2))
-
-   (define-predicate-dispatch-default-handler compute-substitution
-     (lambda (expression mark-safe!)
-       (declare (ignore expression mark-safe!))
-       '()))
+	 (cached-standard-predicate-dispatcher 'compute-substitution 2
+	   (lambda (expression mark-safe!)
+	     (declare (ignore expression mark-safe!))
+	     '())))
 
    (define-cs-handler scode-variable?
      (lambda (expression mark-safe!)
@@ -316,12 +314,10 @@ USA.
 	     (get-subexpressions expression)))))
 
    (set! alpha-substitute
-	 (cached-standard-predicate-dispatcher 'alpha-substitute 2))
-
-   (define-predicate-dispatch-default-handler alpha-substitute
-     (lambda (substitution expression)
-       (declare (ignore substitution))
-       expression))
+	 (cached-standard-predicate-dispatcher 'alpha-substitute 2
+	   (lambda (substitution expression)
+	     (declare (ignore substitution))
+	     expression)))
 
    (define-as-handler scode-variable?
      (lambda (substitution expression)

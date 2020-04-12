@@ -70,10 +70,11 @@ USA.
 
 (define (test-complex-relationships make-handler-set)
   (define tester
-    (make-predicate-dispatcher 'tester 1 make-handler-set))
-
-  (define-predicate-dispatch-default-handler tester
-    (lambda (x) (declare (ignore x)) #f))
+    (make-predicate-dispatcher 'tester 1
+			       (lambda (x)
+				 (declare (ignore x))
+				 #f)
+			       make-handler-set))
 
   (define-predicate-dispatch-handler tester
     (list %record?)

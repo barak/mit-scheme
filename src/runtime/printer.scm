@@ -369,7 +369,10 @@ USA.
 	 (standard-print-method-parts print-method object))))
 
 (define-deferred get-print-method
-  (standard-predicate-dispatcher 'get-print-method 1))
+  (standard-predicate-dispatcher 'get-print-method 1
+    (lambda (object)
+      (declare (ignore object))
+      #f)))
 
 (add-boot-init!
  (lambda ()
@@ -380,10 +383,7 @@ USA.
 	     (lambda (object)
 	       (declare (ignore object))
 	       print-method))))
-   (define-predicate-dispatch-default-handler get-print-method
-     (lambda (object)
-       (declare (ignore object))
-       #f))))
+   unspecific))
 
 (define dispatch-table)
 (add-boot-init!

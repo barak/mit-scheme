@@ -37,12 +37,9 @@ USA.
   (cached-standard-predicate-dispatcher 'compile-expr-item 1))
 
 (define-deferred render-item
-  (cached-standard-predicate-dispatcher 'render-item 1))
-
-(add-boot-init!
- (lambda ()
-   (define-predicate-dispatch-default-handler render-item
-     (lambda (item) item))))
+  (cached-standard-predicate-dispatcher 'render-item 1
+    (lambda (item)
+      item)))
 
 (define (define-item-compiler predicate compiler #!optional expr-compiler)
   (seq:after-syntax-items 'add-action!

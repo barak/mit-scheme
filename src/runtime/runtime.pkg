@@ -2184,7 +2184,6 @@ USA.
 	  cached-chaining-predicate-dispatcher
 	  cached-standard-predicate-dispatcher
 	  chaining-predicate-dispatcher
-	  define-predicate-dispatch-default-handler
 	  define-predicate-dispatch-handler
 	  predicate-dispatcher-arity
 	  predicate-dispatcher-name

@@ -158,12 +158,10 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! pp-description
-	 (standard-predicate-dispatcher 'pp-description 1))
-
-   (define-predicate-dispatch-default-handler pp-description
-     (lambda (object)
-       (declare (ignore object))
-       #f))
+	 (standard-predicate-dispatcher 'pp-description 1
+	   (lambda (object)
+	     (declare (ignore object))
+	     #f)))
 
    (set! define-pp-describer
 	 (named-lambda (define-pp-describer predicate describer)
