@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime gc-notification)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime thread))
 
 (define (initialize-package!)
   (add-gc-daemon! signal-gc-events))

@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime syntax parser)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime bytevector))
 
 ;;; A "syntax parser" as defined here is a procedure with the following
 ;;; signature:

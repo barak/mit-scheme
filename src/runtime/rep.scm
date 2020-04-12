@@ -29,17 +29,20 @@ USA.
 
 (declare (usual-integrations))
 
+(add-boot-deps! '(runtime dynamic) '(runtime error-handler))
+
 (define repl:allow-restart-notifications? #t)
 (define repl:write-result-hash-numbers? #f)
 
-(define (initialize-package!)
-  (set! param:nearest-cmdl (make-unsettable-parameter #f))
-  (set! hook/repl-read default/repl-read)
-  (set! hook/repl-eval default/repl-eval)
-  (set! hook/repl-write default/repl-write)
-  (set! hook/set-default-environment default/set-default-environment)
-  (set! hook/error-decision #f)
-  (initialize-breakpoint-condition!))
+(add-boot-init!
+ (lambda ()
+   (set! param:nearest-cmdl (make-unsettable-parameter #f))
+   (set! hook/repl-read default/repl-read)
+   (set! hook/repl-eval default/repl-eval)
+   (set! hook/repl-write default/repl-write)
+   (set! hook/set-default-environment default/set-default-environment)
+   (set! hook/error-decision #f)
+   (initialize-breakpoint-condition!)))
 
 (define (initial-top-level-repl)
   (call-with-current-continuation

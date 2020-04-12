@@ -474,15 +474,6 @@ USA.
    (runtime predicate)
    (runtime error-handler)
 
-   ;; Syntax
-   (runtime syntax rename)
-   (runtime syntax top-level)
-   (runtime syntax parser)
-   ;; REP Loops
-   (runtime interrupt-handler)
-   (runtime gc-statistics)
-   (runtime gc-notification)
-   (runtime rep)
    ;; Debugging
    (runtime compiler-info)
    (runtime advice)

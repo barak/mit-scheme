@@ -29,18 +29,20 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! history-modes
-	`((none . ,none:install-history!)
-	  (bounded . ,bounded:install-history!)
-	  (unbounded . ,unbounded:install-history!)))
-  (set-history-mode! 'bounded)
-  (set! timestamp (cons 0 0))
-  (statistics-reset!)
-  (add-event-receiver! event:after-restore statistics-reset!)
-  (set! hook/gc-start recorder/gc-start)
-  (set! hook/gc-finish recorder/gc-finish)
-  unspecific)
+(add-boot-deps! '(runtime number))
+(add-boot-init!
+ (lambda ()
+   (set! history-modes
+	 `((none . ,none:install-history!)
+	   (bounded . ,bounded:install-history!)
+	   (unbounded . ,unbounded:install-history!)))
+   (set-history-mode! 'bounded)
+   (set! timestamp (cons 0 0))
+   (statistics-reset!)
+   (add-event-receiver! event:after-restore statistics-reset!)
+   (set! hook/gc-start recorder/gc-start)
+   (set! hook/gc-finish recorder/gc-finish)
+   unspecific))
 
 (define (recorder/gc-start)
   (port/gc-start (console-i/o-port))

@@ -47,6 +47,8 @@ USA.
 ;;; interned symbol with a computed name that's designed to be unique.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic) '(runtime predicate-dispatch))
 
 (define (make-local-identifier-renamer)
   ((rdb:identifier-renamer (rename-db)) new-identifier))

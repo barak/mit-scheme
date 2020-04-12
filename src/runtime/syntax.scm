@@ -40,6 +40,8 @@ USA.
 ;;; Programming, page 86.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic) '(runtime error-handler))
 
 ;;;; Top level
 
