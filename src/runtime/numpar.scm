@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime number-parser)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime number))
 
 (define (string->number string #!optional radix error? start end)
   (let* ((caller 'string->number)
@@ -408,7 +410,12 @@ USA.
 ;; This method also benfits accuracy when FLONUM-PARSER-FAST? is true and
 ;; the reciprocal is exact.
 
-(define exact-flonum-powers-of-10)	; a vector, i -> 10.^i
+;; a vector, i -> 10.^i
+(define-deferred exact-flonum-powers-of-10
+  (let loop ((i 0) (power 1) (powers '()))
+    (if (= (inexact->exact (exact->inexact power)) power)
+	(loop (+ i 1) (* power 10) (cons (exact->inexact power) powers))
+	(list->vector (reverse! powers)))))
 
 (define (finish-real integer rexponent exactness radix sign base bexponent)
   ;; State: result is integer, apply exactness and sign.
@@ -506,11 +513,3 @@ USA.
 
 (define-integrable (i? char)
   (or (char=? #\i char) (char=? #\I char)))
-
-(define (initialize-package!)
-  (set! exact-flonum-powers-of-10
-	(let loop ((i 0) (power 1) (powers '()))
-	  (if (= (inexact->exact (exact->inexact power)) power)
-	      (loop (+ i 1) (* power 10) (cons (exact->inexact power) powers))
-	      (list->vector (reverse! powers)))))
-  unspecific)

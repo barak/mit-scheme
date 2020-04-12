@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime options)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic))
 
 (define (load-option name #!optional no-error?)
   (let ((no-error? (and (not (default-object? no-error?)) no-error?))
@@ -110,13 +112,11 @@ USA.
        pathname))
 
 (define loaded-options '())
-(define *options*)		 ; Current options.
-(define *parent*)		 ; A thunk or a pathname/string or #f.
 (define *initial-options-file* #f)
+(define-deferred *options* (make-settable-parameter '()))
 
-(define (initialize-package!)
-  (set! *options* (make-settable-parameter '()))
-  (set! *parent* (make-settable-parameter #f)))
+;; A thunk or a pathname/string or #f.
+(define-deferred *parent* (make-settable-parameter #f))
 
 (define (dummy-option-loader)
   unspecific)

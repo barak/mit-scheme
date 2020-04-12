@@ -475,17 +475,6 @@ USA.
    (runtime error-handler)
 
    ;; Syntax
-   (runtime number-parser)
-   (runtime options)
-   (runtime reader)
-   (runtime file-attributes)
-   ((runtime pathname) initialize-parser-method!)
-   (runtime printer)
-   (runtime unsyntaxer)
-   (runtime pretty-printer)
-   (runtime extended-scode-eval)
-   (runtime syntax low)
-   (runtime syntax items)
    (runtime syntax rename)
    (runtime syntax top-level)
    (runtime syntax parser)

@@ -29,6 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
+(add-boot-deps! '(runtime character-set))
+
 ;;; This code will parse a "file attributes line" found in the first line of a
 ;;; file and delimited by the special -*- sequence.
 

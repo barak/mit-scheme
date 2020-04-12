@@ -28,6 +28,10 @@ USA.
 ;;; package: (runtime reader)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic)
+		'(runtime character-set)
+		'(runtime error-handler))
 
 (define *parser-associate-positions?* #!default)
 (define *parser-canonicalize-symbols?* #!default)

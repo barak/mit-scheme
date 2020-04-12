@@ -28,6 +28,9 @@ USA.
 ;;; package: (runtime unsyntaxer)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic)
+		'(runtime scode-walker))
 
 ;;; If UNSYNTAXER:MACROIZE? is #f, then the unsyntaxed output will
 ;;; closely match the concrete structure that is given to SCODE-EVAL.

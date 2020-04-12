@@ -27,16 +27,20 @@ USA.
 ;;;; Syntax items and compiler
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime predicate-dispatch))
 
-(define compile-item)
-(define compile-expr-item)
-(define render-item)
+(define-deferred compile-item
+  (cached-standard-predicate-dispatcher 'compile-item 1))
+
+(define-deferred compile-expr-item
+  (cached-standard-predicate-dispatcher 'compile-expr-item 1))
+
+(define-deferred render-item
+  (cached-standard-predicate-dispatcher 'render-item 1))
+
 (add-boot-init!
  (lambda ()
-   (set! compile-item (cached-standard-predicate-dispatcher 'compile-item 1))
-   (set! compile-expr-item
-	 (cached-standard-predicate-dispatcher 'compile-expr-item 1))
-   (set! render-item (cached-standard-predicate-dispatcher 'render-item 1))
    (define-predicate-dispatch-default-handler render-item
      (lambda (item) item))))
 

@@ -28,6 +28,10 @@ USA.
 ;;; package: (runtime printer)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables)
+		'(runtime dynamic)
+		'(runtime predicate-dispatch))
 
 (define *unparse-abbreviate-quotations?* #!default)
 (define *unparse-compound-procedure-names?* #!default)

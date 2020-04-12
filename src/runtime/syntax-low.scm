@@ -30,6 +30,8 @@ USA.
 ;;; Required during cold load, so must be loaded very early in the sequence.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic))
 
 (define (sc-macro-transformer->expander transformer env)
   (transformer-item (sc-wrapper transformer (runtime-getter env))))

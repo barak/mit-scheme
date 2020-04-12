@@ -29,7 +29,9 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime pathname unix) '(runtime pathname dos))
+(add-boot-deps! '(runtime pathname unix)
+		'(runtime pathname dos)
+		'(runtime reader))
 
 #|
 
@@ -727,9 +729,7 @@ these rules:
 	     (vector->list ((ucode-primitive microcode-library-path 0)))))
   unspecific)
 
-(define (initialize-package!)
-  (reset-package!)
-  (add-event-receiver! event:after-restore reset-package!))
-
-(define (initialize-parser-method!)
-  (define-bracketed-reader-method 'pathname pathname-parser-method))
+(add-boot-init!
+ (lambda ()
+   (run-now-and-after-restore! reset-package!)
+   (define-bracketed-reader-method 'pathname pathname-parser-method)))
