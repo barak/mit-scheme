@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime memoizer)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime hash-table))
 
 (define-record-type <memoizer-metadata>
     (%make-memoizer-metadata table procedure)

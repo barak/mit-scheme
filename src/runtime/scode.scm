@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime scode)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables))
 
 ;;;; Constant
 

@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime number)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables))
 
 ;;;; Utilities
 
@@ -234,136 +236,137 @@ USA.
 		    flo:largest-positive-normal
 		    (lambda (x) (flo:finite? (flo:expt 10. x))))))
   unspecific)
+(add-event-receiver! event:after-restore initialize-microcode-dependencies!)
 
-(define (initialize-package!)
-  (initialize-microcode-dependencies!)
-  (add-event-receiver! event:after-restore initialize-microcode-dependencies!)
-  (initialize-*maximum-fixnum-radix-powers*!)
-  (set-fixed-objects-item! 'generic-trampoline-zero? complex:zero?)
-  (set-fixed-objects-item! 'generic-trampoline-positive? complex:positive?)
-  (set-fixed-objects-item! 'generic-trampoline-negative? complex:negative?)
-  (set-fixed-objects-item! 'generic-trampoline-add-1 complex:1+)
-  (set-fixed-objects-item! 'generic-trampoline-subtract-1 complex:-1+)
-  (set-fixed-objects-item! 'generic-trampoline-equal? complex:=)
-  (set-fixed-objects-item! 'generic-trampoline-less? complex:<)
-  (set-fixed-objects-item! 'generic-trampoline-greater? complex:>)
-  (set-fixed-objects-item! 'generic-trampoline-add complex:+)
-  (set-fixed-objects-item! 'generic-trampoline-subtract complex:-)
-  (set-fixed-objects-item! 'generic-trampoline-multiply complex:*)
-  (set-fixed-objects-item! 'generic-trampoline-divide complex:/)
-  (set-fixed-objects-item! 'generic-trampoline-quotient complex:quotient)
-  (set-fixed-objects-item! 'generic-trampoline-remainder complex:remainder)
-  (set-fixed-objects-item! 'generic-trampoline-modulo complex:modulo)
-
-  ;; The binary cases for the following operators rely on the fact that the
-  ;; &<mumble> operators, either interpreted or open-coded by the
-  ;; compiler, calls the GENERIC-TRAMPOLINE version above, are set to
-  ;; the appropriate binary procedures when this package is
-  ;; initialized.  We could have just replaced (ucode-primitive &+)
-  ;; with + etc and relied on + being integrated, but that is not
-  ;; very clear.
+(add-boot-init!
+ (lambda ()
+   (initialize-microcode-dependencies!)
+   (initialize-*maximum-fixnum-radix-powers*!)
+   (set-fixed-objects-item! 'generic-trampoline-zero? complex:zero?)
+   (set-fixed-objects-item! 'generic-trampoline-positive? complex:positive?)
+   (set-fixed-objects-item! 'generic-trampoline-negative? complex:negative?)
+   (set-fixed-objects-item! 'generic-trampoline-add-1 complex:1+)
+   (set-fixed-objects-item! 'generic-trampoline-subtract-1 complex:-1+)
+   (set-fixed-objects-item! 'generic-trampoline-equal? complex:=)
+   (set-fixed-objects-item! 'generic-trampoline-less? complex:<)
+   (set-fixed-objects-item! 'generic-trampoline-greater? complex:>)
+   (set-fixed-objects-item! 'generic-trampoline-add complex:+)
+   (set-fixed-objects-item! 'generic-trampoline-subtract complex:-)
+   (set-fixed-objects-item! 'generic-trampoline-multiply complex:*)
+   (set-fixed-objects-item! 'generic-trampoline-divide complex:/)
+   (set-fixed-objects-item! 'generic-trampoline-quotient complex:quotient)
+   (set-fixed-objects-item! 'generic-trampoline-remainder complex:remainder)
+   (set-fixed-objects-item! 'generic-trampoline-modulo complex:modulo)
 
-  (let-syntax
-      ((commutative
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   (let ((name (list-ref form 1))
-		 (identity (close-syntax (list-ref form 3) environment)))
-	     `(set! ,(close-syntax name environment)
-		    (make-arity-dispatched-procedure
-		     (named-lambda (,name self . zs)
-		       self		; ignored
-		       (reduce ,(close-syntax (list-ref form 2) environment)
-			       ,identity
-			       zs))
-		     (named-lambda (,(symbol 'nullary- name))
-		       ,identity)
-		     (named-lambda (,(symbol 'unary- name) z)
-		       (if (not (complex:complex? z))
-			   (error:wrong-type-argument z "number" ',name))
-		       z)
-		     (named-lambda (,(symbol 'binary- name) z1 z2)
-		       ((ucode-primitive ,(list-ref form 4)) z1 z2)))))))))
-    (commutative + complex:+ 0 &+)
-    (commutative * complex:* 1 &*))
+   ;; The binary cases for the following operators rely on the fact that the
+   ;; &<mumble> operators, either interpreted or open-coded by the
+   ;; compiler, calls the GENERIC-TRAMPOLINE version above, are set to
+   ;; the appropriate binary procedures when this package is
+   ;; initialized.  We could have just replaced (ucode-primitive &+)
+   ;; with + etc and relied on + being integrated, but that is not
+   ;; very clear.
 
-  (let-syntax
-      ((non-commutative
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   (let ((name (list-ref form 1)))
-	     `(set! ,(close-syntax name environment)
-		    (make-arity-dispatched-procedure
-		     (named-lambda (,name self z1 . zs)
-		       self		; ignored
-		       (,(close-syntax (list-ref form 3) environment)
-			z1
-			(reduce ,(close-syntax (list-ref form 4) environment)
-				,(close-syntax (list-ref form 5) environment)
-				zs)))
-		     #f
-		     ,(close-syntax (list-ref form 2) environment)
-		     (named-lambda (,(symbol 'binary- name) z1 z2)
-		       ((ucode-primitive ,(list-ref form 6)) z1 z2)))))))))
-    (non-commutative - complex:negate complex:- complex:+ 0 &-)
-    (non-commutative / complex:invert complex:/ complex:* 1 &/))
-
-  (let-syntax
-      ((relational
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   (let ((name (list-ref form 1))
-		 (comp (list-ref form 2))
-		 (prim (list-ref form 3))
-		 (type (list-ref form 4))
-		 (borked? (list-ref form 5)))
-	     `(set! ,(close-syntax name environment)
-		    (make-arity-dispatched-procedure
-		     (named-lambda (,name self . zs)
-		       self		; ignored
-		       (reduce-comparator
-			,(close-syntax comp environment)
-			zs ',name))
-		     (named-lambda (,(symbol 'nullary- name)) #t)
-		     (named-lambda (,(symbol 'unary- name) z)
-		       (if (not (,(intern (string-append "complex:" type "?"))
-				 z))
-			   (error:wrong-type-argument
-			    z ,(string-append type " number") ',name))
-		       #t)
-		     (named-lambda (,(symbol 'binary- name) z1 z2)
-		       (,(if borked?
-			     (close-syntax comp environment)
-			     `(ucode-primitive ,prim))
-			z1
-			z2)))))))))
-    (relational = complex:= &= "complex" #f)
-    (relational < complex:< &< "real" #f)
-    (relational > complex:> &> "real" #f)
-    (relational <= complex:<= &> "real" #t)
-    (relational >= complex:>= &< "real" #t))
+   (let-syntax
+       ((commutative
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    (let ((name (list-ref form 1))
+		  (identity (close-syntax (list-ref form 3) environment)))
+	      `(set! ,(close-syntax name environment)
+		     (make-arity-dispatched-procedure
+		      (named-lambda (,name self . zs)
+			self		; ignored
+			(reduce ,(close-syntax (list-ref form 2) environment)
+				,identity
+				zs))
+		      (named-lambda (,(symbol 'nullary- name))
+			,identity)
+		      (named-lambda (,(symbol 'unary- name) z)
+			(if (not (complex:complex? z))
+			    (error:wrong-type-argument z "number" ',name))
+			z)
+		      (named-lambda (,(symbol 'binary- name) z1 z2)
+			((ucode-primitive ,(list-ref form 4)) z1 z2)))))))))
+     (commutative + complex:+ 0 &+)
+     (commutative * complex:* 1 &*))
 
-  (let-syntax
-      ((max/min
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   (let ((name (list-ref form 1))
-		 (generic-binary (close-syntax (list-ref form 2) environment)))
-	     `(set! ,(close-syntax name environment)
-		    (make-arity-dispatched-procedure
-		     (named-lambda (,name self x . xs)
-		       self		; ignored
-		       (reduce-max/min ,generic-binary x xs ',name))
-		     #f
-		     (named-lambda (,(symbol 'unary- name) x)
-		       (if (not (complex:real? x))
-			   (error:wrong-type-argument x "real number" ',name))
-		       x)
-		     ,generic-binary)))))))
-    (max/min max complex:max)
-    (max/min min complex:min))
+   (let-syntax
+       ((non-commutative
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    (let ((name (list-ref form 1)))
+	      `(set! ,(close-syntax name environment)
+		     (make-arity-dispatched-procedure
+		      (named-lambda (,name self z1 . zs)
+			self		; ignored
+			(,(close-syntax (list-ref form 3) environment)
+			 z1
+			 (reduce ,(close-syntax (list-ref form 4) environment)
+				 ,(close-syntax (list-ref form 5) environment)
+				 zs)))
+		      #f
+		      ,(close-syntax (list-ref form 2) environment)
+		      (named-lambda (,(symbol 'binary- name) z1 z2)
+			((ucode-primitive ,(list-ref form 6)) z1 z2)))))))))
+     (non-commutative - complex:negate complex:- complex:+ 0 &-)
+     (non-commutative / complex:invert complex:/ complex:* 1 &/))
+ 
+   (let-syntax
+       ((relational
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    (let ((name (list-ref form 1))
+		  (comp (list-ref form 2))
+		  (prim (list-ref form 3))
+		  (type (list-ref form 4))
+		  (borked? (list-ref form 5)))
+	      `(set! ,(close-syntax name environment)
+		     (make-arity-dispatched-procedure
+		      (named-lambda (,name self . zs)
+			self		; ignored
+			(reduce-comparator
+			 ,(close-syntax comp environment)
+			 zs ',name))
+		      (named-lambda (,(symbol 'nullary- name)) #t)
+		      (named-lambda (,(symbol 'unary- name) z)
+			(if (not (,(intern (string-append "complex:" type "?"))
+				  z))
+			    (error:wrong-type-argument
+			     z ,(string-append type " number") ',name))
+			#t)
+		      (named-lambda (,(symbol 'binary- name) z1 z2)
+			(,(if borked?
+			      (close-syntax comp environment)
+			      `(ucode-primitive ,prim))
+			 z1
+			 z2)))))))))
+     (relational = complex:= &= "complex" #f)
+     (relational < complex:< &< "real" #f)
+     (relational > complex:> &> "real" #f)
+     (relational <= complex:<= &> "real" #t)
+     (relational >= complex:>= &< "real" #t))
 
-  unspecific)
+   (let-syntax
+       ((max/min
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    (let ((name (list-ref form 1))
+		  (generic-binary (close-syntax (list-ref form 2) environment)))
+	      `(set! ,(close-syntax name environment)
+		     (make-arity-dispatched-procedure
+		      (named-lambda (,name self x . xs)
+			self		; ignored
+			(reduce-max/min ,generic-binary x xs ',name))
+		      #f
+		      (named-lambda (,(symbol 'unary- name) x)
+			(if (not (complex:real? x))
+			    (error:wrong-type-argument x "real number" ',name))
+			x)
+		      ,generic-binary)))))))
+     (max/min max complex:max)
+     (max/min min complex:min))
+
+   (initialize-dragon4!)))
 
 (define (complex:<= x y)
   ;; XXX Should use a generic trampoline for this.

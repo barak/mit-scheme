@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime pathname dos)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime number))
 
 (define sub-directory-delimiters
   ;; Allow forward slashes as well as backward slashes so that
@@ -58,8 +60,9 @@ USA.
 		  dos/init-file-pathname
 		  dos/pathname-simplify))
 
-(define (initialize-package!)
-  (add-pathname-host-type! 'dos make-dos-host-type))
+(add-boot-init!
+ (lambda ()
+   (add-pathname-host-type! 'dos make-dos-host-type)))
 
 ;;;; Pathname Parser
 

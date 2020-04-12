@@ -28,26 +28,29 @@ USA.
 ;;; package: (runtime file-i/o-port)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime generic-i/o-port))
 
 (define input-file-type)
 (define output-file-type)
 (define i/o-file-type)
-(define (initialize-package!)
-  (let ((other-operations
-	 `((length ,operation/length)
-	   (pathname ,operation/pathname)
-	   (position ,operation/position)
-	   (set-position! ,operation/set-position!)
-	   (truename ,operation/pathname)
-	   (write-self ,operation/write-self))))
-    (let ((make-type
-	   (lambda (source sink)
-	     (make-textual-port-type other-operations
-				     (generic-i/o-port-type source sink)))))
-      (set! input-file-type (make-type 'channel #f))
-      (set! output-file-type (make-type #f 'channel))
-      (set! i/o-file-type (make-type 'channel 'channel))))
-  unspecific)
+(add-boot-init!
+ (lambda ()
+   (let ((other-operations
+	  `((length ,operation/length)
+	    (pathname ,operation/pathname)
+	    (position ,operation/position)
+	    (set-position! ,operation/set-position!)
+	    (truename ,operation/pathname)
+	    (write-self ,operation/write-self))))
+     (let ((make-type
+	    (lambda (source sink)
+	      (make-textual-port-type other-operations
+				      (generic-i/o-port-type source sink)))))
+       (set! input-file-type (make-type 'channel #f))
+       (set! output-file-type (make-type #f 'channel))
+       (set! i/o-file-type (make-type 'channel 'channel))))
+   unspecific))
 
 (define (operation/pathname port)
   (port-property port 'pathname))

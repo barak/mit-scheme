@@ -29,6 +29,9 @@ USA.
 
 (declare (usual-integrations))
 
+(add-boot-deps! '(runtime floating-point-environment)
+		'(runtime microcode-errors))
+
 ;;; This allows a host without the SMP primitives to avoid calling them.
 (define enable-smp? #f)
 
@@ -139,30 +142,31 @@ USA.
     (%thread-running first))
   (seq:after-thread-low 'trigger!))
 
-(define (initialize-high!)
-  ;; Called later in the cold load, when more of the runtime is initialized.
-  (set! root-continuation-default (make-unsettable-parameter #f))
-  (initialize-error-conditions!)
-  (reset-threads-high!)
-  (record-start-times! first-running-thread)
-  (add-event-receiver! event:after-restore reset-threads!)
-  (add-event-receiver! event:before-exit stop-thread-timer)
-  (named-structure/set-tag-description! thread-mutex-tag
-    (new-make-define-structure-type 'vector
-				    "thread-mutex"
-				    '#(waiting-threads owner)
-				    '#(1 2)
-				    (vector 2 (lambda () #f))
-				    thread-mutex-tag
-				    3))
-  (named-structure/set-tag-description! link-tag
-    (new-make-define-structure-type 'vector
-				    "link"
-				    '#(prev next item)
-				    '#(1 2 3)
-				    (vector 3 (lambda () #f))
-				    link-tag
-				    4)))
+(add-boot-init!
+ (lambda ()
+   ;; Called later in the cold load, when more of the runtime is initialized.
+   (set! root-continuation-default (make-unsettable-parameter #f))
+   (initialize-error-conditions!)
+   (reset-threads-high!)
+   (record-start-times! first-running-thread)
+   (add-event-receiver! event:after-restore reset-threads!)
+   (add-event-receiver! event:before-exit stop-thread-timer)
+   (named-structure/set-tag-description! thread-mutex-tag
+     (new-make-define-structure-type 'vector
+				     "thread-mutex"
+				     '#(waiting-threads owner)
+				     '#(1 2)
+				     (vector 2 (lambda () #f))
+				     thread-mutex-tag
+				     3))
+   (named-structure/set-tag-description! link-tag
+     (new-make-define-structure-type 'vector
+				     "link"
+				     '#(prev next item)
+				     '#(1 2 3)
+				     (vector 3 (lambda () #f))
+				     link-tag
+				     4))))
 
 (define-print-method link?
   (standard-print-method 'link))

@@ -33,6 +33,8 @@ USA.
 (declare (usual-integrations))
 (declare (integrate-external "dispatch-tag"))
 
+(add-boot-deps! '(runtime tagged-dispatch))
+
 (define-primitives
   (vector-cons 2))
 
@@ -100,7 +102,6 @@ USA.
 	  (list (list 'parent-type record-type? (lambda () #f))
 		(list 'applicator procedure? (lambda () #f))
 		(list 'instance-marker %record-type-proxy? (lambda () #f)))))))
-(add-boot-deps! '(runtime tagged-dispatch))
 
 (define (->type-name object caller)
   (cond ((string? object) (string->symbol object))
@@ -951,69 +952,69 @@ USA.
 (define condition-type:no-such-slot)
 (define error:uninitialized-slot)
 (define error:no-such-slot)
-
-(define (initialize-conditions!)
-  (set! condition-type:slot-error
-	(make-condition-type 'slot-error condition-type:cell-error
-	    '()
-	  (lambda (condition port)
-	    (write-string "Anonymous error for slot " port)
-	    (write (access-condition condition 'location) port)
-	    (write-string "." port))))
-  (set! condition-type:uninitialized-slot
-	(make-condition-type 'uninitialized-slot condition-type:slot-error
-	    '(record)
-	  (lambda (condition port)
-	    (write-string "Attempt to reference slot " port)
-	    (write (access-condition condition 'location) port)
-	    (write-string " in record " port)
-	    (write (access-condition condition 'record) port)
-	    (write-string " failed because the slot is not initialized."
-			  port))))
-  (set! condition-type:no-such-slot
-	(make-condition-type 'no-such-slot condition-type:slot-error
-	    '(record-type)
-	  (lambda (condition port)
-	    (write-string "No slot named " port)
-	    (write (access-condition condition 'location) port)
-	    (write-string " in records of type " port)
-	    (write (access-condition condition 'record-type) port)
-	    (write-string "." port))))
-  (set! error:uninitialized-slot
-	(let ((signal
-	       (condition-signaller condition-type:uninitialized-slot
-				    '(record location)
-				    standard-error-handler)))
-	  (lambda (record index)
-	    (let* ((location (%record-field-name record index))
-		   (ls (write-to-string location)))
-	      (call-with-current-continuation
-	       (lambda (k)
-		 (store-value-restart ls
-				      (lambda (value)
-					(%record-set! record index value)
-					(k value))
-		   (lambda ()
-		     (use-value-restart
-		      (string-append
-		       "value to use instead of the contents of slot "
-		       ls)
-		      k
-		      (lambda () (signal record location)))))))))))
-  (set! error:no-such-slot
-	(let ((signal
-	       (condition-signaller condition-type:no-such-slot
-				    '(record-type location)
-				    standard-error-handler)))
-	  (lambda (record-type name)
-	    (call-with-current-continuation
-	     (lambda (k)
-	       (use-value-restart
-		(string-append "slot name to use instead of "
-			       (write-to-string name))
-		k
-		(lambda () (signal record-type name))))))))
-  unspecific)
+(seq:after-conditions 'add-action!
+  (lambda ()
+   (set! condition-type:slot-error
+	 (make-condition-type 'slot-error condition-type:cell-error
+	     '()
+	   (lambda (condition port)
+	     (write-string "Anonymous error for slot " port)
+	     (write (access-condition condition 'location) port)
+	     (write-string "." port))))
+   (set! condition-type:uninitialized-slot
+	 (make-condition-type 'uninitialized-slot condition-type:slot-error
+	     '(record)
+	   (lambda (condition port)
+	     (write-string "Attempt to reference slot " port)
+	     (write (access-condition condition 'location) port)
+	     (write-string " in record " port)
+	     (write (access-condition condition 'record) port)
+	     (write-string " failed because the slot is not initialized."
+			   port))))
+   (set! condition-type:no-such-slot
+	 (make-condition-type 'no-such-slot condition-type:slot-error
+	     '(record-type)
+	   (lambda (condition port)
+	     (write-string "No slot named " port)
+	     (write (access-condition condition 'location) port)
+	     (write-string " in records of type " port)
+	     (write (access-condition condition 'record-type) port)
+	     (write-string "." port))))
+   (set! error:uninitialized-slot
+	 (let ((signal
+		(condition-signaller condition-type:uninitialized-slot
+				     '(record location)
+				     standard-error-handler)))
+	   (lambda (record index)
+	     (let* ((location (%record-field-name record index))
+		    (ls (write-to-string location)))
+	       (call-with-current-continuation
+		(lambda (k)
+		  (store-value-restart ls
+				       (lambda (value)
+					 (%record-set! record index value)
+					 (k value))
+		    (lambda ()
+		      (use-value-restart
+		       (string-append
+			"value to use instead of the contents of slot "
+			ls)
+		       k
+		       (lambda () (signal record location)))))))))))
+   (set! error:no-such-slot
+	 (let ((signal
+		(condition-signaller condition-type:no-such-slot
+				     '(record-type location)
+				     standard-error-handler)))
+	   (lambda (record-type name)
+	     (call-with-current-continuation
+	      (lambda (k)
+		(use-value-restart
+		 (string-append "slot name to use instead of "
+				(write-to-string name))
+		 k
+		 (lambda () (signal record-type name))))))))
+   unspecific))
 
 (define (%record-field-name record index)
   (or (let ((type (and (record? record) (%record->leaf-type record))))

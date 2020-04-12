@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime microcode-errors)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime error-handler))
 
 (define condition-type:anomalous-microcode-error)
 (define condition-type:compiled-code-error)

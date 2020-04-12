@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime ucd-segmentation word)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime ucd-glue))
 
 (define codes
   '(carriage-return

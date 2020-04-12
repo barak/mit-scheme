@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime socket)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime generic-i/o-port))
 
 (define (open-tcp-server-socket service #!optional host)
   (let ((server-socket (create-tcp-server-socket)))
@@ -193,13 +195,10 @@ USA.
 		    (make-channel-output-sink channel)
 		    caller))
 
-(define socket-port-type)
-(define (initialize-package!)
-  (set! socket-port-type
-	(make-textual-port-type `((close-input ,socket/close-input)
-				  (close-output ,socket/close-output))
-				(generic-i/o-port-type 'channel 'channel)))
-  unspecific)
+(define-deferred socket-port-type
+  (make-textual-port-type `((close-input ,socket/close-input)
+			    (close-output ,socket/close-output))
+			  (generic-i/o-port-type 'channel 'channel)))
 
 (define (socket/close-input port)
   (if (textual-port-open? port)

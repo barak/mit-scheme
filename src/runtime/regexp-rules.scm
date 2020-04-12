@@ -31,6 +31,8 @@ USA.
 ;;; parsing syntax, as well as completely general rules.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime number))
 
 (define-record-type <rule>
     (general-rule key predicate operation)

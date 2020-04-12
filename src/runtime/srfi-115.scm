@@ -80,20 +80,21 @@ USA.
 
 (define condition-type:compile-regexp)
 (define compile-error)
-(define (initialize-conditions!)
-  (set! condition-type:compile-regexp
-	(make-condition-type 'compile-sre condition-type:error
-	    '(pattern element)
-	  (lambda (condition port)
-	    (write-string "Ill-formed regular s-expression: " port)
-	    (write (access-condition condition 'element) port)
-	    (write-string " from pattern: " port)
-	    (write (access-condition condition 'pattern) port))))
-  (set! compile-error
-	(condition-signaller condition-type:compile-regexp
-			     '(pattern element)
-			     standard-error-handler))
-  unspecific)
+(seq:after-conditions 'add-action!
+  (lambda ()
+    (set! condition-type:compile-regexp
+	  (make-condition-type 'compile-sre condition-type:error
+	      '(pattern element)
+	    (lambda (condition port)
+	      (write-string "Ill-formed regular s-expression: " port)
+	      (write (access-condition condition 'element) port)
+	      (write-string " from pattern: " port)
+	      (write (access-condition condition 'pattern) port))))
+    (set! compile-error
+	  (condition-signaller condition-type:compile-regexp
+			       '(pattern element)
+			       standard-error-handler))
+    unspecific))
 
 ;;;; Match and search
 

@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime continuation-parser)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables) '(runtime history))
 
 ;;;; Stack Frames
 
@@ -86,7 +88,7 @@ USA.
 	(and stack-frame
 	     (stack-frame/skip-non-subproblems stack-frame)))
       (stack-frame/skip-non-subproblems stack-frame)))
-
+
 (define-integrable (stack-frame/length stack-frame)
   (vector-length (stack-frame/elements stack-frame)))
 
@@ -108,7 +110,7 @@ USA.
 
 (define-integrable (stack-frame/compiled-code? stack-frame)
   (compiled-return-address? (stack-frame/return-address stack-frame)))
-
+
 (define (stack-frame/subproblem? stack-frame)
   (if (stack-frame/stack-marker? stack-frame)
       (stack-marker-frame/repl-eval-boundary? stack-frame)
@@ -141,21 +143,6 @@ USA.
 	   (let ((stack-frame (stack-frame/next stack-frame)))
 	     (and stack-frame
 		  (stack-frame/skip-non-subproblems stack-frame)))))))
-
-(define continuation-return-address)
-
-(define (initialize-special-frames!)
-  (set! continuation-return-address
-	(let ((stack-frame
-	       (call-with-current-continuation
-		(lambda (k)
-		  k
-		  (call-with-current-continuation
-		   continuation/first-subproblem)))))
-	  (and (eq? (stack-frame/type stack-frame)
-		    stack-frame-type/compiled-return-address)
-	       (stack-frame/return-address stack-frame))))
-  unspecific)
 
 ;;;; Parser
 
@@ -595,9 +582,6 @@ USA.
 				  (loop (fix:+ index 1)))
 		     element-stream))))
 	   next-control-point)))))
-
-(define return-address/join-stacklets)
-(define return-address/reenter-compiled-code)
 
 ;;;; Special Frame Lengths
 
@@ -780,47 +764,6 @@ USA.
 	 (error:bad-range-argument return-address
 				   'return-address->stack-frame-type))))
 
-(define (initialize-package!)
-  (set! return-address/join-stacklets
-	(make-return-address (microcode-return 'join-stacklets)))
-  (set! return-address/reenter-compiled-code
-	(make-return-address (microcode-return 'reenter-compiled-code)))
-  (set! stack-frame-types (make-stack-frame-types))
-  (set! stack-frame-type/hardware-trap
-	(microcode-return/name->type 'hardware-trap))
-  (set! stack-frame-type/stack-marker
-	(microcode-return/name->type 'stack-marker))
-  (set! stack-frame-type/compiled-return-address
-	(make-stack-frame-type #f #t #f length/compiled-return-address
-			       parser/standard-compiled))
-  (set! stack-frame-type/return-to-interpreter
-	(make-stack-frame-type #f #f #t 1 parser/standard))
-  (set! stack-frame-type/special-compiled
-	(make-stack-frame-type #f #t #f length/special-compiled
-			       parser/special-compiled))
-  (set! stack-frame-type/interrupt-compiled-procedure
-	(make-stack-frame-type #f #t #f length/interrupt-compiled-procedure
-			       parser/standard))
-  (set! stack-frame-type/interrupt-compiled-expression
-	(make-stack-frame-type #f #t #f 1 parser/standard))
-  (set! word-size
-	(let ((b1 (system-vector-length (make-bit-string 1 #f))))
-	  (let loop ((size 2))
-	    (if (fix:= (system-vector-length (make-bit-string size #f)) b1)
-		(loop (fix:+ size 1))
-		(fix:- size 1)))))
-  (set! continuation-return-address #f)
-  unspecific)
-
-(define stack-frame-types)
-(define stack-frame-type/compiled-return-address)
-(define stack-frame-type/return-to-interpreter)
-(define stack-frame-type/special-compiled)
-(define stack-frame-type/hardware-trap)
-(define stack-frame-type/stack-marker)
-(define stack-frame-type/interrupt-compiled-procedure)
-(define stack-frame-type/interrupt-compiled-expression)
-
 (define (make-stack-frame-types)
   (let ((types (make-vector (microcode-return/code-limit) #f)))
 
@@ -900,6 +843,54 @@ USA.
 
     (non-history-subproblem 'hardware-trap length/hardware-trap)
     types))
+
+(define-deferred stack-frame-types
+  (make-stack-frame-types))
+
+(define-deferred stack-frame-type/compiled-return-address
+  (make-stack-frame-type #f #t #f length/compiled-return-address
+			 parser/standard-compiled))
+
+(define-deferred stack-frame-type/return-to-interpreter
+  (make-stack-frame-type #f #f #t 1 parser/standard))
+
+(define-deferred stack-frame-type/special-compiled
+  (make-stack-frame-type #f #t #f length/special-compiled
+			 parser/special-compiled))
+
+(define-deferred stack-frame-type/hardware-trap
+  (microcode-return/name->type 'hardware-trap))
+
+(define-deferred stack-frame-type/stack-marker
+  (microcode-return/name->type 'stack-marker))
+
+(define-deferred stack-frame-type/interrupt-compiled-procedure
+  (make-stack-frame-type #f #t #f length/interrupt-compiled-procedure
+			 parser/standard))
+
+(define-deferred stack-frame-type/interrupt-compiled-expression
+  (make-stack-frame-type #f #t #f 1 parser/standard))
+
+(define-deferred return-address/join-stacklets
+  (make-return-address (microcode-return 'join-stacklets)))
+
+(define-deferred return-address/reenter-compiled-code
+  (make-return-address (microcode-return 'reenter-compiled-code)))
+
+(define continuation-return-address #f)
+(add-boot-init!
+ (lambda ()
+   (set! continuation-return-address
+	 (let ((stack-frame
+		(call-with-current-continuation
+		  (lambda (k)
+		    k
+		    (call-with-current-continuation
+		      continuation/first-subproblem)))))
+	   (and (eq? (stack-frame/type stack-frame)
+		     stack-frame-type/compiled-return-address)
+		(stack-frame/return-address stack-frame))))
+   unspecific))
 
 ;;;; Hardware trap parsing
 
@@ -990,7 +981,12 @@ USA.
     (write-string " = ")
     (write-string (number->string value 16))))
 
-(define word-size)
+(define-deferred word-size
+  (let ((b1 (system-vector-length (make-bit-string 1 #f))))
+    (let loop ((size 2))
+      (if (fix:= (system-vector-length (make-bit-string size #f)) b1)
+	  (loop (fix:+ size 1))
+	  (fix:- size 1)))))
 
 (define (hardware-trap-frame/print-stack frame)
   (guarantee-hardware-trap-frame frame 'hardware-trap-frame/print-stack)

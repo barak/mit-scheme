@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime parametric-predicate)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime predicate))
 
 (define parametric-tag-metatag (make-dispatch-metatag 'parametric-tag))
 (define parametric-tag? (dispatch-tag->predicate parametric-tag-metatag))

@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime character-set)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime ucd-glue))
 
 ;;; The character set is stored in two parts.  The LOW part is a bit-vector
 ;;; encoding of the code points below a limit.  The HIGH part is a sequence
@@ -875,18 +877,14 @@ USA.
     (char-set-union difference
 		    (char-set* (char-set-map proc intersection)))))
 
-(define char-set-foldcase)
-(define char-set-downcase)
-(define char-set-upcase)
-(seq:after-ucd-glue 'add-action!
-  (lambda ()
-    (set! char-set-foldcase
-	  (domain-mapper char-foldcase char-set:changes-when-case-folded))
-    (set! char-set-downcase
-	  (domain-mapper char-downcase char-set:changes-when-lower-cased))
-    (set! char-set-upcase
-	  (domain-mapper char-upcase char-set:changes-when-upper-cased))
-    unspecific))
+(define-deferred char-set-foldcase
+  (domain-mapper char-foldcase char-set:changes-when-case-folded))
+
+(define-deferred char-set-downcase
+  (domain-mapper char-downcase char-set:changes-when-lower-cased))
+
+(define-deferred char-set-upcase
+  (domain-mapper char-upcase char-set:changes-when-upper-cased))
 
 ;;;; Char-Set Compiler
 
@@ -930,33 +928,14 @@ USA.
 
 ;;;; Miscellaneous character sets
 
-(define char-ctl?)
-(define char-set:ascii)
-(define char-set:blank)
-(define char-set:ctls)
-(define char-set:empty)
-(define char-set:hex-digit)
-(define char-set:iso-control)
-(define char-set:wsp)
-(define char-wsp?)
-(add-boot-init!
- (lambda ()
-   (set! char-set:blank (char-set #\space #\tab))
-   (set! char-set:empty (char-set))
-   (set! char-set:hex-digit (char-set "0123456789abcdefABCDEF"))
-   (set! char-set:iso-control (ilist->char-set '(#x00 #x20 #x7F #x80)))
+(define char-set:ascii (ilist->char-set '(#x00 #x80)))
+(define char-set:blank (char-set #\space #\tab))
+(define char-set:empty (char-set))
+(define char-set:hex-digit (char-set "0123456789abcdefABCDEF"))
+(define char-set:iso-control (ilist->char-set '(#x00 #x20 #x7F #x80)))
 
-   ;; Used in RFCs:
-
-   (set! char-set:ascii (ilist->char-set '(#x00 #x80)))
-
-   (set! char-set:ctls (ilist->char-set '(#x00 #x20 #x7F #x80)))
-   (set! char-ctl? (char-set-predicate char-set:ctls))
-
-   (set! char-set:wsp (char-set #\space #\tab))
-   (set! char-wsp? (char-set-predicate char-set:wsp))
-
-   unspecific))
+(define char-ctl? (char-set-predicate char-set:iso-control))
+(define char-wsp? (char-set-predicate char-set:blank))
 
 ;;;; Backwards compatibility
 

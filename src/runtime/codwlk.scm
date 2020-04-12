@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime scode-walker)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables))
 
 (define-structure (scode-walker (constructor %make-scode-walker)
 				(conc-name scode-walker/))
@@ -95,35 +97,32 @@ USA.
 (define (scode-walk walker expression)
   ((vector-ref dispatch-vector (object-type expression)) walker expression))
 
-(define dispatch-vector)
-
-(define (initialize-package!)
-  (set! dispatch-vector
-	(let ((table (make-vector (microcode-type/code-limit) walk/constant)))
-	  (for-each (lambda (entry)
-		      (let ((kernel
-			     (lambda (name)
-			       (vector-set! table
-					    (microcode-type name)
-					    (cadr entry)))))
-			(if (pair? (car entry))
-			    (for-each kernel (car entry))
-			    (kernel (car entry)))))
-		    `((access ,walk/access)
-		      (assignment ,walk/assignment)
-		      (combination ,walk/combination)
-		      (comment ,walk/comment)
-		      (conditional ,walk/conditional)
-		      (definition ,walk/definition)
-		      (delay ,walk/delay)
-		      (disjunction ,walk/disjunction)
-		      (extended-lambda ,walk/extended-lambda)
-		      ((lambda lexpr) ,walk/lambda)
-		      (quotation ,walk/quotation)
-		      (sequence ,walk/sequence)
-		      (the-environment ,walk/the-environment)
-		      (variable ,walk/variable)))
-	  table)))
+(define-deferred dispatch-vector
+  (let ((table (make-vector (microcode-type/code-limit) walk/constant)))
+    (for-each (lambda (entry)
+		(let ((kernel
+		       (lambda (name)
+			 (vector-set! table
+				      (microcode-type name)
+				      (cadr entry)))))
+		  (if (pair? (car entry))
+		      (for-each kernel (car entry))
+		      (kernel (car entry)))))
+	      `((access ,walk/access)
+		(assignment ,walk/assignment)
+		(combination ,walk/combination)
+		(comment ,walk/comment)
+		(conditional ,walk/conditional)
+		(definition ,walk/definition)
+		(delay ,walk/delay)
+		(disjunction ,walk/disjunction)
+		(extended-lambda ,walk/extended-lambda)
+		((lambda lexpr) ,walk/lambda)
+		(quotation ,walk/quotation)
+		(sequence ,walk/sequence)
+		(the-environment ,walk/the-environment)
+		(variable ,walk/variable)))
+    table))
 
 (define (walk/combination walker expression)
   (let ((operator (scode-combination-operator expression)))

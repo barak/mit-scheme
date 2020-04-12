@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime predicate-tagging)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime predicate))
 
 (define (object->predicate object)
   (dispatch-tag->predicate (object->dispatch-tag object)))

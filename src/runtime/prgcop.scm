@@ -29,38 +29,33 @@ USA.
 
 (declare (usual-integrations))
 
+(add-boot-deps! '(runtime scode-walker))
+
 (define-primitives
   (object-new-type primitive-object-new-type 2))
-
-(define (initialize-package!)
-  (set! *copy-constants?* (make-unsettable-parameter 'unbound))
-  (set! *object-copies* (make-unsettable-parameter 'unbound))
-  (set! copier/scode-walker
-	(make-scode-walker
-	 copy-constant
-	 `((access ,(%copy-pair (ucode-type access)))
-	   (assignment ,(%copy-triple (ucode-type assignment)))
-	   (combination ,copy-combination-object)
-	   (comment ,copy-comment-object)
-	   (conditional ,(%copy-triple (ucode-type conditional)))
-	   (definition ,(%copy-pair (ucode-type definition)))
-	   (delay ,(%copy-pair (ucode-type delay)))
-	   (disjunction ,(%copy-pair (ucode-type disjunction)))
-	   (lambda ,copy-lambda-object)
-	   (quotation ,(%copy-pair (ucode-type quotation)))
-	   (sequence ,copy-sequence-object)
-	   (the-environment ,copy-constant)
-	   (variable ,copy-variable-object))))
-  unspecific)
 
 ;;;; Top level
 
 (define *default/copy-constants?* #f)
 
-(define *copy-constants?*)
+(define-deferred *copy-constants?* (make-unsettable-parameter 'unbound))
+(define-deferred *object-copies* (make-unsettable-parameter 'unbound))
 
-(define *object-copies*)
-(define copier/scode-walker)
+(define-deferred copier/scode-walker
+  (make-scode-walker copy-constant
+    `((access ,(%copy-pair (ucode-type access)))
+      (assignment ,(%copy-triple (ucode-type assignment)))
+      (combination ,copy-combination-object)
+      (comment ,copy-comment-object)
+      (conditional ,(%copy-triple (ucode-type conditional)))
+      (definition ,(%copy-pair (ucode-type definition)))
+      (delay ,(%copy-pair (ucode-type delay)))
+      (disjunction ,(%copy-pair (ucode-type disjunction)))
+      (lambda ,copy-lambda-object)
+      (quotation ,(%copy-pair (ucode-type quotation)))
+      (sequence ,copy-sequence-object)
+      (the-environment ,copy-constant)
+      (variable ,copy-variable-object))))
 
 (define-integrable (make-object-association-table)
   (list '*object-copies*))

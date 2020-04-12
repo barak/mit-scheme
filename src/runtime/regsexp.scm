@@ -78,20 +78,21 @@ USA.
 
 (define condition-type:compile-regsexp)
 (define compile-error)
-(define (initialize-conditions!)
-  (set! condition-type:compile-regsexp
-	(make-condition-type 'compile-regsexp condition-type:error
-	    '(pattern element)
-	  (lambda (condition port)
-	    (write-string "Ill-formed regular s-expression: " port)
-	    (write (access-condition condition 'element) port)
-	    (write-string " from pattern: " port)
-	    (write (access-condition condition 'pattern) port))))
-  (set! compile-error
-	(condition-signaller condition-type:compile-regsexp
-			     '(pattern element)
-			     standard-error-handler))
-  unspecific)
+(seq:after-conditions 'add-action!
+  (lambda ()
+    (set! condition-type:compile-regsexp
+	  (make-condition-type 'compile-regsexp condition-type:error
+	      '(pattern element)
+	    (lambda (condition port)
+	      (write-string "Ill-formed regular s-expression: " port)
+	      (write (access-condition condition 'element) port)
+	      (write-string " from pattern: " port)
+	      (write (access-condition condition 'pattern) port))))
+    (set! compile-error
+	  (condition-signaller condition-type:compile-regsexp
+			       '(pattern element)
+			       standard-error-handler))
+    unspecific))
 
 ;;;; Compiler rules
 

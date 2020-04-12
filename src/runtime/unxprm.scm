@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime os-primitives)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime hash-table))
 
 (define (file-modes filename)
   ((ucode-primitive file-modes 1)
@@ -166,13 +168,11 @@ USA.
   (import-mime-types)
   (hash-table-ref/default mime-types suffix #f))
 
-(define (initialize-mime-types!)
-  (set! mime-types (make-string-hash-table))
-  (set! mime.types-files (make-vector (length mime.types-pathnames) (list #f)))
-  unspecific)
+(define-deferred mime-types
+  (make-string-hash-table))
 
-(define mime-types)
-(define mime.types-files)
+(define-deferred mime.types-files
+  (make-vector (length mime.types-pathnames) (list #f)))
 
 (define mime.types-pathnames
   '("/etc/mime.types" "~/.mime.types"))

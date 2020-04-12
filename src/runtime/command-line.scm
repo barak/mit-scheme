@@ -28,11 +28,9 @@ USA.
 ;;; package: (runtime command-line)
 
 (declare (usual-integrations))
-
-(add-boot-init!
- (lambda ()
-   (add-event-receiver! event:after-restart process-command-line)))
 
+(add-boot-deps! '(runtime dynamic))
+
 (define (scheme-program-name)
   (string-from-primitive ((ucode-primitive scheme-program-name 0))))
 
@@ -90,6 +88,7 @@ USA.
 	(if (and (param:load-init-file?)
 		 (not (nearest-cmdl/batch-mode?)))
 	    (load-init-file))))))
+(add-event-receiver! event:after-restart process-command-line)
 
 (define (find-keyword-parser keyword)
   (let ((entry (assoc (strip-leading-hyphens keyword) *command-line-parsers*)))

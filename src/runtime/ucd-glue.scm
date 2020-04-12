@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime ucd-table-glue)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime ucd-tables))
 
 (define-deferred char-set:alphanumeric
   (char-set-union char-set:alphabetic char-set:numeric))

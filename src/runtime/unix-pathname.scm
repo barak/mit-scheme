@@ -29,6 +29,11 @@ USA.
 
 (declare (usual-integrations))
 
+(add-boot-deps! '(runtime number))
+(add-boot-init!
+ (lambda ()
+   (add-pathname-host-type! 'unix make-unix-host-type)))
+
 (define (make-unix-host-type index)
   (make-host-type index
 		  'unix
@@ -45,9 +50,6 @@ USA.
 		  unix/user-homedir-pathname
 		  unix/init-file-pathname
 		  unix/pathname-simplify))
-
-(define (initialize-package!)
-  (add-pathname-host-type! 'unix make-unix-host-type))
 
 ;;;; Pathname Parser
 

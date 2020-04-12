@@ -28,6 +28,9 @@ USA.
 ;;; package: (runtime load)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime error-handler)
+		'(runtime dynamic))
 
 (define *purification-root-marker*
   '|#[PURIFICATION-ROOT]|)

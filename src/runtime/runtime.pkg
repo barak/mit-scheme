@@ -45,6 +45,7 @@ USA.
 	  load-packages-from-file
 	  name->package
 	  package-name=?
+	  package-name?
 	  package-set-pathname
 	  package/add-child!
 	  package/children
@@ -603,7 +604,6 @@ USA.
 	  (*the-non-printing-object* unspecific)
 	  <hook-list>
 	  append-hook-to-list
-	  apply
 	  bind-cell-contents!
 	  cd
 	  cell-contents
@@ -1350,7 +1350,9 @@ USA.
 
 (define-package (runtime apply)
   (files "apply")
-  (parent (runtime)))
+  (parent (runtime))
+  (export ()
+	  apply))
 
 (define-package (runtime character)
   (files "char")
@@ -1656,6 +1658,8 @@ USA.
 	  (char-set-unfold! char-set-unfold)
 	  (char-set-union! char-set-union)
 	  (char-set-xor! char-set-xor)
+	  (char-set:ctls char-set:iso-control)
+	  (char-set:wsp char-set:blank)
           (list->char-set! list->char-set)
           (string->char-set! string->char-set)
           (ucs-range->char-set! ucs-range->char-set)
@@ -1709,11 +1713,9 @@ USA.
 	  char-set-xor*
 	  char-set:ascii		;SRFI 14
 	  char-set:blank		;SRFI 14
-	  char-set:ctls
 	  char-set:empty		;SRFI 14
 	  char-set:hex-digit		;SRFI 14
 	  char-set:iso-control		;SRFI 14
-	  char-set:wsp
 	  char-set<=			;SRFI 14
 	  char-set=			;SRFI 14
 	  char-set?			;SRFI 14

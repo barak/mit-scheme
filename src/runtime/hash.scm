@@ -40,6 +40,8 @@ USA.
 ;;; and the unhash table holds its values weakly.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime hash-table))
 
 (define (hash-object object #!optional hasher)
   ((->hasher hasher 'hash-object) 'hash-object object))

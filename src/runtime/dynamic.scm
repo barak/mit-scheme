@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime dynamic)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime hash-table))
 
 (define bindings '())	    ; The current thread's parameter bindings.
 (define parameter?)

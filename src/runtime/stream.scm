@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime stream)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime number))
 
 (define (stream-pair? stream)
   (and (pair? stream)
@@ -271,8 +273,6 @@ USA.
 	  ((null? s) (reverse elements))
 	  (else (error:illegal-stream-element s 'stream->list 0)))))
 
-(define prime-numbers-stream)
-
 (define (make-prime-numbers-stream)
   (let ((limit (fix:- (fix:largest-value) 2)))
     (define odd-primes (cons-stream 3 (fixnum-filter 5)))
@@ -296,37 +296,38 @@ USA.
 	       (loop (force (cdr ps)))))))
     (cons-stream 2 odd-primes)))
 
-(define (initialize-package!)
-  (let ((reset-primes!
-	 (lambda ()
-	   (set! prime-numbers-stream (make-prime-numbers-stream))
-	   unspecific)))
-    (reset-primes!)
-    (add-secondary-gc-daemon! reset-primes!)))
+(define prime-numbers-stream)
+(define (reset-primes!)
+  (set! prime-numbers-stream (make-prime-numbers-stream))
+  unspecific)
+(add-boot-init!
+ (lambda ()
+   (reset-primes!)
+   (add-secondary-gc-daemon! reset-primes!)))
 
 (define condition-type:illegal-stream-element)
 (define error:illegal-stream-element)
-
-(define (initialize-conditions!)
-  (set! condition-type:illegal-stream-element
-	(make-condition-type 'illegal-stream-element
-	    condition-type:wrong-type-argument
-	    '()
-	  (lambda (condition port)
-	    (write-string "The object " port)
-	    (write (access-condition condition 'datum) port)
-	    (write-string ", passed as the " port)
-	    (write-string (ordinal-number-string
-			   (+ (access-condition condition 'operand) 1))
-			  port)
-	    (write-string " argument to " port)
-	    (write-operator (access-condition condition 'operator) port)
-	    (write-string ", is not a stream." port))))
-  (set! error:illegal-stream-element
-	(let ((signaller
-	       (condition-signaller condition-type:illegal-stream-element
-				    '(type datum operator operand)
-				    standard-error-handler)))
-	  (named-lambda (error:illegal-stream-element stream operator operand)
-	    (signaller "stream" stream operator operand))))
-  unspecific)
+(seq:after-conditions 'add-action!
+  (lambda ()
+    (set! condition-type:illegal-stream-element
+	  (make-condition-type 'illegal-stream-element
+	      condition-type:wrong-type-argument
+	      '()
+	    (lambda (condition port)
+	      (write-string "The object " port)
+	      (write (access-condition condition 'datum) port)
+	      (write-string ", passed as the " port)
+	      (write-string (ordinal-number-string
+			     (+ (access-condition condition 'operand) 1))
+			    port)
+	      (write-string " argument to " port)
+	      (write-operator (access-condition condition 'operator) port)
+	      (write-string ", is not a stream." port))))
+    (set! error:illegal-stream-element
+	  (let ((signaller
+		 (condition-signaller condition-type:illegal-stream-element
+				      '(type datum operator operand)
+				      standard-error-handler)))
+	    (named-lambda (error:illegal-stream-element stream operator operand)
+	      (signaller "stream" stream operator operand))))
+    unspecific))

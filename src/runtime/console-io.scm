@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime console-i/o-port)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime generic-i/o-port))
 
 (define (make-binary-console-port)
   (make-binary-port (make-channel-input-source (tty-input-channel))

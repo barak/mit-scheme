@@ -28,12 +28,11 @@ USA.
 ;;; package: (runtime directory)
 
 (declare (usual-integrations))
-
-(define *expand-directory-prefixes?*)
 
-(define (initialize-package!)
-  (set! *expand-directory-prefixes?* (make-unsettable-parameter #t))
-  unspecific)
+(add-boot-deps! '(runtime dynamic))
+
+(define *expand-directory-prefixes?*
+  (make-unsettable-parameter #t))
 
 (define (directory-read pattern #!optional sort? full?)
   (let ((sort? (if (default-object? sort?) #t sort?))

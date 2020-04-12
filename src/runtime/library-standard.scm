@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime library standard)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime library database))
 
 (define-deferred host-library-db
   (make-library-db 'host))

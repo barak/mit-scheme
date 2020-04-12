@@ -29,26 +29,22 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (reset-system-clock!)
-  (add-event-receiver! event:after-restore reset-system-clock!))
-
-(define (reset-system-clock!)
-  (set! offset-time (process-time-clock))
-  (set! non-runtime 0)
-  unspecific)
-
 (define current-jiffy (ucode-primitive current-jiffy 0))
 (define jiffies-per-second (ucode-primitive jiffies-per-second 0))
-
-(define offset-time)
-(define non-runtime)
 
 (define-integrable process-time-clock
   (ucode-primitive system-clock 0))
 
 (define-integrable real-time-clock
   (ucode-primitive real-time-clock 0))
+
+(define offset-time)
+(define non-runtime)
+(define (reset-system-clock!)
+  (set! offset-time (process-time-clock))
+  (set! non-runtime 0)
+  unspecific)
+(run-now-and-after-restore! reset-system-clock!)
 
 (define (system-clock)
   (process->system-time (process-time-clock)))

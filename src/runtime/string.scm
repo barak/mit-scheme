@@ -32,6 +32,8 @@ USA.
 ;;; the runtime system has been converted to this string abstraction.
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 (define-primitives
   (allocate-nm-vector 2)

@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime pathname)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime pathname unix) '(runtime pathname dos))
 
 #|
 

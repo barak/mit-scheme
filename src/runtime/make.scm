@@ -154,46 +154,51 @@ USA.
 ;;;; Utilities
 
 (define (package-initialize package-name procedure-name mandatory?)
-  (define (print-name string)
-    (tty-write-string newline-string)
-    (tty-write-string string)
-    (tty-write-string " (")
-    (let loop ((name package-name))
-      (if (not (null? name))
-	  (begin
-	    (if (not (eq? name package-name))
-		(tty-write-string " "))
-	    (tty-write-string (system-pair-car (car name)))
-	    (loop (cdr name)))))
-    (tty-write-string ")"))
-
-  (cond ((let ((package (find-package package-name #f)))
+  (cond ((and (or (not procedure-name)
+		  (eq? procedure-name 'initialize-package!))
+	      (let ((package (find-package package-name #f)))
+		(and package
+		     (let ((seq (package-sequencer package)))
+		       (and (not (seq 'inert?))
+			    seq)))))
+	 => (lambda (seq)
+	      (seq 'trigger!)))
+	((let ((package (find-package package-name #f)))
 	   (and package
 		(let ((env (package/environment package)))
-		  (if (not procedure-name)
-		      (let ((seq (package-sequencer package)))
-			(and (not (seq 'inert?))
-			     (lambda () (seq 'trigger!))))
-		      (and (not (lexical-unreferenceable? env procedure-name))
-			   (lexical-reference env procedure-name))))))
+		  (and (not (lexical-unreferenceable? env procedure-name))
+		       (lexical-reference env procedure-name)))))
 	 => (lambda (procedure)
-	      (print-name "initialize:")
-	      (if (not (or (not procedure-name)
-			   (eq? procedure-name 'initialize-package!)))
-		  (begin
-		    (tty-write-string " [")
-		    (tty-write-string (system-pair-car procedure-name))
-		    (tty-write-string "]")))
+	      (print-package-name "initialize:" package-name)
+	      (tty-write-string " [")
+	      (tty-write-string (system-pair-car procedure-name))
+	      (tty-write-string "]")
 	      (procedure)))
 	((not mandatory?)
-	 (print-name "* skipping:"))
+	 (print-package-name "* skipping:" package-name))
 	(else
 	 ;; Missing mandatory package! Report it and die.
-	 (print-name "Package")
+	 (print-package-name "Package" package-name)
 	 (tty-write-string " is missing initialization procedure ")
 	 (if procedure-name
 	     (tty-write-string (system-pair-car procedure-name)))
 	 (fatal-error "Could not initialize a required package."))))
+
+(define (print-package-name prefix package-name)
+  (tty-write-string newline-string)
+  (tty-write-string prefix)
+  (tty-write-string " (")
+  (let loop ((name package-name))
+    (if (not (null? name))
+	(begin
+	  (if (not (eq? name package-name))
+	      (tty-write-string " "))
+	  (tty-write-string (system-pair-car (car name)))
+	  (loop (cdr name)))))
+  (tty-write-string ")"))
+
+(define ((package-init-printer package))
+  (print-package-name "initialize:" (package/name package)))
 
 (define (package-reference name)
   (package/environment (find-package name)))
@@ -326,6 +331,7 @@ USA.
   (export 'load-packages-from-file)
   (export 'name->package)
   (export 'package-name=?)
+  (export 'package-name?)
   (export 'package-set-pathname)
   (export 'package/add-child!)
   (export 'package/children)
@@ -391,8 +397,8 @@ USA.
 	    (package-reference (cdr (car files))))))
 
   (load-files files0)
-
-  ((lexical-reference runtime-env 'initialize-after-sequencers!))
+  ((lexical-reference runtime-env 'initialize-after-sequencers!)
+   package-init-printer)
 
   (set! package-sequencer
 	(lexical-reference runtime-env 'package-sequencer))
@@ -432,8 +438,11 @@ USA.
 
   (load-files-with-boot-inits files2)
   (package-initialize '(runtime state-space) #f #t)
-  (package-initialize '(runtime thread) 'initialize-low! #t) ;First 1d-table.
+  (package-initialize '(runtime thread) 'initialize-low! #t)
   (package-initialize '(runtime gc-finalizer) #f #t)
+
+  (package-initialize '(package) 'finalize-package-record-type! #t)
+  (package-initialize '(runtime random-number) 'finalize-random-state-type! #t)
 
   ;; Load everything else.
   ((lexical-reference environment-for-package 'load-packages-from-file)
@@ -460,77 +469,11 @@ USA.
 ;;; Funny stuff is done.  Rest of sequence is standardized.
 (package-initialization-sequence
  '(
-   ;; Microcode interface
    (runtime microcode-tables)
-   (runtime system-clock)
-   ;; Basic data structures
-   (runtime number)
-   ((runtime number) initialize-dragon4!)
-   (runtime miscellaneous-global)
-   (runtime character)
-   (runtime bytevector)
-   (runtime character-set)
-   (runtime lambda-abstraction)
-   (runtime string)
-   (runtime stream)
-   (runtime 2d-property)
-   (runtime hash-table)
-   (runtime memoizer)
    (runtime ucd-tables)
-   (runtime ucd-glue)
-   (runtime ucd-segmentation grapheme)
-   (runtime ucd-segmentation word)
    (runtime predicate)
-   (runtime predicate-tagging)
-   (runtime predicate-dispatch)
-   (runtime compound-predicate)
-   (runtime parametric-predicate)
-   (runtime hash)
-   (runtime dynamic)
-   (runtime regexp rules)
-   (runtime library loader)
-   (runtime library standard)
-   ;; Microcode data structures
-   (runtime history)
-   (runtime scode)
-   (runtime scode-walker)
-   (runtime continuation-parser)
-   (runtime program-copier)
-   ;; Finish records
-   ((package) finalize-package-record-type!)
-   ((runtime random-number) finalize-random-state-type!)
-   ;; Condition System
    (runtime error-handler)
-   (runtime microcode-errors)
-   ((runtime record) initialize-conditions!)
-   ((runtime stream) initialize-conditions!)
-   ((runtime regexp regsexp) initialize-conditions!)
-   ((runtime regexp srfi-115) initialize-conditions!)
-   ;; System dependent stuff
-   (runtime os-primitives)
-   ;; Floating-point environment -- needed by threads.
-   (runtime floating-point-environment)
-   ((runtime thread) initialize-high!)
-   ;; I/O
-   (runtime port)
-   (runtime output-port)
-   (runtime generic-i/o-port)
-   (runtime file-i/o-port)
-   (runtime console-i/o-port)
-   (runtime socket)
-   (runtime string-i/o-port)
-   (runtime user-interface)
-   ;; These MUST be done before (RUNTIME PATHNAME)
-   ;; Typically only one of them is loaded.
-   (runtime pathname unix)
-   (runtime pathname dos)
-   (runtime pathname)
-   (runtime directory)
-   (runtime working-directory)
-   (runtime load)
-   (runtime command-line)
-   (runtime simple-file-ops)
-   (optional (runtime os-primitives) initialize-mime-types!)
+
    ;; Syntax
    (runtime number-parser)
    (runtime options)
@@ -564,7 +507,6 @@ USA.
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (runtime emacs-interface)
    ;; More debugging
-   (optional (runtime continuation-parser) initialize-special-frames!)
    (runtime uri)
    (runtime rfc2822-headers)
    (runtime http-syntax)

@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime string-i/o-port)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime generic-i/o-port))
 
 ;;;; Input
 

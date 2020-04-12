@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime miscellaneous-global)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables))
 
 ;;;; Primitive Operators
 
@@ -98,9 +100,6 @@ USA.
 (define (null-procedure . args) args '())
 (define (false-procedure . args) args #f)
 (define (true-procedure . args) args #t)
-
-;; This definition is replaced later in the boot sequence.
-(define apply (ucode-primitive apply 2))
 
 (define (eval expression environment)
   (extended-scode-eval (syntax expression environment) environment))

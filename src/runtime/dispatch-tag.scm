@@ -32,6 +32,8 @@ USA.
 ;;; September 16, 1992 PCL implementation.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime random-number))
 
 (define (%make-tag metatag name predicate extra)
   (let ((tag
@@ -107,7 +109,6 @@ USA.
 	(state (make-random-state #t)))
     (lambda ()
       (random modulus state))))
-(add-boot-deps! '(runtime random-number))
 
 (define (make-dispatch-metatag name)
   (guarantee tag-name? name 'make-dispatch-metatag)

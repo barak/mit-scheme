@@ -28,6 +28,10 @@ USA.
 ;;; package: (runtime generic-i/o-port)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime port)
+		'(runtime character-set)
+		'(runtime error-handler))
 
 (define (make-generic-i/o-port binary-port #!optional type caller . extra-state)
   (let ((port

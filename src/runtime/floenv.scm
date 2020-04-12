@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime floating-point-environment)
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 ;;;; Floating-point environment
 
@@ -155,10 +157,9 @@ USA.
 	    (flo:default-trapped-exceptions))
 	   ((ucode-primitive float-environment 0)))))
   unspecific)
-
-(define (initialize-package!)
-  (reset-package!)
-  (add-event-receiver! event:after-restore reset-package!))
+(add-boot-init!
+ (lambda ()
+   (run-now-and-after-restore! reset-package!)))
 
 ;;;; Floating-point rounding mode
 

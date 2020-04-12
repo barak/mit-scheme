@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime hash-table)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime stream))
 
 ;;;; Structures
 

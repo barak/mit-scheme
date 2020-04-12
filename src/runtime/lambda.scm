@@ -588,3 +588,5 @@ USA.
 	  (else
 	   (error "Illegal arity for entity:"
 		  (list required-count optional-count rest? offset))))))
+
+(initialize-package!)

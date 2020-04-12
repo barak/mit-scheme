@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime predicate-dispatch)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime predicate))
 
 (define (predicate-dispatcher? object)
   (and (entity? object)

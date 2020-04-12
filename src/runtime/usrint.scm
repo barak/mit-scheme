@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime user-interface)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime port) '(runtime dynamic))
 
 ;;;; Prompting
 

@@ -28,18 +28,15 @@ USA.
 ;;; package: (runtime working-directory)
 
 (declare (usual-integrations))
-
-(define (initialize-package!)
-  (set! working-directory-pathname
-	(make-general-parameter #f
-				default-parameter-converter
-				default-parameter-merger
-				default-parameter-getter
-				wd-setter))
-  (reset!)
-  (add-event-receiver! event:after-restore reset!))
 
-(define working-directory-pathname)
+(add-boot-deps! '(runtime pathname))
+
+(define-deferred working-directory-pathname
+  (make-general-parameter #f
+			  default-parameter-converter
+			  default-parameter-merger
+			  default-parameter-getter
+			  wd-setter))
 
 (define (wd-setter set-param pathname)
   (set-param pathname)
@@ -52,6 +49,9 @@ USA.
     (pathname-as-directory
      (string-from-primitive
       ((ucode-primitive working-directory-pathname)))))))
+(add-boot-init!
+ (lambda ()
+   (run-now-and-after-restore! reset!)))
 
 (define (set-working-directory-pathname! name)
   (let ((pathname (new-pathname name)))

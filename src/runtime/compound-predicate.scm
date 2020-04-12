@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime compound-predicate)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime predicate) '(runtime hash-table))
 
 (define compound-tag-metatag (make-dispatch-metatag 'compound-tag))
 (define compound-tag? (dispatch-tag->predicate compound-tag-metatag))

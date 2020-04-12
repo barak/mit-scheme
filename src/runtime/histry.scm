@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime history)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables))
 
 ;;; Vertebrae
 
@@ -185,7 +187,8 @@ USA.
 				 (loop next)))))
 	      '()))))
 
-(define the-empty-history)
+(define-deferred the-empty-history
+  (list (fixed-objects-item 'dummy-history)))
 
 (define (unfold-and-reverse-rib rib)
   (let loop ((current (next-reduction rib)) (output 'wrap-around))
@@ -226,9 +229,3 @@ USA.
 
 (define-integrable (history-untransform history)
   (car history))
-
-(define (initialize-package!)
-  (set! the-empty-history
-	(cons (fixed-objects-item 'dummy-history)
-	      '()))
-  unspecific)

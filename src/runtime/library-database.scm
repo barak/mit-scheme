@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime library database)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime hash-table))
 
 (define-record-type <library-db>
     (%make-library-db name table)

@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime output-port)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime port))
 
 ;;;; Low level
 

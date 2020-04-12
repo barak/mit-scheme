@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime character)
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 (define-primitives
   (char? 1)

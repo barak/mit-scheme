@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime port)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic) '(runtime compound-predicate))
 
 ;;;; Textual port types
 

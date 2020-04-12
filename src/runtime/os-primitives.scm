@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime os-primitives)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime hash-table))
 
 (define (get-environment-variable name)
   (guarantee string? name 'get-environment-variable)
