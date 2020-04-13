@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime structure-parser)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic))
 
 (define-syntax object-parser
   (sc-macro-transformer
@@ -780,11 +782,8 @@ USA.
 		  (symbol name '. n)))
 	      names)))
 
-(define name-counters)
-
-(define (initialize-package!)
-  (set! name-counters (make-unsettable-parameter unspecific))
-  unspecific)
+(define-deferred name-counters
+  (make-unsettable-parameter unspecific))
 
 ;;;; Optimizer
 

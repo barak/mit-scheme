@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime compiler-info)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime bytevector) '(runtime dynamic))
 
 (define (compiled-code-block/dbg-info block demand-load?)
   (let ((wrapper (compiled-code-block/debugging-wrapper block)))
@@ -90,13 +92,10 @@ USA.
 		       (lambda (wrapper)
 			 (set-debugging-wrapper/info! wrapper #f)))
   (empty-population! wrappers-with-memoized-debugging-info))
+(add-secondary-gc-daemon! discard-debugging-info!)
 
-(define-deferred wrappers-with-memoized-debugging-info
+(define wrappers-with-memoized-debugging-info
   (make-serial-population))
-
-(add-boot-init!
- (lambda ()
-   (add-secondary-gc-daemon! discard-debugging-info!)))
 
 (define (compiled-entry/dbg-object entry #!optional demand-load?)
   (let ((block (compiled-entry/block entry))

@@ -362,7 +362,8 @@ USA.
 	(else
 	 (values false false))))
 
-(define (initialize-package!)
+(add-boot-init!
+ (lambda ()
 
 (set! return-code:internal-apply
   (microcode-return/name->code 'internal-apply))
@@ -996,5 +997,5 @@ USA.
 			k #f '())
 		       (signal-hardware-trap k name code)))))))))
 
-;;; end INITIALIZE-PACKAGE!.
-)
+;;; end boot init
+))

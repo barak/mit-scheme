@@ -29,7 +29,9 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime predicate) '(runtime hash-table))
+(add-boot-deps! '(runtime predicate)
+		'(runtime hash-table)
+		'(runtime memoizer))
 
 (define compound-tag-metatag (make-dispatch-metatag 'compound-tag))
 (define compound-tag? (dispatch-tag->predicate compound-tag-metatag))

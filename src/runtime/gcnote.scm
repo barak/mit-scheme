@@ -31,9 +31,6 @@ USA.
 
 (add-boot-deps! '(runtime thread))
 
-(define (initialize-package!)
-  (add-gc-daemon! signal-gc-events))
-
 (define (toggle-gc-notification!)
   (if (registered-gc-event)
       (deregister-gc-event)
@@ -108,7 +105,7 @@ USA.
 (define (registered-gc-event)
   (let ((entry (weak-assq (current-thread) gc-events)))
     (and entry (weak-cdr entry))))
-
+
 (define (signal-gc-events)
   (without-interrupts
    (lambda ()
@@ -141,6 +138,8 @@ USA.
 		    signaled?))))
 	 (if signaled?
 	     (%maybe-toggle-thread-timer)))))))
+
+(add-boot-init! (lambda () (add-gc-daemon! signal-gc-events)))
 
 (define (weak-assq obj alist)
   (let loop ((alist alist))

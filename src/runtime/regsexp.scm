@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime regexp regsexp)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime regexp rules) '(runtime error-handler))
 
 (define (regsexp? object)
   (and (match-rule object) #t))
@@ -76,36 +78,29 @@ USA.
       (unicode-char? object)
       (symbol? object)))
 
-(define condition-type:compile-regsexp)
-(define compile-error)
-(seq:after-conditions 'add-action!
-  (lambda ()
-    (set! condition-type:compile-regsexp
-	  (make-condition-type 'compile-regsexp condition-type:error
-	      '(pattern element)
-	    (lambda (condition port)
-	      (write-string "Ill-formed regular s-expression: " port)
-	      (write (access-condition condition 'element) port)
-	      (write-string " from pattern: " port)
-	      (write (access-condition condition 'pattern) port))))
-    (set! compile-error
-	  (condition-signaller condition-type:compile-regsexp
-			       '(pattern element)
-			       standard-error-handler))
-    unspecific))
+(define-deferred condition-type:compile-regsexp
+  (make-condition-type 'compile-regsexp condition-type:error
+      '(pattern element)
+    (lambda (condition port)
+      (write-string "Ill-formed regular s-expression: " port)
+      (write (access-condition condition 'element) port)
+      (write-string " from pattern: " port)
+      (write (access-condition condition 'pattern) port))))
+
+(define-deferred compile-error
+  (condition-signaller condition-type:compile-regsexp
+		       '(pattern element)
+		       standard-error-handler))
 
 ;;;; Compiler rules
 
-(define regsexp-rules)
-(seq:after-regexp-rules 'add-action!
-  (lambda ()
-    (set! regsexp-rules (make-rules 'regsexp))
-    unspecific))
+(define-deferred regsexp-rules
+  (make-rules 'regsexp))
 
-(define-sequenced-procedure match-rule seq:after-regexp-rules
+(define-deferred match-rule
   (rules-matcher regsexp-rules))
 
-(define-sequenced-procedure define-rule seq:after-regexp-rules
+(define-sequenced-procedure define-rule (current-package-sequencer)
   (rules-definer regsexp-rules))
 
 (define (any-char? object)

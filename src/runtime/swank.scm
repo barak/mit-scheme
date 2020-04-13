@@ -62,6 +62,8 @@ USA.
 |#
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic) '(runtime port))
 
 (define (start-swank #!optional port-file)
   (let ((port-number 4005)
@@ -120,7 +122,8 @@ USA.
 	(parameterize ((*top-level-restart* (find-restart 'abort)))
 	  (process-one-message socket 0))))))
 
-(define *top-level-restart*)
+(define-deferred *top-level-restart*
+   (make-unsettable-parameter unspecific))
 
 (define (get-current-environment)
   (nearest-repl/environment))
@@ -215,7 +218,8 @@ USA.
 	   (write-message `(:return (:ok ,(emacs-rex socket sexp pstring id))
 				    ,id)
 			  socket)))))))
-(define *index*)
+(define-deferred *index*
+  (make-unsettable-parameter unspecific))
 
 (define (emacs-rex socket sexp pstring id)
   (parameterize ((*buffer-pstring* pstring)
@@ -223,7 +227,8 @@ USA.
     (eval (cons* (car sexp) socket (map quote-special (cdr sexp)))
 	  swank-env)))
 
-(define *buffer-pstring*)
+(define-deferred *buffer-pstring*
+  (make-unsettable-parameter unspecific))
 
 (define swank-env
   (the-environment))
@@ -307,27 +312,20 @@ USA.
 	(lambda () (parameterize ((current-output-port p)) (thunk)))
 	(lambda () (flush-output-port p)))))
 
-(define repl-port-type)
-(define (initialize-package!)
-  (set! *top-level-restart* (make-unsettable-parameter unspecific))
-  (set! *sldb-state* (make-unsettable-parameter #f))
-  (set! *index* (make-unsettable-parameter unspecific))
-  (set! *buffer-pstring* (make-unsettable-parameter unspecific))
-  (set! repl-port-type
-	(make-textual-port-type
-	 `((write-char
-	    ,(lambda (port char)
-	       (write-message `(:write-string ,(string char))
-			      (textual-port-state port))
-	       1))
-	   (write-substring
-	    ,(lambda (port string start end)
-	       (if (< start end)
-		   (write-message `(:write-string ,(substring string start end))
-				  (textual-port-state port)))
-	       (- end start))))
-	 #f))
-  unspecific)
+(define-deferred repl-port-type
+  (make-textual-port-type
+   `((write-char
+      ,(lambda (port char)
+	 (write-message `(:write-string ,(string char))
+			(textual-port-state port))
+	 1))
+     (write-substring
+      ,(lambda (port string start end)
+	 (if (< start end)
+	     (write-message `(:write-string ,(substring string start end))
+			    (textual-port-state port)))
+	 (- end start))))
+   #f))
 
 (define (swank:pprint-eval socket string)
   socket
@@ -661,7 +659,8 @@ swank:xref
   condition
   restarts)
 
-(define *sldb-state*)
+(define-deferred *sldb-state*
+  (make-unsettable-parameter #f))
 
 (define (invoke-sldb socket level condition)
   (parameterize ((*sldb-state*

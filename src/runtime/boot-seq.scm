@@ -104,11 +104,13 @@ USA.
 	((%triggered?) triggered?)
 	(else (error "Unknown operator:" operator))))
 
+    (set! all-boot-sequencers (cons this all-boot-sequencers))
     this))
 
-;;; Define these early so that load order doesn't matter.
+(define all-boot-sequencers '())
 
-(define seq:after-compound-predicate (boot-sequencer))
+;;; These are used to defer actions in the earliest part of the boot.
+;;; They shouldn't be used in the bulk part.
 (define seq:after-conditions (boot-sequencer))
 (define seq:after-files-loaded (boot-sequencer))
 (define seq:after-microcode-tables (boot-sequencer))
@@ -116,26 +118,19 @@ USA.
 (define seq:after-printer (boot-sequencer))
 (define seq:after-predicate (boot-sequencer))
 (define seq:after-record (boot-sequencer))
-(define seq:after-regexp-rules (boot-sequencer))
 (define seq:after-thread-low (boot-sequencer))
-(define seq:after-syntax-items (boot-sequencer))
-(define seq:after-ucd-glue (boot-sequencer))
 (define seq:set-predicate-tag! (boot-sequencer))
 
 (define initialize-after-sequencers!)
 (define package-sequencer)
 (let ((alist '())
       (after-alist
-       `((,seq:after-compound-predicate (runtime compound-predicate))
-	 (,seq:after-conditions (runtime microcode-errors))
+       `((,seq:after-conditions (runtime microcode-errors))
 	 (,seq:after-microcode-tables (runtime microcode-tables))
 	 (,seq:after-pretty-printer (runtime pretty-printer))
 	 (,seq:after-printer (runtime printer))
 	 (,seq:after-predicate (runtime predicate))
-	 (,seq:after-record (runtime record))
-	 (,seq:after-regexp-rules (runtime regexp rules))
-	 (,seq:after-syntax-items (runtime syntax items))
-	 (,seq:after-ucd-glue (runtime ucd-glue))))
+	 (,seq:after-record (runtime record))))
       (prefix-maker #f))
   (set! initialize-after-sequencers!
 	(lambda (prefix-maker*)

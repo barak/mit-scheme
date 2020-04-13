@@ -164,8 +164,8 @@ USA.
 	      (set-interrupt-enables! interrupt-mask)
 	      point))))))
 
-(define state-space:global)
-(define state-space:local)
+(define-deferred state-space:global (make-state-space))
+(define-deferred state-space:local (make-state-space))
 
 (define (shallow-fluid-bind before during after)
   (%execute-at-new-state-point state-space:global before during after))
@@ -181,11 +181,6 @@ USA.
      (lambda ()
        (%translate-to-state-point fluid-bindings)
        (after)))))
-
-(define (initialize-package!)
-  (set! state-space:global (make-state-space))
-  (set! state-space:local (make-state-space))
-  unspecific)
 
 (define-structure (dynamic-state (conc-name dynamic-state/))
   (global #f read-only #t)

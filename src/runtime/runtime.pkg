@@ -63,12 +63,15 @@ USA.
 	  package-description/name
 	  package-file/descriptions)
   (export (runtime environment)
-	  package-name-tag)
-  (initialization (initialize-package!)))
+	  package-name-tag))
 
 (define-package (runtime)
-  (files "boot-seq" "version")
-  (parent ())
+  (files "boot-seq")
+  (parent ()))
+
+(define-package (runtime version)
+  (files "version")
+  (parent (runtime))
   (export ()
 	  write-mit-scheme-copyright
 	  write-mit-scheme-license))
@@ -513,8 +516,7 @@ USA.
   (export (runtime thread)
 	  discard-float-environment
 	  save-float-environment
-	  restore-float-environment)
-  (initialization (initialize-package!)))
+	  restore-float-environment))
 
 (define-package (runtime integer-bits)
   (files "integer-bits")
@@ -836,8 +838,7 @@ USA.
 	  string-is-mime-token?
 	  string-is-mime-type?
 	  with-temporary-file
-	  write-mime-type)
-  (initialization (initialize-package!)))
+	  write-mime-type))
 
 (define-package (runtime symbol)
   (files "symbol")
@@ -1016,8 +1017,7 @@ USA.
 	  temporary-directory-pathname
 	  temporary-file-pathname
 	  universal-time->file-time
-	  user-home-directory)
-  (initialization (initialize-system-primitives!)))
+	  user-home-directory))
 
 (os-type-case
  ((unix)
@@ -1314,8 +1314,7 @@ USA.
 	  2d-get-alist-x
 	  2d-get-alist-y
 	  2d-put!
-	  2d-remove!)
-  (initialization (initialize-package!)))
+	  2d-remove!))
 
 (define-package (runtime advice)
   (files "advice")
@@ -1345,8 +1344,7 @@ USA.
 	  unbreak-exit
 	  untrace
 	  untrace-entry
-	  untrace-exit)
-  (initialization (initialize-package!)))
+	  untrace-exit))
 
 (define-package (runtime apply)
   (files "apply")
@@ -1801,8 +1799,7 @@ USA.
 	  uncompress-internal
 	  write-compressed-file-marker)
   (export (runtime options)
-	  with-directory-rewriting-rule)
-  (initialization (initialize-package!)))
+	  with-directory-rewriting-rule))
 
 (define-package (runtime console-i/o-port)
   (files "console-io")
@@ -1812,8 +1809,7 @@ USA.
 	  console-i/o-port?
 	  console-error-port)
   (export (runtime emacs-interface)
-	  the-console-port)
-  (initialization (initialize-package!)))
+	  the-console-port))
 
 (define-package (runtime continuation)
   (files "contin")
@@ -1837,19 +1833,7 @@ USA.
   (export ()
 	  continuation->stack-frame
 	  continuation/first-subproblem
-	  hardware-trap-frame?
-	  hardware-trap-frame/describe
-	  hardware-trap-frame/print-registers
-	  hardware-trap-frame/print-stack
-	  hardware-trap-frame/code
-	  microcode-return/code->type
-	  microcode-return/name->type
 	  stack-frame->continuation
-	  stack-frame-type/code
-	  stack-frame-type/compiled-return-address
-	  stack-frame-type/properties
-	  stack-frame-type/subproblem?
-	  stack-frame-type?
 	  stack-frame/block-thread-events?
 	  stack-frame/compiled-code?
 	  stack-frame/dynamic-state
@@ -1872,10 +1856,21 @@ USA.
 	  stack-frame/subproblem?
 	  stack-frame/type
 	  stack-frame?)
-  (export (runtime debugging-info)
+  (export (runtime)
+	  hardware-trap-frame?
+	  hardware-trap-frame/describe
+	  hardware-trap-frame/print-registers
+	  hardware-trap-frame/print-stack
+	  hardware-trap-frame/code
+	  microcode-return/code->type
+	  microcode-return/name->type
+	  stack-frame-type/code
+	  stack-frame-type/compiled-return-address
+	  stack-frame-type/interrupt-compiled-expression
 	  stack-frame-type/interrupt-compiled-procedure
-	  stack-frame-type/interrupt-compiled-expression)
-  (initialization (initialize-package!)))
+	  stack-frame-type/properties
+	  stack-frame-type/subproblem?
+	  stack-frame-type?))
 
 (define-package (runtime control-point)
   (files "cpoint")
@@ -1995,13 +1990,11 @@ USA.
 	  debugger:string-length-limit
 	  debugger:student-walk?
 	  debugger:use-history?
-	  stack-trace)
-  (initialization (initialize-package!)))
+	  stack-trace))
 
 (define-package (runtime debugger-command-loop)
   (files "dbgcmd")
-  (parent (runtime))
-  (initialization (initialize-package!)))
+  (parent (runtime)))
 
 (define-package (runtime debugger-utilities)
   (files "dbgutl")
@@ -2018,8 +2011,7 @@ USA.
 	  show-environment-procedure
 	  show-frame
 	  show-frames
-	  write-dbg-name)
-  (initialization (initialize-package!)))
+	  write-dbg-name))
 
 (define-package (runtime debugging-info)
   (files "framex")
@@ -2033,16 +2025,14 @@ USA.
 	  debugging-info/unknown-expression?
 	  debugging-info/noise
 	  debugging-info/noise?
-	  stack-frame/debugging-info)
-  (initialization (initialize-package!)))
+	  stack-frame/debugging-info))
 
 (define-package (runtime directory)
   (parent (runtime))
   (export (runtime pathname)
 	  *expand-directory-prefixes?*)
   (export ()
-	  directory-read)
-  (initialization (initialize-package!)))
+	  directory-read))
 
 (os-type-case
  ((unix)
@@ -2054,8 +2044,7 @@ USA.
 
 (define-package (runtime emacs-interface)
   (files "emacs")
-  (parent (runtime))
-  (initialization (initialize-package!)))
+  (parent (runtime)))
 
 (define-package (runtime procedure)
   (files "procedure")
@@ -2251,15 +2240,13 @@ USA.
 	  ic-environment/arguments
 	  ic-environment/procedure)
   (export (runtime debugging-info)
-	  stack-frame/environment)
-  (initialization (initialize-package!)))
+	  stack-frame/environment))
 
 (define-package (runtime environment-inspector)
   (files "where")
   (parent (runtime debugger-command-loop))
   (export ()
-	  where)
-  (initialization (initialize-package!)))
+	  where))
 
 (define-package (runtime error-handler)
   (files "error")
@@ -2401,8 +2388,7 @@ USA.
   (export (runtime environment)
 	  error:macro-binding
 	  error:unassigned-variable
-	  error:unbound-variable)
-  (initialization (initialize-package!)))
+	  error:unbound-variable))
 
 (define-package (runtime event-distributor)
   (files "events")
@@ -2426,8 +2412,7 @@ USA.
   (parent (runtime))
   (export ()
 	  extended-scode-eval
-	  hook/extended-scode-eval)
-  (initialization (initialize-package!)))
+	  hook/extended-scode-eval))
 
 (define-package (runtime file-i/o-port)
   (files "file-io")
@@ -2463,16 +2448,14 @@ USA.
 	  open-input-file
 	  open-output-file
 	  with-input-from-file
-	  with-output-to-file)
-  (initialization (initialize-package!)))
+	  with-output-to-file))
 
 (define-package (runtime transcript)
   (files "transcript")
   (parent (runtime))
   (export ()
 	  transcript-off
-	  transcript-on)
-  (initialization (initialize-package!)))
+	  transcript-on))
 
 (define-package (runtime format)
   (file-case options
@@ -2480,8 +2463,7 @@ USA.
     (else))
   (parent (runtime))
   (export ()
-	  format)
-  (initialization (initialize-package!)))
+	  format))
 
 (define-package (runtime garbage-collector)
   (files "gc")
@@ -2498,8 +2480,7 @@ USA.
   (export (runtime error-handler)
 	  hook/hardware-trap)
   (export (runtime gc-notification)
-	  abort-heap-low)
-  (initialization (initialize-package!)))
+	  abort-heap-low))
 
 (define-package (runtime gc-daemons)
   (files "gcdemn")
@@ -2512,8 +2493,7 @@ USA.
 	  gc-clean
 	  trigger-secondary-gc-daemons!)
   (export (runtime interrupt-handler)
-	  trigger-gc-daemons!)
-  (initialization (initialize-package!)))
+	  trigger-gc-daemons!))
 
 (define-package (runtime gc-finalizer)
   (files "gcfinal")
@@ -2526,8 +2506,7 @@ USA.
 	  make-gc-finalizer
 	  remove-all-from-gc-finalizer!
 	  remove-from-gc-finalizer!
-	  search-gc-finalizer)
-  (initialization (initialize-package!)))
+	  search-gc-finalizer))
 
 (define-package (runtime gc-notification)
   (files "gcnote")
@@ -2546,8 +2525,7 @@ USA.
   (import (runtime thread)
 	  first-running-thread
 	  %maybe-toggle-thread-timer
-	  %signal-thread-event)
-  (initialization (initialize-package!)))
+	  %signal-thread-event))
 
 (define-package (runtime gc-statistics)
   (files "gcstat")
@@ -2569,8 +2547,7 @@ USA.
 	  gc-timestamp
 	  gctime)
   (export (runtime gc-notification)
-	  last-statistic)
-  (initialization (initialize-package!)))
+	  last-statistic))
 
 (define-package (runtime generic-i/o-port)
   (files "generic-io")
@@ -2802,8 +2779,7 @@ USA.
 	  history-reductions
 	  history-superproblem
 	  history-transform
-	  history-untransform)
-  (initialization (initialize-package!)))
+	  history-untransform))
 
 (define-package (runtime compress)
   (file-case options
@@ -3024,8 +3000,7 @@ USA.
 	  generic-port-operation:write-substring)
   (export (runtime emacs-interface)
 	  set-textual-port-type!
-	  textual-port-type-operation)
-  (initialization (initialize-package!)))
+	  textual-port-type-operation))
 
 (define-package (runtime input-port)
   (files "input-port")
@@ -3095,8 +3070,7 @@ USA.
 	  write-simple
 	  write-string
 	  write-strings-in-columns
-	  write-strings-in-paragraph)
-  (initialization (initialize-package!)))
+	  write-strings-in-paragraph))
 
 (define-package (runtime interrupt-handler)
   (files "interrupt")
@@ -3111,8 +3085,7 @@ USA.
   (export (runtime swank)
 	  keyboard-interrupt-vector)
   (import (runtime thread)
-	  handle-current-thread-events)
-  (initialization (initialize-package!)))
+	  handle-current-thread-events))
 
 (define-package (runtime lambda-abstraction)
   (files "lambda")
@@ -3136,8 +3109,7 @@ USA.
 	  lambda-names-vector
 	  make-slambda)
   (export (runtime unsyntaxer)
-	  lambda-immediate-body)
-  (initialization (initialize-package!)))
+	  lambda-immediate-body))
 
 (define-package (runtime alternative-lambda)
   (files "lambdx")
@@ -3504,8 +3476,7 @@ USA.
 	  condition-type:unimplemented-primitive
 	  condition-type:unimplemented-primitive-for-os
 	  condition-type:user-microcode-reset
-	  condition-type:wrong-arity-primitives)
-  (initialization (initialize-package!)))
+	  condition-type:wrong-arity-primitives))
 
 (define-package (runtime microcode-tables)
   (files "microcode-tables")
@@ -3530,7 +3501,6 @@ USA.
 	  fixed-objects-item
 	  fixed-objects-modifier
 	  fixed-objects-updater
-	  get-microcode-version-numbers
 	  microcode-type/code->name
 	  microcode-type/name->code
 	  set-fixed-objects-item!
@@ -3564,7 +3534,8 @@ USA.
 	  microcode-termination/name->code)
   (export (runtime save/restore)
 	  read-microcode-identification!)
-  (initialization (initialize-package!)))
+  (export (runtime version)
+	  get-microcode-version))
 
 (define-package (runtime number)
   (files "arith" "dragon4")
@@ -3700,11 +3671,7 @@ USA.
 	  param:flonum-printer-cutoff
 	  quotient
 	  remainder
-	  square)
-  (initialization
-   (begin
-     (initialize-package!)
-     (initialize-dragon4!))))
+	  square))
 
 (define-package (runtime number interface)
   (file-case options
@@ -3741,8 +3708,7 @@ USA.
 	  option-loaded?
 	  standard-load-options
 	  standard-option-loader
-	  standard-system-loader)
-  (initialization (initialize-package!)))
+	  standard-system-loader))
 
 (define-package (runtime reader)
   (files "reader")
@@ -3837,18 +3803,15 @@ USA.
   (export (runtime options)
 	  library-directory-path)
   (export (runtime load)
-	  library-directory-path)
-  (initialization (initialize-package!)))
+	  library-directory-path))
 
 (define-package (runtime pathname unix)
   (files "unix-pathname")
-  (parent (runtime pathname))
-  (initialization (initialize-package!)))
+  (parent (runtime pathname)))
 
 (define-package (runtime pathname dos)
   (files "dos-pathname")
-  (parent (runtime pathname))
-  (initialization (initialize-package!)))
+  (parent (runtime pathname)))
 
 (define-package (runtime population)
   (files "poplat")
@@ -3896,8 +3859,7 @@ USA.
 	  param:pp-auto-highlighter
 	  pp
 	  pp-description
-	  pretty-print)
-  (initialization (initialize-package!)))
+	  pretty-print))
 
 (define-package (runtime primitive-io)
   (files "primitive-io")
@@ -4006,8 +3968,7 @@ USA.
 	  with-gc-finalizer-lock
 	  remove-from-locked-gc-finalizer!)
   (export (runtime directory)
-	  directory-channel/descriptor)
-  (initialization (initialize-package!)))
+	  directory-channel/descriptor))
 
 (define-package (runtime ffi)
   (parent (runtime))
@@ -4058,15 +4019,13 @@ USA.
 	  add-plugin
 	  remove-plugin
 	  delete-plugin-list
-	  update-plugin-indices)
-  (initialization (initialize-package!)))
+	  update-plugin-indices))
 
 (define-package (runtime program-copier)
   (files "prgcop")
   (parent (runtime))
   (export ()
-	  copy-program)
-  (initialization (initialize-package!)))
+	  copy-program))
 
 (define-package (runtime random-number)
   (files "random")
@@ -4094,8 +4053,7 @@ USA.
 	  random-source-pseudo-randomize!
 	  random-source-randomize!
 	  random-source-state-set!
-	  random-state?)
-  (initialization (initialize-package!)))
+	  random-state?))
 
 (define-package (runtime record)
   (files "record")
@@ -4144,8 +4102,7 @@ USA.
 	  record-type-field-index)
   (export (runtime pathname)
 	  record-type-proxy:host
-	  record-type-proxy:pathname)
-  (initialization (initialize-package!)))
+	  record-type-proxy:pathname))
 
 (define-package (runtime reference-trap)
   (files "reference-trap")
@@ -4284,8 +4241,7 @@ USA.
   (export (runtime miscellaneous-global)
 	  root-continuation)
   (export (runtime working-directory)
-	  cmdl/set-default-directory)
-  (initialization (initialize-package!)))
+	  cmdl/set-default-directory))
 
 (define-package (runtime save/restore)
   (files "savres")
@@ -4297,8 +4253,7 @@ USA.
   (export (runtime gc-daemons)
 	  *within-restore-window?*)
   (export (runtime user-interface)
-	  *within-restore-window?*)
-  (initialization (initialize-package!)))
+	  *within-restore-window?*))
 
 (define-package (runtime scode)
   (files "scode")
@@ -4426,8 +4381,7 @@ USA.
   (export ()
 	  make-scode-walker
 	  scode-walk
-	  scode-walker?)
-  (initialization (initialize-package!)))
+	  scode-walker?))
 
 (define-package (runtime socket)
   (files "socket")
@@ -4457,8 +4411,7 @@ USA.
 	  tcp-server-binary-connection-accept
 	  tcp-server-connection-accept
 	  unix-server-binary-connection-accept
-	  unix-server-connection-accept)
-  (initialization (initialize-package!)))
+	  unix-server-connection-accept))
 
 (define-package (runtime subprocess)
   (file-case options
@@ -4519,8 +4472,7 @@ USA.
 	  subprocess-registrations
 	  subprocess-support-loaded?)
   (import (runtime gc-finalizer)
-	  gc-finalizer-items)
-  (initialization (initialize-package!)))
+	  gc-finalizer-items))
 
 (define-package (runtime synchronous-subprocess)
   (file-case options
@@ -4722,8 +4674,7 @@ USA.
 	  current-state-point
 	  make-state-space
 	  state-space:local
-	  translate-to-state-point)
-  (initialization (initialize-package!)))
+	  translate-to-state-point))
 
 (define-package (runtime dynamic)
   (files "dynamic")
@@ -4776,8 +4727,7 @@ USA.
 	  stream-truncate
 	  stream-write
 	  tail
-	  the-empty-stream)
-  (initialization (initialize-package!)))
+	  the-empty-stream))
 
 (define-package (runtime string-i/o-port)
   (files "string-io")
@@ -5215,8 +5165,7 @@ USA.
 	  system-clock
 	  with-timings)
   (export (runtime gc-statistics)
-	  increment-non-runtime!)
-  (initialization (initialize-package!)))
+	  increment-non-runtime!))
 
 (define-package (runtime printer)
   (files "printer")
@@ -5278,8 +5227,7 @@ USA.
   (export ()
 	  set-working-directory-pathname!
 	  with-working-directory-pathname
-	  working-directory-pathname)
-  (initialization (initialize-package!)))
+	  working-directory-pathname))
 
 (define-package (runtime user-interface)
   (files "usrint")
@@ -5311,8 +5259,7 @@ USA.
 	  port/read-finish
 	  port/read-start)
   (export (runtime swank)
-	  port/write-values)
-  (initialization (initialize-package!)))
+	  port/write-values))
 
 (define-package (runtime thread)
   (files "thread-low" "thread")
@@ -5389,8 +5336,7 @@ USA.
 	  set-thread-event-block!)
   (export (runtime floating-point-environment)
 	  set-thread-float-environment!
-	  thread-float-environment)
-  (initialization (initialize-package!)))
+	  thread-float-environment))
 
 (define-package (runtime thread barrier)
   (files "thread-barrier")
@@ -5617,8 +5563,7 @@ USA.
 	  md5-available?
 	  md5-bytevector
 	  md5-file
-	  md5-string)
-  (initialization (initialize-package!)))
+	  md5-string))
 
 (define-package (runtime regexp)
   (files)
@@ -5798,8 +5743,7 @@ USA.
 	  re-substring-search-backward
 	  re-substring-search-forward
 	  regexp-group
-	  set-re-registers!)
-  (initialization (initialize-package!)))
+	  set-re-registers!))
 
 (define-package (runtime regular-expression-compiler)
   (file-case options
@@ -5871,8 +5815,7 @@ USA.
 	  substring-find-next-char-of-syntax
 	  syntax-code-predicate)
   (export (runtime regular-expression)
-	  char-syntax-table/entries)
-  (initialization (initialize-package!)))
+	  char-syntax-table/entries))
 
 (define-package (runtime mime-codec)
   (file-case options
@@ -6073,8 +6016,7 @@ USA.
 	  url:encode-string
 	  write-partial-uri
 	  write-uri
-	  write-uri-authority)
-  (initialization (initialize-package!)))
+	  write-uri-authority))
 
 (define-package (runtime rfc2822-headers)
   (files "rfc2822-headers")
@@ -6096,8 +6038,7 @@ USA.
 	  rfc2822-header?
 	  rfc2822-headers->string
 	  string->rfc2822-headers
-	  write-rfc2822-headers)
-  (initialization (initialize-package!)))
+	  write-rfc2822-headers))
 
 (define-package (runtime http-syntax)
   (files "http-syntax")
@@ -6171,8 +6112,7 @@ USA.
 	  simple-http-request?
 	  simple-http-response?
 	  write-http-request
-	  write-http-response)
-  (initialization (initialize-package!)))
+	  write-http-response))
 
 (define-package (runtime http-client)
   (files "http-client")
@@ -6183,16 +6123,14 @@ USA.
 	  http-client-request
 	  http-get
 	  http-head
-	  http-post)
-  (initialization (initialize-package!)))
+	  http-post))
 
 (define-package (runtime html-form-codec)
   (files "html-form-codec")
   (parent (runtime))
   (export ()
 	  decode-www-form-urlencoded
-	  encode-www-form-urlencoded)
-  (initialization (initialize-package!)))
+	  encode-www-form-urlencoded))
 
 (define-package (runtime structure-parser)
   (files "structure-parser")
@@ -6210,8 +6148,7 @@ USA.
 	  structure-parser-values-length
 	  structure-parser-values-ref
 	  structure-parser-values?
-	  vector-parser)
-  (initialization (initialize-package!)))
+	  vector-parser))
 
 (define-package (runtime postgresql)
   (file-case options
@@ -6299,15 +6236,13 @@ USA.
 	    win32-registry/subkey
 	    win32-registry/subkeys
 	    win32-registry/value-names
-	    win32/expand-environment-strings)
-    (initialization (initialize-package!)))))
+	    win32/expand-environment-strings))))
 
 (define-package (runtime swank)
   (files "swank")
   (parent (runtime))
   (export ()
-	  start-swank)
-  (initialization (initialize-package!)))
+	  start-swank))
 
 (define-package (runtime stack-sampler)
   (files "stack-sample")
@@ -6315,8 +6250,7 @@ USA.
   (export ()
 	  stack-sampler:debug-internal-errors?
 	  stack-sampler:topmost-expressions
-	  with-stack-sampling)
-  (initialization (initialize-package!)))
+	  with-stack-sampling))
 
 (define-package (runtime world-report)
   (files "world-report")

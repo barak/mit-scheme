@@ -29,6 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
+(add-boot-deps! '(runtime dynamic))
+
 ;;; (DISK-SAVE  filename #!optional identify)
 ;;; Saves a world image in FILENAME.  IDENTIFY has the following meaning:
 ;;;
@@ -42,11 +44,8 @@ USA.
 (define world-id "Image")
 (define time-world-saved #f)
 (define time-world-restored #f)
-(define *within-restore-window?*)
+(define-deferred *within-restore-window?* (make-unsettable-parameter #f))
 
-(define (initialize-package!)
-  (set! *within-restore-window?* (make-unsettable-parameter #f)))
-
 (define (disk-save filename #!optional id)
   (let ((filename (->namestring (merge-pathnames filename)))
 	(id (if (default-object? id) world-id id))
@@ -79,7 +78,6 @@ USA.
 			   (set! time-world-saved time)
 			   (if (string? id) unspecific #f)))))))
 		 ((ucode-primitive set-fixed-objects-vector!) fixed-objects))))
-	   (read-microcode-identification!)
 	   (lambda ()
 	     (set! time-world-saved time)
 	     (set! time-world-restored (get-universal-time))

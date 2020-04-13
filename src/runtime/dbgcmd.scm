@@ -106,16 +106,14 @@ USA.
   (continue)
   (debugger-failure port "Can't exit; use a restart command instead."))
 
-(define (initialize-package!)
-  (set! hook/leaving-command-loop default/leaving-command-loop)
-  unspecific)
-
 (define (leaving-command-loop thunk)
   (hook/leaving-command-loop thunk))
 
-(define hook/leaving-command-loop)
 (define (default/leaving-command-loop thunk)
   (thunk))
+
+(define hook/leaving-command-loop
+  default/leaving-command-loop)
 
 (define (debug/read-eval-print environment from to)
   (leaving-command-loop

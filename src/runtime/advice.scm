@@ -28,22 +28,16 @@ USA.
 ;;; package: (runtime advice)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic))
 
-(define entry-advice-population)
-(define exit-advice-population)
+(define entry-advice-population (make-population))
+(define exit-advice-population (make-population))
 
-(define (initialize-package!)
-  (set! entry-advice-population (make-population))
-  (set! exit-advice-population (make-population))
-  (set! advice-continuation (make-unsettable-parameter #f))
-  (set! the-arguments (make-unsettable-parameter #f))
-  (set! the-procedure (make-unsettable-parameter #f))
-  (set! the-result (make-unsettable-parameter #f))
-  unspecific)
-
-(define the-arguments)
-(define the-procedure)
-(define the-result)
+(define-deferred advice-continuation (make-unsettable-parameter #f))
+(define-deferred the-arguments (make-unsettable-parameter #f))
+(define-deferred the-procedure (make-unsettable-parameter #f))
+(define-deferred the-result (make-unsettable-parameter #f))
 
 (define (*args*)
   (list-copy (the-arguments)))
@@ -108,8 +102,6 @@ USA.
 					   environment))))
 			     (cdr state))
 		   value))))))))))
-
-(define advice-continuation)
 
 ;;;; Advisers
 

@@ -30,6 +30,8 @@ USA.
 ;;; Assumption: octets less than #x80 are ASCII.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime character-set))
 
 ;;;; Decoder
 

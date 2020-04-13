@@ -28,8 +28,9 @@ USA.
 ;;; package: (runtime ffi)
 
 (declare (usual-integrations))
-
 
+(add-boot-deps! '(runtime thread))
+
 ;;; Aliens
 
 (define-structure (alien (constructor %make-alien)
@@ -654,12 +655,11 @@ USA.
   (set! %radix (if (fix:fixnum? #x100000000) #x100000000 #x10000))
   (set! calloutback-stack '()))
 
-(define (initialize-package!)
-  (reset-package!)
-  (initialize-callbacks!)
-  (add-event-receiver! event:after-restore reset-package!)
-  (add-gc-daemon! free-malloced-aliens)
-  unspecific)
+(add-boot-init!
+ (lambda ()
+   (run-now-and-after-restore! reset-package!)
+   (initialize-callbacks!)
+   (add-gc-daemon! free-malloced-aliens)))
 
 #;
 (define-syntax %assert

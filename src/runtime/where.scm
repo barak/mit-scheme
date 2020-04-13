@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime environment-inspector)
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 (define (where #!optional environment)
   (with-simple-restart 'continue "Return from WHERE."
@@ -53,11 +55,8 @@ USA.
 		   (conc-name wstate/))
   frame-list)
 
-(define (initialize-package!)
-  (set!
-   command-set
-   (make-command-set
-    'where-commands
+(define-deferred command-set
+  (make-command-set 'where-commands
     `((#\? ,standard-help-command
 	   "help, list command letters")
       (#\A ,show-all
@@ -79,9 +78,6 @@ USA.
       (#\W ,recursive-where
 	   "enter environment inspector (Where) on the current environment")
       )))
-  unspecific)
-
-(define command-set)
 
 (define (show wstate port)
   (show-current-frame wstate #f port))

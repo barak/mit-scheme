@@ -30,6 +30,8 @@ USA.
 ;;; RFC 3986 <http://ietf.org/rfc/rfc3986.txt>
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime character-set) '(runtime hash-table))
 
 (define-record-type <uri>
     (%make-uri scheme authority path query fragment string)
@@ -64,7 +66,8 @@ USA.
 	(lambda ()
 	  (%make-uri scheme authority path query fragment string))))))
 
-(define interned-uris)
+(define-deferred interned-uris
+  (make-string-hash-table))
 
 (define (uri-absolute? uri)
   (if (uri-scheme uri) #t #f))
@@ -140,7 +143,8 @@ USA.
     (lambda ()
       (%make-uri-authority userinfo host port))))
 
-(define interned-uri-authorities)
+(define-deferred interned-uri-authorities
+  (make-string-hash-table))
 
 (define (uri-userinfo? object)
   (string? object))
@@ -265,12 +269,14 @@ USA.
 		     (uri-query uri)
 		     (uri-fragment uri))))))
 
-(define uri-merge-defaults)
 (define (make-uri-merge-defaults)
   (make-parameter #f
 		  (lambda (object)
 		    (and object
 			 (->uri object 'uri-merge-defaults)))))
+
+(define-deferred uri-merge-defaults
+  (make-uri-merge-defaults))
 
 (define (merge-paths ref-path base-uri)
   (cond ((path-absolute? ref-path)
@@ -830,10 +836,20 @@ USA.
 				    char-set:uri-hex
 				    char-set:uri-hex)))
 
-(define char-set:uri-alpha)
-(define char-set:uri-digit)
-(define char-set:uri-hex)
-(define char-set:uri-scheme)
+(define-deferred char-set:uri-alpha
+  (string->char-set "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+
+(define-deferred char-set:uri-digit
+  (string->char-set "0123456789"))
+
+(define-deferred char-set:uri-hex
+  (string->char-set "0123456789abcdefABCDEF"))
+
+(define-deferred char-set:uri-scheme
+  (char-set-union char-set:uri-alpha
+		  char-set:uri-digit
+		  (string->char-set "+-.")))
+
 (define char-set:uri-userinfo)
 (define char-set:uri-ipvfuture)
 (define char-set:uri-reg-name)
@@ -842,29 +858,8 @@ USA.
 (define char-set:uri-query)
 (define char-set:uri-fragment)
 (define char-set:uri-sloppy-auth)
-
-(define parser:userinfo)
-(define matcher:reg-name)
-(define parser:segment)
-(define parser:segment-nz)
-(define parser:segment-nz-nc)
-(define parser:query)
-(define parser:fragment)
-
-(define url:char-set:unreserved)
-(define url:char-set:unescaped)
-
 (add-boot-init!
  (lambda ()
-   (set! char-set:uri-alpha
-	 (string->char-set
-	  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-   (set! char-set:uri-digit (string->char-set "0123456789"))
-   (set! char-set:uri-hex (string->char-set "0123456789abcdefABCDEF"))
-   (set! char-set:uri-scheme
-	 (char-set-union char-set:uri-alpha
-			 char-set:uri-digit
-			 (string->char-set "+-.")))
    (let* ((sub-delims (string->char-set "!$&'()*+,;="))
 	  (unreserved
 	   (char-set-union char-set:uri-alpha
@@ -880,30 +875,40 @@ USA.
      (set! char-set:uri-segment-nc	(component-chars "@"))
      (set! char-set:uri-query		(component-chars ":@/?"))
      (set! char-set:uri-fragment	char-set:uri-query)
-     (set! char-set:uri-sloppy-auth	(component-chars ":@[]")))
+     (set! char-set:uri-sloppy-auth	(component-chars ":@[]"))
+     unspecific)))
 
-   (set! parser:userinfo	(component-parser-* char-set:uri-userinfo))
-   (set! matcher:reg-name	(component-matcher-* char-set:uri-reg-name))
-   (set! parser:segment		(component-parser-* char-set:uri-segment))
-   (set! parser:segment-nz	(component-parser-+ char-set:uri-segment))
-   (set! parser:segment-nz-nc	(component-parser-+ char-set:uri-segment-nc))
-   (set! parser:query		(component-parser-* char-set:uri-query))
-   (set! parser:fragment	(component-parser-* char-set:uri-fragment))
+(define-deferred parser:userinfo
+  (component-parser-* char-set:uri-userinfo))
 
-   (set! interned-uris (make-string-hash-table))
-   (set! interned-uri-authorities (make-string-hash-table))
+(define-deferred matcher:reg-name
+  (component-matcher-* char-set:uri-reg-name))
 
-   ;; backwards compatibility:
-   (set! url:char-set:unreserved
-	 (char-set-union char-set:uri-alpha
-			 char-set:uri-digit
-			 (string->char-set "!$'()*+,-._")))
-   (set! url:char-set:unescaped
-	 (char-set-union url:char-set:unreserved
-			 (string->char-set ";/?:@&=")))
+(define-deferred parser:segment
+  (component-parser-* char-set:uri-segment))
 
-   (set! uri-merge-defaults (make-uri-merge-defaults))
-   unspecific))
+(define-deferred parser:segment-nz
+  (component-parser-+ char-set:uri-segment))
+
+(define-deferred parser:segment-nz-nc
+  (component-parser-+ char-set:uri-segment-nc))
+
+(define-deferred parser:query
+  (component-parser-* char-set:uri-query))
+
+(define-deferred parser:fragment
+  (component-parser-* char-set:uri-fragment))
+
+;; backwards compatibility:
+(define-deferred url:char-set:unreserved
+  (char-set-union char-set:uri-alpha
+		  char-set:uri-digit
+		  (string->char-set "!$'()*+,-._")))
+
+;; backwards compatibility:
+(define-deferred url:char-set:unescaped
+  (char-set-union url:char-set:unreserved
+		  (string->char-set ";/?:@&=")))
 
 ;;;; Partial URIs
 

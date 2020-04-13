@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime microcode-tables)
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 (define-integrable fixed-objects-slot 15)
 
@@ -223,7 +225,9 @@ USA.
 	(intern (microcode-identification-item 'cc-arch-string "unknown")))
   unspecific)
 
-(add-boot-init! read-microcode-identification!)
+(add-boot-init!
+ (lambda ()
+   (run-now-and-after-restore! read-microcode-identification!)))
 
 (define (microcode-identification-item name #!optional default-value)
   (let ((index (microcode-table-search identifications-slot name)))
@@ -234,7 +238,7 @@ USA.
 	      (error:bad-range-argument name 'microcode-identification-item))
 	  default-value))))
 
-(define (get-microcode-version-numbers)
+(define (get-microcode-version)
   (map (lambda (s) (or (string->number s) s))
        (burst-string microcode-version-string #\. #f)))
 

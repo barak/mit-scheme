@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime rfc2822-headers)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime character-set) '(runtime error-handler))
 
 (define (make-rfc2822-header name value)
   (guarantee-header-name name 'make-rfc2822-header)
@@ -273,39 +275,34 @@ USA.
 
 ;;;; Initialization
 
-(define char-set:rfc2822-name)
-(define char-set:rfc2822-text)
-(define char-set:rfc2822-qtext)
+(define-deferred char-set:rfc2822-name
+  (char-set-difference char-set:ascii
+		       (char-set-union char-set:ctls
+				       (char-set #\space #\:)
+				       char-set:upper-case)))
 
-(define condition-type:rfc2822-parse-error)
-(define parse-error)
+(define-deferred char-set:rfc2822-text
+  (char-set-difference char-set:ascii
+		       (char-set #\null #\linefeed #\return)))
 
-(define (initialize-package!)
-  (set! char-set:rfc2822-name
-	(char-set-difference char-set:ascii
-			     (char-set-union char-set:ctls
-					     (char-set #\space #\:)
-					     char-set:upper-case)))
-  (set! char-set:rfc2822-text
-	(char-set-difference char-set:ascii
-			     (char-set #\null #\linefeed #\return)))
-  (set! char-set:rfc2822-qtext
-	(char-set-difference char-set:rfc2822-text
-			     (char-set #\tab #\space #\delete #\\ #\")))
-  (set! condition-type:rfc2822-parse-error
-	(make-condition-type 'rfc2822-parse-error
-	    condition-type:port-error
-	    '(message irritants)
-	  (lambda (condition port)
-	    (write-string "Error while parsing RFC 2822 headers: " port)
-	    (format-error-message (access-condition condition 'message)
-				  (access-condition condition 'irritants)
-				  port))))
-  (set! parse-error
-	(let ((signal
-	       (condition-signaller condition-type:rfc2822-parse-error
-				    '(port message irritants)
-				    standard-error-handler)))
-	  (lambda (port message . irritants)
-	    (signal port message irritants))))
-  unspecific)
+(define-deferred char-set:rfc2822-qtext
+  (char-set-difference char-set:rfc2822-text
+		       (char-set #\tab #\space #\delete #\\ #\")))
+
+(define-deferred condition-type:rfc2822-parse-error
+  (make-condition-type 'rfc2822-parse-error
+      condition-type:port-error
+      '(message irritants)
+    (lambda (condition port)
+      (write-string "Error while parsing RFC 2822 headers: " port)
+      (format-error-message (access-condition condition 'message)
+			    (access-condition condition 'irritants)
+			    port))))
+
+(define-deferred parse-error
+  (let ((signal
+	 (condition-signaller condition-type:rfc2822-parse-error
+			      '(port message irritants)
+			      standard-error-handler)))
+    (lambda (port message . irritants)
+      (signal port message irritants))))

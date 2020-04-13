@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime predicate))
+(add-boot-deps! '(runtime predicate) '(runtime memoizer))
 
 (define parametric-tag-metatag (make-dispatch-metatag 'parametric-tag))
 (define parametric-tag? (dispatch-tag->predicate parametric-tag-metatag))

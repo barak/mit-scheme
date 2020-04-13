@@ -28,6 +28,10 @@ USA.
 ;;; package: (runtime regexp srfi-115)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime regexp rules)
+		'(runtime error-handler)
+		'(runtime ucd-glue))
 
 (define (valid-sre? object)
   (and (or (match-cset-sre-rule initial-ctx object)
@@ -78,23 +82,19 @@ USA.
 		(write-line object port))
 	      (regexp->nfa (regexp re)))))
 
-(define condition-type:compile-regexp)
-(define compile-error)
-(seq:after-conditions 'add-action!
-  (lambda ()
-    (set! condition-type:compile-regexp
-	  (make-condition-type 'compile-sre condition-type:error
-	      '(pattern element)
-	    (lambda (condition port)
-	      (write-string "Ill-formed regular s-expression: " port)
-	      (write (access-condition condition 'element) port)
-	      (write-string " from pattern: " port)
-	      (write (access-condition condition 'pattern) port))))
-    (set! compile-error
-	  (condition-signaller condition-type:compile-regexp
-			       '(pattern element)
-			       standard-error-handler))
-    unspecific))
+(define-deferred condition-type:compile-regexp
+  (make-condition-type 'compile-sre condition-type:error
+      '(pattern element)
+    (lambda (condition port)
+      (write-string "Ill-formed regular s-expression: " port)
+      (write (access-condition condition 'element) port)
+      (write-string " from pattern: " port)
+      (write (access-condition condition 'pattern) port))))
+
+(define-deferred compile-error
+  (condition-signaller condition-type:compile-regexp
+		       '(pattern element)
+		       standard-error-handler))
 
 ;;;; Match and search
 
@@ -425,37 +425,37 @@ USA.
 
 ;;;; Compiler rules
 
-(define sre-rules)
-(define sre-rewrite-rules)
-(define cset-sre-rules)
-(define cset-sre-rewrite-rules)
-(seq:after-regexp-rules 'add-action!
-  (lambda ()
-    (set! sre-rules (make-rules 'sre 1))
-    (set! sre-rewrite-rules (make-rules 'sre-rewrite 1))
-    (set! cset-sre-rules (make-rules 'cset-sre 1))
-    (set! cset-sre-rewrite-rules (make-rules 'cset-sre-rewrite 1))
-    unspecific))
+(define-deferred sre-rules
+  (make-rules 'sre 1))
+
+(define-deferred sre-rewrite-rules
+  (make-rules 'sre-rewrite 1))
+
+(define-deferred cset-sre-rules
+  (make-rules 'cset-sre 1))
+
+(define-deferred cset-sre-rewrite-rules
+  (make-rules 'cset-sre-rewrite 1))
 
 (define (rule-finder match-rules rewrite-rules)
   (rules-rewriter rewrite-rules (rules-matcher match-rules)))
 
-(define-sequenced-procedure match-sre-rule seq:after-regexp-rules
+(define-deferred match-sre-rule
   (rule-finder sre-rules sre-rewrite-rules))
 
-(define-sequenced-procedure match-cset-sre-rule seq:after-regexp-rules
+(define-deferred match-cset-sre-rule
   (rule-finder cset-sre-rules cset-sre-rewrite-rules))
 
-(define-sequenced-procedure define-sre-rule seq:after-regexp-rules
+(define-sequenced-procedure define-sre-rule (current-package-sequencer)
   (rules-definer sre-rules))
 
-(define-sequenced-procedure define-sre-rewriter seq:after-regexp-rules
+(define-sequenced-procedure define-sre-rewriter (current-package-sequencer)
   (rules-definer sre-rewrite-rules))
 
-(define-sequenced-procedure define-cset-sre-rule seq:after-regexp-rules
+(define-sequenced-procedure define-cset-sre-rule (current-package-sequencer)
   (rules-definer cset-sre-rules))
 
-(define-sequenced-procedure define-cset-sre-rewriter seq:after-regexp-rules
+(define-sequenced-procedure define-cset-sre-rewriter (current-package-sequencer)
   (rules-definer cset-sre-rewrite-rules))
 
 (define (alias-rule-definer rules)
@@ -468,10 +468,10 @@ USA.
 	  (declare (ignore ctx))
 	  (cons to args))))))
 
-(define-sequenced-procedure define-sre-alias seq:after-regexp-rules
+(define-sequenced-procedure define-sre-alias (current-package-sequencer)
   (alias-rule-definer sre-rewrite-rules))
 
-(define-sequenced-procedure define-cset-sre-alias seq:after-regexp-rules
+(define-sequenced-procedure define-cset-sre-alias (current-package-sequencer)
   (alias-rule-definer cset-sre-rewrite-rules))
 
 (define (compile-sre ctx sre)
@@ -544,11 +544,8 @@ USA.
       (partition exact-nonnegative-integer? (hash-table-keys table))
     (append (sort numbered <) named)))
 
-(define char-set:word)
-(seq:after-ucd-glue 'add-action!
-  (lambda ()
-    (set! char-set:word (char-set-adjoin char-set:alphabetic #\_))
-    unspecific))
+(define-deferred char-set:word
+  (char-set-adjoin char-set:alphabetic #\_))
 
 ;;;; <sre>
 

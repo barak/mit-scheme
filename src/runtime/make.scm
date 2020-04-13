@@ -153,17 +153,21 @@ USA.
 
 ;;;; Utilities
 
-(define (package-initialize package-name procedure-name mandatory?)
-  (cond ((and (or (not procedure-name)
-		  (eq? procedure-name 'initialize-package!))
-	      (let ((package (find-package package-name #f)))
-		(and package
-		     (let ((seq (package-sequencer package)))
-		       (and (not (seq 'inert?))
-			    seq)))))
+(define (run-pkg-boot-inits package-name)
+  (cond ((let ((package (find-package package-name #f)))
+	   (and package
+		(let ((seq (package-sequencer package)))
+		  (and (not (seq 'inert?))
+		       seq))))
 	 => (lambda (seq)
 	      (seq 'trigger!)))
-	((let ((package (find-package package-name #f)))
+	(else
+	 (print-package-name "Package" package-name)
+	 (tty-write-string " has no boot initialization")
+	 (fatal-error "Could not initialize package"))))
+
+(define (call-pkg-init-proc package-name procedure-name)
+  (cond ((let ((package (find-package package-name #f)))
 	   (and package
 		(let ((env (package/environment package)))
 		  (and (not (lexical-unreferenceable? env procedure-name))
@@ -174,15 +178,11 @@ USA.
 	      (tty-write-string (system-pair-car procedure-name))
 	      (tty-write-string "]")
 	      (procedure)))
-	((not mandatory?)
-	 (print-package-name "* skipping:" package-name))
 	(else
-	 ;; Missing mandatory package! Report it and die.
 	 (print-package-name "Package" package-name)
 	 (tty-write-string " is missing initialization procedure ")
-	 (if procedure-name
-	     (tty-write-string (system-pair-car procedure-name)))
-	 (fatal-error "Could not initialize a required package."))))
+	 (tty-write-string (system-pair-car procedure-name))
+	 (fatal-error "Could not initialize package"))))
 
 (define (print-package-name prefix package-name)
   (tty-write-string newline-string)
@@ -202,23 +202,6 @@ USA.
 
 (define (package-reference name)
   (package/environment (find-package name)))
-
-(define (package-initialization-sequence specs)
-  (do ((specs specs (cdr specs)))
-      ((not (pair? specs)) unspecific)
-    (let ((spec (car specs)))
-      (cond ((eq? (car spec) 'optional)
-	     (package-initialize (cadr spec)
-				 (and (pair? (cddr spec))
-				      (caddr spec))
-				 #f))
-	    ((pair? (car spec))
-	     (package-initialize (car spec)
-				 (and (pair? (cdr spec))
-				      (cadr spec))
-				 #t))
-	    (else
-	     (package-initialize spec #f #t))))))
 
 (define (remember-to-purify purify? filename value)
   (if purify?
@@ -355,8 +338,14 @@ USA.
 
 ((lexical-reference environment-for-package 'construct-packages-from-file)
  packages-file)
+
+(define runtime-env
+  (package-reference '(runtime)))
 
-;;; Global databases.  Load, then initialize.
+;;; Initial part of load/eval/initialize sequence is manual and carefully
+;;; constructed to provide the mechanisms so that the remaining files can be
+;;; loaded and evaluated.  Then dependency-based sequencing is used to
+;;; initialize everything else.
 (define package-sequencer)
 (let ((files0
        '(("gcdemn" . (runtime gc-daemons))
@@ -387,8 +376,7 @@ USA.
 	 ("thread" . (runtime thread))
 	 ("wind" . (runtime state-space))
 	 ("events" . (runtime event-distributor))
-	 ("gcfinal" . (runtime gc-finalizer))))
-      (runtime-env (package-reference '(runtime))))
+	 ("gcfinal" . (runtime gc-finalizer)))))
 
   (define (load-files files)
     (do ((files files (cdr files)))
@@ -397,25 +385,14 @@ USA.
 	    (package-reference (cdr (car files))))))
 
   (load-files files0)
+  (call-pkg-init-proc '(runtime gc-daemons) 'initialize-package!)
+  (call-pkg-init-proc '(runtime garbage-collector) 'initialize-package!)
+
   ((lexical-reference runtime-env 'initialize-after-sequencers!)
    package-init-printer)
 
   (set! package-sequencer
 	(lexical-reference runtime-env 'package-sequencer))
-
-  (define (link-default-initializer! package)
-    (let ((env (package/environment package))
-	  (name 'initialize-package!))
-      (if (not (lexical-unreferenceable? env name))
-	  ((package-sequencer package)
-	   'add-action!
-	   (lexical-reference env name)))))
-
-  (link-default-initializer! (find-package '(runtime gc-daemons)))
-  (link-default-initializer! (find-package '(runtime garbage-collector)))
-
-  (package-initialize '(runtime gc-daemons) #f #t)
-  (package-initialize '(runtime garbage-collector) #f #t)
 
   (define with-current-package
     (lexical-reference runtime-env 'with-current-package))
@@ -430,19 +407,18 @@ USA.
     (let ((file-object (file->object file-name #t #t)))
       (with-current-package package
 	(lambda ()
-	  (eval file-object (package/environment package))))
-      (link-default-initializer! package)))
+	  (eval file-object (package/environment package))))))
 
   (load-files-with-boot-inits files1)
-  (package-initialize '(runtime random-number) #f #t)
+  (run-pkg-boot-inits '(runtime random-number))
 
   (load-files-with-boot-inits files2)
-  (package-initialize '(runtime state-space) #f #t)
-  (package-initialize '(runtime thread) 'initialize-low! #t)
-  (package-initialize '(runtime gc-finalizer) #f #t)
+  (run-pkg-boot-inits '(runtime state-space))
+  (call-pkg-init-proc '(runtime thread) 'initialize-low!)
+  (run-pkg-boot-inits '(runtime gc-finalizer))
 
-  (package-initialize '(package) 'finalize-package-record-type! #t)
-  (package-initialize '(runtime random-number) 'finalize-random-state-type! #t)
+  (call-pkg-init-proc '(package) 'finalize-package-record-type!)
+  (call-pkg-init-proc '(runtime random-number) 'finalize-random-state-type!)
 
   ;; Load everything else.
   ((lexical-reference environment-for-package 'load-packages-from-file)
@@ -463,44 +439,24 @@ USA.
 		    (file-member? filename files1)
 		    (file-member? filename files2)))
 	   (load-file-with-boot-inits filename package))
-       unspecific)))
-  ((lexical-reference runtime-env 'seq:after-files-loaded) 'trigger!))
-
-;;; Funny stuff is done.  Rest of sequence is standardized.
-(package-initialization-sequence
- '(
-   (runtime microcode-tables)
-   (runtime ucd-tables)
-   (runtime predicate)
-   (runtime error-handler)
+       unspecific))))
 
-   ;; Debugging
-   (runtime compiler-info)
-   (runtime advice)
-   (runtime debugger-command-loop)
-   (runtime debugger-utilities)
-   (runtime environment-inspector)
-   (runtime debugging-info)
-   (runtime debugger)
-   ;; Misc (e.g., version)
-   (runtime)
-   ;; Emacs -- last because it installs hooks everywhere which must be initted.
-   (runtime emacs-interface)
-   ;; More debugging
-   (runtime uri)
-   (runtime rfc2822-headers)
-   (runtime http-syntax)
-   (runtime html-form-codec)
-   (optional (runtime win32-registry))
-   (runtime ffi)
-   (runtime save/restore)
-   (runtime structure-parser)
-   (runtime swank)
-   (runtime stack-sampler)
-   ;; Done very late since it will look up lots of global variables.
-   ((runtime library standard) finish-host-library-db!)
-   ;; Last since it turns on runtime handling of microcode errors.
-   ((runtime microcode-errors) initialize-error-hooks!)))
+;; All remaining initizations are rooted in seq:after-files-loaded.  Triggering
+;; that starts the initialization cascade.
+(define seq:after-files-loaded
+  (lexical-reference runtime-env 'seq:after-files-loaded))
+
+;; Must be done manually since the ucd-tables are generated:
+((package-sequencer (find-package '(runtime ucd-tables)))
+ 'add-before! seq:after-files-loaded)
+
+(seq:after-files-loaded 'trigger!)
+
+;; Done very late since it will look up lots of global variables.
+(call-pkg-init-proc '(runtime library standard) 'finish-host-library-db!)
+
+;; Last since it turns on runtime handling of microcode errors.
+(call-pkg-init-proc '(runtime microcode-errors) 'initialize-error-hooks!)
 
 (let ((obj (file->object "site" #t #f)))
   (if obj

@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime win32-registry)
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 (define (win32-registry/open-key name mode)
   (let ((key
@@ -308,16 +310,13 @@ USA.
 	       (set-cdr! l1 (cdr l2))))
 	    (loop l2 (cdr l2))))))
 
-(define open-keys)
-(define open-handles-list)
+(define-deferred open-keys
+  (map (lambda (n.h)
+	 (%make-registry-key #f (car n.h) (cdr n.h)))
+       (win32-predefined-registry-keys)))
 
-(define (initialize-package!)
-  (set! open-keys
-	(map (lambda (n.h)
-	       (%make-registry-key #f (car n.h) (cdr n.h)))
-	     (win32-predefined-registry-keys)))
-  (set! open-handles-list (list 'open-handles-list))
-  (add-gc-daemon! close-lost-open-keys-daemon))
+(define open-handles-list
+  (list 'open-handles-list))
 
 (define (close-lost-open-keys-daemon)
   (let loop ((l1 open-handles-list) (l2 (cdr open-handles-list)))
@@ -328,6 +327,7 @@ USA.
 	      (win32-close-registry-key (%weak-cdr (car l2)))
 	      (set-cdr! l1 (cdr l2))
 	      (loop l1 (cdr l1)))))))
+(add-gc-daemon! close-lost-open-keys-daemon)
 
 ;;;; Microcode Interface
 

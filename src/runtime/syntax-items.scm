@@ -28,7 +28,8 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime predicate-dispatch))
+(add-boot-deps! '(runtime predicate-dispatch)
+		'(runtime compound-predicate))
 
 (define-deferred compile-item
   (cached-standard-predicate-dispatcher 'compile-item 1))
@@ -42,22 +43,22 @@ USA.
       item)))
 
 (define (define-item-compiler predicate compiler #!optional expr-compiler)
-  (seq:after-syntax-items 'add-action!
-    (lambda ()
-      (define-predicate-dispatch-handler compile-item
-	(list predicate)
-	compiler)
-      (if expr-compiler
-	  (define-predicate-dispatch-handler compile-expr-item
-	    (list predicate)
-	    (if (default-object? expr-compiler) compiler expr-compiler))))))
+  (add-boot-init!
+   (lambda ()
+     (define-predicate-dispatch-handler compile-item
+       (list predicate)
+       compiler)
+     (if expr-compiler
+	 (define-predicate-dispatch-handler compile-expr-item
+	   (list predicate)
+	   (if (default-object? expr-compiler) compiler expr-compiler))))))
 
 (define (define-item-renderer predicate renderer)
-  (seq:after-syntax-items 'add-action!
-    (lambda ()
-      (define-predicate-dispatch-handler render-item
-	(list predicate)
-	renderer))))
+  (add-boot-init!
+   (lambda ()
+     (define-predicate-dispatch-handler render-item
+       (list predicate)
+       renderer))))
 
 (define (illegal-expression-compiler description)
   (let ((message (string description " may not be used as an expression:")))
@@ -92,7 +93,7 @@ USA.
 
 ;;; Keyword items represent syntactic keywords.
 
-(define-sequenced-procedure keyword-item? seq:after-compound-predicate
+(define-deferred keyword-item?
   (disjoin classifier-item? transformer-item?))
 
 (define-item-compiler classifier-item?

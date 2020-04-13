@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime http-syntax)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime character-set) '(runtime version))
 
 ;;;; Utility combinators
 
@@ -212,8 +214,8 @@ USA.
   (write-u8 (char->integer #\.) port)
   (write-object (cdr version) port))
 
-(define-deferred http-version:1.0 (make-http-version 1 0))
-(define-deferred http-version:1.1 (make-http-version 1 1))
+(define http-version:1.0 (make-http-version 1 0))
+(define http-version:1.1 (make-http-version 1 1))
 
 ;;;; Status
 

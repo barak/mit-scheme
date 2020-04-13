@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime syntax mit)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime syntax items))
 
 ;;;; Macro transformers
 

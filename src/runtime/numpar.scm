@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime number))
+(add-boot-deps! '(runtime number) '(runtime character-set))
 
 (define (string->number string #!optional radix error? start end)
   (let* ((caller 'string->number)
