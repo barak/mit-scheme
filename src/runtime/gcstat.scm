@@ -29,7 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime number))
+(add-boot-deps! '(runtime number) '(runtime console-i/o-port))
+
 (add-boot-init!
  (lambda ()
    (set! history-modes
@@ -61,7 +62,7 @@ USA.
 		     this-gc-start-uctime
 		     this-gc-start-clock end-time-clock))
   (port/gc-finish (console-i/o-port)))
-
+
 (define timestamp)
 (define total-gc-time)
 (define last-gc-start)
