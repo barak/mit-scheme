@@ -385,8 +385,6 @@ USA.
 	    (package-reference (cdr (car files))))))
 
   (load-files files0)
-  (call-pkg-init-proc '(runtime gc-daemons) 'initialize-package!)
-  (call-pkg-init-proc '(runtime garbage-collector) 'initialize-package!)
 
   ((lexical-reference runtime-env 'initialize-after-sequencers!)
    package-init-printer)
@@ -410,6 +408,10 @@ USA.
 	  (eval file-object (package/environment package))))))
 
   (load-files-with-boot-inits files1)
+  (call-pkg-init-proc '(runtime gc-daemons) 'initialize-package!)
+  (call-pkg-init-proc '(runtime garbage-collector) 'initialize-package!)
+  (run-pkg-boot-inits '(runtime population))
+  (run-pkg-boot-inits '(runtime 1d-property))
   (run-pkg-boot-inits '(runtime random-number))
 
   (load-files-with-boot-inits files2)

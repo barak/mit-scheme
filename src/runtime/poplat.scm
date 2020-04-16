@@ -65,7 +65,10 @@ USA.
 (define (clean-all-populations!)
   (clean-population! population-of-populations)
   (map-over-population! population-of-populations clean-population!))
-(add-secondary-gc-daemon!/unsafe clean-all-populations!)
+
+(add-boot-init!
+ (lambda ()
+   (add-secondary-gc-daemon!/unsafe clean-all-populations!)))
 
 (define (make-population)
   (let ((population (list population-tag #f)))

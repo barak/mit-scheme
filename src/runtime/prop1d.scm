@@ -34,7 +34,10 @@ USA.
 
 (define (clean-1d-tables!)
   (for-each-inhabitant population-of-1d-tables 1d-table/clean!))
-(add-secondary-gc-daemon!/unsafe clean-1d-tables!)
+
+(add-boot-init!
+ (lambda ()
+   (add-secondary-gc-daemon!/unsafe clean-1d-tables!)))
 
 (define (make-1d-table)
   (let ((table (list 1d-table-tag)))
