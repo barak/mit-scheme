@@ -46,36 +46,36 @@ USA.
 	  (com-path
 	   (pathname-new-type file
 			      (compiler:compiled-code-pathname-type types)))
-	  (ext-type (file-type-ext types sf/cross-compiling?))
-	  (dependencies
-	   (map (lambda (dep)
-		  (pathname-default-type dep ext-type))
-		(if (default-object? dependencies)
-		    '()
-		    dependencies))))
-      (process-file src-path bin-path dependencies
-	(lambda ()
-	  (fluid-let ((sf/default-syntax-table
-		       (if (default-object? environment)
-			   #f
-			   (guarantee environment? environment)))
-		      (sf/default-declarations
-		       `((usual-integrations
-			  ,@compile-file:override-usual-integrations)
-			 ,@(let ((deps
-				  (filter (lambda (dep)
-					    (equal? ext-type
-						    (pathname-type dep)))
-					  dependencies)))
-			     (if (null? deps)
-				 '()
-				 `((integrate-external ,@deps)))))))
-	    (sf src-path bin-path))))
-      (if (not compile-file:sf-only?)
-	  (process-file bin-path com-path '()
-	    (lambda ()
-	      (fluid-let ((compiler:coalescing-constant-warnings? #f))
-		(compile-bin-file bin-path com-path))))))))
+	  (ext-type (file-type-ext types sf/cross-compiling?)))
+      (let ((dependencies
+	     (map (lambda (dep)
+		    (pathname-default-type dep ext-type))
+		  (if (default-object? dependencies)
+		      '()
+		      dependencies))))
+	(process-file src-path bin-path dependencies
+	  (lambda ()
+	    (fluid-let ((sf/default-syntax-table
+			 (if (default-object? environment)
+			     #f
+			     (guarantee environment? environment)))
+			(sf/default-declarations
+			 `((usual-integrations
+			    ,@compile-file:override-usual-integrations)
+			   ,@(let ((deps
+				    (filter (lambda (dep)
+					      (equal? ext-type
+						      (pathname-type dep)))
+					    dependencies)))
+			       (if (null? deps)
+				   '()
+				   `((integrate-external ,@deps)))))))
+	      (sf src-path bin-path))))
+	(if (not compile-file:sf-only?)
+	    (process-file bin-path com-path '()
+	      (lambda ()
+		(fluid-let ((compiler:coalescing-constant-warnings? #f))
+		  (compile-bin-file bin-path com-path)))))))))
 
 (define (process-file input-file output-file dependencies thunk)
   (if compile-file:force?
