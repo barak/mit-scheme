@@ -680,14 +680,6 @@ USA.
       (make-type-test expr block (ucode-type uninterned-symbol) (car operands))
       #f))
 
-(define (default-object?-expansion expr operands block)
-  (if (and (pair? operands)
-	   (null? (cdr operands)))
-      (pcall expr block (ucode-primitive eq?)
-	      (car operands)
-	      (constant/make #f #!default))
-      #f))
-
 (define (make-disjunction expr . clauses)
   (let loop ((clauses clauses))
     (if (null? (cdr clauses))
@@ -737,6 +729,45 @@ USA.
 	(papply expr block primitive operands)
 	#f)))
 
+(define (default-object-expansion expr operands block)
+  (if (null? operands)
+      (constant/make expr (default-object))
+      #f))
+
+(define (default-object?-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (pcall expr block (ucode-primitive eq?)
+	     (car operands)
+	     (constant/make #f (default-object)))
+      #f))
+
+(define (eof-object-expansion expr operands block)
+  (if (null? operands)
+      (constant/make expr (eof-object))
+      #f))
+
+(define (eof-object?-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (pcall expr block (ucode-primitive eq?)
+	     (car operands)
+	     (constant/make #f (eof-object)))
+      #f))
+
+(define (gc-reclaimed-object-expansion expr operands block)
+  (if (null? operands)
+      (constant/make expr (gc-reclaimed-object))
+      #f))
+
+(define (gc-reclaimed-object?-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (pcall expr block (ucode-primitive eq?)
+	     (car operands)
+	     (constant/make #f (gc-reclaimed-object)))
+      #f))
+
 ;;;; Tables
 
 (define usual-integrations/expansion-alist
@@ -783,8 +814,11 @@ USA.
 	 (cons 'char=? char=?-expansion)
 	 (cons 'complex? complex?-expansion)
 	 (cons 'cons* cons*-expansion)
+	 (cons 'default-object default-object-expansion)
 	 (cons 'default-object? default-object?-expansion)
 	 (cons 'eighth eighth-expansion)
+	 (cons 'eof-object eof-object-expansion)
+	 (cons 'eof-object? eof-object?-expansion)
 	 (cons 'exact-integer? exact-integer?-expansion)
 	 (cons 'exact-rational? exact-rational?-expansion)
 	 (cons 'expt expt-expansion)
@@ -802,6 +836,8 @@ USA.
 	 (cons 'fx>=? fx>=?-expansion)
 	 (cons 'fxarithmetic-shift-right fxarithmetic-shift-right-expansion)
 	 (cons 'fxneg fxneg-expansion)
+	 (cons 'gc-reclaimed-object gc-reclaimed-object-expansion)
+	 (cons 'gc-reclaimed-object? gc-reclaimed-object?-expansion)
 	 (cons 'guarantee guarantee-expansion)
 	 (cons 'int:->flonum int:->flonum-expansion)
 	 (cons 'int:integer? exact-integer?-expansion)

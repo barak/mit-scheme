@@ -81,15 +81,46 @@ USA.
   (define (put! name value)
     (environment-assign! env name value))
 
-  (let ((alist
-	 (remove! (lambda (p)
-		    (let ((name (car p)))
-		      (or (eq? name 'call-with-values)
-			  (eq? name 'with-values)
-			  (eq? name 'values))))
-		  (get 'usual-integrations/expansion-alist))))
-    (put! 'usual-integrations/expansion-alist alist)
-    (put! 'usual-integrations/expansion-names (map car alist))
-    (put! 'usual-integrations/expansion-values (map cdr alist))))
+  (define alist
+    (get 'usual-integrations/expansion-alist))
+
+  (define (add-expansion! name exp-name exp-expr)
+    (if (not (assq name alist))
+	(begin
+	  (eval exp-expr env)
+	  (set! alist (cons (cons name (get exp-name)) alist))
+	  unspecific)))
+
+  (add-expansion! 'gc-reclaimed-object
+		  'gc-reclaimed-object-expansion
+		  '(define (gc-reclaimed-object-expansion expr operands block)
+		     (if (null? operands)
+			 (constant/make
+			  expr
+			  (object-new-type (microcode-type 'constant) 10))
+			 #f)))
+  (add-expansion! 'gc-reclaimed-object?
+		  'gc-reclaimed-object?-expansion
+		  '(define (gc-reclaimed-object?-expansion expr operands block)
+		     (if (and (pair? operands)
+			      (null? (cdr operands)))
+			 (pcall expr block (make-primitive-procedure 'eq?)
+				(car operands)
+				(constant/make
+				 #f
+				 (object-new-type (microcode-type 'constant)
+						  10)))
+			 #f)))
+
+  (set! alist
+	(remove! (lambda (p)
+		   (let ((name (car p)))
+		     (or (eq? name 'call-with-values)
+			 (eq? name 'with-values)
+			 (eq? name 'values))))
+		 alist))
+  (put! 'usual-integrations/expansion-alist alist)
+  (put! 'usual-integrations/expansion-names (map car alist))
+  (put! 'usual-integrations/expansion-values (map cdr alist)))
 
 unspecific

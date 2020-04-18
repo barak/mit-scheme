@@ -488,6 +488,7 @@ USA.
       (and (not (fix:= line length))
 	   (let ((tags (cache-line-tags cache line)))
 	     (if (or (not tags)
+		     (not (system-pair-car tags))
 		     (gc-reclaimed-object? (system-pair-car tags)))
 		 (loop (fix:+ line 1))
 		 (or (predicate (weak-list->list tags))
@@ -499,6 +500,7 @@ USA.
 	 (alist '()
 		(let ((tags (cache-line-tags cache line)))
 		  (if (or (not tags)
+			  (not (system-pair-car tags))
 			  (gc-reclaimed-object? (system-pair-car tags)))
 		      alist
 		      (cons (cons (weak-list->list tags)
