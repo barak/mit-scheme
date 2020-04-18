@@ -174,8 +174,6 @@ USA.
 	  error:not-a
 	  error:not-a-list-of
 	  force				;R7RS
-	  gc-reclaimed-object
-	  gc-reclaimed-object?
 	  gc-space-status
 	  guarantee
 	  guarantee-list-of
@@ -208,22 +206,8 @@ USA.
 	  standard-print-method
 	  target-bytes-per-object
 	  values
-	  weak-car
-	  weak-cdr
-	  weak-cons
-	  weak-pair/car?
-	  weak-pair?
-	  weak-set-car!
-	  weak-set-cdr!
 	  with-absolutely-no-interrupts
 	  with-limited-interrupts)
-  (export (runtime)
-	  %add-to-weak-set
-	  %make-weak-set
-	  %remove-from-weak-set
-	  %weak-set->list
-	  %weak-set-any
-	  %weak-set-for-each)
   (export (runtime predicate)
 	  set-predicate-tag!)
   (export (runtime printer)
@@ -235,6 +219,89 @@ USA.
 	  multi-values?)
   (export (runtime tagged-dispatch)
 	  set-predicate-tag!))
+
+(define-package (runtime generator)
+  (files "generator")
+  (parent (runtime))
+  (export ()
+	  gdrop				;SRFI-158
+	  gdrop-while			;SRFI-158
+	  generator-any			;SRFI-158
+	  generator-count		;SRFI-158
+	  generator-every		;SRFI-158
+	  generator-find		;SRFI-158
+	  generator-fold		;SRFI-158
+	  generator-fold-map
+	  generator-fold-right		;SRFI-158
+	  generator-fold-right-map
+	  generator-for-each		;SRFI-158
+	  generator-map->list		;SRFI-158
+	  generator-unfold		;SRFI-158
+	  gfilter			;SRFI-158
+	  gmap				;SRFI-158
+	  gremove			;SRFI-158
+	  gtake				;SRFI-158
+	  gtake-while			;SRFI-158
+	  ))
+
+(define-package (runtime weak-pair)
+  (files "weak-pair")
+  (parent (runtime))
+  (export ()
+	  add-to-weak-set!
+	  clean-weak-alist!
+	  clean-weak-list!
+	  clean-weak-set!
+	  clear-weak-set!
+	  gc-reclaimed-object
+	  gc-reclaimed-object?
+	  list->weak-list
+	  null-weak-list?
+	  remove-from-weak-set!
+	  weak-any
+	  weak-append-reverse!
+	  weak-assoc
+	  weak-assq
+	  weak-assv
+	  weak-car
+	  weak-cdr
+	  weak-cons
+	  weak-delete!
+	  weak-delq!
+	  weak-delv!
+	  weak-drop-while
+	  weak-every
+	  weak-filter!
+	  weak-find
+	  weak-find-tail
+	  weak-fold
+	  weak-fold-map
+	  weak-fold-right
+	  weak-fold-right-map
+	  weak-for-each
+	  weak-list->generator
+	  weak-list->list
+	  weak-list?
+	  weak-member
+	  weak-memq
+	  weak-memv
+	  weak-pair/car?
+	  weak-pair?
+	  weak-remove!
+	  weak-reverse!
+	  weak-set
+	  weak-set->list
+	  weak-set-any
+	  weak-set-car!
+	  weak-set-cdr!
+	  weak-set-contains?
+	  weak-set-every
+	  weak-set-fold
+	  weak-set-fold-right
+	  weak-set-for-each
+	  weak-set?
+	  weak-take-while
+	  weak-take-while!))
 
 (define-package (runtime equality)
   (files "equals")
@@ -2626,8 +2693,6 @@ USA.
 (define-package (runtime hash-table)
   (files "hash-table")
   (parent (runtime))
-  (import (runtime population)
-	  add-to-population!/unsafe)
   (export deprecated ()
 	  (eq-hash-table-type key-weak-eq-hash-table-type)
 	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
@@ -3245,7 +3310,6 @@ USA.
 	  length			;SRFI-1
 	  length=?
 	  list				;SRFI-1
-	  list->weak-list
 	  list-copy			;SRFI-1
 	  list-deletor
 	  list-deletor!
@@ -3284,10 +3348,6 @@ USA.
 	  third				;SRFI-1
 	  tree-copy			;SRFI-1
 	  unique-keyword-list?
-	  weak-delq!
-	  weak-list->list
-	  weak-list?
-	  weak-memq
 	  xcons				;SRFI-1
 	  ))
 

@@ -411,26 +411,25 @@ USA.
 (define malloced-aliens-mutex)
 
 (define (free-malloced-aliens)
-  (with-thread-mutex-try-lock
-   malloced-aliens-mutex
-   (lambda ()
-     (let loop ((aliens malloced-aliens)
-		(prev #f))
-       (if (pair? aliens)
-	   (if (weak-pair/car? (car aliens))
-	       (loop (cdr aliens) aliens)
-	       (let ((copy (weak-cdr (car aliens)))
-		     (next (cdr aliens)))
-		 (if prev
-		     (set-cdr! prev next)
-		     (set! malloced-aliens next))
-		 (if (not (alien-null? copy))
-		     (begin
-		       ((ucode-primitive c-free 1) copy)
-		       (alien-null! copy)))
-		 (loop next prev))))))
-   (lambda ()
-     unspecific)))
+  (with-thread-mutex-try-lock malloced-aliens-mutex
+    (lambda ()
+      (let loop ((aliens malloced-aliens) (prev #f))
+	(if (pair? aliens)
+	    (let ((p (car aliens))
+		  (next (cdr aliens)))
+	      (if (gc-reclaimed-object? (weak-car p))
+		  (let ((copy (weak-cdr p)))
+		    (if prev
+			(set-cdr! prev next)
+			(set! malloced-aliens next))
+		    (if (not (alien-null? copy))
+			(begin
+			  ((ucode-primitive c-free 1) copy)
+			  (alien-null! copy)))
+		    (loop next prev))
+		  (loop next aliens))))))
+    (lambda ()
+      unspecific)))
 
 (define (reset-malloced-aliens!)
   (set! malloced-aliens-mutex (make-thread-mutex))
@@ -478,14 +477,6 @@ USA.
 		       (alien-null! copy)
 		       (set! malloced-aliens
 			     (delq! weak malloced-aliens)))))))))))
-
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (null? alist) #f
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? obj key) entry
-	      (loop (cdr alist)))))))
 
 
 ;;; Callback support

@@ -271,13 +271,6 @@ USA.
 	    (loop (cdr elements) satisfied (cons (car elements) unsatisfied)))
 	(values satisfied unsatisfied))))
 
-(define (weak-assq item alist)
-  (let loop ((alist alist))
-    (and (not (null? alist))
-	 (if (eq? (weak-car (car alist)) item)
-	     (car alist)
-	     (loop (cdr alist))))))
-
 (define (file-time->ls-string time #!optional now)
   ;; Returns a time string like that used by unix `ls -l'.
   (let ((time (file-time->universal-time time))

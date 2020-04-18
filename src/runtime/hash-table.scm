@@ -125,10 +125,7 @@ USA.
       table)))
 
 (define (record-address-hash-table! table)
-  (if (cadr address-hash-tables)
-      (with-thread-mutex-lock (cadr address-hash-tables)
-        (lambda () (add-to-population!/unsafe address-hash-tables table)))
-      (add-to-population! address-hash-tables table)))
+  (add-to-population! address-hash-tables table))
 
 (define address-hash-tables)
 (add-boot-init!

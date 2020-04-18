@@ -375,27 +375,18 @@ USA.
 (define open-gdbfs-mutex)
 
 (define (add-open-gdbf-cleanup gdbf)
-  (with-thread-mutex-lock
-   open-gdbfs-mutex
-   (lambda ()
-     (set! open-gdbfs (cons (weak-cons gdbf (gdbf-args gdbf))
-			    open-gdbfs)))))
+  (with-thread-mutex-lock open-gdbfs-mutex
+    (lambda ()
+      (set! open-gdbfs
+	    (cons (weak-cons gdbf (gdbf-args gdbf))
+		  open-gdbfs)))))
 
 (define (remove-open-gdbf-cleanup gdbf)
-  (with-thread-mutex-lock
-   open-gdbfs-mutex
-   (lambda ()
-     (let ((entry (weak-assq gdbf open-gdbfs)))
-       (if entry
-	   (set! open-gdbfs (delq! entry open-gdbfs)))))))
-
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (null? alist) #f
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? obj key) entry
-	      (loop (cdr alist)))))))
+  (with-thread-mutex-lock open-gdbfs-mutex
+    (lambda ()
+      (let ((entry (weak-assq gdbf open-gdbfs)))
+	(if entry
+	    (set! open-gdbfs (delq! entry open-gdbfs)))))))
 
 (define (cleanup-open-gdbfs)
   (with-thread-mutex-try-lock

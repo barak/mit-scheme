@@ -40,13 +40,7 @@ USA.
   (%record? 1)
   (%tagged-object-datum 1)
   (%tagged-object-tag 1)
-  (%tagged-object? 1)
-  (weak-car 1)
-  (weak-cdr 1)
-  (weak-cons 2)
-  (weak-pair? 1)
-  (weak-set-car! 2)
-  (weak-set-cdr! 2))
+  (%tagged-object? 1))
 
 (define (%make-record tag length #!optional fill)
   (let ((fill (if (default-object? fill) #f fill)))
@@ -74,92 +68,6 @@ USA.
 		      (%record-set! record 0 tag)
 		      record)))))))
       (expand-cases 16))))
-
-(define-integrable (weak-pair/car? pair)
-  (not (gc-reclaimed-object? (weak-car pair))))
-
-(define-integrable (gc-reclaimed-object)
-  %gc-reclaimed)
-
-(define-integrable (gc-reclaimed-object? object)
-  (eq? %gc-reclaimed object))
-
-(define-integrable %gc-reclaimed
-  ((ucode-primitive object-set-type) (ucode-type constant) 10))
-
-;;;; Simple weak-set implementation
-
-(define (%make-weak-set)
-  (weak-cons 'weak-set '()))
-
-(define (%weak-set->list weak-set)
-  (weak-list->list (weak-cdr weak-set)))
-
-(define (%add-to-weak-set item weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item* (weak-car this))
-	      (next (weak-cdr this)))
-	  (cond ((gc-reclaimed-object? item*)
-		 (weak-set-cdr! prev next)
-		 (loop next prev))
-		((eq? item item*)
-		 #f)
-		(else
-		 (loop next this))))
-	(begin
-	  (weak-set-cdr! prev (weak-cons item '()))
-	  #t))))
-
-(define (%remove-from-weak-set item weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item* (weak-car this))
-	      (next (weak-cdr this)))
-	  (cond ((gc-reclaimed-object? item*)
-		 (weak-set-cdr! prev next)
-		 (loop next prev))
-		((eq? item item*)
-		 (weak-set-cdr! prev next)
-		 #t)
-		(else
-		 (loop next this))))
-	#f)))
-
-(define (%weak-set-any predicate weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item (weak-car this))
-	      (next (weak-cdr this)))
-	  (cond ((gc-reclaimed-object? item)
-		 (weak-set-cdr! prev next)
-		 (loop next prev))
-		((predicate item)
-		 #t)
-		(else
-		 (loop next this))))
-	#f)))
-
-(define (%weak-set-for-each procedure weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item (weak-car this))
-	      (next (weak-cdr this)))
-	  (if (gc-reclaimed-object? item)
-	      (begin
-		(weak-set-cdr! prev next)
-		(loop next prev))
-	      (begin
-		(procedure item)
-		(loop next this)))))))
 
 ;;;; Interrupt control
 

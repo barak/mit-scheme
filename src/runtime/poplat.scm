@@ -32,28 +32,54 @@ USA.
 ;;; A population is a weak collection of objects.  A serial
 ;;; population is a population with a mutex to serialize its operations.
 
+(define (%make-population mutex)
+  (%record population-tag mutex (weak-set eqv?)))
+
+(define (population? object)
+  (and (%record? object)
+       (eq? population-tag (%record-ref object 0))))
+
 (define-integrable population-tag
-  '|#[population]|)
+  '|#[(runtime population)population]|)
+
+(define-integrable (%pop-mutex pop) (%record-ref pop 1))
+(define-integrable (%pop-set pop) (%record-ref pop 2))
+
+(define-print-method population?
+  (standard-print-method 'population))
 
 (define population-of-populations
-  (list population-tag (make-thread-mutex)))
+  (%make-population (make-thread-mutex)))
 
+(define (make-population)
+  (let ((population (%make-population #f)))
+    (add-to-population! population-of-populations population)
+    population))
+
+(define (make-population/unsafe)
+  (let ((population (%make-population #f)))
+    (add-to-population!/unsafe population-of-populations population)
+    population))
+
+(define (make-serial-population)
+  (let ((population (%make-population (make-thread-mutex))))
+    (add-to-population! population-of-populations population)
+    population))
+
+(define (make-serial-population/unsafe)
+  (let ((population (%make-population (make-thread-mutex))))
+    (add-to-population!/unsafe population-of-populations population)
+    population))
+
+(define (%maybe-lock! population thunk)
+  (if (%pop-mutex population)
+      (with-thread-mutex-lock (%pop-mutex population) thunk)
+      (thunk)))
+
 (define (clean-population! population)
-  (if (cadr population)
-      (with-thread-mutex-lock (cadr population)
-	(lambda ()
-	  (%clean-population! population)))
-      (%clean-population! population)))
-
-(define (%clean-population! population)
-  (let loop ((l1 (cdr population)) (l2 (cddr population)))
-    (if (weak-pair? l2)
-	(if (gc-reclaimed-object? (weak-car l2))
-	    (begin
-	      (system-pair-set-cdr! l1 (weak-cdr l2))
-	      (loop l1 (weak-cdr l2)))
-	    (loop l2 (weak-cdr l2)))
-	#t)))
+  (%maybe-lock! population
+    (lambda ()
+      (clean-weak-set! (%pop-set population)))))
 
 (define (clean-all-populations!)
   (clean-population! population-of-populations)
@@ -62,126 +88,43 @@ USA.
 (add-boot-init!
  (lambda ()
    (add-secondary-gc-daemon!/unsafe clean-all-populations!)))
-
-(define (make-population)
-  (let ((population (list population-tag #f)))
-    (add-to-population! population-of-populations population)
-    population))
-
-(define (make-population/unsafe)
-  (let ((population (list population-tag #f)))
-    (add-to-population!/unsafe population-of-populations population)
-    population))
-
-(define (make-serial-population)
-  (let ((population (list population-tag (make-thread-mutex))))
-    (add-to-population! population-of-populations population)
-    population))
-
-(define (make-serial-population/unsafe)
-  (let ((population (list population-tag (make-thread-mutex))))
-    (add-to-population!/unsafe population-of-populations population)
-    population))
-
-(define (population? object)
-  (and (pair? object)
-       (eq? (car object) population-tag)))
-
-(define-print-method population?
-  (standard-print-method 'population))
 
 (define (add-to-population! population object)
   (guarantee population? population 'add-to-population!)
-  (if (cadr population)
-      (with-thread-mutex-lock (cadr population)
-	(lambda ()
-	  (%add-to-population! population object)))
-      (%add-to-population! population object)))
-
-(define (%add-to-population! population object)
-  (let loop ((this (cddr population)))
-    (if (weak-pair? this)
-	(let ((entry (weak-car this)))
-	  (cond ((gc-reclaimed-object? entry) (weak-set-car! this object))
-		((not (eqv? object entry)) (loop (weak-cdr this)))))
-	(set-cdr! (cdr population)
-		  (weak-cons object (cddr population))))))
+  (%maybe-lock! population
+    (lambda ()
+      (add-to-weak-set! object (%pop-set population)))))
 
 (define (add-to-population!/unsafe population object)
-  ;; No uniquification, no locking.
-  (set-cdr! (cdr population) (weak-cons object (cddr population))))
+  (add-to-weak-set! object (%pop-set population)))
 
 (define (remove-from-population! population object)
   (guarantee population? population 'remove-from-population!)
-  (if (cadr population)
-      (with-thread-mutex-lock (cadr population)
-	(lambda ()
-	  (%remove-from-population! population object)))
-      (%remove-from-population! population object)))
-
-(define (%remove-from-population! population object)
-  (let loop ((previous (cdr population)) (this (cddr population)))
-    (if (weak-pair? this)
-	(let ((entry (weak-car this))
-	      (next (weak-cdr this)))
-	  (cond ((gc-reclaimed-object? entry)
-		 (system-pair-set-cdr! previous next)
-		 (loop previous next))
-		((eqv? object entry)
-		 (system-pair-set-cdr! previous next))
-		(else
-		 (loop this next)))))))
+  (%maybe-lock! population
+    (lambda ()
+      (remove-from-weak-set! object (%pop-set population)))))
 
 (define (empty-population! population)
   (guarantee population? population 'empty-population!)
-  (if (cadr population)
-      (with-thread-mutex-lock (cadr population)
-	(lambda ()
-	  (%empty-population! population)))
-      (%empty-population! population)))
+  (%maybe-lock! population
+    (lambda ()
+      (clear-weak-set! (%pop-set population)))))
 
-(define (%empty-population! population)
-  (set-cdr! (cdr population) '()))
-
 ;;;; Read-only operations
 
 ;;; These are safe without serialization.
 
 (define (map-over-population population procedure)
-  (let loop ((l2 (cddr population)))
-    (if (weak-pair? l2)
-	(let ((object (weak-car l2)))
-	  (if (gc-reclaimed-object? object)
-	      (loop (weak-cdr l2))
-	      (cons (procedure object)
-		    (loop (weak-cdr l2)))))
-	'())))
+  (weak-set-fold (lambda (item acc)
+		   (cons (procedure item) acc))
+		 '()
+		 (%pop-set population)))
 
 (define (map-over-population! population procedure)
-  (let loop ((l2 (cddr population)))
-    (if (weak-pair? l2)
-	(let ((object (weak-car l2)))
-	  (if (gc-reclaimed-object? object)
-	      (loop (weak-cdr l2))
-	      (begin
-		(procedure object)
-		(loop (weak-cdr l2))))))))
+  (weak-set-for-each procedure (%pop-set population)))
 
 (define (for-all-inhabitants? population predicate)
-  (let loop ((l2 (cddr population)))
-    (or (not (weak-pair? l2))
-	(let ((object (weak-car l2)))
-	  (if (gc-reclaimed-object? object)
-	      (loop (weak-cdr l2))
-	      (and (predicate object)
-		   (loop (weak-cdr l2))))))))
+  (weak-set-every predicate (%pop-set population)))
 
 (define (exists-an-inhabitant? population predicate)
-  (let loop ((l2 (cddr population)))
-    (and (weak-pair? l2)
-	 (let ((object (weak-car l2)))
-	   (if (gc-reclaimed-object? object)
-	       (loop (weak-cdr l2))
-	       (if (predicate object)
-		   #t
-		   (loop (weak-cdr l2))))))))
+  (weak-set-any predicate (%pop-set population)))

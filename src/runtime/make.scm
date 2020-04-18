@@ -352,6 +352,8 @@ USA.
 	 ("gc" . (runtime garbage-collector))
 	 ("boot-seq" . (runtime))
 	 ("boot" . (runtime boot-definitions))
+	 ("generator" . (runtime generator))
+	 ("weak-pair" . (runtime weak-pair))
 	 ("queue" . (runtime simple-queue))
 	 ("equals" . (runtime equality))
 	 ("vector" . (runtime vector))

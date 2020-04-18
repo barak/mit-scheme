@@ -145,16 +145,6 @@ USA.
 	     (%maybe-toggle-thread-timer)))))))
 
 (add-boot-init! (lambda () (add-gc-daemon! signal-gc-events)))
-
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (pair? alist)
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? key obj)
-	      entry
-	      (loop (cdr alist))))
-	#f)))
 
 ;;;; Output
 

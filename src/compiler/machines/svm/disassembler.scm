@@ -325,14 +325,6 @@ USA.
 	(write (car entry))
 	(write-string "... not found!"))))
 
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (null? alist) #f
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? obj key) entry
-	      (loop (cdr alist)))))))
-
 (define (write-procedure-cache block index)
   (let ((result (read-procedure-cache block index)))
     (write (-1+ (vector-ref result 2)))

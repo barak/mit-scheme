@@ -1078,12 +1078,4 @@ USA.
     (lambda ()
       unspecific)))
 
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (null? alist) #f
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? obj key) entry
-	      (loop (cdr alist)))))))
-
 (initialize-package!)

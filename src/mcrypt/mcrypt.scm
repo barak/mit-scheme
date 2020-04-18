@@ -466,14 +466,6 @@ USA.
 	;; Already removed!
 	)))
 
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (null? alist) #f
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? obj key) entry
-	      (loop (cdr alist)))))))
-
 (define (cleanup-mcrypt-objects)
   (let loop ((entries cleanups)
 	     (prev #f))

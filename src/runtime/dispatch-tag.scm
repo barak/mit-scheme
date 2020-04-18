@@ -49,7 +49,7 @@ USA.
 		(get-tag-cache-number)
 		name
 		predicate
-		(%make-weak-set)
+		(weak-set eq?)
 		extra)))
     (set-predicate-tag! predicate tag)
     tag))
@@ -168,12 +168,12 @@ USA.
 
 (define (any-dispatch-tag-superset procedure tag)
   (guarantee dispatch-tag? tag 'any-dispatch-tag-superset)
-  (%weak-set-any procedure (%tag-supersets tag)))
+  (weak-set-any procedure (%tag-supersets tag)))
 
 (define (add-dispatch-tag-superset tag superset)
   (guarantee dispatch-tag? tag 'add-dispatch-tag-superset)
   (guarantee dispatch-tag? superset 'add-dispatch-tag-superset)
-  (%add-to-weak-set superset (%tag-supersets tag)))
+  (add-to-weak-set! superset (%tag-supersets tag)))
 
 (define-print-method dispatch-tag?
   (standard-print-method

@@ -59,91 +59,68 @@ USA.
 (define-print-method 1d-table?
   (standard-print-method '1d-table))
 
-(define (weak-assq key table)
-  (let loop ((previous table) (alist (cdr table)))
-    (and (not (null? alist))
-	 (let ((entry (car alist))
-	       (next (cdr alist)))
-	   (let ((key* (weak-car entry)))
-	     (cond ((gc-reclaimed-object? key*)
-		    (set-cdr! previous next)
-		    (loop previous next))
-		   ((eq? key* key)
-		    entry)
-		   (else
-		    (loop alist next))))))))
+(define (get-table-alist table)
+  (let loop ((alist (cdr table)))
+    (if (and (pair? alist)
+	     (gc-reclaimed-object? (weak-car (car alist))))
+	(let ((next (cdr alist)))
+	  (set-cdr! table next)
+	  (loop next))
+	alist)))
 
 (define (1d-table/get table key default)
-  (let ((entry (weak-assq key table)))
-    (if entry
-	(weak-cdr entry)
+  (let ((p (weak-assv key (get-table-alist table))))
+    (if p
+	(weak-cdr p)
 	default)))
 
 (define (1d-table/lookup table key if-found if-not-found)
-  (let ((entry (weak-assq key table)))
-    (if entry
-	(if-found (weak-cdr entry))
+  (let ((p (weak-assv key (get-table-alist table))))
+    (if p
+	(if-found (weak-cdr p))
 	(if-not-found))))
 
 (define (1d-table/put! table key value)
-  (let ((entry (weak-assq key table)))
-    (if entry
-	(weak-set-cdr! entry value)
+  (let ((p (weak-assv key (get-table-alist table))))
+    (if p
+	(weak-set-cdr! p value)
 	(set-cdr! table
 		  (cons (weak-cons key value)
-			(cdr table))))
-    unspecific))
+			(cdr table))))))
 
 (define (1d-table/remove! table key)
-  (let loop ((previous table) (alist (cdr table)))
-    (if (not (null? alist))
-	(let ((key* (weak-car (car alist)))
-	      (next (cdr alist)))
-	  (loop (if (or (gc-reclaimed-object? key*) (eq? key* key))
-		    ;; Might as well clean whole list.
-		    (begin
-		      (set-cdr! previous next)
-		      previous)
-		    alist)
-		next)))))
+  (set-cdr! table
+	    (remove! (lambda (p)
+		       (let ((key* (weak-car p)))
+			 (or (gc-reclaimed-object? key*)
+			     (eqv? key* key))))
+		     (cdr table))))
 
 (define (1d-table/clean! table)
-  (let loop ((previous table) (alist (cdr table)))
-    (if (not (null? alist))
-	(let ((next (cdr alist)))
-	  (loop (if (gc-reclaimed-object? (weak-car (car alist)))
-		    (begin
-		      (set-cdr! previous next)
-		      previous)
-		    alist)
-		next)))))
+  (set-cdr! table
+	    (remove! (lambda (p)
+		       (gc-reclaimed-object? (weak-car p)))
+		     (cdr table))))
 
 (define (1d-table/alist table)
-  (let loop ((previous table) (alist (cdr table)) (result '()))
-    (if (null? alist)
-	result
-	(let ((entry (car alist))
-	      (next (cdr alist)))
-	  (let ((key (weak-car entry)))
+  (fold (lambda (p acc)
+	  (let ((key (weak-car p)))
 	    (if (gc-reclaimed-object? key)
-		(begin
-		  (set-cdr! previous next)
-		  (loop previous next result))
-		(loop alist
-		      next
-		      (cons (cons key (weak-cdr entry))
-			    result))))))))
+		acc
+		(cons (cons key (weak-cdr p)) acc))))
+	'()
+	(cdr table)))
 
 (define (1d-table/for-each proc table)
-  (let loop ((previous table) (alist (cdr table)))
-    (if (not (null? alist))
-	(let ((entry (car alist))
+  (let loop ((alist (cdr table)) (prev table))
+    (if (pair? alist)
+	(let ((p (car alist))
 	      (next (cdr alist)))
-	  (let ((key (weak-car entry)))
+	  (let ((key (weak-car p)))
 	    (if (gc-reclaimed-object? key)
 		(begin
-		  (set-cdr! previous next)
-		  (loop previous next))
+		  (set-cdr! prev next)
+		  (loop next prev))
 		(begin
-		  (proc key (weak-cdr entry))
-		  (loop alist next))))))))
+		  (proc key (weak-cdr p))
+		  (loop next alist))))))))

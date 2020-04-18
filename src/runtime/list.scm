@@ -352,60 +352,6 @@ USA.
 (define (car+cdr pair)
   (values (car pair) (cdr pair)))
 
-;;;; Weak lists
-
-(define (weak-list->list items)
-  (let loop ((items* items) (result '()))
-    (if (weak-pair? items*)
-	(loop (weak-cdr items*)
-	      (let ((item (weak-car items*)))
-		(if (gc-reclaimed-object? item)
-		    result
-		    (cons item result))))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-a weak-list? items 'weak-list->list))
-	  (reverse! result)))))
-
-(define (list->weak-list items)
-  (let loop ((items* (reverse items)) (result '()))
-    (if (pair? items*)
-	(loop (cdr items*)
-	      (weak-cons (car items*) result))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-a list? items 'list->weak-list))
-	  result))))
-
-(define (weak-list? object)
-  (let loop ((l1 object) (l2 object))
-    (if (weak-pair? l1)
-	(let ((l1 (weak-cdr l1)))
-	  (and (not (eq? l1 l2))
-	       (if (weak-pair? l1)
-		   (loop (weak-cdr l1) (weak-cdr l2))
-		   (null? l1))))
-	(null? l1))))
-
-(define (weak-memq item items)
-  (let loop ((items* items))
-    (if (weak-pair? items*)
-	(if (eq? item (weak-car items*))
-	    items*
-	    (loop (weak-cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-a weak-list? items 'weak-memq))
-	  #f))))
-
-(define (weak-delq! item items)
-  (define-integrable (delete? item*)
-    (or (eq? item item*)
-	(gc-reclaimed-object? item*)))
-  (define (lose)
-    (error:not-a weak-list? items 'weak-delq!))
-  (%remove! delete? items weak-pair? weak-car weak-cdr weak-set-cdr! lose))
-
 ;;;; General CAR CDR
 
 ;;; Return a list of car and cdr symbols that the code
@@ -721,20 +667,15 @@ USA.
 (define (fold kons knil first . rest)
   (case (length rest)
     ((0)
-     (guarantee list? first 'fold)
-     (%fold kons knil first))
+     (%fold kons knil first 'fold))
     ((1)
      (let loop ((elts1 first) (elts2 (car rest)) (acc knil))
-       (if (and (pair? elts1) (pair? elts2))
+       (if (or (null-list? elts1 'fold)
+	       (null-list? elts2 'fold))
+	   acc
 	   (loop (cdr elts1)
 		 (cdr elts2)
-		 (kons (car elts1) (car elts2) acc))
-	   (begin
-	     (if (not (or (pair? elts1) (null? elts1)))
-		 (error:not-a list? elts1 'fold))
-	     (if (not (or (pair? elts2) (null? elts2)))
-		 (error:not-a list? elts2 'fold))
-	     acc))))
+		 (kons (car elts1) (car elts2) acc)))))
     (else
      (let loop ((lists (cons first rest)) (acc knil))
        (%cars+cdrs 'fold lists (list acc)
@@ -743,17 +684,16 @@ USA.
 	       (loop cdrs (apply kons cars))
 	       acc)))))))
 
-(define-integrable (%fold kons knil elts)
+(define-integrable (%fold kons knil elts caller)
   (let loop ((elts elts) (acc knil))
-    (if (pair? elts)
-	(loop (cdr elts) (kons (car elts) acc))
-	acc)))
+    (if (null-list? elts caller)
+	acc
+	(loop (cdr elts) (kons (car elts) acc)))))
 
 (define (fold-right kons knil first . rest)
   (case (length rest)
     ((0)
-     (guarantee list? first 'fold-right)
-     (%fold-right kons knil first))
+     (%fold-right kons knil first 'fold-right))
     ((1)
      (let loop ((elts1 first) (elts2 (car rest)))
        (if (and (pair? elts1) (pair? elts2))
@@ -774,40 +714,35 @@ USA.
 	       (apply kons (append cars (list (loop cdrs))))
 	       knil)))))))
 
-(define-integrable (%fold-right kons knil elts)
+(define-integrable (%fold-right kons knil elts caller)
   (let loop ((elts elts))
-    (if (pair? elts)
-	(kons (car elts) (loop (cdr elts)))
-	knil)))
+    (if (null-list? elts caller)
+	knil
+	(kons (car elts) (loop (cdr elts))))))
 
 (define (reduce kons knil list)
-  (guarantee list? list 'reduce)
-  (if (pair? list)
-      (%fold kons (car list) (cdr list))
-      knil))
+  (if (null-list? list 'reduce)
+      knil
+      (%fold kons (car list) (cdr list) 'reduce)))
 
 (define (reduce-right kons knil list)
-  (guarantee list? list 'reduce-right)
-  (if (pair? list)
+  (if (null-list? list 'reduce-right)
+      knil
       (let loop ((head (car list)) (tail (cdr list)))
-	(if (pair? tail)
-	    (kons head (loop (car tail) (cdr tail)))
-	    head))
-      knil))
+	(if (null-list? tail 'reduce-right)
+	    head
+	    (kons head (loop (car tail) (cdr tail)))))))
 
 (define (%cars+cdrs caller lists knil k0)
   (let loop ((lists lists) (k k0))
     (if (pair? lists)
 	(let ((list (car lists)))
-	  (if (pair? list)
+	  (if (null-list? list caller)
+	      (k0 knil '())
 	      (loop (cdr lists)
 		(lambda (cars cdrs)
 		  (k (cons (car list) cars)
-		     (cons (cdr list) cdrs))))
-	      (begin
-		(if (not (null? list))
-		    (error:not-a list? list caller))
-		(k0 knil '()))))
+		     (cons (cdr list) cdrs))))))
 	(k knil '()))))
 
 ;;; FOLD-LEFT and REDUCE-LEFT are deprecated.
