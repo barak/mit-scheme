@@ -107,7 +107,7 @@ rehash_bucket (SCHEME_OBJECT * bucket, SCHEME_OBJECT hash_table,
   while (!EMPTY_LIST_P (*bucket))
   {
     weak_pair = (PAIR_CAR (*bucket));
-    if ((PAIR_CAR (weak_pair)) != SHARP_F)
+    if ((PAIR_CAR (weak_pair)) != GC_RECLAIMED)
     {
       rehash_pair (weak_pair, hash_table, table_size);
     }
@@ -124,7 +124,7 @@ splice_and_rehash_bucket (SCHEME_OBJECT * bucket, SCHEME_OBJECT hash_table,
   while (!EMPTY_LIST_P (*bucket))
   {
     weak_pair = (PAIR_CAR (*bucket));
-    if ((PAIR_CAR (weak_pair)) != SHARP_F)
+    if ((PAIR_CAR (weak_pair)) != GC_RECLAIMED)
     {
       rehash_pair (weak_pair, hash_table, table_size);
       bucket = (PAIR_CDR_LOC (*bucket));

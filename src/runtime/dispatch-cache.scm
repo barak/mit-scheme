@@ -116,16 +116,15 @@ USA.
   (let ((index (cache-tag-index cache))
 	(mask (cache-mask cache)))
     (let loop ((tags tags) (line 0))
-      (cond ((null? tags)
-	     line)
-	    ((not (system-pair-car tags))
-	     #f)
-	    (else
-	     (loop (system-pair-cdr tags)
-		   (fix:and (fix:+ line
-				   (dispatch-tag-ref (system-pair-car tags)
-						     index))
-			    mask)))))))
+      (if (null? tags)
+	  line
+	  (let ((tag (system-pair-car tags)))
+	    (if (or (not tag)
+		    (gc-reclaimed-object? tag))
+		#f
+		(loop (system-pair-cdr tags)
+		      (fix:and (fix:+ line (dispatch-tag-ref tag index))
+			       mask))))))))
 
 (define (cache-entry-reusable? tags tags*)
   ;; True iff TAGS is (1) empty, (2) contains a tag that is invalid,
@@ -133,9 +132,11 @@ USA.
   (or (not tags)
       (let loop ((tags tags) (tags* tags*))
 	(or (null? tags)
-	    (not (system-pair-car tags))
-	    (and (eq? (system-pair-car tags) (system-pair-car tags*))
-		 (loop (system-pair-cdr tags) (system-pair-cdr tags*)))))))
+	    (let ((tag (system-pair-car tags)))
+	      (or (gc-reclaimed-object? tag)
+		  (and (eq? tag (system-pair-car tags*))
+		       (loop (system-pair-cdr tags)
+			     (system-pair-cdr tags*)))))))))
 
 (define (cache-count cache)
   (let ((length (cache-length cache)))
@@ -145,7 +146,8 @@ USA.
 		      (and tags
 			   (let loop ((tags tags))
 			     (or (null? tags)
-				 (and (system-pair-car tags)
+				 (and (not (gc-reclaimed-object?
+					    (system-pair-car tags)))
 				      (loop (system-pair-cdr tags)))))))
 		    (fix:+ count 1)
 		    count)))
@@ -486,7 +488,7 @@ USA.
       (and (not (fix:= line length))
 	   (let ((tags (cache-line-tags cache line)))
 	     (if (or (not tags)
-		     (not (system-pair-car tags)))
+		     (gc-reclaimed-object? (system-pair-car tags)))
 		 (loop (fix:+ line 1))
 		 (or (predicate (weak-list->list tags))
 		     (loop (fix:+ line 1)))))))))
@@ -497,7 +499,7 @@ USA.
 	 (alist '()
 		(let ((tags (cache-line-tags cache line)))
 		  (if (or (not tags)
-			  (not (system-pair-car tags)))
+			  (gc-reclaimed-object? (system-pair-car tags)))
 		      alist
 		      (cons (cons (weak-list->list tags)
 				  (cache-line-value cache line))

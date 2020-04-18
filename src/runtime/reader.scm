@@ -771,6 +771,7 @@ USA.
 	  ((string-maybe-ci=? db name "eof") (eof-object))
 	  ((string-maybe-ci=? db name "default") (default-object))
 	  ((string-maybe-ci=? db name "unspecific") unspecific)
+	  ((string-maybe-ci=? db name "reclaimed") (gc-reclaimed-object))
 	  ((string=? name "fold-case")
 	   (set-db-fold-case! db #t)
 	   continue-reading)

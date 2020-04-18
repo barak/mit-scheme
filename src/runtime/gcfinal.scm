@@ -40,16 +40,15 @@ USA.
   (mutex #f read-only #t)
   items)
 
-(define (guarantee-gc-finalizer object procedure)
-  (if (not (gc-finalizer? object))
-      (error:wrong-type-argument object "GC finalizer" procedure)))
+(define (valid-object? object)
+  (and object
+       (not (gc-reclaimed-object? object))))
 
 (define (make-gc-finalizer procedure
 			   object?
 			   object-context
 			   set-object-context!)
-  (if (not (procedure? procedure))
-      (error:wrong-type-argument procedure "procedure" 'make-gc-finalizer))
+  (guarantee procedure? procedure 'make-gc-finalizer)
   (if (not (procedure-arity-valid? procedure 1))
       (error:bad-range-argument procedure 'make-gc-finalizer))
   (let ((finalizer
@@ -65,11 +64,8 @@ USA.
     finalizer))
 
 (define (add-to-gc-finalizer! finalizer object)
-  (guarantee-gc-finalizer finalizer 'add-to-gc-finalizer!)
-  (if (not ((gc-finalizer-object? finalizer) object))
-      (error:wrong-type-argument object
-				 "finalized object"
-				 'add-to-gc-finalizer!))
+  (guarantee gc-finalizer? finalizer 'add-to-gc-finalizer!)
+  (guarantee gc-finalizer-object? finalizer 'add-to-gc-finalizer!)
   (with-finalizer-lock finalizer
     (lambda ()
       (let ((context ((gc-finalizer-object-context finalizer) object)))
@@ -81,12 +77,8 @@ USA.
   object)
 
 (define (remove-from-gc-finalizer! finalizer object)
-  (guarantee-gc-finalizer finalizer 'remove-from-gc-finalizer!)
-  (let ((object? (gc-finalizer-object? finalizer)))
-    (if (not (object? object))
-	(error:wrong-type-argument object
-				   "finalized object"
-				   'remove-from-gc-finalizer!)))
+  (guarantee gc-finalizer? finalizer 'remove-from-gc-finalizer!)
+  (guarantee (gc-finalizer-object? finalizer) object 'remove-from-gc-finalizer!)
   (with-finalizer-lock finalizer
     (lambda ()
       (remove-from-locked-gc-finalizer! finalizer object))))
@@ -117,11 +109,11 @@ USA.
        thunk))))
 
 (define (with-gc-finalizer-lock finalizer thunk)
-  (guarantee-gc-finalizer finalizer 'with-gc-finalizer-lock)
+  (guarantee gc-finalizer? finalizer 'with-gc-finalizer-lock)
   (with-finalizer-lock finalizer thunk))
 
 (define (remove-all-from-gc-finalizer! finalizer)
-  (guarantee-gc-finalizer finalizer 'remove-all-from-gc-finalizer!)
+  (guarantee gc-finalizer? finalizer 'remove-all-from-gc-finalizer!)
   (let ((procedure (gc-finalizer-procedure finalizer))
 	(object-context (gc-finalizer-object-context finalizer))
 	(set-object-context! (gc-finalizer-set-object-context! finalizer)))
@@ -133,34 +125,34 @@ USA.
 		(let ((item (car items)))
 		  (set-gc-finalizer-items! finalizer (cdr items))
 		  (let ((object (weak-car item)))
-		    (let ((context (object-context object)))
-		      (if context
-			  (begin
-			    (if object
-				(set-object-context! object #f))
-			    (procedure context)))))
+		    (if (valid-object? object)
+			(let ((context (object-context object)))
+			  (if context
+			      (begin
+				(set-object-context! object #f)
+				(procedure context))))))
 		  (loop)))))))))
 
 (define (search-gc-finalizer finalizer predicate)
-  (guarantee-gc-finalizer finalizer 'search-gc-finalizer)
+  (guarantee gc-finalizer? finalizer 'search-gc-finalizer)
   (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
     (lambda ()
       (let loop ((items (gc-finalizer-items finalizer)))
 	(and (pair? items)
 	     (let ((object (weak-car (car items))))
-	       (if (and object (predicate object))
+	       (if (and (valid-object? object) (predicate object))
 		   object
 		   (loop (cdr items)))))))))
 
 (define (gc-finalizer-elements finalizer)
-  (guarantee-gc-finalizer finalizer 'gc-finalizer-elements)
+  (guarantee gc-finalizer? finalizer 'gc-finalizer-elements)
   (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
     (lambda ()
       (let loop ((items (gc-finalizer-items finalizer)) (objects '()))
 	(if (pair? items)
 	    (loop (cdr items)
 		  (let ((object (weak-car (car items))))
-		    (if object
+		    (if (valid-object? object)
 			(cons object objects)
 			objects)))
 	    (reverse! objects))))))
@@ -170,7 +162,7 @@ USA.
   ;; interrupts turned on, yet not leave a dangling descriptor around
   ;; if the open is interrupted before the runtime system's data
   ;; structures are updated.
-  (guarantee-gc-finalizer finalizer 'make-gc-finalized-object)
+  (guarantee gc-finalizer? finalizer 'make-gc-finalized-object)
   (let ((p (weak-cons #f #f)))
     (dynamic-wind
      (lambda () unspecific)
@@ -201,32 +193,30 @@ USA.
 (add-event-receiver! event:after-restore reset-gc-finalizers)
 
 (define (run-gc-finalizers)
-  (with-thread-mutex-try-lock
-   gc-finalizers-mutex
-   (lambda ()
-     (walk-gc-finalizers-list/unsafe
-      (lambda (finalizer)
-	(with-thread-mutex-try-lock
-	    (gc-finalizer-mutex finalizer)
-	  (lambda ()
-	    (without-interruption
-	     (lambda ()
-	       (let ((procedure (gc-finalizer-procedure finalizer)))
-		 (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
-		   (if (pair? items)
-		       (if (weak-pair/car? (car items))
-			   (loop (cdr items) items)
-			   (let ((context (weak-cdr (car items)))
-				 (next (cdr items)))
-			     (if prev
-				 (set-cdr! prev next)
-				 (set-gc-finalizer-items! finalizer next))
-			     (procedure context)
-			     (loop next prev)))))))))
-	  (lambda ()
-	    unspecific)))))
-   (lambda ()
-     unspecific)))
+  (with-thread-mutex-try-lock gc-finalizers-mutex
+    (lambda ()
+      (walk-gc-finalizers-list/unsafe
+       (lambda (finalizer)
+	 (with-thread-mutex-try-lock (gc-finalizer-mutex finalizer)
+	   (lambda ()
+	     (without-interruption
+	      (lambda ()
+		(let ((procedure (gc-finalizer-procedure finalizer)))
+		  (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
+		    (if (pair? items)
+			(if (weak-pair/car? (car items))
+			    (loop (cdr items) items)
+			    (let ((context (weak-cdr (car items)))
+				  (next (cdr items)))
+			      (if prev
+				  (set-cdr! prev next)
+				  (set-gc-finalizer-items! finalizer next))
+			      (procedure context)
+			      (loop next prev)))))))))
+	   (lambda ()
+	     unspecific)))))
+    (lambda ()
+      unspecific)))
 (add-boot-init!
  (lambda ()
    (add-gc-daemon! run-gc-finalizers)))
@@ -235,7 +225,7 @@ USA.
   (let loop ((finalizers gc-finalizers) (prev #f))
     (if (weak-pair? finalizers)
 	(let ((finalizer (weak-car finalizers)))
-	  (if finalizer
+	  (if (not (gc-reclaimed-object? finalizer))
 	      (begin
 		(procedure finalizer)
 		(loop (weak-cdr finalizers) finalizers))

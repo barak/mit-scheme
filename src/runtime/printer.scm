@@ -623,6 +623,7 @@ USA.
 	       ((eq? object lambda-tag:optional) "#!optional")
 	       ((eq? object lambda-tag:rest) "#!rest")
 	       ((eq? object unspecific) "#!unspecific")
+	       ((gc-reclaimed-object? object) "#!reclaimed")
 	       (else #f))))
     (if string
 	(*print-string string context)

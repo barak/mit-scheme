@@ -173,7 +173,9 @@ Just minus as an argument moves down full screen."
   (lambda (argument)
     (let ((window
 	   (or (and (typein-window? (selected-window))
-		    (weak-car *minibuffer-scroll-window*))
+		    (let ((window (weak-car *minibuffer-scroll-window*)))
+		      (and (not (gc-reclaimed-object? window))
+			   window)))
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (standard-scroll-window-argument window argument 1)))))
@@ -184,7 +186,9 @@ Just minus as an argument moves down full screen."
   (lambda (argument)
     (let ((window
 	   (or (and (typein-window? (selected-window))
-		    (weak-car *minibuffer-scroll-window*))
+		    (let ((window (weak-car *minibuffer-scroll-window*)))
+		      (and (not (gc-reclaimed-object? window))
+			   window)))
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (standard-scroll-window-argument window argument -1)))))
@@ -198,7 +202,9 @@ means scroll one screenful down."
   (lambda (argument)
     (let ((window
 	   (or (and (typein-window? (selected-window))
-		    (weak-car *minibuffer-scroll-window*))
+		    (let ((window (weak-car *minibuffer-scroll-window*)))
+		      (and (not (gc-reclaimed-object? window))
+			   window)))
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (multi-scroll-window-argument window argument 1)))))
@@ -452,14 +458,15 @@ Also kills any pop up window it may have created."
 
 (define (kill-pop-up-buffer error-if-none?)
   (let ((window (weak-car *previous-popped-up-window*)))
-    (if window
+    (if (not (gc-reclaimed-object? window))
 	(begin
 	  (weak-set-car! *previous-popped-up-window* #f)
 	  (if (and (window-live? window)
 		   (not (window-has-no-neighbors? window)))
 	      (window-delete! window)))))
   (let ((buffer (weak-car *previous-popped-up-buffer*)))
-    (cond ((and buffer (buffer-alive? buffer))
+    (cond ((and (not (gc-reclaimed-object? buffer))
+		(buffer-alive? buffer))
 	   (for-each
 	    (lambda (window)
 	      (let ((entry (weak-assq window *pop-up-buffer-window-alist*)))
@@ -476,7 +483,9 @@ Also kills any pop up window it may have created."
       (kill-pop-up-buffer #f)))
 
 (define (popped-up-buffer)
-  (weak-car *previous-popped-up-buffer*))
+  (let ((buffer (weak-car *previous-popped-up-buffer*)))
+    (and (not (gc-reclaimed-object? buffer))
+	 buffer)))
 
 (define (keep-pop-up-buffer buffer)
   (if (or (not buffer)

@@ -570,7 +570,7 @@ The buffer is guaranteed to be selected at that time."
 		  (if (let loop ((buffers (cdr l2)))
 			(or (not (weak-pair? buffers))
 			    (and (let ((buffer (weak-car buffers)))
-				   (and buffer
+				   (and (not (gc-reclaimed-object? buffer))
 					(buffer-alive? buffer)))
 				 (loop (weak-cdr buffers)))))
 		      (begin
@@ -603,14 +603,14 @@ The buffer is guaranteed to be selected at that time."
   (do ((buffers (cdr layout) (weak-cdr buffers)))
       ((not (weak-pair? buffers)))
     (let ((buffer (weak-car buffers)))
-      (if buffer
+      (if (not (gc-reclaimed-object? buffer))
 	  (buffer-remove! buffer buffer-layout-key)))))
 
 (define (buffer-layout-visible? layout screen)
   (let loop ((buffers (cdr layout)))
     (and (weak-pair? buffers)
 	 (or (not (let ((buffer (weak-car buffers)))
-		    (and buffer
+		    (and (not (gc-reclaimed-object? buffer))
 			 (any (lambda (window)
 				(eq? (window-screen window) screen))
 			      (buffer-windows buffer)))))

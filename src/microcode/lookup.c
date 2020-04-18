@@ -100,7 +100,7 @@ USA.
 
 #define PREFS_HEADER_1(prefs_var, cache)				\
 {									\
-  if ((GET_CACHE_REFERENCE_BLOCK (cache)) == SHARP_F)			\
+  if ((GET_CACHE_REFERENCE_BLOCK (cache)) == GC_RECLAIMED)		\
     {									\
       (*prefs_var) = (PAIR_CDR (*prefs_var));				\
       continue;								\
@@ -961,7 +961,7 @@ add_reference (SCHEME_OBJECT * palist,
     {
       while (PREFS_COND (prefs))
 	{
-	  if ((GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (*prefs))) == SHARP_F)
+	  if ((GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (*prefs))) == GC_RECLAIMED)
 	    {
 	      /* Reuse this pair.  */
 	      SET_CACHE_REFERENCE_BLOCK ((PAIR_CAR (*prefs)), block);

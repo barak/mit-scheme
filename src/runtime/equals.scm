@@ -67,7 +67,7 @@ USA.
 		  (string=? x y)))
 	    ((weak-pair? x)
 	     (and (weak-pair? y)
-		  (equal? (%weak-car x) (%weak-car y))
+		  (equal? (weak-car x) (weak-car y))
 		  (equal? (weak-cdr x) (weak-cdr y))))
 	    ((cell? x)
 	     (and (cell? y)

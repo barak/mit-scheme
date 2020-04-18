@@ -98,9 +98,11 @@ USA.
 	(filter! (lambda (weak)
 		   (let ((thread (weak-car weak)))
 		     (and thread
+			  (not (gc-reclaimed-object? thread))
 			  (weak-cdr weak) ;not cleared by %deregister...
 			  (not (eq? 'dead (thread-execution-state thread))))))
-		 gc-events)))
+		 gc-events))
+  unspecific)
 
 (define (registered-gc-event)
   (let ((entry (weak-assq (current-thread) gc-events)))
@@ -131,8 +133,11 @@ USA.
 		     (lambda (entry)
 		       (let ((thread (weak-car entry))
 			     (event (weak-cdr entry)))
-			 (if (signal-event thread (named-lambda (gc-event)
-						    (event statistic)))
+			 (if (and thread
+				  (not (gc-reclaimed-object? thread))
+				  (signal-event thread
+						(named-lambda (gc-event)
+						  (event statistic))))
 			     (set! signaled? #t))))
 		     gc-events)
 		    signaled?))))

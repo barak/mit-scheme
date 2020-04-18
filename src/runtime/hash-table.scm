@@ -344,7 +344,7 @@ USA.
 (define-integrable (maybe-weak-cons a d)
   (if (non-weak? a)
       (cons a d)
-      (system-pair-cons (ucode-type weak-cons) a d)))
+      (weak-cons a d)))
 
 ;;;; Entries of various flavours
 
@@ -400,7 +400,7 @@ USA.
 
 (define-integrable (key-weak-entry-valid? entry)
   (or (pair? entry)
-      (system-pair-car entry)))
+      (not (gc-reclaimed-object? (weak-car entry)))))
 
 (define-integrable key-weak-entry-key system-pair-car)
 (define-integrable key-weak-entry-datum system-pair-cdr)
@@ -410,7 +410,7 @@ USA.
   (let ((k (key-weak-entry-key entry)))
     ;** Do not integrate K!  It must be fetched and saved *before* we
     ;** determine whether the entry is valid.
-    (if (or (pair? entry) k)
+    (if (or (pair? entry) (not (gc-reclaimed-object? k)))
 	(if-valid k (lambda () (reference-barrier k)))
 	(if-not-valid))))
 
@@ -419,7 +419,7 @@ USA.
     ;** Do not integrate K!  It is OK to integrate D only because these
     ;** are weak pairs, not ephemerons, so the entry holds D strongly
     ;** anyway.
-    (if (or (pair? entry) k)
+    (if (or (pair? entry) (not (gc-reclaimed-object? k)))
 	(if-valid k
 		  (key-weak-entry-datum entry)
 		  (lambda () (reference-barrier k)))
@@ -442,7 +442,7 @@ USA.
 
 (define-integrable (datum-weak-entry-valid? entry)
   (or (pair? entry)
-      (system-pair-car entry)))
+      (not (gc-reclaimed-object? (system-pair-car entry)))))
 
 (define-integrable datum-weak-entry-key system-pair-cdr)
 (define-integrable datum-weak-entry-datum system-pair-car)
@@ -450,14 +450,14 @@ USA.
 
 (define-integrable (call-with-datum-weak-entry-key entry if-valid if-not)
   (let ((d (datum-weak-entry-datum entry)))
-    (if (or (pair? entry) d)
+    (if (or (pair? entry) (not (gc-reclaimed-object? d)))
 	(if-valid (datum-weak-entry-key entry)
 		  (lambda () (reference-barrier d)))
 	(if-not))))
 
 (define-integrable (call-with-datum-weak-entry-key&datum entry if-valid if-not)
   (let ((d (datum-weak-entry-datum entry)))
-    (if (or (pair? entry) d)
+    (if (or (pair? entry) (not (gc-reclaimed-object? d)))
 	(if-valid (datum-weak-entry-key entry)
 		  d
 		  (lambda () (reference-barrier d)))
@@ -478,8 +478,8 @@ USA.
   (maybe-weak-cons key (maybe-weak-cons datum '())))
 
 (define-integrable (key&datum-weak-entry-valid? entry)
-  (and (system-pair-car entry)
-       (system-pair-car (system-pair-cdr entry))))
+  (and (not (gc-reclaimed-object? (system-pair-car entry)))
+       (not (gc-reclaimed-object? (system-pair-car (system-pair-cdr entry))))))
 
 (define-integrable key&datum-weak-entry-key system-pair-car)
 (define-integrable (key&datum-weak-entry-datum entry)
@@ -498,9 +498,10 @@ USA.
 		     if-not)
   (let ((k (key&datum-weak-entry-key entry))
 	(d (key&datum-weak-entry-datum entry)))
-    (if (and (or (pair? entry) k)
+    (if (and (or (pair? entry)
+		 (not (gc-reclaimed-object? k)))
 	     (or (pair? (system-pair-cdr entry))
-		 d))
+		 (not (gc-reclaimed-object? d))))
 	(if-valid k d (lambda () (reference-barrier k) (reference-barrier d)))
 	(if-not))))
 

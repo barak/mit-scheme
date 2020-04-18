@@ -481,7 +481,7 @@ constant_string (SCHEME_OBJECT obj)
     case DEFAULT_OBJECT: return "#!default";
     case AUX_MARKER: return "#!aux";
     case EMPTY_LIST: return "()";
-    case WEAK_SHARP_F: return "[weak #f]";
+    case GC_RECLAIMED: return "#!reclaimed";
     default: return 0;
     }
 }
@@ -648,6 +648,32 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_CONSTANT:
       print_simple (stream, obj);
+      return;
+
+    case TC_CHARACTER:
+      {
+        unsigned long code = (OBJECT_DATUM (obj));
+        const char* name;
+        switch (code)
+          {
+          case 0x00: name = "null"; break;
+          case 0x07: name = "alarm"; break;
+          case 0x08: name = "backspace"; break;
+          case 0x09: name = "tab"; break;
+          case 0x0A: name = "newline"; break;
+          case 0x0D: name = "return"; break;
+          case 0x1B: name = "escape"; break;
+          case 0x20: name = "space"; break;
+          case 0x7F: name = "delete"; break;
+          default: name = 0; break;
+          }
+        if (name != 0)
+          outf (stream, "#\\%s", name);
+        else if (code > 0x20 && code < 0x7F)
+          outf (stream, "#\\%c", (char) code);
+        else
+          outf (stream, "#\\x%lx", code);
+      }
       return;
 
 #ifdef CC_SUPPORT_P

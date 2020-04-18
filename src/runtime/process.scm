@@ -349,7 +349,7 @@ USA.
       (let ((signaled? #f))
 	(for-each (lambda (weak)
 		    (let ((subprocess (weak-car weak)))
-		      (if subprocess
+		      (if (not (gc-reclaimed-object? subprocess))
 			  (poll-subprocess-status subprocess))))
 		  (gc-finalizer-items subprocess-finalizer))
 	(for-each

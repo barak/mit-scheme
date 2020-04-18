@@ -375,7 +375,8 @@ USA.
 	       ;; Delete memoization _only_ if URL-EXISTS?
 	       ;; unambiguously states non-existence.  An error is
 	       ;; often transitory.
-	       (if (and resource (ignore-errors (lambda () (url-exists? url))))
+	       (if (and (not (gc-reclaimed-object? resource))
+			(ignore-errors (lambda () (url-exists? url))))
 		   resource
 		   (begin
 		     (hash-table-delete! memoized-resources url)
@@ -395,7 +396,7 @@ USA.
   (let ((r.c (hash-table-ref/default memoized-resources url #f)))
     (if r.c
 	(let ((resource (weak-car r.c)))
-	  (if resource
+	  (if (not (gc-reclaimed-object? resource))
 	      (begin
 		(let ((close (weak-cdr r.c)))
 		  (if close

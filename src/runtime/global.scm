@@ -358,7 +358,7 @@ USA.
 	  (let per-symbol ((bucket (vector-ref obarray index)))
 	    (cond ((weak-pair? bucket)
 		   (let ((symbol (weak-car bucket)))
-		     (if (weak-pair/car? bucket)
+		     (if (not (gc-reclaimed-object? symbol))
 			 (procedure symbol)))
 		   (per-symbol (weak-cdr bucket)))
 		  ((pair? bucket)

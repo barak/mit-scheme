@@ -261,7 +261,7 @@ USA.
   (let ((cache (get-property entity 'MIME-ENTITY-BODY-STRUCTURE #f)))
     (if cache
         (let ((body-structure (weak-car cache)))
-          (if (weak-pair/car? cache)
+          (if (and body-structure (not (gc-reclaimed-object? body-structure)))
               body-structure
               (next (lambda (value) (weak-set-car! cache value)))))
         (next (lambda (value)

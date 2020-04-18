@@ -41,12 +41,11 @@ USA.
   (%tagged-object-datum 1)
   (%tagged-object-tag 1)
   (%tagged-object? 1)
-  (%weak-cons weak-cons 2)
-  (%weak-car weak-car 1)
-  (%weak-set-car! weak-set-car! 2)
+  (weak-car 1)
   (weak-cdr 1)
+  (weak-cons 2)
   (weak-pair? 1)
-  (weak-pair/car? weak-car 1)
+  (weak-set-car! 2)
   (weak-set-cdr! 2))
 
 (define (%make-record tag length #!optional fill)
@@ -76,40 +75,22 @@ USA.
 		      record)))))))
       (expand-cases 16))))
 
-(define (weak-cons car cdr)
-  (%weak-cons (%false->weak-false car) cdr))
+(define-integrable (weak-pair/car? pair)
+  (not (gc-reclaimed-object? (weak-car pair))))
 
-(define (weak-car weak-pair)
-  (%weak-false->false (%weak-car weak-pair)))
+(define-integrable (gc-reclaimed-object)
+  %gc-reclaimed)
 
-(define (weak-set-car! weak-pair object)
-  (%weak-set-car! weak-pair (%false->weak-false object)))
+(define-integrable (gc-reclaimed-object? object)
+  (eq? %gc-reclaimed object))
 
-(define-integrable (%false->weak-false object)
-  (if object object %weak-false))
-
-(declare (integrate-operator %weak-false->false))
-(define (%weak-false->false object)
-  (if (%weak-false? object) #f object))
-
-(define-integrable (%weak-false? object)
-  (eq? object %weak-false))
-
-(define-integrable %weak-false
-  (let-syntax
-      ((ugh
-	(sc-macro-transformer
-	 (lambda (form use-env)
-	   (declare (ignore form use-env))
-	   (object-new-type (ucode-type constant) 10)))))
-    (ugh)))
+(define-integrable %gc-reclaimed
+  ((ucode-primitive object-set-type) (ucode-type constant) 10))
 
 ;;;; Simple weak-set implementation
 
-;;; Does not support #f as an item of the set.
-
 (define (%make-weak-set)
-  (%weak-cons 'weak-set '()))
+  (weak-cons 'weak-set '()))
 
 (define (%weak-set->list weak-set)
   (weak-list->list (weak-cdr weak-set)))
@@ -119,9 +100,9 @@ USA.
       ((this (weak-cdr weak-set))
        (prev weak-set))
     (if (weak-pair? this)
-	(let ((item* (%weak-car this))
+	(let ((item* (weak-car this))
 	      (next (weak-cdr this)))
-	  (cond ((not item*)
+	  (cond ((gc-reclaimed-object? item*)
 		 (weak-set-cdr! prev next)
 		 (loop next prev))
 		((eq? item item*)
@@ -129,7 +110,7 @@ USA.
 		(else
 		 (loop next this))))
 	(begin
-	  (weak-set-cdr! prev (%weak-cons item '()))
+	  (weak-set-cdr! prev (weak-cons item '()))
 	  #t))))
 
 (define (%remove-from-weak-set item weak-set)
@@ -137,9 +118,9 @@ USA.
       ((this (weak-cdr weak-set))
        (prev weak-set))
     (if (weak-pair? this)
-	(let ((item* (%weak-car this))
+	(let ((item* (weak-car this))
 	      (next (weak-cdr this)))
-	  (cond ((not item*)
+	  (cond ((gc-reclaimed-object? item*)
 		 (weak-set-cdr! prev next)
 		 (loop next prev))
 		((eq? item item*)
@@ -154,9 +135,9 @@ USA.
       ((this (weak-cdr weak-set))
        (prev weak-set))
     (if (weak-pair? this)
-	(let ((item (%weak-car this))
+	(let ((item (weak-car this))
 	      (next (weak-cdr this)))
-	  (cond ((not item)
+	  (cond ((gc-reclaimed-object? item)
 		 (weak-set-cdr! prev next)
 		 (loop next prev))
 		((predicate item)
@@ -170,15 +151,15 @@ USA.
       ((this (weak-cdr weak-set))
        (prev weak-set))
     (if (weak-pair? this)
-	(let ((item (%weak-car this))
+	(let ((item (weak-car this))
 	      (next (weak-cdr this)))
-	  (if item
-	      (begin
-		(procedure item)
-		(loop next this))
+	  (if (gc-reclaimed-object? item)
 	      (begin
 		(weak-set-cdr! prev next)
-		(loop next prev)))))))
+		(loop next prev))
+	      (begin
+		(procedure item)
+		(loop next this)))))))
 
 ;;;; Interrupt control
 

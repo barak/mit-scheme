@@ -1080,7 +1080,7 @@ There is a special command, `*l', to mark all files currently locked.
       ;; If a new window was created to hold the log buffer, and the log
       ;; buffer is still selected in that window, delete it.
       (let ((log-window (weak-car log-window)))
-	(if (and log-window
+	(if (and (not (gc-reclaimed-object? log-window))
 		 (window-live? log-window)
 		 (eq? log-buffer (window-buffer log-window))
 		 (not (window-has-no-neighbors? log-window)))
@@ -1094,9 +1094,11 @@ There is a special command, `*l', to mark all files currently locked.
 		(bury-buffer log-buffer))))
       (let ((window (weak-car window))
 	    (buffer (weak-car buffer)))
-	(if (and window (window-live? window))
+	(if (and (not (gc-reclaimed-object? window))
+		 (window-live? window))
 	    (select-window window))
-	(if (and buffer (buffer-alive? buffer))
+	(if (and (not (gc-reclaimed-object? buffer))
+		 (buffer-alive? buffer))
 	    (if (and window (window-live? window))
 		(select-buffer-no-record buffer window)
 		(select-buffer buffer))))

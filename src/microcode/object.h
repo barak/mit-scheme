@@ -520,7 +520,7 @@ extern bool string_p (SCHEME_OBJECT);
    7 #!default
    8 #!aux
    9 '()
-   10 weak #f
+   10 #!reclaimed
    ...
    0x100 -> 0x1FF reserved for fasdumpable records
  */
@@ -535,7 +535,7 @@ extern bool string_p (SCHEME_OBJECT);
 #define DEFAULT_OBJECT		MAKE_OBJECT (TC_CONSTANT, 7)
 #define AUX_MARKER		MAKE_OBJECT (TC_CONSTANT, 8)
 #define EMPTY_LIST		MAKE_OBJECT (TC_CONSTANT, 9)
-#define WEAK_SHARP_F		MAKE_OBJECT (TC_CONSTANT, 10)
+#define GC_RECLAIMED		MAKE_OBJECT (TC_CONSTANT, 10)
 #define FASDUMP_RECORD_MARKER_START 0x100
 #define FASDUMP_RECORD_MARKER_END 0x200
 #define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)

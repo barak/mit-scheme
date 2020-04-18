@@ -576,7 +576,7 @@ USA.
   (let loop ((connections memoized-imap-connections) (prev #f) (winner #f))
     (if (weak-pair? connections)
 	(let ((connection (weak-car connections)))
-	  (if connection
+	  (if (not (gc-reclaimed-object? connection))
 	      (loop (weak-cdr connections)
 		    connections
 		    (let ((value (assessor connection)))
@@ -1253,7 +1253,7 @@ USA.
 	     (if (initpred message)
 		 (let* ((pair (accessor message))
 			(value (weak-car pair)))
-		   (if (weak-pair/car? pair)
+		   (if (and value (not (gc-reclaimed-object? value)))
 		       value
 		       (fetch message
 			      (lambda (value) (weak-set-car! pair value)))))
@@ -1433,7 +1433,7 @@ USA.
     (if (initpred body)
 	(let* ((pair (accessor body))
 	       (header-fields (weak-car pair)))
-	  (if (weak-pair/car? pair)
+	  (if (and header-fields (not (gc-reclaimed-object? header-fields)))
 	      header-fields
 	      (fetch body
 		     (lambda (header-fields)
@@ -1525,7 +1525,7 @@ USA.
   (define (scan-positive body-parts previous)
     (and (weak-pair? body-parts)
 	 (let ((entry (weak-car body-parts)))
-	   (if entry
+	   (if (not (gc-reclaimed-object? entry))
 	       (if (equal? section (car entry))
 		   entry
 		   (scan-positive (weak-cdr body-parts) body-parts))
@@ -1533,7 +1533,7 @@ USA.
   (define (scan-negative body-parts previous)
     (if (weak-pair? body-parts)
 	(let ((entry (weak-car body-parts)))
-	  (if entry
+	  (if (not (gc-reclaimed-object? entry))
 	      (begin
 		(weak-set-cdr! previous body-parts)
 		(if (equal? section (car entry))

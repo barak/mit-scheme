@@ -796,10 +796,10 @@ DEFINE_GC_HANDLER (gc_handle_undefined)
    pointer to the corresponding weak pair in new space, we also have a
    list of all of the new weak pairs.
 
-   The extra pass then traverses this list, restoring the original
-   type of the object in the car of each pair.  Then, if the car is a
-   pointer that hasn't been copied to new space, it is replaced by #F.
-   This work is performed by 'update_weak_pointers'.
+   The extra pass then traverses this list, restoring the original type of the
+   object in the car of each pair.  Then, if the car is a pointer that hasn't
+   been copied to new space, it is replaced by WEAK_PAIR_COLLECTED.  This work
+   is performed by 'update_weak_pointers'.
 
    Here is a diagram showing the layout of a weak pair immediately
    after it is transported to new space.  After the normal pass is
@@ -847,7 +847,7 @@ weak_referent_address (SCHEME_OBJECT object)
 }
 
 static SCHEME_OBJECT
-weak_referent_forward (SCHEME_OBJECT object)
+weak_referent_forward (SCHEME_OBJECT object, SCHEME_OBJECT collected)
 {
   SCHEME_OBJECT * addr;
 
@@ -857,7 +857,7 @@ weak_referent_forward (SCHEME_OBJECT object)
       addr = (OBJECT_ADDRESS (object));
       if (BROKEN_HEART_P (*addr))
 	return (MAKE_OBJECT_FROM_OBJECTS (object, (*addr)));
-      return (SHARP_F);
+      return (collected);
 
     case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P
@@ -867,7 +867,7 @@ weak_referent_forward (SCHEME_OBJECT object)
 #else
       gc_no_cc_support ();
 #endif
-      return (SHARP_F);
+      return (collected);
 
     case GC_POINTER_COMPILED_RETURN:
 #ifdef CC_SUPPORT_P
@@ -877,12 +877,12 @@ weak_referent_forward (SCHEME_OBJECT object)
 #else
       gc_no_cc_support ();
 #endif
-      return (SHARP_F);
+      return (collected);
 
     case GC_POINTER_NOT:
     default:			/* suppress bogus GCC warning */
       std_gc_death ("Non-pointer cannot be a weak reference.");
-      return (SHARP_F);
+      return (collected);
     }
 }
 
@@ -961,7 +961,7 @@ gc_transport_ephemeron (SCHEME_OBJECT old_ephemeron)
      its contents, including the datum.  */
   if ((old_key_addr == 0)
       || (!ADDRESS_IN_FROMSPACE_P (old_key_addr))
-      || (SHARP_F != (weak_referent_forward (old_key))))
+      || (SHARP_F != (weak_referent_forward (old_key, SHARP_F))))
     {
       WRITE_TOSPACE (new_addr, MARKED_EPHEMERON_MANIFEST);
       return (new_ephemeron);
@@ -1030,7 +1030,7 @@ scan_ephemerons (void)
 	 right here and now, but we can't do that, because we must also
 	 delete it from the hash table so that nothing else will put it
 	 in the queue again.  */
-      if (SHARP_F != (weak_referent_forward (old_key)))
+      if (SHARP_F != (weak_referent_forward (old_key, SHARP_F)))
 	queue_ephemerons_for_key (weak_referent_address (old_key));
     }
   while (EPHEMERON_P (ephemeron = ephemeron_queue))
@@ -1039,7 +1039,7 @@ scan_ephemerons (void)
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
       {
 	SCHEME_OBJECT key = (READ_TOSPACE (ephemeron_addr + EPHEMERON_KEY));
-	if (! (weak_referent_forward (key)))
+	if (SHARP_F == (weak_referent_forward (key, SHARP_F)))
 	  std_gc_death
 	    ("Ephemeron queued whose key has not been forwarded: %lx", key);
       }
@@ -1073,7 +1073,7 @@ update_ephemerons (void)
       SCHEME_OBJECT * ephemeron_addr = (OBJECT_ADDRESS (ephemeron));
       SCHEME_OBJECT * key_loc = (ephemeron_addr + EPHEMERON_KEY);
       SCHEME_OBJECT old_key = (READ_TOSPACE (key_loc));
-      SCHEME_OBJECT new_key = (weak_referent_forward (old_key));
+      SCHEME_OBJECT new_key = (weak_referent_forward (old_key, SHARP_F));
       WRITE_TOSPACE (ephemeron_addr, MARKED_EPHEMERON_MANIFEST);
       WRITE_TOSPACE (key_loc, new_key);
       /* Advance before we clobber the list pointer.  */
@@ -1103,7 +1103,7 @@ update_weak_pairs (void)
 	= (OBJECT_NEW_TYPE ((OBJECT_TYPE (obj)),
 			    (READ_TOSPACE (new_addr))));
 
-      WRITE_TOSPACE (new_addr, (weak_referent_forward (old_car)));
+      WRITE_TOSPACE (new_addr, (weak_referent_forward (old_car, GC_RECLAIMED)));
       weak_chain = (((OBJECT_DATUM (obj)) == 0) ? 0 : (OBJECT_ADDRESS (obj)));
     }
 }
@@ -1291,8 +1291,8 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_NON_POINTER,		/* TC_FALSE */
   GC_PAIR,			/* TC_LIST */
   GC_NON_POINTER,		/* TC_CHARACTER */
-  GC_PAIR,		   	/* TC_SCODE_QUOTE */
-  GC_COMPILED_RETURN,	        /* TC_COMPILED_RETURN */
+  GC_PAIR,			/* TC_SCODE_QUOTE */
+  GC_COMPILED_RETURN,		/* TC_COMPILED_RETURN */
   GC_PAIR,			/* TC_UNINTERNED_SYMBOL */
   GC_VECTOR,			/* TC_BIG_FLONUM */
   GC_UNDEFINED,			/* was TC_COMBINATION_1 */

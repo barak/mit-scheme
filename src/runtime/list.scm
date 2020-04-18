@@ -358,10 +358,10 @@ USA.
   (let loop ((items* items) (result '()))
     (if (weak-pair? items*)
 	(loop (weak-cdr items*)
-	      (let ((item (%weak-car items*)))
-		(if item
-		    (cons (%weak-false->false item) result)
-		    result)))
+	      (let ((item (weak-car items*)))
+		(if (gc-reclaimed-object? item)
+		    result
+		    (cons item result))))
 	(begin
 	  (if (not (null? items*))
 	      (error:not-a weak-list? items 'weak-list->list))
@@ -388,24 +388,23 @@ USA.
 	(null? l1))))
 
 (define (weak-memq item items)
-  (let ((item (%false->weak-false item)))
-    (let loop ((items* items))
-      (if (weak-pair? items*)
-	  (if (eq? item (%weak-car items*))
-	      items*
-	      (loop (weak-cdr items*)))
-	  (begin
-	    (if (not (null? items*))
-		(error:not-a weak-list? items 'weak-memq))
-	    #f)))))
+  (let loop ((items* items))
+    (if (weak-pair? items*)
+	(if (eq? item (weak-car items*))
+	    items*
+	    (loop (weak-cdr items*)))
+	(begin
+	  (if (not (null? items*))
+	      (error:not-a weak-list? items 'weak-memq))
+	  #f))))
 
 (define (weak-delq! item items)
-  (let ((item (%false->weak-false item)))
-    (define-integrable (delete? item*)
-      (or (eq? item item*) (eq? #f item*)))
-    (define (lose)
-      (error:not-a weak-list? items 'weak-delq!))
-    (%remove! delete? items weak-pair? %weak-car weak-cdr weak-set-cdr! lose)))
+  (define-integrable (delete? item*)
+    (or (eq? item item*)
+	(gc-reclaimed-object? item*)))
+  (define (lose)
+    (error:not-a weak-list? items 'weak-delq!))
+  (%remove! delete? items weak-pair? weak-car weak-cdr weak-set-cdr! lose))
 
 ;;;; General CAR CDR
 

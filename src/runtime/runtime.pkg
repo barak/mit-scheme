@@ -154,7 +154,6 @@ USA.
 	  (with-values call-with-values)
 	  without-interrupts)
   (export ()
-	  %false->weak-false
 	  %make-record
 	  %make-tagged-object
 	  %record
@@ -165,11 +164,6 @@ USA.
 	  %tagged-object-datum
 	  %tagged-object-tag
 	  %tagged-object?
-	  %weak-car
-	  %weak-cons
-	  %weak-false->false
-	  %weak-false?
-	  %weak-set-car!
 	  bracketed-print-method
 	  bytes-per-object
 	  call-with-values
@@ -180,6 +174,8 @@ USA.
 	  error:not-a
 	  error:not-a-list-of
 	  force				;R7RS
+	  gc-reclaimed-object
+	  gc-reclaimed-object?
 	  gc-space-status
 	  guarantee
 	  guarantee-list-of
@@ -228,8 +224,6 @@ USA.
 	  %weak-set->list
 	  %weak-set-any
 	  %weak-set-for-each)
-  (export (runtime equality)
-	  %weak-car)
   (export (runtime predicate)
 	  set-predicate-tag!)
   (export (runtime printer)

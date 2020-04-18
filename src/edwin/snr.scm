@@ -1616,7 +1616,7 @@ This shows News groups that have been created since the last time that
     (and pair
 	 (let ((window
 		(let ((window (weak-car pair)))
-		  (and window
+		  (and (not (gc-reclaimed-object? window))
 		       (window-visible? window)
 		       (or (not require-buffer?)
 			   (eq? buffer (window-buffer window)))
