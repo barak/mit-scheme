@@ -403,54 +403,40 @@ USA.
       (%trace (tindent)"<= "value)
       value)))
 
-
 ;;; Malloc/Free
 
-;; Weak alist of: ( malloc alien X copy for c-free )...
-(define malloced-aliens '())
-(define malloced-aliens-mutex)
+(define malloced-aliens
+  (weak-alist-table eq?
+    (lambda (copy)
+      (if (not (alien-null? copy))
+	  (begin
+	    ((ucode-primitive c-free 1) copy)
+	    (alien-null! copy))))))
+
+(define malloced-aliens-mutex
+  (make-thread-mutex))
 
 (define (free-malloced-aliens)
   (with-thread-mutex-try-lock malloced-aliens-mutex
     (lambda ()
-      (let loop ((aliens malloced-aliens) (prev #f))
-	(if (pair? aliens)
-	    (let ((p (car aliens))
-		  (next (cdr aliens)))
-	      (if (gc-reclaimed-object? (weak-car p))
-		  (let ((copy (weak-cdr p)))
-		    (if prev
-			(set-cdr! prev next)
-			(set! malloced-aliens next))
-		    (if (not (alien-null? copy))
-			(begin
-			  ((ucode-primitive c-free 1) copy)
-			  (alien-null! copy)))
-		    (loop next prev))
-		  (loop next aliens))))))
+      (weak-alist-table-clean! malloced-aliens))
     (lambda ()
       unspecific)))
 
 (define (reset-malloced-aliens!)
-  (set! malloced-aliens-mutex (make-thread-mutex))
-  (let loop ((aliens malloced-aliens))
-    (if (pair? aliens)
-	(let ((alien (weak-car (car aliens)))
-	      (copy (weak-cdr (car aliens))))
-	  (if (not (gc-reclaimed-object? alien))
-	      (alien-null! alien))
-	  (alien-null! copy)
-	  (loop (cdr aliens)))))
-  (set! malloced-aliens '()))
+  (weak-alist-table-delete-matching! malloced-aliens
+    (lambda (alien copy)
+      (alien-null! alien)
+      (alien-null! copy)
+      #t)))
 
 (define (make-alien-to-free ctype init)
   ;; Register BEFORE initializing (allocating).
   (let ((alien (make-alien ctype)))
     (let ((copy (make-alien ctype)))
-      (let ((entry (weak-cons alien copy)))
-	(with-thread-mutex-lock malloced-aliens-mutex
-	 (lambda ()
-	   (set! malloced-aliens (cons entry malloced-aliens)))))
+      (with-thread-mutex-lock malloced-aliens-mutex
+	(lambda ()
+	  (weak-alist-table-set! malloced-aliens alien copy)))
       (init copy)
       ;; Even an abort here will not leak a byte.
       (copy-alien-address! alien copy))
@@ -462,21 +448,18 @@ USA.
 			((ucode-primitive c-malloc 2) alien size))))
 
 (define (free alien)
-  (if (not (alien? alien))
-      (warn "Cannot free a non-alien:" alien)
-      (let ((weak (weak-assq alien malloced-aliens)))
-	(if (not weak)
-	    (warn "Cannot free an alien that was not malloced:" alien)
-	    (let ((copy (weak-cdr weak)))
-	      (with-thread-mutex-lock malloced-aliens-mutex
-	       (lambda ()
-		 (if (not (alien-null? alien))
-		     (begin
-		       (alien-null! alien)
-		       ((ucode-primitive c-free 1) copy)
-		       (alien-null! copy)
-		       (set! malloced-aliens
-			     (delq! weak malloced-aliens)))))))))))
+  (cond ((not (alien? alien))
+	 (warn "Cannot free a non-alien:" alien))
+	((not (alien-null? alien))
+	 (with-thread-mutex-lock malloced-aliens-mutex
+	  (lambda ()
+	    (let ((copy (weak-alist-table-delete! malloced-aliens alien #f)))
+	      (alien-null! alien)
+	      (cond ((not copy)
+		     (warn "Cannot free an alien that was not malloced:" alien))
+		    ((not (alien-null? copy))
+		     ((ucode-primitive c-free 1) copy)
+		     (alien-null! copy)))))))))
 
 
 ;;; Callback support

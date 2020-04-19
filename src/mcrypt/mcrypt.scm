@@ -454,44 +454,28 @@ USA.
 
 ;;;; The cleanups list.
 
-(define cleanups '())
+(define cleanups (weak-alist-table eq?))
 
 (define (add-cleanup object cleaner)
-  (set! cleanups (cons (weak-cons object cleaner) cleanups)))
+  (weak-alist-table-set! cleanups object cleaner))
 
 (define (remove-cleanup object)
-  (let ((entry (weak-assq object cleanups)))
-    (if entry
-	(set! cleanups (delq! entry cleanups))
-	;; Already removed!
-	)))
+  (weak-alist-table-delete! cleanups object))
 
 (define (cleanup-mcrypt-objects)
-  (let loop ((entries cleanups)
-	     (prev #f))
-    (if (pair? entries)
-	(let ((entry (car entries))
-	      (next (cdr entries)))
-	  (if (weak-pair/car? entry)
-	      (loop next entries)
-	      (let ((cleaner (weak-cdr entry)))
-		(if prev
-		    (set-cdr! prev next)
-		    (set! cleanups next))
-		(cleaner)
-		(loop next prev)))))))
+  (weak-alist-table-clean! cleanups))
 
 (define (reset-cleanups!)
-  (for-each (lambda (entry)
-	      (if (weak-pair/car? entry)
-		  (let ((obj (weak-car entry)))
-		    (cond ((alien? obj) (alien-null! obj))
-			  ((mcrypt-context? obj)
-			   (alien-null! (mcrypt-context-alien obj)))
-			  (else
-			   (error "Unexpected object on cleanup list:" obj))))))
-	    cleanups)
-  (set! cleanups '()))
+  (weak-alist-table-delete-matching! cleanups
+    (lambda (object cleaner)
+      (declare (ignore cleaner))
+      (cond ((alien? object)
+	     (alien-null! object))
+	    ((mcrypt-context? object)
+	     (alien-null! (mcrypt-context-alien object)))
+	    (else
+	     (error "Unexpected object on cleanup list:" object)))
+      #t)))
 
 (add-gc-daemon! cleanup-mcrypt-objects)
 (add-event-receiver! event:after-restart reset-mcrypt-variables!)

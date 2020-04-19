@@ -40,87 +40,58 @@ USA.
    (add-secondary-gc-daemon!/unsafe clean-1d-tables!)))
 
 (define (make-1d-table)
-  (let ((table (list 1d-table-tag)))
+  (let ((table (%make-1d-table)))
     (add-to-population! population-of-1d-tables table)
     table))
 
 (define (make-1d-table/unsafe)
-  (let ((table (list 1d-table-tag)))
+  (let ((table (%make-1d-table)))
     (add-to-population!/unsafe population-of-1d-tables table)
     table))
 
+(define (%make-1d-table)
+  (%record 1d-table-tag (weak-alist-table eqv?)))
+
 (define (1d-table? object)
-  (and (pair? object)
-       (eq? (car object) 1d-table-tag)))
+  (and (%record? object)
+       (eq? 1d-table-tag (%record-ref object 0))))
 
 (define-integrable 1d-table-tag
   '|#[1D table]|)
 
+(define-integrable (%table-items table) (%record-ref table 1))
+
 (define-print-method 1d-table?
   (standard-print-method '1d-table))
 
-(define (get-table-alist table)
-  (let loop ((alist (cdr table)))
-    (if (and (pair? alist)
-	     (gc-reclaimed-object? (weak-car (car alist))))
-	(let ((next (cdr alist)))
-	  (set-cdr! table next)
-	  (loop next))
-	alist)))
-
 (define (1d-table/get table key default)
-  (let ((p (weak-assv key (get-table-alist table))))
-    (if p
-	(weak-cdr p)
-	default)))
+  (guarantee 1d-table? table '1d-table/get)
+  (weak-alist-table-ref (%table-items table) key (lambda () default)))
+
+(define dummy-value (list 'dummy-value))
 
 (define (1d-table/lookup table key if-found if-not-found)
-  (let ((p (weak-assv key (get-table-alist table))))
-    (if p
-	(if-found (weak-cdr p))
-	(if-not-found))))
+  (let ((value (1d-table/get table key dummy-value)))
+    (if (eq? dummy-value value)
+	(if-not-found)
+	(if-found value))))
 
 (define (1d-table/put! table key value)
-  (let ((p (weak-assv key (get-table-alist table))))
-    (if p
-	(weak-set-cdr! p value)
-	(set-cdr! table
-		  (cons (weak-cons key value)
-			(cdr table))))))
+  (guarantee 1d-table? table '1d-table/put!)
+  (weak-alist-table-set! (%table-items table) key value))
 
 (define (1d-table/remove! table key)
-  (set-cdr! table
-	    (remove! (lambda (p)
-		       (let ((key* (weak-car p)))
-			 (or (gc-reclaimed-object? key*)
-			     (eqv? key* key))))
-		     (cdr table))))
+  (guarantee 1d-table? table '1d-table/remove!)
+  (weak-alist-table-delete! (%table-items table) key))
 
 (define (1d-table/clean! table)
-  (set-cdr! table
-	    (remove! (lambda (p)
-		       (gc-reclaimed-object? (weak-car p)))
-		     (cdr table))))
+  (guarantee 1d-table? table '1d-table/clean!)
+  (weak-alist-table-clean! (%table-items table)))
 
 (define (1d-table/alist table)
-  (fold (lambda (p acc)
-	  (let ((key (weak-car p)))
-	    (if (gc-reclaimed-object? key)
-		acc
-		(cons (cons key (weak-cdr p)) acc))))
-	'()
-	(cdr table)))
+  (guarantee 1d-table? table '1d-table/alist)
+  (weak-alist-table->alist (%table-items table)))
 
 (define (1d-table/for-each proc table)
-  (let loop ((alist (cdr table)) (prev table))
-    (if (pair? alist)
-	(let ((p (car alist))
-	      (next (cdr alist)))
-	  (let ((key (weak-car p)))
-	    (if (gc-reclaimed-object? key)
-		(begin
-		  (set-cdr! prev next)
-		  (loop next prev))
-		(begin
-		  (proc key (weak-cdr p))
-		  (loop next alist))))))))
+  (for-each (lambda (p) (proc (car p) (cdr p)))
+	    (1d-table/alist table)))

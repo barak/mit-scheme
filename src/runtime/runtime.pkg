@@ -226,6 +226,7 @@ USA.
   (export ()
 	  gdrop				;SRFI-158
 	  gdrop-while			;SRFI-158
+	  generator->list		;SRFI-158
 	  generator-any			;SRFI-158
 	  generator-count		;SRFI-158
 	  generator-every		;SRFI-158
@@ -248,16 +249,43 @@ USA.
   (files "weak-pair")
   (parent (runtime))
   (export ()
-	  add-to-weak-set!
 	  clean-weak-alist!
 	  clean-weak-list!
-	  clean-weak-set!
-	  clear-weak-set!
 	  gc-reclaimed-object
 	  gc-reclaimed-object?
+	  generator->weak-list
 	  list->weak-list
 	  null-weak-list?
-	  remove-from-weak-set!
+	  weak-alist->generator
+	  weak-alist-copy
+	  weak-alist-filter
+	  weak-alist-filter!
+	  weak-alist-find
+	  weak-alist-fold
+	  weak-alist-fold-right
+	  weak-alist-remove
+	  weak-alist-remove!
+	  weak-alist-table
+	  weak-alist-table->alist
+	  weak-alist-table-clean!
+	  weak-alist-table-clear!
+	  weak-alist-table-delete!
+	  weak-alist-table-delete-matching!
+	  weak-alist-table-empty?
+	  weak-alist-table-exists?
+	  weak-alist-table-fold
+	  weak-alist-table-fold-right
+	  weak-alist-table-intern!
+	  weak-alist-table-key=
+	  weak-alist-table-keys
+	  weak-alist-table-ref
+	  weak-alist-table-search
+	  weak-alist-table-set!
+	  weak-alist-table-size
+	  weak-alist-table-update!
+	  weak-alist-table-values
+	  weak-alist-table?
+	  weak-alist?
 	  weak-any
 	  weak-append-reverse!
 	  weak-assoc
@@ -266,11 +294,18 @@ USA.
 	  weak-car
 	  weak-cdr
 	  weak-cons
+	  weak-del-assoc
+	  weak-del-assoc!
+	  weak-del-assq
+	  weak-del-assq!
+	  weak-del-assv
+	  weak-del-assv!
 	  weak-delete!
 	  weak-delq!
 	  weak-delv!
 	  weak-drop-while
 	  weak-every
+	  weak-filter
 	  weak-filter!
 	  weak-find
 	  weak-find-tail
@@ -281,27 +316,44 @@ USA.
 	  weak-for-each
 	  weak-list->generator
 	  weak-list->list
+	  weak-list-copy
+	  weak-list-empty?
+	  weak-length
+	  weak-length+
+	  weak-list-set
+	  weak-list-set->generator
+	  weak-list-set->list
+	  weak-list-set-add!
+	  weak-list-set-any
+	  weak-list-set-clean!
+	  weak-list-set-clear!
+	  weak-list-set-contains?
+	  weak-list-set-delete!
+	  weak-list-set-empty?
+	  weak-list-set-every
+	  weak-list-set-fold
+	  weak-list-set-fold-right
+	  weak-list-set-for-each
+	  weak-list-set-predicate
+	  weak-list-set-size
+	  weak-list-set?
 	  weak-list?
 	  weak-member
 	  weak-memq
 	  weak-memv
 	  weak-pair/car?
 	  weak-pair?
+	  weak-remove
 	  weak-remove!
 	  weak-reverse!
-	  weak-set
-	  weak-set->list
-	  weak-set-any
 	  weak-set-car!
 	  weak-set-cdr!
-	  weak-set-contains?
-	  weak-set-every
-	  weak-set-fold
-	  weak-set-fold-right
-	  weak-set-for-each
-	  weak-set?
 	  weak-take-while
-	  weak-take-while!))
+	  weak-take-while!)
+  (export (runtime gc-finalizer)
+	  %weak-alist-table-add-pair!)
+  (export (runtime gc-notification)
+	  %weak-alist-table-get-pair))
 
 (define-package (runtime equality)
   (files "equals")
@@ -2567,22 +2619,19 @@ USA.
 	  make-gc-finalizer
 	  remove-all-from-gc-finalizer!
 	  remove-from-gc-finalizer!
-	  search-gc-finalizer))
+	  search-gc-finalizer)
+  (export (runtime subprocess)
+	  %gc-finalizer-elements))
 
 (define-package (runtime gc-notification)
   (files "gcnote")
   (parent (runtime))
   (export ()
-	  deregister-gc-event
 	  gc-statistic->string
 	  print-gc-statistics
-	  register-gc-event
-	  registered-gc-event
 	  set-gc-notification!
 	  toggle-gc-notification!
 	  with-gc-notification!)
-  (export (runtime thread)
-	  %deregister-gc-event)
   (import (runtime thread)
 	  first-running-thread
 	  %maybe-toggle-thread-timer
@@ -4524,9 +4573,7 @@ USA.
 	  %maybe-toggle-thread-timer
 	  %signal-thread-event
 	  subprocess-registrations
-	  subprocess-support-loaded?)
-  (import (runtime gc-finalizer)
-	  gc-finalizer-items))
+	  subprocess-support-loaded?))
 
 (define-package (runtime synchronous-subprocess)
   (file-case options

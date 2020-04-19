@@ -432,7 +432,7 @@ USA.
   (cons (real-time-clock) (process-time-clock)))
 
 (define-integrable system-times/real car)
-  
+
 (define-integrable system-times/process cdr)
 
 (define (record-start-times! thread)

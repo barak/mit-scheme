@@ -32,81 +32,54 @@ USA.
 (add-boot-deps! '(runtime thread))
 
 (define (toggle-gc-notification!)
-  (if (registered-gc-event)
-      (deregister-gc-event)
-      (register-gc-event gc-notification))
-  unspecific)
+  (let ((thread (current-thread)))
+    (with-thread-mutex-lock threads-to-notify-mutex
+      (lambda ()
+	(if (registered-thread? thread)
+	    (deregister-thread thread)
+	    (register-thread thread))))))
 
 (define (set-gc-notification! #!optional on?)
-  (let ((on? (if (default-object? on?) #t on?)))
-    (if on?
-	(register-gc-event gc-notification)
-	(deregister-gc-event))
-    unspecific))
+  (let ((on? (if (default-object? on?) #t on?))
+	(thread (current-thread)))
+    (with-thread-mutex-lock threads-to-notify-mutex
+      (lambda ()
+	(if on?
+	    (register-thread thread)
+	    (deregister-thread thread))))))
 
 (define (with-gc-notification! notify? thunk)
-  (let ((outside))
+  (let ((thread (current-thread))
+	(outside))
     (dynamic-wind
      (lambda ()
-       (set! outside (registered-gc-event))
-       (if notify?
-	   (register-gc-event gc-notification)
-	   (deregister-gc-event)))
+       (with-thread-mutex-lock threads-to-notify-mutex
+	 (lambda ()
+	   (set! outside (registered-thread? thread))
+	   (if notify?
+	       (register-thread thread)
+	       (deregister-thread thread)))))
      thunk
      (lambda ()
-       (if outside
-	   (register-gc-event outside)
-	   (deregister-gc-event))
-       (set! outside)))))
-
-;;;; GC Events
+       (with-thread-mutex-lock threads-to-notify-mutex
+	 (lambda ()
+	   (if outside
+	       (register-thread thread)
+	       (deregister-thread thread))
+	   (set! outside)
+	   unspecific))))))
 
-(define gc-events '())			;Weak alist of threads X events.
-(define gc-events-mutex (make-thread-mutex))
+(define threads-to-notify (weak-list-set eq?))
+(define threads-to-notify-mutex (make-thread-mutex))
 
-(define (register-gc-event event)
-  (guarantee unary-procedure? event 'register-gc-event)
-  (with-thread-mutex-lock gc-events-mutex
-    (lambda ()
-      (clean-gc-events)
-      (let* ((thread (current-thread))
-	     (entry (weak-assq thread gc-events)))
-	(if entry
-	    (weak-set-cdr! entry event)
-	    (set! gc-events (cons (weak-cons thread event) gc-events)))))))
+(define-integrable (registered-thread? thread)
+  (weak-list-set-contains? thread threads-to-notify))
 
-(define (deregister-gc-event)
-  (with-thread-mutex-lock gc-events-mutex
-    (lambda ()
-      (clean-gc-events)
-      (let* ((thread (current-thread))
-	     (entry (weak-assq thread gc-events)))
-	(if entry
-	    (set! gc-events (delq! entry gc-events)))))))
+(define-integrable (register-thread thread)
+  (weak-list-set-add! threads-to-notify thread))
 
-(define (%deregister-gc-event thread)
-  ;; This procedure is called by the thread system when a thread exits
-  ;; or calls deregister-all-events.  It may interrupt the procedures
-  ;; above, but it does not modify the gc-events list.  Fortunately a
-  ;; thread cannot race itself to both set and clear its entry.
-  (let ((entry (weak-assq thread gc-events)))
-    (if entry
-	(weak-set-cdr! entry #f))))
-
-(define (clean-gc-events)
-  (set! gc-events
-	(filter! (lambda (weak)
-		   (let ((thread (weak-car weak)))
-		     (and thread
-			  (not (gc-reclaimed-object? thread))
-			  (weak-cdr weak) ;not cleared by %deregister...
-			  (not (eq? 'dead (thread-execution-state thread))))))
-		 gc-events))
-  unspecific)
-
-(define (registered-gc-event)
-  (let ((entry (weak-assq (current-thread) gc-events)))
-    (and entry (weak-cdr entry))))
+(define-integrable (deregister-thread thread)
+  (weak-list-set-delete! threads-to-notify thread))
 
 (define (signal-gc-events)
   (without-interrupts
@@ -114,11 +87,14 @@ USA.
      (let ((statistic last-statistic))
 
        (define (signal-event thread event)
-	 (if (and thread (not (eq? 'dead (thread-execution-state thread))))
+	 (if (eq? 'dead (thread-execution-state thread))
+	     #f
 	     (begin
 	       (%signal-thread-event thread event)
-	       #t)
-	     #f))
+	       #t)))
+
+       (define (gc-event)
+	 (gc-notification statistic))
 
        (let ((signaled?
 	      (if (< (gc-statistic/heap-left statistic) 4096)
@@ -129,17 +105,12 @@ USA.
 			    (signal-event thread abort-heap-low)
 			    #f)))
 		  (let ((signaled? #f))
-		    (for-each
-		     (lambda (entry)
-		       (let ((thread (weak-car entry))
-			     (event (weak-cdr entry)))
-			 (if (and thread
-				  (not (gc-reclaimed-object? thread))
-				  (signal-event thread
-						(named-lambda (gc-event)
-						  (event statistic))))
-			     (set! signaled? #t))))
-		     gc-events)
+		    (for-each (lambda (thread)
+				(if (signal-event thread gc-event)
+				    (begin
+				      (set! signaled? #t)
+				      unspecific)))
+			      (weak-list-set->list threads-to-notify))
 		    signaled?))))
 	 (if signaled?
 	     (%maybe-toggle-thread-timer)))))))

@@ -573,24 +573,15 @@ USA.
       (make-imap-connection url)))
 
 (define (search-imap-connections assessor)
-  (let loop ((connections memoized-imap-connections) (prev #f) (winner #f))
-    (if (weak-pair? connections)
-	(let ((connection (weak-car connections)))
-	  (if (not (gc-reclaimed-object? connection))
-	      (loop (weak-cdr connections)
-		    connections
-		    (let ((value (assessor connection)))
-		      (if (and value
-			       (or (not winner)
-				   (> value (cdr winner))))
-			  (cons connection value)
-			  winner)))
-	      (let ((next (weak-cdr connections)))
-		(if prev
-		    (weak-set-cdr! prev next)
-		    (set! memoized-imap-connections next))
-		(loop next prev winner))))
-	(and winner (car winner)))))
+  (weak-list-set-fold (lambda (connection winner)
+			(let ((value (assessor connection)))
+			  (if (and value
+				   (or (not winner)
+				       (> value (cdr winner))))
+			      (cons connection value)
+			      winner)))
+		      #f
+		      memoized-imap-connections))
 
 (define make-imap-connection
   (let ((constructor (instance-constructor <imap-connection> '(URL))))
@@ -598,11 +589,10 @@ USA.
       (let ((connection (constructor (imap-url-new-mailbox url ""))))
 	(without-interrupts
 	 (lambda ()
-	   (set! memoized-imap-connections
-		 (weak-cons connection memoized-imap-connections))))
+	   (weak-list-set-add! connection memoized-imap-connections)))
 	connection))))
 
-(define memoized-imap-connections '())
+(define memoized-imap-connections (weak-list-set eq?))
 
 (define (guarantee-imap-connection-open connection)
   (stop-pending-connection-closure connection)

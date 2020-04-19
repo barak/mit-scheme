@@ -29,6 +29,12 @@ USA.
 
 (declare (usual-integrations))
 
+(define (generator->list gen #!optional n)
+  (generator-fold-right cons '()
+			(if (default-object? n)
+			    gen
+			    (gtake gen n))))
+
 (define (generator-fold kons knil gen . gens)
   (cond ((null? gens)
 	 (let loop ((acc knil))

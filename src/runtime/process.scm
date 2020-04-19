@@ -347,11 +347,8 @@ USA.
 (define (%handle-subprocess-status-change)
   (if ((ucode-primitive process-status-sync-all 0))
       (let ((signaled? #f))
-	(for-each (lambda (weak)
-		    (let ((subprocess (weak-car weak)))
-		      (if (not (gc-reclaimed-object? subprocess))
-			  (poll-subprocess-status subprocess))))
-		  (gc-finalizer-items subprocess-finalizer))
+	(for-each poll-subprocess-status
+		  (%gc-finalizer-elements subprocess-finalizer))
 	(for-each
 	  (lambda (registration)
 	    (let ((status (subprocess-status

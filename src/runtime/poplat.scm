@@ -33,7 +33,7 @@ USA.
 ;;; population is a population with a mutex to serialize its operations.
 
 (define (%make-population mutex)
-  (%record population-tag mutex (weak-set eqv?)))
+  (%record population-tag mutex (weak-list-set eqv?)))
 
 (define (population? object)
   (and (%record? object)
@@ -79,7 +79,7 @@ USA.
 (define (clean-population! population)
   (%maybe-lock! population
     (lambda ()
-      (clean-weak-set! (%pop-set population)))))
+      (weak-list-set-clean! (%pop-set population)))))
 
 (define (clean-all-populations!)
   (clean-population! population-of-populations)
@@ -93,38 +93,38 @@ USA.
   (guarantee population? population 'add-to-population!)
   (%maybe-lock! population
     (lambda ()
-      (add-to-weak-set! object (%pop-set population)))))
+      (weak-list-set-add! object (%pop-set population)))))
 
 (define (add-to-population!/unsafe population object)
-  (add-to-weak-set! object (%pop-set population)))
+  (weak-list-set-add! object (%pop-set population)))
 
 (define (remove-from-population! population object)
   (guarantee population? population 'remove-from-population!)
   (%maybe-lock! population
     (lambda ()
-      (remove-from-weak-set! object (%pop-set population)))))
+      (weak-list-set-delete! object (%pop-set population)))))
 
 (define (empty-population! population)
   (guarantee population? population 'empty-population!)
   (%maybe-lock! population
     (lambda ()
-      (clear-weak-set! (%pop-set population)))))
+      (weak-list-set-clear! (%pop-set population)))))
 
 ;;;; Read-only operations
 
 ;;; These are safe without serialization.
 
 (define (map-over-population population procedure)
-  (weak-set-fold (lambda (item acc)
-		   (cons (procedure item) acc))
-		 '()
-		 (%pop-set population)))
+  (weak-list-set-fold (lambda (item acc)
+			(cons (procedure item) acc))
+		      '()
+		      (%pop-set population)))
 
 (define (map-over-population! population procedure)
-  (weak-set-for-each procedure (%pop-set population)))
+  (weak-list-set-for-each procedure (%pop-set population)))
 
 (define (for-all-inhabitants? population predicate)
-  (weak-set-every predicate (%pop-set population)))
+  (weak-list-set-every predicate (%pop-set population)))
 
 (define (exists-an-inhabitant? population predicate)
-  (weak-set-any predicate (%pop-set population)))
+  (weak-list-set-any predicate (%pop-set population)))

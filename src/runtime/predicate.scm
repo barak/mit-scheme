@@ -171,6 +171,7 @@ USA.
    (register-predicate! char? 'char)
    (register-predicate! default-object? 'default-object)
    (register-predicate! eof-object? 'eof-object)
+   (register-predicate! gc-reclaimed-object? 'gc-reclaimed-object)
    (register-predicate! list? 'list)
    (register-predicate! number? 'number)
    (register-predicate! pair? 'pair)
@@ -280,5 +281,8 @@ USA.
    (register-predicate! unicode-scalar-value? 'unicode-scalar-value
 			'<= unicode-code-point?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
+   (register-predicate! weak-alist-table? 'weak-alist-table '<= %record?)
+   (register-predicate! weak-alist? 'weak-association-list '<= list?)
+   (register-predicate! weak-list-set? 'weak-list-set '<= %record?)
    (register-predicate! weak-list? 'weak-list)
    (register-predicate! weak-pair? 'weak-pair)))

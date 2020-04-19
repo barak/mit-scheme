@@ -964,9 +964,8 @@ USA.
   (if (and *shared-namestring*
 	   (eq? (weak-car *shared-namestring*) path))
       (weak-cdr *shared-namestring*)
-      (let* ((ns (->namestring path))
-	     (wp (weak-cons path ns)))
-	(set! *shared-namestring* wp)
+      (let ((ns (->namestring path)))
+	(set! *shared-namestring* (weak-cons path ns))
 	ns)))
 
 (define (string-reverse string)
