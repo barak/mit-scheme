@@ -68,20 +68,21 @@ USA.
   (or (symbol? object)
       (and (pair? object)
 	   (symbol? (car object))
-	   (pair? (cdr object))
-	   (%valid-default-init? (cadr object))
-	   (null? (cddr object)))))
+	   (or (and (pair? (cdr object))
+		    (%valid-default-init? (cadr object))
+		    (null? (cddr object)))
+	       (keyword-list? (cdr object))))))
 
 (define (make-field-spec name init)
   (if init
-      (list name init)
+      (list name 'default-init init)
       name))
 
 (define (field-spec-name spec)
   (if (pair? spec) (car spec) spec))
 
-(define (field-spec-init spec)
-  (if (pair? spec) (cadr spec) #f))
+(define (field-spec-options spec)
+  (if (pair? spec) (cdr spec) '()))
 
 (define (%valid-default-init? object)
   (or (not object)
@@ -91,6 +92,7 @@ USA.
 (define record-type?)
 (define %%make-record-type)
 (define make-record-type-options)
+(define make-record-field-options)
 (add-boot-init!
  (lambda ()
    (set! %record-metatag (make-dispatch-metatag 'record-tag))
@@ -101,7 +103,11 @@ USA.
 	 (keyword-option-parser
 	  (list (list 'parent-type record-type? (lambda () #f))
 		(list 'applicator procedure? (lambda () #f))
-		(list 'instance-marker %record-type-proxy? (lambda () #f)))))))
+		(list 'instance-marker %record-type-proxy? (lambda () #f)))))
+   (set! make-record-field-options
+	 (keyword-option-parser
+	  (list (list 'default-init thunk? (lambda () #f)))))
+   unspecific))
 
 (define (->type-name object caller)
   (cond ((string? object) (string->symbol object))
@@ -137,7 +143,7 @@ USA.
 			    (record-predicate parent-type)
 			    record?))
       type)))
-
+
 (define (generate-fields-by-index field-specs parent-type start-index)
   (let ((partial-fields
 	 (let ((v (make-vector (length field-specs)))
@@ -145,15 +151,23 @@ USA.
 	   (do ((specs field-specs (cdr specs))
 		(index 0 (fix:+ index 1)))
 	       ((not (pair? specs)) v)
-	     (vector-set! v
-			  index
-			  (make-field (field-spec-name (car specs))
-				      (field-spec-init (car specs))
-				      (fix:+ offset index)))))))
+	     (receive (init) (parse-field-options (car specs))
+	       (vector-set! v
+			    index
+			    (make-field (field-spec-name (car specs))
+					init
+					(fix:+ offset index))))))))
     (if parent-type
 	(vector-append (%record-type-fields-by-index parent-type)
 		       partial-fields)
 	partial-fields)))
+
+(define (parse-field-options field-spec)
+  (let ((options (field-spec-options field-spec)))
+    (if (and (pair? options) (null? (cdr options)))
+	;; backwards compatibility
+	(values (car options))
+	(make-record-field-options options 'make-record-type))))
 
 (define (generate-fields-by-name fields-by-index)
   (let loop ((fields (reverse (vector->list fields-by-index))) (filtered '()))
@@ -497,21 +511,17 @@ USA.
 		(error:wrong-number-of-arguments constructor
 						 arity
 						 field-values))
-
 	    (let ((record (%make-typed-record)))
 	      (do ((i 0 (fix:+ i 1))
 		   (vals field-values (cdr vals)))
 		  ((not (fix:< i arity)) unspecific)
-		(%record-set! record
-			      (vector-ref indices i)
-			      (car vals)))
+		(%record-set! record (vector-ref indices i) (car vals)))
 	      record))
 	  constructor)
 
 	(if (%record-type-parent record-type)
 	    (general-case)
-	    (expand-cases record-type arity 16
-			  (general-case)))))))
+	    (expand-cases record-type arity 16 (general-case)))))))
 
 (define (%record-constructor-given-names record-type field-names)
   (let* ((fields
