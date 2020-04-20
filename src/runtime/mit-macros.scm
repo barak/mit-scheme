@@ -827,20 +827,23 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((or (and id (value #f))
-	       (subform id any))
+	 `((or (and id (value #f) (value ()))
+	       (subform id any (value ()))
+	       (subform id (value #f) (* symbol any)))
 	   (or (and id (value #f))
 	       (and ,not (value #f))
 	       (subform id (* symbol)))
 	   (or id ,not)
-	   (* (subform (list symbol id (or id (value #f))))))
-       (lambda (type-name parent maker-name maker-args pred-name field-specs)
+	   (* (subform (list symbol id (or id (value #f)) (* symbol any)))))
+       (lambda (type-name parent options maker-name maker-args pred-name
+			  field-specs)
 	 (apply scons-begin
 		(scons-define type-name
-		  (scons-call (scons-close 'make-record-type)
-			      (scons-quote type-name)
-			      (scons-quote (map car field-specs))
-			      (or parent (default-object))))
+		  (apply scons-call
+			 (scons-close 'make-record-type)
+			 (scons-quote type-name)
+			 (scons-record-fields field-specs)
+			 (scons-record-options parent options)))
 		(if maker-name
 		    (scons-define maker-name
 		      (scons-call (scons-close 'record-constructor)
@@ -878,6 +881,35 @@ USA.
 			    ;; Start at 1, after the record type descriptor.
 			    (iota (length field-specs) 1))))))))
 
+(define (scons-record-fields field-specs)
+  (if (every (lambda (spec) (null? (cadddr spec))) field-specs)
+      (scons-quote (map car field-specs))
+      (apply scons-call
+	     (scons-close 'list)
+	     (map (lambda (spec)
+		    (let ((name (car spec))
+			  (options (cadddr spec)))
+		      (if (null? options)
+			  (scons-quote name)
+			  (apply scons-call
+				 (scons-close 'list)
+				 (scons-quote name)
+				 (scons-keyword-list options)))))
+		  field-specs))))
+
+(define (scons-record-options parent options)
+  (if parent
+      (list parent)
+      (scons-keyword-list options)))
+
+(define (scons-keyword-list keylist)
+  (let loop ((keylist keylist))
+    (if (pair? keylist)
+	(cons* (scons-quote (car keylist))
+	       (cadr keylist)
+	       (loop (cddr keylist)))
+	'())))
+
 (define (scons-record-accessor accessor type-name parent pred-name name index)
   (if (and (not parent)
 	   pred-name)
