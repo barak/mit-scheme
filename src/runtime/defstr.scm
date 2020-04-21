@@ -805,12 +805,14 @@ differences:
 	  ,(if (structure/record-type? structure)
 	       `(,(absolute 'make-record-type context)
 		 ',name
-		 (list ,@(map (lambda (name init)
-				(if init
-				    `(list ',name ,init)
-				    `',name))
-			      field-names
-			      inits)))
+		 ,(if (every not inits)
+		      `',field-names
+		      `(list ,@(map (lambda (name init)
+				      (if init
+					  `(list ',name ,init)
+					  `',name))
+				    field-names
+				    inits))))
 	       `(,(absolute 'new-make-define-structure-type context)
 		 ',(structure/physical-type structure)
 		 ',name
