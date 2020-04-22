@@ -485,11 +485,25 @@ USA.
 	    (make-false-pcfg)))
       (pcfg/prefer-consequent!
        (rtl:make-pred-1-arg 'INDEX-FIXNUM? expression))))
+
+(define (open-code:byte-check expression primitive block)
+  (cond ((rtl:constant? expression)
+	 (if (u8? (rtl:constant-value expression))
+	     (make-true-pcfg)
+	     (make-false-pcfg)))
+	((block/generate-range-checks? block primitive)
+	 (pcfg/prefer-consequent!
+	  (rtl:make-fixnum-pred-2-args
+	   'UNSIGNED-LESS-THAN-FIXNUM?
+	   (rtl:make-object->fixnum expression)
+	   (rtl:make-object->fixnum (rtl:make-constant #x100)))))
+	(else
+	 (make-true-pcfg))))
 
 ;;;; Indexed Memory References
 
 (define (indexed-memory-reference length-expression index-locative)
-  (lambda (name base-type value-type generator)
+  (lambda (name base-type value-type generator #!optional extra-checks)
     (lambda (combination expressions finish)
       (let ((object (car expressions))
 	    (index (cadr expressions)))
@@ -499,12 +513,17 @@ USA.
 	   (cons*
 	    (open-code:type-check object base-type name block)
 	    (open-code:index-check index (length-expression object) name block)
-	    (if value-type
-		(list (open-code:type-check (caddr expressions)
-					    value-type
-					    name
-					    block))
-		'())))
+	    (let ((checks
+		   (if (default-object? extra-checks)
+		       '()
+		       (extra-checks combination expressions))))
+	      (if value-type
+		  (cons (open-code:type-check (caddr expressions)
+					      value-type
+					      name
+					      block)
+			checks)
+		  checks))))
 	 (index-locative object index
 	   (lambda (locative)
 	     (generator locative expressions finish)))
@@ -513,13 +532,25 @@ USA.
 	 expressions)))))
 
 (define (raw-indexed-memory-reference index-locative)
-  (lambda (name base-type value-type generator)
-    name base-type value-type
+  (lambda (name base-type value-type generator #!optional extra-checks)
+    (declare (ignore base-type value-type))
     (lambda (combination expressions finish)
-      combination
-      (index-locative (car expressions) (cadr expressions)
-	(lambda (locative)
-	  (generator locative expressions finish))))))
+      (let ((non-error-cfg
+	     (index-locative (car expressions) (cadr expressions)
+	       (lambda (locative)
+		 (generator locative expressions finish))))
+	    (checks
+	     (if (default-object? extra-checks)
+		 '()
+		 (extra-checks combination expressions))))
+	(if (null? checks)
+	    non-error-cfg
+	    (open-code:with-checks combination
+				   checks
+				   non-error-cfg
+				   finish
+				   name
+				   expressions))))))
 
 (define (index-locative-generator make-constant-locative
 				  make-variable-locative
@@ -1193,29 +1224,35 @@ USA.
 
 (define-open-coder/value 'PRIMITIVE-BYTE-REF
   (simple-open-coder
-   (raw-byte-memory-reference 'PRIMITIVE-BYTE-REF false false
+   (raw-byte-memory-reference 'PRIMITIVE-BYTE-REF #f #f
     (lambda (locative expressions finish)
-      expressions
+      (declare (ignore expressions))
       (finish (rtl:small-fixnum-fetch locative))))
    '(0 1)
-   false))
+   #f))
 
 (define-open-coder/effect 'PRIMITIVE-BYTE-SET!
   (simple-open-coder
-   (raw-byte-memory-reference 'PRIMITIVE-BYTE-SET! false false
-    (lambda (locative expressions finish)
-      (finish-assignment rtl:datum-assignment
-			 locative
-			 (caddr expressions)
-			 finish)))
+   (raw-byte-memory-reference 'PRIMITIVE-BYTE-SET!
+			      #f
+			      (ucode-type fixnum)
+     (lambda (locative expressions finish)
+       (finish-assignment rtl:datum-assignment
+			  locative
+			  (caddr expressions)
+			  finish))
+     (lambda (combination expressions)
+       (list (open-code:byte-check (caddr expressions)
+				   'PRIMITIVE-BYTE-SET!
+				   (combination/block combination)))))
    '(0 1 2)
-   false))
+   #f))
 
 (define-open-coder/value 'BYTEVECTOR-U8-REF
   (simple-open-coder
    (bytevector-memory-reference 'BYTEVECTOR-U8-REF (ucode-type bytevector) #f
      (lambda (locative expressions finish)
-       expressions
+       (declare (ignore expressions))
        (finish (rtl:small-fixnum-fetch locative))))
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
@@ -1229,15 +1266,19 @@ USA.
        (finish-assignment rtl:datum-assignment
 			  locative
 			  (caddr expressions)
-			  finish)))
+			  finish))
+     (lambda (combination expressions)
+       (list (open-code:byte-check (caddr expressions)
+				   'BYTEVECTOR-U8-SET!
+				   (combination/block combination)))))
    '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
 
 (define-open-coder/value 'FLOATING-VECTOR-REF
   (simple-open-coder
-   (float-memory-reference 'FLOATING-VECTOR-REF (ucode-type flonum) false
+   (float-memory-reference 'FLOATING-VECTOR-REF (ucode-type flonum) #f
      (lambda (locative expressions finish)
-       expressions
+       (declare (ignore expressions))
        (finish (rtl:float-fetch locative))))
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
@@ -1257,9 +1298,9 @@ USA.
 
 (define-open-coder/value 'STRING-REF
   (simple-open-coder
-   (bytevector-memory-reference 'STRING-REF (ucode-type string) false
+   (bytevector-memory-reference 'STRING-REF (ucode-type string) #f
      (lambda (locative expressions finish)
-       expressions
+       (declare (ignore expressions))
        (finish (rtl:char-fetch locative))))
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
@@ -1279,23 +1320,25 @@ USA.
 
 (define-open-coder/value 'VECTOR-8B-REF
   (simple-open-coder
-   (bytevector-memory-reference 'VECTOR-8B-REF (ucode-type string) false
+   (bytevector-memory-reference 'VECTOR-8B-REF (ucode-type string) #f
      (lambda (locative expressions finish)
-       expressions
+       (declare (ignore expressions))
        (finish (rtl:small-fixnum-fetch locative))))
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
 
 (define-open-coder/effect 'VECTOR-8B-SET!
   (simple-open-coder
-   (bytevector-memory-reference 'VECTOR-8B-SET!
-				(ucode-type string)
-				(ucode-type fixnum)
+   (bytevector-memory-reference 'VECTOR-8B-SET! (ucode-type string) #f
      (lambda (locative expressions finish)
        (finish-assignment rtl:datum-assignment
 			  locative
 			  (caddr expressions)
-			  finish)))
+			  finish))
+     (lambda (combination expressions)
+       (list (open-code:byte-check (caddr expressions)
+				   'VECTOR-8B-SET!
+				   (combination/block combination)))))
    '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
 
