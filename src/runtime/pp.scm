@@ -561,19 +561,24 @@ USA.
 
 (define-deferred code-dispatch-list
   (make-unsettable-parameter
-   `((cond . ,forced-indentation)
-     (case . ,print-case-expression)
-     (if . ,forced-indentation)
-     (or . ,forced-indentation)
+   `(
      (and . ,forced-indentation)
-     (let . ,print-let-expression)
-     (let* . ,print-let-expression)
-     (letrec . ,print-let-expression)
-     (fluid-let . ,print-let-expression)
+     (case . ,print-case-expression)
+     (cond . ,forced-indentation)
      (define . ,print-procedure)
      (define-integrable . ,print-procedure)
+     (fluid-let . ,print-let-like-expression)
+     (if . ,forced-indentation)
      (lambda . ,print-procedure)
-     (named-lambda . ,print-procedure))))
+     (let . ,print-let-expression)
+     (let* . ,print-let-like-expression)
+     (let*-values . ,print-let-like-expression)
+     (let-values . ,print-let-like-expression)
+     (letrec . ,print-let-like-expression)
+     (letrec* . ,print-let-like-expression)
+     (named-lambda . ,print-procedure)
+     (or . ,forced-indentation)
+     (parameterize . ,print-let-like-expression))))
 
 (define-deferred dispatch-list
   (make-unsettable-parameter (code-dispatch-list)))
@@ -692,7 +697,19 @@ USA.
 	     (else
 	      ;; ordinary let
 	      (print-node (car nodes) optimistic 0)
-	      (print-body (cdr nodes))))))))
+	      (tab-to pessimistic)
+	      (print-column (cdr nodes) pessimistic depth)))))))
+
+(define print-let-like-expression
+  (special-printer
+   (lambda (nodes optimistic pessimistic depth)
+     (if (pair? (cdr nodes))
+	 (begin
+	   (print-node (car nodes) optimistic 0)
+	   (tab-to pessimistic)
+	   (print-column (cdr nodes) pessimistic depth))
+	 ;; screw case
+	 (print-node (car nodes) optimistic depth)))))
 
 ;;;; Alignment
 
