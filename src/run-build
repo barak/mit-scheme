@@ -9,7 +9,9 @@ case ${MIT_SCHEME_EXE} in
     ;;
 esac
 HERE=`dirname "${MIT_SCHEME_EXE}"`
+MITSCHEME_INF_DIRECTORY=${HERE}
 MITSCHEME_LIBRARY_PATH=${HERE}/lib
 export MIT_SCHEME_EXE
+export MITSCHEME_INF_DIRECTORY
 export MITSCHEME_LIBRARY_PATH
 exec "${HERE}"/microcode/scheme "${@}"
