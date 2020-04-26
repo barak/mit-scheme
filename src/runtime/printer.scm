@@ -627,7 +627,8 @@ USA.
 	       (else #f))))
     (if string
 	(*print-string string context)
-	(print-default object context))))
+	(*print-with-brackets (user-object-type object) object context
+	  (list (printing-item *print-datum object))))))
 
 (define (print-interned-symbol symbol context)
   (print-symbol symbol context))
