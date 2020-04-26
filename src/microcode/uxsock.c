@@ -237,7 +237,9 @@ OS_open_unix_stream_socket (const char * filename)
     struct sockaddr_un address;
     memset((&address), 0, (sizeof (address)));
     (address . sun_family) = AF_UNIX;
-    strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
+    strncpy ((address . sun_path),
+             filename,
+             ((sizeof (address . sun_path)) - 1));
     do_connect (s, ((struct sockaddr *) (&address)), (sizeof (address)));
   }
   transaction_commit ();
@@ -307,7 +309,9 @@ OS_create_unix_server_socket (const char * filename)
     struct sockaddr_un address;
     memset((&address), 0, (sizeof (address)));
     (address . sun_family) = AF_UNIX;
-    strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
+    strncpy ((address . sun_path),
+             filename,
+             ((sizeof (address . sun_path)) - 1));
     STD_VOID_SYSTEM_CALL
       (syscall_bind,
        (UX_bind ((CHANNEL_DESCRIPTOR (channel)),
