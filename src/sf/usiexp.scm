@@ -757,19 +757,25 @@ USA.
 	     (constant/make #f (eof-object)))
       #f))
 
+;;; RELNOTE: Don't integrate gc-reclaimed-object unless we're running on a
+;;; microcode that supports it.  After release, this can be made unconditional.
+
 (define (gc-reclaimed-object-expansion expr operands block)
   (declare (ignore block))
-  (if (null? operands)
-      (constant/make expr (gc-reclaimed-object))
-      #f))
+  (let ((object (vector-ref ((ucode-primitive get-fixed-objects-vector)) #x18)))
+    (if (and object (null? operands))
+	(constant/make expr object)
+	#f)))
 
 (define (gc-reclaimed-object?-expansion expr operands block)
-  (if (and (pair? operands)
-	   (null? (cdr operands)))
-      (pcall expr block (ucode-primitive eq?)
-	     (car operands)
-	     (constant/make #f (gc-reclaimed-object)))
-      #f))
+  (let ((object (vector-ref ((ucode-primitive get-fixed-objects-vector)) #x18)))
+    (if (and object
+	     (pair? operands)
+	     (null? (cdr operands)))
+	(pcall expr block (ucode-primitive eq?)
+	       (car operands)
+	       (constant/make #f object))
+	#f)))
 
 ;;;; Tables
 

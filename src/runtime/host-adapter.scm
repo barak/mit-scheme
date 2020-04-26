@@ -84,34 +84,6 @@ USA.
   (define alist
     (get 'usual-integrations/expansion-alist))
 
-  (define (add-expansion! name exp-name exp-expr)
-    (if (not (assq name alist))
-	(begin
-	  (eval exp-expr env)
-	  (set! alist (cons (cons name (get exp-name)) alist))
-	  unspecific)))
-
-  (add-expansion! 'gc-reclaimed-object
-		  'gc-reclaimed-object-expansion
-		  '(define (gc-reclaimed-object-expansion expr operands block)
-		     (if (null? operands)
-			 (constant/make
-			  expr
-			  (object-new-type (microcode-type 'constant) 10))
-			 #f)))
-  (add-expansion! 'gc-reclaimed-object?
-		  'gc-reclaimed-object?-expansion
-		  '(define (gc-reclaimed-object?-expansion expr operands block)
-		     (if (and (pair? operands)
-			      (null? (cdr operands)))
-			 (pcall expr block (make-primitive-procedure 'eq?)
-				(car operands)
-				(constant/make
-				 #f
-				 (object-new-type (microcode-type 'constant)
-						  10)))
-			 #f)))
-
   (set! alist
 	(remove! (lambda (p)
 		   (let ((name (car p)))

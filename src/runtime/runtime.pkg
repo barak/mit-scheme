@@ -174,6 +174,8 @@ USA.
 	  error:not-a
 	  error:not-a-list-of
 	  force				;R7RS
+	  gc-reclaimed-object
+	  gc-reclaimed-object?
 	  gc-space-status
 	  guarantee
 	  guarantee-list-of
@@ -267,8 +269,6 @@ USA.
   (export ()
 	  clean-weak-alist!
 	  clean-weak-list!
-	  gc-reclaimed-object
-	  gc-reclaimed-object?
 	  generator->weak-list
 	  list->weak-list
 	  null-weak-list?

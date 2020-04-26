@@ -39,15 +39,6 @@ USA.
 
 (define-integrable (weak-pair/car? pair)
   (not (gc-reclaimed-object? (weak-car pair))))
-
-(define-integrable (gc-reclaimed-object)
-  %gc-reclaimed)
-
-(define-integrable (gc-reclaimed-object? object)
-  (eq? %gc-reclaimed object))
-
-(define-integrable %gc-reclaimed
-  ((ucode-primitive object-set-type) (ucode-type constant) 10))
 
 ;;;; Weak lists
 

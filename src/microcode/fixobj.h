@@ -54,7 +54,7 @@ USA.
 #define FIXOBJ_PROXIED_RECORD_TYPES	0x15
 #define Termination_Vector	0x16    /* Names for terminations. */
 #define Termination_Proc_Vector	0x17	/* Handlers for terminations. */
-/* #define UNUSED		0x18 */
+#define FIXOBJ_GC_RECLAIMED	0x18    /* Stored in weak car when reclaimed. */
 /* #define UNUSED		0x19 */
 /* #define UNUSED		0x1A */
 /* #define UNUSED		0x1B */
@@ -144,7 +144,7 @@ USA.
   /* 0x15 */	"proxied-record-types",					\
   /* 0x16 */	"microcode-terminations-vector",			\
   /* 0x17 */	"microcode-terminations-procedures",			\
-  /* 0x18 */	0,							\
+  /* 0x18 */	"gc-reclaimed-object",					\
   /* 0x19 */	0,							\
   /* 0x1A */	0,							\
   /* 0x1B */	0,							\
