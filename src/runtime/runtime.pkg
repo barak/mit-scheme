@@ -224,9 +224,18 @@ USA.
   (files "generator")
   (parent (runtime))
   (export ()
+	  bytevector->generator		;SRFI-158
+	  circular-generator		;SRFI-158
+	  gappend			;SRFI-158
+	  gcons*			;SRFI-158
+	  gdelete			;SRFI-158
 	  gdrop				;SRFI-158
 	  gdrop-while			;SRFI-158
+	  generator			;SRFI-158
 	  generator->list		;SRFI-158
+	  generator->reverse-list	;SRFI-158
+	  generator->string		;SRFI-158
+	  generator->vector		;SRFI-158
 	  generator-any			;SRFI-158
 	  generator-count		;SRFI-158
 	  generator-every		;SRFI-158
@@ -239,10 +248,17 @@ USA.
 	  generator-map->list		;SRFI-158
 	  generator-unfold		;SRFI-158
 	  gfilter			;SRFI-158
+	  gflatten			;SRFI-158
 	  gmap				;SRFI-158
 	  gremove			;SRFI-158
 	  gtake				;SRFI-158
 	  gtake-while			;SRFI-158
+	  list->generator		;SRFI-158
+	  make-iota-generator		;SRFI-158
+	  make-range-generator		;SRFI-158
+	  reverse-vector->generator	;SRFI-158
+	  string->generator		;SRFI-158
+	  vector->generator		;SRFI-158
 	  ))
 
 (define-package (runtime weak-pair)
