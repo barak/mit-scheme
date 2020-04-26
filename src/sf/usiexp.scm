@@ -730,6 +730,7 @@ USA.
 	#f)))
 
 (define (default-object-expansion expr operands block)
+  (declare (ignore block))
   (if (null? operands)
       (constant/make expr (default-object))
       #f))
@@ -743,6 +744,7 @@ USA.
       #f))
 
 (define (eof-object-expansion expr operands block)
+  (declare (ignore block))
   (if (null? operands)
       (constant/make expr (eof-object))
       #f))
@@ -756,6 +758,7 @@ USA.
       #f))
 
 (define (gc-reclaimed-object-expansion expr operands block)
+  (declare (ignore block))
   (if (null? operands)
       (constant/make expr (gc-reclaimed-object))
       #f))
