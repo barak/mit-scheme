@@ -224,21 +224,22 @@ USA.
 		   default
 		   (not (scode-constant? object))))
 	     as-code?)))
-    (pp-top-level (let ((sexp
-			 (if (scode-constant? object)
-			     object
-			     (unsyntax object))))
-		    (if (and as-code?
-			     (pair? sexp)
-			     (eq? (car sexp) 'named-lambda)
-			     (get-param:pp-named-lambda->define?))
-			(if (and (eq? 'lambda
-				      (get-param:pp-named-lambda->define?))
-				 (pair? (cdr sexp))
-				 (pair? (cadr sexp)))
-			    `(lambda ,(cdadr sexp) ,@(cddr sexp))
-			    `(define ,@(cdr sexp)))
-			sexp))
+    (pp-top-level (if as-code?
+		      (let ((sexp
+			     (if (scode-constant? object)
+				 object
+				 (unsyntax object))))
+			(if (and (pair? sexp)
+				 (eq? (car sexp) 'named-lambda)
+				 (get-param:pp-named-lambda->define?))
+			    (if (and (eq? 'lambda
+					  (get-param:pp-named-lambda->define?))
+				     (pair? (cdr sexp))
+				     (pair? (cadr sexp)))
+				`(lambda ,(cdadr sexp) ,@(cddr sexp))
+				`(define ,@(cdr sexp)))
+			    sexp))
+		      object)
 		  (if (default-object? port) (current-output-port) port)
 		  as-code?
 		  (if (default-object? indentation) 0 indentation)
