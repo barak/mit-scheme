@@ -100,26 +100,33 @@ USA.
 	  (values (read-file pn) #f)))))
 
 (define (parse-expression-groups exprs)
-  (if (pair? exprs)
-      (let ((to-eval (car exprs)))
-	(let ((r (parse-expectations (cdr exprs))))
-	  (cons (make-group to-eval (reverse (car r)))
-		(parse-expression-groups (cdr r)))))
-      '()))
+
+  (define (expectation? expr)
+    (and (pair? expr)
+	 (procedure? (car expr))))
+
+  (let loop ((items (parse-expectations exprs)))
+    (cond ((not (pair? items)) '())
+	  ((expectation? (car items))
+	   (cons (cons #f (take-while expectation? items))
+		 (loop (drop-while expectation? items))))
+	  ((and (pair? (cdr items))
+		(expectation? (cadr items)))
+	   (cons (cons (car items) (take-while expectation? (cdr items)))
+		 (loop (drop-while expectation? (cdr items)))))
+	  (else
+	   (cons (list (car items))
+		 (loop (cdr items)))))))
 
 (define make-group cons)
 (define group-expression car)
 (define group-expectations cdr)
 
 (define (parse-expectations exprs)
-  (let ((expectation
-	 (and (pair? exprs)
-	      (parse-expectation (car exprs)))))
-    (if expectation
-	(let ((r (parse-expectations (cdr exprs))))
-	  (cons (cons expectation (car r))
-		(cdr r)))
-	(cons (list) exprs))))
+  (map (lambda (expr)
+	 (or (parse-expectation expr)
+	     expr))
+       exprs))
 
 (define (parse-expectation expr)
   (and (is-quotation? expr)
@@ -173,22 +180,23 @@ USA.
           (begin
             (current-group (car (groups-to-test)))
             (groups-to-test (cdr (groups-to-test)))
-            (test-results
-	     (cons (execute-expression-group (current-group))
-		   (test-results)))
+	    (let ((result (execute-expression-group (current-group))))
+	      (if result
+		  (test-results (cons result (test-results)))))
             (loop))))
     (reverse (test-results))))
 
 (define (execute-expression-group group)
   (let ((context (eval-to-context (car group))))
-    (cons (car group)
-	  (filter-map (lambda (expectation)
-			(apply (car expectation)
-			       context
-			       (map (lambda (expr)
-				      (eval expr (test-env)))
-				    (cdr expectation))))
-		      (cdr group)))))
+    (and (pair? (cdr group))
+	 (cons (car group)
+	       (filter-map (lambda (expectation)
+			     (apply (car expectation)
+				    context
+				    (map (lambda (expr)
+					   (eval expr (test-env)))
+					 (cdr expectation))))
+			   (cdr group))))))
 
 (define (eval-to-context expr)
   (let ((output-port (open-output-string)))
@@ -238,7 +246,7 @@ USA.
 	    (display " test")
 	    (if (not (= 1 all))
 		(display "s"))
-	    (display "; ")
+	    (display ": ")
 	    (write failures)
 	    (display " failure")
 	    (if (not (= 1 failures))
@@ -392,7 +400,7 @@ USA.
 	(string-append "expected to see output "
 		       (write-to-string expected)
 		       "\nbut instead saw "
-		       (write-to-string objects)))))
+		       (write-to-string (car objects))))))
 
 (define-output-expectation 'expect-pp-description 1
   (lambda (objects expected)

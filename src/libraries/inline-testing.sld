@@ -34,9 +34,11 @@ USA.
 	  (scheme read)
 	  (scheme write)
 	  (only (srfi 1)
+		drop-while
 		filter
 		filter-map
-		find-tail)
+		find-tail
+		take-while)
 	  (mit library)
 	  (only (mit legacy runtime)
 		->namestring
