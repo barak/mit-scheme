@@ -223,25 +223,26 @@ OS_host_address_loopback (void * addr)
 
 #ifdef HAVE_UNIX_SOCKETS
 Tchannel
-OS_open_unix_stream_socket (const char * filename)
+OS_open_unix_stream_socket (const char * filename, int argno)
 {
   int s;
   Tchannel channel;
+  struct sockaddr_un address;
+
+  if ((strlen (filename)) >= (sizeof (address . sun_path)))
+    error_bad_range_arg(argno);
 
   transaction_begin ();
   STD_FD_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_UNIX, SOCK_STREAM, 0)));
   MAKE_CHANNEL (s, channel_type_unix_stream_socket, channel =);
   OS_channel_close_on_abort (channel);
-  {
-    struct sockaddr_un address;
-    memset((&address), 0, (sizeof (address)));
-    (address . sun_family) = AF_UNIX;
-    strncpy ((address . sun_path),
-             filename,
-             ((sizeof (address . sun_path)) - 1));
-    do_connect (s, ((struct sockaddr *) (&address)), (sizeof (address)));
-  }
+
+  memset((&address), 0, (sizeof (address)));
+  (address . sun_family) = AF_UNIX;
+  strcpy ((address . sun_path), filename);
+  do_connect (s, ((struct sockaddr *) (&address)), (sizeof (address)));
+
   transaction_commit ();
   return (channel);
 }
@@ -295,32 +296,34 @@ OS_listen_tcp_server_socket (Tchannel channel)
 
 #ifdef HAVE_UNIX_SOCKETS
 Tchannel
-OS_create_unix_server_socket (const char * filename)
+OS_create_unix_server_socket (const char * filename, int argno)
 {
   int s;
   Tchannel channel;
+  struct sockaddr_un address;
+
+  if ((strlen (filename)) >= (sizeof (address . sun_path)))
+    error_bad_range_arg(argno);
 
   transaction_begin ();
   STD_FD_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_UNIX, SOCK_STREAM, 0)));
   MAKE_CHANNEL (s, channel_type_unix_server_socket, channel =);
   OS_channel_close_on_abort (channel);
-  {
-    struct sockaddr_un address;
-    memset((&address), 0, (sizeof (address)));
-    (address . sun_family) = AF_UNIX;
-    strncpy ((address . sun_path),
-             filename,
-             ((sizeof (address . sun_path)) - 1));
-    STD_VOID_SYSTEM_CALL
-      (syscall_bind,
-       (UX_bind ((CHANNEL_DESCRIPTOR (channel)),
-		 ((struct sockaddr *) (&address)),
-		 (sizeof (struct sockaddr_un)))));
-    STD_VOID_SYSTEM_CALL
-      (syscall_listen,
-       (UX_listen ((CHANNEL_DESCRIPTOR (channel)), SOCKET_LISTEN_BACKLOG)));
-  }
+
+  memset((&address), 0, (sizeof (address)));
+  (address . sun_family) = AF_UNIX;
+  strcpy ((address . sun_path), filename);
+  STD_VOID_SYSTEM_CALL
+    (syscall_bind,
+     (UX_bind ((CHANNEL_DESCRIPTOR (channel)),
+               ((struct sockaddr *) (&address)),
+               (sizeof (struct sockaddr_un)))));
+
+  STD_VOID_SYSTEM_CALL
+    (syscall_listen,
+     (UX_listen ((CHANNEL_DESCRIPTOR (channel)), SOCKET_LISTEN_BACKLOG)));
+
   transaction_commit ();
   return (channel);
 }
