@@ -6569,3 +6569,11 @@ USA.
 	  ieee754-binary64-exact?
 	  ieee754-binary64-hex-string
 	  ))
+
+(define-package (runtime simple-matcher)
+  (files "simple-matcher")
+  (parent (runtime))
+  (export ()
+	  apply-simple-matcher
+	  make-simple-matcher
+	  simple-matcher-names))
