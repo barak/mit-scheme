@@ -261,7 +261,7 @@ USA.
     (let ((pn (init-file-specifier->pathname '("libraries"))))
       (if (file-directory? pn)
 	  (find-scheme-libraries! (pathname-as-directory pn))))))
-(add-event-receiver! event:after-restart preregister-standard-libraries!)
+(add-event-receiver! event:after-restore preregister-standard-libraries!)
 
 (define (find-scheme-libraries! pathname)
     (let ((pattern (get-directory-read-pattern pathname)))
