@@ -49,7 +49,6 @@ USA.
 	      (cons keyword receiver))
     (process-events! event-distributor)))
 
-;; add-event-receiver! defined earlier in boot.scm
 (define-sequenced-procedure add-event-receiver! seq:after-files-loaded
   (make-receiver-modifier 'add-receiver))
 
