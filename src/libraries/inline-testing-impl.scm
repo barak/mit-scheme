@@ -51,14 +51,17 @@ USA.
   (let-values (((*eval *env *notify? *summarize?)
 		(run-option-parser options 'run-inline-tests))
 	       ((exprs imports) (read-test-file filename)))
-    (let ((groups (parse-expression-groups exprs)))
-      (parameterize ((test-eval *eval)
-		     (test-env
-		      (if imports
-			  (make-environment-from-parsed-imports imports)
-			  *env))
-		     (notify? *notify?)
-		     (summarize? *summarize?))
+    (parameterize ((test-eval *eval)
+		   (test-env
+		    (if imports
+			(make-environment-from-parsed-imports imports)
+			*env))
+		   (notify? *notify?)
+		   (summarize? *summarize?)
+		   (expectation-rules (expectation-rules)))
+      (let ((groups
+	     (parse-expression-groups
+	      (evaluate-expectation-definitions exprs))))
 	(summarize-test-results
 	 (notify-filename filename
 	   (lambda ()
@@ -131,7 +134,7 @@ USA.
 (define (parse-expectation expr)
   (and (is-quotation? expr)
        (let ((text (quotation-text expr)))
-	 (let loop ((rules expectation-rules))
+	 (let loop ((rules (expectation-rules)))
 	   (if (pair? rules)
 	       (or (match-rule (car rules) text)
 		   (loop (cdr rules)))
@@ -282,12 +285,10 @@ USA.
          (find-tail (lambda (rule)
                       (eq? keyword
                            (expectation-rule-keyword rule)))
-                    expectation-rules)))
+                    (expectation-rules))))
     (if tail
         (set-car! tail rule)
-        (set! expectation-rules
-              (cons rule
-                    expectation-rules)))))
+        (expectation-rules (cons rule (expectation-rules))))))
 
 (define (define-error-expectation keyword n-args handler)
   (define-expectation keyword n-args
@@ -330,7 +331,7 @@ USA.
 		  (loop (cons object objects))))))))))
 
 (define expectation-rules
-  '())
+  (make-settable-parameter '()))
 
 (define (make-expectation-rule keyword n-args handler)
   (list 'expectation-rule keyword n-args handler))
@@ -338,6 +339,28 @@ USA.
 (define expectation-rule-keyword cadr)
 (define expectation-rule-n-args caddr)
 (define expectation-rule-handler cadddr)
+
+(define (evaluate-expectation-definitions exprs)
+  (let-values (((defns other) (partition expectation-definition? exprs)))
+    (for-each (lambda (defn)
+		(apply (expectation-definer (car defn))
+		       (map (lambda (expr)
+			      ((test-eval) expr (test-env)))
+			    (cdr defn))))
+	      defns)
+    other))
+
+(define (expectation-definition? expr)
+  (and (list? expr)
+       (= 4 (length expr))
+       (expectation-definer (car expr))))
+
+(define (expectation-definer name)
+  (case name
+    ((define-error-expectation) define-error-expectation)
+    ((define-value-expectation) define-value-expectation)
+    ((define-output-expectation) define-output-expectation)
+    (else #f)))
 
 (define-value-expectation 'expect 2
   (lambda (value pred expected)

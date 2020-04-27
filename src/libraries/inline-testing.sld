@@ -38,6 +38,7 @@ USA.
 		filter
 		filter-map
 		find-tail
+		partition
 		take-while)
 	  (mit library)
 	  (only (mit legacy runtime)
@@ -63,8 +64,5 @@ USA.
 		warn
 		with-notification
 		write-to-string))
-  (export define-error-expectation
-	  define-output-expectation
-	  define-value-expectation
-	  run-inline-tests)
+  (export run-inline-tests)
   (include "inline-testing-impl.scm"))
