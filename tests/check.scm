@@ -113,6 +113,7 @@ USA.
     "runtime/test-syntax"
     "runtime/test-syntax-rename"
     "runtime/test-thread-queue"
+    "runtime/test-trie"
     "runtime/test-ucd-grapheme"
     "runtime/test-ucd-word"
     "runtime/test-url"

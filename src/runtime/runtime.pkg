@@ -6578,3 +6578,19 @@ USA.
 	  make-simple-matcher
 	  simple-matcher-names
 	  simple-matcher-pattern->names))
+
+(define-package (runtime trie)
+  (files "trie")
+  (parent (runtime))
+  (export ()
+	  alist->trie
+	  make-trie
+	  set-trie-value!
+	  trie-=?
+	  trie->alist
+	  trie-find
+	  trie-has-value?
+	  trie-intern!
+	  trie-value
+	  trie-values
+	  trie?))
