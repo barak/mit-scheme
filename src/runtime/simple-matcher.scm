@@ -53,7 +53,7 @@ USA.
 	     (lambda (id) id)
 	     (guarantee unary-procedure? rename 'make-simple-matcher))))
     (%make-simple-matcher (compile-pattern pattern rename)
-			  (pattern-names pattern))))
+			  (simple-matcher-pattern->names pattern))))
 
 (define (apply-simple-matcher matcher datum #!optional succeed)
   ((simple-matcher-procedure matcher)
@@ -90,7 +90,7 @@ USA.
 	  (else
 	   (error "Ill-formed pattern:" pattern)))))
 
-(define (pattern-names pattern)
+(define (simple-matcher-pattern->names pattern)
   (reverse
    (let loop ((pattern pattern) (names '()))
      (cond ((or (element-var? pattern)

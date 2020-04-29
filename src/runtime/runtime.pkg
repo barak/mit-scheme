@@ -6576,4 +6576,5 @@ USA.
   (export ()
 	  apply-simple-matcher
 	  make-simple-matcher
-	  simple-matcher-names))
+	  simple-matcher-names
+	  simple-matcher-pattern->names))
