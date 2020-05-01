@@ -3356,7 +3356,9 @@ USA.
 	  fifth				;SRFI-1
 	  first				;SRFI-1
 	  fold				;SRFI-1
+	  fold-map
 	  fold-right			;SRFI-1
+	  fold-right-map
 	  for-each			;SRFI-1
 	  fourth			;SRFI-1
 	  general-car-cdr

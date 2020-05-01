@@ -665,60 +665,113 @@ USA.
 ;;;; Fold and reduce
 
 (define (fold kons knil first . rest)
-  (case (length rest)
-    ((0)
-     (%fold kons knil first 'fold))
-    ((1)
-     (let loop ((elts1 first) (elts2 (car rest)) (acc knil))
-       (if (or (null-list? elts1 'fold)
-	       (null-list? elts2 'fold))
-	   acc
-	   (loop (cdr elts1)
-		 (cdr elts2)
-		 (kons (car elts1) (car elts2) acc)))))
-    (else
-     (let loop ((lists (cons first rest)) (acc knil))
-       (%cars+cdrs 'fold lists (list acc)
-	 (lambda (cars cdrs)
-	   (if (pair? cdrs)
-	       (loop cdrs (apply kons cars))
-	       acc)))))))
+  (cond ((null? rest)
+	 (%fold kons knil first 'fold))
+	((null? (cdr rest))
+	 (%fold-2 kons knil first (car rest) 'fold))
+	(else
+	 (apply generator-fold
+		kons
+		knil
+		(list->generator first)
+		(map list->generator rest)))))
 
+(define (fold-map kons knil proc first . rest)
+  (cond ((null? rest)
+	 (%fold-map kons knil proc first 'fold-map))
+	((null? (cdr rest))
+	 (%fold-map-2 kons knil proc first (car rest) 'fold-map))
+	(else
+	 (apply generator-fold-map
+		kons
+		knil
+		proc
+		(list->generator first)
+		(map list->generator rest)))))
+
+(define (fold-right kons knil first . rest)
+  (cond ((null? rest)
+	 (%fold-right kons knil first 'fold-right))
+	((null? (cdr rest))
+	 (%fold-right-2 kons knil first (car rest) 'fold-right))
+	(else
+	 (apply generator-fold-right
+		kons
+		knil
+		(list->generator first)
+		(map list->generator rest)))))
+
+(define (fold-right-map kons knil proc first . rest)
+  (cond ((null? rest)
+	 (%fold-right-map kons knil proc first 'fold-right-map))
+	((null? (cdr rest))
+	 (%fold-right-map-2 kons knil proc first (car rest) 'fold-right-map))
+	(else
+	 (apply generator-fold-right-map
+		kons
+		knil
+		proc
+		(list->generator first)
+		(map list->generator rest)))))
+
 (define-integrable (%fold kons knil elts caller)
   (let loop ((elts elts) (acc knil))
     (if (null-list? elts caller)
 	acc
 	(loop (cdr elts) (kons (car elts) acc)))))
 
-(define (fold-right kons knil first . rest)
-  (case (length rest)
-    ((0)
-     (%fold-right kons knil first 'fold-right))
-    ((1)
-     (let loop ((elts1 first) (elts2 (car rest)))
-       (if (and (pair? elts1) (pair? elts2))
-	   (kons (car elts1)
-		 (car elts2)
-		 (loop (cdr elts1) (cdr elts2)))
-	   (begin
-	     (if (not (or (pair? elts1) (null? elts1)))
-		 (error:not-a list? elts1 'fold-right))
-	     (if (not (or (pair? elts2) (null? elts2)))
-		 (error:not-a list? elts2 'fold-right))
-	     knil))))
-    (else
-     (let loop ((lists (cons first rest)))
-       (%cars+cdrs 'fold-right lists '()
-	 (lambda (cars cdrs)
-	   (if (pair? cdrs)
-	       (apply kons (append cars (list (loop cdrs))))
-	       knil)))))))
+(define-integrable (%fold-map kons knil proc elts caller)
+  (let loop ((elts elts) (acc knil))
+    (if (null-list? elts caller)
+	acc
+	(loop (cdr elts) (kons (proc (car elts)) acc)))))
 
 (define-integrable (%fold-right kons knil elts caller)
   (let loop ((elts elts))
     (if (null-list? elts caller)
 	knil
 	(kons (car elts) (loop (cdr elts))))))
+
+(define-integrable (%fold-right-map kons knil proc elts caller)
+  (let loop ((elts elts))
+    (if (null-list? elts caller)
+	knil
+	(kons (proc (car elts)) (loop (cdr elts))))))
+
+(define-integrable (%fold-2 kons knil elts1 elts2 caller)
+  (let loop ((elts1 elts1) (elts2 elts2) (acc knil))
+    (if (or (null-list? elts1 caller)
+	    (null-list? elts2 caller))
+	acc
+	(loop (cdr elts1)
+	      (cdr elts2)
+	      (kons (car elts1) (car elts2) acc)))))
+
+(define-integrable (%fold-map-2 kons knil proc elts1 elts2 caller)
+  (let loop ((elts1 elts1) (elts2 elts2) (acc knil))
+    (if (or (null-list? elts1 caller)
+	    (null-list? elts2 caller))
+	acc
+	(loop (cdr elts1)
+	      (cdr elts2)
+	      (kons (proc (car elts1) (car elts2)) acc)))))
+
+(define-integrable (%fold-right-2 kons knil elts1 elts2 caller)
+  (let loop ((elts1 elts1) (elts2 elts2))
+    (if (or (null-list? elts1 caller)
+	    (null-list? elts2 caller))
+	knil
+	(kons (car elts1)
+	      (car elts2)
+	      (loop (cdr elts1) (cdr elts2))))))
+
+(define-integrable (%fold-right-map-2 kons knil proc elts1 elts2 caller)
+  (let loop ((elts1 elts1) (elts2 elts2))
+    (if (or (null-list? elts1 caller)
+	    (null-list? elts2 caller))
+	knil
+	(kons (proc (car elts1) (car elts2))
+	      (loop (cdr elts1) (cdr elts2))))))
 
 (define (reduce kons knil list)
   (if (null-list? list 'reduce)
@@ -733,32 +786,21 @@ USA.
 	    head
 	    (kons head (loop (car tail) (cdr tail)))))))
 
-(define (%cars+cdrs caller lists knil k0)
-  (let loop ((lists lists) (k k0))
-    (if (pair? lists)
-	(let ((list (car lists)))
-	  (if (null-list? list caller)
-	      (k0 knil '())
-	      (loop (cdr lists)
-		(lambda (cars cdrs)
-		  (k (cons (car list) cars)
-		     (cons (cdr list) cdrs))))))
-	(k knil '()))))
-
 ;;; FOLD-LEFT and REDUCE-LEFT are deprecated.
 
 (define (fold-left proc knil first . rest)
-  (apply fold (%fold-left-wrapper proc) knil first rest))
+  (apply fold
+	 (lambda args
+	   (apply proc (last args) (except-last-pair args)))
+	 knil
+	 first
+	 rest))
 
 (define (reduce-left proc knil list)
   (guarantee list? list 'reduce-left)
   (if (pair? list)
       (fold-left proc (car list) (cdr list))
       knil))
-
-(define (%fold-left-wrapper proc)
-  (lambda args
-    (apply proc (last args) (except-last-pair args))))
 
 ;;;; Generalized list operations -- mostly deprecated in favor of SRFI-1
 
