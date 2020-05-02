@@ -45,6 +45,7 @@ USA.
       (assert-equal expected-names (simple-matcher-names matcher))
       (let ((all-results '()))
 	(apply-simple-matcher matcher datum
+			      eq?
 			      (lambda (result)
 				(set! all-results (cons result all-results))
 				#f))
