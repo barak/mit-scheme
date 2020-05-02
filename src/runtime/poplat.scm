@@ -95,8 +95,14 @@ USA.
     (lambda ()
       (weak-list-set-add! object (%pop-set population)))))
 
+(define (add-new-to-population! population object)
+  (guarantee population? population 'add-new-to-population!)
+  (%maybe-lock! population
+    (lambda ()
+      (weak-list-set-add-new! object (%pop-set population)))))
+
 (define (add-to-population!/unsafe population object)
-  (weak-list-set-add! object (%pop-set population)))
+  (weak-list-set-add-new! object (%pop-set population)))
 
 (define (remove-from-population! population object)
   (guarantee population? population 'remove-from-population!)

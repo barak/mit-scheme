@@ -341,6 +341,7 @@ USA.
 	  weak-list-set->generator
 	  weak-list-set->list
 	  weak-list-set-add!
+	  weak-list-set-add-new!
 	  weak-list-set-any
 	  weak-list-set-clean!
 	  weak-list-set-clear!
@@ -3942,6 +3943,7 @@ USA.
   (import (runtime gc-daemons)
 	  add-secondary-gc-daemon!/unsafe)
   (export ()
+	  add-new-to-population!
 	  add-to-population!
 	  empty-population!
 	  exists-an-inhabitant?

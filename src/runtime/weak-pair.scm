@@ -1006,6 +1006,10 @@ USA.
 	    (%set-set-items! set (weak-cons item items))
 	    #t)))))
 
+(define (weak-list-set-add-new! item set)
+  (guarantee weak-list-set? set 'weak-list-set-add-new!)
+  (%set-set-items! set (weak-cons item (%set-items set))))
+
 (define (weak-list-set-delete! item set)
   (guarantee weak-list-set? set 'weak-list-set-delete!)
   (let ((= (%set-predicate set)))
