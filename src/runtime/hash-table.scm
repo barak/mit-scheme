@@ -407,7 +407,7 @@ USA.
   (let ((k (key-weak-entry-key entry)))
     ;** Do not integrate K!  It must be fetched and saved *before* we
     ;** determine whether the entry is valid.
-    (if (or (pair? entry) (not (gc-reclaimed-object? k)))
+    (if (not (gc-reclaimed-object? k))
 	(if-valid k (lambda () (reference-barrier k)))
 	(if-not-valid))))
 
@@ -416,7 +416,7 @@ USA.
     ;** Do not integrate K!  It is OK to integrate D only because these
     ;** are weak pairs, not ephemerons, so the entry holds D strongly
     ;** anyway.
-    (if (or (pair? entry) (not (gc-reclaimed-object? k)))
+    (if (not (gc-reclaimed-object? k))
 	(if-valid k
 		  (key-weak-entry-datum entry)
 		  (lambda () (reference-barrier k)))
@@ -438,8 +438,7 @@ USA.
   (maybe-weak-cons datum key))
 
 (define-integrable (datum-weak-entry-valid? entry)
-  (or (pair? entry)
-      (not (gc-reclaimed-object? (system-pair-car entry)))))
+  (not (gc-reclaimed-object? (system-pair-car entry))))
 
 (define-integrable datum-weak-entry-key system-pair-cdr)
 (define-integrable datum-weak-entry-datum system-pair-car)
@@ -447,14 +446,14 @@ USA.
 
 (define-integrable (call-with-datum-weak-entry-key entry if-valid if-not)
   (let ((d (datum-weak-entry-datum entry)))
-    (if (or (pair? entry) (not (gc-reclaimed-object? d)))
+    (if (not (gc-reclaimed-object? d))
 	(if-valid (datum-weak-entry-key entry)
 		  (lambda () (reference-barrier d)))
 	(if-not))))
 
 (define-integrable (call-with-datum-weak-entry-key&datum entry if-valid if-not)
   (let ((d (datum-weak-entry-datum entry)))
-    (if (or (pair? entry) (not (gc-reclaimed-object? d)))
+    (if (not (gc-reclaimed-object? d))
 	(if-valid (datum-weak-entry-key entry)
 		  d
 		  (lambda () (reference-barrier d)))
@@ -495,10 +494,8 @@ USA.
 		     if-not)
   (let ((k (key&datum-weak-entry-key entry))
 	(d (key&datum-weak-entry-datum entry)))
-    (if (and (or (pair? entry)
-		 (not (gc-reclaimed-object? k)))
-	     (or (pair? (system-pair-cdr entry))
-		 (not (gc-reclaimed-object? d))))
+    (if (and (not (gc-reclaimed-object? k))
+	     (not (gc-reclaimed-object? d)))
 	(if-valid k d (lambda () (reference-barrier k) (reference-barrier d)))
 	(if-not))))
 
