@@ -280,7 +280,7 @@ USA.
 ;;;; Low-level Handle Tracking
 
 (define (open-registry-handle procedure key)
-  (let ((p (system-pair-cons (ucode-type weak-cons) #f #f)))
+  (let ((p (weak-cons #f #f)))
     (dynamic-wind
      (lambda () unspecific)
      (lambda ()
