@@ -271,6 +271,7 @@ USA.
 	  clean-weak-list!
 	  generator->weak-list
 	  list->weak-list
+	  make-weak-list
 	  null-weak-list?
 	  weak-alist->generator
 	  weak-alist-copy

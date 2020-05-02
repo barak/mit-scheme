@@ -60,6 +60,14 @@ USA.
 	((weak-pair? object) #f)
 	(else (error:not-a weak-list? object caller))))
 
+(define (make-weak-list length #!optional value)
+  (guarantee index-fixnum? length 'make-weak-list)
+  (let ((value (if (default-object? value) unspecific value)))
+    (let loop ((i 0) (result '()))
+      (if (fix:< i length)
+	  (loop (fix:+ i 1) (weak-cons value result))
+	  result))))
+
 (define (weak-list->list items)
   (%weak-fold-right cons '() items 'weak-list->list))
 
