@@ -1049,6 +1049,10 @@ USA.
   (generator-fold-right kons knil
     (%weak-list-set->generator set 'weak-list-set-fold-right)))
 
+(define (weak-list-set-find predicate set)
+  (generator-find predicate
+		  (%weak-list-set->generator set 'weak-list-set-find)))
+
 (define (weak-list-set-any predicate set)
   (generator-any predicate
     (%weak-list-set->generator set 'weak-list-set-any)))

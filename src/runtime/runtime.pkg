@@ -347,6 +347,7 @@ USA.
 	  weak-list-set-delete!
 	  weak-list-set-empty?
 	  weak-list-set-every
+	  weak-list-set-find
 	  weak-list-set-fold
 	  weak-list-set-fold-right
 	  weak-list-set-for-each
