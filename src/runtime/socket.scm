@@ -44,7 +44,7 @@ USA.
 (define (create-tcp-server-socket)
   (open-channel
    (lambda (p)
-     (system-pair-set-cdr! p ((ucode-primitive create-tcp-server-socket 0)))
+     (weak-set-cdr! p ((ucode-primitive create-tcp-server-socket 0)))
      #t)))
 
 (define (bind-tcp-server-socket server-socket service host)

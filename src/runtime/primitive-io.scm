@@ -47,7 +47,7 @@ USA.
 (define-guarantee channel "I/O channel")
 
 (define (make-channel d)
-  (open-channel (lambda (p) (system-pair-set-cdr! p d))))
+  (open-channel (lambda (p) (weak-set-cdr! p d))))
 
 (define (open-channel procedure)
   (make-gc-finalized-object open-channels procedure
