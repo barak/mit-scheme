@@ -340,6 +340,7 @@ USA.
   (and (vector? object)
        (fix:= 5 (vector-length object))
        (eq? %inferior-tag (vector-ref object 0))))
+(register-predicate! %inferior? 'inferior '<= vector?)
 
 (define-integrable (%make-inferior window x-start y-start redisplay-flags)
   (vector %inferior-tag window x-start y-start redisplay-flags))

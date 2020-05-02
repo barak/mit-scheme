@@ -267,8 +267,6 @@ USA.
    (register-predicate! named-vector? 'named-vector
 			'<= vector?
 			'<= named-structure?)
-   (register-predicate! population? 'population)
-   (register-predicate! promise? 'promise)
    (register-predicate! record? 'record
 			'<= %record?
 			'<= named-structure?)

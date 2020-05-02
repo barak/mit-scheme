@@ -165,7 +165,7 @@ USA.
 			 (package-name->sequencer dep)
 			 dep)))
 	      deps)))
-
+
 (define (current-package-sequencer)
   (package-sequencer (current-package)))
 
@@ -183,4 +183,16 @@ USA.
 	  (if (not *package*)
 	      (error "Package only available during cold load."))
 	  *package*))
+  unspecific)
+
+(define in-cold-load?)
+(define cold-load-finished!)
+(let ((value #t))
+  (set! in-cold-load?
+	(lambda ()
+	  value))
+  (set! cold-load-finished!
+	(lambda ()
+	  (set! value #f)
+	  unspecific))
   unspecific)

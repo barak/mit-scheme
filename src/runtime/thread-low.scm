@@ -60,6 +60,7 @@ USA.
   (and (%record? object)
        (fix:= 4 (%record-length object))
        (eq? (%record-ref object 0) link-tag)))
+(register-predicate! link? 'link '<= %record?)
 
 (define-integrable (make-link prev next item)
   (%record link-tag prev next item))

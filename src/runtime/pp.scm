@@ -29,7 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime dynamic)
+(add-boot-deps! '(runtime compound-predicate)
+		'(runtime dynamic)
 		'(runtime predicate-dispatch))
 
 ;; Controls the appearance of procedures in the CASE statement used
@@ -174,9 +175,7 @@ USA.
        `((weak-car ,(weak-car wp))
 	 (weak-cdr ,(weak-cdr wp)))))
 
-   (define-pp-describer (lambda (object)
-			  (and (cell? object)
-			       (not (promise? object))))
+   (define-pp-describer (conjoin cell? (complement promise?))
      (lambda (cell)
        `((contents ,(cell-contents cell)))))))
 

@@ -102,6 +102,7 @@ USA.
   (named-lambda (pathname-map? object)
     (and (pair? object)
 	 (eq? (car object) pathname-map/tag))))
+(register-predicate! pathname-map? 'pathname-map '<= pair?)
 
 (define-print-method pathname-map?
   (standard-print-method 'pathname-map))

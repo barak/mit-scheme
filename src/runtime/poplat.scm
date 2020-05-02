@@ -38,6 +38,7 @@ USA.
 (define (population? object)
   (and (%record? object)
        (eq? population-tag (%record-ref object 0))))
+(register-predicate! population? 'population '<= %record?)
 
 (define-integrable population-tag
   '|#[(runtime population)population]|)

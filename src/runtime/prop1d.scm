@@ -55,6 +55,7 @@ USA.
 (define (1d-table? object)
   (and (%record? object)
        (eq? 1d-table-tag (%record-ref object 0))))
+(register-predicate! 1d-table? '1d-table '<= %record?)
 
 (define-integrable 1d-table-tag
   '|#[1D table]|)

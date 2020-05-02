@@ -185,7 +185,8 @@ USA.
   (lambda (arity default-handler)
     (let* ((delegate (simple-handler-set arity default-handler))
 	   (delegate-get-rules (delegate 'get-rules))
-	   (delegate-get-default-handler (delegate 'get-default-handler)))
+	   (delegate-get-default-handler (delegate 'get-default-handler))
+	   (delegate-set-handler! (delegate 'set-handler!)))
 
       (define (get-handler . args)
         (let ((matching
@@ -199,9 +200,20 @@ USA.
 	  (make-effective-handler (map car (sort matching rule<?))
 				  delegate-get-default-handler)))
 
+      (define (set-handler! predicates handler)
+	(let ((unregistered (remove predicate? predicates)))
+	  (if (pair? unregistered)
+	      (if (in-cold-load?)
+		  ((ucode-primitive debugging-printer)
+		   (cons 'unregistered-predicates unregistered))
+		  (error "This dispatcher requires registered predicates:"
+			 unregistered))))
+	(delegate-set-handler! predicates handler))
+
       (lambda (operator)
         (case operator
           ((get-handler) get-handler)
+	  ((set-handler!) set-handler!)
           (else (delegate operator)))))))
 
 (define (rule<? r1 r2)

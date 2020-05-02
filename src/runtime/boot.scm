@@ -254,6 +254,7 @@ USA.
        (cell? (cell-contents object))
        (object-type? (ucode-type delayed)
 		     (cell-contents (cell-contents object)))))
+(register-predicate! promise? 'promise)
 
 (define (make-promise object)
   (make-cell (make-cell (system-pair-cons (ucode-type delayed) #t object))))

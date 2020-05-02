@@ -55,7 +55,12 @@ USA.
 			    `((set-default-directory
 			       ,top-level-repl/set-default-directory))
 			    user-initial-prompt)
-		 (cmdl-message/strings "Cold load finished")))))
+		 (cmdl-message/append
+		  (cmdl-message/active
+		   (lambda (port)
+		     (declare (ignore port))
+		     (cold-load-finished!)))
+		  (cmdl-message/strings "Cold load finished"))))))
 
 (define root-continuation)
 
