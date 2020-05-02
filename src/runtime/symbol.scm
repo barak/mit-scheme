@@ -70,13 +70,13 @@ USA.
        (string->utf8 string start end))))
 
 (define (symbol->string symbol)
-  (guarantee symbol? symbol 'symbol->string)
-  (symbol-name symbol))
-
-(define (symbol-name symbol)
-  (let ((bytes (->bytes (system-pair-car symbol))))
+  (let ((bytes (%symbol-bytes symbol 'symbol->string)))
     (or (maybe-ascii bytes)
 	(utf8->string bytes))))
+
+(define (%symbol-bytes symbol caller)
+  (guarantee symbol? symbol caller)
+  (->bytes (system-pair-car symbol)))
 
 (define (symbol . objects)
   (string->symbol (string* objects)))
@@ -88,11 +88,11 @@ USA.
   ((ucode-primitive find-symbol) (foldcase->utf8 string)))
 
 (define (symbol-hash symbol #!optional modulus)
-  (string-hash (symbol->string symbol) modulus))
+  (bytevector-hash (%symbol-bytes symbol 'symbol-hash) modulus))
 
 (define (symbol<? x y)
-  (bytevector<? (->bytes (system-pair-car x))
-		(->bytes (system-pair-car y))))
+  (bytevector<? (%symbol-bytes x 'symbol<?)
+		(%symbol-bytes y 'symbol<?)))
 
 (define (symbol>? x y)
   (symbol<? y x))
