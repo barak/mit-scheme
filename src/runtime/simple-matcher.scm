@@ -47,18 +47,15 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-simple-matcher pattern #!optional rename)
-  (let ((rename
-	 (if (default-object? rename)
-	     (lambda (id) id)
-	     (guarantee unary-procedure? rename 'make-simple-matcher))))
-    (%make-simple-matcher (compile-pattern pattern rename)
-			  (simple-matcher-pattern->names pattern))))
+(define (make-simple-matcher pattern)
+  (%make-simple-matcher (compile-pattern pattern)
+			(simple-matcher-pattern->names pattern)))
 
-(define (apply-simple-matcher matcher datum #!optional succeed)
+(define (apply-simple-matcher matcher datum #!optional id=? succeed)
   ((simple-matcher-procedure matcher)
    (list datum)
    (new-dict)
+   (if (default-object? id=?) eq? id=?)
    (lambda (tail dict)
      (and (null? tail)
 	  (let ((vals (reverse (map binding-value (dict-bindings dict)))))
@@ -72,7 +69,7 @@ USA.
   (procedure simple-matcher-procedure)
   (names simple-matcher-names))
 
-(define (compile-pattern pattern rename)
+(define (compile-pattern pattern)
   (let loop ((pattern pattern))
     (cond ((element-var? pattern)
 	   (element-matcher (var-type pattern)
@@ -84,7 +81,7 @@ USA.
 	  ((list? pattern)
 	   (list-matcher (map loop pattern)))
 	  ((identifier? pattern)
-	   (constant-matcher (rename pattern)))
+	   (identifier-matcher pattern))
 	  ((constant? pattern)
 	   (constant-matcher pattern))
 	  (else
@@ -149,14 +146,24 @@ USA.
 ;;;; Match combinators
 
 (define (constant-matcher constant)
-  (define (match-constant data dict succeed)
+  (define (match-constant data dict id=? succeed)
+    (declare (ignore id=?))
     (and (pair? data)
          (eqv? (car data) constant)
          (succeed (cdr data) dict)))
   match-constant)
 
+(define (identifier-matcher id)
+  (define (match-identifier data dict id=? succeed)
+    (and (pair? data)
+	 (identifier? (car data))
+	 (id=? id (car data))
+	 (succeed (cdr data) dict)))
+  match-identifier)
+
 (define (element-matcher type name restriction)
-  (define (match-element data dict succeed)
+  (define (match-element data dict id=? succeed)
+    (declare (ignore id=?))
     (and (pair? data)
 	 (if name
 	     (let ((binding (dict-binding type name dict)))
@@ -173,7 +180,8 @@ USA.
   match-element)
 
 (define (segment-matcher type name)
-  (define (match-segment data dict succeed)
+  (define (match-segment data dict id=? succeed)
+    (declare (ignore id=?))
     (and (list? data)
 	 (if name
 	     (let ((binding (dict-binding type name dict)))
@@ -196,13 +204,13 @@ USA.
   match-segment)
 
 (define (list-matcher matchers)
-  (define (match-list data dict succeed)
+  (define (match-list data dict id=? succeed)
     (and (pair? data)
 	 (let ((datum (car data)))
 	   (and (list? datum)
 		(let loop ((matchers matchers) (elts datum) (dict dict))
 		  (if (pair? matchers)
-		      ((car matchers) elts dict
+		      ((car matchers) elts dict id=?
 			(lambda (elts* new-dict)
 			  (loop (cdr matchers)
 				elts*
