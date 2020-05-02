@@ -125,7 +125,7 @@ USA.
       table)))
 
 (define (record-address-hash-table! table)
-  (add-to-population! address-hash-tables table))
+  (add-new-to-population! address-hash-tables table))
 
 (define address-hash-tables)
 (add-boot-init!
