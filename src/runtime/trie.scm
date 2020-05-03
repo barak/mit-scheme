@@ -89,24 +89,14 @@ USA.
         trie*)))
 
 (define (trie-values trie)
-  (let ((tail
-         (append-map (lambda (p)
-                       (trie-values (cdr p)))
-                     (%trie-edge-alist trie))))
-    (if (trie-has-value? trie)
-        (cons (trie-value trie) tail)
-        tail)))
+  (trie-fold (lambda (path value acc)
+	       (declare (ignore path))
+	       (cons value acc))
+	     '()
+	     trie))
 
 (define (trie->alist trie)
-  (let loop ((trie trie) (path '()))
-    (let ((tail
-           (append-map (lambda (p)
-                         (loop (cdr p)
-                               (cons (car p) path)))
-                       (%trie-edge-alist trie))))
-      (if (trie-has-value? trie)
-          (cons (cons (reverse path) (trie-value trie)) tail)
-          tail))))
+  (trie-fold alist-cons '() trie))
 
 (define (alist->trie alist #!optional =?)
   (guarantee alist? alist 'alist->trie)
@@ -115,3 +105,19 @@ USA.
                 (set-trie-value! (trie-intern! trie (car p)) (cdr p)))
               alist)
     trie))
+
+(define (trie-fold kons knil trie)
+  (let loop ((path '()) (trie trie) (acc knil))
+    (alist-fold (lambda (key trie* acc)
+		  (loop (cons key path) trie* acc))
+		(if (trie-has-value? trie)
+		    (kons (reverse path) (trie-value trie) acc)
+		    acc)
+		(%trie-edge-alist trie))))
+
+(define (trie-for-each procedure trie)
+  (trie-fold (lambda (path value acc)
+	       (procedure path value)
+	       acc)
+	     unspecific
+	     trie))

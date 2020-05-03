@@ -37,6 +37,11 @@ USA.
 	'(d d)
 	'(c b)))
 
+(define (simple-example)
+  (let* ((vals (iota (length paths)))
+	 (alist (map cons paths vals)))
+    (values vals alist (alist->trie alist))))
+
 (define-test 'trie-empty
   (lambda ()
     (let ((trie (make-trie)))
@@ -113,15 +118,51 @@ USA.
 
 (define-test 'alist->trie
   (lambda ()
-    (let* ((vals (iota (length paths)))
-	   (alist (map cons paths vals))
-	   (trie (alist->trie (map cons paths vals))))
-      (for-each (lambda (path val)
-		  (let ((leaf (trie-find trie path)))
-		    (assert-true leaf)
-		    (assert-true (trie-has-value? leaf))
-		    (assert-equal (trie-value leaf) val)))
-		paths
-		vals)
+    (let-values (((vals alist trie) (simple-example)))
       (assert-lset= equal? (trie-values trie) vals)
       (assert-lset= equal? (trie->alist trie) alist))))
+
+(define-test 'trie-fold
+  (lambda ()
+    (let-values (((vals alist trie) (simple-example)))
+      (assert-lset= equal?
+		    (trie-fold (lambda (path value acc)
+				 (declare (ignore value))
+				 (cons path acc))
+			       '()
+			       trie)
+		    paths)
+      (assert-lset= equal?
+		    (trie-fold (lambda (path value acc)
+				 (if (= 1 (length path))
+				     (cons value acc)
+				     acc))
+			       '()
+			       trie)
+		    (filter-map (lambda (p)
+				  (and (= 1 (length (car p)))
+				       (cdr p)))
+				alist)))))
+
+(define-test 'trie-for-each
+  (lambda ()
+    (let-values (((vals alist trie) (simple-example)))
+      (let ((paths* '()))
+	(trie-for-each (lambda (path value)
+			 (declare (ignore value))
+			 (set! paths* (cons path paths*))
+			 unspecific)
+		       trie)
+	(assert-lset= equal? paths* paths))
+      (let ((vals* '()))
+	(trie-for-each (lambda (path value)
+			 (if (= 1 (length path))
+			     (set! vals* (cons value vals*)))
+			 unspecific)
+		       trie)
+	(assert-lset= equal?
+		      vals*
+		      (filter-map (lambda (p)
+				    (and (= 1 (length (car p)))
+					 (cdr p)))
+				  alist))))))

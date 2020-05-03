@@ -6599,6 +6599,8 @@ USA.
 	  trie-=?
 	  trie->alist
 	  trie-find
+	  trie-fold
+	  trie-for-each
 	  trie-has-value?
 	  trie-intern!
 	  trie-value
