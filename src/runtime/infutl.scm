@@ -85,7 +85,7 @@ USA.
   (without-interruption
    (lambda ()
      (set-debugging-wrapper/info! wrapper info)
-     (add-to-population! wrappers-with-memoized-debugging-info wrapper))))
+     (add-new-to-population! wrappers-with-memoized-debugging-info wrapper))))
 
 (define (discard-debugging-info!)
   (for-each-inhabitant wrappers-with-memoized-debugging-info

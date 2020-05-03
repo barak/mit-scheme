@@ -83,7 +83,7 @@ USA.
 	    (loop))))))
 
 (define (record-address-hash-table! table)
-  (add-to-population! address-hash-tables table))
+  (add-new-to-population! address-hash-tables table))
 
 (define (mark-address-hash-tables!)
   (for-each-inhabitant address-hash-tables

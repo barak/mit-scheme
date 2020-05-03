@@ -141,9 +141,9 @@ USA.
 	   (let ((entry-advice* (edit-entry entry-advice))
 		 (exit-advice* (edit-exit exit-advice)))
 	     (if (not (eq? entry-advice* entry-advice))
-		 (add-to-population! entry-advice-population *lambda))
+		 (add-new-to-population! entry-advice-population *lambda))
 	     (if (not (eq? exit-advice* exit-advice))
-		 (add-to-population! exit-advice-population *lambda))
+		 (add-new-to-population! exit-advice-population *lambda))
 	     (cons entry-advice* exit-advice*)))))
     (lambda-wrap-body! *lambda
       (lambda (body state receiver)

@@ -138,7 +138,7 @@ USA.
     (set-thread/exit-value! first detached-thread-marker)
     (set-thread/root-state-point! first
 				  (current-state-point state-space:local))
-    (add-to-population!/unsafe thread-population first)
+    (add-new-to-population!/unsafe thread-population first)
     (%thread-running first))
   (seq:after-thread-low 'trigger!))
 
@@ -195,7 +195,7 @@ USA.
     (set-thread/continuation! thread continuation)
     (set-thread/root-state-point! thread
 				  (current-state-point state-space:local))
-    (add-to-population! thread-population thread)
+    (add-new-to-population! thread-population thread)
     (thread-running thread)
     thread))
 

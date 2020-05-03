@@ -54,22 +54,22 @@ USA.
 
 (define (make-population)
   (let ((population (%make-population #f)))
-    (add-to-population! population-of-populations population)
+    (add-new-to-population! population-of-populations population)
     population))
 
 (define (make-population/unsafe)
   (let ((population (%make-population #f)))
-    (add-to-population!/unsafe population-of-populations population)
+    (add-new-to-population!/unsafe population-of-populations population)
     population))
 
 (define (make-serial-population)
   (let ((population (%make-population (make-thread-mutex))))
-    (add-to-population! population-of-populations population)
+    (add-new-to-population! population-of-populations population)
     population))
 
 (define (make-serial-population/unsafe)
   (let ((population (%make-population (make-thread-mutex))))
-    (add-to-population!/unsafe population-of-populations population)
+    (add-new-to-population!/unsafe population-of-populations population)
     population))
 
 (define (%maybe-lock! population thunk)
@@ -102,7 +102,7 @@ USA.
     (lambda ()
       (weak-list-set-add-new! object (%pop-set population)))))
 
-(define (add-to-population!/unsafe population object)
+(define (add-new-to-population!/unsafe population object)
   (weak-list-set-add-new! object (%pop-set population)))
 
 (define (remove-from-population! population object)

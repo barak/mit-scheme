@@ -1434,7 +1434,7 @@ USA.
 	  make-1d-table)
   (import (runtime population)
 	  make-serial-population/unsafe
-	  add-to-population!/unsafe)
+	  add-new-to-population!/unsafe)
   (import (runtime gc-daemons)
 	  add-secondary-gc-daemon!/unsafe))
 
@@ -5450,7 +5450,7 @@ USA.
 	  without-thread-mutex-lock
 	  yield-current-thread)
   (import (runtime population)
-	  add-to-population!/unsafe
+	  add-new-to-population!/unsafe
 	  make-population/unsafe)
   (import (runtime 1d-property)
 	  make-1d-table/unsafe)

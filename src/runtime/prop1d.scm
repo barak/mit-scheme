@@ -41,12 +41,12 @@ USA.
 
 (define (make-1d-table)
   (let ((table (%make-1d-table)))
-    (add-to-population! population-of-1d-tables table)
+    (add-new-to-population! population-of-1d-tables table)
     table))
 
 (define (make-1d-table/unsafe)
   (let ((table (%make-1d-table)))
-    (add-to-population!/unsafe population-of-1d-tables table)
+    (add-new-to-population!/unsafe population-of-1d-tables table)
     table))
 
 (define (%make-1d-table)
