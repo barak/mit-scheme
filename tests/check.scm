@@ -117,6 +117,7 @@ USA.
     "runtime/test-ucd-grapheme"
     "runtime/test-ucd-word"
     "runtime/test-url"
+    "runtime/test-weak-pair"
     ("runtime/test-wttree" (runtime wt-tree))
     "ffi/test-ffi"
     "sos/test-genmult"

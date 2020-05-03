@@ -43,6 +43,7 @@ USA.
 ;;;; Weak lists
 
 (define (weak-list? object)
+  (declare (no-type-checks))
   (let loop ((l1 object) (l2 object))
     (if (weak-pair? l1)
 	(let ((l1 (weak-cdr l1)))
@@ -63,16 +64,11 @@ USA.
 (define (make-weak-list length #!optional value)
   (guarantee index-fixnum? length 'make-weak-list)
   (let ((value (if (default-object? value) unspecific value)))
+    (declare (no-type-checks))
     (let loop ((i 0) (result '()))
       (if (fix:< i length)
 	  (loop (fix:+ i 1) (weak-cons value result))
 	  result))))
-
-(define (weak-list->list items)
-  (%weak-fold-right cons '() items 'weak-list->list))
-
-(define (list->weak-list items)
-  (fold-right weak-cons '() items))
 
 (define (weak-list-empty? items)
   (if (%null-weak-list? items 'weak-list-empty?)
@@ -83,6 +79,7 @@ USA.
 	    #t))))
 
 (define (weak-length items)
+  (declare (no-type-checks))
   (let loop ((this items) (prev #f) (length 0))
     (if (%null-weak-list? this 'weak-length+)
 	length
@@ -94,6 +91,7 @@ USA.
 	      (loop next this (fix:+ length 1)))))))
 
 (define (weak-length+ items)
+  (declare (no-type-checks))
 
   (define (loop this past prev length)
     (let ((this+1 (get-next this prev)))
@@ -117,19 +115,20 @@ USA.
 
   (loop items items #f 0))
 
+(define (weak-list->list items)
+  (%weak-fold-right cons '() items 'weak-list->list))
+
+(define (list->weak-list items)
+  (fold-right weak-cons '() items))
+
+(define (weak-list . items)
+  (fold-right weak-cons '() items))
+
 (define (weak-list-copy items)
-  (let loop ((this items) (prev #f))
-    (if (%null-weak-list? items 'weak-list-copy)
-	'()
-	(let ((item (weak-car this))
-	      (next (weak-cdr this)))
-	  (if (gc-reclaimed-object? item)
-	      (begin
-		(if prev (weak-set-cdr! prev next))
-		(loop next prev))
-	      (weak-cons item (loop next this)))))))
+  (%weak-fold weak-cons '() items 'weak-list-copy))
 
 (define (weak-list->generator items)
+  (declare (no-type-checks))
   (let ((prev #f))
     (define (weak-list-generator)
       (if (%null-weak-list? items 'weak-list->generator)
@@ -174,6 +173,7 @@ USA.
   (%member predicate items 'weak-find-tail))
 
 (define-integrable (%member predicate items caller)
+  (declare (no-type-checks))
   (let loop ((this items) (prev #f))
     (if (%null-weak-list? this caller)
 	#f
@@ -191,7 +191,8 @@ USA.
 (define (weak-append-reverse! items tail)
   (%weak-append-reverse! items tail 'weak-append-reverse!))
 
-(define (%weak-append-reverse! items tail caller)
+(define-integrable (%weak-append-reverse! items tail caller)
+  (declare (no-type-checks))
   (let loop ((this items) (tail tail))
     (if (%null-weak-list? this caller)
 	tail
@@ -204,6 +205,7 @@ USA.
 		(loop next this)))))))
 
 (define (weak-find predicate items)
+  (declare (no-type-checks))
   (let loop ((this items) (prev #f))
     (if (%null-weak-list? this 'weak-find)
 	#f
@@ -216,6 +218,7 @@ USA.
 		(else (loop next this)))))))
 
 (define (weak-drop-while predicate items)
+  (declare (no-type-checks))
   (let loop ((this items) (prev #f))
     (if (%null-weak-list? this 'weak-drop-while)
 	'()
@@ -228,6 +231,7 @@ USA.
 		(else this))))))
 
 (define (weak-take-while predicate items)
+  (declare (no-type-checks))
   (let loop ((this items) (prev #f))
     (if (%null-weak-list? this 'weak-take-while)
 	'()
@@ -242,6 +246,7 @@ USA.
 		 '()))))))
 
 (define (weak-take-while! predicate items)
+  (declare (no-type-checks))
 
   (define (skip this)
     (if (%null-weak-list? this 'weak-take-while!)
@@ -300,6 +305,7 @@ USA.
   (%delete! predicate items 'clean-weak-list!))
 
 (define-integrable (%delete! predicate items caller)
+  (declare (no-type-checks))
 
   (define (skip this)
     (if (%null-weak-list? this caller)
@@ -326,10 +332,22 @@ USA.
   (skip items))
 
 (define (weak-filter predicate items)
-  (generator->weak-list (gfilter predicate (weak-list->generator items))))
+  (%weak-fold-right (lambda (item acc)
+		      (if (predicate item)
+			  (weak-cons item acc)
+			  acc))
+		    '()
+		    items
+		    'weak-filter))
 
 (define (weak-remove predicate items)
-  (generator->weak-list (gremove predicate (weak-list->generator items))))
+  (%weak-fold-right (lambda (item acc)
+		      (if (predicate item)
+			  acc
+			  (weak-cons item acc)))
+		    '()
+		    items
+		    'weak-remove))
 
 (define (weak-any predicate items)
   (generator-any predicate (weak-list->generator items)))
@@ -339,24 +357,16 @@ USA.
 
 (define (weak-for-each procedure first . rest)
   (if (null? rest)
-      (%weak-for-each procedure first 'weak-for-each)
+      (%weak-fold (lambda (item acc)
+		    (procedure item)
+		    acc)
+		  unspecific
+		  first
+		  'weak-for-each)
       (apply generator-for-each
 	     procedure
 	     (weak-list->generator first)
 	     (map weak-list->generator rest))))
-
-(define (%weak-for-each procedure items caller)
-  (let loop ((this items) (prev #f))
-    (if (not (%null-weak-list? this caller))
-	(let ((item (weak-car this))
-	      (next (weak-cdr this)))
-	  (if (gc-reclaimed-object? item)
-	      (begin
-		(if prev (weak-set-cdr! prev next))
-		(loop next prev))
-	      (begin
-		(procedure item)
-		(loop next this)))))))
 
 (define (weak-fold kons knil first . rest)
   (if (null? rest)
@@ -368,6 +378,7 @@ USA.
 	     (map weak-list->generator rest))))
 
 (define (%weak-fold kons knil items caller)
+  (declare (no-type-checks))
   (let loop ((this items) (prev #f) (acc knil))
     (if (%null-weak-list? this caller)
 	acc
@@ -390,12 +401,18 @@ USA.
 	     (map weak-list->generator rest))))
 
 (define (%weak-fold-map kons knil procedure items caller)
-  (%weak-fold (lambda (item acc)
-		(kons (procedure item) acc))
-	      knil
-	      items
-	      caller))
-
+  (declare (no-type-checks))
+  (let loop ((this items) (prev #f) (acc knil))
+    (if (%null-weak-list? this caller)
+	acc
+	(let ((item (weak-car this))
+	      (next (weak-cdr this)))
+	  (if (gc-reclaimed-object? item)
+	      (begin
+		(if prev (weak-set-cdr! prev next))
+		(loop next prev acc))
+	      (loop next this (kons (procedure item) acc)))))))
+
 (define (weak-fold-right kons knil first . rest)
   (if (null? rest)
       (%weak-fold-right kons knil first 'weak-fold-right)
@@ -406,6 +423,7 @@ USA.
 	     (map weak-list->generator rest))))
 
 (define (%weak-fold-right kons knil items caller)
+  (declare (no-type-checks))
   (let loop ((this items) (prev #f))
     (if (%null-weak-list? this caller)
 	knil
@@ -428,30 +446,69 @@ USA.
 	     (map weak-list->generator rest))))
 
 (define (%weak-fold-right-map kons knil procedure items caller)
-  (%weak-fold-right (lambda (item acc)
-		      (kons (procedure item) acc))
-		    knil
-		    items
-		    caller))
+  (declare (no-type-checks))
+  (let loop ((this items) (prev #f))
+    (if (%null-weak-list? this caller)
+	knil
+	(let ((item (weak-car this))
+	      (next (weak-cdr this)))
+	  (if (gc-reclaimed-object? item)
+	      (begin
+		(if prev (weak-set-cdr! prev next))
+		(loop next prev))
+	      (kons (procedure item) (loop next this)))))))
 
 ;;;; Weak alists
 
 (define (weak-alist? object)
   (list-of-type? weak-pair? object))
 
+(define (weak-alist-fold kons knil alist #!optional caller)
+  (let* ((caller (if (default-object? caller) 'weak-alist-fold caller))
+	 (lose (lambda () (error:not-a weak-alist? alist caller))))
+    (declare (no-type-checks))
+    (let loop ((this alist) (prev #f) (acc knil))
+      (if (pair? this)
+	  (let ((p (car this)))
+	    (if (weak-pair? p)
+		(let ((key (weak-car p))
+		      (next (cdr this)))
+		  (if (gc-reclaimed-object? key)
+		      (begin
+			(if prev (set-cdr! prev next))
+			(loop next prev acc))
+		      (loop next this (kons key (weak-cdr p) acc))))
+		(lose)))
+	  (if (null? this)
+	      acc
+	      (lose))))))
+
+(define (weak-alist-fold-right kons knil alist #!optional caller)
+  (let* ((caller (if (default-object? caller) 'weak-alist-fold-right caller))
+	 (lose (lambda () (error:not-a weak-alist? alist caller))))
+    (declare (no-type-checks))
+    (let loop ((this alist) (prev #f))
+      (if (pair? this)
+	  (let ((p (car this)))
+	    (if (weak-pair? p)
+		(let ((key (weak-car p))
+		      (next (cdr this)))
+		  (if (gc-reclaimed-object? key)
+		      (begin
+			(if prev (set-cdr! prev next))
+			(loop next prev))
+		      (kons key (weak-cdr p) (loop next this))))
+		(lose)))
+	  (if (null? this)
+	      knil
+	      (lose))))))
+
 (define (weak-alist-copy alist)
-  (let loop ((this alist) (prev #f))
-    (if (null-list? this 'weak-alist-copy)
-	'()
-	(let ((p (car this))
-	      (next (cdr this)))
-	  (let ((key (weak-car p)))
-	    (if (gc-reclaimed-object? key)
-		(begin
-		  (if prev (set-cdr! prev next))
-		  (loop next prev))
-		(cons (weak-cons key (weak-cdr p))
-		      (loop next this))))))))
+  (weak-alist-fold-right (lambda (key datum acc)
+			   (cons (weak-cons key datum) acc))
+			 '()
+			 alist
+			 'weak-alist-copy))
 
 (define (weak-alist-filter predicate alist)
   (weak-alist-fold-right (lambda (key datum acc)
@@ -470,32 +527,6 @@ USA.
 			 '()
 			 alist
 			 'weak-alist-remove))
-
-(define (weak-alist-fold kons knil alist)
-  (let loop ((this alist) (prev #f) (acc knil))
-    (if (null-list? this 'weak-alist-fold)
-	acc
-	(let ((p (car this))
-	      (next (cdr this)))
-	  (let ((key (weak-car p)))
-	    (if (gc-reclaimed-object? key)
-		(begin
-		  (if prev (set-cdr! prev next))
-		  (loop next prev acc))
-		(loop next this (kons key (weak-cdr p) acc))))))))
-
-(define (weak-alist-fold-right kons knil alist)
-  (let loop ((this alist) (prev #f))
-    (if (null-list? this 'weak-alist-fold-right)
-	knil
-	(let ((p (car this))
-	      (next (cdr this)))
-	  (let ((key (weak-car p)))
-	    (if (gc-reclaimed-object? key)
-		(begin
-		  (if prev (set-cdr! prev next))
-		  (loop next prev))
-		(kons key (weak-cdr p) (loop next this))))))))
 
 (define (weak-assq item items)
   (define-integrable (predicate item*)
@@ -504,49 +535,66 @@ USA.
 
 (define (weak-assv item items)
   (define-integrable (predicate item*)
-    (eq? item item*))
+    (or (eq? item item*)
+	(eqv? item item*)))
   (%assoc predicate items 'weak-assv))
 
 (define (weak-assoc item items #!optional =)
   (let ((= (if (default-object? =) equal? =)))
     (define-integrable (predicate item*)
-      (= item item*))
+      (or (eq? item item*)
+	  (= item item*)))
     (%assoc predicate items 'weak-assoc)))
 
 (define-integrable (%assoc predicate alist caller)
-  (let loop ((this alist) (prev #f))
-    (if (null-list? this caller)
-	#f
-	(let ((p (car this))
-	      (next (cdr this)))
-	  (let ((key (weak-car p)))
-	    (cond ((gc-reclaimed-object? key)
-		   (if prev (set-cdr! prev next))
-		   (loop next prev))
-		  ((predicate key) p)
-		  (else (loop next this))))))))
+  (let ((lose (lambda () (error:not-a weak-alist? alist caller))))
+    (declare (no-type-checks))
+    (let loop ((this alist) (prev #f))
+      (if (pair? this)
+	  (let ((p (car this)))
+	    (if (weak-pair? p)
+		(let ((key (weak-car p))
+		      (next (cdr this)))
+		  (cond ((gc-reclaimed-object? key)
+			 (if prev (set-cdr! prev next))
+			 (loop next prev))
+			((predicate key) p)
+			(else (loop next this))))
+		(lose)))
+	  (if (null? this)
+	      #f
+	      (lose))))))
 
 (define (weak-alist-find predicate alist)
   (%assoc predicate alist 'weak-alist-find))
 
 (define (weak-del-assq key alist)
-  (weak-alist-remove (lambda (key* datum)
-		       (declare (ignore datum))
-		       (eq? key key*))
-		     alist))
+  (weak-alist-fold-right (lambda (key* datum acc)
+			   (if (eq? key key*)
+			       acc
+			       (cons (weak-cons key* datum) acc)))
+			 '()
+			 alist
+			 'weak-del-assq))
 
 (define (weak-del-assv key alist)
-  (weak-alist-remove (lambda (key* datum)
-		       (declare (ignore datum))
-		       (eq? key key*))
-		     alist))
+  (weak-alist-fold-right (lambda (key* datum acc)
+			   (if (eqv? key key*)
+			       acc
+			       (cons (weak-cons key* datum) acc)))
+			 '()
+			 alist
+			 'weak-del-assv))
 
 (define (weak-del-assoc key alist #!optional =)
-  (weak-alist-remove (let ((= (if (default-object? =) equal? =)))
-		       (lambda (key* datum)
-			 (declare (ignore datum))
-			 (= key key*)))
-		     alist))
+  (weak-alist-fold-right (let ((= (if (default-object? =) equal? =)))
+			   (lambda (key* datum acc)
+			     (if (= key key*)
+				 acc
+				 (cons (weak-cons key* datum) acc))))
+			 '()
+			 alist
+			 'weak-del-assoc))
 
 (define (weak-del-assq! key alist)
   (define-integrable (predicate key* datum)
@@ -557,14 +605,16 @@ USA.
 (define (weak-del-assv! key alist)
   (define-integrable (predicate key* datum)
     (declare (ignore datum))
-    (eqv? key key*))
+    (or (eq? key key*)
+	(eqv? key key*)))
   (%weak-alist-remove! predicate alist 'weak-del-assv!))
 
 (define (weak-del-assoc! key alist #!optional =)
   (let ((= (if (default-object? =) equal? =)))
     (define-integrable (predicate key* datum)
       (declare (ignore datum))
-      (= key key*))
+      (or (eq? key key*)
+	  (= key key*)))
     (%weak-alist-remove! predicate alist 'weak-del-assoc!)))
 
 (define (weak-alist-remove! predicate alist)
@@ -576,34 +626,44 @@ USA.
   (%weak-alist-remove! predicate alist 'weak-alist-filter!))
 
 (define-integrable (%weak-alist-remove! predicate alist caller)
+  (let ((lose (lambda () (error:not-a weak-alist? alist caller))))
+    (declare (no-type-checks))
 
-  (define (skip this)
-    (if (null-list? this caller)
-	this
-	(let ((p (car this))
-	      (next (cdr this)))
-	  (let ((key (weak-car p)))
-	    (if (or (gc-reclaimed-object? key)
-		    (predicate key (weak-cdr p)))
-		(skip next)
-		(begin
-		  (scan next this)
-		  this))))))
+    (define (skip this)
+      (if (pair? this)
+	  (let ((p (car this)))
+	    (if (weak-pair? p)
+		(let ((key (weak-car p))
+		      (next (cdr this)))
+		  (if (or (gc-reclaimed-object? key)
+			  (predicate key (weak-cdr p)))
+		      (skip next)
+		      (begin
+			(scan next this)
+			this)))
+		(lose)))
+	  (if (null? this)
+	      this
+	      (lose))))
 
-  (define (scan this prev)
-    (if (null-list? this caller)
-	(set-cdr! prev this)
-	(let ((p (car this))
-	      (next (cdr this)))
-	  (let ((key (weak-car p)))
-	    (if (or (gc-reclaimed-object? key)
-		    (predicate key (weak-cdr p)))
-		(scan next prev)
-		(begin
-		  (set-cdr! prev this)
-		  (scan next this)))))))
+    (define (scan this prev)
+      (if (pair? this)
+	  (let ((p (car this)))
+	    (if (weak-pair? p)
+		(let ((key (weak-car p))
+		      (next (cdr this)))
+		  (if (or (gc-reclaimed-object? key)
+			  (predicate key (weak-cdr p)))
+		      (scan next prev)
+		      (begin
+			(set-cdr! prev this)
+			(scan next this))))
+		(lose)))
+	  (if (null? this)
+	      (set-cdr! prev this)
+	      (lose))))
 
-  (skip alist))
+    (skip alist)))
 
 (define (clean-weak-alist! alist)
   (remove! (lambda (p)
@@ -707,6 +767,7 @@ USA.
     (lambda () #t)))
 
 (define (weak-alist-table-fold kons knil table)
+  (declare (no-type-checks))
   (guarantee weak-alist-table? table 'weak-alist-table-fold)
   (let ((finalizer (%table-finalizer table)))
     (let loop ((this (%table-alist table)) (prev #f) (acc knil))
@@ -726,6 +787,7 @@ USA.
 	  acc))))
 
 (define (weak-alist-table-fold-right kons knil table)
+  (declare (no-type-checks))
   (guarantee weak-alist-table? table 'weak-alist-table-fold-right)
   (let ((finalizer (%table-finalizer table)))
     (let loop ((this (%table-alist table)) (prev #f))
@@ -824,6 +886,7 @@ USA.
     if-not-found))
 
 (define (%weak-alist-table-search table predicate caller if-found if-not-found)
+  (declare (no-type-checks))
   (guarantee weak-alist-table? table caller)
   (let ((finalizer (%table-finalizer table)))
     (let loop ((this (%table-alist table)) (prev #f))
@@ -843,6 +906,7 @@ USA.
 	  (if-not-found)))))
 
 (define (weak-alist-table-delete! table key #!optional default)
+  (declare (no-type-checks))
   (guarantee weak-alist-table? table 'weak-alist-table-delete!)
   (let ((key= (%table-key= table))
 	(finalizer (%table-finalizer table)))
@@ -868,6 +932,7 @@ USA.
 		     (loop next this)))))))))
 
 (define (weak-alist-table-delete-matching! table predicate)
+  (declare (no-type-checks))
   (guarantee weak-alist-table? table 'weak-alist-table-delete-matching!)
   (let ((finalizer (%table-finalizer table)))
     (let loop ((this (%table-alist table)) (prev #f))
@@ -891,6 +956,7 @@ USA.
 		     (loop next this)))))))))
 
 (define (weak-alist-table-clean! table)
+  (declare (no-type-checks))
   (guarantee weak-alist-table? table 'weak-alist-table-clean!)
   (let ((finalizer (%table-finalizer table)))
     (let loop ((this (%table-alist table)) (prev #f))
@@ -929,18 +995,22 @@ USA.
 (define-integrable (%set-set-items! set items) (%record-set! set 2 items))
 
 (define (weak-list-set-predicate set)
+  (declare (no-type-checks))
   (guarantee weak-list-set? set 'weak-list-set-predicate)
   (%set-predicate set))
 
 (define (weak-list-set-size set)
+  (declare (no-type-checks))
   (guarantee weak-list-set? set 'weak-list-set-size)
   (weak-length (%set-items set)))
 
 (define (weak-list-set-empty? set)
+  (declare (no-type-checks))
   (guarantee weak-list-set? set 'weak-list-set-empty?)
   (weak-list-empty? (%set-items set)))
 
 (define (weak-list-set-add! item set)
+  (declare (no-type-checks))
   (guarantee weak-list-set? set 'weak-list-set-add!)
   (let ((= (%set-predicate set))
 	(items (%set-items set)))
@@ -962,10 +1032,12 @@ USA.
 	    #t)))))
 
 (define (weak-list-set-add-new! item set)
+  (declare (no-type-checks))
   (guarantee weak-list-set? set 'weak-list-set-add-new!)
   (%set-set-items! set (weak-cons item (%set-items set))))
 
 (define (weak-list-set-delete! item set)
+  (declare (no-type-checks))
   (guarantee weak-list-set? set 'weak-list-set-delete!)
   (let ((= (%set-predicate set)))
     (let loop ((this (%set-items set)) (prev #f))
@@ -987,6 +1059,7 @@ USA.
 	  #f))))
 
 (define (weak-list-set-delete-matching! set predicate)
+  (declare (no-type-checks))
   (guarantee weak-list-set? set 'weak-list-set-delete-matching!)
   (let loop ((this (%set-items set)) (prev #f))
     (if (weak-pair? this)
@@ -1002,6 +1075,7 @@ USA.
 	      (loop next this))))))
 
 (define (weak-list-set-contains? item set)
+  (declare (no-type-checks))
   (guarantee weak-list-set? set)
   (generator-any (let ((= (%set-predicate set)))
 		   (lambda (item*)
@@ -1035,6 +1109,7 @@ USA.
   (%weak-list-set->generator set 'weak-list-set->generator))
 
 (define (%weak-list-set->generator set caller)
+  (declare (no-type-checks))
   (guarantee weak-list-set? set caller)
   (let ((this (%set-items set))
 	(prev #f))

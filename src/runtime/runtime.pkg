@@ -336,6 +336,7 @@ USA.
 	  weak-list-empty?
 	  weak-length
 	  weak-length+
+	  weak-list
 	  weak-list-set
 	  weak-list-set->generator
 	  weak-list-set->list
