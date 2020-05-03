@@ -273,7 +273,6 @@ USA.
 	  list->weak-list
 	  make-weak-list
 	  null-weak-list?
-	  weak-alist->generator
 	  weak-alist-copy
 	  weak-alist-filter
 	  weak-alist-filter!

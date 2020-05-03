@@ -454,58 +454,26 @@ USA.
 		      (loop next this))))))))
 
 (define (weak-alist-filter predicate alist)
-  (%weak-alist-fold-right (lambda (key datum acc)
-			    (if (predicate key datum)
-				(cons (weak-cons key datum) acc)
-				acc))
-			  '()
-			  alist
-			  'weak-alist-filter))
+  (weak-alist-fold-right (lambda (key datum acc)
+			   (if (predicate key datum)
+			       (cons (weak-cons key datum) acc)
+			       acc))
+			 '()
+			 alist
+			 'weak-alist-filter))
 
 (define (weak-alist-remove predicate alist)
-  (%weak-alist-fold-right (lambda (key datum acc)
-			    (if (predicate key datum)
-				acc
-				(cons (weak-cons key datum) acc)))
-			  '()
-			  alist
-			  'weak-alist-remove))
+  (weak-alist-fold-right (lambda (key datum acc)
+			   (if (predicate key datum)
+			       acc
+			       (cons (weak-cons key datum) acc)))
+			 '()
+			 alist
+			 'weak-alist-remove))
 
-(define (weak-alist->generator alist)
-  (let ((prev #f))
-    (define (weak-alist-generator)
-      (if (null-list? alist 'weak-alist->generator)
-	  (eof-object)
-	  (let ((p (car alist))
-		(next (cdr alist)))
-	    (let ((key (weak-car p)))
-	      (if (gc-reclaimed-object? key)
-		  (begin
-		    (if prev (set-cdr! prev next))
-		    (set! alist next)
-		    (weak-alist-generator))
-		  (begin
-		    (set! prev alist)
-		    (set! alist next)
-		    p))))))
-    weak-alist-generator))
-
-(define (weak-alist-fold kons knil first . rest)
-  (if (null? rest)
-      (%weak-alist-fold kons knil first 'weak-alist-fold)
-      (apply generator-fold
-	     (lambda (p acc)
-	       (let ((key (weak-car p)))
-		 (if (gc-reclaimed-object? key)
-		     acc
-		     (kons key (weak-cdr p) acc))))
-	     knil
-	     (weak-alist->generator first)
-	     (map weak-alist->generator rest))))
-
-(define (%weak-alist-fold kons knil alist caller)
+(define (weak-alist-fold kons knil alist)
   (let loop ((this alist) (prev #f) (acc knil))
-    (if (null-list? this caller)
+    (if (null-list? this 'weak-alist-fold)
 	acc
 	(let ((p (car this))
 	      (next (cdr this)))
@@ -516,22 +484,9 @@ USA.
 		  (loop next prev acc))
 		(loop next this (kons key (weak-cdr p) acc))))))))
 
-(define (weak-alist-fold-right kons knil first . rest)
-  (if (null? rest)
-      (%weak-alist-fold-right kons knil first 'weak-alist-fold-right)
-      (apply generator-fold-right
-	     (lambda (p acc)
-	       (let ((key (weak-car p)))
-		 (if (gc-reclaimed-object? key)
-		     acc
-		     (kons key (weak-cdr p) acc))))
-	     knil
-	     (weak-alist->generator first)
-	     (map weak-alist->generator rest))))
-
-(define (%weak-alist-fold-right kons knil alist caller)
+(define (weak-alist-fold-right kons knil alist)
   (let loop ((this alist) (prev #f))
-    (if (null-list? this caller)
+    (if (null-list? this 'weak-alist-fold-right)
 	knil
 	(let ((p (car this))
 	      (next (cdr this)))
