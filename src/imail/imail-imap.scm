@@ -1515,7 +1515,7 @@ USA.
   (define (scan-positive body-parts previous)
     (and (weak-pair? body-parts)
 	 (let ((entry (weak-car body-parts)))
-	   (if (not (gc-reclaimed-object? entry))
+	   (if (pair? entry)
 	       (if (equal? section (car entry))
 		   entry
 		   (scan-positive (weak-cdr body-parts) body-parts))
@@ -1523,7 +1523,7 @@ USA.
   (define (scan-negative body-parts previous)
     (if (weak-pair? body-parts)
 	(let ((entry (weak-car body-parts)))
-	  (if (not (gc-reclaimed-object? entry))
+	  (if (pair? entry)
 	      (begin
 		(weak-set-cdr! previous body-parts)
 		(if (equal? section (car entry))

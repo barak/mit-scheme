@@ -171,7 +171,7 @@ USA.
   (let ((pair (1d-table/get (browser/properties browser) 'NEW-SCREEN #f)))
     (and pair
 	 (let ((screen (weak-car pair)))
-	   (and (not (gc-reclaimed-object? screen))
+	   (and (screen? screen)
 		screen)))))
 
 (define (set-browser/new-screen! browser screen)

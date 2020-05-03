@@ -430,7 +430,7 @@ Automatically becomes local when set in any fashion."
 	 (and (not (eq? window selected-window))
 	      (converted-window window)))
        (let ((window (weak-car *minibuffer-scroll-window*)))
-	 (and (not (gc-reclaimed-object? window))
+	 (and (window? window)
 	      (converted-window window)))))))
 
 (define (set-screen-window-configuration! screen configuration)

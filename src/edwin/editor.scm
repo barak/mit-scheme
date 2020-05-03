@@ -629,7 +629,7 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 			 (next (cdr threads)))
 		     (let ((thread (weak-car record))
 			   (flags (weak-cdr record)))
-		       (if (and (not (gc-reclaimed-object? thread))
+		       (if (and (thread? thread)
 				(not (thread-dead? thread)))
 			   (loop next
 				 threads

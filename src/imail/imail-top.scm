@@ -2236,7 +2236,7 @@ WARNING: With a prefix argument, this command may take a very long
 
 (define ((probe-folder-output-processor folder))
   (let ((folder (weak-car folder)))
-    (and (not (gc-reclaimed-object? folder))
+    (and (folder? folder)
 	 (if (and (imail-folder->buffer folder #f)
 		  (eq? (folder-connection-status folder) 'ONLINE))
 	     (begin
