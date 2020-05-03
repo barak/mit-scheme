@@ -3287,6 +3287,8 @@ USA.
 	  alist-copy			;SRFI-1
 	  alist-delete			;SRFI-1
 	  alist-delete!			;SRFI-1
+	  alist-fold
+	  alist-fold-right
 	  alist?
 	  any-duplicates?
 	  append			;SRFI-1
@@ -3372,6 +3374,8 @@ USA.
 	  guarantee-restricted-keyword-list
 	  iota				;SRFI-1
 	  keyword-list->alist
+	  keyword-list-fold
+	  keyword-list-fold-right
 	  keyword-list?
 	  keyword-option-parser
 	  last				;SRFI-1

@@ -130,3 +130,455 @@ USA.
 		  (lambda () 'overflow)
 		  (lambda () 'timeout))
        n))))
+
+(define-test 'fold
+  (lambda ()
+
+    (assert-error (lambda () (fold cons '() 'a)))
+    (assert-error (lambda () (fold cons* '() '() 'a)))
+    (assert-error (lambda () (fold cons* '() 'a '())))
+
+    (assert-equal (fold cons '() '())
+		  '())
+    (assert-equal (fold cons '() '(1))
+		  '(1))
+    (assert-equal (fold cons '() '(1 2))
+		  '(2 1))
+
+    (assert-equal (fold cons 'a '())
+		  'a)
+    (assert-equal (fold cons 'a '(1))
+		  '(1 . a))
+    (assert-equal (fold cons 'a '(1 2))
+		  '(2 1 . a))
+
+    (assert-equal (fold rcons '() '())
+		  '())
+    (assert-equal (fold rcons '() '(1))
+		  '(() . 1))
+    (assert-equal (fold rcons '() '(1 2))
+		  '((() . 1) . 2))
+
+    (assert-equal (fold rcons 'a '())
+		  'a)
+    (assert-equal (fold rcons 'a '(1))
+		  '(a . 1))
+    (assert-equal (fold rcons 'a '(1 2))
+		  '((a . 1) . 2))
+
+    (assert-equal (fold + 0 '())
+		  0)
+    (assert-equal (fold + 0 '(1))
+		  1)
+    (assert-equal (fold + 0 '(1 2))
+		  3)
+
+    (assert-equal (fold + 0 '() '())
+		  0)
+    (assert-equal (fold + 0 '(2) '(3))
+		  5)
+    (assert-equal (fold + 0 '(2 3) '(5 7))
+		  17)
+
+    (assert-equal (fold cons* '() '() '())
+		  '())
+    (assert-equal (fold cons* '() '(2) '(3))
+		  '(2 3))
+    (assert-equal (fold cons* '() '(2 3) '(5 7))
+		  '(3 7 2 5))
+
+    (assert-equal (fold list '() '() '())
+		  '())
+    (assert-equal (fold list '() '(2) '(3))
+		  '(2 3 ()))
+    (assert-equal (fold list '() '(2 3) '(5 7))
+		  '(3 7 (2 5 ())))
+
+    ))
+
+(define-test 'fold-right
+  (lambda ()
+
+    (assert-error (lambda () (fold-right cons '() 'a)))
+    (assert-error (lambda () (fold-right cons* '() '() 'a)))
+    (assert-error (lambda () (fold-right cons* '() 'a '())))
+
+    (assert-equal (fold-right cons '() '())
+		  '())
+    (assert-equal (fold-right cons '() '(1))
+		  '(1))
+    (assert-equal (fold-right cons '() '(1 2))
+		  '(1 2))
+
+    (assert-equal (fold-right cons 'a '())
+		  'a)
+    (assert-equal (fold-right cons 'a '(1))
+		  '(1 . a))
+    (assert-equal (fold-right cons 'a '(1 2))
+		  '(1 2 . a))
+
+    (assert-equal (fold-right rcons '() '())
+		  '())
+    (assert-equal (fold-right rcons '() '(1))
+		  '(() . 1))
+    (assert-equal (fold-right rcons '() '(1 2))
+		  '((() . 2) . 1))
+
+    (assert-equal (fold-right rcons 'a '())
+		  'a)
+    (assert-equal (fold-right rcons 'a '(1))
+		  '(a . 1))
+    (assert-equal (fold-right rcons 'a '(1 2))
+		  '((a . 2) . 1))
+
+    (assert-equal (fold-right + 0 '())
+		  0)
+    (assert-equal (fold-right + 0 '(1))
+		  1)
+    (assert-equal (fold-right + 0 '(1 2))
+		  3)
+
+    (assert-equal (fold-right + 0 '() '())
+		  0)
+    (assert-equal (fold-right + 0 '(2) '(3))
+		  5)
+    (assert-equal (fold-right + 0 '(2 3) '(5 7))
+		  17)
+
+    (assert-equal (fold-right cons* '() '() '())
+		  '())
+    (assert-equal (fold-right cons* '() '(2) '(3))
+		  '(2 3))
+    (assert-equal (fold-right cons* '() '(2 3) '(5 7))
+		  '(2 5 3 7))
+
+    (assert-equal (fold-right list '() '() '())
+		  '())
+    (assert-equal (fold-right list '() '(2) '(3))
+		  '(2 3 ()))
+    (assert-equal (fold-right list '() '(2 3) '(5 7))
+		  '(2 5 (3 7 ())))
+
+    ))
+
+(define-test 'fold-map
+  (lambda ()
+
+    (assert-error (lambda () (fold-map cons '() add13 'a)))
+    (assert-error (lambda () (fold-map cons* '() * '() 'a)))
+    (assert-error (lambda () (fold-map cons* '() * 'a '())))
+
+    (assert-equal (fold-map cons '() add13 '())
+		  '())
+    (assert-equal (fold-map cons '() add13 '(1))
+		  '(14))
+    (assert-equal (fold-map cons '() add13 '(1 2))
+		  '(15 14))
+
+    (assert-equal (fold-map cons 'a add13 '())
+		  'a)
+    (assert-equal (fold-map cons 'a add13 '(1))
+		  '(14 . a))
+    (assert-equal (fold-map cons 'a add13 '(1 2))
+		  '(15 14 . a))
+
+    (assert-equal (fold-map rcons '() add13 '())
+		  '())
+    (assert-equal (fold-map rcons '() add13 '(1))
+		  '(() . 14))
+    (assert-equal (fold-map rcons '() add13 '(1 2))
+		  '((() . 14) . 15))
+
+    (assert-equal (fold-map rcons 'a add13 '())
+		  'a)
+    (assert-equal (fold-map rcons 'a add13 '(1))
+		  '(a . 14))
+    (assert-equal (fold-map rcons 'a add13 '(1 2))
+		  '((a . 14) . 15))
+
+    (assert-equal (fold-map + 0 add13 '())
+		  0)
+    (assert-equal (fold-map + 0 add13 '(1))
+		  14)
+    (assert-equal (fold-map + 0 add13 '(1 2))
+		  29)
+
+    (assert-equal (fold-map + 0 * '() '())
+		  0)
+    (assert-equal (fold-map + 0 * '(2) '(3))
+		  6)
+    (assert-equal (fold-map + 0 * '(2 3) '(5 7))
+		  31)
+
+    (assert-equal (fold-map cons '() * '() '())
+		  '())
+    (assert-equal (fold-map cons '() * '(2) '(3))
+		  '(6))
+    (assert-equal (fold-map cons '() * '(2 3) '(5 7))
+		  '(21 10))
+
+    (assert-equal (fold-map list '() * '() '())
+		  '())
+    (assert-equal (fold-map list '() * '(2) '(3))
+		  '(6 ()))
+    (assert-equal (fold-map list '() * '(2 3) '(5 7))
+		  '(21 (10 ())))
+
+    ))
+
+(define-test 'fold-right-map
+  (lambda ()
+
+    (assert-error (lambda () (fold-right-map cons '() add13 'a)))
+    (assert-error (lambda () (fold-right-map cons* '() * '() 'a)))
+    (assert-error (lambda () (fold-right-map cons* '() * 'a '())))
+
+    (assert-equal (fold-right-map cons '() add13 '())
+		  '())
+    (assert-equal (fold-right-map cons '() add13 '(1))
+		  '(14))
+    (assert-equal (fold-right-map cons '() add13 '(1 2))
+		  '(14 15))
+
+    (assert-equal (fold-right-map cons 'a add13 '())
+		  'a)
+    (assert-equal (fold-right-map cons 'a add13 '(1))
+		  '(14 . a))
+    (assert-equal (fold-right-map cons 'a add13 '(1 2))
+		  '(14 15 . a))
+
+    (assert-equal (fold-right-map rcons '() add13 '())
+		  '())
+    (assert-equal (fold-right-map rcons '() add13 '(1))
+		  '(() . 14))
+    (assert-equal (fold-right-map rcons '() add13 '(1 2))
+		  '((() . 15) . 14))
+
+    (assert-equal (fold-right-map rcons 'a add13 '())
+		  'a)
+    (assert-equal (fold-right-map rcons 'a add13 '(1))
+		  '(a . 14))
+    (assert-equal (fold-right-map rcons 'a add13 '(1 2))
+		  '((a . 15) . 14))
+
+    (assert-equal (fold-right-map + 0 add13 '())
+		  0)
+    (assert-equal (fold-right-map + 0 add13 '(1))
+		  14)
+    (assert-equal (fold-right-map + 0 add13 '(1 2))
+		  29)
+
+    (assert-equal (fold-right-map + 0 * '() '())
+		  0)
+    (assert-equal (fold-right-map + 0 * '(2) '(3))
+		  6)
+    (assert-equal (fold-right-map + 0 * '(2 3) '(5 7))
+		  31)
+
+    (assert-equal (fold-right-map cons '() * '() '())
+		  '())
+    (assert-equal (fold-right-map cons '() * '(2) '(3))
+		  '(6))
+    (assert-equal (fold-right-map cons '() * '(2 3) '(5 7))
+		  '(10 21))
+
+    (assert-equal (fold-right-map list '() * '() '())
+		  '())
+    (assert-equal (fold-right-map list '() * '(2) '(3))
+		  '(6 ()))
+    (assert-equal (fold-right-map list '() * '(2 3) '(5 7))
+		  '(10 (21 ())))
+
+    ))
+
+(define-test 'alist-fold
+  (lambda ()
+
+    (assert-error (lambda () (alist-fold kcons '() 'a)))
+
+    (assert-equal (alist-fold kcons '() '())
+		  '())
+    (assert-equal (alist-fold kcons '() '((a . 1)))
+		  '(a 1))
+    (assert-equal (alist-fold kcons '() '((a . 1) (b . 2)))
+		  '(b 2 a 1))
+
+    (assert-equal (alist-fold kcons 'c '())
+		  'c)
+    (assert-equal (alist-fold kcons 'c '((a . 1)))
+		  '(a 1 . c))
+    (assert-equal (alist-fold kcons 'c '((a . 1) (b . 2)))
+		  '(b 2 a 1 . c))
+
+    (assert-equal (alist-fold rkcons '() '())
+		  '())
+    (assert-equal (alist-fold rkcons '() '((a . 1)))
+		  '(1 a))
+    (assert-equal (alist-fold rkcons '() '((a . 1) (b . 2)))
+		  '(2 b 1 a))
+
+    (assert-equal (alist-fold rkcons 'c '())
+		  'c)
+    (assert-equal (alist-fold rkcons 'c '((a . 1)))
+		  '(1 a . c))
+    (assert-equal (alist-fold rkcons 'c '((a . 1) (b . 2)))
+		  '(2 b 1 a . c))
+
+    (assert-equal (alist-fold add13-datum '() '())
+		  '())
+    (assert-equal (alist-fold add13-datum '() '((a . 1)))
+		  '((a . 14)))
+    (assert-equal (alist-fold add13-datum '() '((a . 1) (b . 2)))
+		  '((b . 15) (a . 14)))
+
+    ))
+
+(define-test 'alist-fold-right
+  (lambda ()
+
+    (assert-error (lambda () (alist-fold-right kcons '() 'a)))
+
+    (assert-equal (alist-fold-right kcons '() '())
+		  '())
+    (assert-equal (alist-fold-right kcons '() '((a . 1)))
+		  '(a 1))
+    (assert-equal (alist-fold-right kcons '() '((a . 1) (b . 2)))
+		  '(a 1 b 2))
+
+    (assert-equal (alist-fold-right kcons 'c '())
+		  'c)
+    (assert-equal (alist-fold-right kcons 'c '((a . 1)))
+		  '(a 1 . c))
+    (assert-equal (alist-fold-right kcons 'c '((a . 1) (b . 2)))
+		  '(a 1 b 2 . c))
+
+    (assert-equal (alist-fold-right rkcons '() '())
+		  '())
+    (assert-equal (alist-fold-right rkcons '() '((a . 1)))
+		  '(1 a))
+    (assert-equal (alist-fold-right rkcons '() '((a . 1) (b . 2)))
+		  '(1 a 2 b))
+
+    (assert-equal (alist-fold-right rkcons 'c '())
+		  'c)
+    (assert-equal (alist-fold-right rkcons 'c '((a . 1)))
+		  '(1 a . c))
+    (assert-equal (alist-fold-right rkcons 'c '((a . 1) (b . 2)))
+		  '(1 a 2 b . c))
+
+    (assert-equal (alist-fold-right add13-datum '() '())
+		  '())
+    (assert-equal (alist-fold-right add13-datum '() '((a . 1)))
+		  '((a . 14)))
+    (assert-equal (alist-fold-right add13-datum '() '((a . 1) (b . 2)))
+		  '((a . 14) (b . 15)))
+
+    ))
+
+(define-test 'keyword-list-fold
+  (lambda ()
+
+    (assert-error (lambda () (keyword-list-fold kcons '() 'a)))
+
+    (assert-equal (keyword-list-fold alist-cons '() '())
+		  '())
+    (assert-equal (keyword-list-fold alist-cons '() '(a 1))
+		  '((a . 1)))
+    (assert-equal (keyword-list-fold alist-cons '() '(a 1 b 2))
+		  '((b . 2) (a . 1)))
+
+    (assert-equal (keyword-list-fold alist-cons 'c '())
+		  'c)
+    (assert-equal (keyword-list-fold alist-cons 'c '(a 1))
+		  '((a . 1) . c))
+    (assert-equal (keyword-list-fold alist-cons 'c '(a 1 b 2))
+		  '((b . 2) (a . 1) . c))
+
+    (assert-equal (keyword-list-fold racons '() '())
+		  '())
+    (assert-equal (keyword-list-fold racons '() '(a 1))
+		  '((1 . a)))
+    (assert-equal (keyword-list-fold racons '() '(a 1 b 2))
+		  '((2 . b) (1 . a)))
+
+    (assert-equal (keyword-list-fold racons 'c '())
+		  'c)
+    (assert-equal (keyword-list-fold racons 'c '(a 1))
+		  '((1 . a) . c))
+    (assert-equal (keyword-list-fold racons 'c '(a 1 b 2))
+		  '((2 . b) (1 . a) . c))
+
+    (assert-equal (keyword-list-fold add13-datum '() '())
+		  '())
+    (assert-equal (keyword-list-fold add13-datum '() '(a 1))
+		  '((a . 14)))
+    (assert-equal (keyword-list-fold add13-datum '() '(a 1 b 2))
+		  '((b . 15) (a . 14)))
+
+    ))
+
+(define-test 'keyword-list-fold-right
+  (lambda ()
+
+    (assert-error (lambda () (keyword-list-fold-right kcons '() 'a)))
+
+    (assert-equal (keyword-list-fold-right alist-cons '() '())
+		  '())
+    (assert-equal (keyword-list-fold-right alist-cons '() '(a 1))
+		  '((a . 1)))
+    (assert-equal (keyword-list-fold-right alist-cons '() '(a 1 b 2))
+		  '((a . 1) (b . 2)))
+
+    (assert-equal (keyword-list-fold-right alist-cons 'c '())
+		  'c)
+    (assert-equal (keyword-list-fold-right alist-cons 'c '(a 1))
+		  '((a . 1) . c))
+    (assert-equal (keyword-list-fold-right alist-cons 'c '(a 1 b 2))
+		  '((a . 1) (b . 2) . c))
+
+    (assert-equal (keyword-list-fold-right racons '() '())
+		  '())
+    (assert-equal (keyword-list-fold-right racons '() '(a 1))
+		  '((1 . a)))
+    (assert-equal (keyword-list-fold-right racons '() '(a 1 b 2))
+		  '((1 . a) (2 . b)))
+
+    (assert-equal (keyword-list-fold-right racons 'c '())
+		  'c)
+    (assert-equal (keyword-list-fold-right racons 'c '(a 1))
+		  '((1 . a) . c))
+    (assert-equal (keyword-list-fold-right racons 'c '(a 1 b 2))
+		  '((1 . a) (2 . b) . c))
+
+    (assert-equal (keyword-list-fold-right add13-datum '() '())
+		  '())
+    (assert-equal (keyword-list-fold-right add13-datum '() '(a 1))
+		  '((a . 14)))
+    (assert-equal (keyword-list-fold-right add13-datum '() '(a 1 b 2))
+		  '((a . 14) (b . 15)))
+
+    ))
+
+(define (rcons a b)
+  (cons b a))
+
+(define (kcons key datum acc)
+  (cons key (cons datum acc)))
+
+(define (rkcons key datum acc)
+  (cons datum (cons key acc)))
+
+(define (racons key datum acc)
+  (alist-cons datum key acc))
+
+(define (rcons* item . items)
+  (let loop ((first item) (rest items))
+    (if (pair? rest)
+	(rcons first (loop (car rest) (cdr rest)))
+	first)))
+
+(define (add13-datum key datum acc)
+  (alist-cons key (+ datum 13) acc))
+
+(define (add13 a)
+  (+ a 13))
