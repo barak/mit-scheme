@@ -6598,6 +6598,9 @@ USA.
 	  set-trie-value!
 	  trie-=?
 	  trie->alist
+	  trie-edge-alist
+	  trie-edge-fold
+	  trie-edge-for-each
 	  trie-find
 	  trie-fold
 	  trie-for-each

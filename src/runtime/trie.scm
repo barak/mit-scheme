@@ -108,12 +108,12 @@ USA.
 
 (define (trie-fold kons knil trie)
   (let loop ((path '()) (trie trie) (acc knil))
-    (alist-fold (lambda (key trie* acc)
-		  (loop (cons key path) trie* acc))
-		(if (trie-has-value? trie)
-		    (kons (reverse path) (trie-value trie) acc)
-		    acc)
-		(%trie-edge-alist trie))))
+    (trie-edge-fold (lambda (key trie* acc)
+		      (loop (cons key path) trie* acc))
+		    (if (trie-has-value? trie)
+			(kons (reverse path) (trie-value trie) acc)
+			acc)
+		    trie)))
 
 (define (trie-for-each procedure trie)
   (trie-fold (lambda (path value acc)
@@ -121,3 +121,16 @@ USA.
 	       acc)
 	     unspecific
 	     trie))
+
+(define (trie-edge-fold kons knil trie)
+  (alist-fold kons knil (%trie-edge-alist trie)))
+
+(define (trie-edge-alist trie)
+  (trie-edge-fold alist-cons '() trie))
+
+(define (trie-edge-for-each procedure trie)
+  (trie-edge-fold (lambda (key trie* acc)
+		    (procedure key trie*)
+		    acc)
+		  unspecific
+		  trie))
