@@ -6609,3 +6609,43 @@ USA.
 	  trie-value
 	  trie-values
 	  trie?))
+
+(define-package (runtime cgen)
+  (files "cgen-base")
+  (parent (runtime))
+  (export ()
+	  cgen:and
+	  cgen:and*
+	  cgen:call
+	  cgen:call*
+	  cgen:finish
+	  cgen:if
+	  cgen:in-context
+	  cgen:lambda
+	  cgen:let
+	  cgen:new-name
+	  cgen:or
+	  cgen:or*
+	  cgen:pcall
+	  cgen:quote
+	  cgen:rename))
+
+(define-package (runtime cgen optimizer)
+  (files "cgen-optimize")
+  (parent (runtime cgen))
+  (export (runtime cgen)
+	  optimization-rules
+	  optimize-cgen-expr))
+
+(define-package (runtime cgen cse)
+  (files "cgen-cse")
+  (parent (runtime cgen))
+  (export (runtime cgen)
+	  cse-cgen-expr))
+
+(define-package (runtime cgen output)
+  (files "cgen-output")
+  (parent (runtime cgen))
+  (export (runtime cgen)
+	  cgen-expr->scheme
+	  output-optimizer-rules))
