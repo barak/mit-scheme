@@ -39,6 +39,12 @@ USA.
                 (apply-rules expr))
               expr)))
 
+(define (index< n)
+  (lambda (object)
+    (and (fixnum? object)
+	 (>= object 0)
+	 (< object n))))
+
 (define-deferred optimization-rules
   (make-cgen-rule-set
 
@@ -107,4 +113,21 @@ USA.
      (lambda () '#t))
 
    (define-cgen-rule `(pcall any (lambda ((??)) #f) (??))
-     (lambda () '#f))))
+     (lambda () '#f))
+
+
+   (define-cgen-rule `(pcall list-ref (? a) (? n ,(index< 10)))
+     (lambda (a n)
+       (let loop ((n n) (expr a))
+	 (if (> n 0)
+	     (loop (- n 1) (cgen:pcall 'cdr expr))
+	     (cgen:pcall 'car expr)))))
+
+   (define-cgen-rule `(pcall drop (? a) (? n ,(index< 10)))
+     (lambda (a n)
+       (let loop ((n n) (expr a))
+	 (if (> n 0)
+	     (loop (- n 1) (cgen:pcall 'cdr expr))
+	     expr))))
+
+   ))
