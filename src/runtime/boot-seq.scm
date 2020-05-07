@@ -155,7 +155,9 @@ USA.
   (package-sequencer (find-package package-name)))
 
 (define (add-boot-init! thunk)
-  ((current-package-sequencer) 'add-action! thunk))
+  (if (in-cold-load?)
+      ((current-package-sequencer) 'add-action! thunk)
+      (thunk)))
 
 (define (add-boot-deps! . deps)
   (let ((seq (current-package-sequencer)))
