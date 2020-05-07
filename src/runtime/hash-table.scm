@@ -170,13 +170,12 @@ USA.
   (hash-table-update! table key procedure (lambda () default)))
 
 (define (hash-table-intern! table key generator)
-  (let ((datum
-	 (let ((datum (hash-table-ref/default table key default-marker)))
-	   (if (eq? datum default-marker)
-	       (generator)
-	       datum))))
-    (hash-table-set! table key datum)
-    datum))
+  (let ((datum (hash-table-ref/default table key default-marker)))
+    (if (eq? datum default-marker)
+	(let ((datum (generator)))
+	  (hash-table-set! table key datum)
+	  datum)
+	datum)))
 
 (define (hash-table-delete! table key)
   ((table-type-method:remove! (hash-table-type table)) table key))
