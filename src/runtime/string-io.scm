@@ -67,6 +67,9 @@ USA.
 			    (unread-char ,string-in/unread-char)
 			    (write-self ,string-in/write-self))
 			  #f))
+
+(define (read-from-string string #!optional start end)
+  (read (open-input-string string start end)))
 
 (define (string-in/char-ready? port)
   port
@@ -141,6 +144,20 @@ USA.
   (let ((port (open-output-string)))
     (let ((truncated? (call-with-truncated-output-port limit port generator)))
       (cons truncated? (get-output-string port)))))
+
+(define (write-to-string object #!optional max)
+
+  (define (do-write port)
+    (write object port))
+
+  (if (or (default-object? max) (not max))
+      (call-with-output-string do-write)
+      (call-with-truncated-output-string max do-write)))
+
+(define (pp-to-string object . args)
+  (call-with-output-string
+    (lambda (port)
+      (apply pp object port args))))
 
 ;; deprecated
 (define (with-output-to-string thunk)

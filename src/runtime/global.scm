@@ -127,14 +127,6 @@ USA.
 (define bind-cell-contents!
   (object-component-binder cell-contents set-cell-contents!))
 
-(define (write-to-string object #!optional max)
-  (if (or (default-object? max) (not max))
-      (call-with-output-string
-       (lambda (port) (write object port)))
-      (call-with-truncated-output-string
-       max
-       (lambda (port) (write object port)))))
-
 (define (edit . args)
   (let ((env (let ((package (name->package '(edwin))))
 	       (and package (package/environment package)))))

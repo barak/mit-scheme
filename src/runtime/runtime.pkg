@@ -842,8 +842,7 @@ USA.
 	  user-initial-prompt
 	  wait-interval
 	  with-history-disabled
-	  with-interrupt-mask
-	  write-to-string)
+	  with-interrupt-mask)
   (export (runtime)
 	  get-fixed-objects-vector
 	  strip-angle-brackets)
@@ -4892,7 +4891,10 @@ USA.
 	  get-output-string
 	  get-output-string!
 	  open-input-string
-	  open-output-string))
+	  open-output-string
+	  pp-to-string
+	  read-from-string
+	  write-to-string))
 
 (define-package (runtime syntax)
   (files)
