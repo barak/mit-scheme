@@ -106,12 +106,12 @@ USA.
               (map cadr bindings)))
 
 (define (cgen:finish rename compare expr)
-  (if (cgen-raw-output?)
+  (if (cgen:raw-output?)
       expr
       (cgen-expr->scheme rename compare
                          (cse-cgen-expr (optimize-cgen-expr expr)))))
 
-(define-deferred cgen-raw-output?
+(define-deferred cgen:raw-output?
   (make-settable-parameter #f))
 
 (define (compound-expr? expr)

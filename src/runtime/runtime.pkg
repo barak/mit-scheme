@@ -6646,6 +6646,7 @@ USA.
 	  cgen:or*
 	  cgen:pcall
 	  cgen:quote
+	  cgen:raw-output?
 	  cgen:rename))
 
 (define-package (runtime cgen optimizer)
