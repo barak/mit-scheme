@@ -480,54 +480,41 @@ USA.
   (make-bundle-predicate 'metadata-table))
 
 (define (make-alist-metadata-table)
-  (let ((alist '()))
+  (let ((table (weak-alist-table eqv?)))
 
     (define (has? key)
-      (if (assv key alist) #t #f))
+      (weak-alist-table-exists? table key))
 
     (define (get key #!optional default-value)
-      (let ((p (assv key alist)))
-	(if p
-	    (cdr p)
-	    (begin
-	      (if (default-object? default-value)
-		  (error "Object has no associated metadata:" key))
-	      default-value))))
+      (weak-alist-table-ref table key
+			    (if (default-object? default-value)
+				default-value
+				(lambda () default-value))))
 
     (define (put! key metadata)
-      (let ((p (assv key alist)))
-	(if p
-	    (set-cdr! p metadata)
-	    (begin
-	      (set! alist (cons (cons key metadata) alist))
-	      unspecific))))
+      (weak-alist-table-set! table key metadata))
 
     (define (intern! key get-value)
-      (let ((p (assv key alist)))
-	(if p
-	    (cdr p)
-	    (let ((value (get-value)))
-	      (set! alist (cons (cons key value) alist))
-	      value))))
+      (weak-alist-table-intern! table key get-value))
 
     (define (delete! key)
-      (set! alist
-	    (remove! (lambda (p)
-		       (eqv? (car p) key))
-		     alist))
-      unspecific)
+      (weak-alist-table-delete! table key table))
 
     (define (get-alist)
-      alist)
+      (weak-alist-table->alist table))
 
-    (define (put-alist! alist*)
-      (for-each (lambda (p)
-		  (put! (car p) (cdr p)))
-		alist*))
+    (define (put-alist! alist)
+      (for-each (lambda (p) (put! (car p) (cdr p))) alist))
 
-    (bundle metadata-table?
-	    has? get put! intern! delete! get-alist put-alist!)))
-
+    (define (get-keys)
+      (weak-alist-table-keys table))
+
+    (define (clear!)
+      (weak-alist-table-clear! table))
+
+    (bundle metadata-table? has? get put! intern! delete! get-alist put-alist!
+	    get-keys clear!)))
+
 (define (make-hashed-metadata-table)
   (let ((table (make-key-weak-eqv-hash-table)))
 
@@ -535,9 +522,10 @@ USA.
       (hash-table-exists? table key))
 
     (define (get key #!optional default-value)
-      (if (default-object? default-value)
-	  (hash-table-ref table key)
-	  (hash-table-ref/default table key default-value)))
+      (hash-table-ref table key
+		      (if (default-object? default-value)
+			  default-value
+			  (lambda () default-value))))
 
     (define (put! key metadata)
       (hash-table-set! table key metadata))
@@ -552,12 +540,16 @@ USA.
       (hash-table->alist table))
 
     (define (put-alist! alist*)
-      (for-each (lambda (p)
-		  (put! (car p) (cdr p)))
-		alist*))
+      (for-each (lambda (p) (put! (car p) (cdr p))) alist*))
 
-    (bundle metadata-table?
-	    has? get put! intern! delete! get-alist put-alist!)))
+    (define (get-keys)
+      (hash-table-values table))
+
+    (define (clear!)
+      (hash-table-clear! table))
+
+    (bundle metadata-table? has? get put! intern! delete! get-alist put-alist!
+	    get-keys clear!)))
 
 ;;;; Builder for vector-like sequences
 
