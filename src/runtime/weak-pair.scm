@@ -331,6 +331,20 @@ USA.
 
   (skip items))
 
+(define (weak-last-pair items)
+  (declare (no-type-checks))
+  (let loop ((this items) (prev #f))
+    (if (%null-weak-list? this 'weak-last-pair)
+	prev
+	(let ((item (weak-car this))
+	      (next (weak-cdr this)))
+	  (loop next
+		(if (gc-reclaimed-object? item)
+		    (begin
+		      (if prev (weak-set-cdr! prev next))
+		      prev)
+		    this))))))
+
 (define (weak-filter predicate items)
   (%weak-fold-right (lambda (item acc)
 		      (if (predicate item)

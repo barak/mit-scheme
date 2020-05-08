@@ -330,13 +330,14 @@ USA.
 	  weak-fold-right
 	  weak-fold-right-map
 	  weak-for-each
+	  weak-last-pair
+	  weak-length
+	  weak-length+
+	  weak-list
 	  weak-list->generator
 	  weak-list->list
 	  weak-list-copy
 	  weak-list-empty?
-	  weak-length
-	  weak-length+
-	  weak-list
 	  weak-list-set
 	  weak-list-set->generator
 	  weak-list-set->list
