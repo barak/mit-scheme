@@ -759,8 +759,8 @@ USA.
 			 table))
 
 (define (weak-alist-table-empty? table)
-  (define-integrable (predicate key)
-    (declare (ignore key))
+  (define-integrable (predicate key value)
+    (declare (ignore key value))
     #t)
   (%weak-alist-table-search table predicate 'weak-alist-table-empty?
     (lambda (key p) (declare (ignore key p)) #f)
@@ -825,7 +825,7 @@ USA.
 			   (cons (cons key value) acc))
 			 '()
 			 table))
-
+
 (define (weak-alist-table-exists? table key)
   (%operate-on-table table key 'weak-alist-table-exists?
     (lambda (p) (declare (ignore p)) #t)
@@ -837,7 +837,7 @@ USA.
     (if (default-object? get-default)
 	(lambda () (error:bad-range-argument key 'weak-alist-table-ref))
 	get-default)))
-
+
 (define (%weak-alist-table-get-pair table key)
   (%operate-on-table table key '%weak-alist-table-get-pair
     (lambda (p) p)
@@ -874,7 +874,8 @@ USA.
 
 (define-integrable (%operate-on-table table key caller if-found if-not-found)
   (let ((key= (%table-key= table)))
-    (define-integrable (predicate key*)
+    (define-integrable (predicate key* value)
+      (declare (ignore value))
       (key= key key*))
     (%weak-alist-table-search table predicate caller
       (lambda (key p) (declare (ignore key)) (if-found p))
@@ -885,7 +886,8 @@ USA.
     (lambda (key p) (if-found key (weak-cdr p)))
     if-not-found))
 
-(define (%weak-alist-table-search table predicate caller if-found if-not-found)
+(define-integrable (%weak-alist-table-search table predicate caller
+					     if-found if-not-found)
   (declare (no-type-checks))
   (guarantee weak-alist-table? table caller)
   (let ((finalizer (%table-finalizer table)))
@@ -901,7 +903,7 @@ USA.
 			 (set-cdr! prev next)
 			 (%set-table-alist! table next))
 		     (loop next prev))
-		    ((predicate key) (if-found key p))
+		    ((predicate key (weak-cdr p)) (if-found key p))
 		    (else (loop next this)))))
 	  (if-not-found)))))
 
