@@ -54,10 +54,8 @@ USA.
   (let ((pathname (canonicalize-debug-info-pathname pathname)))
     (if (file-exists? pathname)
 	(fasload-loader (->namestring pathname))
-	(find-alternate-file-type pathname
-				  `(("inf" . ,fasload-loader)
-				    ("bif" . ,fasload-loader)
-				    ("bci" . ,compressed-loader))))))
+	(compressed-loader
+	 (pathname-new-type-map pathname file-type-inf file-type-bci)))))
 
 (define (find-alternate-file-type base-pathname alist)
   (let loop ((left alist) (time 0) (file #f) (receiver (lambda (x) x)))
