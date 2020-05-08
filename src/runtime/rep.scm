@@ -78,11 +78,9 @@ USA.
   (parent cmdl/parent)
   (port cmdl/port set-cmdl/port!)
   (driver cmdl/driver)
-  (state cmdl/state set-cmdl/state!)
+  (state cmdl/state)
   (operations cmdl/operations)
   (properties cmdl/properties))
-
-(define-guarantee cmdl "command loop")
 
 (define (make-cmdl parent port driver state operations)
   (if (not (or (not parent) (cmdl? parent)))
@@ -546,6 +544,7 @@ USA.
 	    repl)))
 
 (define (repl/start repl #!optional message)
+  ((repl/env-mgr repl) 'set-repl! repl)
   (cmdl/start repl
 	      (make-repl-message repl
 				 (if (default-object? message)
@@ -581,8 +580,8 @@ USA.
 	      (hook/set-default-environment repl environment))))))
 
 (define hook/set-default-environment)
-(define (default/set-default-environment port environment)
-  (let ((port (cmdl/port port)))
+(define (default/set-default-environment repl environment)
+  (let ((port (cmdl/port repl)))
     (with-output-port-terminal-mode port 'cooked
       (lambda ()
 	(if (not (interpreter-environment? environment))
@@ -593,6 +592,12 @@ USA.
 ; Assignments to most compiled-code bindings are prohibited,
 ; as are certain other environment operations."
 	       port)))
+	(let ((name ((repl/env-mgr repl) 'name-of environment)))
+	  (if name
+	      (begin
+		(fresh-line port)
+		(write-string ";Env name: " port)
+		(write name port))))
 	(let ((package (environment->package environment)))
 	  (if package
 	      (begin
@@ -682,53 +687,48 @@ USA.
 	 (write index port)
 	 (write-string ") =>" port))))))
 
-(define-structure (repl-state
-		   (conc-name repl-state/)
-		   (constructor make-repl-state
-				(prompt environment condition)))
-  prompt
-  environment
-  (condition #f read-only #t)
-  (reader-history (make-repl-history repl-reader-history-size))
-  (printer-history (make-repl-history repl-printer-history-size))
-  (input-queue (make-serial-queue) read-only #t))
+(define (make-repl-state prompt environment condition)
+  (%make-repl-state prompt
+		    (make-env-mgr environment)
+		    condition
+		    (make-repl-history repl-reader-history-size)
+		    (make-repl-history repl-reader-history-size)
+		    (make-serial-queue)))
+
+(define-record-type <repl-state>
+    (%make-repl-state prompt env-mgr condition reader-history printer-history
+		      input-queue)
+    repl-state?
+  (prompt repl-state/prompt set-repl-state/prompt!)
+  (env-mgr repl-state/env-mgr)
+  (condition repl-state/condition)
+  (reader-history repl-state/reader-history)
+  (printer-history repl-state/printer-history)
+  (input-queue repl-state/input-queue))
 
 (define (repl? object)
   (and (cmdl? object)
        (repl-state? (cmdl/state object))))
 
-(define-guarantee repl "read-eval-print loop")
-
-(define-integrable (repl/prompt repl)
+(define (repl/prompt repl)
   (repl-state/prompt (cmdl/state repl)))
 
-(define-integrable (set-repl/prompt! repl prompt)
+(define (set-repl/prompt! repl prompt)
   (set-repl-state/prompt! (cmdl/state repl) prompt))
 
-(define-integrable (repl/environment repl)
-  (repl-state/environment (cmdl/state repl)))
+(define (repl/env-mgr repl)
+  (repl-state/env-mgr (cmdl/state repl)))
 
-(define (set-repl/environment! repl environment)
-  (set-repl-state/environment! (cmdl/state repl) environment)
-  (repl/set-default-environment repl)
-  (port/set-default-environment (cmdl/port repl) environment))
-
-(define-integrable (repl/condition repl)
+(define (repl/condition repl)
   (repl-state/condition (cmdl/state repl)))
 
-(define-integrable (repl/reader-history repl)
+(define (repl/reader-history repl)
   (repl-state/reader-history (cmdl/state repl)))
 
-(define-integrable (set-repl/reader-history! repl reader-history)
-  (set-repl-state/reader-history! (cmdl/state repl) reader-history))
-
-(define-integrable (repl/printer-history repl)
+(define (repl/printer-history repl)
   (repl-state/printer-history (cmdl/state repl)))
 
-(define-integrable (set-repl/printer-history! repl printer-history)
-  (set-repl-state/printer-history! (cmdl/state repl) printer-history))
-
-(define-integrable (repl/input-queue repl)
+(define (repl/input-queue repl)
   (repl-state/input-queue (cmdl/state repl)))
 
 (define (repl/parent repl)
@@ -744,17 +744,114 @@ USA.
 	   cmdl
 	   (skip-non-repls (cmdl/parent cmdl)))))
 
-(define (repl/base repl)
-  (let ((parent (repl/parent repl)))
-    (if parent
-	(repl/base parent)
-	repl)))
+(define (nearest-repl/condition)
+  (repl/condition (nearest-repl)))
 
 (define (nearest-repl/environment)
   (repl/environment (nearest-repl)))
 
-(define (nearest-repl/condition)
-  (repl/condition (nearest-repl)))
+(define (repl/environment repl)
+  ((repl/env-mgr repl) 'current))
+
+(define (set-repl/environment! repl environment)
+  ((repl/env-mgr repl) 'push! environment))
+
+(define (nearest-repl/named-environment name)
+  ((repl/env-mgr (nearest-repl)) 'get-named name))
+
+(define (make-env-mgr environment)
+  (let ((repl #f)
+	(current-env environment)
+	(stack '())
+	(table (alist-table eq?)))
+
+    (define (set-repl! repl*)
+      (set! repl repl*)
+      unspecific)
+
+    (define (%switch-env! env)
+      (set! current-env env)
+      (repl/set-default-environment repl)
+      (port/set-default-environment (cmdl/port repl) env)
+      env)
+
+    (define (current)
+      current-env)
+
+    (define (get-stack)
+      (weak-list->list stack))
+
+    (define (push! env)
+      (guarantee environment? env)
+      (if (eq? current-env env)
+	  env
+	  (begin
+	    (set! stack (weak-cons current-env (weak-delq! env stack)))
+	    (%switch-env! env))))
+
+    (define (pop!)
+      (%pop-stack! %switch-env!))
+
+    (define (swap-tos!)
+      (%pop-stack! (lambda (env)
+		     (set! stack (weak-cons current-env stack))
+		     (%switch-env! env))))
+
+    (define (bury!)
+      (%pop-stack! (lambda (env)
+		     (let ((tail (weak-cons current-env '()))
+			   (p (weak-last-pair stack)))
+		       (if p
+			   (weak-set-cdr! p tail)
+			   (set! stack tail)))
+		     (%switch-env! env))))
+
+    (define (%pop-stack! succeed)
+      (let loop ((this stack))
+	(if (weak-pair? this)
+	    (let ((env (weak-car this))
+		  (next (weak-cdr this)))
+	      (set! stack next)
+	      (if (gc-reclaimed-object? env)
+		  (loop next)
+		  (begin (succeed env) #t)))
+	    #f)))
+
+    (define (known-name? name)
+      (alist-table-exists? table (guarantee interned-symbol? name)))
+
+    (define (get-named name)
+      (alist-table-ref table (guarantee interned-symbol? name)))
+
+    (define (name-current! name)
+      (alist-table-set! table (guarantee interned-symbol? name) current-env))
+
+    (define (delete-name! name)
+      (alist-table-delete! table (guarantee interned-symbol? name)))
+
+    (define (clear-names!)
+      (alist-table-clear! table))
+
+    (define (env-names)
+      (alist-table-keys table))
+
+    (define (named-envs)
+      (alist-table->alist table))
+
+    (define (name-of env)
+      (guarantee environment? env)
+      (alist-table-search table
+			  (lambda (name env*)
+			    (declare (ignore name))
+			    (eq? env env*))
+			  (lambda (name env*)
+			    (declare (ignore env*))
+			    name)
+			  (lambda () #f)))
+
+    (bundle #f set-repl! current get-stack push! pop! swap-tos! bury!
+	    known-name? get-named name-current! delete-name! clear-names!
+	    env-names named-envs name-of)))
 
 ;;;; History
 
@@ -789,19 +886,23 @@ USA.
   (list-ref (repl-history/elements history)
 	    (- (- (repl-history/size history) 1) n)))
 
-;;; User Interface Stuff
+;;; User interface
 
 (define (pe)
-  (let ((environment (nearest-repl/environment)))
-    (let ((package (environment->package environment)))
-      (if package
-	  (package/name package)
-	  environment))))
+  (let ((env-mgr (repl/env-mgr (nearest-repl))))
+    (let ((env (env-mgr 'current)))
+      (or (env-mgr 'name-of env)
+	  (let ((package (environment->package env)))
+	    (if package
+		(package/name package)
+		env))))))
 
-(define (ge environment)
-  (let ((environment (->environment environment 'ge)))
-    (set-repl/environment! (nearest-repl) environment)
-    environment))
+(define (ge #!optional environment)
+  ((repl/env-mgr (nearest-repl))
+   'push!
+   (if (default-object? environment)
+       (make-top-level-environment)
+       (->environment environment 'ge))))
 
 (define (re #!optional index)
   (repl-eval (repl-history/read (repl/reader-history (nearest-repl))

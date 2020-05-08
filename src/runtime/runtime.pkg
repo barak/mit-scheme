@@ -4350,6 +4350,7 @@ USA.
 	  read-eval-print
 	  repl-eval
 	  repl-eval/write
+	  repl-get-hash-number
 	  repl-history/read
 	  repl-history/record!
 	  repl-history/size
@@ -4357,9 +4358,7 @@ USA.
 	  repl-read
 	  repl-reader-history-size
 	  repl-scode-eval
-	  repl-get-hash-number
 	  repl-write
-	  repl/base
 	  repl/condition
 	  repl/environment
 	  repl/parent
@@ -4372,16 +4371,15 @@ USA.
 	  repl?
 	  restart
 	  run-in-nearest-repl
-	  set-cmdl/state!
 	  set-repl/environment!
-	  set-repl/printer-history!
 	  set-repl/prompt!
-	  set-repl/reader-history!
 	  signal-breakpoint
 	  standard-breakpoint-handler
 	  standard-breakpoint-hook
 	  ve
 	  with-repl-eval-boundary)
+  (export (runtime)
+	  nearest-repl/named-environment)
   (export (runtime debugger)
 	  write-restarts)
   (export (runtime emacs-interface)

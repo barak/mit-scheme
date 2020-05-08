@@ -42,6 +42,7 @@ USA.
 	  ((library->environment-helper object) => library-environment)
 	  ((name->package object) => package/environment)
 	  ((procedure? object) (procedure-environment object))
+	  ((interned-symbol? object) (nearest-repl/named-environment object))
 	  (else (error:wrong-type-argument object "environment" caller)))))
 
 (define (environment-has-parent? environment)
