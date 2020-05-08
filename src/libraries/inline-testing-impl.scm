@@ -244,38 +244,38 @@ USA.
 	  (let ((failures (length failing-results))
 		(all (length results)))
 	    (fresh-line)
-	    (display "Ran ")
+	    (write-string decoration-prefix)
+	    (write-string "Ran ")
 	    (write all)
-	    (display " test")
+	    (write-string " test")
 	    (if (not (= 1 all))
-		(display "s"))
-	    (display ": ")
+		(write-string "s"))
+	    (write-string ": ")
 	    (write failures)
-	    (display " failure")
+	    (write-string " failure")
 	    (if (not (= 1 failures))
-		(display "s")))))
+		(write-string "s")))))
     (null? failing-results)))
 
 (define (failing-test-result? result)
   (pair? (cdr result)))
 
 (define (show-failing-result failure)
-  (newline)
-  (newline)
-  (display "evaluating")
-  (newline)
+  (fresh-line)
   (pp (car failure))
-  (display "failed the following expectations:")
+  (write-string decoration-prefix)
+  (write-string "failed the following expectations:")
   (newline)
-  (for-each (lambda (error)
+  (for-each (lambda (error index)
+	      (write-string decoration-prefix)
+	      (write index)
+	      (newline)
               (display error)
               (newline))
-            (cdr failure)))
+            (cdr failure)
+	    (iota (length (cdr failure)) 1)))
 
-(define (pp-to-string object)
-  (call-with-output-string
-    (lambda (port)
-      (pp object port))))
+(define decoration-prefix ";;; ")
 
 ;;;; Expectation rules
 
@@ -361,36 +361,57 @@ USA.
     ((define-value-expectation) define-value-expectation)
     ((define-output-expectation) define-output-expectation)
     (else #f)))
+
+(define (make-message s . args)
+  (let ((builder (string-builder)))
+    (builder decoration-prefix)
+    (builder s)
+    (let loop ((args args) (value? #t))
+      (if (pair? args)
+	  (begin
+	    (cond ((not value?)
+		   (builder decoration-prefix)
+		   (builder (car args)))
+		  ((multi-value? (car args))
+		   (for-each (lambda (object)
+			       (builder #\newline)
+			       (builder (pp-to-string object)))
+			     (multi-value-objects (car args))))
+		  (else
+		   (builder #\newline)
+		   (builder (pp-to-string (car args)))))
+	    (loop (cdr args) (not value?)))))
+    (builder)))
+
+(define-record-type <multi-value>
+    (multi-value objects)
+    multi-value?
+  (objects multi-value-objects))
 
 (define-value-expectation 'expect 2
   (lambda (value pred expected)
     (if (pred expected value)
 	#f
-	(string-append "expected value\n"
-		       (write-to-string expected)
-		       "\nbut instead got value\n"
-		       (write-to-string value)))))
+	(make-message "expected value" expected
+		      "but instead got value" value))))
 
 (define-value-expectation 'expect-not 2
   (lambda (value pred expected)
     (if (pred expected value)
-	(string-append "expected value different from\n"
-		       (write-to-string expected)
-		       "\nbut instead got value\n"
-		       (write-to-string value))
+	(make-message "expected value different from" expected
+		      "but instead got value" value)
 	#f)))
 
 (define-value-expectation 'expect-true 0
   (lambda (value)
     (if value
 	#f
-	(string-append "expected true value but got false"))))
+	(make-message "expected true value but got false"))))
 
 (define-value-expectation 'expect-false 0
   (lambda (value)
     (if value
-	(string-append "expected false value but got\n"
-		       (write-to-string value))
+	(make-message "expected false value but got" value)
 	#f)))
 
 (define-error-expectation 'expect-error 0
@@ -405,39 +426,34 @@ USA.
       (cond ((string? v) v)
 	    ((eq? #t v) #f)
 	    ((eq? #f v)
-	     (string-append "Output\n"
-			    (pp-to-string objects)
-			    "doesn't satisfy predicate\n"
-			    (pp-to-string pred)
-			    "with expected value\n"
-			    (pp-to-string expected)))
+	     (make-message "Output" objects
+			   "doesn't satisfy predicate" pred
+			   "with expected value" expected))
 	    (else
 	     (error "illegal predicate value:" v))))))
 
 (define-output-expectation 'expect-write 1
   (lambda (objects expected)
     (if (and (pair? objects)
-	     (null? (cdr objects))
-	     (equal? (car objects) expected))
-	#f
-	(string-append "expected to see output "
-		       (write-to-string expected)
-		       "\nbut instead saw "
-		       (write-to-string (car objects))))))
+	     (null? (cdr objects)))
+	(if (equal? (car objects) expected)
+	    #f
+	    (make-message "expected to see output" expected
+			  "but instead saw" (car objects)))
+	(make-message "expected to see one output" expected
+		      "but instead saw" (multi-value objects)))))
 
 (define-output-expectation 'expect-pp-description 1
   (lambda (objects expected)
     (if (and (pair? objects)
 	     (equal? (cdr objects) expected))
 	#f
-	(string-append "expected to see pp description "
-		       (write-to-string expected)
-		       "\nbut instead saw "
-		       (write-to-string objects)))))
+	(make-message "expected to see pp description" (multi-value expected)
+		      "but instead saw" (multi-value objects)))))
 
 (define-output-expectation 'expect-no-output 0
   (lambda (objects)
     (if (null? objects)
 	#f
-	(string-append "expected no output but found "
-		       objects))))
+	(make-message "expected no output but instead saw"
+		      (multi-value objects)))))

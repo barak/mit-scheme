@@ -54,13 +54,16 @@ USA.
 		default-object?
 		environment?
 		fresh-line
+		iota
 		keyword-option-parser
 		make-bundle-predicate
 		make-settable-parameter
 		nearest-repl/environment
 		pathname-default-type
 		pp
+		pp-to-string
 		read-file
+		string-builder
 		warn
 		with-notification
 		write-to-string))
