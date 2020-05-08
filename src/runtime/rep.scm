@@ -919,8 +919,12 @@ USA.
 (define (read-eval-print environment message prompt)
   (repl/start (push-repl environment #f '() prompt) message))
 
-(define (ve environment)
-  (read-eval-print (->environment environment 've) #f 'inherit))
+(define (ve #!optional environment)
+  (read-eval-print (if (default-object? environment)
+		       (make-top-level-environment)
+		       (->environment environment 've))
+		   #f
+		   'inherit))
 
 (define (proceed #!optional value)
   (if (default-object? value)
