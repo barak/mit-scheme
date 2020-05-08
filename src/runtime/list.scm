@@ -1376,3 +1376,127 @@ USA.
 	      (set-cdr! items (list item))
 	      (loop (cdr items))))
 	items)))
+
+;;;; Alist tables
+
+(define %make-alist-table)
+(define alist-table?)
+(define alist-table-key=)
+(define %table-alist)
+(define %set-table-alist!)
+(seq:after-record 'add-action!
+  (lambda ()
+    (let ((rt (make-record-type '<alist-table> '(key= alist))))
+      (set! %make-alist-table (record-constructor rt))
+      (set! alist-table? (record-predicate rt))
+      (set! alist-table-key= (record-accessor rt 'key=))
+      (set! %table-alist (record-accessor rt 'alist))
+      (set! %set-table-alist! (record-modifier rt 'alist))
+      unspecific)))
+
+(define (alist-table key=)
+  (%make-alist-table key= '()))
+
+(define (alist-table-size table)
+  (length (%table-alist table)))
+
+(define (alist-table-empty? table)
+  (null? (%table-alist table)))
+
+(define (alist-table-fold kons knil table)
+  (alist-fold kons knil (%table-alist table)))
+
+(define (alist-table-fold-right kons knil table)
+  (alist-fold-right kons knil (%table-alist table)))
+
+(define (alist-table-keys table)
+  (map car (%table-alist table)))
+
+(define (alist-table-values table)
+  (map cdr (%table-alist table)))
+
+(define (alist-table->alist table)
+  (alist-copy (%table-alist table)))
+
+(define (%find-pair table key)
+  (let ((key= (alist-table-key= table)))
+    (find (lambda (p)
+	    (key= key (car p)))
+	  (%table-alist table))))
+
+(define (alist-table-exists? table key)
+  (and (%find-pair table key) #t))
+
+(define (alist-table-ref table key #!optional get-default)
+  (let ((p (%find-pair table key)))
+    (if (and (not p) (default-object? get-default))
+	(error:bad-range-argument key 'alist-table-ref))
+    (if p
+	(cdr p)
+	(get-default))))
+
+(define (alist-table-set! table key value)
+  (let ((p (%find-pair table key)))
+    (if p
+	(set-cdr! p value)
+	(%set-table-alist! table
+			   (cons (cons key value)
+				 (%table-alist table))))))
+
+(define (alist-table-update! table key procedure #!optional get-default)
+  (let ((p (%find-pair table key)))
+    (if p
+	(set-cdr! p (procedure (cdr p)))
+	(begin
+	  (if (default-object? get-default)
+	      (error:bad-range-argument key 'alist-table-update!))
+	  (%set-table-alist! table
+			     (cons (cons key (procedure (get-default)))
+				   (%table-alist table)))))))
+
+(define (alist-table-intern! table key get-value)
+  (let ((p (%find-pair table key)))
+    (if p
+	(cdr p)
+	(let ((value (get-value)))
+	  (%set-table-alist! table
+			     (cons (cons key value)
+				   (%table-alist table)))
+	  value))))
+
+(define (alist-table-search table predicate if-found if-not-found)
+  (let ((p
+	 (find (lambda (p)
+		 (predicate (car p) (cdr p)))
+	       (%table-alist table))))
+    (if p
+	(if-found (car p) (cdr p))
+	(if-not-found))))
+
+(define (alist-table-delete! table key #!optional default)
+  (let ((key= (alist-table-key= table)))
+    (let loop ((this (%table-alist table)) (prev #f))
+      (if (pair? this)
+	  (if (key= key (caar this))
+	      (begin
+		(if prev
+		    (set-cdr! prev (cdr this))
+		    (%set-table-alist! table (cdr this)))
+		(cdar this))
+	      (loop (cdr this) this))
+	  default))))
+
+(define (alist-table-delete-matching! table predicate)
+  (let loop ((this (%table-alist table)) (prev #f))
+    (if (pair? this)
+	(loop (cdr this)
+	      (if (predicate (caar this) (cdar this))
+		  (begin
+		    (if prev
+			(set-cdr! prev (cdr this))
+			(%set-table-alist! table (cdr this)))
+		    prev)
+		  this)))))
+
+(define (alist-table-clear! table)
+  (%set-table-alist! table '()))

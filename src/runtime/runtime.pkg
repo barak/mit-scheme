@@ -3290,6 +3290,25 @@ USA.
 	  alist-delete!			;SRFI-1
 	  alist-fold
 	  alist-fold-right
+	  alist-table
+	  alist-table->alist
+	  alist-table-clear!
+	  alist-table-delete!
+	  alist-table-delete-matching!
+	  alist-table-empty?
+	  alist-table-exists?
+	  alist-table-fold
+	  alist-table-fold-right
+	  alist-table-intern!
+	  alist-table-key=
+	  alist-table-keys
+	  alist-table-ref
+	  alist-table-search
+	  alist-table-set!
+	  alist-table-size
+	  alist-table-update!
+	  alist-table-values
+	  alist-table?
 	  alist?
 	  any-duplicates?
 	  append			;SRFI-1
