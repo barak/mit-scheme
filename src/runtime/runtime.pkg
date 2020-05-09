@@ -138,8 +138,8 @@ USA.
 	  (false? not)
 	  boolean/and
 	  boolean/or
-	  boolean=?
-	  boolean?
+	  boolean=?			;(scheme base)
+	  boolean?			;(scheme base)
 	  false
 	  not
 	  true))
@@ -166,14 +166,14 @@ USA.
 	  %tagged-object?
 	  bracketed-print-method
 	  bytes-per-object
-	  call-with-values
+	  call-with-values		;(scheme base)
 	  default-object
 	  default-object?
 	  define-pp-describer
 	  define-print-method
 	  error:not-a
 	  error:not-a-list-of
-	  force				;R7RS
+	  force				;(scheme lazy)
 	  gc-reclaimed-object
 	  gc-reclaimed-object?
 	  gc-space-status
@@ -192,7 +192,7 @@ USA.
 	  interrupt-mask/gc-ok
 	  interrupt-mask/none
 	  interrupt-mask/timer-ok
-	  make-promise			;R7RS
+	  make-promise			;(scheme lazy)
 	  make-unforced-promise
 	  object-constant?
 	  object-pure?
@@ -200,14 +200,14 @@ USA.
 	  predicate?
 	  promise-forced?
 	  promise-value
-	  promise?			;R7RS
+	  promise?			;(scheme lazy)
 	  register-predicate!
 	  set-dispatch-tag<=!
 	  set-predicate<=!
 	  simple-parser-method
 	  standard-print-method
 	  target-bytes-per-object
-	  values
+	  values			;(scheme base)
 	  with-absolutely-no-interrupts
 	  with-limited-interrupts)
   (export (runtime predicate)
@@ -226,41 +226,41 @@ USA.
   (files "generator")
   (parent (runtime))
   (export ()
-	  bytevector->generator		;SRFI-158
-	  circular-generator		;SRFI-158
-	  gappend			;SRFI-158
-	  gcons*			;SRFI-158
-	  gdelete			;SRFI-158
-	  gdrop				;SRFI-158
-	  gdrop-while			;SRFI-158
-	  generator			;SRFI-158
-	  generator->list		;SRFI-158
-	  generator->reverse-list	;SRFI-158
-	  generator->string		;SRFI-158
-	  generator->vector		;SRFI-158
-	  generator-any			;SRFI-158
-	  generator-count		;SRFI-158
-	  generator-every		;SRFI-158
-	  generator-find		;SRFI-158
-	  generator-fold		;SRFI-158
+	  bytevector->generator		;(srfi 158)
+	  circular-generator		;(srfi 158)
+	  gappend			;(srfi 158)
+	  gcons*			;(srfi 158)
+	  gdelete			;(srfi 158)
+	  gdrop				;(srfi 158)
+	  gdrop-while			;(srfi 158)
+	  generator			;(srfi 158)
+	  generator->list		;(srfi 158)
+	  generator->reverse-list	;(srfi 158)
+	  generator->string		;(srfi 158)
+	  generator->vector		;(srfi 158)
+	  generator-any			;(srfi 158)
+	  generator-count		;(srfi 158)
+	  generator-every		;(srfi 158)
+	  generator-find		;(srfi 158)
+	  generator-fold		;(srfi 158)
 	  generator-fold-map
-	  generator-fold-right		;SRFI-158
+	  generator-fold-right		;(srfi 158)
 	  generator-fold-right-map
-	  generator-for-each		;SRFI-158
-	  generator-map->list		;SRFI-158
-	  generator-unfold		;SRFI-158
-	  gfilter			;SRFI-158
-	  gflatten			;SRFI-158
-	  gmap				;SRFI-158
-	  gremove			;SRFI-158
-	  gtake				;SRFI-158
-	  gtake-while			;SRFI-158
-	  list->generator		;SRFI-158
-	  make-iota-generator		;SRFI-158
-	  make-range-generator		;SRFI-158
-	  reverse-vector->generator	;SRFI-158
-	  string->generator		;SRFI-158
-	  vector->generator		;SRFI-158
+	  generator-for-each		;(srfi 158)
+	  generator-map->list		;(srfi 158)
+	  generator-unfold		;(srfi 158)
+	  gfilter			;(srfi 158)
+	  gflatten			;(srfi 158)
+	  gmap				;(srfi 158)
+	  gremove			;(srfi 158)
+	  gtake				;(srfi 158)
+	  gtake-while			;(srfi 158)
+	  list->generator		;(srfi 158)
+	  make-iota-generator		;(srfi 158)
+	  make-range-generator		;(srfi 158)
+	  reverse-vector->generator	;(srfi 158)
+	  string->generator		;(srfi 158)
+	  vector->generator		;(srfi 158)
 	  ))
 
 (define-package (runtime weak-pair)
@@ -379,10 +379,11 @@ USA.
   (files "equals")
   (parent (runtime))
   (export ()
-	  eq?
+	  eq?				;(scheme base)
 	  equal-hash
-	  equal?
-	  eqv?))
+	  equal?			;(scheme base)
+	  eqv?				;(scheme base)
+	  ))
 
 (define-package (runtime primitive-arithmetic)
   (files "primitive-arithmetic")
@@ -391,7 +392,7 @@ USA.
 	  (largest-fixnum fix:largest-value)
 	  (smallest-fixnum fix:smallest-value))
   (export ()
-	  (exact-integer? int:integer?)
+	  (exact-integer? int:integer?)	;(scheme base)
 	  (fix:* fx*)
 	  (fix:+ fx+)
 	  (fix:- fx-)
@@ -417,10 +418,10 @@ USA.
 	  (fix:zero? fxzero?)
 	  (flo:ldexp flo:denormalize)
 	  (flo:scalbn flo:denormalize)
-	  (fxarithmetic-shift-left fxarithmetic-shift) ;SRFI-143
+	  (fxarithmetic-shift-left fxarithmetic-shift) ;(srfi 143)
 	  (index-fixnum? non-negative-fixnum?)
 	  ->flonum
-	  exact-integer-sqrt
+	  exact-integer-sqrt		;(scheme base)
 	  fix:andc
 	  fix:divide
 	  fix:end-index
@@ -429,51 +430,51 @@ USA.
 	  fix:largest-value
 	  fix:smallest-value
 	  fix:start-index
-	  fixnum?			;SRFI-143
-	  fx*				;SRFI-143
-	  fx*/carry			;SRFI-143
-	  fx+				;SRFI-143
-	  fx+/carry			;SRFI-143
-	  fx-				;SRFI-143
-	  fx-/carry			;SRFI-143
-	  fx-greatest			;SRFI-143
-	  fx-least			;SRFI-143
-	  fx-width			;SRFI-143
-	  fx<=?				;SRFI-143
-	  fx<?				;SRFI-143
-	  fx=?				;SRFI-143
-	  fx>=?				;SRFI-143
-	  fx>?				;SRFI-143
-	  fxabs				;SRFI-143
-	  fxand				;SRFI-143
-	  fxarithmetic-shift		;SRFI-143
-	  fxarithmetic-shift-right	;SRFI-143
-	  fxbit-count			;SRFI-143
-	  fxbit-field			;SRFI-143
-	  fxbit-field-reverse		;SRFI-143
-	  fxbit-field-rotate		;SRFI-143
-	  fxbit-set?			;SRFI-143
-	  fxcopy-bit			;SRFI-143
+	  fixnum?			;(srfi 143)
+	  fx*				;(srfi 143)
+	  fx*/carry			;(srfi 143)
+	  fx+				;(srfi 143)
+	  fx+/carry			;(srfi 143)
+	  fx-				;(srfi 143)
+	  fx-/carry			;(srfi 143)
+	  fx-greatest			;(srfi 143)
+	  fx-least			;(srfi 143)
+	  fx-width			;(srfi 143)
+	  fx<=?				;(srfi 143)
+	  fx<?				;(srfi 143)
+	  fx=?				;(srfi 143)
+	  fx>=?				;(srfi 143)
+	  fx>?				;(srfi 143)
+	  fxabs				;(srfi 143)
+	  fxand				;(srfi 143)
+	  fxarithmetic-shift		;(srfi 143)
+	  fxarithmetic-shift-right	;(srfi 143)
+	  fxbit-count			;(srfi 143)
+	  fxbit-field			;(srfi 143)
+	  fxbit-field-reverse		;(srfi 143)
+	  fxbit-field-rotate		;(srfi 143)
+	  fxbit-set?			;(srfi 143)
+	  fxcopy-bit			;(srfi 143)
 	  fxdecr
-	  fxeven?			;SRFI-143
-	  fxfirst-set-bit		;SRFI-143
-	  fxif				;SRFI-143
+	  fxeven?			;(srfi 143)
+	  fxfirst-set-bit		;(srfi 143)
+	  fxif				;(srfi 143)
 	  fxincr
-	  fxior				;SRFI-143
-	  fxlength			;SRFI-143
-	  fxmax				;SRFI-143
-	  fxmin				;SRFI-143
-	  fxneg				;SRFI-143
-	  fxnegative?			;SRFI-143
-	  fxnot				;SRFI-143
-	  fxodd?			;SRFI-143
-	  fxpositive?			;SRFI-143
-	  fxquotient			;SRFI-143
-	  fxremainder			;SRFI-143
-	  fxsqrt			;SRFI-143
-	  fxsquare			;SRFI-143
-	  fxxor				;SRFI-143
-	  fxzero?			;SRFI-143
+	  fxior				;(srfi 143)
+	  fxlength			;(srfi 143)
+	  fxmax				;(srfi 143)
+	  fxmin				;(srfi 143)
+	  fxneg				;(srfi 143)
+	  fxnegative?			;(srfi 143)
+	  fxnot				;(srfi 143)
+	  fxodd?			;(srfi 143)
+	  fxpositive?			;(srfi 143)
+	  fxquotient			;(srfi 143)
+	  fxremainder			;(srfi 143)
+	  fxsqrt			;(srfi 143)
+	  fxsquare			;(srfi 143)
+	  fxxor				;(srfi 143)
+	  fxzero?			;(srfi 143)
 	  flo:*
 	  flo:*+
 	  flo:+
@@ -711,15 +712,16 @@ USA.
           euclidean-quotient
           euclidean-remainder
           euclidean/
-          floor-quotient
-          floor-remainder
-          floor/
+          floor-quotient		;(scheme base)
+          floor-remainder		;(scheme base)
+          floor/			;(scheme base)
           round-quotient
           round-remainder
           round/
-          truncate-quotient
-          truncate-remainder
-          truncate/))
+          truncate-quotient		;(scheme base)
+          truncate-remainder		;(scheme base)
+          truncate/			;(scheme base)
+	  ))
 
 (define-package (runtime keyword)
   (files "keyword")
@@ -746,15 +748,15 @@ USA.
 	  constant-procedure
 	  edit
 	  edwin
-	  emergency-exit		;R7RS
+	  emergency-exit		;(scheme process-context)
 	  environment-link-name
 	  ephemeron-broken?
 	  ephemeron-datum
 	  ephemeron-key
 	  ephemeron?
 	  error-procedure
-	  eval
-	  exit				;R7RS
+	  eval				;(scheme eval)
+	  exit				;(scheme process-context)
 	  false-procedure
 	  fasdump
 	  for-each-interned-symbol
@@ -913,7 +915,7 @@ USA.
   (export deprecated ()
 	  (file-writable? file-writeable?))
   (export ()
-	  (file-exists? file-exists-indirect?)
+	  (file-exists? file-exists-indirect?) ;(scheme file)
 	  (file-soft-link? file-symbolic-link?)
 	  <mime-type>
 	  allocate-temporary-file
@@ -924,7 +926,7 @@ USA.
 	  current-file-time
 	  deallocate-temporary-file
 	  delete-directory
-	  delete-file
+	  delete-file			;(scheme file)
 	  delete-file-no-errors
 	  directory-file-names
 	  disassociate-pathname-type-from-mime-type
@@ -984,15 +986,15 @@ USA.
 	  intern-soft
 	  interned-symbol?
 	  generate-uninterned-symbol
-	  string->symbol
+	  string->symbol		;(scheme base)
 	  string->uninterned-symbol
 	  symbol
-	  symbol->string
+	  symbol->string		;(scheme base)
 	  symbol-hash
 	  symbol<?
-	  symbol=?			;R7RS
+	  symbol=?			;(scheme base)
 	  symbol>?
-	  symbol?
+	  symbol?			;(scheme base)
 	  uninterned-symbol?))
 
 (define-package (runtime microcode-data)
@@ -1050,9 +1052,9 @@ USA.
 	  for-each-vector-element
 	  guarantee-subvector
 	  guarantee-vector-of-type
-	  list->vector
+	  list->vector			;(scheme base)
 	  make-initialized-vector
-	  make-vector
+	  make-vector			;(scheme base)
 	  subvector
 	  subvector->list
 	  subvector-fill!
@@ -1064,35 +1066,35 @@ USA.
 	  subvector-move-left!
 	  subvector-move-right!
 	  subvector-uniform?
-	  vector
-	  vector->list
+	  vector			;(scheme base)
+	  vector->list			;(scheme base)
 	  vector-any
-	  vector-append
+	  vector-append			;(scheme base)
 	  vector-binary-search
 	  vector-builder
-	  vector-copy
-	  vector-copy!
+	  vector-copy			;(scheme base)
+	  vector-copy!			;(scheme base)
 	  vector-eighth
 	  vector-every
 	  vector-fifth
-	  vector-fill!
+	  vector-fill!			;(scheme base)
 	  vector-filled?
 	  vector-find-next-element
 	  vector-find-previous-element
 	  vector-first
-	  vector-for-each
+	  vector-for-each		;(scheme base)
 	  vector-fourth
 	  vector-grow
 	  vector-head
 	  vector-head!
-	  vector-length
-	  vector-map
+	  vector-length			;(scheme base)
+	  vector-map			;(scheme base)
 	  vector-move!
 	  vector-of-type?
 	  vector-of-unique-symbols?
-	  vector-ref
+	  vector-ref			;(scheme base)
 	  vector-second
-	  vector-set!
+	  vector-set!			;(scheme base)
 	  vector-seventh
 	  vector-sixth
 	  vector-tail
@@ -1133,8 +1135,8 @@ USA.
 	  file-time->global-decoded-time
 	  file-time->local-decoded-time
 	  file-time->universal-time
-	  get-environment-variables	;R7RS
-	  get-environment-variable	;R7RS
+	  get-environment-variables	;(scheme process-context)
+	  get-environment-variable	;(scheme process-context)
 	  init-file-specifier->pathname
 	  os/exec-path
 	  os/executable-pathname-types
@@ -1262,34 +1264,34 @@ USA.
 	  char->string
 	  decorated-string-append
 	  immutable-string?
-	  list->string
-	  make-string
+	  list->string			;(scheme base)
+	  make-string			;(scheme base)
 	  mutable-string?
 	  nfc-string?
-	  string
+	  string			;(scheme base)
 	  string*
 	  string->immutable
-	  string->list
+	  string->list			;(scheme base)
 	  string->nfc
 	  string->nfd
-	  string->vector
+	  string->vector		;(scheme base)
 	  string-any
-	  string-append
+	  string-append			;(scheme base)
 	  string-builder
-	  string-ci<=?
-	  string-ci<?
-	  string-ci=?
-	  string-ci>=?
-	  string-ci>?
+	  string-ci<=?			;(scheme char)
+	  string-ci<?			;(scheme char)
+	  string-ci=?			;(scheme char)
+	  string-ci>=?			;(scheme char)
+	  string-ci>?			;(scheme char)
 	  string-compare
 	  string-compare-ci
 	  string-concatenate
-	  string-copy
-	  string-copy!
+	  string-copy			;(scheme base)
+	  string-copy!			;(scheme base)
 	  string-count
-	  string-downcase
+	  string-downcase		;(scheme char)
 	  string-every
-	  string-fill!
+	  string-fill!			;(scheme base)
 	  string-find-first-index
 	  string-find-last-index
 	  string-find-next-char
@@ -1298,21 +1300,21 @@ USA.
 	  string-find-previous-char
 	  string-find-previous-char-ci
 	  string-find-previous-char-in-set
-	  string-fold			;SRFI 140
-	  string-fold-right		;SRFI 140
-	  string-foldcase
-	  string-for-each
-	  string-hash			;SRFI-69
-	  string-ci-hash		;SRFI-69
+	  string-fold			;(srfi 140)
+	  string-fold-right		;(srfi 140)
+	  string-foldcase		;(scheme char)
+	  string-for-each		;(scheme base)
+	  string-hash			;(srfi 69)
+	  string-ci-hash		;(srfi 69)
 	  string-head
 	  string-immutable?
 	  string-in-nfc?
 	  string-in-nfd?
 	  string-joiner
 	  string-joiner*
-	  string-length
+	  string-length			;(scheme base)
 	  string-lower-case?
-	  string-map
+	  string-map			;(scheme base)
 	  string-match-backward
 	  string-match-forward
 	  string-mutable?
@@ -1322,12 +1324,12 @@ USA.
 	  string-padder
 	  string-prefix-ci?
 	  string-prefix?
-	  string-ref
+	  string-ref			;(scheme base)
 	  string-replace
 	  string-search-all
 	  string-search-backward
 	  string-search-forward
-	  string-set!
+	  string-set!			;(scheme base)
 	  string-slice
 	  string-splitter
 	  string-suffix-ci?
@@ -1338,17 +1340,18 @@ USA.
 	  string-trim-left
 	  string-trim-right
 	  string-trimmer
-	  string-upcase
+	  string-upcase			;(scheme char)
 	  string-upper-case?
-	  string<=?
-	  string<?
-	  string=?
-	  string>=?
-	  string>?
-	  string?
-	  substring
+	  string<=?			;(scheme base)
+	  string<?			;(scheme base)
+	  string=?			;(scheme base)
+	  string>=?			;(scheme base)
+	  string>?			;(scheme base)
+	  string?			;(scheme base)
+	  substring			;(scheme base)
 	  substring?
-	  vector->string)
+	  vector->string		;(scheme base)
+	  )
   (export (runtime)
 	  string-for-primitive
 	  string-from-primitive)
@@ -1369,18 +1372,18 @@ USA.
 	  legacy-string->bytevector)
   (export ()
 	  (byte? u8?)
-	  bytevector
+	  bytevector			;(scheme base)
 	  bytevector->exact-nonnegative-integer
 	  bytevector->hexadecimal
 	  bytevector->list
 	  bytevector->vector
-	  bytevector-append
+	  bytevector-append		;(scheme base)
 	  bytevector-builder
-	  bytevector-copy
-	  bytevector-copy!
+	  bytevector-copy		;(scheme base)
+	  bytevector-copy!		;(scheme base)
 	  bytevector-fill!
 	  bytevector-hash
-	  bytevector-length
+	  bytevector-length		;(scheme base)
 	  bytevector-u16be-ref
 	  bytevector-u16be-set!
 	  bytevector-u16le-ref
@@ -1389,17 +1392,17 @@ USA.
 	  bytevector-u32be-set!
 	  bytevector-u32le-ref
 	  bytevector-u32le-set!
-	  bytevector-u8-ref
-	  bytevector-u8-set!
+	  bytevector-u8-ref		;(scheme base)
+	  bytevector-u8-set!		;(scheme base)
 	  bytevector-zero-explicit!
 	  bytevector<?
 	  bytevector=?
-	  bytevector?
+	  bytevector?			;(scheme base)
 	  exact-nonnegative-integer->bytevector
 	  hexadecimal->bytevector
 	  iso8859-1->string
 	  list->bytevector
-	  make-bytevector
+	  make-bytevector		;(scheme base)
 	  string->iso8859-1
 	  string->utf16
 	  string->utf16be
@@ -1407,7 +1410,7 @@ USA.
 	  string->utf32
 	  string->utf32be
 	  string->utf32le
-	  string->utf8
+	  string->utf8			;(scheme base)
 	  u16?
 	  u32?
 	  u8?
@@ -1417,7 +1420,7 @@ USA.
 	  utf32->string
 	  utf32be->string
 	  utf32le->string
-	  utf8->string
+	  utf8->string			;(scheme base)
 	  vector->bytevector))
 
 (define-package (runtime 1d-property)
@@ -1482,7 +1485,8 @@ USA.
   (files "apply")
   (parent (runtime))
   (export ()
-	  apply))
+	  apply				;(scheme base)
+	  ))
 
 (define-package (runtime character)
   (files "char")
@@ -1496,7 +1500,7 @@ USA.
 	  char-8-bit?
 	  char->bitless-char
 	  char->digit
-	  char->integer
+	  char->integer			;(scheme base)
 	  char->name
 	  char-ascii?
 	  char-bit:control
@@ -1507,35 +1511,35 @@ USA.
 	  char-bits-clear?
 	  char-bits-limit
 	  char-bits-set?
-	  char-ci<=?
-	  char-ci<?
+	  char-ci<=?			;(scheme char)
+	  char-ci<?			;(scheme char)
 	  char-ci=-predicate
-	  char-ci=?
-	  char-ci>=?
-	  char-ci>?
+	  char-ci=?			;(scheme char)
+	  char-ci>=?			;(scheme char)
+	  char-ci>?			;(scheme char)
 	  char-code
 	  char-code-limit
 	  char-codec-decoder
 	  char-codec-encoder
 	  char-codec?
-	  char-downcase
-	  char-foldcase
+	  char-downcase			;(scheme char)
+	  char-foldcase			;(scheme char)
 	  char-general-category
-	  char-upcase
-	  char<=?
-	  char<?
+	  char-upcase			;(scheme char)
+	  char<=?			;(scheme base)
+	  char<?			;(scheme base)
 	  char=-predicate
-	  char=?
-	  char>=?
-	  char>?
-	  char?
+	  char=?			;(scheme base)
+	  char>=?			;(scheme base)
+	  char>?			;(scheme base)
+	  char?				;(scheme base)
 	  clear-char-bits
 	  code-point-general-category
 	  decode-utf8-char
 	  digit->char
-	  digit-value
+	  digit-value			;(scheme char)
 	  get-char-codec
-	  integer->char
+	  integer->char			;(scheme base)
 	  make-char
 	  name->char
 	  radix?
@@ -1623,27 +1627,28 @@ USA.
 	 "ucd-table-wspace")
   (parent (runtime))
   (export ()
-	  (char-set:digit char-set:nt=decimal)	;SRFI 14
-	  (char-set:letter char-set:alphabetic) ;SRFI 14
+	  (char-set:digit char-set:nt=decimal)	;(srfi 14)
+	  (char-set:letter char-set:alphabetic) ;(srfi 14)
 	  (char-set:numeric char-set:nt=decimal)
-	  (char-set:title-case char-set:gc=letter:titlecase) ;SRFI 14
-	  (char-numeric? char-nt=decimal?)
-	  char-alphabetic?
+	  (char-set:title-case char-set:gc=letter:titlecase) ;(srfi 14)
+	  (char-numeric? char-nt=decimal?) ;(scheme char)
+	  char-alphabetic?		;(scheme char)
 	  char-cased?
 	  char-changes-when-case-folded?
 	  char-changes-when-lower-cased?
 	  char-changes-when-upper-cased?
-	  char-lower-case?
+	  char-lower-case?		;(scheme char)
 	  char-set:alphabetic
 	  char-set:cased
 	  char-set:changes-when-case-folded
 	  char-set:changes-when-lower-cased
 	  char-set:changes-when-upper-cased
-	  char-set:lower-case		;SRFI 14
-	  char-set:upper-case		;SRFI 14
-	  char-set:whitespace		;SRFI 14
-	  char-upper-case?
-	  char-whitespace?)
+	  char-set:lower-case		;(srfi 14)
+	  char-set:upper-case		;(srfi 14)
+	  char-set:whitespace		;(srfi 14)
+	  char-upper-case?		;(scheme char)
+	  char-whitespace?		;(scheme char)
+	  )
   (export (runtime character)
 	  ucd-gc-value
 	  ucd-nt-value
@@ -1703,15 +1708,15 @@ USA.
   (files "ucd-glue")
   (parent (runtime))
   (export ()
-	  (char-set:full char-set:unicode) ;SRFI 14
-	  (char-set:letter+digit char-set:alphanumeric) ;SRFI 14
+	  (char-set:full char-set:unicode) ;(srfi 14)
+	  (char-set:letter+digit char-set:alphanumeric) ;(srfi 14)
 	  char-alphanumeric?
 	  char-graphic?
 	  char-newline?
 	  char-printing?
 	  char-set:alphanumeric
 	  char-set:control
-	  char-set:graphic		;SRFI 14
+	  char-set:graphic		;(srfi 14)
 	  char-set:newline
 	  char-set:no-newline
 	  char-set:not-alphabetic
@@ -1723,10 +1728,10 @@ USA.
 	  char-set:not-standard
 	  char-set:not-upper-case
 	  char-set:not-whitespace
-	  char-set:printing		;SRFI 14
-	  char-set:punctuation		;SRFI 14
-	  char-set:standard		;SRFI 14
-	  char-set:symbol		;SRFI 14
+	  char-set:printing		;(srfi 14)
+	  char-set:punctuation		;(srfi 14)
+	  char-set:standard		;(srfi 14)
+	  char-set:symbol		;(srfi 14)
 	  char-set:unicode
 	  char-standard?
 	  unicode-char?)
@@ -1793,74 +1798,74 @@ USA.
           (list->char-set! list->char-set)
           (string->char-set! string->char-set)
           (ucs-range->char-set! ucs-range->char-set)
-	  ->char-set			;SRFI 14
+	  ->char-set			;(srfi 14)
 	  8-bit-char-set?
 	  char-ctl?
 	  char-in-set?
-	  char-set			;SRFI 14 (extended)
+	  char-set			;(srfi 14) (extended)
 	  char-set*
 	  char-set->code-points
-	  char-set->list		;SRFI 14
+	  char-set->list		;(srfi 14)
 	  char-set->name
-	  char-set->string		;SRFI 14
-	  char-set-adjoin		;SRFI 14
-	  char-set-any			;SRFI 14
+	  char-set->string		;(srfi 14)
+	  char-set-adjoin		;(srfi 14)
+	  char-set-any			;(srfi 14)
 	  char-set-ci-predicate
-	  char-set-complement		;SRFI 14
-	  char-set-contains?		;SRFI 14
-	  char-set-copy                 ;SRFI 14
-	  char-set-count		;SRFI 14
-	  char-set-cursor		;SRFI 14
-	  char-set-cursor-next		;SRFI 14
-	  char-set-delete		;SRFI 14
-	  char-set-diff+intersection	;SRFI 14
-	  char-set-difference		;SRFI 14
+	  char-set-complement		;(srfi 14)
+	  char-set-contains?		;(srfi 14)
+	  char-set-copy                 ;(srfi 14)
+	  char-set-count		;(srfi 14)
+	  char-set-cursor		;(srfi 14)
+	  char-set-cursor-next		;(srfi 14)
+	  char-set-delete		;(srfi 14)
+	  char-set-diff+intersection	;(srfi 14)
+	  char-set-difference		;(srfi 14)
 	  char-set-downcase
 	  char-set-empty?
-	  char-set-every		;SRFI 14
-	  char-set-filter		;SRFI 14
-	  char-set-fold			;SRFI 14
+	  char-set-every		;(srfi 14)
+	  char-set-filter		;(srfi 14)
+	  char-set-fold			;(srfi 14)
 	  char-set-fold-right
 	  char-set-foldcase
-	  char-set-for-each		;SRFI 14
-	  char-set-hash			;SRFI 14
-	  char-set-intersection		;SRFI 14
+	  char-set-for-each		;(srfi 14)
+	  char-set-hash			;(srfi 14)
+	  char-set-intersection		;(srfi 14)
 	  char-set-intersection*
 	  char-set-invert
-	  char-set-map			;SRFI 14
+	  char-set-map			;(srfi 14)
 	  char-set-name?
 	  char-set-names
 	  char-set-predicate
 	  char-set-range-fold
 	  char-set-range-fold-right
-	  char-set-ref			;SRFI 14
-	  char-set-size			;SRFI 14
-	  char-set-unfold		;SRFI 14
-	  char-set-union		;SRFI 14
+	  char-set-ref			;(srfi 14)
+	  char-set-size			;(srfi 14)
+	  char-set-unfold		;(srfi 14)
+	  char-set-union		;(srfi 14)
 	  char-set-union*
 	  char-set-upcase
-	  char-set-xor			;SRFI 14
+	  char-set-xor			;(srfi 14)
 	  char-set-xor*
-	  char-set:ascii		;SRFI 14
-	  char-set:blank		;SRFI 14
-	  char-set:empty		;SRFI 14
-	  char-set:hex-digit		;SRFI 14
-	  char-set:iso-control		;SRFI 14
-	  char-set<=			;SRFI 14
-	  char-set=			;SRFI 14
-	  char-set?			;SRFI 14
+	  char-set:ascii		;(srfi 14)
+	  char-set:blank		;(srfi 14)
+	  char-set:empty		;(srfi 14)
+	  char-set:hex-digit		;(srfi 14)
+	  char-set:iso-control		;(srfi 14)
+	  char-set<=			;(srfi 14)
+	  char-set=			;(srfi 14)
+	  char-set?			;(srfi 14)
 	  char-sets-disjoint?
 	  char-wsp?
 	  code-point-list?
 	  code-point-in-char-set?
 	  compute-char-set
-	  end-of-char-set?		;SRFI 14
-	  list->char-set		;SRFI 14
+	  end-of-char-set?		;(srfi 14)
+	  list->char-set		;(srfi 14)
 	  name->char-set
 	  re-char-pattern->code-points
 	  re-compile-char-set
-	  string->char-set		;SRFI 14
-	  ucs-range->char-set		;SRFI 14
+	  string->char-set		;(srfi 14)
+	  ucs-range->char-set		;(srfi 14)
 	  )
   (export (runtime regexp regsexp)
 	  cpl-element?
@@ -1947,8 +1952,8 @@ USA.
   (files "contin")
   (parent (runtime))
   (export ()
-	  (call/cc call-with-current-continuation) ;R7RS
-	  call-with-current-continuation ;R7RS
+	  (call/cc call-with-current-continuation) ;(scheme base)
+	  call-with-current-continuation ;(scheme base)
 	  continuation?
 	  within-continuation)
   (export (runtime continuation-parser)
@@ -2038,7 +2043,7 @@ USA.
 	  ctime-string->decoded-time
 	  ctime-string->file-time
 	  ctime-string->universal-time
-	  current-second		;R7RS
+	  current-second		;(scheme time)
 	  day-of-week/long-string
 	  day-of-week/short-string
 	  decoded-time->ctime-string
@@ -2220,7 +2225,7 @@ USA.
 	  procedure-environment
 	  procedure-lambda
 	  procedure-of-arity?
-	  procedure?
+	  procedure?			;(scheme base)
 	  scode-lambda-arity
 	  set-apply-hook-extra!
 	  set-apply-hook-procedure!
@@ -2452,11 +2457,11 @@ USA.
 	  condition?
 	  continue
 	  default/invoke-condition-handler
-	  error				;R7RS
+	  error				;(scheme base)
 	  error-irritant/noise
-	  error-object-irritants	;R7RS
-	  error-object-message		;R7RS
-	  error-object?			;R7RS
+	  error-object-irritants	;(scheme base)
+	  error-object-message		;(scheme base)
+	  error-object?			;(scheme base)
 	  error:bad-range-argument
 	  error:datum-out-of-range
 	  error:derived-file
@@ -2469,7 +2474,7 @@ USA.
 	  error:wrong-number-of-arguments
 	  error:wrong-type-argument
 	  error:wrong-type-datum
-	  file-error?			;R7RS
+	  file-error?			;(scheme base)
 	  find-restart
 	  first-bound-restart
 	  format-error-message
@@ -2483,8 +2488,8 @@ USA.
 	  muffle-warning
 	  param:standard-error-hook
 	  param:standard-warning-hook
-	  raise				;R7RS
-	  raise-continuable		;R7RS
+	  raise				;(scheme base)
+	  raise-continuable		;(scheme base)
 	  restart/effector
 	  restart/get
 	  restart/interactor
@@ -2501,7 +2506,7 @@ USA.
 	  store-value
 	  use-value
 	  warn
-	  with-exception-handler	;R7RS
+	  with-exception-handler	;(scheme base)
 	  with-restart
 	  with-simple-restart
 	  write-condition-report
@@ -2569,18 +2574,19 @@ USA.
 	  call-with-binary-output-file
 	  call-with-exclusive-binary-output-file
 	  call-with-exclusive-output-file
-	  call-with-input-file
-	  call-with-output-file
+	  call-with-input-file		;(scheme file)
+	  call-with-output-file		;(scheme file)
 	  open-binary-i/o-file
-	  open-binary-input-file
-	  open-binary-output-file
+	  open-binary-input-file	;(scheme file)
+	  open-binary-output-file	;(scheme file)
 	  open-exclusive-binary-output-file
 	  open-exclusive-output-file
 	  open-i/o-file
-	  open-input-file
-	  open-output-file
-	  with-input-from-file
-	  with-output-to-file))
+	  open-input-file		;(scheme file)
+	  open-output-file		;(scheme file)
+	  with-input-from-file		;(scheme file)
+	  with-output-to-file		;(scheme file)
+	  ))
 
 (define-package (runtime transcript)
   (files "transcript")
@@ -2797,7 +2803,7 @@ USA.
 	  strong-hash-table/constructor
 	  weak-hash-table/constructor)
   (export ()
-	  alist->hash-table		;SRFI-69
+	  alist->hash-table		;(srfi 69)
 	  binary-hash-by-equal
 	  binary-hash-by-eqv
 	  binary-hash-by-identity
@@ -2814,13 +2820,13 @@ USA.
 	  equality-predicate?
 	  eqv-hash
 	  eqv-hash-mod
-	  hash-by-identity		;SRFI-69
-	  hash-table->alist		;SRFI-69
+	  hash-by-identity		;(srfi 69)
+	  hash-table->alist		;(srfi 69)
 	  hash-table-clean!
-	  hash-table-clear!		;SRFI-69
+	  hash-table-clear!		;(srfi 69)
 	  hash-table-constructor
-	  hash-table-copy		;SRFI-69
-	  hash-table-delete!		;SRFI-69
+	  hash-table-copy		;(srfi 69)
+	  hash-table-delete!		;(srfi 69)
 	  hash-table-entry-type-names
 	  hash-table-entry-type:datum-ephemeral
 	  hash-table-entry-type:datum-weak
@@ -2829,29 +2835,29 @@ USA.
 	  hash-table-entry-type:key-weak
 	  hash-table-entry-type:key&datum-weak
 	  hash-table-entry-type:strong
-	  hash-table-equivalence-function ;SRFI-69
-	  hash-table-exists?		;SRFI-69
-	  hash-table-fold		;SRFI-69
+	  hash-table-equivalence-function ;(srfi 69)
+	  hash-table-exists?		;(srfi 69)
+	  hash-table-fold		;(srfi 69)
 	  hash-table-grow-size
-	  hash-table-hash-function	;SRFI-69
+	  hash-table-hash-function	;(srfi 69)
 	  hash-table-intern!
-	  hash-table-keys		;SRFI-69
-	  hash-table-merge!		;SRFI-69
-	  hash-table-ref		;SRFI-69
-	  hash-table-ref/default	;SRFI-69
+	  hash-table-keys		;(srfi 69)
+	  hash-table-merge!		;(srfi 69)
+	  hash-table-ref		;(srfi 69)
+	  hash-table-ref/default	;(srfi 69)
 	  hash-table-rehash-size
 	  hash-table-rehash-threshold
-	  hash-table-set!		;SRFI-69
+	  hash-table-set!		;(srfi 69)
 	  hash-table-shrink-size
-	  hash-table-size		;SRFI-69
+	  hash-table-size		;(srfi 69)
 	  hash-table-type
 	  hash-table-type?
-	  hash-table-update!		;SRFI-69
-	  hash-table-update!/default	;SRFI-69
-	  hash-table-values		;SRFI-69
-	  hash-table-walk		;SRFI-69
+	  hash-table-update!		;(srfi 69)
+	  hash-table-update!/default	;(srfi 69)
+	  hash-table-values		;(srfi 69)
+	  hash-table-walk		;(srfi 69)
 	  hash-table/lookup
-	  hash-table?			;SRFI-69
+	  hash-table?			;(srfi 69)
 	  key-ephemeral-eq-hash-table-type
 	  key-ephemeral-eqv-hash-table-type
 	  key-weak-eq-hash-table-type
@@ -2927,20 +2933,21 @@ USA.
 	  binary-output-port?
 	  binary-port-length
 	  binary-port-position
-	  binary-port?
+	  binary-port?			;(scheme base)
 	  call-with-output-bytevector
-	  get-output-bytevector
-	  open-input-bytevector
-	  open-output-bytevector
-	  peek-u8
-	  read-bytevector
-	  read-bytevector!
-	  read-u8
+	  get-output-bytevector		;(scheme base)
+	  open-input-bytevector		;(scheme base)
+	  open-output-bytevector	;(scheme base)
+	  peek-u8			;(scheme base)
+	  read-bytevector		;(scheme base)
+	  read-bytevector!		;(scheme base)
+	  read-u8			;(scheme base)
 	  set-binary-port-position!
 	  textual->binary-port
-	  u8-ready?
-	  write-bytevector
-	  write-u8)
+	  u8-ready?			;(scheme base)
+	  write-bytevector		;(scheme base)
+	  write-u8			;(scheme base)
+	  )
   (export (runtime)
 	  binary-port-input-channel
 	  binary-port-output-channel
@@ -3044,27 +3051,27 @@ USA.
 	  with-output-to-port
 	  with-trace-output-port)
   (export ()
-	  call-with-port
-	  close-input-port
-	  close-output-port
-	  close-port
-	  current-error-port
-	  current-input-port
-	  current-output-port
+	  call-with-port		;(scheme base)
+	  close-input-port		;(scheme base)
+	  close-output-port		;(scheme base)
+	  close-port			;(scheme base)
+	  current-error-port		;(scheme base)
+	  current-input-port		;(scheme base)
+	  current-output-port		;(scheme base)
 	  i/o-port?
 	  input-port-blocking-mode
-	  input-port-open?
+	  input-port-open?		;(scheme base)
 	  input-port-terminal-mode
-	  input-port?
+	  input-port?			;(scheme base)
 	  interaction-i/o-port
 	  intern-port-property!
 	  make-textual-port
 	  make-textual-port-type
 	  notification-output-port
 	  output-port-blocking-mode
-	  output-port-open?
+	  output-port-open?		;(scheme base)
 	  output-port-terminal-mode
-	  output-port?
+	  output-port?			;(scheme base)
 	  port-properties
 	  port-property
 	  port/coding
@@ -3076,7 +3083,7 @@ USA.
 	  port/set-coding
 	  port/set-line-ending
 	  port/supports-coding?
-	  port?
+	  port?				;(scheme base)
 	  remove-port-property!
 	  set-input-port-blocking-mode!
 	  set-input-port-terminal-mode!
@@ -3092,7 +3099,7 @@ USA.
 	  textual-port-operation-names
 	  textual-port-thread-mutex
 	  textual-port-type
-	  textual-port?
+	  textual-port?			;(scheme base)
 	  set-textual-port-state!
 	  textual-port-state
 	  trace-output-port
@@ -3138,9 +3145,9 @@ USA.
   (export ()
 	  (discard-char read-char)
 	  (input-port/discard-char input-port/read-char)
-	  char-ready?
-	  eof-object
-	  eof-object?
+	  char-ready?			;(scheme base)
+	  eof-object			;(scheme base)
+	  eof-object?			;(scheme base)
 	  input-port/char-ready?
 	  input-port/line
 	  input-port/discard-chars
@@ -3152,14 +3159,14 @@ USA.
 	  input-port/read-string!
 	  input-port/read-substring!
 	  input-port/unread-char
-	  peek-char
-	  read
-	  read-char
+	  peek-char			;(scheme base)
+	  read				;(scheme read)
+	  read-char			;(scheme base)
 	  read-char-no-hang
 	  read-delimited-string
 	  read-file
-	  read-line
-	  read-string
+	  read-line			;(scheme base)
+	  read-string			;(scheme base)
 	  read-string!
 	  unread-char))
 
@@ -3173,10 +3180,10 @@ USA.
 	  beep
 	  call-with-truncated-output-port
 	  clear
-	  display
-	  flush-output-port
+	  display			;(scheme write)
+	  flush-output-port		;(scheme base)
 	  fresh-line
-	  newline
+	  newline			;(scheme base)
 	  output-port/bytes-written
 	  output-port/column
 	  output-port/discretionary-flush
@@ -3190,12 +3197,12 @@ USA.
 	  output-port/x-size
 	  output-port/y-size
 	  synchronize-output-port
-	  write
-	  write-char
+	  write				;(scheme write)
+	  write-char			;(scheme base)
 	  write-line
-	  write-shared
-	  write-simple
-	  write-string
+	  write-shared			;(scheme write)
+	  write-simple			;(scheme write)
+	  write-string			;(scheme base)
 	  write-strings-in-columns
 	  write-strings-in-paragraph))
 
@@ -3278,16 +3285,16 @@ USA.
 	  reduce-left)
   (export ()
 	  (improper-list? dotted-list?)
-	  (list-tabulate make-initialized-list)	;SRFI-1
-	  (proper-list? list?)		;SRFI-1
+	  (list-tabulate make-initialized-list)	;(srfi 1)
+	  (proper-list? list?)		;(srfi 1)
 	  add-member-procedure
 	  alist->keyword-list
 	  alist-adjoiner
 	  alist-adjoiner!
-	  alist-cons			;SRFI-1
-	  alist-copy			;SRFI-1
-	  alist-delete			;SRFI-1
-	  alist-delete!			;SRFI-1
+	  alist-cons			;(srfi 1)
+	  alist-copy			;(srfi 1)
+	  alist-delete			;(srfi 1)
+	  alist-delete!			;(srfi 1)
 	  alist-fold
 	  alist-fold-right
 	  alist-table
@@ -3311,49 +3318,49 @@ USA.
 	  alist-table?
 	  alist?
 	  any-duplicates?
-	  append			;SRFI-1
-	  append!			;SRFI-1
-	  append-map			;SRFI-1
-	  append-map!			;SRFI-1
-	  assoc				;SRFI-1
+	  append			;(scheme base)
+	  append!			;(srfi 1)
+	  append-map			;(srfi 1)
+	  append-map!			;(srfi 1)
+	  assoc				;(scheme base)
 	  association-procedure
-	  assq				;SRFI-1
-	  assv				;SRFI-1
-	  caaaar			;SRFI-1
-	  caaadr			;SRFI-1
-	  caaar				;SRFI-1
-	  caadar			;SRFI-1
-	  caaddr			;SRFI-1
-	  caadr				;SRFI-1
-	  caar				;SRFI-1
-	  cadaar			;SRFI-1
-	  cadadr			;SRFI-1
-	  cadar				;SRFI-1
-	  caddar			;SRFI-1
-	  cadddr			;SRFI-1
-	  caddr				;SRFI-1
-	  cadr				;SRFI-1
-	  car				;SRFI-1
-	  car+cdr			;SRFI-1
-	  cdaaar			;SRFI-1
-	  cdaadr			;SRFI-1
-	  cdaar				;SRFI-1
-	  cdadar			;SRFI-1
-	  cdaddr			;SRFI-1
-	  cdadr				;SRFI-1
-	  cdar				;SRFI-1
-	  cddaar			;SRFI-1
-	  cddadr			;SRFI-1
-	  cddar				;SRFI-1
-	  cdddar			;SRFI-1
-	  cddddr			;SRFI-1
-	  cdddr				;SRFI-1
-	  cddr				;SRFI-1
-	  cdr				;SRFI-1
-	  circular-list			;SRFI-1
-	  circular-list?		;SRFI-1
-	  cons				;SRFI-1
-	  cons*				;SRFI-1
+	  assq				;(scheme base)
+	  assv				;(scheme base)
+	  caaaar			;(scheme cxr)
+	  caaadr			;(scheme cxr)
+	  caaar				;(scheme cxr)
+	  caadar			;(scheme cxr)
+	  caaddr			;(scheme cxr)
+	  caadr				;(scheme cxr)
+	  caar				;(scheme base)
+	  cadaar			;(scheme cxr)
+	  cadadr			;(scheme cxr)
+	  cadar				;(scheme cxr)
+	  caddar			;(scheme cxr)
+	  cadddr			;(scheme cxr)
+	  caddr				;(scheme cxr)
+	  cadr				;(scheme base)
+	  car				;(scheme base)
+	  car+cdr			;(srfi 1)
+	  cdaaar			;(scheme cxr)
+	  cdaadr			;(scheme cxr)
+	  cdaar				;(scheme cxr)
+	  cdadar			;(scheme cxr)
+	  cdaddr			;(scheme cxr)
+	  cdadr				;(scheme cxr)
+	  cdar				;(scheme base)
+	  cddaar			;(scheme cxr)
+	  cddadr			;(scheme cxr)
+	  cddar				;(scheme cxr)
+	  cdddar			;(scheme cxr)
+	  cddddr			;(scheme cxr)
+	  cdddr				;(scheme cxr)
+	  cddr				;(scheme base)
+	  cdr				;(scheme base)
+	  circular-list			;(srfi 1)
+	  circular-list?		;(srfi 1)
+	  cons				;(scheme base)
+	  cons*				;(srfi 1)
 	  cons-last
 	  cons-last!
 	  decode-general-car-cdr
@@ -3363,28 +3370,28 @@ USA.
 	  del-assq!
 	  del-assv
 	  del-assv!
-	  delete			;SRFI-1
-	  delete!			;SRFI-1
+	  delete			;(srfi 1)
+	  delete!			;(srfi 1)
 	  delete-association-procedure
 	  delete-member-procedure
 	  delq
 	  delq!
 	  delv
 	  delv!
-	  dotted-list?			;SRFI-1
-	  eighth			;SRFI-1
+	  dotted-list?			;(srfi 1)
+	  eighth			;(srfi 1)
 	  encode-general-car-cdr
 	  error:not-restricted-keyword-list
 	  except-last-pair
 	  except-last-pair!
-	  fifth				;SRFI-1
-	  first				;SRFI-1
-	  fold				;SRFI-1
+	  fifth				;(srfi 1)
+	  first				;(srfi 1)
+	  fold				;(srfi 1)
 	  fold-map
-	  fold-right			;SRFI-1
+	  fold-right			;(srfi 1)
 	  fold-right-map
-	  for-each			;SRFI-1
-	  fourth			;SRFI-1
+	  for-each			;(scheme base)
+	  fourth			;(srfi 1)
 	  general-car-cdr
 	  get-keyword-value
 	  get-keyword-values
@@ -3392,56 +3399,56 @@ USA.
 	  guarantee-list-of-type
 	  guarantee-list-of-type->length
 	  guarantee-restricted-keyword-list
-	  iota				;SRFI-1
+	  iota				;(srfi 1)
 	  keyword-list->alist
 	  keyword-list-fold
 	  keyword-list-fold-right
 	  keyword-list?
 	  keyword-option-parser
-	  last				;SRFI-1
-	  last-pair			;SRFI-1
-	  length			;SRFI-1
+	  last				;(srfi 1)
+	  last-pair			;(srfi 1)
+	  length			;(scheme base)
 	  length=?
-	  list				;SRFI-1
-	  list-copy			;SRFI-1
+	  list				;(scheme base)
+	  list-copy			;(scheme base)
 	  list-deletor
 	  list-deletor!
 	  list-of-type?
 	  list-of-type?->length
 	  list-of-unique-symbols?
-	  list-ref			;SRFI-1
-	  list-set!
-	  list=				;SRFI-1
-	  list?
+	  list-ref			;(scheme base)
+	  list-set!			;(scheme base)
+	  list=				;(srfi 1)
+	  list?				;(scheme base)
 	  list?->length
 	  make-circular-list
 	  make-initialized-list
-	  make-list			;SRFI-1
-	  map				;SRFI-1
-	  member			;SRFI-1
+	  make-list			;(scheme base)
+	  map				;(scheme base)
+	  member			;(scheme base)
 	  member-procedure
-	  memq				;SRFI-1
-	  memv				;SRFI-1
-	  ninth				;SRFI-1
+	  memq				;(scheme base)
+	  memv				;(scheme base)
+	  ninth				;(srfi 1)
 	  non-empty-list?
-	  not-pair?			;SRFI-1
-	  null-list?			;SRFI-1
-	  null?				;SRFI-1
-	  pair?				;SRFI-1
-	  reduce			;SRFI-1
-	  reduce-right			;SRFI-1
+	  not-pair?			;(srfi 1)
+	  null-list?			;(srfi 1)
+	  null?				;(scheme base)
+	  pair?				;(scheme base)
+	  reduce			;(srfi 1)
+	  reduce-right			;(srfi 1)
 	  restricted-keyword-list?
-	  second			;SRFI-1
-	  set-car!			;SRFI-1
-	  set-cdr!			;SRFI-1
-	  seventh			;SRFI-1
-	  sixth				;SRFI-1
+	  second			;(srfi 1)
+	  set-car!			;(scheme base)
+	  set-cdr!			;(scheme base)
+	  seventh			;(srfi 1)
+	  sixth				;(srfi 1)
 	  sublist
-	  tenth				;SRFI-1
-	  third				;SRFI-1
-	  tree-copy			;SRFI-1
+	  tenth				;(srfi 1)
+	  third				;(srfi 1)
+	  tree-copy			;(srfi 1)
 	  unique-keyword-list?
-	  xcons				;SRFI-1
+	  xcons				;(srfi 1)
 	  ))
 
 (define-package (runtime lambda-list)
@@ -3474,7 +3481,7 @@ USA.
 	  for-all?
 	  there-exists?)
   (export ()
-	  (list-tail drop)
+	  (list-tail drop)		;(scheme base)
 	  any
 	  append-reverse
 	  append-reverse!
@@ -3520,7 +3527,7 @@ USA.
 	  partition!
 	  remove
 	  remove!
-	  reverse
+	  reverse			;(scheme base)
 	  reverse!
 	  span
 	  span!
@@ -3571,7 +3578,7 @@ USA.
 	  file-types:library
 	  file-types:program
 	  find-file-types
-	  load
+	  load				;(scheme load)
 	  load-library-object-file
 	  load/push-hook!
 	  loadable-source-pathname
@@ -3595,7 +3602,7 @@ USA.
   (parent (runtime))
   (export ()
 	  argument-command-line-parser
-	  command-line
+	  command-line			;(scheme process-context)
 	  command-line-arguments
 	  scheme-program-name
 	  set-command-line-parser!
@@ -3694,76 +3701,76 @@ USA.
   (export ()
 	  (-1+ complex:-1+)
 	  (1+ complex:1+)
-	  (abs complex:abs)
-	  (acos complex:acos)
-	  (angle complex:angle)
-	  (asin complex:asin)
-	  (ceiling complex:ceiling)
+	  (abs complex:abs)		;(scheme base)
+	  (acos complex:acos)		;(scheme inexact)
+	  (angle complex:angle)		;(scheme complex)
+	  (asin complex:asin)		;(scheme inexact)
+	  (ceiling complex:ceiling)	;(scheme base)
 	  (ceiling->exact complex:ceiling->exact)
-	  (complex? complex:complex?)
+	  (complex? complex:complex?)	;(scheme base)
 	  (conjugate complex:conjugate)
 	  (copysign complex:copysign)
-	  (cos complex:cos)
-	  (denominator complex:denominator)
+	  (cos complex:cos)		;(scheme inexact)
+	  (denominator complex:denominator) ;(scheme base)
 	  (denominator->exact complex:denominator->exact)
-	  (even? complex:even?)
-	  (exact complex:inexact->exact)
+	  (even? complex:even?)		;(scheme base)
+	  (exact complex:inexact->exact) ;(scheme base)
 	  (exact->inexact complex:exact->inexact)
 	  (exact-rational? rat:rational?)
-	  (exact? complex:exact?)
-	  (exp complex:exp)
+	  (exact? complex:exact?)	;(scheme base)
+	  (exp complex:exp)		;(scheme inexact)
 	  (expm1 complex:expm1)
-	  (expt complex:expt)
-	  (finite? complex:finite?)
-	  (floor complex:floor)
+	  (expt complex:expt)		;(scheme base)
+	  (finite? complex:finite?)	;(scheme inexact)
+	  (floor complex:floor)		;(scheme base)
 	  (floor->exact complex:floor->exact)
-	  (imag-part complex:imag-part)
-	  (inexact complex:exact->inexact)
+	  (imag-part complex:imag-part)	;(scheme complex)
+	  (inexact complex:exact->inexact) ;(scheme base)
 	  (inexact->exact complex:inexact->exact)
-	  (infinite? complex:infinite?)
+	  (infinite? complex:infinite?)	;(scheme inexact)
 	  (integer-ceiling complex:integer-ceiling)
 	  (integer-divide complex:divide)
 	  (integer-floor complex:integer-floor)
 	  (integer-round complex:integer-round)
 	  (integer-truncate complex:quotient)
-	  (integer? complex:integer?)
-	  (log complex:log)
+	  (integer? complex:integer?)	;(scheme base)
+	  (log complex:log)		;(scheme inexact)
 	  (log1p complex:log1p)
-	  (magnitude complex:magnitude)
-	  (make-polar complex:make-polar)
-	  (make-rectangular complex:make-rectangular)
-	  (nan? complex:nan?)
-	  (negative? complex:negative?)
+	  (magnitude complex:magnitude)	;(scheme complex)
+	  (make-polar complex:make-polar) ;(scheme complex)
+	  (make-rectangular complex:make-rectangular) ;(scheme complex)
+	  (nan? complex:nan?)           ;(scheme inexact)
+	  (negative? complex:negative?)	;(scheme base)
 	  (number:eqv? complex:eqv?)
-	  (number? complex:complex?)
-	  (numerator complex:numerator)
+	  (number? complex:complex?)	;(scheme base)
+	  (numerator complex:numerator)	;(scheme base)
 	  (numerator->exact complex:numerator->exact)
-	  (positive? complex:positive?)
-	  (rational? complex:rational?)
-	  (rationalize complex:rationalize)
+	  (positive? complex:positive?)	;(scheme base)
+	  (rational? complex:rational?)	;(scheme base)
+	  (rationalize complex:rationalize) ;(scheme base)
 	  (rationalize->exact complex:rationalize->exact)
-	  (real-part complex:real-part)
-	  (real? complex:real?)
-	  (round complex:round)
+	  (real-part complex:real-part)	;(scheme complex)
+	  (real? complex:real?)		;(scheme base)
+	  (round complex:round)		;(scheme base)
 	  (round->exact complex:round->exact)
 	  (simplest-exact-rational complex:simplest-exact-rational)
 	  (simplest-rational complex:simplest-rational)
-	  (sin complex:sin)
-	  (sqrt complex:sqrt)
-	  (tan complex:tan)
-	  (truncate complex:truncate)
+	  (sin complex:sin)		;(scheme inexact)
+	  (sqrt complex:sqrt)		;(scheme inexact)
+	  (tan complex:tan)		;(scheme inexact)
+	  (truncate complex:truncate)	;(scheme base)
 	  (truncate->exact complex:truncate->exact)
-	  (zero? complex:zero?)
-	  *
-	  +
-	  -
-	  /
-	  <
-	  <=
-	  =
-	  >
-	  >=
-	  atan
+	  (zero? complex:zero?)		;(scheme base)
+	  *				;(scheme base)
+	  +				;(scheme base)
+	  -				;(scheme base)
+	  /				;(scheme base)
+	  <				;(scheme base)
+	  <=				;(scheme base)
+	  =				;(scheme base)
+	  >				;(scheme base)
+	  >=				;(scheme base)
+	  atan				;(scheme inexact)
 	  cube
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
@@ -3794,11 +3801,11 @@ USA.
 	  flonum-printer:normal-output
 	  flonum-printer:scientific-output
 	  flonum-unparser-cutoff
-	  gcd
-	  inexact?
+	  gcd				;(scheme base)
+	  inexact?			;(scheme base)
 	  integer-divide-quotient
 	  integer-divide-remainder
-	  lcm
+	  lcm				;(scheme base)
 	  log-logistic
 	  log1mexp
 	  log1pexp
@@ -3808,17 +3815,18 @@ USA.
 	  logit-exp
 	  logit1/2+
 	  logsumexp
-	  max
-	  min
-	  modulo
+	  max				;(scheme base)
+	  min				;(scheme base)
+	  modulo			;(scheme base)
 	  non-negative?
 	  non-positive?
-	  number->string
-	  odd?
+	  number->string		;(scheme base)
+	  odd?				;(scheme base)
 	  param:flonum-printer-cutoff
-	  quotient
-	  remainder
-	  square))
+	  quotient			;(scheme base)
+	  remainder			;(scheme base)
+	  square			;(scheme base)
+	  ))
 
 (define-package (runtime number interface)
   (file-case options
@@ -3839,7 +3847,7 @@ USA.
   (parent (runtime))
   (export ()
 	  flonum-parser-fast?
-	  string->number
+	  string->number		;(scheme base)
 	  substring->number))
 
 (define-package (runtime options)
@@ -3872,7 +3880,7 @@ USA.
 	  param:reader-fold-case?
 	  param:reader-keyword-style
 	  param:reader-radix
-	  read-error?			;R7RS
+	  read-error?			;(scheme base)
 	  )
   (export (runtime)
 	  define-bracketed-reader-method)
@@ -4289,7 +4297,7 @@ USA.
   (files "rep")
   (parent (runtime))
   (export ()
-	  (interaction-environment nearest-repl/environment) ;R7RS
+	  (interaction-environment nearest-repl/environment) ;(scheme repl)
 	  abort->nearest
 	  abort->previous
 	  abort->top-level
@@ -4806,7 +4814,7 @@ USA.
   (files "wind")
   (parent (runtime))
   (export ()
-	  dynamic-wind
+	  dynamic-wind			;(scheme base)
 	  shallow-fluid-bind)
   (export (runtime continuation)
 	  get-dynamic-state
@@ -4824,7 +4832,7 @@ USA.
   (files "dynamic")
   (parent (runtime))
   (export ()
-	  (make-parameter make-unsettable-parameter)
+	  (make-parameter make-unsettable-parameter) ;(scheme base)
 	  copy-parameter
 	  default-parameter-converter
 	  default-parameter-merger
@@ -4888,10 +4896,10 @@ USA.
 	  call-with-input-string
 	  call-with-output-string
 	  call-with-truncated-output-string
-	  get-output-string
+	  get-output-string		;(scheme base)
 	  get-output-string!
-	  open-input-string
-	  open-output-string
+	  open-input-string		;(scheme base)
+	  open-output-string		;(scheme base)
 	  pp-to-string
 	  read-from-string
 	  write-to-string))
@@ -4921,7 +4929,8 @@ USA.
 	  syntactic-closure?
 	  syntax
 	  syntax*
-	  syntax-error)
+	  syntax-error			;(scheme base)
+	  )
   (export (runtime library)
 	  syntax-library-forms)
   (export (runtime syntax)
@@ -5183,31 +5192,31 @@ USA.
   (files "mit-syntax")
   (parent (runtime syntax))
   (export ()
-	  (... $...)			;R7RS
-	  (=> $=>)			;R7RS
-	  (_ $_)			;R7RS
+	  (... $...)			;(scheme base)
+	  (=> $=>)			;(scheme base)
+	  (_ $_)			;(scheme base)
 	  (access $access)
-	  (begin $begin)		;R7RS
+	  (begin $begin)		;(scheme base)
 	  (declare $declare)
-	  (define $define)		;R7RS
-	  (define-syntax $define-syntax) ;R7RS
-	  (else $else)			;R7RS
+	  (define $define)		;(scheme base)
+	  (define-syntax $define-syntax) ;(scheme base)
+	  (else $else)			;(scheme base)
 	  (er-macro-transformer $er-macro-transformer)
-	  (if $if)			;R7RS
-	  (lambda $lambda)		;R7RS
-	  (let-syntax $let-syntax)	;R7RS
-	  (letrec-syntax $letrec-syntax) ;R7RS
+	  (if $if)			;(scheme base)
+	  (lambda $lambda)		;(scheme base)
+	  (let-syntax $let-syntax)	;(scheme base)
+	  (letrec-syntax $letrec-syntax) ;(scheme base)
 	  (named-lambda $named-lambda)
-	  (or $or)			;R7RS
-	  (quote $quote)		;R7RS
+	  (or $or)			;(scheme base)
+	  (quote $quote)		;(scheme base)
 	  (quote-identifier $quote-identifier)
 	  (rsc-macro-transformer $rsc-macro-transformer)
 	  (sc-macro-transformer $sc-macro-transformer)
-	  (set! $set!)			;R7RS
+	  (set! $set!)			;(scheme base)
 	  (spar-macro-transformer $spar-macro-transformer)
 	  (the-environment $the-environment)
-	  (unquote $unquote)		;R7RS
-	  (unquote-splicing $unquote-splicing) ;R7RS
+	  (unquote $unquote)		;(scheme base)
+	  (unquote-splicing $unquote-splicing) ;(scheme base)
 	  )
   (export (runtime mit-macros)
 	  keyword:let-syntax
@@ -5218,43 +5227,43 @@ USA.
   (files "mit-macros")
   (parent (runtime))
   (export ()
-	  (and $and)			;R7RS
-	  (and-let* $and-let*)		;SRFI 2
+	  (and $and)			;(scheme base)
+	  (and-let* $and-let*)		;(srfi 2)
 	  (assert $assert)
 	  (begin0 $begin0)
 	  (bundle $bundle)
-	  (case $case)			;R7RS
-	  (case-lambda $case-lambda)	;R7RS
+	  (case $case)			;(scheme base)
+	  (case-lambda $case-lambda)	;(scheme case-lambda)
 	  (circular-stream $circular-stream)
-	  (cond $cond)			;R7RS
-	  (cond-expand $cond-expand)	;R7RS
+	  (cond $cond)			;(scheme base)
+	  (cond-expand $cond-expand)	;(scheme base)
 	  (cons-stream $cons-stream)
 	  (cons-stream* $cons-stream*)
 	  (define-integrable $define-integrable)
-	  (define-record-type $define-record-type)
-	  (define-values $define-values) ;R7RS
-	  (delay $delay)		;R7RS
-	  (delay-force $delay-force)	;R7RS
-	  (do $do)			;R7RS
+	  (define-record-type $define-record-type) ;(scheme base)
+	  (define-values $define-values) ;(scheme base)
+	  (delay $delay)		;(scheme lazy)
+	  (delay-force $delay-force)	;(scheme lazy)
+	  (do $do)			;(scheme base)
 	  (fluid-let $fluid-let)
-	  (guard $guard)		;R7RS
-	  (include $include)		;R7RS
-	  (include-ci $include-ci)	;R7RS
-	  (let $let)			;R7RS
-	  (let-values $let-values)	;R7RS
-	  (let* $let*)			;R7RS
-	  (let*-syntax $let*-syntax)	;R7RS
-	  (let*-values $let*-values)	;R7RS
-	  (letrec $letrec)		;R7RS
-	  (letrec* $letrec*)		;R7RS
+	  (guard $guard)		;(scheme base)
+	  (include $include)		;(scheme base)
+	  (include-ci $include-ci)	;(scheme base)
+	  (let $let)			;(scheme base)
+	  (let-values $let-values)	;(scheme base)
+	  (let* $let*)			;(scheme base)
+	  (let*-syntax $let*-syntax)
+	  (let*-values $let*-values)	;(scheme base)
+	  (letrec $letrec)		;(scheme base)
+	  (letrec* $letrec*)		;(scheme base)
 	  (local-declare $local-declare)
-	  (parameterize $parameterize)	;R7RS
-	  (rx $rx)			;SRFI 115
-	  (quasiquote $quasiquote)	;R7RS
-	  (receive $receive)		;SRFI 8
-	  (unless $unless)		;R7RS
-	  (when $when)			;R7RS
-	  features			;R7RS
+	  (parameterize $parameterize)	;(scheme base)
+	  (rx $rx)			;(srfi 115)
+	  (quasiquote $quasiquote)	;(scheme base)
+	  (receive $receive)		;(srfi 8)
+	  (unless $unless)		;(scheme base)
+	  (when $when)			;(scheme base)
+	  features			;(scheme base)
 	  )
   (export (runtime library parser)
 	  evaluate-cond-expand))
@@ -5301,10 +5310,10 @@ USA.
   (files "sysclk")
   (parent (runtime))
   (export ()
-	  current-jiffy
+	  current-jiffy			;(scheme time)
 	  internal-time/seconds->ticks
 	  internal-time/ticks->seconds
-	  jiffies-per-second
+	  jiffies-per-second		;(scheme time)
 	  measure-interval
 	  process-time-clock
 	  real-time-clock
@@ -6554,11 +6563,11 @@ USA.
   (files "library-loader")
   (parent (runtime library))
   (export ()
-	  environment			;R7RS
+	  environment			;(scheme eval)
 	  find-scheme-libraries!
 	  import!
-	  null-environment		;R7RS
-	  scheme-report-environment	;R7RS
+	  null-environment		;(scheme r5rs)
+	  scheme-report-environment	;(scheme r5rs)
 	  )
   (export (runtime)
 	  eval-r7rs-scode-file
