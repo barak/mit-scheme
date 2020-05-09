@@ -45,9 +45,8 @@ USA.
 	 (>= object 0)
 	 (< object n))))
 
-(define-deferred optimization-rules
-  (make-cgen-rule-set
-
+(define-deferred rules:arithmetic
+  (list
    (define-cgen-rule `(pcall + (? n1 ,fixnum?) (? n2 ,fixnum?))
      (lambda (n1 n2) (+ n1 n2)))
 
@@ -93,6 +92,59 @@ USA.
                              (? n2 ,fixnum?))
      (lambda (e1 n1 n2)
        (cgen:pcall '- e1 (- n2 n1))))
+   ))
+
+(define-deferred rules:length-tests
+  (list
+   (define-cgen-rule `(if (pcall list? (? a))
+			  (pcall = (pcall length (? a)) (? n ,(index< 4)))
+			  #f)
+     (lambda (a n)
+       (cgen:and*
+	(let loop ((a a) (n n))
+	  (if (> n 0)
+	      (cons (cgen:pcall 'pair? a)
+			(loop (cgen:pcall 'cdr a) (- n 1)))
+	      (list (cgen:pcall 'null? a)))))))
+
+   (define-cgen-rule `(if (pcall list? (? a))
+			  (if (pcall = (pcall length (? a)) (? n ,(index< 4)))
+			      (? b)
+			      #f)
+			  #f)
+     (lambda (a n b)
+       (cgen:and*
+	(let loop ((a a) (n n))
+	  (if (> n 0)
+	      (cons (cgen:pcall 'pair? a)
+			(loop (cgen:pcall 'cdr a) (- n 1)))
+	      (list (cgen:pcall 'null? a)
+		    b))))))
+
+   (define-cgen-rule `(if (pcall list? (? a))
+			  (pcall >= (pcall length (? a)) (? n ,(index< 4)))
+			  #f)
+     (lambda (a n)
+       (cgen:and*
+	(let loop ((a a) (n n))
+	  (if (> n 0)
+	      (cons (cgen:pcall 'pair? a)
+		    (loop (cgen:pcall 'cdr a) (- n 1)))
+	      (list (cgen:pcall 'list? a)))))))
+
+   (define-cgen-rule `(if (pcall list? (? a))
+			  (if (pcall >= (pcall length (? a)) (? n ,(index< 4)))
+			      (? b)
+			      #f)
+			  #f)
+     (lambda (a n b)
+       (cgen:and*
+	(let loop ((a a) (n n))
+	  (if (> n 0)
+	      (cons (cgen:pcall 'pair? a)
+		    (loop (cgen:pcall 'cdr a) (- n 1)))
+	      (list (cgen:pcall 'list? a)
+		    b))))))
 
 
    (define-cgen-rule `(pcall >= (pcall length (?)) 0)
@@ -100,8 +152,10 @@ USA.
 
    (define-cgen-rule `(pcall >= (pcall vector-length (?)) 0)
      (lambda () (cgen:and)))
-
-
+   ))
+
+(define-deferred rules:misc
+  (list
    (define-cgen-rule `(if #t (? c) (?))
      (lambda (c) c))
 
@@ -112,7 +166,13 @@ USA.
    (define-cgen-rule `(pcall every (lambda ((??)) #t) (??))
      (lambda () '#t))
 
+   (define-cgen-rule `(pcall vector-every (lambda ((??)) #t) (??))
+     (lambda () '#t))
+
    (define-cgen-rule `(pcall any (lambda ((??)) #f) (??))
+     (lambda () '#f))
+
+   (define-cgen-rule `(pcall vector-any (lambda ((??)) #f) (??))
      (lambda () '#f))
 
 
@@ -129,5 +189,10 @@ USA.
 	 (if (> n 0)
 	     (loop (- n 1) (cgen:pcall 'cdr expr))
 	     expr))))
-
    ))
+
+(define-deferred optimization-rules
+  (apply make-cgen-rule-set
+	 (append rules:arithmetic
+		 rules:length-tests
+		 rules:misc)))
