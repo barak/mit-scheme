@@ -98,7 +98,7 @@ USA.
 ;;;; Eliminate unshared nodes
 
 (define (eliminate-unshared-cnodes root-node)
-  (let ((single-parent? (compute-single-parent-map root-node))
+  (let ((delete? (compute-delete-predicate root-node))
         (memoize! (make-strong-eq-memoizer)))
 
     (define (scan-cnode cnode)
@@ -115,25 +115,59 @@ USA.
                   (cnode-children cnode)))
 
     (define (scan-child rpath child)
-      (if (single-parent? child)
+      (if (delete? child)
           (scan-children rpath child)
           (list (make-clink rpath (scan-cnode child)))))
 
     (scan-cnode root-node)))
 
-(define (compute-single-parent-map root-node)
-  (let ((table (make-strong-eq-hash-table)))
-    (let loop ((parent root-node))
+(define (compute-delete-predicate root-node)
+  (let ((ptable (make-strong-eq-hash-table))
+	(ctable (make-strong-eq-hash-table)))
+
+    (define (initialize! parent)
       (for-each (lambda (clink)
                   (let ((child (clink-child clink)))
-                    (hash-table-update! table
-                                        child
-                                        (lambda (n-parents) (+ n-parents 1))
-                                        (lambda () 0))
-                    (loop child)))
+		    (connect! child parent)
+                    (initialize! child)))
                 (cnode-children parent)))
-    (lambda (cnode)
-      (= 1 (hash-table-ref table cnode)))))
+
+    (define (get-deletions)
+      (hash-table-fold ptable
+		       (lambda (child parents acc)
+			 (if (and (pair? parents) (null? (cdr parents)))
+			     (cons child acc)
+			     acc))
+		       '()))
+
+    (define (delete! cnode)
+      (let ((children (hash-table-ref/default ctable cnode '()))
+	    (parents (hash-table-ref ptable cnode)))
+	(for-each (lambda (child) (disconnect! child cnode)) children)
+	(for-each (lambda (parent) (disconnect! cnode parent)) parents)
+	(for-each (lambda (child)
+		    (for-each (lambda (parent)
+				(connect! child parent))
+			      parents))
+		  children)))
+
+    (define (connect! child parent)
+      (hash-table-update! ptable child
+	(lambda (parents) (lset-adjoin eq? parents parent))
+	(lambda () '()))
+      (hash-table-update! ctable parent
+	(lambda (children) (lset-adjoin eq? children child))
+	(lambda () '())))
+
+    (define (disconnect! child parent)
+      (hash-table-update! ptable child
+	(lambda (parents) (delq! parent parents)))
+      (hash-table-update! ctable parent
+	(lambda (children) (delq! child children))))
+
+    (initialize! root-node)
+    (for-each delete! (get-deletions))
+    (lambda (cnode) (null? (hash-table-ref ptable cnode)))))
 
 (define (substitute-cnodes root-node)
   (let ((let-groups (compute-let-groups root-node)))
