@@ -35,30 +35,14 @@ USA.
   (if (expr-cse? expr)
       (cnode-expr
        (substitute-cnodes
-        (insert-lets
-         (eliminate-unshared-cnodes
-          (generate-cgraph expr)))))
+	(eliminate-unshared-cnodes
+	 (generate-cgraph expr))))
       expr))
 
 (define (expr-cse? expr)
   (and (pair? expr)
        (not (eq? 'rename (car expr)))
        (not (eq? 'quote (car expr)))))
-
-(define (substitute-cnodes root-node)
-  (let loop ((root-node root-node))
-    (let ((cnodes (cgraph-nodes root-node)))
-      (if (pair? (cdr cnodes))
-          (let ((leaf-nodes
-                 (filter (lambda (cnode)
-                           (null? (cnode-children cnode)))
-                         cnodes)))
-            (if (null? leaf-nodes)
-                (error "Unable to continue processing:" cnodes))
-            (loop (substitute-leaf-nodes root-node leaf-nodes)))
-          root-node))))
-
-;;;; Convert expr to graph
 
 (define (generate-cgraph expr)
   (initial-cgraph (containment-trie expr)))
@@ -91,10 +75,7 @@ USA.
       (let ((subexpr (trie-value trie)))
         (make-cnode (car subexpr)
                     (cdr subexpr)
-                    (scan-children rpath trie '())
-                    #f
-                    #f
-                    #f)))
+                    (scan-children rpath trie '()))))
 
     (define (scan-children rpath trie acc)
       (trie-edge-fold (lambda (key trie* acc)
@@ -125,10 +106,7 @@ USA.
         (lambda (cnode)
           (make-cnode (cnode-expr cnode)
                       (cnode-paths cnode)
-                      (scan-children '() cnode)
-                      #f
-                      #f
-                      #f))))
+                      (scan-children '() cnode)))))
 
     (define (scan-children rpath cnode)
       (append-map (lambda (clink)
@@ -157,218 +135,163 @@ USA.
     (lambda (cnode)
       (= 1 (hash-table-ref table cnode)))))
 
-;;;; Insert lets
-
-(define (insert-lets root-node)
-  (let-values (((let-name insertions let-data adjust-path)
-                (compute-let-maps root-node)))
-    (let ((memoize! (make-strong-eq-memoizer)))
+(define (substitute-cnodes root-node)
+  (let ((let-groups (compute-let-groups root-node)))
+    (let ((cnode->name (compute-cnode->name let-groups))
+	  (bindings (compute-bindings let-groups))
+	  (memoize! (make-strong-eq-memoizer))
+	  (table (make-strong-eq-hash-table)))
 
       (define (scan-cnode path cnode)
-        (memoize! cnode
-          (lambda (cnode)
-            (let-values (((let-path let-index) (let-data cnode)))
-              (make-cnode (cse-expr-map (cnode-expr cnode)
-                                        (filter-path-alist path cnode
-                                                           insertions))
-                          (map adjust-path (cnode-paths cnode))
-                          (scan-children path (cnode-children cnode))
-                          (let-name cnode)
-                          (and let-path (adjust-path let-path))
-                          let-index)))))
+	(memoize! cnode
+	  (lambda (cnode)
+	    (let ((children
+		   (map (lambda (clink)
+			  (make-clink (clink-rpath clink)
+				      (scan-cnode (clink-apath path clink)
+						  (clink-child clink))))
+			(cnode-children cnode))))
+	      ;; Must come after processing children so that they can be looked
+	      ;; up by binding-group-maps.
+	      (let ((cnode*
+		     (make-cnode (edit-expr path cnode)
+				 (cnode-paths cnode)
+				 children)))
+		(hash-table-set! table cnode cnode*)
+		cnode*)))))
 
-      (define (scan-children path clinks)
-        (let ((ppath (adjust-path path)))
-          (map (lambda (clink)
-                 (let ((cpath (adjust-path (clink-apath path clink))))
-                   (make-clink (path-suffix ppath cpath)
-                               (scan-cnode cpath (clink-child clink)))))
-               clinks)))
+      (define (edit-expr path cnode)
+	(cse-expr-map (cse-expr-replace (cnode-expr cnode)
+					(compute-replacements cnode))
+		      (binding-group-maps path cnode)))
+
+      (define (compute-replacements cnode)
+	(map (lambda (clink)
+	       (cons (clink-rpath clink)
+		     (cnode->name (clink-child clink))))
+	     (cnode-children cnode)))
+
+      (define (binding-group-maps path cnode)
+	(map (lambda (let-group)
+	       (cons (car let-group)
+		     (lambda (subexpr)
+		       (fold-right (lambda (cnodes subexpr*)
+				     (cgen:let (cnodes->bindings cnodes)
+					       subexpr*))
+				   subexpr
+				   (cdr let-group)))))
+	     (bindings path cnode)))
+
+      (define (cnodes->bindings cnodes)
+	(map (lambda (cnode)
+	       (list (cnode->name cnode)
+		     (cnode-expr (hash-table-ref table cnode))))
+	     cnodes))
 
       (scan-cnode '() root-node))))
-
-(define (compute-let-maps root-node)
-  (let ((groups (compute-let-groups root-node)))
-    (let ((name-map (compute-let-name-map groups)))
-      (values name-map
-              (compute-let-insertions groups name-map)
-              (compute-let-data-map groups)
-              (compute-path-adjustment-map groups)))))
-
-(define (compute-let-groups root-node)
-  (let ((table (make-equal-hash-table)))
-    (for-each (lambda (cnode)
-                (hash-table-update! table
-                                    (let ((paths (cnode-paths cnode)))
-                                      (and (pair? (cdr paths))
-                                           (path-shared-prefix* paths)))
-                                    (lambda (cnodes) (cons cnode cnodes))
-                                    (lambda () '())))
-              (cgraph-nodes root-node))
-    (hash-table->alist table)))
 
-(define (compute-let-name-map groups)
+(define (compute-let-groups root-node)
+  (let ((memoize! (make-strong-eq-memoizer))
+	(table (make-equal-hash-table)))
+    (let loop ((cnode root-node))
+      (memoize! cnode
+	(lambda (cnode)
+	  (hash-table-update! table (cnode-let-path cnode)
+	    (lambda (cnodes) (cons cnode cnodes))
+	    (lambda () '()))
+	  (for-each (lambda (clink)
+		      (loop (clink-child clink)))
+		    (cnode-children cnode)))))
+    (map (lambda (p)
+	   (cons (car p)
+		 (group-cnodes-by-dependency (cdr p))))
+	 (hash-table->alist table))))
+
+(define (group-cnodes-by-dependency cnodes)
+  (let loop ((alist (compute-cnode-dependencies cnodes)))
+    (if (pair? alist)
+	(let-values (((leaves rest)
+		      (partition (lambda (p) (null? (cdr p)))
+				 alist)))
+	  (if (null? leaves)
+	      (error "Unable to group cnodes:" alist))
+	  (let ((leaf-nodes (map car leaves)))
+	    (cons leaf-nodes
+		  (loop
+		   (map (lambda (p)
+			  (cons (car p)
+				(lset-difference eq? (cdr p) leaf-nodes)))
+			rest)))))
+	'())))
+
+(define (compute-cnode-dependencies cnodes)
+  (map (lambda (cnode)
+	 (cons cnode
+	       (filter (lambda (cnode*)
+			 (cnode-strict-ancestor? cnode cnode*))
+		       cnodes)))
+       cnodes))
+
+(define (compute-cnode->name let-groups)
   (let ((table (make-strong-eq-hash-table)))
-    (for-each (lambda (group)
-                (let ((let-path (car group)))
-                  (for-each (lambda (cnode)
-                              (hash-table-set! table cnode
-                                               (and let-path
-                                                    (cgen:new-name 'cse))))
-                            (cdr group))))
-              ;; Sort groups so that let names are in lexical order.
-              (sort groups
-                (lambda (g1 g2)
-                  (let ((p1 (car g1))
-                        (p2 (car g2)))
-                    (if (and p1 p2)
-                        (path<? p1 p2)
-                        (and (not p1) p2))))))
+    (for-each (lambda (let-group)
+		(let ((path (car let-group)))
+		  (for-each (lambda (dep-group)
+			      (for-each (lambda (cnode)
+					  (hash-table-set! table cnode
+					    (and path (cgen:new-name 'cse))))
+					dep-group))
+			    (cdr let-group))))
+	      ;; Sort groups so that let names are in lexical order.
+	      (sort let-groups
+		    (lambda (g1 g2)
+		      (let ((p1 (car g1))
+			    (p2 (car g2)))
+			(if (and p1 p2)
+			    (path<? p1 p2)
+			    (and (not p1) p2))))))
     (lambda (cnode)
       (hash-table-ref table cnode))))
 
-(define (compute-let-insertions groups let-name)
-  (filter-map (lambda (group)
-                (and (car group)
-                     (cons (car group)
-                           (let ((bindings
-                                  (map (lambda (cnode)
-                                         (list (let-name cnode) unspecific))
-                                       (cdr group))))
-                             (lambda (subexpr)
-                               (cgen:let bindings subexpr))))))
-              groups))
-
-(define (compute-let-data-map groups)
-  (let ((indices (make-strong-eq-hash-table)))
-    (for-each (lambda (group)
-                (let ((let-path (car group))
-                      (cnodes (cdr group)))
-                  (for-each (lambda (cnode index)
-                              (hash-table-set! indices
-                                               cnode
-                                               (list let-path index)))
-                            cnodes
-                            (iota (length cnodes)))))
-              groups)
-    (lambda (cnode)
-      (apply values (hash-table-ref indices cnode)))))
-
-(define (compute-path-adjustment-map groups)
-  (let ((let-paths (filter-map car groups)))
-    (lambda (path)
-      (let loop
-          ((indices
-            (sort (filter-map (let ((n (length path)))
-                                (lambda (let-path)
-                                  (and (not (path=? path let-path))
-                                       (let ((suffix
-                                              (path-suffix let-path path)))
-                                         (and suffix
-                                              (- n (length suffix)))))))
-                              let-paths)
-                  <))
-           (index 0)
-           (path path))
-        (if (pair? indices)
-            (if (= index (car indices))
-                (append (let-body-path '())
-                        (cons (car path)
-                              (loop (cdr indices)
-                                    (+ index 1)
-                                    (cdr path))))
-                (cons (car path)
-                      (loop indices
-                            (+ index 1)
-                            (cdr path))))
-            path)))))
-
-;;;; Substitute leaf nodes
-
-(define (substitute-leaf-nodes root-node leaf-nodes)
-  (let ((value-insertions (compute-value-insertion-map leaf-nodes))
-        (memoize! (make-strong-eq-memoizer)))
-
-    (define (scan-cnode path cnode)
-      (memoize! cnode
-        (lambda (cnode)
-          (make-cnode (cse-expr-replace (cnode-expr cnode)
-                                        (value-insertions path cnode))
-                      (cnode-paths cnode)
-                      (scan-children path (cnode-children cnode))
-                      (cnode-name cnode)
-                      (cnode-let-path cnode)
-                      (cnode-let-index cnode)))))
-
-    (define (scan-children path clinks)
-      (filter-map (lambda (clink)
-                    (let ((child (clink-child clink)))
-                      (and (not (memq child leaf-nodes))
-                           (make-clink (clink-rpath clink)
-                                       (scan-cnode (clink-apath path clink)
-                                                   child)))))
-                  clinks))
-
-    (scan-cnode '() root-node)))
-
-(define (compute-value-insertion-map leaf-nodes)
-  (let ((let-value-paths (compute-let-value-paths leaf-nodes)))
-    (lambda (path cnode)
-      (append (filter-path-alist path cnode let-value-paths)
-              (filter-map (lambda (clink)
-                            (let ((child (clink-child clink)))
-                              (and (memq child leaf-nodes)
-                                   (cons (clink-rpath clink)
-                                         (cnode-name child)))))
-                          (cnode-children cnode))))))
-
-(define (compute-let-value-paths leaf-nodes)
-  (filter-map (lambda (cnode)
-                (let ((let-path (cnode-let-path cnode)))
-                  (and let-path
-                       (cons (let-value-path let-path (cnode-let-index cnode))
-                             (cnode-expr cnode)))))
-              leaf-nodes))
+(define (compute-bindings let-groups)
+  (lambda (path cnode)
+    (filter-map (lambda (p)
+		  (let* ((target-path (car p))
+			 (rpath (path-suffix path target-path)))
+		    (and rpath
+			 (not (any (lambda (clink)
+				     (path-suffix (clink-apath path clink)
+						  target-path))
+				   (cnode-children cnode)))
+			 (cons rpath (cdr p)))))
+		let-groups)))
 
 (define-record-type <cnode>
-    (make-cnode expr paths children name let-path let-index)
+    (make-cnode expr paths children)
     cnode?
   (expr cnode-expr)
   (paths cnode-paths)
-  (children cnode-children)
-  (name cnode-name)
-  (let-path cnode-let-path)
-  (let-index cnode-let-index))
+  (children cnode-children))
 
 (define-integrable make-clink cons)
 (define-integrable clink-rpath car)
 (define-integrable clink-child cdr)
 
-(define (filter-path-alist path cnode alist)
-  (filter-map (lambda (p)
-                (let* ((target-path (car p))
-                       (rpath (path-suffix path target-path)))
-                  (and rpath
-                       (not (any (lambda (clink)
-                                   (path-suffix (clink-apath path clink)
-                                                target-path))
-                                 (cnode-children cnode)))
-                       (cons rpath (cdr p)))))
-              alist))
+(define (cnode-let-path cnode)
+  (let ((paths (cnode-paths cnode)))
+    (and (pair? (cdr paths))
+	 (path-shared-prefix* paths))))
+
+(define (cnode-strict-ancestor? cnode1 cnode2)
+  (and (not (eq? cnode1 cnode2))
+       (any (lambda (path1)
+	      (any (lambda (path2)
+		     (path-suffix path1 path2))
+		   (cnode-paths cnode2)))
+	    (cnode-paths cnode1))))
 
 (define (clink-apath apath clink)
   (append apath (clink-rpath clink)))
-
-(define (cgraph-nodes root-node)
-  (let ((seen (make-strong-eq-hash-table)))
-    (let loop ((cnode root-node))
-      (if (not (hash-table-exists? seen cnode))
-          (begin
-            (hash-table-set! seen cnode #t)
-            (for-each (lambda (clink)
-                        (loop (clink-child clink)))
-                      (cnode-children cnode)))))
-    (hash-table-keys seen)))
 
 (define (make-strong-eq-memoizer)
   (let ((table (make-strong-eq-hash-table)))
