@@ -276,10 +276,10 @@ USA.
 
 (define (define-cgen-rule pattern rewriter)
   (lambda (rule-trie)
-    (set-trie-value! (trie-intern! rule-trie pattern)
-                     (make-rule pattern
-                                (make-simple-matcher pattern)
-                                rewriter))))
+    (trie-set! rule-trie pattern
+	       (make-rule pattern
+			  (make-simple-matcher pattern)
+			  rewriter))))
 
 (define-record-type <rule>
     (make-rule pattern matcher rewriter)
@@ -323,7 +323,7 @@ USA.
 
 (define (get-applicable-rules expr rule-set)
   (let ((prefix (discrimination-prefix expr)))
-    (let ((trie (and prefix (trie-find rule-set prefix))))
+    (let ((trie (and prefix (find-subtrie rule-set prefix))))
       (if trie
           (trie-values trie)
           '()))))

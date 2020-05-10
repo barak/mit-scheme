@@ -6625,6 +6625,8 @@ USA.
   (parent (runtime))
   (export ()
 	  alist->trie
+	  find-subtrie
+	  intern-subtrie!
 	  make-trie
 	  set-trie-value!
 	  trie-=?
@@ -6632,11 +6634,10 @@ USA.
 	  trie-edge-alist
 	  trie-edge-fold
 	  trie-edge-for-each
-	  trie-find
 	  trie-fold
 	  trie-for-each
 	  trie-has-value?
-	  trie-intern!
+	  trie-set!
 	  trie-value
 	  trie-values
 	  trie?))

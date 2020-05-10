@@ -60,17 +60,17 @@ USA.
           (list (trie-value trie))
           '()))))
 
-(define (trie-find trie path)
+(define (find-subtrie trie path)
   (let loop ((path path) (trie trie))
-    (if (null-list? path 'trie-find)
+    (if (null-list? path 'find-subtrie)
         trie
         (let ((trie* (%trie-find trie (car path))))
           (and trie*
                (loop (cdr path) trie*))))))
 
-(define (trie-intern! trie path)
+(define (intern-subtrie! trie path)
   (let loop ((path path) (trie trie))
-    (if (null-list? path 'trie-intern!)
+    (if (null-list? path 'intern-subtrie!)
         trie
         (loop (cdr path)
               (%trie-intern! trie (car path))))))
@@ -88,6 +88,9 @@ USA.
                                         (list (cons key trie*))))
         trie*)))
 
+(define (trie-set! trie path value)
+  (set-trie-value! (intern-subtrie! trie path) value))
+
 (define (trie-values trie)
   (trie-fold (lambda (path value acc)
 	       (declare (ignore path))
@@ -102,7 +105,7 @@ USA.
   (guarantee alist? alist 'alist->trie)
   (let ((trie (make-trie =?)))
     (for-each (lambda (p)
-                (set-trie-value! (trie-intern! trie (car p)) (cdr p)))
+                (trie-set! trie (car p) (cdr p)))
               alist)
     trie))
 

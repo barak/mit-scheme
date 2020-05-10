@@ -47,13 +47,13 @@ USA.
     (let ((trie (make-trie)))
       (assert-false (trie-has-value? trie))
       (assert-error (lambda () (trie-value trie)))
-      (assert-equal (trie-find trie '()) trie)
-      (assert-equal (trie-intern! trie '()) trie)
+      (assert-equal (find-subtrie trie '()) trie)
+      (assert-equal (intern-subtrie! trie '()) trie)
       (assert-equal (trie-values trie) '())
       (assert-equal (trie->alist trie) '())
 
       (for-each (lambda (path)
-		  (assert-false (trie-find trie path)))
+		  (assert-false (find-subtrie trie path)))
 		paths)
 
       (set-trie-value! trie "win!")
@@ -69,7 +69,7 @@ USA.
       (let ((vals* (map (lambda (val) (+ val 57)) vals))
 	    (leaves
 	     (map (lambda (path)
-		    (let ((trie* (trie-intern! trie path)))
+		    (let ((trie* (intern-subtrie! trie path)))
 		      (assert-!equal trie* trie)
 		      (assert-false (trie-has-value? trie*))
 		      trie*))
@@ -77,7 +77,7 @@ USA.
 
 	;; Confirm that looking up again gets same node.
 	(for-each (lambda (path leaf)
-		    (assert-eq (trie-find trie path) leaf))
+		    (assert-eq (find-subtrie trie path) leaf))
 		  paths
 		  leaves)
 
@@ -86,7 +86,7 @@ USA.
 		  leaves
 		  vals)
 	(for-each (lambda (path val)
-		    (let ((leaf (trie-find trie path)))
+		    (let ((leaf (find-subtrie trie path)))
 		      (assert-true leaf)
 		      (assert-true (trie-has-value? leaf))
 		      (assert-equal (trie-value leaf) val)))
@@ -100,14 +100,14 @@ USA.
 		  leaves
 		  vals*)
 	(for-each (lambda (path val)
-		    (let ((leaf (trie-find trie path)))
+		    (let ((leaf (find-subtrie trie path)))
 		      (assert-true leaf)
 		      (assert-true (trie-has-value? leaf))
 		      (assert-!equal (trie-value leaf) val)))
 		  paths
 		  vals)
 	(for-each (lambda (path val)
-		    (let ((leaf (trie-find trie path)))
+		    (let ((leaf (find-subtrie trie path)))
 		      (assert-true leaf)
 		      (assert-true (trie-has-value? leaf))
 		      (assert-equal (trie-value leaf) val)))

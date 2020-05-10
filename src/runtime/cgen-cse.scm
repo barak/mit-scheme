@@ -49,10 +49,10 @@ USA.
 
 (define (containment-trie expr)
   (let ((trie (make-trie eqv?)))
-    (set-trie-value! trie expr)
+    (trie-set! trie '() expr)
     (for-each (lambda (subexpr)
                 (for-each (lambda (path)
-                            (set-trie-value! (trie-intern! trie path) subexpr))
+                            (trie-set! trie path subexpr))
                           (cdr subexpr)))
               (cse-subexprs expr))
     trie))
