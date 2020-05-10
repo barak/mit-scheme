@@ -1044,6 +1044,11 @@ USA.
 		    alist
 		    'alist-copy))
 
+(define (alist-for-each procedure alist)
+  (for-each (lambda (p)
+	      (procedure (car p) (cdr p)))
+	    alist))
+
 (define (association-procedure predicate selector #!optional caller)
   (lambda (key items)
     (let ((lose (lambda () (error:not-a list? items caller))))

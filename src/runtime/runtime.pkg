@@ -3298,6 +3298,7 @@ USA.
 	  alist-delete!			;(srfi 1)
 	  alist-fold
 	  alist-fold-right
+	  alist-for-each
 	  alist-table
 	  alist-table->alist
 	  alist-table-clear!
