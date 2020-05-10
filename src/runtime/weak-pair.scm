@@ -329,7 +329,7 @@ USA.
 (define (clean-weak-list! items)
   (define-integrable (predicate item)
     (declare (ignore item))
-    #t)
+    #f)
   (%delete! predicate items 'clean-weak-list!))
 
 (define-integrable (%delete! predicate items caller)
