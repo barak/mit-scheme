@@ -404,7 +404,7 @@ USA.
 
 (define (weak-for-each procedure first . rest)
   (if (null? rest)
-      (%weak-for-each procedure items #f 'weak-for-each)
+      (%weak-for-each procedure first #f 'weak-for-each)
       (apply generator-for-each
 	     procedure
 	     (weak-list->generator first)
@@ -598,6 +598,22 @@ USA.
 				(cons (weak-cons key datum) acc)))
 			  '()
 			  alist set-alist! 'weak-alist-remove))
+
+(define (weak-alist-for-each procedure alist #!optional set-alist!)
+  (let ((set-alist! (if (default-object? set-alist!) #f set-alist!)))
+    (let loop ((this alist) (prev #f))
+      (if (pair? this)
+	  (let ((p (car this))
+		(next (cdr this)))
+	    (let ((key (weak-car p)))
+	      (if (gc-reclaimed-object? key)
+		  (begin
+		    (cond (prev (set-cdr! prev next))
+			  (set-alist! (set-alist! next)))
+		    (loop next prev))
+		  (begin
+		    (procedure key (weak-cdr p))
+		    (loop next this)))))))))
 
 (define (weak-assq item items #!optional set-alist!)
   (define-integrable (predicate item*)

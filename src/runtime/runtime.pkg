@@ -279,6 +279,7 @@ USA.
 	  weak-alist-find
 	  weak-alist-fold
 	  weak-alist-fold-right
+	  weak-alist-for-each
 	  weak-alist-remove
 	  weak-alist-remove!
 	  weak-alist-table
