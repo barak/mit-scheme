@@ -23,7 +23,22 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Utility to make TAGS file for an MIT/GNU Scheme build directory.
-# The working directory must be the build directory.
+# Utility to make TAGS files for MIT/GNU Scheme.
 
-etags *.scm
+set -e
+
+SUBDIRS=(src tests)
+
+for SUBDIR in "${SUBDIRS[@]}"; do
+    echo "making TAGS in ${SUBDIR}"
+    ( cd ${SUBDIR} && ./Tags.sh ) || exit 1
+done
+
+function write_entries ()
+{
+    for SUBDIR in "${SUBDIRS[@]}"; do
+	echo -e "\f"
+	echo "${SUBDIR}"/TAGS,include
+    done
+}
+write_entries > TAGS

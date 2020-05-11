@@ -28,44 +28,39 @@
 
 set -e
 
-DEFAULT_SUBDIRS=( \
-    6001 \
-    blowfish \
-    compiler \
-    cref \
-    edwin \
-    ffi \
-    gdbm \
-    imail \
-    libraries \
-    mcrypt \
-    microcode \
-    pgsql \
-    runtime \
-    sf \
-    sos \
-    ssp \
-    star-parser \
-    win32 \
-    x11 \
-    x11-screen \
-    xdoc \
-    xml \
-)
+EXCLUDED_DIRS=(etc relnotes tools)
 
-SUBDIRS=("${@}")
-if (( ${#SUBDIRS[@]} == 0 )); then
-    SUBDIRS=("${DEFAULT_SUBDIRS[@]}")
-fi
+function excluded_dir ()
+{
+    local DIR=${1}
+    local N=${#EXCLUDED_DIRS[@]}
+    local I=0
+    while (( I < N )); do
+        if [[ ${DIR} = ${EXCLUDED_DIRS[${I}]} ]]; then
+            return 0
+        fi
+        (( I++ ))
+    done
+    return 1
+}
+
+ALL_SUBDIRS=($(find * -type d -depth 0))
+SUBDIRS=()
+
+for SUBDIR in "${ALL_SUBDIRS[@]}"; do
+    if ! excluded_dir "${SUBDIR}"; then
+        SUBDIRS+=("${SUBDIR}")
+    fi
+done
 
 for SUBDIR in "${SUBDIRS[@]}"; do
     echo "making TAGS in ${SUBDIR}"
     if [[ -x ${SUBDIR}/Tags.sh ]]; then
-	SCRIPT_LOC=.
+        SCRIPT=./Tags.sh
     else
-	SCRIPT_LOC=../etc
+        SCRIPT=../etc/Tags.sh
     fi
-    ( cd ${SUBDIR} && ${SCRIPT_LOC}/Tags.sh ) || exit 1
+    ( cd ${SUBDIR} && ${SCRIPT} ) || exit 1
 done
 
 function write_entries ()
