@@ -2834,6 +2834,7 @@ USA.
 	  hash-table-entry-type:key&datum-ephemeral
 	  hash-table-entry-type:key-ephemeral
 	  hash-table-entry-type:key-weak
+	  hash-table-entry-type:key-weak-list
 	  hash-table-entry-type:key&datum-weak
 	  hash-table-entry-type:strong
 	  hash-table-equivalence-function ;(srfi 69)
@@ -2863,6 +2864,8 @@ USA.
 	  key-ephemeral-eqv-hash-table-type
 	  key-weak-eq-hash-table-type
 	  key-weak-eqv-hash-table-type
+	  key-weak-list-eq-hash-table-type
+	  key-weak-list-eqv-hash-table-type
 	  make-datum-weak-eq-hash-table
 	  make-datum-weak-eqv-hash-table
 	  make-equal-hash-table
@@ -2874,18 +2877,24 @@ USA.
 	  make-key-ephemeral-eqv-hash-table
 	  make-key-weak-eq-hash-table
 	  make-key-weak-eqv-hash-table
+	  make-key-weak-list-eq-hash-table
+	  make-key-weak-list-eqv-hash-table
 	  make-non-pointer-hash-table
 	  make-string-ci-hash-table
 	  make-string-hash-table
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table
+	  make-strong-list-eq-hash-table
+	  make-strong-list-eqv-hash-table
 	  non-pointer-hash-table-type
 	  set-equality-predicate-properties!
 	  set-hash-table-rehash-size!
 	  set-hash-table-rehash-threshold!
 	  string-hash-table-type
 	  strong-eq-hash-table-type
-	  strong-eqv-hash-table-type))
+	  strong-eqv-hash-table-type
+	  strong-list-eq-hash-table-type
+	  strong-list-eqv-hash-table-type))
 
 (define-package (runtime memoizer)
   (files "memoizer")

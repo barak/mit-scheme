@@ -633,6 +633,43 @@ USA.
 (register-entry-type! 'key&datum-ephemeral
 		      hash-table-entry-type:key&datum-ephemeral)
 
+;;; key-weak-list -- if any element of the key is GC'd, the entry is dropped,
+;;; but the datum may be retained arbitrarily long.
+
+(define-integrable (make-key-weak-list-entry key datum)
+  (cons key datum))
+
+(define (key-weak-list-entry-valid? entry)
+  (let loop ((key (car entry)))
+    (if (null-weak-list? key)
+	#t
+	(and (not (gc-reclaimed-object? (weak-car key)))
+	     (loop (weak-cdr key))))))
+
+(define-integrable key-weak-list-entry-key car)
+(define-integrable key-weak-list-entry-datum cdr)
+(define-integrable set-key-weak-list-entry-datum! set-cdr!)
+
+(define-integrable (call-with-key-weak-list-entry-key entry if-valid if-not)
+  (if (key-weak-list-entry-valid? entry)
+      (if-valid (car entry) (lambda () unspecific))
+      (if-not)))
+
+(define-integrable (call-with-key-weak-list-entry-key&datum entry if-valid
+							    if-not)
+  (if (key-weak-list-entry-valid? entry)
+      (if-valid (car entry) (cdr entry) (lambda () unspecific))
+      (if-not)))
+
+(declare (integrate-operator hash-table-entry-type:key-weak-list))
+(define hash-table-entry-type:key-weak-list
+  (make-entry-type make-key-weak-list-entry
+		   key-weak-list-entry-valid?
+		   call-with-key-weak-list-entry-key
+		   call-with-key-weak-list-entry-key&datum
+		   set-key-weak-list-entry-datum!))
+(register-entry-type! 'key-weak-list hash-table-entry-type:key-weak-list)
+
 ;;;; Methods
 
 (define (make-method:get compute-hash! key=? entry-type)
@@ -1006,29 +1043,116 @@ USA.
   (fix:remainder (equal-hash key) modulus))
 
 (define (binary-hash-by-identity object1 object2 #!optional modulus)
-  (binary-hash eq-hash object1 object2 modulus))
+  (binary-hash eq-hash object1 object2 modulus 'binary-hash-by-identity))
 
 (define (binary-hash-by-eqv object1 object2 #!optional modulus)
-  (binary-hash eqv-hash object1 object2 modulus))
+  (binary-hash eqv-hash object1 object2 modulus 'binary-hash-by-eqv))
 
 (define (binary-hash-by-equal object1 object2 #!optional modulus)
-  (binary-hash equal-hash object1 object2 modulus))
+  (binary-hash equal-hash object1 object2 modulus 'binary-hash-by-equal))
 
 ;;; Assumes that hash-fn always returns a nonnegative fixnum.
-(define-integrable (binary-hash hash-fn object1 object2 modulus)
-  (let ((sum
-	 (+ (* 31 (hash-fn object1))
-	    (hash-fn object2))))
-    (if (default-object? modulus)
-	(if (fix:fixnum? sum)
-	    sum
-	    (fix:xor (shift-right sum microcode-id/nonnegative-fixnum-length)
-		     (bitwise-and sum microcode-id/nonnegative-fixnum-mask)))
-	(begin
-	  (guarantee positive-fixnum? modulus 'binary-eq-hash-mod)
-	  (if (fix:fixnum? sum)
-	      (fix:remainder sum modulus)
-	      (modulo sum modulus))))))
+(define-integrable (binary-hash hash-fn object1 object2 modulus caller)
+  (if (default-object? modulus)
+      (combine-hashes (hash-fn object1) (hash-fn object2))
+      (begin
+	(guarantee positive-fixnum? modulus caller)
+	(combine-hashes-mod (hash-fn object1) (hash-fn object2) modulus))))
+
+(define-integrable (combine-hashes h1 h2)
+  (let ((sum (+ (* 31 h1) h2)))
+    (if (fix:fixnum? sum)
+	sum
+	(fix:xor (shift-right sum microcode-id/nonnegative-fixnum-length)
+		 (bitwise-and sum microcode-id/nonnegative-fixnum-mask)))))
+
+(define-integrable (combine-hashes-mod h1 h2 modulus)
+  (let ((sum (+ (* 31 h1) h2)))
+    (if (fix:fixnum? sum)
+	(fix:remainder sum modulus)
+	(modulo sum modulus))))
+
+(define ((make-list-hash elt-hash) object #!optional modulus)
+  (if (default-object? modulus)
+      (%list-hash elt-hash object)
+      (%list-hash-mod elt-hash object modulus)))
+
+(define-integrable (make-list-hash-mod elt-hash)
+  (lambda (object modulus)
+    (%list-hash-mod elt-hash object modulus)))
+
+(define list-eq-hash-mod (make-list-hash-mod eq-hash))
+(define list-eqv-hash-mod (make-list-hash-mod eqv-hash))
+
+(define-integrable (%list-hash elt-hash object)
+  (let loop ((object object) (result 25165813))
+    (if (null-list? object)
+	result
+	(loop (cdr object)
+	      (combine-hashes (elt-hash (car object)) result)))))
+
+(define-integrable (%list-hash-mod elt-hash object modulus)
+  (guarantee positive-fixnum? modulus)
+  (let loop ((object object) (result (fix:remainder 25165813 modulus)))
+    (if (null-list? object)
+	result
+	(loop (cdr object)
+	      (combine-hashes-mod (elt-hash (car object))
+				  result
+				  modulus)))))
+
+(define-integrable (make-list=? elt=?)
+  (lambda (l1 l2)
+    (let loop ((l1 l1) (l2 l2))
+      (if (and (pair? l1) (pair? l2))
+	  (and (elt=? (car l1) (car l2))
+	       (loop (cdr l1) (cdr l2)))
+	  (and (null? l1) (null? l2))))))
+
+(define list-eq=? (make-list=? eq?))
+(define list-eqv=? (make-list=? eqv?))
+
+(define ((make-weak-list-hash elt-hash) object #!optional modulus)
+  (if (default-object? modulus)
+      (%weak-list-hash elt-hash object)
+      (%weak-list-hash-mod elt-hash object modulus)))
+
+(define-integrable (make-weak-list-hash-mod elt-hash)
+  (lambda (object modulus)
+    (%weak-list-hash-mod elt-hash object modulus)))
+
+(define weak-list-eq-hash-mod (make-weak-list-hash-mod eq-hash))
+(define weak-list-eqv-hash-mod (make-weak-list-hash-mod eqv-hash))
+
+(define-integrable (%weak-list-hash elt-hash object)
+  (let loop ((object object) (result 25165813))
+    (if (null-weak-list? object)
+	result
+	(loop (weak-cdr object)
+	      (combine-hashes (elt-hash (weak-car object)) result)))))
+
+(define-integrable (%weak-list-hash-mod elt-hash object modulus)
+  (guarantee positive-fixnum? modulus)
+  (let loop ((object object) (result (fix:remainder 25165813 modulus)))
+    (if (null-weak-list? object)
+	result
+	(loop (weak-cdr object)
+	      (combine-hashes-mod (elt-hash (weak-car object))
+				  result
+				  modulus)))))
+
+(define-integrable (make-weak-list=? elt=?)
+  (lambda (l1 l2)
+    (let loop ((l1 l1) (l2 l2))
+      (if (and (weak-pair? l1) (weak-pair? l2))
+	  (let ((key1 (weak-car l1)))
+	    (and (elt=? key1 (weak-car l2))
+		 (not (gc-reclaimed-object? key1))
+		 (loop (weak-cdr l1) (weak-cdr l2))))
+	  (and (null? l1) (null? l2))))))
+
+(define weak-list-eq=? (make-weak-list=? eq?))
+(define weak-list-eqv=? (make-weak-list=? eqv?))
 
 ;;;; Constructing and Open-Coding Types and Constructors
 
@@ -1176,10 +1300,12 @@ USA.
 (define string-hash-table-type)
 (define strong-eq-hash-table-type)
 (define strong-eqv-hash-table-type)
-
+(define strong-list-eq-hash-table-type)
+(define strong-list-eqv-hash-table-type)
+(define key-weak-list-eq-hash-table-type)
+(define key-weak-list-eqv-hash-table-type)
 (define hash-table-type-constructors)
 (define hash-metadata-table)
-
 (add-boot-init!
  (lambda ()
    (set! key-ephemeral-eq-hash-table-type
@@ -1198,6 +1324,7 @@ USA.
    (open-type-constructor! hash-table-entry-type:key-ephemeral)
    (open-type-constructor! hash-table-entry-type:datum-ephemeral)
    (open-type-constructor! hash-table-entry-type:key&datum-ephemeral)
+   (open-type-constructor! hash-table-entry-type:key-weak-list)
    (let ((make make-hash-table-type))	;For brevity...
      (set! equal-hash-table-type
 	   (make equal-hash-mod equal? #t hash-table-entry-type:strong))
@@ -1220,7 +1347,17 @@ USA.
      (set! strong-eq-hash-table-type	;Open-coded
 	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:strong))
      (set! strong-eqv-hash-table-type
-	   (make eqv-hash-mod eqv? #t hash-table-entry-type:strong)))
+	   (make eqv-hash-mod eqv? #t hash-table-entry-type:strong))
+     (set! strong-list-eq-hash-table-type
+	   (make list-eq-hash-mod list-eq=? #t hash-table-entry-type:strong))
+     (set! strong-list-eqv-hash-table-type
+	   (make list-eqv-hash-mod list-eqv=? #t hash-table-entry-type:strong))
+     (set! key-weak-list-eq-hash-table-type
+	   (make weak-list-eq-hash-mod weak-list-eq=? #t
+		 hash-table-entry-type:key-weak-list))
+     (set! key-weak-list-eqv-hash-table-type
+	   (make weak-list-eqv-hash-mod weak-list-eqv=? #t
+		 hash-table-entry-type:key-weak-list)))
    unspecific))
 
 (define make-equal-hash-table)
@@ -1235,7 +1372,10 @@ USA.
 (define make-string-hash-table)
 (define make-strong-eq-hash-table)
 (define make-strong-eqv-hash-table)
-
+(define make-strong-list-eq-hash-table)
+(define make-strong-list-eqv-hash-table)
+(define make-key-weak-list-eq-hash-table)
+(define make-key-weak-list-eqv-hash-table)
 (add-boot-init!
  (lambda ()
    (let-syntax ((init
@@ -1254,7 +1394,11 @@ USA.
      (init make-string-ci-hash-table string-ci-hash-table-type)
      (init make-string-hash-table string-hash-table-type)
      (init make-strong-eq-hash-table strong-eq-hash-table-type)
-     (init make-strong-eqv-hash-table strong-eqv-hash-table-type))
+     (init make-strong-eqv-hash-table strong-eqv-hash-table-type)
+     (init make-strong-list-eq-hash-table strong-list-eq-hash-table-type)
+     (init make-strong-list-eqv-hash-table strong-list-eqv-hash-table-type)
+     (init make-key-weak-list-eq-hash-table key-weak-list-eq-hash-table-type)
+     (init make-key-weak-list-eqv-hash-table key-weak-list-eqv-hash-table-type))
    unspecific))
 
 ;;;; Compatibility with SRFI 69 and older MIT Scheme

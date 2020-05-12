@@ -39,6 +39,7 @@ USA.
 		   (conc-name sequence-specification/))
   (length #f read-only #t)
   (key-radix #f read-only #t)
+  (key-type #f read-only #t)
   (insert-fraction #f read-only #t)
   (delete-fraction #f read-only #t))
 
@@ -60,46 +61,109 @@ USA.
   (generate-test-sequence (make-random-state #t)
 			  sequence-specification))
 
-(define (generate-test-sequence state sequence-specification)
+(define (generate-test-sequence state spec)
   (let ((state (make-random-state state))
-	(length (sequence-specification/length sequence-specification))
-	(key-radix (sequence-specification/key-radix sequence-specification))
+	(length (sequence-specification/length spec))
+	(key-radix (sequence-specification/key-radix spec))
+	(key-type (sequence-specification/key-type spec))
 	(insert-fraction
 	 (exact->inexact
-	  (sequence-specification/insert-fraction sequence-specification)))
+	  (sequence-specification/insert-fraction spec)))
 	(delete-fraction
 	 (exact->inexact
-	  (sequence-specification/delete-fraction sequence-specification)))
-	(tree (make-rb-tree fix:= fix:<)))
-    (let ((delete-break (+ insert-fraction delete-fraction)))
-      (let loop ((n 0) (s '()))
-	(if (fix:= n length)
-	    s
-	    (loop (fix:+ n 1)
-		  (cons (cons (let ((x (random 1. state)))
-				(cond ((< x insert-fraction) 'insert)
-				      ((< x delete-break) 'delete)
-				      (else 'lookup)))
-			      (let ((key (random key-radix state)))
-				(or (rb-tree/lookup tree key #f)
-				    (let ((pointer (cons key '())))
-				      (rb-tree/insert! tree key pointer)
-				      pointer))))
-			s)))))))
+	  (sequence-specification/delete-fraction spec))))
+
+    (define random-int
+      (random-source-make-integers state))
+
+    (define (make-scalar-key)
+      (random key-radix state))
+
+    (define (make-list-key)
+      (let loop ((n (random-int 10)) (key '()))
+	(if (> n 0)
+	    (loop (- n 1) (cons (make-scalar-key) key))
+	    key)))
+
+    (define (make-weak-list-key)
+      (let loop ((n (random-int 10)) (key '()))
+	(if (> n 0)
+	    (loop (- n 1) (weak-cons (make-scalar-key) key))
+	    key)))
+
+    (let-values (((key= key<) (sequence-specification/predicates spec)))
+      (let ((make-key
+	     (case key-type
+	       ((scalar) make-scalar-key)
+	       ((list) make-list-key)
+	       ((weak-list) make-weak-list-key)
+	       (else (error "Unrecognized key type:" key-type))))
+	    (delete-break (+ insert-fraction delete-fraction))
+	    (tree (make-rb-tree key= key<)))
+	(let loop ((n 0) (s '()))
+	  (if (fix:= n length)
+	      s
+	      (loop (fix:+ n 1)
+		    (cons (cons (let ((x (random 1. state)))
+				  (cond ((< x insert-fraction) 'insert)
+					((< x delete-break) 'delete)
+					(else 'lookup)))
+				(let ((key (make-key)))
+				  (or (rb-tree/lookup tree key #f)
+				      (let ((pointer (cons key '())))
+					(rb-tree/insert! tree key pointer)
+					pointer))))
+			  s))))))))
+
+(define (sequence-specification/predicates spec)
+
+  (define (list= l1 l2)
+    (if (null-list? l1)
+	(null-list? l2)
+	(and (not (null-list? l2))
+	     (fix:= (car l1) (car l2))
+	     (list= (cdr l1) (cdr l2)))))
+
+  (define (list< l1 l2)
+    (and (not (null-list? l2))
+	 (or (null-list? l1)
+	     (fix:< (car l1) (car l2))
+	     (and (fix:= (car l1) (car l2))
+		  (list< (cdr l1) (cdr l2))))))
+
+  (define (weak-list= l1 l2)
+    (if (null-weak-list? l1)
+	(null-weak-list? l2)
+	(and (not (null-weak-list? l2))
+	     (fix:= (weak-car l1) (weak-car l2))
+	     (weak-list= (weak-cdr l1) (weak-cdr l2)))))
+
+  (define (weak-list< l1 l2)
+    (and (not (null-weak-list? l2))
+	 (or (null-weak-list? l1)
+	     (fix:< (weak-car l1) (weak-car l2))
+	     (and (fix:= (weak-car l1) (weak-car l2))
+		  (weak-list< (weak-cdr l1) (weak-cdr l2))))))
+
+  (case (sequence-specification/key-type spec)
+    ((scalar) (values fix:= fix:<))
+    ((list) (values list= list<))
+    ((weak-list) (values weak-list= weak-list<))
+    (else (error "Unrecognized key type:" key-type))))
 
 (define (run-test-sequence s implementation)
   (let ((table ((implementation/make implementation)))
 	(insert! (implementation/insert! implementation))
 	(delete! (implementation/delete! implementation))
 	(lookup (implementation/lookup implementation)))
-    (do ((s s (cdr s)))
-	((null? s))
-      (cond ((eq? 'insert (caar s))
-	     (insert! table (cdar s) #f))
-	    ((eq? 'delete (caar s))
-	     (delete! table (cdar s)))
-	    (else
-	     (lookup table (cdar s) #f))))
+    (for-each (lambda (step)
+		(let ((operator (car step))
+		      (key (cadr step)))
+		  (case operator
+		    ((insert) (insert! table key #f))
+		    ((delete) (delete! table key))
+		    (else (lookup table key #f)))))
+	      s)
     table))
 
 (define (test-sequence-overhead s)
@@ -118,16 +182,12 @@ USA.
 
 (load-option 'rb-tree)
 
-(define (make-pointer-tree)
-  (make-rb-tree (lambda (x y) (fix:= (car x) (car y)))
-		(lambda (x y) (fix:< (car x) (car y)))))
-
-(define rbt
-  (make-implementation make-pointer-tree
-		       rb-tree/insert!
-		       rb-tree/delete!
-		       rb-tree/lookup
-		       rb-tree->alist))
+(define (make-pointer-tree spec)
+  (let-values (((key= key<) (sequence-specification/predicates spec)))
+    (if (eq? 'scalar (sequence-specification/predicates spec))
+	(make-rb-tree (lambda (x y) (key= (car x) (car y)))
+		      (lambda (x y) (key< (car x) (car y))))
+	(make-rb-tree key= key<))))
 
 (load-option 'hash-table)
 
@@ -136,54 +196,55 @@ USA.
 		       hash-table-set!
 		       hash-table-delete!
 		       hash-table-ref/default
-		       (lambda (table)
-			 (sort (hash-table->alist table)
-			       (lambda (x y) (fix:< (caar x) (caar y)))))))
+		       hash-table->alist))
 
-(define (test-correctness s implementation)
-  (let ((table ((implementation/make implementation)))
-	(insert! (implementation/insert! implementation))
-	(delete! (implementation/delete! implementation))
-	(lookup (implementation/lookup implementation))
-	(tree (make-pointer-tree)))
-    (do ((s s (cdr s)))
-	((null? s))
-      (let ((operation (caar s))
-	    (key (cdar s)))
-	(cond ((eq? 'insert operation)
-	       (rb-tree/insert! tree key #t)
-	       (insert! table key #t))
-	      ((eq? 'delete operation)
-	       (rb-tree/delete! tree key)
-	       (delete! table key))
-	      (else
-	       (let ((result (lookup table key #f)))
-		 (if (not (eq? result (rb-tree/lookup tree key #f)))
-		     (error "Incorrect lookup result:" result key)))))))
-    (let loop
-	((alist ((implementation/->alist implementation) table))
-	 (check (rb-tree->alist tree)))
-      (if (null? alist)
-	  (if (not (null? check))
-	      (error "Table has too few elements:" check))
-	  (begin
-	    (if (null? check)
-		(error "Table has too many elements:" alist))
-	    (if (not (and (eq? (caar alist) (caar check))
-			  (eq? (cdar alist) (cdar check))))
-		(error "Alist element incorrect:" (car alist) (car check)))
-	    (loop (cdr alist) (cdr check)))))))
+(define (test-correctness spec implementation)
+  (let-values (((key= key<) (sequence-specification/predicates spec)))
+    (let ((table ((implementation/make implementation)))
+	  (insert! (implementation/insert! implementation))
+	  (delete! (implementation/delete! implementation))
+	  (lookup (implementation/lookup implementation))
+	  (tree
+	   (if (eq? 'scalar (sequence-specification/key-type spec))
+	       (make-rb-tree (lambda (x y) (key= (car x) (car y)))
+			     (lambda (x y) (key< (car x) (car y))))
+	       (make-rb-tree key= key<)))
+	  (get-ptr
+	   (if (eq? 'scalar (sequence-specification/key-type spec))
+	       cdr
+	       cadr)))
+      (for-each (lambda (step)
+		  (let ((operator (car step))
+			(ptr (get-ptr step)))
+		    (case operator
+		      ((insert)
+		       (rb-tree/insert! tree ptr #t)
+		       (insert! table ptr #t))
+		      ((delete)
+		       (rb-tree/delete! tree ptr)
+		       (delete! table ptr))
+		      (else
+		       (assert-equal (lookup table ptr #f)
+				     (rb-tree/lookup tree ptr #f)
+				     'expression `(lookup ,ptr))))))
+		(sequence-specification->sequence spec))
+      (assert-lset= (lambda (a b)
+		      (and (eq? (car a) (car b))
+			   (eq? (cdr a) (cdr b))))
+		    ((implementation/->alist implementation) table)
+		    (rb-tree->alist tree)))))
 
 ;;;; Correctness Tests
 
-(define (check implementation)
+(define (check implementation key-type)
   (let ((n (if keep-it-fast!? #x100 #x1000)))
     (do ((i 0 (+ i 1))) ((= i (if keep-it-fast!? #x10 #x100)))
       (let* ((key-radix (+ 1 (random-integer n)))
 	     (insert-fraction (random-real))
 	     (delete-fraction (- 1 insert-fraction)))
 	(test-correctness
-	 (make-sequence n key-radix insert-fraction delete-fraction)
+	 (make-sequence-specification n key-radix key-type insert-fraction
+				      delete-fraction)
 	 implementation)))))
 
 (define (integer-hash-mod integer modulus)
@@ -219,9 +280,30 @@ USA.
 				(hash-table-constructor
 				 (apply make-hash-table-type
 					(append (cdr hash-parameters)
-						(cdr entry-type)))))))))
+						(cdr entry-type)))))
+			       'scalar))))
 			entry-types))
 	    hash-parameters))
+
+(define-test 'correctness-vs-rb:strong-list-eq-hash-table
+  (lambda ()
+    (check (make-hash-table-implementation make-strong-list-eq-hash-table)
+	   'list)))
+
+(define-test 'correctness-vs-rb:strong-list-eqv-hash-table
+  (lambda ()
+    (check (make-hash-table-implementation make-strong-list-eqv-hash-table)
+	   'list)))
+
+(define-test 'correctness-vs-rb:key-weak-list-eq-hash-table
+  (lambda ()
+    (check (make-hash-table-implementation make-key-weak-list-eq-hash-table)
+	   'weak-list)))
+
+(define-test 'correctness-vs-rb:key-weak-list-eqv-hash-table
+  (lambda ()
+    (check (make-hash-table-implementation make-key-weak-list-eqv-hash-table)
+	   'weak-list)))
 
 ;;;; Regression Tests
 
@@ -240,6 +322,14 @@ USA.
       (hash-table-set! hash-table (cons 0 0) 'lose)
       (gc-flip)
       (assert-eqv (hash-table-ref/default hash-table #f 'win) 'win))))
+
+(define-test 'regression:gc-reclaimed-key-of-broken-weak-entry
+  (lambda ()
+    (let ((hash-table (regression-make-table hash-table-entry-type:key-weak)))
+      (hash-table-set! hash-table (cons 0 0) 'lose)
+      (gc-flip)
+      (assert-eqv (hash-table-ref/default hash-table (gc-reclaimed-object) 'win)
+		  'win))))
 
 (define-test 'regression:modification-during-srfi-69-update
   (lambda ()
