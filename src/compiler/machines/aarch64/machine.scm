@@ -31,6 +31,13 @@ USA.
 
 ;;;; Architecture Parameters
 
+(define (compiler-features)
+  (cons (case endianness
+          ((big) 'target-big-endian)
+          ((little) 'target-little-endian)
+          (else (error "Unknown endianness:" endianness)))
+        '(target-arch=aarch64 target-64-bit)))
+
 (define (target-fasl-format)
   (case endianness
     ((BIG) fasl-format:aarch64be)

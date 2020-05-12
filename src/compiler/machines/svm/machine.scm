@@ -31,6 +31,17 @@ USA.
 
 ;;;; Architecture Parameters
 
+(define (compiler-features)
+  (list 'target-arch=svm1
+	(case endianness
+	  ((big) 'target-big-endian)
+	  ((little) 'target-little-endian)
+	  (else (error "Unknown endianness:" endianness)))
+	(case scheme-object-width
+	  ((32) 'target-32-bit)
+	  ((64) 'target-64-bit)
+	  (else (error "Unknown object width:" scheme-object-width)))))
+
 (define (target-fasl-format)
   (cond ((and (eq? endianness 'BIG) (= scheme-object-width 32))
 	 fasl-format:svm1-32be)

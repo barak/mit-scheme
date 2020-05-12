@@ -31,6 +31,9 @@ USA.
 
 ;;;; Architecture Parameters
 
+(define (compiler-features)
+  '(target-arch=x86-64 target-little-endian target-64-bit))
+
 (define (target-fasl-format) fasl-format:amd64)
 
 (define use-pre/post-increment? false)

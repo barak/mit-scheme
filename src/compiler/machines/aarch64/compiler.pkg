@@ -70,6 +70,7 @@ USA.
          )
   (parent ())
   (export ()
+          compiler-features
           compiler:analyze-side-effects?
           compiler:cache-free-variables?
           compiler:coalescing-constant-warnings?

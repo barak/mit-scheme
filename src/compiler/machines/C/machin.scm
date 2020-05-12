@@ -31,6 +31,7 @@ USA.
 
 ;;;; Architecture Parameters
 
+(define (compiler-features) '(target-arch=c))
 (define (target-fasl-format) (error "I should not be fasdumping crap!"))
 
 (define use-pre/post-increment? true)

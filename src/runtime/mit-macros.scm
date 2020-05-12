@@ -736,7 +736,7 @@ USA.
     (let ((p
 	   (find (lambda (p)
 		   (id=? (car p) req))
-		 supported-features)))
+		 (supported-features))))
       (and p
 	   ((cdr p)))))
 
@@ -752,12 +752,30 @@ USA.
 
   (eval-req feature-requirement))
 
+(define (features)
+  (filter-map (lambda (p)
+		(and ((cdr p))
+		     (car p)))
+	      (supported-features)))
+
+(define (supported-features)
+  (append runtime-supported-features
+	  (let ((cf (global-value 'compiler-features)))
+	    (map (lambda (name) (cons name always))
+		 (if cf (cf) '(target-arch=none))))))
+
+(define (global-value name)
+  (and (eq? 'normal (environment-reference-type system-global-environment name))
+       (environment-lookup system-global-environment name)))
+
 (define (define-feature name procedure)
-  (set! supported-features (cons (cons name procedure) supported-features))
+  (set! runtime-supported-features
+	(cons (cons name procedure)
+	      runtime-supported-features))
   name)
 
-(define supported-features '())
-
+(define runtime-supported-features '())
+
 (define (always) #t)
 
 (define-feature 'mit always)
@@ -808,6 +826,8 @@ USA.
 
 (define-feature 'big-endian (lambda () (host-big-endian?)))
 (define-feature 'little-endian (lambda () (not (host-big-endian?))))
+(define-feature 'host-big-endian (lambda () (host-big-endian?)))
+(define-feature 'host-little-endian (lambda () (not (host-big-endian?))))
 
 (define ((machine? value))
   (string=? value microcode-id/machine-type))
@@ -815,11 +835,21 @@ USA.
 (define-feature 'i386 (machine? "IA-32"))
 (define-feature 'x86-64 (machine? "x86-64"))
 
-(define (features)
-  (filter-map (lambda (p)
-		(and ((cdr p))
-		     (car p)))
-	      supported-features))
+(define ((host-arch? value))
+  (eq? value microcode-id/compiled-code-type))
+
+(define-feature 'host-arch=aarch64 (host-arch? 'aarch64))
+(define-feature 'host-arch=c (host-arch? 'c))
+(define-feature 'host-arch=i386 (host-arch? 'i386))
+(define-feature 'host-arch=none (host-arch? 'none))
+(define-feature 'host-arch=svm1 (host-arch? 'svm1))
+(define-feature 'host-arch=x86-64 (host-arch? 'x86-64))
+
+(define ((bytes-per-object? value))
+  (= value (bytes-per-object)))
+
+(define-feature 'host-32-bit (bytes-per-object? 4))
+(define-feature 'host-64-bit (bytes-per-object? 8))
 
 ;;;; SRFI 9, SRFI 131, R7RS: define-record-type
 

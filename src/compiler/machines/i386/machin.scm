@@ -31,6 +31,9 @@ USA.
 
 ;;;; Architecture Parameters
 
+(define (compiler-features)
+  '(target-arch=i386 target-little-endian target-32-bit))
+
 (define (target-fasl-format) fasl-format:i386)
 
 (define use-pre/post-increment? false)
