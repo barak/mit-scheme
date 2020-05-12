@@ -77,7 +77,7 @@ USA.
        (any (lambda (component1)
 	      (dispatch-tag<= component1 tag2))
 	    (compound-tag-operands tag1))))))
-
+
 (define (compound-predicate? object)
   (and (predicate? object)
        (compound-tag? (predicate->dispatch-tag object))))
@@ -94,85 +94,87 @@ USA.
   (map dispatch-tag->predicate
        (compound-tag-operands (predicate->dispatch-tag predicate))))
 
+(define (compound-predicate datum-test operands memoizer)
+  (guarantee-list-of unary-procedure? operands 'compound-predicate)
+  (if (every predicate? operands)
+      (dispatch-tag->predicate
+       (memoizer datum-test (map predicate->dispatch-tag operands)))
+      datum-test))
+
 (define (disjoin . predicates)
   (disjoin* predicates))
 
 (define (disjoin* predicates)
-  (make-predicate (lambda (object)
-		    (any (lambda (predicate)
-			   (predicate object))
-			 predicates))
-		  'disjoin
-		  predicates))
+  (compound-predicate (lambda (object)
+			(any (lambda (predicate)
+			       (predicate object))
+			     predicates))
+		      predicates
+		      (joinish-memoizer 'disjoin dispatch-tag-is-top?)))
 
 (define (conjoin . predicates)
   (conjoin* predicates))
 
 (define (conjoin* predicates)
-  (make-predicate (lambda (object)
-		    (every (lambda (predicate)
-			     (predicate object))
-			   predicates))
-		  'conjoin
-		  predicates))
+  (compound-predicate (lambda (object)
+			(every (lambda (predicate)
+				 (predicate object))
+			       predicates))
+		      predicates
+		      (joinish-memoizer 'conjoin dispatch-tag-is-bottom?)))
 
-(define (complement predicate)
-  (make-predicate (lambda (object)
-		    (not (predicate object)))
-		  'complement
-		  (list predicate)))
-
-(define (make-predicate datum-test operator operands)
-  (if (every predicate? operands)
-      (dispatch-tag->predicate
-       ((compound-operator-builder operator)
-	datum-test
-	operator
-	(map predicate->dispatch-tag operands)))
-      datum-test))
+(define (joinish-memoizer operator tag-is-limit?)
+  (let ((memoizer
+	 (simple-lset-memoizer eq?
+	   (lambda (datum-test operator tags)
+	     (declare (ignore datum-test operator))
+	     tags)
+	   make-compound-tag)))
+    (lambda (datum-test tags)
+      (let ((tags*
+	     (delete-duplicates
+	      (append-map
+	       (lambda (tag)
+		 (if (and (compound-tag? tag)
+			  (eq? operator (compound-tag-operator tag)))
+		     (compound-tag-operands tag)
+		     (list tag)))
+	       tags)
+	      eq?)))
+	(if (and (pair? tags*) (null? (cdr tags*)))
+	    (car tags*)
+	    (or (find tag-is-limit? tags*)
+		(memoizer datum-test operator tags*)))))))
 
-(define compound-operator-builder)
-(define define-compound-operator)
-(add-boot-init!
- (lambda ()
-   (let ((table (make-alist-metadata-table)))
-     (set! compound-operator-builder (bundle-ref table 'get))
-     (set! define-compound-operator (bundle-ref table 'put!))
-     unspecific)
+(define (complement predicate)
+  (compound-predicate (lambda (object)
+			(not (predicate object)))
+		      (list predicate)
+		      (ordered-predicates-memoizer 'complement)))
 
-   (define (make-joinish-memoizer tag-is-limit?)
-     (let ((memoizer
-	    (simple-lset-memoizer eq?
-	      (lambda (datum-test operator tags)
-		(declare (ignore datum-test operator))
-		tags)
-	      make-compound-tag)))
-       (lambda (datum-test operator tags)
-	 (let ((tags
-		(delete-duplicates
-		 (append-map
-		  (lambda (tag)
-		    (if (and (compound-tag? tag)
-			     (eq? operator
-				  (compound-tag-operator tag)))
-			(compound-tag-operands tag)
-			(list tag)))
-		  tags)
-		 eq?)))
-	   (if (and (pair? tags) (null? (cdr tags)))
-	       (car tags)
-	       (or (find tag-is-limit? tags)
-		   (memoizer datum-test operator tags)))))))
+(define (pair-predicate car-pred cdr-pred)
+  (compound-predicate (lambda (object)
+			(and (pair? object)
+			     (car-pred (car object))
+			     (cdr-pred (cdr object))))
+		      (list car-pred cdr-pred)
+		      (ordered-predicates-memoizer 'pair)))
 
-   (define-compound-operator 'disjoin
-     (make-joinish-memoizer dispatch-tag-is-top?))
+(define (uniform-list-predicate elt-pred)
+  (compound-predicate (lambda (object)
+			(list-of-type? object elt-pred))
+		      (list elt-pred)
+		      (ordered-predicates-memoizer 'uniform-list)))
 
-   (define-compound-operator 'conjoin
-     (make-joinish-memoizer dispatch-tag-is-bottom?))
+(define (ordered-predicates-memoizer operator)
+  (let ((table
+	 (hash-table-intern! ordered-predicates-tables
+			     operator
+			     make-key-weak-list-eqv-hash-table)))
+    (lambda (datum-test tags)
+      (hash-table-intern! table (list->weak-list tags)
+	(lambda ()
+	  (make-compound-tag datum-test operator tags))))))
 
-   (define-compound-operator 'complement
-     (let ((table (make-key-weak-eqv-hash-table)))
-       (lambda (datum-test operator tags)
-	 (hash-table-intern! table (car tags)
-	   (lambda ()
-	     (make-compound-tag datum-test operator tags))))))))
+(define-deferred ordered-predicates-tables
+  (make-strong-eq-hash-table))

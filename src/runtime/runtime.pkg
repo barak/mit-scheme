@@ -2263,10 +2263,14 @@ USA.
   (parent (runtime))
   (export ()
 	  complement
+	  compound-predicate
 	  conjoin
 	  conjoin*
 	  disjoin
-	  disjoin*)
+	  disjoin*
+	  ordered-predicates-memoizer
+	  pair-predicate
+	  uniform-list-predicate)
   (export (runtime predicate)
 	  make-compound-tag))
 
