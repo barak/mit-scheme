@@ -49,7 +49,9 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime dynamic) '(runtime compound-predicate))
+(add-boot-deps! '(runtime dynamic)
+		'(runtime compound-predicate)
+		'(runtime trie))
 
 (define (cgen:new-name base)
   (string->uninterned-symbol (string base "-" (name-count base))))

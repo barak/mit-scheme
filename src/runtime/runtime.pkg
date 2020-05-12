@@ -6625,18 +6625,24 @@ USA.
   (parent (runtime))
   (export ()
 	  alist->trie
+	  delete-trie-value!
 	  find-subtrie
 	  intern-subtrie!
 	  make-trie
 	  set-trie-value!
 	  trie-=?
 	  trie->alist
-	  trie-edge-alist
+	  trie-clean!
+	  trie-clear!
+	  trie-edge-find
 	  trie-edge-fold
 	  trie-edge-for-each
+	  trie-edge-prune!
 	  trie-fold
 	  trie-for-each
 	  trie-has-value?
+	  trie-paths
+	  trie-ref
 	  trie-set!
 	  trie-value
 	  trie-values

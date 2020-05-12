@@ -29,7 +29,8 @@ USA.
 (declare (usual-integrations))
 
 (define paths
-  (list '(a b)
+  (list '()
+	'(a b)
 	'(a)
 	'(c d)
 	'(e a)
@@ -45,22 +46,42 @@ USA.
 (define-test 'trie-empty
   (lambda ()
     (let ((trie (make-trie)))
-      (assert-false (trie-has-value? trie))
-      (assert-error (lambda () (trie-value trie)))
-      (assert-equal (find-subtrie trie '()) trie)
-      (assert-equal (intern-subtrie! trie '()) trie)
-      (assert-equal (trie-values trie) '())
-      (assert-equal (trie->alist trie) '())
+      (define (empty-assertions)
+	(assert-false (trie-has-value? trie))
+	(assert-error (lambda () (trie-value trie)))
+	(assert-equal (find-subtrie trie '()) trie)
+	(assert-equal (intern-subtrie! trie '()) trie)
+	(assert-error (lambda () (trie-ref trie '())))
+	(assert-equal (trie-paths trie) '())
+	(assert-equal (trie-values trie) '())
+	(assert-equal (trie->alist trie) '())
+	(for-each (lambda (path)
+		    (if (null? path)
+			(assert-equal (find-subtrie trie path) trie)
+			(assert-false (find-subtrie trie path)))
+		    (assert-error (lambda () (trie-ref trie path))))
+		  paths))
 
-      (for-each (lambda (path)
-		  (assert-false (find-subtrie trie path)))
-		paths)
+      (define (non-empty-assertions value)
+	(assert-true (trie-has-value? trie))
+	(assert-equal (trie-value trie) value)
+	(assert-equal (trie-paths trie) '(()))
+	(assert-equal (trie-values trie) `(,value))
+	(assert-equal (trie->alist trie) `((() . ,value))))
+
+      (empty-assertions)
 
       (set-trie-value! trie "win!")
-      (assert-true (trie-has-value? trie))
-      (assert-equal (trie-value trie) "win!")
-      (assert-equal (trie-values trie) '("win!"))
-      (assert-equal (trie->alist trie) '((() . "win!"))))))
+      (non-empty-assertions "win!")
+
+      (delete-trie-value! trie)
+      (empty-assertions)
+
+      (trie-set! trie '() "foo")
+      (non-empty-assertions "foo")
+
+      (trie-clear! trie)
+      (empty-assertions))))
 
 (define-test 'trie-non-empty
   (lambda ()
@@ -70,7 +91,9 @@ USA.
 	    (leaves
 	     (map (lambda (path)
 		    (let ((trie* (intern-subtrie! trie path)))
-		      (assert-!equal trie* trie)
+		      (if (null? path)
+			  (assert-equal trie* trie)
+			  (assert-!equal trie* trie))
 		      (assert-false (trie-has-value? trie*))
 		      trie*))
 		  paths)))
@@ -116,6 +139,99 @@ USA.
 	(assert-lset= equal? (trie-values trie) vals*)
 	(assert-lset= equal? (trie->alist trie) (map cons paths vals*))))))
 
+(define (edge-example)
+  (let ((trie (make-trie))
+	(paths '((a) (b) (c)))
+	(vals '(2 3 5)))
+    (for-each (lambda (path value)
+		(trie-set! trie path value))
+	      paths
+	      vals)
+    (values trie
+	    (map (lambda (path)
+		   (cons (car path)
+			 (find-subtrie trie path)))
+		 paths))))
+
+(define-test 'trie-edge-find
+  (lambda ()
+    (let-values (((trie expected-alist) (edge-example)))
+      (let ((alist '()))
+	(assert-false
+	 (trie-edge-find (lambda (key trie*)
+			   (set! alist (alist-cons key trie* alist))
+			   #f)
+			 trie))
+	(assert-lset= equal? alist expected-alist))
+      (assert-true
+       (trie-edge-find (lambda (key trie*)
+			 (declare (ignore key))
+			 (and (trie-has-value? trie*)
+			      (even? (trie-value trie*))))
+		       trie))
+      (assert-true
+       (trie-edge-find (lambda (key trie*)
+			 (declare (ignore key))
+			 (and (trie-has-value? trie*)
+			      (odd? (trie-value trie*))))
+		       trie))
+      (assert-false
+       (trie-edge-find (lambda (key trie*)
+			 (declare (ignore key))
+			 (and (trie-has-value? trie*)
+			      (zero? (trie-value trie*))))
+		       trie)))))
+
+(define-test 'trie-edge-fold
+  (lambda ()
+    (let-values (((trie expected-alist) (edge-example)))
+      (assert-lset= equal?
+		    (trie-edge-fold (lambda (key trie* acc)
+				      (alist-cons key trie* acc))
+				    '()
+				    trie)
+		    expected-alist)
+      (let ((expected
+	     (fold (lambda (p acc)
+		     (cons* (cdr p) (car p) acc))
+		   '(the-end)
+		   expected-alist))
+	    (actual
+	     (trie-edge-fold (lambda (key trie* acc)
+			       (cons* trie* key acc))
+			     '(the-end)
+			     trie)))
+	(assert-lset= equal? actual expected)
+	(assert-equal (last actual) (last expected))))))
+
+(define-test 'trie-edge-prune!
+  (lambda ()
+
+    (define (try predicate)
+      (let-values (((trie expected-alist) (edge-example)))
+	(trie-edge-prune! predicate trie)
+	(assert-lset= equal?
+		      (trie-edge-fold (lambda (key trie* acc)
+					(alist-cons key trie* acc))
+				      '()
+				      trie)
+		      (remove (lambda (p)
+				(predicate (car p) (cdr p)))
+			      expected-alist))))
+
+    (try (lambda (key trie*)
+	   (declare (ignore trie*))
+	   (eq? 'a key)))
+    (try (lambda (key trie*)
+	   (declare (ignore trie*))
+	   (eq? 'b key)))
+    (try (lambda (key trie*)
+	   (declare (ignore trie*))
+	   (eq? 'c key)))
+    (try (lambda (key trie*)
+	   (declare (ignore trie*))
+	   (or (eq? 'a key) (eq? 'c key))))))
+
 (define-test 'alist->trie
   (lambda ()
     (let-values (((vals alist trie) (simple-example)))
@@ -125,6 +241,7 @@ USA.
 (define-test 'trie-fold
   (lambda ()
     (let-values (((vals alist trie) (simple-example)))
+      (declare (ignore vals))
       (assert-lset= equal?
 		    (trie-fold (lambda (path value acc)
 				 (declare (ignore value))
@@ -147,6 +264,7 @@ USA.
 (define-test 'trie-for-each
   (lambda ()
     (let-values (((vals alist trie) (simple-example)))
+      (declare (ignore vals))
       (let ((paths* '()))
 	(trie-for-each (lambda (path value)
 			 (declare (ignore value))
@@ -166,3 +284,16 @@ USA.
 				    (and (= 1 (length (car p)))
 					 (cdr p)))
 				  alist))))))
+
+(define-test 'trie-clean!
+  (lambda ()
+    (let-values (((vals alist trie) (simple-example)))
+      (declare (ignore vals))
+      (for-each (lambda (p)
+		  (assert-equal (trie-ref trie (car p)) (cdr p)))
+		alist)
+      (trie-clear! trie)
+      (for-each (lambda (p)
+		  (assert-error (lambda () (trie-ref trie (car p)))))
+		alist)
+      )))

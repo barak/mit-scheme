@@ -41,6 +41,14 @@ USA.
               the-unset-value
               '()))
 
+(define (alist->trie alist #!optional =?)
+  (guarantee alist? alist 'alist->trie)
+  (let ((trie (make-trie =?)))
+    (for-each (lambda (p)
+                (trie-set! trie (car p) (cdr p)))
+              alist)
+    trie))
+
 (define (trie-has-value? trie)
   (not (eq? the-unset-value (%trie-value trie))))
 
@@ -49,6 +57,9 @@ USA.
     (if (eq? the-unset-value value)
         (error:bad-range-argument trie 'trie-value))
     value))
+
+(define (delete-trie-value! trie)
+  (set-trie-value! trie the-unset-value))
 
 (define the-unset-value
   (list 'the-unset-value))
@@ -60,54 +71,74 @@ USA.
           (list (trie-value trie))
           '()))))
 
+(define (%get-child trie key succeed fail)
+  (let ((p (assoc key (%trie-edge-alist trie) (trie-=? trie))))
+    (if p
+	(succeed (cdr p))
+	(fail))))
+
+(define (%add-edge! trie key trie*)
+  (%set-trie-edge-alist! trie
+			 (cons (cons key trie*)
+			       (%trie-edge-alist trie))))
+
+(define (trie-edge-find predicate trie)
+  (let loop ((this (%trie-edge-alist trie)))
+    (and (pair? this)
+	 (or (predicate (caar this) (cdar this))
+	     (loop (cdr this))))))
+
+(define (trie-edge-fold kons knil trie)
+  (fold (lambda (p acc)
+	  (kons (car p) (cdr p) acc))
+	knil
+	(%trie-edge-alist trie)))
+
+(define (trie-edge-for-each procedure trie)
+  (for-each (lambda (p)
+	      (procedure (car p) (cdr p)))
+	    (%trie-edge-alist trie)))
+
+(define (trie-edge-prune! predicate trie)
+  (%set-trie-edge-alist! trie
+			 (remove! (lambda (p)
+				    (predicate (car p) (cdr p)))
+				  (%trie-edge-alist trie))))
+
 (define (find-subtrie trie path)
   (let loop ((path path) (trie trie))
     (if (null-list? path 'find-subtrie)
         trie
-        (let ((trie* (%trie-find trie (car path))))
-          (and trie*
-               (loop (cdr path) trie*))))))
+	(%get-child trie (car path)
+	  (lambda (trie*)
+	    (loop (cdr path) trie*))
+	  (lambda () #f)))))
 
 (define (intern-subtrie! trie path)
   (let loop ((path path) (trie trie))
     (if (null-list? path 'intern-subtrie!)
         trie
-        (loop (cdr path)
-              (%trie-intern! trie (car path))))))
+	(loop (cdr path)
+	      (let ((key (car path)))
+		(%get-child trie key
+		  (lambda (trie*)
+		    trie*)
+		  (lambda ()
+		    (let ((trie* (make-trie (trie-=? trie))))
+		      (%add-edge! trie key trie*)
+		      trie*))))))))
 
-(define (%trie-find trie key)
-  (let ((p (assoc key (%trie-edge-alist trie) (trie-=? trie))))
-    (and p
-         (cdr p))))
+(define (trie-ref trie path #!optional fail)
+  (let ((trie* (find-subtrie trie path)))
+    (if (and trie* (trie-has-value? trie*))
+	(trie-value trie*)
+	(begin
+	  (if (default-object? fail)
+	      (error:bad-range-argument path 'trie-ref))
+	  (fail)))))
 
-(define (%trie-intern! trie key)
-  (or (%trie-find trie key)
-      (let ((trie* (make-trie (trie-=? trie))))
-        (%set-trie-edge-alist! trie
-                               (append! (%trie-edge-alist trie)
-                                        (list (cons key trie*))))
-        trie*)))
-
 (define (trie-set! trie path value)
   (set-trie-value! (intern-subtrie! trie path) value))
-
-(define (trie-values trie)
-  (trie-fold (lambda (path value acc)
-	       (declare (ignore path))
-	       (cons value acc))
-	     '()
-	     trie))
-
-(define (trie->alist trie)
-  (trie-fold alist-cons '() trie))
-
-(define (alist->trie alist #!optional =?)
-  (guarantee alist? alist 'alist->trie)
-  (let ((trie (make-trie =?)))
-    (for-each (lambda (p)
-                (trie-set! trie (car p) (cdr p)))
-              alist)
-    trie))
 
 (define (trie-fold kons knil trie)
   (let loop ((path '()) (trie trie) (acc knil))
@@ -117,23 +148,43 @@ USA.
 			(kons (reverse path) (trie-value trie) acc)
 			acc)
 		    trie)))
-
+
 (define (trie-for-each procedure trie)
-  (trie-fold (lambda (path value acc)
-	       (procedure path value)
-	       acc)
-	     unspecific
+  (let loop ((path '()) (trie trie))
+    (if (trie-has-value? trie)
+	(procedure (reverse path) (trie-value trie)))
+    (trie-edge-for-each (lambda (key trie*)
+			  (loop (cons key path) trie*))
+			trie)))
+
+(define (trie-clean! trie)
+  (let loop ((path '()) (trie trie))
+    (trie-edge-prune! (lambda (key trie*)
+			(loop (cons key path) trie*)
+			(and (not (trie-has-value? trie*))
+			     (null? (%trie-edge-alist trie*))))
+		      trie)))
+
+(define (trie-clear! trie)
+  (delete-trie-value! trie)
+  (%set-trie-edge-alist! trie '()))
+
+(define (trie-paths trie)
+  (trie-fold (lambda (path value paths)
+	       (declare (ignore value))
+	       (cons path paths))
+	     '()
 	     trie))
 
-(define (trie-edge-fold kons knil trie)
-  (alist-fold kons knil (%trie-edge-alist trie)))
+(define (trie-values trie)
+  ;; Not using trie-fold to avoid wasted calls to reverse.
+  (let loop ((path '()) (trie trie) (vs '()))
+    (trie-edge-fold (lambda (key trie* vs)
+		      (loop (cons key path) trie* vs))
+		    (if (trie-has-value? trie)
+			(cons (trie-value trie) vs)
+			vs)
+		    trie)))
 
-(define (trie-edge-alist trie)
-  (trie-edge-fold alist-cons '() trie))
-
-(define (trie-edge-for-each procedure trie)
-  (trie-edge-fold (lambda (key trie* acc)
-		    (procedure key trie*)
-		    acc)
-		  unspecific
-		  trie))
+(define (trie->alist trie)
+  (trie-fold alist-cons '() trie))
