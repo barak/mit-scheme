@@ -67,7 +67,78 @@ USA.
 (define ((default-hash comparator) a)
   (declare (ignore a))
   (error "Comparator not hashable:" comparator))
+
+(define (make-eq-comparator)
+  the-eq-comparator)
+
+(define-deferred the-eq-comparator
+  (%make-comparator any-object? eq? #f eq-hash #t))
+
+(define (make-eqv-comparator)
+  the-eqv-comparator)
+
+(define-deferred the-eqv-comparator
+  (%make-comparator any-object? eqv? #f eqv-hash #t))
+
+(define (make-equal-comparator)
+  the-equal-comparator)
+
+(define-deferred the-equal-comparator
+  (%make-comparator any-object? equal? #f equal-hash #t))
 
+(define (comparator-test-type comparator object)
+  ((comparator-type-test-predicate comparator) object))
+
+(define (comparator-check-type comparator object)
+  (guarantee (comparator-type-test-predicate comparator) object
+	     'comparator-check-type)
+  #t)
+
+(define (comparator-hash comparator object)
+  ((comparator-hash-function comparator) object))
+
+(define (=? comparator a b . rest)
+  (let ((= (comparator-equality-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (= a b)
+	       (loop b (car rest) (cdr rest)))
+	  (= a b)))))
+
+(define (<? comparator a b . rest)
+  (let ((< (comparator-ordering-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (< a b)
+	       (loop b (car rest) (cdr rest)))
+	  (< a b)))))
+
+(define (<=? comparator a b . rest)
+  (let ((< (comparator-ordering-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (not (< b a))
+	       (loop b (car rest) (cdr rest)))
+	  (not (< b a))))))
+
+(define (>? comparator a b . rest)
+  (let ((< (comparator-ordering-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (< b a)
+	       (loop b (car rest) (cdr rest)))
+	  (< b a)))))
+
+(define (>=? comparator a b . rest)
+  (let ((< (comparator-ordering-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (not (< a b))
+	       (loop b (car rest) (cdr rest)))
+	  (not (< a b))))))
+
+;;;; General combinators
+
 (define (make-pair-comparator c1 c2)
   (%make-comparator (pair-predicate (comparator-type-test-predicate c1)
 				    (comparator-type-test-predicate c2))
@@ -177,58 +248,7 @@ USA.
 	  (loop (kdr scan)
 		(combine-hashes (elt-hash (kar scan)) result))))))
 
-(define (comparator-test-type comparator object)
-  ((comparator-type-test-predicate comparator) object))
-
-(define (comparator-check-type comparator object)
-  (guarantee (comparator-type-test-predicate comparator) object
-	     'comparator-check-type)
-  #t)
-
-(define (comparator-hash comparator object)
-  ((comparator-hash-function comparator) object))
-
-(define (=? comparator a b . rest)
-  (let ((= (comparator-equality-predicate comparator)))
-    (let loop ((a a) (b b) (rest rest))
-      (if (pair? rest)
-	  (and (= a b)
-	       (loop b (car rest) (cdr rest)))
-	  (= a b)))))
-
-(define (<? comparator a b . rest)
-  (let ((< (comparator-ordering-predicate comparator)))
-    (let loop ((a a) (b b) (rest rest))
-      (if (pair? rest)
-	  (and (< a b)
-	       (loop b (car rest) (cdr rest)))
-	  (< a b)))))
-
-(define (<=? comparator a b . rest)
-  (let ((< (comparator-ordering-predicate comparator)))
-    (let loop ((a a) (b b) (rest rest))
-      (if (pair? rest)
-	  (and (not (< b a))
-	       (loop b (car rest) (cdr rest)))
-	  (not (< b a))))))
-
-(define (>? comparator a b . rest)
-  (let ((< (comparator-ordering-predicate comparator)))
-    (let loop ((a a) (b b) (rest rest))
-      (if (pair? rest)
-	  (and (< b a)
-	       (loop b (car rest) (cdr rest)))
-	  (< b a)))))
-
-(define (>=? comparator a b . rest)
-  (let ((< (comparator-ordering-predicate comparator)))
-    (let loop ((a a) (b b) (rest rest))
-      (if (pair? rest)
-	  (and (not (< a b))
-	       (loop b (car rest) (cdr rest)))
-	  (not (< a b))))))
-
-;;;; Comparator combinators
+;;;; Specific combinators
 
 (define (uniform-list-comparator celt)
   (%make-comparator
@@ -368,6 +388,9 @@ USA.
 
 (define-integrable (hash-bound)
   (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))
+
+(define ((protected-hash-function hash-fn) object)
+  (check-hash (hash-fn object)))
 
 (define-integrable (check-hash h)
   (guarantee index-fixnum? h)

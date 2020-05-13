@@ -381,21 +381,6 @@ Returns a hash number for @var{symbol}, which is computed by calling
 non-negative integer.
 @end deffn
 
-@deffn procedure symbol-hash-mod symbol modulus
-@var{Modulus} must be an exact positive integer.  Equivalent to
-
-@example
-@group
-(modulo (symbol-hash @var{symbol}) @var{modulus})
-@end group
-@end example
-
-This procedure is provided for convenience in constructing hash tables.
-However, it is normally preferable to use
-@code{make-strong-eq-hash-table} to build hash tables keyed by symbols,
-because @code{eq?} hash tables are much faster.
-@end deffn
-
 @deffn procedure symbol<? symbol1 symbol2
 This procedure computes a total order on symbols.  It is equivalent to
 

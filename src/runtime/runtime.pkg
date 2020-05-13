@@ -2824,6 +2824,12 @@ USA.
 	  (set-hash-table/rehash-threshold! set-hash-table-rehash-threshold!)
 	  (weak-eq-hash-table-type key-weak-eq-hash-table-type)
 	  (weak-eqv-hash-table-type key-weak-eqv-hash-table-type)
+	  eq-hash-mod
+	  equal-hash-mod
+	  eqv-hash-mod
+	  hash-by-identity		;(srfi 69)
+	  hash-by-equal
+	  hash-by-eqv
 	  hash-table/constructor
 	  hash-table/modify!
 	  strong-hash-table/constructor
@@ -2833,8 +2839,6 @@ USA.
 	  datum-weak-eq-hash-table-type
 	  datum-weak-eqv-hash-table-type
 	  eq-hash
-	  eq-hash-mod
-	  equal-hash-mod
 	  equal-hash-table-type
 	  equality-predicate-hasher
 	  equality-predicate-property
@@ -2842,8 +2846,6 @@ USA.
 	  equality-predicate-rehash-after-gc?
 	  equality-predicate?
 	  eqv-hash
-	  eqv-hash-mod
-	  hash-by-identity		;(srfi 69)
 	  hash-table->alist		;(srfi 69)
 	  hash-table-clean!
 	  hash-table-clear!		;(srfi 69)
@@ -6761,6 +6763,9 @@ USA.
 	  lset-equality-predicate
 	  lset-ordering-predicate
 	  make-comparator		;(srfi 128)
+	  make-eq-comparator		;(srfi 128)
+	  make-equal-comparator		;(srfi 128)
+	  make-eqv-comparator		;(srfi 128)
 	  make-list-comparator		;(srfi 128)
 	  make-pair-comparator		;(srfi 128)
 	  uniform-binary-hash
@@ -6782,4 +6787,6 @@ USA.
 	  uniform-weak-list-ordering-predicate
 	  weak-lset-comparator
 	  weak-lset-equality-predicate
-	  weak-lset-ordering-predicate))
+	  weak-lset-ordering-predicate)
+  (export (runtime)
+	  protected-hash-function))

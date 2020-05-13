@@ -477,15 +477,9 @@ USA.
 		 #t)))
       #t))
 
-(define (char-set-hash char-set #!optional modulus)
-  (let ((hash
-	 (primitive-object-hash-2 (%char-set-low char-set)
-				  (%char-set-high char-set))))
-    (if (default-object? modulus)
-	hash
-	(begin
-	  (guarantee positive-fixnum? modulus 'char-set-hash)
-	  (fix:remainder hash modulus)))))
+(define (char-set-hash char-set)
+  (primitive-object-hash-2 (%char-set-low char-set)
+			   (%char-set-high char-set)))
 
 (define (char-set-empty? cs)
   (and (fix:= 0 (bytevector-length (%char-set-low cs)))

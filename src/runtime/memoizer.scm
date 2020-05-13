@@ -116,15 +116,11 @@ USA.
 
 (define (%make-list-hash elt=)
   (let ((elt-hash (equality-predicate-hasher elt=)))
-    (lambda (lset #!optional modulus)
-      (let ((hash
-             (apply +
-                    (map (lambda (elt)
-                           (elt-hash elt modulus))
-                         lset))))
-        (if (default-object? modulus)
-            hash
-            (modulo hash modulus))))))
+    (lambda (lset)
+      (apply +
+	     (map (lambda (elt)
+		    (elt-hash elt))
+		  lset)))))
 
 (define list-memoizer)
 (define lset-memoizer)

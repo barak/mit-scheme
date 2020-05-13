@@ -192,7 +192,7 @@
         (if (pair? pframes)
             (loop (cdr pframes)
                   (let ((key (pframe.return-address (car pframes))))
-                    (modulo (* r (+ h (eq-hash-mod key n))) n)))
+                    (modulo (* r (+ h (modulo (eq-hash key)))) n)))
             (modulo (modulo (+ h s) n) modulus))))
     (define (= x y)
       (list= eq? x y))

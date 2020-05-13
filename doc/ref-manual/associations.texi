@@ -565,14 +565,13 @@ are described.
 
 @deffn procedure make-hash-table-type hash-function key=? rehash-after-gc? entry-type
 @cindex hashing, of key in hash table
-@cindex modulus, of hashing procedure
 This procedure accepts four arguments and returns a hash-table type,
 which can be used to make hash tables of that type.  The @var{key=?}
 argument is an equivalence predicate for the keys of the hash table.
 The @var{hash-function} argument is a procedure that computes a hash
-number.  Specifically, @var{hash-function} accepts two arguments, a key and
-an exact positive integer (the @dfn{modulus}), and returns an exact
-non-negative integer that is less than the modulus.
+number.  Specifically, @var{hash-function} accepts one argument, a
+key, and returns an exact non-negative integer that is less than or
+equal to @code{(hash-bound)}.
 
 The argument @var{rehash-after-gc?}, if true, says that the
 values returned by @var{hash-function} might change after a garbage
@@ -1111,19 +1110,19 @@ that the garbage collector does not run during or between the two calls.
 The following procedures are the hash functions specified by
 @asrfi{69}.
 
-@deffn procedure hash-by-identity key [modulus]
+@deffn {obsolete procedure} hash-by-identity key [modulus]
 This procedure returns the same value as @code{eq-hash}, optionally
 limited by @var{modulus}.
 @end deffn
 
-@deffn procedure hash-by-eqv key [modulus]
+@deffn {obsolete procedure} hash-by-eqv key [modulus]
 This procedure returns the same value as @code{eqv-hash}, optionally
 limited by @var{modulus}.
 
 This procedure is not specified by @asrfi{69}.
 @end deffn
 
-@deffn procedure hash-by-equal key [modulus]
+@deffn {obsolete procedure} hash-by-equal key [modulus]
 This procedure returns the same value as @code{equal-hash}, optionally
 limited by @var{modulus}.
 
@@ -1136,17 +1135,17 @@ it will be some time until it can be removed.
 The following procedures are the key-hashing procedures used by the
 standard address-hash-based hash tables.  They are 
 
-@deffn procedure eq-hash-mod object modulus
+@deffn {obsolete procedure} eq-hash-mod object modulus
 This procedure is the key-hashing procedure used by
 @code{make-strong-eq-hash-table}.
 @end deffn
 
-@deffn procedure eqv-hash-mod object modulus
+@deffn {obsolete procedure} eqv-hash-mod object modulus
 This procedure is the key-hashing procedure used by
 @code{make-strong-eqv-hash-table}.
 @end deffn
 
-@deffn procedure equal-hash-mod object modulus
+@deffn {obsolete procedure} equal-hash-mod object modulus
 This procedure is the key-hashing procedure used by
 @code{make-equal-hash-table}.
 @end deffn

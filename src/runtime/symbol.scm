@@ -87,8 +87,8 @@ USA.
 (define (intern-soft string)
   ((ucode-primitive find-symbol) (foldcase->utf8 string)))
 
-(define (symbol-hash symbol #!optional modulus)
-  (bytevector-hash (%symbol-bytes symbol 'symbol-hash) modulus))
+(define (symbol-hash symbol)
+  (bytevector-hash (%symbol-bytes symbol 'symbol-hash)))
 
 (define (symbol<? x y)
   (bytevector<? (%symbol-bytes x 'symbol<?)
