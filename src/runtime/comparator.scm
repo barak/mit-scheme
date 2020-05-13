@@ -32,37 +32,37 @@ USA.
 (add-boot-deps! '(runtime compound-predicate)
 		'(runtime hash-table))
 
-(define (make-comparator predicate = < hash #!optional rehash-on-gc?)
-  (guarantee unary-procedure? predicate 'make-comparator)
+(define (make-comparator ? = < hash #!optional rehash-on-gc?)
+  (guarantee unary-procedure? ? 'make-comparator)
   (guarantee binary-procedure? = 'make-comparator)
   (if < (guarantee binary-procedure? < 'make-comparator))
   (if hash (guarantee unary-procedure? hash 'make-comparator))
-  (%make-comparator predicate = < hash (and hash rehash-on-gc? #t)))
+  (%make-comparator ? = < hash (and hash rehash-on-gc? #t)))
 
 (define-record-type <comparator>
-    (%make-comparator predicate = < hash rehash-on-gc?)
+    (%make-comparator ? = < hash rehash-on-gc?)
     comparator?
-  (predicate comparator-type-test-predicate)
-  (= comparator-equality-predicate)
-  (< %comparator-ordering-predicate)
-  (hash %comparator-hash-function)
+  (? %comparator-?)
+  (= %comparator-=)
+  (< %comparator-<)
+  (hash %comparator-hash)
   (rehash-on-gc? comparator-rehash-on-gc?))
 
 (define (comparator-ordered? comparator)
-  (and (%comparator-ordering-predicate comparator) #t))
+  (and (%comparator-< comparator) #t))
 
 (define (comparator-hashable? comparator)
-  (and (%comparator-hash-function comparator) #t))
+  (and (%comparator-hash comparator) #t))
 
 (define (comparator-ordering-predicate comparator)
-  (or (%comparator-ordering-predicate comparator) (default-< comparator)))
+  (or (%comparator-< comparator) (default-< comparator)))
 
 (define ((default-< comparator) a b)
   (declare (ignore a b))
   (error "Comparator not ordered:" comparator))
 
 (define (comparator-hash-function comparator)
-  (or (%comparator-hash-function comparator) (default-hash comparator)))
+  (or (%comparator-hash comparator) (default-hash comparator)))
 
 (define ((default-hash comparator) a)
   (declare (ignore a))
@@ -87,18 +87,17 @@ USA.
   (%make-comparator any-object? equal? #f equal-hash #t))
 
 (define (comparator-test-type comparator object)
-  ((comparator-type-test-predicate comparator) object))
+  ((%comparator-? comparator) object))
 
 (define (comparator-check-type comparator object)
-  (guarantee (comparator-type-test-predicate comparator) object
-	     'comparator-check-type)
+  (guarantee (%comparator-? comparator) object 'comparator-check-type)
   #t)
 
 (define (comparator-hash comparator object)
   ((comparator-hash-function comparator) object))
 
 (define (=? comparator a b . rest)
-  (let ((= (comparator-equality-predicate comparator)))
+  (let ((= (%comparator-= comparator)))
     (let loop ((a a) (b b) (rest rest))
       (if (pair? rest)
 	  (and (= a b)
@@ -106,7 +105,7 @@ USA.
 	  (= a b)))))
 
 (define (<? comparator a b . rest)
-  (let ((< (comparator-ordering-predicate comparator)))
+  (let ((< (%comparator-< comparator)))
     (let loop ((a a) (b b) (rest rest))
       (if (pair? rest)
 	  (and (< a b)
@@ -114,7 +113,7 @@ USA.
 	  (< a b)))))
 
 (define (<=? comparator a b . rest)
-  (let ((< (comparator-ordering-predicate comparator)))
+  (let ((< (%comparator-< comparator)))
     (let loop ((a a) (b b) (rest rest))
       (if (pair? rest)
 	  (and (not (< b a))
@@ -122,7 +121,7 @@ USA.
 	  (not (< b a))))))
 
 (define (>? comparator a b . rest)
-  (let ((< (comparator-ordering-predicate comparator)))
+  (let ((< (%comparator-< comparator)))
     (let loop ((a a) (b b) (rest rest))
       (if (pair? rest)
 	  (and (< b a)
@@ -130,7 +129,7 @@ USA.
 	  (< b a)))))
 
 (define (>=? comparator a b . rest)
-  (let ((< (comparator-ordering-predicate comparator)))
+  (let ((< (%comparator-< comparator)))
     (let loop ((a a) (b b) (rest rest))
       (if (pair? rest)
 	  (and (not (< a b))
@@ -140,19 +139,19 @@ USA.
 ;;;; General combinators
 
 (define (make-pair-comparator c1 c2)
-  (%make-comparator (pair-predicate (comparator-type-test-predicate c1)
-				    (comparator-type-test-predicate c2))
-		    (make-pair= (comparator-equality-predicate c1)
-				(comparator-equality-predicate c2))
-		    (and (%comparator-ordering-predicate c1)
-			 (%comparator-ordering-predicate c2)
-			 (make-pair< (comparator-equality-predicate c1)
-				     (%comparator-ordering-predicate c1)
-				     (%comparator-ordering-predicate c2)))
-		    (and (%comparator-hash-function c1)
-			 (%comparator-hash-function c2)
-			 (make-pair-hash (%comparator-hash-function c1)
-					 (%comparator-hash-function c2)))
+  (%make-comparator (pair-predicate (%comparator-? c1)
+				    (%comparator-? c2))
+		    (make-pair= (%comparator-= c1)
+				(%comparator-= c2))
+		    (and (%comparator-< c1)
+			 (%comparator-< c2)
+			 (make-pair< (%comparator-= c1)
+				     (%comparator-< c1)
+				     (%comparator-< c2)))
+		    (and (%comparator-hash c1)
+			 (%comparator-hash c2)
+			 (make-pair-hash (%comparator-hash c1)
+					 (%comparator-hash c2)))
 		    (or (comparator-rehash-on-gc? c1)
 			(comparator-rehash-on-gc? c2))))
 
@@ -185,16 +184,16 @@ USA.
 	 (uniform-weak-list-comparator celt))
 	(else
 	 (%make-comparator
-	  (make-klist? (comparator-type-test-predicate celt)
+	  (make-klist? (%comparator-? celt)
 		       kpair? knull? kar kdr)
-	  (make-klist= (comparator-equality-predicate celt)
+	  (make-klist= (%comparator-= celt)
 		       kpair? knull? kar kdr)
-	  (and (%comparator-ordering-predicate celt)
-	       (make-klist< (comparator-equality-predicate celt)
-			    (%comparator-ordering-predicate celt)
+	  (and (%comparator-< celt)
+	       (make-klist< (%comparator-= celt)
+			    (%comparator-< celt)
 			    kpair? knull? kar kdr))
-	  (and (%comparator-hash-function celt)
-	       (make-klist-hash (%comparator-hash-function celt)
+	  (and (%comparator-hash celt)
+	       (make-klist-hash (%comparator-hash celt)
 				kpair? knull? kar kdr))
 	  (comparator-rehash-on-gc? celt)))))
 
@@ -250,18 +249,30 @@ USA.
 
 ;;;; Specific combinators
 
-(define (uniform-list-comparator celt)
-  (%make-comparator
-   (uniform-list-predicate (comparator-type-test-predicate celt))
-   (uniform-list-equality-predicate (comparator-equality-predicate celt))
-   (and (%comparator-ordering-predicate celt)
-	(uniform-list-ordering-predicate (comparator-equality-predicate celt)
-					 (%comparator-ordering-predicate celt)))
-   (and (%comparator-hash-function celt)
-	(uniform-list-hash (%comparator-hash-function celt)))
-   (comparator-rehash-on-gc? celt)))
+(define (memoized-constructor constructor)
+  (let ((table (make-key-weak-eq-hash-table)))
+    (lambda (celt)
+      (hash-table-intern! table celt (lambda () (constructor celt))))))
 
-(define-integrable (uniform-list-equality-predicate elt=?)
+(define-deferred uniform-list-comparator
+  (memoized-constructor
+   (lambda (celt)
+     (%make-comparator
+      (uniform-list-predicate (%comparator-? celt))
+      (uniform-list-equality-predicate (%comparator-= celt))
+      (and (%comparator-< celt)
+	   (uniform-list-ordering-predicate (%comparator-= celt)
+					    (%comparator-< celt)))
+      (and (%comparator-hash celt)
+	   (uniform-list-hash (%comparator-hash celt)))
+      (comparator-rehash-on-gc? celt)))))
+
+(define (uniform-list-equality-predicate elt=?)
+  (cond ((eqv? eq? elt=?) uniform-eq-list=?)
+	((eqv? eqv? elt=?) uniform-eqv-list=?)
+	(else (%uniform-list-equality-predicate elt=?))))
+
+(define-integrable (%uniform-list-equality-predicate elt=?)
   (lambda (l1 l2)
     (let loop ((l1 l1) (l2 l2))
       (if (and (pair? l1) (pair? l2))
@@ -269,8 +280,8 @@ USA.
 	       (loop (cdr l1) (cdr l2)))
 	  (and (null? l1) (null? l2))))))
 
-(define uniform-eq-list=? (uniform-list-equality-predicate eq?))
-(define uniform-eqv-list=? (uniform-list-equality-predicate eqv?))
+(define uniform-eq-list=? (%uniform-list-equality-predicate eq?))
+(define uniform-eqv-list=? (%uniform-list-equality-predicate eqv?))
 
 (define (uniform-list-ordering-predicate elt=? elt<?)
   (lambda (a b)
@@ -280,17 +291,24 @@ USA.
 	       (elt<? (car scana) (car scanb))
 	       (and (elt=? (car scana) (car scanb))
 		    (loop (cdr scana) (cdr scanb))))))))
-
-(define (lset-comparator celt)
-  (%make-comparator
-   (uniform-list-predicate (comparator-type-test-predicate celt))
-   (lset-equality-predicate (comparator-equality-predicate celt))
-   (lset-ordering-predicate (comparator-equality-predicate celt))
-   (and (%comparator-hash-function celt)
-	(uniform-list-hash (%comparator-hash-function celt)))
-   (comparator-rehash-on-gc? celt)))
+
+(define-deferred lset-comparator
+  (memoized-constructor
+   (lambda (celt)
+     (%make-comparator
+      (uniform-list-predicate (%comparator-? celt))
+      (lset-equality-predicate (%comparator-= celt))
+      (lset-ordering-predicate (%comparator-= celt))
+      (and (%comparator-hash celt)
+	   (uniform-list-hash (%comparator-hash celt)))
+      (comparator-rehash-on-gc? celt)))))
 
 (define (lset-equality-predicate elt=?)
+  (cond ((eqv? eq? elt=?) eq-lset=?)
+	((eqv? eqv? elt=?) eqv-lset=?)
+	(else (%lset-equality-predicate elt=?))))
+
+(define-integrable (%lset-equality-predicate elt=?)
   (define-integrable (<=? l1 l2)
     (every (lambda (x)
 	     (any (lambda (y) (elt=? x y)) l2))
@@ -300,10 +318,15 @@ USA.
 	(and (<=? l1 l2)
 	     (<=? l2 l1)))))
 
-(define eq-lset=? (lset-equality-predicate eq?))
-(define eqv-lset=? (lset-equality-predicate eqv?))
+(define eq-lset=? (%lset-equality-predicate eq?))
+(define eqv-lset=? (%lset-equality-predicate eqv?))
 
 (define (lset-ordering-predicate elt=?)
+  (cond ((eqv? eq? elt=?) eq-lset<?)
+	((eqv? eqv? elt=?) eqv-lset<?)
+	(else (%lset-ordering-predicate elt=?))))
+
+(define-integrable (%lset-ordering-predicate elt=?)
   (define-integrable (<=? l1 l2)
     (every (lambda (x)
 	     (any (lambda (y) (elt=? x y)) l2))
@@ -311,20 +334,29 @@ USA.
   (lambda (l1 l2)
     (and (<=? l1 l2)
 	 (not (<=? l2 l1)))))
-
-(define (uniform-weak-list-comparator celt)
-  (%make-comparator
-   (uniform-weak-list-predicate (comparator-type-test-predicate celt))
-   (uniform-weak-list-equality-predicate (comparator-equality-predicate celt))
-   (and (%comparator-ordering-predicate celt)
-	(uniform-weak-list-ordering-predicate
-	 (comparator-equality-predicate celt)
-	 (%comparator-ordering-predicate celt)))
-   (and (%comparator-hash-function celt)
-	(uniform-weak-list-hash (%comparator-hash-function celt)))
-   (comparator-rehash-on-gc? celt)))
 
-(define-integrable (uniform-weak-list-equality-predicate elt=?)
+(define eq-lset<? (%lset-ordering-predicate eq?))
+(define eqv-lset<? (%lset-ordering-predicate eqv?))
+
+(define-deferred uniform-weak-list-comparator
+  (memoized-constructor
+   (lambda (celt)
+     (%make-comparator
+      (uniform-weak-list-predicate (%comparator-? celt))
+      (uniform-weak-list-equality-predicate (%comparator-= celt))
+      (and (%comparator-< celt)
+	   (uniform-weak-list-ordering-predicate (%comparator-= celt)
+						 (%comparator-< celt)))
+      (and (%comparator-hash celt)
+	   (uniform-weak-list-hash (%comparator-hash celt)))
+      (comparator-rehash-on-gc? celt)))))
+
+(define (uniform-weak-list-equality-predicate elt=?)
+  (cond ((eqv? eq? elt=?) uniform-eq-weak-list=?)
+	((eqv? eqv? elt=?) uniform-eqv-weak-list=?)
+	(else (%uniform-weak-list-equality-predicate elt=?))))
+
+(define-integrable (%uniform-weak-list-equality-predicate elt=?)
   (lambda (l1 l2)
     (let loop ((l1 l1) (l2 l2))
       (if (and (weak-pair? l1) (weak-pair? l2))
@@ -334,8 +366,8 @@ USA.
 		 (loop (weak-cdr l1) (weak-cdr l2))))
 	  (and (null? l1) (null? l2))))))
 
-(define uniform-eq-weak-list=? (uniform-weak-list-equality-predicate eq?))
-(define uniform-eqv-weak-list=? (uniform-weak-list-equality-predicate eqv?))
+(define uniform-eq-weak-list=? (%uniform-weak-list-equality-predicate eq?))
+(define uniform-eqv-weak-list=? (%uniform-weak-list-equality-predicate eqv?))
 
 (define (uniform-weak-list-ordering-predicate elt=? elt<?)
   (lambda (a b)
@@ -347,17 +379,24 @@ USA.
 		      (or (elt<? key1 (weak-car scanb))
 			  (and (elt=? key1 (weak-car scanb))
 			       (loop (weak-cdr scana) (weak-cdr scanb)))))))))))
-
-(define (weak-lset-comparator celt)
-  (%make-comparator
-   (uniform-weak-list-predicate (comparator-type-test-predicate celt))
-   (weak-lset-equality-predicate (comparator-equality-predicate celt))
-   (weak-lset-ordering-predicate (comparator-equality-predicate celt))
-   (and (%comparator-hash-function celt)
-	(uniform-weak-list-hash (%comparator-hash-function celt)))
-   (comparator-rehash-on-gc? celt)))
+
+(define-deferred weak-lset-comparator
+  (memoized-constructor
+   (lambda (celt)
+     (%make-comparator
+      (uniform-weak-list-predicate (%comparator-? celt))
+      (weak-lset-equality-predicate (%comparator-= celt))
+      (weak-lset-ordering-predicate (%comparator-= celt))
+      (and (%comparator-hash celt)
+	   (uniform-weak-list-hash (%comparator-hash celt)))
+      (comparator-rehash-on-gc? celt)))))
 
 (define (weak-lset-equality-predicate elt=?)
+  (cond ((eqv? eq? elt=?) eq-weak-lset=?)
+	((eqv? eqv? elt=?) eqv-weak-lset=?)
+	(else (%weak-lset-equality-predicate elt=?))))
+
+(define-integrable (%weak-lset-equality-predicate elt=?)
   (define-integrable (<=? l1 l2)
     (weak-every (lambda (x)
 		  (weak-any (lambda (y) (elt=? x y)) l2))
@@ -367,10 +406,15 @@ USA.
 	(and (<=? l1 l2)
 	     (<=? l2 l1)))))
 
-(define eq-weak-lset=? (weak-lset-equality-predicate eq?))
-(define eqv-weak-lset=? (weak-lset-equality-predicate eqv?))
+(define eq-weak-lset=? (%weak-lset-equality-predicate eq?))
+(define eqv-weak-lset=? (%weak-lset-equality-predicate eqv?))
 
 (define (weak-lset-ordering-predicate elt=?)
+  (cond ((eqv? eq? elt=?) eq-weak-lset<?)
+	((eqv? eqv? elt=?) eqv-weak-lset<?)
+	(else (%weak-lset-ordering-predicate elt=?))))
+
+(define-integrable (%weak-lset-ordering-predicate elt=?)
   (define-integrable (<=? l1 l2)
     (weak-every (lambda (x)
 		  (weak-any (lambda (y) (elt=? x y)) l2))
@@ -378,6 +422,9 @@ USA.
   (lambda (l1 l2)
     (and (<=? l1 l2)
 	 (not (<=? l2 l1)))))
+
+(define eq-weak-lset<? (%weak-lset-ordering-predicate eq?))
+(define eqv-weak-lset<? (%weak-lset-ordering-predicate eqv?))
 
 ;;;; Hash functions
 

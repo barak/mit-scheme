@@ -6736,6 +6736,8 @@ USA.
   (files "comparator")
   (parent (runtime))
   (export ()
+	  (comparator-equality-predicate %comparator-=) ;(srfi 128)
+	  (comparator-type-test-predicate %comparator-?) ;(srfi 128)
 	  <=?				;(srfi 128)
 	  <?				;(srfi 128)
 	  =?				;(srfi 128)
@@ -6743,7 +6745,6 @@ USA.
 	  >?				;(srfi 128)
 	  combine-hashes
 	  comparator-check-type		;(srfi 128)
-	  comparator-equality-predicate	;(srfi 128)
 	  comparator-hash		;(srfi 128)
 	  comparator-hash-function	;(srfi 128)
 	  comparator-hashable?		;(srfi 128)
@@ -6751,12 +6752,7 @@ USA.
 	  comparator-ordering-predicate	;(srfi 128)
 	  comparator-rehash-on-gc?
 	  comparator-test-type		;(srfi 128)
-	  comparator-type-test-predicate ;(srfi 128)
 	  comparator?			;(srfi 128)
-	  eq-lset=?
-	  eq-weak-lset=?
-	  eqv-lset=?
-	  eqv-weak-lset=?
 	  hash-bound			;(srfi 128)
 	  initial-hash
 	  lset-comparator
@@ -6769,14 +6765,6 @@ USA.
 	  make-list-comparator		;(srfi 128)
 	  make-pair-comparator		;(srfi 128)
 	  uniform-binary-hash
-	  uniform-eq-list-hash
-	  uniform-eq-list=?
-	  uniform-eq-weak-list-hash
-	  uniform-eq-weak-list=?
-	  uniform-eqv-list-hash
-	  uniform-eqv-list=?
-	  uniform-eqv-weak-list-hash
-	  uniform-eqv-weak-list=?
 	  uniform-list-comparator
 	  uniform-list-equality-predicate
 	  uniform-list-hash
@@ -6789,4 +6777,17 @@ USA.
 	  weak-lset-equality-predicate
 	  weak-lset-ordering-predicate)
   (export (runtime)
-	  protected-hash-function))
+	  protected-hash-function)
+  (export (runtime hash-table)
+	  eq-lset=?
+	  eq-weak-lset=?
+	  eqv-lset=?
+	  eqv-weak-lset=?
+	  uniform-eq-list-hash
+	  uniform-eq-list=?
+	  uniform-eq-weak-list-hash
+	  uniform-eq-weak-list=?
+	  uniform-eqv-list-hash
+	  uniform-eqv-list=?
+	  uniform-eqv-weak-list-hash
+	  uniform-eqv-weak-list=?))
