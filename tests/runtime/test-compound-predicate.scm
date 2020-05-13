@@ -30,8 +30,8 @@ USA.
 
 (define-test 'compound
   (lambda ()
-    (test-compound-predicate-operations (disjoin) 'disjoin '())
-    (test-compound-predicate-operations (conjoin) 'conjoin '())
+    (test-compound-predicate-operations (disjoin) disjoin? '())
+    (test-compound-predicate-operations (conjoin) conjoin? '())
 
     (assert-eqv string? (disjoin string?))
     (assert-eqv string? (disjoin string? string?))
@@ -40,11 +40,16 @@ USA.
     (assert-eqv string? (conjoin string? string?))
 
     (test-compound-predicate-operations (disjoin string? symbol?)
-                                        'disjoin
+                                        disjoin?
                                         (list string? symbol?))
     (test-compound-predicate-operations (conjoin string? symbol?)
-                                        'conjoin
+                                        conjoin?
                                         (list string? symbol?))))
+
+(define (test-compound-predicate-operations predicate test operands)
+  (assert-true (compound-predicate? predicate))
+  (assert-true (test predicate))
+  (assert-lset= eqv? (compound-predicate-operands predicate) operands))
 
 (define-test 'ordering
   (lambda ()
@@ -56,11 +61,6 @@ USA.
 
     (assert-false (predicate<= string? (conjoin string? symbol?)))
     (assert-true (predicate<= (conjoin string? symbol?) string?))))
-
-(define (test-compound-predicate-operations predicate operator operands)
-  (assert-true (compound-predicate? predicate))
-  (assert-eqv (compound-predicate-operator predicate) operator)
-  (assert-lset= eqv? (compound-predicate-operands predicate) operands))
 
 (define-test 'tagging
   (lambda ()

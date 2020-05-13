@@ -105,10 +105,10 @@ USA.
   (eq? the-bottom-dispatch-tag tag))
 
 (define-deferred the-top-dispatch-tag
-  (make-compound-tag any-object? 'conjoin '()))
+  (%make-compound-tag (list 'conjoin) any-object? #f '()))
 
 (define-deferred the-bottom-dispatch-tag
-  (make-compound-tag no-object? 'disjoin '()))
+  (%make-compound-tag (list 'disjoin) no-object? #f '()))
 
 (define get-predicate-tag)
 (add-boot-init!

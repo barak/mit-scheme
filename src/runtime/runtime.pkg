@@ -2258,23 +2258,41 @@ USA.
 	  predicate>=
 	  top-dispatch-tag)
   (export (runtime)
-	  define-dispatch-tag<=))
+	  define-dispatch-tag<=)
+  (export (runtime compound-predicate)
+	  the-bottom-dispatch-tag
+	  the-top-dispatch-tag))
 
 (define-package (runtime compound-predicate)
   (files "compound-predicate")
   (parent (runtime))
   (export ()
 	  complement
-	  compound-predicate
+	  complement?
+	  compound-predicate-constructor
+	  compound-predicate-operands
+	  compound-predicate?
 	  conjoin
 	  conjoin*
+	  conjoin?
 	  disjoin
 	  disjoin*
+	  disjoin?
+	  lset-predicate
+	  lset-predicate?
 	  ordered-predicates-memoizer
 	  pair-predicate
-	  uniform-list-predicate)
+	  pair-predicate?
+	  single-predicate-memoizer
+	  uniform-list-predicate
+	  uniform-list-predicate?
+	  uniform-weak-list-predicate
+	  uniform-weak-list-predicate?
+	  unordered-predicates-memoizer
+	  weak-lset-predicate
+	  weak-lset-predicate?)
   (export (runtime predicate)
-	  make-compound-tag))
+	  %make-compound-tag))
 
 (define-package (runtime parametric-predicate)
   (files "parametric-predicate")
@@ -2811,9 +2829,6 @@ USA.
 	  weak-hash-table/constructor)
   (export ()
 	  alist->hash-table		;(srfi 69)
-	  binary-hash-by-equal
-	  binary-hash-by-eqv
-	  binary-hash-by-identity
 	  datum-weak-eq-hash-table-type
 	  datum-weak-eqv-hash-table-type
 	  eq-hash
@@ -2872,6 +2887,8 @@ USA.
 	  key-weak-eqv-hash-table-type
 	  key-weak-list-eq-hash-table-type
 	  key-weak-list-eqv-hash-table-type
+	  key-weak-lset-eq-hash-table-type
+	  key-weak-lset-eqv-hash-table-type
 	  make-datum-weak-eq-hash-table
 	  make-datum-weak-eqv-hash-table
 	  make-equal-hash-table
@@ -2885,6 +2902,8 @@ USA.
 	  make-key-weak-eqv-hash-table
 	  make-key-weak-list-eq-hash-table
 	  make-key-weak-list-eqv-hash-table
+	  make-key-weak-lset-eq-hash-table
+	  make-key-weak-lset-eqv-hash-table
 	  make-non-pointer-hash-table
 	  make-string-ci-hash-table
 	  make-string-hash-table
@@ -2892,6 +2911,8 @@ USA.
 	  make-strong-eqv-hash-table
 	  make-strong-list-eq-hash-table
 	  make-strong-list-eqv-hash-table
+	  make-strong-lset-eq-hash-table
+	  make-strong-lset-eqv-hash-table
 	  non-pointer-hash-table-type
 	  set-equality-predicate-properties!
 	  set-hash-table-rehash-size!
@@ -2900,7 +2921,9 @@ USA.
 	  strong-eq-hash-table-type
 	  strong-eqv-hash-table-type
 	  strong-list-eq-hash-table-type
-	  strong-list-eqv-hash-table-type))
+	  strong-list-eqv-hash-table-type
+	  strong-lset-eq-hash-table-type
+	  strong-lset-eqv-hash-table-type))
 
 (define-package (runtime memoizer)
   (files "memoizer")
@@ -5690,6 +5713,8 @@ USA.
 	  dispatch-tag-print-name
 	  dispatch-tag?
 	  make-dispatch-metatag)
+  (export (runtime compound-predicate)
+	  %dispatch-tag-extra-set!)
   (export (runtime predicate)
 	  add-dispatch-tag-superset
 	  any-dispatch-tag-superset)
