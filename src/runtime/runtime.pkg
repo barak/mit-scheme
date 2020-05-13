@@ -6703,3 +6703,57 @@ USA.
   (export (runtime cgen)
 	  cgen-expr->scheme
 	  output-optimizer-rules))
+
+(define-package (runtime comparator)
+  (files "comparator")
+  (parent (runtime))
+  (export ()
+	  <=?				;(srfi 128)
+	  <?				;(srfi 128)
+	  =?				;(srfi 128)
+	  >=?				;(srfi 128)
+	  >?				;(srfi 128)
+	  combine-hashes
+	  comparator-check-type		;(srfi 128)
+	  comparator-equality-predicate	;(srfi 128)
+	  comparator-hash		;(srfi 128)
+	  comparator-hash-function	;(srfi 128)
+	  comparator-hashable?		;(srfi 128)
+	  comparator-ordered?		;(srfi 128)
+	  comparator-ordering-predicate	;(srfi 128)
+	  comparator-rehash-on-gc?
+	  comparator-test-type		;(srfi 128)
+	  comparator-type-test-predicate ;(srfi 128)
+	  comparator?			;(srfi 128)
+	  eq-lset=?
+	  eq-weak-lset=?
+	  eqv-lset=?
+	  eqv-weak-lset=?
+	  hash-bound			;(srfi 128)
+	  initial-hash
+	  lset-comparator
+	  lset-equality-predicate
+	  lset-ordering-predicate
+	  make-comparator		;(srfi 128)
+	  make-list-comparator		;(srfi 128)
+	  make-pair-comparator		;(srfi 128)
+	  uniform-binary-hash
+	  uniform-eq-list-hash
+	  uniform-eq-list=?
+	  uniform-eq-weak-list-hash
+	  uniform-eq-weak-list=?
+	  uniform-eqv-list-hash
+	  uniform-eqv-list=?
+	  uniform-eqv-weak-list-hash
+	  uniform-eqv-weak-list=?
+	  uniform-list-comparator
+	  uniform-list-equality-predicate
+	  uniform-list-hash
+	  uniform-list-ordering-predicate
+	  uniform-weak-list-comparator
+	  uniform-weak-list-equality-predicate
+	  uniform-weak-list-hash
+	  uniform-weak-list-ordering-predicate
+	  weak-lset-comparator
+	  weak-lset-equality-predicate
+	  weak-lset-ordering-predicate))

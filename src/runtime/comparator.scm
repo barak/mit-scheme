@@ -1,0 +1,431 @@
+#| -*-Scheme-*-
+
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018, 2019 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
+
+|#
+
+;;;; Comparators (compatible with SRFI 128)
+;;; package: (runtime comparator)
+
+(declare (usual-integrations))
+
+(add-boot-deps! '(runtime compound-predicate)
+		'(runtime hash-table))
+
+(define (make-comparator predicate = < hash #!optional rehash-on-gc?)
+  (guarantee unary-procedure? predicate 'make-comparator)
+  (guarantee binary-procedure? = 'make-comparator)
+  (if < (guarantee binary-procedure? < 'make-comparator))
+  (if hash (guarantee unary-procedure? hash 'make-comparator))
+  (%make-comparator predicate = < hash (and hash rehash-on-gc? #t)))
+
+(define-record-type <comparator>
+    (%make-comparator predicate = < hash rehash-on-gc?)
+    comparator?
+  (predicate comparator-type-test-predicate)
+  (= comparator-equality-predicate)
+  (< %comparator-ordering-predicate)
+  (hash %comparator-hash-function)
+  (rehash-on-gc? comparator-rehash-on-gc?))
+
+(define (comparator-ordered? comparator)
+  (and (%comparator-ordering-predicate comparator) #t))
+
+(define (comparator-hashable? comparator)
+  (and (%comparator-hash-function comparator) #t))
+
+(define (comparator-ordering-predicate comparator)
+  (or (%comparator-ordering-predicate comparator) (default-< comparator)))
+
+(define ((default-< comparator) a b)
+  (declare (ignore a b))
+  (error "Comparator not ordered:" comparator))
+
+(define (comparator-hash-function comparator)
+  (or (%comparator-hash-function comparator) (default-hash comparator)))
+
+(define ((default-hash comparator) a)
+  (declare (ignore a))
+  (error "Comparator not hashable:" comparator))
+
+(define (make-pair-comparator c1 c2)
+  (%make-comparator (pair-predicate (comparator-type-test-predicate c1)
+				    (comparator-type-test-predicate c2))
+		    (make-pair= (comparator-equality-predicate c1)
+				(comparator-equality-predicate c2))
+		    (and (%comparator-ordering-predicate c1)
+			 (%comparator-ordering-predicate c2)
+			 (make-pair< (comparator-equality-predicate c1)
+				     (%comparator-ordering-predicate c1)
+				     (%comparator-ordering-predicate c2)))
+		    (and (%comparator-hash-function c1)
+			 (%comparator-hash-function c2)
+			 (make-pair-hash (%comparator-hash-function c1)
+					 (%comparator-hash-function c2)))
+		    (or (comparator-rehash-on-gc? c1)
+			(comparator-rehash-on-gc? c2))))
+
+(define (make-pair= car= cdr=)
+  (lambda (a b)
+    (and (car= (car a) (car b))
+	 (cdr= (cdr a) (cdr b)))))
+
+(define (make-pair< car= car< cdr<)
+  (lambda (a b)
+    (or (car< (car a) (car b))
+	(and (car= (car a) (car b))
+	     (cdr< (cdr a) (cdr b))))))
+
+(define (make-pair-hash car-hash cdr-hash)
+  (lambda (a)
+    (combine-hashes (car-hash (car a))
+		    (cdr-hash (cdr a)))))
+
+(define (make-list-comparator celt kpair? knull? kar kdr)
+  (cond ((and (eqv? pair? kpair?)
+	      (eqv? null? knull?)
+	      (eqv? car kar)
+	      (eqv? cdr kdr))
+	 (uniform-list-comparator celt))
+	((and (eqv? weak-pair? kpair?)
+	      (eqv? null? knull?)
+	      (eqv? weak-car kar)
+	      (eqv? weak-cdr kdr))
+	 (uniform-weak-list-comparator celt))
+	(else
+	 (%make-comparator
+	  (make-klist? (comparator-type-test-predicate celt)
+		       kpair? knull? kar kdr)
+	  (make-klist= (comparator-equality-predicate celt)
+		       kpair? knull? kar kdr)
+	  (and (%comparator-ordering-predicate celt)
+	       (make-klist< (comparator-equality-predicate celt)
+			    (%comparator-ordering-predicate celt)
+			    kpair? knull? kar kdr))
+	  (and (%comparator-hash-function celt)
+	       (make-klist-hash (%comparator-hash-function celt)
+				kpair? knull? kar kdr))
+	  (comparator-rehash-on-gc? celt)))))
+
+(define (make-klist? elt? kpair? knull? kar kdr)
+  (lambda (a)
+    (let loop ((scan1 a) (scan2 a))
+      (if (kpair? scan1)
+	  (and (elt? (kar scan1))
+	       (let ((next (kdr scan1)))
+		 (and (not (eq? next scan2))
+		      (if (kpair? next)
+			  (loop (kdr next) (kdr scan2))
+			  (knull? next)))))
+	  (knull? scan1)))))
+
+(define (make-klist= elt= kpair? knull? kar kdr)
+  (define (null-klist? object)
+    (cond ((knull? object) #t)
+	  ((kpair? object) #f)
+	  (else (error:wrong-type-argument "list-ish" object))))
+  (lambda (a b)
+    (let loop ((scana a) (scanb b))
+      (if (null-klist? scana)
+	  (null-klist? scanb)
+	  (and (not (null-klist? scanb))
+	       (elt= (kar scana) (kar scanb))
+	       (loop (kdr scana) (kdr scanb)))))))
+
+(define (make-klist< elt= elt< kpair? knull? kar kdr)
+  (define (null-klist? object)
+    (cond ((knull? object) #t)
+	  ((kpair? object) #f)
+	  (else (error:wrong-type-argument "list-ish" object))))
+  (lambda (a b)
+    (let loop ((scana a) (scanb b))
+      (and (not (null-klist? scanb))
+	   (or (null-klist? scana)
+	       (elt< (kar scana) (kar scanb))
+	       (and (elt= (kar scana) (kar scanb))
+		    (loop (kdr scana) (kdr scanb))))))))
+
+(define (make-klist-hash elt-hash kpair? knull? kar kdr)
+  (define (null-klist? object)
+    (cond ((knull? object) #t)
+	  ((kpair? object) #f)
+	  (else (error:wrong-type-argument "list-ish" object))))
+  (lambda (a)
+    (let loop ((scan a) (result (initial-hash)))
+      (if (null-klist? scan)
+	  result
+	  (loop (kdr scan)
+		(combine-hashes (elt-hash (kar scan)) result))))))
+
+(define (comparator-test-type comparator object)
+  ((comparator-type-test-predicate comparator) object))
+
+(define (comparator-check-type comparator object)
+  (guarantee (comparator-type-test-predicate comparator) object
+	     'comparator-check-type)
+  #t)
+
+(define (comparator-hash comparator object)
+  ((comparator-hash-function comparator) object))
+
+(define (=? comparator a b . rest)
+  (let ((= (comparator-equality-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (= a b)
+	       (loop b (car rest) (cdr rest)))
+	  (= a b)))))
+
+(define (<? comparator a b . rest)
+  (let ((< (comparator-ordering-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (< a b)
+	       (loop b (car rest) (cdr rest)))
+	  (< a b)))))
+
+(define (<=? comparator a b . rest)
+  (let ((< (comparator-ordering-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (not (< b a))
+	       (loop b (car rest) (cdr rest)))
+	  (not (< b a))))))
+
+(define (>? comparator a b . rest)
+  (let ((< (comparator-ordering-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (< b a)
+	       (loop b (car rest) (cdr rest)))
+	  (< b a)))))
+
+(define (>=? comparator a b . rest)
+  (let ((< (comparator-ordering-predicate comparator)))
+    (let loop ((a a) (b b) (rest rest))
+      (if (pair? rest)
+	  (and (not (< a b))
+	       (loop b (car rest) (cdr rest)))
+	  (not (< a b))))))
+
+;;;; Comparator combinators
+
+(define (uniform-list-comparator celt)
+  (%make-comparator
+   (uniform-list-predicate (comparator-type-test-predicate celt))
+   (uniform-list-equality-predicate (comparator-equality-predicate celt))
+   (and (%comparator-ordering-predicate celt)
+	(uniform-list-ordering-predicate (comparator-equality-predicate celt)
+					 (%comparator-ordering-predicate celt)))
+   (and (%comparator-hash-function celt)
+	(uniform-list-hash (%comparator-hash-function celt)))
+   (comparator-rehash-on-gc? celt)))
+
+(define-integrable (uniform-list-equality-predicate elt=?)
+  (lambda (l1 l2)
+    (let loop ((l1 l1) (l2 l2))
+      (if (and (pair? l1) (pair? l2))
+	  (and (elt=? (car l1) (car l2))
+	       (loop (cdr l1) (cdr l2)))
+	  (and (null? l1) (null? l2))))))
+
+(define uniform-eq-list=? (uniform-list-equality-predicate eq?))
+(define uniform-eqv-list=? (uniform-list-equality-predicate eqv?))
+
+(define (uniform-list-ordering-predicate elt=? elt<?)
+  (lambda (a b)
+    (let loop ((scana a) (scanb b))
+      (and (not (null-list? scanb))
+	   (or (null-list? scana)
+	       (elt<? (car scana) (car scanb))
+	       (and (elt=? (car scana) (car scanb))
+		    (loop (cdr scana) (cdr scanb))))))))
+
+(define (lset-comparator celt)
+  (%make-comparator
+   (uniform-list-predicate (comparator-type-test-predicate celt))
+   (lset-equality-predicate (comparator-equality-predicate celt))
+   (lset-ordering-predicate (comparator-equality-predicate celt))
+   (and (%comparator-hash-function celt)
+	(uniform-list-hash (%comparator-hash-function celt)))
+   (comparator-rehash-on-gc? celt)))
+
+(define (lset-equality-predicate elt=?)
+  (define-integrable (<=? l1 l2)
+    (every (lambda (x)
+	     (any (lambda (y) (elt=? x y)) l2))
+	   l1))
+  (lambda (l1 l2)
+    (or (eq? l1 l2)
+	(and (<=? l1 l2)
+	     (<=? l2 l1)))))
+
+(define eq-lset=? (lset-equality-predicate eq?))
+(define eqv-lset=? (lset-equality-predicate eqv?))
+
+(define (lset-ordering-predicate elt=?)
+  (define-integrable (<=? l1 l2)
+    (every (lambda (x)
+	     (any (lambda (y) (elt=? x y)) l2))
+	   l1))
+  (lambda (l1 l2)
+    (and (<=? l1 l2)
+	 (not (<=? l2 l1)))))
+
+(define (uniform-weak-list-comparator celt)
+  (%make-comparator
+   (uniform-weak-list-predicate (comparator-type-test-predicate celt))
+   (uniform-weak-list-equality-predicate (comparator-equality-predicate celt))
+   (and (%comparator-ordering-predicate celt)
+	(uniform-weak-list-ordering-predicate
+	 (comparator-equality-predicate celt)
+	 (%comparator-ordering-predicate celt)))
+   (and (%comparator-hash-function celt)
+	(uniform-weak-list-hash (%comparator-hash-function celt)))
+   (comparator-rehash-on-gc? celt)))
+
+(define-integrable (uniform-weak-list-equality-predicate elt=?)
+  (lambda (l1 l2)
+    (let loop ((l1 l1) (l2 l2))
+      (if (and (weak-pair? l1) (weak-pair? l2))
+	  (let ((key1 (weak-car l1)))
+	    (and (not (gc-reclaimed-object? key1))
+		 (elt=? key1 (weak-car l2))
+		 (loop (weak-cdr l1) (weak-cdr l2))))
+	  (and (null? l1) (null? l2))))))
+
+(define uniform-eq-weak-list=? (uniform-weak-list-equality-predicate eq?))
+(define uniform-eqv-weak-list=? (uniform-weak-list-equality-predicate eqv?))
+
+(define (uniform-weak-list-ordering-predicate elt=? elt<?)
+  (lambda (a b)
+    (let loop ((scana a) (scanb b))
+      (and (not (null-weak-list? scanb))
+	   (or (null-weak-list? scana)
+	       (let ((key1 (weak-car scana)))
+		 (and (not (gc-reclaimed-object? key1))
+		      (or (elt<? key1 (weak-car scanb))
+			  (and (elt=? key1 (weak-car scanb))
+			       (loop (weak-cdr scana) (weak-cdr scanb)))))))))))
+
+(define (weak-lset-comparator celt)
+  (%make-comparator
+   (uniform-weak-list-predicate (comparator-type-test-predicate celt))
+   (weak-lset-equality-predicate (comparator-equality-predicate celt))
+   (weak-lset-ordering-predicate (comparator-equality-predicate celt))
+   (and (%comparator-hash-function celt)
+	(uniform-weak-list-hash (%comparator-hash-function celt)))
+   (comparator-rehash-on-gc? celt)))
+
+(define (weak-lset-equality-predicate elt=?)
+  (define-integrable (<=? l1 l2)
+    (weak-every (lambda (x)
+		  (weak-any (lambda (y) (elt=? x y)) l2))
+		l1))
+  (lambda (l1 l2)
+    (or (eq? l1 l2)
+	(and (<=? l1 l2)
+	     (<=? l2 l1)))))
+
+(define eq-weak-lset=? (weak-lset-equality-predicate eq?))
+(define eqv-weak-lset=? (weak-lset-equality-predicate eqv?))
+
+(define (weak-lset-ordering-predicate elt=?)
+  (define-integrable (<=? l1 l2)
+    (weak-every (lambda (x)
+		  (weak-any (lambda (y) (elt=? x y)) l2))
+		l1))
+  (lambda (l1 l2)
+    (and (<=? l1 l2)
+	 (not (<=? l2 l1)))))
+
+;;;; Hash functions
+
+;;; On 64-bit architectures:
+;;;   hash functions return a 32-bit unsigned value
+;;; On 32-bit architectures:
+;;;   hash functions return a 25-bit unsigned value
+
+(define-integrable (hash-bound)
+  (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))
+
+(define-integrable (check-hash h)
+  (guarantee index-fixnum? h)
+  (if (not (fix:<= h (hash-bound)))
+      (error:bad-range-argument h))
+  h)
+
+(define (combine-hashes h1 h2)
+  (%combine-hashes (check-hash h1) (check-hash h2)))
+
+(define-integrable (initial-hash)
+  (select-on-bytes-per-word 25165813 3221225473))
+
+(select-on-bytes-per-word
+ (define-integrable (%combine-hashes h1 h2)
+   (let ((sum (+ (* 31 h1) h2)))
+     (if (fix:fixnum? sum)
+	 (fix:and sum (hash-bound))
+	 (bitwise-and sum (hash-bound)))))
+ (define-integrable (%combine-hashes h1 h2)
+   (fix:and (fix:+ (fix:* 31 h1) h2) (hash-bound))))
+
+(define ((uniform-binary-hash hash-fn) object1 object2)
+  (%combine-hashes (check-hash (hash-fn object1))
+		   (check-hash (hash-fn object2))))
+
+(define ((uniform-list-hash elt-hash) object)
+  (fold (lambda (elt result)
+	  (%combine-hashes (check-hash (elt-hash elt)) result))
+	(initial-hash)
+	object))
+
+(define (uniform-eq-list-hash object)
+  (fold (lambda (elt result)
+	  (%combine-hashes (eq-hash elt) result))
+	(initial-hash)
+	object))
+
+(define (uniform-eqv-list-hash object)
+  (fold (lambda (elt result)
+	  (%combine-hashes (eqv-hash elt) result))
+	(initial-hash)
+	object))
+
+(define ((uniform-weak-list-hash elt-hash) object)
+  (weak-fold (lambda (elt result)
+	       (%combine-hashes (check-hash (elt-hash elt)) result))
+	     (initial-hash)
+	     object))
+
+(define (uniform-eq-weak-list-hash object)
+  (weak-fold (lambda (elt result)
+	       (%combine-hashes (eq-hash elt) result))
+	     (initial-hash)
+	     object))
+
+(define (uniform-eqv-weak-list-hash object)
+  (weak-fold (lambda (elt result)
+	       (%combine-hashes (eqv-hash elt) result))
+	     (initial-hash)
+	     object))
