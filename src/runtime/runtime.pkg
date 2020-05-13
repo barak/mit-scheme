@@ -339,6 +339,8 @@ USA.
 	  weak-list->list
 	  weak-list-copy
 	  weak-list-empty?
+	  weak-list-of-type?
+	  weak-list-reclaimed?
 	  weak-list-set
 	  weak-list-set->generator
 	  weak-list-set->list

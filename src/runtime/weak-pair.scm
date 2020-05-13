@@ -61,6 +61,30 @@ USA.
 	((weak-pair? object) #f)
 	(else (error:not-a weak-list? object caller))))
 
+(define (weak-list-of-type? object predicate)
+  (declare (no-type-checks))
+  (let loop ((l1 object) (l2 object))
+    (if (weak-pair? l1)
+	(and (let ((e1 (weak-car l1)))
+	       (or (gc-reclaimed-object? e1)
+		   (predicate e1)))
+	     (let ((l1 (weak-cdr l1)))
+	       (and (not (eq? l1 l2))
+		    (if (weak-pair? l1)
+			(and (let ((e1 (weak-car l1)))
+			       (or (gc-reclaimed-object? e1)
+				   (predicate e1)))
+			     (loop (weak-cdr l1) (weak-cdr l2)))
+			(null? l1)))))
+	(null? l1))))
+
+(define (weak-list-reclaimed? items)
+  (let loop ((items items))
+    (if (%null-weak-list? items 'weak-list-reclaimed?)
+	#f
+	(or (gc-reclaimed-object? (weak-car items))
+	    (loop (weak-cdr items))))))
+
 (define (make-weak-list length #!optional value)
   (guarantee index-fixnum? length 'make-weak-list)
   (let ((value (if (default-object? value) unspecific value)))
@@ -69,7 +93,7 @@ USA.
       (if (fix:< i length)
 	  (loop (fix:+ i 1) (weak-cons value result))
 	  result))))
-
+
 (define (weak-list->list items #!optional set-items!)
   (%weak-fold-right cons '() items set-items! 'weak-list->list))
 
