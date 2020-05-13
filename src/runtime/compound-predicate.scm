@@ -136,7 +136,9 @@ USA.
   (let ((table
 	 (hash-table-intern! ordered-predicates-tables
 			     key
-			     make-key-weak-list-eqv-hash-table)))
+			     (hash-table-constructor
+			      (uniform-weak-list-comparator
+			       (make-eqv-comparator))))))
     (lambda (datum-test tags)
       (hash-table-intern! table (list->weak-list tags)
 	(lambda ()
@@ -155,7 +157,8 @@ USA.
 (define (%get-unordered-predicates-table key)
   (hash-table-intern! unordered-predicates-tables
 		      key
-		      make-key-weak-lset-eqv-hash-table))
+		      (hash-table-constructor
+		       (weak-lset-comparator (make-eqv-comparator)))))
 
 (define-deferred unordered-predicates-tables
   (make-strong-eq-hash-table))
@@ -193,21 +196,6 @@ USA.
 (define-deferred disjoin-tag?
   (tag-predicate disjoin-key))
 
-(add-boot-init!
- (lambda ()
-
-   (define-dispatch-tag<= dispatch-tag? disjoin-tag?
-     (lambda (tag1 tag2)
-       (any (lambda (component2)
-	      (dispatch-tag<= tag1 component2))
-	    (compound-tag-operands tag2))))
-
-   ;; Finish previous allocation of this the-bottom-dispatch-tag.
-   (%set-compound-tag-key! the-bottom-dispatch-tag disjoin-key)
-   (hash-table-set! (%get-unordered-predicates-table disjoin-key)
-		    '()
-		    the-bottom-dispatch-tag)))
-
 (define (conjoin . predicates)
   (conjoin* predicates))
 
@@ -226,18 +214,31 @@ USA.
 
 (add-boot-init!
  (lambda ()
-
+   (define-dispatch-tag<= dispatch-tag? disjoin-tag?
+     (lambda (tag1 tag2)
+       (any (lambda (component2)
+	      (dispatch-tag<= tag1 component2))
+	    (compound-tag-operands tag2))))
    (define-dispatch-tag<= conjoin-tag? dispatch-tag?
      (lambda (tag1 tag2)
        (any (lambda (component1)
 	      (dispatch-tag<= component1 tag2))
-	    (compound-tag-operands tag1))))
+	    (compound-tag-operands tag1))))))
 
-   ;; Finish previous allocation of the-top-dispatch-tag.
-   (%set-compound-tag-key! the-top-dispatch-tag conjoin-key)
-   (hash-table-set! (%get-unordered-predicates-table conjoin-key)
-		    '()
-		    the-top-dispatch-tag)))
+;;; Finish initializing top and bottom.
+(let ((seq (boot-sequencer)))
+  (seq 'add-before! (current-package-sequencer))
+  (seq 'add-before! (package-name->sequencer '(runtime comparator)))
+  (seq 'add-action!
+    (lambda ()
+      (%set-compound-tag-key! the-bottom-dispatch-tag disjoin-key)
+      (hash-table-set! (%get-unordered-predicates-table disjoin-key)
+		       '()
+		       the-bottom-dispatch-tag)
+      (%set-compound-tag-key! the-top-dispatch-tag conjoin-key)
+      (hash-table-set! (%get-unordered-predicates-table conjoin-key)
+		       '()
+		       the-top-dispatch-tag))))
 
 ;;;; Other combinators
 

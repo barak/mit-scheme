@@ -93,10 +93,26 @@ USA.
 
 ;;;; Table operations
 
-(define (hash-table-constructor type)
-  (guarantee hash-table-type? type 'hash-table-constructor)
-  (lambda (#!optional initial-size)
-    (%make-hash-table type initial-size 'hash-table-constructor)))
+(define (make-hash-table . args)
+  (define (k type initial-size)
+    (%make-hash-table type initial-size 'make-hash-table))
+  (cond ((and (pair? args) (comparator? (car args)))
+	 (k (apply comparator->hash-table-type args)
+	    (find exact-nonnegative-integer? (cdr args))))
+	((and (pair? args)
+	      (hash-table-type? (car args))
+	      (null? (cdr args)))
+	 (k (car args) #f))
+	(else
+	 (k (apply srfi-69-hash-table-type args) #f))))
+
+(define (hash-table-constructor type . args)
+  (let ((type
+	 (if (comparator? type)
+	     (apply comparator->hash-table-type type args)
+	     (guarantee hash-table-type? type 'hash-table-constructor))))
+    (lambda (#!optional initial-size)
+      (%make-hash-table type initial-size 'hash-table-constructor))))
 
 (define (make-hash-table* type #!optional initial-size)
   (guarantee hash-table-type? type 'make-hash-table*)
@@ -138,7 +154,7 @@ USA.
   (for-each-inhabitant address-hash-tables
 		       (lambda (table)
 			 (set-table-needs-rehash?! table #t))))
-
+
 (define (hash-table-hash-function table)
   (table-type-key-hash (hash-table-type table)))
 
@@ -158,7 +174,7 @@ USA.
 
 (define (hash-table-ref/default table key default)
   (hash-table-ref table key (lambda () default)))
-
+
 (define (hash-table-set! table key datum)
   ((table-type-method:put! (hash-table-type table)) table key datum))
 
@@ -1029,6 +1045,27 @@ USA.
 
 ;;;; Constructing and Open-Coding Types and Constructors
 
+(define (comparator->hash-table-type comparator . args)
+  (if (not (comparator-hashable? comparator))
+      (error:bad-range-argument comparator))
+  (make-hash-table-type (comparator-hash-function comparator)
+			(comparator-equality-predicate comparator)
+			(comparator-rehash-after-gc? comparator)
+			(comparator-entry-type comparator args)))
+
+(define (comparator-entry-type comparator args)
+  (cond ((weak-list-comparator? comparator)
+	 hash-table-entry-type:key-weak-list)
+	((and (memq 'weak-keys args) (memq 'weak-values args))
+	 hash-table-entry-type:key&datum-weak)
+	((memq 'weak-keys args) hash-table-entry-type:key-weak)
+	((memq 'weak-values args) hash-table-entry-type:datum-weak)
+	((and (memq 'ephemeral-keys args) (memq 'ephemeral-values args))
+	 hash-table-entry-type:key&datum-ephemeral)
+	((memq 'ephemeral-keys args) hash-table-entry-type:key-ephemeral)
+	((memq 'ephemeral-values args) hash-table-entry-type:datum-ephemeral)
+	(else hash-table-entry-type:strong)))
+
 (define (make-hash-table-type* key=? . options)
   (receive (key-hash rehash-after-gc? entry-type-name)
       (hash-table-type-options options 'make-hash-table-type*)
@@ -1173,14 +1210,6 @@ USA.
 (define string-hash-table-type)
 (define strong-eq-hash-table-type)
 (define strong-eqv-hash-table-type)
-(define strong-list-eq-hash-table-type)
-(define strong-list-eqv-hash-table-type)
-(define key-weak-list-eq-hash-table-type)
-(define key-weak-list-eqv-hash-table-type)
-(define strong-lset-eq-hash-table-type)
-(define strong-lset-eqv-hash-table-type)
-(define key-weak-lset-eq-hash-table-type)
-(define key-weak-lset-eqv-hash-table-type)
 (define hash-table-type-constructors)
 (define hash-metadata-table)
 (add-boot-init!
@@ -1224,31 +1253,7 @@ USA.
      (set! strong-eq-hash-table-type	;Open-coded
 	   (open-type! eq-hash eq? #t hash-table-entry-type:strong))
      (set! strong-eqv-hash-table-type
-	   (make eqv-hash eqv? #t hash-table-entry-type:strong))
-     (set! strong-list-eq-hash-table-type
-	   (make uniform-eq-list-hash uniform-eq-list=? #t
-		 hash-table-entry-type:strong))
-     (set! strong-list-eqv-hash-table-type
-	   (make uniform-eqv-list-hash uniform-eqv-list=? #t
-		 hash-table-entry-type:strong))
-     (set! key-weak-list-eq-hash-table-type
-	   (make uniform-eq-weak-list-hash uniform-eq-weak-list=? #t
-		 hash-table-entry-type:key-weak-list))
-     (set! key-weak-list-eqv-hash-table-type
-	   (make uniform-eqv-weak-list-hash uniform-eqv-weak-list=? #t
-		 hash-table-entry-type:key-weak-list))
-     (set! strong-lset-eq-hash-table-type
-	   (make uniform-eq-list-hash eq-lset=? #t
-		 hash-table-entry-type:strong))
-     (set! strong-lset-eqv-hash-table-type
-	   (make uniform-eqv-list-hash eqv-lset=? #t
-		 hash-table-entry-type:strong))
-     (set! key-weak-lset-eq-hash-table-type
-	   (make uniform-eq-weak-list-hash eq-weak-lset=? #t
-		 hash-table-entry-type:key-weak-list))
-     (set! key-weak-lset-eqv-hash-table-type
-	   (make uniform-eqv-weak-list-hash eqv-weak-lset=? #t
-		 hash-table-entry-type:key-weak-list)))
+	   (make eqv-hash eqv? #t hash-table-entry-type:strong)))
    unspecific))
 
 (define make-equal-hash-table)
@@ -1263,14 +1268,6 @@ USA.
 (define make-string-hash-table)
 (define make-strong-eq-hash-table)
 (define make-strong-eqv-hash-table)
-(define make-strong-list-eq-hash-table)
-(define make-strong-list-eqv-hash-table)
-(define make-key-weak-list-eq-hash-table)
-(define make-key-weak-list-eqv-hash-table)
-(define make-strong-lset-eq-hash-table)
-(define make-strong-lset-eqv-hash-table)
-(define make-key-weak-lset-eq-hash-table)
-(define make-key-weak-lset-eqv-hash-table)
 (add-boot-init!
  (lambda ()
    (let-syntax ((init
@@ -1289,15 +1286,7 @@ USA.
      (init make-string-ci-hash-table string-ci-hash-table-type)
      (init make-string-hash-table string-hash-table-type)
      (init make-strong-eq-hash-table strong-eq-hash-table-type)
-     (init make-strong-eqv-hash-table strong-eqv-hash-table-type)
-     (init make-strong-list-eq-hash-table strong-list-eq-hash-table-type)
-     (init make-strong-list-eqv-hash-table strong-list-eqv-hash-table-type)
-     (init make-key-weak-list-eq-hash-table key-weak-list-eq-hash-table-type)
-     (init make-key-weak-list-eqv-hash-table key-weak-list-eqv-hash-table-type)
-     (init make-strong-lset-eq-hash-table strong-lset-eq-hash-table-type)
-     (init make-strong-lset-eqv-hash-table strong-lset-eqv-hash-table-type)
-     (init make-key-weak-lset-eq-hash-table key-weak-lset-eq-hash-table-type)
-     (init make-key-weak-lset-eqv-hash-table key-weak-lset-eqv-hash-table-type))
+     (init make-strong-eqv-hash-table strong-eqv-hash-table-type))
    unspecific))
 
 ;;;; Compatibility with SRFI 69 and older MIT Scheme
@@ -1324,13 +1313,12 @@ USA.
 			      rehash-after-gc?)
 			  hash-table-entry-type:key-weak))
 
-(define (make-hash-table #!optional key=? key-hash . args)
-  (make-hash-table*
-   (apply make-hash-table-type*
-	  (if (default-object? key=?) equal? key=?)
-	  (if (default-object? key-hash)
-	      args
-	      (cons* 'hash-function key-hash args)))))
+(define (srfi-69-hash-table-type #!optional key=? key-hash . args)
+  (apply make-hash-table-type*
+	 (if (default-object? key=?) equal? key=?)
+	 (if (default-object? key-hash)
+	     args
+	     (cons* 'hash-function key-hash args))))
 
 (define (alist->hash-table alist #!optional key=? key-hash . args)
   (guarantee alist? alist 'alist->hash-table)
