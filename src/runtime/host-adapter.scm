@@ -35,23 +35,17 @@ USA.
 ;;; the new runtime.  It contains temporary hacks that will be kept
 ;;; only until the new runtime is released.
 
-(if (lexical-unreferenceable? (->environment '()) 'target-bytes-per-object)
-    (environment-define (->environment '())
-			'target-bytes-per-object
-			bytes-per-object))
+(let ((genv (->environment '()))
+      (renv (->environment '(runtime))))
 
-(if (lexical-unreferenceable? (->environment '()) 'cref/source-root)
-    (environment-define (->environment '())
-			'cref/source-root
-			#!default))
+  (if (lexical-unreferenceable? genv 'target-bytes-per-object)
+      (environment-define genv 'target-bytes-per-object bytes-per-object))
+  (if (lexical-unreferenceable? genv 'cref/source-root)
+      (environment-define genv 'cref/source-root #!default))
+  (if (lexical-unreferenceable? genv 'cref/object-root)
+      (environment-define genv 'cref/object-root #!default))
 
-(if (lexical-unreferenceable? (->environment '()) 'cref/object-root)
-    (environment-define (->environment '())
-			'cref/object-root
-			#!default))
-
-(let ((env (->environment '(runtime))))
-  (if (not (environment-bound? env 'define-sequenced-procedure))
+  (if (not (environment-bound? renv 'define-sequenced-procedure))
       (eval '(define-syntax define-sequenced-procedure
 	       (er-macro-transformer
 		(lambda (form rename compare)
@@ -71,28 +65,36 @@ USA.
 			    (,(rename 'lambda) ()
 			     (,(rename 'set!) ,name ,expr)
 			     ,(rename 'unspecific))))))))
-	    env)))
+	    renv))
 
-(let ((env (->environment '(scode-optimizer expansion))))
+  (if (not (environment-bound? genv 'hash-bound))
+      (begin
+	(eval '(define-syntax hash-bound
+		 (syntax-rules ()
+		   ((_) (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))))
+	      renv)
+	(link-variables genv 'hash-bound renv 'hash-bound)))
 
-  (define (get name)
-    (environment-lookup env name))
+  (let ((env (->environment '(scode-optimizer expansion))))
 
-  (define (put! name value)
-    (environment-assign! env name value))
+    (define (get name)
+      (environment-lookup env name))
 
-  (define alist
-    (get 'usual-integrations/expansion-alist))
+    (define (put! name value)
+      (environment-assign! env name value))
 
-  (set! alist
-	(remove! (lambda (p)
-		   (let ((name (car p)))
-		     (or (eq? name 'call-with-values)
-			 (eq? name 'with-values)
-			 (eq? name 'values))))
-		 alist))
-  (put! 'usual-integrations/expansion-alist alist)
-  (put! 'usual-integrations/expansion-names (map car alist))
-  (put! 'usual-integrations/expansion-values (map cdr alist)))
+    (define alist
+      (get 'usual-integrations/expansion-alist))
 
-unspecific
+    (set! alist
+	  (remove! (lambda (p)
+		     (let ((name (car p)))
+		       (or (eq? name 'call-with-values)
+			   (eq? name 'with-values)
+			   (eq? name 'values))))
+		   alist))
+    (put! 'usual-integrations/expansion-alist alist)
+    (put! 'usual-integrations/expansion-names (map car alist))
+    (put! 'usual-integrations/expansion-values (map cdr alist)))
+
+  )

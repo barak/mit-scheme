@@ -433,8 +433,9 @@ USA.
 ;;; On 32-bit architectures:
 ;;;   hash functions return a 25-bit unsigned value
 
-(define-integrable (hash-bound)
-  (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))
+(define-syntax hash-bound
+  (syntax-rules ()
+    ((_) (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))))
 
 (define ((protected-hash-function hash-fn) object)
   (check-hash (hash-fn object)))
