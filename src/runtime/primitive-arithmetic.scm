@@ -634,6 +634,11 @@ USA.
 	r
 	(int:+ r d))))
 
+(define (int:abs n)
+  (if (int:negative? n)
+      (int:- 0 n)
+      n))
+
 ;;; Fairly standard Newton's method implementation.  Cribbed from
 ;;; https://www.akalin.com/computing-isqrt which has proof of correctness and
 ;;; shows that this is O(lg lg n) in time.

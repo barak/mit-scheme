@@ -589,6 +589,7 @@ USA.
 	  int:=
 	  int:>
 	  int:>=
+	  int:abs
 	  int:divide
 	  int:integer?
 	  int:modulo
