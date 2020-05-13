@@ -6750,7 +6750,7 @@ USA.
 	  comparator-hashable?		;(srfi 128)
 	  comparator-ordered?		;(srfi 128)
 	  comparator-ordering-predicate	;(srfi 128)
-	  comparator-rehash-on-gc?
+	  comparator-rehash-after-gc?
 	  comparator-test-type		;(srfi 128)
 	  comparator?			;(srfi 128)
 	  hash-bound			;(srfi 128)
@@ -6773,6 +6773,7 @@ USA.
 	  uniform-weak-list-equality-predicate
 	  uniform-weak-list-hash
 	  uniform-weak-list-ordering-predicate
+	  weak-list-comparator?
 	  weak-lset-comparator
 	  weak-lset-equality-predicate
 	  weak-lset-ordering-predicate)

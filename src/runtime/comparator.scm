@@ -32,21 +32,21 @@ USA.
 (add-boot-deps! '(runtime compound-predicate)
 		'(runtime hash-table))
 
-(define (make-comparator ? = < hash #!optional rehash-on-gc?)
+(define (make-comparator ? = < hash #!optional rehash-after-gc?)
   (guarantee unary-procedure? ? 'make-comparator)
   (guarantee binary-procedure? = 'make-comparator)
   (if < (guarantee binary-procedure? < 'make-comparator))
   (if hash (guarantee unary-procedure? hash 'make-comparator))
-  (%make-comparator ? = < hash (and hash rehash-on-gc? #t)))
+  (%make-comparator ? = < hash (and hash rehash-after-gc? #t)))
 
 (define-record-type <comparator>
-    (%make-comparator ? = < hash rehash-on-gc?)
+    (%make-comparator ? = < hash rehash-after-gc?)
     comparator?
   (? %comparator-?)
   (= %comparator-=)
   (< %comparator-<)
   (hash %comparator-hash)
-  (rehash-on-gc? comparator-rehash-on-gc?))
+  (rehash-after-gc? comparator-rehash-after-gc?))
 
 (define (comparator-ordered? comparator)
   (and (%comparator-< comparator) #t))
@@ -152,8 +152,8 @@ USA.
 			 (%comparator-hash c2)
 			 (make-pair-hash (%comparator-hash c1)
 					 (%comparator-hash c2)))
-		    (or (comparator-rehash-on-gc? c1)
-			(comparator-rehash-on-gc? c2))))
+		    (or (comparator-rehash-after-gc? c1)
+			(comparator-rehash-after-gc? c2))))
 
 (define (make-pair= car= cdr=)
   (lambda (a b)
@@ -195,7 +195,7 @@ USA.
 	  (and (%comparator-hash celt)
 	       (make-klist-hash (%comparator-hash celt)
 				kpair? knull? kar kdr))
-	  (comparator-rehash-on-gc? celt)))))
+	  (comparator-rehash-after-gc? celt)))))
 
 (define (make-klist? elt? kpair? knull? kar kdr)
   (lambda (a)
@@ -265,7 +265,7 @@ USA.
 					    (%comparator-< celt)))
       (and (%comparator-hash celt)
 	   (uniform-list-hash (%comparator-hash celt)))
-      (comparator-rehash-on-gc? celt)))))
+      (comparator-rehash-after-gc? celt)))))
 
 (define (uniform-list-equality-predicate elt=?)
   (cond ((eqv? eq? elt=?) uniform-eq-list=?)
@@ -301,7 +301,7 @@ USA.
       (lset-ordering-predicate (%comparator-= celt))
       (and (%comparator-hash celt)
 	   (uniform-list-hash (%comparator-hash celt)))
-      (comparator-rehash-on-gc? celt)))))
+      (comparator-rehash-after-gc? celt)))))
 
 (define (lset-equality-predicate elt=?)
   (cond ((eqv? eq? elt=?) eq-lset=?)
@@ -338,8 +338,21 @@ USA.
 (define eq-lset<? (%lset-ordering-predicate eq?))
 (define eqv-lset<? (%lset-ordering-predicate eqv?))
 
-(define-deferred uniform-weak-list-comparator
+(define (weak-list-constructor constructor)
   (memoized-constructor
+   (lambda (celt)
+     (let ((comparator (constructor celt)))
+       (hash-table-set! weak-list-comparators comparator #t)
+       comparator))))
+
+(define (weak-list-comparator? object)
+  (hash-table-exists? weak-list-comparators object))
+
+(define-deferred weak-list-comparators
+  (make-key-weak-eq-hash-table))
+
+(define-deferred uniform-weak-list-comparator
+  (weak-list-constructor
    (lambda (celt)
      (%make-comparator
       (uniform-weak-list-predicate (%comparator-? celt))
@@ -349,7 +362,7 @@ USA.
 						 (%comparator-< celt)))
       (and (%comparator-hash celt)
 	   (uniform-weak-list-hash (%comparator-hash celt)))
-      (comparator-rehash-on-gc? celt)))))
+      (comparator-rehash-after-gc? celt)))))
 
 (define (uniform-weak-list-equality-predicate elt=?)
   (cond ((eqv? eq? elt=?) uniform-eq-weak-list=?)
@@ -381,7 +394,7 @@ USA.
 			       (loop (weak-cdr scana) (weak-cdr scanb)))))))))))
 
 (define-deferred weak-lset-comparator
-  (memoized-constructor
+  (weak-list-constructor
    (lambda (celt)
      (%make-comparator
       (uniform-weak-list-predicate (%comparator-? celt))
@@ -389,7 +402,7 @@ USA.
       (weak-lset-ordering-predicate (%comparator-= celt))
       (and (%comparator-hash celt)
 	   (uniform-weak-list-hash (%comparator-hash celt)))
-      (comparator-rehash-on-gc? celt)))))
+      (comparator-rehash-after-gc? celt)))))
 
 (define (weak-lset-equality-predicate elt=?)
   (cond ((eqv? eq? elt=?) eq-weak-lset=?)
@@ -465,38 +478,40 @@ USA.
   (%combine-hashes (check-hash (hash-fn object1))
 		   (check-hash (hash-fn object2))))
 
-(define ((uniform-list-hash elt-hash) object)
-  (fold (lambda (elt result)
-	  (%combine-hashes (check-hash (elt-hash elt)) result))
-	(initial-hash)
-	object))
+(define (uniform-list-hash elt-hash)
+  (cond ((eqv? eq? elt-hash) uniform-eq-list-hash)
+	((eqv? eqv? elt-hash) uniform-eqv-list-hash)
+	(else
+	 (let ()
+	   (define-integrable (checked elt)
+	     (check-hash (elt-hash elt)))
+	   (%uniform-list-hash checked)))))
 
-(define (uniform-eq-list-hash object)
-  (fold (lambda (elt result)
-	  (%combine-hashes (eq-hash elt) result))
-	(initial-hash)
-	object))
+(define-integrable (%uniform-list-hash elt-hash)
+  (lambda (object)
+    (fold (lambda (elt result)
+	    (%combine-hashes (elt-hash elt) result))
+	  (initial-hash)
+	  object)))
 
-(define (uniform-eqv-list-hash object)
-  (fold (lambda (elt result)
-	  (%combine-hashes (eqv-hash elt) result))
-	(initial-hash)
-	object))
+(define uniform-eq-list-hash (%uniform-list-hash eq-hash))
+(define uniform-eqv-list-hash (%uniform-list-hash eqv-hash))
 
-(define ((uniform-weak-list-hash elt-hash) object)
-  (weak-fold (lambda (elt result)
-	       (%combine-hashes (check-hash (elt-hash elt)) result))
-	     (initial-hash)
-	     object))
+(define (uniform-weak-list-hash elt-hash)
+  (cond ((eqv? eq? elt-hash) uniform-eq-weak-list-hash)
+	((eqv? eqv? elt-hash) uniform-eqv-weak-list-hash)
+	(else
+	 (let ()
+	   (define-integrable (checked elt)
+	     (check-hash (elt-hash elt)))
+	   (%uniform-weak-list-hash checked)))))
 
-(define (uniform-eq-weak-list-hash object)
-  (weak-fold (lambda (elt result)
-	       (%combine-hashes (eq-hash elt) result))
-	     (initial-hash)
-	     object))
+(define-integrable (%uniform-weak-list-hash elt-hash)
+  (lambda (object)
+    (weak-fold (lambda (elt result)
+		 (%combine-hashes (elt-hash elt) result))
+	       (initial-hash)
+	       object)))
 
-(define (uniform-eqv-weak-list-hash object)
-  (weak-fold (lambda (elt result)
-	       (%combine-hashes (eqv-hash elt) result))
-	     (initial-hash)
-	     object))
+(define uniform-eq-weak-list-hash (%uniform-weak-list-hash eq-hash))
+(define uniform-eqv-weak-list-hash (%uniform-weak-list-hash eqv-hash))
