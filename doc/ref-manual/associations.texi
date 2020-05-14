@@ -524,15 +524,48 @@ All of the above are highly optimized table implementations.  Next are
 some general constructors that allow for more flexible table
 definitions.
 
-@deffn procedure make-hash-table [key=? [hash-function [arg @dots{}]]]
-@deffnx procedure alist->hash-table alist [key=? [hash-function [arg @dots{}]]]
-These are the @asrfi{69} constructors.  The @var{key=?} argument
-specifies how keys are compared and defaults to @code{equal?}.  The
-@var{hash-function} argument specifies the hash function to use. If
-@var{hash-function} is not specified, it defaults to a standard value that
-depends on @var{key=?}; an error is signaled if there's no standard
-value.  The @var{arg} arguments are allowed but are implementation
-dependent; do not provide them.
+@deffn procedure make-hash-table comparator arg @dots{}
+@deffnx procedure make-hash-table [key=? [hash-function arg @dots{}]]
+@deffnx procedure alist->hash-table alist comparator arg @dots{}
+@deffnx procedure alist->hash-table alist [key=? [hash-function arg @dots{}]]
+These are the standard constructors for making hash tables.  The
+behavior of each differs depending on its arguments: if the first
+argument is a comparator, then it behaves like a @asrfi{125}
+procedure, otherwise it behaves like a @asrfi{69} procedure.
+
+For @asrfi{125} behavior the @var{comparator} must be a comparator
+that satisfies @code{comparator-hashable?}.  The remaining @var{args}
+are optional, and may include the following symbols:
+@table @code
+@item weak-keys
+Specifies that the table will have weak keys.
+
+@item weak-values
+Specifies that the table will have weak values.
+
+@item ephemeral-keys
+Specifies that the table will have ephemeral keys.
+
+@item ephemeral-values
+Specifies that the table will have ephemeral values.
+@end table
+The symbols @code{weak-keys} and @code{weak-values} can be specified
+together or separately, likewise for @code{ephemeral-keys} and
+@code{ephemeral-values}.  But weak and ephemeral symbols can't be
+mixed.  If none of these symbols are present, then the keys and values
+are strongly held.
+
+Additionally @var{args} may contain an exact non-negative integer,
+which specifies an initial size for the table; otherwise a default
+size is used.
+
+For @asrfi{69} behavior the @var{key=?} argument specifies how keys
+are compared and defaults to @code{equal?}.  The @var{hash-function}
+argument specifies the hash function to use.  If @var{hash-function}
+is not specified, it defaults to a standard value that depends on
+@var{key=?}; an error is signaled if there's no standard value.  The
+@var{arg} arguments are allowed but are implementation dependent; do
+not provide them.
 
 The procedure @code{alist->hash-table} creates a new hash table, as
 with @code{make-hash-table}, and then fills it with the contents of
@@ -542,17 +575,25 @@ with @code{make-hash-table}, and then fills it with the contents of
 The remaining constructors use @dfn{hash-table types} to encapsulate
 the hashing parameters.
 
-@deffn procedure make-hash-table* type [initial-size]
+@deffn {obsolete procedure} make-hash-table* type [initial-size]
 Constructs a new hash table using the hashing parameters in
 @var{type}.
 @end deffn
 
-@deffn procedure hash-table-constructor type
+@deffn procedure hash-table-constructor comparator arg @dots{}
+@deffnx {obsolete procedure} hash-table-constructor type
 Returns a procedure that, when called, constructs a new hash table
-using the hashing parameters in @var{type}.  The returned procedure
-accepts an optional @var{initial-size}.
+using the specified parameters.  The returned procedure accepts an
+optional @var{initial-size}.
 
-This is equivalent to
+If its first argument is a comparator, it uses the @var{comparator}
+and @var{args} as in @code{make-hash-table}, except that any initial
+size specified in @var{args} can be overridden by the
+@var{initial-size} argument to the returned procedure.
+
+If its first argument is a type, returns a procedure that, when
+called, constructs a new hash table using the hashing parameters in
+@var{type}.  This is equivalent to
 @lisp
 (lambda (#!optional initial-size)
   (make-hash-table* @var{type} initial-size))
@@ -563,7 +604,7 @@ The next two procedures are used to create hash-table types.  The
 procedures are equivalent in power; they differ only in how the types
 are described.
 
-@deffn procedure make-hash-table-type hash-function key=? rehash-after-gc? entry-type
+@deffn {obsolete procedure} make-hash-table-type hash-function key=? rehash-after-gc? entry-type
 @cindex hashing, of key in hash table
 This procedure accepts four arguments and returns a hash-table type,
 which can be used to make hash tables of that type.  The @var{key=?}
@@ -587,7 +628,7 @@ entry-type variables described below, which all start with
 @code{hash-table-entry-type:}.
 @end deffn
 
-@deffn procedure make-hash-table-type* key=? hash-function rehash-after-gc? entry-type
+@deffn {obsolete procedure} make-hash-table-type* key=? hash-function rehash-after-gc? entry-type
 This procedure's arguments, except for @var{key=?}, are keyword
 arguments; that is, each argument is a symbol of the same name
 followed by its value.  Aside from how they are passed, the arguments
@@ -609,11 +650,11 @@ standard values that depend on @var{key=?}; an error is signaled if
 defaults to @var{strong}.
 @end deffn
 
-@defvr variable hash-table-entry-type:strong
+@defvr {obsolete variable} hash-table-entry-type:strong
 The entry type for hash tables that hold both keys and data strongly.
 @end defvr
 
-@defvr variable hash-table-entry-type:key-weak
+@defvr {obsolete variable} hash-table-entry-type:key-weak
 An entry type for hash tables that hold keys weakly and data strongly.
 An entry of this type is a weak pair (@pxref{Weak Pairs}) whose weak
 (car) slot holds the key of the entry and whose strong (cdr) slot
@@ -623,7 +664,7 @@ if some datum holds some key strongly, the table will effectively hold
 that key strongly.
 @end defvr
 
-@defvr variable hash-table-entry-type:datum-weak
+@defvr {obsolete variable} hash-table-entry-type:datum-weak
 An entry type for hash tables that hold keys strongly and data weakly.
 An entry of this type is a weak pair (@pxref{Weak Pairs}) whose weak
 (car) slot holds the datum of the entry and whose strong (cdr) slot
@@ -633,7 +674,7 @@ if some key holds some datum strongly, the table will effectively hold
 that datum strongly.
 @end defvr
 
-@defvr variable hash-table-entry-type:key&datum-weak
+@defvr {obsolete variable} hash-table-entry-type:key&datum-weak
 @defvrx {obsolete variable} hash-table-entry-type:key/datum-weak
 The entry type for hash tables that hold both keys and data weakly.
 An entry of this type is a weak list, holding both the key and the
@@ -642,7 +683,7 @@ either a key or datum of such a hash table is garbage collected, all
 corresponding entries will be removed.
 @end defvr
 
-@defvr variable hash-table-entry-type:key-ephemeral
+@defvr {obsolete variable} hash-table-entry-type:key-ephemeral
 An entry type for hash tables that hold data ephemerally, keyed by the keys.
 An entry of this type is an ephemeron (@pxref{Ephemerons}) whose key
 is the key of the entry and whose datum is the datum of the entry.  If
@@ -651,7 +692,7 @@ entry will be removed.  Note that the table holds all its keys weakly
 even if some data should hold some keys strongly.
 @end defvr
 
-@defvr variable hash-table-entry-type:datum-ephemeral
+@defvr {obsolete variable} hash-table-entry-type:datum-ephemeral
 An entry type for hash tables that hold keys ephemerally, keyed by the data.
 An entry of this type is an ephemeron (@pxref{Ephemerons}) whose key
 is the datum of the entry and whose datum is the key of the entry.  If
@@ -660,7 +701,7 @@ entries will be removed.  Note that the table holds all its data weakly
 even if some keys should hold some data strongly.
 @end defvr
 
-@defvr variable hash-table-entry-type:key&datum-ephemeral
+@defvr {obsolete variable} hash-table-entry-type:key&datum-ephemeral
 The entry type for hash tables that hold both keys and data
 ephemerally keyed on each other.  An entry of this type is a pair of
 ephemerons (@pxref{Ephemerons}), one holding the datum keyed by the
@@ -675,27 +716,27 @@ respectively.
 Some examples showing how some standard hash-table constructors could have
 been defined:
 
-@findex eq-hash-mod
+@findex eq-hash
 @findex eq?
-@findex equal-hash-mod
+@findex equal-hash
 @findex equal?
-@findex string-hash-mod
+@findex string-hash
 @findex string=?
 @example
 @group
 (define make-weak-eq-hash-table
   (hash-table-constructor
-    (make-hash-table-type eq-hash-mod eq? #t
+    (make-hash-table-type eq-hash eq? #t
       hash-table-entry-type:key-weak)))
 
 (define make-equal-hash-table
   (hash-table-constructor
-    (make-hash-table-type equal-hash-mod equal? #t
+    (make-hash-table-type equal-hash equal? #t
       hash-table-entry-type:strong)))
 
 (define make-string-hash-table
   (hash-table-constructor
-    (make-hash-table-type string-hash-mod string=? #f
+    (make-hash-table-type string-hash string=? #f
       hash-table-entry-type:strong)))
 @end group
 @end example
@@ -837,7 +878,7 @@ value for @code{hash-table-ref} and the caller must choose between
 different actions depending on whether there is a datum associated
 with the key.
 
-@deffn procedure hash-table/lookup hash-table key if-found if-not-found
+@deffn {obsolete procedure} hash-table/lookup hash-table key if-found if-not-found
 @var{If-found} must be a procedure of one argument, and
 @var{if-not-found} must be a procedure of no arguments.  If
 @var{hash-table} contains an association for @var{key}, @var{if-found}
@@ -1107,19 +1148,14 @@ same hash number when passed as arguments to these procedures, provided
 that the garbage collector does not run during or between the two calls.
 @end deffn
 
-The following procedures are the hash functions specified by
-@asrfi{69}.
-
-@deffn {obsolete procedure} hash-by-identity key [modulus]
-This procedure returns the same value as @code{eq-hash}, optionally
-limited by @var{modulus}.
+@deffn procedure hash-by-identity key [modulus]
+This @asrfi{69} procedure returns the same value as @code{eq-hash},
+optionally limited by @var{modulus}.
 @end deffn
 
 @deffn {obsolete procedure} hash-by-eqv key [modulus]
 This procedure returns the same value as @code{eqv-hash}, optionally
 limited by @var{modulus}.
-
-This procedure is not specified by @asrfi{69}.
 @end deffn
 
 @deffn {obsolete procedure} hash-by-equal key [modulus]
@@ -1131,9 +1167,6 @@ used for a different purpose by MIT/GNU Scheme long before @asrfi{69}
 was written.  The previous use of @code{hash} has been deprecated, but
 it will be some time until it can be removed.
 @end deffn
-
-The following procedures are the key-hashing procedures used by the
-standard address-hash-based hash tables.  They are 
 
 @deffn {obsolete procedure} eq-hash-mod object modulus
 This procedure is the key-hashing procedure used by

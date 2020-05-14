@@ -1282,6 +1282,7 @@ USA.
 	  string-any
 	  string-append			;(scheme base)
 	  string-builder
+	  string-ci-hash
 	  string-ci<=?			;(scheme char)
 	  string-ci<?			;(scheme char)
 	  string-ci=?			;(scheme char)
@@ -1308,8 +1309,7 @@ USA.
 	  string-fold-right		;(srfi 140)
 	  string-foldcase		;(scheme char)
 	  string-for-each		;(scheme base)
-	  string-hash			;(srfi 69)
-	  string-ci-hash		;(srfi 69)
+	  string-hash
 	  string-head
 	  string-immutable?
 	  string-in-nfc?
@@ -2824,76 +2824,103 @@ USA.
 	  (set-hash-table/rehash-threshold! set-hash-table-rehash-threshold!)
 	  (weak-eq-hash-table-type key-weak-eq-hash-table-type)
 	  (weak-eqv-hash-table-type key-weak-eqv-hash-table-type)
-	  eq-hash-mod
-	  equal-hash-mod
-	  eqv-hash-mod
-	  hash-by-identity		;(srfi 69)
-	  hash-by-equal
-	  hash-by-eqv
-	  hash-table/constructor
-	  hash-table/modify!
-	  strong-hash-table/constructor
-	  weak-hash-table/constructor)
-  (export ()
-	  alist->hash-table		;(srfi 69)
 	  datum-weak-eq-hash-table-type
 	  datum-weak-eqv-hash-table-type
-	  eq-hash
+	  eq-hash-mod
+	  equal-hash-mod
 	  equal-hash-table-type
 	  equality-predicate-hasher
 	  equality-predicate-property
 	  equality-predicate-property-names
 	  equality-predicate-rehash-after-gc?
 	  equality-predicate?
-	  eqv-hash
-	  hash-table->alist		;(srfi 69)
-	  hash-table-clean!
-	  hash-table-clear!		;(srfi 69)
-	  hash-table-constructor
-	  hash-table-copy		;(srfi 69)
-	  hash-table-delete!		;(srfi 69)
+	  eqv-hash-mod
+	  hash-by-equal
+	  hash-by-eqv
 	  hash-table-entry-type-names
 	  hash-table-entry-type:datum-ephemeral
 	  hash-table-entry-type:datum-weak
 	  hash-table-entry-type:key&datum-ephemeral
+	  hash-table-entry-type:key&datum-weak
 	  hash-table-entry-type:key-ephemeral
 	  hash-table-entry-type:key-weak
-	  hash-table-entry-type:key&datum-weak
 	  hash-table-entry-type:strong
-	  hash-table-equivalence-function ;(srfi 69)
-	  hash-table-exists?		;(srfi 69)
-	  hash-table-fold		;(srfi 69)
-	  hash-table-grow-size
-	  hash-table-hash-function	;(srfi 69)
-	  hash-table-intern!
-	  hash-table-keys		;(srfi 69)
-	  hash-table-merge!		;(srfi 69)
-	  hash-table-ref		;(srfi 69)
-	  hash-table-ref/default	;(srfi 69)
-	  hash-table-rehash-size
-	  hash-table-rehash-threshold
-	  hash-table-set!		;(srfi 69)
-	  hash-table-shrink-size
-	  hash-table-size		;(srfi 69)
 	  hash-table-type
 	  hash-table-type?
-	  hash-table-update!		;(srfi 69)
-	  hash-table-update!/default	;(srfi 69)
-	  hash-table-values		;(srfi 69)
-	  hash-table-walk		;(srfi 69)
+	  hash-table/constructor
 	  hash-table/lookup
-	  hash-table?			;(srfi 69)
+	  hash-table/modify!
 	  key-ephemeral-eq-hash-table-type
 	  key-ephemeral-eqv-hash-table-type
 	  key-weak-eq-hash-table-type
 	  key-weak-eqv-hash-table-type
-	  make-datum-weak-eq-hash-table
-	  make-datum-weak-eqv-hash-table
-	  make-equal-hash-table
-	  make-hash-table
 	  make-hash-table*
 	  make-hash-table-type
 	  make-hash-table-type*
+	  non-pointer-hash-table-type
+	  set-equality-predicate-properties!
+	  string-hash-table-type
+	  strong-eq-hash-table-type
+	  strong-eqv-hash-table-type
+	  strong-hash-table/constructor
+	  weak-hash-table/constructor)
+  (export ()
+	  (hash-table-exists? hash-table-contains?) ;(srfi 69)
+	  (hash-table-merge! hash-table-union!) ;(srfi 69)
+	  alist->hash-table		;(srfi 69) (srfi 125)
+	  eq-hash
+	  eqv-hash
+	  hash-table			;(srfi 125)
+	  hash-table->alist		;(srfi 69) (srfi 125)
+	  hash-by-identity		;(srfi 69)
+	  hash-table-clean!
+	  hash-table-clear!		;(srfi 69) (srfi 125)
+	  hash-table-constructor
+	  hash-table-contains?		;(srfi 125)
+	  hash-table-copy		;(srfi 69) (srfi 125)
+	  hash-table-count		;(srfi 125)
+	  hash-table-delete!		;(srfi 69) (srfi 125)
+	  hash-table-difference!	;(srfi 125)
+	  hash-table-empty-copy		;(srfi 125)
+	  hash-table-empty?		;(srfi 125)
+	  hash-table-entries		;(srfi 125)
+	  hash-table-equivalence-function ;(srfi 69)
+	  hash-table-every
+	  hash-table-find		;(srfi 125)
+	  hash-table-fold		;(srfi 69) (srfi 125)
+	  hash-table-for-each		;(srfi 125)
+	  hash-table-grow-size
+	  hash-table-hash-function	;(srfi 69)
+	  hash-table-intern!		;(srfi 125)
+	  hash-table-intersection!	;(srfi 125)
+	  hash-table-keys		;(srfi 69) (srfi 125)
+	  hash-table-map		;(srfi 125)
+	  hash-table-map!		;(srfi 125)
+	  hash-table-map->list		;(srfi 125)
+	  hash-table-mutable?		;(srfi 125)
+	  hash-table-pop!		;(srfi 125)
+	  hash-table-prune!		;(srfi 125)
+	  hash-table-ref		;(srfi 69) (srfi 125)
+	  hash-table-ref/default	;(srfi 69) (srfi 125)
+	  hash-table-rehash-size
+	  hash-table-rehash-threshold
+	  hash-table-set!		;(srfi 69) (srfi 125)
+	  hash-table-shrink-size
+	  hash-table-size		;(srfi 69) (srfi 125)
+	  hash-table-unfold		;(srfi 125)
+	  hash-table-union!		;(srfi 125)
+	  hash-table-update!		;(srfi 69) (srfi 125)
+	  hash-table-update!/default	;(srfi 69) (srfi 125)
+	  hash-table-values		;(srfi 69) (srfi 125)
+	  hash-table-walk		;(srfi 69)
+	  hash-table-xor!		;(srfi 125)
+	  hash-table<=?
+	  hash-table=?			;(srfi 125)
+	  hash-table?			;(srfi 69) (srfi 125)
+	  make-datum-weak-eq-hash-table
+	  make-datum-weak-eqv-hash-table
+	  make-equal-hash-table
+	  make-hash-table		;(srfi 69) (srfi 125)
 	  make-key-ephemeral-eq-hash-table
 	  make-key-ephemeral-eqv-hash-table
 	  make-key-weak-eq-hash-table
@@ -2903,13 +2930,8 @@ USA.
 	  make-string-hash-table
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table
-	  non-pointer-hash-table-type
-	  set-equality-predicate-properties!
 	  set-hash-table-rehash-size!
-	  set-hash-table-rehash-threshold!
-	  string-hash-table-type
-	  strong-eq-hash-table-type
-	  strong-eqv-hash-table-type))
+	  set-hash-table-rehash-threshold!))
 
 (define-package (runtime memoizer)
   (files "memoizer")

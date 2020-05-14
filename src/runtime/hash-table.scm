@@ -36,7 +36,8 @@ USA.
 (define-record-type <hash-table-type>
     (%make-table-type key-hash key=? rehash-after-gc? method:get method:put!
 		      method:remove! method:clean! method:rehash! method:fold
-		      method:copy-bucket)
+		      method:copy-bucket method:prune! method:map! method:find
+		      method:every)
     hash-table-type?
   (key-hash table-type-key-hash)
   (key=? table-type-key=?)
@@ -47,7 +48,11 @@ USA.
   (method:clean! table-type-method:clean!)
   (method:rehash! table-type-method:rehash!)
   (method:fold table-type-method:fold)
-  (method:copy-bucket table-type-method:copy-bucket))
+  (method:copy-bucket table-type-method:copy-bucket)
+  (method:prune! table-type-method:prune!)
+  (method:map! table-type-method:map!)
+  (method:find table-type-method:find)
+  (method:every table-type-method:every))
 
 (define (make-table type)
   (%make-table type
@@ -106,6 +111,35 @@ USA.
 	(else
 	 (k (apply srfi-69-hash-table-type args) #f))))
 
+(define (alist->hash-table alist . args)
+  (guarantee alist? alist 'alist->hash-table)
+  (let ((table (apply make-hash-table args)))
+    (for-each (lambda (p)
+		(hash-table-set! table (car p) (cdr p)))
+	      alist)
+    table))
+
+(define (hash-table comparator . args)
+  (let ((table (make-hash-table comparator)))
+    (let loop ((scan args))
+      (if (pair? scan)
+	  (let ((key (car scan))
+		(scan (cdr scan)))
+	    (if (not (pair? scan))
+		(error "Not an even number of arguments:" args))
+	    (hash-table-set! table key (car scan))
+	    (loop (cdr scan)))))
+    table))
+
+(define (hash-table-unfold stop? mapper successor seed comparator . args)
+  (let ((result (apply make-hash-table comparator args)))
+    (let loop ((seed seed))
+      (if (stop? seed)
+	  result
+	  (let-values (((key value) (mapper seed)))
+	    (hash-table-set! result key value)
+	    (loop (successor seed)))))))
+
 (define (hash-table-constructor type . args)
   (let ((type
 	 (if (comparator? type)
@@ -113,10 +147,6 @@ USA.
 	     (guarantee hash-table-type? type 'hash-table-constructor))))
     (lambda (#!optional initial-size)
       (%make-hash-table type initial-size 'hash-table-constructor))))
-
-(define (make-hash-table* type #!optional initial-size)
-  (guarantee hash-table-type? type 'make-hash-table*)
-  (%make-hash-table type initial-size 'make-hash-table*))
 
 (define (%make-hash-table type initial-size caller)
   (let ((initial-size
@@ -155,46 +185,68 @@ USA.
 		       (lambda (table)
 			 (set-table-needs-rehash?! table #t))))
 
-(define (hash-table-hash-function table)
-  (table-type-key-hash (hash-table-type table)))
+(define (hash-table-mutable? table)
+  (guarantee hash-table? table 'hash-table-mutable?)
+  #f)
 
-(define (hash-table-equivalence-function table)
-  (table-type-key=? (hash-table-type table)))
+(define (hash-table-empty? table)
+  (= 0 (hash-table-size table)))
 
-(define (hash-table-exists? table key)
-  (not (eq? (hash-table-ref/default table key default-marker) default-marker)))
+(define (hash-table-size table)
+  (let loop ()
+    (let ((count (table-count table)))
+      (if (table-needs-rehash? table)
+	  (begin
+	    (rehash-table! table)
+	    (loop))
+	  count))))
 
-(define (hash-table-ref table key #!optional get-default)
-  ((table-type-method:get (hash-table-type table))
-   table
-   key
-   (if (default-object? get-default)
-       (lambda () (error:bad-range-argument key 'hash-table-ref))
-       get-default)))
+(define (hash-table-contains? table key)
+  (%hash-table-ref table key
+    (lambda () #f)
+    (lambda (value) (declare (ignore value)) #t)))
+
+(define (hash-table-ref table key #!optional fail succeed)
+  (%hash-table-ref table key
+    (if (default-object? fail)
+	(lambda () (error:bad-range-argument key 'hash-table-ref))
+	fail)
+    (if (default-object? succeed) #f succeed)))
 
 (define (hash-table-ref/default table key default)
-  (hash-table-ref table key (lambda () default)))
+  (%hash-table-ref table key (lambda () default) #f))
+
+(define-integrable (%hash-table-ref table key fail succeed)
+  ((table-type-method:get (hash-table-type table)) table key fail succeed))
 
 (define (hash-table-set! table key datum)
   ((table-type-method:put! (hash-table-type table)) table key datum))
 
-(define (hash-table-update! table key procedure #!optional get-default)
+(define (hash-table-update! table key procedure #!optional fail succeed)
   (hash-table-set! table key
-		   (procedure (hash-table-ref table key get-default))))
+		   (procedure (hash-table-ref table key fail succeed))))
 
 (define (hash-table-update!/default table key procedure default)
   (hash-table-update! table key procedure (lambda () default)))
 
 (define (hash-table-intern! table key generator)
-  (let ((datum (hash-table-ref/default table key default-marker)))
-    (if (eq? datum default-marker)
-	(let ((datum (generator)))
-	  (hash-table-set! table key datum)
-	  datum)
-	datum)))
+  (%hash-table-ref table key
+		   (lambda ()
+		     (let ((datum (generator)))
+		       (hash-table-set! table key datum)
+		       datum))
+		   #f))
 
 (define (hash-table-delete! table key)
   ((table-type-method:remove! (hash-table-type table)) table key))
+
+(define (hash-table-clear! table)
+  (without-interruption
+    (lambda ()
+      (if (not (table-initial-size-in-effect? table))
+	  (set-table-grow-size! table minimum-size))
+      (set-table-count! table 0)
+      (reset-table! table))))
 
 (define (hash-table-clean! table)
   (without-interruption
@@ -202,37 +254,158 @@ USA.
       ((table-type-method:clean! (hash-table-type table)) table)
       (maybe-shrink-table! table))))
 
-(define (hash-table-walk table procedure)
-  ;; It's difficult to make this more efficient because PROCEDURE is
-  ;; allowed to delete the entry from the table, and if the table is
-  ;; resized while being examined we'll lose our place.
-  (for-each (lambda (p) (procedure (car p) (cdr p)))
-	    (hash-table->alist table)))
+(define (hash-table-fold kons knil table)
+  (if (hash-table? kons)
+      (%hash-table-fold knil table kons)
+      (%hash-table-fold kons knil table)))
+
+(define (%hash-table-fold kons knil table)
+  ((table-type-method:fold (hash-table-type table)) kons knil table))
+
+(define (hash-table-find predicate table fail)
+  ((table-type-method:find (hash-table-type table)) predicate table fail))
+
+(define (hash-table-every predicate table)
+  ((table-type-method:every (hash-table-type table)) predicate table))
+
+(define (hash-table-map! procedure table)
+  (without-interruption
+    (lambda ()
+      ((table-type-method:map! (hash-table-type table)) procedure table)
+      (maybe-shrink-table! table))))
+
+(define (hash-table-prune! predicate table)
+  (without-interruption
+    (lambda ()
+      ((table-type-method:prune! (hash-table-type table)) predicate table)
+      (maybe-shrink-table! table))))
+
+(define (hash-table-for-each procedure table)
+  (%hash-table-fold (lambda (key datum acc)
+		      (procedure key datum)
+		      acc)
+		    unspecific
+		    table))
+
+(define (hash-table-count predicate table)
+  (%hash-table-fold (lambda (key datum acc)
+		      (if (predicate key datum)
+			  (+ acc 1)
+			  acc))
+		    0
+		    table))
+
+(define (hash-table-map procedure comparator table)
+  (let ((result (make-hash-table comparator)))
+    (%hash-table-fold (lambda (key value acc)
+			(hash-table-set! result key (procedure value))
+			acc)
+		      unspecific
+		      table)
+    result))
+
+(define (hash-table-map->list procedure table)
+  (%hash-table-fold (lambda (key value acc)
+		      (cons (procedure key value) acc))
+		    '()
+		    table))
 
 (define (hash-table->alist table)
-  (hash-table-fold table
-		   (lambda (key datum alist)
+  (%hash-table-fold (lambda (key datum alist)
 		     (cons (cons key datum) alist))
-		   '()))
+		   '()
+		   table))
 
 (define (hash-table-keys table)
-  (hash-table-fold table
-		   (lambda (key datum keys)
+  (%hash-table-fold (lambda (key datum keys)
 		     (declare (ignore datum))
 		     (cons key keys))
-		   '()))
+		   '()
+		   table))
 
 (define (hash-table-values table)
-  (hash-table-fold table
-		   (lambda (key datum values)
+  (%hash-table-fold (lambda (key datum values)
 		     (declare (ignore key))
 		     (cons datum values))
-		   '()))
+		   '()
+		   table))
 
-(define (hash-table-fold table procedure initial-value)
-  ((table-type-method:fold (hash-table-type table))
-   table procedure initial-value))
-
+(define (hash-table-entries table)
+  (let ((p
+	 (%hash-table-fold (lambda (key value acc)
+			     (cons (cons key (car acc))
+				   (cons value (cdr acc))))
+			  (cons '() '())
+			  table)))
+    (values (car p) (cdr p))))
+
+(define (hash-table-pop! table)
+  (let ((p (hash-table-find cons table)))
+    (hash-table-delete! table (car p))
+    (values (car p) (cdr p))))
+
+(define (hash-table<=? value-comparator table1 table2)
+  (let ((val=? (comparator-equality-predicate value-comparator)))
+    (%hash-table<=? val=? table1 table2)))
+
+(define (hash-table=? value-comparator table1 table2)
+  (let ((val=? (comparator-equality-predicate value-comparator)))
+    (and (%hash-table<=? val=? table1 table2)
+	 (%hash-table<=? val=? table2 table1))))
+
+(define (%hash-table<=? val=? table1 table2)
+  (hash-table-every (lambda (key value)
+		      (hash-table-ref table2 key
+				      (lambda () #f)
+				      (lambda (value*) (val=? value value*))))
+		    table1))
+
+(define (hash-table-union! table1 table2)
+  (hash-table-for-each (lambda (key value)
+			 (if (not (hash-table-contains? table1 key))
+			     (hash-table-set! table1 key value)))
+		       table2)
+  table1)
+
+(define (hash-table-intersection! table1 table2)
+  (hash-table-prune! (lambda (key value)
+		       (declare (ignore value))
+		       (not (hash-table-contains? table2 key)))
+		     table1)
+  table1)
+
+(define (hash-table-difference! table1 table2)
+  (hash-table-prune! (lambda (key value)
+		       (declare (ignore value))
+		       (hash-table-contains? table2 key))
+		     table1)
+  table1)
+
+(define (hash-table-xor! table1 table2)
+  (hash-table-for-each (lambda (key value)
+			 (if (hash-table-contains? table1 key)
+			     (hash-table-delete! table1 key)
+			     (hash-table-set! table1 key value)))
+		       table2)
+  table1)
+
+(define (hash-table-copy table #!optional mutable?)
+  (if (not mutable?)
+      (error "Immutable hash tables not supported."))
+  (without-interruption
+    (lambda ()
+      (let ((table* (copy-record table))
+	    (type (hash-table-type table)))
+	(set-table-buckets! table*
+			    (vector-map (table-type-method:copy-bucket type)
+					(table-buckets table)))
+	(if (table-type-rehash-after-gc? type)
+	    (record-address-hash-table! table*))
+	table*))))
+
+(define (hash-table-empty-copy table)
+  (%make-hash-table (hash-table-type table) #f 'hash-table-empty-copy))
+
 (define (set-hash-table-rehash-threshold! table threshold)
   (let ((threshold
 	 (check-arg threshold
@@ -263,23 +436,6 @@ USA.
 	(set-table-rehash-size! table size)
 	(reset-shrink-size! table)
 	(maybe-shrink-table! table)))))
-
-(define (hash-table-size table)
-  (let loop ()
-    (let ((count (table-count table)))
-      (if (table-needs-rehash? table)
-	  (begin
-	    (rehash-table! table)
-	    (loop))
-	  count))))
-
-(define (hash-table-clear! table)
-  (without-interruption
-    (lambda ()
-      (if (not (table-initial-size-in-effect? table))
-	  (set-table-grow-size! table minimum-size))
-      (set-table-count! table 0)
-      (reset-table! table))))
 
 ;;;; Entry abstraction
 
@@ -344,7 +500,11 @@ USA.
 			(make-method:clean! entry-type))
 		    (make-method:rehash! key-hash entry-type)
 		    (make-method:fold entry-type)
-		    (make-method:copy-bucket entry-type)))
+		    (make-method:copy-bucket entry-type)
+		    (make-method:prune! entry-type)
+		    (make-method:map! entry-type)
+		    (make-method:find entry-type)
+		    (make-method:every entry-type)))
 
 (define-integrable (non-weak? object)
   ;; Use an ordinary pair for objects that aren't pointers or that
@@ -702,7 +862,7 @@ USA.
 
 (define (make-method:get compute-hash! key=? entry-type)
   (declare (integrate-operator compute-hash! key=? entry-type))
-  (define (method:get table key get-default)
+  (define (method:get table key fail succeed)
     (let ((hash (compute-hash! table key)))
       ;; Call COMPUTE-HASH! before TABLE-BUCKETS, because computing the
       ;; hash might trigger rehashing which replaces the bucket vector.
@@ -711,9 +871,13 @@ USA.
 	    (call-with-entry-key&datum entry-type (car p)
 	      (lambda (key* datum barrier)
 		(declare (integrate key* datum) (ignore barrier))
-		(if (key=? key* key) datum (loop (cdr p))))
+		(if (key=? key* key)
+		    (if succeed
+			(succeed datum)
+			datum)
+		    (loop (cdr p))))
 	      (lambda () (loop (cdr p))))
-	    (get-default)))))
+	    (fail)))))
   method:get)
 
 (define (make-method:put! compute-hash! key=? entry-type)
@@ -819,26 +983,125 @@ USA.
 		(loop q)))))))
   method:rehash!)
 
-(define (make-method:fold entry-type)
+(define (make-method:map! entry-type)
   (declare (integrate-operator entry-type))
-  (define (method:fold table procedure initial-value)
+  (define (method:map! procedure table)
     (let ((buckets (table-buckets table)))
       (let ((n-buckets (vector-length buckets)))
-	(let per-bucket ((i 0) (value initial-value))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n-buckets)))
+	  (let loop ((this (vector-ref buckets i)) (prev #f))
+	    (if (pair? this)
+		(call-with-entry-key&datum entry-type (car this)
+		  (lambda (key datum barrier)
+		    (declare (integrate key datum))
+		    (declare (ignore barrier))
+		    (set-entry-datum! entry-type
+				      (car this)
+				      (procedure key datum))
+		    (loop (cdr this) this))
+		  (lambda ()
+		    (decrement-table-count! table)
+		    (if prev
+			(set-cdr! prev (cdr this))
+			(vector-set! buckets i (cdr this)))
+		    (loop (cdr this) prev)))))))))
+  method:map!)
+
+(define (make-method:prune! entry-type)
+  (declare (integrate-operator entry-type))
+  (define (method:prune! predicate table)
+    (let ((buckets (table-buckets table)))
+      (let ((n-buckets (vector-length buckets)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n-buckets)))
+	  (let ()
+
+	    (define (scan this prev)
+	      (if (pair? this)
+		  (call-with-entry-key&datum entry-type (car this)
+		    (lambda (key datum barrier)
+		      (declare (integrate key datum))
+		      (declare (ignore barrier))
+		      (if (predicate key datum)
+			  (delete this prev)
+			  (scan (cdr this) this)))
+		    (lambda ()
+		      (delete this prev)))))
+
+	    (define (delete this prev)
+	      (decrement-table-count! table)
+	      (if prev
+		  (set-cdr! prev (cdr this))
+		  (vector-set! buckets i (cdr this)))
+	      (scan (cdr this) prev))
+
+	    (scan (vector-ref buckets i) #f))))))
+  method:prune!)
+
+(define (make-method:fold entry-type)
+  (declare (integrate-operator entry-type))
+  (define (method:fold kons knil table)
+    (let ((buckets (table-buckets table)))
+      (let ((n-buckets (vector-length buckets)))
+	(let per-bucket ((i 0) (acc knil))
 	  (if (fix:< i n-buckets)
-	      (let per-entry ((p (vector-ref buckets i)) (value value))
+	      (let per-entry ((p (vector-ref buckets i)) (acc acc))
 		(if (pair? p)
 		    (per-entry (cdr p)
 			       (call-with-entry-key&datum entry-type (car p)
 				 (lambda (key datum barrier)
 				   (declare (integrate key datum))
 				   (declare (ignore barrier))
-				   (procedure key datum value))
-				 (lambda () value)))
-		    (per-bucket (fix:+ i 1) value)))
-	      value)))))
+				   (kons key datum acc))
+				 (lambda () acc)))
+		    (per-bucket (fix:+ i 1) acc)))
+	      acc)))))
   method:fold)
 
+(define (make-method:find entry-type)
+  (declare (integrate-operator entry-type))
+  (define (method:find procedure table fail)
+    (let ((buckets (table-buckets table)))
+      (let ((n-buckets (vector-length buckets)))
+	(let per-bucket ((i 0))
+	  (if (fix:< i n-buckets)
+	      (let per-entry ((p (vector-ref buckets i)))
+		(if (pair? p)
+		    (call-with-entry-key&datum entry-type (car p)
+		      (lambda (key datum barrier)
+			(declare (integrate key datum))
+			(declare (ignore barrier))
+			(or (procedure key datum)
+			    (per-entry (cdr p))))
+		      (lambda ()
+			(per-entry (cdr p))))
+		    (per-bucket (fix:+ i 1))))
+	      (fail))))))
+  method:find)
+
+(define (make-method:every entry-type)
+  (declare (integrate-operator entry-type))
+  (define (method:every predicate table)
+    (let ((buckets (table-buckets table)))
+      (let ((n-buckets (vector-length buckets)))
+	(let per-bucket ((i 0) (result #t))
+	  (if (fix:< i n-buckets)
+	      (let per-entry ((p (vector-ref buckets i)) (result result))
+		(if (pair? p)
+		    (call-with-entry-key&datum entry-type (car p)
+		      (lambda (key datum barrier)
+			(declare (integrate key datum))
+			(declare (ignore barrier))
+			(let ((value (predicate key datum)))
+			  (and value
+			       (per-entry (cdr p) value))))
+		      (lambda ()
+			(per-entry (cdr p) result)))
+		    (per-bucket (fix:+ i 1) result)))
+	      result)))))
+  method:every)
+
 (define (make-method:copy-bucket entry-type)
   (declare (integrate-operator entry-type))
   (define (method:copy-bucket bucket)
@@ -1180,7 +1443,8 @@ USA.
   (declare (integrate-operator make-method:get make-method:put!))
   (declare (integrate-operator make-method:remove! make-method:clean!))
   (declare (integrate-operator make-method:rehash! make-method:fold))
-  (declare (integrate-operator make-method:copy-bucket))
+  (declare (integrate-operator make-method:copy-bucket make-method:prune!))
+  (declare (integrate-operator make-method:find make-method:every))
   (lambda (key-hash key=? rehash-after-gc?)
     (let ((compute-hash!
 	   ((if rehash-after-gc?
@@ -1202,7 +1466,8 @@ USA.
   (declare (integrate-operator make-method:get make-method:put!))
   (declare (integrate-operator make-method:remove! make-method:clean!))
   (declare (integrate-operator make-method:rehash! make-method:fold))
-  (declare (integrate-operator make-method:copy-bucket))
+  (declare (integrate-operator make-method:copy-bucket make-method:prune!))
+  (declare (integrate-operator make-method:find make-method:every))
   (make-table-type key-hash key=? rehash-after-gc?
 		   (if rehash-after-gc?
 		       (compute-address-hash key-hash)
@@ -1337,14 +1602,6 @@ USA.
 	     args
 	     (cons* 'hash-function key-hash args))))
 
-(define (alist->hash-table alist #!optional key=? key-hash . args)
-  (guarantee alist? alist 'alist->hash-table)
-  (let ((table (apply make-hash-table key=? key-hash args)))
-    (for-each (lambda (p)
-		(hash-table-set! table (car p) (cdr p)))
-	      alist)
-    table))
-
 (define (hash-by-identity key #!optional modulus)
   (if (default-object? modulus)
       (eq-hash key)
@@ -1367,36 +1624,25 @@ USA.
 	(fix:remainder (equal-hash key) modulus))))
 
 (define (hash-table/lookup table key if-found if-not-found)
-  (let ((datum (hash-table-ref/default table key default-marker)))
-    (if (eq? datum default-marker)
-	(if-not-found)
-	(if-found datum))))
+  (hash-table-ref table key if-not-found if-found))
 
 (define (hash-table/modify! table key default procedure)
   (let ((datum (procedure (hash-table-ref/default table key default))))
     (hash-table-set! table key datum)
     datum))
 
-(define (hash-table-copy table)
-  (without-interruption
-    (lambda ()
-      (let ((table* (copy-record table))
-	    (type (hash-table-type table)))
-	(set-table-buckets! table*
-			    (vector-map (table-type-method:copy-bucket type)
-					(table-buckets table)))
-	(if (table-type-rehash-after-gc? type)
-	    (record-address-hash-table! table*))
-	table*))))
+(define (hash-table-walk table procedure)
+  (hash-table-for-each procedure table))
 
-(define (hash-table-merge! table1 table2)
-  (if (not (eq? table2 table1))
-      (hash-table-fold table2
-		       (lambda (key datum ignore)
-			 ignore
-			 (hash-table-set! table1 key datum))
-		       unspecific))
-  table1)
+(define (hash-table-hash-function table)
+  (table-type-key-hash (hash-table-type table)))
+
+(define (hash-table-equivalence-function table)
+  (table-type-key=? (hash-table-type table)))
+
+(define (make-hash-table* type #!optional initial-size)
+  (guarantee hash-table-type? type 'make-hash-table*)
+  (%make-hash-table type initial-size 'make-hash-table*))
 
 ;;;; Miscellany
 
@@ -1406,9 +1652,6 @@ USA.
 	(else (error:wrong-type-argument object description procedure))))
 
 (define-integrable without-interruption with-thread-events-blocked)
-
-(define default-marker
-  (list 'default-marker))
 
 (define equality-predicate?)
 (define %equality-predicate-properties)
