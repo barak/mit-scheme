@@ -284,26 +284,56 @@ USA.
 			       'scalar))))
 			entry-types))
 	    hash-parameters))
+
+(define (comparator->ht-impl comparator . args)
+  (make-hash-table-implementation
+   (apply hash-table-constructor comparator args)))
 
 (define-test 'correctness-vs-rb:strong-list-eq-hash-table
   (lambda ()
-    (check (make-hash-table-implementation make-strong-list-eq-hash-table)
+    (check (comparator->ht-impl
+	    (uniform-list-comparator (make-eq-comparator)))
 	   'list)))
 
 (define-test 'correctness-vs-rb:strong-list-eqv-hash-table
   (lambda ()
-    (check (make-hash-table-implementation make-strong-list-eqv-hash-table)
+    (check (comparator->ht-impl
+	    (uniform-list-comparator (make-eqv-comparator)))
 	   'list)))
 
 (define-test 'correctness-vs-rb:key-weak-list-eq-hash-table
   (lambda ()
-    (check (make-hash-table-implementation make-key-weak-list-eq-hash-table)
+    (check (comparator->ht-impl
+	    (uniform-weak-list-comparator (make-eq-comparator)))
 	   'weak-list)))
 
 (define-test 'correctness-vs-rb:key-weak-list-eqv-hash-table
   (lambda ()
-    (check (make-hash-table-implementation make-key-weak-list-eqv-hash-table)
+    (check (comparator->ht-impl
+	    (uniform-weak-list-comparator (make-eqv-comparator)))
 	   'weak-list)))
+
+#|
+(define-test 'correctness-vs-rb:strong-lset-eq-hash-table
+  (lambda ()
+    (check (comparator->ht-impl (lset-comparator (make-eq-comparator)))
+	   'lset)))
+
+(define-test 'correctness-vs-rb:strong-lset-eqv-hash-table
+  (lambda ()
+    (check (comparator->ht-impl (lset-comparator (make-eqv-comparator)))
+	   'lset)))
+
+(define-test 'correctness-vs-rb:key-weak-lset-eq-hash-table
+  (lambda ()
+    (check (comparator->ht-impl (weak-lset-comparator (make-eq-comparator)))
+	   'weak-lset)))
+
+(define-test 'correctness-vs-rb:key-weak-lset-eqv-hash-table
+  (lambda ()
+    (check (comparator->ht-impl (weak-lset-comparator (make-eqv-comparator)))
+	   'weak-lset)))
+|#
 
 ;;;; Regression Tests
 
