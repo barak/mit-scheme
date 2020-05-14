@@ -138,7 +138,8 @@ USA.
 			     key
 			     (hash-table-constructor
 			      (uniform-weak-list-comparator
-			       (make-eqv-comparator))))))
+			       (make-eqv-comparator))
+			      'weak-values))))
     (lambda (datum-test tags)
       (hash-table-intern! table (list->weak-list tags)
 	(lambda ()
@@ -158,7 +159,8 @@ USA.
   (hash-table-intern! unordered-predicates-tables
 		      key
 		      (hash-table-constructor
-		       (weak-lset-comparator (make-eqv-comparator)))))
+		       (weak-lset-comparator (make-eqv-comparator))
+		       'weak-values)))
 
 (define-deferred unordered-predicates-tables
   (make-strong-eq-hash-table))

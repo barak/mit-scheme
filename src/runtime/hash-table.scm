@@ -649,38 +649,54 @@ USA.
 (register-entry-type! 'key&datum-ephemeral
 		      hash-table-entry-type:key&datum-ephemeral)
 
-;;; key-weak-list -- if any element of the key is GC'd, the entry is dropped,
+;;; key-list-weak -- if any element of the key is GC'd, the entry is dropped,
 ;;; but the datum may be retained arbitrarily long.
 
-(define-integrable (make-key-weak-list-entry key datum)
-  (cons key datum))
-
-(define-integrable (key-weak-list-entry-valid? entry)
+(define-integrable (klwe-valid? entry)
   (not (weak-list-reclaimed? (car entry))))
 
-(define-integrable key-weak-list-entry-key car)
-(define-integrable key-weak-list-entry-datum cdr)
-(define-integrable set-key-weak-list-entry-datum! set-cdr!)
-
-(define-integrable (call-with-key-weak-list-entry-key entry if-valid if-not)
-  (if (key-weak-list-entry-valid? entry)
+(define (call-with-klwe-key entry if-valid if-not)
+  (if (klwe-valid? entry)
       (if-valid (car entry) (lambda () unspecific))
       (if-not)))
 
-(define-integrable (call-with-key-weak-list-entry-key&datum entry if-valid
-							    if-not)
-  (if (key-weak-list-entry-valid? entry)
+(define (call-with-klwe-key&datum entry if-valid if-not)
+  (if (klwe-valid? entry)
       (if-valid (car entry) (cdr entry) (lambda () unspecific))
       (if-not)))
 
-(declare (integrate-operator hash-table-entry-type:key-weak-list))
-(define hash-table-entry-type:key-weak-list
-  (make-entry-type make-key-weak-list-entry
-		   key-weak-list-entry-valid?
-		   call-with-key-weak-list-entry-key
-		   call-with-key-weak-list-entry-key&datum
-		   set-key-weak-list-entry-datum!))
-(register-entry-type! 'key-weak-list hash-table-entry-type:key-weak-list)
+(define hash-table-entry-type:key-list-weak
+  (make-entry-type cons
+		   klwe-valid?
+		   call-with-klwe-key
+		   call-with-klwe-key&datum
+		   set-cdr!))
+(register-entry-type! 'key-list-weak hash-table-entry-type:key-list-weak)
+
+;;; weak-key-list&datum -- if any element of the key is GC'd, or the datum is
+;;; GC'd, then the entry is dropped.
+
+(define-integrable (klwde-valid? entry)
+  (not (weak-list-reclaimed? entry)))
+
+(define (call-with-klwde-key entry if-valid if-not)
+  (if (klwde-valid? entry)
+      (if-valid (weak-cdr entry) (lambda () unspecific))
+      (if-not)))
+
+(define (call-with-klwde-key&datum entry if-valid if-not)
+  (if (klwde-valid? entry)
+      (if-valid (weak-cdr entry) (weak-car entry) (lambda () unspecific))
+      (if-not)))
+
+(define hash-table-entry-type:key-list&datum-weak
+  (make-entry-type (lambda (key datum) (weak-cons datum key))
+		   klwde-valid?
+		   call-with-klwde-key
+		   call-with-klwde-key&datum
+		   weak-set-car!))
+(register-entry-type! 'key-list&datum-weak
+		      hash-table-entry-type:key-list&datum-weak)
 
 ;;;; Methods
 
@@ -1055,7 +1071,9 @@ USA.
 
 (define (comparator-entry-type comparator args)
   (cond ((weak-list-comparator? comparator)
-	 hash-table-entry-type:key-weak-list)
+	 (if (memq 'weak-values args)
+	     hash-table-entry-type:key-list&datum-weak
+	     hash-table-entry-type:key-list-weak))
 	((and (memq 'weak-keys args) (memq 'weak-values args))
 	 hash-table-entry-type:key&datum-weak)
 	((memq 'weak-keys args) hash-table-entry-type:key-weak)
@@ -1230,7 +1248,6 @@ USA.
    (open-type-constructor! hash-table-entry-type:key-ephemeral)
    (open-type-constructor! hash-table-entry-type:datum-ephemeral)
    (open-type-constructor! hash-table-entry-type:key&datum-ephemeral)
-   (open-type-constructor! hash-table-entry-type:key-weak-list)
    (let ((make make-hash-table-type))	;For brevity...
      (set! equal-hash-table-type
 	   (make equal-hash equal? #t hash-table-entry-type:strong))

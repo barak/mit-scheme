@@ -2858,7 +2858,6 @@ USA.
 	  hash-table-entry-type:key&datum-ephemeral
 	  hash-table-entry-type:key-ephemeral
 	  hash-table-entry-type:key-weak
-	  hash-table-entry-type:key-weak-list
 	  hash-table-entry-type:key&datum-weak
 	  hash-table-entry-type:strong
 	  hash-table-equivalence-function ;(srfi 69)
