@@ -94,66 +94,74 @@ USA.
   (let ((env
 	 (make-root-top-level-environment
 	  (delete-duplicates (map library-ixport-to imports) eq?))))
-    (add-imports-to-env! imports env db #f)
+    (add-imports-to-env! imports env db)
     env))
 
-(define (add-imports-to-env! imports env db allow-conflicts?)
-  (if (not allow-conflicts?)
-      (let ((conflicts
-	     (let ((bindings (environment-bindings env)))
-	       (filter (lambda (import)
-			 (let ((b (assq (library-ixport-to import) bindings)))
-			   (and b
-				(pair? (cdr b))
-				(not
-				 (values-equivalent?
-				  (cadr b)
-				  (library-import-value import db))))))
-		       imports))))
-	(if (pair? conflicts)
-	    (error "Conflicting imports:" conflicts))))
-  (for-each (lambda (import)
-	      (let ((name (library-ixport-to import))
-		    (value (library-import-value import db)))
-		(cond ((macro-reference-trap? value)
-		       (environment-define-macro
-			env name
-			(macro-reference-trap-transformer value)))
-		      ((unassigned-reference-trap? value)
-		       ;; nothing to do
-		       )
-		      (else
-		       (environment-define env name value)))))
-	    imports))
+(define (add-imports-to-env! imports env db)
+  (let ((grouped
+	 (let ((table (make-strong-eq-hash-table)))
+	   (for-each (lambda (import)
+		       (let-values (((senv sname)
+				     (library-import-source import db)))
+			 (hash-table-update! table (library-ixport-to import)
+			   (lambda (sources) (cons (cons senv sname) sources))
+			   (lambda () '()))))
+		     imports)
+	   (hash-table->alist table))))
+    (let ((conflicts
+	   (remove (lambda (p)
+		     (let ((source (cadr p)))
+		       (every (lambda (source*)
+				(and (eq? (car source) (car source*))
+				     (eq? (cdr source) (cdr source*))))
+			      (cddr p))))
+		   grouped)))
+      (if (pair? conflicts)
+	  (error "Conflicting imports:" conflicts)))
+    (let-values (((overrides other)
+		  (partition (let ((existing (environment-bindings env)))
+			       (lambda (p)
+				 (let ((binding (assq (car p) existing)))
+				   (and binding
+					(not (null? (cdr binding)))))))
+			     grouped)))
+      (if (pair? overrides)
+	  (warn "Not overriding names with imports:" (map car overrides)))
+      (for-each (lambda (p)
+		  (let ((tname (car p))
+			(source (cadr p)))
+		    (let ((value
+			   (environment-safe-lookup (car source) (cdr source))))
+		      (cond ((macro-reference-trap? value)
+			     (environment-define-macro
+			      env tname
+			      (macro-reference-trap-transformer value)))
+			    ((unassigned-reference-trap? value)
+			     ;; nothing to do
+			     )
+			    (else
+			     (environment-define env tname value))))))
+		other))))
 
-(define (library-import-value import db)
+(define (library-import-source import db)
   (let ((name (library-ixport-from import))
 	(library (registered-library (library-ixport-from-library import) db)))
     (let ((export
 	   (find (lambda (export)
-		   (eq? name (library-ixport-from export)))
+		   (eq? name (library-ixport-to export)))
 		 (library-exports library))))
       (if (not export)
 	  (error "Not an exported name:" name))
-      (environment-safe-lookup (library-environment library)
-			       (library-ixport-from export)))))
-
-(define (values-equivalent? v1 v2)
-  (cond ((unassigned-reference-trap? v1)
-	 (unassigned-reference-trap? v2))
-	((macro-reference-trap? v1)
-	 (and (macro-reference-trap? v2)
-	      (eqv? (macro-reference-trap-transformer v1)
-		    (macro-reference-trap-transformer v2))))
-	(else (eqv? v1 v2))))
-
+      (values (library-environment library)
+	      (library-ixport-from export)))))
+
 (define-automatic-property 'imports-environment '(imports db)
   (lambda (imports db)
     (every (lambda (import)
 	     (environment-available? import db))
 	   imports))
   make-environment-from-imports)
-
+
 (define (environment . import-sets)
   (let ((db (current-library-db)))
     (make-environment-from-imports (import-sets->imports import-sets db)
@@ -165,8 +173,7 @@ USA.
 			 (if (default-object? env)
 			     (nearest-repl/environment)
 			     (guarantee environment? env 'import!))
-			 db
-			 #t)))
+			 db)))
 
 (define (import-sets->imports import-sets db)
   (parsed-imports->imports (map parse-import-set import-sets) db))
