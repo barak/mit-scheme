@@ -1153,19 +1153,14 @@ This @asrfi{69} procedure returns the same value as @code{eq-hash},
 optionally limited by @var{modulus}.
 @end deffn
 
+@deffn procedure hash key [modulus]
+This @asrfi{69} procedure returns the same value as @code{equal-hash},
+optionally limited by @var{modulus}.
+@end deffn
+
 @deffn {obsolete procedure} hash-by-eqv key [modulus]
 This procedure returns the same value as @code{eqv-hash}, optionally
 limited by @var{modulus}.
-@end deffn
-
-@deffn {obsolete procedure} hash-by-equal key [modulus]
-This procedure returns the same value as @code{equal-hash}, optionally
-limited by @var{modulus}.
-
-This procedure is called @code{hash} by @asrfi{69}, but that name was
-used for a different purpose by MIT/GNU Scheme long before @asrfi{69}
-was written.  The previous use of @code{hash} has been deprecated, but
-it will be some time until it can be removed.
 @end deffn
 
 @deffn {obsolete procedure} eq-hash-mod object modulus

@@ -2777,7 +2777,6 @@ USA.
   (files "hash")
   (parent (runtime))
   (export deprecated ()
-	  (hash hash-object)
 	  (hash-table/make make-object-hasher)
 	  (object-hash hash-object)
 	  (object-unhash unhash-object)
@@ -2865,6 +2864,7 @@ USA.
 	  strong-hash-table/constructor
 	  weak-hash-table/constructor)
   (export ()
+	  (hash hash-by-equal)			    ;(srfi 69)
 	  (hash-table-exists? hash-table-contains?) ;(srfi 69)
 	  (hash-table-merge! hash-table-union!) ;(srfi 69)
 	  alist->hash-table		;(srfi 69) (srfi 125)
