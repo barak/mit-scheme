@@ -46,6 +46,9 @@ USA.
        (every (if b1 (lambda (b) b) not)
 	      bs)))
 
+(define (boolean<? b1 b2)
+  (and (not b1) b2))
+
 (define (boolean/or . arguments)
   (let loop ((arguments arguments))
     (if (pair? arguments)

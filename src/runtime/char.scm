@@ -103,6 +103,9 @@ USA.
   (lambda (char*)
     (and (char? char*)
 	 (char-ci=? char* char))))
+
+(define (char-ci-hash char)
+  (eq-hash (char-foldcase char)))
 
 (define-integrable (%char=? x y)
   (fix:= (char->integer x) (char->integer y)))

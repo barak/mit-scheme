@@ -435,6 +435,9 @@ these rules:
   ((host-type/operation/pathname->namestring
     (host/type (%pathname-host pathname)))
    pathname))
+
+(define (pathname-hash pathname)
+  (string-hash (->namestring pathname)))
 
 ;;;; Pathname Merging
 

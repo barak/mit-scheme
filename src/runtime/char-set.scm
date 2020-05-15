@@ -234,6 +234,10 @@ USA.
 (define (ilist<= ilist1 ilist2)
   (ilist= (ilist-union (ilist-difference ilist2 ilist1) ilist1)
 	  ilist2))
+
+(define (ilist< ilist1 ilist2)
+  (and (not (ilist= ilist1 ilist2))
+       (ilist<= ilist1 ilist2)))
 
 (define (ilist-combiner combine)
 
@@ -472,6 +476,16 @@ USA.
 	   (pair? (cdr char-sets)))
       (let loop ((ilists (map char-set->list char-sets)))
 	(and (ilist<= (car ilists) (cadr ilists))
+	     (if (pair? (cdr ilists))
+		 (loop (cdr ilists))
+		 #t)))
+      #t))
+
+(define (char-set< . char-sets)
+  (if (and (pair? char-sets)
+	   (pair? (cdr char-sets)))
+      (let loop ((ilists (map char-set->list char-sets)))
+	(and (ilist< (car ilists) (cadr ilists))
 	     (if (pair? (cdr ilists))
 		 (loop (cdr ilists))
 		 #t)))

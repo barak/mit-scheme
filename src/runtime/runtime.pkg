@@ -138,6 +138,7 @@ USA.
 	  (false? not)
 	  boolean/and
 	  boolean/or
+	  boolean<?
 	  boolean=?			;(scheme base)
 	  boolean?			;(scheme base)
 	  false
@@ -994,7 +995,7 @@ USA.
 	  string->uninterned-symbol
 	  symbol
 	  symbol->string		;(scheme base)
-	  symbol-hash
+	  symbol-hash			;(srfi 128)
 	  symbol<?
 	  symbol=?			;(scheme base)
 	  symbol>?
@@ -1282,7 +1283,7 @@ USA.
 	  string-any
 	  string-append			;(scheme base)
 	  string-builder
-	  string-ci-hash
+	  string-ci-hash		;(srfi 128)
 	  string-ci<=?			;(scheme char)
 	  string-ci<?			;(scheme char)
 	  string-ci=?			;(scheme char)
@@ -1309,7 +1310,7 @@ USA.
 	  string-fold-right		;(srfi 140)
 	  string-foldcase		;(scheme char)
 	  string-for-each		;(scheme base)
-	  string-hash
+	  string-hash			;(srfi 128)
 	  string-head
 	  string-immutable?
 	  string-in-nfc?
@@ -1517,6 +1518,7 @@ USA.
 	  char-bits-clear?
 	  char-bits-limit
 	  char-bits-set?
+	  char-ci-hash			;(srfi 128)
 	  char-ci<=?			;(scheme char)
 	  char-ci<?			;(scheme char)
 	  char-ci=-predicate
@@ -1857,6 +1859,7 @@ USA.
 	  char-set:empty		;(srfi 14)
 	  char-set:hex-digit		;(srfi 14)
 	  char-set:iso-control		;(srfi 14)
+	  char-set<
 	  char-set<=			;(srfi 14)
 	  char-set=			;(srfi 14)
 	  char-set?			;(srfi 14)
@@ -2868,9 +2871,12 @@ USA.
 	  strong-hash-table/constructor
 	  weak-hash-table/constructor)
   (export ()
+	  (boolean-hash eq-hash)	;(srfi 128)
+	  (char-hash eq-hash)		;(srfi 128)
 	  (hash hash-by-equal)			    ;(srfi 69)
 	  (hash-table-exists? hash-table-contains?) ;(srfi 69)
 	  (hash-table-merge! hash-table-union!) ;(srfi 69)
+	  (number-hash eqv-hash)	;(srfi 128)
 	  alist->hash-table		;(srfi 69) (srfi 125)
 	  eq-hash
 	  eqv-hash
@@ -3987,6 +3993,7 @@ USA.
 	  pathname-default-version
 	  pathname-device
 	  pathname-directory
+	  pathname-hash
 	  pathname-host
 	  pathname-name
 	  pathname-new-device
