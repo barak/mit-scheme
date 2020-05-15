@@ -33,7 +33,6 @@ USA.
   (directory-pathname test-pathname))
 
 (define-comparator library-ixport=? 'library-ixport=?)
-(define-comparator library-ixport=? 'library-ixport=?)
 
 (define (convert-export library export)
   (if (symbol? export)
