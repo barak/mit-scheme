@@ -79,7 +79,12 @@ USA.
 
 (define (expand-parsed-import-set import-set db library imports)
   (if (library-name? import-set)
-      (fold cons imports (get-exports import-set db))
+      (fold (lambda (export imports)
+	      (cons (make-library-ixport (library-ixport-from-library export)
+					 (library-ixport-to export))
+		    imports))
+	    imports
+	    (get-exports import-set db))
       (case (car import-set)
 	((drop)
 	 (expand-exclusions (get-exports (cadr import-set) db)
@@ -105,26 +110,24 @@ USA.
 		     library
 		     exports))
 
-(define (expand-exclusions ixports exclusions db library acc)
+(define (expand-exclusions sources exclusions db library acc)
   (let ((part (partition-ixclusions exclusions))
-	(nameset-matcher
-	 (make-nameset-matcher ixports exclusions library db)))
+	(name-matcher (make-name-matcher sources exclusions library db)))
     (lset-union library-ixport=?
-		(remove (re-match-matcher (part 're-match))
-			(remove (nameset-matcher (part 'nameset))
-				ixports))
+		(remove-sources (re-match-matcher (part 're-match))
+				(remove-sources (name-matcher (part 'nameset))
+						sources))
 		acc)))
 
-(define (expand-inclusions ixports inclusions db library acc)
+(define (expand-inclusions sources inclusions db library acc)
   (let ((part (partition-ixclusions inclusions))
-	(nameset-matcher
-	 (make-nameset-matcher ixports inclusions library db))
-	(rename-renamer (make-rename-renamer ixports inclusions)))
+	(name-matcher (make-name-matcher sources inclusions library db))
+	(rename-renamer (make-rename-renamer sources inclusions)))
     (lset-union library-ixport=?
-		(filter (nameset-matcher (part 'nameset)) ixports)
-		(filter-map (rename-renamer (part 'rename)) ixports)
-		(filter (re-match-matcher (part 're-match)) ixports)
-		(filter-map (re-rename-renamer (part 're-rename)) ixports)
+		(keep-sources (name-matcher (part 'nameset)) sources)
+		(rename-sources (rename-renamer (part 'rename)) sources)
+		(keep-sources (re-match-matcher (part 're-match)) sources)
+		(rename-sources (re-rename-renamer (part 're-rename)) sources)
 		acc)))
 
 (define partition-ixclusions
@@ -134,41 +137,53 @@ USA.
 			 (cons-last! (cdr item) items))
 		       '()))
 
-(define (make-rename-renamer ixports inclusions)
-  (let ((available-names (map library-ixport-to ixports)))
+(define (keep-sources matcher sources)
+  (filter-map (lambda (source)
+		(let ((name (library-ixport-to source)))
+		  (and (matcher name)
+		       (make-library-ixport (library-ixport-from-library source)
+					    name))))
+	      sources))
+
+(define (remove-sources matcher sources)
+  (filter-map (lambda (source)
+		(let ((name (library-ixport-to source)))
+		  (and (not (matcher name))
+		       (make-library-ixport (library-ixport-from-library source)
+					    name))))
+	      sources))
+
+(define (rename-sources renamer sources)
+  (filter-map (lambda (source)
+		(let* ((name (library-ixport-to source))
+		       (name* (renamer name)))
+		  (and (not (eq? name name*))
+		       (make-library-ixport (library-ixport-from-library source)
+					    name
+					    name*))))
+	      sources))
+
+(define (make-rename-renamer sources inclusions)
+  (let ((available-names (map library-ixport-to sources)))
     (lambda (renames)
       (check-for-missing-names (map car renames) available-names inclusions)
-      (ixport-renamer (make-renamer renames)))))
+      (make-renamer renames))))
 
 (define (re-match-matcher sres)
-  (ixport-matcher (make-re-matcher `(or ,@sres))))
+  (make-re-matcher `(or ,@sres)))
 
 (define (re-rename-renamer renames)
-  (ixport-renamer
-   (combine-renamers
-    (map (lambda (r)
-	   (make-re-renamer (car r) (cadr r)))
-	 renames))))
-
-(define (ixport-matcher matcher)
-  (lambda (ixport)
-    (matcher (library-ixport-to ixport))))
-
-(define (ixport-renamer renamer)
-  (lambda (ixport)
-    (let* ((name (library-ixport-to ixport))
-	   (name* (renamer name)))
-      (and (not (eq? name name*))
-	   (make-library-ixport (library-ixport-from-library ixport)
-				(library-ixport-from ixport)
-				name*)))))
+  (combine-renamers
+   (map (lambda (r)
+	  (make-re-renamer (car r) (cadr r)))
+	renames)))
 
 ;;; Track explicit and implicit (exports) names separately.  Only explicit names
 ;;; are required to be available.
 
-(define (make-nameset-matcher ixports ixclusions library db)
+(define (make-name-matcher sources ixclusions library db)
   (let ((lookup (get-lookup library))
-	(available-names (map library-ixport-to ixports)))
+	(available-names (map library-ixport-to sources)))
     (lambda (namesets)
       (let ((nss
 	     (apply nss-union
@@ -178,8 +193,7 @@ USA.
 	(check-for-missing-names (explicit-names nss)
 				 available-names
 				 ixclusions)
-	(ixport-matcher
-	 (make-matcher (append (explicit-names nss) (implicit-names nss))))))))
+	(make-matcher (append (explicit-names nss) (implicit-names nss)))))))
 
 (define (expand-nameset nameset lookup db)
   (let loop ((nameset nameset))

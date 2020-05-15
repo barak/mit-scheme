@@ -57,7 +57,7 @@ USA.
 				   imports
 				   (make-library-ixport
 				    (library-ixport-from-library export)
-				    (library-ixport-from export)
+				    (library-ixport-to export)
 				    to))
 		      imports)))
 	      imports
