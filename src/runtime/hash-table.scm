@@ -1303,7 +1303,7 @@ USA.
   (fix:and ((ucode-primitive primitive-object-set-type)
 	    (ucode-type positive-fixnum)
 	    object)
-	   (hash-bound)))
+	   (hash-mask)))
 
 (define (eqv-hash-mod key modulus)
   (fix:remainder (eqv-hash key) modulus))
@@ -1320,7 +1320,7 @@ USA.
   (fix:remainder (equal-hash key) modulus))
 
 (define (int:hash object)
-  (bitwise-and (int:abs object) (hash-bound)))
+  (bitwise-and (int:abs object) (hash-mask)))
 
 ;;;; Constructing and Open-Coding Types and Constructors
 

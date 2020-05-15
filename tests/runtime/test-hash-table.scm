@@ -248,7 +248,7 @@ USA.
 	 implementation)))))
 
 (define (integer-hash integer)
-  (bitwise-and (abs integer) (hash-bound)))
+  (bitwise-and (abs integer) (hash-mask)))
 
 (let ((hash-parameters
        (list (list 'eq eq-hash eq? #t)

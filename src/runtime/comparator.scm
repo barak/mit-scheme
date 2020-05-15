@@ -448,6 +448,10 @@ USA.
 
 (define-syntax hash-bound
   (syntax-rules ()
+    ((_) (select-on-bytes-per-word #x02000000 #x100000000))))
+
+(define-syntax hash-mask
+  (syntax-rules ()
     ((_) (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))))
 
 (define ((protected-hash-function hash-fn) object)
@@ -455,7 +459,7 @@ USA.
 
 (define-integrable (check-hash h)
   (guarantee index-fixnum? h)
-  (if (not (fix:<= h (hash-bound)))
+  (if (not (fix:<= h (hash-mask)))
       (error:bad-range-argument h))
   h)
 
@@ -469,10 +473,10 @@ USA.
  (define-integrable (%combine-hashes h1 h2)
    (let ((sum (+ (* 31 h1) h2)))
      (if (fix:fixnum? sum)
-	 (fix:and sum (hash-bound))
-	 (bitwise-and sum (hash-bound)))))
+	 (fix:and sum (hash-mask))
+	 (bitwise-and sum (hash-mask)))))
  (define-integrable (%combine-hashes h1 h2)
-   (fix:and (fix:+ (fix:* 31 h1) h2) (hash-bound))))
+   (fix:and (fix:+ (fix:* 31 h1) h2) (hash-mask))))
 
 (define ((uniform-binary-hash hash-fn) object1 object2)
   (%combine-hashes (check-hash (hash-fn object1))

@@ -611,8 +611,8 @@ which can be used to make hash tables of that type.  The @var{key=?}
 argument is an equivalence predicate for the keys of the hash table.
 The @var{hash-function} argument is a procedure that computes a hash
 number.  Specifically, @var{hash-function} accepts one argument, a
-key, and returns an exact non-negative integer that is less than or
-equal to @code{(hash-bound)}.
+key, and returns an exact non-negative integer that is less than
+@code{(hash-bound)}.
 
 The argument @var{rehash-after-gc?}, if true, says that the
 values returned by @var{hash-function} might change after a garbage

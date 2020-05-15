@@ -71,9 +71,17 @@ USA.
       (begin
 	(eval '(define-syntax hash-bound
 		 (syntax-rules ()
-		   ((_) (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))))
+		   ((_) (select-on-bytes-per-word #x02000000 #x100000000))))
 	      renv)
 	(link-variables genv 'hash-bound renv 'hash-bound)))
+
+  (if (not (environment-bound? genv 'hash-mask))
+      (begin
+	(eval '(define-syntax hash-mask
+		 (syntax-rules ()
+		   ((_) (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))))
+	      renv)
+	(link-variables genv 'hash-mask renv 'hash-mask)))
 
   (let ((env (->environment '(scode-optimizer expansion))))
 

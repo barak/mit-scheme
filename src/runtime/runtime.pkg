@@ -6764,6 +6764,7 @@ USA.
 	  comparator-test-type		;(srfi 128)
 	  comparator?			;(srfi 128)
 	  hash-bound			;(srfi 128)
+	  hash-mask
 	  initial-hash
 	  lset-comparator
 	  lset-equality-predicate
