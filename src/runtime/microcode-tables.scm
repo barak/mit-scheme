@@ -56,6 +56,9 @@ USA.
       (let ((v (get-fixed-objects-vector)))
 	(vector-set! v index (updater (vector-ref v index)))))))
 
+(define (fixed-objects-item? name)
+  (and (fixed-object/name->code name) #t))
+
 (define (fixed-objects-item name)
   ((fixed-objects-accessor name)))
 

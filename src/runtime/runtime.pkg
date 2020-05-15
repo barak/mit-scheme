@@ -3703,6 +3703,7 @@ USA.
   (export (runtime)
 	  fixed-objects-accessor
 	  fixed-objects-item
+	  fixed-objects-item?
 	  fixed-objects-modifier
 	  fixed-objects-updater
 	  microcode-type/code->name
