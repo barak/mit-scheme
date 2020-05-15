@@ -1043,6 +1043,43 @@ USA.
     string-hash				;deprecated
     ))
 
+(define-standard-library '(srfi 128)
+  '(<=?
+    <?
+    =?
+    >=?
+    >?
+    boolean-hash
+    char-ci-hash
+    char-hash
+    comparator-check-type
+    comparator-equality-predicate
+    comparator-hash
+    comparator-hash-function
+    comparator-hashable?
+    comparator-if<=>
+    comparator-ordered?
+    comparator-ordering-predicate
+    comparator-register-default!
+    comparator-test-type
+    comparator-type-test-predicate
+    comparator?
+    default-hash
+    hash-bound
+    hash-salt
+    make-comparator
+    make-default-comparator
+    make-eq-comparator
+    make-equal-comparator
+    make-eqv-comparator
+    make-list-comparator
+    make-pair-comparator
+    make-vector-comparator
+    number-hash
+    string-ci-hash
+    string-hash
+    symbol-hash))
+
 (define-standard-library '(srfi 131)
   '(define-record-type))
 
