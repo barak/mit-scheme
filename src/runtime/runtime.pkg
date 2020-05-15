@@ -6760,53 +6760,51 @@ USA.
 	  =?				;(srfi 128)
 	  >=?				;(srfi 128)
 	  >?				;(srfi 128)
+	  boolean-comparator
+	  bytevector-comparator
+	  char-ci-comparator
+	  char-comparator
 	  combine-hashes
 	  comparator-check-type		;(srfi 128)
 	  comparator-hash		;(srfi 128)
 	  comparator-hash-function	;(srfi 128)
 	  comparator-hashable?		;(srfi 128)
+	  comparator-if<=>		;(srfi 128)
 	  comparator-ordered?		;(srfi 128)
 	  comparator-ordering-predicate	;(srfi 128)
+	  comparator-register-default!	;(srfi 128)
 	  comparator-rehash-after-gc?
 	  comparator-test-type		;(srfi 128)
 	  comparator?			;(srfi 128)
+	  default-hash			;(srfi 128)
+	  default<
+	  default=
+	  fixnum-comparator
+	  flonum-comparator
 	  hash-bound			;(srfi 128)
 	  hash-mask
+	  hash-salt			;(srfi 128)
 	  initial-hash
 	  lset-comparator
-	  lset-equality-predicate
-	  lset-ordering-predicate
 	  make-comparator		;(srfi 128)
+	  make-default-comparator	;(srfi 128)
 	  make-eq-comparator		;(srfi 128)
 	  make-equal-comparator		;(srfi 128)
 	  make-eqv-comparator		;(srfi 128)
 	  make-list-comparator		;(srfi 128)
 	  make-pair-comparator		;(srfi 128)
-	  uniform-binary-hash
+	  make-vector-comparator	;(srfi 128)
+	  make-weak-pair-comparator
+	  number-comparator
+	  real-comparator
+	  string-ci-comparator
+	  string-comparator
+	  symbol-comparator
 	  uniform-list-comparator
-	  uniform-list-equality-predicate
-	  uniform-list-hash
-	  uniform-list-ordering-predicate
+	  uniform-vector-comparator
 	  uniform-weak-list-comparator
-	  uniform-weak-list-equality-predicate
-	  uniform-weak-list-hash
-	  uniform-weak-list-ordering-predicate
-	  weak-list-comparator?
-	  weak-lset-comparator
-	  weak-lset-equality-predicate
-	  weak-lset-ordering-predicate)
+	  weak-lset-comparator)
   (export (runtime)
 	  protected-hash-function)
   (export (runtime hash-table)
-	  eq-lset=?
-	  eq-weak-lset=?
-	  eqv-lset=?
-	  eqv-weak-lset=?
-	  uniform-eq-list-hash
-	  uniform-eq-list=?
-	  uniform-eq-weak-list-hash
-	  uniform-eq-weak-list=?
-	  uniform-eqv-list-hash
-	  uniform-eqv-list=?
-	  uniform-eqv-weak-list-hash
-	  uniform-eqv-weak-list=?))
+	  weak-list-comparator?))

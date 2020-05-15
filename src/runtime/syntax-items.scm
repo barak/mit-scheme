@@ -29,7 +29,8 @@ USA.
 (declare (usual-integrations))
 
 (add-boot-deps! '(runtime predicate-dispatch)
-		'(runtime compound-predicate))
+		'(runtime compound-predicate)
+		'(runtime comparator))
 
 (define-deferred compile-item
   (cached-standard-predicate-dispatcher 'compile-item 1))
