@@ -102,15 +102,28 @@ USA.
       (if (%db-name db) (list (%db-name db)) '()))))
 
 (define-record-type <library>
-    (%make-library name db alist)
+    (%make-library name db alist original-alist)
     library?
   (name library-name)
   (db %library-db %set-library-db!)
-  (alist %library-alist))
+  (alist %library-alist)
+  (original-alist %library-original-alist))
+
+(define (alist->library name alist)
+  (%make-library name
+		 #f
+		 (cons 'library alist)
+		 (cons 'library alist)))
+
+(define (%set-library-alist! library library*)
+  (set-cdr! (%library-alist library)
+	    (alist-copy (cdr (%library-alist library*))))
+  (set-cdr! (%library-original-alist library)
+	    (alist-copy (cdr (%library-original-alist library*)))))
 
 (define (make-library name . keylist)
   (if name (guarantee library-name? name 'make-library))
-  (%make-library name #f (cons 'library (convert-library-keylist keylist))))
+  (alist->library name (convert-library-keylist keylist)))
 
 (define (convert-library-keylist keylist)
   (fold-right (lambda (key value alist)
@@ -158,37 +171,16 @@ USA.
 			   key
 			   (error-irritant/noise " because of")
 			   (auto-unready-deps auto library)))
-		(let ((bindings (run-auto auto library)))
-		  (set-cdr! alist (append bindings (cdr alist)))
-		  (cdr (assq key bindings)))))
+		(set-cdr! alist (append (run-auto auto library) (cdr alist)))
+		(cdr (assq key (cdr alist)))))
 	  (else (error "Unknown property:" key)))))
 
 (define properties-requiring-load
   '(contents))
-
-(define (%library-put! key value library)
-  (if (auto-property key)
-      (error "Overwriting automatic property:" key))
-  (let* ((alist (%library-alist library))
-	 (p (assq key (cdr alist))))
-    (if p
-	(begin
-	  (warn "Overwriting property:" key)
-	  (set-cdr! p value))
-	(set-cdr! alist (cons (cons key value) (cdr alist))))))
-
-(define (%library-delete! key library)
-  (let ((alist (%library-alist library)))
-    (set-cdr! alist (del-assq! key (cdr alist)))))
 
 (define (copy-library library)
-  (%make-library (library-name library)
-		 #f
-		 (cons 'library (alist-copy (cdr (%library-alist library))))))
-
-(define (%set-library-alist! library library*)
-  (set-cdr! (%library-alist library)
-	    (alist-copy (cdr (%library-alist library*)))))
+  (alist->library (library-name library)
+		  (alist-copy (cdr (%library-original-alist library)))))
 
 (define-print-method library?
   (standard-print-method 'library
@@ -234,10 +226,17 @@ USA.
 		  library)))))
 
 (define (preregister-library! library db)
-  (%library-delete! 'parsed-contents library)
-  (%library-delete! 'contents library)
-  (%library-put! 'preregistration? #t library)
-  (register-library! library db))
+  (register-library! (prepare-for-preregistration library) db))
+
+(define (prepare-for-preregistration library)
+  (alist->library (library-name library)
+    (alist-fold-right (lambda (key value acc)
+			(if (or (eq? key 'parsed-contents)
+				(eq? key 'contents))
+			    acc
+			    (alist-cons key value acc)))
+		      (alist-cons 'preregistration? #t '())
+		      (cdr (%library-alist library)))))
 
 (define (library-preregistered? library)
   (library-has? 'preregistration? library))
