@@ -55,7 +55,7 @@ USA.
 #define Termination_Vector	0x16    /* Names for terminations. */
 #define Termination_Proc_Vector	0x17	/* Handlers for terminations. */
 #define FIXOBJ_GC_RECLAIMED	0x18    /* Stored in weak car when reclaimed. */
-/* #define UNUSED		0x19 */
+#define FIXOBJ_INITIAL_HASH     0x19    /* Used when hashing vectors. */
 /* #define UNUSED		0x1A */
 /* #define UNUSED		0x1B */
 /* #define UNUSED		0x1C */
@@ -145,7 +145,7 @@ USA.
   /* 0x16 */	"microcode-terminations-vector",			\
   /* 0x17 */	"microcode-terminations-procedures",			\
   /* 0x18 */	"gc-reclaimed-object",					\
-  /* 0x19 */	0,							\
+  /* 0x19 */	"initial-hash",						\
   /* 0x1A */	0,							\
   /* 0x1B */	0,							\
   /* 0x1C */	0,							\

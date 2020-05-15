@@ -574,7 +574,7 @@ hash_object (SCHEME_OBJECT object)
       {
 	const SCHEME_OBJECT * scan = (VECTOR_LOC (object, 0));
 	const SCHEME_OBJECT * end = (scan + (VECTOR_LENGTH (object)));
-	uint32_t result = 0;
+	uint32_t result = (initial_hash ());
 	while (scan < end)
 	  result = (combine_hashes (result, (hash_object (*scan++))));
 	return result;
@@ -586,6 +586,19 @@ hash_object (SCHEME_OBJECT object)
     default:
       return (0);
     }
+}
+
+uint32_t
+initial_hash (void)
+{
+  SCHEME_OBJECT object = (VECTOR_REF (fixed_objects, FIXOBJ_INITIAL_HASH));
+  if ((FIXNUM_P (object)) && (FIXNUM_TO_ULONG_P (object)))
+    {
+      unsigned long value = (FIXNUM_TO_ULONG (object));
+      if (value <= UINT32_MAX)
+        return ((uint32_t) value);
+    }
+  return 0;
 }
 
 uint32_t
