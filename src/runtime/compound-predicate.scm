@@ -69,16 +69,20 @@ USA.
 
 ;;;; Constructors
 
-(define (compound-predicate-constructor operator make-datum-test
-					make-predicates make-memoizer)
-  (let-values (((constructor predicate-predicate key)
-		(%constructor operator make-datum-test make-predicates
+(define (compound-predicate-constructor operator superset make-datum-test
+					make-operands make-memoizer)
+  (let-values (((constructor related-predicate? key)
+		(%constructor operator superset make-datum-test make-operands
 			      make-memoizer)))
     (declare (ignore key))
-    (values constructor predicate-predicate)))
+    (values constructor related-predicate?)))
 
-(define (%constructor operator make-datum-test make-operands make-memoizer)
-  (let ((key (make-key operator)))
+(define (%constructor operator superset make-datum-test make-operands
+		      make-memoizer)
+  (let ((key (make-key operator))
+	(superset-tag
+	 (and (predicate? superset)
+	      (predicate->dispatch-tag superset))))
 
     (define (related-predicate? object)
       (and (predicate? object)
@@ -93,10 +97,14 @@ USA.
 		    (operands (apply make-operands args))
 		    (memoizer (make-memoizer key)))
 		(guarantee-list-of unary-procedure? operands)
-		(if (every predicate? operands)
-		    (dispatch-tag->predicate
-		     (memoizer datum-test
-			       (map predicate->dispatch-tag operands)))
+		(if (and (every predicate? operands)
+			 (not (eqv? datum-test superset)))
+		    (let ((tag
+			   (memoizer datum-test
+				     (map predicate->dispatch-tag operands))))
+		      (if superset-tag
+			  (set-dispatch-tag<=! tag superset-tag))
+		      (dispatch-tag->predicate tag))
 		    datum-test)))
 	    related-predicate?
 	    key)))
@@ -186,7 +194,7 @@ USA.
   (disjoin* predicates))
 
 (define-values (disjoin* disjoin? disjoin-key)
-  (%constructor 'disjoin
+  (%constructor 'disjoin any-object?
     (lambda (predicates)
       (lambda (object)
 	(any (lambda (predicate)
@@ -202,7 +210,7 @@ USA.
   (conjoin* predicates))
 
 (define-values (conjoin* conjoin? conjoin-key)
-  (%constructor 'conjoin
+  (%constructor 'conjoin any-object?
     (lambda (predicates)
       (lambda (object)
 	(every (lambda (predicate)
@@ -245,7 +253,7 @@ USA.
 ;;;; Other combinators
 
 (define-values (complement complement?)
-  (compound-predicate-constructor 'complement
+  (compound-predicate-constructor 'complement any-object?
     (lambda (predicate)
       (lambda (object)
 	(not (predicate object))))
@@ -258,43 +266,77 @@ USA.
 	      (memoizer datum-test tags)))))))
 
 (define-values (pair-predicate pair-predicate?)
-  (compound-predicate-constructor 'pair
+  (compound-predicate-constructor 'pair pair?
+    (lambda (car-pred cdr-pred)
+      (if (and (eqv? any-object? car-pred)
+	       (eqv? any-object? cdr-pred))
+	  pair?
+	  (lambda (object)
+	    (and (pair? object)
+		 (car-pred (car object))
+		 (cdr-pred (cdr object))))))
+    list
+    ordered-predicates-memoizer))
+
+(define-values (weak-pair-predicate weak-pair-predicate?)
+  (compound-predicate-constructor 'weak-pair weak-pair?
     (lambda (car-pred cdr-pred)
       (lambda (object)
-	(and (pair? object)
-	     (car-pred (car object))
-	     (cdr-pred (cdr object)))))
+	(and (weak-pair? object)
+	     (let ((elt (weak-car object)))
+	       (and (not (gc-reclaimed-object? elt))
+		    (car-pred elt)))
+	     (cdr-pred (weak-cdr object)))))
     list
     ordered-predicates-memoizer))
 
 (define-values (uniform-list-predicate uniform-list-predicate?)
-  (compound-predicate-constructor 'uniform-list
+  (compound-predicate-constructor 'uniform-list list?
     (lambda (elt-pred)
-      (lambda (object)
-	(list-of-type? object elt-pred)))
+      (if (eqv? any-object? elt-pred)
+	  list?
+	  (lambda (object)
+	    (list-of-type? object elt-pred))))
     list
     single-predicate-memoizer))
 
 (define-values (uniform-weak-list-predicate uniform-weak-list-predicate?)
-  (compound-predicate-constructor 'uniform-weak-list
+  (compound-predicate-constructor 'uniform-weak-list weak-list?
     (lambda (elt-pred)
-      (lambda (object)
-	(weak-list-of-type? object elt-pred)))
+      (if (eqv? any-object? elt-pred)
+	  weak-list?
+	  (lambda (object)
+	    (weak-list-of-type? object elt-pred))))
     list
     single-predicate-memoizer))
-
+
 (define-values (lset-predicate lset-predicate?)
-  (compound-predicate-constructor 'lset
+  (compound-predicate-constructor 'lset list?
     (lambda (elt-pred)
-      (lambda (object)
-	(list-of-type? object elt-pred)))
+      (if (eqv? any-object? elt-pred)
+	  list?
+	  (lambda (object)
+	    (list-of-type? object elt-pred))))
     list
     single-predicate-memoizer))
 
 (define-values (weak-lset-predicate weak-lset-predicate?)
-  (compound-predicate-constructor 'weak-lset
+  (compound-predicate-constructor 'weak-lset weak-list?
     (lambda (elt-pred)
-      (lambda (object)
-	(weak-list-of-type? object elt-pred)))
+      (if (eqv? any-object? elt-pred)
+	  weak-list?
+	  (lambda (object)
+	    (weak-list-of-type? object elt-pred))))
+    list
+    single-predicate-memoizer))
+
+(define-values (uniform-vector-predicate uniform-vector-predicate?)
+  (compound-predicate-constructor 'uniform-vector vector?
+    (lambda (elt-pred)
+      (if (eqv? any-object? elt-pred)
+	  vector?
+	  (lambda (object)
+	    (and (vector? object)
+		 (vector-every elt-pred object)))))
     list
     single-predicate-memoizer))

@@ -2289,11 +2289,13 @@ USA.
 	  single-predicate-memoizer
 	  uniform-list-predicate
 	  uniform-list-predicate?
+	  uniform-vector-predicate
 	  uniform-weak-list-predicate
 	  uniform-weak-list-predicate?
 	  unordered-predicates-memoizer
 	  weak-lset-predicate
-	  weak-lset-predicate?)
+	  weak-lset-predicate?
+	  weak-pair-predicate)
   (export (runtime predicate)
 	  %make-compound-tag))
 
