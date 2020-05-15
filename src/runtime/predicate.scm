@@ -247,7 +247,6 @@ USA.
    (register-predicate! ascii-char? 'ascii-char '<= 8-bit-char?)
    (register-predicate! bit-string? 'bit-string)
    (register-predicate! bitless-char? 'bitless-char '<= char?)
-   (register-predicate! cell? 'cell)
    (register-predicate! code-point-list? 'code-point-list '<= list?)
    (register-predicate! compiled-code-address? 'compiled-code-address)
    (register-predicate! compiled-code-block? 'compiled-code-block)

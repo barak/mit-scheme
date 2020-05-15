@@ -110,6 +110,22 @@ USA.
 	(begin
 	  (guarantee positive-fixnum? buffer-length 'bytevector-builder)
 	  buffer-length))))
+
+(define (bytevector-any predicate bv)
+  (let ((end (bytevector-length bv)))
+    (let loop ((i 0))
+      (and (fix:< i end)
+	   (or (predicate (bytevector-u8-ref bv i))
+	       (loop (fix:+ i 1)))))))
+
+(define (bytevector-every predicate bv)
+  (let ((end (bytevector-length bv)))
+    (let loop ((i 0) (result #t))
+      (if (fix:< i end)
+	  (let ((v (predicate (bytevector-u8-ref bv i))))
+	    (and v
+		 (loop (fix:+ i 1) v)))
+	  result))))
 
 (define (list->bytevector bytes)
   (let ((bytevector (allocate-bytevector (length bytes))))

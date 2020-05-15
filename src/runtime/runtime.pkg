@@ -1381,10 +1381,12 @@ USA.
 	  bytevector->hexadecimal
 	  bytevector->list
 	  bytevector->vector
+	  bytevector-any
 	  bytevector-append		;(scheme base)
 	  bytevector-builder
 	  bytevector-copy		;(scheme base)
 	  bytevector-copy!		;(scheme base)
+	  bytevector-every
 	  bytevector-fill!
 	  bytevector-hash
 	  bytevector-length		;(scheme base)
