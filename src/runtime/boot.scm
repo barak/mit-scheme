@@ -248,13 +248,16 @@ USA.
 
 ;;;; Promises
 
+(define-primitives make-cell cell? cell-contents set-cell-contents!)
+(register-predicate! cell? 'cell)
+
 (declare (integrate-operator promise?))
 (define (promise? object)
   (and (cell? object)
        (cell? (cell-contents object))
        (object-type? (ucode-type delayed)
 		     (cell-contents (cell-contents object)))))
-(register-predicate! promise? 'promise)
+(register-predicate! promise? 'promise '<= cell?)
 
 (define (make-promise object)
   (make-cell (make-cell (system-pair-cons (ucode-type delayed) #t object))))

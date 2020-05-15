@@ -167,6 +167,8 @@ USA.
 	  bracketed-print-method
 	  bytes-per-object
 	  call-with-values		;(scheme base)
+	  cell-contents
+	  cell?
 	  default-object
 	  default-object?
 	  define-pp-describer
@@ -192,6 +194,7 @@ USA.
 	  interrupt-mask/gc-ok
 	  interrupt-mask/none
 	  interrupt-mask/timer-ok
+	  make-cell
 	  make-promise			;(scheme lazy)
 	  make-unforced-promise
 	  object-constant?
@@ -202,6 +205,7 @@ USA.
 	  promise-value
 	  promise?			;(scheme lazy)
 	  register-predicate!
+	  set-cell-contents!
 	  set-dispatch-tag<=!
 	  set-predicate<=!
 	  simple-parser-method
@@ -747,8 +751,6 @@ USA.
 	  append-hook-to-list
 	  bind-cell-contents!
 	  cd
-	  cell-contents
-	  cell?
 	  constant-procedure
 	  edit
 	  edwin
@@ -781,7 +783,6 @@ USA.
 	  link-variables
 	  local-assignment
 	  make-alist-metadata-table
-	  make-cell
 	  make-ephemeron
 	  make-hashed-metadata-table
 	  make-hook-list
@@ -815,7 +816,6 @@ USA.
 	  remove-hook-from-list
 	  run-hooks-in-list
 	  scode-eval
-	  set-cell-contents!
 	  set-ephemeron-datum!
 	  set-ephemeron-key!
 	  set-interrupt-enables!

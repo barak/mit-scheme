@@ -51,9 +51,6 @@ USA.
   (object-new-type object-set-type 2)
   make-non-pointer-object
 
-  ;; Cells
-  make-cell cell? cell-contents set-cell-contents!
-
   ;; System Compound Datatypes
   system-pair-cons system-pair?
   system-pair-car system-pair-set-car!
