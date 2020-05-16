@@ -236,7 +236,7 @@ USA.
 		       (hash-table-set! table key datum)
 		       datum))
 		   #f))
-
+
 (define (hash-table-delete! table key)
   ((table-type-method:remove! (hash-table-type table)) table key))
 
@@ -286,7 +286,7 @@ USA.
 		      acc)
 		    unspecific
 		    table))
-
+
 (define (hash-table-count predicate table)
   (%hash-table-fold (lambda (key datum acc)
 		      (if (predicate key datum)
@@ -338,7 +338,7 @@ USA.
 			  (cons '() '())
 			  table)))
     (values (car p) (cdr p))))
-
+
 (define (hash-table-pop! table)
   (let ((p (hash-table-find cons table)))
     (hash-table-delete! table (car p))
@@ -388,7 +388,7 @@ USA.
 			     (hash-table-set! table1 key value)))
 		       table2)
   table1)
-
+
 (define (hash-table-copy table #!optional mutable?)
   (if (not mutable?)
       (error "Immutable hash tables not supported."))
@@ -506,15 +506,12 @@ USA.
 		    (make-method:find entry-type)
 		    (make-method:every entry-type)))
 
-(define-integrable (non-weak? object)
-  ;; Use an ordinary pair for objects that aren't pointers or that
-  ;; have unbounded extent.
-  (or (object-non-pointer? object)
-      (number? object)
-      (interned-symbol? object)))
-
 (define-integrable (maybe-weak-cons a d)
-  (if (non-weak? a)
+  ;; Use an ordinary pair for objects that aren't pointers or that have
+  ;; unbounded extent.
+  (if (or (object-non-pointer? a)
+	  (number? a)
+	  (interned-symbol? a))
       (cons a d)
       (weak-cons a d)))
 
@@ -1364,7 +1361,7 @@ USA.
    (list (list 'hash-function unary-procedure? default-object)
 	 (list 'rehash-after-gc? boolean? default-object)
 	 (list 'entry-type entry-type-name? (lambda () 'strong)))))
-
+
 (define (make-hash-table-type key-hash key=? rehash-after-gc? entry-type)
   (hash-table-intern! (hash-metadata key=? key-hash rehash-after-gc?)
 		      entry-type
