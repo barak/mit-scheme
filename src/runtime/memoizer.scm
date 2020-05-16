@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime hash-table))
+(add-boot-deps! '(runtime hash-table) '(runtime comparator))
 
 (define-record-type <memoizer-metadata>
     (%make-memoizer-metadata table procedure)
@@ -58,93 +58,58 @@ USA.
 (define (clear-memoizer! memoizer)
   (hash-table-clear! (memoizer-table memoizer)))
 
-(define (weak-eqv-memoizer get-key get-datum)
-  (let ((table (make-key-weak-eqv-hash-table)))
-    (make-memoizer table
-                   get-datum
-                   (lambda args
-                     (hash-table-intern! table
-                                         (apply get-key args)
-                                         (lambda () (apply get-datum args)))))))
+(define-deferred ordered-memoizer
+  (%standard-memoizer uniform-list-comparator #f))
 
-(define (all-args-memoizer elt= get-key get-datum)
-  (let ((memoizer
-         (list-memoizer elt=
-                        (lambda (args)
-                          (apply get-key args))
-                        (lambda (args)
-                          (apply get-datum args)))))
-    (make-memoizer (memoizer-table memoizer)
-                   get-datum
-                   (lambda args (memoizer args)))))
+(define-deferred weak-ordered-memoizer
+  (%standard-memoizer uniform-weak-list-comparator #t))
+
+(define-deferred unordered-memoizer
+  (%standard-memoizer lset-comparator #f))
+
+(define-deferred weak-unordered-memoizer
+  (%standard-memoizer weak-lset-comparator #t))
 
-(define (make-list-memoizer make-list= dedup?)
-  (lambda (elt= get-key get-datum)
-    (let ((list= (make-list= elt=)))
-      (let ((table (make-hash-table list= (equality-predicate-hasher list=))))
-        (make-memoizer
-         table
-         get-datum
-         (lambda (list)
-           (let ((list
-                  (if dedup?
-                      (delete-duplicates list elt=)
-                      list)))
-             (hash-table-intern! table
-                                 (get-key list)
-                                 (lambda () (get-datum list))))))))))
+(define-integrable (%standard-memoizer combinator weak?)
+  (lambda (comparator procedure)
+    (let ((arity (procedure-arity procedure)))
+      (let ((n
+	     (let ((n (procedure-arity-min arity)))
+	       (and (eqv? n (procedure-arity-max arity))
+		    n))))
+	(let ((table
+	       (let ((c (if (eqv? 1 n) comparator (combinator comparator))))
+		 (if weak?
+		     (make-hash-table c 'weak-keys)
+		     (make-hash-table c)))))
 
-(define (make-list= elt=)
-  (let ((compare
-         (lambda (a b)
-           (list= elt= a b))))
-    (set-equality-predicate-properties!
-     compare
-     (%make-list-hash elt=)
-     (equality-predicate-rehash-after-gc? elt=))
-    compare))
+	  (define-integrable (get-impl klist list->klist)
+	    (case n
+	      ((1)
+	       (lambda (a)
+		 (hash-table-intern! table a
+				     (lambda () (procedure a)))))
+	      ((2)
+	       (lambda (a1 a2)
+		 (hash-table-intern! table (klist a1 a2)
+				     (lambda () (procedure a1 a2)))))
+	      ((3)
+	       (lambda (a1 a2 a3)
+		 (hash-table-intern! table (klist a1 a2 a3)
+				     (lambda () (procedure a1 a2 a3)))))
+	      ((4)
+	       (lambda (a1 a2 a3 a4)
+		 (hash-table-intern! table (klist a1 a2 a3 a4)
+				     (lambda () (procedure a1 a2 a3 a4)))))
+	      (else
+	       (lambda args
+		 (hash-table-intern! table (list->klist args)
+				     (lambda () (apply procedure args)))))))
 
-(define (make-lset= elt=)
-  (let ((compare
-         (lambda (a b)
-           (lset= elt= a b))))
-    (set-equality-predicate-properties!
-     compare
-     (%make-list-hash elt=)
-     (equality-predicate-rehash-after-gc? elt=))
-    compare))
+	  (define-integrable (list->list args)
+	    args)
 
-(define (%make-list-hash elt=)
-  (let ((elt-hash (equality-predicate-hasher elt=)))
-    (lambda (lset)
-      (apply +
-	     (map (lambda (elt)
-		    (elt-hash elt))
-		  lset)))))
-
-(define list-memoizer)
-(define lset-memoizer)
-(add-boot-init!
- (lambda ()
-   (set! list-memoizer (make-list-memoizer make-list= #f))
-   (set! lset-memoizer (make-list-memoizer make-lset= #t))
-   unspecific))
-
-(define (make-simple-list-memoizer list-memoizer)
-  (lambda (elt= get-key get-datum)
-    (let ((memoizer
-           (list-memoizer elt=
-                          (lambda (args)
-                            (apply get-key args))
-                          (lambda (args)
-                            (apply get-datum args)))))
-      (lambda args
-        (memoizer args)))))
-
-(define simple-list-memoizer)
-(define simple-lset-memoizer)
-(add-boot-init!
- (lambda ()
-   (set! simple-list-memoizer (make-simple-list-memoizer list-memoizer))
-   (set! simple-lset-memoizer (make-simple-list-memoizer lset-memoizer))
-   unspecific))
+	  (make-memoizer table procedure
+	    (if weak?
+		(get-impl weak-list list->weak-list)
+		(get-impl list list->list))))))))

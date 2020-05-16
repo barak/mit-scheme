@@ -66,10 +66,8 @@ USA.
        (template
         (%make-predicate-template name
 				  pattern
-				  (all-args-memoizer equal?
-						     (lambda patterned-tags
-						       patterned-tags)
-						     instantiator)
+				  (ordered-memoizer (make-equal-comparator)
+						    instantiator)
 				  (lambda (object)
 				    (and (parametric-predicate? object)
 					 (eqv? template

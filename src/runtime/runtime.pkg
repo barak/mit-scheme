@@ -2944,18 +2944,14 @@ USA.
   (files "memoizer")
   (parent (runtime))
   (export ()
-	  all-args-memoizer
-          clear-memoizer!
-          list-memoizer
-          lset-memoizer
-          make-list-memoizer
-          make-memoizer
-          memoizer-table
-          memoizer-procedure
-          memoizer?
-          simple-list-memoizer
-          simple-lset-memoizer
-          weak-eqv-memoizer))
+	  clear-memoizer!
+	  memoizer-procedure
+	  memoizer-table
+	  memoizer?
+	  ordered-memoizer
+	  unordered-memoizer
+	  weak-ordered-memoizer
+	  weak-unordered-memoizer))
 
 (define-package (runtime history)
   (files "histry")
