@@ -184,7 +184,13 @@ USA.
   the-symbol-comparator)
 
 (define-deferred the-symbol-comparator
-  (%make-comparator symbol? eq? symbol<? eq-hash #t))
+  (%make-comparator symbol? symbol=? symbol<? symbol-hash #f))
+
+(define (interned-symbol-comparator)
+  the-interned-symbol-comparator)
+
+(define-deferred the-interned-symbol-comparator
+  (%make-comparator interned-symbol? eq? symbol<? eq-hash #t))
 
 (define (bytevector-comparator)
   the-bytevector-comparator)
