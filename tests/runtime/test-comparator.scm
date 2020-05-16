@@ -28,6 +28,51 @@ USA.
 
 (declare (usual-integrations))
 
+(define (all-pairs-of items)
+  (append-map (lambda (a)
+		(map (lambda (b) (cons a b))
+		     items))
+	      items))
+
+(define (all-weak-pairs-of items)
+  (append-map (lambda (a)
+		(map (lambda (b) (weak-cons a b))
+		     items))
+	      items))
+
+(define (all-vectors-of items)
+  (map list->vector (all-lists-of items)))
+
+(define (all-lists-of items)
+  (append-map all-permutations-of
+	      (all-heads-of items)))
+
+(define (all-permutations-of items)
+  (let loop ((items items))
+    (if (pair? items)
+        (append-map (lambda (index)
+                      (map (let ((head (list-ref items index)))
+                             (lambda (tail)
+                               (cons head tail)))
+                           (loop (delete-item items index))))
+                    (iota (length items)))
+        '(()))))
+
+(define (delete-item items index)
+  (append (take items index)
+          (cdr (drop items index))))
+
+(define (all-heads-of items)
+  (fold-right (lambda (i acc)
+		(cons (take items i) acc))
+	      (list items)
+	      (iota (length items))))
+
+(define (trim-large-items items n)
+  (if (> (length items) n)
+      (take items n)
+      items))
+
 ;;; These shouldn't be longer than 4 or 5.
 ;;; The number of tests grows like this:
 ;;; (square
@@ -38,7 +83,7 @@ USA.
 (define boolean-items '(#f #t))
 (define small-fixnum-items '(2 3 5 7))
 
-(define (bytevector-items)
+(define bytevector-items
   (map list->bytevector (all-lists-of small-fixnum-items)))
 
 ;;; These can be a hundred or so.
@@ -52,7 +97,7 @@ USA.
   (map (lambda (string)
 	 (symbol 'x- string))
        string-items))
-
+
 (define-test 'predicates
   (lambda ()
     (assert-false (comparator? =))
@@ -70,7 +115,12 @@ USA.
       (assert-true (comparator? c))
       (assert-true (comparator-ordered? c))
       (assert-true (comparator-hashable? c))
-      (assert-false (comparator-rehash-after-gc? c)))))
+      (assert-false (comparator-rehash-after-gc? c)))
+    (let ((c (make-default-comparator)))
+      (assert-true (comparator? c))
+      (assert-true (comparator-ordered? c))
+      (assert-true (comparator-hashable? c))
+      (assert-true (comparator-rehash-after-gc? c)))))
 
 (define-test 'comparator-if
   (lambda ()
@@ -133,47 +183,106 @@ USA.
 			      'expression `(comparator-hash ,item))))
 		items)))
 
-(define-test 'comparison
+(define (comparison-tests items c1 c2)
   (lambda ()
-    (comparison-tests boolean-items
-		      (boolean-comparator)
-		      (make-comparator boolean?
-				       boolean=?
-				       boolean<?
-				       boolean-hash))
-    (comparison-tests (bytevector-items)
-		      (bytevector-comparator)
-		      (make-comparator bytevector?
-				       bytevector=?
-				       bytevector<?
-				       bytevector-hash))
-    (comparison-tests char-items
-		      (char-comparator)
-		      (make-comparator char?
-				       char=?
-				       char<?
-				       char-hash))
+
+    (define (check-type a)
+      (assert-eq (comparator-test-type c1 a)
+		 (comparator-test-type c2 a)
+		 'expression
+		 `(eq? (comparator-test-type ,c1 ,a)
+		       (comparator-test-type ,c2 ,a))))
+
+    (define (compare p name a b)
+      (assert-eq (p c1 a b) (p c2 a b)
+		 'expression `(eq (,name ,c1 ,a ,b) (,name ,c2 ,a ,b))))
+
+    (for-each (lambda (p)
+		(let ((a (car p))
+		      (b (cdr p)))
+		  (check-type a)
+		  (check-type b)
+		  (compare =? '=? a b)
+		  (if (comparator-ordered? c1)
+		      (begin
+			(compare <? '<? a b)
+			(compare <=? '<=? a b)
+			(compare >? '>? a b)
+			(compare >=? '>=? a b)))))
+	      (all-pairs-of items))
+    (if (comparator-hashable? c1)
+	(for-each (lambda (item)
+		    (assert-= (comparator-hash c1 item)
+			      (comparator-hash c2 item)
+			      'expression `(= (comparator-hash ,c1 ,item)
+					      (comparator-hash ,c2 ,item))))
+		  items))))
+
+(define-test 'comparison
+  (list
+   (let ((dc (make-default-comparator)))
+     (define (run-default items c1 c2)
+       (list (lambda ()
+	       (assert-eq (comparator-ordered? c1)
+			  (comparator-ordered? c2)
+			  'expression `(eq? (comparator-ordered? ,c1)
+					    (comparator-ordered? ,c2)))
+	       (assert-eq (comparator-hashable? c1)
+			  (comparator-hashable? c2)
+			  'expression `(eq? (comparator-hashable? ,c1)
+					    (comparator-hashable? ,c2))))
+	     (comparison-tests items c1 c2)
+	     (comparison-tests items c1 dc)
+	     (comparison-tests (all-pairs-of (trim-large-items items 4))
+			       (make-pair-comparator c1 c1)
+			       dc)
+	     (comparison-tests (all-weak-pairs-of (trim-large-items items 4))
+			       (make-weak-pair-comparator c1 c1)
+			       dc)
+	     (comparison-tests (all-vectors-of (trim-large-items items 4))
+			       (uniform-vector-comparator c1)
+			       dc)))
+
+     (list
+      (run-default boolean-items
+		   (boolean-comparator)
+		   (make-comparator boolean?
+				    boolean=?
+				    boolean<?
+				    boolean-hash))
+      (run-default bytevector-items
+		   (bytevector-comparator)
+		   (make-comparator bytevector?
+				    bytevector=?
+				    bytevector<?
+				    bytevector-hash))
+      (run-default char-items
+		   (char-comparator)
+		   (make-comparator char? char=? char<? char-hash))
+      (run-default fixnum-items
+		   (fixnum-comparator)
+		   (make-comparator fix:fixnum? fix:= fix:< fixnum-hash))
+      (run-default flonum-items
+		   (real-comparator)
+		   (make-comparator real? = < number-hash))
+      (run-default string-items
+		   (string-comparator)
+		   (make-comparator string? string=? string<? string-hash))
+      (run-default symbol-items
+		   (symbol-comparator)
+		   (make-comparator symbol? symbol=? symbol<? symbol-hash))))
     (comparison-tests char-items
 		      (char-ci-comparator)
 		      (make-comparator char?
 				       char-ci=?
 				       char-ci<?
 				       char-ci-hash))
-    (comparison-tests fixnum-items
-		      (fixnum-comparator)
-		      (make-comparator fix:fixnum? fix:= fix:< fixnum-hash))
     (comparison-tests flonum-items
 		      (flonum-comparator)
 		      (make-comparator flo:flonum? flo:= flo:< number-hash))
     (comparison-tests flonum-items
 		      (number-comparator)
 		      (make-comparator number? = #f number-hash))
-    (comparison-tests flonum-items
-		      (real-comparator)
-		      (make-comparator real? = < number-hash))
-    (comparison-tests string-items
-		      (string-comparator)
-		      (make-comparator string? string=? string<? string-hash))
     (comparison-tests string-items
 		      (string-ci-comparator)
 		      (make-comparator string?
@@ -181,44 +290,8 @@ USA.
 				       string-ci<?
 				       string-ci-hash))
     (comparison-tests symbol-items
-		      (symbol-comparator)
-		      (make-comparator symbol? symbol=? symbol<? symbol-hash))
-    (comparison-tests symbol-items
 		      (interned-symbol-comparator)
 		      (make-comparator interned-symbol? eq? symbol<? eq-hash))))
-
-(define (comparison-tests items c1 c2)
-
-  (define (compare p name a b)
-    (assert-eq (p c1 a b) (p c2 a b)
-	       'expression `(eq (,name ,c1 ,a ,b) (,name ,c2 ,a ,b))))
-
-  (assert-eq (comparator-ordered? c1)
-	     (comparator-ordered? c2))
-  (assert-eq (comparator-hashable? c1)
-	     (comparator-hashable? c2))
-  (for-each (lambda (p)
-	      (let ((a (car p))
-		    (b (cdr p)))
-		(assert-eq (comparator-test-type c1 a)
-			   (comparator-test-type c2 a))
-		(assert-eq (comparator-test-type c1 b)
-			   (comparator-test-type c2 b))
-		(compare =? '=? a b)
-		(if (comparator-ordered? c1)
-		    (begin
-		      (compare <? '<? a b)
-		      (compare <=? '<=? a b)
-		      (compare >? '>? a b)
-		      (compare >=? '>=? a b)))))
-	    (all-pairs-of items))
-  (if (comparator-hashable? c1)
-      (for-each (lambda (item)
-		  (assert-= (comparator-hash c1 item)
-			    (comparator-hash c2 item)
-			    'expression `(= (comparator-hash ,c1 ,item)
-					    (comparator-hash ,c2 ,item))))
-		items)))
 
 (define (test-combinations test items c)
   (upair-test test items c)
@@ -360,37 +433,3 @@ USA.
 		  (combine-hashes (elt-hash (kvector-ref a i))
 				  result))
 	    result)))))
-
-(define (all-pairs-of items)
-  (append-map (lambda (a)
-		(map (lambda (b) (cons a b))
-		     items))
-	      items))
-
-(define (all-vectors-of items)
-  (map list->vector (all-lists-of items)))
-
-(define (all-lists-of items)
-  (append-map all-permutations-of
-	      (all-heads-of items)))
-
-(define (all-permutations-of items)
-  (let loop ((items items))
-    (if (pair? items)
-        (append-map (lambda (index)
-                      (map (let ((head (list-ref items index)))
-                             (lambda (tail)
-                               (cons head tail)))
-                           (loop (delete-item items index))))
-                    (iota (length items)))
-        '(()))))
-
-(define (delete-item items index)
-  (append (take items index)
-          (cdr (drop items index))))
-
-(define (all-heads-of items)
-  (fold-right (lambda (i acc)
-		(cons (take items i) acc))
-	      (list items)
-	      (iota (length items))))
