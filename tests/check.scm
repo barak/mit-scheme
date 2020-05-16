@@ -65,6 +65,7 @@ USA.
     "runtime/test-bytevector"
     ("runtime/test-char" (runtime))
     ("runtime/test-char-set" (runtime character-set))
+    "runtime/test-comparator"
     ("runtime/test-compound-predicate" (runtime compound-predicate))
     ("runtime/test-digraph" (runtime))
     "runtime/test-division"
