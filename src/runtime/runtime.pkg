@@ -5336,6 +5336,7 @@ USA.
 	  define-deferred
 	  define-primitives
 	  define-sequenced-procedure
+	  define-values-deferred
 	  select-on-bytes-per-word
 	  ucode-primitive
 	  ucode-return-address

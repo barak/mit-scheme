@@ -107,6 +107,27 @@ USA.
 	     (,(rename 'set!) ,name ,value)
 	     ,(rename 'unspecific))))))))
 
+(define-syntax define-values-deferred
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore compare))
+     (syntax-check '(_ (* identifier) expression) form)
+     (let ((names (cadr form))
+	   (expr (caddr form)))
+       `(,(rename 'begin)
+	 ,@(map (lambda (name)
+		  `(,(rename 'define) ,name))
+		names)
+	  (,(rename 'add-boot-init!)
+	   (,(rename 'lambda) ()
+	    ,(let ((names* (map rename names)))
+	       `(let-values ((,names* ,expr))
+		  ,@(map (lambda (name name*)
+			   `(,(rename 'set!) ,name ,name*))
+			 names
+			 names*)
+		  ,(rename 'unspecific))))))))))
+
 (define-syntax define-sequenced-procedure
   (er-macro-transformer
    (lambda (form rename compare)
