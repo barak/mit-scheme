@@ -113,48 +113,52 @@ USA.
 (define get-predicate-tag)
 (add-boot-init!
  (lambda ()
-   (let ((table (make-hashed-metadata-table)))
-     (set! predicate? (bundle-ref table 'has?))
-     (set! get-predicate-tag (bundle-ref table 'get))
-     (set! set-predicate-tag! (bundle-ref table 'put!)))
-   (set! predicate->dispatch-tag
-	 (named-lambda (predicate->dispatch-tag predicate)
-	   (let ((tag (get-predicate-tag predicate #f)))
-	     (if (not tag)
-		 (error:not-a predicate? predicate))
-	     tag)))
-   (seq:set-predicate-tag! 'trigger!)
-   (set! register-predicate!
-	 (let ((make-simple-tag
-		(dispatch-metatag-constructor
-		 (make-dispatch-metatag 'simple-tag)
-		 'register-predicate!)))
-	   (named-lambda (register-predicate! predicate name . keylist)
-	     (guarantee keyword-list? keylist 'register-predicate!)
-	     (let ((tag
-		    (let ((tag (get-predicate-tag predicate #f)))
-		      (if tag
-			  (begin
-			    (if (not (eq? name (dispatch-tag-name tag)))
-				(error "Can't re-register predicate:"
-				       predicate name))
-			    tag)
-			  (make-simple-tag name predicate)))))
-	       (for-each (lambda (superset)
-			   (set-predicate<=! predicate superset))
-			 (get-keyword-values keylist '<=))
-	       tag))))
-   (set! set-dispatch-tag<=!
-	 (named-lambda (set-dispatch-tag<=! tag superset)
-	   (if (dispatch-tag>= tag superset)
-	       (error "Not allowed to create a superset loop:" tag superset))
-	   (add-dispatch-tag-superset tag superset)
-	   (hash-table-clear! dispatch-tag<=-cache)))
-   (set! set-predicate<=!
-	 (named-lambda (set-predicate<=! predicate superset)
-	   (set-dispatch-tag<=! (predicate->dispatch-tag predicate)
-				(predicate->dispatch-tag superset))))
-   unspecific))
+   (let ((boot-predicate? predicate?))
+     (let ((table (make-hashed-metadata-table)))
+       (set! predicate? (bundle-ref table 'has?))
+       (set! get-predicate-tag (bundle-ref table 'get))
+       (set! set-predicate-tag! (bundle-ref table 'put!)))
+     (set! predicate->dispatch-tag
+	   (named-lambda (predicate->dispatch-tag predicate)
+	     (let ((tag (get-predicate-tag predicate #f)))
+	       (if (not tag)
+		   (error:not-a predicate? predicate))
+	       tag)))
+     (seq:set-predicate-tag! 'trigger!)
+     (set! register-predicate!
+	   (let ((make-simple-tag
+		  (dispatch-metatag-constructor
+		   (make-dispatch-metatag 'simple-tag)
+		   'register-predicate!)))
+	     (named-lambda (register-predicate! predicate name . keylist)
+	       (guarantee keyword-list? keylist 'register-predicate!)
+	       (let ((tag
+		      (let ((tag (get-predicate-tag predicate #f)))
+			(if tag
+			    (begin
+			      (if (not (eq? name (dispatch-tag-name tag)))
+				  (error "Can't re-register predicate:"
+					 predicate name))
+			      tag)
+			    (make-simple-tag name predicate)))))
+		 (for-each (lambda (superset)
+			     (set-predicate<=! predicate superset))
+			   (get-keyword-values keylist '<=))
+		 tag))))
+     (set! set-dispatch-tag<=!
+	   (named-lambda (set-dispatch-tag<=! tag superset)
+	     (if (dispatch-tag>= tag superset)
+		 (error "Not allowed to create a superset loop:" tag superset))
+	     (add-dispatch-tag-superset tag superset)
+	     (hash-table-clear! dispatch-tag<=-cache)))
+     (set! set-predicate<=!
+	   (named-lambda (set-predicate<=! predicate superset)
+	     (set-dispatch-tag<=! (predicate->dispatch-tag predicate)
+				  (predicate->dispatch-tag
+				   (if (eqv? boot-predicate? superset)
+				       predicate?
+				       superset)))))
+     unspecific)))
 
 (add-boot-init!
  (lambda ()
