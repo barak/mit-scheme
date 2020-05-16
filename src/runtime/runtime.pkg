@@ -6764,6 +6764,7 @@ USA.
 	  char-ci-hash			;(srfi 128)
 	  char-comparator
 	  char-hash			;(srfi 128)
+	  char-set-comparator
 	  combine-hashes
 	  comparator-check-type		;(srfi 128)
 	  comparator-hash		;(srfi 128)

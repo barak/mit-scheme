@@ -208,13 +208,19 @@ USA.
   the-fixnum-comparator)
 
 (define-deferred the-fixnum-comparator
-  (%make-comparator fix:fixnum? fix:= fix:< number-hash #f))
+  (%make-comparator fix:fixnum? fix:= fix:< fixnum-hash #f))
 
 (define (flonum-comparator)
   the-flonum-comparator)
 
 (define-deferred the-flonum-comparator
   (%make-comparator flo:flonum? flo:= flo:< number-hash #f))
+
+(define (char-set-comparator)
+  the-char-set-comparator)
+
+(define-deferred the-char-set-comparator
+  (%make-comparator char-set? char-set= char-set< char-set-hash #f))
 
 ;;;; General combinators
 
@@ -840,16 +846,17 @@ USA.
      (lambda (x y) (declare (ignore x y)) #f)
      (lambda (x) (declare (ignore x)) (%combine-hashes 2777 (initial-hash))))
 
+   (comparator-register-default! (boolean-comparator))
+   (comparator-register-default! (bytevector-comparator))
+   (comparator-register-default! (char-comparator))
+   (comparator-register-default! (char-set-comparator))
+   (comparator-register-default! (fixnum-comparator))
+   (comparator-register-default! (string-comparator))
+   (comparator-register-default! (symbol-comparator))
+
    (define-default-type bit-string? bit-string=? #f eq-hash)
-   (define-default-type boolean? boolean=? boolean<? boolean-hash)
-   (define-default-type bytevector? bytevector=? bytevector<? bytevector-hash)
    (define-default-type cell? eq? #f eq-hash)
-   (define-default-type char-set? char-set= char-set< char-set-hash)
-   (define-default-type char? char=? char<? char-hash)
-   (define-default-type fix:fixnum? fix:= fix:< fixnum-hash)
    (define-default-type pathname? pathname=? #f pathname-hash)
-   (define-default-type string? string=? string<? string-hash)
-   (define-default-type symbol? symbol=? symbol<? symbol-hash)
 
    (define-default-type number?
      =
