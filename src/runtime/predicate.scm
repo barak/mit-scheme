@@ -254,8 +254,6 @@ USA.
    (register-predicate! compiled-return-address? 'compiled-return-address)
    (register-predicate! control-point? 'control-point)
    (register-predicate! ephemeron? 'ephemeron)
-   (register-predicate! equality-predicate? 'equality-predicate
-			'<= binary-procedure?)
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
    (register-predicate! keyword? 'keyword '<= symbol?)
    (register-predicate! lambda-tag? 'lambda-tag)

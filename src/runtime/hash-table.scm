@@ -1348,11 +1348,13 @@ USA.
   (receive (key-hash rehash-after-gc? entry-type-name)
       (hash-table-type-options options 'make-hash-table-type*)
     (make-hash-table-type (if (default-object? key-hash)
-			      (equality-predicate-hasher key=?)
+			      (comparator-hash-function
+			       (key=->comparator key=?))
 			      key-hash)
 			  key=?
 			  (if (default-object? rehash-after-gc?)
-			      (equality-predicate-rehash-after-gc? key=?)
+			      (comparator-rehash-after-gc?
+			       (key=->comparator key=?))
 			      rehash-after-gc?)
 			  (get-entry-type entry-type-name))))
 
@@ -1650,60 +1652,12 @@ USA.
 
 (define-integrable without-interruption with-thread-events-blocked)
 
-(define equality-predicate?)
-(define %equality-predicate-properties)
-(define %set-equality-predicate-properties!)
-(add-boot-init!
- (lambda ()
-   (let ((table (make-hashed-metadata-table)))
-     (set! equality-predicate? (bundle-ref table 'has?))
-     (set! %equality-predicate-properties (bundle-ref table 'get))
-     (set! %set-equality-predicate-properties! (bundle-ref table 'put!)))
-   (set-equality-predicate-properties! eq? eq-hash #t)
-   (set-equality-predicate-properties! eqv? eqv-hash #t)
-   (set-equality-predicate-properties! equal? equal-hash #t)
-   (set-equality-predicate-properties! string=? string-hash #f)
-   (set-equality-predicate-properties! string-ci=? string-ci-hash #f)
-   (set-equality-predicate-properties! int:= int:hash #f)
-   (set-equality-predicate-properties! char-set= char-set-hash #f)
-   (register-predicate! equality-predicate? 'equality-predicate)))
-
-(define (equality-predicate-keylist equality-predicate)
-  (%equality-predicate-properties equality-predicate '()))
-
-(define (equality-predicate-property-names equality-predicate)
-  (let loop ((keylist (equality-predicate-keylist equality-predicate)))
-    (if (pair? keylist)
-	(cons (car keylist) (loop (cddr keylist)))
-	'())))
-
-(define (equality-predicate-property equality-predicate name
-				     #!optional default-value)
-  (let ((value
-	 (get-keyword-value (equality-predicate-keylist equality-predicate)
-			    name)))
-    (if (default-object? value)
-	(begin
-	  (if (default-object? default-value)
-	      (error "Equality predicate missing property" name))
-	  default-value)
-	value)))
-
-(define (equality-predicate-hasher equality-predicate)
-  (equality-predicate-property equality-predicate 'hasher))
-
-(define (equality-predicate-rehash-after-gc? equality-predicate)
-  (equality-predicate-property equality-predicate
-			       'rehash-after-gc?
-			       #t))
-
-(define (set-equality-predicate-properties! equality-predicate hasher
-					    rehash-after-gc? . keylist)
-  (guarantee binary-procedure? equality-predicate
-	     'set-equality-predicate-properties!)
-  (guarantee unary-procedure? hasher 'set-equality-predicate-properties!)
-  (guarantee keyword-list? keylist 'set-equality-predicate-properties!)
-  (%set-equality-predicate-properties! equality-predicate
-				       (cons* 'hasher hasher
-					      'rehash-after-gc? rehash-after-gc?
-					      keylist)))
+(define (key=->comparator key=)
+  (cond ((eqv? key= eq?) (make-eq-comparator))
+	((eqv? key= eqv?) (make-eqv-comparator))
+	((eqv? key= equal?) (make-equal-comparator))
+	((eqv? key= string=?) (string-comparator))
+	((eqv? key= string-ci=?) (string-ci-comparator))
+	((eqv? key= int:=) (exact-integer-comparator))
+	((eqv? key= char-set=) (char-set-comparator))
+	(else (error:bad-range-argument key=))))

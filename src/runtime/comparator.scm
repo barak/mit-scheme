@@ -227,6 +227,12 @@ USA.
 
 (define-deferred the-char-set-comparator
   (%make-comparator char-set? char-set= char-set< char-set-hash #f))
+
+(define (exact-integer-comparator)
+  the-exact-integer-comparator)
+
+(define-deferred the-exact-integer-comparator
+  (%make-comparator exact-integer? int:= int:< number-hash #f))
 
 ;;;; General combinators
 

@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime library parser)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime comparator))
 
 ;; Returns one of the following:
 ;; * Zero or more libraries, one or more imports, and a body.
@@ -184,14 +186,14 @@ USA.
 (define (get-library-declarations pathname)
   (cdr (%parse-define-library (call-with-input-file pathname read))))
 
-(define partition-decls
+(define-deferred partition-decls
   (partition-generator (lambda (decl)
 			 (case (car decl)
 			   ((r7rs-import mit-import) 'import)
 			   ((r7rs-export mit-export) 'export)
 			   ((mit-define) 'define)
 			   (else 'content)))
-		       eq?
+		       (make-eq-comparator)
 		       cons-last!
 		       '()))
 

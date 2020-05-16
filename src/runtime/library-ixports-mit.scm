@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime library import/export mit)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime comparator))
 
 (define (mit-parsed-import-libraries parsed-import library libraries)
   (fold (lambda (import-set libraries)
@@ -130,9 +132,9 @@ USA.
 		(rename-sources (re-rename-renamer (part 're-rename)) sources)
 		acc)))
 
-(define partition-ixclusions
+(define-deferred partition-ixclusions
   (partition-generator car
-		       eq?
+		       (make-eq-comparator)
 		       (lambda (item items)
 			 (cons-last! (cdr item) items))
 		       '()))

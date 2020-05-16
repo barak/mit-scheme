@@ -2834,11 +2834,6 @@ USA.
 	  eq-hash-mod
 	  equal-hash-mod
 	  equal-hash-table-type
-	  equality-predicate-hasher
-	  equality-predicate-property
-	  equality-predicate-property-names
-	  equality-predicate-rehash-after-gc?
-	  equality-predicate?
 	  eqv-hash-mod
 	  hash-by-equal
 	  hash-by-eqv
@@ -2863,7 +2858,6 @@ USA.
 	  make-hash-table-type
 	  make-hash-table-type*
 	  non-pointer-hash-table-type
-	  set-equality-predicate-properties!
 	  string-hash-table-type
 	  strong-eq-hash-table-type
 	  strong-eqv-hash-table-type
@@ -6776,6 +6770,7 @@ USA.
 	  default-hash			;(srfi 128)
 	  default<
 	  default=
+	  exact-integer-comparator
 	  fixnum-comparator
 	  fixnum-hash
 	  flonum-comparator
