@@ -1518,7 +1518,6 @@ USA.
 	  char-bits-clear?
 	  char-bits-limit
 	  char-bits-set?
-	  char-ci-hash			;(srfi 128)
 	  char-ci<=?			;(scheme char)
 	  char-ci<?			;(scheme char)
 	  char-ci=-predicate
@@ -2871,8 +2870,6 @@ USA.
 	  strong-hash-table/constructor
 	  weak-hash-table/constructor)
   (export ()
-	  (boolean-hash eq-hash)	;(srfi 128)
-	  (char-hash eq-hash)		;(srfi 128)
 	  (hash hash-by-equal)			    ;(srfi 69)
 	  (hash-table-exists? hash-table-contains?) ;(srfi 69)
 	  (hash-table-merge! hash-table-union!) ;(srfi 69)
@@ -6761,9 +6758,12 @@ USA.
 	  >=?				;(srfi 128)
 	  >?				;(srfi 128)
 	  boolean-comparator
+	  boolean-hash			;(srfi 128)
 	  bytevector-comparator
 	  char-ci-comparator
+	  char-ci-hash			;(srfi 128)
 	  char-comparator
+	  char-hash			;(srfi 128)
 	  combine-hashes
 	  comparator-check-type		;(srfi 128)
 	  comparator-hash		;(srfi 128)
@@ -6780,6 +6780,7 @@ USA.
 	  default<
 	  default=
 	  fixnum-comparator
+	  fixnum-hash
 	  flonum-comparator
 	  hash-bound			;(srfi 128)
 	  hash-mask

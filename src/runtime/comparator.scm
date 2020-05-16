@@ -196,25 +196,25 @@ USA.
   the-number-comparator)
 
 (define-deferred the-number-comparator
-  (%make-comparator number? = #f eqv-hash #f))
+  (%make-comparator number? = #f number-hash #f))
 
 (define (real-comparator)
   the-real-comparator)
 
 (define-deferred the-real-comparator
-  (%make-comparator real? = < eqv-hash #f))
+  (%make-comparator real? = < number-hash #f))
 
 (define (fixnum-comparator)
   the-fixnum-comparator)
 
 (define-deferred the-fixnum-comparator
-  (%make-comparator fix:fixnum? fix:= fix:< eq-hash #f))
+  (%make-comparator fix:fixnum? fix:= fix:< number-hash #f))
 
 (define (flonum-comparator)
   the-flonum-comparator)
 
 (define-deferred the-flonum-comparator
-  (%make-comparator flo:flonum? flo:= flo:< eqv-hash #f))
+  (%make-comparator flo:flonum? flo:= flo:< number-hash #f))
 
 ;;;; General combinators
 
@@ -720,6 +720,10 @@ USA.
   (syntax-rules ()
     ((_) (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))))
 
+(define-syntax hash-bits
+  (syntax-rules ()
+    ((_) (select-on-bytes-per-word 25 32))))
+
 (define (hash-salt)
   (random-integer (hash-bound)))
 
@@ -751,6 +755,22 @@ USA.
 	 (bitwise-and sum (hash-mask)))))
  (define-integrable (%combine-hashes h1 h2)
    (fix:and (fix:+ (fix:* 31 h1) h2) (hash-mask))))
+
+(define (boolean-hash b)
+  ;; Arbitrarily chosen primes:
+  (%combine-hashes (if b 4111 5333) (initial-hash)))
+
+(define (char-hash char)
+  ;; CHAR->INTEGER always returns a non-negative fixnum.
+  (%combine-hashes (char->integer char) (initial-hash)))
+
+(define (char-ci-hash char)
+  (char-hash (char-foldcase char)))
+
+(define (fixnum-hash n)
+  (%combine-hashes (fix:and (fix:xor (fix:lsh n (fix:- 0 (hash-bits))) n)
+			    (hash-mask))
+		   (initial-hash)))
 
 ;;;; Default comparator
 
@@ -818,14 +838,15 @@ USA.
    (define-default-type null?
      (lambda (x y) (declare (ignore x y)) #t)
      (lambda (x y) (declare (ignore x y)) #f)
-     eq-hash)
+     (lambda (x) (declare (ignore x)) (%combine-hashes 2777 (initial-hash))))
 
    (define-default-type bit-string? bit-string=? #f eq-hash)
-   (define-default-type boolean? boolean=? boolean<? eq-hash)
+   (define-default-type boolean? boolean=? boolean<? boolean-hash)
    (define-default-type bytevector? bytevector=? bytevector<? bytevector-hash)
    (define-default-type cell? eq? #f eq-hash)
    (define-default-type char-set? char-set= char-set< char-set-hash)
    (define-default-type char? char=? char<? char-hash)
+   (define-default-type fix:fixnum? fix:= fix:< fixnum-hash)
    (define-default-type pathname? pathname=? #f pathname-hash)
    (define-default-type string? string=? string<? string-hash)
    (define-default-type symbol? symbol=? symbol<? symbol-hash)
