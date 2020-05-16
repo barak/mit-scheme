@@ -2283,21 +2283,9 @@ USA.
 	  disjoin
 	  disjoin*
 	  disjoin?
-	  lset-predicate
-	  lset-predicate?
 	  ordered-predicates-memoizer
-	  pair-predicate
-	  pair-predicate?
 	  single-predicate-memoizer
-	  uniform-list-predicate
-	  uniform-list-predicate?
-	  uniform-vector-predicate
-	  uniform-weak-list-predicate
-	  uniform-weak-list-predicate?
-	  unordered-predicates-memoizer
-	  weak-lset-predicate
-	  weak-lset-predicate?
-	  weak-pair-predicate)
+	  unordered-predicates-memoizer)
   (export (runtime predicate)
 	  %make-compound-tag))
 
@@ -6780,6 +6768,7 @@ USA.
 	  hash-salt			;(srfi 128)
 	  initial-hash
 	  interned-symbol-comparator
+	  kpair-comparator-combinator
 	  lset-comparator
 	  make-comparator		;(srfi 128)
 	  make-default-comparator	;(srfi 128)

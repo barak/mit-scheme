@@ -81,35 +81,3 @@ USA.
     (for-each (lambda (non-datum)
 		(assert-type-error (lambda () (tagger non-datum))))
 	      non-data)))
-
-(define-test 'uniform-list
-  (lambda ()
-    (let ((li (uniform-list-predicate exact-integer?))
-	  (ls (uniform-list-predicate string?)))
-      ;; check memoization
-      (assert-eqv (uniform-list-predicate exact-integer?) li)
-      (assert-eqv (uniform-list-predicate string?) ls)
-
-      (assert-true (li '()))
-      (assert-true (ls '()))
-      (assert-false (li '(1 . 2)))
-      (assert-false (ls '("a" . "b")))
-
-      (let* ((val1 (iota 10))
-	     (val2 (map number->string val1)))
-	(assert-true (li val1))
-	(assert-false (li val2))
-	(assert-false (ls val1))
-	(assert-true (ls val2))
-
-	(let ((val (list-copy val1)))
-	  (list-set! val 0 #f)
-	  (assert-false (li val)))
-
-	(let ((val (list-copy val1)))
-	  (list-set! val 9 #f)
-	  (assert-false (li val)))
-
-	(let ((val (list-copy val1)))
-	  (list-set! val 4 #f)
-	  (assert-false (li val)))))))

@@ -56,12 +56,7 @@ USA.
 (define (compound-predicate? object)
   (and (predicate? object)
        (compound-tag? (predicate->dispatch-tag object))))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! compound-tag? 'compound-tag '<= dispatch-tag?)
-   (register-predicate! compound-predicate? 'compound-predicate
-			'<= predicate?)))
+(register-predicate! compound-predicate? 'compound-predicate '<= predicate?)
 
 (define (compound-predicate-operands predicate)
   (map dispatch-tag->predicate
@@ -87,10 +82,8 @@ USA.
     (define (related-predicate? object)
       (and (predicate? object)
 	   (keyed-tag? key (predicate->dispatch-tag object))))
-    (add-boot-init!
-     (lambda ()
-       (register-predicate! related-predicate? (symbol operator '-predicate)
-			    '<= compound-predicate?)))
+    (register-predicate! related-predicate? (symbol operator '-predicate)
+			 '<= compound-predicate?)
 
     (values (lambda args
 	      (let ((datum-test (apply make-datum-test args))
@@ -264,79 +257,3 @@ USA.
 	  (if (keyed-tag? key (car tags))
 	      (car (compound-tag-operands (car tags)))
 	      (memoizer datum-test tags)))))))
-
-(define-values (pair-predicate pair-predicate?)
-  (compound-predicate-constructor 'pair pair?
-    (lambda (car-pred cdr-pred)
-      (if (and (eqv? any-object? car-pred)
-	       (eqv? any-object? cdr-pred))
-	  pair?
-	  (lambda (object)
-	    (and (pair? object)
-		 (car-pred (car object))
-		 (cdr-pred (cdr object))))))
-    list
-    ordered-predicates-memoizer))
-
-(define-values (weak-pair-predicate weak-pair-predicate?)
-  (compound-predicate-constructor 'weak-pair weak-pair?
-    (lambda (car-pred cdr-pred)
-      (lambda (object)
-	(and (weak-pair? object)
-	     (let ((elt (weak-car object)))
-	       (and (not (gc-reclaimed-object? elt))
-		    (car-pred elt)))
-	     (cdr-pred (weak-cdr object)))))
-    list
-    ordered-predicates-memoizer))
-
-(define-values (uniform-list-predicate uniform-list-predicate?)
-  (compound-predicate-constructor 'uniform-list list?
-    (lambda (elt-pred)
-      (if (eqv? any-object? elt-pred)
-	  list?
-	  (lambda (object)
-	    (list-of-type? object elt-pred))))
-    list
-    single-predicate-memoizer))
-
-(define-values (uniform-weak-list-predicate uniform-weak-list-predicate?)
-  (compound-predicate-constructor 'uniform-weak-list weak-list?
-    (lambda (elt-pred)
-      (if (eqv? any-object? elt-pred)
-	  weak-list?
-	  (lambda (object)
-	    (weak-list-of-type? object elt-pred))))
-    list
-    single-predicate-memoizer))
-
-(define-values (lset-predicate lset-predicate?)
-  (compound-predicate-constructor 'lset list?
-    (lambda (elt-pred)
-      (if (eqv? any-object? elt-pred)
-	  list?
-	  (lambda (object)
-	    (list-of-type? object elt-pred))))
-    list
-    single-predicate-memoizer))
-
-(define-values (weak-lset-predicate weak-lset-predicate?)
-  (compound-predicate-constructor 'weak-lset weak-list?
-    (lambda (elt-pred)
-      (if (eqv? any-object? elt-pred)
-	  weak-list?
-	  (lambda (object)
-	    (weak-list-of-type? object elt-pred))))
-    list
-    single-predicate-memoizer))
-
-(define-values (uniform-vector-predicate uniform-vector-predicate?)
-  (compound-predicate-constructor 'uniform-vector vector?
-    (lambda (elt-pred)
-      (if (eqv? any-object? elt-pred)
-	  vector?
-	  (lambda (object)
-	    (and (vector? object)
-		 (vector-every elt-pred object)))))
-    list
-    single-predicate-memoizer))
