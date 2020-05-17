@@ -29,7 +29,9 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime character-set) '(runtime version))
+(add-boot-deps! '(runtime character-set)
+		'(runtime version)
+		'(runtime hash-table))
 
 ;;;; Utility combinators
 

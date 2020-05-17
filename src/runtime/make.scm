@@ -394,6 +394,9 @@ USA.
   (set! package-sequencer
 	(lexical-reference runtime-env 'package-sequencer))
 
+  (define seq:after-files-loaded
+    (lexical-reference runtime-env 'seq:after-files-loaded))
+
   (define with-current-package
     (lexical-reference runtime-env 'with-current-package))
 
@@ -424,37 +427,34 @@ USA.
   (call-pkg-init-proc '(package) 'finalize-package-record-type!)
   (call-pkg-init-proc '(runtime random-number) 'finalize-random-state-type!)
 
+  (define (file-member? filename files)
+    (let loop ((files files))
+      (and (pair? files)
+	   (or (string=? (car (car files)) filename)
+	       (loop (cdr files))))))
+
   ;; Load everything else.
   ((lexical-reference environment-for-package 'load-packages-from-file)
    packages-file
    `((sort-type . merge-sort)
      (os-type . ,os-name)
      (options . no-load))
-   (let ((file-member?
-	  (lambda (filename files)
-	    (let loop ((files files))
-	      (and (pair? files)
-		   (or (string=? (car (car files)) filename)
-		       (loop (cdr files))))))))
-     (lambda (filename package)
-       (if (not (or (string=? filename "make")
-		    (string=? filename "packag")
-		    (file-member? filename files0)
-		    (file-member? filename files1)
-		    (file-member? filename files2)))
-	   (load-file-with-boot-inits filename package))
-       unspecific))))
+   (lambda (filename package)
+     (if (not (or (string=? filename "make")
+		  (string=? filename "packag")
+		  (file-member? filename files0)
+		  (file-member? filename files1)
+		  (file-member? filename files2)))
+	 (begin
+	   (let ((seq (package-sequencer package)))
+	     (if (not (seq 'triggered?))
+		 (seq 'add-before! seq:after-files-loaded)))
+	   (load-file-with-boot-inits filename package)))
+     unspecific))
 
-;; All remaining initizations are rooted in seq:after-files-loaded.  Triggering
-;; that starts the initialization cascade.
-(define seq:after-files-loaded
-  (lexical-reference runtime-env 'seq:after-files-loaded))
-
-;; Must be done manually since the ucd-tables are generated:
-((package-sequencer (find-package '(runtime ucd-tables)))
- 'add-before! seq:after-files-loaded)
-
-(seq:after-files-loaded 'trigger!)
+  ;; All remaining initizations are rooted in seq:after-files-loaded.
+  ;; Triggering that starts the initialization cascade.
+  (seq:after-files-loaded 'trigger!))
 
 ;; Done very late since it will look up lots of global variables.
 (call-pkg-init-proc '(runtime library standard) 'finish-host-library-db!)

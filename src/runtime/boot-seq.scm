@@ -40,7 +40,7 @@ USA.
     (define (add-before! seq)
       (if triggered?
 	  (error "Boot sequencer already triggered:" this))
-      (if (not (or (seq '%triggered?)
+      (if (not (or (seq 'triggered?)
 		   (let loop ((scan befores))
 		     (and (pair? scan)
 			  (or (eqv? seq (car scan))
@@ -71,12 +71,14 @@ USA.
       (if (not (null? befores))
 	  (error "Boot sequencer not ready:" this))
       (set! triggered? 'started)
-      (if (not (default-object? trigger-prefix))
-	  (trigger-prefix))
-      (for-each (lambda (action) (action))
-		actions-head)
-      (set! actions-head '())
-      (set! actions-tail '())
+      (if (not (null? actions-head))
+	  (begin
+	    (if (not (default-object? trigger-prefix))
+		(trigger-prefix))
+	    (for-each (lambda (action) (action))
+		      actions-head)
+	    (set! actions-head '())
+	    (set! actions-tail '())))
       (set! triggered? 'finished)
       (let ((ready
 	     (filter! (lambda (seq) (seq '%remove-before! this))
@@ -101,7 +103,7 @@ USA.
 	;; Private:
 	((%add-after!) (apply add-after! args))
 	((%remove-before!) (apply remove-before! args))
-	((%triggered?) triggered?)
+	((triggered?) triggered?)
 	(else (error "Unknown operator:" operator))))
 
     (set! all-boot-sequencers (cons this all-boot-sequencers))
