@@ -454,10 +454,7 @@ USA.
   (enqueue! (repl/input-queue (nearest-repl)) procedure))
 
 (define (repl-read #!optional repl)
-  (hook/repl-read
-   (if (default-object? repl)
-       (nearest-repl)
-       (guarantee repl? repl 'repl-read))))
+  (hook/repl-read (optional-repl repl 'repl-read)))
 
 (define hook/repl-read)
 (define (default/repl-read repl)
@@ -479,16 +476,9 @@ USA.
 
 (define hook/repl-eval)
 (define (default/repl-eval s-expression environment repl)
-
-  (define (do-eval expr env)
-    (%repl-scode-eval (syntax expr env) env repl))
-
-  (if (and (pair? s-expression)
-	   (eq? 'unquote (car s-expression))
-	   (pair? (cdr s-expression))
-	   (null? (cddr s-expression)))
-      (do-eval (cadr s-expression) (->environment '(user)))
-      (do-eval s-expression environment)))
+  (if (rep-escape? s-expression)
+      (handle-rep-escape s-expression environment)
+      (%repl-scode-eval (syntax s-expression environment) environment repl)))
 
 (define (repl-scode-eval scode #!optional environment repl)
   (receive (environment repl) (optional-er environment repl 'repl-scode-eval)
@@ -506,24 +496,11 @@ USA.
    repl))
 
 (define (repl-write vals s-expression #!optional repl)
-  (hook/repl-write vals
-		   s-expression
-		   (if (default-object? repl)
-		       (nearest-repl)
-		       (begin
-			 (guarantee repl? repl 'repl-write)
-			 repl))))
+  (hook/repl-write vals s-expression (optional-repl repl 'repl-write)))
 
 (define hook/repl-write)
 (define (default/repl-write vals s-expression repl)
   (port/write-values (cmdl/port repl) s-expression vals))
-
-(define (repl-get-hash-number object)
-  (and repl:write-result-hash-numbers?
-       (object-pointer? object)
-       (not (interned-symbol? object))
-       (not (number? object))
-       (hash-object object)))
 
 (define (repl-eval/write s-expression #!optional environment repl)
   (receive (environment repl) (optional-er environment repl 'repl-eval/write)
@@ -533,15 +510,24 @@ USA.
   (receive vals (%repl-eval s-expression environment repl)
     (hook/repl-write vals s-expression repl)))
 
+(define (optional-repl repl caller)
+  (if (default-object? repl)
+      (nearest-repl)
+      (guarantee repl? repl caller)))
+
 (define (optional-er environment repl caller)
-  (let ((repl
-	 (if (default-object? repl)
-	     (nearest-repl)
-	     (guarantee repl? repl caller))))
+  (let ((repl (optional-repl repl caller)))
     (values (if (default-object? environment)
 		(repl/environment repl)
 		(guarantee environment? environment caller))
 	    repl)))
+
+(define (repl-get-hash-number object)
+  (and repl:write-result-hash-numbers?
+       (object-pointer? object)
+       (not (interned-symbol? object))
+       (not (number? object))
+       (hash-object object)))
 
 (define (repl/start repl #!optional message)
   ((repl/env-mgr repl) 'set-repl! repl)
@@ -592,12 +578,6 @@ USA.
 ; Assignments to most compiled-code bindings are prohibited,
 ; as are certain other environment operations."
 	       port)))
-	(let ((name ((repl/env-mgr repl) 'name-of environment)))
-	  (if name
-	      (begin
-		(fresh-line port)
-		(write-string ";Env name: " port)
-		(write name port))))
 	(let ((package (environment->package environment)))
 	  (if package
 	      (begin
@@ -769,14 +749,14 @@ USA.
       (set! repl repl*)
       unspecific)
 
-    (define (%switch-env! env)
+    (define (current)
+      current-env)
+
+    (define (set-current! env)
       (set! current-env env)
       (repl/set-default-environment repl)
       (port/set-default-environment (cmdl/port repl) env)
       env)
-
-    (define (current)
-      current-env)
 
     (define (get-stack)
       (weak-list->list stack))
@@ -787,15 +767,15 @@ USA.
 	  env
 	  (begin
 	    (set! stack (weak-cons current-env (weak-delq! env stack)))
-	    (%switch-env! env))))
+	    (set-current! env))))
 
     (define (pop!)
-      (%pop-stack! %switch-env!))
+      (%pop-stack! set-current!))
 
     (define (swap-tos!)
       (%pop-stack! (lambda (env)
 		     (set! stack (weak-cons current-env stack))
-		     (%switch-env! env))))
+		     (set-current! env))))
 
     (define (bury!)
       (%pop-stack! (lambda (env)
@@ -804,7 +784,7 @@ USA.
 		       (if p
 			   (weak-set-cdr! p tail)
 			   (set! stack tail)))
-		     (%switch-env! env))))
+		     (set-current! env))))
 
     (define (%pop-stack! succeed)
       (let loop ((this stack))
@@ -849,8 +829,8 @@ USA.
 			    name)
 			  (lambda () #f)))
 
-    (bundle #f set-repl! current get-stack push! pop! swap-tos! bury!
-	    known-name? get-named name-current! delete-name! clear-names!
+    (bundle #f set-repl! current set-current! get-stack push! pop! swap-tos!
+	    bury! known-name? get-named name-current! delete-name! clear-names!
 	    env-names named-envs name-of)))
 
 ;;;; History
@@ -899,7 +879,7 @@ USA.
 
 (define (ge #!optional environment)
   ((repl/env-mgr (nearest-repl))
-   'push!
+   'set-current!
    (if (default-object? environment)
        (make-top-level-environment)
        (->environment environment 'ge))))

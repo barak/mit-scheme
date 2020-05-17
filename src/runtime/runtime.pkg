@@ -4432,6 +4432,13 @@ USA.
   (export (runtime working-directory)
 	  cmdl/set-default-directory))
 
+(define-package (runtime rep ui)
+  (files "rep-ui")
+  (parent (runtime rep))
+  (export (runtime rep)
+	  handle-rep-escape
+	  rep-escape?))
+
 (define-package (runtime save/restore)
   (files "savres")
   (parent (runtime))
