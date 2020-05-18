@@ -3320,6 +3320,7 @@ USA.
 	  (list-tabulate make-initialized-list)	;(srfi 1)
 	  (proper-list? list?)		;(srfi 1)
 	  add-member-procedure
+	  alist->alist-table
 	  alist->keyword-list
 	  alist-adjoiner
 	  alist-adjoiner!

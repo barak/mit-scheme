@@ -1402,6 +1402,9 @@ USA.
 (define (alist-table key=)
   (%make-alist-table key= '()))
 
+(define (alist->alist-table key= alist)
+  (%make-alist-table key= (alist-copy alist)))
+
 (define (alist-table-size table)
   (length (%table-alist table)))
 
