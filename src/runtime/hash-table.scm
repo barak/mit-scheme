@@ -115,7 +115,7 @@ USA.
   (guarantee alist? alist 'alist->hash-table)
   (let ((table (apply make-hash-table args)))
     (for-each (lambda (p)
-		(hash-table-set! table (car p) (cdr p)))
+		(%hash-table-set! table (car p) (cdr p)))
 	      alist)
     table))
 
@@ -127,7 +127,7 @@ USA.
 		(scan (cdr scan)))
 	    (if (not (pair? scan))
 		(error "Not an even number of arguments:" args))
-	    (hash-table-set! table key (car scan))
+	    (%hash-table-set! table key (car scan))
 	    (loop (cdr scan)))))
     table))
 
@@ -137,7 +137,7 @@ USA.
       (if (stop? seed)
 	  result
 	  (let-values (((key value) (mapper seed)))
-	    (hash-table-set! result key value)
+	    (%hash-table-set! result key value)
 	    (loop (successor seed)))))))
 
 (define (hash-table-constructor type . args)
@@ -219,12 +219,23 @@ USA.
 (define-integrable (%hash-table-ref table key fail succeed)
   ((table-type-method:get (hash-table-type table)) table key fail succeed))
 
-(define (hash-table-set! table key datum)
+(define (hash-table-set! table . plist)
+  (let ((:set! (table-type-method:put! (hash-table-type table))))
+    (let loop ((plist plist))
+      (if (not (null-list? plist 'hash-table-set!))
+          (let ((key (car plist))
+                (rest (cdr plist)))
+            (if (null-list? rest 'hash-table-set!)
+                (error:bad-range-argument plist 'hash-table-set!))
+            (:set! table key (car rest))
+            (loop (cdr rest)))))))
+
+(define (%hash-table-set! table key datum)
   ((table-type-method:put! (hash-table-type table)) table key datum))
 
 (define (hash-table-update! table key procedure #!optional fail succeed)
-  (hash-table-set! table key
-		   (procedure (hash-table-ref table key fail succeed))))
+  (%hash-table-set! table key
+		    (procedure (hash-table-ref table key fail succeed))))
 
 (define (hash-table-update!/default table key procedure default)
   (hash-table-update! table key procedure (lambda () default)))
@@ -233,12 +244,18 @@ USA.
   (%hash-table-ref table key
 		   (lambda ()
 		     (let ((datum (generator)))
-		       (hash-table-set! table key datum)
+		       (%hash-table-set! table key datum)
 		       datum))
 		   #f))
 
-(define (hash-table-delete! table key)
-  ((table-type-method:remove! (hash-table-type table)) table key))
+(define (hash-table-delete! table . keys)
+  (fold (let ((:remove! (table-type-method:remove! (hash-table-type table))))
+	  (lambda (key count)
+	    (if (:remove! table key)
+		(+ count 1)
+		count)))
+	0
+	keys))
 
 (define (hash-table-clear! table)
   (without-interruption
@@ -298,7 +315,7 @@ USA.
 (define (hash-table-map procedure comparator table)
   (let ((result (make-hash-table comparator)))
     (%hash-table-fold (lambda (key value acc)
-			(hash-table-set! result key (procedure value))
+			(%hash-table-set! result key (procedure value))
 			acc)
 		      unspecific
 		      table)
@@ -340,7 +357,10 @@ USA.
     (values (car p) (cdr p))))
 
 (define (hash-table-pop! table)
-  (let ((p (hash-table-find cons table)))
+  (let ((p
+	 (hash-table-find cons table
+	   (lambda ()
+	     (error:bad-range-argument table 'hash-table-pop!)))))
     (hash-table-delete! table (car p))
     (values (car p) (cdr p))))
 
@@ -363,7 +383,7 @@ USA.
 (define (hash-table-union! table1 table2)
   (hash-table-for-each (lambda (key value)
 			 (if (not (hash-table-contains? table1 key))
-			     (hash-table-set! table1 key value)))
+			     (%hash-table-set! table1 key value)))
 		       table2)
   table1)
 
@@ -385,7 +405,7 @@ USA.
   (hash-table-for-each (lambda (key value)
 			 (if (hash-table-contains? table1 key)
 			     (hash-table-delete! table1 key)
-			     (hash-table-set! table1 key value)))
+			     (%hash-table-set! table1 key value)))
 		       table2)
   table1)
 
@@ -909,20 +929,21 @@ USA.
   (define (method:remove! table key)
     (let ((hash (compute-hash! table key)))
       (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
-	(if (pair? p)
-	    (call-with-entry-key entry-type (car p)
-	      (lambda (key* barrier)
-		(declare (integrate key*) (ignore barrier))
-		(if (key=? key* key)
-		    (without-interruption
-		      (lambda ()
-			(if q
-			    (set-cdr! q (cdr p))
-			    (vector-set! (table-buckets table) hash (cdr p)))
-			(decrement-table-count! table)
-			(maybe-shrink-table! table)))
-		    (loop (cdr p) p)))
-	      (lambda () (loop (cdr p) p)))))))
+	(and (pair? p)
+	     (call-with-entry-key entry-type (car p)
+	       (lambda (key* barrier)
+		 (declare (integrate key*) (ignore barrier))
+		 (if (key=? key* key)
+		     (without-interruption
+		       (lambda ()
+			 (if q
+			     (set-cdr! q (cdr p))
+			     (vector-set! (table-buckets table) hash (cdr p)))
+			 (decrement-table-count! table)
+			 (maybe-shrink-table! table)
+			 #t))
+		     (loop (cdr p) p)))
+	       (lambda () (loop (cdr p) p)))))))
   method:remove!)
 
 (define (make-method:clean! entry-type)
@@ -1401,7 +1422,7 @@ USA.
     (cond ((hash-table-ref/default crap entry-type #f)
 	   => (lambda (type*)
 		(warn "Replacing memoized hash table type:" type type*))))
-    (hash-table-set! crap entry-type type)))
+    (%hash-table-set! crap entry-type type)))
 
 (define (%make-hash-table-type key-hash key=? rehash-after-gc? entry-type)
   (let ((compute-hash!
@@ -1455,9 +1476,9 @@ USA.
 		       entry-type))))
 
 (define-integrableish (open-type-constructor! entry-type)
-  (hash-table-set! hash-table-type-constructors
-		   entry-type
-		   (open-type-constructor entry-type)))
+  (%hash-table-set! hash-table-type-constructors
+		    entry-type
+		    (open-type-constructor entry-type)))
 
 (define-integrableish (open-type key-hash key=? rehash-after-gc? entry-type)
   (declare (integrate-operator %make-hash-table-type make-table-type))
@@ -1627,7 +1648,7 @@ USA.
 
 (define (hash-table/modify! table key default procedure)
   (let ((datum (procedure (hash-table-ref/default table key default))))
-    (hash-table-set! table key datum)
+    (%hash-table-set! table key datum)
     datum))
 
 (define (hash-table-walk table procedure)
