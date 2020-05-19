@@ -187,7 +187,7 @@ USA.
 
 (define (hash-table-mutable? table)
   (guarantee hash-table? table 'hash-table-mutable?)
-  #f)
+  #t)
 
 (define (hash-table-empty? table)
   (= 0 (hash-table-size table)))
