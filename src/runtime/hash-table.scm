@@ -994,7 +994,7 @@ USA.
 		(call-with-entry-key entry-type (car p)
 		  (lambda (key barrier)
 		    (declare (integrate key) (ignore barrier))
-		    (let ((hash (fix:remainder (key-hash key) n-buckets)))
+		    (let ((hash (key-hash key n-buckets)))
 		      (set-cdr! p (vector-ref buckets hash))
 		      (vector-set! buckets hash p)))
 		  (lambda () (decrement-table-count! table)))
@@ -1277,16 +1277,14 @@ USA.
   (declare (integrate-operator key-hash))
   (lambda (table key)
     (declare (integrate table key))
-    (fix:remainder (key-hash key) (vector-length (table-buckets table)))))
+    (key-hash key (vector-length (table-buckets table)))))
 
 (define (compute-address-hash key-hash)
   (declare (integrate-operator key-hash))
   (lambda (table key)
     (declare (integrate table key))
     (let loop ()
-      (let ((hash
-	     (fix:remainder (key-hash key)
-			    (vector-length (table-buckets table)))))
+      (let ((hash (key-hash key (vector-length (table-buckets table)))))
 	(if (table-needs-rehash? table)
 	    (begin
 	      (rehash-table! table)
@@ -1314,7 +1312,7 @@ USA.
 
 ;;;; EQ/EQV/EQUAL Hash functions
 
-(define (eq-hash-mod key modulus)
+(define-integrable (eq-hash-mod key modulus)
   (fix:remainder (eq-hash key) modulus))
 
 (define-integrable (eq-hash object)
@@ -1323,7 +1321,7 @@ USA.
 	    object)
 	   (hash-mask)))
 
-(define (eqv-hash-mod key modulus)
+(define-integrable (eqv-hash-mod key modulus)
   (fix:remainder (eqv-hash key) modulus))
 
 (define (eqv-hash key)
@@ -1334,18 +1332,24 @@ USA.
       (primitive-object-hash key)
       (eq-hash key)))
 
-(define (equal-hash-mod key modulus)
+(define-integrable (equal-hash-mod key modulus)
   (fix:remainder (equal-hash key) modulus))
 
-(define (int:hash object)
-  (bitwise-and (int:abs object) (hash-mask)))
+(define (comparator-binary-hash-function comparator)
+  (let ((hash-fn (comparator-hash-function comparator)))
+    (cond ((eqv? eq-hash hash-fn) eq-hash-mod)
+	  ((eqv? eqv-hash hash-fn) eqv-hash-mod)
+	  ((eqv? equal-hash hash-fn) equal-hash-mod)
+	  (else
+	   (lambda (key modulus)
+	     (fix:remainder (hash-fn key) modulus))))))
 
 ;;;; Constructing and Open-Coding Types and Constructors
 
 (define (comparator->hash-table-type comparator . args)
   (if (not (comparator-hashable? comparator))
       (error:bad-range-argument comparator))
-  (make-hash-table-type (comparator-hash-function comparator)
+  (make-hash-table-type (comparator-binary-hash-function comparator)
 			(comparator-equality-predicate comparator)
 			(comparator-rehash-after-gc? comparator)
 			(comparator-entry-type comparator args)))
@@ -1369,7 +1373,7 @@ USA.
   (receive (key-hash rehash-after-gc? entry-type-name)
       (hash-table-type-options options 'make-hash-table-type*)
     (make-hash-table-type (if (default-object? key-hash)
-			      (comparator-hash-function
+			      (comparator-binary-hash-function
 			       (key=->comparator key=?))
 			      key-hash)
 			  key=?
@@ -1381,7 +1385,7 @@ USA.
 
 (define-deferred hash-table-type-options
   (keyword-option-parser
-   (list (list 'hash-function unary-procedure? default-object)
+   (list (list 'hash-function binary-procedure? default-object)
 	 (list 'rehash-after-gc? boolean? default-object)
 	 (list 'entry-type entry-type-name? (lambda () 'strong)))))
 
@@ -1518,12 +1522,12 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! key-ephemeral-eq-hash-table-type
-	 (open-type eq-hash eq? #t hash-table-entry-type:key-ephemeral))
+	 (open-type eq-hash-mod eq? #t hash-table-entry-type:key-ephemeral))
    (set! make-key-ephemeral-eq-hash-table
 	 (hash-table-constructor key-ephemeral-eq-hash-table-type))
    (set! hash-table-type-constructors (make-key-ephemeral-eq-hash-table))
    (set! hash-metadata-table (make-key-ephemeral-eq-hash-table))
-   (memoize-hash-table-type! eq-hash eq? #t
+   (memoize-hash-table-type! eq-hash-mod eq? #t
 			     hash-table-entry-type:key-ephemeral
 			     key-ephemeral-eq-hash-table-type)
    (open-type-constructor! hash-table-entry-type:strong)
@@ -1535,27 +1539,27 @@ USA.
    (open-type-constructor! hash-table-entry-type:key&datum-ephemeral)
    (let ((make make-hash-table-type))	;For brevity...
      (set! equal-hash-table-type
-	   (make equal-hash equal? #t hash-table-entry-type:strong))
+	   (make equal-hash-mod equal? #t hash-table-entry-type:strong))
      (set! key-weak-eq-hash-table-type	;Open-coded
-	   (open-type! eq-hash eq? #t hash-table-entry-type:key-weak))
+	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:key-weak))
      (set! datum-weak-eq-hash-table-type ;Open-coded
-	   (open-type! eq-hash eq? #t hash-table-entry-type:datum-weak))
+	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:datum-weak))
      (set! key-ephemeral-eqv-hash-table-type
-	   (make eqv-hash eqv? #t hash-table-entry-type:key-ephemeral))
+	   (make eqv-hash-mod eqv? #t hash-table-entry-type:key-ephemeral))
      (set! key-weak-eqv-hash-table-type
-	   (make eqv-hash eqv? #t hash-table-entry-type:key-weak))
+	   (make eqv-hash-mod eqv? #t hash-table-entry-type:key-weak))
      (set! datum-weak-eqv-hash-table-type
-	   (make eqv-hash eqv? #t hash-table-entry-type:datum-weak))
+	   (make eqv-hash-mod eqv? #t hash-table-entry-type:datum-weak))
      (set! non-pointer-hash-table-type	;Open-coded
-	   (open-type! eq-hash eq? #f hash-table-entry-type:strong))
+	   (open-type! eq-hash-mod eq? #f hash-table-entry-type:strong))
      (set! string-ci-hash-table-type
 	   (make string-ci-hash string-ci=? #t hash-table-entry-type:strong))
      (set! string-hash-table-type
 	   (make string-hash string=? #t hash-table-entry-type:strong))
      (set! strong-eq-hash-table-type	;Open-coded
-	   (open-type! eq-hash eq? #t hash-table-entry-type:strong))
+	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:strong))
      (set! strong-eqv-hash-table-type
-	   (make eqv-hash eqv? #t hash-table-entry-type:strong)))
+	   (make eqv-hash-mod eqv? #t hash-table-entry-type:strong)))
    unspecific))
 
 (define make-equal-hash-table)
@@ -1627,21 +1631,21 @@ USA.
       (eq-hash key)
       (begin
 	(guarantee positive-fixnum? modulus)
-	(fix:remainder (eq-hash key) modulus))))
+	(eq-hash-mod key modulus))))
 
 (define (hash-by-eqv key #!optional modulus)
   (if (default-object? modulus)
       (eqv-hash key)
       (begin
 	(guarantee positive-fixnum? modulus)
-	(fix:remainder (eqv-hash key) modulus))))
+	(eqv-hash-mod key modulus))))
 
 (define (hash-by-equal key #!optional modulus)
   (if (default-object? modulus)
       (equal-hash key)
       (begin
 	(guarantee positive-fixnum? modulus)
-	(fix:remainder (equal-hash key) modulus))))
+	(equal-hash-mod key modulus))))
 
 (define (hash-table/lookup table key if-found if-not-found)
   (hash-table-ref table key if-not-found if-found))
@@ -1663,7 +1667,7 @@ USA.
 (define (make-hash-table* type #!optional initial-size)
   (guarantee hash-table-type? type 'make-hash-table*)
   (%make-hash-table type initial-size 'make-hash-table*))
-
+
 ;;;; Miscellany
 
 (define (check-arg object default predicate description procedure)

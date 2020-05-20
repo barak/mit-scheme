@@ -732,8 +732,8 @@ USA.
 (define (hash-salt)
   (random-integer (hash-bound)))
 
-(define ((protected-hash-function hash-fn) object)
-  (check-hash (hash-fn object)))
+(define ((protected-hash-function hash-fn) object modulus)
+  (check-hash (hash-fn object modulus)))
 
 (define-integrable (check-hash h)
   (guarantee index-fixnum? h)

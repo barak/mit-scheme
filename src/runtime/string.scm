@@ -1765,8 +1765,12 @@ USA.
 		(if (char=? char char1) char2 char))
 	      string))
 
-(define (string-hash string)
-  (%string-hash (string->nfc string)))
+(define (string-hash string #!optional modulus)
+  (if (default-object? modulus)
+      (%string-hash (string->nfc string))
+      (begin
+	(guarantee positive-fixnum? modulus 'string-hash)
+	(fix:remainder (%string-hash (string->nfc string)) modulus))))
 
 (define (%string-hash string)
   (primitive-memory-hash string
@@ -1777,8 +1781,8 @@ USA.
 				(fix:* (%ustring-cp-size string)
 				       (ustring-length string)))))
 
-(define (string-ci-hash string)
-  (string-hash (string-foldcase string)))
+(define (string-ci-hash string #!optional modulus)
+  (string-hash (string-foldcase string) modulus))
 
 (define (8-bit-string? object)
   (and (string? object)

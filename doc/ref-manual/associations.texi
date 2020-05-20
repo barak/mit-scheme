@@ -606,13 +606,14 @@ are described.
 
 @deffn {obsolete procedure} make-hash-table-type hash-function key=? rehash-after-gc? entry-type
 @cindex hashing, of key in hash table
+@cindex modulus, of hashing procedure
 This procedure accepts four arguments and returns a hash-table type,
 which can be used to make hash tables of that type.  The @var{key=?}
 argument is an equivalence predicate for the keys of the hash table.
 The @var{hash-function} argument is a procedure that computes a hash
-number.  Specifically, @var{hash-function} accepts one argument, a
-key, and returns an exact non-negative integer that is less than
-@code{(hash-bound)}.
+number.  Specifically, @var{hash-function} accepts two arguments, a key and
+an exact positive integer (the @dfn{modulus}), and returns an exact
+non-negative integer that is less than the modulus.
 
 The argument @var{rehash-after-gc?}, if true, says that the
 values returned by @var{hash-function} might change after a garbage

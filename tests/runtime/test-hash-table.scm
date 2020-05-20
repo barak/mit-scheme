@@ -247,15 +247,15 @@ USA.
 				      delete-fraction)
 	 implementation)))))
 
-(define (integer-hash integer)
-  (bitwise-and (abs integer) (hash-mask)))
+(define (integer-hash-mod integer modulus)
+  (int:remainder (if (int:< integer 0) (int:- 0 integer) integer) modulus))
 
 (let ((hash-parameters
-       (list (list 'eq eq-hash eq? #t)
-	     (list 'eqv eqv-hash eqv? #t)
-	     (list 'equal equal-hash equal? #t)
+       (list (list 'eq eq-hash-mod eq? #t)
+	     (list 'eqv eqv-hash-mod eqv? #t)
+	     (list 'equal equal-hash-mod equal? #t)
 	     (list 'integer
-		   (lambda (x) (integer-hash (car x)))
+		   (lambda (x modulus) (integer-hash-mod (car x) modulus))
 		   (lambda (x y) (int:= (car x) (car y)))
 		   #f)))
       (entry-types
@@ -344,7 +344,7 @@ USA.
 
 (define (regression-make-table entry-type)
   ((hash-table-constructor
-    (make-hash-table-type (lambda (k) k 0) eqv? #f entry-type))))
+    (make-hash-table-type (lambda (k m) k m 0) eqv? #f entry-type))))
 
 (define-test 'regression:false-key-of-broken-weak-entry
   (lambda ()

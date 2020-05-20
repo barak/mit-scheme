@@ -574,17 +574,17 @@ Returns @code{#t} if @var{string} has zero length; otherwise returns
 @end example
 @end deffn
 
-@deffn procedure string-hash string
-@deffnx procedure string-hash-ci string
+@deffn procedure string-hash string [modulus]
+@deffnx procedure string-hash-ci string [modulus]
 @cindex hashing, of string
 @findex string=?
 @findex string-ci=?
 @findex =
-These procedures return an exact non-negative integer that can be used
-for storing the specified @var{string} in a hash table.  Equal strings
-(in the sense of @code{string=?} and @code{string-ci=?} respectively)
-return equal (@code{=}) hash codes, and non-equal but similar strings
-are usually mapped to distinct hash codes.
+These @srfi{69} procedures return an exact non-negative integer that
+can be used for storing the specified @var{string} in a hash table.
+Equal strings (in the sense of @code{string=?} and @code{string-ci=?}
+respectively) return equal (@code{=}) hash codes, and non-equal but
+similar strings are usually mapped to distinct hash codes.
 @end deffn
 
 @deffn procedure string-head string end
@@ -593,6 +593,11 @@ Equivalent to @code{(substring @var{string} 0 @var{end})}.
 
 @deffn procedure string-tail string start
 Equivalent to @code{(substring @var{string} @var{start})}.
+
+If the optional argument @var{modulus} is specified, it must be an
+exact positive integer, and the result of the hash computation is
+restricted to be less than that value.  This is equivalent to calling
+@code{modulo} on the result, but may be faster.
 @end deffn
 
 @deffn procedure string-builder [buffer-length]

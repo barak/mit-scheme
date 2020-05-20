@@ -99,8 +99,10 @@ USA.
 		    (loop (fix:+ index 1))))))))
 
 ;; String hash primitives work on bytevectors too.
-(define (bytevector-hash bytevector)
-  ((ucode-primitive string-hash) bytevector))
+(define (bytevector-hash bytevector #!optional modulus)
+  (if (default-object? modulus)
+      ((ucode-primitive string-hash) bytevector)
+      ((ucode-primitive string-hash-mod) bytevector modulus)))
 
 (define (bytevector-builder #!optional buffer-length)
   (make-sequence-builder u8? bytevector? allocate-bytevector bytevector-length

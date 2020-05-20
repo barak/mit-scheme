@@ -2852,16 +2852,16 @@ USA.
 	  strong-hash-table/constructor
 	  weak-hash-table/constructor)
   (export ()
-	  (hash hash-by-equal)			    ;(srfi 69)
-	  (hash-table-exists? hash-table-contains?) ;(srfi 69)
-	  (hash-table-merge! hash-table-union!) ;(srfi 69)
+	  (hash hash-by-equal)			    ;(srfi 69) (srfi 125)
+	  (hash-table-exists? hash-table-contains?) ;(srfi 69) (srfi 125)
+	  (hash-table-merge! hash-table-union!) ;(srfi 69) (srfi 125)
 	  (number-hash eqv-hash)	;(srfi 128)
 	  alist->hash-table		;(srfi 69) (srfi 125)
 	  eq-hash
 	  eqv-hash
 	  hash-table			;(srfi 125)
 	  hash-table->alist		;(srfi 69) (srfi 125)
-	  hash-by-identity		;(srfi 69)
+	  hash-by-identity		;(srfi 69) (srfi 125)
 	  hash-table-clean!
 	  hash-table-clear!		;(srfi 69) (srfi 125)
 	  hash-table-constructor
@@ -2873,13 +2873,13 @@ USA.
 	  hash-table-empty-copy		;(srfi 125)
 	  hash-table-empty?		;(srfi 125)
 	  hash-table-entries		;(srfi 125)
-	  hash-table-equivalence-function ;(srfi 69)
+	  hash-table-equivalence-function ;(srfi 69) (srfi 125)
 	  hash-table-every
 	  hash-table-find		;(srfi 125)
 	  hash-table-fold		;(srfi 69) (srfi 125)
 	  hash-table-for-each		;(srfi 125)
 	  hash-table-grow-size
-	  hash-table-hash-function	;(srfi 69)
+	  hash-table-hash-function	;(srfi 69) (srfi 125)
 	  hash-table-intern!		;(srfi 125)
 	  hash-table-intersection!	;(srfi 125)
 	  hash-table-keys		;(srfi 69) (srfi 125)
@@ -2901,7 +2901,7 @@ USA.
 	  hash-table-update!		;(srfi 69) (srfi 125)
 	  hash-table-update!/default	;(srfi 69) (srfi 125)
 	  hash-table-values		;(srfi 69) (srfi 125)
-	  hash-table-walk		;(srfi 69)
+	  hash-table-walk		;(srfi 69) (srfi 125)
 	  hash-table-xor!		;(srfi 125)
 	  hash-table<=?
 	  hash-table=?			;(srfi 125)
@@ -6796,7 +6796,7 @@ USA.
 	  uniform-vector-comparator
 	  uniform-weak-list-comparator
 	  weak-lset-comparator)
-  (export (runtime)
+  (export (runtime hash-table)
 	  protected-hash-function)
   (export (runtime hash-table)
 	  weak-list-comparator?))
