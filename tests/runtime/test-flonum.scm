@@ -972,48 +972,49 @@ USA.
       (assert-eqv (flo:nan-payload nan) payload))))
 
 (let ((inputs '((-inf.0) (-1.) (-0.) (+0.) (+1.) (+inf.0)))
-      (quiet-cases
+      (numeric-cases
        `((-inf.0 -inf.0 -inf.0 -inf.0 -inf.0 -inf.0)
          (-inf.0 -1. -inf.0 -1. -1. -inf.0)
          (-inf.0 -0. -inf.0 -0. -0. -inf.0)
          (-inf.0 +0. -inf.0 +0. +0. -inf.0)
          (-inf.0 +1. -inf.0 +1. +1. -inf.0)
          (-inf.0 +inf.0 -inf.0 +inf.0 -inf.0 +inf.0)
-         (-inf.0 ,(flo:qnan) -inf.0 -inf.0 -inf.0 -inf.0)
          (-1. -inf.0 -inf.0 -1. -1. -inf.0)
          (-1. -1. -1. -1. -1. -1.)
          (-1. -0. -1. -0. -0. -1.)
          (-1. +0. -1. +0. +0. -1.)
          (-1. +1. -1. +1. -1. +1.)
          (-1. +inf.0 -1. +inf.0 -1. +inf.0)
-         (-1. ,(flo:qnan) -1. -1. -1. -1.)
          (-0. -inf.0 -inf.0 -0. -0. -inf.0)
          (-0. -1. -1. -0. -0. -1.)
          (-0. -0. -0. -0. -0. -0.)
-         (-0. +0. -0. +0. -0. +0.)      ;arbitrary
+         (-0. +0. -0. +0. -0. +0.)
          (-0. +1. -0. +1. -0. +1.)
          (-0. +inf.0 -0. +inf.0 -0. +inf.0)
-         (-0. ,(flo:qnan) -0. -0. -0. -0.)
          (+0. -inf.0 -inf.0 +0. +0. -inf.0)
          (+0. -1. -1. +0. +0. -1.)
-         (+0. -0. +0. -0. +0. -0.)      ;arbitrary
+         (+0. -0. -0. +0. -0. +0.)
          (+0. +0. +0. +0. +0. +0.)
          (+0. +1. +0. +1. +0. +1.)
          (+0. +inf.0 +0. +inf.0 +0. +inf.0)
-         (+0. ,(flo:qnan) +0. +0. +0. +0.)
          (+1. -inf.0 -inf.0 +1. +1. -inf.0)
          (+1. -1. -1. +1. -1. +1.)
          (+1. -0. -0. +1. -0. +1.)
          (+1. +0. +0. +1. +0. +1.)
          (+1. +1. +1. +1. +1. +1.)
          (+1. +inf.0 +1. +inf.0 +1. +inf.0)
-         (+1. ,(flo:qnan) +1. +1. +1. +1.)
          (+inf.0 -inf.0 -inf.0 +inf.0 -inf.0 +inf.0)
          (+inf.0 -1. -1. +inf.0 -1. +inf.0)
          (+inf.0 -0. -0. +inf.0 -0. +inf.0)
          (+inf.0 +0. +0. +inf.0 +0. +inf.0)
          (+inf.0 +1. +1. +inf.0 +1. +inf.0)
-         (+inf.0 +inf.0 +inf.0 +inf.0 +inf.0 +inf.0)
+         (+inf.0 +inf.0 +inf.0 +inf.0 +inf.0 +inf.0)))
+      (quiet-cases
+       `((-inf.0 ,(flo:qnan) -inf.0 -inf.0 -inf.0 -inf.0)
+         (-1. ,(flo:qnan) -1. -1. -1. -1.)
+         (-0. ,(flo:qnan) -0. -0. -0. -0.)
+         (+0. ,(flo:qnan) +0. +0. +0. +0.)
+         (+1. ,(flo:qnan) +1. +1. +1. +1.)
          (+inf.0 ,(flo:qnan) +inf.0 +inf.0 +inf.0 +inf.0)
          (,(flo:qnan) -inf.0 -inf.0 -inf.0 -inf.0 -inf.0)
          (,(flo:qnan) -1. -1. -1. -1. -1.)
@@ -1024,38 +1025,60 @@ USA.
          (,(flo:qnan) ,(flo:qnan)
           ,(flo:qnan) ,(flo:qnan)
           ,(flo:qnan) ,(flo:qnan)))))
-  (define-enumerated-test 'min quiet-cases
+
+  ;; Min/max (magnitude) -- numeric cases
+  (define-enumerated-test 'min numeric-cases
     (lambda (x y min max min-mag max-mag)
       max min-mag max-mag
-      (assert-eqv-nan (yes-traps (lambda () (flo:min x y))) min)))
-  (define-enumerated-test 'max quiet-cases
+      (assert-eqv (yes-traps (lambda () (flo:min x y))) min)))
+  (define-enumerated-test 'max numeric-cases
     (lambda (x y min max min-mag max-mag)
       min min-mag max-mag
-      (assert-eqv-nan (yes-traps (lambda () (flo:max x y))) max)))
-  (define-enumerated-test 'min-mag quiet-cases
+      (assert-eqv (yes-traps (lambda () (flo:max x y))) max)))
+  (define-enumerated-test 'min-mag numeric-cases
     (lambda (x y min max min-mag max-mag)
       min max max-mag
-      (assert-eqv-nan (yes-traps (lambda () (flo:min-mag x y))) min-mag)))
-  (define-enumerated-test 'max-mag quiet-cases
+      (assert-eqv (yes-traps (lambda () (flo:min-mag x y))) min-mag)))
+  (define-enumerated-test 'max-mag numeric-cases
     (lambda (x y min max min-mag max-mag)
       min max min-mag
-      (assert-eqv-nan (yes-traps (lambda () (flo:max-mag x y))) max-mag)))
+      (assert-eqv (yes-traps (lambda () (flo:max-mag x y))) max-mag)))
+
+  ;; Min/max (magnitude) -- quiet NaN cases
+  (define-enumerated-test 'min quiet-cases
+    (lambda (x y min max min-mag max-mag)
+      min max min-mag max-mag
+      (assert-qnan (yes-traps (lambda () (flo:min x y))))))
+  (define-enumerated-test 'max quiet-cases
+    (lambda (x y min max min-mag max-mag)
+      min max min-mag max-mag
+      (assert-qnan (yes-traps (lambda () (flo:max x y))))))
+  (define-enumerated-test 'min-mag quiet-cases
+    (lambda (x y min max min-mag max-mag)
+      min max min-mag max-mag
+      (assert-qnan (yes-traps (lambda () (flo:min-mag x y))))))
+  (define-enumerated-test 'max-mag quiet-cases
+    (lambda (x y min max min-mag max-mag)
+      min max min-mag max-mag
+      (assert-qnan (yes-traps (lambda () (flo:max-mag x y))))))
+
+  ;; Min/max -- signalling cases (XXX test exceptions too)
   (define-enumerated-test 'min-snan-left inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:min (flo:snan 123) x)))
-                      (flo:qnan 123))))
+		      (flo:qnan 123))))
   (define-enumerated-test 'max-snan-left inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:max (flo:snan 123) x)))
-                      (flo:qnan 123))))
+		      (flo:qnan 123))))
   (define-enumerated-test 'min-snan-right inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:min x (flo:snan 123))))
-                      (flo:qnan 123))))
+		      (flo:qnan 123))))
   (define-enumerated-test 'max-snan-right inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:max x (flo:snan 123))))
-                      (flo:qnan 123))))
+		      (flo:qnan 123))))
   (define-test 'min-snan-both
     (lambda ()
       (assert-qnan
@@ -1064,32 +1087,104 @@ USA.
     (lambda ()
       (assert-qnan
        (no-traps (lambda () (flo:max (flo:snan 123) (flo:snan 456)))))))
+
+  ;; Min/max magnitude -- signalling cases (XXX test exceptions too)
   (define-enumerated-test 'min-mag-snan-left inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:min-mag (flo:snan 123) x)))
-                      (flo:qnan 123))))
+		      (flo:qnan 123))))
   (define-enumerated-test 'max-mag-snan-left inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:max-mag (flo:snan 123) x)))
-                      (flo:qnan 123))))
+		      (flo:qnan 123))))
   (define-enumerated-test 'min-mag-snan-right inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:min-mag x (flo:snan 123))))
-                      (flo:qnan 123))))
+		      (flo:qnan 123))))
   (define-enumerated-test 'max-mag-snan-right inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:max-mag x (flo:snan 123))))
-                      (flo:qnan 123))))
+		      (flo:qnan 123))))
   (define-test 'min-mag-snan-both
     (lambda ()
       (assert-qnan
-       (no-traps
-        (lambda () (flo:min-mag (flo:snan 123) (flo:snan 456)))))))
+       (no-traps (lambda () (flo:min-mag (flo:snan 123) (flo:snan 456)))))))
   (define-test 'max-mag-snan-both
     (lambda ()
       (assert-qnan
+       (no-traps (lambda () (flo:max-mag (flo:snan 123) (flo:snan 456)))))))
+
+  ;; Min/max (magnitude) number -- all non-signalling cases
+  (define-enumerated-test 'min-num (append numeric-cases quiet-cases)
+    (lambda (x y min max min-mag max-mag)
+      max min-mag max-mag
+      (assert-eqv-nan (yes-traps (lambda () (flo:min-num x y))) min)))
+  (define-enumerated-test 'max-num (append numeric-cases quiet-cases)
+    (lambda (x y min max min-mag max-mag)
+      min min-mag max-mag
+      (assert-eqv-nan (yes-traps (lambda () (flo:max-num x y))) max)))
+  (define-enumerated-test 'min-mag-num (append numeric-cases quiet-cases)
+    (lambda (x y min max min-mag max-mag)
+      min max max-mag
+      (assert-eqv-nan (yes-traps (lambda () (flo:min-mag-num x y))) min-mag)))
+  (define-enumerated-test 'max-mag-num (append numeric-cases quiet-cases)
+    (lambda (x y min max min-mag max-mag)
+      min max min-mag
+      (assert-eqv-nan (yes-traps (lambda () (flo:max-mag-num x y))) max-mag)))
+
+  ;; Min/max number -- signalling cases (XXX test exceptions too)
+  (define-enumerated-test 'min-num-snan-left inputs
+    (lambda (x)
+      (assert-eqv-nan (no-traps (lambda () (flo:min-num (flo:snan 123) x)))
+                      (flo:qnan 123))))
+  (define-enumerated-test 'max-num-snan-left inputs
+    (lambda (x)
+      (assert-eqv-nan (no-traps (lambda () (flo:max-num (flo:snan 123) x)))
+                      (flo:qnan 123))))
+  (define-enumerated-test 'min-num-snan-right inputs
+    (lambda (x)
+      (assert-eqv-nan (no-traps (lambda () (flo:min-num x (flo:snan 123))))
+                      (flo:qnan 123))))
+  (define-enumerated-test 'max-num-snan-right inputs
+    (lambda (x)
+      (assert-eqv-nan (no-traps (lambda () (flo:max-num x (flo:snan 123))))
+                      (flo:qnan 123))))
+  (define-test 'min-num-snan-both
+    (lambda ()
+      (assert-qnan
+       (no-traps (lambda () (flo:min-num (flo:snan 123) (flo:snan 456)))))))
+  (define-test 'max-num-snan-both
+    (lambda ()
+      (assert-qnan
+       (no-traps (lambda () (flo:max-num (flo:snan 123) (flo:snan 456)))))))
+
+  ;; Min/max magnitude number -- signalling cases (XXX test exceptions too)
+  (define-enumerated-test 'min-mag-num-snan-left inputs
+    (lambda (x)
+      (assert-eqv-nan (no-traps (lambda () (flo:min-mag-num (flo:snan 123) x)))
+                      (flo:qnan 123))))
+  (define-enumerated-test 'max-mag-num-snan-left inputs
+    (lambda (x)
+      (assert-eqv-nan (no-traps (lambda () (flo:max-mag-num (flo:snan 123) x)))
+                      (flo:qnan 123))))
+  (define-enumerated-test 'min-mag-num-snan-right inputs
+    (lambda (x)
+      (assert-eqv-nan (no-traps (lambda () (flo:min-mag-num x (flo:snan 123))))
+                      (flo:qnan 123))))
+  (define-enumerated-test 'max-mag-num-snan-right inputs
+    (lambda (x)
+      (assert-eqv-nan (no-traps (lambda () (flo:max-mag-num x (flo:snan 123))))
+                      (flo:qnan 123))))
+  (define-test 'min-mag-num-snan-both
+    (lambda ()
+      (assert-qnan
        (no-traps
-        (lambda () (flo:max-mag (flo:snan 123) (flo:snan 456))))))))
+        (lambda () (flo:min-mag-num (flo:snan 123) (flo:snan 456)))))))
+  (define-test 'max-mag-num-snan-both
+    (lambda ()
+      (assert-qnan
+       (no-traps
+        (lambda () (flo:max-mag-num (flo:snan 123) (flo:snan 456))))))))
 
 (define-enumerated-test 'abs
   `((-inf.0)

@@ -84,8 +84,19 @@ New flonum-related definitions:
   comparison, -1 if x < y, 0 if x = y, +1 if x > y.
 - (flo:total-mag< x y) = (flo:total< (flo:abs x) (flo:abs y))
 - (flo:total-order-mag x y) = (flo:total-order (flo:abs x) (flo:abs y))
-- (flo:min-mag x y) and (flo:max-mag x y) return the number of lesser
-  or greater magnitude, as in minNumMag and maxNumMag of IEEE 754-2008.
+- The eight min/max operations of IEEE 754-2019 are now supported:
+  . flo:min
+  . flo:max
+  . flo:min-mag
+  . flo:max-mag
+  . flo:min-num
+  . flo:max-num
+  . flo:min-mag-num
+  . flo:max-mag-num
+  The `-mag' variants compare magnitudes.  The `-num' variants treat
+  NaN as missing data -- if one operand is numeric and the other is
+  NaN, they return the numeric operand and ignore the NaN, as the
+  minNum/maxNum operations from IEEE 754-2008 did.
 - (flo:make-nan negative? quiet? payload) returns a NaN with the
   specified payload, which must not exceed (- (expt 2
   flo:significand-digits-base-2 2) 1).

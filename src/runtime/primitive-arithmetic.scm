@@ -476,8 +476,58 @@ USA.
 		#t			;quiet
 		(flo:nan-payload n)))
 
-(define (flo:invalid-minmax x y caller)
-  caller
+(define (flo:eqv? x y)
+  (and (not (flo:nan? x))
+       (not (flo:nan? y))
+       (flo:= x y)
+       (or (not (flo:zero? x))
+	   (eq? (flo:sign-negative? x)
+		(flo:sign-negative? y)))))
+
+;;; Minimum and maximum (magnitude) from IEEE 754-2019 §9.6
+
+(define (flo:min x y)
+  (cond ((flo:safe< x y) x)
+	((flo:safe> x y) y)
+	((flo:safe= x y) (if (flo:sign-negative? x) x y))
+	(else (flo:invalid-minmax x y))))
+
+(define (flo:max x y)
+  (cond ((flo:safe< x y) y)
+	((flo:safe> x y) x)
+	((flo:safe= x y) (if (flo:sign-negative? x) y x))
+	(else (flo:invalid-minmax x y))))
+
+(define (flo:min-mag x y)
+  (let ((xm (flo:abs x))
+	(ym (flo:abs y)))
+    (cond ((flo:safe< xm ym) x)
+	  ((flo:safe> xm ym) y)
+	  (else (flo:min x y)))))
+
+(define (flo:max-mag x y)
+  (let ((xm (flo:abs x))
+	(ym (flo:abs y)))
+    (cond ((flo:safe< xm ym) y)
+	  ((flo:safe> xm ym) x)
+	  (else (flo:max x y)))))
+
+(define (flo:invalid-minmax x y)
+  (assert (or (flo:nan? x) (flo:nan? y)))
+  (if (or (flo:snan? x)
+	  (flo:snan? y))
+      (flo:raise-exceptions! (flo:exception:invalid-operation)))
+  (cond ((flo:nan? x) (flo:quieten-nan x))
+	(else (assert (flo:nan? y)) (flo:quieten-nan y))))
+
+;;; Minimum and maximum (magnitude) number from IEEE 754-2008 §5.3.1,
+;;; renamed and relegated to `recommended' in IEEE 754-2019 §9.6.
+;;; Differs from the above only on NaN inputs: while min/max
+;;; propagate NaN, min/max-number treat NaN as missing data and
+;;; return the number without even raising an exception on quiet NaN
+;;; inputs.
+
+(define (flo:invalid-minmax-num x y)
   (cond ((not (flo:nan? x))
 	 (assert (flo:nan? y))
 	 (if (flo:nan-quiet? y)
@@ -510,41 +560,31 @@ USA.
 	 ;; min vs max?)
 	 (if (flo:total< x y) x y))))
 
-(define (flo:min x y)
+(define (flo:min-num x y)
   (cond ((flo:safe< x y) x)
 	((flo:safe> x y) y)
-	((flo:safe= x y) x)		;arbitrary
-	(else (flo:invalid-minmax x y 'flo:min))))
+	((flo:safe= x y) (if (flo:sign-negative? x) x y))
+	(else (flo:invalid-minmax-num x y))))
 
-(define (flo:max x y)
+(define (flo:max-num x y)
   (cond ((flo:safe< x y) y)
 	((flo:safe> x y) x)
-	((flo:safe= x y) y)		;arbitrary
-	(else (flo:invalid-minmax x y 'flo:max))))
+	((flo:safe= x y) (if (flo:sign-negative? x) y x))
+	(else (flo:invalid-minmax-num x y))))
 
-(define (flo:min-mag x y)
+(define (flo:min-mag-num x y)
   (let ((xm (flo:abs x))
 	(ym (flo:abs y)))
     (cond ((flo:safe< xm ym) x)
 	  ((flo:safe> xm ym) y)
-	  ((flo:safe= xm ym) (flo:min x y))
-	  (else (flo:invalid-minmax x y 'flo:min-mag)))))
+	  (else (flo:min-num x y)))))
 
-(define (flo:max-mag x y)
+(define (flo:max-mag-num x y)
   (let ((xm (flo:abs x))
 	(ym (flo:abs y)))
     (cond ((flo:safe< xm ym) y)
 	  ((flo:safe> xm ym) x)
-	  ((flo:safe= xm ym) (flo:max x y))
-	  (else (flo:invalid-minmax x y 'flo:max-mag)))))
-
-(define (flo:eqv? x y)
-  (and (not (flo:nan? x))
-       (not (flo:nan? y))
-       (flo:= x y)
-       (or (not (flo:zero? x))
-	   (eq? (flo:sign-negative? x)
-		(flo:sign-negative? y)))))
+	  (else (flo:max-num x y)))))
 
 ;;; Measure the distance from x to the next floating-point number of
 ;;; the same sign as x and larger in magnitude.  For +/-0, this yields

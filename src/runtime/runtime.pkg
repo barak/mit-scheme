@@ -534,8 +534,12 @@ USA.
 	  flo:make-nan
 	  flo:max
 	  flo:max-mag
+	  flo:max-mag-num
+	  flo:max-num
 	  flo:min
 	  flo:min-mag
+	  flo:min-mag-num
+	  flo:min-num
 	  flo:modulo
 	  flo:nan-payload
 	  flo:nan-quiet?
