@@ -714,3 +714,19 @@ USA.
 	  (if (fx>=? j i)
 	      (values i (fx- n (fx* i i)))
 	      (loop j))))))
+
+(define (modexp a e n)
+  (guarantee exact-integer? a 'modexp)
+  (guarantee exact-nonnegative-integer? e 'modexp)
+  (guarantee exact-nonnegative-integer? n 'modexp)
+  (if (zero? e)
+      1
+      (let loop ((r 1) (b (modulo a n)) (f e))
+	;; Invariants:
+	;;   r b^f = a^e (mod n)
+	;;   f > 0
+	(let ((r (if (even? f) r (modulo (* r b) n)))
+              (f (quotient f 2)))
+          (if (zero? f)
+              r
+              (loop r (modulo (* b b) n) f))))))

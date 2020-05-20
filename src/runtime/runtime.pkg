@@ -608,6 +608,7 @@ USA.
 	  int:quotient
 	  int:remainder
 	  int:zero?
+	  modexp
 	  negative-fixnum?
 	  non-negative-fixnum?
 	  non-positive-fixnum?
