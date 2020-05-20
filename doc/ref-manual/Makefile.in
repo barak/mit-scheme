@@ -50,6 +50,7 @@ SOURCES = \
     overview.texi \
     procedures.texi \
     special-forms.texi \
+    standards.texi \
     strings.texi \
     vectors.texi \
     win32-packaging.texi

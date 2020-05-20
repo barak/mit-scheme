@@ -1,9 +1,8 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-ref
-@set EDITION 1.106
 @set VERSION 10.1.90
-@set UPDATED 2019-12-04
+@set UPDATED 2020-05-19
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -46,7 +45,7 @@ Documentation License.''
 
 @titlepage
 @title MIT/GNU Scheme Reference Manual
-@subtitle Edition @value{EDITION} for release @value{VERSION}
+@subtitle For release @value{VERSION}
 @subtitle @value{UPDATED}
 @author by Chris Hanson
 @author the MIT Scheme Team
@@ -120,12 +119,9 @@ Documentation License.''
 @end macro
 @end ifnottex
 
-@ifnottex
-@node Top, Acknowledgements, (dir), (dir)
-@top MIT/GNU Scheme
-
-@insertcopying
-@end ifnottex
+@macro mitgnu {}
+MIT/GNU Scheme
+@end macro
 
 @macro asrfi {n}
 @acronym{SRFI} \n\
@@ -135,13 +131,38 @@ Documentation License.''
 @uref{https://srfi.schemers.org/srfi-\n\/srfi-\n\.html,@asrfi{\n\}}
 @end macro
 
+@macro srfiurl {n}
+@url{https://srfi.schemers.org/srfi-\n\/srfi-\n\.html}
+@end macro
+
+@set R7RS_URL https://small.r7rs.org/attachment/r7rs.pdf
+
 @macro rseven {}
 @acronym{R7RS}
 @end macro
 
 @macro urseven {}
-@uref{http://r7rs.org/,@rseven{}}
+@uref{@value{R7RS_URL},@rseven{}}
 @end macro
+
+@ifnotinfo
+@macro nicode {x}
+@code{\x\}
+@end macro
+@end ifnotinfo
+
+@ifinfo
+@macro nicode {x}
+\x\
+@end macro
+@end ifinfo
+
+@ifnottex
+@node Top, Acknowledgements, (dir), (dir)
+@top MIT/GNU Scheme
+
+@insertcopying
+@end ifnottex
 
 @menu
 * Acknowledgements::            
@@ -163,6 +184,7 @@ Documentation License.''
 * Error System::                
 * Graphics::                    
 * Win32 Package Reference::     
+* Standards Support::           
 * GNU Free Documentation License::  
 * Binding Index::               
 * Concept Index::               
@@ -504,6 +526,27 @@ Device Independent Bitmap Utilities
 * DIB procedures::
 * Other parts of the DIB Utilities implementation::
 
+Standards Support
+
+* R7RS::
+* SRFI 1::
+* SRFI 2::
+* SRFI 8::
+* SRFI 9::
+* SRFI 14::
+* SRFI 23::
+* SRFI 27::
+* SRFI 39::
+* SRFI 69::
+* SRFI 115::
+* SRFI 125::
+* SRFI 128::
+* SRFI 131::
+* SRFI 133::
+* SRFI 140::
+* SRFI 143::
+* SRFI 158::
+
 @end detailmenu
 @end menu
 
@@ -526,9 +569,9 @@ Device Independent Bitmap Utilities
 @include error.texi
 @include graphics.texi
 @include win32-packaging.texi
+@include standards.texi
 @include gfdl.texinfo
 @include binding-index.texi
 @include concept-index.texi
 
 @bye
-gggg

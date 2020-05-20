@@ -1,0 +1,2183 @@
+@node Standards Support, GNU Free Documentation License, Win32 Package Reference, Top
+@chapter Standards Support
+
+@menu
+* R7RS::
+* SRFI 1::
+* SRFI 2::
+* SRFI 8::
+* SRFI 9::
+* SRFI 14::
+* SRFI 23::
+* SRFI 27::
+* SRFI 39::
+* SRFI 69::
+* SRFI 115::
+* SRFI 125::
+* SRFI 128::
+* SRFI 131::
+* SRFI 133::
+* SRFI 140::
+* SRFI 143::
+* SRFI 158::
+@end menu
+
+@node R7RS, SRFI 1, Standards Support, Standards Support
+@section Revised@sup{7} Report on the Algorithmic Language Scheme
+@findex *
+@findex +
+@findex -
+@findex ...
+@findex /
+@findex <
+@findex <=
+@findex =
+@findex =>
+@findex >
+@findex >=
+@findex _
+@findex abs
+@findex acos
+@findex and
+@findex angle
+@findex append
+@findex apply
+@findex asin
+@findex assoc
+@findex assq
+@findex assv
+@findex atan
+@findex begin
+@findex binary-port?
+@findex boolean=?
+@findex boolean?
+@findex bytevector
+@findex bytevector-append
+@findex bytevector-copy
+@findex bytevector-copy!
+@findex bytevector-length
+@findex bytevector-u8-ref
+@findex bytevector-u8-set!
+@findex bytevector?
+@findex caaaar
+@findex caaadr
+@findex caaar
+@findex caadar
+@findex caaddr
+@findex caadr
+@findex caar
+@findex cadaar
+@findex cadadr
+@findex cadar
+@findex caddar
+@findex cadddr
+@findex caddr
+@findex cadr
+@findex call-with-current-continuation
+@findex call-with-input-file
+@findex call-with-output-file
+@findex call-with-port
+@findex call-with-values
+@findex call/cc
+@findex car
+@findex case
+@findex case-lambda
+@findex cdaaar
+@findex cdaadr
+@findex cdaar
+@findex cdadar
+@findex cdaddr
+@findex cdadr
+@findex cdar
+@findex cddaar
+@findex cddadr
+@findex cddar
+@findex cdddar
+@findex cddddr
+@findex cdddr
+@findex cddr
+@findex cdr
+@findex ceiling
+@findex char->integer
+@findex char-alphabetic?
+@findex char-ci<=?
+@findex char-ci<?
+@findex char-ci=?
+@findex char-ci>=?
+@findex char-ci>?
+@findex char-downcase
+@findex char-foldcase
+@findex char-lower-case?
+@findex char-numeric?
+@findex char-ready?
+@findex char-upcase
+@findex char-upper-case?
+@findex char-whitespace?
+@findex char<=?
+@findex char<?
+@findex char=?
+@findex char>=?
+@findex char>?
+@findex char?
+@findex close-input-port
+@findex close-output-port
+@findex close-port
+@findex command-line
+@findex complex?
+@findex cond
+@findex cond-expand
+@findex cons
+@findex cos
+@findex current-error-port
+@findex current-input-port
+@findex current-jiffy
+@findex current-output-port
+@findex current-second
+@findex define
+@findex define-record-type
+@findex define-syntax
+@findex define-values
+@findex delay
+@findex delay-force
+@findex delete-file
+@findex denominator
+@findex digit-value
+@findex display
+@findex do
+@findex dynamic-wind
+@findex else
+@findex emergency-exit
+@findex environment
+@findex eof-object
+@findex eof-object?
+@findex eq?
+@findex equal?
+@findex eqv?
+@findex error
+@findex error-object-irritants
+@findex error-object-message
+@findex error-object?
+@findex eval
+@findex even?
+@findex exact
+@findex exact-integer-sqrt
+@findex exact-integer?
+@findex exact?
+@findex exit
+@findex exp
+@findex expt
+@findex features
+@findex file-error?
+@findex file-exists?
+@findex finite?
+@findex floor
+@findex floor-quotient
+@findex floor-remainder
+@findex floor/
+@findex flush-output-port
+@findex for-each
+@findex force
+@findex gcd
+@findex get-environment-variable
+@findex get-environment-variables
+@findex get-output-bytevector
+@findex get-output-string
+@findex guard
+@findex if
+@findex imag-part
+@findex include
+@findex include-ci
+@findex inexact
+@findex inexact?
+@findex infinite?
+@findex input-port-open?
+@findex input-port?
+@findex integer->char
+@findex integer?
+@findex interaction-environment
+@findex jiffies-per-second
+@findex lambda
+@findex lcm
+@findex length
+@findex let
+@findex let*
+@findex let*-values
+@findex let-syntax
+@findex let-values
+@findex letrec
+@findex letrec*
+@findex letrec-syntax
+@findex list
+@findex list->string
+@findex list->vector
+@findex list-copy
+@findex list-ref
+@findex list-set!
+@findex list-tail
+@findex list?
+@findex load
+@findex log
+@findex magnitude
+@findex make-bytevector
+@findex make-list
+@findex make-parameter
+@findex make-polar
+@findex make-promise
+@findex make-rectangular
+@findex make-string
+@findex make-vector
+@findex map
+@findex max
+@findex member
+@findex memq
+@findex memv
+@findex min
+@findex modulo
+@findex nan?
+@findex negative?
+@findex newline
+@findex not
+@findex null?
+@findex number->string
+@findex number?
+@findex numerator
+@findex odd?
+@findex open-binary-input-file
+@findex open-binary-output-file
+@findex open-input-bytevector
+@findex open-input-file
+@findex open-input-string
+@findex open-output-bytevector
+@findex open-output-file
+@findex open-output-string
+@findex or
+@findex output-port-open?
+@findex output-port?
+@findex pair?
+@findex parameterize
+@findex peek-char
+@findex peek-u8
+@findex port?
+@findex positive?
+@findex procedure?
+@findex promise?
+@findex quasiquote
+@findex quote
+@findex quotient
+@findex raise
+@findex raise-continuable
+@findex rational?
+@findex rationalize
+@findex read
+@findex read-bytevector
+@findex read-bytevector!
+@findex read-char
+@findex read-error?
+@findex read-line
+@findex read-string
+@findex read-u8
+@findex real-part
+@findex real?
+@findex remainder
+@findex reverse
+@findex round
+@findex set!
+@findex set-car!
+@findex set-cdr!
+@findex sin
+@findex sqrt
+@findex square
+@findex string
+@findex string->list
+@findex string->number
+@findex string->symbol
+@findex string->utf8
+@findex string->vector
+@findex string-append
+@findex string-ci<=?
+@findex string-ci<?
+@findex string-ci=?
+@findex string-ci>=?
+@findex string-ci>?
+@findex string-copy
+@findex string-copy!
+@findex string-downcase
+@findex string-fill!
+@findex string-foldcase
+@findex string-for-each
+@findex string-length
+@findex string-map
+@findex string-ref
+@findex string-set!
+@findex string-upcase
+@findex string<=?
+@findex string<?
+@findex string=?
+@findex string>=?
+@findex string>?
+@findex string?
+@findex substring
+@findex symbol->string
+@findex symbol=?
+@findex symbol?
+@findex syntax-error
+@findex syntax-rules
+@findex tan
+@findex textual-port?
+@findex truncate
+@findex truncate-quotient
+@findex truncate-remainder
+@findex truncate/
+@findex u8-ready?
+@findex unless
+@findex unquote
+@findex unquote-splicing
+@findex utf8->string
+@findex values
+@findex vector
+@findex vector->list
+@findex vector->string
+@findex vector-append
+@findex vector-copy
+@findex vector-copy!
+@findex vector-fill!
+@findex vector-for-each
+@findex vector-length
+@findex vector-map
+@findex vector-ref
+@findex vector-set!
+@findex vector?
+@findex when
+@findex with-exception-handler
+@findex with-input-from-file
+@findex with-output-to-file
+@findex write
+@findex write-bytevector
+@findex write-char
+@findex write-shared
+@findex write-simple
+@findex write-string
+@findex write-u8
+@findex zero?
+
+@cartouche
+@table @b
+@item Description
+The core standard for the Scheme language.
+@item URL
+@url{@value{R7RS_URL}}
+@item Support
+Fully supported, with exceptions:
+@itemize @bullet
+@item
+@code{syntax-rules} doesn't handle additional patterns after a segment
+pattern.  This means that @code{(syntax-rules () ((a b ... c)
+@dots{}))} doesn't work, even though @code{(syntax-rules () ((a b
+...) @dots{}))} does work.
+
+@item
+@code{syntax-rules} doesn't handle vector patterns or templates.
+
+@item
+Multiple values aren't supported correctly.  Instead @code{values}
+returns a special record containing the values, and
+@code{call-with-values} takes that record apart and passes the values
+to the receiver.  For many uses of multiple values this is adequate.
+@end itemize
+
+@item Libraries
+@nicode{(scheme base)}
+@nicode{(scheme case-lambda)}
+@nicode{(scheme char)}
+@nicode{(scheme complex)}@*
+@nicode{(scheme cxr)}
+@nicode{(scheme eval)}
+@nicode{(scheme file)}
+@nicode{(scheme inexact)}@*
+@nicode{(scheme lazy)}
+@nicode{(scheme load)}
+@nicode{(scheme process-context)}
+@nicode{(scheme r5rs)}@*
+@nicode{(scheme read)}
+@nicode{(scheme repl)}
+@nicode{(scheme time)}
+@nicode{(scheme write)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .33 .33 .33
+@item @nicode{*}
+@tab @nicode{+}
+@tab @nicode{-}
+@item @nicode{...}
+@tab @nicode{/}
+@tab @nicode{<}
+@item @nicode{<=}
+@tab @nicode{=}
+@tab @nicode{=>}
+@item @nicode{>}
+@tab @nicode{>=}
+@tab @nicode{_}
+@item @nicode{abs}
+@tab @nicode{acos}
+@tab @nicode{and}
+@item @nicode{angle}
+@tab @nicode{append}
+@tab @nicode{apply}
+@item @nicode{asin}
+@tab @nicode{assoc}
+@tab @nicode{assq}
+@item @nicode{assv}
+@tab @nicode{atan}
+@tab @nicode{begin}
+@item @nicode{binary-port?}
+@tab @nicode{boolean=?}
+@tab @nicode{boolean?}
+@item @nicode{bytevector}
+@tab @nicode{bytevector-append}
+@tab @nicode{bytevector-copy}
+@item @nicode{bytevector-copy!}
+@tab @nicode{bytevector-length}
+@tab @nicode{bytevector-u8-ref}
+@item @nicode{bytevector-u8-set!}
+@tab @nicode{bytevector?}
+@tab @nicode{caaaar}
+@item @nicode{caaadr}
+@tab @nicode{caaar}
+@tab @nicode{caadar}
+@item @nicode{caaddr}
+@tab @nicode{caadr}
+@tab @nicode{caar}
+@item @nicode{cadaar}
+@tab @nicode{cadadr}
+@tab @nicode{cadar}
+@item @nicode{caddar}
+@tab @nicode{cadddr}
+@tab @nicode{caddr}
+@item @nicode{cadr}
+@tab @nicode{call-with-current-continuation}
+@tab @nicode{call-with-input-file}
+@item @nicode{call-with-output-file}
+@tab @nicode{call-with-port}
+@tab @nicode{call-with-values}
+@item @nicode{call/cc}
+@tab @nicode{car}
+@tab @nicode{case}
+@item @nicode{case-lambda}
+@tab @nicode{cdaaar}
+@tab @nicode{cdaadr}
+@item @nicode{cdaar}
+@tab @nicode{cdadar}
+@tab @nicode{cdaddr}
+@item @nicode{cdadr}
+@tab @nicode{cdar}
+@tab @nicode{cddaar}
+@item @nicode{cddadr}
+@tab @nicode{cddar}
+@tab @nicode{cdddar}
+@item @nicode{cddddr}
+@tab @nicode{cdddr}
+@tab @nicode{cddr}
+@item @nicode{cdr}
+@tab @nicode{ceiling}
+@tab @nicode{char->integer}
+@item @nicode{char-alphabetic?}
+@tab @nicode{char-ci<=?}
+@tab @nicode{char-ci<?}
+@item @nicode{char-ci=?}
+@tab @nicode{char-ci>=?}
+@tab @nicode{char-ci>?}
+@item @nicode{char-downcase}
+@tab @nicode{char-foldcase}
+@tab @nicode{char-lower-case?}
+@item @nicode{char-numeric?}
+@tab @nicode{char-ready?}
+@tab @nicode{char-upcase}
+@item @nicode{char-upper-case?}
+@tab @nicode{char-whitespace?}
+@tab @nicode{char<=?}
+@item @nicode{char<?}
+@tab @nicode{char=?}
+@tab @nicode{char>=?}
+@item @nicode{char>?}
+@tab @nicode{char?}
+@tab @nicode{close-input-port}
+@item @nicode{close-output-port}
+@tab @nicode{close-port}
+@tab @nicode{command-line}
+@item @nicode{complex?}
+@tab @nicode{cond}
+@tab @nicode{cond-expand}
+@item @nicode{cons}
+@tab @nicode{cos}
+@tab @nicode{current-error-port}
+@item @nicode{current-input-port}
+@tab @nicode{current-jiffy}
+@tab @nicode{current-output-port}
+@item @nicode{current-second}
+@tab @nicode{define}
+@tab @nicode{define-record-type}
+@item @nicode{define-syntax}
+@tab @nicode{define-values}
+@tab @nicode{delay}
+@item @nicode{delay-force}
+@tab @nicode{delete-file}
+@tab @nicode{denominator}
+@item @nicode{digit-value}
+@tab @nicode{display}
+@tab @nicode{do}
+@item @nicode{dynamic-wind}
+@tab @nicode{else}
+@tab @nicode{emergency-exit}
+@item @nicode{environment}
+@tab @nicode{eof-object}
+@tab @nicode{eof-object?}
+@item @nicode{eq?}
+@tab @nicode{equal?}
+@tab @nicode{eqv?}
+@item @nicode{error}
+@tab @nicode{error-object-irritants}
+@tab @nicode{error-object-message}
+@item @nicode{error-object?}
+@tab @nicode{eval}
+@tab @nicode{even?}
+@item @nicode{exact}
+@tab @nicode{exact-integer-sqrt}
+@tab @nicode{exact-integer?}
+@item @nicode{exact?}
+@tab @nicode{exit}
+@tab @nicode{exp}
+@item @nicode{expt}
+@tab @nicode{features}
+@tab @nicode{file-error?}
+@item @nicode{file-exists?}
+@tab @nicode{finite?}
+@tab @nicode{floor}
+@item @nicode{floor-quotient}
+@tab @nicode{floor-remainder}
+@tab @nicode{floor/}
+@item @nicode{flush-output-port}
+@tab @nicode{for-each}
+@tab @nicode{force}
+@item @nicode{gcd}
+@tab @nicode{get-environment-variable}
+@tab @nicode{get-environment-variables}
+@item @nicode{get-output-bytevector}
+@tab @nicode{get-output-string}
+@tab @nicode{guard}
+@item @nicode{if}
+@tab @nicode{imag-part}
+@tab @nicode{include}
+@item @nicode{include-ci}
+@tab @nicode{inexact}
+@tab @nicode{inexact?}
+@item @nicode{infinite?}
+@tab @nicode{input-port-open?}
+@tab @nicode{input-port?}
+@item @nicode{integer->char}
+@tab @nicode{integer?}
+@tab @nicode{interaction-environment}
+@item @nicode{jiffies-per-second}
+@tab @nicode{lambda}
+@tab @nicode{lcm}
+@item @nicode{length}
+@tab @nicode{let}
+@tab @nicode{let*}
+@item @nicode{let*-values}
+@tab @nicode{let-syntax}
+@tab @nicode{let-values}
+@item @nicode{letrec}
+@tab @nicode{letrec*}
+@tab @nicode{letrec-syntax}
+@item @nicode{list}
+@tab @nicode{list->string}
+@tab @nicode{list->vector}
+@item @nicode{list-copy}
+@tab @nicode{list-ref}
+@tab @nicode{list-set!}
+@item @nicode{list-tail}
+@tab @nicode{list?}
+@tab @nicode{load}
+@item @nicode{log}
+@tab @nicode{magnitude}
+@tab @nicode{make-bytevector}
+@item @nicode{make-list}
+@tab @nicode{make-parameter}
+@tab @nicode{make-polar}
+@item @nicode{make-promise}
+@tab @nicode{make-rectangular}
+@tab @nicode{make-string}
+@item @nicode{make-vector}
+@tab @nicode{map}
+@tab @nicode{max}
+@item @nicode{member}
+@tab @nicode{memq}
+@tab @nicode{memv}
+@item @nicode{min}
+@tab @nicode{modulo}
+@tab @nicode{nan?}
+@item @nicode{negative?}
+@tab @nicode{newline}
+@tab @nicode{not}
+@item @nicode{null?}
+@tab @nicode{number->string}
+@tab @nicode{number?}
+@item @nicode{numerator}
+@tab @nicode{odd?}
+@tab @nicode{open-binary-input-file}
+@item @nicode{open-binary-output-file}
+@tab @nicode{open-input-bytevector}
+@tab @nicode{open-input-file}
+@item @nicode{open-input-string}
+@tab @nicode{open-output-bytevector}
+@tab @nicode{open-output-file}
+@item @nicode{open-output-string}
+@tab @nicode{or}
+@tab @nicode{output-port-open?}
+@item @nicode{output-port?}
+@tab @nicode{pair?}
+@tab @nicode{parameterize}
+@item @nicode{peek-char}
+@tab @nicode{peek-u8}
+@tab @nicode{port?}
+@item @nicode{positive?}
+@tab @nicode{procedure?}
+@tab @nicode{promise?}
+@item @nicode{quasiquote}
+@tab @nicode{quote}
+@tab @nicode{quotient}
+@item @nicode{raise}
+@tab @nicode{raise-continuable}
+@tab @nicode{rational?}
+@item @nicode{rationalize}
+@tab @nicode{read}
+@tab @nicode{read-bytevector}
+@item @nicode{read-bytevector!}
+@tab @nicode{read-char}
+@tab @nicode{read-error?}
+@item @nicode{read-line}
+@tab @nicode{read-string}
+@tab @nicode{read-u8}
+@item @nicode{real-part}
+@tab @nicode{real?}
+@tab @nicode{remainder}
+@item @nicode{reverse}
+@tab @nicode{round}
+@tab @nicode{set!}
+@item @nicode{set-car!}
+@tab @nicode{set-cdr!}
+@tab @nicode{sin}
+@item @nicode{sqrt}
+@tab @nicode{square}
+@tab @nicode{string}
+@item @nicode{string->list}
+@tab @nicode{string->number}
+@tab @nicode{string->symbol}
+@item @nicode{string->utf8}
+@tab @nicode{string->vector}
+@tab @nicode{string-append}
+@item @nicode{string-ci<=?}
+@tab @nicode{string-ci<?}
+@tab @nicode{string-ci=?}
+@item @nicode{string-ci>=?}
+@tab @nicode{string-ci>?}
+@tab @nicode{string-copy}
+@item @nicode{string-copy!}
+@tab @nicode{string-downcase}
+@tab @nicode{string-fill!}
+@item @nicode{string-foldcase}
+@tab @nicode{string-for-each}
+@tab @nicode{string-length}
+@item @nicode{string-map}
+@tab @nicode{string-ref}
+@tab @nicode{string-set!}
+@item @nicode{string-upcase}
+@tab @nicode{string<=?}
+@tab @nicode{string<?}
+@item @nicode{string=?}
+@tab @nicode{string>=?}
+@tab @nicode{string>?}
+@item @nicode{string?}
+@tab @nicode{substring}
+@tab @nicode{symbol->string}
+@item @nicode{symbol=?}
+@tab @nicode{symbol?}
+@tab @nicode{syntax-error}
+@item @nicode{syntax-rules}
+@tab @nicode{tan}
+@tab @nicode{textual-port?}
+@item @nicode{truncate}
+@tab @nicode{truncate-quotient}
+@tab @nicode{truncate-remainder}
+@item @nicode{truncate/}
+@tab @nicode{u8-ready?}
+@tab @nicode{unless}
+@item @nicode{unquote}
+@tab @nicode{unquote-splicing}
+@tab @nicode{utf8->string}
+@item @nicode{values}
+@tab @nicode{vector}
+@tab @nicode{vector->list}
+@item @nicode{vector->string}
+@tab @nicode{vector-append}
+@tab @nicode{vector-copy}
+@item @nicode{vector-copy!}
+@tab @nicode{vector-fill!}
+@tab @nicode{vector-for-each}
+@item @nicode{vector-length}
+@tab @nicode{vector-map}
+@tab @nicode{vector-ref}
+@item @nicode{vector-set!}
+@tab @nicode{vector?}
+@tab @nicode{when}
+@item @nicode{with-exception-handler}
+@tab @nicode{with-input-from-file}
+@tab @nicode{with-output-to-file}
+@item @nicode{write}
+@tab @nicode{write-bytevector}
+@tab @nicode{write-char}
+@item @nicode{write-shared}
+@tab @nicode{write-simple}
+@tab @nicode{write-string}
+@end multitable
+
+@node SRFI 1, SRFI 2, R7RS, Standards Support
+@section SRFI 1: List Library
+@findex alist-cons
+@findex alist-copy
+@findex alist-delete
+@findex alist-delete!
+@findex any
+@findex append
+@findex append!
+@findex append-map
+@findex append-map!
+@findex append-reverse
+@findex append-reverse!
+@findex assoc
+@findex assq
+@findex assv
+@findex break
+@findex break!
+@findex caaaar
+@findex caaadr
+@findex caaar
+@findex caadar
+@findex caaddr
+@findex caadr
+@findex caar
+@findex cadaar
+@findex cadadr
+@findex cadar
+@findex caddar
+@findex cadddr
+@findex caddr
+@findex cadr
+@findex car
+@findex car+cdr
+@findex cdaaar
+@findex cdaadr
+@findex cdaar
+@findex cdadar
+@findex cdaddr
+@findex cdadr
+@findex cdar
+@findex cddaar
+@findex cddadr
+@findex cddar
+@findex cdddar
+@findex cddddr
+@findex cdddr
+@findex cddr
+@findex cdr
+@findex circular-list
+@findex circular-list?
+@findex concatenate
+@findex concatenate!
+@findex cons
+@findex cons*
+@findex count
+@findex delete
+@findex delete!
+@findex delete-duplicates
+@findex delete-duplicates!
+@findex dotted-list?
+@findex drop
+@findex drop-right
+@findex drop-right!
+@findex drop-while
+@findex eighth
+@findex every
+@findex fifth
+@findex filter
+@findex filter!
+@findex filter-map
+@findex find
+@findex find-tail
+@findex first
+@findex fold
+@findex fold-right
+@findex for-each
+@findex fourth
+@findex iota
+@findex last
+@findex last-pair
+@findex length
+@findex length+
+@findex list
+@findex list-copy
+@findex list-index
+@findex list-ref
+@findex list-tabulate
+@findex list=
+@findex lset-adjoin
+@findex lset-diff+intersection
+@findex lset-diff+intersection!
+@findex lset-difference
+@findex lset-difference!
+@findex lset-intersection
+@findex lset-intersection!
+@findex lset-union
+@findex lset-union!
+@findex lset-xor
+@findex lset-xor!
+@findex lset<=
+@findex lset=
+@findex make-list
+@findex map
+@findex map!
+@findex map-in-order
+@findex member
+@findex memq
+@findex memv
+@findex ninth
+@findex not-pair?
+@findex null-list?
+@findex null?
+@findex pair-fold
+@findex pair-fold-right
+@findex pair-for-each
+@findex pair?
+@findex partition
+@findex partition!
+@findex proper-list?
+@findex reduce
+@findex reduce-right
+@findex remove
+@findex remove!
+@findex reverse
+@findex reverse!
+@findex second
+@findex set-car!
+@findex set-cdr!
+@findex seventh
+@findex sixth
+@findex span
+@findex span!
+@findex split-at
+@findex split-at!
+@findex take
+@findex take!
+@findex take-right
+@findex take-while
+@findex take-while!
+@findex tenth
+@findex third
+@findex unfold
+@findex unfold-right
+@findex unzip1
+@findex unzip2
+@findex unzip3
+@findex unzip4
+@findex unzip5
+@findex xcons
+@findex zip
+
+@cartouche
+@table @b
+@item Description
+An extensive set of procedures for working with lists that is a
+superset of the list procedures defined by @rseven{}.
+@item URL
+@srfiurl{1}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 1)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .33 .33 .33
+@item @nicode{alist-cons}
+@tab @nicode{alist-copy}
+@tab @nicode{alist-delete}
+@item @nicode{alist-delete!}
+@tab @nicode{any}
+@tab @nicode{append}
+@item @nicode{append!}
+@tab @nicode{append-map}
+@tab @nicode{append-map!}
+@item @nicode{append-reverse}
+@tab @nicode{append-reverse!}
+@tab @nicode{assoc}
+@item @nicode{assq}
+@tab @nicode{assv}
+@tab @nicode{break}
+@item @nicode{break!}
+@tab @nicode{caaaar}
+@tab @nicode{caaadr}
+@item @nicode{caaar}
+@tab @nicode{caadar}
+@tab @nicode{caaddr}
+@item @nicode{caadr}
+@tab @nicode{caar}
+@tab @nicode{cadaar}
+@item @nicode{cadadr}
+@tab @nicode{cadar}
+@tab @nicode{caddar}
+@item @nicode{cadddr}
+@tab @nicode{caddr}
+@tab @nicode{cadr}
+@item @nicode{car}
+@tab @nicode{car+cdr}
+@tab @nicode{cdaaar}
+@item @nicode{cdaadr}
+@tab @nicode{cdaar}
+@tab @nicode{cdadar}
+@item @nicode{cdaddr}
+@tab @nicode{cdadr}
+@tab @nicode{cdar}
+@item @nicode{cddaar}
+@tab @nicode{cddadr}
+@tab @nicode{cddar}
+@item @nicode{cdddar}
+@tab @nicode{cddddr}
+@tab @nicode{cdddr}
+@item @nicode{cddr}
+@tab @nicode{cdr}
+@tab @nicode{circular-list}
+@item @nicode{circular-list?}
+@tab @nicode{concatenate}
+@tab @nicode{concatenate!}
+@item @nicode{cons}
+@tab @nicode{cons*}
+@tab @nicode{count}
+@item @nicode{delete}
+@tab @nicode{delete!}
+@tab @nicode{delete-duplicates}
+@item @nicode{delete-duplicates!}
+@tab @nicode{dotted-list?}
+@tab @nicode{drop}
+@item @nicode{drop-right}
+@tab @nicode{drop-right!}
+@tab @nicode{drop-while}
+@item @nicode{eighth}
+@tab @nicode{every}
+@tab @nicode{fifth}
+@item @nicode{filter}
+@tab @nicode{filter!}
+@tab @nicode{filter-map}
+@item @nicode{find}
+@tab @nicode{find-tail}
+@tab @nicode{first}
+@item @nicode{fold}
+@tab @nicode{fold-right}
+@tab @nicode{for-each}
+@item @nicode{fourth}
+@tab @nicode{iota}
+@tab @nicode{last}
+@item @nicode{last-pair}
+@tab @nicode{length}
+@tab @nicode{length+}
+@item @nicode{list}
+@tab @nicode{list-copy}
+@tab @nicode{list-index}
+@item @nicode{list-ref}
+@tab @nicode{list-tabulate}
+@tab @nicode{list=}
+@item @nicode{lset-adjoin}
+@tab @nicode{lset-diff+intersection}
+@tab @nicode{lset-diff+intersection!}
+@item @nicode{lset-difference}
+@tab @nicode{lset-difference!}
+@tab @nicode{lset-intersection}
+@item @nicode{lset-intersection!}
+@tab @nicode{lset-union}
+@tab @nicode{lset-union!}
+@item @nicode{lset-xor}
+@tab @nicode{lset-xor!}
+@tab @nicode{lset<=}
+@item @nicode{lset=}
+@tab @nicode{make-list}
+@tab @nicode{map}
+@item @nicode{map!}
+@tab @nicode{map-in-order}
+@tab @nicode{member}
+@item @nicode{memq}
+@tab @nicode{memv}
+@tab @nicode{ninth}
+@item @nicode{not-pair?}
+@tab @nicode{null-list?}
+@tab @nicode{null?}
+@item @nicode{pair-fold}
+@tab @nicode{pair-fold-right}
+@tab @nicode{pair-for-each}
+@item @nicode{pair?}
+@tab @nicode{partition}
+@tab @nicode{partition!}
+@item @nicode{proper-list?}
+@tab @nicode{reduce}
+@tab @nicode{reduce-right}
+@item @nicode{remove}
+@tab @nicode{remove!}
+@tab @nicode{reverse}
+@item @nicode{reverse!}
+@tab @nicode{second}
+@tab @nicode{set-car!}
+@item @nicode{set-cdr!}
+@tab @nicode{seventh}
+@tab @nicode{sixth}
+@item @nicode{span}
+@tab @nicode{span!}
+@tab @nicode{split-at}
+@item @nicode{split-at!}
+@tab @nicode{take}
+@tab @nicode{take!}
+@item @nicode{take-right}
+@tab @nicode{take-while}
+@tab @nicode{take-while!}
+@item @nicode{tenth}
+@tab @nicode{third}
+@tab @nicode{unfold}
+@item @nicode{unfold-right}
+@tab @nicode{unzip1}
+@tab @nicode{unzip2}
+@item @nicode{unzip3}
+@tab @nicode{unzip4}
+@tab @nicode{unzip5}
+@item @nicode{xcons}
+@tab @nicode{zip}
+@end multitable
+
+@node SRFI 2, SRFI 8, SRFI 1, Standards Support
+@section SRFI 2: @code{and-let*}
+@findex and-let*
+
+@cartouche
+@table @b
+@item Description
+A macro combining features of @code{let*} and @code{and}.
+@item URL
+@srfiurl{2}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 2)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@noindent
+@nicode{and-let*}
+
+@node SRFI 8, SRFI 9, SRFI 2, Standards Support
+@section SRFI 8: @code{receive}
+@findex receive
+
+@cartouche
+@table @b
+@item Description
+Early syntax for binding multiple values.  @rseven{} provides the more
+flexible @code{let-values}, which should be preferred.
+@item URL
+@srfiurl{8}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 8)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@noindent
+@nicode{receive}
+
+@node SRFI 9, SRFI 14, SRFI 8, Standards Support
+@section SRFI 9: Record Types
+@findex define-record-type
+
+@cartouche
+@table @b
+@item Description
+A basic implementation of record types.  Superseded by @rseven{}.
+@item URL
+@srfiurl{9}
+@item Support
+The @mitgnu{} implementation is fully compatible.
+@item Libraries
+@nicode{(srfi 9)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@noindent
+@nicode{define-record-type}
+
+@node SRFI 14, SRFI 23, SRFI 9, Standards Support
+@section SRFI 14: Character-set Library
+@findex ->char-set
+@findex char-set
+@findex char-set->list
+@findex char-set->string
+@findex char-set-adjoin
+@findex char-set-adjoin!
+@findex char-set-any
+@findex char-set-complement
+@findex char-set-complement!
+@findex char-set-contains?
+@findex char-set-copy
+@findex char-set-count
+@findex char-set-cursor
+@findex char-set-cursor-next
+@findex char-set-delete
+@findex char-set-delete!
+@findex char-set-diff+intersection
+@findex char-set-diff+intersection!
+@findex char-set-difference
+@findex char-set-difference!
+@findex char-set-every
+@findex char-set-filter
+@findex char-set-filter!
+@findex char-set-fold
+@findex char-set-for-each
+@findex char-set-hash
+@findex char-set-intersection
+@findex char-set-intersection!
+@findex char-set-map
+@findex char-set-ref
+@findex char-set-size
+@findex char-set-unfold
+@findex char-set-unfold!
+@findex char-set-union
+@findex char-set-union!
+@findex char-set-xor
+@findex char-set-xor!
+@findex char-set:ascii
+@findex char-set:blank
+@findex char-set:digit
+@findex char-set:empty
+@findex char-set:full
+@findex char-set:graphic
+@findex char-set:hex-digit
+@findex char-set:iso-control
+@findex char-set:letter
+@findex char-set:letter+digit
+@findex char-set:lower-case
+@findex char-set:printing
+@findex char-set:punctuation
+@findex char-set:symbol
+@findex char-set:title-case
+@findex char-set:upper-case
+@findex char-set:whitespace
+@findex char-set<=
+@findex char-set=
+@findex char-set?
+@findex end-of-char-set?
+@findex list->char-set
+@findex list->char-set!
+@findex string->char-set
+@findex string->char-set!
+@findex ucs-range->char-set
+@findex ucs-range->char-set!
+
+@cartouche
+@table @b
+@item Description
+An extensive set of definitions for working with sets of characters.
+@item URL
+@srfiurl{14}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 14)}
+@item Global
+Most names are bound in the @mitgnu{} global environment.  Exceptions
+are the linear-update procedures whose names end in @code{!}.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{->char-set}
+@tab @nicode{char-set}
+@item @nicode{char-set->list}
+@tab @nicode{char-set->string}
+@item @nicode{char-set-adjoin}
+@tab @nicode{char-set-adjoin!}
+@item @nicode{char-set-any}
+@tab @nicode{char-set-complement}
+@item @nicode{char-set-complement!}
+@tab @nicode{char-set-contains?}
+@item @nicode{char-set-copy}
+@tab @nicode{char-set-count}
+@item @nicode{char-set-cursor}
+@tab @nicode{char-set-cursor-next}
+@item @nicode{char-set-delete}
+@tab @nicode{char-set-delete!}
+@item @nicode{char-set-diff+intersection}
+@tab @nicode{char-set-diff+intersection!}
+@item @nicode{char-set-difference}
+@tab @nicode{char-set-difference!}
+@item @nicode{char-set-every}
+@tab @nicode{char-set-filter}
+@item @nicode{char-set-filter!}
+@tab @nicode{char-set-fold}
+@item @nicode{char-set-for-each}
+@tab @nicode{char-set-hash}
+@item @nicode{char-set-intersection}
+@tab @nicode{char-set-intersection!}
+@item @nicode{char-set-map}
+@tab @nicode{char-set-ref}
+@item @nicode{char-set-size}
+@tab @nicode{char-set-unfold}
+@item @nicode{char-set-unfold!}
+@tab @nicode{char-set-union}
+@item @nicode{char-set-union!}
+@tab @nicode{char-set-xor}
+@item @nicode{char-set-xor!}
+@tab @nicode{char-set:ascii}
+@item @nicode{char-set:blank}
+@tab @nicode{char-set:digit}
+@item @nicode{char-set:empty}
+@tab @nicode{char-set:full}
+@item @nicode{char-set:graphic}
+@tab @nicode{char-set:hex-digit}
+@item @nicode{char-set:iso-control}
+@tab @nicode{char-set:letter}
+@item @nicode{char-set:letter+digit}
+@tab @nicode{char-set:lower-case}
+@item @nicode{char-set:printing}
+@tab @nicode{char-set:punctuation}
+@item @nicode{char-set:symbol}
+@tab @nicode{char-set:title-case}
+@item @nicode{char-set:upper-case}
+@tab @nicode{char-set:whitespace}
+@item @nicode{char-set<=}
+@tab @nicode{char-set=}
+@item @nicode{char-set?}
+@tab @nicode{end-of-char-set?}
+@item @nicode{list->char-set}
+@tab @nicode{list->char-set!}
+@item @nicode{string->char-set}
+@tab @nicode{string->char-set!}
+@item @nicode{ucs-range->char-set}
+@tab @nicode{ucs-range->char-set!}
+@end multitable
+
+@node SRFI 23, SRFI 27, SRFI 14, Standards Support
+@section SRFI 23: Error Reporting Mechanism
+@findex error
+
+@cartouche
+@table @b
+@item Description
+A simple implementation of @code{error}.  Superseded by @rseven{}.
+@item URL
+@srfiurl{23}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 23)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@noindent
+@nicode{error}
+
+@node SRFI 27, SRFI 39, SRFI 23, Standards Support
+@section SRFI 27: Sources of Random Bits
+@findex default-random-source
+@findex make-random-source
+@findex random-integer
+@findex random-real
+@findex random-source-make-integers
+@findex random-source-make-reals
+@findex random-source-make-reals
+@findex random-source-pseudo-randomize!
+@findex random-source-randomize!
+@findex random-source-state-ref
+@findex random-source-state-set!
+@findex random-source?
+
+@cartouche
+@table @b
+@item Description
+Procedures to obtain pseudo-random numbers in various formats.
+@item URL
+@srfiurl{27}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 27)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{default-random-source}
+@tab @nicode{make-random-source}
+@item @nicode{random-integer}
+@tab @nicode{random-real}
+@item @nicode{random-source-make-integers}
+@tab @nicode{random-source-make-reals}
+@item @nicode{random-source-make-reals}
+@tab @nicode{random-source-pseudo-randomize!}
+@item @nicode{random-source-randomize!}
+@tab @nicode{random-source-state-ref}
+@item @nicode{random-source-state-set!}
+@tab @nicode{random-source?}
+@end multitable
+
+@node SRFI 39, SRFI 69, SRFI 27, Standards Support
+@section SRFI 39: Parameter Objects
+@findex make-parameter
+@findex parameterize
+
+@cartouche
+@table @b
+@item Description
+A mechanism for dynamic binding.  Superseded by @rseven{}.
+@item URL
+@srfiurl{39}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 39)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{make-parameter}
+@tab @nicode{parameterize}
+@end multitable
+
+@node SRFI 69, SRFI 115, SRFI 39, Standards Support
+@section SRFI 69: Basic Hash Tables
+@findex alist->hash-table
+@findex hash
+@findex hash-by-identity
+@findex hash-table->alist
+@findex hash-table-copy
+@findex hash-table-delete!
+@findex hash-table-equivalence-function
+@findex hash-table-exists?
+@findex hash-table-fold
+@findex hash-table-hash-function
+@findex hash-table-keys
+@findex hash-table-merge!
+@findex hash-table-ref
+@findex hash-table-ref/default
+@findex hash-table-set!
+@findex hash-table-size
+@findex hash-table-update!
+@findex hash-table-update!/default
+@findex hash-table-values
+@findex hash-table-walk
+@findex hash-table?
+@findex make-hash-table
+@findex string-ci-hash
+@findex string-hash
+
+@cartouche
+@table @b
+@item Description
+A standard interface for hash tables.  Superseded by @asrfi{125}.
+@item URL
+@srfiurl{69}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 69)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{alist->hash-table}
+@tab @nicode{hash}
+@item @nicode{hash-by-identity}
+@tab @nicode{hash-table->alist}
+@item @nicode{hash-table-copy}
+@tab @nicode{hash-table-delete!}
+@item @nicode{hash-table-equivalence-function}
+@tab @nicode{hash-table-exists?}
+@item @nicode{hash-table-fold}
+@tab @nicode{hash-table-hash-function}
+@item @nicode{hash-table-keys}
+@tab @nicode{hash-table-merge!}
+@item @nicode{hash-table-ref}
+@tab @nicode{hash-table-ref/default}
+@item @nicode{hash-table-set!}
+@tab @nicode{hash-table-size}
+@item @nicode{hash-table-update!}
+@tab @nicode{hash-table-update!/default}
+@item @nicode{hash-table-values}
+@tab @nicode{hash-table-walk}
+@item @nicode{hash-table?}
+@tab @nicode{make-hash-table}
+@item @nicode{string-ci-hash}
+@tab @nicode{string-hash}
+@end multitable
+
+@node SRFI 115, SRFI 125, SRFI 69, Standards Support
+@section SRFI 115: Scheme Regular Expressions
+@findex char-set->sre
+@findex regexp
+@findex regexp-extract
+@findex regexp-fold
+@findex regexp-match->list
+@findex regexp-match-count
+@findex regexp-match-submatch
+@findex regexp-match-submatch-end
+@findex regexp-match-submatch-start
+@findex regexp-match?
+@findex regexp-matches
+@findex regexp-matches?
+@findex regexp-partition
+@findex regexp-replace
+@findex regexp-replace-all
+@findex regexp-search
+@findex regexp-split
+@findex regexp?
+@findex rx
+@findex valid-sre?
+
+@cartouche
+@table @b
+@item Description
+An implementation of regular expressions using Scheme syntax.
+@item URL
+@srfiurl{115}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 115)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{char-set->sre}
+@tab @nicode{regexp}
+@item @nicode{regexp-extract}
+@tab @nicode{regexp-fold}
+@item @nicode{regexp-match->list}
+@tab @nicode{regexp-match-count}
+@item @nicode{regexp-match-submatch}
+@tab @nicode{regexp-match-submatch-end}
+@item @nicode{regexp-match-submatch-start}
+@tab @nicode{regexp-match?}
+@item @nicode{regexp-matches}
+@tab @nicode{regexp-matches?}
+@item @nicode{regexp-partition}
+@tab @nicode{regexp-replace}
+@item @nicode{regexp-replace-all}
+@tab @nicode{regexp-search}
+@item @nicode{regexp-split}
+@tab @nicode{regexp?}
+@item @nicode{rx}
+@tab @nicode{valid-sre?}
+@end multitable
+
+@node SRFI 125, SRFI 128, SRFI 115, Standards Support
+@section SRFI 125: Intermediate Hash Tables
+@findex alist->hash-table
+@findex hash
+@findex hash-by-identity
+@findex hash-table
+@findex hash-table->alist
+@findex hash-table-clear!
+@findex hash-table-contains?
+@findex hash-table-copy
+@findex hash-table-count
+@findex hash-table-delete!
+@findex hash-table-difference!
+@findex hash-table-empty-copy
+@findex hash-table-empty?
+@findex hash-table-entries
+@findex hash-table-equivalence-function
+@findex hash-table-exists?
+@findex hash-table-find
+@findex hash-table-fold
+@findex hash-table-for-each
+@findex hash-table-hash-function
+@findex hash-table-intern!
+@findex hash-table-intersection!
+@findex hash-table-keys
+@findex hash-table-map
+@findex hash-table-map!
+@findex hash-table-map->list
+@findex hash-table-merge!
+@findex hash-table-mutable?
+@findex hash-table-pop!
+@findex hash-table-prune!
+@findex hash-table-ref
+@findex hash-table-ref/default
+@findex hash-table-set!
+@findex hash-table-size
+@findex hash-table-unfold
+@findex hash-table-union!
+@findex hash-table-update!
+@findex hash-table-update!/default
+@findex hash-table-values
+@findex hash-table-walk
+@findex hash-table-xor!
+@findex hash-table=?
+@findex hash-table?
+@findex make-hash-table
+@findex string-ci-hash
+@findex string-hash
+
+@cartouche
+@table @b
+@item Description
+A comprehensive set of procedures for hash tables.  Supersedes @asrfi{69}.
+@item URL
+@srfiurl{125}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 125)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{alist->hash-table}
+@tab @nicode{hash}
+@item @nicode{hash-by-identity}
+@tab @nicode{hash-table}
+@item @nicode{hash-table->alist}
+@tab @nicode{hash-table-clear!}
+@item @nicode{hash-table-contains?}
+@tab @nicode{hash-table-copy}
+@item @nicode{hash-table-count}
+@tab @nicode{hash-table-delete!}
+@item @nicode{hash-table-difference!}
+@tab @nicode{hash-table-empty-copy}
+@item @nicode{hash-table-empty?}
+@tab @nicode{hash-table-entries}
+@item @nicode{hash-table-equivalence-function}
+@tab @nicode{hash-table-exists?}
+@item @nicode{hash-table-find}
+@tab @nicode{hash-table-fold}
+@item @nicode{hash-table-for-each}
+@tab @nicode{hash-table-hash-function}
+@item @nicode{hash-table-intern!}
+@tab @nicode{hash-table-intersection!}
+@item @nicode{hash-table-keys}
+@tab @nicode{hash-table-map}
+@item @nicode{hash-table-map!}
+@tab @nicode{hash-table-map->list}
+@item @nicode{hash-table-merge!}
+@tab @nicode{hash-table-mutable?}
+@item @nicode{hash-table-pop!}
+@tab @nicode{hash-table-prune!}
+@item @nicode{hash-table-ref}
+@tab @nicode{hash-table-ref/default}
+@item @nicode{hash-table-set!}
+@tab @nicode{hash-table-size}
+@item @nicode{hash-table-unfold}
+@tab @nicode{hash-table-union!}
+@item @nicode{hash-table-update!}
+@tab @nicode{hash-table-update!/default}
+@item @nicode{hash-table-values}
+@tab @nicode{hash-table-walk}
+@item @nicode{hash-table-xor!}
+@tab @nicode{hash-table=?}
+@item @nicode{hash-table?}
+@tab @nicode{make-hash-table}
+@item @nicode{string-ci-hash}
+@tab @nicode{string-hash}
+@end multitable
+
+@node SRFI 128, SRFI 131, SRFI 125, Standards Support
+@section SRFI 128: Comparators (reduced)
+@findex <=?
+@findex <?
+@findex =?
+@findex >=?
+@findex >?
+@findex boolean-hash
+@findex char-ci-hash
+@findex char-hash
+@findex comparator-check-type
+@findex comparator-equality-predicate
+@findex comparator-hash
+@findex comparator-hash-function
+@findex comparator-hashable?
+@findex comparator-if<=>
+@findex comparator-ordered?
+@findex comparator-ordering-predicate
+@findex comparator-register-default!
+@findex comparator-test-type
+@findex comparator-type-test-predicate
+@findex comparator?
+@findex default-hash
+@findex hash-bound
+@findex hash-salt
+@findex make-comparator
+@findex make-default-comparator
+@findex make-eq-comparator
+@findex make-equal-comparator
+@findex make-eqv-comparator
+@findex make-list-comparator
+@findex make-pair-comparator
+@findex make-vector-comparator
+@findex number-hash
+@findex string-ci-hash
+@findex string-hash
+@findex symbol-hash
+
+@cartouche
+@table @b
+@item Description
+An implementation of comparators, which encapsulate type, equality,
+ordering, and hashing.
+@item URL
+@srfiurl{128}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 128)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{<=?}
+@tab @nicode{<?}
+@item @nicode{=?}
+@tab @nicode{>=?}
+@item @nicode{>?}
+@tab @nicode{boolean-hash}
+@item @nicode{char-ci-hash}
+@tab @nicode{char-hash}
+@item @nicode{comparator-check-type}
+@tab @nicode{comparator-equality-predicate}
+@item @nicode{comparator-hash}
+@tab @nicode{comparator-hash-function}
+@item @nicode{comparator-hashable?}
+@tab @nicode{comparator-if<=>}
+@item @nicode{comparator-ordered?}
+@tab @nicode{comparator-ordering-predicate}
+@item @nicode{comparator-register-default!}
+@tab @nicode{comparator-test-type}
+@item @nicode{comparator-type-test-predicate}
+@tab @nicode{comparator?}
+@item @nicode{default-hash}
+@tab @nicode{hash-bound}
+@item @nicode{hash-salt}
+@tab @nicode{make-comparator}
+@item @nicode{make-default-comparator}
+@tab @nicode{make-eq-comparator}
+@item @nicode{make-equal-comparator}
+@tab @nicode{make-eqv-comparator}
+@item @nicode{make-list-comparator}
+@tab @nicode{make-pair-comparator}
+@item @nicode{make-vector-comparator}
+@tab @nicode{number-hash}
+@item @nicode{string-ci-hash}
+@tab @nicode{string-hash}
+@item @nicode{symbol-hash}
+@end multitable
+
+@node SRFI 131, SRFI 133, SRFI 128, Standards Support
+@section SRFI 131: ERRR5RS Record Syntax (reduced)
+@findex define-record-type
+
+@cartouche
+@table @b
+@item Description
+An enhanced record syntax supporting abbreviations and single
+inheritance.
+@item URL
+@srfiurl{131}
+@item Support
+The @mitgnu{} implementation is fully compatible.
+@item Libraries
+@nicode{(srfi 131)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@noindent
+@nicode{define-record-type}
+
+@node SRFI 133, SRFI 140, SRFI 131, Standards Support
+@section SRFI 133: Vector Library (R7RS-compatible)
+@findex reverse-list->vector
+@findex reverse-vector->list
+@findex vector-any
+@findex vector-append-subvectors
+@findex vector-cumulate
+@findex vector-empty?
+@findex vector-every
+@findex vector-fold
+@findex vector-fold-right
+@findex vector-index
+@findex vector-index-right
+@findex vector-map!
+@findex vector-partition
+@findex vector-reverse!
+@findex vector-reverse-copy
+@findex vector-skip
+@findex vector-skip-right
+@findex vector-swap!
+@findex vector-unfold
+@findex vector-unfold!
+@findex vector-unfold-right
+@findex vector-unfold-right!
+@findex vector=
+@findex vector-binary-search
+@findex vector-concatenate
+@findex vector-count
+@findex vector-reverse-copy!
+
+@cartouche
+@table @b
+@item Description
+A set of procedures for working with vectors.
+@item URL
+@srfiurl{133}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 133)}
+@item Global
+No bindings in the @mitgnu{} global environment.  Some of the same
+names are there, but they aren't the same implementations.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{reverse-list->vector}
+@tab @nicode{reverse-vector->list}
+@item @nicode{vector-any}
+@tab @nicode{vector-append-subvectors}
+@item @nicode{vector-cumulate}
+@tab @nicode{vector-empty?}
+@item @nicode{vector-every}
+@tab @nicode{vector-fold}
+@item @nicode{vector-fold-right}
+@tab @nicode{vector-index}
+@item @nicode{vector-index-right}
+@tab @nicode{vector-map!}
+@item @nicode{vector-partition}
+@tab @nicode{vector-reverse!}
+@item @nicode{vector-reverse-copy}
+@tab @nicode{vector-skip}
+@item @nicode{vector-skip-right}
+@tab @nicode{vector-swap!}
+@item @nicode{vector-unfold}
+@tab @nicode{vector-unfold!}
+@item @nicode{vector-unfold-right}
+@tab @nicode{vector-unfold-right!}
+@item @nicode{vector=}
+@tab @nicode{vector-binary-search}
+@item @nicode{vector-concatenate}
+@tab @nicode{vector-count}
+@item @nicode{vector-reverse-copy!}
+@end multitable
+
+@node SRFI 140, SRFI 143, SRFI 133, Standards Support
+@section SRFI 140: Immutable Strings
+@findex istring?
+@findex list->string
+@findex reverse-list->string
+@findex string
+@findex string->list
+@findex string->utf16
+@findex string->utf16be
+@findex string->utf16le
+@findex string->utf8
+@findex string->vector
+@findex string-any
+@findex string-append
+@findex string-ci<=?
+@findex string-ci<?
+@findex string-ci=?
+@findex string-ci>=?
+@findex string-ci>?
+@findex string-concatenate
+@findex string-concatenate-reverse
+@findex string-contains
+@findex string-contains-right
+@findex string-count
+@findex string-downcase
+@findex string-drop
+@findex string-drop-right
+@findex string-every
+@findex string-filter
+@findex string-fold
+@findex string-fold-right
+@findex string-foldcase
+@findex string-for-each
+@findex string-for-each-index
+@findex string-index
+@findex string-index-right
+@findex string-join
+@findex string-length
+@findex string-map
+@findex string-map-index
+@findex string-null?
+@findex string-pad
+@findex string-pad-right
+@findex string-prefix-length
+@findex string-prefix?
+@findex string-ref
+@findex string-remove
+@findex string-repeat
+@findex string-replace
+@findex string-skip
+@findex string-skip-right
+@findex string-split
+@findex string-suffix-length
+@findex string-suffix?
+@findex string-tabulate
+@findex string-take
+@findex string-take-right
+@findex string-titlecase
+@findex string-trim
+@findex string-trim-both
+@findex string-trim-right
+@findex string-unfold
+@findex string-unfold-right
+@findex string-upcase
+@findex string<=?
+@findex string<?
+@findex string=?
+@findex string>=?
+@findex string>?
+@findex string?
+@findex substring
+@findex utf16->string
+@findex utf16be->string
+@findex utf16le->string
+@findex utf8->string
+@findex vector->string
+@findex xsubstring
+
+@cartouche
+@table @b
+@item Description
+A comprehensive library for using immutable strings.
+@item URL
+@srfiurl{140}
+@item Support
+Partially supported: only immutable strings are implemented.
+@item Libraries
+@nicode{(srfi 140)}
+@item Global
+Some bindings in the @mitgnu{} global environment; see below.
+@end table
+@end cartouche
+
+@noindent
+Names that are bound in the @mitgnu{} global environment:
+
+@multitable @columnfractions .5 .5
+@item @nicode{istring?}
+@tab @nicode{list->string}
+@item @nicode{string}
+@tab @nicode{string->list}
+@item @nicode{string->utf16}
+@tab @nicode{string->utf16be}
+@item @nicode{string->utf16le}
+@tab @nicode{string->utf8}
+@item @nicode{string->vector}
+@tab @nicode{string-append}
+@item @nicode{string-ci<=?}
+@tab @nicode{string-ci<?}
+@item @nicode{string-ci=?}
+@tab @nicode{string-ci>=?}
+@item @nicode{string-ci>?}
+@tab @nicode{string-concatenate}
+@item @nicode{string-downcase}
+@tab @nicode{string-fold}
+@item @nicode{string-fold-right}
+@tab @nicode{string-foldcase}
+@item @nicode{string-for-each}
+@tab @nicode{string-length}
+@item @nicode{string-map}
+@tab @nicode{string-null?}
+@item @nicode{string-ref}
+@tab @nicode{string-titlecase}
+@item @nicode{string-upcase}
+@tab @nicode{string<=?}
+@item @nicode{string<?}
+@tab @nicode{string=?}
+@item @nicode{string>=?}
+@tab @nicode{string>?}
+@item @nicode{string?}
+@tab @nicode{substring}
+@item @nicode{utf16->string}
+@tab @nicode{utf16be->string}
+@item @nicode{utf16le->string}
+@tab @nicode{utf8->string}
+@item @nicode{vector->string}
+@end multitable
+
+@noindent
+Names that are not bound in the @mitgnu{} global environment:
+
+@multitable @columnfractions .5 .5
+@item @nicode{reverse-list->string}
+@tab @nicode{string-any}
+@item @nicode{string-concatenate-reverse}
+@tab @nicode{string-contains}
+@item @nicode{string-contains-right}
+@tab @nicode{string-count}
+@item @nicode{string-drop}
+@tab @nicode{string-drop-right}
+@item @nicode{string-every}
+@tab @nicode{string-filter}
+@item @nicode{string-for-each-index}
+@tab @nicode{string-index}
+@item @nicode{string-index-right}
+@tab @nicode{string-join}
+@item @nicode{string-map-index}
+@tab @nicode{string-pad}
+@item @nicode{string-pad-right}
+@tab @nicode{string-prefix-length}
+@item @nicode{string-prefix?}
+@tab @nicode{string-remove}
+@item @nicode{string-repeat}
+@tab @nicode{string-replace}
+@item @nicode{string-skip}
+@tab @nicode{string-skip-right}
+@item @nicode{string-split}
+@tab @nicode{string-suffix-length}
+@item @nicode{string-suffix?}
+@tab @nicode{string-tabulate}
+@item @nicode{string-take}
+@tab @nicode{string-take-right}
+@item @nicode{string-trim}
+@tab @nicode{string-trim-both}
+@item @nicode{string-trim-right}
+@tab @nicode{string-unfold}
+@item @nicode{string-unfold-right}
+@tab @nicode{xsubstring}
+@end multitable
+
+@node SRFI 143, SRFI 158, SRFI 140, Standards Support
+@section SRFI 143: Fixnums
+@findex fixnum?
+@findex fx*
+@findex fx*/carry
+@findex fx+
+@findex fx+/carry
+@findex fx-
+@findex fx-/carry
+@findex fx-greatest
+@findex fx-least
+@findex fx-width
+@findex fx<=?
+@findex fx<?
+@findex fx=?
+@findex fx>=?
+@findex fx>?
+@findex fxabs
+@findex fxand
+@findex fxarithmetic-shift
+@findex fxarithmetic-shift-left
+@findex fxarithmetic-shift-right
+@findex fxbit-count
+@findex fxbit-field
+@findex fxbit-field-reverse
+@findex fxbit-field-rotate
+@findex fxbit-set?
+@findex fxcopy-bit
+@findex fxeven?
+@findex fxfirst-set-bit
+@findex fxif
+@findex fxior
+@findex fxlength
+@findex fxmax
+@findex fxmin
+@findex fxneg
+@findex fxnegative?
+@findex fxnot
+@findex fxodd?
+@findex fxpositive?
+@findex fxquotient
+@findex fxremainder
+@findex fxsqrt
+@findex fxsquare
+@findex fxxor
+@findex fxzero?
+
+@cartouche
+@table @b
+@item Description
+Definitions of fixnum-specific procedures.
+@item URL
+@srfiurl{143}
+@item Support
+Fully supported with efficient compilation.
+@item Libraries
+@nicode{(srfi 143)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{fixnum?}
+@tab @nicode{fx*}
+@item @nicode{fx*/carry}
+@tab @nicode{fx+}
+@item @nicode{fx+/carry}
+@tab @nicode{fx-}
+@item @nicode{fx-/carry}
+@tab @nicode{fx-greatest}
+@item @nicode{fx-least}
+@tab @nicode{fx-width}
+@item @nicode{fx<=?}
+@tab @nicode{fx<?}
+@item @nicode{fx=?}
+@tab @nicode{fx>=?}
+@item @nicode{fx>?}
+@tab @nicode{fxabs}
+@item @nicode{fxand}
+@tab @nicode{fxarithmetic-shift}
+@item @nicode{fxarithmetic-shift-left}
+@tab @nicode{fxarithmetic-shift-right}
+@item @nicode{fxbit-count}
+@tab @nicode{fxbit-field}
+@item @nicode{fxbit-field-reverse}
+@tab @nicode{fxbit-field-rotate}
+@item @nicode{fxbit-set?}
+@tab @nicode{fxcopy-bit}
+@item @nicode{fxeven?}
+@tab @nicode{fxfirst-set-bit}
+@item @nicode{fxif}
+@tab @nicode{fxior}
+@item @nicode{fxlength}
+@tab @nicode{fxmax}
+@item @nicode{fxmin}
+@tab @nicode{fxneg}
+@item @nicode{fxnegative?}
+@tab @nicode{fxnot}
+@item @nicode{fxodd?}
+@tab @nicode{fxpositive?}
+@item @nicode{fxquotient}
+@tab @nicode{fxremainder}
+@item @nicode{fxsqrt}
+@tab @nicode{fxsquare}
+@item @nicode{fxxor}
+@tab @nicode{fxzero?}
+@end multitable
+
+@node SRFI 158,  , SRFI 143, Standards Support
+@section SRFI 158: Generators and Accumulators
+@findex bytevector->generator
+@findex circular-generator
+@findex gappend
+@findex gcons*
+@findex gdelete
+@findex gdrop
+@findex gdrop-while
+@findex generator
+@findex generator->list
+@findex generator->reverse-list
+@findex generator->string
+@findex generator->vector
+@findex generator-any
+@findex generator-count
+@findex generator-every
+@findex generator-find
+@findex generator-fold
+@findex generator-fold-right
+@findex generator-for-each
+@findex generator-map->list
+@findex generator-unfold
+@findex gfilter
+@findex gflatten
+@findex gmap
+@findex gremove
+@findex gtake
+@findex gtake-while
+@findex list->generator
+@findex make-iota-generator
+@findex make-range-generator
+@findex reverse-vector->generator
+@findex string->generator
+@findex vector->generator
+
+@cartouche
+@table @b
+@item Description
+Efficient sources and sinks of objects.
+@item URL
+@srfiurl{158}
+@item Support
+Partially supported.
+@item Libraries
+No libraries.
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{bytevector->generator}
+@tab @nicode{circular-generator}
+@item @nicode{gappend}
+@tab @nicode{gcons*}
+@item @nicode{gdelete}
+@tab @nicode{gdrop}
+@item @nicode{gdrop-while}
+@tab @nicode{generator}
+@item @nicode{generator->list}
+@tab @nicode{generator->reverse-list}
+@item @nicode{generator->string}
+@tab @nicode{generator->vector}
+@item @nicode{generator-any}
+@tab @nicode{generator-count}
+@item @nicode{generator-every}
+@tab @nicode{generator-find}
+@item @nicode{generator-fold}
+@tab @nicode{generator-fold-right}
+@item @nicode{generator-for-each}
+@tab @nicode{generator-map->list}
+@item @nicode{generator-unfold}
+@tab @nicode{gfilter}
+@item @nicode{gflatten}
+@tab @nicode{gmap}
+@item @nicode{gremove}
+@tab @nicode{gtake}
+@item @nicode{gtake-while}
+@tab @nicode{list->generator}
+@item @nicode{make-iota-generator}
+@tab @nicode{make-range-generator}
+@item @nicode{reverse-vector->generator}
+@tab @nicode{string->generator}
+@item @nicode{vector->generator}
+@end multitable

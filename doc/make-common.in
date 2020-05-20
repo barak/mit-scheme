@@ -71,6 +71,7 @@ INST_TARGETS = @INST_TARGETS@
 
 INFO_TARGET = $(TARGET_ROOT).info
 HTML_TARGET = $(TARGET_ROOT)
+HTML_NOSPLIT_TARGET = $(TARGET_ROOT).html
 DVI_TARGET = $(TARGET_ROOT).dvi
 PDF_TARGET = $(TARGET_ROOT).pdf
 PS_TARGET = $(TARGET_ROOT).ps
@@ -89,20 +90,22 @@ all: $(INFO_TARGET) $(TARGETS)
 
 $(INFO_TARGET): $(SOURCES) $(FIGURES_PNG)
 	rm -f $(INFO_TARGET)*
-	makeinfo --output=$(INFO_TARGET) $(TEXINFO_ROOT).texinfo
+	texi2any --info --output=$(INFO_TARGET) $(TEXINFO_ROOT).texinfo
 
 $(HTML_TARGET)/index.html: $(SOURCES) $(FIGURES_PNG)
 	rm -rf $(HTML_TARGET)
-	makeinfo --html $(TEXINFO_ROOT).texinfo
+	texi2any --html $(TEXINFO_ROOT).texinfo
+
+$(HTML_NOSPLIT_TARGET): $(SOURCES) $(FIGURES_PNG)
+	rm -f $(HTML_NOSPLIT_TARGET)
+	texi2any --html --no-split $(TEXINFO_ROOT).texinfo
 
 $(PDF_TARGET): $(SOURCES) $(FIGURES_PDF)
 	texi2dvi --pdf $(TEX_OPTIONS) --output=$@ $(TEXINFO_ROOT).texinfo
 
 $(PS_TARGET): $(SOURCES) $(FIGURES_EPS)
 	-rm -f $(DVI_TARGET)
-	texi2dvi $(TEX_OPTIONS) --output=$(DVI_TARGET) $(TEXINFO_ROOT).texinfo
-	dvips -q -o $@ $(DVI_TARGET)
-	rm -f $(DVI_TARGET)
+	texi2dvi --ps $(TEX_OPTIONS) --output=$@ $(TEXINFO_ROOT).texinfo
 
 .SUFFIXES: .eps
 .SUFFIXES: .eps.in

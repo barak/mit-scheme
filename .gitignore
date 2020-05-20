@@ -51,6 +51,7 @@ doc/*/*.cp
 doc/*/*.cps
 doc/*/*.fn
 doc/*/*.fns
+doc/*/*.html
 doc/*/*.info
 doc/*/*.info-*
 doc/*/*.ky
