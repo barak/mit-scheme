@@ -1553,9 +1553,9 @@ USA.
      (set! non-pointer-hash-table-type	;Open-coded
 	   (open-type! eq-hash-mod eq? #f hash-table-entry-type:strong))
      (set! string-ci-hash-table-type
-	   (make string-ci-hash string-ci=? #t hash-table-entry-type:strong))
+	   (make string-ci-hash string-ci=? #f hash-table-entry-type:strong))
      (set! string-hash-table-type
-	   (make string-hash string=? #t hash-table-entry-type:strong))
+	   (make string-hash string=? #f hash-table-entry-type:strong))
      (set! strong-eq-hash-table-type	;Open-coded
 	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:strong))
      (set! strong-eqv-hash-table-type
