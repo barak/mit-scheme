@@ -35,6 +35,18 @@ USA.
 #include "fma.h"
 #include "floenv.h"
 
+static void
+fwait (void)
+{
+  /* Trap any deferred exceptions.  Relevant only on systems that use
+     i387 internally, e.g. to compute exp in binary80 precision and
+     then store the result in binary64, which may not overflow until
+     the store which defers the exception trap.  */
+#ifdef HAVE_FERAISEEXCEPT
+  feraiseexcept (0);
+#endif
+}
+
 double
 arg_flonum (int arg_number)
 {
@@ -229,6 +241,7 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
   double result;							\
   PRIMITIVE_HEADER (1);							\
   result = (function (arg_flonum (1)));					\
+  fwait ();								\
   FLONUM_RESULT (result);						\
 }
 
