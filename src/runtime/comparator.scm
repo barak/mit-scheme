@@ -39,7 +39,11 @@ USA.
   (guarantee binary-procedure? = 'make-comparator)
   (if < (guarantee binary-procedure? < 'make-comparator))
   (if hash (guarantee unary-procedure? hash 'make-comparator))
-  (%make-comparator ? = < hash (and hash rehash-after-gc? #t)))
+  (%make-comparator ? = < hash
+		    (and hash
+			 (if (default-object? rehash-after-gc?)
+			     (hash-changes-after-gc? hash)
+			     (and rehash-after-gc? #t)))))
 
 (define-record-type <comparator>
     (%make-comparator ? = < hash rehash-after-gc?)
@@ -67,6 +71,56 @@ USA.
       (lambda (a)
 	(declare (ignore a))
 	(error "Comparator not hashable:" comparator))))
+
+(define (hash-changes-after-gc? hash-fn)
+  (hash-table-ref/default registered-hashes hash-fn #f))
+
+(define (registered-hash? object)
+  (hash-table-contains? registered-hashes object))
+
+(define (register-hash! hash-fn changes-after-gc?)
+  (guarantee unary-procedure? hash-fn 'register-hash!)
+  (%register-hash! hash-fn changes-after-gc?))
+
+(define (register-compound-hash! hash-fn . components)
+  (guarantee unary-procedure? hash-fn 'register-hash!)
+  (let ((v
+	 (fold (lambda (component acc)
+		 (combine-cags (get-cag component) acc))
+	       #f
+	       components)))
+    (if (not (eq? 'unknown v))
+	(%register-hash! hash-fn v))))
+
+(define (%register-hash! hash-fn changes-after-gc?)
+  (hash-table-set! registered-hashes hash-fn (and changes-after-gc? #t)))
+
+(define (get-cag hash-fn)
+  (hash-table-ref/default registered-hashes hash-fn 'unknown))
+
+(define (combine-cags a b)
+  (cond ((or (eq? #t a) (eq? #t b)) #t)
+	((or (eq? 'unknown a) (eq? 'unknown b)) 'unknown)
+	(else #f)))
+
+(define-deferred registered-hashes
+  (make-key-weak-eqv-hash-table))
+
+(add-boot-init!
+ (lambda ()
+   (register-hash! boolean-hash #f)
+   (register-hash! bytevector-hash #f)
+   (register-hash! char-ci-hash #f)
+   (register-hash! char-hash #f)
+   (register-hash! char-set-hash #f)
+   (register-hash! eq-hash #t)
+   (register-hash! equal-hash #t)
+   (register-hash! eqv-hash #t)
+   (register-hash! fixnum-hash #f)
+   (register-hash! number-hash #f)
+   (register-hash! string-ci-hash #f)
+   (register-hash! string-hash #f)
+   (register-hash! symbol-hash #f)))
 
 (define (comparator-test-type comparator object)
   ((%comparator-? comparator) object))
@@ -270,12 +324,14 @@ USA.
 		      (kdr< (kdr a) (kdr b))))))))
 
   (define (make-hash kar-hash kdr-hash)
-    (lambda (a)
+    (define (kpair-hash a)
       (let ((aa (kar a)))
 	(if (kar-valid? aa)
 	    (combine-hashes (kar-hash aa)
 			    (kdr-hash (kdr a)))
-	    (kdr-hash (kdr a))))))
+	    (kdr-hash (kdr a)))))
+    (register-compound-hash! kpair-hash kar-hash kdr-hash)
+    kpair-hash)
 
   (lambda (ac dc)
     (let ((a= (%comparator-= ac))
@@ -368,12 +424,14 @@ USA.
 		    (loop (kdr scana) (kdr scanb))))))))
 
 (define ((make-klist-hash null-klist? kar kdr) elt-hash)
-  (lambda (a)
+  (define (klist-hash a)
     (let loop ((scan a) (result (initial-hash)))
       (if (null-klist? scan)
 	  result
 	  (loop (kdr scan)
-		(combine-hashes (elt-hash (kar scan)) result))))))
+		(combine-hashes (elt-hash (kar scan)) result)))))
+  (register-compound-hash! klist-hash elt-hash)
+  klist-hash)
 
 (define (make-vector-comparator celt kvector? kv-length kv-ref)
   (cond ((and (eqv? vector? kvector?)
@@ -421,13 +479,15 @@ USA.
 	      (< end1 end2)))))))
 
 (define ((make-kvector-hash kv-length kv-ref) elt-hash)
-  (lambda (kv)
+  (define (kvector-hash kv)
     (let ((end (kv-length kv)))
       (let loop ((i 0) (result (initial-hash)))
 	(if (< i end)
 	    (loop (+ i 1)
 		  (combine-hashes (elt-hash (kv-ref kv i)) result))
-	    result)))))
+	    result))))
+  (register-compound-hash! kvector-hash elt-hash)
+  kvector-hash)
 
 ;;;; Specialized combinators
 
@@ -494,6 +554,7 @@ USA.
 (define (make-ulist-hash elt-hash)
   (cond ((eqv? eq? elt-hash) eq-ulist-hash)
 	((eqv? eqv? elt-hash) eqv-ulist-hash)
+	((registered-hash? elt-hash) (%make-ulist-hash elt-hash))
 	(else
 	 (let ()
 	   (define-integrable (checked elt)
@@ -501,14 +562,16 @@ USA.
 	   (%make-ulist-hash checked)))))
 
 (define-integrable (%make-ulist-hash elt-hash)
-  (lambda (object)
+  (define (ulist-hash object)
     (fold (lambda (elt result)
 	    (%combine-hashes (elt-hash elt) result))
 	  (initial-hash)
-	  object)))
+	  object))
+  (register-compound-hash! ulist-hash elt-hash)
+  ulist-hash)
 
-(define eq-ulist-hash (%make-ulist-hash eq-hash))
-(define eqv-ulist-hash (%make-ulist-hash eqv-hash))
+(define-deferred eq-ulist-hash (%make-ulist-hash eq-hash))
+(define-deferred eqv-ulist-hash (%make-ulist-hash eqv-hash))
 
 (define-deferred lset-comparator
   (memoized-constructor
@@ -602,6 +665,7 @@ USA.
 (define (make-uwlist-hash elt-hash)
   (cond ((eqv? eq? elt-hash) eq-uwlist-hash)
 	((eqv? eqv? elt-hash) eqv-uwlist-hash)
+	((registered-hash? elt-hash) (%make-uwlist-hash elt-hash))
 	(else
 	 (let ()
 	   (define-integrable (checked elt)
@@ -609,14 +673,16 @@ USA.
 	   (%make-uwlist-hash checked)))))
 
 (define-integrable (%make-uwlist-hash elt-hash)
-  (lambda (object)
+  (define (uwlist-hash object)
     (weak-fold (lambda (elt result)
 		 (%combine-hashes (elt-hash elt) result))
 	       (initial-hash)
-	       object)))
+	       object))
+  (register-compound-hash! uwlist-hash elt-hash)
+  uwlist-hash)
 
-(define eq-uwlist-hash (%make-uwlist-hash eq-hash))
-(define eqv-uwlist-hash (%make-uwlist-hash eqv-hash))
+(define-deferred eq-uwlist-hash (%make-uwlist-hash eq-hash))
+(define-deferred eqv-uwlist-hash (%make-uwlist-hash eqv-hash))
 
 (define-deferred weak-lset-comparator
   (weak-list-constructor
@@ -702,13 +768,23 @@ USA.
 	      (fix:< end1 end2)))))))
 
 (define (make-uvector-hash elt-hash)
-  (lambda (v)
+  (if (registered-hash? elt-hash)
+      (%make-uvector-hash elt-hash)
+      (let ()
+	(define-integrable (checked elt)
+	  (check-hash (elt-hash elt)))
+	(%make-uvector-hash checked))))
+
+(define-integrable (%make-uvector-hash elt-hash)
+  (define (uvector-hash v)
     (let ((end (vector-length v)))
       (let loop ((i 0) (result (initial-hash)))
-	(if (< i end)
-	    (loop (+ i 1)
-		  (combine-hashes (elt-hash (vector-ref v i)) result))
-	    result)))))
+	(if (fix:< i end)
+	    (loop (fix:+ i 1)
+		  (%combine-hashes (elt-hash (vector-ref v i)) result))
+	    result))))
+  (register-compound-hash! uvector-hash elt-hash)
+  uvector-hash)
 
 ;;;; Hash functions
 
@@ -733,7 +809,8 @@ USA.
   (random-integer (hash-bound)))
 
 (define ((protected-hash-function hash-fn) object modulus)
-  (check-hash (hash-fn object modulus)))
+  (let ((h (hash-fn object modulus)))
+    (check-hash h)))
 
 (define-integrable (check-hash h)
   (guarantee index-fixnum? h)
@@ -772,10 +849,15 @@ USA.
 (define (char-ci-hash char)
   (char-hash (char-foldcase char)))
 
-(define (fixnum-hash n)
+(define-integrable (fixnum-hash n)
   (%combine-hashes (fix:and (fix:xor (fix:lsh n (fix:- 0 (hash-bits))) n)
 			    (hash-mask))
 		   (initial-hash)))
+
+(define (number-hash z)
+  (if (fix:fixnum? z)
+      (fixnum-hash z)
+      (primitive-object-hash z)))
 
 ;;;; Default comparator
 
