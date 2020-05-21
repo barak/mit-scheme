@@ -5306,7 +5306,6 @@ USA.
 	  (receive $receive)		;(srfi 8)
 	  (unless $unless)		;(scheme base)
 	  (when $when)			;(scheme base)
-	  features			;(scheme base)
 	  )
   (export (runtime library parser)
 	  evaluate-cond-expand))
@@ -6800,3 +6799,10 @@ USA.
 	  protected-hash-function)
   (export (runtime hash-table)
 	  weak-list-comparator?))
+
+(define-package (runtime feature)
+  (files "feature")
+  (parent (runtime))
+  (export ()
+	  features			;(scheme base)
+	  ))

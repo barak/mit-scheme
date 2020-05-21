@@ -715,30 +715,29 @@ USA.
   `(subform (* (or symbol ,exact-nonnegative-integer?))))
 
 (define (evaluate-cond-expand id=? clauses else-forms)
-  (let ((clause
-	 (find (lambda (clause)
-		 (evaluate-feature-requirement id=? (car clause)))
-	       clauses)))
-    (if clause
-	(cdr clause)
-	else-forms)))
+  (let ((supported-features (features)))
+    (let ((clause
+	   (find (lambda (clause)
+		   (evaluate-feature-requirement id=? supported-features
+						 (car clause)))
+		 clauses)))
+      (if clause
+	  (cdr clause)
+	  else-forms))))
 
-(define (evaluate-feature-requirement id=? feature-requirement)
+(define (evaluate-feature-requirement id=? supported-features
+				      feature-requirement)
 
   (define (eval-req req)
     (cond ((identifier? req) (supported-feature? req))
 	  ((id=? 'or (car req)) (eval-or (cdr req)))
 	  ((id=? 'and (car req)) (eval-and (cdr req)))
-	  ((id=? 'not (car req)) (eval-req (cadr req)))
+	  ((id=? 'not (car req)) (not (eval-req (cadr req))))
 	  (else (error "Unknown requirement:" req))))
 
-  (define (supported-feature? req)
-    (let ((p
-	   (find (lambda (p)
-		   (id=? (car p) req))
-		 (supported-features))))
-      (and p
-	   ((cdr p)))))
+  (define (supported-feature? id)
+    (any (lambda (feature) (id=? id feature))
+	 supported-features))
 
   (define (eval-or reqs)
     (and (pair? reqs)
@@ -751,108 +750,6 @@ USA.
 	     (eval-and (cdr reqs)))))
 
   (eval-req feature-requirement))
-
-(define (features)
-  (filter-map (lambda (p)
-		(and ((cdr p))
-		     (car p)))
-	      (supported-features)))
-
-(define (supported-features)
-  (append runtime-supported-features
-	  (let ((cf (global-value 'compiler-features)))
-	    (map (lambda (name) (cons name always))
-		 (if cf (cf) '(target-arch=none))))))
-
-(define (global-value name)
-  (and (eq? 'normal (environment-reference-type system-global-environment name))
-       (environment-lookup system-global-environment name)))
-
-(define (define-feature name procedure)
-  (set! runtime-supported-features
-	(cons (cons name procedure)
-	      runtime-supported-features))
-  name)
-
-(define runtime-supported-features '())
-
-(define (always) #t)
-
-(define-feature 'mit always)
-(define-feature 'mit/gnu always)
-
-;; r7rs features
-(define-feature 'exact-closed always)
-(define-feature 'exact-complex always)
-(define-feature 'ieee-float always)
-(define-feature 'full-unicode always)
-(define-feature 'ratio always)
-
-(define-feature 'swank always)   ;Provides SWANK module for SLIME
-(define-feature 'srfi-0 always)  ;COND-EXPAND
-(define-feature 'srfi-1 always)  ;List Library
-(define-feature 'srfi-2 always)  ;AND-LET*
-(define-feature 'srfi-6 always)  ;Basic String Ports
-(define-feature 'srfi-8 always)  ;RECEIVE
-(define-feature 'srfi-9 always)  ;DEFINE-RECORD-TYPE
-(define-feature 'srfi-14 always) ;Character-set Library
-(define-feature 'srfi-23 always) ;ERROR
-(define-feature 'srfi-27 always) ;Sources of Random Bits
-(define-feature 'srfi-30 always) ;Nested Multi-Line Comments (#| ... |#)
-(define-feature 'srfi-39 always) ;Parameter objects
-(define-feature 'srfi-62 always) ;S-expression comments
-(define-feature 'srfi-69 always) ;Basic Hash Tables
-(define-feature 'srfi-115 always) ;Scheme Regular Expressions
-(define-feature 'srfi-124 always) ;Ephemerons
-(define-feature 'srfi-125 always) ;Intermediate hash tables
-(define-feature 'srfi-128 always) ;Comparators (reduced)
-(define-feature 'srfi-131 always) ;ERR5RS Record Syntax (reduced)
-(define-feature 'srfi-133 always) ;Vector Library (R7RS-compatible)
-(define-feature 'srfi-143 always) ;Fixnums
-
-;; SRFI 115:
-(define-feature 'regexp-unicode always)
-(define-feature 'regexp-non-greedy always)
-
-(define ((os? value))
-  (eq? value microcode-id/operating-system))
-
-(define-feature 'windows (os? 'nt))
-(define-feature 'unix (os? 'unix))
-(define-feature 'posix (os? 'unix))
-
-(define ((os-variant? value))
-  (string=? value microcode-id/operating-system-variant))
-
-(define-feature 'darwin (os-variant? "OS X"))
-(define-feature 'gnu-linux (os-variant? "GNU/Linux"))
-
-(define-feature 'big-endian (lambda () (host-big-endian?)))
-(define-feature 'little-endian (lambda () (not (host-big-endian?))))
-(define-feature 'host-big-endian (lambda () (host-big-endian?)))
-(define-feature 'host-little-endian (lambda () (not (host-big-endian?))))
-
-(define ((machine? value))
-  (string=? value microcode-id/machine-type))
-
-(define-feature 'i386 (machine? "IA-32"))
-(define-feature 'x86-64 (machine? "x86-64"))
-
-(define ((host-arch? value))
-  (eq? value microcode-id/compiled-code-type))
-
-(define-feature 'host-arch=aarch64 (host-arch? 'aarch64))
-(define-feature 'host-arch=c (host-arch? 'c))
-(define-feature 'host-arch=i386 (host-arch? 'i386))
-(define-feature 'host-arch=none (host-arch? 'none))
-(define-feature 'host-arch=svm1 (host-arch? 'svm1))
-(define-feature 'host-arch=x86-64 (host-arch? 'x86-64))
-
-(define ((bytes-per-object? value))
-  (= value (bytes-per-object)))
-
-(define-feature 'host-32-bit (bytes-per-object? 4))
-(define-feature 'host-64-bit (bytes-per-object? 8))
 
 ;;;; SRFI 9, SRFI 131, R7RS: define-record-type
 
