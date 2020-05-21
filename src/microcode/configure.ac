@@ -233,8 +233,11 @@ if test x"${GCC}" = xyes; then
     CFLAGS_WERROR=-Werror
     CFLAGS_WNOERROR=-Wno-error
 
+    # -frounding-math is needed if we change the rounding mode
+    # -fno-builtin-floor works around GCC7 bug miscompiling floor
     for flag in \
 	-frounding-math \
+	-fno-builtin-floor \
 	\
 	-Wall \
 	-Wclobbered \
