@@ -449,13 +449,6 @@ USA.
 (define-deferred weak-list-comparators
   (make-key-weak-eq-hash-table))
 
-(define-deferred uniform-list-comparator
-  (memoized-constructor
-   (%unary-combinator uniform-list-predicate
-		      make-ulist=
-		      make-ulist<
-		      make-ulist-hash)))
-
 (define-values-deferred (uniform-list-predicate uniform-list-predicate?)
   (compound-predicate-constructor 'uniform-list list?
     (lambda (elt-pred)
@@ -465,6 +458,13 @@ USA.
 	    (list-of-type? object elt-pred))))
     list
     single-predicate-memoizer))
+
+(define-deferred uniform-list-comparator
+  (memoized-constructor
+   (%unary-combinator uniform-list-predicate
+		      make-ulist=
+		      make-ulist<
+		      make-ulist-hash)))
 
 (define (make-ulist= elt=)
   (cond ((eqv? eq? elt=) eq-ulist=)
@@ -552,13 +552,6 @@ USA.
 (define eq-lset< (%make-lset< eq?))
 (define eqv-lset< (%make-lset< eqv?))
 
-(define-deferred uniform-weak-list-comparator
-  (weak-list-constructor
-   (%unary-combinator uniform-weak-list-predicate
-		      make-uwlist=
-		      make-uwlist<
-		      make-uwlist-hash)))
-
 (define-values-deferred (uniform-weak-list-predicate
 			 uniform-weak-list-predicate?)
   (compound-predicate-constructor 'uniform-weak-list weak-list?
@@ -569,6 +562,13 @@ USA.
 	    (weak-list-of-type? object elt-pred))))
     list
     single-predicate-memoizer))
+
+(define-deferred uniform-weak-list-comparator
+  (weak-list-constructor
+   (%unary-combinator uniform-weak-list-predicate
+		      make-uwlist=
+		      make-uwlist<
+		      make-uwlist-hash)))
 
 (define (make-uwlist= elt=)
   (cond ((eqv? eq? elt=) eq-uwlist=)
@@ -660,13 +660,6 @@ USA.
 (define eq-wlset< (%make-wlset< eq?))
 (define eqv-wlset< (%make-wlset< eqv?))
 
-(define-deferred uniform-vector-comparator
-  (memoized-constructor
-   (%unary-combinator uniform-vector-predicate
-		      make-uvector=
-		      make-uvector<
-		      make-uvector-hash)))
-
 (define-values-deferred (uniform-vector-predicate uniform-vector-predicate?)
   (compound-predicate-constructor 'uniform-vector vector?
     (lambda (elt-pred)
@@ -677,6 +670,13 @@ USA.
 		 (vector-every elt-pred object)))))
     list
     single-predicate-memoizer))
+
+(define-deferred uniform-vector-comparator
+  (memoized-constructor
+   (%unary-combinator uniform-vector-predicate
+		      make-uvector=
+		      make-uvector<
+		      make-uvector-hash)))
 
 (define (make-uvector= elt=)
   (lambda (v1 v2)
