@@ -13,6 +13,7 @@
 * SRFI 39::
 * SRFI 69::
 * SRFI 115::
+* SRFI 124::
 * SRFI 125::
 * SRFI 128::
 * SRFI 131::
@@ -1441,7 +1442,7 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{string-hash}
 @end multitable
 
-@node SRFI 115, SRFI 125, SRFI 69, Standards Support
+@node SRFI 115, SRFI 124, SRFI 69, Standards Support
 @section SRFI 115: Scheme Regular Expressions
 @findex char-set->sre
 @findex regexp
@@ -1502,7 +1503,40 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{valid-sre?}
 @end multitable
 
-@node SRFI 125, SRFI 128, SRFI 115, Standards Support
+@node SRFI 124, SRFI 125, SRFI 115, Standards Support
+@section SRFI 124: Ephemerons
+@findex ephemeron-broken?
+@findex ephemeron-datum
+@findex ephemeron-key
+@findex ephemeron?
+@findex make-ephemeron
+@findex reference-barrier
+
+@cartouche
+@table @b
+@item Description
+Support for ephemerons, a weak-pointer mechanism.
+@item URL
+@srfiurl{124}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 124)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .33 .33 .33
+@item @nicode{ephemeron-broken?}
+@tab @nicode{ephemeron-datum}
+@tab @nicode{ephemeron-key}
+@item @nicode{ephemeron?}
+@tab @nicode{make-ephemeron}
+@tab @nicode{reference-barrier}
+@end multitable
+
+@node SRFI 125, SRFI 128, SRFI 124, Standards Support
 @section SRFI 125: Intermediate Hash Tables
 @findex alist->hash-table
 @findex hash

@@ -757,10 +757,10 @@ USA.
 	  edwin
 	  emergency-exit		;(scheme process-context)
 	  environment-link-name
-	  ephemeron-broken?
-	  ephemeron-datum
-	  ephemeron-key
-	  ephemeron?
+	  ephemeron-broken?		;(srfi 124)
+	  ephemeron-datum		;(srfi 124)
+	  ephemeron-key			;(srfi 124)
+	  ephemeron?			;(srfi 124)
 	  error-procedure
 	  eval				;(scheme eval)
 	  exit				;(scheme process-context)
@@ -784,7 +784,7 @@ USA.
 	  link-variables
 	  local-assignment
 	  make-alist-metadata-table
-	  make-ephemeron
+	  make-ephemeron		;(srfi 124)
 	  make-hashed-metadata-table
 	  make-hook-list
 	  make-non-pointer-object
@@ -813,7 +813,7 @@ USA.
 	  pwd
 	  spawn-edwin
 	  suspend
-	  (reference-barrier identity-procedure)
+	  (reference-barrier identity-procedure) ;(srfi 124)
 	  remove-hook-from-list
 	  run-hooks-in-list
 	  scode-eval

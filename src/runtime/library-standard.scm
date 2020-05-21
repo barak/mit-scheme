@@ -994,6 +994,14 @@ USA.
     rx
     valid-sre?))
 
+(define-standard-library '(srfi 124)
+  '(ephemeron-broken?
+    ephemeron-datum
+    ephemeron-key
+    ephemeron?
+    make-ephemeron
+    reference-barrier))
+
 (define-standard-library '(srfi 125)
   '(alist->hash-table
     hash				;deprecated
