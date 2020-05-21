@@ -580,7 +580,7 @@ Returns @code{#t} if @var{string} has zero length; otherwise returns
 @findex string=?
 @findex string-ci=?
 @findex =
-These @srfi{69} procedures return an exact non-negative integer that
+These @asrfi{69} procedures return an exact non-negative integer that
 can be used for storing the specified @var{string} in a hash table.
 Equal strings (in the sense of @code{string=?} and @code{string-ci=?}
 respectively) return equal (@code{=}) hash codes, and non-equal but
