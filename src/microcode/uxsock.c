@@ -229,8 +229,8 @@ OS_open_unix_stream_socket (const char * filename, int argno)
   Tchannel channel;
   struct sockaddr_un address;
 
-  if ((strlen (filename)) >= (sizeof (address . sun_path)))
-    error_bad_range_arg(argno);
+  if ((strlen (filename)) > (sizeof (address . sun_path)))
+    error_bad_range_arg (argno);
 
   transaction_begin ();
   STD_FD_SYSTEM_CALL
@@ -240,7 +240,7 @@ OS_open_unix_stream_socket (const char * filename, int argno)
 
   memset((&address), 0, (sizeof (address)));
   (address . sun_family) = AF_UNIX;
-  strcpy ((address . sun_path), filename);
+  strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
   do_connect (s, ((struct sockaddr *) (&address)), (sizeof (address)));
 
   transaction_commit ();
@@ -302,8 +302,8 @@ OS_create_unix_server_socket (const char * filename, int argno)
   Tchannel channel;
   struct sockaddr_un address;
 
-  if ((strlen (filename)) >= (sizeof (address . sun_path)))
-    error_bad_range_arg(argno);
+  if ((strlen (filename)) > (sizeof (address . sun_path)))
+    error_bad_range_arg (argno);
 
   transaction_begin ();
   STD_FD_SYSTEM_CALL
@@ -313,7 +313,7 @@ OS_create_unix_server_socket (const char * filename, int argno)
 
   memset((&address), 0, (sizeof (address)));
   (address . sun_family) = AF_UNIX;
-  strcpy ((address . sun_path), filename);
+  strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
   STD_VOID_SYSTEM_CALL
     (syscall_bind,
      (UX_bind ((CHANNEL_DESCRIPTOR (channel)),
