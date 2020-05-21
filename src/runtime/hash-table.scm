@@ -1374,12 +1374,12 @@ USA.
       (hash-table-type-options options 'make-hash-table-type*)
     (make-hash-table-type (if (default-object? key-hash)
 			      (comparator-binary-hash-function
-			       (key=->comparator key=?))
+			       (key=->comparator key=? 'make-hash-table-type*))
 			      key-hash)
 			  key=?
 			  (if (default-object? rehash-after-gc?)
 			      (comparator-rehash-after-gc?
-			       (key=->comparator key=?))
+			       (key=->comparator key=? 'make-hash-table-type*))
 			      rehash-after-gc?)
 			  (get-entry-type entry-type-name))))
 
@@ -1677,7 +1677,7 @@ USA.
 
 (define-integrable without-interruption with-thread-events-blocked)
 
-(define (key=->comparator key=)
+(define (key=->comparator key= caller)
   (cond ((eqv? key= eq?) (make-eq-comparator))
 	((eqv? key= eqv?) (make-eqv-comparator))
 	((eqv? key= equal?) (make-equal-comparator))
@@ -1685,4 +1685,4 @@ USA.
 	((eqv? key= string-ci=?) (string-ci-comparator))
 	((eqv? key= int:=) (exact-integer-comparator))
 	((eqv? key= char-set=) (char-set-comparator))
-	(else (error:bad-range-argument key=))))
+	(else (error:bad-range-argument key= caller))))
