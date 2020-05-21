@@ -81,7 +81,7 @@ USA.
 			     names)
 		      (,(rename 'add-boot-init!)
 		       (,(rename 'lambda) ()
-			,(let ((names* (map rename names)))
+			,(let ((names* (map new-identifier names)))
 			   `(let-values ((,names* ,expr))
 			      ,@(map (lambda (name name*)
 				       `(,(rename 'set!) ,name ,name*))
