@@ -798,7 +798,7 @@ USA.
 	    #f)))
 
     (define (known-name? name)
-      (alist-table-exists? table (guarantee interned-symbol? name)))
+      (alist-table-contains? table (guarantee interned-symbol? name)))
 
     (define (get-named name)
       (alist-table-ref table (guarantee interned-symbol? name)))

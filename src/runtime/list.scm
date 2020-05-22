@@ -1432,7 +1432,7 @@ USA.
 	    (key= key (car p)))
 	  (%table-alist table))))
 
-(define (alist-table-exists? table key)
+(define (alist-table-contains? table key)
   (and (%find-pair table key) #t))
 
 (define (alist-table-ref table key #!optional get-default)

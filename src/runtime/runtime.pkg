@@ -291,10 +291,10 @@ USA.
 	  weak-alist-table->alist
 	  weak-alist-table-clean!
 	  weak-alist-table-clear!
+	  weak-alist-table-contains?
 	  weak-alist-table-delete!
 	  weak-alist-table-delete-matching!
 	  weak-alist-table-empty?
-	  weak-alist-table-exists?
 	  weak-alist-table-fold
 	  weak-alist-table-fold-right
 	  weak-alist-table-intern!
@@ -3339,10 +3339,10 @@ USA.
 	  alist-table
 	  alist-table->alist
 	  alist-table-clear!
+	  alist-table-contains?
 	  alist-table-delete!
 	  alist-table-delete-matching!
 	  alist-table-empty?
-	  alist-table-exists?
 	  alist-table-fold
 	  alist-table-fold-right
 	  alist-table-intern!

@@ -938,8 +938,8 @@ USA.
 			 '()
 			 table))
 
-(define (weak-alist-table-exists? table key)
-  (%operate-on-table table key 'weak-alist-table-exists?
+(define (weak-alist-table-contains? table key)
+  (%operate-on-table table key 'weak-alist-table-contains?
     (lambda (p) (declare (ignore p)) #t)
     (lambda () #f)))
 

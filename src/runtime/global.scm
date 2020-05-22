@@ -472,7 +472,7 @@ USA.
   (let ((table (weak-alist-table eqv?)))
 
     (define (has? key)
-      (weak-alist-table-exists? table key))
+      (weak-alist-table-contains? table key))
 
     (define (get key #!optional default-value)
       (weak-alist-table-ref table key
