@@ -6780,8 +6780,9 @@ USA.
 	  hash-salt			;(srfi 128)
 	  initial-hash
 	  interned-symbol-comparator
-	  kpair-comparator-combinator
 	  lset-comparator
+	  lset-comparator-elt
+	  lset-comparator?
 	  make-comparator		;(srfi 128)
 	  make-default-comparator	;(srfi 128)
 	  make-eq-comparator		;(srfi 128)
@@ -6792,18 +6793,34 @@ USA.
 	  make-vector-comparator	;(srfi 128)
 	  make-weak-pair-comparator
 	  number-comparator
+	  pair-comparator-car
+	  pair-comparator-cdr
+	  pair-comparator?
 	  real-comparator
 	  string-ci-comparator
 	  string-comparator
 	  symbol-comparator
+	  uniform-klist-comparator-elt
+	  uniform-klist-comparator?
+	  uniform-kvector-comparator-elt
+	  uniform-kvector-comparator?
 	  uniform-list-comparator
+	  uniform-list-comparator-elt
+	  uniform-list-comparator?
 	  uniform-vector-comparator
+	  uniform-vector-comparator-elt
+	  uniform-vector-comparator?
 	  uniform-weak-list-comparator
-	  weak-lset-comparator)
+	  uniform-weak-list-comparator-elt
+	  uniform-weak-list-comparator?
+	  weak-lset-comparator
+	  weak-lset-comparator-elt
+	  weak-lset-comparator?
+	  weak-pair-comparator-car
+	  weak-pair-comparator-cdr
+	  weak-pair-comparator?)
   (export (runtime hash-table)
-	  protected-hash-function)
-  (export (runtime hash-table)
-	  weak-list-comparator?))
+	  checked-hash-mod))
 
 (define-package (runtime feature)
   (files "feature")

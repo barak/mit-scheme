@@ -43,16 +43,20 @@ USA.
 		    (and hash
 			 (if (default-object? rehash-after-gc?)
 			     (hash-changes-after-gc? hash)
-			     (and rehash-after-gc? #t)))))
+			     (and rehash-after-gc? #t)))
+		    #f
+		    #f))
 
 (define-record-type <comparator>
-    (%make-comparator ? = < hash rehash-after-gc?)
+    (%make-comparator ? = < hash rehash-after-gc? key elts)
     comparator?
   (? %comparator-?)
   (= %comparator-=)
   (< %comparator-<)
   (hash %comparator-hash)
-  (rehash-after-gc? comparator-rehash-after-gc?))
+  (rehash-after-gc? comparator-rehash-after-gc?)
+  (key %comparator-key)
+  (elts %comparator-elts))
 
 (define (comparator-ordered? comparator)
   (and (%comparator-< comparator) #t))
@@ -71,6 +75,11 @@ USA.
       (lambda (a)
 	(declare (ignore a))
 	(error "Comparator not hashable:" comparator))))
+
+(define (simple-comparator? object)
+  (and (comparator? object)
+       (not (%comparator-key object))))
+(register-predicate! simple-comparator? 'simple-comparator '<= comparator?)
 
 (define (hash-changes-after-gc? hash-fn)
   (hash-table-ref/default registered-hashes hash-fn #f))
@@ -82,13 +91,12 @@ USA.
   (guarantee unary-procedure? hash-fn 'register-hash!)
   (%register-hash! hash-fn changes-after-gc?))
 
-(define (register-compound-hash! hash-fn . components)
-  (guarantee unary-procedure? hash-fn 'register-hash!)
+(define (register-compound-hash! hash-fn . elts)
   (let ((v
-	 (fold (lambda (component acc)
-		 (combine-cags (get-cag component) acc))
+	 (fold (lambda (elt acc)
+		 (combine-cags (get-cag elt) acc))
 	       #f
-	       components)))
+	       elts)))
     (if (not (eq? 'unknown v))
 	(%register-hash! hash-fn v))))
 
@@ -190,107 +198,204 @@ USA.
   the-eq-comparator)
 
 (define-deferred the-eq-comparator
-  (%make-comparator any-object? eq? #f eq-hash #t))
+  (make-comparator any-object? eq? #f eq-hash #t))
 
 (define (make-eqv-comparator)
   the-eqv-comparator)
 
 (define-deferred the-eqv-comparator
-  (%make-comparator any-object? eqv? #f eqv-hash #t))
+  (make-comparator any-object? eqv? #f eqv-hash #t))
 
 (define (make-equal-comparator)
   the-equal-comparator)
 
 (define-deferred the-equal-comparator
-  (%make-comparator any-object? equal? #f equal-hash #t))
+  (make-comparator any-object? equal? #f equal-hash #t))
 
 (define (boolean-comparator)
   the-boolean-comparator)
 
 (define-deferred the-boolean-comparator
-  (%make-comparator boolean? boolean=? boolean<? boolean-hash #f))
+  (make-comparator boolean? boolean=? boolean<? boolean-hash #f))
 
 (define (char-comparator)
   the-char-comparator)
 
 (define-deferred the-char-comparator
-  (%make-comparator char? char=? char<? char-hash #f))
+  (make-comparator char? char=? char<? char-hash #f))
 
 (define (char-ci-comparator)
   the-char-ci-comparator)
 
 (define-deferred the-char-ci-comparator
-  (%make-comparator char? char-ci=? char-ci<? char-ci-hash #f))
+  (make-comparator char? char-ci=? char-ci<? char-ci-hash #f))
 
 (define (string-comparator)
   the-string-comparator)
 
 (define-deferred the-string-comparator
-  (%make-comparator string? string=? string<? string-hash #f))
+  (make-comparator string? string=? string<? string-hash #f))
 
 (define (string-ci-comparator)
   the-string-ci-comparator)
 
 (define-deferred the-string-ci-comparator
-  (%make-comparator string? string-ci=? string-ci<? string-ci-hash #f))
+  (make-comparator string? string-ci=? string-ci<? string-ci-hash #f))
 
 (define (symbol-comparator)
   the-symbol-comparator)
 
 (define-deferred the-symbol-comparator
-  (%make-comparator symbol? symbol=? symbol<? symbol-hash #f))
+  (make-comparator symbol? symbol=? symbol<? symbol-hash #f))
 
 (define (interned-symbol-comparator)
   the-interned-symbol-comparator)
 
 (define-deferred the-interned-symbol-comparator
-  (%make-comparator interned-symbol? eq? symbol<? eq-hash #t))
+  (make-comparator interned-symbol? eq? symbol<? eq-hash #t))
 
 (define (bytevector-comparator)
   the-bytevector-comparator)
 
 (define-deferred the-bytevector-comparator
-  (%make-comparator bytevector? bytevector=? bytevector<? bytevector-hash #f))
+  (make-comparator bytevector? bytevector=? bytevector<? bytevector-hash #f))
 
 (define (number-comparator)
   the-number-comparator)
 
 (define-deferred the-number-comparator
-  (%make-comparator number? = #f number-hash #f))
+  (make-comparator number? = #f number-hash #f))
 
 (define (real-comparator)
   the-real-comparator)
 
 (define-deferred the-real-comparator
-  (%make-comparator real? = < number-hash #f))
+  (make-comparator real? = < number-hash #f))
 
 (define (fixnum-comparator)
   the-fixnum-comparator)
 
 (define-deferred the-fixnum-comparator
-  (%make-comparator fix:fixnum? fix:= fix:< fixnum-hash #f))
+  (make-comparator fix:fixnum? fix:= fix:< fixnum-hash #f))
 
 (define (flonum-comparator)
   the-flonum-comparator)
 
 (define-deferred the-flonum-comparator
-  (%make-comparator flo:flonum? flo:= flo:< number-hash #f))
+  (make-comparator flo:flonum? flo:= flo:< number-hash #f))
 
 (define (char-set-comparator)
   the-char-set-comparator)
 
 (define-deferred the-char-set-comparator
-  (%make-comparator char-set? char-set= char-set< char-set-hash #f))
+  (make-comparator char-set? char-set= char-set< char-set-hash #f))
 
 (define (exact-integer-comparator)
   the-exact-integer-comparator)
 
 (define-deferred the-exact-integer-comparator
-  (%make-comparator exact-integer? int:= int:< number-hash #f))
+  (make-comparator exact-integer? int:= int:< number-hash #f))
+
+;;;; Compound comparators
+
+(define (compound-comparator-constructor name n-elts wrapper)
+  (guarantee positive-fixnum? n-elts)
+  (let ((key (make-key name)))
+    (let ((predicate
+	   (lambda (object)
+	     (and (comparator? object)
+		  (eq? key (%comparator-key object))))))
+      (register-predicate! predicate name '<= compound-comparator?)
+      (case n-elts
+	((1)
+	 (values (wrapper
+		  (lambda (? = < hash rehash-after-gc? elt)
+		    (%make-comparator ? = < hash rehash-after-gc?
+				      key elt)))
+		 predicate
+		 (lambda (c)
+		   (guarantee predicate c)
+		   (%comparator-elts c))))
+	((2)
+	 (values (wrapper
+		  (lambda (? = < hash rehash-after-gc? elt1 elt2)
+		    (%make-comparator ? = < hash rehash-after-gc?
+				      key (cons elt1 elt2))))
+		 predicate
+		 (lambda (c)
+		   (guarantee predicate c)
+		   (car (%comparator-elts c)))
+		 (lambda (c)
+		   (guarantee predicate c)
+		   (cdr (%comparator-elts c)))))
+	(else
+	 (apply values
+		(wrapper
+		 (lambda (? = < hash rehash-after-gc? . elts)
+		   (%make-comparator ? = < hash rehash-after-gc? key elts)))
+		predicate
+		(map (lambda (i)
+		       (lambda (c)
+			 (guarantee predicate c)
+			 (list-ref (%comparator-elts c) i)))
+		     (iota n-elts))))))))
+
+(define (compound-comparator? object)
+  (and (comparator? object)
+       (key? (%comparator-key object))))
+(register-predicate! compound-comparator? 'compound-comparator '<= comparator?)
+
+(define-record-type <key>
+    (make-key name)
+    key?
+  (name key-name))
+
+(define (unary-combinator constructor make-? make-= make-< make-hash)
+  (lambda (c1)
+    (constructor (make-? (%comparator-? c1))
+		 (make-= (%comparator-= c1))
+		 (and (%comparator-< c1)
+		      (make-< (%comparator-= c1)
+			      (%comparator-< c1)))
+		 (and (%comparator-hash c1)
+		      (let ((hash (make-hash (%comparator-hash c1))))
+			(register-compound-hash! hash
+						 (%comparator-hash c1))
+			hash))
+		 (and (%comparator-hash c1)
+		      (comparator-rehash-after-gc? c1))
+		 c1)))
+
+(define (binary-combinator constructor make-? make-= make-< make-hash)
+  (lambda (c1 c2)
+    (constructor (make-? (%comparator-? c1)
+			 (%comparator-? c2))
+		 (make-= (%comparator-= c1)
+			 (%comparator-= c2))
+		 (and (%comparator-< c1)
+		      (%comparator-< c2)
+		      (make-< (%comparator-= c1)
+			      (%comparator-< c1)
+			      (%comparator-= c2)
+			      (%comparator-< c2)))
+		 (and (%comparator-hash c1)
+		      (%comparator-hash c2)
+		      (let ((hash
+			     (make-hash (%comparator-hash c1)
+					(%comparator-hash c2))))
+			(register-compound-hash! hash
+						 (%comparator-hash c1)
+						 (%comparator-hash c2))
+			hash))
+		 (and (%comparator-hash c1)
+		      (%comparator-hash c2)
+		      (or (comparator-rehash-after-gc? c1)
+			  (comparator-rehash-after-gc? c2)))
+		 c1 c2)))
 
 ;;;; General combinators
 
-(define-integrable (kpair-comparator-combinator kpair? kar-valid? kar kdr)
+(define-integrable (kpair-wrapper kpair? kar-valid? kar kdr)
 
   (define-values (make-? is-?)
     (compound-predicate-constructor (predicate-name kpair?) kpair?
@@ -313,7 +418,8 @@ USA.
 		  (kar= aa ab)))
 	   (kdr= (kdr a) (kdr b)))))
 
-  (define (make-< kar= kar< kdr<)
+  (define (make-< kar= kar< kdr= kdr<)
+    (declare (ignore kdr=))
     (lambda (a b)
       (let ((aa (kar a))
 	    (ab (kar b)))
@@ -324,53 +430,39 @@ USA.
 		      (kdr< (kdr a) (kdr b))))))))
 
   (define (make-hash kar-hash kdr-hash)
-    (define (kpair-hash a)
-      (let ((aa (kar a)))
-	(if (kar-valid? aa)
-	    (combine-hashes (kar-hash aa)
-			    (kdr-hash (kdr a)))
-	    (kdr-hash (kdr a)))))
-    (register-compound-hash! kpair-hash kar-hash kdr-hash)
-    kpair-hash)
+    (let ((kar-hash (checked-hash kar-hash))
+	  (kdr-hash (checked-hash kdr-hash)))
+      (lambda (a)
+	(let ((aa (kar a)))
+	  (if (kar-valid? aa)
+	      (%combine-hashes (kar-hash aa)
+			       (kdr-hash (kdr a)))
+	      (kdr-hash (kdr a)))))))
 
-  (lambda (ac dc)
-    (let ((a= (%comparator-= ac))
-	  (a< (%comparator-< ac))
-	  (ah (%comparator-hash ac))
-	  (d< (%comparator-< dc))
-	  (dh (%comparator-hash dc)))
-      (%make-comparator (make-? (%comparator-? ac)
-				(%comparator-? dc))
-			(make-= a= (%comparator-= dc))
-			(and a< d< (make-< a= a< d<))
-			(and ah dh (make-hash ah dh))
-			(or (comparator-rehash-after-gc? ac)
-			    (comparator-rehash-after-gc? dc))))))
+  (lambda (constructor)
+    (binary-combinator constructor make-? make-= make-< make-hash)))
 
-(define-deferred make-pair-comparator
-  (kpair-comparator-combinator pair? car-valid? car cdr))
+(define-values-deferred (make-pair-comparator
+			 pair-comparator?
+			 pair-comparator-car
+			 pair-comparator-cdr)
+  (compound-comparator-constructor 'pair-comparator 2
+    (kpair-wrapper pair? car-valid? car cdr)))
 
 (define-integrable (car-valid? a)
   (declare (ignore a))
   #t)
 
-(define-deferred make-weak-pair-comparator
-  (kpair-comparator-combinator weak-pair? weak-car-valid? weak-car weak-cdr))
+(define-values-deferred (make-weak-pair-comparator
+			 weak-pair-comparator?
+			 weak-pair-comparator-car
+			 weak-pair-comparator-cdr)
+  (compound-comparator-constructor 'weak-pair-comparator 2
+    (kpair-wrapper weak-pair? weak-car-valid? weak-car weak-cdr)))
 
 (define-integrable (weak-car-valid? a)
   (not (gc-reclaimed-object? a)))
 
-(define-integrable (%unary-combinator make-? make-= make-< make-hash)
-  (lambda (celt)
-    (let ((c= (%comparator-= celt))
-	  (c< (%comparator-< celt))
-	  (ch (%comparator-hash celt)))
-      (%make-comparator (make-? (%comparator-? celt))
-			(make-= c=)
-			(and c< (make-< c= c<))
-			(and ch (make-hash ch))
-			(comparator-rehash-after-gc? celt)))))
-
 (define (make-list-comparator celt kpair? knull? kar kdr)
   (cond ((and (eqv? pair? kpair?)
 	      (eqv? null? knull?)
@@ -383,55 +475,61 @@ USA.
 	      (eqv? weak-cdr kdr))
 	 (uniform-weak-list-comparator celt))
 	(else
-	 (let ()
-	   (define (null-klist? object)
-	     (cond ((knull? object) #t)
-		   ((kpair? object) #f)
-		   (else (error:wrong-type-argument "klist" object))))
-	   (%unary-combinator (make-klist-pred kpair? knull? kar kdr)
-			      (make-klist= null-klist? kar kdr)
-			      (make-klist< null-klist? kar kdr)
-			      (make-klist-hash null-klist? kar kdr))))))
+	 (uniform-klist-comparator celt kpair? knull? kar kdr))))
 
-(define ((make-klist-pred kpair? knull? kar kdr) elt?)
-  (lambda (a)
-    (let loop ((scan1 a) (scan2 a))
-      (if (kpair? scan1)
-	  (and (elt? (kar scan1))
-	       (let ((next (kdr scan1)))
-		 (and (not (eq? next scan2))
-		      (if (kpair? next)
-			  (loop (kdr next) (kdr scan2))
-			  (knull? next)))))
-	  (knull? scan1)))))
+(define ((uniform-klist-wrapper constructor) celt kpair? knull? kar kdr)
 
-(define ((make-klist= null-klist? kar kdr) elt=)
-  (lambda (a b)
-    (let loop ((scana a) (scanb b))
-      (if (null-klist? scana)
-	  (null-klist? scanb)
-	  (and (not (null-klist? scanb))
-	       (elt= (kar scana) (kar scanb))
-	       (loop (kdr scana) (kdr scanb)))))))
+  (define (make-? elt?)
+    (lambda (l1)
+      (let loop ((scan1 l1) (scan2 l1))
+	(if (kpair? scan1)
+	    (and (elt? (kar scan1))
+		 (let ((next (kdr scan1)))
+		   (and (not (eq? next scan2))
+			(if (kpair? next)
+			    (loop (kdr next) (kdr scan2))
+			    (knull? next)))))
+	    (knull? scan1)))))
 
-(define ((make-klist< null-klist? kar kdr) elt= elt<)
-  (lambda (a b)
-    (let loop ((scana a) (scanb b))
-      (and (not (null-klist? scanb))
-	   (or (null-klist? scana)
-	       (elt< (kar scana) (kar scanb))
-	       (and (elt= (kar scana) (kar scanb))
-		    (loop (kdr scana) (kdr scanb))))))))
+  (define (make-= elt=)
+    (define (klist= l1 l2)
+      (if (null-klist? l1)
+	  (null-klist? l2)
+	  (and (not (null-klist? l2))
+	       (elt= (kar l1) (kar l2))
+	       (klist= (kdr l1) (kdr l2)))))
+    klist=)
 
-(define ((make-klist-hash null-klist? kar kdr) elt-hash)
-  (define (klist-hash a)
-    (let loop ((scan a) (result (initial-hash)))
-      (if (null-klist? scan)
-	  result
-	  (loop (kdr scan)
-		(combine-hashes (elt-hash (kar scan)) result)))))
-  (register-compound-hash! klist-hash elt-hash)
-  klist-hash)
+  (define (make-< elt= elt<)
+    (define (klist< l1 l2)
+      (and (not (null-klist? l2))
+	   (or (null-klist? l1)
+	       (elt< (kar l1) (kar l2))
+	       (and (elt= (kar l1) (kar l2))
+		    (klist< (kdr l1) (kdr l2))))))
+    klist<)
+
+  (define (make-hash elt-hash)
+    (let ((elt-hash (checked-hash elt-hash)))
+      (lambda (kl)
+	(let loop ((kl kl) (result (initial-hash)))
+	  (if (null-klist? kl)
+	      result
+	      (loop (kdr kl)
+		    (%combine-hashes (elt-hash (kar kl)) result)))))))
+
+  (define (null-klist? object)
+    (cond ((knull? object) #t)
+	  ((kpair? object) #f)
+	  (else (error:wrong-type-argument "klist" object))))
+
+  ((unary-combinator constructor make-? make-= make-< make-hash) celt))
+
+(define-values-deferred (uniform-klist-comparator
+			 uniform-klist-comparator?
+			 uniform-klist-comparator-elt)
+  (compound-comparator-constructor 'uniform-klist-comparator 1
+    uniform-klist-wrapper))
 
 (define (make-vector-comparator celt kvector? kv-length kv-ref)
   (cond ((and (eqv? vector? kvector?)
@@ -439,55 +537,61 @@ USA.
 	      (eqv? vector-ref kv-ref))
 	 (uniform-vector-comparator celt))
 	(else
-	 (%unary-combinator (make-kvector-pred kvector? kv-length kv-ref)
-			    (make-kvector= kv-length kv-ref)
-			    (make-kvector< kv-length kv-ref)
-			    (make-kvector-hash kv-length kv-ref)))))
+	 (uniform-kvector-comparator celt kvector? kv-length kv-ref))))
 
-(define ((make-kvector-pred kvector? kv-length kv-ref) elt?)
-  (if (eqv? any-object? elt?)
-      kvector?
-      (lambda (object)
-	(and (kvector? object)
-	     (let ((end (kv-length object)))
-	       (let loop ((i 0))
-		 (or (not (< i end))
-		     (and (elt? (kv-ref object i))
-			  (loop (+ i 1))))))))))
+(define ((uniform-kvector-wrapper constructor) celt kvector? kv-length kv-ref)
 
-(define ((make-kvector= kv-length kv-ref) elt=)
-  (lambda (kv1 kv2)
-    (let ((end (kv-length kv1)))
-      (and (= end (kv-length kv2))
-	   (let loop ((i 0))
-	     (or (not (< i end))
-		 (and (elt= (kv-ref kv1 i) (kv-ref kv2 i))
-		      (loop (+ i 1)))))))))
+  (define (make-? elt?)
+    (if (eqv? any-object? elt?)
+	kvector?
+	(lambda (object)
+	  (and (kvector? object)
+	       (let ((end (kv-length object)))
+		 (let loop ((i 0))
+		   (or (not (< i end))
+		       (and (elt? (kv-ref object i))
+			    (loop (+ i 1))))))))))
 
-(define ((make-kvector< kv-length kv-ref) elt= elt<)
-  (lambda (kv1 kv2)
-    (let ((end1 (kv-length kv1))
-	  (end2 (kv-length kv2)))
-      (let ((end (min end1 end2)))
-	(let loop ((i 0))
-	  (if (< i end)
-	      (let ((elt1 (kv-ref kv1 i))
-		    (elt2 (kv-ref kv2 i)))
-		(or (elt< elt1 elt2)
-		    (and (elt= elt1 elt2)
-			 (loop (+ i 1)))))
-	      (< end1 end2)))))))
+  (define (make-= elt=)
+    (lambda (v1 v2)
+      (let ((end (kv-length v1)))
+	(and (= end (kv-length v2))
+	     (let loop ((i 0))
+	       (or (not (< i end))
+		   (and (elt= (kv-ref v1 i) (kv-ref v2 i))
+			(loop (+ i 1)))))))))
 
-(define ((make-kvector-hash kv-length kv-ref) elt-hash)
-  (define (kvector-hash kv)
-    (let ((end (kv-length kv)))
-      (let loop ((i 0) (result (initial-hash)))
-	(if (< i end)
-	    (loop (+ i 1)
-		  (combine-hashes (elt-hash (kv-ref kv i)) result))
-	    result))))
-  (register-compound-hash! kvector-hash elt-hash)
-  kvector-hash)
+  (define (make-< elt= elt<)
+    (lambda (v1 v2)
+      (let ((end1 (kv-length v1))
+	    (end2 (kv-length v2)))
+	(let ((end (min end1 end2)))
+	  (let loop ((i 0))
+	    (if (< i end)
+		(let ((elt1 (kv-ref v1 i))
+		      (elt2 (kv-ref v2 i)))
+		  (or (elt< elt1 elt2)
+		      (and (elt= elt1 elt2)
+			   (loop (+ i 1)))))
+		(< end1 end2)))))))
+
+  (define (make-hash elt-hash)
+    (let ((elt-hash (checked-hash elt-hash)))
+      (lambda (v)
+	(let ((end (kv-length v)))
+	  (let loop ((i 0) (result (initial-hash)))
+	    (if (< i end)
+		(loop (+ i 1)
+		      (%combine-hashes (elt-hash (kv-ref v i)) result))
+		result))))))
+
+  ((unary-combinator constructor make-? make-= make-< make-hash) celt))
+
+(define-values-deferred (uniform-kvector-comparator
+			 uniform-kvector-comparator?
+			 uniform-kvector-comparator-elt)
+  (compound-comparator-constructor 'uniform-kvector-comparator 1
+    uniform-kvector-wrapper))
 
 ;;;; Specialized combinators
 
@@ -496,19 +600,6 @@ USA.
     (lambda (celt)
       (hash-table-intern! table celt (lambda () (constructor celt))))))
 
-(define (weak-list-constructor constructor)
-  (memoized-constructor
-   (lambda (celt)
-     (let ((comparator (constructor celt)))
-       (hash-table-set! weak-list-comparators comparator #t)
-       comparator))))
-
-(define (weak-list-comparator? object)
-  (hash-table-exists? weak-list-comparators object))
-
-(define-deferred weak-list-comparators
-  (make-key-weak-eq-hash-table))
-
 (define-values-deferred (uniform-list-predicate uniform-list-predicate?)
   (compound-predicate-constructor 'uniform-list list?
     (lambda (elt-pred)
@@ -519,73 +610,76 @@ USA.
     list
     single-predicate-memoizer))
 
-(define-deferred uniform-list-comparator
-  (memoized-constructor
-   (%unary-combinator uniform-list-predicate
-		      make-ulist=
-		      make-ulist<
-		      make-ulist-hash)))
+(define-values-deferred (uniform-list-comparator
+			 uniform-list-comparator?
+			 uniform-list-comparator-elt)
+  (compound-comparator-constructor 'uniform-list-comparator 1
+    (lambda (constructor)
+      (memoized-constructor
+       (unary-combinator constructor
+			 uniform-list-predicate
+			 make-ulist-=
+			 make-ulist-<
+			 make-ulist-hash)))))
 
-(define (make-ulist= elt=)
+(define (make-ulist-= elt=)
   (cond ((eqv? eq? elt=) eq-ulist=)
 	((eqv? eqv? elt=) eqv-ulist=)
-	(else (%make-ulist= elt=))))
+	(else (%make-ulist-= elt=))))
 
-(define-integrable (%make-ulist= elt=)
-  (lambda (l1 l2)
-    (let loop ((l1 l1) (l2 l2))
-      (if (and (pair? l1) (pair? l2))
-	  (and (elt= (car l1) (car l2))
-	       (loop (cdr l1) (cdr l2)))
-	  (and (null? l1) (null? l2))))))
+(define-integrable (%make-ulist-= elt=)
+  (define (ulist= l1 l2)
+    (if (and (pair? l1) (pair? l2))
+	(and (elt= (car l1) (car l2))
+	     (ulist= (cdr l1) (cdr l2)))
+	(and (null? l1) (null? l2))))
+  ulist=)
 
-(define eq-ulist= (%make-ulist= eq?))
-(define eqv-ulist= (%make-ulist= eqv?))
+(define eq-ulist= (%make-ulist-= eq?))
+(define eqv-ulist= (%make-ulist-= eqv?))
 
-(define (make-ulist< elt= elt<)
-  (lambda (a b)
-    (let loop ((scana a) (scanb b))
-      (and (not (null-list? scanb))
-	   (or (null-list? scana)
-	       (elt< (car scana) (car scanb))
-	       (and (elt= (car scana) (car scanb))
-		    (loop (cdr scana) (cdr scanb))))))))
+(define (make-ulist-< elt= elt<)
+  (define (ulist< l1 l2)
+    (and (not (null-list? l2))
+	 (or (null-list? l1)
+	     (elt< (car l1) (car l2))
+	     (and (elt= (car l1) (car l2))
+		  (ulist< (cdr l1) (cdr l2))))))
+  ulist<)
 
 (define (make-ulist-hash elt-hash)
   (cond ((eqv? eq? elt-hash) eq-ulist-hash)
 	((eqv? eqv? elt-hash) eqv-ulist-hash)
-	((registered-hash? elt-hash) (%make-ulist-hash elt-hash))
 	(else
-	 (let ()
-	   (define-integrable (checked elt)
-	     (check-hash (elt-hash elt)))
-	   (%make-ulist-hash checked)))))
+	 (let ((elt-hash (checked-hash elt-hash)))
+	   (%make-ulist-hash elt-hash)))))
 
 (define-integrable (%make-ulist-hash elt-hash)
-  (define (ulist-hash object)
+  (lambda (l)
     (fold (lambda (elt result)
 	    (%combine-hashes (elt-hash elt) result))
 	  (initial-hash)
-	  object))
-  (register-compound-hash! ulist-hash elt-hash)
-  ulist-hash)
+	  l)))
 
-(define-deferred eq-ulist-hash (%make-ulist-hash eq-hash))
-(define-deferred eqv-ulist-hash (%make-ulist-hash eqv-hash))
+(define eq-ulist-hash (%make-ulist-hash eq-hash))
+(define eqv-ulist-hash (%make-ulist-hash eqv-hash))
 
-(define-deferred lset-comparator
-  (memoized-constructor
-   (%unary-combinator uniform-list-predicate
-		      make-lset=
-		      make-lset<
-		      make-ulist-hash)))
+(define-values-deferred (lset-comparator lset-comparator? lset-comparator-elt)
+  (compound-comparator-constructor 'lset-comparator 1
+    (lambda (constructor)
+      (memoized-constructor
+       (unary-combinator constructor
+			 uniform-list-predicate
+			 make-lset-=
+			 make-lset-<
+			 make-ulist-hash)))))
 
-(define (make-lset= elt=)
+(define (make-lset-= elt=)
   (cond ((eqv? eq? elt=) eq-lset=)
 	((eqv? eqv? elt=) eqv-lset=)
-	(else (%make-lset= elt=))))
+	(else (%make-lset-= elt=))))
 
-(define-integrable (%make-lset= elt=)
+(define-integrable (%make-lset-= elt=)
   (define-integrable (<=? l1 l2)
     (every (lambda (x)
 	     (any (lambda (y) (elt= x y)) l2))
@@ -595,15 +689,16 @@ USA.
 	(and (<=? l1 l2)
 	     (<=? l2 l1)))))
 
-(define eq-lset= (%make-lset= eq?))
-(define eqv-lset= (%make-lset= eqv?))
+(define eq-lset= (%make-lset-= eq?))
+(define eqv-lset= (%make-lset-= eqv?))
 
-(define (make-lset< elt=)
+(define (make-lset-< elt= elt<)
+  (declare (ignore elt<))
   (cond ((eqv? eq? elt=) eq-lset<)
 	((eqv? eqv? elt=) eqv-lset<)
-	(else (%make-lset< elt=))))
+	(else (%make-lset-< elt=))))
 
-(define-integrable (%make-lset< elt=)
+(define-integrable (%make-lset-< elt=)
   (define-integrable (<=? l1 l2)
     (every (lambda (x)
 	     (any (lambda (y) (elt= x y)) l2))
@@ -612,8 +707,8 @@ USA.
     (and (<=? l1 l2)
 	 (not (<=? l2 l1)))))
 
-(define eq-lset< (%make-lset< eq?))
-(define eqv-lset< (%make-lset< eqv?))
+(define eq-lset< (%make-lset-< eq?))
+(define eqv-lset< (%make-lset-< eqv?))
 
 (define-values-deferred (uniform-weak-list-predicate
 			 uniform-weak-list-predicate?)
@@ -626,77 +721,86 @@ USA.
     list
     single-predicate-memoizer))
 
-(define-deferred uniform-weak-list-comparator
-  (weak-list-constructor
-   (%unary-combinator uniform-weak-list-predicate
-		      make-uwlist=
-		      make-uwlist<
-		      make-uwlist-hash)))
+(define-values-deferred (uniform-weak-list-comparator
+			 uniform-weak-list-comparator?
+			 uniform-weak-list-comparator-elt)
+  (compound-comparator-constructor 'uniform-weak-list-comparator 1
+    (lambda (constructor)
+      (memoized-constructor
+       (unary-combinator constructor
+			 uniform-weak-list-predicate
+			 make-uwlist-=
+			 make-uwlist-<
+			 make-uwlist-hash)))))
 
-(define (make-uwlist= elt=)
+(define (make-uwlist-= elt=)
   (cond ((eqv? eq? elt=) eq-uwlist=)
 	((eqv? eqv? elt=) eqv-uwlist=)
-	(else (%make-uwlist= elt=))))
+	(else (%make-uwlist-= elt=))))
 
-(define-integrable (%make-uwlist= elt=)
-  (lambda (l1 l2)
-    (let loop ((l1 l1) (l2 l2))
-      (if (and (weak-pair? l1) (weak-pair? l2))
-	  (let ((key1 (weak-car l1)))
-	    (and (not (gc-reclaimed-object? key1))
-		 (elt= key1 (weak-car l2))
-		 (loop (weak-cdr l1) (weak-cdr l2))))
-	  (and (null? l1) (null? l2))))))
+(define-integrable (%make-uwlist-= elt=)
+  (define (uwlist= l1 l2)
+    (if (and (weak-pair? l1) (weak-pair? l2))
+	(and (let ((key1 (weak-car l1))
+		   (key2 (weak-car l2)))
+	       (and (not (gc-reclaimed-object? key1))
+		    (not (gc-reclaimed-object? key2))
+		    (elt= key1 key2)))
+	     (uwlist= (weak-cdr l1) (weak-cdr l2)))
+	(and (null? l1) (null? l2))))
+  uwlist=)
 
-(define eq-uwlist= (%make-uwlist= eq?))
-(define eqv-uwlist= (%make-uwlist= eqv?))
+(define eq-uwlist= (%make-uwlist-= eq?))
+(define eqv-uwlist= (%make-uwlist-= eqv?))
 
-(define (make-uwlist< elt= elt<)
-  (lambda (a b)
-    (let loop ((scana a) (scanb b))
-      (and (not (null-weak-list? scanb))
-	   (or (null-weak-list? scana)
-	       (let ((key1 (weak-car scana)))
-		 (and (not (gc-reclaimed-object? key1))
-		      (or (elt< key1 (weak-car scanb))
-			  (and (elt= key1 (weak-car scanb))
-			       (loop (weak-cdr scana) (weak-cdr scanb)))))))))))
+(define (make-uwlist-< elt= elt<)
+  (define (uwlist< l1 l2)
+    (and (not (null-weak-list? l2))
+	 (or (null-weak-list? l1)
+	     (let ((key1 (weak-car l1))
+		   (key2 (weak-car l2)))
+	       (and (not (gc-reclaimed-object? key1))
+		    (not (gc-reclaimed-object? key2))
+		    (or (elt< key1 key2)
+			(and (elt= key1 key2)
+			     (uwlist< (weak-cdr l1) (weak-cdr l2)))))))))
+  uwlist<)
 
 (define (make-uwlist-hash elt-hash)
   (cond ((eqv? eq? elt-hash) eq-uwlist-hash)
 	((eqv? eqv? elt-hash) eqv-uwlist-hash)
-	((registered-hash? elt-hash) (%make-uwlist-hash elt-hash))
 	(else
-	 (let ()
-	   (define-integrable (checked elt)
-	     (check-hash (elt-hash elt)))
-	   (%make-uwlist-hash checked)))))
+	 (let ((elt-hash (checked-hash elt-hash)))
+	   (%make-uwlist-hash elt-hash)))))
 
 (define-integrable (%make-uwlist-hash elt-hash)
-  (define (uwlist-hash object)
+  (lambda (uwlist)
     (weak-fold (lambda (elt result)
 		 (%combine-hashes (elt-hash elt) result))
 	       (initial-hash)
-	       object))
-  (register-compound-hash! uwlist-hash elt-hash)
-  uwlist-hash)
+	       uwlist)))
 
-(define-deferred eq-uwlist-hash (%make-uwlist-hash eq-hash))
-(define-deferred eqv-uwlist-hash (%make-uwlist-hash eqv-hash))
+(define eq-uwlist-hash (%make-uwlist-hash eq-hash))
+(define eqv-uwlist-hash (%make-uwlist-hash eqv-hash))
 
-(define-deferred weak-lset-comparator
-  (weak-list-constructor
-   (%unary-combinator uniform-weak-list-predicate
-		      make-wlset=
-		      make-wlset<
-		      make-uwlist-hash)))
+(define-values-deferred (weak-lset-comparator
+			 weak-lset-comparator?
+			 weak-lset-comparator-elt)
+  (compound-comparator-constructor 'weak-lset-comparator 1
+    (lambda (constructor)
+      (memoized-constructor
+       (unary-combinator constructor
+			 uniform-weak-list-predicate
+			 make-wlset-=
+			 make-wlset-<
+			 make-uwlist-hash)))))
 
-(define (make-wlset= elt=)
+(define (make-wlset-= elt=)
   (cond ((eqv? eq? elt=) eq-wlset=)
 	((eqv? eqv? elt=) eqv-wlset=)
-	(else (%make-wlset= elt=))))
+	(else (%make-wlset-= elt=))))
 
-(define-integrable (%make-wlset= elt=)
+(define-integrable (%make-wlset-= elt=)
   (define-integrable (<=? l1 l2)
     (weak-every (lambda (x)
 		  (weak-any (lambda (y) (elt= x y)) l2))
@@ -706,15 +810,16 @@ USA.
 	(and (<=? l1 l2)
 	     (<=? l2 l1)))))
 
-(define eq-wlset= (%make-wlset= eq?))
-(define eqv-wlset= (%make-wlset= eqv?))
+(define eq-wlset= (%make-wlset-= eq?))
+(define eqv-wlset= (%make-wlset-= eqv?))
 
-(define (make-wlset< elt=)
+(define (make-wlset-< elt= elt<)
+  (declare (ignore elt<))
   (cond ((eqv? eq? elt=) eq-wlset<)
 	((eqv? eqv? elt=) eqv-wlset<)
-	(else (%make-wlset< elt=))))
+	(else (%make-wlset-< elt=))))
 
-(define-integrable (%make-wlset< elt=)
+(define-integrable (%make-wlset-< elt=)
   (define-integrable (<=? l1 l2)
     (weak-every (lambda (x)
 		  (weak-any (lambda (y) (elt= x y)) l2))
@@ -723,8 +828,8 @@ USA.
     (and (<=? l1 l2)
 	 (not (<=? l2 l1)))))
 
-(define eq-wlset< (%make-wlset< eq?))
-(define eqv-wlset< (%make-wlset< eqv?))
+(define eq-wlset< (%make-wlset-< eq?))
+(define eqv-wlset< (%make-wlset-< eqv?))
 
 (define-values-deferred (uniform-vector-predicate uniform-vector-predicate?)
   (compound-predicate-constructor 'uniform-vector vector?
@@ -737,14 +842,19 @@ USA.
     list
     single-predicate-memoizer))
 
-(define-deferred uniform-vector-comparator
-  (memoized-constructor
-   (%unary-combinator uniform-vector-predicate
-		      make-uvector=
-		      make-uvector<
-		      make-uvector-hash)))
+(define-values-deferred (uniform-vector-comparator
+			 uniform-vector-comparator?
+			 uniform-vector-comparator-elt)
+  (compound-comparator-constructor 'uniform-vector-comparator 1
+    (lambda (constructor)
+      (memoized-constructor
+       (unary-combinator constructor
+			 uniform-vector-predicate
+			 make-uvector-=
+			 make-uvector-<
+			 make-uvector-hash)))))
 
-(define (make-uvector= elt=)
+(define (make-uvector-= elt=)
   (lambda (v1 v2)
     (let ((end (vector-length v1)))
       (and (fix:= end (vector-length v2))
@@ -753,7 +863,7 @@ USA.
 		 (and (elt= (vector-ref v1 i) (vector-ref v2 i))
 		      (loop (fix:+ i 1)))))))))
 
-(define (make-uvector< elt= elt<)
+(define (make-uvector-< elt= elt<)
   (lambda (v1 v2)
     (let ((end1 (vector-length v1))
 	  (end2 (vector-length v2)))
@@ -768,35 +878,23 @@ USA.
 	      (fix:< end1 end2)))))))
 
 (define (make-uvector-hash elt-hash)
-  (if (registered-hash? elt-hash)
-      (%make-uvector-hash elt-hash)
-      (let ()
-	(define-integrable (checked elt)
-	  (check-hash (elt-hash elt)))
-	(%make-uvector-hash checked))))
-
-(define-integrable (%make-uvector-hash elt-hash)
-  (define (uvector-hash v)
-    (let ((end (vector-length v)))
-      (let loop ((i 0) (result (initial-hash)))
-	(if (fix:< i end)
-	    (loop (fix:+ i 1)
-		  (%combine-hashes (elt-hash (vector-ref v i)) result))
-	    result))))
-  (register-compound-hash! uvector-hash elt-hash)
-  uvector-hash)
+  (let ((elt-hash (checked-hash elt-hash)))
+    (lambda (v)
+      (let ((end (vector-length v)))
+	(let loop ((i 0) (result (initial-hash)))
+	  (if (fix:< i end)
+	      (loop (fix:+ i 1)
+		    (%combine-hashes (elt-hash (vector-ref v i)) result))
+	      result))))))
 
 ;;;; Hash functions
 
-;;; On 64-bit architectures:
-;;;   hash functions return a 32-bit unsigned value
-;;; On 32-bit architectures:
-;;;   hash functions return a 25-bit unsigned value
-
+;;; Not a fixnum on 32-bit systems.
 (define-syntax hash-bound
   (syntax-rules ()
     ((_) (select-on-bytes-per-word #x02000000 #x100000000))))
 
+;;; Always a fixnum.
 (define-syntax hash-mask
   (syntax-rules ()
     ((_) (select-on-bytes-per-word #x01FFFFFF #xFFFFFFFF))))
@@ -805,21 +903,28 @@ USA.
   (syntax-rules ()
     ((_) (select-on-bytes-per-word 25 32))))
 
+;;; Always a fixnum.
 (define (hash-salt)
   (random-integer (hash-bound)))
 
-(define ((protected-hash-function hash-fn) object modulus)
-  (let ((h (hash-fn object modulus)))
-    (check-hash h)))
+(define (checked-hash hash)
+  (if (registered-hash? hash)
+      hash
+      (lambda (object)
+	(check-hash (hash object)))))
 
-(define-integrable (check-hash h)
+;;; For hash tables only.
+(define ((checked-hash-mod hash-mod) object modulus)
+  (check-hash (hash-mod object modulus)))
+
+(define (check-hash h)
+  (%check-hash h))
+
+(define-integrable (%check-hash h)
   (guarantee index-fixnum? h)
   (if (not (fix:<= h (hash-mask)))
       (error:bad-range-argument h))
   h)
-
-(define (combine-hashes h1 h2)
-  (%combine-hashes (check-hash h1) (check-hash h2)))
 
 (define-integrable (initial-hash)
   (select-on-bytes-per-word 25165813 3221225473))
@@ -829,6 +934,9 @@ USA.
    (if (fixed-objects-item? 'initial-hash)
        (set-fixed-objects-item! 'initial-hash (initial-hash)))))
 
+(define (combine-hashes h1 h2)
+  (%combine-hashes (check-hash h1) (check-hash h2)))
+
 (select-on-bytes-per-word
  (define-integrable (%combine-hashes h1 h2)
    (let ((sum (+ (* 31 h1) h2)))
@@ -837,7 +945,7 @@ USA.
 	 (bitwise-and sum (hash-mask)))))
  (define-integrable (%combine-hashes h1 h2)
    (fix:and (fix:+ (fix:* 31 h1) h2) (hash-mask))))
-
+
 (define (boolean-hash b)
   ;; Arbitrarily chosen primes:
   (%combine-hashes (if b 4111 5333) (initial-hash)))
@@ -910,13 +1018,16 @@ USA.
   (standard-predicate-dispatcher 'default-hash 1
     (lambda (object)
       (error "Don't know how to hash this object:" object))))
+(add-boot-init!
+ (lambda ()
+   (register-hash! default-hash #t)))
 
 (define-deferred the-default-comparator
-  (%make-comparator any-object?
-		    default=
-		    default<
-		    default-hash
-		    #t))
+  (make-comparator any-object?
+		   default=
+		   default<
+		   default-hash
+		   #t))
 
 (add-boot-init!
  (lambda ()

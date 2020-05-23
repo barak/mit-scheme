@@ -1355,7 +1355,8 @@ USA.
 			(comparator-entry-type comparator args)))
 
 (define (comparator-entry-type comparator args)
-  (cond ((weak-list-comparator? comparator)
+  (cond ((or (uniform-weak-list-comparator? comparator)
+	     (weak-lset-comparator? comparator))
 	 (if (memq 'weak-values args)
 	     hash-table-entry-type:key-list&datum-weak
 	     hash-table-entry-type:key-list-weak))
@@ -1433,7 +1434,7 @@ USA.
 	 ((if rehash-after-gc?
 	      compute-address-hash
 	      compute-non-address-hash)
-	  (protected-hash-function key-hash))))
+	  (checked-hash-mod key-hash))))
     ;; Don't integrate COMPUTE-HASH!.
     (make-table-type key-hash key=? rehash-after-gc? compute-hash!
 		     entry-type)))
@@ -1474,7 +1475,7 @@ USA.
 	   ((if rehash-after-gc?
 		compute-address-hash
 		compute-non-address-hash)
-	    (protected-hash-function key-hash))))
+	    (checked-hash-mod key-hash))))
       ;; Don't integrate COMPUTE-HASH!.
       (make-table-type key-hash key=? rehash-after-gc? compute-hash!
 		       entry-type))))

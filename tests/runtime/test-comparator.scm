@@ -295,8 +295,9 @@ USA.
 
 (define (test-combinations test items c)
   (upair-test test items c)
-  (klist-test test items c pair? null? car cdr)
-  (kvector-test test items c vector-length vector-ref))
+  (klist-test test items c)
+  (klset-test test items c)
+  (kvector-test test items c))
 
 (define (upair-test test items c)
   (test (all-pairs-of items)
@@ -324,112 +325,202 @@ USA.
     (combine-hashes (hash (car a))
 		    (hash (cdr a)))))
 
-(define (klist-test test items celt kpair? knull? kar kdr)
-  (test (all-lists-of items)
-	(make-list-comparator celt kpair? knull? kar kdr)
-	(klist= (comparator-equality-predicate celt)
-		kpair? knull? kar kdr)
+(define (klist-test test items celt)
+  (let ((items (all-lists-of items)))
+
+    (let ((c (make-list-comparator celt pair? null? car cdr)))
+      (assert-false (uniform-klist-comparator? c))
+      (assert-true (uniform-list-comparator? c))
+      (assert-false (uniform-weak-list-comparator? c))
+
+      (assert-eq (uniform-list-comparator-elt c) celt)
+      (assert-eq (uniform-list-comparator celt) c) ;memoized
+
+      (klist-test-1 test items c celt pair? null? car cdr))
+
+    (let ((c (make-list-comparator celt weak-pair? null? weak-car weak-cdr)))
+      (assert-false (uniform-klist-comparator? c))
+      (assert-false (uniform-list-comparator? c))
+      (assert-true (uniform-weak-list-comparator? c))
+
+      (assert-eq (uniform-weak-list-comparator-elt c) celt)
+      (assert-eq (uniform-weak-list-comparator celt) c) ;memoized
+
+      (klist-test-1 test (map list->weak-list items) c celt
+		    weak-pair? null? weak-car weak-cdr))
+
+    (let ((c (make-list-comparator celt pair? null? cdr car)))
+      (assert-true (uniform-klist-comparator? c))
+      (assert-false (uniform-list-comparator? c))
+      (assert-false (uniform-weak-list-comparator? c))
+
+      (assert-eq (uniform-klist-comparator-elt c) celt)
+
+      (klist-test-1 test
+		    (map (lambda (list)
+			   (fold-right xcons '() list))
+			 items)
+		    c celt
+		    pair? null? cdr car))))
+
+(define (klist-test-1 test items cklist celt kpair? knull? kar kdr)
+
+  (define (klist= elt=)
+    (define (loop a b)
+      (if (knull-list? a)
+	  (knull-list? b)
+	  (and (not (knull-list? b))
+	       (elt= (kar a) (kar b))
+	       (loop (kdr a) (kdr b)))))
+    loop)
+
+  (define (klist< elt= elt<)
+    (define (loop a b)
+      (and (not (knull-list? b))
+	   (or (knull-list? a)
+	       (let ((ea (kar a))
+		     (eb (kar b)))
+		 (or (elt< ea eb)
+		     (and (elt= ea eb)
+			  (loop (kdr a) (kdr b))))))))
+    loop)
+
+  (define (klist-hash elt-hash)
+    (lambda (a)
+      (let loop ((a a) (result (initial-hash)))
+	(if (knull-list? a)
+	    result
+	    (loop (kdr a)
+		  (combine-hashes (elt-hash (kar a))
+				  result))))))
+
+  (define (knull-list? a)
+    (cond ((knull? a) #t)
+	  ((kpair? a) #f)
+	  (else (error:wrong-type-argument "klist" a))))
+
+  (test items
+	cklist
+	(klist= (comparator-equality-predicate celt))
 	(and (comparator-ordered? celt)
 	     (klist< (comparator-equality-predicate celt)
-		     (comparator-ordering-predicate celt)
-		     kpair? knull? kar kdr))
+		     (comparator-ordering-predicate celt)))
 	(and (comparator-hashable? celt)
-	     (klist-hash (comparator-hash-function celt)
-			 kpair? knull? kar kdr))))
-
-(define (klist= elt= kpair? knull? kar kdr)
-
-  (define (loop a b)
-    (if (knull-list? a)
-	(knull-list? b)
-	(and (not (knull-list? b))
-	     (elt= (kar a) (kar b))
-	     (loop (kdr a) (kdr b)))))
-
-  (define (knull-list? a)
-    (cond ((knull? a) #t)
-	  ((kpair? a) #f)
-	  (else (error:wrong-type-argument "klist" a))))
-
-  loop)
-
-(define (klist< elt= elt< kpair? knull? kar kdr)
-
-  (define (loop a b)
-    (and (not (knull-list? b))
-	 (or (knull-list? a)
-	     (let ((ea (kar a))
-		   (eb (kar b)))
-	       (or (elt< ea eb)
-		   (and (elt= ea eb)
-			(loop (kdr a) (kdr b))))))))
-
-  (define (knull-list? a)
-    (cond ((knull? a) #t)
-	  ((kpair? a) #f)
-	  (else (error:wrong-type-argument "klist" a))))
-
-  loop)
-
-(define (klist-hash elt-hash kpair? knull? kar kdr)
-
-  (define (knull-list? a)
-    (cond ((knull? a) #t)
-	  ((kpair? a) #f)
-	  (else (error:wrong-type-argument "klist" a))))
-
-  (lambda (a)
-    (let loop ((a a) (result (initial-hash)))
-      (if (knull-list? a)
-	  result
-	  (loop (kdr a)
-		(combine-hashes (elt-hash (kar a))
-				result))))))
+	     (klist-hash (comparator-hash-function celt)))))
 
-(define (kvector-test test items celt kvector-length kvector-ref)
-  (test (all-vectors-of items)
-	(make-vector-comparator celt vector?
-				kvector-length kvector-ref)
-	(kvector= (comparator-equality-predicate celt)
-		  kvector-length kvector-ref)
+(define (klset-test test items celt)
+  (let ((items (all-lists-of items)))
+    (let ((elt= (comparator-equality-predicate celt))
+	  (elt-hash (comparator-hash-function celt)))
+
+      (define (= a b)
+	(lset= elt= a b))
+
+      (define (< a b)
+	(and (lset<= elt= a b)
+	     (not (lset= elt= a b))))
+
+      (define (hash a)
+	(let loop ((a a) (result (initial-hash)))
+	  (if (null-list? a)
+	      result
+	      (loop (cdr a)
+		    (combine-hashes (elt-hash (car a))
+				    result)))))
+
+      (let ((c (lset-comparator celt)))
+	(assert-true (lset-comparator? c))
+	(assert-false (weak-lset-comparator? c))
+
+	(assert-eq (lset-comparator-elt c) celt)
+	(assert-eq (lset-comparator celt) c) ;memoized
+
+	(assert-true (comparator-ordered? c))
+	(assert-true (comparator-hashable? c))
+
+	(test items c = < hash))
+
+      (let ((c (weak-lset-comparator celt)))
+	(assert-false (lset-comparator? c))
+	(assert-true (weak-lset-comparator? c))
+
+	(assert-eq (weak-lset-comparator-elt c) celt)
+	(assert-eq (weak-lset-comparator celt) c) ;memoized
+
+	(assert-true (comparator-ordered? c))
+	(assert-true (comparator-hashable? c))
+
+	(test (map list->weak-list items)
+	      c
+	      (lambda (a b)
+		(= (weak-list->list a) (weak-list->list b)))
+	      (lambda (a b)
+		(< (weak-list->list a) (weak-list->list b)))
+	      (lambda (a)
+		(hash (weak-list->list a))))))))
+
+(define (kvector-test test items celt)
+  (let ((items (all-lists-of items)))
+
+    (let ((c (make-vector-comparator celt vector? vector-length vector-ref)))
+      (assert-false (uniform-kvector-comparator? c))
+      (assert-true (uniform-vector-comparator? c))
+
+      (assert-eq (uniform-vector-comparator-elt c) celt)
+      (assert-eq (uniform-vector-comparator celt) c) ;memoized
+
+      (kvector-test-1 test (map list->vector items) c celt
+		      vector-length vector-ref))
+
+    (let ((c (make-vector-comparator celt list? length list-ref)))
+      (assert-true (uniform-kvector-comparator? c))
+      (assert-false (uniform-vector-comparator? c))
+
+      (assert-eq (uniform-kvector-comparator-elt c) celt)
+
+      (kvector-test-1 test items c celt length list-ref))))
+
+(define (kvector-test-1 test items ckvector celt kvector-length kvector-ref)
+
+  (define (kvector= elt=)
+    (lambda (a b)
+      (let ((n (kvector-length a)))
+	(and (= n (kvector-length b))
+	     (let loop ((i 0))
+	       (if (< i n)
+		   (and (elt= (kvector-ref a i) (kvector-ref b i))
+			(loop (+ i 1)))
+		   #t))))))
+
+  (define (kvector< elt= elt<)
+    (lambda (a b)
+      (let ((na (kvector-length a))
+	    (nb (kvector-length b)))
+	(let ((n (min na nb)))
+	  (let loop ((i 0))
+	    (if (< i n)
+		(let ((ea (kvector-ref a i))
+		      (eb (kvector-ref b i)))
+		  (or (elt< ea eb)
+		      (and (elt= ea eb)
+			   (loop (+ i 1)))))
+		(< na nb)))))))
+
+  (define (kvector-hash elt-hash)
+    (lambda (a)
+      (let ((n (kvector-length a)))
+	(let loop ((i 0) (result (initial-hash)))
+	  (if (< i n)
+	      (loop (+ i 1)
+		    (combine-hashes (elt-hash (kvector-ref a i))
+				    result))
+	      result)))))
+
+  (test items
+	ckvector
+	(kvector= (comparator-equality-predicate celt))
 	(and (comparator-ordered? celt)
 	     (kvector< (comparator-equality-predicate celt)
-		       (comparator-ordering-predicate celt)
-		       kvector-length kvector-ref))
+		       (comparator-ordering-predicate celt)))
 	(and (comparator-hashable? celt)
-	     (kvector-hash (comparator-hash-function celt)
-			   kvector-length kvector-ref))))
-
-(define (kvector= elt= kvector-length kvector-ref)
-  (lambda (a b)
-    (let ((n (kvector-length a)))
-      (and (= n (kvector-length b))
-	   (let loop ((i 0))
-	     (if (< i n)
-		 (and (elt= (kvector-ref a i) (kvector-ref b i))
-		      (loop (+ i 1)))
-		 #t))))))
-
-(define (kvector< elt= elt< kvector-length kvector-ref)
-  (lambda (a b)
-    (let ((na (kvector-length a))
-	  (nb (kvector-length b)))
-      (let ((n (min na nb)))
-	(let loop ((i 0))
-	  (if (< i n)
-	      (let ((ea (kvector-ref a i))
-		    (eb (kvector-ref b i)))
-		(or (elt< ea eb)
-		    (and (elt= ea eb)
-			 (loop (+ i 1)))))
-	      (< na nb)))))))
-
-(define (kvector-hash elt-hash kvector-length kvector-ref)
-  (lambda (a)
-    (let ((n (kvector-length a)))
-      (let loop ((i 0) (result (initial-hash)))
-	(if (< i n)
-	    (loop (+ i 1)
-		  (combine-hashes (elt-hash (kvector-ref a i))
-				  result))
-	    result)))))
+	     (kvector-hash (comparator-hash-function celt)))))
