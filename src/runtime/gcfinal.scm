@@ -100,15 +100,15 @@ USA.
 	(procedure (gc-finalizer-procedure finalizer)))
     (with-finalizer-lock finalizer
       (lambda ()
-	(weak-alist-table-delete-matching! (gc-finalizer-items finalizer)
-	  (lambda (object context)
-	    (declare (ignore context))
-	    (let ((context (object-context object)))
-	      (if context
-		  (begin
-		    (set-object-context! object #f)
-		    (procedure context))))
-	    #t))))))
+	(weak-alist-table-prune! (lambda (object context)
+				   (declare (ignore context))
+				   (let ((context (object-context object)))
+				     (if context
+					 (begin
+					   (set-object-context! object #f)
+					   (procedure context))))
+				   #t)
+				 (gc-finalizer-items finalizer))))))
 
 (define (search-gc-finalizer finalizer predicate)
   (guarantee gc-finalizer? finalizer 'search-gc-finalizer)

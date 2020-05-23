@@ -466,16 +466,17 @@ USA.
   (weak-alist-table-clean! cleanups))
 
 (define (reset-cleanups!)
-  (weak-alist-table-delete-matching! cleanups
-    (lambda (object cleaner)
-      (declare (ignore cleaner))
-      (cond ((alien? object)
-	     (alien-null! object))
-	    ((mcrypt-context? object)
-	     (alien-null! (mcrypt-context-alien object)))
-	    (else
-	     (error "Unexpected object on cleanup list:" object)))
-      #t)))
+  (weak-alist-table-prune!
+   (lambda (object cleaner)
+     (declare (ignore cleaner))
+     (cond ((alien? object)
+	    (alien-null! object))
+	   ((mcrypt-context? object)
+	    (alien-null! (mcrypt-context-alien object)))
+	   (else
+	    (error "Unexpected object on cleanup list:" object)))
+     #t)
+   cleanups))
 
 (add-gc-daemon! cleanup-mcrypt-objects)
 (add-event-receiver! event:after-restart reset-mcrypt-variables!)

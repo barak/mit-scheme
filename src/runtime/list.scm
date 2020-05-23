@@ -1494,7 +1494,7 @@ USA.
 	      (loop (cdr this) this))
 	  default))))
 
-(define (alist-table-delete-matching! table predicate)
+(define (alist-table-prune! predicate table)
   (let loop ((this (%table-alist table)) (prev #f))
     (if (pair? this)
 	(loop (cdr this)

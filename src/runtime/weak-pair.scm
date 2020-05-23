@@ -1045,12 +1045,12 @@ USA.
 		    (else
 		     (loop next this)))))))))
 
-(define (weak-alist-table-delete-matching! table predicate)
+(define (weak-alist-table-prune! predicate table)
   (declare (no-type-checks))
-  (guarantee weak-alist-table? table 'weak-alist-table-delete-matching!)
+  (guarantee weak-alist-table? table 'weak-alist-table-prune!)
   (let ((finalizer (%table-finalizer table)))
     (let loop ((this (%table-alist table)) (prev #f))
-      (if (not (null-list? this 'weak-alist-table-delete-matching!))
+      (if (not (null-list? this 'weak-alist-table-prune!))
 	  (let ((p (car this))
 		(next (cdr this)))
 	    (let ((key (weak-car p)))

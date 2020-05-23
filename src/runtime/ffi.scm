@@ -424,11 +424,11 @@ USA.
       unspecific)))
 
 (define (reset-malloced-aliens!)
-  (weak-alist-table-delete-matching! malloced-aliens
-    (lambda (alien copy)
-      (alien-null! alien)
-      (alien-null! copy)
-      #t)))
+  (weak-alist-table-prune! (lambda (alien copy)
+			     (alien-null! alien)
+			     (alien-null! copy)
+			     #t)
+			   malloced-aliens))
 
 (define (make-alien-to-free ctype init)
   ;; Register BEFORE initializing (allocating).

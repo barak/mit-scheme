@@ -293,13 +293,13 @@ USA.
 	  weak-alist-table-clear!
 	  weak-alist-table-contains?
 	  weak-alist-table-delete!
-	  weak-alist-table-delete-matching!
 	  weak-alist-table-empty?
 	  weak-alist-table-fold
 	  weak-alist-table-fold-right
 	  weak-alist-table-intern!
 	  weak-alist-table-key=
 	  weak-alist-table-keys
+	  weak-alist-table-prune!
 	  weak-alist-table-ref
 	  weak-alist-table-search
 	  weak-alist-table-set!
@@ -3341,13 +3341,13 @@ USA.
 	  alist-table-clear!
 	  alist-table-contains?
 	  alist-table-delete!
-	  alist-table-delete-matching!
 	  alist-table-empty?
 	  alist-table-fold
 	  alist-table-fold-right
 	  alist-table-intern!
 	  alist-table-key=
 	  alist-table-keys
+	  alist-table-prune!
 	  alist-table-ref
 	  alist-table-search
 	  alist-table-set!
