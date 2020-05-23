@@ -141,12 +141,17 @@ USA.
 	    (loop (successor seed)))))))
 
 (define (hash-table-constructor type . args)
-  (let ((type
+  (let ((default-initial-size (find exact-nonnegative-integer? args))
+	(type
 	 (if (comparator? type)
 	     (apply comparator->hash-table-type type args)
 	     (guarantee hash-table-type? type 'hash-table-constructor))))
     (lambda (#!optional initial-size)
-      (%make-hash-table type initial-size 'hash-table-constructor))))
+      (%make-hash-table type
+			(if (default-object? initial-size)
+			    default-initial-size
+			    initial-size)
+			'hash-table-constructor))))
 
 (define (%make-hash-table type initial-size caller)
   (let ((initial-size
