@@ -1072,6 +1072,26 @@ USA.
 		     (loop next prev))
 		    (else
 		     (loop next this)))))))))
+
+(define (weak-alist-table-map! procedure table)
+  (declare (no-type-checks))
+  (guarantee weak-alist-table? table 'weak-alist-table-map!)
+  (let ((finalizer (%table-finalizer table)))
+    (let loop ((this (%table-alist table)) (prev #f))
+      (if (not (null-list? this 'weak-alist-table-map!))
+	  (let ((p (car this))
+		(next (cdr this)))
+	    (let ((key (weak-car p)))
+	      (cond ((gc-reclaimed-object? key)
+		     (if finalizer
+			 (finalizer (weak-cdr p)))
+		     (if prev
+			 (set-cdr! prev next)
+			 (%set-table-alist! table next))
+		     (loop next prev))
+		    (else
+		     (weak-set-cdr! p (procedure key (weak-cdr p)))
+		     (loop next this)))))))))
 
 (define (weak-alist-table-clean! table)
   (declare (no-type-checks))

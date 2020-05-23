@@ -299,6 +299,7 @@ USA.
 	  weak-alist-table-intern!
 	  weak-alist-table-key=
 	  weak-alist-table-keys
+	  weak-alist-table-map!
 	  weak-alist-table-prune!
 	  weak-alist-table-ref
 	  weak-alist-table-search
@@ -3347,6 +3348,7 @@ USA.
 	  alist-table-intern!
 	  alist-table-key=
 	  alist-table-keys
+	  alist-table-map!
 	  alist-table-prune!
 	  alist-table-ref
 	  alist-table-search
@@ -6824,3 +6826,67 @@ USA.
   (export ()
 	  features			;(scheme base)
 	  ))
+
+(define-package (runtime amap)
+  (files "amap")
+  (parent (runtime))
+  (export ()
+          alist->amap
+          amap->alist
+          amap-clean!
+          amap-clear!
+          amap-contains?
+          amap-copy
+          amap-count
+          amap-delete!
+          amap-difference!
+          amap-empty-copy
+          amap-empty?
+          amap-entries
+          amap-find
+          amap-fold
+          amap-for-each
+	  amap-implementations
+          amap-intern!
+          amap-intersection!
+          amap-keys
+          amap-map
+          amap-map!
+          amap-map->list
+          amap-mutable?
+          amap-pop!
+          amap-prune!
+          amap-ref
+          amap-ref/default
+          amap-set!
+          amap-size
+          amap-unfold
+          amap-union!
+          amap-update!
+          amap-update!/default
+          amap-values
+          amap-xor!
+          amap=?
+          amap?
+          make-amap))
+
+(define-package (runtime amap impl)
+  (files "amap-impl")
+  (parent (runtime amap))
+  (export (runtime)
+          define-amap-impl)
+  (export (runtime amap)
+	  implementations
+          select-impl))
+
+(define-package (runtime amap hash-table)
+  (files "amap-hash-table")
+  (parent (runtime)))
+
+(define-package (runtime amap trie)
+  (files "amap-trie")
+  (parent (runtime)))
+
+(define-package (runtime amap alist)
+  (files "amap-alist")
+  (parent (runtime)))

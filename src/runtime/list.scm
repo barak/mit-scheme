@@ -1513,5 +1513,10 @@ USA.
 		    prev)
 		  this)))))
 
+(define (alist-table-map! procedure table)
+  (for-each (lambda (p)
+	      (set-cdr! p (procedure (car p) (cdr p))))
+	    (%table-alist table)))
+
 (define (alist-table-clear! table)
   (%set-table-alist! table '()))
