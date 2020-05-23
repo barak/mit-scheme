@@ -943,12 +943,14 @@ USA.
     (lambda (p) (declare (ignore p)) #t)
     (lambda () #f)))
 
-(define (weak-alist-table-ref table key #!optional get-default)
+(define (weak-alist-table-ref table key #!optional fail succeed)
   (%operate-on-table table key 'weak-alist-table-ref
-    weak-cdr
-    (if (default-object? get-default)
+    (if (default-object? succeed)
+	weak-cdr
+	(lambda (p) (succeed (weak-cdr p))))
+    (if (default-object? fail)
 	(lambda () (error:bad-range-argument key 'weak-alist-table-ref))
-	get-default)))
+	fail)))
 
 (define (%weak-alist-table-get-pair table key)
   (%operate-on-table table key '%weak-alist-table-get-pair
@@ -966,14 +968,16 @@ USA.
 (define (%weak-alist-table-add-pair! table p)
   (%set-table-alist! table (cons p (%table-alist table))))
 
-(define (weak-alist-table-update! table key procedure #!optional get-default)
+(define (weak-alist-table-update! table key updater #!optional fail succeed)
   (%operate-on-table table key 'weak-alist-table-update!
-    (lambda (p) (weak-set-cdr! p (procedure (weak-cdr p))))
-    (if (default-object? get-default)
+    (if (default-object? succeed)
+	(lambda (p) (weak-set-cdr! p (updater (weak-cdr p))))
+	(lambda (p) (weak-set-cdr! p (updater (succeed (weak-cdr p))))))
+    (if (default-object? fail)
 	(lambda () (error:bad-range-argument key 'weak-alist-table-update!))
 	(lambda ()
 	  (%set-table-alist! table
-			     (cons (weak-cons key (procedure (get-default)))
+			     (cons (weak-cons key (updater (fail)))
 				   (%table-alist table)))))))
 
 (define (weak-alist-table-intern! table key get-value)

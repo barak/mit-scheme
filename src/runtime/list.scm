@@ -1435,13 +1435,16 @@ USA.
 (define (alist-table-contains? table key)
   (and (%find-pair table key) #t))
 
-(define (alist-table-ref table key #!optional get-default)
+(define (alist-table-ref table key #!optional fail succeed)
   (let ((p (%find-pair table key)))
-    (if (and (not p) (default-object? get-default))
-	(error:bad-range-argument key 'alist-table-ref))
     (if p
-	(cdr p)
-	(get-default))))
+	(if (default-object? succeed)
+	    (cdr p)
+	    (succeed (cdr p)))
+	(begin
+	  (if (default-object? fail)
+	      (error:bad-range-argument key 'alist-table-ref))
+	  (fail)))))
 
 (define (alist-table-set! table key value)
   (let ((p (%find-pair table key)))
@@ -1451,15 +1454,19 @@ USA.
 			   (cons (cons key value)
 				 (%table-alist table))))))
 
-(define (alist-table-update! table key procedure #!optional get-default)
+(define (alist-table-update! table key updater #!optional fail succeed)
   (let ((p (%find-pair table key)))
     (if p
-	(set-cdr! p (procedure (cdr p)))
+	(set-cdr! p
+		  (updater
+		   (if (default-object? succeed)
+		       (cdr p)
+		       (succeed (cdr p)))))
 	(begin
-	  (if (default-object? get-default)
+	  (if (default-object? fail)
 	      (error:bad-range-argument key 'alist-table-update!))
 	  (%set-table-alist! table
-			     (cons (cons key (procedure (get-default)))
+			     (cons (cons key (updater (fail)))
 				   (%table-alist table)))))))
 
 (define (alist-table-intern! table key get-value)
