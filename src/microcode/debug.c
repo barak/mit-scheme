@@ -486,6 +486,101 @@ constant_string (SCHEME_OBJECT obj)
     }
 }
 
+static bool
+anonymous_procedure_name_p (SCHEME_OBJECT name)
+{
+  const char * s = "#[unnamed-procedure]";
+  return (name == (find_symbol ((strlen (s)), s)));
+}
+
+static void
+print_lambda (outf_channel stream, SCHEME_OBJECT lambda)
+{
+  SCHEME_OBJECT names = (GET_LAMBDA_FORMALS (lambda));
+  unsigned n_names = (VECTOR_LENGTH (names));
+
+  SCHEME_OBJECT name = (VECTOR_REF (names, 0));
+  bool anon = anonymous_procedure_name_p (name);
+  if (n_names == 1)
+    {
+      if (anon)
+        outf (stream, "[lambda () ");
+      else
+        {
+          outf (stream, "[named-lambda (");
+          print_symbol (stream, name);
+          outf (stream, ")");
+        }
+    }
+  else
+    {
+      if (anon)
+        outf (stream, "[lambda (");
+      else
+        {
+          outf (stream, "[named-lambda (");
+          print_symbol (stream, name);
+          outf (stream, " ");
+        }
+      for (unsigned i = 1; i < n_names; i++)
+        {
+          if (i > 1)
+            outf (stream, " ");
+          print_symbol (stream, (VECTOR_REF (names, i)));
+        }
+      outf (stream, ")");
+    }
+  outf (stream, " %#lx]", (OBJECT_DATUM (lambda)));
+}
+
+static void
+print_extended_lambda (outf_channel stream, SCHEME_OBJECT elambda)
+{
+  SCHEME_OBJECT names = (Get_Names_Elambda (elambda));
+  unsigned n_req = (Elambda_Formals_Count (elambda));
+  unsigned n_opt = (Elambda_Opts_Count (elambda));
+  unsigned n_rest = (Elambda_Rest_Flag (elambda));
+  unsigned n_names = (n_req + n_opt + n_rest);
+  unsigned n_params = (n_names - 1);
+
+  SCHEME_OBJECT name = (VECTOR_REF (names, 0));
+  bool anon = anonymous_procedure_name_p (name);
+  if (anon && (n_params == n_rest))
+    {
+      outf (stream, "[lambda ");
+      if (n_rest == 0)
+        outf (stream, "()");
+      else
+        print_symbol (stream, (VECTOR_REF (names, 1)));
+    }
+  else
+    {
+      if (anon)
+        outf (stream, "[lambda (");
+      else
+        {
+          outf (stream, "[named-lambda (");
+          print_symbol (stream, name);
+          outf (stream, " ");
+        }
+
+      unsigned end_req = (1 + n_req);
+      unsigned end_opt = (end_req + n_opt);
+      for (unsigned i = 1; i < n_names; i++)
+        {
+          if (i > 1)
+            outf (stream, " ");
+          if (i == end_req && n_opt > 0)
+            outf (stream, "%s ", (constant_string (OPTIONAL_MARKER)));
+          else if (i == end_opt && n_rest > 0)
+            outf (stream, ". ");
+          print_symbol (stream, (VECTOR_REF (names, i)));
+        }
+      outf (stream, ")");
+    }
+  outf (stream, " %#lx]", (OBJECT_DATUM (elambda)));
+}
+
 static void
 print_object (outf_channel stream, SCHEME_OBJECT obj)
 {
@@ -597,10 +692,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       return;
 
     case TC_EXTENDED_LAMBDA:
-      outf (stream, "[extended-lambda ");
-      print_object (stream, (MEMORY_REF ((MEMORY_REF (obj, ELAMBDA_NAMES)),
-					 1)));
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_extended_lambda (stream, obj);
       return;
 
     case TC_EXTENDED_PROCEDURE:
@@ -610,10 +702,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       return;
 
     case TC_LAMBDA:
-      outf (stream, "[lambda ");
-      print_object (stream, (MEMORY_REF ((MEMORY_REF (obj, LAMBDA_FORMALS)),
-					 1)));
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_lambda (stream, obj);
       return;
 
     case TC_PRIMITIVE:
