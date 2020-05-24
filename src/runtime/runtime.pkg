@@ -6846,7 +6846,6 @@ USA.
           amap-find
           amap-fold
           amap-for-each
-	  amap-implementations
           amap-intern!
           amap-intersection!
           amap-keys
@@ -6873,11 +6872,11 @@ USA.
 (define-package (runtime amap impl)
   (files "amap-impl")
   (parent (runtime amap))
+  (export ()
+	  amap-implementations)
   (export (runtime)
           define-amap-impl)
   (export (runtime amap)
-	  amap-impl-supported-args
-	  implementations
           select-impl))
 
 (define-package (runtime amap hash-table)

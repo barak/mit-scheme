@@ -201,15 +201,14 @@ USA.
 
 ;;;; Implementation data structure
 
-(define (make-amap-impl name props new-state get-operation)
+(define (make-amap-impl metadata new-state get-operation)
   (let* ((operators (all-operators))
 	 (n-ops (length operators))
 	 (impl
 	  (%make-record %amap-impl-tag
 			(fix:+ %amap-impl-op-offset n-ops))))
-    (%record-set! impl 1 name)
-    (%record-set! impl 2 props)
-    (%record-set! impl 3 new-state)
+    (%record-set! impl 1 metadata)
+    (%record-set! impl 2 new-state)
     (for-each (lambda (operator index)
 		(%record-set! impl index (get-operation operator)))
 	      operators
@@ -222,22 +221,13 @@ USA.
 (register-predicate! amap-impl? 'amap-impl '<= %record?)
 
 (define-integrable %amap-impl-tag '|(runtime amap)impl|)
-(define-integrable %amap-impl-op-offset 4)
+(define-integrable %amap-impl-op-offset 3)
 
-(define-integrable (amap-impl:name impl)
+(define-integrable (amap-impl:metadata impl)
   (%record-ref impl 1))
 
-(define-integrable (amap-impl:props impl)
-  (%record-ref impl 2))
-
 (define-integrable (amap-impl:new-state impl)
-  (%record-ref impl 3))
-
-(define (amap-implementations)
-  (map (lambda (impl)
-	 (cons (amap-impl:name impl)
-	       (amap-impl-supported-args impl)))
-       (implementations)))
+  (%record-ref impl 2))
 
 (define (operator? object)
   (and (assq object operator-property-alist) #t))
@@ -274,7 +264,7 @@ USA.
 			   (,(rename 'no-range-checks)))
 			  (,(rename '%record-ref) impl ,index)))
 		      normal
-		      (iota (length normal) 4)))))))))
+		      (iota (length normal) 3)))))))))
 
   (op-defs (->alist)
 	   (clean! mutates)

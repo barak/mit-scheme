@@ -39,16 +39,22 @@ USA.
       (guarantee unary-procedure? comparator-predicate 'define-amap-impl))
   (guarantee binary-procedure? new-state 'define-amap-impl)
   (guarantee amap-operations? operations 'define-amap-impl)
-  (let ((props (make-impl-props properties comparator-predicate)))
+  (let ((metadata (make-metadata name properties comparator-predicate)))
     (alist-table-set! registered-implementations name
-      (make-amap-impl name
-		      props
+      (make-amap-impl metadata
 		      new-state
-		      (organize-operations props operations))))
+		      (organize-operations metadata operations))))
   name)
 
 (define registered-implementations
   (alist-table eq?))
+
+(define (amap-implementations)
+  (map (lambda (impl)
+	 (let ((metadata (amap-impl:metadata impl)))
+	   (cons (metadata-name metadata)
+		 (metadata-supported-args metadata))))
+       (implementations)))
 
 (define (implementation-names)
   (alist-table-keys registered-implementations))
@@ -59,10 +65,31 @@ USA.
 (define (get-implementation name)
   (alist-table-ref registered-implementations name))
 
-(define (amap-impl-supported-args impl)
-  (impl-props-supported-args (amap-impl:props impl)))
+(define (select-impl comparator args)
+  (for-each (lambda (group)
+	      (let ((given (filter (lambda (arg) (memq arg args)) group)))
+		(if (> (length given) 1)
+		    (error "These args are mutually exclusive:" given))))
+	    mutually-exclusive-args)
+  (let ((predicate (impl-requirement-predicate comparator args)))
+    (or (find predicate
+	      (map get-implementation
+		   (lset-intersection eq? args (implementation-names))))
+	(find predicate (implementations))
+	(error "Unable to select implementation:" args))))
+
+(define mutually-exclusive-args
+  '((ephemeral-keys weak-keys)
+    (ephemeral-values weak-values)
+    (amortized-constant-time log-time linear-time sublinear-time)))
+
+(define (impl-requirement-predicate comparator args)
+  (lambda (impl)
+    (let ((metadata (amap-impl:metadata impl)))
+      (and ((metadata-comparator-predicate metadata) comparator)
+	   ((metadata-args-predicate metadata) args)))))
 
-;;;; Properties
+;;;; Metadata
 
 (define (amap-properties? object)
   (list-of-type? object
@@ -72,16 +99,15 @@ USA.
 	   (non-empty-list? (cdr elt))))))
 (register-predicate! amap-properties? 'amap-properties '<= list?)
 
-(define (make-impl-props specs comparator-predicate)
+(define (make-metadata name specs comparator-predicate)
   (let ((specs
 	 (map (lambda (spec)
-		(let ((keyword (car spec))
+		(let ((prop (get-prop (car spec)))
 		      (vals (delete-duplicates (cdr spec) equal?)))
-		  (let ((prop (get-prop keyword)))
-		    (if (not (and (lset<= equal? vals (prop-vals prop))
-				  ((prop-vals-predicate prop) vals)))
-			(error "Ill-formed property:" spec))
-		    (cons prop vals))))
+		  (if (not (and (lset<= equal? vals (prop-vals prop))
+				((prop-vals-predicate prop) vals)))
+		      (error "Ill-formed property:" spec))
+		  (cons prop vals)))
 	      specs)))
     (let ((missing
 	   (remove (lambda (prop)
@@ -89,34 +115,30 @@ USA.
 		   (required-props))))
       (if (pair? missing)
 	  (error "Missing required properties:" missing)))
-    (let ((mutability (cdr (assq (get-prop 'mutability) specs)))
-	  (props (map car specs)))
-      (%make-impl-props
-       (and (memq 'mutable mutability) #t)
-       (and (memq 'immutable mutability) #t)
-       (any (lambda (kv)
-	      (any (lambda (x) (memq x '(weak ephemeron))) kv))
-	    (cdr (assq (get-prop 'kv-types) specs)))
-       (append-map (lambda (spec)
-		     ((prop-matching-args (car spec)) (cdr spec)))
-		   specs)
-       (conjoin* (map prop-supports-args? props))
-       (or comparator-predicate comparator?)))))
+    (%make-metadata
+     name
+     (encode-mutability (cdr (assq (get-prop 'mutability) specs)))
+     (append-map (lambda (spec)
+		   ((prop-matching-args (car spec)) (cdr spec)))
+		 specs)
+     (conjoin* (map (lambda (spec)
+		      (prop-args-predicate (car spec)))
+		    specs))
+     (or comparator-predicate comparator?))))
 
-(define-record-type <impl-props>
-    (%make-impl-props mutable? immutable? weakish?
-		      supported-args supports-args? supports-comparator?)
-    impl-props?
-  (mutable? impl-props-mutable?)
-  (immutable? impl-props-immutable?)
-  (weakish? impl-props-weakish?)
-  (supported-args impl-props-supported-args)
-  (supports-args? impl-props-supports-args?)
-  (supports-comparator? impl-props-supports-comparator?))
+(define-record-type <metadata>
+    (%make-metadata name mutability supported-args args-predicate
+		    comparator-predicate)
+    metadata?
+  (name metadata-name)
+  (mutability metadata-mutability)
+  (supported-args metadata-supported-args)
+  (args-predicate metadata-args-predicate)
+  (comparator-predicate metadata-comparator-predicate))
 
 (define (define-property keyword required? vals vals-predicate
-	  matching-args make-supports-args?)
-  (alist-table-set! props keyword
+	  matching-args make-args-predicate)
+  (alist-table-set! properties keyword
     (make-prop keyword required?
 	       vals
 	       (or vals-predicate
@@ -127,43 +149,17 @@ USA.
 		   (lambda (vals)
 		     (declare (ignore vals))
 		     '()))
-	       (if make-supports-args?
-		   (make-args-support-predicate (matching-args vals)
-						(make-supports-args? vals))
+	       (if make-args-predicate
+		   (let ((filter (make-args-filter (matching-args vals)))
+			 (predicate (make-args-predicate vals)))
+		     (lambda (args)
+		       (predicate (filter args))))
 		   (lambda (args)
 		     (declare (ignore args))
 		     '()))))
   keyword)
 
-(define (have-prop? keyword)
-  (alist-table-contains? props keyword))
-
-(define (get-prop keyword)
-  (alist-table-ref props keyword))
-
-(define (required-props)
-  (filter prop-required? (alist-table-values props)))
-
-(define props
-  (alist-table eq?))
-
-(define-record-type <prop>
-    (make-prop keyword required? vals vals-predicate matching-args
-	       supports-args?)
-    prop?
-  (keyword prop-keyword)
-  (required? prop-required?)
-  (vals prop-vals)
-  (vals-predicate prop-vals-predicate)
-  (matching-args prop-matching-args)
-  (supports-args? prop-supports-args?))
-
-(define (make-args-support-predicate claimed-args predicate)
-  (let ((matcher (make-args-matcher claimed-args)))
-    (lambda (args)
-      (predicate (matcher args)))))
-
-(define (make-args-matcher claimed-args)
+(define (make-args-filter claimed-args)
   (let-values (((matchers syms) (partition arg-matcher? claimed-args)))
     (lambda (args)
       (let-values (((diff int) (lset-diff+intersection eq? args syms)))
@@ -174,6 +170,29 @@ USA.
 					   matcher))
 				    matchers))
 			    diff))))))
+
+(define (have-prop? keyword)
+  (alist-table-contains? properties keyword))
+
+(define (get-prop keyword)
+  (alist-table-ref properties keyword))
+
+(define (required-props)
+  (filter prop-required? (alist-table-values properties)))
+
+(define properties
+  (alist-table eq?))
+
+(define-record-type <prop>
+    (make-prop keyword required? vals vals-predicate matching-args
+	       args-predicate)
+    prop?
+  (keyword prop-keyword)
+  (required? prop-required?)
+  (vals prop-vals)
+  (vals-predicate prop-vals-predicate)
+  (matching-args prop-matching-args)
+  (args-predicate prop-args-predicate))
 
 (define (define-arg-matcher name predicate)
   (alist-table-set! arg-matchers name predicate))
@@ -192,6 +211,11 @@ USA.
   #f
   #f
   #f)
+
+(define (encode-mutability vals)
+  (if (null? (cdr vals))
+      (eq? 'mutable (car vals))
+      'both))
 
 (let ((alist
        '(((strong strong))
@@ -270,8 +294,8 @@ USA.
        (not (any-duplicates? object eq? car))))
 (register-predicate! amap-operations? 'amap-operations '<= alist?)
 
-(define (organize-operations props operations)
-  (let ((missing-operators (missing-inputs props operations)))
+(define (organize-operations metadata operations)
+  (let ((missing-operators (missing-inputs metadata operations)))
     (if (pair? missing-operators)
 	(error "Missing required amap operators:" missing-operators)))
   (let ((table (alist-table eq?)))
@@ -303,75 +327,53 @@ USA.
 	(alist-table-set! table 'clean! default:clean!))
     (if (not (alist-table-contains? table 'mutable?))
 	(alist-table-set! table 'mutable?
-			  (default:mutable? (impl-props-mutable? props))))
+			  (default:mutable? (metadata-mutability metadata))))
 
     (evolve
      (map default-operation
 	  (lset-difference eq?
-			   (required-outputs props)
+			   (required-outputs metadata)
 			   (alist-table-keys table))))
     (lambda (operator)
       (alist-table-ref table
 		       operator
 		       (lambda () (error-operation operator))))))
 
-(define (missing-inputs props operations)
+(define (missing-inputs metadata operations)
 
   (define (remove-provided operators)
     (remove (lambda (operator)
 	      (assq operator operations))
 	    operators))
 
-  (remove-provided
-   (fold (lambda (operator acc)
-	   (lset-union eq? (operator-deps operator) acc))
-	 '()
-	 (remove-provided
-	  (filter (lambda (operator)
-		    (case operator
-		      ((clean!)
-		       (and (impl-props-mutable? props)
-			    (impl-props-weakish? props)))
-		      ((mutable?)
-		       (and (impl-props-mutable? props)
-			    (impl-props-immutable? props)))
-		      (else
-		       (or (impl-props-mutable? props)
-			   (not (operator-mutates? operator))))))
-		  (all-operators))))))
+  (let ((mutability (metadata-mutability metadata))
+	(weakish?
+	 (any (lambda (arg)
+		(memq arg
+		      '(weak-keys weak-values ephemeral-keys ephemeral-values)))
+	      (metadata-supported-args metadata))))
+    (remove-provided
+     (fold (lambda (operator acc)
+	     (lset-union eq? (operator-deps operator) acc))
+	   '()
+	   (remove-provided
+	    (filter (lambda (operator)
+		      (case operator
+			((clean!) (and mutability weakish?))
+			((mutable?) (eq? 'both mutability))
+			(else
+			 (or mutability
+			     (not (operator-mutates? operator))))))
+		    (all-operators)))))))
 
-(define (required-outputs props)
-  (if (impl-props-mutable? props)
+(define (required-outputs metadata)
+  (if (metadata-mutability metadata)
       (all-operators)
       (remove operator-mutates? (all-operators))))
 
 (define (error-operation operator)
   (lambda args
     (error "Unimplemented amap operation:" (cons operator args))))
-
-(define (select-impl comparator args)
-  (for-each (lambda (group)
-	      (let ((given (filter (lambda (arg) (memq arg args)) group)))
-		(if (> (length given) 1)
-		    (error "These args are mutually exclusive:" given))))
-	    mutually-exclusive-args)
-  (let ((predicate (impl-requirement-predicate comparator args)))
-    (or (find predicate
-	      (map get-implementation
-		   (lset-intersection eq? args (implementation-names))))
-	(find predicate (implementations))
-	(error "Unable to select implementation:" args))))
-
-(define mutually-exclusive-args
-  '((ephemeral-keys weak-keys)
-    (ephemeral-values weak-values)
-    (amortized-constant-time log-time linear-time sublinear-time)))
-
-(define (impl-requirement-predicate comparator args)
-  (lambda (impl)
-    (let ((props (amap-impl:props impl)))
-      (and ((impl-props-supports-comparator? props) comparator)
-	   ((impl-props-supports-args? props) args)))))
 
 ;;;; Default operations
 
@@ -404,9 +406,9 @@ USA.
 ;;; Special cases:
 
 (define (default:mutable? mutable?)
-  (if mutable?
-      (lambda (state) (declare (ignore state)) #t)
-      (lambda (state) (declare (ignore state)) #f)))
+  (lambda (state)
+    (declare (ignore state))
+    mutable?))
 
 (define (default:clean! state)
   (declare (ignore state))
