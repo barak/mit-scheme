@@ -35,7 +35,9 @@ USA.
 (add-boot-init!
  (lambda ()
    (define-amap-impl 'trie
-     '(mutable strong-keys+values key-is-uniform-list log-time)
+     '((mutability mutable)
+       (kv-types (strong strong)))
+     uniform-list-comparator?
      (lambda (comparator args)
        (declare (ignore args))
        (make-trie

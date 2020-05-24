@@ -35,16 +35,17 @@ USA.
 (add-boot-init!
  (lambda ()
    (define-amap-impl 'hash-table
-     '(amortized-constant-time
-       ephemeral-keys
-       ephemeral-keys+values
-       ephemeral-values
-       hashed
-       mutable
-       weak-keys
-       weak-keys+values
-       weak-values
-       strong-keys+values)
+     '((mutability mutable)
+       (kv-types (strong strong)
+		 (weak strong)
+		 (strong weak)
+		 (weak weak)
+		 (ephemeral strong)
+		 (strong ephemeral)
+		 (ephemeral ephemeral))
+       (time-complexity amortized-constant)
+       (other initial-size))
+     comparator-hashable?
      (lambda (comparator args)
        (apply make-hash-table comparator args))
      `((->alist ,hash-table->alist)

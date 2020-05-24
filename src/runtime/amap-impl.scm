@@ -31,25 +31,20 @@ USA.
 
 (add-boot-deps! '(runtime comparator))
 
-(define (define-amap-impl name keywords new-state operations)
+(define (define-amap-impl name properties comparator-predicate new-state
+	  operations)
   (guarantee interned-symbol? name 'define-amap-impl)
-  (guarantee amap-keywords? keywords 'define-amap-impl)
+  (guarantee amap-properties? properties 'define-amap-impl)
+  (if comparator-predicate
+      (guarantee unary-procedure? comparator-predicate 'define-amap-impl))
   (guarantee binary-procedure? new-state 'define-amap-impl)
   (guarantee amap-operations? operations 'define-amap-impl)
-  (let* ((keywords (delete-duplicates keywords eq?))
-	 (has? (lambda (keyword) (memq keyword keywords))))
-    (if (not (any has? mutability-support-keywords))
-	(error "No mutability support specified:" keywords))
-    (for-each (lambda (group)
-		(let ((given (filter has? group)))
-		  (if (> (length given) 1)
-		      (error "These keywords are mutually exclusive:" given))))
-	      mutually-exclusive-keywords)
+  (let ((props (make-impl-props properties comparator-predicate)))
     (alist-table-set! registered-implementations name
       (make-amap-impl name
-		      keywords
+		      props
 		      new-state
-		      (organize-operations keywords operations))))
+		      (organize-operations props operations))))
   name)
 
 (define registered-implementations
@@ -64,35 +59,205 @@ USA.
 (define (get-implementation name)
   (alist-table-ref registered-implementations name))
 
-(define (amap-keywords? object)
+(define (amap-impl-supported-args impl)
+  (impl-props-supported-args (amap-impl:props impl)))
+
+;;;; Properties
+
+(define (amap-properties? object)
   (list-of-type? object
     (lambda (elt)
-      (memq elt all-impl-keywords))))
-(register-predicate! amap-keywords? 'amap-keywords '<= list?)
+      (and (pair? elt)
+	   (have-prop? (car elt))
+	   (non-empty-list? (cdr elt))))))
+(register-predicate! amap-properties? 'amap-properties '<= list?)
 
-(define mutability-support-keywords
-  '(mutable immutable))
+(define (make-impl-props specs comparator-predicate)
+  (let ((specs
+	 (map (lambda (spec)
+		(let ((keyword (car spec))
+		      (vals (delete-duplicates (cdr spec) equal?)))
+		  (let ((prop (get-prop keyword)))
+		    (if (not (and (lset<= equal? vals (prop-vals prop))
+				  ((prop-vals-predicate prop) vals)))
+			(error "Ill-formed property:" spec))
+		    (cons prop vals))))
+	      specs)))
+    (let ((missing
+	   (remove (lambda (prop)
+		     (assq prop specs))
+		   (required-props))))
+      (if (pair? missing)
+	  (error "Missing required properties:" missing)))
+    (let ((mutability (cdr (assq (get-prop 'mutability) specs)))
+	  (props (map car specs)))
+      (%make-impl-props
+       (and (memq 'mutable mutability) #t)
+       (and (memq 'immutable mutability) #t)
+       (any (lambda (kv)
+	      (any (lambda (x) (memq x '(weak ephemeron))) kv))
+	    (cdr (assq (get-prop 'kv-types) specs)))
+       (append-map (lambda (spec)
+		     ((prop-matching-args (car spec)) (cdr spec)))
+		   specs)
+       (conjoin* (map prop-supports-args? props))
+       (or comparator-predicate comparator?)))))
 
-(define weakish-support-keywords
-  '(ephemeral-keys
-    ephemeral-values
-    ephemeral-keys+values
-    weak-keys
-    weak-values
-    weak-keys+values))
+(define-record-type <impl-props>
+    (%make-impl-props mutable? immutable? weakish?
+		      supported-args supports-args? supports-comparator?)
+    impl-props?
+  (mutable? impl-props-mutable?)
+  (immutable? impl-props-immutable?)
+  (weakish? impl-props-weakish?)
+  (supported-args impl-props-supported-args)
+  (supports-args? impl-props-supports-args?)
+  (supports-comparator? impl-props-supports-comparator?))
+
+(define (define-property keyword required? vals vals-predicate
+	  matching-args make-supports-args?)
+  (alist-table-set! props keyword
+    (make-prop keyword required?
+	       vals
+	       (or vals-predicate
+		   (lambda (vals)
+		     (declare (ignore vals))
+		     #t))
+	       (or matching-args
+		   (lambda (vals)
+		     (declare (ignore vals))
+		     '()))
+	       (if make-supports-args?
+		   (make-args-support-predicate (matching-args vals)
+						(make-supports-args? vals))
+		   (lambda (args)
+		     (declare (ignore args))
+		     '()))))
+  keyword)
 
-(define mutually-exclusive-keywords
-  '((amortized-constant-time log-time linear-time)
-    (key-is-uniform-list key-is-lset key-is-uniform-vector)))
+(define (have-prop? keyword)
+  (alist-table-contains? props keyword))
 
-(define other-keywords
-  '(strong-keys+values ordered hashed thread-safe))
+(define (get-prop keyword)
+  (alist-table-ref props keyword))
 
-(define all-impl-keywords
-  (append mutability-support-keywords
-	  weakish-support-keywords
-	  (apply append mutually-exclusive-keywords)
-	  other-keywords))
+(define (required-props)
+  (filter prop-required? (alist-table-values props)))
+
+(define props
+  (alist-table eq?))
+
+(define-record-type <prop>
+    (make-prop keyword required? vals vals-predicate matching-args
+	       supports-args?)
+    prop?
+  (keyword prop-keyword)
+  (required? prop-required?)
+  (vals prop-vals)
+  (vals-predicate prop-vals-predicate)
+  (matching-args prop-matching-args)
+  (supports-args? prop-supports-args?))
+
+(define (make-args-support-predicate claimed-args predicate)
+  (let ((matcher (make-args-matcher claimed-args)))
+    (lambda (args)
+      (predicate (matcher args)))))
+
+(define (make-args-matcher claimed-args)
+  (let-values (((matchers syms) (partition arg-matcher? claimed-args)))
+    (lambda (args)
+      (let-values (((diff int) (lset-diff+intersection eq? args syms)))
+	(append int
+		(filter-map (lambda (arg)
+			      (find (lambda (matcher)
+				      (and ((arg-matcher-predicate matcher) arg)
+					   matcher))
+				    matchers))
+			    diff))))))
+
+(define (define-arg-matcher name predicate)
+  (alist-table-set! arg-matchers name predicate))
+
+(define (arg-matcher? name)
+  (alist-table-contains? arg-matchers name))
+
+(define (arg-matcher-predicate name)
+  (alist-table-ref arg-matchers name))
+
+(define arg-matchers
+  (alist-table eq?))
+
+(define-property 'mutability #t
+  '(mutable immutable)
+  #f
+  #f
+  #f)
+
+(let ((alist
+       '(((strong strong))
+	 ((weak strong) weak-keys)
+	 ((strong weak) weak-values)
+	 ((weak weak) weak-keys weak-values)
+	 ((ephemeral strong) ephemeral-keys)
+	 ((strong ephemeral) ephemeral-values)
+	 ((ephemeral ephemeral) ephemeral-keys ephemeral-values))))
+  (define-property 'kv-types #t
+    (map car alist)
+    #f
+    (lambda (vals)
+      (apply lset-union
+	     eq?
+	     (filter-map (lambda (p)
+			   (and (member (car p) vals)
+				(cdr p)))
+			 alist)))
+    (lambda (vals)
+      (let ((argsets
+	     (map (lambda (val)
+		    (cdr (assoc val alist)))
+		  vals)))
+	(lambda (args)
+	  (any (lambda (argset)
+		 (lset= eq? argset args))
+	       argsets))))))
+
+(let ((alist
+       '((amortized-constant amortized-constant-time sublinear-time)
+	 (log log-time sublinear-time)
+	 (linear linear-time))))
+  (define-property 'time-complexity #f
+    (map car alist)
+    (lambda (vals)
+      (= 1 (length vals)))
+    (lambda (vals)
+      (apply lset-union
+	     eq?
+	     (filter-map (lambda (p)
+			   (and (memq (car p) vals)
+				(cdr p)))
+			 alist)))
+    (lambda (vals)
+      (let ((supported (cdr (assq (car vals) alist))))
+	(lambda (args)
+	  (and (= 1 (length args))
+	       (memq (car args) supported)))))))
+
+(let ((all-vals '(thread-safe initial-size)))
+  (define-property 'other #f
+    all-vals
+    #f
+    (lambda (vals)
+      vals)
+    (lambda (vals)
+      (lambda (args)
+	(lset= eq? vals args)))))
+
+(add-boot-init!
+ (lambda ()
+   (define-arg-matcher 'initial-size
+     exact-nonnegative-integer?)))
+
+;;;; Operations
 
 (define (amap-operations? object)
   (and (list-of-type? object
@@ -104,61 +269,53 @@ USA.
 		(null? (cddr elt)))))
        (not (any-duplicates? object eq? car))))
 (register-predicate! amap-operations? 'amap-operations '<= alist?)
+
+(define (organize-operations props operations)
+  (let ((missing-operators (missing-inputs props operations)))
+    (if (pair? missing-operators)
+	(error "Missing required amap operators:" missing-operators)))
+  (let ((table (alist-table eq?)))
+
+    (define (evolve ops)
+      (let-values (((ready unready)
+		    (partition (lambda (op)
+				 (every (lambda (dep)
+					  (alist-table-contains? table dep))
+					(defop-deps op)))
+			       ops)))
+	(if (pair? ready)
+	    (begin
+	      (for-each (lambda (op)
+			  (alist-table-set! table (defop-operator op)
+			    (apply (defop-procedure op)
+				   (map (lambda (dep)
+					  (alist-table-ref table dep))
+					(defop-deps op)))))
+			ready)
+	      (evolve unready))
+	    (if (pair? unready)
+		(error "Dependency loop in default operations:" unready)))))
+
+    (for-each (lambda (op)
+		(alist-table-set! table (car op) (cadr op)))
+	      operations)
+    (if (not (alist-table-contains? table 'clean!))
+	(alist-table-set! table 'clean! default:clean!))
+    (if (not (alist-table-contains? table 'mutable?))
+	(alist-table-set! table 'mutable?
+			  (default:mutable? (impl-props-mutable? props))))
+
+    (evolve
+     (map default-operation
+	  (lset-difference eq?
+			   (required-outputs props)
+			   (alist-table-keys table))))
+    (lambda (operator)
+      (alist-table-ref table
+		       operator
+		       (lambda () (error-operation operator))))))
 
-(define (organize-operations keywords operations)
-  (let ((mutable? (memq 'mutable keywords))
-	(immutable? (memq 'immutable keywords))
-	(weakish?
-	 (any (lambda (keyword)
-		(memq keyword keywords))
-	      weakish-support-keywords)))
-    (if (not (or mutable? immutable?))
-	(error "No mutability support specified:" keywords))
-    (let ((missing-operators
-	   (missing-inputs mutable? immutable? weakish? operations)))
-      (if (pair? missing-operators)
-	  (error "Missing required amap operators:" missing-operators)))
-    (let ((table (alist-table eq?)))
-
-      (define (evolve ops)
-	(let-values (((ready unready)
-		      (partition (lambda (op)
-				   (every (lambda (dep)
-					    (alist-table-contains? table dep))
-					  (defop-deps op)))
-				 ops)))
-	  (if (pair? ready)
-	      (begin
-		(for-each (lambda (op)
-			    (alist-table-set! table (defop-operator op)
-			      (apply (defop-procedure op)
-				     (map (lambda (dep)
-					    (alist-table-ref table dep))
-					  (defop-deps op)))))
-			  ready)
-		(evolve unready))
-	      (if (pair? unready)
-		  (error "Dependency loop in default operations:" unready)))))
-
-      (for-each (lambda (op)
-		  (alist-table-set! table (car op) (cadr op)))
-		operations)
-      (if (not (alist-table-contains? table 'mutable?))
-	  (alist-table-set! table 'mutable? (default:mutable? mutable?)))
-      (if (not (alist-table-contains? table 'clean!))
-	  (alist-table-set! table 'clean! default:clean!))
-
-      (evolve
-       (map default-operation
-	    (lset-difference eq?
-			     (required-outputs mutable?)
-			     (alist-table-keys table))))
-      (lambda (operator)
-	(alist-table-ref table
-			 operator
-			 (lambda () (error-operation operator)))))))
-
-(define (missing-inputs mutable? immutable? weakish? operations)
+(define (missing-inputs props operations)
 
   (define (remove-provided operators)
     (remove (lambda (operator)
@@ -172,13 +329,19 @@ USA.
 	 (remove-provided
 	  (filter (lambda (operator)
 		    (case operator
-		      ((clean!) (and mutable? weakish?))
-		      ((mutable?) (and mutable? immutable?))
-		      (else (or mutable? (not (operator-mutates? operator))))))
+		      ((clean!)
+		       (and (impl-props-mutable? props)
+			    (impl-props-weakish? props)))
+		      ((mutable?)
+		       (and (impl-props-mutable? props)
+			    (impl-props-immutable? props)))
+		      (else
+		       (or (impl-props-mutable? props)
+			   (not (operator-mutates? operator))))))
 		  (all-operators))))))
 
-(define (required-outputs mutable?)
-  (if mutable?
+(define (required-outputs props)
+  (if (impl-props-mutable? props)
       (all-operators)
       (remove operator-mutates? (all-operators))))
 
@@ -205,69 +368,10 @@ USA.
     (amortized-constant-time log-time linear-time sublinear-time)))
 
 (define (impl-requirement-predicate comparator args)
-  (let ((impl-requirements (impl-support-requirements args)))
-    (lambda (impl)
-      (and (impl-requirements-supported? impl-requirements impl)
-	   (comparator-requirements-satisfied? (comparator-requirements impl)
-					       comparator)))))
-
-(define (comparator-requirements impl)
-  (filter-map (lambda (p)
-		(and (memq (car p) (amap-impl:keywords impl))
-		     (cdr p)))
-	      comparator-restrictions))
-
-(define-deferred comparator-restrictions
-  (list (cons 'ordered comparator-ordered?)
-	(cons 'hashed comparator-hashable?)
-	(cons 'key-is-uniform-list uniform-list-comparator?)
-	(cons 'key-is-lset lset-comparator?)
-	(cons 'key-is-uniform-vector uniform-vector-comparator?)))
-
-(define (comparator-requirements-satisfied? requirements comparator)
-  (every (lambda (predicate) (predicate comparator))
-	 requirements))
-
-(define (impl-support-requirements args)
-  (let ((req
-	 (filter (lambda (rs)
-		   (every (lambda (arg) (memq arg args))
-			  (car rs)))
-		 request-supports)))
-    (if (null? (lset-intersection eq? req weakish-support-keywords))
-	(cons 'strong-keys+values req)
-	req)))
-
-(define request-supports
-  '(((ephemeral-keys ephemeral-values) ephemeral-keys+values)
-    ((ephemeral-keys) ephemeral-keys)
-    ((ephemeral-values) ephemeral-values)
-    ((weak-keys weak-values) (or weak-keys+values ephemeral-keys+values))
-    ((weak-keys) (or weak-keys ephemeral-keys))
-    ((weak-values) (or weak-values ephemeral-values))
-    ((thread-safe) thread-safe)
-    ((amortized-constant-time) amortized-constant-time)
-    ((log-time) log-time)
-    ((linear-time) linear-time)
-    ((sublinear-time) (or amortized-constant-time log-time))))
-
-(define (impl-requirements-supported? requirements impl)
-
-  (define (has-support? keyword)
-    (memq keyword (amap-impl:keywords impl)))
-
-  (every (lambda (rs)
-	   (let ((req (cadr rs)))
-	     (cond ((interned-symbol? req)
-		    (has-support? req))
-		   ((and (pair? req)
-			 (eq? 'or (car req))
-			 (list-of-type? interned-symbol?
-					(cdr req)))
-		    (any has-support? (cdr req)))
-		   (else
-		    (error "Unknown requirement:" req)))))
-	 requirements))
+  (lambda (impl)
+    (let ((props (amap-impl:props impl)))
+      (and ((impl-props-supports-comparator? props) comparator)
+	   ((impl-props-supports-args? props) args)))))
 
 ;;;; Default operations
 

@@ -201,14 +201,14 @@ USA.
 
 ;;;; Implementation data structure
 
-(define (make-amap-impl name keywords new-state get-operation)
+(define (make-amap-impl name props new-state get-operation)
   (let* ((operators (all-operators))
 	 (n-ops (length operators))
 	 (impl
 	  (%make-record %amap-impl-tag
 			(fix:+ %amap-impl-op-offset n-ops))))
     (%record-set! impl 1 name)
-    (%record-set! impl 2 keywords)
+    (%record-set! impl 2 props)
     (%record-set! impl 3 new-state)
     (for-each (lambda (operator index)
 		(%record-set! impl index (get-operation operator)))
@@ -227,7 +227,7 @@ USA.
 (define-integrable (amap-impl:name impl)
   (%record-ref impl 1))
 
-(define-integrable (amap-impl:keywords impl)
+(define-integrable (amap-impl:props impl)
   (%record-ref impl 2))
 
 (define-integrable (amap-impl:new-state impl)
@@ -236,7 +236,7 @@ USA.
 (define (amap-implementations)
   (map (lambda (impl)
 	 (cons (amap-impl:name impl)
-	       (list-copy (amap-impl:keywords impl))))
+	       (amap-impl-supported-args impl)))
        (implementations)))
 
 (define (operator? object)

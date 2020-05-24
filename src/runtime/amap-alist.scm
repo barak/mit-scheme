@@ -34,7 +34,10 @@ USA.
 (add-boot-init!
  (lambda ()
    (define-amap-impl 'alist
-     '(mutable strong-keys+values linear-time)
+     '((mutability mutable)
+       (kv-types (strong strong))
+       (time-complexity linear))
+     #f
      (lambda (comparator args)
        (declare (ignore args))
        (alist-table (comparator-equality-predicate comparator)))
@@ -73,7 +76,10 @@ USA.
 (add-boot-init!
  (lambda ()
    (define-amap-impl 'weak-alist
-     '(mutable weak-keys linear-time)
+     '((mutability mutable)
+       (kv-types (weak strong))
+       (time-complexity linear))
+     #f
      (lambda (comparator args)
        (declare (ignore args))
        (weak-alist-table (comparator-equality-predicate comparator)))
