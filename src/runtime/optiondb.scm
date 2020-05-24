@@ -68,11 +68,9 @@ USA.
    (format	(runtime format)	(initialize-package!)	"format")
    (mime-codec	(runtime mime-codec)	#f			"mime-codec")
    (ordered-vector (runtime ordered-vector) #f			"ordvec")
-   (rb-tree	(runtime rb-tree)	#f			"rbtree")
    (stepper	(runtime stepper)	#f			"ystep")
    (subprocess	(runtime subprocess)	(initialize-package!)	"process")
    (synchronous-subprocess (runtime synchronous-subprocess) #f	"syncproc")
-   (wt-tree	(runtime wt-tree)	#f			"wttree")
    ))
 
 (define-load-option 'regular-expression
@@ -91,3 +89,5 @@ USA.
 
 ;; HASH-TABLE is now always loaded.
 (define-load-option 'hash-table dummy-option-loader)
+(define-load-option 'rb-tree dummy-option-loader)
+(define-load-option 'wt-tree dummy-option-loader)

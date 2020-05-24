@@ -251,7 +251,6 @@ we adopt here, described in
   ((access error system-global-environment)
    "Operation requires non-empty tree:" owner))
 
-
 (define (make-wt-tree-type key<?)
 
   (declare (integrate key<?))
@@ -500,8 +499,6 @@ we adopt here, described in
 
   my-type)
 
-
-
 ;;;
 ;;;
 ;;;
@@ -534,7 +531,6 @@ we adopt here, described in
 ;;;  Exported interface
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (define (make-wt-tree tree-type)
   (%make-wt-tree tree-type empty))
@@ -683,19 +679,12 @@ we adopt here, described in
       (and (balanced? root)
 	   (ordered? root (lambda (k) k #t) (lambda (k) k #t))))))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;;
-
-(define ttype (make-wt-tree-type <))
-
-(define number-wt-type
+(define-deferred number-wt-type
   ((lambda()
      (declare (integrate-operator make-wt-tree-type))
-     (make-wt-tree-type  (lambda (x y) (< x y))))))
+     (make-wt-tree-type (lambda (x y) (< x y))))))
 
-(define string-wt-type
+(define-deferred string-wt-type
   ((lambda()
      (declare (integrate-operator make-wt-tree-type))
-     (make-wt-tree-type  string<?))))
+     (make-wt-tree-type string<?))))

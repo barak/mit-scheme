@@ -5565,9 +5565,7 @@ USA.
 	  unlock-thread-mutex-and-wait))
 
 (define-package (runtime rb-tree)
-  (file-case options
-    ((load) "rbtree")
-    (else))
+  (files "rbtree")
   (parent (runtime))
   (export ()
 	  alist->rb-tree
@@ -5598,9 +5596,7 @@ USA.
 	  rb-tree?))
 
 (define-package (runtime wt-tree)
-  (file-case options
-    ((load) "wttree")
-    (else))
+  (files "wttree")
   (parent (runtime))
   (export ()
 	  number-wt-type

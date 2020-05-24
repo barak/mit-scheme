@@ -1303,19 +1303,6 @@ Red-black trees hold their keys @dfn{strongly}.  In other words, if a
 red-black tree contains an association for a given key, that key cannot
 be reclaimed by the garbage collector.
 
-@cindex run-time-loadable option
-@cindex option, run-time-loadable
-The red-black tree implementation is a run-time-loadable option.  To use
-red-black trees, execute
-
-@example
-(load-option 'rb-tree)
-@end example
-@findex load-option
-
-@noindent
-once before calling any of the procedures defined here.
-
 @deffn procedure make-rb-tree key=? key<?
 This procedure creates and returns a newly allocated red-black tree.
 The tree contains no associations.  @var{Key=?} and @var{key<?} are
@@ -1574,19 +1561,6 @@ operation, but, when regarding the tree as a discrete map,
 an element in its domain.  Most names in this package have been chosen
 based on interpreting the trees as sets, hence the name
 @code{wt-tree/member?} rather than @code{wt-tree/defined-at?}.
-
-@cindex run-time-loadable option
-@cindex option, run-time-loadable
-The weight-balanced tree implementation is a run-time-loadable option.
-To use weight-balanced trees, execute
-
-@example
-(load-option 'wt-tree)
-@end example
-@findex load-option
-
-@noindent
-once before calling any of the procedures defined here.
 
 @menu
 * Construction of Weight-Balanced Trees::
