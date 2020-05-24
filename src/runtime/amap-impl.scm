@@ -33,25 +33,49 @@ USA.
 
 (define (define-amap-impl name properties comparator-predicate new-state
 	  operations)
-  (guarantee interned-symbol? name 'define-amap-impl)
-  (guarantee amap-properties? properties 'define-amap-impl)
-  (if comparator-predicate
-      (guarantee unary-procedure? comparator-predicate 'define-amap-impl))
-  (guarantee binary-procedure? new-state 'define-amap-impl)
-  (guarantee amap-operations? operations 'define-amap-impl)
+  (register-abstract-impl!
+   (make-amap-impl name properties comparator-predicate new-state operations)))
+
+(define (make-amap-impl name properties comparator-predicate new-state
+			operations)
+  (guarantee binary-procedure? new-state 'make-amap-impl)
+  (guarantee amap-operations? operations 'make-amap-impl)
   (let ((metadata (make-metadata name properties comparator-predicate)))
-    (alist-table-set! registered-implementations name
-      (make-amap-impl metadata
-		      new-state
-		      (organize-operations metadata operations))))
-  name)
+    (make-abstract-impl metadata
+      (trivial-selector
+       (%make-amap-impl metadata
+			new-state
+			(organize-operations metadata operations))))))
+
+(define (define-amap-impl-selector name properties comparator-predicate
+	  selector)
+  (guarantee binary-procedure? selector 'make-abstract-impl)
+  (register-abstract-impl!
+   (make-abstract-impl (make-metadata name properties comparator-predicate)
+		       selector)))
+
+(define-record-type <abstract-impl>
+    (make-abstract-impl metadata selector)
+    abstract-impl?
+  (metadata abstract-impl-metadata)
+  (selector abstract-impl-selector))
+
+(define (trivial-selector impl)
+  (lambda (comparator args)
+    (declare (ignore comparator args))
+    impl))
+
+(define (register-abstract-impl! impl)
+  (alist-table-set! registered-implementations
+		    (metadata-name (abstract-impl-metadata impl))
+		    impl))
 
 (define registered-implementations
   (alist-table eq?))
 
 (define (amap-implementations)
   (map (lambda (impl)
-	 (let ((metadata (amap-impl:metadata impl)))
+	 (let ((metadata (abstract-impl-metadata impl)))
 	   (cons (metadata-name metadata)
 		 (metadata-supported-args metadata))))
        (implementations)))
@@ -64,19 +88,27 @@ USA.
 
 (define (get-implementation name)
   (alist-table-ref registered-implementations name))
-
+
 (define (select-impl comparator args)
   (for-each (lambda (group)
 	      (let ((given (filter (lambda (arg) (memq arg args)) group)))
 		(if (> (length given) 1)
 		    (error "These args are mutually exclusive:" given))))
 	    mutually-exclusive-args)
-  (let ((predicate (impl-requirement-predicate comparator args)))
-    (or (find predicate
-	      (map get-implementation
-		   (lset-intersection eq? args (implementation-names))))
-	(find predicate (implementations))
-	(error "Unable to select implementation:" args))))
+  (let ((impl
+	 (let ((predicate (impl-requirement-predicate comparator args)))
+	   (or (find predicate
+		     (map get-implementation
+			  (lset-intersection eq? args (implementation-names))))
+	       (find predicate (implementations))))))
+    (if (not impl)
+	(error "Unable to select implementation:" comparator args))
+    (let loop ((impl impl))
+      (if (abstract-impl? impl)
+	  (loop ((abstract-impl-selector impl) comparator args))
+	  (begin
+	    (guarantee amap-impl? impl 'select-impl)
+	    impl)))))
 
 (define mutually-exclusive-args
   '((ephemeral-keys weak-keys)
@@ -85,21 +117,17 @@ USA.
 
 (define (impl-requirement-predicate comparator args)
   (lambda (impl)
-    (let ((metadata (amap-impl:metadata impl)))
+    (let ((metadata (abstract-impl-metadata impl)))
       (and ((metadata-comparator-predicate metadata) comparator)
 	   ((metadata-args-predicate metadata) args)))))
 
 ;;;; Metadata
 
-(define (amap-properties? object)
-  (list-of-type? object
-    (lambda (elt)
-      (and (pair? elt)
-	   (have-prop? (car elt))
-	   (non-empty-list? (cdr elt))))))
-(register-predicate! amap-properties? 'amap-properties '<= list?)
-
 (define (make-metadata name specs comparator-predicate)
+  (guarantee interned-symbol? name 'make-metadata)
+  (guarantee amap-properties? specs 'make-metadata)
+  (if comparator-predicate
+      (guarantee unary-procedure? comparator-predicate 'make-metadata))
   (let ((specs
 	 (map (lambda (spec)
 		(let ((prop (get-prop (car spec)))
@@ -135,7 +163,29 @@ USA.
   (supported-args metadata-supported-args)
   (args-predicate metadata-args-predicate)
   (comparator-predicate metadata-comparator-predicate))
+
+(define (define-arg-matcher name predicate)
+  (alist-table-set! arg-matchers name predicate))
+
+(define (arg-matcher? name)
+  (alist-table-contains? arg-matchers name))
+
+(define (arg-matcher-predicate name)
+  (alist-table-ref arg-matchers name))
+
+(define arg-matchers
+  (alist-table eq?))
 
+;;;; Properties
+
+(define (amap-properties? object)
+  (list-of-type? object
+    (lambda (elt)
+      (and (pair? elt)
+	   (have-prop? (car elt))
+	   (non-empty-list? (cdr elt))))))
+(register-predicate! amap-properties? 'amap-properties '<= list?)
+
 (define (define-property keyword required? vals vals-predicate
 	  matching-args make-args-predicate)
   (alist-table-set! properties keyword
@@ -193,18 +243,6 @@ USA.
   (vals-predicate prop-vals-predicate)
   (matching-args prop-matching-args)
   (args-predicate prop-args-predicate))
-
-(define (define-arg-matcher name predicate)
-  (alist-table-set! arg-matchers name predicate))
-
-(define (arg-matcher? name)
-  (alist-table-contains? arg-matchers name))
-
-(define (arg-matcher-predicate name)
-  (alist-table-ref arg-matchers name))
-
-(define arg-matchers
-  (alist-table eq?))
 
 (define-property 'mutability #t
   '(mutable immutable)
@@ -525,9 +563,8 @@ USA.
   (lambda (:for-each)
     (lambda (procedure comparator state)
       (let ((result (make-amap comparator)))
-	(:for-each (let ((:set! (amap-impl:set! (amap-impl result))))
-		     (lambda (key value)
-		       (:set! state key (procedure value))))
+	(:for-each (lambda (key value)
+		     (amap-set! result key (procedure value)))
 		   state)
 	result))))
 

@@ -6875,7 +6875,9 @@ USA.
   (export ()
 	  amap-implementations)
   (export (runtime)
-          define-amap-impl)
+          define-amap-impl
+          define-amap-impl-selector
+	  make-amap-impl)
   (export (runtime amap)
           select-impl))
 

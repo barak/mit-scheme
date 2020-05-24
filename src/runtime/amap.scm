@@ -201,7 +201,7 @@ USA.
 
 ;;;; Implementation data structure
 
-(define (make-amap-impl metadata new-state get-operation)
+(define (%make-amap-impl metadata new-state get-operation)
   (let* ((operators (all-operators))
 	 (n-ops (length operators))
 	 (impl
@@ -223,10 +223,12 @@ USA.
 (define-integrable %amap-impl-tag '|(runtime amap)impl|)
 (define-integrable %amap-impl-op-offset 3)
 
-(define-integrable (amap-impl:metadata impl)
+(define (amap-impl-metadata impl)
+  (guarantee amap-impl? impl 'amap-impl-metadata)
   (%record-ref impl 1))
 
 (define-integrable (amap-impl:new-state impl)
+  (declare (no-type-checks) (no-range-checks))
   (%record-ref impl 2))
 
 (define (operator? object)
