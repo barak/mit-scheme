@@ -304,7 +304,7 @@ USA.
 	  (and (= 1 (length args))
 	       (memq (car args) supported)))))))
 
-(let ((all-vals '(thread-safe initial-size)))
+(let ((all-vals '(thread-safe initial-size ordered-by-key)))
   (define-property 'other #f
     all-vals
     #f
@@ -588,6 +588,18 @@ USA.
   (lambda (:ref)
     (lambda (state key default)
       (:ref state key (lambda () default)))))
+
+(define-default-operation 'prune! '(fold delete!)
+  (lambda (:fold :delete!)
+    (lambda (predicate state)
+      (for-each (lambda (key)
+		  (:delete! state key))
+		(:fold (lambda (key datum acc)
+			 (if (predicate key datum)
+			     (cons key acc)
+			     acc))
+		       '()
+		       state)))))
 
 (define-default-operation 'set! '(set-1!)
   (lambda (:set-1!)

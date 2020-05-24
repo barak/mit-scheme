@@ -5573,6 +5573,8 @@ USA.
 	  alist->rb-tree
 	  make-rb-tree
 	  rb-tree->alist
+	  rb-tree/clear!
+	  rb-tree/contains?
 	  rb-tree/copy
 	  rb-tree/datum-list
 	  rb-tree/delete!
@@ -5582,19 +5584,30 @@ USA.
 	  rb-tree/delete-min!
 	  rb-tree/delete-min-datum!
 	  rb-tree/delete-min-pair!
+	  rb-tree/empty-copy
 	  rb-tree/empty?
 	  rb-tree/equal?
+	  rb-tree/find
+	  rb-tree/fold
+	  rb-tree/fold-right
+	  rb-tree/for-each
 	  rb-tree/height
 	  rb-tree/insert!
+	  rb-tree/intern!
 	  rb-tree/key-list
+	  rb-tree/key<?
+	  rb-tree/key=?
 	  rb-tree/lookup
+	  rb-tree/map!
 	  rb-tree/max
 	  rb-tree/max-datum
 	  rb-tree/max-pair
 	  rb-tree/min
 	  rb-tree/min-datum
 	  rb-tree/min-pair
+	  rb-tree/ref
 	  rb-tree/size
+	  rb-tree/update!
 	  rb-tree?))
 
 (define-package (runtime wt-tree)
