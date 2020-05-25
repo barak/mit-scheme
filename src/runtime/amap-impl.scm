@@ -90,36 +90,44 @@ USA.
   (alist-table-ref registered-implementations name))
 
 (define (select-impl comparator args)
-  (for-each (lambda (group)
-	      (let ((given (filter (lambda (arg) (memq arg args)) group)))
-		(if (> (length given) 1)
-		    (error "These args are mutually exclusive:" given))))
-	    mutually-exclusive-args)
-  (let ((impl
-	 (let ((predicate (impl-requirement-predicate comparator args)))
-	   (or (find predicate
-		     (map get-implementation
-			  (lset-intersection eq? args (implementation-names))))
-	       (find predicate (implementations))))))
-    (if (not impl)
-	(error "Unable to select implementation:" comparator args))
-    (let loop ((impl impl))
-      (if (abstract-impl? impl)
-	  (loop ((abstract-impl-selector impl) comparator args))
-	  (begin
-	    (guarantee amap-impl? impl 'select-impl)
-	    impl)))))
 
-(define mutually-exclusive-args
-  '((ephemeral-keys weak-keys)
-    (ephemeral-values weak-values)
-    (amortized-constant-time log-time linear-time sublinear-time)))
+  (define (select-named-impl)
+    (let ((names (lset-intersection eq? args (implementation-names))))
+      (and (pair? names)
+	   (begin
+	     (if (pair? (cdr names))
+		 (error "These args are mutually exclusive:" names))
+	     (let ((impl (get-implementation (car names))))
+	       (if (not (supported-comparator? impl))
+		   (error "Implementation doesn't support this comparator:"
+			  (car names) comparator))
+	       (if (not (supported-args? impl))
+		   (error "Implementation doesn't support these args:"
+			  (car names) args))
+	       impl)))))
 
-(define (impl-requirement-predicate comparator args)
-  (lambda (impl)
-    (let ((metadata (abstract-impl-metadata impl)))
-      (and ((metadata-comparator-predicate metadata) comparator)
-	   ((metadata-args-predicate metadata) args)))))
+  (define (select-matching-impl)
+    (let ((impl
+	   (find (lambda (impl)
+		   (and (supported-comparator? impl)
+			(supported-args? impl)))
+		 (implementations))))
+      (if (not impl)
+	  (error "Unable to find matching implementation:" comparator args))
+      impl))
+
+  (define (supported-comparator? impl)
+    ((metadata-comparator-predicate (abstract-impl-metadata impl)) comparator))
+
+  (define (supported-args? impl)
+    ((metadata-args-predicate (abstract-impl-metadata impl)) args))
+
+  (let loop ((impl (or (select-named-impl) (select-matching-impl))))
+    (if (abstract-impl? impl)
+	(loop ((abstract-impl-selector impl) comparator args))
+	(begin
+	  (guarantee amap-impl? impl 'select-impl)
+	  impl))))
 
 ;;;; Metadata
 
