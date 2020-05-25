@@ -46,8 +46,6 @@ USA.
        (time-complexity amortized-constant)
        (other initial-size))
      comparator-hashable?
-     (lambda (comparator args)
-       (apply make-hash-table comparator args))
      `((->alist ,hash-table->alist)
        (clean! ,hash-table-clean!)
        (clear! ,hash-table-clear!)
@@ -65,10 +63,11 @@ USA.
        (intern! ,hash-table-intern!)
        (intersection! ,hash-table-intersection!)
        (keys ,hash-table-keys)
-       (map ,hash-table-map)
+       (map ,hash-table:map)
        (map! ,hash-table-map!)
        (map->list ,hash-table-map->list)
        (mutable? ,hash-table-mutable?)
+       (new-state ,hash-table:new-state)
        (pop! ,hash-table-pop!)
        (prune! ,hash-table-prune!)
        (ref ,hash-table-ref)
@@ -80,3 +79,10 @@ USA.
        (update!/default ,hash-table-update!/default)
        (values ,hash-table-values)
        (xor! ,hash-table-xor!)))))
+
+(define (hash-table:new-state comparator args)
+  (apply make-hash-table comparator args))
+
+(define (hash-table:map procedure comparator args table)
+  (declare (ignore args))
+  (hash-table-map procedure comparator table))

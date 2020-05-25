@@ -31,20 +31,16 @@ USA.
 
 (add-boot-deps! '(runtime comparator))
 
-(define (define-amap-impl name properties comparator-predicate new-state
-	  operations)
+(define (define-amap-impl name properties comparator-predicate operations)
   (register-abstract-impl!
-   (make-amap-impl name properties comparator-predicate new-state operations)))
+   (make-amap-impl name properties comparator-predicate operations)))
 
-(define (make-amap-impl name properties comparator-predicate new-state
-			operations)
-  (guarantee binary-procedure? new-state 'make-amap-impl)
+(define (make-amap-impl name properties comparator-predicate operations)
   (guarantee amap-operations? operations 'make-amap-impl)
   (let ((metadata (make-metadata name properties comparator-predicate)))
     (make-abstract-impl metadata
       (trivial-selector
        (%make-amap-impl metadata
-			new-state
 			(organize-operations metadata operations))))))
 
 (define (define-amap-impl-selector name properties comparator-predicate
@@ -567,14 +563,14 @@ USA.
 	     '()
 	     state))))
 
-(define-default-operation 'map '(for-each)
-  (lambda (:for-each)
-    (lambda (procedure comparator state)
-      (let ((result (make-amap comparator)))
+(define-default-operation 'map '(new-state for-each set!)
+  (lambda (:new-state :for-each :set!)
+    (lambda (procedure comparator args state)
+      (let ((state* (:new-state comparator args)))
 	(:for-each (lambda (key value)
-		     (amap-set! result key (procedure value)))
+		     (:set! state* key (procedure value)))
 		   state)
-	result))))
+	state*))))
 
 (define-default-operation 'map->list '(fold)
   (lambda (:fold)

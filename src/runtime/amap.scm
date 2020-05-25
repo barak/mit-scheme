@@ -150,8 +150,18 @@ USA.
 
 ;;; Mapping and folding
 
-(define (amap-map procedure type amap)
-  ((amap-impl:map (amap-impl amap)) procedure type (amap-state amap)))
+(define (amap-map procedure amap #!optional comparator . args)
+  (let ((comparator
+	 (if (default-object? comparator)
+	     (amap-comparator amap)
+	     comparator))
+	(args
+	 (if (and (default-object? comparator) (null? args))
+	     (amap-args amap)
+	     args)))
+    (%make-amap comparator args (amap-impl amap)
+      ((amap-impl:map (amap-impl amap))
+       procedure comparator args (amap-state amap)))))
 
 (define (amap-for-each procedure amap)
   ((amap-impl:for-each (amap-impl amap)) procedure (amap-state amap)))
@@ -201,14 +211,13 @@ USA.
 
 ;;;; Implementation data structure
 
-(define (%make-amap-impl metadata new-state get-operation)
+(define (%make-amap-impl metadata get-operation)
   (let* ((operators (all-operators))
 	 (n-ops (length operators))
 	 (impl
 	  (%make-record %amap-impl-tag
 			(fix:+ %amap-impl-op-offset n-ops))))
     (%record-set! impl 1 metadata)
-    (%record-set! impl 2 new-state)
     (for-each (lambda (operator index)
 		(%record-set! impl index (get-operation operator)))
 	      operators
@@ -221,15 +230,11 @@ USA.
 (register-predicate! amap-impl? 'amap-impl '<= %record?)
 
 (define-integrable %amap-impl-tag '|(runtime amap)impl|)
-(define-integrable %amap-impl-op-offset 3)
+(define-integrable %amap-impl-op-offset 2)
 
 (define (amap-impl-metadata impl)
   (guarantee amap-impl? impl 'amap-impl-metadata)
   (%record-ref impl 1))
-
-(define-integrable (amap-impl:new-state impl)
-  (declare (no-type-checks) (no-range-checks))
-  (%record-ref impl 2))
 
 (define (operator? object)
   (and (assq object operator-property-alist) #t))
@@ -266,7 +271,7 @@ USA.
 			   (,(rename 'no-range-checks)))
 			  (,(rename '%record-ref) impl ,index)))
 		      normal
-		      (iota (length normal) 3)))))))))
+		      (iota (length normal) 2)))))))))
 
   (op-defs (->alist)
 	   (clean! mutates)
@@ -290,6 +295,7 @@ USA.
 	   (map! mutates)
 	   (map->list)
 	   (mutable?)
+	   (new-state)
 	   (pop! mutates)
 	   (prune! mutates)
 	   (ref)

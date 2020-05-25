@@ -38,11 +38,6 @@ USA.
      '((mutability mutable)
        (kv-types (strong strong)))
      uniform-list-comparator?
-     (lambda (comparator args)
-       (declare (ignore args))
-       (make-trie
-	(comparator-equality-predicate
-	 (uniform-list-comparator-elt comparator))))
      `((->alist ,trie->alist)
        (clean! ,trie-clean!)
        (clear! ,trie-clear!)
@@ -55,6 +50,7 @@ USA.
        (intern! ,trie:intern!)
        (keys ,trie-paths)
        (map! ,trie:map!)
+       (new-state ,trie:new-state)
        (prune! ,trie:prune!)
        (ref ,trie:ref)
        (ref/default ,trie:ref/default)
@@ -63,6 +59,12 @@ USA.
        (update! ,trie:update!)
        (update!/default ,trie:update!/default)
        (values ,trie-values)))))
+
+(define (trie:new-state comparator args)
+  (declare (ignore args))
+  (make-trie
+   (comparator-equality-predicate
+    (uniform-list-comparator-elt comparator))))
 
 (define (trie:contains? trie path)
   (let ((trie* (find-subtrie trie path)))
