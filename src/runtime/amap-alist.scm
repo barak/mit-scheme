@@ -33,7 +33,7 @@ USA.
 
 (add-boot-init!
  (lambda ()
-   (define-amap-impl-selector 'alist
+   (define-amap-implementation-selector 'alist
      '((mutability mutable)
        (kv-types (strong strong) (weak strong))
        (time-complexity linear))
@@ -45,7 +45,7 @@ USA.
 	   strong-impl)))))
 
 (define-deferred strong-impl
-  (make-amap-impl 'strong-alist
+  (make-amap-implementation 'strong-alist
     '((mutability mutable)
       (kv-types (strong strong))
       (time-complexity linear))
@@ -88,7 +88,7 @@ USA.
 		      fail))
 
 (define-deferred weak-impl
-  (make-amap-impl 'weak-alist
+  (make-amap-implementation 'weak-alist
     '((mutability mutable)
       (kv-types (weak strong))
       (time-complexity linear))

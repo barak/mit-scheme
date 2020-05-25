@@ -34,7 +34,7 @@ USA.
 
 (add-boot-init!
  (lambda ()
-   (define-amap-impl 'hash-table
+   (define-amap-implementation 'hash-table
      '((mutability mutable)
        (kv-types (strong strong)
 		 (weak strong)

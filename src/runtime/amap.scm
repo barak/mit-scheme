@@ -32,6 +32,7 @@ USA.
 ;;; Constructors
 
 (define (make-amap comparator . args)
+  (guarantee comparator? comparator 'make-amap)
   (let-values (((impl impl-name) (select-impl comparator args)))
     (%make-amap comparator
 		args

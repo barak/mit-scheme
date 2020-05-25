@@ -518,7 +518,7 @@ USA.
 
 (add-boot-init!
  (lambda ()
-   (define-amap-impl 'red/black-tree
+   (define-amap-implementation 'red/black-tree
      '((mutability mutable)
        (kv-types (strong strong))
        (time-complexity log)

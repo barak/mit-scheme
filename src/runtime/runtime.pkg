@@ -6846,8 +6846,10 @@ USA.
   (export ()
           alist->amap
           amap->alist
+	  amap-args
           amap-clean!
           amap-clear!
+	  amap-comparator
           amap-contains?
           amap-copy
           amap-count
@@ -6887,11 +6889,13 @@ USA.
   (files "amap-impl")
   (parent (runtime amap))
   (export ()
-	  amap-implementations)
-  (export (runtime)
-          define-amap-impl
-          define-amap-impl-selector
-	  make-amap-impl)
+	  amap-implementation-names
+	  amap-implementation-supported-args
+	  amap-implementation-supports-args?
+	  amap-implementation-supports-comparator?
+          define-amap-implementation
+          define-amap-implementation-selector
+	  make-amap-implementation)
   (export (runtime amap)
           select-impl))
 

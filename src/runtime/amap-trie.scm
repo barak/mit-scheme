@@ -34,7 +34,7 @@ USA.
 
 (add-boot-init!
  (lambda ()
-   (define-amap-impl 'trie
+   (define-amap-implementation 'trie
      '((mutability mutable)
        (kv-types (strong strong)))
      uniform-list-comparator?

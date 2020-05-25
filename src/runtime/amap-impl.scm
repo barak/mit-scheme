@@ -31,24 +31,80 @@ USA.
 
 (add-boot-deps! '(runtime comparator))
 
-(define (define-amap-impl name properties comparator-predicate operations)
+(define (define-amap-implementation name props comparator-pred operations)
   (register-abstract-impl!
-   (make-amap-impl name properties comparator-predicate operations)))
+   (make-amap-implementation name props comparator-pred operations)))
 
-(define (make-amap-impl name properties comparator-predicate operations)
-  (guarantee amap-operations? operations 'make-amap-impl)
-  (let ((metadata (make-metadata name properties comparator-predicate)))
-    (make-abstract-impl metadata
-      (trivial-selector
-       (%make-amap-impl metadata
-			(organize-operations metadata operations))))))
+(define (make-amap-implementation name props comparator-pred operations)
+  (let ((caller 'make-amap-implementation))
+    (guarantee amap-operations? operations caller)
+    (let ((metadata (make-metadata name props comparator-pred caller)))
+      (make-abstract-impl metadata
+	(trivial-selector
+	 (%make-amap-impl metadata
+			  (organize-operations metadata operations)))))))
 
-(define (define-amap-impl-selector name properties comparator-predicate
-	  selector)
-  (guarantee binary-procedure? selector 'make-abstract-impl)
-  (register-abstract-impl!
-   (make-abstract-impl (make-metadata name properties comparator-predicate)
-		       selector)))
+(define (define-amap-implementation-selector name props comparator-pred select)
+  (let ((caller 'define-amap-implementation-selector))
+    (guarantee binary-procedure? select caller)
+    (register-abstract-impl!
+     (make-abstract-impl (make-metadata name props comparator-pred caller)
+			 select))))
+
+(define (amap-implementation-names)
+  (alist-table-keys registered-implementations))
+
+(define (amap-implementation-supported-args name)
+  (impl-supported-args (get-impl name 'amap-implementation-supported-args)))
+
+(define (amap-implementation-supports-args? name args)
+  (impl-supports-args? (get-impl name 'amap-implementation-supports-args?)
+		       args))
+
+(define (amap-implementation-supports-comparator? name comparator)
+  (impl-supports-comparator?
+   (get-impl name 'amap-implementation-supports-comparator?)
+   comparator))
+
+(define (select-impl comparator args)
+
+  (define (supported-comparator? impl)
+    (impl-supports-comparator? impl comparator))
+
+  (define (supported-args? impl)
+    (impl-supports-args? impl args))
+
+  (define (finish impl)
+    (values (deref-abstract-impls impl comparator args)
+	    (impl-name impl)))
+
+  (let-values (((args names)
+		(lset-diff+intersection eqv? args
+					(amap-implementation-names))))
+    (if (pair? names)
+	;; Select by implementation name.
+	(let ((name (car names)))
+	  (if (pair? (cdr names))
+	      (error "Can't specify multiple implementations:" names))
+	  (let ((impl (alist-table-ref registered-implementations name)))
+	    (if (not (supported-comparator? impl))
+		(error "Implementation doesn't support this comparator:"
+		       name comparator))
+	    (if (not (supported-args? impl))
+		(error "Implementation doesn't support these args:"
+		       name args))
+	    (finish impl)))
+	;; Select by matching.
+	(let ((impl
+	       (find (lambda (impl)
+		       (and (supported-comparator? impl)
+			    (supported-args? impl)))
+		     (alist-table-values registered-implementations))))
+	  (if (not impl)
+	      (error "Unable to find matching implementation:" comparator args))
+	  (finish impl)))))
+
+;;;; Abstract implementations
 
 (define-record-type <abstract-impl>
     (make-abstract-impl metadata selector)
@@ -61,80 +117,45 @@ USA.
     (declare (ignore comparator args))
     impl))
 
+(define (deref-abstract-impls impl comparator args)
+  (let loop ((impl impl))
+    (if (abstract-impl? impl)
+	(loop ((abstract-impl-selector impl) comparator args))
+	(begin
+	  (guarantee amap-impl? impl 'deref-abstract-impls)
+	  impl))))
+
+(define (impl-name impl)
+  (metadata-name (abstract-impl-metadata impl)))
+
+(define (impl-supported-args impl)
+  (metadata-supported-args (abstract-impl-metadata impl)))
+
+(define (impl-supports-args? impl args)
+  ((metadata-args-predicate (abstract-impl-metadata impl)) args))
+
+(define (impl-supports-comparator? impl comparator)
+  ((metadata-comparator-predicate (abstract-impl-metadata impl)) comparator))
+
 (define (register-abstract-impl! impl)
   (alist-table-set! registered-implementations
 		    (metadata-name (abstract-impl-metadata impl))
 		    impl))
 
+(define (get-impl name caller)
+  (alist-table-ref registered-implementations name
+		   (lambda () (error:bad-range-argument name caller))))
+
 (define registered-implementations
   (alist-table eq?))
-
-(define (amap-implementations)
-  (map (lambda (impl)
-	 (let ((metadata (abstract-impl-metadata impl)))
-	   (cons (metadata-name metadata)
-		 (metadata-supported-args metadata))))
-       (implementations)))
-
-(define (implementation-names)
-  (alist-table-keys registered-implementations))
-
-(define (implementations)
-  (alist-table-values registered-implementations))
-
-(define (get-implementation name)
-  (alist-table-ref registered-implementations name))
-
-(define (select-impl comparator args)
-
-  (define (select-named-impl)
-    (let ((names (lset-intersection eq? args (implementation-names))))
-      (and (pair? names)
-	   (let ((name (car names)))
-	     (if (pair? (cdr names))
-		 (error "These args are mutually exclusive:" names))
-	     (let ((impl (get-implementation name))
-		   (args (delq name args)))
-	       (if (not (supported-comparator? impl))
-		   (error "Implementation doesn't support this comparator:"
-			  name comparator))
-	       (if (not (supported-args? impl))
-		   (error "Implementation doesn't support these args:"
-			  name args))
-	       impl)))))
-
-  (define (select-matching-impl)
-    (let ((impl
-	   (find (lambda (impl)
-		   (and (supported-comparator? impl)
-			(supported-args? impl)))
-		 (implementations))))
-      (if (not impl)
-	  (error "Unable to find matching implementation:" comparator args))
-      impl))
-
-  (define (supported-comparator? impl)
-    ((metadata-comparator-predicate (abstract-impl-metadata impl)) comparator))
-
-  (define (supported-args? impl)
-    ((metadata-args-predicate (abstract-impl-metadata impl)) args))
-
-  (let ((impl (or (select-named-impl) (select-matching-impl))))
-    (values (let loop ((impl impl))
-	      (if (abstract-impl? impl)
-		  (loop ((abstract-impl-selector impl) comparator args))
-		  (begin
-		    (guarantee amap-impl? impl 'select-impl)
-		    impl)))
-	    (metadata-name (abstract-impl-metadata impl)))))
 
 ;;;; Metadata
 
-(define (make-metadata name specs comparator-predicate)
-  (guarantee interned-symbol? name 'make-metadata)
-  (guarantee amap-properties? specs 'make-metadata)
+(define (make-metadata name specs comparator-predicate caller)
+  (guarantee interned-symbol? name caller)
+  (guarantee amap-properties? specs caller)
   (if comparator-predicate
-      (guarantee unary-procedure? comparator-predicate 'make-metadata))
+      (guarantee unary-procedure? comparator-predicate caller))
   (let ((specs
 	 (map (lambda (spec)
 		(let ((prop (get-prop (car spec)))
@@ -160,7 +181,7 @@ USA.
       (map (lambda (spec)
 	     (prop-args-predicate (car spec)))
 	   specs))
-     (or comparator-predicate comparator?))))
+     (or comparator-predicate any-object?))))
 
 (define (make-args-predicate preds)
   (lambda (args)
