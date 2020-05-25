@@ -6859,6 +6859,7 @@ USA.
           amap-find
           amap-fold
           amap-for-each
+	  amap-implementation-name
           amap-intern!
           amap-intersection!
           amap-keys

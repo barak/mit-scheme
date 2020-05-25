@@ -57,6 +57,7 @@ USA.
     "microcode/test-keccak"
     "microcode/test-lookup"
     "runtime/test-access"
+    "runtime/test-amap"
     "runtime/test-arith"
     "runtime/test-ieee754"
     "runtime/test-binary-port"

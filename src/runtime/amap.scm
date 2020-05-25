@@ -32,25 +32,33 @@ USA.
 ;;; Constructors
 
 (define (make-amap comparator . args)
-  (let ((impl (select-impl comparator args)))
+  (let-values (((impl impl-name) (select-impl comparator args)))
     (%make-amap comparator
 		args
+		impl-name
 		impl
 		((amap-impl:new-state impl) comparator args))))
 
 (define (%amap-new-state amap state)
   (%make-amap (amap-comparator amap)
 	      (amap-args amap)
+	      (amap-implementation-name amap)
 	      (amap-impl amap)
 	      state))
 
 (define-record-type <amap>
-    (%make-amap comparator args impl state)
+    (%make-amap comparator args impl-name impl state)
     amap?
   (comparator amap-comparator)
   (args amap-args)
+  (impl-name amap-implementation-name)
   (impl amap-impl)
   (state amap-state))
+
+(define-print-method amap?
+  (standard-print-method 'amap
+    (lambda (amap)
+      (list (amap-implementation-name amap)))))
 
 (define (amap-unfold stop? mapper successor seed comparator . args)
   (let ((result (apply make-amap comparator args)))
@@ -146,7 +154,7 @@ USA.
   ((amap-impl:find (amap-impl amap)) procedure (amap-state amap) fail))
 
 (define (amap-count predicate amap)
-  ((amap-impl:count (amap-impl amap)) (amap-state amap) predicate))
+  ((amap-impl:count (amap-impl amap)) predicate (amap-state amap)))
 
 ;;; Mapping and folding
 
@@ -159,7 +167,7 @@ USA.
 	 (if (and (default-object? comparator) (null? args))
 	     (amap-args amap)
 	     args)))
-    (%make-amap comparator args (amap-impl amap)
+    (%make-amap comparator args (amap-implementation-name amap) (amap-impl amap)
       ((amap-impl:map (amap-impl amap))
        procedure comparator args (amap-state amap)))))
 

@@ -90,16 +90,17 @@ USA.
   (define (select-named-impl)
     (let ((names (lset-intersection eq? args (implementation-names))))
       (and (pair? names)
-	   (begin
+	   (let ((name (car names)))
 	     (if (pair? (cdr names))
 		 (error "These args are mutually exclusive:" names))
-	     (let ((impl (get-implementation (car names))))
+	     (let ((impl (get-implementation name))
+		   (args (delq name args)))
 	       (if (not (supported-comparator? impl))
 		   (error "Implementation doesn't support this comparator:"
-			  (car names) comparator))
+			  name comparator))
 	       (if (not (supported-args? impl))
 		   (error "Implementation doesn't support these args:"
-			  (car names) args))
+			  name args))
 	       impl)))))
 
   (define (select-matching-impl)
@@ -118,12 +119,14 @@ USA.
   (define (supported-args? impl)
     ((metadata-args-predicate (abstract-impl-metadata impl)) args))
 
-  (let loop ((impl (or (select-named-impl) (select-matching-impl))))
-    (if (abstract-impl? impl)
-	(loop ((abstract-impl-selector impl) comparator args))
-	(begin
-	  (guarantee amap-impl? impl 'select-impl)
-	  impl))))
+  (let ((impl (or (select-named-impl) (select-matching-impl))))
+    (values (let loop ((impl impl))
+	      (if (abstract-impl? impl)
+		  (loop ((abstract-impl-selector impl) comparator args))
+		  (begin
+		    (guarantee amap-impl? impl 'select-impl)
+		    impl)))
+	    (metadata-name (abstract-impl-metadata impl)))))
 
 ;;;; Metadata
 
@@ -153,10 +156,20 @@ USA.
      (append-map (lambda (spec)
 		   ((prop-matching-args (car spec)) (cdr spec)))
 		 specs)
-     (conjoin* (map (lambda (spec)
-		      (prop-args-predicate (car spec)))
-		    specs))
+     (make-args-predicate
+      (map (lambda (spec)
+	     (prop-args-predicate (car spec)))
+	   specs))
      (or comparator-predicate comparator?))))
+
+(define (make-args-predicate preds)
+  (lambda (args)
+    (let loop ((preds preds) (args args))
+      (or (not (pair? preds))
+	  (let ((used-args ((car preds) args)))
+	    (and used-args
+		 (loop (cdr preds)
+		       (lset-difference eqv? args used-args))))))))
 
 (define-record-type <metadata>
     (%make-metadata name mutability supported-args args-predicate
@@ -207,7 +220,9 @@ USA.
 		   (let ((filter (make-args-filter (matching-args vals)))
 			 (predicate (make-args-predicate vals)))
 		     (lambda (args)
-		       (predicate (filter args))))
+		       (let ((used-args (filter args)))
+			 (and (predicate used-args)
+			      used-args))))
 		   (lambda (args)
 		     (declare (ignore args))
 		     '()))))
@@ -216,7 +231,7 @@ USA.
 (define (make-args-filter claimed-args)
   (let-values (((matchers syms) (partition arg-matcher? claimed-args)))
     (lambda (args)
-      (let-values (((diff int) (lset-diff+intersection eq? args syms)))
+      (let-values (((diff int) (lset-diff+intersection eqv? args syms)))
 	(append int
 		(filter-map (lambda (arg)
 			      (find (lambda (matcher)
@@ -294,7 +309,7 @@ USA.
   (define-property 'time-complexity #f
     (map car alist)
     (lambda (vals)
-      (= 1 (length vals)))
+      (<= (length vals) 1))
     (lambda (vals)
       (apply lset-union
 	     eq?
@@ -305,8 +320,9 @@ USA.
     (lambda (vals)
       (let ((supported (cdr (assq (car vals) alist))))
 	(lambda (args)
-	  (and (= 1 (length args))
-	       (memq (car args) supported)))))))
+	  (or (null? args)
+	      (and (memq (car args) supported)
+		   (null? (cdr args)))))))))
 
 (let ((all-vals '(thread-safe initial-size ordered-by-key)))
   (define-property 'other #f
@@ -316,7 +332,7 @@ USA.
       vals)
     (lambda (vals)
       (lambda (args)
-	(lset= eq? vals args)))))
+	(lset<= eqv? args vals)))))
 
 (add-boot-init!
  (lambda ()
@@ -484,7 +500,7 @@ USA.
 
 (define-default-operation 'count '(fold)
   (lambda (:fold)
-    (lambda (state predicate)
+    (lambda (predicate state)
       (:fold (lambda (key value acc)
 	       (if (predicate key value)
 		   (+ acc 1)
