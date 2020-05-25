@@ -25,6 +25,7 @@ USA.
 |#
 
 ;;;; MIT/GNU Scheme macros
+;;; package: (runtime mit-macros)
 
 (declare (usual-integrations))
 
@@ -442,15 +443,14 @@ USA.
 			    ,cond-else-clause-pattern)
 		   (+ any))
        (lambda (var clauses else-actions body)
-	 (let ((guard-k (new-identifier 'guard-k))
-	       (condition (new-identifier 'condition)))
+	 (let ((guard-k (new-identifier 'guard-k)))
 	   (scons-call 'call-with-current-continuation
 		       (scons-lambda (list guard-k)
 			 (scons-call 'with-exception-handler
-				     (scons-lambda (list condition)
-				       (scons-let (list (list var condition))
-					 (guard-handler guard-k condition
-							clauses else-actions)))
+				     (scons-lambda (list var)
+				       (scons-declare `(ignorable ,var))
+				       (guard-handler guard-k var
+						      clauses else-actions))
 				     (apply scons-lambda '() body))))))))))
 
 (define (guard-handler guard-k condition clauses else-actions)
