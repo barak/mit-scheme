@@ -960,7 +960,7 @@ USA.
     (let ((ht (reproduce-ts2)))
 
       (define (test-=? ht1 ht2)
-	(hash-table=? (number-comparator) ht ht2))
+	(hash-table=? (number-comparator) ht1 ht2))
 
       ;; Not supported
       (assert-error (lambda () (hash-table-copy ht #f)))
