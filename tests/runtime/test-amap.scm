@@ -86,7 +86,200 @@ USA.
   (- value))
 
 (define amap-types
-  '(hash-table alist red/black-tree))
+  (filter (lambda (name)
+	    (and (amap-implementation-supports-comparator? name
+							   test-key-comparator)
+		 (amap-implementation-supports-args? name '())))
+	  (amap-implementation-names)))
+
+(define ordered-and-hashable-comparator (fixnum-comparator))
+(define hashable-comparator (make-eqv-comparator))
+(define ordered-comparator (make-comparator symbol? eq? symbol<? #f))
+(define neither-comparator (make-comparator any-object? eqv? #f #f))
+
+(define base-key-comparators
+  (list ordered-and-hashable-comparator
+	hashable-comparator
+	ordered-comparator
+	neither-comparator))
+
+(define list-key-comparators
+  (map uniform-list-comparator base-key-comparators))
+
+(define lset-key-comparators		;always ordered
+  (map lset-comparator base-key-comparators))
+
+(define test-key-comparators
+  (append base-key-comparators
+	  list-key-comparators
+	  lset-key-comparators))
+
+(define (at-least-one-of items)
+  (delq '() (all-choices-of items)))
+
+(define (at-most-one-of items)
+  (cons '() (map list items)))
+
+(define (all-choices-of items)
+
+  (define (choose k items)
+    (if (> k 0)
+	(if (< k (length items))
+	    (append (map (lambda (tail)
+			   (cons (car items) tail))
+			 (choose (- k 1) (cdr items)))
+		    (choose k (cdr items)))
+	    (list items))
+	'(())))
+
+  (let ((n (length items)))
+    (let loop ((k 0))
+      (if (< k n)
+	  (append (choose k items)
+		  (loop (+ k 1)))
+	  (choose n items)))))
+
+(define (good-comparator-pred name)
+  (case name
+    ((hash-table) comparator-hashable?)
+    ((alist) any-object?)
+    ((trie) uniform-list-comparator?)
+    ((red/black-tree) comparator-ordered?)
+    (else (error "Unknown implementation type:" name))))
+
+(define (all-choices)
+  (all-choices-of (subst-args (all-amap-args))))
+
+(define (subst-args args)
+  (map (lambda (arg)
+	 (if (eqv? exact-nonnegative-integer? arg)
+	     7
+	     arg))
+       args))
+
+(define (good-choices name)
+  (let ((supported (amap-implementation-supported-args name)))
+    (append-choices (good-kv-choices supported)
+		    (good-time-choices supported)
+		    (good-other-choices supported))))
+
+(define (good-kv-choices supported)
+  (append '(())
+	  (at-least-one-of (match-args supported kv-weak-args))
+	  (at-least-one-of (match-args supported kv-ephemeral-args))))
+
+(define kv-weak-args
+  '(weak-keys weak-values))
+
+(define kv-ephemeral-args
+  '(ephemeral-keys ephemeral-values))
+
+(define (good-time-choices supported)
+  (at-most-one-of (match-args supported time-args)))
+
+(define time-args
+  '(amortized-constant-time log-time sublinear-time linear-time))
+
+(define (good-other-choices supported)
+  (all-choices-of (subst-args (match-args supported other-args))))
+
+(define other-args
+  `(thread-safe ordered-by-key ,exact-nonnegative-integer?))
+
+(define (match-args a1 a2)
+  (lset-intersection eqv? a1 a2))
+
+(define (append-choices . choices-list)
+  (reduce-right (lambda (prefixes suffixes)
+		  (append-map (lambda (prefix)
+				(map (lambda (suffix)
+				       (append prefix suffix))
+				     suffixes))
+			      prefixes))
+		'()
+		choices-list))
+
+(define (explicit-construction-tests name)
+  (lambda ()
+
+    (define (test-make comparator args)
+      (if (and (good-comparator? comparator) (good-args? args))
+	  (test-good comparator args)
+	  (test-bad comparator args)))
+
+    (define (test-good comparator args)
+      (let ((amap (run-make comparator args)))
+	(assert-true (amap? amap))
+	(assert-equal (amap-implementation-name amap) name)
+	(assert-eqv (amap-comparator amap) comparator)
+	(assert-equal (amap-args amap) (massage-args args))))
+
+    (define (test-bad comparator args)
+      (assert-error (lambda () (run-make comparator args))
+		    (default-object)
+		    'expression `(make ,name ,comparator ,args)))
+
+    (define (good-comparator? comparator)
+      (amap-implementation-supports-comparator? name comparator))
+
+    (define (good-args? args)
+      (amap-implementation-supports-args? name args))
+
+    (define (run-make comparator args)
+      (apply make-amap comparator (massage-args args)))
+
+    (define (massage-args args)
+      (cons* name
+	     'not-an-arg
+	     '(not-an-arg)
+	     "not-an-arg"
+	     (subst-args args)))
+
+    (define (test-good-args args expected)
+      (assert-boolean= (good-args? (subst-args args)) expected
+		       'expression `(good-args? ,name ,(subst-args args))))
+
+    (let ((all-args (all-choices-of (amap-implementation-supported-args name))))
+      (for-each (lambda (comparator)
+		  (for-each (lambda (args)
+			      (test-make comparator args))
+			    all-args))
+		test-key-comparators))
+    (let-values (((good-comparators bad-comparators)
+		  (partition (good-comparator-pred name)
+			     test-key-comparators)))
+      (let* ((good-args (good-choices name))
+	     (bad-args
+	      (lset-difference (lambda (a b)
+				 (lset= equal? a b))
+			       (all-choices)
+			       good-args))
+	     (bad-args (if keep-it-fast!? (take bad-args 256) bad-args)))
+	(for-each (lambda (comparator)
+		    (assert-true (good-comparator? comparator))
+		    (for-each (lambda (args)
+				(test-good-args args #t)
+				(test-good comparator args))
+			      good-args)
+		    (for-each (lambda (args)
+				(test-good-args args #f)
+				(test-bad comparator args))
+			      bad-args))
+		  good-comparators)
+	(for-each (lambda (comparator)
+		    (assert-false (good-comparator? comparator))
+		    (for-each (lambda (args)
+				(test-good-args args #t)
+				(test-bad comparator args))
+			      good-args)
+		    (for-each (lambda (args)
+				(test-good-args args #f)
+				(test-bad comparator args))
+			      bad-args))
+		  bad-comparators)))))
+
+(define-test 'explicit-construction
+  (map explicit-construction-tests (amap-implementation-names)))
 
 (define (empty-nondestructive-tests impl-name)
   (lambda ()

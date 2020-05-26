@@ -6889,6 +6889,7 @@ USA.
   (files "amap-impl")
   (parent (runtime amap))
   (export ()
+	  all-amap-args
 	  amap-implementation-names
 	  amap-implementation-supported-args
 	  amap-implementation-supports-args?

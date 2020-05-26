@@ -54,6 +54,10 @@ USA.
 (define (amap-implementation-names)
   (alist-table-keys registered-implementations))
 
+(define (all-amap-args)
+  (map replace-arg-matcher
+       (append-map prop-claimed-args (alist-table-values properties))))
+
 (define (amap-implementation-supported-args name)
   (impl-supported-args (get-impl name 'amap-implementation-supported-args)))
 
@@ -65,7 +69,7 @@ USA.
   (impl-supports-comparator?
    (get-impl name 'amap-implementation-supports-comparator?)
    comparator))
-
+
 (define (select-impl comparator args)
 
   (define (supported-comparator? impl)
@@ -129,7 +133,8 @@ USA.
   (metadata-name (abstract-impl-metadata impl)))
 
 (define (impl-supported-args impl)
-  (metadata-supported-args (abstract-impl-metadata impl)))
+  (map replace-arg-matcher
+       (metadata-supported-args (abstract-impl-metadata impl))))
 
 (define (impl-supports-args? impl args)
   ((metadata-args-predicate (abstract-impl-metadata impl)) args))
@@ -165,6 +170,13 @@ USA.
 		      (error "Ill-formed property:" spec))
 		  (cons prop vals)))
 	      specs)))
+
+    (define (spec-vals prop)
+      (let ((spec (assv prop specs)))
+	(if spec
+	    (cdr spec)
+	    '())))
+
     (let ((missing
 	   (remove (lambda (prop)
 		     (assq prop specs))
@@ -174,23 +186,24 @@ USA.
     (%make-metadata
      name
      (encode-mutability (cdr (assq (get-prop 'mutability) specs)))
-     (append-map (lambda (spec)
-		   ((prop-matching-args (car spec)) (cdr spec)))
-		 specs)
+     (append-map (lambda (prop)
+		   ((prop-matching-args prop) (spec-vals prop)))
+		 (all-props))
      (make-args-predicate
-      (map (lambda (spec)
-	     (prop-args-predicate (car spec)))
-	   specs))
+      (map (lambda (prop)
+	     ((prop-args-predicate-maker prop) (spec-vals prop)))
+	   (all-props)))
      (or comparator-predicate any-object?))))
 
 (define (make-args-predicate preds)
   (lambda (args)
-    (let loop ((preds preds) (args args))
-      (or (not (pair? preds))
-	  (let ((used-args ((car preds) args)))
+    (let loop ((preds preds) (unused-args args))
+      (if (pair? preds)
+	  (let ((used-args ((car preds) unused-args)))
 	    (and used-args
 		 (loop (cdr preds)
-		       (lset-difference eqv? args used-args))))))))
+		       (lset-difference eqv? unused-args used-args))))
+	  unused-args))))
 
 (define-record-type <metadata>
     (%make-metadata name mutability supported-args args-predicate
@@ -211,6 +224,9 @@ USA.
 (define (arg-matcher-predicate name)
   (alist-table-ref arg-matchers name))
 
+(define (replace-arg-matcher arg)
+  (alist-table-ref arg-matchers arg (lambda () arg)))
+
 (define arg-matchers
   (alist-table eq?))
 
@@ -227,39 +243,9 @@ USA.
 (define (define-property keyword required? vals vals-predicate
 	  matching-args make-args-predicate)
   (alist-table-set! properties keyword
-    (make-prop keyword required?
-	       vals
-	       (or vals-predicate
-		   (lambda (vals)
-		     (declare (ignore vals))
-		     #t))
-	       (or matching-args
-		   (lambda (vals)
-		     (declare (ignore vals))
-		     '()))
-	       (if make-args-predicate
-		   (let ((filter (make-args-filter (matching-args vals)))
-			 (predicate (make-args-predicate vals)))
-		     (lambda (args)
-		       (let ((used-args (filter args)))
-			 (and (predicate used-args)
-			      used-args))))
-		   (lambda (args)
-		     (declare (ignore args))
-		     '()))))
+    (make-prop keyword required? vals vals-predicate
+	       matching-args make-args-predicate))
   keyword)
-
-(define (make-args-filter claimed-args)
-  (let-values (((matchers syms) (partition arg-matcher? claimed-args)))
-    (lambda (args)
-      (let-values (((diff int) (lset-diff+intersection eqv? args syms)))
-	(append int
-		(filter-map (lambda (arg)
-			      (find (lambda (matcher)
-				      (and ((arg-matcher-predicate matcher) arg)
-					   matcher))
-				    matchers))
-			    diff))))))
 
 (define (have-prop? keyword)
   (alist-table-contains? properties keyword))
@@ -268,27 +254,80 @@ USA.
   (alist-table-ref properties keyword))
 
 (define (required-props)
-  (filter prop-required? (alist-table-values properties)))
+  (filter prop-required? (all-props)))
+
+(define (all-props)
+  (alist-table-values properties))
 
 (define properties
   (alist-table eq?))
 
 (define-record-type <prop>
     (make-prop keyword required? vals vals-predicate matching-args
-	       args-predicate)
+	       args-predicate-maker)
     prop?
   (keyword prop-keyword)
   (required? prop-required?)
   (vals prop-vals)
   (vals-predicate prop-vals-predicate)
   (matching-args prop-matching-args)
-  (args-predicate prop-args-predicate))
+  (args-predicate-maker prop-args-predicate-maker))
+
+(define (prop-claimed-args prop)
+  ((prop-matching-args prop) (prop-vals prop)))
 
-(define-property 'mutability #t
+(define (define-no-args-property keyword required? vals vals-predicate)
+  (define-property keyword required? vals
+    vals-predicate
+    (lambda (vals)
+      (declare (ignore vals))
+      '())
+    (lambda (impl-vals)
+      (declare (ignore impl-vals))
+      (lambda (args)
+	(declare (ignore args))
+	'()))))
+
+(define (define-args-property keyword required? vals vals-predicate
+	  val->args make-args-matcher)
+
+  (define (matching-args vals*)
+    (apply lset-union equal? (map val->args vals*)))
+
+  (define-property keyword required?
+    vals
+    vals-predicate
+    matching-args
+    (let ((filter (make-args-filter (matching-args vals))))
+      (lambda (impl-vals)
+	(let ((matcher (make-args-matcher impl-vals)))
+	  (lambda (args)
+	    (let ((args-to-match (filter args)))
+	      (and (matcher args-to-match)
+		   args-to-match))))))))
+
+(define (make-args-filter claimed-args)
+  (let-values (((matchers syms) (partition arg-matcher? claimed-args)))
+    (lambda (args)
+      (let-values (((diff int) (lset-diff+intersection eqv? args syms)))
+	(append int
+		(filter (lambda (arg)
+			  (find (lambda (matcher)
+				  ((arg-matcher-predicate matcher) arg))
+				matchers))
+			diff))))))
+
+(define (default-vals-predicate impl-vals)
+  (declare (ignore impl-vals))
+  #t)
+
+(define (lset-predicate a)
+  (lambda (b)
+    (lset= equal? a b)))
+
+(define-no-args-property 'mutability #t
   '(mutable immutable)
-  #f
-  #f
-  #f)
+  default-vals-predicate)
 
 (define (encode-mutability vals)
   (if (null? (cdr vals))
@@ -303,62 +342,62 @@ USA.
 	 ((ephemeral strong) ephemeral-keys)
 	 ((strong ephemeral) ephemeral-values)
 	 ((ephemeral ephemeral) ephemeral-keys ephemeral-values))))
-  (define-property 'kv-types #t
+
+  (define (val->args val)
+    (cdr (assoc val alist)))
+
+  (define-args-property 'kv-types #t
     (map car alist)
-    #f
-    (lambda (vals)
-      (apply lset-union
-	     eq?
-	     (filter-map (lambda (p)
-			   (and (member (car p) vals)
-				(cdr p)))
-			 alist)))
-    (lambda (vals)
-      (let ((argsets
-	     (map (lambda (val)
-		    (cdr (assoc val alist)))
-		  vals)))
-	(lambda (args)
-	  (any (lambda (argset)
-		 (lset= eq? argset args))
-	       argsets))))))
+    default-vals-predicate
+    val->args
+    (lambda (impl-vals)
+      (disjoin*
+       (map lset-predicate
+	    (map val->args impl-vals))))))
 
 (let ((alist
        '((amortized-constant amortized-constant-time sublinear-time)
 	 (log log-time sublinear-time)
 	 (linear linear-time))))
-  (define-property 'time-complexity #f
-    (map car alist)
-    (lambda (vals)
-      (<= (length vals) 1))
-    (lambda (vals)
-      (apply lset-union
-	     eq?
-	     (filter-map (lambda (p)
-			   (and (memq (car p) vals)
-				(cdr p)))
-			 alist)))
-    (lambda (vals)
-      (let ((supported (cdr (assq (car vals) alist))))
-	(lambda (args)
-	  (or (null? args)
-	      (and (memq (car args) supported)
-		   (null? (cdr args)))))))))
 
-(let ((all-vals '(thread-safe initial-size ordered-by-key)))
-  (define-property 'other #f
-    all-vals
-    #f
-    (lambda (vals)
-      vals)
-    (lambda (vals)
-      (lambda (args)
-	(lset<= eqv? args vals)))))
+  (define (val->args val)
+    (cdr (assq val alist)))
+
+  (define-args-property 'time-complexity #f
+    (map car alist)
+    (lambda (impl-vals)
+      (or (null? impl-vals)
+	  (null? (cdr impl-vals))))
+    val->args
+    (lambda (impl-vals)
+      (disjoin*
+       (cons null?
+	     (map lset-predicate
+		  (apply lset-union equal?
+			 (map (lambda (val)
+				(map list (val->args val)))
+			      impl-vals))))))))
 
 (add-boot-init!
  (lambda ()
    (define-arg-matcher 'initial-size
-     exact-nonnegative-integer?)))
+     exact-nonnegative-integer?)
+
+   (let ((all-vals '(thread-safe initial-size ordered-by-key)))
+     (define-args-property 'other #f
+       all-vals
+       default-vals-predicate
+       list
+       (lambda (impl-vals)
+	 (let ((pred
+		(disjoin*
+		 (map (lambda (val)
+			(if (arg-matcher? val)
+			    (arg-matcher-predicate val)
+			    (lambda (arg) (eq? val arg))))
+		      impl-vals))))
+	   (lambda (args)
+	     (every pred args))))))))
 
 ;;;; Operations
 

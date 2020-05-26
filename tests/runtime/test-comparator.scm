@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Tests of hash-table implementation
+;;;; Tests of comparator implementation
 
 (declare (usual-integrations))
 
