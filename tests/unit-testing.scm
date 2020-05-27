@@ -423,6 +423,15 @@ USA.
 
 (define-for-tests assert-null
   (predicate-assertion null? "an empty list"))
+
+(define-for-tests assert-pair
+  (predicate-assertion pair? "a pair"))
+
+(define-for-tests assert-list
+  (predicate-assertion list? "a non-empty list"))
+
+(define-for-tests assert-non-empty-list
+  (predicate-assertion non-empty-list? "a non-empty list"))
 
 (define-for-tests (assert-error thunk #!optional condition-types . properties)
   (let ((condition-types (if (default-object? condition-types)
