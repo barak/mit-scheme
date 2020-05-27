@@ -885,8 +885,8 @@ USA.
   (let ((lose (lambda () (error:not-a list? items caller))))
     (let loop ((items items))
       (if (pair? items)
-	  (if (or (eq? (car items) item)
-		  (= (car items) item))
+	  (if (or (eq? item (car items))
+		  (= item (car items)))
 	      items
 	      (loop (cdr items)))
 	  (begin
