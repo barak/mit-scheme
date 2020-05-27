@@ -835,7 +835,11 @@ USA.
 ;;;   and results to get structure sharing in the lset procedures.
 
 (define (%lset2<= = lis1 lis2)
-  (every (lambda (x) (member x lis2 =)) lis1))
+  (every (lambda (item1)
+	   (any (lambda (item2)
+		  (= item1 item2))
+		lis2))
+	 lis1))
 
 (define (lset<= = . lists)
   (or (not (pair? lists)) ; 0-ary case
@@ -847,13 +851,15 @@ USA.
 		   (lp s2 rest)))))))
 
 (define (lset= = . lists)
-  (or (not (pair? lists)) ; 0-ary case
+  (define (r= a b)
+    (= b a))
+  (or (not (pair? lists))		;0-ary case
       (let lp ((s1 (car lists)) (rest (cdr lists)))
 	(or (not (pair? rest))
 	    (let ((s2   (car rest))
 		  (rest (cdr rest)))
-	      (and (or (eq? s1 s2)	; Fast path
-		       (and (%lset2<= = s1 s2) (%lset2<= = s2 s1))) ; Real test
+	      (and (or (eq? s1 s2)	;Fast path
+		       (and (%lset2<= = s1 s2) (%lset2<= r= s2 s1))) ;Real test
 		   (lp s2 rest)))))))
 
 (define (lset-adjoin = lis . elts)
