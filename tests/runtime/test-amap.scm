@@ -281,6 +281,76 @@ USA.
 (define-test 'explicit-construction
   (map explicit-construction-tests (amap-implementation-names)))
 
+(define-test 'implicit-construction
+  (lambda ()
+
+    (define (test-make comparator args impls)
+	(if (null? impls)
+	    (assert-error (lambda () (apply make-amap comparator args)))
+	    (let ((impl (apply make-amap comparator args)))
+	      (assert-memv (amap-implementation-name impl) impls
+			   'expression `(make-amap ,comparator ,args)))))
+
+    (define (supporting-impls comparator args)
+      (filter (lambda (name)
+		(and (amap-implementation-supports-comparator? name comparator)
+		     (amap-implementation-supports-args? name args)))
+              (amap-implementation-names)))
+
+    (for-each
+     (lambda (comp)
+       (let ((max-expected
+	      (let ((opt
+		     (lambda (pred impl)
+		       (if (pred comp) (list impl) '()))))
+		`(alist ,@(opt comparator-hashable? 'hash-table)
+			,@(opt comparator-ordered? 'red/black-tree)
+			,@(opt uniform-list-comparator? 'trie)))))
+
+	 (define (test-impls best . arg-lists)
+	   (for-each (lambda (args)
+		       (let ((impls (supporting-impls comp args)))
+			 (assert-lset= eq?
+				       impls
+				       (lset-intersection eq? best max-expected)
+				       'expression
+				       `(supporting-impls ,comp ,args))
+			 (test-make comp args impls)))
+		     arg-lists))
+
+	 (test-impls '(alist hash-table red/black-tree trie)
+		     '())
+
+	 (test-impls '(hash-table)
+		     '(weak-values)
+		     '(weak-keys weak-values)
+		     '(ephemeral-keys)
+		     '(ephemeral-values)
+		     '(ephemeral-keys ephemeral-values)
+		     '(7)
+		     '(amortized-constant-time))
+
+	 (test-impls '(red/black-tree)
+		     '(log-time)
+		     '(ordered-by-key))
+
+	 (test-impls '(alist)
+		     '(linear-time))
+
+	 (test-impls '(alist hash-table) '(weak-keys))
+	 (test-impls '(hash-table red/black-tree) '(sublinear-time))
+
+	 ;; Illegal
+	 (test-impls '()
+		     '(weak-keys ephemeral-keys)
+		     '(weak-values ephemeral-values))
+
+	 ;; Not supported but not illegal
+	 (test-impls '()
+		     '(weak-keys ephemeral-values)
+		     '(ephemeral-keys weak-values))))
+     test-key-comparators)))
+
 (define (empty-nondestructive-tests impl-name)
   (lambda ()
     (let ((amap (make-amap test-key-comparator impl-name)))
