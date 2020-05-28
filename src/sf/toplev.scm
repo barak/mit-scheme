@@ -62,8 +62,8 @@ USA.
 (define sf:noisy? #t)
 
 (define (sf/set-usual-integrations-default-deletions! del-list)
-  (guarantee-list-of-type del-list symbol? "list of symbols"
-			  'sf/set-usual-integrations-default-deletions!)
+  (guarantee-list-of symbol? del-list
+		     'sf/set-usual-integrations-default-deletions!)
   (set! sf/usual-integrations-default-deletions del-list)
   unspecific)
 
@@ -100,7 +100,7 @@ USA.
 
 (define (syntax-file input-string bin-string spec-string)
   (guarantee environment? sf/default-syntax-table 'syntax-file)
-  (guarantee-list-of-type sf/top-level-definitions symbol? 'syntax-file)
+  (guarantee-list-of symbol? sf/top-level-definitions 'syntax-file)
   (for-each (lambda (input-string)
 	      (receive (input-pathname bin-pathname spec-pathname)
 		  (sf/pathname-defaulting input-string bin-string spec-string)

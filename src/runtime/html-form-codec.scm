@@ -102,13 +102,12 @@ USA.
 ;;;; Encoder
 
 (define (encode-www-form-urlencoded data)
-  (guarantee-list-of-type data
-			  (lambda (p)
-			    (and (pair? p)
-				 (interned-symbol? (car p))
-				 (string? (cdr p))))
-			  "HTML form data alist"
-			  'encode-www-form-urlencoded)
+  (guarantee-list-of (lambda (p)
+		       (and (pair? p)
+			    (interned-symbol? (car p))
+			    (string? (cdr p))))
+		     data
+		     'encode-www-form-urlencoded)
   (let ((builder (string-builder)))
 
      (define (write-datum datum)

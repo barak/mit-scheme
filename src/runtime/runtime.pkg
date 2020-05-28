@@ -3302,28 +3302,17 @@ USA.
   (files "list")
   (parent (runtime))
   (export deprecated ()
-	  (list-search-negative find-non-matching-item)
-	  (list-search-positive find-matching-item)
-	  (list-transform-negative delete-matching-items)
-	  (list-transform-positive keep-matching-items)
-	  (mapcan append-map!)
-	  (mapcan* append-map*!)
+	  (improper-list? dotted-list?)
+	  (make-initialized-list list-tabulate)
 	  append-map*
 	  append-map*!
-	  count-matching-items
-	  count-non-matching-items
-	  delete-matching-items
-	  delete-matching-items!
-	  find-matching-item
-	  find-non-matching-item
 	  fold-left
-	  keep-matching-items
-	  keep-matching-items!
+	  guarantee-list->length
+	  guarantee-list-of-type
+	  guarantee-list-of-type->length
 	  map*
 	  reduce-left)
   (export ()
-	  (improper-list? dotted-list?)
-	  (list-tabulate make-initialized-list)	;(srfi 1)
 	  (proper-list? list?)		;(srfi 1)
 	  add-member-procedure
 	  alist->alist-table
@@ -3436,9 +3425,6 @@ USA.
 	  general-car-cdr
 	  get-keyword-value
 	  get-keyword-values
-	  guarantee-list->length
-	  guarantee-list-of-type
-	  guarantee-list-of-type->length
 	  guarantee-restricted-keyword-list
 	  iota				;(srfi 1)
 	  keyword-list->alist
@@ -3459,11 +3445,11 @@ USA.
 	  list-of-unique-symbols?
 	  list-ref			;(scheme base)
 	  list-set!			;(scheme base)
+	  list-tabulate			;(srfi 1)
 	  list=				;(srfi 1)
 	  list?				;(scheme base)
 	  list?->length
 	  make-circular-list
-	  make-initialized-list
 	  make-list			;(scheme base)
 	  map				;(scheme base)
 	  member			;(scheme base)

@@ -51,10 +51,7 @@ USA.
 (define-guarantee condition-type "condition type")
 
 (define-integrable (guarantee-condition-types object caller)
-  (guarantee-list-of-type object
-			  condition-type?
-			  "list of condition types"
-			  caller))
+  (guarantee-list-of condition-type? object caller))
 
 (define (make-condition-type name generalization field-names reporter)
   (if generalization
@@ -327,7 +324,7 @@ USA.
 (define-guarantee restart "restart")
 
 (define-integrable (guarantee-restarts object caller)
-  (guarantee-list-of-type object restart? "list of restarts" caller))
+  (guarantee-list-of restart? object caller))
 
 (define (with-restart name reporter effector interactor thunk)
   (if name (guarantee symbol? name 'with-restart))

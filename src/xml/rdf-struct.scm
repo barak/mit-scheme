@@ -114,8 +114,7 @@ USA.
 (define-guarantee rdf-graph "RDF graph")
 
 (define (make-rdf-graph triples)
-  (guarantee-list-of-type triples rdf-triple? "list of RDF triples"
-			  'MAKE-RDF-GRAPH)
+  (guarantee-list-of rdf-triple? triples 'make-rdf-graph)
   (let ((triples
 	 (if (pair? triples)
 	     (let ((head

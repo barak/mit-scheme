@@ -449,7 +449,7 @@ USA.
 
 (define (coding-type-end-index coding-type)
   (+ (coding-type-start-index coding-type)
-     (count-matching-items (coding-type-defns coding-type) defn-has-code?)))
+     (count defn-has-code? (coding-type-defns coding-type))))
 
 (define (specialize-defn defn pv defn*)
   (let ((defn* (maybe-rename defn* defn)))
