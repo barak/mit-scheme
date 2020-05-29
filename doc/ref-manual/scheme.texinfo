@@ -45,7 +45,7 @@ Documentation License.''
 
 @titlepage
 @title MIT/GNU Scheme Reference Manual
-@subtitle For release @value{VERSION}
+@subtitle for release @value{VERSION}
 @subtitle @value{UPDATED}
 @author by Chris Hanson
 @author the MIT Scheme Team
