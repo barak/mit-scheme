@@ -357,4 +357,9 @@ If ENV is not provided, generates a new top-level environment."
 (define-command 'up '()
   "Returns to the parent of this REPL."
   (lambda ()
-    (abort->previous)))
+    (cmdl-interrupt/abort-previous)))
+
+(define-command 'top-level '()
+  "Returns to the top-level REPL."
+  (lambda ()
+    (cmdl-interrupt/abort-top-level)))
