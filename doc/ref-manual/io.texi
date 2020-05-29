@@ -1095,12 +1095,10 @@ limit; the default is @code{#f}.
 @example
 @group
 (parameterize ((param:printer-list-breadth-limit 4))
-  (lambda ()
-    (write-to-string '(a b c d))))
+  (write-to-string '(a b c d)))
                                 @result{} "(a b c d)"
 (parameterize ((param:printer-list-breadth-limit 4))
-  (lambda ()
-    (write-to-string '(a b c d e))))
+  (write-to-string '(a b c d e)))
                                 @result{} "(a b c d ...)"
 @end group
 @end example
@@ -1117,12 +1115,10 @@ is @code{#f}.
 @example
 @group
 (parameterize ((param:printer-list-depth-limit 4))
-  (lambda ()
-    (write-to-string '((((a))) b c d))))
+  (write-to-string '((((a))) b c d)))
                                 @result{} "((((a))) b c d)"
 (parameterize ((param:printer-list-depth-limit 4))
-  (lambda ()
-    (write-to-string '(((((a)))) b c d))))
+  (write-to-string '(((((a)))) b c d)))
                                 @result{} "((((...))) b c d)"
 @end group
 @end example
@@ -1139,12 +1135,10 @@ is @code{#f}.
 @example
 @group
 (parameterize ((param:printer-string-length-limit 4))
-  (lambda ()
-    (write-to-string "abcd")))
+  (write-to-string "abcd"))
                                 @result{} "\"abcd\""
 (parameterize ((param:printer-string-length-limit 4))
-  (lambda ()
-    (write-to-string "abcde")))
+  (write-to-string "abcde"))
                                 @result{} "\"abcd...\""
 @end group
 @end example

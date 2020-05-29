@@ -1526,48 +1526,37 @@ Some examples of @code{param:flonum-printer-cutoff}:
 (number->string (* 4 (atan 1 1)))
                                     @result{} "3.141592653589793"
 (parameterize ((param:flonum-printer-cutoff '(relative 5)))
-  (lambda ()
-    (number->string (* 4 (atan 1 1)))))
+  (number->string (* 4 (atan 1 1))))
                                     @result{} "3.1416"
 (parameterize ((param:flonum-printer-cutoff '(relative 5)))
-  (lambda ()
-    (number->string (* 4000 (atan 1 1)))))
+  (number->string (* 4000 (atan 1 1))))
                                     @result{} "3141.6"
 (parameterize ((param:flonum-printer-cutoff '(relative 5 scientific)))
-  (lambda ()
-    (number->string (* 4000 (atan 1 1)))))
+  (number->string (* 4000 (atan 1 1))))
                                     @result{} "3.1416e3"
 (parameterize ((param:flonum-printer-cutoff '(relative 5 scientific)))
-  (lambda ()
-    (number->string (* 40000 (atan 1 1)))))
+  (number->string (* 40000 (atan 1 1))))
                                     @result{} "3.1416e4"
 (parameterize ((param:flonum-printer-cutoff '(relative 5 engineering)))
-  (lambda ()
-    (number->string (* 40000 (atan 1 1)))))
+  (number->string (* 40000 (atan 1 1))))
                                     @result{} "31.416e3"
 (parameterize ((param:flonum-printer-cutoff '(absolute 5)))
-  (lambda ()
-    (number->string (* 4 (atan 1 1)))))
+  (number->string (* 4 (atan 1 1))))
                                     @result{} "3.14159"
 (parameterize ((param:flonum-printer-cutoff '(absolute 5)))
-  (lambda ()
-    (number->string (* 4000 (atan 1 1)))))
+  (number->string (* 4000 (atan 1 1))))
                                     @result{} "3141.59265"
 (parameterize ((param:flonum-printer-cutoff '(absolute -4)))
-  (lambda ()
-    (number->string (* 4e10 (atan 1 1)))))
+  (number->string (* 4e10 (atan 1 1))))
                                     @result{} "31415930000."
 (parameterize ((param:flonum-printer-cutoff '(absolute -4 scientific)))
-  (lambda ()
-    (number->string (* 4e10 (atan 1 1)))))
+  (number->string (* 4e10 (atan 1 1))))
                                     @result{} "3.141593e10"
 (parameterize ((param:flonum-printer-cutoff '(absolute -4 engineering)))
-  (lambda ()
-    (number->string (* 4e10 (atan 1 1)))))
+  (number->string (* 4e10 (atan 1 1))))
                                     @result{} "31.41593e9"
 (parameterize ((param:flonum-printer-cutoff '(absolute -5)))
-  (lambda ()
-    (number->string (* 4e10 (atan 1 1)))))
+  (number->string (* 4e10 (atan 1 1))))
                                     @result{} "31415900000."
 @end example
 
