@@ -33,7 +33,7 @@ USA.
 ;;; This matcher implements traditional list-based pattern matching with element
 ;;; variables, segment variables, and backward reference maching.  It has some
 ;;; additional features, including: support for explicit-renaming macros using a
-;;; rename procedure; element-variable restrictions; and anonymous variables.
+;;; rename procedure; variable restrictions; and anonymous variables.
 ;;;
 ;;; Element-variable syntax:
 ;;;   (?)			anonymous, no restriction
@@ -41,9 +41,9 @@ USA.
 ;;;   (? <predicate>)		anonymous, restriction
 ;;;   (? <symbol> <predicate>)	named, restriction
 ;;;
-;;; Segment-variable syntax:
-;;;   (??)			anonymous
-;;;   (?? <symbol>)		named
+;;; Segment variable are the same except they start with ?? instead of ?.  A
+;;; restriction on an element variable applies to the matched value.  A
+;;; restriction on a segment variable applies to each of the matched values.
 
 (declare (usual-integrations))
 
@@ -71,13 +71,14 @@ USA.
 
 (define (compile-pattern pattern)
   (let loop ((pattern pattern))
-    (cond ((element-var? pattern)
-	   (element-matcher (var-type pattern)
-			    (var-name pattern)
-			    (element-var-restriction pattern)))
-	  ((segment-var? pattern)
-	   (segment-matcher (var-type pattern)
-			    (var-name pattern)))
+    (cond ((var? pattern)
+	   (if (var-element? pattern)
+	       (element-matcher (var-type pattern)
+				(var-name pattern)
+				(var-restriction pattern))
+	       (segment-matcher (var-type pattern)
+				(var-name pattern)
+				(var-restriction pattern))))
 	  ((list? pattern)
 	   (list-matcher (map loop pattern)))
 	  ((identifier? pattern)
@@ -90,8 +91,7 @@ USA.
 (define (simple-matcher-pattern->names pattern)
   (reverse
    (let loop ((pattern pattern) (names '()))
-     (cond ((or (element-var? pattern)
-		(segment-var? pattern))
+     (cond ((var? pattern)
             (let ((name (var-name pattern)))
 	      (if (and name (not (memq name names)))
 		  (cons name names)
@@ -103,9 +103,13 @@ USA.
 
 ;;;; Pattern syntax
 
-(define (element-var? pattern)
+(define (var-element? var)
+  (eq? '? (car var)))
+
+(define (var? pattern)
   (and (pair? pattern)
-       (eq? '? (car pattern))
+       (or (eq? '? (car pattern))
+	   (eq? '?? (car pattern)))
        (or (null? (cdr pattern))
 	   (and (pair? (cdr pattern))
 		(if (null? (cddr pattern))
@@ -115,14 +119,6 @@ USA.
 			 (unary-procedure? (caddr pattern))
 			 (null? (cdddr pattern))))))))
 
-(define (segment-var? pattern)
-  (and (pair? pattern)
-       (eq? '?? (car pattern))
-       (or (null? (cdr pattern))
-	   (and (pair? (cdr pattern))
-		(symbol? (cadr pattern))
-		(null? (cddr pattern))))))
-
 (define (var-type var)
   (car var))
 
@@ -131,7 +127,7 @@ USA.
        (symbol? (cadr var))
        (cadr var)))
 
-(define (element-var-restriction var)
+(define (var-restriction var)
   (and (pair? (cdr var))
        (if (unary-procedure? (cadr var))
 	   (cadr var)
@@ -179,7 +175,7 @@ USA.
 		  (succeed (cdr data) dict)))))
   match-element)
 
-(define (segment-matcher type name)
+(define (segment-matcher type name restriction)
   (define (match-segment data dict id=? succeed)
     (declare (ignore id=?))
     (and (list? data)
@@ -196,10 +192,14 @@ USA.
 		     (or (succeed tail
 				  (extend-dict type name (reverse head) dict))
 			 (and (pair? tail)
+			      (or (not restriction)
+				  (restriction (car tail)))
 			      (loop (cdr tail) (cons (car tail) head)))))))
 	     (let loop ((tail data))
 	       (or (succeed tail dict)
 		   (and (pair? tail)
+			(or (not restriction)
+			    (restriction (car tail)))
 			(loop (cdr tail))))))))
   match-segment)
 
