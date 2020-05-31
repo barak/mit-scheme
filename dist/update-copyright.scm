@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -54,7 +54,7 @@ USA.
 				     (pathname-as-directory input))
 				    (cdr pathnames)))))
 		(begin
-		  (if (and (file-regular? input)
+		  (if (and (eq? 'regular (file-type-direct input))
 			   (not (match-path input root-dir files-to-skip)))
 		      (let ((results (translation (read-file-leader input))))
 			(if (pair? results)
@@ -75,7 +75,7 @@ USA.
 (define dirs-to-skip
   (compile-regsexp
    '(seq (alt (seq (? (seq (* (any-char)) "/"))
-		   (alt "." ".." ".git" "CVS"))
+		   (alt "." ".." ".git" "autom4te.cache" "CVS"))
 	      "src/etc/iso8859-mapping"
 	      "src/etc/ucd-raw-props"
 	      "src/relnotes")
@@ -83,34 +83,66 @@ USA.
 
 (define files-to-skip
   (compile-regsexp
-   '(seq (alt (seq (+ (any-char))
-		   "."
-		   (alt "bci"
-			"bin"
-			"com"
-			"cur"
-			"ext"
-			"icns"
-			"ico"
-			"pdf"
-			"png"))
+   `(seq (alt (seq (+ (any-char))
+		   (alt ".bci"
+			".bin"
+			".com"
+			".cur"
+			".ext"
+			".icns"
+			".ico"
+			".pdf"
+			".png"
+			"~"))
 	      (seq (? (seq (* (any-char)) "/"))
-		   (alt "aclocal.m4"
+		   (alt ".DS_Store"
+			".dir-locals.el"
+			".gitignore"
+			"aclocal.m4"
+			"config.log"
 			"config.guess"
+			"config.status"
 			"config.sub"
+			"configure"
 			"install-sh"
 			"mkinstalldirs"))
 	      (seq "html/"
 		   (+ (any-char))
 		   ".html")
+	      (seq "doc/"
+		   (+ (any-char))
+		   (alt ".aux"
+			".cp"
+			".cps"
+			".fn"
+			".fns"
+			".html"
+			".info"
+			".log"
+			".nv"
+			".nvs"
+			".op"
+			".ops"
+			".pdf"
+			".toc"
+			".vr"
+			".vrs"
+			(seq ".info-" (+ (char-in ,char-set:numeric)))))
+	      (seq "doc/Makefile")
+	      (seq "doc/" (+ (any-char)) "/Makefile")
+	      (seq "doc/ref-manual/"
+		   (+ (any-char))
+		   ".texi")
+	      (seq "doc/ref-manual/fig/"
+		   (+ (any-char))
+		   (alt ".eps" ".pdf" ".ps"))
 	      "src/microcode/svm1-defns.h")
 	 (line-end))))
 
 (define suppress-warnings-for
   (compile-regsexp
    '(seq (alt (seq (? (seq (* (any-char)) "/"))
-		   (alt ".gitignore"
-			"AUTHORS"
+		   (alt "AUTHORS"
 			"ChangeLog"
 			"COPYING"
 			"INSTALL"
@@ -119,14 +151,11 @@ USA.
 			"README"
 			"TAGS"
 			"TODO"
-			"ed-ffi.scm"
-			(seq "CVS/" (+ (any-char)))))
+			"ed-ffi.scm"))
 	      (seq (+ (any-char))
-		   (alt ".ico"
-			".sh"
+		   (alt ".sh"
 			".txt"))
 	      (seq (alt "doc/ffi/prhello"
-			"doc/ref-manual/"
 			"etc/"
 			"src/compiler/documentation"
 			"src/compiler/improvements"
@@ -150,18 +179,39 @@ USA.
 		   (alt "compile.scm"
 			"make.scm"
 			"optiondb.scm"))
+	      (seq "src/compiler/tests/" (+ (any-char)))
+	      (seq "src/microcode/chacha" (+ (any-char)))
+	      (seq "doc/ref-manual/fig/" (+ (any-char)) ".eps.in")
 	      "dist/index.html"
 	      "dist/make-upload-files"
 	      "dist/scheme-inst.nsi"
+	      "doc/ffi/Makefile.in"
 	      "doc/index.html"
 	      "doc/info-dir"
 	      "doc/mit-scheme.1"
+	      "doc/ref-manual/gfdl.texinfo"
+	      "doc/ref-manual/tools.scm"
+	      "src/berkeley-db/configure.ac"
+	      "src/compiler/base/fasdump.scm"
 	      "src/edwin/TUTORIAL"
+	      "src/edwin/diff.scm"
+	      "src/edwin/paredit.scm"
 	      "src/etc/TUTORIAL"
+	      "src/ffi/ffi.pkg"
 	      "src/imail/fake-env.scm"
+	      "src/microcode/fma.c"
+	      "src/microcode/keccak.c"
+	      "src/microcode/keccak.h"
 	      "src/microcode/liarc-gendeps.c"
+	      "src/microcode/md5.c"
+	      "src/microcode/md5.h"
 	      "src/run-build"
+	      "src/runtime/division.scm"
+	      "src/runtime/ieee754.scm"
+	      "src/runtime/stack-sample.scm"
 	      "src/win32/tests/CLIPBRD.SCM"
+	      "tests/libraries/test-srfi-140.scm"
+	      "tests/runtime/test-division.scm"
 	      "tests/runtime/test-string-normalization-data")
 	 (line-end))))
 
