@@ -2662,7 +2662,17 @@ fill_trampoline (SCHEME_OBJECT * block,
     if (write_cc_entry_offset ((&ceo), addr))
       return (true);
   }
-  return (store_trampoline_insns (addr, kind));
+  if (store_trampoline_insns (addr, kind))
+    return (true);
+#ifdef FLUSH_I_CACHE_REGION
+  /* This is longer than the actual instructions, but trampolines are
+     small -- only one, the compiler utilities, ever has more than one
+     entry -- and there's not much harm in flushing an i-cache for a
+     few words of memory that will never be executed as instructions
+     anyway unless things are horribly awry.  */
+  FLUSH_I_CACHE_REGION (block, (CC_BLOCK_ADDR_LENGTH (block)));
+#endif
+  return (false);
 }
 
 SCHEME_OBJECT *
