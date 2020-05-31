@@ -1,4 +1,5 @@
 
+# -*-makefile-*-
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 #     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
@@ -128,6 +129,7 @@ clean: mostlyclean
 	rm -f $(FIGURES_PDF)
 	rm -f $(FIGURES_PNG)
 	rm -rf $(HTML_TARGET)
+	rm -f $(HTML_NOSPLIT_TARGET)
 	rm -rf $(TEXINFO_ROOT).aux $(TEXINFO_ROOT).log $(TEXINFO_ROOT).toc
 	rm -rf $(TEXINFO_ROOT).pg $(TEXINFO_ROOT).tp
 	rm -rf $(TEXINFO_ROOT).cp* $(TEXINFO_ROOT).fn* $(TEXINFO_ROOT).ky*
