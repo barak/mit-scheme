@@ -35,12 +35,40 @@ USA.
 
 #ifdef NEED_FEEXCEPT_WORKAROUND
 
+# ifdef __APPLE__
+
+#include <xmmintrin.h>
+
+int fegetexcept(void)
+{
+  return ((~ ((_mm_getcsr ()) >> 7)) & FE_ALL_EXCEPT);
+}
+
+int feenableexcept(unsigned int excepts)
+{
+  unsigned int csr = (_mm_getcsr ());
+  unsigned int old_excepts = ((~ (csr >> 7)) & FE_ALL_EXCEPT);
+  _mm_setcsr (csr & (~ ((excepts & FE_ALL_EXCEPT) << 7)));
+  return (old_excepts);
+}
+
+int fedisableexcept(unsigned int excepts)
+{
+  unsigned int csr = (_mm_getcsr ());
+  unsigned int old_excepts = ((~ (csr >> 7)) & FE_ALL_EXCEPT);
+  _mm_setcsr (csr | ((excepts & FE_ALL_EXCEPT) << 7));
+  return (old_excepts);
+}
+
+# else
+
 // From http://www-personal.umich.edu/~williams/archive/computation/fe-handling-example.c
+// Had to be fixed: was returning disabled exceptions, not enabled ones.
 
 int fegetexcept(void)
 {
   fenv_t fenv;
-  return (fegetenv (&fenv)) ? -1 : (fenv.__control & FE_ALL_EXCEPT);
+  return ((fegetenv (&fenv)) ? -1 : ((~ fenv.__control) & FE_ALL_EXCEPT));
 }
 
 int feenableexcept(unsigned int excepts)
@@ -49,14 +77,14 @@ int feenableexcept(unsigned int excepts)
     if (fegetenv (&fenv))
       return -1;
 
-    unsigned int new_excepts = excepts & FE_ALL_EXCEPT;
-    unsigned int old_excepts = fenv.__control & FE_ALL_EXCEPT;
+    unsigned int new_excepts = (excepts & FE_ALL_EXCEPT);
+    unsigned int old_excepts = ((~ fenv.__control) & FE_ALL_EXCEPT);
 
     // unmask
-    fenv.__control &= ~new_excepts;
-    fenv.__mxcsr   &= ~(new_excepts << 7);
+    fenv.__control &= (~ new_excepts);
+    fenv.__mxcsr   &= (~ (new_excepts << 7));
 
-    return (fesetenv (&fenv)) ? -1 : old_excepts;
+    return ((fesetenv (&fenv)) ? -1 : old_excepts);
 }
 
 int fedisableexcept(unsigned int excepts)
@@ -65,15 +93,16 @@ int fedisableexcept(unsigned int excepts)
     if (fegetenv (&fenv))
       return -1;
 
-    unsigned int new_excepts = excepts & FE_ALL_EXCEPT;
-    unsigned int old_excepts = fenv.__control & FE_ALL_EXCEPT;
+    unsigned int new_excepts = (excepts & FE_ALL_EXCEPT);
+    unsigned int old_excepts = ((~ fenv.__control) & FE_ALL_EXCEPT);
 
     // mask
     fenv.__control |= new_excepts;
-    fenv.__mxcsr   |= new_excepts << 7;
+    fenv.__mxcsr   |= (new_excepts << 7);
 
-    return (fesetenv (&fenv)) ? -1 : old_excepts;
+    return ((fesetenv (&fenv)) ? -1 : old_excepts);
 }
+#  endif // __APPLE__
 #endif // NEED_FEEXCEPT_WORKAROUND
 
 #ifndef __GNUC__
