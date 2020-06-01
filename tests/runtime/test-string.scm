@@ -255,3 +255,67 @@ USA.
 
 (define (substring:predict s i j)
   (list->string (sublist (string->list s) i j)))
+
+(define-test 'string-any
+  (lambda ()
+    (let ((s1 "1234xy4321")
+	  (s2 "56789a9876")
+	  (s3 "12345")
+	  (s4 "12345x"))
+
+      (assert-true (string-any char-alphabetic? s1))
+      (assert-true (string-any char-alphabetic? s2))
+      (assert-false (string-any char-alphabetic? s3))
+      (assert-true (string-any char-alphabetic? s4))
+
+      (assert-eqv (string-any alpha-value s1) #\x)
+      (assert-eqv (string-any alpha-value s2) #\a)
+      (assert-eqv (string-any alpha-value s4) #\x)
+
+      (assert-true (string-any both-alphabetic? s1 s2))
+      (assert-false (string-any both-alphabetic? s1 s3))
+      (assert-true (string-any both-alphabetic? s1 s4))
+      (assert-false (string-any both-alphabetic? s2 s3))
+      (assert-true (string-any both-alphabetic? s2 s4))
+
+      (assert-equal (string-any both-alpha-value s1 s2)
+		    '(#\y #\a))
+      (assert-equal (string-any both-alpha-value s1 s4)
+		    '(#\y #\x))
+      (assert-equal (string-any both-alpha-value s2 s4)
+		    '(#\a #\x)))))
+
+(define-test 'string-every
+  (lambda ()
+    (let ((s1 "abcdefgh")
+	  (s2 "wxyz")
+	  (s3 "abcd12dcba"))
+
+      (assert-true (string-every char-alphabetic? s1))
+      (assert-true (string-every char-alphabetic? s2))
+      (assert-false (string-every char-alphabetic? s3))
+
+      (assert-eqv (string-every alpha-value s1) #\h)
+      (assert-eqv (string-every alpha-value s2) #\z)
+
+      (assert-true (string-every both-alphabetic? s1 s2))
+      (assert-false (string-every both-alphabetic? s1 s3))
+      (assert-true (string-every both-alphabetic? s2 s3))
+
+      (assert-equal (string-every both-alpha-value s1 s2)
+		    '(#\d #\z))
+      (assert-equal (string-every both-alpha-value s2 s3)
+		    '(#\z #\d)))))
+
+(define (alpha-value c)
+  (and (char-alphabetic? c)
+       c))
+
+(define (both-alphabetic? c1 c2)
+  (and (char-alphabetic? c1)
+       (char-alphabetic? c2)))
+
+(define (both-alpha-value c1 c2)
+  (and (char-alphabetic? c1)
+       (char-alphabetic? c2)
+       (list c1 c2)))

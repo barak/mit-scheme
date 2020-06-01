@@ -144,6 +144,8 @@ USA.
 (vector-every < '#(1 2 3) '#(2 3 4)) 'expect-true
 (vector-any (lambda (x) (if (number? x) 'yes #f)) '#(1 2 x y z))
  '(expect eqv? 'yes)
+(vector-every (lambda (x) (if (symbol? x) 'yes #t)) '#(1 2 x y z))
+ '(expect eqv? 'yes)
 
 (define vp
   (let-values (((new off) (vector-partition number? '#(1 x 2 y 3 z))))

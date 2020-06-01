@@ -1546,17 +1546,19 @@ USA.
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0))
       (and (fix:< i n)
-	   (if (proc i)
-	       #t
+	   (or (proc i)
 	       (loop (fix:+ i 1)))))))
 
 (define (string-every proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
-    (let loop ((i 0))
-      (if (fix:< i n)
-	  (and (proc i)
-	       (loop (fix:+ i 1)))
-	  #t))))
+    (if (fix:= n 0)
+	#t
+	(let ((n-1 (fix:- n 1)))
+	  (let loop ((i 0))
+	    (if (fix:< i n-1)
+		(and (proc i)
+		     (loop (fix:+ i 1)))
+		(proc i)))))))
 
 (define (string-find-first-index proc string . strings)
   (guarantee nfc-string? string 'string-find-first-index)

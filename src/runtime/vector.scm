@@ -224,27 +224,33 @@ USA.
 	      #f)))))
 
 (define (vector-every procedure vector . vectors)
-  (let ((n (vector-length vector)))
-    (if (pair? vectors)
-	(let ((n
-	       (fold (lambda (v n)
-		       (fix:min (vector-length v) n))
-		     n
-		     vectors)))
-	  (let loop ((i 0))
-	    (if (fix:< i n)
-		(and (apply procedure
-			    (vector-ref vector i)
-			    (map (lambda (vector*)
-				   (vector-ref vector* i))
-				 vectors))
-		     (loop (fix:+ i 1)))
-		#t)))
-	(let loop ((i 0))
-	  (if (fix:< i n)
-	      (and (procedure (vector-ref vector i))
-		   (loop (fix:+ i 1)))
-	      #t)))))
+  (let ((n
+	 (fold (lambda (v n)
+		 (fix:min (vector-length v) n))
+	       (vector-length vector)
+	       vectors)))
+    (if (fix:= n 0)
+	#t
+	(let ((n-1 (fix:- n 1)))
+	  (if (pair? vectors)
+	      (let loop ((i 0))
+		(if (fix:< i n-1)
+		    (and (apply procedure
+				(vector-ref vector i)
+				(map (lambda (vector*)
+				       (vector-ref vector* i))
+				     vectors))
+			 (loop (fix:+ i 1)))
+		    (apply procedure
+			   (vector-ref vector i)
+			   (map (lambda (vector*)
+				  (vector-ref vector* i))
+				vectors))))
+	      (let loop ((i 0))
+		(if (fix:< i n-1)
+		    (and (procedure (vector-ref vector i))
+			 (loop (fix:+ i 1)))
+		    (procedure (vector-ref vector i)))))))))
 
 (define (subvector-find-next-element vector start end item)
   (guarantee-subvector vector start end 'subvector-find-next-element)
