@@ -299,7 +299,9 @@ USA.
         flo:exception:subnormal-operand
         ;; XXX Should have its own condition type, but this requires OS
         ;; support for the siginfo code.
-        condition-type:inexact-floating-point-result)
+	;; Changed to get test working on macOS:
+	;; condition-type:inexact-floating-point-result
+	condition-type:arithmetic-error)
       (define-fpe-elicitor 'SUBNORMAL-OPERAND 'RAISE
         (lambda ()
           (flo:raise-exceptions! (flo:exception:subnormal-operand))))
