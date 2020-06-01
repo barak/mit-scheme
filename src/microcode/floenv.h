@@ -50,6 +50,9 @@ USA.
      extern int fegetexcept(void);
      extern int feenableexcept(unsigned int);
      extern int fedisableexcept(unsigned int);
+#    ifndef FE_DENORMAL
+#      define FE_DENORMAL FE_DENORMALOPERAND
+#    endif
 #  endif
 #elif ((!defined (CMPINTMD_EMULATES_FENV)) && (defined (HAVE_IEEEFP_H)))
 
