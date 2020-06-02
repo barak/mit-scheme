@@ -760,13 +760,12 @@ static void *
 mmap_heap_malloc_try (unsigned long address, unsigned long request, int flags)
 {
   assert ((address == 0) || ((flags & (MAP_TRYFIXED | MAP_FIXED)) != 0));
-  void * addr
-    = (mmap (((void *) address),
-	     request,
-	     (PROT_EXEC | PROT_READ | PROT_WRITE),
-	     (MAP_PRIVATE | MAP_ANONYMOUS | flags),
-	     (-1),
-	     0));
+  int prot = (PROT_READ | PROT_WRITE);
+#ifdef CC_IS_NATIVE
+  prot |= PROT_EXEC;
+#endif
+  flags |= (MAP_PRIVATE | MAP_ANONYMOUS);
+  void * addr = (mmap (((void *) address), request, prot, flags, (-1), 0));
   return ((addr == MAP_FAILED) ? 0 : addr);
 }
 
