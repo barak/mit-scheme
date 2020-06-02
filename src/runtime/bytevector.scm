@@ -29,7 +29,9 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime character) '(runtime miscellaneous-global))
+(add-boot-deps! '(runtime number)
+		'(runtime character)
+		'(runtime miscellaneous-global))
 
 (define (u8? object)
   (and (index-fixnum? object)
@@ -266,7 +268,9 @@ USA.
      (and (exact-nonnegative-integer? object)
 	  (int:<= object #xFFFFFFFF)))
 
-   (register-predicate! u32? 'u32 '<= exact-nonnegative-integer?)))
+   (add-boot-init!
+    (lambda ()
+      (register-predicate! u32? 'u32 '<= exact-nonnegative-integer?)))))
 
 (define-integrable (bytes->u32le b0 b1 b2 b3) (bytes->u32be b3 b2 b1 b0))
 (define-integrable u32le-byte0 u32be-byte3)
