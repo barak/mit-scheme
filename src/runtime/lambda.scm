@@ -135,7 +135,8 @@ USA.
   (set! set-scode-lambda-body!
 	(dispatch-1 'set-scode-lambda-body!
 		    set-clambda-unwrapped-body!
-		    set-xlambda-unwrapped-body!)))
+		    set-xlambda-unwrapped-body!))
+  unspecific)
 
 ;;;; Hairy Advice Wrappers
 
