@@ -93,9 +93,9 @@ USA.
       (or (try-variable "TMPDIR")
 	  (try-variable "TEMP")
 	  (try-variable "TMP")
-	  (try-directory "/var/tmp")
 	  (try-directory "/usr/tmp")
 	  (try-directory "/tmp")
+	  (try-directory "/var/tmp")
 	  (error "Can't find temporary directory.")))))
 
 (define (file-attributes-direct filename)
