@@ -648,8 +648,8 @@ USA.
   ulist<)
 
 (define (make-ulist-hash elt-hash)
-  (cond ((eqv? eq? elt-hash) eq-ulist-hash)
-	((eqv? eqv? elt-hash) eqv-ulist-hash)
+  (cond ((eqv? eq-hash elt-hash) eq-ulist-hash)
+	((eqv? eqv-hash elt-hash) eqv-ulist-hash)
 	(else
 	 (let ((elt-hash (checked-hash elt-hash)))
 	   (%make-ulist-hash elt-hash)))))
@@ -767,8 +767,8 @@ USA.
   uwlist<)
 
 (define (make-uwlist-hash elt-hash)
-  (cond ((eqv? eq? elt-hash) eq-uwlist-hash)
-	((eqv? eqv? elt-hash) eqv-uwlist-hash)
+  (cond ((eqv? eq-hash elt-hash) eq-uwlist-hash)
+	((eqv? eqv-hash elt-hash) eqv-uwlist-hash)
 	(else
 	 (let ((elt-hash (checked-hash elt-hash)))
 	   (%make-uwlist-hash elt-hash)))))
