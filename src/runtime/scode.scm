@@ -43,7 +43,7 @@ USA.
   (let ((type-vector (make-vector (microcode-type/code-limit) #f)))
     (for-each (lambda (name)
 		(vector-set! type-vector (microcode-type name) #t))
-	      '(access assignment combination comment conditional constant
+	      '(access assignment combination comment conditional
 		       definition delay disjunction extended-lambda lambda
 		       lexpr quotation sequence the-environment variable))
     type-vector))
