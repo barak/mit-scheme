@@ -112,7 +112,7 @@ USA.
 (define (rewrite/variable expression environment bound-names)
   (let ((name (scode-variable-name expression)))
     (if (memq name bound-names)
-	(ccenv-lookup environment name)
+	(ccenv-lookup environment name (scode-variable-safe? expression))
 	expression)))
 
 (define (rewrite/unassigned? expression environment bound-names)
@@ -120,11 +120,14 @@ USA.
     (if (memq name bound-names)
 	(make-scode-combination
 	 (make-scode-absolute-reference 'unassigned-reference-trap?)
-	 (list (ccenv-lookup environment name)))
+	 (list (ccenv-lookup environment name #f)))
 	expression)))
 
-(define (ccenv-lookup environment name)
-  (make-scode-combination (make-scode-absolute-reference 'environment-lookup)
+(define (ccenv-lookup environment name safe?)
+  (make-scode-combination (make-scode-absolute-reference
+			   (if safe?
+			       'environment-safe-lookup
+			       'environment-lookup))
 			  (list (environment-that-binds environment name)
 				name)))
 

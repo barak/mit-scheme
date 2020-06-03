@@ -86,7 +86,7 @@ USA.
 
 (define-item-compiler var-item?
   (lambda (item)
-    (output/variable (var-item-id item))))
+    (output/variable (var-item-id item) #f)))
 
 (define-item-renderer var-item?
   (lambda (item)

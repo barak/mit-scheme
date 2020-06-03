@@ -612,8 +612,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_ASSIGNMENT:
       outf (stream, "[set! ");
-      print_symbol (stream, (MEMORY_REF ((MEMORY_REF (obj, ASSIGN_NAME)),
-					 VARIABLE_SYMBOL)));
+      print_symbol (stream, (VARIABLE_SYMBOL (MEMORY_REF (obj, ASSIGN_NAME))));
       outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 
@@ -668,7 +667,9 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_VARIABLE:
       outf (stream, "[variable ");
-      print_symbol (stream, (MEMORY_REF (obj, VARIABLE_SYMBOL)));
+      print_symbol (stream, (VARIABLE_SYMBOL (obj)));
+      if (VARIABLE_SAFE_P (obj))
+        outf (stream, " (safe)");
       outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 

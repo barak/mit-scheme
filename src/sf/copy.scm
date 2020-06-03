@@ -286,7 +286,8 @@ USA.
     (reference/make (reference/scode expression)
 		    block
 		    (copy/variable block environment
-				   (reference/variable expression)))))
+				   (reference/variable expression))
+		    (reference/safe? expression))))
 
 (define-method/copy 'sequence
   (lambda (block environment expression)

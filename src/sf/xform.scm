@@ -176,7 +176,8 @@ USA.
   (reference/make expression
 		  block
 		  (environment/lookup environment
-				      (scode-variable-name expression))))
+				      (scode-variable-name expression))
+		  (scode-variable-safe? expression)))
 
 (define (transform/assignment block environment expression)
   (let ((name (scode-assignment-name expression))

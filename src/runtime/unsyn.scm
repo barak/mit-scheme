@@ -130,7 +130,9 @@ USA.
 
 (define (unsyntax-variable-object environment object)
   (declare (ignore environment))
-  (scode-variable-name object))
+  (if (scode-variable-safe? object)
+      `(safe-reference ,(scode-variable-name object))
+      (scode-variable-name object)))
 
 (define (unsyntax-access-object environment object)
   (or (and (unsyntaxer:elide-global-accesses?)

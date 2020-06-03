@@ -148,9 +148,7 @@ USA.
  * Corresponds to a variable lookup or variable reference. Contains the
  * symbol referenced
  */
-#define VARIABLE_SYMBOL		0
-
-#define GET_VARIABLE_SYMBOL(variable)					\
-  (MEMORY_REF ((variable), VARIABLE_SYMBOL))
+#define VARIABLE_SYMBOL(variable) (MEMORY_REF ((variable), 0))
+#define VARIABLE_SAFE_P(variable) ((MEMORY_REF ((variable), 1)) == SHARP_F)
 
 #endif /* not SCM_SCODE_H */

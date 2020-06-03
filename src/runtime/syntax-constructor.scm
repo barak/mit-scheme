@@ -104,6 +104,11 @@ USA.
    (lambda (close)
      (list (close 'delay)
 	   (close-part close expr)))))
+
+(define (scons-safe-ref id)
+  (make-open-expr
+   (lambda (close)
+     (list (close 'safe-reference) id))))
 
 (define (scons-if predicate consequent alternative)
   (make-open-expr

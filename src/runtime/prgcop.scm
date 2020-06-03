@@ -240,7 +240,9 @@ USA.
 	 (error "copy-lambda-object: Unknown type" obj))))
 
 (define (copy-variable-object obj)
-  (let ((var (make-scode-variable (scode-variable-name obj))))
+  (let ((var
+	 (make-scode-variable (scode-variable-name obj)
+			      (scode-variable-safe? obj))))
     (add-association! obj var)
     var))
 

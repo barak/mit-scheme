@@ -323,7 +323,8 @@ USA.
 
    (define-as-handler scode-variable?
      (lambda (substitution expression)
-       (make-scode-variable (substitution (scode-variable-name expression)))))
+       (make-scode-variable (substitution (scode-variable-name expression))
+			    (scode-variable-safe? expression))))
 
    (define-as-handler quoted-identifier?
      (lambda (substitution expression)

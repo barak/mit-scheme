@@ -160,7 +160,8 @@ Examples:
    false
    block
    (or (block/lookup-name block name false)
-       (block/lookup-name (integrate/get-top-level-block) name true))))
+       (block/lookup-name (integrate/get-top-level-block) name true))
+   #f))
 
 (define-integrable (handle-variable object core)
   (if (variable? object)

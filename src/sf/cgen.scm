@@ -121,11 +121,11 @@ USA.
    (lambda (interns expression)
      (cgen/output expression (handler interns expression)))))
 
-(define (cgen/variable interns variable)
+(define (cgen/variable interns variable safe?)
   (cdr (or (assq variable (cdr interns))
 	   (let ((association
 		  (cons variable
-			(make-scode-variable (variable/name variable)))))
+			(make-scode-variable (variable/name variable) safe?))))
 	     (set-cdr! interns (cons association (cdr interns)))
 	     association))))
 
@@ -138,7 +138,7 @@ USA.
   (lambda (interns expression)
     (make-scode-assignment
      (scode-variable-name
-      (cgen/variable interns (assignment/variable expression)))
+      (cgen/variable interns (assignment/variable expression) #f))
      (cgen/expression interns (assignment/value expression)))))
 
 (define-method/cgen 'combination
@@ -220,7 +220,9 @@ USA.
 
 (define-method/cgen 'reference
   (lambda (interns expression)
-    (cgen/variable interns (reference/variable expression))))
+    (cgen/variable interns
+		   (reference/variable expression)
+		   (reference/safe? expression))))
 
 (define-method/cgen 'sequence
   (lambda (interns expression)

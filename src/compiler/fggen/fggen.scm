@@ -308,15 +308,6 @@ USA.
       (make-subproblem/canonical (make-return block continuation rvalue)
 				 continuation)))
 
-(define-integrable (scode/make-safe-variable name)
-  (cons safe-variable-tag name))
-
-(define-integrable (scode/safe-variable-name reference)
-  (cdr reference))
-
-(define safe-variable-tag
-  "safe-variable")
-
 ;; This is a kludge.
 
 (define *global-variables*)
@@ -359,25 +350,20 @@ USA.
 	     (cons variable
 		   (block-variables-nontransitively-free block))))))
 
-(define-integrable (make-variable-generator extract-name safe?)
+(define-integrable (make-variable-generator extract-name extract-safe?)
   (lambda (block continuation context expression)
-    context				; ignored
+    (declare (ignore context))
     (continue/rvalue block
 		     continuation
 		     (make-reference block
-				     (find-name block
-						(extract-name expression))
-				     safe?))))
+				     (find-name block (extract-name expression))
+				     (extract-safe? expression)))))
 
 (define generate/variable
-  (make-variable-generator scode/variable-name #f))
-
-(define generate/safe-variable
-  (make-variable-generator scode/safe-variable-name #t))
+  (make-variable-generator scode/variable-name scode/variable-safe?))
 
 (define generate/global-variable
-  (make-variable-generator scode/global-variable-name #f))
-
+  (make-variable-generator scode/global-variable-name (lambda (x) x #f)))
 
 (define (generate/lambda block continuation context expression)
   (generate/lambda* block continuation
@@ -708,7 +694,7 @@ USA.
 	   (scode/make-let (list new-value)
 			   (list value)
 	     (scode/make-let (list old-value)
-			     (list (scode/make-safe-variable name))
+			     (list (scode/make-variable name #t))
 	       (scode/make-assignment name (scode/make-variable new-value))
 	       (scode/make-variable old-value))))))))
 
@@ -959,10 +945,7 @@ USA.
 					  context expression))))))
 	(generate/pair
 	 (lambda (block continuation context expression)
-	   (cond ((eq? (car expression) safe-variable-tag)
-		  (generate/safe-variable block continuation
-					  context expression))
-		 ((eq? (car expression) constant-quotation-tag)
+	   (cond ((eq? (car expression) constant-quotation-tag)
 		  (generate/constant-quotation block continuation
 					       context expression))
 		 (else

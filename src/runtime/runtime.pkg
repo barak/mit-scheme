@@ -4511,6 +4511,7 @@ USA.
 	  scode-unassigned?-name
 	  scode-unassigned??
 	  scode-variable-name
+	  scode-variable-safe?
 	  scode-variable?
 	  undefined-scode-conditional-branch)
   (export (runtime lambda-abstraction)
@@ -5177,6 +5178,7 @@ USA.
 	  scons-quote
 	  scons-quote-identifier
 	  scons-rule
+	  scons-safe-ref
 	  scons-set!))
 
 (define-package (runtime syntax rename)
@@ -5247,6 +5249,7 @@ USA.
 	  (quote $quote)		;(scheme base)
 	  (quote-identifier $quote-identifier)
 	  (rsc-macro-transformer $rsc-macro-transformer)
+	  (safe-reference $safe-reference)
 	  (sc-macro-transformer $sc-macro-transformer)
 	  (set! $set!)			;(scheme base)
 	  (spar-macro-transformer $spar-macro-transformer)

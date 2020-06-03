@@ -213,7 +213,9 @@ ARBITRARY:	The expression may be executed more than once.  It
 	   (if (eq? name environment-variable)
 	       exp
 	       (scode/make-combination
-		(ucode-primitive LEXICAL-REFERENCE)
+		(if (scode/variable-safe? body)
+		    (ucode-primitive safe-lexical-reference)
+		    (ucode-primitive lexical-reference))
 		(list exp name)))))
 	((not (scode/the-environment? exp))
 	 (normal))
@@ -261,7 +263,10 @@ ARBITRARY:	The expression may be executed more than once.  It
 	   (make-canout var true false true))
 	  (else
 	   (make-canout
-	    (scode/make-combination (ucode-primitive LEXICAL-REFERENCE)
+	    (scode/make-combination
+	     (if (scode/variable-safe? var)
+		 (ucode-primitive safe-lexical-reference)
+		 (ucode-primitive lexical-reference))
 	     (list (scode/make-variable environment-variable)
 		   name))
 	    true true false)))))

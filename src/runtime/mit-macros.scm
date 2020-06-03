@@ -966,24 +966,28 @@ USA.
 	 `((subform (* (subform (list any ,(optional-value-pattern)))))
 	   (+ any))
        (lambda (bindings body-forms)
+
+	 (define (swap-id id out)
+	   (if (identifier? id)
+	       (let ((temp (new-identifier (symbol 'temp- id))))
+		 (scons-let (list (list temp (scons-safe-ref id)))
+		   (scons-set! id (scons-safe-ref out))
+		   (scons-set! out (scons-safe-ref temp))
+		   (unspecific-expression)))
+	       ;; Presumably an access; set! will figure it out.
+	       (scons-set! id (scons-set! out (scons-set! id)))))
+
 	 (let ((ids (map car bindings))
 	       (vals (map cadr bindings)))
-	   (let ((temps
+	   (let ((outs
 		  (map (lambda (id)
-			 (new-identifier (symbol 'temp- id)))
+			 (new-identifier (symbol 'out- id)))
 		       ids))
 		 (swap! (new-identifier 'swap!)))
-	     (scons-let (map list temps vals)
+	     (scons-let (map list outs vals)
 	       (scons-define swap!
 		 (scons-lambda '()
-		   (apply scons-begin
-			  (map (lambda (id temp)
-				 (scons-set! id
-					     (scons-set! temp
-							 (scons-set! id))))
-			       ids
-			       temps))
-		   #f))
+		   (apply scons-begin (map swap-id ids outs))))
 	       (scons-call (scons-close 'shallow-fluid-bind)
 			   swap!
 			   (apply scons-lambda '() body-forms)

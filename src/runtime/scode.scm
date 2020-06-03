@@ -69,9 +69,11 @@ USA.
 
 ;;;; Variable
 
-(define (make-scode-variable name)
+(define (make-scode-variable name #!optional safe?)
   (guarantee symbol? name 'make-scode-variable)
-  (system-hunk3-cons (ucode-type variable) name #t '()))
+  (system-hunk3-cons (ucode-type variable) name
+		     (or (default-object? safe?) (not safe?))
+		     #f))
 
 (define (scode-variable? object)
   (object-type? (ucode-type variable) object))
@@ -80,6 +82,10 @@ USA.
 (define (scode-variable-name variable)
   (guarantee scode-variable? variable 'scode-variable-name)
   (system-hunk3-cxr0 variable))
+
+(define (scode-variable-safe? variable)
+  (guarantee scode-variable? variable 'scode-variable-safe?)
+  (not (system-hunk3-cxr1 variable)))
 
 ;;;; Definition
 

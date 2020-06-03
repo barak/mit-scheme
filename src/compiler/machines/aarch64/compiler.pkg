@@ -167,6 +167,7 @@ USA.
           (scode/unassigned?-name scode-unassigned?-name)
           (scode/unassigned?? scode-unassigned??)
           (scode/variable-name scode-variable-name)
+	  (scode/variable-safe? scode-variable-safe?)
           (scode/variable? scode-variable?)))
 
 (define-package (compiler reference-contexts)

@@ -922,7 +922,10 @@ USA.
     (list (scode-lambda-name lambda-object))))
 
 (define (print-variable variable context)
-  (*print-with-brackets 'variable variable context
+  (*print-with-brackets (if (scode-variable-safe? variable)
+			    'safe-variable
+			    'variable)
+			variable context
     (list (scode-variable-name variable))))
 
 (define (print-number object context)

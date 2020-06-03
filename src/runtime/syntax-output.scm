@@ -32,8 +32,8 @@ USA.
 (define (transformer-eval output environment)
   (eval output (senv->runtime environment)))
 
-(define (output/variable name)
-  (make-scode-variable name))
+(define (output/variable name safe?)
+  (make-scode-variable name safe?))
 
 (define (output/constant datum)
   datum)

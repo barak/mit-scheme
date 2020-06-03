@@ -439,6 +439,19 @@ USA.
        (spar-subform)
        (spar-match-null)
        (spar-push-value unassigned-item spar-arg:ctx)))))
+
+(define $safe-reference
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values safe-ref-item
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform
+	 spar-push-classified
+	 (spar-or (spar-match var-item? spar-arg:value)
+		  (spar-error "Variable required in this context:"
+			      spar-arg:form)))
+       (spar-match-null)))))
 
 ;;;; Declarations
 
@@ -530,6 +543,13 @@ USA.
       (output/quoted-identifier (var-item-id var-item)))
     (lambda ()
       `(quoted-id-item ,(var-item-id var-item)))))
+
+(define (safe-ref-item ctx var-item)
+  (expr-item ctx '()
+    (lambda ()
+      (output/variable (var-item-id var-item) #t))
+    (lambda ()
+      `(safe-ref-item ,(var-item-id var-item)))))
 
 (define (the-environment-item ctx)
   (expr-item ctx '()

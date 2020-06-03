@@ -59,7 +59,7 @@ USA.
 			 #f
 			 block scode-lambda-name:let (list variable) '() #f
 			 (make-body block
-				    (reference/make #f block variable)))))
+				    (reference/make #f block variable #f)))))
 		    (list operand)))
 
 (define (constant-eq? expression constant)
@@ -555,7 +555,7 @@ USA.
 	 block
 	 (let ((block (block/make block #t '())))
 	   (define (*const v) (constant/make #f v))
-	   (define (*ref var) (reference/make #f block var))
+	   (define (*ref var) (reference/make #f block var #f))
 	   (define (*begin . actions) (sequence/make #f actions))
 	   (define (*app operator operands)
 	     (combination/make #f block operator operands))

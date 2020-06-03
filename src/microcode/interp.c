@@ -538,9 +538,11 @@ Interpret (void)
     case TC_VARIABLE:
       {
 	SCHEME_OBJECT val = GET_VAL;
-	SCHEME_OBJECT name = (GET_VARIABLE_SYMBOL (GET_EXP));
+	SCHEME_OBJECT name = (VARIABLE_SYMBOL (GET_EXP));
 	long temp = (lookup_variable (GET_ENV, name, (&val)));
-	if (temp != PRIM_DONE)
+        if ((VARIABLE_SAFE_P (GET_EXP)) && (temp == ERR_UNASSIGNED_VARIABLE))
+          val = UNASSIGNED_OBJECT;
+	else if (temp != PRIM_DONE)
 	  {
 	    /* Back out of the evaluation. */
 	    if (temp == PRIM_INTERRUPT)
@@ -732,7 +734,7 @@ Interpret (void)
 	POP_ENV ();
 	if (TC_VARIABLE == (OBJECT_TYPE (variable)))
 	  code = (assign_variable (GET_ENV,
-				   (GET_VARIABLE_SYMBOL (variable)),
+				   (VARIABLE_SYMBOL (variable)),
 				   GET_VAL,
 				   (&old_val)));
 	else

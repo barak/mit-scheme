@@ -611,10 +611,12 @@ USA.
                    (print-procedure
                     (standard-print-method 'reference
 		      (lambda (ref)
-			(list (variable/name (reference/variable ref)))))))
+			(list (variable/name (reference/variable ref))
+			      (if (reference/safe? ref) 'safe 'normal))))))
   (scode #f read-only #t)
   block
-  variable)
+  variable
+  safe?)
 
 (define-guarantee reference "reference")
 
