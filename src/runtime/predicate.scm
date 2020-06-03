@@ -56,7 +56,7 @@ USA.
 
 (define (cached-dispatch-tag<= tag1 tag2)
   (hash-table-intern! dispatch-tag<=-cache
-		      (cons tag1 tag2)
+		      (weak-list tag1 tag2)
 		      (lambda () (uncached-dispatch-tag<= tag1 tag2))))
 
 (define (uncached-dispatch-tag<= tag1 tag2)
@@ -82,9 +82,7 @@ USA.
 	      dispatch-tag<=-overrides))
   unspecific)
 
-;; TODO(cph): should be a weak-key table, but we don't have tables that have
-;; weak compound keys.
-(define-deferred dispatch-tag<=-cache (make-equal-hash-table))
+(define-deferred dispatch-tag<=-cache (make-key-weak-list-eq-hash-table))
 (define dispatch-tag<=-overrides '())
 
 (define (any-object? object)

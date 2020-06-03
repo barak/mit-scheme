@@ -837,16 +837,17 @@ USA.
 (define-integrable (klwe-valid? entry)
   (not (weak-list-reclaimed? (car entry))))
 
-(define (call-with-klwe-key entry if-valid if-not)
+(define-integrable (call-with-klwe-key entry if-valid if-not)
   (if (klwe-valid? entry)
       (if-valid (car entry) (lambda () unspecific))
       (if-not)))
 
-(define (call-with-klwe-key&datum entry if-valid if-not)
+(define-integrable (call-with-klwe-key&datum entry if-valid if-not)
   (if (klwe-valid? entry)
       (if-valid (car entry) (cdr entry) (lambda () unspecific))
       (if-not)))
 
+(declare (integrate-operator hash-table-entry-type:key-list-weak))
 (define hash-table-entry-type:key-list-weak
   (make-entry-type cons
 		   klwe-valid?
@@ -861,16 +862,17 @@ USA.
 (define-integrable (klwde-valid? entry)
   (not (weak-list-reclaimed? entry)))
 
-(define (call-with-klwde-key entry if-valid if-not)
+(define-integrable (call-with-klwde-key entry if-valid if-not)
   (if (klwde-valid? entry)
       (if-valid (weak-cdr entry) (lambda () unspecific))
       (if-not)))
 
-(define (call-with-klwde-key&datum entry if-valid if-not)
+(define-integrable (call-with-klwde-key&datum entry if-valid if-not)
   (if (klwde-valid? entry)
       (if-valid (weak-cdr entry) (weak-car entry) (lambda () unspecific))
       (if-not)))
 
+(declare (integrate-operator hash-table-entry-type:key-list&datum-weak))
 (define hash-table-entry-type:key-list&datum-weak
   (make-entry-type (lambda (key datum) (weak-cons datum key))
 		   klwde-valid?
@@ -1317,17 +1319,11 @@ USA.
 
 ;;;; EQ/EQV/EQUAL Hash functions
 
-(define-integrable (eq-hash-mod key modulus)
-  (fix:remainder (eq-hash key) modulus))
-
 (define-integrable (eq-hash object)
   (fix:and ((ucode-primitive primitive-object-set-type)
 	    (ucode-type positive-fixnum)
 	    object)
 	   (hash-mask)))
-
-(define-integrable (eqv-hash-mod key modulus)
-  (fix:remainder (eqv-hash key) modulus))
 
 (define (eqv-hash key)
   (if (or (object-type? (ucode-type bignum) key)
@@ -1337,14 +1333,28 @@ USA.
       (primitive-object-hash key)
       (eq-hash key)))
 
+(define-integrable (eq-hash-mod key modulus)
+  (fix:remainder (eq-hash key) modulus))
+
+(define-integrable (eqv-hash-mod key modulus)
+  (fix:remainder (eqv-hash key) modulus))
+
 (define-integrable (equal-hash-mod key modulus)
   (fix:remainder (equal-hash key) modulus))
+
+(define-integrable (eq-uwlist-hash-mod key modulus)
+  (fix:remainder (eq-uwlist-hash key) modulus))
+
+(define-integrable (eqv-uwlist-hash-mod key modulus)
+  (fix:remainder (eqv-uwlist-hash key) modulus))
 
 (define (comparator-binary-hash-function comparator)
   (let ((hash-fn (comparator-hash-function comparator)))
     (cond ((eqv? eq-hash hash-fn) eq-hash-mod)
 	  ((eqv? eqv-hash hash-fn) eqv-hash-mod)
 	  ((eqv? equal-hash hash-fn) equal-hash-mod)
+	  ((eqv? eq-uwlist-hash hash-fn) eq-uwlist-hash-mod)
+	  ((eqv? eqv-uwlist-hash hash-fn) eqv-uwlist-hash-mod)
 	  (else
 	   (lambda (key modulus)
 	     (fix:remainder (hash-fn key) modulus))))))
@@ -1523,6 +1533,8 @@ USA.
 (define string-hash-table-type)
 (define strong-eq-hash-table-type)
 (define strong-eqv-hash-table-type)
+(define key-weak-list-eq-hash-table-type)
+(define key-weak-list-eqv-hash-table-type)
 (define hash-table-type-constructors)
 (define hash-metadata-table)
 (add-boot-init!
@@ -1543,6 +1555,7 @@ USA.
    (open-type-constructor! hash-table-entry-type:key-ephemeral)
    (open-type-constructor! hash-table-entry-type:datum-ephemeral)
    (open-type-constructor! hash-table-entry-type:key&datum-ephemeral)
+   (open-type-constructor! hash-table-entry-type:key-list-weak)
    (let ((make make-hash-table-type))	;For brevity...
      (set! equal-hash-table-type
 	   (make equal-hash-mod equal? #t hash-table-entry-type:strong))
@@ -1565,7 +1578,13 @@ USA.
      (set! strong-eq-hash-table-type	;Open-coded
 	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:strong))
      (set! strong-eqv-hash-table-type
-	   (make eqv-hash-mod eqv? #t hash-table-entry-type:strong)))
+	   (make eqv-hash-mod eqv? #t hash-table-entry-type:strong))
+     (set! key-weak-list-eq-hash-table-type
+	   (make eq-uwlist-hash-mod eq-uwlist= #t
+		 hash-table-entry-type:key-list-weak))
+     (set! key-weak-list-eqv-hash-table-type
+	   (make eqv-uwlist-hash-mod eqv-uwlist= #t
+		 hash-table-entry-type:key-list-weak)))
    unspecific))
 
 (define make-equal-hash-table)
@@ -1580,6 +1599,8 @@ USA.
 (define make-string-hash-table)
 (define make-strong-eq-hash-table)
 (define make-strong-eqv-hash-table)
+(define make-key-weak-list-eq-hash-table)
+(define make-key-weak-list-eqv-hash-table)
 (add-boot-init!
  (lambda ()
    (let-syntax ((init
@@ -1598,7 +1619,9 @@ USA.
      (init make-string-ci-hash-table string-ci-hash-table-type)
      (init make-string-hash-table string-hash-table-type)
      (init make-strong-eq-hash-table strong-eq-hash-table-type)
-     (init make-strong-eqv-hash-table strong-eqv-hash-table-type))
+     (init make-strong-eqv-hash-table strong-eqv-hash-table-type)
+     (init make-key-weak-list-eq-hash-table key-weak-list-eq-hash-table-type)
+     (init make-key-weak-list-eqv-hash-table key-weak-list-eqv-hash-table-type))
    unspecific))
 
 ;;;; Compatibility with SRFI 69 and older MIT Scheme
