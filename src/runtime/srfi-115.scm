@@ -98,8 +98,8 @@ USA.
 
 ;;;; Match and search
 
-(define (regexp-matches-all? re string #!optional start end)
-  (%regexp-matches? re #t string start end 'regexp-matches-all?))
+(define (regexp-matches? re string #!optional start end)
+  (%regexp-matches? re #t string start end 'regexp-matches?))
 
 (define (regexp-matches-some? re string #!optional start end)
   (%regexp-matches? re #f string start end 'regexp-matches-some?))
@@ -112,8 +112,8 @@ USA.
 		      string start end)
 	 #t)))
 
-(define (regexp-matches-all re string #!optional start end)
-  (%regexp-matches re #t string start end 'regexp-matches-all))
+(define (regexp-matches re string #!optional start end)
+  (%regexp-matches re #t string start end 'regexp-matches))
 
 (define (regexp-matches-some re string #!optional start end)
   (%regexp-matches re #f string start end 'regexp-matches-some))

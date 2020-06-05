@@ -49,7 +49,7 @@ USA.
 		   (cdr (regexp-match->list match))))))
 
 (define match-some-test (single-test regexp-matches-some 'regexp-matches-some))
-(define match-all-test (single-test regexp-matches-all 'regexp-matches-all))
+(define match-all-test (single-test regexp-matches 'regexp-matches))
 (define search-test (single-test regexp-search 'regexp-search))
 
 (define (match-some-test* sre entries)

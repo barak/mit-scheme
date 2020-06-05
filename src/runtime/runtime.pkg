@@ -5798,44 +5798,43 @@ USA.
   (files "srfi-115")
   (parent (runtime regexp))
   (export ()
-	  (regexp-matches regexp-matches-all)
-	  (regexp-matches? regexp-matches-all?)
-	  char-set->sre
-	  condition-type:compile-regexp	;extension
-	  print-regexp			;extension
-	  regexp
-	  regexp->nfa			;extension
-	  regexp-extract
-	  regexp-fold
-	  regexp-fold-right		;extension
-	  regexp-match->list
-	  regexp-match-count
-	  regexp-match-empty?		;extension
-	  regexp-match-end		;extension
-	  regexp-match-key?		;extension
+	  char-set->sre			;(srfi 115)
+	  condition-type:compile-regexp
+	  print-regexp
+	  regexp			;(srfi 115)
+	  regexp->nfa
+	  regexp-extract		;(srfi 115)
+	  regexp-fold			;(srfi 115)
+	  regexp-fold-right
+	  regexp-match->list		;(srfi 115)
+	  regexp-match-count		;(srfi 115)
+	  regexp-match-empty?
+	  regexp-match-end
+	  regexp-match-key?
 	  regexp-match-keys
-	  regexp-match-length		;extension
-	  regexp-match-replace		;extension
-	  regexp-match-replacement?	;extension
-	  regexp-match-start		;extension
-	  regexp-match-submatch
-	  regexp-match-submatch-end
-	  regexp-match-submatch-start
-	  regexp-match-value		;extension
-	  regexp-match?
-	  regexp-matches-all		;extension
-	  regexp-matches-all?		;extension
-	  regexp-matches-some		;extension
-	  regexp-matches-some?		;extension
-	  regexp-partition
-	  regexp-replace
-	  regexp-replace-all
-	  regexp-search
-	  regexp-search-all		;extension
-	  regexp-split
-	  regexp?
-	  valid-cset-sre?		;extension
-	  valid-sre?))
+	  regexp-match-length
+	  regexp-match-replace
+	  regexp-match-replacement?
+	  regexp-match-start
+	  regexp-match-submatch		;(srfi 115)
+	  regexp-match-submatch-end	;(srfi 115)
+	  regexp-match-submatch-start	;(srfi 115)
+	  regexp-match-value
+	  regexp-match?			;(srfi 115)
+	  regexp-matches		;(srfi 115)
+	  regexp-matches?		;(srfi 115)
+	  regexp-matches-some
+	  regexp-matches-some?
+	  regexp-partition		;(srfi 115)
+	  regexp-replace		;(srfi 115)
+	  regexp-replace-all		;(srfi 115)
+	  regexp-search			;(srfi 115)
+	  regexp-search-all
+	  regexp-split			;(srfi 115)
+	  regexp?			;(srfi 115)
+	  valid-cset-sre?
+	  valid-sre?			;(srfi 115)
+	  ))
 
 (define-package (runtime regexp rules)
   (files "regexp-rules")
