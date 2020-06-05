@@ -799,6 +799,13 @@ USA.
   (lambda ()
     (assert-equal (regexp-replace '(+ space) "abc \t\n def" " ") "abc def")
 
+    (assert-equal (regexp-replace '(: ($ (+ alpha)) ":" (* space)) "  abc: "
+				  '(1 "-" 1))
+		  "  abc-abc")
+    (assert-equal (regexp-replace '(: ($ (+ alpha)) ":" (* space)) "  abc: "
+				  '(1 "-" pre 1))
+		  "  abc-  abc")
+
     (assert-equal (regexp-replace '(+ space) "  abc \t\n d ef  " "-" 0)
 		  "-abc \t\n d ef  ")
     (assert-equal (regexp-replace '(+ space) "  abc \t\n d ef  " "-" 0 #f 0)

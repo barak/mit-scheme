@@ -5828,6 +5828,7 @@ USA.
 	  regexp-partition		;(srfi 115)
 	  regexp-replace		;(srfi 115)
 	  regexp-replace-all		;(srfi 115)
+	  regexp-replace-subst?
 	  regexp-search			;(srfi 115)
 	  regexp-search-all
 	  regexp-split			;(srfi 115)
