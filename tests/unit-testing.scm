@@ -745,6 +745,6 @@ USA.
 	(join-thread thread done-it)
 	(let ((timer))
 	  (dynamic-wind
-	    (lambda () (set! timer (register-timer-event 1000 stop-it)))
+	    (lambda () (set! timer (register-timer-event 2000 stop-it)))
 	    (lambda () (do () (result) (suspend-current-thread)))
 	    (lambda () (deregister-timer-event (set! timer)))))))))
