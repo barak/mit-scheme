@@ -315,7 +315,9 @@ USA.
 (define (load-indexed-address target base offset scale)
   (standard-binary target base offset
     (lambda (target base offset)
-      (LAP (ADD X ,target ,base (LSL ,offset ,(scale->shift scale)))))))
+      (if (= scale 1)
+          (LAP (ADD X ,target ,base ,offset))
+          (LAP (ADD X ,target ,base (LSL ,offset ,(scale->shift scale))))))))
 
 (define (load-pc-relative-address target label)
   (LAP (ADR X ,target (@PCR ,label ,regnum:scratch-0))))
@@ -360,13 +362,17 @@ USA.
   (assert (<= 0 imm (bit-mask 64 0)))
   (cond ((find-shift imm)
          => (lambda (shift)
-              (LAP (MOVZ X ,target
-                         (LSL (&U ,(shift-right imm shift)) ,shift)))))
+              (if (zero? shift)
+                  (LAP (MOVZ X ,target (&U ,imm)))
+                  (LAP (MOVZ X ,target
+                             (LSL (&U ,(shift-right imm shift)) ,shift))))))
         ((find-shift (bitwise-andc1 imm #xffffffffffffffff))
          => (lambda (shift)
               (let ((imm (bitwise-andc1 imm #xffffffffffffffff)))
-                (LAP (MOVN X ,target
-                           (LSL (&U ,(shift-right imm shift)) ,shift))))))
+                (if (zero? shift)
+                    (LAP (MOVN X ,target (&U ,imm)))
+                    (LAP (MOVN X ,target
+                               (LSL (&U ,(shift-right imm shift)) ,shift)))))))
         ((logical-imm-u64 imm)
          (LAP (ORR X ,target Z (&U ,imm))))
         ;; XXX try splitting in halves, quarters
