@@ -729,14 +729,19 @@ USA.
         (arg2 regnum:utility-arg2)
         (arg3 regnum:utility-arg3)
         (arg4 regnum:utility-arg4)
-        (temp r5))
+        (temp r5)
+        (temp1 r6))
     (assert (not (memv temp (list regnum:utility-arg1 arg2 arg3 arg4))))
+    (assert (not (memv temp1 (list regnum:utility-arg1 arg2 arg3 arg4))))
     (LAP (LDR X ,temp ,reg:environment)
          ;; arg2 := block address
          ,@(load-pc-relative arg2 code-block-label)
          ,@(object->address arg2 arg2)
          ;; Set this block's environment.
-         (STR X ,temp (+ ,arg2 (&U (* 8 ,environment-index))))
+         ,@(if (fits-in-unsigned-12? environment-index)
+               (LAP (STR X ,temp (+ ,arg2 (&U (* 8 ,environment-index)))))
+               (LAP ,@(load-signed-immediate temp1 (* 8 environment-index))
+                    (STR X ,temp (+ ,arg2 ,temp1))))
          ;; arg3 := constants address
          ,@(add-immediate arg3 arg2 free-ref-offset (lambda () temp))
          ;; arg4 := n sections
