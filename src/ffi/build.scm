@@ -91,7 +91,7 @@ USA.
 	'())))
 
 (define (update-plugins-file operation name dir)
-  (let ((filename (merge-pathnames "plugins.scm" dir)))
+  (let ((filename (string dir"plugins.scm")))
     (if (file-exists? filename)
 	(rewrite-file filename
 	  (lambda (in out)

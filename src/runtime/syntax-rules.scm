@@ -48,26 +48,30 @@ USA.
 	   (syntax-error "Keywords list contains duplicates:" keywords)
 	   (let ((r-form (rename 'form))
 		 (r-rename (rename 'rename))
+		 (r-rename2 (rename 'rename2))
 		 (r-compare (rename 'compare)))
 	     `(,(rename 'er-macro-transformer)
 	       (,(rename 'lambda)
-		(,r-form ,r-rename ,r-compare)
-		(,(rename 'declare) (ignorable ,r-rename ,r-compare))
-		,(let loop ((clauses clauses))
-		   (if (pair? clauses)
-		       (let ((pattern (caar clauses)))
-			 (let ((sids
-				(parse-pattern rename compare keywords
-					       pattern r-form)))
-			   `(,(rename 'if)
-			     ,(generate-match rename compare keywords
-					      r-rename r-compare
-					      pattern r-form)
-			     ,(generate-output rename compare r-rename
-					       sids (cadar clauses))
-			     ,(loop (cdr clauses)))))
-		       `(,(rename 'begin)
-			 (,(rename 'ill-formed-syntax) ,r-form))))))))))))
+		(,r-form ,r-rename2 ,r-compare)
+                (,(rename 'let)
+                 ((,r-rename
+                   (,(rename 'lambda) (id)
+                    (,r-rename2 (,(rename 'identifier->symbol) id)))))
+                 (,(rename 'declare) (ignorable ,r-rename ,r-compare))
+                 ,(let loop ((clauses clauses))
+                    (if (pair? clauses)
+                        (let ((pattern (caar clauses)))
+                          (let ((sids
+                                 (parse-pattern rename compare keywords
+                                                pattern r-form)))
+                            `(,(rename 'if)
+                              ,(generate-match rename compare keywords
+                                               r-rename r-compare
+                                               pattern r-form)
+                              ,(generate-output rename compare r-rename
+                                                sids (cadar clauses))
+                              ,(loop (cdr clauses)))))
+                        `(,(rename 'ill-formed-syntax) ,r-form))))))))))))
 
 (define (parse-pattern rename compare keywords pattern expression)
   (let loop

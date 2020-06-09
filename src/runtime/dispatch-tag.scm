@@ -178,10 +178,13 @@ USA.
    (lambda (tag)
      (if (dispatch-metatag? tag) 'dispatch-metatag 'dispatch-tag))
    (lambda (tag)
-     (list (let ((name (dispatch-tag-name tag)))
-	     (if (symbol? name)
-		 (strip-angle-brackets name)
-		 name))))))
+     (list (dispatch-tag-print-name tag)))))
+
+(define (dispatch-tag-print-name tag)
+  (let ((name (dispatch-tag-name tag)))
+    (if (symbol? name)
+	(strip-angle-brackets name)
+	name)))
 
 (define-pp-describer dispatch-tag?
   (lambda (tag)

@@ -69,7 +69,7 @@ USA.
 
 (define (make-scode-variable name)
   (guarantee symbol? name 'make-scode-variable)
-  (system-hunk3-cons (ucode-type variable) name #t '()))
+  (system-hunk3-cons (ucode-type variable) name #t #f))
 
 (define (scode-variable? object)
   (object-type? (ucode-type variable) object))

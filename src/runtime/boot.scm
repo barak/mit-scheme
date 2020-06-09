@@ -486,6 +486,13 @@ USA.
                        (system-pair-set-cdr! p (system-pair-cdr p*))
                        (set-cell-contents! promise* p))))))
             (%force promise))))))
+
+(define-print-method promise?
+  (standard-print-method 'promise
+    (lambda (promise)
+      (if (promise-forced? promise)
+	  (list '(evaluated) (promise-value promise))
+	  (list '(unevaluated))))))
 
 ;;;; Miscellany
 
@@ -496,10 +503,10 @@ USA.
   object
   #f)
 
-(define (default-object? object)
+(define-integrable (default-object? object)
   (eq? object #!default))
 
-(define (default-object)
+(define-integrable (default-object)
   #!default)
 
 (define (gc-space-status)

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme documentation],
-	[10.1.10],
+	[10.1.11],
 	[bug-mit-scheme@gnu.org],
 	[mit-scheme-doc])
 AC_CONFIG_SRCDIR([ref-manual/scheme.texinfo])
