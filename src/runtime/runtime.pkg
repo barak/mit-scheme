@@ -5265,6 +5265,7 @@ USA.
 	  dispatch-tag-extra-ref
 	  dispatch-tag-metatag
 	  dispatch-tag-name
+          dispatch-tag-print-name
 	  dispatch-tag?
 	  make-dispatch-metatag)
   (export (runtime predicate)

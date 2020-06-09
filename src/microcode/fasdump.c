@@ -85,7 +85,6 @@ static gc_handler_t handle_manifest_closure;
 static gc_handler_t handle_linkage_section;
 static gc_handler_t handle_symbol;
 static gc_handler_t handle_broken_heart;
-static gc_handler_t handle_variable;
 static gc_handler_t handle_environment;
 static gc_handler_t handle_ephemeron;
 
@@ -337,7 +336,6 @@ fasdump_table (void)
       (GCT_ENTRY ((&table), TC_INTERNED_SYMBOL)) = handle_symbol;
       (GCT_ENTRY ((&table), TC_BROKEN_HEART)) = handle_broken_heart;
       (GCT_ENTRY ((&table), TC_UNINTERNED_SYMBOL)) = handle_symbol;
-      (GCT_ENTRY ((&table), TC_VARIABLE)) = handle_variable;
       (GCT_ENTRY ((&table), TC_ENVIRONMENT)) = handle_environment;
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
       (GCT_ENTRY ((&table), TC_EPHEMERON)) = handle_ephemeron;
@@ -439,21 +437,6 @@ DEFINE_GC_HANDLER (handle_broken_heart)
     (((OBJECT_DATUM (object)) == 0)
      ? (scan + 1)
      : (gc_handle_broken_heart (scan, object)));
-}
-
-static
-DEFINE_GC_HANDLER (handle_variable)
-{
-  SCHEME_OBJECT * from = (OBJECT_ADDRESS (object));
-  SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (from));
-  if (new_address == 0)
-    {
-      new_address = (GC_TRANSPORT_WORDS (from, 3, false));
-      write_tospace ((new_address + 1), UNCOMPILED_VARIABLE);
-      write_tospace ((new_address + 2), SHARP_F);
-    }
-  (*scan) = (OBJECT_NEW_ADDRESS (object, new_address));
-  return (scan + 1);
 }
 
 static

@@ -1,4 +1,4 @@
-# This file automatically generated at 2019-08-10T18:12:01-04.
+# This file automatically generated at 2020-06-04T12:59:09-07.
 
 # -*- Makefile -*-
 #
@@ -76,6 +76,7 @@ M4 = $(srcdir)/makegen/m4.sh @M4@
 AS = as
 TAR = tar
 GZIP_ENV = --best
+PAXCTL = @PAXCTL@
 
 DEFS = @DEFS@ @SCHEME_DEFS@ -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\"
 CFLAGS = @CFLAGS@
@@ -87,6 +88,7 @@ AS_FLAGS = @AS_FLAGS@
 
 COMPILE = $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS)
 LINK = $(CCLD) $(LDFLAGS) -o $@
+LINKTMP = $(CCLD) $(LDFLAGS) -o $@.tmp
 EXPAND = $(M4) $(M4_FLAGS)
 ASSEMBLE = $(AS) $(AS_FLAGS)
 
@@ -190,7 +192,9 @@ all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA)
 
 scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
 	-rm -f $@
-	$(LINK) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
+	$(LINKTMP) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
+	$(PAXCTL) +m $@.tmp
+	mv -f $@.tmp $@
 
 usrdef.c: $(STD_SOURCES) findprim Makefile
 	-rm -f $@.tmp
