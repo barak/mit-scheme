@@ -1,0 +1,133 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Tue, 9 Jun 2020 11:44:33 +0100
+Subject: man page
+
+Minor updates to mit-scheme(1).
+---
+ doc/mit-scheme.1 | 55 ++++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 36 insertions(+), 19 deletions(-)
+
+diff --git a/doc/mit-scheme.1 b/doc/mit-scheme.1
+index 60aac05..5bbb429 100644
+--- a/doc/mit-scheme.1
++++ b/doc/mit-scheme.1
+@@ -1,10 +1,10 @@
+-.TH "mit-scheme" "1" "10.1.11" "MIT/GNU Scheme Team" ""
++.TH "mit\-scheme" "1" "10.1.11" "MIT/GNU Scheme Team" ""
+ .SH "NAME"
+ .LP
+-mit-scheme - The MIT/GNU Scheme development environment
++mit-scheme \(em The MIT/GNU Scheme development environment
+ .SH "SYNOPSIS"
+ .LP 
+-.B mit-scheme
++.B mit\-scheme
+ .RI [ OPTIONS ]
+ .br 
+ .SH "DESCRIPTION"
+@@ -19,44 +19,47 @@ development cycle.
+ These are some of the more common command-line options.  For full
+ information about available options, see the Texinfo documentation.
+ Additional options may also be supported by the band.  Use the
+---help option (last) to see descriptions of all available
++\-\-help option (last) to see descriptions of all available
+ command-line options.
++.TP
++.RI \-\-help
++Report available command-line options, then exit.
+ .TP 
+-.RI --version
++.RI \-\-version
+ .br 
+-Report various version numbers, then exit.
++Report various version numbers and copyright information, then exit.
+ .TP 
+-.RI --heap " NBLOCKS"
++.RI \-\-heap " NBLOCKS"
+ .br 
+ Specify the size of the heap in 1024-word blocks.
+ .TP 
+-.RI --stack " NBLOCKS"
++.RI \-\-stack " NBLOCKS"
+ .br 
+ Specify the size of the stack in 1024-word blocks.
+ .TP 
+-.RI --library " PATH"
++.RI \-\-library " PATH"
+ .br 
+ Specify where to look for Scheme's binary files.
+ .I PATH
+ should be a colon-separated list of directory names.
+ .TP 
+---option-summary
++\-\-option\-summary
+ .br 
+ Print the actual values of the machine parameters (like those above).
+ .TP 
+---no-init-file
++\-\-no\-init\-file
+ .br 
+ Don't load the user's init file.
+ .TP 
+---edit
++\-\-edit
+ .br 
+ Start the text editor after starting Scheme.
+ .TP 
+-.RI --eval " EXPRESSION" ...
++.RI \-\-eval " EXPRESSION" ...
+ .br 
+ Evaluate the specified expressions after starting Scheme.
+ .TP 
+-.RI --load " FILENAME" ...
++.RI \-\-load " FILENAME" ...
+ .br 
+ Load the specified files after starting Scheme.
+ .SH "FILES"
+@@ -64,6 +67,20 @@ Load the specified files after starting Scheme.
+ \fI.scheme.init\fP or \fISCHEME.INI\fP
+ .br
+ Scheme loads this file first, if it exists in the user's home directory.
++.TP
++\fI/usr/lib/\fB<architecture>\fI/mit\-scheme/\fP
++.br
++Support files.
++.TP
++\fI/usr/bin/mit\-scheme\-\fB<architecture>\fP
++.br
++Architecture-specific executable.
++.TP
++\fI/usr/bin/mit\-scheme\fP
++.br
++Link to architecture-specific executable, to allow multiarch
++installation.  When multiple architectures are installed, use
++\fBupdate\-alternatives\fP(8) to choose.
+ .SH "ENVIRONMENT VARIABLES"
+ .LP 
+ MIT/GNU Scheme refers to a large number of environment variables.  See
+@@ -72,14 +89,14 @@ the Texinfo documentation for details.
+ .LP 
+ To use the evaluator in a command-line interface, type:
+ .LP 
+-.B mit-scheme
++.B mit\-scheme
+ .LP 
+ To start the editor and use it as a front-end to the evaluator, type:
+ .LP 
+-.B mit-scheme --edit
++.B mit\-scheme \-\-edit
+ .SH "AUTHORS"
+ .LP 
+-The MIT/GNU Scheme Team <bug-mit-scheme@gnu.org>
++The MIT/GNU Scheme Team <bug\-mit\-scheme@gnu.org>
+ .SH "SEE ALSO"
+ .LP
+ The full documentation for MIT/GNU Scheme is maintained as a set of
+@@ -92,5 +109,5 @@ program is properly installed at your site, the command
+ "MIT/GNU Scheme User"
+ .PP
+ should give you access to the complete user's manual.  Programming
+-information is located in the Info topics "MIT/GNU Scheme Ref" and
+-"SOS".
++information is located in the Info topics \(lqMIT/GNU Scheme Ref\(rq and
++\(lqSOS\(rq.
