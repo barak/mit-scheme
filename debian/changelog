@@ -1,3 +1,15 @@
+mit-scheme (10.1.11-1) unstable; urgency=medium
+
+  * new upstream release
+  * bump debhelper from old 12 to 13
+  * set upstream metadata fields: Repository, Repository-Browse
+  * update standards version to 4.5.0, no changes needed
+  * forward port quilt patches (context includes version)
+  * merge debian mit-scheme(1) into quilt patch to upstream mit-scheme(1)
+  * info dir file should not be installed
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Tue, 09 Jun 2020 12:09:43 +0100
+
 mit-scheme (10.1.10-1) unstable; urgency=medium
 
   * new upstream version
