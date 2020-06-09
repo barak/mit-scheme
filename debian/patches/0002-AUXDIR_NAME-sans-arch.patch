@@ -8,7 +8,7 @@ Subject: AUXDIR_NAME sans arch
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 236e270..49364b7 100644
+index 721534c..160c7c8 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
 @@ -166,7 +166,7 @@ else
@@ -21,10 +21,10 @@ index 236e270..49364b7 100644
  MIT_SCHEME_LIBDIR=${AUXDIR}/
  MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
 diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
-index 06691eb..ed9a2b2 100644
+index 47469bc..2387967 100644
 --- a/src/microcode/configure.ac
 +++ b/src/microcode/configure.ac
-@@ -250,7 +250,7 @@ CCLD=${CC}
+@@ -262,7 +262,7 @@ CCLD=${CC}
  MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
  MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
  
