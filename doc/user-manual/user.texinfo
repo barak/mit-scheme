@@ -166,10 +166,9 @@ using.
 
 @menu
 * Unix Installation::
-* Portable C Installation::
 @end menu
 
-@node Unix Installation, Portable C Installation, Installation, Installation
+@node Unix Installation,  , Installation, Installation
 @section Unix Installation
 
 We will use as an example the installation for GNU/Linux.  The
