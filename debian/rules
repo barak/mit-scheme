@@ -47,7 +47,12 @@ endif
 
 override_dh_auto_install-arch:
 	dh_auto_install --sourcedirectory=src
-	@echo remove symbolic link executables
+
+execute_after_dh_auto_install-arch:
+#	# This doesn't work because doc/ hasn't been *configured*
+#	# which hardly seems worth working around
+#	dh_auto_install --sourcedirectory=doc -- install-man
+	@echo "remove symbolic link executables"
 	cd debian/tmp/usr/bin && \
 	for f in scheme bchscheme mit-scheme mit-scheme-native; do \
 	  if [ -L $$f ]; then \
@@ -56,25 +61,26 @@ override_dh_auto_install-arch:
 	    echo skipping $$f; \
 	  fi; \
 	done
-#	@echo delete runtime.com for MYSTERIOUS reasons
-#	@echo stop doing this because it breaks future builds
+#	@echo "delete runtime.com for MYSTERIOUS reasons"
+#	@echo "stop doing this because it breaks future builds"
 #	find debian/tmp/usr/lib -name runtime.com -ls -delete
-	@echo remove .la library support files as these are not actually used by the dynamic linker
+	@echo "remove .la library support files as these are not actually used by the dynamic linker"
 	find debian/tmp -name '*.la' -ls -delete
 
 override_dh_auto_install-indep:
 	dh_auto_install --sourcedirectory=doc -- install-html install-pdf
-	@echo allow dh scripts to compress info files themselves
+
+execute_after_dh_auto_install-indep:
+	@echo "allow dh scripts to compress info files themselves"
 	find debian/tmp \( -name '*.info.gz' -o -name '*.info-*.gz' \) -ls -exec gunzip '{}' ';'
 
-override_dh_install-arch:
-	dh_install
-	@echo All .bci files belong in -dbg, move them manually for robustness
+execute_after_dh_install-arch:
+	@echo "All .bci files belong in -dbg, move them manually for robustness"
 	mkdir -p debian/mit-scheme-dbg
 	tar -C debian/mit-scheme --create --file=- --files-from=/dev/null $$(cd debian/mit-scheme && find -name '*.bci') \
 	 | tar -C debian/mit-scheme-dbg -xvf -
 	find debian/mit-scheme -name '*.bci' -delete
-	@echo remove empty directory
+	@echo "remove empty directory"
 	-rmdir debian/mit-scheme/usr/lib/x86_64-linux-gnu/mit-scheme/lib
 
 # Upstream changelog is over 5MB, leave a copy in the doc package but
