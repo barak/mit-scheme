@@ -273,7 +273,7 @@ USA.
 
 #define TERM_HALT_MESSAGE_TABLE						\
 {									\
-    "Moriturus te saluto.",						\
+    "Moriturus te salutat.",						\
     "Happy happy joy joy!",						\
     "Ceterum censeo Carthaginem esse delendam.",			\
     "..#]^@^@^@ NO CARRIER",						\
