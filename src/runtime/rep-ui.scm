@@ -40,7 +40,7 @@ USA.
 (define (handle-rep-escape form env)
   (let ((expr (cadr form)))
     (if (unquote? expr)
-	(repl-eval (cadr expr) (->environment '(user)))
+	(repl-eval (cadr expr) user-initial-environment)
 	(catch-and-report-errors
 	 (lambda ()
 	   (cond ((interned-symbol? expr)
@@ -291,7 +291,8 @@ Otherwise, shows all REPL environments."
     (let ((name* ((env-mgr) 'name-of ((env-mgr) 'current))))
       (if name*
 	  (failure "The REPL environment is already named " name* ".")))
-    ((env-mgr) 'name-current! name)))
+    ((env-mgr) 'name-current! name)
+    (message "env named " name " has been assigned")))
 
 (define-command 'unname '(#!optional name)
   "Unassigns one or more envnames.
