@@ -68,16 +68,16 @@ USA.
     srfi-14	;Character-set Library
     srfi-23	;ERROR
     srfi-27	;Sources of Random Bits
-    srfi-30	;Nested Multi-Line Comments (#| ... |#
+    srfi-30	;Nested Multi-Line Comments (#| ... |#)
     srfi-39	;Parameter objects
     srfi-62	;S-expression comments
     srfi-69	;Basic Hash Tables
     srfi-115	;Scheme Regular Expressions
     srfi-124	;Ephemerons
     srfi-125	;Intermediate hash tables
-    srfi-128	;Comparators (reduced
-    srfi-131	;ERR5RS Record Syntax (reduced
-    srfi-133	;Vector Library (R7RS-compatible
+    srfi-128	;Comparators (reduced)
+    srfi-131	;ERR5RS Record Syntax (reduced)
+    srfi-133	;Vector Library (R7RS-compatible)
     srfi-143	;Fixnums
 
     ;; SRFI 115 features
