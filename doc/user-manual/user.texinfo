@@ -2,7 +2,7 @@
 @comment %**start of header
 @setfilename mit-scheme-user
 @set VERSION 11.0.50
-@set UPDATED 2020-05-28
+@set UPDATED 2020-06-12
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -996,6 +996,7 @@ prints the result, and gives you another prompt.
 * Interrupting::
 * Restarting::
 * The Current REPL Environment::
+* REPL Escapes::
 @end menu
 
 @node The Prompt and Level Number, Interrupting, REPL, REPL
@@ -1086,9 +1087,7 @@ equivalent to evaluating
 @end example
 
 @item C-c C-x
-@itemx C-x
 @kindex C-c C-x
-@kindex C-x
 Abort whatever Scheme evaluation is currently running and return to the
 ``current'' @acronym{REPL}.  If no evaluation is running, this is
 equivalent to evaluating
@@ -1099,9 +1098,7 @@ equivalent to evaluating
 @end example
 
 @item C-c C-u
-@itemx C-u
 @kindex C-c C-u
-@kindex C-u
 Abort whatever Scheme evaluation is running and go up one level.  If you
 are already at level number 1, the evaluation is aborted, leaving you at
 level 1.  If no evaluation is running, this is equivalent to evaluating
@@ -1112,9 +1109,7 @@ level 1.  If no evaluation is running, this is equivalent to evaluating
 @end example
 
 @item C-c C-b
-@itemx C-b
 @kindex C-c C-b
-@kindex C-b
 @cindex breakpoint
 Suspend whatever Scheme evaluation is running and start a
 @dfn{breakpoint} @acronym{REPL}.  The evaluation can be resumed by
@@ -1225,7 +1220,7 @@ Value to use instead of foo: '(a b)
 @end example
 @end deffn
 
-@node The Current REPL Environment,  , Restarting, REPL
+@node The Current REPL Environment, REPL Escapes, Restarting, REPL
 @subsection The Current REPL Environment
 
 @cindex current REPL environment
@@ -1255,7 +1250,7 @@ which it was closed by evaluating
 (procedure-environment @var{procedure})
 @end example
 
-Here are some procedures that manage the  @acronym{REPL}'s environment:
+Here are some procedures that manage the @acronym{REPL}'s environment:
 
 @deffn procedure ge environment
 Changes the current @acronym{REPL} environment to be @var{environment}
@@ -1280,6 +1275,245 @@ This procedure is useful for finding out which environment you are in
 the package name (a list of symbols).  If the current @acronym{REPL}
 environment does not belong to a package then the environment is
 returned.
+@end deffn
+
+@node REPL Escapes,  , The Current REPL Environment, REPL
+@subsection REPL Escapes
+
+Normally the @acronym{REPL} evaluates an expression and prints the
+value it returns.  The @acronym{REPL} also supports a set of special
+@dfn{escapes} that bypass the normal evaluation.  There are two kinds
+of escapes:
+
+@table @code
+@item ,(@var{command} @var{arg} @dots{})
+@itemx ,@var{command}
+tells the @acronym{REPL} to perform a special action.  The symbol
+@var{command} specifies the action to perform; the @var{arg} elements
+are command specific.  A command that can be used with no @var{arg}
+elements can be abbreviated by dropping the parentheses.
+Additionally, @var{command} can be shortened to any unique prefix,
+such as @code{po} for @code{pop}.  Note that @var{command} is not
+evaluated.  An @var{arg} is not evaluated, unless it starts with a
+comma, in which case it is evaluated in the current @acronym{REPL}
+environment.
+
+@item ,,@var{expression}
+evaluates @var{expression} in @code{user-initial-environment} instead
+of the current @acronym{REPL} environment.  This is especially useful
+when working with library environments, where many of the usual
+definitions, for example @code{debug}, are not available.
+@end table
+
+The rest of this section documents the commands that can be used with
+the first form of escape.  The most important command is @code{help}:
+
+@deffn {REPL command} help [name]
+Prints each of the available commands along with a summary of what
+they do.  If @var{name} is given, show only commands that match
+@var{name}.
+@end deffn
+
+@smallexample
+@group
+,(help p)
+@print{} ;,pop
+@print{} ;    Pops an environment off the stack and moves the REPL there.
+@print{} ;,push
+@print{} ;,(push env)
+@print{} ;    Push the REPL env on the env stack and move the REPL to a new env.
+@print{} ;    
+@print{} ;    If ENV is provided, it is converted to an environment in the usual
+@print{} ;    way.  The the current REPL env is pushed on the env stack and the REPL
+@print{} ;    is moved to ENV.
+@print{} ;    
+@print{} ;    If ENV is not provided, the current REPL env is exchanged with the top
+@print{} ;    of the env stack.
+@end group
+@end smallexample
+
+A number of the commands manipulate the @acronym{REPL}'s environment
+in various ways.  These involve the following parts:
+
+@itemize @bullet
+@item
+The current @acronym{REPL} environment is the environment that's used to
+evaluate expressions.
+
+@item
+The @dfn{environment stack} contains additional environments that are
+saved for future use.  This stack is modified by the @code{push},
+@code{pop}, @code{bury}, and @code{ge} commands.
+
+@item
+A set of @dfn{named environments} that have been given symbolic names.
+This set is modified by @code{name} and @code{unname}.
+@end itemize
+
+@deffn {REPL command} envs [env-name]
+Prints a summary of the environments.  If @var{env-name} is given,
+prints only the named environments matching @var{env-name}.
+
+For example, here is the output when the system is started:
+@example
+,envs
+@print{} ;here: (user) #[environment 12]
+@print{} ;The env stack is empty
+@print{} ;no named envs
+@end example
+Where @code{;here:} marks the current @acronym{REPL} environment.
+@end deffn
+
+Several commands take an @var{env} argument, specifying an
+environment.  This argument can have several forms:
+
+@table @asis
+@item a symbol
+Refers to a named environment.
+
+@item a library name
+Refers to the environment of a loaded library.  For example,
+@samp{(scheme base)}.
+
+@item a package name
+Refers to the environment of a loaded @mitgnu{} package.  For example,
+@samp{(runtime)}.
+
+@item @code{,@var{expression}}
+Evaluates @var{expression} in the current environment; its value must
+be an environment object.
+@end table
+
+@deffn {REPL command} push [env]
+Pushes the current @acronym{REPL} environment on the environment
+stack, then moves the @acronym{REPL} to a new environment.  If
+@var{env} is not given, then this swaps the current @acronym{REPL}
+environment and the environment on the top of the stack.  Otherwise
+@var{env} specifies the new environment in the usual way.
+
+If the command completes successfully, it prints the current
+@acronym{REPL} environment and the environment stack:
+
+@example
+,(push (srfi 133))
+@print{} ;here: #[environment 28]
+@print{} ;stack:
+@print{} ;    0: (user) #[environment 12]
+@end example
+
+We can swap the two environments:
+
+@example
+,push
+@print{} ;Package: (user)
+@print{} ;here: (user) #[environment 12]
+@print{} ;stack:
+@print{} ;    0: #[environment 28]
+@end example
+@end deffn
+
+@deffn {REPL command} pop
+Pops off the top of the environment stack and moves the current
+@acronym{REPL} environment there.
+
+@example
+,pop
+@print{} ;Package: (user)
+@print{} ;here: (user) #[environment 12]
+@print{} ;The env stack is empty
+@end example
+@end deffn
+
+@deffn {REPL command} bury
+Saves the current @acronym{REPL} environment at the bottom of the
+stack, then pops off the top of the environment stack and moves the
+current @acronym{REPL} environment there.
+@example
+,(push (runtime))
+@print{} ;Package: (runtime)
+@print{} ;here: (runtime) #[environment 30]
+@print{} ;stack:
+@print{} ;    0: #[environment 28]
+@print{} ;    1: (user) #[environment 12]
+
+,bury
+@print{} ;here: #[environment 28]
+@print{} ;stack:
+@print{} ;    0: (user) #[environment 12]
+@print{} ;    1: (runtime) #[environment 30]
+@end example
+@end deffn
+
+@deffn {REPL command} ge [env]
+Sets the current @acronym{REPL} environment to the specified
+environment without affecting the environment stack.  If @var{env} is
+not given, a newly created top-level environment is used.
+
+This is basically the same as the @code{ge} procedure.
+@end deffn
+
+@deffn {REPL command} ve [env]
+Creates a new child @acronym{REPL}, setting its current environment to
+the specified one.  If @var{env} is not given, a newly created
+top-level environment is used.
+
+This is basically the same as the @code{ve} procedure.
+@end deffn
+
+@deffn {REPL command} name env-name
+Gives the current @acronym{REPL} environment a name @var{env-name} and
+adds it to the set of named environments.  The argument @var{env-name}
+must be a symbol.
+
+@example
+,(name foobar)
+@print{} ;env named foobar has been assigned
+
+,envs
+@print{} ;here: foobar #[environment 28]
+@print{} ;stack:
+@print{} ;    0: (user) #[environment 12]
+@print{} ;    1: (runtime) #[environment 30]
+@print{} ;named envs
+@print{} ;    foobar #[environment 28]
+@end example
+@end deffn
+
+@deffn {REPL command} unname [env-name]
+Removes the environment with name @var{env-name} from the set of named
+environments.  If @var{env-name} is not given, removes all named
+environments.
+
+@example
+,(unname foobar)
+@print{} ;env named foobar has been unassigned
+
+,envs
+@print{} ;here: #[environment 28]
+@print{} ;stack:
+@print{} ;    0: (user) #[environment 12]
+@print{} ;    1: (runtime) #[environment 30]
+@print{} ;no named envs
+@end example
+@end deffn
+
+This group of commands manages nested @acronym{REPL} instances.
+
+@deffn {REPL command} down
+Creates a new child @acronym{REPL} with the same current environment
+as this one.
+@end deffn
+
+@deffn {REPL command} up
+Pops up one level to the parent @acronym{REPL}.
+
+This is equivalent to calling @code{cmdl-interrupt/abort-previous}.
+@end deffn
+
+@deffn {REPL command} top-level
+Pops up to the top-level @acronym{REPL}.
+
+This is equivalent to calling @code{cmdl-interrupt/abort-top-level}.
 @end deffn
 
 @node Loading Files, World Images, REPL, Using Scheme
