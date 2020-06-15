@@ -36,12 +36,6 @@ USA.
   (let ((document
 	 (read/expand-xml-file pathname
 			       (make-expansion-environment pathname))))
-    (if (not (xml-document-dtd document))
-	(begin
-	  (set-xml-document-dtd! document html-1.0-dtd)
-	  (set-xml-document-misc-2! document
-				    (cons "\n"
-					  (xml-document-misc-2 document)))))
     (let ((root (xml-document-root document)))
       (if (not (find-xml-attr 'xmlns root))
 	  (set-xml-element-attributes!

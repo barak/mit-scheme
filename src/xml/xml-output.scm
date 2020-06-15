@@ -380,7 +380,9 @@ USA.
   (lambda (string ctx)
     (write-escaped-string string
 			  '((#\< . "&lt;")
-			    (#\& . "&amp;"))
+			    (#\> . "&gt;")
+			    (#\& . "&amp;")
+			    (#\' . "&apos;"))
 			  ctx)))
 
 (define-predicate-dispatch-handler %write-xml (list xml-entity-ref? ctx?)

@@ -90,9 +90,7 @@ USA.
 
 (define (html-dtd? object)
   (and (xml-dtd? object)
-       (eq? (xml-dtd-root object) 'html)
-       (html-external-id? (xml-dtd-external object))
-       (null? (xml-dtd-internal object))))
+       (eq? (xml-dtd-root object) 'html)))
 
 (define (html-1.0-document attrs . items)
   (%make-document html-1.0-dtd attrs items))
