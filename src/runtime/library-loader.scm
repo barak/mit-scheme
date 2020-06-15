@@ -271,7 +271,7 @@ USA.
 (add-event-receiver! event:after-restore preregister-standard-libraries!)
 
 (define (find-scheme-libraries! pathname)
-    (let ((pattern (get-directory-read-pattern pathname)))
+  (let ((pattern (get-directory-read-pattern pathname)))
     (if pattern
 	(let ((root (directory-pathname pattern)))
 	  (let loop ((pattern pattern))
