@@ -361,6 +361,7 @@ Associations
 * Object Hashing::
 * Red-Black Trees::
 * Weight-Balanced Trees::
+* Associative Maps::
 
 Hash Tables
 
@@ -375,6 +376,17 @@ Weight-Balanced Trees
 * Basic Operations on Weight-Balanced Trees::
 * Advanced Operations on Weight-Balanced Trees::
 * Indexing Operations on Weight-Balanced Trees::
+
+Associative Maps
+
+* Amap constructors::
+* Amap predicates::
+* Amap accessors::
+* Amap mutators::
+* Amap mapping and folding::
+* Amap contents::
+* Amap copying and conversion::
+* Amaps as sets::
 
 Procedures
 

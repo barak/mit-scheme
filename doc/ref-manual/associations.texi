@@ -69,6 +69,7 @@ intersection and difference; and indexing of elements by position.
 * Object Hashing::
 * Red-Black Trees::
 * Weight-Balanced Trees::
+* Associative Maps::
 @end menu
 
 @node Association Lists, 1D Tables, Associations, Associations
@@ -1485,7 +1486,7 @@ return information associated with the smallest or largest key, except
 that they simultaneously delete that key.
 @end deffn
 
-@node Weight-Balanced Trees,  , Red-Black Trees, Associations
+@node Weight-Balanced Trees, Associative Maps, Red-Black Trees, Associations
 @section Weight-Balanced Trees
 
 @cindex trees, balanced binary
@@ -2041,4 +2042,393 @@ operation is equivalent to
 @example
 (wt-tree/delete! @var{wt-tree} (wt-tree/min @var{wt-tree}))
 @end example
+@end deffn
+
+@node Associative Maps,  , Weight-Balanced Trees, Associations
+@section Associative Maps
+
+Starting with version 11.1, @mitgnu{} provides an abstract
+associative-map interface that can be backed by any kind of
+association mechanism.  The interface is similar to that of
+@asrfi{125}.  Associative maps can be mutable or immutable, depending
+on the backing implementation.  As of this writing we support the
+following implementations: alists, weak alists, red/black trees, hash
+tables, and tries, all of which are mutable.
+
+@menu
+* Amap constructors::
+* Amap predicates::
+* Amap accessors::
+* Amap mutators::
+* Amap mapping and folding::
+* Amap contents::
+* Amap copying and conversion::
+* Amaps as sets::
+@end menu
+
+@node Amap constructors, Amap predicates, Associative Maps, Associative Maps
+@subsection Amap constructors
+
+All associative-map constructors take a comparator argument followed
+by a list of additional specification arguments.  In all cases, the
+comparator is used to compare keys in the map, while the additional
+arguments specify the implementation and/or features of the map being
+created.
+
+@deffn procedure make-amap comparator arg @dots{}
+Creates a new mutable associative map as specified by @var{comparator}
+and @var{arg}s.
+@end deffn
+
+@deffn procedure alist->amap alist comparator arg @dots{}
+Creates a new associative map as specified by @var{comparator} and
+@var{arg}s, and which contains the associations in @var{alist}.
+@end deffn
+
+@deffn procedure amap-unfold stop? mapper successor seed comparator arg @dots{}
+Creates a new associative map as specified by @var{comparator} and
+@var{arg}s.  The associations in the resulting map are generated using
+the additional arguments.
+
+The @var{stop?} argument is a unary predicate that takes a state value
+and returns @code{#t} if generation is complete, otherwise @code{#f}.
+The @var{mapper} argument is a unary procedure that takes a state value
+and returns two values: a key and a value.  The @var{successor}
+argument is a unary procedure that takes a state value and returns a
+new state value.  And @var{seed} is the initial state value.
+
+The process by which the generator adds associations to the map is
+this:
+
+@example
+@group
+(let loop ((state @var{seed}))
+  (if (@var{stop?} state)
+      result
+      (let-values (((key value) (@var{mapper} state)))
+        (amap-set! result key value)
+        (loop (@var{successor} state)))))
+@end group
+@end example
+@end deffn
+
+The arguments passed to a constructor can be divided into categories:
+
+@itemize @bullet
+@item
+Each backing implementation has an associated name, which can be
+passed as one of the arguments.  At present this includes
+@code{alist}, @code{hash-table}, @code{red/black-tree}, etc.
+
+There must be at most one such name; it is an error to pass two or
+more implementation names.  If an implementation name is given, then
+the remaining arguments must be supported by that implementation.
+
+@item
+The arguments @code{weak-keys}, @code{weak-values},
+@code{ephemeral-keys}, and @code{ephemeral-values} specify how
+associations interact with garbage collection.  Not all
+implementations support these arguments, and those that do may support
+only some of them.  Some combinations are not allowed: for example,
+@code{weak-keys} and @code{ephemeral-keys} are mutually exclusive.
+
+@item
+Additional arguments are used to guide the choice of implementation
+when it is not explicitly specified.  The desired time complexity can
+be specified: @code{linear-time}, @code{log-time},
+@code{amortized-constant-time}, and @code{sublinear-time}.  The
+argument @code{ordered-by-key} specifies that the map keeps its
+associations ordered.
+
+@item
+The argument @code{thread-safe} specifies that the implementation is
+safe to use in a multi-threaded environment.  At present none of the
+implementations are thread-safe.
+
+@item
+Finally, an exact non-negative integer argument specifies the initial
+size of the map.
+@end itemize
+
+This is a complex set of possible arguments.  In order to help explore
+what arguments can be used, and in what combinations, we provide some
+utility procedures:
+
+@deffn procedure amap-implementation-names
+Returns a list of the supported implementation names.
+@end deffn
+
+@deffn procedure amap-implementation-supported-args name
+Returns a list of the arguments supported by the implementation
+specified by @var{name}.  This list can include the procedure
+@code{exact-nonnegative-integer?} if the implementation supports an
+initial size.
+@end deffn
+
+@deffn procedure amap-implementation-supports-args? name args
+Returns @code{#t} if the implementation specified by @var{name}
+supports @var{args}, otherwise returns @code{#f}.
+@end deffn
+
+An implementation may support a limited set of comparators.  For
+example, a hash table requires a comparator that satisfies
+@code{comparator-hashable?}, while a binary tree requires one
+satisfying @code{comparator-ordered?}.
+
+@deffn procedure amap-implementation-supports-comparator? name comparator
+Returns @code{#t} if the implementation specified by @var{name}
+supports @var{comparator}, otherwise returns @code{#f}.
+@end deffn
+
+@node Amap predicates, Amap accessors, Amap constructors, Associative Maps
+@subsection Amap predicates
+
+@deffn procedure amap? object
+True iff @var{object} is an associative map.
+@end deffn
+
+@deffn procedure amap-contains? amap key
+True iff @var{amap} contains an association for @var{key}.
+@end deffn
+
+@deffn procedure amap-empty? amap
+True iff @var{amap} has no associations.
+@end deffn
+
+@deffn procedure amap=? value-comparator amap1 amap2
+True iff the associations in @var{amap1} are the same as the
+associations in @var{amap2}.  This means that @var{amap1} and
+@var{amap2} have the same keys (in the sense of their shared equality
+predicate), and that for each key they have the same value (in the
+sense of @var{value-comparator}).
+@end deffn
+
+@deffn procedure amap-mutable? amap
+True iff @var{amap} is mutable.
+@end deffn
+
+@node Amap accessors, Amap mutators, Amap predicates, Associative Maps
+@subsection Amap accessors
+
+@deffn procedure amap-ref amap key [fail [succeed]]
+Looks up the value associated to @var{key} in @var{amap}, invokes the
+procedure @var{succeed} on it, and returns its result; if
+@var{succeed} is not provided, then the value itself is returned.  If
+@var{key} is not contained in @var{amap} and @var{fail} is supplied,
+then @var{fail} is invoked on no arguments and its result is returned.
+Otherwise an error is signaled.
+@end deffn
+
+@deffn procedure amap-ref/default amap key default
+Semantically equivalent to, but may be more efficient than, the following code:
+
+@example
+(amap-ref @var{amap} @var{key} (lambda () @var{default}))
+@end example
+@end deffn
+
+@deffn procedure amap-comparator amap
+Returns the comparator that was used to create @var{amap}.
+@end deffn
+
+@deffn procedure amap-args amap
+Returns the extra arguments that were used to create @var{amap}.
+@end deffn
+
+@deffn procedure amap-implementation-name amap
+Returns the name of @var{amap}'s backing implementation.
+@end deffn
+
+@node Amap mutators, Amap mapping and folding, Amap accessors, Associative Maps
+@subsection Amap mutators
+
+@deffn procedure amap-set! amap [key value] @dots{}
+Repeatedly mutates @var{amap}, creating new associations in it by
+processing the arguments from left to right.  The args alternate
+between keys and values.  Whenever there is a previous association for
+a key, it is deleted.  It is an error if a key does not satisfy the
+type check procedure of the comparator of @var{amap}.  Likewise, it is
+an error if a key is not a valid argument to the equality predicate of
+@var{amap}.  Returns an unspecified value.
+@end deffn
+
+@deffn procedure amap-delete! amap key @dots{}
+Deletes any association to each @var{key} in @var{amap} and returns
+the number of keys that had associations.
+@end deffn
+
+@deffn procedure amap-intern! amap key fail
+Effectively invokes @code{amap-ref} with the given arguments and
+returns what it returns.  If @var{key} was not found in @var{amap},
+its value is set to the result of calling @var{fail}.
+@end deffn
+
+@deffn procedure amap-update! amap key updater [fail [succeed]]
+Semantically equivalent to, but may be more efficient than, the following code:
+
+@example
+(amap-set! @var{amap} @var{key} (@var{updater} (amap-ref @var{amap} @var{key} @var{fail} @var{succeed})))
+@end example
+@end deffn
+
+@deffn procedure amap-update!/default amap key updater default
+Semantically equivalent to, but may be more efficient than, the following code:
+
+@example
+(amap-set! @var{amap} @var{key} (@var{updater} (amap-ref/default @var{amap} @var{key} @var{default})))
+@end example
+@end deffn
+
+@deffn procedure amap-pop! amap
+Chooses an arbitrary association from @var{amap} and removes it,
+returning the key and value as two values.  Signals an error if
+@var{amap} is empty.
+@end deffn
+
+@deffn procedure amap-clear! amap
+Delete all the associations from @var{amap}.
+@end deffn
+
+@deffn procedure amap-clean! amap
+If @var{amap} has weak or ephemeral associations, cleans up any
+storage for associations whose key and/or value has been reclaimed by
+the garbage collector.  Otherwise does nothing.
+
+This procedure does not have any visible effect, since the
+associations it cleans up are ignored by all other parts of the
+interface.  Additionally, most implementations clean up their storage
+incrementally as they are used.  But this procedure provides for edge
+cases where the reclaimed storage might matter.
+@end deffn
+
+@node Amap mapping and folding, Amap contents, Amap mutators, Associative Maps
+@subsection Amap mapping and folding
+
+@deffn procedure amap-map procedure amap [comparator arg @dots{}]
+Returns a newly allocated associative map as if by @code{(make-amap
+@var{comparator} @var{arg} @dots{})}.  Calls @var{procedure} for every
+association in @var{amap} with the value of the association.  The key
+of the association and the result of invoking @var{procedure} are
+entered into the new map.
+
+If @var{comparator} recognizes multiple keys in @var{amap} as
+equivalent, any one of such associations is taken.
+@end deffn
+
+@deffn procedure amap-for-each procedure amap
+Calls @var{procedure} for every association in @var{amap} with two
+arguments: the key of the association and the value of the
+association.  The value returned by @var{procedure} is discarded.
+Returns an unspecified value.
+@end deffn
+
+@deffn procedure amap-map! procedure amap
+Calls @var{procedure} for every association in @var{amap} with two
+arguments: the key of the association and the value of the
+association.  The value returned by @var{procedure} is used to update
+the value of the association.  Returns an unspecified value.
+@end deffn
+
+@deffn procedure amap-map->list procedure amap
+Calls @var{procedure} for every association in @var{amap} with two
+arguments: the key of the association and the value of the
+association.  The values returned by the invocations of
+@var{procedure} are accumulated into a list, which is returned.
+@end deffn
+
+@deffn procedure amap-fold kons knil amap
+Calls @var{kons} for every association in @var{amap} with three
+arguments: the key of the association, the value of the association,
+and an accumulated value @var{val}.  The argument @var{knil} is seed
+for the first invocation of @var{kons}, and for subsequent invocations
+of @var{kons}, the returned value of the previous invocation.  The
+value returned by @code{amap-fold} is the return value of the last
+invocation of @var{kons}.
+@end deffn
+
+@deffn procedure amap-prune! predicate amap
+Calls @var{predicate} for every association in @var{amap} with two
+arguments, the key and the value of the association, and removes all
+associations from @var{amap} for which @var{predicate} returns true.
+Returns an unspecified value.
+@end deffn
+
+@node Amap contents, Amap copying and conversion, Amap mapping and folding, Associative Maps
+@subsection Amap contents
+
+@deffn procedure amap-size amap
+Returns the number of associations in @var{amap} as an exact integer.
+@end deffn
+
+@deffn procedure amap-keys amap
+Returns a newly allocated list of all the keys in @var{amap}.
+@end deffn
+
+@deffn procedure amap-values amap
+Returns a newly allocated list of all the values in @var{amap}.
+@end deffn
+
+@deffn procedure amap-entries amap
+Returns two values, a newly allocated list of all the keys in
+@var{amap} and a newly allocated list of all the values in @var{amap}
+in the corresponding order.
+@end deffn
+
+@deffn procedure amap-find procedure amap fail
+For each association of @var{amap}, invoke @var{procedure} on its key
+and value.  If @var{procedure} returns true, then @code{amap-find}
+returns what @var{procedure} returns.  If all the calls to
+@var{procedure} return @code{#f}, returns the result of invoking the
+thunk @var{fail}.
+@end deffn
+
+@deffn procedure amap-count predicate amap
+For each association of @var{amap}, invoke @var{predicate} on its key
+and value.  Returns the number of calls to @var{predicate} that
+returned true.
+@end deffn
+
+@node Amap copying and conversion, Amaps as sets, Amap contents, Associative Maps
+@subsection Amap copying and conversion
+
+@deffn procedure amap-copy amap [mutable?]
+Returns a newly allocated associative map with the same properties and
+associations as @var{amap}.  If @var{mutable?} is given and is true,
+the new associative map is mutable.  Otherwise it is immutable
+provided that the implementation supports immutable maps.
+@end deffn
+
+@deffn procedure amap-empty-copy amap
+Returns a newly allocated mutable associative map with the same
+properties as @var{amap}, but with no associations.
+@end deffn
+
+@deffn procedure amap->alist amap
+Returns an alist with the same associations as @var{amap} in an
+unspecified order.
+@end deffn
+
+@node Amaps as sets,  , Amap copying and conversion, Associative Maps
+@subsection Amaps as sets
+
+@deffn procedure amap-union! amap1 amap2
+Adds the associations of @var{amap2} to @var{amap1} and returns
+@var{amap1}.  If a key appears in both maps, its value is set to the
+value appearing in @var{amap1}.
+@end deffn
+
+@deffn procedure amap-intersection! amap1 amap2
+Deletes the associations from @var{amap1} whose keys don't also appear
+in @var{amap2} and returns @var{amap1}.
+@end deffn
+
+@deffn procedure amap-difference! amap1 amap2
+Deletes the associations of @var{amap1} whose keys are also present in
+@var{amap2} and returns @var{amap1}.
+@end deffn
+
+@deffn procedure amap-xor! amap1 amap2
+Deletes the associations of @var{amap1} whose keys are also present in
+@var{amap2}, and then adds the associations of @var{amap2} whose keys
+are not present in @var{amap1} to @var{amap1}.  Returns @var{amap1}.
 @end deffn
