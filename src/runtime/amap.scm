@@ -86,13 +86,12 @@ USA.
   ((amap-impl:empty? (amap-impl amap)) (amap-state amap)))
 
 (define (amap=? value-comparator amap1 amap2)
-  (let ((key-comparator (amap-comparator amap1)))
-    (if (not (eqv? key-comparator (amap-comparator amap2)))
+  (let ((key= (comparator-equality-predicate (amap-comparator amap1))))
+    (if (not (eqv? key=
+		   (comparator-equality-predicate (amap-comparator amap2))))
 	(error:bad-range-argument amap2 'amap=?))
     (let ((keys (amap-keys amap1)))
-      (and (lset= (comparator-equality-predicate key-comparator)
-		  keys
-		  (amap-keys amap2))
+      (and (lset= key= keys (amap-keys amap2))
 	   (every (let ((=? (comparator-equality-predicate value-comparator)))
 		    (lambda (key)
 		      (=? (amap-ref amap1 key) (amap-ref amap2 key))))
