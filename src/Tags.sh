@@ -44,7 +44,7 @@ function excluded_dir ()
     return 1
 }
 
-ALL_SUBDIRS=($(find * -type d -depth 0))
+ALL_SUBDIRS=($(find * -maxdepth 0 -type d))
 SUBDIRS=()
 
 for SUBDIR in "${ALL_SUBDIRS[@]}"; do

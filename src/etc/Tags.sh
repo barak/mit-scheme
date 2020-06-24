@@ -27,5 +27,5 @@
 # The working directory must be the build directory.
 
 rm TAGS
-find * -type f \( -name \*.scm -o -name \*.sld -o -name \*.pkg \) -depth 0 -print0 \
-    | xargs -0 etags --append --language=scheme
+find * -maxdepth 0 -type f \( -name \*.scm -o -name \*.sld -o -name \*.pkg \) \
+    -print0 | xargs -0 etags --append --language=scheme
