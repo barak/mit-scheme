@@ -33,41 +33,79 @@ USA.
 
 (define (get-environment-variable name)
   (guarantee string? name 'get-environment-variable)
-  (hash-table-ref/default %env-cache name #f))
+  (with-thread-mutex-lock %env-lock
+    (lambda ()
+      (hash-table-ref %local-env name
+	(lambda ()
+	  (hash-table-ref/default (env-cache) name #f))))))
 
 (define (get-environment-variables)
-  (hash-table-fold %env-cache
-		   (lambda (name value result)
-		     (if value
-			 (cons (cons name value) result)
-			 result))
-		   '()))
+  (with-thread-mutex-lock %env-lock
+    (lambda ()
+      (let ((local-copy (hash-table-copy %local-env)))
+	(hash-table-for-each (lambda (name value)
+			       (if (not (hash-table-exists? local-copy name))
+				   (hash-table-set! local-copy name value)))
+			     (env-cache))
+	(let ((entries
+	       (hash-table-fold local-copy
+				(lambda (name value result)
+				  (if value
+				      (cons (cons name value) result)
+				      result))
+				'())))
+	  (sort entries string<? car))))))
 
 (define (set-environment-variable! name value)
   (guarantee string? name 'set-environment-variable!)
   (if value
       (guarantee string? value 'set-environment-variable!))
-  (hash-table-set! %env-cache name value))
+  (with-thread-mutex-lock %env-lock
+    (lambda ()
+      (hash-table-set! %local-env name value))))
 
 (define (delete-environment-variable! name)
   (guarantee string? name 'delete-environment-variable!)
-  (hash-table-delete! %env-cache name))
+  (with-thread-mutex-lock %env-lock
+    (lambda ()
+      ;; XXX Kinda does the wrong thing on save/restore -- restoring a
+      ;; band in a new environment might cause a variable that you had
+      ;; deleted to become available.  But the alternative is for
+      ;; delete-environment-variable! to leak memory indefinitely.
+      (if (hash-table-ref/default (env-cache) name #f)
+	  (hash-table-set! %local-env name #f)
+	  (hash-table-delete! %local-env name)))))
+
+(define (env-cache)
+  (assert-thread-mutex-owned %env-lock)
+  (if (not %env-cache)
+      (begin
+	(set! %env-cache (os/make-env-cache))
+	(vector-for-each (lambda (s)
+			   (let ((s (string-from-primitive s))
+				 (i (string-find-next-char s #\=)))
+			     (if i
+				 (let ((var (string-head s i))
+				       (val (string-tail s (fix:+ i 1))))
+				   (hash-table-set! %env-cache var val)))))
+			 ((ucode-primitive get-environment 0)))))
+  %env-cache)
 
 (define (reset-environment-variables!)
-  (hash-table-clear! %env-cache)
-  (vector-for-each (lambda (s)
-		     (let ((s (string-from-primitive s))
-			   (i (string-find-next-char s #\=)))
-		       (if i
-			   (hash-table-set! %env-cache
-					    (string-head s i)
-					    (string-tail s (fix:+ i 1))))))
-		   ((ucode-primitive get-environment 0))))
+  (with-thread-mutex-lock %env-lock
+    (lambda ()
+      (set! %env-cache #f))))
 
-(define-deferred %env-cache
+(define-deferred %env-lock
+  (make-thread-mutex))
+
+(define %env-cache)
+
+(define-deferred %local-env
   (os/make-env-cache))
 
 (add-boot-init!
  (lambda ()
    (reset-environment-variables!)
-   (add-event-receiver! event:after-restart reset-environment-variables!)))
+   (add-event-receiver! event:after-restart reset-environment-variables!)
+   (add-secondary-gc-daemon! reset-environment-variables!)))
