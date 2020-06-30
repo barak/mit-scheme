@@ -1,13 +1,10 @@
 The Blowfish option.
 
 This plugin creates a (blowfish) package.  It is built in the GNU
-standard way (below).  It expects the blowfish library header file to
-be available, but often headers are not installed with the library.
-On Ubuntu, when using the OpenSSL library, the libssl-dev package must
-be installed before running the configure script.  Other options
-include the libcrypto++-dev package or any library that provides the
-blowfish header.  (Some adjustment to the configure script may be
-necessary.)
+standard way (below).  It is currently based on the OpenSSL
+implementation as described in its blowfish header file.  On Debian
+this file is supplied by the libssl-dev package, which must be
+installed before running the configure script.
 
 The GNU standard way:
 
