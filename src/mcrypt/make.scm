@@ -6,4 +6,4 @@
   (lambda ()
     (load-package-set "mcrypt")))
 
-(add-subsystem-identification! "Mcrypt" '(0 2))
+(add-subsystem-identification! "Mcrypt" '(1 0))
