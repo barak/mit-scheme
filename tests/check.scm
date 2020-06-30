@@ -40,6 +40,7 @@ USA.
 
 (define known-tests
   '(
+    "compiler/test-closure"
     ("compiler/test-fasdump" (compiler portable-fasdump))
     "compiler/test-fgopt-conect"
     "compiler/test-open-code"
