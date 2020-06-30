@@ -89,6 +89,7 @@ USA.
     "runtime/test-list"
     "runtime/test-md5"
     "runtime/test-mime-codec"
+    "runtime/test-msort"
     "runtime/test-numpar"
     "runtime/test-optional"
     "runtime/test-optional.bin"
@@ -100,6 +101,7 @@ USA.
     ("runtime/test-printer" (runtime printer))
     "runtime/test-process"
     "runtime/test-promise"
+    "runtime/test-qsort"
     "runtime/test-random"
     "runtime/test-readwrite"
     "runtime/test-record"

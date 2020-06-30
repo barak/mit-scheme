@@ -29,29 +29,34 @@ USA.
 
 (declare (usual-integrations))
 
-(define (quick-sort vector predicate)
+(define (quick-sort vector predicate #!optional key)
   (if (vector? vector)
-      (quick-sort! (vector-copy vector) predicate)
-      (vector->list (quick-sort! (list->vector vector) predicate))))
+      (quick-sort! (vector-copy vector) predicate key)
+      (vector->list (quick-sort! (list->vector vector) predicate key))))
 
-(define (quick-sort! vector predicate)
+(define (quick-sort! vector predicate #!optional key)
+  (define get-key
+    (if (default-object? key)
+	(lambda (x) x)
+	(lambda (x) (key x))))
   (define (outer-loop l r)
     (if (fix:> r l)
 	(if (fix:= r (fix:+ l 1))
-	    (if (predicate (vector-ref vector r)
-			   (vector-ref vector l))
+	    (if (predicate (get-key (vector-ref vector r))
+			   (get-key (vector-ref vector l)))
 		(exchange! l r))
-	    (let ((lth-element (vector-ref vector l)))
+	    (let ((lth-key (get-key (vector-ref vector l))))
 
 	      (define (increase-i i)
 		(if (or (fix:> i r)
-			(predicate lth-element (vector-ref vector i)))
+			(predicate lth-key (get-key (vector-ref vector i))))
 		    i
 		    (increase-i (fix:+ i 1))))
 
 	      (define (decrease-j j)
 		(if (or (fix:<= j l)
-			(not (predicate lth-element (vector-ref vector j))))
+			(not
+			 (predicate lth-key (get-key (vector-ref vector j)))))
 		    j
 		    (decrease-j (fix:- j 1))))
 
