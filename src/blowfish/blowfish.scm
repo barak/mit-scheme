@@ -48,6 +48,9 @@ USA.
 
 (C-include "blowfish")
 
+(if (not (zero? (C-call "blowfish_selftest")))
+    (error "Blowfish self-test failed"))
+
 (define (blowfish-set-key bytes)
   (guarantee bytevector? bytes 'blowfish-set-key)
   (let ((len (bytevector-length bytes)))
@@ -183,16 +186,7 @@ USA.
        (bytevector-fill! output-buffer 0)))))
 
 (define (compute-blowfish-init-vector)
-  (let ((iv (make-bytevector 8)))
-    (do ((i 0 (fix:+ i 1))
-	 (t (+ (* (+ (* (get-universal-time) 1000)
-		     (remainder (real-time-clock) 1000))
-		  #x100000)
-	       (random #x100000))
-	    (quotient t #x100)))
-	((not (fix:< i 8)))
-      (bytevector-u8-set! iv i (remainder t #x100)))
-    iv))
+  (random-bytevector 8))
 
 (define (write-blowfish-file-header port)
   (write-bytevector blowfish-file-header-v2 port)

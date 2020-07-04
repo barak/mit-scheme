@@ -28,13 +28,17 @@ USA.
 
 #include "config.h"
 
-#if defined(HAVE_OPENSSL_BLOWFISH_H)
-#  include <openssl/blowfish.h>
-#else
-#  ifdef HAVE_BLOWFISH_H
-#    include <blowfish.h>
-#  endif
-#endif
+#include "blowfish.h"
+
+typedef struct blowfish BF_KEY;
+
+#define BF_ENCRYPT 1
+#define BF_DECRYPT 0
+
+void BF_set_key (BF_KEY *, int, const unsigned char *);
+void BF_ecb_encrypt (const unsigned char *, unsigned char *, BF_KEY *, int);
+void BF_cbc_encrypt (const unsigned char *, unsigned char *, long, BF_KEY *,
+		     unsigned char *, int);
 
 int
 do_BF_cfb64_encrypt (const unsigned char *in,

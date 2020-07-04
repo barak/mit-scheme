@@ -1,14 +1,12 @@
-The Blowfish option.
+The Blowfish option -- an obsolete block cipher that should be used for
+compatibility only.
 
 This plugin creates a (blowfish) package.  It is built in the GNU
-standard way (below).  It is currently based on the OpenSSL
-implementation as described in its blowfish header file.  On Debian
-this file is supplied by the libssl-dev package, which must be
-installed before running the configure script.
+standard way (below).
 
 The GNU standard way:
 
-    ./configure [--with-openssl=directory]...
+    ./configure
     make all
     make check
     make install

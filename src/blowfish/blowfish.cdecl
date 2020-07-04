@@ -29,10 +29,10 @@ USA.
 (enum (BF_ENCRYPT)
       (BF_DECRYPT))
 
-(struct bf_key_st (P (array mumble)))
+(struct blowfish (P (array mumble)))
 
 (typedef BF_KEY
-	 (struct bf_key_st))
+	 (struct blowfish))
 
 (extern void BF_set_key
 	(key (* BF_KEY))
@@ -74,12 +74,4 @@ USA.
 	(ivec (* uchar))
 	(num int))
 
-(extern (* (const char)) BF_options)
-
-(extern void BF_encrypt
-	(data (* BF_LONG))
-	(key (* (const BF_KEY))))
-
-(extern void BF_decrypt
-	(data (* BF_LONG))
-	(key (* (const BF_KEY))))
+(extern int blowfish_selftest)
