@@ -31,7 +31,7 @@ USA.
 
 ;;;; Exports to the compiler
 
-(define (compiler:compiled-code-pathname-type types)
+(define (compiler:compiled-code-pathname-type #!optional types)
   (declare (ignore types))
   "c")
 

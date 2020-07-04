@@ -31,8 +31,11 @@ USA.
 
 ;;;; Exports to the compiler
 
-(define (compiler:compiled-code-pathname-type types)
-  (file-type-com types compiler:cross-compiling?))
+(define (compiler:compiled-code-pathname-type #!optional types)
+  (file-type-com (if (default-object? types)
+		     file-types:program
+		     types)
+		 compiler:cross-compiling?))
 
 (define (compiler-file-output object pathname)
   (if compiler:cross-compiling?
