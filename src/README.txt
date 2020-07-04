@@ -78,9 +78,6 @@ There are a few C/Unix FFI plugins:
   provides a drop-in replacement for the microcode module based
   package (runtime blowfish).
 
-* "mcrypt" wraps libmcrypt and provides replacements for the mcrypt-*
-  procedures implemented in (runtime crypto).
-
 * "pgsql" wraps libpq and provides a drop-in replacement for the
   microcode module based package (runtime postgresql).
 

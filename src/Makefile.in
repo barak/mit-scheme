@@ -599,21 +599,6 @@ compile-gdbm-c:
 	+(cd gdbm && $(MAKE))
 
 ################
-# mcrypt
-################
-
-@IF_MCRYPT@MCRYPT_BUILD_TARGETS = compile-mcrypt
-MCRYPT_DEPEND_TARGETS = compile-mcrypt
-
-.PHONY: compile-mcrypt
-compile-mcrypt: $(PLUGINS_TOOLCHAIN)
-	+(cd mcrypt && $(MAKE))
-
-.PHONY: compile-mcrypt-c
-compile-mcrypt-c:
-	+(cd mcrypt && $(MAKE))
-
-################
 # pgsql
 ################
 
@@ -776,7 +761,6 @@ cross-target: $(BLOWFISH_BUILD_TARGETS)
 cross-target: $(EDWIN_BUILD_TARGETS)
 cross-target: $(GDBM_BUILD_TARGETS)
 cross-target: $(IMAIL_BUILD_TARGETS)
-cross-target: $(MCRYPT_BUILD_TARGETS)
 cross-target: $(PGSQL_BUILD_TARGETS)
 cross-target: $(X11_BUILD_TARGETS)
 cross-target: $(X11_SCREEN_BUILD_TARGETS)
@@ -799,7 +783,6 @@ microcode/scheme:
 compile-microcode: microcode/scheme
 @IF_BLOWFISH@compile-microcode: compile-blowfish-c
 @IF_GDBM@compile-microcode: compile-gdbm-c
-@IF_MCRYPT@compile-microcode: compile-mcrypt-c
 @IF_PGSQL@compile-microcode: compile-pgsql-c
 @IF_X11@compile-microcode: compile-x11-c
 

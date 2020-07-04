@@ -171,7 +171,6 @@ USA.
 			"blowfish"
 			"ffi"
 			"gdbm"
-			"mcrypt"
 			"pgsql"
 			"x11"
 			"x11-screen")

@@ -79,7 +79,7 @@ fi
 . etc/functions.sh
 
 INSTALLED_SUBDIRS="cref ffi libraries sf sos ssp star-parser xml"
-PLUGIN_SUBDIRS="blowfish edwin gdbm imail pgsql mcrypt x11 x11-screen"
+PLUGIN_SUBDIRS="blowfish edwin gdbm imail pgsql x11 x11-screen"
 OTHER_SUBDIRS="6001 compiler runtime win32 xdoc microcode"
 
 # lib

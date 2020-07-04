@@ -313,7 +313,7 @@ By default, the following plugins are built and installed:
 latter two only if X11 libraries are installed on your system.)  To
 get all of the functionality previously available in version 9.2 you
 will need to build and install the remaining plugins included in the
-@file{src} subdirectory: @file{blowfish}, @file{gdbm}, @file{mcrypt},
+@file{src} subdirectory: @file{blowfish}, @file{gdbm},
 and @file{pgsql}.  These plugins are all configured, built, and
 installed in the GNU standard way.  See the @file{README} file in each
 plugin's source directory for complete details.

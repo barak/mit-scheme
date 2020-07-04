@@ -5748,27 +5748,6 @@ USA.
 (define-package (runtime crypto)
   (files "crypto")
   (parent (runtime))
-  (export deprecated ()
-	  mcrypt-algorithm-name
-	  mcrypt-algorithm-names
-	  mcrypt-available?
-	  mcrypt-block-algorithm-mode?
-	  mcrypt-block-algorithm?
-	  mcrypt-block-mode?
-	  mcrypt-context?
-	  mcrypt-decrypt!
-	  mcrypt-encrypt
-	  mcrypt-encrypt!
-	  mcrypt-encrypt-port
-	  mcrypt-end
-	  mcrypt-init
-	  mcrypt-init-vector-size
-	  mcrypt-key-size
-	  mcrypt-mode-name
-	  mcrypt-mode-names
-	  mcrypt-open-module
-	  mcrypt-self-test
-	  mcrypt-supported-key-sizes)
   (export ()
 	  md5-available?
 	  md5-bytevector

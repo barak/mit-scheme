@@ -130,11 +130,6 @@ AC_ARG_ENABLE([pgsql],
 	[Add support for the PostgreSQL support [[no]]]))
 : ${enable_pgsql=no}
 
-AC_ARG_ENABLE([mcrypt],
-    AS_HELP_STRING([--enable-mcrypt],
-	[Add support for the mcrypt support [[no]]]))
-: ${enable_mcrypt=no}
-
 AC_CANONICAL_HOST
 
 AC_CHECK_SIZEOF([unsigned long])
@@ -329,15 +324,6 @@ else
     IF_IMAIL="#!imail: "
     AC_MSG_RESULT([no])
 fi
-AC_MSG_CHECKING([configuring mcrypt plugin])
-if test x"${enable_mcrypt}" = xyes; then
-    OPTION_SUBDIRS="${OPTION_SUBDIRS} mcrypt"
-    IF_MCRYPT=
-    AC_MSG_RESULT([yes])
-else
-    IF_MCRYPT="#!mcrypt: "
-    AC_MSG_RESULT([no])
-fi
 AC_MSG_CHECKING([configuring pgsql plugin])
 if test x"${enable_pgsql}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} pgsql"
@@ -376,7 +362,6 @@ AC_SUBST([IF_EDWIN])
 AC_SUBST([IF_GDBM])
 AC_SUBST([IF_IMAIL])
 AC_SUBST([IF_LIARC])
-AC_SUBST([IF_MCRYPT])
 AC_SUBST([IF_NATIVE])
 AC_SUBST([IF_PGSQL])
 AC_SUBST([IF_SVM])
@@ -429,9 +414,6 @@ if test x"${enable_gdbm}" = xyes; then
 fi
 if test x"${enable_imail}" = xyes; then
     AC_CONFIG_SUBDIRS([imail])
-fi
-if test x"${enable_mcrypt}" = xyes; then
-    AC_CONFIG_SUBDIRS([mcrypt])
 fi
 if test x"${enable_pgsql}" = xyes; then
     AC_CONFIG_SUBDIRS([pgsql])
