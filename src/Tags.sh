@@ -28,7 +28,7 @@
 
 set -e
 
-EXCLUDED_DIRS=(etc relnotes tools)
+EXCLUDED_DIRS=(etc relnotes tools autom4te.cache lib)
 
 function excluded_dir ()
 {
