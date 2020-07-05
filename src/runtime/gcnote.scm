@@ -76,10 +76,10 @@ USA.
   (weak-list-set-contains? thread threads-to-notify))
 
 (define-integrable (register-thread thread)
-  (weak-list-set-add! threads-to-notify thread))
+  (weak-list-set-add! thread threads-to-notify))
 
 (define-integrable (deregister-thread thread)
-  (weak-list-set-delete! threads-to-notify thread))
+  (weak-list-set-delete! thread threads-to-notify))
 
 (define (signal-gc-events)
   (without-interrupts
