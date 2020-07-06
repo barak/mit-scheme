@@ -3019,7 +3019,7 @@ Equivalent to:
 @deffn procedure random-source-make-integers source
 [SRFI 27]
 Returns a procedure of one argument, @var{n}, that deterministically
-draws from @var{source} a exact nonnegative integer below @var{n} with
+draws from @var{source} an exact nonnegative integer below @var{n} with
 uniform distribution.
 @end deffn
 
