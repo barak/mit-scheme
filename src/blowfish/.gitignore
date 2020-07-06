@@ -1,9 +1,13 @@
 # autocrud
+/.deps/
+/.libs/
 /INSTALL
 /Makefile
 /Makefile.in
 /aclocal.m4
 /autom4te.cache/
+/blowfish-check.sh.log
+/blowfish-check.sh.trs
 /compile
 /config.guess
 /config.h
@@ -14,9 +18,24 @@
 /configure
 /depcomp
 /install-sh
+/libtool
 /ltmain.sh
 /m4/
 /mdate-sh
 /missing
 /test-driver
+/test-suite.log
 /texinfo.tex
+
+# build crud
+/blowfish-const
+/blowfish-const.c
+/blowfish-const.scm
+/blowfish-shim.c
+/mit-scheme-blowfish.info
+/stamp-h1
+/stamp-scheme
+/stamp-shim
+/stamp-vti
+/test
+/version.texi

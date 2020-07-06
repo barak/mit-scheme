@@ -12,7 +12,9 @@
 @end macro
 @end ifhtml
 @ifnothtml
-@alias myresult = result
+@macro myresult{}
+ @result{}
+@end macro
 @end ifnothtml
 
 @copying

@@ -40,6 +40,7 @@ USA.
 
 (define known-tests
   '(
+    "compiler/test-closure"
     ("compiler/test-fasdump" (compiler portable-fasdump))
     "compiler/test-fgopt-conect"
     "compiler/test-open-code"
@@ -88,10 +89,12 @@ USA.
     "runtime/test-list"
     "runtime/test-md5"
     "runtime/test-mime-codec"
+    "runtime/test-msort"
     "runtime/test-numpar"
     "runtime/test-optional"
     "runtime/test-optional.bin"
     "runtime/test-optional.com"
+    "runtime/test-os-env"
     ("runtime/test-parametric-predicate" (runtime parametric-predicate))
     "runtime/test-pp"
     "runtime/test-predicate"
@@ -99,6 +102,7 @@ USA.
     ("runtime/test-printer" (runtime printer))
     "runtime/test-process"
     "runtime/test-promise"
+    "runtime/test-qsort"
     "runtime/test-random"
     "runtime/test-readwrite"
     "runtime/test-record"

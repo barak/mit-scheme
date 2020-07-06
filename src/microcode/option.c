@@ -158,12 +158,10 @@ for the band.\n\
 \n\
 --band FILENAME\n\
   Specifies the initial band to be loaded.  Searches for FILENAME in\n\
-  the working directory and the library directories, returning the\n\
-  full pathname of the first readable file of that name.  If this\n\
-  option isn't given, the filename is the value of the environment\n\
-  variable MITSCHEME_BAND, or if that isn't defined, \"%s\"; in\n\
-  these cases the library directories are searched, but not the\n\
-  working directory.\n\
+  the working directory and the library directories.  If this option\n\
+  is not given, the environment variable MITSCHEME_BAND is used, or\n\
+  if that is not defined, \"%s\".\n\
+  If this option is not given, the working directory is not searched.\n\
 \n\
 --fasl FILENAME\n\
   Specifies that a cold load should be performed, using FILENAME as\n\

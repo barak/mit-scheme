@@ -163,7 +163,7 @@ USA.
   (let ((channel
 	 (directory-channel-open
 	  (string-for-primitive
-	   (->namestring (pathname-as-directory directory)))))
+	   (->namestring (pathname-as-directory (merge-pathnames directory))))))
 	(include-dots?
 	 (if (default-object? include-dots?) #f include-dots?)))
     (let loop ((result '()))

@@ -48,12 +48,12 @@ AM_MAKEINFOHTMLFLAGS = --no-split
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
 
-blowfish_shim_la_SOURCES = blowfish-adapter.c blowfish-shim.h
+blowfish_shim_la_SOURCES = blowfish.c blowfish-adapter.c blowfish-shim.h
 nodist_blowfish_shim_la_SOURCES = blowfish-shim.c
 blowfish_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = blowfish-const$(EXEEXT)
-blowfish_const_SOURCES = blowfish-shim.h
+blowfish_const_SOURCES = blowfish.h blowfish-shim.h
 nodist_blowfish_const_SOURCES = blowfish-const.c
 
 blowfish-shim.c: stamp-shim

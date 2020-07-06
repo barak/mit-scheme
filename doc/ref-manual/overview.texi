@@ -15,14 +15,12 @@ output.
 
 @cindex standard Scheme (defn)
 @cindex Scheme standard
-@cindex R4RS
+@cindex R7RS
 Throughout this manual, we will make frequent references to
 @dfn{standard Scheme}, which is the language defined by the document
-@cite{Revised^4 Report on the Algorithmic Language Scheme}, by William
-Clinger, Jonathan Rees, et al.@:, or by @sc{ieee} Std.@: 1178-1990,
-@cite{IEEE Standard for the Scheme Programming Language} (in fact,
-several parts of this document are copied from the @cite{Revised
-Report}).  MIT/GNU Scheme is an extension of standard Scheme.
+@cite{Revised@sup{7} Report on the Algorithmic Language Scheme}; Alex
+Shinn, John Cowan, and Arthur A. Gleckler (Editors).
+MIT/GNU Scheme is an extension of standard Scheme.
 
 These are the significant semantic characteristics of the Scheme
 language:

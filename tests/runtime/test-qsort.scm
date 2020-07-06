@@ -1,4 +1,4 @@
-/* -*-C-*-
+#| -*-Scheme-*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -22,41 +22,27 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
-*/
+|#
 
-/* Interface to the Blowfish encryption library */
+;;;; Test of quick-sort
 
-#include "config.h"
+(declare (usual-integrations))
+
+(define-test 'vector
+  (lambda ()
+    (assert-equal (quick-sort '#(0 2 1 3) <) '#(0 1 2 3))))
 
-#include "blowfish.h"
+(define-test 'list
+  (lambda ()
+    (assert-equal (quick-sort '(0 2 1 3) <) '(0 1 2 3))))
 
-typedef struct blowfish BF_KEY;
+(define-test 'vector!
+  (lambda ()
+    (let ((v (vector 0 2 1 3)))
+      (quick-sort! v <)
+      (assert-equal v '#(0 1 2 3)))))
 
-#define BF_ENCRYPT 1
-#define BF_DECRYPT 0
-
-void BF_set_key (BF_KEY *, int, const unsigned char *);
-void BF_ecb_encrypt (const unsigned char *, unsigned char *, BF_KEY *, int);
-void BF_cbc_encrypt (const unsigned char *, unsigned char *, long, BF_KEY *,
-		     unsigned char *, int);
-
-int
-do_BF_cfb64_encrypt (const unsigned char *in,
-		     long istart,
-		     unsigned char *out,
-		     long ostart,
-		     long length,
-		     const BF_KEY *schedule,
-		     unsigned char *ivec,
-		     int num,
-		     int enc);
-
-extern int
-do_BF_ofb64_encrypt (const unsigned char *in,
-		     long istart,
-		     unsigned char *out,
-		     long ostart,
-		     long length,
-		     const BF_KEY *schedule,
-		     unsigned char *ivec,
-		     int num);
+(define-test 'vector-key
+  (lambda ()
+    (assert-equal (quick-sort '#((0 . a) (2 . c) (1 . b) (3 . d)) < car)
+		  '#((0 . a) (1 . b) (2 . c) (3 . d)))))

@@ -74,7 +74,7 @@ There are a few C/Unix FFI plugins:
   drop-in replacement for the microcode module based package (runtime
   gdbm).
 
-* "blowfish" wraps libssl or libcrypto blowfish functions, and
+* "blowfish" implements the obsolete Blowfish block cipher, and
   provides a drop-in replacement for the microcode module based
   package (runtime blowfish).
 

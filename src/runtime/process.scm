@@ -30,7 +30,6 @@ USA.
 (declare (usual-integrations))
 
 (define subprocess-finalizer)
-(define scheme-subprocess-environment)
 
 (define (initialize-package!)
   (set! subprocess-finalizer
@@ -39,13 +38,7 @@ USA.
 			   subprocess-index
 			   set-subprocess-index!))
   (set! subprocess-support-loaded? #t)
-  (reset-package!)
-  (add-event-receiver! event:after-restore reset-package!)
   (add-event-receiver! event:before-exit delete-all-processes))
-
-(define (reset-package!)
-  (set! scheme-subprocess-environment ((ucode-primitive scheme-environment 0)))
-  unspecific)
 
 (define (delete-all-processes)
   (for-each subprocess-delete (subprocess-list)))
@@ -175,6 +168,7 @@ USA.
 			 (and (cdr environment)
 			      (->namestring (cdr environment))))
 		   (set! environment (car environment))))
+	     (set! environment (resolve-environment environment))
 	     (without-interruption
 	      (lambda ()
 		(let ((index
@@ -442,8 +436,16 @@ USA.
 
 ;;;; Environment Bindings
 
+(define scheme-subprocess-environment
+  '|#[(runtime subprocess)scheme-subprocess-environment]|)
+
+(define (resolve-environment environment)
+  (if (eq? environment scheme-subprocess-environment)
+      ((ucode-primitive scheme-environment 0))
+      environment))
+
 (define (process-environment-bind environment . bindings)
-  (let ((bindings* (vector->list environment)))
+  (let ((bindings* (vector->list (resolve-environment environment))))
     (for-each (lambda (binding)
 		(let ((b
 		       (find-environment-variable

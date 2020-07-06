@@ -99,29 +99,6 @@ if test ${GCC} = yes; then
 	[AC_MSG_RESULT([no])])
 fi
 
-AC_ARG_WITH([openssl],
-    AS_HELP_STRING([--with-openssl],
-	[Use OpenSSL crypto library if available [[yes]]]))
-: ${with_openssl='yes'}
-
-dnl The OpenSSL crypto library provides support for blowfish.
-if test "${with_openssl}" != no; then
-    if test "${with_openssl}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_openssl}/include"
-	LDFLAGS="${LDFLAGS} -L${with_openssl}/lib"
-    fi
-    FOUND=
-    AC_CHECK_HEADERS([openssl/blowfish.h blowfish.h],[FOUND=yes])
-    if test -n "${FOUND}"; then
-	AC_CHECK_LIB([crypto], [BF_set_key],
-	    [
-	    AC_DEFINE([HAVE_LIBCRYPTO], [1],
-		[Define to 1 if you have the `crypto' library (-lcrypto).])
-	    LIBS="-lcrypto"
-	    ])
-    fi
-fi
-
 MIT_SCHEME_PROJECT=mit-scheme
 : ${MIT_SCHEME_TOOLCHAIN_EXE=mit-scheme}
 if test x"${MIT_SCHEME_LIBDIR}" = x; then

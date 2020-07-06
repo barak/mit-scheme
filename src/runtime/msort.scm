@@ -31,14 +31,18 @@ USA.
 
 ;; This merge sort is stable.
 
-(define (merge-sort obj pred)
+(define (merge-sort obj pred #!optional key)
   (if (vector? obj)
-      (merge-sort! (vector-copy obj) pred)
-      (vector->list (merge-sort! (list->vector obj) pred))))
+      (merge-sort! (vector-copy obj) pred key)
+      (vector->list (merge-sort! (list->vector obj) pred key))))
 
-(define (merge-sort! v pred)
+(define (merge-sort! v pred #!optional key)
   (if (not (vector? v))
       (error:wrong-type-argument v "vector" 'merge-sort!))
+  (define get-key
+    (if (default-object? key)
+	(lambda (x) x)
+	(lambda (x) (key x))))
   (let sort-subvector
       ((v v)
        (temp (vector-copy v))
@@ -55,8 +59,8 @@ USA.
 	    (if (fix:< p high)
 		(if (and (fix:< p1 middle)
 			 (or (fix:= p2 high)
-			     (not (pred (vector-ref temp p2)
-					(vector-ref temp p1)))))
+			     (not (pred (get-key (vector-ref temp p2))
+					(get-key (vector-ref temp p1))))))
 		    (begin
 		      (vector-set! v p (vector-ref temp p1))
 		      (merge (fix:+ p 1) (fix:+ p1 1) p2))
