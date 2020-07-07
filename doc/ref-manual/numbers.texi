@@ -629,6 +629,32 @@ multiple of their arguments.  The result is always non-negative.
 @end example
 @end deffn
 
+@deffn procedure modexp b e m
+Modular exponentiation.
+Returns
+@iftex
+@tex
+$b^e \bmod m$.
+@end tex
+@end iftex
+@ifnottex
+b^e mod m.
+@end ifnottex
+@var{b}, @var{e}, and @var{m} must be exact integers; @var{m} must be
+nonzero.
+Mathematically equivalent to @code{(modulo (expt b e) m)}, but works
+even for large inputs for which the intermediate @code{(expt b e)}
+would overflow memory.
+
+@example
+@group
+(modexp 1234 5678 90)   @result{} 46
+(modexp 2 (expt 2 1024) 299)
+                        @result{} 55
+@end group
+@end example
+@end deffn
+
 @deffn procedure numerator q
 @deffnx procedure denominator q
 These procedures return the numerator or denominator of their argument;
