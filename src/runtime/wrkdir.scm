@@ -28,8 +28,6 @@ USA.
 ;;; package: (runtime working-directory)
 
 (declare (usual-integrations))
-
-(add-boot-deps! '(runtime pathname))
 
 (define-deferred *working-directory-pathname*
   (make-general-parameter #f
@@ -40,21 +38,16 @@ USA.
 
 (define (wd-setter set-param pathname)
   (set-param pathname)
-  (param:default-pathname-defaults pathname)
   pathname)
 
 (define (working-directory-pathname)
-  (*working-directory-pathname*))
-
-(define (reset!)
-  (*working-directory-pathname*
-   (pathname-simplify
-    (pathname-as-directory
-     (string-from-primitive
-      ((ucode-primitive working-directory-pathname)))))))
-(add-boot-init!
- (lambda ()
-   (run-now-and-after-restore! reset!)))
+  (or (*working-directory-pathname*)
+      (pathname-simplify
+       (pathname-as-directory
+	(parse-namestring
+	 (string-from-primitive
+	  ((ucode-primitive working-directory-pathname)))
+	 local-host)))))
 
 (define (set-working-directory-pathname! name)
   (let ((pathname (new-pathname name)))
@@ -78,10 +71,8 @@ USA.
 
 (define (with-working-directory-pathname name thunk)
   (let ((pathname (new-pathname name)))
-    (fluid-let ((*default-pathname-defaults* pathname))
-      (parameterize ((param:default-pathname-defaults pathname)
-		     (*working-directory-pathname* pathname))
-	(thunk)))))
+    (parameterize ((*working-directory-pathname* pathname))
+      (thunk))))
 
 (define (new-pathname name)
   (pathname-simplify

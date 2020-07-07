@@ -117,8 +117,7 @@ USA.
   (port/set-default-directory (cmdl/port cmdl) pathname))
 
 (define (cmdl/start cmdl message)
-  (let ((port (cmdl/port cmdl))
-	(pathname-defaults (param:default-pathname-defaults)))
+  (let ((port (cmdl/port cmdl)))
     (let ((thunk
 	   (lambda ()
 	     (parameterize ((current-input-port #f)
@@ -133,13 +132,13 @@ USA.
 			    (param:standard-error-hook #f)
 			    (param:standard-warning-hook #f)
 			    (param:standard-breakpoint-hook #f)
-			    (param:default-pathname-defaults pathname-defaults)
+			    (param:default-pathname-defaults #f)
 			    (dynamic-handler-frames '())
 			    (param:bound-restarts
 			     (if (cmdl/parent cmdl)
 				 (param:bound-restarts)
 				 '())))
-	       (fluid-let ((*default-pathname-defaults* pathname-defaults))
+	       (fluid-let ((*default-pathname-defaults* #!default))
 		 (let loop ((message message))
 		   (loop
 		    (bind-abort-restart cmdl

@@ -31,7 +31,8 @@ USA.
 
 (add-boot-deps! '(runtime pathname unix)
 		'(runtime pathname dos)
-		'(runtime reader))
+		'(runtime reader)
+		'(runtime working-directory))
 
 #|
 
@@ -441,26 +442,33 @@ these rules:
 
 ;;;; Pathname Merging
 
-(define *default-pathname-defaults*)
+(define *default-pathname-defaults* #!default)
 (define param:default-pathname-defaults)
 
 (define (make-param:default-pathname-defaults)
-  (make-general-parameter (make-pathname local-host #f #f #f #f #f)
+  (make-general-parameter #f
 			  defaults-converter
 			  defaults-merger
-			  default-parameter-getter
+			  defaults-getter
 			  defaults-setter))
 
 (define (defaults-converter object)
-  (parse-namestring object local-host))
+  (and object
+       (parse-namestring object local-host)))
 
 (define (defaults-merger old new)
-  (pathname-simplify (merge-pathnames new old)))
+  (if old
+      (and new (pathname-simplify (merge-pathnames new old)))
+      new))
 
 (define (defaults-setter set-param defaults)
   (set-param defaults)
-  (set! *default-pathname-defaults* defaults)
   unspecific)
+
+(define (defaults-getter value)
+  (or value
+      (working-directory-pathname)
+      (make-pathname local-host #f #f #f #f #f)))
 
 (define (merge-pathnames pathname #!optional defaults default-version)
   (let* ((defaults
@@ -728,7 +736,6 @@ these rules:
       (set! host-types types)
       (set! local-host (make-host host-type #f))))
   (set! param:default-pathname-defaults (make-param:default-pathname-defaults))
-  (set! *default-pathname-defaults* (param:default-pathname-defaults))
   unspecific)
 
 (add-boot-init!
