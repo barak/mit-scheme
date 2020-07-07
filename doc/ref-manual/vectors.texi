@@ -301,15 +301,18 @@ vector.
 @end table
 @end deffn
 
-@deffn procedure sort! vector procedure
-@deffnx procedure merge-sort! vector procedure
-@deffnx procedure quick-sort! vector procedure
+@deffn procedure sort! vector procedure key
+@deffnx procedure merge-sort! vector procedure key
+@deffnx procedure quick-sort! vector procedure key
+@var{Key}, if specified, must be a procedure of one argument that maps
+an element of @var{sequence} to a key fit for comparison by
+@var{procedure}; by default, @var{key} is the identity.
 @var{Procedure} must be a procedure of two arguments that defines a
-@dfn{total ordering} on the elements of @var{vector}.  The elements of
-@var{vector} are rearranged so that they are sorted in the order defined
-by @var{procedure}.  The elements are rearranged in place, that is,
-@var{vector} is destructively modified so that its elements are in the
-new order.
+@dfn{total ordering} on the keys of @var{vector}.
+The elements of @var{vector} are rearranged so that they are sorted in
+the order defined by @var{procedure} and @var{key}.
+The elements are rearranged in place, that is, @var{vector} is
+destructively modified so that its elements are in the new order.
 
 @code{sort!} returns @var{vector} as its value.
 

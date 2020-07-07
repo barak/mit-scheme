@@ -1383,19 +1383,23 @@ destructively modifies @var{list}.  Because the result may not be
 @end deffn
 
 
-@deffn procedure sort sequence procedure
-@deffnx procedure merge-sort sequence procedure
-@deffnx procedure quick-sort sequence procedure
+@deffn procedure sort sequence procedure [key]
+@deffnx procedure merge-sort sequence procedure [key]
+@deffnx procedure quick-sort sequence procedure [key]
 @cindex total ordering (defn)
-@var{Sequence} must be either a list or a vector.  @var{Procedure} must be a
-procedure of two arguments that defines a @dfn{total ordering} on the
-elements of @var{sequence}.  In other words, if @var{x} and @var{y} are two
-distinct elements of @var{sequence}, then it must be the case that
+@var{Sequence} must be either a list or a vector.
+@var{Key}, if specified, must be a procedure of one argument that maps
+an element of @var{sequence} to a key fit for comparison by
+@var{procedure}; by default, @var{key} is the identity.
+@var{Procedure} must be a procedure of two arguments that defines a
+@dfn{total ordering} on the keys of @var{sequence}.
+In other words, if @var{x} and @var{y} are two distinct elements of
+@var{sequence}, then it must be the case that
 
 @example
 @group
-(and (@var{procedure} @var{x} @var{y})
-     (@var{procedure} @var{y} @var{x}))
+(and (@var{procedure} (@var{key} @var{x}) (@var{key} @var{y}))
+     (@var{procedure} (@var{key} @var{y}) (@var{key} @var{x})))
      @result{} #f
 @end group
 @end example
@@ -1403,24 +1407,39 @@ distinct elements of @var{sequence}, then it must be the case that
 If @var{sequence} is a list (vector), @code{sort} returns a newly
 allocated list (vector) whose elements are those of @var{sequence},
 except that they are rearranged to be sorted in the order defined by
-@var{procedure}.  So, for example, if the elements of @var{sequence} are
-numbers, and @var{procedure} is @code{<}, then the resulting elements
-are sorted in monotonically nondecreasing order.  Likewise, if
-@var{procedure} is @code{>}, the resulting elements are sorted in
-monotonically nonincreasing order.  To be precise, if @var{x} and
-@var{y} are any two adjacent elements in the result, where @var{x}
-precedes @var{y}, it is the case that
+@var{procedure} and @var{key}.
+So, for example, if the elements of @var{sequence} are numbers, and
+@var{procedure} is @code{<}, then the resulting elements are sorted in
+monotonically nondecreasing order.
+Likewise, if @var{procedure} is @code{>}, the resulting elements are
+sorted in monotonically nonincreasing order.
+To be precise, if @var{x} and @var{y} are any two adjacent elements in
+the result, where @var{x} precedes @var{y}, it is the case that
 
 @example
 @group
-(@var{procedure} @var{y} @var{x})
+(@var{procedure} (@var{key} @var{y}) (@var{key} @var{x}))
      @result{} #f
 @end group
 @end example
 
 Two sorting algorithms are implemented: @code{merge-sort} and
-@code{quick-sort}.  The procedure @code{sort} is an alias for
-@code{merge-sort}.
+@code{quick-sort}.
+The procedure @code{sort} is an alias for @code{merge-sort}.
+@code{Merge-sort} is stable, meaning that it preserves the order in
+@var{sequence} of elements which are equivalent under @var{procedure}
+and @var{key}; @code{quick-sort} is not stable, so it does not
+guarantee this.
 
 See also the definition of @code{sort!}.
+
+@example
+@group
+(merge-sort '((2 . foo) (2 . bar) (1 . baz) (3 . quux)) < car)
+@result{} ((1 . baz) (2 . foo) (2 . bar) (3 . quux))
+
+(quick-sort '((2 . foo) (2 . bar) (1 . baz) (3 . quux)) < car)
+@result{} ((1 . baz) (2 . bar) (2 . foo) (3 . quux))
+@end group
+@end example
 @end deffn
