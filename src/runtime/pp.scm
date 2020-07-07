@@ -748,7 +748,17 @@ USA.
 
 (define (numerical-walk object list-depth)
   (define (numerical-walk-no-auto-highlight object list-depth)
-    (cond ((get-print-method object)
+    (cond ((pretty-printer-highlight? object)
+	   ;; (1) see note below.
+	   (let ((rest (walk-highlighted-object
+			object list-depth
+			numerical-walk-no-auto-highlight)))
+	     (make-highlighted-node (+ (pph/start-string-length object)
+				       (pph/end-string-length object)
+				       (node-size rest))
+				    object
+				    rest)))
+	  ((get-print-method object)
 	   (walk-custom object list-depth))
 	  ((and (pair? object)
 		(not (named-list? object)))
@@ -763,16 +773,6 @@ USA.
 		   (interned-symbol? object))
 	       object
 	       (walk-custom object list-depth)))
-	  ((pretty-printer-highlight? object)
-	   ;; (1) see note below.
-	   (let ((rest (walk-highlighted-object
-			object list-depth
-			numerical-walk-no-auto-highlight)))
-	     (make-highlighted-node (+ (pph/start-string-length object)
-				       (pph/end-string-length object)
-				       (node-size rest))
-				    object
-				    rest)))
 	  ((and (vector? object)
 		(not (named-vector? object)))
 	   (if (zero? (vector-length object))
