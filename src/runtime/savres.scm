@@ -29,7 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime dynamic))
+(add-boot-deps! '(runtime dynamic)
+		'(runtime gc-finalizer))
 
 ;;; (DISK-SAVE  filename #!optional identify)
 ;;; Saves a world image in FILENAME.  IDENTIFY has the following meaning:
@@ -47,9 +48,10 @@ USA.
 (define-deferred *within-restore-window?* (make-unsettable-parameter #f))
 
 (define (disk-save filename #!optional id)
-  (let ((filename (->namestring (merge-pathnames filename)))
+  (let ((filename* (disk-save-filename filename))
 	(id (if (default-object? id) world-id id))
 	(time (local-decoded-time)))
+    (set! filename #f)
     (gc-clean)
     ((without-interrupts
       (lambda ()
@@ -69,10 +71,10 @@ USA.
 			(do ()
 			    (((ucode-primitive dump-band)
 			      restart
-			      (string-for-primitive filename)))
+			      (disk-save-filename-string filename*)))
 			  (with-simple-restart 'retry "Try again."
 			    (lambda ()
-			      (error "Disk save failed:" filename))))
+			      (error "Disk save failed!"))))
 			(continuation
 			 (lambda ()
 			   (set! time-world-saved time)
@@ -96,6 +98,32 @@ USA.
 		   (else
 		    (event-distributor/invoke! event:after-restart)
 		    #t))))))))))
+
+;;; Kludge to store disk-save filenames outside the Scheme heap so they
+;;; don't get dumped in bands.
+
+(define (disk-save-filename filename)
+  (let* ((pathname (merge-pathnames filename))
+	 (namestring (->namestring pathname))
+	 (primitive (string-for-primitive namestring))
+	 (n (string-length primitive))
+	 (cell
+	  (make-gc-finalized-object disk-save-filenames
+	    (lambda (p)
+	      (weak-set-cdr! p
+			     ((ucode-primitive allocate-external-string 1) n)))
+	    (lambda (s)
+	      (make-cell s))))
+	 (string (cell-contents cell)))
+    ((ucode-primitive substring-move-left! 5) primitive 0 n string 0)
+    cell))
+
+(define (disk-save-filename-string f)
+  (cell-contents f))
+
+(define-deferred disk-save-filenames
+  (make-gc-finalizer (ucode-primitive deallocate-external-string 1)
+		     cell? cell-contents set-cell-contents!))
 
 (define (disk-restore #!optional filename)
   ;; Force order of events -- no need to run event:before-exit if

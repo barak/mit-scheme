@@ -514,11 +514,12 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
   SCHEME_OBJECT * to = Free;
   SCHEME_OBJECT * prim_table_start;
   SCHEME_OBJECT * c_code_table_start;
+  const char * filename;
   bool result;
   PRIMITIVE_HEADER (2);
 
   CHECK_ARG (1, INTERPRETER_APPLICABLE_P);
-  CHECK_ARG (2, STRING_P);
+  filename = ((const char *) (arg_extended_string (2, NULL)));
 
   Primitive_GC_If_Needed (5);
   initialize_fasl_header (true, true);
@@ -556,7 +557,6 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
     result = false;
   else
     {
-      const char * filename = (STRING_POINTER (ARG_REF (2)));
       fasl_file_handle_t handle;
 
       export_primitive_table (prim_table_start);
