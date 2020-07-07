@@ -1,0 +1,8 @@
+The merge-sort, merge-sort!, quick-sort, and quick-sort! procedures, as
+well as the sort and sort! aliases for merge sort, now accept an
+optional parameter for a procedure to map an element to a sorting key.
+
+Example:
+
+(merge-sort '((123 . value0) (456 . value1) (78 . value2)) < car)
+;Value: ((78 . value2) (123 . value0) (456 . value1))
