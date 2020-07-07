@@ -501,7 +501,11 @@ USA.
 		    (let ((object (cdr entry)))
 		      (fasload/update-debugging-info! object (car entry))
 		      (load/purification-root object)))
-		  fasload-purification-queue)))))))
+		  (cons (cons (if (compiled-code-address? (lambda (x) x))
+				  "make.com"
+				  "make.bin")
+			      define-multiple)
+			fasload-purification-queue))))))))
   (lexical-assignment (->environment '(runtime garbage-collector))
 		      'gc-boot-loading?
 		      #f)
