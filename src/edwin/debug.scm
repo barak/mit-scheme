@@ -1588,7 +1588,7 @@ once it has been renamed, it will not be deleted automatically.")
 			 (string-length separator))))
 		 (write-string (string-tail
 				(call-with-output-string
-				  (lambda ()
+				  (lambda (port)
 				    (pretty-print value port #t indentation)))
 				indentation)
 			       port))))))
