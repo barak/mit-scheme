@@ -573,15 +573,17 @@ USA.
       (make-imap-connection url)))
 
 (define (search-imap-connections assessor)
-  (weak-list-set-fold (lambda (connection winner)
-			(let ((value (assessor connection)))
-			  (if (and value
-				   (or (not winner)
-				       (> value (cdr winner))))
-			      (cons connection value)
-			      winner)))
-		      #f
-		      memoized-imap-connections))
+  (cond ((weak-list-set-fold (lambda (connection winner)
+			       (let ((value (assessor connection)))
+				 (if (and value
+					  (or (not winner)
+					      (> value (cdr winner))))
+				     (cons connection value)
+				     winner)))
+			     #f
+			     memoized-imap-connections)
+	 => car)
+	(else #f)))
 
 (define make-imap-connection
   (let ((constructor (instance-constructor <imap-connection> '(URL))))
