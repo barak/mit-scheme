@@ -1,0 +1,2 @@
+Bug fix: Dumping a band no longer stores a copy of the process's
+environment variables.
