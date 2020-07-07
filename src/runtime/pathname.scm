@@ -651,18 +651,20 @@ these rules:
 
 (define (%find-library-directory)
   (pathname-simplify
-   (or (find file-directory? library-directory-path)
+   (or (find file-directory? (library-directory-path))
        (error "Can't find library directory."))))
 
 (define (%find-library-file pathname)
-  (let loop ((path library-directory-path))
+  (let loop ((path (library-directory-path)))
     (and (pair? path)
 	 (let ((p (merge-pathnames pathname (car path))))
 	   (if (file-exists? p)
 	       p
 	       (loop (cdr path)))))))
 
-(define library-directory-path)
+(define (library-directory-path)
+  (map pathname-as-directory
+       (vector->list ((ucode-primitive microcode-library-path 0)))))
 
 (define known-host-types
   '((0 unix)
@@ -727,9 +729,6 @@ these rules:
       (set! local-host (make-host host-type #f))))
   (set! param:default-pathname-defaults (make-param:default-pathname-defaults))
   (set! *default-pathname-defaults* (param:default-pathname-defaults))
-  (set! library-directory-path
-	(map pathname-as-directory
-	     (vector->list ((ucode-primitive microcode-library-path 0)))))
   unspecific)
 
 (add-boot-init!

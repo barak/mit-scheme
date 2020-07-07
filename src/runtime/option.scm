@@ -33,7 +33,7 @@ USA.
 
 (define (load-option name #!optional no-error?)
   (let ((no-error? (and (not (default-object? no-error?)) no-error?))
-	(path library-directory-path))
+	(path (library-directory-path)))
 
     (define (find-option options parent)
       (cond ((assq name options) => load-entry)

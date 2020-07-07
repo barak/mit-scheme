@@ -513,7 +513,7 @@ USA.
 	      (thunk)))))))
 
 (define (standard-library-directory-pathname)
-  (last library-directory-path))
+  (last (library-directory-path)))
 
 (define (pathname->standard-uri pathname)
   (let ((uri
