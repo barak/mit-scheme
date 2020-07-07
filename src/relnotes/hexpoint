@@ -1,5 +1,0 @@
-Added support for hexadecimal floating-point notation.  Example:
-
-(parameterize ((param:printer-radix #x10))
-  (write-to-string (list #x1.5p10 1.5e10 0.1 (flo:nextafter 0.1 1.0))))
-;Value: "(#x1.5p+10 #x1.bf08ebp+33 #x1.999999999999ap-4 #x1.999999999999bp-4)"

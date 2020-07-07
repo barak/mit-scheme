@@ -1,4 +1,0 @@
-Bug fix: The reader and string->number now reject `#e+inf.0', `#e+nan.0', &c.
-
-Infinities and NaNs are not exact numbers and as such there is no way
-to interpret them with the #e prefix.  (The #i prefix still works.)

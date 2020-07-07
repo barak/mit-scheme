@@ -1,5 +1,0 @@
-Bug fix: A number of bugs on big-endian systems have been fixed:
-
-- SVM1 byte code interpreter works on big-endian systems now
-- compiler can now cross-compile to big-endian systems
-- fixed wrong byte ordering in MD5 microcode primitive

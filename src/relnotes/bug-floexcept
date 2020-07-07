@@ -1,3 +1,0 @@
-Bug fix: Floating-point primitives now raise floating-point exceptions,
-rather than signalling argument range errors, and trap (i.e., signal a
-condition) only if floating-point exceptions are trapped.

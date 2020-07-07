@@ -1,3 +1,0 @@
-Bug fix: (make-polar magnitude 0) now returns magnitude, even if it is
-infinite or NaN; previously for infinite magnitudes it returned a
-rectangular number with NaN imaginary part.

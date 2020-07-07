@@ -1,8 +1,0 @@
-Bug fix: The integer? procedure no longer returns true for infinities.
-
-A side effect of this bug was that the compile's common subexpression
-elimination would crash when handling infinities, either written
-literally or due to constant folding:
-
-;  Compiling file: "./floenv.bin" => "./floenv.com"...
-;The object +inf.0, passed as the first argument to flonum-normalize, is not the correct type.

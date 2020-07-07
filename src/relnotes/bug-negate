@@ -1,2 +1,0 @@
-Bug fix: SF no longer incorrectly transforms (- x) into (- 0 x).  This
-means when x is a floating-point zero, (- x) reliably changes its sign.
