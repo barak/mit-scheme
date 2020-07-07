@@ -31,7 +31,7 @@ USA.
 
 (add-boot-deps! '(runtime pathname))
 
-(define-deferred working-directory-pathname
+(define-deferred *working-directory-pathname*
   (make-general-parameter #f
 			  default-parameter-converter
 			  default-parameter-merger
@@ -43,8 +43,11 @@ USA.
   (param:default-pathname-defaults pathname)
   pathname)
 
+(define (working-directory-pathname)
+  (*working-directory-pathname*))
+
 (define (reset!)
-  (working-directory-pathname
+  (*working-directory-pathname*
    (pathname-simplify
     (pathname-as-directory
      (string-from-primitive
@@ -69,7 +72,7 @@ USA.
 				  "no such directory")
 			      'set-working-directory-pathname!
 			      (list name)))
-    (working-directory-pathname pathname)
+    (*working-directory-pathname* pathname)
     (cmdl/set-default-directory (nearest-cmdl) pathname)
     pathname))
 
@@ -77,7 +80,7 @@ USA.
   (let ((pathname (new-pathname name)))
     (fluid-let ((*default-pathname-defaults* pathname))
       (parameterize ((param:default-pathname-defaults pathname)
-		     (working-directory-pathname pathname))
+		     (*working-directory-pathname* pathname))
 	(thunk)))))
 
 (define (new-pathname name)

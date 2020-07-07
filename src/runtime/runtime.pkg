@@ -5424,7 +5424,9 @@ USA.
   (export ()
 	  set-working-directory-pathname!
 	  with-working-directory-pathname
-	  working-directory-pathname))
+	  working-directory-pathname)
+  (export (runtime rep)
+	  *working-directory-pathname*))
 
 (define-package (runtime user-interface)
   (files "usrint")

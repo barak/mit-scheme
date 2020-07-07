@@ -126,8 +126,8 @@ USA.
 			    (notification-output-port #f)
 			    (trace-output-port #f)
 			    (interaction-i/o-port #f)
-			    (working-directory-pathname
-			     (working-directory-pathname))
+			    (*working-directory-pathname*
+			     (*working-directory-pathname*))
 			    (current-library-db (current-library-db))
 			    (param:nearest-cmdl cmdl)
 			    (param:standard-error-hook #f)
