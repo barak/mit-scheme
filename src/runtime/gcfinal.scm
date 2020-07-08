@@ -114,7 +114,10 @@ USA.
   (guarantee gc-finalizer? finalizer 'search-gc-finalizer)
   (with-finalizer-lock finalizer
     (lambda ()
-      (weak-alist-table-search (gc-finalizer-items finalizer) predicate
+      (weak-alist-table-search (gc-finalizer-items finalizer)
+			       (lambda (object context)
+				 (declare (ignore context))
+				 (predicate object))
 	(lambda (object context) (declare (ignore context)) object)
 	(lambda () #f)))))
 
