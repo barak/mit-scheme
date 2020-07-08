@@ -506,7 +506,7 @@ run_fixups (void * p)
   OS_free (fixups_start);
 }
 
-DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2,
+DEFINE_PRIMITIVE ("DUMP-BAND*", Prim_band_dump, 2, 2,
 		  "(PROCEDURE NAMESTRING)\n\
 Saves an image of the current world to the file NAMESTRING.\n\
 When the file is reloaded, PROCEDURE is called with an argument of #F.")

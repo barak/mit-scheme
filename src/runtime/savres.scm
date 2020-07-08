@@ -69,9 +69,7 @@ USA.
 			interrupt-mask
 			(gc-flip)
 			(do ()
-			    (((ucode-primitive dump-band)
-			      restart
-			      (disk-save-filename-string filename*)))
+			    ((dump-band restart filename*))
 			  (with-simple-restart 'retry "Try again."
 			    (lambda ()
 			      (error "Disk save failed!"))))
@@ -100,26 +98,34 @@ USA.
 		    #t))))))))))
 
 ;;; Kludge to store disk-save filenames outside the Scheme heap so they
-;;; don't get dumped in bands.
+;;; don't get dumped in bands.  However, only works if the microcode
+;;; supports passing the filename through an external string; if not,
+;;; tough -- we'll just have to keep the filename in the Scheme heap
+;;; and in the band.
+
+(define (dump-band restart filename)
+  (if (implemented-primitive-procedure? (ucode-primitive dump-band* 2))
+      ((ucode-primitive dump-band* 2) restart (cell-contents filename))
+      ((ucode-primitive dump-band 2) restart filename)))
 
 (define (disk-save-filename filename)
-  (let* ((pathname (merge-pathnames filename))
-	 (namestring (->namestring pathname))
-	 (primitive (string-for-primitive namestring))
-	 (n (string-length primitive))
-	 (cell
-	  (make-gc-finalized-object disk-save-filenames
-	    (lambda (p)
-	      (weak-set-cdr! p
-			     ((ucode-primitive allocate-external-string 1) n)))
-	    (lambda (s)
-	      (make-cell s))))
-	 (string (cell-contents cell)))
-    ((ucode-primitive substring-move-left! 5) primitive 0 n string 0)
-    cell))
-
-(define (disk-save-filename-string f)
-  (cell-contents f))
+  (if (implemented-primitive-procedure? (ucode-primitive dump-band* 2))
+      (let* ((pathname (merge-pathnames filename))
+	     (namestring (->namestring pathname))
+	     (primitive (string-for-primitive namestring))
+	     (n (string-length primitive))
+	     (cell
+	      (make-gc-finalized-object disk-save-filenames
+		(lambda (p)
+		  (weak-set-cdr!
+		   p
+		   ((ucode-primitive allocate-external-string 1) n)))
+		(lambda (s)
+		  (make-cell s))))
+	     (string (cell-contents cell)))
+	((ucode-primitive substring-move-left! 5) primitive 0 n string 0)
+	cell)
+      filename))
 
 (define-deferred disk-save-filenames
   (make-gc-finalizer (ucode-primitive deallocate-external-string 1)

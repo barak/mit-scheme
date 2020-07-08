@@ -53,7 +53,8 @@ static struct primitive_alias_s primitive_aliases [] =
   { "SCREEN-Y-SIZE", "TTY-Y-SIZE" },
   { "FILE-SYMLINK?", "FILE-SOFT-LINK?" },
   { "X-GRAPHICS-SET-CLASS-HINT", "X-WINDOW-SET-CLASS-HINT" },
-  { "CURRENT-FILE-TIME", "ENCODED-TIME" }
+  { "CURRENT-FILE-TIME", "ENCODED-TIME" },
+  { "DUMP-BAND", "DUMP-BAND*" },
 };
 
 #define N_PRIMITIVE_ALIASES						\
