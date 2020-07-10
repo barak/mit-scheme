@@ -780,6 +780,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 
   level = level_start;
   level_end = (level_start + LEVEL_ARRAY_LENGTH);
+  (level -> last) = NULL;
   (level -> previous) = NULL;
 
   /* Initialize the state variables from the state argument. */
