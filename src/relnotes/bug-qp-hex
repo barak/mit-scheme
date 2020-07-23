@@ -1,0 +1,4 @@
+Bug fix: The quoted-printable encoder correctly produces uppercase
+hexadecimal digits; a change in the default case of output in
+digit->char had caused it to erroneously produce lowercase hexadecimal
+digits in violation of RFC 2045.

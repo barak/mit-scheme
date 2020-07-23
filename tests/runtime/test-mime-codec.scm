@@ -294,16 +294,13 @@ USA.
 
 (define-test 'QUOTED-PRINTABLE/UPPERCASE
   (lambda ()
-    ;; Currently uses digit->char which no longer produces uppercase.
-    (expect-failure
-     (lambda ()
-       (let* ((string "The quïck brøwn fox jump§ over the lazʒ doﻎ.")
-	      (utf8 (string->utf8 string))
-	      (bytestring (iso8859-1->string utf8)))
-	 (assert-equal
-	  (encode-quoted-printable bytestring #t)
-	  (string-append "The qu=C3=AFck br=C3=B8wn=C2=A0fox jump=C2=A7"
-			 " over the laz=CA=92 do=EF=BB=\n=8E.")))))))
+    (let* ((string "The quïck brøwn fox jump§ over the lazʒ doﻎ.")
+	   (utf8 (string->utf8 string))
+	   (bytestring (iso8859-1->string utf8)))
+      (assert-equal
+       (encode-quoted-printable bytestring #t)
+       (string-append "The qu=C3=AFck br=C3=B8wn=C2=A0fox jump=C2=A7"
+		      " over the laz=CA=92 do=EF=BB=\n=8E.")))))
 
 (define-test 'QUOTED-PRINTABLE/UNICODE-BUG
   (lambda ()
