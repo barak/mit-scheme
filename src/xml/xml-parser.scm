@@ -901,7 +901,7 @@ USA.
 		      (builder #\newline)
 		      (builder (string-slice string start index))
 		      (loop (step-over-eol index)))
-		    (builder (string-slice string start index)))))
+		    (builder (string-slice string start)))))
 	    (builder))))
       (if (if (default-object? always-copy?) #f always-copy?)
 	  (string-copy string)
