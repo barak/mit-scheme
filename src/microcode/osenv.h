@@ -59,6 +59,7 @@ struct scheme_attotime
 #endif
 
 extern void OS_nanotime_since_utc_epoch (struct scheme_nanotime *);
+extern void OS_monotonic_nanotime (struct scheme_nanotime *);
 extern time_t OS_encoded_time (void);
 extern void OS_decode_time (time_t, struct time_structure *);
 extern void OS_decode_utc (time_t, struct time_structure *);

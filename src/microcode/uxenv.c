@@ -214,6 +214,16 @@ OS_nanotime_since_utc_epoch (struct scheme_nanotime *t)
 }
 
 #endif
+
+void
+OS_monotonic_nanotime (struct scheme_nanotime *t)
+{
+  struct timespec ts;
+  STD_VOID_SYSTEM_CALL
+    (syscall_clock_gettime, (UX_clock_gettime (CLOCK_MONOTONIC, (&ts))));
+  (t->seconds) = (ts.tv_sec);
+  (t->nanoseconds) = (ts.tv_nsec);
+}
 
 time_t
 OS_encoded_time (void)
