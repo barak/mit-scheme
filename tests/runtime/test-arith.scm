@@ -339,9 +339,42 @@ USA.
    (list (log 2) 1.)
    (list 0.7 1.0137527074704766)
    (list (expt 2 -53) (expt 2. -53))
-   (list (- (expt 2 -53)) (- (expt 2. -53))))
-  (lambda (x y)
-    (assert-<= (relerr y (expm1 x)) 1e-15)))
+   (list (- (expt 2 -53)) (- (expt 2. -53)))
+   (list 9.9999999995e-11 1e-10)
+   (list 9.9999999995e-11+1e-100i 1e-10+1e-100i expect-failure)
+   (list 1e-20 1e-20)
+   (list 1e-20+1e-100i 1e-20+1e-100i expect-failure)
+   (list 709.1962086421661 1.0000000000000136e308)
+   (list 709.542782232446+.7853981633974483i
+	 9.99999999999986e307+9.99999999999986e307i
+	 expect-failure)
+   (list -2.0001500066646957e-4+1.5706963067912294i -.9999+.9998i)
+   (list -8.749421923219187e-14+.5053605102839992i
+	 -.125+.4841229182757464i)
+   (list (make-rectangular 36 (* 5 (atan 1 0)))
+	 .319933978639428796+4311231547115195.i)
+   (list (make-rectangular 36 (* 7 (atan 1 0)))
+	 -2.8479075700952-4311231547115195.i))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-<= (relerr y (expm1 x)) 1e-15)))))
+
+(define-enumerated-test 'expm1-approx-componentwise
+  (list
+   (list 9.999999999500001e-11+9.999999999e-101i 1e-10+1e-100i expect-failure)
+   (list 1e-20+1e-100i 1e-20+1e-100i expect-failure)
+   (list 709.542782232446+.7853981633974483i
+	 9.99999999999986e307+9.99999999999986e307i)
+   (list -2.0001500066646957e-4+1.5706963067912294i -.9999+.9998i)
+   (list -8.749421923219187e-14+.5053605102839992i
+	 -.125+.4841229182757464i))
+  (lambda (z w #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(let ((w* (expm1 z)))
+	  (assert-<= (relerr (real-part w) (real-part w*)) 1e-15)
+	  (assert-<= (relerr (imag-part w) (imag-part w*)) 1e-15))))))
 
 (define-enumerated-test 'log1p-approx
   (list
@@ -351,11 +384,36 @@ USA.
    (list 0.25 .22314355131420976)
    (list (- 1 (sqrt 1/2)) 0.25688251232181475)
    (list 0.3 .26236426446749106)
-   (list -2 +3.141592653589793i))
+   (list -2 +3.141592653589793i)
+   (list 1e-10 9.9999999995e-11)
+   (list 1e-10+1e-100i 9.9999999995e-11+1e-100i expect-failure)
+   (list 1e-20 1e-20)
+   (list 1e-20+1e-100i 1e-20+1e-100i expect-failure)
+   (list 1e308 709.1962086421661)
+   (list 1e308+1e308i 709.542782232446+.7853981633974483i)
+   (list -.9999+.9998i -2.0001500066646957e-4+1.5706963067912294i)
+   (list -.125+.4841229182757464i
+	 -8.749421923219187e-14+.5053605102839992i))
   (lambda (x y #!optional xfail)
     (with-expected-failure xfail
       (lambda ()
         (assert-<= (relerr y (log1p x)) 1e-15)))))
+
+(define-enumerated-test 'log1p-approx-componentwise
+  (list
+   (list 1e-10+1e-100i 9.999999999500001e-11+9.999999999e-101i expect-failure)
+   (list 1e-20+1e-100i 1e-20+1e-100i expect-failure)
+   (list -.9999+.9998i -2.0001500066646957e-4+1.5706963067912294i
+	 expect-failure)
+   (list -.125+.4841229182757464i
+	 -8.749421923219187e-14+.5053605102839992i
+	 expect-failure))
+  (lambda (z w #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(let ((w* (log1p z)))
+	  (assert-<= (relerr (real-part w) (real-part w*)) 1e-15)
+	  (assert-<= (relerr (imag-part w) (imag-part w*)) 1e-15))))))
 
 (define-test 'log1p-inf
   (lambda ()
