@@ -2002,7 +2002,7 @@ USA.
 (define (complex:log1p z)
   ;; log(1 + z)
   ;; = log |1 + z| + i atan2(y, 1 + x)
-  ;; = 1/2 log |1 + z|^2
+  ;; = 1/2 log |1 + z|^2 + i atan2(y, 1 + x)
   ;; = 1/2 log [(1 + x)^2 + y^2] + i atan2(y, 1 + x)
   ;; = 1/2 log [1 + 2 x + x^2 + y^2] + i atan2(y, 1 + x).
   ;;
@@ -2037,25 +2037,49 @@ USA.
 		  ;; ill-conditioned at |1 + z|, so instead compute
 		  ;; it via
 		  ;;
-		  ;;	log |1 + z|
-		  ;;	= log sqrt(|1 + z|^2)
-		  ;;	= (1/2) log |1 + z|^2
-		  ;;	= (1/2) log (1 + z + z* + z z*)
-		  ;;	= (1/2) log (1 + 2 x + x^2 + y^2)
-		  ;;	= (1/2) log1p (2 x + x^2 + y^2),
+		  ;;	(1/2) log1p (2 x + x^2 + y^2),
 		  ;;
 		  ;; with compensated summation to minimize
 		  ;; intermediate error should 2 x + x^2 + y^2 be
 		  ;; near zero.
 		  ;;
-		  (let* ((a (real:* 2 x))	;2x, exactly
-			 (s (real:*+ x x a))	;fl(2x + x^2)
-			 (t (real:*+ y y s))	;fl(fl(2x + x^2) + y^2)
-			 ;; Fast2Sum, roughly -- s + e ≈ 2x + x^2.
-			 ;; (XXX Prove equality?)
-			 (e (real:*+ (real:negate x) x (real:- s a)))
-			 (u (real:- t e)))
-		    (real:* 1/2 (real:log1p u)))
+
+		  ;; complex:log1p continued
+		  (let ((a (real:* 2 x))	;2x, exactly
+			(xm (real:abs x))
+			(ym (real:abs y)))
+		    (let ((u (real:min xm ym))
+			  (v (real:max xm ym)))
+		      ;; Computed a sum s and compensation c, along the
+		      ;; lines of Fast2Sum but with FMA instead of sum:
+		      ;;
+		      ;;	s = (u^2 + a) (1 + O(eps))
+		      ;;	s + d = (u^2 + a) (1 + O(eps^2))
+		      ;;
+		      ;; Note that the condition of Fast2Sum holds
+		      ;; here, |2x| >= u^2, in all cases where the
+		      ;; error compensation is important, so we only
+		      ;; need to compute d := fl(u^2 + fl(a - s)) and
+		      ;; never fl(a + fl(u^2 - s)).
+		      ;;
+		      ;; Specifically, computing v^2 + fl(u^2 + 2x) is
+		      ;; problematic only where there is a large factor
+		      ;;
+		      ;;	(u^2 + 2x)/(v^2 + u^2 + 2x)
+		      ;;	= 1/(1 + v^2/(u^2 + 2x))
+		      ;;
+		      ;; amplifying error in fl(u^2 + 2x).  This can
+		      ;; happen only when both
+		      ;;
+		      ;;	u^2 + 2x < 0
+		      ;; and
+		      ;;	-v^2 ≈ u^2 + 2x.
+		      ;;
+		      ;; But if -2x < u^2, then we have 0 < 2x + u^2.
+		      ;;
+		      (let* ((s (real:*+ u u a))
+			     (c (real:*+ u u (real:- a s))))
+			(real:* 1/2 (real:log1p (real:+ (real:*+ v v s) c))))))
 		  ;; Outside the ring of radii [1/e, e] about -1, log
 		  ;; is well-conditioned -- inside the disc of radius
 		  ;; 1/e, log1p is ill-conditioned, and much farther
