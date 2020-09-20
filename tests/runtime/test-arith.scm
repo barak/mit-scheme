@@ -328,7 +328,7 @@ USA.
 (define (relerr e a)
   (if (or (zero? e) (infinite? e))
       (if (eqv? a e) 0 1)
-      (magnitude (/ (- e a) e))))
+      (/ (magnitude (- e a)) (magnitude e))))
 
 (define-enumerated-test 'expm1-approx
   (list
@@ -346,8 +346,7 @@ USA.
    (list 1e-20+1e-100i 1e-20+1e-100i)
    (list 709.1962086421661 1.0000000000000136e308)
    (list 709.542782232446+.7853981633974483i
-	 9.99999999999986e307+9.99999999999986e307i
-	 expect-failure)
+	 9.99999999999986e307+9.99999999999986e307i)
    (list -2.0001500066646957e-4+1.5706963067912294i -.9999+.9998i)
    (list -8.749421923219187e-14+.5053605102839992i
 	 -.125+.4841229182757464i)
