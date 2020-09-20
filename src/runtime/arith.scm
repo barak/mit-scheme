@@ -1184,6 +1184,26 @@ USA.
 	     x))
 	((flonum? y) (flo:* (rat:->inexact x) y))
 	(else ((copy rat:*) x y))))
+
+(define (real:*+ x y a)
+  (cond ((flonum? x)
+	 (cond ((flonum? y)
+		(flo:*+ x y (real:->inexact a)))
+	       ((rat:zero? y)
+		(cond ((flo:finite? x) a)
+		      ((flo:nan? x) x)	;XXX Necessary?
+		      (else (flo:*+ x 0. (real:->inexact a)))))
+	       (else
+		(flo:*+ x (rat:->inexact y) (real:->inexact a)))))
+	((rat:zero? x)
+	 (if (flonum? y)
+	     (cond ((flo:finite? y) a)
+		   ((flo:nan? y) y)	;XXX Necessary?
+		   (else (flo:*+ 0. y (real:->inexact a))))
+	     a))
+	((flonum? y) (flo:*+ (rat:->inexact x) y (real:->inexact a)))
+	((flonum? a) (flo:*+ (rat:->inexact x) (rat:->inexact y) a))
+	(else (rat:+ (rat:* x y) a))))
 
 (define (real:/ x y)
   (cond ((flonum? x) (flo:/ x (if (flonum? y) y (rat:->inexact y))))
@@ -1874,18 +1894,6 @@ USA.
 	(else
 	 ((copy real:log) z))))
 
-(define (complex:expm1 z)
-  (if (recnum? z)
-      (complex:-1+ (complex:exp z))	;XXX
-      ((copy real:expm1) z)))
-
-(define (complex:log1p z)
-  (if (or (recnum? z)
-	  (and (real:real? z)
-	       (<= z -1)))
-      (complex:log (complex:1+ z))	;XXX
-      ((copy real:log1p) z)))
-
 (define (complex:log1m z)
   (if (and (real:real? z) (real:< 1 z))
       (make-recnum (real:log (real:- z 1)) (real:negate rec:pi))
@@ -1916,6 +1924,149 @@ USA.
 	   (complex:/ (complex:- e+iz e-iz)
 		      (complex:+ e+iz e-iz)))))
       ((copy real:tan) z)))
+
+(define (complex:expm1 z)
+  (define (real:versin t)
+    (real:* 2 (real:square (real:sin (real:/ t 2)))))
+  (if (recnum? z)
+      (let ((r (rec:real-part z))
+	    (t (rec:imag-part z)))
+	;;
+	;;	e^{r + i θ} - 1
+	;;	= e^r (cos θ + i sin θ) - 1
+	;;	= e^r cos θ - 1 + i e^r sin θ
+	;;
+	;; Computing e^r sin θ is easy.  The tricky part is computing
+	;; e^r cos θ - 1, which we can do a few different ways
+	;; (recall versin θ = 1 - cos θ = 2 sin^2(θ/2)):
+	;;
+	;; (a)	e^r cos θ - 1
+	;;	= (e^r - 1) cos θ + cos θ - 1
+	;;	= (e^r - 1) cos θ - versin θ
+	;;
+	;; (b)	e^r cos θ - 1
+	;;	= e^r + (cos θ - 1) e^r - 1
+	;;	= (e^r - 1) - e^r versin θ
+	;;	= e^r [(e^r - 1)/e^r - versin θ]
+	;;	= e^r [1 - e^{-r} - versin θ]
+	;;	= e^r [-expm1(-r) - versin θ]
+	;;
+	;; (c)	e^r cos θ - 1
+	;;	= e^{r + log cos θ} - 1
+	;;	= e^{r + log (1 - versin θ)} - 1
+	;;	(provided cos θ > 0)
+	;;
+	;; When cos θ <= 0, the naive  e^r cos θ - 1  works fine
+	;; because the subtraction won't amplify error in e^r cos θ.
+	;; The hard case is when r > 0 and cos θ ≈ 1/e^r; alas, all
+	;; of the options are bad in parts of that region.  For large
+	;; r we choose (c) since it avoids overflow; for small and
+	;; moderate r we choose (a), since unlike (b) it avoids
+	;; catastrophic cancellation when θ ≈ (2n + 1) π/2.  For
+	;; example,
+	;;
+	;;	(real-part (expm1 (make-rectangular 36 (* 5 (atan 1 0)))))
+	;;	;True:  .31993397863942879634230060038119570859185188547658...
+	;;	;Naive: .31993397863942885
+	;;	;(a):   .31993397863942863
+	;;	;(b):  0.0
+	;;	;(c):   .31993397863942774 [log(cos θ)]
+	;;	;(c):  -.04271429438047255 [log1p(-versin θ)]
+	;;
+	;;	(real-part (expm1 (make-rectangular 36 (* 7 (atan 1 0)))))
+	;;	;True:  -2.8479075700952003148792208405336462778540355878772...
+	;;	;Naive: -2.8479075700952
+	;;	;(a):	-2.8479075700952
+	;;	;(b):	-3.
+	;;	;(c):	[N/A; cos θ < 0]
+	;;
+	(complex:%make-rectangular
+	 (let ((c (real:cos t)))
+	   (cond ((real:< c 0)
+		  ;; e^r cos θ - 1
+		  (real:*+ (real:exp r) c -1))
+		 ((or (real:< r 0)
+		      (not (real:< r flo:greatest-normal-exponent-base-e)))
+		  ;; e^{r + log cos θ} - 1
+		  (real:expm1
+		   (real:+ r
+			   (if (real:< c 1/2)
+			       (real:log c)
+			       (real:log1p (real:negate (real:versin t)))))))
+		 (else
+		  ;; (e^r - 1) cos θ - versin θ
+		  (real:*+ (real:expm1 r) c (real:negate (real:versin t))))))
+	 (real:* (real:exp r) (real:sin t))))
+      ((copy real:expm1) z)))
+
+(define (complex:log1p z)
+  ;; log(1 + z)
+  ;; = log |1 + z| + i atan2(y, 1 + x)
+  ;; = 1/2 log |1 + z|^2
+  ;; = 1/2 log [(1 + x)^2 + y^2] + i atan2(y, 1 + x)
+  ;; = 1/2 log [1 + 2 x + x^2 + y^2] + i atan2(y, 1 + x).
+  ;;
+  ;; For 1/e <= |1 + z| <= e, where log is ill-conditioned, we prefer
+  ;; to evaluate it using log1p.  The tricky part is when |1 + z| is
+  ;; near 1 and we need to compute |1 + z|^2 - 1.
+  ;;
+  ;; Otherwise, we prefer to evaluate it using log -- where |1 + z|
+  ;; is very small, |1 + z|^2 - 1 is near -1 where log1p is
+  ;; ill-conditioned; where |1 + z| is large, |1 + z|^2 may overflow.
+  ;;
+  ;; We could avoid computing the magnitude altogether when
+  ;;	x in [-1 - e/sqrt(2), -1 - 1/e] or [-1 + 1/e, -1 + e/sqrt(2)]
+  ;; and when
+  ;;	y in [-e/sqrt(2), -1/e] or [1/e, e/sqrt(2)]
+  ;; where we won't use it anyway, but eh.
+  ;;
+  ;; When x in [-2, -1/2], 1 + x is evaluated exactly, so the error
+  ;; in the imaginary part is just the error in atan2; when x not in
+  ;; [-2, -1/2], atan2(y, 1 + x) dampens error in 1 + x so the error
+  ;; is around 2*eps + O(eps^2) if atan2 error is bounded by eps.
+  ;;
+  (cond ((recnum? z)
+	 (let ((x (rec:real-part z))
+	       (y (rec:imag-part z)))
+	   (complex:%make-rectangular
+	    (let ((d (complex:magnitude (complex:1+ z))))
+	      ;; d = distance between z and -1
+	      (if (and (real:< (flo:exp -1.) d)
+		       (real:< d (flo:exp 1.)))
+		  ;; In the ring of radii [1/e, e] about -1, log is
+		  ;; ill-conditioned at |1 + z|, so instead compute
+		  ;; it via
+		  ;;
+		  ;;	log |1 + z|
+		  ;;	= log sqrt(|1 + z|^2)
+		  ;;	= (1/2) log |1 + z|^2
+		  ;;	= (1/2) log (1 + z + z* + z z*)
+		  ;;	= (1/2) log (1 + 2 x + x^2 + y^2)
+		  ;;	= (1/2) log1p (2 x + x^2 + y^2),
+		  ;;
+		  ;; with compensated summation to minimize
+		  ;; intermediate error should 2 x + x^2 + y^2 be
+		  ;; near zero.
+		  ;;
+		  (let* ((a (real:* 2 x))	;2x, exactly
+			 (s (real:*+ x x a))	;fl(2x + x^2)
+			 (t (real:*+ y y s))	;fl(fl(2x + x^2) + y^2)
+			 ;; Fast2Sum, roughly -- s + e ≈ 2x + x^2.
+			 ;; (XXX Prove equality?)
+			 (e (real:*+ (real:negate x) x (real:- s a)))
+			 (u (real:- t e)))
+		    (real:* 1/2 (real:log1p u)))
+		  ;; Outside the ring of radii [1/e, e] about -1, log
+		  ;; is well-conditioned -- inside the disc of radius
+		  ;; 1/e, log1p is ill-conditioned, and much farther
+		  ;; outside the disc of radius e, |1 + z|^2 - 1 may
+		  ;; overflow.  So just compute log |1 + z| as such.
+		  (real:log d)))
+	    (real:atan2 y (real:+ 1 x)))))
+	((real:< z -1)
+	 (make-recnum (real:log (real:- -1 z)) rec:pi))
+	(else
+	 ((copy real:log1p) z))))
 
 ;;; Complex arguments -- ASIN
 ;;;   The danger in the complex case happens for large y when
