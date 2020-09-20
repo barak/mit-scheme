@@ -2054,12 +2054,12 @@ USA.
 		      ;; lines of Fast2Sum but with FMA instead of sum:
 		      ;;
 		      ;;	s = (u^2 + a) (1 + O(eps))
-		      ;;	s + d = (u^2 + a) (1 + O(eps^2))
+		      ;;	s + c = (u^2 + a) (1 + O(eps^2))
 		      ;;
 		      ;; Note that the condition of Fast2Sum holds
 		      ;; here, |2x| >= u^2, in all cases where the
 		      ;; error compensation is important, so we only
-		      ;; need to compute d := fl(u^2 + fl(a - s)) and
+		      ;; need to compute c := fl(u^2 + fl(a - s)) and
 		      ;; never fl(a + fl(u^2 - s)).
 		      ;;
 		      ;; Specifically, computing v^2 + fl(u^2 + 2x) is
