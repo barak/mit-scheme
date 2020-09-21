@@ -1205,6 +1205,9 @@ USA.
 	((flonum? a) (flo:*+ (rat:->inexact x) (rat:->inexact y) a))
 	(else (rat:+ (rat:* x y) a))))
 
+(define (real:*- x y s)
+  (real:*+ x y (real:negate s)))
+
 (define (real:/ x y)
   (cond ((flonum? x) (flo:/ x (if (flonum? y) y (rat:->inexact y))))
 	((flonum? y)
@@ -1995,7 +1998,7 @@ USA.
 			       (real:log1p (real:negate (real:versin t)))))))
 		 (else
 		  ;; (e^r - 1) cos θ - versin θ
-		  (real:*+ (real:expm1 r) c (real:negate (real:versin t))))))
+		  (real:*- (real:expm1 r) c (real:versin t)))))
 	 (real:* (real:exp r) (real:sin t))))
       ((copy real:expm1) z)))
 
@@ -2043,43 +2046,28 @@ USA.
 		  ;; intermediate error should 2 x + x^2 + y^2 be
 		  ;; near zero.
 		  ;;
-
-		  ;; complex:log1p continued
-		  (let ((a (real:* 2 x))	;2x, exactly
-			(xm (real:abs x))
-			(ym (real:abs y)))
-		    (let ((u (real:min xm ym))
-			  (v (real:max xm ym)))
-		      ;; Computed a sum s and compensation c, along the
-		      ;; lines of Fast2Sum but with FMA instead of sum:
-		      ;;
-		      ;;	s = (u^2 + a) (1 + O(eps))
-		      ;;	s + c = (u^2 + a) (1 + O(eps^2))
-		      ;;
-		      ;; Note that the condition of Fast2Sum holds
-		      ;; here, |2x| >= u^2, in all cases where the
-		      ;; error compensation is important, so we only
-		      ;; need to compute c := fl(u^2 + fl(a - s)) and
-		      ;; never fl(a + fl(u^2 - s)).
-		      ;;
-		      ;; Specifically, computing v^2 + fl(u^2 + 2x) is
-		      ;; problematic only where there is a large factor
-		      ;;
-		      ;;	(u^2 + 2x)/(v^2 + u^2 + 2x)
-		      ;;	= 1/(1 + v^2/(u^2 + 2x))
-		      ;;
-		      ;; amplifying error in fl(u^2 + 2x).  This can
-		      ;; happen only when both
-		      ;;
-		      ;;	u^2 + 2x < 0
-		      ;; and
-		      ;;	-v^2 ≈ u^2 + 2x.
-		      ;;
-		      ;; But if -2x < u^2, then we have 0 < 2x + u^2.
-		      ;;
-		      (let* ((s (real:*+ u u a))
-			     (c (real:*+ u u (real:- a s))))
-			(real:* 1/2 (real:log1p (real:+ (real:*+ v v s) c))))))
+		  ;; If x <= -2 or x >= 0, then x*(2 + x) >= 0, so
+		  ;; there is no cancellation in x*(2 + x) + y^2.  The
+		  ;; error terms e0 and e1 are small enough that they
+		  ;; don't affect the result.
+		  ;;
+		  ;; If -2 < x < 0, then by Fast2Sum and 2MultFMA,
+		  ;;
+		  ;;	s + e0 = 2 + x,
+		  ;;	p + e1 = x*(2 + x - e0),  and
+		  ;;	t = fl(y^2 + x*(2 + x) - x*e0 - e1).
+		  ;;
+		  ;; The computation of p = fl(x*s) cannot underflow
+		  ;; because either |x| >= 1 or |fl(x + 2)| >= 1.  We
+		  ;; then add e ≈ x*e0 + e1 back at the end.
+		  ;;
+		  (let* ((s (real:+ 2 x))	;Fast2Sum, s + e0 = 2 + x
+			 (e0 (real:- x (real:- s 2)))
+			 (p (real:* x s))	;2MultFMA, p + e1 = x*s
+			 (e1 (real:*- x s p))
+			 (e (real:*+ x e0 e1))
+			 (t (real:*+ y y p)))
+		    (real:* 1/2 (real:log1p (real:+ e t))))
 		  ;; Outside the ring of radii [1/e, e] about -1, log
 		  ;; is well-conditioned -- inside the disc of radius
 		  ;; 1/e, log1p is ill-conditioned, and much farther
