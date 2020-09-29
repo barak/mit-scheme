@@ -1847,7 +1847,7 @@ $$\pm r^e (1 + f/r^p)$$
 @ifnottex
 
 @example
-r^e (1 + f/r^p)
++/- r^e (1 + f/r^p)
 @end example
 
 @end ifnottex
