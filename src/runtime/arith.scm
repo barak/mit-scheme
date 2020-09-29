@@ -2104,8 +2104,27 @@ USA.
 
 (define (complex:exp z)
   (if (recnum? z)
-      (complex:%make-polar (real:exp (rec:real-part z))
-			   (rec:imag-part z))
+      (let ((r (rec:real-part z))
+	    (t (rec:imag-part z)))
+	;; If e^r would overflow, break it into e^r = e * e^{r - 1} so
+	;; we can compute the real and imaginary parts as
+	;;
+	;;	e^{r - 1} * (e * cos(t))
+	;;	e^{r - 1} * (e * sin(t)),
+	;;
+	;; which avoids intermediate overflow in the event e^r cos t
+	;; and e^r sin t don't overflow after all.  If r is this large,
+	;; r - 1 is computed exactly or we overflow anyway.
+	;;
+	(if (real:< r flo:greatest-normal-exponent-base-e)
+	    (complex:%make-polar (real:exp r) t)
+	    (let ((r (real:->inexact r))
+		  (t (real:->inexact t)))
+	      (let ((u (flo:exp (flo:- r 1.)))
+		    (e (flo:exp 1.)))
+		(complex:%make-rectangular
+		 (flo:* u (flo:* e (flo:cos t)))
+		 (flo:* u (flo:* e (flo:sin t))))))))
       ((copy real:exp) z)))
 
 (define (complex:log z)
