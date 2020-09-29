@@ -849,9 +849,12 @@ expm1 z = exp(z) - 1,
 
 @end ifnottex
 
-However, for real numbers close to zero, these provide better
-approximations than @code{(log (+ 1 @var{z}))} or @code{(- (exp
-@var{z}) 1)}:
+However, for real numbers close to zero, or for complex numbers near
+the circle of radius @math{1} about @math{-1}, these provide better
+approximations than
+@code{(log (+ 1 @var{z}))}
+or
+@code{(- (exp @var{z}) 1)}:
 
 @itemize @bullet
 @item
@@ -911,8 +914,28 @@ x f'(x)/f(x) = x e^x/(e^x - 1).
 @end ifnottex
 @end itemize
 
-The forward relative error of this implementation is determined by the
-system's math library, usually below 1ulp.
+On real numbers, the forward relative error of this implementation is
+determined by the system's math library, usually below 1ulp.
+
+On complex numbers:
+
+@itemize @bullet
+@item
+The forward relative error @emph{in complex magnitude} is bounded by a
+small multiple of the system math library's error for exp, expm1, log,
+log1p, sin, and cos.
+
+@item
+The @emph{componentwise} forward relative error of @code{log1p} is
+bounded by a small multiple of the system math library's error for
+log and log1p.
+
+@item
+The @emph{componentwise} forward relative error of @code{expm1} is
+bounded by a small multiple of the system math library's error for
+exp, expm1, log, log1p, sin, and cos---@emph{except} on @math{x + i y}
+where @math{x} is near zero and @math{e^{-x}} is near @math{\cos y}.
+@end itemize
 @end deffn
 
 @deffn procedure log1mexp x

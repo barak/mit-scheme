@@ -1,5 +1,5 @@
-Bug fix: The procedures log1p and expm1 now have better error bounds
-for complex inputs.
+Bug fix: The procedures log, log1p, and expm1 now have better error
+bounds for complex inputs, and no longer overflow unnecessarily.
 
-(expm1 x+iy) is still bad when x ~ 1 and e^x cos y ~ 1 but it should be
+(expm1 x+iy) is still bad when x ~ 0 and e^x cos y ~ 1 but it should be
 improved on much of the rest of the complex plane.

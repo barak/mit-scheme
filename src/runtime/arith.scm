@@ -41,6 +41,19 @@ USA.
 	   `(local-declare ((integrate ,identifier)) ,identifier))
 	 (ill-formed-syntax form)))))
 
+(define-integrable (flo:*- x y s)
+  (flo:*+ x y (flo:negate s)))
+
+(define-integrable (flo:square x)
+  (flo:* x x))
+
+(define-integrable (flo:versin t)
+  ;; versin t := 1 - cos t = 2 sin^2(t/2)
+  (flo:* 2. (flo:square (flo:sin (flo:/ t 2.)))))
+
+(define-integrable (flo:signum s)
+  (flo:copysign 1. s))
+
 ;;;; Primitives
 
 (define-primitives
@@ -1513,6 +1526,213 @@ USA.
 	      (else
 	       (general-case (rat:->inexact x) (rat:->inexact y)))))))
 
+(define (flo:log-hypot x y)
+  (let ((x (flo:abs x))
+	(y (flo:abs y)))
+    (let ((v (flo:max x y))
+	  (w (flo:min x y)))
+      ;; We want
+      ;;
+      ;;	log|z|
+      ;;	= log(sqrt(v^2 + w^2))
+      ;;	= (1/2) log(v^2 + w^2).			(a)
+      ;;
+      ;; We can rewrite this as
+      ;;
+      ;;	(1/2) log(1 + (v^2 + w^2 - 1)).		(b)
+      ;; or as
+      ;;	(1/2) log(v^2 (1 + w^2/v^2))
+      ;;	= log v + (1/2) log(1 + w^2/v^2).	(c)
+      ;;
+      ;; Option (a) is better when v^2 + w^2 << 1/2: log is well-
+      ;; conditioned near v^2 + w^2, but log1p is ill-conditioned near
+      ;; v^2 + w^2 - 1.
+      ;;
+      ;; Option (c) is better when v >= 1 so that there's neither
+      ;; overflow (0 <= w/v <= 1 so w^2/v^2 can't overflow) nor
+      ;; cancellation (log v >= 0).
+      ;;
+      ;; That leaves option (b) for the middle.  For simplicity, we
+      ;; discriminate on v and carve it up into:
+      ;;
+      ;;	0 (a) 1/2 (b) 1 (c)
+      ;;
+      (cond ((flo:< v 0.5)
+	     ;; 0 <= w^2 <= v^2 <= 1/4, so v^2 + w^2 <= 1/2, where log
+	     ;; is reasonably well-conditioned.
+	     (flo:* 0.5 (flo:log (flo:*+ v v (flo:* w w)))))
+	    ((and (flo:< v 1.)
+		  (flo:< v (flo:*+ v v (flo:* w w))))
+	     (let ((pv (flo:* v v))	;2MultFMA
+		   (pw (flo:* w w)))
+	       (let ((ev (flo:*- v v pv))
+		     (ew (flo:*- w w pw)))
+		 ;; Invariants:
+		 ;;
+		 ;;	pv + ev = v^2
+		 ;;	pw + ew = w^2
+		 ;;	1/4 <= pv <= 1
+		 ;;
+		 ;; The Sterbenz lemma would apply to pv - 1 if we had
+		 ;; 1/2 <= pv <= 1, but 1/4 <= pv <= 1/2 may occur too,
+		 ;; which may lose us an entire bit of precision; we
+		 ;; recover that bit with Fast2Sum.
+		 ;;
+		 (let* ((s (flo:- pv 1.))	;Fast2Sum(-1, pv), |-1| >= |pv|
+			(e (flo:- pv (flo:+ s 1.))))
+		   ;; Invariants:
+		   ;;
+		   ;;	s + e = pv - 1 = v^2 - 1 - ev
+		   ;;	|ew| <= |ev|
+		   ;;	pw = |pw| <= |pv| = pv
+		   ;;
+		   (let ((a
+			  (flo:+ (flo:+ s pw)
+				 (flo:+ e (flo:+ ev ew)))))
+		     ;; a = fl(fl(v^2 + w^2 - 1 - e - ev - ew)
+		     ;;		+ fl(e + fl(ev + ew)))
+		     (flo:* 0.5 (flo:log1p-guarded a)))))))
+	    (else
+	     (let* ((w/v (flo:/ w v))
+		    (w^2/v^2 (flo:square w/v)))
+	       ;; 0 <= w^2/v^2 <= w/v <= 1, so w^2/v^2 cannot overflow,
+	       ;; and log1p is well-conditioned and positive; further,
+	       ;; log v >= 0 because v >= 1, so no cancellation.
+	       (flo:+ (flo:log v)
+		      (flo:* 0.5 (flo:log1p-guarded w^2/v^2)))))))))
+
+(define (flo:log1p-magnitude x y)
+  ;;
+  ;;	log|1 + z|
+  ;;	= (1/2) log |1 + z|^2
+  ;;	= (1/2) log [(1 + x)^2 + y^2]
+  ;;	= (1/2) log [1 + 2 x + x^2 + y^2].
+  ;;
+  ;; Where |1 + z| ~ 1, i.e. on the circle of radius 1 about -1, log is
+  ;; ill-conditioned, so we prefer to evaluate it using log1p.  But
+  ;; even using log1p, we must be careful to avoid catastrophic
+  ;; cancellation in 2 x + x^2 + y^2.
+  ;;
+  ;; If |1 + z| ~ 0, then log1p is ill-conditioned near |1 + z|^2 - 1.
+  ;; And where |1 + z| is large, |1 + z|^2 - 1 may overflow.  So we
+  ;; prefer to compute log|1 + z| directly in those regions.
+  ;;
+  ;; To keep it simple, we draw two squares around -1:
+  ;;
+  ;; - an inner square of diagonal length 1 so the distance from -1 to
+  ;;   any point in the square is at most 1/2, and
+  ;;
+  ;; - an outer square of side length 2 so the distance from the circle
+  ;;   of radius 1 to any point outside the square is at least 1.
+  ;;
+  ;; Inside the inner square and outside the outer square, we use log.
+  ;; But in the `square annulus' between them, we use log1p, with
+  ;; double-Dekker arithmetic to precisely compute 2 x + x^2 + y^2.
+  ;;
+  (if (and (flo:< (flo:abs y) 2.)	;inside outer square
+	   (flo:< -2. x)
+	   (flo:< x 1.)
+	   (let ((sqrt1/8 (flo:/ 1. (flo:sqrt 8.))))
+	     (or (flo:< sqrt1/8 y)	;outside inner square
+		 (flo:< x (flo:- -1. sqrt1/8))
+		 (flo:< (flo:+ -1. sqrt1/8) x))))
+      ;; If x <= -2 or x >= 0, then x*(2 + x) >= 0, so there is no
+      ;; cancellation in x*(2 + x) + y^2.  The error terms e0 and e1
+      ;; are small enough not to affect the result.
+      ;;
+      ;; If -2 < x < 0, then by Fast2Sum and 2MultFMA,
+      ;;
+      ;;	s + e0 = 2 + x,
+      ;;	p + e1 = x*(2 + x - e0),  and
+      ;;	t = fl(y^2 + x*(2 + x) - x*e0 - e1).
+      ;;
+      ;; The computation of p = fl(x*s) cannot underflow because either
+      ;; |x| >= 1 or |fl(x + 2)| >= 1.  We then add e ≈ x*e0 + e1.
+      ;;
+      (let* ((s (flo:+ 2. x))	;Fast2Sum, s + e0 = 2 + x (if x > -2)
+	     (e0 (flo:- x (flo:- s 2.)))
+	     (p (flo:* x s))	;2MultFMA, p + e1 = x*s
+	     (e1 (flo:*- x s p))
+	     (e (flo:*+ x e0 e1))
+	     (t (flo:*+ y y p)))
+	(flo:* 0.5 (flo:log1p-guarded (flo:+ e t))))
+      ;; x is close enough to -1 that 1 + x is exact, or z is far
+      ;; enough from -1 that any rounding error is dwarfed.
+      (flo:log-hypot (flo:+ 1. x) y)))
+
+(define (flo:expcosm1 r t)
+  ;;
+  ;;	e^r cos θ - 1
+  ;;
+  ;; Recall versin θ = 1 - cos θ = 2 sin^2(θ/2).  We can rewrite this a
+  ;; few different ways:
+  ;;
+  ;;	e^r cos θ - 1
+  ;;	= (e^r - 1) cos θ + cos θ - 1
+  ;;	= (e^r - 1) cos θ - versin θ		(a)
+  ;;
+  ;;	e^r cos θ - 1
+  ;;	= e^r + (cos θ - 1) e^r - 1
+  ;;	= (e^r - 1) - e^r versin θ
+  ;;	= e^r [(e^r - 1)/e^r - versin θ]
+  ;;	= e^r [1 - e^{-r} - versin θ]
+  ;;	= e^r [-expm1(-r) - versin θ]		(b)
+  ;;
+  ;;	e^r cos θ - 1
+  ;;	= e^{r + log cos θ} - 1
+  ;;	= e^{r + log (1 - versin θ)} - 1	(c)
+  ;;	(provided cos θ > 0)
+  ;;
+  ;; When cos θ <= 0, the naive e^r cos θ - 1 works fine because the
+  ;; subtraction won't amplify error in e^r cos θ.  The hard case is
+  ;; when r > 0 and cos θ ≈ 1/e^r; alas, all of the options are bad in
+  ;; parts of that region.  For large r we choose (c) since it avoids
+  ;; overflow; for small and moderate r we choose (a), since unlike (b)
+  ;; it avoids catastrophic cancellation when θ ≈ (2n + 1) π/2.  For
+  ;; example,
+  ;;
+  ;;	(real-part (expm1 (make-rectangular 36 (* 5 (atan 1 0)))))
+  ;;	;True:  .31993397863942879634230060038119570859185188547658...
+  ;;	;Naive: .31993397863942885
+  ;;	;(a):   .31993397863942863
+  ;;	;(b):  0.0
+  ;;	;(c):   .31993397863942774 [log(cos θ)]
+  ;;	;(c):  -.04271429438047255 [log1p(-versin θ)]
+  ;;
+  ;;	(real-part (expm1 (make-rectangular 36 (* 7 (atan 1 0)))))
+  ;;	;True:  -2.8479075700952003148792208405336462778540355878772...
+  ;;	;Naive: -2.8479075700952
+  ;;	;(a):	-2.8479075700952
+  ;;	;(b):	-3.
+  ;;	;(c):	[N/A; cos θ < 0]
+  ;;
+  (let ((c (flo:cos t)))
+    (cond ((flo:< c 0.)
+	   ;; e^r cos θ - 1
+	   (flo:*+ (flo:exp r) c -1.))
+	  ((flo:< r 0.)
+	   (flo:expm1-guarded
+	    (flo:+ r
+		   (if (flo:< c 0.5)
+		       (flo:log c)
+		       (flo:log1p-guarded (flo:negate (flo:versin t)))))))
+	  ((flo:> r flo:greatest-normal-exponent-base-e)
+	   ;; e^{r + log cos θ - d} e^d - 1
+	   ;;
+	   ;; (r is large enough that no matter what θ is, the
+	   ;; minus-one at the end will always be rounded away.)
+	   (let* ((u
+		   (if (flo:< c 0.5)
+		       (flo:log c)
+		       (flo:log1p-guarded (flo:negate (flo:versin t)))))
+		  (v (flo:+ r u))	;Fast2Sum(r, u), |r| >= |u|
+		  (d (flo:- u (flo:- v r))))
+	     ;; v + d = r + fl(u), so e^s e^d = e^{r + fl(u)}.
+	     (flo:* (flo:exp v) (flo:exp d))))
+	  (else
+	   ;; (e^r - 1) cos θ - versin θ
+	   (flo:*- (flo:expm1-guarded r) c (flo:versin t))))))
+
 (define (complex:complex? object)
   (or (recnum? object) ((copy real:real?) object)))
 
@@ -1890,18 +2110,56 @@ USA.
 
 (define (complex:log z)
   (cond ((recnum? z)
-	 (complex:%make-rectangular (real:log (complex:magnitude z))
+	 (complex:%make-rectangular (complex:log-magnitude z)
 				    (complex:angle z)))
 	((real:negative? z)
 	 (make-recnum (real:log (real:negate z)) rec:pi))
 	(else
 	 ((copy real:log) z))))
 
+(define (complex:expm1 z)
+  (if (recnum? z)
+      (let ((r (real:->inexact (rec:real-part z)))
+	    (t (real:->inexact (rec:imag-part z))))
+	;;	e^{r + i θ} - 1
+	;;	= e^r (cos θ + i sin θ) - 1
+	;;	= e^r cos θ - 1 + i e^r sin θ
+	;;
+	;; Computing e^r sin θ is easy -- multiplication won't amplify
+	;; relative error in the factors so we just have to worry about
+	;; overflow.  The tricky part is computing e^r cos θ - 1.
+	(complex:%make-rectangular
+	 (flo:expcosm1 r t)
+	 (if (flo:<= r flo:greatest-normal-exponent-base-e)
+	     (flo:* (flo:exp r) (flo:sin t))
+	     (let* ((s (flo:sin t))
+		    (u (flo:log (flo:abs s)))
+		    (v (flo:+ r u))	;Fast2Sum(r, u), |r| >= |u|
+		    (e (flo:- u (flo:- v r))))
+	       (flo:* (flo:signum s)
+		      (flo:* (flo:exp v) (flo:exp e)))))))
+      ((copy real:expm1) z)))
+
+(define (complex:log1p z)
+  (cond ((recnum? z)
+	 ;; When x in [-2, -1/2], 1 + x is evaluated exactly, so the
+	 ;; error in the imaginary part is just the error in atan2;
+	 ;; when x not in [-2, -1/2], atan2(y, 1 + x) dampens error in
+	 ;; 1 + x so the error is around 2*eps + O(eps^2) if atan2
+	 ;; error is bounded by eps.
+	 (complex:%make-rectangular (complex:log1p-magnitude z)
+				    (real:atan2 (rec:imag-part z)
+						(real:+ 1 (rec:real-part z)))))
+	((real:< z -1)
+	 (make-recnum (real:log (real:- -1 z)) rec:pi))
+	(else
+	 ((copy real:log1p) z))))
+
 (define (complex:log1m z)
   (if (and (real:real? z) (real:< 1 z))
       (make-recnum (real:log (real:- z 1)) (real:negate rec:pi))
       (complex:log1p (complex:negate z))))
-
+
 (define (complex:sin z)
   (if (recnum? z)
       (complex:/ (let ((iz (complex:+i* z)))
@@ -1928,157 +2186,42 @@ USA.
 		      (complex:+ e+iz e-iz)))))
       ((copy real:tan) z)))
 
-(define (complex:expm1 z)
-  (define (real:versin t)
-    (real:* 2 (real:square (real:sin (real:/ t 2)))))
+(define (complex:log-magnitude z)
+  ;; log|z| = (1/2) log(x^2 + y^2)
   (if (recnum? z)
-      (let ((r (rec:real-part z))
-	    (t (rec:imag-part z)))
-	;;
-	;;	e^{r + i θ} - 1
-	;;	= e^r (cos θ + i sin θ) - 1
-	;;	= e^r cos θ - 1 + i e^r sin θ
-	;;
-	;; Computing e^r sin θ is easy.  The tricky part is computing
-	;; e^r cos θ - 1, which we can do a few different ways
-	;; (recall versin θ = 1 - cos θ = 2 sin^2(θ/2)):
-	;;
-	;; (a)	e^r cos θ - 1
-	;;	= (e^r - 1) cos θ + cos θ - 1
-	;;	= (e^r - 1) cos θ - versin θ
-	;;
-	;; (b)	e^r cos θ - 1
-	;;	= e^r + (cos θ - 1) e^r - 1
-	;;	= (e^r - 1) - e^r versin θ
-	;;	= e^r [(e^r - 1)/e^r - versin θ]
-	;;	= e^r [1 - e^{-r} - versin θ]
-	;;	= e^r [-expm1(-r) - versin θ]
-	;;
-	;; (c)	e^r cos θ - 1
-	;;	= e^{r + log cos θ} - 1
-	;;	= e^{r + log (1 - versin θ)} - 1
-	;;	(provided cos θ > 0)
-	;;
-	;; When cos θ <= 0, the naive  e^r cos θ - 1  works fine
-	;; because the subtraction won't amplify error in e^r cos θ.
-	;; The hard case is when r > 0 and cos θ ≈ 1/e^r; alas, all
-	;; of the options are bad in parts of that region.  For large
-	;; r we choose (c) since it avoids overflow; for small and
-	;; moderate r we choose (a), since unlike (b) it avoids
-	;; catastrophic cancellation when θ ≈ (2n + 1) π/2.  For
-	;; example,
-	;;
-	;;	(real-part (expm1 (make-rectangular 36 (* 5 (atan 1 0)))))
-	;;	;True:  .31993397863942879634230060038119570859185188547658...
-	;;	;Naive: .31993397863942885
-	;;	;(a):   .31993397863942863
-	;;	;(b):  0.0
-	;;	;(c):   .31993397863942774 [log(cos θ)]
-	;;	;(c):  -.04271429438047255 [log1p(-versin θ)]
-	;;
-	;;	(real-part (expm1 (make-rectangular 36 (* 7 (atan 1 0)))))
-	;;	;True:  -2.8479075700952003148792208405336462778540355878772...
-	;;	;Naive: -2.8479075700952
-	;;	;(a):	-2.8479075700952
-	;;	;(b):	-3.
-	;;	;(c):	[N/A; cos θ < 0]
-	;;
-	(complex:%make-rectangular
-	 (let ((c (real:cos t)))
-	   (cond ((real:< c 0)
-		  ;; e^r cos θ - 1
-		  (real:*+ (real:exp r) c -1))
-		 ((or (real:< r 0)
-		      (not (real:< r flo:greatest-normal-exponent-base-e)))
-		  ;; e^{r + log cos θ} - 1
-		  (real:expm1
-		   (real:+ r
-			   (if (real:< c 1/2)
-			       (real:log c)
-			       (real:log1p (real:negate (real:versin t)))))))
-		 (else
-		  ;; (e^r - 1) cos θ - versin θ
-		  (real:*- (real:expm1 r) c (real:versin t)))))
-	 (real:* (real:exp r) (real:sin t))))
-      ((copy real:expm1) z)))
-
-(define (complex:log1p z)
-  ;; log(1 + z)
-  ;; = log |1 + z| + i atan2(y, 1 + x)
-  ;; = 1/2 log |1 + z|^2 + i atan2(y, 1 + x)
-  ;; = 1/2 log [(1 + x)^2 + y^2] + i atan2(y, 1 + x)
-  ;; = 1/2 log [1 + 2 x + x^2 + y^2] + i atan2(y, 1 + x).
+      (let ((x (rec:real-part z))
+	    (y (rec:imag-part z)))
+	;; Exact y = 0 is not possible -- z would not be a recnum in
+	;; that case.  So we only have to consider exact z = ±i.
+	(if (and (real:exact0= x)
+		 (real:exact1= (real:abs y)))
+	    0
+	    (flo:log-hypot (real:->inexact x) (real:->inexact y))))
+      (real:log (real:abs z))))
+
+(define (complex:log1p-magnitude z)
   ;;
-  ;; For 1/e <= |1 + z| <= e, where log is ill-conditioned, we prefer
-  ;; to evaluate it using log1p.  The tricky part is when |1 + z| is
-  ;; near 1 and we need to compute |1 + z|^2 - 1.
-  ;;
-  ;; Otherwise, we prefer to evaluate it using log -- where |1 + z|
-  ;; is very small, |1 + z|^2 - 1 is near -1 where log1p is
-  ;; ill-conditioned; where |1 + z| is large, |1 + z|^2 may overflow.
-  ;;
-  ;; We could avoid computing the magnitude altogether when
-  ;;	x in [-1 - e/sqrt(2), -1 - 1/e] or [-1 + 1/e, -1 + e/sqrt(2)]
-  ;; and when
-  ;;	y in [-e/sqrt(2), -1/e] or [1/e, e/sqrt(2)]
-  ;; where we won't use it anyway, but eh.
-  ;;
-  ;; When x in [-2, -1/2], 1 + x is evaluated exactly, so the error
-  ;; in the imaginary part is just the error in atan2; when x not in
-  ;; [-2, -1/2], atan2(y, 1 + x) dampens error in 1 + x so the error
-  ;; is around 2*eps + O(eps^2) if atan2 error is bounded by eps.
+  ;;	log|1 + z|
+  ;;	= log(sqrt((1 + x)^2 + y^2))
+  ;;	= (1/2) log((1 + x)^2 + y^2)
+  ;;	= (1/2) log(1 + 2 x + x^2 + y^2)
   ;;
   (cond ((recnum? z)
 	 (let ((x (rec:real-part z))
 	       (y (rec:imag-part z)))
-	   (complex:%make-rectangular
-	    (let ((d (complex:magnitude (complex:1+ z))))
-	      ;; d = distance between z and -1
-	      (if (and (real:< (flo:exp -1.) d)
-		       (real:< d (flo:exp 1.)))
-		  ;; In the ring of radii [1/e, e] about -1, log is
-		  ;; ill-conditioned at |1 + z|, so instead compute
-		  ;; it via
-		  ;;
-		  ;;	(1/2) log1p (2 x + x^2 + y^2),
-		  ;;
-		  ;; with compensated summation to minimize
-		  ;; intermediate error should 2 x + x^2 + y^2 be
-		  ;; near zero.
-		  ;;
-		  ;; If x <= -2 or x >= 0, then x*(2 + x) >= 0, so
-		  ;; there is no cancellation in x*(2 + x) + y^2.  The
-		  ;; error terms e0 and e1 are small enough that they
-		  ;; don't affect the result.
-		  ;;
-		  ;; If -2 < x < 0, then by Fast2Sum and 2MultFMA,
-		  ;;
-		  ;;	s + e0 = 2 + x,
-		  ;;	p + e1 = x*(2 + x - e0),  and
-		  ;;	t = fl(y^2 + x*(2 + x) - x*e0 - e1).
-		  ;;
-		  ;; The computation of p = fl(x*s) cannot underflow
-		  ;; because either |x| >= 1 or |fl(x + 2)| >= 1.  We
-		  ;; then add e ≈ x*e0 + e1 back at the end.
-		  ;;
-		  (let* ((s (real:+ 2 x))	;Fast2Sum, s + e0 = 2 + x
-			 (e0 (real:- x (real:- s 2)))
-			 (p (real:* x s))	;2MultFMA, p + e1 = x*s
-			 (e1 (real:*- x s p))
-			 (e (real:*+ x e0 e1))
-			 (t (real:*+ y y p)))
-		    (real:* 1/2 (real:log1p (real:+ e t))))
-		  ;; Outside the ring of radii [1/e, e] about -1, log
-		  ;; is well-conditioned -- inside the disc of radius
-		  ;; 1/e, log1p is ill-conditioned, and much farther
-		  ;; outside the disc of radius e, |1 + z|^2 - 1 may
-		  ;; overflow.  So just compute log |1 + z| as such.
-		  (real:log d)))
-	    (real:atan2 y (real:+ 1 x)))))
+	   (if (and (real:exact? x)
+		    (real:= x -1)
+		    (real:exact1= (real:abs y)))
+	       0
+	       (flo:log1p-magnitude (real:->inexact x) (real:->inexact y)))))
 	((real:< z -1)
-	 (make-recnum (real:log (real:- -1 z)) rec:pi))
+	 ;; z < -1, so 1 + z < 0 and thus |1 + z| = -(1 + z) = -1 - z.
+	 ;; If -2 <= z <= -1, then the subtraction is computed exactly
+	 ;; by the Sterbenz lemma; if z < -2, then log is reasonably
+	 ;; well-conditioned, so it won't amplify error in -1 - z.
+	 (real:log (real:- -1 z)))
 	(else
-	 ((copy real:log1p) z))))
+	 (real:log1p z))))
 
 ;;; Complex arguments -- ASIN
 ;;;   The danger in the complex case happens for large y when
