@@ -530,18 +530,14 @@ USA.
 (define (flo:invalid-minmax-num x y)
   (cond ((not (flo:nan? x))
 	 (assert (flo:nan? y))
-	 (if (flo:nan-quiet? y)
-	     x
-	     (begin
-	       (flo:raise-exceptions! (flo:exception:invalid-operation))
-	       (flo:quieten-nan y))))
+	 (if (not (flo:nan-quiet? y))
+	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
+	 x)
 	((not (flo:nan? y))
 	 (assert (flo:nan? x))
-	 (if (flo:nan-quiet? x)
-	     y
-	     (begin
-	       (flo:raise-exceptions! (flo:exception:invalid-operation))
-	       (flo:quieten-nan x))))
+	 (if (not (flo:nan-quiet? x))
+	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
+	 y)
 	;; Both are NaN.
 	((not (or (flo:nan-quiet? x) (flo:nan-quiet? y)))
 	 (flo:raise-exceptions! (flo:exception:invalid-operation))
