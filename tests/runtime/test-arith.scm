@@ -370,6 +370,46 @@ USA.
 	  (assert-<= (relerr (real-part w) (real-part w*)) 1e-15)
 	  (assert-<= (relerr (imag-part w) (imag-part w*)) 1e-15))))))
 
+(define-enumerated-test 'exp-approx
+  (list
+   (list 709.9482473405542+0.7853981633974483i
+	 1.4999999999999729e308+1.4999999999999725e308i
+	 expect-failure)
+   (list 709.9482473405542-0.7853981633974483i
+	 1.4999999999999729e308-1.4999999999999725e308i
+	 expect-failure)
+   (list 709.9482473405542+2.356194490192345i
+	 -1.4999999999999725e308+1.4999999999999729e308i
+	 expect-failure)
+   (list 709.9482473405542-2.356194490192345i
+	 -1.4999999999999725e308-1.4999999999999729e308i
+	 expect-failure))
+  (lambda (z w #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-<= (relerr w (exp z)) 1e-15)))))
+
+(define-enumerated-test 'exp-approx-componentwise
+  (list
+   (list 709.9482473405542+0.7853981633974483i
+	 1.4999999999999729e308+1.4999999999999725e308i
+	 expect-failure)
+   (list 709.9482473405542-0.7853981633974483i
+	 1.4999999999999729e308-1.4999999999999725e308i
+	 expect-failure)
+   (list 709.9482473405542+2.356194490192345i
+	 -1.4999999999999725e308+1.4999999999999729e308i
+	 expect-failure)
+   (list 709.9482473405542-2.356194490192345i
+	 -1.4999999999999725e308-1.4999999999999729e308i
+	 expect-failure))
+  (lambda (z w #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(let ((w* (exp z)))
+	  (assert-<= (relerr (real-part w) (real-part w*)) 1e-15)
+	  (assert-<= (relerr (imag-part w) (imag-part w*)) 1e-15))))))
+
 (define-enumerated-test 'expm1-approx
   (list
    (list -0.7 -0.5034146962085905)
