@@ -307,13 +307,23 @@ USA.
   (lambda ()
     (assert-nan (make-polar (flo:nan.0) 0))))
 
+(define-enumerated-test 'log-exact
+  (list
+   (list 1 0)
+   (list +i +1.5707963267948966i)
+   (list -i -1.5707963267948966i))
+  (lambda (x y)
+    (assert-eqv (log x) y)))
+
 (define-enumerated-test 'log1p-exact
   (list
    (list 0 0)
    (list 1 (log 2))
    (list (- (exp 1) 1) 1.)
    (list (expt 2 -53) (expt 2. -53))
-   (list (- (expt 2 -53)) (- (expt 2. -53))))
+   (list (- (expt 2 -53)) (- (expt 2. -53)))
+   (list -1+i +1.5707963267948966i)
+   (list -1-i -1.5707963267948966i))
   (lambda (x y)
     (assert-eqv (log1p x) y)))
 
@@ -329,6 +339,37 @@ USA.
   (if (or (zero? e) (infinite? e))
       (if (eqv? a e) 0 1)
       (/ (magnitude (- e a)) (magnitude e))))
+
+(define-enumerated-test 'log-approx
+  (list
+   (list 1e-16+i 4.9999999999999996e-33+1.5707963267948966i)
+   (list .7071067811794765+.7071067811865475i
+	 -5.000048085837774e-12+.7853981634024483i)
+   (list 1.5e308+1.5e308i 709.9482473405542+0.7853981633974483i expect-failure)
+   (list 1.5e308-1.5e308i 709.9482473405542-0.7853981633974483i expect-failure)
+   (list -1.5e308+1.5e308i 709.9482473405542+2.356194490192345i expect-failure)
+   (list -1.5e308-1.5e308i 709.9482473405542-2.356194490192345i expect-failure))
+  (lambda (z w #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-<= (relerr w (log z)) 1e-15)))))
+
+(define-enumerated-test 'log-approx-componentwise
+  (list
+   (list 1e-16+i 4.9999999999999996e-33+1.5707963267948966i expect-failure)
+   (list .7071067811794765+.7071067811865475i
+	 -5.000048085837774e-12+.7853981634024483i
+	 expect-failure)
+   (list 1.5e308+1.5e308i 709.9482473405542+0.7853981633974483i expect-failure)
+   (list 1.5e308-1.5e308i 709.9482473405542-0.7853981633974483i expect-failure)
+   (list -1.5e308+1.5e308i 709.9482473405542+2.356194490192345i expect-failure)
+   (list -1.5e308-1.5e308i 709.9482473405542-2.356194490192345i expect-failure))
+  (lambda (z w #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(let ((w* (log z)))
+	  (assert-<= (relerr (real-part w) (real-part w*)) 1e-15)
+	  (assert-<= (relerr (imag-part w) (imag-part w*)) 1e-15))))))
 
 (define-enumerated-test 'expm1-approx
   (list
@@ -353,7 +394,15 @@ USA.
    (list (make-rectangular 36 (* 5 (atan 1 0)))
 	 .319933978639428796+4311231547115195.i)
    (list (make-rectangular 36 (* 7 (atan 1 0)))
-	 -2.8479075700952-4311231547115195.i))
+	 -2.8479075700952-4311231547115195.i)
+   (list 7.583651193599508e-3+0.123i
+	 4.271362530375236e-17+.12362406586927442i)
+   (list 710+.7853981633974483i
+	 1.5796728482882015e308+1.5796728482882013e308i
+	 expect-failure)
+   (list 710-.7853981633974483i
+	 1.5796728482882015e308-1.5796728482882013e308i
+	 expect-failure))
   (lambda (x y #!optional xfail)
     (with-expected-failure xfail
       (lambda ()
@@ -367,7 +416,16 @@ USA.
 	 9.99999999999986e307+9.99999999999986e307i)
    (list -2.0001500066646957e-4+1.5706963067912294i -.9999+.9998i)
    (list -8.749421923219187e-14+.5053605102839992i
-	 -.125+.4841229182757464i))
+	 -.125+.4841229182757464i)
+   (list 7.583651193599508e-3+0.123i
+	 4.271362530375236e-17+.12362406586927442i
+	 expect-failure)
+   (list 710+.7853981633974483i
+	 1.5796728482882015e308+1.5796728482882013e308i
+	 expect-failure)
+   (list 710-.7853981633974483i
+	 1.5796728482882015e308-1.5796728482882013e308i
+	 expect-failure))
   (lambda (z w #!optional xfail)
     (with-expected-failure xfail
       (lambda ()
