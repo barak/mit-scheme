@@ -1683,13 +1683,19 @@ USA.
   ;;	= e^{r + log (1 - versin θ)} - 1	(c)
   ;;	(provided cos θ > 0)
   ;;
+  ;; When e^r overflows, if e^r cos θ - 1 doesn't overflow we can
+  ;; compute it with e^{r - 1} (e cos θ) - 1, and hope that e cos θ
+  ;; can't be small enough that there's cancellation.  (XXX)
+  ;;
   ;; When cos θ <= 0, the naive e^r cos θ - 1 works fine because the
-  ;; subtraction won't amplify error in e^r cos θ.  The hard case is
-  ;; when r > 0 and cos θ ≈ 1/e^r; alas, all of the options are bad in
-  ;; parts of that region.  For large r we choose (c) since it avoids
-  ;; overflow; for small and moderate r we choose (a), since unlike (b)
-  ;; it avoids catastrophic cancellation when θ ≈ (2n + 1) π/2.  For
-  ;; example,
+  ;; subtraction won't amplify error in e^r cos θ.
+  ;;
+  ;; There seems to be no particular advantage to (c).
+  ;;
+  ;; The hard case is when r > 0 and cos θ ≈ 1/e^r; alas, all of the
+  ;; options are bad in parts of that region.  For small and moderate r
+  ;; we choose (a), since unlike (b) it avoids catastrophic
+  ;; cancellation when r ≫ 1 and θ ≈ (2n + 1) π/2.  For example,
   ;;
   ;;	(real-part (expm1 (make-rectangular 36 (* 5 (atan 1 0)))))
   ;;	;True:  .31993397863942879634230060038119570859185188547658...
@@ -1707,30 +1713,16 @@ USA.
   ;;	;(c):	[N/A; cos θ < 0]
   ;;
   (let ((c (flo:cos t)))
-    (cond ((flo:< c 0.)
-	   ;; e^r cos θ - 1
-	   (flo:*+ (flo:exp r) c -1.))
-	  ((flo:< r 0.)
-	   (flo:expm1-guarded
-	    (flo:+ r
-		   (if (flo:< c 0.5)
-		       (flo:log c)
-		       (flo:log1p-guarded (flo:negate (flo:versin t)))))))
-	  ((flo:> r flo:greatest-normal-exponent-base-e)
-	   ;; e^{r + log cos θ - d} e^d - 1
-	   ;;
-	   ;; (r is large enough that no matter what θ is, the
-	   ;; minus-one at the end will always be rounded away.)
-	   (let* ((u
-		   (if (flo:< c 0.5)
-		       (flo:log c)
-		       (flo:log1p-guarded (flo:negate (flo:versin t)))))
-		  (v (flo:+ r u))	;Fast2Sum(r, u), |r| >= |u|
-		  (d (flo:- u (flo:- v r))))
-	     ;; v + d = r + fl(u), so e^s e^d = e^{r + fl(u)}.
-	     (flo:* (flo:exp v) (flo:exp d))))
+    (cond ((flo:> r flo:greatest-normal-exponent-base-e)
+	   ;; e^{r - 1} (e cos θ) - 1, to avoid overflow
+	   (flo:*- (flo:exp (flo:- r 1.)) (flo:* (flo:exp 1.) c) 1.))
+	  ((flo:< c 0.)
+	   ;; e^r cos θ - 1, no cancellation because e^r cos θ < 0
+	   (flo:*- (flo:exp r) c 1.))
 	  (else
-	   ;; (e^r - 1) cos θ - versin θ
+	   ;; (e^r - 1) cos θ - versin θ, cancellation may happen if
+	   ;; e^r ~ cos θ but it tends to do a better job than the
+	   ;; naive e^r cos θ - 1.
 	   (flo:*- (flo:expm1-guarded r) c (flo:versin t))))))
 
 (define (complex:complex? object)
@@ -2151,12 +2143,8 @@ USA.
 	 (flo:expcosm1 r t)
 	 (if (flo:<= r flo:greatest-normal-exponent-base-e)
 	     (flo:* (flo:exp r) (flo:sin t))
-	     (let* ((s (flo:sin t))
-		    (u (flo:log (flo:abs s)))
-		    (v (flo:+ r u))	;Fast2Sum(r, u), |r| >= |u|
-		    (e (flo:- u (flo:- v r))))
-	       (flo:* (flo:signum s)
-		      (flo:* (flo:exp v) (flo:exp e)))))))
+	     ;; e^r sin t = e^{r - 1} * (e * sin t)
+	     (flo:* (flo:exp (flo:- r 1.)) (flo:* (flo:exp 1.) (flo:sin t))))))
       ((copy real:expm1) z)))
 
 (define (complex:log1p z)
