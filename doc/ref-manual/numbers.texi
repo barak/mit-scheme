@@ -1841,7 +1841,7 @@ All floating-point values are classified into:
 Numbers of the form
 @iftex
 @tex
-$$r^e (1 + f/r^p)$$
+$$\pm r^e (1 + f/r^p)$$
 @end tex
 @end iftex
 @ifnottex
