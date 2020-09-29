@@ -2295,8 +2295,8 @@ sign of @var{x2}.
 @example
 @group
 (flo:copysign 123. 456.)       @result{} 123.
-(flo:copysign +inf.0 -1)       @result{} -inf.0
-(flo:copysign 0. -1)           @result{} -0.
+(flo:copysign +inf.0 -1.)      @result{} -inf.0
+(flo:copysign 0. -1.)          @result{} -0.
 (flo:copysign -0. 0.)          @result{} 0.
 (flo:copysign -nan.123 0.)     @result{} +nan.123
 @end group
