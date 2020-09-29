@@ -1135,20 +1135,28 @@ USA.
   ;; Min/max number -- signalling cases (XXX test exceptions too)
   (define-enumerated-test 'min-num-snan-left inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:min-num (flo:snan 123) x)))
-                      (flo:qnan 123))))
+      (expect-failure
+       (lambda ()
+	 (assert-eqv-nan (no-traps (lambda () (flo:min-num (flo:snan 123) x)))
+			 x)))))
   (define-enumerated-test 'max-num-snan-left inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:max-num (flo:snan 123) x)))
-                      (flo:qnan 123))))
+      (expect-failure
+       (lambda ()
+	 (assert-eqv-nan (no-traps (lambda () (flo:max-num (flo:snan 123) x)))
+			 x)))))
   (define-enumerated-test 'min-num-snan-right inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:min-num x (flo:snan 123))))
-                      (flo:qnan 123))))
+      (expect-failure
+       (lambda ()
+	 (assert-eqv-nan (no-traps (lambda () (flo:min-num x (flo:snan 123))))
+			 x)))))
   (define-enumerated-test 'max-num-snan-right inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:max-num x (flo:snan 123))))
-                      (flo:qnan 123))))
+      (expect-failure
+       (lambda ()
+	 (assert-eqv-nan (no-traps (lambda () (flo:max-num x (flo:snan 123))))
+			 x)))))
   (define-test 'min-num-snan-both
     (lambda ()
       (assert-qnan
@@ -1161,20 +1169,32 @@ USA.
   ;; Min/max magnitude number -- signalling cases (XXX test exceptions too)
   (define-enumerated-test 'min-mag-num-snan-left inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:min-mag-num (flo:snan 123) x)))
-                      (flo:qnan 123))))
+      (expect-failure
+       (lambda ()
+	 (assert-eqv-nan
+	  (no-traps (lambda () (flo:min-mag-num (flo:snan 123) x)))
+	  x)))))
   (define-enumerated-test 'max-mag-num-snan-left inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:max-mag-num (flo:snan 123) x)))
-                      (flo:qnan 123))))
+      (expect-failure
+       (lambda ()
+	 (assert-eqv-nan
+	  (no-traps (lambda () (flo:max-mag-num (flo:snan 123) x)))
+	  x)))))
   (define-enumerated-test 'min-mag-num-snan-right inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:min-mag-num x (flo:snan 123))))
-                      (flo:qnan 123))))
+      (expect-failure
+       (lambda ()
+	 (assert-eqv-nan
+	  (no-traps (lambda () (flo:min-mag-num x (flo:snan 123))))
+	  x)))))
   (define-enumerated-test 'max-mag-num-snan-right inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:max-mag-num x (flo:snan 123))))
-                      (flo:qnan 123))))
+      (expect-failure
+       (lambda ()
+	 (assert-eqv-nan
+	  (no-traps (lambda () (flo:max-mag-num x (flo:snan 123))))
+	  x)))))
   (define-test 'min-mag-num-snan-both
     (lambda ()
       (assert-qnan
