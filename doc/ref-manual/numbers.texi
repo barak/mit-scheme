@@ -2230,7 +2230,7 @@ Returns the min or max of two floating-point numbers.
 @code{flo:min} and @code{flo:max}.
 
 If either argument is NaN, raises the floating-point invalid-operation
-exception and returns a quiet NaN.
+exception if it is a signalling NaN, and returns a quiet NaN.
 In other words, @code{flo:min} and @code{flo:max} propagate NaN.
 
 These are the minimum and maximum operations of @acronym{IEEE 754-2019}.
@@ -2242,7 +2242,7 @@ Returns the argument that has the smallest or largest magnitude, or
 the min or max if the magnitude is the same.
 
 If either argument is NaN, raises the floating-point invalid-operation
-exception and returns a quiet NaN.
+exception if it is a signalling NaN, and returns a quiet NaN.
 In other words, @code{flo:min-mag} and @code{flo:max-mag} propagate
 NaN.
 
@@ -2257,8 +2257,8 @@ Returns the min or max of two floating-point numbers.
 @code{flo:min-num} and @code{flo:max-num}.
 
 If either argument is NaN, raises the floating-point invalid-operation
-exception and returns the other one if it is not NaN, or the first
-argument if they are both NaN.
+exception if it is a signalling NaN, and returns the other one if it
+is not NaN, or the first argument if they are both NaN.
 In other words, @code{flo:min-num} and @code{flo:max-num} treat NaN as
 missing data and ignore it if possible.
 
@@ -2273,8 +2273,8 @@ Returns the argument that has the smallest or largest magnitude, or
 the min or max if the magnitude is the same.
 
 If either argument is NaN, raises the floating-point invalid-operation
-exception and returns the other one if it is not NaN, or the first
-argument if they are both NaN.
+exception if it is a signalling NaN, and returns the other one if it
+is not NaN, or the first argument if they are both NaN.
 In other words, @code{flo:min-mag-num} and @code{flo:max-mag-num}
 treat NaN as missing data and ignore it if possible.
 
