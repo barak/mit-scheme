@@ -78,12 +78,12 @@ FIGURES_EPS = \
 	fig/loglogistic.eps \
 	# end of FIGURES_EPS
 
+EPS2EPSFLAGS = -Ifig
+
+include $(top_srcdir)/make-common
+
 $(FIGURES_EPS): fig/common/ad.ps
 $(FIGURES_EPS): fig/common/math.ps
 $(FIGURES_EPS): fig/common/newton.ps
 $(FIGURES_EPS): fig/common/plot.ps
 $(FIGURES_EPS): fig/common/splinterp.ps
-
-EPS2EPSFLAGS = -Ifig
-
-include $(top_srcdir)/make-common
