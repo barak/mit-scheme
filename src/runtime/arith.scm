@@ -1525,6 +1525,17 @@ USA.
 			     guess))))))
 	      (else
 	       (general-case (rat:->inexact x) (rat:->inexact y)))))))
+
+(define (flo:sqrt-hypot x y)
+  ;; sqrt(|x + iy|) = sqrt(sqrt(x^2 + y^2))
+  ;; = sqrt(sqrt(v^2 + w^2)) = sqrt(sqrt(v^2 * (1 + w^2/v^2)))
+  ;; = sqrt(v * sqrt(1 + w^2/v^2)) = sqrt(v) * sqrt(sqrt(1 + w^2/v^2))
+  (let ((x (flo:abs x))
+	(y (flo:abs y)))
+    (let ((v (flo:max x y))
+	  (w (flo:min x y)))
+      (flo:* (flo:sqrt v)
+	     (flo:sqrt (flo:sqrt (flo:+ 1. (flo:square (flo:/ w v)))))))))
 
 (define (flo:log-hypot x y)
   (let ((x (flo:abs x))
@@ -2323,13 +2334,15 @@ USA.
 			  (real:sqrt (real:1+ (real:square (real:/ w v)))))))
 	    (flo:hypot (real:->inexact ar) (real:->inexact ai))))
       (real:abs z)))
-
+
 (define (complex:sqrt z)
   (define (x>=0 x)
     ((copy real:sqrt) x))
   (cond ((recnum? z)
 	 (let ((x (rec:real-part z))
 	       (y (rec:imag-part z)))
+	   (define (sqrt-hypot)
+	     (flo:sqrt-hypot (real:->inexact x) (real:->inexact y)))
 	   (cond ((real:safe-zero? y)
 		  (assert (not (real:exact0= y)))
 		  (if (real:safe-negative? x)
@@ -2343,10 +2356,17 @@ USA.
 		    (complex:%make-rectangular
 		     sqrt-abs-y/2
 		     (real:copysign sqrt-abs-y/2 y))))
+		 ((and (real:finite? x) (real:finite? y))
+		  (complex:%make-polar
+		   (if (and (real:exact? x) (real:exact? y))
+		       (let ((s (real:sqrt (complex:magnitude z))))
+			 (if (real:exact? s) s (sqrt-hypot)))
+		       (sqrt-hypot))
+		   (real:/ (complex:angle z) 2)))
 		 ((eq? (real:infinite? x) (real:infinite? y))
-		  ;; Standard formula.  Works when both inputs are
-		  ;; finite, when both inputs are infinite, and when
-		  ;; both inputs are NaN.
+		  ;; Standard formula.  Works when both inputs are are
+		  ;; infinite and when both inputs are NaN.  Would work
+		  ;; when both inputs are finite, except for overflow.
 		  (complex:%make-polar (x>=0 (complex:magnitude z))
 				       (real:/ (complex:angle z) 2)))
 		 ((real:finite? x)
@@ -2367,7 +2387,7 @@ USA.
 	 (complex:%make-rectangular 0 (x>=0 (real:negate z))))
 	(else
 	 (x>=0 z))))
-
+
 (define (complex:expt z1 z2)
   (cond ((complex:zero? z1)
 	 (cond ((eqv? z2 0)

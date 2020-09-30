@@ -1,0 +1,5 @@
+Bug fix: sqrt no longer spuriously overflows on certain complex inputs.
+
+(However, it may still spuriously raise a floating-point overflow
+exception if an exact input, even if the resulting value is correct and
+exact.)
