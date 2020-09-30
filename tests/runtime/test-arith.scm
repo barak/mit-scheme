@@ -1007,9 +1007,20 @@ USA.
     (-0. -0.)                           ;IEEE 754-2008, 5.4.1, p. 21
     (1 1)
     (1. 1.)
+    (+i .7071067811865476+.7071067811865476i)
+    (-i .7071067811865476-.7071067811865476i)
+    (1.5e308 1.224744871391589e154)
     ;; Square root of perfect square should be exact.
     (4 2)
     (4. 2.)
+    (9 3)
+    (9. 3.)
+    (4/9 2/3)
+    (0.25 0.5)
+    (-4 +2i)
+    (-4/9 +2/3i)
+    (-4.+0.i 0.+2.i)
+    (-4.-0.i 0.-2.i)
     ;; Square root of perfect square x times 2i should be exactly x+xi.
     (,(make-rectangular 0 (* 2 (expt 2 -4000)))
      ,(make-rectangular (expt 2 -2000) (expt 2 -2000)))
@@ -1117,6 +1128,38 @@ USA.
     (with-expected-failure xfail
       (lambda ()
         (assert-eqv (yes-traps (lambda () (sqrt z))) r)))))
+
+(define-enumerated-test 'sqrt-approx
+  (list
+   (list 1.5e308+1.5e308i 1.345607733249115e154+5.5736897274590134e153i
+	 expect-failure)
+   (list 1.5e308-1.5e308i 1.345607733249115e154-5.5736897274590134e153i
+	 expect-failure)
+   (list -1.5e308+1.5e308i 5.5736897274590134e153+1.345607733249115e154i
+	 expect-failure)
+   (list -1.5e308-1.5e308i 5.5736897274590134e153-1.345607733249115e154i
+	 expect-failure))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-<= (relerr y (sqrt x)) 1e-15)))))
+
+(define-enumerated-test 'sqrt-approx-componentwise
+  (list
+   (list 1.5e308+1.5e308i 1.345607733249115e154+5.5736897274590134e153i
+	 expect-failure)
+   (list 1.5e308-1.5e308i 1.345607733249115e154-5.5736897274590134e153i
+	 expect-failure)
+   (list -1.5e308+1.5e308i 5.5736897274590134e153+1.345607733249115e154i
+	 expect-failure)
+   (list -1.5e308-1.5e308i 5.5736897274590134e153-1.345607733249115e154i
+	 expect-failure))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(let ((y* (sqrt x)))
+	  (assert-<= (relerr (real-part y) (real-part y*)) 1e-15)
+	  (assert-<= (relerr (imag-part y) (imag-part y*)) 1e-15))))))
 
 (define-test 'sqrt-qnan
   (lambda ()
