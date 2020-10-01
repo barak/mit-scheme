@@ -307,13 +307,79 @@ USA.
   (lambda ()
     (assert-nan (make-polar (flo:nan.0) 0))))
 
+(define-enumerated-test 'exp-exact
+  (list
+   (list 0 1)
+   (list 1 2.718281828459045)
+   (list 1. 2.718281828459045))
+  (lambda (x y)
+    (assert-eqv (exp x) y)))
+
+(define-enumerated-test 'exp2-exact
+  (list
+   (list 0 1)
+   (list 1 2 expect-failure)
+   (list 1. 2.)
+   (list 2. 4.)
+   (list -1 1/2 expect-failure)
+   (list -1. 0.5))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (exp2 x) y)))))
+
+(define-enumerated-test 'exp10-exact
+  (list
+   (list 0 1)
+   (list 1 10 expect-failure)
+   (list 1. 10. expect-failure)
+   (list 2. 100. expect-failure)
+   (list -1 1/10 expect-failure)
+   (list -1. 0.1 expect-failure))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (exp10 x) y)))))
+
 (define-enumerated-test 'log-exact
   (list
    (list 1 0)
+   (list 2.718281828459045 1.)
    (list +i +1.5707963267948966i)
    (list -i -1.5707963267948966i))
   (lambda (x y)
     (assert-eqv (log x) y)))
+
+(define-enumerated-test 'log2-exact
+  (list
+   (list 1 0)
+   (list 2 1 expect-failure)
+   (list 4 2 expect-failure)
+   (list 1/2 -1 expect-failure)
+   (list 2. 1.)
+   (list 4. 2.)
+   (list 0.5 -1.)
+   (list +i +1.5707963267948966i)
+   (list -i -1.5707963267948966i))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (log2 x) y)))))
+
+(define-enumerated-test 'log10-exact
+  (list
+   (list 1 0)
+   (list 10 1 expect-failure)
+   (list 100 2 expect-failure)
+   (list 1/10 -1 expect-failure)
+   (list 10. 1.)
+   (list 100. 2.)
+   (list +i +1.5707963267948966i)
+   (list -i -1.5707963267948966i))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (log10 x) y)))))
 
 (define-enumerated-test 'log1p-exact
   (list
@@ -401,6 +467,14 @@ USA.
 	(let ((w* (exp z)))
 	  (assert-<= (relerr (real-part w) (real-part w*)) 1e-15)
 	  (assert-<= (relerr (imag-part w) (imag-part w*)) 1e-15))))))
+
+(define-enumerated-test 'exp10-approx
+  (list
+   (list 1. 10.)
+   (list 2. 100.)
+   (list -1. .1))
+  (lambda (x y)
+    (assert-<= (relerr y (exp10 x)) 1e-15)))
 
 (define-enumerated-test 'expm1-approx
   (list

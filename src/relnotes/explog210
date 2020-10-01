@@ -1,0 +1,15 @@
+New procedures for base-2 and base-10 exponentials and logarithms:
+
+- (exp2 z)
+- (exp10 z)
+- (exp2m1 z)
+- (exp10m1 z)
+- (log2 z)
+- (log10 z)
+- (log2p1 z)
+- (log10p1 z)
+
+Additionally, logp1 is added as an alias for log1p.
+
+These follow IEEE 754-2019, except that they are not necessarily
+correctly rounded.

@@ -938,6 +938,22 @@ where @math{x} is near zero and @math{e^{-x}} is near @math{\cos y}.
 @end itemize
 @end deffn
 
+@deffn procedure logp1 z
+Alias for @code{log1p}.
+@end deffn
+
+@deffn procedure exp2 z
+@deffnx procedure exp10 z
+@deffnx procedure exp2m1 z
+@deffnx procedure exp10m1 z
+@deffnx procedure log2 z
+@deffnx procedure log10 z
+@deffnx procedure log2p1 z
+@deffnx procedure log10p1 z
+Base-2 and base-10 variants of @code{exp}, @code{expm1}, @code{log},
+and @code{log1p}.
+@end deffn
+
 @deffn procedure log1mexp x
 @deffnx procedure log1pexp x
 Equivalent to:
@@ -2115,9 +2131,18 @@ This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
 
 @deffn procedure flo:abs flonum
 @deffnx procedure flo:exp flonum
+@deffnx procedure flo:exp2 flonum
+@deffnx procedure flo:exp10 flonum
 @deffnx procedure flo:expm1 flonum
+@deffnx procedure flo:exp2m1 flonum
+@deffnx procedure flo:exp10m1 flonum
 @deffnx procedure flo:log flonum
+@deffnx procedure flo:log2 flonum
+@deffnx procedure flo:log10 flonum
 @deffnx procedure flo:log1p flonum
+@deffnx procedure flo:logp1 flonum
+@deffnx procedure flo:log2p1 flonum
+@deffnx procedure flo:log10p1 flonum
 @deffnx procedure flo:sin flonum
 @deffnx procedure flo:cos flonum
 @deffnx procedure flo:tan flonum

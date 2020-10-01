@@ -514,6 +514,7 @@ USA.
 	  flo:erf
 	  flo:erfc
 	  flo:exp
+	  flo:exp2
 	  flo:expt
 	  flo:fast-fma?
 	  flo:finite?
@@ -529,6 +530,7 @@ USA.
 	  flo:jn
 	  flo:lgamma
 	  flo:log
+	  flo:log2
 	  flo:logb
 	  flo:make-nan
 	  flo:max
@@ -3749,6 +3751,10 @@ USA.
 	  (exact-rational? rat:rational?)
 	  (exact? complex:exact?)	;(scheme base)
 	  (exp complex:exp)		;(scheme inexact)
+	  (exp10 complex:exp10)
+	  (exp10m1 complex:exp10m1)
+	  (exp2 complex:exp2)
+	  (exp2m1 complex:exp2m1)
 	  (expm1 complex:expm1)
 	  (expt complex:expt)		;(scheme base)
 	  (finite? complex:finite?)	;(scheme inexact)
@@ -3765,7 +3771,12 @@ USA.
 	  (integer-truncate complex:quotient)
 	  (integer? complex:integer?)	;(scheme base)
 	  (log complex:log)		;(scheme inexact)
+	  (log10 complex:log10)
+	  (log10p1 complex:log10p1)
 	  (log1p complex:log1p)
+	  (log2 complex:log2)
+	  (log2p1 complex:log2p1)
+	  (logp1 complex:log1p)
 	  (magnitude complex:magnitude)	;(scheme complex)
 	  (make-polar complex:make-polar) ;(scheme complex)
 	  (make-rectangular complex:make-rectangular) ;(scheme complex)
@@ -3805,6 +3816,8 @@ USA.
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
 	  flo:error-bound
+	  flo:exp10m1
+	  flo:exp2m1
 	  flo:expm1
 	  flo:greatest-normal-exponent-base-10
 	  flo:greatest-normal-exponent-base-2
@@ -3817,7 +3830,10 @@ USA.
 	  flo:least-subnormal-exponent-base-2
 	  flo:least-subnormal-exponent-base-e
 	  flo:log-error-bound
+	  flo:log10p1
 	  flo:log1p
+	  flo:log2p1
+	  (flo:logp1 flo:log1p)
 	  flo:normal-exponent-max
 	  flo:normal-exponent-min
 	  flo:precision

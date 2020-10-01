@@ -184,7 +184,8 @@ USA.
 		  (flo:negate flo:largest-positive-normal)
 		  (lambda (x) (not (flo:zero? (flo:expt 2. x))))))
   (set! flo:least-subnormal-exponent-base-e
-	(rejigger (flo:- (flo:log flo:smallest-positive-subnormal) flo:log2)
+	(rejigger (flo:- (flo:log flo:smallest-positive-subnormal)
+			 (flo:log 2.))
 		  (flo:negate flo:largest-positive-normal)
 		  (lambda (x) (not (flo:zero? (flo:exp x))))))
   (set! flo:least-subnormal-exponent-base-10
@@ -1393,9 +1394,17 @@ USA.
 	     (real:->inexact x)))))))
 
 (define-transcendental-unary real:exp real:exact0= 1 flo:exp)
+(define-transcendental-unary real:exp2 real:exact0= 1 flo:exp2)
+(define-transcendental-unary real:exp10 real:exact0= 1 flo:exp10)
 (define-transcendental-unary real:log real:exact1= 0 flo:log)
+(define-transcendental-unary real:log2 real:exact1= 0 flo:log2)
+(define-transcendental-unary real:log10 real:exact1= 0 flo:log10)
 (define-transcendental-unary real:expm1 real:exact0= 0 flo:expm1)
+(define-transcendental-unary real:exp2m1 real:exact0= 0 flo:exp2m1)
+(define-transcendental-unary real:exp10m1 real:exact0= 0 flo:exp10m1)
 (define-transcendental-unary real:log1p real:exact0= 0 flo:log1p)
+(define-transcendental-unary real:log2p1 real:exact0= 0 flo:log2p1)
+(define-transcendental-unary real:log10p1 real:exact0= 0 flo:log10p1)
 (define-transcendental-unary real:sin real:exact0= 0 flo:sin)
 (define-transcendental-unary real:cos real:exact0= 1 flo:cos)
 (define-transcendental-unary real:tan real:exact0= 0 flo:tan)
@@ -1403,21 +1412,36 @@ USA.
 (define-transcendental-unary real:acos real:exact1= 0 flo:acos)
 (define-transcendental-unary real:atan real:exact0= 0 flo:atan)
 
-(define-integrable flo:log2 (flo:log 2.))
-(define-integrable flo:1-sqrt1/2 (flo:- 1. (flo:sqrt 0.5)))
+(define-integrable (flo:exp10 x)
+  (flo:exp (flo:* (flo:log 10.) x)))
+
+(define-integrable (flo:log10 x)
+  (flo:/ (flo:log x) (flo:log 10.)))
 
 (declare (integrate flo:expm1))
 (define (flo:expm1 x)
-  (if (flo:< (flo:abs x) flo:log2)
+  (if (flo:< (flo:abs x) (flo:log 2.))
       (flo:primitive-expm1 x)
       (flo:- (flo:exp x) 1.)))
 
+(define-integrable (flo:exp2m1 x)
+  (flo:expm1 (flo:* (flo:log 2.) x)))
+
+(define-integrable (flo:exp10m1 x)
+  (flo:expm1 (flo:* (flo:log 10.) x)))
+
 (declare (integrate flo:log1p))
 (define (flo:log1p x)
-  (if (flo:< (flo:abs x) flo:1-sqrt1/2)
+  (if (flo:< (flo:abs x) (flo:- 1. (flo:sqrt 0.5)))
       (flo:primitive-log1p x)
       (flo:log (flo:+ 1. x))))
 
+(define-integrable (flo:log2p1 x)
+  (flo:/ (flo:log1p x) (flo:log 2.)))
+
+(define-integrable (flo:log10p1 x)
+  (flo:/ (flo:log1p x) (flo:log 10.)))
+
 (define (real:atan2 y x)
   (if (and (real:exact0= y)
 	   (real:exact? x))
@@ -1537,7 +1561,7 @@ USA.
       (flo:* (flo:sqrt v)
 	     (flo:sqrt (flo:sqrt (flo:+ 1. (flo:square (flo:/ w v)))))))))
 
-(define (flo:log-hypot x y)
+(define-integrable (flo:%log-hypot flo:log flo:log1p x y)
   (let ((x (flo:abs x))
 	(y (flo:abs y)))
     (let ((v (flo:max x y))
@@ -1611,8 +1635,12 @@ USA.
 	       ;; log v >= 0 because v >= 1, so no cancellation.
 	       (flo:+ (flo:log v)
 		      (flo:* 0.5 (flo:log1p w^2/v^2)))))))))
+
+(define (flo:log-hypot x y) (flo:%log-hypot flo:log flo:log1p x y))
+(define (flo:log2-hypot x y) (flo:%log-hypot flo:log2 flo:log2p1 x y))
+(define (flo:log10-hypot x y) (flo:%log-hypot flo:log10 flo:log10p1 x y))
 
-(define (flo:log1p-magnitude x y)
+(define-integrable (flo:%log1p-magnitude flo:log1p flo:log-hypot x y)
   ;;
   ;;	log|1 + z|
   ;;	= (1/2) log |1 + z|^2
@@ -1670,8 +1698,17 @@ USA.
       ;; x is close enough to -1 that 1 + x is exact, or z is far
       ;; enough from -1 that any rounding error is dwarfed.
       (flo:log-hypot (flo:+ 1. x) y)))
+
+(define (flo:log1p-magnitude x y)
+  (flo:%log1p-magnitude flo:log1p flo:log-hypot x y))
+
+(define (flo:log2p1-magnitude x y)
+  (flo:%log1p-magnitude flo:log2p1 flo:log2-hypot x y))
+
+(define (flo:log10p1-magnitude x y)
+  (flo:%log1p-magnitude flo:log10p1 flo:log10-hypot x y))
 
-(define (flo:expcosm1 r t)
+(define-integrable (flo:%expcosm1 flo:exp flo:expm1 r t)
   ;;
   ;;	e^r cos θ - 1
   ;;
@@ -1735,6 +1772,10 @@ USA.
 	   ;; e^r ~ cos θ but it tends to do a better job than the
 	   ;; naive e^r cos θ - 1.
 	   (flo:*- (flo:expm1 r) c (flo:versin t))))))
+
+(define (flo:expcosm1 r t) (flo:%expcosm1 flo:exp flo:expm1 r t))
+(define (flo:exp2cosm1 r t) (flo:%expcosm1 flo:exp2 flo:exp2m1 r t))
+(define (flo:exp10cosm1 r t) (flo:%expcosm1 flo:exp10 flo:exp10m1 r t))
 
 (define (complex:complex? object)
   (or (recnum? object) ((copy real:real?) object)))
@@ -2105,7 +2146,9 @@ USA.
   (real:simplest-exact-rational (complex:real-arg 'simplest-rational x)
 				(complex:real-arg 'simplest-rational y)))
 
-(define (complex:exp z)
+(define-integrable (complex:%exp real:exp flo:exp bound base z)
+  (define (real-case z)
+    ((copy real:exp) z))
   (if (recnum? z)
       (let ((r (rec:real-part z))
 	    (t (rec:imag-part z)))
@@ -2119,27 +2162,45 @@ USA.
 	;; and e^r sin t don't overflow after all.  If r is this large,
 	;; r - 1 is computed exactly or we overflow anyway.
 	;;
-	(if (real:< r flo:greatest-normal-exponent-base-e)
-	    (complex:%make-polar (real:exp r) t)
+	(if (real:< r bound)
+	    (complex:%make-polar (real-case r) t)
 	    (let ((r (real:->inexact r))
 		  (t (real:->inexact t)))
-	      (let ((u (flo:exp (flo:- r 1.)))
-		    (e (flo:exp 1.)))
+	      (let ((u (flo:exp (flo:- r 1.))))
 		(complex:%make-rectangular
-		 (flo:* u (flo:* e (flo:cos t)))
-		 (flo:* u (flo:* e (flo:sin t))))))))
-      ((copy real:exp) z)))
+		 (flo:* u (flo:* base (flo:cos t)))
+		 (flo:* u (flo:* base (flo:sin t))))))))
+      (real-case z)))
 
-(define (complex:log z)
+(define (complex:exp z)
+  (complex:%exp real:exp flo:exp
+		flo:greatest-normal-exponent-base-e (flo:exp 1.) z))
+
+(define (complex:exp2 z)
+  (complex:%exp real:exp2 flo:exp2
+		flo:greatest-normal-exponent-base-2 2. z))
+
+(define (complex:exp10 z)
+  (complex:%exp real:exp10 flo:exp10
+		flo:greatest-normal-exponent-base-10 10. z))
+
+(define-integrable (complex:%log real:log complex:log-magnitude z)
+  (define (real-case z)
+    ((copy real:log) z))
   (cond ((recnum? z)
 	 (complex:%make-rectangular (complex:log-magnitude z)
 				    (complex:angle z)))
 	((real:negative? z)
-	 (make-recnum (real:log (real:negate z)) rec:pi))
+	 (make-recnum (real-case (real:negate z)) rec:pi))
 	(else
-	 ((copy real:log) z))))
+	 (real-case z))))
 
-(define (complex:expm1 z)
+(define (complex:log z) (complex:%log real:log complex:log-magnitude z))
+(define (complex:log2 z) (complex:%log real:log2 complex:log2-magnitude z))
+(define (complex:log10 z) (complex:%log real:log10 complex:log10-magnitude z))
+
+(define-integrable (complex:%expm1 real:expm1 flo:expcosm1 flo:exp bound base
+				   z)
   (if (recnum? z)
       (let ((r (real:->inexact (rec:real-part z)))
 	    (t (real:->inexact (rec:imag-part z))))
@@ -2152,13 +2213,26 @@ USA.
 	;; overflow.  The tricky part is computing e^r cos θ - 1.
 	(complex:%make-rectangular
 	 (flo:expcosm1 r t)
-	 (if (flo:<= r flo:greatest-normal-exponent-base-e)
+	 (if (flo:<= r bound)
 	     (flo:* (flo:exp r) (flo:sin t))
 	     ;; e^r sin t = e^{r - 1} * (e * sin t)
-	     (flo:* (flo:exp (flo:- r 1.)) (flo:* (flo:exp 1.) (flo:sin t))))))
+	     (flo:* (flo:exp (flo:- r 1.)) (flo:* base (flo:sin t))))))
       ((copy real:expm1) z)))
 
-(define (complex:log1p z)
+(define (complex:expm1 z)
+  (complex:%expm1 real:expm1 flo:expcosm1 flo:exp
+		  flo:greatest-normal-exponent-base-e (flo:exp 1.) z))
+
+(define (complex:exp2m1 z)
+  (complex:%expm1 real:exp2m1 flo:exp2cosm1 flo:exp2
+		  flo:greatest-normal-exponent-base-2 2. z))
+
+(define (complex:exp10m1 z)
+  (complex:%expm1 real:exp10m1 flo:exp10cosm1 flo:exp10
+		  flo:greatest-normal-exponent-base-10 10. z))
+
+(define-integrable (complex:%log1p real:log1p real:log complex:log1p-magnitude
+				   z)
   (cond ((recnum? z)
 	 ;; When x in [-2, -1/2], 1 + x is evaluated exactly, so the
 	 ;; error in the imaginary part is just the error in atan2;
@@ -2172,6 +2246,15 @@ USA.
 	 (make-recnum (real:log (real:- -1 z)) rec:pi))
 	(else
 	 ((copy real:log1p) z))))
+
+(define (complex:log1p z)
+  (complex:%log1p real:log1p real:log complex:log1p-magnitude z))
+
+(define (complex:log2p1 z)
+  (complex:%log1p real:log2p1 real:log2 complex:log2p1-magnitude z))
+
+(define (complex:log10p1 z)
+  (complex:%log1p real:log10p1 real:log10 complex:log10p1-magnitude z))
 
 (define (complex:log1m z)
   (if (and (real:real? z) (real:< 1 z))
@@ -2204,7 +2287,7 @@ USA.
 		      (complex:+ e+iz e-iz)))))
       ((copy real:tan) z)))
 
-(define (complex:log-magnitude z)
+(define-integrable (complex:%log-magnitude real:log flo:log-hypot z)
   ;; log|z| = (1/2) log(x^2 + y^2)
   (if (recnum? z)
       (let ((x (rec:real-part z))
@@ -2217,7 +2300,17 @@ USA.
 	    (flo:log-hypot (real:->inexact x) (real:->inexact y))))
       (real:log (real:abs z))))
 
-(define (complex:log1p-magnitude z)
+(define (complex:log-magnitude z)
+  (complex:%log-magnitude real:log flo:log-hypot z))
+
+(define (complex:log2-magnitude z)
+  (complex:%log-magnitude real:log2 flo:log2-hypot z))
+
+(define (complex:log10-magnitude z)
+  (complex:%log-magnitude real:log10 flo:log10-hypot z))
+
+(define-integrable (complex:%log1p-magnitude real:log1p real:log
+					     flo:log1p-magnitude z)
   ;;
   ;;	log|1 + z|
   ;;	= log(sqrt((1 + x)^2 + y^2))
@@ -2240,6 +2333,15 @@ USA.
 	 (real:log (real:- -1 z)))
 	(else
 	 (real:log1p z))))
+
+(define (complex:log1p-magnitude z)
+  (complex:%log1p-magnitude real:log1p real:log flo:log1p-magnitude z))
+
+(define (complex:log2p1-magnitude z)
+  (complex:%log1p-magnitude real:log2p1 real:log2 flo:log2p1-magnitude z))
+
+(define (complex:log10p1-magnitude z)
+  (complex:%log1p-magnitude real:log10p1 real:log10 flo:log10p1-magnitude z))
 
 ;;; Complex arguments -- ASIN
 ;;;   The danger in the complex case happens for large y when
@@ -2699,7 +2801,7 @@ USA.
     ;; to always lie in [-1/2, +1/2], since in +/-[1/2, 1] we have
     ;; only fixed-point precision.
     ;;
-    (cond ((flo:safe< x (flo:negate flo:log2))
+    (cond ((flo:safe< x (flo:negate (flo:log 2.)))
 	   ;; Let d0 be the error of exp, and d1 the error of log1p.
 	   ;; Since x <= log(1/2), we have e^x <= 1/2 = 1 - 1/2, and
 	   ;; thus 1/2 <= 1 - e^x, so that by Lemma 4,
