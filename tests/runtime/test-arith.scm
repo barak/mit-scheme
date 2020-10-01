@@ -1580,3 +1580,83 @@ USA.
    (list (flo:+inf.0) (flo:+inf.0) +0.25))
   (lambda (y x t)
     (assert-eqv (atan/pi y x) t)))
+
+(define-enumerated-test 'versin-exact
+  (list
+   (list 0 0)
+   (list 0. 0.))
+  (lambda (x y)
+    (assert-eqv (versin x) y)
+    (assert-eqv (versin (- x)) y)
+    (assert-eqv (aversin y) x)))
+
+(define-enumerated-test 'versin-approx
+  (list
+   (list 1. .4596976941318603)
+   (list 1e-1 4.995834721974234e-3)
+   (list 1e-10 5.0000000000000005e-21)
+   (list 1e-100 5e-201)
+   (list (atan 1 1) (- 1 (sqrt 1/2)))
+   (list (atan 1 0) 1.)
+   (list (atan 0 -1) 2.))
+  (lambda (x y)
+    (assert-<= (relerr y (versin x)) 1e-15)
+    (assert-<= (relerr x (aversin y)) 1e-15)
+    (assert-eqv (versin x) (versin (- x)))))
+
+(define-enumerated-test 'versin-pi*-exact
+  (list
+   (list 0 0 0)
+   (list 0. 0. 0.)
+   (list 1/2 1 1/2 expect-failure)
+   (list 0.5 1. 0.5)
+   (list 1 2 1 expect-failure)
+   (list 1. 2. 1.)
+   (list 1.5 1. 0.5)
+   (list 2. 0. 0.))
+  (lambda (x y x* #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (versin-pi* x) y)
+	(assert-eqv (versin-pi* (- x)) y)
+	(assert-eqv (aversin/pi y) x*)))))
+
+(define-enumerated-test 'exsec-exact
+  (list
+   (list 0 0)
+   (list 0. 0.))
+  (lambda (x y)
+    (assert-eqv (exsec x) y)
+    (assert-eqv (exsec (- x)) y)
+    (assert-eqv (aexsec y) x)))
+
+(define-enumerated-test 'exsec-approx
+  (list
+   (list 1. .8508157176809256 1.)
+   (list 1e-1 5.020918400455429e-3 1e-1)
+   (list 1e-10 5.0000000000000005e-21 1e-10)
+   (list 1e-100 5e-201 1e-100)
+   (list (atan 1 1) (- (sqrt 2) 1) (atan 1 1))
+   (list (* 1/3 (atan 0 -1)) 1. (* 1/3 (atan 0 -1)))
+   (list (atan 0 -1) -2. 0.))
+  (lambda (x y x*)
+    (assert-<= (relerr y (exsec x)) 1e-15)
+    (assert-<= (relerr x* (aexsec y)) 1e-15)
+    (assert-eqv (exsec x) (exsec (- x)))))
+
+(define-enumerated-test 'exsec-pi*-exact
+  (list
+   (list 0 0 0)
+   (list 0. 0. 0.)
+   (list 1/2 +inf.0 0.5)
+   (list 0.5 +inf.0 0.5)
+   (list 1 2 1 expect-failure)
+   (list 1. -2. 0.)
+   (list 1.5 -inf.0 -0.5)
+   (list 2. 0. 0.))
+  (lambda (x y x* #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (exsec-pi* x) y)
+	(assert-eqv (exsec-pi* (- x)) y)
+	(assert-eqv (aexsec/pi y) x*)))))

@@ -1,4 +1,22 @@
-New procedures sin-pi*, cos-pi*, tan-pi*, asin/pi, cos/pi, atan/pi.
+- New procedures sin-pi*, cos-pi*, tan-pi*, asin/pi, cos/pi, atan/pi.
 
-These compute the standard trigonometric functions in units of
-half-revolutions rather than radians.
+  These compute the standard trigonometric functions in units of
+  half-revolutions rather than radians.
+
+- New procedures versin, exsec, aversin, aexsec.
+
+  These compute the historical trigonometric functions
+
+    versin z = 1 - cos z
+    exsec z = (1 - cos z)/cos z,
+
+  which are useful because they are well-conditioned near zero unlike
+  cosine, and as such were used in many historical trigonometric
+  computations and tables.  (In contrast, the other trigonometric
+  torments like secant and hacovercosine and excosecant aren't terribly
+  useful.)
+
+- New procedures versin-pi*, exsec-pi*, aversin/pi, aexsec/pi.
+
+  These are like versin and exsec but in units of half-revolutions
+  rather than radians.

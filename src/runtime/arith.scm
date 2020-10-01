@@ -47,13 +47,25 @@ USA.
 (define-integrable (flo:square x)
   (flo:* x x))
 
-(define-integrable (flo:versin t)
-  ;; versin t := 1 - cos t = 2 sin^2(t/2)
-  (flo:* 2. (flo:square (flo:sin (flo:/ t 2.)))))
-
 (define-integrable (flo:signum s)
   (flo:copysign 1. s))
 
+(define-integrable (flo:versin t)
+  ;; versin t := 1 - cos t = 2 sin^2(t/2) \in [-2, 2]
+  (flo:* 2. (flo:square (flo:sin (flo:/ t 2.)))))
+
+(define-integrable (flo:aversin x)
+  (flo:* 2. (flo:asin (flo:sqrt (flo:/ x 2.)))))
+
+(define (flo:exsec t)
+  ;; exsec t := (1 - cos t)/cos t = versin t / cos t \in R - (-2, 0)
+  (flo:/ (flo:versin t) (flo:cos t)))
+
+(define (flo:aexsec x)
+  (if (flo:> (flo:abs x) (flo:expt 2. 26.))
+      (flo:copysign rec:pi/2 x)
+      (flo:atan (flo:sqrt (flo:*+ x x (flo:* 2. x))))))
+
 ;;;; Primitives
 
 (define-primitives
@@ -1411,12 +1423,20 @@ USA.
 (define-transcendental-unary real:asin real:exact0= 0 flo:asin)
 (define-transcendental-unary real:acos real:exact1= 0 flo:acos)
 (define-transcendental-unary real:atan real:exact0= 0 flo:atan)
+(define-transcendental-unary real:versin real:exact0= 0 flo:versin)
+(define-transcendental-unary real:exsec real:exact0= 0 flo:exsec)
+(define-transcendental-unary real:aversin real:exact0= 0 flo:aversin)
+(define-transcendental-unary real:aexsec real:exact0= 0 flo:aexsec)
 (define-transcendental-unary real:sin-pi* real:exact0= 0 flo:sin-pi*)
 (define-transcendental-unary real:cos-pi* real:exact0= 1 flo:cos-pi*)
 (define-transcendental-unary real:tan-pi* real:exact0= 0 flo:tan-pi*)
 (define-transcendental-unary real:asin/pi real:exact0= 0 flo:asin/pi)
 (define-transcendental-unary real:acos/pi real:exact1= 0 flo:acos/pi)
 (define-transcendental-unary real:atan/pi real:exact0= 0 flo:atan/pi)
+(define-transcendental-unary real:versin-pi* real:exact0= 0 flo:versin-pi*)
+(define-transcendental-unary real:exsec-pi* real:exact0= 0 flo:exsec-pi*)
+(define-transcendental-unary real:aversin/pi real:exact0= 0 flo:aversin/pi)
+(define-transcendental-unary real:aexsec/pi real:exact0= 0 flo:aexsec/pi)
 
 (define-integrable (flo:exp10 x)
   (flo:exp (flo:* (flo:log 10.) x)))
@@ -1499,6 +1519,34 @@ USA.
 	 (flo:copysign 0.5 y))
 	(else
 	 (flo:/ (flo:atan2 y x) rec:pi))))
+
+(define (flo:versin-pi* t)
+  (let ((t (flo:abs t)))
+    (if (or (flo:safe>= t (flo:scalbn 1. flo:precision))
+	    (and (not (flo:integer? t))
+		 (flo:integer? (flo:* 2. t))))
+	1.
+	(flo:* 2. (flo:square (flo:sin-pi* (flo:/ t 2.)))))))
+
+(define (flo:aversin/pi x)
+  (cond ((flo:safe-zero? x) 0.)
+	((flo:safe= x 1.) 0.5)
+	(else (flo:* 2. (flo:asin/pi (flo:sqrt (flo:/ x 2.)))))))
+
+(define (flo:exsec-pi* t)
+  (let* ((t (flo:abs t))
+	 (u (flo:modulo t 2.)))
+    (cond ((flo:safe= u 0.0) +0.)
+	  ((flo:safe= u 0.5) +inf.0)
+	  ((flo:safe= u 1.0) -2.)
+	  ((flo:safe= u 1.5) -inf.0)
+	  (else
+	   (flo:/ (flo:versin-pi* t) (flo:cos-pi* t))))))
+
+(define (flo:aexsec/pi x)
+  (if (flo:> (flo:abs x) (flo:scalbn 1. (fix:quotient flo:precision 2)))
+      (flo:copysign 0.5 x)
+      (flo:atan/pi (flo:sqrt (flo:*+ x x (flo:* 2. x))))))
 
 (define (real:atan2 y x)
   (if (and (real:exact0= y)
@@ -2356,6 +2404,16 @@ USA.
 	   (complex:/ (complex:- e+iz e-iz)
 		      (complex:+ e+iz e-iz)))))
       ((copy real:tan) z)))
+
+(define (complex:versin z)
+  (if (recnum? z)
+      (complex:* 2 (square (complex:sin (complex:/ z 2))))
+      ((copy real:versin) z)))
+
+(define (complex:exsec z)
+  (if (recnum? z)
+      (complex:/ (complex:versin z) (complex:cos z))
+      ((copy real:exsec) z)))
 
 (define-integrable (complex:%log-magnitude real:log flo:log-hypot z)
   ;; log|z| = (1/2) log(x^2 + y^2)
@@ -2464,6 +2522,18 @@ USA.
       (rec:atan z)
       ((copy real:atan) z)))
 
+(define (complex:aversin z)
+  (if (recnum? z)			;XXX figure out branch cuts
+      (complex:* 2 (complex:asin (complex:sqrt (complex:/ z 2))))
+      ((copy real:aversin) z)))
+
+(define (complex:aexsec z)
+  (if (recnum? z)			;XXX figure out branch cuts
+      (complex:atan
+       (complex:* (complex:sqrt z)
+		  (complex:sqrt (complex:+ z 2))))
+      ((copy real:aexsec) z)))
+
 (define (complex:atan2 y x)
   (let ((rec-case
 	 (lambda (y x)
@@ -2481,7 +2551,7 @@ USA.
 	       (complex:- (complex:log1p iz)
 			  (complex:log1m iz)))
 	     +2i))
-
+
 (define (complex:angle z)
   (cond ((recnum? z)
 	 (if (and (complex:exact? z)

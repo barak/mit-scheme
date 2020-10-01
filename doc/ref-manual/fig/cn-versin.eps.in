@@ -1,0 +1,61 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 0 0 180 60
+%%BeginProlog
+
+% Bounding box parameters.
+/llx 0 def /lly 0 def /urx 180 def /ury 60 def
+/bbwidth urx llx sub def /bbheight ury lly sub def
+
+% Axes.
+/axmin -7 def /axmax 7 def /aymin -10 def /aymax 4 def
+
+% Interpolation parameters.
+/nspline 70 def
+/splinterpoint { chebypoint } def  % i n => s_{i,n}
+
+(common/ad.ps) runlibfile
+(common/math.ps) runlibfile
+(common/plot.ps) runlibfile
+(common/splinterp.ps) runlibfile
+
+%%EndProlog
+
+setupplotbbox
+
+% Draw axes.
+gsave
+    setupaxesgreek
+    drawaxes
+
+    % x ticks
+    pi -2.0 mul 0 0 -1   tick  pi -2.0 mul (2p)   -1 xticklabelstr
+    pi -1.5 mul 0 0  1   tick  pi -1.5 mul (3p/2)  1 xticklabelstr
+    pi -1.0 mul 0 0 -1   tick  pi -1.0 mul (p)    -1 xticklabelstr
+    pi -0.5 mul 0 0 -1   tick  pi -0.5 mul (p/2)  -1 xticklabelstr
+    pi  0.5 mul 0 0 -1   tick  pi  0.5 mul (p/2)  -1 xticklabelstr
+    pi  1.0 mul 0 0 -1   tick  pi  1.0 mul (p)    -1 xticklabelstr
+    pi  1.5 mul 0 0  1   tick  pi  1.5 mul (3p/2)  1 xticklabelstr
+    pi  2.0 mul 0 0 -1   tick  pi  2.0 mul (2p)   -1 xticklabelstr
+
+    % y ticks
+    0  2 -1 0 tick   2 -1 yticklabel
+    0 -8 -1 0 tick  -8 -1 yticklabel
+grestore
+
+/f
+{
+    dup                                 % Tt Tt         (t in radians)
+    57.29577951308232 Tconst Tmul       % Tt Td         (d in degrees)
+    dup                                 % Tt Td Td
+    Tsin                                % Tt Td T(sin(t))
+    exch Tversin                        % Tt T(sin(t)) T(versin(t))
+    Tdiv                                % Tt T((sin(t))/versin(t))
+    Tmul                                % T(t*(sin(t))/versin(t))
+} def
+
+gsave
+    setupconditionnumberplot
+    nspline -6.00  6.00 {f} cubicsplinterpolate
+grestore
+
+showpage

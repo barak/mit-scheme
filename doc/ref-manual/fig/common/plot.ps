@@ -50,6 +50,13 @@
 {
     exch dup                    % ty x x
     4 string cvs                % ty x xs
+    3 -1 roll                   % x xs ty
+    xticklabelstr
+} def
+
+/xticklabelstr                  % x xs ty => ---
+{
+    3 1 roll                    % ty x xs
     gsave
         newpath 0 0 moveto
         dup true charpath
@@ -76,6 +83,13 @@
 {
     exch dup                    % tx y y
     4 string cvs                % tx y ys
+    3 -1 roll                   % y ys tx
+    yticklabelstr
+} def
+
+/yticklabelstr                  % y ys tx => ---
+{
+    3 1 roll                    % tx y ys
     gsave
         newpath 0 0 moveto
         dup true charpath
@@ -132,6 +146,15 @@
     0.4 setlinewidth
     /Times-Roman-Numeric
         /Times-Roman findfont
+        { dup 45 /minus put } reencodefont % replace hyphen by minus
+    10 scalefont setfont
+} def
+
+/setupaxesgreek
+{
+    0.4 setlinewidth
+    /Symbol-Numeric
+        /Symbol findfont
         { dup 45 /minus put } reencodefont % replace hyphen by minus
     10 scalefont setfont
 } def

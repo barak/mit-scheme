@@ -3736,9 +3736,13 @@ USA.
 	  (abs complex:abs)		;(scheme base)
 	  (acos complex:acos)		;(scheme inexact)
 	  (acos/pi real:acos/pi)
+	  (aexsec complex:aexsec)
+	  (aexsec/pi real:aexsec/pi)
 	  (angle complex:angle)		;(scheme complex)
 	  (asin complex:asin)		;(scheme inexact)
 	  (asin/pi real:asin/pi)
+	  (aversin complex:aversin)
+	  (aversin/pi real:aversin/pi)
 	  (ceiling complex:ceiling)	;(scheme base)
 	  (ceiling->exact complex:ceiling->exact)
 	  (complex? complex:complex?)	;(scheme base)
@@ -3760,6 +3764,8 @@ USA.
 	  (exp2m1 complex:exp2m1)
 	  (expm1 complex:expm1)
 	  (expt complex:expt)		;(scheme base)
+	  (exsec complex:exsec)
+	  (exsec-pi* real:exsec-pi*)
 	  (finite? complex:finite?)	;(scheme inexact)
 	  (floor complex:floor)		;(scheme base)
 	  (floor->exact complex:floor->exact)
@@ -3806,6 +3812,8 @@ USA.
 	  (tan-pi* real:tan-pi*)
 	  (truncate complex:truncate)	;(scheme base)
 	  (truncate->exact complex:truncate->exact)
+	  (versin complex:versin)
+	  (versin-pi* real:versin-pi*)
 	  (zero? complex:zero?)		;(scheme base)
 	  *				;(scheme base)
 	  +				;(scheme base)
@@ -3822,14 +3830,19 @@ USA.
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
 	  flo:acos/pi
+	  flo:aexsec
+	  flo:aexsec/pi
 	  flo:asin/pi
 	  flo:atan/pi
 	  flo:atan2/pi
+	  flo:aversin
+	  flo:aversin/pi
 	  flo:cos-pi*
 	  flo:error-bound
 	  flo:exp10m1
 	  flo:exp2m1
 	  flo:expm1
+	  flo:exsec
 	  flo:greatest-normal-exponent-base-10
 	  flo:greatest-normal-exponent-base-2
 	  flo:greatest-normal-exponent-base-e
@@ -3858,6 +3871,8 @@ USA.
 	  flo:subnormal-exponent-min
 	  flo:tan-pi*
 	  flo:ulp-of-one
+	  flo:versin
+	  flo:versin-pi*
 	  flonum-printer:engineering-output
 	  flonum-printer:normal-output
 	  flonum-printer:scientific-output

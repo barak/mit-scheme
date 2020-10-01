@@ -938,6 +938,56 @@ where @math{x} is near zero and @math{e^{-x}} is near @math{\cos y}.
 @end itemize
 @end deffn
 
+@deffn procedure versin z
+@deffnx procedure exsec z
+@deffnx procedure aversin z
+@deffnx procedure aexsec z
+Zero-centered trigonometric functions related to cosine but
+well-conditioned near zero:
+@iftex
+@tex
+\eqimage{fig/versin}{$$\versin z = 1 - \cos z,$$}
+\eqimage{fig/exsec}{$$\exsec z = {1 - \cos z \over \cos z}.$$}
+@end tex
+@end iftex
+@ifnottex
+
+@example
+versin z = 1 - cos z
+exsec z = (1 - cos z)/cos z
+@end example
+@group
+
+@image{fig/versin}
+@image{fig/exsec}
+
+@end group
+@end ifnottex
+
+Both functions are well-conditioned near zero on the real line:
+@iftex
+@tex
+\eqimage{fig/cn-versin}
+  {$${x \versin' x \over \versin x} = {x \sin x \over 1 - \cos x},$$}
+\eqimage{fig/cn-exsec}
+  {$${x \exsec' x \over \exsec x} = {x \tan x \over 1 - \cos x}.$$}
+@end tex
+@end iftex
+@ifnottex
+
+@example
+x versin'(x)/versin(x) = x sin(x)/(1 - cos(x)),
+x exsec'(x)/exsec(x) = x tan(x)/(1 - cos(x)).
+@end example
+@group
+
+@image{fig/cn-versin}
+@image{fig/cn-exsec}
+
+@end group
+@end ifnottex
+@end deffn
+
 @deffn procedure logp1 z
 Alias for @code{log1p}.
 @end deffn
@@ -1362,10 +1412,14 @@ floating-point exceptions other than invalid-operation.
 @deffn procedure sin-pi* x
 @deffnx procedure cos-pi* x
 @deffnx procedure tan-pi* x
+@deffnx procedure versin-pi* x
+@deffnx procedure exsec-pi* x
 @deffnx procedure asin/pi x
 @deffnx procedure acos/pi x
 @deffnx procedure atan/pi x
 @deffnx procedure atan2/pi y x
+@deffnx procedure aversin/pi x
+@deffnx procedure aexsec/pi x
 These procedures compute the standard trigonometric functions in units
 of half-revolutions rather than units of radians.
 Mathematically, @code{(sin-pi* x)} computes @math{\sin(\pi x)} and
@@ -2168,6 +2222,14 @@ This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
 @deffnx procedure flo:asin/pi flonum
 @deffnx procedure flo:acos/pi flonum
 @deffnx procedure flo:atan/pi flonum
+@deffnx procedure flo:versin flonum
+@deffnx procedure flo:exsec flonum
+@deffnx procedure flo:aversin flonum
+@deffnx procedure flo:aexsec flonum
+@deffnx procedure flo:versin-pi* flonum
+@deffnx procedure flo:exsec-pi* flonum
+@deffnx procedure flo:aversin/pi flonum
+@deffnx procedure flo:aexsec/pi flonum
 @deffnx procedure flo:sinh flonum
 @deffnx procedure flo:cosh flonum
 @deffnx procedure flo:tanh flonum

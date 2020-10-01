@@ -111,6 +111,10 @@ Documentation License.''
 % Explicit hyphen that doesn't block automatic hyphenation, in words
 % like `log-probability'.
 \gdef\hy{-\penalty0\hskip0pt\relax}
+
+% Handy historical trigonometric functions.
+\gdef\versin{\mathop{\rm versin}}
+\gdef\exsec{\mathop{\rm exsec}}
 @end tex
 
 @ifnottex
