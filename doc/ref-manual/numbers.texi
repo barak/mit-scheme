@@ -2115,7 +2115,9 @@ This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
 
 @deffn procedure flo:abs flonum
 @deffnx procedure flo:exp flonum
+@deffnx procedure flo:expm1 flonum
 @deffnx procedure flo:log flonum
+@deffnx procedure flo:log1p flonum
 @deffnx procedure flo:sin flonum
 @deffnx procedure flo:cos flonum
 @deffnx procedure flo:tan flonum
@@ -2152,33 +2154,6 @@ This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
 @deffnx procedure flo:round->exact flonum
 These procedures are flonum versions of the corresponding procedures.
 When compiled, they do not check the types of their arguments.
-@end deffn
-
-@deffn procedure flo:expm1 flonum
-@deffnx procedure flo:log1p flonum
-Flonum versions of @code{expm1} and @code{log1p} with restricted
-domains: @code{flo:expm1} is defined only on inputs bounded below
-@iftex
-@tex
-$\log 2$
-@end tex
-@end iftex
-@ifnottex
-log(2)
-@end ifnottex
-in magnitude, and @code{flo:log1p} is defined only on inputs bounded
-below
-@iftex
-@tex
-$1 - \sqrt{1/2}$
-@end tex
-@end iftex
-@ifnottex
-@math{1 - sqrt(1/2)}
-@end ifnottex
-in magnitude.
-Callers must use @code{(- (flo:exp x) 1)} or @code{(flo:log (+ 1 x))}
-outside these ranges.
 @end deffn
 
 @deffn procedure flo:atan2 flonum1 flonum2

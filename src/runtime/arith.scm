@@ -1394,8 +1394,8 @@ USA.
 
 (define-transcendental-unary real:exp real:exact0= 1 flo:exp)
 (define-transcendental-unary real:log real:exact1= 0 flo:log)
-(define-transcendental-unary real:expm1 real:exact0= 0 flo:expm1-guarded)
-(define-transcendental-unary real:log1p real:exact0= 0 flo:log1p-guarded)
+(define-transcendental-unary real:expm1 real:exact0= 0 flo:expm1)
+(define-transcendental-unary real:log1p real:exact0= 0 flo:log1p)
 (define-transcendental-unary real:sin real:exact0= 0 flo:sin)
 (define-transcendental-unary real:cos real:exact0= 1 flo:cos)
 (define-transcendental-unary real:tan real:exact0= 0 flo:tan)
@@ -1406,16 +1406,16 @@ USA.
 (define-integrable flo:log2 (flo:log 2.))
 (define-integrable flo:1-sqrt1/2 (flo:- 1. (flo:sqrt 0.5)))
 
-(declare (integrate flo:expm1-guarded))
-(define (flo:expm1-guarded x)
+(declare (integrate flo:expm1))
+(define (flo:expm1 x)
   (if (flo:< (flo:abs x) flo:log2)
-      (flo:expm1 x)
+      (flo:primitive-expm1 x)
       (flo:- (flo:exp x) 1.)))
 
-(declare (integrate flo:log1p-guarded))
-(define (flo:log1p-guarded x)
+(declare (integrate flo:log1p))
+(define (flo:log1p x)
   (if (flo:< (flo:abs x) flo:1-sqrt1/2)
-      (flo:log1p x)
+      (flo:primitive-log1p x)
       (flo:log (flo:+ 1. x))))
 
 (define (real:atan2 y x)
@@ -1602,7 +1602,7 @@ USA.
 				 (flo:+ e (flo:+ ev ew)))))
 		     ;; a = fl(fl(v^2 + w^2 - 1 - e - ev - ew)
 		     ;;		+ fl(e + fl(ev + ew)))
-		     (flo:* 0.5 (flo:log1p-guarded a)))))))
+		     (flo:* 0.5 (flo:log1p a)))))))
 	    (else
 	     (let* ((w/v (flo:/ w v))
 		    (w^2/v^2 (flo:square w/v)))
@@ -1610,7 +1610,7 @@ USA.
 	       ;; and log1p is well-conditioned and positive; further,
 	       ;; log v >= 0 because v >= 1, so no cancellation.
 	       (flo:+ (flo:log v)
-		      (flo:* 0.5 (flo:log1p-guarded w^2/v^2)))))))))
+		      (flo:* 0.5 (flo:log1p w^2/v^2)))))))))
 
 (define (flo:log1p-magnitude x y)
   ;;
@@ -1666,7 +1666,7 @@ USA.
 	     (e1 (flo:*- x s p))
 	     (e (flo:*+ x e0 e1))
 	     (t (flo:*+ y y p)))
-	(flo:* 0.5 (flo:log1p-guarded (flo:+ e t))))
+	(flo:* 0.5 (flo:log1p (flo:+ e t))))
       ;; x is close enough to -1 that 1 + x is exact, or z is far
       ;; enough from -1 that any rounding error is dwarfed.
       (flo:log-hypot (flo:+ 1. x) y)))
@@ -1734,7 +1734,7 @@ USA.
 	   ;; (e^r - 1) cos θ - versin θ, cancellation may happen if
 	   ;; e^r ~ cos θ but it tends to do a better job than the
 	   ;; naive e^r cos θ - 1.
-	   (flo:*- (flo:expm1-guarded r) c (flo:versin t))))))
+	   (flo:*- (flo:expm1 r) c (flo:versin t))))))
 
 (define (complex:complex? object)
   (or (recnum? object) ((copy real:real?) object)))
@@ -2713,7 +2713,7 @@ USA.
 	   ;;	|d1| + |d'| + |d1| |d'|
 	   ;;	<= 9 eps + 8 eps^2.
 	   ;;
-	   (flo:log1p-guarded (flo:negate (flo:exp x))))
+	   (flo:log1p (flo:negate (flo:exp x))))
 	  ((flo:safe< x 0.)
 	   ;; Let d0 be the error of expm1, and d1 the error of log.
 	   ;; We have:
@@ -2733,7 +2733,7 @@ USA.
 	   ;;	<= |d1| + 4 |d0| + 4 |d1 d0|
 	   ;;	<= 5 eps + 4 eps^2.
 	   ;;
-	   (flo:log (flo:negate (flo:expm1-guarded x))))
+	   (flo:log (flo:negate (flo:expm1 x))))
 	  ((flo:safe-zero? x)
 	   ;; Negative infinity.
 	   (flo:/ (identity-procedure -1.) 0.))
@@ -2795,7 +2795,7 @@ USA.
 	   ;;
 	   ;; provided e^x does not overflow.
 	   ;;
-	   (flo:log1p-guarded (flo:exp x)))
+	   (flo:log1p (flo:exp x)))
 
 	  ;; log1pexp, continued: x >= log(1/sqrt(eps)) so far
 	  ((flo:<= x (flo:negate flo:log-error-bound))

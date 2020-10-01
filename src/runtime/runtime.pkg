@@ -514,7 +514,6 @@ USA.
 	  flo:erf
 	  flo:erfc
 	  flo:exp
-	  flo:expm1
 	  flo:expt
 	  flo:fast-fma?
 	  flo:finite?
@@ -530,7 +529,6 @@ USA.
 	  flo:jn
 	  flo:lgamma
 	  flo:log
-	  flo:log1p
 	  flo:logb
 	  flo:make-nan
 	  flo:max
@@ -550,6 +548,8 @@ USA.
 	  flo:nextafter
 	  flo:normal?
 	  flo:positive?
+	  flo:primitive-expm1
+	  flo:primitive-log1p
 	  flo:qnan
 	  flo:qnan?
 	  flo:round
@@ -3805,6 +3805,7 @@ USA.
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
 	  flo:error-bound
+	  flo:expm1
 	  flo:greatest-normal-exponent-base-10
 	  flo:greatest-normal-exponent-base-2
 	  flo:greatest-normal-exponent-base-e
@@ -3816,6 +3817,7 @@ USA.
 	  flo:least-subnormal-exponent-base-2
 	  flo:least-subnormal-exponent-base-e
 	  flo:log-error-bound
+	  flo:log1p
 	  flo:normal-exponent-max
 	  flo:normal-exponent-min
 	  flo:precision
