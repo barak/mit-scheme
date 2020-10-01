@@ -3735,14 +3735,17 @@ USA.
 	  (1+ complex:1+)
 	  (abs complex:abs)		;(scheme base)
 	  (acos complex:acos)		;(scheme inexact)
+	  (acos/pi real:acos/pi)
 	  (angle complex:angle)		;(scheme complex)
 	  (asin complex:asin)		;(scheme inexact)
+	  (asin/pi real:asin/pi)
 	  (ceiling complex:ceiling)	;(scheme base)
 	  (ceiling->exact complex:ceiling->exact)
 	  (complex? complex:complex?)	;(scheme base)
 	  (conjugate complex:conjugate)
 	  (copysign complex:copysign)
 	  (cos complex:cos)		;(scheme inexact)
+	  (cos-pi* real:cos-pi*)
 	  (denominator complex:denominator) ;(scheme base)
 	  (denominator->exact complex:denominator->exact)
 	  (even? complex:even?)		;(scheme base)
@@ -3797,8 +3800,10 @@ USA.
 	  (simplest-exact-rational complex:simplest-exact-rational)
 	  (simplest-rational complex:simplest-rational)
 	  (sin complex:sin)		;(scheme inexact)
+	  (sin-pi* real:sin-pi*)
 	  (sqrt complex:sqrt)		;(scheme inexact)
 	  (tan complex:tan)		;(scheme inexact)
+	  (tan-pi* real:tan-pi*)
 	  (truncate complex:truncate)	;(scheme base)
 	  (truncate->exact complex:truncate->exact)
 	  (zero? complex:zero?)		;(scheme base)
@@ -3812,9 +3817,15 @@ USA.
 	  >				;(scheme base)
 	  >=				;(scheme base)
 	  atan				;(scheme inexact)
+	  atan/pi
 	  cube
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
+	  flo:acos/pi
+	  flo:asin/pi
+	  flo:atan/pi
+	  flo:atan2/pi
+	  flo:cos-pi*
 	  flo:error-bound
 	  flo:exp10m1
 	  flo:exp2m1
@@ -3841,9 +3852,11 @@ USA.
 	  flo:radix.
 	  flo:significand-digits-base-10
 	  flo:significand-digits-base-2
+	  flo:sin-pi*
 	  flo:smallest-positive-normal
 	  flo:smallest-positive-subnormal
 	  flo:subnormal-exponent-min
+	  flo:tan-pi*
 	  flo:ulp-of-one
 	  flonum-printer:engineering-output
 	  flonum-printer:normal-output

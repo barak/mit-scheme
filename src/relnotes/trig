@@ -1,0 +1,4 @@
+New procedures sin-pi*, cos-pi*, tan-pi*, asin/pi, cos/pi, atan/pi.
+
+These compute the standard trigonometric functions in units of
+half-revolutions rather than radians.

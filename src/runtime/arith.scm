@@ -1411,6 +1411,12 @@ USA.
 (define-transcendental-unary real:asin real:exact0= 0 flo:asin)
 (define-transcendental-unary real:acos real:exact1= 0 flo:acos)
 (define-transcendental-unary real:atan real:exact0= 0 flo:atan)
+(define-transcendental-unary real:sin-pi* real:exact0= 0 flo:sin-pi*)
+(define-transcendental-unary real:cos-pi* real:exact0= 1 flo:cos-pi*)
+(define-transcendental-unary real:tan-pi* real:exact0= 0 flo:tan-pi*)
+(define-transcendental-unary real:asin/pi real:exact0= 0 flo:asin/pi)
+(define-transcendental-unary real:acos/pi real:exact1= 0 flo:acos/pi)
+(define-transcendental-unary real:atan/pi real:exact0= 0 flo:atan/pi)
 
 (define-integrable (flo:exp10 x)
   (flo:exp (flo:* (flo:log 10.) x)))
@@ -1442,11 +1448,75 @@ USA.
 (define-integrable (flo:log10p1 x)
   (flo:/ (flo:log1p x) (flo:log 10.)))
 
+(define (flo:sin-pi* t)
+  (if (flo:integer? t)
+      (flo:copysign 0. t)
+      (flo:sin (flo:* rec:pi t))))
+
+(define (flo:asin/pi x)
+  (if (flo:safe-zero? x)
+      x
+      (flo:/ (flo:asin x) rec:pi)))
+
+(define (flo:cos-pi* t)
+  (let ((t (flo:abs t)))
+    (if (or (flo:safe>= t (flo:scalbn 1. flo:precision))
+	    (and (not (flo:integer? t))
+		 (flo:integer? (flo:* 2. t))))
+	+0.
+	(flo:cos (flo:* rec:pi t)))))
+
+(define (flo:acos/pi x)
+  (if (flo:safe= x 1.)
+      +0.
+      (flo:/ (flo:acos x) rec:pi)))
+
+(define (flo:tan-pi* t)
+  (define (t>=0 t)
+    (let ((u (flo:modulo t 2.)))
+      (cond ((flo:safe= u 0.0) +0.)
+	    ((flo:safe= u 0.5) (flo:/ t +0.))
+	    ((flo:safe= u 1.0) -0.)
+	    ((flo:safe= u 1.5) (flo:/ t -0.))
+	    (else (flo:tan (flo:* rec:pi t))))))
+  (if (flo:sign-negative? t)
+      (flo:negate (t>=0 (flo:negate t)))
+      (t>=0 t)))
+
+(define (flo:atan/pi x)
+  (if (flo:infinite? x)
+      (flo:copysign 0.5 x)
+      (flo:/ (flo:atan x) rec:pi)))
+
+(define (flo:atan2/pi y x)
+  (cond ((flo:safe-zero? y)
+	 (flo:copysign (if (flo:sign-negative? x) 1. 0.) y))
+	((flo:safe-zero? x)
+	 (flo:copysign 0.5 y))
+	((and (flo:infinite? y) (flo:infinite? x))
+	 (flo:copysign (if (flo:sign-negative? x) 0.75 0.25) y))
+	((and (flo:infinite? y) (flo:finite? x))
+	 (flo:copysign 0.5 y))
+	(else
+	 (flo:/ (flo:atan2 y x) rec:pi))))
+
 (define (real:atan2 y x)
   (if (and (real:exact0= y)
 	   (real:exact? x))
       (if (real:negative? x) rec:pi 0)
       (flo:atan2 (real:->inexact y) (real:->inexact x))))
+
+(define (real:atan2/pi y x)
+  (define (inexact-case)
+    (flo:atan2/pi (real:->inexact y) (real:->inexact x)))
+  (if (and (real:exact? y)
+	   (real:exact? x))
+      ;; XXX No branch cut information in unsigned zero here to choose
+      ;; +1 or -1!
+      (cond ((rat:zero? y) (if (rat:negative? x) 1 0))
+	    ((rat:zero? x) (if (rat:negative? y) -1/2 1/2))
+	    (else (inexact-case)))
+      (inexact-case)))
 
 (define (rat:sqrt x)
   (let ((guess (flo:sqrt (rat:->inexact x))))
@@ -2673,6 +2743,12 @@ USA.
   (if (default-object? x)
       (complex:atan z)
       (complex:atan2 z x)))
+
+(define (atan/pi y/x #!optional x)
+  (if (default-object? x)
+      (real:atan/pi y/x)
+      (let ((y y/x))
+	(real:atan2/pi y x))))
 
 (define (square z)
   (complex:* z z))

@@ -1471,3 +1471,112 @@ USA.
 (define-test 'flo:fast-fma?
   (lambda ()
     ((predicate-assertion boolean? "boolean") (flo:fast-fma?))))
+
+(define-enumerated-test 'sin-pi*-exact
+  (list
+   (list 0 0 0)
+   (list 0. 0. 0.)
+   (list 1/2 1 1/2 expect-failure)
+   (list 0.5 1. 0.5)
+   (list 1 0 0 expect-failure)
+   (list 1. 0. 0.)
+   (list 3/2 1 -1/2 expect-failure)
+   (list 1.5 -1. -0.5)
+   (list 2 0 0 expect-failure)
+   (list 2. 0. 0.))
+  (lambda (x y x* #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (sin-pi* x) y)
+	(assert-eqv (sin-pi* (- x)) (- y))
+	(assert-eqv (asin/pi y) x*)
+	(assert-eqv (asin/pi (- y)) (- x*))))))
+
+(define-enumerated-test 'sin-pi*-approx
+  (list
+   (list 1/4 (sqrt 1/2) 1/4)
+   (list 3/4 (sqrt 1/2) 1/4)
+   (list 5/4 (- (sqrt 1/2)) -1/4)
+   (list 7/4 (- (sqrt 1/2)) -1/4))
+  (lambda (x y x*)
+    (assert-<= (relerr y (sin-pi* x)) 1e-15)
+    (assert-eqv (sin-pi* (- x)) (- (sin-pi* x)))
+    (assert-<= (relerr x* (asin/pi y)) 1e-15)
+    (assert-eqv (asin/pi (- y)) (- (asin/pi y)))))
+
+(define-enumerated-test 'cos-pi*-exact
+  (list
+   (list 0 1 0)
+   (list 0. 1. 0.)
+   (list 1/2 0 1/2 expect-failure)
+   (list 0.5 0. 0.5)
+   (list 1 -1 1 expect-failure)
+   (list 1. -1. 1.)
+   (list 3/2 0 1/2 expect-failure)
+   (list 1.5 0. 0.5)
+   (list 2 1 0 expect-failure)
+   (list 2. 1. 0.))
+  (lambda (x y x* #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (cos-pi* x) y)
+	(assert-eqv (cos-pi* (- x)) y)
+	(assert-eqv (acos/pi y) x*)))))
+
+(define-enumerated-test 'cos-pi*-approx
+  (list
+   (list 1/4 (sqrt 1/2) 1/4)
+   (list 3/4 (- (sqrt 1/2)) 3/4)
+   (list 5/4 (- (sqrt 1/2)) 3/4)
+   (list 7/4 (sqrt 1/2) 1/4))
+  (lambda (x y x*)
+    (assert-<= (relerr y (cos-pi* x)) 1e-15)
+    (assert-eqv (cos-pi* (- x)) (cos-pi* x))
+    (assert-<= (relerr x* (acos/pi y)) 1e-15)))
+
+(define-enumerated-test 'tan-pi*-exact
+  (list
+   (list 0 0 0)
+   (list 0. 0. 0.)
+   (list 1/2 +inf.0 0.5)
+   (list 0.5 +inf.0 0.5)
+   (list 1 0 1 expect-failure)
+   (list 1.0 -0. -0.)
+   (list 3/2 -inf.0 -0.5)
+   (list 1.5 -inf.0 -0.5)
+   (list 2 0 0 expect-failure)
+   (list 2.0 +0. +0.))
+  (lambda (x y x* #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (tan-pi* x) y)
+	(assert-eqv (atan/pi y) x*)
+	(assert-eqv (tan-pi* (- x)) (- y))
+	(assert-eqv (atan/pi (- y)) (- x*))))))
+
+(define-enumerated-test 'atan2/pi
+  (list
+   (list +0. -1. +1.)
+   (list -0. -1. -1.)
+   (list +0. -0. +1.)
+   (list -0. -0. -1.)
+   (list +0. +0. +0.)
+   (list -0. +0. -0.)
+   (list +0. +1. +0.)
+   (list -0. +1. -0.)
+   (list -1. -0. -0.5)
+   (list -1. +0. -0.5)
+   (list +1. -0. +0.5)
+   (list +1. +0. +0.5)
+   (list -1. (flo:-inf.0) -1.)
+   (list +1. (flo:-inf.0) +1.)
+   (list -1. (flo:+inf.0) -0.)
+   (list +1. (flo:+inf.0) +0.)
+   (list (flo:-inf.0) -1. -0.5)
+   (list (flo:+inf.0) -1. +0.5)
+   (list (flo:-inf.0) (flo:-inf.0) -0.75)
+   (list (flo:+inf.0) (flo:-inf.0) +0.75)
+   (list (flo:-inf.0) (flo:+inf.0) -0.25)
+   (list (flo:+inf.0) (flo:+inf.0) +0.25))
+  (lambda (y x t)
+    (assert-eqv (atan/pi y x) t)))

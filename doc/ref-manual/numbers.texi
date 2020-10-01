@@ -1359,6 +1359,19 @@ If @var{list} contains both @code{-inf} and @code{+inf}, or if
 floating-point exceptions other than invalid-operation.
 @end deffn
 
+@deffn procedure sin-pi* x
+@deffnx procedure cos-pi* x
+@deffnx procedure tan-pi* x
+@deffnx procedure asin/pi x
+@deffnx procedure acos/pi x
+@deffnx procedure atan/pi x
+@deffnx procedure atan2/pi y x
+These procedures compute the standard trigonometric functions in units
+of half-revolutions rather than units of radians.
+Mathematically, @code{(sin-pi* x)} computes @math{\sin(\pi x)} and
+@code{(asin/pi x)} computes @math{\arcsin(x)/\pi}, etc.
+@end deffn
+
 @deffn procedure sqrt z
 Returns the principal square root of @var{z}.  The result will have
 either positive real part, or zero real part and non-negative imaginary
@@ -2149,6 +2162,12 @@ This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
 @deffnx procedure flo:asin flonum
 @deffnx procedure flo:acos flonum
 @deffnx procedure flo:atan flonum
+@deffnx procedure flo:sin-pi* flonum
+@deffnx procedure flo:cos-pi* flonum
+@deffnx procedure flo:tan-pi* flonum
+@deffnx procedure flo:asin/pi flonum
+@deffnx procedure flo:acos/pi flonum
+@deffnx procedure flo:atan/pi flonum
 @deffnx procedure flo:sinh flonum
 @deffnx procedure flo:cosh flonum
 @deffnx procedure flo:tanh flonum
@@ -2182,9 +2201,11 @@ When compiled, they do not check the types of their arguments.
 @end deffn
 
 @deffn procedure flo:atan2 flonum1 flonum2
+@deffnx procedure flo:atan2/pi flonum1 flonum2
 @findex atan
-This is the flonum version of @code{atan} with two arguments.  When
-compiled, it does not check the types of its arguments.
+These are the flonum versions of @code{atan} and @code{atan/pi} with
+two arguments.
+When compiled, they do not check the types of their arguments.
 @end deffn
 
 @deffn procedure flo:signed-lgamma x
