@@ -1503,7 +1503,7 @@ USA.
   (if (flo:infinite? x)
       (flo:copysign 0.5 x)
       (flo:/ (flo:atan x) rec:pi)))
-
+
 (define (flo:atan2/pi y x)
   (cond ((flo:safe-zero? y)
 	 (flo:copysign (if (flo:sign-negative? x) 1. 0.) y))
@@ -2395,7 +2395,6 @@ USA.
 	;; which avoids intermediate overflow in the event e^r cos t
 	;; and e^r sin t don't overflow after all.  If r is this large,
 	;; r - 1 is computed exactly or we overflow anyway.
-	;;
 	(if (real:< r bound)
 	    (complex:%make-polar (real-case r) t)
 	    (let ((r (real:->inexact r))
@@ -2947,7 +2946,7 @@ USA.
 ;;; Lemma 1.  If |d| < 1 - 1/2^n, then 1/(1 + d) <= 2^n for n > 1.
 ;;;
 ;;; Proof.  If d is nonnegative, then 1 + d >= 1, so that 1/(1 + d)
-;;; <= 1.  If d is negative, then 1 - 1/2^n <= d <= 0, so that 1 + d
+;;; <= 1.  If d is negative, then 0 <= -d <= 1 - 1/2^n so that 1 + d
 ;;; >= 1/2^n, and hence 1/(1 + d) <= 2^n.  QED.
 ;;;
 ;;; Lemma 2. If b = a*(1 + d)/(1 + d') for |d'| < 1/2 and nonzero a, b,
