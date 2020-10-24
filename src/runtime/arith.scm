@@ -2285,6 +2285,25 @@ USA.
 	(else
 	 (error:wrong-type-argument z #f 'conjugate))))
 
+(define (complex:invert z)
+  (if (recnum? z)
+      (let ((zr (rec:real-part z))
+	    (zi (rec:imag-part z)))
+	(cond ((real:exact0= zr)
+	       (make-recnum 0 (real:/ -1 zi)))
+	      ((or (flonum? zr) (flonum? zi))
+	       (flo:compdiv 1. 0.
+			    (real:->inexact zr) (real:->inexact zi)
+			    make-recnum))
+	      (else
+	       (let ((d (real:+ (real:square zr) (real:square zi))))
+		 (make-recnum (real:/ zr d)
+			      (real:/ (real:negate zi) d))))))
+      ((copy real:invert) z)))
+
+(define (complex:abs x)
+  (if (recnum? x) (real:abs (rec:real-arg 'abs x)) ((copy real:abs) x)))
+
 (define (complex:/ z1 z2)
   (define (kernel a b c d)
     (flo:compdiv a b c d make-recnum))
@@ -2327,25 +2346,6 @@ USA.
 		      (rat:/ (rat:* z1 z2r) d)
 		      (rat:/ (rat:negate (rat:* z1 z2i)) d))))))
 	  ((copy real:/) z1 z2))))
-
-(define (complex:invert z)
-  (if (recnum? z)
-      (let ((zr (rec:real-part z))
-	    (zi (rec:imag-part z)))
-	(cond ((real:exact0= zr)
-	       (make-recnum 0 (real:/ -1 zi)))
-	      ((or (flonum? zr) (flonum? zi))
-	       (flo:compdiv 1. 0.
-			    (real:->inexact zr) (real:->inexact zi)
-			    make-recnum))
-	      (else
-	       (let ((d (real:+ (real:square zr) (real:square zi))))
-		 (make-recnum (real:/ zr d)
-			      (real:/ (real:negate zi) d))))))
-      ((copy real:invert) z)))
-
-(define (complex:abs x)
-  (if (recnum? x) (real:abs (rec:real-arg 'abs x)) ((copy real:abs) x)))
 
 ;;; Complex division.  We use the compdiv_robust algorithm from
 ;;;
