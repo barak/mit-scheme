@@ -3746,6 +3746,8 @@ USA.
 	  (ceiling complex:ceiling)	;(scheme base)
 	  (ceiling->exact complex:ceiling->exact)
 	  (complex? complex:complex?)	;(scheme base)
+	  (compound complex:compound)
+	  (compoundm1 complex:compoundm1)
 	  (conjugate complex:conjugate)
 	  (copysign complex:copysign)
 	  (cos complex:cos)		;(scheme inexact)
@@ -3803,11 +3805,13 @@ USA.
 	  (real? complex:real?)		;(scheme base)
 	  (round complex:round)		;(scheme base)
 	  (round->exact complex:round->exact)
+	  (rsqrt complex:rsqrt)
 	  (simplest-exact-rational complex:simplest-exact-rational)
 	  (simplest-rational complex:simplest-rational)
 	  (sin complex:sin)		;(scheme inexact)
 	  (sin-pi* real:sin-pi*)
 	  (sqrt complex:sqrt)		;(scheme inexact)
+	  (sqrt1pm1 complex:sqrt1pm1)
 	  (tan complex:tan)		;(scheme inexact)
 	  (tan-pi* real:tan-pi*)
 	  (truncate complex:truncate)	;(scheme base)
@@ -3863,11 +3867,13 @@ USA.
 	  flo:precision
 	  flo:radix
 	  flo:radix.
+	  flo:rsqrt
 	  flo:significand-digits-base-10
 	  flo:significand-digits-base-2
 	  flo:sin-pi*
 	  flo:smallest-positive-normal
 	  flo:smallest-positive-subnormal
+	  flo:sqrt1pm1
 	  flo:subnormal-exponent-min
 	  flo:tan-pi*
 	  flo:ulp-of-one

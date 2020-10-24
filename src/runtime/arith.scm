@@ -1448,7 +1448,7 @@ USA.
 
 (define-integrable (flo:exp10m1 x)
   (flo:expm1 (flo:* (flo:log 10.) x)))
-
+
 (declare (integrate flo:log1p))
 (define (flo:log1p x)
   (if (flo:< (flo:abs x) (flo:- 1. (flo:sqrt 0.5)))
@@ -1460,6 +1460,39 @@ USA.
 
 (define-integrable (flo:log10p1 x)
   (flo:/ (flo:log1p x) (flo:log 10.)))
+
+(define-integrable (flo:rsqrt x)
+  ;; XXX Make this a primitive -- can be much cheaper on most
+  ;; architectures with fast approximate-rsqrt and rsqrt-step
+  ;; instructions like modern x86 and aarch64.
+  (flo:/ 1. (flo:sqrt x)))
+
+(define (flo:sqrt1pm1 x)
+  ;; sqrt(1 + x) - 1
+  ;;
+  ;; - For x <= -3/4, we compute 1 + x <= 1/4 exactly, and the result
+  ;;   sqrt(1 + x) - 1 <= -1/2 so there is no catastrophic cancellation
+  ;;   even if fl(sqrt(1 + x)) != sqrt(1 + x) -- the computation of
+  ;;   fl(sqrt(1 + x)) - 1 multiplies the error in fl(sqrt(1 + x)) by a
+  ;;   factor of at most 2.
+  ;;
+  ;; - For x >= 3/4, 1 + x may not be exact but sqrt dampens the error,
+  ;;   and sqrt(1 + x) > 1.3 so computing fl(sqrt(1 + x)) - 1 amplifies
+  ;;   the error by at most a factor of 10/3.
+  ;;
+  ;; For |x| < 3/4, we use expm1/log1p.
+  ;;
+  (if (flo:< (flo:abs x) 0.75)
+      (flo:expm1 (flo:* 0.5 (flo:log1p x)))
+      (flo:- (flo:sqrt (flo:+ 1. x)) 1.)))
+
+(define-integrable (flo:compound x n)
+  ;; (1 + x)^n
+  (flo:exp (flo:* n (flo:log1p x))))
+
+(define-integrable (flo:compoundm1 x n)
+  ;; (1 + x)^n - 1
+  (flo:expm1 (flo:* n (flo:log1p x))))
 
 (define (flo:sin-pi* t)
   (if (flo:integer? t)
@@ -1589,6 +1622,12 @@ USA.
 (define (real:sqrt x)
   (if (flonum? x) (flo:sqrt x) (rat:sqrt x)))
 
+(define (real:sqrt1pm1 x)
+  (if (flonum? x) (flo:sqrt1pm1 x) (real:-1+ (rat:sqrt (rat:1+ x)))))
+
+(define (real:rsqrt x)
+  (if (flonum? x) (flo:rsqrt x) (/ 1 (rat:sqrt x))))
+
 (define (real:->inexact x)
   (if (flonum? x)
       x
@@ -1598,6 +1637,20 @@ USA.
   (if (flonum? x)
       (flo:->string x radix)
       (rat:->string x radix)))
+
+(define (real:compound x n)
+  (define (compound x n) (flo:compound x n))
+  (cond ((flonum? x) (compound x (real:->inexact n)))
+	((real:zero? x) 1)
+	((flonum? n) (compound (rat:->inexact x) n))
+	(else (rat:expt (rat:1+ x) n))))
+
+(define (real:compoundm1 x n)
+  (define (compoundm1 x n) (flo:compoundm1 x n))
+  (cond ((flonum? x) (compoundm1 x (real:->inexact n)))
+	((real:zero? x) 0)
+	((flonum? n) (compoundm1 (rat:->inexact x) n))
+	(else (rat:-1+ (rat:expt (rat:1+ x) n)))))
 
 (define (real:expt x y)
   (let ((general-case
@@ -2233,44 +2286,134 @@ USA.
 	 (error:wrong-type-argument z #f 'conjugate))))
 
 (define (complex:/ z1 z2)
+  (define (kernel a b c d)
+    (flo:compdiv a b c d make-recnum))
   (if (recnum? z1)
       (if (recnum? z2)
 	  (let ((z1r (rec:real-part z1))
 		(z1i (rec:imag-part z1))
 		(z2r (rec:real-part z2))
 		(z2i (rec:imag-part z2)))
-	    (let ((d (real:+ (real:square z2r) (real:square z2i)))
-		  (u
-		   (if (or (real:exact0= z1r) (real:exact0= z2r))
-		       (real:* z1i z2i)
-		       (real:+ (real:* z1r z2r) (real:* z1i z2i))))
-		  (v
-		   (if (real:exact0= z2r)
-		       (real:negate (real:* z1r z2i))
-		       (real:- (real:* z1i z2r) (real:* z1r z2i)))))
-	      (complex:%make-rectangular (real:/ u d) (real:/ v d))))
+	    (cond ((real:exact0= z2r)
+		   ;; (a + i b)/(i c) = -b/c + i a/c
+		   (complex:%make-rectangular (real:/ z1i z2i)
+					      (real:negate (real:/ z1r z2i))))
+		  ((or (flonum? z1r) (flonum? z1i) (flonum? z2r) (flonum? z2i))
+		   (kernel (real:->inexact z1r) (real:->inexact z1i)
+			   (real:->inexact z2r) (real:->inexact z2i)))
+		  (else
+		   (let ((d (real:+ (real:square z2r) (real:square z2i)))
+			 (u
+			  (if (or (real:exact0= z1r) (real:exact0= z2r))
+			      (real:* z1i z2i)
+			      (real:+ (real:* z1r z2r) (real:* z1i z2i))))
+			 (v
+			  (if (real:exact0= z2r)
+			      (real:negate (real:* z1r z2i))
+			      (real:- (real:* z1i z2r) (real:* z1r z2i)))))
+		     (complex:%make-rectangular (real:/ u d) (real:/ v d))))))
 	  (make-recnum (real:/ (rec:real-part z1) z2)
 		       (real:/ (rec:imag-part z1) z2)))
       (if (recnum? z2)
 	  (let ((z2r (rec:real-part z2))
 		(z2i (rec:imag-part z2)))
-	    (let ((d (real:+ (real:square z2r) (real:square z2i))))
-	      (complex:%make-rectangular
-	       (real:/ (real:* z1 z2r) d)
-	       (real:/ (real:negate (real:* z1 z2i)) d))))
+	    (cond ((real:exact0= z2r)
+		   ;; a/(i b) = -i a/b
+		   (make-recnum 0 (real:negate (real:/ z1 z2i))))
+		  ((or (flonum? z1) (flonum? z2r) (flonum? z2i))
+		   (kernel (real:->inexact z1) 0.
+			   (real:->inexact z2r) (real:->inexact z2i)))
+		  (else
+		   (let ((d (real:+ (real:square z2r) (real:square z2i))))
+		     (complex:%make-rectangular
+		      (real:/ (real:* z1 z2r) d)
+		      (real:/ (real:negate (real:* z1 z2i)) d))))))
 	  ((copy real:/) z1 z2))))
 
 (define (complex:invert z)
   (if (recnum? z)
       (let ((zr (rec:real-part z))
 	    (zi (rec:imag-part z)))
-	(let ((d (real:+ (real:square zr) (real:square zi))))
-	  (make-recnum (real:/ zr d)
-		       (real:/ (real:negate zi) d))))
+	(cond ((real:exact0= zr)
+	       (make-recnum 0 (real:/ -1 zi)))
+	      ((or (flonum? zr) (flonum? zi))
+	       (flo:compdiv 1. 0.
+			    (real:->inexact zr) (real:->inexact zi)
+			    make-recnum))
+	      (else
+	       (let ((d (real:+ (real:square zr) (real:square zi))))
+		 (make-recnum (real:/ zr d)
+			      (real:/ (real:negate zi) d))))))
       ((copy real:invert) z)))
 
 (define (complex:abs x)
   (if (recnum? x) (real:abs (rec:real-arg 'abs x)) ((copy real:abs) x)))
+
+;;; Complex division.  We use the compdiv_robust algorithm from
+;;;
+;;;	Michael Baudin and Robert L. Smith, `A Robust Complex Division
+;;;	in Scilab', October 2012, pp. 19--21.
+;;;	https://arxiv.org/abs/1210.4539v2
+;;;
+;;; which avoids spurious overflow and underflow.  This does not take
+;;; advantage of FMA.
+
+(define (flo:compdiv a b c d k)
+  ;; e + f i := (a + b i)/(c + d i)
+  (define (robust-internal a b c d k)
+    ;; Decide whether to compute z/w or conj(-conj(i z)/-conj(i w)).
+    (if (flo:safe<= (flo:abs d) (flo:abs c))
+	(robust-subinternal a b c d (lambda (e f) (k e f)))
+	(robust-subinternal b a d c (lambda (e f) (k e (flo:negate f))))))
+  (define (robust-subinternal a b c d k)
+    (assert (not (flo:safe> (flo:abs d) (flo:abs c))))
+    (let* ((r (flo:/ d c))
+	   (t (flo:/ 1. (flo:+ c (flo:* d r))))
+	   (e (internal-compreal a b c d r t))
+	   (a (flo:negate a))
+	   (f (internal-compreal b a c d r t)))
+      (k e f)))
+  (define (internal-compreal a b c d r t)
+    (if (not (flo:safe-zero? r))
+	(let ((br (flo:* b r)))
+	  (if (not (flo:safe-zero? br))
+	      (flo:* (flo:+ a br) t)
+	      (flo:*+ a t (flo:* (flo:* b t) r))))
+	(flo:* (flo:*+ d (flo:/ b c) a) t)))
+  (let ((ab (flo:max (flo:abs a) (flo:abs b)))
+	(cd (flo:max (flo:abs c) (flo:abs d)))
+	(scale 1.)
+	(Be (flo:/ flo:radix. (flo:square flo:ulp-of-one)))
+	(OV flo:largest-positive-normal)
+	(UN flo:smallest-positive-normal))
+    ;; Scale to avoid overflow.
+    ((lambda (k)
+       (if (flo:safe>= ab (flo:/ OV 2.))
+	   (k (flo:/ a 2.) (flo:/ b 2.) (flo:* scale 2.))
+	   (k a b scale)))
+     (lambda (a b scale)
+       ((lambda (k)
+	  (if (flo:safe>= cd (flo:/ OV 2.))
+	      (k (flo:/ c 2.) (flo:/ d 2.) (flo:/ scale 2.))
+	      (k c d scale)))
+	(lambda (c d scale)
+	  ;; Scale to avoid underflow.
+	  ((lambda (k)
+	     (if (flo:safe<= ab (flo:* UN (flo:/ flo:radix. flo:ulp-of-one)))
+		 (k (flo:* a Be) (flo:* b Be) (flo:/ scale Be))
+		 (k a b scale)))
+	   (lambda (a b scale)
+	     ((lambda (k)
+		(if (flo:safe<= cd
+				(flo:* UN (flo:/ flo:radix. flo:ulp-of-one)))
+		    (k (flo:* c Be) (flo:* d Be) (flo:* scale Be))
+		    (k c d scale)))
+	      (lambda (c d scale)
+		;; Compute scaled division, and rescale result.
+		((lambda (k) (robust-internal a b c d k))
+		 (lambda (e f)
+		   (k (flo:* e scale)
+		      (flo:* f scale))))))))))))))
 
 (define (complex:quotient n d)
   (real:quotient (complex:real-arg 'quotient n)
@@ -2744,6 +2887,30 @@ USA.
 	 (complex:%make-rectangular 0 (x>=0 (real:negate z))))
 	(else
 	 (x>=0 z))))
+
+(define (complex:sqrt1pm1 z)
+  (define (real-case x)
+    ((copy real:sqrt1pm1) x))
+  (cond ((recnum? z)
+	 (let ((y (rec:imag-part z)))
+	   (if (real:zero? y)
+	       (complex:%make-rectangular (real-case (rec:real-part z)) y)
+	       (complex:-1+ (complex:sqrt (complex:1+ z))))))
+	((real:< z -1)
+	 (complex:%make-rectangular -1 (real:sqrt (real:- -1 z))))
+	(else
+	 (real-case z))))
+
+(define (complex:rsqrt z)
+  (define (x>=0 x)
+    ((copy real:rsqrt) x))
+  (cond ((recnum? z)
+	 (complex:/ 1 (complex:sqrt z)))
+	((real:safe-negative? z)
+	 ;; sqrt(-1/x) = -i/sqrt(x)
+	 (complex:%make-rectangular 0 (real:negate (x>=0 (real:negate z)))))
+	(else
+	 (x>=0 z))))
 
 (define (complex:expt z1 z2)
   (cond ((complex:zero? z1)
@@ -2784,6 +2951,16 @@ USA.
 	 (complex:exp (complex:* (complex:log z1) z2)))
 	(else
 	 (real:expt z1 z2))))
+
+(define (complex:compound x n)
+  (if (or (recnum? x) (recnum? n))
+      (complex:exp (complex:* n (complex:log1p x)))
+      ((copy real:compound) x n)))
+
+(define (complex:compoundm1 x n)
+  (if (or (recnum? x) (recnum? n))
+      (complex:expm1 (complex:* n (complex:log1p x)))
+      ((copy real:compoundm1) x n)))
 
 (define (complex:make-rectangular real imag)
   (let ((check-arg

@@ -28,9 +28,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (rsqrt x)
-  (/ 1 (sqrt x)))
-
 (define (assert-nan object)
   (assert-true (flo:flonum? object))
   (assert-true (flo:nan? object)))
@@ -289,6 +286,32 @@ USA.
     (with-expected-failure xfail (lambda () (assert-eqv (/ z +i) w)))
     (with-expected-failure xfail (lambda () (assert-eqv (* -i z) w)))
     (with-expected-failure xfail (lambda () (assert-eqv (* z -i) w)))))
+
+(define-enumerated-test 'baudin&smith
+  ;; Michael Baudin and Robert L. Smith, `A Robust Complex Division in
+  ;; Scilab', October 2012, pp. 19--21.
+  ;; https://arxiv.org/abs/1210.4539v2
+  (list
+   (list 1.+1.i #x1.+1p1023i (* #x1p-1023 1-i))			;1
+   (list 1.+1.i #x1p-1023+1p-1023i #x1p1023+0.i)		;2
+   (list #x1p1023+1p-1023i #x1p677+1p-677i #x1p346-1p-1008i)	;3
+   (list #x1p1023+1p1023i 1.+1.i #x1p1023+0.i) 			;4
+   (list #x1p1020+1p-844i #x1p656+1p-780i #x1p364-1p-1072i)	;5
+   (list #x1p-71+1p1021i #x1p1001+1p-323i #x1p-1072+1p20i)	;6
+   (list #x1p-347+1p-54i #x1p-1037+1p-1058i			;7
+	 3.898125604559113300e289+8.174961907852353577e295i)
+   (list #x1p-1074+1p-1074i #x1p-1073+1p-1074i 0.6+0.2i)	;8
+   (list #x1p1015+1p-989i #x1p1023+1p1023i			;9
+	 0.001953125-0.001953125i)
+   (list #x1p-622+1p-1071i #x1p-343+1p-798i			;10
+	 1.02951151789360578e-84+6.97145987515076231e-220i))
+  (lambda (z w z/w #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(let ((r (yes-traps (lambda () (/ z w)))))
+	  (assert-<= (relerr z/w r) 1e-15)
+	  (assert-<= (relerr (real-part z/w) (real-part r)) 1e-15)
+	  (assert-<= (relerr (imag-part z/w) (imag-part r)) 1e-15))))))
 
 (define-enumerated-test 'polar0-real
   (list
@@ -805,6 +828,58 @@ USA.
           (assert-eqv (expt (* 2 x) (/ y 2)) x^y)
           (assert-eqv (expt (/ 1 (* 2 x)) (- (/ y 2))) x^y))))))
 
+(define-enumerated-test 'compound-exact
+  (list
+   (list 123 0 1)
+   (list 123. 0 1.)			;XXX exact?
+   (list 0 123 1)
+   (list 0 123. 1)
+   (list 1 16 65536))
+  (lambda (x n c)
+    (assert-eqv (yes-traps (lambda () (compound x n))) c)))
+
+(define-enumerated-test 'compoundm1-exact
+  (list
+   (list 123 0 0)
+   (list 123. 0 0.)			;XXX exact?
+   (list 0 123 0)
+   (list 0 123. 0)
+   (list 1 16 65535))
+  (lambda (x n c)
+    (assert-eqv (yes-traps (lambda () (compoundm1 x n))) c)))
+
+(define-enumerated-test 'compound-approx
+  (list
+   (list -1e-20 1e20 .36787944117144233)
+   (list -1e-20 1e10 .9999999999)
+   (list -1e-20 10 1.)
+   (list 1e-20 10 1.)
+   (list 1e-20 1e10 1.0000000001)
+   (list 1e-20 1e20 2.718281828459045)
+   (list 1. 16. 65536.)
+   (list +i 2 +2i)
+   (list +1.i 2. +2.i)
+   (list +i 3 -2+2i)
+   (list +1.i 3. -2.+2.i))
+  (lambda (x n c)
+    (assert-<= (relerr c (yes-traps (lambda () (compound x n)))) 1e-15)))
+
+(define-enumerated-test 'compoundm1-approx
+  (list
+   (list -1e-20 1e20 -.6321205588285577)
+   (list -1e-20 1e10 -9.9999999995e-11)
+   (list -1e-20 10 -1e-19)
+   (list 1e-20 10 1e-19)
+   (list 1e-20 1e10 1.0000000000499999e-10)
+   (list 1e-20 1e20 1.718281828459045)
+   (list 1. 16. 65535.)
+   (list +i 2 -1+2i)
+   (list +1.i 2. -1.+2.i)
+   (list +i 3 -3+2i)
+   (list +1.i 3. -3.+2.i))
+  (lambda (x n c)
+    (assert-<= (relerr c (yes-traps (lambda () (compoundm1 x n)))) 1e-15)))
+
 (define-enumerated-test 'atan2
   (list
    (list +0. -1. +3.1415926535897932)
@@ -1090,19 +1165,21 @@ USA.
     (9 3)
     (9. 3.)
     (4/9 2/3)
+    (9/4 3/2)
+    (1/4 1/2)
     (0.25 0.5)
     (-4 +2i)
     (-4/9 +2/3i)
     (-4.+0.i 0.+2.i)
     (-4.-0.i 0.-2.i)
-    ;; Square root of perfect square x times 2i should be exactly x+xi.
+    ;; sqrt(2i * x^2) = sqrt(2i) * |x| = (1 + i) * |x| = |x| + |x| i
     (,(make-rectangular 0 (* 2 (expt 2 -4000)))
      ,(make-rectangular (expt 2 -2000) (expt 2 -2000)))
     (,(make-rectangular 0. (* 2 flo:smallest-positive-subnormal))
      ,(make-rectangular (expt 2. (/ flo:subnormal-exponent-min 2))
                         (expt 2. (/ flo:subnormal-exponent-min 2))))
-    (+.125i .25+.25i)
     (+1/8i 1/4+1/4i)
+    (+.125i .25+.25i)
     (+2i 1+1i)
     (+8i 2+2i)
     (+18i 3+3i)
@@ -1117,7 +1194,7 @@ USA.
     (,(make-rectangular 0 (* 2 (expt 2 4000)))
      ,(make-rectangular (expt 2 2000) (expt 2 2000))
      ,expect-error)
-    ;; Likewise, sqrt of perfect square x times -2i should be x-xi.
+    ;; sqrt(-2i * x^2) = sqrt(-2i) * |x| = (1 - i) * |x| = |x| - |x| i
     (,(make-rectangular 0 (* -2 (expt 2 -4000)))
      ,(make-rectangular (expt 2 -2000) (- (expt 2 -2000))))
     (,(make-rectangular 0. (- (* 2 flo:smallest-positive-subnormal)))
@@ -1273,6 +1350,247 @@ USA.
                                      (lambda () (sqrt xi+0)))
         (assert-only-except/no-traps (flo:exception:invalid-operation)
                                      (lambda () (sqrt xi-0)))))))
+
+(define-enumerated-test 'rsqrt-exact
+  `((1 1)
+    (1. 1.)
+    (4 1/2)
+    (4. 0.5)
+    (9 1/3)
+    (1/9 3)
+    (4/9 3/2)
+    (9/4 2/3)
+    (1/4 2)
+    (0.25 2.)
+    (-4 -1/2i)
+    (-4/9 -3/2i)
+    (-4.+0.i 0.-0.5i)
+    (-4.-0.i 0.+0.5i ,expect-failure)
+    ;; 1/sqrt(i x^2/2) = sqrt(-2i) / |x| = (1 - i) / |x| = 1/|x| - i/|x|
+    (,(make-rectangular 0 (/ (expt 2 -4000) 2))
+     ,(make-rectangular (expt 2 2000) (- (expt 2 2000))))
+    #;
+    (,(make-rectangular 0. (/ flo:smallest-positive-subnormal 2))
+     ,(make-rectangular (expt 2. (/ flo:subnormal-exponent-min -2))
+                        (- (expt 2. (/ flo:subnormal-exponent-min -2)))))
+    (+1/8i 2-2i)
+    (+.125i 2.-2.i)
+    (+2i 1/2-1/2i)
+    (+8i 1/4-1/4i)
+    (+18i 1/6-1/6i)
+    (+32i 1/8-1/8i)
+    (+2.i 0.5-0.5i)
+    (+8.i 0.25-0.25i)
+    (+32.i 0.125-0.125i)
+    (,(make-rectangular 0. (expt 2. flo:normal-exponent-max))
+     ,(make-rectangular (expt 2. (/ (+ flo:normal-exponent-max 1) -2))
+                        (- (expt 2. (/ (+ flo:normal-exponent-max 1) -2)))))
+    (,(make-rectangular 0 (* 2 (expt 2 4000)))
+     ,(make-rectangular (expt 2 2000) (- (expt 2 2000)))
+     ,expect-error)
+    ;; 1/sqrt(-i x^2/2) = sqrt(2i) / |x| = (1 = i) / |x| = 1/|x| + i/|x|
+    (,(make-rectangular 0 (- (/ (expt 2 -4000) 2)))
+     ,(make-rectangular (expt 2 2000) (expt 2 2000)))
+    #;
+    (,(make-rectangular 0. (- (/ flo:smallest-positive-subnormal 2)))
+     ,(make-rectangular (expt 2. (/ flo:subnormal-exponent-min -2))
+                        (expt 2. (/ flo:subnormal-exponent-min -2))))
+    (-1/8i 2+2i)
+    (-.125i 2.+2.i)
+    (-2i 1/2+1/2i)
+    (-8i 1/4+1/4i)
+    (-18i 1/6+1/6i)
+    (-32i 1/8+1/8i)
+    (-2.i 0.5+0.5i)
+    (-8.i 0.25+0.25i)
+    (-32.i 0.125+0.125i)
+    (,(make-rectangular 0. (- (expt 2. flo:normal-exponent-max)))
+     ,(make-rectangular (expt 2. (/ (+ flo:normal-exponent-max 1) -2))
+                        (expt 2. (/ (+ flo:normal-exponent-max 1) -2))))
+    (,(make-rectangular 0 (* -2 (expt 2 4000)))
+     ,(make-rectangular (expt 2 2000) (expt 2 2000))
+     ,expect-error)
+    ;; XXX complex infinity
+    ;(+0.i ...)
+    ;(-0.i ...)
+    ;(+0.+0.i ...)
+    ;(+0.-0.i ...)
+    ;(-0.+0.i ...)
+    ;(-0.-0.i ...)
+    ;; Treat infinities carefully around branch cuts.
+    (-inf.0 -0.i)
+    (+inf.0 0.)
+    (-inf.0+0.i +0.-0.i)
+    (-inf.0+0i +0-0.i)
+    (+inf.0+0.i +0.-0.i ,expect-failure)
+    (+inf.0+0i +0.-0i)			;no exact signed zero
+    (-inf.0+1.i +0.-0.i)
+    (-inf.0+1i +0.-0.i)
+    (+inf.0+1.i +0.-0.i ,expect-failure)
+    (+inf.0+1i +0.+0.i)
+    (-inf.0-0.i +0.+0.i ,expect-failure)
+    (-inf.0-0i +0-0.i)
+    (+inf.0-0.i 0.+0.i)
+    (+inf.0-0i 0.)
+    (-inf.0-1.i 0.+0.i ,expect-failure)
+    (-inf.0-1i 0.+0.i ,expect-failure)
+    (+inf.0-1.i +0.+0.i)
+    (+inf.0-1i +0.+0.i)
+    ;(-inf.0i ...)
+    ;(+inf.0i ...)
+    ;(+0.-inf.0i ...)
+    ;(+0-inf.0i ...)
+    ;(+0.+inf.0i ...)
+    ;(+0+inf.0i ...)
+    ;(-0.-inf.0i ...)
+    ;(-0-inf.0i ...)
+    ;(-0.+inf.0i ...)
+    ;(-0+inf.0i ...)
+    ;(1.-inf.0i ...)
+    ;(1-inf.0i ...)
+    ;(1.+inf.0i ...)
+    ;(1+inf.0i ...)
+    ;(-1.-inf.0i ...)
+    ;(-1-inf.0i ...)
+    ;(-1.+inf.0i ...)
+    ;(-1+inf.0i ...)
+    ;(+inf.0+inf.0i ...)
+    ;(+inf.0-inf.0i ...)
+    ;(-inf.0+inf.0i ...)
+    ;(-inf.0-inf.0i ...)
+    ;; Reciprocal square root of negative real should be purely
+    ;; imaginary, whether exact or inexact.
+    (-4 -1/2i)
+    (-4. -0.5i)
+    ;; Reciprocal square root of negative real with inexact zero
+    ;; imaginary part should be imaginary with inexact zero real part.
+    (-4.+0.i 0.-0.5i)
+    (-4.-0.i 0.+0.5i ,expect-failure))
+  (lambda (z r #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (yes-traps (lambda () (rsqrt z))) r)))))
+
+(define-enumerated-test 'rsqrt-approx
+  (list
+   (list +i .7071067811865476-.7071067811865476i)
+   (list -i .7071067811865476+.7071067811865476i)
+   (list 1.5e308+1.5e308i 6.343255686650112e-155-2.627462535010736e-155i)
+   (list 1.5e308-1.5e308i 6.343255686650112e-155+2.627462535010736e-155i)
+   (list -1.5e308+1.5e308i 2.6274625350107366e-155-6.343255686650112e-155i)
+   (list -1.5e308-1.5e308i 2.6274625350107366e-155+6.343255686650112e-155i))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-<= (relerr y (rsqrt x)) 1e-14)))))
+
+(define-enumerated-test 'rsqrt-approx-componentwise
+  (list
+   (list +i .7071067811865476-.7071067811865476i)
+   (list -i .7071067811865476+.7071067811865476i)
+   (list 1.5e308+1.5e308i 6.343255686650112e-155-2.627462535010736e-155i)
+   (list 1.5e308-1.5e308i 6.343255686650112e-155+2.627462535010736e-155i)
+   (list -1.5e308+1.5e308i 2.6274625350107366e-155-6.343255686650112e-155i)
+   (list -1.5e308-1.5e308i 2.6274625350107366e-155+6.343255686650112e-155i))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(let ((y* (rsqrt x)))
+	  (assert-<= (relerr (real-part y) (real-part y*)) 1e-12)
+	  (assert-<= (relerr (imag-part y) (imag-part y*)) 1e-12))))))
+
+(define-test 'rsqrt-qnan
+  (lambda ()
+    (let ((x (identity-procedure (flo:qnan 1234))))
+      (assert-eqv-nan (yes-traps (lambda () (rsqrt x))) x)
+      (assert-no-except/yes-traps (lambda () (rsqrt x)))
+      (let ((x+0i (make-rectangular x +0.))
+            (x-0i (make-rectangular x -0.))
+            (xi+0 (make-rectangular +0. x))
+            (xi-0 (make-rectangular -0. x)))
+        (assert-eqv-nan (no-traps (lambda () (real-part (rsqrt x+0i)))) x)
+        (assert-eqv-nan (no-traps (lambda () (real-part (rsqrt x-0i)))) x)
+        (assert-eqv-nan (no-traps (lambda () (real-part (rsqrt xi+0)))) x)
+        (assert-eqv-nan (no-traps (lambda () (real-part (rsqrt xi-0)))) x)
+        (assert-no-except/yes-traps (lambda () (rsqrt x+0i)))
+        (assert-no-except/yes-traps (lambda () (rsqrt x-0i)))
+        (assert-no-except/yes-traps (lambda () (rsqrt xi+0)))
+        (assert-no-except/yes-traps (lambda () (rsqrt xi-0)))))))
+
+(define-test 'rsqrt-snan
+  (lambda ()
+    (let ((x (identity-procedure (flo:snan 4321)))
+          (x* (flo:qnan 4321)))
+      (assert-eqv-nan (no-traps (lambda () (rsqrt x))) x*)
+      (assert-flo-error (lambda () (yes-traps (lambda () (rsqrt x)))))
+      (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                   (lambda () (rsqrt x)))
+      (let ((x+0i (make-rectangular x +0.))
+            (x-0i (make-rectangular x -0.))
+            (xi+0 (make-rectangular +0. x))
+            (xi-0 (make-rectangular -0. x)))
+        (assert-eqv-nan (no-traps (lambda () (real-part (rsqrt x+0i)))) x*)
+        (assert-eqv-nan (no-traps (lambda () (real-part (rsqrt x-0i)))) x*)
+        (assert-eqv-nan (no-traps (lambda () (real-part (rsqrt xi+0)))) x*)
+        (assert-eqv-nan (no-traps (lambda () (real-part (rsqrt xi-0)))) x*)
+        (assert-flo-error (lambda () (yes-traps (lambda () (rsqrt x+0i)))))
+        (assert-flo-error (lambda () (yes-traps (lambda () (rsqrt x-0i)))))
+        (assert-flo-error (lambda () (yes-traps (lambda () (rsqrt xi+0)))))
+        (assert-flo-error (lambda () (yes-traps (lambda () (rsqrt xi-0)))))
+        (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                     (lambda () (rsqrt x+0i)))
+        (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                     (lambda () (rsqrt x-0i)))
+        (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                     (lambda () (rsqrt xi+0)))
+        (assert-only-except/no-traps (flo:exception:invalid-operation)
+                                     (lambda () (rsqrt xi-0)))))))
+
+(define-enumerated-test 'sqrt1pm1-exact
+  (list
+   (list -5 -1+2i)
+   (list -5. -1+2.i)
+   (list -2 -1+i)
+   (list -2. -1+1.i)
+   (list -1 -1)
+   (list -1. -1.)
+   (list -5/9 -1/3)
+   (list -0. -0.)
+   (list 0 0)
+   (list 0. 0.)
+   (list 3. 1.))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (yes-traps (lambda () (sqrt1pm1 x))) y)))))
+
+(define-enumerated-test 'sqrt1pm1-approx
+  (list
+   (list -0.99999999 -.9998999999997488)
+   (list -0.9999 -.99)
+   (list -0.99 -.9)
+   (list -0.9 -.6837722339831621)
+   (list -0.5 -.2928932188134525)
+   (list -1e-1 -5.1316701949486204e-2)
+   (list -1e-5 -5.000012500062501e-6)
+   (list -1e-10 -5.000000000125e-11)
+   (list -1e-20 -5e-21)
+   (list -1e-300 -5e-301)
+   (list 1e-300 5e-301)
+   (list 1e-20 5e-21)
+   (list 1e-10 4.999999999875e-11)
+   (list 1e-5 4.9999875000625e-6)
+   (list 1e-1 .04880884817015155)
+   (list 0.5 .22474487139158905)
+   (list 0.9 .3784048752090221)
+   (list 0.99 .4106735979665884)
+   (list 0.9999 .41417820659208293)
+   (list 0.99999999 .41421355883756117)
+   (list 1. .41421356237309515))
+  (lambda (x y #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-<= (relerr y (yes-traps (lambda () (sqrt1pm1 x)))) 1e-15)))))
 
 (define-enumerated-test 'copysign
   `((0. 0. 0.)

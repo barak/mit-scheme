@@ -1,0 +1,19 @@
+New arithmetic procedures:
+
+- (sqrt1pm1 z) computes sqrt(1 + z) - 1, with low relative error even
+  for values of z near zero
+- (rsqrt z) computes 1/sqrt(z)
+- (compound z w) computes (1 + z)^w, with low relative error even for
+  values of z near zero
+- (compoundm1 z w) computes (1 + z)^w - 1, with low relative error even
+  for values of z near zero
+
+Additionally, complex division avoids spurious overflow and underflow
+much more often.
+
+New floating-point procedures:
+
+- (flo:sqrt1pm1 x)
+- (flo:rsqrt x)
+- (flo:compound x y) -- note y must be a flonum, not an exact integer
+- (flo:compoundm1 x y)
