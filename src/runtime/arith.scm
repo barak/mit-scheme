@@ -2314,7 +2314,7 @@ USA.
 		(z2r (rec:real-part z2))
 		(z2i (rec:imag-part z2)))
 	    (cond ((real:exact0= z2r)
-		   ;; (a + i b)/(i c) = -b/c + i a/c
+		   ;; (a + i b)/(i c) = b/c - i a/c
 		   (complex:%make-rectangular (real:/ z1i z2i)
 					      (real:negate (real:/ z1r z2i))))
 		  ((or (flonum? z1r) (flonum? z1i) (flonum? z2r) (flonum? z2i))
