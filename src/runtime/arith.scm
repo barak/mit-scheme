@@ -2336,7 +2336,7 @@ USA.
 		(z2i (rec:imag-part z2)))
 	    (cond ((real:exact0= z2r)
 		   ;; a/(i b) = -i a/b
-		   (make-recnum 0 (real:negate (real:/ z1 z2i))))
+		   (complex:%make-rectangular 0 (real:negate (real:/ z1 z2i))))
 		  ((or (flonum? z1) (flonum? z2r) (flonum? z2i))
 		   (kernel (real:->inexact z1) 0.
 			   (real:->inexact z2r) (real:->inexact z2i)))
