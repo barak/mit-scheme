@@ -2302,16 +2302,14 @@ USA.
 		   (kernel (real:->inexact z1r) (real:->inexact z1i)
 			   (real:->inexact z2r) (real:->inexact z2i)))
 		  (else
-		   (let ((d (real:+ (real:square z2r) (real:square z2i)))
+		   (let ((d (rat:+ (rat:square z2r) (rat:square z2i)))
 			 (u
-			  (if (or (real:exact0= z1r) (real:exact0= z2r))
-			      (real:* z1i z2i)
-			      (real:+ (real:* z1r z2r) (real:* z1i z2i))))
+			  (if (rat:zero? z1r)
+			      (rat:* z1i z2i)
+			      (rat:+ (rat:* z1r z2r) (rat:* z1i z2i))))
 			 (v
-			  (if (real:exact0= z2r)
-			      (real:negate (real:* z1r z2i))
-			      (real:- (real:* z1i z2r) (real:* z1r z2i)))))
-		     (complex:%make-rectangular (real:/ u d) (real:/ v d))))))
+			  (rat:- (rat:* z1i z2r) (rat:* z1r z2i))))
+		     (complex:%make-rectangular (rat:/ u d) (rat:/ v d))))))
 	  (make-recnum (real:/ (rec:real-part z1) z2)
 		       (real:/ (rec:imag-part z1) z2)))
       (if (recnum? z2)
@@ -2324,10 +2322,10 @@ USA.
 		   (kernel (real:->inexact z1) 0.
 			   (real:->inexact z2r) (real:->inexact z2i)))
 		  (else
-		   (let ((d (real:+ (real:square z2r) (real:square z2i))))
+		   (let ((d (rat:+ (rat:square z2r) (rat:square z2i))))
 		     (complex:%make-rectangular
-		      (real:/ (real:* z1 z2r) d)
-		      (real:/ (real:negate (real:* z1 z2i)) d))))))
+		      (rat:/ (rat:* z1 z2r) d)
+		      (rat:/ (rat:negate (rat:* z1 z2i)) d))))))
 	  ((copy real:/) z1 z2))))
 
 (define (complex:invert z)
