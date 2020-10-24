@@ -2543,7 +2543,7 @@ USA.
 	    (let ((r (real:->inexact r))
 		  (t (real:->inexact t)))
 	      (let ((u (flo:exp (flo:- r 1.))))
-		(complex:%make-rectangular
+		(make-recnum
 		 (flo:* u (flo:* base (flo:cos t)))
 		 (flo:* u (flo:* base (flo:sin t))))))))
       (real-case z)))
@@ -2587,7 +2587,7 @@ USA.
 	;; Computing e^r sin θ is easy -- multiplication won't amplify
 	;; relative error in the factors so we just have to worry about
 	;; overflow.  The tricky part is computing e^r cos θ - 1.
-	(complex:%make-rectangular
+	(make-recnum
 	 (flo:expcosm1 r t)
 	 (if (flo:<= r bound)
 	     (flo:* (flo:exp r) (flo:sin t))
