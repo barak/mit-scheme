@@ -511,132 +511,323 @@ Never raises a floating-point exception---not even for signalling NaN.
 @end example
 @end deffn
 
-@deffn procedure quotient n1 n2
-@deffnx procedure remainder n1 n2
-@deffnx procedure modulo n1 n2
+@deffn procedure euclidean/ n1 n2
+@deffnx procedure floor/ n1 n2
+@deffnx procedure ceiling/ n1 n2
+@deffnx procedure truncate/ n1 n2
+@deffnx procedure round/ n1 n2
 @cindex division, of integers
 @cindex quotient, of integers
 @cindex remainder, of integers
 @cindex modulus, of integers
 @cindex integer division
-These procedures implement number-theoretic (integer) division: for
-positive integers @var{n1} and @var{n2}, if @var{n3} and @var{n4} are
-integers such that
+These procedures implement number-theoretic (integer) division.
+Given a numerator @var{n1} and denominator @var{n2}, they return two
+values @var{n3} and @var{n4}, respectively quotient (an integer) and
+remainder, such that
+@iftex
 @tex
-$$n_1=n_2n_3+n_4$$
-$$0\leq n_4<n_2$$
+$$n_1 = n_2 n_3 + n_4,
+\qquad 0\leq \lvert n_4\rvert < \lvert n_2\rvert.$$
 @end tex
-@ifinfo
+@end iftex
+@ifnottex
 
 @example
 @group
-@var{n1} = (@var{n2} * @var{n3}) + @var{n4}
+@var{n1} = (@var{n2} * @var{n3}) + @var{n4},
 
-0 <= @var{n4} < @var{n2}
+0 <= |@var{n4}| < |@var{n2}|.
 @end group
 @end example
 
-@end ifinfo
-@noindent
-then
+@end ifnottex
+The procedures differ in choice of quotient and remainder:
+
+@itemize
+@item
+@code{euclidean/} chooses the remainder @var{n4} to be nonnegative, so
+that
+@iftex
+@tex
+$0\leq n_4 < \lvert n_2\rvert$.
+@end tex
+@end iftex
+@ifnottex
+@math{0 <= @var{n4} < @var{n2}}.
+@end ifnottex
 
 @example
 @group
-(quotient @var{n1} @var{n2})        @result{}  @var{n3}
-(remainder @var{n1} @var{n2})       @result{}  @var{n4}
-(modulo @var{n1} @var{n2})          @result{}  @var{n4}
+(euclidean/ 15 4)       @result{}  3, 3
+(euclidean/ 13 4)       @result{}  3, 1
+(euclidean/ 13 -4)      @result{}  -3, 1
+(euclidean/ +1 4)       @result{}  0, 1
+(euclidean/ 0 4)        @result{}  0, 0
+(euclidean/ -1 4)       @result{}  -1, 3
+(euclidean/ -13 4)      @result{}  -4, 3
+(euclidean/ -13 -4)     @result{}  4, 3
 @end group
 @end example
 
-@noindent
-For integers @var{n1} and @var{n2} with @var{n2} not equal to 0,
+The quotient part of euclidean division, which can be computed without
+the remainder using @code{euclidean-quotient}, is an odd function of
+the denominator:
 
 @example
 @group
-(= @var{n1}
-   (+ (* @var{n2} (quotient @var{n1} @var{n2}))
-      (remainder @var{n1} @var{n2})))
-                                    @result{}  #t
+(- (euclidean-quotient @var{n1} (- @var{n2})))
+= (euclidean-quotient @var{n1} @var{n2})
 @end group
 @end example
 
-@noindent
-provided all numbers involved in that computation are exact.
-
-The value returned by @code{quotient} always has the sign of the product
-of its arguments.  @code{remainder} and @code{modulo} differ on negative
-arguments --- the @code{remainder} always has the sign of the dividend,
-the @code{modulo} always has the sign of the divisor:
+The remainder part of euclidean division, which can be computed
+without the quotient using @code{euclidean-remainder}, is an even
+function of the denominator:
 
 @example
 @group
-(modulo 13 4)           @result{}  1
-(remainder 13 4)        @result{}  1
-
-(modulo -13 4)          @result{}  3
-(remainder -13 4)       @result{}  -1
-
-(modulo 13 -4)          @result{}  -3
-(remainder 13 -4)       @result{}  1
-
-(modulo -13 -4)         @result{}  -1
-(remainder -13 -4)      @result{}  -1
-
-(remainder -13 -4.0)    @result{}  -1.0  @r{; inexact}
+(euclidean-remainder @var{n1} (- @var{n2}))
+= (euclidean-remainder @var{n1} @var{n2})
 @end group
 @end example
 
-@findex integer-truncate
-Note that @code{quotient} is the same as @code{integer-truncate}.
+When the denominator @var{n2} is a positive power of two, the quotient
+@var{n3} of euclidean division coincides with the result of an
+arithmetic shift:
+
+@example
+@group
+(shift-right @var{n1} @var{s})
+= (euclidean-quotient @var{n1} (expt 2 @var{s}))
+@end group
+@end example
+
+@item
+@code{truncate/} chooses the quotient to have absolute value
+@iftex
+@tex
+$\lvert n_3\rvert = \lfloor\lvert n_1/n_2\rvert\rfloor$;
+@end tex
+@end iftex
+@ifnottex
+@math{@var{n3} = floor(|@var{n1}/@var{n2}|)};
+@end ifnottex
+in other words, @code{truncate/} rounds the quotient @var{n3} toward
+zero.
+
+@example
+@group
+(truncate/ 15 4)        @result{}  3, 3
+(truncate/ 13 4)        @result{}  3, 1
+(truncate/ 13 -4)       @result{}  -3, 1
+(truncate/ +1 4)        @result{}  0, 1
+(truncate/ 0 4)         @result{}  0, 0
+(truncate/ -1 4)        @result{}  0, -1
+(truncate/ -13 4)       @result{}  -3, -1
+(truncate/ -13 -4)      @result{}  3, -1
+@end group
+@end example
+
+If the remainder @var{n4} is nonzero, then it is negative if and only
+if the numerator @var{n1} is negative.
+Like euclidean division, the quotient @var{n3} is an odd function of
+the denominator @var{n2} and the remainder @var{n4} is an even
+function of the denominator @var{n2}.
+
+@item
+@code{floor/} chooses the quotient @var{n3} to be
+@iftex
+@tex
+$\lfloor n_1/n_2\rfloor$;
+@end tex
+@end iftex
+@ifnottex
+@math{floor(@var{n1}/@var{n2})};
+@end ifnottex
+in other words, @code{floor/} rounds the quotient @var{n3} toward
+negative infinity.
+
+@example
+@group
+(floor/ 15 4)           @result{}  3, 3
+(floor/ 13 4)           @result{}  3, 1
+(floor/ 13 -4)          @result{}  -4, -3
+(floor/ +1 4)           @result{}  0, 1
+(floor/ 0 4)            @result{}  0, 0
+(floor/ -1 4)           @result{}  -1, 3
+(floor/ -13 4)          @result{}  -4, 3
+(floor/ -13 -4)         @result{}  3, -1
+@end group
+@end example
+
+If the remainder @var{n4} is nonzero, then it is negative if and only
+if the denominator @var{n2} is negative.
+Like euclidean division, when the denominator @var{n2} is a positive
+power of two, the quotient @var{n3} from @code{floor/} coincides with
+the result of an arithmetic shift.
+
+@item
+@code{ceiling/} chooses the quotient @var{n3} to be
+@iftex
+@tex
+$\lceil n_1/n_2\rceil$;
+@end tex
+@end iftex
+@ifnottex
+@math{ceil(@var{n1}/@var{n2})};
+@end ifnottex
+in other words, @code{ceiling/} rounds the quotient @var{n3} toward
+positive infinity.
+
+@example
+@group
+(ceiling/ 15 4)         @result{}  4, -1
+(ceiling/ 13 4)         @result{}  4, -3
+(ceiling/ 13 -4)        @result{}  -3, 1
+(ceiling/ +1 4)         @result{}  1, -3
+(ceiling/ 0 4)          @result{}  0, 0
+(ceiling/ -1 4)         @result{}  0, -1
+(ceiling/ -13 4)        @result{}  -3, -1
+(ceiling/ -13 -4)       @result{}  4, 3
+@end group
+@end example
+
+If the remainder @var{n4} is nonzero, then it is negative if and only
+if the denominator @var{n2} is nonnegative.
+@code{Ceiling/} is useful for determining, given a number of units,
+how many blocks of a fixed number of units are needed to store that
+many units and how much space is wasted.
+
+@item
+@code{round/} chooses the quotient @var{n3} to be the integer nearest
+to
+@iftex
+@tex
+$n_1/n_2$,
+@end tex
+@end iftex
+@ifnottex
+@math{@var{n1}/@var{n2}},
+@end ifnottex
+or if it is exactly halfway between two integers, then the nearest
+even integer; in other words, @code{round/} implements the default
+@acronym{IEEE 754} rounding mode of round-to-nearest/ties-to-even.
+
+@example
+@group
+(round/ 15 4)           @result{}  4, -1
+(round/ 13 4)           @result{}  3, 1
+(round/ 13 -4)          @result{}  -3, 1
+(round/ +1 4)           @result{}  0, 1
+(round/ 0 4)            @result{}  0, 0
+(round/ -1 4)           @result{}  0, -1
+(round/ -13 4)          @result{}  -3, -1
+(round/ -13 -4)         @result{}  3, -1
+@end group
+@end example
+
+@code{Round/} guarantees that
+@iftex
+@tex
+$0 \leq \lvert n_4\rvert < n_2/2$.
+@end tex
+@end iftex
+@ifnottex
+@math{0 <= |@var{n4}| < @var{n2}/2}.
+@end ifnottex
+Like euclidean division, the quotient @var{n3} is an odd function of
+the denominator @var{n2} and the remainder @var{n4} is an even
+function of the denominator @var{n2}.
+@end itemize
+
+These procedures may also be applied to any real numbers, and are
+subject to inexact contagion:
+
+@example
+@group
+(truncate/ -13 -4.0)    @result{}  3.0, -1.0   @r{; inexact}
+(floor/ 4.56 1.0)       @result{}  4.0, 0.56
+(floor/ #e4.56 1)       @result{}  4, 14/25
+(euclidean/ 7.853981633974483 (atan 0 -1))
+                        @result{}  2.0, 1.5707963267948966
+@end group
+@end example
+
+(These are not useful for precise floating-point argument reduction
+modulo @math{2\pi}, e.g., in @code{cos}, @code{sin}, etc.; for that
+you need to represent @math{\pi} in extended precision.)
 @end deffn
 
-@deffn procedure integer-floor n1 n2
+@deffn procedure euclidean-quotient n1 n2
+@deffnx procedure euclidean-remainder n1 n2
+@deffnx procedure floor-quotient n1 n2
+@deffnx procedure floor-remainder n1 n2
+@deffnx procedure ceiling-quotient n1 n2
+@deffnx procedure ceiling-remainder n1 n2
+@deffnx procedure truncate-quotient n1 n2
+@deffnx procedure truncate-remainder n1 n2
+@deffnx procedure round-quotient n1 n2
+@deffnx procedure round-remainder n1 n2
+These procedures return only the quotient or remainder part of an
+integer division.
+For example, @code{(floor/ @var{n1} @var{n2})} is equivalent to:
+
+@example
+@group
+(values (floor-quotient @var{n1} @var{n2})
+        (floor-remainder @var{n1} @var{n2}))
+@end group
+@end example
+@end deffn
+
+@deffn procedure quotient n1 n2
+@deffnx procedure remainder n1 n2
+@deffnx procedure modulo n1 n2
+@deffnx procedure integer-floor n1 n2
 @deffnx procedure integer-ceiling n1 n2
 @deffnx procedure integer-truncate n1 n2
 @deffnx procedure integer-round n1 n2
-These procedures combine integer division with rounding.  For example,
-the following are equivalent:
+Historic aliases for integer division routines, not applicable to
+non-integral rational or real numbers:
 
-@example
-@group
-(integer-floor @var{n1} @var{n2})
-(floor (/ @var{n1} @var{n2}))
-@end group
-@end example
+@itemize
+@item
+@code{quotient} is an alias for @code{truncate-quotient}
 
-@noindent
-However, the former is faster and does not produce an intermediate
-result.
+@item
+@code{remainder} is an alias for @code{truncate-remainder}
 
-@findex quotient
-Note that @code{integer-truncate} is the same as @code{quotient}.
+@item
+@code{modulo} is an alias for @code{floor-remainder}
+
+@item
+@code{integer-floor} is an alias for @code{floor-quotient}
+
+@item
+@code{integer-ceiling} is an alias for @code{ceiling-quotient}
+
+@item
+@code{integer-truncate} is an alias for @code{truncate-quotient}
+
+@item
+@code{integer-round} is an alias for @code{round-quotient}
+@end itemize
 @end deffn
 
 @deffn procedure integer-divide n1 n2
 @deffnx procedure integer-divide-quotient qr
 @deffnx procedure integer-divide-remainder qr
-@findex quotient
-@findex remainder
-@code{integer-divide} is equivalent to performing both @code{quotient}
-and @code{remainder} at once.  The result of @code{integer-divide} is an
-object with two components; the procedures
-@code{integer-divide-quotient} and @code{integer-divide-remainder}
-select those components.  These procedures are useful when both the
-quotient and remainder are needed; often computing both of these numbers
-simultaneously is much faster than computing them separately.
-
-For example, the following are equivalent:
+Historic alias for @code{truncate/} with a special data structure
+instead of multiple return values, not applicable to non-integral
+rational or real arguments.
+If @var{qr} is the result of @code{(integer-divide @var{n1} @var{n2})},
+then @code{(truncate/ @var{n1} @var{n2})} is equivalent to:
 
 @example
 @group
-(lambda (n d)
-  (cons (quotient n d)
-        (remainder n d)))
-
-(lambda (n d)
-  (let ((qr (integer-divide n d)))
-    (cons (integer-divide-quotient qr)
-          (integer-divide-remainder qr))))
+(values (integer-divide-quotient @var{qr})
+        (integer-divide-remainder @var{qr}))
 @end group
 @end example
 @end deffn

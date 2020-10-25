@@ -115,6 +115,9 @@ Documentation License.''
 % Handy historical trigonometric functions.
 \gdef\versin{\mathop{\rm versin}}
 \gdef\exsec{\mathop{\rm exsec}}
+
+\gdef\lvert{\mathopen\vert}
+\gdef\rvert{\mathclose\vert}
 @end tex
 
 @ifnottex
