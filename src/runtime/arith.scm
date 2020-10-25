@@ -1486,13 +1486,17 @@ USA.
       (flo:expm1 (flo:* 0.5 (flo:log1p x)))
       (flo:- (flo:sqrt (flo:+ 1. x)) 1.)))
 
-(define-integrable (flo:compound x n)
+(define (flo:compound x n)
   ;; (1 + x)^n
-  (flo:exp (flo:* n (flo:log1p x))))
+  (if (flo:zero? n)
+      1.
+      (flo:exp (flo:* n (flo:log1p x)))))
 
-(define-integrable (flo:compoundm1 x n)
+(define (flo:compoundm1 x n)
   ;; (1 + x)^n - 1
-  (flo:expm1 (flo:* n (flo:log1p x))))
+  (if (flo:zero? n)
+      0.
+      (flo:expm1 (flo:* n (flo:log1p x)))))
 
 (define (flo:sin-pi* t)
   (if (flo:integer? t)
@@ -1639,16 +1643,16 @@ USA.
       (rat:->string x radix)))
 
 (define (real:compound x n)
-  (define (compound x n) (flo:compound x n))
-  (cond ((flonum? x) (compound x (real:->inexact n)))
-	((real:zero? x) 1)
+  (define (compound x n) ((copy flo:compound) x n))
+  (cond ((or (real:exact0= x) (real:exact0= n)) 1)
+	((flonum? x) (compound x (real:->inexact n)))
 	((flonum? n) (compound (rat:->inexact x) n))
 	(else (rat:expt (rat:1+ x) n))))
 
 (define (real:compoundm1 x n)
-  (define (compoundm1 x n) (flo:compoundm1 x n))
-  (cond ((flonum? x) (compoundm1 x (real:->inexact n)))
-	((real:zero? x) 0)
+  (define (compoundm1 x n) ((copy flo:compoundm1) x n))
+  (cond ((or (real:exact0= x) (real:exact0= n)) 0)
+	((flonum? x) (compoundm1 x (real:->inexact n)))
 	((flonum? n) (compoundm1 (rat:->inexact x) n))
 	(else (rat:-1+ (rat:expt (rat:1+ x) n)))))
 

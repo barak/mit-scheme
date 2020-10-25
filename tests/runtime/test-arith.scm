@@ -830,21 +830,62 @@ USA.
 
 (define-enumerated-test 'compound-exact
   (list
+   (list +nan.0 0. 1.)
+   (list -1 0 1)
+   (list -1. 0 1)
+   (list -1. 0. 1.)
+   (list -1. -0. 1.)
+   (list -1. -1 +inf.0)
+   (list -1. -1. +inf.0)
+   (list -1. 1. +0.)
+   (list -1. 2. +0.)
    (list 123 0 1)
-   (list 123. 0 1.)			;XXX exact?
+   (list 123. 0 1)
    (list 0 123 1)
    (list 0 123. 1)
-   (list 1 16 65536))
-  (lambda (x n c)
-    (assert-eqv (yes-traps (lambda () (compound x n))) c)))
+   (list 0. 123 1.)
+   (list 0. 123. 1.)
+   (list 0. -123 1.)
+   (list 0. -123. 1.)
+   (list 1 16 65536)
+   (list +inf.0 123 +inf.0)
+   (list +inf.0 -123 +0.))
+  (lambda (x n c #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv-nan (yes-traps (lambda () (compound x n))) c)))))
+
+(define-enumerated-test 'compound-qnan
+  (list
+   (list +nan.0 1.)
+   (list 1. +nan.0))
+  (lambda (x n #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-nan (no-traps (lambda () (compound x n))))))))
 
 (define-enumerated-test 'compoundm1-exact
   (list
+   (list +nan.0 0. 0.)
+   (list -1 0 0)
+   (list -1. 0 0)
+   (list -1. 0. 0.)
+   (list -1. -0. 0.)
+   (list -1. -1 +inf.0)
+   (list -1. -1. +inf.0)
+   (list -1. 1. -1.)
+   (list -1. 2. -1.)
    (list 123 0 0)
-   (list 123. 0 0.)			;XXX exact?
+   (list 123. 0 0)
    (list 0 123 0)
    (list 0 123. 0)
-   (list 1 16 65535))
+   (list 0. 123 0.)
+   (list 0. 123. 0.)
+   (list 0. -123 -0.)
+   (list 0. -123. -0.)
+   (list 1 16 65535)
+   (list +inf.0 123 +inf.0)
+   (list +inf.0 -123 -1.))
   (lambda (x n c)
     (assert-eqv (yes-traps (lambda () (compoundm1 x n))) c)))
 
@@ -1352,7 +1393,9 @@ USA.
                                      (lambda () (sqrt xi-0)))))))
 
 (define-enumerated-test 'rsqrt-exact
-  `((1 1)
+  `((+0. +inf.0)
+    (-0. -inf.0)
+    (1 1)
     (1. 1.)
     (4 1/2)
     (4. 0.5)
