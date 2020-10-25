@@ -2484,6 +2484,7 @@ This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
 @end deffn
 
 @deffn procedure flo:abs flonum
+@deffnx procedure flo:copysign flonum1 flonum2
 @deffnx procedure flo:exp flonum
 @deffnx procedure flo:exp2 flonum
 @deffnx procedure flo:exp10 flonum
@@ -2702,25 +2703,6 @@ of @var{x2}.
 
 @example
 (flo:nextafter 0. -1.)         @result{}  -4.9406564584124654e-324
-@end example
-@end deffn
-
-@deffn procedure flo:copysign x1 x2
-Returns a floating-point number with the magnitude of @var{x1} and the
-sign of @var{x2}.
-If @var{x1} is a NaN, then the result has the payload of @var{x1} and
-is quiet if and only if @var{x1} is quiet.
-Never raises a floating-point exception---not even for signalling NaN.
-
-@example
-@group
-(flo:copysign 123. 456.)       @result{}  123.
-(flo:copysign +inf.0 -1.)      @result{}  -inf.0
-(flo:copysign 0. -1.)          @result{}  -0.
-(flo:copysign -0. 0.)          @result{}  0.
-(flo:copysign -nan.123 0.)     @result{}  +nan.123
-(flo:copysign +snan.123 -0.)   @result{}  -snan.123
-@end group
 @end example
 @end deffn
 
