@@ -3833,6 +3833,7 @@ USA.
 	  cube
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
+	  flo:*-
 	  flo:acos/pi
 	  flo:aexsec
 	  flo:aexsec/pi
