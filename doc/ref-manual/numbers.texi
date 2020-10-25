@@ -2409,7 +2409,7 @@ of @code{normal}, @code{subnormal}, @code{zero}, @code{infinity}, or
 @deffn procedure flo:sign-negative? flonum
 Returns true if the sign bit of @var{flonum} is negative, and false
 otherwise.
-Never raises a floating-point exception.
+Never raises a floating-point exception---not even for signalling NaN.
 
 @example
 @group
@@ -2463,6 +2463,7 @@ emulated using Dekker's double-precision algorithm in software.
 @deffn procedure flo:negate flonum
 This procedure returns the negation of its argument.  When compiled, it
 does not check the type of its argument.
+Never raises a floating-point exception---not even for signalling NaN.
 
 This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
 
