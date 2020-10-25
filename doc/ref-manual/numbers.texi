@@ -870,9 +870,9 @@ would overflow memory.
 
 @example
 @group
-(modexp 1234 5678 90)   @result{} 46
+(modexp 1234 5678 90)   @result{}  46
 (modexp 2 (expt 2 1024) 299)
-                        @result{} 55
+                        @result{}  55
 @end group
 @end example
 @end deffn
@@ -886,9 +886,10 @@ of 0 is defined to be 1.
 
 @example
 @group
-(numerator (/ 6 4))  @result{}  3
-(denominator (/ 6 4))  @result{}  2
-(denominator (inexact (/ 6 4))) @result{} 2.0
+(numerator (/ 6 4))     @result{}  3
+(denominator (/ 6 4))   @result{}  2
+(denominator (inexact (/ 6 4)))
+                        @result{}  2.0
 @end group
 @end example
 @end deffn
@@ -967,8 +968,8 @@ simplest rational of all.
 
 @example
 @group
-(rationalize (exact .3) 1/10)  @result{} 1/3    @r{; exact}
-(rationalize .3 1/10)          @result{} #i1/3  @r{; inexact}
+(rationalize (exact .3) 1/10)  @result{}  1/3    @r{; exact}
+(rationalize .3 1/10)          @result{}  #i1/3  @r{; inexact}
 @end group
 @end example
 
@@ -1013,7 +1014,7 @@ range minus @var{pi} (exclusive) to @var{pi} (inclusive).  log 0 is
 undefined.  The value of log @var{z} when @var{z} is complex is defined
 according to the formula
 @tex
-$$\log z = \log {\rm magnitude}(z) + i {\rm angle} (z)$$
+$$\log z = \log \mathop{\rm magnitude}(z) + i \mathop{\rm angle} (z)$$
 @end tex
 @ifinfo
 
@@ -1025,9 +1026,11 @@ log @var{z} = log magnitude(@var{z}) + i angle(@var{z})
 With log defined this way, the values of arcsine, arccosine, and
 arctangent are according to the following formulae:
 @tex
-$$\sin^{-1} z = -i \log (i z + \sqrt{1 - z^2})$$
-$$\cos^{-1} z = \pi / 2 - \sin^{-1} z$$
-$$\tan^{-1} z = (\log (1 + i z) - \log (1 - i z)) / (2 i)$$
+$$\eqalign{
+  \sin^{-1} z &= -i \log (i z + \sqrt{1 - z^2}) \cr
+  \cos^{-1} z &= \pi / 2 - \sin^{-1} z \cr
+  \tan^{-1} z &= (\log (1 + i z) - \log (1 - i z)) / (2 i)
+}$$
 @end tex
 @ifinfo
 
@@ -1508,9 +1511,17 @@ Equivalent to:
 @iftex
 @tex
 \eqimage{fig/loglogistic}
-  {$$\eqalign{\mathop{\hbox{\rm log-logistic}} x &= \log \mathop{\rm logistic}(x) \cr&= \log [1/(1 + e^{-x})],}$$}
+  {$$\eqalign{
+    \mathop{\hbox{\rm log-logistic}} x
+      &= \log \mathop{\rm logistic}(x) \cr
+      &= \log [1/(1 + e^{-x})],
+  }$$}
 \eqimage{fig/logitexp}
-  {$$\eqalign{\mathop{\hbox{\rm logit-exp}} x &= \mathop{\rm logit}(e^x) \cr&= \log [e^x/(1 - e^x)].}$$}
+  {$$\eqalign{
+    \mathop{\hbox{\rm logit-exp}} x
+      &= \mathop{\rm logit}(e^x) \cr
+      &= \log [e^x/(1 - e^x)].
+  }$$}
 @end tex
 @end iftex
 @ifnottex
@@ -1932,40 +1943,40 @@ Some examples of @code{param:flonum-printer-cutoff}:
 
 @example
 (number->string (* 4 (atan 1 1)))
-                                    @result{} "3.141592653589793"
+                                    @result{}  "3.141592653589793"
 (parameterize ((param:flonum-printer-cutoff '(relative 5)))
   (number->string (* 4 (atan 1 1))))
-                                    @result{} "3.1416"
+                                    @result{}  "3.1416"
 (parameterize ((param:flonum-printer-cutoff '(relative 5)))
   (number->string (* 4000 (atan 1 1))))
-                                    @result{} "3141.6"
+                                    @result{}  "3141.6"
 (parameterize ((param:flonum-printer-cutoff '(relative 5 scientific)))
   (number->string (* 4000 (atan 1 1))))
-                                    @result{} "3.1416e3"
+                                    @result{}  "3.1416e3"
 (parameterize ((param:flonum-printer-cutoff '(relative 5 scientific)))
   (number->string (* 40000 (atan 1 1))))
-                                    @result{} "3.1416e4"
+                                    @result{}  "3.1416e4"
 (parameterize ((param:flonum-printer-cutoff '(relative 5 engineering)))
   (number->string (* 40000 (atan 1 1))))
-                                    @result{} "31.416e3"
+                                    @result{}  "31.416e3"
 (parameterize ((param:flonum-printer-cutoff '(absolute 5)))
   (number->string (* 4 (atan 1 1))))
-                                    @result{} "3.14159"
+                                    @result{}  "3.14159"
 (parameterize ((param:flonum-printer-cutoff '(absolute 5)))
   (number->string (* 4000 (atan 1 1))))
-                                    @result{} "3141.59265"
+                                    @result{}  "3141.59265"
 (parameterize ((param:flonum-printer-cutoff '(absolute -4)))
   (number->string (* 4e10 (atan 1 1))))
-                                    @result{} "31415930000."
+                                    @result{}  "31415930000."
 (parameterize ((param:flonum-printer-cutoff '(absolute -4 scientific)))
   (number->string (* 4e10 (atan 1 1))))
-                                    @result{} "3.141593e10"
+                                    @result{}  "3.141593e10"
 (parameterize ((param:flonum-printer-cutoff '(absolute -4 engineering)))
   (number->string (* 4e10 (atan 1 1))))
-                                    @result{} "31.41593e9"
+                                    @result{}  "31.41593e9"
 (parameterize ((param:flonum-printer-cutoff '(absolute -5)))
   (number->string (* 4e10 (atan 1 1))))
-                                    @result{} "31415900000."
+                                    @result{}  "31415900000."
 @end example
 
 @deffn procedure string->number string [radix]
@@ -2107,10 +2118,10 @@ compiled, it does not check the type of its argument.
 
 @example
 @group
-(fix:not 0)                             @result{}  -1
-(fix:not -1)                            @result{}  0
-(fix:not 1)                             @result{}  -2
-(fix:not -34)                           @result{}  33
+(fix:not 0)             @result{}  -1
+(fix:not -1)            @result{}  0
+(fix:not 1)             @result{}  -2
+(fix:not -34)           @result{}  33
 @end group
 @end example
 @end deffn
@@ -2121,8 +2132,8 @@ compiled, it does not check the types of its arguments.
 
 @example
 @group
-(fix:and #x43 #x0f)                     @result{}  3
-(fix:and #x43 #xf0)                     @result{}  #x40
+(fix:and #x43 #x0f)     @result{}  3
+(fix:and #x43 #xf0)     @result{}  #x40
 @end group
 @end example
 @end deffn
@@ -2134,8 +2145,8 @@ not check the types of its arguments.
 
 @example
 @group
-(fix:andc #x43 #x0f)                    @result{}  #x40
-(fix:andc #x43 #xf0)                    @result{}  3
+(fix:andc #x43 #x0f)    @result{}  #x40
+(fix:andc #x43 #xf0)    @result{}  3
 @end group
 @end example
 @end deffn
@@ -2146,8 +2157,8 @@ When compiled, it does not check the types of its arguments.
 
 @example
 @group
-(fix:or #x40 3)                         @result{} #x43
-(fix:or #x41 3)                         @result{} #x43
+(fix:or #x40 3)         @result{}  #x43
+(fix:or #x41 3)         @result{}  #x43
 @end group
 @end example
 @end deffn
@@ -2158,8 +2169,8 @@ When compiled, it does not check the types of its arguments.
 
 @example
 @group
-(fix:xor #x40 3)                        @result{} #x43
-(fix:xor #x41 3)                        @result{} #x42
+(fix:xor #x40 3)        @result{}  #x43
+(fix:xor #x41 3)        @result{}  #x42
 @end group
 @end example
 @end deffn
@@ -2172,10 +2183,10 @@ not check the types of its arguments, nor the validity of its result.
 
 @example
 @group
-(fix:lsh 1 10)                          @result{}  #x400
-(fix:lsh #x432 -10)                     @result{}  1
-(fix:lsh -1 3)                          @result{}  -8
-(fix:lsh -128 -4)                       @result{}  #x3FFFF8
+(fix:lsh 1 10)          @result{}  #x400
+(fix:lsh #x432 -10)     @result{}  1
+(fix:lsh -1 3)          @result{}  -8
+(fix:lsh -128 -4)       @result{}  #x3FFFF8
 @end group
 @end example
 @end deffn
@@ -2340,15 +2351,15 @@ NaN arguments; in other words, they are ``ordered comparisons''.
 
 @example
 @group
-(flo:zero? -0.)                @result{} #t
-(flo:negative? -0.)            @result{} #f
-(flo:negative? -1.)            @result{} #t
+(flo:zero? -0.)                @result{}  #t
+(flo:negative? -0.)            @result{}  #f
+(flo:negative? -1.)            @result{}  #t
 
-(flo:zero? 0.)                 @result{} #t
-(flo:positive? 0.)             @result{} #f
-(flo:positive? 1.)             @result{} #f
+(flo:zero? 0.)                 @result{}  #t
+(flo:positive? 0.)             @result{}  #f
+(flo:positive? 1.)             @result{}  #f
 
-(flo:zero? +nan.123)           @result{} #f  @r{; (raises invalid-operation)}
+(flo:zero? +nan.123)           @result{}  #f  @r{; (raises invalid-operation)}
 @end group
 @end example
 @end deffn
@@ -2363,11 +2374,11 @@ For any flonum, exactly one of these predicates returns true.
 These predicates never raise floating-point exceptions.
 
 @example
-(flo:normal? 1.23)             @result{} #t
-(flo:subnormal? 4e-124)        @result{} #t
-(flo:safe-zero? -0.)           @result{} #t
-(flo:infinite? +inf.0)         @result{} #t
-(flo:nan? -nan.123)            @result{} #t
+(flo:normal? 1.23)             @result{}  #t
+(flo:subnormal? 4e-124)        @result{}  #t
+(flo:safe-zero? -0.)           @result{}  #t
+(flo:infinite? +inf.0)         @result{}  #t
+(flo:nan? -nan.123)            @result{}  #t
 @end example
 @end deffn
 
@@ -2402,14 +2413,14 @@ Never raises a floating-point exception.
 
 @example
 @group
-(flo:sign-negative? +0.)       @result{} #f
-(flo:sign-negative? -0.)       @result{} #t
-(flo:sign-negative? -1.)       @result{} #t
-(flo:sign-negative? +inf.0)    @result{} #f
-(flo:sign-negative? +nan.123)  @result{} #f
+(flo:sign-negative? +0.)       @result{}  #f
+(flo:sign-negative? -0.)       @result{}  #t
+(flo:sign-negative? -1.)       @result{}  #t
+(flo:sign-negative? +inf.0)    @result{}  #f
+(flo:sign-negative? +nan.123)  @result{}  #f
 
-(flo:negative? -0.)            @result{} #f
-(flo:negative? +nan.123)       @result{} #f  @r{; (raises invalid-operation)}
+(flo:negative? -0.)            @result{}  #f
+(flo:negative? +nan.123)       @result{}  #f  @r{; (raises invalid-operation)}
 @end group
 @end example
 @end deffn
@@ -2442,9 +2453,9 @@ emulated using Dekker's double-precision algorithm in software.
 @example
 @group
 (flo:+ (flo:* 1.2e100 2e208) -1.4e308)
-                               @result{} +inf.0  @r{; (raises overflow)}
+                               @result{}  +inf.0  @r{; (raises overflow)}
 (flo:*+ 1.2e100 2e208  -1.4e308)
-                               @result{} 1e308
+                               @result{}  1e308
 @end group
 @end example
 @end deffn
@@ -2457,17 +2468,17 @@ This is @emph{not} equivalent to @code{(flo:- 0. @var{flonum})}:
 
 @example
 @group
-(flo:negate 1.2)               @result{} -1.2
-(flo:negate -nan.123)          @result{} +nan.123
-(flo:negate +inf.0)            @result{} -inf.0
-(flo:negate 0.)                @result{} -0.
-(flo:negate -0.)               @result{} 0.
+(flo:negate 1.2)               @result{}  -1.2
+(flo:negate -nan.123)          @result{}  +nan.123
+(flo:negate +inf.0)            @result{}  -inf.0
+(flo:negate 0.)                @result{}  -0.
+(flo:negate -0.)               @result{}  0.
 
-(flo:- 0. 1.2)                 @result{} -1.2
-(flo:- 0. -nan.123)            @result{} -nan.123
-(flo:- 0. +inf.0)              @result{} -inf.0
-(flo:- 0. 0.)                  @result{} 0.
-(flo:- 0. -0.)                 @result{} 0.
+(flo:- 0. 1.2)                 @result{}  -1.2
+(flo:- 0. -nan.123)            @result{}  -nan.123
+(flo:- 0. +inf.0)              @result{}  -inf.0
+(flo:- 0. 0.)                  @result{}  0.
+(flo:- 0. -0.)                 @result{}  0.
 @end group
 @end example
 @end deffn
@@ -2550,7 +2561,11 @@ When compiled, they do not check the types of their arguments.
 Returns two values,
 @iftex
 @tex
-$$m = \log \left|\Gamma(x)\right| \quad\hbox{and}\quad s = \mathop{\rm sign} \Gamma(x),$$
+$$
+  m = \log \left|\Gamma(x)\right|
+\quad\hbox{and}\quad
+  s = \mathop{\rm sign} \Gamma(x),
+$$
 @end tex
 @end iftex
 @ifnottex
@@ -2686,21 +2701,25 @@ Returns the next floating-point number after @var{x1} in the direction
 of @var{x2}.
 
 @example
-(flo:nextafter 0. -1.)         @result{} -4.9406564584124654e-324
+(flo:nextafter 0. -1.)         @result{}  -4.9406564584124654e-324
 @end example
 @end deffn
 
 @deffn procedure flo:copysign x1 x2
 Returns a floating-point number with the magnitude of @var{x1} and the
 sign of @var{x2}.
+If @var{x1} is a NaN, then the result has the payload of @var{x1} and
+is quiet if and only if @var{x1} is quiet.
+Never raises a floating-point exception---not even for signalling NaN.
 
 @example
 @group
-(flo:copysign 123. 456.)       @result{} 123.
-(flo:copysign +inf.0 -1.)      @result{} -inf.0
-(flo:copysign 0. -1.)          @result{} -0.
-(flo:copysign -0. 0.)          @result{} 0.
-(flo:copysign -nan.123 0.)     @result{} +nan.123
+(flo:copysign 123. 456.)       @result{}  123.
+(flo:copysign +inf.0 -1.)      @result{}  -inf.0
+(flo:copysign 0. -1.)          @result{}  -0.
+(flo:copysign -0. 0.)          @result{}  0.
+(flo:copysign -nan.123 0.)     @result{}  +nan.123
+(flo:copysign +snan.123 -0.)   @result{}  -snan.123
 @end group
 @end example
 @end deffn
@@ -2722,7 +2741,10 @@ Floating-point system parameters.
 maximum relative error of rounding to nearest:
 @iftex
 @tex
-$$\max_x {|x - \mathop{\rm fl}(x)| \over |x|} = {1 \over 2 r^{p-1}},$$
+$$
+  \max_x {\lvert x - \mathop{\rm fl}(x)\rvert \over \lvert x\rvert}
+  = {1 \over 2 r^{p-1}},
+$$
 @end tex
 @end iftex
 @ifnottex
@@ -2753,8 +2775,8 @@ For infinities, this returns positive infinity.
 For NaN, this returns the same NaN.
 
 @example
-(flo:ulp 1.)                    @result{} 2.220446049250313e-16
-(= (flo:ulp 1.) flo:ulp-of-one) @result{} #t
+(flo:ulp 1.)                    @result{}  2.220446049250313e-16
+(= (flo:ulp 1.) flo:ulp-of-one) @result{}  #t
 @end example
 @end deffn
 
@@ -2853,16 +2875,16 @@ If @var{quiet?} is false, @var{payload} must be nonzero.
 @example
 @group
 (flo:sign-negative? (flo:make-nan @var{negative?} @var{quiet?} @var{payload}))
-                               @result{} @var{negative?}
+                               @result{}  @var{negative?}
 (flo:nan-quiet? (flo:make-nan @var{negative?} @var{quiet?} @var{payload}))
-                               @result{} @var{quiet?}
+                               @result{}  @var{quiet?}
 (flo:nan-payload (flo:make-nan @var{negative?} @var{quiet?} @var{payload}))
-                               @result{} @var{payload}
+                               @result{}  @var{payload}
 
-(flo:make-nan #t #f 42)        @result{} -snan.42
-(flo:sign-negative? +nan.123)  @result{} #f
-(flo:quiet? +nan.123)          @result{} #t
-(flo:payload +nan.123)         @result{} 123
+(flo:make-nan #t #f 42)        @result{}  -snan.42
+(flo:sign-negative? +nan.123)  @result{}  #f
+(flo:nan-quiet? +nan.123)      @result{}  #t
+(flo:nan-payload +nan.123)     @result{}  123
 @end group
 @end example
 @end deffn
@@ -3054,7 +3076,7 @@ of exceptions by a list of human-readable symbols naming them.
    (flo:/ (identity-procedure 1.) 0.)
    (flo:exceptions->names
     (flo:test-exceptions (flo:supported-exceptions)))))
-                               @result{} (divide-by-zero)
+                               @result{}  (divide-by-zero)
 @end example
 @end deffn
 
@@ -3292,12 +3314,12 @@ states.
 
 @example
 @group
-(random 1.0)    @result{} .32744744667719056
-(random 1.0)    @result{} .01668326768172354
-(random 10)     @result{} 3
-(random 10)     @result{} 8
-(random 100)    @result{} 38
-(random 100)    @result{} 63
+(random 1.0)    @result{}  .32744744667719056
+(random 1.0)    @result{}  .01668326768172354
+(random 10)     @result{}  3
+(random 10)     @result{}  8
+(random 100)    @result{}  38
+(random 100)    @result{}  63
 @end group
 @end example
 @end deffn
