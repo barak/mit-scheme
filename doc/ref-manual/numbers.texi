@@ -1432,6 +1432,28 @@ either positive real part, or zero real part and non-negative imaginary
 part.
 @end deffn
 
+@deffn procedure rsqrt z
+Returns the reciprocal of the principal square root of @var{z}.
+@end deffn
+
+@deffn procedure sqrt1pm1 z
+Returns
+@iftex
+@tex
+$$\sqrt{1 + z} - 1$$
+@end tex
+@end iftex
+@ifnottex
+
+@example
+sqrt(1 + @var{z}) - 1
+@end example
+
+@end ifnottex
+with low relative error even for @var{z} near zero, unlike
+@code{(- (sqrt (+ 1 @var{z})) 1)}.
+@end deffn
+
 @deffn procedure expt z1 z2
 Returns @var{z1} raised to the power @var{z2}:
 @tex
@@ -1447,6 +1469,29 @@ $0^0$ is defined to be equal to 1.
 @noindent
 0^0 is defined to be equal to 1.
 @end ifinfo
+@end deffn
+
+@deffn procedure compound z1 z2
+@deffnx procedure compoundm1 z1 z2
+@code{Compound} returns
+@iftex
+@tex
+$(1 + z_1)^{z_2}$,
+@end tex
+@end iftex
+@ifnottex
+(1 + @var{z1})^@var{z2},
+@end ifnottex
+and @code{compoundm1} returns
+@iftex
+@tex
+$(1 + z_1)^{z_2} - 1$,
+@end tex
+@end iftex
+@ifnottex
+(1 + @var{z1})^@var{z2} - 1,
+@end ifnottex
+with low relative error even for @var{z1} near zero.
 @end deffn
 
 @deffn procedure make-rectangular x1 x2
