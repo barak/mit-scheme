@@ -730,7 +730,7 @@ even integer; in other words, @code{round/} implements the default
 @code{Round/} guarantees that
 @iftex
 @tex
-$0 \leq \lvert n_4\rvert < n_2/2$.
+$0 \leq \lvert n_4\rvert < \lvert n_2\rvert/2$.
 @end tex
 @end iftex
 @ifnottex
