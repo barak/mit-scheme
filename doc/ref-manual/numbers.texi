@@ -1440,7 +1440,8 @@ Returns the reciprocal of the principal square root of @var{z}.
 Returns
 @iftex
 @tex
-$$\sqrt{1 + z} - 1$$
+\eqimage{fig/sqrt1pm1}
+  {$$\sqrt{1 + z} - 1.$$}
 @end tex
 @end iftex
 @ifnottex
@@ -1449,9 +1450,31 @@ $$\sqrt{1 + z} - 1$$
 sqrt(1 + @var{z}) - 1
 @end example
 
+@image{fig/sqrt1pm1}
+
 @end ifnottex
-with low relative error even for @var{z} near zero, unlike
-@code{(- (sqrt (+ 1 @var{z})) 1)}.
+
+This function is well-conditioned except for @var{z} near @math{-1};
+the condition number is:
+@iftex
+@tex
+\eqimage{fig/cn-sqrt1pm1}
+  {$${z/2 \over z - (\sqrt{1 + z} - 1)}.$$}
+@end tex
+@end iftex
+@ifnottex
+
+@example
+(z/2) / (z - (sqrt(1 + z) - 1))
+@end example
+
+@image{fig/cn-sqrt1pm1}
+
+@end ifnottex
+
+Using @code{(sqrt1pm1 @var{z})} instead of
+@code{(- (sqrt (+ 1 @var{z})) 1)}
+avoids loss of precision when @var{z} is near @math{0}.
 @end deffn
 
 @deffn procedure expt z1 z2

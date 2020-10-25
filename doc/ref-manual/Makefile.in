@@ -67,6 +67,7 @@ FIGURES_EPS = \
 	fig/cn-logitexp.eps \
 	fig/cn-logithalf.eps \
 	fig/cn-loglogistic.eps \
+	fig/cn-sqrt1pm1.eps \
 	fig/cn-versin.eps \
 	fig/expm1.eps \
 	fig/exsec.eps \
@@ -79,6 +80,7 @@ FIGURES_EPS = \
 	fig/logitexp.eps \
 	fig/logithalf.eps \
 	fig/loglogistic.eps \
+	fig/sqrt1pm1.eps \
 	fig/versin.eps \
 	# end of FIGURES_EPS
 
