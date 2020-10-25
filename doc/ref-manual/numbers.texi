@@ -473,10 +473,41 @@ equivalent to @code{(- z 1)}.
 @deffn procedure abs x
 @cindex absolute value, of number
 @cindex magnitude, of real number
-@code{abs} returns the magnitude of its argument.
+Returns a real number with the magnitude of @var{x} and nonnegative
+sign bit.
+If @var{x} is a NaN, then the result has nonnegative sign bit and the
+payload of @var{x}, and is quiet if and only if @var{x} is quiet.
+Never raises a floating-point exception---not even for signalling NaN.
+
+@code{Abs} is limited to real numbers.
+For the complex magnitude, use @code{magnitude} instead.
 
 @example
 (abs -7)                @result{}  7
+(abs 0.)                @result{}  0.
+(abs -0.)               @result{}  0.
+(abs -inf.0)            @result{}  +inf.0
+(abs -snan.123)         @result{}  +snan.123
+(abs 1+2i)              @error{}
+@end example
+@end deffn
+
+@deffn procedure copysign x1 x2
+@cindex sign bit, of number
+Returns a real number with the magnitude of @var{x1} and the sign of
+@var{x2}.
+If @var{x1} is a NaN, then the result has the payload of @var{x1} and
+is quiet if and only if @var{x1} is quiet.
+Never raises a floating-point exception---not even for signalling NaN.
+
+@example
+@group
+(copysign 123 -1)              @result{}  -123
+(copysign 0. -1)               @result{}  -0.
+(copysign -0. 0.)              @result{}  0.
+(copysign -nan.123 0.)         @result{}  +nan.123
+(copysign +snan.123 -0.)       @result{}  -snan.123
+@end group
 @end example
 @end deffn
 
@@ -1582,20 +1613,6 @@ equivalent (in the sense of @code{=}), then a violation of an
 implementation restriction may be reported.
 
 The procedure @code{inexact->exact} has been deprecated by @urseven{}.
-@end deffn
-
-@deffn procedure copysign x1 x2
-Returns a real number with the magnitude of @var{x1} and the sign of
-@var{x2}.
-
-@example
-@group
-(copysign 123 -1)              @result{} -123
-(copysign 0. -1)               @result{} -0.
-(copysign -0. 0.)              @result{} 0.
-(copysign -nan.123 0.)         @result{} +nan.123
-@end group
-@end example
 @end deffn
 
 @node Numerical input and output, Fixnum and Flonum Operations, Numerical operations, Numbers
