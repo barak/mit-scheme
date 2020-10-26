@@ -918,14 +918,25 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    (assert (not overflow?))
+    ;; We only test for overflow in small nonzero left shifts.
+    (assert (or (< 0 n (- scheme-datum-width 1)) (not overflow?)))
     (cond ((zero? n)
+	   ;; XXX Should dispense with this case earlier.
+	   (assert (not overflow?))
 	   (LAP))
 	  ((not (<= (- 0 scheme-datum-width) n scheme-datum-width))
+	   (assert (not overflow?))
 	   (load-fixnum-constant 0 target))
-	  ((not (negative? n))
-	   (LAP (SHL Q ,target (&U ,n))))
+	  ((positive? n)
+	   (if (and overflow? (> n 1))
+	       ;; SHL fails to set the overflow flag for n>1, so
+	       ;; instead we multiply by an immediate.
+	       (with-unsigned-immediate-operand (expt 2 n)
+		 (lambda (operand)
+		   (LAP (IMUL Q ,target ,target ,operand))))
+	       (LAP (SHL Q ,target (&U ,n)))))
 	  (else
+	   (assert (not overflow?))
 	   (LAP (SAR Q ,target (&U ,(- 0 n)))
 		,@(word->fixnum target))))))
 

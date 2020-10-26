@@ -1897,17 +1897,19 @@ USA.
 	    (lambda ()
 	      give-it-up)
 	    (lambda ()
-	      (load-temporary-register scfg*scfg->scfg!
-				       (rtl:make-fixnum-2-args
-					'FIXNUM-LSH
-					(rtl:make-object->fixnum op1)
-					(rtl:make-object->fixnum op2)
-					true)
-		(lambda (fix-temp)
-		  (pcfg*scfg->scfg!
-		   (pcfg/prefer-alternative! (rtl:make-overflow-test))
-		   give-it-up
-		   (finish (rtl:make-fixnum->object fix-temp))))))))))
+	      (if (zero? (rtl:constant-value op2))
+		  (finish op1)
+		  (load-temporary-register scfg*scfg->scfg!
+					   (rtl:make-fixnum-2-args
+					    'FIXNUM-LSH
+					    (rtl:make-object->fixnum op1)
+					    (rtl:make-object->fixnum op2)
+					    true)
+		    (lambda (fix-temp)
+		      (pcfg*scfg->scfg!
+		       (pcfg/prefer-alternative! (rtl:make-overflow-test))
+		       give-it-up
+		       (finish (rtl:make-fixnum->object fix-temp)))))))))))
     '(0 1)
     true)))
 
@@ -1929,13 +1931,15 @@ USA.
 			   false finish)
 	  (lambda ()
 	    (finish
-	     (rtl:make-fixnum->object
-	      (rtl:make-fixnum-2-args 'FIXNUM-LSH
-				      (rtl:make-object->fixnum op1)
-				      (rtl:make-object->fixnum
-				       (rtl:make-constant
-					(- (rtl:constant-value op2))))
-				      false)))))))
+             (if (zero? (rtl:constant-value op2))
+                 op1
+                 (rtl:make-fixnum->object
+                  (rtl:make-fixnum-2-args 'FIXNUM-LSH
+                                          (rtl:make-object->fixnum op1)
+                                          (rtl:make-object->fixnum
+                                           (rtl:make-constant
+                                            (- (rtl:constant-value op2))))
+                                          false))))))))
     '(0 1)
     true)))
 
