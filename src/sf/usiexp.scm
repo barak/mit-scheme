@@ -205,6 +205,19 @@ USA.
 		    (cadr ops)))
       #f))
 
+;;;; Flonum Operations
+
+(define (flonum-fmsub-expansion expr ops block)
+  (if (and (pair? ops)
+	   (pair? (cdr ops))
+	   (pair? (cddr ops))
+	   (null? (cdddr ops)))
+      (pcall expr block (ucode-primitive flonum-fma 3)
+	     (car ops)
+	     (cadr ops)
+	     (pcall #f block (ucode-primitive flonum-negate 1) (caddr ops)))
+      #f))
+
 ;;;; N-ary Arithmetic Field Operations
 
 (define (right-accumulation identity make-binary)
@@ -837,6 +850,7 @@ USA.
 	 (cons 'fix:<= fx<=?-expansion)
 	 (cons 'fix:= fx=?-expansion)
 	 (cons 'fix:>= fx>=?-expansion)
+	 (cons 'flo:*- flonum-fmsub-expansion)
 	 (cons 'fourth fourth-expansion)
 	 (cons 'fx<? fx<?-expansion)
 	 (cons 'fx<=? fx<=?-expansion)
