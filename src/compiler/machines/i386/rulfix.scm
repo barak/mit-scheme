@@ -487,7 +487,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?				;ignore
+    (assert (not overflow?))
     ;++ This is suboptimal in the cases when SOURCE1 is stored only in
     ;++ ecx or when SOURCE2 is stored only in eax, and either one is
     ;++ dead (which is often the case).  In such cases, this generates
@@ -520,7 +520,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (if (= source2 source1)
 	(load-fixnum-constant 1 (target-register-reference target))
 	(LAP ,@(do-division target source1 source2 eax)
@@ -528,7 +528,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (if (= source2 source1)
 	(load-fixnum-constant 0 (target-register-reference target))
 	(do-division target source1 source2 edx))))
@@ -543,7 +543,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -553,7 +553,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -564,7 +564,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (load-fixnum-constant 0 target))
 	  ((= n -1)
@@ -574,7 +574,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -584,7 +584,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((not (<= (- 0 scheme-datum-width) n scheme-datum-width))
@@ -640,7 +640,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((= n 1)
 	   (LAP))
 	  ((= n -1)
@@ -666,7 +666,7 @@ USA.
   (lambda (target n overflow?)
     ;; (remainder x y) is 0 or has the sign of x.
     ;; Thus we can always "divide" by (abs y) to make things simpler.
-    overflow?				; ignored
+    (assert (not overflow?))
     (let ((n (if (negative? n) (- 0 n) n)))
       (cond ((= n 1)
 	     (load-fixnum-constant 0 target))

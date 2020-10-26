@@ -1874,6 +1874,71 @@ USA.
      '(0 1)
      true)))
 
+(define-open-coder/value 'INTEGER-SHIFT-LEFT
+  (conditional-open-coder
+   (lambda (operands primitive block)
+     primitive block
+     (and (rvalue-known-constant? (cadr operands))
+	  (let ((shift (rvalue-constant-value (cadr operands))))
+	    (and (exact-nonnegative-integer? shift)
+		 (< shift (- scheme-datum-width 1))))))
+   (simple-open-coder
+    (lambda (combination expressions finish)
+      (let ((op1 (car expressions))
+	    (op2 (cadr expressions))
+	    (give-it-up
+	     (generic-default 'INTEGER-SHIFT-LEFT combination expressions
+			      false finish)))
+	(assert (rtl:constant? op2))
+	(assert (exact-nonnegative-integer? (rtl:constant-value op2)))
+	(assert (< (rtl:constant-value op2) (- scheme-datum-width 1)))
+	(let ((give-it-up (give-it-up)))
+	  (generate-unary-fixnum-test op1
+	    (lambda ()
+	      give-it-up)
+	    (lambda ()
+	      (load-temporary-register scfg*scfg->scfg!
+				       (rtl:make-fixnum-2-args
+					'FIXNUM-LSH
+					(rtl:make-object->fixnum op1)
+					(rtl:make-object->fixnum op2)
+					true)
+		(lambda (fix-temp)
+		  (pcfg*scfg->scfg!
+		   (pcfg/prefer-alternative! (rtl:make-overflow-test))
+		   give-it-up
+		   (finish (rtl:make-fixnum->object fix-temp))))))))))
+    '(0 1)
+    true)))
+
+(define-open-coder/value 'INTEGER-SHIFT-RIGHT
+  (conditional-open-coder
+   (lambda (operands primitive block)
+     primitive block
+     (and (rvalue-known-constant? (cadr operands))
+	  (let ((shift (rvalue-constant-value (cadr operands))))
+	    (exact-nonnegative-integer? shift))))
+   (simple-open-coder
+    (lambda (combination expressions finish)
+      (let ((op1 (car expressions))
+	    (op2 (cadr expressions)))
+	(assert (rtl:constant? op2))
+	(assert (exact-nonnegative-integer? (rtl:constant-value op2)))
+	(generate-unary-fixnum-test op1
+	  (generic-default 'INTEGER-SHIFT-RIGHT combination expressions
+			   false finish)
+	  (lambda ()
+	    (finish
+	     (rtl:make-fixnum->object
+	      (rtl:make-fixnum-2-args 'FIXNUM-LSH
+				      (rtl:make-object->fixnum op1)
+				      (rtl:make-object->fixnum
+				       (rtl:make-constant
+					(- (rtl:constant-value op2))))
+				      false)))))))
+    '(0 1)
+    true)))
+
 (define (generic-default generic-op combination expressions predicate? finish)
   (lambda ()
     (if (combination/reduction? combination)

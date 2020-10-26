@@ -548,5 +548,6 @@ USA.
     FLONUM-SIN          ;not useful to open-code hairy math
     FLONUM-TAN          ;not useful to open-code hairy math
     GCD-FIXNUM          ;nobody open-codes this
+    INTEGER-SHIFT-LEFT  ;need FIXNUM-LSH overflow test
     VECTOR-CONS         ;nobody open-codes this
     ))
