@@ -43,6 +43,7 @@ USA.
     "compiler/test-closure"
     ("compiler/test-fasdump" (compiler portable-fasdump))
     "compiler/test-fgopt-conect"
+    "compiler/test-fixnum"
     "compiler/test-lsh"
     "compiler/test-open-code"
     "compiler/test-toplev"
