@@ -30,6 +30,7 @@ as fixed point and floating point are referred to by names such as
 * Syntax of numerical constants::
 * Numerical operations::
 * Numerical input and output::
+* Bit operations::
 * Fixnum and Flonum Operations::
 * Random Number Generation::
 @end menu
@@ -1817,7 +1818,7 @@ implementation restriction may be reported.
 The procedure @code{inexact->exact} has been deprecated by @urseven{}.
 @end deffn
 
-@node Numerical input and output, Fixnum and Flonum Operations, Numerical operations, Numbers
+@node Numerical input and output, Bit operations, Numerical operations, Numbers
 @section Numerical input and output
 @cindex numerical input and output
 
@@ -2002,7 +2003,231 @@ Note that a numeric representation using a decimal point or an exponent
 marker is not recognized unless @var{radix} is @code{10}.
 @end deffn
 
-@node Fixnum and Flonum Operations, Random Number Generation, Numerical input and output, Numbers
+@node Bit operations, Fixnum and Flonum Operations, Numerical input and output, Numbers
+@section Bit operations
+
+@cindex bitwise operations
+This section describes operations on exact integers as strings of
+bits in two's-complement representation.
+All arguments must be exact integers.
+
+@deffn procedure bitwise-not x
+Bitwise complement.
+Equivalent to @code{(- -1 @var{x})}.
+@end deffn
+
+@deffn procedure bitwise-and x1 x2 @dots{}
+@deffnx procedure bitwise-andc2 x1 x2
+@deffnx procedure bitwise-andc1 x1 x2
+@deffnx procedure bitwise-xor x1 x2 @dots{}
+@deffnx procedure bitwise-ior x1 x2 @dots{}
+@deffnx procedure bitwise-nor x1 x2
+@deffnx procedure bitwise-eqv x1 x2 @dots{}
+@deffnx procedure bitwise-orc2 x1 x2
+@deffnx procedure bitwise-orc1 x1 x2
+@deffnx procedure bitwise-nand x1 x2
+Bitwise operations.
+The `c1'/`c2' variants take the complement of their first or second
+operand, respectively; for example,
+@code{(bitwise-andc2 @var{x1} @var{x2})}
+is equivalent to
+@code{(bitwise-and @var{x1} (bitwise-not @var{x2}))}.
+
+The four bitwise operations that are associative are extended to
+arbitrary numbers of arguments with an appropriate identity:
+@example
+@group
+(bitwise-and)           @result{} -1
+(bitwise-xor)           @result{} 0
+(bitwise-ior)           @result{} 0
+(bitwise-eqv)           @result{} -1
+@end group
+@end example
+@end deffn
+
+@deffn procedure shift-left x n
+@deffnx procedure shift-right x n
+@deffnx procedure arithmetic-shift x n
+Multiplication and integer division by
+@iftex
+@tex
+$2^n$:
+@end tex
+@end iftex
+@ifnottex
+@math{2^@var{n}}:
+@end ifnottex
+@code{(shift-left @var{x} @var{n})}
+is equivalent to
+@code{(* @var{x} (expt 2 @var{n}))},
+and
+@code{(shift-left @var{x} @var{n})}
+is equivalent to
+@code{(euclidean-quotient @var{x} (expt 2 @var{n}))}.
+
+@code{Shift-left} and @code{shift-right} require @var{n} to be
+nonnegative; @code{arithmetic-shift} is equivalent to
+@code{shift-left} for positive @var{n}, and equivalent to
+@code{shift-right} for the negation of negative @var{n}.
+@end deffn
+
+@deffn procedure bit-mask size position
+Returns an integer with @var{size} consecutive bits set starting at
+@var{position}, zero-based, and all other bits clear.
+Both arguments must be nonnegative.
+
+@example
+@group
+(bit-mask 0 123)        @result{} 0
+(bit-mask 4 3)          @result{} #b1111000
+@end group
+@end example
+@end deffn
+
+@deffn procedure bit-antimask size position
+Returns an integer with @var{size} consecutive bits clear starting at
+@var{position}, zero-based, and all other bits set.
+Both arguments must be nonnegative.
+Equivalent to
+@code{(bitwise-not (bit-mask @var{size} @var{position}))}.
+
+@example
+@group
+(bit-antimask 0 123)    @result{} -1
+(bit-antimask 4 3)      @result{} #b-1111001  @r{; `@code{#b...10000111}'}
+@end group
+@end example
+@end deffn
+
+@deffn procedure bit-count x
+@cindex pop count
+Returns the number of 1 bits in @var{x}, if it is nonnegative, or the
+number of 0 bits, if it is negative.
+Sometimes known as `pop count' or `population count'.
+@end deffn
+
+@deffn procedure hamming-distance x y
+Returns the Hamming distance between @var{x} and @var{y}---that is,
+the number of bits that differ in corresponding positions of their
+finite representations, or @math{-1} if they have opposite signs
+(meaning that they differ in an infinite number of positions).
+Equivalent to @code{(bit-count (bitwise-xor @var{x} @var{y}))}.
+
+@example
+@group
+(hamming-distance 1 3)          @result{} 1
+(hamming-distance 7 8)          @result{} 4
+(hamming-distance -8 -9)        @result{} 4
+(hamming-distance 1 -1)         @result{} -1
+@end group
+@end example
+@end deffn
+
+@deffn procedure integer-length x
+Returns the number of bit positions needed to represent @var{x} in
+two's-complement:
+zero when @var{x} is zero;
+the exact value of
+@code{(ceiling (/ (log @var{x}) (log 2)))}
+when @var{x} is positive;
+@code{(integer-length (bitwise-not @var{x}))}
+when @var{x} is negative.
+
+@example
+@group
+(integer-length -129)           @result{} 9
+(integer-length -128)           @result{} 8
+(integer-length -127)           @result{} 7
+(integer-length -1)             @result{} 0
+(integer-length 0)              @result{} 0
+(integer-length 1)              @result{} 1
+(integer-length 127)            @result{} 7
+(integer-length 128)            @result{} 8
+@end group
+@end example
+@end deffn
+
+@deffn procedure first-set-bit x
+Returns the zero-based position of the first set bit in @var{x}.
+For zero, returns @math{-1}.
+@end deffn
+
+@deffn procedure set-bit n x
+@deffnx procedure clear-bit n x
+@deffnx procedure toggle-bit n x
+@deffnx procedure extract-bit n x
+@deffnx procedure bit-set? n x
+@deffnx procedure bit-clear? n x
+@code{Set-bit} returns the integer @var{x} with the bit at position
+@var{n} set.
+@code{Clear-bit} returns the integer @var{x} with the bit at position
+@var{n} clear.
+@code{Toggle-bit} returns the integer @var{x} with the bit at position
+@var{n} in the opposite state.
+
+@code{Extract-bit} returns the bit at position @var{n} in @var{x} as
+an integer, 0 or 1.
+@code{Bit-set?} returns true if that bit is set, false if clear.
+@code{Bit-clear?} returns false if that bit is set, true if clear.
+@end deffn
+
+@deffn procedure bit n
+@deffnx procedure bits n m
+@code{(bit @var{n})} returns a mask with the @var{n}th bit set and
+all other bits clear.
+@code{(bits @var{n} @var{m})} returns a mask with bits @var{n}
+through @var{m} set, inclusive and zero-based, and all other bits
+clear.
+@var{n} and @var{m} may occur in either order.
+
+@example
+@group
+(bit 7)                 @result{} 128
+(bits 4 5)              @result{} #b110000
+(bits 5 4)              @result{} #b110000
+@end group
+@end example
+@end deffn
+
+@deffn procedure shiftout x mask
+@deffnx procedure shiftin x mask
+@var{mask} must be a nonnegative integer with a contiguous substring
+of bits set, representing a contiguous field of bits.
+
+@code{(shiftout @var{x} @var{mask})} returns the corresponding value
+of that field in @var{x}; that is,
+@code{(bitwise-and (shift-right @var{x} @var{n}) @var{mask})},
+where @var{n} is the position of the first set bit in @var{mask}.
+
+@code{(shiftin @var{x} @var{mask})} returns an an integer with that
+field set to @var{x}; that is,
+@code{(shift-left @var{x} @var{n})}.
+
+Intended to be used with @code{bit} and @code{bits}.
+For example:
+
+@example
+@group
+(define foo:x (bits 0 3))
+(define foo:y (bits 4 5))
+(define foo:z (bits 6 7))
+
+(define (make-foo x y z)
+  (bitwise-ior (shiftin x foo:x)
+               (shiftin y foo:y)
+               (shiftin z foo:z)))
+
+(define (foo-x foo) (shiftout foo foo:x))
+(define (foo-y foo) (shiftout foo foo:y))
+(define (foo-z foo) (shiftout foo foo:z))
+
+(make-foo 1 2 3)                @result{} #b11100001
+(foo-z (make-foo 1 2 3))        @result{} 3
+@end group
+@end example
+@end deffn
+
+@node Fixnum and Flonum Operations, Random Number Generation, Bit operations, Numbers
 @section Fixnum and Flonum Operations
 
 This section describes numerical operations that are restricted forms of
