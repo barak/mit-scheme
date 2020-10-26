@@ -60,7 +60,6 @@ USA.
     "runtime/test-access"
     "runtime/test-amap"
     "runtime/test-arith"
-    "runtime/test-ieee754"
     "runtime/test-binary-port"
     "runtime/test-bit-string"
     "runtime/test-bundle"
@@ -81,6 +80,7 @@ USA.
     "runtime/test-flonum.bin"
     "runtime/test-flonum.com"
     "runtime/test-hash-table"
+    "runtime/test-ieee754"
     "runtime/test-integer-bits"
     "runtime/test-letrec"
     ("runtime/test-library-parser" (runtime library))
