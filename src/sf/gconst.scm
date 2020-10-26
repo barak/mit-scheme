@@ -239,6 +239,8 @@ USA.
     (set-cdr! set-cdr!)
     (set-cell-contents! set-cell-contents!)
     (set-interrupt-enables! set-interrupt-enables!)
+    (shift-left integer-shift-left 2)
+    (shift-right integer-shift-right 2)
     (stack-address-offset stack-address-offset)
     (system-hunk3-cxr0 system-hunk3-cxr0)
     (system-hunk3-cxr1 system-hunk3-cxr1)

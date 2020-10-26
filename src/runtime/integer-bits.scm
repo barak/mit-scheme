@@ -30,7 +30,6 @@ USA.
 (declare (usual-integrations))
 
 (define-primitives
-  ;; Alphabetical order
   (bit-antimask integer-negative-zero-bits 2)
   (bit-count integer-bit-count 1)
   (bit-mask integer-nonnegative-one-bits 2)
@@ -39,19 +38,56 @@ USA.
   (hamming-distance integer-hamming-distance 2)
   (integer-length 1)
   (shift-left integer-shift-left 2)
-  (shift-right integer-shift-right 2)
+  (shift-right integer-shift-right 2))
 
+(let-syntax
+    ((define-associative
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((name (cadr form))
+	       (primitive (caddr form))
+	       (identity (cadddr form)))
+	   `(begin
+	      (declare
+	       (reduce-operator (,name
+				 (primitive ,primitive 2)
+				 (null-value ,identity none))))
+	      (define ,name
+		(let ()
+		  (define-integrable (,name x y)
+		    (,(make-primitive-procedure primitive 2) x y))
+		  (make-arity-dispatched-procedure
+		   (named-lambda (,name self x y z . integers)
+		     self
+		     (let loop
+			 ((integers integers)
+			  (r (,name (,name x y) z)))
+		       (if (pair? integers)
+			   (loop (cdr integers) (,name r (car integers)))
+			   r)))
+		   (lambda () ,identity)
+		   (lambda (x) x)
+		   (lambda (x y) (,name x y))))))))))
+     (define-nonassociative
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((name (cadr form))
+	       (primitive (caddr form)))
+	   `(define-integrable (,name x y)
+	      (,(make-primitive-procedure primitive 2) x y)))))))
   ;; Truth table order
-  (bitwise-and integer-bitwise-and 2)
-  (bitwise-andc2 integer-bitwise-andc2 2)
-  (bitwise-andc1 integer-bitwise-andc1 2)
-  (bitwise-xor integer-bitwise-xor 2)
-  (bitwise-ior integer-bitwise-ior 2)
-  (bitwise-nor integer-bitwise-nor 2)
-  (bitwise-eqv integer-bitwise-eqv 2)
-  (bitwise-orc2 integer-bitwise-orc2 2)
-  (bitwise-orc1 integer-bitwise-orc1 2)
-  (bitwise-nand integer-bitwise-nand 2))
+  (define-associative bitwise-and integer-bitwise-and -1)
+  (define-nonassociative bitwise-andc2 integer-bitwise-andc2)
+  (define-nonassociative bitwise-andc1 integer-bitwise-andc1)
+  (define-associative bitwise-xor integer-bitwise-xor 0)
+  (define-associative bitwise-ior integer-bitwise-ior 0)
+  (define-nonassociative bitwise-nor integer-bitwise-nor)
+  (define-associative bitwise-eqv integer-bitwise-eqv -1)
+  (define-nonassociative bitwise-orc2 integer-bitwise-orc2)
+  (define-nonassociative bitwise-orc1 integer-bitwise-orc1)
+  (define-nonassociative bitwise-nand integer-bitwise-nand))
 
 (define (arithmetic-shift integer shift)
   (if (negative? shift)

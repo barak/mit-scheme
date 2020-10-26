@@ -255,7 +255,45 @@ USA.
   (right-accumulation 1
     (lambda (expr block x y)
       (pcall expr block (ucode-primitive &*) x y))))
+
+(define bitwise-and-expansion
+  (right-accumulation -1
+    (lambda (expr block x y)
+      (pcall expr block (ucode-primitive integer-bitwise-and 2) x y))))
+
+(define bitwise-xor-expansion
+  (right-accumulation 0
+    (lambda (expr block x y)
+      (pcall expr block (ucode-primitive integer-bitwise-xor 2) x y))))
+
+(define bitwise-ior-expansion
+  (right-accumulation 0
+    (lambda (expr block x y)
+      (pcall expr block (ucode-primitive integer-bitwise-ior 2) x y))))
+
+(define bitwise-eqv-expansion
+  (right-accumulation -1
+    (lambda (expr block x y)
+      (pcall expr block (ucode-primitive integer-bitwise-eqv 2) x y))))
 
+(define (bitwise-andc1-expansion expr operands block)
+  (and (length=? operands 2)
+       (let ((x (car operands))
+	     (y (cadr operands)))
+	 (pcall expr block (ucode-primitive integer-bitwise-andc2 2) y x))))
+
+(define (arithmetic-shift-expansion expr operands block)
+  (and (length=? operands 2)
+       (let ((x (car operands))
+	     (s (cadr operands)))
+	 (and (constant? (cadr operands))
+	      (if (negative? (constant/value s))
+		  (pcall expr block (ucode-primitive integer-shift-right 2)
+			 x
+			 (constant/make #f (- (constant/value s))))
+		  (pcall expr block (ucode-primitive integer-shift-left 2)
+			 x s))))))
+
 (define (expt-expansion expr operands block)
   (let ((make-binder
 	 (lambda (make-body)
@@ -803,6 +841,12 @@ USA.
 	 (cons '= =-expansion)
 	 (cons '> >-expansion)
 	 (cons 'apply apply*-expansion)
+	 (cons 'arithmetic-shift arithmetic-shift-expansion)
+	 (cons 'bitwise-and bitwise-and-expansion)
+	 (cons 'bitwise-andc1 bitwise-andc1-expansion)
+	 (cons 'bitwise-eqv bitwise-eqv-expansion)
+	 (cons 'bitwise-ior bitwise-ior-expansion)
+	 (cons 'bitwise-xor bitwise-xor-expansion)
 	 (cons 'caaaar caaaar-expansion)
 	 (cons 'caaadr caaadr-expansion)
 	 (cons 'caaar caaar-expansion)
