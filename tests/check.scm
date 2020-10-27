@@ -66,6 +66,7 @@ USA.
     "runtime/test-bit-string"
     "runtime/test-bundle"
     "runtime/test-bytevector"
+    "runtime/test-case-lambda"
     ("runtime/test-char" (runtime))
     ("runtime/test-char-set" (runtime character-set))
     "runtime/test-comparator"
