@@ -683,6 +683,7 @@ USA.
 	  bit-mask
 	  bit-set?
 	  bits
+	  (bitwise-if bitwise-merge)
 	  bitwise-merge
 	  bitwise-not
 	  clear-bit
