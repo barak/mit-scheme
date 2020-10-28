@@ -209,11 +209,6 @@ USA.
   (object->fixnum (standard-move-to-temporary! register)))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate) (? expression rtl:simple-offset?))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (CMP Q ,(offset->reference! expression) (& 0))))
-
-(define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? register-1))
 		      (REGISTER (? register-2)))
@@ -223,22 +218,6 @@ USA.
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? register))
-		      (? expression rtl:simple-offset?))
-  (fixnum-branch! predicate)
-  (LAP (CMP Q ,(source-register-reference register)
-	    ,(offset->reference! expression))))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (? expression rtl:simple-offset?)
-		      (REGISTER (? register)))
-  (fixnum-branch! predicate)
-  (LAP (CMP Q ,(offset->reference! expression)
-	    ,(source-register-reference register))))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (REGISTER (? register))
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
   (fixnum-branch! predicate)
   (compare/reference*fixnum (source-register-reference register) constant))
@@ -249,20 +228,6 @@ USA.
 		      (REGISTER (? register)))
   (fixnum-branch! (commute-fixnum-predicate predicate))
   (compare/reference*fixnum (source-register-reference register) constant))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (? expression rtl:simple-offset?)
-		      (OBJECT->FIXNUM (CONSTANT (? constant))))
-  (fixnum-branch! predicate)
-  (compare/reference*fixnum (offset->reference! expression) constant))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (OBJECT->FIXNUM (CONSTANT (? constant)))
-		      (? expression rtl:simple-offset?))
-  (fixnum-branch! (commute-fixnum-predicate predicate))
-  (compare/reference*fixnum (offset->reference! expression) constant))
 
 ;;; Detag and compare.
 
@@ -356,26 +321,6 @@ USA.
 				    #f))
   (fixnum-branch! (fixnum-predicate/unary->binary predicate))
   (compare/register*register register-1 register-2))
-
-(define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
-		     (FIXNUM-2-ARGS MINUS-FIXNUM
-				    (REGISTER (? register))
-				    (? expression rtl:simple-offset?)
-				    #f))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (CMP Q ,(source-register-reference register)
-	    ,(offset->reference! expression))))
-
-(define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
-		     (FIXNUM-2-ARGS MINUS-FIXNUM
-				    (? expression rtl:simple-offset?)
-				    (REGISTER (? register))
-				    #f))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (CMP Q ,(offset->reference! expression)
-	    ,(source-register-reference register))))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate)
@@ -395,25 +340,6 @@ USA.
   (fixnum-branch!
    (commute-fixnum-predicate (fixnum-predicate/unary->binary predicate)))
   (compare/reference*fixnum (source-register-reference register) constant))
-
-(define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
-		     (FIXNUM-2-ARGS MINUS-FIXNUM
-				    (? expression rtl:simple-offset?)
-				    (OBJECT->FIXNUM (CONSTANT (? constant)))
-				    #f))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (compare/reference*fixnum (offset->reference! expression) constant))
-
-(define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
-		     (FIXNUM-2-ARGS MINUS-FIXNUM
-				    (OBJECT->FIXNUM (CONSTANT (? constant)))
-				    (? expression rtl:simple-offset?)
-				    #f))
-  (fixnum-branch!
-   (commute-fixnum-predicate (fixnum-predicate/unary->binary predicate)))
-  (compare/reference*fixnum (offset->reference! expression) constant))
 
 ;;; Use TEST for (FIX:ZERO/NEGATIVE/POSITIVE? (FIX:AND x y)).
 
@@ -425,24 +351,6 @@ USA.
 				    #f))
   (fixnum-branch! (fixnum-predicate/unary->binary predicate))
   (test/register*register register-1 register-2))
-
-(define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
-		     (FIXNUM-2-ARGS FIXNUM-AND
-				    (REGISTER (? register))
-				    (? expression rtl:simple-offset?)))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (TEST Q ,(source-register-reference register)
-	     ,(offset->reference! expression))))
-
-(define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
-		     (FIXNUM-2-ARGS FIXNUM-AND
-				    (? expression rtl:simple-offset?)
-				    (REGISTER (? register))))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (TEST Q ,(offset->reference! expression)
-	     ,(source-register-reference register))))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate)
@@ -484,24 +392,6 @@ USA.
   (QUALIFIER (<= 0 constant))
   (fixnum-branch! (fixnum-predicate/unary->binary predicate))
   (test/reference*constant (source-register-reference register) constant))
-
-(define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
-		     (FIXNUM-2-ARGS FIXNUM-AND
-				    (? expression rtl:simple-offset?)
-				    (OBJECT->FIXNUM (CONSTANT (? constant)))
-				    #f))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (test/reference*fixnum (offset->reference! expression) constant))
-
-(define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
-		     (FIXNUM-2-ARGS FIXNUM-AND
-				    (OBJECT->FIXNUM (CONSTANT (? constant)))
-				    (? expression rtl:simple-offset?)
-				    #f))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (test/reference*fixnum (offset->reference! expression) constant))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate)
