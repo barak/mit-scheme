@@ -536,9 +536,9 @@ USA.
        (rest-case #f))
     (if (not (pair? clauses))
 	(values m (reverse! bindings) (reverse! entries) rest-case)
-	(let ((bvl (caar clauses))
-	      (name (new-identifier (symbol 'case-lambda- i)))
-	      (expression (apply scons-lambda (caar clauses) (cdar clauses))))
+	(let ((name (new-identifier (symbol 'case-lambda- i)))
+	      (bvl (caar clauses))
+	      (body (cdar clauses)))
 	  (receive (required optional rest) (parse-mit-lambda-list bvl)
 	    (let ((arity
 		   (make-procedure-arity (length required)
@@ -551,12 +551,12 @@ USA.
 			   (or (procedure-arity-max arity)
 			       (procedure-arity-min arity))))
 		      (if m (max m m*) m*))
-		    (cons (list name expression) bindings)
+		    (cons (cons* name bvl body) bindings)
 		    (cons (cons arity name) entries)
 		    (or rest-case
 			(and rest
 			     (cons* name required optional rest))))))))))
-
+
 (define (assign-cases m entries)
   (let ((cases (make-vector (+ m 1) #f)))
     (do ((entries entries (cdr entries)))
@@ -568,39 +568,55 @@ USA.
 	  (if (not (vector-ref cases i))
 	      (vector-set! cases i name)))))
     (vector->list cases)))
-
+
 (define (generate-case-lambda bindings rest-case cases)
-  ;; Always constructing the LET with every binding has the side
-  ;; effect that later on, SF will warn if any clauses are unused.
-  ;; It would be better to warn earlier on here when we can show what
-  ;; the clause is, but this will serve.
-  (scons-let bindings
-    (if (and rest-case (every (lambda (c) (eq? c (car rest-case))) cases))
-	rest-name
-	(apply scons-call
-	       'make-arity-dispatched-procedure
-	       (and rest-case (generate-case-lambda-default rest-case))
-	       cases))))
+  (let ((default (and rest-case (new-identifier 'default))))
+    ;; If there is a default case, create a local lambda with fixed
+    ;; arity for a jump to it, to avoid going through `apply'.
+    (scons-let
+	(generate-case-lambda-default-bindings bindings rest-case default)
+      ;; Always constructing the LET with every binding has the side
+      ;; effect that later on, SF will warn if any clauses are unused.
+      ;; It would be better to warn earlier on here when we can show
+      ;; what the clause is, but this will serve.
+      (scons-let (generate-case-lambda-bindings bindings rest-case default)
+	(if (and rest-case (every (lambda (c) (eq? c (car rest-case))) cases))
+	    (car rest-case)
+	    (apply scons-call
+		   'make-arity-dispatched-procedure
+		   (and rest-case
+			(generate-case-lambda-rest-case rest-case default))
+		   cases))))))
 
-(define (generate-case-lambda-default rest-case)
-  ;; XXX As an optimization, we could generate something like this:
-  ;;
-  ;;	(case-lambda ((x y . r) ...) [other clauses])
-  ;; =>
-  ;;	(let ((default (lambda (x y r) ...)))
-  ;;	  (let ((case-lambda-0 (lambda (x y . r) (default x y r)))
-  ;;		[other clauses])
-  ;;	    (make-arity-dispatched-procedure
-  ;;	     (lambda (self x y . r) self (default x y r))
-  ;;	     [other clauses]
-  ;;	     case-lambda-0
-  ;;	     [other clauses]))),
-  ;;
-  ;; which would avoid going through `apply'.  However, it would take a
-  ;; little more effort to separate the binding.
-  ;;
+(define (generate-case-lambda-default-bindings bindings rest-case default)
+  (if rest-case
+      (let ((required (cadr rest-case))
+	    (optional (caddr rest-case))
+	    (rest (cdddr rest-case))
+	    (body (cddr (assq (car rest-case) bindings))))
+	`((,default
+	   ,(apply scons-lambda `(,@required ,@optional ,rest) body))))
+      '()))
+
+(define (generate-case-lambda-bindings bindings rest-case default)
+  (map (lambda (binding)
+	 (let ((name (car binding))
+	       (bvl (cadr binding))
+	       (body (cddr binding)))
+	   (list name
+		 (if (and rest-case (eq? name (car rest-case)))
+		     (let ((required (cadr rest-case))
+			   (optional (caddr rest-case))
+			   (rest (cdddr rest-case)))
+		       (scons-lambda bvl
+			 (apply scons-call
+				default
+				(append required optional (list rest)))))
+		     (apply scons-lambda bvl body)))))
+       bindings))
+
+(define (generate-case-lambda-rest-case rest-case default)
   (let ((self (new-identifier 'self))
-	(name (car rest-case))
 	(required (cadr rest-case))
 	(optional (caddr rest-case))
 	(rest (cdddr rest-case)))
@@ -609,7 +625,7 @@ USA.
 		    ,@(if (pair? optional) `((#!optional ,@optional)) '())
 		    . ,rest)
       (scons-declare (list 'ignore self))
-      (apply scons-call 'apply name (append required optional (list rest))))))
+      (apply scons-call default (append required optional (list rest))))))
 
 (define (case-lambda-no-choices)
   (let ((args (new-identifier 'args)))
