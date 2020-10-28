@@ -327,30 +327,34 @@ USA.
   (compare/register*register register-1 register-2))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG FIXNUM-ZERO?
+  (FIXNUM-PRED-1-ARG (? predicate)
 		     (FIXNUM-2-ARGS
 		      MINUS-FIXNUM
 		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
 		      (REGISTER (? untagged-source))
 		      #f))
-  (detag-and-compare 'FIXNUM-EQUAL? tagged-source untagged-source))
+  (let ((predicate (fixnum-predicate/unary->binary predicate)))
+    (detag-and-compare predicate tagged-source untagged-source)))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG FIXNUM-ZERO?
+  (FIXNUM-PRED-1-ARG (? predicate)
 		     (FIXNUM-2-ARGS
 		      MINUS-FIXNUM
 		      (REGISTER (? untagged-source))
 		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
 		      #f))
-  (detag-and-compare 'FIXNUM-EQUAL? tagged-source untagged-source))
+  (let ((predicate
+         (commute-fixnum-predicate
+          (fixnum-predicate/unary->binary predicate))))
+    (detag-and-compare predicate tagged-source untagged-source)))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG FIXNUM-ZERO?
+  (FIXNUM-PRED-1-ARG (? predicate)
 		     (FIXNUM-2-ARGS MINUS-FIXNUM
 				    (OBJECT->FIXNUM (REGISTER (? register-1)))
 				    (OBJECT->FIXNUM (REGISTER (? register-2)))
 				    #f))
-  (fixnum-branch! 'FIXNUM-EQUAL?)
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
   (compare/register*register register-1 register-2))
 
 (define-rule predicate
