@@ -514,91 +514,102 @@ USA.
 						  names
 						  temps))))))))))))
 
-;;; This optimizes some simple cases, but it could be better.  Among other
-;;; things it could take advantage of arity-dispatched procedures in the right
-;;; circumstances.
-
 (define $case-lambda
   (spar-transformer->runtime
    (delay
-     (scons-rule `((* (subform (cons ,r4rs-lambda-list? (+ any)))))
+     (scons-rule `((* (subform (cons ,mit-lambda-list? (+ any)))))
        (lambda (clauses)
 	 (if (pair? clauses)
-	     (let ((clauses (case-lambda-eliminate-redundant-clauses clauses)))
-	       (if (pair? (cdr clauses))
-		   (let ((arities
-			  (map r4rs-lambda-list-arity (map car clauses)))
-			 (temps
-			  (map (lambda (i)
-				 (new-identifier (symbol 'p i)))
-			       (iota (length clauses)))))
-		     (scons-let (map (lambda (temp clause)
-				       (list temp
-					     (apply scons-lambda clause)))
-				     temps
-				     clauses)
-		       (let ((choices (map cons arities temps)))
-			 (if (every exact-nonnegative-integer? arities)
-			     (case-lambda-no-rest choices)
-			     (case-lambda-rest choices)))))
-		   (apply scons-lambda (car clauses))))
+	     (receive (m bindings entries rest-case)
+		      (parse-case-lambda clauses)
+	       (let ((cases (assign-cases m entries)))
+		 (generate-case-lambda bindings rest-case cases)))
 	     (case-lambda-no-choices)))))))
 
-(define (case-lambda-eliminate-redundant-clauses clauses)
-  ;; For now just handle fixed arities.  Handling variable arities needs
-  ;; something like intervals or an inversion list, which is a lot of hair.
-  (let loop ((clauses clauses) (arities '()))
-    (if (pair? clauses)
-	(let ((arity (r4rs-lambda-list-arity (caar clauses))))
-	  (if (memv arity arities)
-	      (loop (cdr clauses) arities)
-	      (cons (car clauses) (loop (cdr clauses) (cons arity arities)))))
-	'())))
+(define (parse-case-lambda clauses)
+  (let loop
+      ((i 0)
+       (clauses clauses)
+       (m #f)
+       (bindings '())
+       (entries '())
+       (rest-case #f))
+    (if (not (pair? clauses))
+	(values m (reverse! bindings) (reverse! entries) rest-case)
+	(let ((bvl (caar clauses))
+	      (name (new-identifier (symbol 'case-lambda- i)))
+	      (expression (apply scons-lambda (caar clauses) (cdar clauses))))
+	  (receive (required optional rest) (parse-mit-lambda-list bvl)
+	    (let ((arity
+		   (make-procedure-arity (length required)
+					 (and (not rest)
+					      (+ (length required)
+						 (length optional))))))
+	      (loop (+ i 1)
+		    (cdr clauses)
+		    (let ((m*
+			   (or (procedure-arity-max arity)
+			       (procedure-arity-min arity))))
+		      (if m (max m m*) m*))
+		    (cons (list name expression) bindings)
+		    (cons (cons arity name) entries)
+		    (or rest-case
+			(and rest
+			     (cons* name required optional rest))))))))))
 
-(define (case-lambda-no-rest choices)
-  (let ((choices (sort choices (lambda (c1 c2) (fix:< (car c1) (car c2))))))
-    (let ((low (apply min (map car choices)))
-	  (high (apply max (map car choices))))
-      (let ((args
-	     (map (lambda (i)
-		    (new-identifier (symbol 'a i)))
-		  (iota high))))
+(define (assign-cases m entries)
+  (let ((cases (make-vector (+ m 1) #f)))
+    (do ((entries entries (cdr entries)))
+	((not (pair? entries)))
+      (let ((arity (caar entries))
+	    (name (cdar entries)))
+	(do ((i (procedure-arity-min arity) (+ i 1)))
+	    ((> i (or (procedure-arity-max arity) m)))
+	  (if (not (vector-ref cases i))
+	      (vector-set! cases i name)))))
+    (vector->list cases)))
 
-	(define (choose i)
-	  (let ((choice (assv i choices))
-		(args* (take args i)))
-	    (if choice
-		(apply scons-call (cdr choice) args*)
-		(scons-call 'error "No matching case-lambda clause:"
-			    (apply scons-call 'list args*)))))
+(define (generate-case-lambda bindings rest-case cases)
+  ;; Always constructing the LET with every binding has the side
+  ;; effect that later on, SF will warn if any clauses are unused.
+  ;; It would be better to warn earlier on here when we can show what
+  ;; the clause is, but this will serve.
+  (scons-let bindings
+    (if (and rest-case (every (lambda (c) (eq? c (car rest-case))) cases))
+	rest-name
+	(apply scons-call
+	       'make-arity-dispatched-procedure
+	       (and rest-case (generate-case-lambda-default rest-case))
+	       cases))))
 
-	(scons-lambda (append (take args low)
-			      (list #!optional)
-			      (drop args low))
-	  (let loop ((i low))
-	    (if (fix:< i high)
-		(scons-if (scons-call 'default-object? (list-ref args i))
-			  (choose i)
-			  (loop (fix:+ i 1)))
-		(choose i))))))))
-
-(define (case-lambda-rest choices)
-  (let ((args (new-identifier 'args))
-	(nargs (new-identifier 'nargs)))
-    (scons-lambda args
-      (scons-let (list (list nargs (scons-call 'length args)))
-	(let loop ((choices choices))
-	  (if (pair? choices)
-	      (scons-if (scons-call (if (procedure-arity-max (caar choices))
-					'fix:=
-					'fix:>=)
-				    nargs
-				    (procedure-arity-min (caar choices)))
-			(scons-call 'apply (cdar choices) args)
-			(loop (cdr choices)))
-	      (scons-call 'error
-			  "No matching case-lambda clause:"
-			  args)))))))
+(define (generate-case-lambda-default rest-case)
+  ;; XXX As an optimization, we could generate something like this:
+  ;;
+  ;;	(case-lambda ((x y . r) ...) [other clauses])
+  ;; =>
+  ;;	(let ((default (lambda (x y r) ...)))
+  ;;	  (let ((case-lambda-0 (lambda (x y . r) (default x y r)))
+  ;;		[other clauses])
+  ;;	    (make-arity-dispatched-procedure
+  ;;	     (lambda (self x y . r) self (default x y r))
+  ;;	     [other clauses]
+  ;;	     case-lambda-0
+  ;;	     [other clauses]))),
+  ;;
+  ;; which would avoid going through `apply'.  However, it would take a
+  ;; little more effort to separate the binding.
+  ;;
+  (let ((self (new-identifier 'self))
+	(name (car rest-case))
+	(required (cadr rest-case))
+	(optional (caddr rest-case))
+	(rest (cdddr rest-case)))
+    (scons-lambda `(,self
+		    ,@required
+		    ,@(if (pair? optional) `((#!optional ,@optional)) '())
+		    . ,rest)
+      (scons-declare (list 'ignore self))
+      (apply scons-call 'apply name (append required optional (list rest))))))
 
 (define (case-lambda-no-choices)
   (let ((args (new-identifier 'args)))

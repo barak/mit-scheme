@@ -94,7 +94,6 @@ USA.
     (assert-eqv (f 3 3 3) 0)
     (assert-eqv (f 4 4 4 4) 0)))
 
-#;
 (define-test 'optional-disorder
   (lambda ()
     (define f
