@@ -549,5 +549,6 @@ USA.
     FLONUM-TAN          ;not useful to open-code hairy math
     GCD-FIXNUM          ;nobody open-codes this
     INTEGER-SHIFT-LEFT  ;need FIXNUM-LSH overflow test
+    INTEGER-SHIFT-RIGHT ;need FIXNUM-LSH
     VECTOR-CONS         ;nobody open-codes this
     ))
