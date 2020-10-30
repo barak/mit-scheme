@@ -40,6 +40,9 @@ USA.
 (define (fix:rsh3 x)
   (fix:lsh x -3))
 
+(define (fix:rsh3-prim x)
+  ((make-primitive-procedure 'fixnum-lsh 2) x -3))
+
 (define (fix:rsh3-noop x)
   (fix:noop (fix:lsh x -3)))
 
@@ -63,6 +66,14 @@ USA.
 (define-test 'rsh3-123
   (lambda ()
     (assert-eqv (fix:rsh3 -123) -16)))
+
+(define-test 'rsh3-prim+123
+  (lambda ()
+    (assert-eqv (fix:rsh3-prim +123) 15)))
+
+(define-test 'rsh3-prim-123
+  (lambda ()
+    (expect-failure (lambda () (assert-eqv (fix:rsh3-prim -123) -16)))))
 
 (define-test 'lsh3-noop+123
   (lambda ()
