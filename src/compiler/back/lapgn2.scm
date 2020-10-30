@@ -259,6 +259,7 @@ USA.
   ;; aliases.  Thus the target register can "inherit" the alias, which
   ;; means that the assignment is accomplished without moving any
   ;; data.
+  (assert (not (machine-register? register)))
   (set! *register-map*
 	(add-pseudo-register-alias *register-map* register alias false))
   (need-register! alias))
