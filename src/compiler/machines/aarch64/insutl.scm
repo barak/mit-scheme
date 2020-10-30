@@ -324,7 +324,7 @@ USA.
     ;; Given the period, phase, and count of bits, compute and encode
     ;; the n, immr, and imms representation.
     (assert (< phase period))
-    (let* ((immr (- period phase))
+    (let* ((immr (modulo (- period phase) width))
            (nimms (bitwise-ior (shift-left (- period) 1) (- count 1)))
            (n (bitwise-xor 1 (bitwise-and 1 (shift-right nimms 6))))
            (imms (bitwise-and nimms #x3f)))
