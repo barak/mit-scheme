@@ -70,7 +70,8 @@ USA.
   (LAP (LSR X ,target ,source (&U ,scheme-type-width))))
 
 (define (word->fixnum target source)
-  (LAP (AND X ,target ,source (&U ,(- (expt 2 scheme-type-width) 1)))))
+  (LAP (AND X ,target ,source
+            (& ,(bitwise-not (- (expt 2 scheme-type-width) 1))))))
 
 (define-integrable fixnum-1
   (shift-left 1 scheme-type-width))
@@ -129,41 +130,146 @@ USA.
     (lambda (target source1 source2)
       ((fixnum-2-args/operator operator) target source1 source2 overflow?))))
 
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+          (FIXNUM-2-ARGS (? operator)
+                         (REGISTER (? source1))
+                         (OBJECT->FIXNUM (REGISTER (? source2)))
+                         (? overflow?)))
+  (QUALIFIER (detaggable-operator? operator))
+  (standard-binary target source1 source2
+    (lambda (target source1 source2)
+      ((fixnum-untagged*tagged/operator operator)
+       target source1 source2 overflow?))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+          (FIXNUM-2-ARGS (? operator)
+                         (OBJECT->FIXNUM (REGISTER (? source1)))
+                         (REGISTER (? source2))
+                         (? overflow?)))
+  (QUALIFIER
+   (and (detaggable-operator? operator)
+        (commutative-operator? operator)))
+  (standard-binary target source1 source2
+    (lambda (target source1 source2)
+      ((fixnum-untagged*tagged/operator operator)
+       target source2 source1 overflow?))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+          (FIXNUM-2-ARGS (? operator)
+                         (REGISTER (? source))
+                         (OBJECT->FIXNUM (CONSTANT (? constant)))
+                         (? overflow?)))
+  (standard-unary target source
+    (lambda (target source)
+      ((fixnum-register*constant/operator operator)
+       target source constant overflow?))))
+
 (define (fixnum-2-args/operator operator)
   (lookup-arithmetic-method operator fixnum-methods/2-args))
 
 (define fixnum-methods/2-args
   (list 'FIXNUM-METHODS/2-ARGS))
 
-(define ((fixnum-2-args/additive flags no-flags)
-         target source1 source2 overflow?)
-  (if overflow?
-      (begin
-        (set-overflow-branches!)
-        (LAP (,flags X ,target ,source1 ,source2)))
-      (LAP (,no-flags X ,target ,source1 ,source2))))
+(define (fixnum-untagged*tagged/operator operator)
+  (lookup-arithmetic-method operator fixnum-methods/untagged*tagged))
 
-(define ((fixnum-2-args/bitwise op) target source1 source2 overflow?)
-  (assert (not overflow?))
-  (LAP (,op X ,target ,source1 ,source2)))
+(define fixnum-methods/untagged*tagged
+  (list 'FIXNUM-METHODS/2-ARGS))
 
-(define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args
-  (fixnum-2-args/additive 'ADDS 'ADD))
+(define (fixnum-register*constant/operator operator)
+  (lookup-arithmetic-method operator fixnum-methods/register*constant))
 
-(define-arithmetic-method 'MINUS-FIXNUM fixnum-methods/2-args
-  (fixnum-2-args/additive 'SUBS 'SUB))
+(define fixnum-methods/register*constant
+  (list 'FIXNUM-METHODS/REGISTER*CONSTANT))
 
-(define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args
-  (fixnum-2-args/bitwise 'AND))
+(define (detaggable-operator? operator)
+  (memq operator
+        '(PLUS-FIXNUM
+          MINUS-FIXNUM
+          FIXNUM-AND
+          FIXNUM-ANDC
+          FIXNUM-OR
+          FIXNUM-XOR)))
+
+(define (commutative-operator? operator)
+  (memq operator
+        '(PLUS-FIXNUM
+          FIXNUM-AND
+          FIXNUM-OR
+          FIXNUM-XOR)))
+
+(define ((untagged*tagged-operator operate) target source1 source2 overflow?)
+  (let ((source2 (INST-EA (LSL ,source2 ,scheme-type-width))))
+    (operate target source1 source2 overflow?)))
+
+(define (define-additive-method operator add adds sub subs)
+  (define ((operate no-flags flags) target source1 source2 overflow?)
+    (if overflow?
+        (begin
+          (set-overflow-branches!)
+          (LAP (,flags X ,target ,source1 ,source2)))
+        (LAP (,no-flags X ,target ,source1 ,source2))))
+  (let ((operate+ (operate add adds))
+        (operate- (operate sub subs)))
+    (define-arithmetic-method operator fixnum-methods/2-args operate+)
+    (define-arithmetic-method operator fixnum-methods/untagged*tagged
+      (untagged*tagged-operator operate+))
+    (define-arithmetic-method operator fixnum-methods/register*constant
+      (lambda (target source constant overflow?)
+        (define ((kernel operate) operand)
+          (operate target source operand overflow?))
+        (immediate-addition (* constant fixnum-1)
+                            (kernel operate+)
+                            (kernel operate-)
+                            general-temporary!)))))
+
+(define (define-bitwise-method operator op)
+  (define (operate target source1 source2 overflow?)
+    (assert (not overflow?))
+    (LAP (,op X ,target ,source1 ,source2)))
+  (define-arithmetic-method operator fixnum-methods/2-args operate)
+  (define-arithmetic-method operator fixnum-methods/untagged*tagged
+    (untagged*tagged-operator operate))
+  (define-arithmetic-method operator fixnum-methods/register*constant
+    (lambda (target source constant overflow?)
+      (assert (not overflow?))
+      (let ((imm (* constant fixnum-1)))
+        (if (logical-imm-u64 imm)
+            (LAP (,op X ,target ,source (&U ,imm)))
+            (let ((temp (if (eqv? target source) (general-temporary!) target)))
+              (LAP ,@(load-signed-immediate temp imm)
+                   (,op X ,target ,source ,temp))))))))
+
+(define-additive-method 'PLUS-FIXNUM 'ADD 'ADDS 'SUB 'SUBS)
+(define-additive-method 'MINUS-FIXNUM 'SUB 'SUBS 'ADD 'ADDS)
+
+(define-bitwise-method 'FIXNUM-AND 'AND)
+(define-bitwise-method 'FIXNUM-OR 'ORR)
+(define-bitwise-method 'FIXNUM-XOR 'EOR)
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
-  (fixnum-2-args/bitwise 'BIC))         ;Bitwise Bit Clear
+  (lambda (target source1 source2 overflow?)
+    (assert (not overflow?))
+    (LAP (BIC X ,target ,source1 ,source2)
+         ,@(word->fixnum target target))))
 
-(define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args
-  (fixnum-2-args/bitwise 'ORR))
+(define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/untagged*tagged
+  (lambda (target source1 source2 overflow?)
+    (assert (not overflow?))
+    (LAP (BIC X ,target ,source1 (LSL ,source2 ,scheme-type-width)))))
 
-(define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args
-  (fixnum-2-args/bitwise 'EOR))         ;fans of Winnie the Pooh
+(define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/register*constant
+  (lambda (target register constant overflow?)
+    (assert (not overflow?))
+    (let ((imm (* (bitwise-not constant) fixnum-1)))
+      (if (logical-imm-u64 imm)
+          (LAP (AND X ,target ,register (&U ,imm)))
+          (let ((temp (if (eqv? target register) (general-temporary!) target)))
+            (LAP ,@(load-signed-immediate temp imm)
+                 (AND X ,target ,register ,temp)))))))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
@@ -212,8 +318,119 @@ USA.
              ;; target := (n - d*q) 2^t
              (MSUB X ,target ,source2 ,target ,source1)))))
 
-;; XXX Constant operands.
-;; XXX Fast division by multiplication.
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+          (FIXNUM-2-ARGS FIXNUM-LSH
+                         (REGISTER (? source1))
+                         (REGISTER (? source2))
+                         (? overflow?)))
+  (assert (not overflow?))
+  (need-registers! (list r0 r1))
+  (let* ((load-r0 (load-machine-register! source1 r0))
+         (load-r1 (load-machine-register! source2 r1)))
+    (delete-dead-registers!)
+    (rtl-target:=machine-register! target r0)
+    (LAP ,@load-r0
+         ,@load-r1
+         ,@(invoke-hook/subroutine entry:compiler-fixnum-shift))))
+
+(define (integer-power-of-2? x)
+  (and (zero? (bitwise-and x (- x 1)))
+       (bit-count (- x 1))))
+
+(define (fixnum-multiply-constant target source n overflow?)
+  (define (do-shift shift)
+    (LAP (LSL X ,target ,source (&U ,(abs shift)))
+         ,@(if (negative? n)
+               (LAP (NEG X ,target ,target))
+               (LAP))))
+  (cond ((not overflow?)
+         ;; XXX Special cases should be dispensed with earlier.
+         (cond ((or (= n 0) (>= (abs n) (expt 2 scheme-datum-width)))
+                (load-fixnum-constant target 0))
+               ((= n 1)
+                ;; XXX assign pseudos without transfer
+                (register->register-transfer source target))
+               ((= n -1)
+                (LAP (NEG X ,target ,source)))
+               ((integer-power-of-2? (abs n))
+                => do-shift)
+               (else
+                (LAP ,@(load-signed-immediate regnum:scratch-0 n)
+                     (MUL X ,target ,source ,regnum:scratch-0)))))
+        ((= n 0)
+         (set-never-branches!)
+         (load-fixnum-constant target 0))
+        ((= n 1)
+         (set-never-branches!)
+         ;; XXX assign pseudos without transfer
+         (register->register-transfer source target))
+        ((= n -1)
+         ;; Overflows only if the source is the most negative fixnum,
+         ;; which has no fixnum negation.
+         (set-equal-branches!)
+         (LAP ,@(cmp-immediate source
+                               (* fixnum-1
+                                  (shift-left -1 (- scheme-datum-width 1)))
+                               general-temporary!)
+              (NEG X ,target ,source)))
+        ((integer-power-of-2? (abs n))
+         => (lambda (shift)
+              (let ((temp regnum:scratch-0))
+                (set-not-equal-branches!)
+                ;; Check whether the bits we're shifting out all
+                ;; match the sign bit.
+                (LAP (ASR X ,temp ,source
+                          (&U ,(- scheme-object-width 1 shift)))
+                     (CMP X ,temp (ASR ,source ,(- scheme-object-width 1)))
+                     ,@(do-shift shift)))))
+        (else
+         (let ((mask regnum:scratch-0)
+               (hi regnum:scratch-1)
+               (temp (if (eqv? target source) (general-temporary!) target)))
+           (set-not-equal-branches!)
+           (LAP ,@(load-signed-immediate mask (if (negative? n) -1 0))
+                (CMP X ,source (&U 0))
+                ,@(load-signed-immediate temp n)
+                (CINV X LT ,mask ,mask)
+                (SMULH X ,hi ,source ,temp)
+                (MUL X ,target ,source ,temp)
+                (CMP X ,mask ,hi))))))
+
+(define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/register*constant
+  fixnum-multiply-constant)
+
+(define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/register*constant
+  (lambda (q-target n-source d-constant overflow?)
+    (assert (not overflow?))
+    ;; XXX fast division by multiplication
+    (LAP ,@(load-fixnum-constant regnum:scratch-0 d-constant)
+         (SDIV X ,q-target ,n-source ,regnum:scratch-0)
+         (LSL X ,q-target ,q-target (&U ,scheme-type-width)))))
+
+(define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/register*constant
+  (lambda (q-target n-source d-constant overflow?)
+    (assert (not overflow?))
+    ;; XXX fast division by multiplication
+    (LAP ,@(load-fixnum-constant regnum:scratch-0 d-constant)
+         (SDIV X ,q-target ,n-source ,regnum:scratch-0)
+         (MSUB X ,q-target ,regnum:scratch-0 ,q-target ,n-source))))
+
+(define-arithmetic-method 'FIXNUM-LSH fixnum-methods/register*constant
+  (lambda (target source n overflow?)
+    ;; We only test for overflow in small nonzero left shifts.
+    (assert (or (< 0 n (- scheme-datum-width 1)) (not overflow?)))
+    (cond ((negative? n)
+           (assert (not overflow?))
+           (if (<= (- n) scheme-datum-width)
+               (LAP (ASR X ,target ,source (&U ,(- n)))
+                    ,@(word->fixnum target target))
+               (load-fixnum-constant target 0)))
+          ((< n scheme-datum-width)
+           (fixnum-multiply-constant target source (expt 2 n) overflow?))
+          (else
+           (assert (not overflow?))
+           (load-fixnum-constant target 0)))))
 
 ;;;; Fixnum Predicates
 

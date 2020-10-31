@@ -70,6 +70,9 @@ define(ADRL,`
 	// Interpreter register block offsets.  Must agree with
 	// const.h.
 	.equiv	REGBLOCK_VAL,		2
+
+	.equiv	TC_LENGTH,		6	// bits in type tag
+	.equiv	DATUM_LENGTH,		58	// bits in datum
 
 ///////////////////////////////////////////////////////////////////////////////
 // Entering Scheme from C
@@ -289,13 +292,44 @@ END(apply_setup_fail)
 // Scheme miscellaneous primitive subroutine hooks
 ///////////////////////////////////////////////////////////////////////////////
 
-	// fixnum_shift
+	// fixnum_shift(x@x0, n@x1)
 	//
-	//	Compute a left shift, handling all possible signs of
-	//	both inputs.  Not yet implemented.
+	//	Compute an arithmetic shift, handling all possible
+	//	signs of both inputs.  Both inputs are `detagged
+	//	fixnums' -- representing n by n 2^t, so the low t bits
+	//	are all zero, where t is TC_LENGTH.
+	//
+	//	Destroys x1; returns result in x0.
 	//
 LOCAL(fixnum_shift)
-	hlt	#0
+	cmp	x1, #0
+	asr	x1, x1, #TC_LENGTH
+	b.lt	2f
+
+	// Positive/left shift -- return x * 2^n.
+	cmp	x1, #DATUM_LENGTH
+	b.ge	1f
+	lsl	x0, x0, x1
+	ret
+
+	// Shift beyond datum width, so result is always zero.
+1:	mov	x0, #0
+	ret
+
+	// Negative/right shift -- return floor(x / 2^n).
+2:	neg	x1, x1
+	cmp	x1, #DATUM_LENGTH
+	b.ge	3f
+	asr	x0, x0, x1
+	// Must return a detagged fixnum by clearing the low bits.
+	bic	x0, x0, #((1 << TC_LENGTH) - 1)
+	ret
+
+	// Shift amount is wider than the datum width, so the result is
+	// 0 or -1 depending on the sign.
+3:	asr	x0, x0, #63
+	bic	x0, x0, #((1 << TC_LENGTH) - 1)
+	ret
 END(fixnum_shift)
 
 	// set_interrupt_enables

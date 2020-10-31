@@ -534,7 +534,6 @@ USA.
   '(
     &/                  ;nobody open-codes this
     DIVIDE-FIXNUM       ;nobody open-codes this
-    FIXNUM-LSH          ;open-coding not useful without constant operands
     FLOATING-VECTOR-CONS;nobody open-codes this
     FLONUM-ACOS         ;not useful to open-code hairy math
     FLONUM-ASIN         ;not useful to open-code hairy math
@@ -548,7 +547,5 @@ USA.
     FLONUM-SIN          ;not useful to open-code hairy math
     FLONUM-TAN          ;not useful to open-code hairy math
     GCD-FIXNUM          ;nobody open-codes this
-    INTEGER-SHIFT-LEFT  ;need FIXNUM-LSH overflow test
-    INTEGER-SHIFT-RIGHT ;need FIXNUM-LSH
     VECTOR-CONS         ;nobody open-codes this
     ))
