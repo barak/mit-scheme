@@ -91,12 +91,7 @@ USA.
        (B (@PCR ,label ,regnum:scratch-0))))
 
 (define (entry->pc pc entry)
-  ;; XXX Would be nice to skip the SUB, but LDR doesn't have a signed
-  ;; offset without pre/post-increment.
-  ;;
-  ;; XXX Oops -- yes we can: LDUR.
-  (LAP (SUB X ,pc ,entry (&U 8))
-       (LDR X ,pc ,pc)
+  (LAP (LDUR X ,pc (+ ,entry (& -8)))
        (ADD X ,pc ,pc ,entry)))
 
 (define-rule statement
