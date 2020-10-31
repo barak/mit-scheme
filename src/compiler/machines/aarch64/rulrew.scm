@@ -139,9 +139,6 @@ USA.
   ;; have to change this.
   (rtl:make-address->fixnum (rtl:object->datum-expression source)))
 
-#|
-;;; Disabled until we have fixnum rules with constant operands.
-
 (define-rule rewriting
   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
                  (REGISTER (? operand-1 register-known-value))
@@ -191,7 +188,6 @@ USA.
   (QUALIFIER (and (rtl:register? operand-1)
                   (rtl:constant-fixnum-test operand-2 (lambda (n) n true))))
   (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 #F))
-|#
 
 (define (rtl:constant-fixnum? expression)
   (and (rtl:constant? expression)
