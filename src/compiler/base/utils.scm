@@ -147,16 +147,17 @@ USA.
      `(DEFINE-INTEGRABLE ,(symbol 'TYPE-CODE: (cadr form))
 	',(microcode-type (cadr form))))))
 
+(define-type-code cell)
+(define-type-code compiled-entry)
+(define-type-code environment)
+(define-type-code extended-lambda)
+(define-type-code extended-procedure)
 (define-type-code fixnum)
 (define-type-code lambda)
-(define-type-code extended-lambda)
 (define-type-code procedure)
-(define-type-code extended-procedure)
-(define-type-code cell)
-(define-type-code environment)
-(define-type-code unassigned)
 (define-type-code stack-environment)
-(define-type-code compiled-entry)
+(define-type-code unassigned)
+
 (define-integrable type-code:compiled-return 4)
 
 (define (scode/procedure-type-code *lambda)
