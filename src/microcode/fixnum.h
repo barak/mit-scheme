@@ -32,6 +32,8 @@ USA.
 #define RIGHT_SHIFT(source, number)					\
   (((number) > MAX_BIT_SHIFT)						\
    ? 0									\
+   : ((source) < 0)							\
+   ? ((long) (~ ((~ ((unsigned long) (source))) >> (number))))		\
    : ((source) >> (number)))
 
 #define LEFT_SHIFT(source, number)					\
