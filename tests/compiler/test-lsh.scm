@@ -73,7 +73,7 @@ USA.
 
 (define-test 'rsh3-prim-123
   (lambda ()
-    (expect-failure (lambda () (assert-eqv (fix:rsh3-prim -123) -16)))))
+    (assert-eqv (fix:rsh3-prim -123) -16)))
 
 (define-test 'lsh3-noop+123
   (lambda ()

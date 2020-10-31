@@ -29,11 +29,6 @@ USA.
 
 #define MAX_BIT_SHIFT DATUM_LENGTH
 
-#define RIGHT_SHIFT_UNSIGNED(source, number)				\
-  (((number) > MAX_BIT_SHIFT)						\
-   ? 0									\
-   : ((((unsigned long) (source)) & DATUM_MASK) >> (number)))
-
 #define RIGHT_SHIFT(source, number)					\
   (((number) > MAX_BIT_SHIFT)						\
    ? 0									\
@@ -47,7 +42,7 @@ USA.
 #define FIXNUM_LSH(source, number)					\
   (((number) >= 0)							\
    ? (LEFT_SHIFT (source, number))					\
-   : (RIGHT_SHIFT_UNSIGNED (source, (- (number)))))
+   : (RIGHT_SHIFT (source, (- (number)))))
 
 #define FIXNUM_REMAINDER(source1, source2)				\
   (((source2) > 0)							\

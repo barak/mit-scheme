@@ -2401,19 +2401,25 @@ When compiled, it does not check the types of its arguments.
 @end deffn
 
 @deffn procedure fix:lsh fixnum1 fixnum2
-This procedure returns the result of logically shifting @var{fixnum1} by
-@var{fixnum2} bits.  If @var{fixnum2} is positive, @var{fixnum1} is
-shifted left; if negative, it is shifted right.  When compiled, it does
-not check the types of its arguments, nor the validity of its result.
+This procedure returns the result of shifting @var{fixnum1} by
+@var{fixnum2} bits.
+If @var{fixnum2} is positive, @var{fixnum1} is shifted left; if
+negative, it is shifted right @emph{arithmetically} in signed
+two's-complement.
+When compiled, it does not check the types of its arguments, nor the
+validity of its result.
 
 @example
 @group
 (fix:lsh 1 10)          @result{}  #x400
 (fix:lsh #x432 -10)     @result{}  1
 (fix:lsh -1 3)          @result{}  -8
-(fix:lsh -128 -4)       @result{}  #x3FFFF8
+(fix:lsh -128 -4)       @result{}  -8
 @end group
 @end example
+
+@strong{Warning:} In the past, the semantics of @code{fix:lsh} when
+both arguments were negative has been inconsistent.
 @end deffn
 
 @node Flonum Operations, Floating-Point Environment, Fixnum Operations, Fixnum and Flonum Operations

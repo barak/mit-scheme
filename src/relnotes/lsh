@@ -1,0 +1,8 @@
+The fix:lsh (to be read as `left shift') procedure now computes
+arithmetic shifts on all platforms.  Previously, for negative shift
+amounts, it would sometimes compute logical right shifts relative to
+the number of bits in a fixnum.
+
+See
+https://lists.gnu.org/archive/html/mit-scheme-devel/2020-10/msg00000.html
+for historical details.

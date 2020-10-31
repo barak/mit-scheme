@@ -403,7 +403,7 @@ USA.
   fixnum-methods/2-args/register*constant
   (lambda (tgt src constant overflow?)
     (assert (not overflow?))
-    (cond (overflow? 
+    (cond (overflow?
 	   (error "fixnum-lsh overflow what??"))
 	  ((back-end:= constant 0)
 	   (LAP ,(c:= tgt src)))
@@ -412,11 +412,7 @@ USA.
 	  ((positive? constant)
 	   (LAP ,(c:= tgt (c:ecall "LEFT_SHIFT" src constant))))
 	  (else
-	   (LAP ,(c:= tgt
-		      (c:cast 'long
-			      (c:ecall "RIGHT_SHIFT_UNSIGNED"
-				       (c:cast 'ulong src)
-				       (- constant)))))))))
+	   (LAP ,(c:= tgt (c:ecall "RIGHT_SHIFT" src (- constant))))))))
 
 (define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args/register*constant
   (lambda (tgt src1 constant overflow?)
