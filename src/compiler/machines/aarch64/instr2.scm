@@ -259,7 +259,7 @@ USA.
     lsb                                 ;r64
     (- (+ lsb width) 1))                ;s
   ;; Signed bitfield insert in zeros, alias for SBFM
-  (define-bitfield-insert/extract-instruction SFBIZ #b00
+  (define-bitfield-insert/extract-instruction SBFIZ #b00
     (modulo (- 0 lsb) 32)               ;r32
     (modulo (- 0 lsb) 64)               ;r64
     (- width 1))                        ;s
