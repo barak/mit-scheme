@@ -507,13 +507,6 @@ USA.
 (define (fits-in-unsigned-48? x)
   (<= 0 x #xffffffffffff))
 
-;; XXX doesn't belong here
-
-(define-integrable type-code:fixnum #x1a)
-(define-integrable type-code:flonum #x06)
-(define-integrable type-code:manifest-closure #x0d)
-(define-integrable type-code:manifest-vector #x00)
-
 ;; XXX
 
 (define (non-pointer->literal object)
