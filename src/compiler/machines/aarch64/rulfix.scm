@@ -458,12 +458,55 @@ USA.
     (lambda (source1 source2)
       (LAP (CMP X ,source1 ,source2)))))
 
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+                      (REGISTER (? source1))
+                      (OBJECT->FIXNUM (REGISTER (? source2))))
+  (fixnum-branch! predicate)
+  (standard-binary-effect source1 source2
+    (lambda (source1 source2)
+      (LAP (CMP X ,source1 (LSL ,source2 ,scheme-type-width))))))
+
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+                      (OBJECT->FIXNUM (REGISTER (? source1)))
+                      (REGISTER (? source2)))
+  (fixnum-branch! (commute-fixnum-predicate predicate))
+  (standard-binary-effect source1 source2
+    (lambda (source1 source2)
+      (LAP (CMP X ,source2 (LSL ,source1 ,scheme-type-width))))))
+
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+                      (REGISTER (? register))
+                      (OBJECT->FIXNUM (CONSTANT (? constant))))
+  (fixnum-branch! predicate)
+  (let ((register (standard-source! register)))
+    (cmp-immediate register (* constant fixnum-1) general-temporary!)))
+
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+                      (OBJECT->FIXNUM (CONSTANT (? constant)))
+                      (REGISTER (? register)))
+  (fixnum-branch! (commute-fixnum-predicate predicate))
+  (let ((register (standard-source! register)))
+    (cmp-immediate register (* constant fixnum-1) general-temporary!)))
+
 (define (fixnum-predicate/unary->binary predicate)
   (case predicate
     ((ZERO-FIXNUM?) 'EQUAL-FIXNUM?)
     ((NEGATIVE-FIXNUM?) 'LESS-THAN-FIXNUM?)
     ((POSITIVE-FIXNUM?) 'GREATER-THAN-FIXNUM?)
     (else (error "Unknown unary predicate:" predicate))))
+
+(define (commute-fixnum-predicate predicate)
+  (case predicate
+    ((EQUAL-FIXNUM?) 'EQUAL-FIXNUM?)
+    ((LESS-THAN-FIXNUM?) 'GREATER-THAN-FIXNUM?)
+    ((GREATER-THAN-FIXNUM?) 'LESS-THAN-FIXNUM?)
+    ((UNSIGNED-LESS-THAN-FIXNUM?) 'UNSIGNED-GREATER-THAN-FIXNUM?)
+    ((UNSIGNED-GREATER-THAN-FIXNUM?) 'UNSIGNED-LESS-THAN-FIXNUM?)
+    (else (error "Unknown binary predicate:" predicate))))
 
 (define (fixnum-branch! predicate)
   (case predicate
