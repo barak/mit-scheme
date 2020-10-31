@@ -1274,7 +1274,7 @@ USA.
                   ((? type logical-shift/rotate-type)
                    (? Rm register-31=z)
                    (? amount unsigned-6)))
-               (BITS (1 0)              ;sf=0, 32-bit operand size
+               (BITS (1 1)              ;sf=1, 64-bit operand size
                      (2 ,opc)
                      (5 #b01010)
                      (2 type)
