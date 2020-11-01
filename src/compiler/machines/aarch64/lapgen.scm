@@ -420,7 +420,9 @@ USA.
          (sub `(LSL (&U ,(shift-right (- imm) 12)) 12)))
         (else
          (let ((temp (get-temporary)))
-           (LAP ,@(load-unsigned-immediate temp imm)
+           (LAP ,@(if (< imm 0)         ;XXX
+                      (load-signed-immediate temp imm)
+                      (load-unsigned-immediate temp imm))
                 ,@(add temp))))))
 
 (define (affix-type target type datum get-temporary)
