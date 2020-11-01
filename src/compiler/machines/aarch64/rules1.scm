@@ -43,24 +43,9 @@ USA.
   (ASSIGN (REGISTER (? target))
           (CONS-POINTER (REGISTER (? type))
                         (REGISTER (? datum))))
-  (reuse-pseudo-register-alias! datum 'GENERAL
-    (lambda (alias)
-      ;; If we already have a reusable machine register loaded with the
-      ;; datum, use bit field insertion to set the type, and treat it
-      ;; as an alias for the target.
-      (let ((type (standard-source! type))
-            (lsb scheme-datum-width)
-            (width scheme-type-width))
-        (delete-dead-registers!)
-        (add-pseudo-register-alias! target alias)
-        (LAP (BFI X ,alias ,type (&U ,lsb) (&U ,width)))))
-    (lambda ()
-      ;; No advantage to using bit field insertion since we'd need two
-      ;; instructions anyway, so just shift and or.
-      (standard-binary target type datum
-        (lambda (target type datum)
-          (LAP (LSL X ,target ,type (&U ,scheme-datum-width))
-               (ORR X ,target ,target ,datum)))))))
+  (standard-binary target type datum
+    (lambda (target type datum)
+      (LAP (ORR X ,target ,datum (LSL ,type ,scheme-datum-width))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
