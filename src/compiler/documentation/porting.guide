@@ -1676,11 +1676,16 @@ returns a machine register of the specified type that is a valid alias
 for that RTL register if there is one, or false if there is none.
 This procedure should only be used for source operand RTL registers.
 If the register type is false, then REGISTER-ALIAS will return any
-valid alias.
+valid alias.  The alias is not marked as needed (see NEED-REGISTER!),
+so it may overlap with temporary registers allocated later using
+ALLOCATE-TEMPORARY-REGISTER!, or with target registers allocated after
+DELETE-DEAD-REGISTERS! using ALLOCATE-ALIAS-REGISTER!.
 
 * LOAD-ALIAS-REGISTER! is like REGISTER-ALIAS but always returns a
 machine register, allocating one of the specified type if necessary.
 This procedure should only be used for source operand RTL registers.
+The alias is marked as needed (see NEED-REGISTER!), so it is
+guaranteed never to overlap with any temporary or target registers.
 
 * REFERENCE-ALIAS-REGISTER! performs the same action as
 LOAD-ALIAS-REGISTER! but returns a register reference instead of an
@@ -1707,7 +1712,11 @@ that there really is no preference for the type, and any reference is
 valid.  STANDARD-REGISTER-REFERENCE should be used only for source
 operands (i.e. those that already contain data), and may return a
 memory reference for those machines with general addressing modes if
-there is no preferred type and alternates are acceptable.
+there is no preferred type and alternates are acceptable.  The
+resulting alias may not be marked as needed (see NEED-REGISTER!), so
+it may overlap with temporary registers allocated later using
+ALLOCATE-TEMPORARY-REGISTER!, or with target registers allocated after
+DELETE-DEAD-REGISTERS! using ALLOCATE-ALIAS-REGISTER!.
 
 * MOVE-TO-ALIAS-REGISTER! expects a source RTL register, a register
 type, and a target RTL register.  It returns a new alias for the
