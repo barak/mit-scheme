@@ -1747,7 +1747,13 @@ need to invoke it explicitly when calling out-of-line routines.
 register and generates code that copies the current value of the RTL
 register to the machine register.  It is used to pass arguments in
 fixed registers to out-of-line code, typically in the compiled code
-runtime library.
+runtime library.  LOAD-MACHINE-REGISTER! implies CLEAR-REGISTERS! on
+the RTL machine register -- there's no need to call CLEAR-REGISTERS!
+first.  Callers issuing multiple LOAD-MACHINE-REGISTER! calls should
+call NEED-REGISTER! for all of the registers up front, before any of
+the LOAD-MACHINE-REGISTER! calls, in order to avoid moving temporaries
+into machine registers that LOAD-MACHINE-REGISTER! is about to reassign
+anyway.
 
 * ADD-PSEUDO-REGISTER-ALIAS! expects an RTL pseudo-register and an
 available machine register (no longer an alias), and makes the
@@ -1755,10 +1761,12 @@ specified machine register an alias for the pseudo-register.
 
 * CLEAR-REGISTERS! expects any number of RTL registers and clears them
 from the register map, preserving their current contents in memory if
-needed.  It returns the code that will perform the required motion at
-runtime.  It should be used before invoking LOAD-MACHINE-REGISTER! to
-ensure that the potentially valid previous contents of the machine
-register have been saved.
+needed.  It has the side effect of NEED-REGISTER! on all the registers
+so they will not be allocated as temporaries; however, if the caller
+needs temporaries of its own, it should allocate them up front in order
+to avoid unnecessary register motion in case a spill is needed.
+CLEAR-MAP! returns the code that will perform the required motion at
+runtime.
 
 * CLEAR-MAP! deletes all aliases from the register map, pushing the
 data only held in aliases into the memory homes if needed.  This

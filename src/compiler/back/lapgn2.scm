@@ -310,15 +310,20 @@ USA.
 (define (clear-registers! . registers)
   (if (null? registers)
       '()
-      (let loop ((map *register-map*) (registers registers))
-	(save-machine-register map (car registers)
-	  (lambda (map instructions)
+      (let loop
+	  ((map *register-map*)
+	   (needed-registers (eqv-set-union registers *needed-registers*))
+	   (registers registers))
+	(save-machine-register map needed-registers (car registers)
+	  (lambda (map needed-registers instructions)
 	    (let ((map (delete-machine-register map (car registers))))
 	      (if (null? (cdr registers))
 		  (begin
 		    (set! *register-map* map)
+		    (set! *needed-registers* needed-registers)
 		    instructions)
-		  (append! instructions (loop map (cdr registers))))))))))
+		  (append! instructions
+			   (loop map needed-registers (cdr registers))))))))))
 
 (define (standard-register-reference register preferred-type alternate-types?)
   ;; Generate a standard reference for `register'.  This procedure

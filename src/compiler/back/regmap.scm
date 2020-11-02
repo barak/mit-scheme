@@ -590,14 +590,25 @@ exists, returns #F."
 		 (eqv? maybe-alias alias))
 	       (map-entry-aliases entry)))))
 
-(define (save-machine-register map register receiver)
+(define (save-machine-register map needed-registers register receiver)
   (let ((entry (map-entries:find-alias map register)))
     (if (and entry
 	     (not (map-entry-saved-into-home? entry))
 	     (null? (cdr (map-entry-aliases entry))))
-	(receiver (register-map:save-entry map entry)
-		  (save-into-home-instruction entry))
-	(receiver map (LAP)))))
+	(let ((type (register-type register)))
+	  (if (allocate-register-without-spill? map type needed-registers)
+	      (bind-allocator-values
+		  (make-free-register map type needed-registers)
+		(lambda (alias map instructions)
+		  (let ((transfer
+			 (register->register-transfer register alias)))
+		    (receiver (register-map:add-alias map entry alias)
+			      (cons alias needed-registers)
+			      (append! instructions transfer)))))
+	      (receiver (register-map:save-entry map entry)
+			needed-registers
+			(save-into-home-instruction entry))))
+	(receiver map needed-registers (LAP)))))
 
 (define (save-pseudo-register map register receiver)
   (let ((entry (map-entries:find-home map register)))
