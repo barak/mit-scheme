@@ -1771,7 +1771,9 @@ runtime.
 * CLEAR-MAP! deletes all aliases from the register map, pushing the
 data only held in aliases into the memory homes if needed.  This
 procedure returns an assembly language code fragment, and is typically
-used before invoking out-of-line code.
+used before invoking out-of-line code.  CLEAR-MAP! implies
+DELETE-DEAD-REGISTERS! -- there's no need to DELETE-DEAD-REGISTERS!
+first before CLEAR-MAP!.
 
 * DELETE-DEAD-REGISTERS! informs the register allocator that RTL
 pseudo registers whose contents will not be needed after the current
