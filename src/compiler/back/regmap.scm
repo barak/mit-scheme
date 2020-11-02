@@ -590,10 +590,12 @@ exists, returns #F."
 		 (eqv? maybe-alias alias))
 	       (map-entry-aliases entry)))))
 
-(define (save-machine-register map needed-registers register receiver)
+(define (save-machine-register map needed-registers dead-registers register
+			       receiver)
   (let ((entry (map-entries:find-alias map register)))
     (if (and entry
 	     (not (map-entry-saved-into-home? entry))
+	     (not (memv (map-entry-home entry) dead-registers))
 	     (null? (cdr (map-entry-aliases entry))))
 	(let ((type (register-type register)))
 	  (if (allocate-register-without-spill? map type needed-registers)
