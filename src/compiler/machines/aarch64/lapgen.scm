@@ -447,15 +447,10 @@ USA.
                 (ORR X ,target ,temp ,datum))))))
 
 (define (object->type target source)
-  (let ((lsb scheme-datum-width)
-        (width scheme-type-width))
-    (LAP (UBFX X ,target ,source (&U ,lsb) (&U ,width)))))
+  (LAP (LSR X ,target ,source (&U ,scheme-datum-width))))
 
 (define (object->datum target source)
-  (let ((lsb 0)
-        (width scheme-datum-width))
-    ;; Alternatively, use BFC to clear the top scheme-type-width bits.
-    (LAP (UBFX X ,target ,source (&U ,lsb) (&U ,width)))))
+  (LAP (AND X ,target ,source (&U ,(bit-mask scheme-datum-width 0)))))
 
 (define (object->address target source)
   (object->datum target source))
