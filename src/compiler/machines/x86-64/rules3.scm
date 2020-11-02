@@ -172,13 +172,13 @@ USA.
   (QUALIFIER (interpreter-call-argument? extension))
   continuation
   (expect-no-exit-interrupt-checks)
+  (need-registers! (list rbx rdx))
   (let* ((set-extension
 	  (interpreter-call-argument->machine-register! extension rbx))
 	 (set-address
-	  (begin (require-register! rdx)
+	  (begin (prefix-instructions! (clear-registers! rdx))
 		 (load-pc-relative-address (INST-EA (R ,rdx))
 					   *block-label*))))
-    (delete-dead-registers!)
     (LAP ,@set-extension
 	 ,@set-address
 	 ,@(clear-map!)
@@ -190,10 +190,10 @@ USA.
   (QUALIFIER (interpreter-call-argument? environment))
   continuation
   (expect-no-entry-interrupt-checks)
+  (need-registers! (list rbx rdx))
   (let* ((set-environment
 	  (interpreter-call-argument->machine-register! environment rbx))
 	 (set-name (object->machine-register! name rdx)))
-    (delete-dead-registers!)
     (LAP ,@set-environment
 	 ,@set-name
 	 ,@(clear-map!)

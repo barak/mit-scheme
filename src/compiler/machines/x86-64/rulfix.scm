@@ -705,15 +705,9 @@ USA.
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
     (assert (not overflow?))
-    ;++ This is suboptimal in the cases when SOURCE1 is stored only in
-    ;++ rcx or when SOURCE2 is stored only in rax, and either one is
-    ;++ dead (which is often the case).  In such cases, this generates
-    ;++ code to needlessly save the dead pseudo-registers into their
-    ;++ homes simply because they were stored in rax and rcx.  It'd be
-    ;++ nice to have a variant of LOAD-MACHINE-REGISTER! for multiple
-    ;++ sources and targets, which would compute a parallel assignment
-    ;++ using machine registers if available for temporaries, or the
-    ;++ homes of pseudo-registers if not.
+    (need-registers! (list rax rdx))
+    ;; XXX This may make suboptimal use of temporaries -- would be nice
+    ;; to have a parallel-assignment variant of load-machine-register!.
     (let* ((load-rax (load-machine-register! source1 rax))
 	   (load-rcx (load-machine-register! source2 rcx)))
       (delete-dead-registers!)
@@ -726,16 +720,18 @@ USA.
 	   ,@(invoke-hook/subroutine entry:compiler-fixnum-shift)))))
 
 (define (do-division target source1 source2 result-reg)
-  (prefix-instructions! (load-machine-register! source1 rax))
-  (need-register! rax)
-  (require-register! rdx)
-  (rtl-target:=machine-register! target result-reg)
-  (let ((source2 (any-reference source2)))
+  (assert (or (= result-reg rax) (= result-reg rdx)))
+  (need-registers! (list rax rdx))
+  (let* ((load-rax (load-machine-register! source1 rax))
+	 (source2 (any-reference source2)))
+    (delete-dead-registers!)
+    (rtl-target:=machine-register! target result-reg)
     ;; Before IDIV, the high (most significant) half of the 128-bit
     ;; dividend is in RDX, and the low (least significant) half is in
     ;; RAX.  After, the quotient is in RAX, and the remainder in RDX.
-    ;; First we fill RDX with the sign of RAX.
-    (LAP (CSE Q (R ,rdx) (R ,rax))
+    ;; First we fill RDX with the sign of RAX with CSE (= CQO/CQTO).
+    (LAP ,@load-rax
+	 (CSE Q (R ,rdx) (R ,rax))
 	 (IDIV Q ((R ,rdx) : (R ,rax)) ,source2))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
@@ -2093,10 +2089,7 @@ USA.
   (- n (* d (fast-quotient/signed n d width multiplier s1 s2))))
 
 (define (fast-division target* source* d finish)
-  (flush-register! rax)
-  (need-register! rax)
-  (flush-register! rdx)
-  (need-register! rdx)
+  (prefix-instructions! (clear-registers! rax rdx))
   (receive (multiplier s1 s2) (fast-divide-prepare (abs d) scheme-object-width)
     (let* ((if-negative1 (generate-label 'QUO-NEGATIVE-1))
 	   (if-negative2 (generate-label 'QUO-NEGATIVE-2))

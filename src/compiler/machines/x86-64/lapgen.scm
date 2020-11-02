@@ -185,23 +185,20 @@ USA.
 
 ;;;; Utilities for the rules
 
-(define (require-register! machine-reg)
-  (flush-register! machine-reg)
-  (need-register! machine-reg))
-
-(define-integrable (flush-register! machine-reg)
-  (prefix-instructions! (clear-registers! machine-reg)))
-
 (define (rtl-target:=machine-register! rtl-reg machine-reg)
+  ;; Assert that in the code generated for this RTL instruction, the
+  ;; value for rtl-reg ends up stored in machine-reg.  Ensures that if
+  ;; machine-reg is an alias for a pseudo, the pseudo will have another
+  ;; alias or be saved in its home.
   (if (machine-register? rtl-reg)
       (begin
-	(require-register! machine-reg)
+	(prefix-instructions! (clear-registers! machine-reg))
 	(if (not (= rtl-reg machine-reg))
 	    (suffix-instructions!
 	     (register->register-transfer machine-reg rtl-reg))))
       (begin
 	(delete-register! rtl-reg)
-	(flush-register! machine-reg)
+	(prefix-instructions! (clear-registers! machine-reg))
 	(add-pseudo-register-alias! rtl-reg machine-reg))))
 
 ;;; OBJECT->MACHINE-REGISTER! takes only general registers, not float
@@ -211,7 +208,7 @@ USA.
 (define (object->machine-register! object mreg)
   ;; This ordering allows LOAD-CONSTANT to use MREG as a temporary.
   (let ((code (load-constant (INST-EA (R ,mreg)) object)))
-    (require-register! mreg)
+    (prefix-instructions! (clear-registers! mreg))
     code))
 
 (define (assign-register->register target source)
