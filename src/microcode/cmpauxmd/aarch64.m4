@@ -73,6 +73,9 @@ define(ADRL,`
 
 	.equiv	TC_LENGTH,		6	// bits in type tag
 	.equiv	DATUM_LENGTH,		58	// bits in datum
+	.equiv	DATUM_MASK,		(1 << DATUM_LENGTH) - 1
+
+	.equiv	TC_COMPILED_ENTRY,	40
 
 ///////////////////////////////////////////////////////////////////////////////
 // Entering Scheme from C
@@ -268,12 +271,28 @@ END(interface_to_scheme_return)
 	//	arity, load its PC into APPLICAND_PC=x17.  Otherwise,
 	//	load apply_setup_fail into APPLICAND_PC=x17 to defer to
 	//	microcode.  Then return to link register.  Caller is
-	//	expected to jump to APPLICAND_PC=x17.
-	//
-	//	Not yet implemented fully.
+	//	expected to jump to APPLICAND_PC=x17.  No restrictions
+	//	on register use -- caller has already saved its
+	//	registers.
 	//
 LOCAL(apply_setup)
-	ADRL(APPLICAND_PC,apply_setup_fail)
+	// Split into type@x3 and datum@x4, and verify that the type is
+	// TC_COMPILED_ENTRY.
+	lsr	x3, APPLICAND, #DATUM_LENGTH
+	and	x4, APPLICAND, #DATUM_MASK
+	cmp	x3, #TC_COMPILED_ENTRY
+	b.ne	1f
+
+	// Load format word and PC offset, and verify frame size match.
+	ldursb	x3, [x4, #-12]		// x3 := signed frame size
+	ldr	x5, [x4, #-8]		// x5 := PC offset
+	cmp	x3, x2			// branch if frame size mismatch
+	b.ne	1f
+
+	add	APPLICAND_PC, x4, x5
+	ret
+
+1:	ADRL(APPLICAND_PC,apply_setup_fail)
 	ret
 END(apply_setup)
 
