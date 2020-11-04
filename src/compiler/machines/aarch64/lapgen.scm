@@ -212,23 +212,20 @@ USA.
   (move-to-alias-register! source (register-type source) target)
   (LAP))
 
-(define (require-register! machine-reg)
-  (flush-register! machine-reg)
-  (need-register! machine-reg))
-
-(define (flush-register! machine-reg)
-  (prefix-instructions! (clear-registers! machine-reg)))
-
 (define (rtl-target:=machine-register! rtl-reg machine-reg)
+  ;; Assert that in the code generated for this RTL instruction, the
+  ;; value for rtl-reg ends up stored in machine-reg.  Ensures that if
+  ;; machine-reg is an alias for a pseudo, the pseudo will have another
+  ;; alias or be saved in its home.
   (if (machine-register? rtl-reg)
       (begin
-        (require-register! machine-reg)
+        (prefix-instructions! (clear-registers! machine-reg))
         (if (not (= rtl-reg machine-reg))
             (suffix-instructions!
              (register->register-transfer machine-reg rtl-reg))))
       (begin
         (delete-register! rtl-reg)
-        (flush-register! machine-reg)
+        (prefix-instructions! (clear-registers! machine-reg))
         (add-pseudo-register-alias! rtl-reg machine-reg))))
 
 (define (register-expression expression)

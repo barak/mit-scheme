@@ -35,8 +35,7 @@ USA.
   (INTERPRETER-CALL:CACHE-REFERENCE (? continuation)
                                     (REGISTER (? extension))
                                     (? safe?))
-  ;; arg0 will be the return address.
-  (require-register! regnum:utility-arg2)
+  ;; utility-arg1 will be the return address.
   (let* ((set-extension (load-machine-register! extension regnum:utility-arg2))
          (prefix (clear-map!)))
     (LAP ,@set-extension
@@ -51,9 +50,8 @@ USA.
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? continuation)
                                      (REGISTER (? extension))
                                      (REGISTER (? value)))
-  ;; arg0 will be the return address.
-  (require-register! regnum:utility-arg2)
-  (require-register! regnum:utility-arg3)
+  ;; utility-arg1 will be the return address.
+  (need-registers! (list regnum:utility-arg2 regnum:utility-arg3))
   (let* ((set-extension (load-machine-register! extension regnum:utility-arg2))
          (set-value (load-machine-register! value regnum:utility-arg3))
          (prefix (clear-map!)))
@@ -66,8 +64,7 @@ USA.
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? continuation)
                                       (REGISTER (? extension)))
-  ;; arg0 will be the return address.
-  (require-register! regnum:utility-arg2)
+  ;; utility-arg1 will be the return address.
   (let* ((set-extension (load-machine-register! extension regnum:utility-arg2))
          (prefix (clear-map!)))
     (LAP ,@set-extension
