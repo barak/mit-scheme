@@ -118,7 +118,7 @@ GLOBAL(C_to_interface)
 	ADRL(HOOKS,hooks)		// address of hook table
 
 	// Set parameters for interface_to_scheme.  Note
-	// APPLICAND_PC=x17, APPLICAND=x0, so ordering is important
+	// APPLICAND_PC=x17, APPLICAND=x1, so ordering is important
 	// here.
 	mov	APPLICAND_PC, x1
 	mov	APPLICAND, x0
