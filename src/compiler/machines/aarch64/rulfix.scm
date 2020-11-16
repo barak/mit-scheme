@@ -268,28 +268,18 @@ USA.
   (lambda (target source1 source2 overflow?)
     ;; We have x 2^t and y 2^t, and we want x y 2^t, so divide one of
     ;; them first by 2^t.
-    (if (not overflow?)
-        (LAP (ASR X ,regnum:scratch-0 ,source1 (&U ,scheme-type-width))
-             (MUL X ,target ,regnum:scratch-0 ,source2))
-        (let* ((mask regnum:scratch-0)
-               (hi regnum:scratch-1)
-               (temp (general-temporary!)))
-          ;; We're going to test whether the high 64-bits is equal to
-          ;; the -1 or 0 we expect it to be.  Overflow if not equal, no
-          ;; overflow if equal.
-          (set-not-equal-branches!)
-          ;; Set mask to -1 if same sign, 0 if different sign.  The
-          ;; mask is equal to the high 64 bits of a non-overflowing
-          ;; multiply, so its xor with the high 64 bits is zero iff no
-          ;; overflow.
-          (LAP (CMP X ,source1 (&U 0))
-               (CSETM X LT ,mask)
-               (CMP X ,source2 (&U 0))
-               (CINV X LT ,mask ,mask)
-               (ASR X ,temp ,source1 (&U ,scheme-type-width))
-               (SMULH X ,hi ,temp ,source2)
-               (MUL X ,target ,temp ,source2)
-               (CMP X ,mask ,hi))))))
+    (let ((temp regnum:scratch-0))
+      (LAP (ASR X ,temp ,source1 (&U ,scheme-type-width))
+           (MUL X ,target ,temp ,source2)
+           ,@(if overflow?
+                 (let ((hi regnum:scratch-1)
+                       (sign-shift (- scheme-object-width 1)))
+                   ;; Not equal => high half mismatches sign => overflow.
+                   ;; Equal => high half matches sign => no overflow.
+                   (set-not-equal-branches!)
+                   (LAP (SMULH X ,hi ,temp ,source2)
+                        (CMP X ,hi (ASR ,target ,sign-shift))))
+                 (LAP))))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
