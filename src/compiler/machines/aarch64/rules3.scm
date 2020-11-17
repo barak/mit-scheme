@@ -414,17 +414,29 @@ USA.
 ;;; register.
 
 (define (interrupt-check checks label)
-  (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
-             (LAP (LDR X ,regnum:scratch-0 ,reg:memtop)
-                  (CMP X ,regnum:free-pointer ,regnum:scratch-0)
-                  (B. GE (@PCR ,label ,regnum:scratch-0)))
-             (LAP))
-       ,@(if (memq 'STACK checks)
-             (LAP (LDR X ,regnum:scratch-0 ,reg:stack-guard)
-                  (CMP X ,regnum:stack-pointer ,regnum:scratch-0)
-                  (B. LT (@PCR ,label ,regnum:scratch-0)))
-             (LAP))))
-
+  (let ((heap? (or (memq 'INTERRUPT checks) (memq 'HEAP checks)))
+        (stack? (memq 'STACK checks))
+        (memtop regnum:scratch-0)
+        (stack-guard regnum:scratch-1))
+    (cond ((and heap? stack?)
+           (LAP (LDR X ,memtop ,reg:memtop)
+                ;; Would be nice to use LDP here but memtop and
+                ;; stack-guard aren't adjacent in the registers block.
+                (LDR X ,stack-guard ,reg:stack-guard)
+                (CMP X ,regnum:free-pointer ,memtop)
+                (CCMP X LT ,regnum:stack-pointer ,stack-guard (&U #b1000))
+                (B. LT (@PCR ,label ,regnum:scratch-0))))
+          (heap?
+           (LAP (LDR X ,memtop ,reg:memtop)
+                (CMP X ,regnum:free-pointer ,memtop)
+                (B. GE (@PCR ,label ,regnum:scratch-0))))
+          (stack?
+           (LAP (LDR X ,stack-guard ,reg:stack-guard)
+                (CMP X ,regnum:stack-pointer ,stack-guard)
+                (B. LT (@PCR ,label ,regnum:scratch-0))))
+          (else
+           (LAP)))))
+
 (define (generate-procedure-header code-word label generate-interrupt-stub)
   (let ((checks (get-entry-interrupt-checks))
         (interrupt-label (generate-label 'INTERRUPT)))
