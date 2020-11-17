@@ -1622,6 +1622,56 @@ USA.
 (define-instruction CNEG
   (((? sf) (? condition) (? Rd) (? Rn))
    (MACRO 32 (CSNEG ,sf ,(invert-branch-condition condition) ,Rd ,Rn ,Rn))))
+
+;;; C3.4.12 Conditional comparison
+
+(let-syntax
+    ((define-conditional-compare-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic op) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              (((? sf sf-size)
+                (? condition branch-condition)
+                (? Rn register-31=z)
+                (? Rm register-31=z)
+                (&U (? nzcv unsigned-4)))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 1)
+                     (1 1)
+                     (4 #b1010)
+                     (3 #b010)
+                     (5 Rm)
+                     (4 condition)
+                     (1 0)
+                     (1 0)
+                     (5 Rn)
+                     (1 0)
+                     (4 nzcv)))
+              (((? sf sf-size)
+                (? condition branch-condition)
+                (? Rn register-31=z)
+                (&U (? imm unsigned-5))
+                (&U (? nzcv unsigned-4)))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 1)
+                     (1 1)
+                     (4 #b1010)
+                     (3 #b010)
+                     (5 imm)
+                     (4 condition)
+                     (1 1)
+                     (1 0)
+                     (5 Rn)
+                     (1 0)
+                     (4 nzcv)))))))))
+  ;; Conditional Compare Negative
+  (define-conditional-compare-instruction CCMN 0)
+  ;; Conditional Compare
+  (define-conditional-compare-instruction CCMP 1))
 
 ;;; Local Variables:
 ;;; eval: (put 'variable-width 'scheme-indent-function 2)
