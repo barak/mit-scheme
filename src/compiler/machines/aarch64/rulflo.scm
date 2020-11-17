@@ -253,8 +253,7 @@ USA.
 (define-arithmetic-method 'FLONUM-COPYSIGN flonum-methods/2-args
   (flonum-2-args/temporary
    (lambda (target source1 source2)
-     (let ((tempx (general-temporary!)))
-       ;; XXX do this without a temporary general register -- MOVI?
+     (let ((tempx regnum:scratch-0))
        (LAP (MOVZ X ,tempx (LSL (&U #x8000) 48))
             (FMOV D ,target X ,tempx)
             ;; target[i] := source2[i] if signbit[i] else source1[i]
@@ -375,11 +374,11 @@ USA.
   (set-condition-branches! 'EQ 'NE)
   (let ((source (float-source-fpr! source)))
     (delete-dead-registers!)
-    (let* ((temp-source (float-temporary-fpr!))
-           (temp-inf (float-temporary-fpr!))
+    (let* ((temp-inf (float-temporary-fpr!))
+           (temp-source (float-temporary-fpr!))
            (label (allocate-binary64-label binary64-bits:+inf)))
-      (LAP (FABS D ,temp-source ,source)
-           ,@(load-pc-relative-float temp-inf regnum:scratch-0 label)
+      (LAP ,@(load-pc-relative-float temp-inf regnum:scratch-0 label)
+           (FABS D ,temp-source ,source)
            (FCMP D ,temp-source ,temp-inf)))))
 
 (define-rule predicate
@@ -388,11 +387,11 @@ USA.
   (set-condition-branches! 'LO 'HS)     ;LO = lt; HS = gt, eq, or un
   (let ((source (float-source-fpr! source)))
     (delete-dead-registers!)
-    (let* ((temp-source (float-temporary-fpr!))
-           (temp-inf (float-temporary-fpr!))
+    (let* ((temp-inf (float-temporary-fpr!))
+           (temp-source (float-temporary-fpr!))
            (label (allocate-binary64-label binary64-bits:+inf)))
-      (LAP (FABS D ,temp-source ,source)
-           ,@(load-pc-relative-float temp-inf regnum:scratch-0 label)
+      (LAP ,@(load-pc-relative-float temp-inf regnum:scratch-0 label)
+           (FABS D ,temp-source ,source)
            (FCMP D ,temp-source ,temp-inf)))))
 
 (define-rule predicate
@@ -410,16 +409,16 @@ USA.
   (set-condition-branches! 'GE 'LO)
   (let ((source (float-source-fpr! source)))
     (delete-dead-registers!)
-    (let* ((temp-source (float-temporary-fpr!))
-           (temp-inf (float-temporary-fpr!))
+    (let* ((temp-inf (float-temporary-fpr!))
            (temp-norm (float-temporary-fpr!))
+           (temp-source (float-temporary-fpr!))
            (label-inf (allocate-binary64-label binary64-bits:+inf))
            (label-norm
             (allocate-binary64-label binary64-bits:smallest-normal)))
       ;; XXX Use LDP to load both registers in one go.
-      (LAP (FABS D ,temp-source ,source)
-           ,@(load-pc-relative-float temp-inf regnum:scratch-0 label-inf)
+      (LAP ,@(load-pc-relative-float temp-inf regnum:scratch-0 label-inf)
            ,@(load-pc-relative-float temp-norm regnum:scratch-0 label-norm)
+           (FABS D ,temp-source ,source)
            (FCMP D ,temp-source ,temp-inf)
            ;; If |x| < +inf, compare source and norm; otherwise, if |x|
            ;; >= +inf or |x| and +inf are unordered, set NCVB := 1000
