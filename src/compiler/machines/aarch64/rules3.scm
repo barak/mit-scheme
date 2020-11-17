@@ -160,7 +160,9 @@ USA.
         ;; ((eq? primitive (ucode-primitive set-interrupt-enables!)) ...)
         ;; ((eq? primitive (ucode-primitive with-interrupt-mask)) ...)
         ;; ((eq? primitive (ucode-primitive with-interrupts-reduced)) ...)
-        ;; ((eq? primitive (ucode-primitive with-stack-marker)) ...)
+        ((eq? primitive (ucode-primitive with-stack-marker))
+         (assert (= frame-size 4))
+         (generate/with-stack-marker))
         (else
          (generate/generic-primitive frame-size primitive))))
 
@@ -206,6 +208,65 @@ USA.
           (invoke-interface/shared 'COMPILER-APPLY code:compiler-apply)))
     (LAP ,@arg2
          ,@invocation)))
+
+;; Must match enum reflect_code_t in microcode/cmpint.c.
+(define-integrable reflect-code:internal-apply 0)
+(define-integrable reflect-code:restore-interrupt-mask 1)
+(define-integrable reflect-code:stack-marker 2)
+(define-integrable reflect-code:compiled-code-bkpt 3)
+(define-integrable reflect-code:compiled-invocation 8)
+
+(define (generate/with-stack-marker)
+  (let* ((linked (generate-label 'LINKED))
+         (continue (generate-label 'CONTINUE))
+         (prefix (clear-map!))
+         (temp r2)  ;not scratch0=r16, not scratch1=r17, not applicand=r1
+         (suffix (pop-return/interrupt-check)))
+    (LAP ,@prefix
+	 ;; Stack initially looks like:
+	 ;;
+	 ;;	sp[0] = procedure
+	 ;;	sp[1] = type
+	 ;;	sp[2] = instance
+	 ;;	sp[3] = continuation*
+	 ;;
+	 ;; We want:
+	 ;;
+	 ;;	sp[0] = continuation that pops it all
+	 ;;	sp[1] = reflect-to-interface
+	 ;;	sp[2] = fixnum reflect-code:stack-marker
+	 ;;	sp[3] = type
+	 ;;	sp[4] = instance
+	 ;;	sp[5] = continuation*
+	 ;;
+         (LDR X ,regnum:scratch-0 ,reg:reflect-to-interface)
+         ,@(load-tagged-immediate regnum:scratch-1
+                                  type-code:fixnum
+                                  reflect-code:stack-marker)
+         (BL (@PCR ,linked ,temp))
+         (B (@PCR ,continue ,regnum:scratch-0))
+        (LABEL ,linked)
+         ,@(pop regnum:applicand)
+         ,@(push2 regnum:scratch-1 regnum:scratch-0)
+         ,@(affix-type rlr type-code:compiled-return rlr
+                       (lambda () regnum:scratch-0))
+         ,@(push rlr)
+         ,@(invoke-hook/subroutine entry:compiler-apply-setup-size-1)
+         (BR ,regnum:applicand-pc)
+         ,@(make-external-label (continuation-code-word #f) continue)
+	 ;; Return value is in r0, so don't overwrite it.  Stack now looks
+	 ;; like:
+	 ;;
+	 ;;	sp[0] = reflect-to-interface
+	 ;;	sp[1] = fixnum reflect-code:stack-marker
+	 ;;	sp[2] = type
+	 ;;	sp[3] = instance
+	 ;;	sp[4] = continuation*
+	 ;;
+	 ;; Pop it all off and return.
+         (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
+              (&U ,(* 4 address-units-per-object)))
+         ,@suffix)))
 
 (let-syntax
     ((define-primitive-invocation
