@@ -69,7 +69,21 @@ define(ADRL,`
 
 	// Interpreter register block offsets.  Must agree with
 	// const.h.
+	.equiv	REGBLOCK_MEMTOP,	0
+	.equiv	REGBLOCK_INT_MASK,	1
 	.equiv	REGBLOCK_VAL,		2
+	.equiv	REGBLOCK_STACK_GUARD,	11
+	.equiv	REGBLOCK_INT_CODE,	12
+
+	// Interrupt numbers.  Must agree with intrpt.h.
+	.equiv	INTBIT_Stack_Overflow,	0
+	.equiv	INTBIT_GC,		2
+	.equiv	MAX_INTERRUPT_NUMBER,	0xf
+
+	.equiv	INT_Stack_Overflow,	(1 << INTBIT_Stack_Overflow)
+	.equiv	INT_GC,			(1 << INTBIT_GC)
+
+	.equiv	INT_Mask,		((1 << (MAX_INTERRUPT_NUMBER + 1)) - 1)
 
 	.equiv	TC_LENGTH,		6	// bits in type tag
 	.equiv	DATUM_LENGTH,		58	// bits in datum
@@ -350,13 +364,59 @@ LOCAL(fixnum_shift)
 	bic	x0, x0, #((1 << TC_LENGTH) - 1)
 	ret
 END(fixnum_shift)
-
-	// set_interrupt_enables
+
+	// set_interrupt_enables(value=x0, tagged_mask=x1)
 	//
 	//	Set the interrupt mask, and adjust stack_guard and
-	//	memtop accordingly.  Not yet implemented.
+	//	memtop accordingly.  Must preserve x0.
+	//
 LOCAL(set_interrupt_enables)
-	hlt	#0
+	// Store the updated interrupt mask.  Can't read the interrupt
+	// code until after we've done that.
+	and	x1, x1, #INT_Mask		// x1 := mask
+	str	x1, [REGS, #(REGBLOCK_INT_MASK*8)]
+
+	// This logic more or less follows COMPILER_SETUP_INTERRUPT.
+
+	// Get the pending interrupts.
+	ldr	x2, [REGS, #(REGBLOCK_INT_CODE*8)]	// x2 := pending intrs
+
+	// Load the expected values for the memtop and stack_guard
+	// registers.
+	ADRL(x3,heap_alloc_limit)		// x3 := &heap_alloc_limit
+	ldr	x3, [x3]			// x3 := heap_alloc_limit
+	ADRL(x4,stack_guard)			// x4 := &stack_guard
+	ldr	x4, [x4]			// x4 := stack_guard
+
+	// If interrupts are pending, or if if GC interrupts or stack
+	// overflow interrupts are blocked, branch to the slow path.
+	tst	x1, x2
+	b.ne	3f
+	tbz	x1, #INTBIT_GC, 4f
+1:	tbz	x1, #INTBIT_Stack_Overflow, 5f
+
+2:	// Set the registers.  (Can't use stp because non-adjacent.)
+	str	x3, [REGS, #(REGBLOCK_MEMTOP*8)]
+	str	x4, [REGS, #(REGBLOCK_STACK_GUARD*8)]
+
+	// All set!
+	ret
+
+3:	// Interrupt pending -- set memtop to zero so we stop at the
+	// first safe point.
+	mov	x3, #0
+	b	1b
+
+4:	// GC interrupt disabled, set memtop register to heap_end.
+	ADRL(x3,heap_end)
+	ldr	x3, [x3]
+	b	1b
+
+5:	// Stack overflow interrupt disabled -- set stack_guard
+	// register to stack_start.
+	ADRL(x4,stack_start)
+	ldr	x4, [x4]
+	b	2b
 END(set_interrupt_enables)
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -165,7 +165,9 @@ USA.
   continuation
   (cond ((eq? primitive compiled-error-procedure)
          (generate/compiled-error frame-size))
-        ;; ((eq? primitive (ucode-primitive set-interrupt-enables!)) ...)
+        ((eq? primitive (ucode-primitive set-interrupt-enables!))
+         (assert (= frame-size 2))
+         (generate/set-interrupt-enables!))
         ;; ((eq? primitive (ucode-primitive with-interrupt-mask)) ...)
         ;; ((eq? primitive (ucode-primitive with-interrupts-reduced)) ...)
         ((eq? primitive (ucode-primitive with-stack-marker))
@@ -183,6 +185,18 @@ USA.
          ,@arg1
          ,@invocation)))
 
+(define (generate/set-interrupt-enables!)
+  (let* ((prefix (clear-map!))
+         (temp regnum:scratch-0)
+         (value regnum:value-register)
+         (suffix (pop-return/interrupt-check)))
+    (LAP ,@prefix
+         ,@(pop regnum:utility-arg1)
+         (LDR X ,value ,reg:int-mask)
+         ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+         ,@(affix-type value type-code:fixnum value (lambda () temp))
+         ,@suffix)))
+
 (define (generate/generic-primitive frame-size primitive)
   (let* ((prefix (clear-map!))
          (arg1 (load-constant regnum:utility-arg1 primitive)))
