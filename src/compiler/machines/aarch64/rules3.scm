@@ -53,9 +53,17 @@ USA.
     (lambda (shared-label)
       (let ((interrupt-label (generate-label 'INTERRUPT)))
         (LAP (LABEL ,shared-label)
-             ,@(interrupt-check '(HEAP) interrupt-label)
-             ,@(pop-return)
+             ;; Inline heap/interrupt check, interleaved with
+             ;; pop-return.
+             (LDR X ,regnum:scratch-0 ,reg:memtop)
+             ,@(pop rlr)
+             (CMP X ,regnum:free-pointer ,regnum:scratch-0)
+             (B. GE (@PCR ,interrupt-label ,regnum:scratch-0))
+             ,@(object->address rlr rlr)
+             (RET)
              (LABEL ,interrupt-label)
+             ;; Never mind -- push back what we popped.
+             ,@(push rlr)
              ,@(invoke-interface code:compiler-interrupt-continuation-2))))))
 
 (define-rule statement
