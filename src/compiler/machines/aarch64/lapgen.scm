@@ -426,7 +426,7 @@ USA.
   (assert (<= scheme-type-width 16))
   (assert (<= 48 scheme-datum-width))
   (cond ((zero? type)
-         (assign-register->register target datum))
+         (register->register-transfer datum target))
         ((logical-imm-u64 (make-non-pointer-literal type 0))
          ;; Works for tags with only contiguous one bits, including
          ;; tags with only one bit set.

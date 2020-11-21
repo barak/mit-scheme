@@ -51,9 +51,11 @@ USA.
   (ASSIGN (REGISTER (? target))
           (CONS-POINTER (MACHINE-CONSTANT (? type))
                         (REGISTER (? datum))))
-  (standard-unary target datum
-    (lambda (target datum)
-      (affix-type target type datum general-temporary!))))
+  (if (zero? type)
+      (assign-register->register target datum)
+      (standard-unary target datum
+        (lambda (target datum)
+          (affix-type target type datum general-temporary!)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
