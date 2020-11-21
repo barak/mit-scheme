@@ -249,22 +249,22 @@ USA.
          (temp r2)  ;not scratch0=r16, not scratch1=r17, not applicand=r1
          (suffix (pop-return/interrupt-check)))
     (LAP ,@prefix
-	 ;; Stack initially looks like:
-	 ;;
-	 ;;	sp[0] = procedure
-	 ;;	sp[1] = type
-	 ;;	sp[2] = instance
-	 ;;	sp[3] = continuation*
-	 ;;
-	 ;; We want:
-	 ;;
-	 ;;	sp[0] = continuation that pops it all
-	 ;;	sp[1] = reflect-to-interface
-	 ;;	sp[2] = fixnum reflect-code:stack-marker
-	 ;;	sp[3] = type
-	 ;;	sp[4] = instance
-	 ;;	sp[5] = continuation*
-	 ;;
+         ;; Stack initially looks like:
+         ;;
+         ;;	sp[0] = procedure
+         ;;	sp[1] = type
+         ;;	sp[2] = instance
+         ;;	sp[3] = continuation*
+         ;;
+         ;; We want:
+         ;;
+         ;;	sp[0] = continuation that pops it all
+         ;;	sp[1] = reflect-to-interface
+         ;;	sp[2] = fixnum reflect-code:stack-marker
+         ;;	sp[3] = type
+         ;;	sp[4] = instance
+         ;;	sp[5] = continuation*
+         ;;
          (LDR X ,regnum:scratch-0 ,reg:reflect-to-interface)
          ,@(load-tagged-immediate regnum:scratch-1
                                   type-code:fixnum
@@ -279,17 +279,17 @@ USA.
          ,@(push rlr)
          ,@(invoke-hook/subroutine entry:compiler-apply-setup-size-1)
          (BR ,regnum:applicand-pc)
-         ,@(make-external-label (continuation-code-word #f) continue)
-	 ;; Return value is in r0, so don't overwrite it.  Stack now looks
-	 ;; like:
-	 ;;
-	 ;;	sp[0] = reflect-to-interface
-	 ;;	sp[1] = fixnum reflect-code:stack-marker
-	 ;;	sp[2] = type
-	 ;;	sp[3] = instance
-	 ;;	sp[4] = continuation*
-	 ;;
-	 ;; Pop it all off and return.
+        ,@(make-external-label (continuation-code-word #f) continue)
+         ;; Return value is in r0, so don't overwrite it.  Stack now looks
+         ;; like:
+         ;;
+         ;;	sp[0] = reflect-to-interface
+         ;;	sp[1] = fixnum reflect-code:stack-marker
+         ;;	sp[2] = type
+         ;;	sp[3] = instance
+         ;;	sp[4] = continuation*
+         ;;
+         ;; Pop it all off and return.
          (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
               (&U ,(* 4 address-units-per-object)))
          ,@suffix)))
