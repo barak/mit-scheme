@@ -175,13 +175,13 @@ USA.
 (define (load-register register ea)
   (case (register-type register)
     ((GENERAL) (LAP (LDR X ,register ,ea)))
-    ((FLOAT) (LAP (LDR D ,(float-register->fpr register) ,ea)))
+    ((FLOAT) (LAP (LDR.V D ,(float-register->fpr register) ,ea)))
     (else (error "Unknown register type:" register))))
 
 (define (store-register register ea)
   (case (register-type register)
     ((GENERAL) (LAP (STR X ,register ,ea)))
-    ((FLOAT) (LAP (STR D ,(float-register->fpr register) ,ea)))
+    ((FLOAT) (LAP (STR.V D ,(float-register->fpr register) ,ea)))
     (else (error "Unknown register type:" register))))
 
 ;;; Utilities
