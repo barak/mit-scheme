@@ -168,8 +168,12 @@ USA.
         ((eq? primitive (ucode-primitive set-interrupt-enables!))
          (assert (= frame-size 2))
          (generate/set-interrupt-enables!))
-        ;; ((eq? primitive (ucode-primitive with-interrupt-mask)) ...)
-        ;; ((eq? primitive (ucode-primitive with-interrupts-reduced)) ...)
+        ((eq? primitive (ucode-primitive with-interrupt-mask 2))
+         (assert (= frame-size 3))
+         (generate/with-interrupts #f))
+        ((eq? primitive (ucode-primitive with-interrupts-reduced 2))
+         (assert (= frame-size 3))
+         (generate/with-interrupts #t))
         ((eq? primitive (ucode-primitive with-stack-marker))
          (assert (= frame-size 4))
          (generate/with-stack-marker))
@@ -288,6 +292,68 @@ USA.
 	 ;; Pop it all off and return.
          (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
               (&U ,(* 4 address-units-per-object)))
+         ,@suffix)))
+
+(define (generate/with-interrupts merge?)
+  (let* ((prefix (clear-map!))
+         (restore-interrupts (generate-label 'RESTORE-INTERRUPTS))
+         (linked (generate-label 'LINKED))
+         (new-mask regnum:utility-arg1)
+         (old-mask r24)                 ;callee-saved temporaries
+         (procedure r25)
+         (reflect-code r26)
+         (reflect-to-interface r27)
+         (temp regnum:scratch-0)
+         (fixnum-tag regnum:scratch-1)
+         (suffix (pop-return/interrupt-check)))
+    (LAP ,@prefix
+         ;; Stack initially looks like:
+         ;;
+         ;;	sp[0] = new-mask
+         ;;	sp[1] = procedure
+         ;;	sp[2] = continuation
+         ;;
+         ;; We want:
+         ;;
+         ;;	sp[0] = old-mask
+         ;;	sp[1] = intermediate continuation (restore-interrupts)
+         ;;	sp[2] = reflect-to-interface
+         ;;	sp[3] = reflect-code:restore-interrupt-mask
+         ;;	sp[4] = old-mask
+         ;;	sp[5] = continuation
+         ;;
+         (LDR X ,old-mask ,reg:int-mask)
+         (LDR X ,reflect-to-interface ,reg:reflect-to-interface)
+         ,@(load-tagged-immediate fixnum-tag type-code:fixnum 0)
+         ,@(pop2 new-mask procedure)
+         (ORR X ,old-mask ,fixnum-tag ,old-mask)
+         (ORR X ,reflect-code ,fixnum-tag
+              (&U ,reflect-code:restore-interrupt-mask))
+         ,@(push2 old-mask reflect-code)
+         (BL (@PCR ,linked ,temp))
+         (B (@PCR ,restore-interrupts ,regnum:scratch-0))
+        (LABEL ,linked)
+         ,@(affix-type rlr type-code:compiled-return rlr (lambda () temp))
+         ,@(push2 reflect-to-interface rlr)
+         ,@(if merge? (LAP (AND X ,new-mask ,new-mask ,old-mask)) (LAP))
+         ,@(push old-mask)
+         ,@(begin (assert (= new-mask regnum:utility-arg1)) (LAP))
+         ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+         (ORR X ,regnum:applicand Z ,procedure)
+         ,@(invoke-hook/subroutine entry:compiler-apply-setup-size-2)
+         (BR ,regnum:applicand-pc)
+        ,@(make-external-label (continuation-code-word #f) restore-interrupts)
+         ;; Return value in r0, so don't overwrite it.  Stack is now:
+         ;;
+         ;;	sp[0] = reflect-to-interface
+         ;;	sp[1] = reflect-code:restore-interrupt-mask
+         ;;	sp[2] = old-mask
+         ;;	sp[3] = continuation
+         ;;
+         (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
+              (&U ,(* 2 address-units-per-object)))
+         ,@(pop regnum:utility-arg1)
+         ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
          ,@suffix)))
 
 (let-syntax
