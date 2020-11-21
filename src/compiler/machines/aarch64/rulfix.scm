@@ -323,10 +323,10 @@ USA.
 
 (define (fixnum-multiply-constant target source n overflow?)
   (define (do-shift shift)
-    (LAP (LSL X ,target ,source (&U ,(abs shift)))
-         ,@(if (negative? n)
-               (LAP (NEG X ,target ,target))
-               (LAP))))
+    (assert (< 0 shift))
+    (if (negative? n)
+        (LAP (NEG X ,target (LSL ,source ,shift)))
+        (LAP (LSL X ,target ,source (&U ,shift)))))
   (cond ((not overflow?)
          ;; XXX Special cases should be dispensed with earlier.
          (cond ((or (= n 0) (>= (abs n) (expt 2 scheme-datum-width)))
@@ -355,7 +355,7 @@ USA.
          (LAP ,@(cmp-immediate source
                                (* fixnum-1
                                   (shift-left -1 (- scheme-datum-width 1)))
-                               general-temporary!)
+                               (lambda () regnum:scratch-0))
               (NEG X ,target ,source)))
         ((integer-power-of-2? (abs n))
          => (lambda (shift)
@@ -368,17 +368,14 @@ USA.
                      (CMP X ,temp (ASR ,source ,(- scheme-object-width 1)))
                      ,@(do-shift shift)))))
         (else
-         (let ((mask regnum:scratch-0)
+         (let ((temp regnum:scratch-0)
                (hi regnum:scratch-1)
-               (temp (if (eqv? target source) (general-temporary!) target)))
+               (sign-shift (- scheme-object-width 1)))
            (set-not-equal-branches!)
-           (LAP ,@(load-signed-immediate mask (if (negative? n) -1 0))
-                (CMP X ,source (&U 0))
-                ,@(load-signed-immediate temp n)
-                (CINV X LT ,mask ,mask)
-                (SMULH X ,hi ,source ,temp)
-                (MUL X ,target ,source ,temp)
-                (CMP X ,mask ,hi))))))
+           (LAP ,@(load-signed-immediate temp n)
+                (MUL X ,target ,temp ,source)
+                (SMULH X ,hi ,temp ,source)
+                (CMP X ,hi (ASR ,target ,sign-shift)))))))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/register*constant
   fixnum-multiply-constant)
