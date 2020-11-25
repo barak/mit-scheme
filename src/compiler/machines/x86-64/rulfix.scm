@@ -309,8 +309,8 @@ USA.
 		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
 		      #f))
   (let ((predicate
-         (commute-fixnum-predicate
-          (fixnum-predicate/unary->binary predicate))))
+	 (commute-fixnum-predicate
+	  (fixnum-predicate/unary->binary predicate))))
     (detag-and-compare predicate tagged-source untagged-source)))
 
 (define-rule predicate
@@ -1847,7 +1847,7 @@ USA.
 			  #f)))
   (QUALIFIER
    (and compiler:assume-safe-fixnums?
-        (< n 0)))		    ;Sign-extension must not clear tag.
+	(< n 0)))			;Sign-extension must not clear tag.
   (and-immediate-in-place target source n))
 
 (define-rule statement
@@ -1859,7 +1859,7 @@ USA.
 			  #f)))
   (QUALIFIER
    (and compiler:assume-safe-fixnums?
-        (< n 0)))		    ;Sign-extension must not clear tag.
+	(< n 0)))			;Sign-extension must not clear tag.
   (and-immediate-in-place target source n))
 
 (define (and-immediate-in-place target source n)
@@ -1913,11 +1913,11 @@ USA.
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-          (FIXNUM->OBJECT
-           (FIXNUM-2-ARGS FIXNUM-ANDC
-                          (REGISTER (? source))
-                          (OBJECT->FIXNUM (CONSTANT (? n)))
-                          #f)))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-ANDC
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
   (and-immediate-and-tag target source (bitwise-not n)))
 
 (define-rule statement
