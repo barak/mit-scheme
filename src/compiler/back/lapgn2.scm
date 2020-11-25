@@ -367,14 +367,24 @@ USA.
 
 (define (load-machine-register! source-register machine-register)
   ;; Copy the contents of `source-register' to `machine-register'.
+  (define (last-reference-already-there)
+    ;; The machine register already holds the source (either because it
+    ;; is an alias for the source, or because the source literally is
+    ;; the machine register), so all we need to do is delete it from
+    ;; the map and mark it needed so nothing else will try to reuse it.
+    (delete-register! machine-register)
+    (need-register! machine-register)
+    (LAP))
   (if (machine-register? source-register)
-      (LAP ,@(clear-registers! machine-register)
-	   ,@(if (eqv? source-register machine-register)
-		 (LAP)
-		 (register->register-transfer source-register
+      (if (eqv? source-register machine-register)
+	  (last-reference-already-there)
+	  (LAP ,@(clear-registers! machine-register)
+	       ,@(register->register-transfer source-register
 					      machine-register)))
       (if (is-alias-for-register? machine-register source-register)
-	  (clear-registers! machine-register)
+	  (if (dead-register? source-register)
+	      (last-reference-already-there)
+	      (clear-registers! machine-register))
 	  (let ((source-reference
 		 (if (register-value-class=word? source-register)
 		     (standard-register-reference source-register false true)
