@@ -32,11 +32,10 @@ USA.
 (define (call-with-current-continuation receiver)
   ((ucode-primitive call-with-current-continuation 1)
    (lambda (control-point)
-     (let ((k
-	    (make-continuation control-point
-			       (get-dynamic-state)
-			       (get-thread-event-block))))
-       (%within-continuation k #f (lambda () (receiver k)))))))
+     (receiver
+      (make-continuation control-point
+			 (get-dynamic-state)
+			 (get-thread-event-block))))))
 
 (define (within-continuation k thunk)
   (guarantee continuation? k 'within-continuation)
