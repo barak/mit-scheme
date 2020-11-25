@@ -2055,100 +2055,178 @@ USA.
 
 ;;;; Fast division by multiplication
 
-(define (fast-divide-prepare divisor width)
-  (let ((zeros (integer-length (- divisor 1))))
-    (values
-     (+ 1
-	(quotient (shift-left (- (shift-left 1 zeros) divisor) width) divisor))
-     (if (> zeros 1) 1 zeros)
-     (if (= zeros 0) 0 (- zeros 1)))))
+;;; Torbjörn Granlund and Peter L. Montgomery, `Division by Invariant
+;;; Integers using Multiplication', Proceedings of ACM SIGPLAN 1994
+;;; Conference on Programming Language Design and Implementation,
+;;; pp. 61--72.
+;;;
+;;; https://dl.acm.org/doi/10.1145/178243.178249
+;;; https://gmplib.org/~tege/divcnst-pldi94.pdf
+;;;
+;;; We write W for N (width of a word in bits) to avoid
+;;; case-insensitive collision with n.
+
+(define (choose-multiplier d prec W)
+  ;; Fig 6.2: Selection of multiplier and shift count.
+  (assert (<= 1 prec W))
+  (assert (<= 1 d (expt 2 prec)))
+  (let ((L (integer-length (- d 1))))	;L := ceil(lg d)
+    (let loop
+	((s L)
+	 (m-low (quotient (expt 2 (+ W L)) d))
+	 (m-high
+	  (quotient (+ (expt 2 (+ W L))
+		       (expt 2 (+ W L (- prec))))
+		    d)))
+      (assert (= m-low (quotient (expt 2 (+ W s)) d)))
+      (assert
+       (= m-high
+	  (quotient (* (expt 2 (+ W s)) (+ 1 (expt 2 (- prec))))
+		    d)))
+      (assert (< m-low m-high))
+      (if (and (< (quotient m-low 2) (quotient m-high 2))
+	       (> s 0))
+	  (loop (- s 1) (quotient m-low 2) (quotient m-high 2))
+	  (values m-high s L)))))
 
 ;;; For reference, this is what the code generated below computes.
 
-(define (fast-quotient n d width multiplier s1 s2)
-  d					;ignore
-  (let ((t (shift-right (* n multiplier) width)))
-    (shift-right (+ t (shift-right (- n t) s1)) s2)))
+(define (fast-quotient n d W m s L)
+  ;; Fig. 5.2: Optimized code generation of signed q = TRUNC(n/d) for
+  ;; constant d =/= 0.
+  ((lambda (q) (if (< d 0) (- q) q))
+   (let ((xsign-n (shift-right n (- W 1))))
+     (assert (memv xsign-n '(0 -1)))
+     (assert (eqv? (negative? xsign-n) (negative? n)))
+     (define (mulsh x y) (shift-right (* x y) W))
+     (cond ((= (abs d) 1)
+	    ;; There is a typo in the paper -- it says `Issue q = d' in
+	    ;; case |d| = 1, but obviously that has to mean `q = n'.
+	    n)
+	   ((= (abs d) (expt 2 L))
+	    (shift-right (+ n (shift-left (shift-right n (- L 1)) (- W L))) L))
+	   ((< m (expt 2 (- W 1)))
+	    (- (shift-right (mulsh m n) s) xsign-n))
+	   (else
+	    (- (shift-right (+ n (mulsh (- m (expt 2 W)) n)) s) xsign-n))))))
 
-(define (fast-remainder n d width multiplier s1 s2)
-  (- n (* d (fast-quotient n d width multiplier s1 s2))))
-
-(define (fast-divide-prepare/signed divisor width)
-  (fast-divide-prepare (abs divisor) width))
-
-(define (fast-quotient/signed n d width multiplier s1 s2)
-  (define (do-unsigned n d)
-    (fast-quotient n d width multiplier s1 s2))
-  (if (negative? d)
-      (if (negative? n)
-	  (do-unsigned (- 0 n) (- 0 d))
-	  (- 0 (do-unsigned n (- 0 d))))
-      (if (negative? n)
-	  (- 0 (do-unsigned (- 0 n) d))
-	  (do-unsigned n d))))
-
-(define (fast-remainder/signed n d width multiplier s1 s2)
-  (- n (* d (fast-quotient/signed n d width multiplier s1 s2))))
-
-(define (fast-division target* source* d finish)
-  (prefix-instructions! (clear-registers! rax rdx))
-  (receive (multiplier s1 s2) (fast-divide-prepare (abs d) scheme-object-width)
-    (let* ((if-negative1 (generate-label 'QUO-NEGATIVE-1))
-	   (if-negative2 (generate-label 'QUO-NEGATIVE-2))
-	   (merge1 (generate-label 'QUO-MULTIPLY))
-	   (merge2 (generate-label 'QUO-RESULT))
-	   (source (source-register-reference source*))
-	   (target (target-register-reference target*)))
-      (LAP (MOV Q ,target ,source)
-	   ;; Divide by 2^t so that factor doesn't mess us up.
-	   (SAR Q ,target (&U ,scheme-type-width))
-	   ;; No need to CMP; SAR sets the SF bit for us to detect
-	   ;; whether the input is negative.
-	   (JS B (@PCR ,if-negative1))
-	   (JMP (@PCR ,merge1))
-	  (LABEL ,if-negative1)
-	   (NEG Q ,target)
-	  (LABEL ,merge1)
-	   ;; MUL takes argument in rax, so put it there.
-	   (MOV Q (R ,rax) ,target)
-	   ;; Load the multiplier into rdx, which is free until we MUL.
-	   (MOV Q (R ,rdx) (&U ,multiplier))
-	   ;; Compute the 128-bit product rax * multiplier, storing the
-	   ;; high 64 bits in rdx and the low 64 bits in rax.  We are
-	   ;; not interested in the low 64 bits, so rax is now free for
-	   ;; reuse.
-	   (MUL Q ((R ,rdx) : (R ,rax)) (R ,rdx))
-	   ;; Compute ((((n - p) >> s1) + p) >> s2) where p is the high
-	   ;; 64 bits of the product, in rdx.
-	   (SUB Q ,target (R ,rdx))
-	   (SHR Q ,target (&U ,s1))
-	   (ADD Q ,target (R ,rdx))
-	   (SHR Q ,target (&U ,s2))
-	   ;; Reapply the sign.
-	   (CMP Q ,source (& 0))
-	   (JL B (@PCR ,if-negative2))
-	   ,@(if (negative? d) (LAP (NEG Q ,target)) (LAP))
-	   (JMP (@PCR ,merge2))
-	  (LABEL ,if-negative2)
-	   ,@(if (negative? d) (LAP) (LAP (NEG Q ,target)))
-	  (LABEL ,merge2)
-	   ;; Convert back to fixnum representation with low zero bits.
-	   (SAL Q ,target (&U ,scheme-type-width))
-	   ,@(finish target source (INST-EA (R ,rax)))))))
-
+(define (fast-remainder n d W m s L)
+  (- n (* d (fast-quotient n d W m s L))))
+
+(define (fast-division target source d move-to-target! move-to-temporary!
+		       finish)
+  (define (finish* target source temp)
+    (LAP ,@(if (negative? d) (LAP (NEG Q ,target)) (LAP))
+	 ,@(finish target source temp)))
+  (define (srl x c) (if (zero? c) (LAP) (LAP (SHR Q ,x (&U ,c)))))
+  (define (sra x c) (if (zero? c) (LAP) (LAP (SAR Q ,x (&U ,c)))))
+  (let ((W scheme-object-width))
+    (receive (m s L) (choose-multiplier (abs d) (- W 1) W)
+      (cond ((= (abs d) 1)
+	     ;; q = n
+	     (receive (target source) (move-to-target! source target)
+	       (finish* target source #f)))
+	    ((= (abs d) (expt 2 L))
+	     ;; q = sra(n + srl(sra(n, L - 1), W - L), L)
+	     (receive (target source) (move-to-target! source target)
+	       (let ((temp (temporary-register-reference)))
+		 (LAP (SAR Q ,target (&U ,scheme-type-width))
+		      (MOV Q ,temp ,target)
+		      ,@(sra target (- L 1))	;sra(n, L - 1)
+		      ,@(srl target (- W L))	;srl(sra(n, L - 1), W - L)
+		      (ADD Q ,target ,temp)	;n + srl(sra(n, L - 1), W - L)
+		      ,@(sra target L)		;q
+		      (SHL Q ,target (&U ,scheme-type-width))
+		      ,@(finish* target source temp)))))
+	    ((< m (expt 2 (- W 1)))
+	     ;; q = sra(mulsh(m, n), s) - xsign(n)
+	     (need-registers! (list rax rdx))
+	     (receive (temp source) (move-to-temporary! source)
+	       (delete-dead-registers!)
+	       (prefix-instructions! (clear-registers! rax rdx))
+	       (rtl-target:=machine-register! target rdx)
+	       (LAP (SAR Q ,temp (&U ,scheme-type-width))
+		    ,@(load-unsigned-immediate (INST-EA (R ,rdx)) m)
+		    (MOV Q (R ,rax) ,temp)
+		    ;; temp := xsign(n)
+		    (SAR Q ,temp (&U ,(- W 1)))
+		    ;; rdx := mulsh(m, n) = floor(m*n/2^64), rax := garbage
+		    (IMUL Q ((R ,rdx) : (R ,rax)) (R ,rdx))
+		    ;; rdx := sra(mulsh(m, n), s)
+		    ,@(sra (INST-EA (R ,rdx)) s)
+		    ;; rdx := sra(mulsh(m, n), s) - xsign(n)
+		    (SUB Q (R ,rdx) ,temp)
+		    (SHL Q (R ,rdx) (&U ,scheme-type-width))
+		    ,@(finish* (INST-EA (R ,rdx))
+			       source
+			       (INST-EA (R ,rax))))))
+	    (else
+	     ;; q = sra(n + mulsh(m - 2^W, n), s) - xsign(n)
+	     (assert (>= m (expt 2 (- W 1))))
+	     (need-registers! (list rax rdx))
+	     (receive (temp source) (move-to-temporary! source)
+	       (delete-dead-registers!)
+	       (prefix-instructions! (clear-registers! rax rdx))
+	       (rtl-target:=machine-register! target rdx)
+	       (LAP (SAR Q ,temp (&U ,scheme-type-width))
+		    ,@(load-signed-immediate (INST-EA (R ,rdx))
+					     (- m (expt 2 W)))
+		    (MOV Q (R ,rax) ,temp)
+		    ;; rdx := mulsh(m - 2^W, n) = floor((m - 2^W)*n/2^64)
+		    ;; rax := garbage
+		    (IMUL Q ((R ,rdx) : (R ,rax)) (R ,rdx))
+		    ;; rdx := n + mulsh(m - 2^W, n)
+		    (ADD Q (R ,rdx) ,temp)
+		    ;; temp := xsign(n)
+		    (SAR Q ,temp (&U ,(- W 1)))
+		    ;; rdx := sra(n + mulsh(m - 2^W, n), s)
+		    ,@(sra (INST-EA (R ,rdx)) s)
+		    ;; rdx := sra(n + mulsh(m - 2^W, n), s) - xsign(n)
+		    (SUB Q (R ,rdx) ,temp)
+		    (SHL Q (R ,rdx) (&U ,scheme-type-width))
+		    ,@(finish* (INST-EA (R ,rdx))
+			       source
+			       (INST-EA (R ,rax))))))))))
+
 (define (fixnum-quotient/constant target source d)
-  (fast-division target source d
-    (lambda (quotient numerator temp)
-      (declare (ignore quotient numerator temp))
+  (define (move-to-target! source target)
+    (values (standard-move-to-target! source target) #f))
+  (define (move-to-temporary! source)
+    (values (standard-move-to-temporary! source) #f))
+  (fast-division target source d move-to-target! move-to-temporary!
+    (lambda (target source temp)
+      target source temp
       (LAP))))
 
 (define (fixnum-remainder/constant target source d)
-  (fast-division target source d
-    (lambda (quotient numerator temp)
+  (define (move-to-target! source target)
+    ;; We could ask for a second alias if it exists after
+    ;; standard-move-to-target!, but it's unlikely for a second alias
+    ;; to exist, so we'll just allocate a temporary explicitly to keep
+    ;; it simple.
+    (let* ((target (standard-move-to-target! source target))
+	   (temp (allocate-temporary-register! 'GENERAL)))
+      (prefix-instructions! (reference->register-transfer target temp))
+      (values target (register-reference temp))))
+  (define (move-to-temporary! source)
+    ;; source-register-reference might return a needed register (rax or
+    ;; rdx), which will not do here.
+    ;;
+    ;; XXX Fix source-register so this can't happen, and/or audit all
+    ;; the other uses to verify it's not important.
+    (let* ((source (register-reference (load-alias-register! source 'GENERAL)))
+	   (temp (allocate-temporary-register! 'GENERAL)))
+      (prefix-instructions! (reference->register-transfer source temp))
+      (values (register-reference temp) source)))
+  (fast-division target source d move-to-target! move-to-temporary!
+    (lambda (target source temp)
       ;; Compute n - d q.
-      (LAP (MOV Q ,temp (& ,(- d)))
-	   (IMUL Q ,quotient ,temp)
-	   (ADD Q ,quotient ,numerator)))))
+      (LAP ,@(if (fits-in-signed-long? (- d))
+		 (LAP (IMUL Q ,target ,target (& ,(- d))))
+		 (let ((temp (or temp (temporary-register-reference))))
+		   (LAP (MOV Q ,temp (& ,(- d)))
+			(IMUL Q ,target ,temp))))
+	   (ADD Q ,target ,source)))))
 
 (define (fixnum-predicate/unary->binary predicate)
   (case predicate
