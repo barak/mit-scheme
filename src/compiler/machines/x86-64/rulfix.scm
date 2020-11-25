@@ -723,6 +723,7 @@ USA.
   (assert (or (= result-reg rax) (= result-reg rdx)))
   (need-registers! (list rax rdx))
   (let* ((load-rax (load-machine-register! source1 rax))
+	 (clear-rdx (clear-registers! rdx))
 	 (source2 (any-reference source2)))
     (delete-dead-registers!)
     (rtl-target:=machine-register! target result-reg)
@@ -731,6 +732,7 @@ USA.
     ;; RAX.  After, the quotient is in RAX, and the remainder in RDX.
     ;; First we fill RDX with the sign of RAX with CSE (= CQO/CQTO).
     (LAP ,@load-rax
+	 ,@clear-rdx
 	 (CSE Q (R ,rdx) (R ,rax))
 	 (IDIV Q ((R ,rdx) : (R ,rax)) ,source2))))
 
