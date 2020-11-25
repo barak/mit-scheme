@@ -46,6 +46,7 @@ USA.
     "compiler/test-fixnum"
     "compiler/test-lsh"
     "compiler/test-open-code"
+    "compiler/test-remquo"
     "compiler/test-toplev"
     "compiler/test-varname"
     "compiler/test-vartrap"
