@@ -1699,6 +1699,46 @@ USA.
 			      (pcfg*scfg->scfg! test* (do-it) give-it-up)
 			      give-it-up)))))))
 
+(define (generic-division-operator generic-op fix-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (lambda (combination expressions finish)
+       (let ((op1 (car expressions))
+	     (op2 (cadr expressions))
+	     (give-it-up
+	      (generic-default generic-op combination expressions
+			       false finish)))
+	 (define (do-it)
+	   (finish
+	    (rtl:make-fixnum->object
+	     (rtl:make-fixnum-2-args fix-op
+				     (rtl:make-object->fixnum op1)
+				     (rtl:make-object->fixnum op2)
+				     false))))
+	 ;; Fixnum division can go wrong only if the divisor is zero,
+	 ;; in which case we must raise an exception; or if the divisor
+	 ;; is negative, in which case the most negative fixnum can
+	 ;; overflow, which the back ends aren't prepared to detect.
+	 (if (rtl:constant? op2)
+	     (if (let ((value (rtl:constant-value op2)))
+		   (and (exact-positive-integer? value)
+			(< value signed-fixnum/upper-limit)))
+		 (generate-unary-fixnum-test op1 give-it-up do-it)
+		 (give-it-up))
+	     (let ((give-it-up (give-it-up)))
+	       (generate-binary-fixnum-test op1 op2
+		 (lambda () give-it-up)
+		 (lambda ()
+		   (pcfg*scfg->scfg!
+		    (pcfg/prefer-consequent!
+		     (rtl:make-fixnum-pred-1-arg
+		      'POSITIVE-FIXNUM?
+		      (rtl:make-object->fixnum op2)))
+		    (do-it)
+		    give-it-up)))))))
+     '(0 1)
+     true)))
+
 (define (generic-unary-operator generic-op)
   (define-open-coder/value generic-op
     (simple-open-coder
@@ -1991,9 +2031,12 @@ USA.
 
 (for-each (lambda (generic-op)
 	    (generic-binary-operator generic-op))
-	  ;; Don't add any division operators here.  The open-coding
-	  ;; doesn't test for divide-by-zero.
 	  '(&+ &- &* INTEGER-ADD INTEGER-SUBTRACT INTEGER-MULTIPLY))
+
+(generic-division-operator 'QUOTIENT 'FIXNUM-QUOTIENT)
+(generic-division-operator 'REMAINDER 'FIXNUM-REMAINDER)
+(generic-division-operator 'INTEGER-QUOTIENT 'FIXNUM-QUOTIENT)
+(generic-division-operator 'INTEGER-REMAINDER 'FIXNUM-REMAINDER)
 
 ;; Truth table order
 (generic-bitwise-operator 'INTEGER-BITWISE-AND)
