@@ -314,8 +314,7 @@ USA.
 	  ((map *register-map*)
 	   (needed-registers (eqv-set-union registers *needed-registers*))
 	   (registers registers))
-	(save-machine-register map needed-registers *dead-registers*
-			       (car registers)
+	(save-machine-register map needed-registers (car registers)
 	  (lambda (map needed-registers instructions)
 	    (let ((map (delete-machine-register map (car registers))))
 	      (if (null? (cdr registers))
