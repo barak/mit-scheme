@@ -433,7 +433,7 @@ USA.
 	  (standard-register-reference source type true)
 	  target))
 	target))))
-
+
 (define (reuse-pseudo-register-alias! source type if-reusable if-not)
   (reuse-pseudo-register-alias source type
     (lambda (alias)
@@ -451,15 +451,39 @@ USA.
   ;; aliases, then one of its aliases may be reused.
   (if (machine-register? source)
       (if-not)
-      (let ((alias (register-alias source type)))
-	(cond ((not alias)
-	       (if-not))
-	      ((dead-register? source)
-	       (if-reusable alias))
-	      ((not (alias-is-unique? alias))
-	       (if-reusable alias))
-	      (else
-	       (if-not))))))
+      (let* ((all-aliases
+	      (or (pseudo-register-aliases *register-map* source) '()))
+	     (typed-aliases
+	      (if type
+		  (filter (lambda (alias)
+			    (register-type? alias type))
+			  all-aliases)
+		  all-aliases))
+	     (usable-aliases
+	      (eqv-set-difference typed-aliases *needed-registers*)))
+	(if (pair? usable-aliases)
+	    (let ((alias (car usable-aliases)))
+	      ;; XXX Not clear that need-register! here is necessary or
+	      ;; even appropriate, especially if we end up branching to
+	      ;; if-not rather than if-reusable, but it mimics the past
+	      ;; behaviour of reuse-pseudo-register-alias (via a since
+	      ;; removed call to register-alias), and shall remain
+	      ;; until proven removable and tested.
+	      ;;
+	      ;; In particular, most if-reusable continuations will
+	      ;; either explicitly issue need-register! or issue
+	      ;; delete-register!, whereas if we're not using the
+	      ;; register then it's hard to imagine why we should mark
+	      ;; it needed.  However, need-register! does affect what
+	      ;; aliases register-alias and standard-register-reference
+	      ;; may return, which some callers may (inadvertently)
+	      ;; rely on.
+	      (need-register! alias)
+	      (if (or (not (alias-is-unique? alias))
+		      (dead-register? source))
+		  (if-reusable alias)
+		  (if-not)))
+	    (if-not)))))
 
 ;;; The following procedures are used when the copy is going to be
 ;;; transformed, and the machine has 3 operand instructions, which
