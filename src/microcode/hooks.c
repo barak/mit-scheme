@@ -265,7 +265,7 @@ unpack_control_point (SCHEME_OBJECT cp)
 
     stack_pointer = STACK_BOTTOM;
     CLEAR_INTERRUPT (INT_Stack_Overflow);
-    STACK_CHECK (end_from - scan_from);
+    STACK_CHECK (scan_from - end_from);
     
     while (scan_from > end_from)
       STACK_PUSH (*--scan_from);
