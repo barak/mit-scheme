@@ -56,7 +56,7 @@ USA.
 
 #define CTASSERT_EXPN(x, a, b) CTASSERT_DECL(x, a, b)
 #define CTASSERT_DECL(x, a, b) \
-  typedef char mitscheme_ctassert_##a##_##b[(x) ? 1 : -1] ATTRIBUTE ((unused))
+  typedef char mitscheme_ctassert_##a##_##b[(x) ? 1 : -1] UNUSED
 
 #endif
 

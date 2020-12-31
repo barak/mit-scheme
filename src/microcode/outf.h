@@ -32,19 +32,19 @@ USA.
 typedef enum { CONSOLE_OUTPUT, ERROR_OUTPUT, FATAL_OUTPUT } outf_channel;
 
 extern void outf (outf_channel, const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 2, 3)));
+  PRINTFLIKE (2, 3);
 
 extern void outf_console (const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+  PRINTFLIKE (1, 2);
 
 extern void outf_error (const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+  PRINTFLIKE (1, 2);
 
 extern void outf_fatal (const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+  PRINTFLIKE (1, 2);
 
 extern void outf_error_line (const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+  PRINTFLIKE (1, 2);
 
 extern void voutf (outf_channel, const char *, va_list);
 extern void voutf_console (const char *, va_list);

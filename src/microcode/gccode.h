@@ -218,7 +218,8 @@ extern void gc_scan_oldspace (SCHEME_OBJECT *, SCHEME_OBJECT *);
 extern void gc_scan_tospace (SCHEME_OBJECT *, SCHEME_OBJECT *);
 
 extern void std_gc_death (const char *, ...)
-  ATTRIBUTE ((__noreturn__, __format__ (__printf__, 1, 2)));
+  NORETURN
+  PRINTFLIKE (1, 2);
 extern void gc_no_cc_support (void) NORETURN;
 extern void gc_bad_type (SCHEME_OBJECT) NORETURN;
 

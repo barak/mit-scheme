@@ -49,7 +49,7 @@ USA.
 
 extern SCHEME_OBJECT * sp_register;
 
-#define DEFLABEL(name) name : ATTRIBUTE((unused))
+#define DEFLABEL(name) name : UNUSED
 
 union machine_word_u
 {

@@ -145,9 +145,15 @@ USA.
 #if ((defined (__GNUC__)) && (__GNUC__ >= 3))
 #  define ATTRIBUTE(x) __attribute__ (x)
 #  define NORETURN __attribute__ ((__noreturn__))
+#  define UNUSED __attribute__ ((__unused__))
 #else
 #  define ATTRIBUTE(x)
 #  define NORETURN
+#  define UNUSED
+#endif
+
+#if ((defined (__GNUC__)) && (__GNUC__ >= 4))
+#  define PRINTFLIKE(n,m) ATTRIBUTE ((__format__ (__printf__, n, m)))
 #endif
 
 #if (((defined (__GNUC__)) && (__GNUC__ >= 7)) || \
