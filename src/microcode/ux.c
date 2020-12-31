@@ -58,8 +58,7 @@ UX_prim_check_fd_errno (enum syscall_names name)
 	  REQUEST_GC (0);
 	  deliver_pending_interrupts ();
 	}
-      /* Fall through */
-
+      FALLTHROUGH ();
     default:
       error_system_call (errno, name);
     }
