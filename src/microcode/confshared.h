@@ -154,6 +154,8 @@ USA.
 
 #if ((defined (__GNUC__)) && (__GNUC__ >= 4))
 #  define PRINTFLIKE(n,m) ATTRIBUTE ((__format__ (__printf__, n, m)))
+#else
+#  define PRINTFLIKE(n,m) /* nothing */
 #endif
 
 #if (((defined (__GNUC__)) && (__GNUC__ >= 7)) || \
