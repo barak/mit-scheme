@@ -788,8 +788,8 @@ USA.
 		   0
 		   0
 		   (x-image/window image)
-		   (->flonum window-x)
-		   (->flonum window-y)
+		   window-x
+		   window-y
 		   (x-image/width image)
 		   (x-image/height image)))
 
@@ -798,8 +798,8 @@ USA.
 		   x
 		   y
 		   (x-image/window image)
-		   (->flonum window-x)
-		   (->flonum window-y)
+		   window-x
+		   window-y
 		   width
 		   height))
 
@@ -830,8 +830,8 @@ USA.
 		     0
 		     0
 		     (x-graphics-device/xw device)
-		     (->flonum x)
-		     (->flonum y)
+		     x
+		     y
 		     w
 		     h)))
 
