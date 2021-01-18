@@ -197,8 +197,18 @@ USA.
   ;; have the same number of pixels as image.  These pixels are written onto
   ;; image by repeated calls to XPutPixel.  This procedure is equivalent to
   ;; calling x-set-pixel-in-image for each pixel in vector.
-  (guarantee bytevector? vector 'x-bytes-into-image)
-  (C-call "x_bytes_into_image" vector image))
+  (cond ((bytevector? vector)
+	 (C-call "x_bytes_into_image" vector image))
+	((vector? vector)
+	 (let ((w (C-call "x_image_width" image))
+	       (h (C-call "x_image_height" image)))
+	   (if (not (= (* w h) (vector-length vector)))
+	       (error:bad-range-argument vector 'X-BYTES-INTO-IMAGE))
+	   (do ((y 0 (+ y 1)) (i 0 (+ i w))) ((>= y h))
+	     (do ((x 0 (+ x 1)) (i i (+ i 1))) ((>= x w))
+	       (x-set-pixel-in-image image x y (vector-ref vector i))))))
+	(else
+	 (error:wrong-type-argument vector 'X-BYTES-INTO-IMAGE))))
 
 (define (x-get-pixel-from-image image x y)
   (let ((pixel (C-call "x_get_pixel_from_image" image x y)))

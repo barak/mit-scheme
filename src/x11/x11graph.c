@@ -800,6 +800,20 @@ x_create_image (struct xwindow * xw, uint width, uint height)
 	    bitmap_pad,
 	    bytes_per_line)));
 }
+
+unsigned long
+x_image_width (struct ximage * ximage)
+{
+  XImage * image = (XI_IMAGE (ximage));
+  return (image -> width);
+}
+
+unsigned long
+x_image_height (struct ximage * ximage)
+{
+  XImage * image = (XI_IMAGE (ximage));
+  return (image -> height);
+}
 
 int
 x_bytes_into_image (unsigned char * vector, int length, struct ximage *ximage)

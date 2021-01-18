@@ -817,6 +817,9 @@ USA.
 	(xw (* (struct xwindow)))
 	(width uint) (height uint))
 
+(extern ulong x_image_width (ximage (* (struct ximage))))
+(extern ulong x_image_height (ximage (* (struct ximage))))
+
 (extern int
 	x_bytes_into_image
 	(vector (* uchar)) (length int) (ximage (* (struct ximage))))
