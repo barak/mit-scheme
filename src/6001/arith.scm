@@ -27,7 +27,7 @@ USA.
 ;;;; Scheme Arithmetic for 6.001
 ;;; package: (student number)
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 (define-integrable (int:->flonum n)
   ((ucode-primitive integer->flonum 2) n #b10))

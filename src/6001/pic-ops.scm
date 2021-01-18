@@ -26,7 +26,7 @@ USA.
 
 ;;; Operations for manipulating pictures
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 (define-integrable (in-rect? x y width height)
   (and (fix:< -1 x) (fix:< x width) (fix:< -1 y) (fix:< y height)))

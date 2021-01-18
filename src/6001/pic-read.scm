@@ -26,7 +26,7 @@ USA.
 
 ;;;; Procedures to read a file in raw pgm format into a picture
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 (define (pgm-file->picture filename)
   (call-with-input-file (standard-pathname filename "pgm")

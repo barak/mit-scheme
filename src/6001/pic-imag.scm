@@ -26,7 +26,7 @@ USA.
 
 ;;;; 6.001 Images
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 ;;; Procedure to build an image given a picture and the magnification factors
 

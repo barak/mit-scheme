@@ -27,7 +27,7 @@ USA.
 ;;;; SCode rewriting for 6.001
 ;;; package: (student scode-rewriting)
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 (define (initialize-package!)
   (set! hook/repl-eval student/repl-eval)

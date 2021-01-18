@@ -26,7 +26,7 @@ USA.
 
 ;;;; 6.001 Images
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 ;;;; Miscellaneous Utilities
 

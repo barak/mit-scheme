@@ -26,7 +26,7 @@ USA.
 
 ;;;; 6.001: Edwin Extensions
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 (define student-root-directory)
 (define student-work-directory)

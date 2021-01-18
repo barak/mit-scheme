@@ -26,7 +26,7 @@ USA.
 
 ;;; Representation of pictures using records
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 (define-record-type <picture>
     (%make-picture width height)

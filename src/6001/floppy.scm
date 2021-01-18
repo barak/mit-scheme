@@ -26,7 +26,7 @@ USA.
 
 ;;;; 6.001: HP-UX Floppy Commands
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 (define (run-floppy-login-loop)
   (set! floppy-contents-loaded? false)

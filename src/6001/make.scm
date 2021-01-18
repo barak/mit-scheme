@@ -26,7 +26,7 @@ USA.
 
 ;;;; 6.001: System Construction
 
-(declare (usual-integrations))
+;(declare (usual-integrations))
 
 (with-loader-base-uri (system-library-uri "6001/")
   (lambda ()
