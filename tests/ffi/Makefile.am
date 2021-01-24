@@ -59,4 +59,4 @@ MAINTAINERCLEANFILES = Makefile.in aclocal.m4 compile config.* configure
 MAINTAINERCLEANFILES += depcomp install-sh ltmain.sh missing
 
 maintainer-clean-local:
-	-rm -rf m4
+	-rm -rf m4 .deps
