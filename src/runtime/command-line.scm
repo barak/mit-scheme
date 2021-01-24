@@ -218,19 +218,20 @@ USA.
   (values '() #f))
 
 (define (show-command-line-options)
-  (write-string "
-
-ADDITIONAL OPTIONS supported by this band:\n")
-  (do ((parsers (sort *command-line-parsers*
-		      (lambda (a b) (string<? (car a) (car b))))
-		(cdr parsers)))
-      ((null? parsers))
-    (let ((description (cadar parsers)))
-      (if (not (fix:= 0 (string-length description)))
-	  (begin
-	    (newline)
-	    (write-string description)
-	    (newline)))))
+  (let ((port (console-error-port)))
+    (do ((parsers (sort *command-line-parsers*
+			(lambda (a b) (string<? (car a) (car b))))
+		  (cdr parsers)))
+	((null? parsers))
+      (let ((description (cadar parsers)))
+	(if (not (fix:= 0 (string-length description)))
+	    (begin
+	      (newline port)
+	      (write-string description port)
+	      (newline port)))))
+    (newline port)
+    (write-string "Please report bugs to bug-mit-scheme@gnu.org." port)
+    (newline port))
   (exit))
 
 (add-boot-init!
