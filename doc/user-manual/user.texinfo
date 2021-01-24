@@ -190,9 +190,9 @@ the packages that must be installed on some popular systems:
 
 @itemize @bullet
 @item
-Debian-like systems: @code{gcc} @code{make} @code{libncurses-dev}
+Debian-like systems: @code{gcc} @code{make} @code{automake} @code{libncurses-dev}
 @item
-CentOS-like systems: @code{gcc} @code{make} @code{ncurses-devel}
+CentOS-like systems: @code{gcc} @code{make} @code{automake} @code{ncurses-devel}
 @item
 macOS systems: Command line developer tools @samp{xcode-select --install}
 @end itemize
