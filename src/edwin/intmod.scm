@@ -1000,8 +1000,7 @@ If this is an error, the debugger examines the error condition."
 (define (operation/read-char port)
   (error "READ-CHAR not supported on this port:" port))
 
-(define (operation/read port environment)
-  (declare (ignore environment))
+(define (operation/read port)
   (read-expression port (nearest-cmdl/level)))
 
 (define read-expression
