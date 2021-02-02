@@ -24,45 +24,55 @@
 # inputs: git source tree
 # outputs: changelog, source tar
 
+system_args ()
+{
+    (( ${#} <= 2 )) || usage
+    DIST_TYPE=${1:-standard}
+    GIT_BRANCH=${2:-master}
+}
+ARGS_FUNCTION=system_args
+
+system_usage ()
+{
+    echo "usage: ${PROGRAM} TYPE [BRANCH]"
+    standard_args_usage
+    echo "  BRANCH is the git branch to use"
+}
+USAGE_FUNCTION=system_usage
+
 . "$(dirname "${0}")"/shared.sh
 reset_output_dir
 
-notify "Creating the changelog"
-my_rm_f "${CHANGELOG}"
-run_command "${CHANGELOG}" "${SOURCE_TREE}" git log --name-status
-make_read_only "${CHANGELOG}"
+GIT_REPO=https://git.savannah.gnu.org/git/"${PROJECT_NAME}".git
 
-notify "Creating the distribution directory"
-new_temp_dir "${DIST_DIR}"
-my_cp "${CHANGELOG}" "${DIST_DIR}"/.
-for FILE in src tests doc dist/Makefile; do
-    my_cp "${SOURCE_TREE}"/"${FILE}" "${DIST_DIR}"/.
-done
-my_mkdir "${DIST_DIR}"/etc
-my_cp "${SOURCE_TREE}"/etc/xscheme.el "${DIST_DIR}"/etc/.
+notify "Cloning the source tree"
+run_command "${SRC_OUT}"-clone . git clone -b "${GIT_BRANCH}" "${GIT_REPO}"
+cleanup_file "${PROJECT_NAME}"
 
-# Clean up dot files from source tree
-my_find "${DIST_DIR}" -name '.*' -exec rm -f '{}' \;
-
-reconf ()
+generate_changelog ()
 {
-    if [[ -f configure ]]; then
-	my_configure
-	my_make distclean
-    else
-	cmd autoconf
-    fi
+    git log --name-status > ../"${CHANGELOG}"
+    make_read_only ../"${CHANGELOG}"
 }
 
-notify "Configuring the distribution directory"
-run_command "${SRC_OUT}"-config "${DIST_DIR}"/src ./Setup.sh
-run_command "${DOC_OUT}"-config "${DIST_DIR}"/doc reconf
+notify "Creating the changelog"
+run_command "${SRC_OUT}"-changelog "${PROJECT_NAME}" generate_changelog
+my_rm_rf "${PROJECT_NAME}"/.git
 
-# Clean up after autoconf
-find "${DIST_DIR}" -type d -name autom4te.cache | xargs rm -rf
-fixup_perms "${DIST_DIR}"
+notify "Setting release number"
+set_release_vars "${PROJECT_NAME}"
+my_mv "${PROJECT_NAME}" "${DIST_DIR}"
+cleanup_file "${DIST_DIR}"
+
+notify "Configuring the source tree"
+run_command "${SRC_OUT}"-config "${DIST_DIR}"/src ./Setup.sh
+run_command_append "${SRC_OUT}"-config "${DIST_DIR}"/doc autoconf
 
 notify "Creating archive file"
 make_tar_file "${SRC_OUT}" "${DIST_DIR}"
 
+notify "Cleaning up"
+my_rm_rf "${PROJECT_NAME}"/"${DIST_DIR}"
+
+cleanup_temp_files
 notify_finished

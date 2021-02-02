@@ -24,6 +24,8 @@
 # inputs: source tar
 # outputs: binary tar
 
+umask go-w
+
 system_args ()
 {
     (( ${#} == 2 )) || usage
@@ -35,15 +37,14 @@ ARGS_FUNCTION=system_args
 system_usage ()
 {
     echo "usage: ${PROGRAM} TYPE ARCH"
-    usage_arg_type
-    echo "  ARCH must be one of 'i386', 'x86-64', or 'svm1'"
+    standard_args_usage
+    echo "  ARCH must be a supported native-code architecture,"
+    echo "    such as 'x86-64' or 'aarch64le'"
 }
 USAGE_FUNCTION=system_usage
 
 . "$(dirname "${0}")"/shared.sh
-make_output_dir
-
-shift 2
+restore_release_vars
 
 build ()
 {
@@ -66,13 +67,12 @@ clean ()
 OUT_ROOT=${NATIVE_OUT}-${ARCH}
 
 notify "Building binaries for arch ${ARCH}"
-unpack_dist_file_to "${DIST_DIR}" "${DIST_DIR}"
+unpack_dist_dir "${DIST_DIR}"
 run_command "${OUT_ROOT}"-compile "${DIST_DIR}"/src build
 run_command "${OUT_ROOT}"-clean "${DIST_DIR}"/src clean
 
 notify "Making tarball"
-fixup_perms "${DIST_DIR}"
 make_tar_file "${OUT_ROOT}" "${DIST_DIR}"-"${ARCH}" "${DIST_DIR}"
-cleanup_temp_files
 
+cleanup_temp_files
 notify_finished

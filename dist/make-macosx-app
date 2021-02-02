@@ -29,22 +29,21 @@ system_args ()
     (( ${#} >= 2 )) || usage
     DIST_TYPE=${1}
     ARCH=${2}
+    shift 2
 }
 ARGS_FUNCTION=system_args
 
 system_usage ()
 {
     echo "usage: ${PROGRAM} TYPE ARCH [OPTIONS]"
-    usage_arg_type
+    standard_args_usage
     echo "  ARCH must be 'i386' or 'x86-64'"
     echo "  OPTIONS are passed to the configure script"
 }
 USAGE_FUNCTION=system_usage
 
 . "$(dirname "${0}")"/shared.sh
-make_output_dir
-
-shift 2
+restore_release_vars
 
 OUT=${MACOSX_OUT}-${ARCH}
 ARCH_BASE=${DIST_DIR}-${ARCH}
@@ -61,7 +60,7 @@ make_dmg ()
 {
     new_temp_dir "${DMG_DIR}"
     local APP_DIR="MIT:GNU Scheme ${RELEASE}.app"
-    my_mv "${DIST_DIR}"/src/mit-scheme.app "${DMG_DIR}"/"${APP_DIR}"
+    my_mv "${ARCH_BASE}"/src/mit-scheme.app "${DMG_DIR}"/"${APP_DIR}"
     my_ln_s /Applications "${DMG_DIR}"/.
     my_rm_f "${DMG_FILE}"
     create-dmg --volname "MIT-GNU Scheme ${RELEASE}" "${DMG_FILE}" "${DMG_DIR}"
@@ -69,14 +68,15 @@ make_dmg ()
 }
 
 notify "Compiling executable"
-unpack_dist_file_to "${ARCH_BASE}" "${DIST_DIR}"
-run_command "${OUT}"-compile "${DIST_DIR}"/src compile "${@}"
+unpack_dist_dir "${ARCH_BASE}"
+run_command "${OUT}"-compile "${ARCH_BASE}"/src compile "${@}"
 
 notify "Building application bundle"
 VERSION_STRING=${RELEASE} \
-    run_command "${OUT}"-buildapp "${DIST_DIR}"/src etc/macosx/make-app.sh
+    run_command "${OUT}"-buildapp "${ARCH_BASE}"/src etc/macosx/make-app.sh
 
 notify "Building disk image"
 run_command "${OUT}"-makedmg "${TL_DIR}" make_dmg
 
+cleanup_temp_files
 notify_finished

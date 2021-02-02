@@ -25,7 +25,7 @@
 # outputs: doc image tar, formatted doc tars
 
 . "$(dirname "${0}")"/shared.sh
-make_output_dir
+restore_release_vars
 
 BUILD_DIR=doc-build
 PLUGINS_WITH_DOC=(blowfish gdbm imail)
@@ -43,7 +43,10 @@ make_archive_dir ()
 }
 
 notify "Building documentation"
-unpack_dist_file_to "${DIST_DIR}" "${BUILD_DIR}"
+unpack_dist_dir "${DIST_DIR}"
+my_rm_rf "${BUILD_DIR}"
+my_mv "${DIST_DIR}" "${BUILD_DIR}"
+cleanup_file "${BUILD_DIR}"
 run_command "${DOC_OUT}"-build "${BUILD_DIR}"/doc build_docs
 for PLUGIN in "${PLUGINS_WITH_DOC[@]}"; do
     run_command_append "${DOC_OUT}"-build "${BUILD_DIR}"/src/"${PLUGIN}" \

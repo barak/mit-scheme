@@ -21,7 +21,7 @@
 # 02110-1301, USA.
 
 set -ae
-umask 022
+umask 0002
 
 # Capture standard out so we can send messages there even when it's
 # redirected.
@@ -30,7 +30,6 @@ exec 3>&1
 TL_DIR=$(pwd)
 PROGRAM=${0}
 PROJECT_NAME=mit-scheme
-SOURCE_TREE=${PROJECT_NAME}
 
 usage ()
 {
@@ -41,10 +40,10 @@ usage ()
 standard_usage ()
 {
     echo "usage: ${PROGRAM} TYPE"
-    usage_arg_type
+    standard_args_usage
 }
 
-usage_arg_type ()
+standard_args_usage ()
 {
     echo "  TYPE must be 'snapshot' to specify today's date"
     echo "    or 'standard' to specify standard release"
@@ -56,18 +55,42 @@ standard_args ()
     DIST_TYPE=${1:-standard}
 }
 
-source_missing ()
-{
-    echo "${SOURCE_TREE}: directory not found"
-    exit 1
-}
-
-[[ -d ${SOURCE_TREE} ]] || source_missing
-
 ${ARGS_FUNCTION:-standard_args} "${@}"
+
+CHANGELOG=changelog.txt
+TAR_SUFFIX=.tar.gz
+
+OUTPUT_DIR=${TL_DIR}/.out
+RELEASE_OUT=${OUTPUT_DIR}/release
+SRC_OUT=${OUTPUT_DIR}/src
+DOC_OUT=${OUTPUT_DIR}/doc
+LIARC_OUT=${OUTPUT_DIR}/liarc
+NATIVE_OUT=${OUTPUT_DIR}/native
+MACOSX_OUT=${OUTPUT_DIR}/macosx
+
+PLUGINS=(blowfish gdbm edwin imail x11 x11-screen)
+
+set_release_vars ()
+{
+    local -r SOURCE_TREE=${1}
+    case ${DIST_TYPE} in
+        snapshot)
+	    RELEASE=$(date +%Y%m%d)
+	    ;;
+        standard)
+	    RELEASE=$(get_release "${SOURCE_TREE}")
+	    ;;
+        *)
+	    usage
+	    ;;
+    esac
+    DIST_DIR=${PROJECT_NAME}-${RELEASE}
+    echo "${RELEASE}" > "${RELEASE_OUT}"
+}
 
 get_release ()
 {
+    local -r SOURCE_TREE=${1}
     fgrep Release "${SOURCE_TREE}"/src/runtime/version.scm \
 	| awk 'BEGIN { OFS = "." }
 	       NF == 4 { print $3, $4 }
@@ -77,31 +100,20 @@ get_release ()
 	| tr -d \(\)\'\"
 }
 
-case ${DIST_TYPE} in
-    snapshot)
-	RELEASE=$(date +%Y%m%d)
-	;;
-    standard)
-	RELEASE=$(get_release)
-	;;
-    *)
-	usage
-	;;
-esac
+restore_release_vars ()
+{
+    guarantee_file "${RELEASE_OUT}"
+    RELEASE=$(cat "${RELEASE_OUT}")
+    DIST_DIR=${PROJECT_NAME}-${RELEASE}
+}
 
-CHANGELOG=changelog.txt
-TAR_SUFFIX=.tar.gz
-
-DIST_DIR=${PROJECT_NAME}-${RELEASE}
-
-OUTPUT_DIR=${TL_DIR}/.out
-SRC_OUT=${OUTPUT_DIR}/src
-DOC_OUT=${OUTPUT_DIR}/doc
-LIARC_OUT=${OUTPUT_DIR}/liarc
-NATIVE_OUT=${OUTPUT_DIR}/native
-MACOSX_OUT=${OUTPUT_DIR}/macosx
-
-PLUGINS=(blowfish gdbm edwin imail x11 x11-screen)
+guarantee_file ()
+{
+    if [[ ! -f ${1} ]]; then
+	echo "Missing required file: ${1}" >&2
+	exit 1
+    fi
+}
 
 notify ()
 {
@@ -128,7 +140,7 @@ cmd ()
 reset_output_dir ()
 {
     my_rm_rf "${OUTPUT_DIR}"
-    cmd mkdir "${OUTPUT_DIR}"
+    my_mkdir "${OUTPUT_DIR}"
 }
 
 make_output_dir ()
@@ -257,38 +269,25 @@ make_tar_file ()
     make_read_only "${TAR_FILE}"
 }
 
-unpack_dist_file_to ()
+unpack_dist_dir ()
 {
     local SOURCE=${1}
-    local DEST=${2}
-    guarantee_tar "${SOURCE}"
-    new_temp_dir "${DEST}"
-    unpack_into_existing_dir "${SOURCE}" "${DEST}"
-}
-
-unpack_into_existing_dir ()
-{
-    my_untar "${1}" -C "${2}" --strip-components 1
-}
-
-guarantee_tar ()
-{
-    guarantee_file "${1}""${TAR_SUFFIX}"
-}
-
-guarantee_file ()
-{
-    if [[ ! -f ${1} ]]; then
-	echo "No source file: ${1}"
-	exit 1
-    fi
+    guarantee_file "${SOURCE}""${TAR_SUFFIX}"
+    my_rm_rf "${SOURCE}"
+    my_untar "${SOURCE}"
+    cleanup_file "${SOURCE}"
 }
 
 # Keep track of temp files and clean them up.
 
-new_temp_file ()
+cleanup_file ()
 {
     TEMP_FILES+=("${@}")
+}
+
+new_temp_file ()
+{
+    cleanup_file "${@}"
     my_rm_rf "${@}"
 }
 
