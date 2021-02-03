@@ -40,22 +40,20 @@ USA.
 #  ifdef HAVE_FEXCEPT_T
 #    define scheme_fexcept_t fexcept_t
 #  endif
-#  ifdef __APPLE__
+#  if (defined (__APPLE__)) && (defined (__x86_64__))
+/* Apple libraries are missing feget/enable/disableexcept.  The x86
+   hardware supports it, but aarch64 hardware generally doesn't.  */
 #    ifndef HAVE_FEGETEXCEPT
 #      define HAVE_FEGETEXCEPT
 #    endif
 #    define HAVE_FEENABLEEXCEPT
 #    define HAVE_FEDISABLEEXCEPT
-#    ifdef __x86_64__
-#      define NEED_FEEXCEPT_WORKAROUND
-#    endif
+#    define NEED_FEEXCEPT_WORKAROUND
      extern int fegetexcept(void);
      extern int feenableexcept(unsigned int);
      extern int fedisableexcept(unsigned int);
-#    ifdef __x86_64__
-#      ifndef FE_DENORMAL
-#        define FE_DENORMAL FE_DENORMALOPERAND
-#      endif
+#    ifndef FE_DENORMAL
+#      define FE_DENORMAL FE_DENORMALOPERAND
 #    endif
 #  endif
 #elif ((!defined (CMPINTMD_EMULATES_FENV)) && (defined (HAVE_IEEEFP_H)))
