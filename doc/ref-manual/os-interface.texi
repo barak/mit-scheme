@@ -795,36 +795,24 @@ procedure.  Each @acronym{REP} loop has its own working directory, and
 inferior @acronym{REP} loops initialize their working directory from the
 value in effect in their superior at the time they are created.
 
-@deffn parameter working-directory-pathname
-@deffnx parameter pwd
+@deffn procedure working-directory-pathname
+@deffnx procedure pwd
 Returns the current working directory as a pathname that has no name,
 type, or version components, just host, device, and directory
 components.  @code{pwd} is an alias for
 @code{working-directory-pathname}; the long name is intended for
 programs and the short name for interactive use.
-
-This parameter may be called with an argument to set its value, in
-which case it also modifies the value of
-@code{param:default-pathname-defaults} by merging the new working
-directory into it.
 @end deffn
 
 @deffn procedure set-working-directory-pathname! filename
 @deffnx procedure cd filename
 @findex ->pathname
 @findex pathname-as-directory
-This procedure is @strong{deprecated}; instead call
-@code{working-directory-pathname} with an argument.
-
 Makes @var{filename} the current working directory and returns the new
 current working directory as a pathname.  @var{Filename} is coerced to a
 pathname using @code{pathname-as-directory}.  @code{cd} is an alias for
 @code{set-working-directory-pathname!}; the long name is intended for
 programs and the short name for interactive use.
-
-Additionally, @code{set-working-directory-pathname!} modifies the
-value of @code{param:default-pathname-defaults} by merging the new
-working directory into it.
 
 When this procedure is executed in the top-level @acronym{REP} loop, it
 changes the working directory of the running Scheme executable.
@@ -856,16 +844,10 @@ directory, before changing the working directory.
 @end deffn
 
 @deffn procedure with-working-directory-pathname filename thunk
-This procedure is @strong{deprecated}; instead bind
-@code{working-directory-pathname} using @code{parameterize}.
-
 This procedure dynamically binds the current working directory to
 @var{filename} and returns the value of @var{thunk} (a procedure of no
 arguments).  @var{Filename} is coerced to a pathname using
-@code{pathname-as-directory}.  In addition to binding the working
-directory, @code{with-working-directory-pathname} also dynamically
-binds the @code{param:default-pathname-defaults} parameter, merging
-the old value with the new working directory pathname.
+@code{pathname-as-directory}.
 @end deffn
 
 @node File Manipulation, Directory Reader, Working Directory, Operating-System Interface
