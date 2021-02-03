@@ -46,11 +46,11 @@ ifdef(`__APPLE__',
 	// gas has this for arm32 but not for aarch64, no idea why.
 ifdef(`__APPLE__',
 	`define(ADRL,`
-	adrp	$1, :pg_hi21:$2
-	add	$1, $1, #:lo12:$2')',
-	`define(ADRL,`
 	adrp	$1, $2@PAGE
-	add	$1, $1, #$2@PAGEOFF')')
+	add	$1, $1, #$2@PAGEOFF')',
+	`define(ADRL,`
+	adrp	$1, :pg_hi21:$2
+	add	$1, $1, #:lo12:$2')')
 
 	// For some reason these are not automatically defined in gas?
 	ip0	.req x16
