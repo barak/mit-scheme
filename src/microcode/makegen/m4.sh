@@ -53,7 +53,7 @@ touch "${TMP_FILE}"
 
 if [ $# = 0 ]
 then
-  sed -e '/^#/D' | run_m4 | sed -e 's/@/$/g' -e 's/^$//'
+  sed -e '/^#/D' | run_m4 | sed -e 's/^$//'
 else
   SEEN_INPUT=0
   while [ $# != 0 ]; do
@@ -69,7 +69,7 @@ else
   if [ ${SEEN_INPUT} -eq 0 ]; then
     sed -e '/^#/D' >> "${TMP_FILE}"
   fi
-  run_m4 < "${TMP_FILE}" | sed -e 's/@/$/g' -e 's/^$//'
+  run_m4 < "${TMP_FILE}" | sed -e 's/^$//'
 fi
 
 # If m4 was successful, run_m4 has deleted the temporary file.  If
