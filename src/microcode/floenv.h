@@ -46,12 +46,16 @@ USA.
 #    endif
 #    define HAVE_FEENABLEEXCEPT
 #    define HAVE_FEDISABLEEXCEPT
-#    define NEED_FEEXCEPT_WORKAROUND
+#    ifdef __x86_64__
+#      define NEED_FEEXCEPT_WORKAROUND
+#    endif
      extern int fegetexcept(void);
      extern int feenableexcept(unsigned int);
      extern int fedisableexcept(unsigned int);
-#    ifndef FE_DENORMAL
-#      define FE_DENORMAL FE_DENORMALOPERAND
+#    ifdef __x86_64__
+#      ifndef FE_DENORMAL
+#        define FE_DENORMAL FE_DENORMALOPERAND
+#      endif
 #    endif
 #  endif
 #elif ((!defined (CMPINTMD_EMULATES_FENV)) && (defined (HAVE_IEEEFP_H)))
