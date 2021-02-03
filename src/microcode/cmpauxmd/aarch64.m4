@@ -27,6 +27,8 @@
 // Scheme compiled code support for AArch64
 ///////////////////////////////////////////////////////////////////////////////
 
+changecom()
+
 ifdef(`SUPPRESS_LEADING_UNDERSCORE',
 	`define(SYMBOL,`$1')',
 	`define(SYMBOL,`_$1')')
