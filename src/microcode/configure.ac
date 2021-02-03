@@ -321,6 +321,7 @@ dragonfly*)
     GNU_LD=yes
     ;;
 darwin*)
+    M4_FLAGS="${M4_FLAGS} -P __APPLE__,1"
     if test -n "${with_macos_version}"; then
 	MACOS=${with_macos_version}
 	MACOS_CFLAGS="-mmacosx-version-min=${MACOS}"

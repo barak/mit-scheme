@@ -34,16 +34,23 @@ ifdef(`SUPPRESS_LEADING_UNDERSCORE',
 	// Symbol definitions.
 	//
 	// XXX Use .def/.endef or .func/.endfunc?
-define(GLOBAL,`	.globl $1
+define(GLOBAL,`	.globl SYMBOL($1)
+	.p2align 2
 SYMBOL($1):')
-define(LOCAL,`
+define(LOCAL,`	.p2align 2
 SYMBOL($1):')
-define(END,`	.size SYMBOL($1),.-SYMBOL($1)')
+ifdef(`__APPLE__',
+	`define(END,`')',
+	`define(END,`	.size SYMBOL($1),.-SYMBOL($1)')')
 
 	// gas has this for arm32 but not for aarch64, no idea why.
-define(ADRL,`
+ifdef(`__APPLE__',
+	`define(ADRL,`
 	adrp	$1, :pg_hi21:$2
-	add	$1, $1, #:lo12:$2')
+	add	$1, $1, #:lo12:$2')',
+	`define(ADRL,`
+	adrp	$1, $2@PAGE
+	add	$1, $1, #$2@PAGEOFF')')
 
 	// For some reason these are not automatically defined in gas?
 	ip0	.req x16
