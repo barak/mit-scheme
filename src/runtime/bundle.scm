@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,12 +37,7 @@ USA.
 (declare (usual-integrations))
 
 (define (make-bundle-predicate name)
-  (let ((type (new-make-record-type name '() <bundle>)))
-    (set-record-type-applicator! type %bundle-applicator)
-    (record-predicate type)))
-
-(define (%bundle-applicator bundle name . args)
-  (apply (bundle-ref bundle name) args))
+  (record-predicate (make-record-type name '() <bundle>)))
 
 (define-integrable (%predicate->record-type predicate)
   (predicate->dispatch-tag predicate))
@@ -51,7 +46,7 @@ USA.
   (and (predicate? object)
        (predicate<= object bundle?)))
 
-(defer-boot-action 'predicate-relations
+(seq:after-predicate 'add-action!
   (lambda ()
     (register-predicate! bundle-predicate? 'bundle-predicate '<= predicate?)))
 
@@ -66,7 +61,7 @@ USA.
 (define %bundle-predicate->record-type
   %predicate->record-type)
 
-(defer-boot-action 'predicate-relations
+(seq:after-predicate 'add-action!
   (lambda ()
     (set! %bundle-predicate->record-type
 	  (named-lambda (%bundle-predicate->record-type predicate)
@@ -81,11 +76,10 @@ USA.
               object)))
 
 (define <bundle>
-  (new-make-record-type '<bundle> '(alist)))
-
-(defer-boot-action 'record-procedures
-  (lambda ()
-    (set-record-type-applicator! <bundle> %bundle-applicator)))
+  (make-record-type '<bundle> '(alist)
+		    'applicator
+		    (lambda (bundle name . args)
+		      (apply (bundle-ref bundle name) args))))
 
 (define bundle?
   (record-predicate <bundle>))

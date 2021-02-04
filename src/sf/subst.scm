@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -176,7 +176,7 @@ USA.
                                integrated-predicate
                                consequent
                                alternative)
-  (cond ((scode-sequence? integrated-predicate)
+  (cond ((sequence? integrated-predicate)
          (sequence/make
           (and expression (object/scode expression))
           (append (except-last-pair (sequence/actions integrated-predicate))
@@ -263,7 +263,7 @@ USA.
                               (integrate/expression
                                operations environment alternative))))
 
-        ((scode-sequence? integrated-predicate)
+        ((sequence? integrated-predicate)
          (sequence/make
           (and expression (object/scode expression))
           (append (except-last-pair (sequence/actions integrated-predicate))
@@ -334,7 +334,9 @@ USA.
                    (integrate/name expression expression info environment)))
               (if new-expression
                   (begin (variable/integrated! variable)
-                         new-expression)
+                         (integrate/expression operations
+                                               environment
+                                               new-expression))
                   (dont-integrate))))
 
 	   ((integrate-operator)
@@ -706,7 +708,7 @@ USA.
            (if (null? (constant/value operand))
                '()
                'fail))
-          ((not (scode-combination? operand))
+          ((not (combination? operand))
            'fail)
           (else
            (let ((rator (combination/operator operand)))
@@ -778,7 +780,7 @@ USA.
              (procedure-with-body body (encloser (procedure/body body))))
         (scan-operator body encloser)))
   (define (scan-operator operator encloser)
-    (cond ((scode-sequence? operator)
+    (cond ((sequence? operator)
            (let ((reversed-actions (reverse (sequence/actions operator))))
              (scan-body (car reversed-actions)
                         (let ((commands (cdr reversed-actions)))
@@ -787,7 +789,7 @@ USA.
                              (sequence-with-actions
                               operator
                               (reverse (cons expression commands)))))))))
-          ((scode-combination? operator)
+          ((combination? operator)
            (let ((descend
                   (lambda (operator*)
                     (and (not (open-block? (procedure/body operator*)))
@@ -805,7 +807,7 @@ USA.
                      (combination/operands operator))
                     => descend)
                    (else #f))))
-          ((scode-declaration? operator)
+          ((declaration? operator)
            (scan-body (declaration/expression operator)
                       (lambda (expression)
                         (encloser

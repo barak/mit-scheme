@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,7 +31,12 @@ USA.
 
 ;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(compiler)))
-    (let ((package-set (package-set-pathname "compiler")))
+    (let ((package-set
+	   (merge-pathnames
+	    (enough-pathname
+	     (merge-pathnames (package-set-pathname "compiler"))
+	     cref/source-root)
+	    cref/object-root)))
       (if (not (file-exists? package-set))
 	  (cref/generate-trivial-constructor "compiler"))
       (construct-packages-from-file (fasload package-set))))
@@ -78,6 +83,8 @@ USA.
 	((access initialize-package! environment)))
       (sf-and-load "base/pmlook")
       (sf-and-load "base/pmpars")
+      (sf-and-load "machines/svm/endian")
+      (sf-and-load "machines/svm/wordsize")
       (sf-and-load "machines/svm/machine")
       (sf-and-load "back/syntax")
       (sf-and-load "base/scode")

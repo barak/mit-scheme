@@ -3,7 +3,7 @@
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 #     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
-#     2015, 2016, 2017, 2018, 2019 Massachusetts Institute of
+#     2015, 2016, 2017, 2018, 2019, 2020 Massachusetts Institute of
 #     Technology
 #
 # This file is part of MIT/GNU Scheme.
@@ -64,14 +64,17 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** Tool configuration ****
 
+MIT_SCHEME_ARCH = @MIT_SCHEME_ARCH@
+MIT_SCHEME_VERSION = @MIT_SCHEME_VERSION@
 AUXDIR_NAME = @AUXDIR_NAME@
-EXE_NAME = @EXE_NAME@
+EXE_NAME = mit-scheme-$(MIT_SCHEME_ARCH)-$(MIT_SCHEME_VERSION)
 AUXDIR = $(libdir)/$(AUXDIR_NAME)
 
 CC = @CC@
+HOST_CC = @HOST_CC@
 CCLD = @CCLD@
 M4 = $(srcdir)/makegen/m4.sh @M4@
-AS = as
+AS = @AS@
 TAR = tar
 GZIP_ENV = --best
 PAXCTL = @PAXCTL@
@@ -176,7 +179,11 @@ usrdef.c: $(STD_SOURCES) findprim Makefile
 
 findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
 	-rm -f $@
-	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
+	$(HOST_CC) -o $@ $(findprim_LDFLAGS) $(findprim_OBJECTS) \
+		$(findprim_LIBS)
+
+findprim.o: findprim.c config.h
+	$(HOST_CC) -o $@ $(findprim_CFLAGS) -c findprim.c
 
 gen-nonce: gen-nonce.o
 	$(LINK) gen-nonce.o
@@ -211,7 +218,7 @@ c-clean: clean
 install: install-auxPROGRAMS install-auxLIBS install-auxDATA @INSTALL_INCLUDE@
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
 	$(INSTALL_PROGRAM) scheme $(DESTDIR)$(bindir)/$(EXE_NAME)
-	../etc/install-bin-symlinks.sh $(DESTDIR)$(bindir) $(EXE_NAME)
+	../etc/install-bin-symlinks.sh $(DESTDIR)$(bindir) $(EXE_NAME) $(MIT_SCHEME_ARCH)
 
 install-auxPROGRAMS: $(aux_PROGRAMS)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)

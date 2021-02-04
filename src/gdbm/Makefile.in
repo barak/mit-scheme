@@ -90,7 +90,6 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-noinst_PROGRAMS = gdbm-const$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -138,9 +137,11 @@ am__uninstall_files_from_dir = { \
 am__installdirs = "$(DESTDIR)$(scmlibdir)" "$(DESTDIR)$(infodir)" \
 	"$(DESTDIR)$(scmlibdir)" "$(DESTDIR)$(scmlib_subdir)"
 LTLIBRARIES = $(scmlib_LTLIBRARIES)
-gdbm_shim_la_DEPENDENCIES = gdbm-adapter.lo
-gdbm_shim_la_SOURCES = gdbm-shim.c
-gdbm_shim_la_OBJECTS = gdbm-shim.lo
+gdbm_shim_la_LIBADD =
+am_gdbm_shim_la_OBJECTS = gdbm-adapter.lo
+nodist_gdbm_shim_la_OBJECTS = gdbm-shim.lo
+gdbm_shim_la_OBJECTS = $(am_gdbm_shim_la_OBJECTS) \
+	$(nodist_gdbm_shim_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -148,8 +149,10 @@ am__v_lt_1 =
 gdbm_shim_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(gdbm_shim_la_LDFLAGS) $(LDFLAGS) -o $@
-am_gdbm_const_OBJECTS = gdbm-const.$(OBJEXT)
-gdbm_const_OBJECTS = $(am_gdbm_const_OBJECTS)
+am_gdbm_const_OBJECTS =
+nodist_gdbm_const_OBJECTS = gdbm-const.$(OBJEXT)
+gdbm_const_OBJECTS = $(am_gdbm_const_OBJECTS) \
+	$(nodist_gdbm_const_OBJECTS)
 gdbm_const_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -166,8 +169,8 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/gdbm-const.Po \
-	./$(DEPDIR)/gdbm-shim.Plo
+am__depfiles_remade = ./$(DEPDIR)/gdbm-adapter.Plo \
+	./$(DEPDIR)/gdbm-const.Po ./$(DEPDIR)/gdbm-shim.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -187,8 +190,9 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = gdbm-shim.c $(gdbm_const_SOURCES)
-DIST_SOURCES = gdbm-shim.c $(gdbm_const_SOURCES)
+SOURCES = $(gdbm_shim_la_SOURCES) $(nodist_gdbm_shim_la_SOURCES) \
+	$(gdbm_const_SOURCES) $(nodist_gdbm_const_SOURCES)
+DIST_SOURCES = $(gdbm_shim_la_SOURCES) $(gdbm_const_SOURCES)
 AM_V_DVIPS = $(am__v_DVIPS_@AM_V@)
 am__v_DVIPS_ = $(am__v_DVIPS_@AM_DEFAULT_V@)
 am__v_DVIPS_0 = @echo "  DVIPS   " $@;
@@ -497,12 +501,12 @@ MIT_CFLAGS = @MIT_CFLAGS@
 MIT_SCHEME_BCIs = @MIT_SCHEME_BCIs@
 MIT_SCHEME_CLEAN = @MIT_SCHEME_CLEAN@
 MIT_SCHEME_COMs = @MIT_SCHEME_COMs@
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 MIT_SCHEME_INCLUDEDIR = @MIT_SCHEME_INCLUDEDIR@
 MIT_SCHEME_LIBDIR = @MIT_SCHEME_LIBDIR@
 MIT_SCHEME_PKD = @MIT_SCHEME_PKD@
 MIT_SCHEME_PROJECT = @MIT_SCHEME_PROJECT@
 MIT_SCHEME_SCMs = @MIT_SCHEME_SCMs@
+MIT_SCHEME_TOOLCHAIN_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
@@ -578,8 +582,10 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = autogen.sh $(all_sources) $(cdecls) compile.scm gdbm.pkg \
-	gdbm-check.scm gdbm-check.sh make.scm optiondb.scm tags-fix.sh
+EXTRA_DIST = autogen.sh $(sources) $(cdecls) compile.sh compile.scm \
+	gdbm.pkg gdbm-check.scm gdbm-check.sh make.scm optiondb.scm \
+	tags-fix.sh
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)gdbm
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -593,16 +599,17 @@ info_TEXINFOS = mit-scheme-gdbm.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
-gdbm_shim_la_LIBADD = gdbm-adapter.lo
+gdbm_shim_la_SOURCES = gdbm-adapter.c gdbm-shim.h
+nodist_gdbm_shim_la_SOURCES = gdbm-shim.c
 gdbm_shim_la_LDFLAGS = -module -avoid-version -shared
-gdbm_const_SOURCES = gdbm-const.c gdbm-shim.h
+noinst_PROGRAMS = gdbm-const$(EXEEXT)
+gdbm_const_SOURCES = gdbm-shim.h
+nodist_gdbm_const_SOURCES = gdbm-const.c
+MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) gdbm-const$(EXEEXT)
 CLEANFILES = gdbm-const* gdbm-shim.c *.bin *.ext *.com *.bci *.moc \
 	*.fni *.crf *.fre *.pkd stamp-shim stamp-scheme \
 	@MIT_SCHEME_CLEAN@ gdbm-check.db
 TESTS = gdbm-check.sh
-all_sources = $(sources) gdbm-adapter.c
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 all: all-am
 
 .SUFFIXES:
@@ -698,6 +705,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gdbm-adapter.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gdbm-const.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gdbm-shim.Plo@am__quote@ # am--include-marker
 
@@ -1360,6 +1368,7 @@ install-strip:
 	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
 	fi
 mostlyclean-generic:
+	-test -z "$(MOSTLYCLEANFILES)" || rm -f $(MOSTLYCLEANFILES)
 	-test -z "$(TEST_LOGS)" || rm -f $(TEST_LOGS)
 	-test -z "$(TEST_LOGS:.log=.trs)" || rm -f $(TEST_LOGS:.log=.trs)
 	-test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
@@ -1381,7 +1390,8 @@ clean-am: clean-aminfo clean-generic clean-libtool \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-		-rm -f ./$(DEPDIR)/gdbm-const.Po
+		-rm -f ./$(DEPDIR)/gdbm-adapter.Plo
+	-rm -f ./$(DEPDIR)/gdbm-const.Po
 	-rm -f ./$(DEPDIR)/gdbm-shim.Plo
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -1521,7 +1531,8 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-		-rm -f ./$(DEPDIR)/gdbm-const.Po
+		-rm -f ./$(DEPDIR)/gdbm-adapter.Plo
+	-rm -f ./$(DEPDIR)/gdbm-const.Po
 	-rm -f ./$(DEPDIR)/gdbm-shim.Plo
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-aminfo \
@@ -1530,7 +1541,8 @@ maintainer-clean-am: distclean-am maintainer-clean-aminfo \
 mostlyclean: mostlyclean-am
 
 mostlyclean-am: mostlyclean-aminfo mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool mostlyclean-vti
+	mostlyclean-generic mostlyclean-libtool mostlyclean-local \
+	mostlyclean-vti
 
 pdf: pdf-am
 
@@ -1566,10 +1578,10 @@ uninstall-am: uninstall-dvi-am uninstall-html-am uninstall-info-am \
 	maintainer-clean-aminfo maintainer-clean-generic \
 	maintainer-clean-vti mostlyclean mostlyclean-aminfo \
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	mostlyclean-vti pdf pdf-am ps ps-am recheck tags tags-am \
-	uninstall uninstall-am uninstall-dvi-am uninstall-hook \
-	uninstall-html-am uninstall-info-am uninstall-pdf-am \
-	uninstall-ps-am uninstall-scmlibDATA \
+	mostlyclean-local mostlyclean-vti pdf pdf-am ps ps-am recheck \
+	tags tags-am uninstall uninstall-am uninstall-dvi-am \
+	uninstall-hook uninstall-html-am uninstall-info-am \
+	uninstall-pdf-am uninstall-ps-am uninstall-scmlibDATA \
 	uninstall-scmlibLTLIBRARIES uninstall-scmlib_subDATA
 
 .PRECIOUS: Makefile
@@ -1579,24 +1591,27 @@ gdbm-shim.c: stamp-shim
 gdbm-const.c: stamp-shim
 gdbm-types.bin: stamp-shim
 stamp-shim: gdbm-shim.h $(cdecls)
-	touch stamp-shim
 	echo '(generate-shim "gdbm" "#include \"gdbm-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode \
-	|| rm stamp-shim
+	    | $(MIT_SCHEME_EXE) --batch-mode
+	echo "done" > $@
 
 gdbm-const.bin: gdbm-const.scm
 	echo '(sf "gdbm-const")' | $(MIT_SCHEME_EXE) --batch-mode
 
-gdbm-const.scm: gdbm-const
+gdbm-const.scm: gdbm-const$(EXEEXT)
 	./gdbm-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) gdbm.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+stamp-scheme: stamp-shim $(sources) gdbm-const.bin gdbm.pkg
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
-tags: tags-am
-	./tags-fix.sh gdbm
+mostlyclean-local:
+	-rm -rf .libs
+
+tags: tags-am $(sources) $(cdecls)
+	$(ETAGS) -a $(sources) -r '/^([^iI].*/' $(cdecls)
+	./tags-fix.sh
 
 install-data-hook:
 	( echo '(add-plugin "gdbm" "@MIT_SCHEME_PROJECT@"'; \

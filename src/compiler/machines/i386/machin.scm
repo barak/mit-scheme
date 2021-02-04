@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,6 +30,11 @@ USA.
 (declare (usual-integrations))
 
 ;;;; Architecture Parameters
+
+(define (compiler-features)
+  '(target-arch=i386 target-little-endian target-32-bit))
+
+(define (target-fasl-format) fasl-format:i386)
 
 (define use-pre/post-increment? false)
 (define-integrable endianness 'LITTLE)
@@ -355,4 +360,18 @@ USA.
 		  ;; <= pi/4.  Correct argument reduction requires a
 		  ;; better approximation of pi than the i387 has.
 		  FLONUM-SIN FLONUM-COS FLONUM-TAN
-		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS))
+		  ;; Disabled: need to futz with cpuid flags to
+		  ;; determine whether we can use it.
+		  FLONUM-FMA
+		  ;; Disabled: exp is too much trouble to get right in
+		  ;; i387; need 64-bit precision.  Let libm do it.
+		  FLONUM-EXP
+		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
+		  ;; Disabled: these require some care to handle
+		  ;; signalling NaN, which can't even be loaded onto
+		  ;; the i387 floating-point stack without raising an
+		  ;; exception.
+		  FLONUM-IS-NORMAL? FLONUM-IS-FINITE? FLONUM-IS-INFINITE?
+		  FLONUM-IS-NAN? FLONUM-IS-ZERO?
+		  FLONUM-IS-NEGATIVE?
+		  FLONUM-COPYSIGN FLONUM-NEGATE FLONUM-ABS))

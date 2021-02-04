@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -75,23 +75,13 @@ USA.
 		    (buffer-not-modified! buffer))))))))
 
 (define-command debug-count-marks
-  "Show the number of in-use and GC'ed marks for the current buffer."
+  "Show the number of in-use marks for the current buffer."
   ()
   (lambda ()
-    (count-marks-group (buffer-group (current-buffer))
-		       (lambda (n-existing n-gced)
-			 (message "Existing: " (write-to-string n-existing)
-				  "; GCed: " (write-to-string n-gced))))))
-
-(define (count-marks-group group receiver)
-  (let loop ((marks (group-marks group)) (receiver receiver))
-    (if (weak-pair? marks)
-	(loop (weak-cdr marks)
-	  (lambda (n-existing n-gced)
-	    (if (weak-pair/car? marks)
-		(receiver (1+ n-existing) n-gced)
-		(receiver n-existing (1+ n-gced)))))
-	(receiver 0 0))))
+    (message "In use: "
+	     (write-to-string
+	      (weak-list-set-size
+	       (group-marks (buffer-group (current-buffer))))))))
 
 (define-command debug-show-standard-marks
   ""

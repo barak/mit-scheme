@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,29 +50,26 @@ Applies to all lines after point."
 	(start (mark-index start))
 	(anchor (mark-left-inserting-copy start))
 	(end (mark-left-inserting-copy end)))
-    (letrec
-	((loop
-	  (lambda (start point)
-	    (let ((point
-		   (re-search-buffer-forward pattern syntax-table
-					     group point (mark-index end))))
-	      (if point
-		  (begin
-		    (set-mark-index! anchor point)
-		    (let ((end
-			   (line-start-index group (re-match-start-index 0))))
-		      (if (< start end)
-			  (group-delete! group start end)))
-		    (continue (mark-index anchor)))
-		  (group-delete! group start (mark-index end))))))
-	 (continue
-	  (lambda (point)
-	    (let ((start (line-end-index group point)))
-	      (if (< start (mark-index end))
-		  (loop (+ start 1) point))))))
-      (if (line-start-index? group start)
-	  (loop start start)
-	  (continue start)))
+    (define (loop start point)
+      (let ((point
+	     (re-search-buffer-forward pattern syntax-table
+				       group point (mark-index end))))
+	(if point
+	    (begin
+	      (set-mark-index! anchor point)
+	      (let ((end
+		     (line-start-index group (re-match-start-index 0))))
+		(if (< start end)
+		    (group-delete! group start end)))
+	      (continue (mark-index anchor)))
+	    (group-delete! group start (mark-index end)))))
+    (define (continue point)
+      (let ((start (line-end-index group point)))
+	(if (< start (mark-index end))
+	    (loop (+ start 1) point))))
+    (if (line-start-index? group start)
+	(loop start start)
+	(continue start))
     (mark-temporary! anchor)
     (mark-temporary! end)))
 

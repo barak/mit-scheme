@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -654,8 +654,8 @@ differences:
 							   value))
 		       ((list)
 			`(,(absolute 'set-car! context)
-			  (,(absolute 'list-tail context) structure
-							  ,(slot/index slot))
+			  (,(absolute 'drop context) structure
+						     ,(slot/index slot))
 			  value)))))))
 	 (remove slot/read-only? (structure/slots structure)))))
 
@@ -805,21 +805,20 @@ differences:
 	  ,(if (structure/record-type? structure)
 	       `(,(absolute 'make-record-type context)
 		 ',name
-		 (list ,@(map (lambda (name init)
-				(if init
-				    `(list ',name ,init)
-				    `',name))
-			      field-names
-			      inits)))
-	       `(,(absolute 'make-define-structure-type context)
+		 ,(if (every not inits)
+		      `',field-names
+		      `(list ,@(map (lambda (name init)
+				      (if init
+					  `(list ',name ,init)
+					  `',name))
+				    field-names
+				    inits))))
+	       `(,(absolute 'new-make-define-structure-type context)
 		 ',(structure/physical-type structure)
 		 ',name
 		 '#(,@field-names)
 		 '#(,@(map slot/index slots))
 		 (vector ,@inits)
-		 ;; This field was the print-procedure, no longer used.
-		 ;; It should be removed after 9.3 is released.
-		 #f
 		 ,(if (and tag-expression
 			   (not (eq? tag-expression type-name)))
 		      (close tag-expression context)

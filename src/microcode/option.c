@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -224,12 +224,8 @@ for the band.\n\
 "\n\
 --prepend-library DIRNAME\n\
   Adds DIRNAME to the front of the library search path.  This option\n\
-  takes one value and can be specified once.\n\
-\n\
-Please report bugs to %s.\n\
-\n\
-Additional options may be supported by the band (and described below).\n\
-\n", DEFAULT_LIBRARY_PATH, DEFAULT_STD_BAND, PACKAGE_BUGREPORT);
+  takes one value and can be specified once.\n",
+              DEFAULT_LIBRARY_PATH, DEFAULT_STD_BAND);
 }
 
 #ifndef DEFAULT_HEAP_SIZE
@@ -1016,7 +1012,10 @@ read_command_line_options (int argc, const char ** argv)
       outf_flush_console ();
     }
   if (option_show_help)
-    print_help ();
+    {
+      option_batch_mode = true;
+      print_help ();
+    }
   if (option_summary)
     describe_options ();
 }

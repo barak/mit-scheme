@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime string-i/o-port)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime generic-i/o-port))
 
 ;;;; Input
 
@@ -65,6 +67,9 @@ USA.
 			    (unread-char ,string-in/unread-char)
 			    (write-self ,string-in/write-self))
 			  #f))
+
+(define (read-from-string string #!optional start end)
+  (read (open-input-string string start end)))
 
 (define (string-in/char-ready? port)
   port
@@ -140,6 +145,20 @@ USA.
     (let ((truncated? (call-with-truncated-output-port limit port generator)))
       (cons truncated? (get-output-string port)))))
 
+(define (write-to-string object #!optional max)
+
+  (define (do-write port)
+    (write object port))
+
+  (if (or (default-object? max) (not max))
+      (call-with-output-string do-write)
+      (call-with-truncated-output-string max do-write)))
+
+(define (pp-to-string object . args)
+  (call-with-output-string
+    (lambda (port)
+      (apply pp object port args))))
+
 ;; deprecated
 (define (with-output-to-string thunk)
   (call-with-output-string
@@ -169,6 +188,7 @@ USA.
 			    (extract-output ,string-out/extract-output)
 			    (extract-output! ,string-out/extract-output!)
 			    (output-column ,string-out/output-column)
+			    (char-set ,string-out/char-set)
 			    (position ,string-out/position)
 			    (write-self ,string-out/write-self))
 			  #f))
@@ -200,11 +220,15 @@ USA.
 (define (string-out/output-column port)
   (ostate-column (textual-port-state port)))
 
+(define (string-out/char-set port)
+  (declare (ignore port))
+  char-set:unicode)
+
 (define (string-out/position port)
   ((ostate-builder (textual-port-state port)) 'count))
 
 (define (string-out/write-self port output-port)
-  port
+  (declare (ignore port))
   (write-string " to string" output-port))
 
 (define (new-column char column)

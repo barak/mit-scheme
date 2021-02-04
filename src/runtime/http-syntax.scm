@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,10 @@ USA.
 ;;; package: (runtime http-syntax)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime character-set)
+		'(runtime version)
+		'(runtime hash-table))
 
 ;;;; Utility combinators
 
@@ -212,8 +216,8 @@ USA.
   (write-u8 (char->integer #\.) port)
   (write-object (cdr version) port))
 
-(define-deferred http-version:1.0 (make-http-version 1 0))
-(define-deferred http-version:1.1 (make-http-version 1 1))
+(define http-version:1.0 (make-http-version 1 0))
+(define http-version:1.1 (make-http-version 1 1))
 
 ;;;; Status
 
@@ -844,11 +848,12 @@ USA.
 	(cond ((char? key)
 	       (vector-set! table (char->integer key) handler))
 	      ((char-set? key)
-	       (for-each (lambda (char)
-			   (let ((i (char->integer char)))
-			     (if (eq? (vector-ref table i) else-action)
-				 (vector-set! table i handler))))
-			 (char-set-members key)))
+	       (char-set-for-each
+		(lambda (char)
+		  (let ((i (char->integer char)))
+		    (if (eq? (vector-ref table i) else-action)
+			(vector-set! table i handler))))
+		(char-set-intersection key char-set:ascii)))
 	      (else
 	       (error:wrong-type-argument key "char or char-set")))))
     (lambda (port emit fifo)
@@ -953,8 +958,8 @@ USA.
   (char-set-difference char-set:http-text (char-set #\")))
 
 (define-deferred char-set:alpha
-  (char-set-union (ascii-range->char-set #x41 #x5B)
-		  (ascii-range->char-set #x61 #x7B)))
+  (char-set-union (ucs-range->char-set #x41 #x5B)
+		  (ucs-range->char-set #x61 #x7B)))
 
 (define-tokenizer-state tokenize
   (eof done)
@@ -1492,13 +1497,11 @@ USA.
 (define-deferred default-http-user-agent
   (list
    (cons "MIT-GNU-Scheme"
-	 (let ((s (string-copy (get-subsystem-version-string "release"))))
-	   (let ((end (string-length s)))
-	     (do ((i 0 (+ i 1)))
-		 ((not (< i end)))
-	       (if (not (char-in-set? (string-ref s i) char-set:http-token))
-		   (string-set! s i #\_))))
-	   s))))
+	 (string-map (lambda (c)
+		       (if (char-in-set? c char-set:http-token)
+			   c
+			   #\_))
+		     (get-subsystem-version-string "release")))))
 
 (define (vector->values vector)
   (apply values (vector->list vector)))

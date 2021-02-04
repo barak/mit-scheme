@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; The mcrypt option.
+;;;; The Mcrypt option.
 ;;; package: (mcrypt)
 
 (declare (usual-integrations))
@@ -331,7 +331,7 @@ USA.
 
 (define (mcrypt-encrypt-port algorithm mode input output key init-vector
 			     encrypt?)
-  ;; Assumes that INPUT is in blocking mode.
+  ;; Assumes that input is in blocking mode.
   ((port-transformer (lambda ()
 		       (let ((context (mcrypt-open-module algorithm mode)))
 			 (mcrypt-init context key init-vector)
@@ -454,52 +454,29 @@ USA.
 
 ;;;; The cleanups list.
 
-(define cleanups '())
+(define cleanups (weak-alist-table eq?))
 
 (define (add-cleanup object cleaner)
-  (set! cleanups (cons (weak-cons object cleaner) cleanups)))
+  (weak-alist-table-set! cleanups object cleaner))
 
 (define (remove-cleanup object)
-  (let ((entry (weak-assq object cleanups)))
-    (if entry
-	(set! cleanups (delq! entry cleanups))
-	;; Already removed!
-	)))
-
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (null? alist) #f
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? obj key) entry
-	      (loop (cdr alist)))))))
+  (weak-alist-table-delete! cleanups object))
 
 (define (cleanup-mcrypt-objects)
-  (let loop ((entries cleanups)
-	     (prev #f))
-    (if (pair? entries)
-	(let ((entry (car entries))
-	      (next (cdr entries)))
-	  (if (weak-pair/car? entry)
-	      (loop next entries)
-	      (let ((cleaner (weak-cdr entry)))
-		(if prev
-		    (set-cdr! prev next)
-		    (set! cleanups next))
-		(cleaner)
-		(loop next prev)))))))
+  (weak-alist-table-clean! cleanups))
 
 (define (reset-cleanups!)
-  (for-each (lambda (entry)
-	      (if (weak-pair/car? entry)
-		  (let ((obj (weak-car entry)))
-		    (cond ((alien? obj) (alien-null! obj))
-			  ((mcrypt-context? obj)
-			   (alien-null! (mcrypt-context-alien obj)))
-			  (else
-			   (error "Unexpected object on cleanup list:" obj))))))
-	    cleanups)
-  (set! cleanups '()))
+  (weak-alist-table-prune!
+   (lambda (object cleaner)
+     (declare (ignore cleaner))
+     (cond ((alien? object)
+	    (alien-null! object))
+	   ((mcrypt-context? object)
+	    (alien-null! (mcrypt-context-alien object)))
+	   (else
+	    (error "Unexpected object on cleanup list:" object)))
+     #t)
+   cleanups))
 
 (add-gc-daemon! cleanup-mcrypt-objects)
 (add-event-receiver! event:after-restart reset-mcrypt-variables!)

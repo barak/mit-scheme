@@ -95,7 +95,8 @@ allow characters U+0001 to U+00FF (the Latin-1 repertoire without
 
 Implementation note: MIT/GNU Scheme allows any ``bitless'' character
 to be stored in a string.  In effect this means any character with a
-Unicode code point, including surrogates.
+Unicode code point, including surrogates.  String operations that
+accept characters automatically strip their bucky bits.
 
 It is an error to pass such a forbidden character to
 @code{make-string}, @code{string}, @code{string-set!}, or
@@ -388,7 +389,7 @@ It is important to recognize that what the user thinks of as a
 not be just a single Unicode code point.  Instead, that basic unit may
 be made up of multiple Unicode code points.  To avoid ambiguity with
 the computer use of the term character, this is called a
-user-perceived character.  For example, “G” + acute-accent is a
+user-perceived character.  For example, ``G'' + acute-accent is a
 user-perceived character: users think of it as a single character, yet
 is actually represented by two Unicode code points.  These
 user-perceived characters are approximated by what is called a
@@ -579,16 +580,11 @@ Returns @code{#t} if @var{string} has zero length; otherwise returns
 @findex string=?
 @findex string-ci=?
 @findex =
-These procedures return an exact non-negative integer that can be used
-for storing the specified @var{string} in a hash table.  Equal strings
-(in the sense of @code{string=?} and @code{string-ci=?} respectively)
-return equal (@code{=}) hash codes, and non-equal but similar strings
-are usually mapped to distinct hash codes.
-
-If the optional argument @var{modulus} is specified, it must be an
-exact positive integer, and the result of the hash computation is
-restricted to be less than that value.  This is equivalent to calling
-@code{modulo} on the result, but may be faster.
+These @asrfi{69} procedures return an exact non-negative integer that
+can be used for storing the specified @var{string} in a hash table.
+Equal strings (in the sense of @code{string=?} and @code{string-ci=?}
+respectively) return equal (@code{=}) hash codes, and non-equal but
+similar strings are usually mapped to distinct hash codes.
 @end deffn
 
 @deffn procedure string-head string end
@@ -597,6 +593,11 @@ Equivalent to @code{(substring @var{string} 0 @var{end})}.
 
 @deffn procedure string-tail string start
 Equivalent to @code{(substring @var{string} @var{start})}.
+
+If the optional argument @var{modulus} is specified, it must be an
+exact positive integer, and the result of the hash computation is
+restricted to be less than that value.  This is equivalent to calling
+@code{modulo} on the result, but may be faster.
 @end deffn
 
 @deffn procedure string-builder [buffer-length]
@@ -617,7 +618,7 @@ arguments as follows:
 
 @itemize @bullet
 @item
-Given a bitless character argument, the string builder appends that
+Given a character argument, the string builder appends that
 character to the string being built and returns an unspecified value.
 @item
 Given a string argument, the string builder appends that string to the
@@ -690,7 +691,7 @@ Some examples:
 @end example
 @end deffn
 
-@deffn procedure string-splitter delimiter allow-runs? copy?
+@deffn procedure string-splitter delimiter allow-runs? copier copy?
 @cindex splitting, of string
 This procedure's arguments are keyword arguments; that is, each
 argument is a symbol of the same name followed by its value.  The
@@ -719,10 +720,14 @@ end of the delimiters.  If @var{allow-runs?} is @code{#f}, then
 adjacent delimiters are treated as if they were separate with an empty
 string between them.  The default value of this argument is @code{#t}.
 @item
-@code{copy?} is a boolean: if it is @code{#t}, then the returned
-strings are immutable copies, but if it is @code{#f} the returned
-strings are slices of the original string.  The default value of this
-argument is @code{#f}.
+@var{copier} is a procedure that accepts three arguments: a string, a
+start index, and an end index, returning the specified substring as a
+string.  It defaults to @code{string-slice}.
+@item
+@var{copy?} is a boolean, for backwards compatibility; instead use
+@var{copier}.  A value of @code{#t} is equivalent to a @var{copier} of
+@code{substring}, while a value of @code{#f} is equivalent to a
+@var{copier} of @code{string-slice}.
 @end itemize
 
 Some examples:
@@ -834,7 +839,7 @@ indices).
 @end example
 @end deffn
 
-@deffn procedure string-trimmer where to-trim copy?
+@deffn procedure string-trimmer where to-trim copier copy?
 @cindex trimming, of string
 This procedure's arguments are keyword arguments; that is, each
 argument is a symbol of the same name followed by its value.  The
@@ -863,9 +868,14 @@ returns a boolean value.  The trimmer uses this to identify characters
 to remove.  The default value of this argument is
 @code{char-whitespace?}.
 @item
-@var{copy?} is a boolean: if @code{#t}, the trimmer returns an
-immutable copy of the trimmed string, if @code{#f} it returns a slice.
-The default value of this argument is @code{#f}.
+@var{copier} is a procedure that accepts three arguments: a string, a
+start index, and an end index, returning the specified substring as a
+string.  It defaults to @code{string-slice}.
+@item
+@var{copy?} is a boolean, for backwards compatibility; instead use
+@var{copier}.  A value of @code{#t} is equivalent to a @var{copier} of
+@code{substring}, while a value of @code{#f} is equivalent to a
+@var{copier} of @code{string-slice}.
 @end itemize
 
 Some examples:

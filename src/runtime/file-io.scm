@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,26 +28,29 @@ USA.
 ;;; package: (runtime file-i/o-port)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime generic-i/o-port))
 
 (define input-file-type)
 (define output-file-type)
 (define i/o-file-type)
-(define (initialize-package!)
-  (let ((other-operations
-	 `((length ,operation/length)
-	   (pathname ,operation/pathname)
-	   (position ,operation/position)
-	   (set-position! ,operation/set-position!)
-	   (truename ,operation/pathname)
-	   (write-self ,operation/write-self))))
-    (let ((make-type
-	   (lambda (source sink)
-	     (make-textual-port-type other-operations
-				     (generic-i/o-port-type source sink)))))
-      (set! input-file-type (make-type 'channel #f))
-      (set! output-file-type (make-type #f 'channel))
-      (set! i/o-file-type (make-type 'channel 'channel))))
-  unspecific)
+(add-boot-init!
+ (lambda ()
+   (let ((other-operations
+	  `((length ,operation/length)
+	    (pathname ,operation/pathname)
+	    (position ,operation/position)
+	    (set-position! ,operation/set-position!)
+	    (truename ,operation/pathname)
+	    (write-self ,operation/write-self))))
+     (let ((make-type
+	    (lambda (source sink)
+	      (make-textual-port-type other-operations
+				      (generic-i/o-port-type source sink)))))
+       (set! input-file-type (make-type 'channel #f))
+       (set! output-file-type (make-type #f 'channel))
+       (set! i/o-file-type (make-type 'channel 'channel))))
+   unspecific))
 
 (define (operation/pathname port)
   (port-property port 'pathname))
@@ -66,7 +69,17 @@ USA.
   (binary-port-position (generic-i/o-port->binary-port port)))
 
 (define (operation/set-position! port position)
-  (set-binary-port-position! (generic-i/o-port->binary-port port) position))
+  (set-binary-port-position! (generic-i/o-port->binary-port port) position)
+  (cond ((port-input-buffer port)
+	 => (lambda (ib)
+	      (set-input-buffer-decoded-chars! ib '())
+	      (set-input-buffer-line! ib 0)
+	      (set-input-buffer-peeked! ib #f))))
+  (cond ((port-output-buffer port)
+	 => (lambda (ob)
+	      (set-output-buffer-column! ob 0)
+	      (set-output-buffer-line! ob 0))))
+  unspecific)
 
 (define (input-file-opener caller make-port)
   (lambda (filename)

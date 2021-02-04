@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -46,7 +46,7 @@ static SCHEME_OBJECT fixed_objects_syscall_names (void);
 static SCHEME_OBJECT fixed_objects_syserr_names (void);
 static SCHEME_OBJECT names_to_vector (unsigned long, const char **);
 
-#define IDENTITY_LENGTH 	20	/* Plenty of room */
+#define IDENTITY_LENGTH		20	/* Plenty of room */
 #define ID_RELEASE		0	/* System release (string) */
 #define ID_MICRO_VERSION	1	/* Microcode version (fixnum) */
 /* 2 unused */
@@ -62,8 +62,10 @@ static SCHEME_OBJECT names_to_vector (unsigned long, const char **);
 #define ID_CC_ARCH		12	/* Compiled-code support (string) */
 #define ID_FLONUM_EXP_MIN	13	/* Minimum finite (normal) exponent */
 #define ID_FLONUM_EXP_MAX	14	/* Maximum finite exponent */
+#define ID_NONNEG_FIXNUM_LENGTH	15	/* Number of bits in nonneg. fixnum */
+#define ID_NONNEG_FIXNUM_MASK	16	/* Mask for nonneg. fixnum */
 
-#define N_IDENTITY_NAMES 0x0F
+#define N_IDENTITY_NAMES 0x11
 static const char * identity_names [] =
 {
   /* 0x00 */	"system-release-string",
@@ -81,6 +83,8 @@ static const char * identity_names [] =
   /* 0x0C */	"cc-arch-string",
   /* 0x0D */	"flonum-exponent-min",
   /* 0x0E */	"flonum-exponent-max",
+  /* 0x0F */	"nonnegative-fixnum-length",
+  /* 0x10 */	"nonnegative-fixnum-mask",
 };
 
 SCHEME_OBJECT
@@ -100,11 +104,9 @@ make_microcode_identification_vector (void)
   VECTOR_SET (v, ID_MACHINE_TYPE, (char_pointer_to_string (MACHINE_TYPE)));
   VECTOR_SET (v, ID_FLONUM_EXP_MIN, (LONG_TO_FIXNUM (DBL_MIN_EXP - 1)));
   VECTOR_SET (v, ID_FLONUM_EXP_MAX, (LONG_TO_FIXNUM (DBL_MAX_EXP - 1)));
-  {
-    const char * name = (cc_arch_name ());
-    if (name != 0)
-      VECTOR_SET (v, ID_CC_ARCH, (char_pointer_to_string (name)));
-  }
+  VECTOR_SET (v, ID_NONNEG_FIXNUM_LENGTH, (ULONG_TO_FIXNUM (FIXNUM_LENGTH)));
+  VECTOR_SET (v, ID_NONNEG_FIXNUM_MASK, (ULONG_TO_FIXNUM (FIXNUM_MASK)));
+  VECTOR_SET (v, ID_CC_ARCH, (char_pointer_to_string (cc_arch_name ())));
   return (v);
 }
 
@@ -118,7 +120,8 @@ cc_arch_name (void)
     case COMPILER_C_TYPE: return ("c");
     case COMPILER_SVM_TYPE: return ("svm1");
     case COMPILER_X86_64_TYPE: return ("x86-64");
-    default: return (0);
+    case COMPILER_AARCH64_TYPE: return ("aarch64");
+    default: return ("unknown");
     }
 }
 
@@ -160,6 +163,7 @@ initialize_fixed_objects_vector (void)
   STORE_FIXOBJ (FIXOBJ_FILES_TO_DELETE, EMPTY_LIST);
   STORE_FIXOBJ (FIXOBJ_SYSTEM_CALL_NAMES, (fixed_objects_syscall_names ()));
   STORE_FIXOBJ (FIXOBJ_SYSTEM_CALL_ERRORS, (fixed_objects_syserr_names ()));
+  STORE_FIXOBJ (FIXOBJ_GC_RECLAIMED, GC_RECLAIMED);
 
   STORE_GENERIC (GENERIC_TRAMPOLINE_ZERO_P, "INTEGER-ZERO?", 1);
   STORE_GENERIC (GENERIC_TRAMPOLINE_POSITIVE_P, "INTEGER-POSITIVE?", 1);

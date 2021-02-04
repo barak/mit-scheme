@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -381,8 +381,8 @@ USA.
 	  #t))))
 
 (define c:decimal-chars
-  (ascii-range->char-set (char->integer #\0)
-			 (+ (char->integer #\9) 1)))
+  (ucs-range->char-set (char->integer #\0)
+		       (+ (char->integer #\9) 1)))
 
 (define (c:type type)
   (or (and (symbol? type)
@@ -410,7 +410,9 @@ USA.
 
 (define (c:decl type var #!optional val)
   (c:line (c:type type) " " (c:var var)
-	  (if (default-object? val) "" (string-append " = " (c:expr val)))
+	  (if (default-object? val)
+	      (string-append " LIARC_UNINITIALIZED(" (c:var var) ")")
+	      (string-append " = " (c:expr val)))
 	  ";"))
 
 (define (c:decl-unused type var #!optional val)
@@ -462,12 +464,12 @@ USA.
 	  #t))))
 
 (define c:identifier-chars
-  (char-set-union (ascii-range->char-set (char->integer #\A)
-					 (+ (char->integer #\Z) 1))
-		  (ascii-range->char-set (char->integer #\a)
-					 (+ (char->integer #\z) 1))
-		  (ascii-range->char-set (char->integer #\0)
-					 (+ (char->integer #\9) 1))
+  (char-set-union (ucs-range->char-set (char->integer #\A)
+				       (+ (char->integer #\Z) 1))
+		  (ucs-range->char-set (char->integer #\a)
+				       (+ (char->integer #\z) 1))
+		  (ucs-range->char-set (char->integer #\0)
+				       (+ (char->integer #\9) 1))
 		  (char-set #\_)))
 
 (define (c:%parenthesized? e)

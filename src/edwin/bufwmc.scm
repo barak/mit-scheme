@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,13 +57,13 @@ USA.
 	       (%window-line-end-index? window index))))
 
 (define (buffer-window/index->y window index)
-  (with-values (lambda () (start-point-for-index window index))
+  (call-with-values (lambda () (start-point-for-index window index))
     (lambda (start-index start-y line-start-index)
       line-start-index
       (predict-y window start-index start-y index))))
 
 (define (buffer-window/index->coordinates window index)
-  (with-values (lambda () (start-point-for-index window index))
+  (call-with-values (lambda () (start-point-for-index window index))
     (lambda (start-index start-y line-start-index)
       (let ((group (%window-group window))
 	    (char-image-strings (%window-char-image-strings window))
@@ -88,7 +88,7 @@ USA.
 	 (make-mark (%window-group window) index))))
 
 (define (buffer-window/coordinates->index window x y)
-  (with-values (lambda () (start-point-for-y window y))
+  (call-with-values (lambda () (start-point-for-y window y))
     (lambda (start-index start-y)
       (predict-index window start-index start-y x y))))
 
@@ -97,7 +97,7 @@ USA.
   (let ((index (mark-index mark)))
     (and (fix:<= (%window-group-start-index window) index)
 	 (fix:<= index (%window-group-end-index window))
-	 (with-values (lambda () (start-point-for-index window index))
+	 (call-with-values (lambda () (start-point-for-index window index))
 	   (lambda (start-index start-y line-start-index)
 	     line-start-index
 	     (predict-index-visible? window start-index start-y index))))))

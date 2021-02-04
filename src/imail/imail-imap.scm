@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -573,24 +573,17 @@ USA.
       (make-imap-connection url)))
 
 (define (search-imap-connections assessor)
-  (let loop ((connections memoized-imap-connections) (prev #f) (winner #f))
-    (if (weak-pair? connections)
-	(let ((connection (weak-car connections)))
-	  (if connection
-	      (loop (weak-cdr connections)
-		    connections
-		    (let ((value (assessor connection)))
-		      (if (and value
-			       (or (not winner)
-				   (> value (cdr winner))))
-			  (cons connection value)
-			  winner)))
-	      (let ((next (weak-cdr connections)))
-		(if prev
-		    (weak-set-cdr! prev next)
-		    (set! memoized-imap-connections next))
-		(loop next prev winner))))
-	(and winner (car winner)))))
+  (cond ((weak-list-set-fold (lambda (connection winner)
+			       (let ((value (assessor connection)))
+				 (if (and value
+					  (or (not winner)
+					      (> value (cdr winner))))
+				     (cons connection value)
+				     winner)))
+			     #f
+			     memoized-imap-connections)
+	 => car)
+	(else #f)))
 
 (define make-imap-connection
   (let ((constructor (instance-constructor <imap-connection> '(URL))))
@@ -598,11 +591,10 @@ USA.
       (let ((connection (constructor (imap-url-new-mailbox url ""))))
 	(without-interrupts
 	 (lambda ()
-	   (set! memoized-imap-connections
-		 (weak-cons connection memoized-imap-connections))))
+	   (weak-list-set-add! connection memoized-imap-connections)))
 	connection))))
 
-(define memoized-imap-connections '())
+(define memoized-imap-connections (weak-list-set eq?))
 
 (define (guarantee-imap-connection-open connection)
   (stop-pending-connection-closure connection)
@@ -1253,7 +1245,7 @@ USA.
 	     (if (initpred message)
 		 (let* ((pair (accessor message))
 			(value (weak-car pair)))
-		   (if (weak-pair/car? pair)
+		   (if (and value (not (gc-reclaimed-object? value)))
 		       value
 		       (fetch message
 			      (lambda (value) (weak-set-car! pair value)))))
@@ -1433,7 +1425,7 @@ USA.
     (if (initpred body)
 	(let* ((pair (accessor body))
 	       (header-fields (weak-car pair)))
-	  (if (weak-pair/car? pair)
+	  (if (and header-fields (not (gc-reclaimed-object? header-fields)))
 	      header-fields
 	      (fetch body
 		     (lambda (header-fields)
@@ -1525,7 +1517,7 @@ USA.
   (define (scan-positive body-parts previous)
     (and (weak-pair? body-parts)
 	 (let ((entry (weak-car body-parts)))
-	   (if entry
+	   (if (pair? entry)
 	       (if (equal? section (car entry))
 		   entry
 		   (scan-positive (weak-cdr body-parts) body-parts))
@@ -1533,7 +1525,7 @@ USA.
   (define (scan-negative body-parts previous)
     (if (weak-pair? body-parts)
 	(let ((entry (weak-car body-parts)))
-	  (if entry
+	  (if (pair? entry)
 	      (begin
 		(weak-set-cdr! previous body-parts)
 		(if (equal? section (car entry))
@@ -1615,7 +1607,7 @@ USA.
 		  (intern (list-ref body 5))
 		  (list-ref body 6)
 		  (list-ref body 7)
-		  (parse-mime-body:extensions (list-tail body 8))))
+		  (parse-mime-body:extensions (drop body 8))))
 	  ((and (string-ci=? "message" (car body))
 		(string-ci=? "rfc822" (cadr body)))
 	   (if (not (fix:>= n 10))
@@ -1632,7 +1624,7 @@ USA.
 			  (parse-mime-envelope (list-ref body 7))
 			  enclosed
 			  (list-ref body 9)
-			  (parse-mime-body:extensions (list-tail body 10)))))
+			  (parse-mime-body:extensions (drop body 10)))))
 	     (set-mime-body-enclosure! enclosed enclosure)
 	     enclosure))
 	  (else
@@ -1646,7 +1638,7 @@ USA.
 		  (list-ref body 4)
 		  (intern (list-ref body 5))
 		  (list-ref body 6)
-		  (parse-mime-body:extensions (list-tail body 7)))))))
+		  (parse-mime-body:extensions (drop body 7)))))))
 
 (define (parse-mime-body:extensions tail)
   (if (pair? tail)

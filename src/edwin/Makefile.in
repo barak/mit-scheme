@@ -208,10 +208,10 @@ LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 MIT_SCHEME_LIBDIR = @MIT_SCHEME_LIBDIR@
-MIT_SCHEME_OS_SUFFIX = @MIT_SCHEME_OS_SUFFIX@
+MIT_SCHEME_PKD = @MIT_SCHEME_PKD@
 MIT_SCHEME_PROJECT = @MIT_SCHEME_PROJECT@
+MIT_SCHEME_TOOLCHAIN_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 MKDIR_P = @MKDIR_P@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -265,13 +265,14 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-EXTRA_DIST = autogen.sh $(sources) TUTORIAL sources.sh compile.sh \
-	decls.scm edwin.ldr edwin.sf edwin.cbf edwin.pkg
+EXTRA_DIST = autogen.sh $(sources) edwin.ldr TUTORIAL sources.scm \
+	sources.sh compile.sh decls.scm edwin.sf edwin.cbf edwin.pkg
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)edwin
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
 scmlib_sub_DATA = $(sources) $(binaries) loadef.scm edwin.bld make.scm \
-	edwin.pkg edwin-@MIT_SCHEME_OS_SUFFIX@.pkd TUTORIAL
+	edwin.pkg @MIT_SCHEME_PKD@ TUTORIAL
 sources = abbrev.scm adapters.scm ansi.scm argred.scm artdebug.scm \
 	autold.scm autosv.scm basic.scm bios.scm bufcom.scm buffer.scm \
 	buffrm.scm bufinp.scm bufmnu.scm bufout.scm bufset.scm \
@@ -286,24 +287,23 @@ sources = abbrev.scm adapters.scm ansi.scm argred.scm artdebug.scm \
 	filcom.scm fileio.scm fill.scm grpops.scm hlpcom.scm \
 	htmlmode.scm image.scm info.scm input.scm intmod.scm \
 	iserch.scm javamode.scm key-w32.scm keymap.scm keyparse.scm \
-	kilcom.scm kmacro.scm lincom.scm linden.scm lisppaste.scm \
-	loadef.scm lspcom.scm macros.scm make.scm malias.scm \
-	manual.scm midas.scm modefs.scm modes.scm modlin.scm \
-	modwin.scm motcom.scm motion.scm mousecom.scm nntp.scm \
-	notify.scm nvector.scm occur.scm outline.scm paredit.scm \
-	pasmod.scm paths.scm print.scm process.scm prompt.scm \
-	pwedit.scm pwparse.scm rcsparse.scm reccom.scm regcom.scm \
-	regexp.scm regops.scm replaz.scm rfc822.scm ring.scm rmail.scm \
-	rmailsrt.scm rmailsum.scm schmod.scm scrcom.scm screen.scm \
-	search.scm sendmail.scm sercom.scm shell.scm simple.scm \
-	snr.scm sort.scm string.scm strpad.scm strtab.scm struct.scm \
-	syntax.scm tagutl.scm techinfo.scm telnet.scm termcap.scm \
-	texcom.scm things.scm tparse.scm tterm.scm tximod.scm \
-	txtprp.scm undo.scm unix.scm utils.scm utlwin.scm vc.scm \
-	vc-bzr.scm vc-cvs.scm vc-git.scm vc-rcs.scm vc-svn.scm \
-	verilog.scm vhdl.scm webster.scm win32.scm win32com.scm \
-	wincom.scm window.scm winout.scm world-monitor.scm xform.scm \
-	xterm.scm
+	kilcom.scm kmacro.scm lincom.scm linden.scm loadef.scm \
+	lspcom.scm macros.scm make.scm malias.scm manual.scm midas.scm \
+	modefs.scm modes.scm modlin.scm modwin.scm motcom.scm \
+	motion.scm mousecom.scm nntp.scm notify.scm nvector.scm \
+	occur.scm outline.scm paredit.scm pasmod.scm paths.scm \
+	print.scm process.scm prompt.scm pwedit.scm pwparse.scm \
+	rcsparse.scm reccom.scm regcom.scm regexp.scm regops.scm \
+	replaz.scm rfc822.scm ring.scm rmail.scm rmailsrt.scm \
+	rmailsum.scm schmod.scm scrcom.scm screen.scm search.scm \
+	sendmail.scm sercom.scm shell.scm simple.scm snr.scm sort.scm \
+	string.scm strpad.scm strtab.scm struct.scm syntax.scm \
+	tagutl.scm techinfo.scm telnet.scm termcap.scm texcom.scm \
+	things.scm tparse.scm tterm.scm tximod.scm txtprp.scm undo.scm \
+	unix.scm utils.scm utlwin.scm vc.scm vc-bzr.scm vc-cvs.scm \
+	vc-git.scm vc-rcs.scm vc-svn.scm verilog.scm vhdl.scm \
+	webster.scm win32.scm win32com.scm wincom.scm window.scm \
+	winout.scm world-monitor.scm xform.scm xterm.scm
 binaries = abbrev.bci abbrev.com adapters.bci adapters.com ansi.bci \
 	ansi.com argred.bci argred.com artdebug.bci artdebug.com \
 	autold.bci autold.com autosv.bci autosv.com basic.bci \
@@ -333,46 +333,44 @@ binaries = abbrev.bci abbrev.com adapters.bci adapters.com ansi.bci \
 	iserch.com javamode.bci javamode.com key-w32.bci key-w32.com \
 	keymap.bci keymap.com keyparse.bci keyparse.com kilcom.bci \
 	kilcom.com kmacro.bci kmacro.com lincom.bci lincom.com \
-	linden.bci linden.com lisppaste.bci lisppaste.com loadef.bci \
-	loadef.com lspcom.bci lspcom.com macros.bci macros.com \
-	make.bci make.com malias.bci malias.com manual.bci manual.com \
-	midas.bci midas.com modefs.bci modefs.com modes.bci modes.com \
-	modlin.bci modlin.com modwin.bci modwin.com motcom.bci \
-	motcom.com motion.bci motion.com mousecom.bci mousecom.com \
-	nntp.bci nntp.com notify.bci notify.com nvector.bci \
-	nvector.com occur.bci occur.com outline.bci outline.com \
-	paredit.bci paredit.com pasmod.bci pasmod.com paths.bci \
-	paths.com print.bci print.com process.bci process.com \
-	prompt.bci prompt.com pwedit.bci pwedit.com pwparse.bci \
-	pwparse.com rcsparse.bci rcsparse.com reccom.bci reccom.com \
-	regcom.bci regcom.com regexp.bci regexp.com regops.bci \
-	regops.com replaz.bci replaz.com rfc822.bci rfc822.com \
-	ring.bci ring.com rmail.bci rmail.com rmailsrt.bci \
-	rmailsrt.com rmailsum.bci rmailsum.com schmod.bci schmod.com \
-	scrcom.bci scrcom.com screen.bci screen.com search.bci \
-	search.com sendmail.bci sendmail.com sercom.bci sercom.com \
-	shell.bci shell.com simple.bci simple.com snr.bci snr.com \
-	sort.bci sort.com string.bci string.com strpad.bci strpad.com \
-	strtab.bci strtab.com struct.bci struct.com syntax.bci \
-	syntax.com tagutl.bci tagutl.com techinfo.bci techinfo.com \
-	telnet.bci telnet.com termcap.bci termcap.com texcom.bci \
-	texcom.com things.bci things.com tparse.bci tparse.com \
-	tterm.bci tterm.com tximod.bci tximod.com txtprp.bci \
-	txtprp.com undo.bci undo.com unix.bci unix.com utils.bci \
-	utils.com utlwin.bci utlwin.com vc.bci vc.com vc-bzr.bci \
-	vc-bzr.com vc-cvs.bci vc-cvs.com vc-git.bci vc-git.com \
-	vc-rcs.bci vc-rcs.com vc-svn.bci vc-svn.com verilog.bci \
-	verilog.com vhdl.bci vhdl.com webster.bci webster.com \
-	win32.bci win32.com win32com.bci win32com.com wincom.bci \
-	wincom.com window.bci window.com winout.bci winout.com \
-	world-monitor.bci world-monitor.com xform.bci xform.com \
-	xterm.bci xterm.com
+	linden.bci linden.com loadef.bci loadef.com lspcom.bci \
+	lspcom.com macros.bci macros.com make.bci make.com malias.bci \
+	malias.com manual.bci manual.com midas.bci midas.com \
+	modefs.bci modefs.com modes.bci modes.com modlin.bci \
+	modlin.com modwin.bci modwin.com motcom.bci motcom.com \
+	motion.bci motion.com mousecom.bci mousecom.com nntp.bci \
+	nntp.com notify.bci notify.com nvector.bci nvector.com \
+	occur.bci occur.com outline.bci outline.com paredit.bci \
+	paredit.com pasmod.bci pasmod.com paths.bci paths.com \
+	print.bci print.com process.bci process.com prompt.bci \
+	prompt.com pwedit.bci pwedit.com pwparse.bci pwparse.com \
+	rcsparse.bci rcsparse.com reccom.bci reccom.com regcom.bci \
+	regcom.com regexp.bci regexp.com regops.bci regops.com \
+	replaz.bci replaz.com rfc822.bci rfc822.com ring.bci ring.com \
+	rmail.bci rmail.com rmailsrt.bci rmailsrt.com rmailsum.bci \
+	rmailsum.com schmod.bci schmod.com scrcom.bci scrcom.com \
+	screen.bci screen.com search.bci search.com sendmail.bci \
+	sendmail.com sercom.bci sercom.com shell.bci shell.com \
+	simple.bci simple.com snr.bci snr.com sort.bci sort.com \
+	string.bci string.com strpad.bci strpad.com strtab.bci \
+	strtab.com struct.bci struct.com syntax.bci syntax.com \
+	tagutl.bci tagutl.com techinfo.bci techinfo.com telnet.bci \
+	telnet.com termcap.bci termcap.com texcom.bci texcom.com \
+	things.bci things.com tparse.bci tparse.com tterm.bci \
+	tterm.com tximod.bci tximod.com txtprp.bci txtprp.com undo.bci \
+	undo.com unix.bci unix.com utils.bci utils.com utlwin.bci \
+	utlwin.com vc.bci vc.com vc-bzr.bci vc-bzr.com vc-cvs.bci \
+	vc-cvs.com vc-git.bci vc-git.com vc-rcs.bci vc-rcs.com \
+	vc-svn.bci vc-svn.com verilog.bci verilog.com vhdl.bci \
+	vhdl.com webster.bci webster.com win32.bci win32.com \
+	win32com.bci win32com.com wincom.bci wincom.com window.bci \
+	window.com winout.bci winout.com world-monitor.bci \
+	world-monitor.com xform.bci xform.com xterm.bci xterm.com
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd \
 	*.bld stamp-scheme
 
 #TESTS = edwin-check.sh
-ETAGS_ARGS = $(sources) edwin.ldr
-TAGS_DEPENDENCIES = $(sources) edwin.ldr
+TAGS_FILES = $(sources) edwin.ldr
 all: all-am
 
 .SUFFIXES:
@@ -717,17 +715,20 @@ info: info-am
 info-am:
 
 install-data-am: install-scmlib_subDATA
-	@$(NORMAL_INSTALL)
-	$(MAKE) $(AM_MAKEFLAGS) install-data-hook
+
 install-dvi: install-dvi-am
 
 install-dvi-am:
 
 install-exec-am:
 
+install-html: install-html-am
+
 install-html-am:
 
 install-info: install-info-am
+
+install-info-am:
 
 install-man:
 
@@ -760,9 +761,8 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-scmlib_subDATA
-	@$(NORMAL_INSTALL)
-	$(MAKE) $(AM_MAKEFLAGS) uninstall-hook
-.MAKE: install-am install-data-am install-strip uninstall-am
+
+.MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--refresh check check-am clean \
 	clean-cscope clean-generic cscope cscopelist-am ctags ctags-am \
@@ -770,15 +770,15 @@ uninstall-am: uninstall-scmlib_subDATA
 	dist-tarZ dist-xz dist-zip distcheck distclean \
 	distclean-generic distclean-tags distcleancheck distdir \
 	distuninstallcheck dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am \
-	install-data-hook install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-scmlib_subDATA install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-scmlib_subDATA install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-generic pdf \
 	pdf-am ps ps-am tags tags-am uninstall uninstall-am \
-	uninstall-hook uninstall-scmlib_subDATA
+	uninstall-scmlib_subDATA
 
 .PRECIOUS: Makefile
 
@@ -932,8 +932,6 @@ lincom.bci: stamp-scheme
 lincom.com: stamp-scheme
 linden.bci: stamp-scheme
 linden.com: stamp-scheme
-lisppaste.bci: stamp-scheme
-lisppaste.com: stamp-scheme
 loadef.bci: stamp-scheme
 loadef.com: stamp-scheme
 lspcom.bci: stamp-scheme
@@ -1107,20 +1105,10 @@ xterm.com: stamp-scheme
 #AM_MAKEINFOHTMLFLAGS = --no-split
 
 edwin.bld: stamp-scheme
-edwin-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+@MIT_SCHEME_PKD@: stamp-scheme
 stamp-scheme: $(sources) edwin.ldr edwin.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
-
-install-data-hook:
-
-install-html: install-html-am
-
-install-info-am:
-
-uninstall-info-am:
-
-uninstall-hook:
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

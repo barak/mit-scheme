@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime simple-file-ops)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime hash-table) '(runtime character-set))
 
 (define (file-exists-direct? filename)
   (let ((result
@@ -214,7 +216,7 @@ USA.
    thunk
    (lambda () (deallocate-temporary-file pathname))))
 
-(define files-to-delete-mutex)
+(define files-to-delete-mutex (make-thread-mutex))
 
 (define (with-files-to-delete-locked thunk)
   (with-thread-mutex-lock files-to-delete-mutex
@@ -329,28 +331,28 @@ USA.
     (lambda (mime-type)
       (list (mime-type->string mime-type)))))
 
-(define interned-mime-types)
-(define unusual-interned-mime-types)
-(define char-set:mime-token)
-(define local-type-map)
+(define-deferred interned-mime-types
+  ;; We really want each of these hash tables to be a
+  ;; datum-weak hash table, but the hash table abstraction
+  ;; doesn't support that.  Using a key-weak hash table does no
+  ;; good because each datum has a strong reference to its key.
+  (vector-map (lambda (token) token (make-strong-eq-hash-table))
+	      top-level-mime-types))
 
-(define (initialize-package!)
-  (set! files-to-delete-mutex (make-thread-mutex))
-  (set! interned-mime-types
-	;; We really want each of these hash tables to be a
-	;; datum-weak hash table, but the hash table abstraction
-	;; doesn't support that.  Using a key-weak hash table does no
-	;; good because each datum has a strong reference to its key.
-	(vector-map (lambda (token) token (make-strong-eq-hash-table))
-		    top-level-mime-types))
-  (set! unusual-interned-mime-types (make-equal-hash-table))
-  (set! char-set:mime-token
-	(char-set-difference (ascii-range->char-set #x21 #x7F)
-			     (string->char-set "()<>@,;:\\\"/[]?=")))
-  (set! local-type-map (make-string-hash-table))
-  (associate-pathname-type-with-mime-type "scm"
-					  (make-mime-type 'text 'x-scheme))
-  unspecific)
+(define-deferred unusual-interned-mime-types
+  (make-equal-hash-table))
+
+(define-deferred char-set:mime-token
+  (char-set-difference (ucs-range->char-set #x21 #x7F)
+		       (string->char-set "()<>@,;:\\\"/[]?=")))
+
+(define-deferred local-type-map
+  (make-string-hash-table))
+
+(add-boot-init!
+ (lambda ()
+   (associate-pathname-type-with-mime-type "scm"
+					   (make-mime-type 'text 'x-scheme))))
 
 (define (mime-type->string mime-type)
   (call-with-output-string

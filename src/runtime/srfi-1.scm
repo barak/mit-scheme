@@ -12,7 +12,7 @@ Hanson for inclusion in MIT/GNU Scheme.
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,6 +36,7 @@ USA.
 ;;;; SRFI-1 list-processing library
 
 (declare (usual-integrations))
+(declare (integrate-external "list"))
 
 ;;; [Olin's original notes]
 
@@ -339,11 +340,17 @@ USA.
 	      len))
 	len)))
 
+(define (reverse l)
+  (append-reverse l '()))
+
 (define (append-reverse rev-head tail)
   (let lp ((rev-head rev-head) (tail tail))
     (if (null-list? rev-head 'append-reverse)
 	tail
 	(lp (cdr rev-head) (cons (car rev-head) tail)))))
+
+(define (reverse! l)
+  (append-reverse! l '()))
 
 (define (append-reverse! rev-head tail)
   (let lp ((rev-head rev-head) (tail tail))
@@ -569,34 +576,34 @@ USA.
 ;;; beginning of the next.
 
 (define (filter! pred lis)
+  ;; ANS is the eventual answer.
+  ;; SCAN-IN: (CDR PREV) = LIS and (CAR PREV) satisfies PRED.
+  ;;          Scan over a contiguous segment of the list that
+  ;;          satisfies PRED.
+  ;; SCAN-OUT: (CAR PREV) satisfies PRED. Scan over a contiguous
+  ;;           segment of the list that *doesn't* satisfy PRED.
+  ;;           When the segment ends, patch in a link from PREV
+  ;;           to the start of the next good segment, and jump to
+  ;;           SCAN-IN.
+  (define (scan-in prev lis)
+    (if (pair? lis)
+	(if (pred (car lis))
+	    (scan-in lis (cdr lis))
+	    (scan-out prev (cdr lis)))))
+  (define (scan-out prev lis)
+    (let lp ((lis lis))
+      (if (pair? lis)
+	  (if (pred (car lis))
+	      (begin (set-cdr! prev lis)
+		     (scan-in lis (cdr lis)))
+	      (lp (cdr lis)))
+	  (set-cdr! prev lis))))
   (let lp ((ans lis))
     (cond ((null-list? ans 'filter!) ans) ; Scan looking for
 	  ((not (pred (car ans))) (lp (cdr ans)))	; first cons of result.
-
-	  ;; ANS is the eventual answer.
-	  ;; SCAN-IN: (CDR PREV) = LIS and (CAR PREV) satisfies PRED.
-	  ;;          Scan over a contiguous segment of the list that
-	  ;;          satisfies PRED.
-	  ;; SCAN-OUT: (CAR PREV) satisfies PRED. Scan over a contiguous
-	  ;;           segment of the list that *doesn't* satisfy PRED.
-	  ;;           When the segment ends, patch in a link from PREV
-	  ;;           to the start of the next good segment, and jump to
-	  ;;           SCAN-IN.
-	  (else (letrec ((scan-in (lambda (prev lis)
-				    (if (pair? lis)
-					(if (pred (car lis))
-					    (scan-in lis (cdr lis))
-					    (scan-out prev (cdr lis))))))
-			 (scan-out (lambda (prev lis)
-				     (let lp ((lis lis))
-				       (if (pair? lis)
-					   (if (pred (car lis))
-					       (begin (set-cdr! prev lis)
-						      (scan-in lis (cdr lis)))
-					       (lp (cdr lis)))
-					   (set-cdr! prev lis))))))
-		  (scan-in ans (cdr ans))
-		  ans)))))
+	  (else
+	   (scan-in ans (cdr ans))
+	   ans))))
 
 ;;; Answers share common tail with LIS where possible;
 ;;; the technique is slightly subtle.
@@ -622,47 +629,47 @@ USA.
 ;;; lists.
 
 (define (partition! pred lis)
+  ;; This pair of loops zips down contiguous in & out runs of the
+  ;; list, splicing the runs together. The invariants are
+  ;;   SCAN-IN:  (cdr in-prev)  = LIS.
+  ;;   SCAN-OUT: (cdr out-prev) = LIS.
+  (define (scan-in in-prev out-prev lis)
+    (let lp ((in-prev in-prev) (lis lis))
+      (if (pair? lis)
+	  (if (pred (car lis))
+	      (lp lis (cdr lis))
+	      (begin (set-cdr! out-prev lis)
+		     (scan-out in-prev lis (cdr lis))))
+	  ;; Done.
+	  (set-cdr! out-prev lis))))
+  (define (scan-out in-prev out-prev lis)
+    (let lp ((out-prev out-prev) (lis lis))
+      (if (pair? lis)
+	  (if (pred (car lis))
+	      (begin (set-cdr! in-prev lis)
+		     (scan-in lis out-prev (cdr lis)))
+	      (lp lis (cdr lis)))
+	  ;; Done.
+	  (set-cdr! in-prev lis))))
   (if (null-list? lis 'partition!)
       (values lis lis)
 
-      ;; This pair of loops zips down contiguous in & out runs of the
-      ;; list, splicing the runs together. The invariants are
-      ;;   SCAN-IN:  (cdr in-prev)  = LIS.
-      ;;   SCAN-OUT: (cdr out-prev) = LIS.
-      (letrec ((scan-in (lambda (in-prev out-prev lis)
-			  (let lp ((in-prev in-prev) (lis lis))
-			    (if (pair? lis)
-				(if (pred (car lis))
-				    (lp lis (cdr lis))
-				    (begin (set-cdr! out-prev lis)
-					   (scan-out in-prev lis (cdr lis))))
-				(set-cdr! out-prev lis))))) ; Done.
+      ;; Crank up the scan&splice loops.
+      (if (pred (car lis))
+	  ;; LIS begins in-list. Search for out-list's first pair.
+	  (let lp ((prev-l lis) (l (cdr lis)))
+	    (cond ((not (pair? l)) (values lis l))
+		  ((pred (car l)) (lp l (cdr l)))
+		  (else (scan-out prev-l l (cdr l))
+			(values lis l))))	; Done.
 
-	       (scan-out (lambda (in-prev out-prev lis)
-			   (let lp ((out-prev out-prev) (lis lis))
-			     (if (pair? lis)
-				 (if (pred (car lis))
-				     (begin (set-cdr! in-prev lis)
-					    (scan-in lis out-prev (cdr lis)))
-				     (lp lis (cdr lis)))
-				 (set-cdr! in-prev lis)))))) ; Done.
-
-	;; Crank up the scan&splice loops.
-	(if (pred (car lis))
-	    ;; LIS begins in-list. Search for out-list's first pair.
-	    (let lp ((prev-l lis) (l (cdr lis)))
-	      (cond ((not (pair? l)) (values lis l))
-		    ((pred (car l)) (lp l (cdr l)))
-		    (else (scan-out prev-l l (cdr l))
-			  (values lis l))))	; Done.
-
-	    ;; LIS begins out-list. Search for in-list's first pair.
-	    (let lp ((prev-l lis) (l (cdr lis)))
-	      (cond ((not (pair? l)) (values l lis))
-		    ((pred (car l))
-		     (scan-in l prev-l (cdr l))
-		     (values l lis))		; Done.
-		    (else (lp l (cdr l)))))))))
+	  ;; LIS begins out-list. Search for in-list's first pair.
+	  (let lp ((prev-l lis) (l (cdr lis)))
+	    (cond ((not (pair? l)) (values l lis))
+		  ((pred (car l))
+		   (scan-in l prev-l (cdr l))
+		   (values l lis))		; Done.
+		  (else (lp l (cdr l))))))))
 
 (define-integrable (remove  pred l) (filter  (lambda (x) (not (pred x))) l))
 (define-integrable (remove! pred l) (filter! (lambda (x) (not (pred x))) l))
@@ -828,7 +835,11 @@ USA.
 ;;;   and results to get structure sharing in the lset procedures.
 
 (define (%lset2<= = lis1 lis2)
-  (every (lambda (x) (member x lis2 =)) lis1))
+  (every (lambda (item1)
+	   (any (lambda (item2)
+		  (= item1 item2))
+		lis2))
+	 lis1))
 
 (define (lset<= = . lists)
   (or (not (pair? lists)) ; 0-ary case
@@ -840,13 +851,15 @@ USA.
 		   (lp s2 rest)))))))
 
 (define (lset= = . lists)
-  (or (not (pair? lists)) ; 0-ary case
+  (define (r= a b)
+    (= b a))
+  (or (not (pair? lists))		;0-ary case
       (let lp ((s1 (car lists)) (rest (cdr lists)))
 	(or (not (pair? rest))
 	    (let ((s2   (car rest))
 		  (rest (cdr rest)))
-	      (and (or (eq? s1 s2)	; Fast path
-		       (and (%lset2<= = s1 s2) (%lset2<= = s2 s1))) ; Real test
+	      (and (or (eq? s1 s2)	;Fast path
+		       (and (%lset2<= = s1 s2) (%lset2<= r= s2 s1))) ;Real test
 		   (lp s2 rest)))))))
 
 (define (lset-adjoin = lis . elts)

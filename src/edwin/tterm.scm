@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,7 +45,7 @@ USA.
     (let ((baud-rate (output-port/baud-rate (console-i/o-port)))
 	  (x-size (output-port/x-size (console-i/o-port)))
 	  (y-size (output-port/y-size (console-i/o-port))))
-      (make-screen (with-values
+      (make-screen (call-with-values
 		       (lambda ()
 			 (compute-scrolling-costs description
 						  baud-rate
@@ -183,173 +183,180 @@ USA.
 	;; subsequent read do not EACH wait a little-while.
         (incomplete-pending #F))
 
-    (letrec
-        ((match-key			; -> match: #F or char or (seq . name)
-	  (named-lambda (match-key)
-	    (and (fix:< start end)
-		 terminal-state
-		 (let ((n-chars (fix:- end start)))
-		   (let find
-		       ((key-pairs (terminal-state/key-table terminal-state))
-			(possible-pending? #f))
-		     (if (null? key-pairs)
-			 (begin
-			   (if (number? incomplete-pending)
-			       (if (or (not possible-pending?)
-				       (> (real-time-clock)
-					  incomplete-pending))
-				   (set! incomplete-pending #t)))
-			   (if (number? incomplete-pending)
-			       #f
-			       (vector-8b-ref buffer start)))
-			 (let* ((key-seq  (caar key-pairs))
-				(n-seq    (string-length key-seq)))
-			   (cond ((and (fix:<= n-seq n-chars)
-				       (substring=? buffer start
-						    (fix:+ start n-seq)
-						    key-seq 0 n-seq))
-				  (car key-pairs))
-				 ((and (fix:> n-seq n-chars)
-				       (substring=? buffer start
-						    (fix:+ start n-chars)
-						    key-seq 0 n-chars))
-				  (if (not incomplete-pending)
-				      (set! incomplete-pending
-					    (+ (real-time-clock)
-					       little-while)))
-				  (find (cdr key-pairs) #T))
-				 (else
-				  (find (cdr key-pairs)
-					possible-pending?))))))))))
-	 (read-more?			; -> #F or #T if some octets were read
-	  (named-lambda (read-more?)
-	    (let ((n (%channel-read channel buffer end input-buffer-size)))
-	      (cond ((not n)  #f)
-		    ((eq? n #t) #f)
-		    ((fix:> n 0)
-		     (set! end (fix:+ end n))
-		     #t)
-		    ((fix:= n 0)
-		     ;;(error "Reached EOF in keyboard input.")
-		     #f)))))
-	 (match-event	; -> #F or match (char or pair) or input event
-	  (named-lambda (match-event block?)
-	    (let loop ()
-	      (or (begin
-		    (read-more?)
-		    (match-key))
-		  ;; Poll event sources and block.
-		  (begin
-		    (cond (inferior-thread-changes?
-			   (or (->update-event (accept-thread-output))
-			       (loop)))
-			  ((process-output-available?)
-			   (or (->update-event (accept-process-output))
-			       (loop)))
-			  ((process-status-changes?)
-			   (or (->update-event (handle-process-status-changes))
-			       (loop)))
-			  ((not have-select?)
-			   (and block? (loop)))
-			  (incomplete-pending
-			   ;; Must busy-wait.
-			   (loop))
-			  (block?
-			   (block-for-event)
-			   (loop))
-			  (else
-			   #f)))))))
-	 (->update-event
-	  (named-lambda (->update-event redisplay?)
-	    (and redisplay?
-		 (make-input-event
-		  (if (eq? redisplay? 'force-return) 'return 'update)
-		  update-screens! #f))))
-	 (consume-match!
-	  (named-lambda (consume-match! match)
-	    (cond ((fixnum? match)
-		   (set! start (fix:1+ start)))
-		  ((input-event? match)
-		   unspecific)
-		  ((pair? match)
-		   (set! start (fix:+ start (string-length (car match)))))
-		  (else (error "Inedible match:" match)))
-	    (if (fix:< end start)
-		(error "Overconsumption:" buffer start end match))
-	    (cond ((fix:= start end)	; all consumed
-		   (if (not (fix:zero? start))
-		       (set! start 0))
-		   (if (not (fix:zero? end))
-		       (set! end 0)))
-		  ((fix:>= start input-buffer-size)
-		   (substring-move-left! buffer start end buffer 0)
-		   (set! end (fix:- end start))
-		   (set! start 0)))
-	    (set! incomplete-pending #f)))
-	 (->event
-	  (named-lambda (->event match)
-	    (cond ((eq? match #f)
-		   #F)
-		  ((fixnum? match)
-		   ;; Assume the eighth bit is a meta bit.
-		   (if (fix:< match #x80)
-		       (make-char match 0)
-		       (make-char (fix:and match #x7F) char-bit:meta)))
-		  ((input-event? match)
-		   match)
-		  ((pair? match)
-		   (cdr match))
-		  (else (error "Bogus input match:" match)))))
-	 (block-for-event
-	  (named-lambda (block-for-event)
-	    (let ((input-available? #f)
-		  (output-available? #f)
-		  (registrations))
-	      (dynamic-wind
-	       (lambda ()
-		 (let ((thread (current-thread)))
-		   (set! registrations
-			 (cons
-			  (register-io-thread-event
-			   (channel-descriptor-for-select channel) 'read
-			   thread (lambda (mode)
-				    mode
-				    (set! input-available? #t)))
-			  (register-process-output-events
-			   thread (lambda (mode)
-				    mode
-				    (set! output-available? #t)))))))
-	       (lambda ()
-		 (with-thread-events-blocked
-		  (lambda ()
-		    (if (and (not input-available?)
-			     (not output-available?)
-			     (not (process-status-changes?))
-			     (not inferior-thread-changes?))
-			(suspend-current-thread))))
-		 unspecific)
-	       (lambda ()
-		 (for-each deregister-io-thread-event registrations)))))))
-      (values
-       (named-lambda (halt-update?)
-	 (or (fix:< start end)
-	     (read-more?)))
-       (named-lambda (peek-no-hang timeout)
-	 (keyboard-peek-busy-no-hang
+    ;; Internal subroutines.
+
+    (define (match-key)			; -> match: #F or char or (seq . name)
+      (and (fix:< start end)
+	   terminal-state
+	   (let ((n-chars (fix:- end start)))
+	     (let find
+		 ((key-pairs (terminal-state/key-table terminal-state))
+		  (possible-pending? #f))
+	       (if (null? key-pairs)
+		   (begin
+		     (if (number? incomplete-pending)
+			 (if (or (not possible-pending?)
+				 (> (real-time-clock)
+				    incomplete-pending))
+			     (set! incomplete-pending #t)))
+		     (if (number? incomplete-pending)
+			 #f
+			 (vector-8b-ref buffer start)))
+		   (let* ((key-seq  (caar key-pairs))
+			  (n-seq    (string-length key-seq)))
+		     (cond ((and (fix:<= n-seq n-chars)
+				 (substring=? buffer start
+					      (fix:+ start n-seq)
+					      key-seq 0 n-seq))
+			    (car key-pairs))
+			   ((and (fix:> n-seq n-chars)
+				 (substring=? buffer start
+					      (fix:+ start n-chars)
+					      key-seq 0 n-chars))
+			    (if (not incomplete-pending)
+				(set! incomplete-pending
+				      (+ (real-time-clock)
+					 little-while)))
+			    (find (cdr key-pairs) #T))
+			   (else
+			    (find (cdr key-pairs)
+				  possible-pending?)))))))))
+
+    (define (read-more?)		; -> #F or #T if some octets were read
+      (let ((n (%channel-read channel buffer end input-buffer-size)))
+	(cond ((not n)  #f)
+	      ((eq? n #t) #f)
+	      ((fix:> n 0)
+	       (set! end (fix:+ end n))
+	       #t)
+	      ((fix:= n 0)
+	       ;;(error "Reached EOF in keyboard input.")
+	       #f))))
+
+    (define (match-event block?) ; -> #F or match (char or pair) or input event
+      (let loop ()
+	(or (begin
+	      (read-more?)
+	      (match-key))
+	    ;; Poll event sources and block.
+	    (begin
+	      (cond (inferior-thread-changes?
+		     (or (->update-event (accept-thread-output))
+			 (loop)))
+		    ((process-output-available?)
+		     (or (->update-event (accept-process-output))
+			 (loop)))
+		    ((process-status-changes?)
+		     (or (->update-event (handle-process-status-changes))
+			 (loop)))
+		    ((not have-select?)
+		     (and block? (loop)))
+		    (incomplete-pending
+		     ;; Must busy-wait.
+		     (loop))
+		    (block?
+		     (block-for-event)
+		     (loop))
+		    (else
+		     #f))))))
+
+    (define (->update-event redisplay?)
+      (and redisplay?
+	   (make-input-event
+	    (if (eq? redisplay? 'force-return) 'return 'update)
+	    update-screens! #f)))
+
+    (define (consume-match! match)
+      (cond ((fixnum? match)
+	     (set! start (fix:1+ start)))
+	    ((input-event? match)
+	     unspecific)
+	    ((pair? match)
+	     (set! start (fix:+ start (string-length (car match)))))
+	    (else (error "Inedible match:" match)))
+      (if (fix:< end start)
+	  (error "Overconsumption:" buffer start end match))
+      (cond ((fix:= start end)		; all consumed
+	     (if (not (fix:zero? start))
+		 (set! start 0))
+	     (if (not (fix:zero? end))
+		 (set! end 0)))
+	    ((fix:>= start input-buffer-size)
+	     (substring-move-left! buffer start end buffer 0)
+	     (set! end (fix:- end start))
+	     (set! start 0)))
+      (set! incomplete-pending #f))
+
+    (define (->event match)
+      (cond ((eq? match #f)
+	     #F)
+	    ((fixnum? match)
+	     ;; Assume the eighth bit is a meta bit.
+	     (if (fix:< match #x80)
+		 (make-char match 0)
+		 (make-char (fix:and match #x7F) char-bit:meta)))
+	    ((input-event? match)
+	     match)
+	    ((pair? match)
+	     (cdr match))
+	    (else (error "Bogus input match:" match))))
+
+    (define (block-for-event)
+      (let ((input-available? #f)
+	    (output-available? #f)
+	    (registrations))
+	(dynamic-wind
 	  (lambda ()
-	    (let ((event (->event (match-event #f))))
-	      (if (input-event? event)
-		  (begin
-		    (apply-input-event event)
-		    #f)
-		  event)))
-	  timeout))
-       (named-lambda (peek)
-	 (->event (match-event #t)))
-       (named-lambda (read)
-	 (let ((match (match-event #t)))
-	   (consume-match! match)
-	   (->event match)))))))
+	    (let ((thread (current-thread)))
+	      (set! registrations
+		    (cons
+		     (register-io-thread-event
+		      (channel-descriptor-for-select channel) 'read
+		      thread (lambda (mode)
+			       mode
+			       (set! input-available? #t)))
+		     (register-process-output-events
+		      thread (lambda (mode)
+			       mode
+			       (set! output-available? #t)))))))
+	  (lambda ()
+	    (with-thread-events-blocked
+	      (lambda ()
+		(if (and (not input-available?)
+			 (not output-available?)
+			 (not (process-status-changes?))
+			 (not inferior-thread-changes?))
+		    (suspend-current-thread))))
+	    unspecific)
+	  (lambda ()
+	    (for-each deregister-io-thread-event registrations)))))
+
+    ;; Exposed operations.
+
+    (define (halt-update?)
+      (or (fix:< start end)
+	  (read-more?)))
+
+    (define (peek-no-hang timeout)
+      (keyboard-peek-busy-no-hang
+       (lambda ()
+	 (let ((event (->event (match-event #f))))
+	   (if (input-event? event)
+	       (begin
+		 (apply-input-event event)
+		 #f)
+	       event)))
+       timeout))
+
+    (define (peek)
+      (->event (match-event #t)))
+
+    (define (read)
+      (let ((match (match-event #t)))
+	(consume-match! match)
+	(->event match)))
+
+    (values halt-update? peek-no-hang peek read)))
 
 (define-integrable input-buffer-size 16)
 
@@ -1106,7 +1113,7 @@ USA.
       (output-n screen command n-lines)))
 
 (define (compute-scrolling-costs description baud-rate x-size y-size)
-  (with-values
+  (call-with-values
       (lambda ()
 	(i/d-line-cost-vectors description
 			       baud-rate
@@ -1115,7 +1122,7 @@ USA.
 			       (or (ts-insert-line description)
 				   (ts-reverse-scroll description))))
     (lambda (insert-line-cost insert-line-next-cost)
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (i/d-line-cost-vectors description
 				   baud-rate

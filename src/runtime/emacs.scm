@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime emacs-interface)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime bytevector) '(runtime console-i/o-port))
 
 ;;;; Prompting
 
@@ -123,26 +125,41 @@ USA.
 
 ;;;; Miscellaneous Hooks
 
-(define (emacs/write-result port expression object hash-number)
-  expression
-  (cond ((undefined-value? object)
-	 (transmit-signal-with-argument port #\v ""))
-	(hash-number
-	 ;; The #\P command used to do something useful, but now
-	 ;; it just sets the Emacs variable `xscheme-prompt' to
-	 ;; its string argument.  We use this to advantage here.
-	 (transmit-signal-with-argument port #\P (write-to-string object))
-	 (emacs-eval
-	  port
-	  "(xscheme-write-message-1 xscheme-prompt (format \";Value "
-	  (number->string hash-number)
-	  ": %s\" xscheme-prompt))"))
-	(else
-	 (transmit-signal-with-argument
-	  port #\v
-	  (call-with-output-string
-	    (lambda (port)
-	      (write object port)))))))
+(define (emacs/write-values port expression vals)
+  (declare (ignore expression))
+
+  (define (write-one val)
+    (let ((hash-number (repl-get-hash-number val)))
+      (if hash-number
+	  (begin
+	    ;; The #\P command used to do something useful, but now it just sets
+	    ;; the Emacs variable `xscheme-prompt' to its string argument.  We
+	    ;; use this to advantage here so that we can pass a string in
+	    ;; Scheme's syntax to Emac's eval.
+	    (transmit-signal-with-argument port #\P
+	      (call-with-output-string
+		(lambda (port)
+		  (write val port))))
+	    (emacs-eval
+	     port
+	     "(xscheme-write-message-1 xscheme-prompt (format \";Value "
+	     (number->string hash-number)
+	     ": %s\" xscheme-prompt))"))
+	  (transmit-signal-with-argument port #\v
+	    (call-with-output-string
+	      (lambda (port)
+		(write val port)))))))
+
+  (case (length vals)
+    ((0)
+     (emacs-eval port
+		 "(xscheme-write-message-1 \"(no values)\" \";No values\")"))
+    ((1)
+     (if (undefined-value? (car vals))
+	 (transmit-signal-with-argument port #\v "")
+	 (write-one (car vals))))
+    (else
+     (for-each write-one vals))))
 
 (define (emacs/error-decision repl condition)
   condition
@@ -223,44 +240,44 @@ USA.
 
 ;;;; Initialization
 
-(define gc-start-bytes)
-(define gc-end-bytes)
-(define console-output-channel)
-(define vanilla-console-port-type)
-(define emacs-console-port-type)
+(define-deferred gc-start-bytes
+  (bytevector (char->integer #\esc)
+	      (char->integer #\b)))
 
-(define (initialize-package!)
-  (set! gc-start-bytes
-	(bytevector (char->integer #\esc)
-		    (char->integer #\b)))
-  (set! gc-end-bytes
-	(bytevector (char->integer #\esc)
-		    (char->integer #\e)))
-  (set! console-output-channel (output-port-channel the-console-port))
-  (set! vanilla-console-port-type (textual-port-type the-console-port))
-  (set! emacs-console-port-type
-	(make-textual-port-type
-	 `((prompt-for-expression ,emacs/prompt-for-expression)
-	   (prompt-for-command-char ,emacs/prompt-for-command-char)
-	   (prompt-for-command-expression ,emacs/prompt-for-command-expression)
-	   (prompt-for-confirmation ,emacs/prompt-for-confirmation)
-	   (debugger-failure ,emacs/debugger-failure)
-	   (debugger-message ,emacs/debugger-message)
-	   (debugger-presentation ,emacs/debugger-presentation)
-	   (write-result ,emacs/write-result)
-	   (set-default-directory ,emacs/set-default-directory)
-	   (read-start ,emacs/read-start)
-	   (read-finish ,emacs/read-finish)
-	   (gc-start ,emacs/gc-start)
-	   (gc-finish ,emacs/gc-finish))
-	 vanilla-console-port-type))
-  (add-event-receiver! event:after-restore
-    (lambda ()
-      (let ((type (select-console-port-type)))
-	(if (let ((type (textual-port-type the-console-port)))
-	      (or (eq? type vanilla-console-port-type)
-		  (eq? type emacs-console-port-type)))
-	    (set-textual-port-type! the-console-port type))))))
+(define-deferred gc-end-bytes
+  (bytevector (char->integer #\esc)
+	      (char->integer #\e)))
+
+(define-deferred console-output-channel
+   (output-port-channel the-console-port))
+
+(define-deferred vanilla-console-port-type
+   (textual-port-type the-console-port))
+
+(define-deferred emacs-console-port-type
+  (make-textual-port-type
+   `((prompt-for-expression ,emacs/prompt-for-expression)
+     (prompt-for-command-char ,emacs/prompt-for-command-char)
+     (prompt-for-command-expression ,emacs/prompt-for-command-expression)
+     (prompt-for-confirmation ,emacs/prompt-for-confirmation)
+     (debugger-failure ,emacs/debugger-failure)
+     (debugger-message ,emacs/debugger-message)
+     (debugger-presentation ,emacs/debugger-presentation)
+     (write-values ,emacs/write-values)
+     (set-default-directory ,emacs/set-default-directory)
+     (read-start ,emacs/read-start)
+     (read-finish ,emacs/read-finish)
+     (gc-start ,emacs/gc-start)
+     (gc-finish ,emacs/gc-finish))
+   vanilla-console-port-type))
+
+(add-event-receiver! event:after-restore
+  (lambda ()
+    (let ((type (select-console-port-type)))
+      (if (let ((type (textual-port-type the-console-port)))
+	    (or (eq? type vanilla-console-port-type)
+		(eq? type emacs-console-port-type)))
+	  (set-textual-port-type! the-console-port type)))))
 
 (define (select-console-port-type)
   (if ((ucode-primitive under-emacs? 0))

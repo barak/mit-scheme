@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -49,6 +49,7 @@ USA.
 		      (lambda (expression)
 			(wrap-with-continuation-entry
 			 context
+			 (make-null-cfg)
 			 (lambda (cont-label)
 			   (rtl:make-interpreter-call:set!
 			    cont-label
@@ -82,6 +83,7 @@ USA.
 		  (n5
 		   (wrap-with-continuation-entry
 		    context
+		    (make-null-cfg)
 		    (lambda (cont-label)
 		      (rtl:make-interpreter-call:cache-assignment
 		       cont-label cell value))))
@@ -103,7 +105,7 @@ USA.
 	(rvalue (definition-rvalue definition)))
     (generate/rvalue rvalue scfg*scfg->scfg!
       (lambda (expression)
-	(with-values (lambda () (find-definition-variable context lvalue))
+	(call-with-values (lambda () (find-definition-variable context lvalue))
 	  (lambda (environment name)
 	    (load-temporary-register scfg*scfg->scfg! environment
 	      (lambda (environment)
@@ -111,6 +113,7 @@ USA.
 		  (lambda (expression)
 		    (wrap-with-continuation-entry
 		     context
+		     (make-null-cfg)
 		     (lambda (cont-label)
 		       (rtl:make-interpreter-call:define
 			cont-label
@@ -280,18 +283,21 @@ USA.
 	      (find-variable/value context lvalue
 	       rtl:make-unassigned-test
 		(lambda (environment name)
-		  (scfg*pcfg->pcfg!
-		   (load-temporary-register scfg*scfg->scfg! environment
-		     (lambda (environment)
-		       (wrap-with-continuation-entry
-			context
-			(lambda (cont-label)
-			  (rtl:make-interpreter-call:unassigned?
-			   cont-label
-			   environment
-			   name)))))
-		   (rtl:make-true-test
-		    (rtl:interpreter-call-result:unassigned?))))
+		  (let ((temporary (rtl:make-pseudo-register)))
+		    (scfg*pcfg->pcfg!
+		     (load-temporary-register scfg*scfg->scfg! environment
+		       (lambda (environment)
+			 (wrap-with-continuation-entry
+			  context
+			  (rtl:make-assignment
+			   temporary
+			   (rtl:interpreter-call-result:unassigned?))
+			  (lambda (cont-label)
+			    (rtl:make-interpreter-call:unassigned?
+			     cont-label
+			     environment
+			     name)))))
+		     (rtl:make-true-test (rtl:make-fetch temporary)))))
 		(lambda (name)
 		  (generate/cached-unassigned? context name)))
 	      (generate/node consequent)
@@ -306,20 +312,23 @@ USA.
   (load-temporary-register scfg*pcfg->pcfg!
 			   (rtl:make-variable-cache name)
     (lambda (cell)
-      (let ((reference (rtl:make-fetch cell)))
+      (let ((reference (rtl:make-fetch cell))
+	    (temporary (rtl:make-pseudo-register)))
 	(let ((n2 (rtl:make-type-test (rtl:make-object->type reference)
 				      (ucode-type reference-trap)))
 	      (n3 (rtl:make-unassigned-test reference))
 	      (n4
 	       (wrap-with-continuation-entry
 		context
+		(rtl:make-assignment
+		 temporary
+		 (rtl:interpreter-call-result:cache-unassigned?))
 		(lambda (cont-label)
 		  (rtl:make-interpreter-call:cache-unassigned?
 		   cont-label
 		   cell))))
 	      (n5
-	       (rtl:make-true-test
-		(rtl:interpreter-call-result:cache-unassigned?))))
+	       (rtl:make-true-test (rtl:make-fetch temporary))))
 	  (pcfg-consequent-connect! n2 n3)
 	  (pcfg-alternative-connect! n3 n4)
 	  (scfg-next-connect! n4 n5)

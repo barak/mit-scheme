@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,8 +69,8 @@ USA.
 	     (= 2 (register-n-refs register)))
 	(let ((expression (rtl:assign-expression rtl)))
 	  (if (not (rtl:expression-contains? expression
-					     rtl:volatile-expression?))
-	      (with-values
+					     nonfoldable-expression?))
+	      (call-with-values
 		  (lambda ()
 		    (let ((next (rinst-next rinst)))
 		      (if (rinst-dead-register? next register)
@@ -85,6 +85,16 @@ USA.
 					  next
 					  register
 					  expression)))))))))
+
+(define (nonfoldable-expression? expression)
+  ;; We can't fold expressions with side effects or references to
+  ;; machine registers that are available for allocation, since they
+  ;; both depend on where they are in the RTL.
+  (or (rtl:volatile-expression? expression)
+      (and (rtl:register? expression)
+	   (let ((register (rtl:register-number expression)))
+	     (and (machine-register? register)
+		  (memv register available-machine-registers))))))
 
 (define (find-reference-instruction next register expression)
   ;; Find the instruction that contains the single reference to
@@ -104,7 +114,7 @@ USA.
 	     (phi-1 next)))
 	  (recursion
 	   (lambda (unwrap wrap)
-	     (with-values
+	     (call-with-values
 		 (lambda ()
 		   (loop (unwrap expression)))
 	       (lambda (next expression)
@@ -113,8 +123,7 @@ USA.
 		     (values false false)))))))
       (let ((recurse-and-search
 	     (lambda (unwrap wrap)
-	       (with-values (lambda ()
-			      (recursion unwrap wrap))
+	       (call-with-values (lambda () (recursion unwrap wrap))
 		 (lambda (next expression*)
 		   (if next
 		       (values next expression*)
@@ -122,7 +131,7 @@ USA.
 					   (lambda (rtl)
 					     rtl ; ignored
 					     false))))))))
-	       
+
 	(cond ((interpreter-value-register? expression)
 	       (search-stopping-at expression
 				   (lambda (rtl)
@@ -204,6 +213,9 @@ USA.
 	      ((rtl:object->unsigned-fixnum? expression)
 	       (recursion rtl:object->unsigned-fixnum-expression
 			  rtl:make-object->unsigned-fixnum))
+	      ((rtl:object->float? expression)
+	       (recurse-and-search rtl:object->float-expression
+				   rtl:make-object->float))
 	      (else
 	       (values false false)))))))
 

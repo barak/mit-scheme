@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,9 @@ USA.
 ;;; package: (runtime thread)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime floating-point-environment)
+		'(runtime microcode-errors))
 
 ;;; This allows a host without the SMP primitives to avoid calling them.
 (define enable-smp? #f)
@@ -75,10 +78,12 @@ USA.
   ;; unwind the thread's state space when it is exited.
 
   (floating-point-environment #f)
-  ;; A floating-point environment descriptor, or #T if the thread is
-  ;; running and has modified its floating-point environment since it
-  ;; was last cached.  While a thread is running, this is a cache of
-  ;; the machine's floating-point environment.
+  ;; For the current thread: #t if the thread is using the
+  ;; floating-point environment, via flo:use-environment or
+  ;; flo:preserving-environment; #f if not.
+  ;;
+  ;; For any other thread: a floating-point environment descriptor if
+  ;; the floating-point environment is in use; #f if not.
 
   (mutexes '())
   ;; List of mutexes that this thread owns or is waiting to own.  Used
@@ -133,35 +138,35 @@ USA.
     (set-thread/exit-value! first detached-thread-marker)
     (set-thread/root-state-point! first
 				  (current-state-point state-space:local))
-    (add-to-population!/unsafe thread-population first)
-    (%thread-running first)))
+    (add-new-to-population!/unsafe thread-population first)
+    (%thread-running first))
+  (seq:after-thread-low 'trigger!))
 
-(define (initialize-high!)
-  ;; Called later in the cold load, when more of the runtime is initialized.
-  (set! root-continuation-default (make-unsettable-parameter #f))
-  (initialize-error-conditions!)
-  (reset-threads-high!)
-  (record-start-times! first-running-thread)
-  (add-event-receiver! event:after-restore reset-threads!)
-  (add-event-receiver! event:before-exit stop-thread-timer)
-  (named-structure/set-tag-description! thread-mutex-tag
-    (make-define-structure-type 'vector
-				"thread-mutex"
-				'#(waiting-threads owner)
-				'#(1 2)
-				(vector 2 (lambda () #f))
-				#f
-				thread-mutex-tag
-				3))
-  (named-structure/set-tag-description! link-tag
-    (make-define-structure-type 'vector
-				"link"
-				'#(prev next item)
-				'#(1 2 3)
-				(vector 3 (lambda () #f))
-				#f
-				link-tag
-				4)))
+(add-boot-init!
+ (lambda ()
+   ;; Called later in the cold load, when more of the runtime is initialized.
+   (set! root-continuation-default (make-unsettable-parameter #f))
+   (initialize-error-conditions!)
+   (reset-threads-high!)
+   (record-start-times! first-running-thread)
+   (add-event-receiver! event:after-restore reset-threads!)
+   (add-event-receiver! event:before-exit stop-thread-timer)
+   (named-structure/set-tag-description! thread-mutex-tag
+     (new-make-define-structure-type 'vector
+				     "thread-mutex"
+				     '#(waiting-threads owner)
+				     '#(1 2)
+				     (vector 2 (lambda () #f))
+				     thread-mutex-tag
+				     3))
+   (named-structure/set-tag-description! link-tag
+     (new-make-define-structure-type 'vector
+				     "link"
+				     '#(prev next item)
+				     '#(1 2 3)
+				     (vector 3 (lambda () #f))
+				     link-tag
+				     4))))
 
 (define-print-method link?
   (standard-print-method 'link))
@@ -190,7 +195,7 @@ USA.
     (set-thread/continuation! thread continuation)
     (set-thread/root-state-point! thread
 				  (current-state-point state-space:local))
-    (add-to-population! thread-population thread)
+    (add-new-to-population! thread-population thread)
     (thread-running thread)
     thread))
 
@@ -328,13 +333,13 @@ USA.
 	(set! last-running-thread #f)
 	(wait-for-io))))
 
-(define (run-thread thread)
-  (let ((continuation (thread/continuation thread))
-	(fp-env (thread/floating-point-environment thread)))
+(define (run-thread thread #!optional fp-env)
+  (assert (eq? thread first-running-thread))
+  (restore-float-environment thread fp-env)
+  (let ((continuation (thread/continuation thread)))
     (set-thread/continuation! thread #f)
     (%within-continuation continuation #t
       (lambda ()
-	(enter-float-environment fp-env)
 	(record-start-times! thread)
 	(%resume-current-thread thread)))))
 
@@ -361,22 +366,23 @@ USA.
 	      (begin
 		(set-thread/block-events?! thread block-events?)
 		(%maybe-toggle-thread-timer))
-	      (call-with-current-continuation
-	       (lambda (continuation)
-		 (set-thread/continuation! thread continuation)
-		 (maybe-save-thread-float-environment! thread)
-		 (account-for-times thread (get-system-times))
-		 (thread-not-running thread 'waiting)))))))))
+	      (begin
+		(save-float-environment thread)
+		(call-with-current-continuation
+		  (lambda (continuation)
+		    (set-thread/continuation! thread continuation)
+		    (account-for-times thread (get-system-times))
+		    (thread-not-running thread 'waiting))))))))))
 
 (define (stop-current-thread)
   (without-interrupts
    (lambda ()
      (call-with-current-thread #f
        (lambda (thread)
+	 (save-float-environment thread)
 	 (call-with-current-continuation
 	  (lambda (continuation)
 	    (set-thread/continuation! thread continuation)
-	    (maybe-save-thread-float-environment! thread)
 	    (account-for-times thread (get-system-times))
 	    (thread-not-running thread 'stopped))))))))
 
@@ -402,11 +408,8 @@ USA.
   (set-thread/execution-state! (current-thread) 'running))
 
 (define (thread-timer-interrupt-handler)
-  ;; Preserve the floating-point environment here to guarantee that the
-  ;; thread timer won't raise or clear exceptions (particularly the
-  ;; inexact result exception) that the interrupted thread cares about.
-  (let* ((times (get-system-times))
-	 (fp-env (enter-default-float-environment first-running-thread)))
+  (save-float-environment first-running-thread)
+  (let ((times (get-system-times)))
     (set! next-scheduled-timeout #f)
     (set-interrupt-enables! interrupt-mask/gc-ok)
     (account-for-times first-running-thread times)
@@ -416,12 +419,12 @@ USA.
       (cond ((not thread)
 	     (%maybe-toggle-thread-timer))
 	    ((thread/continuation thread)
-	     (run-thread thread))
+	     (run-thread thread (flo:default-environment)))
 	    ((not (eq? 'running-without-preemption
 		       (thread/execution-state thread)))
-	     (yield-thread thread fp-env))
+	     (yield-thread thread))
 	    (else
-	     (restore-float-environment-from-default fp-env)
+	     (restore-float-environment thread (flo:default-environment))
 	     (record-start-times! thread)
 	     (%resume-current-thread thread))))))
 
@@ -429,7 +432,7 @@ USA.
   (cons (real-time-clock) (process-time-clock)))
 
 (define-integrable system-times/real car)
-  
+
 (define-integrable system-times/process cdr)
 
 (define (record-start-times! thread)
@@ -458,6 +461,7 @@ USA.
    (lambda ()
      (call-with-current-thread #t
        (lambda (thread)
+	 (save-float-environment thread)
 	 (account-for-times thread (get-system-times))
 	 ;; Allow preemption now, since the current thread has
 	 ;; volunteered to yield control.
@@ -465,23 +469,21 @@ USA.
 	 (maybe-signal-io-thread-events)
 	 (yield-thread thread))))))
 
-(define (yield-thread thread #!optional fp-env)
+(define (yield-thread thread)
   (let ((next (thread/next thread)))
     (if (not next)
 	(begin
-	  (if (not (default-object? fp-env))
-	      (restore-float-environment-from-default fp-env))
+	  (restore-float-environment thread (flo:default-environment))
 	  (record-start-times! thread)
 	  (%resume-current-thread thread))
 	(call-with-current-continuation
 	 (lambda (continuation)
 	   (set-thread/continuation! thread continuation)
-	   (maybe-save-thread-float-environment! thread fp-env)
 	   (set-thread/next! thread #f)
 	   (set-thread/next! last-running-thread thread)
 	   (set! last-running-thread thread)
 	   (set! first-running-thread next)
-	   (run-thread next))))))
+	   (run-thread next (flo:default-environment)))))))
 
 (define (thread-float-environment thread)
   (thread/floating-point-environment thread))
@@ -495,6 +497,7 @@ USA.
     (set-thread/block-events?! thread #t)
     (ring/discard-all (thread/pending-events thread))
     (translate-to-state-point (thread/root-state-point thread))
+    (discard-float-environment thread)
     (%deregister-io-thread-events thread)
     (%discard-thread-timer-records thread)
     (%deregister-subprocess-events thread)
@@ -676,30 +679,28 @@ USA.
 (define (permanently-register-io-thread-event descriptor mode thread event)
   (let ((stop? #f)
 	(registration #f))
-    (letrec ((handler
-	      (named-lambda (permanent-io-event mode*)
-		(if (not stop?)
-		    (event mode*))
-		(if (not (or stop? (memq mode* '(error hangup #f))))
-		    (register))))
-	     (register
-	      (lambda ()
-		(deregister)
-		(if (not stop?)
-		    (set! registration
-			  (register-io-thread-event descriptor mode
-						    thread handler)))))
-	     (deregister
-	      (lambda ()
-		(if registration
-		    (begin
-		      (deregister-io-thread-event registration)
-		      (set! registration #f))))))
-      (register)
-      (cons 'deregister-permanent-io-event
-	    (lambda ()
-	      (set! stop? #t)
-	      (deregister))))))
+    (define handler
+      (named-lambda (permanent-io-event mode*)
+	(if (not stop?)
+	    (event mode*))
+	(if (not (or stop? (memq mode* '(error hangup #f))))
+	    (register))))
+    (define (register)
+      (deregister)
+      (if (not stop?)
+	  (set! registration
+		(register-io-thread-event descriptor mode
+					  thread handler))))
+    (define (deregister)
+      (if registration
+	  (begin
+	    (deregister-io-thread-event registration)
+	    (set! registration #f))))
+    (register)
+    (cons 'deregister-permanent-io-event
+	  (lambda ()
+	    (set! stop? #t)
+	    (deregister)))))
 
 (define (register-io-thread-event descriptor mode thread event)
   (guarantee-select-mode mode 'register-io-thread-event)
@@ -1190,7 +1191,8 @@ USA.
 ;;; populations, queues, etc.  The following define-structure is
 ;;; hand-expanded as a tagged vector (not record) in thread-low.scm.
 
-#;(define-structure (thread-mutex
+#;
+(define-structure (thread-mutex
 		   (constructor make-thread-mutex ())
 		   (conc-name thread-mutex/))
   (waiting-threads (make-ring) read-only #t)

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime win32-registry)
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 (define (win32-registry/open-key name mode)
   (let ((key
@@ -175,7 +177,7 @@ USA.
   (guarantee-subkeys parent)
   (let loop ((subkeys (registry-key-subkeys parent)))
     (if (pair? subkeys)
-	(if (string-ci=? name (%weak-cdr (car subkeys)))
+	(if (string-ci=? name (weak-cdr (car subkeys)))
 	    (guarantee-subkey parent (car subkeys))
 	    (loop (cdr subkeys)))
 	#f)))
@@ -184,8 +186,7 @@ USA.
   (if (eq? 'unknown (registry-key-subkeys key))
       (set-registry-key-subkeys! key
 				 (map (lambda (key)
-					(%weak-cons key
-						    (registry-key-name key)))
+					(weak-cons key (registry-key-name key)))
 				      (generate-subkeys key)))))
 
 (define (generate-subkeys key)
@@ -196,30 +197,32 @@ USA.
 	     (lambda (name v) v (%make-registry-key key name #f))))
 
 (define (guarantee-subkey parent k.n)
-  (or (%weak-car k.n)
-      (let ((key (%make-registry-key parent (%weak-cdr k.n) #f)))
-	(%weak-set-car! k.n key)
-	key)))
+  (let ((k (weak-car k.n)))
+    (if (gc-reclaimed-object? k)
+	(let ((key (%make-registry-key parent (weak-cdr k.n) #f)))
+	  (weak-set-car! k.n key)
+	  key)
+	k)))
 
 (define (add-subkey! parent name key)
   (if (not (eq? 'unknown (registry-key-subkeys parent)))
       (let loop ((subkeys (registry-key-subkeys parent)))
 	(if (pair? subkeys)
-	    (if (not (string-ci=? name (%weak-cdr (car subkeys))))
+	    (if (not (string-ci=? name (weak-cdr (car subkeys))))
 		(loop (cdr subkeys)))
 	    (set-registry-key-subkeys!
 	     parent
-	     (cons (%weak-cons key name) (registry-key-subkeys parent)))))))
+	     (cons (weak-cons key name) (registry-key-subkeys parent)))))))
 
 (define (delete-subkey! parent name)
   (if (not (eq? 'unknown (registry-key-subkeys parent)))
       (let loop ((subkeys (registry-key-subkeys parent)) (prev #f))
 	(if (pair? subkeys)
-	    (if (string-ci=? name (%weak-cdr (car subkeys)))
+	    (if (string-ci=? name (weak-cdr (car subkeys)))
 		(without-interrupts
 		 (lambda ()
-		   (let ((key (%weak-car (car subkeys))))
-		     (if key
+		   (let ((key (weak-car (car subkeys))))
+		     (if (not (gc-reclaimed-object? key))
 			 (begin
 			   (close-registry-handle key)
 			   (set-registry-key-handle! key 'deleted))))
@@ -277,7 +280,7 @@ USA.
 ;;;; Low-level Handle Tracking
 
 (define (open-registry-handle procedure key)
-  (let ((p (system-pair-cons (ucode-type weak-cons) #f #f)))
+  (let ((p (weak-cons #f #f)))
     (dynamic-wind
      (lambda () unspecific)
      (lambda ()
@@ -285,49 +288,49 @@ USA.
 	      (procedure (guarantee-handle (registry-key-parent key))
 			 (registry-key-name key)
 			 p)))
-	 (if (%weak-cdr p)
+	 (if (weak-cdr p)
 	     (without-interrupts
 	      (lambda ()
-		(set-registry-key-handle! key (%weak-cdr p))
+		(set-registry-key-handle! key (weak-cdr p))
 		(set-cdr! open-handles-list
 			  (cons p (cdr open-handles-list)))
-		(%weak-set-car! p key))))
+		(weak-set-car! p key))))
 	 v))
      (lambda ()
-       (if (and (%weak-cdr p) (not (%weak-car p)))
+       (if (and (weak-cdr p)
+		(or (not (weak-car p))
+		    (gc-reclaimed-object? (weak-car p))))
 	   (close-registry-handle key))))))
 
 (define (close-registry-handle key)
   (let loop ((l1 open-handles-list) (l2 (cdr open-handles-list)))
     (if (pair? l2)
-	(if (eq? key (%weak-car (car l2)))
+	(if (eq? key (weak-car (car l2)))
 	    (without-interrupts
 	     (lambda ()
-	       (win32-close-registry-key (%weak-cdr (car l2)))
+	       (win32-close-registry-key (weak-cdr (car l2)))
 	       (set-registry-key-handle! key #f)
 	       (set-cdr! l1 (cdr l2))))
 	    (loop l2 (cdr l2))))))
 
-(define open-keys)
-(define open-handles-list)
+(define-deferred open-keys
+  (map (lambda (n.h)
+	 (%make-registry-key #f (car n.h) (cdr n.h)))
+       (win32-predefined-registry-keys)))
 
-(define (initialize-package!)
-  (set! open-keys
-	(map (lambda (n.h)
-	       (%make-registry-key #f (car n.h) (cdr n.h)))
-	     (win32-predefined-registry-keys)))
-  (set! open-handles-list (list 'open-handles-list))
-  (add-gc-daemon! close-lost-open-keys-daemon))
+(define open-handles-list
+  (list 'open-handles-list))
 
 (define (close-lost-open-keys-daemon)
   (let loop ((l1 open-handles-list) (l2 (cdr open-handles-list)))
     (if (pair? l2)
-	(if (%weak-car (car l2))
+	(if (gc-reclaimed-object? (weak-car (car l2)))
 	    (loop l2 (cdr l2))
 	    (begin
-	      (win32-close-registry-key (%weak-cdr (car l2)))
+	      (win32-close-registry-key (weak-cdr (car l2)))
 	      (set-cdr! l1 (cdr l2))
 	      (loop l1 (cdr l1)))))))
+(add-gc-daemon! close-lost-open-keys-daemon)
 
 ;;;; Microcode Interface
 
@@ -404,14 +407,6 @@ USA.
 		  (cons (substring string start index) result))
 	    (list->vector
 	     (reverse! (cons (substring string start end) result))))))))
-
-(define-integrable (%weak-cons a d)
-  (system-pair-cons (ucode-type weak-cons) a d))
-
-(define-integrable (%weak-car p) (system-pair-car p))
-(define-integrable (%weak-set-car! p a) (system-pair-set-car! p a))
-(define-integrable (%weak-cdr p) (system-pair-cdr p))
-(define-integrable (%weak-set-cdr! p d) (system-pair-set-cdr! p d))
 
 (define (enumerate key enumerator length-index get-length make-result)
   (let* ((handle (guarantee-handle key))

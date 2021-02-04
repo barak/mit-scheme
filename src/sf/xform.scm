@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,7 +43,7 @@ USA.
 (define (transform/r7rs-library imports expression)
   (let ((block (block/make #f #f '())))
     (for-each (lambda (import)
-		(variable/make&bind! block (library-import-to import)))
+		(variable/make&bind! block (library-ixport-to import)))
 	      imports)
     (set-block/declarations! block (r7rs-usual-integrations block imports))
     (values block
@@ -114,10 +114,11 @@ USA.
 	    (variable/make&bind! top-level-block name)))))
 
 (define (environment/bind environment variables)
-  (map* environment
-	(lambda (variable)
-	  (cons (variable/name variable) variable))
-	variables))
+  (fold-right (lambda (variable env)
+		(cons (cons (variable/name variable) variable)
+		      env))
+	      environment
+	      variables))
 
 (define (transform/open-block block environment expression)
   (transform/open-block* expression
@@ -175,7 +176,8 @@ USA.
   (reference/make expression
 		  block
 		  (environment/lookup environment
-				      (scode-variable-name expression))))
+				      (scode-variable-name expression))
+		  (scode-variable-safe? expression)))
 
 (define (transform/assignment block environment expression)
   (let ((name (scode-assignment-name expression))
@@ -209,7 +211,7 @@ USA.
 ;; If procedure body is a sequence, scan the first elements and turn variable
 ;; references into IGNORE declarations.
 (define (build-procedure expression block name required optional rest body)
-  (if (scode-sequence? body)
+  (if (sequence? body)
       (do ((actions (sequence/actions body) (cdr actions))
 	   (ignores '()
 		    (cons (variable/name (reference/variable (car actions)))
@@ -324,10 +326,15 @@ USA.
 (define (transform/sequence block environment expression)
   ;; Don't remove references from sequences here.  We want them
   ;; to signal ignored variables.
-  (sequence/%make
-   expression
-   (transform/expressions block environment
-			  (scode-sequence-actions expression))))
+  (let ((actions
+	 (transform/expressions block environment
+				(scode-sequence-actions expression))))
+    (cond ((not (pair? actions))
+	   (transform/constant block environment unspecific))
+	  ((not (pair? (cdr actions)))
+	   (car actions))
+	  (else
+	   (sequence/%make expression actions)))))
 
 (define (transform/the-environment block environment expression)
   environment ; ignored

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,163 +32,106 @@ USA.
 ;;; A population is a weak collection of objects.  A serial
 ;;; population is a population with a mutex to serialize its operations.
 
-(define-deferred population-of-populations
-  (list population-tag (make-thread-mutex)))
+(define (%make-population mutex)
+  (%record population-tag mutex (weak-list-set eqv?)))
+
+(define (population? object)
+  (and (%record? object)
+       (eq? population-tag (%record-ref object 0))))
+(register-predicate! population? 'population '<= %record?)
+
+(define-integrable population-tag
+  '|#[(runtime population)population]|)
+
+(define-integrable (%pop-mutex pop) (%record-ref pop 1))
+(define-integrable (%pop-set pop) (%record-ref pop 2))
+
+(define-print-method population?
+  (standard-print-method 'population))
+
+(define population-of-populations
+  (%make-population (make-thread-mutex)))
+
+(define (make-population)
+  (let ((population (%make-population #f)))
+    (add-new-to-population! population-of-populations population)
+    population))
+
+(define (make-population/unsafe)
+  (let ((population (%make-population #f)))
+    (add-new-to-population!/unsafe population-of-populations population)
+    population))
+
+(define (make-serial-population)
+  (let ((population (%make-population (make-thread-mutex))))
+    (add-new-to-population! population-of-populations population)
+    population))
+
+(define (make-serial-population/unsafe)
+  (let ((population (%make-population (make-thread-mutex))))
+    (add-new-to-population!/unsafe population-of-populations population)
+    population))
+
+(define (%maybe-lock! population thunk)
+  (if (%pop-mutex population)
+      (with-thread-mutex-lock (%pop-mutex population) thunk)
+      (thunk)))
+
+(define (clean-population! population)
+  (%maybe-lock! population
+    (lambda ()
+      (weak-list-set-clean! (%pop-set population)))))
+
+(define (clean-all-populations!)
+  (clean-population! population-of-populations)
+  (map-over-population! population-of-populations clean-population!))
 
 (add-boot-init!
  (lambda ()
    (add-secondary-gc-daemon!/unsafe clean-all-populations!)))
 
-(define-integrable population-tag
-  '|#[population]|)
-
-(define-integrable bogus-false
-  '|#[population false]|)
-
-(define-integrable (canonicalize object)
-  (if (eq? object false) bogus-false object))
-
-(define-integrable (uncanonicalize object)
-  (if (eq? object bogus-false) false object))
-
-(define (clean-population! population)
-  (if (cadr population)
-      (with-thread-mutex-lock (cadr population)
-	(lambda ()
-	  (%clean-population! population)))
-      (%clean-population! population)))
-
-(define (%clean-population! population)
-  (let loop ((l1 (cdr population)) (l2 (cddr population)))
-    (cond ((null? l2) true)
-	  ((eq? (system-pair-car l2) false)
-	   (system-pair-set-cdr! l1 (system-pair-cdr l2))
-	   (loop l1 (system-pair-cdr l2)))
-	  (else (loop l2 (system-pair-cdr l2))))))
-
-(define (clean-all-populations!)
-  (clean-population! population-of-populations)
-  (map-over-population! population-of-populations clean-population!))
-
-(define (make-population)
-  (let ((population (list population-tag #f)))
-    (add-to-population! population-of-populations population)
-    population))
-
-(define (make-population/unsafe)
-  (let ((population (list population-tag #f)))
-    (add-to-population!/unsafe population-of-populations population)
-    population))
-
-(define (make-serial-population)
-  (let ((population (list population-tag (make-thread-mutex))))
-    (add-to-population! population-of-populations population)
-    population))
-
-(define (make-serial-population/unsafe)
-  (let ((population (list population-tag (make-thread-mutex))))
-    (add-to-population!/unsafe population-of-populations population)
-    population))
-
-(define (population? object)
-  (and (pair? object)
-       (eq? (car object) population-tag)))
-
-(define-print-method population?
-  (standard-print-method 'population))
-
-(define-guarantee population "population")
-
 (define (add-to-population! population object)
-  (guarantee-population population 'add-to-population!)
-  (if (cadr population)
-      (with-thread-mutex-lock (cadr population)
-	(lambda ()
-	  (%add-to-population! population object)))
-      (%add-to-population! population object)))
+  (guarantee population? population 'add-to-population!)
+  (%maybe-lock! population
+    (lambda ()
+      (weak-list-set-add! object (%pop-set population)))))
 
-(define (%add-to-population! population object)
-  (let ((object (canonicalize object)))
-    (let loop ((previous (cdr population)) (this (cddr population)))
-      (if (null? this)
-	  (set-cdr! (cdr population)
-		    (weak-cons object (cddr population)))
-	  (let ((entry (system-pair-car this))
-		(next (system-pair-cdr this)))
-	    (cond ((not entry)
-		   (system-pair-set-cdr! previous next)
-		   (loop previous next))
-		  ((not (eq? object entry))
-		   (loop this next))))))))
+(define (add-new-to-population! population object)
+  (guarantee population? population 'add-new-to-population!)
+  (%maybe-lock! population
+    (lambda ()
+      (weak-list-set-add-new! object (%pop-set population)))))
 
-(define (add-to-population!/unsafe population object)
-  ;; No canonicalization, no uniquification, no locking.
-  (set-cdr! (cdr population) (weak-cons object (cddr population))))
+(define (add-new-to-population!/unsafe population object)
+  (weak-list-set-add-new! object (%pop-set population)))
 
 (define (remove-from-population! population object)
-  (guarantee-population population 'remove-from-population!)
-  (if (cadr population)
-      (with-thread-mutex-lock (cadr population)
-	(lambda ()
-	  (%remove-from-population! population object)))
-      (%remove-from-population! population object)))
-
-(define (%remove-from-population! population object)
-  (let ((object (canonicalize object)))
-    (let loop ((previous (cdr population)) (this (cddr population)))
-      (if (not (null? this))
-	  (let ((entry (system-pair-car this))
-		(next (system-pair-cdr this)))
-	    (if (or (not entry) (eq? object entry))
-		(begin (system-pair-set-cdr! previous next)
-		       (loop previous next))
-		(loop this next)))))))
+  (guarantee population? population 'remove-from-population!)
+  (%maybe-lock! population
+    (lambda ()
+      (weak-list-set-delete! object (%pop-set population)))))
 
 (define (empty-population! population)
-  (guarantee-population population 'empty-population!)
-  (if (cadr population)
-      (with-thread-mutex-lock (cadr population)
-	(lambda ()
-	  (%empty-population! population)))
-      (%empty-population! population)))
+  (guarantee population? population 'empty-population!)
+  (%maybe-lock! population
+    (lambda ()
+      (weak-list-set-clear! (%pop-set population)))))
 
-(define (%empty-population! population)
-  (set-cdr! (cdr population) '()))
-
 ;;;; Read-only operations
 
 ;;; These are safe without serialization.
 
 (define (map-over-population population procedure)
-  (let loop ((l2 (cddr population)))
-    (cond ((null? l2) '())
-	  ((eq? (system-pair-car l2) false)
-	   (loop (system-pair-cdr l2)))
-	  (else
-	   (cons (procedure (uncanonicalize (system-pair-car l2)))
-		 (loop (system-pair-cdr l2)))))))
+  (weak-list-set-fold (lambda (item acc)
+			(cons (procedure item) acc))
+		      '()
+		      (%pop-set population)))
 
 (define (map-over-population! population procedure)
-  (let loop ((l2 (cddr population)))
-    (cond ((null? l2) true)
-	  ((eq? (system-pair-car l2) false)
-	   (loop (system-pair-cdr l2)))
-	  (else
-	   (procedure (uncanonicalize (system-pair-car l2)))
-	   (loop (system-pair-cdr l2))))))
+  (weak-list-set-for-each procedure (%pop-set population)))
 
 (define (for-all-inhabitants? population predicate)
-  (let loop ((l2 (cddr population)))
-    (or (null? l2)
-	(if (eq? (system-pair-car l2) false)
-	    (loop (system-pair-cdr l2))
-	    (and (predicate (uncanonicalize (system-pair-car l2)))
-		 (loop (system-pair-cdr l2)))))))
+  (weak-list-set-every predicate (%pop-set population)))
 
 (define (exists-an-inhabitant? population predicate)
-  (let loop ((l2 (cddr population)))
-    (and (not (null? l2))
-	 (if (eq? (system-pair-car l2) false)
-	     (loop (system-pair-cdr l2))
-	     (or (predicate (uncanonicalize (system-pair-car l2)))
-		 (loop (system-pair-cdr l2)))))))
+  (weak-list-set-any predicate (%pop-set population)))

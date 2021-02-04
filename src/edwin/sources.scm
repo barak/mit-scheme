@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -39,14 +39,14 @@ USA.
 	"doscom" "dosfile" "dosproc" "dosshell" "ed-ffi" "editor" "edtfrm"
 	"edtstr" "evlcom" "eystep" "filcom" "fileio" "fill" "grpops" "hlpcom"
 	"htmlmode" "image" "info" "input" "intmod" "iserch" "javamode" "key-w32"
-	"keymap" "keyparse" "kilcom" "kmacro" "lincom" "linden" "lisppaste"
-	"loadef" "lspcom" "macros" "make" "malias" "manual" "midas" "modefs"
-	"modes" "modlin" "modwin" "motcom" "motion" "mousecom" "nntp" "notify"
-	"nvector" "occur" "outline" "paredit" "pasmod" "paths" "print" "process"
-	"prompt" "pwedit" "pwparse" "rcsparse" "reccom" "regcom" "regexp"
-	"regops" "replaz" "rfc822" "ring" "rmail" "rmailsrt" "rmailsum" "schmod"
-	"scrcom" "screen" "search" "sendmail" "sercom" "shell" "simple" "snr"
-	"sort" "string" "strpad" "strtab" "struct" "syntax" "tagutl" "techinfo"
+	"keymap" "keyparse" "kilcom" "kmacro" "lincom" "linden" "loadef"
+	"lspcom" "macros" "make" "malias" "manual" "midas" "modefs" "modes"
+	"modlin" "modwin" "motcom" "motion" "mousecom" "nntp" "notify" "nvector"
+	"occur" "outline" "paredit" "pasmod" "paths" "print" "process" "prompt"
+	"pwedit" "pwparse" "rcsparse" "reccom" "regcom" "regexp" "regops"
+	"replaz" "rfc822" "ring" "rmail" "rmailsrt" "rmailsum" "schmod" "scrcom"
+	"screen" "search" "sendmail" "sercom" "shell" "simple" "snr" "sort"
+	"string" "strpad" "strtab" "struct" "syntax" "tagutl" "techinfo"
 	"telnet" "termcap" "texcom" "things" "tparse" "tterm" "tximod" "txtprp"
 	"undo" "unix" "utils" "utlwin" "vc" "vc-bzr" "vc-cvs" "vc-git" "vc-rcs"
 	"vc-svn" "verilog" "vhdl" "webster" "win32" "win32com" "wincom" "window"

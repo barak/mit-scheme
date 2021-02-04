@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -204,10 +204,10 @@ USA.
   (let ((n (vector-length vector)))
     (if (pair? vectors)
 	(let ((n
-	       (fold-left (lambda (n v)
-			    (fix:min (vector-length v) n))
-			  n
-			  vectors)))
+	       (fold (lambda (v n)
+		       (fix:min (vector-length v) n))
+		     n
+		     vectors)))
 	  (let loop ((i 0))
 	    (if (fix:< i n)
 		(or (apply procedure
@@ -224,27 +224,33 @@ USA.
 	      #f)))))
 
 (define (vector-every procedure vector . vectors)
-  (let ((n (vector-length vector)))
-    (if (pair? vectors)
-	(let ((n
-	       (fold-left (lambda (n v)
-			    (fix:min (vector-length v) n))
-			  n
-			  vectors)))
-	  (let loop ((i 0))
-	    (if (fix:< i n)
-		(and (apply procedure
-			    (vector-ref vector i)
-			    (map (lambda (vector*)
-				   (vector-ref vector* i))
-				 vectors))
-		     (loop (fix:+ i 1)))
-		#t)))
-	(let loop ((i 0))
-	  (if (fix:< i n)
-	      (and (procedure (vector-ref vector i))
-		   (loop (fix:+ i 1)))
-	      #t)))))
+  (let ((n
+	 (fold (lambda (v n)
+		 (fix:min (vector-length v) n))
+	       (vector-length vector)
+	       vectors)))
+    (if (fix:= n 0)
+	#t
+	(let ((n-1 (fix:- n 1)))
+	  (if (pair? vectors)
+	      (let loop ((i 0))
+		(if (fix:< i n-1)
+		    (and (apply procedure
+				(vector-ref vector i)
+				(map (lambda (vector*)
+				       (vector-ref vector* i))
+				     vectors))
+			 (loop (fix:+ i 1)))
+		    (apply procedure
+			   (vector-ref vector i)
+			   (map (lambda (vector*)
+				  (vector-ref vector* i))
+				vectors))))
+	      (let loop ((i 0))
+		(if (fix:< i n-1)
+		    (and (procedure (vector-ref vector i))
+			 (loop (fix:+ i 1)))
+		    (procedure (vector-ref vector i)))))))))
 
 (define (subvector-find-next-element vector start end item)
   (guarantee-subvector vector start end 'subvector-find-next-element)

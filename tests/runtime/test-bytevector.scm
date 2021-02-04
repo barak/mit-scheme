@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -53,6 +53,7 @@ USA.
 (define-test 'non-vector
   (lambda ()
     (let ((v (vector (reverse (iota 5)))))
+      (declare (type-checks))
       (assert-false (bytevector? v))
       (assert-type-error (lambda () (bytevector-length v)))
       (assert-type-error (lambda () (bytevector-u8-ref v 0)))
@@ -109,6 +110,7 @@ USA.
 		((> start end))
 	      (assert-equal (bytevector-copy v start end)
 			    (apply bytevector (sublist bytes start end)))))
+	  (declare (range-checks))
 	  (assert-range-error (lambda () (bytevector-copy v 0 (+ n 1))))
 	  (assert-range-error (lambda () (bytevector-copy v n (+ n 1))))
 	  (assert-range-error (lambda () (bytevector-copy v -1 n))))))))
@@ -134,6 +136,7 @@ USA.
 			    (append (make-list to n)
 				    (sublist bytes start end)
 				    (make-list (- extra to) n)))))))))
+	  (declare (range-checks))
 	  (assert-range-error
 	   (lambda ()
 	     (bytevector-copy! (make-bytevector n) 0 v 0 (+ n 1))))
@@ -170,15 +173,37 @@ USA.
 				   (append (sublist bytes 0 start)
 					   (make-list (- end start) 51)
 					   (sublist bytes end n))))))))
+      (declare (range-checks))
       (assert-range-error
        (lambda ()
 	 (bytevector-fill! (make-bytevector n) 51 0 (+ n 1))))
-	  (assert-range-error
-	   (lambda ()
-	     (bytevector-fill! (make-bytevector n) 51 n (+ n 1))))
-	  (assert-range-error
-	   (lambda ()
-	     (bytevector-fill! (make-bytevector n) 51 -1 n))))))
+      (assert-range-error
+       (lambda ()
+	 (bytevector-fill! (make-bytevector n) 51 n (+ n 1))))
+      (assert-range-error
+       (lambda ()
+	 (bytevector-fill! (make-bytevector n) 51 -1 n))))))
+
+(define-test 'bytevector-zero-explicit!
+  ;; Can't really test what we want here -- that the bytevector is
+  ;; zero'd in memory even if the compiler can prove its value is not
+  ;; used afterward.  Worse, we can't even really guarantee this,
+  ;; because the GC might have copied it already and we have no way to
+  ;; zero the original.
+  (lambda ()
+    (let ((bv (make-bytevector 3 #xff)))
+      (bytevector-zero-explicit! bv 1 2)
+      (assert-= (bytevector-u8-ref bv 0) #xff)
+      (assert-= (bytevector-u8-ref bv 1) 0)
+      (assert-= (bytevector-u8-ref bv 2) #xff)
+      (bytevector-zero-explicit! bv 1)
+      (assert-= (bytevector-u8-ref bv 0) #xff)
+      (assert-= (bytevector-u8-ref bv 1) 0)
+      (assert-= (bytevector-u8-ref bv 2) 0)
+      (bytevector-zero-explicit! bv 0)
+      (assert-= (bytevector-u8-ref bv 0) 0)
+      (assert-= (bytevector-u8-ref bv 1) 0)
+      (assert-= (bytevector-u8-ref bv 2) 0))))
 
 (define (test-bytevector-properties v bytes)
   (assert-true (bytevector? v))
@@ -187,6 +212,7 @@ USA.
        (index 0 (+ index 1)))
       ((not (pair? bytes)))
     (assert-= (bytevector-u8-ref v index) (car bytes)))
+  (declare (range-checks))
   (assert-range-error (lambda () (bytevector-u8-ref v -1)))
   (assert-range-error (lambda () (bytevector-u8-ref v (length bytes)))))
 
@@ -207,6 +233,7 @@ USA.
 (define (test-bytevector-u16-ref bytes)
   (let ((bv (apply bytevector bytes))
 	(index-limit (- (length bytes) 1)))
+    (declare (range-checks))
     (assert-u16-refs bv bytes)
     (assert-range-error (lambda () (bytevector-u16be-ref bv -1)))
     (assert-range-error (lambda () (bytevector-u16le-ref bv -1)))
@@ -240,6 +267,7 @@ USA.
 		 (drop bytes (+ index-to-set 2)))))
     (setter bv index-to-set value-to-set)
     (assert-u16-refs bv expected-bytes)
+    (declare (range-checks))
     (assert-range-error (lambda () (setter bv -1 value-to-set)))
     (assert-range-error (lambda () (setter bv index-limit value-to-set)))))
 
@@ -271,6 +299,7 @@ USA.
   (let ((bv (apply bytevector bytes))
 	(index-limit (- (length bytes) 1)))
     (assert-u32-refs bv bytes)
+    (declare (range-checks))
     (assert-range-error (lambda () (bytevector-u32be-ref bv -1)))
     (assert-range-error (lambda () (bytevector-u32le-ref bv -1)))
     (assert-range-error (lambda () (bytevector-u32be-ref bv index-limit)))
@@ -305,6 +334,7 @@ USA.
 		 (drop bytes (+ index-to-set 4)))))
     (setter bv index-to-set value-to-set)
     (assert-u32-refs bv expected-bytes)
+    (declare (range-checks))
     (assert-range-error (lambda () (setter bv -1 value-to-set)))
     (assert-range-error (lambda () (setter bv index-limit value-to-set)))))
 
@@ -483,3 +513,126 @@ USA.
 	 (declare (ignore i))
 	 (random #x100))
        (iota (random (+ max-length 1)))))
+
+;; These tests taken from SRFI 140.
+(define-test 'utf-converters
+  (lambda ()
+    (assert-equal (string->utf8 "abc")
+		  '#u8(97 98 99))
+    (assert-equal (string->utf8 "xxxabcyyyzzz" 3)
+		  '#u8(97 98 99 121 121 121 122 122 122))
+    (assert-equal (string->utf8 "xxxabcyyyzzz" 3 6)
+		  '#u8(97 98 99))
+
+    (assert-equal (cond-expand (big-endian '#u8(254 255 0 97 0 98 0 99))
+			       (else '#u8(255 254 97 0 98 0 99 0)))
+		  (string->utf16 "abc"))
+    (assert-equal
+     (cond-expand
+       (big-endian
+	'#u8(254 255 0 97 0 98 0 99 0 121 0 121 0 121 0 122 0 122 0 122))
+       (else
+	'#u8(255  254 97 0 98 0 99 0 121 0 121 0 121 0 122 0 122 0 122 0)))
+     (string->utf16 "xxxabcyyyzzz" 3))
+    (assert-equal (cond-expand (big-endian '#u8(254 255 0 97 0 98 0 99))
+                               (else '#u8(255 254 97 0 98 0 99 0)))
+		  (string->utf16 "xxxabcyyyzzz" 3 6))
+
+    (assert-equal (string->utf16be "abc")
+		  '#u8(0 97 0 98 0 99))
+    (assert-equal (string->utf16be "xxxabcyyyzzz" 3)
+		  '#u8(0 97 0 98 0 99 0 121 0 121 0 121 0 122 0 122 0 122))
+    (assert-equal (string->utf16be "xxxabcyyyzzz" 3 6)
+		  '#u8(0 97 0 98 0 99))
+
+    (assert-equal (string->utf16le "abc")
+		  '#u8(97 0 98 0 99 0))
+    (assert-equal (string->utf16le "xxxabcyyyzzz" 3)
+		  '#u8(97 0 98 0 99 0 121 0 121 0 121 0 122 0 122 0 122 0))
+    (assert-equal (string->utf16le "xxxabcyyyzzz" 3 6)
+		  '#u8(97 0 98 0 99 0))
+
+    (assert-equal (utf8->string '#u8(97 98 99))
+		  "abc")
+    (assert-equal (utf8->string '#u8(0 1 2 97 98 99 121 121 121 122 122 122) 3)
+		  "abcyyyzzz")
+    (assert-equal (utf8->string '#u8(41 42 43 97 98 99 100 101 102) 3 6)
+		  "abc")
+
+    (assert-equal (utf16->string '#u8(254 255 0 97 0 98 0 99))
+		  "abc")
+    (assert-equal (utf16->string '#u8(255 254 97 0 98 0 99 0))
+		  "abc")
+
+    (assert-equal (utf16->string (string->utf16 "abc") 2)
+		  "abc")
+    (assert-equal (utf16->string (string->utf16 "abcdef") 4)
+		  "bcdef")
+    (assert-equal (utf16->string (string->utf16 "abcdef") 4 10)
+		  "bcd")
+
+    (assert-equal (utf16be->string '#u8(0 97 0 98 0 99))
+		  "abc")
+    (assert-equal (utf16be->string (string->utf16be "abc") 2)
+		  "bc")
+    (assert-equal (utf16be->string (string->utf16be "abcdef") 2 8)
+		  "bcd")
+
+    (assert-equal (utf16le->string '#u8(97 0 98 0 99 0))
+		  "abc")
+    (assert-equal (utf16le->string (string->utf16le "abc") 2)
+		  "bc")
+    (assert-equal (utf16le->string (string->utf16le "abcdef") 2 8)
+		  "bcd")))
+
+;; These tests taken from SRFI 140.
+(define-test 'utf-converters-beyond-bmp
+  (lambda ()
+    (assert-equal (string->utf8 beyond-bmp)
+		  '#u8(97 195 128 206 191
+			  240 157 145 129 240 157 132 147 240 157 132 144 122))
+
+    (if (host-big-endian?)
+	(assert-equal
+	 (string->utf16 beyond-bmp)
+	 '#u8(254 255 0 97 0 192 3 191
+		  216 53 220 65 216 52 221 19 216 52 221 16 0 122))
+	(assert-equal
+	 (string->utf16 beyond-bmp)
+	 '#u8(255 254 97 0 192 0 191 3
+		  53 216 65 220 52 216 19 221 52 216 16 221 122 0)))
+
+    (assert-equal
+     (string->utf16be beyond-bmp)
+     '#u8(0 97 0 192 3 191 216 53 220 65 216 52 221 19 216 52 221 16 0 122))
+
+    (assert-equal
+     (string->utf16le beyond-bmp)
+     '#u8(97 0 192 0 191 3 53 216 65 220 52 216 19 221 52 216 16 221 122 0))
+
+    (assert-equal
+     (utf8->string
+      '#u8(97 195 128 206 191
+              240 157 145 129 240 157 132 147 240 157 132 144 122))
+     beyond-bmp)
+
+    (assert-equal (utf16->string (string->utf16 beyond-bmp))
+		  beyond-bmp)
+
+    (assert-equal (utf16->string (string->utf16 beyond-bmp) 2)
+		  beyond-bmp)
+
+    (assert-equal (utf16be->string (string->utf16be beyond-bmp)) beyond-bmp)
+
+    (assert-equal (utf16le->string (string->utf16le beyond-bmp)) beyond-bmp)
+
+    (assert-equal (utf16be->string '#u8(254 255 0 97 0 98 0 99))
+		  (string-append (string (integer->char #xfeff)) "abc"))
+
+    (assert-equal (utf16le->string '#u8(255 254 97 0 98 0 99 0))
+		  (string-append (string (integer->char #xfeff)) "abc"))))
+
+(define beyond-bmp
+  (list->string (map integer->char
+		     '(#x61 #xc0 #x3bf
+			    #x1d441 #x1d113 #x1d110 #x7a))))

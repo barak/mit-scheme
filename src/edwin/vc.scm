@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1080,7 +1080,7 @@ There is a special command, `*l', to mark all files currently locked.
       ;; If a new window was created to hold the log buffer, and the log
       ;; buffer is still selected in that window, delete it.
       (let ((log-window (weak-car log-window)))
-	(if (and log-window
+	(if (and (window? log-window)
 		 (window-live? log-window)
 		 (eq? log-buffer (window-buffer log-window))
 		 (not (window-has-no-neighbors? log-window)))
@@ -1094,9 +1094,11 @@ There is a special command, `*l', to mark all files currently locked.
 		(bury-buffer log-buffer))))
       (let ((window (weak-car window))
 	    (buffer (weak-car buffer)))
-	(if (and window (window-live? window))
+	(if (and (window? window)
+		 (window-live? window))
 	    (select-window window))
-	(if (and buffer (buffer-alive? buffer))
+	(if (and (buffer? buffer)
+		 (buffer-alive? buffer))
 	    (if (and window (window-live? window))
 		(select-buffer-no-record buffer window)
 		(select-buffer buffer))))

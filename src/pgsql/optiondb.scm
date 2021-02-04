@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-(define-load-option 'PGSQL
+(define-load-option 'pgsql
   (standard-system-loader "."))
 
 (further-load-options #t)

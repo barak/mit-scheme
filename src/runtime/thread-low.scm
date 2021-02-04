@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,21 +33,22 @@ USA.
   '|#[(runtime thread)thread-mutex]|)
 
 (define-integrable (thread-mutex? object)
-  (and (vector? object)
-       (fix:= 3 (vector-length object))
-       (eq? (vector-ref object 0) thread-mutex-tag)))
+  (and (%record? object)
+       (fix:= 3 (%record-length object))
+       (eq? (%record-ref object 0) thread-mutex-tag)))
 
 (define-integrable (make-thread-mutex)
-  (vector thread-mutex-tag (make-ring) #f))
+  (%record thread-mutex-tag (make-ring) #f))
 
-(define-integrable (thread-mutex/waiting-threads t) (vector-ref t 1))
+(define-integrable (thread-mutex/waiting-threads t) (%record-ref t 1))
 
-(define-integrable (thread-mutex/owner t) (vector-ref t 2))
-(define-integrable (set-thread-mutex/owner! t o) (vector-set! t 2 o))
+(define-integrable (thread-mutex/owner t) (%record-ref t 2))
+(define-integrable (set-thread-mutex/owner! t o) (%record-set! t 2 o))
 
 ;;;; Circular Rings
 
-#;(define-structure (link (conc-name link/))
+#;
+(define-structure (link (conc-name link/))
   prev
   next
   item)
@@ -56,21 +57,22 @@ USA.
   '|#[(runtime thread)link]|)
 
 (define-integrable (link? object)
-  (and (vector? object)
-       (fix:= 4 (vector-length object))
-       (eq? (vector-ref object 0) link-tag)))
+  (and (%record? object)
+       (fix:= 4 (%record-length object))
+       (eq? (%record-ref object 0) link-tag)))
+(register-predicate! link? 'link '<= %record?)
 
 (define-integrable (make-link prev next item)
-  (vector link-tag prev next item))
+  (%record link-tag prev next item))
 
-(define-integrable (link/prev l) (vector-ref l 1))
-(define-integrable (set-link/prev! l p) (vector-set! l 1 p))
+(define-integrable (link/prev l) (%record-ref l 1))
+(define-integrable (set-link/prev! l p) (%record-set! l 1 p))
 
-(define-integrable (link/next l) (vector-ref l 2))
-(define-integrable (set-link/next! l n) (vector-set! l 2 n))
+(define-integrable (link/next l) (%record-ref l 2))
+(define-integrable (set-link/next! l n) (%record-set! l 2 n))
 
-(define-integrable (link/item l) (vector-ref l 3))
-(define-integrable (set-link/item! l i) (vector-set! l 3 i))
+(define-integrable (link/item l) (%record-ref l 3))
+(define-integrable (set-link/item! l i) (%record-set! l 3 i))
 
 (define (make-ring)
   (let ((link (make-link #f #f #f)))

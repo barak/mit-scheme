@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -111,10 +111,16 @@ USA.
   (make-external-label internal-label (encode-procedure-type min max)))
 
 (define (make-internal-procedure-label label)
-  (make-external-label label #xFFFD))
+  (let ((offset
+	 (rtl-procedure/next-continuation-offset (label->object label))))
+    (make-external-label label (encode-continuation-offset offset #xFFFD))))
 
 (define (make-continuation-label entry-label label)
-  (make-external-label label (encode-continuation-offset entry-label #xFFFC)))
+  (let ((offset
+	 (and entry-label
+	      (rtl-continuation/next-continuation-offset
+	       (label->object entry-label)))))
+    (make-external-label label (encode-continuation-offset offset #xFFFC))))
 
 (define (encode-procedure-type min-frame max-frame)
   (let ((n-required (-1+ min-frame))
@@ -131,18 +137,14 @@ USA.
 	    (fix:or (fix:lsh n-optional 7)
 		    (if rest? #x4000 0)))))
 
-(define (encode-continuation-offset label default)
-  (let ((offset
-	 (if label
-	     (rtl-continuation/next-continuation-offset (label->object label))
-	     0)))
-    (if offset
-	(begin
-	  (guarantee exact-nonnegative-integer? offset)
-	  (if (not (< offset #x7FF8))
-	      (error "Can't encode continuation offset:" offset))
-	  (+ offset #x8000))
-	default)))
+(define (encode-continuation-offset offset default)
+  (if offset
+      (begin
+	(guarantee exact-nonnegative-integer? offset)
+	(if (not (< offset #x7FF8))
+	    (error "Can't encode continuation offset:" offset))
+	(+ offset #x8000))
+      default))
 
 ;;;; Utilities for the rules
 

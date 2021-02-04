@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,9 +33,7 @@ USA.
 
 (define (dbg-info-vector? object)
   (and (vector? object)
-       ;; Length 6 can be removed after 9.3 release.
-       (or (fix:= 6 (vector-length object))
-	   (fix:= 7 (vector-length object)))
+       (fix:= 7 (vector-length object))
        (eq? '|#[(runtime compiler-info)dbg-info-vector]|
 	    (vector-ref object 0))))
 
@@ -237,6 +235,9 @@ USA.
 		(or (not (vector-ref wrapper 5))
 		    (dbg-info? (vector-ref wrapper 5)))))))
 
+(define (debug-info-pathname? object)
+  (string? object))
+
 (define (debugging-wrapper/version wrapper)
   (vector-ref wrapper 1))
 
@@ -244,7 +245,7 @@ USA.
   (vector-ref wrapper 2))
 
 (define (debugging-wrapper/pathname wrapper)
-  (convert-old-style-pathname (vector-ref wrapper 3)))
+  (vector-ref wrapper 3))
 
 (define (set-debugging-wrapper/pathname! wrapper pathname)
   (vector-set! wrapper 3 pathname))
@@ -306,11 +307,8 @@ USA.
   (vector-ref wrapper 4))
 
 (define (dbg-info-key? object)
-  (or (and (bytevector? object)
-	   (fix:= (bytevector-length object) 32))
-      ;; The following can be removed after 9.3 release:
-      (and ((ucode-primitive string? 1) object)
-	   (fix:= ((ucode-primitive string-length 1) object) 32))))
+  (and (bytevector? object)
+       (fix:= (bytevector-length object) 32)))
 
 (define (dbg-info-key=? k1 k2)
   (or (and k1 k2 (equal? k1 k2))
@@ -362,31 +360,3 @@ USA.
 			       (lookup-by-index (vector-ref v i))
 			       (loop (fix:+ i 1)))))))))
 	  (else #f))))
-
-(define (debug-info-pathname? object)
-  (or (string? object)
-      (old-style-pathname? object)))
-
-;; This can be removed after the 9.3 release.
-(define (old-style-pathname? object)
-  (and (vector? object)
-       (fix:= 7 (vector-length object))
-       (eq? '|#[(runtime pathname)pathname]| (vector-ref object 0))))
-
-;; This can be removed after the 9.3 release.
-(define (convert-old-style-pathname object)
-  (if (old-style-pathname? object)
-      (%make-pathname (let ((host (vector-ref object 1)))
-			(if (and (vector? host)
-				 (fix:= 3 (vector-length host))
-				 (eq? '|#[(runtime pathname)host]|
-				      (vector-ref host 0)))
-			    (%make-host (vector-ref host 1)
-					(vector-ref host 2))
-			    host))
-		      (vector-ref object 2)
-		      (vector-ref object 3)
-		      (vector-ref object 4)
-		      (vector-ref object 5)
-		      (vector-ref object 6))
-      object))

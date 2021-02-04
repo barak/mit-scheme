@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime predicate)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime hash-table))
 
 (define (predicate-name predicate)
   (dispatch-tag-name (predicate->dispatch-tag predicate)))
@@ -54,7 +56,7 @@ USA.
 
 (define (cached-dispatch-tag<= tag1 tag2)
   (hash-table-intern! dispatch-tag<=-cache
-		      (cons tag1 tag2)
+		      (weak-list tag1 tag2)
 		      (lambda () (uncached-dispatch-tag<= tag1 tag2))))
 
 (define (uncached-dispatch-tag<= tag1 tag2)
@@ -80,9 +82,7 @@ USA.
 	      dispatch-tag<=-overrides))
   unspecific)
 
-;; TODO(cph): should be a weak-key table, but we don't have tables that have
-;; weak compound keys.
-(define-deferred dispatch-tag<=-cache (make-equal-hash-table))
+(define-deferred dispatch-tag<=-cache (make-key-weak-list-eq-hash-table))
 (define dispatch-tag<=-overrides '())
 
 (define (any-object? object)
@@ -103,56 +103,60 @@ USA.
   (eq? the-bottom-dispatch-tag tag))
 
 (define-deferred the-top-dispatch-tag
-  (make-compound-tag any-object? 'conjoin '()))
+  (%make-compound-tag (list 'conjoin) any-object? #f '()))
 
 (define-deferred the-bottom-dispatch-tag
-  (make-compound-tag no-object? 'disjoin '()))
+  (%make-compound-tag (list 'disjoin) no-object? #f '()))
 
 (define get-predicate-tag)
 (add-boot-init!
  (lambda ()
-   (let ((table (make-hashed-metadata-table)))
-     (set! predicate? (bundle-ref table 'has?))
-     (set! get-predicate-tag (bundle-ref table 'get))
-     (set! set-predicate-tag! (bundle-ref table 'put!)))
-   (set! predicate->dispatch-tag
-	 (named-lambda (predicate->dispatch-tag predicate)
-	   (let ((tag (get-predicate-tag predicate #f)))
-	     (if (not tag)
-		 (error:not-a predicate? predicate))
-	     tag)))
-   (run-deferred-boot-actions 'set-predicate-tag!)
-   (set! register-predicate!
-	 (let ((make-simple-tag
-		(dispatch-metatag-constructor
-		 (make-dispatch-metatag 'simple-tag)
-		 'register-predicate!)))
-	   (named-lambda (register-predicate! predicate name . keylist)
-	     (guarantee keyword-list? keylist 'register-predicate!)
-	     (let ((tag
-		    (let ((tag (get-predicate-tag predicate #f)))
-		      (if tag
-			  (begin
-			    (if (not (eq? name (dispatch-tag-name tag)))
-				(error "Can't re-register predicate:"
-				       predicate name))
-			    tag)
-			  (make-simple-tag name predicate)))))
-	       (for-each (lambda (superset)
-			   (set-predicate<=! predicate superset))
-			 (get-keyword-values keylist '<=))
-	       tag))))
-   (set! set-dispatch-tag<=!
-	 (named-lambda (set-dispatch-tag<=! tag superset)
-	   (if (dispatch-tag>= tag superset)
-	       (error "Not allowed to create a superset loop:" tag superset))
-	   (add-dispatch-tag-superset tag superset)
-	   (hash-table-clear! dispatch-tag<=-cache)))
-   (set! set-predicate<=!
-	 (named-lambda (set-predicate<=! predicate superset)
-	   (set-dispatch-tag<=! (predicate->dispatch-tag predicate)
-				(predicate->dispatch-tag superset))))
-   unspecific))
+   (let ((boot-predicate? predicate?))
+     (let ((table (make-hashed-metadata-table)))
+       (set! predicate? (bundle-ref table 'has?))
+       (set! get-predicate-tag (bundle-ref table 'get))
+       (set! set-predicate-tag! (bundle-ref table 'put!)))
+     (set! predicate->dispatch-tag
+	   (named-lambda (predicate->dispatch-tag predicate)
+	     (let ((tag (get-predicate-tag predicate #f)))
+	       (if (not tag)
+		   (error:not-a predicate? predicate))
+	       tag)))
+     (seq:set-predicate-tag! 'trigger!)
+     (set! register-predicate!
+	   (let ((make-simple-tag
+		  (dispatch-metatag-constructor
+		   (make-dispatch-metatag 'simple-tag)
+		   'register-predicate!)))
+	     (named-lambda (register-predicate! predicate name . keylist)
+	       (guarantee keyword-list? keylist 'register-predicate!)
+	       (let ((tag
+		      (let ((tag (get-predicate-tag predicate #f)))
+			(if tag
+			    (begin
+			      (if (not (eq? name (dispatch-tag-name tag)))
+				  (error "Can't re-register predicate:"
+					 predicate name))
+			      tag)
+			    (make-simple-tag name predicate)))))
+		 (for-each (lambda (superset)
+			     (set-predicate<=! predicate superset))
+			   (get-keyword-values keylist '<=))
+		 tag))))
+     (set! set-dispatch-tag<=!
+	   (named-lambda (set-dispatch-tag<=! tag superset)
+	     (if (dispatch-tag>= tag superset)
+		 (error "Not allowed to create a superset loop:" tag superset))
+	     (add-dispatch-tag-superset tag superset)
+	     (hash-table-clear! dispatch-tag<=-cache)))
+     (set! set-predicate<=!
+	   (named-lambda (set-predicate<=! predicate superset)
+	     (set-dispatch-tag<=! (predicate->dispatch-tag predicate)
+				  (predicate->dispatch-tag
+				   (if (eqv? boot-predicate? superset)
+				       predicate?
+				       superset)))))
+     unspecific)))
 
 (add-boot-init!
  (lambda ()
@@ -169,6 +173,7 @@ USA.
    (register-predicate! char? 'char)
    (register-predicate! default-object? 'default-object)
    (register-predicate! eof-object? 'eof-object)
+   (register-predicate! gc-reclaimed-object? 'gc-reclaimed-object)
    (register-predicate! list? 'list)
    (register-predicate! number? 'number)
    (register-predicate! pair? 'pair)
@@ -201,9 +206,6 @@ USA.
    (register-predicate! exact-rational? 'exact-rational '<= rational?)
 
    (register-predicate! fix:fixnum? 'fixnum '<= exact-integer?)
-   (register-predicate! index-fixnum? 'index-fixnum
-			'<= fix:fixnum?
-			'<= exact-nonnegative-integer?)
    (register-predicate! negative-fixnum? 'negative-fixnum '<= fix:fixnum?)
    (register-predicate! positive-fixnum? 'positive-fixnum
 			'<= fix:fixnum?
@@ -213,7 +215,7 @@ USA.
 			'<= exact-nonnegative-integer?)
    (register-predicate! non-positive-fixnum? 'non-positive-fixnum
 			'<= fix:fixnum?)
-   (register-predicate! radix? 'radix '<= index-fixnum?)
+   (register-predicate! radix? 'radix '<= non-negative-fixnum?)
 
    (register-predicate! flo:flonum? 'flonum '<= real?)
 
@@ -247,7 +249,6 @@ USA.
    (register-predicate! ascii-char? 'ascii-char '<= 8-bit-char?)
    (register-predicate! bit-string? 'bit-string)
    (register-predicate! bitless-char? 'bitless-char '<= char?)
-   (register-predicate! cell? 'cell)
    (register-predicate! code-point-list? 'code-point-list '<= list?)
    (register-predicate! compiled-code-address? 'compiled-code-address)
    (register-predicate! compiled-code-block? 'compiled-code-block)
@@ -255,8 +256,6 @@ USA.
    (register-predicate! compiled-return-address? 'compiled-return-address)
    (register-predicate! control-point? 'control-point)
    (register-predicate! ephemeron? 'ephemeron)
-   (register-predicate! equality-predicate? 'equality-predicate
-			'<= binary-procedure?)
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
    (register-predicate! keyword? 'keyword '<= symbol?)
    (register-predicate! lambda-tag? 'lambda-tag)
@@ -267,8 +266,6 @@ USA.
    (register-predicate! named-vector? 'named-vector
 			'<= vector?
 			'<= named-structure?)
-   (register-predicate! population? 'population)
-   (register-predicate! promise? 'promise)
    (register-predicate! record? 'record
 			'<= %record?
 			'<= named-structure?)
@@ -277,12 +274,12 @@ USA.
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
    (register-predicate! unicode-code-point? 'unicode-code-point
-			'<= index-fixnum?)
+			'<= non-negative-fixnum?)
    (register-predicate! unicode-scalar-value? 'unicode-scalar-value
 			'<= unicode-code-point?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
+   (register-predicate! weak-alist-table? 'weak-alist-table '<= %record?)
+   (register-predicate! weak-alist? 'weak-association-list '<= list?)
+   (register-predicate! weak-list-set? 'weak-list-set '<= %record?)
    (register-predicate! weak-list? 'weak-list)
-   (register-predicate! weak-pair? 'weak-pair)
-
-   (run-deferred-boot-actions 'predicate-registrations)
-   (run-deferred-boot-actions 'predicate-relations)))
+   (register-predicate! weak-pair? 'weak-pair)))

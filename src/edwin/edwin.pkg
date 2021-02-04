@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -104,6 +104,7 @@ USA.
   (parent ())
   (import (runtime)
 	  define-primitives
+	  string-for-primitive
 	  ucode-primitive
 	  ucode-type)
   (import (runtime char-syntax)
@@ -156,7 +157,8 @@ USA.
   (export (edwin)
           (call-with-append-file edwin:call-with-append-file)
           (call-with-input-file edwin:call-with-input-file)
-          (call-with-output-file edwin:call-with-output-file)))
+          (call-with-output-file edwin:call-with-output-file)
+	  char-set:graphic))
 
 (define-package (edwin string)
   (files "string")
@@ -308,9 +310,9 @@ USA.
   (import (runtime syntax)
 	  classifier->runtime
 	  classify-form
-	  compile-expr-item
-	  compile-item
-	  expr-item))
+	  expr-item
+	  hist-car
+	  hist-cddr))
 
 (define-package (edwin class-macros transform-instance-variables)
   (files "xform")
@@ -857,7 +859,7 @@ USA.
 	  set-local-repl-buffer!
 	  start-inferior-repl!)
   (import (runtime user-interface)
-	  default/write-result))
+	  default/write-values))
 
 (define-package (edwin dired)
   (files "dired")
@@ -1924,54 +1926,3 @@ USA.
 	  edwin-variable$add-log-full-name
 	  edwin-variable$add-log-mailing-address
 	  edwin-variable$debian-changelog-mode-hook))
-
-(define-package (edwin lisppaste)
-  (files "lisppaste")
-  (parent (edwin))
-  (export (edwin)
-	  ;; All of the lisppaste-related variables are defined in
-	  ;; loadefs.scm in order to be available before the lisppaste
-	  ;; library is loaded, and are therefore not listed here.
-	  edwin-command$lisppaste-annotate-with-buffer
-	  edwin-command$lisppaste-annotate-with-region
-	  edwin-command$lisppaste-buffer
-	  edwin-command$lisppaste-channels
-	  edwin-command$lisppaste-insert-paste
-	  edwin-command$lisppaste-insert-annotation
-	  edwin-command$lisppaste-region
-
-	  ;; Edwin lisppaste operations
-	  lisppaste-annotate
-	  lisppaste-create
-	  lisppaste-default-annotation-number
-	  lisppaste-default-channel
-	  lisppaste-default-nickname
-	  lisppaste-default-number
-	  lisppaste-insert-paste
-	  lisppaste-list-pastes
-	  prompt-for-lisppaste-annotation-number
-	  maybe-prompt-for-lisppaste-channel
-	  maybe-prompt-for-lisppaste-nickname
-	  maybe-prompt-for-lisppaste-number
-	  prompt-for-lisppaste-annotation-title
-	  prompt-for-lisppaste-title
-	  show-lisppaste
-
-	  ;; Edwin-independent RPC interface
-	  lisppaste-entry/channel
-	  lisppaste-entry/components
-	  lisppaste-entry/annotations
-	  lisppaste-entry/content
-	  lisppaste-entry/nickname
-	  lisppaste-entry/number
-	  lisppaste-entry/time
-	  lisppaste-entry/title
-	  lisppaste-rpc			;Generic RPC interface
-	  lisppaste:new-paste		;RPC commands
-	  lisppaste:paste-header
-	  lisppaste:paste-headers
-	  lisppaste:paste-headers-by-channel
-	  lisppaste:paste-annotation-headers
-	  lisppaste:paste-details
-	  lisppaste:list-channels
-	  ))

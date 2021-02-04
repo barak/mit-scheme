@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -163,6 +163,7 @@ USA.
   (add-instruction-assembler! 'LOAD (load-assembler))
   (add-instruction-assembler! 'LOAD-ADDRESS (load-address-assembler))
   (add-instruction-assembler! 'JUMP (jump-assembler))
+  (add-instruction-assembler! 'INDIRECT-JUMP (indirect-jump-assembler))
   (add-instruction-assembler! 'CONDITIONAL-JUMP (cjump1-assembler))
   (add-instruction-assembler! 'CONDITIONAL-JUMP (cjump2-assembler)))
 
@@ -213,14 +214,13 @@ USA.
 
 (define (fixed-instruction-width lap)
   (if (and (pair? lap) (pair? (car lap)) (null? (cdr lap)))
-      (fold-left + 0 (map bit-string-length
-			  (lap:syntax-instruction (car lap))))
+      (reduce + 0 (map bit-string-length (lap:syntax-instruction (car lap))))
       (error "FIXED-INSTRUCTION-WIDTH: Multiple instructions in LAP" lap)))
 
 (define (assemble-fixed-instruction width lap)
   (if (and (pair? lap) (pair? (car lap)) (null? (cdr lap)))
       (let* ((bits (lap:syntax-instruction (car lap)))
-	     (len (fold-left + 0 (map bit-string-length bits))))
+	     (len (reduce + 0 (map bit-string-length bits))))
 	(if (not (= len width))
 	    (error "Mis-sized fixed instruction" lap))
 	bits)
@@ -231,7 +231,7 @@ USA.
   ;; variable-width instructions (calculated by measuring a
   ;; representative assembled by MAKE-SAMPLE) and the range of offsets
   ;; encodable by each.
-  ;; 
+  ;;
   ;; The variable-width expression refers to *PC*, which is the PC at
   ;; the beginning of this instruction.  The instruction will actually
   ;; use the PC at the beginning of the next instruction.  Thus the
@@ -265,6 +265,35 @@ USA.
 	       (let ((low #x-8000) (high #x7FFF))
 		 (and (<= low offset) (<= offset high)))))
       (signed-integer->bit-string nbits offset)
+      ;; Does not fit into a smaller number of bytes; no fixing necessary.
+      offset))
+
+(define (pc-relative-stats-unsigned nbits make-sample)
+  (let ((high (-1+ (expt 2 nbits)))
+	(low 0))
+    (let* ((bit-width (fixed-instruction-width (make-sample high)))
+	   (byte-width (/ bit-width 8)))
+      (list nbits byte-width bit-width
+	    (+ low byte-width) (+ high byte-width)))))
+
+(define (pc-relative-selector-unsigned stats make-inst)
+  (let ((nbits (car stats))
+	(byte-width (cadr stats))
+	(bit-width (caddr stats)))
+    (cons
+     (named-lambda (pc-relative-selector-handler offset)
+       (let ((operand (fix-offset-unsigned (- offset byte-width) nbits)))
+	 (assemble-fixed-instruction bit-width (make-inst operand))))
+     (cddr stats))))
+
+(define-integrable (fix-offset-unsigned offset nbits)
+  (if (or (and (= nbits 16)
+	       (let ((low 0) (high #xFF))
+		 (and (<= low offset) (<= offset high))))
+	  (and (= nbits 32)
+	       (let ((low 0) (high #xFFFF))
+		 (and (<= low offset) (<= offset high)))))
+      (unsigned-integer->bit-string nbits offset)
       ;; Does not fit into a smaller number of bytes; no fixing necessary.
       offset))
 
@@ -337,6 +366,22 @@ USA.
 	    ,(pc-relative-selector  8bit-stats make-inst)
 	    ,(pc-relative-selector 16bit-stats make-inst)
 	    ,(pc-relative-selector 32bit-stats make-inst))))))))
+
+(define (indirect-jump-assembler)
+  (let ((make-sample (lambda (offset)
+		       (inst:indirect-jump (ea:pc-relative offset)))))
+    (let (( 8bit-stats (pc-relative-stats-unsigned  8 make-sample))
+	  (16bit-stats (pc-relative-stats-unsigned 16 make-sample))
+	  (32bit-stats (pc-relative-stats-unsigned 32 make-sample)))
+      (rule-matcher
+       ((PC-RELATIVE (- (? label) *PC*)))
+       (let ((make-inst (lambda (offset)
+			  (inst:indirect-jump (ea:pc-relative offset)))))
+	 `((VARIABLE-WIDTH-EXPRESSION
+	    (- ,label *PC*)
+	    ,(pc-relative-selector-unsigned  8bit-stats make-inst)
+	    ,(pc-relative-selector-unsigned 16bit-stats make-inst)
+	    ,(pc-relative-selector-unsigned 32bit-stats make-inst))))))))
 
 (define (cjump2-assembler)
   (let ((make-sample (lambda (offset)
@@ -447,23 +492,74 @@ USA.
 (define maximum-block-offset
   (- (expt 2 (-1+ block-offset-width)) 1))
 
-(define-integrable (block-offset->bit-string offset start?)
+;;; This is endian-dependent because the microcode always reads it as
+;;; little-endian, no matter what the system byte order is.
+
+(define-integrable (block-offset->bit-string/le offset start?)
   (unsigned-integer->bit-string block-offset-width
 				(+ (* 2 offset)
 				   (if start? 0 1))))
 
+(define-integrable (block-offset->bit-string/be offset start?)
+  (unsigned-integer->bit-string
+   block-offset-width
+   (let ((offset
+	  (+ (* 2 offset)
+	     (if start? 0 1))))
+     (bitwise-ior (shift-left (bitwise-and offset #x00ff) 8)
+		  (shift-right (bitwise-and offset #xff00) 8)))))
+
+(define block-offset->bit-string
+  (case endianness
+    ((BIG) block-offset->bit-string/be)
+    ((LITTLE) block-offset->bit-string/le)
+    (else (error "Unknown endianness:" endianness))))
+
 ;;; Machine dependent instruction order
 
-(define (instruction-insert! bits block position receiver)
+;;; This is endian-dependent because bit strings are entirely msb-first
+;;; on big-endian systems, and entirely lsb-first on little-endian
+;;; systems, so they must be assembled in reverse order.
+
+(define (instruction-insert!/be bits block position receiver)
+  (let* ((l (bit-string-length bits))
+	 (new-position (- position l)))
+    (bit-substring-move-right! bits 0 l block new-position)
+    (receiver new-position)))
+
+(define-integrable (instruction-initial-position/be block)
+  (bit-string-length block))
+
+(define-integrable instruction-append/be bit-string-append-reversed)
+
+(define (instruction-insert!/le bits block position receiver)
   (let ((l (bit-string-length bits)))
     (bit-substring-move-right! bits 0 l block position)
     (receiver (+ position l))))
 
-(define-integrable (instruction-initial-position block)
+(define-integrable (instruction-initial-position/le block)
   block					; ignored
   0)
 
-(define-integrable instruction-append bit-string-append)
+(define-integrable instruction-append/le bit-string-append)
+
+(define instruction-insert!
+  (case endianness
+    ((BIG) instruction-insert!/be)
+    ((LITTLE) instruction-insert!/le)
+    (else (error "Unknown endianness:" endianness))))
+
+(define instruction-initial-position
+  (case endianness
+    ((BIG) instruction-initial-position/be)
+    ((LITTLE) instruction-initial-position/le)
+    (else (error "Unknown endianness:" endianness))))
+
+(define instruction-append
+  (case endianness
+    ((BIG) instruction-append/be)
+    ((LITTLE) instruction-append/le)
+    (else (error "Unknown endianness:" endianness))))
 
 ;;;; Patterns
 
@@ -617,8 +713,10 @@ USA.
     (let ((limit (expt 2 n-bits)))
       (define-pvt (symbol 'UNSIGNED- n-bits) (symbol 'U n-bits) 'INTEGER
 	(lambda (object)
-	  (and (exact-nonnegative-integer? object)
-	       (< object limit)))
+	  (or (and (bit-string? object)
+		   (= n-bits (bit-string-length object)))
+	      (and (exact-nonnegative-integer? object)
+		   (< object limit))))
 	(symbol 'ENCODE-UNSIGNED-INTEGER- n-bits)
 	(symbol 'DECODE-UNSIGNED-INTEGER- n-bits)))))
 
@@ -673,19 +771,30 @@ USA.
 ;;;; Primitive codecs
 
 (define (encode-unsigned-integer-8 n write-byte)
-  (write-byte n))
+  (if (bit-string? n)
+      (write-bytes n 1 write-byte)
+      (write-byte n)))
 
 (define (encode-unsigned-integer-16 n write-byte)
-  (write-byte (remainder n #x100))
-  (write-byte (quotient n #x100)))
+  (if (bit-string? n)
+      (write-bytes n 2 write-byte)
+      (begin
+	(write-byte (remainder n #x100))
+	(write-byte (quotient n #x100)))))
 
 (define (encode-unsigned-integer-32 n write-byte)
-  (encode-unsigned-integer-16 (remainder n #x10000) write-byte)
-  (encode-unsigned-integer-16 (quotient n #x10000) write-byte))
+  (if (bit-string? n)
+      (write-bytes n 4 write-byte)
+      (begin
+	(encode-unsigned-integer-16 (remainder n #x10000) write-byte)
+	(encode-unsigned-integer-16 (quotient n #x10000) write-byte))))
 
 (define (encode-unsigned-integer-64 n write-byte)
-  (encode-unsigned-integer-32 (remainder n #x100000000) write-byte)
-  (encode-unsigned-integer-32 (quotient n #x100000000) write-byte))
+  (if (bit-string? n)
+      (write-bytes n 8 write-byte)
+      (begin
+	(encode-unsigned-integer-32 (remainder n #x100000000) write-byte)
+	(encode-unsigned-integer-32 (quotient n #x100000000) write-byte))))
 
 (define (decode-unsigned-integer-8 read-byte)
   (read-byte))

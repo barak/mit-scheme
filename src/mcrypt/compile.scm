@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the MCRYPT option.
+;;;; Compile the Mcrypt option.
 
 (load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))

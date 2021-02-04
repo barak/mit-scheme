@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,14 +40,7 @@ USA.
   (%record? 1)
   (%tagged-object-datum 1)
   (%tagged-object-tag 1)
-  (%tagged-object? 1)
-  (%weak-cons weak-cons 2)
-  (%weak-car weak-car 1)
-  (%weak-set-car! weak-set-car! 2)
-  (weak-cdr 1)
-  (weak-pair? 1)
-  (weak-pair/car? weak-car 1)
-  (weak-set-cdr! 2))
+  (%tagged-object? 1))
 
 (define (%make-record tag length #!optional fill)
   (let ((fill (if (default-object? fill) #f fill)))
@@ -75,110 +68,6 @@ USA.
 		      (%record-set! record 0 tag)
 		      record)))))))
       (expand-cases 16))))
-
-(define (weak-cons car cdr)
-  (%weak-cons (%false->weak-false car) cdr))
-
-(define (weak-car weak-pair)
-  (%weak-false->false (%weak-car weak-pair)))
-
-(define (weak-set-car! weak-pair object)
-  (%weak-set-car! weak-pair (%false->weak-false object)))
-
-(define-integrable (%false->weak-false object)
-  (if object object %weak-false))
-
-(declare (integrate-operator %weak-false->false))
-(define (%weak-false->false object)
-  (if (%weak-false? object) #f object))
-
-(define-integrable (%weak-false? object)
-  (eq? object %weak-false))
-
-(define-integrable %weak-false
-  (let-syntax
-      ((ugh
-	(sc-macro-transformer
-	 (lambda (form use-env)
-	   (declare (ignore form use-env))
-	   (object-new-type (ucode-type constant) 10)))))
-    (ugh)))
-
-;;;; Simple weak-set implementation
-
-;;; Does not support #f as an item of the set.
-
-(define (%make-weak-set)
-  (%weak-cons 'weak-set '()))
-
-(define (%weak-set->list weak-set)
-  (weak-list->list (weak-cdr weak-set)))
-
-(define (%add-to-weak-set item weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item* (%weak-car this))
-	      (next (weak-cdr this)))
-	  (cond ((not item*)
-		 (weak-set-cdr! prev next)
-		 (loop next prev))
-		((eq? item item*)
-		 #f)
-		(else
-		 (loop next this))))
-	(begin
-	  (weak-set-cdr! prev (%weak-cons item '()))
-	  #t))))
-
-(define (%remove-from-weak-set item weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item* (%weak-car this))
-	      (next (weak-cdr this)))
-	  (cond ((not item*)
-		 (weak-set-cdr! prev next)
-		 (loop next prev))
-		((eq? item item*)
-		 (weak-set-cdr! prev next)
-		 #t)
-		(else
-		 (loop next this))))
-	#f)))
-
-(define (%weak-set-any predicate weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item (%weak-car this))
-	      (next (weak-cdr this)))
-	  (cond ((not item)
-		 (weak-set-cdr! prev next)
-		 (loop next prev))
-		((predicate item)
-		 #t)
-		(else
-		 (loop next this))))
-	#f)))
-
-(define (%weak-set-for-each procedure weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item (%weak-car this))
-	      (next (weak-cdr this)))
-	  (if item
-	      (begin
-		(procedure item)
-		(loop next this))
-	      (begin
-		(weak-set-cdr! prev next)
-		(loop next prev)))))))
 
 ;;;; Interrupt control
 
@@ -222,87 +111,10 @@ USA.
 (define (with-limited-interrupts limit-mask procedure)
   ((ucode-primitive with-interrupts-reduced) limit-mask procedure))
 
-;;;; Boot-time initializers
-
-(define (init-boot-inits!)
-  (set! boot-inits '())
-  unspecific)
-
-(define (add-boot-init! thunk)
-  (if (and booting? boot-inits)
-      (set! boot-inits (cons thunk boot-inits))
-      (thunk))
-  unspecific)
-
-(define (save-boot-inits! environment)
-  (if (pair? boot-inits)
-      (let ((inits (reverse! boot-inits)))
-	(set! boot-inits #f)
-	(let ((p (assq environment saved-boot-inits)))
-	  (if p
-	      (set-cdr! p (append! (cdr p) inits))
-	      (begin
-		(set! saved-boot-inits
-		      (cons (cons environment inits)
-			    saved-boot-inits))
-		unspecific))))))
-
-(define (get-boot-init-runner environment)
-  (let ((p (assq environment saved-boot-inits)))
-    (and p
-	 (let ((inits (cdr p)))
-	   (set! saved-boot-inits (delq! p saved-boot-inits))
-	   (lambda ()
-	     (for-each (lambda (init) (init))
-		       inits))))))
-
-(define (defer-boot-action group-name thunk)
-  (if booting?
-      (let ((group (%get-boot-action-group group-name)))
-	(set-cdr! group
-		  (cons thunk
-			(cdr group))))
-      (thunk)))
-
-(define (run-deferred-boot-actions group-name)
-  (let ((group (%find-boot-action-group group-name)))
-    (if group
-	(begin
-	  (set! boot-action-groups (delq! group boot-action-groups))
-	  (for-each (lambda (thunk) (thunk))
-		    (reverse! (cdr group)))))))
-
-(define (%get-boot-action-group group-name)
-  (or (%find-boot-action-group group-name)
-      (let ((group (cons group-name '())))
-	(set! boot-action-groups (cons group boot-action-groups))
-	group)))
-
-(define (%find-boot-action-group group-name)
-  (let loop ((groups boot-action-groups))
-    (and (pair? groups)
-	 (if (eq? group-name (caar groups))
-	     (car groups)
-	     (loop (cdr groups))))))
-
-(define (finished-booting!)
-  (set! booting? #f)
-  (if (pair? boot-inits)
-      (warn "boot-inits not saved:" boot-inits))
-  (if (pair? saved-boot-inits)
-      (warn "saved-boot-inits not run:" saved-boot-inits))
-  (if (pair? boot-action-groups)
-      (warn "boot-action-groups not run:" boot-action-groups)))
-
-(define booting? #t)
-(define boot-inits #f)
-(define saved-boot-inits '())
-(define boot-action-groups '())
-
 ;;;; Printing
 
 (define (define-print-method predicate print-method)
-  (defer-boot-action 'print-methods
+  (seq:after-printer 'add-action!
     (lambda ()
       (define-print-method predicate print-method))))
 
@@ -353,7 +165,7 @@ USA.
 	  (write-char #\] port)))))
 
 (define (define-pp-describer predicate describer)
-  (defer-boot-action 'pp-describers
+  (seq:after-pretty-printer 'add-action!
     (lambda ()
       (define-pp-describer predicate describer))))
 
@@ -379,7 +191,7 @@ USA.
 	      #f)))
   (set! register-predicate!
 	(lambda (predicate name . keylist)
-	  (defer-boot-action 'predicate-registrations
+	  (seq:after-predicate 'add-action!
 	    (lambda ()
 	      (apply register-predicate! predicate name keylist)))
 	  (set! predicates (cons predicate predicates))
@@ -390,22 +202,24 @@ USA.
   (set! set-predicate-tag!
 	(lambda (predicate tag)
 	  (set! associations (cons (cons predicate tag) associations))
-	  (defer-boot-action 'set-predicate-tag!
+	  (seq:set-predicate-tag! 'add-action!
 	    (lambda ()
 	      (set-predicate-tag! predicate tag)))))
   unspecific)
 
 (define (set-dispatch-tag<=! t1 t2)
-  (defer-boot-action 'predicate-relations
+  (seq:after-predicate 'add-action!
     (lambda ()
       (set-dispatch-tag<=! t1 t2))))
 
 (define (set-predicate<=! p1 p2)
-  (defer-boot-action 'predicate-relations
+  (seq:after-predicate 'add-action!
     (lambda ()
       (set-predicate<=! p1 p2))))
 
+(declare (integrate-operator guarantee))
 (define (guarantee predicate object #!optional caller)
+  (declare (integrate-operator predicate))
   (if (not (predicate object))
       (error:not-a predicate object caller))
   object)
@@ -434,36 +248,41 @@ USA.
 
 ;;;; Promises
 
+(define-primitives make-cell cell? cell-contents set-cell-contents!)
+(register-predicate! cell? 'cell)
+
+(declare (integrate-operator promise?))
 (define (promise? object)
   (and (cell? object)
-       (object-type? (ucode-type delayed) (cell-contents object))))
+       (cell? (cell-contents object))
+       (object-type? (ucode-type delayed)
+		     (cell-contents (cell-contents object)))))
+(register-predicate! promise? 'promise '<= cell?)
 
 (define (make-promise object)
-  (if (promise? object)
-      object
-      (make-cell (system-pair-cons (ucode-type delayed) #t object))))
+  (make-cell (make-cell (system-pair-cons (ucode-type delayed) #t object))))
 
 (define (make-unforced-promise thunk)
   ;(guarantee thunk? thunk 'make-unforced-promise)
-  (make-cell (system-pair-cons (ucode-type delayed) #f thunk)))
+  (make-cell (make-cell (system-pair-cons (ucode-type delayed) #f thunk))))
 
 ;;; Don't use multiple-values here because this gets called before they are
 ;;; defined.
 (define-integrable (%promise-parts promise k)
-  (let ((p (cell-contents promise)))
+  (let ((p (cell-contents (cell-contents promise))))
     (k (system-pair-car p)
        (system-pair-cdr p))))
 
 (define (promise-forced? promise)
   (guarantee promise? promise 'promise-forced?)
-  (system-pair-car (cell-contents promise)))
+  (system-pair-car (cell-contents (cell-contents promise))))
 
 (define (promise-value promise)
   (guarantee promise? promise 'promise-value)
   (%promise-parts promise
     (lambda (forced? value)
       (if (not forced?)
-          (error "Promise not yet forced:" promise))
+	  (error "Promise not yet forced:" promise))
       value)))
 
 (define (force promise)
@@ -474,18 +293,24 @@ USA.
   (%promise-parts promise
     (lambda (forced? value)
       (if forced?
-          value
-          (let ((promise* (value)))
-            (guarantee promise? promise* 'force)
-            (without-interrupts
-             (lambda ()
-               (let ((p (cell-contents promise)))
-                 (if (not (system-pair-car p))
-                     (let ((p* (cell-contents promise*)))
-                       (system-pair-set-car! p (system-pair-car p*))
-                       (system-pair-set-cdr! p (system-pair-cdr p*))
-                       (set-cell-contents! promise* p))))))
-            (%force promise))))))
+	  value
+	  (let ((promise* (value)))
+	    (guarantee promise? promise* 'force)
+	    (if (eq? promise* promise)
+		(error "Infinite recursion in promise:" promise))
+	    (without-interrupts
+	     (lambda ()
+	       (let ((q (cell-contents promise)))
+		 (if (not (system-pair-car (cell-contents q)))
+		     (let ((q* (cell-contents promise*)))
+		       ;; Reduce the chain of indirections by one link so
+		       ;; that we don't accumulate space.
+		       (set-cell-contents! q (cell-contents q*))
+		       ;; Point promise* at the same chain of
+		       ;; indirections as promise so that forcing
+		       ;; promise* will yield the same result.
+		       (set-cell-contents! promise* q))))))
+	    (%force promise))))))
 
 (define-print-method promise?
   (standard-print-method 'promise
@@ -494,6 +319,41 @@ USA.
 	  (list '(evaluated) (promise-value promise))
 	  (list '(unevaluated))))))
 
+;;;; Multiple values
+
+(define <multi-values>
+  (list '<multi-values>))
+
+(define (make-multi-values objects)
+  (cons <multi-values> objects))
+
+(define (multi-values? object)
+  (and (pair? object)
+       (eq? <multi-values> (car object))))
+
+(define (multi-values-list mv)
+  (cdr mv))
+
+(seq:after-record 'add-action!
+  (lambda ()
+    (set! <multi-values> (make-record-type '<multi-values> '(list)))
+    (set! make-multi-values (record-constructor <multi-values>))
+    (set! multi-values? (record-predicate <multi-values>))
+    (set! multi-values-list (record-accessor <multi-values> 'list))
+    unspecific))
+
+(define (values . objects)
+  (if (and (pair? objects)
+	   (null? (cdr objects)))
+      (car objects)
+      (make-multi-values objects)))
+
+(define (call-with-values thunk receiver)
+  (let ((v (thunk)))
+    (if (multi-values? v)
+	(apply receiver (multi-values-list v))
+	(receiver v))))
+
 ;;;; Miscellany
 
 (define (object-constant? object)
@@ -509,8 +369,27 @@ USA.
 (define-integrable (default-object)
   #!default)
 
+;;; RELNOTE: After release, %gc-reclaimed can be replaced with #!reclaimed.
+
+(define (gc-reclaimed-object)
+  %gc-reclaimed)
+
+(define (gc-reclaimed-object? object)
+  (eq? %gc-reclaimed object))
+
+(define %gc-reclaimed
+  (vector-ref ((ucode-primitive get-fixed-objects-vector)) #x18))
+
 (define (gc-space-status)
   ((ucode-primitive gc-space-status)))
 
 (define (bytes-per-object)
   (vector-ref (gc-space-status) 0))
+
+;;; XXX Cross-compilation kludge: We redefine this to return the
+;;; characteristic of the target system.  In the future, macro
+;;; expanders should just see a binding of bytes-per-object that
+;;; reflects the target system.
+
+(define (target-bytes-per-object)
+  (bytes-per-object))

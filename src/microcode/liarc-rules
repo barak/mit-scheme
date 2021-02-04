@@ -1,11 +1,11 @@
-# This file automatically generated at 2020-06-04T12:59:09-07.
+# This file automatically generated at 2021-01-30T18:20:59-08.
 
 # -*- Makefile -*-
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 #     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
-#     2015, 2016, 2017, 2018, 2019 Massachusetts Institute of
+#     2015, 2016, 2017, 2018, 2019, 2020 Massachusetts Institute of
 #     Technology
 #
 # This file is part of MIT/GNU Scheme.
@@ -34,9 +34,12 @@ unstackify.o: unstackify.c stackops.h $(LIARC_HEAD_FILES)
 
 SYS_LIB_URI = http://www.gnu.org/software/mit-scheme/lib/
 
-compinit.c compinit.h: $(LIARC_SOURCES) Makefile gen-nonce extract-liarc-decls
-	rm -f $@
+stamp_compinit: $(LIARC_SOURCES) Makefile gen-nonce extract-liarc-decls
+	rm -f $@ compinit.c compinit.h
 	$(srcdir)/../etc/c-bundle.sh . static compinit \
 	    --rewrite "" $(SYS_LIB_URI)microcode/ \
 	    --rewrite ../runtime/ $(SYS_LIB_URI)runtime/ \
 	    $(LIARC_SOURCES)
+	echo done > $@
+
+compinit.c compinit.h: stamp_compinit

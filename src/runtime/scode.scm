@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime scode)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables))
 
 ;;;; Constant
 
@@ -41,7 +43,7 @@ USA.
   (let ((type-vector (make-vector (microcode-type/code-limit) #f)))
     (for-each (lambda (name)
 		(vector-set! type-vector (microcode-type name) #t))
-	      '(access assignment combination comment conditional constant
+	      '(access assignment combination comment conditional
 		       definition delay disjunction extended-lambda lambda
 		       lexpr quotation sequence the-environment variable))
     type-vector))
@@ -67,9 +69,11 @@ USA.
 
 ;;;; Variable
 
-(define (make-scode-variable name)
+(define (make-scode-variable name #!optional safe?)
   (guarantee symbol? name 'make-scode-variable)
-  (system-hunk3-cons (ucode-type variable) name #t #f))
+  (system-hunk3-cons (ucode-type variable) name
+		     (or (default-object? safe?) (not safe?))
+		     #f))
 
 (define (scode-variable? object)
   (object-type? (ucode-type variable) object))
@@ -78,6 +82,10 @@ USA.
 (define (scode-variable-name variable)
   (guarantee scode-variable? variable 'scode-variable-name)
   (system-hunk3-cxr0 variable))
+
+(define (scode-variable-safe? variable)
+  (guarantee scode-variable? variable 'scode-variable-safe?)
+  (not (system-hunk3-cxr1 variable)))
 
 ;;;; Definition
 
@@ -242,28 +250,39 @@ USA.
 ;;;; Sequence
 
 (define (make-scode-sequence actions)
-  (guarantee non-empty-list? actions 'make-sequence)
-  (let loop ((actions actions))
-    (if (pair? (cdr actions))
-	(system-pair-cons (ucode-type sequence)
-			  (unmap-reference-trap (car actions))
-			  (unmap-reference-trap (loop (cdr actions))))
-	(car actions))))
+  (guarantee list? actions 'make-sequence)
+  (let ((actions (append-map scode-sequence-actions actions)))
+    (if (pair? actions)
+	(let loop ((actions actions))
+	  (if (pair? (cdr actions))
+	      (system-pair-cons (ucode-type sequence)
+				(unmap-reference-trap (car actions))
+				(unmap-reference-trap (loop (cdr actions))))
+	      (car actions)))
+	(empty-sequence))))
 
 (define (scode-sequence? object)
   (object-type? (ucode-type sequence) object))
 (register-predicate! scode-sequence? 'scode-sequence)
 
 (define (scode-sequence-actions expression)
-  (if (scode-sequence? expression)
-      (append-map scode-sequence-actions
-		  (list (map-reference-trap
-			 (lambda ()
-			   (system-pair-car expression)))
-			(map-reference-trap
-			 (lambda ()
-			   (system-pair-cdr expression)))))
-      (list expression)))
+  (cond ((not (scode-sequence? expression)) (list expression))
+	((sequence-empty? expression) '())
+	(else
+	 (append-map scode-sequence-actions
+		     (list (map-reference-trap
+			    (lambda ()
+			      (system-pair-car expression)))
+			   (map-reference-trap
+			    (lambda ()
+			      (system-pair-cdr expression))))))))
+
+(define (empty-sequence)
+  (system-pair-cons (ucode-type sequence) #!unspecific #!unspecific))
+
+(define (sequence-empty? sequence)
+  (and (eq? #!unspecific (system-pair-car sequence))
+       (eq? #!unspecific (system-pair-cdr sequence))))
 
 ;;;; Combination
 

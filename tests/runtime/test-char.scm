@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -302,14 +302,12 @@ USA.
 (define-test 'utf8-initial-byte
   (lambda ()
     (for-each (lambda (b)
-                (if (memv b invalid-utf8-initial-bytes)
-                    (assert-error
-                     (lambda () (initial-byte->utf8-char-length b)))
-                    (assert-= (initial-byte->utf8-char-length b)
-                              (cond ((< b #x80) 1)
-                                    ((< b #xE0) 2)
-                                    ((< b #xF0) 3)
-                                    (else 4)))))
+                (assert-= (initial-byte->utf8-char-length b)
+                          (cond ((memv b invalid-utf8-initial-bytes) 1)
+                                ((< b #x80) 1)
+                                ((< b #xE0) 2)
+                                ((< b #xF0) 3)
+                                (else 4))))
               (iota #x100))))
 
 (define invalid-utf8-initial-bytes
@@ -319,13 +317,16 @@ USA.
 (define-test 'invalid-known-length-utf8-sequences
   (lambda ()
     (for-each (lambda (entry)
-		(let ((bytes (car entry))
-		      (length (cadr entry)))
-                  (let ((b0 (bytevector-u8-ref bytes 0)))
-                    (if (not (memv b0 invalid-utf8-initial-bytes))
-                        (assert-= (initial-byte->utf8-char-length b0)
-                                  length)))
-		  (assert-error (lambda () (decode-utf8-char bytes 0)))))
+                (let ((bytes (car entry))
+                      (length (cadr entry)))
+                  (let* ((b0 (bytevector-u8-ref bytes 0))
+                         (length* (initial-byte->utf8-char-length b0)))
+                    (assert-= length*
+                              (if (memv b0 invalid-utf8-initial-bytes)
+                                  1
+                                  length))
+                    (if (<= length* (bytevector-length bytes))
+                        (assert-false (decode-utf8-char bytes 0))))))
               invalid-known-length-sequences)))
 
 (define invalid-known-length-sequences
@@ -410,7 +411,7 @@ USA.
 (define-test 'invalid-utf8-sequences
   (lambda ()
     (for-each (lambda (bytes)
-                (assert-error (lambda () (decode-utf8-char bytes 0))))
+                (assert-false (decode-utf8-char bytes 0)))
               invalid-utf8-sequences)))
 
 (define invalid-utf8-sequences
@@ -499,3 +500,88 @@ USA.
     ;; (#\xDBFF #\xDC00 #u8(#xED #xAF #xBF #xED #xB0 #x80))
     ;; (#\xDBFF #\xDFFF #u8(#xED #xAF #xBF #xED #xBF #xBF))
     ))
+
+(define (decode-via-port coding octets)
+  (let* ((binary-port (open-input-bytevector octets))
+         (textual-port (binary->textual-port binary-port)))
+    (port/set-coding textual-port coding)
+    (read-string (char-set) textual-port)))
+
+(define-test 'replacement-character/utf8
+  (lambda ()
+    (define octets
+      #u8(#x20 #b10000010 #x20
+               #b11000010 0 #x20
+               #b11100010 0 0 #x20
+               #b11110010 0 0 0 #x20))
+    (define n (bytevector-length octets))
+    (define string " \xfffd; \xfffd; \xfffd; \xfffd; ")
+    (assert-error (lambda () (utf8->string octets)))
+    (assert-error (lambda () (utf8->string octets 0)))
+    (assert-error (lambda () (utf8->string octets 0 n)))
+    (assert-equal (utf8->string octets 0 n #t) string)
+    (assert-equal (decode-via-port 'UTF-8 octets) string)))
+
+(define-test 'replacement-character/utf16le
+  (lambda ()
+    (define octets
+      #u8(#x20 0
+          #x00 #xd8 0 0
+          #x20 0
+          0 #xdf
+          #x20 0))
+    (define n (bytevector-length octets))
+    (define string " \xfffd; \xfffd; ")
+    (assert-error (lambda () (utf16le->string octets)))
+    (assert-error (lambda () (utf16le->string octets 0)))
+    (assert-error (lambda () (utf16le->string octets 0 n)))
+    (assert-equal (utf16le->string octets 0 n #t) string)
+    (assert-equal (decode-via-port 'UTF-16LE octets) string)))
+
+(define-test 'replacement-character/utf16be
+  (lambda ()
+    (define octets
+      #u8(0 #x20
+          #xd8 #x00 0 0
+          0 #x20
+          #xdf 0
+          0 #x20))
+    (define n (bytevector-length octets))
+    (define string " \xfffd; \xfffd; ")
+    (assert-error (lambda () (utf16be->string octets)))
+    (assert-error (lambda () (utf16be->string octets 0)))
+    (assert-error (lambda () (utf16be->string octets 0 n)))
+    (assert-equal (utf16be->string octets 0 n #t) string)
+    (assert-equal (decode-via-port 'UTF-16BE octets) string)))
+
+(define-test 'replacement-character/utf32le
+  (lambda ()
+    (define octets
+      #u8(#x20 0 0 0
+          0 #xd8 0 0
+          #x20 0 0 0
+          0 #xdf 0 0
+          #x20 0 0 0))
+    (define n (bytevector-length octets))
+    (define string " \xfffd; \xfffd; ")
+    (assert-error (lambda () (utf32le->string octets)))
+    (assert-error (lambda () (utf32le->string octets 0)))
+    (assert-error (lambda () (utf32le->string octets 0 n)))
+    (assert-equal (utf32le->string octets 0 n #t) string)
+    (assert-equal (decode-via-port 'UTF-32LE octets) string)))
+
+(define-test 'replacement-character:utf32be
+  (lambda ()
+    (define octets
+      #u8(0 0 0 #x20
+          0 0 #xd8 0
+          0 0 0 #x20
+          0 0 #xdf 0
+          0 0 0 #x20))
+    (define n (bytevector-length octets))
+    (define string " \xfffd; \xfffd; ")
+    (assert-error (lambda () (utf32be->string octets)))
+    (assert-error (lambda () (utf32be->string octets 0)))
+    (assert-error (lambda () (utf32be->string octets 0 n)))
+    (assert-equal (utf32be->string octets 0 n #t) string)
+    (assert-equal (decode-via-port 'UTF-32BE octets) string)))

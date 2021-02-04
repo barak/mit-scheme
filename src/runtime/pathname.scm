@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,11 @@ USA.
 ;;; package: (runtime pathname)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime pathname unix)
+		'(runtime pathname dos)
+		'(runtime reader)
+		'(runtime working-directory))
 
 #|
 
@@ -97,18 +102,19 @@ these rules:
 
 |#
 
-(define-record-type <pathname>
-    (%make-pathname host device directory name type version)
-    pathname?
-  (host %pathname-host)
-  (device %pathname-device)
-  (directory %pathname-directory)
-  (name %pathname-name)
-  (type %pathname-type)
-  (version %pathname-version))
-(set-record-type-fasdumpable! <pathname> record-type-proxy:pathname)
+(define <pathname>
+  (make-record-type '<pathname>
+		    '(host device directory name type version)
+		    'instance-marker record-type-proxy:pathname))
 
-(define-guarantee pathname "pathname")
+(define %make-pathname (record-constructor <pathname>))
+(define pathname? (record-predicate <pathname>))
+(define %pathname-host (record-accessor <pathname> 'host))
+(define %pathname-device (record-accessor <pathname> 'device))
+(define %pathname-directory (record-accessor <pathname> 'directory))
+(define %pathname-name (record-accessor <pathname> 'name))
+(define %pathname-type (record-accessor <pathname> 'type))
+(define %pathname-version (record-accessor <pathname> 'version))
 
 (define-print-method pathname?
   (standard-print-method 'pathname
@@ -430,29 +436,39 @@ these rules:
   ((host-type/operation/pathname->namestring
     (host/type (%pathname-host pathname)))
    pathname))
+
+(define (pathname-hash pathname)
+  (string-hash (->namestring pathname)))
 
 ;;;; Pathname Merging
 
-(define *default-pathname-defaults*)
+(define *default-pathname-defaults* #!default)
 (define param:default-pathname-defaults)
 
 (define (make-param:default-pathname-defaults)
-  (make-general-parameter (make-pathname local-host #f #f #f #f #f)
+  (make-general-parameter #f
 			  defaults-converter
 			  defaults-merger
-			  default-parameter-getter
+			  defaults-getter
 			  defaults-setter))
 
 (define (defaults-converter object)
-  (parse-namestring object local-host))
+  (and object
+       (parse-namestring object local-host)))
 
 (define (defaults-merger old new)
-  (pathname-simplify (merge-pathnames new old)))
+  (if old
+      (and new (pathname-simplify (merge-pathnames new old)))
+      new))
 
 (define (defaults-setter set-param defaults)
   (set-param defaults)
-  (set! *default-pathname-defaults* defaults)
   unspecific)
+
+(define (defaults-getter value)
+  (or value
+      (working-directory-pathname)
+      (make-pathname local-host #f #f #f #f #f)))
 
 (define (merge-pathnames pathname #!optional defaults default-version)
   (let* ((defaults
@@ -561,12 +577,15 @@ these rules:
   (operation/init-file-pathname #f read-only #t)
   (operation/pathname-simplify #f read-only #t))
 
-(define-record-type <host>
-    (%make-host type-index name)
-    host?
-  (type-index host/type-index)
-  (name host/name))
-(set-record-type-fasdumpable! <host> record-type-proxy:host)
+(define <host>
+  (make-record-type '<host>
+		    '(type-index name)
+		    'instance-marker record-type-proxy:host))
+
+(define %make-host (record-constructor <host>))
+(define host? (record-predicate <host>))
+(define host/type-index (record-accessor <host> 'type-index))
+(define host/name (record-accessor <host> 'name))
 
 (define (make-host type name)
   (%make-host (host-type/index type) name))
@@ -640,18 +659,20 @@ these rules:
 
 (define (%find-library-directory)
   (pathname-simplify
-   (or (find file-directory? library-directory-path)
+   (or (find file-directory? (library-directory-path))
        (error "Can't find library directory."))))
 
 (define (%find-library-file pathname)
-  (let loop ((path library-directory-path))
+  (let loop ((path (library-directory-path)))
     (and (pair? path)
 	 (let ((p (merge-pathnames pathname (car path))))
 	   (if (file-exists? p)
 	       p
 	       (loop (cdr path)))))))
 
-(define library-directory-path)
+(define (library-directory-path)
+  (map pathname-as-directory
+       (vector->list ((ucode-primitive microcode-library-path 0)))))
 
 (define known-host-types
   '((0 unix)
@@ -715,15 +736,9 @@ these rules:
       (set! host-types types)
       (set! local-host (make-host host-type #f))))
   (set! param:default-pathname-defaults (make-param:default-pathname-defaults))
-  (set! *default-pathname-defaults* (param:default-pathname-defaults))
-  (set! library-directory-path
-	(map pathname-as-directory
-	     (vector->list ((ucode-primitive microcode-library-path 0)))))
   unspecific)
 
-(define (initialize-package!)
-  (reset-package!)
-  (add-event-receiver! event:after-restore reset-package!))
-
-(define (initialize-parser-method!)
-  (define-bracketed-reader-method 'pathname pathname-parser-method))
+(add-boot-init!
+ (lambda ()
+   (run-now-and-after-restore! reset-package!)
+   (define-bracketed-reader-method 'pathname pathname-parser-method)))

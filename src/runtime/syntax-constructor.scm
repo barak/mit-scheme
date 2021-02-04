@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -78,6 +78,14 @@ USA.
      (cons (close-part close operator)
 	   (close-parts close operands)))))
 
+(define (scons-cond . clauses)
+  (make-open-expr
+   (lambda (close)
+     (cons (close 'cond)
+	   (map (lambda (clause)
+		  (close-parts close clause))
+		clauses)))))
+
 (define (scons-declare . decls)
   (make-open-expr
    (lambda (close)
@@ -97,6 +105,11 @@ USA.
      (list (close 'delay)
 	   (close-part close expr)))))
 
+(define (scons-safe-ref id)
+  (make-open-expr
+   (lambda (close)
+     (list (close 'safe-reference) id))))
+
 (define (scons-if predicate consequent alternative)
   (make-open-expr
    (lambda (close)
@@ -104,7 +117,7 @@ USA.
 	   (close-part close predicate)
 	   (close-part close consequent)
 	   (close-part close alternative)))))
-
+
 (define (scons-lambda bvl . body-forms)
   (make-open-expr
    (lambda (close)

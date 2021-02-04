@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime miscellaneous-global)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables))
 
 ;;;; Primitive Operators
 
@@ -48,10 +50,6 @@ USA.
   (object-type? 2)
   (object-new-type object-set-type 2)
   make-non-pointer-object
-  eq?
-
-  ;; Cells
-  make-cell cell? cell-contents set-cell-contents!
 
   ;; System Compound Datatypes
   system-pair-cons system-pair?
@@ -100,9 +98,6 @@ USA.
 (define (false-procedure . args) args #f)
 (define (true-procedure . args) args #t)
 
-;; This definition is replaced later in the boot sequence.
-(define apply (ucode-primitive apply 2))
-
 (define (eval expression environment)
   (extended-scode-eval (syntax expression environment) environment))
 
@@ -128,31 +123,6 @@ USA.
 
 (define bind-cell-contents!
   (object-component-binder cell-contents set-cell-contents!))
-
-(define-record-type <multi-values>
-    (make-multi-values list)
-    multi-values?
-  (list multi-values-list))
-
-(define (values . objects)
-  (if (and (pair? objects)
-	   (null? (cdr objects)))
-      (car objects)
-      (make-multi-values objects)))
-
-(define (call-with-values thunk receiver)
-  (let ((v (thunk)))
-    (if (multi-values? v)
-	(apply receiver (multi-values-list v))
-	(receiver v))))
-
-(define (write-to-string object #!optional max)
-  (if (or (default-object? max) (not max))
-      (call-with-output-string
-       (lambda (port) (write object port)))
-      (call-with-truncated-output-string
-       max
-       (lambda (port) (write object port)))))
 
 (define (edit . args)
   (let ((env (let ((package (name->package '(edwin))))
@@ -295,12 +265,6 @@ USA.
 
 (define (unbind-variable environment name)
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
-
-(define (simple-top-level-environment fold-case?)
-  (make-top-level-environment (list 'param:reader-fold-case?
-				    '*parser-canonicalize-symbols?*)
-			      (list (make-settable-parameter fold-case?)
-				    #!default)))
 
 (define (object-gc-type object)
   (%encode-gc-type ((ucode-primitive object-gc-type 1) object)))
@@ -311,10 +275,11 @@ USA.
 (define (%encode-gc-type t)
   (if (not (and (fix:fixnum? t)
 		(fix:>= t -4)
-		(fix:<= t 4)))
+		(fix:<= t 5)))
       (error "Illegal GC-type value:" t))
+  ;; Must match enum gc_type_t in microcode/gc.h.
   (vector-ref '#(compiled-entry vector gc-internal undefined non-pointer
-				cell pair triple quadruple)
+				cell pair triple quadruple compiled-return)
 	      (fix:+ t 4)))
 
 (define (object-non-pointer? object)
@@ -343,7 +308,7 @@ USA.
 
 (define (pointer-type-code? code)
   (case (type-code->gc-type code)
-    ((cell pair triple quadruple vector compiled-entry) #t)
+    ((cell pair triple quadruple vector compiled-entry compiled-return) #t)
     ((gc-internal) (fix:= (ucode-type broken-heart) code))
     (else #f)))
 
@@ -379,15 +344,24 @@ USA.
   (let per-bucket ((index (vector-length obarray)))
     (if (fix:> index 0)
 	(let ((index (fix:- index 1)))
-	  (let per-symbol ((bucket (vector-ref obarray index)))
-	    (cond ((weak-pair? bucket)
-		   (let ((symbol (weak-car bucket)))
-		     (if (weak-pair/car? bucket)
-			 (procedure symbol)))
-		   (per-symbol (weak-cdr bucket)))
-		  ((pair? bucket)
-		   (procedure (car bucket))
-		   (per-symbol (cdr bucket)))
+	  (let per-symbol
+	      ((this (vector-ref obarray index))
+	       (set-prev! (lambda (next) (vector-set! obarray index next))))
+	    (cond ((weak-pair? this)
+		   (let ((symbol (weak-car this))
+			 (next (weak-cdr this)))
+		     (if (gc-reclaimed-object? symbol)
+			 (begin
+			   (set-prev! next)
+			   (per-symbol next set-prev!))
+			 (begin
+			   (procedure symbol)
+			   (per-symbol next
+				       (lambda (next)
+					 (weak-set-cdr! this next)))))))
+		  ((pair? this)
+		   (procedure (car this))
+		   (per-symbol (cdr this) (lambda (next) (set-cdr! this next))))
 		  (else
 		   (per-bucket index))))))))
 
@@ -405,35 +379,10 @@ USA.
   (with-obarray-lock
    (lambda ()
      (let ((obarray (fixed-objects-item 'obarray)))
-       (let loop ((index (vector-length obarray)))
-	 (if (fix:> index 0)
-	     (let ((index (fix:- index 1)))
-	       (define (find-broken-entry bucket previous)
-		 (cond ((weak-pair? bucket)
-			(let ((d (weak-cdr bucket)))
-			  (if (weak-pair/car? bucket)
-			      (find-broken-entry d bucket)
-			      (delete-broken-entries d previous))))
-		       ((pair? bucket)
-			(find-broken-entry (cdr bucket) bucket))))
-	       (define (delete-broken-entries bucket previous)
-		 (cond ((weak-pair? bucket)
-			(let ((d (weak-cdr bucket)))
-			  (if (weak-pair/car? bucket)
-			      (begin (clobber previous bucket)
-				     (find-broken-entry d bucket))
-			      (delete-broken-entries d previous))))
-		       ((pair? bucket)
-			(clobber previous bucket)
-			(find-broken-entry (cdr bucket) bucket))
-		       (else
-			(clobber previous '()))))
-	       (define (clobber previous tail)
-		 (cond ((weak-pair? previous) (weak-set-cdr! previous tail))
-		       ((pair? previous) (set-cdr! previous tail))
-		       (else (vector-set! obarray index tail))))
-	       (find-broken-entry (vector-ref obarray index) #f)
-	       (loop index))))))))
+       (for-each-symbol-in-obarray obarray
+	 (lambda (symbol)
+	   (declare (ignore symbol))
+	   unspecific))))))
 
 (add-boot-init!
  (lambda ()
@@ -520,54 +469,41 @@ USA.
   (make-bundle-predicate 'metadata-table))
 
 (define (make-alist-metadata-table)
-  (let ((alist '()))
+  (let ((table (weak-alist-table eqv?)))
 
     (define (has? key)
-      (if (assv key alist) #t #f))
+      (weak-alist-table-contains? table key))
 
     (define (get key #!optional default-value)
-      (let ((p (assv key alist)))
-	(if p
-	    (cdr p)
-	    (begin
-	      (if (default-object? default-value)
-		  (error "Object has no associated metadata:" key))
-	      default-value))))
+      (weak-alist-table-ref table key
+			    (if (default-object? default-value)
+				default-value
+				(lambda () default-value))))
 
     (define (put! key metadata)
-      (let ((p (assv key alist)))
-	(if p
-	    (set-cdr! p metadata)
-	    (begin
-	      (set! alist (cons (cons key metadata) alist))
-	      unspecific))))
+      (weak-alist-table-set! table key metadata))
 
     (define (intern! key get-value)
-      (let ((p (assv key alist)))
-	(if p
-	    (cdr p)
-	    (let ((value (get-value)))
-	      (set! alist (cons (cons key value) alist))
-	      value))))
+      (weak-alist-table-intern! table key get-value))
 
     (define (delete! key)
-      (set! alist
-	    (remove! (lambda (p)
-		       (eqv? (car p) key))
-		     alist))
-      unspecific)
+      (weak-alist-table-delete! table key table))
 
     (define (get-alist)
-      alist)
+      (weak-alist-table->alist table))
 
-    (define (put-alist! alist*)
-      (for-each (lambda (p)
-		  (put! (car p) (cdr p)))
-		alist*))
+    (define (put-alist! alist)
+      (for-each (lambda (p) (put! (car p) (cdr p))) alist))
 
-    (bundle metadata-table?
-	    has? get put! intern! delete! get-alist put-alist!)))
-
+    (define (get-keys)
+      (weak-alist-table-keys table))
+
+    (define (clear!)
+      (weak-alist-table-clear! table))
+
+    (bundle metadata-table? has? get put! intern! delete! get-alist put-alist!
+	    get-keys clear!)))
+
 (define (make-hashed-metadata-table)
   (let ((table (make-key-weak-eqv-hash-table)))
 
@@ -575,9 +511,10 @@ USA.
       (hash-table-exists? table key))
 
     (define (get key #!optional default-value)
-      (if (default-object? default-value)
-	  (hash-table-ref table key)
-	  (hash-table-ref/default table key default-value)))
+      (hash-table-ref table key
+		      (if (default-object? default-value)
+			  default-value
+			  (lambda () default-value))))
 
     (define (put! key metadata)
       (hash-table-set! table key metadata))
@@ -592,12 +529,16 @@ USA.
       (hash-table->alist table))
 
     (define (put-alist! alist*)
-      (for-each (lambda (p)
-		  (put! (car p) (cdr p)))
-		alist*))
+      (for-each (lambda (p) (put! (car p) (cdr p))) alist*))
 
-    (bundle metadata-table?
-	    has? get put! intern! delete! get-alist put-alist!)))
+    (define (get-keys)
+      (hash-table-values table))
+
+    (define (clear!)
+      (hash-table-clear! table))
+
+    (bundle metadata-table? has? get put! intern! delete! get-alist put-alist!
+	    get-keys clear!)))
 
 ;;;; Builder for vector-like sequences
 
@@ -729,3 +670,69 @@ USA.
 (define (ephemeron-broken? ephemeron)
   (guarantee-ephemeron ephemeron 'ephemeron-broken?)
   (not (primitive-object-ref ephemeron 1)))
+
+;;;; Partitioning
+
+(define (partition-generator classifier comparator kons knil . options)
+  (let ((cls= (comparator-equality-predicate comparator)))
+
+    (define (impl:hybrid)
+      (let ((alist-type (impl:mutable-alist))
+	    (hash-table-type (impl:hash-table)))
+	(lambda (items)
+	  (if (fix:<= (length items) 128)
+	      (alist-type items)
+	      (hash-table-type items)))))
+
+    (define (impl:immutable-alist)
+      (alist-type alist-adjoiner))
+
+    (define (impl:mutable-alist)
+      (alist-type alist-adjoiner!))
+
+    (define (alist-type alist-adjoiner)
+      (let ((adjoiner (alist-adjoiner cls= kons knil)))
+	(lambda (items)
+	  (let ((alist
+		 (fold (lambda (item alist)
+			 (adjoiner (classifier item) item alist))
+		       '()
+		       items)))
+	    (lambda (#!optional cls)
+	      (if (default-object? cls)
+		  (map car alist)
+		  (let ((p (assoc cls alist cls=)))
+		    (if p
+			(cdr p)
+			knil))))))))
+
+    (define (impl:hash-table)
+      (let ((knil-thunk (lambda () knil)))
+	(lambda (items)
+	  (let ((table (make-hash-table comparator)))
+	    (for-each (lambda (item)
+			(hash-table-update! table
+					    (classifier item)
+					    kons
+					    knil-thunk))
+		      items)
+	    (lambda (#!optional cls)
+	      (if (default-object? cls)
+		  (hash-table-keys table)
+		  (hash-table-ref table cls knil-thunk)))))))
+
+    (let-values (((implementation)
+		  (partition-generator-options options 'partition-generator)))
+      (case implementation
+	((#!default hybrid) (impl:hybrid))
+	((immutable-alist) (impl:immutable-alist))
+	((mutable-alist) (impl:mutable-alist))
+	((hash-table) (impl:hash-table))
+	(else (error "Unsupported implementation:" implementation))))))
+
+
+(define partition-generator-options
+  (keyword-option-parser
+   (list (list 'implementation
+	       '(hybrid immutable-alist mutable-alist hash-table)
+	       'hybrid))))

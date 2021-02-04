@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,7 +40,7 @@ USA.
 	(procedure (block-procedure block)))
     (let ((delete-integrations
 	   (lambda (get-names set-names!)
-	     (with-values
+	     (call-with-values
 		 (lambda ()
 		   (find-integrated-variables (get-names procedure)))
 	       (lambda (not-integrated integrated)
@@ -60,7 +60,7 @@ USA.
 	  (begin
 	    (set! deletions (eq-set-adjoin rest deletions))
 	    (set-procedure-rest! procedure false))))
-    (with-values
+    (call-with-values
 	(lambda ()
 	  (find-integrated-bindings (procedure-names procedure)
 				    (procedure-values procedure)))
@@ -76,7 +76,7 @@ USA.
 (define (find-integrated-bindings names vals)
   (if (null? names)
       (values '() '() '())
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (find-integrated-bindings (cdr names) (cdr vals)))
 	(lambda (names* values* integrated)
@@ -89,7 +89,7 @@ USA.
 (define (find-integrated-variables variables)
   (if (null? variables)
       (values '() '())
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (find-integrated-variables (cdr variables)))
 	(lambda (not-integrated integrated)

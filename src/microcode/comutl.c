@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,13 +36,18 @@ extern void get_liarc_compiled_block_data
   (unsigned long, const char **, void **, void **, void **);
 #endif
 
+#define CC_ENTRY_OR_RETURN_P(x) ((CC_ENTRY_P (x)) || (CC_RETURN_P (x)))
+
 DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block,
 		  1, 1, "(ADDRESS)\n\
 Given a compiled-code entry ADDRESS, return its block.")
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, CC_ENTRY_P);
-  PRIMITIVE_RETURN (cc_entry_to_block (ARG_REF (1)));
+  CHECK_ARG (1, CC_ENTRY_OR_RETURN_P);
+  if (CC_ENTRY_P (ARG_REF (1)))
+    PRIMITIVE_RETURN (cc_entry_to_block (ARG_REF (1)));
+  else
+    PRIMITIVE_RETURN (cc_return_to_block (ARG_REF (1)));
 }
 
 DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET",
@@ -50,8 +55,13 @@ DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET",
 Given a compiled-code entry ADDRESS, return its offset into its block.")
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, CC_ENTRY_P);
-  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (cc_entry_to_block_offset (ARG_REF (1))));
+  CHECK_ARG (1, CC_ENTRY_OR_RETURN_P);
+  if (CC_ENTRY_P (ARG_REF (1)))
+    PRIMITIVE_RETURN
+      (ULONG_TO_FIXNUM (cc_entry_to_block_offset (ARG_REF (1))));
+  else
+    PRIMITIVE_RETURN
+      (ULONG_TO_FIXNUM (cc_return_to_block_offset (ARG_REF (1))));
 }
 
 DEFINE_PRIMITIVE ("STACK-TOP-ADDRESS", Prim_stack_top_address, 0, 0, 0)
@@ -77,14 +87,21 @@ DEFINE_PRIMITIVE ("STACK-ADDRESS-OFFSET", Prim_stack_address_offset, 1, 1, 0)
 DEFINE_PRIMITIVE ("COMPILED-ENTRY-KIND", Prim_compiled_entry_kind, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, CC_ENTRY_P);
+  CHECK_ARG (1, CC_ENTRY_OR_RETURN_P);
   {
+    insn_t * addr;
     cc_entry_type_t cet;
     unsigned long kind = 4;
     unsigned long field1 = 0;
     long field2 = 0;
 
-    if (!read_cc_entry_type ((&cet), (CC_ENTRY_ADDRESS (ARG_REF (1)))))
+    if (CC_ENTRY_P (ARG_REF (1)))
+      addr = (CC_ENTRY_ADDRESS (ARG_REF (1)));
+    else
+      addr =
+	(CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (CC_RETURN_ADDRESS (ARG_REF (1))));
+
+    if (!read_cc_entry_type ((&cet), addr))
       switch (cet.marker)
 	{
 	case CET_PROCEDURE:

@@ -3,7 +3,7 @@
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 #     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
-#     2015, 2016, 2017, 2018, 2019 Massachusetts Institute of
+#     2015, 2016, 2017, 2018, 2019, 2020 Massachusetts Institute of
 #     Technology
 #
 # This file is part of MIT/GNU Scheme.
@@ -67,7 +67,9 @@ EOF
     exit 1
 fi
 
-if [ ! -x configure ]; then
+if [ ! -x configure \
+	-o configure.ac -nt configure \
+	-o microcode/aclocal.m4 -nt configure ]; then
     configure=clean
     echo "autoconf --include=microcode"
     autoconf --include=microcode
@@ -76,7 +78,7 @@ fi
 
 . etc/functions.sh
 
-INSTALLED_SUBDIRS="cref ffi sf sos ssp star-parser xml"
+INSTALLED_SUBDIRS="cref ffi libraries sf sos ssp star-parser xml"
 PLUGIN_SUBDIRS="blowfish edwin gdbm imail pgsql mcrypt x11 x11-screen"
 OTHER_SUBDIRS="6001 compiler runtime win32 xdoc microcode"
 
@@ -91,6 +93,7 @@ maybe_link lib/cref ../cref
 maybe_link lib/edwin ../edwin
 maybe_link lib/ffi ../ffi
 maybe_link lib/imail ../imail
+maybe_link lib/libraries ../libraries
 maybe_link lib/runtime ../runtime
 maybe_link lib/sf ../sf
 maybe_link lib/sos ../sos

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -273,6 +273,8 @@ Returns true iff the two bit strings contain the same bits.")
   long i;								\
   SCHEME_OBJECT *scan1, *scan2;						\
   PRIMITIVE_HEADER (2);							\
+  CHECK_ARG (1, BIT_STRING_P);						\
+  CHECK_ARG (2, BIT_STRING_P);						\
   bit_string_1 = (ARG_REF (1));						\
   bit_string_2 = (ARG_REF (2));						\
   if ((BIT_STRING_LENGTH (bit_string_1)) !=				\

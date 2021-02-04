@@ -1,0 +1,25 @@
+% Newton-Raphson root-finding.
+/newton                         % n x0 Tf => x
+{
+    0 1 5 -1 roll               % x0 Tf start step n
+    {
+        pop                     % x0 Tf
+        1 index Tvar            % x0 Tf Tx0
+        1 index                 % x0 Tf Tx0 Tf
+        exec                    % x0 Tf Ty0
+        Tqv                     % x0 Tf y0 dy0
+        dup 0.0 eq { pop pop exit } if
+        div                     % x0 Tf y0/dy0
+        2 index exch            % x0 Tf x0 y0/dy0
+        sub                     % x0 Tf x1
+        dup 0.0 ne {
+            dup 3 index sub     % x0 Tf x1 x1-x0
+            1 index div abs     % x0 Tf x1 |(x1-x0)/x1|
+            eps le { pop exit } if
+        } if
+        exch                    % x0 x1 Tf
+        3 -1 roll               % x1 Tf x0
+        pop                     % x1 Tf
+    } for
+    pop                         % x
+} def

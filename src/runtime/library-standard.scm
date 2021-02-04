@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime library standard)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime library database))
 
 (define-deferred host-library-db
   (make-library-db 'host))
@@ -38,20 +40,14 @@ USA.
       (guarantee library-db? value))))
 
 (define (finish-host-library-db!)
-  (add-standard-libraries! host-library-db))
-
-(define (add-standard-libraries! db)
-  (register-libraries! (make-standard-libraries) db))
+  (register-libraries! (make-standard-libraries) host-library-db))
 
 (define (make-standard-libraries)
   (map (lambda (p)
-	 (let ((name (car p))
+	 (let ((library (car p))
 	       (exports (cdr p)))
-	   (make-library name
-			 'parsed-imports '()
-			 'exports (map make-library-export exports)
-			 'parsed-contents '()
-			 'filename #f
+	   (make-library library
+			 'exports (convert-exports exports)
 			 'environment system-global-environment)))
        standard-libraries))
 
@@ -60,7 +56,7 @@ USA.
 	      (check-standard-library! (car p) (cdr p)))
 	    standard-libraries))
 
-(define (check-standard-library! name exports)
+(define (check-standard-library! library exports)
   (let ((missing
 	 (remove (lambda (name)
 		   (memq (environment-reference-type system-global-environment
@@ -68,13 +64,7 @@ USA.
 			 '(normal macro)))
 		 exports)))
     (if (pair? missing)
-	(warn "Missing definitions for library:" name missing))))
-
-(define (standard-library-names)
-  (map car standard-libraries))
-
-(define (standard-library-exports name)
-  (cdr (assoc name standard-libraries)))
+	(warn "Missing definitions for library:" library missing))))
 
 ;; Filters the given imports to find those that are equivalent to global
 ;; variables, and for each one returns a pair of the "to" identifier and the
@@ -84,93 +74,103 @@ USA.
 (define (standard-library-globals imports)
   (filter-map (lambda (import)
 		(let ((p
-		       (assoc (library-import-from-library import)
-			      standard-libraries)))
+		       (assoc (library-ixport-from-library import)
+			      standard-libraries
+			      library-name=?)))
 		  (and p
-		       (memq (library-import-from import)
+		       (memq (library-ixport-from import)
 			     (cdr p))
-		       (cons (library-import-to import)
-			     (library-import-from import)))))
+		       (cons (library-ixport-to import)
+			     (library-ixport-from import)))))
 	      imports))
 
-(define (define-standard-library name exports)
-  (let ((p (assoc name standard-libraries))
-	(exports (extend-with-macro-deps exports)))
+(define (define-standard-library library exports)
+  (let ((p (assoc library standard-libraries library-name=?)))
     (if p
 	(set-cdr! p exports)
 	(begin
 	  (set! standard-libraries
-		(cons (cons name exports)
+		(cons (cons library exports)
 		      standard-libraries))
 	  unspecific)))
-  name)
+  library)
 
 (define standard-libraries '())
 
 ;; Make sure that the names introduced by macro expansions are also included.
 ;; This is a kludge to work around our inability to address names globally.
-(define (extend-with-macro-deps names)
-  (define (scan-new to-scan new names)
-    (cond ((pair? to-scan)
-	   (let ((name (car to-scan))
-		 (rest (cdr to-scan)))
-	     (let ((p (assq name macro-dependencies)))
-	       (if p
-		   (scan-deps (cdr p) rest new names)
-		   (scan-new rest new names)))))
-	  ((pair? new)
-	   (scan-new new '() names))
-	  (else names)))
+(define (convert-exports names)
+  (map (lambda (name)
+	 (make-library-ixport '(mit legacy runtime) name))
+       (lset-union eq?
+		   names
+		   (fold (lambda (name extra)
+			   (let ((deps (macro-deps name)))
+			     (if deps
+				 (lset-union eq? deps extra)
+				 extra)))
+			 '()
+			 names))))
+
+(define-deferred macro-deps
+  (flatten-macro-deps
+   '((and if)
+     (and-let* and begin let)
+     (assert error if not)
+     (begin0 let)
+     (case begin eq? eqv? if let or quote)
+     (case-lambda apply default-object? error fix:= fix:>= if lambda length let)
+     (circular-stream cons delay letrec)
+     (cond begin if let)
+     (cond-expand begin)
+     (cons-stream cons delay)
+     (cons-stream* cons delay)
+     (define lambda named-lambda)
+     (define-record-type %record? %record-ref %record-set! define eq?
+			 guarantee make-record-type quote record-accessor
+			 record-constructor record-modifier record-predicate)
+     (define-values begin call-with-values define lambda set!)
+     (delay delay-force make-promise)
+     (delay-force lambda make-unforced-promise)
+     (do begin if let)
+     (guard begin call-with-current-continuation if lambda let raise-continuable
+	    with-exception-handler)
+     (include begin)
+     (include-ci begin)
+     (let declare lambda letrec letrec* named-lambda)
+     (let* let)
+     (let-syntax* let-syntax)
+     (letrec lambda let set!)
+     (letrec* begin lambda let)
+     (local-declare declare let)
+     (parameterize cons lambda list parameterize*)
+     (quasiquote append cons list list->vector quote vector)
+     (receive call-with-values lambda)
+     (unless begin if not)
+     (when begin if))))
 
-  (define (scan-deps deps rest new names)
-    (if (pair? deps)
-	(let ((dep (car deps)))
-	  (if (memq dep names)
-	      (scan-deps (cdr deps) rest new names)
-	      (scan-deps (cdr deps)
-			 rest
-			 (cons dep new)
-			 (cons dep names))))
-	(scan-new rest new names)))
+(define (flatten-macro-deps alist)
 
-  (scan-new names '() names))
+  (define (expand-deps deps expanded)
+    (fold (lambda (dep expanded)
+	    (if (memq dep expanded)
+		expanded
+		(let ((expanded* (cons dep expanded))
+		      (p (assq dep alist)))
+		  (if p
+		      (expand-deps (cdr p) expanded*)
+		      expanded*))))
+	  expanded
+	  deps))
 
-(define macro-dependencies
-  '((and if)
-    (and-let* and begin let)
-    (assert error if not)
-    (begin0 let)
-    (bundle alist->bundle cons list)
-    (case begin eq? eqv? if let or quote)
-    (case-lambda apply default-object? error fix:= fix:>= if lambda length let)
-    (circular-stream cons delay letrec)
-    (cond begin if let)
-    (cond-expand begin)
-    (cons-stream cons delay)
-    (cons-stream* cons delay)
-    (define lambda named-lambda)
-    (define-integrable begin lambda let set! shallow-fluid-bind)
-    (define-record-type define new-make-record-type quote record-accessor
-			record-constructor record-modifier record-predicate)
-    (define-values begin call-with-values define lambda set!)
-    (delay delay-force make-promise)
-    (delay-force lambda make-unforced-promise)
-    (do begin if let)
-    (guard begin call-with-current-continuation if lambda let raise-continuable
-	   with-exception-handler)
-    (include begin)
-    (include-ci begin)
-    (let declare lambda letrec letrec* named-lambda)
-    (let* let)
-    (let-syntax* let-syntax)
-    (letrec lambda let set!)
-    (letrec* begin lambda let)
-    (local-declare declare let)
-    (parameterize cons lambda list parameterize*)
-    (quasiquote append cons list list->vector quote vector)
-    (receive call-with-values lambda)
-    (unless begin if not)
-    (when begin if)))
+  (let ((expanded
+	 (map (lambda (p)
+		(cons (car p) (expand-deps (cdr p) '())))
+	      alist)))
+    (lambda (name)
+      (let ((p (assq name expanded)))
+	(and p
+	     (cdr p))))))
 
 (define-standard-library '(scheme base)
   '(*
@@ -971,6 +971,230 @@ USA.
     make-hash-table
     string-ci-hash
     string-hash))
+
+(define-standard-library '(srfi 115)
+  '(char-set->sre
+    regexp
+    regexp-extract
+    regexp-fold
+    regexp-match->list
+    regexp-match-count
+    regexp-match-submatch
+    regexp-match-submatch-end
+    regexp-match-submatch-start
+    regexp-match?
+    regexp-matches
+    regexp-matches?
+    regexp-partition
+    regexp-replace
+    regexp-replace-all
+    regexp-search
+    regexp-split
+    regexp?
+    rx
+    valid-sre?))
 
+(define-standard-library '(srfi 124)
+  '(ephemeron-broken?
+    ephemeron-datum
+    ephemeron-key
+    ephemeron?
+    make-ephemeron
+    reference-barrier))
+
+(define-standard-library '(srfi 125)
+  '(alist->hash-table
+    hash				;deprecated
+    hash-by-identity			;deprecated
+    hash-table
+    hash-table->alist
+    hash-table-clear!
+    hash-table-contains?
+    hash-table-copy
+    hash-table-count
+    hash-table-delete!
+    hash-table-difference!
+    hash-table-empty-copy
+    hash-table-empty?
+    hash-table-entries
+    hash-table-equivalence-function	;deprecated
+    hash-table-exists?			;deprecated
+    hash-table-find
+    hash-table-fold
+    hash-table-for-each
+    hash-table-hash-function		;deprecated
+    hash-table-intern!
+    hash-table-intersection!
+    hash-table-keys
+    hash-table-map
+    hash-table-map!
+    hash-table-map->list
+    hash-table-merge!			;deprecated
+    hash-table-mutable?
+    hash-table-pop!
+    hash-table-prune!
+    hash-table-ref
+    hash-table-ref/default
+    hash-table-set!
+    hash-table-size
+    hash-table-unfold
+    hash-table-union!
+    hash-table-update!
+    hash-table-update!/default
+    hash-table-values
+    hash-table-walk			;deprecated
+    hash-table-xor!
+    hash-table=?
+    hash-table?
+    make-hash-table
+    string-ci-hash			;deprecated
+    string-hash				;deprecated
+    ))
+
+(define-standard-library '(srfi 128)
+  '(<=?
+    <?
+    =?
+    >=?
+    >?
+    boolean-hash
+    char-ci-hash
+    char-hash
+    comparator-check-type
+    comparator-equality-predicate
+    comparator-hash
+    comparator-hash-function
+    comparator-hashable?
+    comparator-if<=>
+    comparator-ordered?
+    comparator-ordering-predicate
+    comparator-register-default!
+    comparator-test-type
+    comparator-type-test-predicate
+    comparator?
+    default-hash
+    hash-bound
+    hash-salt
+    make-comparator
+    make-default-comparator
+    make-eq-comparator
+    make-equal-comparator
+    make-eqv-comparator
+    make-list-comparator
+    make-pair-comparator
+    make-vector-comparator
+    number-hash
+    string-ci-hash
+    string-hash
+    symbol-hash))
+
 (define-standard-library '(srfi 131)
   '(define-record-type))
+
+(define-standard-library '(srfi 143)
+  '(fixnum?
+    fx*
+    fx*/carry
+    fx+
+    fx+/carry
+    fx-
+    fx-/carry
+    fx-greatest
+    fx-least
+    fx-width
+    fx<=?
+    fx<?
+    fx=?
+    fx>=?
+    fx>?
+    fxabs
+    fxand
+    fxarithmetic-shift
+    fxarithmetic-shift-left
+    fxarithmetic-shift-right
+    fxbit-count
+    fxbit-field
+    fxbit-field-reverse
+    fxbit-field-rotate
+    fxbit-set?
+    fxcopy-bit
+    fxeven?
+    fxfirst-set-bit
+    fxif
+    fxior
+    fxlength
+    fxmax
+    fxmin
+    fxneg
+    fxnegative?
+    fxnot
+    fxodd?
+    fxpositive?
+    fxquotient
+    fxremainder
+    fxsqrt
+    fxsquare
+    fxxor
+    fxzero?))
+
+;;;; Synthetic libraries
+
+;;; A synthetic library is one that's derived from legacy packages, much like a
+;;; standard library, with a little more flexibility in where the exports come
+;;; from.
+
+(define (define-synthetic-library name source-package package-pred)
+  (set! synthetic-libraries
+	(cons (list name source-package package-pred)
+	      synthetic-libraries))
+  unspecific)
+
+(define synthetic-libraries '())
+
+(define (package-predicate:name-prefix prefix)
+  (lambda (pd)
+    (let ((name (package-description/name pd)))
+      (and (>= (length name) (length prefix))
+	   (equal? (take name (length prefix)) prefix)))))
+
+(define-synthetic-library '(mit legacy runtime) '()
+  (package-predicate:name-prefix '(runtime)))
+
+(define-synthetic-library '(mit library) '(runtime)
+  (package-predicate:name-prefix '(runtime library)))
+
+(define initial-host-library-db)
+(define (initialize-synthetic-libraries! package-file)
+  (for-each (lambda (p)
+	      (let ((library (car p))
+		    (source-package (cadr p))
+		    (package-pred (caddr p)))
+		(make-synthetic-library library
+		  (get-exports package-file library source-package package-pred)
+		  (->environment source-package))))
+	    synthetic-libraries)
+  (set! initial-host-library-db (copy-library-db host-library-db 'initial-host))
+  (check-standard-libraries!))
+
+(define (new-library-db #!optional name)
+  (copy-library-db initial-host-library-db name))
+
+(define (make-synthetic-library library exports environment)
+  (register-library! (make-library library
+				   'exports exports
+				   'environment environment)
+		     host-library-db))
+
+(define (get-exports package-file library source-package package-pred)
+  (append-map (lambda (pd)
+		(package-exports pd library source-package))
+	      (filter package-pred
+		      (vector->list (package-file/descriptions package-file)))))
+
+(define (package-exports pd library source-package)
+  (filter-map (lambda (link)
+		(and (equal? source-package (link-description/package link))
+		     (not (link-description/status link))
+		     (make-library-ixport library
+					  (link-description/outer-name link))))
+	      (vector->list (package-description/exports pd))))

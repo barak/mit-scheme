@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,66 +28,49 @@ USA.
 ;;; package: (runtime pretty-printer)
 
 (declare (usual-integrations))
-
-(define param:pp-arity-dispatched-procedure-style)
-(define param:pp-auto-highlighter)
-(define param:pp-avoid-circularity?)
-(define param:pp-default-as-code?)
-(define param:pp-forced-x-size)
-(define param:pp-lists-as-tables?)
-(define param:pp-named-lambda->define?)
-(define param:pp-no-highlights?)
-(define param:pp-primitives-by-name?)
-(define param:pp-save-vertical-space?)
-(define param:pp-uninterned-symbols-by-name?)
 
-(add-boot-init!
- (lambda ()
-   ;; Controls the appearance of procedures in the CASE statement used
-   ;; to describe an arity dispatched procedure:
-   ;;  FULL:  full bodies of procedures
-   ;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
-   ;;  SHORT: procedures appear in #[...] syntax
-   (set! param:pp-arity-dispatched-procedure-style
-	 (make-settable-parameter 'full))
-   (set! param:pp-auto-highlighter (make-settable-parameter #f))
-   (set! param:pp-avoid-circularity? (make-settable-parameter #f))
-   (set! param:pp-default-as-code? (make-settable-parameter #t))
-   (set! param:pp-forced-x-size (make-settable-parameter #f))
-   (set! param:pp-lists-as-tables? (make-settable-parameter #t))
-   (set! param:pp-named-lambda->define? (make-settable-parameter #f))
-   (set! param:pp-no-highlights? (make-settable-parameter #t))
-   (set! param:pp-primitives-by-name? (make-settable-parameter #t))
-   (set! param:pp-save-vertical-space? (make-settable-parameter #f))
-   (set! param:pp-uninterned-symbols-by-name? (make-settable-parameter #t))
-
-   (set! x-size (make-unsettable-parameter #f))
-   (set! output-port (make-unsettable-parameter #f))
-   (set! forced-indentation (special-printer kernel/forced-indentation))
-   (set! pressured-indentation (special-printer kernel/pressured-indentation))
-   (set! print-procedure (special-printer kernel/print-procedure))
-   (set! print-let-expression (special-printer kernel/print-let-expression))
-   (set! print-case-expression (special-printer kernel/print-case-expression))
-   (set! code-dispatch-list
-	 (make-unsettable-parameter
-	  `((cond . ,forced-indentation)
-	    (case . ,print-case-expression)
-	    (if . ,forced-indentation)
-	    (or . ,forced-indentation)
-	    (and . ,forced-indentation)
-	    (let . ,print-let-expression)
-	    (let* . ,print-let-expression)
-	    (letrec . ,print-let-expression)
-	    (fluid-let . ,print-let-expression)
-	    (define . ,print-procedure)
-	    (define-integrable . ,print-procedure)
-	    (lambda . ,print-procedure)
-	    (named-lambda . ,print-procedure))))
-   (set! dispatch-list (make-unsettable-parameter (code-dispatch-list)))
-   (set! dispatch-default (make-unsettable-parameter print-combination))
-   (set! cocked-object (generate-uninterned-symbol))
-   unspecific))
+(add-boot-deps! '(runtime compound-predicate)
+		'(runtime dynamic)
+		'(runtime predicate-dispatch))
 
+;; Controls the appearance of procedures in the CASE statement used
+;; to describe an arity dispatched procedure:
+;;  FULL:  full bodies of procedures
+;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
+;;  SHORT: procedures appear in #[...] syntax
+(define-deferred param:pp-arity-dispatched-procedure-style
+  (make-settable-parameter 'full))
+
+(define-deferred param:pp-auto-highlighter
+  (make-settable-parameter #f))
+
+(define-deferred param:pp-avoid-circularity?
+  (make-settable-parameter #f))
+
+(define-deferred param:pp-default-as-code?
+  (make-settable-parameter #t))
+
+(define-deferred param:pp-forced-x-size
+  (make-settable-parameter #f))
+
+(define-deferred param:pp-lists-as-tables?
+  (make-settable-parameter #t))
+
+(define-deferred param:pp-named-lambda->define?
+  (make-settable-parameter #f))
+
+(define-deferred param:pp-no-highlights?
+  (make-settable-parameter #t))
+
+(define-deferred param:pp-primitives-by-name?
+  (make-settable-parameter #t))
+
+(define-deferred param:pp-save-vertical-space?
+  (make-settable-parameter #f))
+
+(define-deferred param:pp-uninterned-symbols-by-name?
+  (make-settable-parameter #t))
+
 (define *pp-arity-dispatched-procedure-style* #!default)
 (define *pp-auto-highlighter* #!default)
 (define *pp-avoid-circularity?* #!default)
@@ -99,7 +82,7 @@ USA.
 (define *pp-primitives-by-name* #!default)
 (define *pp-save-vertical-space?* #!default)
 (define *pp-uninterned-symbols-by-name* #!default)
-
+
 (define (get-param:pp-arity-dispatched-procedure-style)
   (if (default-object? *pp-arity-dispatched-procedure-style*)
       (param:pp-arity-dispatched-procedure-style)
@@ -176,12 +159,10 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! pp-description
-	 (standard-predicate-dispatcher 'pp-description 1))
-
-   (define-predicate-dispatch-default-handler pp-description
-     (lambda (object)
-       (declare (ignore object))
-       #f))
+	 (standard-predicate-dispatcher 'pp-description 1
+	   (lambda (object)
+	     (declare (ignore object))
+	     #f)))
 
    (set! define-pp-describer
 	 (named-lambda (define-pp-describer predicate describer)
@@ -189,14 +170,12 @@ USA.
 	     (list predicate)
 	     describer)))
 
-   (run-deferred-boot-actions 'pp-describers)
-
    (define-pp-describer weak-pair?
      (lambda (wp)
        `((weak-car ,(weak-car wp))
 	 (weak-cdr ,(weak-cdr wp)))))
 
-   (define-pp-describer cell?
+   (define-pp-describer (conjoin cell? (complement promise?))
      (lambda (cell)
        `((contents ,(cell-contents cell)))))))
 
@@ -244,21 +223,22 @@ USA.
 		   default
 		   (not (scode-constant? object))))
 	     as-code?)))
-    (pp-top-level (let ((sexp
-			 (if (scode-constant? object)
-			     object
-			     (unsyntax object))))
-		    (if (and as-code?
-			     (pair? sexp)
-			     (eq? (car sexp) 'named-lambda)
-			     (get-param:pp-named-lambda->define?))
-			(if (and (eq? 'lambda
-				      (get-param:pp-named-lambda->define?))
-				 (pair? (cdr sexp))
-				 (pair? (cadr sexp)))
-			    `(lambda ,(cdadr sexp) ,@(cddr sexp))
-			    `(define ,@(cdr sexp)))
-			sexp))
+    (pp-top-level (if as-code?
+		      (let ((sexp
+			     (if (scode-constant? object)
+				 object
+				 (unsyntax object))))
+			(if (and (pair? sexp)
+				 (eq? (car sexp) 'named-lambda)
+				 (get-param:pp-named-lambda->define?))
+			    (if (and (eq? 'lambda
+					  (get-param:pp-named-lambda->define?))
+				     (pair? (cdr sexp))
+				     (pair? (cadr sexp)))
+				`(lambda ,(cdadr sexp) ,@(cddr sexp))
+				`(define ,@(cdr sexp)))
+			    sexp))
+		      object)
 		  (if (default-object? port) (current-output-port) port)
 		  as-code?
 		  (if (default-object? indentation) 0 indentation)
@@ -301,7 +281,7 @@ USA.
     (if (string? end)
 	(string-length end)
 	0)))
-
+
 (define (pp-top-level expression port as-code? indentation list-depth)
   (parameterize ((x-size
 		  (- (or (get-param:pp-forced-x-size)
@@ -325,8 +305,8 @@ USA.
 	  (print-non-code-node node indentation list-depth))
       (output-port/discretionary-flush port))))
 
-(define x-size)
-(define output-port)
+(define-deferred x-size (make-unsettable-parameter #f))
+(define-deferred output-port (make-unsettable-parameter #f))
 
 (define-integrable (*print-char char)
   (output-port/write-char (output-port) char))
@@ -502,7 +482,7 @@ USA.
 	  (and (>= available-space (+ (-1+ n-cols) (reduce + 0 widths)))
 	       (let ((last-n-1 (remainder (-1+ n-nodes) n-cols)))
 		 (>= available-space
-		     (+ (+ last-n-1 (reduce + 0 (list-head widths last-n-1)))
+		     (+ (+ last-n-1 (reduce + 0 (take widths last-n-1)))
 			(+ last-size depth))))))
 
 	(define (find-max-width posn step)
@@ -579,9 +559,32 @@ USA.
 	   (print-column nodes column depth))))
   (*print-close))
 
-(define dispatch-list)
-(define dispatch-default)
-(define code-dispatch-list)
+(define-deferred code-dispatch-list
+  (make-unsettable-parameter
+   `(
+     (and . ,forced-indentation)
+     (case . ,print-case-expression)
+     (cond . ,forced-indentation)
+     (define . ,print-procedure)
+     (define-integrable . ,print-procedure)
+     (fluid-let . ,print-let-like-expression)
+     (if . ,forced-indentation)
+     (lambda . ,print-procedure)
+     (let . ,print-let-expression)
+     (let* . ,print-let-like-expression)
+     (let*-values . ,print-let-like-expression)
+     (let-values . ,print-let-like-expression)
+     (letrec . ,print-let-like-expression)
+     (letrec* . ,print-let-like-expression)
+     (named-lambda . ,print-procedure)
+     (or . ,forced-indentation)
+     (parameterize . ,print-let-like-expression))))
+
+(define-deferred dispatch-list
+  (make-unsettable-parameter (code-dispatch-list)))
+
+(define-deferred dispatch-default
+  (make-unsettable-parameter print-combination))
 
 (define ((special-printer procedure) nodes column depth)
   (*print-open)
@@ -593,40 +596,61 @@ USA.
 		 (+ column 2)
 		 (+ depth 1)))
   (*print-close))
-
+
 ;;; Force the indentation to be an optimistic column.
 
-(define forced-indentation)
-(define (kernel/forced-indentation nodes optimistic pessimistic depth)
-  pessimistic
-  (print-column nodes optimistic depth))
+(define forced-indentation
+  (special-printer
+   (lambda (nodes optimistic pessimistic depth)
+     (declare (ignore pessimistic))
+     (print-column nodes optimistic depth))))
 
 ;;; Pressure the indentation to be an optimistic column; no matter
 ;;; what happens, insist on a column, but accept a pessimistic one if
 ;;; necessary.
 
-(define pressured-indentation)
-(define (kernel/pressured-indentation nodes optimistic pessimistic depth)
-  (if (fits-as-column? nodes optimistic depth)
-      (print-guaranteed-column nodes optimistic)
-      (begin
-	(tab-to pessimistic)
-	(print-column nodes pessimistic depth))))
-
+(define pressured-indentation
+  (special-printer
+   (lambda (nodes optimistic pessimistic depth)
+     (if (fits-as-column? nodes optimistic depth)
+	 (print-guaranteed-column nodes optimistic)
+	 (begin
+	   (tab-to pessimistic)
+	   (print-column nodes pessimistic depth))))))
+
 ;;; Print a procedure definition.  The bound variable pattern goes on
 ;;; the same line as the keyword, while everything else gets indented
 ;;; pessimistically.  We may later want to modify this to make higher
 ;;; order procedure patterns be printed more carefully.
 
-(define print-procedure)
-(define (kernel/print-procedure nodes optimistic pessimistic depth)
-  (print-node (car nodes) optimistic 0)
-  (let ((rest (cdr nodes)))
-    (if (not (null? rest))
-	(begin
-	  (tab-to pessimistic)
-	  (print-column (cdr nodes) pessimistic depth)))))
+(define print-procedure
+  (special-printer
+   (lambda (nodes optimistic pessimistic depth)
+     (print-node (car nodes) optimistic 0)
+     (let ((rest (cdr nodes)))
+       (if (not (null? rest))
+	   (begin
+	     (tab-to pessimistic)
+	     (print-column (cdr nodes) pessimistic depth)))))))
 
+(define print-case-expression
+  (special-printer
+   (lambda (nodes optimistic pessimistic depth)
+     (define (print-cases nodes)
+       (if (not (null? nodes))
+	   (begin
+	     (tab-to pessimistic)
+	     (print-column nodes pessimistic depth))))
+     (cond ((null? (cdr nodes))
+	    (print-node (car nodes) optimistic depth))
+	   ((fits-within? (car nodes) optimistic 0)
+	    (print-guaranteed-node (car nodes))
+	    (print-cases (cdr nodes)))
+	   (else
+	    (tab-to (+ pessimistic 2))
+	    (print-node (car nodes) optimistic 0)
+	    (print-cases (cdr nodes)))))))
+
 ;;; Print a binding form.  There is a great deal of complication here,
 ;;; some of which is to gracefully handle the case of a badly-formed
 ;;; binder.  But most important is the code that handles the name when
@@ -635,61 +659,57 @@ USA.
 ;;; start on that line if possible; otherwise they line up under the
 ;;; name.  The body, of course, is always indented pessimistically.
 
-(define print-let-expression)
-(define (kernel/print-let-expression nodes optimistic pessimistic depth)
-  (let ((print-body
-	 (lambda (nodes)
-	   (if (not (null? nodes))
-	       (begin
-		 (tab-to pessimistic)
-		 (print-column nodes pessimistic depth))))))
-    (cond ((null? (cdr nodes))
-	   ;; screw case
-	   (print-node (car nodes) optimistic depth))
-	  ((symbol? (car nodes))
-	   ;; named let
-	   (*print-symbol (car nodes))
-	   (let ((new-optimistic
-		  (+ optimistic (+ 1 (symbol-length (car nodes))))))
-	     (cond ((fits-within? (cadr nodes) new-optimistic 0)
-		    (*print-space)
-		    (print-guaranteed-node (cadr nodes))
-		    (print-body (cddr nodes)))
-		   ((and (list-node? (cadr nodes))
-			 (fits-as-column? (node-subnodes (cadr nodes))
-					  (+ new-optimistic 2)
-					  0))
-		    (*print-space)
-		    (*print-open)
-		    (print-guaranteed-column (node-subnodes (cadr nodes))
-					     (+ new-optimistic 1))
-		    (*print-close)
-		    (print-body (cddr nodes)))
-		   (else
-		    (tab-to optimistic)
-		    (print-node (cadr nodes) optimistic 0)
-		    (print-body (cddr nodes))))))
-	  (else
-	   ;; ordinary let
-	   (print-node (car nodes) optimistic 0)
-	   (print-body (cdr nodes))))))
+(define print-let-expression
+  (special-printer
+   (lambda (nodes optimistic pessimistic depth)
+     (let ((print-body
+	    (lambda (nodes)
+	      (if (not (null? nodes))
+		  (begin
+		    (tab-to pessimistic)
+		    (print-column nodes pessimistic depth))))))
+       (cond ((null? (cdr nodes))
+	      ;; screw case
+	      (print-node (car nodes) optimistic depth))
+	     ((symbol? (car nodes))
+	      ;; named let
+	      (*print-symbol (car nodes))
+	      (let ((new-optimistic
+		     (+ optimistic (+ 1 (symbol-length (car nodes))))))
+		(cond ((fits-within? (cadr nodes) new-optimistic 0)
+		       (*print-space)
+		       (print-guaranteed-node (cadr nodes))
+		       (print-body (cddr nodes)))
+		      ((and (list-node? (cadr nodes))
+			    (fits-as-column? (node-subnodes (cadr nodes))
+					     (+ new-optimistic 2)
+					     0))
+		       (*print-space)
+		       (*print-open)
+		       (print-guaranteed-column (node-subnodes (cadr nodes))
+						(+ new-optimistic 1))
+		       (*print-close)
+		       (print-body (cddr nodes)))
+		      (else
+		       (tab-to optimistic)
+		       (print-node (cadr nodes) optimistic 0)
+		       (print-body (cddr nodes))))))
+	     (else
+	      ;; ordinary let
+	      (print-node (car nodes) optimistic 0)
+	      (tab-to pessimistic)
+	      (print-column (cdr nodes) pessimistic depth)))))))
 
-(define print-case-expression)
-(define (kernel/print-case-expression nodes optimistic pessimistic depth)
-  (define (print-cases nodes)
-    (if (not (null? nodes))
-	(begin
-	  (tab-to pessimistic)
-	  (print-column nodes pessimistic depth))))
-  (cond ((null? (cdr nodes))
-	 (print-node (car nodes) optimistic depth))
-	((fits-within? (car nodes) optimistic 0)
-	 (print-guaranteed-node (car nodes))
-	 (print-cases (cdr nodes)))
-	(else
-	 (tab-to (+ pessimistic 2))
-	 (print-node (car nodes) optimistic 0)
-	 (print-cases (cdr nodes)))))
+(define print-let-like-expression
+  (special-printer
+   (lambda (nodes optimistic pessimistic depth)
+     (if (pair? (cdr nodes))
+	 (begin
+	   (print-node (car nodes) optimistic 0)
+	   (tab-to pessimistic)
+	   (print-column (cdr nodes) pessimistic depth))
+	 ;; screw case
+	 (print-node (car nodes) optimistic depth)))))
 
 ;;;; Alignment
 
@@ -728,9 +748,19 @@ USA.
 
 (define (numerical-walk object list-depth)
   (define (numerical-walk-no-auto-highlight object list-depth)
-    (cond ((get-print-method object)
-           (walk-custom object list-depth))
-          ((and (pair? object)
+    (cond ((pretty-printer-highlight? object)
+	   ;; (1) see note below.
+	   (let ((rest (walk-highlighted-object
+			object list-depth
+			numerical-walk-no-auto-highlight)))
+	     (make-highlighted-node (+ (pph/start-string-length object)
+				       (pph/end-string-length object)
+				       (node-size rest))
+				    object
+				    rest)))
+	  ((get-print-method object)
+	   (walk-custom object list-depth))
+	  ((and (pair? object)
 		(not (named-list? object)))
 	   (let ((prefix (prefix-pair? object)))
 	     (if prefix
@@ -743,16 +773,6 @@ USA.
 		   (interned-symbol? object))
 	       object
 	       (walk-custom object list-depth)))
-	  ((pretty-printer-highlight? object)
-	   ;; (1) see note below.
-	   (let ((rest (walk-highlighted-object
-			object list-depth
-			numerical-walk-no-auto-highlight)))
-	     (make-highlighted-node (+ (pph/start-string-length object)
-				       (pph/end-string-length object)
-				       (node-size rest))
-				    object
-				    rest)))
 	  ((and (vector? object)
 		(not (named-vector? object)))
 	   (if (zero? (vector-length object))
@@ -1024,10 +1044,32 @@ USA.
 			(numerical-walk-terminating
 			 (car pair) half-pointer/queue list-depth)))
 		  (loop (cdr pair) (+ list-breadth 1)))))))))
+
+;;; This procedure creates the circularity object which is printed
+;;; within circular structures.
+
+(define (circularity-string queue)
+  (let ((depth (queue-depth queue))
+	(cdrs (queue/past-cdrs queue)))
+    (string-append
+     (cond ((= depth 1) "#[circularity (current parenthetical level")
+	   ((= depth 2) "#[circularity (up 1 parenthetical level")
+	   (else
+	    (string-append "#[circularity (up "
+			   (number->string (-1+ depth))
+			   " parenthetical levels")))
+     (cond ((= cdrs 0) ")]")
+	   ((= cdrs 1) ", downstream 1 cdr.)]")
+	   (else
+	    (string-append ", downstream "
+			   (number->string cdrs)
+			   " cdrs.)]"))))))
+
 
 ;;;; These procedures allow the walkers to interact with the queue.
 
-(define cocked-object)
+(define-deferred cocked-object
+  (generate-uninterned-symbol))
 
 (define (advance half-object queue)
   (cond ((vector? half-object)
@@ -1169,27 +1211,6 @@ USA.
 	 (operating-list
 	  (flatten (cdr head) (car head) (cdr tail) (car tail))))
     (proc-list-iter operating-list #f)))
-
-
-;;; This procedure creates the circularity object which is printed
-;;; within circular structures.
-
-(define (circularity-string queue)
-  (let ((depth (queue-depth queue))
-	(cdrs (queue/past-cdrs queue)))
-    (string-append
-     (cond ((= depth 1) "#[circularity (current parenthetical level")
-	   ((= depth 2) "#[circularity (up 1 parenthetical level")
-	   (else
-	    (string-append "#[circularity (up "
-			   (number->string (-1+ depth))
-			   " parenthetical levels")))
-     (cond ((= cdrs 0) ")]")
-	   ((= cdrs 1) ", downstream 1 cdr.)]")
-	   (else
-	    (string-append ", downstream "
-			   (number->string cdrs)
-			   " cdrs.)]"))))))
 
 
 ;;;; Node Model

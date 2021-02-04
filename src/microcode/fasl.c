@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -209,6 +209,8 @@ decode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
     (FASLHDR_VERSION (h)) = (FASL_VERSION (object));
     (FASLHDR_ARCH (h)) = (FASL_ARCH (object));
   }
+  if ((check_fasl_version (h)) != FASL_FILE_FINE)
+    return (false);
   {
     SCHEME_OBJECT object = (raw[FASL_OFFSET_CI_VERSION]);
     (FASLHDR_CC_VERSION (h)) = (CI_VERSION (object));
@@ -311,6 +313,17 @@ fasl_cc_address (SCHEME_OBJECT o, fasl_header_t * h)
     return (((insn_t *) (FASLHDR_MEMORY_BASE (h))) + (OBJECT_DATUM (o)));
   if ((FASLHDR_ARCH (h)) == CURRENT_FASL_ARCH)
     return (CC_ENTRY_ADDRESS (o));
+  abort ();
+  return (0);
+}
+
+insn_t *
+fasl_cc_return (SCHEME_OBJECT o, fasl_header_t * h)
+{
+  if ((FASLHDR_MEMORY_BASE (h)) != 0)
+    return (((insn_t *) (FASLHDR_MEMORY_BASE (h))) + (OBJECT_DATUM (o)));
+  if ((FASLHDR_ARCH (h)) == CURRENT_FASL_ARCH)
+    return (CC_RETURN_ADDRESS (o));
   abort ();
   return (0);
 }

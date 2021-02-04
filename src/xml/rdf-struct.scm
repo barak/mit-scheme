@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -114,8 +114,7 @@ USA.
 (define-guarantee rdf-graph "RDF graph")
 
 (define (make-rdf-graph triples)
-  (guarantee-list-of-type triples rdf-triple? "list of RDF triples"
-			  'MAKE-RDF-GRAPH)
+  (guarantee-list-of rdf-triple? triples 'make-rdf-graph)
   (let ((triples
 	 (if (pair? triples)
 	     (let ((head
@@ -175,7 +174,7 @@ USA.
 	 (unhash-object (vector-ref v 0)))))
 
 (define parse-bnode
-  (let ((digits (ascii-range->char-set #x30 #x3A)))
+  (let ((digits (ucs-range->char-set #x30 #x3A)))
     (*parser
      (seq (noise "_:B")
 	  (map (lambda (s) (string->number s 10 #t))
@@ -238,10 +237,10 @@ USA.
        (*match-symbol match-language object)))
 
 (define match-language
-  (let* ((language-head (ascii-range->char-set #x61 #x7B))
+  (let* ((language-head (ucs-range->char-set #x61 #x7B))
 	 (language-tail
 	  (char-set-union language-head
-			  (ascii-range->char-set #x30 #x3A))))
+			  (ucs-range->char-set #x30 #x3A))))
     (*matcher
      (seq (+ (char-set language-head))
 	  (* (seq #\- (+ (char-set language-tail))))))))

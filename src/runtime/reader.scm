@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,10 @@ USA.
 ;;; package: (runtime reader)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic)
+		'(runtime character-set)
+		'(runtime error-handler))
 
 (define *parser-associate-positions?* #!default)
 (define *parser-canonicalize-symbols?* #!default)
@@ -433,9 +437,7 @@ USA.
   ctx
   (let ((string (read-atom db (list char))))
     (or (maybe-keyword db string)
-	(if (string=? string "nan.0")
-	    (flo:nan.0)
-	    (make-symbol db string)))))
+	(make-symbol db string))))
 
 (define (maybe-keyword db string)
   (cond ((and (eq? 'suffix (db-keyword-style db))
@@ -769,6 +771,7 @@ USA.
 	  ((string-maybe-ci=? db name "eof") (eof-object))
 	  ((string-maybe-ci=? db name "default") (default-object))
 	  ((string-maybe-ci=? db name "unspecific") unspecific)
+	  ((string-maybe-ci=? db name "reclaimed") (gc-reclaimed-object))
 	  ((string=? name "fold-case")
 	   (set-db-fold-case! db #t)
 	   continue-reading)

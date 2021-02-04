@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,22 +28,16 @@ USA.
 ;;; package: (runtime advice)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic))
 
-(define entry-advice-population)
-(define exit-advice-population)
+(define entry-advice-population (make-population))
+(define exit-advice-population (make-population))
 
-(define (initialize-package!)
-  (set! entry-advice-population (make-population))
-  (set! exit-advice-population (make-population))
-  (set! advice-continuation (make-unsettable-parameter #f))
-  (set! the-arguments (make-unsettable-parameter #f))
-  (set! the-procedure (make-unsettable-parameter #f))
-  (set! the-result (make-unsettable-parameter #f))
-  unspecific)
-
-(define the-arguments)
-(define the-procedure)
-(define the-result)
+(define-deferred advice-continuation (make-unsettable-parameter #f))
+(define-deferred the-arguments (make-unsettable-parameter #f))
+(define-deferred the-procedure (make-unsettable-parameter #f))
+(define-deferred the-result (make-unsettable-parameter #f))
 
 (define (*args*)
   (list-copy (the-arguments)))
@@ -108,8 +102,6 @@ USA.
 					   environment))))
 			     (cdr state))
 		   value))))))))))
-
-(define advice-continuation)
 
 ;;;; Advisers
 
@@ -149,9 +141,9 @@ USA.
 	   (let ((entry-advice* (edit-entry entry-advice))
 		 (exit-advice* (edit-exit exit-advice)))
 	     (if (not (eq? entry-advice* entry-advice))
-		 (add-to-population! entry-advice-population *lambda))
+		 (add-new-to-population! entry-advice-population *lambda))
 	     (if (not (eq? exit-advice* exit-advice))
-		 (add-to-population! exit-advice-population *lambda))
+		 (add-new-to-population! exit-advice-population *lambda))
 	     (cons entry-advice* exit-advice*)))))
     (lambda-wrap-body! *lambda
       (lambda (body state receiver)
@@ -287,7 +279,7 @@ USA.
 		  (write-args arguments)
 		  (write-string "]" port))
 		(begin
-		  (write-args (list-head arguments 10))
+		  (write-args (take arguments 10))
 		  (newline port)
 		  (write-string "          ...]" port))))))
     (newline port)))

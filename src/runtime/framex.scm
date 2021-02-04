@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime debugging-info)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables) '(runtime continuation-parser))
 
 (define (stack-frame/debugging-info frame)
   (let ((method
@@ -49,6 +51,9 @@ USA.
 	  undefined-environment
 	  undefined-expression))
 
+(define undefined-expression (list 'undefined-expression))
+(define undefined-environment (list 'undefined-environment))
+
 (define (debugging-info/undefined-expression? expression)
   (or (eq? expression undefined-expression)
       (debugging-info/noise? expression)))
@@ -69,8 +74,12 @@ USA.
 (define-integrable (debugging-info/unknown-expression? expression)
   (eq? expression unknown-expression))
 
+(define unknown-expression (list 'unknown-expression))
+
 (define-integrable (debugging-info/compiled-code? expression)
   (eq? expression compiled-code))
+
+(define compiled-code (list 'compiled-code))
 
 (define (make-evaluated-object object)
   (if (scode-constant? object)
@@ -81,6 +90,8 @@ USA.
   (and (pair? expression)
        (eq? (car expression) evaluated-object-tag)))
 
+(define evaluated-object-tag (list 'evaluated))
+
 (define-integrable (debugging-info/evaluated-object-value expression)
   (cdr expression))
 
@@ -89,12 +100,8 @@ USA.
       undefined-expression
       subexpression))
 
-(define undefined-expression "undefined expression")
-(define undefined-environment "undefined environment")
-(define unknown-expression "unknown expression")
-(define compiled-code "compiled code")
-(define evaluated-object-tag "evaluated")
-(define stack-frame-type/pop-return-error)
+(define-deferred stack-frame-type/pop-return-error
+  (microcode-return/name->type 'pop-return-error))
 
 (define (method/null frame)
   frame
@@ -258,50 +265,49 @@ USA.
 	    (else
 	     (lose))))))
 
-(define (initialize-package!)
-  (set! stack-frame-type/pop-return-error
-	(microcode-return/name->type 'pop-return-error))
-  (record-method 'combination-apply method/null)
-  (record-method 'reenter-compiled-code method/null)
-  (let ((method (method/standard &pair-car)))
-    (record-method 'disjunction-decide method)
-    (record-method 'sequence-continue method))
-  (let ((method (method/standard &pair-cdr)))
-    (record-method 'assignment-continue method)
-    (record-method 'definition-continue method))
-  (let ((method (method/standard &triple-first)))
-    (record-method 'conditional-decide method))
-  (let ((method (method/expression-only &pair-car)))
-    (record-method 'access-continue method))
-  (record-method 'combination-save-value method/combination-save-value)
-  (record-method 'eval-error method/eval-error)
-  (record-method 'force-snap-thunk method/force-snap-thunk)
-  (let ((method (method/application-frame 3)))
-    (record-method 'internal-apply method)
-    (record-method 'internal-apply-val method))
-  (let ((method (method/compiler-reference-trap make-scode-variable)))
-    (record-method 'compiler-reference-trap-restart method)
-    (record-method 'compiler-safe-reference-trap-restart method))
-  (record-method 'compiler-unassigned?-trap-restart
-		 (method/compiler-reference-trap make-scode-unassigned?))
-  (record-method 'compiler-assignment-trap-restart
-		 (method/compiler-assignment-trap make-scode-assignment))
-  (record-method 'compiler-lookup-apply-trap-restart
-		 method/compiler-lookup-apply-trap-restart)
-  (record-method 'compiler-operator-lookup-trap-restart
-		 method/compiler-lookup-apply-trap-restart)
-  (record-method 'compiler-error-restart
-		 method/compiler-error-restart)
-  (record-method 'hardware-trap method/hardware-trap)
-  (set-stack-frame-type/debugging-info-method!
-   stack-frame-type/compiled-return-address
-   method/compiled-code)
-  (set-stack-frame-type/debugging-info-method!
-   stack-frame-type/interrupt-compiled-procedure
-   method/compiled-code)
-  (set-stack-frame-type/debugging-info-method!
-   stack-frame-type/interrupt-compiled-expression
-   method/compiled-code))
+(add-boot-init!
+ (lambda ()
+   (record-method 'combination-apply method/null)
+   (record-method 'reenter-compiled-code method/null)
+   (let ((method (method/standard &pair-car)))
+     (record-method 'disjunction-decide method)
+     (record-method 'sequence-continue method))
+   (let ((method (method/standard &pair-cdr)))
+     (record-method 'assignment-continue method)
+     (record-method 'definition-continue method))
+   (let ((method (method/standard &triple-first)))
+     (record-method 'conditional-decide method))
+   (let ((method (method/expression-only &pair-car)))
+     (record-method 'access-continue method))
+   (record-method 'combination-save-value method/combination-save-value)
+   (record-method 'eval-error method/eval-error)
+   (record-method 'force-snap-thunk method/force-snap-thunk)
+   (let ((method (method/application-frame 3)))
+     (record-method 'internal-apply method)
+     (record-method 'internal-apply-val method))
+   (let ((method (method/compiler-reference-trap make-scode-variable)))
+     (record-method 'compiler-reference-trap-restart method)
+     (record-method 'compiler-safe-reference-trap-restart method))
+   (record-method 'compiler-unassigned?-trap-restart
+		  (method/compiler-reference-trap make-scode-unassigned?))
+   (record-method 'compiler-assignment-trap-restart
+		  (method/compiler-assignment-trap make-scode-assignment))
+   (record-method 'compiler-lookup-apply-trap-restart
+		  method/compiler-lookup-apply-trap-restart)
+   (record-method 'compiler-operator-lookup-trap-restart
+		  method/compiler-lookup-apply-trap-restart)
+   (record-method 'compiler-error-restart
+		  method/compiler-error-restart)
+   (record-method 'hardware-trap method/hardware-trap)
+   (set-stack-frame-type/debugging-info-method!
+    stack-frame-type/compiled-return-address
+    method/compiled-code)
+   (set-stack-frame-type/debugging-info-method!
+    stack-frame-type/interrupt-compiled-procedure
+    method/compiled-code)
+   (set-stack-frame-type/debugging-info-method!
+    stack-frame-type/interrupt-compiled-expression
+    method/compiled-code)))
 
 (define (&vector-second vector)
   (&vector-ref vector 1))
@@ -320,4 +326,4 @@ USA.
 (define-integrable (set-stack-frame-type/debugging-info-method! type method)
   (1d-table/put! (stack-frame-type/properties type) method-tag method))
 
-(define method-tag "stack-frame-type/debugging-info-method")
+(define method-tag (list 'debugging-info-method))

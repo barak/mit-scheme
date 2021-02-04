@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,10 @@ USA.
 ;;; package: (runtime printer)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables)
+		'(runtime dynamic)
+		'(runtime predicate-dispatch))
 
 (define *unparse-abbreviate-quotations?* #!default)
 (define *unparse-compound-procedure-names?* #!default)
@@ -365,7 +369,10 @@ USA.
 	 (standard-print-method-parts print-method object))))
 
 (define-deferred get-print-method
-  (standard-predicate-dispatcher 'get-print-method 1))
+  (standard-predicate-dispatcher 'get-print-method 1
+    (lambda (object)
+      (declare (ignore object))
+      #f)))
 
 (add-boot-init!
  (lambda ()
@@ -376,11 +383,7 @@ USA.
 	     (lambda (object)
 	       (declare (ignore object))
 	       print-method))))
-   (define-predicate-dispatch-default-handler get-print-method
-     (lambda (object)
-       (declare (ignore object))
-       #f))
-   (run-deferred-boot-actions 'print-methods)))
+   unspecific))
 
 (define dispatch-table)
 (add-boot-init!
@@ -420,7 +423,13 @@ USA.
 	       (uninterned-symbol ,print-uninterned-symbol)
 	       (variable ,print-variable)
 	       (vector ,print-vector)
-	       (vector-1b ,print-bit-string)))))
+	       (vector-1b ,print-bit-string)))
+   ;; XXX Provisional until next release with the entry/return split.
+   (cond ((microcode-type/name->code 'compiled-return)
+	  => (lambda (type-code:compiled-return)
+	       (vector-set! dispatch-table
+			    type-code:compiled-return
+			    print-compiled-entry))))))
 
 ;;;; Low Level Operations
 
@@ -614,10 +623,12 @@ USA.
 	       ((eq? object lambda-tag:optional) "#!optional")
 	       ((eq? object lambda-tag:rest) "#!rest")
 	       ((eq? object unspecific) "#!unspecific")
+	       ((gc-reclaimed-object? object) "#!reclaimed")
 	       (else #f))))
     (if string
 	(*print-string string context)
-	(print-default object context))))
+	(*print-with-brackets (user-object-type object) object context
+	  (list (printing-item *print-datum object))))))
 
 (define (print-interned-symbol symbol context)
   (print-symbol symbol context))
@@ -911,7 +922,10 @@ USA.
     (list (scode-lambda-name lambda-object))))
 
 (define (print-variable variable context)
-  (*print-with-brackets 'variable variable context
+  (*print-with-brackets (if (scode-variable-safe? variable)
+			    'safe-variable
+			    'variable)
+			variable context
     (list (scode-variable-name variable))))
 
 (define (print-number object context)

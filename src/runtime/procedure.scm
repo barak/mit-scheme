@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -175,7 +175,8 @@ USA.
 (define (guarantee-procedure-of-arity object arity caller)
   (guarantee procedure? object caller)
   (if (not (procedure-arity-valid? object arity))
-      (error:bad-range-argument object caller)))
+      (error:bad-range-argument object caller))
+  object)
 
 (define (make-procedure-arity min #!optional max simple-ok?)
   (guarantee index-fixnum? min 'make-procedure-arity)
@@ -219,6 +220,15 @@ USA.
 	   (and (procedure-arity-max arity1)
 		(fix:<= (procedure-arity-max arity1)
 			(procedure-arity-max arity2))))))
+
+(define (procedure-arity-intersection a1 a2)
+  (make-procedure-arity (fix:max (procedure-arity-min a1)
+				 (procedure-arity-min a2))
+                        (let ((m1 (procedure-arity-max a1))
+                              (m2 (procedure-arity-max a2)))
+			  (if m1
+			      (if m2 (fix:min m1 m2) m1)
+			      m2))))
 
 (define-integrable (simple-arity? object)
   (index-fixnum? object))
@@ -466,7 +476,7 @@ USA.
 (define-integrable arity-dispatcher-tag
   '|#[(microcode)arity-dispatcher-tag]|)
 
-(defer-boot-action 'fixed-objects
+(seq:after-microcode-tables 'add-action!
   (lambda ()
     (set-fixed-objects-item! 'arity-dispatcher-tag arity-dispatcher-tag)))
 

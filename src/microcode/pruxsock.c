@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -254,7 +254,7 @@ The opened socket is stored in the cdr of WEAK-PAIR.")
 #ifdef HAVE_UNIX_SOCKETS
   SET_PAIR_CDR
     ((ARG_REF (2)),
-     (long_to_integer (OS_open_unix_stream_socket (STRING_ARG (1)))));
+     (long_to_integer (OS_open_unix_stream_socket ((STRING_ARG (1)), 1))));
 #else
   signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
 #endif
@@ -307,7 +307,7 @@ DEFINE_PRIMITIVE ("CREATE-UNIX-SERVER-SOCKET", Prim_create_unix_server_socket, 2
   CHECK_ARG (2, WEAK_PAIR_P);
 #ifdef HAVE_UNIX_SOCKETS
   {
-    Tchannel channel = OS_create_unix_server_socket (STRING_ARG (1));
+    Tchannel channel = OS_create_unix_server_socket ((STRING_ARG (1)), 1);
     if (channel == NO_CHANNEL)
       PRIMITIVE_RETURN (SHARP_F);
     SET_PAIR_CDR ((ARG_REF (2)), (long_to_integer (channel)));

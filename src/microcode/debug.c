@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -163,6 +163,40 @@ print_list (outf_channel stream, SCHEME_OBJECT pair)
 }
 
 static void
+print_vector (outf_channel stream, SCHEME_OBJECT vector)
+{
+  outf (stream, "#(");
+  unsigned long length = (VECTOR_LENGTH (vector));
+  unsigned long end = ((length < MAX_LIST_PRINT) ? length : MAX_LIST_PRINT);
+  for (unsigned long i = 0; i < end; i++)
+    {
+      if (i > 0)
+	outf (stream, " ");
+      print_object (stream, (VECTOR_REF (vector, i)));
+    }
+  if (end < length)
+    outf (stream, "...[%ld more]", (length - end));
+  outf (stream, ")");
+}
+
+static void
+print_bytevector (outf_channel stream, SCHEME_OBJECT vector)
+{
+  outf (stream, "#u8(");
+  unsigned long length = (BYTEVECTOR_LENGTH (vector));
+  unsigned long end = ((length < 20) ? length : 20);
+  for (unsigned long i = 0; i < end; i++)
+    {
+      if (i > 0)
+	outf (stream, " ");
+      outf (stream, "%d", (BYTEVECTOR_REF (vector, i)));
+    }
+  if (end < length)
+    outf (stream, "...[%ld more]", (length - end));
+  outf (stream, ")");
+}
+
+static void
 print_return_name (outf_channel stream, SCHEME_OBJECT Ptr)
 {
   unsigned long index = (OBJECT_DATUM (Ptr));
@@ -224,7 +258,7 @@ print_char (outf_channel stream, unsigned int cp)
       if ((cp >= ' ') && (cp <= '~'))
 	outf (stream, "%c", cp);
       else
-	outf (stream, "\\%03o", cp);
+	outf (stream, "\\x%x;", cp);
       break;
     }
 }
@@ -250,17 +284,10 @@ print_string (outf_channel stream, SCHEME_OBJECT string)
 static void
 print_ustring (outf_channel stream, SCHEME_OBJECT string)
 {
-  long length, long_enough;
-  long i;
-  unsigned char * next;
-  unsigned int cp;
-  unsigned char cp_size;
-
-  length = (STRING_LENGTH (string));
-  long_enough = (length < 100 ? length : 90);
-  next = (STRING_LOC (string, 0));
-
-  cp_size
+  unsigned long length = (STRING_LENGTH (string));
+  unsigned long long_enough = (length < 100 ? length : 90);
+  unsigned char * next = (STRING_LOC (string, 0));
+  unsigned char cp_size
     = ((OBJECT_TYPE (MEMORY_REF (string, BYTEVECTOR_LENGTH_INDEX))) & 0x03);
   if (cp_size == 0)
     {
@@ -269,8 +296,9 @@ print_ustring (outf_channel stream, SCHEME_OBJECT string)
     }
 
   outf (stream, "\"");
-  for (i = 0; (i < long_enough); i += 1)
+  for (unsigned long i = 0; (i < long_enough); i += 1)
     {
+      unsigned int cp;
       switch (cp_size) {
       case 1:
 	cp = *next++;
@@ -343,36 +371,8 @@ DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
   PRIMITIVE_HEADER (1);
 
   print_object (ERROR_OUTPUT, ARG_REF (1));
+  outf_error ("\n");
   return (SHARP_F);
-}
-
-static void
-print_objects (SCHEME_OBJECT * objects, int n)
-{
-  SCHEME_OBJECT * scan;
-  SCHEME_OBJECT * end;
-
-  scan = objects;
-  end = (objects + n);
-  while (scan < end)
-    {
-      outf_error ("%#lx: ", ((unsigned long) scan));
-      print_object (ERROR_OUTPUT, (*scan++));
-      outf_error ("\n");
-    }
-  outf_flush_error();
-}
-
-/* This is useful because `print_object' doesn't print the contents of
-   vectors.  The reason that it doesn't is because vectors are used to
-   represent named structures, and most named structures don't want to
-   be printed out explicitly.  */
-
-void
-Print_Vector (SCHEME_OBJECT vector)
-{
-  print_objects
-    ((MEMORY_LOC (vector, 1)), (OBJECT_DATUM (VECTOR_LENGTH (vector))));
 }
 
 static void
@@ -396,6 +396,7 @@ print_compiled_entry (outf_channel stream, SCHEME_OBJECT entry)
   bool closure_p = false;
   cc_entry_type_t cet;
   const char * type_string;
+  SCHEME_OBJECT original_entry;
   SCHEME_OBJECT filename;
 
   if (read_cc_entry_type ((&cet), (CC_ENTRY_ADDRESS (entry))))
@@ -408,6 +409,7 @@ print_compiled_entry (outf_channel stream, SCHEME_OBJECT entry)
 	if (cc_entry_closure_p (entry))
 	  {
 	    type_string = "compiled-closure";
+            original_entry = entry;
 	    entry = (cc_closure_to_entry (entry));
 	    closure_p = true;
 	  }
@@ -446,7 +448,7 @@ print_compiled_entry (outf_channel stream, SCHEME_OBJECT entry)
 	(cc_entry_to_block_offset (entry)),
 	(OBJECT_DATUM (entry)));
   if (closure_p)
-    outf (stream, " address: %#lx", (OBJECT_DATUM (entry)));
+    outf (stream, " address: %#lx", (OBJECT_DATUM (original_entry)));
 
   filename = (compiled_entry_debug_filename (entry));
   if (STRING_P (filename))
@@ -464,15 +466,131 @@ print_compiled_entry (outf_channel stream, SCHEME_OBJECT entry)
   outf (stream, "]");
 }
 
+static const char*
+constant_string (SCHEME_OBJECT obj)
+{
+  switch (obj)
+    {
+    case SHARP_F: return "#f";
+    case SHARP_T: return "#t";
+    case UNSPECIFIC: return "#!unspecific";
+    case OPTIONAL_MARKER: return "#!optional";
+    case REST_MARKER: return "#!rest";
+    case KEY_MARKER: return "#!key";
+    case EOF_OBJECT: return "#!eof";
+    case DEFAULT_OBJECT: return "#!default";
+    case AUX_MARKER: return "#!aux";
+    case EMPTY_LIST: return "()";
+    case GC_RECLAIMED: return "#!reclaimed";
+    default: return 0;
+    }
+}
+
+static bool
+anonymous_procedure_name_p (SCHEME_OBJECT name)
+{
+  const char * s = "#[unnamed-procedure]";
+  return (name == (find_symbol ((strlen (s)), s)));
+}
+
+static void
+print_lambda (outf_channel stream, SCHEME_OBJECT lambda)
+{
+  SCHEME_OBJECT names = (GET_LAMBDA_FORMALS (lambda));
+  unsigned n_names = (VECTOR_LENGTH (names));
+
+  SCHEME_OBJECT name = (VECTOR_REF (names, 0));
+  bool anon = anonymous_procedure_name_p (name);
+  if (n_names == 1)
+    {
+      if (anon)
+        outf (stream, "[lambda () ");
+      else
+        {
+          outf (stream, "[named-lambda (");
+          print_symbol (stream, name);
+          outf (stream, ")");
+        }
+    }
+  else
+    {
+      if (anon)
+        outf (stream, "[lambda (");
+      else
+        {
+          outf (stream, "[named-lambda (");
+          print_symbol (stream, name);
+          outf (stream, " ");
+        }
+      for (unsigned i = 1; i < n_names; i++)
+        {
+          if (i > 1)
+            outf (stream, " ");
+          print_symbol (stream, (VECTOR_REF (names, i)));
+        }
+      outf (stream, ")");
+    }
+  outf (stream, " %#lx]", (OBJECT_DATUM (lambda)));
+}
+
+static void
+print_extended_lambda (outf_channel stream, SCHEME_OBJECT elambda)
+{
+  SCHEME_OBJECT names = (Get_Names_Elambda (elambda));
+  unsigned n_req = (Elambda_Formals_Count (elambda));
+  unsigned n_opt = (Elambda_Opts_Count (elambda));
+  unsigned n_rest = (Elambda_Rest_Flag (elambda));
+  unsigned n_names = (n_req + n_opt + n_rest);
+  unsigned n_params = (n_names - 1);
+
+  SCHEME_OBJECT name = (VECTOR_REF (names, 0));
+  bool anon = anonymous_procedure_name_p (name);
+  if (anon && (n_params == n_rest))
+    {
+      outf (stream, "[lambda ");
+      if (n_rest == 0)
+        outf (stream, "()");
+      else
+        print_symbol (stream, (VECTOR_REF (names, 1)));
+    }
+  else
+    {
+      if (anon)
+        outf (stream, "[lambda (");
+      else
+        {
+          outf (stream, "[named-lambda (");
+          print_symbol (stream, name);
+          outf (stream, " ");
+        }
+
+      unsigned end_req = (1 + n_req);
+      unsigned end_opt = (end_req + n_opt);
+      for (unsigned i = 1; i < n_names; i++)
+        {
+          if (i > 1)
+            outf (stream, " ");
+          if (i == end_req && n_opt > 0)
+            outf (stream, "%s ", (constant_string (OPTIONAL_MARKER)));
+          else if (i == end_opt && n_rest > 0)
+            outf (stream, ". ");
+          print_symbol (stream, (VECTOR_REF (names, i)));
+        }
+      outf (stream, ")");
+    }
+  outf (stream, " %#lx]", (OBJECT_DATUM (elambda)));
+}
+
 static void
 print_object (outf_channel stream, SCHEME_OBJECT obj)
 {
-  if (EMPTY_LIST_P (obj))	{ outf (stream, "()");	return; }
-  else if (obj == SHARP_F)	{ outf (stream, "#F");	return; }
-  else if (obj == SHARP_T)	{ outf (stream, "#T");	return; }
-  else if (obj == UNSPECIFIC){ outf (stream, "[unspecific]"); return; }
-
-  else if (obj == return_to_interpreter)
+  const char* s = (constant_string (obj));
+  if (s != 0)
+    {
+      outf (stream, "%s", s);
+      return;
+    }
+  if (obj == return_to_interpreter)
     {
       outf (stream, "[return-to-interpreter]");
       return;
@@ -494,8 +612,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_ASSIGNMENT:
       outf (stream, "[set! ");
-      print_symbol (stream, (MEMORY_REF ((MEMORY_REF (obj, ASSIGN_NAME)),
-					 VARIABLE_SYMBOL)));
+      print_symbol (stream, (VARIABLE_SYMBOL (MEMORY_REF (obj, ASSIGN_NAME))));
       outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 
@@ -506,8 +623,11 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       return;
 
     case TC_CHARACTER_STRING:
-    case TC_BYTEVECTOR:
       print_string (stream, obj);
+      return;
+
+    case TC_BYTEVECTOR:
+      print_bytevector (stream, obj);
       return;
 
     case TC_UNICODE_STRING:
@@ -527,6 +647,10 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       print_list (stream, obj);
       return;
 
+    case TC_VECTOR:
+      print_vector (stream, obj);
+      return;
+
     case TC_FALSE:
       print_simple (stream, obj);
       return;
@@ -543,7 +667,9 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_VARIABLE:
       outf (stream, "[variable ");
-      print_symbol (stream, (MEMORY_REF (obj, VARIABLE_SYMBOL)));
+      print_symbol (stream, (VARIABLE_SYMBOL (obj)));
+      if (VARIABLE_SAFE_P (obj))
+        outf (stream, " (safe)");
       outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
       return;
 
@@ -567,10 +693,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       return;
 
     case TC_EXTENDED_LAMBDA:
-      outf (stream, "[extended-lambda ");
-      print_object (stream, (MEMORY_REF ((MEMORY_REF (obj, ELAMBDA_NAMES)),
-					 1)));
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_extended_lambda (stream, obj);
       return;
 
     case TC_EXTENDED_PROCEDURE:
@@ -580,10 +703,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       return;
 
     case TC_LAMBDA:
-      outf (stream, "[lambda ");
-      print_object (stream, (MEMORY_REF ((MEMORY_REF (obj, LAMBDA_FORMALS)),
-					 1)));
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_lambda (stream, obj);
       return;
 
     case TC_PRIMITIVE:
@@ -620,10 +740,46 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       print_simple (stream, obj);
       return;
 
+    case TC_CHARACTER:
+      {
+        unsigned long code = (OBJECT_DATUM (obj));
+        const char* name;
+        switch (code)
+          {
+          case 0x00: name = "null"; break;
+          case 0x07: name = "alarm"; break;
+          case 0x08: name = "backspace"; break;
+          case 0x09: name = "tab"; break;
+          case 0x0A: name = "newline"; break;
+          case 0x0D: name = "return"; break;
+          case 0x1B: name = "escape"; break;
+          case 0x20: name = "space"; break;
+          case 0x7F: name = "delete"; break;
+          default: name = 0; break;
+          }
+        if (name != 0)
+          outf (stream, "#\\%s", name);
+        else if (code > 0x20 && code < 0x7F)
+          outf (stream, "#\\%c", (char) code);
+        else
+          outf (stream, "#\\x%lx", code);
+      }
+      return;
+
 #ifdef CC_SUPPORT_P
     case TC_COMPILED_ENTRY:
       print_compiled_entry (stream, obj);
       return;
+
+    case TC_COMPILED_RETURN:
+      {
+	insn_t * ret_addr = (CC_RETURN_ADDRESS (obj));
+	insn_t * entry_addr = (CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr));
+	SCHEME_OBJECT entry =
+	  (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, entry_addr));
+	print_compiled_entry (stream, entry);
+	return;
+      }
 #endif
 
     default:
@@ -1222,10 +1378,14 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 	  break;
 
 #ifdef CC_SUPPORT_P
-	case GC_COMPILED:
+	case GC_COMPILED_ENTRY:
 	  if (! verify_compiled (object, (unsigned long)area))
 	    complaints += 1;
 	  area += 1;
+	  break;
+	case GC_COMPILED_RETURN:
+	  outf_error ("%#lx: XXX not implemented", (unsigned long)area);
+	  complaints += 1;
 	  break;
 #endif
 

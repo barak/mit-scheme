@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -78,6 +78,7 @@ static gc_handler_t handle_primitive;
 static gc_tuple_handler_t fasload_tuple;
 static gc_vector_handler_t fasload_vector;
 static gc_object_handler_t fasload_cc_entry;
+static gc_object_handler_t fasload_cc_return;
 static gc_raw_address_to_object_t fasload_raw_address_to_object;
 static gc_raw_address_to_cc_entry_t fasload_raw_address_to_cc_entry;
 static void * relocate_address (void *);
@@ -490,6 +491,7 @@ relocate_block_table (void)
       (GCT_TUPLE (&table)) = fasload_tuple;
       (GCT_VECTOR (&table)) = fasload_vector;
       (GCT_CC_ENTRY (&table)) = fasload_cc_entry;
+      (GCT_CC_RETURN (&table)) = fasload_cc_return;
       (GCT_RAW_ADDRESS_TO_OBJECT (&table)) = fasload_raw_address_to_object;
       (GCT_RAW_ADDRESS_TO_CC_ENTRY (&table)) = fasload_raw_address_to_cc_entry;
 
@@ -517,6 +519,7 @@ DEFINE_GC_HANDLER (handle_primitive)
 
 #define OLD_ADDRESS(object) (fasl_object_address ((object), (fh)))
 #define OLD_CC_ADDRESS(object) (fasl_cc_address ((object), (fh)))
+#define OLD_CC_RETURN(object) (fasl_cc_return ((object), (fh)))
 
 static SCHEME_OBJECT
 fasload_raw_address_to_object (unsigned int type, SCHEME_OBJECT * address)
@@ -554,6 +557,18 @@ DEFINE_GC_OBJECT_HANDLER (fasload_cc_entry)
   return
     (CC_ENTRY_NEW_ADDRESS (object,
 			   (relocate_address (OLD_CC_ADDRESS (object)))));
+#else
+  return (object);
+#endif
+}
+
+static
+DEFINE_GC_OBJECT_HANDLER (fasload_cc_return)
+{
+#ifdef CC_SUPPORT_P
+  return
+    (CC_RETURN_NEW_ADDRESS (object,
+			    (relocate_address (OLD_CC_RETURN (object)))));
 #else
   return (object);
 #endif

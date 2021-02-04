@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Load the BLOWFISH option.
+;;;; Load the Blowfish option.
 
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()

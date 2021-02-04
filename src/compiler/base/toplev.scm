@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,80 +36,77 @@ USA.
 (define compile-file:force? #f)
 (define compile-file:show-dependencies? #f)
 (define compiler:compile-data-files-as-expressions? #t)
-(define compile-file)
-(let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
-      (bin-pathname
-       (lambda (path)
-	 (pathname-new-type path (if sf/cross-compiling? "nib" "bin"))))
-      (ext-pathname (lambda (path) (pathname-default-type path "ext")))
-      (ext-pathname? (lambda (path) (equal? (pathname-type path) "ext")))
-      (com-pathname
-       (lambda (path)
-	 (pathname-new-type path (compiler:compiled-code-pathname-type)))))
 
-  (define (process-file input-file output-file dependencies processor)
-    (let ((doit (lambda () (processor input-file output-file dependencies))))
-    (if compile-file:force?
-	(doit)
-	(let ((reasons
-	       (let ((output-time (file-modification-time output-file)))
-		 (if (not output-time)
-		     (list input-file)
-		     (filter (lambda (dependency)
-			       (let ((dep-time
-				      (file-modification-time dependency)))
-				 (if dep-time
-				     (> dep-time output-time)
-				     (begin
-				       (warn "Missing dependency:"
-					     (->namestring dependency))
-				       #f))))
-			     (cons input-file dependencies))))))
-	  (if (pair? reasons)
-	      (begin
-		(if compile-file:show-dependencies?
-		    (write-notification-line
-		     (lambda (port)
-		       (write-string "Generating " port)
-		       (write (->namestring output-file) port)
-		       (write-string " because of:" port)
-		       (for-each (lambda (reason)
-				   (write-char #\space port)
-				   (write (->namestring reason) port))
-				 reasons))))
-		(doit)))))))
+(define (compile-file file #!optional dependencies environment)
+  (let ((types
+	 (or (find-file-types file)
+	     file-types:program)))
+    (let ((src-path (pathname-new-type-src file types sf/cross-compiling?))
+	  (bin-path (pathname-new-type-bin file types sf/cross-compiling?))
+	  (com-path
+	   (pathname-new-type file
+			      (compiler:compiled-code-pathname-type types)))
+	  (ext-type (file-type-ext types sf/cross-compiling?)))
+      (let ((dependencies
+	     (map (lambda (dep)
+		    (pathname-default-type dep ext-type))
+		  (if (default-object? dependencies)
+		      '()
+		      dependencies))))
+	(process-file src-path bin-path dependencies
+	  (lambda ()
+	    (fluid-let ((sf/default-syntax-table
+			 (if (default-object? environment)
+			     #f
+			     (guarantee environment? environment)))
+			(sf/default-declarations
+			 `((usual-integrations
+			    ,@compile-file:override-usual-integrations)
+			   ,@(let ((deps
+				    (filter (lambda (dep)
+					      (equal? ext-type
+						      (pathname-type dep)))
+					    dependencies)))
+			       (if (null? deps)
+				   '()
+				   `((integrate-external ,@deps)))))))
+	      (sf src-path bin-path))))
+	(if (not compile-file:sf-only?)
+	    (process-file bin-path com-path '()
+	      (lambda ()
+		(fluid-let ((compiler:coalescing-constant-warnings? #f))
+		  (compile-bin-file bin-path com-path)))))))))
 
-  (set! compile-file
-	(named-lambda (compile-file file #!optional dependencies environment)
-	  (process-file (scm-pathname file) (bin-pathname file)
-			(map ext-pathname
-			     (if (default-object? dependencies)
-				 '()
-				 dependencies))
-	    (lambda (input-file output-file dependencies)
-	      (fluid-let ((sf/default-syntax-table
-			   (if (default-object? environment)
-			       #f
-			       (begin
-				 (if (not (environment? environment))
-				     (error:wrong-type-argument environment
-								"environment"
-								'compile-file))
-				 environment)))
-			  (sf/default-declarations
-			   `((usual-integrations
-			      ,@compile-file:override-usual-integrations)
-			     ,@(let ((deps (filter ext-pathname? dependencies)))
-				 (if (null? deps)
-				     '()
-				     `((integrate-external ,@deps)))))))
-		(sf input-file output-file))))
-	  (if (not compile-file:sf-only?)
-	      (process-file (bin-pathname file) (com-pathname file) '()
-		(lambda (input-file output-file dependencies)
-		  dependencies
-		  (fluid-let ((compiler:coalescing-constant-warnings? #f))
-		    (compile-bin-file input-file output-file))))))))
+(define (process-file input-file output-file dependencies thunk)
+  (if compile-file:force?
+      (thunk)
+      (let ((reasons
+	     (let ((output-time (file-modification-time output-file)))
+	       (if (not output-time)
+		   (list input-file)
+		   (filter (lambda (dependency)
+			     (let ((dep-time
+				    (file-modification-time dependency)))
+			       (if dep-time
+				   (> dep-time output-time)
+				   (begin
+				     (warn "Missing dependency:"
+					   (->namestring dependency))
+				     #f))))
+			   (cons input-file dependencies))))))
+	(if (pair? reasons)
+	    (begin
+	      (if compile-file:show-dependencies?
+		  (write-notification-line
+		   (lambda (port)
+		     (write-string "Generating " port)
+		     (write (->namestring output-file) port)
+		     (write-string " because of:" port)
+		     (for-each (lambda (reason)
+				 (write-char #\space port)
+				 (write (->namestring reason) port))
+			       reasons))))
+	      (thunk))))))
 
 ;;;; Non-Incremental File Compiler
 
@@ -128,131 +125,127 @@ USA.
 	(for-each kernel input)
 	(kernel input))))
 
-(define (cbf input . rest)
-  (apply compile-bin-file input rest))
+(define (cbf input-string #!optional output-string)
+  (compile-bin-file input-string output-string))
 
 (define (compile-bin-file input-string #!optional output-string)
-  (compiler-pathnames
-   input-string
-   (and (not (default-object? output-string)) output-string)
-   (make-pathname #f #f #f #f (if sf/cross-compiling? "nib" "bin") 'NEWEST)
-   (lambda (input-pathname output-pathname)
-     (fluid-let ((*compiler-input-pathname*
-		  (merge-pathnames input-pathname))
-		 (*compiler-output-pathname*
-		  (merge-pathnames output-pathname)))
-       (let ((scode (compiler-fasload input-pathname)))
-	 (if (and (scode/constant? scode)
-		  (not compiler:compile-data-files-as-expressions?))
-	     (compile-data-from-file scode output-pathname)
-	     (maybe-open-file
-	      compiler:generate-rtl-files?
-	      (pathname-new-type output-pathname "rtl")
-	      (lambda (rtl-output-port)
-		(maybe-open-file
-		 compiler:generate-lap-files?
-		 (pathname-new-type output-pathname "lap")
-		 (lambda (lap-output-port)
-		   (fluid-let ((*debugging-key* (random-bytevector 32)))
-		     (compile-scode/file/hook
-		      input-pathname
-		      output-pathname
-		      (lambda ()
-			(compile-bin-file-1
-			 scode
-			 (pathname-new-type
-			  output-pathname
-			  (compiler:compiled-inf-pathname-type))
-			 rtl-output-port
-			 lap-output-port)))))))))))))
-  unspecific)
+  (compiler-pathnames input-string
+		      (if (default-object? output-string) #f output-string)
+		      compile-bin-file-1))
 
-(define (compile-bin-file-1 scode info-output-pathname rtl-output-port
-			    lap-output-port)
+(define (compiler-pathnames input-string output-string transform)
+
+  (define (process-one-file input-string)
+    (let* ((types
+	    (or (find-file-types input-string
+				 file-type-bin
+				 sf/cross-compiling?)
+		file-types:program))
+	   (input-path
+	    (pathname-new-type-bin input-string types sf/cross-compiling?))
+	   (output-path
+	    (if (and output-string (string? (pathname-type output-string)))
+		(merge-pathnames output-string input-path)
+		(let ((output-path
+		       (pathname-new-type
+			input-path
+			(compiler:compiled-code-pathname-type types))))
+		  (if output-string
+		      (merge-pathnames output-string output-path)
+		      output-path)))))
+
+      (define (do-it)
+	(compiler-file-output (transform input-path output-path)
+			      output-path))
+      (if compiler:noisy?
+	  (with-notification
+	      (lambda (port)
+		(write-string "Compiling file: " port)
+		(write (enough-namestring input-path) port)
+		(write-string " => " port)
+		(write (enough-namestring output-path) port))
+	    do-it)
+	  (do-it))))
+
+  (let ((kernel
+	 (if compiler:batch-mode?
+	     (batch-kernel process-one-file)
+	     process-one-file)))
+    (if (pair? input-string)
+	(for-each kernel input-string)
+	(kernel input-string))))
+
+(define (compile-bin-file-1 input-path output-path)
+  (fluid-let ((*compiler-input-pathname* (merge-pathnames input-path))
+	      (*compiler-output-pathname* (merge-pathnames output-path)))
+    (let ((scode (compiler-fasload input-path)))
+      (if (and (scode/constant? scode)
+	       (not compiler:compile-data-files-as-expressions?))
+	  (compile-data-from-file scode output-path)
+	  (let ((inf-path
+		 (pathname-new-type-map output-path
+					file-type-com
+					file-type-inf
+					compiler:cross-compiling?)))
+	    (maybe-open-file compiler:generate-rtl-files?
+			     (pathname-new-type output-path "rtl")
+	      (lambda (rtl-port)
+		(maybe-open-file compiler:generate-lap-files?
+				 (pathname-new-type output-path "lap")
+		  (lambda (lap-port)
+		    (fluid-let ((*debugging-key* (random-bytevector 32)))
+		      (compile-scode/file/hook input-path output-path
+			(lambda ()
+			  (compile-bin-file-2 scode inf-path rtl-port
+					      lap-port)))))))))))))
+
+(define (compile-bin-file-2 scode inf-path rtl-port lap-port)
+
+  (define (handle-r7rs)
+    (let ((file-wrappers '()))
+      (let ((result
+	     (map-r7rs-scode-file
+	      (lambda (library)
+		(let ((name
+		       (or (scode-library-name library)
+			   'program)))
+		  (map-scode-library
+		   (lambda (contents)
+		     (receive (result file-wrapper) (do-one-expr contents name)
+		       (if file-wrapper
+			   (set! file-wrappers
+				 (cons file-wrapper
+				       file-wrappers)))
+		       result))
+		   library)))
+	      scode)))
+	(values result
+		(vector 'debugging-library-wrapper
+			3
+			*debugging-key*
+			(list->vector (reverse file-wrappers)))))))
+
+  (define (do-one-expr scode library-name)
+    (fluid-let ((*library-name* library-name))
+      (compile-scode/internal scode inf-path rtl-port lap-port)))
+
   (receive (result wrapper)
-      (let ((do-one-expr
-	     (lambda (scode library-name)
-	       (fluid-let ((*library-name* library-name))
-		 (compile-scode/internal scode
-					 info-output-pathname
-					 rtl-output-port
-					 lap-output-port)))))
-	(if (r7rs-scode-file? scode)
-	    (let ((file-wrappers '()))
-	      (let ((result
-		     (map-r7rs-scode-file
-		      (lambda (library)
-			(let ((name
-			       (or (scode-library-name library)
-				   'program)))
-			  (map-scode-library
-			   (lambda (contents)
-			     (receive (result file-wrapper)
-				 (do-one-expr contents name)
-			       (if file-wrapper
-				   (set! file-wrappers
-					 (cons file-wrapper
-					       file-wrappers)))
-			       result))
-			   library)))
-		      scode)))
-		(values result
-			(vector 'debugging-library-wrapper
-				3
-				*debugging-key*
-				(list->vector (reverse file-wrappers))))))
-	    (do-one-expr scode #f)))
+      (if (r7rs-scode-file? scode)
+	  (handle-r7rs)
+	  (do-one-expr scode #f))
     (if wrapper
-	(compiler:dump-info-file wrapper
-				 info-output-pathname))
+	(compiler:dump-info-file wrapper inf-path))
     result))
-
-(define *debugging-key*)
+
 (define *compiler-input-pathname*)
 (define *compiler-output-pathname*)
+(define *debugging-key*)
 (define *library-name*)
 
 (define (maybe-open-file open? pathname receiver)
   (if open?
       (call-with-output-file pathname receiver)
       (receiver #f)))
-
-(define (compiler:compiled-inf-pathname-type)
-  (if compiler:cross-compiling? "fni" "inf"))
-
-(define (compiler-pathnames input-string output-string default transform)
-  (let* ((core
-	  (lambda (input-string)
-	    (let ((input-pathname (merge-pathnames input-string default)))
-	      (let ((output-pathname
-		     (let ((output-pathname
-			    (pathname-new-type
-			     input-pathname
-			     (compiler:compiled-code-pathname-type))))
-		       (if output-string
-			   (merge-pathnames output-string output-pathname)
-			   output-pathname))))
-		(let ((do-it
-		       (lambda ()
-			 (compiler-file-output
-			  (transform input-pathname output-pathname)
-			  output-pathname))))
-		  (if compiler:noisy?
-		      (with-notification
-			  (lambda (port)
-			    (write-string "Compiling file: " port)
-			    (write (enough-namestring input-pathname) port)
-			    (write-string " => " port)
-			    (write (enough-namestring output-pathname) port))
-			do-it)
-		      (do-it)))))))
-	 (kernel
-	  (if compiler:batch-mode?
-	      (batch-kernel core)
-	      core)))
-    (if (pair? input-string)
-	(for-each kernel input-string)
-	(kernel input-string))))
 
 (define (compiler-fasload pathname)
   (let ((scode
@@ -281,9 +274,9 @@ USA.
 
 (define (compile-directory input-directory #!optional output-directory force?)
   ((directory-processor
-    (if sf/cross-compiling? "nib" "bin")
+    (file-type-bin file-types:program sf/cross-compiling?)
     (lambda ()
-      (compiler:compiled-code-pathname-type))
+      (compiler:compiled-code-pathname-type file-types:program))
     (lambda (pathname output-directory)
       (compile-bin-file pathname output-directory)))
    input-directory output-directory force?))

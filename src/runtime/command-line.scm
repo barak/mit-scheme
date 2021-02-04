@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,11 +28,9 @@ USA.
 ;;; package: (runtime command-line)
 
 (declare (usual-integrations))
-
-(add-boot-init!
- (lambda ()
-   (add-event-receiver! event:after-restart process-command-line)))
 
+(add-boot-deps! '(runtime dynamic))
+
 (define (scheme-program-name)
   (string-from-primitive ((ucode-primitive scheme-program-name 0))))
 
@@ -90,6 +88,7 @@ USA.
 	(if (and (param:load-init-file?)
 		 (not (nearest-cmdl/batch-mode?)))
 	    (load-init-file))))))
+(add-event-receiver! event:after-restart process-command-line)
 
 (define (find-keyword-parser keyword)
   (let ((entry (assoc (strip-leading-hyphens keyword) *command-line-parsers*)))
@@ -219,19 +218,20 @@ USA.
   (values '() #f))
 
 (define (show-command-line-options)
-  (write-string "
-
-ADDITIONAL OPTIONS supported by this band:\n")
-  (do ((parsers (sort *command-line-parsers*
-		      (lambda (a b) (string<? (car a) (car b))))
-		(cdr parsers)))
-      ((null? parsers))
-    (let ((description (cadar parsers)))
-      (if (not (fix:= 0 (string-length description)))
-	  (begin
-	    (newline)
-	    (write-string description)
-	    (newline)))))
+  (let ((port (console-error-port)))
+    (do ((parsers (sort *command-line-parsers*
+			(lambda (a b) (string<? (car a) (car b))))
+		  (cdr parsers)))
+	((null? parsers))
+      (let ((description (cadar parsers)))
+	(if (not (fix:= 0 (string-length description)))
+	    (begin
+	      (newline port)
+	      (write-string description port)
+	      (newline port)))))
+    (newline port)
+    (write-string "Please report bugs to bug-mit-scheme@gnu.org." port)
+    (newline port))
   (exit))
 
 (add-boot-init!

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,7 +32,7 @@ USA.
 #include "config.h"
 #include "object.h"
 
-#define COMPILER_INTERFACE_VERSION 3
+#define COMPILER_INTERFACE_VERSION 4
 
 typedef struct cc_entry_type_s cc_entry_type_t;
 typedef struct cc_entry_offset_s cc_entry_offset_t;
@@ -137,19 +137,6 @@ struct cc_entry_offset_s
 extern bool read_cc_entry_offset (cc_entry_offset_t *, insn_t *);
 extern bool write_cc_entry_offset (cc_entry_offset_t *, insn_t *);
 
-#define CC_ENTRY_ADDRESS(obj) ((insn_t *) (OBJECT_ADDRESS (obj)))
-#define MAKE_CC_ENTRY(addr)						\
-  (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, ((SCHEME_OBJECT *) (addr))))
-
-#define CC_ENTRY_NEW_ADDRESS(entry, address)				\
-  (OBJECT_NEW_ADDRESS ((entry), ((insn_t *) (address))))
-
-#define CC_ENTRY_NEW_BLOCK(entry, new_block, old_block)			\
-  (CC_ENTRY_NEW_ADDRESS ((entry),					\
-			 (((insn_t *) (new_block))			\
-			  + ((CC_ENTRY_ADDRESS (entry))			\
-			     - ((insn_t *) (old_block))))))
-
 #define MAKE_CC_BLOCK(address)						\
   (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, (address)))
 
@@ -162,13 +149,78 @@ extern bool write_cc_entry_offset (cc_entry_offset_t *, insn_t *);
 #define CC_BLOCK_ADDR_END(addr) ((addr) + (CC_BLOCK_ADDR_LENGTH (addr)))
 
 #define CC_ENTRY_P(object) ((OBJECT_TYPE (object)) == TC_COMPILED_ENTRY)
+#define CC_RETURN_P(object) ((OBJECT_TYPE (object)) == TC_COMPILED_RETURN)
 #define CC_BLOCK_P(object) ((OBJECT_TYPE (object)) == TC_COMPILED_CODE_BLOCK)
 #define CC_STACK_ENV_P(object) ((OBJECT_TYPE (object)) == TC_STACK_ENVIRONMENT)
+
+static inline insn_t *
+CC_ENTRY_ADDRESS (SCHEME_OBJECT obj)
+{
+  assert (CC_ENTRY_P (obj));
+  return ((insn_t *) (OBJECT_ADDRESS (obj)));
+}
+
+static inline SCHEME_OBJECT
+MAKE_CC_ENTRY (insn_t * addr)
+{
+  return (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, ((SCHEME_OBJECT *) addr)));
+}
+
+static inline SCHEME_OBJECT
+CC_ENTRY_NEW_ADDRESS (SCHEME_OBJECT entry, insn_t * addr)
+{
+  assert (CC_ENTRY_P (entry));
+  return (OBJECT_NEW_ADDRESS (entry, addr));
+}
+
+static inline SCHEME_OBJECT
+CC_ENTRY_NEW_BLOCK (SCHEME_OBJECT entry,
+		    SCHEME_OBJECT * new_block,
+		    SCHEME_OBJECT * old_block)
+{
+  size_t offset;
+  assert (CC_ENTRY_P (entry));
+  offset = ((CC_ENTRY_ADDRESS (entry)) - ((insn_t *) old_block));
+  return (CC_ENTRY_NEW_ADDRESS (entry, (((insn_t *) new_block) + offset)));
+}
+
+static inline insn_t *
+CC_RETURN_ADDRESS (SCHEME_OBJECT obj)
+{
+  assert (CC_RETURN_P (obj));
+  return ((insn_t *) (OBJECT_ADDRESS (obj)));
+}
+
+static inline SCHEME_OBJECT
+MAKE_CC_RETURN (insn_t * addr)
+{
+  return (MAKE_POINTER_OBJECT (TC_COMPILED_RETURN, ((SCHEME_OBJECT *) addr)));
+}
+
+static inline SCHEME_OBJECT
+CC_RETURN_NEW_ADDRESS (SCHEME_OBJECT entry, insn_t * addr)
+{
+  assert (CC_RETURN_P (entry));
+  return (OBJECT_NEW_ADDRESS (entry, addr));
+}
+
+static inline SCHEME_OBJECT
+CC_RETURN_NEW_BLOCK (SCHEME_OBJECT entry,
+		    SCHEME_OBJECT * new_block,
+		    SCHEME_OBJECT * old_block)
+{
+  size_t offset = ((CC_RETURN_ADDRESS (entry)) - ((insn_t *) old_block));
+  return (CC_RETURN_NEW_ADDRESS (entry, (((insn_t *) new_block) + offset)));
+}
 
 extern unsigned long cc_entry_to_block_offset (SCHEME_OBJECT);
 extern SCHEME_OBJECT cc_entry_to_block (SCHEME_OBJECT);
 extern SCHEME_OBJECT * cc_entry_to_block_address (SCHEME_OBJECT);
 extern SCHEME_OBJECT * cc_entry_address_to_block_address (insn_t *);
+extern unsigned long cc_return_to_block_offset (SCHEME_OBJECT);
+extern SCHEME_OBJECT cc_return_to_block (SCHEME_OBJECT);
+extern SCHEME_OBJECT * cc_return_to_block_address (SCHEME_OBJECT);
+extern SCHEME_OBJECT * cc_return_address_to_block_address (insn_t *);
 extern int plausible_cc_block_p (SCHEME_OBJECT *);
 
 /* Linkage sections
@@ -327,6 +379,10 @@ extern unsigned long trampoline_entry_size (unsigned long);
    the address of the specified entry point.  */
 extern insn_t * trampoline_entry_addr (SCHEME_OBJECT *, unsigned long);
 
+/* Given the address of a trampoline block and an entry index, returns
+   the address of the specified entry point as a return address.  */
+extern insn_t * trampoline_return_addr (SCHEME_OBJECT *, unsigned long);
+
 /* Given the address of a trampoline entry and the code for the
    trampoline to be invoked, stores the appropriate instruction
    sequence in the trampoline.  */
@@ -368,7 +424,11 @@ typedef struct
   union
     {
       long code_to_interpreter;
-      insn_t * entry_point;
+      struct
+	{
+	  insn_t * ptr;
+	  insn_t * pc;
+	} compiled_code;
     } extra;
 } utility_result_t;
 

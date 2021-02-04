@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,6 +32,8 @@ USA.
 ;;; the runtime system has been converted to this string abstraction.
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 (define-primitives
   (allocate-nm-vector 2)
@@ -167,7 +169,7 @@ USA.
   (integer->char (cp1-ref string index)))
 
 (define-integrable (ustring1-set! string index char)
-  (cp1-set! string index (char->integer char)))
+  (cp1-set! string index (char-code char)))
 
 (define-integrable (cp1-ref string index)
   (primitive-byte-ref string (cp1-index index)))
@@ -182,7 +184,7 @@ USA.
   (integer->char (cp2-ref string index)))
 
 (define-integrable (ustring2-set! string index char)
-  (cp2-set! string index (char->integer char)))
+  (cp2-set! string index (char-code char)))
 
 (define (cp2-ref string index)
   (let ((i (cp2-index index)))
@@ -201,7 +203,7 @@ USA.
   (integer->char (cp3-ref string index)))
 
 (define-integrable (ustring3-set! string index char)
-  (cp3-set! string index (char->integer char)))
+  (cp3-set! string index (char-code char)))
 
 (define (cp3-ref string index)
   (let ((i (cp3-index index)))
@@ -360,7 +362,7 @@ USA.
 (define (string-set! string index char)
   (guarantee mutable-string? string 'string-set!)
   (guarantee index-fixnum? index 'string-set!)
-  (guarantee bitless-char? char 'string-set!)
+  (guarantee char? char 'string-set!)
   (if (not (fix:< index (string-length string)))
       (error:bad-range-argument index 'string-set!))
   (if (slice? string)
@@ -420,7 +422,7 @@ USA.
 
 (define (substring string #!optional start end)
   (let* ((len (string-length string))
-	 (end (fix:end-index end (string-length string) 'substring))
+	 (end (fix:end-index end len 'substring))
 	 (start (fix:start-index start end 'substring)))
     ;; It shouldn't be necessary to copy immutable substrings, but some of these
     ;; find their way to Edwin so we can't return a slice here.  We will
@@ -454,74 +456,106 @@ USA.
   (define-integrable (zero! j o)
     (primitive-byte-set! to (fix:+ j o) 0))
 
-  (case (ustring-cp-size from)
-    ((1)
-     (let ((start (cp1-index start))
-	   (end (cp1-index end)))
-       (case (ustring-cp-size to)
-	 ((1)
-	  (do ((i start (fix:+ i 1))
-	       (j (cp1-index at) (fix:+ j 1)))
-	      ((not (fix:< i end)))
-	    (copy! j i 0)))
-	 ((2)
-	  (do ((i start (fix:+ i 1))
-	       (j (cp2-index at) (fix:+ j 2)))
-	      ((not (fix:< i end)))
-	    (copy! j i 0)
-	    (zero! j 1)))
-	 (else
-	  (do ((i start (fix:+ i 1))
-	       (j (cp3-index at) (fix:+ j 3)))
-	      ((not (fix:< i end)))
-	    (copy! j i 0)
-	    (zero! j 1)
-	    (zero! j 2))))))
-    ((2)
-     (let ((start (cp2-index start))
-	   (end (cp2-index end)))
-       (case (ustring-cp-size to)
-	 ((1)
-	  (do ((i start (fix:+ i 2))
-	       (j (cp1-index at) (fix:+ j 1)))
-	      ((not (fix:< i end)))
-	    (copy! j i 0)))
-	 ((2)
-	  (do ((i start (fix:+ i 2))
-	       (j (cp2-index at) (fix:+ j 2)))
-	      ((not (fix:< i end)))
-	    (copy! j i 0)
-	    (copy! j i 1)))
-	 (else
-	  (do ((i start (fix:+ i 2))
-	       (j (cp3-index at) (fix:+ j 3)))
-	      ((not (fix:< i end)))
-	    (copy! j i 0)
-	    (copy! j i 1)
-	    (zero! j 2))))))
-    (else
-     (let ((start (cp3-index start))
-	   (end (cp3-index end)))
-       (case (ustring-cp-size to)
-	 ((1)
-	  (do ((i start (fix:+ i 3))
-	       (j (cp1-index at) (fix:+ j 1)))
-	      ((not (fix:< i end)))
-	    (copy! j i 0)))
-	 ((2)
-	  (do ((i start (fix:+ i 3))
-	       (j (cp2-index at) (fix:+ j 2)))
-	      ((not (fix:< i end)))
-	    (copy! j i 0)
-	    (copy! j i 1)))
-	 (else
-	  (do ((i start (fix:+ i 3))
-	       (j (cp3-index at) (fix:+ j 3)))
-	      ((not (fix:< i end)))
-	    (copy! j i 0)
-	    (copy! j i 1)
-	    (copy! j i 2))))))))
+  (if (eq? to from)
+      (%general-shift! to at start end)
+      (case (ustring-cp-size from)
+	((1)
+	 (let ((start (cp1-index start))
+	       (end (cp1-index end)))
+	   (case (ustring-cp-size to)
+	     ((1)
+	      (do ((i start (fix:+ i 1))
+		   (j (cp1-index at) (fix:+ j 1)))
+		  ((not (fix:< i end)))
+		(copy! j i 0)))
+	     ((2)
+	      (do ((i start (fix:+ i 1))
+		   (j (cp2-index at) (fix:+ j 2)))
+		  ((not (fix:< i end)))
+		(copy! j i 0)
+		(zero! j 1)))
+	     (else
+	      (do ((i start (fix:+ i 1))
+		   (j (cp3-index at) (fix:+ j 3)))
+		  ((not (fix:< i end)))
+		(copy! j i 0)
+		(zero! j 1)
+		(zero! j 2))))))
+	((2)
+	 (let ((start (cp2-index start))
+	       (end (cp2-index end)))
+	   (case (ustring-cp-size to)
+	     ((1)
+	      (do ((i start (fix:+ i 2))
+		   (j (cp1-index at) (fix:+ j 1)))
+		  ((not (fix:< i end)))
+		(copy! j i 0)))
+	     ((2)
+	      (do ((i start (fix:+ i 2))
+		   (j (cp2-index at) (fix:+ j 2)))
+		  ((not (fix:< i end)))
+		(copy! j i 0)
+		(copy! j i 1)))
+	     (else
+	      (do ((i start (fix:+ i 2))
+		   (j (cp3-index at) (fix:+ j 3)))
+		  ((not (fix:< i end)))
+		(copy! j i 0)
+		(copy! j i 1)
+		(zero! j 2))))))
+	(else
+	 (let ((start (cp3-index start))
+	       (end (cp3-index end)))
+	   (case (ustring-cp-size to)
+	     ((1)
+	      (do ((i start (fix:+ i 3))
+		   (j (cp1-index at) (fix:+ j 1)))
+		  ((not (fix:< i end)))
+		(copy! j i 0)))
+	     ((2)
+	      (do ((i start (fix:+ i 3))
+		   (j (cp2-index at) (fix:+ j 2)))
+		  ((not (fix:< i end)))
+		(copy! j i 0)
+		(copy! j i 1)))
+	     (else
+	      (do ((i start (fix:+ i 3))
+		   (j (cp3-index at) (fix:+ j 3)))
+		  ((not (fix:< i end)))
+		(copy! j i 0)
+		(copy! j i 1)
+		(copy! j i 2)))))))))
 
+(define (%general-shift! ustring to start end)
+  (cond ((fix:< to start) (%shift-left! ustring to start end))
+	((fix:> to start) (%shift-right! ustring to start end))))
+
+(define (%shift-left! ustring to start end)
+
+  (define (do-shift! to start end)
+    (do ((i start (fix:+ i 1))
+	 (j to (fix:+ j 1)))
+	((not (fix:< i end)))
+      (primitive-byte-set! ustring j (primitive-byte-ref ustring i))))
+
+  (case (ustring-cp-size ustring)
+    ((1) (do-shift! (cp1-index to) (cp1-index start) (cp1-index end)))
+    ((2) (do-shift! (cp2-index to) (cp2-index start) (cp2-index end)))
+    (else (do-shift! (cp3-index to) (cp3-index start) (cp3-index end)))))
+
+(define (%shift-right! ustring to start end)
+
+  (define (do-shift! to start end)
+    (do ((i (fix:- end 1) (fix:- i 1))
+	 (j (fix:- (fix:+ to (fix:- end start)) 1) (fix:- j 1)))
+	((not (fix:>= i start)))
+      (primitive-byte-set! ustring j (primitive-byte-ref ustring i))))
+
+  (case (ustring-cp-size ustring)
+    ((1) (do-shift! (cp1-index to) (cp1-index start) (cp1-index end)))
+    ((2) (do-shift! (cp2-index to) (cp2-index start) (cp2-index end)))
+    (else (do-shift! (cp3-index to) (cp3-index start) (cp3-index end)))))
+
 (define (%general-max-cp string start end)
 
   (define-integrable (max-loop cp-ref)
@@ -556,16 +590,20 @@ USA.
   (let ((builder
 	 (%make-string-builder
 	  (if (default-object? buffer-length)
-	      16
+	      1024
 	      (begin
-		(guarantee positive-fixnum? buffer-length 'string-builder)
-		buffer-length)))))
+		(guarantee non-negative-fixnum? buffer-length 'string-builder)
+		(fix:max 1 buffer-length))))))
     (let ((append-char! (builder 'append-char!))
 	  (append-string! (builder 'append-string!))
 	  (build (builder 'build)))
       (lambda (#!optional object)
-	(cond ((bitless-char? object) (append-char! object))
+	(cond ((char? object) (append-char! object))
 	      ((string? object) (append-string! object))
+	      ((list-of-type? object char?)
+	       (for-each append-char! object))
+	      ((vector-of-type? object char?)
+	       (vector-for-each append-char! object))
 	      (else
 	       (case object
 		 ((#!default nfc) (build build-string:nfc))
@@ -575,90 +613,77 @@ USA.
 		 ((empty? count max-cp reset!) ((builder object)))
 		 (else (error "Unsupported argument:" object)))))))))
 
-(define (build-string:nfc strings count max-cp)
-  (string->nfc (build-string:immutable strings count max-cp)))
+(define (build-string:nfc chars count max-cp)
+  (string->nfc (build-string:immutable chars count max-cp)))
 
-(define (build-string:immutable strings count max-cp)
-  (let ((result (immutable-ustring-allocate count max-cp)))
-    (fill-result! strings result)
-    result))
+(define (build-string:immutable chars count max-cp)
+  (fill-result! chars count (immutable-ustring-allocate count max-cp)))
 
-(define (build-string:mutable strings count max-cp)
+(define (build-string:mutable chars count max-cp)
   (declare (ignore max-cp))
-  (let ((result (mutable-ustring-allocate count)))
-    (fill-result! strings result)
-    result))
+  (fill-result! chars count (mutable-ustring-allocate count)))
 
-(define (build-string:legacy strings count max-cp)
+(define (build-string:legacy chars count max-cp)
   (if (not (fix:< max-cp #x100))
       (error "Can't build legacy string:" max-cp))
-  (let ((result (legacy-string-allocate count)))
-    (fill-result! strings result)
-    result))
+  (fill-result! chars count (legacy-string-allocate count)))
 
-(define (fill-result! strings result)
-  (do ((strings strings (cdr strings))
-       (i 0 (fix:+ i (string-length (car strings)))))
-      ((not (pair? strings)))
-    (unpack-slice (car strings)
-      (lambda (string start end)
-	(%general-copy! result i string start end)))))
+(define (fill-result! chars count result)
+  (case (ustring-cp-size result)
+    ((1)
+     (do ((i 0 (fix:+ i 1)))
+	 ((not (fix:< i count)) unspecific)
+       (cp1-set! result i (char->integer (vector-ref chars i)))))
+    ((2)
+     (do ((i 0 (fix:+ i 1)))
+	 ((not (fix:< i count)) unspecific)
+       (cp2-set! result i (char->integer (vector-ref chars i)))))
+    (else
+     (do ((i 0 (fix:+ i 1)))
+	 ((not (fix:< i count)) unspecific)
+       (cp3-set! result i (char->integer (vector-ref chars i))))))
+  result)
 
-(define (%make-string-builder buffer-length)
-  (let ((buffers)
-	(buffer)
-	(start)
+(define (%make-string-builder initial-buffer-length)
+  (let ((buffer)
 	(index)
-	(count)
 	(max-cp))
 
     (define (reset!)
-      (set! buffers '())
-      (set! buffer (mutable-ustring-allocate buffer-length))
-      (set! start 0)
+      (set! buffer (make-vector initial-buffer-length))
       (set! index 0)
-      (set! count 0)
       (set! max-cp 0)
       unspecific)
 
-    (define (get-partial)
-      (string-slice buffer start index))
-
     (define (append-char! char)
-      (ustring3-set! buffer index char)
+      (vector-set! buffer index char)
       (set! index (fix:+ index 1))
-      (set! count (fix:+ count 1))
-      (set! max-cp (fix:max max-cp (char->integer char)))
-      (if (not (fix:< index buffer-length))
+      (set! max-cp (fix:max max-cp (char-code char)))
+      (if (not (fix:< index (vector-length buffer)))
 	  (begin
-	    (set! buffers (cons (get-partial) buffers))
-	    (set! buffer (mutable-ustring-allocate buffer-length))
-	    (set! start 0)
-	    (set! index 0)
+	    (set! buffer (vector-grow buffer (fix:* 2 (vector-length buffer))))
 	    unspecific)))
 
     (define (append-string! string)
-      (let ((length (string-length string)))
-	(if (fix:> length 0)
-	    (begin
-	      (if (fix:> index start)
-		  (begin
-		    (set! buffers (cons (get-partial) buffers))
-		    (set! start index)))
-	      (set! buffers (cons string buffers))
-	      (set! count (fix:+ count length))
-	      (set! max-cp
-		    (fix:max max-cp
-			     (unpack-slice string %general-max-cp)))
-	      unspecific))))
+      (let ((index* (fix:+ index (string-length string)))
+	    (length (vector-length buffer)))
+	(if (fix:>= index* length)
+	    (set! buffer
+		  (vector-grow buffer
+			       (let loop ((length (fix:* 2 length)))
+				 (if (fix:< index* length)
+				     length
+				     (loop (fix:* 2 length)))))))
+	(do ((i index (fix:+ i 1))
+	     (j 0 (fix:+ j 1)))
+	    ((not (fix:< i index*)) unspecific)
+	  (vector-set! buffer i (string-ref string j)))
+	(set! index index*)
+	(set! max-cp (fix:max max-cp (unpack-slice string %general-max-cp)))
+	unspecific))
 
     (define (build finish)
-      (finish (reverse
-	       (if (fix:> index start)
-		   (cons (get-partial) buffers)
-		   buffers))
-	      count
-	      max-cp))
+      (finish buffer index max-cp))
 
     (reset!)
     (lambda (operator)
@@ -666,8 +691,8 @@ USA.
 	((append-char!) append-char!)
 	((append-string!) append-string!)
 	((build) build)
-	((empty?) (lambda () (fix:= count 0)))
-	((count) (lambda () count))
+	((empty?) (lambda () (fix:= index 0)))
+	((count) (lambda () index))
 	((max-cp) (lambda () max-cp))
 	((reset!) reset!)
 	(else (error "Unknown operator:" operator))))))
@@ -1016,8 +1041,8 @@ USA.
 		    ((char? dm)
 		     (loop dm))
 		    (else
-		     (loop (string-ref dm 0))
-		     (builder (string-ref dm 1))))))))
+		     (loop (vector-ref dm 0))
+		     (builder (vector-ref dm 1))))))))
     (let* ((string (builder 'mutable))
 	   (end (ustring-length string)))
 
@@ -1138,13 +1163,13 @@ USA.
 
     (define (match-second fc-index sc)
       (let ((keys (vector-ref sk fc-index)))
-	(let loop ((start 0) (end (string-length keys)))
+	(let loop ((start 0) (end (vector-length keys)))
 	  (and (fix:< start end)
 	       (let ((m (fix:quotient (fix:+ start end) 2)))
-		 (let ((key (string-ref keys m)))
+		 (let ((key (vector-ref keys m)))
 		   (cond ((char<? sc key) (loop start m))
 			 ((char<? key sc) (loop (fix:+ m 1) end))
-			 (else (string-ref (vector-ref sv fc-index) m)))))))))
+			 (else (vector-ref (vector-ref sv fc-index) m)))))))))
 
     (scan-for-first-char 0)
     (builder 'immutable)))
@@ -1165,11 +1190,8 @@ USA.
   (fix:- jamo-trailing-end jamo-trailing-start))
 
 (define-integrable jamo-tbase (fix:- jamo-trailing-start 1))
-
-;;; These can be integrable after 9.3 is released.
-;;; Otherwise they trip a bug in the 9.2 compiler.
-(define jamo-tcount (fix:+ jamo-trailing-size 1))
-(define jamo-ncount (fix:* jamo-vowel-size jamo-tcount))
+(define-integrable jamo-tcount (fix:+ jamo-trailing-size 1))
+(define-integrable jamo-ncount (fix:* jamo-vowel-size jamo-tcount))
 
 (define (jamo-leading? char)
   (and (fix:>= (char->integer char) jamo-leading-start)
@@ -1211,351 +1233,6 @@ USA.
 		 (if trailing
 		     (fix:- (char->integer trailing) jamo-tbase)
 		     0)))))
-
-;;;; Grapheme clusters
-
-(define (grapheme-cluster-length string)
-  (let ((breaks
-	 (find-grapheme-cluster-breaks string
-				       0
-				       (lambda (i count)
-					 (declare (ignore i))
-					 (fix:+ count 1)))))
-    (if (fix:> breaks 0)
-	(fix:- breaks 1)
-	breaks)))
-
-(define (grapheme-cluster-slice string start end)
-  ;; START and END refer to the cluster breaks, they must be <= the number of
-  ;; clusters in STRING.
-  (guarantee index-fixnum? start 'grapheme-cluster-slice)
-  (guarantee index-fixnum? end 'grapheme-cluster-slice)
-  (if (not (fix:<= start end))
-      (error:bad-range-argument start 'grapheme-cluster-slice))
-  (let ((start-index #f)
-	(end-index #f))
-    (find-grapheme-cluster-breaks string
-				  0
-				  (lambda (index count)
-				    (if (fix:= count start)
-					(set! start-index index))
-				    (if (fix:= count end)
-					(set! end-index index))
-				    (fix:+ count 1)))
-    (if (not start-index)
-	(error:bad-range-argument start 'grapheme-cluster-slice))
-    (if (not end-index)
-	(error:bad-range-argument end 'grapheme-cluster-slice))
-    (string-slice string start-index end-index)))
-
-(define (grapheme-cluster-breaks string)
-  (reverse! (find-grapheme-cluster-breaks string '() cons)))
-
-(define (find-grapheme-cluster-breaks string initial-ctx break)
-  (let ((n (string-length string)))
-
-    (define (get-gcb i)
-      (ucd-gcb-value (string-ref string i)))
-
-    (define (transition gcb i ctx)
-      (let ((i* (fix:+ i 1)))
-	(if (fix:< i* n)
-	    ((vector-ref gcb-states gcb)
-	     (get-gcb i*)
-	     (lambda (gcb* break?)
-	       (transition gcb* i* (if break? (break i* ctx) ctx))))
-	    (break n ctx))))
-
-    (if (fix:> n 0)
-	(transition (get-gcb 0) 0 (break 0 initial-ctx))
-	initial-ctx)))
-
-(define gcb-names
-  '#(control
-     carriage-return
-     emoji-base
-     emoji-base-gaz
-     emoji-modifier
-     extend
-     glue-after-zwj
-     hst=l
-     linefeed
-     hst=lv
-     hst=lvt
-     prepend
-     regional-indicator
-     spacing-mark
-     hst=t
-     hst=v
-     other
-     zwj))
-
-(define (name->code namev name)
-  (let ((end (vector-length namev)))
-    (let loop ((code 0))
-      (if (not (fix:< code end))
-	  (error "Unknown name:" name))
-      (if (eq? (vector-ref namev code) name)
-	  code
-	  (loop (fix:+ code 1))))))
-
-(define (make-!selector namev names)
-  (let loop
-      ((names names)
-       (mask (fix:- (fix:lsh 1 (vector-length namev)) 1)))
-    (if (pair? names)
-	(loop (cdr names)
-	      (fix:andc mask (fix:lsh 1 (name->code namev (car names)))))
-	(lambda (code)
-	  (not (fix:= 0 (fix:and mask (fix:lsh 1 code))))))))
-
-(define (make-selector namev names)
-  (let loop
-      ((names names)
-       (mask 0))
-    (if (pair? names)
-	(loop (cdr names)
-	      (fix:or mask (fix:lsh 1 (name->code namev (car names)))))
-	(lambda (code)
-	  (not (fix:= 0 (fix:and mask (fix:lsh 1 code))))))))
-
-(define gcb-states
-  (let ((simple-state
-	 (lambda (break?)
-	   (lambda (gcb k)
-	     (k gcb (break? gcb)))))
-	(gcb-code
-	 (lambda (name)
-	   (name->code gcb-names name)))
-	(make-no-breaks
-	 (lambda (names)
-	   (make-!selector gcb-names names)))
-	(make-breaks
-	 (lambda (names)
-	   (make-selector gcb-names names))))
-    (let ((state:control (simple-state (make-no-breaks '())))
-	  (state:emoji-base
-	   (let ((gcb:extend (gcb-code 'extend))
-		 (gcb:emoji-base (gcb-code 'emoji-base))
-		 (break?
-		  (make-no-breaks '(emoji-modifier extend spacing-mark zwj))))
-	     (lambda (gcb k)
-	       (if (fix:= gcb gcb:extend)
-		   (k gcb:emoji-base #f)
-		   (k gcb (break? gcb))))))
-	  (state:extend
-	   (simple-state (make-no-breaks '(extend spacing-mark zwj))))
-	  (state:hst=v
-	   (simple-state
-	    (make-no-breaks '(hst=t hst=v extend spacing-mark zwj))))
-	  (state:hst=t
-	   (simple-state (make-no-breaks '(hst=t extend spacing-mark zwj)))))
-      (vector state:control
-	      (simple-state (make-no-breaks '(linefeed)))
-	      state:emoji-base
-	      state:emoji-base
-	      state:extend
-	      state:extend
-	      state:extend
-	      (simple-state
-	       (make-no-breaks
-		'(hst=l hst=lv hst=lvt hst=v extend spacing-mark zwj)))
-	      state:control
-	      state:hst=v
-	      state:hst=t
-	      (simple-state (make-breaks '(control carriage-return linefeed)))
-	      (let ((gcb:regional-indicator (gcb-code 'regional-indicator))
-		    (gcb:extend (gcb-code 'extend))
-		    (break? (make-no-breaks '(extend spacing-mark zwj))))
-		(lambda (gcb k)
-		  (let ((gcb
-			 (if (fix:= gcb gcb:regional-indicator)
-			     gcb:extend
-			     gcb)))
-		    (k gcb (break? gcb)))))
-	      state:extend
-	      state:hst=t
-	      state:hst=v
-	      state:extend
-	      (simple-state
-	       (make-no-breaks
-		'(emoji-base-gaz glue-after-zwj extend spacing-mark zwj)))))))
-
-;;;; Word breaks
-
-(define (string-word-breaks string)
-  (reverse! (find-word-breaks string '() cons)))
-
-(define (find-word-breaks string initial-ctx break)
-  (let ((n (string-length string)))
-
-    (define (get-wb i)
-      (ucd-wb-value (string-ref string i)))
-
-    (define (t1 wb0 i0 ctx)
-      (if (select:breaker wb0)
-	  (t1-breaker wb0 i0 ctx)
-	  (t1-!breaker wb0 i0 ctx)))
-
-    (define (t1-breaker wb0 i0 ctx)
-      (let ((i1 (fix:+ i0 1)))
-	(if (fix:< i1 n)
-	    (let ((wb1 (get-wb i1)))
-	      ((vector-ref wb-states wb0)
-	       wb1
-	       #f
-	       (lambda (wb1* break?)
-		 (t1 wb1* i1 (if break? (break i1 ctx) ctx)))
-	       k2-none))
-	    ctx)))
-
-    (define (t1-!breaker wb0 i0 ctx)
-      (let ((i1 (fix:+ i0 1)))
-	(if (fix:< i1 n)
-	    (let ((wb1 (get-wb i1)))
-	      (cond ((select:extender wb1)
-		     (t1-!breaker (if (select:zwj wb0) wb1 wb0) i1 ctx))
-		    ((select:breaker wb1)
-		     (t1-breaker wb1 i1 (break i1 ctx)))
-		    (else
-		     (t2 wb0 wb1 i1 ctx))))
-	    ctx)))
-
-    (define (t2 wb0 wb1 i1 ctx)
-      (let find-i2 ((i2 (fix:+ i1 1)))
-	(if (fix:< i2 n)
-	    (let ((wb2 (get-wb i2)))
-	      (if (select:extender wb2)
-		  (find-i2 (fix:+ i2 1))
-		  ((vector-ref wb-states wb0)
-		   wb1
-		   wb2
-		   (lambda (wb1* break?)
-		     (t2 wb1* wb2 i2 (if break? (break i1 ctx) ctx)))
-		   (lambda ()
-		     (t1 wb2 i2 ctx)))))
-	    ((vector-ref wb-states wb0)
-	     wb1
-	     #f
-	     (lambda (wb1* break?)
-	       (declare (ignore wb1*))
-	       (if break? (break i1 ctx) ctx))
-	     k2-none))))
-
-    (define (k2-none)
-      (error "Should never be called"))
-
-    (if (fix:< 0 n)
-	(break n (t1 (get-wb 0) 0 (break 0 initial-ctx)))
-	initial-ctx)))
-
-(define wb-names
-  '#(carriage-return
-     double-quote
-     emoji-base
-     emoji-base-gaz
-     emoji-modifier
-     extend-num-let
-     extend
-     format
-     glue-after-zwj
-     hebrew-letter
-     katakana
-     letter
-     linefeed
-     mid-num-let
-     mid-letter
-     mid-number
-     newline
-     numeric
-     regional-indicator
-     single-quote
-     other
-     zwj))
-
-(define select:breaker
-  (make-selector wb-names '(carriage-return linefeed newline)))
-
-(define select:extender
-  (make-selector wb-names '(extend format zwj)))
-
-(define select:zwj
-  (make-selector wb-names '(zwj)))
-
-(define wb-states
-  (make-vector (vector-length wb-names)
-	       (lambda (wb1 wb2 k1 k2)
-		 (declare (ignore wb2 k2))
-		 (k1 wb1 #t))))
-
-(let ((select:mb/ml/sq
-       (make-selector wb-names '(mid-num-let mid-letter single-quote)))
-      (select:mb/mn/sq
-       (make-selector wb-names '(mid-num-let mid-number single-quote)))
-      (select:hl/le (make-selector wb-names '(hebrew-letter letter)))
-      (select:hl (make-selector wb-names '(hebrew-letter)))
-      (select:numeric (make-selector wb-names '(numeric)))
-      (select:dq (make-selector wb-names '(double-quote)))
-      (select:ri (make-selector wb-names '(regional-indicator)))
-      (break?:hl
-       (make-!selector wb-names
-		       '(extend-num-let hebrew-letter letter numeric
-					single-quote)))
-      (break?:alphanum
-       (make-!selector wb-names
-		       '(extend-num-let hebrew-letter letter numeric)))
-      (wb:extend (name->code wb-names 'extend)))
-
-  (define (define-state name state)
-    (vector-set! wb-states (name->code wb-names name) state))
-
-  (for-each
-   (lambda (n.b)
-     (define-state (car n.b)
-       (let ((break? (make-!selector wb-names (cdr n.b))))
-	 (lambda (wb1 wb2 k1 k2)
-	   (declare (ignore wb2 k2))
-	   (k1 wb1 (break? wb1))))))
-   '((carriage-return linefeed)
-     (emoji-base emoji-modifier)
-     (emoji-base-gaz emoji-modifier)
-     (katakana extend-num-let katakana)
-     (zwj emoji-base-gaz glue-after-zwj)
-     (extend-num-let extend-num-let hebrew-letter katakana letter numeric)))
-
-  (define-state 'hebrew-letter
-    (lambda (wb1 wb2 k1 k2)
-      (if (and wb2
-	       (or (and (select:mb/ml/sq wb1)
-			(select:hl/le wb2))
-		   (and (select:dq wb1)
-			(select:hl wb2))))
-	  (k2)
-	  (k1 wb1 (break?:hl wb1)))))
-
-  (define-state 'letter
-    (lambda (wb1 wb2 k1 k2)
-      (if (and wb2
-	       (select:mb/ml/sq wb1)
-	       (select:hl/le wb2))
-	  (k2)
-	  (k1 wb1 (break?:alphanum wb1)))))
-
-  (define-state 'numeric
-    (lambda (wb1 wb2 k1 k2)
-      (if (and wb2
-	       (select:mb/mn/sq wb1)
-	       (select:numeric wb2))
-	  (k2)
-	  (k1 wb1 (break?:alphanum wb1)))))
-
-  (define-state 'regional-indicator
-    (let ()
-      (lambda (wb1 wb2 k1 k2)
-	(declare (ignore wb2 k2))
-	(if (select:ri wb1)
-	    (k1 wb:extend #f)
-	    (k1 wb1 #t))))))
 
 ;;;; Naive search algorithm
 
@@ -1706,12 +1383,16 @@ USA.
 
 ;;;; Sequence converters
 
-(define (list->string chars)
-  (let ((builder (string-builder)))
-    (for-each (lambda (char)
-		(guarantee bitless-char? char 'list->string)
-		(builder char))
-	      chars)
+(define (list->string chars #!optional start end)
+  (let* ((end (fix:end-index end (length chars) 'list->string))
+	 (start (fix:start-index start end 'list->string))
+	 (n (fix:- end start))
+	 (builder (string-builder n)))
+    (do ((i 0 (fix:+ i 1))
+	 (chars (drop chars start) (cdr chars)))
+	((not (fix:< i n)))
+      (guarantee char? (car chars) 'list->string)
+      (builder (car chars)))
     (builder 'immutable)))
 
 (define (string->list string #!optional start end)
@@ -1733,11 +1414,11 @@ USA.
 (define (vector->string vector #!optional start end)
   (let* ((end (fix:end-index end (vector-length vector) 'vector->string))
 	 (start (fix:start-index start end 'vector->string))
-	 (builder (string-builder)))
+	 (builder (string-builder (fix:- end start))))
     (do ((i start (fix:+ i 1)))
 	((not (fix:< i end)))
       (let ((char (vector-ref vector i)))
-	(guarantee bitless-char? char 'vector->string)
+	(guarantee char? char 'vector->string)
 	(builder char)))
     (builder 'immutable)))
 
@@ -1752,16 +1433,20 @@ USA.
 	      ((not (fix:< i end)))
 	    (vector-set! to j (ustring-ref string i)))
 	  to)))))
-
+
 ;;;; Append
 
 (define (string-append . strings)
-  (string-append* strings))
+  (%string-concatenate strings 'string-append)
+  (string-concatenate strings))
 
-(define (string-append* strings)
+(define (string-concatenate strings)
+  (%string-concatenate strings 'string-concatenate))
+
+(define (%string-concatenate strings caller)
   (let ((builder (string-builder)))
     (for-each (lambda (string)
-		(guarantee string? string 'string-append)
+		(guarantee string? string caller)
 		(builder string))
 	      strings)
     (builder)))
@@ -1774,7 +1459,7 @@ USA.
     (for-each (lambda (object)
 		(if object
 		    (builder
-		     (cond ((bitless-char? object) object)
+		     (cond ((char? object) object)
 			   ((string? object) object)
 			   ((symbol? object) (symbol->string object))
 			   (else
@@ -1785,6 +1470,24 @@ USA.
     (builder)))
 
 ;;;; Mapping
+
+(define (string-fold kons knil string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string-fold))
+	 (start (fix:start-index start end 'string-fold)))
+    (let loop ((index start) (knil knil))
+      (if (fix:< index end)
+	  (loop (fix:+ index 1)
+		(kons (string-ref string index) knil))
+	  knil))))
+
+(define (string-fold-right kons knil string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string-fold-right))
+	 (start (fix:start-index start end 'string-fold-right)))
+    (let loop ((index (fx- end 1)) (knil knil))
+      (if (fix:>= index start)
+	  (loop (fix:- index 1)
+		(kons (string-ref string index) knil))
+	  knil))))
 
 (define (mapper-values proc string strings)
   (cond ((null? strings)
@@ -1843,17 +1546,19 @@ USA.
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0))
       (and (fix:< i n)
-	   (if (proc i)
-	       #t
+	   (or (proc i)
 	       (loop (fix:+ i 1)))))))
 
 (define (string-every proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
-    (let loop ((i 0))
-      (if (fix:< i n)
-	  (and (proc i)
-	       (loop (fix:+ i 1)))
-	  #t))))
+    (if (fix:= n 0)
+	#t
+	(let ((n-1 (fix:- n 1)))
+	  (let loop ((i 0))
+	    (if (fix:< i n-1)
+		(and (proc i)
+		     (loop (fix:+ i 1)))
+		(proc i)))))))
 
 (define (string-find-first-index proc string . strings)
   (guarantee nfc-string? string 'string-find-first-index)
@@ -1910,10 +1615,10 @@ USA.
 ;;;; Splitter
 
 (define (string-splitter . options)
-  (receive (delimiter allow-runs? copy?)
+  (receive (delimiter allow-runs? copier copy?)
       (string-splitter-options options 'string-splitter)
     (let ((predicate (char-matcher->predicate delimiter 'string-splitter))
-	  (get-part (if copy? substring string-slice)))
+	  (copier (get-copier copier copy?)))
 
       (lambda (string #!optional start end)
 	(let* ((end (fix:end-index end (string-length string) 'string-splitter))
@@ -1933,10 +1638,10 @@ USA.
 	    (let loop ((index index))
 	      (if (fix:< index end)
 		  (if (predicate (string-ref string index))
-		      (cons (get-part string start index)
+		      (cons (copier string start index)
 			    (find-start (fix:+ index 1)))
 		      (loop (fix:+ index 1)))
-		  (list (get-part string start end)))))
+		  (list (copier string start end)))))
 
 	  (find-start start))))))
 
@@ -1944,7 +1649,8 @@ USA.
   (keyword-option-parser
    (list (list 'delimiter char-matcher? (lambda () char-whitespace?))
 	 (list 'allow-runs? boolean? (lambda () #t))
-	 (list 'copy? boolean? (lambda () #f)))))
+	 (list 'copier string-copier? (lambda () string-slice))
+	 (list 'copy? boolean? (lambda () #!default)))))
 
 (define (char-matcher->predicate matcher caller)
   (cond ((char? matcher) (char=-predicate matcher))
@@ -1956,14 +1662,26 @@ USA.
   (or (char? object)
       (char-set? object)
       (unary-procedure? object)))
+
+(define (string-copier? object)
+  (procedure-of-arity? object 3))
+
+(define (optional-boolean? object)
+  (or (boolean? object)
+      (default-object? object)))
+
+(define (get-copier copier copy?)
+  (if (default-object? copy?)
+      copier
+      (if copy? substring string-slice)))
 
 ;;;; Trimmer/Padder
 
 (define (string-trimmer . options)
-  (receive (where to-trim copy?)
+  (receive (where to-trim copier copy?)
       (string-trimmer-options options 'string-trimmer)
     (let ((predicate (char-matcher->predicate to-trim 'string-trimmer))
-	  (get-trimmed (if copy? substring string-slice)))
+	  (copier (get-copier copier copy?)))
       (lambda (string)
 	(let* ((end (string-length string))
 	       (start
@@ -1974,21 +1692,22 @@ USA.
 			       (predicate (string-ref string index)))
 			  (loop (fix:+ index 1))
 			  index)))))
-	  (get-trimmed string
-		       start
-		       (if (eq? where 'leading)
-			   end
-			   (let loop ((index end))
-			     (if (and (fix:> index start)
-				      (predicate
-				       (string-ref string (fix:- index 1))))
-				 (loop (fix:- index 1))
-				 index)))))))))
+	  (copier string
+		  start
+		  (if (eq? where 'leading)
+		      end
+		      (let loop ((index end))
+			(if (and (fix:> index start)
+				 (predicate
+				  (string-ref string (fix:- index 1))))
+			    (loop (fix:- index 1))
+			    index)))))))))
 
 (define-deferred string-trimmer-options
   (keyword-option-parser
    (list (list 'where '(leading trailing both) 'both)
 	 (list 'to-trim char-matcher? (lambda () char-whitespace?))
+	 (list 'copier string-copier? (lambda () string-slice))
 	 (list 'copy? boolean? (lambda () #f)))))
 
 (define (string-padder . options)
@@ -2032,7 +1751,7 @@ USA.
 
 (define (string-fill! string char #!optional start end)
   (guarantee mutable-string? string 'string-fill)
-  (guarantee bitless-char? char 'string-fill!)
+  (guarantee char? char 'string-fill!)
   (let* ((end (fix:end-index end (string-length string) 'string-fill!))
 	 (start (fix:start-index start end 'string-fill!)))
     (translate-slice string start end
@@ -2042,8 +1761,8 @@ USA.
 	  (ustring-set! string index char))))))
 
 (define (string-replace string char1 char2)
-  (guarantee bitless-char? char1 'string-replace)
-  (guarantee bitless-char? char2 'string-replace)
+  (guarantee char? char1 'string-replace)
+  (guarantee char? char2 'string-replace)
   (string-map (lambda (char)
 		(if (char=? char char1) char2 char))
 	      string))
@@ -2052,9 +1771,7 @@ USA.
   (if (default-object? modulus)
       (%string-hash (string->nfc string))
       (begin
-	(guarantee index-fixnum? modulus 'string-hash)
-	(if (fix:= 0 modulus)
-	    (error:bad-range-argument modulus 'string-hash))
+	(guarantee positive-fixnum? modulus 'string-hash)
 	(fix:remainder (%string-hash (string->nfc string)) modulus))))
 
 (define (%string-hash string)
@@ -2205,15 +1922,15 @@ USA.
   (fix:= 0 (string-length string)))
 
 (define (char->string char)
-  (guarantee bitless-char? char 'char->string)
-  (let ((s (immutable-ustring-allocate 1 (char->integer char))))
+  (guarantee char? char 'char->string)
+  (let ((s (immutable-ustring-allocate 1 (char-code char))))
     (ustring-set! s 0 char)
     s))
 
 (define (legacy-string-trimmer where)
   (lambda (string #!optional char-set)
     ((string-trimmer 'where where
-		     'copy? #t
+		     'copier substring
 		     'to-trim
 		     (if (default-object? char-set)
 			 char-set:whitespace
@@ -2244,5 +1961,5 @@ USA.
 (define (burst-string string delimiter allow-runs?)
   ((string-splitter 'delimiter delimiter
 		    'allow-runs? allow-runs?
-		    'copy? #t)
+		    'copier substring)
    string))

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,8 +28,9 @@ USA.
 ;;; package: (runtime ffi)
 
 (declare (usual-integrations))
-
 
+(add-boot-deps! '(runtime thread))
+
 ;;; Aliens
 
 (define-structure (alien (constructor %make-alien)
@@ -386,7 +387,8 @@ USA.
 	  (flo:set-environment! saved)
 	  value))))))
 
-#;(define-integrable (call-alien* alien-function args)
+#;
+(define-integrable (call-alien* alien-function args)
   (apply (ucode-primitive c-call -1) alien-function args))
 
 ;; Use this definition to maintain a callout/back stack.
@@ -401,54 +403,40 @@ USA.
       (%trace (tindent)"<= "value)
       value)))
 
-
 ;;; Malloc/Free
 
-;; Weak alist of: ( malloc alien X copy for c-free )...
-(define malloced-aliens '())
-(define malloced-aliens-mutex)
+(define malloced-aliens
+  (weak-alist-table eq?
+    (lambda (copy)
+      (if (not (alien-null? copy))
+	  (begin
+	    ((ucode-primitive c-free 1) copy)
+	    (alien-null! copy))))))
+
+(define malloced-aliens-mutex
+  (make-thread-mutex))
 
 (define (free-malloced-aliens)
-  (with-thread-mutex-try-lock
-   malloced-aliens-mutex
-   (lambda ()
-     (let loop ((aliens malloced-aliens)
-		(prev #f))
-       (if (pair? aliens)
-	   (if (weak-pair/car? (car aliens))
-	       (loop (cdr aliens) aliens)
-	       (let ((copy (weak-cdr (car aliens)))
-		     (next (cdr aliens)))
-		 (if prev
-		     (set-cdr! prev next)
-		     (set! malloced-aliens next))
-		 (if (not (alien-null? copy))
-		     (begin
-		       ((ucode-primitive c-free 1) copy)
-		       (alien-null! copy)))
-		 (loop next prev))))))
-   (lambda ()
-     unspecific)))
+  (with-thread-mutex-try-lock malloced-aliens-mutex
+    (lambda ()
+      (weak-alist-table-clean! malloced-aliens))
+    (lambda ()
+      unspecific)))
 
 (define (reset-malloced-aliens!)
-  (set! malloced-aliens-mutex (make-thread-mutex))
-  (let loop ((aliens malloced-aliens))
-    (if (pair? aliens)
-	(let ((alien (weak-car (car aliens)))
-	      (copy (weak-cdr (car aliens))))
-	  (if alien (alien-null! alien))
-	  (alien-null! copy)
-	  (loop (cdr aliens)))))
-  (set! malloced-aliens '()))
+  (weak-alist-table-prune! (lambda (alien copy)
+			     (alien-null! alien)
+			     (alien-null! copy)
+			     #t)
+			   malloced-aliens))
 
 (define (make-alien-to-free ctype init)
   ;; Register BEFORE initializing (allocating).
   (let ((alien (make-alien ctype)))
     (let ((copy (make-alien ctype)))
-      (let ((entry (weak-cons alien copy)))
-	(with-thread-mutex-lock malloced-aliens-mutex
-	 (lambda ()
-	   (set! malloced-aliens (cons entry malloced-aliens)))))
+      (with-thread-mutex-lock malloced-aliens-mutex
+	(lambda ()
+	  (weak-alist-table-set! malloced-aliens alien copy)))
       (init copy)
       ;; Even an abort here will not leak a byte.
       (copy-alien-address! alien copy))
@@ -460,29 +448,18 @@ USA.
 			((ucode-primitive c-malloc 2) alien size))))
 
 (define (free alien)
-  (if (not (alien? alien))
-      (warn "Cannot free a non-alien:" alien)
-      (let ((weak (weak-assq alien malloced-aliens)))
-	(if (not weak)
-	    (warn "Cannot free an alien that was not malloced:" alien)
-	    (let ((copy (weak-cdr weak)))
-	      (with-thread-mutex-lock malloced-aliens-mutex
-	       (lambda ()
-		 (if (not (alien-null? alien))
-		     (begin
-		       (alien-null! alien)
-		       ((ucode-primitive c-free 1) copy)
-		       (alien-null! copy)
-		       (set! malloced-aliens
-			     (delq! weak malloced-aliens)))))))))))
-
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (null? alist) #f
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? obj key) entry
-	      (loop (cdr alist)))))))
+  (cond ((not (alien? alien))
+	 (warn "Cannot free a non-alien:" alien))
+	((not (alien-null? alien))
+	 (with-thread-mutex-lock malloced-aliens-mutex
+	  (lambda ()
+	    (let ((copy (weak-alist-table-delete! malloced-aliens alien #f)))
+	      (alien-null! alien)
+	      (cond ((not copy)
+		     (warn "Cannot free an alien that was not malloced:" alien))
+		    ((not (alien-null? copy))
+		     ((ucode-primitive c-free 1) copy)
+		     (alien-null! copy)))))))))
 
 
 ;;; Callback support
@@ -548,7 +525,8 @@ USA.
     (normalize-aliens! args)
     (callback-handler* procedure args)))
 
-#;(define-integrable (callback-handler* procedure args)
+#;
+(define-integrable (callback-handler* procedure args)
   (apply-callback-proc procedure args))
 
 ;; Use this definition to maintain a callout/back stack.
@@ -652,14 +630,14 @@ USA.
   (set! %radix (if (fix:fixnum? #x100000000) #x100000000 #x10000))
   (set! calloutback-stack '()))
 
-(define (initialize-package!)
-  (reset-package!)
-  (initialize-callbacks!)
-  (add-event-receiver! event:after-restore reset-package!)
-  (add-gc-daemon! free-malloced-aliens)
-  unspecific)
+(add-boot-init!
+ (lambda ()
+   (run-now-and-after-restore! reset-package!)
+   (initialize-callbacks!)
+   (add-gc-daemon! free-malloced-aliens)))
 
-#;(define-syntax %assert
+#;
+(define-syntax %assert
   (syntax-rules ()
     ((_ test . msg)
      #f)))
@@ -671,7 +649,8 @@ USA.
 	 (error . msg)))))
 
 ;; Use this definition to avoid frequently checking %trace?.
-#;(define-syntax %trace
+#;
+(define-syntax %trace
   (syntax-rules ()
     ((_ . msg)
      #f)))

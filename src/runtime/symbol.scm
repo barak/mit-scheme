@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,7 @@ USA.
 ;;; package: (runtime symbol)
 
 (declare (usual-integrations))
+(declare (integrate-external "string"))
 
 (declare (integrate-operator symbol?))
 (define (symbol? object)
@@ -69,13 +70,13 @@ USA.
        (string->utf8 string start end))))
 
 (define (symbol->string symbol)
-  (guarantee symbol? symbol 'symbol->string)
-  (symbol-name symbol))
-
-(define (symbol-name symbol)
-  (let ((bytes (->bytes (system-pair-car symbol))))
+  (let ((bytes (%symbol-bytes symbol 'symbol->string)))
     (or (maybe-ascii bytes)
 	(utf8->string bytes))))
+
+(define (%symbol-bytes symbol caller)
+  (guarantee symbol? symbol caller)
+  (->bytes (system-pair-car symbol)))
 
 (define (symbol . objects)
   (string->symbol (string* objects)))
@@ -87,11 +88,11 @@ USA.
   ((ucode-primitive find-symbol) (foldcase->utf8 string)))
 
 (define (symbol-hash symbol #!optional modulus)
-  (string-hash (symbol->string symbol) modulus))
+  (bytevector-hash (%symbol-bytes symbol 'symbol-hash) modulus))
 
 (define (symbol<? x y)
-  (bytevector<? (->bytes (system-pair-car x))
-		(->bytes (system-pair-car y))))
+  (bytevector<? (%symbol-bytes x 'symbol<?)
+		(%symbol-bytes y 'symbol<?)))
 
 (define (symbol>? x y)
   (symbol<? y x))

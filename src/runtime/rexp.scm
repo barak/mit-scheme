@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -232,15 +232,10 @@ USA.
 			  parts))))))))
 
 (define (case-fold-char-set c)
-  (let loop ((chars (char-set-members c)) (chars* '()))
-    (if (pair? chars)
-	(loop (cdr chars)
-	      (if (char-alphabetic? (car chars))
-		  (cons* (char-upcase (car chars))
-			 (char-downcase (car chars))
-			 chars*)
-		  chars*))
-	(apply char-set chars*))))
+  (let ((char-set (char-set-intersection c char-set:ascii)))
+    (char-set-union char-set
+		    (char-upcase char-set)
+		    (char-downcase char-set))))
 
 (define (rexp-n*m n m . rexps)
   (guarantee exact-nonnegative-integer? n 'rexp-n*m)

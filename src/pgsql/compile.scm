@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the PGSQL option.
+;;;; Compile the PostgreSQL option.
 
 (load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))

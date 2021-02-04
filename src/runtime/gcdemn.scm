@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,9 +44,9 @@ USA.
   (set! add-secondary-gc-daemon! (make-adder secondary-gc-daemons))
   (set! add-secondary-gc-daemon!/unsafe
 	(make-adder/unsafe secondary-gc-daemons))
-  (let ((fixed-objects ((ucode-primitive get-fixed-objects-vector))))
-    (vector-set! fixed-objects #x0B trigger-primitive-gc-daemons!)
-    ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
+  (vector-set! ((ucode-primitive get-fixed-objects-vector))
+	       #x0B
+	       trigger-primitive-gc-daemons!))
 
 ;;; PRIMITIVE-GC-DAEMONS are executed during the GC.  They must not
 ;;; allocate any storage and they must be prepared to run at times
@@ -58,9 +58,10 @@ USA.
 
 ;;; GC-DAEMONS are executed after each GC from an interrupt handler.
 ;;; This interrupt handler has lower priority than the GC interrupt,
-;;; which guarantees that these daemons will not be run inside of
-;;; critical sections.  As a result, the daemons may allocate storage
-;;; and use most of the runtime facilities.
+;;; which allows these daemons to allocate storage and use most of the
+;;; runtime facilities.  The interrupt handler runs in the thread that
+;;; trapped, or in no thread if the thread system trapped.  Other
+;;; threads will resume running while this interrupt is serviced.
 (define gc-daemons)
 (define trigger-gc-daemons!)
 (define add-gc-daemon!)
@@ -71,8 +72,8 @@ USA.
      (if (not (*within-restore-window?*))
 	 (daemon)))))
 
-;;; SECONDARY-GC-DAEMONS are executed rarely.  Their purpose is to
-;;; reclaim storage that is either unlikely to be reclaimed or
+;;; SECONDARY-GC-DAEMONS must be triggered explicitly.  Their purpose
+;;; is to reclaim storage that is either unlikely to be reclaimed or
 ;;; expensive to reclaim.
 (define secondary-gc-daemons)
 (define trigger-secondary-gc-daemons!)

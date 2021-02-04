@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,6 +25,9 @@ USA.
 */
 
 /* C99 <fenv.h> emulation for x86 (shared between i386 and amd64) */
+
+#ifndef SCHEME_CMPINTMD_X86_FENV_H
+#define SCHEME_CMPINTMD_X86_FENV_H
 
 #define HAVE_FENV_T
 #define HAVE_FEXCEPT_T
@@ -117,3 +120,5 @@ extern int fegetenv (fenv_t *);
 extern int fesetenv (const fenv_t *);
 extern int feholdexcept (fenv_t *);
 extern int feupdateenv (const fenv_t *);
+
+#endif  /* SCHEME_CMPINTMD_X86_FENV_H */

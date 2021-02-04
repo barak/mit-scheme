@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,28 +25,28 @@ USA.
 |#
 
 ;;;; Runtime System Version Information
-;;; package: (runtime)
+;;; package: (runtime version)
 
 (declare (usual-integrations))
 
-(define copyright-years)
+(add-boot-deps! '(runtime microcode-tables)
+		'(runtime number)
+		'(runtime number-parser))
+
+(define last-copyright-year 2020 )
 
-(define last-copyright-year 2019 )
+(define-deferred copyright-years
+  (let ((then 1986))
+    (iota (+ (- last-copyright-year then) 1)
+	  then)))
 
 (add-boot-init!
  (lambda ()
-   (set! copyright-years
-	 (let ((now last-copyright-year)
-	       (then 1986))
-	   (iota (+ (- now then) 1) then)))
-   (add-subsystem-identification! "Release" '(10 1 11))
-   (snarf-microcode-version!)
-   (add-event-receiver! event:after-restore snarf-microcode-version!)
+   (add-subsystem-identification! "Release" '(11 1))
+   (run-now-and-after-restore!
+    (lambda ()
+      (add-subsystem-identification! "Microcode" (get-microcode-version))))
    (add-subsystem-identification! "Runtime" '(15 7))))
-
-(define (snarf-microcode-version!)
-  (add-subsystem-identification! "Microcode"
-				 (get-microcode-version-numbers)))
 
 (define (write-mit-scheme-copyright #!optional port line-prefix cmark short?)
   (let ((port
@@ -63,14 +63,11 @@ USA.
 			   (map (lambda (s) (string-append s ","))
 				(except-last-pair years)))
 		     ,(last years)
-		     "Massachusetts"
-		     "Institute"
-		     "of"
-		     "Technology"))
+		     "Massachusetts" "Institute" "of" "Technology"))
 		 line-prefix
 		 "    "
 		 port)))
-
+
 (define (write-mit-scheme-license #!optional port line-prefix short?)
   (let ((port
 	 (if (default-object? port)

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,38 +29,33 @@ USA.
 
 (declare (usual-integrations))
 
+(add-boot-deps! '(runtime scode-walker))
+
 (define-primitives
   (object-new-type primitive-object-new-type 2))
-
-(define (initialize-package!)
-  (set! *copy-constants?* (make-unsettable-parameter 'unbound))
-  (set! *object-copies* (make-unsettable-parameter 'unbound))
-  (set! copier/scode-walker
-	(make-scode-walker
-	 copy-constant
-	 `((access ,(%copy-pair (ucode-type access)))
-	   (assignment ,(%copy-triple (ucode-type assignment)))
-	   (combination ,copy-combination-object)
-	   (comment ,copy-comment-object)
-	   (conditional ,(%copy-triple (ucode-type conditional)))
-	   (definition ,(%copy-pair (ucode-type definition)))
-	   (delay ,(%copy-pair (ucode-type delay)))
-	   (disjunction ,(%copy-pair (ucode-type disjunction)))
-	   (lambda ,copy-lambda-object)
-	   (quotation ,(%copy-pair (ucode-type quotation)))
-	   (sequence ,copy-sequence-object)
-	   (the-environment ,copy-constant)
-	   (variable ,copy-variable-object))))
-  unspecific)
 
 ;;;; Top level
 
 (define *default/copy-constants?* #f)
 
-(define *copy-constants?*)
+(define-deferred *copy-constants?* (make-unsettable-parameter 'unbound))
+(define-deferred *object-copies* (make-unsettable-parameter 'unbound))
 
-(define *object-copies*)
-(define copier/scode-walker)
+(define-deferred copier/scode-walker
+  (make-scode-walker copy-constant
+    `((access ,(%copy-pair (ucode-type access)))
+      (assignment ,(%copy-triple (ucode-type assignment)))
+      (combination ,copy-combination-object)
+      (comment ,copy-comment-object)
+      (conditional ,(%copy-triple (ucode-type conditional)))
+      (definition ,(%copy-pair (ucode-type definition)))
+      (delay ,(%copy-pair (ucode-type delay)))
+      (disjunction ,(%copy-pair (ucode-type disjunction)))
+      (lambda ,copy-lambda-object)
+      (quotation ,(%copy-pair (ucode-type quotation)))
+      (sequence ,copy-sequence-object)
+      (the-environment ,copy-constant)
+      (variable ,copy-variable-object))))
 
 (define-integrable (make-object-association-table)
   (list '*object-copies*))
@@ -245,7 +240,9 @@ USA.
 	 (error "copy-lambda-object: Unknown type" obj))))
 
 (define (copy-variable-object obj)
-  (let ((var (make-scode-variable (scode-variable-name obj))))
+  (let ((var
+	 (make-scode-variable (scode-variable-name obj)
+			      (scode-variable-safe? obj))))
     (add-association! obj var)
     var))
 

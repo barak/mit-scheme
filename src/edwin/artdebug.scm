@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -990,7 +990,7 @@ Prefix argument means do not kill the debugger buffer."
   string?)
 
 (define (print-subproblem number frame port)
-  (with-values (lambda () (stack-frame/debugging-info frame))
+  (call-with-values (lambda () (stack-frame/debugging-info frame))
     (lambda (expression environment subexpression)
       (print-history-level
        (stack-frame/compiled-code? frame)
@@ -1241,8 +1241,8 @@ Prefix argument means do not kill the debugger buffer."
 	(delta (- subproblem-number (dstate/subproblem-number dstate))))
     (if (negative? delta)
 	(let ((subproblems
-	       (list-tail (dstate/previous-subproblems dstate)
-			  (-1+ (- delta)))))
+	       (drop (dstate/previous-subproblems dstate)
+		     (-1+ (- delta)))))
 	  (set-current-subproblem! dstate (car subproblems) (cdr subproblems))
 	  (finish-move-to-subproblem! dstate))
 	(let loop

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,26 +29,22 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (reset-system-clock!)
-  (add-event-receiver! event:after-restore reset-system-clock!))
-
-(define (reset-system-clock!)
-  (set! offset-time (process-time-clock))
-  (set! non-runtime 0)
-  unspecific)
-
 (define current-jiffy (ucode-primitive current-jiffy 0))
 (define jiffies-per-second (ucode-primitive jiffies-per-second 0))
-
-(define offset-time)
-(define non-runtime)
 
 (define-integrable process-time-clock
   (ucode-primitive system-clock 0))
 
 (define-integrable real-time-clock
   (ucode-primitive real-time-clock 0))
+
+(define offset-time)
+(define non-runtime)
+(define (reset-system-clock!)
+  (set! offset-time (process-time-clock))
+  (set! non-runtime 0)
+  unspecific)
+(run-now-and-after-restore! reset-system-clock!)
 
 (define (system-clock)
   (process->system-time (process-time-clock)))

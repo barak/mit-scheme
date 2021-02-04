@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -84,14 +84,21 @@ USA.
 	      (generate/continuation-entry/pop-extra continuation)))
 	 operand
 	 continuation)
-	(scfg-append!
-	 (if (and continuation (continuation/effect? continuation))
-	     (effect-prefix operand)
-	     ((return-operand/value-generator operand)
-	      (lambda (expression)
-		(rtl:make-assignment register:value expression))))
-	 (return-operator/pop-frames context operator 0)
-	 (rtl:make-pop-return)))))
+        (receive (rising-action conclusion)
+		 (if (and continuation (continuation/effect? continuation))
+		     (values (effect-prefix operand) (make-null-cfg))
+		     (let ((temporary (rtl:make-pseudo-register)))
+		       (values
+			((return-operand/value-generator operand)
+			 (lambda (expression)
+			   (rtl:make-assignment temporary expression)))
+			(rtl:make-assignment register:value
+					     (rtl:make-fetch temporary)))))
+	  (scfg-append!
+	   rising-action
+	   (return-operator/pop-frames context operator 0)
+	   conclusion
+	   (rtl:make-pop-return))))))
 
 (define-integrable (continuation/effect? continuation)
   (eq? continuation-type/effect (continuation/type continuation)))

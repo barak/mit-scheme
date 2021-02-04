@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -125,7 +125,7 @@ USA.
 
 (define (rtl:make-push-return continuation)
   (rtl:make-push
-   (rtl:make-cons-pointer (rtl:make-machine-constant type-code:compiled-entry)
+   (rtl:make-cons-pointer (rtl:make-machine-constant type-code:compiled-return)
 			  (rtl:make-entry:continuation continuation))))
 
 (define (rtl:make-push-link)
@@ -583,9 +583,9 @@ USA.
 	      (do-chunk elements
 			offset
 			(finish))
-	      (do-chunk (list-head elements chunk-size)
+	      (do-chunk (take elements chunk-size)
 			offset
-			(process (list-tail elements chunk-size)
+			(process (drop elements chunk-size)
 				 (+ offset chunk-size)
 				 (1+ chunk)))))))))
 
@@ -706,7 +706,7 @@ USA.
 				     operand1
 				     operand2
 				     overflow?))))))))
-
+
 (define-expression-method 'FIXNUM-1-ARG
   (lambda (receiver scfg-append! operator operand overflow?)
     (expression-simplify operand scfg-append!
@@ -733,6 +733,21 @@ USA.
 		       s-operand1
 		       s-operand2
 		       overflow?))))))))
+
+(define-expression-method 'FLONUM-3-ARGS
+  (lambda (receiver scfg-append! operator operand1 operand2 operand3 overflow?)
+    (expression-simplify operand1 scfg-append!
+      (lambda (s-operand1)
+	(expression-simplify operand2 scfg-append!
+	  (lambda (s-operand2)
+	    (expression-simplify operand3 scfg-append!
+	      (lambda (s-operand3)
+		(receiver (rtl:make-flonum-3-args
+			   operator
+			   s-operand1
+			   s-operand2
+			   s-operand3
+			   overflow?))))))))))
 
 ;;; end EXPRESSION-SIMPLIFY package
 )

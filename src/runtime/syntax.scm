@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,6 +40,8 @@ USA.
 ;;; Programming, page 86.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic) '(runtime error-handler))
 
 ;;;; Top level
 
@@ -57,19 +59,23 @@ USA.
 	 (if (syntactic-environment? environment)
 	     environment
 	     (runtime-environment->syntactic environment))))
-    (with-identifier-renaming
+    (with-syntax-tracing
      (lambda ()
-       (syntax-internal forms senv)))))
+       (with-identifier-renaming
+	(lambda ()
+	  (syntax-internal forms senv)))))))
 
 (define (syntax-library-forms forms env)
   (guarantee list? forms 'syntax-library-forms)
-  (with-identifier-renaming
+  (with-syntax-tracing
    (lambda ()
-     (receive (sealed get-bound get-free) (make-sealed-senv env)
-       (let ((result (syntax-internal forms sealed)))
-	 (values result
-		 (get-bound)
-		 (get-free)))))))
+     (with-identifier-renaming
+      (lambda ()
+	(receive (sealed get-bound get-free) (make-sealed-senv env)
+	  (let ((result (syntax-internal forms sealed)))
+	    (values result
+		    (get-bound)
+		    (get-free)))))))))
 
 (define (syntax-internal forms senv)
   (parameterize ((top-level-senv senv))
@@ -78,10 +84,111 @@ USA.
        (map-in-order (lambda (form)
 		       (classify-form form senv (initial-hist form)))
 		     forms)))))
+
+(define-deferred param:trace-syntax?
+  (make-settable-parameter #f))
+
+(define (with-syntax-tracing thunk)
+  (if (param:trace-syntax?)
+      (let ((t (tracer)))
+	(let ((value
+	       (parameterize ((*tracer* t))
+		 (thunk))))
+	  (parameterize ((param:pp-uninterned-symbols-by-name? #f))
+	    (pp ((tracer:finish t))))
+	  value))
+      (thunk)))
+
+(define-deferred *tracer*
+  (make-unsettable-parameter (dummy-tracer)))
+
+(define (trace-start-subproblem key)
+  ((tracer:start-subproblem (*tracer*)) key))
+
+(define (trace-end-subproblem key value)
+  ((tracer:end-subproblem (*tracer*)) key value))
+
+(define (trace-reduce value)
+  ((tracer:reduce (*tracer*)) value))
+
+(define-record-type <tracer>
+    (make-tracer start-subproblem end-subproblem reduce finish)
+    tracer?
+  (start-subproblem tracer:start-subproblem)
+  (end-subproblem tracer:end-subproblem)
+  (reduce tracer:reduce)
+  (finish tracer:finish))
+
+(define (tracer)
+  (let ((current (list 'top-level))
+	(unfinished '())
+	(finished '()))
+
+    (define (start-subproblem key)
+      (let ((node (list key)))
+	(set-cdr! current (cons (cons 'subproblem node) (cdr current)))
+	(set! unfinished (cons current unfinished))
+	(set! current node)
+	unspecific))
+
+    (define (end-subproblem key value)
+      (if (not (and (pair? unfinished) (eqv? key (car current))))
+	  (error "Trace stack slipped:" key unfinished))
+      (set-cdr! current (cons `(value ,value) (cdr current)))
+      (set! finished (cons current finished))
+      (set! current (car unfinished))
+      (set! unfinished (cdr unfinished))
+      unspecific)
+
+    (define (reduce value)
+      (set-cdr! current (cons `(reduce ,value) (cdr current))))
+
+    (define (finish)
+      (if (not (and (null? unfinished) (eqv? 'top-level (car current))))
+	  (error "Trace stack slipped:" unfinished))
+      (let loop ((node current))
+	(set-cdr! node (reverse (cdr node)))
+	(for-each (lambda (part)
+		    (if (eq? 'subproblem (car part))
+			(loop (cdr part))))
+		  (cdr node)))
+      current)
+
+    (make-tracer start-subproblem end-subproblem reduce finish)))
+
+(define (dummy-tracer)
+
+  (define (start-subproblem key)
+    (declare (ignore key))
+    unspecific)
+
+  (define (end-subproblem key value)
+    (declare (ignore key value))
+    unspecific)
+
+  (define (reduce value)
+    (declare (ignore value))
+    unspecific)
+
+  (define (finish)
+    unspecific)
+
+  (make-tracer start-subproblem end-subproblem reduce finish))
 
 ;;;; Classifier
 
 (define (classify-form form senv hist)
+  (let ((key `(classify-form ,form ,senv)))
+    (trace-start-subproblem key)
+    (let ((item (%classify-form form senv hist)))
+      (trace-end-subproblem key (render-item item))
+      item)))
+
+(define (reclassify form env hist)
+  (trace-reduce `(reclassify ,form ,env))
+  (%classify-form form env (hist-reduce form hist)))
+
+(define (%classify-form form senv hist)
   (cond ((identifier? form)
 	 (let ((item (lookup-identifier form senv)))
 	   (if (reserved-name-item? item)
@@ -96,21 +203,33 @@ USA.
 		     hist))
 	((pair? form)
 	 (let ((item (classify-form (car form) senv (hist-car hist))))
-	   (if (keyword-item? item)
-	       ((keyword-item-impl item) form senv hist)
-	       (let ((ctx (serror-ctx form senv hist)))
-		  (if (not (list? (cdr form)))
-		      (serror ctx "Combination must be a proper list:" form))
-		  (combination-item ctx
-				    item
-				    (classify-forms (cdr form)
-						    senv
-						    (hist-cdr hist)))))))
+	   (cond ((classifier-item? item)
+		  (apply-classifier-item item form senv hist))
+		 ((transformer-item? item)
+		  (let ((key `(transform ,item ,form ,senv)))
+		    (trace-start-subproblem key)
+		    (let ((form*
+			   (let ((impl (transformer-item-impl item)))
+			     (with-error-context form senv hist
+			       (lambda ()
+				 (impl form senv hist))))))
+		      (trace-end-subproblem key form*)
+		      (reclassify form* senv hist))))
+		 (else
+		  (let ((ctx (serror-ctx form senv hist)))
+		    (if (not (list? (cdr form)))
+			(serror ctx "Combination must be a proper list:" form))
+		    (combination-item ctx
+				      item
+				      (classify-forms (cdr form)
+						      senv
+						      (hist-cdr hist))))))))
 	(else
 	 (constant-item (serror-ctx form senv hist) form))))
 
-(define (reclassify form env hist)
-  (classify-form form env (hist-reduce form hist)))
+(define (apply-classifier-item item form senv hist)
+  (trace-reduce `(classify ,item ,form ,senv))
+  ((classifier-item-impl item) form senv hist))
 
 (define (classify-forms forms senv hist)
   (smap (lambda (expr hist)
@@ -130,7 +249,7 @@ USA.
 	  (constant-form? form)
 	  (and (syntactic-closure? form)
 	       (null? (syntactic-closure-free form))
-	       (not (closed-identifier? form))))
+	       (not (identifier? (syntactic-closure-form form)))))
       form
       (%make-syntactic-closure senv free form)))
 
@@ -145,6 +264,11 @@ USA.
   (senv syntactic-closure-senv)
   (free syntactic-closure-free)
   (form syntactic-closure-form))
+
+(define-print-method syntactic-closure?
+  (standard-print-method 'syntactic-closure
+    (lambda (closure)
+      (list (syntactic-closure-form closure)))))
 
 (define (strip-syntactic-closures object)
   (if (let loop ((object object))
@@ -175,7 +299,7 @@ USA.
 (define (closed-identifier? object)
   (and (syntactic-closure? object)
        (null? (syntactic-closure-free object))
-       (raw-identifier? (syntactic-closure-form object))))
+       (identifier? (syntactic-closure-form object))))
 
 (register-predicate! identifier? 'identifier)
 (register-predicate! raw-identifier? 'raw-identifier '<= identifier?)
@@ -185,9 +309,13 @@ USA.
   (string->uninterned-symbol (symbol->string (identifier->symbol identifier))))
 
 (define (identifier->symbol identifier)
-  (cond ((raw-identifier? identifier) identifier)
-	((closed-identifier? identifier) (syntactic-closure-form identifier))
-	(else (error:not-a identifier? identifier 'identifier->symbol))))
+  (cond ((raw-identifier? identifier)
+	 identifier)
+	((and (syntactic-closure? identifier)
+	      (null? (syntactic-closure-free identifier)))
+	 (identifier->symbol (syntactic-closure-form identifier)))
+	(else
+	 (error:not-a identifier? identifier 'identifier->symbol))))
 
 (define (identifier=? senv-1 identifier-1 senv-2 identifier-2)
   (let ((item-1 (lookup-identifier identifier-1 senv-1))
@@ -345,13 +473,6 @@ USA.
   (capture-syntactic-environment
    (lambda (closing-senv)
      (close-syntax (procedure closing-senv) senv))))
-
-(define (map-in-order procedure . lists)
-  (let loop ((lists lists) (values '()))
-    (if (pair? (car lists))
-	(loop (map cdr lists)
-	      (cons (apply procedure (map car lists)) values))
-	(reverse! values))))
 
 (define (smap procedure forms hist)
   (map procedure forms (subform-hists forms hist)))

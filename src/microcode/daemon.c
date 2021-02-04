@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -107,7 +107,7 @@ rehash_bucket (SCHEME_OBJECT * bucket, SCHEME_OBJECT hash_table,
   while (!EMPTY_LIST_P (*bucket))
   {
     weak_pair = (PAIR_CAR (*bucket));
-    if ((PAIR_CAR (weak_pair)) != SHARP_F)
+    if ((PAIR_CAR (weak_pair)) != GC_RECLAIMED)
     {
       rehash_pair (weak_pair, hash_table, table_size);
     }
@@ -124,7 +124,7 @@ splice_and_rehash_bucket (SCHEME_OBJECT * bucket, SCHEME_OBJECT hash_table,
   while (!EMPTY_LIST_P (*bucket))
   {
     weak_pair = (PAIR_CAR (*bucket));
-    if ((PAIR_CAR (weak_pair)) != SHARP_F)
+    if ((PAIR_CAR (weak_pair)) != GC_RECLAIMED)
     {
       rehash_pair (weak_pair, hash_table, table_size);
       bucket = (PAIR_CDR_LOC (*bucket));

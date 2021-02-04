@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -144,50 +144,47 @@ USA.
 
 (define (generate-literal state)
   (guarantee-buffer-space state (fix:+ literal-max 2))
-  (letrec
-      ((loop
-	(lambda (nb)
-	  (let ((node (match-first state)))
+  (define (loop nb)
+    (let ((node (match-first state)))
+      (if (not node)
+	  (continue nb)
+	  (let ((node (match-next state node 1)))
 	    (if (not node)
 		(continue nb)
-		(let ((node (match-next state node 1)))
+		(let ((node (match-next state node 2)))
 		  (if (not node)
-		      (continue nb)
-		      (let ((node (match-next state node 2)))
-			(if (not node)
+		      (begin
+			(unread-byte state)
+			(continue nb))
+		      (let ((nb*
+			     (let ((cbp (current-bp state))
+				   (nbp (node-bp node)))
+			       (fix:- (if (fix:< cbp nbp)
+					  (fix:+ cbp buffer-size)
+					  cbp)
+				      nbp))))
+			(if (fix:< nb* 3)
+			    ;; Don't consider matches that
+			    ;; would result in a copy that is
+			    ;; copying from itself.
 			    (begin
-			      (unread-byte state)
+			      (unread-bytes state 2)
 			      (continue nb))
-			    (let ((nb*
-				   (let ((cbp (current-bp state))
-					 (nbp (node-bp node)))
-				     (fix:- (if (fix:< cbp nbp)
-						(fix:+ cbp buffer-size)
-						cbp)
-					    nbp))))
-			      (if (fix:< nb* 3)
-				  ;; Don't consider matches that
-				  ;; would result in a copy that is
-				  ;; copying from itself.
-				  (begin
-				    (unread-bytes state 2)
-				    (continue nb))
-				  (begin
-				    (write-literal state nb)
-				    (generate-copy state node 3))))))))))))
-       (continue
-	(lambda (nb)
-	  (increment-current-pointer state)
-	  (increment-bp state)
-	  (let ((nb (fix:+ nb 1)))
-	    (if (fix:< nb literal-max)
-		(loop nb)
-		(begin
-		  (write-literal state nb)
-		  (idle state)))))))
+			    (begin
+			      (write-literal state nb)
+			      (generate-copy state node 3)))))))))))
+  (define (continue nb)
     (increment-current-pointer state)
     (increment-bp state)
-    (loop 1)))
+    (let ((nb (fix:+ nb 1)))
+      (if (fix:< nb literal-max)
+	  (loop nb)
+	  (begin
+	    (write-literal state nb)
+	    (idle state)))))
+  (increment-current-pointer state)
+  (increment-bp state)
+  (loop 1))
 
 (define (generate-copy state node nb)
   (guarantee-buffer-space state copy-max)

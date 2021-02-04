@@ -959,7 +959,8 @@ Table}), which also holds its keys weakly.
 The car of a @dfn{weak pair} holds its pointer weakly, while the cdr
 holds its pointer strongly.  If the object in the car of a weak pair
 is not held strongly by any other data structure, it will be
-garbage-collected.
+garbage-collected, and the original value replaced with a unique
+@dfn{reclaimed object}.
 
 Note: weak pairs can be defeated by cross references among their
 slots.  Consider a weak pair @var{P} holding an object @var{A} in its
@@ -984,51 +985,37 @@ Allocates and returns a new weak pair, with components @var{car} and
 @var{cdr}.  The @var{car} component is held weakly.
 @end deffn
 
-@deffn procedure weak-pair/car? weak-pair
+@deffn procedure gc-reclaimed-object? object
+Returns @code{#t} if @var{object} is the reclaimed object, and
+@code{#f} otherwise.
+@end deffn
+
+@deffn procedure gc-reclaimed-object
+Returns the reclaimed object.
+@end deffn
+
+@deffn {obsolete procedure} weak-pair/car? weak-pair
 This predicate returns @code{#f} if the car of @var{weak-pair} has been
 garbage-collected; otherwise returns @code{#t}.  In other words, it is
 true if @var{weak-pair} has a valid car component.
+
+This is equivalent to
+@example
+(not (gc-reclaimed-object? (weak-car @var{weak-pair})))
+@end example
+
+This predicate has been deprecated; instead use
+@code{gc-reclaimed-object?}.  Please note that the previously
+recommended way to use @code{weak-pair/car?} will no longer work, so
+any code using it should be rewritten.
 @end deffn
 
 @deffn procedure weak-car weak-pair
 @cindex selection, of weak pair component
 @cindex component selection, of weak pair
 Returns the car component of @var{weak-pair}.  If the car component has
-been garbage-collected, this operation returns @code{#f}, but it can
-also return @code{#f} if that is the value that was stored in the car.
+been garbage-collected, this operation returns the reclaimed object.
 @end deffn
-
-Normally, @code{weak-pair/car?} is used to determine if @code{weak-car}
-would return a valid value.  An obvious way of doing this would be:
-
-@example
-@group
-(if (weak-pair/car? x)
-    (weak-car x)
-    @dots{})
-@end group
-@end example
-
-@noindent
-However, since a garbage collection could occur between the call to
-@code{weak-pair/car?} and @code{weak-car}, this would not always work
-correctly.  Instead, the following should be used, which always works:
-
-@example
-@group
-(or (weak-car x)
-    (and (not (weak-pair/car? x))
-         @dots{}))
-@end group
-@end example
-
-The reason that the latter expression works is that @code{weak-car}
-returns @code{#f} in just two instances: when the car component is
-@code{#f}, and when the car component has been garbage-collected.  In
-the former case, if a garbage collection happens between the two calls,
-it won't matter, because @code{#f} will never be garbage-collected.  And
-in the latter case, it also won't matter, because the car component no
-longer exists and cannot be affected by the garbage collector.
 
 @deffn procedure weak-set-car! weak-pair object
 Sets the car component of @var{weak-pair} to @var{object} and returns an

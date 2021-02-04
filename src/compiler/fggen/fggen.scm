@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -64,7 +64,7 @@ USA.
 	       (make-expression
 		block
 		continuation
-		(with-values
+		(call-with-values
 		    (lambda ()
 		      (let ((collect
 			     (lambda (names declarations body)
@@ -308,15 +308,6 @@ USA.
       (make-subproblem/canonical (make-return block continuation rvalue)
 				 continuation)))
 
-(define-integrable (scode/make-safe-variable name)
-  (cons safe-variable-tag name))
-
-(define-integrable (scode/safe-variable-name reference)
-  (cdr reference))
-
-(define safe-variable-tag
-  "safe-variable")
-
 ;; This is a kludge.
 
 (define *global-variables*)
@@ -359,25 +350,20 @@ USA.
 	     (cons variable
 		   (block-variables-nontransitively-free block))))))
 
-(define-integrable (make-variable-generator extract-name safe?)
+(define-integrable (make-variable-generator extract-name extract-safe?)
   (lambda (block continuation context expression)
-    context				; ignored
+    (declare (ignore context))
     (continue/rvalue block
 		     continuation
 		     (make-reference block
-				     (find-name block
-						(extract-name expression))
-				     safe?))))
+				     (find-name block (extract-name expression))
+				     (extract-safe? expression)))))
 
 (define generate/variable
-  (make-variable-generator scode/variable-name #f))
-
-(define generate/safe-variable
-  (make-variable-generator scode/safe-variable-name #t))
+  (make-variable-generator scode/variable-name scode/variable-safe?))
 
 (define generate/global-variable
-  (make-variable-generator scode/global-variable-name #f))
-
+  (make-variable-generator scode/global-variable-name (lambda (x) x #f)))
 
 (define (generate/lambda block continuation context expression)
   (generate/lambda* block continuation
@@ -455,7 +441,12 @@ USA.
 		     (scode/make-lambda
 		      scode-lambda-name:let auxiliary '() #f names '()
 		      (scode/make-sequence
-		       (map* actions scode/make-assignment names values)))
+		       (fold-right (lambda (name value exprs)
+				     (cons (scode/make-assignment name value)
+					   exprs))
+				   actions
+				   names
+				   values)))
 		     (map (lambda (name)
 			    name ;; ignored
 			    (make-unassigned-reference-trap))
@@ -503,21 +494,25 @@ USA.
 ;;;; Combinators
 
 (define (generate/sequence block continuation context expression)
-  (if (scode/sequence? expression)
-      ;; This is done in a funny way to enforce processing in sequence order.
-      ;; In this way, compile-by-procedures compiles in a predictable order.
-      (let ((first-action
-	     (generate/subproblem/effect
-	      block continuation context
-	      (car (scode/sequence-actions expression))
-              'SEQUENCE-CONTINUE
-	      expression)))
-	((scfg*ctype->ctype! continuation)
-	 first-action
-	 (generate/expression
-	  block continuation context
-	  (scode/make-sequence (cdr (scode/sequence-actions expression))))))
-      (error "Not a sequence" expression)))
+  (if (not (scode/sequence? expression))
+      (error "Not a sequence:" expression))
+  (let ((actions (scode/sequence-actions expression)))
+    (if (pair? actions)
+	(let loop ((actions actions))
+	  (let ((action (car actions))
+		(rest (cdr actions)))
+	    (if (pair? rest)
+		;; This is done in a funny way to enforce processing in sequence
+		;; order.  In this way, compile-by-procedures compiles in a
+		;; predictable order.
+		(let ((first-action
+		       (generate/subproblem/effect block continuation context
+						   action 'sequence-continue
+						   expression)))
+		  ((scfg*ctype->ctype! continuation) first-action (loop rest)))
+		(generate/expression block continuation context action))))
+	(continue/rvalue-constant block continuation
+				  (make-constant unspecific)))))
 
 (define (generate/conditional block continuation context expression)
   (let ((predicate (scode/conditional-predicate expression))
@@ -699,7 +694,7 @@ USA.
 	   (scode/make-let (list new-value)
 			   (list value)
 	     (scode/make-let (list old-value)
-			     (list (scode/make-safe-variable name))
+			     (list (scode/make-variable name #t))
 	       (scode/make-assignment name (scode/make-variable new-value))
 	       (scode/make-variable old-value))))))))
 
@@ -950,10 +945,7 @@ USA.
 					  context expression))))))
 	(generate/pair
 	 (lambda (block continuation context expression)
-	   (cond ((eq? (car expression) safe-variable-tag)
-		  (generate/safe-variable block continuation
-					  context expression))
-		 ((eq? (car expression) constant-quotation-tag)
+	   (cond ((eq? (car expression) constant-quotation-tag)
 		  (generate/constant-quotation block continuation
 					       context expression))
 		 (else

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,25 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define open-channels)
-(define open-directories)
-
-(define (initialize-package!)
-  (set! open-channels
-	(make-gc-finalizer (ucode-primitive channel-close 1)
-			   channel?
-			   channel-descriptor
-			   set-channel-descriptor!))
-  (set! open-directories
-	(make-gc-finalizer (ucode-primitive new-directory-close 1)
-			   directory-channel?
-			   directory-channel/descriptor
-			   set-directory-channel/descriptor!))
-  (initialize-select-registry!)
-  (reset-dld-handles!)
-  (add-event-receiver! event:after-restore reset-dld-handles!)
-  unspecific)
-
 (define-structure (channel (constructor %make-channel))
   ;; This structure serves two purposes.  First, because a descriptor
   ;; is a non-pointer, it is necessary to store it in an allocated
@@ -57,10 +38,16 @@ USA.
   (type #f read-only #t)
   port)
 
+(define open-channels
+  (make-gc-finalizer (ucode-primitive channel-close 1)
+		     channel?
+		     channel-descriptor
+		     set-channel-descriptor!))
+
 (define-guarantee channel "I/O channel")
 
 (define (make-channel d)
-  (open-channel (lambda (p) (system-pair-set-cdr! p d))))
+  (open-channel (lambda (p) (weak-set-cdr! p d))))
 
 (define (open-channel procedure)
   (make-gc-finalized-object open-channels procedure
@@ -450,6 +437,12 @@ USA.
 (define-structure (directory-channel (conc-name directory-channel/))
   descriptor)
 
+(define open-directories
+  (make-gc-finalizer (ucode-primitive new-directory-close 1)
+		     directory-channel?
+		     directory-channel/descriptor
+		     set-directory-channel/descriptor!))
+
 (define-guarantee directory-channel "directory channel")
 
 (define (directory-channel-open name)
@@ -477,31 +470,29 @@ USA.
 ;;;; Select registry
 
 (define have-select?)
-(define select-registry-finalizer)
-(define select-registry-result-vectors)
-
-(define (initialize-select-registry!)
+(define (reset-have-select)
   (set! have-select? ((ucode-primitive have-select? 0)))
-  (set! select-registry-finalizer
-	(make-gc-finalizer (ucode-primitive deallocate-select-registry 1)
-			   select-registry?
-			   select-registry-handle
-			   set-select-registry-handle!))
-  (let ((reset-rv!
-	 (lambda ()
-	   (set! select-registry-result-vectors '())
-	   unspecific)))
-    (reset-rv!)
-    (add-event-receiver! event:after-restart reset-rv!))
-  (add-event-receiver! event:after-restore
-    (lambda ()
-      (set! have-select? ((ucode-primitive have-select? 0)))
-      unspecific)))
+  unspecific)
+(reset-have-select)
+(add-event-receiver! event:after-restore reset-have-select)
+
+(define select-registry-result-vectors)
+(define (reset-rv!)
+  (set! select-registry-result-vectors '())
+  unspecific)
+(reset-rv!)
+(add-event-receiver! event:after-restart reset-rv!)
 
 (define-structure (select-registry
 		   (constructor %make-select-registry (handle)))
   handle
   (length #f))
+
+(define select-registry-finalizer
+  (make-gc-finalizer (ucode-primitive deallocate-select-registry 1)
+		     select-registry?
+		     select-registry-handle
+		     set-select-registry-handle!))
 
 (define (make-select-registry)
   (without-interruption
@@ -711,11 +702,12 @@ USA.
 
 (define dld-handles)
 (define dld-handles-mutex)
-
 (define (reset-dld-handles!)
   (set! dld-handles '())
   (set! dld-handles-mutex (make-thread-mutex))
   unspecific)
+(reset-dld-handles!)
+(add-event-receiver! event:after-restore reset-dld-handles!)
 
 (define (dld-unload-file handle)
   (guarantee-dld-handle handle 'dld-unload-file)

@@ -1,0 +1,590 @@
+\input texinfo @c -*-texinfo-*-
+@comment %**start of header
+@setfilename mit-scheme-ref
+@set VERSION 11.0.91
+@set UPDATED 2020-06-16
+@settitle MIT/GNU Scheme @value{VERSION}
+@comment %**end of header
+@setchapternewpage odd
+@finalout
+
+@syncodeindex vr fn
+@syncodeindex pg fn
+@syncodeindex tp fn
+
+@copying
+This manual documents MIT/GNU Scheme @value{VERSION}.
+
+Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
+    1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+    2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
+    2016, 2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.2 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts and no Back-Cover Texts.
+A copy of the license is included in the section entitled ``GNU Free
+Documentation License.''
+@end quotation
+@end copying
+
+@comment Parts of this document are essentially plagiarized from "Common
+@comment Lisp: The Language".  Those parts are marked by the following
+@comment comment lines:
+@comment
+@comment **** begin CLTL ****
+@comment **** end CLTL ****
+
+@dircategory Programming Languages
+@direntry
+* MIT/GNU Scheme Reference: (mit-scheme-ref).
+                                Reference Manual
+@end direntry
+
+@titlepage
+@title MIT/GNU Scheme Reference Manual
+@subtitle for release @value{VERSION}
+@subtitle @value{UPDATED}
+@author by Chris Hanson
+@author the MIT Scheme Team
+@author and a cast of thousands
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@ifnothtml
+@shortcontents
+@end ifnothtml
+@contents
+
+@tex
+\ifx\urefurlonlylinktrue\undefined\else
+  \global\urefurlonlylinktrue
+  \global\def\urlcolor{0 0 1}   % blue
+\fi
+
+% \eqimage{foo}{$$f_{a,b}(x) = \int_0^1 e^{-2\pi i t} \,dt.$$}
+%
+%       Displays foo.eps to the right of the equation.
+%
+\global\long\def\eqimage#1#2{%
+  \par\leavevmode%
+  % Load up the image into box 0.
+  \setbox0=\hbox{\image{#1}}%
+  % Calculate the width available to us for the pair as \dimen0.
+  \dimen0=\hsize%
+    \advance\dimen0 by -\leftskip%
+    \advance\dimen0 by -\hangindent%
+    \advance\dimen0 by -\rightskip%
+  % Calculate the width available for the display alone as \dimen1.
+  \dimen1=\dimen0 \advance\dimen1 by -\wd0
+  % Set the display into box 1.
+  \setbox1=\vbox{
+    % Narrow ourselves to \dimen1-2em.
+    \hsize\dimen1 \advance\hsize by -2em
+    % Avoid interline skips for displays.
+    \abovedisplayskip=0pt
+    \belowdisplayskip=0pt
+    \abovedisplayshortskip=0pt
+    \belowdisplayshortskip=0pt
+    % Set the display.
+    #2
+  }%
+  % Calculate the higher of the two for the height of our vboxes as
+  % \dimen2.
+  \ifdim\ht0>\ht1 \dimen2=\ht0 \else \dimen2=\ht1 \fi
+  % Set the display (\box1) and figure (\box0) into an hbox as wide as
+  % we can (\dimen0) and as high the higher of the two (\dimen2), with
+  % fill between them and on either side, and vertically centred.
+  \hbox to \dimen0{%
+    \hfill%
+    \vbox to \dimen2{\vss\box1\vss}%
+    \hfill%
+    \vbox to \dimen2{\vss\box0\vss}%
+    \hfill%
+  }%
+}
+
+% Explicit hyphen that doesn't block automatic hyphenation, in words
+% like `log-probability'.
+\gdef\hy{-\penalty0\hskip0pt\relax}
+@end tex
+
+@ifnottex
+@macro hy {n}
+\n\
+@end macro
+@end ifnottex
+
+@macro mitgnu {}
+MIT/GNU Scheme
+@end macro
+
+@macro asrfi {n}
+@acronym{SRFI} \n\
+@end macro
+
+@macro usrfi {n}
+@uref{https://srfi.schemers.org/srfi-\n\/srfi-\n\.html,@asrfi{\n\}}
+@end macro
+
+@macro srfiurl {n}
+@url{https://srfi.schemers.org/srfi-\n\/srfi-\n\.html}
+@end macro
+
+@set R7RS_URL https://small.r7rs.org/attachment/r7rs.pdf
+
+@macro rseven {}
+@acronym{R7RS}
+@end macro
+
+@macro urseven {}
+@uref{@value{R7RS_URL},@rseven{}}
+@end macro
+
+@ifnotinfo
+@macro nicode {x}
+@code{\x\}
+@end macro
+@end ifnotinfo
+
+@ifinfo
+@macro nicode {x}
+\x\
+@end macro
+@end ifinfo
+
+@ifnottex
+@node Top, Acknowledgements, (dir), (dir)
+@top MIT/GNU Scheme
+
+@insertcopying
+@end ifnottex
+
+@menu
+* Acknowledgements::            
+* Overview::                    
+* Special Forms::               
+* Equivalence Predicates::      
+* Numbers::                     
+* Characters::                  
+* Strings::                     
+* Lists::                       
+* Vectors::                     
+* Bit Strings::                 
+* Miscellaneous Datatypes::     
+* Associations::                
+* Procedures::                  
+* Environments::                
+* Input/Output::                
+* Operating-System Interface::  
+* Error System::                
+* Graphics::                    
+* Win32 Package Reference::     
+* Standards Support::           
+* GNU Free Documentation License::  
+* Binding Index::               
+* Concept Index::               
+
+@detailmenu
+ --- The Detailed Node Listing ---
+
+Overview
+
+* Notational Conventions::
+* Scheme Concepts::
+* Lexical Conventions::
+* Expressions::
+
+Notational Conventions
+
+* Errors::
+* Examples::
+* Entry Format::
+
+Scheme Concepts
+
+* Variable Bindings::
+* Environment Concepts::
+* Initial and Current Environments::
+* Static Scoping::
+* True and False::
+* External Representations::
+* Disjointness of Types::
+* Storage Model::
+
+Lexical Conventions
+
+* Whitespace::
+* Delimiters::
+* Identifiers::
+* Uppercase and Lowercase::
+* Naming Conventions::
+* Comments::
+* Additional Notations::
+
+Expressions
+
+* Literal Expressions::
+* Variable References::
+* Special Form Syntax::
+* Procedure Call Syntax::
+
+Special Forms
+
+* Lambda Expressions::
+* Lexical Binding::
+* Dynamic Binding::
+* Definitions::
+* Assignments::
+* Quoting::
+* Conditionals::
+* Sequencing::
+* Iteration::
+* Structure Definitions::
+* Macros::
+* SRFI syntax::
+
+Definitions
+
+* Top-Level Definitions::
+* Internal Definitions::
+
+Macros
+
+* Syntactic Binding Constructs::
+* Pattern Language::
+* Syntactic Closures::
+* Explicit Renaming::
+
+Syntactic Closures
+
+* Syntax Terminology::
+* SC Transformer Definition::
+* SC Identifiers::
+
+SRFI syntax
+
+* cond-expand (SRFI 0)::
+* receive (SRFI 8)::
+* and-let* (SRFI 2)::
+* define-record-type (SRFI 9)::
+
+Numbers
+
+* Numerical types::
+* Exactness::
+* Implementation restrictions::
+* Syntax of numerical constants::
+* Numerical operations::
+* Numerical input and output::
+* Fixnum and Flonum Operations::
+* Random Number Generation::
+
+Fixnum and Flonum Operations
+
+* Fixnum Operations::
+* Flonum Operations::
+* Floating-Point Environment::
+* Floating-Point Exceptions::
+* Floating-Point Rounding Mode::
+
+Characters
+
+* Character implementation::
+* Unicode::
+* Character Sets::
+
+Strings
+
+* Searching and Matching Strings::
+* Regular Expressions::
+
+Regular Expressions
+
+* Regular S-Expressions::
+* Regsexp Procedures::
+
+Lists
+
+* Pairs::
+* Construction of Lists::
+* Selecting List Components::
+* Cutting and Pasting Lists::
+* Filtering Lists::
+* Searching Lists::
+* Mapping of Lists::
+* Folding of Lists::
+* Miscellaneous List Operations::
+
+Vectors
+
+* Construction of Vectors::
+* Selecting Vector Components::
+* Cutting Vectors::
+* Modifying Vectors::
+
+Bit Strings
+
+* Construction of Bit Strings::
+* Selecting Bit String Components::
+* Cutting and Pasting Bit Strings::
+* Bitwise Operations on Bit Strings::
+* Modification of Bit Strings::
+* Integer Conversions of Bit Strings::
+
+Miscellaneous Datatypes
+
+* Booleans::
+* Symbols::
+* Parameters::
+* Records::
+* Promises::
+* Streams::
+* Weak References::
+
+Weak References
+
+* Weak Pairs::
+* Ephemerons::
+* Reference barriers::
+
+Associations
+
+* Association Lists::
+* 1D Tables::
+* The Association Table::
+* Hash Tables::
+* Object Hashing::
+* Red-Black Trees::
+* Weight-Balanced Trees::
+* Associative Maps::
+
+Hash Tables
+
+* Construction of Hash Tables::
+* Basic Hash Table Operations::
+* Resizing of Hash Tables::
+* Address Hashing::
+
+Weight-Balanced Trees
+
+* Construction of Weight-Balanced Trees::
+* Basic Operations on Weight-Balanced Trees::
+* Advanced Operations on Weight-Balanced Trees::
+* Indexing Operations on Weight-Balanced Trees::
+
+Associative Maps
+
+* Amap constructors::
+* Amap predicates::
+* Amap accessors::
+* Amap mutators::
+* Amap mapping and folding::
+* Amap contents::
+* Amap copying and conversion::
+* Amaps as sets::
+
+Procedures
+
+* Procedure Operations::
+* Arity::
+* Primitive Procedures::
+* Continuations::
+* Application Hooks::
+
+Environments
+
+* Environment Operations::
+* Environment Variables::
+* REPL Environment::
+* Top-level Environments::
+
+Input/Output
+
+* Ports::
+* File Ports::
+* String Ports::
+* Bytevector Ports::
+* Input Procedures::
+* Output Procedures::
+* Blocking Mode::
+* Terminal Mode::
+* Format::
+* Custom Output::
+* Prompting::
+* Textual Port Primitives::
+* Parser Buffers::
+* Parser Language::
+* XML Support::
+
+Textual Port Primitives
+
+* Textual Port Types::
+* Constructors and Accessors for Textual Ports::
+* Textual Input Port Operations::
+* Textual Output Port Operations::
+
+Parser Language
+
+* *Matcher::
+* *Parser::
+* Parser-language Macros::
+
+XML Support
+
+* XML Input::
+* XML Output::
+* XML Names::
+* XML Structure::
+
+Operating-System Interface
+
+* Pathnames::
+* Working Directory::
+* File Manipulation::
+* Directory Reader::
+* Date and Time::
+* Machine Time::
+* Subprocesses::
+* TCP Sockets::
+* Miscellaneous OS Facilities::
+
+Pathnames
+
+* Filenames and Pathnames::
+* Components of Pathnames::
+* Operations on Pathnames::
+* Miscellaneous Pathnames::
+
+Date and Time
+
+* Universal Time::
+* Decoded Time::
+* File Time::
+* Time-Format Conversion::
+* External Representation of Time::
+
+Subprocesses
+
+* Subprocess Procedures::
+* Subprocess Conditions::
+* Subprocess Options::
+
+Error System
+
+* Condition Signalling::
+* Error Messages::
+* Condition Handling::
+* Restarts::
+* Condition Instances::
+* Condition Types::
+* Taxonomy::
+
+Restarts
+
+* Establishing Restart Code::
+* Invoking Standard Restart Code::
+* Finding and Invoking General Restart Code::
+* The Named Restart Abstraction::
+
+Condition Instances
+
+* Generating Operations on Conditions::
+* Condition State::
+* Simple Condition Instance Operations::
+
+Graphics
+
+* Opening and Closing of Graphics Devices::
+* Coordinates for Graphics::
+* Drawing Graphics::
+* Characteristics of Graphics Output::
+* Buffering of Graphics Output::
+* Clipping of Graphics Output::
+* Custom Graphics Operations::
+* Images::
+* X Graphics::                  Graphics on the X Window System
+* Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
+
+X Graphics
+
+* X Graphics Type::
+* Utilities for X Graphics::
+* Custom Operations on X Graphics Devices::
+
+Win32 Graphics
+
+* Win32 Graphics Type::
+* Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
+
+Win32 Package Reference
+
+* Win32 Package Overview::
+* Foreign function interface::
+* Device Independent Bitmap Utilities::
+
+Foreign Function Interface
+
+* Windows Types::
+* Windows Foreign Procedures::
+* Win32 API names and procedures::
+
+Device Independent Bitmap Utilities
+
+* DIB procedures::
+* Other parts of the DIB Utilities implementation::
+
+Standards Support
+
+* R7RS::
+* SRFI 1::
+* SRFI 2::
+* SRFI 8::
+* SRFI 9::
+* SRFI 14::
+* SRFI 23::
+* SRFI 27::
+* SRFI 39::
+* SRFI 69::
+* SRFI 115::
+* SRFI 124::
+* SRFI 125::
+* SRFI 128::
+* SRFI 131::
+* SRFI 133::
+* SRFI 140::
+* SRFI 143::
+* SRFI 158::
+
+@end detailmenu
+@end menu
+
+@include acknowledgements.texi
+@include overview.texi
+@include special-forms.texi
+@include equivalence.texi
+@include numbers.texi
+@include characters.texi
+@include strings.texi
+@include lists.texi
+@include vectors.texi
+@include bit-strings.texi
+@include misc-datatypes.texi
+@include associations.texi
+@include procedures.texi
+@include environments.texi
+@include io.texi
+@include os-interface.texi
+@include error.texi
+@include graphics.texi
+@include win32-packaging.texi
+@include standards.texi
+@include gfdl.texinfo
+@include binding-index.texi
+@include concept-index.texi
+
+@bye

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,10 +28,12 @@ USA.
 ;;; package: (runtime options)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic))
 
 (define (load-option name #!optional no-error?)
   (let ((no-error? (and (not (default-object? no-error?)) no-error?))
-	(path library-directory-path))
+	(path (library-directory-path)))
 
     (define (find-option options parent)
       (cond ((assq name options) => load-entry)
@@ -50,8 +52,9 @@ USA.
 	  (lambda ()
 	    (parameterize ((*options* '())
 			   (*parent* #f)
-			   (param:suppress-loading-message? #t))
-	      (load pathname (simple-top-level-environment #t))
+			   (param:suppress-loading-message? #t)
+			   (param:reader-fold-case? #t))
+	      (load pathname (make-top-level-environment))
 	      (values (*options*)
 		      (let ((parent (*parent*)))
 			(if (eq? #t parent)
@@ -109,13 +112,11 @@ USA.
        pathname))
 
 (define loaded-options '())
-(define *options*)		 ; Current options.
-(define *parent*)		 ; A thunk or a pathname/string or #f.
 (define *initial-options-file* #f)
+(define-deferred *options* (make-settable-parameter '()))
 
-(define (initialize-package!)
-  (set! *options* (make-settable-parameter '()))
-  (set! *parent* (make-settable-parameter #f)))
+;; A thunk or a pathname/string or #f.
+(define-deferred *parent* (make-settable-parameter #f))
 
 (define (dummy-option-loader)
   unspecific)

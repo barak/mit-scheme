@@ -90,7 +90,6 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-noinst_PROGRAMS = pgsql-const$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -139,8 +138,10 @@ am__installdirs = "$(DESTDIR)$(scmlibdir)" "$(DESTDIR)$(scmlibdir)" \
 	"$(DESTDIR)$(scmlib_subdir)"
 LTLIBRARIES = $(scmlib_LTLIBRARIES)
 pgsql_shim_la_LIBADD =
-pgsql_shim_la_SOURCES = pgsql-shim.c
-pgsql_shim_la_OBJECTS = pgsql-shim.lo
+am_pgsql_shim_la_OBJECTS =
+nodist_pgsql_shim_la_OBJECTS = pgsql-shim.lo
+pgsql_shim_la_OBJECTS = $(am_pgsql_shim_la_OBJECTS) \
+	$(nodist_pgsql_shim_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -148,8 +149,10 @@ am__v_lt_1 =
 pgsql_shim_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(pgsql_shim_la_LDFLAGS) $(LDFLAGS) -o $@
-am_pgsql_const_OBJECTS = pgsql-const.$(OBJEXT)
-pgsql_const_OBJECTS = $(am_pgsql_const_OBJECTS)
+am_pgsql_const_OBJECTS =
+nodist_pgsql_const_OBJECTS = pgsql-const.$(OBJEXT)
+pgsql_const_OBJECTS = $(am_pgsql_const_OBJECTS) \
+	$(nodist_pgsql_const_OBJECTS)
 pgsql_const_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -187,8 +190,9 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = pgsql-shim.c $(pgsql_const_SOURCES)
-DIST_SOURCES = pgsql-shim.c $(pgsql_const_SOURCES)
+SOURCES = $(pgsql_shim_la_SOURCES) $(nodist_pgsql_shim_la_SOURCES) \
+	$(pgsql_const_SOURCES) $(nodist_pgsql_const_SOURCES)
+DIST_SOURCES = $(pgsql_shim_la_SOURCES) $(pgsql_const_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -447,7 +451,7 @@ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
-LIBS = `pkg-config --libs libpq`
+LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
@@ -459,12 +463,12 @@ MIT_CFLAGS = @MIT_CFLAGS@
 MIT_SCHEME_BCIs = @MIT_SCHEME_BCIs@
 MIT_SCHEME_CLEAN = @MIT_SCHEME_CLEAN@
 MIT_SCHEME_COMs = @MIT_SCHEME_COMs@
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 MIT_SCHEME_INCLUDEDIR = @MIT_SCHEME_INCLUDEDIR@
 MIT_SCHEME_LIBDIR = @MIT_SCHEME_LIBDIR@
 MIT_SCHEME_PKD = @MIT_SCHEME_PKD@
 MIT_SCHEME_PROJECT = @MIT_SCHEME_PROJECT@
 MIT_SCHEME_SCMs = @MIT_SCHEME_SCMs@
+MIT_SCHEME_TOOLCHAIN_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
@@ -541,9 +545,10 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = autogen.sh $(all_sources) $(cdecls) compile.scm pgsql.pkg \
-	pgsql-check.scm pgsql-check.sh make.scm optiondb.scm \
+EXTRA_DIST = autogen.sh $(sources) $(cdecls) compile.sh compile.scm \
+	pgsql.pkg pgsql-check.scm pgsql-check.sh make.scm optiondb.scm \
 	tags-fix.sh
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)pgsql
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -558,15 +563,18 @@ scmlib_sub_DATA = $(sources) $(binaries) make.scm @MIT_SCHEME_PKD@
 #AM_MAKEINFOHTMLFLAGS = --no-split
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@ `pkg-config --cflags libpq`
+AM_LIBS = `pkg-config --libs libpq`
+pgsql_shim_la_SOURCES = pgsql-shim.h
+nodist_pgsql_shim_la_SOURCES = pgsql-shim.c
 pgsql_shim_la_LDFLAGS = -module -avoid-version -shared
-pgsql_const_SOURCES = pgsql-const.c pgsql-shim.h
+noinst_PROGRAMS = pgsql-const$(EXEEXT)
+pgsql_const_SOURCES = pgsql-shim.h
+nodist_pgsql_const_SOURCES = pgsql-const.c
+MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) pgsql-const$(EXEEXT)
 CLEANFILES = pgsql-const* pgsql-shim.c *.bin *.ext *.com *.bci *.moc \
 	*.fni *.crf *.fre *.pkd stamp-shim stamp-scheme \
 	@MIT_SCHEME_CLEAN@ pgsql-check.db
 TESTS = pgsql-check.sh
-all_sources = $(sources)
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -1174,6 +1182,7 @@ install-strip:
 	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
 	fi
 mostlyclean-generic:
+	-test -z "$(MOSTLYCLEANFILES)" || rm -f $(MOSTLYCLEANFILES)
 	-test -z "$(TEST_LOGS)" || rm -f $(TEST_LOGS)
 	-test -z "$(TEST_LOGS:.log=.trs)" || rm -f $(TEST_LOGS:.log=.trs)
 	-test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
@@ -1227,6 +1236,8 @@ install-html-am:
 
 install-info: install-info-am
 
+install-info-am:
+
 install-man:
 
 install-pdf: install-pdf-am
@@ -1250,7 +1261,7 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 mostlyclean: mostlyclean-am
 
 mostlyclean-am: mostlyclean-compile mostlyclean-generic \
-	mostlyclean-libtool
+	mostlyclean-libtool mostlyclean-local
 
 pdf: pdf-am
 
@@ -1283,10 +1294,10 @@ uninstall-am: uninstall-scmlibDATA uninstall-scmlibLTLIBRARIES \
 	install-scmlibLTLIBRARIES install-scmlib_subDATA install-strip \
 	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	recheck tags tags-am uninstall uninstall-am uninstall-hook \
-	uninstall-scmlibDATA uninstall-scmlibLTLIBRARIES \
-	uninstall-scmlib_subDATA
+	mostlyclean-generic mostlyclean-libtool mostlyclean-local pdf \
+	pdf-am ps ps-am recheck tags tags-am uninstall uninstall-am \
+	uninstall-hook uninstall-scmlibDATA \
+	uninstall-scmlibLTLIBRARIES uninstall-scmlib_subDATA
 
 .PRECIOUS: Makefile
 
@@ -1295,42 +1306,41 @@ pgsql-shim.c: stamp-shim
 pgsql-const.c: stamp-shim
 pgsql-types.bin: stamp-shim
 stamp-shim: pgsql-shim.h $(cdecls)
-	touch stamp-shim
 	echo '(generate-shim "pgsql" "#include \"pgsql-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode \
-	|| rm stamp-shim
+	    | $(MIT_SCHEME_EXE) --batch-mode
+	echo "done" > $@
 
 pgsql-const.bin: pgsql-const.scm
 	echo '(sf "pgsql-const")' | $(MIT_SCHEME_EXE) --batch-mode
 
-pgsql-const.scm: pgsql-const
+pgsql-const.scm: pgsql-const$(EXEEXT)
 	./pgsql-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) pgsql.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+stamp-scheme: stamp-shim $(sources) pgsql-const.bin pgsql.pkg
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
-tags: tags-am
-	./tags-fix.sh pgsql
+mostlyclean-local:
+	-rm -rf .libs
+
+tags: tags-am $(sources) $(cdecls)
+	$(ETAGS) -a $(sources) -r '/^([^iI].*/' $(cdecls)
+	./tags-fix.sh
 
 install-data-hook:
 	( echo '(add-plugin "pgsql" "@MIT_SCHEME_PROJECT@"'; \
 	  echo '            ""'; \
 	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
-	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
+	  echo '            "")' ) \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
 install-html: install-html-am
 	( echo '(add-plugin "pgsql" "@MIT_SCHEME_PROJECT@"'; \
 	  echo '            ""'; \
-	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
+	  echo '            ""'; \
 	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
 	| $(MIT_SCHEME_EXE) --batch-mode
-
-install-info-am:
-
-uninstall-info-am:
 
 uninstall-hook:
 	( echo '(remove-plugin "pgsql" "@MIT_SCHEME_PROJECT@"'; \

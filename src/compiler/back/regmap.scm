@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -311,9 +311,11 @@ registers into some interesting sorting order.
   (if (null? entries)
       regmap
       (make-register-map
-       (map* (map-entries:delete* regmap entries)
-	     pseudo-register-entry->temporary-entry
-	     entries)
+       (fold-right (lambda (reg entries)
+		     (cons (pseudo-register-entry->temporary-entry reg)
+			   entries))
+		   (map-entries:delete* regmap entries)
+		   entries)
        (map-registers regmap))))
 
 (define (register-map:keep-live-entries map live-registers)
@@ -497,8 +499,7 @@ registers into some interesting sorting order.
   ;; contents into that register.
   (or (let ((entry (map-entries:find-home map home)))
 	(and entry
-	     (let ((alias (find (register-type-predicate type)
-				(map-entry-aliases entry))))
+	     (let ((alias (map-entry:find-alias entry type needed-registers)))
 	       (and alias
 		    (allocator-values alias map (LAP))))))
       (bind-allocator-values (make-free-register map type needed-registers)
@@ -561,13 +562,13 @@ the same value as REGISTER.  If no such register exists, returns #F."
 		      (register-type? type register*)))
 	       (map-entry-aliases entry)))))
 
-(define (pseudo-register-alias map type register)
+(define (pseudo-register-alias map type register needed-registers)
   "Returns a machine register, of the given TYPE, which is an alias
-for REGISTER.  If no such register exists, returns #F."
+for REGISTER, except those in NEEDED-REGISTERS.  If no such register
+exists, returns #F."
   (let ((entry (map-entries:find-home map register)))
     (and entry
-	 (find (register-type-predicate type)
-	       (map-entry-aliases entry)))))
+	 (map-entry:find-alias entry type needed-registers))))
 
 (define (machine-register-is-unique? map register)
   "True if REGISTER has no other aliases."

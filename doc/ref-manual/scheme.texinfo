@@ -1,8 +1,8 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-ref
-@set VERSION 10.1.11
-@set UPDATED 2018-10-31
+@set VERSION 11.1
+@set UPDATED 2020-06-16
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -18,7 +18,7 @@ This manual documents MIT/GNU Scheme @value{VERSION}.
 Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
-    2016, 2017, 2018, 2019 Massachusetts Institute of Technology
+    2016, 2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -45,7 +45,7 @@ Documentation License.''
 
 @titlepage
 @title MIT/GNU Scheme Reference Manual
-@subtitle For MIT/GNU Scheme @value{VERSION}
+@subtitle for release @value{VERSION}
 @subtitle @value{UPDATED}
 @author by Chris Hanson
 @author the MIT Scheme Team
@@ -61,9 +61,101 @@ Documentation License.''
 @contents
 
 @tex
-\global\urefurlonlylinktrue
-\global\def\urlcolor{0 0 1}   % blue
+\ifx\urefurlonlylinktrue\undefined\else
+  \global\urefurlonlylinktrue
+  \global\def\urlcolor{0 0 1}   % blue
+\fi
+
+% \eqimage{foo}{$$f_{a,b}(x) = \int_0^1 e^{-2\pi i t} \,dt.$$}
+%
+%       Displays foo.eps to the right of the equation.
+%
+\global\long\def\eqimage#1#2{%
+  \par\leavevmode%
+  % Load up the image into box 0.
+  \setbox0=\hbox{\image{#1}}%
+  % Calculate the width available to us for the pair as \dimen0.
+  \dimen0=\hsize%
+    \advance\dimen0 by -\leftskip%
+    \advance\dimen0 by -\hangindent%
+    \advance\dimen0 by -\rightskip%
+  % Calculate the width available for the display alone as \dimen1.
+  \dimen1=\dimen0 \advance\dimen1 by -\wd0
+  % Set the display into box 1.
+  \setbox1=\vbox{
+    % Narrow ourselves to \dimen1-2em.
+    \hsize\dimen1 \advance\hsize by -2em
+    % Avoid interline skips for displays.
+    \abovedisplayskip=0pt
+    \belowdisplayskip=0pt
+    \abovedisplayshortskip=0pt
+    \belowdisplayshortskip=0pt
+    % Set the display.
+    #2
+  }%
+  % Calculate the higher of the two for the height of our vboxes as
+  % \dimen2.
+  \ifdim\ht0>\ht1 \dimen2=\ht0 \else \dimen2=\ht1 \fi
+  % Set the display (\box1) and figure (\box0) into an hbox as wide as
+  % we can (\dimen0) and as high the higher of the two (\dimen2), with
+  % fill between them and on either side, and vertically centred.
+  \hbox to \dimen0{%
+    \hfill%
+    \vbox to \dimen2{\vss\box1\vss}%
+    \hfill%
+    \vbox to \dimen2{\vss\box0\vss}%
+    \hfill%
+  }%
+}
+
+% Explicit hyphen that doesn't block automatic hyphenation, in words
+% like `log-probability'.
+\gdef\hy{-\penalty0\hskip0pt\relax}
 @end tex
+
+@ifnottex
+@macro hy {n}
+\n\
+@end macro
+@end ifnottex
+
+@macro mitgnu {}
+MIT/GNU Scheme
+@end macro
+
+@macro asrfi {n}
+@acronym{SRFI} \n\
+@end macro
+
+@macro usrfi {n}
+@uref{https://srfi.schemers.org/srfi-\n\/srfi-\n\.html,@asrfi{\n\}}
+@end macro
+
+@macro srfiurl {n}
+@url{https://srfi.schemers.org/srfi-\n\/srfi-\n\.html}
+@end macro
+
+@set R7RS_URL https://small.r7rs.org/attachment/r7rs.pdf
+
+@macro rseven {}
+@acronym{R7RS}
+@end macro
+
+@macro urseven {}
+@uref{@value{R7RS_URL},@rseven{}}
+@end macro
+
+@ifnotinfo
+@macro nicode {x}
+@code{\x\}
+@end macro
+@end ifnotinfo
+
+@ifinfo
+@macro nicode {x}
+\x\
+@end macro
+@end ifinfo
 
 @ifnottex
 @node Top, Acknowledgements, (dir), (dir)
@@ -71,22 +163,6 @@ Documentation License.''
 
 @insertcopying
 @end ifnottex
-
-@macro asrfi {n}
-@acronym{SRFI} \n\
-@end macro
-
-@macro usrfi {n}
-@uref{http://srfi.schemers.org/srfi-\n\/srfi-\n\.html,@asrfi{\n\}}
-@end macro
-
-@macro rseven {}
-@acronym{R7RS}
-@end macro
-
-@macro urseven {}
-@uref{http://r7rs.org/,@rseven{}}
-@end macro
 
 @menu
 * Acknowledgements::            
@@ -108,6 +184,7 @@ Documentation License.''
 * Error System::                
 * Graphics::                    
 * Win32 Package Reference::     
+* Standards Support::           
 * GNU Free Documentation License::  
 * Binding Index::               
 * Concept Index::               
@@ -205,12 +282,15 @@ Numbers
 * Numerical operations::
 * Numerical input and output::
 * Fixnum and Flonum Operations::
-* Random Numbers::
+* Random Number Generation::
 
 Fixnum and Flonum Operations
 
 * Fixnum Operations::
 * Flonum Operations::
+* Floating-Point Environment::
+* Floating-Point Exceptions::
+* Floating-Point Rounding Mode::
 
 Characters
 
@@ -237,7 +317,7 @@ Lists
 * Filtering Lists::
 * Searching Lists::
 * Mapping of Lists::
-* Reduction of Lists::
+* Folding of Lists::
 * Miscellaneous List Operations::
 
 Vectors
@@ -281,6 +361,7 @@ Associations
 * Object Hashing::
 * Red-Black Trees::
 * Weight-Balanced Trees::
+* Associative Maps::
 
 Hash Tables
 
@@ -295,6 +376,17 @@ Weight-Balanced Trees
 * Basic Operations on Weight-Balanced Trees::
 * Advanced Operations on Weight-Balanced Trees::
 * Indexing Operations on Weight-Balanced Trees::
+
+Associative Maps
+
+* Amap constructors::
+* Amap predicates::
+* Amap accessors::
+* Amap mutators::
+* Amap mapping and folding::
+* Amap contents::
+* Amap copying and conversion::
+* Amaps as sets::
 
 Procedures
 
@@ -446,6 +538,28 @@ Device Independent Bitmap Utilities
 * DIB procedures::
 * Other parts of the DIB Utilities implementation::
 
+Standards Support
+
+* R7RS::
+* SRFI 1::
+* SRFI 2::
+* SRFI 8::
+* SRFI 9::
+* SRFI 14::
+* SRFI 23::
+* SRFI 27::
+* SRFI 39::
+* SRFI 69::
+* SRFI 115::
+* SRFI 124::
+* SRFI 125::
+* SRFI 128::
+* SRFI 131::
+* SRFI 133::
+* SRFI 140::
+* SRFI 143::
+* SRFI 158::
+
 @end detailmenu
 @end menu
 
@@ -468,6 +582,7 @@ Device Independent Bitmap Utilities
 @include error.texi
 @include graphics.texi
 @include win32-packaging.texi
+@include standards.texi
 @include gfdl.texinfo
 @include binding-index.texi
 @include concept-index.texi

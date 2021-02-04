@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -263,7 +263,7 @@ USA.
 
 ;; True if expression is a call to one of the primitive-boolean-predicates.
 (define (expression/call-to-boolean-predicate? expression)
-  (and (scode-combination? expression)
+  (and (combination? expression)
        (let ((operator (combination/operator expression)))
          (and (constant? operator)
               (let ((operator-value (constant/value operator)))
@@ -296,7 +296,7 @@ USA.
 
 ;; True if expression is a call to one of the effect-free-primitives.
 (define (expression/call-to-effect-free-primitive? expression)
-  (and (scode-combination? expression)
+  (and (combination? expression)
        (let ((operator (combination/operator expression)))
          (and (constant? operator)
               (let ((operator-value (constant/value operator)))
@@ -308,7 +308,7 @@ USA.
 ;; True if expression is a call to NOT.
 ;; Used in conditional simplification.
 (define (expression/call-to-not? expression)
-  (and (scode-combination? expression)
+  (and (combination? expression)
        (let ((operator (combination/operator expression)))
          (and (constant? operator)
               (let ((operator-value (constant/value operator)))
@@ -319,7 +319,7 @@ USA.
 
 (define (expression/constant-eq? expression value)
   (cond ((constant? expression) (eq? (constant/value expression) value))
-        ((scode-declaration? expression)
+        ((declaration? expression)
          (expression/constant-eq? (declaration/expression expression) value))
         (else #f)))
 
@@ -330,7 +330,7 @@ USA.
                name))
 
 (define (global-ref? object)
-  (and (scode-access? object)
+  (and (access? object)
        (expression/constant-eq? (access/environment object)
 				system-global-environment)
        (access/name object)))
@@ -577,25 +577,28 @@ USA.
 ;;  Ensure that sequences are always flat.
 (define (sequence/make scode actions)
   (define (sequence/collect-actions collected actions)
-    (fold-left (lambda (reversed action)
-                 (if (scode-sequence? action)
-                     (sequence/collect-actions reversed
-					       (sequence/actions action))
-                     (cons action reversed)))
-               collected
-               actions))
+    (fold (lambda (action reversed)
+            (if (sequence? action)
+                (sequence/collect-actions reversed
+					  (sequence/actions action))
+                (cons action reversed)))
+          collected
+          actions))
   (let ((filtered-actions
-         (fold-left (lambda (filtered action)
-                      (if (expression/effect-free? action)
-                          (if (null? filtered)
-                              (list action)
-                              filtered)
-                          (cons action filtered)))
-                    '()
-                    (sequence/collect-actions '() actions))))
-    (if (null? (cdr filtered-actions))
-        (car filtered-actions)
-        (sequence/%make scode filtered-actions))))
+         (fold (lambda (action filtered)
+                 (if (expression/effect-free? action)
+                     (if (null? filtered)
+                         (list action)
+                         filtered)
+                     (cons action filtered)))
+               '()
+               (sequence/collect-actions '() actions))))
+    (cond ((not (pair? filtered-actions))
+	   (constant/make unspecific unspecific))
+	  ((not (pair? (cdr filtered-actions)))
+           (car filtered-actions))
+	  (else
+           (sequence/%make scode filtered-actions)))))
 
 ;; Done specially so we can tweak the print method.
 ;; This makes debugging an awful lot easier.
@@ -608,10 +611,12 @@ USA.
                    (print-procedure
                     (standard-print-method 'reference
 		      (lambda (ref)
-			(list (variable/name (reference/variable ref)))))))
+			(list (variable/name (reference/variable ref))
+			      (if (reference/safe? ref) 'safe 'normal))))))
   (scode #f read-only #t)
   block
-  variable)
+  variable
+  safe?)
 
 (define-guarantee reference "reference")
 

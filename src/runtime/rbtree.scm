@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,18 +40,21 @@ USA.
 ;;; 5. The root of a tree is black.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime amap impl))
 
-(define-structure (tree
-		   (predicate rb-tree?)
-		   (constructor make-tree (key=? key<?)))
-  (root #f)
-  (key=? #f read-only #t)
-  (key<? #f read-only #t))
+(define-record-type <rb-tree>
+    (make-tree root key=? key<?)
+    rb-tree?
+  (root tree-root set-tree-root!)
+  (key=? rb-tree/key=?)
+  (key<? rb-tree/key<?))
 
 (define (make-rb-tree key=? key<?)
   ;; Optimizations to work around compiler that codes known calls to
   ;; these primitives much more efficiently than unknown calls.
-  (make-tree (cond ((eq? key=? eq?) (lambda (x y) (eq? x y)))
+  (make-tree #f
+	     (cond ((eq? key=? eq?) (lambda (x y) (eq? x y)))
 		   ((eq? key=? fix:=) (lambda (x y) (fix:= x y)))
 		   ((eq? key=? flo:=) (lambda (x y) (flo:= x y)))
 		   (else key=?))
@@ -59,18 +62,18 @@ USA.
 		   ((eq? key<? flo:<) (lambda (x y) (flo:< x y)))
 		   (else key<?))))
 
-(define-integrable (guarantee-rb-tree tree procedure)
-  (if (not (rb-tree? tree))
-      (error:wrong-type-argument tree "red/black tree" procedure)))
+(define-integrable (make-node key datum)
+  (%make-node key datum #f #f #f #f))
 
-(define-structure (node
-		   (constructor make-node (key datum)))
-  key
-  datum
-  (up #f)
-  (left #f)
-  (right #f)
-  (color #f))
+(define-record-type <node>
+    (%make-node key datum up left right color)
+    node?
+  (key node-key set-node-key!)
+  (datum node-datum set-node-datum!)
+  (up node-up set-node-up!)
+  (left node-left set-node-left!)
+  (right node-right set-node-right!)
+  (color node-color set-node-color!))
 
 ;;; The algorithms are left/right symmetric, so abstract "directions"
 ;;; permit code to be used for either symmetry:
@@ -122,9 +125,8 @@ USA.
   (rotate+! tree x (-d d)))
 
 (define (rb-tree/insert! tree key datum)
-  (guarantee-rb-tree tree 'rb-tree/insert!)
-  (let ((key=? (tree-key=? tree))
-	(key<? (tree-key<? tree)))
+  (let ((key=? (rb-tree/key=? tree))
+	(key<? (rb-tree/key<? tree)))
     (let loop ((x (tree-root tree)) (y #f) (d #f))
       (cond ((not x)
 	     (let ((z (make-node key datum)))
@@ -177,13 +179,15 @@ USA.
       (rb-tree/insert! tree (caar alist) (cdar alist)))
     tree))
 
+(define (rb-tree/clear! tree)
+  (set-tree-root! tree #f))
+
 (define (rb-tree/delete! tree key)
-  (guarantee-rb-tree tree 'rb-tree/delete!)
-  (let ((key=? (tree-key=? tree))
-	(key<? (tree-key<? tree)))
+  (let ((key=? (rb-tree/key=? tree))
+	(key<? (rb-tree/key<? tree)))
     (let loop ((x (tree-root tree)))
-      (cond ((not x) unspecific)
-	    ((key=? key (node-key x)) (delete-node! tree x))
+      (cond ((not x) #f)
+	    ((key=? key (node-key x)) (delete-node! tree x) #t)
 	    ((key<? key (node-key x)) (loop (node-left x)))
 	    (else (loop (node-right x)))))))
 
@@ -248,18 +252,59 @@ USA.
 			(case-4 (get-link- u d)))))))))))
 
 (define (rb-tree/lookup tree key default)
-  (guarantee-rb-tree tree 'rb-tree/lookup)
-  (let ((key=? (tree-key=? tree))
-	(key<? (tree-key<? tree)))
+  (let ((node (find-node tree key)))
+    (if node
+	(node-datum node)
+	default)))
+
+(define (rb-tree/contains? tree key)
+  (and (find-node tree key) #t))
+
+(define (rb-tree/ref tree key #!optional fail succeed)
+  (let ((node (find-node tree key)))
+    (if node
+	(apply-succeed succeed (node-datum node))
+	(apply-fail fail key 'rb-tree/ref))))
+
+(define (rb-tree/intern! tree key fail)
+  (let ((node (find-node tree key)))
+    (if node
+	(node-datum node)
+	(let ((datum (fail)))
+	  (rb-tree/insert! tree key datum)
+	  datum))))
+
+(define (rb-tree/update! tree key updater #!optional fail succeed)
+  (let ((node (find-node tree key)))
+    (if node
+	(set-node-datum! node
+			 (updater (apply-succeed succeed (node-datum node))))
+	(rb-tree/insert! tree key
+			 (updater (apply-fail fail 'rb-tree/update!))))))
+
+(define (find-node tree key)
+  (let ((key=? (rb-tree/key=? tree))
+	(key<? (rb-tree/key<? tree)))
     (let loop ((x (tree-root tree)))
-      (cond ((not x) default)
-	    ((key=? key (node-key x)) (node-datum x))
+      (cond ((or (not x) (key=? key (node-key x))) x)
 	    ((key<? key (node-key x)) (loop (node-left x)))
 	    (else (loop (node-right x)))))))
 
+(define (apply-succeed succeed datum)
+  (if (default-object? succeed)
+      datum
+      (succeed datum)))
+
+(define (apply-fail fail key caller)
+  (if (default-object? fail)
+      (error:bad-range-argument key caller))
+  (fail))
+
+(define (rb-tree/empty-copy tree)
+  (make-rb-tree (rb-tree/key=? tree) (rb-tree/key<? tree)))
+
 (define (rb-tree/copy tree)
-  (guarantee-rb-tree tree 'rb-tree/copy)
-  (let ((result (make-rb-tree (tree-key=? tree) (tree-key<? tree))))
+  (let ((result (rb-tree/empty-copy tree)))
     (set-tree-root!
      result
      (let loop ((node (tree-root tree)) (up #f))
@@ -273,28 +318,23 @@ USA.
     result))
 
 (define (rb-tree/height tree)
-  (guarantee-rb-tree tree 'rb-tree/height)
   (let loop ((node (tree-root tree)))
     (if node
 	(+ 1 (max (loop (node-left node)) (loop (node-right node))))
 	0)))
 
 (define (rb-tree/size tree)
-  (guarantee-rb-tree tree 'rb-tree/size)
   (let loop ((node (tree-root tree)))
     (if node
 	(+ 1 (loop (node-left node)) (loop (node-right node)))
 	0)))
 
 (define (rb-tree/empty? tree)
-  (guarantee-rb-tree tree 'rb-tree/empty?)
   (not (tree-root tree)))
-
+
 (define (rb-tree/equal? x y datum=?)
-  (guarantee-rb-tree x 'rb-tree/equal?)
-  (guarantee-rb-tree y 'rb-tree/equal?)
-  (let ((key=? (tree-key=? x)))
-    (and (eq? key=? (tree-key=? y))
+  (let ((key=? (rb-tree/key=? x)))
+    (and (eq? key=? (rb-tree/key=? y))
 	 (let loop ((nx (min-node x)) (ny (min-node y)))
 	   (if (not nx)
 	       (not ny)
@@ -302,68 +342,77 @@ USA.
 		    (key=? (node-key nx) (node-key ny))
 		    (datum=? (node-datum nx) (node-datum ny))
 		    (loop (next-node nx) (next-node ny))))))))
+
+(define (rb-tree/find predicate tree fail)
+  (let loop ((node (min-node tree)))
+    (if node
+	(or (predicate (node-key node) (node-datum node))
+	    (loop (next-node node)))
+	(fail))))
+
+(define (rb-tree/fold kons knil tree)
+  (let loop ((node (min-node tree)) (acc knil))
+    (if node
+	(loop (next-node node)
+	      (kons (node-key node) (node-datum node) acc))
+	acc)))
+
+(define (rb-tree/fold-right kons knil tree)
+  (let loop ((node (max-node tree)) (acc knil))
+    (if node
+	(loop (prev-node node)
+	      (kons (node-key node) (node-datum node) acc))
+	acc)))
+
+(define (rb-tree/for-each procedure tree)
+  (let loop ((node (min-node tree)))
+    (if node
+	(begin
+	  (procedure (node-key node) (node-datum node))
+	  (loop (next-node node))))))
+
+(define (rb-tree/map! procedure tree)
+  (let loop ((node (min-node tree)))
+    (if node
+	(begin
+	  (set-node-datum! node (procedure (node-key node) (node-datum node)))
+	  (loop (next-node node))))))
 
 (define (rb-tree->alist tree)
-  (guarantee-rb-tree tree 'rb-tree->alist)
-  (let ((node (min-node tree)))
-    (if node
-	(let ((result (list (cons (node-key node) (node-datum node)))))
-	  (let loop ((node (next-node node)) (prev result))
-	    (if node
-		(let ((pair (list (cons (node-key node) (node-datum node)))))
-		  (set-cdr! prev pair)
-		  (loop (next-node node) pair))))
-	  result)
-	'())))
+  (rb-tree/fold-right alist-cons '() tree))
 
 (define (rb-tree/key-list tree)
-  (guarantee-rb-tree tree 'rb-tree/key-list)
-  (let ((node (min-node tree)))
-    (if node
-	(let ((result (list (node-key node))))
-	  (let loop ((node (next-node node)) (prev result))
-	    (if node
-		(let ((pair (list (node-key node))))
-		  (set-cdr! prev pair)
-		  (loop (next-node node) pair))))
-	  result)
-	'())))
+  (rb-tree/fold-right (lambda (key datum acc)
+			(declare (ignore datum))
+			(cons key acc))
+		      '()
+		      tree))
 
 (define (rb-tree/datum-list tree)
-  (guarantee-rb-tree tree 'rb-tree/datum-list)
-  (let ((node (min-node tree)))
-    (if node
-	(let ((result (list (node-datum node))))
-	  (let loop ((node (next-node node)) (prev result))
-	    (if node
-		(let ((pair (list (node-datum node))))
-		  (set-cdr! prev pair)
-		  (loop (next-node node) pair))))
-	  result)
-	'())))
+  (rb-tree/fold-right (lambda (key datum acc)
+			(declare (ignore key))
+			(cons datum acc))
+		      '()
+		      tree))
 
 (define (rb-tree/min tree default)
-  (guarantee-rb-tree tree 'rb-tree/min)
   (let ((node (min-node tree)))
     (if node
 	(node-key node)
 	default)))
 
 (define (rb-tree/min-datum tree default)
-  (guarantee-rb-tree tree 'rb-tree/min-datum)
   (let ((node (min-node tree)))
     (if node
 	(node-datum node)
 	default)))
 
 (define (rb-tree/min-pair tree)
-  (guarantee-rb-tree tree 'rb-tree/min-pair)
   (let ((node (min-node tree)))
     (and node
 	 (node-pair node))))
 
 (define (rb-tree/delete-min! tree default)
-  (guarantee-rb-tree tree 'rb-tree/delete-min!)
   (let ((node (min-node tree)))
     (if node
 	(let ((key (node-key node)))
@@ -372,7 +421,6 @@ USA.
 	default)))
 
 (define (rb-tree/delete-min-datum! tree default)
-  (guarantee-rb-tree tree 'rb-tree/delete-min-datum!)
   (let ((node (min-node tree)))
     (if node
 	(let ((datum (node-datum node)))
@@ -381,7 +429,6 @@ USA.
 	default)))
 
 (define (rb-tree/delete-min-pair! tree)
-  (guarantee-rb-tree tree 'rb-tree/delete-min-pair!)
   (let ((node (min-node tree)))
     (and node
 	 (let ((pair (node-pair node)))
@@ -389,27 +436,23 @@ USA.
 	   pair))))
 
 (define (rb-tree/max tree default)
-  (guarantee-rb-tree tree 'rb-tree/max)
   (let ((node (max-node tree)))
     (if node
 	(node-key node)
 	default)))
 
 (define (rb-tree/max-datum tree default)
-  (guarantee-rb-tree tree 'rb-tree/max-datum)
   (let ((node (max-node tree)))
     (if node
 	(node-datum node)
 	default)))
 
 (define (rb-tree/max-pair tree)
-  (guarantee-rb-tree tree 'rb-tree/max-pair)
   (let ((node (max-node tree)))
     (and node
 	 (node-pair node))))
 
 (define (rb-tree/delete-max! tree default)
-  (guarantee-rb-tree tree 'rb-tree/delete-max!)
   (let ((node (max-node tree)))
     (if node
 	(let ((key (node-key node)))
@@ -418,7 +461,6 @@ USA.
 	default)))
 
 (define (rb-tree/delete-max-datum! tree default)
-  (guarantee-rb-tree tree 'rb-tree/delete-max-datum!)
   (let ((node (max-node tree)))
     (if node
 	(let ((datum (node-datum node)))
@@ -427,7 +469,6 @@ USA.
 	default)))
 
 (define (rb-tree/delete-max-pair! tree)
-  (guarantee-rb-tree tree 'rb-tree/delete-max-pair!)
   (let ((node (max-node tree)))
     (and node
 	 (let ((pair (node-pair node)))
@@ -460,5 +501,55 @@ USA.
 	      (loop y)
 	      y)))))
 
+(define (prev-node x)
+  (if (node-left x)
+       (let loop ((x (node-left x)))
+	 (if (node-right x)
+	     (loop (node-right x))
+	     x))
+      (let loop ((x x))
+	(let ((y (node-up x)))
+	  (if (and y (eq? x (node-left y)))
+	      (loop y)
+	      y)))))
+
 (define-integrable (node-pair node)
   (cons (node-key node) (node-datum node)))
+
+(add-boot-init!
+ (lambda ()
+   (define-amap-implementation 'red/black-tree
+     '((mutability mutable)
+       (kv-types (strong strong))
+       (time-complexity log)
+       (other ordered-by-key))
+     comparator-ordered?
+     `((->alist ,rb-tree->alist)
+       (clear! ,rb-tree/clear!)
+       (contains? ,rb-tree/contains?)
+       (copy ,rb-tree:copy)
+       (delete-1! ,rb-tree/delete!)
+       (empty-copy ,rb-tree/empty-copy)
+       (empty? ,rb-tree/empty?)
+       (find ,rb-tree/find)
+       (fold ,rb-tree/fold-right)
+       (for-each ,rb-tree/for-each)
+       (intern! ,rb-tree/intern!)
+       (keys ,rb-tree/key-list)
+       (map! ,rb-tree/map!)
+       (new-state ,rb-tree:new-state)
+       (ref ,rb-tree/ref)
+       (ref/default ,rb-tree/lookup)
+       (set-1! ,rb-tree/insert!)
+       (size ,rb-tree/size)
+       (update! ,rb-tree/update!)
+       (values ,rb-tree/datum-list)))))
+
+(define (rb-tree:new-state comparator args)
+  (declare (ignore args))
+  (make-rb-tree (comparator-equality-predicate comparator)
+		(comparator-ordering-predicate comparator)))
+
+(define (rb-tree:copy tree mutable?)
+  (declare (ignore mutable?))
+  (rb-tree/copy tree))

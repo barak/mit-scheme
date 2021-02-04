@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -107,12 +107,53 @@ USA.
 	     (,(rename 'set!) ,name ,value)
 	     ,(rename 'unspecific))))))))
 
+(define-syntax define-values-deferred
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore compare))
+     (syntax-check '(_ (* identifier) expression) form)
+     (let ((names (cadr form))
+	   (expr (caddr form)))
+       `(,(rename 'begin)
+	 ,@(map (lambda (name)
+		  `(,(rename 'define) ,name))
+		names)
+	  (,(rename 'add-boot-init!)
+	   (,(rename 'lambda) ()
+	    ,(let ((names* (map rename names)))
+	       `(let-values ((,names* ,expr))
+		  ,@(map (lambda (name name*)
+			   `(,(rename 'set!) ,name ,name*))
+			 names
+			 names*)
+		  ,(rename 'unspecific))))))))))
+
+(define-syntax define-sequenced-procedure
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore compare))
+     (syntax-check '(_ identifier expression expression) form)
+     (let ((name (cadr form))
+	   (seq (caddr form))
+	   (expr (cadddr form))
+	   (args (new-identifier 'args)))
+       `(,(rename 'begin)
+	 (,(rename 'define) ,name
+	  (,(rename 'lambda) ,args
+	   (,seq 'add-action!
+	    (,(rename 'lambda) ()
+	     (,(rename 'apply) ,name ,args)))))
+	 (,seq 'add-action!
+	  (,(rename 'lambda) ()
+	   (,(rename 'set!) ,name ,expr)
+	   ,(rename 'unspecific))))))))
+
 (define-syntax select-on-bytes-per-word
   (er-macro-transformer
    (lambda (form rename compare)
      (declare (ignore rename compare))
      (syntax-check '(_ expression expression) form)
-     (let ((bpo (bytes-per-object)))
+     (let ((bpo (target-bytes-per-object)))
        (case bpo
 	 ((4) (cadr form))
 	 ((8) (caddr form))

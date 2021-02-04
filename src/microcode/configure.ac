@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme microcode], [15.3], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [11.1], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -9,7 +9,7 @@ AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,7 +34,7 @@ AH_TOP([/*
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -162,11 +162,13 @@ OPTIONAL_SOURCES=
 OPTIONAL_OBJECTS=
 SCHEME_DEFS=-DMIT_SCHEME
 SCHEME_LDFLAGS=
+LIARC_CFLAGS=
+LIARC_LDFLAGS=
+LIARC_LOADER='${SCHEME_EXE}'
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
 AUX_DATA=
-AUXDIR_NAME=
 EXE_NAME=
 INSTALL_INCLUDE=
 
@@ -177,6 +179,7 @@ SAVED_CFLAGS=${CFLAGS}
 SAVED_LDFLAGS=${LDFLAGS}
 
 dnl Checks for programs.
+AC_CHECK_TOOL([AS], [as])
 AC_PROG_CC
 AC_PROG_CC_STDC
 if test "x${ac_cv_prog_cc_c99}" != xno; then
@@ -212,42 +215,66 @@ esac
 
 : ${HOST_CC:=${CC}}
 
-if test ${GCC} = yes; then
+if test x"${GCC}" = xyes; then
 
     dnl Discard flags computed by AC_PROG_CC; we'll use our own.
     CFLAGS=${SAVED_CFLAGS}
     LDFLAGS=${SAVED_LDFLAGS}
 
-    if test ${enable_debugging} = no; then
+    if test x"${enable_debugging}" = xno; then
 	CFLAGS="-O3 ${CFLAGS}"
     else
-	CFLAGS="-O0 -g -DENABLE_DEBUGGING_TOOLS ${CFLAGS}"
+        if test x"${enable_debugging}" = xyes; then
+            CFLAGS="-DENABLE_DEBUGGING_TOOLS ${CFLAGS}"
+        fi
+	CFLAGS="-O0 -g ${CFLAGS}"
 	LDFLAGS="${LDFLAGS} -g"
     fi
-    CFLAGS="-Wall -Wundef -Wpointer-arith -Winline ${CFLAGS}"
-    CFLAGS="-Wstrict-prototypes -Wnested-externs -Wredundant-decls ${CFLAGS}"
+    CFLAGS_WERROR=-Werror
+    CFLAGS_WNOERROR=-Wno-error
 
-    AC_MSG_CHECKING([for GCC>=4])
-    AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM(
-	    [[
-	    #if __GNUC__ >= 4
-	    ;
-	    #else
-	    #error "gcc too old"
-	    #endif
-	    ]],
-	    [[]]
-	)],
-	[
-	AC_MSG_RESULT([yes])
-	CFLAGS="-Wextra -Wno-sign-compare -Wno-unused-parameter ${CFLAGS}"
-	CFLAGS="-Wold-style-definition ${CFLAGS}"
-	],
-	[AC_MSG_RESULT([no])])
+    # -frounding-math is needed if we change the rounding mode
+    # -fno-builtin-floor works around GCC7 bug miscompiling floor
+    for flag in \
+	-frounding-math \
+	-fno-builtin-floor \
+	\
+	-Wall \
+	-Wclobbered \
+	-Wempty-body \
+	-Wignored-qualifiers \
+	-Wimplicit-fallthrough \
+	-Wmissing-field-initializers \
+	-Wmissing-parameter-type \
+	-Wnested-externs \
+	-Wold-style-declaration \
+	-Woverride-init \
+	-Wpointer-arith \
+	-Wredundant-decls \
+	-Wshift-negative-value \
+	-Wstrict-prototypes \
+	-Wtype-limits \
+	-Wundef \
+	-Wuninitialized \
+	-Wwrite-strings \
+	\
+	-Wno-error=stringop-truncation \
+	; do
+	AC_MSG_CHECKING([for compiler $flag])
+	SAVED_CFLAGS=${CFLAGS}
+	CFLAGS="${SAVED_CFLAGS} ${flag} -Werror"
+	AC_TRY_COMPILE([],[],
+	    [AC_MSG_RESULT(yes)
+             CFLAGS="${SAVED_CFLAGS} ${flag}"],
+	    [AC_MSG_RESULT(no)
+	     CFLAGS=${SAVED_CFLAGS}])
+    done
 
     # other possibilities:
-    # -Wmissing-prototypes -Wunreachable-code -Wwrite-strings
+    # -Wmissing-prototypes (requires prototypes for DEFINE_PRIMITIVE)
+    # -Wstringop-truncation (requires it to not whine about correct use
+    #  of strncpy for buffers that are _not_ null-terminated)
+    # -Wunreachable-code (too many false positives in clang)
 fi
 FOO=`${INSTALL} --help 2> /dev/null | ${FGREP} -e --preserve-timestamps`
 if test "x${FOO}" != x; then
@@ -258,8 +285,18 @@ CCLD=${CC}
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
 MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
 
-AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
-EXE_NAME=mit-scheme-${mit_scheme_native_code}
+case $mit_scheme_native_code in
+c|svm1-be|svm1-le);;
+*)
+    if test "x${AS}" = x; then
+        AC_MSG_ERROR([Unable to find assembler for native code interface])
+    fi
+    ;;
+esac
+
+: "${MIT_SCHEME_ARCH:=${mit_scheme_native_code}}"
+: "${MIT_SCHEME_VERSION:=${PACKAGE_VERSION}}"
+: "${AUXDIR_NAME:=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}}"
 
 dnl Add OS-dependent customizations.  This must happen before checking
 dnl any headers or library routines, because it may add CFLAGS or
@@ -348,6 +385,7 @@ darwin*)
     CFLAGS="${CFLAGS} ${MACOS_CFLAGS}"
     LDFLAGS="${LDFLAGS} ${MACOS_CFLAGS} -Wl,-syslibroot,${MACOS_SYSROOT}"
     LDFLAGS="${LDFLAGS} -framework CoreFoundation"
+    LIARC_LDFLAGS="${LIARC_LDFLAGS} -bundle -bundle_loader ${LIARC_LOADER}"
     AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
 netbsd*)
@@ -373,6 +411,8 @@ if test "${DO_GCC_TESTS}" = yes; then
     if test "${GNU_LD}" = yes; then
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-export-dynamic"
     fi
+    LIARC_CFLAGS="${LIARC_CFLAGS} -fPIC"
+    LIARC_LDFLAGS="${LIARC_LDFLAGS} -shared -fPIC"
     AC_MSG_CHECKING([for ELF binaries])
     AC_EGREP_CPP([yes],
 	[
@@ -708,22 +748,22 @@ AC_CHECK_FUNCS([clock_gettime closefrom ctermid])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([expm1])
 AC_CHECK_FUNCS([fcntl fdatasync])
-AC_CHECK_FUNCS([floor fmod fpathconf])
+AC_CHECK_FUNCS([floor fma fmod fpathconf])
 AC_CHECK_FUNCS([frexp fsync fsync_range ftruncate])
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpagesize getpgrp])
 AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])
-AC_CHECK_FUNCS([lgamma_r lockf log1p])
+AC_CHECK_FUNCS([lgamma_r log1p])
 AC_CHECK_FUNCS([madvise memcpy mkdir mktime modf])
 AC_CHECK_FUNCS([nice ntp_adjtime ntp_gettime])
 AC_CHECK_FUNCS([openpty])
-AC_CHECK_FUNCS([poll pollts ppoll posix_madvise posix_openpt prealloc])
+AC_CHECK_FUNCS([poll pollts ppoll posix_madvise posix_openpt])
 AC_CHECK_FUNCS([rename rmdir])
-AC_CHECK_FUNCS([pselect select setitimer setpgrp setpgrp2 shmat sigaction])
-AC_CHECK_FUNCS([sighold sigsuspend socket statfs strchr strerror strstr strtol])
+AC_CHECK_FUNCS([pselect select setitimer setpgrp setpgrp2 sigaction])
+AC_CHECK_FUNCS([sighold sigsuspend socket statfs strchr strerror])
 AC_CHECK_FUNCS([strtoul symlink sync_file_range sysconf])
 AC_CHECK_FUNCS([times truncate])
-AC_CHECK_FUNCS([uname utime])
+AC_CHECK_FUNCS([utime])
 AC_CHECK_FUNCS([waitpid])
 
 if test ${ac_cv_type_signal} = void; then
@@ -844,6 +884,15 @@ fi
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
 
 case ${mit_scheme_native_code} in
+aarch64be|aarch64le)
+    cmpauxmd="aarch64"
+    ;;
+*)
+    cmpauxmd="${mit_scheme_native_code}"
+    ;;
+esac
+
+case ${mit_scheme_native_code} in
 none)
     ;;
 c)
@@ -854,7 +903,7 @@ c)
     AUX_PROGRAMS="gen-nonce extract-liarc-decls"
     INSTALL_INCLUDE=install-include
     ;;
-svm1)
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
     ;;
 *)
@@ -862,7 +911,7 @@ svm1)
     if test "x${M4}" = x; then
 	AC_MSG_ERROR([m4 not found])
     fi
-    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${mit_scheme_native_code}.m4])
+    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${cmpauxmd}.m4])
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     ;;
@@ -873,16 +922,30 @@ if test x"${mit_scheme_compiler_target}" = xc; then
     AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
 fi
 
+case ${mit_scheme_native_code} in
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
+    cmpintmd=svm1
+    ;;
+aarch64be|aarch64le)
+    cmpintmd=aarch64
+    ;;
+*)
+    cmpintmd=${mit_scheme_native_code}
+    ;;
+esac
 AC_CONFIG_LINKS([
-    cmpintmd.h:cmpintmd/${mit_scheme_native_code}.h
-    cmpintmd.c:cmpintmd/${mit_scheme_native_code}.c
-    cmpintmd-config.h:cmpintmd/${mit_scheme_native_code}-config.h
+    cmpintmd.h:cmpintmd/${cmpintmd}.h
+    cmpintmd.c:cmpintmd/${cmpintmd}.c
+    cmpintmd-config.h:cmpintmd/${cmpintmd}-config.h
     ])
 
 for base in ${OPTIONAL_BASES}; do
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} ${base}.c"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} ${base}.o"
 done
+
+CFLAGS="${CFLAGS} ${CFLAGS_WERROR}"
+LIARC_CFLAGS="${LIARC_CFLAGS} ${CFLAGS_WNOERROR}"
 
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])
@@ -892,14 +955,19 @@ AC_SUBST([OPTIONAL_SOURCES])
 AC_SUBST([OPTIONAL_OBJECTS])
 AC_SUBST([SCHEME_DEFS])
 AC_SUBST([SCHEME_LDFLAGS])
+AC_SUBST([LIARC_CFLAGS])
+AC_SUBST([LIARC_LDFLAGS])
+AC_SUBST([LIARC_LOADER])
 AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([AUX_PROGRAMS])
 AC_SUBST([AUX_DATA])
+AC_SUBST([MIT_SCHEME_ARCH])
+AC_SUBST([MIT_SCHEME_VERSION])
 AC_SUBST([AUXDIR_NAME])
-AC_SUBST([EXE_NAME])
 AC_SUBST([INSTALL_INCLUDE])
 AC_SUBST([CCLD])
+AC_SUBST([HOST_CC])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

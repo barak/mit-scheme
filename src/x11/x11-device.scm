@@ -3,23 +3,24 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
-This file is part of an x11 plugin for MIT/GNU Scheme.
+This file is part of MIT/GNU Scheme.
 
-This plugin is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2 of the License, or (at your
-option) any later version.
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
 
-This plugin is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this plugin; if not, write to the Free Software Foundation,
-Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
 
 |#
 
@@ -197,8 +198,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 		    (list condition-type:bad-range-argument
 			  condition-type:wrong-type-argument)
 		    (lambda (condition)
-		      ;; If X-DISPLAY-PROCESS-EVENTS or
-		      ;; X-DISPLAY-DESCRIPTOR signals an argument error
+		      ;; If x-display-process-events or
+		      ;; x-display-descriptor signals an argument error
 		      ;; on its display argument, that means the
 		      ;; display has been closed.
 		      condition
@@ -324,7 +325,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	   (vector-set! event 3
 			(x-graphics-map-y-coordinate xw
 						     (vector-ref event 3)))))))
-  ;; ENTER and LEAVE events should be modified to have X,Y coordinates.
+  ;; Enter and leave events should be modified to have X,Y coordinates.
   (define-event-handler event-type:button-down mouse-event-handler)
   (define-event-handler event-type:button-up mouse-event-handler)
   (define-event-handler event-type:motion mouse-event-handler))
@@ -417,7 +418,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (let ((xw (x-window/xw window)))
     (x-window-map xw)
     ;; If this is the first time that this window has been mapped, we
-    ;; need to wait for a MAP event before continuing.
+    ;; need to wait for a map event before continuing.
     (if (not (boolean? (x-window/mapped? window)))
 	(begin
 	  (x-window-flush xw)
@@ -636,7 +637,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (x-window-set-input-hint (x-graphics-device/xw device) input?))
 
 (define (x-graphics/disable-keyboard-focus device)
-  ;; Tell the window to participate in the TAKE-FOCUS protocol.  Since
+  ;; Tell the window to participate in the take-focus protocol.  Since
   ;; there is no handler for this event, focus will never be given to
   ;; the window.
   (x-window-set-event-mask (x-graphics-device/xw device)
@@ -738,7 +739,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 ;;;; Images
 
-;; X-IMAGE is the descriptor of the generic images.
+;; An x-image describes a generic image.
 
 (define-structure (x-image (conc-name x-image/))
   descriptor
@@ -787,8 +788,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 		   0
 		   0
 		   (x-image/window image)
-		   (->flonum window-x)
-		   (->flonum window-y)
+		   window-x
+		   window-y
 		   (x-image/width image)
 		   (x-image/height image)))
 
@@ -797,8 +798,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 		   x
 		   y
 		   (x-image/window image)
-		   (->flonum window-x)
-		   (->flonum window-y)
+		   window-x
+		   window-y
 		   width
 		   height))
 
@@ -829,8 +830,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 		     0
 		     0
 		     (x-graphics-device/xw device)
-		     (->flonum x)
-		     (->flonum y)
+		     x
+		     y
 		     w
 		     h)))
 

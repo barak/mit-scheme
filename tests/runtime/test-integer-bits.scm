@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,19 +51,19 @@ USA.
     (random-integer-of-weight (random-integer (+ n 1)) n)))
 
 (define (randomly-generate-integers procedure)
-  (do ((i 0 (+ i 1))) ((= i #x100))
+  (do ((i 0 (+ i 1))) ((= i (if keep-it-fast!? 8 #x100)))
     (procedure (random-large-integer))))
 
 (define (randomly-generate-fixnums procedure)
-  (do ((i 0 (+ i 1))) ((= i #x1000))
+  (do ((i 0 (+ i 1))) ((= i (if keep-it-fast!? #x10 #x1000)))
     (procedure (random-fixnum))))
 
 (define (randomly-generate-integer-pairs procedure)
-  (do ((i 0 (+ i 1))) ((= i #x100))
+  (do ((i 0 (+ i 1))) ((= i (if keep-it-fast!? 8 #x100)))
     (procedure (random-large-integer) (random-large-integer))))
 
 (define (randomly-generate-fixnum-pairs procedure)
-  (do ((i 0 (+ i 1))) ((= i #x1000))
+  (do ((i 0 (+ i 1))) ((= i (if keep-it-fast!? #x10 #x1000)))
     (procedure (random-fixnum) (random-fixnum))))
 
 (define (define-random-unary-fixnum-test name procedure)
@@ -377,7 +377,7 @@ USA.
 
 (define-test 'BIT-MASK
   (lambda ()
-    (do ((i 0 (+ i 1))) ((>= i #x1000))
+    (do ((i 0 (+ i 1))) ((>= i (if keep-it-fast!? #x10 #x1000)))
       (let ((size (random-integer #x1000))
             (position (random-integer #x1000)))
         (assert-eqv (bit-mask size position)
@@ -387,7 +387,7 @@ USA.
 
 (define-test 'BIT-ANTIMASK
   (lambda ()
-    (do ((i 0 (+ i 1))) ((>= i #x1000))
+    (do ((i 0 (+ i 1))) ((>= i (if keep-it-fast!? #x10 #x1000)))
       (let ((size (random-integer #x1000))
             (position (random-integer #x1000)))
         (assert-eqv (bit-antimask size position)
@@ -398,7 +398,7 @@ USA.
 (define (define-per-bit-test name procedure)
   (define-test name
     (lambda ()
-      (do ((i 0 (+ i 1))) ((>= i #x100))
+      (do ((i 0 (+ i 1))) ((>= i (if keep-it-fast!? 8 #x100)))
         (procedure (random-integer-of-weight (random-integer #x1000) #x1000)
                    (random-integer #x1000))))))
 
@@ -463,3 +463,7 @@ USA.
 
 (define-test 'UTF8-N:5 (lambda () (assert-= 5 (utf8-n #b11111001))))
 (define-test 'UTF8-N:6 (lambda () (assert-= 6 (utf8-n #b11111101))))
+
+(define-test 'SHIFT-RIGHT/TOO-MANY
+  (lambda ()
+    (assert-= (shift-right (identity-procedure 1234567) 100) 0)))

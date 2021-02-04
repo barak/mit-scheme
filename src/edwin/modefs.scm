@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,7 +48,8 @@ Most other major modes are defined by comparison to this one.")
 
 ;; The extra range allows international keyboards to insert 8-bit characters
 (define char-set:self-insert-keys
-  (char-set-union char-set:graphic (ascii-range->char-set 128 255)))
+  (char-set-union (ucs-range->char-set #x20 #x7F)
+		  (ucs-range->char-set #x80 #xFF)))
 
 (define-key 'fundamental char-set:self-insert-keys 'self-insert-command)
 (define-key 'fundamental char-set:numeric 'auto-digit-argument)

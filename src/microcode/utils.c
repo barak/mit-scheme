@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -217,7 +217,7 @@ canonicalize_primitive_context (void)
   n_args = (PRIMITIVE_N_ARGUMENTS (primitive));
 
 #ifdef CC_SUPPORT_P
-  if (CC_ENTRY_P (STACK_REF (n_args)))
+  if (CC_RETURN_P (STACK_REF (n_args)))
     {
       /* The primitive has been invoked from compiled code. */
       STACK_PUSH (primitive);
@@ -228,6 +228,8 @@ canonicalize_primitive_context (void)
       /*NOTREACHED*/
     }
 #endif
+
+  assert (RETURN_CODE_P (STACK_REF (n_args)));
 }
 
 /* back_out_of_primitive sets the registers up so that the backout
@@ -572,7 +574,7 @@ hash_object (SCHEME_OBJECT object)
       {
 	const SCHEME_OBJECT * scan = (VECTOR_LOC (object, 0));
 	const SCHEME_OBJECT * end = (scan + (VECTOR_LENGTH (object)));
-	uint32_t result = 0;
+	uint32_t result = (initial_hash ());
 	while (scan < end)
 	  result = (combine_hashes (result, (hash_object (*scan++))));
 	return result;
@@ -584,6 +586,19 @@ hash_object (SCHEME_OBJECT object)
     default:
       return (0);
     }
+}
+
+uint32_t
+initial_hash (void)
+{
+  SCHEME_OBJECT object = (VECTOR_REF (fixed_objects, FIXOBJ_INITIAL_HASH));
+  if ((FIXNUM_P (object)) && (FIXNUM_TO_ULONG_P (object)))
+    {
+      unsigned long value = (FIXNUM_TO_ULONG (object));
+      if (value <= UINT32_MAX)
+        return ((uint32_t) value);
+    }
+  return 0;
 }
 
 uint32_t

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -97,11 +97,15 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
     }
 
 #ifdef CC_SUPPORT_P
-    if (CC_ENTRY_P (STACK_REF (n_args)))
+    if (CC_RETURN_P (STACK_REF (n_args)))
       {
 	apply_compiled_from_primitive (n_args, procedure);
 	UN_POP_PRIMITIVE_FRAME (2);
 	PRIMITIVE_RETURN (UNSPECIFIC);
+      }
+    else
+      {
+	assert (RETURN_CODE_P (STACK_REF (n_args)));
       }
 #endif
 
@@ -261,7 +265,7 @@ unpack_control_point (SCHEME_OBJECT cp)
 
     stack_pointer = STACK_BOTTOM;
     CLEAR_INTERRUPT (INT_Stack_Overflow);
-    STACK_CHECK (end_from - scan_from);
+    STACK_CHECK (scan_from - end_from);
     
     while (scan_from > end_from)
       STACK_PUSH (*--scan_from);
@@ -491,7 +495,7 @@ and MARKER2 is data identifying the marker instance.")
   {
     SCHEME_OBJECT thunk = (ARG_REF (1));
 #ifdef CC_SUPPORT_P
-    if ((CC_ENTRY_P (STACK_REF (3))) && (CC_ENTRY_P (thunk)))
+    if ((CC_RETURN_P (STACK_REF (3))) && (CC_ENTRY_P (thunk)))
       {
 	(void) STACK_POP ();
 	compiled_with_stack_marker (thunk);
@@ -544,7 +548,7 @@ with_new_interrupt_mask (unsigned long new_mask)
   SCHEME_OBJECT receiver = (ARG_REF (2));
 
 #ifdef CC_SUPPORT_P
-  if ((CC_ENTRY_P (STACK_REF (2))) && (CC_ENTRY_P (receiver)))
+  if ((CC_RETURN_P (STACK_REF (2))) && (CC_ENTRY_P (receiver)))
     {
       unsigned long current_mask = GET_INT_MASK;
       POP_PRIMITIVE_FRAME (2);

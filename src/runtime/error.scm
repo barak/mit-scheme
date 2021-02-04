@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime error-handler)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic))
 
 ;;;; Condition Types
 
@@ -49,10 +51,7 @@ USA.
 (define-guarantee condition-type "condition type")
 
 (define-integrable (guarantee-condition-types object caller)
-  (guarantee-list-of-type object
-			  condition-type?
-			  "list of condition types"
-			  caller))
+  (guarantee-list-of condition-type? object caller))
 
 (define (make-condition-type name generalization field-names reporter)
   (if generalization
@@ -302,7 +301,8 @@ USA.
 
 ;;;; Restarts
 
-(define param:bound-restarts)
+(define-deferred param:bound-restarts
+  (make-unsettable-parameter '()))
 
 (define-structure (restart
 		   (conc-name %restart/)
@@ -324,7 +324,7 @@ USA.
 (define-guarantee restart "restart")
 
 (define-integrable (guarantee-restarts object caller)
-  (guarantee-list-of-type object restart? "list of restarts" caller))
+  (guarantee-list-of restart? object caller))
 
 (define (with-restart name reporter effector interactor thunk)
   (if name (guarantee symbol? name 'with-restart))
@@ -421,7 +421,10 @@ USA.
 	    (invoke-restart (car restarts))
 	    (loop (cdr restarts))))))
 
-(define hook/invoke-restart)
+;; No eta conversion for bootstrapping and efficiency reasons.
+(define hook/invoke-restart
+  (lambda (effector arguments)
+    (apply effector arguments)))
 
 (define (bound-restarts)
   (let loop ((restarts (param:bound-restarts)))
@@ -498,9 +501,14 @@ USA.
 
 ;;;; Condition Signalling and Handling
 
-(define static-handler-frames)
-(define dynamic-handler-frames)
-(define break-on-signals-types)
+(define-deferred static-handler-frames
+  (make-settable-parameter '()))
+
+(define-deferred dynamic-handler-frames
+  (make-settable-parameter '()))
+
+(define-deferred break-on-signals-types
+  (make-settable-parameter '()))
 
 (define (bind-default-condition-handler types handler)
   (guarantee-condition-types types 'bind-default-condition-handler)
@@ -525,10 +533,11 @@ USA.
   (break-on-signals-types types)
   unspecific)
 
-(define hook/invoke-condition-handler)
-
 (define (default/invoke-condition-handler handler condition)
   (handler condition))
+
+(define hook/invoke-condition-handler
+  default/invoke-condition-handler)
 
 (define (signal-condition condition)
   (guarantee-condition condition 'signal-condition)
@@ -620,8 +629,12 @@ USA.
 
 (define standard-error-hook #!default)
 (define standard-warning-hook #!default)
-(define param:standard-error-hook)
-(define param:standard-warning-hook)
+
+(define-deferred param:standard-error-hook
+  (make-settable-parameter #f))
+
+(define-deferred param:standard-warning-hook
+  (make-settable-parameter #f))
 
 (define (condition-signaller type field-names default-handler)
   (guarantee-condition-handler default-handler 'condition-signaller)
@@ -739,68 +752,6 @@ USA.
 
 ;;;; Basic Condition Types
 
-(define condition-type:arithmetic-error)
-(define condition-type:bad-range-argument)
-(define condition-type:cell-error)
-(define condition-type:control-error)
-(define condition-type:datum-out-of-range)
-(define condition-type:derived-file-error)
-(define condition-type:derived-port-error)
-(define condition-type:derived-thread-error)
-(define condition-type:divide-by-zero)
-(define condition-type:error)
-(define condition-type:file-error)
-(define condition-type:file-operation-error)
-(define condition-type:floating-point-divide-by-zero)
-(define condition-type:floating-point-overflow)
-(define condition-type:floating-point-underflow)
-(define condition-type:illegal-datum)
-(define condition-type:illegal-pathname-component)
-(define condition-type:inexact-floating-point-result)
-(define condition-type:integer-divide-by-zero)
-(define condition-type:invalid-floating-point-operation)
-(define condition-type:macro-binding)
-(define condition-type:no-such-restart)
-(define condition-type:port-error)
-(define condition-type:r7rs-tunnel)
-(define condition-type:serious-condition)
-(define condition-type:simple-condition)
-(define condition-type:simple-error)
-(define condition-type:simple-warning)
-(define condition-type:thread-error)
-(define condition-type:unassigned-variable)
-(define condition-type:unbound-variable)
-(define condition-type:variable-error)
-(define condition-type:warning)
-(define condition-type:wrong-number-of-arguments)
-(define condition-type:wrong-type-argument)
-(define condition-type:wrong-type-datum)
-
-(define make-simple-error)
-(define make-simple-warning)
-(define make-file-operation-error)
-(define make-r7rs-tunnel)
-(define error-object?)
-(define file-error?)
-(define r7rs-tunnel?)
-
-(define error:bad-range-argument)
-(define error:datum-out-of-range)
-(define error:divide-by-zero)
-(define error:no-such-restart)
-(define error:derived-file)
-(define error:derived-port)
-(define error:derived-thread)
-(define error:illegal-pathname-component)
-(define error:macro-binding)
-(define error:unassigned-variable)
-(define error:unbound-variable)
-(define error:wrong-number-of-arguments)
-(define error:wrong-type-argument)
-(define error:wrong-type-datum)
-
-(define condition/derived-thread?)
-
 (define (condition-type/error? type)
   (guarantee-condition-type type 'condition-type/error?)
   (%condition-type/error? type))
@@ -814,449 +765,476 @@ USA.
 
 (define-integrable (%condition-type/error? type)
   (memq condition-type:error (%condition-type/generalizations type)))
-
-(define (initialize-package!)
-  (set! param:bound-restarts (make-unsettable-parameter '()))
-  (set! static-handler-frames (make-settable-parameter '()))
-  (set! dynamic-handler-frames (make-unsettable-parameter '()))
-  (set! break-on-signals-types (make-settable-parameter '()))
-  (set! param:standard-error-hook (make-settable-parameter #f))
-  (set! param:standard-warning-hook (make-settable-parameter #f))
-  (set! hook/invoke-condition-handler default/invoke-condition-handler)
-  ;; No eta conversion for bootstrapping and efficiency reasons.
-  (set! hook/invoke-restart
-	(lambda (effector arguments)
-	  (apply effector arguments)))
-  (set! condition-type:serious-condition
-	(make-condition-type 'serious-condition #f '() #f))
-  (set! condition-type:warning
-	(make-condition-type 'warning #f '() #f))
 
-  (set! condition-type:error
-	(make-condition-type 'error condition-type:serious-condition '() #f))
-  (set! error-object?
-	(condition-predicate condition-type:error))
-  (set! condition-type:r7rs-tunnel
-	(make-condition-type 'r7rs-tunnel condition-type:error '(object)
-	  (lambda (condition port)
-	    (write-string "The object " port)
-	    (write (access-condition condition 'object) port)
-	    (write-string " was raised." port))))
-  (set! r7rs-tunnel?
-	(condition-predicate condition-type:r7rs-tunnel))
+(define-deferred condition-type:serious-condition
+  (make-condition-type 'serious-condition #f '() #f))
 
-  (let ((reporter/simple-condition
-	 (lambda (condition port)
-	   (format-error-message (access-condition condition 'message)
-				 (access-condition condition 'irritants)
-				 port))))
-    (set! condition-type:simple-condition
-	  (make-condition-type 'simple-condition #f '(message irritants)
-	    reporter/simple-condition))
-    (set! condition-type:simple-error
-	  (make-condition-type 'simple-error condition-type:error
-	      '(message irritants)
-	    reporter/simple-condition))
-    (set! condition-type:simple-warning
-	  (make-condition-type 'simple-warning condition-type:warning
-	      '(message irritants)
-	    reporter/simple-condition)))
+(define-deferred condition-type:warning
+  (make-condition-type 'warning #f '() #f))
 
-  (set! condition-type:illegal-datum
-	(make-condition-type 'illegal-datum condition-type:error '(datum)
-	  (lambda (condition port)
-	    (write-string "The object " port)
-	    (write (access-condition condition 'datum) port)
-	    (write-string " has been found in an inappropriate context."
-			  port))))
+(define-deferred condition-type:error
+  (make-condition-type 'error condition-type:serious-condition '() #f))
 
-  (set! condition-type:datum-out-of-range
-	(make-condition-type 'datum-out-of-range condition-type:illegal-datum
-	    '()
-	  (lambda (condition port)
-	    (write-string "The object " port)
-	    (write (access-condition condition 'datum) port)
-	    (write-string " is not in the correct range." port))))
-
-  (let ((write-type-description
-	 (let ((char-set:vowels
-		(char-set #\a #\e #\i #\o #\u #\A #\E #\I #\O #\U)))
-	   (lambda (condition port)
-	     (let ((type (access-condition condition 'type)))
-	       (if (string? type)
-		   (begin
-		     (if (not (or (string-null? type)
-				  (string-prefix-ci? "a " type)
-				  (string-prefix-ci? "an " type)))
-			 (write-string
-			  (if (char-in-set? (string-ref type 0) char-set:vowels)
-			      "an "
-			      "a ")
-			  port))
-		     (write-string type port))
-		   (write-string "the correct type" port))))))
-	(write-operand-description
-	 (lambda (condition port)
-	   (let ((operator (access-condition condition 'operator))
-		 (operand (access-condition condition 'operand)))
-	     (if (or (symbol? operator)
-		     (procedure? operator))
-		 (begin
-		   (write-string ", passed " port)
-		   (cond ((symbol? operand)
-			  (write-string "as the argument " port)
-			  (write operand port))
-			 ((exact-nonnegative-integer? operand)
-			  (write-string "as the " port)
-			  (write-string (ordinal-number-string (+ operand 1))
-					port)
-			  (write-string " argument" port))
-			 (else
-			  (write-string "as an argument" port)))
-		   (write-string " to " port)
-		   (write-operator operator port)
-		   (write-string "," port)))))))
-    (set! condition-type:wrong-type-datum
-	  (make-condition-type 'wrong-type-datum condition-type:illegal-datum
-	      '(type)
-	    (lambda (condition port)
-	      (write-string "The object " port)
-	      (write (access-condition condition 'datum) port)
-	      (write-string " is not " port)
-	      (write-type-description condition port)
-	      (write-string "." port))))
-    (set! condition-type:wrong-type-argument
-	  (make-condition-type 'wrong-type-argument
-	      condition-type:wrong-type-datum
-	      '(operator operand)
-	    (lambda (condition port)
-	      (write-string "The object " port)
-	      (write (access-condition condition 'datum) port)
-	      (write-operand-description condition port)
-	      (write-string " is not " port)
-	      (write-type-description condition port)
-	      (write-string "." port))))
-    (set! condition-type:bad-range-argument
-	  (make-condition-type 'bad-range-argument
-	      condition-type:datum-out-of-range
-	      '(operator operand)
-	    (lambda (condition port)
-	      (write-string "The object " port)
-	      (write (access-condition condition 'datum) port)
-	      (write-operand-description condition port)
-	      (write-string " is not in the correct range." port)))))
-
-  (set! condition-type:wrong-number-of-arguments
-	(make-condition-type 'wrong-number-of-arguments
-	    condition-type:wrong-type-datum
-	    '(operands)
-	  (lambda (condition port)
-	    (let ((pluralize-argument
-		   (lambda (number)
-		     (write-string
-		      (if (= number 1) " argument" " arguments")
-		      port))))
-	      (write-string "The procedure " port)
-	      (write-operator (access-condition condition 'datum) port)
-	      (write-string " has been called with " port)
-	      (let ((count (length (access-condition condition 'operands))))
-		(write count port)
-		(pluralize-argument count))
-	      (write-string "; it requires " port)
-	      (let ((arity (access-condition condition 'type)))
-		(let ((arity-min (procedure-arity-min arity))
-		      (arity-max (procedure-arity-max arity)))
-		  (cond ((eqv? arity-min arity-max)
-			 (write-string "exactly " port)
-			 (write arity-min port)
-			 (pluralize-argument arity-min))
-			((not arity-max)
-			 (write-string "at least " port)
-			 (write (car arity) port)
-			 (pluralize-argument (car arity)))
-			(else
-			 (write-string "between " port)
-			 (write arity-min port)
-			 (write-string " and " port)
-			 (write arity-max port)
-			 (write-string " arguments" port)))))
-	      (write-char #\. port)))))
+(define-deferred error-object?
+  (condition-predicate condition-type:error))
 
-  (set! condition-type:illegal-pathname-component
-	(make-condition-type 'illegal-pathname-component
-	    condition-type:wrong-type-datum '()
-	  (lambda (condition port)
-	    (write-string "The object " port)
-	    (write (access-condition condition 'datum) port)
-	    (write-string " is not a valid pathname " port)
-	    (write-string (access-condition condition 'type) port)
-	    (write-string "." port))))
+(define-deferred condition-type:r7rs-tunnel
+  (make-condition-type 'r7rs-tunnel condition-type:error '(object)
+    (lambda (condition port)
+      (write-string "The object " port)
+      (write (access-condition condition 'object) port)
+      (write-string " was raised." port))))
 
-  (set! condition-type:control-error
-	(make-condition-type 'control-error condition-type:error '()
-	  "Control error."))
+(define-deferred r7rs-tunnel?
+  (condition-predicate condition-type:r7rs-tunnel))
 
-  (set! condition-type:no-such-restart
-	(make-condition-type 'no-such-restart condition-type:control-error
-	    '(name)
-	  (lambda (condition port)
-	    (write-string "The restart named " port)
-	    (write (access-condition condition 'name) port)
-	    (write-string " is not bound." port))))
+(define (reporter/simple-condition condition port)
+  (format-error-message (access-condition condition 'message)
+			(access-condition condition 'irritants)
+			port))
 
-  (let ((anonymous-error
-	 (lambda (type-name field-name)
-	   (make-condition-type type-name condition-type:error
-	       (list field-name)
-	     (lambda (condition port)
-	       (write-string "Anonymous error associated with " port)
-	       (write (access-condition condition field-name) port)
-	       (write-string "." port))))))
-    (set! condition-type:port-error (anonymous-error 'port-error 'port))
-    (set! condition-type:file-error (anonymous-error 'file-error 'filename))
-    (set! condition-type:cell-error (anonymous-error 'cell-error 'location))
-    (set! condition-type:thread-error (anonymous-error 'thread-error 'thread)))
-  (set! file-error?
-	(condition-predicate condition-type:file-error))
-
-  (set! condition-type:derived-port-error
-	(make-condition-type 'derived-port-error condition-type:port-error
-	    '(condition)
-	  (lambda (condition port)
-	    (write-string "The port " port)
-	    (write (access-condition condition 'port) port)
-	    (write-string " signalled an error " port)
-	    (write (access-condition condition 'condition) port)
-	    (write-string ":" port)
-	    (newline port)
-	    (write-condition-report (access-condition condition 'condition)
-				    port))))
-  (set! error:derived-port
-	(let ((make-condition
-	       (condition-constructor condition-type:derived-port-error
-				      '(port condition))))
-	  (lambda (port condition)
-	    (guarantee-condition condition 'error:derived-port)
-	    (error (make-condition (%condition/continuation condition)
-				   (%condition/restarts condition)
-				   port
-				   condition)))))
+(define-deferred condition-type:simple-condition
+  (make-condition-type 'simple-condition #f '(message irritants)
+    reporter/simple-condition))
 
-  (set! condition-type:derived-file-error
-	(make-condition-type 'derived-file-error condition-type:file-error
-	    '(condition)
-	  (lambda (condition port)
-	    (write-string "The file " port)
-	    (write (access-condition condition 'filename) port)
-	    (write-string " signalled an error " port)
-	    (write (access-condition condition 'condition) port)
-	    (write-string ":" port)
-	    (newline port)
-	    (write-condition-report (access-condition condition 'condition)
-				    port))))
-  (set! error:derived-file
-	(let ((make-condition
-	       (condition-constructor condition-type:derived-file-error
-				      '(filename condition))))
-	  (lambda (filename condition)
-	    (guarantee-condition condition 'error:derived-file)
-	    (error (make-condition (%condition/continuation condition)
-				   (%condition/restarts condition)
-				   filename
-				   condition)))))
+(define-deferred condition-type:simple-error
+  (make-condition-type 'simple-error condition-type:error
+		       '(message irritants)
+    reporter/simple-condition))
 
-  (set! condition-type:derived-thread-error
-	(make-condition-type 'derived-thread-error condition-type:thread-error
-	    '(condition)
-	  (lambda (condition port)
-	    (write-string "The thread " port)
-	    (write (access-condition condition 'thread) port)
-	    (write-string " signalled " port)
-	    (let ((condition (access-condition condition 'condition)))
-	      (write-string (if (condition/error? condition)
-				"an error "
-				"a condition ")
-			    port)
-	      (write condition port)
-	      (write-string ":" port)
-	      (newline port)
-	      (write-condition-report condition port)))))
-  (set! error:derived-thread
-	(let ((make-condition
-	       (condition-constructor condition-type:derived-thread-error
-				      '(thread condition))))
-	  (lambda (thread condition)
-	    (guarantee-condition condition 'error:derived-thread)
-	    (let ((condition
-		   (make-condition (%condition/continuation condition)
-				   (%condition/restarts condition)
-				   thread
-				   condition)))
-	      (with-simple-restart 'continue "Continue from error."
-		(lambda ()
-		  (restart/put! (first-bound-restart)
-				'associated-condition
-				condition)
-		  (error condition)))))))
-  (set! condition/derived-thread?
-	(condition-predicate condition-type:derived-thread-error))
-
-  (set! condition-type:file-operation-error
-	(make-condition-type 'file-operation-error condition-type:file-error
-	    '(verb noun reason operator operands)
-	  (lambda (condition port)
-	    (let ((noun (access-condition condition 'noun)))
-	      (write-string "Unable to " port)
-	      (write-string (access-condition condition 'verb) port)
-	      (write-string " " port)
-	      (write-string noun port)
-	      (write-string " " port)
-	      (write (->namestring (access-condition condition 'filename))
-		     port)
-	      (write-string " because: " port)
-	      (let ((reason (access-condition condition 'reason)))
-		(if reason
-		    (write-string (reason-titlecase reason) port)
-		    (begin
-		      (write-string "No such " port)
-		      (write-string noun port))))
-	      (write-string "." port)))))
-  (set! make-file-operation-error
-	(condition-constructor condition-type:file-operation-error
-			       '(filename verb noun reason operator operands)))
+(define-deferred condition-type:simple-warning
+  (make-condition-type 'simple-warning condition-type:warning
+		       '(message irritants)
+    reporter/simple-condition))
 
-  (set! condition-type:variable-error
-	(make-condition-type 'variable-error condition-type:cell-error
-	    '(environment)
-	  (lambda (condition port)
-	    (write-string "Anonymous error associated with variable " port)
-	    (write (access-condition condition 'location) port)
-	    (write-string "." port))))
+(define-deferred condition-type:illegal-datum
+  (make-condition-type 'illegal-datum condition-type:error '(datum)
+    (lambda (condition port)
+      (write-string "The object " port)
+      (write (access-condition condition 'datum) port)
+      (write-string " has been found in an inappropriate context."
+		    port))))
 
-  (set! condition-type:unbound-variable
-	(make-condition-type 'unbound-variable condition-type:variable-error
-	    '()
-	  (lambda (condition port)
-	    (write-string "Unbound variable: " port)
-	    (write (access-condition condition 'location) port))))
+(define-deferred condition-type:datum-out-of-range
+  (make-condition-type 'datum-out-of-range condition-type:illegal-datum
+		       '()
+    (lambda (condition port)
+      (write-string "The object " port)
+      (write (access-condition condition 'datum) port)
+      (write-string " is not in the correct range." port))))
 
-  (set! condition-type:unassigned-variable
-	(make-condition-type 'unassigned-variable condition-type:variable-error
-	    '()
-	  (lambda (condition port)
-	    (write-string "Unassigned variable: " port)
-	    (write (access-condition condition 'location) port))))
+(define write-type-description
+  (let ((char-set:vowels
+	 (char-set #\a #\e #\i #\o #\u #\A #\E #\I #\O #\U)))
+    (lambda (condition port)
+      (let ((type (access-condition condition 'type)))
+	(if (string? type)
+	    (begin
+	      (if (not (or (string-null? type)
+			   (string-prefix-ci? "a " type)
+			   (string-prefix-ci? "an " type)))
+		  (write-string
+		   (if (char-in-set? (string-ref type 0) char-set:vowels)
+		       "an "
+		       "a ")
+		   port))
+	      (write-string type port))
+	    (write-string "the correct type" port))))))
 
-  (set! condition-type:macro-binding
-	(make-condition-type 'macro-binding condition-type:variable-error '()
-	  (lambda (condition port)
-	    (write-string "Variable reference to a syntactic keyword: " port)
-	    (write (access-condition condition 'location) port))))
-
-  (let ((arithmetic-error-report
-	 (lambda (description)
-	   (lambda (condition port)
-	     (write-string description port)
-	     (let ((operator (access-condition condition 'operator)))
-	       (if operator
-		   (begin
-		     (write-string " signalled by " port)
-		     (write-operator operator port)
-		     (write-string "." port))))))))
-    (set! condition-type:arithmetic-error
-	  (make-condition-type 'arithmetic-error condition-type:error
-	      '(operator operands)
-	    (arithmetic-error-report "Anonymous arithmetic error")))
-    (set! condition-type:divide-by-zero
-	  (make-condition-type 'divide-by-zero condition-type:arithmetic-error
-	      '()
-	    (arithmetic-error-report "Division by zero")))
-    (set! condition-type:integer-divide-by-zero
-	  (make-condition-type 'integer-divide-by-zero
-	      condition-type:divide-by-zero
-	      '()
-	    (arithmetic-error-report "Integer division by zero")))
-    (set! condition-type:floating-point-divide-by-zero
-	  (make-condition-type 'floating-point-divide-by-zero
-	      condition-type:divide-by-zero
-	      '()
-	    (arithmetic-error-report "Floating-point division by zero")))
-    (set! condition-type:inexact-floating-point-result
-	  (make-condition-type 'inexact-floating-point-result
-	      condition-type:arithmetic-error
-	      '()
-	    (arithmetic-error-report "Inexact floating-point result")))
-    (set! condition-type:invalid-floating-point-operation
-	  (make-condition-type 'invalid-floating-point-operation
-	      condition-type:arithmetic-error
-	      '()
-	    (arithmetic-error-report "Invalid floating-point operation")))
-    (set! condition-type:floating-point-overflow
-	  (make-condition-type 'floating-point-overflow
-	      condition-type:arithmetic-error
-	      '()
-	    (arithmetic-error-report "Floating-point overflow")))
-    (set! condition-type:floating-point-underflow
-	  (make-condition-type 'floating-point-underflow
-	      condition-type:arithmetic-error
-	      '()
-	    (arithmetic-error-report "Floating-point underflow"))))
-
-  (set! make-simple-error
-	(condition-constructor condition-type:simple-error
-			       '(message irritants)))
-  (set! make-simple-warning
-	(condition-constructor condition-type:simple-warning
-			       '(message irritants)))
-  (set! make-r7rs-tunnel
-	(condition-constructor condition-type:r7rs-tunnel
-			       '(object)))
+(define (write-operand-description condition port)
+  (let ((operator (access-condition condition 'operator))
+	(operand (access-condition condition 'operand)))
+    (if (or (symbol? operator)
+	    (procedure? operator))
+	(begin
+	  (write-string ", passed " port)
+	  (cond ((symbol? operand)
+		 (write-string "as the argument " port)
+		 (write operand port))
+		((exact-nonnegative-integer? operand)
+		 (write-string "as the " port)
+		 (write-string (ordinal-number-string (+ operand 1))
+			       port)
+		 (write-string " argument" port))
+		(else
+		 (write-string "as an argument" port)))
+	  (write-string " to " port)
+	  (write-operator operator port)
+	  (write-string "," port)))))
 
-  (set! error:wrong-type-datum
-	(condition-signaller condition-type:wrong-type-datum
-			     '(datum type)
-			     standard-error-handler))
-  (set! error:datum-out-of-range
-	(condition-signaller condition-type:datum-out-of-range
-			     '(datum)
-			     standard-error-handler))
-  (set! error:wrong-type-argument
-	(condition-signaller condition-type:wrong-type-argument
-			     '(datum type operator)
-			     standard-error-handler))
-  (set! error:bad-range-argument
-	(condition-signaller condition-type:bad-range-argument
-			     '(datum operator)
-			     standard-error-handler))
-  (set! error:wrong-number-of-arguments
-	(condition-signaller condition-type:wrong-number-of-arguments
-			     '(datum type operands)
-			     standard-error-handler))
-  (set! error:illegal-pathname-component
-	(condition-signaller condition-type:illegal-pathname-component
-			     '(datum type)
-			     standard-error-handler))
-  (set! error:divide-by-zero
-	(condition-signaller condition-type:divide-by-zero
-			     '(operator operands)
-			     standard-error-handler))
-  (set! error:no-such-restart
-	(condition-signaller condition-type:no-such-restart
-			     '(name)
-			     standard-error-handler))
-  (set! error:unassigned-variable
-	(condition-signaller condition-type:unassigned-variable
-			     '(environment location)
-			     standard-error-handler))
-  (set! error:unbound-variable
-	(condition-signaller condition-type:unbound-variable
-			     '(environment location)
-			     standard-error-handler))
-  (set! error:macro-binding
-	(condition-signaller condition-type:macro-binding
-			     '(environment location)
-			     standard-error-handler))
-  unspecific)
+(define-deferred condition-type:wrong-type-datum
+  (make-condition-type 'wrong-type-datum condition-type:illegal-datum
+		       '(type)
+    (lambda (condition port)
+      (write-string "The object " port)
+      (write (access-condition condition 'datum) port)
+      (write-string " is not " port)
+      (write-type-description condition port)
+      (write-string "." port))))
+
+(define-deferred condition-type:wrong-type-argument
+  (make-condition-type 'wrong-type-argument condition-type:wrong-type-datum
+		       '(operator operand)
+    (lambda (condition port)
+      (write-string "The object " port)
+      (write (access-condition condition 'datum) port)
+      (write-operand-description condition port)
+      (write-string " is not " port)
+      (write-type-description condition port)
+      (write-string "." port))))
+
+(define-deferred condition-type:bad-range-argument
+  (make-condition-type 'bad-range-argument condition-type:datum-out-of-range
+		       '(operator operand)
+    (lambda (condition port)
+      (write-string "The object " port)
+      (write (access-condition condition 'datum) port)
+      (write-operand-description condition port)
+      (write-string " is not in the correct range." port))))
+
+(define-deferred condition-type:wrong-number-of-arguments
+  (make-condition-type 'wrong-number-of-arguments
+      condition-type:wrong-type-datum
+      '(operands)
+    (lambda (condition port)
+      (let ((pluralize-argument
+	     (lambda (number)
+	       (write-string
+		(if (= number 1) " argument" " arguments")
+		port))))
+	(write-string "The procedure " port)
+	(write-operator (access-condition condition 'datum) port)
+	(write-string " has been called with " port)
+	(let ((count (length (access-condition condition 'operands))))
+	  (write count port)
+	  (pluralize-argument count))
+	(write-string "; it requires " port)
+	(let ((arity (access-condition condition 'type)))
+	  (let ((arity-min (procedure-arity-min arity))
+		(arity-max (procedure-arity-max arity)))
+	    (cond ((eqv? arity-min arity-max)
+		   (write-string "exactly " port)
+		   (write arity-min port)
+		   (pluralize-argument arity-min))
+		  ((not arity-max)
+		   (write-string "at least " port)
+		   (write (car arity) port)
+		   (pluralize-argument (car arity)))
+		  (else
+		   (write-string "between " port)
+		   (write arity-min port)
+		   (write-string " and " port)
+		   (write arity-max port)
+		   (write-string " arguments" port)))))
+	(write-char #\. port)))))
+
+(define-deferred condition-type:illegal-pathname-component
+  (make-condition-type 'illegal-pathname-component
+      condition-type:wrong-type-datum
+      '()
+    (lambda (condition port)
+      (write-string "The object " port)
+      (write (access-condition condition 'datum) port)
+      (write-string " is not a valid pathname " port)
+      (write-string (access-condition condition 'type) port)
+      (write-string "." port))))
+
+(define-deferred condition-type:control-error
+  (make-condition-type 'control-error condition-type:error '()
+    "Control error."))
+
+(define-deferred condition-type:no-such-restart
+  (make-condition-type 'no-such-restart condition-type:control-error
+		       '(name)
+    (lambda (condition port)
+      (write-string "The restart named " port)
+      (write (access-condition condition 'name) port)
+      (write-string " is not bound." port))))
+
+(define (anonymous-error type-name field-name)
+  (make-condition-type type-name condition-type:error
+		       (list field-name)
+    (lambda (condition port)
+      (write-string "Anonymous error associated with " port)
+      (write (access-condition condition field-name) port)
+      (write-string "." port))))
+
+(define-deferred condition-type:port-error
+  (anonymous-error 'port-error 'port))
+
+(define-deferred condition-type:file-error
+  (anonymous-error 'file-error 'filename))
+
+(define-deferred condition-type:cell-error
+  (anonymous-error 'cell-error 'location))
+
+(define-deferred condition-type:thread-error
+  (anonymous-error 'thread-error 'thread))
+
+(define-deferred file-error?
+  (condition-predicate condition-type:file-error))
+
+(define-deferred condition-type:derived-port-error
+  (make-condition-type 'derived-port-error condition-type:port-error
+		       '(condition)
+    (lambda (condition port)
+      (write-string "The port " port)
+      (write (access-condition condition 'port) port)
+      (write-string " signalled an error " port)
+      (write (access-condition condition 'condition) port)
+      (write-string ":" port)
+      (newline port)
+      (write-condition-report (access-condition condition 'condition)
+			      port))))
+
+(define-deferred error:derived-port
+  (let ((make-condition
+	 (condition-constructor condition-type:derived-port-error
+				'(port condition))))
+    (lambda (port condition)
+      (guarantee-condition condition 'error:derived-port)
+      (error (make-condition (%condition/continuation condition)
+			     (%condition/restarts condition)
+			     port
+			     condition)))))
+
+(define-deferred condition-type:derived-file-error
+  (make-condition-type 'derived-file-error condition-type:file-error
+		       '(condition)
+    (lambda (condition port)
+      (write-string "The file " port)
+      (write (access-condition condition 'filename) port)
+      (write-string " signalled an error " port)
+      (write (access-condition condition 'condition) port)
+      (write-string ":" port)
+      (newline port)
+      (write-condition-report (access-condition condition 'condition)
+			      port))))
+
+(define-deferred error:derived-file
+  (let ((make-condition
+	 (condition-constructor condition-type:derived-file-error
+				'(filename condition))))
+    (lambda (filename condition)
+      (guarantee-condition condition 'error:derived-file)
+      (error (make-condition (%condition/continuation condition)
+			     (%condition/restarts condition)
+			     filename
+			     condition)))))
+
+(define-deferred condition-type:derived-thread-error
+  (make-condition-type 'derived-thread-error condition-type:thread-error
+		       '(condition)
+    (lambda (condition port)
+      (write-string "The thread " port)
+      (write (access-condition condition 'thread) port)
+      (write-string " signalled " port)
+      (let ((condition (access-condition condition 'condition)))
+	(write-string (if (condition/error? condition)
+			  "an error "
+			  "a condition ")
+		      port)
+	(write condition port)
+	(write-string ":" port)
+	(newline port)
+	(write-condition-report condition port)))))
+
+(define-deferred error:derived-thread
+  (let ((make-condition
+	 (condition-constructor condition-type:derived-thread-error
+				'(thread condition))))
+    (lambda (thread condition)
+      (guarantee-condition condition 'error:derived-thread)
+      (let ((condition
+	     (make-condition (%condition/continuation condition)
+			     (%condition/restarts condition)
+			     thread
+			     condition)))
+	(with-simple-restart 'continue "Continue from error."
+	  (lambda ()
+	    (restart/put! (first-bound-restart)
+			  'associated-condition
+			  condition)
+	    (error condition)))))))
+
+(define-deferred condition/derived-thread?
+  (condition-predicate condition-type:derived-thread-error))
+
+(define-deferred condition-type:file-operation-error
+  (make-condition-type 'file-operation-error condition-type:file-error
+		       '(verb noun reason operator operands)
+    (lambda (condition port)
+      (let ((noun (access-condition condition 'noun)))
+	(write-string "Unable to " port)
+	(write-string (access-condition condition 'verb) port)
+	(write-string " " port)
+	(write-string noun port)
+	(write-string " " port)
+	(write (->namestring (access-condition condition 'filename))
+	       port)
+	(write-string " because: " port)
+	(let ((reason (access-condition condition 'reason)))
+	  (if reason
+	      (write-string (reason-titlecase reason) port)
+	      (begin
+		(write-string "No such " port)
+		(write-string noun port))))
+	(write-string "." port)))))
+
+(define-deferred make-file-operation-error
+  (condition-constructor condition-type:file-operation-error
+			 '(filename verb noun reason operator operands)))
+
+(define-deferred condition-type:variable-error
+  (make-condition-type 'variable-error condition-type:cell-error
+		       '(environment)
+    (lambda (condition port)
+      (write-string "Anonymous error associated with variable " port)
+      (write (access-condition condition 'location) port)
+      (write-string "." port))))
+
+(define-deferred condition-type:unbound-variable
+  (make-condition-type 'unbound-variable condition-type:variable-error
+		       '()
+    (lambda (condition port)
+      (write-string "Unbound variable: " port)
+      (write (access-condition condition 'location) port))))
+
+(define-deferred condition-type:unassigned-variable
+  (make-condition-type 'unassigned-variable condition-type:variable-error
+		       '()
+    (lambda (condition port)
+      (write-string "Unassigned variable: " port)
+      (write (access-condition condition 'location) port))))
+
+(define-deferred condition-type:macro-binding
+  (make-condition-type 'macro-binding condition-type:variable-error '()
+    (lambda (condition port)
+      (write-string "Variable reference to a syntactic keyword: " port)
+      (write (access-condition condition 'location) port))))
+
+(define (arithmetic-error-report description)
+  (lambda (condition port)
+    (write-string description port)
+    (let ((operator (access-condition condition 'operator)))
+      (if operator
+	  (begin
+	    (write-string " signalled by " port)
+	    (write-operator operator port)
+	    (write-string "." port))))))
+
+(define-deferred condition-type:arithmetic-error
+  (make-condition-type 'arithmetic-error condition-type:error
+		       '(operator operands)
+    (arithmetic-error-report "Anonymous arithmetic error")))
+
+(define-deferred condition-type:divide-by-zero
+  (make-condition-type 'divide-by-zero condition-type:arithmetic-error
+		       '()
+    (arithmetic-error-report "Division by zero")))
+
+(define-deferred condition-type:integer-divide-by-zero
+  (make-condition-type 'integer-divide-by-zero
+      condition-type:divide-by-zero
+      '()
+    (arithmetic-error-report "Integer division by zero")))
+
+(define-deferred condition-type:floating-point-divide-by-zero
+  (make-condition-type 'floating-point-divide-by-zero
+      condition-type:divide-by-zero
+      '()
+    (arithmetic-error-report "Floating-point division by zero")))
+
+(define-deferred condition-type:inexact-floating-point-result
+  (make-condition-type 'inexact-floating-point-result
+      condition-type:arithmetic-error
+      '()
+    (arithmetic-error-report "Inexact floating-point result")))
+
+(define-deferred condition-type:invalid-floating-point-operation
+  (make-condition-type 'invalid-floating-point-operation
+      condition-type:arithmetic-error
+      '()
+    (arithmetic-error-report "Invalid floating-point operation")))
+
+(define-deferred condition-type:floating-point-overflow
+  (make-condition-type 'floating-point-overflow
+      condition-type:arithmetic-error
+      '()
+    (arithmetic-error-report "Floating-point overflow")))
+
+(define-deferred condition-type:floating-point-underflow
+  (make-condition-type 'floating-point-underflow
+      condition-type:arithmetic-error
+      '()
+    (arithmetic-error-report "Floating-point underflow")))
+
+(define-deferred make-simple-error
+  (condition-constructor condition-type:simple-error
+			 '(message irritants)))
+
+(define-deferred make-simple-warning
+  (condition-constructor condition-type:simple-warning
+			 '(message irritants)))
+
+(define-deferred make-r7rs-tunnel
+  (condition-constructor condition-type:r7rs-tunnel
+			 '(object)))
+
+(define-deferred error:wrong-type-datum
+  (condition-signaller condition-type:wrong-type-datum
+		       '(datum type)
+		       standard-error-handler))
+
+(define-deferred error:datum-out-of-range
+  (condition-signaller condition-type:datum-out-of-range
+		       '(datum)
+		       standard-error-handler))
+
+(define-deferred error:wrong-type-argument
+  (condition-signaller condition-type:wrong-type-argument
+		       '(datum type operator)
+		       standard-error-handler))
+
+(define-deferred error:bad-range-argument
+  (condition-signaller condition-type:bad-range-argument
+		       '(datum operator)
+		       standard-error-handler))
+
+(define-deferred error:wrong-number-of-arguments
+  (condition-signaller condition-type:wrong-number-of-arguments
+		       '(datum type operands)
+		       standard-error-handler))
+
+(define-deferred error:illegal-pathname-component
+  (condition-signaller condition-type:illegal-pathname-component
+		       '(datum type)
+		       standard-error-handler))
+
+(define-deferred error:divide-by-zero
+  (condition-signaller condition-type:divide-by-zero
+		       '(operator operands)
+		       standard-error-handler))
+
+(define-deferred error:no-such-restart
+  (condition-signaller condition-type:no-such-restart
+		       '(name)
+		       standard-error-handler))
+
+(define-deferred error:unassigned-variable
+  (condition-signaller condition-type:unassigned-variable
+		       '(environment location)
+		       standard-error-handler))
+
+(define-deferred error:unbound-variable
+  (condition-signaller condition-type:unbound-variable
+		       '(environment location)
+		       standard-error-handler))
+
+(define-deferred error:macro-binding
+  (condition-signaller condition-type:macro-binding
+		       '(environment location)
+		       standard-error-handler))
 
 ;;;; Utilities
 

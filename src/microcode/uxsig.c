@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -54,10 +54,6 @@ extern void UX_reinitialize_tty (void);
 #  ifndef SA_SIGINFO
 #    define SA_SIGINFO 0
 #  endif
-#endif
-
-#ifndef __APPLE__
-#  define HAVE_SIGFPE
 #endif
 
 static Tsignal_handler
@@ -340,9 +336,7 @@ initialize_signal_descriptors (void)
   defsignal (SIGTRAP, "SIGTRAP",	dfl_terminate,	CORE_DUMP);
   defsignal (SIGIOT, "SIGIOT",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGEMT, "SIGEMT",		dfl_terminate,	CORE_DUMP);
-#ifdef HAVE_SIGFPE
   defsignal (SIGFPE, "SIGFPE",		dfl_terminate,	CORE_DUMP);
-#endif
   defsignal (SIGKILL, "SIGKILL",	dfl_terminate,	(NOIGNORE | NOBLOCK | NOCATCH));
   defsignal (SIGBUS, "SIGBUS",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGSEGV, "SIGSEGV",	dfl_terminate,	CORE_DUMP);
@@ -550,7 +544,6 @@ static
 DEFUN_STD_HANDLER (sighnd_terminate,
   (termination_signal (find_signal_name (signo))))
 
-#ifdef HAVE_SIGFPE
 extern void clear_float_exceptions (void);
 
 static
@@ -559,7 +552,6 @@ DEFUN_STD_HANDLER (sighnd_fpe,
   clear_float_exceptions ();
   trap_handler ("floating-point exception", signo, info, scp);
 })
-#endif
 
 static
 DEFUN_STD_HANDLER (sighnd_hardware_trap,
@@ -673,9 +665,7 @@ UX_initialize_signals (void)
   initialize_signal_descriptors ();
   initialize_signal_debugging ();
   bind_handler (SIGINT,		sighnd_control_g);
-#ifdef HAVE_SIGFPE
   bind_handler (SIGFPE,		sighnd_fpe);
-#endif
   bind_handler (SIGALRM,	sighnd_timer);
   bind_handler (SIGVTALRM,	sighnd_timer);
   bind_handler (SIGUSR1,	sighnd_save_then_terminate);
@@ -866,7 +856,7 @@ interactive_interrupt_handler (SIGCONTEXT_T * scp)
 	    fprintf (stderr, "Problems reading keyboard input -- Exitting.\n");
 	    termination_eof ();
 	  }
-	  /* fall through */
+	  FALLTHROUGH ();
 	default:
 	  if (!option_emacs_subprocess)
 	    print_interactive_help ();
@@ -997,7 +987,7 @@ describe_sighnd (int signo, unsigned char c)
 	    case dfl_terminate: goto describe_terminate;
 	    }
       }
-      /* fall through */
+      FALLTHROUGH ();
     default:
       fputs ("When typed, this character will have an unknown effect.\n",
 	     stdout);
@@ -1094,6 +1084,7 @@ reset_query (SIGCONTEXT_T * scp)
 	  CLEAR_CRITICAL_SECTION_HOOK ();
 	  EXIT_CRITICAL_SECTION ({});
 	  hard_reset (scp);
+	  FALLTHROUGH ();
 	case 'P':
 	default:
 	  return;

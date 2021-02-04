@@ -24,129 +24,149 @@ USA.
 ;;;; IEEE 754 Format
 
 (declare (usual-integrations))
+
+;;; Nomenclature:
+;;;
+;;; base, b
+;;; exponent width, w: number of bits in exponent field
+;;; precision, p: number of bits in significand before and after radix point
+;;; significand: integer in [b^{p - 1}, b^b)
+;;; trailing significand: integer in [0, b^{p - 1}) = [0, b^t)
+;;; trailing significand width: number of digits in trailing significand
 
-(define (decompose-ieee754-double x)
+(define (decompose-ieee754-binary32 x)
+  (decompose-ieee754-binary x 8 24))
+
+(define (decompose-ieee754-binary64 x)
   (decompose-ieee754-binary x 11 53))
+
+(define (decompose-ieee754-binary128 x)
+  (decompose-ieee754-binary x 15 113))
 
 (define (decompose-ieee754-binary x exponent-bits precision)
   (receive (base emin emax bias exp-subnormal exp-inf/nan)
            (ieee754-binary-parameters exponent-bits precision)
-    (decompose-ieee754 x base emax precision
-      (lambda (sign)                    ;if-zero
-        (values sign 0 0))
-      (lambda (sign scaled-significand) ;if-subnormal
-        (assert (= 0 (shift-right scaled-significand precision)))
-        (values sign exp-subnormal scaled-significand))
-      (lambda (sign exponent scaled-significand) ;if-normal
-        (assert (<= emin exponent emax))
-        ;; The integer part is always 1.  Strip it for the binary
-        ;; interchange format.
-        (assert (= 1 (shift-right scaled-significand (- precision 1))))
-        (values sign
-                (+ exponent bias)
-                (extract-bit-field (- precision 1) 0 scaled-significand)))
-      (lambda (sign)                    ;if-infinite
-        (values sign exp-inf/nan 0))
-      (lambda (sign quiet payload)      ;if-nan
-        (assert (not (and (zero? quiet) (zero? payload))))
-        (assert (zero? (extract-bit-field (- precision 1) 1 payload)))
-        (values sign
-                exp-inf/nan
-                (replace-bit-field (- precision 1) 1 payload quiet))))))
+    (let ((t (- precision 1)))
+      (decompose-ieee754 x base emax precision
+        (lambda (sign)                  ;if-zero
+          (values sign 0 0))
+        (lambda (sign significand)      ;if-subnormal
+          (assert (= 0 (shift-right significand t)))
+          (values sign (+ exp-subnormal bias) significand))
+        (lambda (sign exponent significand) ;if-normal
+          (assert (<= emin exponent emax))
+          ;; The integer part is always 1.  Strip it for the binary
+          ;; interchange format.
+          (assert (= 1 (shift-right significand t)))
+          (values sign (+ exponent bias) (extract-bit-field t 0 significand)))
+        (lambda (sign)                  ;if-infinite
+          (values sign (+ exp-inf/nan bias) 0))
+        (lambda (sign quiet payload)    ;if-nan
+          (assert (not (and (zero? quiet) (zero? payload))))
+          (assert (zero? (extract-bit-field 1 (- t 1) payload)))
+          (values sign
+                  (+ exp-inf/nan bias)
+                  (replace-bit-field 1 (- t 1) payload quiet)))))))
 
 (define (ieee754-sign x)
   (cond ((< 0 x) 0)
         ((< x 0) 1)
-        ;; Zero -- can't use < directly to detect sign.  Elicit a
-        ;; computational difference.
-        ((negative? (atan x -1)) 1)
-        (else 0)))
+        (else
+         ;; Zero -- can't use < directly to detect sign.  Elicit a
+         ;; computational difference.
+         (if (negative? (atan x -1))
+             1
+             0))))
 
 (define (decompose-ieee754 x base emax precision
           if-zero if-subnormal if-normal if-infinite if-nan)
   (cond ((not (= x x))
-         ;; There are, of course, b^p different NaNs.  There is no
-         ;; obvious way to computationally detect the sign of a NaN,
-         ;; and no portable way to get at the quiet bit or the payload
-         ;; bits, so we'll just assume every NaN is a trivial positive
-         ;; signalling NaN and hope the caller has a good story...
-         (if-nan 0 0 1))
-        ((and (< 1. (abs x)) (= x (/ x 2)))
+         (if-nan (if (flo:sign-negative? x) 1 0)
+                 (if (flo:nan-quiet? x) 1 0)
+                 (flo:nan-payload x)))
+        ((and (< 1 (abs x)) (= x (/ x 2)))
          (if-infinite (if (< 0. x) 0 1)))
         (else
-         (let ((sign (ieee754-sign x)) (x (abs x)) (emin (- 1 emax)))
+         (let ((sign (ieee754-sign x))
+               (x (abs x))
+               (emin (- 1 emax)))
            (define (significand x)
-             (truncate->exact (* x (expt base (- precision 1)))))
+             (round->exact (* x (expt base (- precision 1)))))
            (cond ((<= 1 x)              ;Nonnegative exponent (normal)
                   (let loop ((exponent 0) (x x))
                     (cond ((< emax exponent) (if-infinite sign))
                           ((<= base x) (loop (+ exponent 1) (/ x base)))
                           (else (if-normal sign exponent (significand x))))))
-                 ((< (expt base emin) x) ;Negative exponent, normal
+                 ((<= (expt base emin) x) ;Negative exponent, normal
                   (let loop ((exponent 0) (x x))
                     (assert (<= emin exponent))
                     (if (<= 1 x)
                         (if-normal sign exponent (significand x))
                         (loop (- exponent 1) (* x base)))))
                  ((< 0 x)               ;Negative exponent, subnormal
-                  (if (<= x (- (expt base emin) (expt base (- 0 precision))))
+                  (if (<= x (/ (expt base (- emin (+ precision 1))) 2))
                       (if-zero sign)
-                      (if-subnormal
-                       sign
-                       (significand (/ x (expt base emin))))))
+                      (if-subnormal sign
+                                    (significand (/ x (expt base emin))))))
                  (else
                   (if-zero sign)))))))
 
-(define (compose-ieee754-double sign biased-exponent trailing-significand)
+(define (compose-ieee754-binary32 sign biased-exponent trailing-significand)
+  (compose-ieee754-binary sign biased-exponent trailing-significand 8 24))
+
+(define (compose-ieee754-binary64 sign biased-exponent trailing-significand)
   (compose-ieee754-binary sign biased-exponent trailing-significand 11 53))
+
+(define (compose-ieee754-binary128 sign biased-exponent trailing-significand)
+  (compose-ieee754-binary sign biased-exponent trailing-significand 15 113))
 
 (define (compose-ieee754-binary sign biased-exponent trailing-significand
                                 exponent-bits precision)
   (receive (base emin emax bias exp-subnormal exp-inf/nan)
            (ieee754-binary-parameters exponent-bits precision)
-    (let ((exponent (- biased-exponent bias)))
+    (let ((exponent (- biased-exponent bias))
+          (t (- precision 1)))
       (cond ((= exponent exp-subnormal)
              (if (zero? trailing-significand)
-                 (compose-ieee754-zero sign base emax precision)
+                 (compose-ieee754-zero sign)
                  (compose-ieee754-subnormal sign trailing-significand
-                                            base emax precision)))
+                                            base emin precision)))
             ((= exponent exp-inf/nan)
              (if (zero? trailing-significand)
-                 (compose-ieee754-infinity sign base emax precision)
-                 (let ((p-1 (- precision 1))
-                       (t trailing-significand))
-                   (let ((quiet   (extract-bit-field 1 p-1 t))
-                         (payload (extract-bit-field p-1 0 t)))
-                     (compose-ieee754-nan sign quiet payload
-                                          base emax precision)))))
+                 (compose-ieee754-infinity sign)
+                 (let ((q (extract-bit-field 1 (- t 1) trailing-significand))
+                       (p (extract-bit-field (- t 1) 0 trailing-significand)))
+                   (compose-ieee754-nan sign q p))))
             (else
              (assert (<= emin exponent emax))
-             (let ((scaled-significand
+             (let ((significand
                     ;; Add the implied integer part of 1.
-                    (replace-bit-field 1 (- precision 1) trailing-significand
-                                       1)))
-               (compose-ieee754-normal sign exponent scaled-significand
-                                       base emax precision)))))))
+                    (replace-bit-field 1 t trailing-significand 1)))
+               (compose-ieee754-normal sign exponent significand
+                                       base precision)))))))
 
-(define (compose-ieee754-zero sign base emax precision)
-  base emax precision                   ;ignore
-  (* (expt -1 sign) 0))
+(define (compose-ieee754-zero sign)
+  (* (expt -1 sign) 0.))
 
-(define (compose-ieee754-subnormal sign significand base emax precision)
+(define (compose-ieee754-subnormal sign significand base emin precision)
   (* (expt -1 sign)
-     (* significand (expt base (- precision emax)))))
+     (* significand (expt base (- emin (- precision 1))))))
 
-(define (compose-ieee754-normal sign exponent significand base emax precision)
-  (assert (<= (- 1 emax) exponent emax))
+(define (compose-ieee754-normal sign exponent significand base precision)
   (* (expt -1 sign)
-     (expt base exponent)
-     (/ significand (expt base (- precision 1)))))
+     (* significand (expt base (- exponent (- precision 1))))))
 
 (define (compose-ieee754-infinity sign)
-  (error "Can't compose an IEEE754 infinity!" sign))
+  (* (expt -1 sign)
+     (flo:+inf.0)))
 
 (define (compose-ieee754-nan sign quiet payload)
-  (error "Can't compose an IEEE754 NaN!" sign quiet payload))
+  ;; XXX Using the native microcode's idea of NaN is a little hokey:
+  ;; if, for example, we wanted to use this for cross-compilation of
+  ;; a Scheme with binary128 floating-point using a Scheme with
+  ;; binary64 floating-point, many NaNs that could appear in the
+  ;; source code would be unrepresentable in the host.
+  (flo:make-nan (= sign 1) (= quiet 1) payload))
 
 (define (ieee754-binary-parameters exponent-bits precision)
   (assert (zero? (modulo (+ exponent-bits precision) 32)))
@@ -158,59 +178,96 @@ USA.
             (exp-inf/nan (+ emax 1)))
         (values base emin emax bias exp-subnormal exp-inf/nan)))))
 
-(define (ieee754-double-recomposable? x)
+(define (ieee754-binary32-exact? x)
   (= x
      (receive (sign biased-exponent trailing-significand)
-              (decompose-ieee754-double x)
-       (compose-ieee754-double sign biased-exponent trailing-significand))))
+              (decompose-ieee754-binary32 x)
+       (compose-ieee754-binary32 sign biased-exponent trailing-significand))))
+
+(define (ieee754-binary64-exact? x)
+  (= x
+     (receive (sign biased-exponent trailing-significand)
+              (decompose-ieee754-binary64 x)
+       (compose-ieee754-binary64 sign biased-exponent trailing-significand))))
+
+(define (ieee754-binary128-exact? x)
+  (= x
+     (receive (sign biased-exponent trailing-significand)
+              (decompose-ieee754-binary64 x)
+       (compose-ieee754-binary128 sign biased-exponent trailing-significand))))
 
-(define (ieee754-binary-hex-string x exponent-bits precision)
+(define (ieee754-binary-hex-string x exponent-bits precision #!optional mark)
   (receive (base emin emax bias exp-subnormal exp-inf/nan)
            (ieee754-binary-parameters exponent-bits precision)
     bias exp-subnormal exp-inf/nan
     (define (symbolic sign name extra)
       (assert (or (= sign 0) (= sign 1)))
-      (assert (<= 0 extra))
-      (let ((extra (number->string extra #x10)))
-        (string-append (if (zero? sign) "+" "-") name "." extra)))
-    (define (numeric sign integer fractional exponent)
+      (string-append (if (zero? sign) "+" "-") name extra))
+    (define (numeric sign integer width fractional exponent)
       (assert (or (= sign 0) (= sign 1)))
       (assert (or (= integer 0) (= integer 1)))
       (assert (<= 0 fractional))
       (let ((sign (if (zero? sign) "" "-"))
             (integer (if (zero? integer) "0" "1"))
-            (fractional
-             (if (zero? fractional) "" (number->string fractional #x10)))
-            (exponent (number->string exponent #d10)))
-        (string-append sign "0x" integer "." fractional "p" exponent)))
+            (dot (if (zero? fractional) "" "."))
+            (frac (if (zero? fractional) "" (format-frac width fractional)))
+            (expsign (if (< exponent 0) "-" "+"))
+            (exponent (number->string (abs exponent) #d10))
+            (mark (if (default-object? mark) "0x" mark)))
+        (string-append sign mark integer dot frac "p" expsign exponent)))
+    (define (format-frac width fractional)
+      (assert (not (zero? fractional)))
+      (assert (<= (integer-length fractional) width))
+      (receive (width fractional)
+               (let ((misalign (remainder width 4)))
+                 (if (zero? misalign)
+                     (values width fractional)
+                     (let ((s (- 4 misalign)))
+                       (values (+ width s) (shift-left fractional s)))))
+        (assert (<= (integer-length fractional) width))
+        (receive (width fractional)
+                 (let* ((lsb (first-set-bit fractional))
+                        (lo-zeros (quotient lsb 4))
+                        (s (* 4 lo-zeros)))
+                   (values (- width s) (shift-right fractional s)))
+          (assert (<= (integer-length fractional) width))
+          (let ((hi-zeros (quotient (- width (integer-length fractional)) 4)))
+            (string-append (make-string hi-zeros #\0)
+                           (number->string fractional #x10))))))
     (decompose-ieee754 x base emax precision
       (lambda (sign)                    ;if-zero
-        (numeric sign 0 0 0))
-      (lambda (sign scaled-significand) ;if-subnormal
-        (assert (< 0 scaled-significand))
-        (let ((start (first-set-bit scaled-significand))
-              (end (integer-length scaled-significand)))
-          (let ((bits (- (- end 1) start)))
-            (let ((exponent (- emin (- precision end)))
-                  ;; Strip the integer part (1) and the trailing zeros.
-                  (fractional
-                   (extract-bit-field bits start scaled-significand)))
-              ;; Align to a multiple of four bits (hex digits).
-              (let* ((alignment (modulo (- 4 (modulo bits 4)) 4))
-                     (aligned-fractional
-                      (replace-bit-field bits alignment 0 fractional)))
-                (numeric sign 1 aligned-fractional exponent))))))
-      (lambda (sign exponent scaled-significand)
-        (assert (< 0 scaled-significand))
-        (assert (= 1 (shift-right scaled-significand (- precision 1))))
-        (let ((useless-zeros (round-down (first-set-bit scaled-significand) 4))
-              (fractional
-               (extract-bit-field (- precision 1) 0 scaled-significand)))
-          (numeric sign 1 (shift-right fractional useless-zeros) exponent)))
+        (numeric sign 0 0 0 0))
+      (lambda (sign significand)        ;if-subnormal
+        (assert (< 0 significand))
+        (assert (= 0 (shift-right significand (- precision 1))))
+        ;; Find the position of the 1 bit.
+        (let* ((msb (integer-length significand))
+               (width (- msb 1)))
+          ;; Extract bits below that, and subtract the from the exponent.
+          (let ((fractional (extract-bit-field width 0 significand))
+                (exponent (- emin (- precision msb))))
+            (numeric sign 1 width fractional exponent))))
+      (lambda (sign exponent significand)
+        (assert (< 0 significand))
+        (assert (= 1 (shift-right significand (- precision 1))))
+        ;; We know where the 1 bit is.
+        (let* ((width (- precision 1))
+               (fractional (extract-bit-field width 0 significand)))
+          (numeric sign 1 width fractional exponent)))
       (lambda (sign)
-        (symbolic sign "inf" 0))
+        (symbolic sign "inf" ""))
       (lambda (sign quiet payload)
-        (symbolic sign (if (zero? quiet) "sNaN" "qNaN") payload)))))
+        payload                         ;XXX Use this.
+        (symbolic sign (if (zero? quiet) "sNaN" "NaN") "")))))
+
+(define (ieee754-binary32-hex-string x #!optional mark)
+  (ieee754-binary-hex-string x 8 24 mark))
+
+(define (ieee754-binary64-hex-string x #!optional mark)
+  (ieee754-binary-hex-string x 11 53 mark))
+
+(define (ieee754-binary128-hex-string x #!optional mark)
+  (ieee754-binary-hex-string x 15 113 mark))
 
 (define (round-up x n)
   (* n (quotient (+ x (- n 1)) n)))

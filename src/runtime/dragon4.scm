@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,45 +69,51 @@ not much different to numbers within a few orders of magnitude of 1.
   (let ((x>0
 	 (lambda (x)
 	   (let ((p flo:significand-digits-base-2))
-	     (call-with-values (lambda () (dragon4-normalize x p))
-	       (lambda (f e)
-		 (call-with-values flonum-printer-cutoff-args
-		   (lambda (cutoff-mode cutoff display-procedure)
-		     (dragon4 f e p radix cutoff-mode cutoff
-		       (lambda (u k generate)
-			 (let ((digits
-				(list->string
-				 (let loop ((u u) (k k) (generate generate))
-				   k	;ignore
-				   (if (negative? u)
-				       '()
-				       (cons (digit->char u radix)
-					     (generate loop)))))))
-			   (display-procedure digits k radix))))))))))))
+	     (call-with-values flonum-printer-cutoff-args
+	       (lambda (cutoff-mode cutoff display-procedure)
+		 (if (int:= radix #x10)
+		     (ieee754-binary64-hex-string x "")
+		     (call-with-values (lambda () (dragon4-normalize x p))
+		       (lambda (f e)
+			 (dragon4 f e p radix cutoff-mode cutoff
+			   (lambda (u k generate)
+			     (let ((digits
+				    (list->string
+				     (let loop
+					 ((u u) (k k) (generate generate))
+				       k ;ignore
+				       (if (negative? u)
+					   '()
+					   (cons (digit->char u radix)
+						 (generate loop)))))))
+			       (display-procedure digits k radix)))))))))))))
     (or (and flonum-printer-hook
 	     (flonum-printer-hook x radix))
 	(cond ((flo:nan? x)
-	       (string-copy "+nan.0"))
+	       (string-append (if (flo:sign-negative? x) "-" "+")
+			      (if (flo:nan-quiet? x) "nan" "snan")
+			      "."
+			      (number->string (flo:nan-payload x) radix)))
 	      ((flo:positive? x)
 	       (if (flo:infinite? x)
-		   (string-copy "+inf.0")
+		   "+inf.0"
 		   (x>0 x)))
 	      ((flo:negative? x)
 	       (let ((x (flo:negate x)))
 		 (if (flo:infinite? x)
-		     (string-copy "-inf.0")
+		     "-inf.0"
 		     (string-append "-" (x>0 x)))))
 	      ((flo:zero? x)
-	       (string-copy (if (flo:safe-negative? x) "-0." "0.")))
+	       (if (flo:sign-negative? x) "-0." "0."))
 	      (else
-	       (string-copy "+nan.0"))))))
+	       (error "Invalid floating-point value:" x))))))
 
 (define (flonum-printer:normal-output digits k radix)
   (let ((k+1 (+ k 1)))
     (let ((k+1-l (- k+1 (string-length digits)))
 	  (n (flo:significand-digits radix)))
       (cond ((zero? (string-length digits))
-	     (string-copy "0."))
+	     "0.")
 	    ((< k+1-l (- n))
 	     (scientific-output digits k radix 0))
 	    ((negative? k)

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -163,7 +163,8 @@ extern SCHEME_OBJECT * memory_base;
 #endif
 
 #ifndef ADDRESS_TO_DATUM
-#  define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - MEMBASE))
+#  define ADDRESS_TO_DATUM(address)					\
+  ((SCHEME_OBJECT) (((SCHEME_OBJECT *) (address)) - MEMBASE))
 #endif
 
 #endif /* not HEAP_IN_LOW_MEMORY */
@@ -519,7 +520,7 @@ extern bool string_p (SCHEME_OBJECT);
    7 #!default
    8 #!aux
    9 '()
-   10 weak #f
+   10 #!reclaimed
    ...
    0x100 -> 0x1FF reserved for fasdumpable records
  */
@@ -527,8 +528,14 @@ extern bool string_p (SCHEME_OBJECT);
 #define SHARP_F			MAKE_OBJECT (TC_FALSE, 0)
 #define SHARP_T			MAKE_OBJECT (TC_CONSTANT, 0)
 #define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
+#define OPTIONAL_MARKER		MAKE_OBJECT (TC_CONSTANT, 3)
+#define REST_MARKER		MAKE_OBJECT (TC_CONSTANT, 4)
+#define KEY_MARKER		MAKE_OBJECT (TC_CONSTANT, 5)
+#define EOF_OBJECT		MAKE_OBJECT (TC_CONSTANT, 6)
 #define DEFAULT_OBJECT		MAKE_OBJECT (TC_CONSTANT, 7)
+#define AUX_MARKER		MAKE_OBJECT (TC_CONSTANT, 8)
 #define EMPTY_LIST		MAKE_OBJECT (TC_CONSTANT, 9)
+#define GC_RECLAIMED		MAKE_OBJECT (TC_CONSTANT, 10)
 #define FASDUMP_RECORD_MARKER_START 0x100
 #define FASDUMP_RECORD_MARKER_END 0x200
 #define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)

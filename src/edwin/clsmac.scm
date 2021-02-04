@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -86,29 +86,29 @@ USA.
 
 (define with-instance-variables
   (classifier->runtime
-   ;; Rest arg facilitates cross-compiling from 9.2.
-   ;; It should be removed after 9.3 release.
-   (lambda (form senv . rest)
+   (lambda (form senv hist)
      (syntax-check '(_ identifier expression (* identifier) + expression) form)
      (let ((class-name (cadr form))
-	   (self-item (apply classify-form (caddr form) senv rest))
+	   (self-item
+	    (classify-form (caddr form) senv (hist-car (hist-cddr hist))))
 	   (free-names (cadddr form))
 	   (body-item
-	    (apply classify-form
-		   `(,(close-syntax 'begin
-				    (runtime-environment->syntactic
-				     system-global-environment))
-		     ,@(cddddr form))
-		   senv
-		   rest)))
-       (expr-item #f
-	 (lambda ()
+	    (classify-form `(,(close-syntax 'begin
+					    (runtime-environment->syntactic
+					     system-global-environment))
+			     ,@(cddddr form))
+			   senv
+			   (hist-cddr (hist-cddr hist)))))
+       (expr-item #f (list self-item body-item)
+	 (lambda (self body)
 	   (transform-instance-variables
 	    (class-instance-transforms
 	     (name->class (identifier->symbol class-name)))
-	    (compile-expr-item self-item)
+	    self
 	    free-names
-	    (compile-item body-item))))))))
+	    body))
+	 (lambda (self body)
+	   `(with-instance-variables ,class-name ,self ,free-names ,body)))))))
 
 (define-syntax ==>
   (syntax-rules ()

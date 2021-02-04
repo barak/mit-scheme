@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -156,6 +156,7 @@ USA.
 (define-type-code unassigned)
 (define-type-code stack-environment)
 (define-type-code compiled-entry)
+(define-integrable type-code:compiled-return 4)
 
 (define (scode/procedure-type-code *lambda)
   (cond ((object-type? type-code:lambda *lambda)
@@ -295,7 +296,22 @@ USA.
 	(ucode-primitive fixnum?)
 	(ucode-primitive flonum-equal?)
 	(ucode-primitive flonum-greater?)
+	(ucode-primitive flonum-integer?)
+	(ucode-primitive flonum-is-equal? 2)
+	(ucode-primitive flonum-is-finite? 1)
+	(ucode-primitive flonum-is-greater-or-equal? 2)
+	(ucode-primitive flonum-is-greater? 2)
+	(ucode-primitive flonum-is-infinite? 1)
+	(ucode-primitive flonum-is-less-or-equal? 2)
+	(ucode-primitive flonum-is-less-or-greater? 2)
+	(ucode-primitive flonum-is-less? 2)
+	(ucode-primitive flonum-is-nan? 1)
+	(ucode-primitive flonum-is-negative? 1)
+	(ucode-primitive flonum-is-normal? 1)
+	(ucode-primitive flonum-is-unordered? 2)
+	(ucode-primitive flonum-is-zero? 1)
 	(ucode-primitive flonum-less?)
+	(ucode-primitive flonum-nan-quiet? 1)
 	(ucode-primitive flonum-negative?)
 	(ucode-primitive flonum-positive?)
 	(ucode-primitive flonum-zero?)
@@ -316,6 +332,7 @@ USA.
 	(ucode-primitive pair?)
 	(ucode-primitive positive-fixnum?)
 	(ucode-primitive positive?)
+	(ucode-primitive primitive-procedure-open-coded? 1)
 	(ucode-primitive string?)
 	(ucode-primitive vector?)
 	(ucode-primitive weak-pair? 1)
@@ -359,33 +376,67 @@ USA.
 	(ucode-primitive fixnum-and)
 	(ucode-primitive fixnum-andc)
 	(ucode-primitive fixnum-lsh)
+	(ucode-primitive fixnum-negate)
 	(ucode-primitive fixnum-not)
 	(ucode-primitive fixnum-or)
 	(ucode-primitive fixnum-quotient)
 	(ucode-primitive fixnum-remainder)
 	(ucode-primitive fixnum-xor)
+	(ucode-primitive fixnum->flonum)
 	(ucode-primitive floating-vector-length)
 	(ucode-primitive floating-vector-ref)
 	(ucode-primitive flonum-abs)
 	(ucode-primitive flonum-acos)
+	(ucode-primitive flonum-acosh)
 	(ucode-primitive flonum-add)
 	(ucode-primitive flonum-asin)
+	(ucode-primitive flonum-asinh)
 	(ucode-primitive flonum-atan)
 	(ucode-primitive flonum-atan2)
+	(ucode-primitive flonum-atanh)
+	(ucode-primitive flonum-cbrt)
 	(ucode-primitive flonum-ceiling)
+	(ucode-primitive flonum-ceiling->exact)
+	(ucode-primitive flonum-copysign)
 	(ucode-primitive flonum-cos)
+	(ucode-primitive flonum-cosh)
+	(ucode-primitive flonum-denormalize)
 	(ucode-primitive flonum-divide)
+	(ucode-primitive flonum-erf)
+	(ucode-primitive flonum-erfc)
 	(ucode-primitive flonum-exp)
+	(ucode-primitive flonum-expm1)
+	(ucode-primitive flonum-expt)
 	(ucode-primitive flonum-floor)
+	(ucode-primitive flonum-floor->exact)
+	(ucode-primitive flonum-gamma)
+	(ucode-primitive flonum-hypot)
+	(ucode-primitive flonum-j0)
+	(ucode-primitive flonum-j1)
+	(ucode-primitive flonum-jn)
+	(ucode-primitive flonum-lgamma)
 	(ucode-primitive flonum-log)
+	(ucode-primitive flonum-log1p)
+	(ucode-primitive flonum-make-nan 3)
+	(ucode-primitive flonum-modulo)
 	(ucode-primitive flonum-multiply)
+	(ucode-primitive flonum-nan-payload 1)
 	(ucode-primitive flonum-negate)
+	(ucode-primitive flonum-nextafter)
+	(ucode-primitive flonum-normalize)
 	(ucode-primitive flonum-round)
+	(ucode-primitive flonum-round->exact)
 	(ucode-primitive flonum-sin)
+	(ucode-primitive flonum-sinh)
 	(ucode-primitive flonum-sqrt)
 	(ucode-primitive flonum-subtract)
 	(ucode-primitive flonum-tan)
+	(ucode-primitive flonum-tanh)
 	(ucode-primitive flonum-truncate)
+	(ucode-primitive flonum-truncate->exact)
+	(ucode-primitive flonum-y0)
+	(ucode-primitive flonum-y1)
+	(ucode-primitive flonum-yn)
 	(ucode-primitive gcd-fixnum)
 	(ucode-primitive integer->char)
 	(ucode-primitive integer-add)
@@ -420,6 +471,24 @@ USA.
 	(ucode-primitive weak-car 1)
 	(ucode-primitive weak-cdr 1)))
 
+;; These primitives vary from machine to machine in the microcode.  We
+;; could emulate them based on the system characteristics, but for now
+;; it will be easier to just avoid constant-folding them.
+;;
+;; XXX If we ever transition to a system where flonums are not IEEE 754
+;; binary64 floating-point, we'll have to list all the flonum
+;; primitives here too.
+
+(define machine-dependent-primitives
+  (list (ucode-primitive fixnum? 1)
+	(ucode-primitive index-fixnum?)
+	(ucode-primitive object-type 1)
+	(ucode-primitive object-type? 2)
+	(ucode-primitive primitive-object-ref 2)
+	(ucode-primitive primitive-object-type 1)
+	(ucode-primitive system-vector-ref 2)
+	(ucode-primitive system-vector-size 1)))
+
 ;;;; "Foldable" and side-effect-free operators
 
 (define boolean-valued-function-variables)
@@ -440,11 +509,19 @@ USA.
   (let ((names (global-valued function-additional-names)))
     (let ((procedures (map global-value names)))
       (set! function-variables
-	    (map* boolean-valued-function-variables cons names procedures))))
+	    (fold-right (lambda (name proc vars)
+			  (cons (cons name proc) vars))
+			boolean-valued-function-variables
+			names
+			procedures))))
   (let ((names (global-valued side-effect-free-additional-names)))
     (let ((procedures (map global-value names)))
       (set! side-effect-free-variables
-	    (map* function-variables cons names procedures))))
+	    (fold-right (lambda (name proc vars)
+			  (cons (cons name proc) vars))
+			function-variables
+			names
+			procedures))))
   unspecific)
 
 (define function-primitives
@@ -472,8 +549,14 @@ USA.
 (define-integrable (boolean-valued-function-primitive? operator)
   (memq operator boolean-valued-function-primitives))
 
-(define-integrable (constant-foldable-primitive? operator)
-  (memq operator function-primitives))
+(define (constant-foldable-primitive? operator)
+  (and (memq operator function-primitives)
+       (not (and (or compiler:cross-compiling?
+		     ;; C back end never sets COMPILER:CROSS-COMPILING?
+		     ;; but it has a nonconstant SCHEME-OBJECT-WIDTH
+		     ;; which serves as a proxy.
+		     (not (number? scheme-object-width)))
+		 (memq operator machine-dependent-primitives)))))
 
 (define-integrable (side-effect-free-primitive? operator)
   (memq operator side-effect-free-primitives))

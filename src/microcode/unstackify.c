@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -265,7 +265,7 @@ static const char * opcode_names [] =
   "stackify-opcode/push-primitive-5",
   "stackify-opcode/push-primitive-6",
   "stackify-opcode/push-primitive-7",
-  "unknown-0310",
+  "stackify-opcode/push-bytevector",
   "unknown-0311",
   "unknown-0312",
   "unknown-0313",
@@ -611,6 +611,14 @@ stackify_push_string (stackify_opcode_t op)
   unsigned long len;
   char * str = (unstackify_read_string (&len));
   unstackify_push (C_STRING_TO_SCHEME_STRING (len, str));
+}
+
+static void
+stackify_push_bytevector (stackify_opcode_t op)
+{
+  unsigned long len;
+  char * str = (unstackify_read_string (&len));
+  unstackify_push (C_STRING_TO_SCHEME_BYTEVECTOR (len, str));
 }
 
 static void
@@ -1015,6 +1023,10 @@ unstackify (unsigned char * bytes, size_t n_bytes, entry_count_t db)
 
 	case stackify_opcode_push_string:
 	  stackify_push_string (op);
+	  break;
+
+	case stackify_opcode_push_bytevector:
+	  stackify_push_bytevector (op);
 	  break;
 
 	case stackify_opcode_push_symbol:

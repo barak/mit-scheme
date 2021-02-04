@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,14 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! system-properties '())
-  (set! delete-invalid-hash-numbers! (list-deletor! filter-bucket!))
-  (set! delete-invalid-y! (list-deletor! filter-entry!))
-  (add-secondary-gc-daemon! gc-system-properties!))
-
-(define system-properties)
-
 (define (2d-put! x y value)
   (let ((x-hash (hash-object x))
 	(y-hash (hash-object y)))
@@ -79,8 +71,11 @@ USA.
 ;;; This clever piece of code removes all invalid entries and buckets,
 ;;; and also removes any buckets which [subsequently] have no entries.
 
+(define system-properties '())
 (define (gc-system-properties!)
-  (set! system-properties (delete-invalid-hash-numbers! system-properties)))
+  (set! system-properties (delete-invalid-hash-numbers! system-properties))
+  unspecific)
+(add-secondary-gc-daemon! gc-system-properties!)
 
 (define (filter-bucket! bucket)
   (or (not (valid-object-hash? (car bucket)))
@@ -90,8 +85,8 @@ USA.
 (define (filter-entry! entry)
   (not (valid-object-hash? (car entry))))
 
-(define delete-invalid-hash-numbers!)
-(define delete-invalid-y!)
+(define delete-invalid-hash-numbers! (list-deletor! filter-bucket!))
+(define delete-invalid-y! (list-deletor! filter-entry!))
 
 (define (2d-get-alist-x x)
   (let ((bucket (assq (hash-object x) system-properties)))

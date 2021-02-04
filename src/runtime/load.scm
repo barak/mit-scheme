@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,9 @@ USA.
 ;;; package: (runtime load)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime error-handler)
+		'(runtime dynamic))
 
 (define *purification-root-marker*
   '|#[PURIFICATION-ROOT]|)
@@ -123,24 +126,28 @@ USA.
 	  (values pathname*
 		  (wrap-loader pathname (fasloader->loader pathname loader))
 		  notifier)
-	  (let ((pathname*
-		 (if (file-regular? pathname)
-		     pathname
-		     (let ((pathname (pathname-default-type pathname "scm")))
-		       (and (file-regular? pathname)
-			    pathname)))))
+	  (let ((pathname* (loadable-source-pathname pathname)))
 	    (if pathname*
 		(values pathname*
 			(wrap-loader pathname* (source-loader pathname*))
 			(loading-notifier pathname*))
 		(values #f #f #f)))))))
+
+(define (loadable-source-pathname pathname)
+  (cond ((file-regular? pathname) pathname)
+	((pathname-type pathname) #f)
+	(else (try-types openable-pathname pathname file-type-src))))
+
+(define (openable-pathname pathname)
+  (and (file-regular? pathname)
+       pathname))
 
 (define (fasloader->loader pathname loader)
   (lambda (environment purify?)
     (let ((scode (loader)))
       (if purify? (purify (load/purification-root scode)))
       (if (r7rs-scode-file? scode)
-	  (eval-r7rs-scode-file scode pathname (current-library-db))
+	  (eval-r7rs-scode-file scode pathname)
 	  (extended-scode-eval scode environment)))))
 
 (define (source-loader pathname)
@@ -148,7 +155,7 @@ USA.
     (declare (ignore purify?))
     (let ((source (read-r7rs-source pathname)))
       (if source
-	  (eval-r7rs-source source (current-library-db))
+	  (eval-r7rs-source source)
 	  (call-with-input-file pathname
 	    (lambda (port)
 	      (let loop ((value unspecific))
@@ -180,12 +187,15 @@ USA.
 	 (thunk
 	  (if (pathname-type pathname)
 	      (or (try-object-file pathname)
-		  (try-fasl-file pathname))
-	      (or (try-fasl-file pathname)
-		  (try-fasl-file (pathname-new-type pathname "com"))
+		  (try-fasl-file pathname #f))
+	      (or (try-fasl-file pathname #f)
+		  (try-types try-fasl-file pathname file-type-com file-type-src)
 		  (try-object-file (pathname-new-type pathname "so"))
-		  (let ((bin-type (if package/cross-compiling? "nib" "bin")))
-		    (try-fasl-file (pathname-new-type pathname bin-type)))))))
+		  (try-types try-fasl-file
+			     pathname
+			     (lambda (types)
+			       (file-type-bin types package/cross-compiling?))
+			     file-type-src)))))
     (if thunk
 	(receive (pathname loader notifier) (thunk)
 	  (values pathname
@@ -196,7 +206,7 @@ USA.
 		  notifier))
 	(values #f #f #f))))
 
-(define (try-fasl-file pathname)
+(define (try-fasl-file pathname src-pathname)
   (and (fasl-file? pathname)
        (lambda ()
 	 (values pathname
@@ -205,9 +215,8 @@ USA.
 		    (string-for-primitive (->namestring pathname))))
 		 (let ((notifier (loading-notifier pathname)))
 		   (lambda (thunk)
-		     (if (file-modification-time<?
-			  pathname
-			  (pathname-new-type pathname "scm"))
+		     (if (and src-pathname
+			      (file-modification-time<? pathname src-pathname))
 			 (warn "Source file newer than binary:" pathname))
 		     (notifier thunk)))))))
 
@@ -307,6 +316,88 @@ USA.
 			       procedure
 			       (cons pathname arguments))
 	 arguments))
+
+(define (try-types proc pathname . selectors)
+  (find-map (lambda (types)
+	      (apply proc
+		     (map (lambda (selector)
+			    (pathname-new-type pathname (selector types)))
+			  selectors)))
+	    file-types-in-order))
+
+(define-record-type <file-types>
+    (file-types src bin ext com inf bci)
+    file-types?
+  (src %file-type-src)
+  (bin %file-type-bin)
+  (ext %file-type-ext)
+  (com %file-type-com)
+  (inf %file-type-inf)
+  (bci %file-type-bci))
+
+(define (file-type-src types #!optional cross-compiling?)
+  (declare (ignore cross-compiling?))
+  (%file-type-src types))
+
+(define ((file-types-selector selector) types #!optional cross-compiling?)
+  (let ((s (selector types)))
+    (if (if (default-object? cross-compiling?) #f cross-compiling?)
+	(list->string (reverse (string->list s)))
+	s)))
+
+(define file-type-bin (file-types-selector %file-type-bin))
+(define file-type-ext (file-types-selector %file-type-ext))
+(define file-type-com (file-types-selector %file-type-com))
+(define file-type-inf (file-types-selector %file-type-inf))
+(define file-type-bci (file-types-selector %file-type-bci))
+
+(define ((file-types-mapper selector) #!optional cross-compiling?)
+  (map (lambda (types) (selector types cross-compiling?))
+       file-types-in-order))
+
+(define file-types:all-bin (file-types-mapper %file-type-bin))
+(define file-types:all-ext (file-types-mapper %file-type-ext))
+(define file-types:all-com (file-types-mapper %file-type-com))
+(define file-types:all-inf (file-types-mapper %file-type-inf))
+(define file-types:all-bci (file-types-mapper %file-type-bci))
+
+(define ((pathname-typer selector) pathname types #!optional cross-compiling?)
+  (pathname-new-type pathname (selector types cross-compiling?)))
+
+(define pathname-new-type-src (pathname-typer file-type-src))
+(define pathname-new-type-bin (pathname-typer file-type-bin))
+(define pathname-new-type-ext (pathname-typer file-type-ext))
+(define pathname-new-type-com (pathname-typer file-type-com))
+(define pathname-new-type-inf (pathname-typer file-type-inf))
+(define pathname-new-type-bci (pathname-typer file-type-bci))
+
+(define (pathname-new-type-map pathname from to #!optional cross-compiling?)
+  (pathname-new-type pathname
+		     (to (or (find-file-types pathname from cross-compiling?)
+			     file-types:program)
+			 cross-compiling?)))
+
+(define (find-file-types pathname #!optional selector cross-compiling?)
+  (let ((type (pathname-type pathname)))
+    (and (string? type)
+	 (let ((selector
+		(if (default-object? selector)
+		    file-type-src
+		    selector)))
+	   (find (lambda (types)
+		   (string=? type (selector types cross-compiling?)))
+		 file-types-in-order)))))
+
+(define file-types:program
+  (file-types "scm" "bin" "ext" "com" "inf" "bci"))
+
+(define file-types:library
+  ;; No special ext type for libraries -- they don't have them.
+  (file-types "sld" "binld" "ext" "comld" "infld" "bcild"))
+
+(define file-types-in-order
+  (list file-types:library
+	file-types:program))
 
 (define (fasload-object-file pathname)
   (let ((pathname (object-file-pathname pathname)))
@@ -422,12 +513,14 @@ USA.
 	      (thunk)))))))
 
 (define (standard-library-directory-pathname)
-  (last library-directory-path))
+  (last (library-directory-path)))
 
 (define (pathname->standard-uri pathname)
   (let ((uri
 	 (pathname->uri
-	  (enough-pathname pathname (standard-library-directory-pathname)))))
+	  (enough-pathname
+	   (pathname-simplify pathname)
+	   (pathname-simplify (standard-library-directory-pathname))))))
     (if (uri-absolute? uri)
 	uri
 	(system-library-uri uri))))
@@ -435,7 +528,7 @@ USA.
 (define (standard-uri->pathname uri)
   (or (uri->pathname uri #f)
       (merge-pathnames
-       (uri->pathname (make-uri #f #f (list-tail (uri-path uri) 4) #f #f))
+       (uri->pathname (make-uri #f #f (drop (uri-path uri) 4) #f #f))
        (standard-library-directory-pathname))))
 
 (define (system-uri #!optional rel-uri)

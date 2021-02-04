@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,6 +72,12 @@ USA.
 					       #f)))
 		  (and entry
 		       (try-handler combination value entry))))))))
+
+(define (primitive-procedure-open-coded? primitive)
+  (guarantee primitive-procedure? primitive 'PRIMITIVE-PROCEDURE-OPEN-CODED?)
+  (let ((name (primitive-procedure-name primitive)))
+    (and (hash-table-ref name->open-coders name (lambda () #f))
+	 #t)))
 
 (define (try-handler combination primitive entry)
   (let ((operands (combination/operands combination)))
@@ -311,38 +317,42 @@ USA.
 					      (length expressions)
 					      '() false false)))
 		     (make-scfg (cfg-entry-node scfg) '()))
-		   (with-values
-		       (lambda ()
-			 (generate-continuation-entry
-			  (combination/context combination)))
-		     (lambda (label setup cleanup)
-		       (scfg-append!
-			(generate-primitive primitive-name
-					    (length expressions)
-					    expressions setup label)
-			cleanup
-			(if error-finish
-			    (error-finish (rtl:make-fetch register:value))
-			    (make-null-cfg)))
-		       #|
-		       ;; This code is preferable to the above
-		       ;; expression in some circumstances.  It
-		       ;; creates a continuation, but the continuation
-		       ;; is left dangling instead of being hooked
-		       ;; back into the subsequent code.  This avoids
-		       ;; a merge in the RTL and allows the CSE to do
-		       ;; a better job -- but the cost is that it
-		       ;; creates a continuation that, if invoked, has
-		       ;; unpredictable behavior.
-		       (let ((scfg
-			      (scfg*scfg->scfg!
-			       (generate-primitive primitive-name
-						   (length expressions)
-						   expressions setup label)
-			       cleanup)))
-			 (make-scfg (cfg-entry-node scfg) '()))
-		       |#
-		       )))))
+		   (let ((temporary (rtl:make-pseudo-register)))
+		     (call-with-values
+			 (lambda ()
+			   (generate-continuation-entry
+			    (combination/context combination)
+			    (rtl:make-assignment
+			     temporary
+			     (rtl:make-fetch register:value))))
+		       (lambda (label setup cleanup)
+			 (scfg-append!
+			  (generate-primitive primitive-name
+					      (length expressions)
+					      expressions setup label)
+			  cleanup
+			  (if error-finish
+			      (error-finish (rtl:make-fetch temporary))
+			      (make-null-cfg)))
+			 #|
+			 ;; This code is preferable to the above
+			 ;; expression in some circumstances.  It
+			 ;; creates a continuation, but the continuation
+			 ;; is left dangling instead of being hooked
+			 ;; back into the subsequent code.  This avoids
+			 ;; a merge in the RTL and allows the CSE to do
+			 ;; a better job -- but the cost is that it
+			 ;; creates a continuation that, if invoked, has
+			 ;; unpredictable behavior.
+			 (let ((scfg
+				(scfg*scfg->scfg!
+				 (generate-primitive primitive-name
+						     (length expressions)
+						     expressions setup label)
+				 cleanup)))
+			   (make-scfg (cfg-entry-node scfg) '()))
+			 |#
+			 ))))))
 	  (let loop ((checks checks))
 	    (if (null? checks)
 		non-error-cfg
@@ -475,11 +485,25 @@ USA.
 	    (make-false-pcfg)))
       (pcfg/prefer-consequent!
        (rtl:make-pred-1-arg 'INDEX-FIXNUM? expression))))
+
+(define (open-code:byte-check expression primitive block)
+  (cond ((rtl:constant? expression)
+	 (if (u8? (rtl:constant-value expression))
+	     (make-true-pcfg)
+	     (make-false-pcfg)))
+	((block/generate-range-checks? block primitive)
+	 (pcfg/prefer-consequent!
+	  (rtl:make-fixnum-pred-2-args
+	   'UNSIGNED-LESS-THAN-FIXNUM?
+	   (rtl:make-object->fixnum expression)
+	   (rtl:make-object->fixnum (rtl:make-constant #x100)))))
+	(else
+	 (make-true-pcfg))))
 
 ;;;; Indexed Memory References
 
 (define (indexed-memory-reference length-expression index-locative)
-  (lambda (name base-type value-type generator)
+  (lambda (name base-type value-type generator #!optional extra-checks)
     (lambda (combination expressions finish)
       (let ((object (car expressions))
 	    (index (cadr expressions)))
@@ -489,12 +513,17 @@ USA.
 	   (cons*
 	    (open-code:type-check object base-type name block)
 	    (open-code:index-check index (length-expression object) name block)
-	    (if value-type
-		(list (open-code:type-check (caddr expressions)
-					    value-type
-					    name
-					    block))
-		'())))
+	    (let ((checks
+		   (if (default-object? extra-checks)
+		       '()
+		       (extra-checks combination expressions))))
+	      (if value-type
+		  (cons (open-code:type-check (caddr expressions)
+					      value-type
+					      name
+					      block)
+			checks)
+		  checks))))
 	 (index-locative object index
 	   (lambda (locative)
 	     (generator locative expressions finish)))
@@ -503,13 +532,25 @@ USA.
 	 expressions)))))
 
 (define (raw-indexed-memory-reference index-locative)
-  (lambda (name base-type value-type generator)
-    name base-type value-type
+  (lambda (name base-type value-type generator #!optional extra-checks)
+    (declare (ignore base-type value-type))
     (lambda (combination expressions finish)
-      combination
-      (index-locative (car expressions) (cadr expressions)
-	(lambda (locative)
-	  (generator locative expressions finish))))))
+      (let ((non-error-cfg
+	     (index-locative (car expressions) (cadr expressions)
+	       (lambda (locative)
+		 (generator locative expressions finish))))
+	    (checks
+	     (if (default-object? extra-checks)
+		 '()
+		 (extra-checks combination expressions))))
+	(if (null? checks)
+	    non-error-cfg
+	    (open-code:with-checks combination
+				   checks
+				   non-error-cfg
+				   finish
+				   name
+				   expressions))))))
 
 (define (index-locative-generator make-constant-locative
 				  make-variable-locative
@@ -689,6 +730,7 @@ USA.
     (simple-type-test 'char?           (ucode-type character))
     (simple-type-test 'fixnum?         (ucode-type fixnum))
     (simple-type-test 'flonum?         (ucode-type flonum))
+    (simple-type-test 'cell?           (ucode-type cell))
     (simple-type-test 'pair?           (ucode-type pair))
     (simple-type-test 'string?         (ucode-type string))
     (simple-type-test 'vector?         (ucode-type vector))
@@ -901,6 +943,14 @@ USA.
    '(0)
    internal-close-coding-for-type-or-range-checks))
 
+(define-open-coder/value 'MAKE-CELL
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     combination
+     (finish (rtl:make-cell-cons (car expressions))))
+   '(0)
+   false))
+
 (let ((open-code/pair-cons
        (lambda (type)
 	 (lambda (combination expressions finish)
@@ -960,62 +1010,6 @@ USA.
 	'()
 	(cons index (loop (cdr operands) (1+ index))))))
 
-#|
-;; This is somewhat painful to implement.  The problem is that most of
-;; the open coding takes place in "rtlcon.scm", and the mechanism for
-;; doing such things is here.  We should probably try to remodularize
-;; the code that transforms "expression-style" RTL into
-;; "statement-style" RTL, so we can call it from here and then work in
-;; the "statement-style" domain.
-
-(define-open-coder/value 'STRING-ALLOCATE
-  (simple-open-coder
-   (lambda (combination expressions finish)
-     (let ((length (car expressions)))
-       (open-code:with-checks
-	combination
-	(list (open-code:nonnegative-check length
-					   'STRING-ALLOCATE
-					   (combination/block combination)))
-	(scfg*scfg->scfg!
-	 (finish
-	  (rtl:make-typed-cons:string
-	   (rtl:make-machine-constant (ucode-type string))
-	   length)))
-	finish
-	'STRING-ALLOCATE
-	expressions)))
-   '(0)
-   internal-close-coding-for-range-checks))
-|#
-
-;; The following are discretionally open-coded by the back-end.
-;; This allows the type and range checking to take place if
-;; the switch is set appropriately.  The back-end does not check.
-
-(define (define-allocator-open-coder name args)
-  (define-open-coder/value name
-    (simple-open-coder
-     (lambda (combination expressions finish)
-       (let ((length (car expressions)))
-	 (open-code:with-checks
-	  combination
-	  (list (open-code:index-fixnum-check length
-					      name
-					      (combination/block combination))
-		(make-false-pcfg))
-	  (make-null-cfg)
-	  finish
-	  name
-	  expressions)))
-     args
-     true)))
-
-(define-allocator-open-coder 'STRING-ALLOCATE '(0))
-(define-allocator-open-coder 'FLOATING-VECTOR-CONS '(0))
-(define-allocator-open-coder 'VECTOR-CONS '(0 1))
-(define-allocator-open-coder 'ALLOCATE-BYTEVECTOR '(0))
-
 (let ((user-ref
        (lambda (name make-fetch type index)
 	 (define-open-coder/value name
@@ -1043,6 +1037,7 @@ USA.
 	    rtl:floating-vector-length-fetch
 	    (ucode-type flonum)
 	    0)
+  (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
   (user-ref 'CAR rtl:make-fetch (ucode-type pair) 0)
   (user-ref 'CDR rtl:make-fetch (ucode-type pair) 1)
   (user-ref 'weak-car rtl:make-fetch (ucode-type weak-cons) 0)
@@ -1102,6 +1097,7 @@ USA.
 		 expressions)))
 	    '(0 1)
 	    internal-close-coding-for-type-checks)))))
+  (fixed-assignment 'SET-CELL-CONTENTS! (ucode-type cell) 0)
   (fixed-assignment 'SET-CAR! (ucode-type pair) 0)
   (fixed-assignment 'SET-CDR! (ucode-type pair) 1)
   (fixed-assignment 'weak-set-car! (ucode-type weak-cons) 0)
@@ -1228,29 +1224,35 @@ USA.
 
 (define-open-coder/value 'PRIMITIVE-BYTE-REF
   (simple-open-coder
-   (raw-byte-memory-reference 'PRIMITIVE-BYTE-REF false false
+   (raw-byte-memory-reference 'PRIMITIVE-BYTE-REF #f #f
     (lambda (locative expressions finish)
-      expressions
+      (declare (ignore expressions))
       (finish (rtl:small-fixnum-fetch locative))))
    '(0 1)
-   false))
+   #f))
 
 (define-open-coder/effect 'PRIMITIVE-BYTE-SET!
   (simple-open-coder
-   (raw-byte-memory-reference 'PRIMITIVE-BYTE-SET! false false
-    (lambda (locative expressions finish)
-      (finish-assignment rtl:datum-assignment
-			 locative
-			 (caddr expressions)
-			 finish)))
+   (raw-byte-memory-reference 'PRIMITIVE-BYTE-SET!
+			      #f
+			      (ucode-type fixnum)
+     (lambda (locative expressions finish)
+       (finish-assignment rtl:datum-assignment
+			  locative
+			  (caddr expressions)
+			  finish))
+     (lambda (combination expressions)
+       (list (open-code:byte-check (caddr expressions)
+				   'PRIMITIVE-BYTE-SET!
+				   (combination/block combination)))))
    '(0 1 2)
-   false))
+   #f))
 
 (define-open-coder/value 'BYTEVECTOR-U8-REF
   (simple-open-coder
    (bytevector-memory-reference 'BYTEVECTOR-U8-REF (ucode-type bytevector) #f
      (lambda (locative expressions finish)
-       expressions
+       (declare (ignore expressions))
        (finish (rtl:small-fixnum-fetch locative))))
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
@@ -1264,15 +1266,19 @@ USA.
        (finish-assignment rtl:datum-assignment
 			  locative
 			  (caddr expressions)
-			  finish)))
+			  finish))
+     (lambda (combination expressions)
+       (list (open-code:byte-check (caddr expressions)
+				   'BYTEVECTOR-U8-SET!
+				   (combination/block combination)))))
    '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
 
 (define-open-coder/value 'FLOATING-VECTOR-REF
   (simple-open-coder
-   (float-memory-reference 'FLOATING-VECTOR-REF (ucode-type flonum) false
+   (float-memory-reference 'FLOATING-VECTOR-REF (ucode-type flonum) #f
      (lambda (locative expressions finish)
-       expressions
+       (declare (ignore expressions))
        (finish (rtl:float-fetch locative))))
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
@@ -1292,9 +1298,9 @@ USA.
 
 (define-open-coder/value 'STRING-REF
   (simple-open-coder
-   (bytevector-memory-reference 'STRING-REF (ucode-type string) false
+   (bytevector-memory-reference 'STRING-REF (ucode-type string) #f
      (lambda (locative expressions finish)
-       expressions
+       (declare (ignore expressions))
        (finish (rtl:char-fetch locative))))
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
@@ -1314,23 +1320,25 @@ USA.
 
 (define-open-coder/value 'VECTOR-8B-REF
   (simple-open-coder
-   (bytevector-memory-reference 'VECTOR-8B-REF (ucode-type string) false
+   (bytevector-memory-reference 'VECTOR-8B-REF (ucode-type string) #f
      (lambda (locative expressions finish)
-       expressions
+       (declare (ignore expressions))
        (finish (rtl:small-fixnum-fetch locative))))
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
 
 (define-open-coder/effect 'VECTOR-8B-SET!
   (simple-open-coder
-   (bytevector-memory-reference 'VECTOR-8B-SET!
-				(ucode-type string)
-				(ucode-type fixnum)
+   (bytevector-memory-reference 'VECTOR-8B-SET! (ucode-type string) #f
      (lambda (locative expressions finish)
        (finish-assignment rtl:datum-assignment
 			  locative
 			  (caddr expressions)
-			  finish)))
+			  finish))
+     (lambda (combination expressions)
+       (list (open-code:byte-check (caddr expressions)
+				   'VECTOR-8B-SET!
+				   (combination/block combination)))))
    '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
 
@@ -1530,7 +1538,38 @@ USA.
 	   expressions)))
       '(0 1)
       internal-close-coding-for-type-checks)))
- '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE FLONUM-ATAN2))
+ '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE FLONUM-ATAN2
+   FLONUM-COPYSIGN))
+
+(for-each
+ (lambda (flonum-operator)
+   (define-open-coder/value flonum-operator
+     (floating-point-open-coder
+      (lambda (combination expressions finish)
+	(let ((arg1 (car expressions))
+	      (arg2 (cadr expressions))
+	      (arg3 (caddr expressions)))
+	  (open-code:with-checks
+	   combination
+	   (let ((name flonum-operator)
+		 (block (combination/block combination)))
+	     (list (open-code:type-check arg1 (ucode-type flonum) name block)
+		   (open-code:type-check arg2 (ucode-type flonum) name block)
+		   (open-code:type-check arg3 (ucode-type flonum) name block)))
+	   (finish
+	    (rtl:make-float->object
+	     (rtl:make-flonum-3-args
+	      flonum-operator
+	      (rtl:make-object->float arg1)
+	      (rtl:make-object->float arg2)
+	      (rtl:make-object->float arg3)
+	      false)))
+	   finish
+	   flonum-operator
+	   expressions)))
+      '(0 1 2)
+      internal-close-coding-for-type-checks)))
+ '(FLONUM-FMA))
 
 (for-each
  (lambda (flonum-pred)
@@ -1554,7 +1593,9 @@ USA.
 	   expressions)))
       '(0)
       internal-close-coding-for-type-checks)))
- '(FLONUM-ZERO? FLONUM-POSITIVE? FLONUM-NEGATIVE?))
+ '(FLONUM-ZERO? FLONUM-POSITIVE? FLONUM-NEGATIVE? FLONUM-IS-NEGATIVE?
+		FLONUM-IS-NORMAL? FLONUM-IS-FINITE? FLONUM-IS-INFINITE?
+		FLONUM-IS-NAN? FLONUM-IS-ZERO?))
 
 (for-each
  (lambda (flonum-pred)
@@ -1579,7 +1620,11 @@ USA.
 	   expressions)))
       '(0 1)
       internal-close-coding-for-type-checks)))
- '(FLONUM-EQUAL? FLONUM-LESS? FLONUM-GREATER?))
+ '(FLONUM-EQUAL? FLONUM-LESS? FLONUM-GREATER?
+		 FLONUM-IS-LESS? FLONUM-IS-LESS-OR-EQUAL?
+		 FLONUM-IS-GREATER? FLONUM-IS-GREATER-OR-EQUAL?
+		 FLONUM-IS-LESS-OR-GREATER? FLONUM-IS-UNORDERED?
+		 FLONUM-IS-EQUAL?))
 
 ;;;; Generic arithmetic
 
@@ -1710,19 +1755,24 @@ USA.
 	(let ((scfg (generate-primitive generic-op (length expressions) '()
 					false false)))
 	  (make-scfg (cfg-entry-node scfg) '()))
-	(with-values
-	    (lambda ()
-	      (generate-continuation-entry (combination/context combination)))
-	  (lambda (label setup cleanup)
-	    (scfg-append!
-	     (generate-primitive generic-op (length expressions)
-				 expressions setup label)
-	     cleanup
-	     (if predicate?
-		 (finish (rtl:make-true-test (rtl:make-fetch register:value)))
-		 (expression-simplify-for-statement
-		  (rtl:make-fetch register:value)
-		  finish))))))))
+	(let* ((temporary (rtl:make-pseudo-register))
+	       (preamble
+		(rtl:make-assignment temporary
+				     (rtl:make-fetch register:value))))
+	  (call-with-values
+	      (lambda ()
+		(generate-continuation-entry (combination/context combination)
+					     preamble))
+	    (lambda (label setup cleanup)
+	      (scfg-append!
+	       (generate-primitive generic-op (length expressions)
+				   expressions setup label)
+	       cleanup
+	       (if predicate?
+		   (finish (rtl:make-true-test (rtl:make-fetch temporary)))
+		   (expression-simplify-for-statement
+		    (rtl:make-fetch temporary)
+		    finish)))))))))
 
 (define (generic->fixnum-op generic-op)
   (case generic-op

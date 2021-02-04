@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -74,19 +74,20 @@ modes and jump instructions are all 64 bits by default.
 	2		zero		  [TC_FIXNUM | arity]
 	7		0x1A		/
 entry	8		symbol
-	16		<eight bytes of padding>
-	24		<next cache>
+	16		<padding>
+	32		<next cache>
 
 		After linking
 
 	0		16-bit arity
 	2		zero
 	7		0x1A
-entry	8		MOV RAX,imm64		0x48 0xB8
-	10		<address>
-	18		JMP (RAX)		0xFF 0xE0
-	19-23		<four bytes of padding>
-	24		<next cache>
+entry	8		MOV	RCX,imm64	48 b9 <addr64>  ; entry address
+	18		MOV	RAX,-8(RCX)	48 8b 41 f8
+	22		ADD	RAX,RCX		48 01 c8
+	25		JMP	RAX		ff e0
+	27		<padding>
+	32		<next cache>
 
 
 - Closures:
@@ -98,22 +99,31 @@ nicely.
 	8		<entry count>
 	12		<type/arity info>       \__ format word
 	14		<gc offset>             /
-entry0	16		MOV RAX,imm64		0x48 0xB8
-	18		<address>
-	26		CALL (RAX)		0xFF 0xD0
-	28		<four bytes of padding or next format word>
-	...
-	16*(n+1)	<variables>
+	16		<pc offset>
+entry0	24		<padding>
+	28		<type/arity info>
+	30		<gc offset>
+	32		<pc offset>
+entry1	40		<padding>
+	44		<type/arity info>
+	46		<gc offset>
+	48		<pc offset>
+entry2	...
+	8 + 16*n	<variables>
 
 
 - Trampoline encoding:
 
-	-8		<padding>
-	-4		<type/arity info>
-	-2		<gc offset>
-entry	0		MOV	AL,code		0xB0, code-byte
-	2		CALL	n(RSI)		0xFF 0x96 n-longword
-	8		<trampoline dependent storage>
+	-16		<padding>
+	-12		<type/arity info>
+	-10		<gc offset>
+	-8		<offset>		08 00 00 00 00 00 00 00
+entry	0		MOVB	R9,code		41 b1 <code8>
+	3		JMP	n(RSI)		ff a6 <n32>
+	9		<padding>
+	16		<trampoline dependent storage>
+
+  Distance from address in rcx to storage: 16.
 
 */
 
@@ -137,31 +147,53 @@ typedef uint8_t insn_t;
 
 /* Number of insn_t units preceding entry address in which header
    (type and offset info) is stored.  */
-#define CC_ENTRY_HEADER_SIZE (CC_ENTRY_TYPE_SIZE + CC_ENTRY_OFFSET_SIZE)
+#define CC_ENTRY_HEADER_SIZE						\
+  (CC_ENTRY_TYPE_SIZE + CC_ENTRY_OFFSET_SIZE + CC_ENTRY_PC_OFFSET_SIZE)
 #define CC_ENTRY_TYPE_SIZE 2
 #define CC_ENTRY_OFFSET_SIZE 2
+#define CC_ENTRY_PC_OFFSET_SIZE 8
 
 /* Number of insn_t units preceding entry header in which GC trap
    instructions are stored.  This is an approximation: it matches only
    those non-closure procedures for which LIAR has generated interrupt
    checks, in which case there is one CALL n(RSI), which is encoded as
-   #xff #x96 <n>, where n is a longword (32 bits).  */
+   #xff #x96 <n>, where n is a longword (32 bits).
+
+   XXX Stop using CALL for this.  */
 #define CC_ENTRY_GC_TRAP_SIZE 6
+
+#define CC_ENTRY_ADDRESS_PTR(e)		(e)
+#define CC_ENTRY_ADDRESS_PC(e)		((e) + (((const int64_t *) (e))[-1]))
+
+#define CC_RETURN_ADDRESS_PTR(r)	(r)
+#define CC_RETURN_ADDRESS_PC(r)		((insn_t *) interface_to_scheme_return)
+
+insn_t * cc_return_address_to_entry_address (insn_t *);
+
+#define CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS cc_return_address_to_entry_address
 
 #define EMBEDDED_CLOSURE_ADDRS_P 1
 
-#define DECLARE_RELOCATION_REFERENCE(name)
+typedef struct
+{
+  insn_t * old_addr;
+  insn_t * new_addr;
+} reloc_ref_t;
 
-#define START_CLOSURE_RELOCATION(scan, ref)	do {} while (0)
-#define START_OPERATOR_RELOCATION(scan, ref)	do {} while (0)
+#define DECLARE_RELOCATION_REFERENCE(name) reloc_ref_t name
+
+#define START_CLOSURE_RELOCATION(scan, ref)				\
+  start_closure_relocation ((scan), (&ref))
+
+#define START_OPERATOR_RELOCATION(scan, ref)	do {(void)ref;} while (0)
 
 #define OPERATOR_RELOCATION_OFFSET 0
 
 #define READ_COMPILED_CLOSURE_TARGET(a, r)				\
-  read_compiled_closure_target (a)
+  read_compiled_closure_target ((a), (&r))
 
 /* Size of execution cache in SCHEME_OBJECTS.  */
-#define UUO_LINK_SIZE 3
+#define UUO_LINK_SIZE 4
 
 #define UUO_WORDS_TO_COUNT(nw) ((nw) / UUO_LINK_SIZE)
 #define UUO_COUNT_TO_WORDS(nc) ((nc) * UUO_LINK_SIZE)
@@ -230,12 +262,23 @@ extern void asm_sc_apply_size_5 (void);
 extern void asm_sc_apply_size_6 (void);
 extern void asm_sc_apply_size_7 (void);
 extern void asm_sc_apply_size_8 (void);
+extern void asm_apply_setup (void);
+extern void asm_apply_setup_size_1 (void);
+extern void asm_apply_setup_size_2 (void);
+extern void asm_apply_setup_size_3 (void);
+extern void asm_apply_setup_size_4 (void);
+extern void asm_apply_setup_size_5 (void);
+extern void asm_apply_setup_size_6 (void);
+extern void asm_apply_setup_size_7 (void);
+extern void asm_apply_setup_size_8 (void);
+extern void asm_set_interrupt_enables (void);
 extern void asm_scheme_to_interface (void);
 extern void asm_scheme_to_interface_call (void);
 extern void asm_serialize_cache (void);
 extern void asm_trampoline_to_interface (void);
 
-extern insn_t * read_compiled_closure_target (insn_t *);
+extern void start_closure_relocation (SCHEME_OBJECT *, reloc_ref_t *);
+extern insn_t * read_compiled_closure_target (insn_t *, reloc_ref_t *);
 extern insn_t * read_uuo_target (SCHEME_OBJECT *);
 extern void x86_64_reset_hook (void);
 

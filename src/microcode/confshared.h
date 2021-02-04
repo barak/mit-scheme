@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -149,6 +149,13 @@ USA.
 #  define ATTRIBUTE(x)
 #  define NORETURN
 #endif
+
+#if (((defined (__GNUC__)) && (__GNUC__ >= 7)) || \
+       ((defined (__clang__)) && (__clang_major__ >= 12)))
+#  define FALLTHROUGH() ATTRIBUTE ((__fallthrough__))
+#else
+#  define FALLTHROUGH() ((void)0)
+#endif
 
 /* Operating System / Machine dependencies:
 
@@ -221,6 +228,12 @@ typedef enum
   FASL_PPC64,
   FASL_IA64,
   FASL_ARM,
+  FASL_AARCH64LE,
+  FASL_SVM1_32BE,
+  FASL_SVM1_32LE,
+  FASL_SVM1_64BE,
+  FASL_SVM1_64LE,
+  FASL_AARCH64BE,
 } fasl_arch_t;
 
 /* Possible values for COMPILER_PROCESSOR_TYPE.  This identifies the
@@ -235,6 +248,7 @@ typedef enum
   COMPILER_C_TYPE = 12,
   COMPILER_SVM_TYPE = 13,
   COMPILER_X86_64_TYPE = 14,
+  COMPILER_AARCH64_TYPE = 15,
 } cc_arch_t;
 
 #include "cmpintmd-config.h"
@@ -575,6 +589,7 @@ extern void win32_stack_reset (void);
 #  define MACHINE_TYPE		"PowerPC-32"
 #  define CURRENT_FASL_ARCH	FASL_PPC32
 #  define FLOATING_ALIGNMENT	0x7
+#  define HEAP_IN_LOW_MEMORY
 #endif
 
 #ifdef __ppc64__
@@ -597,6 +612,17 @@ extern void win32_stack_reset (void);
 #ifdef __arm__
 #  define MACHINE_TYPE		"arm"
 #  define CURRENT_FASL_ARCH	FASL_ARM
+#endif
+
+#ifdef __aarch64__
+#  define MACHINE_TYPE		"aarch64"
+#  ifdef WORDS_BIGENDIAN
+#    define CURRENT_FASL_ARCH	FASL_AARCH64BE
+#  else
+#    define CURRENT_FASL_ARCH	FASL_AARCH64LE
+#  endif
+#  define HEAP_IN_LOW_MEMORY	1
+#  define PC_ZERO_BITS		2
 #endif
 
 #ifdef sonyrisc
@@ -648,6 +674,11 @@ extern void win32_stack_reset (void);
    extern void * mmap_heap_malloc (unsigned long);
 #  define HEAP_MALLOC mmap_heap_malloc
 #  define HEAP_FREE(address)
+#endif
+
+#ifdef CC_IS_SVM
+#  undef CURRENT_FASL_ARCH
+#  define CURRENT_FASL_ARCH svm_fasl_arch
 #endif
 
 #endif /* SCM_CONFSHARED_H */

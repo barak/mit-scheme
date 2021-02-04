@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -507,8 +507,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 	case syntaxcode_charquote:
 	  LOSE_IF_RIGHT_END (start);
 	  MOVE_RIGHT (start);
-	  /* fall through */
-
+	  FALLTHROUGH ();
 	case syntaxcode_word:
 	case syntaxcode_symbol:
 	  if ((depth != 0) || (! sexp_flag))
@@ -522,8 +521,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 		case syntaxcode_charquote:
 		  MOVE_RIGHT (start);
 		  LOSE_IF_RIGHT_END (start);
-		  /* fall through */
-
+		  FALLTHROUGH ();
 		case syntaxcode_word:
 		case syntaxcode_symbol:
 		  MOVE_RIGHT (start);
@@ -780,6 +778,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 
   level = level_start;
   level_end = (level_start + LEVEL_ARRAY_LENGTH);
+  (level -> last) = NULL;
   (level -> previous) = NULL;
 
   /* Initialize the state variables from the state argument. */
@@ -977,8 +976,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 		      quoted = true;
 		      DONE_IF (true);
 		    }
-		  /* fall through */
-
+		  FALLTHROUGH ();
 		case syntaxcode_word:
 		case syntaxcode_symbol:
 		  MOVE_RIGHT (start);

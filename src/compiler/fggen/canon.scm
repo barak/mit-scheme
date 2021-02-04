@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -213,7 +213,9 @@ ARBITRARY:	The expression may be executed more than once.  It
 	   (if (eq? name environment-variable)
 	       exp
 	       (scode/make-combination
-		(ucode-primitive LEXICAL-REFERENCE)
+		(if (scode/variable-safe? body)
+		    (ucode-primitive safe-lexical-reference)
+		    (ucode-primitive lexical-reference))
 		(list exp name)))))
 	((not (scode/the-environment? exp))
 	 (normal))
@@ -261,7 +263,10 @@ ARBITRARY:	The expression may be executed more than once.  It
 	   (make-canout var true false true))
 	  (else
 	   (make-canout
-	    (scode/make-combination (ucode-primitive LEXICAL-REFERENCE)
+	    (scode/make-combination
+	     (if (scode/variable-safe? var)
+		 (ucode-primitive safe-lexical-reference)
+		 (ucode-primitive lexical-reference))
 	     (list (scode/make-variable environment-variable)
 		   name))
 	    true true false)))))

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -294,36 +294,19 @@ compiled_closure_entry_to_target (insn_t * entry)
    the calling process without having to find and change all the
    places in the compiled code that refer to it.
 
-   Prior to linking, the execution cache has two pieces of
-   information: (1) the name of the procedure being called (a symbol),
-   and (2) the number of arguments that will be passed to the
-   procedure.  It is laid out in memory like this (on a 32-bit
-   machine):
+   Initially, the execution cache stores the frame size and the name of
+   the procedure being called (a symbol); after linking, the name is
+   replaced by the (untagged) address of the code to execute.
 
-   0x00    frame-size (fixnum)
-   0x04    name encoded as symbol
-
-   After linking, the cache is changed as follows:
-
-   0x00    frame-size (u16)
-   0x02    SVM1_INST_IJUMP_U8
-   0x03    offset = 0
-   0x04    32-bit address
-
-   On a 64-bit machine, the post-linking layout is:
-
-   0x00    frame-size (u16)
-   0x02    4 padding bytes
-   0x06    SVM1_INST_IJUMP_U8
-   0x07    offset = 0
-   0x08    64-bit address
-
-   */
+   On real machines, execute caches usually have machine instructions
+   that perform the jump, but we have no need for that in SVM1 where we
+   already have an instruction to make an indirect jump to the address
+   stored at a PC-relative location in memory.  */
 
 unsigned int
 read_uuo_frame_size (SCHEME_OBJECT * saddr)
 {
-  return (read_u16 ((insn_t *) saddr));
+  return (OBJECT_DATUM (saddr[0]));
 }
 
 SCHEME_OBJECT
@@ -331,21 +314,11 @@ read_uuo_symbol (SCHEME_OBJECT * saddr)
 {
   return (saddr[1]);
 }
-
+
 insn_t *
 read_uuo_target (SCHEME_OBJECT * saddr)
 {
-  insn_t * addr = ((insn_t *) (saddr + 2));
-  insn_t * end = ((insn_t *) (saddr + 1));
-  unsigned long eaddr = 0;
-
-  while (true)
-    {
-      eaddr |= (*--addr);
-      if (addr == end)
-	return ((insn_t *) eaddr);
-      eaddr <<= 8;
-    }
+  return ((insn_t *) (saddr[1]));
 }
 
 insn_t *
@@ -357,28 +330,9 @@ read_uuo_target_no_reloc (SCHEME_OBJECT * saddr)
 void
 write_uuo_target (insn_t * target, SCHEME_OBJECT * saddr)
 {
-  unsigned long eaddr = ((unsigned long) target);
-  unsigned long frame_size = (OBJECT_DATUM (saddr[0]));
-  insn_t * addr = ((insn_t *) saddr);
-  insn_t * end = ((insn_t *) (saddr + 1));
-
-  (*addr++) = (frame_size & 0x00FF);
-  (*addr++) = ((frame_size & 0xFF00) >> 8);
-  while (addr < (end - 2))
-    (*addr++) = 0;
-  (*addr++) = SVM1_INST_IJUMP_U8;
-  (*addr++) = 0;
-
-  end = ((insn_t *) (saddr + 2));
-  while (true)
-    {
-      (*addr++) = (eaddr & 0xFF);
-      if (addr == end)
-	break;
-      eaddr >>= 8;
-    }
+  (saddr[1]) = ((SCHEME_OBJECT) target);
 }
-
+
 unsigned long
 trampoline_entry_size (unsigned long n_entries)
 {
@@ -391,6 +345,12 @@ trampoline_entry_addr (SCHEME_OBJECT * block, unsigned long index)
   return (((insn_t *) (block + 2))
 	  + (index * (CC_ENTRY_HEADER_SIZE + 2))
 	  + CC_ENTRY_HEADER_SIZE);
+}
+
+insn_t *
+trampoline_return_addr (SCHEME_OBJECT * block, unsigned long index)
+{
+  return (trampoline_entry_addr (block, index));
 }
 
 bool

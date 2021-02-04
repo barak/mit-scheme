@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -570,7 +570,7 @@ The buffer is guaranteed to be selected at that time."
 		  (if (let loop ((buffers (cdr l2)))
 			(or (not (weak-pair? buffers))
 			    (and (let ((buffer (weak-car buffers)))
-				   (and buffer
+				   (and (buffer? buffer)
 					(buffer-alive? buffer)))
 				 (loop (weak-cdr buffers)))))
 		      (begin
@@ -603,14 +603,14 @@ The buffer is guaranteed to be selected at that time."
   (do ((buffers (cdr layout) (weak-cdr buffers)))
       ((not (weak-pair? buffers)))
     (let ((buffer (weak-car buffers)))
-      (if buffer
+      (if (buffer? buffer)
 	  (buffer-remove! buffer buffer-layout-key)))))
 
 (define (buffer-layout-visible? layout screen)
   (let loop ((buffers (cdr layout)))
     (and (weak-pair? buffers)
 	 (or (not (let ((buffer (weak-car buffers)))
-		    (and buffer
+		    (and (buffer? buffer)
 			 (any (lambda (window)
 				(eq? (window-screen window) screen))
 			      (buffer-windows buffer)))))

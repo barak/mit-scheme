@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,45 +35,41 @@ USA.
     table))
 
 (define (eqht/get table key default)
-  (let ((entries
-	 (vector-ref (table-buckets table) (compute-key-hash table key))))
-    (let loop ((entries entries))
-      (cond ((null? entries)
-	     default)
-	    ((eq? (system-pair-car (car entries)) key)
-	     (system-pair-cdr (car entries)))
-	    (else
-	     (loop (cdr entries)))))))
+  (let ((wp
+	 (weak-assq key
+		    (vector-ref (table-buckets table)
+				(compute-key-hash table key)))))
+    (if wp
+	(weak-cdr wp)
+	default)))
 
 (define (eqht/put! table key datum)
   (let ((buckets (table-buckets table))
 	(hash (compute-key-hash table key)))
-    (let loop ((entries (vector-ref buckets hash)))
-      (cond ((null? entries)
-	     (without-interruption
-	      (lambda ()
-		(vector-set! buckets
-			     hash
-			     (cons (weak-cons key datum)
-				   (vector-ref buckets hash)))
-		(if (> (let ((count (fix:+ (table-count table) 1)))
-			 (set-table-count! table count)
-			 count)
-		       (table-grow-size table))
-		    (grow-table! table)))))
-	    ((eq? (system-pair-car (car entries)) key)
-	     (system-pair-set-cdr! (car entries) datum))
-	    (else
-	     (loop (cdr entries)))))))
+    (let ((wp (weak-assq key (vector-ref buckets hash))))
+      (if wp
+	  (weak-set-cdr! wp datum)
+	  (without-interruption
+	   (lambda ()
+	     (vector-set! buckets
+			  hash
+			  (cons (weak-cons key datum)
+				(vector-ref buckets hash)))
+	     (if (> (let ((count (fix:+ (table-count table) 1)))
+		      (set-table-count! table count)
+		      count)
+		    (table-grow-size table))
+		 (grow-table! table))))))))
 
 (define (eqht/for-each table procedure)
-  (for-each-vector-element (table-buckets table)
-    (lambda (entries)
-      (for-each (lambda (entry)
-		  (if (system-pair-car entry)
-		      (procedure (system-pair-car entry)
-				 (system-pair-cdr entry))))
-		entries))))
+  (vector-for-each
+   (lambda (entries)
+     (weak-alist-fold (lambda (key datum acc)
+			(procedure key datum)
+			acc)
+		      unspecific
+		      entries))
+   (table-buckets table)))
 
 ;;;; Address Hashing
 
@@ -87,7 +83,7 @@ USA.
 	    (loop))))))
 
 (define (record-address-hash-table! table)
-  (add-to-population! address-hash-tables table))
+  (add-new-to-population! address-hash-tables table))
 
 (define (mark-address-hash-tables!)
   (for-each-inhabitant address-hash-tables
@@ -165,12 +161,11 @@ USA.
   (let ((buckets (table-buckets table)))
     (let ((n-buckets (vector-length buckets)))
       (let loop ((entries entries))
-	(if (not (null? entries))
-	    (let ((rest (cdr entries)))
-	      (if (system-pair-car (car entries))
-		  (let ((hash
-			 (eq-hash-mod (system-pair-car (car entries))
-				      n-buckets)))
+	(if (pair? entries)
+	    (let ((key (weak-car (car entries)))
+		  (rest (cdr entries)))
+	      (if (not (gc-reclaimed-object? key))
+		  (let ((hash (eq-hash-mod key n-buckets)))
 		    (set-cdr! entries (vector-ref buckets hash))
 		    (vector-set! buckets hash entries))
 		  (set-table-count! table (fix:- (table-count table) 1)))
@@ -196,12 +191,9 @@ USA.
 	(do ((i 0 (fix:+ i 1)))
 	    ((fix:= i n-buckets))
 	  (let ((bucket (vector-ref buckets i)))
-	    (if (not (null? bucket))
+	    (if (pair? bucket)
 		(begin
-		  (let loop ((bucket bucket))
-		    (if (null? (cdr bucket))
-			(set-cdr! bucket entries)
-			(loop (cdr bucket))))
+		  (set-cdr! (last-pair bucket) entries)
 		  (set! entries bucket)
 		  (vector-set! buckets i '())))))
 	entries))))

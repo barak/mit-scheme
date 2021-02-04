@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -73,7 +73,7 @@ USA.
      ;; This is written as a macro so that the shift will be a constant
      ;; in the compiled code.
      ;; It does not work when cross-compiled!
-     (let ((chars-per-word (bytes-per-object)))
+     (let ((chars-per-word (target-bytes-per-object)))
        (case chars-per-word
 	 ((4) -2)
 	 ((8) -3)
@@ -106,9 +106,9 @@ USA.
 	   ((ucode-primitive primitive-object-set-type 2)
 	    (ucode-type manifest-nm-vector)
 	    (fix:- n-words 1)))		;Subtract one for the manifest.
-	  (set-string-length! result (fix:+ n-chars 1))
-	  (string-set! result n-chars #\nul)
-	  (set-string-length! result n-chars)
+	  ((ucode-primitive set-string-length! 2) result (fix:+ n-chars 1))
+	  ((ucode-primitive string-set! 3) result n-chars #\nul)
+	  ((ucode-primitive set-string-length! 2) result n-chars)
 	  ((ucode-primitive primitive-increment-free 1) n-words)
 	  (set-interrupt-enables! mask)
 	  result)))))
@@ -271,13 +271,6 @@ USA.
 	    (loop (cdr elements) satisfied (cons (car elements) unsatisfied)))
 	(values satisfied unsatisfied))))
 
-(define (weak-assq item alist)
-  (let loop ((alist alist))
-    (and (not (null? alist))
-	 (if (eq? (weak-car (car alist)) item)
-	     (car alist)
-	     (loop (cdr alist))))))
-
 (define (file-time->ls-string time #!optional now)
   ;; Returns a time string like that used by unix `ls -l'.
   (let ((time (file-time->universal-time time))

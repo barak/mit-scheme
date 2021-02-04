@@ -1,5 +1,5 @@
 RUNDIR = $(AUXDIR)/runtime
-RUNOPTS = chrsyn cpress format gdbm hashtb krypt mime-codec numint \
+RUNOPTS = chrsyn cpress format gdbm mime-codec numint \
 	  ordvec pgsql process rbtree regexp rexp rgxcmp syncproc wttree ystep
 
 install:
