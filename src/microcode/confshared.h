@@ -159,7 +159,7 @@ USA.
 #endif
 
 #if (((defined (__GNUC__)) && (__GNUC__ >= 7)) || \
-       ((defined (__clang__)) && (__clang_major__ >= 12)))
+       ((defined (__clang__)) && (__clang_major__ >= 10)))
 #  define FALLTHROUGH() ATTRIBUTE ((__fallthrough__))
 #else
 #  define FALLTHROUGH() ((void)0)
