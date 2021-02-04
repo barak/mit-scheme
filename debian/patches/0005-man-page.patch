@@ -4,16 +4,16 @@ Subject: man page
 
 Minor updates to mit-scheme(1).
 ---
- doc/mit-scheme.1 | 55 ++++++++++++++++++++++++++++++++++++-------------------
- 1 file changed, 36 insertions(+), 19 deletions(-)
+ doc/mit-scheme.1 | 52 +++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 33 insertions(+), 19 deletions(-)
 
 diff --git a/doc/mit-scheme.1 b/doc/mit-scheme.1
-index 60aac05..5bbb429 100644
+index 878a49e..15a678d 100644
 --- a/doc/mit-scheme.1
 +++ b/doc/mit-scheme.1
 @@ -1,10 +1,10 @@
--.TH "mit-scheme" "1" "10.1.11" "MIT/GNU Scheme Team" ""
-+.TH "mit\-scheme" "1" "10.1.11" "MIT/GNU Scheme Team" ""
+-.TH "mit-scheme" "1" "11.1" "MIT/GNU Scheme Team" ""
++.TH "mit\-scheme" "1" "11.1" "MIT/GNU Scheme Team" ""
  .SH "NAME"
  .LP
 -mit-scheme - The MIT/GNU Scheme development environment
@@ -25,16 +25,13 @@ index 60aac05..5bbb429 100644
  .RI [ OPTIONS ]
  .br 
  .SH "DESCRIPTION"
-@@ -19,44 +19,47 @@ development cycle.
+@@ -19,44 +19,44 @@ development cycle.
  These are some of the more common command-line options.  For full
  information about available options, see the Texinfo documentation.
  Additional options may also be supported by the band.  Use the
 ---help option (last) to see descriptions of all available
 +\-\-help option (last) to see descriptions of all available
  command-line options.
-+.TP
-+.RI \-\-help
-+Report available command-line options, then exit.
  .TP 
 -.RI --version
 +.RI \-\-version
@@ -84,7 +81,7 @@ index 60aac05..5bbb429 100644
  .br 
  Load the specified files after starting Scheme.
  .SH "FILES"
-@@ -64,6 +67,20 @@ Load the specified files after starting Scheme.
+@@ -64,6 +64,20 @@ Load the specified files after starting Scheme.
  \fI.scheme.init\fP or \fISCHEME.INI\fP
  .br
  Scheme loads this file first, if it exists in the user's home directory.
@@ -105,7 +102,7 @@ index 60aac05..5bbb429 100644
  .SH "ENVIRONMENT VARIABLES"
  .LP 
  MIT/GNU Scheme refers to a large number of environment variables.  See
-@@ -72,14 +89,14 @@ the Texinfo documentation for details.
+@@ -72,14 +86,14 @@ the Texinfo documentation for details.
  .LP 
  To use the evaluator in a command-line interface, type:
  .LP 
@@ -123,7 +120,7 @@ index 60aac05..5bbb429 100644
  .SH "SEE ALSO"
  .LP
  The full documentation for MIT/GNU Scheme is maintained as a set of
-@@ -92,5 +109,5 @@ program is properly installed at your site, the command
+@@ -92,5 +106,5 @@ program is properly installed at your site, the command
  "MIT/GNU Scheme User"
  .PP
  should give you access to the complete user's manual.  Programming

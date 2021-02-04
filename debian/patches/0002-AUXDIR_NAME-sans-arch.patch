@@ -8,28 +8,28 @@ Subject: AUXDIR_NAME sans arch
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 721534c..160c7c8 100644
+index 8892858..8b76eca 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
-@@ -166,7 +166,7 @@ else
-     IF_SVM_COMPILER='#!svm compiler: '
- fi
+@@ -173,7 +173,7 @@ esac
  
--AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
+ MIT_SCHEME_ARCH=${mit_scheme_native_code}
+ MIT_SCHEME_VERSION=${PACKAGE_VERSION}
+-AUXDIR_NAME=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}
 +AUXDIR_NAME=mit-scheme
  AUXDIR='$(libdir)'/${AUXDIR_NAME}
  MIT_SCHEME_LIBDIR=${AUXDIR}/
  MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
 diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
-index 47469bc..2387967 100644
+index 9fe14ab..5e25414 100644
 --- a/src/microcode/configure.ac
 +++ b/src/microcode/configure.ac
-@@ -262,7 +262,7 @@ CCLD=${CC}
- MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
- MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
+@@ -300,7 +300,7 @@ esac
  
--AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
+ : "${MIT_SCHEME_ARCH:=${mit_scheme_native_code}}"
+ : "${MIT_SCHEME_VERSION:=${PACKAGE_VERSION}}"
+-: "${AUXDIR_NAME:=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}}"
 +AUXDIR_NAME=mit-scheme
- EXE_NAME=mit-scheme-${mit_scheme_native_code}
  
  dnl Add OS-dependent customizations.  This must happen before checking
+ dnl any headers or library routines, because it may add CFLAGS or
