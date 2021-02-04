@@ -883,12 +883,12 @@ Both must be lists, strings, or atoms; error if there is mismatch."
         flag)))
 
 (define (skip-whitespace-forward #!optional start end)
-  (skip-chars-forward (char-set->string char-set:whitespace)
+  (skip-chars-forward (char-set->ascii-string char-set:whitespace)
                       start
                       end))
 
-(define (char-set->string char-set)
-  (list->string (char-set-members char-set)))
+(define (char-set->ascii-string char-set)
+  (char-set->string (char-set-intersection char-set char-set:ascii)))
 
 (define (undo-record-point! #!optional buffer)
   (let ((group (buffer-group (if (default-object? buffer)

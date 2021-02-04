@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime compiler-info)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime bytevector) '(runtime dynamic))
 
 (define (compiled-code-block/dbg-info block demand-load?)
   (let ((wrapper (compiled-code-block/debugging-wrapper block)))
@@ -52,10 +54,8 @@ USA.
   (let ((pathname (canonicalize-debug-info-pathname pathname)))
     (if (file-exists? pathname)
 	(fasload-loader (->namestring pathname))
-	(find-alternate-file-type pathname
-				  `(("inf" . ,fasload-loader)
-				    ("bif" . ,fasload-loader)
-				    ("bci" . ,compressed-loader))))))
+	(compressed-loader
+	 (pathname-new-type-map pathname file-type-inf file-type-bci)))))
 
 (define (find-alternate-file-type base-pathname alist)
   (let loop ((left alist) (time 0) (file #f) (receiver (lambda (x) x)))
@@ -83,20 +83,17 @@ USA.
   (without-interruption
    (lambda ()
      (set-debugging-wrapper/info! wrapper info)
-     (add-to-population! wrappers-with-memoized-debugging-info wrapper))))
+     (add-new-to-population! wrappers-with-memoized-debugging-info wrapper))))
 
 (define (discard-debugging-info!)
   (for-each-inhabitant wrappers-with-memoized-debugging-info
 		       (lambda (wrapper)
 			 (set-debugging-wrapper/info! wrapper #f)))
   (empty-population! wrappers-with-memoized-debugging-info))
+(add-secondary-gc-daemon! discard-debugging-info!)
 
-(define-deferred wrappers-with-memoized-debugging-info
+(define wrappers-with-memoized-debugging-info
   (make-serial-population))
-
-(add-boot-init!
- (lambda ()
-   (add-secondary-gc-daemon! discard-debugging-info!)))
 
 (define (compiled-entry/dbg-object entry #!optional demand-load?)
   (let ((block (compiled-entry/block entry))
@@ -249,8 +246,8 @@ USA.
 	  (pathname-new-directory
 	   (file-pathname pathname)
 	   (cons 'relative
-		 (list-tail (pathname-directory pathname)
-			    (length (pathname-directory (car rule))))))
+		 (drop (pathname-directory pathname)
+		       (length (pathname-directory (car rule))))))
 	  (cdr rule))
 	 pathname))))
 

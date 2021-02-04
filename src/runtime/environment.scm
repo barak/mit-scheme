@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,6 +42,7 @@ USA.
 	  ((library->environment-helper object) => library-environment)
 	  ((name->package object) => package/environment)
 	  ((procedure? object) (procedure-environment object))
+	  ((interned-symbol? object) (nearest-repl/named-environment object))
 	  (else (error:wrong-type-argument object "environment" caller)))))
 
 (define (environment-has-parent? environment)
@@ -562,7 +563,7 @@ USA.
 		      (dbg-block/length block))))
 	       (let ((stack-link (dbg-block/stack-link block)))
 		 (cond ((not stack-link)
-			(with-values
+			(call-with-values
 			    (lambda ()
 			      (stack-frame/resolve-stack-address
 			       frame
@@ -629,12 +630,14 @@ USA.
 		       (stack-ccenv/safe-lookup
 			environment
 			(dbg-variable/name variable)))))))
-	  (map* (map* (let ((rest (dbg-procedure/rest procedure)))
-			(if rest (lookup rest) '()))
-		      lookup
-		      (dbg-procedure/optional procedure))
-		lookup
-		(dbg-procedure/required procedure)))
+	  (fold-right (lambda (variable values)
+			(cons (lookup variable) values))
+		      (fold-right (lambda (variable values)
+				    (cons (lookup variable) values))
+				  (let ((rest (dbg-procedure/rest procedure)))
+				    (if rest (lookup rest) '()))
+				  (dbg-procedure/optional procedure))
+		      (dbg-procedure/required procedure)))
 	'unknown)))
 
 (define (stack-ccenv/bound-names environment)

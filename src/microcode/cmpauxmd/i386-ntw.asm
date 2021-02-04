@@ -3,8 +3,8 @@
 ;;; Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ;;;     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
 ;;;     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013,
-;;;     2014, 2015, 2016, 2017, 2018, 2019 Massachusetts Institute of
-;;;     Technology
+;;;     2014, 2015, 2016, 2017, 2018, 2019, 2020 Massachusetts
+;;;     Institute of Technology
 ;;;
 ;;; This file is part of MIT/GNU Scheme.
 ;;;
@@ -359,7 +359,7 @@ scheme_to_interface_proceed:
 	mov	ebp,_C_Frame_Pointer
 	; Signal to within_c_stack that we are now in C land.
 	mov	_C_Stack_Pointer,0
-	sub	esp,8	; alloc struct return
+	sub	esp,12	; alloc struct return
 	push	dword ptr 36[esi] ; push utility args
 	push	ebx
 	push	edx
@@ -375,7 +375,9 @@ scheme_to_interface_proceed:
 scheme_to_interface_return:
 	add	esp,20	; pop utility args
 	pop	eax		; pop struct return
-	pop	edx
+	pop	edx		; interp code / compiled ptr
+	pop	ecx		; interp garbage / compiled pc
+						; (currently unused on i386)
 	jmp		eax		; Invoke handler
 	public _interface_to_scheme
 _interface_to_scheme:
@@ -1234,9 +1236,14 @@ asm_fixnum_rsh_overflow_negative:
 	ret
 	public _sse_read_mxcsr
 _sse_read_mxcsr:
+	enter		4,0
+	stmxcsr		dword ptr [esp]
+	mov	eax,dword ptr [esp]
+	leave
 	ret
 	public _sse_write_mxcsr
 _sse_write_mxcsr:
+	ldmxcsr		dword ptr 4[esp]
 	ret
 	public _x87_clear_exceptions
 _x87_clear_exceptions:

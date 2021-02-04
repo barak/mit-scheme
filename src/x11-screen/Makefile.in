@@ -385,11 +385,11 @@ MAKEINFO = @MAKEINFO@
 MIT_SCHEME_BCIs = @MIT_SCHEME_BCIs@
 MIT_SCHEME_CLEAN = @MIT_SCHEME_CLEAN@
 MIT_SCHEME_COMs = @MIT_SCHEME_COMs@
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 MIT_SCHEME_LIBDIR = @MIT_SCHEME_LIBDIR@
 MIT_SCHEME_PKD = @MIT_SCHEME_PKD@
 MIT_SCHEME_PROJECT = @MIT_SCHEME_PROJECT@
 MIT_SCHEME_SCMs = @MIT_SCHEME_SCMs@
+MIT_SCHEME_TOOLCHAIN_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 MKDIR_P = @MKDIR_P@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -446,6 +446,7 @@ top_srcdir = @top_srcdir@
 EXTRA_DIST = autogen.sh $(sources) compile.sh x11-screen.pkg \
 	x11-screen-check.sh x11-screen-test.scm make.scm optiondb.scm \
 	compile.scm
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)x11-screen
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -455,8 +456,7 @@ scmlib_sub_DATA = $(sources) $(binaries) make.scm @MIT_SCHEME_PKD@
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd \
 	stamp-scheme @MIT_SCHEME_CLEAN@
 TESTS = x11-screen-check.sh
-ETAGS_ARGS = $(sources)
-TAGS_DEPENDENCIES = $(sources)
+TAGS_FILES = $(sources)
 all: all-am
 
 .SUFFIXES:
@@ -961,17 +961,20 @@ info: info-am
 info-am:
 
 install-data-am: install-scmlib_subDATA
-	@$(NORMAL_INSTALL)
-	$(MAKE) $(AM_MAKEFLAGS) install-data-hook
+
 install-dvi: install-dvi-am
 
 install-dvi-am:
 
 install-exec-am:
 
+install-html: install-html-am
+
 install-html-am:
 
 install-info: install-info-am
+
+install-info-am:
 
 install-man:
 
@@ -1004,9 +1007,8 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-scmlib_subDATA
-	@$(NORMAL_INSTALL)
-	$(MAKE) $(AM_MAKEFLAGS) uninstall-hook
-.MAKE: check-am install-am install-data-am install-strip uninstall-am
+
+.MAKE: check-am install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--refresh check check-TESTS \
 	check-am clean clean-cscope clean-generic cscope cscopelist-am \
@@ -1014,15 +1016,15 @@ uninstall-am: uninstall-scmlib_subDATA
 	dist-shar dist-tarZ dist-xz dist-zip distcheck distclean \
 	distclean-generic distclean-tags distcleancheck distdir \
 	distuninstallcheck dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am \
-	install-data-hook install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-scmlib_subDATA install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-scmlib_subDATA install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-generic pdf \
 	pdf-am ps ps-am recheck tags tags-am uninstall uninstall-am \
-	uninstall-hook uninstall-scmlib_subDATA
+	uninstall-scmlib_subDATA
 
 .PRECIOUS: Makefile
 
@@ -1032,18 +1034,8 @@ uninstall-am: uninstall-scmlib_subDATA
 
 @MIT_SCHEME_DEPS@
 stamp-scheme: $(sources) x11-screen.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
-
-install-data-hook:
-
-install-html: install-html-am
-
-install-info-am:
-
-uninstall-info-am:
-
-uninstall-hook:
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

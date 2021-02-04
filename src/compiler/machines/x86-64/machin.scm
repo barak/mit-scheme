@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,6 +30,11 @@ USA.
 (declare (usual-integrations))
 
 ;;;; Architecture Parameters
+
+(define (compiler-features)
+  '(target-arch=x86-64 target-little-endian target-64-bit))
+
+(define (target-fasl-format) fasl-format:amd64)
 
 (define use-pre/post-increment? false)
 (define-integrable endianness 'LITTLE)
@@ -81,20 +86,20 @@ USA.
 
 ;;; See microcode/cmpintmd/x86-64.h for a description of the layout.
 
-(define-integrable closure-entry-size 2)
+(define-integrable closure-entry-size 2) ;units of objects
 
 (define-integrable address-units-per-closure-manifest address-units-per-object)
 (define-integrable address-units-per-entry-format-code 4)
 (define-integrable address-units-per-closure-entry-count 4)
-(define-integrable address-units-per-closure-padding 4)
+(define-integrable address-units-per-closure-padding -4)
 
-;;; (MOV Q (R ,rax) (&U <entry>))	48 B8 <eight-byte immediate>
-;;; (CALL (R ,rax))			FF D0
-(define-integrable address-units-per-closure-entry-instructions 12)
+(define-integrable address-units-per-closure-pc-offset 8)
+(define-integrable address-units-per-closure-entry-padding 4)
 
 (define-integrable address-units-per-closure-entry
   (+ address-units-per-entry-format-code
-     address-units-per-closure-entry-instructions))
+     address-units-per-closure-pc-offset
+     address-units-per-closure-entry-padding))
 
 ;;; Note:
 ;;;
@@ -118,7 +123,7 @@ USA.
 (define (closure-first-offset nentries entry)
   (if (zero? nentries)
       1
-      (* (- nentries entry) closure-entry-size)))
+      (* (- nentries entry 1) closure-entry-size)))
 
 ;;; Given the number of entry points in a closure, return the distance
 ;;; in objects from the address of the manifest closure to the address
@@ -127,9 +132,10 @@ USA.
 (define (closure-object-first-offset nentries)
   (if (zero? nentries)
       1					;One vector manifest.
-      ;; One object for the closure manifest, and one object for the
-      ;; leading entry count and the trailing padding.
-      (+ 2 (* nentries closure-entry-size))))
+      ;; One object for the closure manifest, half an object for the
+      ;; leading entry count, and minus half an object for the trailing
+      ;; non-padding.
+      (+ 1 (* nentries closure-entry-size))))
 
 ;;; Given the number of entries in a closure, and the indices of two
 ;;; entries, return the number of bytes separating the two entries.
@@ -196,6 +202,7 @@ USA.
 (define-integrable regnum:datum-mask rbp)
 (define-integrable regnum:regs-pointer rsi)
 (define-integrable regnum:free-pointer rdi)
+(define-integrable regnum:value rax)
 
 (define-integrable (machine-register-known-value register)
   register				; ignored
@@ -224,6 +231,8 @@ USA.
 (define-integrable register-block/dynamic-link-offset 4) ; compiler temp
 (define-integrable register-block/lexpr-primitive-arity-offset 7)
 (define-integrable register-block/stack-guard-offset 11)
+(define-integrable register-block/int-code-offset 12)
+(define-integrable register-block/reflect-to-interface-offset 13)
 
 (define-integrable (fits-in-signed-byte? value)
   (<= #x-80 value #x7f))
@@ -280,12 +289,13 @@ USA.
 	 (and (rtl:machine-constant? offset)
 	      (= (rtl:machine-constant-value offset)
 		 offset-value)))))
-  
-(define-integrable (interpreter-value-register)
-  (interpreter-block-register register-block/value-offset))
+
+(define (interpreter-value-register)
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-value-register? expression)
-  (interpreter-block-register? expression register-block/value-offset))
+  (and (rtl:register? expression)
+       (= (rtl:register-number expression) regnum:value)))
 
 (define (interpreter-environment-register)
   (interpreter-block-register register-block/environment-offset))
@@ -324,10 +334,8 @@ USA.
   (case rtl-register
     ((STACK-POINTER)
      (interpreter-stack-pointer))
-    #|
     ((VALUE)
      (interpreter-value-register))
-    |#
     ((FREE)
      (interpreter-free-pointer))
     ((INTERPRETER-CALL-RESULT:ACCESS)
@@ -353,8 +361,10 @@ USA.
      register-block/int-mask-offset)
     ((STACK-GUARD)
      register-block/stack-guard-offset)
+    #|
     ((VALUE)
      register-block/value-offset)
+    |#
     ((ENVIRONMENT)
      register-block/environment-offset)
     ((DYNAMIC-LINK TEMPORARY)
@@ -416,5 +426,5 @@ USA.
     &/
     FLOATING-VECTOR-CONS FLONUM-ACOS FLONUM-ASIN FLONUM-ATAN
     FLONUM-ATAN2 FLONUM-CEILING FLONUM-COS FLONUM-EXP FLONUM-EXPM1
-    FLONUM-FLOOR FLONUM-LOG FLONUM-LOG1P FLONUM-ROUND FLONUM-SIN
+    FLONUM-FLOOR FLONUM-FMA FLONUM-LOG FLONUM-LOG1P FLONUM-ROUND FLONUM-SIN
     FLONUM-TAN FLONUM-TRUNCATE GCD-FIXNUM STRING-ALLOCATE VECTOR-CONS))

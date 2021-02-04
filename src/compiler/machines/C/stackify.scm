@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -98,7 +98,7 @@ USA.
 	      (vector-set! info 2 #t))
 	  (vector-set! info 0 new)
 	  info))))
-    
+
 (define (stackify/count/decrement! obj)
   (let ((info (stackify/table/lookup obj)))
     (cond ((not info)
@@ -133,6 +133,7 @@ USA.
       (flo:flonum? obj)
       (symbol? obj)
       (string? obj)
+      (bytevector? obj)
       (bit-string? obj)
       (scode/primitive-procedure? obj)
       ;; The runtime system needs the following
@@ -509,6 +510,15 @@ USA.
 			   (bit-string->unsigned-integer obj)
 			   16))))
 		       (build/push-nat (bit-string-length obj) prog)))
+	((bytevector? obj)
+	 (build/string stackify-opcode/push-bytevector
+		       (let ((string
+			      (make-vector-8b (bytevector-length obj))))
+			 (do ((i 0 (+ i 1)))
+			     ((>= i (bytevector-length obj)))
+			   (vector-8b-set! string i (bytevector-u8-ref obj i)))
+			 string)
+		       prog))
 	((scode/primitive-procedure? obj)
 	 (let ((arity (primitive-procedure-arity obj))
 	       (name (symbol->string (primitive-procedure-name obj))))
@@ -676,7 +686,7 @@ USA.
 		      (fix:+ curr-depth* 1)
 		      max-depth*
 		      regmap*))))))))
-  
+
 
 (define (build/unique obj prog curr-depth max-depth regmap)
   ;; Returns <program max-depth regmap>
@@ -887,12 +897,13 @@ USA.
 		 (fix:max (fix:+ curr-depth 1) max-depth)
 		 regmap))
 	((fake-compiled-procedure? obj)
-	 (with-values (lambda ()
-			(build (fake-procedure/block obj)
-			       prog
-			       curr-depth
-			       max-depth
-			       regmap))
+	 (call-with-values
+	     (lambda ()
+	       (build (fake-procedure/block obj)
+		      prog
+		      curr-depth
+		      max-depth
+		      regmap))
 	   (lambda (prog* max-depth* regmap*)
 	     (values
 	      (build/natural stackify-opcode/cc-block-to-entry
@@ -931,7 +942,7 @@ USA.
 		   (conc-name stackify-escape/))
   (kind false read-only true)
   (contents false read-only true))
-		   
+
 (define (stackify/make-uuo-arity arity)
   (stackify-escape/make 'arity arity))
 

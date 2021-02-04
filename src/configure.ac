@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [10.1.11], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [11.1], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
 AC_PROG_MAKE_SET
@@ -9,7 +9,7 @@ AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,7 +57,7 @@ AC_ARG_WITH([compiler-target],
 AC_ARG_ENABLE([host-scheme-test],
     AS_HELP_STRING([--enable-host-scheme-test],
 	[Test for working scheme on build host [[if necessary]]]))
-if test x"${IS_NATIVE_RELEASE}" != x || test -f lib/all.com; then
+if test x"${IS_NATIVE_RELEASE}" != x; then
     : ${enable_host_scheme_test=no}
 else
     : ${enable_host_scheme_test=yes}
@@ -69,8 +69,10 @@ AC_ARG_ENABLE([cross-compiling],
 : ${enable_cross_compiling=no}
 if test "x${enable_cross_compiling}" = xyes; then
     IF_CROSS=
+    IF_NATIVE='#!native: '
 else
     IF_CROSS='#!cross-compiling: '
+    IF_NATIVE=
 fi
 
 AC_ARG_WITH([default-target],
@@ -78,8 +80,6 @@ AC_ARG_WITH([default-target],
 	[Set the default make target [[all]]]))
 if test x"${IS_NATIVE_RELEASE}" != x; then
     DEFAULT_DEFAULT_TARGET=compile-microcode
-elif test "x${enable_cross_compiling}" = xyes; then
-    DEFAULT_DEFAULT_TARGET=cross-host
 else
     DEFAULT_DEFAULT_TARGET=all
 fi
@@ -137,7 +137,9 @@ AC_ARG_ENABLE([mcrypt],
 
 AC_CANONICAL_HOST
 
-ALL_TARGET=all-native
+AC_CHECK_SIZEOF([unsigned long])
+mit_scheme_target_bytes_per_object=$ac_cv_sizeof_unsigned_long
+
 INSTALL_COM='$(INSTALL_DATA)'
 INSTALL_LIARC_BUNDLES=
 IF_LIARC='#!liarc: '
@@ -150,19 +152,24 @@ c)
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
     IF_LIARC=
     ;;
-svm1)
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     IF_SVM=
     ;;
 esac
 
 MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
-if test x"${mit_scheme_compiler_target}" = xsvm1; then
+case ${mit_scheme_compiler_target} in
+svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     IF_SVM_COMPILER=
-else
+    ;;
+*)
     IF_SVM_COMPILER='#!svm compiler: '
-fi
+    ;;
+esac
 
-AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
+MIT_SCHEME_ARCH=${mit_scheme_native_code}
+MIT_SCHEME_VERSION=${PACKAGE_VERSION}
+AUXDIR_NAME=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 MIT_SCHEME_LIBDIR=${AUXDIR}/
 MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
@@ -264,12 +271,11 @@ directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code
 fi
 
 # A 32bit host running LIAR/svm needs a large heap.
-if test x"${mit_scheme_native_code}" = xsvm1; then
-    AC_CHECK_SIZEOF([unsigned long])
-    if test ${ac_cv_sizeof_unsigned_long} -eq 4; then
-	HOST_COMPILER_HEAP="--heap 10000"
-    fi
-fi
+case ${mit_scheme_native_code} in
+svm1-32be|svm1-32le)
+    HOST_COMPILER_HEAP="--heap 10000"
+    ;;
+esac
 
 if test x"${enable_x11}" = x && test x"${enable_default_plugins}" = xyes; then
     AC_PATH_X
@@ -360,7 +366,6 @@ else
     AC_MSG_RESULT([no])
 fi
 
-AC_SUBST([ALL_TARGET])
 AC_SUBST([AUXDIR])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([DEFAULT_TARGET])
@@ -372,6 +377,7 @@ AC_SUBST([IF_GDBM])
 AC_SUBST([IF_IMAIL])
 AC_SUBST([IF_LIARC])
 AC_SUBST([IF_MCRYPT])
+AC_SUBST([IF_NATIVE])
 AC_SUBST([IF_PGSQL])
 AC_SUBST([IF_SVM])
 AC_SUBST([IF_SVM_COMPILER])
@@ -379,7 +385,11 @@ AC_SUBST([IF_X11])
 AC_SUBST([IF_X11_SCREEN])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
+AC_SUBST([MIT_SCHEME_ARCH])
 AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([MIT_SCHEME_VERSION])
+AC_SUBST([mit_scheme_native_code])
+AC_SUBST([mit_scheme_target_bytes_per_object])
 AC_SUBST([OPTION_SUBDIRS])
 
 AC_PROG_INSTALL
@@ -392,11 +402,20 @@ compiler/configure "${mit_scheme_compiler_target}" || exit $?
 
 # configure scripts for subdirs care about these
 export IS_NATIVE_RELEASE
+export MIT_SCHEME_ARCH
 export MIT_SCHEME_EXE
+export MIT_SCHEME_VERSION
 export MIT_SCHEME_LIBDIR
 export MIT_SCHEME_INCLUDEDIR
 export MIT_SCHEME_OS_SUFFIX
 export MIT_SCHEME_CC_TYPE
+
+# Microcode uses this
+export AUXDIR_NAME
+
+# Plugins use this one
+MIT_SCHEME_TOOLCHAIN_EXE=../run-build
+export MIT_SCHEME_TOOLCHAIN_EXE
 
 AC_CONFIG_SUBDIRS([microcode])
 if test x"${enable_blowfish}" = xyes; then
@@ -426,10 +445,12 @@ fi
 
 AC_CONFIG_FILES([
 Makefile
+Makefile.tools
 6001/Makefile
 compiler/Makefile
 cref/Makefile
 ffi/Makefile
+libraries/Makefile
 runtime/Makefile
 sf/Makefile
 sos/Makefile
@@ -452,8 +473,8 @@ if test x"${mit_scheme_native_code}" = xc; then
     for BN in star-parser; do
         (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
     done
-    mkdir lib/lib
-    for BUNDLE in 6001 compiler cref ffi sf sos ssp star-parser \
+    mkdir -p lib/lib
+    for BUNDLE in 6001 compiler cref ffi libraries sf sos ssp star-parser \
 		  xdoc xml; do
     	SO=${BUNDLE}.so
 	(cd lib/lib; rm -f ${SO}; ${LN_S} ../../${BUNDLE}/${SO} .)

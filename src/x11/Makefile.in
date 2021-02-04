@@ -90,7 +90,6 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-noinst_PROGRAMS = x11-const$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -138,9 +137,10 @@ am__installdirs = "$(DESTDIR)$(scmlibdir)" "$(DESTDIR)$(scmlibdir)" \
 	"$(DESTDIR)$(scmlib_subdir)"
 LTLIBRARIES = $(scmlib_LTLIBRARIES)
 x11_shim_la_DEPENDENCIES =
-am_x11_shim_la_OBJECTS = x11base.lo x11color.lo x11graph.lo x11term.lo \
-	x11-shim.lo
-x11_shim_la_OBJECTS = $(am_x11_shim_la_OBJECTS)
+am_x11_shim_la_OBJECTS = x11base.lo x11color.lo x11graph.lo x11term.lo
+nodist_x11_shim_la_OBJECTS = x11-shim.lo
+x11_shim_la_OBJECTS = $(am_x11_shim_la_OBJECTS) \
+	$(nodist_x11_shim_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -148,8 +148,10 @@ am__v_lt_1 =
 x11_shim_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(x11_shim_la_LDFLAGS) $(LDFLAGS) -o $@
-am_x11_const_OBJECTS = x11-const.$(OBJEXT)
-x11_const_OBJECTS = $(am_x11_const_OBJECTS)
+am_x11_const_OBJECTS =
+nodist_x11_const_OBJECTS = x11-const.$(OBJEXT)
+x11_const_OBJECTS = $(am_x11_const_OBJECTS) \
+	$(nodist_x11_const_OBJECTS)
 x11_const_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -189,7 +191,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(x11_shim_la_SOURCES) $(x11_const_SOURCES)
+SOURCES = $(x11_shim_la_SOURCES) $(nodist_x11_shim_la_SOURCES) \
+	$(x11_const_SOURCES) $(nodist_x11_const_SOURCES)
 DIST_SOURCES = $(x11_shim_la_SOURCES) $(x11_const_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -461,12 +464,12 @@ MIT_LIBS = @MIT_LIBS@
 MIT_SCHEME_BCIs = @MIT_SCHEME_BCIs@
 MIT_SCHEME_CLEAN = @MIT_SCHEME_CLEAN@
 MIT_SCHEME_COMs = @MIT_SCHEME_COMs@
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 MIT_SCHEME_INCLUDEDIR = @MIT_SCHEME_INCLUDEDIR@
 MIT_SCHEME_LIBDIR = @MIT_SCHEME_LIBDIR@
 MIT_SCHEME_PKD = @MIT_SCHEME_PKD@
 MIT_SCHEME_PROJECT = @MIT_SCHEME_PROJECT@
 MIT_SCHEME_SCMs = @MIT_SCHEME_SCMs@
+MIT_SCHEME_TOOLCHAIN_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
@@ -544,8 +547,10 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = autogen.sh $(all_sources) $(cdecls) compile.sh x11.pkg \
-	x11-check.sh x11-test.scm make.scm optiondb.scm tags-fix.sh
+EXTRA_DIST = autogen.sh $(sources) $(cdecls) compile.sh compile.scm \
+	x11.pkg x11-check.sh x11-test.scm make.scm optiondb.scm \
+	tags-fix.sh
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)x11
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -560,17 +565,17 @@ scmlib_sub_DATA = $(sources) $(binaries) make.scm @MIT_SCHEME_PKD@
 #AM_MAKEINFOHTMLFLAGS = --no-split
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
-x11_shim_la_LIBADD = @MIT_LIBS@
-x11_shim_la_SOURCES = x11base.c x11color.c x11graph.c x11term.c x11-shim.c
+x11_shim_la_SOURCES = x11base.c x11color.c x11graph.c x11term.c x11-shim.h x11.h
+nodist_x11_shim_la_SOURCES = x11-shim.c
 x11_shim_la_LDFLAGS = -module -avoid-version -shared
-x11_const_SOURCES = x11-const.c x11-shim.h
-MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) x11-const
+x11_shim_la_LIBADD = @MIT_LIBS@
+noinst_PROGRAMS = x11-const$(EXEEXT)
+x11_const_SOURCES = x11-shim.h x11.h
+nodist_x11_const_SOURCES = x11-const.c
+MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) x11-const$(EXEEXT)
 CLEANFILES = x11-const* x11-shim.c *.bin *.ext *.com *.bci *.moc *.fni \
 	*.crf *.fre *.pkd stamp-shim stamp-scheme @MIT_SCHEME_CLEAN@
 TESTS = x11-check.sh
-all_sources = $(sources) $(c_sources)
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 all: all-am
 
 .SUFFIXES:
@@ -1212,17 +1217,20 @@ info-am:
 
 install-data-am: install-scmlibDATA install-scmlibLTLIBRARIES \
 	install-scmlib_subDATA
-	@$(NORMAL_INSTALL)
-	$(MAKE) $(AM_MAKEFLAGS) install-data-hook
+
 install-dvi: install-dvi-am
 
 install-dvi-am:
 
 install-exec-am:
 
+install-html: install-html-am
+
 install-html-am:
 
 install-info: install-info-am
+
+install-info-am:
 
 install-man:
 
@@ -1263,9 +1271,8 @@ ps-am:
 
 uninstall-am: uninstall-scmlibDATA uninstall-scmlibLTLIBRARIES \
 	uninstall-scmlib_subDATA
-	@$(NORMAL_INSTALL)
-	$(MAKE) $(AM_MAKEFLAGS) uninstall-hook
-.MAKE: check-am install-am install-data-am install-strip uninstall-am
+
+.MAKE: check-am install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--depfiles am--refresh check \
 	check-TESTS check-am clean clean-cscope clean-generic \
@@ -1275,18 +1282,18 @@ uninstall-am: uninstall-scmlibDATA uninstall-scmlibLTLIBRARIES \
 	distcheck distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags distcleancheck distdir \
 	distuninstallcheck dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am \
-	install-data-hook install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-scmlibDATA \
-	install-scmlibLTLIBRARIES install-scmlib_subDATA install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-scmlibDATA install-scmlibLTLIBRARIES \
+	install-scmlib_subDATA install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool mostlyclean-local pdf \
 	pdf-am ps ps-am recheck tags tags-am uninstall uninstall-am \
-	uninstall-hook uninstall-scmlibDATA \
-	uninstall-scmlibLTLIBRARIES uninstall-scmlib_subDATA
+	uninstall-scmlibDATA uninstall-scmlibLTLIBRARIES \
+	uninstall-scmlib_subDATA
 
 .PRECIOUS: Makefile
 
@@ -1294,7 +1301,7 @@ uninstall-am: uninstall-scmlibDATA uninstall-scmlibLTLIBRARIES \
 x11-shim.c: stamp-shim
 x11-const.c: stamp-shim
 x11-types.bin: stamp-shim
-stamp-shim: $(c_sources) $(cdecls)
+stamp-shim: x11-shim.h x11.h $(cdecls)
 	echo '(generate-shim "x11" "#include \"x11-shim.h\"")' \
 	    | $(MIT_SCHEME_EXE) --batch-mode
 	echo "done" > $@
@@ -1302,33 +1309,20 @@ stamp-shim: $(c_sources) $(cdecls)
 x11-const.bin: x11-const.scm
 	echo '(sf "x11-const")' | $(MIT_SCHEME_EXE) --batch-mode
 
-x11-const.scm: stamp-x11-const
+x11-const.scm: x11-const$(EXEEXT)
 	./x11-const
-
-stamp-x11-const: stamp-shim
-	$(MAKE) x11-const
-	echo "done" > $@
 
 @MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) x11-const.bin x11.pkg
-	./compile.sh
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 
 mostlyclean-local:
 	-rm -rf .libs
 
-tags: tags-am
-	./tags-fix.sh x11
-
-install-data-hook:
-
-install-html: install-html-am
-
-install-info-am:
-
-uninstall-info-am:
-
-uninstall-hook:
+tags: tags-am $(sources) $(cdecls)
+	$(ETAGS) -a $(sources) -r '/^([^iI].*/' $(cdecls)
+	./tags-fix.sh
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

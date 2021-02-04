@@ -83,21 +83,25 @@ fasload.o: fasload.c bignum.h bkpt.h cmpgc.h cmpint.h cmpintmd-config.h \
 	  osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
 	  stack.h trap.h types.h
 findprim.o: findprim.c cmpintmd-config.h config.h confshared.h
-fixnum.o: fixnum.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
-	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
-	  fixnum.h fixobj.h gc.h interp.h intrpt.h memmag.h mul.c object.h \
-	  obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
-	  stack.h types.h
-floenv.o: floenv.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
-	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
-	  fixobj.h floenv.h gc.h interp.h intrpt.h memmag.h object.h \
-	  obstack.h os.h osscheme.h outf.h prim.h prims.h returns.h scheme.h \
+fixnum.o: fixnum.c bignum.h bits.h bkpt.h cmpint.h cmpintmd-config.h \
+	  cmpintmd.h config.h confshared.h const.h critsec.h dstack.h \
+	  errors.h extern.h fixnum.h fixobj.h gc.h interp.h intrpt.h memmag.h \
+	  mul.c object.h obstack.h outf.h prim.h prims.h returns.h scheme.h \
 	  scode.h sdata.h stack.h types.h
+floenv.o: floenv.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
+	  config.h confshared.h const.h critsec.h ctassert.h dstack.h \
+	  errors.h extern.h fixobj.h floenv.h gc.h interp.h intrpt.h memmag.h \
+	  object.h obstack.h os.h osscheme.h outf.h prim.h prims.h returns.h \
+	  scheme.h scode.h sdata.h stack.h types.h
 flonum.o: flonum.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
-	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
-	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h os.h \
-	  osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
-	  stack.h types.h
+	  config.h confshared.h const.h critsec.h ctassert.h dstack.h \
+	  errors.h extern.h fixobj.h floenv.h fma.h gc.h interp.h intrpt.h \
+	  memmag.h object.h obstack.h os.h osscheme.h outf.h prim.h prims.h \
+	  returns.h scheme.h scode.h sdata.h stack.h types.h
+fma.o: fma.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
+	  confshared.h const.h critsec.h dstack.h errors.h extern.h fixobj.h \
+	  floenv.h fma.h gc.h interp.h intrpt.h memmag.h object.h obstack.h \
+	  outf.h prim.h returns.h scheme.h scode.h sdata.h stack.h types.h
 gcloop.o: gcloop.c cmpgc.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h fasl.h gc.h gccode.h object.h os.h ostop.h outf.h \
 	  sdata.h types.h

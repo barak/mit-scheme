@@ -1,0 +1,20 @@
+- Fix ADR assembly -- ADRP doesn't actually do what I thought.
+- Verify the branch condition codes.
+- Verify variable-width cases.
+- Open-coded flonum arithmetic.
+- Better fixnum operations with constant operands.
+- Fast division by multiplication.
+- Fixnum multiply-add/sub/negate.
+- Consider NaN-tagging.
+- Write a disassembler.
+- Change TYPED-CONS to tag Free into a temporary _before_ writing to it.
+  Currently we do
+    str x1,[x20],#8     // *Free++ = x1
+    str x2,[x20],#8     // *Free++ = x2
+    sub x0,x20,#16      // x0 = Free - 2
+    orr x0,x0,#...      // x0 = (cons-pointer ... x0)
+  We have enough temporaries that it shouldn't be a problem to allocate
+  a temporary first and skip the sub step:
+    orr x0,x20,#...     // x0 = (cons-pointer ... Free)
+    str x1,[x20],#8     // *Free++ = x1
+    str x2,[x20],#8     // *Free++ = x2

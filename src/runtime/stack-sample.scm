@@ -20,6 +20,10 @@
 ;;; package: (runtime stack-sampler)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic)
+		'(runtime thread)
+		'(runtime continuation-parser))
 
 ;;; This rudimentary stack sampler periodically interrupts the program and
 ;;; records a histogram of return address stacks.
@@ -67,33 +71,33 @@
 
 (define event-return-address 'uninitialized)
 
-(define (initialize-package!)
-  (set! stack-sampling-return-address (make-unsettable-parameter #f))
-  (let ((blocked? (block-thread-events)))
-    (signal-thread-event (current-thread)
-      (lambda ()
-        (call-with-current-continuation
-          (lambda (continuation)
-            (set! event-return-address
-                  (let ((stack-frame
-                         ;; Total kludge here.  If thread.scm changes,
-                         ;; this will have to change too.  Note that
-                         ;; this magic subproblem skippage is not
-                         ;; isolated to here -- it must be done in
-                         ;; FIND-FIRST-SUBPROBLEM, too, because here we
-                         ;; use SUSPEND-CURRENT-THREAD to force the
-                         ;; event to run, while during sampling the
-                         ;; event is run by a timer interrupt, whose
-                         ;; continuation looks different.
-                         (stack-frame/next-subproblem
-                          (continuation/first-subproblem continuation))))
-                    (and (eq? stack-frame-type/compiled-return-address
-                              (stack-frame/type stack-frame))
-                         (stack-frame/return-address stack-frame))))))))
-    (do () ((not (eq? event-return-address 'uninitialized)))
-      (suspend-current-thread))
-    (if (not blocked?)
-        (unblock-thread-events))))
+(add-boot-init!
+ (lambda ()
+   (let ((blocked? (block-thread-events)))
+     (signal-thread-event (current-thread)
+       (lambda ()
+	 (call-with-current-continuation
+	   (lambda (continuation)
+	     (set! event-return-address
+		   (let ((stack-frame
+			  ;; Total kludge here.  If thread.scm changes,
+			  ;; this will have to change too.  Note that
+			  ;; this magic subproblem skippage is not
+			  ;; isolated to here -- it must be done in
+			  ;; FIND-FIRST-SUBPROBLEM, too, because here we
+			  ;; use SUSPEND-CURRENT-THREAD to force the
+			  ;; event to run, while during sampling the
+			  ;; event is run by a timer interrupt, whose
+			  ;; continuation looks different.
+			  (stack-frame/next-subproblem
+			   (continuation/first-subproblem continuation))))
+		     (and (eq? stack-frame-type/compiled-return-address
+			       (stack-frame/type stack-frame))
+			  (stack-frame/return-address stack-frame))))))))
+     (do () ((not (eq? event-return-address 'uninitialized)))
+       (suspend-current-thread))
+     (if (not blocked?)
+	 (unblock-thread-events)))))
 
 (define stack-sampler:debug-internal-errors? #f)
 (define stack-sampler:topmost-expressions 2)
@@ -145,7 +149,8 @@
               (stack-frame/type stack-frame))
          (eq? event-return-address (stack-frame/return-address stack-frame)))))
 
-(define stack-sampling-return-address)
+(define-deferred stack-sampling-return-address
+  (make-unsettable-parameter #f))
 
 (define (stack-sampling-stack-frame? stack-frame)
   (let ((return-address (stack-sampling-return-address)))

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -651,16 +651,16 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       ,@(inst:jump (ea:uuo-entry-address
-		     (free-uuo-link-label name frame-size)))))
+       ,@(inst:indirect-jump
+	  (ea:address (free-uuo-link-label name frame-size)))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       ,@(inst:jump (ea:uuo-entry-address
-		     (global-uuo-link-label name frame-size)))))
+       ,@(inst:indirect-jump
+	  (ea:address (global-uuo-link-label name frame-size)))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
@@ -1341,14 +1341,15 @@ USA.
 	(LAP))))
 
 (define (generate/uuos name.caches-list)
-  (append-map (lambda (name.caches)
-		(append-map (let ((name (car name.caches)))
-			      (lambda (cache)
-				(let ((frame-size (car cache))
-				      (label (cdr cache)))
-				  `((,frame-size . ,label)
-				    (,name . ,(allocate-constant-label))))))
-			    (cdr name.caches)))
+  (append-map
+   (lambda (name.caches)
+     (append-map (let ((name (car name.caches)))
+		   (lambda (cache)
+		     (let ((frame-size (car cache))
+			   (label (cdr cache)))
+		       `((,frame-size . ,(allocate-constant-label))
+			 (,name . ,label)))))
+		 (cdr name.caches)))
 	      name.caches-list))
 
 (define (make-linkage-type-marker linkage-type n-entries)

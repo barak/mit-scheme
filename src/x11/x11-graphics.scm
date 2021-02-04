@@ -3,23 +3,24 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
-This file is part of an x11 plugin for MIT/GNU Scheme.
+This file is part of MIT/GNU Scheme.
 
-This plugin is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2 of the License, or (at your
-option) any later version.
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
 
-This plugin is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this plugin; if not, write to the Free Software Foundation,
-Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
 
 |#
 
@@ -62,8 +63,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (C-call "x_graphics_reconfigure" window width height))
 
 (define (x-graphics-open-window display geometry suppress-map)
-  ;; Open a window on DISPLAY using GEOMETRY.  If GEOMETRY is false
-  ;; map window interactively.  If third argument SUPPRESS-MAP? is
+  ;; Open a window on display using geometry.  If geometry is false
+  ;; map window interactively.  If third argument suppress-map? is
   ;; true, do not map the window immediately.
   (receive (name class map?)
       (cond ((and (pair? suppress-map)
@@ -115,9 +116,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-graphics-draw-arc window x y radius-x radius-y
 			     start-angle sweep-angle fill?)
   ;; Draw an arc at the given coordinates, with given X and Y radii.
-  ;; START-ANGLE and SWEEP-ANGLE are in degrees, anti-clocwise.
-  ;; START-ANGLE is from 3 o'clock, and SWEEP-ANGLE is relative to the
-  ;; START-ANGLE.  If FILL? is true, the arc is filled.
+  ;; start-angle and sweep-angle are in degrees, anti-clocwise.
+  ;; start-angle is from 3 o'clock, and sweep-angle is relative to the
+  ;; start-angle.  if fill? is true, the arc is filled.
   (C-call "x_graphics_draw_arc" window
 	  x y radius-x radius-y start-angle sweep-angle (if fill? 1 0)))
 
@@ -182,8 +183,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
       (free points))))
 
 (define (x-create-image window width height)
-  ;; Creates and returns an XImage object, of dimensions WIDTH by HEIGHT.
-  ;; WINDOW is used to set the Display, Visual, and Depth characteristics.
+  ;; Creates and returns an XImage object, of dimensions width by height.
+  ;; window is used to set the Display, Visual, and Depth characteristics.
   ;; The image is created by calling XCreateImage.
   (let ((result (C-call "x_create_image" (make-alien '(struct |xwindow|))
 			window width height)))
@@ -192,12 +193,22 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	result)))
 
 (define (x-bytes-into-image vector image)
-  ;; VECTOR is a bytevector of pixel values stored in row-major order; it must
-  ;; have the same number of pixels as IMAGE.  These pixels are written onto
-  ;; IMAGE by repeated calls to XPutPixel.  This procedure is equivalent to
-  ;; calling X-SET-PIXEL-IN-IMAGE for each pixel in VECTOR.
-  (guarantee bytevector? vector 'x-bytes-into-image)
-  (C-call "x_bytes_into_image" vector image))
+  ;; vector is a bytevector of pixel values stored in row-major order; it must
+  ;; have the same number of pixels as image.  These pixels are written onto
+  ;; image by repeated calls to XPutPixel.  This procedure is equivalent to
+  ;; calling x-set-pixel-in-image for each pixel in vector.
+  (cond ((bytevector? vector)
+	 (C-call "x_bytes_into_image" vector image))
+	((vector? vector)
+	 (let ((w (C-call "x_image_width" image))
+	       (h (C-call "x_image_height" image)))
+	   (if (not (= (* w h) (vector-length vector)))
+	       (error:bad-range-argument vector 'X-BYTES-INTO-IMAGE))
+	   (do ((y 0 (+ y 1)) (i 0 (+ i w))) ((>= y h))
+	     (do ((x 0 (+ x 1)) (i i (+ i 1))) ((>= x w))
+	       (x-set-pixel-in-image image x y (vector-ref vector i))))))
+	(else
+	 (error:wrong-type-argument vector 'X-BYTES-INTO-IMAGE))))
 
 (define (x-get-pixel-from-image image x y)
   (let ((pixel (C-call "x_get_pixel_from_image" image x y)))
@@ -224,7 +235,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	  window x-window-offset y-window-offset width height))
 
 (define (x-window-depth window)
-  ;; Returns the pixel depth of WINDOW as an integer.
+  ;; Returns the pixel depth of window as an integer.
   (C-call "x_window_depth" window))
 
 (define (x-graphics-map-x-coordinate window x)

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; The GDBM option.
+;;;; The gdbm option.
 ;;; package: (gdbm)
 
 (declare (usual-integrations))
@@ -83,17 +83,17 @@ USA.
       (bytevector-length bytes)
       (string-length bytes)))
 
-;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who can
+;; Parameters to gdbm_open for readers, writers, and writers who can
 ;; create the database.
-(define GDBM_READER (C-enum "GDBM_READER"))	;A reader.
-(define GDBM_WRITER (C-enum "GDBM_WRITER"))	;A writer.
-(define GDBM_WRCREAT(C-enum "GDBM_WRCREAT"))	;A writer.  Create the db if needed.
-(define GDBM_NEWDB  (C-enum "GDBM_NEWDB"))	;A writer.  Always create a new db.
-(define GDBM_FAST   (C-enum "GDBM_FAST"))	;Write fast! => No fsyncs.
+(define gdbm_reader  (C-enum "GDBM_READER"))	;A reader.
+(define gdbm_writer  (C-enum "GDBM_WRITER"))	;A writer.
+(define gdbm_wrcreat (C-enum "GDBM_WRCREAT"))	;A writer.  Create the db if needed.
+(define gdbm_newdb   (C-enum "GDBM_NEWDB"))	;A writer.  Always create a new db.
+(define gdbm_fast    (C-enum "GDBM_FAST"))	;Write fast! => No fsyncs.
 
 (define (gdbm-open filename block-size flags mode)
-  (guarantee integer? block-size 'GDBM-OPEN)
-  (guarantee integer? mode 'GDBM-OPEN)
+  (guarantee integer? block-size 'gdbm-open)
+  (guarantee integer? mode 'gdbm-open)
   (let ((args (make-alien '|gdbm_args|))
 	(flagsnum (guarantee-gdbm-open-flags flags))
 	(filename (->namestring (merge-pathnames filename))))
@@ -113,20 +113,20 @@ USA.
 (define (guarantee-gdbm-open-flags flags)
   (define (flag->number flag)
     (case flag
-      ((READER) (C-enum "GDBM_READER"))
-      ((WRITER) (C-enum "GDBM_WRITER"))
-      ((WRCREAT) (C-enum "GDBM_WRCREAT"))
-      ((NEWDB) (C-enum "GDBM_NEWDB"))
-      ((FAST) (C-enum "GDBM_FAST"))
-      (else (error:wrong-type-argument flags "gdbm-open flags" 'GDBM-OPEN))))
+      ((reader) (C-enum "GDBM_READER"))
+      ((writer) (C-enum "GDBM_WRITER"))
+      ((wrcreat) (C-enum "GDBM_WRCREAT"))
+      ((newdb) (C-enum "GDBM_NEWDB"))
+      ((fast) (C-enum "GDBM_FAST"))
+      (else (error:wrong-type-argument flags "gdbm-open flags" 'gdbm-open))))
   (cond ((integer? flags) flags)
 	((symbol? flags) (flag->number flags))
 	((list-of-type? flags symbol?)
 	 (reduce + 0 (map flag->number flags)))
-	(else (error:wrong-type-argument flags "gdbm-open flags" 'GDBM-OPEN))))
+	(else (error:wrong-type-argument flags "gdbm-open flags" 'gdbm-open))))
 
 (define (gdbm-close gdbf)
-  (guarantee-gdbf gdbf 'GDBM-CLOSE)
+  (guarantee-gdbf gdbf 'gdbm-close)
   (with-gdbf-locked
    gdbf
    (lambda ()
@@ -140,21 +140,21 @@ USA.
 
 ;; Parameters to gdbm_store for simple insertion or replacement in the
 ;; case that the key is already in the database.
-(define GDBM_INSERT  (C-enum "GDBM_INSERT"))	;Never replace old data.
-(define GDBM_REPLACE (C-enum "GDBM_REPLACE"))	;Always replace old data.
+(define gdbm_insert  (C-enum "GDBM_INSERT"))	;Never replace old data.
+(define gdbm_replace (C-enum "GDBM_REPLACE"))	;Always replace old data.
 
 (define (gdbm-store gdbf key content flag)
-  (guarantee-gdbf gdbf 'GDBM-STORE)
-  (guarantee-nonnull-string key 'GDBM-STORE)
-  (guarantee-nonnull-string content 'GDBM-STORE)
-  (let ((flagnum (cond ((= flag GDBM_INSERT) flag)
-		       ((= flag GDBM_REPLACE) flag)
-		       ((eq? flag 'INSERT) (C-enum "GDBM_INSERT"))
-		       ((eq? flag 'REPLACE) (C-enum "GDBM_REPLACE"))
+  (guarantee-gdbf gdbf 'gdbm-store)
+  (guarantee-nonnull-string key 'gdbm-store)
+  (guarantee-nonnull-string content 'gdbm-store)
+  (let ((flagnum (cond ((= flag gdbm_insert) flag)
+		       ((= flag gdbm_replace) flag)
+		       ((eq? flag 'insert) (C-enum "GDBM_INSERT"))
+		       ((eq? flag 'replace) (C-enum "GDBM_REPLACE"))
 		       (else (error:wrong-type-argument flag "gdbm-store flag"
-							'GDBM-STORE)))))
+							'gdbm-store)))))
     (with-gdbf-locked-open
-     gdbf 'GDBM-STORE
+     gdbf 'gdbm-store
      (lambda (args)
        (gdbf-args-put-key! args key)
        (gdbf-args-put-content! args content)
@@ -164,37 +164,37 @@ USA.
 	       (else (gdbm-error gdbf "gdbm_store"))))))))
 
 (define (gdbm-fetch gdbf key)
-  (guarantee-gdbf gdbf 'GDBM-FETCH)
-  (guarantee-nonnull-string key 'GDBM-FETCH)
+  (guarantee-gdbf gdbf 'gdbm-fetch)
+  (guarantee-nonnull-string key 'gdbm-fetch)
   (with-gdbf-locked-open
-   gdbf 'GDBM-FETCH
+   gdbf 'gdbm-fetch
    (lambda (args)
      (gdbf-args-put-key! args key)
      (C-call "do_gdbm_fetch" args)
      (gdbf-args-get-content args))))
 
 (define (gdbm-exists? gdbf key)
-  (guarantee-gdbf gdbf 'GDBM-EXISTS?)
-  (guarantee-nonnull-string key 'GDBM-EXISTS?)
+  (guarantee-gdbf gdbf 'gdbm-exists?)
+  (guarantee-nonnull-string key 'gdbm-exists?)
   (with-gdbf-locked-open
-   gdbf 'GDBM-EXISTS
+   gdbf 'gdbm-exists
    (lambda (args)
      (gdbf-args-put-key! args key)
      (not (zero? (C-call "do_gdbm_exists" args))))))
 
 (define (gdbm-delete gdbf key)
-  (guarantee-gdbf gdbf 'GDBM-DELETE)
-  (guarantee-nonnull-string key 'GDBM-DELETE)
+  (guarantee-gdbf gdbf 'gdbm-delete)
+  (guarantee-nonnull-string key 'gdbm-delete)
   (with-gdbf-locked-open
-   gdbf 'GDBM-DELETE
+   gdbf 'gdbm-delete
    (lambda (args)
      (gdbf-args-put-key! args key)
      (zero? (C-call "do_gdbm_delete" (gdbf-args gdbf))))))
 
 (define (gdbm-keys gdbf)
-  (guarantee-gdbf gdbf 'GDBM-KEYS)
+  (guarantee-gdbf gdbf 'gdbm-keys)
   (with-gdbf-locked-open
-   gdbf 'GDBM-KEYS
+   gdbf 'gdbm-keys
    (lambda (args)
      (C-call "do_gdbm_firstkey" args)
      (let ((key (gdbf-args-get-key args)))
@@ -206,21 +206,21 @@ USA.
 		 keys)))))))
 
 (define (gdbm-firstkey gdbf)
-  (guarantee-gdbf gdbf 'GDBM-FIRSTKEY)
+  (guarantee-gdbf gdbf 'gdbm-firstkey)
   (with-gdbf-locked-open
-   gdbf 'GDBM-FIRSTKEY
+   gdbf 'gdbm-firstkey
    (lambda (args)
      (C-call "do_gdbm_firstkey" args)
      (gdbf-args-get-key args))))
 
 (define (gdbm-nextkey gdbf key)
-  ;; Returns #f if KEY is not (or no longer) in the database.  Use
+  ;; Returns #f if key is not (or no longer) in the database.  Use
   ;; gdbm-keys to read a complete list despite deletes.  Gdbm-keys
   ;; also avoids copying the keys back for gdbm_nextkey.
-  (guarantee-gdbf gdbf 'GDBM-NEXTKEY)
-  (guarantee-nonnull-string key 'GDBM-NEXTKEY)
+  (guarantee-gdbf gdbf 'gdbm-nextkey)
+  (guarantee-nonnull-string key 'gdbm-nextkey)
   (with-gdbf-locked-open
-   gdbf 'GDBM-NEXTKEY
+   gdbf 'gdbm-nextkey
    (lambda (args)
      (gdbf-args-put-key! args key)
      (if (zero? (C-call "do_gdbm_nextkey" args))
@@ -228,53 +228,53 @@ USA.
 	 #f))))
 
 (define (gdbm-reorganize gdbf)
-  (guarantee-gdbf gdbf 'GDBM-REORGANIZE)
+  (guarantee-gdbf gdbf 'gdbm-reorganize)
   (with-gdbf-locked-open
-   gdbf 'GDBM-REORGANIZE
+   gdbf 'gdbm-reorganize
    (lambda (args)
      (if (not (zero? (C-call "do_gdbm_reorganize" args)))
 	 (gdbm-error gdbf "gdbm_reorganize")))))
 
 (define (gdbm-sync gdbf)
-  (guarantee-gdbf gdbf 'GDBM-SYNC)
+  (guarantee-gdbf gdbf 'gdbm-sync)
   (with-gdbf-locked-open
-   gdbf 'GDBM-SYNC
+   gdbf 'gdbm-sync
    (lambda (args)
      (C-call "do_gdbm_sync" args))))
 
 (define (gdbm-strerror errno)
-  (guarantee fixnum? errno 'GDBM-STRERROR)
+  (guarantee fixnum? errno 'gdbm-strerror)
   (c-peek-cstring (C-call "gdbm_strerror" (make-alien '(* char)) errno)))
 
 (define (strerror errno)
-  (guarantee fixnum? errno 'STRERROR)
+  (guarantee fixnum? errno 'strerror)
   (c-peek-cstring (C-call "strerror" (make-alien '(* char)) errno)))
 
 ;; Parameters to gdbm_setopt, specifing the type of operation to perform.
-(define GDBM_CACHESIZE (C-enum "GDBM_CACHESIZE"))	;Set the cache size.
-(define GDBM_SYNCMODE  (C-enum "GDBM_SYNCMODE"))	;Toggle fast mode.
+(define gdbm_cachesize (C-enum "GDBM_CACHESIZE"))	;Set the cache size.
+(define gdbm_syncmode  (C-enum "GDBM_SYNCMODE"))	;Toggle fast mode.
 
 (define (gdbm-setopt gdbf opt val)
-  (guarantee-gdbf gdbf 'GDBM-SETOPT)
+  (guarantee-gdbf gdbf 'gdbm-setopt)
   (let* ((optnum
-	  (cond ((eq? opt 'SYNCMODE) (C-enum "GDBM_SYNCMODE"))
-		((eq? opt 'CACHESIZE) (C-enum "GDBM_CACHESIZE"))
-		((and (number? opt) (= opt GDBM_SYNCMODE)) opt)
-		((and (number? opt) (= opt GDBM_CACHESIZE)) opt)
-		(else (error:wrong-type-argument opt "option" 'GDBM-SETOPT))))
+	  (cond ((eq? opt 'syncmode) (C-enum "GDBM_SYNCMODE"))
+		((eq? opt 'cachesize) (C-enum "GDBM_CACHESIZE"))
+		((and (number? opt) (= opt gdbm_syncmode)) opt)
+		((and (number? opt) (= opt gdbm_cachesize)) opt)
+		(else (error:wrong-type-argument opt "option" 'gdbm-setopt))))
 	 (valnum
-	  (cond ((= optnum GDBM_SYNCMODE)
-		 (cond ((not val) 0)
+	  (cond ((= optnum gdbm_syncmode)
+		 (cond ((eq? val #f) 0)
 		       ((eq? val #t) 1)
 		       ((zero? val) val)
 		       ((= val 1) val)
-		       (else (error:wrong-type-argument val "SYNCMODE boolean"
-							'GDBM-SETOPT))))
-		((= optnum GDBM_CACHESIZE)
-		 (guarantee integer? val 'GDBM-SETOPT)
+		       (else (error:wrong-type-argument val "syncmode"
+							'gdbm-setopt))))
+		((= optnum gdbm_cachesize)
+		 (guarantee integer? val 'gdbm-setopt)
 		 val))))
     (with-gdbf-locked-open
-     gdbf 'GDBM-SETOPT
+     gdbf 'gdbm-setopt
      (lambda (args)
        (if (not (zero? (C-call "do_gdbm_setopt" args optnum valnum)))
 	   (gdbm-error gdbf "gdbm_setopt"))))))
@@ -289,7 +289,7 @@ USA.
 
 (define-structure (gdbf (constructor make-gdbf)
 			(print-procedure
-			 (standard-print-method 'GDBF
+			 (standard-print-method 'gdbf
 			   (lambda (gdbf)
 			     (list (gdbf-filename gdbf))))))
   ;; Note that communicating through this malloced-per-GDBM_FILE
@@ -375,27 +375,18 @@ USA.
 (define open-gdbfs-mutex)
 
 (define (add-open-gdbf-cleanup gdbf)
-  (with-thread-mutex-lock
-   open-gdbfs-mutex
-   (lambda ()
-     (set! open-gdbfs (cons (weak-cons gdbf (gdbf-args gdbf))
-			    open-gdbfs)))))
+  (with-thread-mutex-lock open-gdbfs-mutex
+    (lambda ()
+      (set! open-gdbfs
+	    (cons (weak-cons gdbf (gdbf-args gdbf))
+		  open-gdbfs)))))
 
 (define (remove-open-gdbf-cleanup gdbf)
-  (with-thread-mutex-lock
-   open-gdbfs-mutex
-   (lambda ()
-     (let ((entry (weak-assq gdbf open-gdbfs)))
-       (if entry
-	   (set! open-gdbfs (delq! entry open-gdbfs)))))))
-
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (null? alist) #f
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? obj key) entry
-	      (loop (cdr alist)))))))
+  (with-thread-mutex-lock open-gdbfs-mutex
+    (lambda ()
+      (let ((entry (weak-assq gdbf open-gdbfs)))
+	(if entry
+	    (set! open-gdbfs (delq! entry open-gdbfs)))))))
 
 (define (cleanup-open-gdbfs)
   (with-thread-mutex-try-lock

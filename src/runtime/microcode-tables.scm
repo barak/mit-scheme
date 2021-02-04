@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime microcode-tables)
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 (define-integrable fixed-objects-slot 15)
 
@@ -53,6 +55,9 @@ USA.
     (lambda (updater)
       (let ((v (get-fixed-objects-vector)))
 	(vector-set! v index (updater (vector-ref v index)))))))
+
+(define (fixed-objects-item? name)
+  (and (fixed-object/name->code name) #t))
 
 (define (fixed-objects-item name)
   ((fixed-objects-accessor name)))
@@ -182,6 +187,8 @@ USA.
 (define microcode-id/floating-epsilon)
 (define microcode-id/floating-exponent-min)
 (define microcode-id/floating-exponent-max)
+(define microcode-id/nonnegative-fixnum-length)
+(define microcode-id/nonnegative-fixnum-mask)
 (define microcode-id/operating-system)
 (define microcode-id/operating-system-name)
 (define microcode-id/operating-system-variant)
@@ -200,6 +207,15 @@ USA.
         (microcode-identification-item 'flonum-exponent-min))
   (set! microcode-id/floating-exponent-max
         (microcode-identification-item 'flonum-exponent-max))
+  (set! microcode-id/nonnegative-fixnum-length
+	(or (microcode-identification-item 'nonnegative-fixnum-length #f)
+	    (let loop ((i 1) (n 0))
+	      (if (fix:fixnum? i)
+		  (loop (* i 2) (+ n 1))
+		  n))))
+  (set! microcode-id/nonnegative-fixnum-mask
+	(or (microcode-identification-item 'nonnegative-fixnum-mask #f)
+	    (fix:not (fix:lsh -1 microcode-id/nonnegative-fixnum-length))))
   (set! microcode-id/operating-system-name
 	(microcode-identification-item 'os-name-string))
   (set! microcode-id/operating-system
@@ -214,8 +230,7 @@ USA.
 
 (add-boot-init!
  (lambda ()
-   (read-microcode-identification!)
-   (run-deferred-boot-actions 'fixed-objects)))
+   (run-now-and-after-restore! read-microcode-identification!)))
 
 (define (microcode-identification-item name #!optional default-value)
   (let ((index (microcode-table-search identifications-slot name)))
@@ -226,7 +241,7 @@ USA.
 	      (error:bad-range-argument name 'microcode-identification-item))
 	  default-value))))
 
-(define (get-microcode-version-numbers)
+(define (get-microcode-version)
   (map (lambda (s) (or (string->number s) s))
        (burst-string microcode-version-string #\. #f)))
 

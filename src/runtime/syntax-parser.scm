@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime syntax parser)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime bytevector))
 
 ;;; A "syntax parser" as defined here is a procedure with the following
 ;;; signature:
@@ -219,6 +221,13 @@ USA.
 				  procedure
 				  (%subst-args input senv output args)))
 	     failure)))
+
+(define (spar-funcall procedure . args)
+  (lambda (input senv output success failure)
+    (apply %call-out input senv
+	   procedure
+	   (%subst-args input senv output args))
+    (success input senv output failure)))
 
 (define (spar-error message . irritants)
   (lambda (input senv output success failure)

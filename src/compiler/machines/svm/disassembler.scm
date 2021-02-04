@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -246,7 +246,7 @@ USA.
 (define (write-constant constant cursor)
   (write-string (cdr (write-to-string constant 60)))
   (cond ((scode-lambda? constant)
-	 (let ((expression (lambda-body constant)))
+	 (let ((expression (scode-lambda-body constant)))
 	   (if (and (compiled-code-address? expression)
 		    (eq? (compiled-code-address->block expression)
 			 (cursor-block cursor)))
@@ -325,14 +325,6 @@ USA.
 	(write (car entry))
 	(write-string "... not found!"))))
 
-(define (weak-assq obj alist)
-  (let loop ((alist alist))
-    (if (null? alist) #f
-	(let* ((entry (car alist))
-	       (key (weak-car entry)))
-	  (if (eq? obj key) entry
-	      (loop (cdr alist)))))))
-
 (define (write-procedure-cache block index)
   (let ((result (read-procedure-cache block index)))
     (write (-1+ (vector-ref result 2)))
@@ -348,21 +340,17 @@ USA.
 	      (vector-ref result 0))))))
 
 (define (read-procedure-cache block index)
-  (let ((word (system-vector-ref block index)))
-    (if (object-type? (ucode-type fixnum) word)
+  (let ((frame-size (system-vector-ref block index)))
+    (assert (object-type? (ucode-type fixnum) frame-size))
+    (if (object-type? (ucode-type interned-symbol)
+		      (system-vector-ref block (1+ index)))
 	;; Unlinked.
-	(vector 'INTERPRETED (system-vector-ref block (1+ index)) word)
+	(let ((name (system-vector-ref block (1+ index))))
+	  (vector 'INTERPRETED name frame-size))
 	;; Linked.
-	(let ((offset (compiled-code-block/index->offset index))
-	      (bytes address-units-per-object))
-	  (let ((arity (read-unsigned-integer block offset 16))
-		(opcode (read-unsigned-integer block (+ offset bytes -2) 8))
-		(operand (read-unsigned-integer block (+ offset bytes -1) 8)))
-	    (if (and (= opcode svm1-inst:ijump-u8) (= operand 0))
-		(vector 'COMPILED (read-procedure block (+ offset bytes)) arity)
-		(error (string-append "disassembler/read-procedure-cache:"
-				      " Unexpected instruction")
-		       opcode operand)))))))
+	(let* ((offset (compiled-code-block/index->offset (1+ index)))
+	       (procedure (read-procedure block offset)))
+	  (vector 'COMPILED procedure frame-size)))))
 
 (define (read-procedure block offset)
   (with-absolutely-no-interrupts

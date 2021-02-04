@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -95,7 +95,9 @@ USA.
     (cond ((fix:< start end)
 	   (let ((char (string-ref string start))
 		 (start (fix:+ start 1)))
-	     (cond ((not (char-lwsp? char))
+	     (cond ((not (char-8-bit? char))
+		    (error "Quoted-printable encoder can't handle Unicode"))
+		   ((not (char-lwsp? char))
 		    (if (char-in-set? char char-set:qp-encoded)
 			(write-qp-encoded context char)
 			(write-qp-clear context char))
@@ -140,8 +142,10 @@ USA.
   (let ((port (qp-encoding-context/port context))
 	(column (qp-encoding-context/column context))
 	(d (char->integer char)))
-    (let ((c1 (digit->char (fix:lsh d -4) 16))
-	  (c2 (digit->char (fix:and d #x0F) 16)))
+    (assert (<= 0 d #xff))
+    (define (hex c) (string-ref "0123456789ABCDEF" c))
+    (let ((c1 (hex (fix:lsh d -4)))
+	  (c2 (hex (fix:and d #x0F))))
       (if (fix:= column 73)
 	  (set-qp-encoding-context/pending-output! context (string #\= c1 c2))
 	  (begin
@@ -327,7 +331,7 @@ USA.
 
 (define char-set:qp-encoded
   (char-set-invert
-   (char-set-union (char-set-difference (ascii-range->char-set #x21 #x7F)
+   (char-set-union (char-set-difference (ucs-range->char-set #x21 #x7F)
 					(char-set #\=))
 		   (char-set #\space #\tab))))
 
@@ -790,7 +794,7 @@ USA.
 (define binhex40:digit->char-table
   "!\"#$%&\'()*+,-012345689@ABCDEFGHIJKLMNPQRSTUVXYZ[`abcdefhijklmpqr")
 
-(define-deferred binhex40:char->digit-table
+(define binhex40:char->digit-table
   (let ((table (make-bytevector #x80 #xFF)))
     (do ((digit 0 (fix:+ digit 1)))
 	((not (fix:< digit #x40)))

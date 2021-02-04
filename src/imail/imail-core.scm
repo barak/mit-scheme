@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -375,7 +375,8 @@ USA.
 	       ;; Delete memoization _only_ if URL-EXISTS?
 	       ;; unambiguously states non-existence.  An error is
 	       ;; often transitory.
-	       (if (and resource (ignore-errors (lambda () (url-exists? url))))
+	       (if (and (not (gc-reclaimed-object? resource))
+			(ignore-errors (lambda () (url-exists? url))))
 		   resource
 		   (begin
 		     (hash-table-delete! memoized-resources url)
@@ -395,7 +396,7 @@ USA.
   (let ((r.c (hash-table-ref/default memoized-resources url #f)))
     (if r.c
 	(let ((resource (weak-car r.c)))
-	  (if resource
+	  (if (not (gc-reclaimed-object? resource))
 	      (begin
 		(let ((close (weak-cdr r.c)))
 		  (if close

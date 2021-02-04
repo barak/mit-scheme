@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define-deferred registers (make-vector 20 #f))
+(define registers (make-vector 20 #f))
 
 (define (re-register? object)
   (and (index-fixnum? object)
@@ -179,7 +179,8 @@ USA.
 	(append! (cdr ranges) (list char))
 	ranges))
 
-  (let ((chars (char-set-members char-set)))
+  (let ((chars
+	 (char-set->list (char-set-intersection char-set char-set:ascii))))
     (if (pair? chars)
 	(if (pair? (cdr chars))
 	    (let ((builder (string-builder)))

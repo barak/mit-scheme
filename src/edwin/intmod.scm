@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -902,20 +902,25 @@ If this is an error, the debugger examines the error condition."
 	   (and (not (null? windows))
 		(apply min (map window-x-size windows)))))))
 
-(define (operation/write-result port expression value hash-number)
+(define (operation/write-values port expression vals)
   (let ((buffer (port/buffer port))
 	(other-buffer?
 	 (memq (operation/current-expression-context port expression)
-	       '(OTHER-BUFFER EXPRESSION))))
+	       '(other-buffer expression))))
     (if (and other-buffer?
 	     (not (ref-variable inferior-repl-write-results buffer)))
-	(transcript-write value
-			  (and (ref-variable enable-transcript-buffer buffer)
-			       (transcript-buffer)))
+	(let ((tbuffer
+	       (and (ref-variable enable-transcript-buffer buffer)
+		    (transcript-buffer))))
+	  (for-each (lambda (object)
+		      (transcript-write object tbuffer))
+		    vals))
 	(begin
-	  (default/write-result port expression value hash-number)
+	  (default/write-values port expression vals)
 	  (if (and other-buffer? (not (mark-visible? (port/mark port))))
-	      (transcript-write value #f))))))
+	      (for-each (lambda (val)
+			  (transcript-write val #f))
+			vals))))))
 
 (define (mark-visible? mark)
   (any (lambda (window)
@@ -995,8 +1000,7 @@ If this is an error, the debugger examines the error condition."
 (define (operation/read-char port)
   (error "READ-CHAR not supported on this port:" port))
 
-(define (operation/read port environment)
-  (declare (ignore environment))
+(define (operation/read port)
   (read-expression port (nearest-cmdl/level)))
 
 (define read-expression
@@ -1178,5 +1182,5 @@ If this is an error, the debugger examines the error condition."
      (READ-CHAR ,operation/read-char)
      (READ ,operation/read)
      (CURRENT-EXPRESSION-CONTEXT ,operation/current-expression-context)
-     (WRITE-RESULT ,operation/write-result))
+     (WRITE-VALUES ,operation/write-values))
    #f))

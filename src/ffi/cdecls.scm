@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,7 +57,7 @@ USA.
 
 (define (include-cdecls library)
   ;; Toplevel entry point for the generator.
-  ;; Returns a new C-INCLUDES structure.
+  ;; Returns a new c-includes structure.
   (let ((includes (make-c-includes library))
 	(cwd (if (param:loading?)
 		 (directory-pathname (current-load-pathname))
@@ -70,9 +70,9 @@ USA.
 (define current-filename)
 
 (define (include-cdecl-file filename cwd twd includes)
-  ;; Adds the C declarations in FILENAME to INCLUDES.  Interprets
-  ;; FILENAME relative to CWD (current working directory).
-  ;; Abbreviates namestrings under TWD (topmost working, build directory).
+  ;; Adds the C declarations in filename to includes.  Interprets
+  ;; filename relative to cwd (current working directory).
+  ;; Abbreviates namestrings under twd (topmost working, build directory).
 
   (let* ((pathname (->simple-pathname
 		    (merge-pathnames (pathname-default-type filename "cdecl")
@@ -114,8 +114,8 @@ USA.
 	    (else (loop again (fix:1+ count)))))))
 
 (define (include-cdecl form cwd twd includes)
-  ;; Add a top-level C declaration to INCLUDES.  If it is an
-  ;; include, interprete the included filenames relative to CWD
+  ;; Add a top-level C declaration to includes.  If it is an
+  ;; include, interprete the included filenames relative to cwd
   ;; (current working directory).
   (if (not (and (pair? form) (symbol? (car form)) (pair? (cdr form))))
       (cerror form "malformed top level C declaration"))
@@ -136,7 +136,7 @@ USA.
   unspecific)
 
 (define (include-typedef form name rest includes)
-  ;; Add a top-level (typedef NAME . REST) C declaration to INCLUDES.
+  ;; Add a top-level (typedef name . rest) C declaration to includes.
   (if (not (and (symbol? name)
 		(pair? rest) (null? (cdr rest))))
       (cerror form "malformed typedef declaration"))
@@ -149,13 +149,13 @@ USA.
       unspecific)))
 
 (define (include-struct form name members includes)
-  ;; Add a top-level (struct NAME . MEMBERS) C declaration to INCLUDES.
+  ;; Add a top-level (struct name . members) C declaration to includes.
   (if (not (and (symbol? name) (pair? members) (list? members)))
       (cerror form "malformed named struct declaration"))
   (let* ((structs (c-includes/structs includes))
 	 (entry (assq name structs)))
     (if entry (cerror form "already defined in " (cddr entry)))
-    (let* ((anon (cons 'STRUCT
+    (let* ((anon (cons 'struct
 		       (map (lambda (member)
 			      (valid-struct-member member includes))
 			    members)))
@@ -165,8 +165,8 @@ USA.
       unspecific)))
 
 (define (valid-struct-member form includes)
-  ;; Returns (NAME . CTYPE) given a MEMBER C declaration.
-  ;; Adds any internal named struct/union/enum types to INCLUDES.
+  ;; Returns (name . ctype) given a member C declaration.
+  ;; Adds any internal named struct/union/enum types to includes.
   (if (not (and (pair? form) (symbol? (car form))
 		(pair? (cdr form)) (null? (cddr form))))
       (cerror form "malformed struct member"))
@@ -175,13 +175,13 @@ USA.
     (cons name ctype)))
 
 (define (include-union form name members includes)
-  ;; Add a top-level (union NAME . MEMBERS) C declaration to INCLUDES.
+  ;; Add a top-level (union name . members) C declaration to includes.
   (if (not (and (symbol? name) (pair? members) (list? members)))
       (cerror form "malformed named union declaration"))
   (let* ((unions (c-includes/unions includes))
 	 (entry (assq name unions)))
     (if entry (cerror form "already defined in " (cddr entry)))
-    (let* ((anon (cons 'UNION
+    (let* ((anon (cons 'union
 		       (map (lambda (member)
 			      (valid-union-member member includes))
 			    members)))
@@ -191,8 +191,8 @@ USA.
       unspecific)))
 
 (define (valid-union-member form includes)
-  ;; Returns (NAME . CTYPE) given a MEMBER C declaration.
-  ;; Adds any internal named struct/union/enum types to INCLUDES.
+  ;; Returns (name . ctype) given a member C declaration.
+  ;; Adds any internal named struct/union/enum types to includes.
   (if (not (and (pair? form) (symbol? (car form))
 		(pair? (cdr form)) (null? (cddr form))))
       (cerror form "malformed union member"))
@@ -201,15 +201,15 @@ USA.
     (cons name ctype)))
 
 (define (include-enum form name constants includes)
-  ;; Add a top-level (enum NAME . CONSTANTS) C declaration to INCLUDES.
-  ;; Also accepts an unnamed (enum . CONSTANTS) C declaration.
+  ;; Add a top-level (enum name . constants) C declaration to includes.
+  ;; Also accepts an unnamed (enum . constants) C declaration.
   (if (not (list? constants))
       (cerror form "malformed named enum declaration"))
   (if (symbol? name)
       (let* ((enums (c-includes/enums includes))
 	     (entry (assq name enums)))
 	(if entry (cerror form "already defined in " (cddr entry)))
-	(let* ((anon (cons 'ENUM
+	(let* ((anon (cons 'enum
 			   (valid-enum-constants constants includes)))
 	       (info (cons anon current-filename)))
 	  (set-c-includes/enums!
@@ -217,16 +217,16 @@ USA.
       (valid-enum-constants (cdr form) includes)))
 
 (define (valid-enum-constants forms includes)
-  ;; Returns a list of (NAME) pairs for each enum constant declaration
-  ;; in FORMS.  Also adds enum constants to INCLUDES.
+  ;; Returns a list of (name) pairs for each enum constant declaration
+  ;; in forms.  Also adds enum constants to includes.
   (let loop ((forms forms))
     (if (null? forms) '()
 	(let ((name (valid-enum-constant (car forms) includes)))
 	  (cons name (loop (cdr forms)))))))
 
 (define (valid-enum-constant form includes)
-  ;; Returns (NAME), the name of the validated enum constant declared
-  ;; by FORM.  Immediately adds the constant to the list in INCLUDES,
+  ;; Returns (name), the name of the validated enum constant declared
+  ;; by form.  Immediately adds the constant to the list in includes,
   ;; checking that it is not already there.
   (if (not (and (pair? form) (symbol? (car form))
 		;; 1 or 2 args
@@ -245,14 +245,14 @@ USA.
 
 (define (include-function form rettype rest includes)
   ;; Callouts/backs have much in common here, thus this shared
-  ;; procedure, which uses the keyword still at the head of FORM to
-  ;; munge the correct alist in INCLUDES.
+  ;; procedure, which uses the keyword still at the head of form to
+  ;; munge the correct alist in includes.
   (if (not (and (pair? rest) (symbol? (car rest))
 		(list? (cdr rest))))
       (cerror form "malformed " (symbol->string (car form)) " declaration"))
   (let* ((name (car rest))
 	 (params (cdr rest))
-	 (others (if (eq? 'EXTERN (car form))
+	 (others (if (eq? 'extern (car form))
 		     (c-includes/callouts includes)
 		     (c-includes/callbacks includes)))
 	 (entry (assq name others)))
@@ -265,20 +265,20 @@ USA.
 		      (valid-ctype rettype includes)
 		      (valid-params params includes)
 		      current-filename))))
-      (if (eq? 'EXTERN (car form))
+      (if (eq? 'extern (car form))
 	  (set-c-includes/callouts! includes (cons new others))
 	  (set-c-includes/callbacks! includes (cons new others)))
       unspecific)))
 
 (define (valid-params forms includes)
-  ;; Returns a list -- (NAME CTYPE) for each parameter declaration
-  ;; form in FORMS.
+  ;; Returns a list -- (name ctype) for each parameter declaration
+  ;; form in forms.
   (if (null? forms) '()
       (cons (valid-param (car forms) includes)
 	    (valid-params (cdr forms) includes))))
 
 (define (valid-param form includes)
-  ;; Returns (NAME CTYPE) after validating FORM.
+  ;; Returns (name ctype) after validating form.
   (if (not (and (pair? form) (symbol? (car form))
 		(pair? (cdr form))
 		(null? (cddr form))))
@@ -295,40 +295,40 @@ USA.
 					       char-set:alphanumeric)))
 
 (define (valid-ctype form includes)
-  ;; Returns a valid ctype expression, a copy of FORM.  Modifies
-  ;; INCLUDES with any internal struct/union/enum declarations.
+  ;; Returns a valid ctype expression, a copy of form.  Modifies
+  ;; includes with any internal struct/union/enum declarations.
   (cond ((symbol? form) form)
 	((ctype/pointer? form) form)
 	((ctype/const? form)
-	 (list 'CONST (valid-ctype (cadr form) includes)))
+	 (list 'const (valid-ctype (cadr form) includes)))
 
 	((ctype/struct-name? form) form)
 	((ctype/struct-anon? form)
-	 (cons 'STRUCT (map (lambda (member)
+	 (cons 'struct (map (lambda (member)
 			      (valid-struct-member member includes))
 			    (cdr form))))
 	((ctype/struct-named? form)
 	 (include-struct form (cadr form) (cddr form) includes)
-	 (list 'STRUCT (cadr form)))
+	 (list 'struct (cadr form)))
 
 	((ctype/union-name? form) form)
 	((ctype/union-anon? form)
-	 (cons 'UNION (map (lambda (member)
+	 (cons 'union (map (lambda (member)
 			     (valid-union-member member includes))
 			   (cdr form))))
 	((ctype/union-named? form)
 	 (include-union form (cadr form) (cddr form))
-	 (list 'UNION (cadr form)))
+	 (list 'union (cadr form)))
 
 	((ctype/enum-name? form) form)
 	((ctype/enum-anon? form)
-	 (cons 'ENUM (valid-enum-constants (cdr form) includes)))
+	 (cons 'enum (valid-enum-constants (cdr form) includes)))
 	((ctype/enum-named? form)
 	 (include-enum form (cadr form) (cddr form) includes)
-	 (list 'ENUM (cadr form)))
+	 (list 'enum (cadr form)))
 
 	((ctype/array? form)
-	 (list 'ARRAY
+	 (list 'array
 	       (valid-ctype (ctype-array/element-type form) includes)
 	       (ctype-array/size form)))
 
@@ -338,18 +338,18 @@ USA.
   (make-condition-type
    'ffi-cdecl-error
    condition-type:error
-   '(FORM FILENAME MESSAGE)
+   '(form filename message)
    (lambda (condition port)
      (write-string "Error: " port)
-     (write-string (access-condition condition 'MESSAGE) port)
+     (write-string (access-condition condition 'message) port)
      (write-string ":" port)
-     (write-string (access-condition condition 'FILENAME) port)
+     (write-string (access-condition condition 'filename) port)
      (write-string ": " port)
-     (write (access-condition condition 'FORM) port))))
+     (write (access-condition condition 'form) port))))
 
 (define cerror
   (let ((signaller (condition-signaller condition-type:cerror
-					'(FORM FILENAME MESSAGE)
+					'(form filename message)
 					standard-error-handler)))
     (named-lambda (cerror form message . args)
       (signaller form current-filename
@@ -362,20 +362,20 @@ USA.
   (make-condition-type
    'ffi-cdecl-warning
    condition-type:warning
-   '(FORM FILENAME MESSAGE)
+   '(form filename message)
    (lambda (condition port)
-     (write-string (access-condition condition 'MESSAGE) port)
+     (write-string (access-condition condition 'message) port)
      (write-string ":" port)
-     (write-string (access-condition condition 'FILENAME) port)
+     (write-string (access-condition condition 'filename) port)
      (write-string ": " port)
-     (write (access-condition condition 'FORM) port))))
+     (write (access-condition condition 'form) port))))
 
 (define cwarn
   (let ((signaller (condition-signaller condition-type:cwarn
-					'(FORM FILENAME MESSAGE)
+					'(form filename message)
 					standard-warning-handler)))
     (named-lambda (cwarn form message . args)
-      (with-simple-restart 'MUFFLE-WARNING "Ignore warning."
+      (with-simple-restart 'muffle-warning "Ignore warning."
         (lambda ()
 	  (signaller form current-filename
 		     (apply string-append

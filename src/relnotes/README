@@ -1,0 +1,10 @@
+Release notes for upcoming release.
+
+To add a release note, just create a new file with a short descriptive
+name and put the text of the release note in it.  You can create
+release notes on feature branches, and as long as the filename doesn't
+collide with anyone else's, git will naturally merge them without
+trouble in the directory.
+
+When making a release, simply concatenate all the release notes in the
+directory and then delete them.

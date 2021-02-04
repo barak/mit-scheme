@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,6 +29,9 @@ USA.
 
 (declare (usual-integrations))
 
+(define-primitives
+  eq?)
+
 (define (eqv? x y)
   ;; EQV? is officially supposed to work on booleans, characters, and
   ;; numbers specially, but it turns out that EQ? does the right thing
@@ -64,7 +67,7 @@ USA.
 		  (string=? x y)))
 	    ((weak-pair? x)
 	     (and (weak-pair? y)
-		  (equal? (%weak-car x) (%weak-car y))
+		  (equal? (weak-car x) (weak-car y))
 		  (equal? (weak-cdr x) (weak-cdr y))))
 	    ((cell? x)
 	     (and (cell? y)
@@ -78,7 +81,7 @@ USA.
 		  (pathname=? x y)))
 	    ((char-set? x)
 	     (and (char-set? y)
-		  (char-set=? x y)))
+		  (char-set= x y)))
 	    (else #f))))
 
 (define (equal-hash key)

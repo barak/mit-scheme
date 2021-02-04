@@ -1,0 +1,9 @@
+; -*- Mode: Scheme -*-
+
+(declare (usual-integrations))
+
+(fluid-let ((compiler:generate-rtl-files? #t)
+            (compiler:generate-lap-files? #t)
+            (compiler:generate-type-checks? #f)
+            (compiler:generate-range-checks? #f))
+  (compile-directory "."))

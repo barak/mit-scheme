@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -81,3 +81,22 @@ USA.
     (try 0.00501   '(absolute  2 normal) ".01")
     (try 0.00499   '(absolute -3 normal) "0.")
     ))
+
+(define (define-hex-tests name . cases)
+  (define-test name
+    (map (lambda (case0)
+           (let ((x (car case0))
+                 (s (cadr case0)))
+             (lambda ()
+               (assert-string= (number->string x #x10) s))))
+         cases)))
+
+(define-hex-tests 'hex
+  '(0. "0.")
+  '(-0. "-0.")
+  '(1. "1p+0")
+  '(-1. "-1p+0")
+  '(1.5 "1.8p+0")
+  '(-1.5 "-1.8p+0")
+  '(15. "1.ep+3")
+  '(16. "1p+4"))

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,18 +29,21 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! history-modes
-	`((none . ,none:install-history!)
-	  (bounded . ,bounded:install-history!)
-	  (unbounded . ,unbounded:install-history!)))
-  (set-history-mode! 'bounded)
-  (set! timestamp (cons 0 0))
-  (statistics-reset!)
-  (add-event-receiver! event:after-restore statistics-reset!)
-  (set! hook/gc-start recorder/gc-start)
-  (set! hook/gc-finish recorder/gc-finish)
-  unspecific)
+(add-boot-deps! '(runtime number) '(runtime console-i/o-port))
+
+(add-boot-init!
+ (lambda ()
+   (set! history-modes
+	 `((none . ,none:install-history!)
+	   (bounded . ,bounded:install-history!)
+	   (unbounded . ,unbounded:install-history!)))
+   (set-history-mode! 'bounded)
+   (set! timestamp (cons 0 0))
+   (statistics-reset!)
+   (add-event-receiver! event:after-restore statistics-reset!)
+   (set! hook/gc-start recorder/gc-start)
+   (set! hook/gc-finish recorder/gc-finish)
+   unspecific))
 
 (define (recorder/gc-start)
   (port/gc-start (console-i/o-port))
@@ -59,7 +62,7 @@ USA.
 		     this-gc-start-uctime
 		     this-gc-start-clock end-time-clock))
   (port/gc-finish (console-i/o-port)))
-
+
 (define timestamp)
 (define total-gc-time)
 (define last-gc-start)
@@ -187,8 +190,8 @@ USA.
 (define (copy-to-size l size)
   (let ((max (length l)))
     (if (>= max size)
-	(list-head l size)
-	(append (list-head l max)
+	(take l size)
+	(append (take l max)
 		(make-list (- size max) '())))))
 
 (define (bounded:install-history!)

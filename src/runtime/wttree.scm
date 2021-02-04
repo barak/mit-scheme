@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -250,7 +250,6 @@ we adopt here, described in
 (define (error:empty owner)
   ((access error system-global-environment)
    "Operation requires non-empty tree:" owner))
-
 
 (define (make-wt-tree-type key<?)
 
@@ -500,8 +499,6 @@ we adopt here, described in
 
   my-type)
 
-
-
 ;;;
 ;;;
 ;;;
@@ -534,7 +531,6 @@ we adopt here, described in
 ;;;  Exported interface
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (define (make-wt-tree tree-type)
   (%make-wt-tree tree-type empty))
@@ -683,19 +679,12 @@ we adopt here, described in
       (and (balanced? root)
 	   (ordered? root (lambda (k) k #t) (lambda (k) k #t))))))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;;
-
-(define ttype (make-wt-tree-type <))
-
-(define number-wt-type
+(define-deferred number-wt-type
   ((lambda()
      (declare (integrate-operator make-wt-tree-type))
-     (make-wt-tree-type  (lambda (x y) (< x y))))))
+     (make-wt-tree-type (lambda (x y) (< x y))))))
 
-(define string-wt-type
+(define-deferred string-wt-type
   ((lambda()
      (declare (integrate-operator make-wt-tree-type))
-     (make-wt-tree-type  string<?))))
+     (make-wt-tree-type string<?))))

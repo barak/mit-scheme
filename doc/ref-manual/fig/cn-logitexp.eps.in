@@ -1,0 +1,81 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 0 0 180 60
+%%BeginProlog
+
+% Bounding box parameters.
+/llx 0 def /lly 0 def /urx 180 def /ury 60 def
+/bbwidth urx llx sub def /bbheight ury lly sub def
+
+% Axes.
+/axmin -3.2 def /axmax 0.5 def /aymin -4.5 def /aymax 4.5 def
+
+% Interpolation parameters.
+/nspline 70 def
+/splinterpoint { chebypoint } def  % i n => s_{i,n}
+
+(common/ad.ps) runlibfile
+(common/math.ps) runlibfile
+(common/plot.ps) runlibfile
+(common/splinterp.ps) runlibfile
+
+%%EndProlog
+
+setupplotbbox
+
+% Draw reference asymptotes.
+gsave
+    setupasymptote
+    newpath
+    axmin 1 a2bb moveto
+    axmax 1 a2bb lineto
+    stroke
+    newpath
+    0.5 ln aymin a2bb moveto
+    0.5 ln aymax a2bb lineto
+    stroke
+grestore
+
+% Draw axes.
+gsave
+    setupaxes
+    drawaxes
+
+    % x ticks
+     0.25 0 0 -0.5 tick
+    -0.25 0 0 -0.5 tick
+    -0.5  0 0 -0.5 tick
+    -0.75 0 0 -0.5 tick
+    -1    0 0 -1   tick -1 -1 xticklabel
+    -1.25 0 0 -0.5 tick
+    -1.5  0 0 -0.5 tick
+    -1.75 0 0 -0.5 tick
+    -2    0 0 -1   tick -2 -1 xticklabel
+    -2.25 0 0 -0.5 tick
+    -2.5  0 0 -0.5 tick
+    -2.75 0 0 -0.5 tick
+    -3    0 0 -1   tick -3 -1 xticklabel
+
+    % y ticks
+    0  3 -0.5 0 tick
+    0  2 -1   0 tick  2 0.5 yticklabel
+    0  1 -0.5 0 tick
+    0 -1 -0.5 0 tick
+    0 -2 -1   0 tick -2 0.5 yticklabel
+    0 -3 -0.5 0 tick
+grestore
+
+gsave
+    setupconditionnumberplot
+    nspline axmin -0.694 {
+	dup Texpm1 Tneg		% Tx T(1-e^x)
+	1 index Texp Tlogit	% Tx T(1-e^x) T(log(e^x/(1-e^x)))
+	Tmul Tdiv		% T(x/((1-e^x)*log((e^x/(1-e^x)))))
+    } cubicsplinterpolate
+    nspline -0.693 -.0001 {
+    	dup Texpm1 Tneg		% Tx T(1-e^x)
+    	1 index Texp Tlogit	% Tx T(1-e^x) T(log(e^x/(1-e^x)))
+    	Tmul Tdiv		% T(x/((1-e^x)*log((e^x/(1-e^x)))))
+    } cubicsplinterpolate
+grestore
+
+showpage

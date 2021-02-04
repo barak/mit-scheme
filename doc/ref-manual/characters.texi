@@ -399,6 +399,11 @@ Returns @code{#t} if @var{object} is a character with no bucky bits
 set, otherwise it returns @code{#f} .
 @end deffn
 
+@deffn procedure char->bitless-char char
+Returns @var{char} with any bucky bits removed.  The result is
+guaranteed to satisfy @code{bitless-char?}.
+@end deffn
+
 @deffn procedure char-predicate char
 Returns a procedure of one argument that returns @code{#t} if its
 argument is a character @code{char=?} to @var{char}, otherwise it
@@ -438,9 +443,9 @@ it returns @code{#f}.
 @end deffn
 
 @deffn procedure unicode-char? object
-Returns @code{#t} if @var{object} is any ``bitless'' character
-corresponding to a Unicode code point, except for those with general
-category @code{other:surrogate} or @code{other:not-assigned}.
+Returns @code{#t} if @var{object} is any character corresponding to a
+Unicode code point, except for those with general category
+@code{other:surrogate} or @code{other:not-assigned}.
 @end deffn
 
 @deffn procedure char-general-category char
@@ -490,8 +495,12 @@ Returns the Unicode general category of @var{char} (or
 
 MIT/GNU Scheme's character-set abstraction is used to represent groups
 of characters, such as the letters or digits.  A character set may
-contain any ``bitless'' character.  Alternatively, a character set can
-be treated as a set of code points.
+contain any character.  Alternatively, a character set can be treated
+as a set of code points.
+
+Implementation note: MIT/GNU Scheme allows any ``bitless'' character
+to be stored in a character set; operations that accept characters
+automatically strip their bucky bits.
 
 @deffn procedure char-set? object
 @cindex type predicate, for character set
@@ -544,7 +553,7 @@ identical.
 
 An @var{element} can take several forms, each of which specifies one
 or more characters to include in the resulting character set: a
-(bitless) character includes itself; a string includes all of the characters it
+character includes itself; a string includes all of the characters it
 contains; a character set includes its members; or a code-point range
 includes the corresponding characters.
 

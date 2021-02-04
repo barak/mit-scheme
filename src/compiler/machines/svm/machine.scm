@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,12 +31,35 @@ USA.
 
 ;;;; Architecture Parameters
 
+(define (compiler-features)
+  (list 'target-arch=svm1
+	(case endianness
+	  ((big) 'target-big-endian)
+	  ((little) 'target-little-endian)
+	  (else (error "Unknown endianness:" endianness)))
+	(case scheme-object-width
+	  ((32) 'target-32-bit)
+	  ((64) 'target-64-bit)
+	  (else (error "Unknown object width:" scheme-object-width)))))
+
+(define (target-fasl-format)
+  (cond ((and (eq? endianness 'BIG) (= scheme-object-width 32))
+	 fasl-format:svm1-32be)
+	((and (eq? endianness 'LITTLE) (= scheme-object-width 32))
+	 fasl-format:svm1-32le)
+	((and (eq? endianness 'BIG) (= scheme-object-width 64))
+	 fasl-format:svm1-64be)
+	((and (eq? endianness 'LITTLE) (= scheme-object-width 64))
+	 fasl-format:svm1-64le)
+	(else
+	 (error "Unknown byte order and object width:"
+		`(,endianness ENDIAN)
+		`(,scheme-object-width BITS)))))
+
 (define use-pre/post-increment? #t)
-(define-integrable endianness 'LITTLE)
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-type-width 6)
 (define-integrable scheme-type-limit #x40)
-(define-integrable scheme-object-width (if (fix:fixnum? #x100000000) 64 32))
 
 (define-integrable scheme-datum-width
   (- scheme-object-width scheme-type-width))
@@ -129,6 +152,7 @@ USA.
 (define-inst entry-point label)
 
 (define-inst jump address)
+(define-inst indirect-jump offset)
 
 (define (inst:trap n . args)
   (list (cons* 'TRAP n args)))
@@ -209,14 +233,6 @@ USA.
 
 (define (ea:address label)
   (ea:pc-relative `(- ,label *PC*)))
-
-(define ea:uuo-entry-address
-  (let ((offset
-	 ;; LABEL is the uuo-link-label, but the PC to jump to is two
-	 ;; opcode bytes before the following word (the link address).
-	 (- address-units-per-object 2)))
-    (named-lambda (ea:uuo-entry-address label)
-      (ea:pc-relative `(- (+ ,label ,offset) *PC*)))))
 
 (define (ea:stack-pop)
   (ea:post-increment rref:stack-pointer 'WORD))
@@ -485,7 +501,14 @@ USA.
 
 (define compiler:primitives-with-no-open-coding
   '(DIVIDE-FIXNUM GCD-FIXNUM &/ FLONUM-EXPM1 FLONUM-LOG1P
-		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS))
+		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
+		  FLONUM-FMA
+		  FLONUM-IS-LESS? FLONUM-IS-LESS-OR-EQUAL?
+		  FLONUM-IS-GREATER? FLONUM-IS-GREATER-OR-EQUAL?
+		  FLONUM-IS-LESS-OR-GREATER? FLONUM-IS-UNORDERED?
+		  FLONUM-IS-NORMAL? FLONUM-IS-FINITE? FLONUM-IS-INFINITE?
+		  FLONUM-IS-NAN? FLONUM-IS-ZERO? FLONUM-IS-EQUAL?
+		  FLONUM-IS-NEGATIVE? FLONUM-COPYSIGN))
 
 ;;;; Closure format
 

@@ -1,38 +1,46 @@
-# This file automatically generated at 2020-06-04T12:59:09-07.
+# This file automatically generated at 2021-01-30T18:20:59-08.
 
 LIARC_HEAD_FILES = cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h dstack.h errors.h extern.h fixnum.h interp.h \
 	  liarc.h object.h outf.h prim.h sdata.h stack.h trap.h types.h
 
 LIARC_SOURCES = ../runtime/runtime-unx.c ../runtime/advice.c \
-	  ../runtime/apply.c ../runtime/apropos.c ../runtime/arith.c \
-	  ../runtime/binary-port.c ../runtime/bitstr.c ../runtime/blowfish.c \
-	  ../runtime/boole.c ../runtime/boot.c ../runtime/bundle.c \
-	  ../runtime/bytevector.c ../runtime/char.c ../runtime/char-set.c \
+	  ../runtime/amap.c ../runtime/amap-alist.c \
+	  ../runtime/amap-hash-table.c ../runtime/amap-impl.c \
+	  ../runtime/amap-trie.c ../runtime/apply.c ../runtime/apropos.c \
+	  ../runtime/arith.c ../runtime/binary-port.c ../runtime/bitstr.c \
+	  ../runtime/blowfish.c ../runtime/boole.c ../runtime/boot.c \
+	  ../runtime/boot-seq.c ../runtime/bundle.c ../runtime/bytevector.c \
+	  ../runtime/bytevector-low.c ../runtime/cgen-base.c \
+	  ../runtime/cgen-cse.c ../runtime/cgen-optimize.c \
+	  ../runtime/cgen-output.c ../runtime/char.c ../runtime/char-set.c \
 	  ../runtime/chrsyn.c ../runtime/codwlk.c ../runtime/command-line.c \
-	  ../runtime/compound-predicate.c ../runtime/condvar.c \
-	  ../runtime/conpar.c ../runtime/console-io.c ../runtime/contin.c \
-	  ../runtime/cpoint.c ../runtime/cpress.c ../runtime/crypto.c \
-	  ../runtime/datime.c ../runtime/dbgcmd.c ../runtime/dbgutl.c \
-	  ../runtime/debug.c ../runtime/defstr.c ../runtime/dispatch-cache.c \
+	  ../runtime/comparator.c ../runtime/compound-predicate.c \
+	  ../runtime/condvar.c ../runtime/conpar.c ../runtime/console-io.c \
+	  ../runtime/contin.c ../runtime/cpoint.c ../runtime/cpress.c \
+	  ../runtime/crypto.c ../runtime/datime.c ../runtime/dbgcmd.c \
+	  ../runtime/dbgutl.c ../runtime/debug.c ../runtime/defstr.c \
+	  ../runtime/digraph.c ../runtime/dispatch-cache.c \
 	  ../runtime/dispatch-tag.c ../runtime/division.c \
 	  ../runtime/dos-pathname.c ../runtime/dragon4.c ../runtime/dynamic.c \
 	  ../runtime/ed-ffi.c ../runtime/emacs.c ../runtime/environment.c \
 	  ../runtime/equals.c ../runtime/error.c ../runtime/events.c \
-	  ../runtime/ffi.c ../runtime/file-attributes.c ../runtime/file-io.c \
-	  ../runtime/floenv.c ../runtime/format.c ../runtime/framex.c \
-	  ../runtime/gc.c ../runtime/gcdemn.c ../runtime/gcfinal.c \
-	  ../runtime/gcnote.c ../runtime/gcstat.c ../runtime/gdatab.c \
-	  ../runtime/gdbm.c ../runtime/generic-io.c ../runtime/global.c \
-	  ../runtime/graphics.c ../runtime/hash.c ../runtime/hash-table.c \
-	  ../runtime/histry.c ../runtime/host-adapter.c \
-	  ../runtime/html-form-codec.c ../runtime/http-client.c \
-	  ../runtime/http-io.c ../runtime/http-syntax.c ../runtime/ieee754.c \
-	  ../runtime/infstr.c ../runtime/infutl.c ../runtime/input-port.c \
+	  ../runtime/feature.c ../runtime/ffi.c ../runtime/file-attributes.c \
+	  ../runtime/file-io.c ../runtime/floenv.c ../runtime/format.c \
+	  ../runtime/framex.c ../runtime/gc.c ../runtime/gcdemn.c \
+	  ../runtime/gcfinal.c ../runtime/gcnote.c ../runtime/gcstat.c \
+	  ../runtime/gdbm.c ../runtime/generator.c ../runtime/generic-io.c \
+	  ../runtime/global.c ../runtime/graphics.c ../runtime/hash.c \
+	  ../runtime/hash-table.c ../runtime/histry.c \
+	  ../runtime/host-adapter.c ../runtime/html-form-codec.c \
+	  ../runtime/http-client.c ../runtime/http-io.c \
+	  ../runtime/http-syntax.c ../runtime/ieee754.c ../runtime/infstr.c \
+	  ../runtime/infutl.c ../runtime/input-port.c \
 	  ../runtime/integer-bits.c ../runtime/interrupt.c \
 	  ../runtime/keyword.c ../runtime/lambda.c ../runtime/lambda-list.c \
 	  ../runtime/lambdx.c ../runtime/legacy-string.c \
-	  ../runtime/library-database.c ../runtime/library-imports.c \
+	  ../runtime/library-database.c ../runtime/library-ixports.c \
+	  ../runtime/library-ixports-mit.c ../runtime/library-ixports-r7rs.c \
 	  ../runtime/library-loader.c ../runtime/library-parser.c \
 	  ../runtime/library-scode.c ../runtime/library-standard.c \
 	  ../runtime/list.c ../runtime/load.c ../runtime/make.c \
@@ -53,11 +61,13 @@ LIARC_SOURCES = ../runtime/runtime-unx.c ../runtime/advice.c \
 	  ../runtime/prop2d.c ../runtime/qsort.c ../runtime/queue.c \
 	  ../runtime/random.c ../runtime/rbtree.c ../runtime/reader.c \
 	  ../runtime/record.c ../runtime/reference-trap.c ../runtime/regexp.c \
-	  ../runtime/regsexp.c ../runtime/rep.c ../runtime/rexp.c \
-	  ../runtime/rfc2822-headers.c ../runtime/rgxcmp.c \
-	  ../runtime/savres.c ../runtime/scan.c ../runtime/scode.c \
-	  ../runtime/sdata.c ../runtime/sfile.c ../runtime/sha3.c \
-	  ../runtime/socket.c ../runtime/srfi-1.c ../runtime/stack-sample.c \
+	  ../runtime/regexp-nfa.c ../runtime/regexp-recursive.c \
+	  ../runtime/regexp-rules.c ../runtime/regsexp.c ../runtime/rep.c \
+	  ../runtime/rep-ui.c ../runtime/rexp.c ../runtime/rfc2822-headers.c \
+	  ../runtime/rgxcmp.c ../runtime/savres.c ../runtime/scan.c \
+	  ../runtime/scode.c ../runtime/sdata.c ../runtime/sfile.c \
+	  ../runtime/sha3.c ../runtime/simple-matcher.c ../runtime/socket.c \
+	  ../runtime/srfi-1.c ../runtime/srfi-115.c ../runtime/stack-sample.c \
 	  ../runtime/stream.c ../runtime/string.c ../runtime/string-io.c \
 	  ../runtime/structure-parser.c ../runtime/swank.c \
 	  ../runtime/symbol.c ../runtime/syncproc.c ../runtime/syntax.c \
@@ -69,58 +79,84 @@ LIARC_SOURCES = ../runtime/runtime-unx.c ../runtime/advice.c \
 	  ../runtime/sysclk.c ../runtime/sysmac.c ../runtime/system.c \
 	  ../runtime/textual-port.c ../runtime/thread.c \
 	  ../runtime/thread-barrier.c ../runtime/thread-low.c \
-	  ../runtime/thread-queue.c ../runtime/transcript.c \
-	  ../runtime/ucd-glue.c ../runtime/ucd-table-alpha.c \
+	  ../runtime/thread-queue.c ../runtime/transcript.c ../runtime/trie.c \
+	  ../runtime/ucd-glue.c ../runtime/ucd-grapheme.c \
+	  ../runtime/ucd-segmentation.c ../runtime/ucd-table-alpha.c \
 	  ../runtime/ucd-table-canonical-cm.c \
 	  ../runtime/ucd-table-canonical-cm-second.c \
 	  ../runtime/ucd-table-canonical-dm.c ../runtime/ucd-table-cased.c \
 	  ../runtime/ucd-table-ccc.c ../runtime/ucd-table-cf.c \
 	  ../runtime/ucd-table-comp_ex.c ../runtime/ucd-table-cwcf.c \
 	  ../runtime/ucd-table-cwl.c ../runtime/ucd-table-cwu.c \
-	  ../runtime/ucd-table-gc.c ../runtime/ucd-table-gcb.c \
+	  ../runtime/ucd-table-gc.c ../runtime/ucd-table-gc=cc.c \
+	  ../runtime/ucd-table-gc=cf.c ../runtime/ucd-table-gc=cn.c \
+	  ../runtime/ucd-table-gc=co.c ../runtime/ucd-table-gc=cs.c \
+	  ../runtime/ucd-table-gc=ll.c ../runtime/ucd-table-gc=lm.c \
+	  ../runtime/ucd-table-gc=lo.c ../runtime/ucd-table-gc=lt.c \
+	  ../runtime/ucd-table-gc=lu.c ../runtime/ucd-table-gc=mc.c \
+	  ../runtime/ucd-table-gc=me.c ../runtime/ucd-table-gc=mn.c \
+	  ../runtime/ucd-table-gc=nd.c ../runtime/ucd-table-gc=nl.c \
+	  ../runtime/ucd-table-gc=no.c ../runtime/ucd-table-gc=pc.c \
+	  ../runtime/ucd-table-gc=pd.c ../runtime/ucd-table-gc=pe.c \
+	  ../runtime/ucd-table-gc=pf.c ../runtime/ucd-table-gc=pi.c \
+	  ../runtime/ucd-table-gc=po.c ../runtime/ucd-table-gc=ps.c \
+	  ../runtime/ucd-table-gc=sc.c ../runtime/ucd-table-gc=sk.c \
+	  ../runtime/ucd-table-gc=sm.c ../runtime/ucd-table-gc=so.c \
+	  ../runtime/ucd-table-gc=zl.c ../runtime/ucd-table-gc=zp.c \
+	  ../runtime/ucd-table-gc=zs.c ../runtime/ucd-table-gcb.c \
 	  ../runtime/ucd-table-lc.c ../runtime/ucd-table-lower.c \
 	  ../runtime/ucd-table-nfc_qc.c ../runtime/ucd-table-nfd_qc.c \
-	  ../runtime/ucd-table-nt.c ../runtime/ucd-table-nv.c \
-	  ../runtime/ucd-table-scf.c ../runtime/ucd-table-slc.c \
-	  ../runtime/ucd-table-suc.c ../runtime/ucd-table-tc.c \
-	  ../runtime/ucd-table-uc.c ../runtime/ucd-table-upper.c \
-	  ../runtime/ucd-table-wb.c ../runtime/ucd-table-wspace.c \
+	  ../runtime/ucd-table-nt.c ../runtime/ucd-table-nt=de.c \
+	  ../runtime/ucd-table-nt=di.c ../runtime/ucd-table-nt=nu.c \
+	  ../runtime/ucd-table-nv.c ../runtime/ucd-table-scf.c \
+	  ../runtime/ucd-table-slc.c ../runtime/ucd-table-suc.c \
+	  ../runtime/ucd-table-tc.c ../runtime/ucd-table-uc.c \
+	  ../runtime/ucd-table-upper.c ../runtime/ucd-table-wb.c \
+	  ../runtime/ucd-table-wspace.c ../runtime/ucd-word.c \
 	  ../runtime/unix-pathname.c ../runtime/unsyn.c ../runtime/unxdir.c \
 	  ../runtime/unxprm.c ../runtime/url.c ../runtime/usrint.c \
-	  ../runtime/vector.c ../runtime/version.c ../runtime/where.c \
-	  ../runtime/win32-registry.c ../runtime/wind.c \
+	  ../runtime/vector.c ../runtime/version.c ../runtime/weak-pair.c \
+	  ../runtime/where.c ../runtime/win32-registry.c ../runtime/wind.c \
 	  ../runtime/world-report.c ../runtime/wrkdir.c ../runtime/wttree.c \
 	  ../runtime/x11graph.c ../runtime/xeval.c ../runtime/ystep.c
 
 LIARC_OBJECTS = ../runtime/runtime-unx.o ../runtime/advice.o \
-	  ../runtime/apply.o ../runtime/apropos.o ../runtime/arith.o \
-	  ../runtime/binary-port.o ../runtime/bitstr.o ../runtime/blowfish.o \
-	  ../runtime/boole.o ../runtime/boot.o ../runtime/bundle.o \
-	  ../runtime/bytevector.o ../runtime/char.o ../runtime/char-set.o \
+	  ../runtime/amap.o ../runtime/amap-alist.o \
+	  ../runtime/amap-hash-table.o ../runtime/amap-impl.o \
+	  ../runtime/amap-trie.o ../runtime/apply.o ../runtime/apropos.o \
+	  ../runtime/arith.o ../runtime/binary-port.o ../runtime/bitstr.o \
+	  ../runtime/blowfish.o ../runtime/boole.o ../runtime/boot.o \
+	  ../runtime/boot-seq.o ../runtime/bundle.o ../runtime/bytevector.o \
+	  ../runtime/bytevector-low.o ../runtime/cgen-base.o \
+	  ../runtime/cgen-cse.o ../runtime/cgen-optimize.o \
+	  ../runtime/cgen-output.o ../runtime/char.o ../runtime/char-set.o \
 	  ../runtime/chrsyn.o ../runtime/codwlk.o ../runtime/command-line.o \
-	  ../runtime/compound-predicate.o ../runtime/condvar.o \
-	  ../runtime/conpar.o ../runtime/console-io.o ../runtime/contin.o \
-	  ../runtime/cpoint.o ../runtime/cpress.o ../runtime/crypto.o \
-	  ../runtime/datime.o ../runtime/dbgcmd.o ../runtime/dbgutl.o \
-	  ../runtime/debug.o ../runtime/defstr.o ../runtime/dispatch-cache.o \
+	  ../runtime/comparator.o ../runtime/compound-predicate.o \
+	  ../runtime/condvar.o ../runtime/conpar.o ../runtime/console-io.o \
+	  ../runtime/contin.o ../runtime/cpoint.o ../runtime/cpress.o \
+	  ../runtime/crypto.o ../runtime/datime.o ../runtime/dbgcmd.o \
+	  ../runtime/dbgutl.o ../runtime/debug.o ../runtime/defstr.o \
+	  ../runtime/digraph.o ../runtime/dispatch-cache.o \
 	  ../runtime/dispatch-tag.o ../runtime/division.o \
 	  ../runtime/dos-pathname.o ../runtime/dragon4.o ../runtime/dynamic.o \
 	  ../runtime/ed-ffi.o ../runtime/emacs.o ../runtime/environment.o \
 	  ../runtime/equals.o ../runtime/error.o ../runtime/events.o \
-	  ../runtime/ffi.o ../runtime/file-attributes.o ../runtime/file-io.o \
-	  ../runtime/floenv.o ../runtime/format.o ../runtime/framex.o \
-	  ../runtime/gc.o ../runtime/gcdemn.o ../runtime/gcfinal.o \
-	  ../runtime/gcnote.o ../runtime/gcstat.o ../runtime/gdatab.o \
-	  ../runtime/gdbm.o ../runtime/generic-io.o ../runtime/global.o \
-	  ../runtime/graphics.o ../runtime/hash.o ../runtime/hash-table.o \
-	  ../runtime/histry.o ../runtime/host-adapter.o \
-	  ../runtime/html-form-codec.o ../runtime/http-client.o \
-	  ../runtime/http-io.o ../runtime/http-syntax.o ../runtime/ieee754.o \
-	  ../runtime/infstr.o ../runtime/infutl.o ../runtime/input-port.o \
+	  ../runtime/feature.o ../runtime/ffi.o ../runtime/file-attributes.o \
+	  ../runtime/file-io.o ../runtime/floenv.o ../runtime/format.o \
+	  ../runtime/framex.o ../runtime/gc.o ../runtime/gcdemn.o \
+	  ../runtime/gcfinal.o ../runtime/gcnote.o ../runtime/gcstat.o \
+	  ../runtime/gdbm.o ../runtime/generator.o ../runtime/generic-io.o \
+	  ../runtime/global.o ../runtime/graphics.o ../runtime/hash.o \
+	  ../runtime/hash-table.o ../runtime/histry.o \
+	  ../runtime/host-adapter.o ../runtime/html-form-codec.o \
+	  ../runtime/http-client.o ../runtime/http-io.o \
+	  ../runtime/http-syntax.o ../runtime/ieee754.o ../runtime/infstr.o \
+	  ../runtime/infutl.o ../runtime/input-port.o \
 	  ../runtime/integer-bits.o ../runtime/interrupt.o \
 	  ../runtime/keyword.o ../runtime/lambda.o ../runtime/lambda-list.o \
 	  ../runtime/lambdx.o ../runtime/legacy-string.o \
-	  ../runtime/library-database.o ../runtime/library-imports.o \
+	  ../runtime/library-database.o ../runtime/library-ixports.o \
+	  ../runtime/library-ixports-mit.o ../runtime/library-ixports-r7rs.o \
 	  ../runtime/library-loader.o ../runtime/library-parser.o \
 	  ../runtime/library-scode.o ../runtime/library-standard.o \
 	  ../runtime/list.o ../runtime/load.o ../runtime/make.o \
@@ -141,11 +177,13 @@ LIARC_OBJECTS = ../runtime/runtime-unx.o ../runtime/advice.o \
 	  ../runtime/prop2d.o ../runtime/qsort.o ../runtime/queue.o \
 	  ../runtime/random.o ../runtime/rbtree.o ../runtime/reader.o \
 	  ../runtime/record.o ../runtime/reference-trap.o ../runtime/regexp.o \
-	  ../runtime/regsexp.o ../runtime/rep.o ../runtime/rexp.o \
-	  ../runtime/rfc2822-headers.o ../runtime/rgxcmp.o \
-	  ../runtime/savres.o ../runtime/scan.o ../runtime/scode.o \
-	  ../runtime/sdata.o ../runtime/sfile.o ../runtime/sha3.o \
-	  ../runtime/socket.o ../runtime/srfi-1.o ../runtime/stack-sample.o \
+	  ../runtime/regexp-nfa.o ../runtime/regexp-recursive.o \
+	  ../runtime/regexp-rules.o ../runtime/regsexp.o ../runtime/rep.o \
+	  ../runtime/rep-ui.o ../runtime/rexp.o ../runtime/rfc2822-headers.o \
+	  ../runtime/rgxcmp.o ../runtime/savres.o ../runtime/scan.o \
+	  ../runtime/scode.o ../runtime/sdata.o ../runtime/sfile.o \
+	  ../runtime/sha3.o ../runtime/simple-matcher.o ../runtime/socket.o \
+	  ../runtime/srfi-1.o ../runtime/srfi-115.o ../runtime/stack-sample.o \
 	  ../runtime/stream.o ../runtime/string.o ../runtime/string-io.o \
 	  ../runtime/structure-parser.o ../runtime/swank.o \
 	  ../runtime/symbol.o ../runtime/syncproc.o ../runtime/syntax.o \
@@ -157,26 +195,44 @@ LIARC_OBJECTS = ../runtime/runtime-unx.o ../runtime/advice.o \
 	  ../runtime/sysclk.o ../runtime/sysmac.o ../runtime/system.o \
 	  ../runtime/textual-port.o ../runtime/thread.o \
 	  ../runtime/thread-barrier.o ../runtime/thread-low.o \
-	  ../runtime/thread-queue.o ../runtime/transcript.o \
-	  ../runtime/ucd-glue.o ../runtime/ucd-table-alpha.o \
+	  ../runtime/thread-queue.o ../runtime/transcript.o ../runtime/trie.o \
+	  ../runtime/ucd-glue.o ../runtime/ucd-grapheme.o \
+	  ../runtime/ucd-segmentation.o ../runtime/ucd-table-alpha.o \
 	  ../runtime/ucd-table-canonical-cm.o \
 	  ../runtime/ucd-table-canonical-cm-second.o \
 	  ../runtime/ucd-table-canonical-dm.o ../runtime/ucd-table-cased.o \
 	  ../runtime/ucd-table-ccc.o ../runtime/ucd-table-cf.o \
 	  ../runtime/ucd-table-comp_ex.o ../runtime/ucd-table-cwcf.o \
 	  ../runtime/ucd-table-cwl.o ../runtime/ucd-table-cwu.o \
-	  ../runtime/ucd-table-gc.o ../runtime/ucd-table-gcb.o \
+	  ../runtime/ucd-table-gc.o ../runtime/ucd-table-gc=cc.o \
+	  ../runtime/ucd-table-gc=cf.o ../runtime/ucd-table-gc=cn.o \
+	  ../runtime/ucd-table-gc=co.o ../runtime/ucd-table-gc=cs.o \
+	  ../runtime/ucd-table-gc=ll.o ../runtime/ucd-table-gc=lm.o \
+	  ../runtime/ucd-table-gc=lo.o ../runtime/ucd-table-gc=lt.o \
+	  ../runtime/ucd-table-gc=lu.o ../runtime/ucd-table-gc=mc.o \
+	  ../runtime/ucd-table-gc=me.o ../runtime/ucd-table-gc=mn.o \
+	  ../runtime/ucd-table-gc=nd.o ../runtime/ucd-table-gc=nl.o \
+	  ../runtime/ucd-table-gc=no.o ../runtime/ucd-table-gc=pc.o \
+	  ../runtime/ucd-table-gc=pd.o ../runtime/ucd-table-gc=pe.o \
+	  ../runtime/ucd-table-gc=pf.o ../runtime/ucd-table-gc=pi.o \
+	  ../runtime/ucd-table-gc=po.o ../runtime/ucd-table-gc=ps.o \
+	  ../runtime/ucd-table-gc=sc.o ../runtime/ucd-table-gc=sk.o \
+	  ../runtime/ucd-table-gc=sm.o ../runtime/ucd-table-gc=so.o \
+	  ../runtime/ucd-table-gc=zl.o ../runtime/ucd-table-gc=zp.o \
+	  ../runtime/ucd-table-gc=zs.o ../runtime/ucd-table-gcb.o \
 	  ../runtime/ucd-table-lc.o ../runtime/ucd-table-lower.o \
 	  ../runtime/ucd-table-nfc_qc.o ../runtime/ucd-table-nfd_qc.o \
-	  ../runtime/ucd-table-nt.o ../runtime/ucd-table-nv.o \
-	  ../runtime/ucd-table-scf.o ../runtime/ucd-table-slc.o \
-	  ../runtime/ucd-table-suc.o ../runtime/ucd-table-tc.o \
-	  ../runtime/ucd-table-uc.o ../runtime/ucd-table-upper.o \
-	  ../runtime/ucd-table-wb.o ../runtime/ucd-table-wspace.o \
+	  ../runtime/ucd-table-nt.o ../runtime/ucd-table-nt=de.o \
+	  ../runtime/ucd-table-nt=di.o ../runtime/ucd-table-nt=nu.o \
+	  ../runtime/ucd-table-nv.o ../runtime/ucd-table-scf.o \
+	  ../runtime/ucd-table-slc.o ../runtime/ucd-table-suc.o \
+	  ../runtime/ucd-table-tc.o ../runtime/ucd-table-uc.o \
+	  ../runtime/ucd-table-upper.o ../runtime/ucd-table-wb.o \
+	  ../runtime/ucd-table-wspace.o ../runtime/ucd-word.o \
 	  ../runtime/unix-pathname.o ../runtime/unsyn.o ../runtime/unxdir.o \
 	  ../runtime/unxprm.o ../runtime/url.o ../runtime/usrint.o \
-	  ../runtime/vector.o ../runtime/version.o ../runtime/where.o \
-	  ../runtime/win32-registry.o ../runtime/wind.o \
+	  ../runtime/vector.o ../runtime/version.o ../runtime/weak-pair.o \
+	  ../runtime/where.o ../runtime/win32-registry.o ../runtime/wind.o \
 	  ../runtime/world-report.o ../runtime/wrkdir.o ../runtime/wttree.o \
 	  ../runtime/x11graph.o ../runtime/xeval.o ../runtime/ystep.o
 

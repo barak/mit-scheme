@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,11 +29,13 @@ USA.
 (declare (usual-integrations))
 
 (define-structure (vector-tag
-		   (constructor %make-vector-tag (parent name index noop)))
+		   (constructor %make-vector-tag
+				(parent name index predicate noop)))
   (parent false read-only true)
   (name false read-only true)
   (index false read-only true)
   (description false)
+  (predicate false read-only true)
   (method-alist '())
 
   ;; This property was stored in the method alist, but it is used so
@@ -42,30 +44,40 @@ USA.
   )
 
 (define make-vector-tag
-  (let ((root-tag (%make-vector-tag false 'OBJECT false false)))
-    (define-print-method (lambda (object)
-			   (and (vector? object)
-				(fix:> (vector-length object) 0)
-				(eq? root-tag (vector-ref object 0))))
-      (standard-print-method
-       (lambda (object)
-	 (string "LIAR:" (vector-tag-name (tagged-vector/tag object))))))
+  (let ()
+    (define (root-tagged-vector? object)
+      (and (vector? object)
+	   (fix:> (vector-length object) 0)
+	   (eq? root-tag (vector-ref object 0))))
+    (define root-tag
+      (%make-vector-tag false 'OBJECT false root-tagged-vector? false))
+    (register-predicate! root-tagged-vector? 'root-tagged-vector?
+			 '<= vector?)
     (named-lambda (make-vector-tag parent name enumeration)
-      (%make-vector-tag (or parent root-tag)
-			name
-			(and enumeration
-			     (enumeration/name->index enumeration
-						      name))
-			;; Propagate this downward at construction time
-			;; to avoid having to crawl upward at use time.
-			(and parent (vector-tag-noop parent))))))
+      (define (predicate object)
+	(and (vector? object)
+	     (fix:> (vector-length object) 0)
+	     (eq? tag (vector-ref object 0))))
+      (define tag
+	(%make-vector-tag (or parent root-tag)
+			  name
+			  (and enumeration
+			       (enumeration/name->index enumeration
+							name))
+			  predicate
+			  ;; Propagate this downward at construction time
+			  ;; to avoid having to crawl upward at use time.
+			  (and parent (vector-tag-noop parent))))
+      (register-predicate! predicate (symbol name '?)
+			   '<= (vector-tag-predicate (or parent root-tag)))
+      (define-print-method predicate
+	(standard-print-method
+	 (lambda (object)
+	   (string "LIAR:" (vector-tag-name (tagged-vector/tag object))))))
+      tag)))
 
 (define (define-vector-tag-unparser tag unparser)
-  (define-print-method (lambda (object)
-			 (and (vector? object)
-			      (fix:> (vector-length object) 0)
-			      (eq? tag (vector-ref object 0))))
-    unparser)
+  (define-print-method (vector-tag-predicate tag) unparser)
   (vector-tag-name tag))
 
 (define (vector-tag-put! tag key value)

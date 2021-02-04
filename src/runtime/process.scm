@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,7 +30,6 @@ USA.
 (declare (usual-integrations))
 
 (define subprocess-finalizer)
-(define scheme-subprocess-environment)
 
 (define (initialize-package!)
   (set! subprocess-finalizer
@@ -39,13 +38,7 @@ USA.
 			   subprocess-index
 			   set-subprocess-index!))
   (set! subprocess-support-loaded? #t)
-  (reset-package!)
-  (add-event-receiver! event:after-restore reset-package!)
   (add-event-receiver! event:before-exit delete-all-processes))
-
-(define (reset-package!)
-  (set! scheme-subprocess-environment ((ucode-primitive scheme-environment 0)))
-  unspecific)
 
 (define (delete-all-processes)
   (for-each subprocess-delete (subprocess-list)))
@@ -79,6 +72,9 @@ USA.
 (define (subprocess-remove! process key)
   (1d-table/remove! (subprocess-properties process) key))
 
+(define (subprocess-binary-i/o-port process)
+  (%subprocess-binary-i/o-port process 'subprocess-binary-i/o-port))
+
 (define (subprocess-i/o-port process)
   (%subprocess-i/o-port process 'subprocess-i/o-port))
 
@@ -96,18 +92,26 @@ USA.
   (without-interruption
    (lambda ()
      (or (subprocess-%i/o-port process)
+	 (let* ((binary-port (%subprocess-binary-i/o-port process caller))
+		(port (and binary-port
+			   (make-generic-i/o-port binary-port (default-object)
+						  caller))))
+	   (set-subprocess-%i/o-port! process port)
+	   port)))))
+
+(define (%subprocess-binary-i/o-port process caller)
+  (without-interruption
+   (lambda ()
+     (or (subprocess-%i/o-port process)
 	 (let ((port
 		(let ((input-channel (subprocess-input-channel process))
 		      (output-channel (subprocess-output-channel process)))
 		  (and (or input-channel output-channel)
-		       (make-generic-i/o-port
-			(make-binary-port
-			 (and input-channel
-			      (make-channel-input-source input-channel))
-			 (and output-channel
-			      (make-channel-output-sink output-channel))
-			 caller)
-			(default-object)
+		       (make-binary-port
+			(and input-channel
+			     (make-channel-input-source input-channel))
+			(and output-channel
+			     (make-channel-output-sink output-channel))
 			caller)))))
 	   (set-subprocess-%i/o-port! process port)
 	   port)))))
@@ -164,6 +168,7 @@ USA.
 			 (and (cdr environment)
 			      (->namestring (cdr environment))))
 		   (set! environment (car environment))))
+	     (set! environment (resolve-environment environment))
 	     (without-interruption
 	      (lambda ()
 		(let ((index
@@ -336,11 +341,8 @@ USA.
 (define (%handle-subprocess-status-change)
   (if ((ucode-primitive process-status-sync-all 0))
       (let ((signaled? #f))
-	(for-each (lambda (weak)
-		    (let ((subprocess (weak-car weak)))
-		      (if subprocess
-			  (poll-subprocess-status subprocess))))
-		  (gc-finalizer-items subprocess-finalizer))
+	(for-each poll-subprocess-status
+		  (%gc-finalizer-elements subprocess-finalizer))
 	(for-each
 	  (lambda (registration)
 	    (let ((status (subprocess-status
@@ -412,9 +414,9 @@ USA.
 		   #f #f #f))
 
 (define (start-pipe-subprocess filename arguments environment)
-  (with-values make-pipe
+  (call-with-values make-pipe
     (lambda (child-read parent-write)
-      (with-values make-pipe
+      (call-with-values make-pipe
 	(lambda (parent-read child-write)
 	  (let ((process
 		 (make-subprocess filename arguments environment
@@ -425,7 +427,7 @@ USA.
 	    process))))))
 
 (define (start-pty-subprocess filename arguments environment)
-  (with-values open-pty-master
+  (call-with-values open-pty-master
     (lambda (master-channel master-name slave-name)
       master-name
       (make-subprocess filename arguments environment
@@ -434,8 +436,16 @@ USA.
 
 ;;;; Environment Bindings
 
+(define scheme-subprocess-environment
+  '|#[(runtime subprocess)scheme-subprocess-environment]|)
+
+(define (resolve-environment environment)
+  (if (eq? environment scheme-subprocess-environment)
+      ((ucode-primitive scheme-environment 0))
+      environment))
+
 (define (process-environment-bind environment . bindings)
-  (let ((bindings* (vector->list environment)))
+  (let ((bindings* (vector->list (resolve-environment environment))))
     (for-each (lambda (binding)
 		(let ((b
 		       (find-environment-variable

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,39 +29,48 @@ USA.
 
 (declare (usual-integrations))
 
-(define (define-declaration name pattern mapper)
-  (let ((entry (assq name known-declarations)))
+(define (define-declaration name pattern mapper folder)
+  (let ((entry (assq name known-declarations))
+	(value (list pattern mapper folder)))
     (if entry
-	(set-cdr! entry (cons pattern mapper))
+	(set-cdr! entry value)
 	(begin
 	  (set! known-declarations
-		(cons (cons name (cons pattern mapper))
+		(cons (cons name value)
 		      known-declarations))
 	  unspecific))))
 
 (define (map-decl-ids procedure declaration)
+  (operate-on-decl-ids (lambda (handlers declaration)
+			 ((car handlers) procedure declaration biselector:cr))
+		       declaration))
+
+(define (fold-decl-ids procedure initial declaration)
+  (operate-on-decl-ids (lambda (handlers declaration)
+			 ((cadr handlers) procedure initial declaration))
+		       declaration))
+
+(define (operate-on-decl-ids procedure declaration)
   (if (not (pair? declaration))
       (error "Ill-formed declaration:" declaration))
   (let* ((declaration
 	  ;++ This is a kludge -- rather than strip syntactic closures,
 	  ;++ it should be aware of the environment.
-	  (if (symbol? (car declaration))
-	      declaration
-	      (cons (strip-syntactic-closures (car declaration))
-		    (cdr declaration))))
+	  (cons (identifier->symbol (car declaration))
+		(cdr declaration)))
 	 (entry (assq (car declaration) known-declarations)))
     (if (and entry (syntax-match? (cadr entry) (cdr declaration)))
-	((cddr entry) procedure declaration biselector:cr)
+	(procedure (cddr entry) declaration)
 	(begin
 	  (warn "Unknown declaration:" declaration)
 	  declaration))))
+
+(define known-declarations '())
 
 (define (map+ procedure items selector)
   (map procedure
        items
        (biselect-list-elts items selector)))
-
-(define known-declarations '())
 
 (for-each (lambda (keyword)
 	    (define-declaration keyword '(* identifier)
@@ -69,7 +78,9 @@ USA.
 		(cons (car declaration)
 		      (map+ procedure
 			    (cdr declaration)
-			    (biselect-cdr selector))))))
+			    (biselect-cdr selector))))
+	      (lambda (procedure initial declaration)
+		(fold procedure initial (cdr declaration)))))
 	  ;; The names in USUAL-INTEGRATIONS are always global.
 	  '(
 	    usual-integrations
@@ -90,13 +101,19 @@ USA.
 	     (pathname? object))))
   (lambda (procedure declaration selector)
     (declare (ignore procedure selector))
-    declaration))
+    declaration)
+  (lambda (procedure initial declaration)
+    (declare (ignore procedure declaration))
+    initial))
 
 (define-declaration 'target-metadata
-  `(* (symbol * datum))
+  '(* (symbol * datum))
   (lambda (procedure declaration selector)
     (declare (ignore procedure selector))
-    declaration))
+    declaration)
+  (lambda (procedure initial declaration)
+    (declare (ignore procedure declaration))
+    initial))
 
 (for-each
  (lambda (keyword)
@@ -119,7 +136,17 @@ USA.
 			    (map+ loop
 				  (cdr varset)
 				  (biselect-cdr selector))))
-		     (else varset)))))))
+		     (else varset)))))
+     (lambda (procedure initial declaration)
+       (let loop ((varset (cadr declaration)) (value initial))
+	 (cond ((syntax-match? '('set * identifier) varset)
+		(fold procedure value (cdr varset)))
+	       ((syntax-match?* '(('union * datum)
+				  ('intersection * datum)
+				  ('difference datum datum))
+				varset)
+		(fold loop value (cdr varset)))
+	       (else value))))))
  '(constant
    ignore-assignment-traps
    ignore-reference-traps
@@ -143,7 +170,17 @@ USA.
 			      (cdr rule)
 			      (biselect-cdr selector))))
 		(cdr declaration)
-		(biselect-cdr selector)))))
+		(biselect-cdr selector))))
+  (lambda (procedure initial declaration)
+    (fold (lambda (rule value)
+	    (fold (lambda (clause value*)
+		    (if (identifier? (cadr clause))
+			(procedure (cadr clause) value*)
+			value*))
+		  (procedure (car rule) value)
+		  (cdr rule)))
+	  initial
+	  (cdr declaration))))
 
 (define-declaration 'reduce-operator '(* (identifier datum * datum))
   (lambda (procedure declaration selector)
@@ -167,4 +204,20 @@ USA.
 			       (cddr rule)
 			       (biselect-cddr selector))))
 		(cdr declaration)
-		(biselect-cdr selector)))))
+		(biselect-cdr selector))))
+  (lambda (procedure initial declaration)
+    (fold (lambda (rule value)
+	    (fold (lambda (clause value*)
+		    (if (syntax-match?* '(('null-value identifier datum)
+					  ('singleton identifier)
+					  ('wrapper identifier ? datum))
+					clause)
+			(procedure (cadr clause) value*)
+			value*))
+		  (let ((value* (procedure (car rule) value)))
+		    (if (identifier? (cadr rule))
+			(procedure (cadr rule) value*)
+			value*))
+		  (cddr rule)))
+	  initial
+	  (cdr declaration))))

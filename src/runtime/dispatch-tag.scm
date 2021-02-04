@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,6 +32,8 @@ USA.
 ;;; September 16, 1992 PCL implementation.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime random-number))
 
 (define (%make-tag metatag name predicate extra)
   (let ((tag
@@ -47,7 +49,7 @@ USA.
 		(get-tag-cache-number)
 		name
 		predicate
-		(%make-weak-set)
+		(weak-list-set eq?)
 		extra)))
     (set-predicate-tag! predicate tag)
     tag))
@@ -104,7 +106,7 @@ USA.
 	 (int:quotient
 	  (let loop ((n 2)) (if (fix:fixnum? n) (loop (int:* n 2)) n))
 	  tag-cache-number-adds-ok))
-	(state (make-random-state)))
+	(state (make-random-state #t)))
     (lambda ()
       (random modulus state))))
 
@@ -166,12 +168,12 @@ USA.
 
 (define (any-dispatch-tag-superset procedure tag)
   (guarantee dispatch-tag? tag 'any-dispatch-tag-superset)
-  (%weak-set-any procedure (%tag-supersets tag)))
+  (weak-list-set-any procedure (%tag-supersets tag)))
 
 (define (add-dispatch-tag-superset tag superset)
   (guarantee dispatch-tag? tag 'add-dispatch-tag-superset)
   (guarantee dispatch-tag? superset 'add-dispatch-tag-superset)
-  (%add-to-weak-set superset (%tag-supersets tag)))
+  (weak-list-set-add! superset (%tag-supersets tag)))
 
 (define-print-method dispatch-tag?
   (standard-print-method

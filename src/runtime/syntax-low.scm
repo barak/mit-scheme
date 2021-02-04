@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,85 +26,78 @@ USA.
 
 ;;;; Syntax -- cold-load support
 
-;;; Procedures to convert transformers to internal form.  Required
-;;; during cold load, so must be loaded very early in the sequence.
+;;; Procedures to convert classifiers and transformers to internal form.
+;;; Required during cold load, so must be loaded very early in the sequence.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic))
 
-;;; These optional arguments are needed for cross-compiling 9.2->9.3.
-;;; They can become required after 9.3 release.
+(define (sc-macro-transformer->expander transformer env)
+  (transformer-item (sc-wrapper transformer (runtime-getter env))))
 
-(define (sc-macro-transformer->expander transformer env #!optional expr)
-  (keyword-item (sc-wrapper transformer (runtime-getter env))
-		expr))
-
-(define (sc-macro-transformer->keyword-item transformer closing-senv expr)
-  (keyword-item (sc-wrapper transformer (lambda () closing-senv))
-		expr))
+(define (sc-macro-transformer->item transformer closing-senv expr)
+  (transformer-item (sc-wrapper transformer (lambda () closing-senv))
+		    expr))
 
 (define (sc-wrapper transformer get-closing-senv)
   (lambda (form use-senv hist)
-    (reclassify (with-error-context form use-senv hist
-		  (lambda ()
-		    (transformer form use-senv)))
-		(get-closing-senv)
-		hist)))
+    (declare (ignore hist))
+    (close-syntax (transformer form use-senv)
+		  (get-closing-senv))))
 
-(define (rsc-macro-transformer->expander transformer env #!optional expr)
-  (keyword-item (rsc-wrapper transformer (runtime-getter env))
-		expr))
+(define (rsc-macro-transformer->expander transformer env)
+  (transformer-item (rsc-wrapper transformer (runtime-getter env))))
 
-(define (rsc-macro-transformer->keyword-item transformer closing-senv expr)
-  (keyword-item (rsc-wrapper transformer (lambda () closing-senv))
-		expr))
+(define (rsc-macro-transformer->item transformer closing-senv expr)
+  (transformer-item (rsc-wrapper transformer (lambda () closing-senv))
+		    expr))
 
 (define (rsc-wrapper transformer get-closing-senv)
   (lambda (form use-senv hist)
-    (reclassify (with-error-context form use-senv hist
-		  (lambda ()
-		    (transformer form (get-closing-senv))))
-		use-senv
-		hist)))
+    (declare (ignore use-senv hist))
+    (transformer form (get-closing-senv))))
 
-(define (er-macro-transformer->expander transformer env #!optional expr)
-  (keyword-item (er-wrapper transformer (runtime-getter env))
-		expr))
+(define (er-macro-transformer->expander transformer env)
+  (transformer-item (er-wrapper transformer (runtime-getter env))))
 
-(define (er-macro-transformer->keyword-item transformer closing-senv expr)
-  (keyword-item (er-wrapper transformer (lambda () closing-senv))
-		expr))
+(define (er-macro-transformer->item transformer closing-senv expr)
+  (transformer-item (er-wrapper transformer (lambda () closing-senv))
+		    expr))
 
 (define (er-wrapper transformer get-closing-senv)
   (lambda (form use-senv hist)
-    (reclassify (with-error-context form use-senv hist
-		  (lambda ()
-		    (transformer form
-				 (make-er-rename (get-closing-senv))
-				 (make-er-compare use-senv))))
-		use-senv
-		hist)))
+    (declare (ignore hist))
+    (transformer form
+		 (make-er-rename (get-closing-senv))
+		 (make-er-compare use-senv))))
 
 (define (make-er-rename closing-senv)
-  (lambda (identifier)
-    (close-syntax identifier closing-senv)))
+  (let ((renames '()))
+    (lambda (id)
+      (guarantee identifier? id)
+      (let ((p (assq id renames)))
+	(if p
+	    (cdr p)
+	    (let ((rename (close-syntax id closing-senv)))
+	      (set! renames (cons (cons id rename) renames))
+	      rename))))))
 
 (define (make-er-compare use-senv)
   (lambda (x y)
     (identifier=? use-senv x use-senv y)))
 
 (define (spar-macro-transformer->expander spar env expr)
-  (keyword-item (spar-wrapper spar (runtime-getter env))
-		expr))
+  (transformer-item (spar-wrapper spar (runtime-getter env))
+		    expr))
 
-(define (spar-macro-transformer->keyword-item spar closing-senv expr)
-  (keyword-item (spar-wrapper spar (lambda () closing-senv))
-		expr))
+(define (spar-macro-transformer->item spar closing-senv expr)
+  (transformer-item (spar-wrapper spar (lambda () closing-senv))
+		    expr))
 
 (define (spar-wrapper spar get-closing-senv)
   (lambda (form use-senv hist)
-    (reclassify (spar-call spar form use-senv hist (get-closing-senv))
-		use-senv
-		hist)))
+    (spar-call spar form use-senv hist (get-closing-senv))))
 
 (define (runtime-getter env)
   (lambda ()
@@ -112,54 +105,57 @@ USA.
 
 ;;; Keyword items represent syntactic keywords.
 
-(define (keyword-item impl #!optional expr)
-  (%keyword-item impl expr))
+;; A transformer has the signature (form senv hist) -> form.
+(define-record-type <transformer-item>
+    (%transformer-item impl expr)
+    transformer-item?
+  (impl transformer-item-impl)
+  (expr transformer-item-expr))
 
-(define-record-type <keyword-item>
-    (%keyword-item impl expr)
-    keyword-item?
-  (impl keyword-item-impl)
-  (expr keyword-item-expr))
+(define (transformer-item impl #!optional expr)
+  (%transformer-item impl expr))
 
-(define (keyword-item-has-expr? item)
-  (not (default-object? (keyword-item-expr item))))
+(define (transformer-item-has-expr? item)
+  (not (default-object? (transformer-item-expr item))))
+
+;; A classifier has the signature (form senv hist) -> item.
+(define-record-type <classifier-item>
+    (classifier-item impl)
+    classifier-item?
+  (impl classifier-item-impl))
+
+(define (classifier-item->runtime item)
+  (make-unmapped-macro-reference-trap item))
+
+(define (classifier-item->keyword item)
+  (close-syntax 'keyword (make-classifier-senv 'keyword item)))
 
 (define (classifier->runtime classifier)
-  (make-unmapped-macro-reference-trap (keyword-item classifier)))
+  (classifier-item->runtime (classifier-item classifier)))
 
 (define (classifier->keyword classifier)
-  (close-syntax 'keyword
-		(make-keyword-senv 'keyword
-				   (keyword-item classifier))))
+  (classifier-item->keyword (classifier-item classifier)))
 
 (define (spar-classifier->runtime promise)
-  (classifier->runtime (spar-classifier-promise-caller promise)))
+  (classifier-item->runtime (spar-classifier-item promise)))
 
 (define (spar-classifier->keyword promise)
-  (classifier->keyword (spar-classifier-promise-caller promise)))
+  (classifier-item->keyword (spar-classifier-item promise)))
 
-(define (spar-classifier-promise-caller promise)
-  (lambda (form senv hist)
-    (spar-call (force promise) form senv hist senv)))
+(define (spar-classifier-item promise)
+  (classifier-item
+   (lambda (form senv hist)
+     (spar-call (force promise) form senv hist senv))))
 
-(define (spar-transformer->runtime promise #!optional env)
-  (classifier->runtime
-   (lambda (form use-senv hist)
-     (reclassify (spar-call (force promise)
-			    form
-			    use-senv
-			    hist
-			    (if (default-object? env)
-				(top-level-senv)
-				(runtime-environment->syntactic env)))
+(define (spar-transformer->runtime promise)
+  (make-unmapped-macro-reference-trap
+   (transformer-item
+    (lambda (form use-senv hist)
+      (spar-call (force promise)
+		 form
 		 use-senv
-		 hist))))
+		 hist
+		 (top-level-senv))))))
 
 (define-deferred top-level-senv
   (make-unsettable-parameter #f))
-
-(define (syntactic-keyword->item keyword environment)
-  (let ((item (environment-lookup-macro environment keyword)))
-    (if (not item)
-	(error:bad-range-argument keyword 'syntactic-keyword->item))
-    item))

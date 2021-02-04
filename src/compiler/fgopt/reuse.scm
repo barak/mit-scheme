@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -82,7 +82,7 @@ USA.
 		  (eq? (car adjustment) 'KNOWN)
 		  (cdr adjustment)))))
       (if overwritten-block
-	  (with-values
+	  (call-with-values
 	      (lambda ()
 		(subproblems->nodes subproblems
 				    caller-block
@@ -92,7 +92,7 @@ USA.
 		  (begin
 		    (set-combination/reuse-existing-frame?! combination
 							    overwritten-block)
-		    (with-values
+		    (call-with-values
 			(lambda ()
 			  (order-subproblems/overwrite-block
 			   caller-block
@@ -113,7 +113,7 @@ USA.
 (define reuse-size-limit 7)
 
 (define (subproblems->nodes subproblems caller-block overwritten-block)
-  (with-values
+  (call-with-values
       (lambda ()
 	(let ((n-subproblems (length subproblems)))
 	  (let ((targets
@@ -132,11 +132,11 @@ USA.
 							overwritten-block)
 			     subproblems))))))
 	      (if (< n-targets n-subproblems)
-		  (values (make-nodes (list-head subproblems n-targets))
-			  (list-tail subproblems n-targets))
+		  (values (make-nodes (take subproblems n-targets))
+			  (drop subproblems n-targets))
 		  (values (make-nodes subproblems) '()))))))
     (lambda (nodes extra-subproblems)
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (discriminate-items nodes
 	      (lambda (node)
@@ -157,7 +157,7 @@ USA.
 	       (append! (block-layout block) (loop (block-parent block)))))))
     (let ((n-items (length stack-layout)))
       (if (< overwriting-size n-items)
-	  (list-tail stack-layout (- n-items overwriting-size))
+	  (drop stack-layout (- n-items overwriting-size))
 	  stack-layout))))
 
 (define (block-layout block)

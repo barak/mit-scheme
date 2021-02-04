@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime number)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables))
 
 ;;;; Utilities
 
@@ -96,25 +98,34 @@ USA.
 (define rec:pi/2 (flo:* 2. (flo:atan2 1. 1.)))
 (define rec:pi (flo:* 2. rec:pi/2))
 
-(define flo:radix 2)
+(define-integrable flo:radix 2)
+(define-integrable flo:radix. 2.)
+(define flo:precision)
 (define flo:ulp-of-one)
 (define flo:error-bound)
 (define flo:log-error-bound)
-(define flo:normal-exponent-max-base-2)
-(define flo:normal-exponent-min-base-2)
-(define flo:normal-exponent-max-base-e)
-(define flo:normal-exponent-min-base-e)
-(define flo:normal-exponent-max-base-10)
-(define flo:normal-exponent-min-base-10)
-(define flo:subnormal-exponent-min-base-2)
-(define flo:subnormal-exponent-min-base-e)
-(define flo:subnormal-exponent-min-base-10)
+(define flo:subnormal-exponent-min)
+(define flo:normal-exponent-min)
+(define flo:normal-exponent-max)
+(define flo:smallest-positive-subnormal)
+(define flo:smallest-positive-normal)
+(define flo:largest-positive-normal)
+(define flo:least-subnormal-exponent-base-2)
+(define flo:least-subnormal-exponent-base-e)
+(define flo:least-subnormal-exponent-base-10)
+(define flo:least-normal-exponent-base-2)
+(define flo:least-normal-exponent-base-e)
+(define flo:least-normal-exponent-base-10)
+(define flo:greatest-normal-exponent-base-2)
+(define flo:greatest-normal-exponent-base-e)
+(define flo:greatest-normal-exponent-base-10)
 (define flo:significand-digits-base-2)
 (define flo:significand-digits-base-10)
 (define int:flonum-integer-limit)
 
 (define (initialize-microcode-dependencies!)
   (let ((p microcode-id/floating-mantissa-bits))
+    (set! flo:precision p)
     (set! flo:significand-digits-base-2 p)
     ;; Add two here because first and last digits may be
     ;; "partial" in the sense that each represents less than the
@@ -130,155 +141,244 @@ USA.
   (set! flo:ulp-of-one microcode-id/floating-epsilon)
   (set! flo:error-bound (flo:/ flo:ulp-of-one 2.))
   (set! flo:log-error-bound (flo:log flo:error-bound))
-  (set! flo:normal-exponent-max-base-2 microcode-id/floating-exponent-max)
-  (set! flo:normal-exponent-min-base-2 microcode-id/floating-exponent-min)
-  (set! flo:subnormal-exponent-min-base-2
-	(int:- flo:normal-exponent-min-base-2
+  (set! flo:normal-exponent-max microcode-id/floating-exponent-max)
+  (set! flo:normal-exponent-min microcode-id/floating-exponent-min)
+  (set! flo:subnormal-exponent-min
+	(int:- flo:normal-exponent-min
 	       (int:- flo:significand-digits-base-2 1)))
-  (set! flo:normal-exponent-max-base-e
-	(flo:log (flo:expt 2. (int:->flonum flo:normal-exponent-max-base-2))))
-  (set! flo:normal-exponent-min-base-e
-	(flo:log (flo:expt 2. (int:->flonum flo:normal-exponent-min-base-2))))
-  (set! flo:subnormal-exponent-min-base-e
-	(flo:+
-	 flo:normal-exponent-min-base-e
-	 (flo:log
-	  (flo:expt 2.
-		    (flo:- 0. (int:->flonum flo:significand-digits-base-2))))))
-  (set! flo:normal-exponent-max-base-10
-	(flo:/ flo:normal-exponent-max-base-e (flo:log 10.)))
-  (set! flo:normal-exponent-min-base-10
-	(flo:/ flo:normal-exponent-min-base-e (flo:log 10.)))
-  (set! flo:subnormal-exponent-min-base-10
-	(flo:/ flo:subnormal-exponent-min-base-e (flo:log 10.)))
+  (set! flo:smallest-positive-subnormal
+	(flo:scalbn 1. flo:subnormal-exponent-min))
+  (set! flo:smallest-positive-normal
+	(flo:scalbn 1. flo:normal-exponent-min))
+  (set! flo:largest-positive-normal
+	(flo:scalbn (flo:nextafter flo:radix. 0.) flo:normal-exponent-max))
+  (define (rejigger x worst good?)
+    ;; We could use bisection but the initial approximations should be
+    ;; good enough that this search should take at most a couple steps.
+    (define (good x i)
+      (if (fix:>= i 10)
+	  (error "Floating-point parameters are hosed, can't find 'em!"))
+      (let ((x* (flo:nextafter x worst)))
+	(if (good? x*) (good x* (fix:+ i 1)) x)))
+    (define (bad x i)
+      (if (fix:>= i 10)
+	  (error "Floating-point parameters are hosed, can't find 'em!"))
+      (let ((x* (flo:nextafter x (flo:negate worst))))
+	(if (good? x*) x* (bad x* (fix:+ i 1)))))
+    (if (good? x) (good x 0) (bad x 0)))
+  (set! flo:least-subnormal-exponent-base-2
+	(rejigger (flo:- (int:->flonum flo:subnormal-exponent-min) 1.)
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (not (flo:zero? (flo:expt 2. x))))))
+  (set! flo:least-subnormal-exponent-base-e
+	(rejigger (flo:- (flo:log flo:smallest-positive-subnormal) flo:log2)
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (not (flo:zero? (flo:exp x))))))
+  (set! flo:least-subnormal-exponent-base-10
+	(rejigger (flo:/ flo:least-subnormal-exponent-base-e (flo:log 10.))
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (not (flo:zero? (flo:expt 10. x))))))
+  (set! flo:least-normal-exponent-base-2
+	(int:->flonum flo:normal-exponent-min))
+  (set! flo:least-normal-exponent-base-e
+	(rejigger (flo:log flo:smallest-positive-normal)
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (flo:normal? (exp x)))))
+  (set! flo:least-normal-exponent-base-10
+	(rejigger (flo:/ flo:least-normal-exponent-base-e (flo:log 10.))
+		  (flo:negate flo:largest-positive-normal)
+		  (lambda (x) (flo:normal? (flo:expt 10. x)))))
+  (let ((b flo:radix.)
+	(emax (int:->flonum flo:normal-exponent-max)))
+    ;; Let eps = ulp(1)/2 = 1/(2 b^{p - 1}).  The largest positive
+    ;; floating-point number m is
+    ;;
+    ;;	b^emax (b - 1 + (b^{p - 1} - 1)/b^{p - 1})
+    ;;	b^emax (b - 1 + (2 b^{p - 1} - 2)/(2 b^{p - 1}))
+    ;;	= b^emax (b - 1 + 1 - 2 eps)
+    ;;	= b^emax (b - 2 eps).
+    ;;
+    ;; What _would_ be the next larger floating-point number is m' =
+    ;; b^{emax + 1}; anything up to (and excluding) halfway from m to
+    ;; m' gets rounded to m, while anything halfway to m' or above is
+    ;; rounded to +infinity.
+    ;;
+    ;; We seek the greatest floating-point x with fl(e^x) < (m + m')/2.
+    ;; We can start by computing an approximation to the log of
+    ;;
+    ;;	(b*b^emax + b^emax (b - 2 eps))/2
+    ;;	= b^emax (b + b - 2 eps)/2
+    ;;	= b^emax (2b - 2 eps)/2
+    ;;	= b^emax 2b (1 - 2 eps/b)/2
+    ;;	= b^{emax + 1} (1 - 2 eps/b)
+    ;;
+    ;; by
+    ;;
+    ;;	log(b^{emax + 1} (1 - 2 eps/b))
+    ;;	= log(b^{emax + 1}) + log(1 - 2 eps/b)
+    ;;	= (emax + 1) log(b) + log1p(-2 eps/b)
+    ;;	= (emax + 1) log(b) + log1p(-ulp(1)/b)
+    ;;
+    ;; It will be off by at most a handful of rounding errors, so we
+    ;; rejigger this estimate with a short search for the correct one.
+    ;;
+    (set! flo:greatest-normal-exponent-base-e
+	  (rejigger (flo:+ (flo:* (flo:+ emax 1.) (flo:log b))
+			   (flo:log1p (flo:/ (flo:negate flo:ulp-of-one) b)))
+		    flo:largest-positive-normal
+		    (lambda (x) (flo:finite? (flo:exp x)))))
+    (set! flo:greatest-normal-exponent-base-2
+	  (rejigger (flo:/ flo:greatest-normal-exponent-base-e (flo:log 2.))
+		    flo:largest-positive-normal
+		    (lambda (x) (flo:finite? (flo:expt 2. x)))))
+    (set! flo:greatest-normal-exponent-base-10
+	  (rejigger (flo:/ flo:greatest-normal-exponent-base-e (flo:log 10.))
+		    flo:largest-positive-normal
+		    (lambda (x) (flo:finite? (flo:expt 10. x))))))
   unspecific)
+(add-event-receiver! event:after-restore initialize-microcode-dependencies!)
 
-(define (initialize-package!)
-  (initialize-microcode-dependencies!)
-  (add-event-receiver! event:after-restore initialize-microcode-dependencies!)
-  (initialize-*maximum-fixnum-radix-powers*!)
-  (set-fixed-objects-item! 'generic-trampoline-zero? complex:zero?)
-  (set-fixed-objects-item! 'generic-trampoline-positive? complex:positive?)
-  (set-fixed-objects-item! 'generic-trampoline-negative? complex:negative?)
-  (set-fixed-objects-item! 'generic-trampoline-add-1 complex:1+)
-  (set-fixed-objects-item! 'generic-trampoline-subtract-1 complex:-1+)
-  (set-fixed-objects-item! 'generic-trampoline-equal? complex:=)
-  (set-fixed-objects-item! 'generic-trampoline-less? complex:<)
-  (set-fixed-objects-item! 'generic-trampoline-greater? complex:>)
-  (set-fixed-objects-item! 'generic-trampoline-add complex:+)
-  (set-fixed-objects-item! 'generic-trampoline-subtract complex:-)
-  (set-fixed-objects-item! 'generic-trampoline-multiply complex:*)
-  (set-fixed-objects-item! 'generic-trampoline-divide complex:/)
-  (set-fixed-objects-item! 'generic-trampoline-quotient complex:quotient)
-  (set-fixed-objects-item! 'generic-trampoline-remainder complex:remainder)
-  (set-fixed-objects-item! 'generic-trampoline-modulo complex:modulo)
-
-  ;; The binary cases for the following operators rely on the fact that the
-  ;; &<mumble> operators, either interpreted or open-coded by the
-  ;; compiler, calls the GENERIC-TRAMPOLINE version above, are set to
-  ;; the appropriate binary procedures when this package is
-  ;; initialized.  We could have just replaced (ucode-primitive &+)
-  ;; with + etc and relied on + being integrated, but that is not
-  ;; very clear.
+(add-boot-init!
+ (lambda ()
+   (initialize-microcode-dependencies!)
+   (initialize-*maximum-fixnum-radix-powers*!)
+   (set-fixed-objects-item! 'generic-trampoline-zero? complex:zero?)
+   (set-fixed-objects-item! 'generic-trampoline-positive? complex:positive?)
+   (set-fixed-objects-item! 'generic-trampoline-negative? complex:negative?)
+   (set-fixed-objects-item! 'generic-trampoline-add-1 complex:1+)
+   (set-fixed-objects-item! 'generic-trampoline-subtract-1 complex:-1+)
+   (set-fixed-objects-item! 'generic-trampoline-equal? complex:=)
+   (set-fixed-objects-item! 'generic-trampoline-less? complex:<)
+   (set-fixed-objects-item! 'generic-trampoline-greater? complex:>)
+   (set-fixed-objects-item! 'generic-trampoline-add complex:+)
+   (set-fixed-objects-item! 'generic-trampoline-subtract complex:-)
+   (set-fixed-objects-item! 'generic-trampoline-multiply complex:*)
+   (set-fixed-objects-item! 'generic-trampoline-divide complex:/)
+   (set-fixed-objects-item! 'generic-trampoline-quotient complex:quotient)
+   (set-fixed-objects-item! 'generic-trampoline-remainder complex:remainder)
+   (set-fixed-objects-item! 'generic-trampoline-modulo complex:modulo)
 
-  (let-syntax
-      ((commutative
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   (let ((name (list-ref form 1))
-		 (identity (close-syntax (list-ref form 3) environment)))
-	     `(set! ,(close-syntax name environment)
-		    (make-arity-dispatched-procedure
-		     (named-lambda (,name self . zs)
-		       self		; ignored
-		       (reduce ,(close-syntax (list-ref form 2) environment)
-			       ,identity
-			       zs))
-		     (named-lambda (,(symbol 'nullary- name))
-		       ,identity)
-		     (named-lambda (,(symbol 'unary- name) z)
-		       (if (not (complex:complex? z))
-			   (error:wrong-type-argument z "number" ',name))
-		       z)
-		     (named-lambda (,(symbol 'binary- name) z1 z2)
-		       ((ucode-primitive ,(list-ref form 4)) z1 z2)))))))))
-    (commutative + complex:+ 0 &+)
-    (commutative * complex:* 1 &*))
+   ;; The binary cases for the following operators rely on the fact that the
+   ;; &<mumble> operators, either interpreted or open-coded by the
+   ;; compiler, calls the GENERIC-TRAMPOLINE version above, are set to
+   ;; the appropriate binary procedures when this package is
+   ;; initialized.  We could have just replaced (ucode-primitive &+)
+   ;; with + etc and relied on + being integrated, but that is not
+   ;; very clear.
 
-  (let-syntax
-      ((non-commutative
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   (let ((name (list-ref form 1)))
-	     `(set! ,(close-syntax name environment)
-		    (make-arity-dispatched-procedure
-		     (named-lambda (,name self z1 . zs)
-		       self		; ignored
-		       (,(close-syntax (list-ref form 3) environment)
-			z1
-			(reduce ,(close-syntax (list-ref form 4) environment)
-				,(close-syntax (list-ref form 5) environment)
-				zs)))
-		     #f
-		     ,(close-syntax (list-ref form 2) environment)
-		     (named-lambda (,(symbol 'binary- name) z1 z2)
-		       ((ucode-primitive ,(list-ref form 6)) z1 z2)))))))))
-    (non-commutative - complex:negate complex:- complex:+ 0 &-)
-    (non-commutative / complex:invert complex:/ complex:* 1 &/))
-
-  (let-syntax
-      ((relational
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   (let ((name (list-ref form 1))
-		 (type (list-ref form 4)))
-	     `(set! ,(close-syntax name environment)
-		    (make-arity-dispatched-procedure
-		     (named-lambda (,name self . zs)
-		       self		; ignored
-		       (reduce-comparator
-			,(close-syntax (list-ref form 2) environment)
-			zs ',name))
-		     (named-lambda (,(symbol 'nullary- name)) #t)
-		     (named-lambda (,(symbol 'unary- name) z)
-		       (if (not (,(intern (string-append "complex:" type "?"))
-				 z))
-			   (error:wrong-type-argument
-			    z ,(string-append type " number") ',name))
-		       #t)
-		     (named-lambda (,(symbol 'binary- name) z1 z2)
-		       ,(let ((p
-			       `((ucode-primitive ,(list-ref form 3)) z1 z2)))
-			  (if (list-ref form 5)
-			      `(not ,p)
-			      p))))))))))
-    (relational = complex:= &= "complex" #f)
-    (relational < complex:< &< "real" #f)
-    (relational > complex:> &> "real" #f)
-    (relational <= (lambda (x y) (not (complex:< y x))) &> "real" #t)
-    (relational >= (lambda (x y) (not (complex:< x y))) &< "real" #t))
+   (let-syntax
+       ((commutative
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    (let ((name (list-ref form 1))
+		  (identity (close-syntax (list-ref form 3) environment)))
+	      `(set! ,(close-syntax name environment)
+		     (make-arity-dispatched-procedure
+		      (named-lambda (,name self . zs)
+			self		; ignored
+			(reduce ,(close-syntax (list-ref form 2) environment)
+				,identity
+				zs))
+		      (named-lambda (,(symbol 'nullary- name))
+			,identity)
+		      (named-lambda (,(symbol 'unary- name) z)
+			(if (not (complex:complex? z))
+			    (error:wrong-type-argument z "number" ',name))
+			z)
+		      (named-lambda (,(symbol 'binary- name) z1 z2)
+			((ucode-primitive ,(list-ref form 4)) z1 z2)))))))))
+     (commutative + complex:+ 0 &+)
+     (commutative * complex:* 1 &*))
 
-  (let-syntax
-      ((max/min
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   (let ((name (list-ref form 1))
-		 (generic-binary (close-syntax (list-ref form 2) environment)))
-	     `(set! ,(close-syntax name environment)
-		    (make-arity-dispatched-procedure
-		     (named-lambda (,name self x . xs)
-		       self		; ignored
-		       (reduce-max/min ,generic-binary x xs ',name))
-		     #f
-		     (named-lambda (,(symbol 'unary- name) x)
-		       (if (not (complex:real? x))
-			   (error:wrong-type-argument x "real number" ',name))
-		       x)
-		     ,generic-binary)))))))
-    (max/min max complex:max)
-    (max/min min complex:min))
+   (let-syntax
+       ((non-commutative
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    (let ((name (list-ref form 1)))
+	      `(set! ,(close-syntax name environment)
+		     (make-arity-dispatched-procedure
+		      (named-lambda (,name self z1 . zs)
+			self		; ignored
+			(,(close-syntax (list-ref form 3) environment)
+			 z1
+			 (reduce ,(close-syntax (list-ref form 4) environment)
+				 ,(close-syntax (list-ref form 5) environment)
+				 zs)))
+		      #f
+		      ,(close-syntax (list-ref form 2) environment)
+		      (named-lambda (,(symbol 'binary- name) z1 z2)
+			((ucode-primitive ,(list-ref form 6)) z1 z2)))))))))
+     (non-commutative - complex:negate complex:- complex:+ 0 &-)
+     (non-commutative / complex:invert complex:/ complex:* 1 &/))
+ 
+   (let-syntax
+       ((relational
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    (let ((name (list-ref form 1))
+		  (comp (list-ref form 2))
+		  (prim (list-ref form 3))
+		  (type (list-ref form 4))
+		  (borked? (list-ref form 5)))
+	      `(set! ,(close-syntax name environment)
+		     (make-arity-dispatched-procedure
+		      (named-lambda (,name self . zs)
+			self		; ignored
+			(reduce-comparator
+			 ,(close-syntax comp environment)
+			 zs ',name))
+		      (named-lambda (,(symbol 'nullary- name)) #t)
+		      (named-lambda (,(symbol 'unary- name) z)
+			(if (not (,(intern (string-append "complex:" type "?"))
+				  z))
+			    (error:wrong-type-argument
+			     z ,(string-append type " number") ',name))
+			#t)
+		      (named-lambda (,(symbol 'binary- name) z1 z2)
+			(,(if borked?
+			      (close-syntax comp environment)
+			      `(ucode-primitive ,prim))
+			 z1
+			 z2)))))))))
+     (relational = complex:= &= "complex" #f)
+     (relational < complex:< &< "real" #f)
+     (relational > complex:> &> "real" #f)
+     (relational <= complex:<= &> "real" #t)
+     (relational >= complex:>= &< "real" #t))
 
-  unspecific)
+   (let-syntax
+       ((max/min
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    (let ((name (list-ref form 1))
+		  (generic-binary (close-syntax (list-ref form 2) environment)))
+	      `(set! ,(close-syntax name environment)
+		     (make-arity-dispatched-procedure
+		      (named-lambda (,name self x . xs)
+			self		; ignored
+			(reduce-max/min ,generic-binary x xs ',name))
+		      #f
+		      (named-lambda (,(symbol 'unary- name) x)
+			(if (not (complex:real? x))
+			    (error:wrong-type-argument x "real number" ',name))
+			x)
+		      ,generic-binary)))))))
+     (max/min max complex:max)
+     (max/min min complex:min))
+
+   (initialize-dragon4!)))
+
+(define (complex:<= x y)
+  ;; XXX Should use a generic trampoline for this.
+  (and (not (and (flo:flonum? x) (flo:nan? x)))
+       (not (and (flo:flonum? y) (flo:nan? y)))
+       (not (complex:> x y))))
+
+(define (complex:>= x y)
+  ;; XXX Should use a generic trampoline for this.
+  (and (not (and (flo:flonum? x) (flo:nan? x)))
+       (not (and (flo:flonum? y) (flo:nan? y)))
+       (not (complex:< x y))))
 
 (define (int:max n m)
   (if (int:< n m) m n))
@@ -827,30 +927,25 @@ USA.
     (let ((k (int:- (integer-length-in-bits n)
 		    (integer-length-in-bits d)))
 	  (p flo:significand-digits-base-2))
-      (letrec
-	  ((step1
-	    (lambda (n d)
-	      ;; (assert (< (expt 2 (- k 1)) (/ n d) (expt 2 (+ k 1))))
-	      (if (int:negative? k)
-		  (step2 (integer-shift-left n (int:negate k)) d)
-		  (step2 n (integer-shift-left d k)))))
-	   (step2
-	    (lambda (n d)
-	      ;; (assert (< 1/2 (/ n d) 2))
-	      (if (int:< n d)
-		  (step3 n d (int:- k p))
-		  (step3 n (int:* 2 d) (int:- (int:1+ k) p)))))
-	   (step3
-	    (lambda (n d e)
-	      ;; (assert (and (<= 1/2 (/ n d)) (< (/ n d) 1)))
-	      (let ((n (int:round (integer-shift-left n p) d)))
-		(if (int:= n int:flonum-integer-limit)
-		    (step4 (int:quotient n 2) (int:1+ e))
-		    (step4 n e)))))
-	   (step4
-	    (lambda (n e)
-	      (flo:denormalize (integer->flonum n #b11) e))))
-	(step1 n d))))
+      (define (step1 n d)
+	;; (assert (< (expt 2 (- k 1)) (/ n d) (expt 2 (+ k 1))))
+	(if (int:negative? k)
+	    (step2 (integer-shift-left n (int:negate k)) d)
+	    (step2 n (integer-shift-left d k))))
+      (define (step2 n d)
+	;; (assert (< 1/2 (/ n d) 2))
+	(if (int:< n d)
+	    (step3 n d (int:- k p))
+	    (step3 n (int:* 2 d) (int:- (int:1+ k) p))))
+      (define (step3 n d e)
+	;; (assert (and (<= 1/2 (/ n d)) (< (/ n d) 1)))
+	(let ((n (int:round (integer-shift-left n p) d)))
+	  (if (int:= n int:flonum-integer-limit)
+	      (step4 (int:quotient n 2) (int:1+ e))
+	      (step4 n e))))
+      (define (step4 n e)
+	(flo:denormalize (integer->flonum n #b11) e))
+      (step1 n d)))
 
   (define (slow-method n d)
     (if (int:positive? n)
@@ -867,9 +962,23 @@ USA.
 	(else (slow-method n d))))
 
 (define (int:->inexact n)
-  (if (fixnum? n)
-      (fixnum->flonum n) ;; 8.0 compiler open-codes when is N fixnum (by test)
-      (integer->flonum n #b10)))
+  (cond ((fixnum? n)
+	 ;; The primitive (via hardware) will raise inexact if necessary.
+	 (fixnum->flonum n))
+	((integer->flonum n #b00)
+	 => (lambda (x)
+	      ;; The primitive does not always raise inexact for us,
+	      ;; and on some broken libms feraiseexcept clears
+	      ;; existing exceptions so explicitly specify overflow.
+	      (if (not (and (flo:finite? x) (int:= (flo:->integer x) n)))
+		  (flo:raise-exceptions!
+		   (fix:or (flo:exception:overflow)
+			   (flo:exception:inexact-result))))
+	      x))
+	(else
+	 (flo:raise-exceptions!
+	  (fix:or (flo:exception:overflow) (flo:exception:inexact-result)))
+	 (if (int:negative? n) (flo:-inf.0) (flo:+inf.0)))))
 
 (define (flo:significand-digits radix)
   (cond ((int:= radix 10)
@@ -985,6 +1094,9 @@ USA.
 (define (real:zero? x)
   (if (flonum? x) (flo:zero? x) ((copy rat:zero?) x)))
 
+(define (real:safe-zero? x)
+  (if (flonum? x) (flo:safe-zero? x) ((copy rat:zero?) x)))
+
 (define (real:exact0= x)
   (if (flonum? x) #f ((copy rat:zero?) x)))
 
@@ -993,6 +1105,9 @@ USA.
 
 (define (real:positive? x)
   (if (flonum? x) (flo:positive? x) ((copy rat:positive?) x)))
+
+(define (real:safe-negative? x)
+  (if (flonum? x) (flo:safe< x 0.) ((copy rat:negative?) x)))
 
 (define-syntax define-standard-unary
   (sc-macro-transformer
@@ -1056,9 +1171,17 @@ USA.
 (define (real:* x y)
   (cond ((flonum? x)
 	 (cond ((flonum? y) (flo:* x y))
-	       ((rat:zero? y) (if (flo:nan? x) x y))
+	       ((rat:zero? y)
+		(cond ((flo:finite? x) y)
+		      ((flo:nan? x) x)
+		      (else (flo:* x 0.))))
 	       (else (flo:* x (rat:->inexact y)))))
-	((rat:zero? x) (if (and (flonum? y) (flo:nan? y)) y x))
+	((rat:zero? x)
+	 (if (flonum? y)
+	     (cond ((flo:finite? y) x)
+		   ((flo:nan? y) y)
+		   (else (flo:* 0. y)))
+	     x))
 	((flonum? y) (flo:* (rat:->inexact x) y))
 	(else ((copy rat:*) x y))))
 
@@ -1207,6 +1330,22 @@ USA.
 
 (define-rational-exact-unary real:numerator->exact rat:numerator)
 (define-rational-exact-unary real:denominator->exact rat:denominator)
+
+(define (real:copysign x y)
+  (cond ((and (flonum? x) (flonum? y))
+	 (flo:copysign x y))
+	((flonum? x)
+	 (flo:copysign x (real:->inexact y)))
+	(else
+	 (let ((xa (rat:abs x)))
+	   (if (real:sign-negative? y)
+	       (rat:negate xa)
+	       xa)))))
+
+(define (real:sign-negative? x)
+  (if (flonum? x)
+      (flo:sign-negative? x)
+      ((copy rat:negative?) x)))
 
 (define-syntax define-transcendental-unary
   (sc-macro-transformer
@@ -1255,11 +1394,20 @@ USA.
 	(let ((n (flo:round->exact guess)))
 	  (if (int:= x (int:* n n))
 	      n
-	      guess))
+	      (receive (s e) (exact-integer-sqrt x)
+		(if (int:zero? e)
+		    s
+		    guess))))
 	(let ((q (flo:->rational guess)))
 	  (if (rat:= x (rat:square q))
 	      q
-	      guess)))))
+	      (receive (ns ne) (exact-integer-sqrt (rat:numerator x))
+		(if (int:zero? ne)
+		    (receive (ds de) (exact-integer-sqrt (rat:denominator x))
+		      (if (int:zero? de)
+			  (rat:/ ns ds)
+			  guess))
+		    guess)))))))
 
 (define (real:sqrt x)
   (if (flonum? x) (flo:sqrt x) (rat:sqrt x)))
@@ -1510,8 +1658,12 @@ USA.
 		(z2r (rec:real-part z2))
 		(z2i (rec:imag-part z2)))
 	    (complex:%make-rectangular
-	     (real:- (real:* z1r z2r) (real:* z1i z2i))
-	     (real:+ (real:* z1r z2i) (real:* z1i z2r))))
+	     (if (or (real:exact0= z1r) (real:exact0= z2r))
+		 (real:negate (real:* z1i z2i))
+		 (real:- (real:* z1r z2r) (real:* z1i z2i)))
+	     (cond ((real:exact0= z1r) (real:* z1i z2r))
+		   ((real:exact0= z2r) (real:* z1r z2i))
+		   (else (real:+ (real:* z1r z2i) (real:* z1i z2r))))))
 	  (complex:%make-rectangular (real:* (rec:real-part z1) z2)
 				     (real:* (rec:imag-part z1) z2)))
       (if (recnum? z2)
@@ -1566,10 +1718,16 @@ USA.
 		(z1i (rec:imag-part z1))
 		(z2r (rec:real-part z2))
 		(z2i (rec:imag-part z2)))
-	    (let ((d (real:+ (real:square z2r) (real:square z2i))))
-	      (complex:%make-rectangular
-	       (real:/ (real:+ (real:* z1r z2r) (real:* z1i z2i)) d)
-	       (real:/ (real:- (real:* z1i z2r) (real:* z1r z2i)) d))))
+	    (let ((d (real:+ (real:square z2r) (real:square z2i)))
+		  (u
+		   (if (or (real:exact0= z1r) (real:exact0= z2r))
+		       (real:* z1i z2i)
+		       (real:+ (real:* z1r z2r) (real:* z1i z2i))))
+		  (v
+		   (if (real:exact0= z2r)
+		       (real:negate (real:* z1r z2i))
+		       (real:- (real:* z1i z2r) (real:* z1r z2i)))))
+	      (complex:%make-rectangular (real:/ u d) (real:/ v d))))
 	  (make-recnum (real:/ (rec:real-part z1) z2)
 		       (real:/ (rec:imag-part z1) z2)))
       (if (recnum? z2)
@@ -1640,6 +1798,10 @@ USA.
 
 (define (complex:denominator->exact q)
   (real:denominator->exact (complex:real-arg 'denominator->exact q)))
+
+(define (complex:copysign x y)
+  (real:copysign (complex:real-arg 'copysign x)
+		 (complex:real-arg 'copysign y)))
 
 (define (complex:floor x)
   (if (recnum? x)
@@ -1714,13 +1876,20 @@ USA.
 
 (define (complex:expm1 z)
   (if (recnum? z)
-      (complex:- (complex:exp z) 1)	;XXX
+      (complex:-1+ (complex:exp z))	;XXX
       ((copy real:expm1) z)))
 
 (define (complex:log1p z)
-  (if (recnum? z)
-      (complex:log (complex:+ z 1))	;XXX
+  (if (or (recnum? z)
+	  (and (real:real? z)
+	       (<= z -1)))
+      (complex:log (complex:1+ z))	;XXX
       ((copy real:log1p) z)))
+
+(define (complex:log1m z)
+  (if (and (real:real? z) (real:< 1 z))
+      (make-recnum (real:log (real:- z 1)) (real:negate rec:pi))
+      (complex:log1p (complex:negate z))))
 
 (define (complex:sin z)
   (if (recnum? z)
@@ -1763,7 +1932,9 @@ USA.
 	   (complex:-i*
 	    (complex:log
 	     (complex:+ (complex:+i* z)
-			(complex:sqrt (complex:- 1 (complex:* z z)))))))))
+			(complex:*
+			 (complex:sqrt (complex:+ 1 z))
+			 (complex:sqrt (complex:- 1 z)))))))))
     (let ((unsafe-case
 	   (lambda (z)
 	     (complex:negate (safe-case (complex:negate z))))))
@@ -1811,38 +1982,78 @@ USA.
 
 (define (rec:atan z)
   (complex:/ (let ((iz (complex:+i* z)))
-	       (complex:- (complex:log (complex:1+ iz))
-			  (complex:log (complex:- 1 iz))))
+	       (complex:- (complex:log1p iz)
+			  (complex:log1m iz)))
 	     +2i))
 
 (define (complex:angle z)
   (cond ((recnum? z)
-	 (if (and (real:zero? (rec:real-part z))
+	 (if (and (complex:exact? z)
+		  (real:zero? (rec:real-part z))
 		  (real:zero? (rec:imag-part z)))
-	     (real:0 (complex:exact? z))
+	     0
 	     (real:atan2 (rec:imag-part z) (rec:real-part z))))
-	((real:negative? z) rec:pi)
+	((real:sign-negative? z) rec:pi)
 	(else (real:0 (real:exact? z)))))
 
 (define (complex:magnitude z)
   (if (recnum? z)
       (let ((ar (real:abs (rec:real-part z)))
 	    (ai (real:abs (rec:imag-part z))))
-	(let ((v (real:max ar ai))
-	      (w (real:min ar ai)))
-	  (if (real:zero? v)
-	      v
-	      (real:* v (real:sqrt (real:1+ (real:square (real:/ w v))))))))
+	(if (and (real:exact? ar)
+		 (real:exact? ai))
+	    (let ((v (real:max ar ai))
+		  (w (real:min ar ai)))
+	      (if (real:zero? v)
+		  v
+		  (real:* v
+			  (real:sqrt (real:1+ (real:square (real:/ w v)))))))
+	    (flo:hypot (real:->inexact ar) (real:->inexact ai))))
       (real:abs z)))
 
 (define (complex:sqrt z)
+  (define (x>=0 x)
+    ((copy real:sqrt) x))
   (cond ((recnum? z)
-	 (complex:%make-polar (real:sqrt (complex:magnitude z))
-			      (real:/ (complex:angle z) 2)))
-	((real:negative? z)
-	 (complex:%make-rectangular 0 (real:sqrt (real:negate z))))
+	 (let ((x (rec:real-part z))
+	       (y (rec:imag-part z)))
+	   (cond ((real:safe-zero? y)
+		  (assert (not (real:exact0= y)))
+		  (if (real:safe-negative? x)
+		      (complex:%make-rectangular
+		       0.
+		       (real:copysign (x>=0 (real:negate x)) y))
+		      (complex:%make-rectangular (x>=0 (real:->inexact x)) y)))
+		 ((real:safe-zero? x)
+		  ;; sqrt(+/- 2i x) = sqrt(x) +/- i sqrt(x)
+		  (let ((sqrt-abs-y/2 (x>=0 (real:/ (real:abs y) 2))))
+		    (complex:%make-rectangular
+		     sqrt-abs-y/2
+		     (real:copysign sqrt-abs-y/2 y))))
+		 ((eq? (real:infinite? x) (real:infinite? y))
+		  ;; Standard formula.  Works when both inputs are
+		  ;; finite, when both inputs are infinite, and when
+		  ;; both inputs are NaN.
+		  (complex:%make-polar (x>=0 (complex:magnitude z))
+				       (real:/ (complex:angle z) 2)))
+		 ((real:finite? x)
+		  ;; Rotate from pi/2 to pi/4, or from -pi/2 to -pi/4,
+		  ;; or preserve NaN but keep real sign positive.
+		  (assert (or (real:infinite? y) (real:nan? y)))
+		  (complex:%make-rectangular (real:abs y) y))
+		 ((and (real:infinite? x) (real:finite? y))
+		  (if (real:negative? x)
+		      (complex:%make-rectangular 0. (real:copysign x y))
+		      (complex:%make-rectangular x (real:copysign 0. y))))
+		 (else
+		  ;; Garbage in, garbage out.  Try to preserve as much
+		  ;; NaNity as possible.
+		  (assert (or (real:nan? x) (real:nan? y)))
+		  (complex:%make-rectangular (real:abs x) y)))))
+	((real:safe-negative? z)
+	 (complex:%make-rectangular 0 (x>=0 (real:negate z))))
 	(else
-	 ((copy real:sqrt) z))))
+	 (x>=0 z))))
 
 (define (complex:expt z1 z2)
   (cond ((complex:zero? z1)
@@ -1905,8 +2116,10 @@ USA.
       (make-recnum real imag)))
 
 (define (complex:%make-polar magnitude angle)
-  (complex:%make-rectangular (real:* magnitude (real:cos angle))
-			     (real:* magnitude (real:sin angle))))
+  (if (real:exact0= angle)
+      magnitude
+      (complex:%make-rectangular (real:* magnitude (real:cos angle))
+				 (real:* magnitude (real:sin angle)))))
 
 (define (complex:real-part z)
   (cond ((recnum? z) (rec:real-part z))
@@ -1943,9 +2156,17 @@ USA.
 		(if (real:exact1= i)
 		    ""
 		    (real:->string i radix)))))
-	 (if (real:negative? i)
-	     (string-append "-" (positive-case (real:negate i)))
-	     (string-append "+" (positive-case i))))
+	 (cond ((not (real:finite? i))
+		(real:->string i radix))
+	       ((real:negative? i)
+		(string-append "-" (positive-case (real:negate i))))
+	       ((and (flo:flonum? i)
+		     (flo:zero? i)
+		     (flo:negative? (flo:copysign 1. i)))
+		;; Not negative, but positive case gives `+-0.'.
+		"-0.")
+	       (else
+		(string-append "+" (positive-case i)))))
        (if imaginary-unit-j? "j" "i"))
       (real:->string z radix)))
 
@@ -2008,10 +2229,10 @@ USA.
 (define-integrable integer-divide-remainder cdr)
 
 (define (gcd . integers)
-  (fold-left complex:gcd 0 integers))
+  (reduce complex:gcd 0 integers))
 
 (define (lcm . integers)
-  (fold-left complex:lcm 1 integers))
+  (reduce complex:lcm 1 integers))
 
 (define (atan z #!optional x)
   (if (default-object? x)
@@ -2024,31 +2245,13 @@ USA.
 (define (cube z)
   (complex:* z (complex:* z z)))
 
-;;; log(1 - e^x), defined only on negative x
-
-(define (log1mexp x)
-  (guarantee-real x 'log1mexp)
-  (guarantee-negative x 'log1mexp)
-  (if (< (- flo:log2) x)
-      (log (- (expm1 x)))
-      (log1p (- (exp x)))))
-
-;;; log(1 + e^x)
-
-(define (log1pexp x)
-  (guarantee-real x 'log1pexp)
-  (cond ((<= x flo:subnormal-exponent-min-base-e) 0.)
-	((<= x flo:log-error-bound) (exp x))
-	((<= x 18) (log1p (exp x)))
-	((<= x 33.3) (+ x (exp (- x))))
-	(else (exact->inexact x))))
-
 ;;; Some lemmas for the bounds below.
 ;;;
-;;; Lemma 1.  If |d| < 1/2, then 1/(1 + d) <= 2.
+;;; Lemma 1.  If |d| < 1 - 1/2^n, then 1/(1 + d) <= 2^n for n > 1.
 ;;;
-;;; Proof.  If 0 <= d <= 1/2, then 1 + d >= 1, so that 1/(1 + d) <= 1.
-;;; If -1/2 <= d <= 0, then 1 + d >= 1/2, so that 1/(1 + d) <= 2.  QED.
+;;; Proof.  If d is nonnegative, then 1 + d >= 1, so that 1/(1 + d)
+;;; <= 1.  If d is negative, then 1 - 1/2^n <= d <= 0, so that 1 + d
+;;; >= 1/2^n, and hence 1/(1 + d) <= 2^n.  QED.
 ;;;
 ;;; Lemma 2. If b = a*(1 + d)/(1 + d') for |d'| < 1/2 and nonzero a, b,
 ;;; then b = a*(1 + e) for |e| <= 2|d' - d|.
@@ -2062,9 +2265,9 @@ USA.
 ;;;
 ;;; QED.
 ;;;
-;;; Lemma 3.  For |d|, |d'| < 1/4,
+;;; Lemma 3.  For |d - d'| < 1/2^{n+1} and |d'| < 1 - 1/2^n,
 ;;;
-;;;	|log((1 + d)/(1 + d'))| <= 4|d - d'|.
+;;;	|log((1 + d)/(1 + d'))| <= 2^{n+1} |d - d'|.
 ;;;
 ;;; Proof.  Write
 ;;;
@@ -2073,43 +2276,290 @@ USA.
 ;;;	 = log(1 + (1 + d - 1 - d')/(1 + d')
 ;;;	 = log(1 + (d - d')/(1 + d')).
 ;;;
-;;; By Lemma 1, |(d - d')/(1 + d')| < 2|d' - d| < 1, so the Taylor
+;;; By Lemma 1, |(d - d')/(1 + d')| < 2^n |d' - d| < 1, so the Taylor
 ;;; series of log(1 + x) converges absolutely for (d - d')/(1 + d'),
 ;;; and thus we have
 ;;;
 ;;;	|log(1 + (d - d')/(1 + d'))|
-;;;	 = |\sum_{n=1}^\infty ((d - d')/(1 + d'))^n/n|
-;;;	<= \sum_{n=1}^\infty |(d - d')/(1 + d')|^n/n
-;;;	<= \sum_{n=1}^\infty |2(d' - d)|^n/n
-;;;	<= \sum_{n=1}^\infty |2(d' - d)|^n
-;;;	 = 1/(1 - |2(d' - d)|)
-;;;	<= 4|d' - d|,
+;;;	 = |\sum_{k=1}^\infty ((d - d')/(1 + d'))^k/k|
+;;;	<= \sum_{k=1}^\infty |(d - d')/(1 + d')|^k/k
+;;;	<= \sum_{k=1}^\infty |2^n (d' - d)|^k/k
+;;;	<= \sum_{k=1}^\infty |2^n (d' - d)|^k
+;;;	 = 1/(1 - |2^n (d' - d)|) - 1	(geometric series)
+;;;	<= 2^{n+1} |d' - d|,		(since |2^n (d' - d)| < 1/2)
 ;;;
 ;;; QED.
-;;;
-;;; Lemma 4.  If 1/e <= 1 + x <= e, then
+
+;;; Lemma 4.  If 1/2^n < 1 + x and |d| < 1/2^{n+1} for n >= 1, then
 ;;;
 ;;;	log(1 + (1 + d) x) = (1 + d') log(1 + x)
 ;;;
-;;; for |d'| < 8|d|.
+;;; for |d'| < 2^{n+2} |d|.
 ;;;
-;;; Proof.  Write
+;;; Proof.  Case I: x < 1 - 1/2^n.  Write the relative error as
 ;;;
-;;;	log(1 + (1 + d) x)
-;;;	= log(1 + x + x*d)
-;;;	= log((1 + x) (1 + x + x*d)/(1 + x))
-;;;	= log(1 + x) + log((1 + x + x*d)/(1 + x))
-;;;	= log(1 + x) (1 + log((1 + x + x*d)/(1 + x))/log(1 + x)).
+;;;	|log(1 + (1 + d) x) - log(1 + x)|/|log(1 + x)|
+;;;	 = |log[(1 + (1 + d) x)/(1 + x)]/log(1 + x)|
+;;;	<= 2^{n+1} |(1 + d) x - x|/|log(1 + x)|, by Lemma 3,
+;;;	 = 2^{n+1} |d x/log(1 + x)|,
 ;;;
-;;; The relative error is bounded by
+;;; since |(1 + d) x - x| = |d x| <= 1/2^{n+1} and |x| < 1 - 1/2^n.
+;;; Note that x/log(1 + x) is a nonnegative function -- the numerator
+;;; is negative iff the denominator is negative, and the limit at
+;;; zero is zero.  Further, x/log(1 + x) is increasing -- the
+;;; derivative is
 ;;;
-;;;	|log((1 + x + x*d)/(1 + x))/log(1 + x)|
-;;;	<= 4|x + x*d - x|/|log(1 + x)|, by Lemma 3,
-;;;	 = 4|x*d|/|log(1 + x)|
-;;;	 < 8|d|,
+;;;	[log(1 + x) - x/(1 + x)]/(log(1 + x))^2,
 ;;;
-;;; since in this range 0 < 1 - 1/e < x/log(1 + x) <= e - 1 < 2.  QED.
+;;; whose denominator (log(1 + x))^2 is nonnegative, and whose
+;;; numerator log(1 + x) - x/(1 + x) is also nonnegative since its
+;;; derivative x/(1 + x)^2 is zero only at zero, so its only critical
+;;; point is zero, and its second derivative (1 - x)/(1 + x)^3 is
+;;; positive at zero, so zero is its minimum.
+;;;
+;;; Finally, we have x/log(1 + x) < 1/log(1 + 1) < 2, from which we
+;;; can conclude that the relative error is bounded by
+;;;
+;;;	2^{n+1} |d x/log(1 + x)|
+;;;	<= 2^{n+2} |d|
+;;;
+;;; as desired.
+;;;
+;;; Case II: x >= 1 - 1/2^n.  Write
+;;;
+;;;	1 + (1 + d) x
+;;;	 = 1 + x + d x
+;;;	 = (1 + x) (1 + d x/(1 + x)),
+;;;
+;;; so that the relative error is
+;;;
+;;;	|log(1 + (1 + d) x) - log(1 + x)|/|log(1 + x)|
+;;;	 = |log[(1 + x) (1 + d x/(1 + x))/(1 + x)]/log(1 + x)|
+;;;	 = |log(1 + d x/(1 + x))/log(1 + x)|.
+;;;
+;;; For fixed d, log(1 + d x/(1 + x)) is a monotone function of x
+;;; with the sign of d which converges to log(1 + d) as x grows
+;;; without bound -- i.e., positive and increasing if d > 0, negative
+;;; and decreasing if d < 0.  Finally, since |d| < 1/2, |log(1 + d)|
+;;; <= 3|d|/2, and since x >= 1/2, |log(1 + x)| >= 1/4, so the
+;;; relative error is
+;;;
+;;;	|log(1 + d x/(1 + x))/log(1 + x)|
+;;;	<= |log(1 + d)/log(1 + x)|
+;;;	<= (3|d|/2)/(1/4)
+;;;	 = 6|d|
+;;;	<= 8|d|
+;;;	<= 2^{n+2} |d|,
+;;;
+;;; QED.
+
+;;; log(1 - e^x), defined only on negative x.  Useful for computing the
+;;; complement of a probability in log-space.
 
+(define (log1mexp x)
+  (guarantee-real x 'log1mexp)
+  ;; It is hard to imagine that this function maps any rational
+  ;; numbers to rational numbers.  (XXX Proof?)
+  ;;
+  (let ((x (real:->inexact x)))
+    ;; Carve up the interval: arrange for the intermediate quantity
+    ;; to always lie in [-1/2, +1/2], since in +/-[1/2, 1] we have
+    ;; only fixed-point precision.
+    ;;
+    (cond ((flo:safe< x (flo:negate flo:log2))
+	   ;; Let d0 be the error of exp, and d1 the error of log1p.
+	   ;; Since x <= log(1/2), we have e^x <= 1/2 = 1 - 1/2, and
+	   ;; thus 1/2 <= 1 - e^x, so that by Lemma 4,
+	   ;;
+	   ;;	(1 + d1) log(1 - (1 + d0) e^x)
+	   ;;	= (1 + d1) (1 + d') log(1 - e^x)
+	   ;;
+	   ;; for |d'| < 8|d0|.  Consequently, the relative error is
+	   ;; bounded by
+	   ;;
+	   ;;	|d1| + |d'| + |d1| |d'|
+	   ;;	<= 9 eps + 8 eps^2.
+	   ;;
+	   (flo:log1p-guarded (flo:negate (flo:exp x))))
+	  ((flo:safe< x 0.)
+	   ;; Let d0 be the error of expm1, and d1 the error of log.
+	   ;; We have:
+	   ;;
+	   ;;	(1 + d1) log((1 + d0) (1 - e^x))
+	   ;;	= (1 + d1) [log(1 + d0) + log(1 - e^x)]
+	   ;;	= (1 + d1) [1 + log(1 + d0)/log(1 - e^x)] log(1 - e^x)
+	   ;;
+	   ;; Since log(1/2) <= x, we have 1/2 <= e^x, or 1 - e^x <=
+	   ;; 1 - 1/2 = 1/2, so that log(1 - e^x) < -1/2; hence
+	   ;; |1/log(1 - e^x)| <= |1/(-1/2)| = 2.  Finally, |log(1 +
+	   ;; d0)| <= 2 |d0| as long as |d0| <= eps < 1/2, so when we
+	   ;; collect terms in the relative error, we find it is
+	   ;; bounded by
+	   ;;
+	   ;;	|d1| + 2 |d0/log(1 - e^x)| + 2 |d1 d0/log(1 - e^x)|
+	   ;;	<= |d1| + 4 |d0| + 4 |d1 d0|
+	   ;;	<= 5 eps + 4 eps^2.
+	   ;;
+	   (flo:log (flo:negate (flo:expm1-guarded x))))
+	  ((flo:safe-zero? x)
+	   ;; Negative infinity.
+	   (flo:/ (identity-procedure -1.) 0.))
+	  ((flo:safe<= x (flo:+inf.0))
+	   ;; Invalid operation.
+	   (flo:/ (identity-procedure 0.) 0.))
+	  (else
+	   ;; Propagate NaN.
+	   (assert (flo:nan? x))
+	   x))))
+
+;;; log(1 + e^x)
+
+(define (log1pexp x)
+  (guarantee-real x 'log1pexp)
+  ;; It is hard to imagine that this function maps any rational
+  ;; numbers to rational numbers.  (XXX Proof?)
+  ;;
+  (let ((x (real:->inexact x)))
+    ;; Carve up the interval to avoid overflow in any intermediate
+    ;; quantities and to save computation.
+    ;;
+    (cond ((flo:safe< x flo:least-subnormal-exponent-base-e)
+	   ;; log(1 + e^x) < e^x < smallest positive subnormal
+	   (flo:raise-exceptions!
+	    (fix:or (flo:exception:inexact-result)
+		    (flo:exception:underflow)))
+	   0.)
+	  ((flo:safe<= x flo:log-error-bound)
+	   ;; 0 < e^x < eps < 1, so log(1 + e^x) >= e^x/2, and the
+	   ;; Taylor series of log(1 + y) converges absolutely at y =
+	   ;; e^x, so
+	   ;;
+	   ;;	|e^x - log(1 + e^x)|/|log(1 + e^x)|
+	   ;;	<= |e^x - log(1 + e^x)|/(e^x/2)
+	   ;;	 = 2|e^x - \sum_{i=1}^\infty (-1)^{i+1} (e^x)^i/i|/e^x
+	   ;;	 = 2|-\sum_{i=2}^\infty (-1)^{i+1} (e^x)^i/i|/e^x
+	   ;;	 = 2|-\sum_{i=2}^\infty (-1)^{i+1} (e^x)^{i-1}/i|
+	   ;;	 = 2|-\sum_{i=1}^\infty (-1)^{i+2} (e^x)^i/(i + 1)|
+	   ;;	 = 2|\sum_{i=1}^\infty (-1)^{i+1} (e^x)^i/(i + 1)|
+	   ;;	 = 2|e^x/2 + \sum_{i=2}^\infty (-1)^{i+1} (e^x)^i/(i + 1)|
+	   ;;	<= 2|e^x/2|
+	   ;;	<= eps.
+	   ;;
+	   (flo:exp x))
+	  ((flo:safe<= x (flo:/ flo:log-error-bound -2.))
+	   ;; Let d0 be the error of exp, and d1 the error of log1p;
+	   ;; then by Lemma 4,
+	   ;;
+	   ;;	(1 + d1) log(1 + (1 + d0) e^x)
+	   ;;	= (1 + d1) (1 + d') log(1 + e^x)
+	   ;;
+	   ;; for |d'| <= 8|d0|, so the relative error is bounded by
+	   ;;
+	   ;;	|d1 + d' + d1 d'|
+	   ;;	<= |d1| + |d'| + |d1 d'|
+	   ;;	<= |d1| + 8|d0| + 8|d0 d1|
+	   ;;	<= 9 eps + 8 eps^2
+	   ;;
+	   ;; provided e^x does not overflow.
+	   ;;
+	   (flo:log1p-guarded (flo:exp x)))
+
+	  ;; log1pexp, continued: x >= log(1/sqrt(eps)) so far
+	  ((flo:<= x (flo:negate flo:log-error-bound))
+	   ;; If x >= log(1/sqrt(eps)), then e^{-2x} <= eps.
+	   ;; Write
+	   ;;
+	   ;;	log(1 + e^x)
+	   ;;	 = log(e^x (1 + e^{-x}))
+	   ;;	 = log(e^x) + log(1 + e^{-x})
+	   ;;	 = x + log(1 + e^{-x}).
+	   ;;
+	   ;; From the alternating Taylor series of log(1 + y) at y =
+	   ;; e^{-x}, this lies between
+	   ;;
+	   ;;	x + e^{-x}
+	   ;;
+	   ;; and
+	   ;;
+	   ;;	x + e^{-x} - e^{-2x}/2,
+	   ;;
+	   ;; which are both greater than 1, so the relative error is
+	   ;; bounded by the larger of
+	   ;;
+	   ;;	|x + e^{-x} - (x + e^{-2x}/2)|/|x + e^{-x}|
+	   ;;	 = |e^{-2x}/2|/|x + e^{-x}|
+	   ;;	<= eps/2.
+	   ;;
+	   ;; and
+	   ;;
+	   ;;	|x + e^{-x} - (x + e^{-2x}/2)|/|x + e^{-x} + e^{-2x}/2|
+	   ;;	 = |e^{-2x}/2|/|x + e^{-x} + e^{-2x}/2|
+	   ;;	<= eps/2,
+	   ;;
+	   ;; since in both cases the denominator is >=1.  In this
+	   ;; range, e^{-x} cannot underflow.
+	   ;;
+	   (flo:+ x (flo:exp (flo:negate x))))
+	  (else
+	   ;; If x >= log(1/eps), then e^{-x} <= eps.  As above, write
+	   ;;
+	   ;;	log(1 + e^x) = x + log(1 + e^{-x}).
+	   ;;
+	   ;; Note that log(1 + e^{-x}) < e^{-x}, so we are computing
+	   ;; a quantity between x and x + eps for x > 1, so the
+	   ;; relative error is bounded by eps.
+	   ;;
+	   ;; If it's NaN, just propagate it; otherwise raise
+	   ;; inexact-result.
+	   ;;
+	   (if (flo:safe<= x (flo:+inf.0))
+	       (flo:raise-exceptions! (flo:exception:inexact-result)))
+	   x))))
+
+;;; log(e^x + e^y + ...)
+;;;
+;;; Caller can minimize error by passing inputs ascending from -inf to
+;;; +inf.
+
+(define (logsumexp l)
+  ;; Cases:
+  ;;
+  ;; 1. No inputs.  Empty sum is zero, so yield log(0) = -inf.
+  ;;
+  ;; 2. One input.  Computation is exact.  Preserve it.
+  ;;
+  ;; 3. NaN among the inputs: invalid operation; result is NaN.
+  ;;
+  ;; 2. Maximum is +inf, and
+  ;;    (a) the minimum is -inf: inf - inf = NaN.
+  ;;    (b) the minimum is finite: sum overflows, so +inf.
+  ;;
+  ;; 3. Maximum is -inf: all inputs are -inf, so -inf.
+  ;;
+  ;; Most likely all the inputs are finite, so prioritize that case by
+  ;; checking for an infinity first -- if there is a NaN, the usual
+  ;; computation will propagate it.
+  ;;
+  ;; Overflow is not possible because everything is normalized to be
+  ;; below zero.  Underflow can be safely ignored because it can't
+  ;; change the outcome: even if you had 2^64 copies of the largest
+  ;; subnormal in the sum, 2^64 * largest subnormal < 2^-900 <<<
+  ;; epsilon = 2^-53, and at least one addend in the sum is 1 since we
+  ;; compute e^{m - m} = e^0 = 1.
+  ;;
+  (let ((m (reduce max #f l)))
+    (cond ((not (pair? l)) (flo:-inf.0))
+	  ((not (pair? (cdr l))) (car l))
+	  ((and (infinite? m)
+		(not (= (- m) (reduce min #f l)))
+		(not (any nan? l)))
+	   m)
+	  (else
+	   (flo:with-exceptions-untrapped (flo:exception:underflow)
+	     (lambda ()
+	       (+ m
+		  (log (reduce + 0 (map (lambda (x) (exp (- x m))) l))))))))))
+
 ;;; Logistic function: 1/(1 + e^{-x}) = e^x/(1 + e^x).	Maps a
 ;;; log-odds-space probability in [-\infty, +\infty] into a
 ;;; direct-space probability in [0,1].	Inverse of logit.
@@ -2122,9 +2572,12 @@ USA.
 
 (define (logistic x)
   (guarantee-real x 'logistic)
-  (cond ((<= x flo:subnormal-exponent-min-base-e)
-	 ;; e^x/(1 + e^x) < e^x < smallest positive float.  (XXX Should
-	 ;; raise inexact and underflow here.)
+  (cond ((real:nan? x) x)		;Propagate NaN.
+	((< x flo:least-subnormal-exponent-base-e)
+	 ;; e^x/(1 + e^x) < e^x < smallest positive subnormal.
+	 (flo:raise-exceptions!
+	  (fix:or (flo:exception:underflow)
+		  (flo:exception:inexact-result)))
 	 0.)
 	((<= x flo:log-error-bound)
 	 ;; e^x < eps, so
@@ -2181,11 +2634,12 @@ USA.
 	 ;;	 = |e^{-x}|
 	 ;;	<= eps.
 	 ;;
+	 (flo:raise-exceptions! (flo:exception:inexact-result))
 	 1.)))
-
+
 ;;; Logistic function, translated in output by 1/2: logistic(x) - 1/2 =
-;;; 1/(1 + e^{-x}) - 1/2. Well-conditioned on the entire real plane,
-;;; with maximum condition number 1 at 0.
+;;; 1/(1 + e^{-x}) - 1/2 = 1/2 - 1/(1 + e^x). Well-conditioned on the
+;;; entire real plane, with maximum condition number 1 at 0.
 ;;;
 ;;; This implementation gives relative error bounded by 5 eps.
 
@@ -2193,34 +2647,62 @@ USA.
   ;; Suppose exp has error d0, + has error d1, expm1 has error d2, and
   ;; / has error d3, so we evaluate
   ;;
-  ;;	-(1 + d2) (1 + d3) (e^{-x} - 1)
-  ;;	  / [2 (1 + d1) (1 + (1 + d0) e^{-x})].
+  ;;	(1 + d2) (1 + d3) (e^x - 1)
+  ;;	  / [2 (1 + d1) (1 + (1 + d0) e^x)].
   ;;
   ;; In the denominator,
   ;;
-  ;;	1 + (1 + d0) e^{-x}
-  ;;	= 1 + e^{-x} + d0 e^{-x}
-  ;;	= (1 + e^{-x}) (1 + d0 e^{-x}/(1 + e^{-x})),
+  ;;	1 + (1 + d0) e^x
+  ;;	= 1 + e^x + d0 e^x
+  ;;	= (1 + e^x) (1 + d0 e^x/(1 + e^x)),
   ;;
   ;; so the relative error of the numerator is
   ;;
   ;;	d' = d2 + d3 + d2 d3,
   ;; and of the denominator,
-  ;;	d'' = d1 + d0 e^{-x}/(1 + e^{-x}) + d0 d1 e^{-x}/(1 + e^{-x})
-  ;;	    = d1 + d0 L(-x) + d0 d1 L(-x),
+  ;;	d'' = d1 + d0 e^x/(1 + e^x) + d0 d1 e^x/(1 + e^x)
+  ;;	    = d1 + d0 L(x) + d0 d1 L(x),
   ;;
-  ;; where L(-x) is logistic(-x).  By Lemma 1 the relative error of the
+  ;; where L(x) is logistic(x).  By Lemma 2 the relative error of the
   ;; quotient is bounded by
   ;;
-  ;;	2|d2 + d3 + d2 d3 - d1 - d0 L(x) + d0 d1 L(x)|,
+  ;;	2|d2 + d3 + d2 d3 - d1 - d0 L(x) - d0 d1 L(x)|,
   ;;
   ;; Since 0 < L(x) < 1, this is bounded by
   ;;
   ;;	2|d2| + 2|d3| + 2|d2 d3| + 2|d1| + 2|d0| + 2|d0 d1|
   ;;	<= 4 eps + 2 eps^2.
   ;;
-  (- (/ (expm1 (- x)) (* 2 (+ 1 (exp (- x)))))))
-
+  ;; logistic(x) = 1 - 2^-54
+  ;; x = logit(1 - 2^-54) = -logit(2^-54)
+  ;;
+  ;; However, if x is large, the intermediate e^x might overflow.
+  ;; Fortunately, if
+  ;;
+  ;;	x > 2 - log(eps)
+  ;;	  > log(4) - log(eps)
+  ;;	  = -log(eps/4)
+  ;;	  > log(1 - eps/4) - log(eps/4)
+  ;;	  = -logit(eps/4)
+  ;;	  = logit(1 - eps/4),
+  ;;
+  ;; we have logistic(x) > 1 - eps/4.  Hence the relative error of
+  ;; logistic(x) - 1/2 from 1/2 is bounded by eps/2, and so the
+  ;; relative error of 1/2 from logistic(x) - 1/2 is bounded by eps.
+  ;;
+  ;; Since logistic(x) - 1/2 is an odd function, we arrange to compute
+  ;; it only on nonnegative inputs and copy the sign so that its
+  ;; magnitude agrees bit-for-bit on positive and negative inputs.
+  ;;
+  (define (x>=0 x)
+    (if (flo:safe> (real:->inexact x) (flo:- 2. flo:log-error-bound))
+	(begin
+	  ;; Always inexact -- 0.5 is never actually attained.
+	  (flo:raise-exceptions! (flo:exception:inexact-result))
+	  0.5)
+	(/ (expm1 x) (* 2 (+ 1 (exp x))))))
+  (copysign (x>=0 (abs x)) x))
+
 (define-integrable logit-boundary-lo	;logistic(-1)
   (flo:/ (flo:exp -1.) (flo:+ 1. (flo:exp -1.))))
 (define-integrable logit-boundary-hi	;logistic(+1)
@@ -2252,7 +2734,17 @@ USA.
   ;;
   ;; to get an intermediate quotient near zero.
   ;;
-  (cond ((<= logit-boundary-lo p logit-boundary-hi)
+  (cond ((real:nan? p) p)		;Propagate NaN.
+	((not (<= 0 p 1))
+	 ;; p outside [0, 1] is invalid-operation.  If input is
+	 ;; exact, then this is an error; if input is inexact, this
+	 ;; is merely a floating-point exception.
+	 (if (not (flo:flonum? p))
+	     (error:bad-range-argument p 'logit))
+	 (real:/ (identity-procedure 0.) 0.))
+
+	;; logit, continued: p in [0, 1]
+	((<= logit-boundary-lo p logit-boundary-hi)
 	 ;; Since p = 2p/2 <= 1 <= 2*2p = 4p, the floating-point
 	 ;; evaluation of 1 - 2p is exact; the only error arises from
 	 ;; division and log1p.	 First, note that if logistic(-1) <= p
@@ -2285,7 +2777,8 @@ USA.
 	 ;;	    + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))]
 	 ;;
 	 ;; Since 0 <= p < logistic(-1) or logistic(+1) < p <= 1, we
-	 ;; have |log(p/(1 - p))| > 1.	Hence this error is bounded by
+	 ;; have |log(p/(1 - p))| > 1.  Hence, provided |d0|, |d1| <
+	 ;; 1/8, this error is bounded by
 	 ;;
 	 ;;	|d2 + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
 	 ;;	<= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
@@ -2296,17 +2789,27 @@ USA.
 	 ;;	<= 9 eps + 8 eps^2.
 	 ;;
 	 (log (/ p (- 1 p))))))
-
+
 ;;; Logit function, translated in input by 1/2: (logit1/2+ p-1/2) =
 ;;; (logit (+ 1/2 p-1/2)).  Defined on [-1/2, 1/2].  Inverse of
 ;;; logistic-1/2.
 ;;;
 ;;; Ill-conditioned near +/-1/2.  If |p0| > 1/2 - 1/(1 + e), it may be
-;;; better to compute 1/2 + p0 or -1/2 - p0 and to use logit instead.
-;;; This implementation gives relative error bounded by 10 eps.
+;;; better to compute 1/2 +/- p0 (whichever is closer to zero) and to
+;;; use logit instead.  This implementation gives relative error
+;;; bounded by 34 eps.
 
 (define (logit1/2+ p-1/2)
-  (cond ((<= (abs p-1/2) (- 1/2 (/ 1 (+ 1 (exp 1)))))
+  (guarantee-real p-1/2 'logit1/2+)
+  (cond ((real:nan? p-1/2) p-1/2)
+	((not (<= -1/2 p-1/2 +1/2))
+	 ;; Outside [-1/2, +1/2] is invalid-operation.  If input is
+	 ;; exact, then this is an error; if input is inexact, this
+	 ;; is merely a floating-point exception.
+	 (if (not (flo:flonum? p-1/2))
+	     (error:bad-range-argument p-1/2 'logit))
+	 (real:/ (identity-procedure 0.) 0.))
+	((<= (abs p-1/2) (- 1/2 (/ 1 (+ 1 (exp 1)))))
 	 ;; If p' = p - 1/2, then p = 1/2 + p', so we compute:
 	 ;;
 	 ;; log(p/(1 - p))
@@ -2317,73 +2820,78 @@ USA.
 	 ;; = log(1 + (1/2 + p' - 1/2 + p')/(1/2 - p'))
 	 ;; = log(1 + 2 p'/(1/2 - p'))
 	 ;;
-	 ;; Note that since p0/2 <= 1/2 <= 2 p0, 1/2 - p0 is
-	 ;; computed exactly without error; the only error
-	 ;; arises from division and log1p.  If the error of
-	 ;; division is d0 and the error of log1p is d1, then
+	 ;; If the error of subtraction is d0, the error of
+	 ;; division is d1, and the error of log1p is d2, then
 	 ;; what we compute is
 	 ;;
-	 ;;	(1 + d1) log(1 + (1 + d0) 2 p0/(1/2 - p0))
-	 ;;	= (1 + d1) (1 + d') log(1 + 2 p0/(1/2 - p0))
-	 ;;	= (1 + d1 + d' + d1 d') log(1 + 2 p0/(1/2 - p0)).
+	 ;;	(1 + d2) log(1 + (1 + d1) 2 p0/[(1 + d0) (1/2 - p0)])
+	 ;;	= (1 + d2) log(1 + (1 + d') 2 p0/(1/2 - p0))
+	 ;;	= (1 + d2) (1 + d'') log(1 + 2 p0/(1/2 - p0))
+	 ;;	= (1 + d2 + d'' + d2 d'') log(1 + 2 p0/(1/2 - p0)),
 	 ;;
-	 ;; where |d'| < 8|d0| by Lemma 4, since
+	 ;; where |d'| < 2|d0 - d1| <= 4 eps by Lemma 2, and
+	 ;; |d''| < 8|d'| < 32 eps by Lemma 4 since
 	 ;;
 	 ;;	1/e <= 1 + 2*p0/(1/2 - p0) <= e
 	 ;;
 	 ;; when |p0| <= 1/2 - 1/(1 + e).  Hence the relative
 	 ;; error is bounded by
 	 ;;
-	 ;;	|d1 + d' + d1 d'|
-	 ;;	<= |d1| + |d'| + |d1 d'|
-	 ;;	<= |d1| + 8 |d0| + 8 |d1 d0|
-	 ;;	<= 9 eps + 8 eps^2.
+	 ;;	|d2 + d'' + d2 d''|
+	 ;;	<= |d2| + |d''| + |d2 d''|
+	 ;;	<= |d1| + 32 |d0| + 32 |d1 d0|
+	 ;;	<= 33 eps + 32 eps^2.
 	 ;;
 	 (log1p (/ (* 2 p-1/2) (- 1/2 p-1/2))))
+
+	;; logit1/2+ continued, 1/2 - 1/(1 + e) < |p - 1/2|
 	(else
-	 ;; We have a choice of computing logit(1/2 + p0) or -logit(1 -
-	 ;; (1/2 + p0)) = -logit(1/2 - p0).  It doesn't matter which
-	 ;; way we do this: either way, since 1/2 p0 <= 1/2 <= 2 p0,
+	 ;; We have a choice of computing logit(1/2 + p') or -logit(1 -
+	 ;; (1/2 + p')) = -logit(1/2 - p').  It doesn't matter which
+	 ;; way we do this: either way, since 1/2 p' <= 1/2 <= 2 p',
 	 ;; the sum and difference are computed exactly.  So let's do
 	 ;; the one that skips the final negation.
 	 ;;
-	 ;; Again, the only error arises from division and log.  So the
-	 ;; result is
+	 ;; The result is
 	 ;;
-	 ;;	(1 + d1) log((1 + d0) (1/2 + p0)/(1/2 - p0))
-	 ;;	= (1 + d1) (1 + log(1 + d0)/log((1/2 + p0)/(1/2 - p0)))
-	 ;;	  * log((1/2 + p0)/(1/2 - p0))
-	 ;;	= (1 + d') log((1/2 + p0)/(1/2 - p0))
+	 ;;	(1 + d1) log((1 + d0) (1/2 + p')/[(1 + d2) (1/2 - p')])
+	 ;;	= (1 + d1) (1 + log((1 + d0)/(1 + d2))
+	 ;;			/ log((1/2 + p')/(1/2 - p')))
+	 ;;	  * log((1/2 + p')/(1/2 - p'))
+	 ;;	= (1 + d') log((1/2 + p')/(1/2 - p'))
+	 ;;	= (1 + d') logit(1/2 + p')
 	 ;;
 	 ;; where
 	 ;;
-	 ;;	d' = d1 + log(1 + d0)/log((1/2 + p0)/(1/2 - p0))
-	 ;;	     + d1 log(1 + d0)/log((1/2 + p0)/(1/2 - p0)).
+	 ;;	d' = d1 + log((1 + d0)/(1 + d2))/logit(1/2 + p')
+	 ;;	     + d1 log((1 + d0)/(1 + d2))/logit(1/2 + p').
 	 ;;
-	 ;; For |p| > 1/2 - 1/(1 + e), logit(1/2 + p0) > 1.  For |d0| <
-	 ;; 1/2, |log(1 + d0)| < 2|d0|.  Hence this is bounded by
+	 ;; For |p| > 1/2 - 1/(1 + e), logit(1/2 + p') > 1.  Provided
+	 ;; |d0|, |d2| < 1/8, by Lemma 3 we have
 	 ;;
-	 ;;	|d'| <= |d1| + 2|d0| + 2|d0 d1|
-	 ;;	     <= 3 eps + 2 eps^2.
+	 ;;	|log((1 + d0)/(1 + d2))| <= 4|d0 - d2|.
+	 ;;
+	 ;; Hence the relative error is bounded by
+	 ;;
+	 ;;	|d'| <= |d1| + 4|d0 - d2| + 4|d1| |d0 - d2|
+	 ;;	     <= |d1| + 4|d0| + 4|d2| + 4|d1 d0| + 4|d1 d2|
+	 ;;	     <= 9 eps + 8 eps^2.
 	 ;;
 	 (log (/ (+ 1/2 p-1/2) (- 1/2 p-1/2))))))
-
-;;; log logistic(x) = -log (1 + e^{-x})
-
-(define (log-logistic x)
-  (guarantee-real x 'log-logistic)
-  (- (log1pexp (- x))))
-
+
 (define logit-exp-boundary-lo		;log logistic(-1)
-  (flo:- 0. (flo:log (flo:+ 1. (flo:exp +1.)))))
+  (flo:negate (flo:log (flo:+ 1. (flo:exp +1.)))))
 (define logit-exp-boundary-hi		;log logistic(+1)
-  (flo:- 0. (flo:log (flo:+ 1. (flo:exp -1.)))))
+  (flo:negate (flo:log (flo:+ 1. (flo:exp -1.)))))
 
-;;; log e^t/(1 - e^t) = logit(e^t)
+;;; logit(e^t) = log e^t/(1 - e^t)
+;;;
+;;; Inverse of log logistic.
 
 (define (logit-exp t)
   (guarantee-real t 'logit-exp)
-  (cond ((<= t flo:log-error-bound)
+  (cond ((real:nan? t) t)		;Propagate NaN.
+	((<= t flo:log-error-bound)
 	 ;; e^t < eps, so since log(e^t/(1 - e^t)) = t - log(1 - e^t),
 	 ;; and |log(1 - e^t)| < 1 < |t|, we have
 	 ;;
@@ -2440,6 +2948,8 @@ USA.
 	 ;;
 	 (let ((e^t (exp t)))
 	   (- (log1p (/ (- 1 (* 2 e^t)) e^t)))))
+
+	;; logit-exp, continued: t <= -log(1 + e) or -log(1 + 1/e) <= t
 	(else
 	 ;; We use the identity
 	 ;;
@@ -2470,6 +2980,14 @@ USA.
 	 ;;	<= 3 eps + 2 eps^2.
 	 ;;
 	 (- (log (expm1 (- t)))))))
+
+;;; log logistic(x) = log (1/(1 + e^{-x})) = -log (1 + e^{-x})
+;;;
+;;; This is the log density of the logistic distribution.
+
+(define (log-logistic x)
+  (guarantee-real x 'log-logistic)
+  (- (log1pexp (- x))))
 
 ;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 

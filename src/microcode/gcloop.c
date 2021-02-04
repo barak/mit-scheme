@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -326,7 +326,8 @@ initialize_gc_table (gc_table_t * table, bool transport_p)
       case GC_TRIPLE:      SIMPLE_HANDLER (gc_handle_triple);
       case GC_QUADRUPLE:   SIMPLE_HANDLER (gc_handle_quadruple);
       case GC_VECTOR:      SIMPLE_HANDLER (gc_handle_unaligned_vector);
-      case GC_COMPILED:    SIMPLE_HANDLER (gc_handle_cc_entry);
+      case GC_COMPILED_ENTRY: SIMPLE_HANDLER (gc_handle_cc_entry);
+      case GC_COMPILED_RETURN: SIMPLE_HANDLER (gc_handle_cc_return);
       case GC_UNDEFINED:   SIMPLE_HANDLER (gc_handle_undefined);
 
       case GC_SPECIAL:
@@ -360,6 +361,7 @@ initialize_gc_table (gc_table_t * table, bool transport_p)
   (GCT_TUPLE (table)) = gc_tuple;
   (GCT_VECTOR (table)) = gc_vector;
   (GCT_CC_ENTRY (table)) = gc_cc_entry;
+  (GCT_CC_RETURN (table)) = gc_cc_return;
   if (transport_p)
     {
       (GCT_PRECHECK_FROM (table)) = gc_precheck_from;
@@ -480,6 +482,20 @@ DEFINE_GC_OBJECT_HANDLER (gc_cc_entry)
   return (CC_ENTRY_NEW_BLOCK (object,
 			      (OBJECT_ADDRESS (new_block)),
 			      (OBJECT_ADDRESS (old_block))));
+#else
+  gc_no_cc_support ();
+  return (object);
+#endif
+}
+
+DEFINE_GC_OBJECT_HANDLER (gc_cc_return)
+{
+#ifdef CC_SUPPORT_P
+  SCHEME_OBJECT old_block = (cc_return_to_block (object));
+  SCHEME_OBJECT new_block = (GC_HANDLE_VECTOR (old_block, true));
+  return (CC_RETURN_NEW_BLOCK (object,
+			       (OBJECT_ADDRESS (new_block)),
+			       (OBJECT_ADDRESS (old_block))));
 #else
   gc_no_cc_support ();
   return (object);
@@ -619,6 +635,12 @@ DEFINE_GC_HANDLER (gc_handle_cc_entry)
   return (scan + 1);
 }
 
+DEFINE_GC_HANDLER (gc_handle_cc_return)
+{
+  (*scan) = (GC_HANDLE_CC_RETURN (object));
+  return (scan + 1);
+}
+
 DEFINE_GC_HANDLER (gc_handle_aligned_vector)
 {
   (*scan) = (GC_HANDLE_VECTOR (object, true));
@@ -685,14 +707,12 @@ DEFINE_GC_HANDLER (gc_handle_linkage_section)
     case LINKAGE_SECTION_TYPE_ASSIGNMENT:
       while (count > 0)
 	{
-	  WRITE_REFERENCE_ADDRESS
-	    ((GC_OBJECT_TO_RAW_ADDRESS
-	      (GC_HANDLE_TUPLE
-	       ((GC_RAW_ADDRESS_TO_OBJECT
-		 (TC_HUNK3,
-		  (READ_REFERENCE_ADDRESS (scan)))),
-		3))),
-	     scan);
+	  SCHEME_OBJECT * oaddr = (READ_REFERENCE_ADDRESS (scan));
+	  SCHEME_OBJECT osection =
+	    (GC_RAW_ADDRESS_TO_OBJECT (TC_HUNK3, oaddr));
+	  SCHEME_OBJECT nsection = (GC_HANDLE_TUPLE (osection, 3));
+	  SCHEME_OBJECT * naddr = (GC_OBJECT_TO_RAW_ADDRESS (nsection));
+	  WRITE_REFERENCE_ADDRESS (naddr, scan);
 	  scan += 1;
 	  count -= 1;
 	}
@@ -705,12 +725,11 @@ DEFINE_GC_HANDLER (gc_handle_linkage_section)
 	START_OPERATOR_RELOCATION (scan, ref);
 	while (count > 0)
 	  {
-	    write_uuo_target
-	      ((GC_CC_ENTRY_TO_RAW_ADDRESS
-		(GC_HANDLE_CC_ENTRY
-		 (GC_RAW_ADDRESS_TO_CC_ENTRY
-		  (READ_UUO_TARGET (scan, ref))))),
-	       scan);
+	    insn_t * otarget = (READ_UUO_TARGET (scan, ref));
+	    SCHEME_OBJECT oentry = (GC_RAW_ADDRESS_TO_CC_ENTRY (otarget));
+	    SCHEME_OBJECT nentry = (GC_HANDLE_CC_ENTRY (oentry));
+	    insn_t * ntarget = (GC_CC_ENTRY_TO_RAW_ADDRESS (nentry));
+	    write_uuo_target (ntarget, scan);
 	    scan += UUO_LINK_SIZE;
 	    count -= 1;
 	  }
@@ -740,12 +759,11 @@ DEFINE_GC_HANDLER (gc_handle_manifest_closure)
     unsigned long count = (compiled_closure_count (scan));
     while (count > 0)
       {
-	write_compiled_closure_target
-	  ((GC_CC_ENTRY_TO_RAW_ADDRESS
-	    (GC_HANDLE_CC_ENTRY
-	     (GC_RAW_ADDRESS_TO_CC_ENTRY
-	      (READ_COMPILED_CLOSURE_TARGET (start, ref))))),
-	   start);
+	insn_t * otarget = (READ_COMPILED_CLOSURE_TARGET (start, ref));
+	SCHEME_OBJECT oentry = (GC_RAW_ADDRESS_TO_CC_ENTRY (otarget));
+	SCHEME_OBJECT nentry = (GC_HANDLE_CC_ENTRY (oentry));
+	insn_t * ntarget = (GC_CC_ENTRY_TO_RAW_ADDRESS (nentry));
+	write_compiled_closure_target (ntarget, start);
 	start = (compiled_closure_next (start));
 	count -= 1;
       }
@@ -778,10 +796,10 @@ DEFINE_GC_HANDLER (gc_handle_undefined)
    pointer to the corresponding weak pair in new space, we also have a
    list of all of the new weak pairs.
 
-   The extra pass then traverses this list, restoring the original
-   type of the object in the car of each pair.  Then, if the car is a
-   pointer that hasn't been copied to new space, it is replaced by #F.
-   This work is performed by 'update_weak_pointers'.
+   The extra pass then traverses this list, restoring the original type of the
+   object in the car of each pair.  Then, if the car is a pointer that hasn't
+   been copied to new space, it is replaced by WEAK_PAIR_COLLECTED.  This work
+   is performed by 'update_weak_pointers'.
 
    Here is a diagram showing the layout of a weak pair immediately
    after it is transported to new space.  After the normal pass is
@@ -809,9 +827,16 @@ weak_referent_address (SCHEME_OBJECT object)
     case GC_POINTER_NORMAL:
       return (OBJECT_ADDRESS (object));
 
-    case GC_POINTER_COMPILED:
+    case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P
       return (cc_entry_address_to_block_address (CC_ENTRY_ADDRESS (object)));
+#else
+      gc_no_cc_support ();
+#endif
+
+    case GC_POINTER_COMPILED_RETURN:
+#ifdef CC_SUPPORT_P
+      return (cc_return_address_to_block_address (CC_RETURN_ADDRESS (object)));
 #else
       gc_no_cc_support ();
 #endif
@@ -822,7 +847,7 @@ weak_referent_address (SCHEME_OBJECT object)
 }
 
 static SCHEME_OBJECT
-weak_referent_forward (SCHEME_OBJECT object)
+weak_referent_forward (SCHEME_OBJECT object, SCHEME_OBJECT collected)
 {
   SCHEME_OBJECT * addr;
 
@@ -832,9 +857,9 @@ weak_referent_forward (SCHEME_OBJECT object)
       addr = (OBJECT_ADDRESS (object));
       if (BROKEN_HEART_P (*addr))
 	return (MAKE_OBJECT_FROM_OBJECTS (object, (*addr)));
-      return (SHARP_F);
+      return (collected);
 
-    case GC_POINTER_COMPILED:
+    case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P
       addr = (cc_entry_address_to_block_address (CC_ENTRY_ADDRESS (object)));
       if (BROKEN_HEART_P (*addr))
@@ -842,12 +867,22 @@ weak_referent_forward (SCHEME_OBJECT object)
 #else
       gc_no_cc_support ();
 #endif
-      return (SHARP_F);
+      return (collected);
+
+    case GC_POINTER_COMPILED_RETURN:
+#ifdef CC_SUPPORT_P
+      addr = (cc_return_address_to_block_address (CC_RETURN_ADDRESS (object)));
+      if (BROKEN_HEART_P (*addr))
+	return (CC_RETURN_NEW_BLOCK (object, (OBJECT_ADDRESS (*addr)), addr));
+#else
+      gc_no_cc_support ();
+#endif
+      return (collected);
 
     case GC_POINTER_NOT:
     default:			/* suppress bogus GCC warning */
       std_gc_death ("Non-pointer cannot be a weak reference.");
-      return (SHARP_F);
+      return (collected);
     }
 }
 
@@ -926,7 +961,7 @@ gc_transport_ephemeron (SCHEME_OBJECT old_ephemeron)
      its contents, including the datum.  */
   if ((old_key_addr == 0)
       || (!ADDRESS_IN_FROMSPACE_P (old_key_addr))
-      || (SHARP_F != (weak_referent_forward (old_key))))
+      || (SHARP_F != (weak_referent_forward (old_key, SHARP_F))))
     {
       WRITE_TOSPACE (new_addr, MARKED_EPHEMERON_MANIFEST);
       return (new_ephemeron);
@@ -995,7 +1030,7 @@ scan_ephemerons (void)
 	 right here and now, but we can't do that, because we must also
 	 delete it from the hash table so that nothing else will put it
 	 in the queue again.  */
-      if (SHARP_F != (weak_referent_forward (old_key)))
+      if (SHARP_F != (weak_referent_forward (old_key, SHARP_F)))
 	queue_ephemerons_for_key (weak_referent_address (old_key));
     }
   while (EPHEMERON_P (ephemeron = ephemeron_queue))
@@ -1004,7 +1039,7 @@ scan_ephemerons (void)
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
       {
 	SCHEME_OBJECT key = (READ_TOSPACE (ephemeron_addr + EPHEMERON_KEY));
-	if (! (weak_referent_forward (key)))
+	if (SHARP_F == (weak_referent_forward (key, SHARP_F)))
 	  std_gc_death
 	    ("Ephemeron queued whose key has not been forwarded: %lx", key);
       }
@@ -1038,7 +1073,7 @@ update_ephemerons (void)
       SCHEME_OBJECT * ephemeron_addr = (OBJECT_ADDRESS (ephemeron));
       SCHEME_OBJECT * key_loc = (ephemeron_addr + EPHEMERON_KEY);
       SCHEME_OBJECT old_key = (READ_TOSPACE (key_loc));
-      SCHEME_OBJECT new_key = (weak_referent_forward (old_key));
+      SCHEME_OBJECT new_key = (weak_referent_forward (old_key, SHARP_F));
       WRITE_TOSPACE (ephemeron_addr, MARKED_EPHEMERON_MANIFEST);
       WRITE_TOSPACE (key_loc, new_key);
       /* Advance before we clobber the list pointer.  */
@@ -1068,7 +1103,7 @@ update_weak_pairs (void)
 	= (OBJECT_NEW_TYPE ((OBJECT_TYPE (obj)),
 			    (READ_TOSPACE (new_addr))));
 
-      WRITE_TOSPACE (new_addr, (weak_referent_forward (old_car)));
+      WRITE_TOSPACE (new_addr, (weak_referent_forward (old_car, GC_RECLAIMED)));
       weak_chain = (((OBJECT_DATUM (obj)) == 0) ? 0 : (OBJECT_ADDRESS (obj)));
     }
 }
@@ -1256,8 +1291,8 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_NON_POINTER,		/* TC_FALSE */
   GC_PAIR,			/* TC_LIST */
   GC_NON_POINTER,		/* TC_CHARACTER */
-  GC_PAIR,		   	/* TC_SCODE_QUOTE */
-  GC_UNDEFINED,		        /* was TC_PCOMB2 */
+  GC_PAIR,			/* TC_SCODE_QUOTE */
+  GC_COMPILED_RETURN,		/* TC_COMPILED_RETURN */
   GC_PAIR,			/* TC_UNINTERNED_SYMBOL */
   GC_VECTOR,			/* TC_BIG_FLONUM */
   GC_UNDEFINED,			/* was TC_COMBINATION_1 */
@@ -1293,7 +1328,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_PAIR,			/* TC_TAGGED_OBJECT */
   GC_VECTOR,			/* TC_COMBINATION */
   GC_SPECIAL,			/* TC_MANIFEST_NM_VECTOR */
-  GC_COMPILED,			/* TC_COMPILED_ENTRY */
+  GC_COMPILED_ENTRY,		/* TC_COMPILED_ENTRY */
   GC_PAIR,			/* TC_LEXPR */
   GC_UNDEFINED,			/* was TC_PCOMB3 */
   GC_VECTOR,			/* TC_EPHEMERON */
@@ -1348,9 +1383,10 @@ gc_ptr_type (SCHEME_OBJECT object)
     case GC_VECTOR:
       return (GC_POINTER_NORMAL);
 
-    case GC_COMPILED:
-      return (GC_POINTER_COMPILED);
-      break;
+    case GC_COMPILED_ENTRY:
+      return (GC_POINTER_COMPILED_ENTRY);
+    case GC_COMPILED_RETURN:
+      return (GC_POINTER_COMPILED_RETURN);
 
     default:
       return (GC_POINTER_NOT);
@@ -1365,9 +1401,14 @@ get_object_address (SCHEME_OBJECT object)
     case GC_POINTER_NORMAL:
       return (OBJECT_ADDRESS (object));
 
-    case GC_POINTER_COMPILED:
+    case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P
       return (cc_entry_to_block_address (object));
+#endif
+
+    case GC_POINTER_COMPILED_RETURN:
+#ifdef CC_SUPPORT_P
+      return (cc_return_to_block_address (object));
 #endif
 
     default:

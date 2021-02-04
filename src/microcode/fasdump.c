@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -506,7 +506,7 @@ run_fixups (void * p)
   OS_free (fixups_start);
 }
 
-DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2,
+DEFINE_PRIMITIVE ("DUMP-BAND*", Prim_band_dump, 2, 2,
 		  "(PROCEDURE NAMESTRING)\n\
 Saves an image of the current world to the file NAMESTRING.\n\
 When the file is reloaded, PROCEDURE is called with an argument of #F.")
@@ -514,11 +514,12 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
   SCHEME_OBJECT * to = Free;
   SCHEME_OBJECT * prim_table_start;
   SCHEME_OBJECT * c_code_table_start;
+  const char * filename;
   bool result;
   PRIMITIVE_HEADER (2);
 
   CHECK_ARG (1, INTERPRETER_APPLICABLE_P);
-  CHECK_ARG (2, STRING_P);
+  filename = ((const char *) (arg_extended_string (2, NULL)));
 
   Primitive_GC_If_Needed (5);
   initialize_fasl_header (true, true);
@@ -556,7 +557,6 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
     result = false;
   else
     {
-      const char * filename = (STRING_POINTER (ARG_REF (2)));
       fasl_file_handle_t handle;
 
       export_primitive_table (prim_table_start);

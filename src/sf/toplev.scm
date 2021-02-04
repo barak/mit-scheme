@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,9 +30,6 @@ USA.
 (declare (usual-integrations))
 
 ;;;; User Interface
-
-(define (bin-pathname-type)
-  (if sf/cross-compiling? "nib" "bin"))
 
 (define (integrate/procedure procedure)
   (procedure-components procedure
@@ -65,14 +62,15 @@ USA.
 (define sf:noisy? #t)
 
 (define (sf/set-usual-integrations-default-deletions! del-list)
-  (guarantee-list-of-type del-list symbol? "list of symbols"
-			  'sf/set-usual-integrations-default-deletions!)
+  (guarantee-list-of symbol? del-list
+		     'sf/set-usual-integrations-default-deletions!)
   (set! sf/usual-integrations-default-deletions del-list)
   unspecific)
 
 (define (pathname/normalize pathname)
   ;; This assumes we're sitting in the source directory.
-  (pathname-default-type (merge-pathnames pathname) "scm"))
+  (pathname-default-type (merge-pathnames pathname)
+			 (file-type-src file-types:program)))
 
 (define (sf/object-pathname pathname)
   (merge-pathnames (enough-pathname pathname sf/source-root) sf/object-root))
@@ -102,7 +100,7 @@ USA.
 
 (define (syntax-file input-string bin-string spec-string)
   (guarantee environment? sf/default-syntax-table 'syntax-file)
-  (guarantee-list-of-type sf/top-level-definitions symbol? 'syntax-file)
+  (guarantee-list-of symbol? sf/top-level-definitions 'syntax-file)
   (for-each (lambda (input-string)
 	      (receive (input-pathname bin-pathname spec-pathname)
 		  (sf/pathname-defaulting input-string bin-string spec-string)
@@ -114,24 +112,30 @@ USA.
 		(list input-string))))
 
 (define (sf/pathname-defaulting input-string bin-string spec-string)
-  spec-string				;ignored
+  (declare (ignore spec-string))
   (let ((input-path (pathname/normalize input-string)))
     (values input-path
-	    (let ((bin-path
-		   (sf/object-pathname
-		    (pathname-new-type
-		     input-path
-		     (let ((input-type (pathname-type input-path)))
-		       (if (and (string? input-type)
-				(not (string=? "scm" input-type)))
-			   (string-append "b"
-					  (if (> (string-length input-type) 2)
-					      (string-head input-type 2)
-					      input-type))
-			   (bin-pathname-type)))))))
-	      (if bin-string
-		  (merge-pathnames bin-string bin-path)
-		  bin-path))
+	    (if (and bin-string (string? (pathname-type bin-string)))
+		(sf/object-pathname (merge-pathnames bin-string input-path))
+		(let ((bin-path
+		       (sf/object-pathname
+			(pathname-new-type
+			 input-path
+			 (let ((types (find-file-types input-path)))
+			   (if types
+			       (file-type-bin types sf/cross-compiling?)
+			       (let ((type (pathname-type input-path)))
+				 (if (string? type)
+				     (string-append
+				      "b"
+				      (if (> (string-length type) 2)
+					  (string-head type 2)
+					  type))
+				     (file-type-bin file-types:program
+						    sf/cross-compiling?)))))))))
+		  (if bin-string
+		      (merge-pathnames bin-string bin-path)
+		      bin-path)))
 	    #f)))
 
 (define (sf/internal input-pathname bin-pathname spec-pathname
@@ -169,28 +173,31 @@ USA.
 
 (define (sf/file->scode input-pathname output-pathname
 			environment declarations)
-  (fluid-let ((sf/default-externs-pathname
-	       (lambda ()
-		 (make-pathname (pathname-host input-pathname)
-				(pathname-device input-pathname)
-				(pathname-directory input-pathname)
-				#f
-				(externs-pathname-type)
-				'newest))))
-    (receive (expression externs-block externs)
-	(integrate/file input-pathname environment declarations)
-      (if output-pathname
-	  (write-externs-file (pathname-new-type output-pathname
-						 (externs-pathname-type))
-			      externs-block
-			      externs))
-      expression)))
-
-(define (externs-pathname-type)
-  (if sf/cross-compiling? "txe" "ext"))
+  (let ((types
+	 (or (find-file-types input-pathname file-type-src sf/cross-compiling?)
+	     file-types:program)))
+    (fluid-let ((sf/default-externs-pathname
+		 (lambda ()
+		   (make-pathname (pathname-host input-pathname)
+				  (pathname-device input-pathname)
+				  (pathname-directory input-pathname)
+				  #f
+				  (file-type-ext types sf/cross-compiling?)
+				  'newest))))
+      (receive (expression externs-block externs)
+	  (integrate/file input-pathname environment declarations)
+	(if output-pathname
+	    (write-externs-file (pathname-new-type-ext output-pathname
+						       types
+						       sf/cross-compiling?)
+				externs-block
+				externs))
+	expression))))
 
 (define (sf/default-externs-pathname)
-  (make-pathname #f #f #f #f (externs-pathname-type) 'newest))
+  (make-pathname #f #f #f #f
+		 (file-type-ext file-types:program sf/cross-compiling?)
+		 'newest))
 
 (define (read-externs-file pathname)
   (let ((pathname

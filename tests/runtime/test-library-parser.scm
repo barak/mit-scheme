@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -39,7 +39,7 @@ USA.
       (assert-equal (library-name library)
 		    '(foo bar))
       (assert-null (library-parsed-imports library))
-      (assert-null (library-exports library))
+      (assert-null (library-parsed-exports library))
       (assert-null (library-parsed-contents library))
       (assert-string= (library-filename library)
 		      (->namestring test-pathname)))))
@@ -49,14 +49,11 @@ USA.
     (let ((library (parse-define-library-form ex1 test-pathname)))
       (assert-equal (library-name library)
 		    '(foo bar))
-      (assert-lset= equal?
-		    (library-parsed-imports library)
-		    (map convert-import ex1-imports))
-      (assert-lset= library-export=?
-		    (library-exports library)
-		    (map convert-export ex1-exports))
-      (assert-list= equal?
-		    (library-parsed-contents library)
+      (assert-equal (library-parsed-imports library)
+		    `((r7rs-import ,@ex1-imports)))
+      (assert-equal (library-parsed-exports library)
+		    `((r7rs-export ,@ex1-exports)))
+      (assert-equal (library-parsed-contents library)
 		    (append-map convert-content ex1-contents))
       (assert-string= (library-filename library)
 		      (->namestring test-pathname)))))
@@ -66,14 +63,13 @@ USA.
     (let ((library (parse-define-library-form ex2 test-pathname)))
       (assert-equal (library-name library)
 		    '(foo bar))
-      (assert-lset= equal?
-		    (library-parsed-imports library)
-		    (map convert-import (append ex1-imports ex2-extra-imports)))
-      (assert-lset= library-export=?
-		    (library-exports library)
-		    (map convert-export (append ex1-exports ex2-extra-exports)))
-      (assert-list= equal?
-		    (library-parsed-contents library)
+      (assert-equal (library-parsed-imports library)
+		    `((r7rs-import ,@ex1-imports)
+		      (r7rs-import ,@ex2-extra-imports)))
+      (assert-equal (library-parsed-exports library)
+		    `((r7rs-export ,@ex1-exports)
+		      (r7rs-export ,@ex2-extra-exports)))
+      (assert-equal (library-parsed-contents library)
 		    (append-map convert-content
 				(append ex2-extra-contents ex1-contents)))
       (assert-string= (library-filename library)
@@ -85,8 +81,7 @@ USA.
       (let ((libraries (r7rs-source-libraries source)))
 	(assert-true (list? libraries))
 	(assert-= (length libraries) 4)
-	(assert-list= equal?
-		      (map library-name libraries)
+	(assert-equal (map library-name libraries)
 		      '((foo mumble)
 			(foo bletch)
 			(foo grumble)
@@ -99,16 +94,16 @@ USA.
       (let ((libraries (r7rs-source-libraries source)))
 	(assert-true (list? libraries))
 	(assert-= (length libraries) 2)
-	(assert-list= equal?
-		      (map library-name libraries)
+	(assert-equal (map library-name libraries)
 		      '((example grid)
 			(example life))))
       (let ((program (r7rs-source-program source)))
 	(assert-equal (library-parsed-imports program)
-		      '((library (scheme base))
-			(only (library (example life)) life)
-			(rename (prefix (library (example grid)) grid-)
-				(grid-make . make-grid))))
+		      '((r7rs-import
+			 (scheme base)
+			 (only (example life) life)
+			 (rename (prefix (example grid) grid-)
+				 (grid-make make-grid)))))
 	(assert-equal (library-parsed-contents program)
 		      '((begin
 			  (define grid (make-grid 24 24))

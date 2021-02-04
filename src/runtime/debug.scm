@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,12 +28,14 @@ USA.
 ;;; package: (runtime debugger)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic))
 
-(define debugger:student-walk? false)
-(define debugger:print-return-values? false)
-(define debugger:auto-toggle? true)
+(define debugger:student-walk? #f)
+(define debugger:print-return-values? #f)
+(define debugger:auto-toggle? #t)
 (define debugger:count-subproblems-limit 50)
-(define debugger:use-history? false)
+(define debugger:use-history? #f)
 (define debugger:list-depth-limit 5)
 (define debugger:list-breadth-limit 5)
 (define debugger:string-length-limit 70)
@@ -126,9 +128,9 @@ USA.
 	    (continuation->stack-frame (condition/continuation object))
 	    object))
 	  ((continuation? object)
-	   (make-dstate (continuation->stack-frame object) false))
+	   (make-dstate (continuation->stack-frame object) #f))
 	  ((stack-frame? object)
-	   (make-dstate object false))
+	   (make-dstate object #f))
 	  (else
 	   (error:wrong-type-argument object
 				      "condition or continuation"
@@ -161,13 +163,8 @@ USA.
 (define (dstate/reductions dstate)
   (stack-frame/reductions (dstate/subproblem dstate)))
 
-(define (initialize-package!)
-  (set! *dstate* (make-unsettable-parameter 'unbound))
-  (set! *port* (make-unsettable-parameter 'unbound))
-  (set!
-   command-set
-   (make-command-set
-    'debug-commands
+(define-deferred command-set
+  (make-command-set 'debug-commands
     `((#\? ,standard-help-command
 	   "help, list command letters")
       (#\A ,command/show-all-frames
@@ -221,10 +218,6 @@ USA.
       (#\Z ,command/return-from
 	   "return FROM the current subproblem with a value")
       )))
-  (set! hook/debugger-before-return default/debugger-before-return)
-  unspecific)
-
-(define command-set)
 
 (define-syntax define-command
   (sc-macro-transformer
@@ -290,10 +283,10 @@ USA.
 	(cond ((debugging-info/compiled-code? expression)
 	       (write-string ";compiled code" port))
 	      ((not (debugging-info/undefined-expression? expression))
-	       (pretty-print expression port true 0))
+	       (pretty-print expression port #t 0))
 	      ((debugging-info/noise? expression)
 	       (write-string ";" port)
-	       (write-string ((debugging-info/noise expression) false) port))
+	       (write-string ((debugging-info/noise expression) #f) port))
 	      (else
 	       (write-string ";undefined expression" port)))))))
 
@@ -351,7 +344,7 @@ USA.
 		   (newline port)
 		   (debugger-pp subexpression expression-indentation port)))))
 	  ((debugging-info/noise? expression)
-	   (write-string ((debugging-info/noise expression) true) port))
+	   (write-string ((debugging-info/noise expression) #t) port))
 	  (else
 	   (write-string (if (stack-frame/compiled-code? subproblem)
 			     "Compiled code expression unknown"
@@ -414,7 +407,7 @@ USA.
 	(newline port)
 	(let ((arguments (environment-arguments environment)))
 	  (if (eq? arguments 'unknown)
-	      (show-environment-bindings environment true port)
+	      (show-environment-bindings environment #t port)
 	      (begin
 		(write-string " applied to: " port)
 		(write-string
@@ -439,7 +432,7 @@ USA.
 	(let loop ((frame top-subproblem) (level 0))
 	  (if frame
 	      (begin
-		(with-values (lambda () (stack-frame/debugging-info frame))
+		(call-with-values (lambda () (stack-frame/debugging-info frame))
 		  (lambda (expression environment subexpression)
 		    subexpression
 		    (terse-print-expression level
@@ -479,7 +472,7 @@ USA.
 	  (output-to-string
 	   50
 	   (lambda ()
-	     (write-string ((debugging-info/noise expression) false)))))
+	     (write-string ((debugging-info/noise expression) #f)))))
 	 (else
 	  ";undefined expression"))
    port))
@@ -488,7 +481,7 @@ USA.
 
 (define-command (command/earlier-subproblem dstate port)
   (maybe-stop-using-history! dstate port)
-  (earlier-subproblem dstate port false finish-move-to-subproblem!))
+  (earlier-subproblem dstate port #f finish-move-to-subproblem!))
 
 (define (earlier-subproblem dstate port reason if-successful)
   (let ((subproblem (dstate/subproblem dstate)))
@@ -513,7 +506,7 @@ USA.
 
 (define-command (command/later-subproblem dstate port)
   (maybe-stop-using-history! dstate port)
-  (later-subproblem dstate port false finish-move-to-subproblem!))
+  (later-subproblem dstate port #f finish-move-to-subproblem!))
 
 (define (later-subproblem dstate port reason if-successful)
   (if (null? (dstate/previous-subproblems dstate))
@@ -534,10 +527,10 @@ USA.
 (define (select-subproblem dstate port)
   (let top-level-loop ()
     (let ((delta
-	   (- (prompt-for-nonnegative-integer "Subproblem number" false port)
+	   (- (prompt-for-nonnegative-integer "Subproblem number" #f port)
 	      (dstate/subproblem-number dstate))))
       (if (negative? delta)
-	  (list-tail (dstate/previous-subproblems dstate) (-1+ (- delta)))
+	  (drop (dstate/previous-subproblems dstate) (-1+ (- delta)))
 	  (let loop
 	      ((subproblem (dstate/subproblem dstate))
 	       (subproblems (dstate/previous-subproblems dstate))
@@ -561,7 +554,7 @@ USA.
   (maybe-start-using-history! dstate port)
   (let ((up
 	 (lambda ()
-	   (earlier-subproblem dstate port false finish-move-to-subproblem!))))
+	   (earlier-subproblem dstate port #f finish-move-to-subproblem!))))
     (if (not (dstate/using-history? dstate))
 	(up)
 	(let ((n-reductions (dstate/number-of-reductions dstate))
@@ -597,9 +590,9 @@ USA.
   (maybe-start-using-history! dstate port)
   (let ((down
 	 (lambda ()
-	   (later-subproblem dstate port false finish-move-to-subproblem!))))
+	   (later-subproblem dstate port #f finish-move-to-subproblem!))))
     (if (not (dstate/using-history? dstate))
-	(later-subproblem dstate port false finish-move-to-subproblem!)
+	(later-subproblem dstate port #f finish-move-to-subproblem!)
 	(let ((reduction-number (dstate/reduction-number dstate))
 	      (wrap
 	       (lambda (reason)
@@ -627,7 +620,7 @@ USA.
 	  (cond ((zero? (dstate/number-of-reductions dstate))
 		 (down))
 		((not reduction-number)
-		 (wrap false))
+		 (wrap #f))
 		((positive? reduction-number)
 		 (move-to-reduction! dstate port (-1+ reduction-number)))
 		((special-history-subproblem? dstate)
@@ -635,7 +628,7 @@ USA.
 		 (set-current-subproblem! dstate
 					  (dstate/subproblem dstate)
 					  (dstate/previous-subproblems dstate))
-		 (set-dstate/reduction-number! dstate false)
+		 (set-dstate/reduction-number! dstate #f)
 		 (command/print-subproblem dstate port))
 		(debugger:student-walk?
 		 (down))
@@ -646,7 +639,7 @@ USA.
 
 (define-command (command/show-current-frame dstate port)
   (if (pair? (dstate/environment-list dstate))
-      (show-current-frame dstate false port)
+      (show-current-frame dstate #f port)
       (undefined-environment port)))
 
 (define-command (command/show-all-frames dstate port)
@@ -659,12 +652,12 @@ USA.
   (let ((environment-list (dstate/environment-list dstate)))
     (cond ((not (pair? environment-list))
 	   (undefined-environment port))
-	  ((eq? true (environment-has-parent? (car environment-list)))
+	  ((eq? #t (environment-has-parent? (car environment-list)))
 	   (set-dstate/environment-list!
 	    dstate
 	    (cons (environment-parent (car environment-list))
 		  environment-list))
-	   (show-current-frame dstate true port))
+	   (show-current-frame dstate #t port))
 	  (else
 	   (debugger-failure port "The current environment has no parent.")))))
 
@@ -678,7 +671,7 @@ USA.
 	    "This is the initial environment; can't move to child."))
 	  (else
 	   (set-dstate/environment-list! dstate (cdr environment-list))
-	   (show-current-frame dstate true port)))))
+	   (show-current-frame dstate #t port)))))
 
 (define (show-current-frame dstate brief? port)
   (debugger-presentation port
@@ -799,12 +792,14 @@ USA.
     (and condition
 	 (condition/other-thread condition))))
 
-(define hook/debugger-before-return)
 (define (default/debugger-before-return)
   '())
+
+(define hook/debugger-before-return
+  default/debugger-before-return)
 
-(define *dstate*)
-(define *port*)
+(define-deferred *dstate* (make-unsettable-parameter 'unbound))
+(define-deferred *port* (make-unsettable-parameter 'unbound))
 
 (define (command/internal dstate port)
   (parameterize ((*dstate* dstate)
@@ -868,7 +863,7 @@ USA.
   (set-dstate/number-of-reductions!
    dstate
    (improper-list-length (stack-frame/reductions stack-frame)))
-  (with-values (lambda () (stack-frame/debugging-info stack-frame))
+  (call-with-values (lambda () (stack-frame/debugging-info stack-frame))
     (lambda (expression environment subexpression)
       (set-dstate/expression! dstate expression)
       (set-dstate/subexpression! dstate subexpression)
@@ -884,7 +879,7 @@ USA.
 	   (not (special-history-subproblem? dstate)))
       (move-to-reduction! dstate port 0)
       (begin
-	(set-dstate/reduction-number! dstate false)
+	(set-dstate/reduction-number! dstate #f)
 	(command/print-subproblem dstate port))))
 
 (define (move-to-reduction! dstate port reduction-number)
@@ -956,7 +951,7 @@ using the read-eval-print environment instead.")
 		 (param:printer-list-breadth-limit debugger:list-breadth-limit)
 		 (param:printer-string-length-limit
 		  debugger:string-length-limit))
-    (pretty-print expression port true indentation)))
+    (pretty-print expression port #t indentation)))
 
 (define expression-indentation 4)
 

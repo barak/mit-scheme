@@ -1,0 +1,439 @@
+\input texinfo @c -*-texinfo-*-
+@comment %**start of header
+@setfilename mit-scheme-gdbm.info
+@include version.texi
+@set SCMVERS 11.0.91
+@settitle MIT/GNU Scheme GDBM Plugin Manual
+@comment %**end of header
+
+@copying
+This manual documents MIT/GNU Scheme GDBM @value{VERSION}.
+
+Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
+    1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+    2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
+    2016, 2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+Copyright @copyright{} 1993-99 Free Software Foundation, Inc.
+
+@quotation
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+@ignore
+Permission is granted to process this file through Tex and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
+
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation approved
+by the Free Software Foundation.
+@end quotation
+@end copying
+
+@dircategory Programming Languages
+@direntry
+* MIT/GNU Scheme GDBM: (mit-scheme-gdbm).
+                                GNU database manager plugin
+@end direntry
+
+@titlepage
+@title MIT/GNU Scheme GDBM Plugin Manual
+@subtitle a GNU database manager plugin (version @value{VERSION})
+@subtitle for MIT/GNU Scheme version @value{SCMVERS}
+@subtitle @value{UPDATED}
+@author by Matt Birkholz
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@ifnottex
+@node Top
+@top GDBM Plugin Manual
+
+@insertcopying
+@end ifnottex
+
+@menu
+* Introduction::
+
+Functions:
+
+* List::		       The exported bindings.
+* Open::                       Opening the database.
+* Close::                      Closing the database.
+* Store::                      Inserting and replacing records in the database.
+* Fetch::                      Searching records in the database.
+* Delete::                     Removing records from the database.
+* Sequential::                 Sequential access to records.
+* Reorganization::             Database reorganization.
+* Sync::                       Insure all writes to disk have competed.
+* Options::                    Setting internal options.
+@end menu
+
+
+@node Introduction
+@chapter Introduction to GNU dbm.
+
+This plugin is a dynamically loadable wrapper for the GNU dbm
+(DataBase Management) C library.  This manual is a derivative of
+Edition 1.5 of the @cite{GNU dbm Manual}, for library version
+1.8.3, last updated October 15, 2002.
+
+GNU dbm (gdbm) is a library of database functions that
+use extendible hashing; it works similarly to the standard UNIX dbm
+functions.
+The basic use of gdbm is to store key/data pairs in a data file.
+Each key must be unique and each key is paired with only one data item.
+The keys can not be directly accessed in sorted order.
+
+The key/data pairs are stored in a gdbm disk file, called a gdbm
+database.  A program must connect to a gdbm database to be able
+manipulate the keys and data contained in it.  Gdbm allows Scheme to
+connect to multiple databases at the same time.  When Scheme connects
+to a gdbm database, the connection is designated as a @dfn{reader} or
+a @dfn{writer}.  A gdbm database may be connected to at most one
+writer at a time.  However, many readers may connect to the database
+simultaneously.  Readers and writers may not connect to the database
+at the same time.  (Note that these restrictions are not enforced by
+the library nor the wrapper.)
+
+Each connection is encapsulated in a Scheme @code{gdbf} structure
+which should be used by one Scheme thread at a time.  A mutex is used
+to block any thread attempting to access the database while an
+operation is in progress.  No file locks are used by gdbm or the
+Scheme wrapper to ensure exclusive access by a Scheme writer.
+
+@node List
+@chapter The exported bindings.
+
+The following is a quick list of the procedures provided by the plugin.
+
+@example
+	  gdbm-open
+	  gdbm-close
+	  gdbm-store
+	  gdbm-fetch
+	  gdbm-delete
+	  gdbm-firstkey
+	  gdbm-nextkey
+	  gdbm-reorganize
+	  gdbm-sync
+	  gdbm-exists?
+	  gdbm-setopt
+@end example
+
+Neither @code{gdbm_errno} nor @code{gdbm_strerror} are exposed because
+the plugin automatically tests and calls them to detect errors and
+convert codes into strings.  @code{gdbm_fdesc} is also not exposed,
+treated as an implementation detail the plugin should probably hide,
+used by tricky code that cooperates with multiple file locking
+libraries.
+
+There is one global variable, @code{gdbm-version}, which is
+initialized from the library's @code{gdbm_version} string.
+
+And several constants:
+@example
+	  gdbm_cachesize
+          gdbm_fast
+          gdbm_insert
+          gdbm_newdb
+          gdbm_reader
+          gdbm_replace
+          gdbm_wrcreat
+          gdbm_writer
+@end example
+
+You can load these bindings into your global environment with the
+following expresson.
+@smallexample
+    (load-option 'gdbm)
+@end smallexample
+
+And you can include these bindings in your package description
+(@file{.pkg}) file with the following expression.
+@smallexample
+    (global-definitions gdbm/)
+@end smallexample
+
+
+@node Open
+@chapter Opening the database.
+
+Connect to the file.  If the file has a size of zero bytes, a file
+initialization procedure is performed, setting up the initial structure in the
+file.
+
+The procedure for opening a gdbm file is:
+
+@deffn Procedure gdbm-open name block-size flags mode
+The parameters are:
+
+@table @var
+@item name
+The name of the file (the complete name, gdbm does not append any
+characters to this name).
+@item block-size
+It is used during initialization to determine the size of various constructs. It
+is the size of a single transfer from disk to memory. This parameter is ignored
+if the file has been previously initialized. The minimum size is 512.
+If the value is less than 512, the file system blocksize is used, otherwise the
+value of @var{block-size} is used.
+@item flags
+If @var{flags} is @code{gdbm_reader}, the user wants to just read the
+database and any call to @code{gdbm-store} or @code{gdbm-delete} will fail.
+Many readers can access the database at the same time. If @var{flags} is
+@code{gdbm_writer}, the user wants both read and write access to the database
+and requires exclusive access. If @var{flags} is @code{gdbm_wrcreat}, the
+user wants both read and write access to the database and if the database does
+not exist, create a new one. If @var{flags} is @code{gdbm_newdb}, the
+user want a new database created, regardless of whether one existed, and wants
+read and write access to the new database.  The following may also be logically
+or'd into the database flags: @code{gdbm_sync}, which causes all database operations
+to be synchronized to the disk, and @code{gdbm_nolock}, which prevents the library
+from performing any locking on the database file.  @code{gdbm_fast} is
+now obsolete, since gdbm defaults to no-sync mode.
+@item mode
+File mode (see chmod(2) and open(2) if the file is created).
+@end table
+
+The return value is the object needed by all other procedures to
+access that gdbm file.
+@end deffn
+
+
+@node Close
+@chapter Closing the database.
+
+It is important that every file opened is also closed. This is needed to
+update the reader/writer count on the file.  Scheme will do this
+automatically if an open gdbm object is garbage collected, but you can
+close the file immediately with the @code{gdbm-close} procedure.
+
+@deffn Procedure gdbm-close dbf
+The parameter is:
+
+@table @var
+@item dbf
+The object returned by @code{gdbm-open}.
+@end table
+
+Closes the gdbm file and frees all memory associated with @var{dbf}.
+@end deffn
+
+
+@node Store
+@chapter Inserting and replacing records in the database.
+
+The procedure @code{gdbm-store} inserts or replaces records in the database.
+
+@deffn Procedure gdbm-store dbf key content flag
+The parameters are:
+
+@table @var
+@item dbf
+The object returned by @code{gdbm-open}.
+@item key
+A non-empty string, converted to utf-8 bytes for lookup in the database.
+@item content
+Another non-empty string, the content to be stored in the database file, also
+converted to utf-8.
+@item flag
+The action to take when @var{key} is already in the database. The value
+of @code{gdbm_replace} indicates that the old content should be replaced
+by @var{content}. The value of @code{gdbm_insert} indicates that
+@code{#f} should be returned and no action taken if @var{key} already
+exists.
+@end table
+
+The values returned are:
+
+@table @code
+@item #t
+Success. @var{content} is keyed by @var{key}. The file on disk is updated
+to reflect the structure of the new database before returning from this
+procedure.
+@item #f
+The item was not stored because @var{flag} was @code{gdbm_insert} and
+@var{key} was already in the database.
+@end table
+
+An error is signaled if the caller is not a writer.
+
+If you store content for a key that is already in the database,
+gdbm replaces the old content with the new content if called with
+@code{gdbm_replace}. You do not get two content items for the same key and you do
+not get an error from @code{gdbm-store}.
+
+The size in gdbm is not restricted like dbm or ndbm. Your
+content can be as large as you want.
+@end deffn
+
+
+@node Fetch
+@chapter Searching for records in the database.
+
+Read content associated with a key.
+
+@deffn Procedure gdbm-fetch dbf key
+The parameters are:
+
+@table @var
+@item dbf
+The object returned by @code{gdbm-open}.
+@item key
+A non-empty string, converted to utf-8 bytes for lookup in the database.
+@end table
+
+The return value is a string created from the utf-8 bytes found in the
+database, or @code{#f} if no content was found.
+@end deffn
+
+You may also search for a particular key without retrieving it, using:
+
+@deffn Procedure gdbm-exists? dbf key
+The parameters are:
+
+@table @var
+@item dbf
+The pointer returned by @code{gdbm-open}.
+@item key
+A non-empty string, converted to utf-8 bytes for lookup in the database.
+@end table
+
+Unlike @code{gdbm-fetch} this procedure does not read any content and
+simply returns true or false depending on whether @var{key} exists.
+@end deffn
+
+
+@node Delete
+@chapter Removing records from the database.
+
+To remove some content from the database:
+
+@deffn Procedure gdbm-delete dbg key
+The parameters are:
+
+@table @var
+@item dbf
+The object returned by @code{gdbm-open}.
+@item key
+A non-empty string, converted to utf-8 bytes for lookup in the database.
+@end table
+
+The return value is @code{#f} if the item is not present or the requester is a reader.
+The return value is @code{#t} if there was a successful delete.
+
+The keyed content and the key are removed from the database. The file
+on disk is updated to reflect the structure of the new database before
+returning from this procedure.
+@end deffn
+
+
+@node Sequential
+@chapter Sequential access to records.
+
+The next two functions allow for accessing all content in a database
+@var{dbf}.  This access is not key sequential, but it is guaranteed to
+visit every key in the database once.  (The order has to do with the
+hash values.)
+
+@deffn Procedure gdbm-firstkey dbf
+Starts the visit of all keys in the database @var{dbf}.
+Returns the first key to visit, converting its utf-8 bytes to a string.
+If there are no keys, returns @code{#f}.
+@end deffn
+
+@deffn Procedure gdbm-nextkey dbf key
+Returns the key to visit after @var{key}, converting its utf-8 bytes
+to a string.
+If there are no more keys, returns @code{#f}.
+@end deffn
+
+These functions were intended to visit the database in read-only algorithms,
+for instance, to validate the database or similar operations.
+
+Visiting keys traverses a hash table which writers may re-arrange.
+The original key order is @emph{not} guaranteed to
+remain unchanged in all instances. It is possible that some key will not be
+visited if the database is changed while traversing the table.
+
+
+@node Reorganization
+@chapter Database reorganization.
+
+The following procedure should be used very seldom.
+
+@deffn Procedure gdbm-reorganize dbf
+If you have made a lot of deletions and would like to shrink the space
+used by the gdbm file, this function will reorganize the database.
+Gdbm will not shorten a gdbm file (will not reuse deleted space)
+until this procedure is called.
+
+The reorganization requires creating a new file and inserting all the elements
+in the old file @code{dbf} into the new file. The new file is then renamed to
+the same name as the old file and @code{dbf} is updated to contain all the
+correct information about the new file.
+@end deffn
+
+
+@node Sync
+@chapter Database Synchronization
+
+Unless you opened your database with the @code{gdbm_sync} flag, gdbm does not
+wait for writes to be flushed to the disk.  This allows
+faster writing of databases at the risk of having a corrupted database if
+Scheme terminates in an abnormal fashion.  The following function
+allows the programmer to flush all changes to disk.
+
+@deffn Procedure gdbm-sync dbf
+This would usually be called after a complete set of changes have been
+made to the database and before some long waiting time.
+@code{Gdbm-close} always flushes any changes to disk.
+@end deffn
+
+
+@node Options
+@chapter Setting options.
+
+Gdbm supports the ability to set certain options on an already
+open database.
+
+@deffn Procedure gdbm-setopt dbf option value
+The parameters are:
+
+@table @var
+@item dbf
+The pointer returned by @code{gdbm-open}.
+@item option
+The option to be set, the value of @code{gdbm_cachesize} or
+@code{gdbm_syncmode}.
+@item value
+The value to be set, an integer.
+@end table
+
+If @var{option} is @code{gdbm_cachesize} the size of the internal
+bucket cache is set to the given integer.  This option may only be set
+once on a database, and is set to 100 by default when the database is
+first accessed.
+
+If @var{option} is @code{gdbm_syncmode} file system synchronization is
+turned on or off.  By default it is off.  @var{Value} should @code{1}
+to turn it on, or @code{0} to turn it off.
+@end deffn
+
+The obsolete and experimental options @code{GDBM_FASTMODE},
+@code{GDBM_CENTFREE} and @code{GDBM_COALESCEBLKS} are not supported by
+this plugin.
+
+@bye

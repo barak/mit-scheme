@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -101,8 +101,17 @@ USA.
 	(+ (symbol-hash type)
 	   (case type
 	     ((REGISTER)
-	      (quantity-number
-	       (get-register-quantity (rtl:register-number expression))))
+	      (let ((register (rtl:register-number expression)))
+		(if (memv register available-machine-registers)
+		    ;; This is a special-purpose register, like the
+		    ;; value register or an interpreter call result
+		    ;; register, which is also generally available
+		    ;; for allocation.  Since this may be assigned as
+		    ;; an alias for other pseudo-registers in the
+		    ;; future, don't let this get propagated past
+		    ;; their assignments.
+		    (set! do-not-record? true))
+		(quantity-number (get-register-quantity register))))
 	     ((OFFSET)
 	      ;; Note that stack-references do not get treated as
 	      ;; memory for purposes of invalidation.  This is because

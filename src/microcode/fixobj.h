@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -54,8 +54,8 @@ USA.
 #define FIXOBJ_PROXIED_RECORD_TYPES	0x15
 #define Termination_Vector	0x16    /* Names for terminations. */
 #define Termination_Proc_Vector	0x17	/* Handlers for terminations. */
-/* #define UNUSED		0x18 */
-/* #define UNUSED		0x19 */
+#define FIXOBJ_GC_RECLAIMED	0x18    /* Stored in weak car when reclaimed. */
+#define FIXOBJ_INITIAL_HASH     0x19    /* Used when hashing vectors. */
 /* #define UNUSED		0x1A */
 /* #define UNUSED		0x1B */
 /* #define UNUSED		0x1C */
@@ -144,8 +144,8 @@ USA.
   /* 0x15 */	"proxied-record-types",					\
   /* 0x16 */	"microcode-terminations-vector",			\
   /* 0x17 */	"microcode-terminations-procedures",			\
-  /* 0x18 */	0,							\
-  /* 0x19 */	0,							\
+  /* 0x18 */	"gc-reclaimed-object",					\
+  /* 0x19 */	"initial-hash",						\
   /* 0x1A */	0,							\
   /* 0x1B */	0,							\
   /* 0x1C */	0,							\

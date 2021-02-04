@@ -1,8 +1,8 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([MIT/GNU Scheme x11 plugin],
-        [1.3],
+AC_INIT([MIT/GNU Scheme X11 plugin],
+        [1.4],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-x11])
 AC_CONFIG_SRCDIR([x11.pkg])
@@ -12,9 +12,9 @@ AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
-This file is part of an x11 plugin for MIT/GNU Scheme.
+This file is part of MIT/GNU Scheme.
 
 MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -100,26 +100,26 @@ if test "${no_x}" != yes; then
 fi
 
 MIT_SCHEME_PROJECT=mit-scheme
-: ${MIT_SCHEME_EXE=mit-scheme}
+: ${MIT_SCHEME_TOOLCHAIN_EXE=mit-scheme}
 if test x"${MIT_SCHEME_LIBDIR}" = x; then
     MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
 			 echo "          (system-library-directory-pathname)))" ) \
-		       | ${MIT_SCHEME_EXE} --batch-mode`
+		       | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 if test x"${MIT_SCHEME_INCLUDEDIR}" = x; then
     MIT_SCHEME_INCLUDEDIR=`( echo "(display (->namestring" ;\
                              echo "          (directory-pathname" ;\
                              echo "           (system-library-pathname" ;\
                              echo '            "mit-scheme.h"))))' ) \
-                           | ${MIT_SCHEME_EXE} --batch-mode`
+                           | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 if test x"${MIT_SCHEME_OS_SUFFIX}" = x; then
     MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
-                          | ${MIT_SCHEME_EXE} --batch-mode`
+			  | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 if test x"${MIT_SCHEME_CC_TYPE}" = x; then
     MIT_SCHEME_CC_TYPE=`echo "(display microcode-id/compiled-code-type)" \
-                        | ${MIT_SCHEME_EXE} --batch-mode`
+                        | ${MIT_SCHEME_TOOLCHAIN_EXE} --batch-mode`
 fi
 
 MIT_SCHEME_PKD="x11-${MIT_SCHEME_OS_SUFFIX}.pkd"
@@ -146,7 +146,7 @@ ${MIT_SCHEME_PKD}: stamp-scheme"
 AC_SUBST([MIT_CFLAGS])
 AC_SUBST([MIT_LIBS])
 AC_SUBST([MIT_SCHEME_PROJECT])
-AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([MIT_SCHEME_TOOLCHAIN_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])
 AC_SUBST([MIT_SCHEME_INCLUDEDIR])
 AC_SUBST([MIT_SCHEME_PKD])

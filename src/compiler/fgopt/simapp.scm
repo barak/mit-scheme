@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -68,7 +68,7 @@ USA.
     (let ((new (lvalue-values-cache (reference-lvalue operator))))
       (let loop ((operators new))
 	;; We can use `eq?' here because we assume that
-	;; (eq? (list-tail (eq-set-union x y) n) y) for some n.
+	;; (eq? (drop (eq-set-union x y) n) y) for some n.
 	;; This is also noted at the definition of `eq-set-union'.
 	(if (eq? operators old)
 	    new
@@ -96,7 +96,7 @@ USA.
 		    (operands operands))
 		 (if (not (null? parameters))
 		     (if (null? operands)
-			 (for-each lvalue-unassigned! parameters)
+			 (for-each lvalue-defaulted! parameters)
 			 (begin
 			   (lvalue-connect! (car parameters) (car operands))
 			   (loop (cdr parameters) (cdr operands)))))))
@@ -135,8 +135,8 @@ USA.
     (eq-set-union* (lvalue-initial-values (car lvalues))
 		   (map lvalue-initial-values (cdr lvalues)))))
 
-(define (lvalue-unassigned! lvalue)
-  (lvalue-connect! lvalue (make-constant (make-unassigned-reference-trap))))
+(define (lvalue-defaulted! lvalue)
+  (lvalue-connect! lvalue (make-constant (default-object))))
 
 (define-integrable (lvalue-connect! lvalue rvalue)
   (if (rvalue/reference? rvalue)

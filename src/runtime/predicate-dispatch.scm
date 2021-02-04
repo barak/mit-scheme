@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime predicate-dispatch)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime predicate))
 
 (define (predicate-dispatcher? object)
   (and (entity? object)
@@ -44,13 +46,16 @@ USA.
         (error:not-a predicate-dispatcher? procedure caller))
     metadata))
 
-(define (make-predicate-dispatcher name arity make-handler-set)
+(define (make-predicate-dispatcher name arity default make-handler-set)
   (if (not (> (procedure-arity-min arity) 0))
       (error:bad-range-argument arity 'make-predicate-dispatcher))
   (let ((metadata
 	 (make-metadata name
 			arity
-			(make-handler-set arity (make-default-handler name)))))
+			(make-handler-set arity
+					  (if (default-object? default)
+					      (make-default-handler name)
+					      default)))))
     (make-entity (make-procedure arity metadata)
 		 metadata)))
 
@@ -83,20 +88,21 @@ USA.
 	 (declare (ignore self))
 	 (apply (apply get-handler args) args))))))
 
-(define (simple-predicate-dispatcher name arity)
-  (make-predicate-dispatcher name arity simple-handler-set))
+(define (simple-predicate-dispatcher name arity #!optional default)
+  (make-predicate-dispatcher name arity default simple-handler-set))
 
-(define (standard-predicate-dispatcher name arity)
-  (make-predicate-dispatcher name arity most-specific-handler-set))
+(define (standard-predicate-dispatcher name arity #!optional default)
+  (make-predicate-dispatcher name arity default most-specific-handler-set))
 
-(define (chaining-predicate-dispatcher name arity)
-  (make-predicate-dispatcher name arity chaining-handler-set))
+(define (chaining-predicate-dispatcher name arity #!optional default)
+  (make-predicate-dispatcher name arity default chaining-handler-set))
 
-(define (cached-standard-predicate-dispatcher name arity)
-  (make-predicate-dispatcher name arity cached-most-specific-handler-set))
+(define (cached-standard-predicate-dispatcher name arity #!optional default)
+  (make-predicate-dispatcher name arity default
+			     cached-most-specific-handler-set))
 
-(define (cached-chaining-predicate-dispatcher name arity)
-  (make-predicate-dispatcher name arity cached-chaining-handler-set))
+(define (cached-chaining-predicate-dispatcher name arity #!optional default)
+  (make-predicate-dispatcher name arity default cached-chaining-handler-set))
 
 (define-record-type <metadata>
     (make-metadata name arity handler-set)
@@ -125,11 +131,6 @@ USA.
     (guarantee-procedure-of-arity handler (metadata-arity metadata)
 				  'define-predicate-dispatch-handler)
     (((metadata-handler-set metadata) 'set-handler!) predicates handler)))
-
-(define (define-predicate-dispatch-default-handler dispatch handler)
-  (((get-handler-set dispatch 'define-predicate-dispatch-default-handler)
-    'set-default-handler!)
-   handler))
 
 ;;;; Handler set implementations
 
@@ -166,16 +167,11 @@ USA.
     (define (get-default-handler)
       default-handler)
 
-    (define (set-default-handler! handler)
-      (set! default-handler handler)
-      unspecific)
-
     (lambda (operator)
       (case operator
 	((get-handler) get-handler)
 	((set-handler!) set-handler!)
         ((get-default-handler) get-default-handler)
-        ((set-default-handler!) set-default-handler!)
 	((get-rules) (lambda () rules))
 	(else (error "Unknown operator:" operator))))))
 
@@ -189,7 +185,8 @@ USA.
   (lambda (arity default-handler)
     (let* ((delegate (simple-handler-set arity default-handler))
 	   (delegate-get-rules (delegate 'get-rules))
-	   (delegate-get-default-handler (delegate 'get-default-handler)))
+	   (delegate-get-default-handler (delegate 'get-default-handler))
+	   (delegate-set-handler! (delegate 'set-handler!)))
 
       (define (get-handler . args)
         (let ((matching
@@ -203,9 +200,20 @@ USA.
 	  (make-effective-handler (map car (sort matching rule<?))
 				  delegate-get-default-handler)))
 
+      (define (set-handler! predicates handler)
+	(let ((unregistered (remove predicate? predicates)))
+	  (if (pair? unregistered)
+	      (if (in-cold-load?)
+		  ((ucode-primitive debugging-printer)
+		   (cons 'unregistered-predicates unregistered))
+		  (error "This dispatcher requires registered predicates:"
+			 unregistered))))
+	(delegate-set-handler! predicates handler))
+
       (lambda (operator)
         (case operator
           ((get-handler) get-handler)
+	  ((set-handler!) set-handler!)
           (else (delegate operator)))))))
 
 (define (rule<? r1 r2)
@@ -248,8 +256,7 @@ USA.
   (let ((cache (new-cache (procedure-arity-min arity)))
 	(nmin (procedure-arity-min arity))
 	(delegate-get-handler (delegate 'get-handler))
-	(delegate-set-handler! (delegate 'set-handler!))
-	(delegate-set-default-handler! (delegate 'set-default-handler!)))
+	(delegate-set-handler! (delegate 'set-handler!)))
 
     (define get-handler
       (case (and (eqv? nmin (procedure-arity-max arity)) nmin)
@@ -278,10 +285,6 @@ USA.
     (define (set-handler! predicates handler)
       (clear-cache!)
       (delegate-set-handler! predicates handler))
-
-    (define (set-default-handler! handler)
-      (clear-cache!)
-      (delegate-set-default-handler! handler))
 
     (define (handle-cache-miss args)
       (let ((tags (compute-tags args))
@@ -314,5 +317,4 @@ USA.
       (case operator
         ((get-handler) get-handler)
 	((set-handler!) set-handler!)
-	((set-default-handler!) set-default-handler!)
         (else (delegate operator))))))

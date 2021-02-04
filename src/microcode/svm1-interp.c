@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,6 +50,22 @@ USA.
 #endif
 
 typedef SCHEME_OBJECT word_t;	/* convenience abbreviation */
+
+#if (SIZEOF_UNSIGNED_LONG == 4)
+#  ifdef WORDS_BIGENDIAN
+const fasl_arch_t svm_fasl_arch = FASL_SVM1_32BE;
+#  else
+const fasl_arch_t svm_fasl_arch = FASL_SVM1_32LE;
+#  endif
+#elif (SIZEOF_UNSIGNED_LONG == 8)
+#  ifdef WORDS_BIGENDIAN
+const fasl_arch_t svm_fasl_arch = FASL_SVM1_64BE;
+#  else
+const fasl_arch_t svm_fasl_arch = FASL_SVM1_64LE;
+#  endif
+#else
+#error Neither 32-bit nor 64-bit, what is this, a PDP-10?
+#endif
 
 #define N_WORD_REGISTERS 0x100
 #define N_FLOAT_REGISTERS 0x100
@@ -1116,8 +1132,9 @@ DEFINE_INST (enter_closure)
     SCHEME_OBJECT * targets
       = (skip_compiled_closure_padding
 	 (block + (CLOSURE_ENTRY_START + (count * CLOSURE_ENTRY_SIZE))));
-    push_object (MAKE_CC_ENTRY (((SCHEME_OBJECT *)
-				 (block + CLOSURE_ENTRY_OFFSET))));
+    push_object
+      (MAKE_CC_ENTRY
+       ((insn_t *) ((SCHEME_OBJECT *) (block + CLOSURE_ENTRY_OFFSET))));
     NEW_PC (BYTE_ADDR (OBJECT_ADDRESS (targets[index])));
   }
 }

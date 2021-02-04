@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -64,7 +64,7 @@ USA.
 				 nentries
 				 (closure-block-entry-number block)))))
 			 (needs-entry?
-			  (with-values
+			  (call-with-values
 			      (lambda () (procedure-arity-encoding procedure))
 			    (lambda (min max)
 			      (rtl:make-procedure-header
@@ -76,7 +76,8 @@ USA.
 			  (rtl:make-open-procedure-header
 			   (procedure-label procedure))))))
 		((procedure-rest procedure)
-		 (with-values (lambda () (procedure-arity-encoding procedure))
+		 (call-with-values
+		     (lambda () (procedure-arity-encoding procedure))
 		   (lambda (min max)
 		     (if (open-procedure-needs-dynamic-link? procedure)
 			 (scfg*scfg->scfg!
@@ -102,6 +103,7 @@ USA.
 		(lambda (expression)
 		  (wrap-with-continuation-entry
 		   context
+		   (make-null-cfg)
 		   (lambda (cont-label)
 		     (rtl:make-interpreter-call:set!
 		      cont-label
@@ -187,7 +189,7 @@ USA.
 			    (rtl:make-constant
 			     (make-unassigned-reference-trap)))))))))
 	   ((IC)
-	    (with-values (lambda () (make-ic-cons value 'USE-ENV)) recvr))
+	    (call-with-values (lambda () (make-ic-cons value 'USE-ENV)) recvr))
 	   ((TRIVIAL-CLOSURE)
 	    ;; This is not an error.
 	    ;; It can be the consequence of bad style.

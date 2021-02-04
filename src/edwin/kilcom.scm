@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -231,7 +231,7 @@ The command \\[yank] can retrieve it from there.
 	       '()
 	       (let ((strings (cons string kill-ring)))
 		 (if (> (length strings) kill-ring-max)
-		     (set-cdr! (list-tail strings (- kill-ring-max 1)) '()))
+		     (set-cdr! (drop strings (- kill-ring-max 1)) '()))
 		 strings)))))
     (set-variable! kill-ring strings context)
     (set-variable! kill-ring-yank-pointer strings context)))
@@ -320,15 +320,15 @@ comes the newest one."
 	  (editor-error "Kill ring is empty"))
       (set-variable!
        kill-ring-yank-pointer
-       (list-tail kill-ring
-		  (modulo (+ argument
-			     (let ((kill-ring-yank-pointer
-				    (ref-variable kill-ring-yank-pointer)))
-			       (let loop ((l kill-ring) (n 0))
-				 (cond ((null? l) 0)
-				       ((eq? l kill-ring-yank-pointer) n)
-				       (else (loop (cdr l) (+ n 1)))))))
-			  (length kill-ring)))))))
+       (drop kill-ring
+	     (modulo (+ argument
+			(let ((kill-ring-yank-pointer
+			       (ref-variable kill-ring-yank-pointer)))
+			  (let loop ((l kill-ring) (n 0))
+			    (cond ((null? l) 0)
+				  ((eq? l kill-ring-yank-pointer) n)
+				  (else (loop (cdr l) (+ n 1)))))))
+		     (length kill-ring)))))))
 
 ;;;; Marks
 

@@ -3,7 +3,7 @@
 ## Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 ##     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 ##     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
-##     2015, 2016, 2017, 2018, 2019 Massachusetts Institute of
+##     2015, 2016, 2017, 2018, 2019, 2020 Massachusetts Institute of
 ##     Technology
 ##
 ## This file is part of MIT/GNU Scheme.
@@ -25,7 +25,7 @@
 
 EXTRA_DIST = autogen.sh
 
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)imail
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -49,7 +49,7 @@ binaries += imap-syntax.bci imap-syntax.com
 
 scmlib_sub_DATA = $(sources)
 scmlib_sub_DATA += $(binaries)
-scmlib_sub_DATA += make.scm imail.pkg imail-@MIT_SCHEME_OS_SUFFIX@.pkd
+scmlib_sub_DATA += make.scm imail.pkg @MIT_SCHEME_PKD@
 
 info_TEXINFOS = mit-scheme-imail.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -78,18 +78,17 @@ imap-response.bci: stamp-scheme
 imap-response.com: stamp-scheme
 imap-syntax.bci: stamp-scheme
 imap-syntax.com: stamp-scheme
-imail-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+@MIT_SCHEME_PKD@: stamp-scheme
 stamp-scheme: $(sources) imail.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-scheme
 
 #TESTS = imail-check.sh
 
-ETAGS_ARGS = $(sources)
-TAGS_DEPENDENCIES = $(sources)
+TAGS_FILES = $(sources)
 
 EXTRA_DIST += $(sources) compile.sh make.scm compile.scm imail.pkg
 

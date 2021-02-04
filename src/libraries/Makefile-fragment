@@ -1,0 +1,6 @@
+TARGET_DIR = $(AUXDIR)/libraries
+
+install:
+	$(mkinstalldirs) $(DESTDIR)$(TARGET_DIR)
+	$(INSTALL_COM) *.comld $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) *.bcild $(DESTDIR)$(TARGET_DIR)/.

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -163,7 +163,7 @@ parameters in registers.
 	    (or (node/bad-variables node)
 		(let ((bad-variables
 		       (eq-set-union
-			(with-values (lambda () (find-node-values node))
+			(call-with-values (lambda () (find-node-values node))
 			  values->variables)
 			(walk-next node walk-node-for-variables))))
 		  (set-node/bad-variables! node bad-variables)
@@ -223,7 +223,8 @@ parameters in registers.
 			rvalues))))
 
 (define (complex-parallel-constraints subproblems vars-referenced-later)
-  (with-values (lambda () (discriminate-items subproblems subproblem-simple?))
+  (call-with-values
+      (lambda () (discriminate-items subproblems subproblem-simple?))
     (lambda (simple complex)
       (let ((discriminate-by-bad-vars
 	     (lambda (subproblems)
@@ -233,9 +234,9 @@ parameters in registers.
 			  (memq var vars-referenced-later))
 			(subproblem-free-variables subproblem))))))
 	    (constraint-graph (make-constraint-graph)))
-	(with-values (lambda () (discriminate-by-bad-vars simple))
+	(call-with-values (lambda () (discriminate-by-bad-vars simple))
 	  (lambda (good-simples bad-simples)
-	    (with-values (lambda () (discriminate-by-bad-vars complex))
+	    (call-with-values (lambda () (discriminate-by-bad-vars complex))
 	      (lambda (good-complex bad-complex)
 		(add-constraint-set! good-simples
 				     good-complex

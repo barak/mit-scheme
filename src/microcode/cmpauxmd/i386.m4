@@ -3,8 +3,8 @@
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
 ###     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013,
-###     2014, 2015, 2016, 2017, 2018, 2019 Massachusetts Institute of
-###     Technology
+###     2014, 2015, 2016, 2017, 2018, 2019, 2020 Massachusetts
+###     Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###
@@ -118,8 +118,6 @@
 ###	If defined, do not generate SSE media instructions.
 ### VALGRIND_MODE
 ###	If defined, modify code to make it work with valgrind.
-
-define(DISABLE_SSE,1)
 
 ####	Utility macros and definitions
 
@@ -640,7 +638,7 @@ scheme_to_interface_proceed:
 	# Signal to within_c_stack that we are now in C land.
 	OP(mov,l)	TW(IMM(0),EVR(C_Stack_Pointer))
 
-	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc struct return
+	OP(sub,l)	TW(IMM(12),REG(esp))	# alloc struct return
 
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # push utility args
 	OP(push,l)	REG(ebx)
@@ -659,7 +657,9 @@ scheme_to_interface_proceed:
 define_debugging_label(scheme_to_interface_return)
 	OP(add,l)	TW(IMM(20),REG(esp))	# pop utility args
 	OP(pop,l)	REG(eax)		# pop struct return
-	OP(pop,l)	REG(edx)
+	OP(pop,l)	REG(edx)		# interp code / compiled ptr
+	OP(pop,l)	REG(ecx)		# interp garbage / compiled pc
+						# (currently unused on i386)
 	jmp		IJMP(REG(eax))		# Invoke handler
 
 define_c_label(interface_to_scheme)
@@ -1240,6 +1240,7 @@ IFSSE(`	enter		IMM(4),IMM(0)
 	stmxcsr		IND(REG(esp))
 	OP(mov,l)	TW(IND(REG(esp)),REG(eax))
 	leave')
+IFNSSE(`OP(xor,l)	TW(REG(eax),REG(eax))')
 	ret
 
 define_c_label(sse_write_mxcsr)
@@ -1259,6 +1260,7 @@ IF387(`	enter		IMM(4),IMM(0)
 	fnstcw		IND(REG(esp))
 	OP(mov,w)	TW(INDW(REG(esp)),REG(ax))
 	leave')
+IFN387(`OP(xor,l)	TW(REG(eax),REG(eax))')
 	ret
 
 define_c_label(x87_write_control_word)
@@ -1270,6 +1272,7 @@ IF387(`	enter		IMM(4),IMM(0)
 	fnstsw		IND(REG(esp))
 	OP(mov,w)	TW(INDW(REG(esp)),REG(ax))
 	leave')
+IFN387(`OP(xor,l)	TW(REG(eax),REG(eax))')
 	ret
 
 define_c_label(x87_read_environment)

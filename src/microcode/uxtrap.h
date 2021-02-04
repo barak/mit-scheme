@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -334,8 +334,9 @@ struct full_sigcontext
 #endif
 
 #define SIGINFO_T siginfo_t *
+#define HAVE_REAL_SIGINFO_T 1
 #define SIGINFO_VALID_P(info) ((info) != 0)
-#define SIGINFO_CODE(info) ((info) -> si_code)
+#define SIGINFO_CODE(info) (((info) != 0) ? ((info) -> si_code) : (0))
 
 #define __SIGCONTEXT_REG(scp, ir) ((((scp) -> uc_mcontext) . gregs) [(ir)])
 
@@ -390,7 +391,7 @@ struct full_sigcontext
 #endif /* mips */
 
 #ifdef __IA32__
- 
+
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #  include <ucontext.h>
 #endif
@@ -734,13 +735,84 @@ typedef struct
 #endif /* __NetBSD_Version__ >= 200000000 */
 #endif /* __NetBSD__ */
 
-#ifdef _POSIX_REALTIME_SIGNALS
-#  define HAVE_SIGACTION_SIGINFO_SIGNALS
+#ifdef __APPLE__
+
+#  ifdef __IA32__
+#    define HAVE_SIGCONTEXT
+#    define SIGCONTEXT_FIRST_REG(scp) (& ((scp) -> uc_mcontext -> __ss))
+#    define SIGCONTEXT_NREGS						\
+  (((sizeof (_STRUCT_X86_THREAD_STATE32)) + (SIZEOF_UNSIGNED_LONG - 1))	\
+   / SIZEOF_UNSIGNED_LONG)
+#    define SIGCONTEXT_SP(scp) (((scp) -> uc_mcontext -> __ss) . __esp)
+#    define SIGCONTEXT_PC(scp) (((scp) -> uc_mcontext -> __ss) . __eip)
+#    define SIGCONTEXT_RFREE(scp) (((scp) -> uc_mcontext -> __ss) . __edi)
+#  endif /* __IA32__ */
+
+#  ifdef __x86_64__
+#    define HAVE_SIGCONTEXT
+#    define SIGCONTEXT_FIRST_REG(scp) (& ((scp) -> uc_mcontext -> __ss))
+#    define SIGCONTEXT_NREGS						\
+  (((sizeof (_STRUCT_X86_THREAD_STATE64)) + (SIZEOF_UNSIGNED_LONG - 1))	\
+   / SIZEOF_UNSIGNED_LONG)
+#    define SIGCONTEXT_SP(scp) (((scp) -> uc_mcontext -> __ss) . __rsp)
+#    define SIGCONTEXT_PC(scp) (((scp) -> uc_mcontext -> __ss) . __rip)
+#    define SIGCONTEXT_RFREE(scp) (((scp) -> uc_mcontext -> __ss) . __rdi)
+#  endif /* __x86_64__ */
+
+#  define INITIALIZE_UX_SIGNAL_CODES() do				\
+{									\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_ILLOPC, "Illegal opcode");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_ILLTRP, "Illegal trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_PRVOPC, "Privileged opcode");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_COPROC, "Coprocessor error");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~0L), ILL_BADSTK, "Internal stack error");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTDIV, "Floating-point divide by zero");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTOVF, "Floating-point overflow");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTUND, "Floating-point underflow");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTRES, "Floating-point inexact result");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTINV, "Invalid floating-point operation");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_FLTSUB, "Subscript out of range");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_INTDIV, "Integer divide by zero");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~0L), FPE_INTOVF, "Integer overflow");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGSEGV, (~0L), SEGV_MAPERR, "Address not mapped to object");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGSEGV, (~0L), SEGV_ACCERR, "Invalid permissions for mapped object"); \
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGBUS, (~0L), BUS_ADRALN, "Invalid address alignment");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGBUS, (~0L), BUS_ADRERR, "Nonexistent physical address");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGBUS, (~0L), BUS_OBJERR, "Object-specific hardware error");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGTRAP, (~0L), TRAP_BRKPT, "Process breakpoint");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGTRAP, (~0L), TRAP_TRACE, "Process trace trap");			\
+} while (0)
+
+#endif /* __APPLE__ */
+
+#if !(defined (HAVE_SIGACTION_SIGINFO_SIGNALS)) && (defined (_POSIX_REALTIME_SIGNALS))
+#  define HAVE_SIGACTION_SIGINFO_SIGNALS 1
 #endif
 
 #ifdef HAVE_SIGACTION_SIGINFO_SIGNALS
 #  define SIGINFO_T siginfo_t *
-#  define SIGINFO_VALID_P(info) (1)
+#  define HAVE_REAL_SIGINFO_T 1
+#  undef SIGINFO_VALID_P
 #  define SIGINFO_CODE(info) ((info) -> si_code)
 #  define SIGCONTEXT_ARG_T void
 #  define SIGCONTEXT_T ucontext_t
@@ -748,7 +820,8 @@ typedef struct
 
 #ifndef SIGINFO_T
 #  define SIGINFO_T int
-#  define SIGINFO_VALID_P(info) (0)
+#  undef HAVE_REAL_SIGINFO_T
+#  undef SIGINFO_VALID_P
 #  define SIGINFO_CODE(info) (0)
 #endif
 
@@ -799,6 +872,11 @@ typedef struct
 #endif
 
 #if defined(__linux__) || defined(__NetBSD__)
+#  if defined(__NetBSD__) && defined(__aarch64__)
+/* NetBSD/aarch64 doesn't provide _init.  Maybe we should just always
+   use __executable_start on NetBSD.  */
+#    define _init __executable_start
+#  endif
    extern unsigned int _init;
    extern unsigned int etext;
 #  define ADDRESS_UCODE_P(addr)						\
@@ -808,10 +886,6 @@ typedef struct
 
 #ifdef __CYGWIN__
    extern unsigned int end;
-#endif
-
-#ifndef ADDRESS_UCODE_P
-#  define ADDRESS_UCODE_P(addr) (0)
 #endif
 
 /* Machine/OS-independent section */

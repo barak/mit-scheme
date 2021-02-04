@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -319,6 +319,7 @@ extern void guarantee_extra_ephemeron_space (unsigned long);
 extern uint32_t memory_hash (unsigned long, const void *);
 extern bool hashable_object_p (SCHEME_OBJECT);
 extern uint32_t hash_object (SCHEME_OBJECT);
+extern uint32_t initial_hash (void);
 extern uint32_t combine_hashes (uint32_t, uint32_t);
 
 #if (FIXNUM_LENGTH >= 32)

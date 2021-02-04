@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -199,7 +199,7 @@ trap_handler (const char * message,
 	      SIGINFO_T info,
 	      SIGCONTEXT_T * scp)
 {
-  int code = ((SIGINFO_VALID_P (info)) ? (SIGINFO_CODE (info)) : 0);
+  int code = (SIGINFO_CODE (info));
   bool stack_overflowed_p = (STACK_OVERFLOWED_P ());
   enum trap_state old_trap_state = trap_state;
 
@@ -243,9 +243,7 @@ trap_handler (const char * message,
 		   ">> [The earlier trap raised signal %d (%s), code %d.]\n",
 		   saved_signo,
 		   (find_signal_name (saved_signo)),
-		   ((SIGINFO_VALID_P (saved_info))
-		    ? (SIGINFO_CODE (saved_info))
-		    : 0));
+		   (SIGINFO_CODE (saved_info)));
 	  fprintf (stdout, ">> Successful recovery is %sunlikely.\n",
 		   ((WITHIN_CRITICAL_SECTION_P ()) ? "extremely " : ""));
 	}
@@ -680,7 +678,10 @@ find_signal_code_name (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 {
   unsigned long code = 0;
   const char * name = 0;
+#ifdef HAVE_REAL_SIGINFO_T
+#ifdef SIGINFO_VALID_P
   if (SIGINFO_VALID_P (info))
+#endif
     {
       code = (SIGINFO_CODE (info));
       SPECIAL_SIGNAL_CODE_NAMES ();
@@ -698,6 +699,7 @@ find_signal_code_name (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 	      entry += 1;
 	}
     }
+#endif /* HAVE_REAL_SIGINFO_T */
   return
     (cons ((ulong_to_integer (code)),
 	   ((name == 0)
@@ -731,6 +733,7 @@ classify_pc (unsigned long pc,
 	    (*r_block_addr) = block_addr;
 	  return (pcl_constant);
 	}
+#ifdef ADDRESS_UCODE_P
       if (ADDRESS_UCODE_P (pc))
 	{
 	  int index = (pc_to_builtin_index (pc));
@@ -750,6 +753,7 @@ classify_pc (unsigned long pc,
 	  if ((OBJECT_TYPE (GET_PRIMITIVE)) == TC_PRIMITIVE)
 	    return (pcl_primitive);
 	}
+#endif /* ADDRESS_UCODE_P */
     }
 #else
   if ((ADDRESS_UCODE_P (pc))

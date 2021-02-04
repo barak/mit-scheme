@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -52,7 +52,7 @@ USA.
       (reverse! (registered-tests)))))
 
 (define (register-test name test)
-  (guarantee-test test 'REGISTER-TEST)
+  (guarantee-test test 'register-test)
   (registered-tests (cons (cons name test) (registered-tests)))
   unspecific)
 
@@ -207,10 +207,10 @@ USA.
   (not (cdr sub-test-result)))
 
 (define condition-type:failure
-  (make-condition-type 'FAILURE #f '(FAILURE) #f))
+  (make-condition-type 'failure #f '(failure) #f))
 
 (define condition-failure
-  (condition-accessor condition-type:failure 'FAILURE))
+  (condition-accessor condition-type:failure 'failure))
 
 (define-record-type <failure>
     (%make-failure alist)
@@ -230,11 +230,11 @@ USA.
 
 (define (failure-feature feature failure)
   (let ((variants
-	 (cons (cons feature 'PATTERN)
+	 (cons (cons feature 'pattern)
 	       (map (lambda (variant-type)
 		      (cons (symbol feature '- variant-type)
 			    variant-type))
-		    '(DESCRIPTION OBJECT)))))
+		    '(description object)))))
     ;; Return the first instance of any variant.
     ;; The result is tagged by the variant type.
     (find-map (lambda (p)
@@ -250,26 +250,35 @@ USA.
 	  (write-string "assertion " port)
 	  (write (cdr p) port)
 	  (write-string ": " port))))
-  (cond ((failure-property 'CONDITION failure)
+  (cond ((failure-property 'seed failure)
 	 => (lambda (p)
-	      (let ((expr (failure-property 'EXPRESSION failure)))
+	      (write-string " (seed " port)
+	      (write (cdr p) port)
+	      (write-string ") " port))))
+  (if (let ((p (failure-property 'expect-failure? failure)))
+	(and p (cdr p)))
+      (write-string "expected failure didn't happen: " port))
+  (cond ((failure-property 'condition failure)
+	 => (lambda (p)
+	      (let ((expr (failure-property 'expression failure)))
 		(if expr
 		    (begin
 		      (write-expr-property #f expr port)
 		      (write-char #\space port))))
 	      (write-string "failed with error: " port)
-	      (write-condition-report (cdr p) port)))
-	((failure-feature 'RESULT failure)
+	      (write-condition-report (cdr p) port)
+	      (if debug-errors? (debug (cdr p)))))
+	((failure-feature 'result failure)
 	 => (lambda (result)
 	      (write-string "value" port)
-	      (let ((expr (failure-property 'EXPRESSION failure)))
+	      (let ((expr (failure-property 'expression failure)))
 		(if expr
 		    (write-expr-property "of" expr port)))
 	      (write-feature "was" result port)
-	      (let ((expectation (failure-feature 'EXPECTATION failure)))
+	      (let ((expectation (failure-feature 'expectation failure)))
 		(if expectation
 		    (write-feature "but expected" expectation port)))))
-	((failure-property 'DESCRIPTION failure)
+	((failure-property 'description failure)
 	 => (lambda (p)
 	      (write-string (cdr p) port)))
 	(else
@@ -319,22 +328,19 @@ USA.
 
 ;;;; Assertions
 
-(define-for-tests (run-sub-test thunk . properties)
+(define (run-sub-test thunk)
   (call-with-current-continuation
    (lambda (k)
      (parameterize ((assertion-index 1))
        (bind-condition-handlers
 	(list condition-type:failure
 	      (lambda (condition)
-		(k (extend-failure (condition-failure condition)
-				   properties)))
+		(k (condition-failure condition)))
 	      condition-type:error
 	      (lambda (condition)
 		(if (not (throw-test-errors?))
-		    (k (apply make-failure
-			      'condition condition
-			      'assertion-index (assertion-index)
-			      properties)))))
+		    (k (make-failure 'condition condition
+				     'assertion-index (assertion-index))))))
 	(lambda ()
 	  (thunk)
 	  #f))))))
@@ -350,8 +356,10 @@ USA.
 			     properties))))
 	 condition-type:error
 	 (lambda (condition)
-	   (if (not (throw-test-errors?))
-	       (apply fail 'CONDITION condition properties))))
+	   (apply maybe-fail
+		  (throw-test-errors?)
+		  'condition condition
+		  properties)))
    thunk))
 
 (define throw-test-errors? (make-settable-parameter #f))
@@ -373,17 +381,22 @@ USA.
 				     'assertion-index (assertion-index)
 				     plist))))))
 
+(define (maybe-fail satisfied? . plist)
+  (if (boolean=? satisfied?
+		 (get-keyword-value plist 'expect-failure? #f))
+      (apply fail plist)))
+
 (define (make-failure-condition continuation failure)
   (make-condition condition-type:failure
 		  continuation
-		  'BOUND-RESTARTS
-		  (list 'FAILURE failure)))
+		  'bound-restarts
+		  (list 'failure failure)))
 
 (define (remake-failure-condition condition failure)
   (make-condition condition-type:failure
 		  (condition/continuation condition)
 		  (condition/restarts condition)
-		  (list 'FAILURE failure)))
+		  (list 'failure failure)))
 
 (define-for-tests (value-assert predicate description value . properties)
   (%assert predicate value description properties))
@@ -395,11 +408,11 @@ USA.
 (define assertion-index (make-settable-parameter #f))
 
 (define (%assert predicate value description properties)
-  (if (not (predicate value))
-      (apply fail
-	     'result-object value
-	     'expectation-description description
-	     properties))
+  (apply maybe-fail
+	 (predicate value)
+	 'result-object value
+	 'expectation-description description
+	 properties)
   (assertion-index (+ (assertion-index) 1)))
 
 (define-for-tests assert-true
@@ -410,23 +423,34 @@ USA.
 
 (define-for-tests assert-null
   (predicate-assertion null? "an empty list"))
+
+(define-for-tests assert-pair
+  (predicate-assertion pair? "a pair"))
+
+(define-for-tests assert-list
+  (predicate-assertion list? "a non-empty list"))
+
+(define-for-tests assert-non-empty-list
+  (predicate-assertion non-empty-list? "a non-empty list"))
 
 (define-for-tests (assert-error thunk #!optional condition-types . properties)
   (let ((condition-types (if (default-object? condition-types)
 			     (list condition-type:error)
 			     condition-types)))
-    (call-with-current-continuation
-     (lambda (k)
-       (apply fail
-	      'RESULT-OBJECT
-	      (bind-condition-handler
-		  condition-types
-		  (lambda (condition)
-		    condition		;ignore
-		    (k #f))
-		thunk)
-	      'EXPECTATION-OBJECT condition-types
-	      properties)))))
+    (let ((result
+	   (call-with-current-continuation
+	     (lambda (k)
+	       (cons #f
+		     (bind-condition-handler
+			 condition-types
+			 (lambda (condition)
+			   (k (cons #t condition)))
+		       thunk))))))
+      (apply maybe-fail
+	     (car result)
+	     (if (car result) 'condition 'result-object) (cdr result)
+	     'expectation-object condition-types
+	     properties))))
 
 (define-for-tests (error-assertion . condition-types)
   (lambda (thunk . properties)
@@ -441,6 +465,11 @@ USA.
 (define-for-tests assert-range-error
   (error-assertion condition-type:bad-range-argument))
 
+(define-for-tests expect-failure
+  (error-assertion condition-type:failure))
+
+(define-for-tests expect-error assert-error)
+
 (define-for-tests keep-it-fast!?
   (let ((v (get-environment-variable "FAST")))
     (if (or (eq? v #f) (string-null? v))
@@ -448,6 +477,11 @@ USA.
 	  (warn "To avoid long run times, export FAST=y.")
 	  #f)
 	#t)))
+
+(define debug-errors?
+  (let ((v (get-environment-variable "DEBUG")))
+    (and v
+	 (not (string-null? v)))))
 
 (define comparator?)
 (define comparator-metadata)
@@ -464,10 +498,14 @@ USA.
   (set-comparator-metadata! comparator (cons name (string name " to"))))
 
 (define (name-of comparator)
-  (car (comparator-metadata comparator)))
+  (if (comparator? comparator)
+      (car (comparator-metadata comparator))
+      comparator))
 
 (define (text-of comparator)
-  (cdr (comparator-metadata comparator)))
+  (if (comparator? comparator)
+      (cdr (comparator-metadata comparator))
+      comparator))
 
 (define-comparator eq? 'eq?)
 (define-comparator eqv? 'eqv?)
@@ -507,11 +545,11 @@ USA.
   (let ((test (if negate? (negate-test test) test))
 	(pattern (expand-pattern negate? pattern)))
     (lambda (value expected . properties)
-      (if (not (test value expected))
-	  (apply fail
-		 'RESULT-OBJECT value
-		 'EXPECTATION (list pattern expected)
-		 properties)))))
+      (apply maybe-fail
+	     (test value expected)
+	     'result-object value
+	     'expectation (list pattern expected)
+	     properties))))
 
 (define (negate-test test)
   (lambda (value expected)
@@ -640,3 +678,73 @@ USA.
 			  (marker)
 			  "comparing elements with" (name-of comparator)
 			  "in any order")))
+
+(define (trivial-matcher pattern expression #!optional value=?)
+  (let ((value=? (if (default-object? value=?) equal? value=?)))
+    (let loop
+	((p pattern)
+	 (e expression)
+	 (dict '())
+	 (win (lambda (dict) dict #t)))
+      (cond ((match-var? p)
+	     (let ((binding (assq p dict)))
+	       (if binding
+		   (and (value=? e (cdr binding))
+			(win dict))
+		   (win (cons (cons p e) dict)))))
+	    ((pair? p)
+	     (and (pair? e)
+		  (loop (car p)
+			(car e)
+			dict
+			(lambda (dict*)
+			  (loop (cdr p)
+				(cdr e)
+				dict*
+				win)))))
+	    (else
+	     (and (eqv? p e)
+		  (win dict)))))))
+
+(define (match-var? object)
+  (and (symbol? object)
+       (string-prefix? "?" (symbol->string object))))
+
+(define (match-assertion negate?)
+  (binary-assertion negate?
+		    (lambda (value expected)
+		      (trivial-matcher expected value))
+		    (list "an object" (if- "not") "matching" (marker))))
+
+(define-for-tests assert-matches (match-assertion #f))
+(define-for-tests assert-!matches (match-assertion #t))
+
+(define-for-tests (carefully procedure if-overflow if-timeout)
+  (let ((gc-env (->environment '(runtime garbage-collector))))
+    (define (start-it)
+      (let ((default/stack-overflow (access default/stack-overflow gc-env))
+	    (thread (current-thread)))
+        (define (give-up)
+          (if (eq? thread (current-thread))
+              (exit-current-thread (if-overflow))
+              (default/stack-overflow)))
+        (call-with-current-continuation
+          (lambda (abort)
+            (fluid-let (((access hook/stack-overflow gc-env)
+                         (lambda () (within-continuation abort give-up))))
+              (exit-current-thread (procedure)))))))
+    (let ((thread (create-thread #f start-it)))
+      (define (stop-it)
+	(signal-thread-event thread
+	  (lambda ()
+	    (exit-current-thread (if-timeout)))))
+      (let ((result #f))
+	(define (done-it thread* value)
+	  (assert (eq? thread* thread))
+	  (set! result value))
+	(join-thread thread done-it)
+	(let ((timer))
+	  (dynamic-wind
+	    (lambda () (set! timer (register-timer-event 2000 stop-it)))
+	    (lambda () (do () (result) (suspend-current-thread)))
+	    (lambda () (deregister-timer-event (set! timer)))))))))

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,11 +31,13 @@ USA.
 
 ;;;; Exports to the compiler
 
-(define (compiler:compiled-code-pathname-type)
-  (if compiler:cross-compiling? "moc" "com"))
+(define (compiler:compiled-code-pathname-type types)
+  (file-type-com types compiler:cross-compiling?))
 
 (define (compiler-file-output object pathname)
-  (fasdump object pathname #t))
+  (if compiler:cross-compiling?
+      (portable-fasdump object pathname (target-fasl-format))
+      (fasdump object pathname #t)))
 
 (define (compiler-output->procedure scode environment)
   (scode-eval scode environment))
@@ -303,7 +305,13 @@ USA.
   (compiler-file-output binf pathname))
 
 (define (compiler:dump-bci-file binf pathname)
-  (dump-compressed binf (pathname-new-type pathname "bci")))
+  (let ((types
+	 (or (find-file-types pathname file-type-inf compiler:cross-compiling?)
+	     file-types:program)))
+    (dump-compressed binf
+		     (pathname-new-type-bci pathname
+					    types
+					    compiler:cross-compiling?))))
 
 (define (dump-compressed object path)
   (call-with-temporary-filename
@@ -333,7 +341,7 @@ USA.
       (block-offset start)
       (label start)
       (pea (@pcr proc))
-      (or b (& ,(* (microcode-type 'compiled-entry) 4)) (@a 7))
+      (or b (& ,(* (microcode-type 'compiled-return) 4)) (@a 7))
       (mov l (@a+ 7) (@ao 6 8))
       (and b (& #x3) (@a 7))
       (rts)

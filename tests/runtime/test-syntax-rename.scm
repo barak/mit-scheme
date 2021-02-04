@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,20 +31,26 @@ USA.
 (define test-environment
   (the-environment))
 
+(define genv
+  (runtime-environment->syntactic test-environment))
+
+(define (grename form)
+  (close-syntax form genv))
+
 (define-syntax outer
-  (sc-macro-transformer
-   (lambda (form use-env)
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore compare))
      (syntax-check '(_ identifier) form)
-     (let* ((raw (cadr form))
-	    (closed (close-syntax raw use-env)))
-       `(define-syntax ,(close-syntax 'inner use-env)
-	  (sc-macro-transformer
-	   (lambda (form use-env)
-	     (syntax-check '(_) form)
-	     `(,(quote-identifier ,raw)
-	       ,(quote ,raw)
-	       ,(quote-identifier ,closed)
-	       ,(quote ,closed)))))))))
+     (let ((id (cadr form)))
+       `(,(rename 'define-syntax) inner
+	 (,(rename 'sc-macro-transformer)
+	  (,(rename 'lambda) (form use-env)
+	   (,(rename 'list)
+	    'list
+	    (,(rename 'grename) (,(rename 'quote) ,id))
+	    (,(rename 'grename) (,(rename 'quote-identifier) ,id))
+	    ))))))))
 
 ;; A fairly complicated test that shows how quote-identifier works,
 ;; how it's different from quote, and that weird binding combinations
@@ -55,11 +61,11 @@ USA.
 	   '(let ((car 13))
 	      (outer car)
 	      (let ((car 15))
-		(car (inner))))))
+		(cons car (inner))))))
       (assert-equal (unsyntax (syntax expr test-environment))
 		    '(let ((.car.1 13))
 		       (let ((.car.2 15))
-			 (.car.2 (car car .car.1 car))))))))
+			 (cons .car.2 (list car .car.1))))))))
 
 (define-test 'keyword-environments
   (lambda ()

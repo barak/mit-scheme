@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (generate/rvalue operand scfg*cfg->cfg! generator)
-  (with-values (lambda () (generate/rvalue* operand))
+  (call-with-values (lambda () (generate/rvalue* operand))
     (lambda (prefix expression)
       (scfg*cfg->cfg! prefix (generator expression)))))
 
@@ -71,20 +71,24 @@ USA.
 	       (find-variable/value context lvalue
 		 expression-value/simple
 		 (lambda (environment name)
-		   (expression-value/temporary
-		    (load-temporary-register scfg*scfg->scfg! environment
-		      (lambda (environment)
-			(wrap-with-continuation-entry
-			 context
-			 (lambda (cont-label)
-			   (rtl:make-interpreter-call:lookup
-			    cont-label
-			    environment
-			    (intern-scode-variable!
-			     (reference-context/block context)
-			     name)
-			    safe?)))))
-		    (rtl:interpreter-call-result:lookup)))
+		   (let ((temporary (rtl:make-pseudo-register)))
+		     (expression-value/temporary
+		      (load-temporary-register scfg*scfg->scfg! environment
+			(lambda (environment)
+			  (wrap-with-continuation-entry
+			   context
+			   (rtl:make-assignment
+			    temporary
+			    (rtl:interpreter-call-result:lookup))
+			   (lambda (cont-label)
+			     (rtl:make-interpreter-call:lookup
+			      cont-label
+			      environment
+			      (intern-scode-variable!
+			       (reference-context/block context)
+			       name)
+			      safe?)))))
+		      (rtl:make-fetch temporary))))
 		 (lambda (name)
 		   (if (memq 'IGNORE-REFERENCE-TRAPS
 			     (variable-declarations lvalue))
@@ -116,20 +120,22 @@ USA.
     (values
      (load-temporary-register scfg*scfg->scfg! (rtl:make-variable-cache name)
        (lambda (cell)
-	 (let ((reference (rtl:make-fetch cell)))
+	 (let ((reference (rtl:make-fetch cell))
+	       (temporary (rtl:make-pseudo-register)))
 	   (let ((n2 (rtl:make-type-test (rtl:make-object->type reference)
 					 (ucode-type reference-trap)))
 		 (n3 (rtl:make-assignment result reference))
 		 (n4
 		  (wrap-with-continuation-entry
 		   context
+		   (rtl:make-assignment
+		    temporary
+		    (rtl:interpreter-call-result:cache-reference))
 		   (lambda (cont-label)
 		     (rtl:make-interpreter-call:cache-reference
 		      cont-label cell safe?))))
 		 (n5
-		  (rtl:make-assignment
-		   result
-		   (rtl:interpreter-call-result:cache-reference))))
+		  (rtl:make-assignment result (rtl:make-fetch temporary))))
 	     (pcfg-alternative-connect! n2 n3)
 	     (scfg-next-connect! n4 n5)
 	     (if safe?
@@ -211,7 +217,7 @@ USA.
 		  *ic-procedure-headers*))
       (let ((context (procedure-closure-context procedure)))
 	(if (reference? context)
-	    (with-values (lambda () (generate/rvalue* context))
+	    (call-with-values (lambda () (generate/rvalue* context))
 	      kernel)
 	    ;; Is this right if the procedure is being closed
 	    ;; inside another IC procedure?
@@ -282,7 +288,7 @@ USA.
 	  ((= (block-entry-number block*) 1)
 	   ;; Single entry point.  This could use the multiclosure case
 	   ;; below, but this is simpler.
-	   (with-values (lambda () (procedure-arity-encoding procedure))
+	   (call-with-values (lambda () (procedure-arity-encoding procedure))
 	     (lambda (min max)
 	       (rtl:make-typed-cons:procedure
 		(rtl:make-cons-closure
@@ -314,7 +320,7 @@ USA.
 		     (cons procedure children)))
 		  (entries
 		   (map (lambda (proc)
-			  (with-values
+			  (call-with-values
 			      (lambda () (procedure-arity-encoding proc))
 			    (lambda (min max)
 			      (list (procedure-label proc) min max))))

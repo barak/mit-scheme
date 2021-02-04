@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,10 @@ USA.
 ;;; package: (runtime generic-i/o-port)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime port)
+		'(runtime character-set)
+		'(runtime error-handler))
 
 (define (make-generic-i/o-port binary-port #!optional type caller . extra-state)
   (let ((port
@@ -151,7 +155,7 @@ USA.
 		 (make-output-buffer binary-port
 				     (gstate-coder-name gstate)
 				     (gstate-normalizer-name gstate)
-				     'gstate-replace-binary-port!)))
+				     'replace-binary-port!)))
 	    (set-output-buffer-port! buffer port)
 	    buffer)))))
 
@@ -1354,7 +1358,8 @@ USA.
   (lambda (ib)
     (let ((n (initial-byte->utf8-char-length (peek-byte ib))))
       (read-bytes! ib 0 n)
-      (decode-utf8-char (input-buffer-bytes ib) 0))))
+      (or (decode-utf8-char (input-buffer-bytes ib) 0)
+	  char:replacement))))
 
 (define-encoder 'utf-8
   (lambda (ob char)
@@ -1372,7 +1377,8 @@ USA.
 	    (bytevector-u16be-ref (input-buffer-bytes ib) 0))))
       (if (fix:> n 2)
 	  (read-bytes! ib 2 n))
-      (decode-utf16be-char (input-buffer-bytes ib) 0))))
+      (or (decode-utf16be-char (input-buffer-bytes ib) 0)
+	  char:replacement))))
 
 (define-decoder 'utf-16le
   (lambda (ib)
@@ -1382,7 +1388,8 @@ USA.
 	    (bytevector-u16le-ref (input-buffer-bytes ib) 0))))
       (if (fix:> n 2)
 	  (read-bytes! ib 2 n))
-      (decode-utf16le-char (input-buffer-bytes ib) 0))))
+      (or (decode-utf16le-char (input-buffer-bytes ib) 0)
+	  char:replacement))))
 
 (define-encoder 'utf-16be
   (lambda (ob char)
@@ -1399,12 +1406,14 @@ USA.
 (define-decoder 'utf-32be
   (lambda (ib)
     (read-bytes! ib 0 4)
-    (decode-utf32be-char (input-buffer-bytes ib) 0)))
+    (or (decode-utf32be-char (input-buffer-bytes ib) 0)
+	char:replacement)))
 
 (define-decoder 'utf-32le
   (lambda (ib)
     (read-bytes! ib 0 4)
-    (decode-utf32le-char (input-buffer-bytes ib) 0)))
+    (or (decode-utf32le-char (input-buffer-bytes ib) 0)
+	char:replacement)))
 
 (define-encoder 'utf-32be
   (lambda (ob char)

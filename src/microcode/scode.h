@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -148,9 +148,7 @@ USA.
  * Corresponds to a variable lookup or variable reference. Contains the
  * symbol referenced
  */
-#define VARIABLE_SYMBOL		0
-
-#define GET_VARIABLE_SYMBOL(variable)					\
-  (MEMORY_REF ((variable), VARIABLE_SYMBOL))
+#define VARIABLE_SYMBOL(variable) (MEMORY_REF ((variable), 0))
+#define VARIABLE_SAFE_P(variable) ((MEMORY_REF ((variable), 1)) == SHARP_F)
 
 #endif /* not SCM_SCODE_H */

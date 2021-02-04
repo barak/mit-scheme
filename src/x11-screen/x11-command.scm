@@ -3,23 +3,24 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
-This file is part of an X11-screen plugin for MIT/GNU Scheme.
+This file is part of MIT/GNU Scheme.
 
-This plugin is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2 of the License, or (at your
-option) any later version.
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
 
-This plugin is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this plugin; if not, write to the Free Software Foundation,
-Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
 
 |#
 
@@ -31,14 +32,14 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (screen-xterm (selected-screen)))
 
 (define-command set-foreground-color
-  "Set foreground (text) color of selected frame to COLOR."
+  "Set foreground (text) color of selected frame to color."
   "sSet foreground color"
   (lambda (color)
     (x-window-set-foreground-color (current-xterm) color)
     (update-screen! (selected-screen) true)))
 
 (define-command set-background-color
-  "Set background color of selected frame to COLOR."
+  "Set background color of selected frame to color."
   "sSet background color"
   (lambda (color)
     (let ((xterm (current-xterm)))
@@ -47,38 +48,38 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (update-screen! (selected-screen) true)))
 
 (define-command set-border-color
-  "Set border color of selected frame to COLOR."
+  "Set border color of selected frame to color."
   "sSet border color"
   (lambda (color)
     (x-window-set-border-color (current-xterm) color)))
 
 (define-command set-cursor-color
-  "Set cursor color of selected frame to COLOR."
+  "Set cursor color of selected frame to color."
   "sSet cursor color"
   (lambda (color)
     (x-window-set-cursor-color (current-xterm) color)))
 
 (define-command set-mouse-color
-  "Set mouse color of selected frame to COLOR."
+  "Set mouse color of selected frame to color."
   "sSet mouse color"
   (lambda (color)
     (x-window-set-mouse-color (current-xterm) color)))
 
 (define-command set-border-width
-  "Set border width of selected frame to WIDTH."
+  "Set border width of selected frame to width."
   "nSet border width"
   (lambda (width)
     (x-window-set-border-width (current-xterm) (max 0 width))
     (update-screen! (selected-screen) true)))
 
 (define-command set-internal-border-width
-  "Set internal border width of selected frame to WIDTH."
+  "Set internal border width of selected frame to width."
   "nSet internal border width"
   (lambda (width)
     (x-window-set-internal-border-width (current-xterm) (max 0 width))))
 
 (define-command set-font
-  "Set text font of selected frame to FONT."
+  "Set text font of selected frame to font."
   (lambda ()
     (list (prompt-for-x-font-name "Set font" #f)))
   (lambda (font)
@@ -150,7 +151,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 		 " pixels)")))))
 
 (define-command set-frame-size
-  "Set size of selected frame to WIDTH x HEIGHT."
+  "Set size of selected frame to width x height."
   "nFrame width (chars)\nnFrame height (chars)"
   (lambda (width height)
     (xterm-set-size (current-xterm) (max 2 width) (max 2 height))))
@@ -173,13 +174,13 @@ desktop."
     (x-window-set-position (current-xterm) x y)))
 
 (define-command set-frame-name
-  "Set name of selected frame to NAME.
+  "Set name of selected frame to name.
 Useful only if `frame-name-format' is false."
   "sSet frame name"
   (lambda (name) (xterm-screen/set-name (selected-screen) name)))
 
 (define-command set-frame-icon-name
-  "Set icon name of selected frame to NAME.
+  "Set icon name of selected frame to name.
 Useful only if `frame-icon-name-format' is false."
   "sSet frame icon name"
   (lambda (name) (xterm-screen/set-icon-name (selected-screen) name)))
@@ -226,8 +227,8 @@ Used only if `frame-icon-name-format' is non-false."
   (lambda () (x-window-lower (current-xterm))))
 
 (define-command set-mouse-shape
-  "Set mouse cursor shape for selected frame to SHAPE.
-SHAPE must be the (string) name of one of the known cursor shapes.
+  "Set mouse cursor shape for selected frame to shape.
+shape must be the (string) name of one of the known cursor shapes.
 When called interactively, completion is available on the input."
   (lambda ()
     (list (prompt-for-alist-value "Set mouse shape"
@@ -268,8 +269,8 @@ When called interactively, completion is available on the input."
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE ,(symbol 'EDWIN-COMMAND$X- name)
-	  ,(close-syntax (symbol 'EDWIN-COMMAND$ name)
+       `(define ,(symbol 'edwin-command$x- name)
+	  ,(close-syntax (symbol 'edwin-command$ name)
 			 environment))))))
 
 (define-old-mouse-command set-foreground-color)

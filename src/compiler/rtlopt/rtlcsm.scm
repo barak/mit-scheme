@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -46,7 +46,7 @@ USA.
 	    (loop))))))
 
 (define (merge-suffixes! rgraph suffixes)
-  (with-values
+  (call-with-values
       (lambda ()
 	(discriminate-items suffixes
 	  (lambda (suffix)
@@ -169,7 +169,7 @@ USA.
   (let loop ((bblocks bblocks))
     (if (null? bblocks)
 	'()
-	(with-values (lambda () (matching-suffixes bblock (car bblocks)))
+	(call-with-values (lambda () (matching-suffixes bblock (car bblocks)))
 	  (lambda (sx sy adjustments)
 	    (if (or (interesting-suffix? bblock sx)
 		    (interesting-suffix? (car bblocks) sy))
@@ -215,7 +215,7 @@ USA.
        (adjustments '()))
     (if (or (null? rx) (null? ry))
 	(values wx wy adjustments)
-	(with-values
+	(call-with-values
 	    (lambda ()
 	      (match-rtl (rinst-rtl (car rx)) (rinst-rtl (car ry)) e))
 	  (lambda (e adjustment)

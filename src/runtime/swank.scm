@@ -8,7 +8,7 @@ License as distributed with Emacs (press C-h C-c for details).
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -62,6 +62,8 @@ USA.
 |#
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic) '(runtime port))
 
 (define (start-swank #!optional port-file)
   (let ((port-number 4005)
@@ -120,7 +122,8 @@ USA.
 	(parameterize ((*top-level-restart* (find-restart 'abort)))
 	  (process-one-message socket 0))))))
 
-(define *top-level-restart*)
+(define-deferred *top-level-restart*
+   (make-unsettable-parameter unspecific))
 
 (define (get-current-environment)
   (nearest-repl/environment))
@@ -215,7 +218,8 @@ USA.
 	   (write-message `(:return (:ok ,(emacs-rex socket sexp pstring id))
 				    ,id)
 			  socket)))))))
-(define *index*)
+(define-deferred *index*
+  (make-unsettable-parameter unspecific))
 
 (define (emacs-rex socket sexp pstring id)
   (parameterize ((*buffer-pstring* pstring)
@@ -223,7 +227,8 @@ USA.
     (eval (cons* (car sexp) socket (map quote-special (cdr sexp)))
 	  swank-env)))
 
-(define *buffer-pstring*)
+(define-deferred *buffer-pstring*
+  (make-unsettable-parameter unspecific))
 
 (define swank-env
   (the-environment))
@@ -278,10 +283,10 @@ USA.
   'nil)
 
 (define (interactive-eval sexp socket nl?)
-  (let ((value (repl-eval sexp socket)))
+  (receive vals (repl-eval sexp socket)
     (call-with-output-string
       (lambda (port)
-	(port/write-result port sexp value (hash-object value))
+	(port/write-values port sexp vals)
 	(if nl? (newline port))))))
 
 (define (for-each-sexp procedure string)
@@ -307,27 +312,20 @@ USA.
 	(lambda () (parameterize ((current-output-port p)) (thunk)))
 	(lambda () (flush-output-port p)))))
 
-(define repl-port-type)
-(define (initialize-package!)
-  (set! *top-level-restart* (make-unsettable-parameter unspecific))
-  (set! *sldb-state* (make-unsettable-parameter #f))
-  (set! *index* (make-unsettable-parameter unspecific))
-  (set! *buffer-pstring* (make-unsettable-parameter unspecific))
-  (set! repl-port-type
-	(make-textual-port-type
-	 `((write-char
-	    ,(lambda (port char)
-	       (write-message `(:write-string ,(string char))
-			      (textual-port-state port))
-	       1))
-	   (write-substring
-	    ,(lambda (port string start end)
-	       (if (< start end)
-		   (write-message `(:write-string ,(substring string start end))
-				  (textual-port-state port)))
-	       (- end start))))
-	 #f))
-  unspecific)
+(define-deferred repl-port-type
+  (make-textual-port-type
+   `((write-char
+      ,(lambda (port char)
+	 (write-message `(:write-string ,(string char))
+			(textual-port-state port))
+	 1))
+     (write-substring
+      ,(lambda (port string start end)
+	 (if (< start end)
+	     (write-message `(:write-string ,(substring string start end))
+			    (textual-port-state port)))
+	 (- end start))))
+   #f))
 
 (define (swank:pprint-eval socket string)
   socket
@@ -661,7 +659,8 @@ swank:xref
   condition
   restarts)
 
-(define *sldb-state*)
+(define-deferred *sldb-state*
+  (make-unsettable-parameter #f))
 
 (define (invoke-sldb socket level condition)
   (parameterize ((*sldb-state*

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,21 +28,15 @@ USA.
 ;;; package: (runtime bytevector)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime number)
+		'(runtime character)
+		'(runtime miscellaneous-global))
 
 (define (u8? object)
   (and (index-fixnum? object)
        (fix:< object #x100)))
 (register-predicate! u8? 'u8 '<= index-fixnum?)
-
-(define-primitives
-  (allocate-bytevector 1)
-  (bytevector-length 1)
-  (bytevector-u8-ref 2)
-  (bytevector-u8-set! 3)
-  (bytevector? 1)
-  (integer-length-in-bits 1)
-  (legacy-string-allocate string-allocate 1)
-  (legacy-string? string? 1))
 
 (define (make-bytevector k #!optional byte)
   (let ((bytevector (allocate-bytevector k)))
@@ -79,6 +73,10 @@ USA.
    (if (default-object? start) 0 start)
    (if (default-object? end) (bytevector-length bytevector) end)))
 
+(define (bytevector-zero-explicit! bytevector #!optional start end)
+  ;; Don't let any compiler optimize this away.
+  ((identity-procedure bytevector-fill!) bytevector 0 start end))
+
 (define (bytevector-copy bytevector #!optional start end)
   ((ucode-primitive bytevector-copy 3)
    bytevector
@@ -102,19 +100,6 @@ USA.
 			   (bytevector-u8-ref b2 index))
 		    (loop (fix:+ index 1))))))))
 
-(define (bytevector<? b1 b2)
-  (let ((l1 (bytevector-length b1))
-	(l2 (bytevector-length b2)))
-    (let ((end (fix:min l1 l2)))
-      (let loop ((index 0))
-	(if (fix:< index end)
-	    (let ((u1 (bytevector-u8-ref b1 index))
-		  (u2 (bytevector-u8-ref b2 index)))
-	      (if (fix:= u1 u2)
-		  (loop (fix:+ index 1))
-		  (fix:< u1 u2)))
-	    (fix:< l1 l2))))))
-
 ;; String hash primitives work on bytevectors too.
 (define (bytevector-hash bytevector #!optional modulus)
   (if (default-object? modulus)
@@ -129,6 +114,22 @@ USA.
 	(begin
 	  (guarantee positive-fixnum? buffer-length 'bytevector-builder)
 	  buffer-length))))
+
+(define (bytevector-any predicate bv)
+  (let ((end (bytevector-length bv)))
+    (let loop ((i 0))
+      (and (fix:< i end)
+	   (or (predicate (bytevector-u8-ref bv i))
+	       (loop (fix:+ i 1)))))))
+
+(define (bytevector-every predicate bv)
+  (let ((end (bytevector-length bv)))
+    (let loop ((i 0) (result #t))
+      (if (fix:< i end)
+	  (let ((v (predicate (bytevector-u8-ref bv i))))
+	    (and v
+		 (loop (fix:+ i 1) v)))
+	  result))))
 
 (define (list->bytevector bytes)
   (let ((bytevector (allocate-bytevector (length bytes))))
@@ -206,18 +207,6 @@ USA.
   (guarantee u16? u16 'bytevector-u16le-set!)
   (bytevector-u8-set! bytevector index (u16le-byte0 u16))
   (bytevector-u8-set! bytevector (fix:+ index 1) (u16le-byte1 u16)))
-
-;; Can be removed after 9.3 release:
-(define (vector->bytevector-u16be v #!optional start end)
-  (let* ((end (fix:end-index end (vector-length v) 'vector->bytevector-u16))
-	 (start (fix:start-index start end 'vector->bytevector-u16))
-	 (bv (allocate-bytevector (fix:lsh (fix:- end start) 1))))
-    (do ((i start (fix:+ i 1))
-	 (j 0 (fix:+ j 2)))
-	((not (fix:< i end)))
-      (bytevector-u8-set! bv j (u16be-byte0 (vector-ref v i)))
-      (bytevector-u8-set! bv (fix:+ j 1) (u16be-byte1 (vector-ref v i))))
-    bv))
 
 ;;;; U32 accessors
 
@@ -226,9 +215,16 @@ USA.
    (lambda (form rename compare)
      rename compare
      (syntax-check '(_ expression expression) form)
+     ;; XXX This queries the host system rather than the target system.
+     ;; We should expose definitions of fix:fixnum? to macro expanders
+     ;; that reflect the target system instead.
+     #;
      (if (fix:fixnum? #xFFFFFFFF)
 	 (cadr form)
-	 (caddr form)))))
+	 (caddr form))
+     ;; XXX For now, we can use the number of bytes per word as a proxy
+     ;; for whether fixnums have 32 bits.
+     `(select-on-bytes-per-word ,(caddr form) ,(cadr form)))))
 
 (select-u32-code
  ;; Can use fixnums:
@@ -275,7 +271,6 @@ USA.
    (add-boot-init!
     (lambda ()
       (register-predicate! u32? 'u32 '<= exact-nonnegative-integer?)))))
-
 
 (define-integrable (bytes->u32le b0 b1 b2 b3) (bytes->u32be b3 b2 b1 b0))
 (define-integrable u32le-byte0 u32be-byte3)
@@ -318,19 +313,21 @@ USA.
   (bytevector-u8-set! bytevector (fix:+ index 3) (u32le-byte3 u32)))
 
 (define-integrable (string-encoder char-byte-length allocator encode-char!
-				   caller)
+				   bom? caller)
   (lambda (string #!optional start end)
     (let* ((end (fix:end-index end (string-length string) caller))
 	   (start (fix:start-index start end caller)))
       (let ((bytes
 	     (allocator
-	      (let loop ((index start) (n-bytes 0))
+	      (let loop ((index start)
+			 (n-bytes (if bom? (char-byte-length #\bom) 0)))
 		(if (fix:< index end)
 		    (loop (fix:+ index 1)
 			  (fix:+ n-bytes
 				 (char-byte-length (string-ref string index))))
 		    n-bytes)))))
-	(let loop ((from start) (to 0))
+	(let loop ((from start)
+		   (to (if bom? (encode-char! bytes 0 #\bom) 0)))
 	  (if (fix:< from end)
 	      (loop (fix:+ from 1)
 		    (encode-char! bytes to (string-ref string from)))))
@@ -343,49 +340,83 @@ USA.
 (define string->utf8)
 (define string->utf16be)
 (define string->utf16le)
+(define string->utf16be+bom)
+(define string->utf16le+bom)
+(define string->utf16)
 (define string->utf32be)
 (define string->utf32le)
+(define string->utf32be+bom)
+(define string->utf32le+bom)
+(define string->utf32)
 (add-boot-init!
  (lambda ()
    (set! string->utf8
 	 (string-encoder char-utf8-byte-length utf8-allocator
-			 encode-utf8-char! 'string->utf8))
+			 encode-utf8-char! #f 'string->utf8))
    (set! string->utf16be
 	 (string-encoder char-utf16-byte-length allocate-bytevector
-			 encode-utf16be-char! 'string->utf16be))
+			 encode-utf16be-char! #f 'string->utf16be))
    (set! string->utf16le
 	 (string-encoder char-utf16-byte-length allocate-bytevector
-			 encode-utf16le-char! 'string->utf16le))
+			 encode-utf16le-char! #f 'string->utf16le))
+   (set! string->utf16be+bom
+	 (string-encoder char-utf16-byte-length allocate-bytevector
+			 encode-utf16be-char! #t 'string->utf16))
+   (set! string->utf16le+bom
+	 (string-encoder char-utf16-byte-length allocate-bytevector
+			 encode-utf16le-char! #t 'string->utf16))
+   (set! string->utf16
+	 (if (host-big-endian?) string->utf16be+bom string->utf16le+bom))
    (set! string->utf32be
 	 (string-encoder char-utf32-byte-length allocate-bytevector
-			 encode-utf32be-char! 'string->utf32be))
+			 encode-utf32be-char! #f 'string->utf32be))
    (set! string->utf32le
 	 (string-encoder char-utf32-byte-length allocate-bytevector
-			 encode-utf32le-char! 'string->utf32le))
+			 encode-utf32le-char! #f 'string->utf32le))
+   (set! string->utf32be+bom
+	 (string-encoder char-utf32-byte-length allocate-bytevector
+			 encode-utf32be-char! #t 'string->utf32))
+   (set! string->utf32le+bom
+	 (string-encoder char-utf32-byte-length allocate-bytevector
+			 encode-utf32le-char! #t 'string->utf32))
+   (set! string->utf32
+	 (if (host-big-endian?) string->utf32be+bom string->utf32le+bom))
    unspecific))
 
 (define-integrable (bytes-decoder getter initial->length decode-char step noun
 				  caller)
-  (lambda (bytevector #!optional start end)
+  (lambda (bytevector #!optional start end replace?)
     (let* ((end (fix:end-index end (bytevector-length bytevector) caller))
 	   (start (fix:start-index start end caller))
 	   (builder (string-builder)))
       (let ((truncated
-	     (lambda (index)
-	       (error (string "Truncated " noun " sequence:")
-		      (bytevector-copy bytevector
-				       index
-				       (fix:min (fix:+ index 4) end))))))
+	     (if (or (default-object? replace?) (not replace?))
+		 (lambda (index)
+		   (error (string "Truncated " noun " sequence:")
+			  (bytevector-copy bytevector
+					   index
+					   (fix:min (fix:+ index 4) end))))
+		 (lambda (index) index char:replacement)))
+	    (ill-formed
+	     (if (or (default-object? replace?) (not replace?))
+		 (lambda (index)
+		   (error (string "Ill-formed " noun " sequence:")
+			  (bytevector-copy bytevector
+					   index
+					   (fix:min (fix:+ index 4) end))))
+		 (lambda (index) index char:replacement))))
 	(let loop ((index start))
 	  (if (fix:<= (fix:+ index step) end)
 	      (let ((n (initial->length (getter bytevector index))))
 		(let ((index* (fix:+ index n)))
-		  (if (not (fix:<= index* end))
-		      (truncated index))
-		  (builder (decode-char bytevector index))
+		  (builder
+		   (if (not (fix:<= index* end))
+		       (truncated index)
+		       (or (decode-char bytevector index)
+			   (ill-formed index))))
 		  (loop index*)))
 	      (if (fix:< index end)
-		  (truncated index)))))
+		  (builder (truncated index))))))
       (builder))))
 
 (define utf8->string)
@@ -400,17 +431,59 @@ USA.
 			decode-utf8-char 1 "UTF-8" 'utf8->string))
    (set! utf16be->string
 	 (bytes-decoder bytevector-u16be-ref initial-u16->utf16-char-length
-			decode-utf16be-char 1 "UTF-16BE" 'utf16be->string))
+			decode-utf16be-char 2 "UTF-16BE" 'utf16be->string))
    (set! utf16le->string
 	 (bytes-decoder bytevector-u16le-ref initial-u16->utf16-char-length
-			decode-utf16le-char 1 "UTF-16LE" 'utf16le->string))
+			decode-utf16le-char 2 "UTF-16LE" 'utf16le->string))
    (set! utf32be->string
 	 (bytes-decoder bytevector-u32be-ref initial-u32->utf32-char-length
-			decode-utf32be-char 1 "UTF-32BE" 'utf32be->string))
+			decode-utf32be-char 4 "UTF-32BE" 'utf32be->string))
    (set! utf32le->string
 	 (bytes-decoder bytevector-u32le-ref initial-u32->utf32-char-length
-			decode-utf32le-char 1 "UTF-32LE" 'utf32le->string))
+			decode-utf32le-char 4 "UTF-32LE" 'utf32le->string))
    unspecific))
+
+(define (utf16->string bytevector #!optional start end replace?)
+  (let* ((end (fix:end-index end (bytevector-length bytevector) 'utf16->string))
+	 (start (fix:start-index start end 'utf16->string)))
+
+    (define (default)
+      (if (host-big-endian?)
+	  (utf16be->string bytevector start end replace?)
+	  (utf16le->string bytevector start end replace?)))
+
+    (if (fix:<= (fix:+ start 2) end)
+	(let ((b0 (bytevector-u8-ref bytevector start))
+	      (b1 (bytevector-u8-ref bytevector (fix:+ start 1))))
+	  (cond ((and (fix:= b0 #xFE) (fix:= b1 #xFF))
+		 (utf16be->string bytevector (fix:+ start 2) end replace?))
+		((and (fix:= b0 #xFF) (fix:= b1 #xFE))
+		 (utf16le->string bytevector (fix:+ start 2) end replace?))
+		(else
+		 (default))))
+	(default))))
+
+(define (utf32->string bytevector #!optional start end replace?)
+  (let* ((end (fix:end-index end (bytevector-length bytevector) 'utf32->string))
+	 (start (fix:start-index start end 'utf32->string)))
+
+    (define (default)
+      (if (host-big-endian?)
+	  (utf32be->string bytevector start end replace?)
+	  (utf32le->string bytevector start end replace?)))
+
+    (if (fix:<= (fix:+ start 4) end)
+	(let ((b0 (bytevector-u8-ref bytevector start))
+	      (b1 (bytevector-u8-ref bytevector (fix:+ start 1)))
+	      (b2 (bytevector-u8-ref bytevector (fix:+ start 2)))
+	      (b3 (bytevector-u8-ref bytevector (fix:+ start 3))))
+	  (cond ((and (fix:= b0 0) (fix:= b1 0) (fix:= b2 #xFE) (fix:= b3 #xFF))
+		 (utf32be->string bytevector (fix:+ start 4) end replace?))
+		((and (fix:= b0 #xFF) (fix:= b1 #xFE) (fix:= b2 0) (fix:= b3 0))
+		 (utf32le->string bytevector (fix:+ start 4) end replace?))
+		(else
+		 (default))))
+	(default))))
 
 (define (string->iso8859-1 string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string->iso8859-1))

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -158,14 +158,13 @@ USA.
       (begin
 	(set-group-start-changes-index! group index)
 	(set-group-end-changes-index! group (fix:+ index n))))
-  (do ((marks (group-marks group) (system-pair-cdr marks)))
-      ((null? marks))
-    (if (and (system-pair-car marks)
-	     (or (fix:> (mark-index (system-pair-car marks)) index)
-		 (and (fix:= (mark-index (system-pair-car marks)) index)
-		      (mark-left-inserting? (system-pair-car marks)))))
-	(set-mark-index! (system-pair-car marks)
-			 (fix:+ (mark-index (system-pair-car marks)) n))))
+  (weak-list-set-for-each (lambda (mark)
+			    (if (or (fix:> (mark-index mark) index)
+				    (and (fix:= (mark-index mark) index)
+					 (mark-left-inserting? mark)))
+				(set-mark-index! mark
+						 (fix:+ (mark-index mark) n))))
+			  (group-marks group))
   (set-group-modified-tick! group (fix:+ (group-modified-tick group) 1))
   (undo-record-insertion! group index (fix:+ index n))
   ;; The MODIFIED? bit must be set *after* the undo recording.
@@ -234,17 +233,14 @@ USA.
 	      (begin
 		(set-group-start-changes-index! group start)
 		(set-group-end-changes-index! group start)))
-	  (do ((marks (group-marks group) (system-pair-cdr marks)))
-	      ((null? marks))
-	    (cond ((or (not (system-pair-car marks))
-		       (fix:<= (mark-index (system-pair-car marks)) start))
-		   unspecific)
-		  ((fix:<= (mark-index (system-pair-car marks)) end)
-		   (set-mark-index! (system-pair-car marks) start))
-		  (else
-		   (set-mark-index!
-		    (system-pair-car marks)
-		    (fix:- (mark-index (system-pair-car marks)) n))))))
+	  (weak-list-set-for-each
+	   (lambda (mark)
+	     (if (fix:> (mark-index mark) start)
+		 (set-mark-index! mark
+				  (if (fix:<= (mark-index mark) end)
+				      start
+				      (fix:- (mark-index mark) n)))))
+	   (group-marks group)))
 	(set-group-modified-tick! group (fix:+ (group-modified-tick group) 1))
 	;; The MODIFIED? bit must be set *after* the undo recording.
 	(set-group-modified?! group #t)

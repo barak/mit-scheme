@@ -58,6 +58,17 @@ le32dec(const void *buf)
 }
 
 static inline void
+le32enc(void *buf, uint32_t v)
+{
+	uint8_t *p = buf;
+
+	p[0] = (v >>  0) & 0xff;
+	p[1] = (v >>  8) & 0xff;
+	p[2] = (v >> 16) & 0xff;
+	p[3] = (v >> 24) & 0xff;
+}
+
+static inline void
 le64enc(void *buf, uint64_t v)
 {
 	uint8_t *p = buf;
@@ -250,6 +261,7 @@ md5_update(struct md5 *M, const void *buf, size_t len)
 void
 md5_final(struct md5 *M, uint8_t h[16])
 {
+	unsigned n;
 
 	assert(M->i < sizeof(M->block));
 	assert(M->i == M->b % 64);
@@ -281,7 +293,8 @@ md5_final(struct md5 *M, uint8_t h[16])
 	md5_compress(M->state, M->block);
 
 	/* Reveal the complete state.  (Sorry, length-extension!)  */
-	(void)memcpy(h, M->state, sizeof(M->state));
+	for (n = 0; n < sizeof(M->state)/sizeof(M->state[0]); n++)
+		le32enc(&h[4*n], M->state[n]);
 
 	/* Zero it all.  */
 	(void)explicit_memset(M, 0, sizeof M);
@@ -308,7 +321,7 @@ md5_selftest(void)
 
 		md5_init(&m0);
 		md5_update(&m0, s, i/2);
-		md5_update(&m0, s + i/2, i);
+		md5_update(&m0, s + i/2, i - i/2);
 		md5_final(&m0, h);
 		md5_update(&m, h, 16);
 	}

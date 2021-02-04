@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,9 +38,9 @@ USA.
       form
       (lambda (library)
 	(let ((ienv (senv->runtime usage-env)))
-	  (if (and (environment-bound? ienv 'C-INCLUDES)
-		   (environment-assigned? ienv 'C-INCLUDES))
-	      (let ((value (environment-lookup ienv 'C-INCLUDES))
+	  (if (and (environment-bound? ienv 'C-includes)
+		   (environment-assigned? ienv 'C-includes))
+	      (let ((value (environment-lookup ienv 'C-includes))
 		    (err (lambda (msg val)
 			   (error (string-append
 				   "C-includes is already bound, " msg) val))))
@@ -51,11 +51,11 @@ USA.
 			     (c-includes/library value)))
 		    (err "but not to a c-include structure:" value)))
 	      (begin
-		(environment-define ienv 'C-INCLUDES (load-c-includes library))
+		(environment-define ienv 'C-includes (load-c-includes library))
 		#f))))))))
 
 (define (call-with-destructured-c-include-form form receiver)
-  ;; Calls RECEIVER with the library.
+  ;; Calls receiver with the library.
   (cond ((null? (cdr form))
 	 (serror form "A library name is required"))
 	((not (string? (cadr form)))
@@ -143,7 +143,7 @@ USA.
 		  (ctype/union-defn? type))
 	      (if (null? member-spec)
 		  (swarn whole-form "Cannot peek a whole struct")
-		  (let ((entry (assoc (cons* 'OFFSET ctype member-spec)
+		  (let ((entry (assoc (cons* 'offset ctype member-spec)
 				      (c-includes/struct-values includes))))
 		    (if (not entry)
 			(swarn whole-form "No such member")
@@ -173,7 +173,7 @@ USA.
 	   `(,prim ,alien-form ,offset ,value-form)))
 	((ctype/array? ctype)
 	 (swarn whole-form "Cannot poke a whole array"))
-	((or (ctype/enum? ctype) (eq? ctype 'ENUM))
+	((or (ctype/enum? ctype) (eq? ctype 'enum))
 	 (let ((prim (ucode-primitive c-poke-uint 3)))
 	   `(,prim ,alien-form ,offset ,value-form)))
 	(else (swarn whole-form "Unexpected C type for poking" ctype))))
@@ -187,24 +187,24 @@ USA.
 	       (swarn whole-form "Cannot peek basic type" ctype))))
 	((ctype/pointer? ctype)
 	 `(,(ucode-primitive c-peek-pointer 3)
-	   ,alien-form ,offset ,(or value-form '(MAKE-ALIEN))))
+	   ,alien-form ,offset ,(or value-form '(make-alien))))
 	((or (ctype/array? ctype) (ctype/struct? ctype))
 	 (if value-form
-	     `(LET ((VALUE ,value-form))
-		(COPY-ALIEN-ADDRESS! VALUE ,alien-form)
-		(ALIEN-BYTE-INCREMENT! VALUE ,offset)
-		VALUE)
-	     `(ALIEN-BYTE-INCREMENT ,alien-form ,offset)))
-	((or (ctype/enum? ctype) (eq? ctype 'ENUM))
+	     `(let ((value ,value-form))
+		(copy-alien-address! value ,alien-form)
+		(alien-byte-increment! value ,offset)
+		value)
+	     `(alien-byte-increment ,alien-form ,offset)))
+	((or (ctype/enum? ctype) (eq? ctype 'enum))
 	 `(,(ucode-primitive c-peek-uint 2) ,alien-form ,offset))
 	(else (swarn whole-form "Unexpected C type for peeking" ctype))))
 
 (define (call-with-destructured-c->-form form receiver)
-  ;; Calls RECEIVER with ALIEN, SPEC and VALUE (or #f) as in these forms:
+  ;; Calls receiver with alien, spec and value (or #f) as in these forms:
   ;;
-  ;;   (C-> ALIEN SPEC)		  VALUE = #f
-  ;;   (C-> ALIEN SPEC* VALUE)    SPEC* specifies a pointer-type member
-  ;;   (C->= ALIEN SPEC VALUE)
+  ;;   (C-> alien spec)		  value = #f
+  ;;   (C-> alien spec* value)    spec* specifies a pointer-type member
+  ;;   (C->= alien spec value)
   ;;
   (let ((len (length form)))
     (if (< len 3)
@@ -229,9 +229,9 @@ USA.
   ;; (C-enum "GDK_MAP")
   ;; ===> 14
   ;; (C-enum "GdkEventType" 14)
-  ;; ===> GDK_MAP
-  ;; (C-enum "GdkEventType" FORM)
-  ;; ===> (C-enum-name FORM '|GdkEventType|
+  ;; ===> |GDK_MAP|
+  ;; (C-enum "GdkEventType" form)
+  ;; ===> (C-enum-name form '|GdkEventType|
   ;;                   '((|GDK_NOTHING| . -1) (|GDK_DELETE| . 0)...))
   (sc-macro-transformer
    (lambda (form usage-env)
@@ -246,7 +246,7 @@ USA.
 				(c-enum-constant-values name form includes))
 		  (let ((value (close-syntax value-form usage-env))
 			(constants (c-enum-constant-values name form includes)))
-		    `(C-ENUM-NAME ,value ',name ',constants))))))))))
+		    `(C-enum-name ,value ',name ',constants))))))))))
 
 (define (lookup-enum-value name includes)
   (let ((entry (assq name (c-includes/enum-values includes))))
@@ -284,7 +284,7 @@ USA.
 		    (let ((name (cond ((and (string=? "enum" (car words))
 					    (not (null? (cdr words)))
 					    (null? (cddr words)))
-				       `(ENUM ,(string->symbol (cadr words))))
+				       `(enum ,(string->symbol (cadr words))))
 				      ((null? (cdr words))
 				       (string->symbol (car words)))
 				      (else (swarn form
@@ -300,16 +300,16 @@ USA.
   ;; (C-sizeof "GdkColor") ===> 10
   (sc-macro-transformer
    (lambda (form usage-env)
-     (expand-c-info-syntax 'SIZEOF form usage-env))))
+     (expand-c-info-syntax 'sizeof form usage-env))))
 
 (define-syntax C-offset
   ;; (C-offset "GdkColor green") ===> 6
   (sc-macro-transformer
    (lambda (form usage-env)
-     (expand-c-info-syntax 'OFFSET form usage-env))))
+     (expand-c-info-syntax 'offset form usage-env))))
 
 (define (expand-c-info-syntax which form usage-env)
-  ;; WHICH can be SIZEOF or OFFSET.
+  ;; which can be 'sizeof or 'offset.
   (let ((len (length form)))
     (if (< len 2)
 	(swarn form "Too few args")
@@ -323,20 +323,20 @@ USA.
 		    (c-info which spec form usage-env))))))))
 
 (define (c-info which spec form usage-env)
-  ;; Returns the offset or sizeof for SPEC.
+  ;; Returns the offset or sizeof for spec.
   (let* ((includes (find-c-includes usage-env))
 	 (btype.members
 	  (call-with-initial-ctype
 	   spec form
 	   (lambda (ctype member-spec)
 	     (let ((defn (ctype-definition ctype includes)))
-	       (cond ((and (eq? which 'OFFSET) (null? member-spec))
+	       (cond ((and (eq? which 'offset) (null? member-spec))
 		      (swarn form "no member specified"))
-		     ((and (eq? which 'OFFSET)
+		     ((and (eq? which 'offset)
 			   (not (or (ctype/struct-defn? defn)
 				    (ctype/union-defn? defn))))
 		      (swarn form "not a struct or union type"))
-		     ((and (not (eq? which 'OFFSET)) (not (null? member-spec)))
+		     ((and (not (eq? which 'offset)) (not (null? member-spec)))
 		      (if (null? (cdr member-spec))
 			  (swarn form "no member name allowed")
 			  (swarn form "no member names allowed")))
@@ -355,24 +355,24 @@ USA.
     (cond ((not btype.members)
 	   form)
 	  (entry
-	   (if (eq? 'OFFSET which) (cadr entry) (cdr entry)))
+	   (if (eq? 'offset which) (cadr entry) (cdr entry)))
 	  (else
-	   (if (eq? 'OFFSET which)
+	   (if (eq? 'offset which)
 	       (swarn form "Unknown member")
 	       (swarn form "Unknown C type" btype.members))))))
 
 (define (call-with-initial-ctype spec form receiver)
-  ;; Given SPEC, a list of symbols, calls RECEIVER with a ctype and
+  ;; Given spec, a list of symbols, calls receiver with a ctype and
   ;; member spec (the list of names that followed the C type spec)
   ;;
-  ;; For example RECEIVER is called with
+  ;; For example receiver is called with
   ;;
   ;;     (* (|struct| |addrinfo|)) and (|ai_socktype|)
   ;;
-  ;; when SPEC is (* |struct| |addrinfo| |ai_socktype|).
+  ;; when spec is (* |struct| |addrinfo| |ai_socktype|).
   (let ((type-name (car spec))
 	(member-spec (cdr spec)))
-    (cond ((memq type-name '(STRUCT UNION ENUM))
+    (cond ((memq type-name '(struct union enum))
 	   (if (null? member-spec)
 	       (swarn form "Incomplete C type specification")
 	       (receiver (list type-name (car member-spec))
@@ -393,35 +393,35 @@ USA.
 ;;; C-array-loc and -loc! Syntaxes
 
 (define-syntax C-array-loc
-  ;; (C-array-loc ALIEN "element type" INDEX)
+  ;; (C-array-loc alien "element type" index)
   ;; ===>
-  ;; (alien-byte-increment ALIEN (* (C-sizeof "element type") INDEX))
+  ;; (alien-byte-increment alien (* (C-sizeof "element type") index))
   (sc-macro-transformer
    (lambda (form usage-env)
      (expand-c-array-loc-syntax #f form usage-env))))
 
 (define-syntax C-array-loc!
-  ;; (C-array-loc! ALIEN "element type" INDEX)
+  ;; (C-array-loc! alien "element type" index)
   ;; ===>
-  ;; (alien-byte-increment! ALIEN (* (C-sizeof "element type") INDEX))
+  ;; (alien-byte-increment! alien (* (C-sizeof "element type") index))
   (sc-macro-transformer
    (lambda (form usage-env)
      (expand-c-array-loc-syntax #t form usage-env))))
 
 (define (expand-c-array-loc-syntax bang? form usage-env)
-  (call-with-destructured-C-array-loc-form
+  (call-with-destructured-c-array-loc-form
    form
    (lambda (alien-form str index-form)
      (let ((spec (map string->symbol (burst-string str #\space #t))))
        (if (null? spec)
 	   (swarn form "2nd arg is an empty string")
 	   (let ((alien-form (close-syntax alien-form usage-env))
-		 (sizeof (c-info `SIZEOF spec form usage-env))
+		 (sizeof (c-info `sizeof spec form usage-env))
 		 (index-form (close-syntax index-form usage-env))
-		 (proc (if bang? 'ALIEN-BYTE-INCREMENT! 'ALIEN-BYTE-INCREMENT)))
+		 (proc (if bang? 'alien-byte-increment! 'alien-byte-increment)))
 	     `(,proc ,alien-form (* ,sizeof ,index-form))))))))
 
-(define (call-with-destructured-C-array-loc-form form receiver)
+(define (call-with-destructured-c-array-loc-form form receiver)
   (let ((len (length form)))
     (if (< len 4)
 	(swarn form "Too few args")
@@ -442,7 +442,7 @@ USA.
   ;; (call-alien #[alien-function 33 gtk_label_new] alien "Hello, World!")
   (sc-macro-transformer
    (lambda (form usage-env)
-     (call-with-destructured-C-call-form
+     (call-with-destructured-c-call-form
       form
       (lambda (func-name arg-forms)
 	(let* ((includes (find-c-includes usage-env))
@@ -452,12 +452,12 @@ USA.
 			    (cdr entry)
 			    (swarn form "No declaration of callout"
 				   func-name)))))
-	  `(CALL-ALIEN ,alien
+	  `(call-alien ,alien
 		       . ,(map (lambda (form) (close-syntax form usage-env))
 			       arg-forms))))))))
 
-(define (call-with-destructured-C-call-form form receiver)
-  ;; Calls RECEIVER with the optional return-alien-form, func-name
+(define (call-with-destructured-c-call-form form receiver)
+  ;; Calls receiver with the optional return-alien-form, func-name
   ;; (as a symbol), and the arg-forms.
   (if (not (pair? (cdr form)))
       (swarn form "No function name")
@@ -486,10 +486,10 @@ USA.
 		(if (pair? entry) (cdr entry)
 		    (swarn form "No declaration of callback"))))
 	    (let ((value-form (close-syntax obj usage-env)))
-	      `(REGISTER-C-CALLBACK ,value-form))))))))
+	      `(register-c-callback ,value-form))))))))
 
 (define (call-with-destructured-c-callback-form form receiver)
-  ;; Calls RECEIVER with the only subform.
+  ;; Calls receiver with the only subform.
   (let ((len (length form)))
     (if (< len 2)
 	(swarn form "Too few args")
@@ -502,12 +502,12 @@ USA.
 ;;; Utilities
 
 (define (find-c-includes env)
-  ;; Returns the c-includes structure bound to 'C-INCLUDES in ENV.
+  ;; Returns the c-includes structure bound to 'C-includes in env.
   (guarantee syntactic-environment? env 'find-c-includes)
   (let ((ienv (senv->runtime env)))
-    (if (and (environment-bound? ienv 'C-INCLUDES)
-	     (environment-assigned? ienv 'C-INCLUDES))
-	(let ((includes (environment-lookup ienv 'C-INCLUDES)))
+    (if (and (environment-bound? ienv 'C-includes)
+	     (environment-assigned? ienv 'C-includes))
+	(let ((includes (environment-lookup ienv 'C-includes)))
 	  (if (c-includes? includes)
 	      includes
 	      (error "C-includes is not bound to a c-includes structure:"
@@ -518,16 +518,16 @@ USA.
   (make-condition-type
       'ffi-syntaxer-error
       condition-type:error
-      '(FORM MESSAGE)
+      '(form message)
     (lambda (condition port)
       (write-string "FFI syntax error: " port)
-      (write-string (access-condition condition 'MESSAGE) port)
+      (write-string (access-condition condition 'message) port)
       (write-string " in: " port)
-      (write (access-condition condition 'FORM) port)
+      (write (access-condition condition 'form) port)
       (write-char #\. port))))
 
 (define serror
-  (let ((signaller (condition-signaller condition-type:serror '(FORM MESSAGE)
+  (let ((signaller (condition-signaller condition-type:serror '(form message)
 					standard-error-handler)))
     (named-lambda (serror form message . args)
       (signaller form
@@ -537,5 +537,5 @@ USA.
 			     (cons message args)))))))
 
 (define (swarn form message . args)
-  (apply warn message (append args (list 'IN form)))
+  (apply warn message (append args (list 'in form)))
   `(error "Invalid syntax" ',form))

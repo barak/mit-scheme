@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,18 +31,36 @@ USA.
 
 ;;;; Exports to the compiler
 
-(define (compiler:compiled-code-pathname-type) "c")
+(define (compiler:compiled-code-pathname-type types)
+  (declare (ignore types))
+  "c")
+
 (define compiler:invoke-c-compiler? #t)
 
 (define (compiler-file-output compiler-output pathname)
   (let ((code (cdr (vector-ref compiler-output 1))))
-    (call-with-output-file pathname
+    (call-with-temporary-output-file pathname (directory-pathname pathname)
       (lambda (port)
 	(c:write-group code port)))
     (if compiler:invoke-c-compiler?
 	(c-compile pathname
 		   (pathname-new-type pathname "o")
 		   (pathname-new-type pathname (c-output-extension))))))
+
+(define (call-with-temporary-output-file pathname directory receiver)
+  (let ((temporary (temporary-file-pathname directory))
+	(done? #f))
+    (dynamic-wind
+      (lambda ()
+	(if done?
+	    (error "Re-entry into temporary file creation is not allowed.")))
+      (lambda ()
+	(let ((result (call-with-output-file temporary receiver)))
+	  (rename-file temporary pathname)
+	  result))
+      (lambda ()
+	(set! done? #t)
+	(deallocate-temporary-file temporary)))))
 
 (define (compile-data-from-file object pathname)
   pathname				;ignore
@@ -318,7 +336,7 @@ USA.
   (compiler-phase
    "Pseudo-Assembly"			; garbage collection
    (lambda ()
-     (with-values
+     (call-with-values
 	 (lambda ()
 	   (stringify
 	    (if (not (zero? *recursive-compilation-number*))
@@ -329,12 +347,27 @@ USA.
 	    (last-reference *start-label*)
 	    (last-reference *lap*)
 	    (cond ((eq? pathname 'RECURSIVE)
-		   (cons *info-output-filename*
-			 *recursive-compilation-number*))
+		   (vector 'debugging-info-wrapper
+			   3
+			   *debugging-key*
+			   (if (pathname? *info-output-filename*)
+			       (->namestring *info-output-filename*)
+			       *info-output-filename*)
+			   *recursive-compilation-number*
+			   #f
+			   *library-name*))
 		  ((eq? pathname 'KEEP)
 		   #f)
 		  (else
-		   pathname))))
+		   (vector 'debugging-info-wrapper
+			   3
+			   *debugging-key*
+			   (if (pathname? *info-output-filename*)
+			       (->namestring *info-output-filename*)
+			       *info-output-filename*)
+			   0
+			   #f
+			   *library-name*)))))
        (lambda (code-name data-name ntags labels code proxy)
 	 (set! *C-code-name* code-name)
 	 (set! *C-data-name* data-name)
@@ -416,13 +449,16 @@ USA.
 			   *recursive-compilation-results*))
 	       #f)
 	      (else
-	       (let ((others (recursive-compilation-results)))
-		 (if (null? others)
-		     info
-		     (list->vector
-		      (cons info
-			    (map (lambda (other) (vector-ref other 1))
-				 others)))))))))))
+	       (vector 'debugging-file-wrapper
+		       3
+		       *debugging-key*
+		       (list->vector
+			(cons
+			 info
+			 (map (lambda (other)
+				(vector-ref other 1))
+			      (recursive-compilation-results))))
+		       *library-name*)))))))
 
 (define (compiler:dump-bci-file binf pathname)
   (dump-compressed binf (pathname-new-type pathname "bci")))

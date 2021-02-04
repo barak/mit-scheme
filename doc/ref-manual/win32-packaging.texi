@@ -1,4 +1,4 @@
-@node Win32 Package Reference, GNU Free Documentation License, Graphics, Top
+@node Win32 Package Reference, Standards Support, Graphics, Top
 @chapter Win32 Package Reference
 
 @ifinfo

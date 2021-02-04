@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -101,9 +101,6 @@ USA.
 (define-integrable lexical-unreferenceable?
   (ucode-primitive lexical-unreferenceable?))
 
-(define-integrable set-fixed-objects-vector!
-  (ucode-primitive set-fixed-objects-vector!))
-
 (define-integrable set-interrupt-enables!
   (ucode-primitive set-interrupt-enables!))
 
@@ -150,74 +147,61 @@ USA.
   (let ((interrupt-vector (vector-ref fixed-objects 1)))
     (vector-set! interrupt-vector 0 condition-handler/stack-overflow)
     (vector-set! interrupt-vector 2 condition-handler/gc))
-  (vector-set! fixed-objects #x0C condition-handler/hardware-trap)
-  (set-fixed-objects-vector! fixed-objects))
+  (vector-set! fixed-objects #x0C condition-handler/hardware-trap))
 
 (set-interrupt-enables! #x0005)
 
 ;;;; Utilities
 
-(define (package-initialize package-name procedure-name mandatory?)
-  (define (print-name string)
-    (tty-write-string newline-string)
-    (tty-write-string string)
-    (tty-write-string " (")
-    (let loop ((name package-name))
-      (if (not (null? name))
-	  (begin
-	    (if (not (eq? name package-name))
-		(tty-write-string " "))
-	    (tty-write-string (system-pair-car (car name)))
-	    (loop (cdr name)))))
-    (tty-write-string ")"))
+(define (run-pkg-boot-inits package-name)
+  (cond ((let ((package (find-package package-name #f)))
+	   (and package
+		(let ((seq (package-sequencer package)))
+		  (and (not (seq 'inert?))
+		       seq))))
+	 => (lambda (seq)
+	      (seq 'trigger!)))
+	(else
+	 (print-package-name "Package" package-name)
+	 (tty-write-string " has no boot initialization")
+	 (fatal-error "Could not initialize package"))))
 
+(define (call-pkg-init-proc package-name procedure-name)
   (cond ((let ((package (find-package package-name #f)))
 	   (and package
 		(let ((env (package/environment package)))
-		  (if (not procedure-name)
-		      (if (lexical-unreferenceable? env 'initialize-package!)
-			  ((access get-boot-init-runner boot-defs) env)
-			  (lexical-reference env 'initialize-package!))
-		      (and (not (lexical-unreferenceable? env procedure-name))
-			   (lexical-reference env procedure-name))))))
+		  (and (not (lexical-unreferenceable? env procedure-name))
+		       (lexical-reference env procedure-name)))))
 	 => (lambda (procedure)
-	      (print-name "initialize:")
-	      (if (not (or (not procedure-name)
-			   (eq? procedure-name 'initialize-package!)))
-		  (begin
-		    (tty-write-string " [")
-		    (tty-write-string (system-pair-car procedure-name))
-		    (tty-write-string "]")))
+	      (print-package-name "initialize:" package-name)
+	      (tty-write-string " [")
+	      (tty-write-string (system-pair-car procedure-name))
+	      (tty-write-string "]")
 	      (procedure)))
-	((not mandatory?)
-	 (print-name "* skipping:"))
 	(else
-	 ;; Missing mandatory package! Report it and die.
-	 (print-name "Package")
+	 (print-package-name "Package" package-name)
 	 (tty-write-string " is missing initialization procedure ")
-	 (if procedure-name
-	     (tty-write-string (system-pair-car procedure-name)))
-	 (fatal-error "Could not initialize a required package."))))
+	 (tty-write-string (system-pair-car procedure-name))
+	 (fatal-error "Could not initialize package"))))
+
+(define (print-package-name prefix package-name)
+  (tty-write-string newline-string)
+  (tty-write-string prefix)
+  (tty-write-string " (")
+  (let loop ((name package-name))
+    (if (not (null? name))
+	(begin
+	  (if (not (eq? name package-name))
+	      (tty-write-string " "))
+	  (tty-write-string (system-pair-car (car name)))
+	  (loop (cdr name)))))
+  (tty-write-string ")"))
+
+(define ((package-init-printer package))
+  (print-package-name "initialize:" (package/name package)))
 
 (define (package-reference name)
   (package/environment (find-package name)))
-
-(define (package-initialization-sequence specs)
-  (do ((specs specs (cdr specs)))
-      ((not (pair? specs)) unspecific)
-    (let ((spec (car specs)))
-      (cond ((eq? (car spec) 'optional)
-	     (package-initialize (cadr spec)
-				 (and (pair? (cddr spec))
-				      (caddr spec))
-				 #f))
-	    ((pair? (car spec))
-	     (package-initialize (car spec)
-				 (and (pair? (cdr spec))
-				      (cadr spec))
-				 #t))
-	    (else
-	     (package-initialize spec #f #t))))))
 
 (define (remember-to-purify purify? filename value)
   (if purify?
@@ -322,12 +306,15 @@ USA.
 	 (link-variables system-global-environment name
 			 environment-for-package name))))
   (export '*allow-package-redefinition?*)
+  (export 'all-packages)
   (export 'construct-packages-from-file)
   (export 'environment->package)
   (export 'find-package)
   (export 'load-package-set)
   (export 'load-packages-from-file)
   (export 'name->package)
+  (export 'package-name=?)
+  (export 'package-name?)
   (export 'package-set-pathname)
   (export 'package/add-child!)
   (export 'package/children)
@@ -351,73 +338,100 @@ USA.
 
 ((lexical-reference environment-for-package 'construct-packages-from-file)
  packages-file)
+
+(define runtime-env
+  (package-reference '(runtime)))
 
-;;; Global databases.  Load, then initialize.
-(define boot-defs)
+;;; Initial part of load/eval/initialize sequence is manual and carefully
+;;; constructed to provide the mechanisms so that the remaining files can be
+;;; loaded and evaluated.  Then dependency-based sequencing is used to
+;;; initialize everything else.
+(define package-sequencer)
 (let ((files0
        '(("gcdemn" . (runtime gc-daemons))
 	 ("gc" . (runtime garbage-collector))
+	 ("boot-seq" . (runtime))
 	 ("boot" . (runtime boot-definitions))
+	 ("generator" . (runtime generator))
+	 ("weak-pair" . (runtime weak-pair))
 	 ("queue" . (runtime simple-queue))
 	 ("equals" . (runtime equality))
+	 ("vector" . (runtime vector))
+	 ("procedure" . (runtime procedure))
 	 ("list" . (runtime list))
 	 ("primitive-arithmetic" . (runtime primitive-arithmetic))
 	 ("srfi-1" . (runtime srfi-1))
-	 ("thread-low" . (runtime thread))
-	 ("vector" . (runtime vector))))
+	 ("thread-low" . (runtime thread))))
       (files1
-       '(("string" . (runtime string))
+       '(("msort" . (runtime merge-sort))
+	 ("string" . (runtime string))
+	 ("bytevector-low" . (runtime bytevector))
 	 ("symbol" . (runtime symbol))
-	 ("procedure" . (runtime procedure))
 	 ("random" . (runtime random-number))
 	 ("dispatch-tag" . (runtime tagged-dispatch))
 	 ("poplat" . (runtime population))
+	 ("prop1d" . (runtime 1d-property))
 	 ("record" . (runtime record))))
       (files2
        '(("bundle" . (runtime bundle))
 	 ("syntax-low" . (runtime syntax low))
 	 ("thread" . (runtime thread))
 	 ("wind" . (runtime state-space))
-	 ("prop1d" . (runtime 1d-property))
 	 ("events" . (runtime event-distributor))
-	 ("gdatab" . (runtime global-database))
-	 ("gcfinal" . (runtime gc-finalizer))))
-      (load-files
-       (lambda (files)
-	 (do ((files files (cdr files)))
-	     ((null? files))
-	   (eval (file->object (car (car files)) #t #t)
-		 (package-reference (cdr (car files)))))))
-      (load-files-with-boot-inits
-       (lambda (files)
-	 (do ((files files (cdr files)))
-	     ((null? files))
-	   ((access init-boot-inits! boot-defs))
-	   (let ((environment (package-reference (cdr (car files)))))
-	     (eval (file->object (car (car files)) #t #t)
-		   environment)
-	     ((access save-boot-inits! boot-defs) environment))))))
+	 ("gcfinal" . (runtime gc-finalizer)))))
+
+  (define (load-files files)
+    (do ((files files (cdr files)))
+	((null? files))
+      (eval (file->object (car (car files)) #t #t)
+	    (package-reference (cdr (car files))))))
 
   (load-files files0)
 
-  (set! boot-defs
-	(package/environment (name->package '(runtime boot-definitions))))
+  ((lexical-reference runtime-env 'initialize-after-sequencers!)
+   package-init-printer)
+
+  (set! package-sequencer
+	(lexical-reference runtime-env 'package-sequencer))
+
+  (define seq:after-files-loaded
+    (lexical-reference runtime-env 'seq:after-files-loaded))
+
+  (define with-current-package
+    (lexical-reference runtime-env 'with-current-package))
+
+  (define (load-files-with-boot-inits files)
+    (do ((files files (cdr files)))
+	((null? files))
+      (load-file-with-boot-inits (car (car files))
+				 (find-package (cdr (car files))))))
+
+  (define (load-file-with-boot-inits file-name package)
+    (let ((file-object (file->object file-name #t #t)))
+      (with-current-package package
+	(lambda ()
+	  (eval file-object (package/environment package))))))
 
   (load-files-with-boot-inits files1)
-  (package-initialize '(runtime gc-daemons) #f #t)
-  (package-initialize '(runtime garbage-collector) #f #t)
-  (package-initialize '(runtime random-number) #f #t)
-  (package-initialize '(runtime tagged-dispatch) #f #t)
-  (package-initialize '(runtime population) #f #t)
-  (package-initialize '(runtime record) #f #t)
+  (call-pkg-init-proc '(runtime gc-daemons) 'initialize-package!)
+  (call-pkg-init-proc '(runtime garbage-collector) 'initialize-package!)
+  (run-pkg-boot-inits '(runtime population))
+  (run-pkg-boot-inits '(runtime 1d-property))
+  (run-pkg-boot-inits '(runtime random-number))
 
   (load-files-with-boot-inits files2)
-  (package-initialize '(runtime 1d-property) #f #t)	     ;First population.
-  (package-initialize '(runtime state-space) #f #t)
-  (package-initialize '(runtime thread) 'initialize-low! #t) ;First 1d-table.
-  (package-initialize '(runtime event-distributor) #f #t)
-  (package-initialize '(runtime global-database) #f #t)
-  (package-initialize '(runtime gc-finalizer) #f #t)
+  (run-pkg-boot-inits '(runtime state-space))
+  (call-pkg-init-proc '(runtime thread) 'initialize-low!)
+  (run-pkg-boot-inits '(runtime gc-finalizer))
+
+  (call-pkg-init-proc '(package) 'finalize-package-record-type!)
+  (call-pkg-init-proc '(runtime random-number) 'finalize-random-state-type!)
+
+  (define (file-member? filename files)
+    (let loop ((files files))
+      (and (pair? files)
+	   (or (string=? (car (car files)) filename)
+	       (loop (cdr files))))))
 
   ;; Load everything else.
   ((lexical-reference environment-for-package 'load-packages-from-file)
@@ -425,154 +439,50 @@ USA.
    `((sort-type . merge-sort)
      (os-type . ,os-name)
      (options . no-load))
-   (let ((file-member?
-	  (lambda (filename files)
-	    (let loop ((files files))
-	      (and (pair? files)
-		   (or (string=? (car (car files)) filename)
-		       (loop (cdr files))))))))
-     (lambda (filename environment)
-       (if (not (or (string=? filename "make")
-		    (string=? filename "packag")
-		    (file-member? filename files0)
-		    (file-member? filename files1)
-		    (file-member? filename files2)))
-	   (begin
-	     ((access init-boot-inits! boot-defs))
-	     (eval (file->object filename #t #t)
-		   environment)
-	     ((access save-boot-inits! boot-defs) environment)))
-       unspecific))))
-
-;;; Funny stuff is done.  Rest of sequence is standardized.
-(package-initialization-sequence
- '(
-   ;; Microcode interface
-   (runtime microcode-tables)
-   (runtime apply)
-   (runtime primitive-io)
-   (runtime system-clock)
-   ((runtime gc-finalizer) initialize-events!)
-   ;; Basic data structures
-   (runtime number)
-   ((runtime number) initialize-dragon4!)
-   (runtime miscellaneous-global)
-   (runtime character)
-   (runtime bytevector)
-   (runtime character-set)
-   (runtime lambda-abstraction)
-   (runtime string)
-   (runtime stream)
-   (runtime 2d-property)
-   (runtime hash-table)
-   (runtime memoizer)
-   (runtime ucd-tables)
-   (runtime ucd-glue)
-   (runtime predicate)
-   (runtime predicate-tagging)
-   (runtime predicate-dispatch)
-   (runtime compound-predicate)
-   (runtime parametric-predicate)
-   (runtime hash)
-   (runtime dynamic)
-   (runtime regular-sexpression)
-   (runtime library standard)
-   ;; Microcode data structures
-   (runtime history)
-   (runtime scode)
-   (runtime scode-walker)
-   (runtime continuation-parser)
-   (runtime program-copier)
-   ;; Finish records
-   ((runtime record) initialize-record-procedures!)
-   ((package) finalize-package-record-type!)
-   ((runtime random-number) finalize-random-state-type!)
-   ;; Condition System
-   (runtime error-handler)
-   (runtime microcode-errors)
-   ((runtime record) initialize-conditions!)
-   ((runtime stream) initialize-conditions!)
-   ((runtime regular-sexpression) initialize-conditions!)
-   ;; System dependent stuff
-   (runtime os-primitives)
-   ;; Floating-point environment -- needed by threads.
-   (runtime floating-point-environment)
-   ((runtime thread) initialize-high!)
-   ;; I/O
-   (runtime port)
-   (runtime output-port)
-   (runtime generic-i/o-port)
-   (runtime file-i/o-port)
-   (runtime console-i/o-port)
-   (runtime socket)
-   (runtime string-i/o-port)
-   (runtime user-interface)
-   ;; These MUST be done before (RUNTIME PATHNAME)
-   ;; Typically only one of them is loaded.
-   (runtime pathname unix)
-   (runtime pathname dos)
-   (runtime pathname)
-   (runtime directory)
-   (runtime working-directory)
-   (runtime load)
-   (runtime command-line)
-   (runtime simple-file-ops)
-   (optional (runtime os-primitives) initialize-mime-types!)
-   ;; Syntax
-   (runtime number-parser)
-   (runtime options)
-   (runtime reader)
-   (runtime file-attributes)
-   ((runtime pathname) initialize-parser-method!)
-   (runtime printer)
-   (runtime unsyntaxer)
-   (runtime pretty-printer)
-   (runtime extended-scode-eval)
-   (runtime syntax low)
-   (runtime syntax items)
-   (runtime syntax rename)
-   (runtime syntax top-level)
-   (runtime syntax parser)
-   ;; REP Loops
-   (runtime interrupt-handler)
-   (runtime gc-statistics)
-   (runtime gc-notification)
-   (runtime rep)
-   ;; Debugging
-   (runtime compiler-info)
-   (runtime advice)
-   (runtime debugger-command-loop)
-   (runtime debugger-utilities)
-   (runtime environment-inspector)
-   (runtime debugging-info)
-   (runtime debugger)
-   ;; Misc (e.g., version)
-   (runtime)
-   ;; Emacs -- last because it installs hooks everywhere which must be initted.
-   (runtime emacs-interface)
-   ;; More debugging
-   (optional (runtime continuation-parser) initialize-special-frames!)
-   (runtime uri)
-   (runtime rfc2822-headers)
-   (runtime http-syntax)
-   (runtime html-form-codec)
-   (optional (runtime win32-registry))
-   (runtime ffi)
-   (runtime save/restore)
-   (runtime structure-parser)
-   (runtime swank)
-   (runtime stack-sampler)
-   ;; Done very late since it will look up lots of global variables.
-   ((runtime library standard) finish-host-library-db!)
-   ;; Last since it turns on runtime handling of microcode errors.
-   ((runtime microcode-errors) initialize-error-hooks!)))
+   (lambda (filename package)
+     (if (not (or (string=? filename "make")
+		  (string=? filename "packag")
+		  (file-member? filename files0)
+		  (file-member? filename files1)
+		  (file-member? filename files2)))
+	 (begin
+	   (let ((seq (package-sequencer package)))
+	     (if (not (seq 'triggered?))
+		 (seq 'add-before! seq:after-files-loaded)))
+	   (load-file-with-boot-inits filename package)))
+     unspecific))
+
+  ;; All remaining initizations are rooted in seq:after-files-loaded.
+  ;; Triggering that starts the initialization cascade.
+  (seq:after-files-loaded 'trigger!))
+
+;; Done very late since it will look up lots of global variables.
+(call-pkg-init-proc '(runtime library standard) 'finish-host-library-db!)
+
+;; Last since it turns on runtime handling of microcode errors.
+(call-pkg-init-proc '(runtime microcode-errors) 'initialize-error-hooks!)
 
 (let ((obj (file->object "site" #t #f)))
   (if obj
       (eval obj system-global-environment)))
 
-(link-variables (->environment '(runtime environment)) 'package-name-tag
-		(->environment '(package)) 'package-name-tag)
+(let* ((package-env (->environment '(package)))
+       (export
+	(lambda (target-package names)
+	  (let ((target-env (->environment target-package)))
+	    (for-each (lambda (name)
+			(link-variables target-env name package-env name))
+		      names)))))
+  (export '(runtime environment)
+	  '(package-name-tag))
+  (export '(runtime library standard)
+	  '(link-description/inner-name
+	    link-description/outer-name
+	    link-description/package
+	    link-description/status
+	    package-description/exports
+	    package-description/name
+	    package-file/descriptions)))
 
 (let ((roots
        (list->vector
@@ -591,7 +501,11 @@ USA.
 		    (let ((object (cdr entry)))
 		      (fasload/update-debugging-info! object (car entry))
 		      (load/purification-root object)))
-		  fasload-purification-queue)))))))
+		  (cons (cons (if (compiled-code-address? (lambda (x) x))
+				  "make.com"
+				  "make.bin")
+			      define-multiple)
+			fasload-purification-queue))))))))
   (lexical-assignment (->environment '(runtime garbage-collector))
 		      'gc-boot-loading?
 		      #f)
@@ -603,6 +517,10 @@ USA.
   ;; Then, really purify the rest.
   (purify roots #t #f)
   (write-string "done" (console-i/o-port)))
+
+((lexical-reference (->environment '(runtime library standard))
+		    'initialize-synthetic-libraries!)
+ packages-file)
 
 )
 

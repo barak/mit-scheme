@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,6 +31,7 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
+#include "bits.h"
 #include "fixnum.h"
 
 static long
@@ -284,6 +285,25 @@ DEFINE_PRIMITIVE ("FIXNUM-LSH", Prim_fixnum_lsh, 2, 2, 0)
 
     LOGICAL_RESULT (FIXNUM_LSH (x, y));
   }
+}
+
+DEFINE_PRIMITIVE ("FXBIT-COUNT", Prim_fxbit_count, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  FIXNUM_RESULT (ulong_bit_count ((unsigned long) (arg_fixnum(1))));
+}
+
+DEFINE_PRIMITIVE ("FXLENGTH", Prim_fxlength, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  long n = (arg_fixnum(1));
+  FIXNUM_RESULT (ulong_length_in_bits ((unsigned long) ((n < 0) ? ~n : n)));
+}
+
+DEFINE_PRIMITIVE ("FXFIRST-SET-BIT", fxfirst_set_bit, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  FIXNUM_RESULT (ulong_first_set_bit ((unsigned long) (arg_fixnum(1))));
 }
 
 DEFINE_PRIMITIVE ("FIXNUM->FLONUM", Prim_fixnum_to_flonum, 1, 1,

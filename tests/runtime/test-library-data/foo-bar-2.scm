@@ -1,7 +1,7 @@
 (DEFINE (BAR-SUM BAR)
-  (+ (FOO-BAR-V1 BAR)
-     (FOO-BAR-V2 BAR)))
+  (+ (BAR-V1 BAR)
+     (BAR-V2 BAR)))
 
 (DEFINE (BAR-DIFFERENCE BAR)
-  (- (FOO-BAR-V1 BAR)
-     (FOO-BAR-V2 BAR)))
+  (- (BAR-V1 BAR)
+     (BAR-V2 BAR)))

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -86,7 +86,7 @@ USA.
 	unspecific)))
 
 (define (generate/expression expression)
-  (with-values
+  (call-with-values
       (lambda ()
 	(generate/rgraph (expression-entry-node expression) generate/node))
     (lambda (rgraph entry-edge)
@@ -96,7 +96,7 @@ USA.
 		     (expression-debugging-info expression)))))
 
 (define (generate/procedure procedure)
-  (with-values
+  (call-with-values
       (lambda ()
 	(generate/rgraph
 	 (procedure-entry-node procedure)
@@ -146,33 +146,49 @@ USA.
 
 (define (generate/continuation continuation)
   (let ((label (continuation/label continuation)))
-    (with-values
+    (call-with-values
 	(lambda ()
 	  (generate/rgraph
 	   (continuation/entry-node continuation)
 	   (lambda (node)
-	     (scfg-append!
-	      (if (continuation/avoid-check? continuation)
-		  (rtl:make-continuation-entry label)
-		  (rtl:make-continuation-header label))
-	      (generate/continuation-entry/pop-extra continuation)
-	      (enumeration-case continuation-type
-		  (continuation/type continuation)
-		((PUSH)
-		 (rtl:make-push (rtl:make-fetch register:value)))
-		((REGISTER)
-		 (rtl:make-assignment (continuation/register continuation)
-				      (rtl:make-fetch register:value)))
-		((VALUE PREDICATE)
-		 (if (continuation/ever-known-operator? continuation)
-		     (rtl:make-assignment (continuation/register continuation)
-					  (rtl:make-fetch register:value))
-		     (make-null-cfg)))
-		((EFFECT)
-		 (make-null-cfg))
-		(else
-		 (error "Illegal continuation type" continuation)))
-	      (generate/node node)))))
+	     (define (with-value generator)
+	       (let* ((temporary (rtl:make-pseudo-register))
+		      (prologue
+		       (rtl:make-assignment temporary
+					    (rtl:make-fetch register:value)))
+		      (intermezzo (generator temporary)))
+		 (values prologue intermezzo)))
+	     (receive (prologue intermezzo)
+		      (enumeration-case continuation-type
+			  (continuation/type continuation)
+			((PUSH)
+			 (with-value rtl:make-push))
+			((REGISTER)
+			 (with-value
+			  (lambda (expression)
+			    (rtl:make-assignment
+			     (continuation/register continuation)
+			     expression))))
+			((VALUE PREDICATE)
+			 (if (continuation/ever-known-operator? continuation)
+			     (with-value
+			      (lambda (expression)
+				(rtl:make-assignment
+				 (continuation/register continuation)
+				 expression)))
+			     (values (make-null-cfg) (make-null-cfg))))
+			((EFFECT)
+			 (values (make-null-cfg) (make-null-cfg)))
+			(else
+			 (error "Illegal continuation type" continuation)))
+	       (scfg-append!
+		(if (continuation/avoid-check? continuation)
+		    (rtl:make-continuation-entry label)
+		    (rtl:make-continuation-header label))
+		prologue
+		(generate/continuation-entry/pop-extra continuation)
+		intermezzo
+		(generate/node node))))))
       (lambda (rgraph entry-edge)
 	(make-rtl-continuation
 	 rgraph
@@ -197,20 +213,21 @@ USA.
 	 (and (primitive-procedure? obj)
 	      (special-primitive-handler obj)))))
 
-(define (wrap-with-continuation-entry context scfg-gen)
-  (with-values (lambda () (generate-continuation-entry context))
+(define (wrap-with-continuation-entry context prefix scfg-gen)
+  (call-with-values (lambda () (generate-continuation-entry context prefix))
     (lambda (label setup cleanup)
       (scfg-append! setup
 		    (scfg-gen label)
 		    cleanup))))
 
-(define (generate-continuation-entry context)
+(define (generate-continuation-entry context prefix)
   (let ((label (generate-label))
 	(closing-block (reference-context/block context)))
     (let ((setup (push-continuation-extra closing-block))
 	  (cleanup
-	   (scfg*scfg->scfg!
+	   (scfg-append!
 	    (rtl:make-continuation-entry label)
+	    prefix
 	    (pop-continuation-extra closing-block))))
       (set! *extra-continuations*
 	    (cons (make-rtl-continuation

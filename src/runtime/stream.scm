@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime stream)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime number))
 
 (define (stream-pair? stream)
   (and (pair? stream)
@@ -271,67 +273,61 @@ USA.
 	  ((null? s) (reverse elements))
 	  (else (error:illegal-stream-element s 'stream->list 0)))))
 
-(define prime-numbers-stream)
-
 (define (make-prime-numbers-stream)
-  (cons-stream
-   2
-   (letrec
-       ((primes (cons-stream 3 (fixnum-filter 5)))
-	(fixnum-filter
-	 (let ((limit (fix:- (fix:largest-value) 2)))
-	   (lambda (n)
-	     (if (fix:<= n limit)
-		 (let loop ((ps primes))
-		   (cond ((fix:< n (fix:* (car ps) (car ps)))
-			  (cons-stream n (fixnum-filter (fix:+ n 2))))
-			 ((fix:= 0 (fix:remainder n (car ps)))
-			  (fixnum-filter (fix:+ n 2)))
-			 (else
-			  (loop (force (cdr ps))))))
-		 (generic-filter n)))))
-	(generic-filter
-	 (lambda (n)
-	   (let loop ((ps primes))
-	     (cond ((< n (square (car ps)))
-		    (cons-stream n (generic-filter (+ n 2))))
-		   ((= 0 (remainder n (car ps)))
-		    (generic-filter (+ n 2)))
-		   (else
-		    (loop (force (cdr ps)))))))))
-     primes)))
+  (let ((limit (fix:- (fix:largest-value) 2)))
+    (define odd-primes (cons-stream 3 (fixnum-filter 5)))
+    (define (fixnum-filter n)
+      (if (fix:<= n limit)
+	  (let loop ((ps odd-primes))
+	    (cond ((fix:< n (fix:* (car ps) (car ps)))
+		   (cons-stream n (fixnum-filter (fix:+ n 2))))
+		  ((fix:= 0 (fix:remainder n (car ps)))
+		   (fixnum-filter (fix:+ n 2)))
+		  (else
+		   (loop (force (cdr ps))))))
+	  (generic-filter n)))
+    (define (generic-filter n)
+      (let loop ((ps odd-primes))
+	(cond ((< n (square (car ps)))
+	       (cons-stream n (generic-filter (+ n 2))))
+	      ((= 0 (remainder n (car ps)))
+	       (generic-filter (+ n 2)))
+	      (else
+	       (loop (force (cdr ps)))))))
+    (cons-stream 2 odd-primes)))
 
-(define (initialize-package!)
-  (let ((reset-primes!
-	 (lambda ()
-	   (set! prime-numbers-stream (make-prime-numbers-stream))
-	   unspecific)))
-    (reset-primes!)
-    (add-secondary-gc-daemon! reset-primes!)))
+(define prime-numbers-stream)
+(define (reset-primes!)
+  (set! prime-numbers-stream (make-prime-numbers-stream))
+  unspecific)
+(add-boot-init!
+ (lambda ()
+   (reset-primes!)
+   (add-secondary-gc-daemon! reset-primes!)))
 
 (define condition-type:illegal-stream-element)
 (define error:illegal-stream-element)
-
-(define (initialize-conditions!)
-  (set! condition-type:illegal-stream-element
-	(make-condition-type 'illegal-stream-element
-	    condition-type:wrong-type-argument
-	    '()
-	  (lambda (condition port)
-	    (write-string "The object " port)
-	    (write (access-condition condition 'datum) port)
-	    (write-string ", passed as the " port)
-	    (write-string (ordinal-number-string
-			   (+ (access-condition condition 'operand) 1))
-			  port)
-	    (write-string " argument to " port)
-	    (write-operator (access-condition condition 'operator) port)
-	    (write-string ", is not a stream." port))))
-  (set! error:illegal-stream-element
-	(let ((signaller
-	       (condition-signaller condition-type:illegal-stream-element
-				    '(type datum operator operand)
-				    standard-error-handler)))
-	  (named-lambda (error:illegal-stream-element stream operator operand)
-	    (signaller "stream" stream operator operand))))
-  unspecific)
+(seq:after-conditions 'add-action!
+  (lambda ()
+    (set! condition-type:illegal-stream-element
+	  (make-condition-type 'illegal-stream-element
+	      condition-type:wrong-type-argument
+	      '()
+	    (lambda (condition port)
+	      (write-string "The object " port)
+	      (write (access-condition condition 'datum) port)
+	      (write-string ", passed as the " port)
+	      (write-string (ordinal-number-string
+			     (+ (access-condition condition 'operand) 1))
+			    port)
+	      (write-string " argument to " port)
+	      (write-operator (access-condition condition 'operator) port)
+	      (write-string ", is not a stream." port))))
+    (set! error:illegal-stream-element
+	  (let ((signaller
+		 (condition-signaller condition-type:illegal-stream-element
+				      '(type datum operator operand)
+				      standard-error-handler)))
+	    (named-lambda (error:illegal-stream-element stream operator operand)
+	      (signaller "stream" stream operator operand))))
+    unspecific))

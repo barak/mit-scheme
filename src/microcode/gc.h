@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,9 +31,10 @@ USA.
 
 #include "object.h"
 
+/* Must match %ENCODE-GC-TYPE in runtime/global.scm.  */
 typedef enum
 {
-  GC_COMPILED = -4,
+  GC_COMPILED_ENTRY = -4,
   GC_VECTOR,
   GC_SPECIAL,			/* Internal GC types */
   GC_UNDEFINED,
@@ -41,7 +42,8 @@ typedef enum
   GC_CELL,
   GC_PAIR,
   GC_TRIPLE,
-  GC_QUADRUPLE
+  GC_QUADRUPLE,
+  GC_COMPILED_RETURN,
 } gc_type_t;
 
 #define GC_TYPE_TO_INT(type) ((int) (type))
@@ -56,12 +58,14 @@ typedef enum
 #define GC_TYPE_UNDEFINED(object)	((GC_TYPE (object)) == GC_UNDEFINED)
 #define GC_TYPE_SPECIAL(object)		((GC_TYPE (object)) == GC_SPECIAL)
 #define GC_TYPE_VECTOR(object)		((GC_TYPE (object)) == GC_VECTOR)
-#define GC_TYPE_COMPILED(object)	((GC_TYPE (object)) == GC_COMPILED)
+#define GC_TYPE_COMPILED_ENTRY(object)	((GC_TYPE (object)) == GC_COMPILED_ENTRY)
+#define GC_TYPE_COMPILED_RETURN(object)	((GC_TYPE (object)) == GC_COMPILED_RETURN)
 
 typedef enum
 {
   GC_POINTER_NORMAL,
-  GC_POINTER_COMPILED,
+  GC_POINTER_COMPILED_ENTRY,
+  GC_POINTER_COMPILED_RETURN,
   GC_POINTER_NOT
 } gc_ptr_type_t;
 

@@ -90,7 +90,6 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-noinst_PROGRAMS = blowfish-const$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -139,9 +138,11 @@ am__uninstall_files_from_dir = { \
 am__installdirs = "$(DESTDIR)$(scmlibdir)" "$(DESTDIR)$(infodir)" \
 	"$(DESTDIR)$(scmlibdir)" "$(DESTDIR)$(scmlib_subdir)"
 LTLIBRARIES = $(scmlib_LTLIBRARIES)
-blowfish_shim_la_DEPENDENCIES = blowfish-adapter.lo
-blowfish_shim_la_SOURCES = blowfish-shim.c
-blowfish_shim_la_OBJECTS = blowfish-shim.lo
+blowfish_shim_la_LIBADD =
+am_blowfish_shim_la_OBJECTS = blowfish-adapter.lo
+nodist_blowfish_shim_la_OBJECTS = blowfish-shim.lo
+blowfish_shim_la_OBJECTS = $(am_blowfish_shim_la_OBJECTS) \
+	$(nodist_blowfish_shim_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -150,8 +151,10 @@ blowfish_shim_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(AM_CFLAGS) $(CFLAGS) $(blowfish_shim_la_LDFLAGS) $(LDFLAGS) \
 	-o $@
-am_blowfish_const_OBJECTS = blowfish-const.$(OBJEXT)
-blowfish_const_OBJECTS = $(am_blowfish_const_OBJECTS)
+am_blowfish_const_OBJECTS =
+nodist_blowfish_const_OBJECTS = blowfish-const.$(OBJEXT)
+blowfish_const_OBJECTS = $(am_blowfish_const_OBJECTS) \
+	$(nodist_blowfish_const_OBJECTS)
 blowfish_const_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -168,8 +171,8 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/blowfish-const.Po \
-	./$(DEPDIR)/blowfish-shim.Plo
+am__depfiles_remade = ./$(DEPDIR)/blowfish-adapter.Plo \
+	./$(DEPDIR)/blowfish-const.Po ./$(DEPDIR)/blowfish-shim.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -189,8 +192,10 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = blowfish-shim.c $(blowfish_const_SOURCES)
-DIST_SOURCES = blowfish-shim.c $(blowfish_const_SOURCES)
+SOURCES = $(blowfish_shim_la_SOURCES) \
+	$(nodist_blowfish_shim_la_SOURCES) $(blowfish_const_SOURCES) \
+	$(nodist_blowfish_const_SOURCES)
+DIST_SOURCES = $(blowfish_shim_la_SOURCES) $(blowfish_const_SOURCES)
 AM_V_DVIPS = $(am__v_DVIPS_@AM_V@)
 am__v_DVIPS_ = $(am__v_DVIPS_@AM_DEFAULT_V@)
 am__v_DVIPS_0 = @echo "  DVIPS   " $@;
@@ -501,12 +506,12 @@ MIT_CFLAGS = @MIT_CFLAGS@
 MIT_SCHEME_BCIs = @MIT_SCHEME_BCIs@
 MIT_SCHEME_CLEAN = @MIT_SCHEME_CLEAN@
 MIT_SCHEME_COMs = @MIT_SCHEME_COMs@
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 MIT_SCHEME_INCLUDEDIR = @MIT_SCHEME_INCLUDEDIR@
 MIT_SCHEME_LIBDIR = @MIT_SCHEME_LIBDIR@
 MIT_SCHEME_PKD = @MIT_SCHEME_PKD@
 MIT_SCHEME_PROJECT = @MIT_SCHEME_PROJECT@
 MIT_SCHEME_SCMs = @MIT_SCHEME_SCMs@
+MIT_SCHEME_TOOLCHAIN_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
@@ -582,9 +587,10 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = autogen.sh $(all_sources) $(cdecls) compile.sh \
-	compile.scm blowfish.pkg blowfish-test.scm blowfish-check.scm \
+EXTRA_DIST = autogen.sh $(sources) $(cdecls) compile.sh compile.scm \
+	blowfish.pkg blowfish-test.scm blowfish-check.scm \
 	blowfish-check.sh make.scm optiondb.scm tags-fix.sh
+MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)blowfish
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
@@ -598,16 +604,17 @@ info_TEXINFOS = mit-scheme-blowfish.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
-blowfish_shim_la_LIBADD = blowfish-adapter.lo
+blowfish_shim_la_SOURCES = blowfish-adapter.c blowfish-shim.h
+nodist_blowfish_shim_la_SOURCES = blowfish-shim.c
 blowfish_shim_la_LDFLAGS = -module -avoid-version -shared
-blowfish_const_SOURCES = blowfish-const.c blowfish-shim.h
+noinst_PROGRAMS = blowfish-const$(EXEEXT)
+blowfish_const_SOURCES = blowfish-shim.h
+nodist_blowfish_const_SOURCES = blowfish-const.c
+MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) blowfish-const$(EXEEXT)
 CLEANFILES = blowfish-const* blowfish-shim.c *.bin *.ext *.com *.bci \
 	*.moc *.fni *.crf *.fre *.pkd stamp-shim stamp-scheme \
 	@MIT_SCHEME_CLEAN@ test
 TESTS = blowfish-check.sh
-all_sources = $(sources) blowfish-adapter.c
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -719,6 +726,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/blowfish-adapter.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/blowfish-const.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/blowfish-shim.Plo@am__quote@ # am--include-marker
 
@@ -1382,6 +1390,7 @@ install-strip:
 	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
 	fi
 mostlyclean-generic:
+	-test -z "$(MOSTLYCLEANFILES)" || rm -f $(MOSTLYCLEANFILES)
 	-test -z "$(TEST_LOGS)" || rm -f $(TEST_LOGS)
 	-test -z "$(TEST_LOGS:.log=.trs)" || rm -f $(TEST_LOGS:.log=.trs)
 	-test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
@@ -1403,7 +1412,8 @@ clean-am: clean-aminfo clean-generic clean-libtool \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-		-rm -f ./$(DEPDIR)/blowfish-const.Po
+		-rm -f ./$(DEPDIR)/blowfish-adapter.Plo
+	-rm -f ./$(DEPDIR)/blowfish-const.Po
 	-rm -f ./$(DEPDIR)/blowfish-shim.Plo
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -1543,7 +1553,8 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-		-rm -f ./$(DEPDIR)/blowfish-const.Po
+		-rm -f ./$(DEPDIR)/blowfish-adapter.Plo
+	-rm -f ./$(DEPDIR)/blowfish-const.Po
 	-rm -f ./$(DEPDIR)/blowfish-shim.Plo
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-aminfo \
@@ -1552,7 +1563,8 @@ maintainer-clean-am: distclean-am maintainer-clean-aminfo \
 mostlyclean: mostlyclean-am
 
 mostlyclean-am: mostlyclean-aminfo mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool mostlyclean-vti
+	mostlyclean-generic mostlyclean-libtool mostlyclean-local \
+	mostlyclean-vti
 
 pdf: pdf-am
 
@@ -1589,10 +1601,10 @@ uninstall-am: uninstall-dvi-am uninstall-html-am uninstall-info-am \
 	maintainer-clean-aminfo maintainer-clean-generic \
 	maintainer-clean-vti mostlyclean mostlyclean-aminfo \
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	mostlyclean-vti pdf pdf-am ps ps-am recheck tags tags-am \
-	uninstall uninstall-am uninstall-dvi-am uninstall-hook \
-	uninstall-html-am uninstall-info-am uninstall-pdf-am \
-	uninstall-ps-am uninstall-scmlibDATA \
+	mostlyclean-local mostlyclean-vti pdf pdf-am ps ps-am recheck \
+	tags tags-am uninstall uninstall-am uninstall-dvi-am \
+	uninstall-hook uninstall-html-am uninstall-info-am \
+	uninstall-pdf-am uninstall-ps-am uninstall-scmlibDATA \
 	uninstall-scmlibLTLIBRARIES uninstall-scmlib_subDATA
 
 .PRECIOUS: Makefile
@@ -1602,24 +1614,27 @@ blowfish-shim.c: stamp-shim
 blowfish-const.c: stamp-shim
 blowfish-types.bin: stamp-shim
 stamp-shim: blowfish-shim.h $(cdecls)
-	touch stamp-shim
 	echo '(generate-shim "blowfish" "#include \"blowfish-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode \
-	|| rm stamp-shim
+	    | $(MIT_SCHEME_EXE) --batch-mode
+	echo "done" > $@
 
 blowfish-const.bin: blowfish-const.scm
 	echo '(sf "blowfish-const")' | $(MIT_SCHEME_EXE) --batch-mode
 
-blowfish-const.scm: blowfish-const
+blowfish-const.scm: blowfish-const$(EXEEXT)
 	./blowfish-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) blowfish.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+stamp-scheme: stamp-shim $(sources) blowfish-const.bin blowfish.pkg
+	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
+	echo "done" > $@
 
-tags: tags-am
-	./tags-fix.sh blowfish
+mostlyclean-local:
+	-rm -rf .libs
+
+tags: tags-am $(sources) $(cdecls)
+	$(ETAGS) -a $(sources) -r '/^([^iI].*/' $(cdecls)
+	./tags-fix.sh
 
 install-data-hook:
 	( echo '(add-plugin "blowfish" "@MIT_SCHEME_PROJECT@"'; \

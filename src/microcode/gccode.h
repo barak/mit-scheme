@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -100,6 +100,7 @@ typedef struct
   gc_tuple_handler_t * tuple_handler;
   gc_vector_handler_t * vector_handler;
   gc_object_handler_t * cc_entry_handler;
+  gc_object_handler_t * cc_return_handler;
   gc_precheck_from_t * precheck_from;
   gc_transport_words_t * transport_words;
   gc_ignore_object_p_t * ignore_object_p;
@@ -113,6 +114,7 @@ typedef struct
 #define GCT_TUPLE(table) ((table)->tuple_handler)
 #define GCT_VECTOR(table) ((table)->vector_handler)
 #define GCT_CC_ENTRY(table) ((table)->cc_entry_handler)
+#define GCT_CC_RETURN(table) ((table)->cc_return_handler)
 #define GCT_PRECHECK_FROM(table) ((table)->precheck_from)
 #define GCT_TRANSPORT_WORDS(table) ((table)->transport_words)
 #define GCT_IGNORE_OBJECT_P(table) ((table)->ignore_object_p)
@@ -129,6 +131,9 @@ typedef struct
 
 #define GC_HANDLE_CC_ENTRY(object)					\
   ((* (GCT_CC_ENTRY (current_gc_table))) (object))
+
+#define GC_HANDLE_CC_RETURN(object)					\
+  ((* (GCT_CC_RETURN (current_gc_table))) (object))
 
 #define GC_PRECHECK_FROM(from)						\
   ((* (GCT_PRECHECK_FROM (current_gc_table))) (from))
@@ -158,6 +163,7 @@ extern gc_handler_t gc_handle_quadruple;
 extern gc_handler_t gc_handle_weak_pair;
 extern gc_handler_t gc_handle_ephemeron;
 extern gc_handler_t gc_handle_cc_entry;
+extern gc_handler_t gc_handle_cc_return;
 extern gc_handler_t gc_handle_aligned_vector;
 extern gc_handler_t gc_handle_unaligned_vector;
 extern gc_handler_t gc_handle_broken_heart;
@@ -170,6 +176,7 @@ extern gc_handler_t gc_handle_undefined;
 extern gc_tuple_handler_t gc_tuple;
 extern gc_vector_handler_t gc_vector;
 extern gc_object_handler_t gc_cc_entry;
+extern gc_object_handler_t gc_cc_return;
 extern gc_precheck_from_t gc_precheck_from;
 extern gc_precheck_from_t gc_precheck_from_no_transport;
 extern gc_transport_words_t gc_transport_words;

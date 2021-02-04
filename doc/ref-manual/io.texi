@@ -79,7 +79,7 @@ returned.  If @var{procedure} does not return, then the port must not
 be closed automatically unless it is possible to prove that the port
 will never again be used for a read or write operation.
 
-@emph{Rationale}: Because Scheme’s escape procedures have unlimited
+@emph{Rationale}: Because Scheme's escape procedures have unlimited
 extent, it is possible to escape from the current continuation but
 later to resume it.  If implementations were permitted to close the
 port on any escape from the current continuation, then it would be
@@ -583,7 +583,7 @@ If an end of file is encountered in the input before any characters
 are found that can begin an object, then an end-of-file object is
 returned.  The port remains open, and further attempts to read will
 also return an end-of-file object.  If an end of file is encountered
-after the beginning of an object’s external representation, but the
+after the beginning of an object's external representation, but the
 external representation is incomplete and therefore not parsable, an
 error that satisfies @code{read-error?} is signaled.
 
@@ -1095,12 +1095,10 @@ limit; the default is @code{#f}.
 @example
 @group
 (parameterize ((param:printer-list-breadth-limit 4))
-  (lambda ()
-    (write-to-string '(a b c d))))
+  (write-to-string '(a b c d)))
                                 @result{} "(a b c d)"
 (parameterize ((param:printer-list-breadth-limit 4))
-  (lambda ()
-    (write-to-string '(a b c d e))))
+  (write-to-string '(a b c d e)))
                                 @result{} "(a b c d ...)"
 @end group
 @end example
@@ -1117,12 +1115,10 @@ is @code{#f}.
 @example
 @group
 (parameterize ((param:printer-list-depth-limit 4))
-  (lambda ()
-    (write-to-string '((((a))) b c d))))
+  (write-to-string '((((a))) b c d)))
                                 @result{} "((((a))) b c d)"
 (parameterize ((param:printer-list-depth-limit 4))
-  (lambda ()
-    (write-to-string '(((((a)))) b c d))))
+  (write-to-string '(((((a)))) b c d)))
                                 @result{} "((((...))) b c d)"
 @end group
 @end example
@@ -1139,12 +1135,10 @@ is @code{#f}.
 @example
 @group
 (parameterize ((param:printer-string-length-limit 4))
-  (lambda ()
-    (write-to-string "abcd")))
+  (write-to-string "abcd"))
                                 @result{} "\"abcd\""
 (parameterize ((param:printer-string-length-limit 4))
-  (lambda ()
-    (write-to-string "abcde")))
+  (write-to-string "abcde"))
                                 @result{} "\"abcd...\""
 @end group
 @end example
@@ -1522,7 +1516,7 @@ above.
 This procedure is @strong{deprecated}; instead use
 @example
 @group
-(define-print-method (record-constructor @var{record-type})
+(define-print-method (record-predicate @var{record-type})
   @var{unparser-method})
 @end group
 @end example

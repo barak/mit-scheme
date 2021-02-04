@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -58,8 +58,7 @@ UX_prim_check_fd_errno (enum syscall_names name)
 	  REQUEST_GC (0);
 	  deliver_pending_interrupts ();
 	}
-      /* Fall through */
-
+      FALLTHROUGH ();
     default:
       error_system_call (errno, name);
     }
@@ -760,13 +759,12 @@ static void *
 mmap_heap_malloc_try (unsigned long address, unsigned long request, int flags)
 {
   assert ((address == 0) || ((flags & (MAP_TRYFIXED | MAP_FIXED)) != 0));
-  void * addr
-    = (mmap (((void *) address),
-	     request,
-	     (PROT_EXEC | PROT_READ | PROT_WRITE),
-	     (MAP_PRIVATE | MAP_ANONYMOUS | flags),
-	     (-1),
-	     0));
+  int prot = (PROT_READ | PROT_WRITE);
+#ifdef CC_IS_NATIVE
+  prot |= PROT_EXEC;
+#endif
+  flags |= (MAP_PRIVATE | MAP_ANONYMOUS);
+  void * addr = (mmap (((void *) address), request, prot, flags, (-1), 0));
   return ((addr == MAP_FAILED) ? 0 : addr);
 }
 
@@ -787,8 +785,10 @@ mmap_heap_malloc_search (unsigned long request,
   addr = (mmap_heap_malloc_try (min_result, request, MAP_FIXED));
 #else
   addr = (mmap_heap_malloc_search_procfs (request, min_result, max_result));
+#if (MAP_TRYFIXED != 0)
   if (addr == 0)
     addr = (mmap_heap_malloc_try (min_result, request, MAP_TRYFIXED));
+#endif
   if (addr == 0)
     addr = (mmap_heap_malloc_try (0, request, 0));
 #endif

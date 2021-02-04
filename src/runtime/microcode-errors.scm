@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime microcode-errors)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime error-handler))
 
 (define condition-type:anomalous-microcode-error)
 (define condition-type:compiled-code-error)
@@ -360,7 +362,8 @@ USA.
 	(else
 	 (values false false))))
 
-(define (initialize-package!)
+(add-boot-init!
+ (lambda ()
 
 (set! return-code:internal-apply
   (microcode-return/name->code 'internal-apply))
@@ -994,5 +997,5 @@ USA.
 			k #f '())
 		       (signal-hardware-trap k name code)))))))))
 
-;;; end INITIALIZE-PACKAGE!.
-)
+;;; end boot init
+))

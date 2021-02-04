@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -81,28 +81,24 @@ USA.
 (define (match-ordered-subvector vector start end key item-key order match)
   (let ((perform-search
 	 (lambda (index)
-	   (letrec
-	       ((scan-up
-		 (lambda (upper gcm)
-		   (if (fix:= upper end)
-		       (values upper gcm)
-		       (let ((m (mc upper)))
-			 (if m
-			     (scan-up (fix:+ upper 1) (min gcm m))
-			     (values upper gcm))))))
-		(scan-down
-		 (lambda (lower gcm)
-		   (if (fix:= lower start)
-		       (values lower gcm)
-		       (let* ((index (fix:- lower 1))
-			      (m (mc index)))
-			 (if m
-			     (scan-down index (min gcm m))
-			     (values lower gcm))))))
-		(mc
-		 (let ((close (item-key (vector-ref vector index))))
-		   (lambda (index)
-		     (match close (item-key (vector-ref vector index)))))))
+	   (let ((close (item-key (vector-ref vector index))))
+	     (define (scan-up upper gcm)
+	       (if (fix:= upper end)
+		   (values upper gcm)
+		   (let ((m (mc upper)))
+		     (if m
+			 (scan-up (fix:+ upper 1) (min gcm m))
+			 (values upper gcm)))))
+	     (define (scan-down lower gcm)
+	       (if (fix:= lower start)
+		   (values lower gcm)
+		   (let* ((index (fix:- lower 1))
+			  (m (mc index)))
+		     (if m
+			 (scan-down index (min gcm m))
+			 (values lower gcm)))))
+	     (define (mc index)
+	       (match close (item-key (vector-ref vector index))))
 	     (call-with-values (lambda () (scan-up (fix:+ index 1) (mc index)))
 	       (lambda (upper gcm)
 		 (call-with-values (lambda () (scan-down index gcm))

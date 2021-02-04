@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -76,29 +76,44 @@ NAME (TYPE x)								\
 DEFINE_BIT_COUNT (uintmax_bit_count, uintmax_t)
 DEFINE_BIT_COUNT (ulong_bit_count, unsigned long)
 
-#define DEFINE_LENGTH_IN_BITS(NAME, TYPE, BIT_COUNT)			\
-static inline unsigned int						\
-NAME (TYPE x)								\
-{									\
+#define LENGTH_IN_BITS_32(TYPE_SIZE)					\
   /* Round up to a power of two minus one; i.e., set all bits in x	\
      below and including its most significant set bit.  */		\
-  int i, limit = (CHAR_BIT * (sizeof (TYPE)));				\
-  /* Unrolling this loop substantially improves performance.  The `for'	\
-     at the end is for completeness; a good compiler should realize	\
-     that it is dead code on just about any system.  */			\
+  int limit = (CHAR_BIT * (TYPE_SIZE));					\
+  /* Unrolling this loop substantially improves performance.  */	\
   if (1 < limit) x |= (x >> 1);						\
   if (2 < limit) x |= (x >> 2);						\
   if (4 < limit) x |= (x >> 4);						\
   if (8 < limit) x |= (x >> 8);						\
-  if (0x10 < limit) x |= (x >> 0x10);					\
+  if (0x10 < limit) x |= (x >> 0x10);
+
+#define LENGTH_IN_BITS_64						\
   if (0x20 < limit) x |= (x >> 0x20);					\
+  /* This `for' loop is for completeness; a good compiler should	\
+     realize that it is dead code on just about any system.  */		\
+  int i;								\
   for (i = 0x40; i < limit; i <<= 1)					\
-    x |= (x >> i);							\
-  return (BIT_COUNT (x));						\
+    x |= (x >> i);
+
+static inline unsigned int
+ulong_length_in_bits (unsigned long x)
+{
+  LENGTH_IN_BITS_32(SIZEOF_UNSIGNED_LONG)
+#if (SIZEOF_UNSIGNED_LONG >= 8)
+  LENGTH_IN_BITS_64
+#endif
+  return (ulong_bit_count (x));
 }
 
-DEFINE_LENGTH_IN_BITS (uintmax_length_in_bits, uintmax_t, uintmax_bit_count)
-DEFINE_LENGTH_IN_BITS (ulong_length_in_bits, unsigned long, ulong_bit_count)
+static inline unsigned int
+uintmax_length_in_bits (uintmax_t x)
+{
+  LENGTH_IN_BITS_32(SIZEOF_UINTMAX_T)
+#if (SIZEOF_UINTMAX_T >= 8)
+  LENGTH_IN_BITS_64
+#endif
+  return (uintmax_bit_count (x));
+}
 
 #define DEFINE_FIRST_SET_BIT(NAME, TYPE, LENGTH_IN_BITS)	\
 static inline int						\

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime rfc2822-headers)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime character-set) '(runtime error-handler))
 
 (define (make-rfc2822-header name value)
   (guarantee-header-name name 'make-rfc2822-header)
@@ -105,24 +107,21 @@ USA.
 (define (write-name name port)
   (let* ((name (symbol->string name))
          (end (string-length name)))
+    (define (start-word i)
+      (if (fix:< i end)
+	  (begin
+	    (write-char (char-upcase (string-ref name i)) port)
+	    (finish-word (fix:+ i 1)))))
+    (define (finish-word i)
+      (if (fix:< i end)
+	  (let ((char (string-ref name i))
+		(i (fix:+ i 1)))
+	    (write-char char port)
+	    (if (char=? char #\-)
+		(start-word i)
+		(finish-word i)))))
     (if (char-alphabetic? (string-ref name 0))
-	(letrec
-	    ((start-word
-	      (lambda (i)
-		(if (fix:< i end)
-		    (begin
-		      (write-char (char-upcase (string-ref name i)) port)
-		      (finish-word (fix:+ i 1))))))
-	     (finish-word
-	      (lambda (i)
-		(if (fix:< i end)
-		    (let ((char (string-ref name i))
-			  (i (fix:+ i 1)))
-		      (write-char char port)
-		      (if (char=? char #\-)
-			  (start-word i)
-			  (finish-word i)))))))
-	  (start-word 0))
+	(start-word 0)
         (write-string name port))))
 
 ;;;;; Input
@@ -191,26 +190,32 @@ USA.
 		       byte
 		       (builder)))
 		  ((fix:= 13 byte)
-		   (if (fix:= 10 (peek-u8 port))
-		       (read-u8 port)
-		       (parse-error port "Invalid line ending:"
-				    'read-ascii-line))
+		   (let ((byte (peek-u8 port)))
+		     (cond ((eof-object? byte)
+			    (parse-error port "Truncated line ending:"
+					 'read-ascii-line))
+			   ((fix:= 10 byte)
+			    (read-u8 port))
+			   (else
+			    (parse-error port "Invalid line ending:"
+					 'read-ascii-line))))
 		   (builder))
 		  ((fix:= 10 byte)
-		   (parse-error port "Invalid line ending:" 'read-ascii-line)
-		   (builder))
+		   (parse-error port "Invalid line ending:" 'read-ascii-line))
 		  ((and (fix:<= 32 byte) (fix:<= byte 126))
 		   (builder (integer->char byte))
 		   (loop))
 		  (else
 		   (parse-error port "Illegal character:" 'read-ascii-line)
-		   (loop)))))))))
+		   ))))))))
 
 (define (peek-ascii-char port)
   (let ((byte (peek-u8 port)))
-    (if (eof-object? byte)
-	byte
-	(integer->char byte))))
+    (cond ((eof-object? byte)
+	   byte)
+	  ((and (fix:<= 32 byte) (fix:<= byte 126))
+	   (integer->char byte))
+	  (else (parse-error port "Illegal character:" 'peek-ascii-char)))))
 
 (define (skip-wsp-left string start end)
   (let loop ((i start))
@@ -270,39 +275,34 @@ USA.
 
 ;;;; Initialization
 
-(define char-set:rfc2822-name)
-(define char-set:rfc2822-text)
-(define char-set:rfc2822-qtext)
+(define-deferred char-set:rfc2822-name
+  (char-set-difference char-set:ascii
+		       (char-set-union char-set:ctls
+				       (char-set #\space #\:)
+				       char-set:upper-case)))
 
-(define condition-type:rfc2822-parse-error)
-(define parse-error)
+(define-deferred char-set:rfc2822-text
+  (char-set-difference char-set:ascii
+		       (char-set #\null #\linefeed #\return)))
 
-(define (initialize-package!)
-  (set! char-set:rfc2822-name
-	(char-set-difference char-set:ascii
-			     (char-set-union char-set:ctls
-					     (char-set #\space #\:)
-					     char-set:upper-case)))
-  (set! char-set:rfc2822-text
-	(char-set-difference char-set:ascii
-			     (char-set #\null #\linefeed #\return)))
-  (set! char-set:rfc2822-qtext
-	(char-set-difference char-set:rfc2822-text
-			     (char-set #\tab #\space #\delete #\\ #\")))
-  (set! condition-type:rfc2822-parse-error
-	(make-condition-type 'rfc2822-parse-error
-	    condition-type:port-error
-	    '(message irritants)
-	  (lambda (condition port)
-	    (write-string "Error while parsing RFC 2822 headers: " port)
-	    (format-error-message (access-condition condition 'message)
-				  (access-condition condition 'irritants)
-				  port))))
-  (set! parse-error
-	(let ((signal
-	       (condition-signaller condition-type:rfc2822-parse-error
-				    '(port message irritants)
-				    standard-error-handler)))
-	  (lambda (port message . irritants)
-	    (signal port message irritants))))
-  unspecific)
+(define-deferred char-set:rfc2822-qtext
+  (char-set-difference char-set:rfc2822-text
+		       (char-set #\tab #\space #\delete #\\ #\")))
+
+(define-deferred condition-type:rfc2822-parse-error
+  (make-condition-type 'rfc2822-parse-error
+      condition-type:port-error
+      '(message irritants)
+    (lambda (condition port)
+      (write-string "Error while parsing RFC 2822 headers: " port)
+      (format-error-message (access-condition condition 'message)
+			    (access-condition condition 'irritants)
+			    port))))
+
+(define-deferred parse-error
+  (let ((signal
+	 (condition-signaller condition-type:rfc2822-parse-error
+			      '(port message irritants)
+			      standard-error-handler)))
+    (lambda (port message . irritants)
+      (signal port message irritants))))

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -114,6 +114,7 @@ USA.
   (set! *external-labels* (cons label *external-labels*))
   (LAP (WORD U ,code)
        (BLOCK-OFFSET ,label)
+       (QUAD U 0)
        (LABEL ,label)))
 
 (define-integrable (make-code-word min max)
@@ -221,7 +222,7 @@ USA.
   (LAP (MOV Q ,target (@PCR ,label-expr))))
 
 (define (load-pc-relative-address target label-expr)
-  (LAP (LEA Q ,target (@PCR ,label-expr))))  
+  (LAP (LEA Q ,target (@PCR ,label-expr))))
 
 (define (compare/register*register reg1 reg2)
   (cond ((register-alias reg1 'GENERAL)
@@ -290,7 +291,9 @@ USA.
 
 (define (load-signed-immediate target value)
   (cond ((zero? value)
-	 (LAP (XOR Q ,target ,target)))
+	 ;; This zeros the upper half of the target, and is a shorter
+	 ;; instruction than (XOR Q ...).
+	 (LAP (XOR L ,target ,target)))
 	((fits-in-signed-quad? value)
 	 (LAP (MOV Q ,target (& ,value))))
 	(else
@@ -298,7 +301,9 @@ USA.
 
 (define (load-unsigned-immediate target value)
   (cond ((zero? value)
-	 (LAP (XOR Q ,target ,target)))
+	 ;; This zeros the upper half of the target, and is a shorter
+	 ;; instruction than (XOR Q ...).
+	 (LAP (XOR L ,target ,target)))
 	((fits-in-unsigned-quad? value)
 	 (LAP (MOV Q ,target (&U ,value))))
 	(else
@@ -678,6 +683,17 @@ USA.
   (offset-reference regnum:regs-pointer
 		    register-block/stack-guard-offset))
 
+(define reg:int-mask
+  (offset-reference regnum:regs-pointer
+		    register-block/int-mask-offset))
+
+(define reg:int-code
+  (offset-reference regnum:regs-pointer
+		    register-block/int-code-offset))
+
+(define reg:reflect-to-interface
+  (offset-reference regnum:regs-pointer
+		    register-block/reflect-to-interface-offset))
 
 (define-syntax define-codes
   (sc-macro-transformer
@@ -707,16 +723,48 @@ USA.
 (define-integrable (invoke-hook entry)
   (LAP (JMP ,entry)))
 
-(define-integrable (invoke-hook/call entry)
+;; Invoke a hook that will pop an untagged return address off the stack
+;; and jump to it with RET, just like a C subroutine.  To be used for
+;; super-cheap assembly hooks that never fail but are a little too
+;; large to copy in every caller.
+
+(define-integrable (invoke-hook/subroutine entry)
   (LAP (CALL ,entry)))
 
+;; Invoke a hook that expects a compiled return address on the stack,
+;; may examine it, and will eventually pop it and return to it with
+;; RET.  It is worthwhile to use paired CALL/RET here because in the
+;; fast path, non-error case, the hook will just return to Scheme; only
+;; in error or complicated cases will it return to C.  To be used for
+;; compiler utilities that are usually cheap but may have error cases
+;; and may call back into C.
+
+(define-integrable (invoke-hook/call entry label)
+  (LAP (CALL ,entry)
+       (JMP (@PCR ,label))))
+
+;; Invoke a hook that expects a compiled entry address in rbx (first
+;; utility argument) and will later jump to it with JMP.  It is not
+;; worthwhile to use paired CALL/RET here because the microcode will
+;; RET back into C code on the C stack to handle it, which wrecks the
+;; return address branch target predictor anyway.  To be used for,
+;; e.g., interrupts, which are assumed to be always expensive.
+
+(define-integrable (invoke-hook/reentry entry label)
+  (LAP (LEA Q (R ,rbx) (@PCR ,label))
+       ,@(invoke-hook entry)))
+
 (define-integrable (invoke-interface code)
-  (LAP (MOV B (R ,rax) (& ,code))
+  (LAP (MOV B (R ,r9) (& ,code))
        ,@(invoke-hook entry:compiler-scheme-to-interface)))
 
-(define-integrable (invoke-interface/call code)
-  (LAP (MOV B (R ,rax) (& ,code))
-       ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
+(define-integrable (invoke-interface/call code label)
+  (LAP (MOV B (R ,r9) (& ,code))
+       ,@(invoke-hook/call entry:compiler-scheme-to-interface/call label)))
+
+(define-integrable (invoke-interface/reentry code label)
+  (LAP (MOV B (R ,r9) (& ,code))
+       ,@(invoke-hook/reentry entry:compiler-scheme-to-interface label)))
 
 (define-syntax define-entries
   (sc-macro-transformer
@@ -772,7 +820,17 @@ USA.
   shortcircuit-apply-size-7
   shortcircuit-apply-size-8
   interrupt-continuation-2
-  fixnum-shift)
+  fixnum-shift
+  apply-setup
+  apply-setup-size-1
+  apply-setup-size-2
+  apply-setup-size-3
+  apply-setup-size-4
+  apply-setup-size-5
+  apply-setup-size-6
+  apply-setup-size-7
+  apply-setup-size-8
+  set-interrupt-enables!)
 
 ;; Operation tables
 

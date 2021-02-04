@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -64,6 +64,12 @@ union machine_word_u
 typedef union machine_word_u machine_word;
 typedef unsigned long entry_count_t;
 
+#ifdef __GNUC__
+#define LIARC_UNINITIALIZED(name) = name
+#else
+#define LIARC_UNINITIALIZED(name)
+#endif
+
 #define ADDRESS_UNITS_PER_OBJECT SIZEOF_SCHEME_OBJECT
 #define ADDRESS_UNITS_PER_FLOAT (sizeof (double))
 
@@ -79,6 +85,9 @@ typedef unsigned long entry_count_t;
 
 #define C_STRING_TO_SCHEME_STRING(len, str)				\
   (MEMORY_TO_STRING ((len), ((const uint8_t *) (str))))
+
+#define C_STRING_TO_SCHEME_BYTEVECTOR(len, str)				\
+  (MEMORY_TO_BYTEVECTOR ((len), ((const uint8_t *) (str))))
 
 #define C_SYM_INTERN(len, str)						\
   (MEMORY_TO_SYMBOL ((len), ((const uint8_t *) (str))))
@@ -440,6 +449,7 @@ extern int multiply_with_overflow (long, long, long *);
 #define MAKE_PRIMITIVE(str, arity)					\
   (make_primitive (((const char *) (str)), ((int) (arity))))
 
+#define MEMORY_TO_BYTEVECTOR memory_to_bytevector
 #define MEMORY_TO_STRING memory_to_string
 #define MEMORY_TO_SYMBOL memory_to_symbol
 #define MAKE_VECTOR make_vector

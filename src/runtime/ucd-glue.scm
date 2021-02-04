@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,20 +28,21 @@ USA.
 ;;; package: (runtime ucd-table-glue)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime ucd-tables))
 
-(define-deferred char-set:numeric
-  (compute-char-set
-   (lambda (sv)
-     (eq? 'decimal (ucd-nt-value (integer->char sv))))))
-
-(define-deferred char-numeric?
-  (char-set-predicate char-set:numeric))
-
 (define-deferred char-set:alphanumeric
   (char-set-union char-set:alphabetic char-set:numeric))
 
 (define-deferred char-alphanumeric?
   (char-set-predicate char-set:alphanumeric))
+
+(define-deferred char-set:control
+  (char-set-union char-set:gc=other:control
+		  char-set:gc=other:format
+		  char-set:gc=other:surrogate
+		  char-set:gc=other:private-use
+		  char-set:gc=other:not-assigned))
 
 (define-deferred char-set:not-alphabetic
   (char-set-invert char-set:alphabetic))
@@ -61,15 +62,51 @@ USA.
 (define-deferred char-set:not-whitespace
   (char-set-invert char-set:whitespace))
 
+(define-deferred char-set:punctuation
+  (char-set-union char-set:gc=punctuation:connector
+		  char-set:gc=punctuation:dash
+		  char-set:gc=punctuation:open
+		  char-set:gc=punctuation:close
+		  char-set:gc=punctuation:initial-quote
+		  char-set:gc=punctuation:final-quote
+		  char-set:gc=punctuation:other))
+
+(define-deferred char-set:symbol
+  (char-set-union char-set:gc=symbol:math
+		  char-set:gc=symbol:currency
+		  char-set:gc=symbol:modifier
+		  char-set:gc=symbol:other))
+
 (define-deferred char-set:unicode
-  (compute-char-set
-   (lambda (cp)
-     (case (code-point-general-category cp)
-       ((other:surrogate other:not-assigned) #f)
-       (else #t)))))
+  (char-set-difference (char-set-invert (char-set))
+		       char-set:gc=other:surrogate
+		       char-set:gc=other:not-assigned))
 
 (define-deferred unicode-char?
   (char-set-predicate char-set:unicode))
+
+(define-deferred char-set:graphic
+  (char-set-union char-set:alphanumeric
+		  char-set:punctuation
+		  char-set:symbol))
+(define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
+(define-deferred char-graphic? (char-set-predicate char-set:graphic))
+
+(define-deferred char-set:newline (char-set #\newline #\return))
+(define-deferred char-set:no-newline
+  (char-set-difference char-set:unicode char-set:newline))
+(define-deferred char-newline? (char-set-predicate char-set:newline))
+
+(define-deferred char-set:printing
+  (char-set-union char-set:graphic
+		  char-set:whitespace))
+(define-deferred char-set:not-printing (char-set-invert char-set:printing))
+(define-deferred char-printing? (char-set-predicate char-set:printing))
+
+(define-deferred char-set:standard
+  (char-set-union char-set:graphic (char-set #\newline)))
+(define-deferred char-set:not-standard (char-set-invert char-set:standard))
+(define-deferred char-standard? (char-set-predicate char-set:standard))
 
 ;;;; Scheme language:
 
@@ -104,45 +141,65 @@ USA.
        (else #f)))))
 
 (define-deferred char-set:symbol-constituent
-  (compute-char-set symbol-constituent?))
+  (char-set-difference
+   (char-set-union char-set:gc=letter:lowercase
+		   char-set:gc=letter:modifier
+		   char-set:gc=letter:other
+		   char-set:gc=letter:titlecase
+		   char-set:gc=letter:uppercase
+		   char-set:gc=mark:enclosing
+		   char-set:gc=mark:nonspacing
+		   char-set:gc=mark:spacing-combining
+		   char-set:gc=number:decimal-digit
+		   char-set:gc=number:letter
+		   char-set:gc=number:other
+		   char-set:gc=other:private-use
+		   char-set:gc=punctuation:connector
+		   char-set:gc=punctuation:dash
+		   char-set:gc=punctuation:other
+		   char-set:gc=symbol:currency
+		   char-set:gc=symbol:math
+		   char-set:gc=symbol:modifier
+		   char-set:gc=symbol:other
+		   (char-set #\x200c #\x200d))
+   (char-set #\" #\# #\' #\, #\; #\\ #\` #\|)))
 
 (define-deferred char-set:folded-symbol-constituent
   (char-set-difference char-set:symbol-constituent
 		       char-set:changes-when-case-folded))
 
 (define-deferred char-set:symbol-initial
-  (compute-char-set (lambda (sv) (eq? #t (symbol-constituent? sv)))))
+  (char-set-difference
+   char-set:symbol-constituent
+   (char-set-union char-set:gc=mark:spacing-combining
+		   char-set:gc=mark:enclosing
+		   char-set:gc=number:decimal-digit)))
 
 (define-deferred char-set:folded-symbol-initial
   (char-set-difference char-set:symbol-initial
 		       char-set:changes-when-case-folded))
 
 (define-deferred char-set:normal-printing
-  (compute-char-set
-   (lambda (sv)
-     (case (code-point-general-category sv)
-       ((letter:uppercase
-	 letter:lowercase
-	 letter:titlecase
-	 letter:modifier
-	 letter:other
-	 mark:nonspacing
-	 mark:spacing-combining
-	 mark:enclosing
-	 number:decimal-digit
-	 number:letter
-	 number:other
-	 punctuation:connector
-	 punctuation:dash
-	 punctuation:open
-	 punctuation:close
-	 punctuation:initial-quote
-	 punctuation:final-quote
-	 punctuation:other
-	 separator:space
-	 symbol:math
-	 symbol:currency
-	 symbol:modifier
-	 symbol:other)
-	#t)
-       (else #f)))))
+  (char-set-union char-set:gc=letter:uppercase
+		  char-set:gc=letter:lowercase
+		  char-set:gc=letter:titlecase
+		  char-set:gc=letter:modifier
+		  char-set:gc=letter:other
+		  char-set:gc=mark:nonspacing
+		  char-set:gc=mark:spacing-combining
+		  char-set:gc=mark:enclosing
+		  char-set:gc=number:decimal-digit
+		  char-set:gc=number:letter
+		  char-set:gc=number:other
+		  char-set:gc=punctuation:connector
+		  char-set:gc=punctuation:dash
+		  char-set:gc=punctuation:open
+		  char-set:gc=punctuation:close
+		  char-set:gc=punctuation:initial-quote
+		  char-set:gc=punctuation:final-quote
+		  char-set:gc=punctuation:other
+		  char-set:gc=separator:space
+		  char-set:gc=symbol:math
+		  char-set:gc=symbol:currency
+		  char-set:gc=symbol:modifier
+		  char-set:gc=symbol:other))

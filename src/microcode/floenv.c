@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,8 +29,81 @@ USA.
 #include "scheme.h"
 #include "osscheme.h"
 #include "prims.h"
+#include "ctassert.h"
 
 #include "floenv.h"
+
+#ifdef NEED_FEEXCEPT_WORKAROUND
+
+# ifdef __APPLE__
+
+#include <xmmintrin.h>
+
+int fegetexcept(void)
+{
+  return ((~ ((_mm_getcsr ()) >> 7)) & FE_ALL_EXCEPT);
+}
+
+int feenableexcept(unsigned int excepts)
+{
+  unsigned int csr = (_mm_getcsr ());
+  unsigned int old_excepts = ((~ (csr >> 7)) & FE_ALL_EXCEPT);
+  _mm_setcsr (csr & (~ ((excepts & FE_ALL_EXCEPT) << 7)));
+  return (old_excepts);
+}
+
+int fedisableexcept(unsigned int excepts)
+{
+  unsigned int csr = (_mm_getcsr ());
+  unsigned int old_excepts = ((~ (csr >> 7)) & FE_ALL_EXCEPT);
+  _mm_setcsr (csr | ((excepts & FE_ALL_EXCEPT) << 7));
+  return (old_excepts);
+}
+
+# else
+
+// From http://www-personal.umich.edu/~williams/archive/computation/fe-handling-example.c
+// Had to be fixed: was returning disabled exceptions, not enabled ones.
+
+int fegetexcept(void)
+{
+  fenv_t fenv;
+  return ((fegetenv (&fenv)) ? -1 : ((~ fenv.__control) & FE_ALL_EXCEPT));
+}
+
+int feenableexcept(unsigned int excepts)
+{
+    fenv_t fenv;
+    if (fegetenv (&fenv))
+      return -1;
+
+    unsigned int new_excepts = (excepts & FE_ALL_EXCEPT);
+    unsigned int old_excepts = ((~ fenv.__control) & FE_ALL_EXCEPT);
+
+    // unmask
+    fenv.__control &= (~ new_excepts);
+    fenv.__mxcsr   &= (~ (new_excepts << 7));
+
+    return ((fesetenv (&fenv)) ? -1 : old_excepts);
+}
+
+int fedisableexcept(unsigned int excepts)
+{
+    fenv_t fenv;
+    if (fegetenv (&fenv))
+      return -1;
+
+    unsigned int new_excepts = (excepts & FE_ALL_EXCEPT);
+    unsigned int old_excepts = ((~ fenv.__control) & FE_ALL_EXCEPT);
+
+    // mask
+    fenv.__control |= new_excepts;
+    fenv.__mxcsr   |= (new_excepts << 7);
+
+    return ((fesetenv (&fenv)) ? -1 : old_excepts);
+}
+#  endif // __APPLE__
+#endif // NEED_FEEXCEPT_WORKAROUND
 
 #ifndef __GNUC__
 #  pragma STDC FENV_ACCESS ON
@@ -89,6 +162,7 @@ clear_float_exceptions (void)
 {
 #ifdef HAVE_FECLEAREXCEPT
   (void) feclearexcept (FE_ALL_EXCEPT);
+  cache_float_environment ();
 #endif
 }
 
@@ -289,8 +363,37 @@ DEFINE_PRIMITIVE ("SET-FLOAT-ROUNDING-MODE", Prim_set_float_rounding_mode, 1, 1,
    machine-dependent but OS-independent, and (c) it would be nice to
    open-code all the floating-point environment hackery.  */
 
+#ifdef __powerpc__
+/* powerpc uses bits [8,30], which interferes with our tags.  */
+CTASSERT ((FE_ALL_EXCEPT & 0xff) == 0);
+CTASSERT (ULONG_TO_FIXNUM_P (FE_ALL_EXCEPT >> 8));
+#else
+CTASSERT (ULONG_TO_FIXNUM_P (FE_ALL_EXCEPT));
+#endif
+
+static inline int
+exceptions_machine_to_scheme (int except_machine)
+{
+#ifdef __powerpc__
+  return (except_machine >> 8);
+#else
+  return (except_machine);
+#endif
+}
+
+static inline int
+exceptions_scheme_to_machine (int except_scheme)
+{
+#ifdef __powerpc__
+  return (except_scheme << 8);
+#else
+  return (except_scheme);
+#endif
+}
+
 #define FLOAT_EXCEPTIONS_RESULT(EXCEPTIONS)			\
-  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (EXCEPTIONS))
+  PRIMITIVE_RETURN						\
+    (ULONG_TO_FIXNUM (exceptions_machine_to_scheme (EXCEPTIONS)))
 
 static int
 arg_float_exceptions (int n)
@@ -298,9 +401,9 @@ arg_float_exceptions (int n)
   CHECK_ARG (n, UNSIGNED_FIXNUM_P);
   {
     unsigned long scheme_exceptions = (FIXNUM_TO_ULONG (ARG_REF (n)));
-    if (scheme_exceptions &~ FE_ALL_EXCEPT)
+    if (scheme_exceptions &~ (exceptions_machine_to_scheme (FE_ALL_EXCEPT)))
       error_bad_range_arg (n);
-    return (scheme_exceptions);
+    return (exceptions_scheme_to_machine (scheme_exceptions));
   }
 }
 
@@ -360,35 +463,44 @@ arg_float_exceptions_to_trap (int n)
 
 DEFINE_PRIMITIVE ("FLOAT-INVALID-OPERATION-EXCEPTION", Prim_float_invalid_operation_exception, 0, 0, 0)
 #ifdef FE_INVALID
-    FLOAT_EXCEPTIONS_PRIMITIVE (FE_INVALID)
+    FLOAT_EXCEPTIONS_PRIMITIVE (FE_INVALID & FE_ALL_EXCEPT)
 #else
     UNIMPLEMENTED_FLOAT_EXCEPTIONS_PRIMITIVE ()
 #endif
 
 DEFINE_PRIMITIVE ("FLOAT-DIVIDE-BY-ZERO-EXCEPTION", Prim_float_divide_by_zero_exception, 0, 0, 0)
 #ifdef FE_DIVBYZERO
-    FLOAT_EXCEPTIONS_PRIMITIVE (FE_DIVBYZERO)
+    FLOAT_EXCEPTIONS_PRIMITIVE (FE_DIVBYZERO & FE_ALL_EXCEPT)
 #else
     UNIMPLEMENTED_FLOAT_EXCEPTIONS_PRIMITIVE ()
 #endif
 
 DEFINE_PRIMITIVE ("FLOAT-OVERFLOW-EXCEPTION", Prim_float_overflow_exception, 0, 0, 0)
 #ifdef FE_OVERFLOW
-    FLOAT_EXCEPTIONS_PRIMITIVE (FE_OVERFLOW)
+    FLOAT_EXCEPTIONS_PRIMITIVE (FE_OVERFLOW & FE_ALL_EXCEPT)
 #else
     UNIMPLEMENTED_FLOAT_EXCEPTIONS_PRIMITIVE ()
 #endif
 
 DEFINE_PRIMITIVE ("FLOAT-UNDERFLOW-EXCEPTION", Prim_float_underflow_exception, 0, 0, 0)
 #ifdef FE_UNDERFLOW
-    FLOAT_EXCEPTIONS_PRIMITIVE (FE_UNDERFLOW)
+    FLOAT_EXCEPTIONS_PRIMITIVE (FE_UNDERFLOW & FE_ALL_EXCEPT)
 #else
     UNIMPLEMENTED_FLOAT_EXCEPTIONS_PRIMITIVE ()
 #endif
 
 DEFINE_PRIMITIVE ("FLOAT-INEXACT-RESULT-EXCEPTION", Prim_float_inexact_result_exception, 0, 0, 0)
 #ifdef FE_INEXACT
-    FLOAT_EXCEPTIONS_PRIMITIVE (FE_INEXACT)
+    FLOAT_EXCEPTIONS_PRIMITIVE (FE_INEXACT & FE_ALL_EXCEPT)
+#else
+    UNIMPLEMENTED_FLOAT_EXCEPTIONS_PRIMITIVE ()
+#endif
+
+/* The subnormal operand exception is nonstandard but appears on x86.  */
+
+DEFINE_PRIMITIVE ("FLOAT-SUBNORMAL-OPERAND-EXCEPTION", Prim_float_subnormal_operand_exception, 0, 0, 0)
+#ifdef FE_DENORMAL
+    FLOAT_EXCEPTIONS_PRIMITIVE (FE_DENORMAL & FE_ALL_EXCEPT)
 #else
     UNIMPLEMENTED_FLOAT_EXCEPTIONS_PRIMITIVE ()
 #endif
@@ -555,7 +667,22 @@ DEFINE_PRIMITIVE ("HAVE-FLOAT-TRAP-ENABLE/DISABLE?", Prim_have_float_trap_enable
 {
   PRIMITIVE_HEADER (0);
 #if ((defined (HAVE_FEENABLEEXCEPT)) && (defined (HAVE_FEDISABLEEXCEPT)))
-  PRIMITIVE_RETURN (SHARP_T);
+  static int have = -1;
+  if (have == -1)
+    {
+      fenv_t fenv;
+      int excepts = (fegetexcept ());
+      /* Prevent traps while we futz with stuff.  */
+      feholdexcept (&fenv);
+      /* Reverse the sense.  */
+      feenableexcept (FE_ALL_EXCEPT &~ excepts);
+      fedisableexcept (excepts);
+      /* Check whether that had any effect.  */
+      have = ((fegetexcept ()) != excepts);
+      /* Restore the environment without raising exceptions.  */
+      fesetenv (&fenv);
+    }
+  PRIMITIVE_RETURN (have ? SHARP_T : SHARP_F);
 #else
   PRIMITIVE_RETURN (SHARP_F);
 #endif

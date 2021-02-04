@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -71,9 +71,10 @@ USA.
     (builder 'immutable)))
 
 (define text-characters
-  (list->string
-   (append '(#\tab #\newline)
-	   (char-set-members char-set:graphic))))
+  (char-set->string
+   (char-set-union (ucs-range->char-set #x20 #x7F)
+		   (ucs-range->char-set #xA0 #x100)
+		   (char-set #\tab #\newline))))
 
 (define (test-codec n-packets packet-length text? filename binary-codec?
 		    encode:initialize encode:finalize encode:update
@@ -283,3 +284,27 @@ USA.
   decode-uue:initialize
   decode-uue:finalize
   decode-uue:update)
+
+(define (encode-quoted-printable string text?)
+  (call-with-output-string
+    (lambda (output-port)
+      (let ((context (encode-quoted-printable:initialize output-port text?)))
+	(encode-quoted-printable:update context string)
+	(encode-quoted-printable:finalize context)))))
+
+(define-test 'QUOTED-PRINTABLE/UPPERCASE
+  (lambda ()
+    (let* ((string "The quïck brøwn fox jump§ over the lazʒ doﻎ.")
+	   (utf8 (string->utf8 string))
+	   (bytestring (iso8859-1->string utf8)))
+      (assert-equal
+       (encode-quoted-printable bytestring #t)
+       (string-append "The qu=C3=AFck br=C3=B8wn=C2=A0fox jump=C2=A7"
+		      " over the laz=CA=92 do=EF=BB=\n=8E.")))))
+
+(define-test 'QUOTED-PRINTABLE/UNICODE-BUG
+  (lambda ()
+    ;; Can't handle Unicode strings, only legacy byte strings so far.
+    (expect-error
+     (lambda ()
+       (encode-quoted-printable "üñîçøðε" #t)))))

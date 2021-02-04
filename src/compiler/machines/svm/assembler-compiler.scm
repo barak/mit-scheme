@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -249,12 +249,14 @@ USA.
 (define (expand-abbrevs inputs abbrevs)
   (receive (abbrev-defs inputs) (split-list inputs abbrev-def?)
     (let ((abbrevs
-	   (map* abbrevs
-		 (lambda (abbrev-def)
-		   (cons `(',(caadr abbrev-def) ,@(cdadr abbrev-def))
-			 (eval (caddr abbrev-def)
-			       (make-top-level-environment))))
-		 abbrev-defs))
+	   (fold-right (lambda (abbrev-def abbrevs)
+			 (cons (cons `(',(caadr abbrev-def)
+				       ,@(cdadr abbrev-def))
+				     (eval (caddr abbrev-def)
+					   (make-top-level-environment)))
+			       abbrevs))
+		       abbrevs
+		       abbrev-defs))
 	  (any-expansions? #f))
       (let ((outputs
 	     (append-map (lambda (input)
@@ -447,7 +449,7 @@ USA.
 
 (define (coding-type-end-index coding-type)
   (+ (coding-type-start-index coding-type)
-     (count-matching-items (coding-type-defns coding-type) defn-has-code?)))
+     (count defn-has-code? (coding-type-defns coding-type))))
 
 (define (specialize-defn defn pv defn*)
   (let ((defn* (maybe-rename defn* defn)))
@@ -594,15 +596,15 @@ USA.
   (let ((names (map defn-name defns)))
     (let ((n
 	   (length
-	    (fold-left (lambda (a b)
-			 (let join ((a a) (b b))
-			   (if (and (pair? a) (pair? b) (eqv? (car a) (car b)))
-			       (cons (car a) (join (cdr a) (cdr b)))
-			       '())))
-		       (car names)
-		       (cdr names)))))
+	    (fold (lambda (a b)
+		    (let join ((a a) (b b))
+		      (if (and (pair? a) (pair? b) (eqv? (car a) (car b)))
+			  (cons (car a) (join (cdr a) (cdr b)))
+			  '())))
+		  (car names)
+		  (cdr names)))))
       (for-each (lambda (defn name)
-		  (set-defn-name! defn (cons (car name) (list-tail name n))))
+		  (set-defn-name! defn (cons (car name) (drop name n))))
 		defns
 		names))))
 

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -173,7 +173,9 @@ Just minus as an argument moves down full screen."
   (lambda (argument)
     (let ((window
 	   (or (and (typein-window? (selected-window))
-		    (weak-car *minibuffer-scroll-window*))
+		    (let ((window (weak-car *minibuffer-scroll-window*)))
+		      (and (window? window)
+			   window)))
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (standard-scroll-window-argument window argument 1)))))
@@ -184,7 +186,9 @@ Just minus as an argument moves down full screen."
   (lambda (argument)
     (let ((window
 	   (or (and (typein-window? (selected-window))
-		    (weak-car *minibuffer-scroll-window*))
+		    (let ((window (weak-car *minibuffer-scroll-window*)))
+		      (and (window? window)
+			   window)))
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (standard-scroll-window-argument window argument -1)))))
@@ -198,7 +202,9 @@ means scroll one screenful down."
   (lambda (argument)
     (let ((window
 	   (or (and (typein-window? (selected-window))
-		    (weak-car *minibuffer-scroll-window*))
+		    (let ((window (weak-car *minibuffer-scroll-window*)))
+		      (and (window? window)
+			   window)))
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (multi-scroll-window-argument window argument 1)))))
@@ -452,14 +458,15 @@ Also kills any pop up window it may have created."
 
 (define (kill-pop-up-buffer error-if-none?)
   (let ((window (weak-car *previous-popped-up-window*)))
-    (if window
+    (if (window? window)
 	(begin
 	  (weak-set-car! *previous-popped-up-window* #f)
 	  (if (and (window-live? window)
 		   (not (window-has-no-neighbors? window)))
 	      (window-delete! window)))))
   (let ((buffer (weak-car *previous-popped-up-buffer*)))
-    (cond ((and buffer (buffer-alive? buffer))
+    (cond ((and (buffer? buffer)
+		(buffer-alive? buffer))
 	   (for-each
 	    (lambda (window)
 	      (let ((entry (weak-assq window *pop-up-buffer-window-alist*)))
@@ -476,7 +483,9 @@ Also kills any pop up window it may have created."
       (kill-pop-up-buffer #f)))
 
 (define (popped-up-buffer)
-  (weak-car *previous-popped-up-buffer*))
+  (let ((buffer (weak-car *previous-popped-up-buffer*)))
+    (and (buffer? buffer)
+	 buffer)))
 
 (define (keep-pop-up-buffer buffer)
   (if (or (not buffer)

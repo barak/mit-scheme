@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,7 +69,7 @@ USA.
 			  unspecific)
 			remote-links))
 
-	  (with-values prepare-constants-block
+	  (call-with-values prepare-constants-block
 	    (or process-constants-block
 		(lambda (constants-code environment-label free-ref-label
 					n-sections)
@@ -179,7 +179,9 @@ USA.
 			  (*registers-to-delete* dead-registers)
 			  (*prefix-instructions* (LAP))
 			  (*suffix-instructions* (LAP))
-			  (*needed-registers* '()))
+			  (*needed-registers* '())
+			  (*target-machine-registers* '()))
+		(reserve-machine-targets! rtl)
 		(let ((instructions (match-result)))
 		  (delete-dead-registers!)
 		  (LAP ,@(if *insert-rtl?*
@@ -268,6 +270,15 @@ USA.
 		   *assign-rules*)))
 	(or (and rules (pattern-lookup (cdr rules) rtl))
 	    (pattern-lookup *assign-variable-rules* rtl)))))
+
+(define (reserve-machine-targets! rtl)
+  (if (rtl:assign? rtl)
+      (let ((address (rtl:assign-address rtl)))
+	(if (rtl:register? address)
+	    (let ((register (rtl:register-number address)))
+	      (if (and (machine-register? register)
+		       (memv register available-machine-registers))
+		  (target-machine-register! register)))))))
 
 ;;; Instruction sequence sharing mechanisms
 

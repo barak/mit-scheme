@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime continuation-parser)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime microcode-tables) '(runtime history))
 
 ;;;; Stack Frames
 
@@ -38,7 +40,8 @@ USA.
 				      interrupt-mask history
 				      previous-history-offset
 				      previous-history-control-point
-				      offset previous-type %next))
+				      offset last-return-code previous-type
+				      %next))
 		   (conc-name stack-frame/))
   (type #f read-only #t)
   (elements #f read-only #t)
@@ -49,6 +52,7 @@ USA.
   (previous-history-offset #f read-only #t)
   (previous-history-control-point #f read-only #t)
   (offset #f read-only #t)
+  (last-return-code #f read-only #t)
   ;; PREVIOUS-TYPE is the stack-frame-type of the frame above this one
   ;; on the stack (closer to the stack's top).  In at least two cases
   ;; we need to know this information.
@@ -84,7 +88,7 @@ USA.
 	(and stack-frame
 	     (stack-frame/skip-non-subproblems stack-frame)))
       (stack-frame/skip-non-subproblems stack-frame)))
-
+
 (define-integrable (stack-frame/length stack-frame)
   (vector-length (stack-frame/elements stack-frame)))
 
@@ -106,7 +110,7 @@ USA.
 
 (define-integrable (stack-frame/compiled-code? stack-frame)
   (compiled-return-address? (stack-frame/return-address stack-frame)))
-
+
 (define (stack-frame/subproblem? stack-frame)
   (if (stack-frame/stack-marker? stack-frame)
       (stack-marker-frame/repl-eval-boundary? stack-frame)
@@ -139,21 +143,6 @@ USA.
 	   (let ((stack-frame (stack-frame/next stack-frame)))
 	     (and stack-frame
 		  (stack-frame/skip-non-subproblems stack-frame)))))))
-
-(define continuation-return-address)
-
-(define (initialize-special-frames!)
-  (set! continuation-return-address
-	(let ((stack-frame
-	       (call-with-current-continuation
-		(lambda (k)
-		  k
-		  (call-with-current-continuation
-		   continuation/first-subproblem)))))
-	  (and (eq? (stack-frame/type stack-frame)
-		    stack-frame-type/compiled-return-address)
-	       (stack-frame/return-address stack-frame))))
-  unspecific)
 
 ;;;; Parser
 
@@ -167,6 +156,7 @@ USA.
   (previous-history-control-point #f read-only #t)
   (element-stream #f read-only #t)
   (n-elements #f read-only #t)
+  (last-return-code #f read-only #t)
   (next-control-point #f read-only #t)
   (previous-type #f read-only #t))
 
@@ -195,6 +185,7 @@ USA.
       (control-point/previous-history-control-point control-point)
       element-stream
       (control-point/n-elements control-point)
+      #f
       (control-point/next-control-point control-point)
       type))))
 
@@ -251,6 +242,7 @@ USA.
      previous-history-control-point
      stream
      new-length
+     (adjust-last-return-code (parser-state/last-return-code state) length)
      (parser-state/next-control-point state)
      (parser-state/previous-type state))))
 
@@ -263,14 +255,15 @@ USA.
 ;;; calling PARSE/STANDARD-NEXT -- for example, RESTORE-INTERRUPT-MASK
 ;;; changes the INTERRUPT-MASK component.
 
-(define (parse/standard-next type elements state history? force-pop?)
+(define (parse/standard-next type elements state lrc history? force-pop?)
   (let ((n-elements (parser-state/n-elements state))
 	(history-subproblem?
 	 (stack-frame-type/history-subproblem? type))
 	(history (parser-state/history state))
 	(previous-history-offset (parser-state/previous-history-offset state))
 	(previous-history-control-point
-	 (parser-state/previous-history-control-point state)))
+	 (parser-state/previous-history-control-point state))
+	(last-return-code (or lrc (parser-state/last-return-code state))))
     (make-stack-frame
      type
      elements
@@ -283,6 +276,7 @@ USA.
      previous-history-offset
      previous-history-control-point
      (fix:+ (vector-length elements) n-elements)
+     last-return-code
      (parser-state/previous-type state)
      (make-parser-state (parser-state/dynamic-state state)
 			(parser-state/block-thread-events? state)
@@ -294,18 +288,39 @@ USA.
 			previous-history-control-point
 			(parser-state/element-stream state)
 			n-elements
+			(adjust-last-return-code last-return-code
+						 (vector-length elements))
 			(parser-state/next-control-point state)
 			type))))
+
+(define (adjust-last-return-code last-return-code length)
+  (and (fixnum? last-return-code)
+       (fix:>= last-return-code length)
+       (fix:- last-return-code length)))
 
 (define (parser/standard type elements state)
-  (parse/standard-next type elements state
+  (parse/standard-next type elements state #f
 		       (and (stack-frame-type/history-subproblem? type)
 			    (stack-frame-type/subproblem? type))
 		       #f))
-
+
+(define (parser/standard-reenter-compiled type elements state)
+  (parse/standard-next type elements state
+		       (let ((last-return-code (vector-ref elements 1)))
+			 (and (fixnum? last-return-code)
+			      ;; Pretend it's relative to the return
+			      ;; code position, not the position you
+			      ;; get by popping the return code and
+			      ;; popping the LRC offset; this is more
+			      ;; convenient for subsequent use.
+			      (fix:+ last-return-code 2)))
+		       (and (stack-frame-type/history-subproblem? type)
+			    (stack-frame-type/subproblem? type))
+		       #f))
+
 (define (parser/standard-compiled type elements state)
   (parse/standard-next
-   type elements state
+   type elements state #f
    (let ((stream (parser-state/element-stream state)))
      (and (stream-pair? stream)
 	  (eq? (return-address->stack-frame-type (stream-car stream))
@@ -318,7 +333,8 @@ USA.
 		(and (stream-pair? stream)
 		     (eq? return-address/reenter-compiled-code
 			  (stream-car stream)))))))
-    (parse/standard-next type elements state valid-history? valid-history?)))
+    (parse/standard-next type elements state #f
+			 valid-history? valid-history?)))
 
 (define (parser/restore-interrupt-mask type elements state)
   (parser/standard
@@ -332,9 +348,10 @@ USA.
 		      (parser-state/previous-history-control-point state)
 		      (parser-state/element-stream state)
 		      (parser-state/n-elements state)
+		      (parser-state/last-return-code state)
 		      (parser-state/next-control-point state)
 		      (parser-state/previous-type state))))
-
+
 (define (parser/restore-history type elements state)
   (parser/standard
    type
@@ -347,9 +364,12 @@ USA.
 		      (vector-ref elements 3)
 		      (parser-state/element-stream state)
 		      (parser-state/n-elements state)
+		      (parser-state/last-return-code state)
 		      (parser-state/next-control-point state)
 		      (parser-state/previous-type state))))
 
+;; reflect_to_interface codes.  Matches enum reflect_code_t in
+;; microcode/cmpint.c.
 (define-integrable code/special-compiled/internal-apply 0)
 (define-integrable code/special-compiled/restore-interrupt-mask 1)
 (define-integrable code/special-compiled/stack-marker 2)
@@ -358,11 +378,12 @@ USA.
 (define-integrable code/restore-regs 5)
 (define-integrable code/apply-compiled 6)
 (define-integrable code/continue-linking 7)
+(define-integrable code/special-compiled/compiled-invocation 8)
 
 (define (parser/special-compiled type elements state)
   (let ((code (vector-ref elements 1)))
     (cond ((fix:= code code/special-compiled/internal-apply)
-	   (parse/standard-next type elements state #f #f))
+	   (parse/standard-next type elements state #f #f #f))
 	  ((fix:= code code/special-compiled/restore-interrupt-mask)
 	   (parser/%stack-marker (parser-state/dynamic-state state)
 				 (parser-state/block-thread-events? state)
@@ -374,14 +395,15 @@ USA.
 	       (fix:= code code/interrupt-restart)
 	       (fix:= code code/restore-regs)
 	       (fix:= code code/apply-compiled)
-	       (fix:= code code/continue-linking))
-	   (parse/standard-next type elements state #f #f))
+	       (fix:= code code/continue-linking)
+	       (fix:= code code/special-compiled/compiled-invocation))
+	   (parse/standard-next type elements state #f #f #f))
 	  (else
 	   (error "Unknown special compiled frame code:" code)))))
 
 (define (parser/compiler-interrupt-restart type elements state)
   (if (= 3 (vector-length elements))
-      (parser/standard type elements state)
+      (parser/standard-reenter-compiled type elements state)
       ;; This is a hairy mongrel of PARSE/STANDARD-NEXT and
       ;; PARSER/STANDARD, because it makes two stack frames at once,
       ;; which we must do because the first stack frame tells us
@@ -399,7 +421,8 @@ USA.
 	      (previous-history-offset
 	       (parser-state/previous-history-offset state))
 	      (previous-history-control-point
-	       (parser-state/previous-history-control-point state)))
+	       (parser-state/previous-history-control-point state))
+	      (last-return-code (vector-ref elements 0)))
 	  (make-stack-frame
 	   type
 	   (vector-head elements 3)
@@ -410,6 +433,7 @@ USA.
 	   previous-history-offset
 	   previous-history-control-point
 	   (fix:+ 3 n-elements)
+	   last-return-code
 	   (parser-state/previous-type state)
 	   (parser/standard
 	    stack-frame-type/interrupt-compiled-procedure
@@ -424,6 +448,7 @@ USA.
 			       previous-history-control-point
 			       (parser-state/element-stream state)
 			       n-elements
+			       (adjust-last-return-code last-return-code 3)
 			       (parser-state/next-control-point state)
 			       type)))))))
 
@@ -470,6 +495,7 @@ USA.
 		      (parser-state/previous-history-control-point state)
 		      (parser-state/element-stream state)
 		      (parser-state/n-elements state)
+		      (parser-state/last-return-code state)
 		      (parser-state/next-control-point state)
 		      (parser-state/previous-type state))))
 
@@ -511,7 +537,7 @@ USA.
 		     #f))
 
 (define (stack-frame->control-point stack-frame)
-  (with-values (lambda () (print-stack-frame stack-frame))
+  (call-with-values (lambda () (print-stack-frame stack-frame))
     (lambda (element-stream next-control-point)
       (make-control-point
        (stack-frame/interrupt-mask stack-frame)
@@ -522,8 +548,13 @@ USA.
        (stack-frame/previous-history-offset stack-frame)
        (stack-frame/previous-history-control-point stack-frame)
        (if (stack-frame/compiled-code? stack-frame)
-	   (cons-stream return-address/reenter-compiled-code
-			(cons-stream #f element-stream))
+	   (let ((last-return-code (stack-frame/last-return-code stack-frame)))
+	     (if (not (fixnum? last-return-code))
+		 (error "Can't reconstruct last return code!"))
+	     (cons-stream return-address/reenter-compiled-code
+			  (cons-stream (fix:+ last-return-code
+					      (stack-frame/length stack-frame))
+				       element-stream)))
 	   element-stream)
        next-control-point))))
 
@@ -531,7 +562,7 @@ USA.
   (if (eq? (stack-frame/return-address stack-frame)
 	   return-address/join-stacklets)
       (values (stream) (vector-ref (stack-frame/elements stack-frame) 1))
-      (with-values
+      (call-with-values
 	  (lambda ()
 	    (let ((next (stack-frame/%next stack-frame)))
 	      (cond ((stack-frame? next)
@@ -551,9 +582,6 @@ USA.
 				  (loop (fix:+ index 1)))
 		     element-stream))))
 	   next-control-point)))))
-
-(define return-address/join-stacklets)
-(define return-address/reenter-compiled-code)
 
 ;;;; Special Frame Lengths
 
@@ -645,6 +673,13 @@ USA.
 	   ;; block, environment, offset, last header offset,sections,
 	   ;; return address
 	   (fix:- 10 1))
+	  ((fix:= code code/special-compiled/compiled-invocation)
+	   ;; Stream[2] is compiled entry, followed by arguments.
+	   (let ((procedure (stream-ref stream 2)))
+	     (cond ((compiled-code-address/frame-size procedure)
+		    => (lambda (frame-size)
+			 (+ 2 frame-size)))
+		   (else (lose)))))
 	  (else
 	   (lose)))))
 
@@ -728,48 +763,7 @@ USA.
 	(else
 	 (error:bad-range-argument return-address
 				   'return-address->stack-frame-type))))
-
-(define (initialize-package!)
-  (set! return-address/join-stacklets
-	(make-return-address (microcode-return 'join-stacklets)))
-  (set! return-address/reenter-compiled-code
-	(make-return-address (microcode-return 'reenter-compiled-code)))
-  (set! stack-frame-types (make-stack-frame-types))
-  (set! stack-frame-type/hardware-trap
-	(microcode-return/name->type 'hardware-trap))
-  (set! stack-frame-type/stack-marker
-	(microcode-return/name->type 'stack-marker))
-  (set! stack-frame-type/compiled-return-address
-	(make-stack-frame-type #f #t #f length/compiled-return-address
-			       parser/standard-compiled))
-  (set! stack-frame-type/return-to-interpreter
-	(make-stack-frame-type #f #f #t 1 parser/standard))
-  (set! stack-frame-type/special-compiled
-	(make-stack-frame-type #f #t #f length/special-compiled
-			       parser/special-compiled))
-  (set! stack-frame-type/interrupt-compiled-procedure
-	(make-stack-frame-type #f #t #f length/interrupt-compiled-procedure
-			       parser/standard))
-  (set! stack-frame-type/interrupt-compiled-expression
-	(make-stack-frame-type #f #t #f 1 parser/standard))
-  (set! word-size
-	(let ((b1 (system-vector-length (make-bit-string 1 #f))))
-	  (let loop ((size 2))
-	    (if (fix:= (system-vector-length (make-bit-string size #f)) b1)
-		(loop (fix:+ size 1))
-		(fix:- size 1)))))
-  (set! continuation-return-address #f)
-  unspecific)
 
-(define stack-frame-types)
-(define stack-frame-type/compiled-return-address)
-(define stack-frame-type/return-to-interpreter)
-(define stack-frame-type/special-compiled)
-(define stack-frame-type/hardware-trap)
-(define stack-frame-type/stack-marker)
-(define stack-frame-type/interrupt-compiled-procedure)
-(define stack-frame-type/interrupt-compiled-expression)
-
 (define (make-stack-frame-types)
   (let ((types (make-vector (microcode-return/code-limit) #f)))
 
@@ -822,10 +816,12 @@ USA.
 
     (let ((compiler-frame
 	   (lambda (name length)
-	     (stack-frame-type name #f #t length parser/standard)))
+	     (stack-frame-type name #f #t length
+			       parser/standard-reenter-compiled)))
 	  (compiler-subproblem
 	   (lambda (name length)
-	     (stack-frame-type name #t #t length parser/standard))))
+	     (stack-frame-type name #t #t length
+			       parser/standard-reenter-compiled))))
 
       (let ((length (length/application-frame 4 0)))
 	(compiler-subproblem 'compiler-lookup-apply-trap-restart length)
@@ -847,6 +843,54 @@ USA.
 
     (non-history-subproblem 'hardware-trap length/hardware-trap)
     types))
+
+(define-deferred stack-frame-types
+  (make-stack-frame-types))
+
+(define-deferred stack-frame-type/compiled-return-address
+  (make-stack-frame-type #f #t #f length/compiled-return-address
+			 parser/standard-compiled))
+
+(define-deferred stack-frame-type/return-to-interpreter
+  (make-stack-frame-type #f #f #t 1 parser/standard))
+
+(define-deferred stack-frame-type/special-compiled
+  (make-stack-frame-type #f #t #f length/special-compiled
+			 parser/special-compiled))
+
+(define-deferred stack-frame-type/hardware-trap
+  (microcode-return/name->type 'hardware-trap))
+
+(define-deferred stack-frame-type/stack-marker
+  (microcode-return/name->type 'stack-marker))
+
+(define-deferred stack-frame-type/interrupt-compiled-procedure
+  (make-stack-frame-type #f #t #f length/interrupt-compiled-procedure
+			 parser/standard))
+
+(define-deferred stack-frame-type/interrupt-compiled-expression
+  (make-stack-frame-type #f #t #f 1 parser/standard))
+
+(define-deferred return-address/join-stacklets
+  (make-return-address (microcode-return 'join-stacklets)))
+
+(define-deferred return-address/reenter-compiled-code
+  (make-return-address (microcode-return 'reenter-compiled-code)))
+
+(define continuation-return-address #f)
+(add-boot-init!
+ (lambda ()
+   (set! continuation-return-address
+	 (let ((stack-frame
+		(call-with-current-continuation
+		  (lambda (k)
+		    k
+		    (call-with-current-continuation
+		      continuation/first-subproblem)))))
+	   (and (eq? (stack-frame/type stack-frame)
+		     stack-frame-type/compiled-return-address)
+		(stack-frame/return-address stack-frame))))
+   unspecific))
 
 ;;;; Hardware trap parsing
 
@@ -937,7 +981,12 @@ USA.
     (write-string " = ")
     (write-string (number->string value 16))))
 
-(define word-size)
+(define-deferred word-size
+  (let ((b1 (system-vector-length (make-bit-string 1 #f))))
+    (let loop ((size 2))
+      (if (fix:= (system-vector-length (make-bit-string size #f)) b1)
+	  (loop (fix:+ size 1))
+	  (fix:- size 1)))))
 
 (define (hardware-trap-frame/print-stack frame)
   (guarantee-hardware-trap-frame frame 'hardware-trap-frame/print-stack)

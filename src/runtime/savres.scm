@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,6 +29,9 @@ USA.
 
 (declare (usual-integrations))
 
+(add-boot-deps! '(runtime dynamic)
+		'(runtime gc-finalizer))
+
 ;;; (DISK-SAVE  filename #!optional identify)
 ;;; Saves a world image in FILENAME.  IDENTIFY has the following meaning:
 ;;;
@@ -42,15 +45,13 @@ USA.
 (define world-id "Image")
 (define time-world-saved #f)
 (define time-world-restored #f)
-(define *within-restore-window?*)
+(define-deferred *within-restore-window?* (make-unsettable-parameter #f))
 
-(define (initialize-package!)
-  (set! *within-restore-window?* (make-unsettable-parameter #f)))
-
 (define (disk-save filename #!optional id)
-  (let ((filename (->namestring (merge-pathnames filename)))
+  (let ((filename* (disk-save-filename filename))
 	(id (if (default-object? id) world-id id))
 	(time (local-decoded-time)))
+    (set! filename #f)
     (gc-clean)
     ((without-interrupts
       (lambda ()
@@ -68,18 +69,15 @@ USA.
 			interrupt-mask
 			(gc-flip)
 			(do ()
-			    (((ucode-primitive dump-band)
-			      restart
-			      (string-for-primitive filename)))
+			    ((dump-band restart filename*))
 			  (with-simple-restart 'retry "Try again."
 			    (lambda ()
-			      (error "Disk save failed:" filename))))
+			      (error "Disk save failed!"))))
 			(continuation
 			 (lambda ()
 			   (set! time-world-saved time)
 			   (if (string? id) unspecific #f)))))))
 		 ((ucode-primitive set-fixed-objects-vector!) fixed-objects))))
-	   (read-microcode-identification!)
 	   (lambda ()
 	     (set! time-world-saved time)
 	     (set! time-world-restored (get-universal-time))
@@ -98,6 +96,40 @@ USA.
 		   (else
 		    (event-distributor/invoke! event:after-restart)
 		    #t))))))))))
+
+;;; Kludge to store disk-save filenames outside the Scheme heap so they
+;;; don't get dumped in bands.  However, only works if the microcode
+;;; supports passing the filename through an external string; if not,
+;;; tough -- we'll just have to keep the filename in the Scheme heap
+;;; and in the band.
+
+(define (dump-band restart filename)
+  (if (implemented-primitive-procedure? (ucode-primitive dump-band* 2))
+      ((ucode-primitive dump-band* 2) restart (cell-contents filename))
+      ((ucode-primitive dump-band 2) restart filename)))
+
+(define (disk-save-filename filename)
+  (if (implemented-primitive-procedure? (ucode-primitive dump-band* 2))
+      (let* ((pathname (merge-pathnames filename))
+	     (namestring (->namestring pathname))
+	     (primitive (string-for-primitive namestring))
+	     (n (string-length primitive))
+	     (cell
+	      (make-gc-finalized-object disk-save-filenames
+		(lambda (p)
+		  (weak-set-cdr!
+		   p
+		   ((ucode-primitive allocate-external-string 1) n)))
+		(lambda (s)
+		  (make-cell s))))
+	     (string (cell-contents cell)))
+	((ucode-primitive substring-move-left! 5) primitive 0 n string 0)
+	cell)
+      filename))
+
+(define-deferred disk-save-filenames
+  (make-gc-finalizer (ucode-primitive deallocate-external-string 1)
+		     cell? cell-contents set-cell-contents!))
 
 (define (disk-restore #!optional filename)
   ;; Force order of events -- no need to run event:before-exit if
@@ -145,11 +177,16 @@ USA.
 	  (write-string " at " port)
 	  (write-string (decoded-time/time-string time-world-saved) port)
 	  (newline port)))
-    (write-strings-in-columns (map get-subsystem-identification-string
-				   (get-subsystem-names))
+    (write-strings-in-columns (subsystem-summary)
 			      port
 			      #t
 			      1
 			      "  "
 			      " || "
 			      "")))
+
+(define (subsystem-summary)
+  (cons (get-subsystem-identification-string "Release")
+	(lset-difference string=?
+			 (get-subsystem-names)
+			 '("Release" "Microcode" "Runtime"))))

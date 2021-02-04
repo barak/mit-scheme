@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,8 @@ USA.
 ;;; package: (runtime floating-point-environment)
 
 (declare (usual-integrations))
+
+(add-boot-deps! seq:after-files-loaded)
 
 ;;;; Floating-point environment
 
@@ -38,14 +40,12 @@ USA.
 ;;; even if it is operationally equivalent to the default environment.
 ;;;
 ;;; The floating-point environment is stored on the physical machine,
-;;; saved in the thread records of threads that are not running, and
-;;; cached in the thread record of the thread that is running.
+;;; and saved in the thread records of threads that are not running.
 ;;;
-;;; When the physical machine is updated, we invalidate the cache by
-;;; setting the current thread's floating-point environment to #T.
 ;;; When switching threads, if the old thread's floating-point
-;;; environment is #T, we grab the environment from the machine and
-;;; stash it in that thread before entering the new thread.  During
+;;; environment is #T meaning it cared about the floating-point
+;;; environment, we grab the environment from the machine and stash
+;;; it in that thread before entering the new thread.  During
 ;;; thread-switching, we need to be in the default floating-point
 ;;; environment so that the thread system logic doesn't get confused.
 ;;;
@@ -57,94 +57,86 @@ USA.
 ;;; The routines on this page are hooks for the thread system.
 
 ;;; Save the floating-point environment and enter the default
-;;; environment for the thread timer interrupt handler.
+;;; environment for the thread scheduler.
 
-(define (enter-default-float-environment interrupted-thread)
-  (let ((fp-env
-	 (if interrupted-thread
-	     (let ((fp-env (thread-float-environment interrupted-thread)))
-	       (if (eqv? fp-env #t)
-		   (let ((fp-env ((ucode-primitive float-environment 0))))
-		     (set-thread-float-environment! interrupted-thread fp-env)
-		     fp-env)
-		   fp-env))
-	     ;; No idea what environment we're in.  Assume the worst.
-	     ((ucode-primitive float-environment 0)))))
-    (if fp-env
-	((ucode-primitive set-float-environment 1) default-environment))
-    fp-env))
+(define (save-float-environment thread)
+  (let ((fp-env?
+	 (if thread
+	     (let ((fp-env? (thread-float-environment thread)))
+	       ;; If the thread was just interrupted, it can't have a
+	       ;; saved environment -- only a marker indicating
+	       ;; whether it is in use or not.
+	       (assert (or (eqv? fp-env? #t) (eqv? fp-env? #f)))
+	       ;; If the thread is using the environment, save the
+	       ;; machine state in the thread structure.
+	       (if fp-env?
+		   (set-thread-float-environment!
+		    thread
+		    ((ucode-primitive float-environment 0))))
+	       fp-env?)
+	     ;; No idea what environment we're in.  Assume it were as
+	     ;; if we were in a thread that's using one.
+	     #t)))
+    ;; If we don't know that we're in the default environment,
+    ;; explicitly transition to it.
+    (if fp-env?
+	((ucode-primitive set-float-environment 1) default-environment)))
+  unspecific)
 
-;;; Restore the environment saved by ENTER-DEFAULT-FLOAT-ENVIRONMENT
-;;; when resuming a thread from the thread timer interrupt handler
-;;; without switching.
+;;; Restore thread's floating-point environment in the machine state,
+;;; optionally given knowledge FP-ENV of the current machine state.
 
-(define (restore-float-environment-from-default fp-env)
-  (if fp-env
-      ((ucode-primitive set-float-environment 1) fp-env)))
+(define (restore-float-environment thread #!optional fp-env)
+  (let ((fp-env* (thread-float-environment thread)))
+    (set-thread-float-environment! thread (if fp-env* #t #f))
+    ;; If we don't know what the machine's floating-point environment
+    ;; is, or if we exited from or are now entering a non-default
+    ;; floating-point environment, set the machine's environment.
+    (if (or (default-object? fp-env)
+	    fp-env
+	    fp-env*)
+	((ucode-primitive set-float-environment 1)
+	 (or fp-env* default-environment)))))
 
-;;; Enter a floating-point environment for switching to a thread.
+;;; Thread is exiting.  Restore the default environment if needed.
 
-(define (enter-float-environment fp-env)
-  ((ucode-primitive set-float-environment 1) (or fp-env default-environment)))
-
-;;; Save a floating-point environment when a thread yields or is
-;;; preempted and must let another thread run.  FP-ENV is absent when
-;;; explicitly yielding with YIELD-CURRENT-THREAD, or is the result of
-;;; ENTER-DEFAULT-FLOAT-ENVIRONMENT from the thread timer interrupt
-;;; handler.
-
-(define (maybe-save-thread-float-environment! thread #!optional fp-env)
-  (if (eqv? #t (thread-float-environment thread))
-      (set-thread-float-environment!
-       thread
-       (if (or (default-object? fp-env)
-	       (eqv? #t fp-env))
-	   ((ucode-primitive float-environment 0))
-	   fp-env))))
+(define (discard-float-environment thread)
+  (if (thread-float-environment thread)
+      ((ucode-primitive set-float-environment 1) default-environment)))
 
-(define (use-floating-point-environment!)
+(define-integrable (using-floating-point-environment?)
+  (thread-float-environment (current-thread)))
+
+(define-integrable (use-floating-point-environment!)
   (set-thread-float-environment! (current-thread) #t))
 
 (define (flo:environment)
-  (let ((fp-env (thread-float-environment (current-thread))))
-    (if (eqv? fp-env #t)
-	(let ((fp-env ((ucode-primitive float-environment 0))))
-	  ;; Cache it now so we don't need to ask the machine again
-	  ;; when we next switch threads.  There is a harmless race
-	  ;; here if we are preempted.
-	  (set-thread-float-environment! (current-thread) fp-env)
-	  fp-env)
-	fp-env)))
+  (if (using-floating-point-environment?)
+      ((ucode-primitive float-environment 0))
+      #f))
 
 (define (flo:set-environment! fp-env)
-  (let ((old-fp-env (thread-float-environment (current-thread))))
-    (if (not (eqv? fp-env old-fp-env))
-	(begin
-	  ;; Update the thread cache first; if we updated the machine
-	  ;; first, then we might be preempted after that but before
-	  ;; updating the thread cache, and the thread starts running
-	  ;; again, there would be nothing to set the machine straight.
-	  (set-thread-float-environment! (current-thread) fp-env)
-	  ((ucode-primitive set-float-environment 1)
-	   (or fp-env default-environment))))))
+  ;; If we are transitioning back to the default environment, do it
+  ;; once while the thread is still considered to be using the
+  ;; environment so that the thread system will take care to set the
+  ;; machine to the default environment.
+  (if (not fp-env)
+      ((ucode-primitive set-float-environment 1) default-environment))
+  ;; Next, if we are transitioning back to the default environment,
+  ;; mark the thread as not using the floating-point environment;
+  ;; otherwise mark the thread as using it -- but do this _before_ we
+  ;; set the machine state so that if we are preempted, the scheduler
+  ;; will know to save and restore it.
+  (set-thread-float-environment! (current-thread) (if fp-env #t #f))
+  ;; Finally, set the machine state if we are transitioning to a
+  ;; nondefault environment.
+  (if fp-env
+      ((ucode-primitive set-float-environment 1) fp-env)))
 
 (define (flo:update-environment! fp-env)
-  (let ((old-fp-env (thread-float-environment (current-thread))))
-    (if (not (eqv? fp-env old-fp-env))
-	;; We need to prevent thread-switching between saving the
-	;; floating-point environment in the thread record and updating
-	;; the machine's state because we need the *old* state to be
-	;; still in place when the update happens so that exceptions
-	;; will be trapped.
-	;;
-	;; XXX We could just disable preemption, but we'd have to do
-	;; that in DYNAMIC-WIND in case UPDATE-FLOAT-ENVIRONMENT
-	;; signals an error, and DYNAMIC-WIND is super-expensive.
-	(without-interrupts
-	 (lambda ()
-	   (set-thread-float-environment! (current-thread) fp-env)
-	   ((ucode-primitive update-float-environment 1)
-	    (or fp-env default-environment)))))))
+  (use-floating-point-environment!)
+  ((ucode-primitive update-float-environment 1)
+   (or fp-env default-environment)))
 
 (define default-environment)
 
@@ -155,23 +147,19 @@ USA.
   (set! default-environment
 	(without-interrupts
 	 (lambda ()
-	   (let ((fp-env ((ucode-primitive float-environment 0))))
-	     ((ucode-primitive set-float-rounding-mode 1)
-	      (%mode-name->number
-	       (flo:default-rounding-mode)
-	       '|#[(runtime floating-point-environment)reset-package!]|))
-	     ((ucode-primitive clear-float-exceptions 1)
-	      (flo:supported-exceptions))
-	     ((ucode-primitive set-trapped-float-exceptions 1)
-	      (flo:default-trapped-exceptions))
-	     (let ((fp-env* ((ucode-primitive float-environment 0))))
-	       ((ucode-primitive set-float-environment 1) fp-env)
-	       fp-env*)))))
-  (initialize-flonum-infinities!))
-
-(define (initialize-package!)
-  (reset-package!)
-  (add-event-receiver! event:after-restore reset-package!))
+	   ((ucode-primitive set-float-rounding-mode 1)
+	    (%mode-name->number
+	     (flo:default-rounding-mode)
+	     '|#[(runtime floating-point-environment)reset-package!]|))
+	   ((ucode-primitive clear-float-exceptions 1)
+	    (flo:supported-exceptions))
+	   ((ucode-primitive set-trapped-float-exceptions 1)
+	    (flo:default-trapped-exceptions))
+	   ((ucode-primitive float-environment 0)))))
+  unspecific)
+(add-boot-init!
+ (lambda ()
+   (run-now-and-after-restore! reset-package!)))
 
 ;;;; Floating-point rounding mode
 
@@ -236,6 +224,7 @@ USA.
   (flo:exception:underflow float-underflow-exception 0)
   (flo:exception:overflow float-overflow-exception 0)
   (flo:exception:inexact-result float-inexact-result-exception 0)
+  (flo:exception:subnormal-operand float-subnormal-operand-exception 0)
   (flo:test-exceptions test-float-exceptions 1)
   (flo:save-exception-flags save-float-exception-flags 1)
   (flo:test-exception-flags test-float-exception-flags 2)
@@ -247,23 +236,28 @@ USA.
   ((ucode-primitive clear-float-exceptions 1) exceptions))
 
 (define (flo:raise-exceptions! exceptions)
-  (use-floating-point-environment!)
-  ((ucode-primitive raise-float-exceptions 1) exceptions))
+  (if (using-floating-point-environment?)
+      ((ucode-primitive raise-float-exceptions 1) exceptions)))
 
 (define (flo:restore-exception-flags! fexcept exceptions)
   (use-floating-point-environment!)
   ((ucode-primitive restore-float-exception-flags 2) fexcept exceptions))
 
 (define (flo:set-trapped-exceptions! exceptions)
-  (use-floating-point-environment!)
+  (if (not (using-floating-point-environment?))
+      (begin
+	(use-floating-point-environment!)
+	((ucode-primitive clear-float-exceptions 1) exceptions)))
   ((ucode-primitive set-trapped-float-exceptions 1) exceptions))
 
 (define (flo:trap-exceptions! exceptions)
-  (use-floating-point-environment!)
+  (if (not (using-floating-point-environment?))
+      (begin
+	(use-floating-point-environment!)
+	((ucode-primitive clear-float-exceptions 1) exceptions)))
   ((ucode-primitive trap-float-exceptions 1) exceptions))
 
 (define (flo:untrap-exceptions! exceptions)
-  (use-floating-point-environment!)
   ((ucode-primitive untrap-float-exceptions 1) exceptions))
 
 (define (flo:defer-exception-traps!)
@@ -271,21 +265,17 @@ USA.
   ((ucode-primitive defer-float-exception-traps 0)))
 
 (define (flo:default-trapped-exceptions)
-  ;; By default, we trap the standard IEEE 754 exceptions that Scheme
-  ;; can safely run with trapped, in order to report errors as soon as
-  ;; they happen.  Scheme cannot safely run with the inexact result
-  ;; exception trapped (which you almost never want anyway), and there
-  ;; are some non-standard exceptions which we will not trap in order
-  ;; to keep behaviour consistent between host systems.
+  ;; By default, we trap nothing, following iEEE 754-2008's default
+  ;; exception handling recommendation.
   ;;
-  ;; XXX If you want to read the exceptions that don't trap by default,
-  ;; you must disable interrupts so that the lazy floating-point
-  ;; environment switching mechanism will work.  Is that too much of a
-  ;; burden?
-  (fix:or (fix:or (flo:exception:divide-by-zero)
-		  (flo:exception:invalid-operation))
-	  (fix:or (flo:exception:overflow)
-		  (flo:exception:underflow))))
+  ;; This is a change from the past in MIT Scheme which used to trap
+  ;; all the standard exceptions except for inexact-result.
+  ;;
+  ;; Note that for querying the status of floating-point operations,
+  ;; the floating-point environment is not reliable in the current
+  ;; thread until you touch it, e.g. with flo:clear-exceptions! or
+  ;; flo:preserving-environment.
+  0)
 
 ;++ Include machine-dependent bits, by number rather than by name.
 
@@ -302,7 +292,8 @@ USA.
 	(n 'invalid-operation (flo:exception:invalid-operation)
 	   (n 'overflow (flo:exception:overflow)
 	      (n 'underflow (flo:exception:underflow)
-		 '()))))))
+		 (n 'subnormal-operand (flo:exception:subnormal-operand)
+		    '())))))))
 
 (define (flo:names->exceptions names)
   (define (name->exceptions name)
@@ -312,6 +303,7 @@ USA.
       ((invalid-operation) (flo:exception:invalid-operation))
       ((overflow) (flo:exception:overflow))
       ((underflow) (flo:exception:underflow))
+      ((subnormal-operand) (flo:exception:subnormal-operand))
       (else (error:bad-range-argument names 'flo:names->exceptions))))
   (guarantee list-of-unique-symbols? names 'flo:names->exceptions)
   (reduce fix:or 0 (map name->exceptions names)))
@@ -363,34 +355,8 @@ USA.
      (flo:untrap-exceptions! exceptions)
      (procedure))))
 
-(define flo:nan.0)
-(define flo:+inf.0)
-(define flo:-inf.0)
-;;; ZERO can be eliminated after 9.3 is released.  It works around
-;;; overly-aggressive constant folding in SF and LIAR.
-(define (initialize-flonum-infinities!)
-  (let ((zero (lambda () (identity-procedure 0.))))
-    (if (flo:have-trap-enable/disable?)
-        (begin
-          (set! flo:nan.0
-                (named-lambda (flo:nan.0)
-                  (flo:with-exceptions-untrapped (flo:exception:invalid-operation)
-                    (lambda ()
-                      (flo:/ 0. (zero))))))
-          (set! flo:+inf.0
-                (named-lambda (flo:+inf.0)
-                  (flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-                    (lambda ()
-                      (flo:/ +1. (zero))))))
-          (set! flo:-inf.0
-                (named-lambda (flo:-inf.0)
-                  (flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-                    (lambda ()
-                      (flo:/ -1. (zero))))))
-          unspecific)
-        ;; This works on macOS.  YMMV.
-        (begin
-          (set! flo:nan.0 (named-lambda (flo:nan.0) (flo:/ 0. (zero))))
-          (set! flo:+inf.0 (named-lambda (flo:+inf.0) (flo:/ +1. (zero))))
-          (set! flo:-inf.0 (named-lambda (flo:-inf.0) (flo:/ -1. (zero))))
-          unspecific))))
+(define (flo:nan.0)
+  (flo:make-nan #f #t 0))
+
+(define (flo:+inf.0) +inf.0)
+(define (flo:-inf.0) -inf.0)

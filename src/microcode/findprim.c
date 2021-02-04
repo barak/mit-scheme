@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -633,6 +633,11 @@ initialize_token_buffer (void)
 void
 grow_token_buffer (void)
 {
+  if (token_buffer_length >= (INT_MAX / 2))
+    {
+      fprintf (stderr, "token buffer overflow\n");
+      exit (1);
+    }
   token_buffer_length *= 2;
   token_buffer = (xrealloc (token_buffer, token_buffer_length));
   return;
@@ -812,6 +817,11 @@ void
 grow_data_buffer (void)
 {
   char * old_data_buffer = ((char *) data_buffer);
+  if (buffer_length >= (INT_MAX / (2 * (sizeof (struct descriptor)))))
+    {
+      fprintf (stderr, "data buffer overflow\n");
+      exit (1);
+    }
   buffer_length *= 2;
   data_buffer =
     ((struct descriptor (*) [])
@@ -827,6 +837,11 @@ grow_data_buffer (void)
 	scan += 1;
       }
   }
+  if (buffer_length >= (INT_MAX / (sizeof (struct descriptor *))))
+    {
+      fprintf (stderr, "result buffer overflow\n");
+      exit (1);
+    }
   result_buffer =
     ((struct descriptor **)
      (xrealloc (((char *) result_buffer),
@@ -1191,8 +1206,8 @@ strcmp_ci (const char * s1, const char * s2)
 
   while ((length--) > 0)
     {
-      int c1 = (*s1++);
-      int c2 = (*s2++);
+      int c1 = ((unsigned char) (*s1++));
+      int c2 = ((unsigned char) (*s2++));
       if (islower (c1)) c1 = (toupper (c1));
       if (islower (c2)) c2 = (toupper (c2));
       if (c1 < c2) return (-1);

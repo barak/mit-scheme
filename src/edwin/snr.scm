@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1616,7 +1616,7 @@ This shows News groups that have been created since the last time that
     (and pair
 	 (let ((window
 		(let ((window (weak-car pair)))
-		  (and window
+		  (and (window? window)
 		       (window-visible? window)
 		       (or (not require-buffer?)
 			   (eq? buffer (window-buffer window)))
@@ -4200,8 +4200,8 @@ With prefix arg, replaces the file with the list information."
          (if limit
              (let ((lns (length ns)))
                (cond ((<= lns (abs limit)) ns)
-                     ((< limit 0) (list-head ns (- limit)))
-                     (else (list-tail ns (- (length ns) limit)))))
+                     ((< limit 0) (take ns (- limit)))
+                     (else (drop ns (- (length ns) limit)))))
              ns)))
    (let ((ignore-header?
           (let ((filter (ref-variable news-header-filter context)))

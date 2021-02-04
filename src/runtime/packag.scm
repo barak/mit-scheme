@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -169,7 +169,9 @@ USA.
 	      (if alternate-loader
 		  (alternate-loader load-component options)
 		  (begin
-		    (load-packages-from-file file options load-component)
+		    (load-packages-from-file file options
+		      (lambda (name package)
+			(load-component name (package/environment package))))
 		    (initialize-packages-from-file file)))))))))
   ;; Make sure that everything we just loaded is purified.  If the
   ;; program runs before it gets purified, some of its run-time state
@@ -205,31 +207,6 @@ USA.
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))
 
-(define-integrable (package-file/tag pf) (vector-ref pf 0))
-(define-integrable (package-file/version pf) (vector-ref pf 1))
-(define-integrable (package-file/descriptions pf) (vector-ref pf 2))
-(define-integrable (package-file/loads pf) (vector-ref pf 3))
-
-(define-integrable (make-package-description name ancestors internal-names
-					     exports imports extension?)
-  (vector name ancestors internal-names exports imports extension?))
-
-(define-integrable (package-description/name pd) (vector-ref pd 0))
-(define-integrable (package-description/ancestors pd) (vector-ref pd 1))
-(define-integrable (package-description/internal-names pd) (vector-ref pd 2))
-(define-integrable (package-description/exports pd) (vector-ref pd 3))
-(define-integrable (package-description/imports pd) (vector-ref pd 4))
-(define-integrable (package-description/extension? pd) (vector-ref pd 5))
-
-(define-integrable (make-load-description name file-cases initializations
-					  finalizations)
-  (vector name file-cases initializations finalizations))
-
-(define-integrable (load-description/name pd) (vector-ref pd 0))
-(define-integrable (load-description/file-cases pd) (vector-ref pd 1))
-(define-integrable (load-description/initializations pd) (vector-ref pd 2))
-(define-integrable (load-description/finalizations pd) (vector-ref pd 3))
-
 (define (package-file? object)
   (and (vector? object)
        (fix:= (vector-length object) 4)
@@ -241,6 +218,15 @@ USA.
        (vector-of-type? (package-file/loads object)
 			load-description?)))
 
+(define-integrable (package-file/tag pf) (vector-ref pf 0))
+(define-integrable (package-file/version pf) (vector-ref pf 1))
+(define-integrable (package-file/descriptions pf) (vector-ref pf 2))
+(define-integrable (package-file/loads pf) (vector-ref pf 3))
+
+(define-integrable (make-package-description name ancestors internal-names
+					     exports imports extension?)
+  (vector name ancestors internal-names exports imports extension?))
+
 (define (package-description? object)
   (and (vector? object)
        (fix:= (vector-length object) 6)
@@ -251,22 +237,16 @@ USA.
        (vector-of-type? (package-description/imports object) link-description?)
        (boolean? (package-description/extension? object))))
 
-(define (link-description? object)
-  (and (vector? object)
-       (cond ((fix:= (vector-length object) 2)
-	      (and (symbol? (vector-ref object 0))
-		   (package-name? (vector-ref object 1))))
-	     ((fix:= (vector-length object) 3)
-	      (and (symbol? (vector-ref object 0))
-		   (package-name? (vector-ref object 1))
-		   (symbol? (vector-ref object 2))))
-	     ((fix:= (vector-length object) 4)
-	      (and (symbol? (vector-ref object 0))
-		   (package-name? (vector-ref object 1))
-		   (symbol? (vector-ref object 2))
-		   (or (eq? #f (vector-ref object 3))
-		       (eq? 'deprecated (vector-ref object 3)))))
-	     (else #f))))
+(define-integrable (package-description/name pd) (vector-ref pd 0))
+(define-integrable (package-description/ancestors pd) (vector-ref pd 1))
+(define-integrable (package-description/internal-names pd) (vector-ref pd 2))
+(define-integrable (package-description/exports pd) (vector-ref pd 3))
+(define-integrable (package-description/imports pd) (vector-ref pd 4))
+(define-integrable (package-description/extension? pd) (vector-ref pd 5))
+
+(define-integrable (make-load-description name file-cases initializations
+					  finalizations)
+  (vector name file-cases initializations finalizations))
 
 (define (load-description? object)
   (and (vector? object)
@@ -285,6 +265,34 @@ USA.
 	       (vector-of-type? file-case string?))))
        (vector? (load-description/initializations object))
        (vector? (load-description/finalizations object))))
+
+(define-integrable (load-description/name pd) (vector-ref pd 0))
+(define-integrable (load-description/file-cases pd) (vector-ref pd 1))
+(define-integrable (load-description/initializations pd) (vector-ref pd 2))
+(define-integrable (load-description/finalizations pd) (vector-ref pd 3))
+
+(define (link-description? object)
+  (and (vector? object)
+       (memv (vector-length object) '(2 3 4))
+       (symbol? (link-description/inner-name object))
+       (package-name? (link-description/package object))
+       (symbol? (link-description/outer-name object))
+       (memq (link-description/status object) '(#f deprecated))))
+
+(define-integrable (link-description/inner-name link)
+  (vector-ref link 0))
+
+(define-integrable (link-description/package link)
+  (vector-ref link 1))
+
+(define-integrable (link-description/outer-name link)
+  (if (fix:>= (vector-length link) 3)
+      (vector-ref link 2)
+      (vector-ref link 0)))
+
+(define-integrable (link-description/status link)
+  (and (fix:>= (vector-length link) 4)
+       (vector-ref link 3)))
 
 ;; CONSTRUCT-PACKAGES-FROM-FILE is called from the cold load before
 ;; the runtime system is loaded.  Thus it must only call procedures
@@ -348,25 +356,22 @@ USA.
 	(do ((i 0 (fix:+ i 1)))
 	    ((fix:= i n))
 	  (let ((binding (vector-ref bindings i)))
-	    (link-variables (find-package-environment (vector-ref binding 1))
-			    (if (fix:>= (vector-length binding) 3)
-				(vector-ref binding 2)
-				(vector-ref binding 0))
+	    (link-variables (find-package-environment
+			     (link-description/package binding))
+			    (link-description/outer-name binding)
 			    environment
-			    (vector-ref binding 0))))))
+			    (link-description/inner-name binding))))))
     (let ((bindings (package-description/imports description)))
       (let ((n (vector-length bindings)))
 	(do ((i 0 (fix:+ i 1)))
 	    ((fix:= i n))
 	  (let ((binding (vector-ref bindings i)))
 	    (let ((source-environment
-		   (find-package-environment (vector-ref binding 1)))
-		  (source-name
-		   (if (fix:>= (vector-length binding) 3)
-		       (vector-ref binding 2)
-		       (vector-ref binding 0))))
+		   (find-package-environment
+		    (link-description/package binding)))
+		  (source-name (link-description/outer-name binding)))
 	      (guarantee-binding source-environment source-name)
-	      (link-variables environment (vector-ref binding 0)
+	      (link-variables environment (link-description/inner-name binding)
 			      source-environment source-name))))))))
 
 (define (extend-package-environment environment . name-sources)
@@ -452,37 +457,36 @@ USA.
 	   file-loader))))))
 
 (define (load-package-from-description package description options file-loader)
-  (let ((environment (package/environment package)))
-    (let ((load-files
-	   (lambda (filenames)
-	     (let ((n (vector-length filenames)))
-	       (do ((i 0 (fix:+ i 1)))
-		   ((fix:= i n))
-		 (file-loader (vector-ref filenames i) environment)))))
-	  (cases (load-description/file-cases description)))
-      (let ((n (vector-length cases)))
-	(do ((i 0 (fix:+ i 1)))
-	    ((fix:= i n))
-	  (let ((file-case (vector-ref cases i)))
-	    (if (pair? file-case)
-		(let ((option (lookup-option (car file-case) options)))
-		  (if (not option)
-		      (error "Missing key:" (car file-case)))
-		  (let ((clauses (cdr file-case)))
-		    (let ((n (vector-length clauses)))
-		      (do ((i 0 (fix:+ i 1)))
-			  ((fix:= i n))
-			(let ((clause (vector-ref clauses i)))
-			  (if (let ((keys (car clause)))
-				(or (eq? keys 'else)
-				    (let ((n (vector-length keys)))
-				      (let loop ((i 0))
-					(and (fix:< i n)
-					     (or (eq? (vector-ref keys i)
-						      option)
-						 (loop (fix:+ i 1))))))))
-			      (load-files (cdr clause))))))))
-		(load-files file-case))))))))
+  (let ((load-files
+	 (lambda (filenames)
+	   (let ((n (vector-length filenames)))
+	     (do ((i 0 (fix:+ i 1)))
+		 ((fix:= i n))
+	       (file-loader (vector-ref filenames i) package)))))
+	(cases (load-description/file-cases description)))
+    (let ((n (vector-length cases)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i n))
+	(let ((file-case (vector-ref cases i)))
+	  (if (pair? file-case)
+	      (let ((option (lookup-option (car file-case) options)))
+		(if (not option)
+		    (error "Missing key:" (car file-case)))
+		(let ((clauses (cdr file-case)))
+		  (let ((n (vector-length clauses)))
+		    (do ((i 0 (fix:+ i 1)))
+			((fix:= i n))
+		      (let ((clause (vector-ref clauses i)))
+			(if (let ((keys (car clause)))
+			      (or (eq? keys 'else)
+				  (let ((n (vector-length keys)))
+				    (let loop ((i 0))
+				      (and (fix:< i n)
+					   (or (eq? (vector-ref keys i)
+						    option)
+					       (loop (fix:+ i 1))))))))
+			    (load-files (cdr clause))))))))
+	      (load-files file-case)))))))
 
 (define (lookup-option key options)
   (let loop ((options options))

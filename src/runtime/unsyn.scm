@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +28,9 @@ USA.
 ;;; package: (runtime unsyntaxer)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic)
+		'(runtime scode-walker))
 
 ;;; If UNSYNTAXER:MACROIZE? is #f, then the unsyntaxed output will
 ;;; closely match the concrete structure that is given to SCODE-EVAL.
@@ -127,7 +130,9 @@ USA.
 
 (define (unsyntax-variable-object environment object)
   (declare (ignore environment))
-  (scode-variable-name object))
+  (if (scode-variable-safe? object)
+      `(safe-reference ,(scode-variable-name object))
+      (scode-variable-name object)))
 
 (define (unsyntax-access-object environment object)
   (or (and (unsyntaxer:elide-global-accesses?)
@@ -232,7 +237,8 @@ USA.
 
 (define (unsyntax-sequence-object environment seq)
   (let ((actions (scode-sequence-actions seq)))
-    (if (and (scode-block-declaration? (car actions))
+    (if (and (pair? actions)
+	     (scode-block-declaration? (car actions))
 	     (pair? (cdr actions)))
 	`(begin
 	  (declare ,@(scode-block-declaration-text (car actions)))
@@ -421,7 +427,8 @@ USA.
 (define (unsyntax-lambda-body-sequence environment body)
   (if (scode-sequence? body)
       (let ((actions (scode-sequence-actions body)))
-	(if (and (scode-block-declaration? (car actions))
+	(if (and (pair? actions)
+		 (scode-block-declaration? (car actions))
 		 (pair? (cdr actions)))
 	    `((declare ,@(scode-block-declaration-text (car actions)))
 	      ,@(unsyntax-sequence-for-splicing

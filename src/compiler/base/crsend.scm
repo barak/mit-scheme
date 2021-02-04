@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,6 +50,10 @@ USA.
 			 (finish-cross-compilation:info-file pathname force?))
 			((let ((t (pathname-type pathname)))
 			   (and (string? t)
+				(string=? t "icb")))
+			 (finish-cross-compilation:bci-file pathname force?))
+			((let ((t (pathname-type pathname)))
+			   (and (string? t)
 				(string=? t "moc")))
 			 (finish-cross-compilation:file pathname force?))))
 		(directory-read (pathname-as-directory directory))))))
@@ -81,7 +85,11 @@ USA.
 			((let ((t (pathname-type pathname)))
 			   (and (string? t)
 				(string=? t "fni")))
-			 (finish-cross-compilation:info-file pathname force?))))
+			 (finish-cross-compilation:info-file pathname force?))
+			((let ((t (pathname-type pathname)))
+			   (and (string? t)
+				(string=? t "icb")))
+			 (finish-cross-compilation:bci-file pathname force?))))
 		(directory-read (pathname-as-directory directory))))))
 
 (define (finish-cross-compilation:info-file pathname #!optional force?)
@@ -101,6 +109,24 @@ USA.
 		  (lambda (temp)
 		    (fasdump inf temp #t)
 		    (compress temp output-file)))))))))
+
+(define (finish-cross-compilation:bci-file pathname #!optional force?)
+  (let* ((input-file (pathname-default-type pathname "icb"))
+	 (output-file (pathname-new-type input-file "bci")))
+    (if (or (if (default-object? force?) #t force?)
+	    (file-modification-time<? output-file input-file))
+	(with-notification
+	    (lambda (port)
+	      (write-string "Compressing info: " port)
+	      (write (enough-namestring input-file) port)
+	      (write-string " => " port)
+	      (write (enough-namestring output-file) port))
+	  (lambda ()
+	    (call-with-temporary-filename
+	      (lambda (temp)
+		(uncompress input-file temp)
+		(fasdump (fasload temp) temp #t)
+		(compress temp output-file))))))))
 
 (define (finish-cross-compilation:file input-file #!optional force?)
   (let* ((input-file (pathname-default-type input-file "moc"))
@@ -200,7 +226,10 @@ USA.
     ;; After header just inserted.
     (write-bits! output-block (* scheme-object-width 2) code-block)
     (insert-objects! output-block objects (+ bl 1))
-    (object-new-type (ucode-type compiled-code-block) output-block)))
+    (let ((compiled-block
+	   (object-new-type (ucode-type compiled-code-block) output-block)))
+      ((ucode-primitive declare-compiled-code-block 1) compiled-block)
+      compiled-block)))
 
 (define (insert-objects! v objects where)
   (let ((end (vector-length v)))

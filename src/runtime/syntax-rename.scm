@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,6 +47,8 @@ USA.
 ;;; interned symbol with a computed name that's designed to be unique.
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime dynamic) '(runtime predicate-dispatch))
 
 (define (make-local-identifier-renamer)
   ((rdb:identifier-renamer (rename-db)) new-identifier))
@@ -108,6 +110,7 @@ USA.
 ;;;; Post processing
 
 (define (post-process-output expression)
+  (trace-reduce expression)
   (let ((safe-set (make-strong-eq-hash-table)))
     (compute-substitution expression
 			  (lambda (rename original)
@@ -121,9 +124,11 @@ USA.
 			  bound)))
     (for-each (lambda (rename)
 		(let ((original (rename->original rename)))
-		  (if (not (any (lambda (rename*)
-				  (eq? original (rename->original rename*)))
-				free))
+		  (if (and (symbol? original)
+			   (not (any (lambda (rename*)
+				       (eq? original
+					    (rename->original rename*)))
+				     free)))
 		      (mark-safe! rename original))))
 	      bound)
     free))
@@ -152,11 +157,11 @@ USA.
 	  (if entry
 	      (cdr entry)
 	      (let ((finalized
-		     (symbol "." original
+		     (symbol "." (identifier->symbol original)
 			     "." frame-id
 			     "-" (length (cdr bucket)))))
 		(set-cdr! bucket
-			  (cons (cons original finalized)
+			  (cons (cons frame-id finalized)
 				(cdr bucket)))
 		finalized)))))
 
@@ -188,12 +193,10 @@ USA.
 		    (get-subexpressions expression)))))
 
    (set! compute-substitution
-	 (cached-standard-predicate-dispatcher 'compute-substitution 2))
-
-   (define-predicate-dispatch-default-handler compute-substitution
-     (lambda (expression mark-safe!)
-       (declare (ignore expression mark-safe!))
-       '()))
+	 (cached-standard-predicate-dispatcher 'compute-substitution 2
+	   (lambda (expression mark-safe!)
+	     (declare (ignore expression mark-safe!))
+	     '())))
 
    (define-cs-handler scode-variable?
      (lambda (expression mark-safe!)
@@ -222,8 +225,21 @@ USA.
    (define-cs-handler scode-open-block?
      (lambda (expression mark-safe!)
        (mark-local-bindings (scode-open-block-names expression)
-			    (scode-open-block-actions expression)
+			    (make-scode-declaration
+			     (scode-open-block-declarations expression)
+			     (scode-open-block-actions expression))
 			    mark-safe!)))
+
+   (define-cs-handler scode-declaration?
+     (lambda (expression mark-safe!)
+       (fold (lambda (declaration ids)
+	       (fold-decl-ids (lambda (id ids)
+				(lset-adjoin eq? ids id))
+			      ids
+			      declaration))
+	     (compute-substitution (scode-declaration-expression expression)
+				   mark-safe!)
+	     (scode-declaration-text expression))))
 
    (define-cs-handler quoted-identifier?
      (simple-subexpression quoted-identifier-identifier))
@@ -300,16 +316,15 @@ USA.
 	     (get-subexpressions expression)))))
 
    (set! alpha-substitute
-	 (cached-standard-predicate-dispatcher 'alpha-substitute 2))
-
-   (define-predicate-dispatch-default-handler alpha-substitute
-     (lambda (substitution expression)
-       (declare (ignore substitution))
-       expression))
+	 (cached-standard-predicate-dispatcher 'alpha-substitute 2
+	   (lambda (substitution expression)
+	     (declare (ignore substitution))
+	     expression)))
 
    (define-as-handler scode-variable?
      (lambda (substitution expression)
-       (make-scode-variable (substitution (scode-variable-name expression)))))
+       (make-scode-variable (substitution (scode-variable-name expression))
+			    (scode-variable-safe? expression))))
 
    (define-as-handler quoted-identifier?
      (lambda (substitution expression)

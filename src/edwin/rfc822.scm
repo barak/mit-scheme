@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,7 +29,7 @@ USA.
 (declare (usual-integrations))
 
 (define rfc822:char-set:header-constituents
-  (char-set-difference (ascii-range->char-set 33 127)
+  (char-set-difference (ucs-range->char-set 33 127)
 		       (char-set #\:)))
 
 (define rfc822:char-set:not-header-constituents
@@ -385,7 +385,7 @@ USA.
 
 (define (rfc822:string-tokenizer special-chars keep-whitespace?)
   (let ((atom-chars
-         (char-set-difference (ascii-range->char-set #x21 #x7F)
+         (char-set-difference (ucs-range->char-set #x21 #x7F)
                               special-chars)))
     (define (special-char? char) (char-in-set? char special-chars))
     (define    (atom-char? char) (char-in-set?    char atom-chars))
@@ -558,7 +558,7 @@ USA.
 (define (reverse-list->string list start end)
   (let* ((length (fix:- end start))
          (string (make-string length)))
-    (let loop ((list (list-tail list start))
+    (let loop ((list (drop list start))
                (index length))
       (cond ((fix:zero? index)
              string)

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -197,4 +197,14 @@ whether the corresponding primitive is implemented or not.")
   PRIMITIVE_RETURN
     (find_primitive
      ((MEMORY_REF (name, SYMBOL_NAME)), intern_p, allow_p, arity));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-OPEN-CODED?", Prim_primitive_procedure_open_coded, 1, 1,
+  "(PRIMITIVE)\n\
+Returns #t iff PRIMITIVE is open-coded by the compiler.\n\
+Only returns #t if constant-folded by the same compiler.")
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, PRIMITIVE_P);
+  PRIMITIVE_RETURN (SHARP_F);
 }

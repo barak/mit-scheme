@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -49,6 +49,11 @@ USA.
 (define (new-cache n-tags)
   (make-cache dispatch-tag-index-start n-tags 4))
 
+(define (resize-cache cache new-length)
+  (make-cache (cache-tag-index cache)
+	      (cache-n-tags cache)
+	      new-length))
+
 (define (make-cache tag-index n-tags length)
   ;; LENGTH is assumed to be a power of two.
   (%make-cache tag-index
@@ -57,7 +62,7 @@ USA.
 		     ((fix:<= length 16) 4)
 		     (else 6))
 	       n-tags
-	       (make-vector length (make-list n-tags #f))
+	       (make-vector length (make-weak-list n-tags #f))
 	       (make-vector length #f)
 	       '()))
 
@@ -77,9 +82,7 @@ USA.
   (vector-set! (cache-values cache) line value))
 
 (define-integrable (cache-next-line cache line)
-  (if (fix:= (fix:+ line 1) (cache-length cache))
-      0
-      (fix:+ line 1)))
+  (fix:and (fix:+ line 1) (cache-mask cache)))
 
 (define-integrable (cache-line-separation cache line line*)
   (let ((n (fix:- line* line)))
@@ -88,203 +91,85 @@ USA.
 	n)))
 
 (define (probe-cache cache tags)
-  (let ((line (compute-primary-cache-line cache tags)))
-    (and line
-	 (let ((limit (cache-limit cache)))
-	   (letrec
-	       ((search-lines
-		 (lambda (line i)
-		   (cond ((match (cache-line-tags cache line))
-			  (cache-line-value cache line))
-			 ((fix:= i limit)
-			  (search-overflow (cache-overflow cache)))
-			 (else
-			  (search-lines (cache-next-line cache line)
-					(fix:+ i 1))))))
-		(search-overflow
-		 (lambda (overflow)
-		   (and (not (null? overflow))
-			(if (match (caar overflow))
-			    (cdar overflow)
-			    (search-overflow (cdr overflow))))))
-		(match
-		 (lambda (tags*)
-		   (let loop ((w1 tags*) (w2 tags))
-		     (and (eq? (system-pair-car w1) (system-pair-car w2))
-			  (or (null? (system-pair-cdr w1))
-			      (loop (system-pair-cdr w1)
-				    (system-pair-cdr w2))))))))
-	     (search-lines line 0))))))
 
-(define (compute-primary-cache-line cache tags)
-  (let ((index (cache-tag-index cache))
-	(mask (cache-mask cache)))
-    (let loop ((tags tags) (line 0))
-      (cond ((null? tags)
-	     line)
-	    ((not (system-pair-car tags))
-	     #f)
-	    (else
-	     (loop (system-pair-cdr tags)
-		   (fix:and (fix:+ line
-				   (dispatch-tag-ref (system-pair-car tags)
-						     index))
-			    mask)))))))
+  (define (match tags*)
+    (let loop ((w1 tags*) (w2 tags))
+      (or (not (weak-pair? w1))
+	  (and (eq? (weak-car w1) (car w2))
+	       (loop (weak-cdr w1) (cdr w2))))))
 
-(define (cache-entry-reusable? tags tags*)
-  ;; True iff TAGS is (1) empty, (2) contains a tag that is invalid,
-  ;; or (3) has the same tags as TAGS*.
-  (or (not tags)
-      (let loop ((tags tags) (tags* tags*))
-	(or (null? tags)
-	    (not (system-pair-car tags))
-	    (and (eq? (system-pair-car tags) (system-pair-car tags*))
-		 (loop (system-pair-cdr tags) (system-pair-cdr tags*)))))))
+  (%probe-cache cache match
+    (let ((index (cache-tag-index cache)))
+      (let loop ((tags (cdr tags)) (sum (dispatch-tag-ref (car tags) index)))
+	(if (pair? tags)
+	    (loop (cdr tags)
+		  (fix:+ sum (dispatch-tag-ref (car tags) index)))
+	    (fix:and sum (cache-mask cache)))))))
 
-(define (cache-count cache)
-  (let ((length (cache-length cache)))
-    (do ((line 0 (fix:+ line 1))
-	 (count 0
-		(if (let ((tags (cache-line-tags cache line)))
-		      (and tags
-			   (let loop ((tags tags))
-			     (or (null? tags)
-				 (and (system-pair-car tags)
-				      (loop (system-pair-cdr tags)))))))
-		    (fix:+ count 1)
-		    count)))
-	((fix:= line length) count))))
+(declare (integrate-operator %probe-cache))
+(define (%probe-cache cache match line)
+  (declare (integrate cache match))
+  (if (match (cache-line-tags cache line))
+      (cache-line-value cache line)
+      (let ((limit (cache-limit cache)))
+	(let loop ((line (cache-next-line cache line)) (i 0))
+	  (if (fix:< i limit)
+	      (if (match (cache-line-tags cache line))
+		  (cache-line-value cache line)
+		  (loop (cache-next-line cache line) (fix:+ i 1)))
+	      (let ov-loop ((overflow (cache-overflow cache)))
+		(and (pair? overflow)
+		     (if (match (caar overflow))
+			 (cdar overflow)
+			 (ov-loop (cdr overflow))))))))))
 
-(declare (integrate-operator probe-cache-1))
 (define (probe-cache-1 cache w1)
-  (let ((line
-	 (fix:and (dispatch-tag-ref w1 (cache-tag-index cache))
-		  (cache-mask cache)))
-	(match
-	 (lambda (tags)
-	   (declare (integrate tags))
-	   (eq? w1 (system-pair-car tags)))))
-    (declare (integrate line))
-    (declare (integrate-operator match))
-    (if (match (cache-line-tags cache line))
-	(cache-line-value cache line)
-	(let ((limit (cache-limit cache)))
-	  (let search-lines ((line (cache-next-line cache line)) (i 0))
-	    (cond ((fix:= i limit)
-		   (let search-overflow ((entries (cache-overflow cache)))
-		     (and (not (null? entries))
-			  (if (match (caar entries))
-			      (cdar entries)
-			      (search-overflow (cdr entries))))))
-		  ((and (cache-line-tags cache line)
-			(match (cache-line-tags cache line)))
-		   (cache-line-value cache line))
-		  (else
-		   (search-lines (cache-next-line cache line)
-				 (fix:+ i 1)))))))))
 
-(declare (integrate-operator probe-cache-2))
+  (define-integrable (match tags)
+    (eq? w1 (weak-car tags)))
+
+  (%probe-cache cache match
+    (fix:and (dispatch-tag-ref w1 (cache-tag-index cache))
+	     (cache-mask cache))))
+
 (define (probe-cache-2 cache w1 w2)
-  (let ((line
-	 (fix:and (fix:+ (dispatch-tag-ref w1 (cache-tag-index cache))
-			 (dispatch-tag-ref w2 (cache-tag-index cache)))
-		  (cache-mask cache)))
-	(match
-	 (lambda (tags)
-	   (declare (integrate tags))
-	   (and (eq? w1 (system-pair-car tags))
-		(eq? w2 (system-pair-car (system-pair-cdr tags)))))))
-    (declare (integrate line))
-    (declare (integrate-operator match))
-    (if (and (cache-line-tags cache line)
-	     (match (cache-line-tags cache line)))
-	(cache-line-value cache line)
-	(let ((limit (cache-limit cache)))
-	  (let search-lines ((line (cache-next-line cache line)) (i 0))
-	    (cond ((fix:= i limit)
-		   (let search-overflow ((entries (cache-overflow cache)))
-		     (and (not (null? entries))
-			  (if (match (caar entries))
-			      (cdar entries)
-			      (search-overflow (cdr entries))))))
-		  ((and (cache-line-tags cache line)
-			(match (cache-line-tags cache line)))
-		   (cache-line-value cache line))
-		  (else
-		   (search-lines (cache-next-line cache line)
-				 (fix:+ i 1)))))))))
-
-(declare (integrate-operator probe-cache-3))
-(define (probe-cache-3 cache w1 w2 w3)
-  (let ((line
-	 (fix:and
-	  (fix:+ (dispatch-tag-ref w1 (cache-tag-index cache))
-		 (fix:+ (dispatch-tag-ref w2 (cache-tag-index cache))
-			(dispatch-tag-ref w3 (cache-tag-index cache))))
-	  (cache-mask cache)))
-	(match
-	 (lambda (tags)
-	   (declare (integrate tags))
-	   (and (eq? w1 (system-pair-car tags))
-		(eq? w2 (system-pair-car (system-pair-cdr tags)))
-		(eq? w3 (system-pair-car
-			 (system-pair-cdr (system-pair-cdr tags))))))))
-    (declare (integrate line))
-    (declare (integrate-operator match))
-    (if (match (cache-line-tags cache line))
-	(cache-line-value cache line)
-	(let ((limit (cache-limit cache)))
-	  (let search-lines ((line (cache-next-line cache line)) (i 0))
-	    (cond ((fix:= i limit)
-		   (let search-overflow ((entries (cache-overflow cache)))
-		     (and (not (null? entries))
-			  (if (match (caar entries))
-			      (cdar entries)
-			      (search-overflow (cdr entries))))))
-		  ((and (cache-line-tags cache line)
-			(match (cache-line-tags cache line)))
-		   (cache-line-value cache line))
-		  (else
-		   (search-lines (cache-next-line cache line)
-				 (fix:+ i 1)))))))))
 
-(declare (integrate-operator probe-cache-4))
+  (define-integrable (match tags)
+    (and (eq? w1 (weak-car tags))
+	 (eq? w2 (weak-car (weak-cdr tags)))))
+
+  (%probe-cache cache match
+    (fix:and (fix:+ (dispatch-tag-ref w1 (cache-tag-index cache))
+		    (dispatch-tag-ref w2 (cache-tag-index cache)))
+	     (cache-mask cache))))
+
+(define (probe-cache-3 cache w1 w2 w3)
+
+  (define-integrable (match tags)
+    (and (eq? w1 (weak-car tags))
+	 (eq? w2 (weak-car (weak-cdr tags)))
+	 (eq? w3 (weak-car (weak-cdr (weak-cdr tags))))))
+
+  (%probe-cache cache match
+    (fix:and (fix:+ (dispatch-tag-ref w1 (cache-tag-index cache))
+		    (fix:+ (dispatch-tag-ref w2 (cache-tag-index cache))
+			   (dispatch-tag-ref w3 (cache-tag-index cache))))
+	     (cache-mask cache))))
+
 (define (probe-cache-4 cache w1 w2 w3 w4)
-  (let ((line
-	 (fix:and
-	  (fix:+ (fix:+ (dispatch-tag-ref w1 (cache-tag-index cache))
-			(dispatch-tag-ref w2 (cache-tag-index cache)))
-		 (fix:+ (dispatch-tag-ref w3 (cache-tag-index cache))
-			(dispatch-tag-ref w4 (cache-tag-index cache))))
-	  (cache-mask cache)))
-	(match
-	 (lambda (tags)
-	   (declare (integrate tags))
-	   (and (eq? w1 (system-pair-car tags))
-		(eq? w2 (system-pair-car (system-pair-cdr tags)))
-		(eq? w3 (system-pair-car
-			 (system-pair-cdr (system-pair-cdr tags))))
-		(eq? w4 (system-pair-car
-			 (system-pair-cdr
-			  (system-pair-cdr (system-pair-cdr tags)))))))))
-    (declare (integrate line))
-    (declare (integrate-operator match))
-    (if (match (cache-line-tags cache line))
-	(cache-line-value cache line)
-	(let ((limit (cache-limit cache)))
-	  (let search-lines ((line (cache-next-line cache line)) (i 0))
-	    (cond ((fix:= i limit)
-		   (let search-overflow ((entries (cache-overflow cache)))
-		     (and (not (null? entries))
-			  (if (match (caar entries))
-			      (cdar entries)
-			      (search-overflow (cdr entries))))))
-		  ((and (cache-line-tags cache line)
-			(match (cache-line-tags cache line)))
-		   (cache-line-value cache line))
-		  (else
-		   (search-lines (cache-next-line cache line)
-				 (fix:+ i 1)))))))))
+
+  (define-integrable (match tags)
+    (and (eq? w1 (weak-car tags))
+	 (eq? w2 (weak-car (weak-cdr tags)))
+	 (eq? w3 (weak-car (weak-cdr (weak-cdr tags))))
+	 (eq? w4 (weak-car (weak-cdr (weak-cdr (weak-cdr tags)))))))
+
+  (%probe-cache cache match
+    (fix:and (fix:+ (fix:+ (dispatch-tag-ref w1 (cache-tag-index cache))
+			   (dispatch-tag-ref w2 (cache-tag-index cache)))
+		    (fix:+ (dispatch-tag-ref w3 (cache-tag-index cache))
+			   (dispatch-tag-ref w4 (cache-tag-index cache))))
+	     (cache-mask cache))))
 
 (define (fill-cache cache tags value)
   ;; TAGS must be converted to a weak list since it will be stored in
@@ -292,8 +177,9 @@ USA.
   ;; being GCed.
   (let ((tags (list->weak-list tags)))
     (or (fill-cache-if-possible cache tags value)
+	;; If the cache isn't too full, try to rehash without expanding.
 	(and (< (cache-count cache) (* (cache-length cache) .8))
-	     (adjust-cache cache tags value))
+	     (rehash-cache cache tags value))
 	(expand-cache cache tags value))))
 
 (define (fill-cache-if-possible cache tags value)
@@ -311,99 +197,75 @@ USA.
 	;; of the tags is GCed during complex cache operations.
 	cache)))
 
-(define (adjust-cache cache tags value)
+(define (compute-primary-cache-line cache tags)
+  (let ((index (cache-tag-index cache)))
+    (let ((tag (weak-car tags)))
+      (if (gc-reclaimed-object? tag)
+	  #f
+	  (let loop ((tags (weak-cdr tags)) (sum (dispatch-tag-ref tag index)))
+	    (if (weak-pair? tags)
+		(let ((tag (weak-car tags)))
+		  (if (gc-reclaimed-object? tag)
+		      #f
+		      (loop (weak-cdr tags)
+			    (fix:+ sum (dispatch-tag-ref tag index)))))
+		(fix:and sum (cache-mask cache))))))))
+
+(define (rehash-cache cache tags value)
   ;; Try to rehash the cache.  If that fails, try rehashing with
   ;; different tag indexes.  Fail only when all of the tag indexes
   ;; have been tried and none has worked.
   (let ((length (cache-length cache)))
-    (let ((new-cache
-	   (make-cache (cache-tag-index cache)
-		       (cache-n-tags cache)
-		       length)))
-      (letrec
-	  ((fill-lines
-	    (lambda (line)
-	      (cond ((fix:= line length)
-		     (fill-overflow (cache-overflow cache)))
-		    ((try-entry (cache-line-tags cache line)
-				(cache-line-value cache line))
-		     (fill-lines (fix:+ line 1)))
-		    (else
-		     (try-next-tag-index)))))
-	   (fill-overflow
-	    (lambda (entries)
-	      (cond ((null? entries)
-		     (or (fill-cache-if-possible new-cache tags value)
-			 (try-next-tag-index)))
-		    ((try-entry (caar entries) (cdar entries))
-		     (fill-overflow (cdr entries)))
-		    (else
-		     (try-next-tag-index)))))
-	   (try-entry
-	    (lambda (tags* value)
-	      (or (cache-entry-reusable? tags* tags)
-		  (fill-cache-if-possible new-cache tags* value))))
-	   (try-next-tag-index
-	    (lambda ()
-	      (let ((index (fix:+ (cache-tag-index new-cache) 1)))
-		(and (fix:< index dispatch-tag-index-end)
-		     (begin
-		       (set-cache-tag-index! new-cache index)
-		       (fill-lines 0)))))))
-	(fill-lines 0)))))
-
+    (let ((new-cache (resize-cache cache length)))
+
+      (define (loop line)
+	(if (fix:< line length)
+	    (and (try-copy (cache-line-tags cache line)
+			   (cache-line-value cache line))
+		 (loop (fix:+ line 1)))
+	    (let ov-loop ((entries (cache-overflow cache)))
+	      (if (pair? entries)
+		  (and (try-copy (caar entries) (cdar entries))
+		       (ov-loop (cdr entries)))
+		  (fill-cache-if-possible new-cache tags value)))))
+
+      (define (try-copy tags* value*)
+	(or (cache-entry-reusable? tags* tags)
+	    (fill-cache-if-possible new-cache tags* value*)))
+
+      (let index-loop ()
+	(or (loop 0)
+	    (let ((index (fix:+ (cache-tag-index new-cache) 1)))
+	      (and (fix:< index dispatch-tag-index-end)
+		   (begin
+		     (set-cache-tag-index! new-cache index)
+		     (index-loop)))))))))
+
 (define (expand-cache cache tags value)
   ;; Create a new cache that is twice the length of CACHE, rehash the
   ;; contents of CACHE into the new cache, and make the new entry.
   ;; Permits overflows to occur in the new cache.
-  (let ((length (cache-length cache)))
-    (letrec
-	((fill-lines
-	  (lambda (new-cache line)
-	    (if (fix:= line length)
-		(fill-overflow new-cache (cache-overflow cache))
-		(fill-lines (maybe-do-fill new-cache
-					   (cache-line-tags cache line)
-					   (cache-line-value cache line))
-			    (fix:+ line 1)))))
-	 (fill-overflow
-	  (lambda (new-cache overflow)
-	    (if (null? overflow)
-		(do-fill new-cache tags value)
-		(fill-overflow (maybe-do-fill new-cache
-					      (caar overflow)
-					      (cdar overflow))
-			       (cdr overflow)))))
-	 (maybe-do-fill
-	  (lambda (cache tags* value)
-	    (if (cache-entry-reusable? tags* tags)
-		cache
-		(do-fill cache tags* value))))
-	 (do-fill
-	  (lambda (cache tags value)
-	    (let ((primary (compute-primary-cache-line cache tags)))
-	      (if primary
-		  (let ((free (find-free-cache-line cache primary tags)))
-		    (if free
-			(begin
-			  (set-cache-line-tags! cache free tags)
-			  (set-cache-line-value! cache free value)
-			  cache)
-			(or (adjust-cache cache tags value)
-			    (begin
-			      (set-cache-overflow!
-			       cache
-			       (cons (cons (cache-line-tags cache primary)
-					   (cache-line-value cache primary))
-				     (cache-overflow cache)))
-			      (set-cache-line-tags! cache primary tags)
-			      (set-cache-line-value! cache primary value)
-			      cache))))
-		  cache)))))
-      (fill-lines (make-cache (cache-tag-index cache)
-			      (cache-n-tags cache)
-			      (fix:+ length length))
-		  0))))
+  (fill-cache-with-overflow
+   (cache-fold (lambda (tags* value* new-cache)
+		      (if (cache-entry-reusable? tags* tags)
+			  new-cache
+			  (fill-cache-with-overflow new-cache tags* value*)))
+		    (resize-cache cache (fix:lsh (cache-length cache) 1))
+		    cache)
+   tags value))
+
+(define (fill-cache-with-overflow cache tags value)
+  (or (fill-cache-if-possible cache tags value)
+      (rehash-cache cache tags value)
+      (let ((primary (compute-primary-cache-line cache tags)))
+	(set-cache-overflow!
+	 cache
+	 (cons (cons (cache-line-tags cache primary)
+		     (cache-line-value cache primary))
+	       (cache-overflow cache)))
+	(set-cache-line-tags! cache primary tags)
+	(set-cache-line-value! cache primary value)
+	cache)))
 
 (define (find-free-cache-line cache primary tags)
   ;; This procedure searches CACHE for a free line to hold an entry
@@ -480,40 +342,91 @@ USA.
 			       (cache-line-value cache line))
 			      (loop line (cdr lines))))))))))))))
 
-(define (purge-cache-entries cache predicate)
-  (if (there-exists-a-cache-entry? cache predicate)
-      ;; Must rebuild cache since deletions are near-impossible.
-      (let loop
-	  ((cache (new-cache (cache-n-tags cache)))
-	   (alist (cache->alist cache)))
-	(if (null? alist)
-	    cache
-	    (loop (if (predicate (caar alist))
-		      cache
-		      (fill-cache cache (caar alist) (cdar alist)))
-		  (cdr alist))))
-      cache))
-
-(define (there-exists-a-cache-entry? cache predicate)
+(define (cache-any predicate cache)
   (let ((length (cache-length cache)))
     (let loop ((line 0))
-      (and (not (fix:= line length))
-	   (let ((tags (cache-line-tags cache line)))
-	     (if (or (not tags)
-		     (not (system-pair-car tags)))
-		 (loop (fix:+ line 1))
-		 (or (predicate (weak-list->list tags))
-		     (loop (fix:+ line 1)))))))))
+      (if (fix:< line length)
+	  (or (predicate (cache-line-tags cache line)
+			 (cache-line-value cache line))
+	      (loop (fix:+ line 1)))
+	  (let ov-loop ((overflow (cache-overflow cache)))
+	    (and (pair? overflow)
+		 (or (predicate (caar overflow) (cdar overflow))
+		     (ov-loop (cdr overflow)))))))))
 
-(define (cache->alist cache)
+(define (cache-fold kons knil cache)
   (let ((length (cache-length cache)))
-    (do ((line 0 (fix:+ line 1))
-	 (alist '()
-		(let ((tags (cache-line-tags cache line)))
-		  (if (or (not tags)
-			  (not (system-pair-car tags)))
-		      alist
-		      (cons (cons (weak-list->list tags)
-				  (cache-line-value cache line))
-			    alist)))))
-	((fix:= line length) alist))))
+    (let loop ((line 0) (acc knil))
+      (if (fix:< line length)
+	  (loop (fix:+ line 1)
+		(kons (cache-line-tags cache line)
+		      (cache-line-value cache line)
+		      acc))
+	  (let ov-loop ((overflow (cache-overflow cache)) (acc acc))
+	    (if (pair? overflow)
+		(ov-loop (cdr overflow)
+			 (kons (caar overflow)
+			       (cdar overflow)
+			       acc))
+		acc))))))
+
+(define (cache-count cache)
+  (cache-fold (lambda (tags value count)
+		(declare (ignore value))
+		(if (or (tags-empty? tags)
+			(tags-reclaimed? tags))
+		    count
+		    (fix:+ count 1)))
+	      0
+	      cache))
+
+;; Used only by SOS.
+(define (purge-cache-entries cache predicate)
+  (if (cache-any (lambda (tags value)
+		   (declare (ignore value))
+		   (let ((tags* (copy-tags tags)))
+		     (and tags*
+			  (predicate tags*))))
+		 cache)
+      ;; Must rebuild cache since deletions are near-impossible.
+      (fold (lambda (p cache)
+	      (fill-cache cache (car p) (cdr p)))
+	    (new-cache (cache-n-tags cache))
+	    (cache-fold (lambda (tags value alist)
+			  (let ((tags* (copy-tags tags)))
+			    (if (and tags* (not (predicate tags*)))
+				(cons (cons tags* value) alist)
+				alist)))
+			'()
+			cache))
+      cache))
+
+(define (copy-tags tags)
+  (if (tags-empty? tags)
+      #f
+      (let loop ((tags tags) (copy '()))
+	(if (weak-pair? tags)
+	    (let ((tag (weak-car tags)))
+	      (if (gc-reclaimed-object? tag)
+		  #f
+		  (loop (weak-cdr tags) (cons tag copy))))
+	    (reverse copy)))))
+
+(define (tags-reclaimed? tags)
+  (and (weak-pair? tags)
+       (or (gc-reclaimed-object? (weak-car tags))
+	   (tags-reclaimed? (weak-cdr tags)))))
+
+(define-integrable (tags-empty? tags)
+  (not (weak-car tags)))
+
+(define (cache-entry-reusable? tags tags*)
+  ;; True iff TAGS is: (1) empty; (2) contains a tag that has been reclaimed; or
+  ;; (3) has the same tags as TAGS*.
+  (or (tags-empty? tags)
+      (let loop ((tags tags) (tags* tags*))
+	(or (not (weak-pair? tags))
+	    (let ((tag (weak-car tags)))
+	      (or (gc-reclaimed-object? tag)
+		  (and (eq? tag (weak-car tags*))
+		       (loop (weak-cdr tags) (weak-cdr tags*)))))))))

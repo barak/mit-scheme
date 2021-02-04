@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,10 +28,12 @@ USA.
 ;;; package: (runtime syntax mit)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime syntax items))
 
 ;;;; Macro transformers
 
-(define (transformer-classifier transformer->keyword-item
+(define (transformer-classifier transformer->item
 				transformer->expander-name)
   (lambda (form senv hist)
     (scheck '(_ expression) form senv hist)
@@ -39,36 +41,38 @@ USA.
 	   (compile-expr-item (classify-form (cadr form)
 					     senv
 					     (hist-cadr hist)))))
-      (transformer->keyword-item
+      (transformer->item
        (transformer-eval transformer senv)
        senv
-       (expr-item (serror-ctx form senv hist)
+       (expr-item (serror-ctx form senv hist) '()
 	 (lambda ()
 	   (output/top-level-syntax-expander transformer->expander-name
-					     transformer)))))))
+					     transformer))
+	 (lambda ()
+	   `(,transformer->expander-name ,transformer)))))))
 
 (define $sc-macro-transformer
   ;; "Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-classifier sc-macro-transformer->keyword-item
+   (transformer-classifier sc-macro-transformer->item
 			   'sc-macro-transformer->expander)))
 
 (define $rsc-macro-transformer
   ;; "Reversed Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-classifier rsc-macro-transformer->keyword-item
+   (transformer-classifier rsc-macro-transformer->item
 			   'rsc-macro-transformer->expander)))
 
 (define $er-macro-transformer
   ;; "Explicit Renaming" transformer
   (classifier->runtime
-   (transformer-classifier er-macro-transformer->keyword-item
+   (transformer-classifier er-macro-transformer->item
 			   'er-macro-transformer->expander)))
 
 (define $spar-macro-transformer
   ;; "Syntax PARser" transformer
   (classifier->runtime
-   (transformer-classifier spar-macro-transformer->keyword-item
+   (transformer-classifier spar-macro-transformer->item
 			   'spar-macro-transformer->expander)))
 
 ;;;; Core primitives
@@ -161,65 +165,101 @@ USA.
 
 ;;;; Definitions
 
-(define keyword:define
-  (spar-classifier->keyword
+(define classifier-item:define
+  (spar-classifier-item
    (delay
-     (spar-call-with-values defn-item
-       (spar-subform)
-       (spar-push spar-arg:ctx)
-       (spar-subform
-	 (spar-match identifier? spar-arg:form)
-	 (spar-push-value bind-variable spar-arg:form spar-arg:senv))
-       (spar-subform spar-push-classified)
-       (spar-match-null)))))
+     (spar-or
+       (spar-call-with-values defn-item
+	 (spar-subform)
+	 (spar-push spar-arg:ctx)
+	 (spar-subform
+	   (spar-match identifier? spar-arg:form)
+	   (spar-push-value bind-variable spar-arg:form spar-arg:senv))
+	 (spar-or (spar-subform spar-push-classified)
+		  (spar-push-value unassigned-item spar-arg:ctx))
+	 (spar-match-null))
+       (spar-call-with-values
+	   (lambda (senv hist id bvl . body)
+	     (apply-classifier-item classifier-item:define
+	       `(_ ,id (,keyword:named-lambda (,id . ,bvl) ,@body))
+	       senv
+	       hist))
+	 (spar-subform)
+	 (spar-push spar-arg:senv)
+	 (spar-push spar-arg:hist)
+	 (spar-subform
+	   (spar-push-subform-if identifier? spar-arg:form)
+	   (spar-push-form-if mit-lambda-list? spar-arg:form))
+	 (spar+ (spar-push-subform))
+	 (spar-match-null))
+       (spar-call-with-values
+	   (lambda (senv hist form bvl . body)
+	     (apply-classifier-item classifier-item:define
+	       `(_ ,form (,keyword:lambda ,bvl ,@body))
+	       senv
+	       hist))
+	 (spar-subform)
+	 (spar-push spar-arg:senv)
+	 (spar-push spar-arg:hist)
+	 (spar-subform
+	   (spar-push-subform)
+	   (spar-push-form-if mit-lambda-list? spar-arg:form))
+	 (spar+ (spar-push-subform))
+	 (spar-match-null))))))
+
+(define $define
+  (classifier-item->runtime classifier-item:define))
 
 (define $define-syntax
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
 	 (lambda (ctx id item)
-	   (receive (id senv)
-	       (if (closed-identifier? id)
-		   (values (syntactic-closure-form id)
-			   (syntactic-closure-senv id))
-		   (values id (serror-ctx-senv ctx)))
+	   (let ((senv (serror-ctx-senv ctx)))
 	     (bind-keyword id senv item)
 	     ;; User-defined macros at top level are preserved in the output.
-	     (if (and (keyword-item-has-expr? item)
+	     (if (and (transformer-item-has-expr? item)
 		      (senv-top-level? senv))
-		 (syntax-defn-item ctx id (keyword-item-expr item))
+		 (syntax-defn-item ctx id (transformer-item-expr item))
 		 (seq-item ctx '()))))
        (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-push-subform-if identifier? spar-arg:form)
+       (spar-subform
+	 (spar-match identifier? spar-arg:form)
+	 (spar-funcall reserve-keyword spar-arg:form spar-arg:senv)
+	 (spar-push spar-arg:form))
        (spar-subform
 	 spar-push-classified
-	 (spar-or (spar-match keyword-item? spar-arg:value)
+	 (spar-or (spar-match transformer-item? spar-arg:value)
 		  (spar-error "Keyword binding value must be a keyword:"
 			      spar-arg:form)))
        (spar-match-null)))))
 
 ;;;; Lambdas
 
-(define $lambda
-  (spar-classifier->runtime
+(define classifier-item:lambda
+  (spar-classifier-item
    (delay
      (spar-call-with-values
-	 (lambda (ctx bvl body-ctx body)
-	   (assemble-lambda-item ctx scode-lambda-name:unnamed bvl
-				 body-ctx body))
+	 (lambda (ctx bvl body)
+	   (assemble-lambda-item ctx scode-lambda-name:unnamed bvl body))
        (spar-subform)
        (spar-push spar-arg:ctx)
        (spar-push-subform-if mit-lambda-list? spar-arg:form)
        (spar-push-body make-internal-senv)))))
 
-(define $named-lambda
-  (spar-classifier->runtime
+(define $lambda
+  (classifier-item->runtime classifier-item:lambda))
+
+(define keyword:lambda
+  (classifier-item->keyword classifier-item:lambda))
+
+(define classifier-item:named-lambda
+  (spar-classifier-item
    (delay
      (spar-call-with-values
-	 (lambda (ctx name bvl body-ctx body)
-	   (assemble-lambda-item ctx (identifier->symbol name) bvl
-				 body-ctx body))
+	 (lambda (ctx name bvl body)
+	   (assemble-lambda-item ctx (identifier->symbol name) bvl body))
        (spar-subform)
        (spar-push spar-arg:ctx)
        (spar-subform
@@ -227,40 +267,49 @@ USA.
 	 (spar-push-form-if mit-lambda-list? spar-arg:form))
        (spar-push-body make-internal-senv)))))
 
-(define (spar-push-body make-senv)
-  (spar-and
-    (spar-push spar-arg:ctx)
-    (spar-encapsulate-values
-	(lambda (elts)
-	  (lambda (frame-senv)
-	    (let ((body-senv (make-senv frame-senv)))
-	      (map-in-order (lambda (elt) (elt body-senv))
-			    elts))))
-      (spar+ (spar-subform spar-push-open-classified))
-      (spar-match-null))))
+(define $named-lambda
+  (classifier-item->runtime classifier-item:named-lambda))
 
-(define (assemble-lambda-item ctx name bvl body-ctx body)
+(define keyword:named-lambda
+  (classifier-item->keyword classifier-item:named-lambda))
+
+(define (assemble-lambda-item ctx name bvl body)
   (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx))))
     (lambda-item ctx
 		 name
 		 (map-mit-lambda-list (lambda (id)
 					(bind-variable id frame-senv))
 				      bvl)
-		 (lambda ()
-		   (body-item body-ctx (body frame-senv))))))
+		 (delay
+		   (receive (body-ctx body-items) (body frame-senv)
+		     (body-item body-ctx body-items))))))
+
+(define (spar-push-body make-senv)
+  (spar-call-with-values
+      (lambda (ctx . elts)
+	(lambda (frame-senv)
+	  (let ((body-senv (make-senv frame-senv)))
+	    (values (serror-ctx (serror-ctx-form ctx)
+				body-senv
+				(serror-ctx-hist ctx))
+		    (map-in-order (lambda (elt) (elt body-senv))
+				  elts)))))
+    (spar-push spar-arg:ctx)
+    (spar+ (spar-subform spar-push-open-classified))
+    (spar-match-null)))
 
 ;;;; LET-like
 
 (define spar-promise:let-syntax
   (delay
     (spar-call-with-values
-	(lambda (ctx bindings body-ctx body)
-	  (let ((frame-senv
-                 (make-keyword-internal-senv (serror-ctx-senv ctx))))
+	(lambda (ctx bindings body)
+	  (let ((frame-senv (make-keyword-internal-senv (serror-ctx-senv ctx))))
 	    (for-each (lambda (binding)
 			(bind-keyword (car binding) frame-senv (cdr binding)))
 		      bindings)
-	    (seq-item body-ctx (body frame-senv))))
+	    (receive (body-ctx body-items) (body frame-senv)
+	      (seq-item body-ctx body-items))))
       (spar-subform)
       (spar-push spar-arg:ctx)
       (spar-subform
@@ -283,9 +332,9 @@ USA.
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
-	 (lambda (ctx bindings body-ctx body)
+	 (lambda (ctx bindings body)
 	   (let ((frame-senv
-                  (make-keyword-internal-senv (serror-ctx-senv ctx)))
+		  (make-keyword-internal-senv (serror-ctx-senv ctx)))
 		 (ids (map car bindings)))
 	     (for-each (lambda (id)
 			 (reserve-keyword id frame-senv))
@@ -296,7 +345,8 @@ USA.
 		       (map (lambda (binding)
 			      ((cdr binding) frame-senv))
 			    bindings))
-	     (seq-item body-ctx (body frame-senv))))
+	     (receive (body-ctx body-items) (body frame-senv)
+	       (seq-item body-ctx body-items))))
        (spar-subform)
        (spar-push spar-arg:ctx)
        (spar-subform
@@ -389,6 +439,19 @@ USA.
        (spar-subform)
        (spar-match-null)
        (spar-push-value unassigned-item spar-arg:ctx)))))
+
+(define $safe-reference
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values safe-ref-item
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform
+	 spar-push-classified
+	 (spar-or (spar-match var-item? spar-arg:value)
+		  (spar-error "Variable required in this context:"
+			      spar-arg:form)))
+       (spar-match-null)))))
 
 ;;;; Declarations
 
@@ -400,7 +463,7 @@ USA.
 	   (let ((senv (serror-ctx-senv ctx))
 		 (hist (serror-ctx-hist ctx)))
 	     (decl-item ctx
-	       (lambda ()
+	       (delay
 		 (smap (lambda (decl hist)
 			 (map-decl-ids (lambda (id selector)
 					 (classify-id id
@@ -431,49 +494,74 @@ USA.
 ;;;; Specific expression items
 
 (define (access-assignment-item ctx name env-item rhs-item)
-  (expr-item ctx
-    (lambda ()
-      (output/access-assignment name
-				(compile-expr-item env-item)
-				(compile-expr-item rhs-item)))))
+  (expr-item ctx (list env-item rhs-item)
+    (lambda (env rhs)
+      (output/access-assignment name env rhs))
+    (lambda (env rhs)
+      `(set!-access-item ,name ,env ,rhs))))
 
 (define (assignment-item ctx id rhs-item)
-  (expr-item ctx
-    (lambda ()
-      (output/assignment id (compile-expr-item rhs-item)))))
+  (expr-item ctx (list rhs-item)
+    (lambda (rhs)
+      (output/assignment id rhs))
+    (lambda (rhs)
+      `(set!-item ,id ,rhs))))
 
 (define (decl-item ctx classify)
-  (expr-item ctx
+  (expr-item ctx '()
     (lambda ()
-      (output/declaration (classify)))))
+      (output/declaration (force classify)))
+    (lambda ()
+      `(declare-item
+	,@(if (promise-forced? classify)
+	      (force classify)
+	      classify)))))
 
 (define (if-item ctx predicate consequent alternative)
-  (expr-item ctx
-    (lambda ()
-      (output/conditional (compile-expr-item predicate)
-			  (compile-expr-item consequent)
-			  (compile-expr-item alternative)))))
+  (expr-item ctx (list predicate consequent alternative)
+    output/conditional
+    (lambda (predicate consequent alternative)
+      `(if-item ,predicate ,consequent ,alternative))))
 
 (define (lambda-item ctx name bvl classify-body)
-  (expr-item ctx
-    (lambda ()
-      (output/lambda name bvl (compile-item (classify-body))))))
+  (expr-item ctx (list classify-body)
+    (lambda (body)
+      (output/lambda name bvl body))
+    (lambda (body)
+      `(lambda-item ,name ,bvl ,body))))
 
 (define (or-item ctx . items)
-  (expr-item ctx
-    (lambda ()
-      (output/disjunction (map compile-expr-item items)))))
+  (expr-item ctx items
+    (lambda exprs
+      (output/disjunction exprs))
+    (lambda exprs
+      `(or-item ,@exprs))))
 
 (define (quoted-id-item ctx var-item)
-  (expr-item ctx
+  (expr-item ctx '()
     (lambda ()
-      (output/quoted-identifier (var-item-id var-item)))))
+      (output/quoted-identifier (var-item-id var-item)))
+    (lambda ()
+      `(quoted-id-item ,(var-item-id var-item)))))
+
+(define (safe-ref-item ctx var-item)
+  (expr-item ctx '()
+    (lambda ()
+      (output/variable (var-item-id var-item) #t))
+    (lambda ()
+      `(safe-ref-item ,(var-item-id var-item)))))
 
 (define (the-environment-item ctx)
-  (expr-item ctx output/the-environment))
+  (expr-item ctx '()
+	     output/the-environment
+	     (lambda () '(the-environment-item))))
 
 (define (unspecific-item ctx)
-  (expr-item ctx output/unspecific))
+  (expr-item ctx '()
+	     output/unspecific
+	     (lambda () '(unspecific-item))))
 
 (define (unassigned-item ctx)
-  (expr-item ctx output/unassigned))
+  (expr-item ctx '()
+	     output/unassigned
+	     (lambda () '(unassigned-item))))

@@ -3,7 +3,7 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,36 +25,9 @@ USA.
 |#
 
 ;;;; MIT/GNU Scheme macros
+;;; package: (runtime mit-macros)
 
 (declare (usual-integrations))
-
-;;;; Definitions
-
-(define $define
-  (spar-transformer->runtime
-   (delay
-     (spar-or
-       (scons-rule `(id ,(optional-value-pattern))
-	 (lambda (name value)
-	   (scons-call keyword:define name value)))
-       (scons-rule
-	   `((spar
-	      ,(spar-subform
-		 (spar-push-subform-if identifier? spar-arg:form)
-		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
-	     (+ any))
-	 (lambda (name bvl body-forms)
-	   (scons-define name
-	     (apply scons-named-lambda (cons name bvl) body-forms))))
-       (scons-rule
-	   `((spar
-	      ,(spar-subform
-		 (spar-push-subform)
-		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
-	     (+ any))
-	 (lambda (nested bvl body-forms)
-	   (scons-define nested
-	     (apply scons-lambda bvl body-forms))))))))
 
 (define (optional-value-pattern)
   `(or any (value-of ,unassigned-expression)))
@@ -156,21 +129,29 @@ USA.
 	 `(,(let-bindings-pattern)
 	   (+ any))
        (lambda (bindings body-forms)
-	 (let* ((ids (map car bindings))
-		(vals (map cadr bindings))
-		(temps (map new-identifier ids)))
-	   (scons-let (map (lambda (id)
-			     (list id (unassigned-expression)))
-			   ids)
-	     (cond ((not (pair? ids))
-		    (default-object))
-		   ((not (pair? (cdr ids)))
-		    (scons-set! (car ids) (car vals)))
-		   (else
-		    (apply scons-let
-			   (map list temps vals)
-			   (map scons-set! ids temps))))
-	     (scons-call (apply scons-lambda '() body-forms)))))))))
+	 (let ((ids (map car bindings))
+	       (vals (map cadr bindings))
+	       ;; Create a distinct nested scope for definitions in the
+	       ;; body.
+	       (body (scons-call (apply scons-lambda '() body-forms))))
+	   (cond ((not (pair? ids))
+		  body)
+		 ((not (pair? (cdr ids)))
+		  ;; Internal definitions have LETREC* semantics, but
+		  ;; for a single binding, LETREC* is equivalent to
+		  ;; LETREC.
+		  (scons-let '()
+		    (scons-define (car ids) (car vals))
+		    body))
+		 (else
+		  (let ((temps (map new-identifier ids)))
+		    (scons-let (map (lambda (id)
+				      (list id (unassigned-expression)))
+				    ids)
+		      (apply scons-let
+			     (map list temps vals)
+			     (map scons-set! ids temps))
+		      body))))))))))
 
 (define $letrec*
   (spar-transformer->runtime
@@ -181,10 +162,11 @@ USA.
        (lambda (bindings body-forms)
 	 (let ((ids (map car bindings))
 	       (vals (map cadr bindings)))
-	   (scons-let (map (lambda (id)
-			     (list id (unassigned-expression)))
-			   ids)
-	     (apply scons-begin (map scons-set! ids vals))
+	   ;; Internal definitions in scode have LETREC* semantics.
+	   (scons-let '()
+	     (apply scons-begin (map scons-define ids vals))
+	     ;; Create a distinct nested scope for definitions in the
+	     ;; body.
 	     (scons-call (apply scons-lambda '() body-forms)))))))))
 
 (define $let-values
@@ -275,6 +257,16 @@ USA.
 		  (scons-and conjunct (apply scons-begin body-exprs)))
 		 (else
 		  conjunct))))))))
+
+;;; SRFI 115: rx
+
+(define $rx
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((* any))
+       (lambda (sres)
+	 (scons-call 'regexp
+		     (apply scons-call 'quasiquote (scons-close ':) sres)))))))
 
 ;;;; Conditionals
 
@@ -335,7 +327,7 @@ USA.
    (delay
      (scons-rule
 	 `((subform (* (subform (list id any (? any)))))
-	   ,cond-clause-pattern
+	   (subform (+ any))
 	   (* any))
        (lambda (bindings test-clause actions)
 	 (let ((loop-name (new-identifier 'do-loop)))
@@ -344,16 +336,16 @@ USA.
 		      (list (car binding)
 			    (cadr binding)))
 		    bindings)
-	     (expand-cond-clause test-clause
-				 (scons-begin
-				   (apply scons-begin actions)
-				   (apply scons-call
-					  loop-name
-					  (map (lambda (binding)
-						 (if (pair? (cddr binding))
-						     (caddr binding)
-						     (car binding)))
-					       bindings)))))))))))
+	     (scons-cond test-clause
+			 (list (scons-close 'else)
+			       (apply scons-begin actions)
+			       (apply scons-call
+				      loop-name
+				      (map (lambda (binding)
+					     (if (pair? (cddr binding))
+						 (caddr binding)
+						 (car binding)))
+					   bindings)))))))))))
 
 (define $case
   (spar-transformer->runtime
@@ -451,15 +443,14 @@ USA.
 			    ,cond-else-clause-pattern)
 		   (+ any))
        (lambda (var clauses else-actions body)
-	 (let ((guard-k (new-identifier 'guard-k))
-	       (condition (new-identifier 'condition)))
+	 (let ((guard-k (new-identifier 'guard-k)))
 	   (scons-call 'call-with-current-continuation
 		       (scons-lambda (list guard-k)
 			 (scons-call 'with-exception-handler
-				     (scons-lambda (list condition)
-				       (scons-let (list (list var condition))
-					 (guard-handler guard-k condition
-							clauses else-actions)))
+				     (scons-lambda (list var)
+				       (scons-declare `(ignorable ,var))
+				       (guard-handler guard-k var
+						      clauses else-actions))
 				     (apply scons-lambda '() body))))))))))
 
 (define (guard-handler guard-k condition clauses else-actions)
@@ -516,11 +507,12 @@ USA.
 			       (scons-lambda '() expr)
 			       (apply scons-lambda
 				      temp-bvl
-				      (map* (list (unspecific-expression))
-					    (lambda (name temp)
-					      (scons-set! name temp))
-					    names
-					    temps))))))))))))
+				      (fold-right (lambda (name temp exprs)
+						    (cons (scons-set! name temp)
+							  exprs))
+						  (list (unspecific-expression))
+						  names
+						  temps))))))))))))
 
 ;;; This optimizes some simple cases, but it could be better.  Among other
 ;;; things it could take advantage of arity-dispatched procedures in the right
@@ -574,15 +566,15 @@ USA.
 
 	(define (choose i)
 	  (let ((choice (assv i choices))
-		(args* (list-head args i)))
+		(args* (take args i)))
 	    (if choice
 		(apply scons-call (cdr choice) args*)
 		(scons-call 'error "No matching case-lambda clause:"
 			    (apply scons-call 'list args*)))))
 
-	(scons-lambda (append (list-head args low)
+	(scons-lambda (append (take args low)
 			      (list #!optional)
-			      (list-tail args low))
+			      (drop args low))
 	  (let loop ((i low))
 	    (if (fix:< i high)
 		(scons-if (scons-call 'default-object? (list-ref args i))
@@ -699,10 +691,12 @@ USA.
      (scons-rule `((value id=?)
 		   (* (subform (cons ,(feature-requirement-pattern)
 				     (* any))))
-		   (opt (subform (cons (keep-if id=? else)
-				       (* any)))))
-       (lambda (id=? clauses)
-	 (apply scons-begin (evaluate-cond-expand id=? clauses)))))))
+		   (or (subform (ignore-if id=? else)
+				(* any))
+		       (value '())))
+       (lambda (id=? clauses else-forms)
+	 (apply scons-begin
+		(evaluate-cond-expand id=? clauses else-forms)))))))
 
 (define (feature-requirement-pattern)
   (spar-pattern-fixed-point
@@ -720,32 +714,30 @@ USA.
 (define (library-name-pattern)
   `(subform (* (or symbol ,exact-nonnegative-integer?))))
 
-(define (evaluate-cond-expand id=? clauses)
-  (let ((clause
-	 (find (lambda (clause)
-		 (or (id=? 'else (car clause))
-		     (evaluate-feature-requirement id=? (car clause))))
-	       clauses)))
-    (if clause
-	(cdr clause)
-	'())))
+(define (evaluate-cond-expand id=? clauses else-forms)
+  (let ((supported-features (features)))
+    (let ((clause
+	   (find (lambda (clause)
+		   (evaluate-feature-requirement id=? supported-features
+						 (car clause)))
+		 clauses)))
+      (if clause
+	  (cdr clause)
+	  else-forms))))
 
-(define (evaluate-feature-requirement id=? feature-requirement)
+(define (evaluate-feature-requirement id=? supported-features
+				      feature-requirement)
 
   (define (eval-req req)
     (cond ((identifier? req) (supported-feature? req))
 	  ((id=? 'or (car req)) (eval-or (cdr req)))
 	  ((id=? 'and (car req)) (eval-and (cdr req)))
-	  ((id=? 'not (car req)) (eval-req (cadr req)))
+	  ((id=? 'not (car req)) (not (eval-req (cadr req))))
 	  (else (error "Unknown requirement:" req))))
 
-  (define (supported-feature? req)
-    (let ((p
-	   (find (lambda (p)
-		   (id=? (car p) req))
-		 supported-features)))
-      (and p
-	   ((cdr p)))))
+  (define (supported-feature? id)
+    (any (lambda (feature) (id=? id feature))
+	 supported-features))
 
   (define (eval-or reqs)
     (and (pair? reqs)
@@ -759,87 +751,29 @@ USA.
 
   (eval-req feature-requirement))
 
-(define (define-feature name procedure)
-  (set! supported-features (cons (cons name procedure) supported-features))
-  name)
-
-(define supported-features '())
-
-(define (always) #t)
-
-(define-feature 'mit always)
-(define-feature 'mit/gnu always)
-
-;; r7rs features
-(define-feature 'exact-closed always)
-(define-feature 'exact-complex always)
-(define-feature 'ieee-float always)
-(define-feature 'full-unicode always)
-(define-feature 'ratio always)
-
-(define-feature 'swank always)   ;Provides SWANK module for SLIME
-(define-feature 'srfi-0 always)  ;COND-EXPAND
-(define-feature 'srfi-1 always)  ;List Library
-(define-feature 'srfi-2 always)  ;AND-LET*
-(define-feature 'srfi-6 always)  ;Basic String Ports
-(define-feature 'srfi-8 always)  ;RECEIVE
-(define-feature 'srfi-9 always)  ;DEFINE-RECORD-TYPE
-(define-feature 'srfi-23 always) ;ERROR
-(define-feature 'srfi-27 always) ;Sources of Random Bits
-(define-feature 'srfi-30 always) ;Nested Multi-Line Comments (#| ... |#)
-(define-feature 'srfi-39 always) ;Parameter objects
-(define-feature 'srfi-62 always) ;S-expression comments
-(define-feature 'srfi-69 always) ;Basic Hash Tables
-(define-feature 'srfi-131 always) ;ERR5RS Record Syntax (reduced)
-
-(define ((os? value))
-  (eq? value microcode-id/operating-system))
-
-(define-feature 'windows (os? 'nt))
-(define-feature 'unix (os? 'unix))
-(define-feature 'posix (os? 'unix))
-
-(define ((os-variant? value))
-  (string=? value microcode-id/operating-system-variant))
-
-(define-feature 'darwin (os-variant? "OS X"))
-(define-feature 'gnu-linux (os-variant? "GNU/Linux"))
-
-(define-feature 'big-endian (lambda () (host-big-endian?)))
-(define-feature 'little-endian (lambda () (not (host-big-endian?))))
-
-(define ((machine? value))
-  (string=? value microcode-id/machine-type))
-
-(define-feature 'i386 (machine? "IA-32"))
-(define-feature 'x86-64 (machine? "x86-64"))
-
-(define (features)
-  (filter-map (lambda (p)
-		(and ((cdr p))
-		     (car p)))
-	      supported-features))
-
 ;;;; SRFI 9, SRFI 131, R7RS: define-record-type
 
 (define $define-record-type
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((or (and id (value #f))
-	       (subform id any))
+	 `((or (and id (value #f) (value ()))
+	       (subform id any (value ()))
+	       (subform id (value #f) (* symbol any)))
 	   (or (and id (value #f))
 	       (and ,not (value #f))
 	       (subform id (* symbol)))
 	   (or id ,not)
-	   (* (subform (list symbol id (or id (value #f))))))
-       (lambda (type-name parent maker-name maker-args pred-name field-specs)
+	   (* (subform (list symbol id (or id (value #f)) (* symbol any)))))
+       (lambda (type-name parent options maker-name maker-args pred-name
+			  field-specs)
 	 (apply scons-begin
 		(scons-define type-name
-		  (scons-call (scons-close 'new-make-record-type)
-			      (scons-quote type-name)
-			      (scons-quote (map car field-specs))
-			      (or parent (default-object))))
+		  (apply scons-call
+			 (scons-close 'make-record-type)
+			 (scons-quote type-name)
+			 (scons-record-fields field-specs)
+			 (scons-record-options parent options)))
 		(if maker-name
 		    (scons-define maker-name
 		      (scons-call (scons-close 'record-constructor)
@@ -852,23 +786,106 @@ USA.
 		    (scons-define pred-name
 		      (scons-call (scons-close 'record-predicate) type-name))
 		    (default-object))
-		(append-map (lambda (field-spec)
+		(append-map (lambda (field-spec index)
 			      (let ((name (car field-spec))
 				    (accessor (cadr field-spec))
 				    (modifier (caddr field-spec)))
-				(list (scons-define accessor
-					(scons-call
-					 (scons-close 'record-accessor)
-					 type-name
-					 (scons-quote name)))
-				      (if modifier
-					  (scons-define modifier
-					    (scons-call
-					     (scons-close 'record-modifier)
-					     type-name
-					     (scons-quote name)))
-					  (default-object)))))
-			    field-specs)))))))
+				(append
+				 (scons-record-accessor
+				  accessor
+				  type-name
+				  parent
+				  pred-name
+				  name
+				  index)
+				 (if modifier
+				     (scons-record-modifier
+				      modifier
+				      type-name
+				      parent
+				      pred-name
+				      name
+				      index)
+				     '()))))
+			    field-specs
+			    ;; Start at 1, after the record type descriptor.
+			    (iota (length field-specs) 1))))))))
+
+(define (scons-record-fields field-specs)
+  (if (every (lambda (spec) (null? (cadddr spec))) field-specs)
+      (scons-quote (map car field-specs))
+      (apply scons-call
+	     (scons-close 'list)
+	     (map (lambda (spec)
+		    (let ((name (car spec))
+			  (options (cadddr spec)))
+		      (if (null? options)
+			  (scons-quote name)
+			  (apply scons-call
+				 (scons-close 'list)
+				 (scons-quote name)
+				 (scons-keyword-list options)))))
+		  field-specs))))
+
+(define (scons-record-options parent options)
+  (if parent
+      (list parent)
+      (scons-keyword-list options)))
+
+(define (scons-keyword-list keylist)
+  (let loop ((keylist keylist))
+    (if (pair? keylist)
+	(cons* (scons-quote (car keylist))
+	       (cadr keylist)
+	       (loop (cddr keylist)))
+	'())))
+
+(define (scons-record-accessor accessor type-name parent pred-name name index)
+  (if (and (not parent)
+	   pred-name)
+      (list
+       (scons-declare (list 'integrate-operator accessor))
+       (scons-define accessor
+	 (let ((object (new-identifier 'object)))
+	   (scons-named-lambda (list accessor object)
+	     (scons-if
+	      (scons-and (scons-call (scons-close '%record?) object)
+			 (scons-call
+			  (scons-close 'eq?)
+			  type-name
+			  (scons-call (scons-close '%record-ref) object 0)))
+	      (unspecific-expression)
+	      (scons-call (scons-close 'guarantee) pred-name object accessor))
+	     (scons-call (scons-close '%record-ref) object index)))))
+      (list
+       (scons-define accessor
+	 (scons-call (scons-close 'record-accessor)
+		     type-name
+		     (scons-quote name))))))
+
+(define (scons-record-modifier modifier type-name parent pred-name name index)
+  (if (and (not parent)
+	   pred-name)
+      (list
+       (scons-declare (list 'integrate-operator modifier))
+       (scons-define modifier
+	 (let ((object (new-identifier 'object))
+	       (value (new-identifier 'value)))
+	   (scons-named-lambda (list modifier object value)
+	     (scons-if
+	      (scons-and (scons-call (scons-close '%record?) object)
+			 (scons-call
+			  (scons-close 'eq?)
+			  type-name
+			  (scons-call (scons-close '%record-ref) object 0)))
+	      (unspecific-expression)
+	      (scons-call (scons-close 'guarantee) pred-name object modifier))
+	     (scons-call (scons-close '%record-set!) object index value)))))
+      (list
+       (scons-define modifier
+	 (scons-call (scons-close 'record-modifier)
+		     type-name
+		     (scons-quote name))))))
 
 ;;;; MIT/GNU Scheme custom syntax
 
@@ -946,27 +963,31 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `(,(let-bindings-pattern)
+	 `((subform (* (subform (list any ,(optional-value-pattern)))))
 	   (+ any))
        (lambda (bindings body-forms)
+
+	 (define (swap-id id out)
+	   (if (identifier? id)
+	       (let ((temp (new-identifier (symbol 'temp- id))))
+		 (scons-let (list (list temp (scons-safe-ref id)))
+		   (scons-set! id (scons-safe-ref out))
+		   (scons-set! out (scons-safe-ref temp))
+		   (unspecific-expression)))
+	       ;; Presumably an access; set! will figure it out.
+	       (scons-set! id (scons-set! out (scons-set! id)))))
+
 	 (let ((ids (map car bindings))
 	       (vals (map cadr bindings)))
-	   (let ((temps
+	   (let ((outs
 		  (map (lambda (id)
-			 (new-identifier (symbol 'temp- id)))
+			 (new-identifier (symbol 'out- id)))
 		       ids))
 		 (swap! (new-identifier 'swap!)))
-	     (scons-let (map list temps vals)
+	     (scons-let (map list outs vals)
 	       (scons-define swap!
 		 (scons-lambda '()
-		   (apply scons-begin
-			  (map (lambda (id temp)
-				 (scons-set! id
-					     (scons-set! temp
-							 (scons-set! id))))
-			       ids
-			       temps))
-		   #f))
+		   (apply scons-begin (map swap-id ids outs))))
 	       (scons-call (scons-close 'shallow-fluid-bind)
 			   swap!
 			   (apply scons-lambda '() body-forms)

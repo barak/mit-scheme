@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-(define-load-option 'X11-SCREEN
+(define-load-option 'x11-screen
   (standard-system-loader "."))
 
 (further-load-options #t)

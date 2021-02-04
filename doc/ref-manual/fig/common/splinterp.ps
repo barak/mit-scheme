@@ -1,0 +1,126 @@
+% Interpolation points.
+
+/linpoint { div } def           % i n => s_{n,i}
+
+/chebypoint                     % i n => s_{n,i}
+{
+    exch                        % n i
+    dup 0 eq {
+        pop pop 0.0
+    } {
+        2 copy eq {
+            pop pop 1.0
+        } {
+            2 mul 1 sub                 % n 2i-1
+            exch 2 mul                  % 2i-1 2n
+            div                         % (2i-1)/(2i)
+            180 mul cos                 % cos(pi*(2i-1)/(2n))
+            1 exch sub                  % 1-cos(pi*(2i-1)/(2n))
+            2 div                       % [1-cos(pi*(2i-1)/(2n))]/2
+        } ifelse
+    } ifelse
+} def
+
+% Spline interpolation.
+
+% Compute the tangent vector of a piecewise linear interpolation
+% between two consecutive spline interpolation nodes:
+%
+%       c_i(t) := xmin + (xmax - xmin)*(x_i + (x_{i+1} - x_i)*t)
+%       c_i(1) = c_{i-1}(0)
+%
+/splinter                       % t i n => T(c_i(t))
+{
+    2 copy                      % t i n i n
+    splinterpoint               % t i n x0
+    3 1 roll                    % t x0 i n
+    exch 1 add exch             % t x0 i+1 n
+    splinterpoint               % t x0 x1
+    1 index sub Tconst          % t x0 T(x1-x0)
+    3 -1 roll Tvar              % x0 T(x1-x0) Tt
+    Tmul                        % x0 T((x1-x0)*t)
+    exch Tconst                 % T((x1-x0)*t) Tx0
+    Tadd                        % T(x0+(x1-x0)*t)
+} def
+
+% Evaluate the tangent vector f(fxmin + (fxmax - fxmin)*c_i(t)).
+/splinterpoval                  % fxmin fxmax Tf t i n => x0 y0
+{
+    splinter                    % fxmin fxmax Tf Tc
+    4 2 roll                    % Tf Tc fxmin fxmax
+    Tlerp                       % Tf Tx0a
+    dup 3 -1 roll               % Tx0a Tx0a Tf
+    exec                        % Tx0a Ty0a
+    Ta2bb                       % Tx0 Ty0
+} def
+
+% Compute control points of a cubic spline matching the starting and
+% ending tangent vectors.  Pops the starting vectors, keeps the ending.
+%
+%       c(t) = (1-t)^3 p0 + 3 t (1-t)^2 p1 + 3 t^2 (1-t) p2 + t^3 p3,
+%
+% Note that
+%
+%       c(0) = p0,  c'(0) = 3 p1 - 3 p0,
+%       c(1) = p1,  c'(1) = 3 p3 - 3 p2,
+%
+% so p0 = c(0) = (x0, y0), p3 = c(1) = (x1, y1), and
+%
+%       p1 = p0 + c'(0)/3,
+%       p2 = p3 - c'(1)/3.
+%
+/cubicsplinterpocontrol         % Tx0 Ty0 Tx3 Ty3 => Tx3 Ty3 x1 y1 x2 y2
+{
+    4 2 roll                    % Tx3 Ty3 Tx0 Ty0
+    % Compute x1 = x1 + dx1/3.
+    exch Tqv                    % Tx3 Ty3 Ty0 x0 dx0
+    3 div add                   % Tx3 Ty3 Ty0 x1
+    % Compute y1 = y0 + dy0/3.
+    exch Tqv                    % Tx3 Ty3 x1 y0 dy0
+    3 div add                   % Tx3 Ty3 x1 y1
+    % Compute x2 = x3 - dx3/3.
+    3 index Tqv                 % Tx3 Ty3 x1 y1 x3 dx3
+    3 div sub                   % Tx3 Ty3 x1 y1 x2
+    % Compute y2 = y3 - dy3/3.
+    3 index Tqv                 % Tx3 Ty3 x1 y1 x2 y3 dy3
+    3 div sub                   % Tx3 Ty3 x1 y1 x2 y2
+} def
+
+/cubicsplinterpostart           % n fxmin fxmax Tf => Tx0 Ty0 x0 y0
+{
+    0.0 0                       % n fxmin fxmax Tf t i
+    6 -1 roll                   % fxmin fxmax Tf t i n
+    splinterpoval               % Tx0 Ty0
+    1 index Tq 1 index Tq       % Tx0 Ty0 x0 y0
+} def
+
+/cubicsplinterpostep            % Tx0 Ty0 i n fxmin fxmax Tf
+                                % => Tx3 Ty3 x1 y1 x2 y2 x3 y3
+{
+    1.0                         % Tx0 Ty0 i n fxmin fxmax Tf t
+    6 -2 roll                   % Tx0 Ty0 fxmin fxmax Tf t i n
+    splinterpoval               % Tx0 Ty0 Tx3 Ty3
+    cubicsplinterpocontrol      % Tx3 Ty3 x1 y1 x2 y2
+    5 index Tq 5 index Tq       % Tx3 Ty3 x1 y1 x2 y2 x3 y3
+} def
+
+/cubicsplinterpostop            % Tx3 Ty3 => ---
+{
+    pop pop
+} def
+
+/cubicsplinterpolate            % n fxmin fxmax Tf => ---
+{
+    5 dict begin
+        /Tf exch def
+        /fxmax exch def
+        /fxmin exch def
+        /n exch def
+        /fxwidth fxmax fxmin sub def
+        newpath
+        n fxmin fxmax {Tf} cubicsplinterpostart moveto % Tx0 Ty0
+        0 1 n 1 sub { n fxmin fxmax {Tf} cubicsplinterpostep curveto } for
+        cubicsplinterpostop
+        stroke
+    end
+} def
