@@ -3,6 +3,11 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
+# for DEB_HOST_GNU_CPU
+include /usr/share/dpkg/architecture.mk
+# for DEB_VERSION_UPSTREAM
+include /usr/share/dpkg/pkg-info.mk
+
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 # Passing --no-parallel because of some creepy race conditions, like
@@ -23,6 +28,21 @@ CONF_FLAGS += --enable-html=/usr/share/doc/mit-scheme-doc/html
 CONF_FLAGS += --enable-pdf=/usr/share/doc/mit-scheme-doc/pdf
 CONF_FLAGS += --enable-ps=no
 
+# According to https://savannah.gnu.org/support/?110264 a build error like
+#
+#  Bad compiled-code version in FASL File: make.com
+#  File has: compiled-code interface 3; architecture 14.
+#  Expected: compiled-code interface 4; architecture 14.
+#
+# can occur when, e.g., 10.1.11 is installed but 11.1 is being built.
+# And can be prevented using a configuration flag.
+
+INSTALLED_MAJOR_VERSION:=$(shell dpkg --status mit-scheme | egrep '^Version:' | sed 's/^Version: //' | cut --delimiter=. --fields=1)
+BUILDING_MAJOR_VERSION:=$(shell echo $(DEB_VERSION_UPSTREAM) | cut --delimiter=. --fields=1)
+ifneq ($(INSTALLED_MAJOR_VERSION),$(BUILDING_MAJOR_VERSION))
+CONF_FLAGS += --enable-cross-compiling
+endif
+
 override_dh_auto_configure-arch:
 	dh_auto_configure --sourcedirectory=src -- $(CONF_FLAGS)
 
@@ -38,7 +58,6 @@ override_dh_auto_build-arch:
 override_dh_auto_build-indep:
 	dh_auto_build --sourcedirectory=doc
 
-DEB_HOST_GNU_CPU=$(shell dpkg-architecture -qDEB_HOST_GNU_CPU)
 ifeq ($(DEB_HOST_GNU_CPU),x86_64)
 export BIN_ARCH=x86-64
 else
