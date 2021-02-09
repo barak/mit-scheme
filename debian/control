@@ -2,14 +2,14 @@ Source: mit-scheme
 Section: lisp
 Priority: optional
 Maintainer: Barak A. Pearlmutter <bap@debian.org>
-Build-Depends: debhelper-compat (= 13),
-		mit-scheme (>= 10),
+Build-Depends: debhelper-compat (= 13)
+Build-Depends-Arch: mit-scheme (>= 10),
 		libssl-dev, libmhash-dev, libmcrypt-dev,
 		libgdbm-dev, libpq-dev,
 		libncurses5-dev,
 		libx11-dev, libxt-dev,
-		libdb-dev, libltdl-dev,
-		texinfo, texlive, ghostscript
+		libdb-dev, libltdl-dev
+Build-Depends-Indep: texinfo, texlive, ghostscript, texlive-plain-generic
 Standards-Version: 4.5.1
 Rules-Requires-Root: no
 Homepage: https://www.gnu.org/software/mit-scheme/

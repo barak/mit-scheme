@@ -4,3 +4,4 @@
 0004-makeinfo-5-fix.patch
 0005-man-page.patch
 0006-extern-ximage-dimensions.patch
+0007-verbose-texi2dvi.patch
