@@ -1,3 +1,9 @@
+mit-scheme (11.1-2) unstable; urgency=medium
+
+  * build dependency on ghostscript for eps2eps
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Tue, 09 Feb 2021 11:59:25 +0000
+
 mit-scheme (11.1-1) unstable; urgency=medium
 
   * new upstream release

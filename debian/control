@@ -9,7 +9,7 @@ Build-Depends: debhelper-compat (= 13),
 		libncurses5-dev,
 		libx11-dev, libxt-dev,
 		libdb-dev, libltdl-dev,
-		texinfo, texlive
+		texinfo, texlive, ghostscript
 Standards-Version: 4.5.1
 Rules-Requires-Root: no
 Homepage: https://www.gnu.org/software/mit-scheme/
