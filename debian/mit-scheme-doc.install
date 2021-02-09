@@ -1,2 +1,3 @@
 usr/share/doc/mit-scheme-doc/html
 usr/share/doc/mit-scheme-doc/pdf
+doc/ref-manual/fig/*.png /usr/share/info/fig
