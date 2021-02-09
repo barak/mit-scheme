@@ -43,19 +43,15 @@ ifneq ($(INSTALLED_MAJOR_VERSION),$(BUILDING_MAJOR_VERSION))
 CONF_FLAGS += --enable-cross-compiling
 endif
 
-override_dh_auto_configure-arch:
+override_dh_auto_configure:
 	dh_auto_configure --sourcedirectory=src -- $(CONF_FLAGS)
-
-override_dh_auto_configure-indep:
 	dh_auto_configure --sourcedirectory=doc -- $(CONF_FLAGS)
 
 # May wish to pass parameter in dh_auto_build
 #  SCHEME_COMPILER=mit-scheme
 
-override_dh_auto_build-arch:
+override_dh_auto_build:
 	dh_auto_build --sourcedirectory=src
-
-override_dh_auto_build-indep:
 	dh_auto_build --sourcedirectory=doc
 
 ifeq ($(DEB_HOST_GNU_CPU),x86_64)
@@ -64,10 +60,11 @@ else
 export BIN_ARCH=$(DEB_HOST_GNU_CPU)
 endif
 
-override_dh_auto_install-arch:
+override_dh_auto_install:
 	dh_auto_install --sourcedirectory=src
+	dh_auto_install --sourcedirectory=doc -- install-html install-pdf
 
-execute_after_dh_auto_install-arch:
+execute_after_dh_auto_install:
 #	# This doesn't work because doc/ hasn't been *configured*
 #	# which hardly seems worth working around
 #	dh_auto_install --sourcedirectory=doc -- install-man
@@ -85,11 +82,6 @@ execute_after_dh_auto_install-arch:
 #	find debian/tmp/usr/lib -name runtime.com -ls -delete
 	@echo "remove .la library support files as these are not actually used by the dynamic linker"
 	find debian/tmp -name '*.la' -ls -delete
-
-override_dh_auto_install-indep:
-	dh_auto_install --sourcedirectory=doc -- install-html install-pdf
-
-execute_after_dh_auto_install-indep:
 	@echo "allow dh scripts to compress info files themselves"
 	find debian/tmp \( -name '*.info.gz' -o -name '*.info-*.gz' \) -ls -exec gunzip '{}' ';'
 
