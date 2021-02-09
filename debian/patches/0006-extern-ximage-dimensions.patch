@@ -1,0 +1,29 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Tue, 9 Feb 2021 10:58:41 +0000
+Subject: extern ximage dimensions
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+Avoid compiler warnings due to missing extern declarations
+
+x11-shim.c:4357:10: warning: implicit declaration of function ‘x_image_width’
+x11-shim.c:4396:10: warning: implicit declaration of function ‘x_image_height’
+---
+ src/x11/x11.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/x11/x11.h b/src/x11/x11.h
+index 606cae7..23a63ef 100644
+--- a/src/x11/x11.h
++++ b/src/x11/x11.h
+@@ -283,6 +283,9 @@ struct ximage
+   XImage * image;
+ };
+ 
++extern unsigned long x_image_width (struct ximage * ximage);
++extern unsigned long x_image_height (struct ximage * ximage);
++
+ #define XI_ALLOCATION_INDEX(xi) ((xi) -> allocation_index)
+ #define XI_IMAGE(xi) ((xi) -> image)
+ 
