@@ -29,7 +29,7 @@ case "${1}" in
 	    ;;
     esac
     update-alternatives --remove mit-scheme /usr/bin/mit-scheme-${BIN_ARCH}
-    update-alternatives --remove scheme /usr/bin/mit-scheme-${BIN_ARCH}
+    update-alternatives --remove scheme /usr/bin/mit-scheme
     ;;
 (*)
     echo "prerm called with unknown argument \"${1}\"" >&2

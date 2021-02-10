@@ -44,14 +44,18 @@ CONF_FLAGS += --enable-cross-compiling
 endif
 
 override_dh_auto_configure:
+# -arch
 	dh_auto_configure --sourcedirectory=src -- $(CONF_FLAGS)
+# -indep
 	dh_auto_configure --sourcedirectory=doc -- $(CONF_FLAGS)
 
 # May wish to pass parameter in dh_auto_build
 #  SCHEME_COMPILER=mit-scheme
 
 override_dh_auto_build:
+# -arch
 	dh_auto_build --sourcedirectory=src
+# -indep
 	dh_auto_build --sourcedirectory=doc
 
 ifeq ($(DEB_HOST_GNU_CPU),x86_64)
@@ -61,13 +65,16 @@ export BIN_ARCH=$(DEB_HOST_GNU_CPU)
 endif
 
 override_dh_auto_install:
+# -arch
 	dh_auto_install --sourcedirectory=src
-	dh_auto_install --sourcedirectory=doc -- install-html install-pdf
-
-execute_after_dh_auto_install:
+# -indep
 #	# This doesn't work because doc/ hasn't been *configured*
 #	# which hardly seems worth working around
 #	dh_auto_install --sourcedirectory=doc -- install-man
+	dh_auto_install --sourcedirectory=doc -- install-html install-pdf
+
+execute_after_dh_auto_install:
+# -arch
 	@echo "remove symbolic link executables"
 	cd debian/tmp/usr/bin && \
 	for f in scheme bchscheme mit-scheme mit-scheme-native; do \
@@ -93,6 +100,11 @@ execute_after_dh_install-arch:
 	find debian/mit-scheme -name '*.bci' -delete
 	@echo "remove empty directory"
 	-rmdir debian/mit-scheme/usr/lib/x86_64-linux-gnu/mit-scheme/lib
+
+execute_after_dh_installman-arch:
+	@echo "install man page using arch; generic is via alternatives"
+	cd debian/mit-scheme/usr/share/man && \
+	 mv man1/mit-scheme.1 man1/mit-scheme-$(BIN_ARCH).1
 
 # Upstream changelog is over 5MB, leave a copy in the doc package but
 # remove it from the binary package to reduce bloat.
