@@ -3403,18 +3403,22 @@ USA.
   ;;
   ;; 1. No inputs.  Empty sum is zero, so yield log(0) = -inf.
   ;; 2. One input.  Computation is exact.  Preserve it.
-  ;; 3. Maximum +inf.  Sum overflows, so yield it (unless NaN).
+  ;; 3. Maximum +inf.  Sum overflows, so yield +inf (or NaN, if one of
+  ;;    the inputs is NaN).
+  ;;
+  ;; Overflow is not possible otherwise because everything is
+  ;; normalized to be below zero.
   ;;
   ;; Most likely all the inputs are finite, so prioritize that case by
   ;; checking for +inf first -- if there is a NaN, the usual
-  ;; computation will propagate it.
+  ;; computation will propagate it anyway.  Case (3) is not needed if
+  ;; there's only one +inf, but if there's more than one, we need to
+  ;; handle specially it to avoid computing +inf - +inf in the
+  ;; normalization.
   ;;
-  ;; Overflow is not possible because everything is normalized to be
-  ;; below zero.
-  ;;
-  (cond ((not (pair? l))
+  (cond ((not (pair? l))		;(1)
 	 (flo:-inf.0))
-	((not (pair? (cdr l)))
+	((not (pair? (cdr l)))		;(2)
 	 (guarantee-real (car l) 'logsumexp)
 	 (car l))
 	(else
@@ -3427,9 +3431,11 @@ USA.
 		   (if (<= x xmax)
 		       (loop (+ i 1) imax xmax)
 		       (loop (+ i 1) i x)))
-		 ;; Avoid arithmetic on +inf.0 and just pass it
-		 ;; through.
-		 (if (= xmax +inf.0)
+		 ;; Avoid arithmetic on +inf (specifically, avoid
+		 ;; intermediate +inf - +inf in case there's more than
+		 ;; one of them), and just pass it through (or the
+		 ;; first NaN).
+		 (if (= xmax +inf.0)	;(3)
 		     (or (find nan? l) +inf.0)
 		     ;; Compute xmax + log(1 + sum_i e^{xi - xmax}), with
 		     ;; imax omitted from the sum.
