@@ -707,9 +707,15 @@ USA.
    (list (iota 1000) 999.45867514538713)
    (list '(999 1000) 1000.3132616875182)
    (list '(-1000 -1000) (+ -1000 (log 2)))
-   (list '(0 0) (log 2)))
-  (lambda (l s)
-    (assert-<= (relerr s (logsumexp l)) 1e-15)))
+   (list '(0 0) (log 2))
+   ;; log(2^-30), log(1 + 2^-29) -> log(1 + 2^-29 + 2^-30)
+   (list (list -20.79441541679836 1.8626451474962336e-9)
+	 2.7939677199433077e-9
+	 expect-failure))
+  (lambda (l s #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-<= (relerr s (logsumexp l)) 1e-15)))))
 
 (define-enumerated-test 'logsumexp-edges
   (list
@@ -726,17 +732,19 @@ USA.
    (list (list (flo:+inf.0)) (flo:+inf.0))
    (list (list (flo:+inf.0) 1) (flo:+inf.0))
    (list (list 1 (flo:+inf.0)) (flo:+inf.0))
+   (list (list 1 (flo:-inf.0) (flo:+inf.0)) (flo:+inf.0) expect-failure)
+   (list (list (flo:-inf.0) (flo:+inf.0) 1) (flo:+inf.0) expect-failure)
    (list (list (flo:-inf.0) (flo:-inf.0)) (flo:-inf.0))
-   (list (list (flo:+inf.0) (flo:+inf.0)) (flo:+inf.0)))
-  (lambda (l s)
-    (assert-eqv (logsumexp l) s)))
+   (list (list (flo:-inf.0) (flo:+inf.0)) (flo:+inf.0) expect-failure)
+   (list (list (flo:+inf.0) (flo:+inf.0)) (flo:+inf.0))
+   (list (list (flo:+inf.0) (flo:-inf.0)) (flo:+inf.0) expect-failure))
+  (lambda (l s #!optional xfail)
+    (with-expected-failure xfail
+      (lambda ()
+	(assert-eqv (logsumexp l) s)))))
 
 (define-enumerated-test 'logsumexp-nan
   (list
-   (list (list (flo:-inf.0) (flo:+inf.0)))
-   (list (list (flo:+inf.0) (flo:-inf.0)))
-   (list (list 1 (flo:-inf.0) (flo:+inf.0)))
-   (list (list (flo:-inf.0) (flo:+inf.0) 1))
    (list (list (flo:nan.0)))
    (list (list (flo:+inf.0) (flo:nan.0)))
    (list (list (flo:-inf.0) (flo:nan.0)))
