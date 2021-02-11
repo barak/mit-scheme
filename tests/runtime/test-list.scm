@@ -431,6 +431,8 @@ USA.
     (assert-equal (delete-duplicates '(x y x y)) '(x y))
     (assert-equal (delete-duplicates '(x y y x)) '(x y))))
 
+;; Runs in quadratic time, so this tends to time out before returning!
+
 #;
 (define-test 'delete-duplicates-long
   (lambda ()
