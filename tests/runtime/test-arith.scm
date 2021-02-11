@@ -710,8 +710,7 @@ USA.
    (list '(0 0) (log 2))
    ;; log(2^-30), log(1 + 2^-29) -> log(1 + 2^-29 + 2^-30)
    (list (list -20.79441541679836 1.8626451474962336e-9)
-	 2.7939677199433077e-9
-	 expect-failure))
+	 2.7939677199433077e-9))
   (lambda (l s #!optional xfail)
     (with-expected-failure xfail
       (lambda ()
@@ -732,12 +731,12 @@ USA.
    (list (list (flo:+inf.0)) (flo:+inf.0))
    (list (list (flo:+inf.0) 1) (flo:+inf.0))
    (list (list 1 (flo:+inf.0)) (flo:+inf.0))
-   (list (list 1 (flo:-inf.0) (flo:+inf.0)) (flo:+inf.0) expect-failure)
-   (list (list (flo:-inf.0) (flo:+inf.0) 1) (flo:+inf.0) expect-failure)
+   (list (list 1 (flo:-inf.0) (flo:+inf.0)) (flo:+inf.0))
+   (list (list (flo:-inf.0) (flo:+inf.0) 1) (flo:+inf.0))
    (list (list (flo:-inf.0) (flo:-inf.0)) (flo:-inf.0))
-   (list (list (flo:-inf.0) (flo:+inf.0)) (flo:+inf.0) expect-failure)
+   (list (list (flo:-inf.0) (flo:+inf.0)) (flo:+inf.0))
    (list (list (flo:+inf.0) (flo:+inf.0)) (flo:+inf.0))
-   (list (list (flo:+inf.0) (flo:-inf.0)) (flo:+inf.0) expect-failure))
+   (list (list (flo:+inf.0) (flo:-inf.0)) (flo:+inf.0)))
   (lambda (l s #!optional xfail)
     (with-expected-failure xfail
       (lambda ()

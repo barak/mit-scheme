@@ -3402,40 +3402,52 @@ USA.
   ;; Cases:
   ;;
   ;; 1. No inputs.  Empty sum is zero, so yield log(0) = -inf.
-  ;;
   ;; 2. One input.  Computation is exact.  Preserve it.
-  ;;
-  ;; 3. NaN among the inputs: invalid operation; result is NaN.
-  ;;
-  ;; 2. Maximum is +inf, and
-  ;;    (a) the minimum is -inf: inf - inf = NaN.
-  ;;    (b) the minimum is finite: sum overflows, so +inf.
-  ;;
-  ;; 3. Maximum is -inf: all inputs are -inf, so -inf.
+  ;; 3. Maximum is infinite:
+  ;;    - if +inf, sum overflows, so +inf.
+  ;;    - if -inf, all inputs are -inf, so -inf.
+  ;; 4. NaN among the inputs: invalid operation; result is NaN.
   ;;
   ;; Most likely all the inputs are finite, so prioritize that case by
   ;; checking for an infinity first -- if there is a NaN, the usual
   ;; computation will propagate it.
   ;;
   ;; Overflow is not possible because everything is normalized to be
-  ;; below zero.  Underflow can be safely ignored because it can't
-  ;; change the outcome: even if you had 2^64 copies of the largest
-  ;; subnormal in the sum, 2^64 * largest subnormal < 2^-900 <<<
-  ;; epsilon = 2^-53, and at least one addend in the sum is 1 since we
-  ;; compute e^{m - m} = e^0 = 1.
+  ;; below zero.
   ;;
-  (let ((m (reduce max #f l)))
-    (cond ((not (pair? l)) (flo:-inf.0))
-	  ((not (pair? (cdr l))) (car l))
-	  ((and (infinite? m)
-		(not (= (- m) (reduce min #f l)))
-		(not (any nan? l)))
-	   m)
-	  (else
-	   (flo:with-exceptions-untrapped (flo:exception:underflow)
-	     (lambda ()
-	       (+ m
-		  (log (reduce + 0 (map (lambda (x) (exp (- x m))) l))))))))))
+  (cond ((not (pair? l))
+	 (flo:-inf.0))
+	((not (pair? (cdr l)))
+	 (guarantee-real (car l) 'logsumexp)
+	 (car l))
+	(else
+	 (let* ((v (list->vector l))
+		(n (vector-length v)))
+	   ;; Find the position of the maximum.
+	   (let loop ((i 1) (imax 0) (xmax (vector-ref v 0)))
+	     (if (< i n)
+		 (let ((x (vector-ref v i)))
+		   (if (<= x xmax)
+		       (loop (+ i 1) imax xmax)
+		       (loop (+ i 1) i x)))
+		 ;; Avoid arithmetic on +inf.0 and just pass it
+		 ;; through.
+		 (if (= xmax +inf.0)
+		     (or (find nan? l) +inf.0)
+		     ;; Compute xmax + log(1 + sum_i e^{xi - xmax}), with
+		     ;; imax omitted from the sum.
+		     (let loop ((i 0) (sumexp 0))
+		       (if (>= i n)
+			   (+ xmax (log1p sumexp))
+			   (let ((x (vector-ref v i)))
+			     (cond ((= x -inf.0)
+				    (loop (+ i 1) (exact->inexact sumexp)))
+				   ((= i imax)
+				    (loop (+ i 1) sumexp))
+				   (else
+				    (loop (+ i 1)
+					  (+ sumexp
+					     (exp (- x xmax))))))))))))))))
 
 ;;; Logistic function: 1/(1 + e^{-x}) = e^x/(1 + e^x).	Maps a
 ;;; log-odds-space probability in [-\infty, +\infty] into a
