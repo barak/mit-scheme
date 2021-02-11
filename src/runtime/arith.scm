@@ -3403,13 +3403,10 @@ USA.
   ;;
   ;; 1. No inputs.  Empty sum is zero, so yield log(0) = -inf.
   ;; 2. One input.  Computation is exact.  Preserve it.
-  ;; 3. Maximum is infinite:
-  ;;    - if +inf, sum overflows, so +inf.
-  ;;    - if -inf, all inputs are -inf, so -inf.
-  ;; 4. NaN among the inputs: invalid operation; result is NaN.
+  ;; 3. Maximum +inf.  Sum overflows, so yield it (unless NaN).
   ;;
   ;; Most likely all the inputs are finite, so prioritize that case by
-  ;; checking for an infinity first -- if there is a NaN, the usual
+  ;; checking for +inf first -- if there is a NaN, the usual
   ;; computation will propagate it.
   ;;
   ;; Overflow is not possible because everything is normalized to be
