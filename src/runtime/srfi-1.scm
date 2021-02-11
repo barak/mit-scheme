@@ -113,6 +113,11 @@ USA.
 ;;; lightens the load on the GC system. Don't stand on your head to iterate!
 ;;; Recurse, where natural. Multiple-value returns make this even more
 ;;; convenient, when the recursion/iteration has multiple state values.
+;;;
+;;; [TRC 20210211: MIT Scheme has a bounded stack size, and stack
+;;; frames are larger than cons cells, so this implementation has been
+;;; adjusted to avoid the stack overflows and reduce net memory usage
+;;; by using iteration instead of recursion.]
 
 ;;; Porting:
 ;;; This is carefully tuned code; do not modify casually.
@@ -247,11 +252,10 @@ USA.
 
 (define (take lis k)
   (guarantee index-fixnum? k 'take)
-  (let recur ((lis lis) (k k))
+  (let lp ((lis lis) (k k) (res '()))
     (if (fix:> k 0)
-	(cons (car lis)
-	      (recur (cdr lis) (fix:- k 1)))
-	'())))
+	(lp (cdr lis) (fix:- k 1) (cons (car lis) res))
+	(reverse! res))))
 
 (define (drop lis k)
   (guarantee index-fixnum? k 'drop)
@@ -284,10 +288,10 @@ USA.
 
 (define (drop-right lis k)
   (guarantee index-fixnum? k 'drop-right)
-  (let recur ((lag lis) (lead (%drop lis k)))
+  (let lp ((lag lis) (lead (%drop lis k)) (res '()))
     (if (pair? lead)
-	(cons (car lag) (recur (cdr lag) (cdr lead)))
-	'())))
+	(lp (cdr lag) (cdr lead) (cons (car lag) res))
+	(reverse! res))))
 
 ;;; In this function, LEAD is actually K+1 ahead of LAG. This lets
 ;;; us stop LAG one step early, in time to smash its cdr to ().
@@ -308,11 +312,10 @@ USA.
 
 (define (split-at x k)
   (guarantee index-fixnum? k 'split-at)
-  (let recur ((lis x) (k k))
+  (let lp ((lis x) (k k) (prefix '()))
     (if (fix:> k 0)
-	(receive (prefix suffix) (recur (cdr lis) (fix:- k 1))
-	  (values (cons (car lis) prefix) suffix))
-	(values '() lis))))
+	(lp (cdr lis) (fix:- k 1) (cons (car lis) prefix))
+	(values (reverse! prefix) lis))))
 
 (define (split-at! x k)
   (guarantee index-fixnum? k 'split-at!)
@@ -508,18 +511,17 @@ USA.
 
 (define (filter-map f lis1 . lists)
   (if (pair? lists)
-      (let recur ((lists (cons lis1 lists)))
+      (let lp ((lists (cons lis1 lists)) (res '()))
 	(receive (cars cdrs) (%cars+cdrs lists)
 	  (if (pair? cars)
-	      (cond ((apply f cars) => (lambda (x) (cons x (recur cdrs))))
-		    (else (recur cdrs))) ; Tail call in this arm.
-	      '())))
-      (let recur ((lis lis1))
+	      (cond ((apply f cars) => (lambda (x) (lp cdrs (cons x res))))
+		    (else (lp cdrs res)))
+	      (reverse! res))))
+      (let lp ((lis lis1) (res '()))
 	(if (null-list? lis 'filter-map)
-	    lis
-	    (let ((tail (recur (cdr lis))))
-	      (cond ((f (car lis)) => (lambda (x) (cons x tail)))
-		    (else tail)))))))
+	    (reverse! res)
+	    (cond ((f (car lis)) => (lambda (x) (lp (cdr lis) (cons x res))))
+		  (else (lp (cdr lis) res)))))))
 
 ;; Like filter-map, but returns first non-false value.
 (define (find-map f lis1 . lists)
@@ -540,20 +542,17 @@ USA.
 
 (define (map-in-order f lis1 . lists)
   (if (pair? lists)
-      (let recur ((lists (cons lis1 lists)))
+      (let lp ((lists (cons lis1 lists)) (res '()))
 	(receive (cars cdrs) (%cars+cdrs lists)
 	  (if (pair? cars)
 	      ;; Do head first, then tail.
-	      (let ((x (apply f cars)))
-		(cons x (recur cdrs)))
-	      '())))
-      (let recur ((lis lis1))
+	      (lp cdrs (cons (apply f cars) res))
+	      (reverse! res))))
+      (let lp ((lis lis1) (res '()))
 	(if (null-list? lis 'map-in-order)
-	    lis
+	    (reverse! res)
 	    ;; Do head first, then tail.
-	    (let ((x (f (car lis))))
-	      (cons x
-		    (recur (cdr lis))))))))
+	    (lp (cdr lis) (cons (f (car lis)) res))))))
 
 ;;;; filter, remove, partition
 
@@ -561,10 +560,10 @@ USA.
 ;;; disorder the elements of their argument.
 
 (define (filter pred lis)
-  (let recur ((lis lis))
-    (cond ((null-list? lis 'filter) lis)
-	  ((pred (car lis)) (cons (car lis) (recur (cdr lis))))
-	  (else (recur (cdr lis))))))
+  (let lp ((lis lis) (res '()))
+    (cond ((null-list? lis 'filter) (reverse! res))
+	  ((pred (car lis)) (lp (cdr lis) (cons (car lis) res)))
+	  (else (lp (cdr lis) res)))))
 
 ;;; This implementation of FILTER!
 ;;; - doesn't cons, and uses no stack;
@@ -605,19 +604,15 @@ USA.
 	   (scan-in ans (cdr ans))
 	   ans))))
 
-;;; Answers share common tail with LIS where possible;
-;;; the technique is slightly subtle.
-
 (define (partition pred lis)
-  (let recur ((lis lis))
+  (let lp ((lis lis) (in '()) (out '()))
     (if (null-list? lis 'partition)
-	(values lis lis)
+	(values (reverse in) (reverse out))
 	(let ((elt (car lis))
 	      (tail (cdr lis)))
-	  (receive (in out) (recur tail)
-	    (if (pred elt)
-		(values (if (pair? out) (cons elt in) lis) out)
-		(values in (if (pair? in) (cons elt out) lis))))))))
+	  (if (pred elt)
+	      (lp tail (cons elt in) out)
+	      (lp tail in (cons elt out)))))))
 
 ;;; This implementation of PARTITION!
 ;;; - doesn't cons, and uses no stack;
@@ -685,23 +680,40 @@ USA.
 
 (define (delete-duplicates lis #!optional elt=)
   (let ((elt= (if (default-object? elt=) equal? elt=)))
-    (let recur ((lis lis))
+    (let lp ((lis lis) (res '()))
       (if (null-list? lis 'delete-duplicates)
-	  lis
-	  (let* ((x (car lis))
-		 (tail (cdr lis))
-		 (new-tail (recur (delete x tail elt=))))
-	    (if (eq? tail new-tail) lis (cons x new-tail)))))))
+	  (reverse res)
+	  (let ((x (car lis))
+		(tail (cdr lis)))
+	    (lp tail (if (member x res elt=) res (cons x res))))))))
 
 (define (delete-duplicates! lis #!optional elt=)
   (let ((elt= (if (default-object? elt=) equal? elt=)))
-    (let recur ((lis lis))
-      (if (null-list? lis 'delete-duplicates!)
-	  lis
-	  (let* ((x (car lis))
-		 (tail (cdr lis))
-		 (new-tail (recur (delete! x tail elt=))))
-	    (if (eq? tail new-tail) lis (cons x new-tail)))))))
+    (let lp ((lis lis))
+      (if (not (null-list? lis 'delete-duplicates!))
+	  (begin
+	    ;; Delete the first element from the tail.
+	    (let ((x (car lis)))
+	      ;; Find the place where the next copy of x lives.
+	      (let scan ((prev lis))
+		(let ((lis (cdr prev)))
+		  (if (not (null-list? lis 'delete-duplicates!))
+		      (if (not (elt= x (car lis)))
+			  (scan lis)
+			  ;; Find the place where the next element that
+			  ;; is not x lives, set-cdr! prev to it, and
+			  ;; return to scanning for another copy of x.
+			  (let skip ((lis (cdr lis)))
+			    (cond ((null-list? lis 'delete-duplicates!)
+				   (set-cdr! prev lis))
+				  ((elt= x (car lis))
+				   (skip (cdr lis)))
+				  (else
+				   (set-cdr! prev lis)
+				   (scan lis)))))))))
+	    ;; Recursively process the tail.
+	    (lp (cdr lis)))))
+    lis))
 
 (define (find pred list)
   (cond ((find-tail pred list) => car)
@@ -715,13 +727,13 @@ USA.
 	     (lp (cdr list))))))
 
 (define (take-while pred lis)
-  (let recur ((lis lis))
+  (let lp ((lis lis) (res '()))
     (if (null-list? lis 'take-while)
-	'()
+	(reverse res)
 	(let ((x (car lis)))
 	  (if (pred x)
-	      (cons x (recur (cdr lis)))
-	      '())))))
+	      (lp (cdr lis) (cons x res))
+	      (reverse res))))))
 
 (define (drop-while pred lis)
   (let lp ((lis lis))
@@ -744,14 +756,13 @@ USA.
 	lis)))
 
 (define (span pred lis)
-  (let recur ((lis lis))
+  (let lp ((lis lis) (prefix '()))
     (if (null-list? lis 'span)
-	(values '() '())
+	(values (reverse prefix) '())
 	(let ((x (car lis)))
 	  (if (pred x)
-	      (receive (prefix suffix) (recur (cdr lis))
-		(values (cons x prefix) suffix))
-	      (values '() lis))))))
+	      (lp (cdr lis) (cons x prefix))
+	      (values (reverse prefix) lis))))))
 
 (define (span! pred lis)
   (if (or (null-list? lis 'span!)

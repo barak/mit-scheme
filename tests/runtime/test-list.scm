@@ -64,13 +64,11 @@ USA.
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (length (take l n)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (length (take l n)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
 
 (define-test 'take!
   (lambda ()
@@ -155,13 +153,11 @@ USA.
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (append (make-list n 0) '(1))))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (length (drop-right l 1)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (length (drop-right l 1)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
 
 (define-test 'drop-right!
   (lambda ()
@@ -202,13 +198,11 @@ USA.
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (append (make-list n 0) '(1))))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (receive (a b) (split-at l n) b (length a)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (receive (a b) (split-at l n) b (length a)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
 
 (define-test 'split-at!
   (lambda ()
@@ -304,13 +298,11 @@ USA.
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (length (filter zero? l)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (length (filter zero? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
 
 (define-test 'filter!
   (lambda ()
@@ -344,13 +336,11 @@ USA.
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (length (remove positive? l)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (length (remove positive? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
 
 (define-test 'remove!
   (lambda ()
@@ -386,15 +376,13 @@ USA.
     (let* ((n (words-in-stack))
 	   (n (- n (remainder n 2)))
 	   (l (list-tabulate n (lambda (i) i))))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda ()
-		       (receive (a b) (partition even? l)
-			 (list (length a) (length b))))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  (list (quotient n 2) (quotient n 2))))))))
+      (assert-equal
+       (carefully (lambda ()
+		    (receive (a b) (partition even? l)
+		      (list (length a) (length b))))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       (list (quotient n 2) (quotient n 2))))))
 
 (define-test 'partition!
   (lambda ()
@@ -471,13 +459,11 @@ USA.
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (length (take-while zero? l)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (length (take-while zero? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
 
 (define-test 'drop-while-long
   (lambda ()
@@ -503,13 +489,11 @@ USA.
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (receive (a b) (span zero? l) b (length a)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (receive (a b) (span zero? l) b (length a)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
 
 (define-test 'span!-long
   (lambda ()
@@ -525,14 +509,12 @@ USA.
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda ()
-		       (receive (a b) (break positive? l) b (length a)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda ()
+		    (receive (a b) (break positive? l) b (length a)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
 
 (define-test 'break!-long
   (lambda ()
