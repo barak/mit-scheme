@@ -3442,13 +3442,13 @@ USA.
 		     (let loop ((i 0) (sumexp 0))
 		       (if (>= i n)
 			   (+ xmax (log1p sumexp))
-			   (let ((x (vector-ref v i)))
-			     (cond ((= x -inf.0)
-				    (loop (+ i 1) (exact->inexact sumexp)))
-				   ((= i imax)
-				    (loop (+ i 1) sumexp))
-				   (else
-				    (loop (+ i 1)
+			   (loop (+ i 1)
+				 (let ((x (vector-ref v i)))
+				   (cond ((= x -inf.0)
+					  (exact->inexact sumexp))
+					 ((= i imax)
+					  sumexp)
+					 (else
 					  (+ sumexp
 					     (exp (- x xmax))))))))))))))))
 
