@@ -158,11 +158,22 @@ USA.
 #  define PRINTFLIKE(n,m) /* nothing */
 #endif
 
-#if (((defined (__GNUC__)) && (__GNUC__ >= 7)) || \
-       ((defined (__clang__)) && (__clang_major__ >= 10)))
+/* This detection should probably be done in configure.ac rather than here. */
+#if (defined (__APPLE__))
+#  if ((defined (__clang_major__)) && (__clang_major__ >= 12))
+#    define HAVE_FALLTHROUGH_ATTRIBUTE 1
+#  endif
+#else
+#  if (((defined (__GNUC__)) && (__GNUC__ >= 7)) \
+       || ((defined (__clang_major__)) && (__clang_major__ >= 10)))
+#    define HAVE_FALLTHROUGH_ATTRIBUTE 1
+#  endif
+#endif
+
+#if (defined (HAVE_FALLTHROUGH_ATTRIBUTE))
 #  define FALLTHROUGH() ATTRIBUTE ((__fallthrough__))
 #else
-#  define FALLTHROUGH() ((void)0)
+#  define FALLTHROUGH() ((void) 0)
 #endif
 
 /* Operating System / Machine dependencies:
