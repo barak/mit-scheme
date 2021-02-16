@@ -54,21 +54,11 @@ USA.
   (let ((pathname (canonicalize-debug-info-pathname pathname)))
     (if (file-exists? pathname)
 	(fasload-loader (->namestring pathname))
-	(compressed-loader
-	 (pathname-new-type-map pathname file-type-inf file-type-bci)))))
-
-(define (find-alternate-file-type base-pathname alist)
-  (let loop ((left alist) (time 0) (file #f) (receiver (lambda (x) x)))
-    (if (null? left)
-	(receiver file)
-	(let ((file* (pathname-new-type base-pathname (caar left)))
-	      (receiver* (cdar left)))
-	  (if (not (file-exists? file*))
-	      (loop (cdr left) time file receiver)
-	      (let ((time* (file-modification-time-direct file*)))
-		(if (> time* time)
-		    (loop (cdr left) time* file* receiver*)
-		    (loop (cdr left) time file receiver))))))))
+	(let ((pn-compressed
+	       (pathname-new-type-map pathname file-type-inf file-type-bci)))
+	  (if (file-exists? pn-compressed)
+	      (compressed-loader pn-compressed)
+	      #f)))))
 
 (define (fasload-loader filename)
   (call-with-current-continuation
