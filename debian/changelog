@@ -1,3 +1,10 @@
+mit-scheme (11.1-5) unstable; urgency=medium
+
+  * track upstream maintenance branch as quilt patches
+  * hope it compiles on i386
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 18 Feb 2021 14:09:59 +0000
+
 mit-scheme (11.1-4) unstable; urgency=medium
 
   * unified -arch and -indep!

@@ -3,5 +3,14 @@
 0003-sequentialize-docs.patch
 0004-makeinfo-5-fix.patch
 0005-man-page.patch
-0006-extern-ximage-dimensions.patch
 0007-verbose-texi2dvi.patch
+0008-microcode-Put-x86isms-under-__x86_64__-not-just-__AP.patch
+0009-microcode-Pacify-clang-s-objection-to-gcc-asm-constr.patch
+0010-ref-manual-Undeprecate-with-working-directory-pathna.patch
+0011-Fix-various-logsumexp-tests.patch
+0012-Fix-accuracy-and-nonsensical-logic-for-edge-cases-in.patch
+0013-Fix-comments-in-logsumexp.patch
+0014-microcode-Use-fallthrough-attribute-on-clang-10-and-.patch
+0015-Fix-problem-with-fallthrough-attribute-on-macos-10.x.patch
+0016-Eliminate-compiler-warning.patch
+0017-Don-t-signal-error-if-debugging-info-not-found.patch

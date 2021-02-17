@@ -1,0 +1,39 @@
+From: Chris Hanson <org/chris-hanson/cph>
+Date: Sun, 14 Feb 2021 22:45:11 -0800
+Subject: Fix problem with fallthrough attribute on macos 10.x.
+
+(cherry picked from commit 0db6a7b19baa1b327f6656832c193ff072aa5286)
+---
+ src/microcode/confshared.h | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/src/microcode/confshared.h b/src/microcode/confshared.h
+index f83671a..900a7c6 100644
+--- a/src/microcode/confshared.h
++++ b/src/microcode/confshared.h
+@@ -150,11 +150,22 @@ USA.
+ #  define NORETURN
+ #endif
+ 
+-#if (((defined (__GNUC__)) && (__GNUC__ >= 7)) || \
+-       ((defined (__clang__)) && (__clang_major__ >= 10)))
++/* This detection should probably be done in configure.ac rather than here. */
++#if (defined (__APPLE__))
++#  if ((defined (__clang_major__)) && (__clang_major__ >= 12))
++#    define HAVE_FALLTHROUGH_ATTRIBUTE 1
++#  endif
++#else
++#  if (((defined (__GNUC__)) && (__GNUC__ >= 7)) \
++       || ((defined (__clang_major__)) && (__clang_major__ >= 10)))
++#    define HAVE_FALLTHROUGH_ATTRIBUTE 1
++#  endif
++#endif
++
++#if (defined (HAVE_FALLTHROUGH_ATTRIBUTE))
+ #  define FALLTHROUGH() ATTRIBUTE ((__fallthrough__))
+ #else
+-#  define FALLTHROUGH() ((void)0)
++#  define FALLTHROUGH() ((void) 0)
+ #endif
+ 
+ /* Operating System / Machine dependencies:

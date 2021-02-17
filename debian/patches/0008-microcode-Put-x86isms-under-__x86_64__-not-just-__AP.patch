@@ -1,0 +1,33 @@
+From: Taylor R Campbell <campbell+mit-scheme@mumble.net>
+Date: Wed, 3 Feb 2021 06:31:25 +0000
+Subject: microcode: Put x86isms under __x86_64__, not just __APPLE__.
+
+(cherry picked from commit b421c2b0a77584bc1e0e095745d413913cef9f67)
+---
+ src/microcode/floenv.h | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/microcode/floenv.h b/src/microcode/floenv.h
+index bc09420..23c5007 100644
+--- a/src/microcode/floenv.h
++++ b/src/microcode/floenv.h
+@@ -46,12 +46,16 @@ USA.
+ #    endif
+ #    define HAVE_FEENABLEEXCEPT
+ #    define HAVE_FEDISABLEEXCEPT
+-#    define NEED_FEEXCEPT_WORKAROUND
++#    ifdef __x86_64__
++#      define NEED_FEEXCEPT_WORKAROUND
++#    endif
+      extern int fegetexcept(void);
+      extern int feenableexcept(unsigned int);
+      extern int fedisableexcept(unsigned int);
+-#    ifndef FE_DENORMAL
+-#      define FE_DENORMAL FE_DENORMALOPERAND
++#    ifdef __x86_64__
++#      ifndef FE_DENORMAL
++#        define FE_DENORMAL FE_DENORMALOPERAND
++#      endif
+ #    endif
+ #  endif
+ #elif ((!defined (CMPINTMD_EMULATES_FENV)) && (defined (HAVE_IEEEFP_H)))

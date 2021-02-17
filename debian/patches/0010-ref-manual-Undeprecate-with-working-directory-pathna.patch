@@ -1,0 +1,99 @@
+From: Taylor R Campbell <campbell+mit-scheme@mumble.net>
+Date: Wed, 3 Feb 2021 15:55:26 +0000
+Subject: ref-manual: Undeprecate with-working-directory-pathname.
+
+The mechanism of working-directory-pathname as a parameter doesn't
+work very well -- it leaves bogus pathnames around in bands, and it
+doesn't really match the OS semantics anyway.
+
+If we simply try to use a parameter getter,
+
+   (define (wd-getter pathname)
+     (or pathname
+         (pathname-simplify
+          ... (ucode-primitive working-directory-pathname) ...))
+
+   (define working-directory-pathname
+     (make-general-parameter ... wd-getter ...))
+
+then when the REPL tries to preserve the working directory pathname with
+
+   (parameterize ((working-directory-pathname (working-directory-pathname)))
+     ...)
+
+it has the side effect of keeping the pathname persistently in bands
+again.  I tried to find a way around, but really the mechanism of
+storing a pathname in userland memory is just not a good way to
+reflect the working directory state; should really use directory file
+descriptors and fchdir or openat &c.
+
+Some further details:
+https://lists.gnu.org/archive/html/bug-mit-scheme/2020-08/msg00002.html
+
+(cherry picked from commit d102b20a4634882ee3e1c2be300f77b2ca507655)
+---
+ doc/ref-manual/os-interface.texi | 24 +++---------------------
+ 1 file changed, 3 insertions(+), 21 deletions(-)
+
+diff --git a/doc/ref-manual/os-interface.texi b/doc/ref-manual/os-interface.texi
+index 2817601..40ece1d 100644
+--- a/doc/ref-manual/os-interface.texi
++++ b/doc/ref-manual/os-interface.texi
+@@ -795,37 +795,25 @@ procedure.  Each @acronym{REP} loop has its own working directory, and
+ inferior @acronym{REP} loops initialize their working directory from the
+ value in effect in their superior at the time they are created.
+ 
+-@deffn parameter working-directory-pathname
+-@deffnx parameter pwd
++@deffn procedure working-directory-pathname
++@deffnx procedure pwd
+ Returns the current working directory as a pathname that has no name,
+ type, or version components, just host, device, and directory
+ components.  @code{pwd} is an alias for
+ @code{working-directory-pathname}; the long name is intended for
+ programs and the short name for interactive use.
+-
+-This parameter may be called with an argument to set its value, in
+-which case it also modifies the value of
+-@code{param:default-pathname-defaults} by merging the new working
+-directory into it.
+ @end deffn
+ 
+ @deffn procedure set-working-directory-pathname! filename
+ @deffnx procedure cd filename
+ @findex ->pathname
+ @findex pathname-as-directory
+-This procedure is @strong{deprecated}; instead call
+-@code{working-directory-pathname} with an argument.
+-
+ Makes @var{filename} the current working directory and returns the new
+ current working directory as a pathname.  @var{Filename} is coerced to a
+ pathname using @code{pathname-as-directory}.  @code{cd} is an alias for
+ @code{set-working-directory-pathname!}; the long name is intended for
+ programs and the short name for interactive use.
+ 
+-Additionally, @code{set-working-directory-pathname!} modifies the
+-value of @code{param:default-pathname-defaults} by merging the new
+-working directory into it.
+-
+ When this procedure is executed in the top-level @acronym{REP} loop, it
+ changes the working directory of the running Scheme executable.
+ 
+@@ -856,16 +844,10 @@ directory, before changing the working directory.
+ @end deffn
+ 
+ @deffn procedure with-working-directory-pathname filename thunk
+-This procedure is @strong{deprecated}; instead bind
+-@code{working-directory-pathname} using @code{parameterize}.
+-
+ This procedure dynamically binds the current working directory to
+ @var{filename} and returns the value of @var{thunk} (a procedure of no
+ arguments).  @var{Filename} is coerced to a pathname using
+-@code{pathname-as-directory}.  In addition to binding the working
+-directory, @code{with-working-directory-pathname} also dynamically
+-binds the @code{param:default-pathname-defaults} parameter, merging
+-the old value with the new working directory pathname.
++@code{pathname-as-directory}.
+ @end deffn
+ 
+ @node File Manipulation, Directory Reader, Working Directory, Operating-System Interface

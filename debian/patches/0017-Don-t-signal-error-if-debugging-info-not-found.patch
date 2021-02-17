@@ -1,0 +1,40 @@
+From: Chris Hanson <org/chris-hanson/cph>
+Date: Mon, 15 Feb 2021 20:04:22 -0800
+Subject: Don't signal error if debugging info not found.
+
+(cherry picked from commit d236a7dfc6df5e85e8af83c8ba80fc067bfe84ca)
+---
+ src/runtime/infutl.scm | 20 +++++---------------
+ 1 file changed, 5 insertions(+), 15 deletions(-)
+
+diff --git a/src/runtime/infutl.scm b/src/runtime/infutl.scm
+index 0dd38d8..efb0480 100644
+--- a/src/runtime/infutl.scm
++++ b/src/runtime/infutl.scm
+@@ -54,21 +54,11 @@ USA.
+   (let ((pathname (canonicalize-debug-info-pathname pathname)))
+     (if (file-exists? pathname)
+ 	(fasload-loader (->namestring pathname))
+-	(compressed-loader
+-	 (pathname-new-type-map pathname file-type-inf file-type-bci)))))
+-
+-(define (find-alternate-file-type base-pathname alist)
+-  (let loop ((left alist) (time 0) (file #f) (receiver (lambda (x) x)))
+-    (if (null? left)
+-	(receiver file)
+-	(let ((file* (pathname-new-type base-pathname (caar left)))
+-	      (receiver* (cdar left)))
+-	  (if (not (file-exists? file*))
+-	      (loop (cdr left) time file receiver)
+-	      (let ((time* (file-modification-time-direct file*)))
+-		(if (> time* time)
+-		    (loop (cdr left) time* file* receiver*)
+-		    (loop (cdr left) time file receiver))))))))
++	(let ((pn-compressed
++	       (pathname-new-type-map pathname file-type-inf file-type-bci)))
++	  (if (file-exists? pn-compressed)
++	      (compressed-loader pn-compressed)
++	      #f)))))
+ 
+ (define (fasload-loader filename)
+   (call-with-current-continuation
