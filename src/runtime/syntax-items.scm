@@ -116,6 +116,9 @@ USA.
 
 (define-item-compiler reserved-name-item?
   (illegal-expression-compiler "Reserved name"))
+
+(define-deferred keywordish-item?
+  (disjoin keyword-item? reserved-name-item?))
 
 ;;; These items can't be stored in a syntactic environment.
 

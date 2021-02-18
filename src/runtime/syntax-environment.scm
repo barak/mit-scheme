@@ -84,17 +84,17 @@ USA.
 
 (define (reserve-keyword identifier senv)
   (guarantee identifier? identifier 'reserve-keyword)
-  ((senv-store senv) identifier #t (reserved-name-item)))
+  ((senv-store senv) identifier (reserved-name-item)))
 
 (define (bind-keyword identifier senv item)
   (guarantee identifier? identifier 'bind-keyword)
   (guarantee keyword-item? item 'bind-keyword)
-  ((senv-store senv) identifier #t item))
+  ((senv-store senv) identifier item))
 
 (define (bind-variable identifier senv)
   (guarantee identifier? identifier 'bind-variable)
   (let ((rename ((senv-rename senv) identifier)))
-    ((senv-store senv) identifier #f (var-item rename))
+    ((senv-store senv) identifier (var-item rename))
     rename))
 
 (define-record-type <syntactic-environment>
@@ -134,8 +134,7 @@ USA.
 	    (cdr binding)
 	    (runtime-lookup identifier env))))
 
-    (define (store identifier keyword? item)
-      (declare (ignore keyword?))
+    (define (store identifier item)
       (let ((binding (assq identifier bound)))
 	(if binding
 	    (set-cdr! binding item)
@@ -164,8 +163,7 @@ USA.
   (define (lookup identifier)
     (runtime-lookup identifier env))
 
-  (define (store identifier keyword? item)
-    (declare (ignore keyword?))
+  (define (store identifier item)
     (error "Can't bind in non-top-level runtime environment:" identifier item))
 
   (define (rename identifier)
@@ -190,8 +188,7 @@ USA.
     (and (eq? name identifier)
 	 item))
 
-  (define (store identifier keyword? item)
-    (declare (ignore keyword?))
+  (define (store identifier item)
     (error "Can't bind in keyword environment:" identifier item))
 
   (define (rename identifier)
@@ -223,8 +220,7 @@ USA.
 	    (cdr binding)
 	    ((senv-lookup parent) identifier))))
 
-    (define (store identifier keyword? item)
-      (declare (ignore keyword?))
+    (define (store identifier item)
       (cond ((assq identifier bound)
 	     => (lambda (binding)
 		  (set-cdr! binding item)))
@@ -256,15 +252,15 @@ USA.
 	    (cdr binding)
 	    ((senv-lookup parent) identifier))))
 
-    (define (store identifier keyword? item)
-      (if keyword?
+    (define (store identifier item)
+      (if (keywordish-item? item)
 	  (cond ((assq identifier bound)
 		 => (lambda (binding)
 		      (set-cdr! binding item)))
 		(else
 		 (set! bound (cons (cons identifier item) bound))
 		 unspecific))
-	  ((senv-store parent) identifier keyword? item)))
+	  ((senv-store parent) identifier item)))
 
     (define (describe)
       `((bound ,bound)
@@ -295,8 +291,7 @@ USA.
 	(define (lookup identifier)
 	  ((senv-lookup (select-env identifier)) identifier))
 
-	(define (store identifier keyword? item)
-	  (declare (ignore keyword?))
+	(define (store identifier item)
 	  ;; **** Shouldn't this be a syntax error?  It can happen as the
 	  ;; result of a misplaced definition.  ****
 	  (error "Can't bind identifier in partial syntactic environment:"
@@ -345,8 +340,7 @@ USA.
 	       (set! free (cons (cons identifier item) free))
 	       item))))
 
-    (define (store identifier keyword? item)
-      (declare (ignore keyword?))
+    (define (store identifier item)
       (cond ((assq identifier bound)
 	     => (lambda (binding)
 		  (set-cdr! binding item)))

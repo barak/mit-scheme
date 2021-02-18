@@ -5121,6 +5121,7 @@ USA.
 	  flatten-items
 	  item->list
 	  keyword-item?
+	  keywordish-item?
 	  render-item
 	  reserved-name-item
 	  reserved-name-item?
