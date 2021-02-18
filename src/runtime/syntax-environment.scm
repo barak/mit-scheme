@@ -333,12 +333,11 @@ USA.
 	    ((syntactic-closure? identifier) #f)
 	    ((environment-lookup-macro env identifier))
 	    (else
-	     (if (not (environment-bound? env identifier))
-		 (warn "Reference to unbound variable:" identifier))
-	     ;; Capture free runtime references:
-	     (let ((item (var-item identifier)))
-	       (set! free (cons (cons identifier item) free))
-	       item))))
+	     (and (environment-bound? env identifier)
+		  ;; Capture free runtime references:
+		  (let ((item (var-item identifier)))
+		    (set! free (cons (cons identifier item) free))
+		    item)))))
 
     (define (store identifier item)
       (cond ((assq identifier bound)
