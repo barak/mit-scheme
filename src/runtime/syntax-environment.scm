@@ -71,7 +71,7 @@ USA.
   ((senv-get-runtime senv)))
 
 (define (senv-top-level? senv)
-  (eq? 'top-level ((senv-get-type senv))))
+  (memq ((senv-get-type senv)) '(top-level sealed)))
 
 (define (lookup-identifier identifier senv)
   (guarantee identifier? identifier 'lookup-identifier)
