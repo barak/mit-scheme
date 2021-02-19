@@ -6659,14 +6659,15 @@ USA.
   (export ()
 	  environment			;(scheme eval)
 	  find-scheme-libraries!
-	  import!
 	  null-environment		;(scheme r5rs)
 	  scheme-report-environment	;(scheme r5rs)
+	  top-level-environment
 	  )
   (export (runtime)
 	  eval-r7rs-scode-file
 	  eval-r7rs-source
 	  make-environment-from-parsed-imports
+	  repl-import
 	  syntax-r7rs-source))
 
 (define-package (runtime directed-graph)

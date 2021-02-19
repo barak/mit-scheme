@@ -24,10 +24,9 @@ USA.
 
 |#
 
-(let ((environment (make-top-level-environment)))
+(let ((environment (top-level-environment '(mit inline-testing))))
   (load (merge-pathnames "unit-testing" (current-load-pathname))
 	environment)
-  (import! '(mit inline-testing) environment)
   (for-each (lambda (name)
 	      (if (environment-bound? system-global-environment name)
 		  (unbind-variable system-global-environment name))
