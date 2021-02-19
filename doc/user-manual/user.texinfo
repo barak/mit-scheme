@@ -1504,6 +1504,11 @@ Creates a new child @acronym{REPL} with the same current environment
 as this one.
 @end deffn
 
+@deffn {REPL command} import import-set @dots{}
+Imports the given @var{import-set}s into the current @acronym{REPL}
+environment.  The syntax is described in @rseven{} section 5.2.
+@end deffn
+
 @deffn {REPL command} up
 Pops up one level to the parent @acronym{REPL}.
 
