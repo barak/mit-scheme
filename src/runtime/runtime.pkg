@@ -1252,6 +1252,7 @@ USA.
 	  (substring-search-all string-search-all)
 	  (substring-search-backward string-search-backward)
 	  (substring-search-forward string-search-forward)
+	  nfc-transformer
 	  string-move!
 	  substring-ci<?
 	  substring-ci=?

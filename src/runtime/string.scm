@@ -946,10 +946,7 @@ USA.
   (canonical-composition
    (if (string-in-nfd? string)
        string
-       (canonical-decomposition&ordering string
-	 (lambda (string* n max-cp)
-	   (declare (ignore n max-cp))
-	   string*)))))
+       (canonical-decomposition&ordering string))))
 
 (define (string-nfc-qc string caller)
   (cond ((legacy-string? string)
@@ -1018,161 +1015,172 @@ USA.
       (let ((result (string->immutable string)))
 	(ustring-in-nfd! result #t)
 	result)
-      (canonical-decomposition&ordering string
-	(lambda (string* n max-cp)
-	  (let ((result (immutable-ustring-allocate n max-cp)))
-	    (%general-copy! result 0 string* 0 n)
-	    (ustring-in-nfd! result #t)
-	    result)))))
-
-(define (canonical-decomposition&ordering string k)
-  (let ((end (string-length string))
+      (canonical-decomposition&ordering string)))
+
+(define (canonical-decomposition&ordering string)
+  (let ((g (nfd-orderer (nfd-decomposer (string->generator string))))
 	(builder (string-builder)))
-    (do ((i 0 (fix:+ i 1)))
-	((not (fix:< i end)))
-      (let loop ((char (string-ref string i)))
-	(if (jamo-precomposed? char)
-	    (jamo-decompose char builder)
-	    (let ((dm (ucd-canonical-dm-value char)))
-	      (cond ((eqv? dm char)
-		     (builder char))
-		    ;; Canonical decomposition always length 1 or 2.
-		    ;; First char might need recursion, second doesn't:
-		    ((char? dm)
-		     (loop dm))
-		    (else
-		     (loop (vector-ref dm 0))
-		     (builder (vector-ref dm 1))))))))
-    (let* ((string (builder 'mutable))
-	   (end (ustring-length string)))
-
-      (define (scan-for-non-starter i)
-	(if (fix:< i end)
-	    (let ((ccc (ucd-ccc-value (ustring3-ref string i))))
-	      (if (fix:= 0 ccc)
-		  (scan-for-non-starter (fix:+ i 1))
-		  (scan-for-non-starter-pair (list ccc) (fix:+ i 1))))))
-
-      (define (scan-for-non-starter-pair previous i)
-	(if (fix:< i end)
-	    (let ((ccc (ucd-ccc-value (ustring3-ref string i))))
-	      (if (fix:= 0 ccc)
-		  (scan-for-non-starter (fix:+ i 1))
-		  (scan-for-non-starter-pair (maybe-twiddle previous i ccc)
-					     (fix:+ i 1))))))
-
-      (define (maybe-twiddle previous i ccc)
-	(if (and (pair? previous)
-		 (fix:< ccc (car previous)))
+    (let loop ()
+      (let ((char (g)))
+	(if (not (eof-object? char))
 	    (begin
-	      (let ((char (ustring3-ref string (fix:- i 1))))
-		(ustring3-set! string (fix:- i 1) (ustring3-ref string i))
-		(ustring3-set! string i char))
-	      (cons (car previous)
-		    (maybe-twiddle (cdr previous) (fix:- i 1) ccc)))
-	    (cons ccc previous)))
+	      (builder char)
+	      (loop)))))
+    (let ((result (builder 'immutable)))
+      (ustring-in-nfd! result #t)
+      result)))
 
-      (scan-for-non-starter 0)
-      (k string end (builder 'max-cp)))))
-
 (define (canonical-composition string)
-  (let ((end (string-length string))
-	(builder (string-builder))
-	(sk ucd-canonical-cm-second-keys)
-	(sv ucd-canonical-cm-second-values))
-
-    (define (scan-for-first-char i)
-      (if (fix:< i end)
-	  (let ((fc (string-ref string i)))
-	    (if (and (jamo-leading? fc)
-		     (fix:< (fix:+ i 1) end)
-		     (jamo-vowel? (string-ref string (fix:+ i 1))))
-		(if (and (fix:< (fix:+ i 2) end)
-			 (jamo-trailing? (string-ref string (fix:+ i 2))))
-		    (begin
-		      (builder
-		       (jamo-compose fc
-				     (string-ref string (fix:+ i 1))
-				     (string-ref string (fix:+ i 2))))
-		      (scan-for-first-char (fix:+ i 3)))
-		    (begin
-		      (builder
-		       (jamo-compose fc
-				     (string-ref string (fix:+ i 1))
-				     #f))
-		      (scan-for-first-char (fix:+ i 2))))
-		(test-first-char (fix:+ i 1) fc)))))
-
-    (define (test-first-char i+1 fc)
-      (let ((fc-index (and (fix:< i+1 end) (ucd-canonical-cm-value fc))))
-	(if fc-index
-	    (let ((combiners (get-combiners i+1)))
-	      (if (pair? combiners)
-		  (let ((j (fix:+ i+1 (length combiners))))
-		    (scan-combiners fc fc-index combiners)
-		    (scan-for-first-char j))
-		  (let ((fc* (match-second fc-index (string-ref string i+1))))
-		    (if fc*
-			(test-first-char (fix:+ i+1 1) fc*)
-			(begin
-			  (builder fc)
-			  (scan-for-first-char i+1))))))
+  (let ((g (nfc-composer (string->generator string)))
+	(builder (string-builder)))
+    (let loop ()
+      (let ((char (g)))
+	(if (not (eof-object? char))
 	    (begin
-	      (builder fc)
-	      (scan-for-first-char i+1)))))
+	      (builder char)
+	      (loop)))))
+    (let ((result (builder 'immutable)))
+      (ustring-in-nfc! result #t)
+      result)))
+
+(define (nfc-transformer source)
+  (nfc-composer (nfd-orderer (nfd-decomposer source))))
 
-    (define (get-combiners j)
-      (if (fix:< j end)
-	  (let* ((char (string-ref string j))
-		 (ccc (ucd-ccc-value char)))
-	    (if (fix:= 0 ccc)
-		'()
-		(cons (cons char ccc) (get-combiners (fix:+ j 1)))))
-	  '()))
+(define (generator+queue get-more)
+  (let ((queue '()))
+    (lambda ()
+      (if (not (pair? queue))
+          (set! queue (get-more)))
+      (let ((char (car queue)))
+        (if (not (eof-object? char))
+            (set! queue (cdr queue)))
+        char))))
 
-    (define (scan-combiners fc fc-index combiners)
-      (let loop ((cs combiners) (last-ccc 0))
-	(if (pair? cs)
-	    (let* ((c (car cs))
-		   (fc*
-		    (and (fix:> (cdr c) last-ccc)
-			 (match-second fc-index (car c)))))
-	      (if fc*
-		  (let ((fc-index* (ucd-canonical-cm-value fc*))
-			(combiners* (remove-combiner! c combiners)))
-		    (if fc-index*
-			(scan-combiners fc* fc-index* combiners*)
-			(done-matching fc* combiners*)))
-		  (loop (cdr cs) (cdr c))))
-	    (done-matching fc combiners))))
+(define (nfd-decomposer source)
 
-    (define (remove-combiner! combiner combiners)
-      (if (eq? combiner (car combiners))
-	  (cdr combiners)
-	  (begin
-	    (let loop ((this (cdr combiners)) (prev combiners))
-	      (if (eq? combiner (car this))
-		  (set-cdr! prev (cdr this))
-		  (loop (cdr this) this)))
-	    combiners)))
+  (define (loop char tail)
+    (if (eof-object? char)
+        (append tail (list char))
+        (if (jamo-precomposed? char)
+            (jamo-decompose char tail)
+            (let ((dm (ucd-canonical-dm-value char)))
+              (cond ((eqv? dm char)
+                     (cons char tail))
+                    ;; Canonical decomposition always length 1 or 2.
+                    ;; First char might need recursion, second doesn't:
+                    ((char? dm)
+                     (loop dm tail))
+                    (else
+                     (loop (vector-ref dm 0)
+                           (cons (vector-ref dm 1) tail))))))))
 
-    (define (done-matching fc combiners)
-      (builder fc)
-      (for-each (lambda (combiner) (builder (car combiner)))
-		combiners))
+  (generator+queue (lambda () (loop (source) '()))))
 
-    (define (match-second fc-index sc)
-      (let ((keys (vector-ref sk fc-index)))
-	(let loop ((start 0) (end (vector-length keys)))
-	  (and (fix:< start end)
-	       (let ((m (fix:quotient (fix:+ start end) 2)))
-		 (let ((key (vector-ref keys m)))
-		   (cond ((char<? sc key) (loop start m))
-			 ((char<? key sc) (loop (fix:+ m 1) end))
-			 (else (vector-ref (vector-ref sv fc-index) m)))))))))
+(define (nfd-orderer source)
 
-    (scan-for-first-char 0)
-    (builder 'immutable)))
+  (define (scan-for-non-starter)
+    (let ((char (source)))
+      (let ((ccc
+             (if (eof-object? char)
+                 0
+                 (ucd-ccc-value char))))
+        (if (fix:= 0 ccc)
+            (list char)
+            (scan-for-non-starter-pair (list (cons ccc char)))))))
+
+  (define (scan-for-non-starter-pair pending)
+    (let ((char (source)))
+      (let ((ccc
+             (if (eof-object? char)
+                 0
+                 (ucd-ccc-value char))))
+        (if (fix:= 0 ccc)
+            (let finish-scan ((p pending) (q (list char)))
+              (if (pair? p)
+                  (finish-scan (cdr p) (cons (cdar p) q))
+                  q))
+            (scan-for-non-starter-pair
+             (let maybe-twiddle ((p pending))
+	       (if (and (pair? p) (fix:< ccc (caar p)))
+		   (cons (car p) (maybe-twiddle (cdr p)))
+		   (cons (cons ccc char) p))))))))
+
+  (generator+queue scan-for-non-starter))
+
+(define (nfc-composer source)
+  (let-values (((char-ready? peek-char read-char) (gpeeker source)))
+    (let ((sk ucd-canonical-cm-second-keys)
+          (sv ucd-canonical-cm-second-values))
+
+      (define (scan-for-first-char)
+        (if (char-ready?)
+            (let ((c1 (read-char)))
+              (if (and (jamo-leading? c1)
+                       (char-ready?)
+                       (jamo-vowel? (peek-char)))
+		  (list
+                   (let ((c2 (read-char)))
+		     (if (and (char-ready?) (jamo-trailing? (peek-char)))
+			 (jamo-compose c1 c2 (read-char))
+			 (jamo-compose c1 c2 #f))))
+                  (test-first-char c1)))
+            (list (eof-object))))
+
+      (define (test-first-char c1)
+        (let ((c1-index (and (char-ready?) (ucd-canonical-cm-value c1))))
+          (if c1-index
+              (let ((combiners (get-combiners)))
+                (if (pair? combiners)
+                    (scan-combiners c1 c1-index combiners)
+                    (let ((c1* (match-second c1-index (peek-char))))
+                      (if c1*
+			  (begin
+			    (read-char)
+                            (test-first-char c1*))
+                          (list c1)))))
+	      (list c1))))
+
+      (define (get-combiners)
+        (if (char-ready?)
+            (let ((ccc (ucd-ccc-value (peek-char))))
+              (if (fix:= 0 ccc)
+                  '()
+		  (let ((c (cons ccc (read-char))))
+                    (cons c
+			  (get-combiners)))))
+            '()))
+
+      (define (scan-combiners c1 c1-index combiners)
+        (let loop ((cs combiners) (last-ccc 0))
+          (if (pair? cs)
+              (let* ((c (car cs))
+                     (ccc (car c))
+                     (c1*
+                      (and (fix:> ccc last-ccc)
+                           (match-second c1-index (cdr c)))))
+                (if c1*
+                    (let ((c1-index* (ucd-canonical-cm-value c1*))
+                          (cs* (delq! c combiners)))
+                      (if c1-index*
+                          (scan-combiners c1* c1-index* cs*)
+                          (done-matching c1* cs*)))
+                    (loop (cdr cs) ccc)))
+              (done-matching c1 combiners))))
+
+      (define (done-matching c1 cs)
+	(cons c1 (map cdr cs)))
+
+      (define (match-second c1-index c2)
+        (let ((keys (vector-ref sk c1-index)))
+          (let loop ((start 0) (end (vector-length keys)))
+            (and (fix:< start end)
+                 (let ((m (fix:quotient (fix:+ start end) 2)))
+                   (let ((key (vector-ref keys m)))
+                     (cond ((char<? c2 key) (loop start m))
+                           ((char<? key c2) (loop (fix:+ m 1) end))
+                           (else (vector-ref (vector-ref sv c1-index) m)))))))))
+
+      (generator+queue scan-for-first-char))))
 
 (define-integrable jamo-leading-start #x1100)
 (define-integrable jamo-leading-end   #x1113)
@@ -1209,17 +1217,19 @@ USA.
   (and (fix:>= (char->integer char) jamo-precomposed-start)
        (fix:< (char->integer char) jamo-precomposed-end)))
 
-(define (jamo-decompose precomposed builder)
+(define (jamo-decompose precomposed tail)
   (let ((pi (fix:- (char->integer precomposed) jamo-precomposed-start)))
-    (builder
-     (integer->char (fix:+ jamo-leading-start (fix:quotient pi jamo-ncount))))
-    (builder
-     (integer->char
-      (fix:+ jamo-vowel-start
-	     (fix:quotient (fix:remainder pi jamo-ncount) jamo-tcount))))
-    (let ((ti (fix:remainder pi jamo-tcount)))
-      (if (fix:> ti 0)
-	  (builder (integer->char (fix:+ jamo-tbase ti)))))))
+    (cons* (integer->char
+            (fix:+ jamo-leading-start
+                   (fix:quotient pi jamo-ncount)))
+	   (integer->char
+	    (fix:+ jamo-vowel-start
+                   (fix:quotient (fix:remainder pi jamo-ncount) jamo-tcount)))
+          (let ((ti (fix:remainder pi jamo-tcount)))
+            (if (fix:> ti 0)
+                (cons (integer->char (fix:+ jamo-tbase ti))
+		       tail)
+		tail)))))
 
 (define (jamo-compose leading vowel trailing)
   (integer->char
