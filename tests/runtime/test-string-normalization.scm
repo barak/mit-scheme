@@ -53,7 +53,7 @@ USA.
   (map (lambda (tc)
 	 (list (nfc-test (norm-tc-source tc) (norm-tc-nfc tc))
 	       (nfc-test    (norm-tc-nfc tc) (norm-tc-nfc tc))
-	       (nfc-test    (norm-tc-nfc tc) (norm-tc-nfc tc))
+	       (nfc-test    (norm-tc-nfd tc) (norm-tc-nfc tc))
 	       (nfc-test   (norm-tc-nfkc tc) (norm-tc-nfkc tc))
 	       (nfc-test   (norm-tc-nfkd tc) (norm-tc-nfkc tc))))
        normalization-test-cases))
