@@ -257,6 +257,7 @@ USA.
 	  gfilter			;(srfi 158)
 	  gflatten			;(srfi 158)
 	  gmap				;(srfi 158)
+	  gpeeker
 	  gremove			;(srfi 158)
 	  gtake				;(srfi 158)
 	  gtake-while			;(srfi 158)

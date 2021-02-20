@@ -461,3 +461,23 @@ USA.
 	     (lambda (val)
 	       (= item val)))
 	   gen))
+
+(define (gpeeker gen)
+  (let ((next #f))
+
+    (define (object-ready?)
+      (if (not next)
+	  (set! next (gen)))
+      (not (eof-object? next)))
+
+    ;; Assumes that (object-ready?) is #t.
+    (define (peek-object)
+      next)
+
+    ;; Assumes that (object-ready?) is #t.
+    (define (read-object)
+      (let ((object next))
+        (set! next #f)
+        object))
+
+    (values object-ready? peek-object read-object)))
