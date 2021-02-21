@@ -1160,12 +1160,22 @@ USA.
                            (match-second c1-index (cdr c)))))
                 (if c1*
                     (let ((c1-index* (ucd-canonical-cm-value c1*))
-                          (cs* (delq! c combiners)))
+                          (combiners* (remove-combiner! c combiners)))
                       (if c1-index*
-                          (scan-combiners c1* c1-index* cs*)
-                          (done-matching c1* cs*)))
+                          (scan-combiners c1* c1-index* combiners*)
+                          (done-matching c1* combiners*)))
                     (loop (cdr cs) ccc)))
               (done-matching c1 combiners))))
+
+      (define (remove-combiner! combiner combiners)
+	(if (eq? combiner (car combiners))
+	    (cdr combiners)
+	    (begin
+	      (let loop ((this (cdr combiners)) (prev combiners))
+		(if (eq? combiner (car this))
+		    (set-cdr! prev (cdr this))
+		    (loop (cdr this) this)))
+	      combiners)))
 
       (define (done-matching c1 cs)
 	(cons c1 (map cdr cs)))
