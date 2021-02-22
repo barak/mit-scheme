@@ -105,7 +105,6 @@ USA.
   (%regexp-matches? re #f string start end 'regexp-matches-some?))
 
 (define-integrable (%regexp-matches? re match-all? string start end caller)
-  (guarantee nfc-string? string caller)
   (let* ((end (fix:end-index end (string-length string) caller))
 	 (start (fix:start-index start end caller)))
     (and (run-matcher (regexp-impl (regexp re)) match-all? #f start
@@ -119,7 +118,6 @@ USA.
   (%regexp-matches re #f string start end 'regexp-matches-some))
 
 (define-integrable (%regexp-matches re match-all? string start end caller)
-  (guarantee nfc-string? string caller)
   (let* ((end (fix:end-index end (string-length string) caller))
 	 (start (fix:start-index start end caller)))
     (%regexp-match (regexp re) match-all? #t start string start end)))
@@ -134,7 +132,6 @@ USA.
 			    (regexp-submatch-keys regexp)))))
 
 (define (regexp-search re string #!optional start end)
-  (guarantee nfc-string? string 'regexp-search)
   (let* ((end (fix:end-index end (string-length string) 'regexp-search))
 	 (start (fix:start-index start end 'regexp-search)))
     (%regexp-search (regexp re) start string start end)))
@@ -324,7 +321,6 @@ USA.
 ;;;; Fold
 
 (define (regexp-fold re kons knil string #!optional finish start end ignore?)
-  (guarantee nfc-string? string 'regexp-fold)
   (let ((regexp (regexp re))
 	(end (fix:end-index end (string-length string) 'regexp-fold))
 	(ignore? (if (default-object? ignore?) #f ignore?)))
@@ -358,7 +354,6 @@ USA.
 
 (define (regexp-fold-right re kons knil string
 			   #!optional finish start end ignore?)
-  (guarantee nfc-string? string 'regexp-fold-right)
   (let ((regexp (regexp re))
 	(end (fix:end-index end (string-length string) 'regexp-fold-right))
 	(ignore? (if (default-object? ignore?) #f ignore?)))

@@ -227,14 +227,12 @@ USA.
 
 (define (regsexp-match-string crsexp string #!optional start end)
   (let ((caller 'regsexp-match-string))
-    (guarantee nfc-string? string caller)
     (let* ((end (fix:end-index end (string-length string) caller))
 	   (start (fix:start-index start end caller)))
       (top-level-match crsexp (make-string-position string start end)))))
 
 (define (regsexp-search-string-forward crsexp string #!optional start end)
   (let ((caller 'regsexp-search-string-forward))
-    (guarantee nfc-string? string caller)
     (let* ((end (fix:end-index end (string-length string) caller))
 	   (start (fix:start-index start end caller)))
       (let loop ((position (make-string-position string start end)))
