@@ -5444,6 +5444,7 @@ USA.
 	  *unparser-string-length-limit*
 	  with-current-unparser-state)
   (export ()
+	  param:print-ascii-only?
 	  param:print-char-in-unicode-syntax?
 	  param:print-compound-procedure-names?
 	  param:print-hash-number-in-objects?
