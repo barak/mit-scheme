@@ -30,17 +30,30 @@ USA.
 ;;; tables.
 
 ;;; Stage one, needs large stack (100000 works OK) and works better with
-;;; large-ish heap.
+;;; large-ish heap (I've been using 200000).
+
+;;; Create a new subdirectory called ucd-<version> and put
+;;; "ucd.all.grouped.xml", "names.scm", and"NormalizationText.txt" into it.
+;;; Note that "names.scm" can be copied from an older version, but may need
+;;; modification.  CD into the new subdirectory and run the following:
 ;;;
-;;; (load-option 'xml)
-;;; (define ucd (read-xml-file "path/to/ucd.all.grouped.xml"))
-;;; (load ".../ucd-converter")
-;;; (write-standard-property-files ucd)
+;;; (load "../ucd-converter")
+;;; (set-version! <version>)
+;;; (write-raw-files)
 
 ;;; Stage two, uses normal sizes:
 ;;;
-;;; (load ".../ucd-converter")
-;;; (generate-standard-property-tables)
+;;; (load "../ucd-converter")
+;;; (set-version! <version>)
+;;; (write-output-files)
+
+;;; The stages are split into two parts because the first stage is slow and only
+;;; needs to be run once.  The second stage might need tweaking to generate
+;;; better code, and consequently may need to be run repeatedly.
+
+;;; If no tweaking is needed, both stages can be run together by using the
+;;; instructions for stage one and replacing (write-raw-files) with
+;;; (write-all-files).
 
 (declare (usual-integrations))
 
@@ -107,17 +120,37 @@ USA.
 (define this-directory
   (directory-pathname (current-load-pathname)))
 
-(define mit-scheme-root-pathname
-  (merge-pathnames "../../" this-directory))
+(define ucd-directory)
+(define raw-directory)
+(define output-directory)
+(define ucd-property-metadata)
+(define (set-version! version)
+  (set! ucd-directory
+	(pathname-as-directory
+	 (merge-pathnames (string-append "ucd-" (string version))
+			  this-directory)))
+  (set! raw-directory
+	(pathname-as-directory (merge-pathnames "raw-props" ucd-directory)))
+  (if (not (file-directory? raw-directory))
+      (make-directory raw-directory))
+  (set! output-directory
+	(pathname-as-directory (merge-pathnames "output" ucd-directory)))
+  (if (not (file-directory? output-directory))
+      (make-directory output-directory))
+  (set! ucd-property-metadata (read-ucd-property-metadata))
+  unspecific)
 
-(define raw-directory
-  (pathname-as-directory (merge-pathnames "ucd-raw-props" this-directory)))
+(define (ucd-file-name name)
+  (merge-pathnames name ucd-directory))
 
 (define (raw-file-name name)
-  (merge-pathnames (string-append name ".scm") raw-directory))
+  (merge-pathnames name raw-directory))
+
+(define (output-file-name name)
+  (merge-pathnames name output-directory))
 
 (define (read-ucd-property-metadata)
-  (let ((properties (read-file (raw-file-name "names"))))
+  (let ((properties (read-file (ucd-file-name "names.scm"))))
     (map (lambda (metadata)
 	   (if (not (well-formed-metadata-spec? metadata))
 	       (error "Ill-formed property metadata record:" metadata))
@@ -142,9 +175,6 @@ USA.
   (prop-file-name metadata-prop-file-name)
   (boolean-key metadata-boolean-key))
 
-(define ucd-property-metadata
-  (read-ucd-property-metadata))
-
 (define (has-metadata? prop-name)
   (any (lambda (metadata)
 	 (string=? prop-name (metadata-name metadata)))
@@ -161,20 +191,33 @@ USA.
 
 ;;;; Raw UCD attribute tables
 
-(define (write-standard-property-files document)
-  (let ((ucd-version (ucd-description document)))
-    (call-with-output-file (ucd-version-file-name)
-      (lambda (port)
-	(write-line ucd-version port)))
-    (for-each (lambda (metadata)
-		(if (not (eq? 'derived (metadata-note metadata)))
-		    (let ((prop-name (metadata-name metadata)))
-		      (write-prop-file
-		       prop-name
-		       ucd-version
-		       (single-repertoire-property (string->symbol prop-name)
-						   document)))))
-              ucd-property-metadata)))
+(load-option 'xml)
+
+(define (write-all-files)
+  (write-raw-files)
+  (write-output-files))
+
+(define (write-raw-files)
+  (let ((document
+	 (with-notification (lambda (port)
+			      (write-string "Reading UCD" port))
+	   (lambda ()
+	     (read-xml-file (ucd-file-name "ucd.all.grouped.xml"))))))
+    (let ((ucd-version (ucd-description document)))
+      (call-with-output-file (ucd-version-file-name)
+	(lambda (port)
+	  (write-line ucd-version port)))
+      (for-each (lambda (metadata)
+		  (if (not (eq? 'derived (metadata-note metadata)))
+		      (let ((prop-name (metadata-name metadata)))
+			(write-prop-file
+			 prop-name
+			 ucd-version
+			 (single-repertoire-property (string->symbol prop-name)
+						     document)))))
+		ucd-property-metadata)
+      (generate-canonical-dm-prop)
+      (generate-canonical-cm-prop))))
 
 (define (write-prop-file prop-name ucd-version prop-alist)
   (with-notification (lambda (port)
@@ -183,6 +226,8 @@ USA.
     (lambda ()
       (call-with-output-file (prop-file-name prop-name)
 	(lambda (port)
+	  (port/set-coding port 'us-ascii)
+	  (port/set-line-ending port 'newline)
 	  (write-copyright-and-title prop-name ucd-version port)
 	  (for-each (lambda (p)
 		      (write-line p port))
@@ -218,10 +263,10 @@ USA.
   (read-file (prop-file-name prop-name)))
 
 (define (ucd-version-file-name)
-  (raw-file-name "version"))
+  (raw-file-name "version.scm"))
 
 (define (prop-file-name prop-name)
-  (raw-file-name (string-append "prop-" prop-name)))
+  (raw-file-name (string-append "prop-" prop-name ".scm")))
 
 ;;;; UCD property extraction
 
@@ -397,7 +442,7 @@ USA.
 					"#")))
 			    (iota (cpr-size (car e)) (cpr-start (car e))))))
 		 (read-prop-file "dm")))))
-
+
 (define (generate-canonical-cm-prop)
   (let ((trie-part
 	 (let ((alist (compute-canonical-cm-prop-alist)))
@@ -431,8 +476,14 @@ USA.
 	  (lambda (a b) (char<? (car a) (car b))))))
 
 (define (compute-reverse-canonical-cm-prop-alist)
-  (remove (lambda (e)
-            (char-full-composition-exclusion? (car e)))
+  (remove (let ((comp-ex
+		 (char-set*
+		  (filter-map (lambda (e)
+				(and (string=? "Y" (cdr e))
+				     (car e)))
+			      (read-prop-file "Comp_Ex")))))
+	    (lambda (e)
+	      (char-set-contains? comp-ex (car e))))
 	  (split-property-alist
 	   integer->char
 	   (lambda (value)
@@ -443,9 +494,6 @@ USA.
 
 (define canonical-cm-prop-splitter
   (string-splitter 'delimiter #\space 'allow-runs? #f))
-
-(define char-full-composition-exclusion?
-  (access char-full-composition-exclusion? (->environment '(runtime string))))
 
 ;;;; Code-point ranges
 
@@ -516,48 +564,47 @@ USA.
 
 ;;;; Code generator
 
-(define copyright-file-name
-  (merge-pathnames "dist/copyright.scm" mit-scheme-root-pathname))
+(define (write-output-files)
+  (generate-standard-property-tables)
+  (convert-normalization-test-data))
 
-(define output-file-root
-  (merge-pathnames "src/runtime/ucd-table" mit-scheme-root-pathname))
+(define copyright-file-name
+  (merge-pathnames "../../dist/copyright.scm" this-directory))
 
 (define (generate-standard-property-tables)
-  (for-each (lambda (prop-name)
-	      (generate-property-table (prop-metadata prop-name)))
-	    '("Alpha"
-	      "CWCF"
-	      "CWL"
-	      "CWU"
-	      "Cased"
-	      "Comp_Ex"
-	      "GCB"
-	      "Lower"
-	      "NFC_QC"
-	      "NFD_QC"
-	      "Upper"
-	      "WB"
-	      "WSpace"
-	      "canonical-cm"
-	      "canonical-dm"
-	      "ccc"
-	      "cf"
-	      "gc"
-	      "lc"
-	      "nt"
-	      "nv"
-	      "scf"
-	      "slc"
-	      "suc"
-	      "tc"
-	      "uc"))
-  (generate-extra-property-tables)
-  (generate-canonical-cm-second))
-
-(define (generate-extra-property-tables)
-  (parameterize ((param:pp-lists-as-tables? #f))
-    (for-each generate-property-table
-	      (get-extra-property-table-metadata))))
+  (parameterize ((param:print-ascii-only? #t))
+    (for-each (lambda (prop-name)
+		(generate-property-table (prop-metadata prop-name)))
+	      '("Alpha"
+		"CWCF"
+		"CWL"
+		"CWU"
+		"Cased"
+		"Comp_Ex"
+		"GCB"
+		"Lower"
+		"NFC_QC"
+		"NFD_QC"
+		"Upper"
+		"WB"
+		"WSpace"
+		"canonical-cm"
+		"canonical-dm"
+		"ccc"
+		"cf"
+		"gc"
+		"lc"
+		"nt"
+		"nv"
+		"scf"
+		"slc"
+		"suc"
+		"tc"
+		"uc"))
+    (parameterize ((param:pp-lists-as-tables? #f))
+      (for-each generate-property-table
+		(get-extra-property-table-metadata))
+      (generate-canonical-cm-second))))
 
 (define (get-extra-property-table-metadata)
   (append (get-per-name-property-table-metadata "gc")
@@ -586,13 +633,12 @@ USA.
 	      (map (lambda (e)
 		     (list->vector (map accessor (cdr e))))
 		   alist))))))
-    (parameterize ((param:pp-lists-as-tables? #f))
-      (generate-property-table-1 "canonical-cm-second"
-	(lambda ()
-	  `((define ucd-canonical-cm-second-keys
-	      ,(strings car))
-	    (define ucd-canonical-cm-second-values
-	      ,(strings cdr))))))))
+    (generate-property-table-1 "canonical-cm-second"
+      (lambda ()
+	`((define ucd-canonical-cm-second-keys
+	    ,(strings car))
+	  (define ucd-canonical-cm-second-values
+	    ,(strings cdr)))))))
 
 (define (generate-property-table metadata)
   (generate-property-table-1 (metadata-name metadata)
@@ -610,6 +656,8 @@ USA.
       (parameterize ((param:pp-forced-x-size 1000))
 	(call-with-output-file (prop-table-file-name prop-name)
 	  (lambda (port)
+	    (port/set-coding port 'us-ascii)
+	    (port/set-line-ending port 'newline)
 	    (write-copyright-and-title prop-name ucd-version port)
 	    (write-code-header port)
 	    (print-code-expr (car exprs) port)
@@ -619,10 +667,8 @@ USA.
 		      (cdr exprs))))))))
 
 (define (prop-table-file-name prop-name)
-  (string-append (->namestring output-file-root)
-		  "-"
-		  (string-downcase prop-name)
-		  ".scm"))
+  (output-file-name
+   (string-append "ucd-table-" (string-downcase prop-name) ".scm")))
 
 (define (write-code-header port)
   (write-string "(declare (usual-integrations))" port)
@@ -1179,3 +1225,78 @@ USA.
                       (cons-head (cpr-size cpr)
                                  head)))))
 	(values (reverse! head) tail))))
+
+;;;; Conversion of normalization test data
+
+(define (convert-normalization-test-data)
+  (call-with-input-file (ucd-file-name "NormalizationTest.txt")
+    (lambda (input-port)
+      (port/set-coding input-port 'iso-8859-1)
+      (call-with-output-file (output-file-name "test-string-normalization-data")
+	(lambda (output-port)
+	  (port/set-coding output-port 'us-ascii)
+	  (port/set-line-ending output-port 'newline)
+	  (parameterize ((param:print-ascii-only? #t)
+			 (param:pp-lists-as-tables? #f))
+	    (write-string
+	     ";;; -*-Scheme-*- Test-case data for string normalization."
+	     output-port)
+	    (newline output-port)
+	    (newline output-port)
+	    (let loop ()
+	      (let ((line (read-line input-port)))
+		(if (not (eof-object? line))
+		    (begin
+		      (cond ((regexp-matches comment-line-pattern line)
+			     => (lambda (rm)
+				  (write-string ";;;" output-port)
+				  (write-string (regexp-match-submatch rm 1)
+						output-port)))
+			    ((regexp-matches part-line-pattern line)
+			     => (lambda (rm)
+				  (write-string ";;; " output-port)
+				  (write-string (regexp-match-submatch rm 1)
+						output-port)))
+			    ((regexp-matches datum-line-pattern line)
+			     => (lambda (rm)
+				  (pretty-print (convert-datum-line rm)
+						output-port
+						#f)))
+			    (else
+			     (error "Unmatched line" line)))
+		      (newline output-port)
+		      (loop)))))))))))
+
+(define (convert-datum-line rm)
+  (map (lambda (n)
+	 (map (lambda (hex)
+		(integer->char (string->number hex 16)))
+	      (datum-splitter (regexp-match-submatch rm n))))
+       (iota 5 1)))
+
+(define comment-line-pattern
+  (rx bol "#" ($ (* any)) eol))
+
+(define part-line-pattern
+  (rx bol ($ "@" (* any)) eol))
+
+(define datum-line-pattern
+  (rx bol
+      ($ (+ (or hex-digit #\space)))
+      ";"
+      ($ (+ (or hex-digit #\space)))
+      ";"
+      ($ (+ (or hex-digit #\space)))
+      ";"
+      ($ (+ (or hex-digit #\space)))
+      ";"
+      ($ (+ (or hex-digit #\space)))
+      ";"
+      (* any)
+      eol))
+
+(define datum-splitter
+  (string-splitter))
+
+(define datum-joiner
+  (string-joiner* 'infix " "))
