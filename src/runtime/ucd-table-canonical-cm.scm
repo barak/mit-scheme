@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: canonical-cm (canonical-composition-mapping)
 
-;;; Generated from Unicode 9.0.0
+;;; Generated from Unicode 10.0.0
 
 (declare (usual-integrations))
 
