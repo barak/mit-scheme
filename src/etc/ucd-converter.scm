@@ -1226,59 +1226,82 @@ USA.
                                  head)))))
 	(values (reverse! head) tail))))
 
-;;;; Conversion of normalization test data
+;;;; Conversion of test data
+
+(define (convert-all-test-data)
+  (convert-normalization-test-data)
+  (convert-grapheme-break-test-data)
+  (convert-word-break-test-data))
 
 (define (convert-normalization-test-data)
-  (call-with-input-file (ucd-file-name "NormalizationTest.txt")
+  (convert-test-data "NormalizationTest.txt"
+		     "test-string-normalization-data"
+		     "string normalization"
+		     'iso-8859-1
+    (cons comment-line-pattern comment-line-action)
+    (cons part-line-pattern part-line-action)
+    (cons datum-line-pattern datum-line-action)))
+
+(define (convert-grapheme-break-test-data)
+  (convert-test-data "GraphemeBreakTest.txt"
+		     "test-ucd-grapheme-data"
+		     "grapheme-break data"
+		     #f
+		     (cons comment-line-pattern comment-line-action)
+		     (cons break-line-pattern break-line-action)))
+
+(define (convert-word-break-test-data)
+  (convert-test-data "WordBreakTest.txt"
+		     "test-ucd-word-data"
+		     "word-break data"
+		     #f
+		     (cons comment-line-pattern comment-line-action)
+		     (cons break-line-pattern break-line-action)))
+
+(define (convert-test-data input output description input-coding . rules)
+  (call-with-input-file (ucd-file-name input)
     (lambda (input-port)
-      (port/set-coding input-port 'iso-8859-1)
-      (call-with-output-file (output-file-name "test-string-normalization-data")
+      (if input-coding
+	  (port/set-coding input-port input-coding))
+      (call-with-output-file (output-file-name output)
 	(lambda (output-port)
 	  (port/set-coding output-port 'us-ascii)
 	  (port/set-line-ending output-port 'newline)
 	  (parameterize ((param:print-ascii-only? #t)
 			 (param:pp-lists-as-tables? #f))
-	    (write-string
-	     ";;; -*-Scheme-*- Test-case data for string normalization."
-	     output-port)
+	    (write-string ";;; -*-Scheme-*- Test-case data for " output-port)
+	    (write-string description output-port)
 	    (newline output-port)
 	    (newline output-port)
 	    (let loop ()
 	      (let ((line (read-line input-port)))
 		(if (not (eof-object? line))
 		    (begin
-		      (cond ((regexp-matches comment-line-pattern line)
-			     => (lambda (rm)
-				  (write-string ";;;" output-port)
-				  (write-string (regexp-match-submatch rm 1)
-						output-port)))
-			    ((regexp-matches part-line-pattern line)
-			     => (lambda (rm)
-				  (write-string ";;; " output-port)
-				  (write-string (regexp-match-submatch rm 1)
-						output-port)))
-			    ((regexp-matches datum-line-pattern line)
-			     => (lambda (rm)
-				  (pretty-print (convert-datum-line rm)
-						output-port
-						#f)))
-			    (else
-			     (error "Unmatched line" line)))
+		      (let rule-loop ((rules rules))
+			(if (pair? rules)
+			    (let ((rule (car rules))
+				  (rules (cdr rules)))
+			      (let ((rm (regexp-matches (car rule) line)))
+				(if rm
+				    ((cdr rule) rm output-port)
+				    (rule-loop rules))))
+			    (error "Unmatched line" line)))
 		      (newline output-port)
 		      (loop)))))))))))
-
-(define (convert-datum-line rm)
-  (map (lambda (n)
-	 (map (lambda (hex)
-		(integer->char (string->number hex 16)))
-	      (datum-splitter (regexp-match-submatch rm n))))
-       (iota 5 1)))
-
+
 (define comment-line-pattern
   (rx bol "#" ($ (* any)) eol))
 
+(define (comment-line-action rm output-port)
+  (write-string ";;;" output-port)
+  (write-string (regexp-match-submatch rm 1) output-port))
+
 (define part-line-pattern
   (rx bol ($ "@" (* any)) eol))
+
+(define (part-line-action rm output-port)
+  (write-string ";;; " output-port)
+  (write-string (regexp-match-submatch rm 1) output-port))
 
 (define datum-line-pattern
   (rx bol
@@ -1295,8 +1318,40 @@ USA.
       (* any)
       eol))
 
+(define (datum-line-action rm output-port)
+  (pretty-print (map (lambda (n)
+		       (map (lambda (hex)
+			      (integer->char (string->number hex 16)))
+			    (datum-splitter (regexp-match-submatch rm n))))
+		     (iota 5 1))
+		output-port
+		#f))
+
 (define datum-splitter
   (string-splitter))
 
-(define datum-joiner
-  (string-joiner* 'infix " "))
+(define break-marker #\xf7)
+(define no-break-marker #\xd7)
+(define break-markers (char-set break-marker no-break-marker))
+
+(define break-line-pattern
+  (rx bol
+      ($ (: ,break-markers
+	    (+ (+ space)
+	       (+ hex-digit)
+	       (+ space)
+	       ,break-markers)))
+      "\t#"
+      (* any)
+      eol))
+
+(define (break-line-action rm output-port)
+  (write (let loop ((items (datum-splitter (regexp-match-submatch rm 1))))
+	   (let ((item (car items))
+		 (items (cdr items)))
+	     (cons (char=? break-marker (string-ref item 0))
+		   (if (pair? items)
+		       (cons (integer->char (string->number (car items) 16))
+			     (loop (cdr items)))
+		       '()))))
+	 output-port))
