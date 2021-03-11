@@ -764,8 +764,6 @@ USA.
 ;;;; Match
 
 (define (string-match-forward string1 string2)
-  (guarantee nfc-string? string1 'string-match-forward)
-  (guarantee nfc-string? string2 'string-match-forward)
   (let ((end1 (string-length string1))
 	(end2 (string-length string2)))
     (let ((end (fix:min end1 end2)))
@@ -777,8 +775,6 @@ USA.
 	    i)))))
 
 (define (string-match-backward string1 string2)
-  (guarantee nfc-string? string1 'string-match-backward)
-  (guarantee nfc-string? string2 'string-match-backward)
   (let ((s1 (fix:- (string-length string1) 1)))
     (let loop ((i s1) (j (fix:- (string-length string2) 1)))
       (if (and (fix:>= i 0)
@@ -920,7 +916,8 @@ USA.
 (define (string->nfc string)
   (if (and (ustring? string)
 	   (%ustring-immutable? string))
-      (if (ustring-in-nfc-set? string)
+      (if (and (ustring-in-nfc-set? string)
+	       (ustring-in-nfc? string))
 	  string
 	  (let ((nfc
 		 (case (string-nfc-qc string 'string->nfc)
@@ -1348,8 +1345,6 @@ USA.
 
 (define-integrable (string-matcher caller naive kmp)
   (lambda (pattern text #!optional start end)
-    (guarantee nfc-string? pattern caller)
-    (guarantee nfc-string? text caller)
     (let ((pend (string-length pattern)))
       (if (fix:= 0 pend)
 	  (error:bad-range-argument pend caller))
@@ -1561,8 +1556,6 @@ USA.
 		(proc i)))))))
 
 (define (string-find-first-index proc string . strings)
-  (guarantee nfc-string? string 'string-find-first-index)
-  (guarantee-list-of nfc-string? strings 'string-find-first-index)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0))
       (and (fix:< i n)
@@ -1571,8 +1564,6 @@ USA.
 	       (loop (fix:+ i 1)))))))
 
 (define (string-find-last-index proc string . strings)
-  (guarantee nfc-string? string 'string-find-last-index)
-  (guarantee-list-of nfc-string? strings 'string-find-last-index)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i (fix:- n 1)))
       (and (fix:>= i 0)

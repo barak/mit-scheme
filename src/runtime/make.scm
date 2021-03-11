@@ -504,7 +504,8 @@ USA.
 		  (cons (cons (if (compiled-code-address? (lambda (x) x))
 				  "make.com"
 				  "make.bin")
-			      define-multiple)
+			      (lexical-reference (->environment '())
+						 'define-multiple))
 			fasload-purification-queue))))))))
   (lexical-assignment (->environment '(runtime garbage-collector))
 		      'gc-boot-loading?

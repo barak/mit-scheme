@@ -1,0 +1,4 @@
+#!/bin/sh
+# Script to generate standard runtime band from binaries.
+cd runtime
+exec ../microcode/scheme -library ../lib -large -fasl make.bin < ../etc/mkband.scm

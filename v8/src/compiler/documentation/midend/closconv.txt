@@ -1,0 +1,76 @@
+Description of closconv.scm
+
+Purpose:
+--------
+CLOSCONV is the closure converter.  It rewrites instances of lambda
+expressions with free variables into calls to the pseudo-primitives
+%make-closure (and %make-trivial-closure).  References to free
+variables of closures are rewritten as calls using the
+pseudo-primitive %closure-ref (and %vector-index).  
+In a LETREC for closed-over env every ordinary-ref of a non-closed-over 
+env, is changed into a CALL to %make-trivial-closure.
+Every free-ref (closed over) is replaced with %closure-ref and 
+%vector-index. Also if the free ref variable is in the closed-over-names list
+produced by a call to the same procedure that rewrites lambda 
+then %heap-closure-set is called. 
+
+CLOSCONV, like LAMLIFT, is called twice, before and after CPS conversion. 
+Before CPS conversion, it uses %make-heap-closure and %heap-closure-ref
+for %make-closure and %closure-ref.  After CPS conversion, it uses 
+%make-stack-closure and %stack-closure-ref instead.
+
+  After LAMLIFT and CLOSCONV, the only free variables in lambda
+expressions are those bound to static bindings (always available, e.g.
+from the program counter).
+
+Operators Introduced:
+---------------------
+%make-closure replaces free variables in LAMBDA and LETREC
+%make-heap-closure
+%make-trivial-closure constructs an externally callable procedure object 
+(all free variables) are accessible through the variable caching mechanism
+.A LOOKUP is permitted only in a LETREC at the top level of a
+program.  It is used to export one of the mutually recursive
+procedures introduced by the LETREC to the external environment.
+%make-stack-closure This appears *only* as the continuation of some 
+KMP-Scheme CALL. If a lambda-expression is supplied, it pushes the 
+values on the stack (creating a stack closure of the format specified) and
+loads the return address specified by the lambda-expression
+into the return address location (register or stack
+location).  If no lambda expression is provided, simply
+pushes the values.
+
+%closure-ref replaces references to free variables.
+%stack-closure-ref
+%heap-closure-ref
+
+%vector-index used for referencing variables in closures and stack frames
+Returns the index of NAME within the vector.
+
+%heap-closure-set! used for closed-over-names in LETREC
+
+%fetch-stack-closure returns a pointer to the current top of
+ stack, which contains values (or cells for values) of the
+ variables named in VECTOR.
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+ none
+
+Guarantees on Output:
+---------------------
+ No non-local variable references.
+  After LAMLIFT and CLOSCONV, the only free variables in lambda
+expressions are those bound to static bindings (always available, e.g.
+from the program counter).
+

@@ -1,0 +1,3 @@
+# LIARC build products (especially useless because no LIARC on Windows)
+/*.c
+/*.o

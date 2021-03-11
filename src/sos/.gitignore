@@ -1,0 +1,6 @@
+# LIARC build products
+/*.c
+/*.o
+/sos-init.h
+/sos.a
+/sos.so

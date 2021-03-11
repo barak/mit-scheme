@@ -1,0 +1,6 @@
+# LIARC build products
+/*.c
+/*.o
+/star-parser-init.h
+/star-parser.a
+/star-parser.so

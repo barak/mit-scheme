@@ -90,9 +90,11 @@ USA.
     (and (registered-library? name db)
 	 (library-has? 'environment (registered-library name db)))))
 
-(define (make-environment-from-imports imports db)
+(define (make-environment-from-imports imports db #!optional sealed?)
   (let ((env
-	 (make-root-top-level-environment
+	 ((if sealed?
+	      make-root-top-level-environment
+	      make-top-level-environment)
 	  (delete-duplicates (map library-ixport-to imports) eq?))))
     (add-imports-to-env! imports env db)
     env))
@@ -167,12 +169,16 @@ USA.
     (make-environment-from-imports (import-sets->imports import-sets db)
 				   db)))
 
-(define (import! import-set #!optional env)
+(define (top-level-environment . import-sets)
   (let ((db (current-library-db)))
-    (add-imports-to-env! (import-sets->imports (list import-set) db)
-			 (if (default-object? env)
-			     (nearest-repl/environment)
-			     (guarantee environment? env 'import!))
+    (make-environment-from-imports (import-sets->imports import-sets db)
+				   db
+				   #f)))
+
+(define (repl-import . import-sets)
+  (let ((db (current-library-db)))
+    (add-imports-to-env! (import-sets->imports import-sets db)
+			 (nearest-repl/environment)
 			 db)))
 
 (define (import-sets->imports import-sets db)

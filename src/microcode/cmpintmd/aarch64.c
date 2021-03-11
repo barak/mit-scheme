@@ -364,15 +364,17 @@ aarch64_reset_hook (void)
 }
 
 static inline void
-aarch64_cache_line_sizes (unsigned *dsize, unsigned *isize)
+aarch64_cache_line_sizes (unsigned *dsizep, unsigned *isizep)
 {
-  uint64_t ctr_el0;
+  uint64_t ctr_el0, dsize, isize;
 
   asm volatile ("\n\
     mrs %0, ctr_el0\n\
     ubfx %1, %0, #16, #4\n\
     ubfx %2, %0, #0, #4\n\
-  " : "=r"(ctr_el0), "=r"(*dsize), "=r"(*isize));
+  " : "=r"(ctr_el0), "=r"(dsize), "=r"(isize));
+  (*dsizep) = dsize;
+  (*isizep) = isize;
 }
 
 void

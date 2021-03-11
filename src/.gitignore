@@ -1,0 +1,12 @@
+# autocrud
+/Makefile
+/Makefile.tools
+/config.log
+/config.status
+
+/makefiles_created
+/stamp_cross-finished
+/stamp_cross-host
+/stamp_install-microcode
+/stamp_liarc-toolchain
+/stamp_toolchain

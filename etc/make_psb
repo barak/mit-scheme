@@ -1,0 +1,43 @@
+#!/bin/sh
+
+scheme=`pwd`
+
+if [ ! -x microcode/Bintopsb ]
+then
+  (cd microcode; make Bintopsb)
+fi
+
+if [ ! -d psb ]
+then
+  echo "mkdir psb"
+  mkdir psb
+fi
+
+if [ ! -d psb/lib ]
+then
+  echo "mkdir psb/lib"
+  mkdir psb/lib
+fi
+
+for i in runtime sf cref
+do
+  if [ ! -d psb/$i ]
+  then
+    echo "mkdir psb/$i"
+    mkdir psb/$i
+  fi
+  if [ $i = runtime ]
+  then
+    ii=runtim
+  else
+    ii=$i
+  fi
+  (
+    cd $i
+    for j in *.bin $ii.bcon $ii.bldr
+    do
+      echo "Bintopsb $i/$j"
+      ../microcode/Bintopsb < $j > ../psb/$i/$j
+    done
+  )
+done

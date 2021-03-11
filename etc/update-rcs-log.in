@@ -1,0 +1,8 @@
+;; -*- Scheme -*-
+
+(begin
+  (load-option 'RCS)
+  (load "/scheme/v7/linux/rcs/mklogs")
+  (for-each rcs-directory-log
+	    '("/gunk/hlsim/SRC"
+	      "/gunk/hlsim/doc")))

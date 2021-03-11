@@ -5061,6 +5061,7 @@ USA.
 	  flatten-items
 	  item->list
 	  keyword-item?
+	  keywordish-item?
 	  render-item
 	  reserved-name-item
 	  reserved-name-item?
@@ -5381,6 +5382,7 @@ USA.
 	  *unparser-string-length-limit*
 	  with-current-unparser-state)
   (export ()
+	  param:print-ascii-only?
 	  param:print-char-in-unicode-syntax?
 	  param:print-compound-procedure-names?
 	  param:print-hash-number-in-objects?
@@ -6619,14 +6621,15 @@ USA.
   (export ()
 	  environment			;(scheme eval)
 	  find-scheme-libraries!
-	  import!
 	  null-environment		;(scheme r5rs)
 	  scheme-report-environment	;(scheme r5rs)
+	  top-level-environment
 	  )
   (export (runtime)
 	  eval-r7rs-scode-file
 	  eval-r7rs-source
 	  make-environment-from-parsed-imports
+	  repl-import
 	  syntax-r7rs-source))
 
 (define-package (runtime directed-graph)

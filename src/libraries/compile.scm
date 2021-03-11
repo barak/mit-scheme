@@ -24,17 +24,7 @@ USA.
 
 |#
 
-(for-each (lambda (pn)
-	    (parameterize ((current-library-db (new-library-db)))
-	      (compile-file pn
-			    (let ((dep
-				   (merge-pathnames
-				    (string-append (pathname-name pn)
-						   "-impl.scm")
-				    pn)))
-			      (if (file-exists? dep)
-				  (list dep)
-				  '())))))
+(for-each compile-file
 	  (directory-read
 	   (merge-pathnames "*.sld"
 			    (directory-pathname (current-load-pathname)))))

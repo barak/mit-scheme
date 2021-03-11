@@ -1,0 +1,61 @@
+runtime/debug: (should be parameters)
+	  debugger:auto-toggle?
+	  debugger:count-subproblems-limit
+	  debugger:list-breadth-limit
+	  debugger:list-depth-limit
+	  debugger:print-return-values?
+	  debugger:string-length-limit
+	  debugger:student-walk?
+	  debugger:use-history?
+
+Update documentation; change "variable" to "parameter" as needed.
+
+done:
+
+*default-pathname-defaults*			(runtime pathname)
+*parser-associate-positions?*			(runtime parser)
+*parser-atom-delimiters*			(runtime parser)
+*parser-canonicalize-symbols?*			(runtime parser)
+*parser-constituents*				(runtime parser)
+*parser-enable-file-attributes-parsing?*	(runtime parser)
+*parser-keyword-style*				(runtime parser)
+*parser-radix*					(runtime parser)
+*parser-table*					(runtime parser)
+*pp-arity-dispatched-procedure-style*		(runtime pretty-printer)
+*pp-auto-highlighter*				(runtime pretty-printer)
+*pp-avoid-circularity?*				(runtime pretty-printer)
+*pp-default-as-code?*				(runtime pretty-printer)
+*pp-forced-x-size*				(runtime pretty-printer)
+*pp-lists-as-tables?*				(runtime pretty-printer)
+*pp-named-lambda->define?*			(runtime pretty-printer)
+*pp-no-highlights?*				(runtime pretty-printer)
+*pp-primitives-by-name*				(runtime pretty-printer)
+*pp-save-vertical-space?*			(runtime pretty-printer)
+*pp-uninterned-symbols-by-name*			(runtime pretty-printer)
+*random-state*					(runtime random-number)
+*unparse-abbreviate-quotations?*		(runtime unparser)
+*unparse-compound-procedure-names?*		(runtime unparser)
+*unparse-primitives-by-name?*			(runtime unparser)
+*unparse-streams?*				(runtime unparser)
+*unparse-uninterned-symbols-by-name?*		(runtime unparser)
+*unparse-with-datum?*				(runtime unparser)
+*unparse-with-maximum-readability?*		(runtime unparser)
+*unparser-list-breadth-limit*			(runtime unparser)
+*unparser-list-depth-limit*			(runtime unparser)
+*unparser-radix*				(runtime unparser)
+*unparser-string-length-limit*			(runtime unparser)
+*unparser-table*				(runtime unparser)
+flonum-unparser-cutoff				(runtime number)
+load/loading?					(runtime load)
+load/suppress-loading-message?			(runtime load)
+standard-breakpoint-hook			(runtime rep)
+standard-error-hook				(runtime error-handler)
+standard-warning-hook				(runtime error-handler)
+hook/%exit					(runtime miscellaneous-global)
+hook/exit					(runtime miscellaneous-global)
+hook/quit					(runtime miscellaneous-global)
+
+ffi/cdecls: *parser-canonicalize-symbols?*
+runtime/option:	*parser-canonicalize-symbols?*
+
+Update documentation; change "variable" to "parameter" as needed.

@@ -1,0 +1,51 @@
+#!/bin/bash
+set -e
+
+if (( ${#} < 1 )); then
+    echo "usage: ${0} [-r REPO] VERSION FILE..."
+    exit 1
+fi
+
+if [[ ${1} == -r ]]; then
+    shift
+    REPO=${1}
+    shift
+    case ${REPO} in
+        stable|testing|snapshot|unstable)
+            :
+            ;;
+        *)
+            echo "Unrecognized REPO: ${REPO}"
+            exit 1
+            ;;
+    esac
+else
+    REPO=stable
+fi
+
+VERSION=${1}
+shift
+
+if ! [[ ${VERSION} =~ ^[0-9.]+$ ]]; then
+    echo "${VERSION} doesn't look like a version number"
+    echo "usage: ${0} VERSION FILE..."
+    exit 1
+fi
+
+for FILE in "${@}"; do
+    # Ignore files written by this script.
+    [[ ${FILE} == *.directive ]] && continue
+    [[ ${FILE} == *.asc ]] && continue
+    [[ ${FILE} == *.sig ]] && continue
+
+    rm -f "${FILE}".directive
+    cat > "${FILE}".directive <<EOF
+version: 1.2
+directory: mit-scheme/${REPO}.pkg/${VERSION}
+filename: ${FILE}
+EOF
+    rm -f "${FILE}".sig "${FILE}".directive.asc
+    gpg -b "${FILE}"
+    gpg --clearsign "${FILE}".directive && rm "${FILE}".directive
+    chmod -w "${FILE}".sig "${FILE}".directive.asc
+done

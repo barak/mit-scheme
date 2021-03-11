@@ -1,0 +1,24 @@
+/machine
+
+# LIARC build products
+/back/*.c
+/back/*.o
+/base/*.c
+/base/*.o
+/compiler-init.c
+/compiler-init.h
+/compiler-unx.c
+/compiler.a
+/compiler.so
+/fggen/*.c
+/fggen/*.o
+/fgopt/*.c
+/fgopt/*.o
+/machines/*/*.c
+/machines/*/*.o
+/rtlbase/*.c
+/rtlbase/*.o
+/rtlgen/*.c
+/rtlgen/*.o
+/rtlopt/*.c
+/rtlopt/*.o

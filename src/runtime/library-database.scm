@@ -231,8 +231,7 @@ USA.
 (define (prepare-for-preregistration library)
   (alist->library (library-name library)
     (alist-fold-right (lambda (key value acc)
-			(if (or (eq? key 'parsed-contents)
-				(eq? key 'contents))
+			(if (eq? key 'contents)
 			    acc
 			    (alist-cons key value acc)))
 		      (alist-cons 'preregistration? #t '())

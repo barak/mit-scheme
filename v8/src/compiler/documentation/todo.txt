@@ -1,0 +1,158 @@
+
+
+	   Things left to do before releasing the compiler
+
+* Type checking for inline coded primitives.
+
+* Implement debugging features.  Solve absolute pathname problems.
+
+
+
+		    Items that have been processed
+
+
+* Bug in definitions in IC code: if there is a GC during the
+definition, the ENV register in the compiler's register block is not
+copied, so the next time it is referenced it is in oldspace.  One
+possible fix is to rewrite definitions as calls to the primitive.  The
+other non-caching environment operations may have the same problem,
+this should be looked into.
+
+Ordinary primitives should NOT have this problem since they supposedly
+push the environment into the continuation and then restore it on
+invocation of the continuation.
+
+FIXED: The compiler no longer uses the "short" definition hook by
+default.  It actually calls the primitives.  -- Jinx
+
+
+* Should notify users that the framing of IC blocks will be changed by
+the rewrite rules for such things as disjunctions and internal
+definition for value.
+
+FIXED: I don't think this is true by default any more.  The rewriting
+of first class environment code in the front end preserves framing
+while allowing better code generation. -- Jinx
+
+
+* Update "rtlgen/rgproc".
+
+* Write method for `unassigned-test' in "rtlgen/rgrval".
+
+* Write `make-rtl-continuation', `make-rtl-expr', and
+`make-rtl-procedure'.
+
+* `Temporary' objects are used in rgcomb, rgrval, and rgstmt.
+Change this code to use pseudo-registers.
+
+* "rgretn" refers to `pop-all-stack-frames', which is not
+written.
+
+* "rgraph" collects continuations in the current rgraph object.  Is
+this still what we want to do?  If so, somebody must do the
+accumulation.
+
+* Subproblem redesign: Attempt to change fggen so that there
+are two kinds of subproblems -- those that explicitly invoke
+continuations, and those that do not.  These correspond to "canonical"
+and "rvalue" subproblems, respectively.  Delay the consing of the
+continuation objects associated with the subproblem until it is known
+that it must be canonical.  This introduces a problem: the
+"subproblem-register" and "subproblem-type" will now be undefined on
+"rvalue" subproblems, and these concepts must be generalized to work
+in this new context.  Also, the operation "set-continuation/rtl!" is
+used on subproblems, and must be changed in this case.  All of these
+problems have to do solely with the RTL generator.
+
+* Separate applications from their subproblems.  Create a new
+node type "parallel" which contains the subproblems.  Doubly link the
+parallel node to the application node so we get the same relationship
+as at present.  Then, during subproblem ordering, edit the CFG to
+place the application node in the correct place, which normally will
+be in one of the continuations of one of the subproblems.
+
+Note that this implies a somewhat complicated CFG edit.
+
+* Note that after a continuation's CFG has been edited (e.g.
+using continuation/next-hooks), the value of continuation/scfg is no
+longer correct.  This is because it is not updated.  It's not obvious
+what should be done here.
+
+There is no good reason to keep the scfg of a continuation around.  A
+properly formed continuation (or procedure, either) has no
+"next-hooks" in its body since all of the exit points are
+applications.  Also, the only kinds of continuations that we want to
+glue anything to are those whose bodies are fg-noop nodes whose "next"
+is not yet connected.  If we try to glue to anything else, it is an
+error.
+
+* Rewrite rule for LAMBDA body screws up mutual recursion if
+the body contains any non-constant-valued definitions.  The LET which
+is created should be rewritten so that it goes around the LETREC
+bindings rather than inside them.
+
+* Change RTL generator to pass "offset" value around explicitly.
+
+* Flush JOIN blocks as these will no longer be used.
+
+* Be more careful about the code generation for applications whose
+operators are "simple".  If a program is known to be a loop, then both
+the call and return for that loop will generate links in the RTL
+graph, causing a real loop to appear in the graph.  Later passes of
+the compiler are assuming that there are no loops!
+
+Right now only "simple" return statements are turned into links, but
+it is desirable to convert "simple" call statements as well, provided
+that they aren't loops.  A simple heuristic that wins is to only
+convert calls who are both "simple" and whose operator is not called
+from elsewhere.  This will optimize LET, the most important case,
+without introducing loops.
+
+Unfortunately this is not easy to do in RTL because of the invocation
+prefixes: prefixes other than NULL require some extra work at the call
+point.  Unfortunately the prefixes are needed to make particular
+invocations work right, e.g. `rtl:make-invocation:lookup'.  Probably
+should eliminate the "prefix" concept for all except those invocations
+that need it, replacing prefixes by some explicit code to perform the
+action required.
+
+For now: implement fall-through in the LAP generator, by noticing it
+at linearization time.
+
+* Try to rewrite `invocation-prefix/erase-to' in "rtlgen/rgcomb" to
+use the `block-stack-link'.
+
+* I'm not convinced that the operator class analysis is useful any
+more.  This should be checked out and flushed if desirable.
+
+* Update the references to `make-vector-tag' in $zfront/rcseht and
+$zfront/rcserq to have the extra argument.
+
+* Write `combination/inline?' and the primitive inlining code.
+
+* The environment register is not being saved in the continuation of
+a subproblem call from an IC procedure.
+
+* Some memoization is desirable for the entry nodes on SIMPLE
+continuations, because they are being generated explicitly.
+
+* Probably the computations involving `lvalue/source-set' want to be
+made more efficient.  It's also possible that they will be computed
+more than once.
+
+* CSE will have to be changed back to do modelling of the stack again.
+
+* Change handling of dynamic links so that the link register is saved
+when calling an unknown place, and is assumed to contain nothing at
+external entries.  The simplest implementation of this is to assume
+that nothing is in the link register at external entries, and to save
+it on calls to external procedures.  Later we can optimize it better.
+This strategy allows us to coexist with the current compiled code.
+
+* Implement the data-structure discarding code.
+
+* The call and return code is not taking into account the cases where
+continuations are closed in IC blocks.  This may complicate things
+somewhat.  I'd prefer to leave this until I can see some output.
+
+* Implement open-coding for `vector'.

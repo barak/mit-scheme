@@ -1,0 +1,46 @@
+;; -*- Scheme -*-
+;;
+;; This file is really for generating the cross reference so we can find
+;; the free variables of the benchmarks.
+
+(define-package (benchmarks)
+  (parent ())
+  (files "boyer.scm"
+	 "browse.scm"
+	 "conform.scm"
+	 "cpstak.scm"
+	 "ctak.scm"
+	 "dderiv.scm"
+	 "deriv.scm"
+	 "destruct.scm"
+	 "div.scm"
+	 "earley.scm"
+	 "fcomp.scm"
+	 "fib.scm"
+	 "library.scm"
+	 "matmul1.scm"
+	 "matmul2.scm"
+	 "peval.scm"
+	 "puzzle.scm"
+	 ;;"run.scm"
+	 "tak.scm"
+	 "takl.scm"
+	 "traverse.scm"
+	 "triangle.scm")
+
+  ;; We import only those procedures too hard to put in library.scm or too
+  ;; inconsequential to performance to bother.
+  (import ()
+	  call-with-current-continuation ; hard
+	  display			; not used much
+	  error				; not called in normal execution
+	  error:bad-range-argument	; used in library.scm
+	  error:wrong-type-argument	; used in library.scm
+	  fixed-objects-item		; library initialization
+	  make-entity			; ""
+	  newline			; not used much
+	  string=?
+	  symbol?			; 
+	  write				; not used much
+	  ))
+	

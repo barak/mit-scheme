@@ -1,0 +1,154 @@
+Description of lamlift.scm
+
+Purpose:
+--------
+
+To reduce the number of closures in a program.
+
+Lambda lifting is a code-motion transformation whereby LAMBDA
+expressions are moved to a higher frame.  Bindings from frames below
+the new location of the lifted LAMBDA expression must be passed as
+extra parameters.
+
+A lifted LAMBDA represents a more eager but possibly less frequent
+closing over its remaining free variables.  This version lifts 'all
+the way', so that there are no remaining free variables, so the cost
+of closing is reduced to nil at the expense of passing possibly many
+more arguments.  The only remaining closures are absoultely necessary.
+
+
+Operators Introduced:
+---------------------
+  none
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+  none
+
+Guarantees on Output:
+---------------------
+
+ . Procedures with no dynamic free variables (see definitions under
+   Algorithm notes) are lifted up into a static frame so that they
+   need not be considered for further closure-oriented
+   transformations.
+
+ . The current version guarrantees that if a non-closure procedure is
+   used in both operator and operand positions then that procedure
+   will be refered to via a named stub procedure in the operand
+   position and a lifted procedure in the operator position.
+
+   This unnecessary splitting of the procedure into two hides a
+   related bug in rtlgen where an operator/operand-shared lambda
+   appears is compiled as one of a PROCEDURE or a TRIVIAL-CLOSURE
+   whereas both are required.  The right place to fix this bug is
+   either closconv, which should know about this nasty property of
+   %make-trivial-closure, or in rtlgen.
+
+
+Algorithm notes:
+----------------
+
+It is a subject of debate as to how far one should `lift' lambdas.
+This algorithm lifts `all the way', passing all dynamic free variables
+as parameters.
+
+Definitions: 
+
+ . Environment frames are either STATIC or DYNAMIC.  A STATIC frame
+   will have no reification at runtime, and all STATIC frames are
+   outside of DYNAMIC frames.
+
+ . "Dynamic free variables" are free variables of a LAMBDA expression
+   that have their binding in a DYNAMIC frame.
+
+There are two parts to the process: deciding where to place the lifted
+lambdas and hence which additional parameters to add, and then editing
+the program.
+
+
+Deciding for LAMBDAs
+
+A LAMBDA requires the following extra formals:
+
+ . Any references to dynamic free variables
+ . Any parameters required to call other procedures which have extra
+   parameters due being lifted.
+
+
+Program Editing
+
+A lambda is split into two lambdas: a body lambda, which takes all the
+extra parameters and contains the original lambda's body, and a stub,
+which has the original signature and calls the body lambda.  All known
+call sites to the lambda are re-written to call the body-lambda, and
+we choose at this point to handle #!optional and #!rest parameters,
+allowing the body lambda to have a simple lambda-list.  As the
+operator position references are rewritten, a stub is required only
+when there are operand position references to the lambda.  The stub
+may be left either in the position of the original lambda or lifted so
+log as no extra parameters are required.
+
+
+Deciding for LETRECs
+
+A LETREC is more complicated because the names bound in the LETREC may
+be free in the bodies of the LAMBDAS bound to those names.  (We have
+the usual restriction that the right hand side of each binding must be
+a LAMBDA expression.)  The hard thing to decide is which of the LETREC
+bindings need to be passed as extra parameters.
+
+
+Algorithm:
+
+1. Create an model of the existing program environment structure,
+   telling the location of each binding frame, the variables bound,
+   the parent and children bindings frames.
+
+2. Identify all free variable references in each body, and mark each
+   as "dynamic" or "static" as well as "operator" or "operand".
+
+3. Create a directed graph where each node is a LAMBDA expression
+   bound in the LETREC, and each edge is a reference (operator or
+   operand) to a node, i.e. a LOOKUP of one of the LETREC bindings.
+   This is the REFERENCE GRAPH.  The strongly connected components
+   of this graph identify which groups of LAMBDAs are constrained by
+   mutual references to remain together in a LETREC environment frame.
+
+4. Processing each component before any component that references it,
+   find the DRIFT FRAME, the highest frame that a component may be
+   lifted to without adding extra arguments.  This frame is the
+   highest to which the stubs may be lifted.  When processing other
+   components assume this component has been lifted to this frame
+   (which is why order is important).
+
+5. Create a CALL GRAPH: a directed graph where each node is a LAMBDA
+   expression bound in the LETREC, and each edge is a call (operator
+   position reference) to a node.  The strongly connected components
+   of this graph identify which groups of LAMBDAs are contrained to
+   pass the same set of free variables.  (Each call graph component is
+   a subset of some reference graph component.)
+
+6. For each call graph component, processing a component before any
+   which calls it, find the dynamic free variables for that component.
+   These are the extra formals for each member of the component.
+    . Operator references to components are not added because they
+      will be rewritten as calls to the lifted bodies.
+    . Operand references to components which have a static drift frame
+      are not included in the dynamic free references under the
+      assumbption that the stubs will be lifted to the static frame.
+   
+7. Lift the LAMBDAs using these extra formals.
+
+8. Lift the stubs.  Stubs which drift to static frames MUST be lifted.
+   Other stubs should be treated as in the simple LAMBDA case.

@@ -1,0 +1,17 @@
+ffi-test-const
+ffi-test-const.c
+ffi-test-const.scm
+ffi-test-shim.c
+ffi-test-shim.so
+ffi-test.c
+prhello-const
+prhello-const.c
+prhello-const.scm
+prhello-shim.c
+
+# LIARC build products
+/*.c
+/*.o
+/ffi-init.h
+/ffi.a
+/ffi.so

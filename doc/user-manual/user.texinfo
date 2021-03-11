@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-user
-@set VERSION 11.1
+@set VERSION 11.2
 @set UPDATED 2020-06-16
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
@@ -1502,6 +1502,11 @@ This group of commands manages nested @acronym{REPL} instances.
 @deffn {REPL command} down
 Creates a new child @acronym{REPL} with the same current environment
 as this one.
+@end deffn
+
+@deffn {REPL command} import import-set @dots{}
+Imports the given @var{import-set}s into the current @acronym{REPL}
+environment.  The syntax is described in @rseven{} section 5.2.
 @end deffn
 
 @deffn {REPL command} up

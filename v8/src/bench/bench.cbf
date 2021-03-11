@@ -1,0 +1,27 @@
+;; -*- SCheme -*-
+
+(cbf '("library"
+
+       "boyer"
+       "browse"
+       "conform"
+       "cpstak"
+       "ctak"
+       "dderiv"
+       "deriv"
+       "destruct"
+       "div"
+       ;;"earley"
+       "fcomp"
+       "fib"
+       ;;"flatten"
+       "matmul1"
+       "matmul2"
+       "peval"
+       "puzzle"
+       "tak"
+       "takl"
+       "traverse"
+       "triangle"
+       "wttree"))
+

@@ -1,0 +1,35 @@
+Description of indexify.scm
+
+Purpose:
+--------
+INDEXIFY replaces calls to the pseudo-primitive %vector-index with
+result of calling vector-index at compile time.
+
+Operators Introduced:
+---------------------
+none
+
+Operators removed:
+------------------
+%vector-index is replaced by a constant integer
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+none
+
+Guarantees on Output:
+---------------------
+ No references to %vector-index.
+
+
+

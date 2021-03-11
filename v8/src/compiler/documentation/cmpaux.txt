@@ -1,0 +1,490 @@
+-*- Text -*-
+
+THIS FILE NEEDS UPDATING TO LIAR 5.0
+
+
+Copyright (c) 1991 Massachusetts Institute of Technology
+
+
+		Documentation of the assembly language
+		interface to MIT Scheme compiled code
+			*DRAFT*
+
+
+
+In the following, whenever Scheme is used, unless otherwise specified,
+we refer to the MIT Scheme dialect and its CScheme implementation.
+
+This file describes the entry points that must be provided by
+cmpaux-md.h, and the linkage conventions assumed by scheme code.
+
+cmpint.txt provides some background information required to understand
+what follows.
+
+	Calling conventions
+
+Most C implementations use traditional stack allocation of frames
+coupled with a callee-saves register linkage convention.  Scheme would
+have a hard time adopting a compatible calling convention:
+
+The Scheme language requires properly tail recursive implementations.
+This means that at any given point in a program's execution, if an
+object is not accessible from the global (static) state of the
+implementation or the current continuation, the object's storage has
+been reclaimed or is in the process of being reclaimed.  In
+particular, recursively written programs need only use progressively
+more storage if there is accumulation in the arguments or deeper
+levels of the recursion are invoked with more deeply nested
+continuations.
+
+This seemingly abstract requirement of Scheme implementations has some
+very mundane consequences.  The traditional technique of allocating a
+new stack frame for each nested procedure call and deallocating it on
+return does not work for Scheme, since allocation should only take
+place if the continuation grows, not if the nesting level grows.
+
+A callee-saves register convention is hard to use for Scheme.  The
+callee-saves convention assumes that all procedures entered eventually
+return, but in the presence of tail recursion, procedures replace each
+other in the execution call tree and return only infrequently.  The
+caller-saves convention is much better suited to Scheme, since
+registers can be saved when the continuation grows and restored when
+it shrinks.
+
+Given these difficulties, it is easier to have each language use its
+natural convention rather than impose an inappropriate (and therefore
+expensive) model on Scheme.
+
+The unfortunate consequence of this decision is that Scheme and C are
+not trivially inter-callable, and thus interface routines must be
+provided to go back and forth.
+
+One additional complication is that the Scheme control stack (that
+represents the current continuation) must be examined by the garbage
+collector to determined what storage is currently in use.  This means
+that it must contain only objects or that regions not containing
+objects must be clearly marked.  Again, it is easier to have separate
+stacks for Scheme and C than to merge them.
+
+The interface routines switch between stacks as well as between
+conventions.  They must be written in assembly language since they do
+not follow C (or Scheme, for that matter) calling conventions.
+
+	Routines required by C:
+	
+The C support for compiled code resides in cmpint.c and is customized
+to the implementation by cmpint2.h which must be a copy of the
+appropriate cmpint-md.h file.
+
+The code in cmpint.c provides the communication between compiled code
+and the interpreter, primitive procedures written in C, and many
+utility procedures that are not in-line coded.
+
+cmpint.c requires three entry points to be made available from
+assembly language:
+
+* C_to_interface:
+  This is a C-callable routine (it expects its arguments and return
+  address following C's passing conventions) used to transfer from the C
+  universe to the compiled Scheme universe.
+
+  It expects a single argument, namely the address of the instruction to
+  execute once the conventions have been switched.
+
+  It saves all C callee-saves registers, switches stacks (if there is
+  an architecture-distinguished stack pointer register), initializes
+  the Scheme register set (Free register, register array pointer,
+  utility handles register, MemTop register, pointer mask, value
+  register, dynamic link register, etc.), and jumps to the address
+  provided as its argument.
+
+  C_to_interface does not return directly, it tail-recurses into
+  Scheme.  Scheme code will eventually invoke C utilities that will
+  request a transfer back to the C world.  This is accomplished by
+  using one of the assembly-language provided entry points listed below.
+
+C utilities are invoked as subroutines from an assembly language
+routine (scheme_to_interface) described below.  The expectation is
+that they will accomplish their task, and execution will continue in
+the compiled Scheme code, but this is not always the case, since the
+utilities may request a transfer to the interpreter, the error system,
+etc. 
+
+This control is accomplished by having C utilities return a C
+structure with two fields.  The first field must hold as its contents
+the address of one of the following two entry points in assembly
+language.  The second field holds a value that depends on which entry
+point is being used.
+
+* interface_to_C:
+  This entry point is used by C utilities to abandon the Scheme
+  compiled code universe, and return from the last call to
+  C_to_interface.  Its argument is the (C long) value that
+  C_to_interface must return to its caller.  It is typically an exit
+  code that specifies further action by the interpreter.
+
+  interface_to_C undoes the work of C_to_interface, ie. it saves the
+  Scheme stack and Free memory pointers in the appropriate C variables
+  (Ext_Stack_Pointer and Free), restores the C linkage registers and
+  callee-saves registers previously saved, and uses the C return
+  sequence to return to the caller of C_to_interface.
+
+* interface_to_scheme:
+  This entry point is used by C utilities to continue executing in the
+  Scheme compiled code universe.  Its argument is the address of the
+  (compiled Scheme) instruction to execute once the transfer is
+  finished.
+  
+  Typically C_to_interface and interface_to_scheme share code.
+
+	Routines required by Scheme:
+
+Conceptually, only one interface routine is required by Scheme code,
+namely scheme_to_interface.  For convenience, other assembly language
+routines are may be provided with slightly different linkage
+conventions.  The Scheme compiler back end will choose among them
+depending on the context of the call.  Longer code sequences may have
+to be issued if only one of the entry points is provided.  The other
+entry points are typically a fixed distance from scheme_to_interface,
+so that compiled code can invoke them by adding the fixed offset.
+
+* scheme_to_interface:
+  This entry point is used by Scheme code to invoke a C utility.
+  It expects up to five arguments in fixed registers.  The first
+  argument (required), is the number identifying the C utility routine
+  to invoke.  This number is the index of the location
+  containing the address of the C procedure in the array
+  utility_result, declared in cmpint.c .
+
+  The other four registers contain the arguments to be passed to the
+  utility procedure.  Note that all C utilities declare 4 arguments
+  even if fewer are necessary or relevant.  The reason for this is
+  that the assembly language routines must know how many arguments to
+  pass along, and it is easier to pass all of them.  Of course,
+  compiled code need not initialize the registers for those arguments
+  that will never be examined.
+
+  In order to make this linkage as fast as possible, it is
+  advantageous to choose the argument registers from the C argument
+  registers if the C calling convention passes arguments in registers.
+  In this way there is no need to move them around.
+	
+  scheme_to_interface switches stacks, moves the arguments to the
+  correct locations (for C), updates the C variables Free and
+  Ext_Stack_Pointer, and invokes (in the C fashion) the C utility
+  procedure indexed by the required argument to scheme_to_interface.
+	
+  On return from the call to scheme_to_interface, a C structure
+  described above is expected, and the first component is invoked
+  (jumped into) leaving the structure or the second component in a
+  pre-established place so that interface_to_C and interface_to_scheme
+  can find it.
+
+* scheme_to_interface_ble/jsr:
+  Many utility procedures expect a return address as one of their
+  arguments.  The return address can be easily obtained by using the
+  machine's subroutine call instruction, rather than a jump
+  instruction, but the return address may not be left in the desired
+  argument register.  scheme_to_interface_ble/jsr can be provided to
+  take care of this case.  In order to facilitate its use, all utility
+  procedures that expect a return address receive it as the first
+  argument.  Thus scheme_to_interface_ble/jsr is invoked with the
+  subroutine-call instruction, transfers (and bumps past the format
+  word) the return address from the place where the instruction leaves
+  it to the first argument register, and falls through to
+  scheme_to_interface.
+
+* trampoline_to_interface:
+
+  Many of the calls to utilities occur in code issued by the linker,
+  rather than the compiler.  For example, compiled code assumes that
+  all free operator references will resolve to compiled procedures,
+  and the linker constructs dummy compiled procedures (trampolines) to
+  allow the code to work when they resolve to unknown or interpreted
+  procedures.  Corrective action must be taken on invocation, and this
+  is accomplished by invoking the appropriate utility.  Trampolines
+  contain instructions to invoke the utility and some
+  utility-dependent data.  The instruction sequence in trampolines may
+  be shortened by having a special-purpose entry point, also invoked
+  with a subroutine-call instruction.  All utilities expecting
+  trampoline data expect as their first argument the address of the
+  first location containing the data.  Thus, again, the return address
+  left behind by the subroutine-call instruction must be passed in the
+  first argument register.
+
+scheme_to_interface_ble/jsr and trampoline_to_interface are virtually
+identical.  The difference is that the return address is interpreted
+differently.  trampoline_to_interface interprets it as the address of
+some storage, scheme_to_interface_ble/jsr interprets it as a machine
+return address that must be bumped to a Scheme return address (all
+Scheme entry points are preceded by format words for the garbage
+collector).
+
+More entry points can be provided for individual ports.  Some ports
+have entry points for common operations that take many instructions
+like integer multiplication, allocation and initialization of a
+closure object, or calls to unknown Scheme procedures with fixed
+numbers of arguments.  None of these are necessary, but may make the
+task of porting the compiler easier.  
+
+Typically these additional entry points are also a fixed distance away
+from scheme_to_interface in order to reduce the number of reserved
+registers required.
+  
+	Examples:
+
+1 (PDP-11-like CISC):
+
+Machine M1 is a general-addressing-mode architecture and has 7
+general-purpose registers (R0 - R6), and a hardware-distinguished
+stack pointer (SP).  The stack is pushed by predecrementing the stack
+pointer.  The JSR (jump to subroutine) instruction transfers control
+to the target and pushes a return address on the stack.  The RTS
+(return from subroutine) instruction pops a return address from the
+top of the stack and jumps to it.
+
+The C calling convention is as follows:
+
+- arguments are passed on the stack and are popped on return by the
+caller.
+- the return address is on top of the stack on entry.
+- register r6 is used as a frame pointer, saved by callees.
+- registers r0 - r2 are caller saves, r3 - r5 are callee saves.
+- scalar values are returned in r0.
+- structures are returned by returning the address of a static area on r0.
+
+The Scheme register convention is as follows:
+
+- register r6 is used to hold the register block.
+- register r5 is used to hold the free pointer.
+- register r4 is used to hold the dynamic link, when necessary.
+- registers r1 - r3 are the caller saves registers for the compiler.
+- register r0 is used as the value register by compiled code.
+- all other implementation registers reside in the register array.  
+  In addition, scheme_to_interface, trampoline_to_interface, etc., are
+  reached from the register array as well (there is an absolute jump 
+  instruction in the register array for each of them).
+
+The utility calling convention is as follows:
+
+- the utility index is in r0.
+- the utility arguments appear in r1 - r4.
+
+The various entry points would then be (they can be bummed):
+
+_C_to_interface:
+	push	r6			; save old frame pointer
+	mov	sp,r6			; set up new frame pointer
+	mov	8(r6),r1		; argument to C_to_interface
+	push	r3			; save callee-saves registers
+	push	r4
+	push	r5
+	push	r6			; and new frame pointer
+
+_interface_to_scheme:
+	mov	sp,_saved_C_sp		; save the C stack pointer.
+	mov	_Ext_Stack_Pointer,sp	; set up the Scheme stack pointer
+	mova	_Registers,r6		; set up the register array pointer
+	mov	_Free,r5		; set up the free register
+	mov	regblock_val(r6),r0	; set up the value register
+	and	&<address-mask>,r0,r4	; set up the dynamic link register
+	jmp	0(r1)			; go to compiled Scheme code
+
+scheme_to_interface_jsr:
+	pop	r1			; return address is first arg.
+	add	&4,r1,r1		; bump past format word
+	jmp	scheme_to_interface
+
+trampoline_to_interface:
+	pop	r1			; return address is first arg.
+
+scheme_to_interface:
+	mov	sp,_Ext_Stack_Pointer	; update the C variables
+	mov	r5,_Free
+	mov	_saved_C_sp,sp
+	mov	0(sp),r6		; restore C frame pointer
+	push	r4			; push arguments to utility
+	push	r3
+	push	r2
+	push	r1
+	mova	_utility_table,r1
+	mul	&4,r0,r0		; scale index to byte offset
+	add	r0,r1,r1
+	mov	0(r1),r1
+	jsr	0(r1)			; invoke the utility
+
+	add	&16,sp,sp		; pop arguments to utility
+	mov	4(r0),r1		; extract argument to return entry point
+	mov	0(r0),r0		; extract return entry point
+	jmp	0(r0)			; invoke it
+
+_interface_to_C:
+	mov	r1,r0			; C return value
+	pop	r6			; restore frame pointer
+	pop	r5			; and callee-saves registers
+	pop	r4
+	pop	r3
+	pop	r6			; restore caller's frame pointer
+	rts				; return to caller of C_to_interface	
+
+Note that somewhere in the register array there would be a section
+with the following code:
+
+offsi	jmp	scheme_to_interface
+offsj	jmp	scheme_to_interface_jsr
+offti	jmp	trampoline_to_interface
+	< perhaps more >
+
+So that the compiler could issue the following code to invoke utilities:
+
+	<set up arguments in r1 - r4>
+	mov	&<utility index>,r0
+	jmp	offsi(r6)
+
+or
+
+	<set up arguments in r2 - r4>
+	mov	&<utility index>,r0
+	jsr	offsj(r6)
+	<format word for the return address>
+
+<label for the return address>
+	<more instructions>
+
+Trampolines (created by the linker) would contain the code
+
+	mov	&<trampoline utility>,r0
+	jsr	offti(r6)
+
+2 (RISC processor):
+
+Machine M2 is a load-store architecture and has 31 general-purpose
+registers (R1 - R31), and R0 always holds 0.  There is no
+hardware-distinguished stack pointer.  The JL (jump and link)
+instruction transfers control to the target and leaves the address of
+the following instruction in R1.  The JLR (jump and link register)
+instruction is like JL but takes the target address from a register
+and an offset, rather than a field in the instruction.  There are no
+delay slots on branches, loads, etc. (to make matters simpler).
+
+R2 is used as a software stack pointer, post-incremented to push.
+
+The C calling convention is as follows:
+
+- the return address is in r1 on entry.
+- there is no frame pointer.  Procedures allocate all the stack space
+they'll ever need (including space for callees' parameters) on entry.
+- all arguments (and the return address) have slots allocated on the
+stack, but the values of the first four arguments are passed on r3 -
+r6.  They need not be preserved accross nested calls.
+- scalar values are returned in r3.
+- structures of 4 words or less are returned in r3 - r6.
+- the stack is popped by the caller.
+- r7 - r10 are caller-saves registers.
+- r11 - r31 are callee-saves registers.
+
+The Scheme register convention is as follows:
+
+- register r7 holds the dynamic link, if present.
+- register r8 holds the register copy of MemTop.
+- register r9 holds the Free pointer.
+- register r10 holds the Scheme stack pointer.
+- register r11 holds the address of scheme_to_interface.
+- register r12 holds the address of the register block.
+- register r13 holds a mask to clear type-code bits from an object.
+- values are returned in r3.
+- the other registers are available without restrictions to the compiler.
+
+Note that scheme_to_interface, the address of the register block, and
+the type-code mask, which are all constants have been assigned to
+callee-saves registers.  This guarantees that they will be preserved
+around utility calls and therefore interface_to_scheme need not set
+them again.
+
+The utility calling convention is:
+
+- arguments are placed in r3 - r6.
+- the index is placed in r14.
+
+The argument registers are exactly those where the utility expects
+them.  In the code below, C_to_interface pre-allocates the frame for
+utilities called by scheme_to_interface, so scheme_to_interface has
+very little work to do.
+
+The code would then be:
+
+OFFSET is (21 + 1 + 4) * 4, the number of bytes allocated by
+_C_to_interface from the stack.  21 is the number of callee-saves
+registers to preserve.  1 is the return address for utilities, and 4
+is the number of arguments passed along.
+
+_C_to_interface:
+	add	&OFFSET,r2,r2		; allocate stack space
+
+	st	r1,-4-OFFSET(r2)	; save the return address
+	st	r11,0-OFFSET(r2)	; save the callee-saves registers
+	st	r12,4-OFFSET(r2)
+	...
+	st	r31,-24(r2)		; -20 - -4 are for the utility.
+
+	or	&mask,r0,r13		; set up the pointer mask
+	lda	_Registers,r12		; set up the register array pointer
+	jl	continue		; get address of continue in r1
+continue
+	add	&(scheme_to_interface-continue),r1,r11
+	or	r0,r3,r4		; preserve the entry point
+
+_interface_to_scheme:
+	ld	_Ext_Stack_Pointer,r10	; set up the Scheme stack pointer
+	ld	_Free,r9		; set up the Free pointer
+	ld	_MemTop,r8		; set up the Memory Top pointer
+	ld	regblock_val(r12),r3	; set up the return value
+	and	r13,r3,r7		;  and the dynamic link register
+	jlr	0(r4)			; go to compiled Scheme code.
+
+
+scheme_to_interface_jl:
+	add	&4,r1,r1		; bump past format word
+
+trampoline_to_interface:
+	or	r0,r1,r3		; return address is first arg.
+
+scheme_to_interface:
+	st	r10,_Ext_Stack_Pointer	; update the C variables
+	st	r9,_Free
+	mul	&4,r14,r14		; scale utility index
+	lda	_utility_table,r8
+	add	r8,r14,r8
+	ld	0(r8),r8		; extract utility's entry point
+	jlr	0(r8)
+
+	jlr	0(r3)			; invoke the assembly language entry point
+					;  on return from the utility.
+
+
+_interface_to_C:
+	or	r0,r4,r3		; return value for C
+	ld	-24(r2),r31		; restore the callee-saves registers
+	...
+	ld	0-OFFSET(r2),r11
+	ld	-4-OFFSET(r2),r1	; restore the return address
+	add	&-OFFSET,r2,r2
+	jlr	0(r1)			; return to caller of C_to_interface
+	
+
+Ordinary utilities would be invoked as follows:
+	
+	<set up arguments in r3 - r6>
+	or	&<utility index>,r0,r14
+	jlr	0(r11)
+
+Utilities expecting a return address could be invoked as follows:
+
+	<set up arguments in r4 - r6>
+	or	&<utility index>,r0,r14
+	jlr	-8(r11)
+
+Trampolines would contain the following code:
+
+	or	&<utility index>,r0,r14
+	jlr	-4(r11)

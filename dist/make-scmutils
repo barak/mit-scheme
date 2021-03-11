@@ -1,0 +1,223 @@
+#!/bin/bash
+#
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+#     2015, 2016, 2017, 2018, 2019, 2020 Massachusetts Institute of
+#     Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# To use this script:
+#
+# 1. Create an empty directory somewhere and cd into it:
+#
+#	mkdir foo
+#	cd foo
+#
+# 2. Link or copy a scheme binary release into it:
+#
+#	ln /scheme/v7/dist/X.Y.Z/mit-scheme-X.Y.Z-ix86-gnu-linux.tar.gz .
+#
+# 3. Run this script:
+#
+#	/scheme/v7/dist/make-scmutils
+
+set -e
+
+if [ $# -gt 0 ]; then
+    echo "usage: ${0}"
+    exit 1
+fi
+
+SCHEME_TAR=$(ls mit-scheme-*-ix86-gnu-linux.tar.gz 2> /dev/null)
+if [ -z "${SCHEME_TAR}" ]; then
+    echo "Unable to find file 'mit-scheme-*-ix86-gnu-linux.tar.gz'"
+    exit 1
+fi
+SVERSION=$(echo "${SCHEME_TAR}" | tail -1 | sed -e 's/^mit-scheme-\(..*\)-ix86-gnu-linux\.tar\.gz$/\1/')
+
+echo "MIT/GNU Scheme version: ${SVERSION}"
+
+TL_DIR="$(pwd)"
+SOURCE_DIR="/projects/scmutils"
+DIST_DIR="/scheme/v7/dist"
+
+SCHEME_DIR="${TL_DIR}/mit-scheme-${SVERSION}"
+SBINDIR="${SCHEME_DIR}/bin"
+SAUXDIR="${SCHEME_DIR}/lib/mit-scheme"
+
+VERSION="$(date '+%Y%m%d')"
+BUILD_DIR="${TL_DIR}/scmutils-${VERSION}"
+IMAGE_DIR="${BUILD_DIR}-image"
+BINDIR="${IMAGE_DIR}/bin"
+AUXDIR="${IMAGE_DIR}/scmutils"
+MBINDIR="${AUXDIR}/mit-scheme/bin"
+MAUXDIR="${AUXDIR}/mit-scheme/lib"
+BCIDIR="${MAUXDIR}"
+
+STAMP_UNPACK="${TL_DIR}/stamp-unpack"
+STAMP_BUILD="${TL_DIR}/stamp-build"
+STAMP_IMAGE="${TL_DIR}/stamp-image"
+
+MKDIR="install -d -m 755"
+INSTALL="install -p"
+INSTALL_DATA="${INSTALL} -m 644"
+
+SCHEME="${SBINDIR}/scheme --library ${SAUXDIR}"
+
+if [ ! -f "${STAMP_UNPACK}" ];then
+    echo "Unpack MIT/GNU Scheme"
+    rm -rf "${SCHEME_DIR}"
+    ${MKDIR} "${SCHEME_DIR}"
+    (cd "${SCHEME_DIR}"; tar xzf "../${SCHEME_TAR}")
+    touch "${STAMP_UNPACK}"
+fi
+
+if [ ! -f "${STAMP_BUILD}" ];then
+    echo "Remove old build directory"
+    rm -rf "${BUILD_DIR}"
+    echo "Create new build directory"
+    cpx -qsE "${SOURCE_DIR}/src" "${BUILD_DIR}"
+    rm -f "${BUILD_DIR}/load.scm"
+    ln -s "${SOURCE_DIR}/dist/load.scm" "${BUILD_DIR}/."
+    (
+	cd "${BUILD_DIR}"
+	echo "Compile binaries"
+	${SCHEME} --compiler --heap 4000 > compile.out \
+<<EOF
+(load "compile")
+EOF
+	echo "Compiler output in ${BUILD_DIR}/compile.out"
+	echo "Generate mechanics band"
+	${SCHEME} --edwin --compiler --heap 4000 > load.out \
+<<EOF
+(load "load")
+(disk-save "edwin-mechanics.com")
+EOF
+	echo "Output in ${BUILD_DIR}/load.out"
+    )
+    touch "${STAMP_BUILD}"
+fi
+
+if [ ! -f "${STAMP_IMAGE}" ];then
+    if [ -e "${IMAGE_DIR}" ]; then
+	echo "Remove old image directory"
+	rm -rf "${IMAGE_DIR}"
+    fi
+
+    echo "Create new image directory"
+    ${MKDIR} "${BINDIR}"
+    ${MKDIR} "${AUXDIR}"
+
+    echo "Copy MIT/GNU Scheme"
+    ${MKDIR} "${MBINDIR}"
+    cp -a "${SBINDIR}"/* "${MBINDIR}/."
+    ${MKDIR} "${MAUXDIR}"
+    (
+	cd "${SAUXDIR}"
+	for FILE in *; do
+	    case "${FILE}" in
+	    (*.com)
+		;;
+	    (*)
+		cp -a "${FILE}" "${MAUXDIR}/."
+		;;
+	    esac
+	done
+    )
+
+    echo "Copy mechanics band"
+    ${INSTALL_DATA} "${BUILD_DIR}/edwin-mechanics.com" "${MAUXDIR}/."
+
+    echo "Copy mechanics shell script"
+    ${INSTALL} "${SOURCE_DIR}/dist/mechanics" "${BINDIR}/."
+
+    echo "Copy source code"
+    for DIR in $(cd "${SOURCE_DIR}";find src -type d -print); do
+	${MKDIR} "${AUXDIR}/${DIR}"
+	for FILE in ${SOURCE_DIR}/${DIR}/*.doc; do
+	    [ -f "${FILE}" ] \
+		&& ${INSTALL_DATA} "${FILE}" "${AUXDIR}/${DIR}/."
+	done
+	# This hack prepends a copyright statement on each Scheme and C file.
+	for SUFFIX in scm c; do
+	    for FILE in ${SOURCE_DIR}/${DIR}/*.${SUFFIX}; do
+		if [ -f "${FILE}" ]; then
+		    TFILE="${AUXDIR}/${DIR}/$(basename "${FILE}")"
+		    rm -f "${TFILE}"
+		    cat "${DIST_DIR}/copyright.${SUFFIX}" "${FILE}" \
+			> "${TFILE}"
+		    touch -r "${FILE}" "${TFILE}" 2> /dev/null
+		fi
+	    done
+	done
+    done
+    ${INSTALL_DATA} "${SOURCE_DIR}/src/copyrigh" "${AUXDIR}/src/LICENSE"
+    ${INSTALL_DATA} "${DIST_DIR}/COPYING" "${AUXDIR}/src/."
+    ${INSTALL_DATA} "${SOURCE_DIR}/src/general/binio/transcript" \
+	"${AUXDIR}/src/general/binio/."
+
+    echo "Copy debugging files"
+    for DIR in $(cd ${BUILD_DIR};find * -type d -print); do
+	${MKDIR} "${BCIDIR}/scmutils/${DIR}"
+	for FILE in ${BUILD_DIR}/${DIR}/*.bci; do
+	    [ -f "${FILE}" ] \
+		&& ${INSTALL_DATA} "${FILE}" "${BCIDIR}/scmutils/${DIR}/."
+	done
+    done
+
+    echo "Copy manuals"
+    ${MKDIR} "${AUXDIR}/manual"
+    for FILE in beginner.txt graphing.txt refman.txt; do
+	${INSTALL_DATA} "${SOURCE_DIR}/manual/${FILE}" "${AUXDIR}/manual/."
+    done
+
+    echo "Remove unwanted files"
+    for FILE in $(cat "${SOURCE_DIR}/dist/dist-exclude"); do
+	rm -rf "${AUXDIR}/${FILE}"
+    done
+
+    echo "Remove empty directories"
+    for DIR in $(find "${IMAGE_DIR}" -type d -print | sort -r); do
+	rmdir --ignore-fail-on-non-empty "${DIR}"
+    done
+
+    echo "Fix file permissions"
+    find "${IMAGE_DIR}" -type f -print | xargs chmod og-w
+    find "${IMAGE_DIR}" -type d -print | xargs chmod og-w
+
+    touch "${STAMP_IMAGE}"
+fi
+
+echo "Build tar file"
+TARFILE="${TL_DIR}/scmutils-${VERSION}-ix86-gnu-linux.tar.gz"
+if [ -e "${TARFILE}" ]; then
+    rm -rf "${TARFILE}"
+fi
+(cd "${IMAGE_DIR}"; tar czf "${TARFILE}" *)
+chmod 444 "${TARFILE}"
+
+echo "Remove image directory"
+rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
+
+echo "Remove build directory"
+rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
+
+echo "Remove MIT/GNU Scheme directory"
+rm -rf "${STAMP_UNPACK}" "${SCHEME_DIR}"
+
+echo "All done; tar file is ${TARFILE}"
