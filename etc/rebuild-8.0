@@ -1,0 +1,381 @@
+#!/bin/csh -f
+
+# Arguments: runtimeversion compilerversion edwinversion 6001version
+
+# The versions can be omitted, and if they are, the current version
+# as determined by the appropriate RCS file (e.g. runtime/version.scm)
+# is built.
+
+# If a version is the string "none", the corresponding band is not built,
+# nor is the corresponding subsystem recompiled.
+
+# If either the compiler or edwin is re-built, the combined (c+e) band
+# is re-built as well.
+
+# If the 6.001 (student) band is re-built, the range- and type-checked
+# runtime system (runtime-check) is recompiled first.  Since the
+# runtime-check/ directory uses symbolic links to .bin files in the
+# runtime/ directory, the 6.001 band will not reflect changes to the
+# runtime system that have not yet been resyntaxed in the runtime/
+# directory.
+
+# This script silently ignores additional arguments.
+
+# Stage 1: Choose architecture and directories
+
+hp9000s300
+if ("$status" == 0) then
+  set root="/scheme/7.4/300"
+  set student_constant=""
+endif
+hp9000s800
+if ("$status" == 0) then
+  set root="/scheme/8.0/700"
+  set student_constant=" -constant 2000"
+endif
+
+set src="/scheme/8.0/src"
+set scheme="scheme-8.0"
+set compile_heap=3000
+
+set noclobber
+set lock="$root/tmp/lock"
+(echo "### Rebuild in progress started by" `whoami` "on" `date` "on" `hostname` > $lock)
+if ("$status" != 0) then
+  cat "$lock"
+  exit 1
+endif
+
+
+# Stage 2: Write re-compilation script
+
+set script="$root/tmp/build.$$"
+rm -f "$script"
+
+onintr abort_and_exit
+
+echo \(begin\  > $script
+
+if ("$1" != "none") then
+  if (("$1" == "") || ("$1" == "next")) then
+    set runver=`rcsversion $src/runtime/version.scm`
+  else
+    set runver="$1"
+  endif
+  echo "### Making runtime system version $runver..."
+  set runtime="$root/backup/runtime-$runver"
+  echo \(load\ \"runtime.sf\"\)\ \(load\ \"runtime.cbf\"\) >> $script
+else
+  set runtime=""
+endif
+
+if ("$2" != "none") then
+  if (("$2" == "") || ("$2" == "next")) then
+    set compver=`rcsversion $src/compiler/base/make.scm`
+  else
+    set compver="$2"
+  endif
+  echo "### Making compiler version $compver..."
+  set complr="$root/backup/complr-$compver"
+  echo \(cd\ \"../sf\"\)\ \(load\ \"sf.sf\"\)\ \(load\ \"sf.cbf\"\) >> $script
+  echo \(cd\ \"../cref\"\)\ \(load\ \"cref.sf\"\)\ \(load\ \"cref.cbf\"\) >> $script
+  echo \(cd\ \"../compiler\"\)\ \(load\ \"compiler.sf\"\)\ \(load\ \"compiler.cbf\"\) >> $script
+else
+  set complr=""
+endif
+
+if ("$3" != "none") then
+  if (("$3" == "") || ("$3" == "next")) then
+    set edver=`rcsversion $src/edwin/make.scm`
+  else
+    set edver="$3"
+  endif
+  echo "### Making edwin version $edver..."
+  set edwin="$root/backup/edwin-$edver"
+  echo \(cd\ \"../edwin\"\)\ \(load\ \"edwin.sf\"\)\ \(load\ \"edwin.cbf\"\) >> $script
+else
+  set edwin=""
+endif
+
+if ("$4" != "none") then
+  if (("$4" == "") || ("$4" == "next")) then
+    set stver=`rcsversion $src/6001/make.scm`
+  else
+    set stver="$4"
+  endif
+  echo "### Making 6.001 student band version $stver..."
+  set student="$root/backup/6001-$stver"
+  echo \(cd\ \"../runtime-check\"\) >> $script
+  echo \(load\ \"runtime.cbf\"\) >> $script
+  if ("$edwin" == "") then
+    echo ";;; Must syntax Edwin in order to syntax the 6.001 make.scm file." >> $script
+    echo \(cd\ \"../edwin\"\) >> $script
+    echo \(load\ \"edwin.sf\"\) >> $script
+  endif
+  echo \(cd\ \"../6001\"\) >> $script
+  echo \(load\ \"6001.sf\"\) >> $script
+  echo \(load\ \"6001.cbf\"\) >> $script
+else
+  set student=""
+endif
+
+echo \(write-line\ \'\(finished\ recompilation\)\) >>$script
+
+# This exit is inside the BEGIN
+echo \(\%exit 0\)\) >>$script
+#   but this one is not
+echo \(\%exit 1\) >> $script
+# That way, the first one will be executed if no error occurs in the BEGIN,
+#  returning zero, but the second will be executed if an error does occur,
+#  returning one.  Similar hack used everywhere.
+
+if (("$runtime" == "") \
+    && ("$complr" == "") \
+    && ("$edwin" == "") \
+    && ("$student" == "")) then
+  echo "### No systems to rebuild."
+  rm -f "$script" "$lock"
+  exit 0
+endif
+
+# Stage 3: Re-compile sources
+
+echo "### cd $root/runtime"
+cd $root/runtime
+
+echo "### $scheme -compiler -heap $compile_heap -no-init-file"
+$scheme -compiler -heap $compile_heap -no-init-file <$script
+
+set result="$status"
+rm -f $script
+
+if ("$result" != 0) then
+  echo "### Recompilation failed."
+  rm -f "$lock"
+  exit "$result"
+endif
+
+
+# Stage 4: Re-build bands in staging area
+
+if ("$runtime" != "") then
+  echo "### cd $root/runtime"
+  cd $root/runtime
+  rm -f ../tmp/runtime.com
+  echo "### $scheme -large -fasl make.com -no-init-file"
+  $scheme -large -fasl make.com -no-init-file <<*END*
+(begin
+  (write-line '(saving runtime band ...))
+  (disk-save "../tmp/runtime.com")
+  (write-line '(saved runtime band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building the runtime system failed."
+    rm -f ../tmp/runtime.com "$lock"
+    exit "$result"
+  endif
+  set runband="$root/tmp/runtime.com"
+  set runbandarg="-band $runband"
+else
+  set runband=""
+  set runbandarg=""
+endif
+
+
+if ("$complr" != "") then
+  echo "### cd $root/sf"
+  cd $root/sf
+  rm -f ../tmp/complr.com
+  echo "### $scheme -heap 2000 $runbandarg -no-init-file"
+  $scheme -heap 2000 $runbandarg -no-init-file <<*END*
+(begin
+  (load "make.com")
+  (cd "../compiler")
+  (load "make.com")
+  (write-line '(saving compiler band ...))
+  (disk-save "../tmp/complr.com")
+  (write-line '(saved compiler band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building the compiler failed."
+    rm -f ../tmp/runtime.com ../tmp/complr.com "$lock"
+    exit "$result"
+  endif
+  set compband="$root/tmp/complr.com"
+  set cbandarg="-band $compband"
+else
+  set compband=""
+  set cbandarg=""
+endif
+
+
+if ("$edwin" != "") then
+  echo "### cd $root/edwin"
+  cd $root/edwin
+  rm -f ../tmp/edwin.com
+  echo "### $scheme -heap 2000 $runbandarg -no-init-file"
+  $scheme -heap 2000 $runbandarg -no-init-file <<*END*
+(begin
+  (load "make.com")
+  (write-line '(saving edwin band ...))
+  (disk-save "../tmp/edwin.com")
+  (write-line '(saved edwin band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building edwin failed."
+    rm -f ../tmp/runtime.com ../tmp/complr.com ../tmp/edwin.com "$lock"
+    exit "$result"
+  endif
+  set edwinband="$root/tmp/edwin.com"
+else
+  set edwinband=""
+endif
+
+
+if (("$edwin" != "") || ("$complr" != "")) then
+  echo "### cd $root/edwin"
+  cd $root/edwin
+  rm -f ../tmp/c+e.com
+  echo "### $scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file"
+  $scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file <<*END*
+(begin
+  (load "make.com")
+  (write-line '(saving c+e band ...))
+  (disk-save "../tmp/c+e.com")
+  (write-line '(saved c+e band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building c+e failed."
+    set fullband=""
+  else
+    set fullband="$root/tmp/c+e.com"
+  endif
+else
+  set fullband=""
+endif
+
+
+if ("$student" != "") then
+  echo "### cd $root/runtime-check"
+  cd $root/runtime-check
+  rm -f ../tmp/6001.com
+  echo "### $scheme -large$student_constant -fasl make.com -no-init-file"
+  $scheme -large$student_constant -fasl make.com -no-init-file <<*END*
+(begin
+  (cd "../edwin")
+  (load "make.com")
+  (cd "../6001")
+  (load "make.com")
+  (write-line '(saving 6001 band ...))
+  (disk-save "../tmp/6001.com")
+  (write-line '(saved 6001 band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building 6.001 student band failed."
+    rm -f ../tmp/runtime.com ../tmp/complr.com ../tmp/edwin.com ../tmp/6001.com "$lock"
+    exit "$result"
+  endif
+  set studband="$root/tmp/6001.com"
+else
+  set studband=""
+endif
+
+
+# Stage 5: Install bands
+# This part should be atomic
+
+onintr -
+
+if ("$runtime" != "") then
+  set backup=`nextver $runtime.gz`
+  if ("$backup" != "$runtime.gz") then
+    echo "###" mv -f "$runtime.gz" "$backup"
+    mv -f "$runtime.gz" "$backup"
+  endif
+  echo "### gzip $runtime"
+  cpx $runband $runtime
+  gzip $runtime
+  chmod a-w $runtime.gz
+  echo "###" mv -f "$runband" "$root/lib/runtime.com"
+  mv -f "$runband" "$root/lib/runtime.com"
+endif
+
+if ("$complr" != "") then
+  set backup=`nextver $complr.gz`
+  if ("$backup" != "$complr.gz") then
+    echo "###" mv -f "$complr.gz" "$backup"
+    mv -f "$complr.gz" "$backup"
+  endif
+  echo "### gzip $complr"
+  cpx $compband $complr
+  gzip $complr
+  chmod a-w $complr.gz
+  echo "###" mv -f "$compband" "$root/lib/compiler.com"
+  mv -f "$compband" "$root/lib/compiler.com"
+endif
+
+if ("$edwin" != "") then
+# Don't save this -- CPH
+#  set backup=`nextver $edwin.gz`
+#  if ("$backup" != "$edwin.gz") then
+#    echo "###" mv -f "$edwin.gz" "$backup"
+#    mv -f "$edwin.gz" "$backup"
+#  endif
+#  echo "### gzip $edwin"
+#  cpx $edwinband $edwin
+#  gzip $edwin
+#  chmod a-w $edwin.gz
+  echo "###" mv -f "$edwinband" "$root/lib/edwin.com"
+  mv -f "$edwinband" "$root/lib/edwin.com"
+endif
+
+if ("$fullband" != "") then
+  echo "###" mv -f "$fullband" "$root/lib/c+e.com"
+  mv -f "$fullband" "$root/lib/c+e.com"
+endif
+
+if ("$student" != "") then
+# Don't save this -- CPH
+#  set backup=`nextver $student.gz`
+#  if ("$backup" != "$student.gz") then
+#    echo "###" mv -f "$student.gz" "$backup"
+#    mv -f "$student.gz" "$backup"
+#  endif
+#  echo "### gzip $student"
+#  cpx $studband $student
+#  gzip $student
+#  chmod a-w $student.gz
+  echo "###" mv -f "$studband" "$root/lib/6001.com"
+  mv -f "$studband" "$root/lib/6001.com"
+endif
+
+rm -f "$lock"
+echo "### Done."
+exit 0
+
+abort_and_exit:
+  echo ""
+  echo "### Aborting -- Cleaning up..."
+  if ("`jobs`" != "") then
+    kill %1
+    wait
+  endif
+  cd "$root/tmp"
+  rm -f "$script" runtime.com complr.com edwin.com c+e.com 6001.com "$lock"
+  echo "### Cleaned up."
+  exit 1

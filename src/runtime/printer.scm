@@ -48,6 +48,9 @@ USA.
 (define-deferred param:print-char-in-unicode-syntax?
   (make-unsettable-parameter #f boolean-converter))
 
+(define-deferred param:print-ascii-only?
+  (make-unsettable-parameter #f boolean-converter))
+
 (define-deferred param:print-compound-procedure-names?
   (make-unsettable-parameter #t boolean-converter))
 
@@ -185,7 +188,9 @@ USA.
   ((context-labeling context) object))
 
 (define (context-char-set context)
-  (textual-port-char-set (context-port context)))
+  (if (param:print-ascii-only?)
+      char-set:ascii
+      (textual-port-char-set (context-port context))))
 
 (define (with-current-unparser-state context procedure)
   (parameterize ((initial-context context))

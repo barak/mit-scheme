@@ -444,6 +444,11 @@ it is the minimal-length sequence for the variants.  Consult the
 Unicode standard for the details and for information about why one
 normalization form is preferable for a specific purpose.
 
+When doing search and match operations, it is recommended that the
+argument strings be in @acronym{NFC}.  Without normalization, strings
+that should match may not, if they have inconsistent encodings for one
+or more characters.
+
 @deffn procedure string-in-nfc? string
 @deffnx procedure string-in-nfd? string
 These procedures return @code{#t} if @var{string} is in Unicode
@@ -949,9 +954,6 @@ This section describes procedures for searching a string, either for a
 character or a substring, and matching two strings to one another.
 
 @deffn procedure string-search-forward pattern string [start [end]]
-The arguments @var{pattern} and @var{string} must satisfy
-@code{string-in-nfc?}.
-
 Searches @var{string} for the leftmost occurrence of the substring
 @var{pattern}.  If successful, the index of the first character of the
 matched substring is returned; otherwise, @code{#f} is returned.
@@ -971,9 +973,6 @@ matched substring is returned; otherwise, @code{#f} is returned.
 @end deffn
 
 @deffn procedure string-search-backward pattern string [start [end]]
-The arguments @var{pattern} and @var{string} must satisfy
-@code{string-in-nfc?}.
-
 Searches @var{string} for the rightmost occurrence of the substring
 @var{pattern}.  If successful, the index to the right of the last
 character of the matched substring is returned; otherwise, @code{#f}
@@ -994,9 +993,6 @@ is returned.
 @end deffn
 
 @deffn procedure string-search-all pattern string [start [end]]
-The arguments @var{pattern} and @var{string} must satisfy
-@code{string-in-nfc?}.
-
 Searches @var{string} to find all occurrences of the substring
 @var{pattern}.  Returns a list of the occurrences; each element of the
 list is an index pointing to the first character of an occurrence.
@@ -1034,8 +1030,8 @@ Searches @var{string} to see if it contains the substring
 
 @deffn procedure string-find-first-index proc string string @dots{}
 @deffnx procedure string-find-last-index proc string string @dots{}
-Each @var{string} must satisfy @code{string-in-nfc?}, and @var{proc}
-must accept as many arguments as there are @var{string}s.
+The @var{proc} argument must accept as many arguments as there are
+@var{string}s.
 
 These procedures apply @var{proc} element-wise to the elements of the
 @var{string}s and return the first or last index for which @var{proc}
@@ -1049,8 +1045,6 @@ same length, then only the indexes of the shortest string are tested.
 @deffn procedure string-find-next-char string char [start [end]]
 @deffnx procedure string-find-next-char-ci string char [start [end]]
 @deffnx procedure string-find-next-char-in-set string char-set [start [end]]
-The argument @var{string} must satisfy @code{string-in-nfc?}.
-
 These procedures search @var{string} for a matching character,
 starting from @var{start} and moving forwards to @var{end}.  If there
 is a matching character, the procedures stop the search and return the
@@ -1083,8 +1077,6 @@ member of @var{char-set}.
 @deffn procedure string-find-previous-char string char [start [end]]
 @deffnx procedure string-find-previous-char-ci string char [start [end]]
 @deffnx procedure string-find-previous-char-in-set string char-set [start [end]]
-The argument @var{string} must satisfy @code{string-in-nfc?}.
-
 These procedures search @var{string} for a matching character,
 starting from @var{end} and moving backwards to @var{start}.  If there
 is a matching character, the procedures stop the search and return the
@@ -1100,9 +1092,6 @@ member of @var{char-set}.
 @end deffn
 
 @deffn procedure string-match-forward string1 string2
-The arguments @var{string1} and @var{string2} must satisfy
-@code{string-in-nfc?}.
-
 Compares the two strings, starting from the beginning, and returns the
 number of characters that are the same.  If the two strings start
 differently, returns 0.
@@ -1116,9 +1105,6 @@ differently, returns 0.
 @end deffn
 
 @deffn procedure string-match-backward string1 string2
-The arguments @var{string1} and @var{string2} must satisfy
-@code{string-in-nfc?}.
-
 Compares the two strings, starting from the end and matching toward
 the front, returning the number of characters that are the same.  If
 the two strings end differently, returns 0.
@@ -1552,16 +1538,14 @@ cases the caller must convert the string using @code{string->nfc}.
 
 @deffn procedure regsexp-match-string crse string [start [end]]
 The @var{crse} argument must be a value returned by
-@code{compile-regsexp}.  The @var{string} argument must satisfy
-@code{string-in-nfc?}.
+@code{compile-regsexp}.
 
 Matches @var{string} against @var{crse} and returns the result.
 @end deffn
 
 @deffn procedure regsexp-search-string-forward crse string [start [end]]
 The @var{crse} argument must be a value returned by
-@code{compile-regsexp}.  The @var{string} argument must satisfy
-@code{string-in-nfc?}.
+@code{compile-regsexp}.
 
 Searches @var{string} from left to right for a match against
 @var{crse} and returns the result.

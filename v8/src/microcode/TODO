@@ -1,0 +1,145 @@
+-*-Text-*-
+
+	Things to do to the C microcode:
+
+MINOR (although not necessarily painless):
+
+* Adopt a naming convention for primitives to mitigate the name conflict
+problem with user-definable names.
+
+* Make the microcode intern the empty string and the empty vector, so
+EQV? does not have to do extra work.  Note that fasdump/fasload have
+to be careful about this.  This may not be desirable for strings,
+given the existence of SET-STRING-LENGTH!
+[Why?  IEEE/R4RS does not require empty strings/vectors to be EQV?]
+
+* Check that the microcode backs out of assignment correctly when it
+needs to gc.
+
+* Implement multiple values.
+
+* Change fasdump in scheme and bchscheme to fix the heap image before
+writing the file.  In this way, if there is a trap during the writing
+operation, the system can recover because there will be no broken hearts
+in memory.
+
+* Make Microcode_Termination close all files (including the photo
+file) if there is no termination handler.
+
+* Clean up the OS dependent stuff.  Add a new error,
+ERR_UNIMPLEMENTED_PRIMITIVE, which is signalled by the missing
+procedures.  Divide the procedures into the ones which can signal such
+an error, and the ones that must return a fake value (System_Clock,
+for example).  NOTE: The error has been added, we must now examine all
+the primitives.
+
+* Improve vms.c.  Implement many of the missing procedures.
+
+* Make the communication between OS_file_open and the appropriate
+primitive better: if OS_file_open fails it can be because the file
+does not exist, or because of some OS limitation on the number of
+files open at any given time.
+
+* Add the GNU emacs directory stuff to unix.c, and maybe to vms.c.
+
+MAJOR (or very painful):
+
+* Look at all instances of Microcode_Termination to determine whether
+they are synchronous or not.  If not synchronous, the stack may be in
+a bad state and the termination handler may be screwed up.  In
+particular, we may be in the middle of compiled code.  This might want
+to be merged with the trap mechanism in unix.c.
+
+* Redesign fasdump so pure load can be implemented.
+
+* Fix purify so it does an indirect transport of the procedure stored
+in an environment.  Thus purifying an environment would have the
+effect of purifying the code that created it.  Maybe the values should
+be purified too.
+
+* Write complete garbage collect.  This should be easy if the
+mechanism used in bchscheme is used.
+
+* Fix purify in bchscheme.  Currently, if the object is too large, it
+crashes.
+
+* Rewrite purify to avoid the double garbage collection.  It can use
+the same hack that fasdump uses, namely build a table of fixups in the
+spare heap while it conses in constant space.  If it reaches the end
+of constant space, it backs out by using the table of fixups.
+
+* Fix the way weak pairs are treated by fasdump, and by fasdump and
+purify in bchscheme.  They should not be treated like normal pairs.
+
+* Design and implement a better microcode error facility.  Adding new
+errors and parsers is a pain in the neck, and often the only
+interesting thing is the message the microcode wants to provide.
+
+* Eliminate all fprintf(stderr, <mumble>).  This can be achieved by
+having a message facility available for the microcode.
+
+* Change the representation of compiled procedures for faster external
+calls.
+
+* Hack GC and related programs so that variable caches and uuo links
+need no type code for faster free variable reference and calls.
+
+	Things done to the C microcode:
+
+* Clean up variable reference code.  Many changes here:
+- Single trap mechanism so the microcode does not have to check more
+than one thing.  Implement unbound, unassigned, and dangerous in terms of this.
+- Clean up aux variable compilation: variables should not go into pure
+space, and then all the kludges about compilation can go away.
+- Eliminate the procedure name slot from the variable reference code.
+It should still be there for debugging, but not visible.  This also
+removes the extra test for assignment.
+	Jinx 4/2/87
+Variables can always go into pure space now because of the way aux
+compilation is done (depth, offset).
+
+* Fix `access' code so that it continues correctly when the variable
+is unbound or unassigned.  This is because the value of the access'
+environment field is not being pushed on the stack at the time of the
+error, so there is no way to continue.  There are probably some other
+similar bugs -- this one is likely to be caused by the fact that it
+requires a non-standard stack frame, making it slightly painful to
+implement.
+	Jinx 4/2/87
+
+* Setup the cached variable stuff so that assignments and references
+can be separated. 
+	Jinx 10/5/87
+
+* Remove danger bit. 
+	Jinx 10/9/87
+
+* Change various places that are signalling interrupts to use the
+macro `Request_Interrupt'.
+* Examine usage of `New_Compiler_Memtop' to determine if it is being
+used similarly.
+Eliminated.  There are new macros in interrupt.h .
+	Jinx 11/17/87
+
+* Make fasdump dump only those primitives referenced in the file.
+Maybe dump some arity information?  Once this is done, both kinds of
+primitives can be merged.
+	Jinx 11/17/87
+
+* Change primitives to use uniform mechanism like external primitive
+mechanism.
+	Jinx 11/17/87
+
+* Change the internal representation of primitives.  Instead of being
+just the primitive number, the high 12 bits of the datum can be the
+primitive number and the low 12 bits can be the primitive number if
+implemented, MAX_PRIMITIVE + 1 otherwise.  Then the primitive
+procedure table can be grown by 1 (with an error procedure) so that
+when invokig primitives the masking will automaticall cause an error
+procedure to be invoked if the primitive is not implemented, without
+comparing against MAX_PRIMITIVE.
+	Jinx 12/4/87
+
+* Improve compiled code interface to primitives.  Make them be
+expensive on backout, not on normal call.
+	Jinx 12/4/87

@@ -266,7 +266,7 @@ USA.
      (scons-rule `((* any))
        (lambda (sres)
 	 (scons-call 'regexp
-		     (apply scons-call 'quasiquote (scons-close ':) sres)))))))
+		     (scons-call 'quasiquote (cons ': sres))))))))
 
 ;;;; Conditionals
 

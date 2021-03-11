@@ -349,7 +349,7 @@ If ENV is not provided, generates a new top-level environment."
 If ENV is not provided, generates a new top-level environment."
   (lambda (#!optional env)
     (read-eval-print (convert-env env) #f 'inherit)))
-
+
 (define-command 'down '()
   "Creates a new child REPL in the current REPL environment."
   (lambda ()
@@ -364,3 +364,9 @@ If ENV is not provided, generates a new top-level environment."
   "Returns to the top-level REPL."
   (lambda ()
     (cmdl-interrupt/abort-top-level)))
+
+(define-command 'import 'import-sets
+  "Imports IMPORT-SETS into the current REPL environment.
+Syntax is identical to that defined by R7RS section 5.2."
+  (lambda import-sets
+    (apply repl-import import-sets)))

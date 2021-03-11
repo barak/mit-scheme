@@ -1,0 +1,125 @@
+-*- Text -*-
+
+
+NOTES ON DEBUGGING INFO GENERATION IN LIAR 5.0
+
+
+Liar 5.0's middle part works by transforming a piece of KMP
+s-expression source code into a simpler program.  This poses the
+challenge of tracking the transformations in order to produce
+debugging information.
+
+The final compiled program contains a set of observable points, each
+point corresponds roughly to some step in the naive evaluation of the
+program as in the 6.001 environment model.  The correpsondence is
+approximate.  Several 6.001 steps may occur in between two adjacent
+observable steps, for example, a whole batch of cons cells might be
+allocated at once.  Sometimes a 6.001 step is broken into several
+observable steps, for example (EXPT X 3) may be transformed into
+
+	(* (* X X) X)
+
+Now the inner combination becomes observable when X holds a value that
+causes * to signal an error.
+
+
+
+The goal of debugging information generation is to provide as much
+information as possible in terms of the original program source (as
+stored in the .bin file by SF) and the original environment model.
+
+
+SOURCE EXPRESSIONS
+
+Each KMP expression may be associated with a source expression.  This
+expression also contains the environment *structure* at that point in
+the program.
+
+Each new KMP expression that corresponds to the same source expression
+should be associated with the source expression.  (This is done via a
+hash table).  Usually this is accomplished by the recursive traversal
+of the KMP program.  If an expression is trivially translated into another expression then it is clear what to do.
+
+Special attention is required when code is no longer in 1-1
+correspondence with the input expression.  Example:
+
+We may replace (CAR x) with a type-safe version:
+
+	(if (%pair? x)
+	    (%car x)
+            (%primitive-error 'CAR x))
+
+The IF expression, the call to %car and the call to %primitive-error
+should all be associated with the source code that is associated with
+the input `(CAR x)'.  This way, if a later phase can prove that only
+one branch of the IF is ever taken then the information is still
+available in the subexpression.
+
+In the (* (* X X) X) case, what expression do we associate with the
+inner combination?  The only possibility is to associate the singel
+source expression with both combinations.  [TO DO: this approach gives
+weird results - (EXPT X 3) is claimed to be a subproblem of itself.
+This can be solved by adding an `outer' slot to each DBG-EXPRESSION
+object, and using that.]
+
+
+
+DEBUGGING REWRITES
+
+The purpose of many KMP rewrite phases is to make some representation
+change.  Each time we rewrite a VARIABLE to be some expression we note
+this by calling
+
+	(DBG-INFO/REMEMBER variable expression)
+
+Provided that we follow the rules below, we can use the rewrite pairs
+to reconstruct thos expressions which are still live.
+
+
+General rules
+
+. The program must be alpha-converted.
+
+. If an object's representation is changed, use a new name.
+
+. Only remember integrations (expression is (QUOTE <something>)) if
+  *all* occurences of variable are being replaced.
+
+. A common approach is to name a value in the compound, e.g. a closure
+  slot may be named after the variable stored there.  Such a name is
+  called a QUANTITY.
+
+Compound objects.
+
+This happens when one or more objects are stored in another object,
+e.g. a cell or a closure.
+
+ 1. Introduce a new name N for the compound object.
+ 2. Rewrite component expressions as accessors
+ 3. Add a DBG rewrite of the form  X --> accessor(N)
+    If using a quantity name, rewrite like this:  X --> accessor(N,'X)
+
+Uncompounding
+
+Any object that is to be uncompounded must have a quantity identifier,
+thus, e.g. we may uncompound closure-refs but not vector-refs.
+
+ 1. In program, rewrite code to elide accessor.
+ 2. In DBG info, rewrite expressions to elide all accessors of that
+    quantity.
+ 3. This requires that all source references to the compounded object
+    are uncompounded.  If thus is not so we must remove ALL dbg
+    expressions to that quantity.
+
+
+Change of compound
+
+Replace accessor-1 by accessor-2: like uncompounding except editing is
+to replace rather than elide accessors.
+
+i.e. replace  (accessor-1 N-1) by (accessor-2 N-2)
+
+
+Dont know how to do
+
+(accessor-1 (accessor-2 N-1)) --> (accessor-3 N-2)

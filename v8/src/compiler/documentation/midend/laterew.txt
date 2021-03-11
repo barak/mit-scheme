@@ -1,0 +1,52 @@
+Description of laterew.scm
+
+Purpose:
+--------
+LATEREW is a primitive rewrite stage that occurs after CPS conversion.
+Branches introduced here will not create new lambda expressions, and
+non-simple operators introduced here must be able to preserve the
+relevant state when called.
+
+
+
+Operators Introduced:
+---------------------
+%continue is used to repexent the continuation.
+%invoke-continuation if continuation is not a quote then it is CALLed
+%stack-closure-ref if an operator is a CALL to it then error of unexpected 
+continuation.
+%+ 
+%-
+%*
+%=
+%<
+%>
+%quotient
+%remainder
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+%fixop used if the operands are fixnum
+%genop used if the operands are not numbers or fixnums.
+%test used to determine which test of fixnum from below to use.
+
+%small-fixnum?
+%machine-fixnum? uses to test if the operand is a fixnum then uses %fixop.
+
+
+Guarantees on Output:
+---------------------
+ operators are rewriten without creating new lambda expretions, and non simple
+operators must be able to preserve relevant state when called.
+
+

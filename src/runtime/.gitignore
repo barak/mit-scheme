@@ -1,0 +1,4 @@
+# LIARC build products
+/*.c
+/*.o
+/runtime.a

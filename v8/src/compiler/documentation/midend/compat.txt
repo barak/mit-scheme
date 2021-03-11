@@ -1,0 +1,132 @@
+Description of compat.scm
+
+Purpose:
+--------
+COMPAT is a compatibility rewrite stage.  It makes unknown calls and
+exported procedures (i.e. closures) pass and accept parameters on the
+stack, following the current system's standard calling convention.
+It also rewrites calls to some pseudo-primitives into calls to
+existing primitives and free variables.
+(in other words it devides the parameters into ones that are in registers
+and ones that have to go on the stack and rewrites them)
+
+In general %fetch-continuation is used for the TOP-LEVEL cont. 
+
+%fetch-stack-closure is used for LAMBDA for a continuation that is for 
+variables on stack
+for variables on stack in LAMBDA a new env maps them to %stach-closure-ref
+and %vector-index.
+
+In CALL when the operator is not a pair or it is a quote
+when there are too many operands to put in registers they are
+put on the stack. The continuaition is changed into %make-stack-closure
+the stack operands are referenced with either LOOKUP or %stack-closure-ref
+If the operator is rewriten then the handler replaces the CALL, 
+It can also get an out of line handler.
+
+kinds of (rewriten) calls which have extra arguments like arity or cache
+(therefore get a handler when CALLed)
+%invoke-operator-cache
+%invoke-remote-cache
+%internal-apply
+%invoke-continuation
+
+rewriten operators
+%vector-index
+%variable-cache-ref {checks that the cont of the call is to a QUOTE or a 
+	LOOKUP otherwise error. using %stack-closure-ref} 
+	%continue is used to represent the continuation using 
+	%invoke-continuation for continuation that are a QUOTE
+	uses %variable-read-cache for cell-name
+	uses %variable-cell-ref for value-name
+	uses %reference-trap? and %hook-variable-cell-ref
+%safe-variable-cahce-ref is like %variable-cache-ref except in the end
+	it calls %unassigned? instead of %hook-variable-cell-ref and then
+	%hook-safe-variable-cell-ref.
+%variable-cache-set! the same as above uses %variable-write-cache
+	for cell-name.  old-value-name uses %variable-cell-ref
+	uses %variable-cell-set! and %hook-variable-cell-set! instead of
+	%continuation and %hook...
+%primitive-apply uses %primitive-apply/compatible also uses (not introduces)
+	 %make-stack-closure and %stack-closure-ref (for a CALL)
+
+%invoke-remote-cache and %primitive-apply/compatible are introduced
+
+Operators removed:
+------------------
+
+%*lookup is replaced by a call to the primitive LEXICAL-REFERENCE
+
+%*set! is replaced by a call to the primitive LEXICAL-ASSIGNMENT
+
+%*unassigned? is replaced by a call to the primitive LEXICAL-UNASSIGNED?
+
+%*define is replaced by a call to the primitive LOCAL-ASSIGNMENT
+
+%*define* is replaced by a call to the global procedure DEFINE-MULTIPLE
+
+%*make-enviornment is replaced by a call to the global procedure 
+  *MAKE-ENVIRONMENT
+
+%*variable-cache-ref is replaced by a lot of hairy code
+
+%*variable-cache-set! is replaced by a lot of hairy code
+
+%safe-variable-cache-ref is replaced by a lot of hairy code
+
+%copy-program is replaced by a call to a global procedure COPY-PROGRAM
+
+%execute is replaced by a call to a primitive procedure SCODE-EVAL
+
+%primitive-apply is replaced by %PRIMITIVE-APPLY/COMPATIBLE
+
+
+Operators Introduced:
+---------------------
+
+%variable-read-cache as part of rewriting %variable-cache-ref and
+	%safe-variable-cache-ref
+
+%variable-write-cache as part of rewriting %variable-cache-set!
+
+%variable-cell-ref as part of rewriting %safe-cache-ref and 
+	%safe-variable-cache-ref
+
+%variable-cell-set! as part of rewriting %variable-cache-set!
+
+%hook-variable-cell-ref as part of rewriting %variable-cache-ref
+
+%hook-safe-variable-cell-ref as part of rewriting %safe-variable-cache-ref
+
+%hook-variable-cell-set! as part of rewriting %variable-cache-set!
+
+%reference-trap? as part of rewriting %variable-cache-ref, 
+	%safe-variable-cache-ref, and  %variable-cache-set!
+
+%make-stack-closure (also by closeconv.scm) with #F
+
+%primitive-apply/compatible 
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+
+Guarantees on Output:
+---------------------
+ none
+
+
+
+
+
+
+

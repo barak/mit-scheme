@@ -1,0 +1,318 @@
+#!/bin/csh -f
+
+# Arguments: runtimeversion compilerversion edwinversion 6001version
+
+# The versions can be omitted, and if they are, the current version
+# as determined by the appropriate RCS file (e.g. runtime/version.scm)
+# is built.
+
+# If a version is the string "none", the corresponding band is not built,
+# nor is the corresponding subsystem recompiled.
+
+# If either the compiler or edwin is re-built, the combined (c+e) band
+# is re-built as well.
+
+# This script silently ignores additional arguments.
+
+# Stage 1: Choose architecture and directories
+
+hp9000s300
+if ("$status" == 0) then
+  set root="/scheme/300"
+  set student_constant=""
+endif
+hp9000s800
+if ("$status" == 0) then
+  set root="/scheme/700"
+  set student_constant=" -constant 2000"
+endif
+
+
+set noclobber
+set lock="$root/tmp/lock"
+(echo "### Rebuild in progress started by" `whoami` "on" `date` "on" `hostname` > $lock)
+if ("$status" != 0) then
+  cat "$lock"
+  exit 1
+endif
+
+
+# Stage 2: Determine what to do
+
+onintr abort_and_exit
+
+if ("$1" != "none") then
+  if (("$1" == "") || ("$1" == "next")) then
+    set runver=`rcsversion /scheme/src/runtime/version.scm`
+  else
+    set runver="$1"
+  endif
+  echo "### Making runtime system version $runver..."
+  set runtime="$root/backup/runtime-$runver"
+else
+  set runtime=""
+endif
+
+if ("$2" != "none") then
+  if (("$2" == "") || ("$2" == "next")) then
+    set compver=`rcsversion /scheme/src/compiler/base/make.scm`
+  else
+    set compver="$2"
+  endif
+  echo "### Making compiler version $compver..."
+  set complr="$root/backup/complr-$compver"
+else
+  set complr=""
+endif
+
+if ("$3" != "none") then
+  if (("$3" == "") || ("$3" == "next")) then
+    set edver=`rcsversion /scheme/src/edwin/make.scm`
+  else
+    set edver="$3"
+  endif
+  echo "### Making edwin version $edver..."
+  set edwin="$root/backup/edwin-$edver"
+else
+  set edwin=""
+endif
+
+if ("$4" != "none") then
+  if (("$4" == "") || ("$4" == "next")) then
+    set stver=`rcsversion /scheme/src/6001/make.scm`
+  else
+    set stver="$4"
+  endif
+  echo "### Making 6.001 student band version $stver..."
+  set student="$root/backup/6001-$stver"
+else
+  set student=""
+endif
+
+if (("$runtime" == "") \
+    && ("$complr" == "") \
+    && ("$edwin" == "") \
+    && ("$student" == "")) then
+  echo "### No systems to rebuild."
+  rm -f "$lock"
+  exit 0
+endif
+
+# Stage 4: Re-build bands in staging area
+
+if ("$runtime" != "") then
+  echo "### cd $root/runtime"
+  cd $root/runtime
+  rm -f ../tmp/runtime.com
+  echo "### scheme -large -fasl make.com -no-init-file"
+  scheme -large -fasl make.com -no-init-file <<*END*
+(begin
+  (disk-save "../tmp/runtime.com")
+  (write-line '(saved runtime band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building the runtime system failed."
+    rm -f ../tmp/runtime.com "$lock"
+    exit "$result"
+  endif
+  set runband="$root/tmp/runtime.com"
+  set runbandarg="-band $runband"
+else
+  set runband=""
+  set runbandarg=""
+endif
+
+
+if ("$complr" != "") then
+  echo "### cd $root/sf"
+  cd $root/sf
+  rm -f ../tmp/complr.com
+  echo "### scheme -large $runbandarg -no-init-file"
+  scheme -large $runbandarg -no-init-file <<*END*
+(begin
+  (load "make.com")
+  (cd "../compiler")
+  (load "make.com")
+  (disk-save "../tmp/complr.com")
+  (write-line '(saved compiler band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building the compiler failed."
+    rm -f ../tmp/runtime.com ../tmp/complr.com "$lock"
+    exit "$result"
+  endif
+  set compband="$root/tmp/complr.com"
+  set cbandarg="-band $compband"
+else
+  set compband=""
+  set cbandarg=""
+endif
+
+
+if ("$edwin" != "") then
+  echo "### cd $root/edwin"
+  cd $root/edwin
+  rm -f ../tmp/edwin.com
+  echo "### scheme -large $runbandarg -no-init-file"
+  scheme -large $runbandarg -no-init-file <<*END*
+(begin
+  (load "make.com")
+  (disk-save "../tmp/edwin.com")
+  (write-line '(saved edwin band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building edwin failed."
+    rm -f ../tmp/runtime.com ../tmp/complr.com ../tmp/edwin.com "$lock"
+    exit "$result"
+  endif
+  set edwinband="$root/tmp/edwin.com"
+else
+  set edwinband=""
+endif
+
+
+if (("$edwin" != "") || ("$complr" != "")) then
+  echo "### cd $root/edwin"
+  cd $root/edwin
+  rm -f ../tmp/c+e.com
+  echo "### scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file"
+  scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file <<*END*
+(begin
+  (load "make.com")
+  (disk-save "../tmp/c+e.com")
+  (write-line '(saved c+e band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building c+e failed."
+    set fullband=""
+  else
+    set fullband="$root/tmp/c+e.com"
+  endif
+else
+  set fullband=""
+endif
+
+
+if ("$student" != "") then
+  echo "### cd $root/runtime-check"
+  cd $root/runtime-check
+  rm -f ../tmp/6001.com
+  echo "### scheme -large$student_constant -fasl make.com -no-init-file"
+  scheme -large$student_constant -fasl make.com -no-init-file <<*END*
+(begin
+  (cd "../edwin")
+  (load "make.com")
+  (cd "../6001")
+  (load "make.com")
+  (disk-save "../tmp/6001.com")
+  (write-line '(saved 6001 band))
+  (%exit 0))
+(%exit 1)
+*END*
+  set result="$status"
+  if ("$result" != 0) then
+    echo "### Re-building 6.001 student band failed."
+    rm -f ../tmp/runtime.com ../tmp/complr.com ../tmp/edwin.com ../tmp/6001.com "$lock"
+    exit "$result"
+  endif
+  set studband="$root/tmp/6001.com"
+else
+  set studband=""
+endif
+
+
+# Stage 5: Install bands
+# This part should be atomic
+
+onintr -
+
+if ("$runtime" != "") then
+  set backup=`nextver $runtime.gz`
+  if ("$backup" != "$runtime.gz") then
+    echo "###" mv -f "$runtime.gz" "$backup"
+    mv -f "$runtime.gz" "$backup"
+  endif
+  echo "### gzip $runtime"
+  cpx $runband $runtime
+  gzip $runtime
+  chmod a-w $runtime.gz
+  echo "###" mv -f "$runband" "$root/lib/runtime.com"
+  mv -f "$runband" "$root/lib/runtime.com"
+endif
+
+if ("$complr" != "") then
+  set backup=`nextver $complr.gz`
+  if ("$backup" != "$complr.gz") then
+    echo "###" mv -f "$complr.gz" "$backup"
+    mv -f "$complr.gz" "$backup"
+  endif
+  echo "### gzip $complr"
+  cpx $compband $complr
+  gzip $complr
+  chmod a-w $complr.gz
+  echo "###" mv -f "$compband" "$root/lib/compiler.com"
+  mv -f "$compband" "$root/lib/compiler.com"
+endif
+
+if ("$edwin" != "") then
+# Don't save this -- CPH
+#  set backup=`nextver $edwin.gz`
+#  if ("$backup" != "$edwin.gz") then
+#    echo "###" mv -f "$edwin.gz" "$backup"
+#    mv -f "$edwin.gz" "$backup"
+#  endif
+#  echo "### gzip $edwin"
+#  cpx $edwinband $edwin
+#  gzip $edwin
+#  chmod a-w $edwin.gz
+  echo "###" mv -f "$edwinband" "$root/lib/edwin.com"
+  mv -f "$edwinband" "$root/lib/edwin.com"
+endif
+
+if ("$fullband" != "") then
+  echo "###" mv -f "$fullband" "$root/lib/c+e.com"
+  mv -f "$fullband" "$root/lib/c+e.com"
+endif
+
+if ("$student" != "") then
+# Don't save this -- CPH
+#  set backup=`nextver $student.gz`
+#  if ("$backup" != "$student.gz") then
+#    echo "###" mv -f "$student.gz" "$backup"
+#    mv -f "$student.gz" "$backup"
+#  endif
+#  echo "### gzip $student"
+#  cpx $studband $student
+#  gzip $student
+#  chmod a-w $student.gz
+  echo "###" mv -f "$studband" "$root/lib/6001.com"
+  mv -f "$studband" "$root/lib/6001.com"
+endif
+
+rm -f "$lock"
+echo "### Done."
+exit 0
+
+abort_and_exit:
+  echo ""
+  echo "### Aborting -- Cleaning up..."
+  if ("`jobs`" != "") then
+    kill %1
+    wait
+  endif
+  cd "$root/tmp"
+  rm -f runtime.com complr.com edwin.com c+e.com 6001.com "$lock"
+  echo "### Cleaned up."
+  exit 1

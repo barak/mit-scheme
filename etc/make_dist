@@ -1,0 +1,72 @@
+#!/bin/csh -fx
+# $1 = name of distribution directory to build
+# $2 = name of RCS release symbol (optional)
+# $3 = prefix string for source directories (optional) (e.g. "/z")
+
+if (($#argv < 1) || ($#argv > 3)) then
+  echo "usage: $0 <distribution directory> [<release>] [<source prefix>]"
+  exit 1
+endif
+
+set destination="$1"
+if ($#argv == 1) then
+  set rcs_opts=""
+else
+  set rcs_opts=" -r$2"
+  if ($#argv == 2) then
+    set prefix=""
+  else
+    set prefix="$3"
+endif
+set source="$prefix/scheme/rel5"
+set rcs_source="$prefix/scheme/rcs/rel5"
+
+if (-e $destination) then
+  rm -rf $destination
+endif
+mkdir $destination
+
+# Guarantee that VMS command files are constructed.
+cd $source
+vms/make.vms
+
+# Copy all the auxiliary files.
+cd $source
+find Makefile documentation etc examples makefiles libs \( \! \( -name '.*~*' -o -name '#*' -o -name '*~*' -o -name '*.bin' -o -name '*.ext' -o -name '*.com' -o -name '*.binf' -o -name '*.elc' -o -name 'RCS' -o -name 'RCS.remote' \) \) -type f -print | cpio -pdmuv $destination
+find vms \( -name '*.com' -o -name '*.txt' -o -name '*.el' \) -type f -print | cpio -pdmuv $destination
+
+# Copy the primary source code by checking out reference copies from RCS.
+foreach i (microcode runtime sf)
+  cd $destination
+  mkdir $i
+  cd $i
+  foreach j ($rcs_source/$i/*,v)
+    co $rcs_opts $j
+  end
+end
+
+# Make the PSB files by resyntaxing and converting them.
+cd $destination
+etc/resyntax
+etc/make_psb
+find * \( -name '*.bin' -o -name '*.ext' \) -print | xargs rm -f
+
+# Move things into the appropriate places.
+cd $destination/documentation
+mv INSTALL Install.* README ..
+
+cd $destination/microcode
+make -k remove
+mv config.h config.dst
+mv Makefile ../makefiles
+mv cmp68020.s cmp68020.s-src
+m4 cmp68020.s-src > cmp68020.s-hp
+cp cmp68020.s-hp cmp68020.s
+/u/cph/cvt/cvt cmp68020
+mv cmp68020.a68 cmp68020.s-sun
+rm -f cmp68020.s
+chmod -w cmp68020.s-hp cmp68020.s-sun
+
+# Create the file "make_dirs.com":
+cd $destination
+emacs -batch -q -l vms/make_dirs.el

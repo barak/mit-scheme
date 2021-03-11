@@ -1,0 +1,47 @@
+
+This directory contains LIAR, the MIT Scheme compiler.
+
+
+Here is a brief summary of the subdirectory contents:
+
+"base" contains the common base on which the rest of the compiler is
+built.  A good place to start reading the compiler is
+"base/toplev.scm" which is the top-level driver of the program.
+
+"midend" contains the higher level transformations, based on an
+s-expression syntax called KMP-Scheme.  Complex operations are
+transformed into simpler operations in a sequence Textual
+transformations.  The oder of the transformations is specified in
+"midend/midend.scm".  The first stage, "midend/inlate.scm", converts
+an SCode program into KMP-Scheme.  The last stage,
+"midend/rtlgen.scm", converts a limited subset of KMP-Scheme into RTL
+code.
+
+"rtlbase" contains the definition of the Register Transfer Language
+(RTL) data abstractions.  This is a second intermediate language which
+is a fairly standard intermediate representation for compilers.
+
+"rtlopt" contains several passes that analyze and optimize the RTL
+representation.  Such things as common subexpression elimination,
+lifetime analysis, dead code elimination, and register allocation and
+assignment are all performed here.  This is almost exclusively
+standard compiler technology which is not Scheme-specific.
+
+"back" contains the "back end" of the compiler.  This consists of a
+pass to convert RTL into assembly code for the target machine, and an
+assembler/linker for that machine.
+
+"machines" contains a subdirectory for each target machine; these
+subdirectories contain all of the machine-specific code for the
+compiler.
+
+
+The following subdirectories are not parts of the compiler per se:
+
+"documentation" contains a little bit of descriptive material.
+
+"etc" contains some programs which are used for developing and
+debugging the compiler.
+
+"improvements" contains some code which has been designed but, for
+various reasons, not yet installed in the compiler.

@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+#     2015, 2016, 2017, 2018, 2019, 2020 Massachusetts Institute of
+#     Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# inputs: source tar
+# outputs: doc image tar, formatted doc tars
+
+. "$(dirname "${0}")"/shared.sh
+restore_release_vars
+
+BUILD_DIR=doc-build
+PLUGINS_WITH_DOC=(blowfish gdbm imail)
+DIST_DOCDIR=${DIST_DIR}/doc
+
+build_docs ()
+{
+    my_configure
+    my_make "${@}"
+}
+
+make_archive_dir ()
+{
+    my_make install-"${1}" DESTDIR="${TL_DIR}"/"${DIST_DIR}"
+}
+
+notify "Building documentation"
+unpack_dist_dir "${DIST_DIR}"
+my_rm_rf "${BUILD_DIR}"
+my_mv "${DIST_DIR}" "${BUILD_DIR}"
+cleanup_file "${BUILD_DIR}"
+run_command "${DOC_OUT}"-build "${BUILD_DIR}"/doc build_docs
+for PLUGIN in "${PLUGINS_WITH_DOC[@]}"; do
+    run_command_append "${DOC_OUT}"-build "${BUILD_DIR}"/src/"${PLUGIN}" \
+	build_docs info html pdf
+done
+
+new_temp_dir "${DIST_DIR}"
+for FORMAT in html info pdf; do
+    OUT=${DOC_OUT}-archive-${FORMAT}
+    notify "Making archive for ${FORMAT}"
+    run_command "${OUT}" "${BUILD_DIR}"/doc make_archive_dir "${FORMAT}"
+    for PLUGIN in "${PLUGINS_WITH_DOC[@]}"; do
+        run_command_append "${OUT}" "${BUILD_DIR}"/src/"${PLUGIN}" \
+	    make_archive_dir "${FORMAT}"
+    done
+    my_mkdir "${DIST_DOCDIR}"
+    FROM=doc/mit-scheme
+    [[ ${FORMAT} = info ]] && FROM=info
+    my_mv "${DIST_DIR}"/usr/local/share/${FROM}/* "${DIST_DOCDIR}"/.
+    my_rm_rf "${DIST_DIR}"/usr
+    my_rm_f "${DIST_DOCDIR}"/plugins.scm
+    make_tar_file "${OUT}" "${DIST_DIR}"-doc-"${FORMAT}" "${DIST_DOCDIR}"
+    my_rm_rf "${DIST_DIR}"
+done
+
+notify_finished

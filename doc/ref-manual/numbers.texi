@@ -1290,34 +1290,9 @@ log(exp(@var{x1}) + exp(@var{x2}) + @dots{} + exp(@var{xn})).
 @end example
 
 @end ifnottex
-The approximation avoids intermediate overflow and underflow.
-To minimize error, the caller should arrange for the numbers to be
-sorted from least to greatest.
-
-Edge cases:
-
-@itemize @bullet
-@item
-If @var{list} is empty, the result is @code{-inf}, as if the
-intermediate sum were zero.
-
-@item
-If @var{list} contains only finite numbers and @code{-inf}, the
-@code{-inf} elements are ignored, since the exponential of @code{-inf}
-is zero.
-
-@item
-If @var{list} contains only finite numbers and @code{+inf}, the result
-is @code{+inf} as if the sum had overflowed.
-(Otherwise, overflow is not possible.)
-
-@item
-If @var{list} contains both @code{-inf} and @code{+inf}, or if
-@var{list} contains any NaNs, the result is a NaN.
-@end itemize
-
-@code{Logsumexp} never raises any of the standard @acronym{IEEE 754-2008}
-floating-point exceptions other than invalid-operation.
+The computation avoids intermediate overflow; @code{logsumexp}
+returns @code{+inf.0} if and only if one of the inputs is
+@code{+inf.0}.
 @end deffn
 
 @deffn procedure sqrt z

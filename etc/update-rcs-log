@@ -1,0 +1,61 @@
+#!/bin/sh
+
+# Update Scheme ChangeLog files.
+# Run daily from cph crontab on aarau.
+
+umask 002
+
+exec > /tmp/update-rcs-log.out 2>&1
+
+export PATH="/usr/local/bin:${PATH}"
+
+CVS2CL="$(which cvs2cl)"
+if [ -z "${CVS2CL}" ]; then
+    echo "cvs2cl not found."
+    exit 1
+fi
+
+if [ -n "${1}" ]; then
+    kinit -k -t /home/${1}/cron.keytab ${1}/cron
+    aklog
+fi
+
+COMMON="--revisions --usermap /scheme/v7/src/etc/usermap --domain zurich.csail.mit.edu --stdout --no-wrap --separate-header --window 3600"
+GOPTS_SCHEME="-d:pserver:anonymous@cvs.savannah.gnu.org:/cvsroot/mit-scheme"
+GOPTS_HTML="-d:pserver:anonymous@cvs.savannah.gnu.org:/webcvs/mit-scheme"
+O="ChangeLog"
+N="${O}.new"
+
+generate_log_gopts ()
+{
+    cd "${1}"
+    cvs2cl --global-opts "${2}" ${COMMON} > "${N}"
+    if cmp "${N}" "${O}"; then
+	rm -f "${N}"
+    elif [ -s "${N}" ]; then
+	mv -f "${N}" "${O}"
+    else
+	echo "Discarding zero-length log."
+	rm -f "${N}"
+    fi
+}
+
+generate_log_gopts /scheme/v7/doc "${GOPTS_SCHEME}"
+generate_log_gopts /scheme/v7/src "${GOPTS_SCHEME}"
+generate_log_gopts /scheme/etc "${GOPTS_SCHEME}"
+
+generate_log_gopts /scheme/v7/html "${GOPTS_HTML}"
+
+generate_log ()
+{
+    cd "${1}"
+    cvs2cl ${COMMON} > "${N}"
+    if cmp "${N}" "${O}"; then
+	rm -f "${N}"
+    else
+	mv -f "${N}" "${O}"
+    fi
+}
+
+#generate_log /gunk/hlsim/doc
+#generate_log /gunk/hlsim/src

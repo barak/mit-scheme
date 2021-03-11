@@ -1,0 +1,27 @@
+#!/bin/sh
+
+scheme=`pwd`
+
+if [ ! -x $scheme/microcode/Psbtobin ]
+then
+  (cd $scheme/microcode; make Psbtobin)
+fi
+
+cd $scheme/psb
+for i in `find * -type d -print | xargs echo`
+do
+  if [ ! -d $scheme/$i ]
+  then
+    echo "mkdir $scheme/$i"
+    mkdir $scheme/$i
+  fi
+  cd $scheme/psb/$i
+  for j in *
+  do
+    if [ -f $j ]
+    then
+      echo "Psbtobin $scheme/$i/$j"
+      $scheme/microcode/Psbtobin < $j > $scheme/$i/$j
+    fi
+  done
+done

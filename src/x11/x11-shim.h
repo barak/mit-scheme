@@ -215,6 +215,8 @@ extern void x_graphics_fill_polygon (struct xwindow * xw,
 				     XPoint * points);
 extern struct ximage * x_create_image (struct xwindow * xw,
 				       uint width, uint height);
+extern unsigned long x_image_width (struct ximage * ximage);
+extern unsigned long x_image_height (struct ximage * ximage);
 extern int x_bytes_into_image (unsigned char * vector, int length,
 			       struct ximage * ximage);
 extern long x_get_pixel_from_image (struct ximage * xi, int x, int y);

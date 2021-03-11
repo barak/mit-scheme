@@ -1,0 +1,136 @@
+Problems:
+
+[] Stackopt is requires too much storage.  Investigate.
+
+[DONE] Indexify should be dropped.  For large programs, fully 32% of the
+program (measured in pairs) is %vector-index expressions after
+cleanup/4 (closconv/2 leaves it at about 25%).
+
+[] Teach dataflow about coerce-to-compiled-procedure
+
+[] Reorganize coerce to keep the expressions small and unconditional
+until much later.  Perhaps the right thing is to treat
+coerce-to-compiled-procedure more like &+, expanding the in-line test
+late.  An alternative is to have an assembly hook which creates a
+trampoline or closure which can be overwritten later with the correct
+value.
+
+[] Investigate replacing %stack-closure-ref by a STACK-REF special
+form. This would save 10 pairs per stack reference.
+
+[] Why is the new code not more than 12% faster than the old code?
+
+[DONE] Move split earlier, to after applicat.
+
+[] Make split introduce closures with no code pointer as tuples.
+
+[] Make dataflow realize that is does not have enough heap space
+earlier.  Keep track of the number of nodes allocated thus far.  From
+this we can calculate the minimum space for the fully connected graph
+and give up if that much is not free after every GC.
+
+[] Dataflow might benefit from a class heirarchy for the nodes, rather
+than having to test a wierd combination of the form, name and type
+slots.
+
+[] Dataflow does not have to keep the transitive closure.  This could
+save lots of space.
+
+
+[PARTLY DONE] Figure out a way to get some debugging information (even
+just an expression) into the `local' continuations.  Getting an
+environment is harder but worth-while.
+
+[] Fix lamlift, split and friends to maintain alpha-conversion wrt
+extra stubs.
+
+[] Fix rtlgen to make internal procedures again.  Bite the bullet.
+Prescan the whole program to see if a letrec label is used in a
+%make-trivial-closure.
+
+
+[] RTLGEN.
+
+RTLGEN should be rewritten in the following way to generate better
+code.  (in an experiment ASSQ is 20% faster when done this way).
+
+ . generate call graph
+ . partition graph into DAGS by removing call edges.  Prefer removing
+   edges that break loops, and then to procedures/continuations that
+   we already know require in interrupt check.
+ . Decide which procedures should have an interrupt check.
+ . if a procedure is called from only one DAG, and does not have an
+   interrupt check (e.g. by declaration) it may be implemented as a
+   label, with pseudo-register arguments.  (perhaps this should be
+   decided before compat?)
+ . generate code for each DAG
+    - generate code for a node before any of its children.  This is
+      required so that we have the preservation information available.
+    - collect allocation & stack statistics from children which do not
+      have their own heap/stack/interrupt checks.
+ . We now have the information to insert interrupt checks at the
+   decided places.
+
+ . at the same time fix the problem that is causing r#x13 to be copied
+   at every procedure entry.
+
+
+[] Incorporate RTL instruction scheduling
+
+
+Missing functionality
+
+[] Implement checked primitive procedures.  This requires a preserving
+call to arbitrary primitives and debugging info for preservations.
+PARTLY DONE -- type based rewriting replaces primitives with unchecked
+versions if possible.
+
+Implementation strategies
+
+[UNLIKELY] Make all variables in the source code be represented by
+structures to allow instant lookup.  Requires strict alpha conversion.
+
+
+Extra functionality
+
+[] Debugging information may be able to use the environment model for
+subproblems (deeper stack frames) in certain circumstances.  Internal
+procedures that do not escape and are only called as subproblems
+(except for calling* themselves) from a fixed set of locations may be
+able to augment available information from these stack frames.  (What
+we must guarantee is that the instance of the subproblem stack frame
+must the the same as the instance of the internal procedure's parent
+frame).
+
+[] Debugging information can be used to get values for
+(sub)expressions that have already been computed.  For this to be
+useful we should remove expressions whose value is available as a
+binding (to avoid duplication, presumably frequent when the user has
+used LET to bind the value).
+
+[IN PROGRESS] Loop unrolling at KMP level.
+
+[] Declaration for controlling the generation of interrupt checks,
+heap checks and stack checks.  Declaration also for ensuring that a
+procedure can be breakpointed?
+
+[] Declaration for more live debugging information, at the expense of
+performance.  This can be implemented by bogus references to the user
+level bindings.  Two logical places to do this: before lamlift/1 might
+cause extra closures to be generated, but gets all the bindings.
+After lamlift/1 might cause extra stack references, but doesnt
+generate closures and might miss those bindings.  Unless done
+carefully this might cause lots of identity continuations.
+
+
+[] Condition tree improvements.  Some kind of CSE on conditions to
+make up for RTL's lack of boolean `registers'.  An open-coder for MEMQ
+in predicate position might be helpful.
+
+[DONE] Make SF integrate more procedures as
+    (access <name> system-global-environment)
+Include anything from R4RS that we can improve.
+
+[DONE] Make the unsyntaxer hide all the `spurrious' accesses
+introduced above.  There should be a flag which when set, elides the
+access provided that the <name> would not be captured.

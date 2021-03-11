@@ -172,7 +172,15 @@ USA.
 			       (cdr parsed-decl)))
 		  ((cond-expand)
 		   (expand-parsed-decls
-		    (evaluate-cond-expand eq? parsed-decl)))
+		    (evaluate-cond-expand
+		     eq?
+		     (filter (lambda (clause) (not (eq? 'else (car clause))))
+			     (cdr parsed-decl))
+		     (cond ((find (lambda (clause) (eq? 'else (car clause)))
+				  (cdr parsed-decl))
+			    => cdr)
+			   (else '())))
+		    directory))
 		  ((include include-ci)
 		   (list
 		    (cons (car parsed-decl)

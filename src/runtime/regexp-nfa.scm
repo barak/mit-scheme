@@ -665,7 +665,9 @@ USA.
 (define (all-groups string index ctx)
   (cons (make-group 0 string index (ctx-index ctx))
 	(map (lambda (p) (p string))
-	     (reverse (ctx-groups ctx)))))
+	     (if (ctx-groups ctx)
+		 (reverse (ctx-groups ctx))
+		 '()))))
 
 (define-record-type <group>
     (make-group key string start end)

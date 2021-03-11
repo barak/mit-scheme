@@ -1,0 +1,81 @@
+Description of cleanup.scm
+
+Purpose:
+--------
+
+CLEANUP is a general optimization phase, called several times.  It
+primarly optimizes LETs and pseudo LETs (CALLs with LAMBDAs as their
+operators).  This is a restricted form of static beta-substitution.
+
+1. It substitutes bound variables by their values if the expressions
+   for the values are sufficiently simple.  Currently only the
+   following value expressions can be substituted:
+    a) LOOKUP forms.
+    b) QUOTE forms.
+    c) CALLs to a simple magic cookie procedure (currently
+       %STACK-CLOSURE-REF and %HEAP-CLOSURE-REF).  The essential
+       property of such expressions is that they are side-effect
+       insensitive and too cheap to pre-compute and bind to a
+       name. (%HEAP-CLOSURE-REF is side-effect insensitive because
+       %HEAP-CLOSURE-SET! is used only in limited ways to construct
+       mutually referring closures).
+
+   The substitution is, of course, careful to avoid name capture.
+
+2. CALL to a LAMBDA is not quite identical to a LET, because there is
+   a continuation to be considered.  If the continuation to the CALL
+   is %MAKE-STACK-CLOSURE it is handled very specially (see code for
+   details).
+
+3. There is special handling for calls to explicit heap closures
+   i.e. expressions of the form
+      (CALL %INTERNAL-APPLY ...
+        (CALL %MAKE-HEAP-CLOSURE '#F (LAMBDA (...) body) ...)
+        ...)
+   This can be converted to the simpler form
+      (CALL (LAMBDA (...) body') ...)
+   provided the body has no self-references.
+
+4. There is special handling for calls to explicit trivial closures,
+   similar to that for explicit heap closures.  This, too, replaces
+   the closure with a LAMBDA expression.
+
+5. Known operators with sufficiently constrained argument expressions
+   are replaced by `simpler' expressions.  Most generic arithmetic
+   operations are constant-folded.  Some are re-written, for example
+      (fix:+ (fix:+ 1 x) 2)
+   is rewritten to (fix:+ x 3) in two steps.
+
+6. IF expressions are also constant-folded, and there are a couple of
+   rewrites for improving combinations of IF and NOT.
+
+Operators Introduced:
+---------------------
+none
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+none
+
+Magic Cookies handled specially:
+--------------------------------
+%HEAP-CLOSURE-REF for optimization 3 and as part of the restriction on
+  optimization 1.
+%STACK-CLOSURE-REF as part of the restriction on optimization 1.
+%INTERNAL-APPLY for optimizations 3 and 4.
+%MAKE-HEAP-CLOSURE for optimization 3.
+%MAKE-TRIVIAL-CLOSURE for optimization 4.
+%MAKE-STACK-CLOSURE for optimization 2.
+
+Guarantees on Output:
+---------------------
+1. No empty binding forms like (LET () e)
+2. No `chained' bindings of the form (LET ((x y)) ...)
+
+[Original guarantee: `No unused bindings' is not true.]

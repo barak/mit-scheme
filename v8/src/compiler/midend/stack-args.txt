@@ -1,0 +1,401 @@
+-*- Scheme -*-
+
+Design notes for passing some arguments on the stack.
+
+
+
+Original legal continuations:
+
+    #F					; Proir to CPS and inlined non-CPS code
+
+    (lookup cont-var)			; Tail call [no stack adjustment]
+
+    (call stack-closure-ref ... 'cont-var)
+
+    (call make-stack-closure		; push, continuation is in expr...
+	  #F
+	  #F
+	  '#(name ...)
+	  expr ...)
+
+    (call make-stack-closure		; reformat, cont is label of lambda
+	  #F
+	  (lambda (ignored-cont result ...)
+	    ...)
+	  '#(name ...)
+	  expr ...)
+
+
+New legal continuations
+
+    (lookup name)			; Tail call, pop if model
+
+    (call make-stack-closure		; reformat, cont is unboxed
+	  #F
+	  (lookup cont-var)
+	  '#(name ...)
+	  expr ...)
+
+    (call make-stack-closure		; reformat, get cont from stack first
+	  #F
+	  (call stack-closure-ref ... 'cont-var)
+	  '#(name ...)
+	  expr ...)
+
+
+
+Example: A call with many args with a continuation with many args:
+
+  (call (loopup op)
+	(call 'make-stack-closure
+	      #F
+	      (lambda (ignored-cont val1 ... valM)
+		(let ((frame (call 'fetch-stack-closure
+				   #F
+				   '#(saved1 ... savedL valK+1 ... valM))))
+		  body))
+	      '#(saved1 ... savedL argK+1 ... argN)
+	      saved1-expr
+	      ...
+	      savedL-expr
+	      argK+1-expr
+	      ...
+	      argN-expr)
+	arg1-expr
+	...
+	argK-expr)
+
+Notes:
+
+ 1. Only arguments val1..valK (i.e. not listed in the vector in
+    fetch-stack-closure) should be loaded from registers.
+
+
+Example: A procedure of many arguments: (lambda (a1..aN) (g 10))
+
+  (lambda (cont arg1 .. argN)
+    (let ((frame (call 'fetch-stack-closure #F '#(argK+1 ... argN))))
+      (call (lookup g)
+	    (lookup cont)		; THIS lookup => pop
+	    '10))))
+
+Notes:
+
+ 1. If the unboxed continuation is in the stack (i386) it might be
+    better to pop it into a register rather than grab the value, pop
+    stack and then put the value back.
+
+ 2. FRAME is not live if all the stack-passed arguments are unused.
+    This is worrysome if simplify/cleanup are run again (at the moment
+    they are not)
+
+ 3. The base (index 0) element of the stack closure is no longer
+    continuation.
+
+
+Example: Tailing to a parameter of many arguments: (lambda (a1..aN) (aj..))
+
+  (lambda (cont arg1 .. argN)
+    (let ((frame (call 'fetch-stack-closure #F '#(argK+1 ... argN))))
+      (call 'internal-apply
+	    (call 'make-stack-closure
+		  #F
+		  (lookup cont)		; Previously illegal
+		  #(passedK+1 ... passedM)
+		  passedK+1-expr
+		  ...
+		  passedM-expr)
+	    (call 'stack-closure-ref ... 'argj) ; or (lookup argj, j<=K)
+	    passed1-expr
+	    ...
+	    passedK-expr)))
+
+
+Example: Procedure of many arguments with subproblem call of many
+arguments returing many results.
+
+
+(Original)
+
+  (lambda (cont arg1 ... argN-1 #!rest argN)
+    (call (lookup g)
+	  (call 'make-stack-closure
+		#F
+		(lambda (ignored-cont val1 ... valL)
+		  (let ((frame (call 'fetch-stack-closure
+				     #F
+				     '#(saved1 ... savedS))))
+		    body))
+		'#(saved1 ... savedS)
+		saved1-expr
+		...
+		savedS-expr)
+	  passed1-expr
+	  ...
+	  passedM-expr))
+		
+
+  (lambda (cont arg1 ... argN-1 #!rest argN)
+    (let ((frame (call 'fetch-stack-closure #F '#(argK+1 ... argN-1 argN))))
+      (call (lookup g)
+	    (call 'make-stack-closure
+		  #F
+		  (lambda (ignored-cont val1 ... valL)
+		    (let ((frame (call 'fetch-stack-closure
+				       #F
+				       '#(saved1 ... savedS valK+1 ... valL))))
+		      body*))
+		  '#(saved1 ... savedS passedK+1 ... passedM)
+		  saved1-expr
+		  ...
+		  savedS-expr
+		  passedK+1-expr
+		  ...
+		  passedM-expr)
+	    passed1-expr
+	    ...
+	    passedK-expr)))
+
+Notes:
+
+ 1. If any of argK+1 ... argN are live in BODY then they will be in
+    the saved set, so we dont save them explicitly.  Thus the unused
+    parameters will be overwritten.
+
+ 2. ?Must teach stackopt that only the common prefix of the stack
+    frame vectors is open to re-ordering.
+
+
+----------------------------------------------------------------------
+;; What we get:
+
+(lambda (k0 u v w)
+  (call P1
+	(call 'make-stack-closure
+	      '#f
+	      (lambda (_1 r1)
+		#(k3 v w)
+		(call P2 k3 v w r1))
+	      #(k3 v w)
+	      (call 'make-stack-closure
+		    '#f
+		    (lambda (_2 r2)
+		      #(k0 u v)
+		      (call P3 k0 r2 u v))
+		    #(k0 u v)
+		    k0
+		    u
+		    v)
+	      v
+	      w)))
+
+;; What it came from:
+
+(lambda (k0 u v w)
+  (call (lambda (k3)
+	  (call 'make-stack-closure
+		'#f
+		(lambda (_1 r1)
+		  #(k3 v w)
+		  (call P2 k3 v w r1))
+		#(k3 v w)
+		k3
+		v
+		w))
+	(call 'make-stack-closure
+	      '#f
+	      (lambda (_2 r2)
+		#(k0 u v)
+		(call P3 k0 r2 u v))
+	      #(k0 u v)
+	      k0
+	      u
+	      v)))
+
+;; What it would have been if we had not messed up (i.e. done the
+;; substitution early enough not to be confused by stack closures.
+
+(lambda (k0 u v w)
+  (call P1
+	(call 'make-stack-closure
+	      '#f
+	      (lambda (_1 r1)
+		#(k0 u v w)
+		(call P2
+		      (call 'make-stack-closure
+			    '#f
+			    (lambda (_2 r2)
+			      #(k0 u v)
+			      (call P3 k0 r2 u v))
+			    #(k0 u v)
+			    k0
+			    u
+			    v)
+		      v
+		      w
+		      r1))
+	      #(k0 u v w)
+	      u
+	      v
+	      w)))
+
+----------------------------------------------------------------------
+
+What happens when we allow any continuation-valued expression as a
+make-stack-closure value expression?  We know what to do with a
+passed-in continuation and a stack-closure-ref.  What about another
+make-stack-closure?  What are the implications of allowing the stack
+closure sublanguages to be closed?
+
+
+  (call (loopup op)
+	(call 'make-stack-closure
+	      #F
+	      (lambda (ignored-cont1 val1)
+		(let ((frame1 (call 'fetch-stack-closure
+				    #F
+				    '#(saved11 ... saved1L))))               --1
+		  body1))
+	      '#(saved11 ... saved1L argK+1 ... argN)                        --2
+	      (call 'make-stack-closure ; = saved11-expr
+		    #F
+		    (lambda (ignored-cont2 val2)
+		      (let ((frame2 (call 'fetch-stack-closure
+					  #F
+					  '#(saved21 ... saved2L))))         --3
+			body2))
+		    '#(saved21 ... saved2L)                                  --4
+		    (call 'make-stack-closure ; = saved21-expr
+			  #F
+			  (lambda (ignored-cont3 val3)
+			    (let ((frame2 (call 'fetch-stack-closure
+						#F
+						'#(saved31 ... saved3L))))   --5
+			      body3))
+			  '#(saved31 ... saved3L)                            --6
+			  saved31-expr
+			  ...
+			  saved3L-expr)
+                    saved22-expr
+		    ...
+		    saved2L-expr)
+	      saved12-expr
+	      ...
+	      saved1L-expr
+	      argK+1-expr
+	      ...
+	      argN-expr)
+	arg1-expr
+	...
+	argK-expr)
+
+Execution sequence: op body1 body2 body3
+
+Stack sequence:
+
+pre-call
+saved31 ... saved3L                                                          --6
+                    saved21 ... saved2L                                      --4
+                                        saved11 ... saved1L argK+1 ... argN  --2
+                                        saved11 ... saved1L                  --1
+                                        body1
+                    saved21 ... saved2L                                      --3
+                    body2
+saved31 ... saved3L                                                          --5
+body3
+
+
+What will have to be changed?
+
+ . Stackopt - to build a correct model
+
+ . Rtlgen - I bet this hairs up the stack rewriting an awful lot.  The
+   inner make-stack-closures need to be pushed first.
+
+ . Alternative:  Transform
+
+    (call <procedure>
+	  (call 'make-stack-closure
+		#F
+		<lambda>
+		#<frame>
+		(call 'make-stack-closure #F ...)
+		...))
+
+   To
+
+    (call (lambda (cont)
+	    (call <procedure>
+		  (call 'make-stack-closure
+			#F
+			<lambda>
+			#<frame>
+			(lookup cont)
+			...)))
+	  (call 'make-stack-closure #F ...))
+
+This works for nested make-stack-closures by repeating transformation
+on the top-level expression.  Intuitively this turns the nested saves
+inside-out so that we can deal with them one at a time.
+
+(call (lambda (cont2)
+	(call (lambda (cont1)
+		(call (loopup op)
+		      (call 'make-stack-closure
+			    #F
+			    (lambda (ignored-cont1 val1)
+			      (let ((frame1 (call 'fetch-stack-closure
+						  #F
+						  '#(saved11 ... saved1L)))) --1
+						  body1))
+			    '#(saved11 ... saved1L argK+1 ... argN)          --2
+			    (lookup cont1)
+			    saved12-expr
+			    ...
+			    saved1L-expr
+			    argK+1-expr
+			    ...
+			    argN-expr)
+		      arg1-expr
+		      ...
+		      argK-expr))
+	      (call 'make-stack-closure	; = saved11-expr
+		    #F
+		    (lambda (ignored-cont2 val2)
+		      (let ((frame2 (call 'fetch-stack-closure
+					  #F
+					  '#(saved21 ... saved2L))))         --3
+					  body2))
+		    '#(saved21 ... saved2L)                                  --4
+		    (lookup cont2)
+		    saved22-expr
+		    ...
+		    saved2L-expr)))
+      (call 'make-stack-closure		; = saved21-expr
+	    #F
+	    (lambda (ignored-cont3 val3)
+	      (let ((frame2 (call 'fetch-stack-closure
+				  #F
+				  '#(saved31 ... saved3L))))                 --5
+				  body3))
+	    '#(saved31 ... saved3L)                                          --6
+	    saved31-expr
+	    ...
+	    saved3L-expr))
+
+
+
+How do we return N>K results, e.g. (lambda () (`values' 1 2 3 ... N)) ?
+
+    (lambda (cont)
+      (call 'invoke-continuation
+	    (call 'make-stack-closure
+		  #F
+		  (lookup cont)
+		  '#(vK+1 vK+2 ... vN)
+		  valK+1-expr
+		  ...
+		  valN-expr)
+	    val1-expr
+	    ...
+	    valK-expr))

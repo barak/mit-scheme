@@ -1,0 +1,41 @@
+Description of simplify.scm
+
+Purpose:
+--------
+
+SIMPLIFY is a general optimization phase, called several times.  It is
+the dual of CLEANUP and works in conjunction with it.  It examines
+variable bindings and rewrites CALLs with LOOKUP operators into CALLs
+with LAMBDA operators which CLEANUP will then reduce further. (It does
+that if it is a lambda without ordinary refs and either only one
+operator ref or the the value is a call to a lookup. Also if the
+length of the ordinary and the length of the operator ref equals 1 and
+the binding is simple and side effect free or insensitive). If the
+lambda expression is simple enough then it removes the binding and
+removes the lookup and just assignes the values straight to the
+variable and leaves the let with no variables.
+
+1st-half of beta substitution  replace variable operators with  lambda expressions
+
+Operators Introduced:
+---------------------
+none
+
+Restrictions on Input:
+----------------------
+Special forms excluded: 
+  ACCESS, DEFINE, DELAY, IN-PACKAGE, OR, SET!, THE-ENVIRONMENT
+  UNASSIGNED?
+
+Special forms introduced:
+-------------------------
+  none
+
+Magic Cookies handled specially:
+-------------------------------
+none
+
+Guarantees on Output:
+---------------------
+ none
+
