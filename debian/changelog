@@ -1,3 +1,11 @@
+mit-scheme (11.2-1) unstable; urgency=medium
+
+  * new upstream release
+  * check signature in debian/watch
+  * remove upstream maintenance quilt patches
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 11 Mar 2021 00:54:23 +0000
+
 mit-scheme (11.1-5) unstable; urgency=medium
 
   * track upstream maintenance branch as quilt patches
