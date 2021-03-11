@@ -8,12 +8,12 @@ Minor updates to mit-scheme(1).
  1 file changed, 33 insertions(+), 19 deletions(-)
 
 diff --git a/doc/mit-scheme.1 b/doc/mit-scheme.1
-index 878a49e..15a678d 100644
+index 73ad0ae..3108495 100644
 --- a/doc/mit-scheme.1
 +++ b/doc/mit-scheme.1
 @@ -1,10 +1,10 @@
--.TH "mit-scheme" "1" "11.1" "MIT/GNU Scheme Team" ""
-+.TH "mit\-scheme" "1" "11.1" "MIT/GNU Scheme Team" ""
+-.TH "mit-scheme" "1" "11.2" "MIT/GNU Scheme Team" ""
++.TH "mit\-scheme" "1" "11.2" "MIT/GNU Scheme Team" ""
  .SH "NAME"
  .LP
 -mit-scheme - The MIT/GNU Scheme development environment

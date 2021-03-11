@@ -8,7 +8,7 @@ Subject: AUXDIR_NAME sans arch
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 8892858..8b76eca 100644
+index 3fde4ea..8237dbb 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
 @@ -173,7 +173,7 @@ esac
@@ -21,7 +21,7 @@ index 8892858..8b76eca 100644
  MIT_SCHEME_LIBDIR=${AUXDIR}/
  MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
 diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
-index 9fe14ab..5e25414 100644
+index 77fe9d8..1f86469 100644
 --- a/src/microcode/configure.ac
 +++ b/src/microcode/configure.ac
 @@ -300,7 +300,7 @@ esac
