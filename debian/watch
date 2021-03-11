@@ -1,2 +1,3 @@
 version=4
-https://ftp.gnu.org/gnu/mit-scheme/stable.pkg/([\d\.]+)/@PACKAGE@-([\d\.]+)@ARCHIVE_EXT@ debian uupdate
+opts="pgpmode=auto" \
+ https://ftp.gnu.org/gnu/mit-scheme/stable.pkg/([\d\.]+)/@PACKAGE@-([\d\.]+)@ARCHIVE_EXT@ debian uupdate
