@@ -975,24 +975,31 @@ This could be used to define @code{memv} as follows:
 @cindex mapping, of list
 
 @deffn {standard procedure} map procedure list list @dots{}
-@var{Procedure} must be a procedure taking as many arguments as there
-are @var{list}s.  If more than one @var{list} is given, then they must
-all be the same length.  @code{map} applies @var{procedure} element-wise
-to the elements of the @var{list}s and returns a list of the results, in
-order from left to right.  The dynamic order in which @var{procedure} is
-applied to the elements of the @var{list}s is unspecified; use
-@code{for-each} to sequence side effects.
+It is an error if @var{procedure} does not accept as many arguments as
+there are @var{list}s and return a single value.
+
+The @code{map} procedure applies @var{procedure} element-wise to the
+elements of the @var{list}s and returns a list of the results, in
+order.  If more than one @var{list} is given and not all lists are the
+same length, @code{map} terminates when the shortest list runs out.
+The @var{list}s can be circular, but it is an error if all of them
+are circular.  It is an error for @var{procedure} to mutate any of the
+lists.  The dynamic order in which @var{procedure} is applied to the
+elements of the @var{list}s is unspecified.  If multiple returns occur
+from @code{map}, the values returned by earlier returns are not
+mutated.
 
 @example
 @group
-(map cadr '((a b) (d e) (g h)))           @result{} (b e h)
-(map (lambda (n) (expt n n)) '(1 2 3 4))  @result{} (1 4 27 256)
-(map + '(1 2 3) '(4 5 6))                 @result{} (5 7 9)
+(map cadr '((a b) (d e) (g h)))         @result{} (b e h)
+(map (lambda (n) (expt n n)) '(1 2 3 4 5))
+                                        @result{} (1 4 27 256 3125)
+(map + '(1 2 3) '(4 5 6 7))             @result{} (5 7 9)
 (let ((count 0))
   (map (lambda (ignored)
          (set! count (+ count 1))
          count)
-       '(a b c)))                         @result{} @r{unspecified}
+       '(a b)))                         @result{} (1 2) @r{or} (2 1)
 @end group
 @end example
 @end deffn
@@ -1085,12 +1092,20 @@ Deprecated, use @code{fold-right} instead.  Equivalent to
 
 
 @deffn {standard procedure} for-each procedure list list @dots{}
+It is an error if @var{procedure} does not accept as many arguments as
+there are @var{list}s.
+
 The arguments to @code{for-each} are like the arguments to @code{map},
 but @code{for-each} calls @var{procedure} for its side effects rather
 than for its values.  Unlike @code{map}, @code{for-each} is guaranteed
-to call @var{procedure} on the elements of the @var{list}s in order from
-the first element to the last, and the value returned by @code{for-each}
-is unspecified.
+to call @var{procedure} on the elements of the @var{list}s in order
+from the first element(s) to the last, and the value returned by
+@code{for-each} is unspecified.  If more than one @var{list} is given
+and not all lists have the same length, @code{for-each} terminates
+when the shortest @var{list} runs out.  The @var{list}s can be
+circular, but it is an error if all of them are circular.
+
+It is an error for @var{procedure} to mutate any of the lists.
 
 @example
 @group
