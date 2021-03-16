@@ -166,31 +166,31 @@ USA.
     vector))
 
 (define (vector-map procedure vector . vectors)
-  (guarantee vector? vector 'vector-map)
-  (for-each (lambda (v) (guarantee vector? v 'vector-map)) vectors)
-  (let ((n (vector-length vector)))
-    (for-each (lambda (v)
-		(if (not (fix:= (vector-length v) n))
-		    (error:bad-range-argument v 'vector-map)))
-	      vectors)
-    (let ((result (make-vector n)))
+  (let ((n
+	 (fold (lambda (v n)
+		 (fix:min (vector-length v) n))
+	       (vector-length vector)
+	       vectors)))
+    (let ((v (make-vector n)))
       (do ((i 0 (fix:+ i 1)))
 	  ((not (fix:< i n)))
-	(vector-set! result
+	(vector-set! v
 		     i
 		     (apply procedure
 			    (vector-ref vector i)
 			    (map (lambda (v) (vector-ref v i)) vectors))))
-      result)))
+      (let ((result (make-vector n)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n)))
+	  (vector-set! result i (vector-ref v i)))
+	result))))
 
 (define (vector-for-each procedure vector . vectors)
-  (guarantee vector? vector 'vector-for-each)
-  (for-each (lambda (v) (guarantee vector? v 'vector-for-each)) vectors)
-  (let ((n (vector-length vector)))
-    (for-each (lambda (v)
-		(if (not (fix:= (vector-length v) n))
-		    (error:bad-range-argument v 'vector-for-each)))
-	      vectors)
+  (let ((n
+	 (fold (lambda (v n)
+		 (fix:min (vector-length v) n))
+	       (vector-length vector)
+	       vectors)))
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i n)) unspecific)
       (apply procedure

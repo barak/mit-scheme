@@ -306,15 +306,16 @@ USA.
   (take (drop list start) (- end start)))
 
 (define (list-copy items)
-  (if (%null-list? items 'list-copy)
-      items
+  (if (pair? items)
       (let ((head (cons (car items) '())))
 	(let loop ((list (cdr items)) (previous head))
-	  (if (not (%null-list? list 'list-copy))
+	  (if (pair? list)
 	      (let ((new (cons (car list) '())))
 		(set-cdr! previous new)
-		(loop (cdr list) new))))
-	head)))
+		(loop (cdr list) new))
+	      (set-cdr! previous list)))
+	head)
+      items))
 
 (define (tree-copy tree)
   (let walk ((tree tree))
@@ -494,48 +495,44 @@ USA.
 
    (named-lambda (map self procedure first . rest)
      (declare (ignore self))
-     (let map-n ((lists (cons first rest)))
-       (let ((head (cons unspecific '())))
-	 (let loop ((lists lists) (previous head))
-	   (let split ((lists lists) (cars '()) (cdrs '()))
-	     (if (pair? lists)
-		 (if (not (%null-list? (car lists) 'map))
-		     (split (cdr lists)
-			    (cons (car (car lists)) cars)
-			    (cons (cdr (car lists)) cdrs)))
-		 (let ((new (cons (apply procedure (reverse! cars)) '())))
-		   (set-cdr! previous new)
-		   (loop (reverse! cdrs) new)))))
-	 (cdr head))))
+     (%reverse
+      (let map-n ((lists (cons first rest)) (r '()))
+	(let split ((lists lists) (cars '()) (cdrs '()))
+	  (if (pair? lists)
+	      (if (%null-list? (car lists) 'map)
+		  r
+		  (split (cdr lists)
+			 (cons (car (car lists)) cars)
+			 (cons (cdr (car lists)) cdrs)))
+	      (map-n (reverse! cdrs)
+		     (cons (apply procedure (reverse! cars)) r)))))))
 
    #f					;zero arguments
    #f					;one argument (procedure)
 
    (named-lambda (map procedure first)
-     (let map-1 ((l first))
-       (if (%null-list? l 'map)
-	   '()
-	   (let ((head (cons (procedure (car l)) '())))
-	     (let loop ((l (cdr l)) (previous head))
-	       (if (not (%null-list? l 'map))
-		   (let ((new (cons (procedure (car l)) '())))
-		     (set-cdr! previous new)
-		     (loop (cdr l) new))))
-	     head))))
+     (%reverse
+      (let map-1 ((l first) (r '()))
+	(if (%null-list? l 'map)
+	    r
+	    (map-1 (cdr l)
+		   (cons (procedure (car l)) r))))))
 
    (named-lambda (map procedure first second)
-     (let map-2 ((l1 first) (l2 second))
-       (if (or (%null-list? l1 'map)
-	       (%null-list? l2 'map))
-	   '()
-	   (let ((head (cons (procedure (car l1) (car l2)) '())))
-	     (let loop ((l1 (cdr l1)) (l2 (cdr l2)) (previous head))
-	       (if (not (or (%null-list? l1 'map)
-			    (%null-list? l2 'map)))
-		   (let ((new (cons (procedure (car l1) (car l2)) '())))
-		     (set-cdr! previous new)
-		     (loop (cdr l1) (cdr l2) new))))
-	     head))))))
+     (%reverse
+      (let map-2 ((l1 first) (l2 second) (r '()))
+	(if (or (%null-list? l1 'map)
+		(%null-list? l2 'map))
+	    r
+	    (map-2 (cdr l1)
+		   (cdr l2)
+		   (cons (procedure (car l1) (car l2)) r))))))))
+
+(define-integrable (%reverse list)
+  (let rev ((list list) (reversed '()))
+    (if (pair? list)
+	(rev (cdr list) (cons (car list) reversed))
+	reversed)))
 
 (let-syntax
     ((mapper
