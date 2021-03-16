@@ -217,7 +217,9 @@ USA.
 						     document)))))
 		ucd-property-metadata)
       (generate-canonical-dm-prop)
-      (generate-canonical-cm-prop))))
+      (generate-canonical-cm-prop)
+      (compute-gcb+ep-prop)
+      (compute-wb+ep-prop))))
 
 (define (write-prop-file prop-name ucd-version prop-alist)
   (with-notification (lambda (port)
@@ -495,6 +497,85 @@ USA.
 (define canonical-cm-prop-splitter
   (string-splitter 'delimiter #\space 'allow-runs? #f))
 
+(define (compute-gcb+ep-prop)
+  (write-prop-file "GCB+EP"
+		   (read-ucd-version-file)
+		   (compute-gcb+ep-prop-alist)))
+
+(define (compute-gcb+ep-prop-alist)
+  (merge-ext-pict (read-prop-file "GCB")
+		  (read-prop-file "ExtPict")))
+
+(define (compute-wb+ep-prop)
+  (write-prop-file "WB+EP"
+		   (read-ucd-version-file)
+		   (compute-wb+ep-prop-alist)))
+
+(define (compute-wb+ep-prop-alist)
+  (merge-ext-pict (read-prop-file "WB")
+		  (read-prop-file "ExtPict")))
+
+(define (merge-ext-pict break-map ext-pict)
+  (let loop
+      ((bs (cpl-start break-map))
+       (be (cpl-end break-map))
+       (bv (cpl-value break-map))
+       (brest (cpl-rest break-map))
+       (es (cpl-start ext-pict))
+       (ee (cpl-end ext-pict))
+       (ev (cpl-value ext-pict))
+       (erest (cpl-rest ext-pict)))
+    (if (not (fix:= bs es))
+	(error "Mismatched starts:" bs es))
+    (let ((v (if (string=? "Y" ev) (string-append bv "+EP") bv)))
+      (cond ((fix:< be ee)
+	     (cons (cons (make-cpr bs be) v)
+		   (loop (cpl-start brest)
+			 (cpl-end brest)
+			 (cpl-value brest)
+			 (cpl-rest brest)
+			 be
+			 ee
+			 ev
+			 erest)))
+	    ((fix:< ee be)
+	     (cons (cons (make-cpr bs ee) v)
+		   (loop ee
+			 be
+			 bv
+			 brest
+			 (cpl-start erest)
+			 (cpl-end erest)
+			 (cpl-value erest)
+			 (cpl-rest erest))))
+	    (else
+	     (cons (cons (make-cpr bs be) v)
+		   (if (and (pair? brest) (pair? erest))
+		       (loop (cpl-start brest)
+			     (cpl-end brest)
+			     (cpl-value brest)
+			     (cpl-rest brest)
+			     (cpl-start erest)
+			     (cpl-end erest)
+			     (cpl-value erest)
+			     (cpl-rest erest))
+		       (begin
+			 (if (or (pair? brest) (pair? erest))
+			     (error "Unused:" brest erest))
+			 '()))))))))
+
+(define (cpl-start cpl)
+  (cpr-start (caar cpl)))
+
+(define (cpl-end cpl)
+  (cpr-end (caar cpl)))
+
+(define (cpl-value cpl)
+  (cdar cpl))
+
+(define (cpl-rest cpl)
+  (cdr cpl))
+
 ;;;; Code-point ranges
 
 (define (make-cpr start #!optional end)
@@ -535,17 +616,6 @@ USA.
 (define (cpr-size cpr)
   (fix:- (cpr-end cpr) (cpr-start cpr)))
 
-(define (merge-cpr-list cprs)
-  (if (pair? cprs)
-      (if (and (pair? (cdr cprs))
-               (cprs-adjacent? (car cprs) (cadr cprs)))
-          (merge-cpr-list
-           (cons (merge-cprs (car cprs) (cadr cprs))
-                 (cddr cprs)))
-          (cons (car cprs)
-                (merge-cpr-list (cdr cprs))))
-      '()))
-
 (define (cprs-adjacent? cpr1 cpr2)
   (fix:= (cpr-end cpr1) (cpr-start cpr2)))
 
@@ -566,7 +636,7 @@ USA.
 
 (define (write-output-files)
   (generate-standard-property-tables)
-  (convert-normalization-test-data))
+  (convert-all-test-data))
 
 (define copyright-file-name
   (merge-pathnames "../../dist/copyright.scm" this-directory))
@@ -581,12 +651,12 @@ USA.
 		"CWU"
 		"Cased"
 		"Comp_Ex"
-		"GCB"
+		"GCB+EP"
 		"Lower"
 		"NFC_QC"
 		"NFD_QC"
 		"Upper"
-		"WB"
+		"WB+EP"
 		"WSpace"
 		"canonical-cm"
 		"canonical-dm"
@@ -1245,7 +1315,7 @@ USA.
 (define (convert-grapheme-break-test-data)
   (convert-test-data "GraphemeBreakTest.txt"
 		     "test-ucd-grapheme-data"
-		     "grapheme-break data"
+		     "grapheme breaks"
 		     #f
 		     (cons comment-line-pattern comment-line-action)
 		     (cons break-line-pattern break-line-action)))
@@ -1253,41 +1323,46 @@ USA.
 (define (convert-word-break-test-data)
   (convert-test-data "WordBreakTest.txt"
 		     "test-ucd-word-data"
-		     "word-break data"
+		     "word breaks"
 		     #f
 		     (cons comment-line-pattern comment-line-action)
 		     (cons break-line-pattern break-line-action)))
 
 (define (convert-test-data input output description input-coding . rules)
-  (call-with-input-file (ucd-file-name input)
-    (lambda (input-port)
-      (if input-coding
-	  (port/set-coding input-port input-coding))
-      (call-with-output-file (output-file-name output)
-	(lambda (output-port)
-	  (port/set-coding output-port 'us-ascii)
-	  (port/set-line-ending output-port 'newline)
-	  (parameterize ((param:print-ascii-only? #t)
-			 (param:pp-lists-as-tables? #f))
-	    (write-string ";;; -*-Scheme-*- Test-case data for " output-port)
-	    (write-string description output-port)
-	    (newline output-port)
-	    (newline output-port)
-	    (let loop ()
-	      (let ((line (read-line input-port)))
-		(if (not (eof-object? line))
-		    (begin
-		      (let rule-loop ((rules rules))
-			(if (pair? rules)
-			    (let ((rule (car rules))
-				  (rules (cdr rules)))
-			      (let ((rm (regexp-matches (car rule) line)))
-				(if rm
-				    ((cdr rule) rm output-port)
-				    (rule-loop rules))))
-			    (error "Unmatched line" line)))
-		      (newline output-port)
-		      (loop)))))))))))
+  (let ((description (string-append "Test-case data for " description)))
+    (with-notification
+	(lambda (port)
+	  (write-string description port))
+      (lambda ()
+	(call-with-input-file (ucd-file-name input)
+	  (lambda (input-port)
+	    (if input-coding
+		(port/set-coding input-port input-coding))
+	    (call-with-output-file (output-file-name output)
+	      (lambda (output-port)
+		(port/set-coding output-port 'us-ascii)
+		(port/set-line-ending output-port 'newline)
+		(parameterize ((param:print-ascii-only? #t)
+			       (param:pp-lists-as-tables? #f))
+		  (write-string ";;; -*-Scheme-*- " output-port)
+		  (write-string description output-port)
+		  (newline output-port)
+		  (newline output-port)
+		  (let loop ()
+		    (let ((line (read-line input-port)))
+		      (if (not (eof-object? line))
+			  (begin
+			    (let rule-loop ((rules rules))
+			      (if (pair? rules)
+				  (let ((rule (car rules))
+					(rules (cdr rules)))
+				    (let ((rm (regexp-matches (car rule) line)))
+				      (if rm
+					  ((cdr rule) rm output-port)
+					  (rule-loop rules))))
+				  (error "Unmatched line" line)))
+			    (newline output-port)
+			    (loop))))))))))))))
 
 (define comment-line-pattern
   (rx bol "#" ($ (* any)) eol))

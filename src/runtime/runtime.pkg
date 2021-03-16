@@ -1625,7 +1625,7 @@ USA.
 	 "ucd-table-gc=zl"
 	 "ucd-table-gc=zp"
 	 "ucd-table-gc=zs"
-	 "ucd-table-gcb"
+	 "ucd-table-gcb+ep"
 	 "ucd-table-lc"
 	 "ucd-table-lower"
 	 "ucd-table-nfc_qc"
@@ -1641,7 +1641,7 @@ USA.
 	 "ucd-table-tc"
 	 "ucd-table-uc"
 	 "ucd-table-upper"
-	 "ucd-table-wb"
+	 "ucd-table-wb+ep"
 	 "ucd-table-wspace")
   (parent (runtime))
   (export ()
@@ -1705,9 +1705,9 @@ USA.
 	  char-set:gc=symbol:other
 	  ucd-nt-value)
   (export (runtime ucd-segmentation grapheme)
-	  ucd-gcb-value)
+	  ucd-gcb+ep-value)
   (export (runtime ucd-segmentation word)
-	  ucd-wb-value)
+	  ucd-wb+ep-value)
   (export (runtime string)
 	  char-full-composition-exclusion?
 	  char-nfd-quick-check?

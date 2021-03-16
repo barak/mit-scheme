@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: WSpace (whitespace)
 
-;;; Generated from Unicode 10.0.0
+;;; Generated from Unicode 13.0.0
 
 (declare (usual-integrations))
 

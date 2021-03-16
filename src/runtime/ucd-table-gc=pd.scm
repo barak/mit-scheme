@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: gc=Pd
 
-;;; Generated from Unicode 10.0.0
+;;; Generated from Unicode 13.0.0
 
 (declare (usual-integrations))
 
@@ -34,4 +34,4 @@ USA.
   (char-in-set? char char-set:gc=punctuation:dash))
 
 (define-deferred char-set:gc=punctuation:dash
-  (char-set* '(45 1418 1470 5120 6150 (8208 . 8214) 11799 11802 (11834 . 11836) 11840 12316 12336 12448 (65073 . 65075) 65112 65123 65293)))
+  (char-set* '(45 1418 1470 5120 6150 (8208 . 8214) 11799 11802 (11834 . 11836) 11840 12316 12336 12448 (65073 . 65075) 65112 65123 65293 69293)))

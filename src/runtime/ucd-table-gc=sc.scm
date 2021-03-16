@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: gc=Sc
 
-;;; Generated from Unicode 10.0.0
+;;; Generated from Unicode 13.0.0
 
 (declare (usual-integrations))
 
@@ -34,4 +34,4 @@ USA.
   (char-in-set? char char-set:gc=symbol:currency))
 
 (define-deferred char-set:gc=symbol:currency
-  (char-set* '(36 (162 . 166) 1423 1547 (2546 . 2548) 2555 2801 3065 3647 6107 (8352 . 8384) 43064 65020 65129 65284 (65504 . 65506) (65509 . 65511))))
+  (char-set* '(36 (162 . 166) 1423 1547 (2046 . 2048) (2546 . 2548) 2555 2801 3065 3647 6107 (8352 . 8384) 43064 65020 65129 65284 (65504 . 65506) (65509 . 65511) (73693 . 73697) 123647 126128)))

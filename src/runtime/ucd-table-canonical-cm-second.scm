@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: canonical-cm-second
 
-;;; Generated from Unicode 10.0.0
+;;; Generated from Unicode 13.0.0
 
 (declare (usual-integrations))
 
@@ -406,7 +406,8 @@ USA.
     #(#\x1133e #\x11357)
     #(#\x114b0 #\x114ba #\x114bd)
     #(#\x115af)
-    #(#\x115af)))
+    #(#\x115af)
+    #(#\x11930)))
 
 (define ucd-canonical-cm-second-values
   #(#(#\x226e)
@@ -784,4 +785,5 @@ USA.
     #(#\x1134b #\x1134c)
     #(#\x114bc #\x114bb #\x114be)
     #(#\x115ba)
-    #(#\x115bb)))
+    #(#\x115bb)
+    #(#\x11938)))
