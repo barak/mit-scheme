@@ -29,52 +29,50 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime ucd-glue))
+(add-boot-deps! '(runtime ucd-glue) '(runtime ucd-segmentation))
 
 (define codes
   '(control
     carriage-return
-    emoji-base
-    emoji-base-gaz
-    emoji-modifier
     extend
-    glue-after-zwj
     hst=l
     linefeed
     hst=lv
     hst=lvt
     prepend
-    regional-indicator
+    ri
     spacing-mark
     hst=t
     hst=v
     other
+    ext-pict
     zwj))
+
+(define abbrevs
+  '())
 
 (define extra-states
   '(ri*2))
 
-(define transitions
+(define rules
   '((sot / any)
     (any / eot)
+    (sot _ eot)
 
     (carriage-return _ linefeed)
-    ((control carriage-return linefeed) / any)
-    (any / (control carriage-return linefeed))
+    ((or control carriage-return linefeed) / any)
+    (any / (or control carriage-return linefeed))
 
-    (hst=l _ (hst=l hst=lv hst=lvt hst=v))
-    ((hst=v hst=lv) _ (hst=t hst=v))
-    ((hst=t hst=lvt) _ hst=t)
+    (hst=l _ (or hst=l hst=lv hst=lvt hst=v))
+    ((or hst=v hst=lv) _ (or hst=t hst=v))
+    ((or hst=t hst=lvt) _ hst=t)
 
-    (any _ (extend zwj))
-    (any _ spacing-mark)
+    (any _ (or extend zwj spacing-mark))
     (prepend _ any)
 
-    ((emoji-base emoji-base-gaz) _ emoji-modifier)
-    ((emoji-base emoji-base-gaz) ? extend (from))
-    (zwj _ (glue-after-zwj emoji-base-gaz))
+    (ext-pict (* _ extend) _ zwj _ ext-pict)
 
-    (regional-indicator _ regional-indicator ri*2)
+    (ri _ ri ri*2)
 
     (any / any)))
 
@@ -86,7 +84,8 @@ USA.
 (define show-transitions)
 (add-boot-init!
  (lambda ()
-   (set! evolver (make-evolver codes extra-states ucd-gcb-value transitions))
+   (set! evolver
+	 (make-evolver codes abbrevs extra-states ucd-gcb+ep-value rules))
    (set! string-gcb-fold (folder evolver 'string-gcb-fold))
    (set! string-gcb-fold-right (right-folder evolver 'string-gcb-fold-right))
    (set! string-gcb-stream (streamer evolver 'string-gcb-stream))
