@@ -733,7 +733,7 @@ USA.
   ((repl/env-mgr repl) 'current))
 
 (define (set-repl/environment! repl environment)
-  ((repl/env-mgr repl) 'push! environment))
+  ((repl/env-mgr repl) 'set-current! environment))
 
 (define (nearest-repl/named-environment name)
   ((repl/env-mgr (nearest-repl)) 'get-named name))
