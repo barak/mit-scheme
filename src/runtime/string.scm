@@ -1477,6 +1477,7 @@ USA.
 		     (cond ((char? object) object)
 			   ((string? object) object)
 			   ((symbol? object) (symbol->string object))
+			   ((number? object) (number->string object))
 			   (else
 			    (call-with-output-string
 			      (lambda (port)
