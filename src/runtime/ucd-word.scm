@@ -31,6 +31,15 @@ USA.
 
 (add-boot-deps! '(runtime ucd-glue) '(runtime ucd-segmentation))
 
+(define evolver)
+(define string-word-breaks)
+(add-boot-init!
+ (lambda ()
+   (set! evolver
+	 (make-evolver codes abbrevs extra-states ucd-wb+ep-value rules))
+   (set! string-word-breaks (evolver-interpreter evolver))
+   unspecific))
+
 (define codes
   '(carriage-return
     double-quote
@@ -99,33 +108,3 @@ USA.
     (ri efz* _ ri ri*2)
 
     (any / any)))
-
-(define evolver)
-(define string-wb-fold)
-(define string-wb-fold-right)
-(define string-wb-stream)
-(define string->wb-names)
-(define show-transitions)
-(add-boot-init!
- (lambda ()
-   (set! evolver
-	 (make-evolver codes abbrevs extra-states ucd-wb+ep-value rules))
-   (set! string-wb-fold (folder evolver 'string-wb-fold))
-   (set! string-wb-fold-right (right-folder evolver 'string-wb-fold-right))
-   (set! string-wb-stream (streamer evolver 'string-wb-stream))
-   (set! string->wb-names (evolver-string->code-names evolver))
-   (set! show-transitions (evolver-show-transitions evolver))
-   unspecific))
-
-(define (string-word-breaks string)
-  (let loop ((stream (string-wb-stream string)))
-    (if (pair? stream)
-	(cons (car stream) (loop (force (cdr stream))))
-	'())))
-
-(define (find-word-breaks string knil kons)
-  (string-wb-fold (lambda (break prev-break acc)
-		    (declare (ignore prev-break))
-		    (kons break acc))
-		  knil
-		  string))

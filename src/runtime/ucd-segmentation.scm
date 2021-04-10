@@ -31,53 +31,6 @@ USA.
 
 (add-boot-deps! '(runtime dynamic))
 
-(define (folder evolver caller)
-  (let ((interpreter (evolver-interpreter evolver)))
-    (lambda (kons knil string #!optional start end)
-      (let ((end (fix:end-index end (string-length string) caller)))
-	(fold kons
-	      knil
-	      (interpreter string
-			   (fix:start-index start end caller)
-			   end))))))
-
-(define (right-folder evolver caller)
-  (let ((interpreter (evolver-interpreter evolver)))
-    (lambda (kons knil string #!optional start end)
-      (let ((end (fix:end-index end (string-length string) caller)))
-	(fold-right kons
-		    knil
-		    (interpreter string
-				 (fix:start-index start end caller)
-				 end))))))
-
-(define (streamer evolver caller)
-  (let ((interpreter (evolver-interpreter evolver)))
-    (lambda (string #!optional start end)
-      (let ((end (fix:end-index end (string-length string) caller)))
-	(list->stream (interpreter string
-				   (fix:start-index start end caller)
-				   end))))))
-
-;;; Debugging support:
-
-(define (evolver-string->code-names evolver)
-  (let ((char->code-name (evolver-char->code-name evolver)))
-    (lambda (string)
-      (map char->code-name (string->list string)))))
-
-(define (evolver-char->code-name evolver)
-  (let ((codes (evolver-codes evolver))
-	(char->code (evolver-char->code evolver)))
-    (lambda (char)
-      (vector-ref codes (char->code char)))))
-
-(define (evolver-show-transitions evolver)
-  (let ((interpreter (evolver-interpreter evolver)))
-    (lambda (string)
-      (parameterize ((trace-interpreter? #t))
-	(interpreter string 0 (string-length string))))))
-
 (define (make-evolver codes abbrevs extra-states char->code rules)
   (let-values (((transitions new-states)
 		(convert-to-transitions
@@ -368,15 +321,17 @@ USA.
     (define-integrable state-index car)
     (define-integrable state-breaks cdr)
 
-    (lambda (string start end)
-      (let loop ((i start) (states (list (make-state sot-index '()))))
-	(if (fix:< i end)
-	    (loop (fix:+ i 1)
-		  (evolve-states states (char->code (string-ref string i)) i))
-	    (let ((states (evolve-states states eot-code i)))
-	      (if (not (and (pair? states) (null? (cdr states))))
-		  (error "Interpretation didn't converge:" states))
-	      (reverse (state-breaks (car states)))))))))
+    (lambda (string #!optional start end)
+      (let* ((end (fix:end-index end (string-length string)))
+	     (start (fix:start-index start end)))
+	(let loop ((i start) (states (list (make-state sot-index '()))))
+	  (if (fix:< i end)
+	      (loop (fix:+ i 1)
+		    (evolve-states states (char->code (string-ref string i)) i))
+	      (let ((states (evolve-states states eot-code i)))
+		(if (not (and (pair? states) (null? (cdr states))))
+		    (error "Interpretation didn't converge:" states))
+		(reverse (state-breaks (car states))))))))))
 
 (define (create-state-vector state-diagram)
 
@@ -396,6 +351,25 @@ USA.
 		       (cdr code-entry)))
 		(cdr state-entry))))
 	state-diagram)))
+
+;;; Debugging support:
+
+(define (evolver-string->code-names evolver)
+  (let ((char->code-name (evolver-char->code-name evolver)))
+    (lambda (string)
+      (map char->code-name (string->list string)))))
+
+(define (evolver-char->code-name evolver)
+  (let ((codes (evolver-codes evolver))
+	(char->code (evolver-char->code evolver)))
+    (lambda (char)
+      (vector-ref codes (char->code char)))))
+
+(define (evolver-show-transitions evolver)
+  (let ((interpreter (evolver-interpreter evolver)))
+    (lambda (string #!optional start end)
+      (parameterize ((trace-interpreter? #t))
+	(interpreter string start end)))))
 
 (define-deferred trace-interpreter?
   (make-settable-parameter #f))

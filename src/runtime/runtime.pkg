@@ -1771,21 +1771,13 @@ USA.
 	  grapheme-cluster-breaks
 	  grapheme-cluster-length
 	  grapheme-cluster-slice
-	  string->grapheme-clusters
-	  string-gcb-fold
-	  string-gcb-fold-right
-	  string-gcb-stream))
+	  string->grapheme-clusters))
 
 (define-package (runtime ucd-segmentation word)
   (files "ucd-word")
   (parent (runtime ucd-segmentation))
   (export ()
-	  string-wb-fold
-	  string-wb-fold-right
-	  string-wb-stream
-	  string-word-breaks)
-  (export (runtime string)
-	  find-word-breaks))
+	  string-word-breaks))
 
 (define-package (runtime character-set)
   (files "char-set")

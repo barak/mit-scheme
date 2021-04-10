@@ -410,7 +410,8 @@ USA.
 	   (make-state (matcher-initial-node matcher)
 		       (initial-ctx index
 				    (if (matcher-need-gcb? matcher)
-					(string-gcb-stream string start end)
+					(grapheme-cluster-breaks
+					 string start end)
 					'())
 				    capture?))))
       (trace-matcher (lambda (port) (write (list 'initial-state initial) port)))
@@ -659,7 +660,7 @@ USA.
 
 (define (chase-gcbs index gcbs)
   (if (and (pair? gcbs) (fix:< (car gcbs) index))
-      (chase-gcbs index (force (cdr gcbs)))
+      (chase-gcbs index (cdr gcbs))
       gcbs))
 
 (define (all-groups string index ctx)

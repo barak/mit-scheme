@@ -841,10 +841,11 @@ USA.
 
 (define (string-titlecase string)
   (let ((builder (string-builder)))
-    (find-word-breaks string 0
-		      (lambda (end start)
-			(maybe-titlecase string start end builder)
-			end))
+    (fold (lambda (end start)
+	    (maybe-titlecase string start end builder)
+	    end)
+	  0
+	  (string-word-breaks string))
     (builder)))
 
 (define (maybe-titlecase string start end builder)
