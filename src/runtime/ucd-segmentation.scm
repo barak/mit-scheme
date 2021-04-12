@@ -38,23 +38,22 @@ USA.
 			      codes
 			      extra-states))))
     (let ((any-states (append codes extra-states)))
-      (let ((all-states (append any-states '(sot) new-states))
-	    (all-codes (append codes '(eot))))
-	(let ((diagram
-	       (generate-state-diagram
-		(expand-transitions transitions any-states codes)
-		all-states
-		all-codes)))
-	  (let ((all-states (list->vector all-states))
-		(all-codes (list->vector all-codes)))
-	    (%make-evolver
-	     all-codes all-states char->code diagram
-	     (let ((sot-index (length any-states))
-		   (eot-code (length codes)))
-	       (let ((new-start (fix:+ sot-index 1)))
-		 (make-interpreter diagram char->code
-				   sot-index eot-code new-start
-				   all-codes all-states))))))))))
+      (let ((sot-index (length any-states))
+	    (eot-code (length codes)))
+	(let ((new-start (fix:+ sot-index 1)))
+	  (let ((diagram
+		 (optimize-state-diagram
+		  (generate-state-diagram
+		   (expand-transitions transitions any-states codes)
+		   (append any-states '(sot) new-states)
+		   (append codes '(eot))))))
+	    (let ((all-states (list->vector (map car diagram)))
+		  (all-codes (list->vector (map car (cdar diagram)))))
+	      (%make-evolver
+	       all-codes all-states char->code diagram
+	       (make-interpreter diagram char->code
+				 sot-index eot-code new-start
+				 all-codes all-states)))))))))
 
 (define-record-type <evolver>
     (%make-evolver codes states char->code diagram interpreter)
@@ -82,12 +81,12 @@ USA.
        (list? (cdr item))))
 
 (define (make-or-op . items)
-  (cons 'or
-	(append-map (lambda (item)
-		      (if (or-op? item)
-			  (or-op-elts item)
-			  (list item)))
-		    items)))
+  (cons 'or (append-map item-names items)))
+
+(define (item-names item)
+  (if (or-op? item)
+      (or-op-elts item)
+      (list item)))
 
 (define-integrable or-op-elts cdr)
 
@@ -169,39 +168,58 @@ USA.
   (map parse-rule rules))
 
 (define (convert-to-transitions parsed-rules)
-  (let ((prev-name 0))
+  (let ((prev-name 0)
+	(new-states '()))
 
-    (define (convert-rule parsed-rule transitions)
-      (let loop
-	  ((state (car parsed-rule))
-	   (steps (cadr parsed-rule)))
-	(if (pair? steps)
-	    (let ((step (car steps)))
-	      (let ((break? (eq? (cadr step) '/))
-		    (state-names (caddr step))
-		    (state1 (new-name)))
-		(if (eq? '* (car step))
-		    (cons* (make-transition state state-names break? state1)
-			   (make-transition state1 state-names break? state1)
-			   (loop (make-or-op state state1) (cdr steps)))
-		    (cons (make-transition state state-names break? state1)
-			  (loop state1 (cdr steps))))))
-	    (let ((end (caddr parsed-rule)))
-	      (let ((break? (eq? (car end) '/))
-		    (code (cadr end))
-		    (state1 (caddr end)))
-		(cons (make-transition state code break? state1)
-		      transitions))))))
+    (define (convert-rule parsed-rule tail)
+      (do-steps (car parsed-rule)
+		(cadr parsed-rule)
+		(caddr parsed-rule)
+		tail))
 
-    (define (new-name)
-      (set! prev-name (fix:+ prev-name 1))
-      prev-name)
+    (define (do-steps from steps end tail)
+      (if (pair? steps)
+	  (fold-right (lambda (from tail)
+			(do-step from
+				 (car steps)
+				 tail
+				 (lambda (to tail)
+				   (do-steps to (cdr steps) end tail))))
+		      tail
+		      (item-names from))
+	  (let ((break? (eq? (car end) '/))
+		(code (cadr end))
+		(to (caddr end)))
+	    (cons (make-transition from code break? to)
+		  tail))))
 
-    (define (get-names)
-      (iota prev-name 1))
+    (define (do-step from step tail k)
+      (let ((break? (eq? (cadr step) '/))
+	    (codes (caddr step)))
+	(if (eq? '* (car step))
+	    (let ((to (new-state from codes break?)))
+	      (cons* (make-transition from codes break? to)
+		     (make-transition to codes break? to)
+		     (k (make-or-op from to) tail)))
+	    (fold-right (lambda (code tail)
+			  (let ((to (new-state from code break?)))
+			    (cons (make-transition from code break? to)
+				  (k to tail))))
+			tail
+			(item-names (caddr step))))))
+
+    (define (new-state state code break?)
+      (let ((key (list state code break?)))
+	(let ((p (assoc key new-states)))
+	  (if p
+	      (cdr p)
+	      (let ((name prev-name))
+		(set! prev-name (fix:+ prev-name 1))
+		(set! new-states (cons (cons key name) new-states))
+		name)))))
 
     (let ((transitions (fold-right convert-rule '() parsed-rules)))
-      (values transitions (get-names)))))
+      (values transitions (reverse (map cdr new-states))))))
 
 (define-record-type <transition>
     (make-transition from code break? to)
@@ -255,16 +273,93 @@ USA.
 		  '()))))
 
   (define (convert transitions)
-    (map (lambda (transition)
-	   (cons (transition-break? transition)
-		 (transition-to transition)))
-	 transitions))
+    (delete-duplicates
+     (map (lambda (transition)
+	    (cons (transition-break? transition)
+		  (transition-to transition)))
+	  transitions)))
 
   (map (lambda (state)
 	 (cons state
 	       (map (lambda (code)
 		      (cons code (convert (match-transitions state code))))
 		    codes)))
+       states))
+
+(define (optimize-state-diagram diagram)
+
+  (define (find-equivalents candidates fixed)
+    (let loop ((candidates candidates) (collapsible '()) (unique '()))
+      (cond ((pair? candidates)
+	     (let ((s1 (car candidates)))
+	       (let-values (((equivalents non-equivalents)
+			     (partition (lambda (s2) (equivalent-states? s1 s2))
+					(cdr candidates))))
+		 (if (pair? equivalents)
+		     (loop non-equivalents
+			   (cons (cons s1 equivalents) collapsible)
+			   unique)
+		     (loop non-equivalents
+			   collapsible
+			   (cons s1 unique))))))
+	    ((pair? collapsible)
+	     (collapse! collapsible unique fixed))
+	    (else
+	     (append fixed (sort-states unique))))))
+
+  (define (collapse! collapsible unique fixed)
+    (let ((collapsible (map sort-states collapsible)))
+      (let ((dict (generate-dictionary collapsible)))
+	(let ((candidates
+	       (sort-states (append (map car collapsible) unique))))
+	  (find-equivalents (rewrite-states candidates dict)
+			    (rewrite-states fixed dict))))))
+
+  (call-with-values (lambda ()
+		      (partition (lambda (state) (index-fixnum? (car state)))
+				 diagram))
+    find-equivalents))
+
+(define (equivalent-states? s1 s2)
+  (let ((n1 (car s1))
+	(n2 (car s2)))
+    (let loop ((cs1 (cdr s1)) (cs2 (cdr s2)))
+      (if (pair? cs1)
+	  (and (pair? cs2)
+	       (loop (car cs1) (car cs2))
+	       (loop (cdr cs1) (cdr cs2)))
+	  (and (not (pair? cs2))
+	       (or (eq? cs1 cs2)
+		   (and (eq? cs1 n1) (eq? cs2 n2))))))))
+
+(define (sort-states states)
+  (sort states (lambda (a b) (fix:< (car a) (car b)))))
+
+(define (generate-dictionary collapsible)
+  (let ((dict
+	 (append-map (lambda (equivalents)
+		       (let ((names (map car equivalents)))
+			 (let ((to (car names)))
+			   (map (lambda (from) (cons from to))
+				(cdr names)))))
+		     collapsible)))
+    (lambda (name)
+      (let ((p (assq name dict)))
+	(if p
+	    (cdr p)
+	    name)))))
+
+(define (rewrite-states states dict)
+  (map (lambda (state)
+	 (cons (dict (car state))
+	       (map (lambda (c)
+		      (cons (car c)
+			    (delete-duplicates
+			     (map (lambda (link)
+				    (cons (car link)
+					  (dict (cdr link))))
+				  (cdr c)))))
+		    (cdr state))))
        states))
 
 (define (make-interpreter diagram char->code sot-index eot-code new-start
