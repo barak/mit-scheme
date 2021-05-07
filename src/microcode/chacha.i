@@ -77,8 +77,10 @@ rol32(uint32_t u, unsigned c)
 static const uint8_t chacha_core_constant32[16] = "expand 32-byte k";
 
 void
-chacha_core(uint8_t *out, const uint8_t *in, const uint8_t *k,
-    const uint8_t *c)
+chacha_core(uint8_t out[chacha_core_OUTPUTBYTES],
+    const uint8_t in[chacha_core_INPUTBYTES],
+    const uint8_t k[chacha_core_KEYBYTES],
+    const uint8_t c[chacha_core_CONSTBYTES])
 {
 	uint32_t x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15;
 	uint32_t j0,j1,j2,j3,j4,j5,j6,j7,j8,j9,j10,j11,j12,j13,j14,j15;
