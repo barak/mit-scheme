@@ -1,3 +1,10 @@
+mit-scheme (11.2-2) unstable; urgency=medium
+
+  * remove i386 from architecture list (closes: #982791)
+  * add postrm script (closes: #987373)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Wed, 25 Aug 2021 11:40:16 +0100
+
 mit-scheme (11.2-1) unstable; urgency=medium
 
   * new upstream release
