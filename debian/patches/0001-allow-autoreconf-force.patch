@@ -7,7 +7,7 @@ $ autoreconf --force
 
 - move src/microcode/aclocal.m4 to src/microcode/mit_scheme_native_code.m4
 
-- use single shared directory locally-defined macros (src/microcode/ for now)
+- use single shared directory for locally-defined macros (src/microcode/ for now)
 
 The necessary local m4 macro file is explicitly included.
 This is necessary because autoconf is not using automake or libtools,
