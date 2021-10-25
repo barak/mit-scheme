@@ -1327,12 +1327,14 @@ the user from the mailer."
   (newline port))
 
 (define (write-mime-message-body-1 b-start b-end subpart? port)
-  (if (not (and subpart? (ref-variable mail-abbreviate-mime b-start)))
-      (write-message-header-field
-       "Content-Type"
-       (string-append "text/plain; charset="
-                      (ref-variable mail-charset b-start))
-       port))
+  (let ((charset (ref-variable mail-charset b-start)))
+    (if (not (and subpart?
+		  (ref-variable mail-abbreviate-mime b-start)
+		  (string-ci=? "us-ascii" charset)))
+	(write-message-header-field
+	 "Content-Type"
+	 (string-append "text/plain; charset=" charset)
+	 port)))
   (if (or (any-non-printable-7bit-chars? b-start b-end)
 	  (any-lines-too-long? b-start b-end 76))
       (begin
