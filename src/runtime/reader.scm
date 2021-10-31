@@ -294,7 +294,7 @@ USA.
    (add-special! #\! handler:named-constant)
    (add-special! #\@ handler:unhash)
    (add-special! (char-set "bBoOdDxXiIeEsSlL") handler:number)
-   (add-special! char-set:numeric handler:special-arg)))
+   (add-special! (char-set "0123456789") handler:special-arg)))
 
 (define (%read-char db)
   (let ((char
