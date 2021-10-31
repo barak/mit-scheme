@@ -21,6 +21,7 @@
 * SRFI 140::
 * SRFI 143::
 * SRFI 158::
+* SRFI 219::
 @end menu
 
 @node R7RS, SRFI 1, Standards Support, Standards Support
@@ -2129,7 +2130,7 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{fxzero?}
 @end multitable
 
-@node SRFI 158,  , SRFI 143, Standards Support
+@node SRFI 158, SRFI 219, SRFI 143, Standards Support
 @section SRFI 158: Generators and Accumulators
 @findex bytevector->generator
 @findex circular-generator
@@ -2215,3 +2216,25 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{string->generator}
 @item @nicode{vector->generator}
 @end multitable
+
+@node SRFI 219,  , SRFI 158, Standards Support
+@section SRFI 219: Define higher-order lambda
+@findex define
+
+@cartouche
+@table @b
+@item Description
+Higher-order lambda syntax for DEFINE
+@item URL
+@srfiurl{219}
+@item Support
+Fully supported.
+@item Libraries
+No libraries.
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@noindent
+@nicode{define}
