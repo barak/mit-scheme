@@ -144,11 +144,27 @@ USA.
 (define (top-level-ctx? ctx)
   (eq? ctx (ctx:top-level)))
 
-(define (ctx:close-paren-ok)
-  'close-paren-ok)
+(define (ctx:list)
+  'list)
+
+(define (dot-ok? ctx)
+  (eq? ctx (ctx:list)))
+
+(define (dot-token)
+  %dot-token)
+
+(define (dot-token? object)
+  (eq? object %dot-token))
+
+(define %dot-token
+  (list 'dot))
+
+(define (ctx:vector)
+  'vector)
 
 (define (close-paren-ok? ctx)
-  (eq? ctx (ctx:close-paren-ok)))
+  (or (eq? ctx (ctx:list))
+      (eq? ctx (ctx:vector))))
 
 (define (close-parenthesis-token)
   %close-parenthesis-token)
@@ -427,11 +443,15 @@ USA.
     (finish-attributes-comment builder db)))
 
 (define (handler:atom db ctx char)
-  ctx
   (let ((string (read-atom db (list char))))
-    (or (maybe-keyword db string)
-	(string->number string (get-param:reader-radix))
-	(make-symbol db string))))
+    (if (string=? "." string)
+	(begin
+	  (if (not (dot-ok? ctx))
+	      (error:illegal-dot))
+	  (dot-token))
+	(or (maybe-keyword db string)
+	    (string->number string (get-param:reader-radix))
+	    (make-symbol db string)))))
 
 (define (handler:symbol db ctx char)
   ctx
@@ -480,29 +500,33 @@ USA.
 (define (handler:list db ctx char)
   ctx char
   (let loop ((objects '()))
-    (let ((object (read-in-context db ctx:close-paren-ok)))
-      (if (close-parenthesis-token? object)
-	  (let ((objects (reverse! objects)))
-	    (fix-up-list! objects)
-	    objects)
-	  (loop (cons object objects))))))
+    (let ((object (read-in-context db ctx:list)))
+      (cond ((close-parenthesis-token? object)
+	     (reverse! objects))
+	    ((dot-token? object)
+	     (handle-dotted-list object objects db))
+	    (else
+	     (loop (cons object objects)))))))
 
-(define (fix-up-list! objects)
-  (let loop ((objects* objects) (prev #f))
-    (if (pair? objects*)
-	(if (eq? (car objects*) '.)
-	    (begin
-	      (if (not (and prev
-			    (pair? (cdr objects*))
-			    (null? (cddr objects*))))
-		  (error:illegal-dot-usage objects))
-	      (set-cdr! prev (cadr objects*)))
-	    (loop (cdr objects*) objects*)))))
+(define (handle-dotted-list dot objects db)
+  (let ((.objects (cons dot objects)))
+    (if (null? objects)
+	(error:illegal-dot-usage .objects #f))
+    (let ((object (read-in-context db ctx:list)))
+      (if (close-parenthesis-token? object)
+	  (error:illegal-dot-usage (reverse! .objects) #t))
+      (if (dot-token? object)
+	  (error:illegal-dot-usage (reverse! (cons object .objects)) #f))
+      (let ((paren (read-in-context db ctx:list)))
+	(if (not (close-parenthesis-token? paren))
+	    (error:illegal-dot-usage (reverse! (cons* paren object .objects))
+				     #f)))
+      (append-reverse! objects object))))
 
 (define (handler:vector db ctx char1 char2)
   ctx char1 char2
   (let loop ((objects '()))
-    (let ((object (read-in-context db ctx:close-paren-ok)))
+    (let ((object (read-in-context db ctx:vector)))
       (if (close-parenthesis-token? object)
 	  (list->vector (reverse! objects))
 	  (loop (cons object objects))))))
@@ -516,7 +540,7 @@ USA.
     (if (not (char=? char #\())
 	(error:illegal-char char)))
   (let loop ((bytes '()))
-    (let ((object (read-in-context db ctx:close-paren-ok)))
+    (let ((object (read-in-context db ctx:vector)))
       (if (close-parenthesis-token? object)
 	  (let ((bytevector (make-bytevector (length bytes))))
 	    (do ((bytes (reverse! bytes) (cdr bytes))
@@ -1011,6 +1035,7 @@ USA.
 		  (make-condition-type ',name condition-type:read-error
 		      ',field-names
 		    (lambda (condition port)
+		      (declare (ignorable condition))
 		      (,reporter
 		       ,@(map (lambda (field-name)
 				`(access-condition condition ',field-name))
@@ -1037,10 +1062,23 @@ USA.
     (write-string "Illegal character: " port)
     (write char port)))
 
-(define-read-error (illegal-dot-usage objects)
-  (lambda (objects port)
-    (write-string "Ill-formed dotted list: " port)
-    (write objects port)))
+(define-read-error (illegal-dot-usage objects complete?)
+  (lambda (objects complete? port)
+    (define (write-one object)
+      (if (dot-token? object)
+	  (write-char #\. port)
+	  (write object port)))
+    (write-string "Ill-formed dotted list: (" port)
+    (write-one (car objects))
+    (for-each (lambda (object)
+		(write-char #\space port)
+		(write-one object))
+	      (cdr objects))
+    (if complete? (write-string ")" port))))
+
+(define-read-error (illegal-dot)
+  (lambda (port)
+    (write-string "Dot allowed only in list" port)))
 
 (define-read-error (illegal-hashed-object objects)
   (lambda (objects port)

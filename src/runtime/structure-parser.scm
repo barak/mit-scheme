@@ -779,7 +779,7 @@ USA.
 		(let* ((t (name-counters))
 		       (n (hash-table-ref/default t name 0)))
 		  (hash-table-set! t name (+ n 1))
-		  (symbol name '. n)))
+		  (symbol name '|.| n)))
 	      names)))
 
 (define-deferred name-counters
