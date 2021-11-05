@@ -816,6 +816,8 @@ USA.
 	       (builder char)
 	       (loop)))))
      (builder))))
+
+;;;; Datum labels
 
 (define (handler:special-arg db ctx char1 char2)
   ctx char1
@@ -823,41 +825,73 @@ USA.
     (let ((char (%read-char/no-eof db)))
       (cond ((char-numeric? char)
 	     (loop (+ (* 10 n) (char->digit char 10))))
-	    ((char=? char #\=)
-	     (let ((object (read-object db)))
-	       (save-shared-object! db n object)
-	       object))
-	    ((char=? char #\#)
-	     (get-shared-object db n))
+	    ((char=? char #\=) (define-datum-label db n))
+	    ((char=? char #\#) (reference-datum-label db n))
+	    (else (error:illegal-char char))))))
+
+(define (define-datum-label db number)
+  (let ((table (db-datum-labels db)))
+    (if (hash-table-ref/default table number #f)
+	(error:redefine-datum-label number))
+    (let ((token (make-cycle-token)))
+      (let ((entry (cons 'pending token)))
+	(hash-table-set! table number entry)
+	(let ((object*
+	       (let ((object (read-object db)))
+		 (if (eq? (car entry) 'pending-seen)
+		     (replace-cycle-token! token object)
+		     object))))
+	  (set-car! entry 'defined)
+	  (set-cdr! entry object*)
+	  object*)))))
+
+(define (replace-cycle-token! token object)
+  (let ((seen (make-key-weak-eq-hash-table)))
+    (let loop ((this object))
+      (cond ((eq? token this) object)
+	    ((hash-table-ref/default seen this #f) this)
 	    (else
-	     (error:illegal-char char))))))
+	     (hash-table-set! seen this #t)
+	     (cond ((pair? this)
+		    (set-car! this (loop (car this)))
+		    (set-cdr! this (loop (cdr this)))
+		    this)
+		   ((vector? this)
+		    (let ((n (vector-length this)))
+		      (do ((i 0 (fix:+ i 1)))
+			  ((not (fix:< i n)))
+			(vector-set! this i (loop (vector-ref this i)))))
+		    this)
+		   ((%record? this)
+		    (let ((n (%record-length this)))
+		      (do ((i 0 (fix:+ i 1)))
+			  ((not (fix:< i n)))
+			(%record-set! this i (loop (%record-ref this i)))))
+		    this)
+		   (else
+		    this)))))))
 
-(define (make-shared-objects)
+(define (reference-datum-label db number)
+  (let ((entry (hash-table-ref/default (db-datum-labels db) number #f)))
+    (if (not entry)
+	(error:undefined-datum-label number))
+    (if (eq? (car entry) 'pending)
+	(set-car! entry 'pending-seen))
+    (cdr entry)))
+
+(define-record-type <cycle-token>
+    (make-cycle-token)
+    cycle-token?)
+
+(define (make-datum-labels)
   (make-strong-eqv-hash-table))
-
-(define (save-shared-object! db n object)
-  (let ((table (db-shared-objects db)))
-    (if (not (eq? (hash-table-ref/default table n non-shared-object)
-		  non-shared-object))
-	(error:re-shared-object n object))
-    (hash-table-set! table n object)))
-
-(define (get-shared-object db n)
-  (let ((object
-	 (hash-table-ref/default (db-shared-objects db) n non-shared-object)))
-    (if (eq? object non-shared-object)
-	(error:non-shared-object n))
-    object))
-
-(define non-shared-object
-  (list 'non-shared-object))
 
 (define-record-type <db>
-    (make-db port shared-objects position-mapping discretionary-write-char
+    (make-db port datum-labels position-mapping discretionary-write-char
 	     get-position input-line peek-char read-char)
     db?
   (port db-port)
-  (shared-objects db-shared-objects)
+  (datum-labels db-datum-labels)
   (position-mapping db-position-mapping set-db-position-mapping!)
   ;; Cached port operations
   (discretionary-write-char db-discretionary-write-char)
@@ -868,7 +902,7 @@ USA.
 
 (define (initial-db port)
   (make-db port
-	   (make-shared-objects)
+	   (make-datum-labels)
 	   '()
 	   (let ((operation
 		  (textual-port-operation port 'discretionary-write-char)))
@@ -1132,16 +1166,15 @@ USA.
     (write-string "Premature EOF on " port)
     (write (db-port db) port)))
 
-(define-read-error (re-shared-object n object)
-  (lambda (n object port)
-    (write-string "Can't re-share object: #" port)
-    (write n port)
-    (write-string "=" port)
-    (write object port)))
-
-(define-read-error (non-shared-object n)
+(define-read-error (redefine-datum-label n)
   (lambda (n port)
-    (write-string "Reference to non-shared object: #" port)
+    (write-string "Can't redefine datum label: #" port)
+    (write n port)
+    (write-string "=" port)))
+
+(define-read-error (undefined-datum-label n)
+  (lambda (n port)
+    (write-string "Reference to undefined datum label: #" port)
     (write n port)
     (write-string "#" port)))
 
