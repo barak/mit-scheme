@@ -271,19 +271,20 @@ USA.
       (list (syntactic-closure-form closure)))))
 
 (define (strip-syntactic-closures object)
-  (if (let loop ((object object))
-	(if (pair? object)
-	    (or (loop (car object))
-		(loop (cdr object)))
-	    (syntactic-closure? object)))
-      (let loop ((object object))
-	(if (pair? object)
-	    (cons (loop (car object))
-		  (loop (cdr object)))
-	    (if (syntactic-closure? object)
-		(loop (syntactic-closure-form object))
-		object)))
-      object))
+  (let ((seen (make-key-weak-eq-hash-table)))
+    (let loop ((object object))
+      (cond ((pair? object)
+	     (if (hash-table-ref/default seen object #f)
+		 object
+		 (begin
+		   (hash-table-set! seen object #t)
+		   (set-car! object (loop (car object)))
+		   (set-cdr! object (loop (cdr object)))
+		   object)))
+	    ((syntactic-closure? object)
+	     (loop (syntactic-closure-form object)))
+	    (else
+	     object)))))
 
 ;;;; Identifiers
 
