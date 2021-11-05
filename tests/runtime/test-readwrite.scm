@@ -275,3 +275,21 @@ USA.
 		 object)
       (assert-eq (eval (read-from-string abbrev) system-global-environment)
 		 object))))
+
+(define-enumerated-test 'dot-good
+  `(("(a . b)" (a . b))
+    ("(a b c . d)" (a b c . d)))
+  (lambda (string value)
+    (assert-equal (read-from-string string) value)))
+
+(define-enumerated-test 'dot-bad
+  `(("(.)")
+    ("(a .)")
+    ("(. a )")
+    ("(a . . b)")
+    (".")
+    ("#(a b c . d)")
+    ("#u8(0 1 2 . 3)"))
+  (lambda (string)
+    (assert-error (lambda () (read-from-string string))
+		  (list condition-type:read-error))))
