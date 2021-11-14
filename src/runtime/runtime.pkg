@@ -6520,11 +6520,14 @@ USA.
   (parent (runtime library))
   (export (runtime)
 	  copy-library-db
+	  export-group-exports
+	  export-group-library-name
 	  library-bound-names
 	  library-contents
 	  library-db
 	  library-db?
 	  library-environment
+	  library-export-groups
 	  library-exports
 	  library-filename
 	  library-free-names
@@ -6547,9 +6550,12 @@ USA.
   (export (runtime library)
 	  define-automatic-property
 	  deregister-library!
+	  export-group->list
 	  library-eval-result
 	  library-preregistered?
+	  list->export-group
 	  load-preregistered-library!
+	  make-export-group
 	  make-library
 	  preregister-library!
 	  register-libraries!
@@ -6640,7 +6646,7 @@ USA.
 	  scode-library-imports-used
 	  scode-library-name
 	  scode-library-version
-	  scode-library-version-current?
+	  scode-library-version-usable?
 	  scode-library?)
   (export (runtime library)
 	  library->scode-library

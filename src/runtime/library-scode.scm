@@ -29,7 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define current-scode-library-version 2)
+(define current-scode-library-version 3)
+(define usable-scode-library-versions '(2 3))
 
 (define (make-scode-library metadata contents)
   (make-scode-declaration `((version ,current-scode-library-version)
@@ -41,8 +42,8 @@ USA.
        (parse-declaration-text (scode-declaration-text object))
        (scode-quotation? (scode-declaration-expression object))))
 
-(define (scode-library-version-current? library)
-  (= (scode-library-version library) current-scode-library-version))
+(define (scode-library-version-usable? library)
+  (memv (scode-library-version library) usable-scode-library-versions))
 
 (define (scode-library-version library)
   ((parse-declaration-text (scode-declaration-text library)) 'version))
@@ -104,8 +105,12 @@ USA.
 (define (scode-library-imports-used library)
   (map list->library-ixport (scode-library-property 'imports-used library)))
 
-(define (scode-library-exports library)
-  (map list->library-ixport (scode-library-property 'exports library)))
+(define (scode-library-export-groups library)
+  (if (= 2 (scode-library-version library))
+      (make-export-group
+       #f
+       (map list->library-ixport (scode-library-property 'exports library)))
+      (map list->export-group (scode-library-property 'export-groups library))))
 
 (define (singleton-list? object)
   (and (pair? object)
@@ -145,7 +150,7 @@ USA.
      (name ,(library-name library))
      (imports ,@(map library-ixport->list (library-imports library)))
      (imports-used ,@(map library-ixport->list (library-imports-used library)))
-     (exports ,@(map library-ixport->list (library-exports library))))
+     (export-groups ,@(map export-group->list (library-export-groups library))))
    (library-contents library)))
 
 (define (scode-library->library library filename)
@@ -153,7 +158,7 @@ USA.
   (make-library (scode-library-name library)
 		'imports (scode-library-imports library)
 		'imports-used (scode-library-imports-used library)
-		'exports (scode-library-exports library)
+		'export-groups (scode-library-export-groups library)
 		'contents (scode-library-contents library)
 		'filename filename))
 

@@ -91,25 +91,23 @@ USA.
 			    name)))))))
 	  (else
 	   (error "Unrecognized import set:" import-set))))))
-
+
 (define (r7rs-parsed-export-libraries parsed-export library libraries)
   (declare (ignore parsed-export library))
   libraries)
 
-(define (r7rs-expand-parsed-export parsed-export names library exports)
+(define (r7rs-expand-parsed-export parsed-export names library)
   (declare (ignore names))
-
-  (define (spec->export spec)
-    (if (symbol? spec)
-	(make-library-ixport (library-name library) spec)
-	(case (car spec)
-	  ((rename)
-	   (make-library-ixport (library-name library)
-				(cadr spec)
-				(caddr spec)))
-	  (else
-	   (error "Unrecognized export spec:" spec)))))
-
-  (fold (lambda (spec exports) (cons (spec->export spec) exports))
-	exports
-	(cdr parsed-export)))
+  (make-export-group
+   (cadr parsed-export)
+   (map (lambda (spec)
+	  (if (symbol? spec)
+	      (make-library-ixport (library-name library) spec)
+	      (case (car spec)
+		((rename)
+		 (make-library-ixport (library-name library)
+				      (cadr spec)
+				      (caddr spec)))
+		(else
+		 (error "Unrecognized export spec:" spec)))))
+	(cddr parsed-export))))

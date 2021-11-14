@@ -122,7 +122,7 @@ USA.
      (else (error "Unknown parsed import:" parsed-import)))
    parsed-import db library imports))
 
-(define-automatic-property 'exports
+(define-automatic-property 'export-groups
   '(parsed-exports bound-names imports library)
   #f
   (lambda (parsed-exports bound-names imports library)
@@ -132,35 +132,24 @@ USA.
 			   library)
     (let* ((imports-to (map library-ixport-to imports))
 	   (names (lset-union eq? bound-names imports-to))
-	   (exports
-	    (fold (lambda (parsed-export exports)
-		    (expand-parsed-export parsed-export names library exports))
-		  '()
-		  parsed-exports)))
-      (let ((missing
-	     (lset-difference eq?
-			      (map library-ixport-from exports)
-			      names)))
-	(if (pair? missing)
-	    (warn "Library exports refer to unbound identifiers:" missing)))
-      (check-dupes "exports"
-		   library-ixport-to
-		   (lambda (export froms)
-		     (lset-adjoin eq? froms (library-ixport-from export)))
-		   exports)
-      (map (lambda (export)
-	     ;; If this is a re-export, export directly from the source.
-	     (let* ((export-from (library-ixport-from export))
-		    (import
-		     (find (lambda (import)
-			     (eq? (library-ixport-to import) export-from))
-			   imports)))
-	       (if import
-		   (make-library-ixport (library-ixport-from-library import)
-					(library-ixport-from import)
-					(library-ixport-to export))
-		   export)))
-	   exports))))
+	   (groups
+	    (map (lambda (parsed-export)
+		   (expand-parsed-export parsed-export names library))
+		 (merge-parsed-exports parsed-exports))))
+      (check-missing-exports groups names)
+      (check-dupes-of-export-groups groups)
+      (map (lambda (group)
+	     (make-export-group (export-group-library-name group)
+				(map-re-exports (export-group-exports group)
+						imports)))
+	   groups))))
+
+(define (expand-parsed-export parsed-export names library)
+  ((case (car parsed-export)
+     ((r7rs-export) r7rs-expand-parsed-export)
+     ((mit-export) mit-expand-parsed-export)
+     (else (error "Unknown parsed export:" parsed-export)))
+   parsed-export names library))
 
 (define (parsed-export-libraries parsed-export library libraries)
   ((case (car parsed-export)
@@ -169,18 +158,73 @@ USA.
      (else (error "Unknown parsed export:" parsed-export)))
    parsed-export library libraries))
 
-(define (expand-parsed-export parsed-export names library exports)
-  ((case (car parsed-export)
-     ((r7rs-export) r7rs-expand-parsed-export)
-     ((mit-export) mit-expand-parsed-export)
-     (else (error "Unknown parsed export:" parsed-export)))
-   parsed-export names library exports))
+(define (merge-parsed-exports parsed-exports)
+  (let ((tag (caar parsed-exports))
+	(amap (make-amap (make-equal-comparator) 'alist)))
+    (for-each (lambda (parsed-export)
+		(amap-update!/default amap
+				      (cadr parsed-export)
+				      (lambda (names)
+					(lset-union (cddr parsed-export) names))
+				      '()))
+	      parsed-exports)
+    (map (lambda (p) (cons tag p))
+	 (amap->alist amap))))
+
+(define (check-missing-exports groups names)
+  (let ((missing
+	 (fold (lambda (export-group missing)
+		 (lset-union eq?
+		   (lset-difference eq?
+		     (map library-ixport-from
+			  (export-group-exports export-group))
+		     names)
+		   missing))
+	       '()
+	       groups)))
+    (if (pair? missing)
+	(warn "Library exports refer to unbound identifiers:" missing))))
+
+(define (check-dupes-of-export-groups groups)
+  (let-values (((public private)
+		(partition (lambda (group)
+			     (not (export-group-library-name group)))
+			   groups)))
+    (let ((base-names (and (pair? public) (export-group-exports (car public)))))
+      (for-each (lambda (private)
+		  (check-dupes "exports"
+			       library-ixport-to
+			       (lambda (export froms)
+				 (lset-adjoin eq?
+					      froms
+					      (library-ixport-from export)))
+			       (if public
+				   (append (export-group-exports private)
+					   base-names)
+				   (export-group-exports private))))
+		private))))
+
+(define (map-re-exports exports)
+  (map (lambda (export)
+	 ;; If this is a re-export, export directly from the source.
+	 (let* ((export-from (library-ixport-from export))
+		(import
+		 (find (lambda (import)
+			 (eq? (library-ixport-to import) export-from))
+		       imports)))
+	   (if import
+	       (make-library-ixport (library-ixport-from-library import)
+				    (library-ixport-from import)
+				    (library-ixport-to export))
+	       export)))
+       exports))
 
 (define (check-libraries-exist folder items db library)
   (let ((unusable
 	 (remove (lambda (name)
 		   (and (registered-library? name db)
-			(library-has? 'exports (registered-library name db))))
+			(library-has? 'export-groups
+				      (registered-library name db))))
 		 (fold (lambda (item acc)
 			 (folder item library acc))
 		       '()
@@ -208,6 +252,3 @@ USA.
 		  (hash-table->alist table))
 	  (lambda (a b)
 	    (symbol<? (car a) (car b))))))
-
-(define (get-exports library db)
-  (library-exports (registered-library library db)))

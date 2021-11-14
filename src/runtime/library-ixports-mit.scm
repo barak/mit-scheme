@@ -49,7 +49,7 @@ USA.
 	    ((nameset) (nameset-libraries (cdr export-spec) libraries))
 	    (else libraries)))
 	(defines-libraries (library-get 'parsed-defines library) libraries)
-	(cdr parsed-export)))
+	(cddr parsed-export)))
 
 (define (nameset-libraries nameset libraries)
   (if (pair? nameset)
@@ -102,16 +102,18 @@ USA.
 			    imports))
 	(else
 	 (error "Unrecognized import set:" import-set)))))
-
-(define (mit-expand-parsed-export parsed-export names library exports)
-  (expand-inclusions (map (lambda (name)
-			    (make-library-ixport (library-name library) name))
-			  names)
-		     (cdr parsed-export)
-		     (library-db library)
-		     library
-		     exports))
 
+(define (mit-expand-parsed-export parsed-export names library)
+  (make-export-group
+   (cadr parsed-export)
+   (expand-inclusions (map (lambda (name)
+			     (make-library-ixport (library-name library) name))
+			   names)
+		      (cddr parsed-export)
+		      (library-db library)
+		      library
+		      '())))
+
 (define (expand-exclusions sources exclusions db library acc)
   (let ((part (partition-ixclusions exclusions))
 	(name-matcher (make-name-matcher sources exclusions library db)))

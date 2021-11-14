@@ -325,6 +325,7 @@ USA.
   (object-parser
     (alt mit-define-parser
 	 mit-export-parser
+	 mit-export-to-parser
 	 mit-import-parser
 	 mit-cond-expand-parser
 	 r7rs-include-parser
@@ -342,7 +343,15 @@ USA.
   (object-parser
     (encapsulate list
       (list 'export
-	    (values 'mit-export)
+	    (values 'mit-export #f)
+	    (* (object mit-inclusion-parser))))))
+
+(define mit-export-to-parser
+  (object-parser
+    (encapsulate list
+      (list 'export-to
+	    (values 'mit-export-to)
+	    (match-if library-name?)
 	    (* (object mit-inclusion-parser))))))
 
 (define mit-import-parser
