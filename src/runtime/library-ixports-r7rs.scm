@@ -41,13 +41,12 @@ USA.
 		       libraries))
 
 (define (r7rs-expand-parsed-import parsed-import db library imports)
-  (declare (ignore library))
   (fold (lambda (import-set imports)
-	  (expand-import-set import-set db imports))
+	  (expand-import-set import-set db imports library))
 	imports
 	(cdr parsed-import)))
 
-(define (expand-import-set import-set db imports)
+(define (expand-import-set import-set db imports importing-library)
   (let loop ((import-set import-set) (filter (lambda (name) name)))
     (if (library-name? import-set)
 	(fold (lambda (export imports)
@@ -61,7 +60,7 @@ USA.
 				    to))
 		      imports)))
 	      imports
-	      (get-exports import-set db))
+	      (get-exports import-set db importing-library))
 	(case (car import-set)
 	  ((only)
 	   (loop (cadr import-set)

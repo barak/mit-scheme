@@ -86,16 +86,16 @@ USA.
 					 (library-ixport-to export))
 		    imports))
 	    imports
-	    (get-exports import-set db))
+	    (get-exports import-set db library))
       (case (car import-set)
 	((drop)
-	 (expand-exclusions (get-exports (cadr import-set) db)
+	 (expand-exclusions (get-exports (cadr import-set) db library)
 			    (cddr import-set)
 			    db
 			    library
 			    imports))
 	((take)
-	 (expand-inclusions (get-exports (cadr import-set) db)
+	 (expand-inclusions (get-exports (cadr import-set) db library)
 			    (cddr import-set)
 			    db
 			    library
@@ -192,14 +192,14 @@ USA.
       (let ((nss
 	     (apply nss-union
 		    (map (lambda (nameset)
-			   (expand-nameset nameset lookup db))
+			   (expand-nameset nameset lookup library db))
 			 namesets))))
 	(check-for-missing-names (explicit-names nss)
 				 available-names
 				 ixclusions)
 	(make-matcher (append (explicit-names nss) (implicit-names nss)))))))
 
-(define (expand-nameset nameset lookup db)
+(define (expand-nameset nameset lookup library db)
   (let loop ((nameset nameset))
     (if (symbol? nameset)
 	(or (lookup nameset)
@@ -208,7 +208,7 @@ USA.
 	  ((exports)
 	   (make-nss '()
 		     (map library-ixport-to
-			  (get-exports (cadr nameset) db))))
+			  (get-exports (cadr nameset) db library))))
 	  ((intersection)
 	   (apply nss-intersection (map loop (cdr nameset))))
 	  ((union)
@@ -237,14 +237,15 @@ USA.
       (and p
 	   (cdr p)))))
 
-(define-automatic-property 'mit-defines '(parsed-defines db)
+(define-automatic-property 'mit-defines '(parsed-defines db library)
   #f
-  (lambda (parsed-defines db)
+  (lambda (parsed-defines db library)
     (fold (lambda (def defs)
 	    (if (eq? 'mit-define (car def))
 		(cons (cons (cadr def)
 			    (expand-nameset (caddr def)
 					    (make-lookup defs)
+					    library
 					    db))
 		      defs)
 		defs))

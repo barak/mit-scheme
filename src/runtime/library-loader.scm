@@ -46,7 +46,7 @@ USA.
 (define-automatic-property 'imports-used
     '(imports export-groups free-names bound-names name)
   #f
-  (lambda (imports export-groups free-names bound-names)
+  (lambda (imports groups free-names bound-names)
     (let ((imports-to
 	   (lset-difference eq?
 			    (map library-ixport-to imports)
@@ -112,8 +112,10 @@ USA.
   (let ((grouped
 	 (let ((table (make-strong-eq-hash-table)))
 	   (for-each (lambda (import)
-		       (let-values (((senv sname)
-				     (library-import-source import db)))
+		       (let-values
+			   (((senv sname)
+			     (library-import-source import db
+						    importing-library-name)))
 			 (hash-table-update! table (library-ixport-to import)
 			   (lambda (sources) (cons (cons senv sname) sources))
 			   (lambda () '()))))

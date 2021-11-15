@@ -204,7 +204,7 @@ USA.
 				   (export-group-exports private))))
 		private))))
 
-(define (map-re-exports exports)
+(define (map-re-exports exports imports)
   (map (lambda (export)
 	 ;; If this is a re-export, export directly from the source.
 	 (let* ((export-from (library-ixport-from export))
@@ -252,3 +252,7 @@ USA.
 		  (hash-table->alist table))
 	  (lambda (a b)
 	    (symbol<? (car a) (car b))))))
+
+(define (get-exports library db importing-library)
+  (library-exports (registered-library library db)
+		   (and importing-library (library-name importing-library))))
