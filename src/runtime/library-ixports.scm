@@ -159,17 +159,21 @@ USA.
    parsed-export library libraries))
 
 (define (merge-parsed-exports parsed-exports)
-  (let ((tag (caar parsed-exports))
-	(amap (make-amap (make-equal-comparator) 'alist)))
-    (for-each (lambda (parsed-export)
-		(amap-update!/default amap
-				      (cadr parsed-export)
-				      (lambda (names)
-					(lset-union (cddr parsed-export) names))
-				      '()))
-	      parsed-exports)
-    (map (lambda (p) (cons tag p))
-	 (amap->alist amap))))
+  (if (pair? parsed-exports)
+      (let ((tag (caar parsed-exports))
+	    (amap (make-amap (make-equal-comparator) 'alist)))
+	(for-each (lambda (parsed-export)
+		    (amap-update!/default amap
+					  (cadr parsed-export)
+					  (lambda (names)
+					    (lset-union eq?
+							(cddr parsed-export)
+							names))
+					  '()))
+		  parsed-exports)
+	(map (lambda (p) (cons tag p))
+	     (amap->alist amap)))
+      parsed-exports))
 
 (define (check-missing-exports groups names)
   (let ((missing
@@ -198,7 +202,7 @@ USA.
 				 (lset-adjoin eq?
 					      froms
 					      (library-ixport-from export)))
-			       (if public
+			       (if base-names
 				   (append (export-group-exports private)
 					   base-names)
 				   (export-group-exports private))))
@@ -254,5 +258,4 @@ USA.
 	    (symbol<? (car a) (car b))))))
 
 (define (get-exports library db importing-library)
-  (library-exports (registered-library library db)
-		   (and importing-library (library-name importing-library))))
+  (library-exports (registered-library library db) importing-library))

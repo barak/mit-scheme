@@ -47,7 +47,8 @@ USA.
 	 (let ((library (car p))
 	       (exports (cdr p)))
 	   (make-library library
-			 'exports (convert-exports exports)
+			 'export-groups
+			 (list (make-export-group #f (convert-exports exports)))
 			 'environment system-global-environment)))
        standard-libraries))
 
@@ -1181,7 +1182,8 @@ USA.
 
 (define (make-synthetic-library library exports environment)
   (register-library! (make-library library
-				   'exports exports
+				   'export-groups
+				   (list (make-export-group #f exports))
 				   'environment environment)
 		     host-library-db))
 

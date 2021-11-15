@@ -256,20 +256,27 @@ USA.
   (library-name export-group-library-name)
   (exports export-group-exports))
 
-(define (library-exports library #!optional importing-library-name)
+(define-print-method export-group?
+  (standard-print-method 'export-group
+    (lambda (group)
+      (list (export-group-library-name group)))))
+
+(define (library-exports library #!optional importing-library)
   (let ((groups (library-export-groups library)))
-    (if (default-object? importing-library-name)
+    (if (or (not importing-library)
+	    (default-object? importing-library))
 	(let ((public
 	       (find (lambda (group)
 		       (not (export-group-library-name group)))
 		     groups)))
 	  (if public
-	      (export-group-exports (car public))
+	      (export-group-exports public)
 	      '()))
 	(fold (lambda (group exports)
-		(let ((export-to (export-group-library-name group)))
+		(let ((export-to (export-group-library-name group))
+		      (importing-name (library-name importing-library)))
 		  (if (or (not export-to)
-			  (library-name=? export-to importing-library-name))
+			  (library-name=? export-to importing-name))
 		      (append (export-group-exports group) exports)
 		      exports)))
 	      '()

@@ -262,6 +262,7 @@ USA.
     (encapsulate list
       (list 'define-library
 	    (match-if library-name?)
+
 	    (* (object r7rs-declaration-parser))))))
 
 (define r7rs-declaration-parser
@@ -277,7 +278,7 @@ USA.
   (object-parser
    (encapsulate list
      (list 'export
-	   (values 'r7rs-export)
+	   (values 'r7rs-export #f)
            (* (object r7rs-export-spec-parser))))))
 
 (define r7rs-export-spec-parser

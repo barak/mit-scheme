@@ -44,7 +44,7 @@ USA.
     (syntax-library-forms (expand-contents parsed-contents) env)))
 
 (define-automatic-property 'imports-used
-    '(imports export-groups free-names bound-names name)
+    '(imports export-groups free-names bound-names)
   #f
   (lambda (imports groups free-names bound-names)
     (let ((imports-to
@@ -98,24 +98,23 @@ USA.
     (and (registered-library? name db)
 	 (library-has? 'environment (registered-library name db)))))
 
-(define (make-environment-from-imports imports db #!optional sealed?
-				       importing-library-name)
+(define (make-environment-from-imports imports db importing-library sealed?)
   (let ((env
 	 ((if sealed?
 	      make-root-top-level-environment
 	      make-top-level-environment)
 	  (delete-duplicates (map library-ixport-to imports) eq?))))
-    (add-imports-to-env! imports env db importing-library-name)
+    (add-imports-to-env! imports env db importing-library)
     env))
 
-(define (add-imports-to-env! imports env db #!optional importing-library-name)
+(define (add-imports-to-env! imports env db importing-library)
   (let ((grouped
 	 (let ((table (make-strong-eq-hash-table)))
 	   (for-each (lambda (import)
 		       (let-values
 			   (((senv sname)
 			     (library-import-source import db
-						    importing-library-name)))
+						    importing-library)))
 			 (hash-table-update! table (library-ixport-to import)
 			   (lambda (sources) (cons (cons senv sname) sources))
 			   (lambda () '()))))
@@ -156,37 +155,36 @@ USA.
 			     (environment-define env tname value))))))
 		other))))
 
-(define (library-import-source import db importing-library-name)
+(define (library-import-source import db importing-library)
   (let ((name (library-ixport-from import))
 	(library (registered-library (library-ixport-from-library import) db)))
     (let ((export
 	   (find (lambda (export)
 		   (eq? name (library-ixport-to export)))
-		 (library-exports library importing-library-name))))
+		 (library-exports library importing-library))))
       (if (not export)
 	  (error "Not an exported name:" name))
       (values (library-environment library)
 	      (library-ixport-from export)))))
 
-(define-automatic-property 'imports-environment '(imports db name)
-  (lambda (imports db name)
-    (declare (ignore name))
+(define-automatic-property 'imports-environment '(imports db library)
+  (lambda (imports db library)
+    (declare (ignore library))
     (every (lambda (import)
 	     (environment-available? import db))
 	   imports))
-  (lambda (imports db name)
-    (make-environment-from-imports imports db #t name)))
+  (lambda (imports db library)
+    (make-environment-from-imports imports db library #t)))
 
 (define (environment . import-sets)
   (let ((db (current-library-db)))
     (make-environment-from-imports (import-sets->imports import-sets db)
-				   db)))
+				   db #f #t)))
 
 (define (top-level-environment . import-sets)
   (let ((db (current-library-db)))
     (make-environment-from-imports (import-sets->imports import-sets db)
-				   db
-				   #f)))
+				   db #f #f)))
 
 (define (scheme-report-environment version)
   (if (not (eqv? version 5))
@@ -205,7 +203,8 @@ USA.
   (let ((db (current-library-db)))
     (add-imports-to-env! (import-sets->imports import-sets db)
 			 (nearest-repl/environment)
-			 db)))
+			 db
+			 #f)))
 
 (define (import-sets->imports import-sets db)
   (parsed-imports->imports (map parse-import-set import-sets) db))
@@ -213,7 +212,7 @@ USA.
 (define (make-environment-from-parsed-imports parsed-imports)
   (let ((db (current-library-db)))
     (make-environment-from-imports (parsed-imports->imports parsed-imports db)
-				   db)))
+				   db #f #t)))
 
 (define (parsed-imports->imports parsed-imports db)
   (let ((imports (expand-parsed-imports parsed-imports db)))

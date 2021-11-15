@@ -107,9 +107,10 @@ USA.
 
 (define (scode-library-export-groups library)
   (if (= 2 (scode-library-version library))
-      (make-export-group
-       #f
-       (map list->library-ixport (scode-library-property 'exports library)))
+      (list
+       (make-export-group
+	#f
+	(map list->library-ixport (scode-library-property 'exports library))))
       (map list->export-group (scode-library-property 'export-groups library))))
 
 (define (singleton-list? object)
