@@ -351,7 +351,7 @@ USA.
   (object-parser
     (encapsulate list
       (list 'export-to
-	    (values 'mit-export-to)
+	    (values 'mit-export)
 	    (match-if library-name?)
 	    (* (object mit-inclusion-parser))))))
 
