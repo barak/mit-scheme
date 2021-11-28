@@ -893,7 +893,7 @@ USA.
   (reduce (lambda (lis ans)
 	    ;; Splice new elts of LIS onto the front of ANS.
 	    (cond ((null? lis) ans)	; Don't copy any lists
-		  ((null? ans) lis) 	; if we don't have to.
+		  ((null? ans) lis)	; if we don't have to.
 		  ((eq? lis ans) ans)
 		  (else
 		   (pair-fold (lambda (pair ans)
