@@ -3501,13 +3501,14 @@ USA.
   (files "srfi-1")
   (parent (runtime))
   (export deprecated ()
-	  (list-head take)
 	  (reverse* append-reverse)
 	  (reverse*! append-reverse!)
 	  for-all?
 	  there-exists?)
   (export ()
+	  (list-head take)
 	  (list-tail drop)		;(scheme base)
+	  (lset-adjoin! lset-adjoin)
 	  any
 	  append-reverse
 	  append-reverse!
