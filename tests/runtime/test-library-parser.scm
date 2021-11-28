@@ -115,3 +115,14 @@ USA.
 			  (life grid 80))))
 	(assert-string= (library-filename program)
 			r7rs-example-filename)))))
+
+(define-test 'read-r7rs-source:privte-exports
+  (lambda ()
+    (let ((source (read-r7rs-source private-exports-example-filename)))
+      (let ((libraries (r7rs-source-libraries source)))
+	(assert-true (list? libraries))
+	(assert-= (length libraries) 2)
+	(assert-equal (map library-name libraries)
+		      '((test amap)
+			(test amap impl))))
+      (assert-false (r7rs-source-program source)))))

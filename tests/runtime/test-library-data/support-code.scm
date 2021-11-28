@@ -39,6 +39,11 @@ USA.
       (make-library-ixport library export)
       (make-library-ixport library (cadr export) (caddr export))))
 
+(define (convert-exports library exports)
+  (map (lambda (name)
+	 (convert-export library name))
+       exports))
+
 (define (convert-content content)
   (case (car content)
     ((include include-ci)
@@ -116,6 +121,11 @@ USA.
 (define srfi-140-example-filename
   (->namestring
    (merge-pathnames "test-library-data/srfi-140-example.scm"
+		    test-directory)))
+
+(define private-exports-example-filename
+  (->namestring
+   (merge-pathnames "test-library-data/private-exports-example.scm"
 		    test-directory)))
 
 (define (exports-of name db)
