@@ -120,7 +120,8 @@ USA.
      (assert error if not)
      (begin0 let)
      (case begin eq? eqv? if let or quote)
-     (case-lambda apply default-object? error fix:= fix:>= if lambda length let)
+     (case-lambda apply default-object? error fix:= fix:>= if lambda length let
+		  make-arity-dispatched-procedure)
      (circular-stream cons delay letrec)
      (cond begin if let)
      (cond-expand begin)
