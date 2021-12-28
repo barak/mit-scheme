@@ -55,7 +55,7 @@ main (int argc, const char ** argv)
     return (3);
 
   bp = ((char *) buffer);
-  pid = (vfork ());
+  pid = (fork ());
   if (pid == 0)
     {
       execl (bp, bp, "--macosx-application", "--edit", ((char *) 0));
