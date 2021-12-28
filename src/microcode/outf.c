@@ -48,6 +48,16 @@ USA.
 #  include "ntscreen.h"
    extern HANDLE master_tty_window;
 #endif
+
+outf_channel CONSOLE_OUTPUT = { .type = OUTF_CONSOLE };
+outf_channel ERROR_OUTPUT = { .type = OUTF_ERROR };
+outf_channel FATAL_OUTPUT = { .type = OUTF_FATAL };
+
+outf_channel
+FILE_OUTPUT (FILE * fp)
+{
+  return ((outf_channel) { .type = OUTF_FILE, .cookie = fp });
+}
 
 void
 outf (outf_channel chan, const char * format, ...)
@@ -61,22 +71,24 @@ outf (outf_channel chan, const char * format, ...)
 void
 voutf (outf_channel chan, const char * format, va_list ap)
 {
-  switch (chan)
+  switch (chan.type)
     {
-    case CONSOLE_OUTPUT: voutf_console (format, ap); break;
-    case ERROR_OUTPUT: voutf_error (format, ap); break;
-    case FATAL_OUTPUT: voutf_fatal (format, ap); break;
+    case OUTF_CONSOLE: voutf_console (format, ap); break;
+    case OUTF_ERROR: voutf_error (format, ap); break;
+    case OUTF_FATAL: voutf_fatal (format, ap); break;
+    case OUTF_FILE: vfprintf ((chan.cookie), format, ap); break;
     }
 }
 
 void
 outf_flush (outf_channel chan)
 {
-  switch (chan)
+  switch (chan.type)
     {
-    case CONSOLE_OUTPUT: outf_flush_console (); break;
-    case ERROR_OUTPUT: outf_flush_error (); break;
-    case FATAL_OUTPUT: outf_flush_fatal (); break;
+    case OUTF_CONSOLE: outf_flush_console (); break;
+    case OUTF_ERROR: outf_flush_error (); break;
+    case OUTF_FATAL: outf_flush_fatal (); break;
+    case OUTF_FILE: fflush (chan.cookie); break;
     }
 }
 

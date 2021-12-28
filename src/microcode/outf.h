@@ -29,7 +29,18 @@ USA.
 
 #include "config.h"
 
-typedef enum { CONSOLE_OUTPUT, ERROR_OUTPUT, FATAL_OUTPUT } outf_channel;
+#include <stdio.h>
+
+typedef struct
+{
+  enum { OUTF_CONSOLE, OUTF_ERROR, OUTF_FATAL, OUTF_FILE } type;
+  void * cookie;
+} outf_channel;
+
+extern outf_channel CONSOLE_OUTPUT;
+extern outf_channel ERROR_OUTPUT;
+extern outf_channel FATAL_OUTPUT;
+extern outf_channel FILE_OUTPUT (FILE *);
 
 extern void outf (outf_channel, const char *, ...)
   PRINTFLIKE (2, 3);

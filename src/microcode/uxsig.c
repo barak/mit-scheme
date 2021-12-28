@@ -1194,7 +1194,7 @@ interactive_back_trace (void)
       outf_console ("Writing the stack trace to file \"%s\" -- ",
                     &input_string[0]);
       outf_flush_console ();
-      debug_back_trace ((outf_channel) to_dump);
+      debug_back_trace (FILE_OUTPUT (to_dump));
       outf_console ("Done.\n");
       outf_flush_console ();
     }
