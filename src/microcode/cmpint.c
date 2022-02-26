@@ -871,7 +871,7 @@ DEFINE_SCHEME_ENTRY (comp_link_caches_restart)
   result = (link_section (&s));
   if (result == PRIM_DONE)
     result = (link_remaining_sections (&s));
-  
+
   end_linking_cc_block (&s);
   if (result != PRIM_DONE)
     return (result);
