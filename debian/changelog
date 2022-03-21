@@ -1,3 +1,16 @@
+mit-scheme (11.2-3) unstable; urgency=medium
+
+  [ Nick Rosbrook ]
+  * d/p/0001-microcode-Make-definition-for-chacha_core-match-decl.patch:
+    Pull in upstream patch to fix -Werror=array-parameter build error.
+    (LP: #1965163).
+
+  [ Barak A. Pearlmutter ]
+  * Spelling correction in description
+  * Ubuntu OpenSSL 3.0 FTBFS patch (closes: #1006507)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Mon, 21 Mar 2022 16:31:37 +0000
+
 mit-scheme (11.2-2) unstable; urgency=medium
 
   * remove i386 from architecture list (closes: #982791)

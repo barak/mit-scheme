@@ -1,0 +1,29 @@
+Description: Make definition for chacha_core match declaration.
+ Makes no semantic difference but some compilers object now.
+Origin: upstream, https://git.savannah.gnu.org/cgit/mit-scheme.git/commit/?id=837bb3f1ca75f867e115bf3a195de2f78517dce1
+Last-Update: 2022-03-16
+---
+From 837bb3f1ca75f867e115bf3a195de2f78517dce1 Mon Sep 17 00:00:00 2001
+From: Taylor R Campbell <campbell+mit-scheme@mumble.net>
+Date: Fri, 7 May 2021 16:02:08 +0000
+Subject: [PATCH] microcode: Make definition for chacha_core match declaration.
+
+Makes no semantic difference but some compilers object now.
+---
+ src/microcode/chacha.i | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+--- a/src/microcode/chacha.i
++++ b/src/microcode/chacha.i
+@@ -77,8 +77,10 @@
+ static const uint8_t chacha_core_constant32[16] = "expand 32-byte k";
+ 
+ void
+-chacha_core(uint8_t *out, const uint8_t *in, const uint8_t *k,
+-    const uint8_t *c)
++chacha_core(uint8_t out[chacha_core_OUTPUTBYTES],
++    const uint8_t in[chacha_core_INPUTBYTES],
++    const uint8_t k[chacha_core_KEYBYTES],
++    const uint8_t c[chacha_core_CONSTBYTES])
+ {
+ 	uint32_t x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15;
+ 	uint32_t j0,j1,j2,j3,j4,j5,j6,j7,j8,j9,j10,j11,j12,j13,j14,j15;
