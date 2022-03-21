@@ -1,7 +1,8 @@
 Source: mit-scheme
 Section: lisp
 Priority: optional
-Maintainer: Barak A. Pearlmutter <bap@debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Barak A. Pearlmutter <bap@debian.org>
 Build-Depends: debhelper-compat (= 13),
 		mit-scheme (>= 10),
 		libssl-dev, libmhash-dev, libmcrypt-dev,

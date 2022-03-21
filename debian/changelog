@@ -1,3 +1,11 @@
+mit-scheme (11.2-2ubuntu1) jammy; urgency=medium
+
+  * d/p/0001-microcode-Make-definition-for-chacha_core-match-decl.patch:
+    Pull in upstream patch to fix -Werror=array-parameter build error.
+    (LP: #1965163).
+
+ -- Nick Rosbrook <nick.rosbrook@canonical.com>  Thu, 17 Mar 2022 13:14:25 -0400
+
 mit-scheme (11.2-2) unstable; urgency=medium
 
   * remove i386 from architecture list (closes: #982791)
