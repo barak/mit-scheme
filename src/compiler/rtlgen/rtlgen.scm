@@ -163,20 +163,12 @@ USA.
 			  (continuation/type continuation)
 			((PUSH)
 			 (with-value rtl:make-push))
-			((REGISTER)
+			((REGISTER VALUE PREDICATE)
 			 (with-value
 			  (lambda (expression)
 			    (rtl:make-assignment
 			     (continuation/register continuation)
 			     expression))))
-			((VALUE PREDICATE)
-			 (if (continuation/ever-known-operator? continuation)
-			     (with-value
-			      (lambda (expression)
-				(rtl:make-assignment
-				 (continuation/register continuation)
-				 expression)))
-			     (values (make-null-cfg) (make-null-cfg))))
 			((EFFECT)
 			 (values (make-null-cfg) (make-null-cfg)))
 			(else

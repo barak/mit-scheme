@@ -86,10 +86,7 @@ USA.
 		     (else
 		      (error "illegal integrated value variable" variable))))
 	     (rtl:make-fetch
-	      (let ((continuation (reference-context/procedure context)))
-		(if (continuation/ever-known-operator? continuation)
-		    (continuation/register continuation)
-		    register:value))))))
+	      (continuation/register (reference-context/procedure context))))))
       (let ((if-locative
 	     (if get-value?
 		 (lambda (locative)
