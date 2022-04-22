@@ -151,24 +151,22 @@ USA.
 	  (generate/rgraph
 	   (continuation/entry-node continuation)
 	   (lambda (node)
-	     (define (with-value generator)
-	       (let* ((temporary (rtl:make-pseudo-register))
-		      (prologue
-		       (rtl:make-assignment temporary
-					    (rtl:make-fetch register:value)))
-		      (intermezzo (generator temporary)))
-		 (values prologue intermezzo)))
 	     (receive (prologue intermezzo)
 		      (enumeration-case continuation-type
 			  (continuation/type continuation)
 			((PUSH)
-			 (with-value rtl:make-push))
+			 (let* ((temporary (rtl:make-pseudo-register))
+				(prologue
+				 (rtl:make-assignment
+				  temporary
+				  (rtl:make-fetch register:value)))
+				(intermezzo (rtl:make-push temporary)))
+			   (values prologue intermezzo)))
 			((REGISTER VALUE PREDICATE)
-			 (with-value
-			  (lambda (expression)
-			    (rtl:make-assignment
-			     (continuation/register continuation)
-			     expression))))
+			 (values (rtl:make-assignment
+				  (continuation/register continuation)
+				  (rtl:make-fetch register:value))
+				 (make-null-cfg)))
 			((EFFECT)
 			 (values (make-null-cfg) (make-null-cfg)))
 			(else
