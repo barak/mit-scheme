@@ -20,7 +20,7 @@ Package: mit-scheme
 Architecture: amd64
 Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Recommends: mime-support
+Recommends: media-types
 Suggests: mit-scheme-dbg, mit-scheme-doc
 Description: MIT/GNU Scheme development environment
  MIT/GNU Scheme is an implementation of the Scheme programming language,
