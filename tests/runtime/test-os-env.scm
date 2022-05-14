@@ -43,3 +43,24 @@ USA.
 	 (if old
 	     (set-environment-variable! var old)
 	     (delete-environment-variable! var)))))))
+
+(define-test 'list-smoke
+  (lambda ()
+    (get-environment-variables)))
+
+(define-test 'set-list-assoc
+  (lambda ()
+    (let* ((var "FOOBAR")
+	   (val "MUMBLEFROTZ")
+	   (old (get-environment-variable var)))
+      (dynamic-wind
+	(lambda () 0)
+	(lambda ()
+	  (set-environment-variable! var val)
+	  (assert-equal (assoc var (get-environment-variables))
+			(cons var val))
+	  0)
+	(lambda ()
+	  (if old
+	      (set-environment-variable! var old)
+	      (delete-environment-variable! var)))))))
