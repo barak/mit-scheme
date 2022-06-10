@@ -1,0 +1,4 @@
+Bug fix: Microcode stack traces had been broken in the microcode v15
+merge in 2007.  They now work again, and the C code that abused enums
+to store pointers, which broke the build with newer compilers, has been
+fixed to work differently.
