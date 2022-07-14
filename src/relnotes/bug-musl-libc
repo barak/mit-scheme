@@ -1,0 +1,5 @@
+Fix build with musl libc.
+
+Work around problem with musl's declaration of environ in unistd.h,
+which causes gcc -Wredundant-decls warnings to reject the POSIX
+requirement that users declare `extern char **environ'.

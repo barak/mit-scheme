@@ -137,8 +137,11 @@ USA.
 #  define USE_MAP_FIXED 1
 #endif
 
-/* GNU C library defines environ if __USE_GNU is defined.  */
-#ifndef __USE_GNU
+/* GNU C library defines environ if __USE_GNU is defined.  musl libc
+   defines environ unconditionally, even though, when combined with
+   -Wredundant-decls, this breaks the POSIX requirement that users must
+   explicitly declare environ.  */
+#if !defined __USE_GNU && !defined MUSL
   extern char ** environ;
 #endif
 

@@ -310,6 +310,12 @@ linux-gnu)
     DO_GCC_TESTS=yes
     GNU_LD=yes
     ;;
+linux-musl)
+    M4_FLAGS="${M4_FLAGS} -P __linux__,1"
+    CPPFLAGS="${CPPFLAGS} -DMUSL"
+    DO_GCC_TESTS=yes
+    GNU_LD=yes
+    ;;
 freebsd*)
     M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
     DO_GCC_TESTS=yes
