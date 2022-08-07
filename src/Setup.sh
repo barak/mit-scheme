@@ -34,7 +34,10 @@ configure=done
 
 clean ()
 {
-    if [ "x${configure}" != xdone ]; then
+    if [ "x${autoheader}" != xdone ]; then
+	rm -f config.h.in
+    fi
+    if [ "x${autoconf}" != xdone ]; then
 	rm -f configure
     fi
 }
@@ -67,13 +70,20 @@ EOF
     exit 1
 fi
 
+if [ ! -f config.h.in ]; then
+    autoheader=clean
+    echo "autoheader"
+    autoheader
+    autoheader=done
+fi
+
 if [ ! -x configure \
 	-o configure.ac -nt configure \
 	-o microcode/aclocal.m4 -nt configure ]; then
-    configure=clean
+    autoconf=clean
     echo "autoconf --include=microcode"
     autoconf --include=microcode
-    configure=done
+    autoconf=done
 fi
 
 . etc/functions.sh

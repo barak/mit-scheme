@@ -113,7 +113,6 @@ USA.
 
 #include "config.h"
 
-#include <errno.h>
 #include <grp.h>
 #include <pwd.h>
 #include <signal.h>
@@ -213,15 +212,9 @@ USA.
 #  endif
 #endif
 
-#ifdef TIME_WITH_SYS_TIME
+#include <time.h>
+#ifdef HAVE_SYS_TIME_H
 #  include <sys/time.h>
-#  include <time.h>
-#else
-#  ifdef HAVE_SYS_TIME_H
-#    include <sys/time.h>
-#  else
-#    include <time.h>
-#  endif
 #endif
 
 #ifdef HAVE_SYS_TIMEX_H
@@ -315,7 +308,7 @@ USA.
 #include "osscheme.h"
 #include "syscall.h"
 
-typedef RETSIGTYPE Tsignal_handler_result;
+typedef void Tsignal_handler_result;
 
 #ifdef _POSIX_REALTIME_SIGNALS
 #  define HAVE_SIGACTION_SIGINFO_SIGNALS
@@ -324,14 +317,10 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #ifdef HAVE_SIGACTION_SIGINFO_SIGNALS
    typedef void (*Tsignal_handler) (int, siginfo_t *, void *);
 #else
-   typedef RETSIGTYPE (*Tsignal_handler) (int);
+   typedef void (*Tsignal_handler) (int);
 #endif
 
-#ifdef VOID_SIGNAL_HANDLERS
-#  define SIGNAL_HANDLER_RETURN() return
-#else
-#  define SIGNAL_HANDLER_RETURN() return (0)
-#endif
+#define SIGNAL_HANDLER_RETURN() return
 
 /* Crufty, but it will work here. */
 #ifndef ENOSYS

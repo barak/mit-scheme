@@ -31,10 +31,6 @@ USA.
 #include "osproc.h"
 #include "osio.h"
 
-#ifdef __unix__
-   extern char ** environ;
-#endif
-
 extern Tchannel arg_channel (int);
 
 static Tprocess

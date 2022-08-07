@@ -3,6 +3,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT([MIT/GNU Scheme], [12.0.50], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
+AC_CONFIG_HEADERS([dummy-config.h])
 AC_PROG_MAKE_SET
 
 AC_COPYRIGHT(
@@ -257,10 +258,10 @@ but ${message}
 
 If you have installed MIT/GNU Scheme in an unusual location, set the
 environment variable MIT_SCHEME_EXE to the name or pathname of the
-MIT/GNU Scheme executable, which is usually \`mit-scheme' or
-\`/usr/local/bin/mit-scheme', and set the environment variable
+MIT/GNU Scheme executable, which is usually `mit-scheme' or
+`/usr/local/bin/mit-scheme', and set the environment variable
 MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme library
-directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
+directory, which is usually `/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
 ])
     fi
 fi
