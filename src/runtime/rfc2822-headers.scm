@@ -213,9 +213,12 @@ USA.
   (let ((byte (peek-u8 port)))
     (cond ((eof-object? byte)
 	   byte)
-	  ((and (fix:<= 32 byte) (fix:<= byte 126))
+	  ((or (fix:= 13 byte)
+	       (fix:= 10 byte)
+	       (and (fix:<= 32 byte) (fix:<= byte 126)))
 	   (integer->char byte))
-	  (else (parse-error port "Illegal character:" 'peek-ascii-char)))))
+	  (else
+	   (parse-error port "Illegal character:" byte 'peek-ascii-char)))))
 
 (define (skip-wsp-left string start end)
   (let loop ((i start))
