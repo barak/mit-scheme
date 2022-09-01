@@ -102,7 +102,7 @@ USA.
 (define-guarantee simple-http-request "simple HTTP request")
 
 (define (make-simple-http-request uri)
-  (guarantee simple-http-request-uri? uri 'make-http-request)
+  (guarantee simple-http-request-uri? uri 'make-simple-http-request)
   (%make-http-request '|GET| uri #f '() (bytevector)))
 
 (define (simple-http-response? object)
