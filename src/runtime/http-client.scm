@@ -55,11 +55,14 @@ USA.
       value)))
 
 (define (http-client-request method uri headers body)
-  (guarantee absolute-uri? uri)
+  (guarantee standard-http-request-uri? uri)
   (make-http-request method
 		     (make-uri #f
 			       #f
-			       (uri-path uri)
+			       (let ((path (uri-path uri)))
+				 (if (null? path)
+				     '("" "")
+				     path))
 			       (uri-query uri)
 			       (uri-fragment uri))
 		     http-version:1.1

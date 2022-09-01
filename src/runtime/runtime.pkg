@@ -6357,6 +6357,7 @@ USA.
 	  simple-http-request-uri?
 	  simple-http-request?
 	  simple-http-response?
+	  standard-http-request-uri?
 	  write-http-request
 	  write-http-response))
 

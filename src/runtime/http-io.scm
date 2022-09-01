@@ -31,6 +31,8 @@ USA.
 ;;;   Transfer coding is assumed to always be "identity".
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime uri))
 
 (define-record-type <http-request>
     (%make-http-request method uri version headers body)
@@ -99,8 +101,6 @@ USA.
   (and (http-request? object)
        (not (http-request-version object))))
 
-(define-guarantee simple-http-request "simple HTTP request")
-
 (define (make-simple-http-request uri)
   (guarantee simple-http-request-uri? uri 'make-simple-http-request)
   (%make-http-request '|GET| uri #f '() (bytevector)))
@@ -108,8 +108,6 @@ USA.
 (define (simple-http-response? object)
   (and (http-response? object)
        (not (http-response-version object))))
-
-(define-guarantee simple-http-response "simple HTTP response")
 
 (define (make-simple-http-response body)
   (guarantee bytevector? body 'make-simple-http-response)
@@ -119,33 +117,37 @@ USA.
   (or (http-request? object)
       (http-response? object)))
 
-(define-guarantee http-message "HTTP message")
-
 (define (http-message-headers message)
   (cond ((http-request? message) (http-request-headers message))
 	((http-response? message) (http-response-headers message))
-	(else (error:not-http-message message 'http-message-headers))))
+	(else (error:not-a http-message? message 'http-message-headers))))
 
 (define (http-message-body message)
   (cond ((http-request? message) (http-request-body message))
 	((http-response? message) (http-response-body message))
-	(else (error:not-http-message message 'http-message-body))))
+	(else (error:not-a http-message? message 'http-message-body))))
 
 (define (http-request-uri? object)
   (or (simple-http-request-uri? object)
-      (absolute-uri? object)
+      (standard-http-request-uri? object)
       (eq? object '*)
       (uri-authority? object)))
-
-(define-guarantee http-request-uri "HTTP URI")
+(register-predicate! http-request-uri? 'http-request-uri?)
 
 (define (simple-http-request-uri? object)
-  (and (uri? object)
-       (not (uri-scheme object))
+  (and (relative-uri? object)
        (not (uri-authority object))
        (uri-path-absolute? (uri-path object))))
+(register-predicate! simple-http-request-uri? 'simple-http-request-uri?
+		     '<= relative-uri?
+		     '<= http-request-uri?)
 
-(define-guarantee simple-http-request-uri "simple HTTP URI")
+(define (standard-http-request-uri? object)
+  (and (absolute-uri? object)
+       (uri-authority object)))
+(register-predicate! standard-http-request-uri? 'standard-http-request-uri?
+		     '<= absolute-uri?
+		     '<= http-request-uri?)
 
 ;;;; Output
 
