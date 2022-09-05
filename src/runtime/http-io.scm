@@ -171,16 +171,12 @@ USA.
       (begin
 	(write-u8 (char->integer #\space) port)
 	(write-http-version (http-request-version request) port)
-	(write-u8 (char->integer #\return) port)
-	(write-u8 (char->integer #\linefeed) port)
+	(newline-ascii port)
 	(write-http-headers (http-request-headers request) port)
 	(write-bytevector (http-request-body request) port))
       (begin
-	(newline port)))
+	(newline-ascii port)))
   (flush-output-port port))
-
-(define (write-ascii string port)
-  (write-bytevector (string->utf8 string) port))
 
 (define (write-http-response response port)
   (if (http-response-version response)
@@ -190,10 +186,17 @@ USA.
 	(write-ascii (write-to-string (http-response-status response)) port)
 	(write-u8 (char->integer #\space) port)
 	(write-ascii (http-response-reason response) port)
-	(newline port)
+	(newline-ascii port)
 	(write-http-headers (http-response-headers response) port)))
   (write-bytevector (http-response-body response) port)
   (flush-output-port port))
+
+(define (write-ascii string port)
+  (write-bytevector (string->utf8 string) port))
+
+(define (newline-ascii port)
+  (write-u8 (char->integer #\return) port)
+  (write-u8 (char->integer #\linefeed) port))
 
 ;;;; Input
 
