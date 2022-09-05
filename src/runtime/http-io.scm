@@ -247,7 +247,7 @@ USA.
 	    (let ((b.t
 		   (or (%read-chunked-body headers port)
 		       (%read-delimited-body headers port)
-		       (%no-read-body))))
+		       (%read-no-body))))
 	      (make-http-request method uri version
 				 (append! headers (cdr b.t))
 				 (car b.t))))))))
@@ -266,7 +266,7 @@ USA.
 		       (or (%read-chunked-body headers port)
 			   (%read-delimited-body headers port)
 			   (%read-terminal-body headers port)
-			   (%no-read-body)))))
+			   (%read-no-body)))))
 	      (make-http-response version status reason
 				  (append! headers (cdr b.t))
 				  (car b.t))))))))
@@ -341,8 +341,8 @@ USA.
 		   (write-u8 (bytevector-u8-ref buffer i) output))
 		 (loop)))))))))
 
-(define (%no-read-body)
-  (error "Unable to determine HTTP message body length."))
+(define (%read-no-body)
+  '(#u8()))
 
 ;;;; Request and response lines
 
