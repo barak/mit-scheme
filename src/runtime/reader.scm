@@ -796,14 +796,9 @@ USA.
 	  ((string-maybe-ci=? db name "default") (default-object))
 	  ((string-maybe-ci=? db name "unspecific") unspecific)
 	  ((string-maybe-ci=? db name "reclaimed") (gc-reclaimed-object))
-	  ((string=? name "fold-case")
-	   (set-db-fold-case! db #t)
-	   continue-reading)
-	  ((string=? name "no-fold-case")
-	   (set-db-fold-case! db #f)
-	   continue-reading)
-	  (else
-	   (error:illegal-named-constant name)))))
+	  ((string=? name "fold-case") (set-db-fold-case! db #t))
+	  ((string=? name "no-fold-case") (set-db-fold-case! db #f))
+	  (else (error:illegal-named-constant name)))))
 
 (define (handler:uri db ctx char1 char2)
   ctx char1 char2
