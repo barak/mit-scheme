@@ -521,9 +521,11 @@ USA.
        (lambda (clauses)
 	 (if (pair? clauses)
 	     (receive (m bindings entries rest-case)
-		      (parse-case-lambda clauses)
+		 (parse-case-lambda clauses)
 	       (let ((cases (assign-cases m entries)))
-		 (generate-case-lambda bindings rest-case cases)))
+		 (generate-case-lambda (remove-unused-bindings bindings cases)
+				       rest-case
+				       cases)))
 	     (case-lambda-no-choices)))))))
 
 (define (parse-case-lambda clauses)
@@ -568,6 +570,11 @@ USA.
 	  (if (not (vector-ref cases i))
 	      (vector-set! cases i name)))))
     (vector->list cases)))
+
+(define (remove-unused-bindings bindings cases)
+  (filter (lambda (binding)
+	    (memq (car binding) cases))
+	  bindings))
 
 (define (generate-case-lambda bindings rest-case cases)
   (let ((default (and rest-case (new-identifier 'default))))
