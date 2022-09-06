@@ -290,7 +290,8 @@ DEFINE_PRIMITIVE ("FIXNUM-LSH", Prim_fixnum_lsh, 2, 2, 0)
 DEFINE_PRIMITIVE ("FXBIT-COUNT", Prim_fxbit_count, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  FIXNUM_RESULT (ulong_bit_count ((unsigned long) (arg_fixnum(1))));
+  long n = (arg_fixnum(1));
+  FIXNUM_RESULT (ulong_bit_count ((unsigned long) ((n < 0) ? (~n) : n)));
 }
 
 DEFINE_PRIMITIVE ("FXLENGTH", Prim_fxlength, 1, 1, 0)
