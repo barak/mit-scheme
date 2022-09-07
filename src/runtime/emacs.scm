@@ -117,7 +117,7 @@ USA.
 (define (emacs/clean-input/flush-typeahead char)
   char
   (let loop ()
-    (if (not (char=? #\U+0000 (input-port/read-char the-console-port)))
+    (if (not (char=? #\x0000 (input-port/read-char the-console-port)))
 	(loop)))
   #t)
 

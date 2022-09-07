@@ -65,7 +65,7 @@ USA.
 	(port/set-coding port coding)
 	(port/set-line-ending port 'TEXT)
 	(if (coding-requires-bom? coding)
-	    (write-char #\U+FEFF port)))))
+	    (write-char #\xFEFF port)))))
 
 (define (write-xml-1 xml port options)
   (%write-xml xml

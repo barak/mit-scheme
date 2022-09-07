@@ -1437,22 +1437,22 @@ USA.
 (define-normalizer 'cr
   (lambda (ib)
     (let ((c0 (decode-char ib)))
-      (if (eq? c0 #\u+000D)
+      (if (eq? c0 #\x000D)
 	  #\newline
 	  c0))))
 
 (define-denormalizer 'cr
   (lambda (ob char)
-    (encode-char ob (if (char=? char #\newline) #\u+000D char))))
+    (encode-char ob (if (char=? char #\newline) #\x000D char))))
 
 (define-normalizer 'crlf
   (lambda (ib)
     (let ((c0 (decode-char ib)))
       (case c0
-	((#\u+000D)
+	((#\x000D)
 	 (let ((c1 (decode-char ib)))
 	   (case c1
-	     ((#\u+000A)
+	     ((#\x000A)
 	      #\newline)
 	     ((#f)
 	      (unread-decoded-char ib c0)
@@ -1465,9 +1465,9 @@ USA.
 (define-denormalizer 'crlf
   (lambda (ob char)
     (if (char=? char #\newline)
-	(let ((n1 (encode-char ob #\u+000D)))
+	(let ((n1 (encode-char ob #\x000D)))
 	  (if (eq? n1 1)
-	      (let ((n2 (encode-char ob #\u+000A)))
+	      (let ((n2 (encode-char ob #\x000A)))
 		(if (not (eq? n2 1))
 		    (error:char-encoding ob char))
 		2)
@@ -1478,10 +1478,10 @@ USA.
   (lambda (ib)
     (let ((c0 (decode-char ib)))
       (case c0
-	((#\u+000D)
+	((#\x000D)
 	 (let ((c1 (decode-char ib)))
 	   (case c1
-	     ((#\u+000A)
+	     ((#\x000A)
 	      #\newline)
 	     ((#f)
 	      (unread-decoded-char ib c0)
@@ -1499,10 +1499,10 @@ USA.
   (lambda (ib)
     (let ((c0 (decode-char ib)))
       (case c0
-	((#\u+000D)
+	((#\x000D)
 	 (let ((c1 (decode-char ib)))
 	   (case c1
-	     ((#\u+000A #\u+0085)
+	     ((#\x000A #\x0085)
 	      #\newline)
 	     ((#f)
 	      (unread-decoded-char ib c0)
@@ -1510,7 +1510,7 @@ USA.
 	     (else
 	      (unread-decoded-char ib c1)
 	      #\newline))))
-	((#\u+0085 #\u+2028) #\newline)
+	((#\x0085 #\x2028) #\newline)
 	(else c0)))))
 
 (define-denormalizer 'xml-1.1

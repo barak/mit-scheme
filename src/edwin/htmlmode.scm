@@ -56,7 +56,7 @@ USA.
     (event-distributor/invoke! (ref-variable xml-mode-hook buffer) buffer)))
 
 (define xml-paragraph-separator
-  (let ((lwsp (rexp* (char-set #\space #\tab #\U+A0))))
+  (let ((lwsp (rexp* (char-set #\space #\tab #\xA0))))
     (rexp->regexp
      (rexp-sequence
       (rexp-optional lwsp

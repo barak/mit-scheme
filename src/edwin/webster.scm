@@ -68,7 +68,7 @@ USA.
 		  (not (char=? delim #\newline)))))))
 
 (define webster-line-delimiters
-  (char-set #\newline #\U+00 #\U+80))
+  (char-set #\newline #\x00 #\x80))
 
 (define webster-server-port #f)
 
