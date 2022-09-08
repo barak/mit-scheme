@@ -44,13 +44,13 @@ USA.
 			(guarantee symbol? name 'make-library-db))
 		    (make-equal-hash-table)))
 
-(define (registered-library? name db)
-  (hash-table-exists? (%db-table db) name))
+(define (registered-library? key db)
+  (hash-table-exists? (%db-table db) key))
 
-(define (registered-library name db)
-  (let ((library (hash-table-ref/default (%db-table db) name #f)))
+(define (registered-library key db)
+  (let ((library (hash-table-ref/default (%db-table db) key #f)))
     (if (not library)
-	(error "No library of this name in database:" name db))
+	(error "No library with this key in database:" key db))
     library))
 
 (define (registered-libraries db)
@@ -59,12 +59,12 @@ USA.
 (define (register-library! library db)
   (if (library-registered? library)
       (error "Library already registered:" library))
-  (let ((name (library-name library))
+  (let ((key (library-key library))
 	(table (%db-table db)))
-    (let ((library* (hash-table-ref/default table name #f)))
+    (let ((library* (hash-table-ref/default table key #f)))
       (cond ((not library*)
 	     (%set-library-db! library db)
-	     (hash-table-set! table name library)
+	     (hash-table-set! table key library)
 	     library)
 	    ((library-preregistered? library*)
 	     (%set-library-alist! library* library)
@@ -72,7 +72,7 @@ USA.
 	    (else
 	     (warn "Replacing library:" library* db)
 	     (%set-library-db! library db)
-	     (hash-table-set! table name library)
+	     (hash-table-set! table key library)
 	     (%set-library-db! library* #f)
 	     library)))))
 
@@ -82,12 +82,12 @@ USA.
 	    libraries))
 
 (define (deregister-library! library db)
-  (let ((name (library-name library)))
-    (if (not (registered-library? name db))
+  (let ((key (library-key library)))
+    (if (not (registered-library? key db))
 	(error "Library not registered here:" library db))
     (if (not (library-preregistered? library))
 	(warn "Removing library:" library db))
-    (hash-table-delete! (%db-table db) name)
+    (hash-table-delete! (%db-table db) key)
     (%set-library-db! library #f)))
 
 (define (copy-library-db db #!optional new-name)
@@ -124,6 +124,10 @@ USA.
 	  (map (lambda (p)
 		 (list (car p) (cdr p)))
 	       (cdr (%library-alist library))))))
+
+(define (library-key library)
+  (or (library-name library)
+      (list '|#[program]| (hash-object library))))
 
 (define (alist->library name alist)
   (%make-library name
