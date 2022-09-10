@@ -127,7 +127,7 @@ USA.
   (let ((metadata (parameter-metadata parameter)))
     (if (forwarder? metadata)
 	(let ((converter1 (forwarder-convert-to metadata))
-	      (converter2 (parameter-converter parameter)))
+	      (converter2 (parameter-converter (forwarder-parameter metadata))))
 	  (lambda (value)
 	    (converter2 (converter1 value))))
 	(metadata-converter metadata))))
