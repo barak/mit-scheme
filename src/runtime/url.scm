@@ -370,7 +370,8 @@ USA.
   (*parser
    (encapsulate encapsulate-uri
      (seq (values #f #f)
-	  parser:path-absolute))))
+	  parser:path-absolute
+	  (values #f #f)))))
 
 (define parser:uri
   (*parser

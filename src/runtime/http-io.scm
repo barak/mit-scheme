@@ -349,8 +349,7 @@ USA.
 
 (define parse-request-line
   (*parser
-   (seq (map string->symbol
-	     (match (+ (char-set char-set:http-token))))
+   (seq (match (+ (char-set char-set:http-token)))
 	" "
 	(alt (map intern (match "*"))
 	     parse-absolute-uri
@@ -369,7 +368,7 @@ USA.
 
 (define parse-simple-request
   (*parser
-   (seq (map string->symbol (match "GET"))
+   (seq (match "GET")
 	" "
 	parse-uri-path-absolute)))
 
