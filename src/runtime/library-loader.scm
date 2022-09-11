@@ -106,6 +106,7 @@ USA.
 	      make-top-level-environment)
 	  (delete-duplicates (map library-ixport-to imports) eq?))))
     (add-imports-to-env! imports env db importing-library)
+    (if importing-library (set-environment->library! env importing-library))
     env))
 
 (define (add-imports-to-env! imports env db importing-library)
@@ -206,6 +207,39 @@ USA.
 			 (nearest-repl/environment)
 			 db
 			 #f)))
+
+(define (environment->library env)
+  (let ((value
+	 (and (eq? 'normal
+		   (environment-reference-type env environment-library-tag))
+	      (environment-lookup env environment-library-tag))))
+    (and (library? value)
+	 value)))
+
+(define (set-environment->library! env library)
+  (environment-define env environment-library-tag library))
+
+(define-integrable environment-library-tag
+  '|#[(library database)library-tag]|)
+
+(define (environment-name environment)
+  (cond ((environment->package environment) => package/name)
+	((environment->library environment) => library-key)
+	(else #f)))
+
+(define (environment-name&type environment)
+  (cond ((environment->package environment)
+	 => (lambda (package)
+	      (values (package/name package) "package")))
+	((environment->library environment)
+	 => (lambda (library)
+	      (values (library-key library) "library")))
+	(else
+	 (values #f #f))))
+
+(define (environment-has-name? environment)
+  (or (environment->package environment)
+      (environment->library environment)))
 
 (define (import-sets->imports import-sets db)
   (parsed-imports->imports (map parse-import-set import-sets) db))

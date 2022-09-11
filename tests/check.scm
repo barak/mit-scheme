@@ -189,9 +189,8 @@ USA.
 			  (if (not (default-object? environment))
 			      (begin
 				(write-string " in environment " output-port)
-				(write (cond ((environment->package environment)
-					      => package/name)
-					     (else environment))
+				(write (or (environment-name environment)
+					   environment)
 				       output-port))))
 		      (lambda ()
 			(if inline?

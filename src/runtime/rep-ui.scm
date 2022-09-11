@@ -277,10 +277,11 @@ Otherwise, shows all REPL environments."
 	 => (lambda (name)
 	      (write name port)
 	      (write-string " " port))))
-  (cond ((environment->package env)
-	 => (lambda (package)
-	      (write (package/name package) port)
-	      (write-string " " port))))
+  (let ((name (environment-name env)))
+    (if name
+	(begin
+	  (write name port)
+	  (write-string " " port))))
   (write env port))
 
 (define-command 'name '(name)

@@ -77,6 +77,7 @@ USA.
   (write symbol))
 
 (define (apropos-describe-env env)
-  (let ((package (environment->package env)))
-    (newline)
-    (write (or package env))))
+  (newline)
+  (write (or (environment->package env)
+	     (environment->library env)
+	     env)))

@@ -403,7 +403,7 @@ USA.
 (define (print-environment environment port)
   (newline port)
   (show-environment-name environment port)
-  (if (not (environment->package environment))
+  (if (not (environment-has-name? environment))
       (begin
 	(newline port)
 	(let ((arguments (environment-arguments environment)))

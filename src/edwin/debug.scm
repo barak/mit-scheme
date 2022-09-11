@@ -1534,7 +1534,7 @@ once it has been renamed, it will not be deleted automatically.")
   (debugger-newline port)
   (debugger-newline port)
   (let ((names (environment-bound-names environment))
-	(package (environment->package environment))
+	(name? (environment-has-name? environment))
 	(finish
 	 (lambda (names)
 	   (debugger-newline port)
@@ -1546,7 +1546,7 @@ once it has been renamed, it will not be deleted automatically.")
 	     names))))
     (cond ((null? names)
 	   (write-string " has no bindings" port))
-	  ((and package
+	  ((and name?
 		(let ((limit (ref-variable environment-package-limit)))
 		  (and limit
 		       (let ((n (length names)))
@@ -1561,7 +1561,7 @@ once it has been renamed, it will not be deleted automatically.")
 				#t)))))))
 	  (else
 	   (write-string "  BINDINGS:" port)
-	   (finish (if package (sort names symbol<?) names)))))
+	   (finish (if name? (sort names symbol<?) names)))))
   (debugger-newline port)
   (debugger-newline port)
   (write-string
@@ -1696,11 +1696,11 @@ once it has been renamed, it will not be deleted automatically.")
 
 (define (show-environment-name environment port)
   (write-string "ENVIRONMENT " port)
-  (let ((package (environment->package environment)))
-    (if package
+  (let ((name (environment-name environment)))
+    (if name
 	(begin
 	  (write-string "named: " port)
-	  (write (package/name package) port))
+	  (write name port))
 	(begin
 	  (write-string "created by " port)
 	  (print-user-friendly-name environment port)))))
@@ -1739,7 +1739,7 @@ once it has been renamed, it will not be deleted automatically.")
 			  ind
 			  port))
 		       names))))
-      (cond ((environment->package environment)
+      (cond ((environment-has-name? environment)
 	     (write-string (string-append ind "    has ") port)
 	     (write n-bindings port)
 	     (write-string

@@ -258,9 +258,9 @@ USA.
 	 (package/environment (find-package (read-from-string pstring) #t)))))
 
 (define (env->pstring env)
-  (let ((package (environment->package env)))
-    (if package
-	(write-to-string (package/name package))
+  (let ((name (environment-name env)))
+    (if name
+	(write-to-string name)
 	(string anonymous-package-prefix (hash-object env)))))
 
 (define anonymous-package-prefix
@@ -1027,8 +1027,7 @@ swank:xref
 	      (iline "cdr" (cdr pair)))))
 
 (define (inspect-environment env)
-  (let ((package (environment->package env))
-	(tail
+  (let ((tail
 	 (let loop ((bindings (environment-bindings env)))
 	   (if (pair? bindings)
 	       (cons-stream (let ((binding (car bindings)))
@@ -1044,9 +1043,10 @@ swank:xref
 	       (if (environment-has-parent? env)
 		   (stream (iline "(<parent>)" (environment-parent env)))
 		   (stream))))))
-    (if package
-	(cons-stream (iline "(package)" package) tail)
-	tail)))
+    (let-values (((name type) (environment-name&type env)))
+      (if name
+	  (cons-stream (iline (string-append "(" type ")") name) tail)
+	  tail))))
 
 (define (inspect-vector o)
   (let ((len (vector-length o)))

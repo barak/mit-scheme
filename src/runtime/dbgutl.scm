@@ -118,16 +118,16 @@ USA.
 	(write-string "Depth (relative to initial environment): " port)
 	(write depth port)
 	(newline port)))
-  (if (not (and (environment->package environment) brief?))
+  (if (not (and (environment-has-name? environment) brief?))
       (show-environment-bindings environment brief? port)))
 
 (define (show-environment-name environment port)
   (write-string "Environment " port)
-  (let ((package (environment->package environment)))
-    (if package
+  (let ((name (environment-name environment)))
+    (if name
 	(begin
 	  (write-string "named: " port)
-	  (write (package/name package) port))
+	  (write name port))
 	(begin
 	  (write-string "created by " port)
 	  (print-user-friendly-name environment port))))

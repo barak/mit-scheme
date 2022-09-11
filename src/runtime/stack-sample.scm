@@ -312,9 +312,9 @@
 (define (environment-ancestry-names environment)
   (let recur ((environment environment))
     (if (environment? environment)      ;Idle paranoia?
-        (let ((package (environment->package environment)))
-          (if package
-              (list (package/name package))
+	(let ((name (environment-name environment)))
+          (if name
+              (list name)
               (let ((name (environment-procedure-name environment))
                     (names
                      (if (environment-has-parent? environment)

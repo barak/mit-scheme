@@ -265,7 +265,8 @@ USA.
     result))
 
 (define (special-unbound-name? name)
-  (eq? name package-name-tag))
+  (or (eq? name package-name-tag)
+      (eq? name environment-library-tag)))
 
 ;;;; Interpreter Environments
 

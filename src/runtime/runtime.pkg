@@ -6470,6 +6470,7 @@ USA.
 	  library-imports
 	  library-imports-environment
 	  library-imports-used
+	  library-key
 	  library-name
 	  library-parsed-contents
 	  library-parsed-exports
@@ -6593,6 +6594,10 @@ USA.
   (parent (runtime library))
   (export ()
 	  environment			;(scheme eval)
+	  environment->library
+	  environment-has-name?
+	  environment-name
+	  environment-name&type
 	  find-scheme-libraries!
 	  null-environment		;(scheme r5rs)
 	  scheme-report-environment	;(scheme r5rs)
@@ -6603,7 +6608,9 @@ USA.
 	  eval-r7rs-source
 	  make-environment-from-parsed-imports
 	  repl-import
-	  syntax-r7rs-source))
+	  syntax-r7rs-source)
+  (export (runtime environment)
+	  environment-library-tag))
 
 (define-package (runtime directed-graph)
   (files "digraph")

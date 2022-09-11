@@ -578,12 +578,14 @@ USA.
 ; Assignments to most compiled-code bindings are prohibited,
 ; as are certain other environment operations."
 	       port)))
-	(let ((package (environment->package environment)))
-	  (if package
+	(let-values (((name type) (environment-name&type environment)))
+	  (if name
 	      (begin
 		(fresh-line port)
-		(write-string ";Package: " port)
-		(write (package/name package) port))))))))
+		(write-string ";" port)
+		(write-string type port)
+		(write-string ": " port)
+		(write name port))))))))
 
 (define (restart #!optional n)
   (let ((condition (nearest-repl/condition)))
@@ -872,10 +874,7 @@ USA.
   (let ((env-mgr (repl/env-mgr (nearest-repl))))
     (let ((env (env-mgr 'current)))
       (or (env-mgr 'name-of env)
-	  (let ((package (environment->package env)))
-	    (if package
-		(package/name package)
-		env))))))
+	  (or (environment-name env) env)))))
 
 (define (ge #!optional environment)
   ((repl/env-mgr (nearest-repl))
