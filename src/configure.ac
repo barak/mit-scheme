@@ -440,7 +440,6 @@ sf/Makefile
 sos/Makefile
 ssp/Makefile
 star-parser/Makefile
-win32/Makefile
 xdoc/Makefile
 xml/Makefile
 ])

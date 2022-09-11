@@ -42,7 +42,7 @@ USA.
   (with-working-directory-pathname "sos"
     (lambda ()
       (load "load")))
-  (for-each compile-dir '("xml" "win32" "ssp" "ffi")))
+  (for-each compile-dir '("xml" "ssp" "ffi")))
 
 (define (compile-boot-dirs compile-dir)
   (compile-cref compile-dir)

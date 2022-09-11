@@ -104,9 +104,6 @@ USA.
        (let ((screen (selected-screen)))
 	 (if (xterm-screen/grab-focus! screen)
 	     (xterm-screen/flush! screen))))
-      ((WIN32)
-       ((access set-focus (->environment '(win32)))
-	((access get-handle (->environment '(win32))) 1)))
       (else
        (error "Unsupported graphics type:" name)))))
 

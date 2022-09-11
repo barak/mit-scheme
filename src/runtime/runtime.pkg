@@ -1184,50 +1184,7 @@ USA.
 	    unix/current-uid
 	    unix/gid->string
 	    unix/system
-	    unix/uid->string)))
- ((nt)
-  (extend-package (runtime os-primitives)
-    (files "ntprm")
-    (import (runtime primitive-io)
-	    channel-descriptor-for-select
-	    tty-input-channel)
-    (export ()
-	    console-channel-descriptor
-	    delete-environment-variable!
-	    dos/fs-drive-type
-	    dos/fs-long-filenames?
-	    file-attributes/gid
-	    file-attributes/inode-number
-	    file-attributes/modes
-	    file-attributes/uid
-	    nt-file-mode/archive
-	    nt-file-mode/compressed
-	    nt-file-mode/directory
-	    nt-file-mode/hidden
-	    nt-file-mode/normal
-	    nt-file-mode/read-only
-	    nt-file-mode/system
-	    nt-file-mode/temporary
-	    nt-fs-flag/case-preserved-names
-	    nt-fs-flag/case-sensitive-search
-	    nt-fs-flag/file-compression
-	    nt-fs-flag/persistent-acls
-	    nt-fs-flag/unicode-on-disk
-	    nt-fs-flag/volume-is-compressed
-	    nt-volume-info
-	    nt-volume-info/file-system-flags
-	    nt-volume-info/file-system-name
-	    nt-volume-info/max-component-length
-	    nt-volume-info/name
-	    nt-volume-info/serial-number
-	    nt/hide-subprocess-windows?
-	    nt/scheme-executable-pathname
-	    nt/subprocess-argument-escape-char
-	    nt/subprocess-argument-quote-char
-	    nt/system-root-directory
-	    nt/windows-type
-	    set-environment-variable!
-	    set-environment-variable-default!))))
+	    unix/uid->string))))
 
 (define-package (runtime legacy-string)
   (files "legacy-string")
@@ -4051,10 +4008,6 @@ USA.
   (files "unix-pathname")
   (parent (runtime pathname)))
 
-(define-package (runtime pathname dos)
-  (files "dos-pathname")
-  (parent (runtime pathname)))
-
 (define-package (runtime population)
   (files "poplat")
   (parent (runtime))
@@ -6463,28 +6416,6 @@ USA.
 	  pgsql-tuples-ok
 	  poll-pgsql-conn
 	  poll-pgsql-reset))
-
-
-(os-type-case
- ((nt)
-  (define-package (runtime win32-registry)
-    (files "win32-registry")
-    (parent (runtime))
-    (export ()
-	    win32-registry/add-subkey
-	    win32-registry/delete-subkey
-	    win32-registry/delete-value
-	    win32-registry/get-value
-	    win32-registry/key-full-name
-	    win32-registry/key-name
-	    win32-registry/key-parent
-	    win32-registry/key?
-	    win32-registry/open-key
-	    win32-registry/set-value
-	    win32-registry/subkey
-	    win32-registry/subkeys
-	    win32-registry/value-names
-	    win32/expand-environment-strings))))
 
 (define-package (runtime swank)
   (files "swank")

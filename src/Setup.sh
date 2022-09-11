@@ -90,7 +90,7 @@ fi
 
 INSTALLED_SUBDIRS="cref ffi libraries sf sos ssp star-parser xml"
 PLUGIN_SUBDIRS="blowfish edwin gdbm imail pgsql x11 x11-screen"
-OTHER_SUBDIRS="6001 compiler runtime win32 xdoc microcode"
+OTHER_SUBDIRS="6001 compiler runtime xdoc microcode"
 
 # lib
 maybe_mkdir lib

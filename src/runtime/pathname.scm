@@ -31,7 +31,6 @@ USA.
 (declare (usual-integrations))
 
 (add-boot-deps! '(runtime pathname unix)
-		'(runtime pathname dos)
 		'(runtime reader)
 		'(runtime working-directory))
 
@@ -676,8 +675,7 @@ these rules:
        (vector->list ((ucode-primitive microcode-library-path 0)))))
 
 (define known-host-types
-  '((0 unix)
-    (1 dos nt)))
+  '((0 unix)))
 
 (define (host-name->index name)
   (let loop ((entries known-host-types))

@@ -39,9 +39,6 @@ The core subsystem consists of these directories:
 * "star-parser" contains the pattern-matching parser language
   extension.
 
-* "win32" contains extra parts of the run-time library that are
-  specific to the Microsoft Windows platform.
-
 * "xml" contains support for XML and XHTML I/O.
 
 * "ffi" provides syntax for calling foreign (C) functions and

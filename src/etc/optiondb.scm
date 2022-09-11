@@ -118,9 +118,6 @@ USA.
 (define-load-option 'student
   (guarded-system-loader '(student) "6001"))
 
-(define-load-option 'win32
-  (guarded-system-loader '(win32) "win32"))
-
 (define-load-option 'x11
   (guarded-system-loader '(x11) "x11"))
 

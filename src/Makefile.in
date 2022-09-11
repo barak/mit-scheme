@@ -67,7 +67,7 @@ default-target: @DEFAULT_TARGET@
 LIARC_BOOT_BUNDLES = compiler cref sf star-parser
 LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) ffi sos ssp xml
 
-SUBDIRS = $(INSTALLED_SUBDIRS) win32 xdoc
+SUBDIRS = $(INSTALLED_SUBDIRS) xdoc
 INSTALLED_SUBDIRS = microcode runtime libraries $(OPTION_SUBDIRS) $(LIARC_BUNDLES)
 BASICS_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 OPTION_SUBDIRS = @OPTION_SUBDIRS@
@@ -473,31 +473,6 @@ bundle-sos: $(LIARC_TOOLCHAIN)
 sos/sos-unx.pkd: $(SOS_CREF_TARGETS)
 
 ################
-# Windows FFI
-################
-
-WIN32_CREF_TARGETS = syntax-win32
-WIN32_HOST_TARGETS = compile-win32
-# no LIARC on Windows
-@IF_NATIVE@WIN32_DEPEND_TARGETS = $(WIN32_HOST_TARGETS)
-@IF_CROSS@WIN32_DEPEND_TARGETS = stamp_cross-finished
-
-.PHONY: compile-win32
-compile-win32: syntax-win32
-compile-win32: $(TOOLCHAIN)
-	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda () (load "win32.cbf")))') \
-	| $(TOOL_COMPILER)
-	$(CROSS_HOST) win32
-
-.PHONY: syntax-win32
-syntax-win32: $(RUNTIME_CREF_TARGETS)
-syntax-win32: $(TOOLCHAIN)
-	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda () (load "win32.sf")))') \
-	| $(TOOL_COMPILER)
-
-################
 # XML
 ################
 
@@ -698,7 +673,6 @@ cross-host: $(SF_HOST_TARGETS)
 cross-host: $(SOS_HOST_TARGETS)
 cross-host: $(SSP_HOST_TARGETS)
 cross-host: $(STAR_PARSER_HOST_TARGETS)
-cross-host: $(WIN32_HOST_TARGETS)
 cross-host: $(XML_HOST_TARGETS)
 	echo done > stamp_cross-host
 
@@ -719,7 +693,6 @@ stamp_cross-finished: $(SF_LIARC_TARGETS)
 stamp_cross-finished: $(SOS_LIARC_TARGETS)
 stamp_cross-finished: $(SSP_LIARC_TARGETS)
 stamp_cross-finished: $(STAR_PARSER_LIARC_TARGETS)
-stamp_cross-finished: $(WIN32_LIARC_TARGETS)
 stamp_cross-finished: $(XML_LIARC_TARGETS)
 stamp_cross-finished: stamp_cross-host microcode/scheme
 	(echo '$(NO_LIARC)' && \
