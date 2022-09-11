@@ -1,4 +1,4 @@
-@node Standards Support, GNU Free Documentation License, Win32 Package Reference, Top
+@node Standards Support, GNU Free Documentation License, Graphics, Top
 @chapter Standards Support
 
 @menu

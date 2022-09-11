@@ -1062,7 +1062,6 @@ unix-character-device
 unix-block-device
 unix-named-pipe
 unix-socket
-win32-named-pipe
 @end example
 @end deffn
 

@@ -52,8 +52,7 @@ SOURCES = \
     special-forms.texi \
     standards.texi \
     strings.texi \
-    vectors.texi \
-    win32-packaging.texi
+    vectors.texi
 
 FIGURES_EPS = \
 	fig/cn-expm1.eps \

@@ -2,7 +2,7 @@
 @comment %**start of header
 @setfilename mit-scheme-ref
 @set VERSION 12.0.50
-@set UPDATED 2020-05-19
+@set UPDATED 2022-00-10
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -191,7 +191,6 @@ MIT/GNU Scheme
 * Operating-System Interface::  
 * Error System::                
 * Graphics::                    
-* Win32 Package Reference::     
 * Standards Support::           
 * GNU Free Documentation License::  
 * Binding Index::               
@@ -289,6 +288,7 @@ Numbers
 * Syntax of numerical constants::
 * Numerical operations::
 * Numerical input and output::
+* Bit operations::
 * Fixnum and Flonum Operations::
 * Random Number Generation::
 
@@ -516,35 +516,12 @@ Graphics
 * Custom Graphics Operations::
 * Images::
 * X Graphics::                  Graphics on the X Window System
-* Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
 
 X Graphics
 
 * X Graphics Type::
 * Utilities for X Graphics::
 * Custom Operations on X Graphics Devices::
-
-Win32 Graphics
-
-* Win32 Graphics Type::
-* Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
-
-Win32 Package Reference
-
-* Win32 Package Overview::
-* Foreign function interface::
-* Device Independent Bitmap Utilities::
-
-Foreign Function Interface
-
-* Windows Types::
-* Windows Foreign Procedures::
-* Win32 API names and procedures::
-
-Device Independent Bitmap Utilities
-
-* DIB procedures::
-* Other parts of the DIB Utilities implementation::
 
 Standards Support
 
@@ -567,6 +544,7 @@ Standards Support
 * SRFI 140::
 * SRFI 143::
 * SRFI 158::
+* SRFI 219::
 
 @end detailmenu
 @end menu
@@ -589,7 +567,6 @@ Standards Support
 @include os-interface.texi
 @include error.texi
 @include graphics.texi
-@include win32-packaging.texi
 @include standards.texi
 @include gfdl.texinfo
 @include binding-index.texi
