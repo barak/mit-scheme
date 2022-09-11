@@ -45,7 +45,7 @@ TARGETS=
 INST_TARGETS=
 
 AC_ARG_ENABLE([html],
-    [AC_HELP_STRING([--enable-html],
+    [AS_HELP_STRING([--enable-html],
         [generate HTML documentation [[yes]]])])
 : ${enable_html=yes}
 if test x"${enable_html}" = xno; then
@@ -57,7 +57,7 @@ test x"${htmldir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT)/index.html"
 test x"${htmldir}" = x || INST_TARGETS="${INST_TARGETS} install-html"
 
 AC_ARG_ENABLE([pdf],
-    [AC_HELP_STRING([--enable-pdf],
+    [AS_HELP_STRING([--enable-pdf],
 	[generate PDF documentation [[yes]]])])
 : ${enable_pdf=yes}
 if test x"${enable_pdf}" = xno; then
@@ -69,7 +69,7 @@ test x"${pdfdir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT).pdf"
 test x"${pdfdir}" = x || INST_TARGETS="${INST_TARGETS} install-pdf"
 
 AC_ARG_ENABLE([ps],
-    [AC_HELP_STRING([--enable-ps],
+    [AS_HELP_STRING([--enable-ps],
 	[generate Postscript documentation [[no]]])])
 : ${enable_pdf=no}
 if test x"${enable_ps}" = xno; then
