@@ -1140,6 +1140,63 @@ USA.
     fxxor
     fxzero?))
 
+(define-standard-library '(srfi 158)
+  '(bytevector->generator
+    bytevector-accumulator
+    bytevector-accumulator!
+    circular-generator
+    count-accumulator
+    gappend
+    gcombine
+    gcons*
+    gdelete
+    gdelete-neighbor-dups
+    gdrop
+    gdrop-while
+    generator
+    generator->list
+    generator->reverse-list
+    generator->string
+    generator->vector
+    generator->vector!
+    generator-any
+    generator-count
+    generator-every
+    generator-find
+    generator-fold
+    generator-for-each
+    generator-map->list
+    generator-unfold
+    gfilter
+    gflatten
+    ggroup
+    gindex
+    gmap
+    gmerge
+    gremove
+    gselect
+    gstate-filter
+    gtake
+    gtake-while
+    list->generator
+    list-accumulator
+    make-accumulator
+    make-coroutine-generator
+    make-for-each-generator
+    make-iota-generator
+    make-range-generator
+    make-unfold-generator
+    product-accumulator
+    reverse-list-accumulator
+    reverse-vector->generator
+    reverse-vector-accumulator
+    string->generator
+    string-accumulator
+    sum-accumulator
+    vector->generator
+    vector-accumulator
+    vector-accumulator!))
+
 ;;;; Synthetic libraries
 
 ;;; A synthetic library is one that's derived from legacy packages, much like a

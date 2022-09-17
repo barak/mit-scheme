@@ -84,6 +84,7 @@ USA.
     "runtime/test-flonum"
     "runtime/test-flonum.bin"
     "runtime/test-flonum.com"
+    "runtime/test-generator"
     "runtime/test-hash-table"
     "runtime/test-ieee754"
     "runtime/test-integer-bits"
