@@ -80,6 +80,8 @@ USA.
     srfi-131	;ERR5RS Record Syntax (reduced)
     srfi-133	;Vector Library (R7RS-compatible)
     srfi-143	;Fixnums
+    srfi-158	;Generators and Accumulators
+    srfi-219	;Define higher-order lambda
 
     ;; SRFI 115 features
     regexp-unicode
