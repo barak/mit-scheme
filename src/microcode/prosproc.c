@@ -32,6 +32,17 @@ USA.
 #include "osproc.h"
 #include "osio.h"
 
+#ifdef __unix__
+   #include "unistd.h"
+   #if !(defined(HAVE_DECL_ENVIRON) && HAVE_DECL_ENVIRON)
+      #if defined(HAVE_DECL___ENVIRON) && HAVE_DECL___ENVIRON
+         #define environ __environ
+      #else
+         extern char ** environ;
+      #endif
+   #endif
+#endif
+
 extern Tchannel arg_channel (int);
 
 static Tprocess

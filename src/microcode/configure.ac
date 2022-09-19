@@ -569,6 +569,8 @@ AC_CHECK_TYPE([speed_t],
 	[Define to `short' if <termios.h> doesn't define.])],
     [SCM_INC_TERMIO])
 
+AC_CHECK_DECLS([__environ, environ])
+
 define([SCM_INC_FENV],
     [
     #include <fenv.h>
