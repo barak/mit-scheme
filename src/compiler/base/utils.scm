@@ -331,6 +331,7 @@ USA.
 	(ucode-primitive integer-positive?)
 	(ucode-primitive integer-zero?)
 	(ucode-primitive less-than-fixnum?)
+	(ucode-primitive not)
 	(ucode-primitive negative-fixnum?)
 	(ucode-primitive negative?)
 	(ucode-primitive null?)
