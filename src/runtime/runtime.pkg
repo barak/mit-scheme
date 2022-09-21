@@ -6765,12 +6765,12 @@ USA.
 	  =?				;(srfi 128)
 	  >=?				;(srfi 128)
 	  >?				;(srfi 128)
-	  boolean-comparator
+	  boolean-comparator		;(srfi 162)
 	  boolean-hash			;(srfi 128)
 	  bytevector-comparator
-	  char-ci-comparator
+	  char-ci-comparator		;(srfi 162)
 	  char-ci-hash			;(srfi 128)
-	  char-comparator
+	  char-comparator		;(srfi 162)
 	  char-hash			;(srfi 128)
 	  char-set-comparator
 	  combine-hashes
@@ -6779,15 +6779,23 @@ USA.
 	  comparator-hash-function	;(srfi 128)
 	  comparator-hashable?		;(srfi 128)
 	  comparator-if<=>		;(srfi 128)
+	  comparator-max		;(srfi 162)
+	  comparator-max-in-list	;(srfi 162)
+	  comparator-min		;(srfi 162)
+	  comparator-min-in-list	;(srfi 162)
 	  comparator-ordered?		;(srfi 128)
 	  comparator-ordering-predicate	;(srfi 128)
 	  comparator-register-default!	;(srfi 128)
 	  comparator-rehash-after-gc?
 	  comparator-test-type		;(srfi 128)
 	  comparator?			;(srfi 128)
+	  default-comparator		;(srfi 162)
 	  default-hash			;(srfi 128)
 	  default<
 	  default=
+	  eq-comparator			;(srfi 162)
+	  equal-comparator		;(srfi 162)
+	  eqv-comparator		;(srfi 162)
 	  exact-integer-comparator
 	  fixnum-comparator
 	  fixnum-hash
@@ -6797,6 +6805,7 @@ USA.
 	  hash-salt			;(srfi 128)
 	  initial-hash
 	  interned-symbol-comparator
+	  list-comparator		;(srfi 162)
 	  lset-comparator
 	  lset-comparator-elt
 	  lset-comparator?
@@ -6810,12 +6819,13 @@ USA.
 	  make-vector-comparator	;(srfi 128)
 	  make-weak-pair-comparator
 	  number-comparator
+	  pair-comparator		;(srfi 162)
 	  pair-comparator-car
 	  pair-comparator-cdr
 	  pair-comparator?
-	  real-comparator
-	  string-ci-comparator
-	  string-comparator
+	  real-comparator		;(srfi 162)
+	  string-ci-comparator		;(srfi 162)
+	  string-comparator		;(srfi 162)
 	  symbol-comparator
 	  uniform-klist-comparator-elt
 	  uniform-klist-comparator?
@@ -6830,6 +6840,7 @@ USA.
 	  uniform-weak-list-comparator
 	  uniform-weak-list-comparator-elt
 	  uniform-weak-list-comparator?
+	  vector-comparator		;(srfi 162)
 	  weak-lset-comparator
 	  weak-lset-comparator-elt
 	  weak-lset-comparator?

@@ -383,7 +383,7 @@ USA.
 	(equal? (file-type-com file-types:program) type))))
 
 (define-deferred group-scheme-files
-  (partition-generator pathname-name (string-comparator) cons '()))
+  (partition-generator pathname-name string-comparator cons '()))
 
 (define (preregister-scheme-file! file-group root db)
 

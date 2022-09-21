@@ -22,6 +22,7 @@
 * SRFI 140::
 * SRFI 143::
 * SRFI 158::
+* SRFI 162::
 * SRFI 219::
 @end menu
 
@@ -2165,7 +2166,7 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{fxzero?}
 @end multitable
 
-@node SRFI 158, SRFI 219, SRFI 143, Standards Support
+@node SRFI 158, SRFI 162, SRFI 143, Standards Support
 @section SRFI 158: Generators and Accumulators
 @findex bytevector->generator
 @findex bytevector-accumulator
@@ -2296,7 +2297,62 @@ All names are bound in the @mitgnu{} global environment.
 @item @nicode{vector-accumulator!}
 @end multitable
 
-@node SRFI 219,  , SRFI 158, Standards Support
+@node SRFI 162, SRFI 219, SRFI 158, Standards Support
+@section SRFI 162: Comparators sublibrary
+@findex boolean-comparator
+@findex char-ci-comparator
+@findex char-comparator
+@findex comparator-max
+@findex comparator-max-in-list
+@findex comparator-min
+@findex comparator-min-in-list
+@findex default-comparator
+@findex eq-comparator
+@findex equal-comparator
+@findex eqv-comparator
+@findex list-comparator
+@findex pair-comparator
+@findex real-comparator
+@findex string-ci-comparator
+@findex string-comparator
+@findex vector-comparator
+
+@cartouche
+@table @b
+@item Description
+Additional useful comparator definitions.
+@item URL
+@srfiurl{162}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 128)} [@emph{not} @nicode{(srfi 162)}]
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{boolean-comparator}
+@tab @nicode{char-ci-comparator}
+@item @nicode{char-comparator}
+@tab @nicode{comparator-max}
+@item @nicode{comparator-max-in-list}
+@tab @nicode{comparator-min}
+@item @nicode{comparator-min-in-list}
+@tab @nicode{default-comparator}
+@item @nicode{eq-comparator}
+@tab @nicode{equal-comparator}
+@item @nicode{eqv-comparator}
+@tab @nicode{list-comparator}
+@item @nicode{pair-comparator}
+@tab @nicode{real-comparator}
+@item @nicode{string-ci-comparator}
+@tab @nicode{string-comparator}
+@item @nicode{vector-comparator}
+@end multitable
+
+@node SRFI 219,  , SRFI 162, Standards Support
 @section SRFI 219: Define higher-order lambda
 @findex define
 

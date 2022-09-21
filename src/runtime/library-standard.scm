@@ -1068,8 +1068,11 @@ USA.
     =?
     >=?
     >?
+    boolean-comparator
     boolean-hash
+    char-ci-comparator
     char-ci-hash
+    char-comparator
     char-hash
     comparator-check-type
     comparator-equality-predicate
@@ -1077,15 +1080,24 @@ USA.
     comparator-hash-function
     comparator-hashable?
     comparator-if<=>
+    comparator-max
+    comparator-max-in-list
+    comparator-min
+    comparator-min-in-list
     comparator-ordered?
     comparator-ordering-predicate
     comparator-register-default!
     comparator-test-type
     comparator-type-test-predicate
     comparator?
+    default-comparator
     default-hash
+    eq-comparator
+    equal-comparator
+    eqv-comparator
     hash-bound
     hash-salt
+    list-comparator
     make-comparator
     make-default-comparator
     make-eq-comparator
@@ -1095,9 +1107,14 @@ USA.
     make-pair-comparator
     make-vector-comparator
     number-hash
+    pair-comparator
+    real-comparator
+    string-ci-comparator
     string-ci-hash
+    string-comparator
     string-hash
-    symbol-hash))
+    symbol-hash
+    vector-comparator))
 
 (define-standard-library '(srfi 131)
   '(define-record-type))

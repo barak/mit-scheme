@@ -59,10 +59,10 @@ USA.
   '(0 1))
 
 (define test-key-comparator
-  (fixnum-comparator))
+  fixnum-comparator)
 
 (define test-value-comparator
-  (fixnum-comparator))
+  fixnum-comparator)
 
 (define (fail)
   1000)
@@ -93,7 +93,7 @@ USA.
 		 (amap-implementation-supports-args? name '())))
 	  (amap-implementation-names)))
 
-(define ordered-and-hashable-comparator (fixnum-comparator))
+(define ordered-and-hashable-comparator fixnum-comparator)
 (define hashable-comparator (make-eqv-comparator))
 (define ordered-comparator (make-comparator symbol? eq? symbol<? #f))
 (define neither-comparator (make-comparator any-object? eqv? #f #f))
