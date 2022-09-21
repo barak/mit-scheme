@@ -39,6 +39,10 @@ extern const char * OS_current_user_home_directory (void);
 #ifdef HAVE_SOCKETS
 #  include "uxsock.h"
 #endif
+
+#ifdef HAVE_SYS_UTSNAME_H
+#  include "sys/utsname.h"
+#endif
 
 DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   "Convert a file system time stamp into a date/time string.")
@@ -277,6 +281,24 @@ DEFINE_PRIMITIVE ("MACOSX-MAIN-BUNDLE-DIR",
     UX_free ((void *) path);
     PRIMITIVE_RETURN (result);
   }
+#else
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
+}
+
+DEFINE_PRIMITIVE ("uname", Prim_uname, 0, 0, 0)
+{
+#ifdef HAVE_SYS_UTSNAME_H
+  struct utsname buf;
+  STD_VOID_SYSTEM_CALL (syscall_uname, (UX_uname (&buf)));
+  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 5, true));
+  VECTOR_SET (v, 0, (char_pointer_to_string (buf.sysname)));
+  VECTOR_SET (v, 1, (char_pointer_to_string (buf.nodename)));
+  VECTOR_SET (v, 2, (char_pointer_to_string (buf.release)));
+  VECTOR_SET (v, 3, (char_pointer_to_string (buf.version)));
+  VECTOR_SET (v, 4, (char_pointer_to_string (buf.machine)));
+  PRIMITIVE_RETURN (v);
 #else
   error_unimplemented_primitive ();
   PRIMITIVE_RETURN (UNSPECIFIC);

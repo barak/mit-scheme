@@ -974,6 +974,14 @@ USA.
     make-hash-table
     string-ci-hash
     string-hash))
+
+(define-standard-library '(srfi 112)
+  '(cpu-architecture
+    implementation-name
+    implementation-version
+    machine-name
+    os-name
+    os-version))
 
 (define-standard-library '(srfi 115)
   '(char-set->sre

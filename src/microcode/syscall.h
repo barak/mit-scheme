@@ -107,6 +107,7 @@ enum syscall_names
   syscall_terminal_set_state,
   syscall_time,
   syscall_times,
+  syscall_uname,
   syscall_unlink,
   syscall_utime,
   syscall_vfork,

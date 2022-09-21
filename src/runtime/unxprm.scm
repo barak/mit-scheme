@@ -467,3 +467,29 @@ USA.
 
 (define (os/executable-pathname-types)
   '())
+
+;;;; SRFI 112
+
+(define (unix/uname)
+  ;; Returns a vector of
+  ;; #(sysname nodename version release machine)
+  ((ucode-primitive uname 0)))
+
+(define (implementation-name) "MIT/GNU Scheme")
+
+(define (implementation-version)
+  (get-subsystem-version-string "Release"))
+
+(define (cpu-architecture)
+  (vector-ref (unix/uname) 4))
+
+(define (machine-name)
+  (vector-ref (unix/uname) 1))
+
+(define (os-name)
+  microcode-id/operating-system-variant)
+
+(define (os-version)
+  (string-append (vector-ref (unix/uname) 2)
+		 " "
+		 (vector-ref (unix/uname) 3)))

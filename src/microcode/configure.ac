@@ -439,14 +439,12 @@ AC_HEADER_STDBOOL
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS_ONCE([sys/time.h])
 
-AC_CHECK_HEADERS([bsdtty.h fcntl.h fenv.h ieeefp.h malloc.h poll.h])
-AC_CHECK_HEADERS([sgtty.h stropts.h])
-AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mount.h sys/param.h])
-AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/timex.h sys/un.h])
+AC_CHECK_HEADERS([bsdtty.h dlfcn.h fcntl.h fenv.h ieeefp.h malloc.h netdb.h])
+AC_CHECK_HEADERS([poll.h sgtty.h stdint.h stropts.h])
+AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mman.h sys/mount.h sys/param.h])
+AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/timex.h sys/un.h sys/utsname.h])
 AC_CHECK_HEADERS([sys/vfs.h])
 AC_CHECK_HEADERS([termio.h termios.h unistd.h util.h utime.h])
-AC_CHECK_HEADERS([dlfcn.h netdb.h])
-AC_CHECK_HEADERS([sys/mman.h stdint.h])
 
 define([SCM_INC_TIME],
     [

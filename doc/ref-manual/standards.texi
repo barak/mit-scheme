@@ -12,6 +12,7 @@
 * SRFI 27::
 * SRFI 39::
 * SRFI 69::
+* SRFI 112::
 * SRFI 115::
 * SRFI 124::
 * SRFI 125::
@@ -1374,7 +1375,7 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{parameterize}
 @end multitable
 
-@node SRFI 69, SRFI 115, SRFI 39, Standards Support
+@node SRFI 69, SRFI 112, SRFI 39, Standards Support
 @section SRFI 69: Basic Hash Tables
 @findex alist->hash-table
 @findex hash
@@ -1443,7 +1444,41 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{string-hash}
 @end multitable
 
-@node SRFI 115, SRFI 124, SRFI 69, Standards Support
+@node SRFI 112, SRFI 115, SRFI 69, Standards Support
+@section SRFI 112: Environment Inquiry
+@findex cpu-architecture
+@findex implementation-name
+@findex implementation-version
+@findex machine-name
+@findex os-name
+@findex os-version
+
+@cartouche
+@table @b
+@item Description
+Provides human-readable information at run time about the hardware and
+software configuration on which a Scheme program is being executed.
+@item URL
+@srfiurl{112}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 112)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{cpu-architecture}
+@tab @nicode{implementation-name}
+@item @nicode{implementation-version}
+@tab @nicode{machine-name}
+@item @nicode{os-name}
+@tab @nicode{os-version}
+@end multitable
+
+@node SRFI 115, SRFI 124, SRFI 112, Standards Support
 @section SRFI 115: Scheme Regular Expressions
 @findex char-set->sre
 @findex regexp

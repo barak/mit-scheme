@@ -73,6 +73,7 @@ USA.
     srfi-39	;Parameter objects
     srfi-62	;S-expression comments
     srfi-69	;Basic Hash Tables
+    srfi-112	;Environment Inquiry
     srfi-115	;Scheme Regular Expressions
     srfi-124	;Ephemerons
     srfi-125	;Intermediate hash tables

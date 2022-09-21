@@ -1197,17 +1197,24 @@ USA.
   (extend-package (runtime os-primitives)
     (files "unxprm")
     (export ()
+	    cpu-architecture		;(srfi 112)
 	    delete-environment-variable!
 	    file-attributes/gid
 	    file-attributes/inode-number
 	    file-attributes/uid
+	    implementation-name		;(srfi 112)
+	    implementation-version	;(srfi 112)
+	    machine-name		;(srfi 112)
+	    os-name			;(srfi 112)
+	    os-version			;(srfi 112)
 	    set-environment-variable!
 	    unix/current-gid
 	    unix/current-pid
 	    unix/current-uid
 	    unix/gid->string
 	    unix/system
-	    unix/uid->string))))
+	    unix/uid->string
+	    unix/uname))))
 
 (define-package (runtime legacy-string)
   (files "legacy-string")

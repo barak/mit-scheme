@@ -635,6 +635,10 @@ typedef void Tsignal_handler_result;
    extern int UX_closefrom (int);
 #  define EMULATE_CLOSEFROM
 #endif
+
+#ifdef HAVE_SYS_UTSNAME_H
+#  define UX_uname uname
+#endif
 
 /* poll is somewhat busted on Mac OSX 10.4 (Tiger), so use select.  */
 #ifdef __APPLE__

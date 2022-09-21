@@ -488,6 +488,7 @@ static const char * syscall_names_table [] =
   "terminal-set-state",
   "time",
   "times",
+  "uname",
   "unlink",
   "utime",
   "vfork",

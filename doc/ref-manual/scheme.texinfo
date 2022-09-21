@@ -535,6 +535,7 @@ Standards Support
 * SRFI 27::
 * SRFI 39::
 * SRFI 69::
+* SRFI 112::
 * SRFI 115::
 * SRFI 124::
 * SRFI 125::
