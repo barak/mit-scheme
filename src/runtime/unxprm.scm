@@ -487,7 +487,7 @@ USA.
   (vector-ref (unix/uname) 1))
 
 (define (os-name)
-  microcode-id/operating-system-variant)
+  (vector-ref (unix/uname) 0))
 
 (define (os-version)
   (string-append (vector-ref (unix/uname) 2)
