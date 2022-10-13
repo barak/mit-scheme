@@ -47,6 +47,9 @@ USA.
 	(read-http-response request port)))))
 
 (define (call-with-http-client-socket uri callee)
+  (let ((scheme (uri-scheme uri)))
+    (if (not (or (not scheme) (eq? 'http scheme)))
+	(error "Unsupported HTTP scheme:" scheme)))
   (let ((port
 	 (let ((auth (uri-authority uri)))
 	   (open-binary-tcp-stream-socket (uri-authority-host auth)
