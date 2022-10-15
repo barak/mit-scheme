@@ -27,6 +27,7 @@
 *.pdf
 *.pkd
 *.res
+*.rtl
 *.txe
 *~
 .edwin-ffi
