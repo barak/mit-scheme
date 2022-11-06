@@ -2913,7 +2913,9 @@ USA.
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table
 	  set-hash-table-rehash-size!
-	  set-hash-table-rehash-threshold!))
+	  set-hash-table-rehash-threshold!)
+  (export (runtime equality)
+	  comparator->hash-table-type))
 
 (define-package (runtime memoizer)
   (files "memoizer")

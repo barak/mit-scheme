@@ -79,6 +79,7 @@ USA.
     "runtime/test-dynamic-env"
     "runtime/test-entity"
     "runtime/test-ephemeron"
+    ("runtime/test-equals" inline)
     ("runtime/test-file-attributes" (runtime))
     "runtime/test-floenv"
     "runtime/test-flonum"

@@ -413,6 +413,12 @@ USA.
 	(lambda ()
 	  (eval file-object (package/environment package))))))
 
+  (let ((package (find-package '(runtime equality))))
+    (with-current-package package
+      (lambda ()
+	((lexical-reference (package/environment package)
+			    'initialize-package!)))))
+
   (load-files-with-boot-inits files1)
   (call-pkg-init-proc '(runtime gc-daemons) 'initialize-package!)
   (call-pkg-init-proc '(runtime garbage-collector) 'initialize-package!)
