@@ -1116,6 +1116,11 @@ USA.
     symbol-hash
     vector-comparator))
 
+(define-standard-library '(srfi 129)
+  '(char-title-case?
+    char-titlecase
+    string-titlecase))
+
 (define-standard-library '(srfi 131)
   '(define-record-type))
 

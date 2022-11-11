@@ -1339,7 +1339,7 @@ USA.
 	  string-suffix-ci?
 	  string-suffix?
 	  string-tail
-	  string-titlecase
+	  string-titlecase		;(srfi 129)
 	  string-trim
 	  string-trim-left
 	  string-trim-right
@@ -1531,6 +1531,7 @@ USA.
 	  char-downcase			;(scheme char)
 	  char-foldcase			;(scheme char)
 	  char-general-category
+	  char-titlecase		;(srfi 129)
 	  char-upcase			;(scheme char)
 	  char<=?			;(scheme base)
 	  char<?			;(scheme base)
@@ -1581,6 +1582,7 @@ USA.
 	 "ucd-table-comp_ex"
 	 "ucd-table-cwcf"
 	 "ucd-table-cwl"
+	 "ucd-table-cwt"
 	 "ucd-table-cwu"
 	 "ucd-table-gc"
 	 "ucd-table-gc=cc"
@@ -1625,6 +1627,7 @@ USA.
 	 "ucd-table-nv"
 	 "ucd-table-scf"
 	 "ucd-table-slc"
+	 "ucd-table-stc"
 	 "ucd-table-suc"
 	 "ucd-table-tc"
 	 "ucd-table-uc"
@@ -1642,12 +1645,14 @@ USA.
 	  char-cased?
 	  char-changes-when-case-folded?
 	  char-changes-when-lower-cased?
+	  char-changes-when-title-cased?
 	  char-changes-when-upper-cased?
 	  char-lower-case?		;(scheme char)
 	  char-set:alphabetic
 	  char-set:cased
 	  char-set:changes-when-case-folded
 	  char-set:changes-when-lower-cased
+	  char-set:changes-when-title-cased
 	  char-set:changes-when-upper-cased
 	  char-set:lower-case		;(srfi 14)
 	  char-set:upper-case		;(srfi 14)
@@ -1661,6 +1666,7 @@ USA.
 	  ucd-nv-value
 	  ucd-scf-value
 	  ucd-slc-value
+	  ucd-stc-value
 	  ucd-suc-value)
   (export (runtime ucd-glue)
 	  char-set:gc=letter:lowercase
@@ -1740,6 +1746,7 @@ USA.
 	  char-set:symbol		;(srfi 14)
 	  char-set:unicode
 	  char-standard?
+	  char-title-case?		;(srfi 129)
 	  unicode-char?)
   (export (runtime)
 	  char-set:folded-symbol-constituent

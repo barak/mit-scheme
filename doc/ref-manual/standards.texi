@@ -17,6 +17,7 @@
 * SRFI 124::
 * SRFI 125::
 * SRFI 128::
+* SRFI 129::
 * SRFI 131::
 * SRFI 133::
 * SRFI 140::
@@ -1686,7 +1687,7 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{string-hash}
 @end multitable
 
-@node SRFI 128, SRFI 131, SRFI 125, Standards Support
+@node SRFI 128, SRFI 129, SRFI 125, Standards Support
 @section SRFI 128: Comparators (reduced)
 @findex <=?
 @findex <?
@@ -1778,7 +1779,33 @@ All names are bound in the @mitgnu{} global environment.
 @item @nicode{symbol-hash}
 @end multitable
 
-@node SRFI 131, SRFI 133, SRFI 128, Standards Support
+@node SRFI 129, SRFI 131, SRFI 128, Standards Support
+@section SRFI 129: Titlecase procedures
+@findex char-title-case?
+@findex char-titlecase
+@findex string-titlecase
+
+@cartouche
+@table @b
+@item Description
+An implementation procedures for title case.
+@item URL
+@srfiurl{129}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 129)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@noindent
+@nicode{char-title-case?}
+@nicode{char-titlecase}
+@nicode{string-titlecase}
+
+@node SRFI 131, SRFI 133, SRFI 129, Standards Support
 @section SRFI 131: ERRR5RS Record Syntax (reduced)
 @findex define-record-type
 

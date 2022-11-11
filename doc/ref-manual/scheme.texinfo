@@ -540,6 +540,7 @@ Standards Support
 * SRFI 124::
 * SRFI 125::
 * SRFI 128::
+* SRFI 129::
 * SRFI 131::
 * SRFI 133::
 * SRFI 140::

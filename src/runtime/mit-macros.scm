@@ -768,6 +768,8 @@ USA.
 	  ((id=? 'or (car req)) (eval-or (cdr req)))
 	  ((id=? 'and (car req)) (eval-and (cdr req)))
 	  ((id=? 'not (car req)) (not (eval-req (cadr req))))
+	  ((id=? 'library (car req))
+	   (registered-library? (cadr req) (current-library-db)))
 	  (else (error "Unknown requirement:" req))))
 
   (define (supported-feature? id)

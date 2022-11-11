@@ -78,6 +78,7 @@ USA.
     srfi-124	;Ephemerons
     srfi-125	;Intermediate hash tables
     srfi-128	;Comparators (reduced)
+    srfi-129	;Titlecase procedures
     srfi-131	;ERR5RS Record Syntax (reduced)
     srfi-133	;Vector Library (R7RS-compatible)
     srfi-143	;Fixnums

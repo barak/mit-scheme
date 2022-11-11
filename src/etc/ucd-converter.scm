@@ -649,6 +649,7 @@ USA.
 	      '("Alpha"
 		"CWCF"
 		"CWL"
+		"CWT"
 		"CWU"
 		"Cased"
 		"Comp_Ex"
@@ -669,6 +670,7 @@ USA.
 		"nv"
 		"scf"
 		"slc"
+		"stc"
 		"suc"
 		"tc"
 		"uc"))

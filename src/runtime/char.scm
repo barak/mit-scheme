@@ -157,6 +157,7 @@ USA.
 
 (define char-downcase)
 (define char-foldcase)
+(define char-titlecase)
 (define char-upcase)
 (add-boot-init!
  (lambda ()
@@ -170,6 +171,7 @@ USA.
 
    (set! char-downcase (char-mapper ucd-slc-value))
    (set! char-foldcase (char-mapper ucd-scf-value))
+   (set! char-titlecase (char-mapper ucd-stc-value))
    (set! char-upcase (char-mapper ucd-suc-value))
    unspecific))
 

@@ -120,6 +120,7 @@ USA.
     "runtime/test-simple-matcher"
     ("runtime/test-srfi-1" inline)
     "runtime/test-srfi-115"
+    "runtime/test-srfi-129"
     "runtime/test-string"
     "runtime/test-string-normalization"
     "runtime/test-string-search"

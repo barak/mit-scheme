@@ -86,6 +86,9 @@ USA.
 (define-deferred unicode-char?
   (char-set-predicate char-set:unicode))
 
+(define-deferred char-title-case?
+  (char-set-predicate char-set:gc=letter:titlecase))
+
 (define-deferred char-set:graphic
   (char-set-union char-set:alphanumeric
 		  char-set:punctuation
