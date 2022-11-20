@@ -281,7 +281,7 @@ USA.
 	(set-node-datum! node
 			 (updater (apply-succeed succeed (node-datum node))))
 	(rb-tree/insert! tree key
-			 (updater (apply-fail fail 'rb-tree/update!))))))
+			 (updater (apply-fail fail key 'rb-tree/update!))))))
 
 (define (find-node tree key)
   (let ((key=? (rb-tree/key=? tree))
