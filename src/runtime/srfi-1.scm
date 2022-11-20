@@ -331,18 +331,18 @@ USA.
 
 (define (length+ x)
   (let lp ((x x) (lag x) (len 0))
-    (if (pair? x)
+    (if (null-list? x 'length+)
+	len
 	(let ((x (cdr x))
 	      (len (fix:+ len 1)))
-	  (if (pair? x)
+	  (if (null-list? x 'length+)
+	      len
 	      (let ((x (cdr x))
 		    (lag (cdr lag))
 		    (len (fix:+ len 1)))
 		(if (eq? x lag)
 		    #f
-		    (lp x lag len)))
-	      len))
-	len)))
+		    (lp x lag len))))))))
 
 (define (reverse l)
   (append-reverse l '()))
