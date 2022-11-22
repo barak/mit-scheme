@@ -149,6 +149,8 @@ USA.
      (parameterize cons lambda list parameterize*)
      (quasiquote append cons list list->vector quote vector)
      (receive call-with-values lambda)
+     (syntax-rules declare er-macro-transformer ill-formed-syntax lambda
+		   syntax-rules:expand-template syntax-rules:match-datum)
      (unless begin if not)
      (when begin if))))
 

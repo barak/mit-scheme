@@ -5360,7 +5360,9 @@ USA.
   (files "syntax-rules")
   (parent (runtime syntax))
   (export ()
-	  syntax-rules))
+	  syntax-rules
+	  syntax-rules:expand-template
+	  syntax-rules:match-datum))
 
 (define-package (runtime syntax defstruct)
   (files "defstr")
