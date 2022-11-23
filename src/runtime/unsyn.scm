@@ -212,6 +212,8 @@ USA.
 		   (rewrite 'rsc-macro-transformer))
 		  ((er-macro-transformer->expander)
 		   (rewrite 'er-macro-transformer))
+		  ((spar-macro-transformer->expander)
+		   (rewrite 'spar-macro-transformer))
 		  (else #f)))))))
 
 (define (unsyntax-assignment-object environment assignment)
