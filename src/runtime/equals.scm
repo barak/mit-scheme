@@ -88,8 +88,8 @@ USA.
 (define (make-detect-circ continue)
   continue)
 
-(define ((make-mdc ht-type) continue)
-  (let ((ht (make-hash-table ht-type)))
+(define ((make-mdc make-ht) continue)
+  (let ((ht (make-ht)))
     (lambda (x y)
       (let ((key (cons x y)))
 	(hash-table-ref ht key
@@ -109,7 +109,7 @@ USA.
    (lambda ()
      (set! make-detect-circ
 	   (make-mdc
-	    (comparator->hash-table-type
+	    (hash-table-constructor
 	     (make-pair-comparator eq-comparator eq-comparator))))
      unspecific)))
 
