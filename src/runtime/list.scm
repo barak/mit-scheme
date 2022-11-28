@@ -256,6 +256,34 @@ USA.
 	(and (null? l1)
 	     length))))
 
+(define (count-pairs x)
+
+  (define (loop x lag n)
+    (if (pair? x)
+	(let ((x (cdr x))
+	      (n (fix:+ n 1)))
+	  (if (pair? x)
+	      (let ((x (cdr x))
+		    (lag (cdr lag))
+		    (n (fix:+ n 1)))
+		(if (eq? x lag)
+		    (count-pairs-in-cycle)
+		    (loop x lag n)))
+	      n))
+	n))
+
+  ;; Deferred to avoid overhead on non-cyclical inputs.
+  (define (count-pairs-in-cycle)
+    (let ((ht (make-hash-table eq-comparator)))
+      (let loop ((x x) (n 0))
+	(if (hash-table-contains? ht x)
+	    n
+	    (begin
+	      (hash-table-set! ht x #t)
+	      (loop (cdr x) (fix:+ n 1)))))))
+
+  (loop x x 0))
+
 (define (length=? left right)
   (define (%length=? n list)
     (cond ((pair? list) (and (fix:positive? n)

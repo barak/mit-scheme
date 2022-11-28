@@ -3455,6 +3455,7 @@ USA.
 	  not-pair?			;(srfi 1)
 	  null-list?			;(srfi 1)
 	  null?				;(scheme base)
+	  count-pairs
 	  pair?				;(scheme base)
 	  reduce			;(srfi 1)
 	  reduce-right			;(srfi 1)

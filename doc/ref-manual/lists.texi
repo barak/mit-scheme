@@ -539,16 +539,34 @@ a proper list.
 @end deffn
 
 @deffn {SRFI 1 procedure} length+ clist
-@var{Clist} must be a proper, dotted, or circular list.  If
-@var{clist} is a circular list, returns @code{#f}, otherwise returns
-the number of pairs comprising the list (which is the same as the
-length for a proper list).
+@var{Clist} must be a proper or circular list.  If @var{clist} is a
+circular list, returns @code{#f}, otherwise returns the number of
+pairs comprising the list (which is the same as the length for a
+proper list).
 
 @example
 @group
 (length+ (list 'a 'b 'c))               @result{} 3
-(length+ (cons* 'a 'b 'c))              @result{} 2
+(length+ (cons* 'a 'b 'c))              @error{}
 (length+ (circular-list 'a 'b 'c))      @result{} #f
+@end group
+@end example
+@end deffn
+
+@deffn procedure count-pairs object
+Counts the number of pairs in a list-like @var{object}.  If
+@var{object} is a proper list, returns the same value as
+@code{length}.  If @var{object} is a dotted list, returns the number
+of pairs including the last one.  If @var{object} is a circular list,
+counts the number of pairs up to and including the one with the
+backwards link.  If @var{object} is any other object, returns @code{0}
+as apropriate for an empty dotted list.
+
+@example
+@group
+(count-pairs (list 'a 'b 'c))           @result{} 3
+(count-pairs (cons* 'a 'b 'c))          @result{} 2
+(count-pairs (circular-list 'a 'b 'c))  @result{} 3
 @end group
 @end example
 @end deffn
