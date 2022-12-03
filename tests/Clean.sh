@@ -15,4 +15,4 @@ for SUBDIR in compiler microcode runtime sos star-parser xml; do
     (cd ${SUBDIR} && TOPDIR=../../src ../../src/etc/Clean.sh ${COMMAND})
 done
 echo "Cleaning in ffi"
-(cd ffi && make ${COMMAND})
+(cd ffi && make ${COMMAND} || true)
