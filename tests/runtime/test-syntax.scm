@@ -102,18 +102,16 @@ USA.
 
 (define-test 'ellipsis-ellipsis
   (lambda ()
-    (expect-error
-     (lambda ()
-       (assert-equal
-        (unsyntax
-         (syntax '(let ()
-                    (define-syntax flatten
-                      (syntax-rules ()
-                        ((flatten f (a ...) ...)
-                         (f a ... ...))))
-                    (flatten list (0 1) (2 3) (4)))
-                 test-environment))
-        '(list 0 1 2 3 4))))))
+    (assert-equal
+     (unsyntax
+      (syntax '(let ()
+		 (define-syntax flatten
+		   (syntax-rules ()
+		     ((flatten f (a ...) ...)
+		      (f a ... ...))))
+		 (flatten list (0 1) (2 3) (4)))
+	      test-environment))
+     '(let () (list 0 1 2 3 4)))))
 
 (define-test 'bug-57785
   (lambda ()

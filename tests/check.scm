@@ -127,6 +127,7 @@ USA.
     "runtime/test-syncproc"
     "runtime/test-syntax"
     "runtime/test-syntax-rename"
+    ("runtime/test-syntax-rules" (runtime syntax syntax-rules))
     "runtime/test-thread-queue"
     "runtime/test-trie"
     "runtime/test-ucd-grapheme"
