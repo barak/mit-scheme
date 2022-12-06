@@ -179,32 +179,64 @@ USA.
        (lambda (bindings body-forms)
 	 (let ((body (apply scons-begin body-forms)))
 	   (case (length bindings)
-	     ((0)
-	      (scons-let '() body))
+	     ((0) (scons-let '() body))
 	     ((1)
-	      (scons-cwv (car (car bindings))
-			 (scons-lambda '() (cadr (car bindings)))
-			 body))
+	      (let ((b (car bindings)))
+		(if (bvl-single? (car b))
+		    (scons-let (list (list (caar b) (cadr b)))
+		      body)
+		    (scons-cwv (car b)
+			       (scons-lambda '() (cadr b))
+			       body))))
 	     (else
 	      (let-values-multi bindings body)))))))))
 
 (define (let-values-multi bindings body)
-  (let ((temps
-	 (map (lambda (index)
-		(new-identifier (symbol 'temp- index)))
-	      (iota (length bindings))))
-	(thunks
-	 (map (lambda (binding)
-		(scons-lambda () (cadr binding)))
-	      bindings)))
-    (scons-let (map list temps thunks)
-      (let loop ((bvls (map car bindings)) (temps temps))
-	(if (pair? bvls)
-	    (scons-cwv (car bvls)
-		       (car temps)
-		       (loop (cdr bvls) (cdr temps)))
-	    body)))))
+  (receive (single multi)
+      (partition (lambda (b)
+		   (bvl-single? (car b)))
+		 bindings)
+    (if (null? multi)
+	(scons-let (map (lambda (b)
+			  (list (caar b) (cadr b)))
+			single)
+	  body)
+	(let ((stemps (map make-temp single))
+	      (mtemps (map make-temp multi)))
+	  (scons-let
+	      (append (map (lambda (b t)
+			     (list t (cadr b)))
+			   single
+			   stemps)
+		      (map (lambda (b t)
+			     (list t (scons-lambda '() (cadr b))))
+			   multi
+			   mtemps))
+	    (fold (lambda (b t expr)
+		    (scons-cwv (car b) t expr))
+		  (if (null? single)
+		      body
+		      (scons-let (map (lambda (b t)
+					(list (caar b) t))
+				      single
+				      stemps)
+			body))
+		  multi
+		  mtemps))))))
 
+(define (bvl-single? bvl)
+  (and (pair? bvl)
+       (null? (cdr bvl))))
+
+(define (make-temp x)
+  (declare (ignore x))
+  (generate-uninterned-symbol))
+
+(define (scons-cwv bvl thunk body)
+  (scons-call (scons-close 'call-with-values)
+	      thunk
+	      (scons-lambda bvl body)))
+
 (define-syntax $let*-values
   (syntax-rules ()
     ((let*-values () body0 body1 ...)
@@ -225,11 +257,6 @@ USA.
 		    (scons-lambda '() expr)
 		    (apply scons-begin body-forms)))))))
 
-(define (scons-cwv bvl thunk body)
-  (scons-call (scons-close 'call-with-values)
-	      thunk
-	      (scons-lambda bvl body)))
-
 ;;; SRFI 2: and-let*
 
 ;;; The SRFI document is a little unclear about the semantics, imposes
