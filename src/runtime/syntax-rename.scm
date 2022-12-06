@@ -44,131 +44,76 @@ USA.
 ;;; collisions.  A name collision occurs when one of the bound identifiers has
 ;;; an original name that is the same as the original name of one of the free
 ;;; identifiers.  If there are no name collisions, then it is safe to restore
-;;; the original name.  Otherwise the bound identifier is replaced by an
-;;; interned symbol with a computed name that's designed to be unique.
+;;; the original name.
 
 (declare (usual-integrations))
 
 (add-boot-deps! '(runtime dynamic) '(runtime predicate-dispatch))
 
-(define (make-local-identifier-renamer)
-  ((rdb:identifier-renamer (rename-db)) new-identifier))
-
-(define (with-identifier-renaming thunk)
-  (parameterize ((rename-db (initial-rename-db)))
-    (post-process-output (thunk))))
-
 (define-deferred rename-db
   (make-unsettable-parameter 'unbound))
 
 (define-record-type <rename-db>
-    (make-rename-db identifier-renamer lookup-rename)
+    (make-rename-db mapping unmapping)
     rename-db?
-  (identifier-renamer rdb:identifier-renamer)
-  (lookup-rename rdb:lookup-rename))
+  (mapping rdb:mapping)
+  (unmapping rdb:unmapping))
 
-(define (initial-rename-db)
-  (let ((frame-id 0)
-	(mapping-table (make-strong-eq-hash-table))
-	(unmapping-table (make-strong-eq-hash-table)))
-
-    (define (identifier-renamer get-rename)
-      (let ((delayed-frame-id (delay (new-frame-id))))
-	(lambda (identifier)
-	  (guarantee identifier? identifier)
-	  (let ((bucket
-		 (hash-table-intern! mapping-table
-				     identifier
-				     (lambda () (list 'bucket)))))
-	    (let ((entry (assq delayed-frame-id (cdr bucket))))
-	      (if entry
-		  (cdr entry)
-		  (let ((rename (get-rename identifier)))
-		    (set-cdr! bucket
-			      (cons (cons delayed-frame-id rename)
-				    (cdr bucket)))
-		    (hash-table-set! unmapping-table
-				     rename
-				     (cons identifier delayed-frame-id))
-		    rename)))))))
-
-    (define (new-frame-id)
-      (let ((n (+ frame-id 1)))
-	(set! frame-id n)
-	n))
-
-    (define (lookup-rename rename)
-      (hash-table-ref/default unmapping-table rename #f))
-
-    (make-rename-db identifier-renamer lookup-rename)))
-
-(define (rename->original rename)
-  (let ((entry ((rdb:lookup-rename (rename-db)) rename)))
-    (if entry
-	(car entry)
-	rename)))
-
-;;;; Post processing
+(define (with-identifier-renaming thunk)
+  (parameterize ((rename-db
+		  (make-rename-db (make-strong-eq-hash-table)
+				  (make-strong-eq-hash-table))))
+    (post-process-output (thunk))))
 
 (define (post-process-output expression)
   (trace-reduce expression)
   (let ((safe-set (make-strong-eq-hash-table)))
     (compute-substitution expression
-			  (lambda (rename original)
-			    (hash-table-set! safe-set rename original)))
-    (alpha-substitute (make-final-substitution safe-set) expression)))
+      (lambda (rename original)
+	(hash-table-set! safe-set rename original)))
+    (alpha-substitute (lambda (rename)
+			(hash-table-ref/default safe-set rename rename))
+		      expression)))
+
+(define (make-local-identifier-renamer)
+  (let ((frame-id (list 'frame-id))
+	(mapping (rdb:mapping (rename-db)))
+	(unmapping (rdb:unmapping (rename-db))))
+    (lambda (original)
+      (guarantee identifier? original)
+      (let ((bucket
+	     (hash-table-intern! mapping
+				 original
+				 (lambda () (list 'bucket)))))
+	(let ((entry (assq frame-id (cdr bucket))))
+	  (if entry
+	      (cdr entry)
+	      (let ((rename (generate-uninterned-symbol)))
+		(set-cdr! bucket
+			  (cons (cons frame-id rename)
+				(cdr bucket)))
+		(hash-table-set! unmapping rename original)
+		rename)))))))
 
 (define (mark-local-bindings bound body mark-safe!)
   (let ((free
 	 (lset-difference eq?
 			  (compute-substitution body mark-safe!)
 			  bound)))
-    (for-each (lambda (rename)
-		(let ((original (rename->original rename)))
-		  (if (and (symbol? original)
-			   (not (any (lambda (rename*)
-				       (eq? original
-					    (rename->original rename*)))
-				     free)))
-		      (mark-safe! rename original))))
-	      bound)
+    (let ((rename->original
+	   (let ((unmapping (rdb:unmapping (rename-db))))
+	     (lambda (rename)
+	       (hash-table-ref/default unmapping rename rename)))))
+      (for-each (lambda (rename)
+		  (let ((original (rename->original rename)))
+		    (if (and (symbol? original)
+			     (not (any (lambda (rename*)
+					 (eq? original
+					      (rename->original rename*)))
+				       free)))
+			(mark-safe! rename original))))
+		bound))
     free))
-
-(define (make-final-substitution safe-set)
-  (let ((lookup-rename (rdb:lookup-rename (rename-db)))
-	(uninterned-table (make-strong-eq-hash-table)))
-
-    (define (finalize-renamed-identifier rename)
-      (guarantee identifier? rename 'finalize-renamed-identifier)
-      (let ((entry (lookup-rename rename)))
-	(if entry
-	    (let ((original (car entry))
-		  (frame-id (force (cdr entry))))
-	      (if (interned-symbol? original)
-		  (symbol "." original "." frame-id)
-		  (finalize-uninterned original frame-id)))
-	    rename)))
-
-    (define (finalize-uninterned original frame-id)
-      (let ((bucket
-	     (hash-table-intern! uninterned-table
-				 original
-				 (lambda () (list 'bucket)))))
-	(let ((entry (assv frame-id (cdr bucket))))
-	  (if entry
-	      (cdr entry)
-	      (let ((finalized
-		     (symbol "." (identifier->symbol original)
-			     "." frame-id
-			     "-" (length (cdr bucket)))))
-		(set-cdr! bucket
-			  (cons (cons frame-id finalized)
-				(cdr bucket)))
-		finalized)))))
-
-    (lambda (rename)
-      (or (hash-table-ref/default safe-set rename #f)
-	  (finalize-renamed-identifier rename)))))
 
 ;;;; Compute substitution
 

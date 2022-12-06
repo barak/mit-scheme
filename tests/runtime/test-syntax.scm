@@ -115,7 +115,7 @@ USA.
 
 (define-test 'bug-57785
   (lambda ()
-    (assert-equal
+    (assert-matches
      (unsyntax
       (syntax '(lambda ()
 
@@ -135,9 +135,9 @@ USA.
 		 (bat x))
               test-environment))
      '(lambda ()
-	(let ((.md.1-0 'quux))
-	  (let ((.md.2-1 .md.1-0))
-	    (list .md.1-0 'x)))))))
+	(let ((?x1 'quux))
+	  (let ((?x2 ?x1))
+	    (list ?x1 'x)))))))
 
 (define-test 'bug-57793
   (lambda ()
@@ -179,6 +179,36 @@ USA.
 	      test-environment))
      '(lambda ()
 	(start)))))
+
+(define-test 'bug-63438
+  (lambda ()
+    (assert-matches
+     (unsyntax
+      (syntax '(let ()
+		 (define-syntax foo
+		   (syntax-rules ()
+		     ((foo 0)
+		      (foo 1 x))
+		     ((foo 1 y)
+		      (lambda (x y)
+			(list (list x y)
+			      (lambda (y) (list x y)))))))
+		 (foo 0))
+	      test-environment))
+     '(let ()
+	(lambda (?x1 ?x2)
+	  (list (list ?x1 ?x2) (lambda (?x3) (list ?x1 ?x3))))))
+    (assert-matches
+     (unsyntax
+      (syntax '(let ((.x.1-0 123))
+		 (define-syntax foo
+                   (syntax-rules ()
+                     ((foo y) (lambda (x) y))))
+		 ((foo .x.1-0) 456))
+	      test-environment))
+     '(let ((.x.1-0 123))
+	(let ((?x1 456))
+	  .x.1-0)))))
 
 ;;;; Tests of syntax-rules, from Larceny:
 

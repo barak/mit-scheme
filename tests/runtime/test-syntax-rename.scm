@@ -63,10 +63,10 @@ USA.
 	      (outer car)
 	      (let ((car 15))
 		(cons car (inner))))))
-      (assert-equal (unsyntax (syntax expr test-environment))
-		    '(let ((.car.1 13))
-		       (let ((.car.2 15))
-			 (cons .car.2 (list car .car.1))))))))
+      (assert-matches (unsyntax (syntax expr test-environment))
+		      '(let ((?x1 13))
+			 (let ((?x2 15))
+			   (cons ?x2 (list car ?x1))))))))
 
 (define-test 'keyword-environments
   (lambda ()
