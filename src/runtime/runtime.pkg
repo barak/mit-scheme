@@ -6634,7 +6634,6 @@ USA.
   (parent (runtime library))
   (export ()
 	  environment			;(scheme eval)
-	  environment->library
 	  environment-has-name?
 	  environment-name
 	  environment-name&type
@@ -6644,6 +6643,7 @@ USA.
 	  top-level-environment
 	  )
   (export (runtime)
+	  environment->library
 	  eval-r7rs-scode-file
 	  eval-r7rs-source
 	  make-environment-from-parsed-imports
