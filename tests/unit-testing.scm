@@ -123,13 +123,13 @@ USA.
 
 (define (run-sub-tests named-sub-tests)
   ;; Runs sub-tests in left-to-right order.
-  (let loop ((named-sub-tests named-sub-tests) (results '()))
-    (if (pair? named-sub-tests)
-	(loop (cdr named-sub-tests)
-	      (cons (cons (caar named-sub-tests)
-			  (run-sub-test (cdar named-sub-tests)))
-		    results))
-	(reverse! results))))
+  (reverse
+   (fold (lambda (sub-test results)
+	   (cons (cons (car sub-test)
+		       (run-sub-test (cdr sub-test)))
+		 results))
+	 '()
+	 named-sub-tests)))
 
 (define (name-and-flatten root-name item)
   (flatten (attach-names root-name item)))
@@ -318,9 +318,9 @@ USA.
 
 (define (decode-feature variant-type value)
   (case variant-type
-    ((PATTERN) (values (car value) (cdr value)))
-    ((DESCRIPTION) (values (list value) '()))
-    ((OBJECT) (values (list (marker)) (list value)))
+    ((pattern) (values (car value) (cdr value)))
+    ((description) (values (list value) '()))
+    ((object) (values (list (marker)) (list value)))
     (else (error "Unknown variant type:" variant-type))))
 
 (define-record-type <marker>
@@ -678,7 +678,7 @@ USA.
 			  (if+ "the same elements as" "different elements from")
 			  (marker)
 			  "comparing elements with" (name-of comparator)
-			  " in any order")))
+			  "in any order")))
 
 (define (trivial-matcher pattern expression #!optional value=?)
   (let ((value=? (if (default-object? value=?) equal? value=?)))
