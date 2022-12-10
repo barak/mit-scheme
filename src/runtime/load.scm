@@ -212,8 +212,7 @@ USA.
        (lambda ()
 	 (values pathname
 		 (lambda ()
-		   ((ucode-primitive binary-fasload)
-		    (string-for-primitive (->namestring pathname))))
+		   ((ucode-primitive binary-fasload) (->namestring pathname)))
 		 (let ((notifier (loading-notifier pathname)))
 		   (lambda (thunk)
 		     (if (and src-pathname

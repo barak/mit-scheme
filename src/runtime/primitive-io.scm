@@ -274,7 +274,7 @@ USA.
   (let ((channel
 	 (open-channel
 	  (lambda (p)
-	    (primitive (string-for-primitive filename) p)))))
+	    (primitive filename p)))))
     (if (or (channel-type=directory? channel)
 	    (channel-type=unknown? channel))
 	(let ((reason
@@ -408,8 +408,8 @@ USA.
    (lambda ()
      (let ((result ((ucode-primitive open-pty-master 0))))
        (values (make-channel (vector-ref result 0))
-	       (string-from-primitive (vector-ref result 1))
-	       (string-from-primitive (vector-ref result 2)))))))
+	       (vector-ref result 1)
+	       (vector-ref result 2))))))
 
 (define (pty-master-send-signal channel signal)
   ((ucode-primitive pty-master-send-signal 2) (channel-descriptor channel)
@@ -451,22 +451,19 @@ USA.
    (lambda ()
      (add-to-gc-finalizer! open-directories
 			   (make-directory-channel
-			    ((ucode-primitive new-directory-open 1)
-			     (string-for-primitive name)))))))
+			    ((ucode-primitive new-directory-open 1) name))))))
 
 (define (directory-channel-close channel)
   (remove-from-gc-finalizer! open-directories channel))
 
 (define (directory-channel-read channel)
-  (string-from-primitive
-   ((ucode-primitive new-directory-read 1)
-    (directory-channel/descriptor channel))))
+  ((ucode-primitive new-directory-read 1)
+   (directory-channel/descriptor channel)))
 
 (define (directory-channel-read-matching channel prefix)
-  (string-from-primitive
-   ((ucode-primitive new-directory-read-matching 2)
-    (directory-channel/descriptor channel)
-    (string-for-primitive prefix))))
+  ((ucode-primitive new-directory-read-matching 2)
+   (directory-channel/descriptor channel)
+   prefix))
 
 ;;;; Select registry
 
@@ -686,7 +683,7 @@ USA.
      (lambda () unspecific)
      (lambda ()
        ((ucode-primitive dld-load-file 2)
-	(and pathname (string-for-primitive (->namestring pathname)))
+	(and pathname (->namestring pathname))
 	p)
        (let ((handle (make-dld-handle pathname (weak-cdr p))))
 	 (with-thread-mutex-lock dld-handles-mutex
@@ -730,7 +727,7 @@ USA.
   (guarantee string? name 'dld-lookup-symbol)
   ((ucode-primitive dld-lookup-symbol 2)
    (dld-handle-address handle)
-   (string-for-primitive name)))
+   name))
 
 (define (dld-loaded-file? pathname)
   (find-dld-handle

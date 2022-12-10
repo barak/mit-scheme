@@ -83,8 +83,7 @@ USA.
       (begin
 	(set! %env-cache (os/make-env-cache))
 	(vector-for-each (lambda (s)
-			   (let ((s (string-from-primitive s))
-				 (i (string-find-next-char s #\=)))
+			   (let ((i (string-find-next-char s #\=)))
 			     (if i
 				 (let ((var (string-head s i))
 				       (val (string-tail s (fix:+ i 1))))

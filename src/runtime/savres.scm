@@ -113,8 +113,7 @@ USA.
   (if (implemented-primitive-procedure? (ucode-primitive dump-band* 2))
       (let* ((pathname (merge-pathnames filename))
 	     (namestring (->namestring pathname))
-	     (primitive (string-for-primitive namestring))
-	     (n (string-length primitive))
+	     (n (string-length namestring))
 	     (cell
 	      (make-gc-finalized-object disk-save-filenames
 		(lambda (p)
@@ -124,7 +123,7 @@ USA.
 		(lambda (s)
 		  (make-cell s))))
 	     (string (cell-contents cell)))
-	((ucode-primitive substring-move-left! 5) primitive 0 n string 0)
+	((ucode-primitive substring-move-left! 5) namestring 0 n string 0)
 	cell)
       filename))
 
@@ -139,9 +138,7 @@ USA.
 	 (->namestring
 	  (if (default-object? filename)
 	      (merge-pathnames
-	       (let ((filename
-		      (string-from-primitive
-		       ((ucode-primitive reload-band-name)))))
+	       (let ((filename ((ucode-primitive reload-band-name))))
 		 (if (not filename)
 		     (error "no default band name available"))
 		 filename))
@@ -158,7 +155,7 @@ USA.
 			  (or (try pathname)
 			      (system-library-pathname pathname))))))))))
     (event-distributor/invoke! event:before-exit)
-    ((ucode-primitive load-band) (string-for-primitive filename))))
+    ((ucode-primitive load-band) filename)))
 
 (define (identify-world #!optional port)
   (let ((port

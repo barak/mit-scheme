@@ -1356,9 +1356,6 @@ USA.
 	  substring?
 	  vector->string		;(scheme base)
 	  )
-  (export (runtime)
-	  string-for-primitive
-	  string-from-primitive)
   (export (runtime symbol)
 	  %ascii-ustring!
 	  %ascii-ustring-allocate

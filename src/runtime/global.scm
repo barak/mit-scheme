@@ -400,7 +400,7 @@ USA.
 	   (lambda ()
 	     (let loop ()
 	       (if (not ((ucode-primitive primitive-fasdump)
-			 object (string-for-primitive filename) dump-option))
+			 object filename dump-option))
 		   (begin
 		     (with-simple-restart 'retry "Try again."
 		       (lambda ()

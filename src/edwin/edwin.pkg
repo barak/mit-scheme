@@ -105,7 +105,6 @@ USA.
   (parent ())
   (import (runtime)
 	  define-primitives
-	  string-for-primitive
 	  ucode-primitive
 	  ucode-type)
   (import (runtime char-syntax)

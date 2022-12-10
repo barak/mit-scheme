@@ -1812,21 +1812,6 @@ USA.
 	((2) (every-loop char-8-bit? ustring2-ref string start end))
 	(else (every-loop char-8-bit? ustring3-ref string start end))))))
 
-(define (string-for-primitive string)
-  (if (and (or (legacy-string? string)
-	       (and (ustring? string)
-		    (fix:= 1 (ustring-cp-size string))))
-	   (let ((end (string-length string)))
-	     (every-loop (lambda (cp) (fix:< cp #x80))
-			 cp1-ref string 0 end)))
-      string
-      (string->utf8 string)))
-
-(define (string-from-primitive string)
-  (if (legacy-string? string)
-      (utf8->string (legacy-string->bytevector string))
-      string))
-
 (define-integrable (every-loop proc ref string start end)
   (let loop ((i start))
     (if (fix:< i end)

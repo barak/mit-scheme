@@ -46,8 +46,7 @@ USA.
       (pathname-simplify
        (pathname-as-directory
 	(parse-namestring
-	 (string-from-primitive
-	  ((ucode-primitive working-directory-pathname)))
+	 ((ucode-primitive working-directory-pathname))
 	 local-host)))))
 
 (define (set-working-directory-pathname! name)
