@@ -218,16 +218,10 @@ USA.
   (let loop ((p p))
     (case (car p)
       ((list dotted-list vector)
-       (if (and (eq? 'dotted-list (car p))
-		(special-dot-tail? p))
-	   (if (any segment? (cdr p))
-	       (syntax-error "No ellipses allowed in pattern:" pattern))
-	   (begin
-	     (if (fix:> (count segment? (cdr p)) 1)
-		 (syntax-error "Only one ellipsis allowed in pattern:" pattern))
-	     (if (any (lambda (elt) (fix:> (count-segments elt) 1)) (cdr p))
-		 (syntax-error "No nested ellipses allowed in pattern:"
-			       pattern))))
+       (if (fix:> (count segment? (cdr p)) 1)
+	   (syntax-error "Only one ellipsis allowed in pattern:" pattern))
+       (if (any (lambda (elt) (fix:> (count-segments elt) 1)) (cdr p))
+	   (syntax-error "No nested ellipses allowed in pattern:" pattern))
        (for-each (lambda (elt)
 		   (loop (strip-segments elt)))
 		 (cdr p)))
@@ -392,11 +386,6 @@ USA.
     (if (segment? elt)
 	(loop (segment-body elt) (fix:+ n 1))
 	n)))
-
-(define (special-dot-tail? p)
-  (let ((tail-pat (last p)))
-    (or (eq? 'var (car tail-pat))
-	(eq? 'anon-var (car tail-pat)))))
 
 ;; Like quote but doesn't strip syntactic closures:
 (define (syntax-quote expression)

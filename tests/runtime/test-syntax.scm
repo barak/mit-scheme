@@ -347,3 +347,21 @@ USA.
       (assert-eq (car (caddr x)) 'c)
       (assert-eq (cdr (caddr x)) (cadr x))
       (assert-eq (cadddr x) (caddr x)))))
+
+(define-test 'dotted-list
+  (lambda ()
+
+    ;; Dotted-list pattern without ellipsis acts like rest parameter of lambda:
+    (define-syntax foo
+      (syntax-rules ()
+	((_ a b . c)
+	 (quote (a b c)))))
+    (assert-equal (foo 1 2 3 4) '(1 2 (3 4)))
+
+    ;; Dotted-list pattern with ellipsis matches final cdr of input:
+    (define-syntax bar
+      (syntax-rules ()
+	((_ a b ... . c)
+	 (quote (a (b ...) c)))))
+    (assert-equal (bar 1 2 3 4) '(1 (2 3 4) ()))
+    (assert-equal (bar 1 2 3 . 4) '(1 (2 3) 4))))
