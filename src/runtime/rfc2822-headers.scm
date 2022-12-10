@@ -189,7 +189,7 @@ USA.
 	    (cond ((eof-object? byte)
 		   (if (builder 'empty?)
 		       byte
-		       (builder)))
+		       (builder 'immutable)))
 		  ((fix:= 13 byte)
 		   (let ((byte (peek-u8 port)))
 		     (cond ((eof-object? byte)
@@ -200,7 +200,7 @@ USA.
 			   (else
 			    (parse-error port "Invalid line ending:"
 					 'read-ascii-line))))
-		   (builder))
+		   (builder 'immutable))
 		  ((fix:= 10 byte)
 		   (parse-error port "Invalid line ending:" 'read-ascii-line))
 		  ((and (fix:<= 32 byte) (fix:<= byte 126))

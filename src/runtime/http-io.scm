@@ -217,7 +217,7 @@ USA.
 	    (cond ((eof-object? byte)
 		   (if (builder 'empty?)
 		       byte
-		       (builder)))
+		       (builder 'immutable)))
 		  ((fix:= 13 byte)
 		   (let ((line (builder)))
 		     (if (fix:= 10 (peek-u8 port))

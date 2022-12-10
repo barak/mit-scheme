@@ -602,4 +602,4 @@ USA.
 		    (builder #\space))
 		(builder (symbol->string nmtoken)))
 	      nmtokens)
-    (builder)))
+    (builder 'immutable)))

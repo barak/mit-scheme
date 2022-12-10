@@ -413,7 +413,7 @@ USA.
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i n)))
       (builder (integer->char (bytevector-u8-ref bv i))))
-    (builder)))
+    (builder 'immutable)))
 
 (define (set-status-header message code)
   (set-header message

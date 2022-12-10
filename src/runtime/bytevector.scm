@@ -418,7 +418,7 @@ USA.
 		  (loop index*)))
 	      (if (fix:< index end)
 		  (builder (truncated index))))))
-      (builder))))
+      (builder 'immutable))))
 
 (define utf8->string)
 (define utf16be->string)
@@ -503,7 +503,7 @@ USA.
     (do ((i start (fix:+ i 1)))
 	((not (fix:< i end)))
       (builder (integer->char (bytevector-u8-ref bytes i))))
-    (builder)))
+    (builder 'immutable)))
 
 (define (bytevector->hexadecimal bytes)
   (define-integrable (hex-char k)
@@ -515,7 +515,7 @@ USA.
 	((not (fix:< i n)))
       (builder (hex-char (fix:lsh (bytevector-u8-ref bytes i) -4)))
       (builder (hex-char (bytevector-u8-ref bytes i))))
-    (builder)))
+    (builder 'immutable)))
 
 (define (hexadecimal->bytevector string)
   (guarantee string? string 'hexadecimal->bytevector)

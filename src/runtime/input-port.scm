@@ -64,7 +64,7 @@ USA.
 		       char
 		       (builder)))
 		  ((char=? char #\newline)
-		   (builder))
+		   (builder 'immutable))
 		  (else
 		   (builder char)
 		   (loop)))))))))
@@ -82,7 +82,7 @@ USA.
 		       (builder)))
 		  ((char-in-set? char delimiters)
 		   (input-port/unread-char port char)
-		   (builder))
+		   (builder 'immutable))
 		  (else
 		   (builder char)
 		   (loop)))))))))

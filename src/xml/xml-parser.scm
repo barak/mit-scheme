@@ -903,7 +903,7 @@ USA.
 		      (builder (string-slice string start index))
 		      (loop (step-over-eol index)))
 		    (builder (string-slice string start)))))
-	    (builder))))
+	    (builder 'immutable))))
       (if (if (default-object? always-copy?) #f always-copy?)
 	  (string-copy string)
 	  string)))

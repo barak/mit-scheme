@@ -98,7 +98,7 @@ USA.
 		 (loop))
 		(else
 		 (error "Illegal character in HTML form data:" char))))))
-    (builder)))
+    (builder 'immutable)))
 
 ;;;; Encoder
 
@@ -143,7 +143,7 @@ USA.
 	       ((not (pair? data)))
 	     (write-char #\&)
 	     (write-datum (car data)))))
-     (builder)))
+     (builder 'immutable)))
 
 (define-deferred char-set:unreserved
   (char-set-difference char-set:ascii

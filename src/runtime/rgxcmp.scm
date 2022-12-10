@@ -241,7 +241,7 @@ USA.
 			   (builder #\\))
 		       (builder char))
 		     string)
-    (builder)))
+    (builder 'immutable)))
 
 ;;;; Pattern Compiler
 
@@ -793,7 +793,7 @@ USA.
 	   (do ((i 0 (fix:+ i 1)))
 	       ((not (fix:< i 1)))
 	     (sbuilder (integer->char (get-byte))))
-	   (write (sbuilder) output)
+	   (write (sbuilder 'immutable) output)
 	   (fix:+ 1 n)))
 	((jump on-failure-jump maybe-finalize-jump dummy-failure-jump)
 	 (write-char #\space output)

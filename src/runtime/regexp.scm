@@ -200,6 +200,6 @@ USA.
 			    (builder range)))
 		      (loop (cdr ranges)))))
 	      (builder #\])
-	      (builder))
+	      (builder 'immutable))
 	    (re-quote-string (string (car chars))))
 	"")))

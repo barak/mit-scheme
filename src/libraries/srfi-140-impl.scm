@@ -70,7 +70,7 @@ USA.
 (define (string-tabulate proc n)
   (let ((builder (string-builder n)))
     (do ((i 0 (fx+ i 1)))
-	((not (fx<? i n)) (builder))
+	((not (fx<? i n)) (builder 'immutable))
       (builder (proc i)))))
 
 ;; TODO: move this into string.scm and make it fast.
@@ -96,7 +96,7 @@ USA.
 	       (loop (successor seed)))
 	      ((not (default-object? make-final))
 	       (builder (make-final seed)))))
-      (builder))))
+      (builder 'immutable))))
 
 (define string-unfold
   (unfolder string-builder))
@@ -142,7 +142,7 @@ USA.
 	  (builder (string-slice string1 0 start1))
 	  (builder (string-slice string2 start2 end2))
 	  (builder (string-slice string1 end1 len1))
-	  (builder))))))
+	  (builder 'immutable))))))
 
 (define (string-prefix-length string1 string2
 			      #!optional start1 end1 start2 end2)
@@ -308,7 +308,7 @@ USA.
       (do ((index start (fx+ index 1)))
 	  ((not (fx<? index end)))
 	(builder (proc index)))
-      (builder))))
+      (builder 'immutable))))
 
 (define (string-for-each-index proc string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string-for-each-index))
@@ -336,7 +336,7 @@ USA.
 	  ((not (fx<? index end)))
 	(if (pred (string-ref string index))
 	    (builder (string-ref string index))))
-      (builder))))
+      (builder 'immutable))))
 
 (define (string-remove pred string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string-remove))
@@ -346,7 +346,7 @@ USA.
 	  ((not (fx<? index end)))
 	(if (not (pred (string-ref string index)))
 	    (builder (string-ref string index))))
-      (builder))))
+      (builder 'immutable))))
 
 (define (string-repeat kernel n)
   (guarantee non-negative-fixnum? n 'string-repeat)
@@ -354,7 +354,7 @@ USA.
     (do ((i 0 (fx+ i 1)))
 	((not (fx<? i n)))
       (builder kernel))
-    (builder)))
+    (builder 'immutable)))
 
 (define (xsubstring string #!optional from to start end)
   (let* ((end (fix:end-index end (string-length string) 'xsubstring))
@@ -379,7 +379,7 @@ USA.
 	    (do ((i from (+ i 1)))
 		((not (< i to)))
 	      (builder (string-ref string (+ start (modulo i n)))))
-	    (builder))))))
+	    (builder 'immutable))))))
 
 (define (string-split string delimiter #!optional grammar limit start end)
   (let* ((end (fix:end-index end (string-length string) 'string-split))

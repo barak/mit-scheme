@@ -434,10 +434,8 @@ these sequences are semantically identical and should be treated
 equivalently for all purposes.  If two such sequences are normalized to
 the same form, the resulting normalized sequences will be identical.
 
-By default, most procedures that return strings return them in
-@acronym{NFC}.  Notable exceptions are @code{list->string},
-@code{vector->string}, and the @code{utfX->string} procedures, which
-do no normalization, and of course @code{string->nfd}.
+By default, most procedures that return strings do not normalize, so it
+is up to the programmer to normalize as needed.
 
 Generally speaking, @acronym{NFC} is preferred for most purposes, as
 it is the minimal-length sequence for the variants.  Consult the
@@ -647,15 +645,14 @@ created.
 @end itemize
 
 The ``result'' arguments control the form of the returned string.  The
-arguments @code{immutable} and @code{mutable} are straightforward,
-specifying the mutability of the returned string.  For these
-arguments, the returned string contains exactly the same characters,
-in the same order, as were appended to the builder.
+arguments @code{immutable} (or no argument) and @code{mutable} are
+straightforward, specifying the mutability of the returned string.
+For these arguments, the returned string contains exactly the same
+characters, in the same order, as were appended to the builder.
 
-However, calling with the argument @code{nfc}, or with no arguments,
-returns an immutable string in Unicode Normalization Form C, exactly
-as if @code{string->nfc} were called on one of the other two result
-strings.
+However, calling with the argument @code{nfc}, returns an immutable
+string in Unicode Normalization Form C, exactly as if
+@code{string->nfc} were called on one of the other two result strings.
 @end deffn
 
 @deffn procedure string-joiner infix prefix suffix

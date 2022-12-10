@@ -148,7 +148,7 @@ USA.
 (define (build-string objects)
   (let ((builder (string-builder)))
     (for-each builder objects)
-    (builder)))
+    (builder 'immutable)))
 
 (define (chars->string chars)
   (let ((s (make-string (length chars))))

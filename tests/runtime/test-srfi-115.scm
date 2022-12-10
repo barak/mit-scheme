@@ -34,7 +34,8 @@ USA.
   (lambda (expected re string #!optional start end)
     (let ((thunk
 	   (lambda ()
-	     (translate-regexp-match (proc re string start end)))))
+	     (translate-regexp-match
+	      (proc re string start end)))))
       (lambda ()
 	(with-test-properties
 	    (lambda ()
@@ -756,11 +757,11 @@ USA.
   (match-all-test '(0 5) '(* numeric) "１２３４５")
   (match-all-test #f '(w/ascii (* numeric)) "１２３４５")
 
-  (match-all-test '(0 1) 'grapheme "한")
-  (match-all-test '(0 1) 'grapheme "글")
+  (match-all-test '(0 1) 'grapheme (string->nfc "한"))
+  (match-all-test '(0 1) 'grapheme (string->nfc "글"))
 
-  (match-all-test '(0 1) '(: bog grapheme eog) "한")
-  (match-all-test #f '(: "ᄒ" bog grapheme eog "ᆫ") "한"))
+  (match-all-test '(0 1) '(: bog grapheme eog) (string->nfc "한"))
+  (match-all-test #f '(: "ᄒ" bog grapheme eog "ᆫ") (string->nfc "한")))
 
 (define-test 'chibi-extract
   (lambda ()

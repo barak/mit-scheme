@@ -378,7 +378,9 @@ USA.
        (string-builder)))
 
 (define (finish-attributes-comment builder db)
-  (let ((attributes (and builder (parse-file-attributes-string (builder)))))
+  (let ((attributes
+	 (and builder
+	      (parse-file-attributes-string (builder 'immutable)))))
     (if attributes
 	(begin
 	  (process-file-attributes attributes db)
@@ -491,7 +493,7 @@ USA.
 	  (begin
 	    (builder (%read-char db))
 	    (loop))))
-    (builder)))
+    (builder 'immutable)))
 
 (define (%atom-end? db)
   (let ((char (%peek-char db)))
@@ -722,7 +724,7 @@ USA.
 	(integer->char (fix:+ (fix:lsh (fix:+ (fix:lsh d1 3) d2) 3) d3))))
 
     (loop)
-    (builder)))
+    (builder 'immutable)))
 
 (define (handler:false db ctx char1 char2)
   ctx char1
@@ -780,7 +782,7 @@ USA.
 			    (%read-char/no-eof db)
 			    char)))
 		     (loop))))
-	     (name->char (builder)
+	     (name->char (builder 'immutable)
 			 (eq? #t (db-fold-case? db))))))))
 
 (define (handler:named-constant db ctx char1 char2)
@@ -811,7 +813,7 @@ USA.
 	     (begin
 	       (builder char)
 	       (loop)))))
-     (builder))))
+     (builder 'immutable))))
 
 ;;;; Datum labels
 

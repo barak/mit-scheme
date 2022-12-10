@@ -284,7 +284,7 @@ USA.
       (guarantee regsexp-match? match 'regsexp-replacer)
       (let ((builder (string-builder)))
 	(replacer builder match)
-	(builder)))))
+	(builder 'immutable)))))
 
 (define (%regsexp-replacer replacement caller)
   (let loop ((r replacement))
@@ -345,13 +345,13 @@ USA.
                   (builder (car exprs))
                   (optimize-alt (cdr exprs) builder))
                 (if builder
-                    (cons (builder)
+                    (cons (builder 'immutable)
                           (cons (car exprs)
                                 (optimize-alt (cdr exprs) #f)))
                     (cons (car exprs)
                           (optimize-alt (cdr exprs) #f))))
             (if builder
-                (list (builder))
+                (list (builder 'immutable))
                 '())))
 
       (define (dispatch)

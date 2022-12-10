@@ -607,8 +607,8 @@ USA.
 	       (vector-for-each append-char! object))
 	      (else
 	       (case object
-		 ((#!default nfc) (build build-string:nfc))
-		 ((immutable) (build build-string:immutable))
+		 ((#!default immutable) (build build-string:immutable))
+		 ((nfc) (build build-string:nfc))
 		 ((mutable) (build build-string:mutable))
 		 ((legacy) (build build-string:legacy))
 		 ((empty? count max-cp reset!) ((builder object)))
@@ -706,8 +706,8 @@ USA.
 		   if= if< if>))
 
 (define (string-compare-ci string1 string2 if= if< if>)
-  (%string-compare (string-foldcase string1)
-		   (string-foldcase string2)
+  (%string-compare (%foldcase->nfc string1)
+		   (%foldcase->nfc string2)
 		   if= if< if>))
 
 ;; Non-Unicode implementation, acceptable to R7RS.
@@ -725,6 +725,9 @@ USA.
 	    (cond ((fix:< end1 end2) (if<))
 		  ((fix:< end2 end1) (if>))
 		  (else (if=))))))))
+
+(define-integrable (%foldcase->nfc string)
+  (string->nfc (string-foldcase string)))
 
 (define-integrable (true) #t)
 (define-integrable (false) #f)
@@ -756,11 +759,11 @@ USA.
 (define string>? (string-comparison-maker string->nfc %string>?))
 (define string>=? (string-comparison-maker string->nfc %string>=?))
 
-(define string-ci=? (string-comparison-maker string-foldcase %string=?))
-(define string-ci<? (string-comparison-maker string-foldcase %string<?))
-(define string-ci<=? (string-comparison-maker string-foldcase %string<=?))
-(define string-ci>? (string-comparison-maker string-foldcase %string>?))
-(define string-ci>=? (string-comparison-maker string-foldcase %string>=?))
+(define string-ci=? (string-comparison-maker %foldcase->nfc %string=?))
+(define string-ci<? (string-comparison-maker %foldcase->nfc %string<?))
+(define string-ci<=? (string-comparison-maker %foldcase->nfc %string<=?))
+(define string-ci>? (string-comparison-maker %foldcase->nfc %string>?))
+(define string-ci>=? (string-comparison-maker %foldcase->nfc %string>=?))
 
 ;;;; Match
 
@@ -791,8 +794,8 @@ USA.
 		   (string->nfc (string-slice string start end))))
 
 (define (string-prefix-ci? prefix string #!optional start end)
-  (%string-prefix? (string-foldcase prefix)
-		   (string-foldcase (string-slice string start end))))
+  (%string-prefix? (%foldcase->nfc prefix)
+		   (%foldcase->nfc (string-slice string start end))))
 
 (define (%string-prefix? prefix string)
   (let ((n (string-length prefix)))
@@ -808,8 +811,8 @@ USA.
 		   (string->nfc (string-slice string start end))))
 
 (define (string-suffix-ci? suffix string #!optional start end)
-  (%string-suffix? (string-foldcase suffix)
-		   (string-foldcase (string-slice string start end))))
+  (%string-suffix? (%foldcase->nfc suffix)
+		   (%foldcase->nfc (string-slice string start end))))
 
 (define (%string-suffix? suffix string)
   (let ((n (string-length suffix))
@@ -838,7 +841,7 @@ USA.
     (do ((index 0 (fix:+ index 1)))
 	((not (fix:< index end)))
       (builder (transform (string-ref string index))))
-    (builder)))
+    (builder 'immutable)))
 
 (define (string-titlecase string)
   (let ((builder (string-builder)))
@@ -847,7 +850,7 @@ USA.
 	    end)
 	  0
 	  (string-word-breaks string))
-    (builder)))
+    (builder 'immutable)))
 
 (define (maybe-titlecase string start end builder)
   (let loop ((index start))
@@ -1466,7 +1469,7 @@ USA.
 		(guarantee string? string caller)
 		(builder string))
 	      strings)
-    (builder)))
+    (builder 'immutable)))
 
 (define (string . objects)
   (string* objects))
@@ -1485,7 +1488,7 @@ USA.
 			      (lambda (port)
 				(display object port))))))))
 	      objects)
-    (builder)))
+    (builder 'immutable)))
 
 ;;;; Mapping
 
@@ -1548,7 +1551,7 @@ USA.
       (do ((i 0 (fix:+ i 1)))
 	  ((not (fix:< i n)))
 	(builder (proc i)))
-      (builder))))
+      (builder 'immutable))))
 
 (define (string-count proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
@@ -1617,7 +1620,7 @@ USA.
 			  (builder string))
 			(cdr strings))
 	      (builder suffix)
-	      (builder))
+	      (builder 'immutable))
 	    "")))))
 
 (define-deferred string-joiner-options
@@ -1749,7 +1752,7 @@ USA.
 		   (builder fill-with))
 		 (if (eq? where 'leading)
 		     (builder string))
-		 (builder))))))))
+		 (builder 'immutable))))))))
 
 (define (grapheme-cluster-string? object)
   (and (string? object)
@@ -1798,7 +1801,7 @@ USA.
 				       (ustring-length string)))))
 
 (define (string-ci-hash string #!optional modulus)
-  (string-hash (string-foldcase string) modulus))
+  (string-hash (%foldcase->nfc string) modulus))
 
 (define (8-bit-string? object)
   (and (string? object)

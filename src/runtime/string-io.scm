@@ -213,7 +213,7 @@ USA.
 (define (string-out/extract-output! port)
   (let* ((os (textual-port-state port))
 	 (builder (ostate-builder os))
-	 (output (builder)))
+	 (output (builder 'immutable)))
     (builder 'reset!)
     (set-ostate-column! os 0)
     output))

@@ -285,7 +285,7 @@ USA.
     (do ((position start-position (next-position position)))
 	((same-positions? position end-position))
       (builder (next-char position)))
-    (builder)))
+    (builder 'immutable)))
 
 (define (make-source-position source)
   (let ((marker (list 'source-position)))

@@ -57,7 +57,9 @@ USA.
 
 (define (string->uninterned-symbol string #!optional start end)
   ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
-				      (string->utf8 string start end)
+				      (string->utf8
+				       (string->nfc
+					(substring string start end)))
 				      (make-unmapped-unbound-reference-trap)))
 
 (define (string->symbol string #!optional start end)
@@ -68,7 +70,7 @@ USA.
 	    (default-object? start)
 	    (default-object? end))
        (->bytes string)
-       (string->utf8 string start end))))
+       (string->utf8 (string->nfc (substring string start end))))))
 
 (define (symbol->string symbol)
   (let ((bytes (%symbol-bytes symbol 'symbol->string)))
@@ -145,7 +147,7 @@ USA.
 	   (ustring-ascii? string))
       ;; Needed during cold load.
       (->bytes (ascii-string-foldcase string))
-      (string->utf8 (string-foldcase string))))
+      (string->utf8 (string->nfc (string-foldcase string)))))
 
 (define (ustring-ascii? string)
   (let ((end (ustring-length string)))
