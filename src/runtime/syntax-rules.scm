@@ -83,9 +83,8 @@ USA.
 	 `(,(rename 'er-macro-transformer)
 	   (,(rename 'lambda)
 	    (,r-form ,r-rename ,r-compare)
-	    (,(rename 'declare) (ignore ,r-compare))
 	    ,@(if (null? clauses)
-		  `((,(rename 'declare) (ignore ,r-rename)))
+		  `((,(rename 'declare) (ignore ,r-rename ,r-compare)))
 		  '())
 	    ,(let loop
 		 ((clauses
@@ -98,7 +97,9 @@ USA.
 		     `(let ((,r-dict
 			     (,(rename 'syntax-rules:match-datum)
 			      ,(syntax-quote pattern)
-			      (cdr ,r-form))))
+			      (cdr ,r-form)
+			     ,r-rename
+			     ,r-compare)))
 			(if ,r-dict
 			    (,(rename 'syntax-rules:expand-template)
 			     ,(syntax-quote template)
@@ -265,7 +266,7 @@ USA.
 		(syntax-error "Mixed segments in template:"
 			      (map car pvs**))))))))
 
-(define (syntax-rules:match-datum pattern datum)
+(define (syntax-rules:match-datum pattern datum rename compare)
 
   (define (match-datum pat datum dict k)
 
@@ -288,7 +289,11 @@ USA.
 	   (lambda (pats datum dict)
 	     (match-datum (car pats) datum dict k))))
 	((literal)
-	 (and (equal? (car x) datum)
+	 (and (let ((literal (car x)))
+		(if (identifier? literal)
+		    (and (identifier? datum)
+			 (compare (rename literal) datum))
+		    (equal? literal datum)))
 	      (k dict)))
 	((var) (k (dict-add (car x) datum dict)))
 	((anon-var) (k dict))

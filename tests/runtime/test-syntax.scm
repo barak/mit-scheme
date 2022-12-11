@@ -365,3 +365,14 @@ USA.
 	 (quote (a (b ...) c)))))
     (assert-equal (bar 1 2 3 4) '(1 (2 3 4) ()))
     (assert-equal (bar 1 2 3 . 4) '(1 (2 3) 4))))
+
+(define-test 'bug-63503
+  (lambda ()
+    (define-syntax foo
+      (syntax-rules (keyword)
+	((foo keyword x) x)))
+    (define-syntax bar
+      (syntax-rules ()
+	((bar x)
+	 (foo keyword x))))
+    (assert-equal (bar 123) 123)))
