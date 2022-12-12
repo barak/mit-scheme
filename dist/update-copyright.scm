@@ -35,6 +35,10 @@ USA.
 			       (string-pad-left (number->string
 						 (random-integer 10000))
 						4 #\0))))
+    (let ((input (merge-pathnames "Tags.sh" root-dir)))
+      (let ((results (translation (read-file-leader input))))
+	(if (pair? results)
+	    (translate-file input suffix results))))
     (for-each (lambda (dir)
 		(translate-directory (merge-pathnames dir root-dir)
 				     suffix
@@ -198,6 +202,7 @@ USA.
 	      "dist/make-upload-files"
 	      "dist/scheme-inst.nsi"
 	      "doc/ffi/Makefile.in"
+	      "doc/bootstrap"
 	      "doc/index.html"
 	      "doc/info-dir"
 	      "doc/mit-scheme.1"
