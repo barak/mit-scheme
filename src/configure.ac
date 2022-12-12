@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [12.0.50], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [13.0.50], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
 AC_CONFIG_HEADERS([dummy-config.h])
