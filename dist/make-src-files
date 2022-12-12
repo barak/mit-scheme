@@ -47,6 +47,9 @@ GIT_REPO=https://git.savannah.gnu.org/git/"${PROJECT_NAME}".git
 
 notify "Cloning the source tree"
 run_command "${SRC_OUT}"-clone . git clone -b "${GIT_BRANCH}" "${GIT_REPO}"
+if [[ -x /usr/lib/git-core/git-restore-mtime ]]; then
+    run_command "${SRC_OUT}"-mtime "${PROJECT_NAME}" git restore-mtime
+fi
 cleanup_file "${PROJECT_NAME}"
 
 generate_changelog ()
