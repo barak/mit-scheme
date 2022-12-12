@@ -85,3 +85,25 @@ USA.
 				(+ a x)))
 			    system-global-environment))
 		  '(begin (define a 3) (define b 4) (define (c x) (+ a x))))))
+
+(define-test 'bug-63507
+  (lambda ()
+    (let ((result
+	   (unsyntax
+	    (syntax
+	     '(let ()
+		(define-syntax foo
+		  (syntax-rules ()
+		    ((foo x)
+		     (let ((t x))
+		       t))))
+		(foo 123))
+	     test-environment))))
+      (assert-matches result
+		      '(let ()
+			 (let ((?x 123))
+			   ?x)))
+      (assert-true
+       (string-prefix? ".t."
+		       (symbol->string
+			(identifier->symbol (caddr (caddr result)))))))))

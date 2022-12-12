@@ -54,15 +54,17 @@ USA.
   (make-unsettable-parameter 'unbound))
 
 (define-record-type <rename-db>
-    (make-rename-db mapping unmapping)
+    (make-rename-db mapping unmapping counter)
     rename-db?
   (mapping rdb:mapping)
-  (unmapping rdb:unmapping))
+  (unmapping rdb:unmapping)
+  (counter rdb:counter rdb:set-counter!))
 
 (define (with-identifier-renaming thunk)
   (parameterize ((rename-db
 		  (make-rename-db (make-strong-eq-hash-table)
-				  (make-strong-eq-hash-table))))
+				  (make-strong-eq-hash-table)
+				  0)))
     (post-process-output (thunk))))
 
 (define (post-process-output expression)
@@ -88,12 +90,22 @@ USA.
 	(let ((entry (assq frame-id (cdr bucket))))
 	  (if entry
 	      (cdr entry)
-	      (let ((rename (generate-uninterned-symbol)))
-		(set-cdr! bucket
-			  (cons (cons frame-id rename)
-				(cdr bucket)))
+	      (let ((rename (rename-id original)))
+		(set-cdr! bucket (cons (cons frame-id rename) (cdr bucket)))
 		(hash-table-set! unmapping rename original)
 		rename)))))))
+
+(define (rename-id id)
+  (let* ((rdb (rename-db))
+	 (n (rdb:counter rdb))
+	 (rename
+	  (string->uninterned-symbol
+	   (string-append "."
+			  (symbol->string (identifier->symbol id))
+			  "."
+			  (number->string n)))))
+    (rdb:set-counter! rdb (+ n 1))
+    rename))
 
 (define (mark-local-bindings bound body mark-safe!)
   (let ((free
