@@ -69,7 +69,7 @@ cleanup_file "${DIST_DIR}"
 
 notify "Configuring the source tree"
 run_command "${SRC_OUT}"-config "${DIST_DIR}"/src ./Setup.sh
-run_command_append "${SRC_OUT}"-config "${DIST_DIR}"/doc autoconf
+run_command_append "${SRC_OUT}"-config "${DIST_DIR}"/doc ./bootstrap
 
 notify "Creating archive file"
 make_tar_file "${SRC_OUT}" "${DIST_DIR}"
