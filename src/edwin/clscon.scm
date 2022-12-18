@@ -43,24 +43,31 @@ USA.
 	(transforms (make-instance-transforms superclass variables)))
     (let ((make-class
 	   (lambda ()
-	     (let ((class
-		    (%make-class name
-				 superclass
-				 object-size
-				 transforms
-				 (cons '()
-				       (and superclass
-					    (class-methods superclass))))))
-	       (named-structure/set-tag-description! class
-		 (new-make-define-structure-type
-		  'VECTOR
-		  name
-		  (list->vector (map car transforms))
-		  (list->vector (map cdr transforms))
-		  (make-vector (length transforms) (lambda () #f))
-		  class
-		  object-size))
-	       class))))
+	     (define class
+	       (%make-class name
+			    superclass
+			    object-size
+			    transforms
+			    (cons '()
+				  (and superclass
+				       (class-methods superclass)))
+			    (lambda (object)
+			      (object-of-class? class object))))
+	     (named-structure/set-tag-description! class
+	       (new-make-define-structure-type
+		'VECTOR
+		name
+		(list->vector (map car transforms))
+		(list->vector (map cdr transforms))
+		(make-vector (length transforms) (lambda () #f))
+		class
+		object-size))
+	     (register-predicate! (class-predicate class) name
+				  '<=
+				  (if superclass
+				      (class-predicate superclass)
+				      object?))
+	     class)))
       (if (not entry)
 	  (let ((class (make-class)))
 	    (set! class-descriptors (cons (cons name class) class-descriptors))

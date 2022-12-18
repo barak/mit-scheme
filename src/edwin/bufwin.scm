@@ -496,18 +496,21 @@ USA.
 (define-integrable (%set-window-debug-trace! window procedure)
   (with-instance-variables buffer-window window (procedure)
     (set! debug-trace procedure)))
+
+(define-print-method (class-predicate buffer-window)
+  (standard-print-method 'buffer-window
+    (lambda (window)
+      (list (%window-buffer window)))))
 
 ;;;; Outlines
 
 (define-structure (outline
 		   (constructor %make-outline)
 		   (print-procedure
-		    (bracketed-print-method 'OUTLINE
-		      (lambda (outline port)
-			(write-string "index: " port)
-			(write (outline-index-length outline) port)
-			(write-string " y: " port)
-			(write (outline-y-size outline) port)))))
+		    (standard-print-method 'outline
+		      (lambda (outline)
+			(list (list 'index (outline-index-length outline))
+			      (list 'y (outline-y-size outline)))))))
   ;; The number of characters in the text line.  This is exclusive of
   ;; the newlines at the line's beginning and end, if any.
   index-length
@@ -570,16 +573,13 @@ USA.
 (define-structure (o3
 		   (constructor %make-o3)
 		   (print-procedure
-		    (bracketed-print-method 'O3
-		      (lambda (o3 port)
-			(write-string "index: " port)
-			(write (o3-index o3) port)
-			(write-string " y: " port)
-			(write (o3-y o3) port)
-			(if (outline? (o3-outline o3))
-			    (begin
-			      (write-string " " port)
-			      (write (o3-outline o3) port)))))))
+		    (standard-print-method 'o3
+		      (lambda (o3)
+			(cons* (list 'index (o3-index o3))
+			       (list 'y (o3-y o3))
+			       (if (outline? (o3-outline o3))
+				   (list (o3-outline o3))
+				   '()))))))
   outline
   index
   y)

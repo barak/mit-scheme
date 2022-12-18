@@ -371,17 +371,14 @@ USA.
   (vector-set! inferior 4 redisplay-flags))
 
 (define-print-method %inferior?
-  (bracketed-print-method 'inferior
-    (lambda (inferior port)
-      (write-string " " port)
-      (write (inferior-window inferior) port)
-      (write-string " x,y=(" port)
-      (write (inferior-x-start inferior) port)
-      (write-string "," port)
-      (write (inferior-y-start inferior) port)
-      (write-string ")" port)
-      (if (inferior-needs-redisplay? inferior)
-	  (write-string " needs-redisplay" port)))))
+  (standard-print-method 'inferior
+    (lambda (inferior)
+      (cons* (inferior-window inferior)
+	     (list (inferior-x-start inferior)
+		   (inferior-y-start inferior))
+	     (if (inferior-needs-redisplay? inferior)
+		 (list 'needs-redisplay)
+		 '())))))
 
 (define (inferior-copy inferior)
   (%make-inferior (inferior-window inferior)
