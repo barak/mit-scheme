@@ -61,7 +61,16 @@ USA.
        (fix:andc x (fix:not y)))
 
      (define-integrable (fix:andc-via-and/not x y)
-       (fix:and x (fix:not y)))))
+       (fix:and x (fix:not y)))
+
+     (define-integrable (fix:=0:- x y)
+       (fix:= 0 (fix:- x y)))
+
+     (define-integrable (fix:<0:- x y)
+       (fix:< 0 (fix:- x y)))
+
+     (define-integrable (fix:>0:- x y)
+       (fix:> 0 (fix:- x y)))))
 
 (define (map-cases cases f)
   (map (lambda (c)
@@ -410,3 +419,24 @@ USA.
     (2 2) (2 127) (2 128)
     (127 127) (127 128)
     (128 128)))
+
+(define-binary-equivalent-test 'fix:=0:- 'fix:= 'fix:id
+  '((-2 -2) (-2 -1) (-2 0) (-2 1) (-2 2)
+    (-1 -2) (-1 -1) (-1 0) (-1 1) (-1 2)
+    (0 -2) (0 -1) (0 0) (0 1) (0 2)
+    (1 -2) (1 -1) (1 0) (1 1) (1 2)
+    (2 -2) (2 -1) (2 0) (2 1) (2 2)))
+
+(define-binary-equivalent-test 'fix:<0:- 'fix:> 'fix:id
+  '((-2 -2) (-2 -1) (-2 0) (-2 1) (-2 2)
+    (-1 -2) (-1 -1) (-1 0) (-1 1) (-1 2)
+    (0 -2) (0 -1) (0 0) (0 1) (0 2)
+    (1 -2) (1 -1) (1 0) (1 1) (1 2)
+    (2 -2) (2 -1) (2 0) (2 1) (2 2)))
+
+(define-binary-equivalent-test 'fix:>0:- 'fix:< 'fix:id
+  '((-2 -2) (-2 -1) (-2 0) (-2 1) (-2 2)
+    (-1 -2) (-1 -1) (-1 0) (-1 1) (-1 2)
+    (0 -2) (0 -1) (0 0) (0 1) (0 2)
+    (1 -2) (1 -1) (1 0) (1 1) (1 2)
+    (2 -2) (2 -1) (2 0) (2 1) (2 2)))

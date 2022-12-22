@@ -293,53 +293,48 @@ USA.
   (compare/register*register register-1 register-2))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
 		     (FIXNUM-2-ARGS
 		      MINUS-FIXNUM
 		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
 		      (REGISTER (? untagged-source))
 		      #f))
-  (let ((predicate (fixnum-predicate/unary->binary predicate)))
-    (detag-and-compare predicate tagged-source untagged-source)))
+  (detag-and-compare 'EQUAL-FIXNUM? tagged-source untagged-source))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
 		     (FIXNUM-2-ARGS
 		      MINUS-FIXNUM
 		      (REGISTER (? untagged-source))
 		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
 		      #f))
-  (let ((predicate
-	 (commute-fixnum-predicate
-	  (fixnum-predicate/unary->binary predicate))))
-    (detag-and-compare predicate tagged-source untagged-source)))
+  (detag-and-compare 'EQUAL-FIXNUM? tagged-source untagged-source))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
 		     (FIXNUM-2-ARGS MINUS-FIXNUM
 				    (OBJECT->FIXNUM (REGISTER (? register-1)))
 				    (OBJECT->FIXNUM (REGISTER (? register-2)))
 				    #f))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (fixnum-branch! 'EQUAL-FIXNUM?)
   (compare/register*register register-1 register-2))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
 		     (FIXNUM-2-ARGS MINUS-FIXNUM
 				    (REGISTER (? register))
 				    (OBJECT->FIXNUM (CONSTANT (? constant)))
 				    #f))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (fixnum-branch! 'EQUAL-FIXNUM?)
   (compare/reference*fixnum (source-register-reference register) constant))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate)
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
 		     (FIXNUM-2-ARGS MINUS-FIXNUM
 				    (OBJECT->FIXNUM (CONSTANT (? constant)))
 				    (REGISTER (? register))
 				    #f))
-  (fixnum-branch!
-   (commute-fixnum-predicate (fixnum-predicate/unary->binary predicate)))
+  (fixnum-branch! 'EQUAL-FIXNUM?)
   (compare/reference*fixnum (source-register-reference register) constant))
 
 ;;; Use TEST for (FIX:ZERO/NEGATIVE/POSITIVE? (FIX:AND x y)).
