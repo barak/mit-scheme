@@ -1228,6 +1228,28 @@ USA.
     vector->generator
     vector-accumulator
     vector-accumulator!))
+
+(define-standard-library '(srfi 162)
+  '(boolean-comparator
+    char-ci-comparator
+    char-comparator
+    comparator-max
+    comparator-max-in-list
+    comparator-min
+    comparator-min-in-list
+    default-comparator
+    eq-comparator
+    equal-comparator
+    eqv-comparator
+    list-comparator
+    pair-comparator
+    real-comparator
+    string-ci-comparator
+    string-comparator
+    vector-comparator))
+
+(define-standard-library '(srfi 219)
+  '(define))
 
 ;;;; Synthetic libraries
 
