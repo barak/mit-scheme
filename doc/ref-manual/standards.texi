@@ -375,15 +375,6 @@ The core standard for the Scheme language.
 Fully supported, with exceptions:
 @itemize @bullet
 @item
-@code{syntax-rules} doesn't handle additional patterns after a segment
-pattern.  This means that @code{(syntax-rules () ((a b ... c)
-@dots{}))} doesn't work, even though @code{(syntax-rules () ((a b
-...) @dots{}))} does work.
-
-@item
-@code{syntax-rules} doesn't handle vector patterns or templates.
-
-@item
 Multiple values aren't supported correctly.  Instead @code{values}
 returns a special record containing the values, and
 @code{call-with-values} takes that record apart and passes the values
