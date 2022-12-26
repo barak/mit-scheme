@@ -365,7 +365,7 @@ USA.
 	 (quote (a (b ...) c)))))
     (assert-equal (bar 1 2 3 4) '(1 (2 3 4) ()))
     (assert-equal (bar 1 2 3 . 4) '(1 (2 3) 4))))
-
+
 (define-test 'bug-63503
   (lambda ()
     (define-syntax foo
@@ -376,3 +376,19 @@ USA.
 	((bar x)
 	 (foo keyword x))))
     (assert-equal (bar 123) 123)))
+
+(define-test 'bug-63568
+  (lambda ()
+    (assert-equal
+     (expand-expr '(lambda ()
+		     (define-syntax define-foo
+		       (syntax-rules ()
+			 ((define-foo ((variable value ...)))
+			  (begin
+			    (add-foo! '(variable value))
+			    ...))))
+		     (define-foo ((a 0 1 2)))))
+     '(lambda ()
+	(add-foo! '(a 0))
+	(add-foo! '(a 1))
+	(add-foo! '(a 2))))))

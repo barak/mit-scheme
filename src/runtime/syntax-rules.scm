@@ -26,6 +26,7 @@ USA.
 |#
 
 ;;;; Rule-based Syntactic Expanders
+;;; package: (runtime syntax syntax-rules)
 
 ;;; See "Syntactic Extensions in the Programming Language Lisp", by
 ;;; Eugene Kohlbecker, Ph.D. dissertation, Indiana University, 1986.
@@ -246,7 +247,8 @@ USA.
 (define (check-template-var-references names depth pvs)
   (let ((pvs*
 	 (filter (lambda (pv)
-		   (memq (car pv) names))
+		   (and (memq (car pv) names)
+			(pair? (cdr pv))))
 		 pvs)))
     ;; All vars in segment must have correct depth.
     (let ((pvs**
@@ -402,11 +404,13 @@ USA.
 
 (define-integrable (new-dict) (make-dict '()))
 (define-integrable (make-dict bindings) bindings)
-(define-integrable (dict-add id datum dict) (cons (make-binding id datum) dict))
+(define-integrable (dict-add id datum dict)
+  (cons (make-binding id datum #f) dict))
 (define-integrable (dict-bindings dict) dict)
-(define-integrable (make-binding id datum) (list id datum))
+(define-integrable (make-binding id datum seg?) (list id datum seg?))
 (define-integrable (binding-id binding) (car binding))
 (define-integrable (binding-datum binding) (cadr binding))
+(define-integrable (binding-seg? binding) (caddr binding))
 (define no-datum (list 'no-datum))
 
 (define (dict-lookup id dict)
@@ -421,22 +425,28 @@ USA.
 	(if (pair? (car dicts))
 	    (cons (let ((per-id (map car dicts)))
 		    (make-binding (binding-id (car per-id))
-				  (reverse (map binding-datum per-id))))
+				  (reverse (map binding-datum per-id))
+				  #t))
 		  (join (map cdr dicts)))
 	     tail))
        tail))
 
 (define (unwrap-dict dict ids)
-  (let loop
-      ((items
-	(map (lambda (binding)
-	       (map (lambda (datum)
-		      (make-binding (binding-id binding) datum))
-		    (binding-datum binding)))
-	     (filter (lambda (binding)
-		       (memq (binding-id binding) ids))
-		     (dict-bindings dict)))))
-    (if (and (pair? items) (pair? (car items)))
-	(cons (make-dict (map car items))
-	      (loop (map cdr items)))
-	'())))
+  (let-values (((seg non-seg)
+		(partition binding-seg?
+			   (filter (lambda (binding)
+				     (memq (binding-id binding) ids))
+				   (dict-bindings dict)))))
+    (let loop
+	((items
+	  (map (lambda (binding)
+		 (let ((id (binding-id binding))
+		       (seg? (binding-seg? binding)))
+		   (map (lambda (datum)
+			  (make-binding id datum seg?))
+			(binding-datum binding))))
+	       seg)))
+      (if (and (pair? items) (pair? (car items)))
+	  (cons (make-dict (append non-seg (map car items)))
+		(loop (map cdr items)))
+	  '()))))
