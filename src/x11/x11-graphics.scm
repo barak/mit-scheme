@@ -139,7 +139,7 @@ USA.
 
 (define (x-graphics-draw-points window x-vector y-vector)
   (let* ((n-points (flo:vector-length x-vector))
-	 (points (malloc (* n-points (C-sizeof "XPoint")))))
+	 (points (malloc (* n-points (C-sizeof "XPoint")) '|XPoint|)))
     (if (not (= n-points (flo:vector-length y-vector)))
 	(error:bad-range-argument y-vector 'x-graphics-draw-points))
     (C-call "x_graphics_draw_points" window x-vector y-vector n-points points)
@@ -147,7 +147,7 @@ USA.
 
 (define (x-graphics-draw-lines window x-vector y-vector)
   (let* ((n-points (flo:vector-length x-vector))
-	 (points (malloc (* n-points (C-sizeof "XPoint")))))
+	 (points (malloc (* n-points (C-sizeof "XPoint")) '|XPoint|)))
     (if (not (= n-points (flo:vector-length y-vector)))
 	(error:bad-range-argument y-vector 'x-graphics-draw-lines))
     (C-call "x_graphics_draw_lines" window x-vector y-vector n-points points)
@@ -179,7 +179,7 @@ USA.
   (let ((length (flo:vector-length vector)))
     (if (not (even? length))
 	(error:bad-range-argument vector 'x-graphics-fill-polygon))
-    (let ((points (malloc (* (/ length 2) (C-sizeof "XPoint")))))
+    (let ((points (malloc (* (/ length 2) (C-sizeof "XPoint")) '|XPoint|)))
       (C-call "x_graphics_fill_polygon" window vector length points)
       (free points))))
 
