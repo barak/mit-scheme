@@ -122,9 +122,9 @@ USA.
       (syntax-error "Pattern must start with identifier:" pattern))
   (let ((p (rewrite (cdr pattern)))
 	(t (rewrite template)))
+    (check-for-multiple-segments p pattern)
     (let ((pvs (compute-segments p))
 	  (tvs (compute-segments t)))
-      (check-for-multiple-segments p pattern)
       (if (any-duplicates? pvs eq? car)
 	  (syntax-error "Duplicate vars in pattern:" pattern))
       (for-each (lambda (group)
@@ -201,6 +201,20 @@ USA.
   (rewriter (if (member ellipsis literals compare) #f ellipsis)
 	    literals))
 
+(define (check-for-multiple-segments p pattern)
+  (let loop ((p p))
+    (case (car p)
+      ((list dotted-list vector)
+       (if (fix:> (count segment? (cdr p)) 1)
+	   (syntax-error "Only one ellipsis allowed in pattern:" pattern))
+       (if (any (lambda (elt) (fix:> (count-segments elt) 1)) (cdr p))
+	   (syntax-error "No nested ellipses allowed in pattern:" pattern))
+       (for-each (lambda (elt)
+		   (loop (strip-segments elt)))
+		 (cdr p)))
+      ((var literal anon-var) unspecific)
+      (else (error "Unknown element marker:" p)))))
+
 (define (compute-segments y)
   (reverse
    (let loop ((y y) (segs '()) (vars '()))
@@ -215,20 +229,6 @@ USA.
        ((var) (cons (cons (cadr y) segs) vars))
        ((literal anon-var) vars)
        (else (error "Unknown element marker:" y))))))
-
-(define (check-for-multiple-segments p pattern)
-  (let loop ((p p))
-    (case (car p)
-      ((list dotted-list vector)
-       (if (fix:> (count segment? (cdr p)) 1)
-	   (syntax-error "Only one ellipsis allowed in pattern:" pattern))
-       (if (any (lambda (elt) (fix:> (count-segments elt) 1)) (cdr p))
-	   (syntax-error "No nested ellipses allowed in pattern:" pattern))
-       (for-each (lambda (elt)
-		   (loop (strip-segments elt)))
-		 (cdr p)))
-      ((var literal anon-var) unspecific)
-      (else (error "Unknown element marker:" p)))))
 
 (define (group-by-segment vars)
   (let loop ((vars vars) (groups '()))
@@ -256,7 +256,7 @@ USA.
 		     (fix:= (length (cdr pv)) depth))
 		   pvs*)))
       (if (pair? pvs**)
-	  (syntax-error "Mismatched segment depth in template:"
+	  (syntax-error "Mismatched ellipsis depth in template:"
 			(map car pvs**))))
     ;; All vars in segment must be in the same pattern segment.
     (if (pair? pvs*)
@@ -265,7 +265,7 @@ USA.
 		 (remove (lambda (pv) (eq? (cdr pv) seg))
 			 pvs*)))
 	    (if (pair? pvs**)
-		(syntax-error "Mixed segments in template:"
+		(syntax-error "Mixed ellipses in template:"
 			      (map car pvs**))))))))
 
 (define (syntax-rules:match-datum pattern datum rename compare)
