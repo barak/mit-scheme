@@ -1265,7 +1265,7 @@ USA.
 	      (else (error "Unexpected value:" v)))))))
 
 (define (format-error-message message irritants port)
-  (parameterize ((param:printer-list-depth-limit 2)
+  (parameterize ((param:printer-list-depth-limit 5)
 		 (param:printer-list-breadth-limit 5))
     (for-each (lambda (irritant)
 		(if (and (pair? irritant)
