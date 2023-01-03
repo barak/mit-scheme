@@ -127,11 +127,7 @@ USA.
 	  (tvs (compute-segments t)))
       (if (any-duplicates? pvs eq? car)
 	  (syntax-error "Duplicate vars in pattern:" pattern))
-      (for-each (lambda (group)
-		  (check-template-var-references (cdr group)
-						 (length (car group))
-						 pvs))
-		(group-by-segment tvs)))
+      (check-template-var-references tvs pvs))
     (list p t)))
 
 (define (make-rewriter ellipsis literals underscore compare)
@@ -230,43 +226,47 @@ USA.
        ((literal anon-var) vars)
        (else (error "Unknown element marker:" y))))))
 
-(define (group-by-segment vars)
-  (let loop ((vars vars) (groups '()))
+(define (check-template-var-references tvs pvs)
+  (let ((vars
+	 (remove (lambda (tv.s)
+		   (let ((pv.s (assq (car tv.s) pvs)))
+		     (or (not pv.s)
+			 (fix:>= (length (cdr tv.s)) (length (cdr pv.s))))))
+		 tvs)))
     (if (pair? vars)
-	(loop (cdr vars)
-	      (let ((name (caar vars))
-		    (segment (cdar vars)))
-		(let ((group (assq segment groups)))
-		  (if group
-		      (begin
-			(set-cdr! group (cons name (cdr group)))
-			groups)
-		      (cons (list segment name) groups)))))
-	groups)))
-
-(define (check-template-var-references names depth pvs)
-  (let ((pvs*
-	 (filter (lambda (pv)
-		   (and (memq (car pv) names)
-			(pair? (cdr pv))))
-		 pvs)))
-    ;; All vars in segment must have correct depth.
-    (let ((pvs**
-	   (remove (lambda (pv)
-		     (fix:= (length (cdr pv)) depth))
-		   pvs*)))
-      (if (pair? pvs**)
-	  (syntax-error "Mismatched ellipsis depth in template:"
-			(map car pvs**))))
-    ;; All vars in segment must be in the same pattern segment.
-    (if (pair? pvs*)
-	(let ((seg (cdar pvs*)))
-	  (let ((pvs**
-		 (remove (lambda (pv) (eq? (cdr pv) seg))
-			 pvs*)))
-	    (if (pair? pvs**)
-		(syntax-error "Mixed ellipses in template:"
-			      (map car pvs**))))))))
+	(syntax-error "Mismatched ellipsis depth in template:" vars)))
+  (let ((table (make-hash-table eq-comparator)))
+    (for-each
+     (lambda (tv.s)
+       (let* ((tv (car tv.s))
+	      (pv.s (assq tv pvs)))
+	 (if pv.s
+	     (let ((ts (cdr tv.s))
+		   (ps (cdr pv.s)))
+	       (let loop
+		   ((ts (drop ts (fix:- (length ts) (length ps))))
+		    (ps ps))
+		 (if (pair? ts)
+		     (begin
+		       (hash-table-update!/default table ts
+			 (lambda (entry)
+			   (let ((part (assq ps entry)))
+			     (if part
+				 (begin
+				   (if (not (memq tv (cdr part)))
+				       (set-cdr! part (cons tv (cdr part))))
+				   entry)
+				 (cons (list ps tv) entry))))
+			 '())
+		       (loop (cdr ts) (cdr ps)))))))))
+     tvs)
+    (let ((mismatches
+	   (filter-map (lambda (value)
+			 (and (pair? (cdr value))
+			      (map cdr value)))
+		       (hash-table-values table))))
+      (if (pair? mismatches)
+	  (syntax-error "Mismatched ellipses in template:" mismatches)))))
 
 (define (syntax-rules:match-datum pattern datum rename compare)
 
@@ -311,7 +311,7 @@ USA.
 		    (pat (segment-body (car pats))))
 		(let loop ((data data) (m m) (dicts '()))
 		  (if (fix:< n m)
-		      (match-datum pat (car data) '()
+		      (match-datum pat (car data) (new-dict)
 			(lambda (dict)
 			  (loop (cdr data) (fix:- m 1) (cons dict dicts))))
 		      (fixed (cdr pats) data (wrap-dicts dicts dict)
@@ -405,12 +405,13 @@ USA.
 (define-integrable (new-dict) (make-dict '()))
 (define-integrable (make-dict bindings) bindings)
 (define-integrable (dict-add id datum dict)
-  (cons (make-binding id datum #f) dict))
+  (cons (make-binding id datum 0) dict))
 (define-integrable (dict-bindings dict) dict)
-(define-integrable (make-binding id datum seg?) (list id datum seg?))
+(define (dict-ids dict) (map binding-id (dict-bindings dict)))
+(define-integrable (make-binding id datum depth) (list id datum depth))
 (define-integrable (binding-id binding) (car binding))
 (define-integrable (binding-datum binding) (cadr binding))
-(define-integrable (binding-seg? binding) (caddr binding))
+(define-integrable (binding-depth binding) (caddr binding))
 (define no-datum (list 'no-datum))
 
 (define (dict-lookup id dict)
@@ -420,20 +421,26 @@ USA.
 	no-datum)))
 
 (define (wrap-dicts dicts tail)
-  (if (pair? dicts)
-      (let join ((dicts dicts))
-	(if (pair? (car dicts))
-	    (cons (let ((per-id (map car dicts)))
-		    (make-binding (binding-id (car per-id))
-				  (reverse (map binding-datum per-id))
-				  #t))
-		  (join (map cdr dicts)))
-	     tail))
-       tail))
+  (make-dict
+   (map* tail
+	 (lambda (id)
+	  (let ((matches
+		 (map (lambda (dict)
+			(assq id (dict-bindings dict)))
+		      dicts)))
+	    (make-binding id
+			  (reverse (map (lambda (match)
+					  (if match (binding-datum match) '()))
+					matches))
+			  (fix:+ (binding-depth
+				  (find (lambda (match) match) matches))
+				 1))))
+	(apply lset-union eq? (map dict-ids dicts)))))
 
 (define (unwrap-dict dict ids)
   (let-values (((seg non-seg)
-		(partition binding-seg?
+		(partition (lambda (binding)
+			     (fix:> (binding-depth binding) 0))
 			   (filter (lambda (binding)
 				     (memq (binding-id binding) ids))
 				   (dict-bindings dict)))))
@@ -441,9 +448,9 @@ USA.
 	((items
 	  (map (lambda (binding)
 		 (let ((id (binding-id binding))
-		       (seg? (binding-seg? binding)))
+		       (depth (fix:- (binding-depth binding) 1)))
 		   (map (lambda (datum)
-			  (make-binding id datum seg?))
+			  (make-binding id datum depth))
 			(binding-datum binding))))
 	       seg)))
       (if (and (pair? items) (pair? (car items)))

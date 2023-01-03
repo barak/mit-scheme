@@ -392,3 +392,24 @@ USA.
 	(add-foo! '(a 0))
 	(add-foo! '(a 1))
 	(add-foo! '(a 2))))))
+
+;; See discussion in bug #63568 after it was closed.
+(define-test 'extra-ellipses
+  (lambda ()
+    (assert-equal
+     (expand-expr '(lambda ()
+		     (define-syntax foo
+                       (syntax-rules ()
+			 ((foo (x (y z ...) ...))
+			  (begin
+			    (add-foo! '(x y z))
+			    ... ...))))
+		     (foo (x (y1 z1a z1b) (y2 z2) (y3) (y4 z4a z4b z4c z4d)))))
+     '(lambda ()
+	(add-foo! '(x y1 z1a))
+	(add-foo! '(x y1 z1b))
+	(add-foo! '(x y2 z2))
+	(add-foo! '(x y4 z4a))
+	(add-foo! '(x y4 z4b))
+	(add-foo! '(x y4 z4c))
+	(add-foo! '(x y4 z4d))))))
