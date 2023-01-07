@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,103 +30,87 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime ucd-glue))
+(add-boot-deps! '(runtime ucd-glue) '(runtime ucd-segmentation))
 
+(define evolver)
+(define grapheme-cluster-breaks)
+(add-boot-init!
+ (lambda ()
+   (set! evolver
+	 (make-evolver codes abbrevs extra-states ucd-gcb+ep-value rules))
+   (set! grapheme-cluster-breaks (evolver-interpreter evolver))
+   unspecific))
+
 (define codes
   '(control
     carriage-return
-    emoji-base
-    emoji-base-gaz
-    emoji-modifier
     extend
-    glue-after-zwj
     hst=l
     linefeed
     hst=lv
     hst=lvt
     prepend
-    regional-indicator
+    ri
     spacing-mark
     hst=t
     hst=v
     other
+    ext-pict
     zwj))
+
+(define abbrevs
+  '())
 
 (define extra-states
   '(ri*2))
 
-(define transitions
+(define rules
   '((sot / any)
     (any / eot)
+    (sot _ eot)
 
     (carriage-return _ linefeed)
-    ((control carriage-return linefeed) / any)
-    (any / (control carriage-return linefeed))
+    ((or control carriage-return linefeed) / any)
+    (any / (or control carriage-return linefeed))
 
-    (hst=l _ (hst=l hst=lv hst=lvt hst=v))
-    ((hst=v hst=lv) _ (hst=t hst=v))
-    ((hst=t hst=lvt) _ hst=t)
+    (hst=l _ (or hst=l hst=lv hst=lvt hst=v))
+    ((or hst=v hst=lv) _ (or hst=t hst=v))
+    ((or hst=t hst=lvt) _ hst=t)
 
-    (any _ (extend zwj))
-    (any _ spacing-mark)
+    (any _ (or extend zwj spacing-mark))
     (prepend _ any)
 
-    ((emoji-base emoji-base-gaz) _ emoji-modifier)
-    ((emoji-base emoji-base-gaz) ? extend (from))
-    (zwj _ (glue-after-zwj emoji-base-gaz))
+    (ext-pict (* _ extend) _ zwj _ ext-pict)
 
-    (regional-indicator _ regional-indicator ri*2)
+    (ri _ ri ri*2)
 
     (any / any)))
-
-(define evolver)
-(define string-gcb-fold)
-(define string-gcb-fold-right)
-(define string-gcb-stream)
-(define string->gcb-names)
-(define show-transitions)
-(add-boot-init!
- (lambda ()
-   (set! evolver (make-evolver codes extra-states ucd-gcb-value transitions))
-   (set! string-gcb-fold (folder evolver 'string-gcb-fold))
-   (set! string-gcb-fold-right (right-folder evolver 'string-gcb-fold-right))
-   (set! string-gcb-stream (streamer evolver 'string-gcb-stream))
-   (set! string->gcb-names (evolver-string->code-names evolver))
-   (set! show-transitions (evolver-show-transitions evolver))
-   unspecific))
 
 (define (string->grapheme-clusters string #!optional start end)
-  (string-gcb-fold-right (lambda (break prev-break acc)
-			   (if prev-break
-			       (cons (substring string prev-break break)
-				     acc)
-			       acc))
-			 '()
-			 string start end))
+  (let ((breaks (grapheme-cluster-breaks string start end)))
+    (if (pair? breaks)
+	(let loop ((breaks (cdr breaks)) (prev-break (car breaks)))
+	  (if (pair? breaks)
+	      (cons (substring string prev-break (car breaks))
+		    (loop (cdr breaks) (car breaks)))
+	      '()))
+	'())))
 
 (define (grapheme-cluster-length string)
-  (string-gcb-fold (lambda (break prev-break count)
-		     (declare (ignore break))
-		     (if prev-break
-			 (fix:+ count 1)
-			 count))
-		   0
-		   string))
+  (gclength (grapheme-cluster-breaks string)))
 
 (define (grapheme-cluster-slice string start end)
   ;; START and END refer to the cluster breaks, they must be <= the number of
   ;; clusters in STRING.
-  (guarantee index-fixnum? start 'grapheme-cluster-slice)
-  (guarantee index-fixnum? end 'grapheme-cluster-slice)
-  (if (not (fix:<= start end))
-      (error:bad-range-argument start 'grapheme-cluster-slice))
   (let ((breaks (grapheme-cluster-breaks string)))
-    (string-slice string
-		  (list-ref breaks start)
-		  (list-ref breaks end))))
+    (let ((end (fix:end-index end (gclength breaks) 'grapheme-cluster-slice))
+	  (start (fix:start-index start end 'grapheme-cluster-slice)))
+      (string-slice string
+		    (list-ref breaks start)
+		    (list-ref breaks end)))))
 
-(define (grapheme-cluster-breaks string #!optional start end)
-  (let loop ((stream (string-gcb-stream string start end)))
-    (if (pair? stream)
-	(cons (car stream) (loop (force (cdr stream))))
-	'())))
+(define (gclength breaks)
+  (let ((n (length breaks)))
+    (if (fix:> n 0)
+	(fix:- n 1)
+	n)))

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -56,7 +57,9 @@ USA.
 
 (define (string->uninterned-symbol string #!optional start end)
   ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
-				      (string->utf8 string start end)
+				      (string->utf8
+				       (string->nfc
+					(substring string start end)))
 				      (make-unmapped-unbound-reference-trap)))
 
 (define (string->symbol string #!optional start end)
@@ -67,7 +70,7 @@ USA.
 	    (default-object? start)
 	    (default-object? end))
        (->bytes string)
-       (string->utf8 string start end))))
+       (string->utf8 (string->nfc (substring string start end))))))
 
 (define (symbol->string symbol)
   (let ((bytes (%symbol-bytes symbol 'symbol->string)))
@@ -144,7 +147,7 @@ USA.
 	   (ustring-ascii? string))
       ;; Needed during cold load.
       (->bytes (ascii-string-foldcase string))
-      (string->utf8 (string-foldcase string))))
+      (string->utf8 (string->nfc (string-foldcase string)))))
 
 (define (ustring-ascii? string)
   (let ((end (ustring-length string)))

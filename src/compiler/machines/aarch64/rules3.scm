@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -53,9 +54,17 @@ USA.
     (lambda (shared-label)
       (let ((interrupt-label (generate-label 'INTERRUPT)))
         (LAP (LABEL ,shared-label)
-             ,@(interrupt-check '(HEAP) interrupt-label)
-             ,@(pop-return)
+             ;; Inline heap/interrupt check, interleaved with
+             ;; pop-return.
+             (LDR X ,regnum:scratch-0 ,reg:memtop)
+             ,@(pop rlr)
+             (CMP X ,regnum:free-pointer ,regnum:scratch-0)
+             (B. GE (@PCR ,interrupt-label ,regnum:scratch-0))
+             ,@(object->address rlr rlr)
+             (RET)
              (LABEL ,interrupt-label)
+             ;; Never mind -- push back what we popped.
+             ,@(push rlr)
              ,@(invoke-interface code:compiler-interrupt-continuation-2))))))
 
 (define-rule statement
@@ -91,12 +100,7 @@ USA.
        (B (@PCR ,label ,regnum:scratch-0))))
 
 (define (entry->pc pc entry)
-  ;; XXX Would be nice to skip the SUB, but LDR doesn't have a signed
-  ;; offset without pre/post-increment.
-  ;;
-  ;; XXX Oops -- yes we can: LDUR.
-  (LAP (SUB X ,pc ,entry (&U 8))
-       (LDR X ,pc ,pc)
+  (LAP (LDUR X ,pc (+ ,entry (& -8)))
        (ADD X ,pc ,pc ,entry)))
 
 (define-rule statement
@@ -162,10 +166,18 @@ USA.
   continuation
   (cond ((eq? primitive compiled-error-procedure)
          (generate/compiled-error frame-size))
-        ;; ((eq? primitive (ucode-primitive set-interrupt-enables!)) ...)
-        ;; ((eq? primitive (ucode-primitive with-interrupt-mask)) ...)
-        ;; ((eq? primitive (ucode-primitive with-interrupts-reduced)) ...)
-        ;; ((eq? primitive (ucode-primitive with-stack-marker)) ...)
+        ((eq? primitive (ucode-primitive set-interrupt-enables!))
+         (assert (= frame-size 2))
+         (generate/set-interrupt-enables!))
+        ((eq? primitive (ucode-primitive with-interrupt-mask 2))
+         (assert (= frame-size 3))
+         (generate/with-interrupts #f))
+        ((eq? primitive (ucode-primitive with-interrupts-reduced 2))
+         (assert (= frame-size 3))
+         (generate/with-interrupts #t))
+        ((eq? primitive (ucode-primitive with-stack-marker))
+         (assert (= frame-size 4))
+         (generate/with-stack-marker))
         (else
          (generate/generic-primitive frame-size primitive))))
 
@@ -178,6 +190,18 @@ USA.
          ,@arg1
          ,@invocation)))
 
+(define (generate/set-interrupt-enables!)
+  (let* ((prefix (clear-map!))
+         (temp regnum:scratch-0)
+         (value regnum:value-register)
+         (suffix (pop-return/interrupt-check)))
+    (LAP ,@prefix
+         ,@(pop regnum:utility-arg1)
+         (LDR X ,value ,reg:int-mask)
+         ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+         ,@(affix-type value type-code:fixnum value (lambda () temp))
+         ,@suffix)))
+
 (define (generate/generic-primitive frame-size primitive)
   (let* ((prefix (clear-map!))
          (arg1 (load-constant regnum:utility-arg1 primitive)))
@@ -211,6 +235,127 @@ USA.
           (invoke-interface/shared 'COMPILER-APPLY code:compiler-apply)))
     (LAP ,@arg2
          ,@invocation)))
+
+;; Must match enum reflect_code_t in microcode/cmpint.c.
+(define-integrable reflect-code:internal-apply 0)
+(define-integrable reflect-code:restore-interrupt-mask 1)
+(define-integrable reflect-code:stack-marker 2)
+(define-integrable reflect-code:compiled-code-bkpt 3)
+(define-integrable reflect-code:compiled-invocation 8)
+
+(define (generate/with-stack-marker)
+  (let* ((linked (generate-label 'LINKED))
+         (continue (generate-label 'CONTINUE))
+         (prefix (clear-map!))
+         (temp r2)  ;not scratch0=r16, not scratch1=r17, not applicand=r1
+         (suffix (pop-return/interrupt-check)))
+    (LAP ,@prefix
+         ;; Stack initially looks like:
+         ;;
+         ;;	sp[0] = procedure
+         ;;	sp[1] = type
+         ;;	sp[2] = instance
+         ;;	sp[3] = continuation*
+         ;;
+         ;; We want:
+         ;;
+         ;;	sp[0] = continuation that pops it all
+         ;;	sp[1] = reflect-to-interface
+         ;;	sp[2] = fixnum reflect-code:stack-marker
+         ;;	sp[3] = type
+         ;;	sp[4] = instance
+         ;;	sp[5] = continuation*
+         ;;
+         (LDR X ,regnum:scratch-0 ,reg:reflect-to-interface)
+         ,@(load-tagged-immediate regnum:scratch-1
+                                  type-code:fixnum
+                                  reflect-code:stack-marker)
+         (BL (@PCR ,linked ,temp))
+         (B (@PCR ,continue ,regnum:scratch-0))
+        (LABEL ,linked)
+         ,@(pop regnum:applicand)
+         ,@(push2 regnum:scratch-1 regnum:scratch-0)
+         ,@(affix-type rlr type-code:compiled-return rlr
+                       (lambda () regnum:scratch-0))
+         ,@(push rlr)
+         ,@(invoke-hook/subroutine entry:compiler-apply-setup-size-1)
+         (BR ,regnum:applicand-pc)
+        ,@(make-external-label (continuation-code-word #f) continue)
+         ;; Return value is in r0, so don't overwrite it.  Stack now looks
+         ;; like:
+         ;;
+         ;;	sp[0] = reflect-to-interface
+         ;;	sp[1] = fixnum reflect-code:stack-marker
+         ;;	sp[2] = type
+         ;;	sp[3] = instance
+         ;;	sp[4] = continuation*
+         ;;
+         ;; Pop it all off and return.
+         (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
+              (&U ,(* 4 address-units-per-object)))
+         ,@suffix)))
+
+(define (generate/with-interrupts merge?)
+  (let* ((prefix (clear-map!))
+         (restore-interrupts (generate-label 'RESTORE-INTERRUPTS))
+         (linked (generate-label 'LINKED))
+         (new-mask regnum:utility-arg1)
+         (old-mask r24)                 ;callee-saved temporaries
+         (procedure r25)
+         (reflect-code r26)
+         (reflect-to-interface r27)
+         (temp regnum:scratch-0)
+         (fixnum-tag regnum:scratch-1)
+         (suffix (pop-return/interrupt-check)))
+    (LAP ,@prefix
+         ;; Stack initially looks like:
+         ;;
+         ;;	sp[0] = new-mask
+         ;;	sp[1] = procedure
+         ;;	sp[2] = continuation
+         ;;
+         ;; We want:
+         ;;
+         ;;	sp[0] = old-mask
+         ;;	sp[1] = intermediate continuation (restore-interrupts)
+         ;;	sp[2] = reflect-to-interface
+         ;;	sp[3] = reflect-code:restore-interrupt-mask
+         ;;	sp[4] = old-mask
+         ;;	sp[5] = continuation
+         ;;
+         (LDR X ,old-mask ,reg:int-mask)
+         (LDR X ,reflect-to-interface ,reg:reflect-to-interface)
+         ,@(load-tagged-immediate fixnum-tag type-code:fixnum 0)
+         ,@(pop2 new-mask procedure)
+         (ORR X ,old-mask ,fixnum-tag ,old-mask)
+         (ORR X ,reflect-code ,fixnum-tag
+              (&U ,reflect-code:restore-interrupt-mask))
+         ,@(push2 old-mask reflect-code)
+         (BL (@PCR ,linked ,temp))
+         (B (@PCR ,restore-interrupts ,regnum:scratch-0))
+        (LABEL ,linked)
+         ,@(affix-type rlr type-code:compiled-return rlr (lambda () temp))
+         ,@(push2 reflect-to-interface rlr)
+         ,@(if merge? (LAP (AND X ,new-mask ,new-mask ,old-mask)) (LAP))
+         ,@(push old-mask)
+         ,@(begin (assert (= new-mask regnum:utility-arg1)) (LAP))
+         ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+         (ORR X ,regnum:applicand Z ,procedure)
+         ,@(invoke-hook/subroutine entry:compiler-apply-setup-size-2)
+         (BR ,regnum:applicand-pc)
+        ,@(make-external-label (continuation-code-word #f) restore-interrupts)
+         ;; Return value in r0, so don't overwrite it.  Stack is now:
+         ;;
+         ;;	sp[0] = reflect-to-interface
+         ;;	sp[1] = reflect-code:restore-interrupt-mask
+         ;;	sp[2] = old-mask
+         ;;	sp[3] = continuation
+         ;;
+         (ADD X ,regnum:stack-pointer ,regnum:stack-pointer
+              (&U ,(* 2 address-units-per-object)))
+         ,@(pop regnum:utility-arg1)
+         ,@(invoke-hook/subroutine entry:compiler-set-interrupt-enables!)
+         ,@suffix)))
 
 (let-syntax
     ((define-primitive-invocation
@@ -419,17 +564,29 @@ USA.
 ;;; register.
 
 (define (interrupt-check checks label)
-  (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
-             (LAP (LDR X ,regnum:scratch-0 ,reg:memtop)
-                  (CMP X ,regnum:free-pointer ,regnum:scratch-0)
-                  (B. GE (@PCR ,label ,regnum:scratch-0)))
-             (LAP))
-       ,@(if (memq 'STACK checks)
-             (LAP (LDR X ,regnum:scratch-0 ,reg:stack-guard)
-                  (CMP X ,regnum:stack-pointer ,regnum:scratch-0)
-                  (B. LT (@PCR ,label ,regnum:scratch-0)))
-             (LAP))))
-
+  (let ((heap? (or (memq 'INTERRUPT checks) (memq 'HEAP checks)))
+        (stack? (memq 'STACK checks))
+        (memtop regnum:scratch-0)
+        (stack-guard regnum:scratch-1))
+    (cond ((and heap? stack?)
+           (LAP (LDR X ,memtop ,reg:memtop)
+                ;; Would be nice to use LDP here but memtop and
+                ;; stack-guard aren't adjacent in the registers block.
+                (LDR X ,stack-guard ,reg:stack-guard)
+                (CMP X ,regnum:free-pointer ,memtop)
+                (CCMP X LT ,regnum:stack-pointer ,stack-guard (&U #b1000))
+                (B. LT (@PCR ,label ,regnum:scratch-0))))
+          (heap?
+           (LAP (LDR X ,memtop ,reg:memtop)
+                (CMP X ,regnum:free-pointer ,memtop)
+                (B. GE (@PCR ,label ,regnum:scratch-0))))
+          (stack?
+           (LAP (LDR X ,stack-guard ,reg:stack-guard)
+                (CMP X ,regnum:stack-pointer ,stack-guard)
+                (B. LT (@PCR ,label ,regnum:scratch-0))))
+          (else
+           (LAP)))))
+
 (define (generate-procedure-header code-word label generate-interrupt-stub)
   (let ((checks (get-entry-interrupt-checks))
         (interrupt-label (generate-label 'INTERRUPT)))

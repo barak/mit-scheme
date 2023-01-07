@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -477,36 +478,36 @@ USA.
 		     (make-equal-comparator)))
 
 (define ht-string
-  (make-hash-table (string-comparator)))
+  (make-hash-table string-comparator))
 
 (define ht-string2
   (hash-table-unfold (lambda (s) (= 0 (string-length s)))
                      (lambda (s) (values s (string-length s)))
                      (lambda (s) (substring s 0 (- (string-length s) 1)))
                      "prefixes"
-                     (string-comparator)
+                     string-comparator
                      'ignored1 'ignored2 "ignored3" '#(ignored 4 5)))
 
 (define ht-string-ci
-  (make-hash-table (string-ci-comparator)))
+  (make-hash-table string-ci-comparator))
 
 (define ht-string-ci2
   (alist->hash-table '(("" . 0) ("Mary" . 4) ("Paul" . 4) ("Peter" . 5))
-                     (string-ci-comparator)
+                     string-ci-comparator
                      "ignored1" 'ignored2))
 
 (define ht-symbol
-  (make-hash-table (symbol-comparator)))
+  (make-hash-table symbol-comparator))
 
 (define ht-symbol2
   (alist->hash-table '((mary . travers) (noel . stookey) (peter .yarrow))
-                     (symbol-comparator)))
+                     symbol-comparator))
 
 (define ht-fixnum
-  (make-hash-table (fixnum-comparator)))
+  (make-hash-table fixnum-comparator))
 
 (define ht-fixnum2
-  (let ((table (make-hash-table (fixnum-comparator))))
+  (let ((table (make-hash-table fixnum-comparator)))
     (for-each (lambda (i)
 		(hash-table-set! table (* i i) i))
 	      (iota 10))
@@ -689,7 +690,7 @@ USA.
 
 (define-test 'delete-value
   (lambda ()
-    (let ((ht (hash-table (number-comparator) 1 1 4 2 9 3 16 4 25 5 64 8)))
+    (let ((ht (hash-table number-comparator 1 1 4 2 9 3 16 4 25 5 64 8)))
       (assert-= (hash-table-delete! ht) 0)
       (assert-= (hash-table-delete! ht 2 7 2000) 0)
       (assert-= (hash-table-delete! ht 1 2 4 7 64 2000) 3)
@@ -831,7 +832,7 @@ USA.
 
 (define-test 'test-sequence-one
   (lambda ()
-    (let ((tracker (setup-tracker (fixnum-comparator))))
+    (let ((tracker (setup-tracker fixnum-comparator)))
       (let ((runner (test-seq-runner tracker ts1))
 	    (ht (tracker 'get-ht)))
 	(runner 'run-steps 4)
@@ -903,7 +904,7 @@ USA.
     (36 6) (64 8) (81 9) (121 11) (144 12) (169 13)))
 
 (define (reproduce-ts1)
-  (let ((tracker (setup-tracker (fixnum-comparator))))
+  (let ((tracker (setup-tracker fixnum-comparator)))
     (let ((runner (test-seq-runner tracker ts1)))
       (runner 'run-remaining-steps)
       (tracker 'get-ht))))
@@ -960,7 +961,7 @@ USA.
     (let ((ht (reproduce-ts2)))
 
       (define (test-=? ht1 ht2)
-	(hash-table=? (number-comparator) ht1 ht2))
+	(hash-table=? number-comparator ht1 ht2))
 
       ;; Not supported
       (assert-error (lambda () (hash-table-copy ht #f)))
@@ -1025,13 +1026,13 @@ USA.
 
       (hash-table-intersection! ht
 	(alist->hash-table '((-1 . -1) (4 . 202) (25 . 205) (100 . 10))
-			   (number-comparator)))
+			   number-comparator))
       (assert-lset= equal? (hash-table->alist ht) '((4 . 2) (25 . -5)))
 
       (let ((ht* (hash-table-copy ht-fixnum2 #t)))
 	(hash-table-difference! ht*
 	  (alist->hash-table '((-1 . -1) (4 . 202) (25 . 205) (100 . 10))
-			     (number-comparator)))
+			     number-comparator))
 	(assert-lset= equal?
 		      (hash-table->alist ht*)
 		      '((0 . 0) (1 . 1) (9 . 3) (16 . 4) (36 . 6) (49 . 7)
@@ -1040,7 +1041,7 @@ USA.
       (let ((ht* (hash-table-copy ht-fixnum2 #t)))
 	(hash-table-xor! ht*
 	  (alist->hash-table '((-1 . -1) (4 . 202) (25 . 205) (100 . 10))
-			     (number-comparator)))
+			     number-comparator))
 	(assert-lset= equal?
 		      (hash-table->alist ht*)
 		      '((-1 . -1) (0 . 0) (1 . 1) (9 . 3) (16 . 4) (36 . 6)
@@ -1067,7 +1068,7 @@ USA.
     #|
     (assert-false
      (hash-table-mutable?
-      (hash-table (number-comparator)
+      (hash-table number-comparator
                   .25 .5 64 9999 81 9998 121 -11 144 -12)))
     |#
     ;; Spec says hash-table-set! must go left to right, but in
@@ -1085,11 +1086,11 @@ USA.
     ;; but in standard implementation it returns an immutable hash
     ;; table if the given hash table is immutable.
     #|
-    (assert-false (hash-table-mutable? (hash-table (number-comparator))))
+    (assert-false (hash-table-mutable? (hash-table number-comparator)))
     (assert-true
      (hash-table-mutable?
       (hash-table-empty-copy
-       (hash-table-copy (hash-table (number-comparator)) #f))))
+       (hash-table-copy (hash-table number-comparator) #f))))
     |#
 
     ;; hash-table-delete! seems to loop infinitely once it finds a key.

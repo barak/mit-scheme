@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -487,7 +488,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?				;ignore
+    (assert (not overflow?))
     ;++ This is suboptimal in the cases when SOURCE1 is stored only in
     ;++ ecx or when SOURCE2 is stored only in eax, and either one is
     ;++ dead (which is often the case).  In such cases, this generates
@@ -520,7 +521,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (if (= source2 source1)
 	(load-fixnum-constant 1 (target-register-reference target))
 	(LAP ,@(do-division target source1 source2 eax)
@@ -528,7 +529,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (if (= source2 source1)
 	(load-fixnum-constant 0 (target-register-reference target))
 	(do-division target source1 source2 edx))))
@@ -543,7 +544,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -553,7 +554,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -564,7 +565,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (load-fixnum-constant 0 target))
 	  ((= n -1)
@@ -574,7 +575,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -584,7 +585,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((not (<= (- 0 scheme-datum-width) n scheme-datum-width))
@@ -592,23 +593,9 @@ USA.
 	  ((not (negative? n))
 	   (LAP (SHL W ,target (& ,n))))
 	  (else
-	   (LAP (SHR W ,target (& ,(- 0 n)))
+	   (LAP (SAR W ,target (& ,(- 0 n)))
 		,@(word->fixnum target))))))
 
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM->OBJECT
-	   (FIXNUM-2-ARGS FIXNUM-LSH
-			  (REGISTER (? source))
-			  (OBJECT->FIXNUM (CONSTANT (? n)))
-			  #f)))
-  (QUALIFIER (and (exact-integer? n) (< (- scheme-datum-width) n 0)))
-  (fixnum-1-arg target source
-    (lambda (target)
-      (LAP (SHR W ,target (& ,(- scheme-type-width n)))
-	   (OR W ,target
-	       (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))))))
-
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS FIXNUM-LSH
@@ -654,7 +641,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((= n 1)
 	   (LAP))
 	  ((= n -1)
@@ -680,7 +667,7 @@ USA.
   (lambda (target n overflow?)
     ;; (remainder x y) is 0 or has the sign of x.
     ;; Thus we can always "divide" by (abs y) to make things simpler.
-    overflow?				; ignored
+    (assert (not overflow?))
     (let ((n (if (negative? n) (- 0 n) n)))
       (cond ((= n 1)
 	     (load-fixnum-constant 0 target))

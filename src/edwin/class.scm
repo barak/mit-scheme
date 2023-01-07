@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,11 +36,17 @@ USA.
 ;;; ******************************************************************
 
 (define-structure (class (constructor %make-class))
-  (name false read-only true)
-  (superclass false read-only true)
+  (name #f read-only #t)
+  (superclass #f read-only #t)
   object-size
   instance-transforms
-  (methods false read-only true))
+  (methods #f read-only #t)
+  (predicate #f read-only #t))
+
+(define-print-method class?
+  (standard-print-method 'class
+    (lambda (class)
+      (list (class-name class)))))
 
 (define (class-method class name)
   (class-methods/ref (class-methods class) name))
@@ -77,7 +84,7 @@ USA.
 (define (make-object class)
   (if (not (class? class))
       (error:wrong-type-argument class "class" 'MAKE-OBJECT))
-  (let ((object (make-vector (class-object-size class) false)))
+  (let ((object (make-vector (class-object-size class) #f)))
     (vector-set! object 0 class)
     object))
 
@@ -85,11 +92,17 @@ USA.
   (and (vector? object)
        (not (zero? (vector-length object)))
        (class? (vector-ref object 0))))
+(register-predicate! object? 'object)
+
+(define-print-method object?
+  (standard-print-method
+      (lambda (object)
+	(class-name (object-class object)))))
 
 (define (object-of-class? class object)
   (and (vector? object)
-       (not (zero? (vector-length object)))
-       (eq? class (vector-ref object 0))))
+       (not (fix:= 0 (vector-length object)))
+       (eq? class (object-class object))))
 
 (define-integrable (object-class object)
   (vector-ref object 0))

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,6 +38,17 @@ DEFINE_PRIMITIVE ("NANOTIME-SINCE-UTC-EPOCH", Prim_nanotime_since_utc_epoch, 1, 
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, PAIR_P);
   OS_nanotime_since_utc_epoch (&t);
+  SET_PAIR_CAR ((ARG_REF (1)), (intmax_to_integer (t.seconds)));
+  SET_PAIR_CDR ((ARG_REF (1)), (uintmax_to_integer (t.nanoseconds)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("MONOTONIC-NANOTIME", Prim_monotonic_nanotime, 1, 1, 0)
+{
+  struct scheme_nanotime t;
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, PAIR_P);
+  OS_monotonic_nanotime (&t);
   SET_PAIR_CAR ((ARG_REF (1)), (intmax_to_integer (t.seconds)));
   SET_PAIR_CDR ((ARG_REF (1)), (uintmax_to_integer (t.nanoseconds)));
   PRIMITIVE_RETURN (UNSPECIFIC);

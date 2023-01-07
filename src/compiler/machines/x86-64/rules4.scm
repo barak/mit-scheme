@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -55,6 +56,7 @@ USA.
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
   (QUALIFIER (and (interpreter-call-argument? extension)
 		  (interpreter-call-argument? value)))
+  (need-registers! (list rdx rcx))
   (let* ((set-extension
 	  (interpreter-call-argument->machine-register! extension rdx))
 	 (set-value (interpreter-call-argument->machine-register! value rcx)))
@@ -104,7 +106,7 @@ USA.
 
 (define (lookup-call code environment name cont)
   (let ((set-environment
-	  (interpreter-call-argument->machine-register! environment rdx)))
+	 (interpreter-call-argument->machine-register! environment rdx)))
     (LAP ,@set-environment
 	 ,@(clear-map (clear-map!))
 	 ,@(load-constant (INST-EA (R ,rcx)) name)
@@ -123,6 +125,7 @@ USA.
   (assignment-call code:compiler-set! environment name value cont))
 
 (define (assignment-call code environment name value cont)
+  (need-registers! (list rdx r8))
   (let* ((set-environment
 	  (interpreter-call-argument->machine-register! environment rdx))
 	 (set-value (interpreter-call-argument->machine-register! value r8)))

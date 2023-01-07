@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -60,12 +61,10 @@ USA.
 (define (tcp-service->port service)
   (if (exact-nonnegative-integer? service)
       ((ucode-primitive get-service-by-number 1) service)
-      ((ucode-primitive get-service-by-name 2)
-       (string-for-primitive service)
-       (string-for-primitive "tcp"))))
+      ((ucode-primitive get-service-by-name 2) service "tcp")))
 
 (define (open-unix-server-socket pathname)
-  (let ((filename (string-for-primitive (->namestring pathname))))
+  (let ((filename (->namestring pathname)))
     (open-channel
      (lambda (p)
        ((ucode-primitive create-unix-server-socket 2) filename p)
@@ -176,7 +175,7 @@ USA.
 	   ((ucode-primitive new-open-tcp-stream-socket 3) host port p)))))))
 
 (define (open-unix-stream-socket-channel pathname)
-  (let ((filename (string-for-primitive (->namestring pathname))))
+  (let ((filename (->namestring pathname)))
     (open-channel
      (lambda (p)
        (with-thread-timer-stopped
@@ -217,7 +216,7 @@ USA.
 (define (get-host-by-name host-name)
   (with-thread-timer-stopped
     (lambda ()
-      ((ucode-primitive get-host-by-name 1) (string-for-primitive host-name)))))
+      ((ucode-primitive get-host-by-name 1) host-name))))
 
 (define (get-host-by-address host-address)
   (with-thread-timer-stopped
@@ -228,7 +227,7 @@ USA.
   (with-thread-timer-stopped
     (lambda ()
       ((ucode-primitive canonical-host-name 1)
-       (string-for-primitive host-name)))))
+       host-name))))
 
 (define get-host-name
   (ucode-primitive get-host-name 0))

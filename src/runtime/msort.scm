@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,14 +32,18 @@ USA.
 
 ;; This merge sort is stable.
 
-(define (merge-sort obj pred)
+(define (merge-sort obj pred #!optional key)
   (if (vector? obj)
-      (merge-sort! (vector-copy obj) pred)
-      (vector->list (merge-sort! (list->vector obj) pred))))
+      (merge-sort! (vector-copy obj) pred key)
+      (vector->list (merge-sort! (list->vector obj) pred key))))
 
-(define (merge-sort! v pred)
+(define (merge-sort! v pred #!optional key)
   (if (not (vector? v))
       (error:wrong-type-argument v "vector" 'merge-sort!))
+  (define get-key
+    (if (default-object? key)
+	(lambda (x) x)
+	(lambda (x) (key x))))
   (let sort-subvector
       ((v v)
        (temp (vector-copy v))
@@ -55,8 +60,8 @@ USA.
 	    (if (fix:< p high)
 		(if (and (fix:< p1 middle)
 			 (or (fix:= p2 high)
-			     (not (pred (vector-ref temp p2)
-					(vector-ref temp p1)))))
+			     (not (pred (get-key (vector-ref temp p2))
+					(get-key (vector-ref temp p1))))))
 		    (begin
 		      (vector-set! v p (vector-ref temp p1))
 		      (merge (fix:+ p 1) (fix:+ p1 1) p2))

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -137,21 +138,18 @@ USA.
 {									\
   if (stack_pointer == stack_end)					\
     {									\
-      long stack_length;						\
-      unsigned char **stack_temporary;					\
-									\
-      stack_length = ((stack_end - stack_start) * 2);			\
+      unsigned long stack_length = ((stack_end - stack_start) * 2);	\
       if (stack_length > (re_max_failures * 2))				\
 	RE_RETURN (-4);							\
-      stack_temporary =							\
+      unsigned long stack_used = (stack_pointer - stack_start);		\
+      unsigned char ** stack_temporary =				\
 	((unsigned char **)						\
 	 (realloc							\
 	  (stack_start, (stack_length * (sizeof (unsigned char *))))));	\
       if (stack_temporary == NULL)					\
 	RE_RETURN (-3);							\
       stack_end = (& (stack_temporary [stack_length]));			\
-      stack_pointer =							\
-	(& (stack_temporary [(stack_pointer - stack_start)]));		\
+      stack_pointer = (& (stack_temporary [stack_used]));		\
       stack_start = stack_temporary;					\
     }									\
   (*stack_pointer++) = (pattern_pc);					\

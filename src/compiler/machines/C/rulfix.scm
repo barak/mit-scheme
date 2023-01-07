@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -159,36 +160,43 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:& src1 src2)))))
 
 (define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:\| src1 src2)))))
 
 (define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:^ src1 src2)))))
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:&~ src1 src2)))))
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:ecall "FIXNUM_REMAINDER" src1 src2)))))
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:ecall "FIXNUM_LSH" src1 src2)))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
+    (assert (not overflow?))
     (standard-overflow-branches! overflow? tgt)
     (LAP ,(c:= tgt (c:ecall "FIXNUM_QUOTIENT" src1 src2)))))
 
@@ -328,6 +336,7 @@ USA.
 (define-arithmetic-method 'FIXNUM-QUOTIENT
   fixnum-methods/2-args/register*constant
   (lambda (tgt src constant overflow?)
+    (assert (not overflow?))
     (cond ((back-end:= constant 0)
 	   (error "fixnum-quotient constant division by zero."))
 	  ((back-end:= constant 1)
@@ -362,6 +371,7 @@ USA.
 (define-arithmetic-method 'FIXNUM-REMAINDER
   fixnum-methods/2-args/register*constant
   (lambda (tgt src s-constant overflow?)
+    (assert (not overflow?))
     (let ((constant (abs s-constant)))
       (if overflow? (no-overflow-branches!))
       (cond ((back-end:= constant 0)
@@ -393,7 +403,8 @@ USA.
 (define-arithmetic-method 'FIXNUM-LSH
   fixnum-methods/2-args/register*constant
   (lambda (tgt src constant overflow?)
-    (cond (overflow? 
+    (assert (not overflow?))
+    (cond (overflow?
 	   (error "fixnum-lsh overflow what??"))
 	  ((back-end:= constant 0)
 	   (LAP ,(c:= tgt src)))
@@ -402,34 +413,35 @@ USA.
 	  ((positive? constant)
 	   (LAP ,(c:= tgt (c:ecall "LEFT_SHIFT" src constant))))
 	  (else
-	   (LAP ,(c:= tgt
-		      (c:cast 'long
-			      (c:ecall "RIGHT_SHIFT_UNSIGNED"
-				       (c:cast 'ulong src)
-				       (- constant)))))))))
+	   (LAP ,(c:= tgt (c:ecall "RIGHT_SHIFT" src (- constant))))))))
 
 (define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args/register*constant
   (lambda (tgt src1 constant overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:& src1 (longify constant))))))
 
 (define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args/register*constant
   (lambda (tgt src1 constant overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:\| src1 (longify constant))))))
 
 (define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args/register*constant
   (lambda (tgt src1 constant overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:^ src1 (longify constant))))))
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args/register*constant
   (lambda (tgt src1 constant overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:&~ src1 (longify constant))))))
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args/constant*register
   (lambda (tgt constant src2 overflow?)
+    (assert (not overflow?))
     (if overflow? (no-overflow-branches!))
     (LAP ,(c:= tgt (c:&~ (longify constant) src2)))))
 

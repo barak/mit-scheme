@@ -1,17 +1,12 @@
-The Blowfish option.
+The Blowfish option -- an obsolete block cipher that should be used for
+compatibility only.
 
 This plugin creates a (blowfish) package.  It is built in the GNU
-standard way (below).  It expects the blowfish library header file to
-be available, but often headers are not installed with the library.
-On Ubuntu, when using the OpenSSL library, the libssl-dev package must
-be installed before running the configure script.  Other options
-include the libcrypto++-dev package or any library that provides the
-blowfish header.  (Some adjustment to the configure script may be
-necessary.)
+standard way (below).
 
 The GNU standard way:
 
-    ./configure [--with-openssl=directory]...
+    ./configure
     make all
     make check
     make install

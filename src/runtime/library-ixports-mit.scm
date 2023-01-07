@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -49,7 +50,7 @@ USA.
 	    ((nameset) (nameset-libraries (cdr export-spec) libraries))
 	    (else libraries)))
 	(defines-libraries (library-get 'parsed-defines library) libraries)
-	(cdr parsed-export)))
+	(cddr parsed-export)))
 
 (define (nameset-libraries nameset libraries)
   (if (pair? nameset)
@@ -86,32 +87,34 @@ USA.
 					 (library-ixport-to export))
 		    imports))
 	    imports
-	    (get-exports import-set db))
+	    (get-exports import-set db library))
       (case (car import-set)
 	((drop)
-	 (expand-exclusions (get-exports (cadr import-set) db)
+	 (expand-exclusions (get-exports (cadr import-set) db library)
 			    (cddr import-set)
 			    db
 			    library
 			    imports))
 	((take)
-	 (expand-inclusions (get-exports (cadr import-set) db)
+	 (expand-inclusions (get-exports (cadr import-set) db library)
 			    (cddr import-set)
 			    db
 			    library
 			    imports))
 	(else
 	 (error "Unrecognized import set:" import-set)))))
-
-(define (mit-expand-parsed-export parsed-export names library exports)
-  (expand-inclusions (map (lambda (name)
-			    (make-library-ixport (library-name library) name))
-			  names)
-		     (cdr parsed-export)
-		     (library-db library)
-		     library
-		     exports))
 
+(define (mit-expand-parsed-export parsed-export names library)
+  (make-export-group
+   (cadr parsed-export)
+   (expand-inclusions (map (lambda (name)
+			     (make-library-ixport (library-name library) name))
+			   names)
+		      (cddr parsed-export)
+		      (library-db library)
+		      library
+		      '())))
+
 (define (expand-exclusions sources exclusions db library acc)
   (let ((part (partition-ixclusions exclusions))
 	(name-matcher (make-name-matcher sources exclusions library db)))
@@ -190,14 +193,14 @@ USA.
       (let ((nss
 	     (apply nss-union
 		    (map (lambda (nameset)
-			   (expand-nameset nameset lookup db))
+			   (expand-nameset nameset lookup library db))
 			 namesets))))
 	(check-for-missing-names (explicit-names nss)
 				 available-names
 				 ixclusions)
 	(make-matcher (append (explicit-names nss) (implicit-names nss)))))))
 
-(define (expand-nameset nameset lookup db)
+(define (expand-nameset nameset lookup library db)
   (let loop ((nameset nameset))
     (if (symbol? nameset)
 	(or (lookup nameset)
@@ -206,7 +209,7 @@ USA.
 	  ((exports)
 	   (make-nss '()
 		     (map library-ixport-to
-			  (get-exports (cadr nameset) db))))
+			  (get-exports (cadr nameset) db library))))
 	  ((intersection)
 	   (apply nss-intersection (map loop (cdr nameset))))
 	  ((union)
@@ -235,14 +238,15 @@ USA.
       (and p
 	   (cdr p)))))
 
-(define-automatic-property 'mit-defines '(parsed-defines db)
+(define-automatic-property 'mit-defines '(parsed-defines db library)
   #f
-  (lambda (parsed-defines db)
+  (lambda (parsed-defines db library)
     (fold (lambda (def defs)
 	    (if (eq? 'mit-define (car def))
 		(cons (cons (cadr def)
 			    (expand-nameset (caddr def)
 					    (make-lookup defs)
+					    library
 					    db))
 		      defs)
 		defs))

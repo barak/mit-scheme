@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,11 +34,11 @@ USA.
 
 (define (file-modes filename)
   ((ucode-primitive file-modes 1)
-   (string-for-primitive (->namestring (merge-pathnames filename)))))
+   (->namestring (merge-pathnames filename))))
 
 (define-integrable (set-file-modes! filename modes)
   ((ucode-primitive set-file-modes! 2)
-   (string-for-primitive (->namestring (merge-pathnames filename)))
+   (->namestring (merge-pathnames filename))
    modes))
 
 (define unix/file-access file-access)	;upwards compatability
@@ -99,17 +100,12 @@ USA.
 	  (error "Can't find temporary directory.")))))
 
 (define (file-attributes-direct filename)
-  (let ((v
-	 ((ucode-primitive file-attributes 1)
-	  (string-for-primitive (->namestring (merge-pathnames filename))))))
-    (and v
-	 (begin
-	   (vector-set! v 0 (string-from-primitive (vector-ref v 0)))
-	   v))))
+  ((ucode-primitive file-attributes 1)
+   (->namestring (merge-pathnames filename))))
 
 (define (file-attributes-indirect filename)
   ((ucode-primitive file-attributes-indirect 1)
-   (string-for-primitive (->namestring (merge-pathnames filename)))))
+   (->namestring (merge-pathnames filename))))
 
 (define-structure (file-attributes
 		   (type vector)
@@ -134,29 +130,28 @@ USA.
 
 (define (file-modification-time-direct filename)
   ((ucode-primitive file-mod-time 1)
-   (string-for-primitive (->namestring (merge-pathnames filename)))))
+   (->namestring (merge-pathnames filename))))
 
 (define (file-modification-time-indirect filename)
   ((ucode-primitive file-mod-time-indirect 1)
-   (string-for-primitive (->namestring (merge-pathnames filename)))))
+   (->namestring (merge-pathnames filename))))
 
 (define file-modification-time
   file-modification-time-indirect)
 
 (define (file-access-time-direct filename)
   ((ucode-primitive file-access-time 1)
-   (string-for-primitive (->namestring (merge-pathnames filename)))))
+   (->namestring (merge-pathnames filename))))
 
 (define (file-access-time-indirect filename)
   ((ucode-primitive file-access-time-indirect 1)
-   (string-for-primitive (->namestring (merge-pathnames filename)))))
+   (->namestring (merge-pathnames filename))))
 
 (define file-access-time
   file-access-time-indirect)
 
 (define (set-file-times! filename access-time modification-time)
-  (let ((filename
-	 (string-for-primitive (->namestring (merge-pathnames filename)))))
+  (let ((filename (->namestring (merge-pathnames filename))))
     ((ucode-primitive set-file-times! 3)
      filename
      (or access-time (file-access-time-direct filename))
@@ -247,7 +242,7 @@ USA.
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
     (if (not directory)
 	(error "Can't find user's home directory:" user-name))
-    (pathname-as-directory (string-from-primitive directory))))
+    (pathname-as-directory directory)))
 
 (define (current-home-directory)
   (let ((home (get-environment-variable "HOME")))
@@ -290,8 +285,7 @@ USA.
       (number->string gid 10)))
 
 (define (unix/system string)
-  (let ((wd-inside
-	 (string-for-primitive (->namestring (working-directory-pathname))))
+  (let ((wd-inside (->namestring (working-directory-pathname)))
 	(wd-outside)
 	(ti-outside))
     (dynamic-wind
@@ -301,7 +295,7 @@ USA.
        (set! ti-outside (thread-timer-interval))
        (set-thread-timer-interval! #f))
      (lambda ()
-       ((ucode-primitive system 1) (string-for-primitive string)))
+       ((ucode-primitive system 1) string))
      (lambda ()
        ((ucode-primitive set-working-directory-pathname! 1) wd-outside)
        (set! wd-outside)
@@ -319,13 +313,12 @@ USA.
   ;; Linux kernel), and ISO9660 can be either DOS or unix format.
   (let ((type
 	 ((ucode-primitive file-system-type 1)
-	  (string-for-primitive
-	   (->namestring
-	    (let loop ((pathname (merge-pathnames pathname)))
-	      (if (file-exists? pathname)
-		  pathname
-		  (loop (directory-pathname-as-file
-			 (directory-pathname pathname))))))))))
+	  (->namestring
+	   (let loop ((pathname (merge-pathnames pathname)))
+	     (if (file-exists? pathname)
+		 pathname
+		 (loop (directory-pathname-as-file
+			(directory-pathname pathname)))))))))
     (if (or (string-ci=? "fat" type)
 	    (string-ci=? "hpfs" type)
 	    (string-ci=? "iso9660" type)
@@ -395,8 +388,7 @@ USA.
 (define (os/make-subprocess filename arguments environment working-directory
 			    ctty stdin stdout stderr)
   ((ucode-primitive ux-make-subprocess 8)
-   (string-for-primitive filename) arguments environment working-directory
-   ctty stdin stdout stderr))
+   filename arguments environment working-directory ctty stdin stdout stderr))
 
 (define (os/find-program program default-directory #!optional exec-path error?)
   (let ((namestring
@@ -466,3 +458,29 @@ USA.
 
 (define (os/executable-pathname-types)
   '())
+
+;;;; SRFI 112
+
+(define (unix/uname)
+  ;; Returns a vector of
+  ;; #(sysname nodename version release machine)
+  ((ucode-primitive uname 0)))
+
+(define (implementation-name) "MIT/GNU Scheme")
+
+(define (implementation-version)
+  (get-subsystem-version-string "Release"))
+
+(define (cpu-architecture)
+  (vector-ref (unix/uname) 4))
+
+(define (machine-name)
+  (vector-ref (unix/uname) 1))
+
+(define (os-name)
+  (vector-ref (unix/uname) 0))
+
+(define (os-version)
+  (string-append (vector-ref (unix/uname) 2)
+		 " "
+		 (vector-ref (unix/uname) 3)))

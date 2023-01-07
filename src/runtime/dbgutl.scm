@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -117,16 +118,16 @@ USA.
 	(write-string "Depth (relative to initial environment): " port)
 	(write depth port)
 	(newline port)))
-  (if (not (and (environment->package environment) brief?))
+  (if (not (and (environment-has-name? environment) brief?))
       (show-environment-bindings environment brief? port)))
 
 (define (show-environment-name environment port)
   (write-string "Environment " port)
-  (let ((package (environment->package environment)))
-    (if package
+  (let ((name (environment-name environment)))
+    (if name
 	(begin
 	  (write-string "named: " port)
-	  (write (package/name package) port))
+	  (write name port))
 	(begin
 	  (write-string "created by " port)
 	  (print-user-friendly-name environment port))))

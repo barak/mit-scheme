@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -271,19 +272,20 @@ USA.
       (list (syntactic-closure-form closure)))))
 
 (define (strip-syntactic-closures object)
-  (if (let loop ((object object))
-	(if (pair? object)
-	    (or (loop (car object))
-		(loop (cdr object)))
-	    (syntactic-closure? object)))
-      (let loop ((object object))
-	(if (pair? object)
-	    (cons (loop (car object))
-		  (loop (cdr object)))
-	    (if (syntactic-closure? object)
-		(loop (syntactic-closure-form object))
-		object)))
-      object))
+  (let ((seen (make-key-weak-eq-hash-table)))
+    (let loop ((object object))
+      (cond ((pair? object)
+	     (if (hash-table-ref/default seen object #f)
+		 object
+		 (begin
+		   (hash-table-set! seen object #t)
+		   (set-car! object (loop (car object)))
+		   (set-cdr! object (loop (cdr object)))
+		   object)))
+	    ((syntactic-closure? object)
+	     (loop (syntactic-closure-form object)))
+	    (else
+	     object)))))
 
 ;;;; Identifiers
 

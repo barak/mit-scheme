@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -79,7 +80,6 @@ USA.
 	 (let ((name (graphics-type-name (graphics-type #f))))
 	   (case name
 	     ((X) (make-window/X11 width height x y))
-	     ((WIN32) (make-window/win32 width height x y))
 	     (else (error "Unsupported graphics type:" name))))))
     (graphics-set-coordinate-limits window 0 (- (- height 1)) (- width 1) 0)
     (restore-focus-to-editor)
@@ -101,15 +101,10 @@ USA.
     (x-graphics/flush window)
     window))
 
-(define (make-window/win32 width height x y)
-  (let ((window (make-graphics-device 'WIN32 width height 'GRAYSCALE-128)))
-    (graphics-operation window 'MOVE-WINDOW x y)
-    window))
-
 (define (resize-window window width height)
   (let ((name (graphics-type-name (graphics-type window))))
     (case name
-      ((X WIN32) (graphics-operation window 'RESIZE-WINDOW width height))
+      ((X) (graphics-operation window 'RESIZE-WINDOW width height))
       (else (error "Unsupported graphics type:" name)))))
 
 (define (show-window-size window)
@@ -122,15 +117,7 @@ USA.
   (let ((name (graphics-type-name (graphics-type window))))
     (case name
       ((X) (n-gray-map/X11 window))
-      ((WIN32) (n-gray-map/win32 window))
       (else (error "Unsupported graphics type:" name)))))
-
-(define n-gray-map/win32
-  (let ((map (make-vector 128)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i 128))
-      (vector-set! map i i))
-    (lambda (window) window map)))
 
 (define (n-gray-map/X11 window)
   (let ((properties (x-display/properties (x-graphics/display window))))
@@ -138,7 +125,7 @@ USA.
 	(let ((gm (allocate-grays window)))
 	  (1d-table/put! properties '6001-GRAY-MAP gm)
 	  gm))))
-
+
 (define (allocate-grays window)
   (let ((w-cm (graphics-operation window 'get-colormap))
 	(visual-info (vector->list (x-graphics/visual-info window))))

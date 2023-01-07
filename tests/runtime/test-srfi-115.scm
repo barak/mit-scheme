@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,7 +34,8 @@ USA.
   (lambda (expected re string #!optional start end)
     (let ((thunk
 	   (lambda ()
-	     (translate-regexp-match (proc re string start end)))))
+	     (translate-regexp-match
+	      (proc re string start end)))))
       (lambda ()
 	(with-test-properties
 	    (lambda ()
@@ -755,11 +757,11 @@ USA.
   (match-all-test '(0 5) '(* numeric) "１２３４５")
   (match-all-test #f '(w/ascii (* numeric)) "１２３４５")
 
-  (match-all-test '(0 1) 'grapheme "한")
-  (match-all-test '(0 1) 'grapheme "글")
+  (match-all-test '(0 1) 'grapheme (string->nfc "한"))
+  (match-all-test '(0 1) 'grapheme (string->nfc "글"))
 
-  (match-all-test '(0 1) '(: bog grapheme eog) "한")
-  (match-all-test #f '(: "ᄒ" bog grapheme eog "ᆫ") "한"))
+  (match-all-test '(0 1) '(: bog grapheme eog) (string->nfc "한"))
+  (match-all-test #f '(: "ᄒ" bog grapheme eog "ᆫ") (string->nfc "한")))
 
 (define-test 'chibi-extract
   (lambda ()

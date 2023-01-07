@@ -1,8 +1,8 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-user
-@set VERSION 11.2
-@set UPDATED 2020-06-16
+@set VERSION 12.1
+@set UPDATED 2021-02-19
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -25,7 +25,8 @@ This manual documents the use of MIT/GNU Scheme @value{VERSION}.
 Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
-    2016, 2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute
+    of Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -313,7 +314,7 @@ By default, the following plugins are built and installed:
 latter two only if X11 libraries are installed on your system.)  To
 get all of the functionality previously available in version 9.2 you
 will need to build and install the remaining plugins included in the
-@file{src} subdirectory: @file{blowfish}, @file{gdbm}, @file{mcrypt},
+@file{src} subdirectory: @file{blowfish}, @file{gdbm},
 and @file{pgsql}.  These plugins are all configured, built, and
 installed in the GNU standard way.  See the @file{README} file in each
 plugin's source directory for complete details.

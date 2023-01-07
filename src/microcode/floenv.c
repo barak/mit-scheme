@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -168,6 +169,7 @@ clear_float_exceptions (void)
 
 /* FIXME: Alignment?  */
 
+#ifdef HAVE_FEGETENV
 static SCHEME_OBJECT
 allocate_fenv (fenv_t **envp_loc)
 {
@@ -175,7 +177,9 @@ allocate_fenv (fenv_t **envp_loc)
   (*envp_loc) = ((fenv_t *) (VECTOR_8B_POINTER (environment)));
   return (environment);
 }
+#endif
 
+#if defined(HAVE_FESETENV) || defined(HAVE_FEUPDATEENV)
 static fenv_t *
 arg_fenv (int n)
 {
@@ -184,7 +188,9 @@ arg_fenv (int n)
     error_bad_range_arg (n);
   return ((fenv_t *) (VECTOR_8B_POINTER (environment)));
 }
+#endif
 
+#ifdef HAVE_FEGETEXCEPTFLAG
 static SCHEME_OBJECT
 allocate_fexcept (fexcept_t **flagp_loc)
 {
@@ -192,7 +198,9 @@ allocate_fexcept (fexcept_t **flagp_loc)
   (*flagp_loc) = ((fexcept_t *) (VECTOR_8B_POINTER (flags)));
   return (flags);
 }
+#endif
 
+#ifdef HAVE_FESETEXCEPTFLAG
 static fexcept_t *
 arg_fexcept (int n)
 {
@@ -201,6 +209,7 @@ arg_fexcept (int n)
     error_bad_range_arg (n);
   return ((fexcept_t *) (VECTOR_8B_POINTER (flags)));
 }
+#endif
 
 DEFINE_PRIMITIVE ("FLOAT-ENVIRONMENT", Prim_float_environment, 0, 0, 0)
 {

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -144,11 +145,27 @@ USA.
 (define (top-level-ctx? ctx)
   (eq? ctx (ctx:top-level)))
 
-(define (ctx:close-paren-ok)
-  'close-paren-ok)
+(define (ctx:list)
+  'list)
+
+(define (dot-ok? ctx)
+  (eq? ctx (ctx:list)))
+
+(define (dot-token)
+  %dot-token)
+
+(define (dot-token? object)
+  (eq? object %dot-token))
+
+(define %dot-token
+  (list 'dot))
+
+(define (ctx:vector)
+  'vector)
 
 (define (close-paren-ok? ctx)
-  (eq? ctx (ctx:close-paren-ok)))
+  (or (eq? ctx (ctx:list))
+      (eq? ctx (ctx:vector))))
 
 (define (close-parenthesis-token)
   %close-parenthesis-token)
@@ -294,7 +311,7 @@ USA.
    (add-special! #\! handler:named-constant)
    (add-special! #\@ handler:unhash)
    (add-special! (char-set "bBoOdDxXiIeEsSlL") handler:number)
-   (add-special! char-set:numeric handler:special-arg)))
+   (add-special! (char-set "0123456789") handler:special-arg)))
 
 (define (%read-char db)
   (let ((char
@@ -361,7 +378,9 @@ USA.
        (string-builder)))
 
 (define (finish-attributes-comment builder db)
-  (let ((attributes (and builder (parse-file-attributes-string (builder)))))
+  (let ((attributes
+	 (and builder
+	      (parse-file-attributes-string (builder 'immutable)))))
     (if attributes
 	(begin
 	  (process-file-attributes attributes db)
@@ -427,11 +446,15 @@ USA.
     (finish-attributes-comment builder db)))
 
 (define (handler:atom db ctx char)
-  ctx
   (let ((string (read-atom db (list char))))
-    (or (maybe-keyword db string)
-	(string->number string (get-param:reader-radix))
-	(make-symbol db string))))
+    (if (string=? "." string)
+	(begin
+	  (if (not (dot-ok? ctx))
+	      (error:illegal-dot))
+	  (dot-token))
+	(or (maybe-keyword db string)
+	    (string->number string (get-param:reader-radix))
+	    (make-symbol db string)))))
 
 (define (handler:symbol db ctx char)
   ctx
@@ -470,7 +493,7 @@ USA.
 	  (begin
 	    (builder (%read-char db))
 	    (loop))))
-    (builder)))
+    (builder 'immutable)))
 
 (define (%atom-end? db)
   (let ((char (%peek-char db)))
@@ -480,29 +503,33 @@ USA.
 (define (handler:list db ctx char)
   ctx char
   (let loop ((objects '()))
-    (let ((object (read-in-context db ctx:close-paren-ok)))
-      (if (close-parenthesis-token? object)
-	  (let ((objects (reverse! objects)))
-	    (fix-up-list! objects)
-	    objects)
-	  (loop (cons object objects))))))
+    (let ((object (read-in-context db ctx:list)))
+      (cond ((close-parenthesis-token? object)
+	     (reverse! objects))
+	    ((dot-token? object)
+	     (handle-dotted-list object objects db))
+	    (else
+	     (loop (cons object objects)))))))
 
-(define (fix-up-list! objects)
-  (let loop ((objects* objects) (prev #f))
-    (if (pair? objects*)
-	(if (eq? (car objects*) '.)
-	    (begin
-	      (if (not (and prev
-			    (pair? (cdr objects*))
-			    (null? (cddr objects*))))
-		  (error:illegal-dot-usage objects))
-	      (set-cdr! prev (cadr objects*)))
-	    (loop (cdr objects*) objects*)))))
+(define (handle-dotted-list dot objects db)
+  (let ((.objects (cons dot objects)))
+    (if (null? objects)
+	(error:illegal-dot-usage .objects #f))
+    (let ((object (read-in-context db ctx:list)))
+      (if (close-parenthesis-token? object)
+	  (error:illegal-dot-usage (reverse! .objects) #t))
+      (if (dot-token? object)
+	  (error:illegal-dot-usage (reverse! (cons object .objects)) #f))
+      (let ((paren (read-in-context db ctx:list)))
+	(if (not (close-parenthesis-token? paren))
+	    (error:illegal-dot-usage (reverse! (cons* paren object .objects))
+				     #f)))
+      (append-reverse! objects object))))
 
 (define (handler:vector db ctx char1 char2)
   ctx char1 char2
   (let loop ((objects '()))
-    (let ((object (read-in-context db ctx:close-paren-ok)))
+    (let ((object (read-in-context db ctx:vector)))
       (if (close-parenthesis-token? object)
 	  (list->vector (reverse! objects))
 	  (loop (cons object objects))))))
@@ -516,7 +543,7 @@ USA.
     (if (not (char=? char #\())
 	(error:illegal-char char)))
   (let loop ((bytes '()))
-    (let ((object (read-in-context db ctx:close-paren-ok)))
+    (let ((object (read-in-context db ctx:vector)))
       (if (close-parenthesis-token? object)
 	  (let ((bytevector (make-bytevector (length bytes))))
 	    (do ((bytes (reverse! bytes) (cdr bytes))
@@ -697,7 +724,7 @@ USA.
 	(integer->char (fix:+ (fix:lsh (fix:+ (fix:lsh d1 3) d2) 3) d3))))
 
     (loop)
-    (builder)))
+    (builder 'immutable)))
 
 (define (handler:false db ctx char1 char2)
   ctx char1
@@ -755,7 +782,7 @@ USA.
 			    (%read-char/no-eof db)
 			    char)))
 		     (loop))))
-	     (name->char (builder)
+	     (name->char (builder 'immutable)
 			 (eq? #t (db-fold-case? db))))))))
 
 (define (handler:named-constant db ctx char1 char2)
@@ -772,14 +799,9 @@ USA.
 	  ((string-maybe-ci=? db name "default") (default-object))
 	  ((string-maybe-ci=? db name "unspecific") unspecific)
 	  ((string-maybe-ci=? db name "reclaimed") (gc-reclaimed-object))
-	  ((string=? name "fold-case")
-	   (set-db-fold-case! db #t)
-	   continue-reading)
-	  ((string=? name "no-fold-case")
-	   (set-db-fold-case! db #f)
-	   continue-reading)
-	  (else
-	   (error:illegal-named-constant name)))))
+	  ((string=? name "fold-case") (set-db-fold-case! db #t))
+	  ((string=? name "no-fold-case") (set-db-fold-case! db #f))
+	  (else (error:illegal-named-constant name)))))
 
 (define (handler:uri db ctx char1 char2)
   ctx char1 char2
@@ -791,7 +813,9 @@ USA.
 	     (begin
 	       (builder char)
 	       (loop)))))
-     (builder))))
+     (builder 'immutable))))
+
+;;;; Datum labels
 
 (define (handler:special-arg db ctx char1 char2)
   ctx char1
@@ -799,41 +823,73 @@ USA.
     (let ((char (%read-char/no-eof db)))
       (cond ((char-numeric? char)
 	     (loop (+ (* 10 n) (char->digit char 10))))
-	    ((char=? char #\=)
-	     (let ((object (read-object db)))
-	       (save-shared-object! db n object)
-	       object))
-	    ((char=? char #\#)
-	     (get-shared-object db n))
+	    ((char=? char #\=) (define-datum-label db n))
+	    ((char=? char #\#) (reference-datum-label db n))
+	    (else (error:illegal-char char))))))
+
+(define (define-datum-label db number)
+  (let ((table (db-datum-labels db)))
+    (if (hash-table-ref/default table number #f)
+	(error:redefine-datum-label number))
+    (let ((token (make-cycle-token)))
+      (let ((entry (cons 'pending token)))
+	(hash-table-set! table number entry)
+	(let ((object*
+	       (let ((object (read-object db)))
+		 (if (eq? (car entry) 'pending-seen)
+		     (replace-cycle-token! token object)
+		     object))))
+	  (set-car! entry 'defined)
+	  (set-cdr! entry object*)
+	  object*)))))
+
+(define (replace-cycle-token! token object)
+  (let ((seen (make-key-weak-eq-hash-table)))
+    (let loop ((this object))
+      (cond ((eq? token this) object)
+	    ((hash-table-ref/default seen this #f) this)
 	    (else
-	     (error:illegal-char char))))))
+	     (hash-table-set! seen this #t)
+	     (cond ((pair? this)
+		    (set-car! this (loop (car this)))
+		    (set-cdr! this (loop (cdr this)))
+		    this)
+		   ((vector? this)
+		    (let ((n (vector-length this)))
+		      (do ((i 0 (fix:+ i 1)))
+			  ((not (fix:< i n)))
+			(vector-set! this i (loop (vector-ref this i)))))
+		    this)
+		   ((%record? this)
+		    (let ((n (%record-length this)))
+		      (do ((i 0 (fix:+ i 1)))
+			  ((not (fix:< i n)))
+			(%record-set! this i (loop (%record-ref this i)))))
+		    this)
+		   (else
+		    this)))))))
 
-(define (make-shared-objects)
+(define (reference-datum-label db number)
+  (let ((entry (hash-table-ref/default (db-datum-labels db) number #f)))
+    (if (not entry)
+	(error:undefined-datum-label number))
+    (if (eq? (car entry) 'pending)
+	(set-car! entry 'pending-seen))
+    (cdr entry)))
+
+(define-record-type <cycle-token>
+    (make-cycle-token)
+    cycle-token?)
+
+(define (make-datum-labels)
   (make-strong-eqv-hash-table))
-
-(define (save-shared-object! db n object)
-  (let ((table (db-shared-objects db)))
-    (if (not (eq? (hash-table-ref/default table n non-shared-object)
-		  non-shared-object))
-	(error:re-shared-object n object))
-    (hash-table-set! table n object)))
-
-(define (get-shared-object db n)
-  (let ((object
-	 (hash-table-ref/default (db-shared-objects db) n non-shared-object)))
-    (if (eq? object non-shared-object)
-	(error:non-shared-object n))
-    object))
-
-(define non-shared-object
-  (list 'non-shared-object))
 
 (define-record-type <db>
-    (make-db port shared-objects position-mapping discretionary-write-char
+    (make-db port datum-labels position-mapping discretionary-write-char
 	     get-position input-line peek-char read-char)
     db?
   (port db-port)
-  (shared-objects db-shared-objects)
+  (datum-labels db-datum-labels)
   (position-mapping db-position-mapping set-db-position-mapping!)
   ;; Cached port operations
   (discretionary-write-char db-discretionary-write-char)
@@ -844,7 +900,7 @@ USA.
 
 (define (initial-db port)
   (make-db port
-	   (make-shared-objects)
+	   (make-datum-labels)
 	   '()
 	   (let ((operation
 		  (textual-port-operation port 'discretionary-write-char)))
@@ -1011,6 +1067,7 @@ USA.
 		  (make-condition-type ',name condition-type:read-error
 		      ',field-names
 		    (lambda (condition port)
+		      (declare (ignorable condition))
 		      (,reporter
 		       ,@(map (lambda (field-name)
 				`(access-condition condition ',field-name))
@@ -1037,10 +1094,23 @@ USA.
     (write-string "Illegal character: " port)
     (write char port)))
 
-(define-read-error (illegal-dot-usage objects)
-  (lambda (objects port)
-    (write-string "Ill-formed dotted list: " port)
-    (write objects port)))
+(define-read-error (illegal-dot-usage objects complete?)
+  (lambda (objects complete? port)
+    (define (write-one object)
+      (if (dot-token? object)
+	  (write-char #\. port)
+	  (write object port)))
+    (write-string "Ill-formed dotted list: (" port)
+    (write-one (car objects))
+    (for-each (lambda (object)
+		(write-char #\space port)
+		(write-one object))
+	      (cdr objects))
+    (if complete? (write-string ")" port))))
+
+(define-read-error (illegal-dot)
+  (lambda (port)
+    (write-string "Dot allowed only in list" port)))
 
 (define-read-error (illegal-hashed-object objects)
   (lambda (objects port)
@@ -1094,16 +1164,15 @@ USA.
     (write-string "Premature EOF on " port)
     (write (db-port db) port)))
 
-(define-read-error (re-shared-object n object)
-  (lambda (n object port)
-    (write-string "Can't re-share object: #" port)
-    (write n port)
-    (write-string "=" port)
-    (write object port)))
-
-(define-read-error (non-shared-object n)
+(define-read-error (redefine-datum-label n)
   (lambda (n port)
-    (write-string "Reference to non-shared object: #" port)
+    (write-string "Can't redefine datum label: #" port)
+    (write n port)
+    (write-string "=" port)))
+
+(define-read-error (undefined-datum-label n)
+  (lambda (n port)
+    (write-string "Reference to undefined datum label: #" port)
     (write n port)
     (write-string "#" port)))
 

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -158,12 +159,10 @@ for the band.\n\
 \n\
 --band FILENAME\n\
   Specifies the initial band to be loaded.  Searches for FILENAME in\n\
-  the working directory and the library directories, returning the\n\
-  full pathname of the first readable file of that name.  If this\n\
-  option isn't given, the filename is the value of the environment\n\
-  variable MITSCHEME_BAND, or if that isn't defined, \"%s\"; in\n\
-  these cases the library directories are searched, but not the\n\
-  working directory.\n\
+  the working directory and the library directories.  If this option\n\
+  is not given, the environment variable MITSCHEME_BAND is used, or\n\
+  if that is not defined, \"%s\".\n\
+  If this option is not given, the working directory is not searched.\n\
 \n\
 --fasl FILENAME\n\
   Specifies that a cold load should be performed, using FILENAME as\n\

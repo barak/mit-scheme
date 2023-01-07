@@ -1,0 +1,75 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 0 0 180 60
+%%BeginProlog
+
+% Bounding box parameters.
+/llx 0 def /lly 0 def /urx 180 def /ury 60 def
+/bbwidth urx llx sub def /bbheight ury lly sub def
+
+% Axes.
+/axmin -7 def /axmax 7 def /aymin -4 def /aymax 2 def
+
+% Interpolation parameters.
+/nspline 1000 def
+/splinterpoint { chebypoint } def  % i n => s_{i,n}
+/linearsplinterpoint { linpoint } def  % i n => s_{i,n}
+/splinterpolate { linearsplinterpolate } def
+
+(common/ad.ps) runlibfile
+(common/math.ps) runlibfile
+(common/plot.ps) runlibfile
+(common/splinterp.ps) runlibfile
+(common/linsplin.ps) runlibfile
+
+%%EndProlog
+
+setupplotbbox
+
+% Draw reference asymptote.
+gsave
+    setupasymptote
+    newpath
+    axmin -2 a2bb moveto
+    axmax -2 a2bb lineto
+    stroke
+    newpath
+    pi 0.5 mul aymin a2bb moveto
+    pi 0.5 mul aymax a2bb lineto
+    stroke
+    newpath
+    pi 1.5 mul aymin a2bb moveto
+    pi 1.5 mul aymax a2bb lineto
+    stroke
+grestore
+
+% Draw axes.
+gsave
+    setupaxesgreek
+    drawaxes
+
+    % x ticks
+    pi -2.0 mul 0 0  1   tick
+    pi -1.5 mul 0 0  1   tick
+    pi -1.0 mul 0 0  1   tick  pi -1.0 mul (-p)     1 xticklabelstr
+    pi -0.5 mul 0 0  1   tick
+    pi  0.5 mul 0 0 -1   tick  pi  0.5 mul  (p/2)  -1 xticklabelstr
+    pi  1.0 mul 0 0 -1   tick  pi  1.0 mul  (p)    -1 xticklabelstr
+    pi  1.5 mul 0 0 -1   tick  pi  1.5 mul  (3p/2) -1 xticklabelstr
+    pi  2.0 mul 0 0 -1   tick  pi  2.0 mul  (2p)   -1 xticklabelstr
+
+    % y ticks
+    0 -2 -1 0 tick  -2 -1 yticklabel
+grestore
+
+/f {57.29577951308232 Tconst Tmul Texsec} def
+
+gsave
+    setupfunctionplot
+    nspline -6.20 -4.80 {f} splinterpolate
+    nspline -4.70 -1.60 {f} splinterpolate
+    nspline -1.50  1.50 {f} splinterpolate
+    nspline  1.60  4.70 {f} splinterpolate
+    nspline  4.80  6.20 {f} splinterpolate
+grestore
+
+showpage

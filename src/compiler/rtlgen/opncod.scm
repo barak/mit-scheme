@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1699,6 +1700,46 @@ USA.
 			      (pcfg*scfg->scfg! test* (do-it) give-it-up)
 			      give-it-up)))))))
 
+(define (generic-division-operator generic-op fix-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (lambda (combination expressions finish)
+       (let ((op1 (car expressions))
+	     (op2 (cadr expressions))
+	     (give-it-up
+	      (generic-default generic-op combination expressions
+			       false finish)))
+	 (define (do-it)
+	   (finish
+	    (rtl:make-fixnum->object
+	     (rtl:make-fixnum-2-args fix-op
+				     (rtl:make-object->fixnum op1)
+				     (rtl:make-object->fixnum op2)
+				     false))))
+	 ;; Fixnum division can go wrong only if the divisor is zero,
+	 ;; in which case we must raise an exception; or if the divisor
+	 ;; is negative, in which case the most negative fixnum can
+	 ;; overflow, which the back ends aren't prepared to detect.
+	 (if (rtl:constant? op2)
+	     (if (let ((value (rtl:constant-value op2)))
+		   (and (exact-positive-integer? value)
+			(< value signed-fixnum/upper-limit)))
+		 (generate-unary-fixnum-test op1 give-it-up do-it)
+		 (give-it-up))
+	     (let ((give-it-up (give-it-up)))
+	       (generate-binary-fixnum-test op1 op2
+		 (lambda () give-it-up)
+		 (lambda ()
+		   (pcfg*scfg->scfg!
+		    (pcfg/prefer-consequent!
+		     (rtl:make-fixnum-pred-1-arg
+		      'POSITIVE-FIXNUM?
+		      (rtl:make-object->fixnum op2)))
+		    (do-it)
+		    give-it-up)))))))
+     '(0 1)
+     true)))
+
 (define (generic-unary-operator generic-op)
   (define-open-coder/value generic-op
     (simple-open-coder
@@ -1749,6 +1790,200 @@ USA.
     (lambda (test)
       (pcfg*scfg->scfg! test (do-it) (give-it-up)))))
 
+;;; Bitwise operations never overflow.
+
+(define (generic-binary-operator/no-overflow generic-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (let ((fix-op (generic->fixnum-op generic-op)))
+       (lambda (combination expressions finish)
+	 (let ((op1 (car expressions))
+	       (op2 (cadr expressions)))
+	   (generate-binary-fixnum-test op1 op2
+	     (generic-default generic-op combination expressions false finish)
+	     (lambda ()
+	       (finish
+		(rtl:make-fixnum->object
+		 (rtl:make-fixnum-2-args fix-op
+					 (rtl:make-object->fixnum op1)
+					 (rtl:make-object->fixnum op2)
+					 false))))))))
+     '(0 1)
+     true)))
+
+(define generic-bitwise-operator generic-binary-operator/no-overflow)
+
+(define (generic-unary-operator/no-overflow generic-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (let ((fix-op (generic->fixnum-op generic-op)))
+       (lambda (combination expressions finish)
+	 (let ((op (car expressions)))
+	   (generate-unary-fixnum-test op
+	     (generic-default generic-op combination expressions false finish)
+	     (lambda ()
+	       (finish
+		(rtl:make-fixnum->object
+		 (rtl:make-fixnum-1-arg fix-op
+					(rtl:make-object->fixnum op)
+					false))))))))
+     '(0)
+     true)))
+
+(define generic-unary-bitwise-operator generic-unary-operator/no-overflow)
+
+;;; Compositions of bitwise operations.
+
+(define (generic-bitwise-operator/commuted generic-op fix-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (lambda (combination expressions finish)
+       (let ((op1 (car expressions))
+	     (op2 (cadr expressions)))
+	 (generate-binary-fixnum-test op1 op2
+	   (generic-default generic-op combination expressions false finish)
+	   (lambda ()
+	     (finish
+	      (rtl:make-fixnum->object
+	       (rtl:make-fixnum-2-args fix-op
+				       (rtl:make-object->fixnum op2)
+				       (rtl:make-object->fixnum op1)
+				       false)))))))
+     '(0 1)
+     true)))
+
+(define (generic-bitwise-operator/complement generic-op fix-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (lambda (combination expressions finish)
+       (let ((op1 (car expressions))
+	     (op2 (cadr expressions)))
+	 (generate-binary-fixnum-test op1 op2
+	   (generic-default generic-op combination expressions false finish)
+	   (lambda ()
+	     (finish
+	      (rtl:make-fixnum->object
+	       (rtl:make-fixnum-1-arg
+		'FIXNUM-NOT
+		(rtl:make-fixnum-2-args fix-op
+					(rtl:make-object->fixnum op1)
+					(rtl:make-object->fixnum op2)
+					false)
+		false)))))))
+     '(0 1)
+     true)))
+
+(define (generic-bitwise-operator/c1 generic-op fix-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (lambda (combination expressions finish)
+       (let ((op1 (car expressions))
+	     (op2 (cadr expressions)))
+	 (generate-binary-fixnum-test op1 op2
+	   (generic-default generic-op combination expressions false finish)
+	   (lambda ()
+	     (finish
+	      (rtl:make-fixnum->object
+	       (rtl:make-fixnum-2-args
+		fix-op
+		(rtl:make-fixnum-1-arg 'FIXNUM-NOT
+				       (rtl:make-object->fixnum op1)
+				       false)
+		(rtl:make-object->fixnum op2)
+		false)))))))
+     '(0 1)
+     true)))
+
+(define (generic-bitwise-operator/c2 generic-op fix-op)
+  (define-open-coder/value generic-op
+    (simple-open-coder
+     (lambda (combination expressions finish)
+       (let ((op1 (car expressions))
+	     (op2 (cadr expressions)))
+	 (generate-binary-fixnum-test op1 op2
+	   (generic-default generic-op combination expressions false finish)
+	   (lambda ()
+	     (finish
+	      (rtl:make-fixnum->object
+	       (rtl:make-fixnum-2-args
+		fix-op
+		(rtl:make-object->fixnum op1)
+		(rtl:make-fixnum-1-arg 'FIXNUM-NOT
+				       (rtl:make-object->fixnum op2)
+				       false)
+		false)))))))
+     '(0 1)
+     true)))
+
+(define-open-coder/value 'INTEGER-SHIFT-LEFT
+  (conditional-open-coder
+   (lambda (operands primitive block)
+     primitive block
+     (and (rvalue-known-constant? (cadr operands))
+	  (let ((shift (rvalue-constant-value (cadr operands))))
+	    (and (exact-nonnegative-integer? shift)
+		 (< shift (- scheme-datum-width 1))))))
+   (simple-open-coder
+    (lambda (combination expressions finish)
+      (let ((op1 (car expressions))
+	    (op2 (cadr expressions))
+	    (give-it-up
+	     (generic-default 'INTEGER-SHIFT-LEFT combination expressions
+			      false finish)))
+	(assert (rtl:constant? op2))
+	(assert (exact-nonnegative-integer? (rtl:constant-value op2)))
+	(assert (< (rtl:constant-value op2) (- scheme-datum-width 1)))
+	(let ((give-it-up (give-it-up)))
+	  (generate-unary-fixnum-test op1
+	    (lambda ()
+	      give-it-up)
+	    (lambda ()
+	      (if (zero? (rtl:constant-value op2))
+		  (finish op1)
+		  (load-temporary-register scfg*scfg->scfg!
+					   (rtl:make-fixnum-2-args
+					    'FIXNUM-LSH
+					    (rtl:make-object->fixnum op1)
+					    (rtl:make-object->fixnum op2)
+					    true)
+		    (lambda (fix-temp)
+		      (pcfg*scfg->scfg!
+		       (pcfg/prefer-alternative! (rtl:make-overflow-test))
+		       give-it-up
+		       (finish (rtl:make-fixnum->object fix-temp)))))))))))
+    '(0 1)
+    true)))
+
+(define-open-coder/value 'INTEGER-SHIFT-RIGHT
+  (conditional-open-coder
+   (lambda (operands primitive block)
+     primitive block
+     (and (rvalue-known-constant? (cadr operands))
+	  (let ((shift (rvalue-constant-value (cadr operands))))
+	    (exact-nonnegative-integer? shift))))
+   (simple-open-coder
+    (lambda (combination expressions finish)
+      (let ((op1 (car expressions))
+	    (op2 (cadr expressions)))
+	(assert (rtl:constant? op2))
+	(assert (exact-nonnegative-integer? (rtl:constant-value op2)))
+	(generate-unary-fixnum-test op1
+	  (generic-default 'INTEGER-SHIFT-RIGHT combination expressions
+			   false finish)
+	  (lambda ()
+	    (finish
+             (if (zero? (rtl:constant-value op2))
+                 op1
+                 (rtl:make-fixnum->object
+                  (rtl:make-fixnum-2-args 'FIXNUM-LSH
+                                          (rtl:make-object->fixnum op1)
+                                          (rtl:make-object->fixnum
+                                           (rtl:make-constant
+                                            (- (rtl:constant-value op2))))
+                                          false))))))))
+    '(0 1)
+    true)))
+
 (define (generic-default generic-op combination expressions predicate? finish)
   (lambda ()
     (if (combination/reduction? combination)
@@ -1782,6 +2017,11 @@ USA.
     ((integer-add-1 1+) 'one-plus-fixnum)
     ((integer-subtract-1 -1+) 'minus-one-plus-fixnum)
     ((integer-negate) 'fixnum-negate)
+    ((integer-bitwise-not) 'fixnum-not)
+    ((integer-bitwise-and) 'fixnum-and)
+    ((integer-bitwise-andc2) 'fixnum-andc)
+    ((integer-bitwise-ior) 'fixnum-or)
+    ((integer-bitwise-xor) 'fixnum-xor)
     ((integer-less? &<) 'less-than-fixnum?)
     ((integer-greater? &>) 'greater-than-fixnum?)
     ((integer-equal? &=) 'equal-fixnum?)
@@ -1789,12 +2029,27 @@ USA.
     ((integer-positive? positive?) 'positive-fixnum?)
     ((integer-negative? negative?) 'negative-fixnum?)
     (else (error "Can't find corresponding fixnum op:" generic-op))))
-
+
 (for-each (lambda (generic-op)
 	    (generic-binary-operator generic-op))
-	  ;; Don't add any division operators here.  The open-coding
-	  ;; doesn't test for divide-by-zero.
 	  '(&+ &- &* INTEGER-ADD INTEGER-SUBTRACT INTEGER-MULTIPLY))
+
+(generic-division-operator 'QUOTIENT 'FIXNUM-QUOTIENT)
+(generic-division-operator 'REMAINDER 'FIXNUM-REMAINDER)
+(generic-division-operator 'INTEGER-QUOTIENT 'FIXNUM-QUOTIENT)
+(generic-division-operator 'INTEGER-REMAINDER 'FIXNUM-REMAINDER)
+
+;; Truth table order
+(generic-bitwise-operator 'INTEGER-BITWISE-AND)
+(generic-bitwise-operator 'INTEGER-BITWISE-ANDC2)
+(generic-bitwise-operator/commuted 'INTEGER-BITWISE-ANDC1 'FIXNUM-ANDC)
+(generic-bitwise-operator 'INTEGER-BITWISE-XOR)
+(generic-bitwise-operator 'INTEGER-BITWISE-IOR)
+(generic-bitwise-operator/complement 'INTEGER-BITWISE-NOR 'FIXNUM-OR)
+(generic-bitwise-operator/complement 'INTEGER-BITWISE-EQV 'FIXNUM-XOR)
+(generic-bitwise-operator/c1 'INTEGER-BITWISE-ORC1 'FIXNUM-OR)
+(generic-bitwise-operator/c2 'INTEGER-BITWISE-ORC2 'FIXNUM-OR)
+(generic-bitwise-operator/complement 'INTEGER-BITWISE-NAND 'FIXNUM-AND)
 
 (for-each (lambda (generic-op)
 	    (generic-binary-predicate generic-op))
@@ -1803,6 +2058,10 @@ USA.
 (for-each (lambda (generic-op)
 	    (generic-unary-operator generic-op))
 	  '(1+ -1+ INTEGER-ADD-1 INTEGER-SUBTRACT-1))
+
+(for-each (lambda (generic-op)
+	    (generic-unary-bitwise-operator generic-op))
+	  '(INTEGER-BITWISE-NOT))
 
 (for-each (lambda (generic-op)
 	    (generic-unary-predicate generic-op))

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -95,7 +96,7 @@ USA.
 			 (OBJECT->FIXNUM (CONSTANT (? d)))
 			 (? overflow?)))
   (QUALIFIER (not (or (zero? d) (integer-power-of-2? d))))
-  overflow?				;ignore
+  (assert (not overflow?))
   (fixnum-quotient/constant target source d))
 
 (define-rule statement
@@ -105,7 +106,7 @@ USA.
 			 (OBJECT->FIXNUM (CONSTANT (? d)))
 			 (? overflow?)))
   (QUALIFIER (not (or (zero? d) (integer-power-of-2? d))))
-  overflow?				;ignore
+  (assert (not overflow?))
   (fixnum-remainder/constant target source d))
 
 (define-rule statement
@@ -149,6 +150,51 @@ USA.
    (lambda (target)
      (multiply-fixnum-constant target (* n fixnum-1) #f))))
 
+;;; Intermediate rules -- no advantage but these pave the way to
+;;; combined detag-and-compare operations.
+;;;
+;;; (Maybe these aren't worth it.)
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS MINUS-FIXNUM
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 (REGISTER (? untagged-source))
+			 (? overflow?)))
+  overflow?
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (any-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (SUB Q ,target ,untagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS MINUS-FIXNUM
+			 (REGISTER (? untagged-source))
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((temp (standard-move-to-temporary! tagged-source))
+	 (target (standard-move-to-target! untagged-source target)))
+    (LAP ,@(object->fixnum temp)
+	 (SUB Q ,target ,temp))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS MINUS-FIXNUM
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (OBJECT->FIXNUM (REGISTER (? source2)))
+			 #f))
+  (if (eqv? source1 source2)
+      ;; XXX Should arrange upstream to ensure this doesn't happen.
+      (let ((target (target-register-reference target)))
+	(LAP (XOR L ,target ,target)))
+      (let* ((source2 (any-reference source2))
+	     (target (standard-move-to-target! source1 target)))
+	(LAP (SUB Q ,target ,source2)
+	     (SAL Q ,target (&U ,scheme-type-width))))))
+
 ;;;; Fixnum Predicates
 
 (define-rule predicate
@@ -164,32 +210,11 @@ USA.
   (object->fixnum (standard-move-to-temporary! register)))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate) (? expression rtl:simple-offset?))
-  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (CMP Q ,(offset->reference! expression) (& 0))))
-
-(define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? register-1))
 		      (REGISTER (? register-2)))
   (fixnum-branch! predicate)
   (compare/register*register register-1 register-2))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (REGISTER (? register))
-		      (? expression rtl:simple-offset?))
-  (fixnum-branch! predicate)
-  (LAP (CMP Q ,(source-register-reference register)
-	    ,(offset->reference! expression))))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (? expression rtl:simple-offset?)
-		      (REGISTER (? register)))
-  (fixnum-branch! predicate)
-  (LAP (CMP Q ,(offset->reference! expression)
-	    ,(source-register-reference register))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -205,24 +230,245 @@ USA.
   (fixnum-branch! (commute-fixnum-predicate predicate))
   (compare/reference*fixnum (source-register-reference register) constant))
 
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (? expression rtl:simple-offset?)
-		      (OBJECT->FIXNUM (CONSTANT (? constant))))
-  (fixnum-branch! predicate)
-  (compare/reference*fixnum (offset->reference! expression) constant))
+;;; Detag and compare.
+
+;; Predicates for which tagging preserves order.
+
+(define (fixnum-unsigned-predicate? predicate)
+  (or (eq? predicate 'EQUAL-FIXNUM?)
+      (eq? predicate 'UNSIGNED-LESS-THAN-FIXNUM?)
+      (eq? predicate 'UNSIGNED-GREATER-THAN-FIXNUM?)))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
-		      (OBJECT->FIXNUM (CONSTANT (? constant)))
-		      (? expression rtl:simple-offset?))
-  (fixnum-branch! (commute-fixnum-predicate predicate))
-  (compare/reference*fixnum (offset->reference! expression) constant))
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      (REGISTER (? untagged-source)))
+  (QUALIFIER (fixnum-unsigned-predicate? predicate))
+  (detag-and-compare predicate tagged-source untagged-source))
+
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (REGISTER (? untagged-source))
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source))))
+  (QUALIFIER (fixnum-unsigned-predicate? predicate))
+  (detag-and-compare (commute-fixnum-predicate predicate)
+		     tagged-source
+		     untagged-source))
+
+(define (detag-and-compare predicate tagged-source untagged-source)
+  ;; Intermediate rule -- no particular advantage.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (assert (fixnum-unsigned-predicate? predicate))
+  (fixnum-branch! predicate)
+  (let* ((untagged-source (any-reference untagged-source))
+	 (temp (standard-move-to-temporary! tagged-source)))
+    (LAP ,@(object->fixnum temp)
+	 (CMP Q ,temp ,untagged-source))))
+
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (OBJECT->FIXNUM (REGISTER (? register-1)))
+		      (OBJECT->FIXNUM (REGISTER (? register-2))))
+  (QUALIFIER (fixnum-unsigned-predicate? predicate))
+  (fixnum-branch! predicate)
+  (compare/register*register register-1 register-2))
+
+;;; Convert (SUB x y) (CMP x 0) into (CMP x y).
+;;;
+;;; Would be nice to use a single rewriting rule for all of these, but
+;;; we can't -- this is worthwhile only if we don't use the difference
+;;; later on, and rewriting rules can't tell that, while RTL code
+;;; compression can but relies on us to have a code generation rule
+;;; rather than a rewriting rule.
+;;;
+;;; (Maybe code compression could apply rewriting rules too?)
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (REGISTER (? register-1))
+				    (REGISTER (? register-2))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (compare/register*register register-1 register-2))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
+		     (FIXNUM-2-ARGS
+		      MINUS-FIXNUM
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      (REGISTER (? untagged-source))
+		      #f))
+  (detag-and-compare 'EQUAL-FIXNUM? tagged-source untagged-source))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
+		     (FIXNUM-2-ARGS
+		      MINUS-FIXNUM
+		      (REGISTER (? untagged-source))
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      #f))
+  (detag-and-compare 'EQUAL-FIXNUM? tagged-source untagged-source))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (OBJECT->FIXNUM (REGISTER (? register-1)))
+				    (OBJECT->FIXNUM (REGISTER (? register-2)))
+				    #f))
+  (fixnum-branch! 'EQUAL-FIXNUM?)
+  (compare/register*register register-1 register-2))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (REGISTER (? register))
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    #f))
+  (fixnum-branch! 'EQUAL-FIXNUM?)
+  (compare/reference*fixnum (source-register-reference register) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG ZERO-FIXNUM?
+		     (FIXNUM-2-ARGS MINUS-FIXNUM
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    (REGISTER (? register))
+				    #f))
+  (fixnum-branch! 'EQUAL-FIXNUM?)
+  (compare/reference*fixnum (source-register-reference register) constant))
+
+;;; Use TEST for (FIX:ZERO/NEGATIVE/POSITIVE? (FIX:AND x y)).
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (REGISTER (? register-1))
+				    (REGISTER (? register-2))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/register*register register-1 register-2))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (REGISTER (? register))
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*fixnum (source-register-reference register) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    (REGISTER (? register))
+				    #f))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*fixnum (source-register-reference register) constant))
+
+;; As long as the constant is nonnegative, the AND will clear any tag
+;; bits.
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (REGISTER (? register)))
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    #f))
+  (QUALIFIER (<= 0 constant))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*constant (source-register-reference register) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (CONSTANT (? constant)))
+				    (OBJECT->FIXNUM (REGISTER (? register)))
+				    #f))
+  (QUALIFIER (<= 0 constant))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (test/reference*constant (source-register-reference register) constant))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS
+		      FIXNUM-AND
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      (REGISTER (? untagged-source))
+		      #f))
+  (detag-and-test predicate tagged-source untagged-source))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS
+		      FIXNUM-AND
+		      (REGISTER (? untagged-source))
+		      (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+		      #f))
+  (detag-and-test predicate tagged-source untagged-source))
+
+(define (detag-and-test predicate tagged-source untagged-source)
+  ;; Intermediate rule -- no particular advantage.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (fixnum-branch! predicate)
+  (let* ((untagged-source (any-reference untagged-source))
+	 (temp (standard-move-to-temporary! tagged-source)))
+    (LAP ,@(object->fixnum temp)
+	 (TEST Q ,temp ,untagged-source))))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (REGISTER (? register)))
+				    (OBJECT->FIXNUM (REGISTER (? register-2)))
+				    #f))
+  ;; XXX Should ensure upstream that we never wind up with (AND x x).
+  (QUALIFIER
+   (and (eqv? register register-2)
+	(or (eq? predicate 'ZERO-FIXNUM?)
+	    (eq? predicate 'NEGATIVE-FIXNUM?))))
+  (fixnum-branch! predicate)
+  ;; OBJECT->FIXNUM ends in SAL which sets ZF and SF as needed for
+  ;; ZERO-FIXNUM? and NEGATIVE-FIXNUM?.  However, we can't currently
+  ;; handle POSITIVE-FIXNUM? in one go, so don't try with this rule.
+  ;; (Mostly only ZERO-FIXNUM? is of interest anyway.)
+  (object->fixnum (standard-move-to-temporary! register)))
+
+(define-rule predicate
+  (FIXNUM-PRED-1-ARG (? predicate)
+		     (FIXNUM-2-ARGS FIXNUM-AND
+				    (OBJECT->FIXNUM (REGISTER (? register-1)))
+				    (OBJECT->FIXNUM (REGISTER (? register-2)))
+				    #f))
+  (QUALIFIER (not (eqv? register-1 register-2)))
+  (define (and&compare temp source)
+    (LAP (AND Q ,temp ,source)
+	 (SAL Q ,temp (&U ,scheme-type-width))))
+  (fixnum-branch! (fixnum-predicate/unary->binary predicate))
+  (cond ((temporary-copy-if-available register-1 'GENERAL)
+	 => (lambda (get-temp!)
+	      (let* ((source (any-reference register-2))
+		     (temp (get-temp!)))
+		(and&compare temp source))))
+	(else
+	 (let* ((source (any-reference register-1))
+		(temp (standard-move-to-temporary! register-2)))
+	   (and&compare temp source)))))
 
 (define (compare/reference*fixnum reference fixnum)
   (with-signed-immediate-operand (* fixnum fixnum-1)
     (lambda (operand)
       (LAP (CMP Q ,reference ,operand)))))
+
+(define (test/reference*fixnum reference fixnum)
+  (with-signed-immediate-operand (* fixnum fixnum-1)
+    (lambda (operand)
+      (LAP (TEST Q ,reference ,operand)))))
+
+(define (test/reference*constant reference constant)
+  (with-signed-immediate-operand constant
+    (lambda (operand)
+      (LAP (TEST Q ,reference ,operand)))))
 
 ;; This assumes that the immediately preceding instruction sets the
 ;; condition code bits correctly.
@@ -454,16 +700,10 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?				;ignore
-    ;++ This is suboptimal in the cases when SOURCE1 is stored only in
-    ;++ rcx or when SOURCE2 is stored only in rax, and either one is
-    ;++ dead (which is often the case).  In such cases, this generates
-    ;++ code to needlessly save the dead pseudo-registers into their
-    ;++ homes simply because they were stored in rax and rcx.  It'd be
-    ;++ nice to have a variant of LOAD-MACHINE-REGISTER! for multiple
-    ;++ sources and targets, which would compute a parallel assignment
-    ;++ using machine registers if available for temporaries, or the
-    ;++ homes of pseudo-registers if not.
+    (assert (not overflow?))
+    (need-registers! (list rax rdx))
+    ;; XXX This may make suboptimal use of temporaries -- would be nice
+    ;; to have a parallel-assignment variant of load-machine-register!.
     (let* ((load-rax (load-machine-register! source1 rax))
 	   (load-rcx (load-machine-register! source2 rcx)))
       (delete-dead-registers!)
@@ -476,21 +716,25 @@ USA.
 	   ,@(invoke-hook/subroutine entry:compiler-fixnum-shift)))))
 
 (define (do-division target source1 source2 result-reg)
-  (prefix-instructions! (load-machine-register! source1 rax))
-  (need-register! rax)
-  (require-register! rdx)
-  (rtl-target:=machine-register! target result-reg)
-  (let ((source2 (any-reference source2)))
+  (assert (or (= result-reg rax) (= result-reg rdx)))
+  (need-registers! (list rax rdx))
+  (let* ((load-rax (load-machine-register! source1 rax))
+	 (clear-rdx (clear-registers! rdx))
+	 (source2 (any-reference source2)))
+    (delete-dead-registers!)
+    (rtl-target:=machine-register! target result-reg)
     ;; Before IDIV, the high (most significant) half of the 128-bit
     ;; dividend is in RDX, and the low (least significant) half is in
     ;; RAX.  After, the quotient is in RAX, and the remainder in RDX.
-    ;; First we fill RDX with the sign of RAX.
-    (LAP (CSE Q (R ,rdx) (R ,rax))
+    ;; First we fill RDX with the sign of RAX with CSE (= CQO/CQTO).
+    (LAP ,@load-rax
+	 ,@clear-rdx
+	 (CSE Q (R ,rdx) (R ,rax))
 	 (IDIV Q ((R ,rdx) : (R ,rax)) ,source2))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (if (= source2 source1)
 	(load-fixnum-constant 1 (target-register-reference target))
 	(LAP ,@(do-division target source1 source2 rax)
@@ -498,7 +742,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (if (= source2 source1)
 	(load-fixnum-constant 0 (target-register-reference target))
 	(do-division target source1 source2 rdx))))
@@ -513,7 +757,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -525,7 +769,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -538,7 +782,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (load-fixnum-constant 0 target))
 	  ((= n -1)
@@ -550,7 +794,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
@@ -562,39 +806,1163 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    ;; We only test for overflow in small nonzero left shifts.
+    (assert (or (< 0 n (- scheme-datum-width 1)) (not overflow?)))
     (cond ((zero? n)
+	   ;; XXX Should dispense with this case earlier.
+	   (assert (not overflow?))
 	   (LAP))
 	  ((not (<= (- 0 scheme-datum-width) n scheme-datum-width))
+	   (assert (not overflow?))
 	   (load-fixnum-constant 0 target))
-	  ((not (negative? n))
-	   (LAP (SHL Q ,target (&U ,n))))
+	  ((positive? n)
+	   (if (and overflow? (> n 1))
+	       ;; SHL fails to set the overflow flag for n>1, so
+	       ;; instead we multiply by an immediate.
+	       (with-unsigned-immediate-operand (expt 2 n)
+		 (lambda (operand)
+		   (LAP (IMUL Q ,target ,target ,operand))))
+	       (LAP (SHL Q ,target (&U ,n)))))
 	  (else
-	   (LAP (SHR Q ,target (&U ,(- 0 n)))
+	   (assert (not overflow?))
+	   (LAP (SAR Q ,target (&U ,(- 0 n)))
 		,@(word->fixnum target))))))
 
-;;; I don't think this rule is ever hit.  In any case, it does nothing
-;;; useful over the other rules; formerly, it used a single OR to
-;;; affix the type tag, since the two SHR's (one for the program, one
-;;; to make room for the type tag) could be merged by adding the
-;;; shift, but OR doesn't take 64-bit immediates, so that no longer
-;;; works.
+;; (+ x y <const>)
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (REGISTER (? source1))
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 #f))
+  (QUALIFIER (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (lea-addition target source1 source2 1 addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 (REGISTER (? source1))
+			 #f))
+  (QUALIFIER (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (lea-addition target source1 source2 1 addend))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM->OBJECT
-	   (FIXNUM-2-ARGS FIXNUM-LSH
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (REGISTER (? source1))
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  #f)))
+  (QUALIFIER (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (lea-addition->object target source1 source2 1 addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  (REGISTER (? source1))
+			  #f)))
+  (QUALIFIER (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (lea-addition->object target source1 source2 1 addend))
+
+;; (+ x (* y {1,2,4,8}))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (REGISTER (? source1))
+			 (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? scale)))
+					#f)
+			 #f))
+  (QUALIFIER (memv scale '(1 2 4 8)))
+  (lea-addition target source1 source2 scale 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? scale)))
+					#f)
+			 (REGISTER (? source1))
+			 #f))
+  (QUALIFIER (memv scale '(1 2 4 8)))
+  (lea-addition target source1 source2 scale 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (REGISTER (? source1))
+			  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? scale)))
+					 #f)
+			  #f)))
+  (QUALIFIER (memv scale '(1 2 4 8)))
+  (lea-addition->object target source1 source2 scale 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? scale)))
+					 #f)
+			  (REGISTER (? source1))
+			  #f)))
+  (QUALIFIER (memv scale '(1 2 4 8)))
+  (lea-addition->object target source1 source2 scale 0))
+
+;; (+ x (lsh y {0,1,2,3}))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (REGISTER (? source1))
+			 (FIXNUM-2-ARGS FIXNUM-LSH
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? power)))
+					#f)
+			 #f))
+  (QUALIFIER (memv power '(0 1 2 3)))
+  (lea-addition target source1 source2 (expt 2 power) 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS FIXNUM-LSH
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? power)))
+					#f)
+			 (REGISTER (? source1))
+			 #f))
+  (QUALIFIER (memv power '(0 1 2 3)))
+  (lea-addition target source1 source2 (expt 2 power) 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (REGISTER (? source1))
+			  (FIXNUM-2-ARGS FIXNUM-LSH
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? power)))
+					 #f)
+			  #f)))
+  (QUALIFIER (memv power '(0 1 2 3)))
+  (lea-addition->object target source1 source2 (expt 2 power) 0))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS FIXNUM-LSH
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? power)))
+					 #f)
+			  (REGISTER (? source1))
+			  #f)))
+  (QUALIFIER (memv power '(0 1 2 3)))
+  (lea-addition->object target source1 source2 (expt 2 power) 0))
+
+;; (+ x (* y {1,2,4,8}) <const>)
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source1))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? scale)))
+					#f)
+			 #f))
+  (QUALIFIER
+   (and (memv scale '(1 2 4 8))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition target source1 source2 scale addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? scale)))
+					#f)
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source1))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 #f))
+  (QUALIFIER
+   (and (memv scale '(1 2 4 8))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition target source1 source2 scale addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source1))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? scale)))
+					 #f)
+			  #f)))
+  (QUALIFIER
+   (and (memv scale '(1 2 4 8))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition->object target source1 source2 scale addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? scale)))
+					 #f)
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source1))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  #f)))
+  (QUALIFIER
+   (and (memv scale '(1 2 4 8))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition->object target source1 source2 scale addend))
+
+;; (+ x (lsh y {0,1,2,3}) <const>)
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source1))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 (FIXNUM-2-ARGS FIXNUM-LSH
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? power)))
+					#f)
+			 #f))
+  (QUALIFIER
+   (and (memv power '(0 1 2 3))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition target source1 source2 (expt 2 power) addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS PLUS-FIXNUM
+			 (FIXNUM-2-ARGS FIXNUM-LSH
+					(REGISTER (? source2))
+					(OBJECT->FIXNUM (CONSTANT (? power)))
+					#f)
+			 (FIXNUM-2-ARGS PLUS-FIXNUM
+					(REGISTER (? source1))
+					(OBJECT->FIXNUM (CONSTANT (? addend)))
+					#f)
+			 #f))
+  (QUALIFIER
+   (and (memv power '(0 1 2 3))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition target source1 source2 (expt 2 power) addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source1))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  (FIXNUM-2-ARGS FIXNUM-LSH
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? power)))
+					 #f)
+			  #f)))
+  (QUALIFIER
+   (and (memv power '(0 1 2 3))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition->object target source1 source2 (expt 2 power) addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (FIXNUM-2-ARGS FIXNUM-LSH
+					 (REGISTER (? source2))
+					 (OBJECT->FIXNUM (CONSTANT (? power)))
+					 #f)
+			  (FIXNUM-2-ARGS PLUS-FIXNUM
+					 (REGISTER (? source1))
+					 (OBJECT->FIXNUM (CONSTANT (? addend)))
+					 #f)
+			  #f)))
+  (QUALIFIER
+   (and (memv power '(0 1 2 3))
+	(fits-in-signed-long? (shift-left addend scheme-type-width))))
+  (lea-addition->object target source1 source2 (expt 2 power) addend))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (REGISTER (? source1))
+			  (REGISTER (? source2))
+			  #f)))
+  (lea-addition->object target source1 source2 1 0))
+
+(define (lea-addition target source1 source2 scale addend)
+  (assert (memv scale '(1 2 4 8)))
+  (assert (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (let ((offset (shift-left addend scheme-type-width)))
+    (with-lea-addition target source1 offset source2 scale
+      (lambda (target addition)
+	target				;ignore
+	addition))))
+
+(define (lea-addition->object target source1 source2 scale addend)
+  (assert (memv scale '(1 2 4 8)))
+  (assert (fits-in-signed-long? (shift-left addend scheme-type-width)))
+  (let ((offset (+ (shift-left addend scheme-type-width) type-code:fixnum)))
+    (with-lea-addition target source1 offset source2 scale
+      (lambda (target addition)
+	(LAP ,@addition
+	     (ROR Q ,target (&U ,scheme-type-width)))))))
+
+(define (with-lea-addition target source1 offset source2 scale operate)
+  (assert (memv scale '(1 2 4 8)))
+  (assert (fits-in-signed-long? offset))
+  (define (two-way target source)
+    (operate
+     (register-reference target)
+     (cond ((and (zero? offset) (= scale 1))
+	    (LAP (ADD Q (R ,target) (R ,source))))
+	   ((zero? offset)
+	    (LAP (LEA Q (R ,target) (@RI ,target ,source ,scale))))
+	   (else
+	    (LAP (LEA Q (R ,target) (@ROI ,target ,offset ,source ,scale)))))))
+  (define (three-way target source1 source2)
+    (operate
+     (register-reference target)
+     (if (zero? offset)
+	 (LAP (LEA Q (R ,target) (@RI ,source1 ,source2 ,scale)))
+	 (LAP (LEA Q (R ,target) (@ROI ,source1 ,offset ,source2 ,scale))))))
+  (let* ((alias1 (register-alias source1 'GENERAL))
+	 (alias2 (register-alias source2 'GENERAL)))
+    ;; If one of the sources has no aliases, just load from its home
+    ;; into a new alias for the target.
+    (cond ((not alias1)
+	   (let* ((source (or alias2 (load-alias-register! source2 'GENERAL)))
+		  (target (move-to-alias-register! source1 'GENERAL target)))
+	     (two-way target source)))
+	  ((not alias2)
+	   (let* ((source alias1)
+		  (target (move-to-alias-register! source2 'GENERAL target)))
+	     (two-way target source)))
+	  ;; If one of the sources has an extra alias, let that one
+	  ;; become an alias for the target instead.
+	  ((register-copy-if-available source1 'GENERAL target)
+	   => (lambda (get-target)
+		(two-way (reference->register (get-target)) alias2)))
+	  ((register-copy-if-available source2 'GENERAL target)
+	   => (lambda (get-target)
+		(two-way (reference->register (get-target)) alias1)))
+	  ;; No copies of the sources available, so allocate an alias
+	  ;; for the target and use the three-operand version.
+	  (else
+	   (three-way (target-register target) alias1 alias2)))))
+
+(define (reference->register reference)
+  (if (not (and (pair? reference)
+		(eq? 'R (car reference))
+		(pair? (cdr reference))
+		(null? (cddr reference))))
+      (error "Invalid register reference:" reference))
+  (cadr reference))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
 			  (REGISTER (? source))
 			  (OBJECT->FIXNUM (CONSTANT (? n)))
 			  #f)))
-  (QUALIFIER (and (exact-integer? n) (< (- scheme-datum-width) n 0)))
+  (add-immediate-and-tag target source n #f))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS PLUS-FIXNUM
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source))
+			  #f)))
+  (add-immediate-and-tag target source n #f))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-1-ARG ONE-PLUS-FIXNUM
+			 (REGISTER (? source))
+			 #f)))
+  (add-immediate-and-tag target source 1 #f))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS MINUS-FIXNUM
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (add-immediate-and-tag target source (- n) #f))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS MINUS-FIXNUM
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source))
+			  #f)))
+  (add-immediate-and-tag target source n #t))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-1-ARG MINUS-ONE-PLUS-FIXNUM
+			 (REGISTER (? source))
+			 #f)))
+  (add-immediate-and-tag target source -1 #f))
+
+(define (add-immediate-and-tag target source n negate?)
   (fixnum-1-arg target source
     (lambda (target)
-      (LAP (SHR Q ,target (&U ,(- scheme-type-width n)))
-	   (SHL Q ,target (&U ,scheme-type-width))
-	   (OR Q ,target (&U ,(ucode-type FIXNUM)))
-	   (ROR Q ,target (&U ,scheme-type-width))))))
+      (let ((n (+ (shift-left n scheme-type-width) type-code:fixnum)))
+	(define (add) (LAP (ADD Q ,target (& ,n))))
+	(define (sub) (LAP (SUB Q ,target (& ,(- n)))))
+	(define (general)
+	  (with-signed-immediate-operand n
+	    (lambda (operand)
+	      (LAP (ADD Q ,target ,operand)))))
+	(LAP ,@(if negate? (LAP (NEG Q ,target)) (LAP))
+	     ,@(cond ((fits-in-signed-byte? n) (add))
+		     ((fits-in-signed-byte? (- n)) (sub))
+		     ((fits-in-signed-long? n) (add))
+		     ((fits-in-signed-long? (- n)) (sub))
+		     (else (general)))
+	     (ROR Q ,target (&U ,scheme-type-width)))))))
+
+;;; NOT tricks
 
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-1-ARG FIXNUM-NOT (OBJECT->FIXNUM (REGISTER (? source))) #f))
+  ;; Save a word->fixnum instruction: complement the word first before
+  ;; shifting off the tag, so that we'll get zeros rather than ones in
+  ;; the low order bits, as we want.
+  (let ((target (standard-move-to-target! source target)))
+    (LAP (NOT Q ,target)
+	 (SAL Q ,target (&U ,scheme-type-width)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT (FIXNUM-1-ARG FIXNUM-NOT (REGISTER (? source)) #f)))
+  ;; Use XOR with a sign-extended immediate operand to simultaneously
+  ;; (a) complement the value of the fixnum, and (b) set the tag bits.
+  (let ((target (standard-move-to-target! source target))
+	(magic-bits
+	 (+ (* -1 (expt 2 scheme-type-width)) type-code:fixnum)))
+    (assert (< magic-bits 0))		;Sign-extend with 1 to complement.
+    (LAP (XOR Q ,target (& ,magic-bits))
+	 (ROR Q ,target (&U ,scheme-type-width)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-1-ARG FIXNUM-NOT
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  ;; XOR with the datum mask to complement the value of the fixnum
+  ;; without affecting its tag.
+  (let ((target (standard-move-to-target! source target)))
+    (LAP (XOR Q ,target (R ,regnum:datum-mask)))))
+
+;;; OR tricks, part 1: mostly intermediate rules en route to good stuff.
+
+;; XXX Can we arrange to sort operands into a canonical order (say,
+;; constant first, then register) so that we don't need to duplicate
+;; every rule for commutative operations?
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 (REGISTER (? untagged-source))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-ior target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (REGISTER (? untagged-source))
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-ior target tagged-source untagged-source))
+
+(define (detag-and-ior target tagged-source untagged-source)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (source-register-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (OR Q ,target ,untagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (OBJECT->FIXNUM (REGISTER (? source2)))
+			 #f))
+  ;; Save a shift by ORing the tagged data first.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (OR Q ,target ,source)
+	  ,@(object->fixnum target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (detag-and-ior-immediate target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-OR
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f))
+  (detag-and-ior-immediate target source n))
+
+(define (detag-and-ior-immediate target source n)
+  ;; Take advantage of the facts that we don't care what happens to the
+  ;; tag bits (which are all set to 1 if n is negative) and that
+  ;; unshifted operands are smaller.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n 0)
+	(object->fixnum target)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (OR Q ,target ,operand)
+		 ;; If n is negative, then we can use a short
+		 ;; sign-extended operand, but the tag will not be
+		 ;; intact so we can't rightly use OBJECT->FIXNUM --
+		 ;; the peephole optimizer might get confused by it.
+		 ,@(if (< n 0)
+		       (LAP (SAL Q ,target (&U ,scheme-type-width)))
+		       (object->fixnum target))))))))
+
+;;; OR tricks, part 2: detag/tag on registers.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  (REGISTER (? untagged-source))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-ior-tag target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (REGISTER (? untagged-source))
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-ior-tag target tagged-source untagged-source))
+
+(define (detag-ior-tag target tagged-source untagged-source)
+  ;; Take advantage of the tag in the tagged source to fill the
+  ;; zero-filled bits from shifting the untagged source into position.
+  (assert compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((tagged-source (source-register-reference tagged-source))
+	 (target (standard-move-to-target! untagged-source target)))
+    (LAP (SHR Q ,target (&U ,scheme-type-width))
+	 (OR Q ,target ,tagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (REGISTER (? source1)))
+			  (OBJECT->FIXNUM (REGISTER (? source2)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  ;; OR on two fixnum tags conveniently preserves them.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (OR Q ,target ,source)))))
+
+;;; OR tricks, part 3: taking advantage of constants.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (ior-immediate-and-tag target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source))
+			  #f)))
+  (ior-immediate-and-tag target source n))
+
+(define (ior-immediate-and-tag target source n)
+  ;; Use the low-order bits of the immediate with OR to set the tag
+  ;; before rotating it into place.
+  (let ((target (standard-move-to-target! source target)))
+    (with-signed-immediate-operand
+	(bitwise-ior (shift-left n scheme-type-width) type-code:fixnum)
+      (lambda (operand)
+	(LAP (OR Q ,target ,operand)
+	     (ROR Q ,target (&U ,scheme-type-width)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Sign-extension must not set tag bits.
+  (ior-immediate-in-place target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-OR
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Sign-extension must not set tag bits.
+  (ior-immediate-in-place target source n))
+
+(define (ior-immediate-in-place target source n)
+  (assert compiler:assume-safe-fixnums?)
+  (assert (<= 0 n))		 ;Sign-extension must not set tag bits.
+  ;; OR preserves the tag, as long as the operand is not sign-extended
+  ;; into setting all the tag bits.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n 0)
+	(LAP)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (OR Q ,target ,operand)))))))
+
+;;; XOR tricks, part 1
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 (REGISTER (? untagged-source))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-xor target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (REGISTER (? untagged-source))
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-xor target tagged-source untagged-source))
+
+(define (detag-and-xor target tagged-source untagged-source)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (source-register-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (XOR Q ,target ,untagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  (REGISTER (? untagged-source))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-xor-tag target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (REGISTER (? untagged-source))
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-xor-tag target tagged-source untagged-source))
+
+(define (detag-xor-tag target tagged-source untagged-source)
+  ;; Take advantage of the tag in the tagged source and the
+  ;; zero-filling of shr in the untagged source, tag xor 0 = tag, to
+  ;; save some shifts, or's, and rotates.
+  (assert compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((tagged-source (source-register-reference tagged-source))
+	 (target (standard-move-to-target! untagged-source target)))
+    (LAP (SHR Q ,target (&U ,scheme-type-width))
+	 (XOR Q ,target ,tagged-source))))
+
+;;; XOR tricks, part 2
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (OBJECT->FIXNUM (REGISTER (? source2)))
+			 #f))
+  ;; Save a shift by XORing the tagged data first.  This zeros the tag,
+  ;; but we don't care because we're going to drop it anyway.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (XOR Q ,target ,source)
+	  ,@(object->fixnum target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (detag-and-xor-immediate target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-XOR
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f))
+  (detag-and-xor-immediate target source n))
+
+(define (detag-and-xor-immediate target source n)
+  ;; Take advantage of the facts that we don't care what happens to the
+  ;; tag bits (which are all toggled if n is negative) and that
+  ;; unshifted operands are smaller.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n 0)
+	(object->fixnum target)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (XOR Q ,target ,operand)
+		 ;; If n is negative, then we can use a short
+		 ;; sign-extended operand, but the tag will not be
+		 ;; intact so we can't rightly use OBJECT->FIXNUM --
+		 ;; the peephole optimizer might get confused by it.
+		 ,@(if (< n 0)
+		       (LAP (SAL Q ,target (&U ,scheme-type-width)))
+		       (object->fixnum target))))))))
+
+;;; XOR tricks, part 3
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (xor-immediate-and-tag target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source))
+			  #f)))
+  (xor-immediate-and-tag target source n))
+
+(define (xor-immediate-and-tag target source n)
+  ;; Use one XOR to do the user's bidding and set the tag, since the
+  ;; low bits are guaranteed to be zero at this point; then it's just a
+  ;; matter of a single rotate to turn it into a tagged object.
+  (let ((target (standard-move-to-target! source target)))
+    (with-signed-immediate-operand
+	(bitwise-xor (shift-left n scheme-type-width) type-code:fixnum)
+      (lambda (operand)
+	(LAP (XOR Q ,target ,operand)
+	     (ROR Q ,target (&U ,scheme-type-width)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Must not toggle tag.
+  (xor-immediate-in-place target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-XOR
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Must not toggle tag.
+  (xor-immediate-in-place target source n))
+
+(define (xor-immediate-in-place target source n)
+  (assert compiler:assume-safe-fixnums?)
+  (assert (<= 0 n))		   ;Sign-extension must not toggle tag.
+  ;; Take advantage of the facts that positive xor with any
+  ;; fixnum-sized integer will preserve the tag, and that unshifted
+  ;; operands are smaller.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n 0)
+	(LAP)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (XOR Q ,target ,operand)))))))
+
+;;; AND tricks, part 1: mostly intermediate rules en route to good stuff.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 (REGISTER (? untagged-source))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-and target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (REGISTER (? untagged-source))
+			 (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			 #f))
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-and target tagged-source untagged-source))
+
+(define (detag-and-and target tagged-source untagged-source)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (source-register-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (AND Q ,target ,untagged-source))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (OBJECT->FIXNUM (REGISTER (? source2)))
+			 #f))
+  ;; Save a shift by ANDing the tagged data first.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (AND Q ,target ,source)
+	  ,@(object->fixnum target)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (detag-and-and-immediate target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-AND
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f))
+  (detag-and-and-immediate target source n))
+
+(define (detag-and-and-immediate target source n)
+  ;; Take advantage of the facts that we don't care what happens to the
+  ;; tag bits (which are all cleared if n is nonnegative) and that
+  ;; unshifted operands are smaller.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n -1)
+	(object->fixnum target)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (AND Q ,target ,operand)
+		 ;; If n is nonnegative, the tag will not be intact, so
+		 ;; we can't rightly use OBJECT->FIXNUM -- the peephole
+		 ;; optimizer might get confused by it.
+		 ,@(if (<= 0 n)
+		       (LAP (SAL Q ,target (&U ,scheme-type-width)))
+		       (object->fixnum target))))))))
+
+;;; AND tricks, part 2: detag/tag on registers.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  (REGISTER (? untagged-source))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-tag target tagged-source untagged-source))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (REGISTER (? untagged-source))
+			  (OBJECT->FIXNUM (REGISTER (? tagged-source)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (detag-and-tag target tagged-source untagged-source))
+
+(define (detag-and-tag target tagged-source untagged-source)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert compiler:assume-safe-fixnums?)
+  (assert (not (eqv? tagged-source untagged-source)))
+  (let* ((untagged-source (source-register-reference untagged-source))
+	 (target (standard-move-to-target! tagged-source target)))
+    (LAP ,@(object->fixnum target)
+	 (AND Q ,target ,untagged-source)
+	 ,@(fixnum->object target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (REGISTER (? source1)))
+			  (OBJECT->FIXNUM (REGISTER (? source2)))
+			  #f)))
+  (QUALIFIER compiler:assume-safe-fixnums?)
+  ;; AND on two fixnum tags conveniently preserves them.
+  ((lambda (operate)
+     ((fixnum-2-args/standard #t operate) target source1 source2 #f))
+   (lambda (target source)
+     (LAP (AND Q ,target ,source)))))
+
+;;; AND tricks, part 3: taking advantage of constants.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n))))))
+  (and-immediate-and-tag target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (REGISTER (? source)))))
+  (and-immediate-and-tag target source n))
+
+(define (and-immediate-and-tag target source n)
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n -1)
+	(fixnum->object target)
+	(with-signed-immediate-operand (shift-left n scheme-type-width)
+	  (lambda (operand)
+	    (LAP (AND Q ,target ,operand)
+		 ,@(fixnum->object target)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(< n 0)))			;Sign-extension must not clear tag.
+  (and-immediate-in-place target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-AND
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(< n 0)))			;Sign-extension must not clear tag.
+  (and-immediate-in-place target source n))
+
+(define (and-immediate-in-place target source n)
+  (assert (< n 0))		    ;Sign-extension must not clear tag.
+  ;; OR preserves the tag, as long as the operand is not sign-extended
+  ;; into clearing all the tag bits.
+  (let ((target (standard-move-to-target! source target)))
+    (if (= n -1)
+	(LAP)
+	(with-signed-immediate-operand n
+	  (lambda (operand)
+	    (LAP (AND Q ,target ,operand)))))))
+
+;;; ANDC tricks
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-ANDC
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 (REGISTER (? source2))
+			 #f))
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? source1 source2)))
+  (let* ((source2 (standard-move-to-temporary! source2))
+	 (target (standard-move-to-target! source1 target)))
+    (LAP ,@(object->fixnum target)
+	 (NOT Q ,source2)
+	 (AND Q ,target ,source2))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-ANDC
+			 (REGISTER (? source2))
+			 (OBJECT->FIXNUM (REGISTER (? source1)))
+			 #f))
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (assert (not (eqv? source1 source2)))
+  (let* ((source1 (standard-move-to-temporary! source1))
+	 (target (standard-move-to-target! source2 target)))
+    (LAP ,@(object->fixnum source1)
+	 (NOT Q ,source1)
+	 (AND Q ,target ,source1))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-ANDC
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 #f))
+  (detag-and-and-immediate target source (bitwise-not n)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-ANDC
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (and-immediate-and-tag target source (bitwise-not n)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-ANDC
+			 (OBJECT->FIXNUM (CONSTANT (? n)))
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #f))
+  ;; Intermediate rule -- no advantage but paves way to composition.
+  (let ((target (standard-move-to-target! source target)))
+    (with-signed-immediate-operand n
+      (lambda (operand)
+	(LAP (NOT Q ,target)
+	     (AND Q ,target ,operand)
+	     ,@(if (<= 0 n)
+		   ;; If n is nonnegative, the tag will not be intact,
+		   ;; so we can't rightly use OBJECT->FIXNUM -- the
+		   ;; peephole optimizer might get confused by it.
+		   (LAP (SAL Q ,target (&U ,scheme-type-width)))
+		   (object->fixnum target)))))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-ANDC
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(<= 0 n)))			;Sign-extension must not clear tag.
+  (and-immediate-in-place target source (bitwise-not n)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS FIXNUM-ANDC
+			  (OBJECT->FIXNUM (CONSTANT (? n)))
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #f)))
+  (QUALIFIER
+   (and compiler:assume-safe-fixnums?
+	(< n 0)))			;Sign-extension must not clear tag.
+  (let ((target (standard-move-to-target! source target)))
+    (with-signed-immediate-operand n
+      (lambda (operand)
+	(LAP (XOR Q ,target (R ,regnum:datum-mask))
+	     (AND Q ,target ,operand))))))
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS FIXNUM-LSH
@@ -612,7 +1980,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-constant
   (lambda (target n overflow?)
-    overflow?				; ignored
+    (assert (not overflow?))
     (cond ((= n 1)
 	   (LAP))
 	  ((= n -1)
@@ -645,7 +2013,7 @@ USA.
   (lambda (target n overflow?)
     ;; (remainder x y) is 0 or has the sign of x.
     ;; Thus we can always "divide" by (abs y) to make things simpler.
-    overflow?				; ignored
+    (assert (not overflow?))
     (let ((n (if (negative? n) (- 0 n) n)))
       (cond ((= n 1)
 	     (load-fixnum-constant 0 target))
@@ -683,103 +2051,178 @@ USA.
 
 ;;;; Fast division by multiplication
 
-(define (fast-divide-prepare divisor width)
-  (let ((zeros (integer-length (- divisor 1))))
-    (values
-     (+ 1
-	(quotient (shift-left (- (shift-left 1 zeros) divisor) width) divisor))
-     (if (> zeros 1) 1 zeros)
-     (if (= zeros 0) 0 (- zeros 1)))))
+;;; Torbjörn Granlund and Peter L. Montgomery, `Division by Invariant
+;;; Integers using Multiplication', Proceedings of ACM SIGPLAN 1994
+;;; Conference on Programming Language Design and Implementation,
+;;; pp. 61--72.
+;;;
+;;; https://dl.acm.org/doi/10.1145/178243.178249
+;;; https://gmplib.org/~tege/divcnst-pldi94.pdf
+;;;
+;;; We write W for N (width of a word in bits) to avoid
+;;; case-insensitive collision with n.
+
+(define (choose-multiplier d prec W)
+  ;; Fig 6.2: Selection of multiplier and shift count.
+  (assert (<= 1 prec W))
+  (assert (<= 1 d (expt 2 prec)))
+  (let ((L (integer-length (- d 1))))	;L := ceil(lg d)
+    (let loop
+	((s L)
+	 (m-low (quotient (expt 2 (+ W L)) d))
+	 (m-high
+	  (quotient (+ (expt 2 (+ W L))
+		       (expt 2 (+ W L (- prec))))
+		    d)))
+      (assert (= m-low (quotient (expt 2 (+ W s)) d)))
+      (assert
+       (= m-high
+	  (quotient (* (expt 2 (+ W s)) (+ 1 (expt 2 (- prec))))
+		    d)))
+      (assert (< m-low m-high))
+      (if (and (< (quotient m-low 2) (quotient m-high 2))
+	       (> s 0))
+	  (loop (- s 1) (quotient m-low 2) (quotient m-high 2))
+	  (values m-high s L)))))
 
 ;;; For reference, this is what the code generated below computes.
 
-(define (fast-quotient n d width multiplier s1 s2)
-  d					;ignore
-  (let ((t (shift-right (* n multiplier) width)))
-    (shift-right (+ t (shift-right (- n t) s1)) s2)))
+(define (fast-quotient n d W m s L)
+  ;; Fig. 5.2: Optimized code generation of signed q = TRUNC(n/d) for
+  ;; constant d =/= 0.
+  ((lambda (q) (if (< d 0) (- q) q))
+   (let ((xsign-n (shift-right n (- W 1))))
+     (assert (memv xsign-n '(0 -1)))
+     (assert (eqv? (negative? xsign-n) (negative? n)))
+     (define (mulsh x y) (shift-right (* x y) W))
+     (cond ((= (abs d) 1)
+	    ;; There is a typo in the paper -- it says `Issue q = d' in
+	    ;; case |d| = 1, but obviously that has to mean `q = n'.
+	    n)
+	   ((= (abs d) (expt 2 L))
+	    (shift-right (+ n (shift-left (shift-right n (- L 1)) (- W L))) L))
+	   ((< m (expt 2 (- W 1)))
+	    (- (shift-right (mulsh m n) s) xsign-n))
+	   (else
+	    (- (shift-right (+ n (mulsh (- m (expt 2 W)) n)) s) xsign-n))))))
 
-(define (fast-remainder n d width multiplier s1 s2)
-  (- n (* d (fast-quotient n d width multiplier s1 s2))))
-
-(define (fast-divide-prepare/signed divisor width)
-  (fast-divide-prepare (abs divisor) width))
-
-(define (fast-quotient/signed n d width multiplier s1 s2)
-  (define (do-unsigned n d)
-    (fast-quotient n d width multiplier s1 s2))
-  (if (negative? d)
-      (if (negative? n)
-	  (do-unsigned (- 0 n) (- 0 d))
-	  (- 0 (do-unsigned n (- 0 d))))
-      (if (negative? n)
-	  (- 0 (do-unsigned (- 0 n) d))
-	  (do-unsigned n d))))
-
-(define (fast-remainder/signed n d width multiplier s1 s2)
-  (- n (* d (fast-quotient/signed n d width multiplier s1 s2))))
-
-(define (fast-division target* source* d finish)
-  (flush-register! rax)
-  (need-register! rax)
-  (flush-register! rdx)
-  (need-register! rdx)
-  (receive (multiplier s1 s2) (fast-divide-prepare (abs d) scheme-object-width)
-    (let* ((if-negative1 (generate-label 'QUO-NEGATIVE-1))
-	   (if-negative2 (generate-label 'QUO-NEGATIVE-2))
-	   (merge1 (generate-label 'QUO-MULTIPLY))
-	   (merge2 (generate-label 'QUO-RESULT))
-	   (source (source-register-reference source*))
-	   (target (target-register-reference target*)))
-      (LAP (MOV Q ,target ,source)
-	   ;; Divide by 2^t so that factor doesn't mess us up.
-	   (SAR Q ,target (&U ,scheme-type-width))
-	   ;; No need to CMP; SAR sets the SF bit for us to detect
-	   ;; whether the input is negative.
-	   (JS B (@PCR ,if-negative1))
-	   (JMP (@PCR ,merge1))
-	  (LABEL ,if-negative1)
-	   (NEG Q ,target)
-	  (LABEL ,merge1)
-	   ;; MUL takes argument in rax, so put it there.
-	   (MOV Q (R ,rax) ,target)
-	   ;; Load the multiplier into rdx, which is free until we MUL.
-	   (MOV Q (R ,rdx) (&U ,multiplier))
-	   ;; Compute the 128-bit product rax * multiplier, storing the
-	   ;; high 64 bits in rdx and the low 64 bits in rax.  We are
-	   ;; not interested in the low 64 bits, so rax is now free for
-	   ;; reuse.
-	   (MUL Q ((R ,rdx) : (R ,rax)) (R ,rdx))
-	   ;; Compute ((((n - p) >> s1) + p) >> s2) where p is the high
-	   ;; 64 bits of the product, in rdx.
-	   (SUB Q ,target (R ,rdx))
-	   (SHR Q ,target (&U ,s1))
-	   (ADD Q ,target (R ,rdx))
-	   (SHR Q ,target (&U ,s2))
-	   ;; Reapply the sign.
-	   (CMP Q ,source (& 0))
-	   (JL B (@PCR ,if-negative2))
-	   ,@(if (negative? d) (LAP (NEG Q ,target)) (LAP))
-	   (JMP (@PCR ,merge2))
-	  (LABEL ,if-negative2)
-	   ,@(if (negative? d) (LAP) (LAP (NEG Q ,target)))
-	  (LABEL ,merge2)
-	   ;; Convert back to fixnum representation with low zero bits.
-	   (SAL Q ,target (&U ,scheme-type-width))
-	   ,@(finish target source (INST-EA (R ,rax)))))))
-
+(define (fast-remainder n d W m s L)
+  (- n (* d (fast-quotient n d W m s L))))
+
+(define (fast-division target source d move-to-target! move-to-temporary!
+		       finish)
+  (define (finish* target source temp)
+    (LAP ,@(if (negative? d) (LAP (NEG Q ,target)) (LAP))
+	 ,@(finish target source temp)))
+  (define (srl x c) (if (zero? c) (LAP) (LAP (SHR Q ,x (&U ,c)))))
+  (define (sra x c) (if (zero? c) (LAP) (LAP (SAR Q ,x (&U ,c)))))
+  (let ((W scheme-object-width))
+    (receive (m s L) (choose-multiplier (abs d) (- W 1) W)
+      (cond ((= (abs d) 1)
+	     ;; q = n
+	     (receive (target source) (move-to-target! source target)
+	       (finish* target source #f)))
+	    ((= (abs d) (expt 2 L))
+	     ;; q = sra(n + srl(sra(n, L - 1), W - L), L)
+	     (receive (target source) (move-to-target! source target)
+	       (let ((temp (temporary-register-reference)))
+		 (LAP (SAR Q ,target (&U ,scheme-type-width))
+		      (MOV Q ,temp ,target)
+		      ,@(sra target (- L 1))	;sra(n, L - 1)
+		      ,@(srl target (- W L))	;srl(sra(n, L - 1), W - L)
+		      (ADD Q ,target ,temp)	;n + srl(sra(n, L - 1), W - L)
+		      ,@(sra target L)		;q
+		      (SHL Q ,target (&U ,scheme-type-width))
+		      ,@(finish* target source temp)))))
+	    ((< m (expt 2 (- W 1)))
+	     ;; q = sra(mulsh(m, n), s) - xsign(n)
+	     (need-registers! (list rax rdx))
+	     (receive (temp source) (move-to-temporary! source)
+	       (delete-dead-registers!)
+	       (prefix-instructions! (clear-registers! rax rdx))
+	       (rtl-target:=machine-register! target rdx)
+	       (LAP (SAR Q ,temp (&U ,scheme-type-width))
+		    ,@(load-unsigned-immediate (INST-EA (R ,rdx)) m)
+		    (MOV Q (R ,rax) ,temp)
+		    ;; temp := xsign(n)
+		    (SAR Q ,temp (&U ,(- W 1)))
+		    ;; rdx := mulsh(m, n) = floor(m*n/2^64), rax := garbage
+		    (IMUL Q ((R ,rdx) : (R ,rax)) (R ,rdx))
+		    ;; rdx := sra(mulsh(m, n), s)
+		    ,@(sra (INST-EA (R ,rdx)) s)
+		    ;; rdx := sra(mulsh(m, n), s) - xsign(n)
+		    (SUB Q (R ,rdx) ,temp)
+		    (SHL Q (R ,rdx) (&U ,scheme-type-width))
+		    ,@(finish* (INST-EA (R ,rdx))
+			       source
+			       (INST-EA (R ,rax))))))
+	    (else
+	     ;; q = sra(n + mulsh(m - 2^W, n), s) - xsign(n)
+	     (assert (>= m (expt 2 (- W 1))))
+	     (need-registers! (list rax rdx))
+	     (receive (temp source) (move-to-temporary! source)
+	       (delete-dead-registers!)
+	       (prefix-instructions! (clear-registers! rax rdx))
+	       (rtl-target:=machine-register! target rdx)
+	       (LAP (SAR Q ,temp (&U ,scheme-type-width))
+		    ,@(load-signed-immediate (INST-EA (R ,rdx))
+					     (- m (expt 2 W)))
+		    (MOV Q (R ,rax) ,temp)
+		    ;; rdx := mulsh(m - 2^W, n) = floor((m - 2^W)*n/2^64)
+		    ;; rax := garbage
+		    (IMUL Q ((R ,rdx) : (R ,rax)) (R ,rdx))
+		    ;; rdx := n + mulsh(m - 2^W, n)
+		    (ADD Q (R ,rdx) ,temp)
+		    ;; temp := xsign(n)
+		    (SAR Q ,temp (&U ,(- W 1)))
+		    ;; rdx := sra(n + mulsh(m - 2^W, n), s)
+		    ,@(sra (INST-EA (R ,rdx)) s)
+		    ;; rdx := sra(n + mulsh(m - 2^W, n), s) - xsign(n)
+		    (SUB Q (R ,rdx) ,temp)
+		    (SHL Q (R ,rdx) (&U ,scheme-type-width))
+		    ,@(finish* (INST-EA (R ,rdx))
+			       source
+			       (INST-EA (R ,rax))))))))))
+
 (define (fixnum-quotient/constant target source d)
-  (fast-division target source d
-    (lambda (quotient numerator temp)
-      (declare (ignore quotient numerator temp))
+  (define (move-to-target! source target)
+    (values (standard-move-to-target! source target) #f))
+  (define (move-to-temporary! source)
+    (values (standard-move-to-temporary! source) #f))
+  (fast-division target source d move-to-target! move-to-temporary!
+    (lambda (target source temp)
+      target source temp
       (LAP))))
 
 (define (fixnum-remainder/constant target source d)
-  (fast-division target source d
-    (lambda (quotient numerator temp)
+  (define (move-to-target! source target)
+    ;; We could ask for a second alias if it exists after
+    ;; standard-move-to-target!, but it's unlikely for a second alias
+    ;; to exist, so we'll just allocate a temporary explicitly to keep
+    ;; it simple.
+    (let* ((target (standard-move-to-target! source target))
+	   (temp (allocate-temporary-register! 'GENERAL)))
+      (prefix-instructions! (reference->register-transfer target temp))
+      (values target (register-reference temp))))
+  (define (move-to-temporary! source)
+    ;; source-register-reference might return a needed register (rax or
+    ;; rdx), which will not do here.
+    ;;
+    ;; XXX Fix source-register so this can't happen, and/or audit all
+    ;; the other uses to verify it's not important.
+    (let* ((source (register-reference (load-alias-register! source 'GENERAL)))
+	   (temp (allocate-temporary-register! 'GENERAL)))
+      (prefix-instructions! (reference->register-transfer source temp))
+      (values (register-reference temp) source)))
+  (fast-division target source d move-to-target! move-to-temporary!
+    (lambda (target source temp)
       ;; Compute n - d q.
-      (LAP (MOV Q ,temp (& ,(- d)))
-	   (IMUL Q ,quotient ,temp)
-	   (ADD Q ,quotient ,numerator)))))
+      (LAP ,@(if (fits-in-signed-long? (- d))
+		 (LAP (IMUL Q ,target ,target (& ,(- d))))
+		 (let ((temp (or temp (temporary-register-reference))))
+		   (LAP (MOV Q ,temp (& ,(- d)))
+			(IMUL Q ,target ,temp))))
+	   (ADD Q ,target ,source)))))
 
 (define (fixnum-predicate/unary->binary predicate)
   (case predicate

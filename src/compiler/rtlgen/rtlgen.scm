@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -151,32 +152,22 @@ USA.
 	  (generate/rgraph
 	   (continuation/entry-node continuation)
 	   (lambda (node)
-	     (define (with-value generator)
-	       (let* ((temporary (rtl:make-pseudo-register))
-		      (prologue
-		       (rtl:make-assignment temporary
-					    (rtl:make-fetch register:value)))
-		      (intermezzo (generator temporary)))
-		 (values prologue intermezzo)))
 	     (receive (prologue intermezzo)
 		      (enumeration-case continuation-type
 			  (continuation/type continuation)
 			((PUSH)
-			 (with-value rtl:make-push))
-			((REGISTER)
-			 (with-value
-			  (lambda (expression)
-			    (rtl:make-assignment
-			     (continuation/register continuation)
-			     expression))))
-			((VALUE PREDICATE)
-			 (if (continuation/ever-known-operator? continuation)
-			     (with-value
-			      (lambda (expression)
-				(rtl:make-assignment
-				 (continuation/register continuation)
-				 expression)))
-			     (values (make-null-cfg) (make-null-cfg))))
+			 (let* ((temporary (rtl:make-pseudo-register))
+				(prologue
+				 (rtl:make-assignment
+				  temporary
+				  (rtl:make-fetch register:value)))
+				(intermezzo (rtl:make-push temporary)))
+			   (values prologue intermezzo)))
+			((REGISTER VALUE PREDICATE)
+			 (values (rtl:make-assignment
+				  (continuation/register continuation)
+				  (rtl:make-fetch register:value))
+				 (make-null-cfg)))
 			((EFFECT)
 			 (values (make-null-cfg) (make-null-cfg)))
 			(else

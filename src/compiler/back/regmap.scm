@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -590,14 +591,25 @@ exists, returns #F."
 		 (eqv? maybe-alias alias))
 	       (map-entry-aliases entry)))))
 
-(define (save-machine-register map register receiver)
+(define (save-machine-register map needed-registers register receiver)
   (let ((entry (map-entries:find-alias map register)))
     (if (and entry
 	     (not (map-entry-saved-into-home? entry))
 	     (null? (cdr (map-entry-aliases entry))))
-	(receiver (register-map:save-entry map entry)
-		  (save-into-home-instruction entry))
-	(receiver map (LAP)))))
+	(let ((type (register-type register)))
+	  (if (allocate-register-without-spill? map type needed-registers)
+	      (bind-allocator-values
+		  (make-free-register map type needed-registers)
+		(lambda (alias map instructions)
+		  (let ((transfer
+			 (register->register-transfer register alias)))
+		    (receiver (register-map:add-alias map entry alias)
+			      (cons alias needed-registers)
+			      (append! instructions transfer)))))
+	      (receiver (register-map:save-entry map entry)
+			needed-registers
+			(save-into-home-instruction entry))))
+	(receiver map needed-registers (LAP)))))
 
 (define (save-pseudo-register map register receiver)
   (let ((entry (map-entries:find-home map register)))

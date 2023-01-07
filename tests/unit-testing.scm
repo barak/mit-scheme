@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -122,13 +123,13 @@ USA.
 
 (define (run-sub-tests named-sub-tests)
   ;; Runs sub-tests in left-to-right order.
-  (let loop ((named-sub-tests named-sub-tests) (results '()))
-    (if (pair? named-sub-tests)
-	(loop (cdr named-sub-tests)
-	      (cons (cons (caar named-sub-tests)
-			  (run-sub-test (cdar named-sub-tests)))
-		    results))
-	(reverse! results))))
+  (reverse
+   (fold (lambda (sub-test results)
+	   (cons (cons (car sub-test)
+		       (run-sub-test (cdr sub-test)))
+		 results))
+	 '()
+	 named-sub-tests)))
 
 (define (name-and-flatten root-name item)
   (flatten (attach-names root-name item)))
@@ -317,9 +318,9 @@ USA.
 
 (define (decode-feature variant-type value)
   (case variant-type
-    ((PATTERN) (values (car value) (cdr value)))
-    ((DESCRIPTION) (values (list value) '()))
-    ((OBJECT) (values (list (marker)) (list value)))
+    ((pattern) (values (car value) (cdr value)))
+    ((description) (values (list value) '()))
+    ((object) (values (list (marker)) (list value)))
     (else (error "Unknown variant type:" variant-type))))
 
 (define-record-type <marker>

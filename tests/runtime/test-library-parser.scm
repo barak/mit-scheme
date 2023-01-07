@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -52,7 +53,7 @@ USA.
       (assert-equal (library-parsed-imports library)
 		    `((r7rs-import ,@ex1-imports)))
       (assert-equal (library-parsed-exports library)
-		    `((r7rs-export ,@ex1-exports)))
+		    `((r7rs-export #f ,@ex1-exports)))
       (assert-equal (library-parsed-contents library)
 		    (append-map convert-content ex1-contents))
       (assert-string= (library-filename library)
@@ -67,8 +68,8 @@ USA.
 		    `((r7rs-import ,@ex1-imports)
 		      (r7rs-import ,@ex2-extra-imports)))
       (assert-equal (library-parsed-exports library)
-		    `((r7rs-export ,@ex1-exports)
-		      (r7rs-export ,@ex2-extra-exports)))
+		    `((r7rs-export #f ,@ex1-exports)
+		      (r7rs-export #f ,@ex2-extra-exports)))
       (assert-equal (library-parsed-contents library)
 		    (append-map convert-content
 				(append ex2-extra-contents ex1-contents)))
@@ -115,3 +116,14 @@ USA.
 			  (life grid 80))))
 	(assert-string= (library-filename program)
 			r7rs-example-filename)))))
+
+(define-test 'read-r7rs-source:privte-exports
+  (lambda ()
+    (let ((source (read-r7rs-source private-exports-example-filename)))
+      (let ((libraries (r7rs-source-libraries source)))
+	(assert-true (list? libraries))
+	(assert-= (length libraries) 2)
+	(assert-equal (map library-name libraries)
+		      '((test amap)
+			(test amap impl))))
+      (assert-false (r7rs-source-program source)))))

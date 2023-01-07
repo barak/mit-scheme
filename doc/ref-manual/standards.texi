@@ -1,4 +1,4 @@
-@node Standards Support, GNU Free Documentation License, Win32 Package Reference, Top
+@node Standards Support, GNU Free Documentation License, Graphics, Top
 @chapter Standards Support
 
 @menu
@@ -12,15 +12,19 @@
 * SRFI 27::
 * SRFI 39::
 * SRFI 69::
+* SRFI 112::
 * SRFI 115::
 * SRFI 124::
 * SRFI 125::
 * SRFI 128::
+* SRFI 129::
 * SRFI 131::
 * SRFI 133::
 * SRFI 140::
 * SRFI 143::
 * SRFI 158::
+* SRFI 162::
+* SRFI 219::
 @end menu
 
 @node R7RS, SRFI 1, Standards Support, Standards Support
@@ -370,15 +374,6 @@ The core standard for the Scheme language.
 @item Support
 Fully supported, with exceptions:
 @itemize @bullet
-@item
-@code{syntax-rules} doesn't handle additional patterns after a segment
-pattern.  This means that @code{(syntax-rules () ((a b ... c)
-@dots{}))} doesn't work, even though @code{(syntax-rules () ((a b
-...) @dots{}))} does work.
-
-@item
-@code{syntax-rules} doesn't handle vector patterns or templates.
-
 @item
 Multiple values aren't supported correctly.  Instead @code{values}
 returns a special record containing the values, and
@@ -1373,7 +1368,7 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{parameterize}
 @end multitable
 
-@node SRFI 69, SRFI 115, SRFI 39, Standards Support
+@node SRFI 69, SRFI 112, SRFI 39, Standards Support
 @section SRFI 69: Basic Hash Tables
 @findex alist->hash-table
 @findex hash
@@ -1442,7 +1437,41 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{string-hash}
 @end multitable
 
-@node SRFI 115, SRFI 124, SRFI 69, Standards Support
+@node SRFI 112, SRFI 115, SRFI 69, Standards Support
+@section SRFI 112: Environment Inquiry
+@findex cpu-architecture
+@findex implementation-name
+@findex implementation-version
+@findex machine-name
+@findex os-name
+@findex os-version
+
+@cartouche
+@table @b
+@item Description
+Provides human-readable information at run time about the hardware and
+software configuration on which a Scheme program is being executed.
+@item URL
+@srfiurl{112}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 112)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{cpu-architecture}
+@tab @nicode{implementation-name}
+@item @nicode{implementation-version}
+@tab @nicode{machine-name}
+@item @nicode{os-name}
+@tab @nicode{os-version}
+@end multitable
+
+@node SRFI 115, SRFI 124, SRFI 112, Standards Support
 @section SRFI 115: Scheme Regular Expressions
 @findex char-set->sre
 @findex regexp
@@ -1649,7 +1678,7 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{string-hash}
 @end multitable
 
-@node SRFI 128, SRFI 131, SRFI 125, Standards Support
+@node SRFI 128, SRFI 129, SRFI 125, Standards Support
 @section SRFI 128: Comparators (reduced)
 @findex <=?
 @findex <?
@@ -1741,7 +1770,33 @@ All names are bound in the @mitgnu{} global environment.
 @item @nicode{symbol-hash}
 @end multitable
 
-@node SRFI 131, SRFI 133, SRFI 128, Standards Support
+@node SRFI 129, SRFI 131, SRFI 128, Standards Support
+@section SRFI 129: Titlecase procedures
+@findex char-title-case?
+@findex char-titlecase
+@findex string-titlecase
+
+@cartouche
+@table @b
+@item Description
+An implementation procedures for title case.
+@item URL
+@srfiurl{129}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 129)}
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@noindent
+@nicode{char-title-case?}
+@nicode{char-titlecase}
+@nicode{string-titlecase}
+
+@node SRFI 131, SRFI 133, SRFI 129, Standards Support
 @section SRFI 131: ERRR5RS Record Syntax (reduced)
 @findex define-record-type
 
@@ -2129,13 +2184,18 @@ All names are bound in the @mitgnu{} global environment.
 @tab @nicode{fxzero?}
 @end multitable
 
-@node SRFI 158,  , SRFI 143, Standards Support
+@node SRFI 158, SRFI 162, SRFI 143, Standards Support
 @section SRFI 158: Generators and Accumulators
 @findex bytevector->generator
+@findex bytevector-accumulator
+@findex bytevector-accumulator!
 @findex circular-generator
+@findex count-accumulator
 @findex gappend
+@findex gcombine
 @findex gcons*
 @findex gdelete
+@findex gdelete-neighbor-dups
 @findex gdrop
 @findex gdrop-while
 @findex generator
@@ -2143,27 +2203,44 @@ All names are bound in the @mitgnu{} global environment.
 @findex generator->reverse-list
 @findex generator->string
 @findex generator->vector
+@findex generator->vector!
 @findex generator-any
 @findex generator-count
 @findex generator-every
 @findex generator-find
 @findex generator-fold
-@findex generator-fold-right
 @findex generator-for-each
 @findex generator-map->list
 @findex generator-unfold
 @findex gfilter
 @findex gflatten
+@findex ggroup
+@findex gindex
 @findex gmap
+@findex gmerge
 @findex gremove
+@findex gselect
+@findex gstate-filter
 @findex gtake
 @findex gtake-while
 @findex list->generator
+@findex list-accumulator
+@findex make-accumulator
+@findex make-coroutine-generator
+@findex make-for-each-generator
 @findex make-iota-generator
 @findex make-range-generator
+@findex make-unfold-generator
+@findex product-accumulator
+@findex reverse-list-accumulator
 @findex reverse-vector->generator
+@findex reverse-vector-accumulator
 @findex string->generator
+@findex string-accumulator
+@findex sum-accumulator
 @findex vector->generator
+@findex vector-accumulator
+@findex vector-accumulator!
 
 @cartouche
 @table @b
@@ -2172,9 +2249,9 @@ Efficient sources and sinks of objects.
 @item URL
 @srfiurl{158}
 @item Support
-Partially supported.
+Fully supported.
 @item Libraries
-No libraries.
+@nicode{(srfi 158)}
 @item Global
 All names are bound in the @mitgnu{} global environment.
 @end table
@@ -2182,36 +2259,135 @@ All names are bound in the @mitgnu{} global environment.
 
 @multitable @columnfractions .5 .5
 @item @nicode{bytevector->generator}
+@tab @nicode{bytevector-accumulator}
+@item @nicode{bytevector-accumulator!}
 @tab @nicode{circular-generator}
-@item @nicode{gappend}
+@item @nicode{count-accumulator}
+@tab @nicode{gappend}
+@item @nicode{gcombine}
 @tab @nicode{gcons*}
 @item @nicode{gdelete}
-@tab @nicode{gdrop}
-@item @nicode{gdrop-while}
-@tab @nicode{generator}
-@item @nicode{generator->list}
-@tab @nicode{generator->reverse-list}
-@item @nicode{generator->string}
-@tab @nicode{generator->vector}
+@tab @nicode{gdelete-neighbor-dups}
+@item @nicode{gdrop}
+@tab @nicode{gdrop-while}
+@item @nicode{generator}
+@tab @nicode{generator->list}
+@item @nicode{generator->reverse-list}
+@tab @nicode{generator->string}
+@item @nicode{generator->vector}
+@tab @nicode{generator->vector!}
 @item @nicode{generator-any}
 @tab @nicode{generator-count}
 @item @nicode{generator-every}
 @tab @nicode{generator-find}
 @item @nicode{generator-fold}
-@tab @nicode{generator-fold-right}
-@item @nicode{generator-for-each}
-@tab @nicode{generator-map->list}
-@item @nicode{generator-unfold}
-@tab @nicode{gfilter}
-@item @nicode{gflatten}
-@tab @nicode{gmap}
+@tab @nicode{generator-for-each}
+@item @nicode{generator-map->list}
+@tab @nicode{generator-unfold}
+@item @nicode{gfilter}
+@tab @nicode{gflatten}
+@item @nicode{ggroup}
+@tab @nicode{gindex}
+@item @nicode{gmap}
+@tab @nicode{gmerge}
 @item @nicode{gremove}
+@tab @nicode{gselect}
+@item @nicode{gstate-filter}
 @tab @nicode{gtake}
 @item @nicode{gtake-while}
 @tab @nicode{list->generator}
+@item @nicode{list-accumulator}
+@tab @nicode{make-accumulator}
+@item @nicode{make-coroutine-generator}
+@tab @nicode{make-for-each-generator}
 @item @nicode{make-iota-generator}
 @tab @nicode{make-range-generator}
-@item @nicode{reverse-vector->generator}
+@item @nicode{make-unfold-generator}
+@tab @nicode{product-accumulator}
+@item @nicode{reverse-list-accumulator}
+@tab @nicode{reverse-vector->generator}
+@item @nicode{reverse-vector-accumulator}
 @tab @nicode{string->generator}
+@item @nicode{string-accumulator}
+@tab @nicode{sum-accumulator}
 @item @nicode{vector->generator}
+@tab @nicode{vector-accumulator}
+@item @nicode{vector-accumulator!}
 @end multitable
+
+@node SRFI 162, SRFI 219, SRFI 158, Standards Support
+@section SRFI 162: Comparators sublibrary
+@findex boolean-comparator
+@findex char-ci-comparator
+@findex char-comparator
+@findex comparator-max
+@findex comparator-max-in-list
+@findex comparator-min
+@findex comparator-min-in-list
+@findex default-comparator
+@findex eq-comparator
+@findex equal-comparator
+@findex eqv-comparator
+@findex list-comparator
+@findex pair-comparator
+@findex real-comparator
+@findex string-ci-comparator
+@findex string-comparator
+@findex vector-comparator
+
+@cartouche
+@table @b
+@item Description
+Additional useful comparator definitions.
+@item URL
+@srfiurl{162}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 128)} [@emph{not} @nicode{(srfi 162)}]
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{boolean-comparator}
+@tab @nicode{char-ci-comparator}
+@item @nicode{char-comparator}
+@tab @nicode{comparator-max}
+@item @nicode{comparator-max-in-list}
+@tab @nicode{comparator-min}
+@item @nicode{comparator-min-in-list}
+@tab @nicode{default-comparator}
+@item @nicode{eq-comparator}
+@tab @nicode{equal-comparator}
+@item @nicode{eqv-comparator}
+@tab @nicode{list-comparator}
+@item @nicode{pair-comparator}
+@tab @nicode{real-comparator}
+@item @nicode{string-ci-comparator}
+@tab @nicode{string-comparator}
+@item @nicode{vector-comparator}
+@end multitable
+
+@node SRFI 219,  , SRFI 162, Standards Support
+@section SRFI 219: Define higher-order lambda
+@findex define
+
+@cartouche
+@table @b
+@item Description
+Higher-order lambda syntax for DEFINE
+@item URL
+@srfiurl{219}
+@item Support
+Fully supported.
+@item Libraries
+No libraries.
+@item Global
+All names are bound in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@noindent
+@nicode{define}

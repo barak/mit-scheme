@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -241,6 +242,8 @@ USA.
   (applicator (make-primitive-procedure 'flonum-divide) 1. 0.))
 (define-divbyzero-flag-test 'flonum-log (applicator flo:log 0.))
 (define-divbyzero-trap-test 'flonum-log (applicator flo:log 0.))
+(define-divbyzero-flag-test 'flonum-log1p (applicator flo:log1p -1.))
+(define-divbyzero-trap-test 'flonum-log1p (applicator flo:log1p -1.))
 
 ;;; IEEE 754-2008, Sec. 7.4
 
@@ -284,12 +287,16 @@ USA.
 (define-overflow-trap-test 'flonum-exp (applicator flo:exp 800.))
 (define-underflow-flag-test 'flonum-exp (applicator flo:exp -800.))
 (define-underflow-trap-test 'flonum-exp (applicator flo:exp -800.))
-;; XXX expm1, exp2, exp2m1, exp10, exp10m1
+(define-overflow-flag-test 'flonum-expm1 (applicator flo:expm1 800.))
+(define-overflow-trap-test 'flonum-expm1 (applicator flo:expm1 800.))
+;; XXX exp2, exp2m1, exp10, exp10m1
 
 ;; divide by zero covered above
 (define-invop-flag-test 'flonum-log (applicator flo:log -1.))
 (define-invop-trap-test 'flonum-log (applicator flo:log -1.))
-;; XXX log1p, log21p, log101p
+(define-invop-flag-test 'flonum-log1p (applicator flo:log -2.))
+(define-invop-trap-test 'flonum-log1p (applicator flo:log -2.))
+;; XXX log2p1, log10p1
 
 ;; XXX hypot, rsqrt, compound, rootn, pown, pow, powr
 

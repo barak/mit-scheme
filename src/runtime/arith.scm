@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,6 +42,34 @@ USA.
 	   `(local-declare ((integrate ,identifier)) ,identifier))
 	 (ill-formed-syntax form)))))
 
+(define-integrable (flo:*- x y s)
+  (flo:*+ x y (flo:negate s)))
+
+(define-integrable (flo:square x)
+  (flo:* x x))
+
+(define-integrable (flo:signum s)
+  (flo:copysign 1. s))
+
+(define-integrable (flo:versin t)
+  ;; versin t := 1 - cos t = 2 sin^2(t/2) \in [-2, 2]
+  (flo:* 2. (flo:square (flo:sin (flo:/ t 2.)))))
+
+(define-integrable (flo:aversin x)
+  (flo:* 2. (flo:asin (flo:sqrt (flo:/ x 2.)))))
+
+(define (flo:exsec t)
+  ;; exsec t := (1 - cos t)/cos t = versin t / cos t \in R - (-2, 0)
+  (flo:/ (flo:versin t) (flo:cos t)))
+
+(define (flo:aexsec x)
+  (if (flo:> (flo:abs x) (flo:expt 2. 26.))
+      (flo:copysign rec:pi/2 x)
+      (let ((t (flo:atan (flo:sqrt (flo:*+ x x (flo:* 2. x))))))
+	(if (flo:<= x -2.)
+	    (flo:- rec:pi t)
+	    t))))
+
 ;;;; Primitives
 
 (define-primitives
@@ -102,6 +131,7 @@ USA.
 (define-integrable flo:radix. 2.)
 (define flo:precision)
 (define flo:ulp-of-one)
+(define flo:log-ulp-of-one)
 (define flo:error-bound)
 (define flo:log-error-bound)
 (define flo:subnormal-exponent-min)
@@ -139,6 +169,7 @@ USA.
 			 (flo:/ (flo:log 10.) (flo:log 2.))))))
     (set! int:flonum-integer-limit (int:expt 2 p)))
   (set! flo:ulp-of-one microcode-id/floating-epsilon)
+  (set! flo:log-ulp-of-one (flo:log flo:ulp-of-one))
   (set! flo:error-bound (flo:/ flo:ulp-of-one 2.))
   (set! flo:log-error-bound (flo:log flo:error-bound))
   (set! flo:normal-exponent-max microcode-id/floating-exponent-max)
@@ -171,7 +202,8 @@ USA.
 		  (flo:negate flo:largest-positive-normal)
 		  (lambda (x) (not (flo:zero? (flo:expt 2. x))))))
   (set! flo:least-subnormal-exponent-base-e
-	(rejigger (flo:- (flo:log flo:smallest-positive-subnormal) flo:log2)
+	(rejigger (flo:- (flo:log flo:smallest-positive-subnormal)
+			 (flo:log 2.))
 		  (flo:negate flo:largest-positive-normal)
 		  (lambda (x) (not (flo:zero? (flo:exp x))))))
   (set! flo:least-subnormal-exponent-base-10
@@ -1184,6 +1216,29 @@ USA.
 	     x))
 	((flonum? y) (flo:* (rat:->inexact x) y))
 	(else ((copy rat:*) x y))))
+
+(define (real:*+ x y a)
+  (cond ((flonum? x)
+	 (cond ((flonum? y)
+		(flo:*+ x y (real:->inexact a)))
+	       ((rat:zero? y)
+		(cond ((flo:finite? x) a)
+		      ((flo:nan? x) x)	;XXX Necessary?
+		      (else (flo:*+ x 0. (real:->inexact a)))))
+	       (else
+		(flo:*+ x (rat:->inexact y) (real:->inexact a)))))
+	((rat:zero? x)
+	 (if (flonum? y)
+	     (cond ((flo:finite? y) a)
+		   ((flo:nan? y) y)	;XXX Necessary?
+		   (else (flo:*+ 0. y (real:->inexact a))))
+	     a))
+	((flonum? y) (flo:*+ (rat:->inexact x) y (real:->inexact a)))
+	((flonum? a) (flo:*+ (rat:->inexact x) (rat:->inexact y) a))
+	(else (rat:+ (rat:* x y) a))))
+
+(define (real:*- x y s)
+  (real:*+ x y (real:negate s)))
 
 (define (real:/ x y)
   (cond ((flonum? x) (flo:/ x (if (flonum? y) y (rat:->inexact y))))
@@ -1357,36 +1412,198 @@ USA.
 	     (real:->inexact x)))))))
 
 (define-transcendental-unary real:exp real:exact0= 1 flo:exp)
+(define-transcendental-unary real:exp2 real:exact0= 1 flo:exp2)
+(define-transcendental-unary real:exp10 real:exact0= 1 flo:exp10)
 (define-transcendental-unary real:log real:exact1= 0 flo:log)
-(define-transcendental-unary real:expm1 real:exact0= 0 flo:expm1-guarded)
-(define-transcendental-unary real:log1p real:exact0= 0 flo:log1p-guarded)
+(define-transcendental-unary real:log2 real:exact1= 0 flo:log2)
+(define-transcendental-unary real:log10 real:exact1= 0 flo:log10)
+(define-transcendental-unary real:expm1 real:exact0= 0 flo:expm1)
+(define-transcendental-unary real:exp2m1 real:exact0= 0 flo:exp2m1)
+(define-transcendental-unary real:exp10m1 real:exact0= 0 flo:exp10m1)
+(define-transcendental-unary real:log1p real:exact0= 0 flo:log1p)
+(define-transcendental-unary real:log2p1 real:exact0= 0 flo:log2p1)
+(define-transcendental-unary real:log10p1 real:exact0= 0 flo:log10p1)
 (define-transcendental-unary real:sin real:exact0= 0 flo:sin)
 (define-transcendental-unary real:cos real:exact0= 1 flo:cos)
 (define-transcendental-unary real:tan real:exact0= 0 flo:tan)
 (define-transcendental-unary real:asin real:exact0= 0 flo:asin)
 (define-transcendental-unary real:acos real:exact1= 0 flo:acos)
 (define-transcendental-unary real:atan real:exact0= 0 flo:atan)
+(define-transcendental-unary real:versin real:exact0= 0 flo:versin)
+(define-transcendental-unary real:exsec real:exact0= 0 flo:exsec)
+(define-transcendental-unary real:aversin real:exact0= 0 flo:aversin)
+(define-transcendental-unary real:aexsec real:exact0= 0 flo:aexsec)
 
-(define-integrable flo:log2 (flo:log 2.))
-(define-integrable flo:1-sqrt1/2 (flo:- 1. (flo:sqrt 0.5)))
+(define-integrable (flo:exp10 x)
+  (flo:exp (flo:* (flo:log 10.) x)))
 
-(declare (integrate flo:expm1-guarded))
-(define (flo:expm1-guarded x)
-  (if (flo:< (flo:abs x) flo:log2)
-      (flo:expm1 x)
+(define-integrable (flo:log10 x)
+  (flo:/ (flo:log x) (flo:log 10.)))
+
+(declare (integrate flo:expm1))
+(define (flo:expm1 x)
+  (if (flo:< (flo:abs x) (flo:log 2.))
+      (flo:primitive-expm1 x)
       (flo:- (flo:exp x) 1.)))
 
-(declare (integrate flo:log1p-guarded))
-(define (flo:log1p-guarded x)
-  (if (flo:< (flo:abs x) flo:1-sqrt1/2)
-      (flo:log1p x)
+(define-integrable (flo:exp2m1 x)
+  (flo:expm1 (flo:* (flo:log 2.) x)))
+
+(define-integrable (flo:exp10m1 x)
+  (flo:expm1 (flo:* (flo:log 10.) x)))
+
+(declare (integrate flo:log1p))
+(define (flo:log1p x)
+  (if (flo:< (flo:abs x) (flo:- 1. (flo:sqrt 0.5)))
+      (flo:primitive-log1p x)
       (flo:log (flo:+ 1. x))))
 
+(define-integrable (flo:log2p1 x)
+  (flo:/ (flo:log1p x) (flo:log 2.)))
+
+(define-integrable (flo:log10p1 x)
+  (flo:/ (flo:log1p x) (flo:log 10.)))
+
+(define-integrable (flo:rsqrt x)
+  ;; XXX Make this a primitive -- can be much cheaper on most
+  ;; architectures with fast approximate-rsqrt and rsqrt-step
+  ;; instructions like modern x86 and aarch64.
+  (flo:/ 1. (flo:sqrt x)))
+
+(define (flo:sqrt1pm1 x)
+  ;; sqrt(1 + x) - 1
+  ;;
+  ;; - For x <= -3/4, we compute 1 + x <= 1/4 exactly, and the result
+  ;;   sqrt(1 + x) - 1 <= -1/2 so there is no catastrophic cancellation
+  ;;   even if fl(sqrt(1 + x)) != sqrt(1 + x) -- the computation of
+  ;;   fl(sqrt(1 + x)) - 1 multiplies the error in fl(sqrt(1 + x)) by a
+  ;;   factor of at most 2.
+  ;;
+  ;; - For x >= 3/4, 1 + x may not be exact but sqrt dampens the error,
+  ;;   and sqrt(1 + x) > 1.3 so computing fl(sqrt(1 + x)) - 1 amplifies
+  ;;   the error by at most a factor of 10/3.
+  ;;
+  ;; For |x| < 3/4, we use expm1/log1p.
+  ;;
+  (if (flo:< (flo:abs x) 0.75)
+      (flo:expm1 (flo:* 0.5 (flo:log1p x)))
+      (flo:- (flo:sqrt (flo:+ 1. x)) 1.)))
+
+(define (flo:compound x n)
+  ;; (1 + x)^n
+  (if (flo:zero? n)
+      1.
+      (flo:exp (flo:* n (flo:log1p x)))))
+
+(define (flo:compoundm1 x n)
+  ;; (1 + x)^n - 1
+  (if (flo:zero? n)
+      0.
+      (flo:expm1 (flo:* n (flo:log1p x)))))
+
+(define (flo:sin-pi* t)
+  (if (flo:integer? t)
+      (flo:copysign 0. t)
+      (flo:sin (flo:* rec:pi t))))
+
+(define (flo:asin/pi x)
+  (if (flo:safe-zero? x)
+      x
+      (flo:/ (flo:asin x) rec:pi)))
+
+(define (flo:cos-pi* t)
+  (let ((t (flo:abs t)))
+    (cond ((flo:safe>= t (flo:scalbn 1. flo:precision)) +0.)
+	  ((flo:integer? t) (if (flo:integer? (flo:/ t 2.)) +1. -1.))
+	  ((flo:integer? (flo:* t 2.)) +0.)
+	  (else (flo:cos (flo:* rec:pi t))))))
+
+(define (flo:acos/pi x)
+  (if (flo:safe= x 1.)
+      +0.
+      (flo:/ (flo:acos x) rec:pi)))
+
+(define (flo:tan-pi* t)
+  (define (t>=0 t)
+    (let ((u (flo:modulo t 2.)))
+      (cond ((flo:safe= u 0.0) +0.)
+	    ((flo:safe= u 0.25) +1.)
+	    ((flo:safe= u 0.5) (flo:/ t +0.))
+	    ((flo:safe= u 0.75) -1.)
+	    ((flo:safe= u 1.0) -0.)
+	    ((flo:safe= u 1.25) +1.)
+	    ((flo:safe= u 1.5) (flo:/ t -0.))
+	    ((flo:safe= u 1.75) -1.)
+	    (else (flo:tan (flo:* rec:pi t))))))
+  (if (flo:sign-negative? t)
+      (flo:negate (t>=0 (flo:negate t)))
+      (t>=0 t)))
+
+(define (flo:atan/pi x)
+  (if (flo:infinite? x)
+      (flo:copysign 0.5 x)
+      (flo:/ (flo:atan x) rec:pi)))
+
+(define (flo:atan2/pi y x)
+  (cond ((flo:safe-zero? y)
+	 (flo:copysign (if (flo:sign-negative? x) 1. 0.) y))
+	((flo:safe-zero? x)
+	 (flo:copysign 0.5 y))
+	((and (flo:infinite? y) (flo:infinite? x))
+	 (flo:copysign (if (flo:sign-negative? x) 0.75 0.25) y))
+	((and (flo:infinite? y) (flo:finite? x))
+	 (flo:copysign 0.5 y))
+	(else
+	 (flo:/ (flo:atan2 y x) rec:pi))))
+
+(define (flo:versin-pi* t)
+  (let ((t (flo:abs t)))
+    (if (or (flo:safe>= t (flo:scalbn 1. flo:precision))
+	    (and (not (flo:integer? t))
+		 (flo:integer? (flo:* 2. t))))
+	1.
+	(flo:* 2. (flo:square (flo:sin-pi* (flo:/ t 2.)))))))
+
+(define (flo:aversin/pi x)
+  (cond ((flo:safe-zero? x) 0.)
+	((flo:safe= x 1.) 0.5)
+	(else (flo:* 2. (flo:asin/pi (flo:sqrt (flo:/ x 2.)))))))
+
+(define (flo:exsec-pi* t)
+  (let* ((t (flo:abs t))
+	 (u (flo:modulo t 2.)))
+    (cond ((flo:safe= u 0.0) +0.)
+	  ((flo:safe= u 0.5) (flo:/ u +0.))
+	  ((flo:safe= u 1.0) -2.)
+	  ((flo:safe= u 1.5) (flo:/ u -0.))
+	  (else
+	   (flo:/ (flo:versin-pi* t) (flo:cos-pi* t))))))
+
+(define (flo:aexsec/pi x)
+  (if (flo:> (flo:abs x) (flo:scalbn 1. (fix:quotient flo:precision 2)))
+      (flo:copysign 0.5 x)
+      (let ((t (flo:atan/pi (flo:sqrt (flo:*+ x x (flo:* 2. x))))))
+	(if (flo:<= x -2.)
+	    (flo:- 1. t)
+	    t))))
+
 (define (real:atan2 y x)
   (if (and (real:exact0= y)
 	   (real:exact? x))
       (if (real:negative? x) rec:pi 0)
       (flo:atan2 (real:->inexact y) (real:->inexact x))))
+
+(define (real:atan2/pi y x)
+  (define (inexact-case)
+    (flo:atan2/pi (real:->inexact y) (real:->inexact x)))
+  (if (and (real:exact? y)
+	   (real:exact? x))
+      ;; XXX No branch cut information in unsigned zero here to choose
+      ;; +1 or -1!
+      (cond ((rat:zero? y) (if (rat:negative? x) 1 0))
+	    ((rat:zero? x) (if (rat:negative? y) -1/2 1/2))
+	    (else (inexact-case)))
+      (inexact-case)))
 
 (define (rat:sqrt x)
   (let ((guess (flo:sqrt (rat:->inexact x))))
@@ -1412,6 +1629,12 @@ USA.
 (define (real:sqrt x)
   (if (flonum? x) (flo:sqrt x) (rat:sqrt x)))
 
+(define (real:sqrt1pm1 x)
+  (if (flonum? x) (flo:sqrt1pm1 x) (real:-1+ (rat:sqrt (rat:1+ x)))))
+
+(define (real:rsqrt x)
+  (if (flonum? x) (flo:rsqrt x) (/ 1 (rat:sqrt x))))
+
 (define (real:->inexact x)
   (if (flonum? x)
       x
@@ -1421,6 +1644,20 @@ USA.
   (if (flonum? x)
       (flo:->string x radix)
       (rat:->string x radix)))
+
+(define (real:compound x n)
+  (define (compound x n) ((copy flo:compound) x n))
+  (cond ((or (real:exact0= x) (real:exact0= n)) 1)
+	((flonum? x) (compound x (real:->inexact n)))
+	((flonum? n) (compound (rat:->inexact x) n))
+	(else (rat:expt (rat:1+ x) n))))
+
+(define (real:compoundm1 x n)
+  (define (compoundm1 x n) ((copy flo:compoundm1) x n))
+  (cond ((or (real:exact0= x) (real:exact0= n)) 0)
+	((flonum? x) (compoundm1 x (real:->inexact n)))
+	((flonum? n) (compoundm1 (rat:->inexact x) n))
+	(else (rat:-1+ (rat:expt (rat:1+ x) n)))))
 
 (define (real:expt x y)
   (let ((general-case
@@ -1489,6 +1726,350 @@ USA.
 			     guess))))))
 	      (else
 	       (general-case (rat:->inexact x) (rat:->inexact y)))))))
+
+(define (rat:balanced-mod2 t)
+  ;; Project Q onto Q/2Z, choosing the smallest representative, and
+  ;; arbitrarily selecting [-1,1) rather than (-1,1].
+  (let ((u (rat:/ (rat:1+ t) 2)))
+    (rat:-1+ (rat:* 2 (rat:- u (rat:floor u))))))
+
+(define (real:sin-pi* t)
+  (cond ((flonum? t) (flo:sin-pi* t))
+	;; Niven's theorem
+	((rat:integer? t) 0)
+	((not (ratnum? t)) (error:wrong-type-argument t #f 'sin-pi*))
+	((int:= 2 (ratnum-denominator t))
+	 (if (int:= 1 (int:modulo (ratnum-numerator t) 4)) +1 -1))
+	((int:= 6 (ratnum-denominator t))
+	 (case (int:modulo (ratnum-numerator t) 12)
+	   ((1 5) +1/2)
+	   ((7 11) -1/2)
+	   (else (error "Impossible!"))))
+	(else
+	 (let ((t* (rat:->inexact (rat:balanced-mod2 t))))
+	   (if (rat:negative? t)
+	       (flo:negate (flo:sin-pi* (flo:negate t*)))
+	       (flo:sin-pi* t*))))))
+
+(define (real:asin/pi x)
+  (cond ((flonum? x) (flo:asin/pi x))
+	((rat:= x -1) -1/2)
+	((rat:= x -1/2) -1/6)
+	((rat:zero? x) 0)
+	((rat:= x +1/2) +1/6)
+	((rat:= x +1) +1/2)
+	(else (flo:asin/pi (rat:->inexact x)))))
+
+(define (real:cos-pi* t)
+  (cond ((flonum? t) (flo:cos-pi* t))
+	;; Niven's theorem
+	((int:integer? t) (if (int:even? t) +1 -1))
+	((not (ratnum? t)) (error:wrong-type-argument t #f 'cos-pi*))
+	((int:= 2 (ratnum-denominator t)) 0)
+	((int:= 3 (ratnum-denominator t))
+	 (case (int:modulo (ratnum-numerator t) 6)
+	   ((1 5) +1/2)
+	   ((2 4) -1/2)
+	   (else (error "Impossible!" t))))
+	(else (flo:cos-pi* (rat:->inexact (rat:balanced-mod2 t))))))
+
+(define (real:acos/pi x)
+  (cond ((flonum? x) (flo:acos/pi x))
+	((rat:= x -1) 1)
+	((rat:= x -1/2) 2/3)
+	((rat:zero? x) 1/2)
+	((rat:= x +1/2) 1/3)
+	((rat:= x 1) 0)
+	(else (flo:acos/pi (rat:->inexact x)))))
+
+(define (real:tan-pi* t)
+  (cond ((flonum? t) (flo:tan-pi* t))
+	((int:integer? t) 0)		;XXX sign bit
+	((int:= 4 (ratnum-denominator t))
+	 (if (int:= 1 (int:modulo (ratnum-numerator t) 4)) +1 -1))
+	(else
+	 (let ((t* (rat:->inexact (rat:balanced-mod2 t))))
+	   (if (rat:negative? t)
+	       (flo:negate (flo:tan-pi* (flo:negate t*)))
+	       (flo:tan-pi* t*))))))
+
+(define (real:atan/pi x)
+  (cond ((flonum? x) (flo:atan/pi x))
+	((rat:= x -1) -1/4)
+	((rat:= x 0) 0)
+	((rat:= x +1) +1/4)
+	(else (flo:atan/pi (rat:->inexact x)))))
+
+(define (real:versin-pi* t)
+  (cond ((flonum? t) (flo:versin-pi* t))
+	;; Niven's theorem
+	((int:integer? t) (if (int:even? t) 0 2))
+	((not (ratnum? t)) (error:wrong-type-argument t #f 'cos-pi*))
+	((int:= 2 (ratnum-denominator t)) 1)
+	((int:= 3 (ratnum-denominator t))
+	 (case (int:abs (int:remainder (ratnum-numerator t) 6))
+	   ((1 5) 1/2)
+	   ((2 4) 3/2)
+	   (else (error "Impossible!" t))))
+	(else (flo:versin-pi* (rat:->inexact (rat:balanced-mod2 t))))))
+
+(define (real:aversin/pi x)
+  (cond ((flonum? x) (flo:aversin/pi x))
+	((or (rat:negative? x)
+	     (rat:< 2 x))
+	 (error:bad-range-argument x 'aversin/pi))
+	((rat:= x 0) 0)
+	((rat:= x 1/2) 1/3)
+	((rat:= x 1) 1/2)
+	((rat:= x 3/2) 2/3)
+	((rat:= x 2) 1)
+	(else (flo:acos/pi (rat:->inexact x)))))
+
+(define (real:exsec-pi* t)
+  (cond ((flonum? t) (flo:exsec-pi* t))
+	((int:integer? t) (if (int:even? t) 0 -2))
+	((not (ratnum? t)) (error:wrong-type-argument t #f 'exsec-pi*))
+	((int:= 3 (ratnum-denominator t))
+	 (case (int:abs (int:remainder (ratnum-numerator t) 6))
+	   ((1 5) 1)
+	   ((2 4) -3)
+	   (else (error "Impossible!" t))))
+	(else (flo:exsec-pi* (rat:->inexact (rat:balanced-mod2 t))))))
+
+(define (real:aexsec/pi x)
+  (cond ((flonum? x) (flo:aexsec/pi x))
+	((rat:zero? x) 0)
+	((rat:= x 1) 1/3)
+	((rat:= x -3) 2/3)
+	((rat:= x -2) 1)
+	(else (flo:aexsec/pi (rat:->inexact x)))))
+
+(define (flo:sqrt-hypot x y)
+  ;; sqrt(|x + iy|) = sqrt(sqrt(x^2 + y^2))
+  ;; = sqrt(sqrt(v^2 + w^2)) = sqrt(sqrt(v^2 * (1 + w^2/v^2)))
+  ;; = sqrt(v * sqrt(1 + w^2/v^2)) = sqrt(v) * sqrt(sqrt(1 + w^2/v^2))
+  (let ((x (flo:abs x))
+	(y (flo:abs y)))
+    (let ((v (flo:max x y))
+	  (w (flo:min x y)))
+      (flo:* (flo:sqrt v)
+	     (flo:sqrt (flo:sqrt (flo:+ 1. (flo:square (flo:/ w v)))))))))
+
+(define-integrable (flo:%log-hypot flo:log flo:log1p x y)
+  (let ((x (flo:abs x))
+	(y (flo:abs y)))
+    (let ((v (flo:max x y))
+	  (w (flo:min x y)))
+      ;; We want
+      ;;
+      ;;	log|z|
+      ;;	= log(sqrt(v^2 + w^2))
+      ;;	= (1/2) log(v^2 + w^2).			(a)
+      ;;
+      ;; We can rewrite this as
+      ;;
+      ;;	(1/2) log(1 + (v^2 + w^2 - 1)).		(b)
+      ;; or as
+      ;;	(1/2) log(v^2 (1 + w^2/v^2))
+      ;;	= log v + (1/2) log(1 + w^2/v^2).	(c)
+      ;;
+      ;; Option (a) is better when v^2 + w^2 << 1/2: log is well-
+      ;; conditioned near v^2 + w^2, but log1p is ill-conditioned near
+      ;; v^2 + w^2 - 1.
+      ;;
+      ;; Option (c) is better when v >= 1 so that there's neither
+      ;; overflow (0 <= w/v <= 1 so w^2/v^2 can't overflow) nor
+      ;; cancellation (log v >= 0).
+      ;;
+      ;; That leaves option (b) for the middle.  For simplicity, we
+      ;; discriminate on v and carve it up into:
+      ;;
+      ;;	0 (a) 1/2 (b) 1 (c)
+      ;;
+      (cond ((flo:< v 0.5)
+	     ;; 0 <= w^2 <= v^2 <= 1/4, so v^2 + w^2 <= 1/2, where log
+	     ;; is reasonably well-conditioned.
+	     (flo:* 0.5 (flo:log (flo:*+ v v (flo:* w w)))))
+	    ((and (flo:< v 1.)
+		  (flo:< v (flo:*+ v v (flo:* w w))))
+	     (let ((pv (flo:* v v))	;2MultFMA
+		   (pw (flo:* w w)))
+	       (let ((ev (flo:*- v v pv))
+		     (ew (flo:*- w w pw)))
+		 ;; Invariants:
+		 ;;
+		 ;;	pv + ev = v^2
+		 ;;	pw + ew = w^2
+		 ;;	1/4 <= pv <= 1
+		 ;;
+		 ;; The Sterbenz lemma would apply to pv - 1 if we had
+		 ;; 1/2 <= pv <= 1, but 1/4 <= pv <= 1/2 may occur too,
+		 ;; which may lose us an entire bit of precision; we
+		 ;; recover that bit with Fast2Sum.
+		 ;;
+		 (let* ((s (flo:- pv 1.))	;Fast2Sum(-1, pv), |-1| >= |pv|
+			(e (flo:- pv (flo:+ s 1.))))
+		   ;; Invariants:
+		   ;;
+		   ;;	s + e = pv - 1 = v^2 - 1 - ev
+		   ;;	|ew| <= |ev|
+		   ;;	pw = |pw| <= |pv| = pv
+		   ;;
+		   (let ((a
+			  (flo:+ (flo:+ s pw)
+				 (flo:+ e (flo:+ ev ew)))))
+		     ;; a = fl(fl(v^2 + w^2 - 1 - e - ev - ew)
+		     ;;		+ fl(e + fl(ev + ew)))
+		     (flo:* 0.5 (flo:log1p a)))))))
+	    (else
+	     (let* ((w/v (flo:/ w v))
+		    (w^2/v^2 (flo:square w/v)))
+	       ;; 0 <= w^2/v^2 <= w/v <= 1, so w^2/v^2 cannot overflow,
+	       ;; and log1p is well-conditioned and positive; further,
+	       ;; log v >= 0 because v >= 1, so no cancellation.
+	       (flo:+ (flo:log v)
+		      (flo:* 0.5 (flo:log1p w^2/v^2)))))))))
+
+(define (flo:log-hypot x y) (flo:%log-hypot flo:log flo:log1p x y))
+(define (flo:log2-hypot x y) (flo:%log-hypot flo:log2 flo:log2p1 x y))
+(define (flo:log10-hypot x y) (flo:%log-hypot flo:log10 flo:log10p1 x y))
+
+(define-integrable (flo:%log1p-magnitude flo:log1p flo:log-hypot x y)
+  ;;
+  ;;	log|1 + z|
+  ;;	= (1/2) log |1 + z|^2
+  ;;	= (1/2) log [(1 + x)^2 + y^2]
+  ;;	= (1/2) log [1 + 2 x + x^2 + y^2].
+  ;;
+  ;; Where |1 + z| ~ 1, i.e. on the circle of radius 1 about -1, log is
+  ;; ill-conditioned, so we prefer to evaluate it using log1p.  But
+  ;; even using log1p, we must be careful to avoid catastrophic
+  ;; cancellation in 2 x + x^2 + y^2.
+  ;;
+  ;; If |1 + z| ~ 0, then log1p is ill-conditioned near |1 + z|^2 - 1.
+  ;; And where |1 + z| is large, |1 + z|^2 - 1 may overflow.  So we
+  ;; prefer to compute log|1 + z| directly in those regions.
+  ;;
+  ;; To keep it simple, we draw two squares around -1:
+  ;;
+  ;; - an inner square of diagonal length 1 so the distance from -1 to
+  ;;   any point in the square is at most 1/2, and
+  ;;
+  ;; - an outer square of side length 2 so the distance from the circle
+  ;;   of radius 1 to any point outside the square is at least 1.
+  ;;
+  ;; Inside the inner square and outside the outer square, we use log.
+  ;; But in the `square annulus' between them, we use log1p, with
+  ;; double-Dekker arithmetic to precisely compute 2 x + x^2 + y^2.
+  ;;
+  (if (and (flo:< (flo:abs y) 2.)	;inside outer square
+	   (flo:< -2. x)
+	   (flo:< x 1.)
+	   (let ((sqrt1/8 (flo:/ 1. (flo:sqrt 8.))))
+	     (or (flo:< sqrt1/8 y)	;outside inner square
+		 (flo:< x (flo:- -1. sqrt1/8))
+		 (flo:< (flo:+ -1. sqrt1/8) x))))
+      ;; If x <= -2 or x >= 0, then x*(2 + x) >= 0, so there is no
+      ;; cancellation in x*(2 + x) + y^2.  The error terms e0 and e1
+      ;; are small enough not to affect the result.
+      ;;
+      ;; If -2 < x < 0, then by Fast2Sum and 2MultFMA,
+      ;;
+      ;;	s + e0 = 2 + x,
+      ;;	p + e1 = x*(2 + x - e0),  and
+      ;;	t = fl(y^2 + x*(2 + x) - x*e0 - e1).
+      ;;
+      ;; The computation of p = fl(x*s) cannot underflow because either
+      ;; |x| >= 1 or |fl(x + 2)| >= 1.  We then add e ≈ x*e0 + e1.
+      ;;
+      (let* ((s (flo:+ 2. x))	;Fast2Sum, s + e0 = 2 + x (if x > -2)
+	     (e0 (flo:- x (flo:- s 2.)))
+	     (p (flo:* x s))	;2MultFMA, p + e1 = x*s
+	     (e1 (flo:*- x s p))
+	     (e (flo:*+ x e0 e1))
+	     (t (flo:*+ y y p)))
+	(flo:* 0.5 (flo:log1p (flo:+ e t))))
+      ;; x is close enough to -1 that 1 + x is exact, or z is far
+      ;; enough from -1 that any rounding error is dwarfed.
+      (flo:log-hypot (flo:+ 1. x) y)))
+
+(define (flo:log1p-magnitude x y)
+  (flo:%log1p-magnitude flo:log1p flo:log-hypot x y))
+
+(define (flo:log2p1-magnitude x y)
+  (flo:%log1p-magnitude flo:log2p1 flo:log2-hypot x y))
+
+(define (flo:log10p1-magnitude x y)
+  (flo:%log1p-magnitude flo:log10p1 flo:log10-hypot x y))
+
+(define-integrable (flo:%expcosm1 flo:exp flo:expm1 r t)
+  ;;
+  ;;	e^r cos θ - 1
+  ;;
+  ;; Recall versin θ = 1 - cos θ = 2 sin^2(θ/2).  We can rewrite this a
+  ;; few different ways:
+  ;;
+  ;;	e^r cos θ - 1
+  ;;	= (e^r - 1) cos θ + cos θ - 1
+  ;;	= (e^r - 1) cos θ - versin θ		(a)
+  ;;
+  ;;	e^r cos θ - 1
+  ;;	= e^r + (cos θ - 1) e^r - 1
+  ;;	= (e^r - 1) - e^r versin θ
+  ;;	= e^r [(e^r - 1)/e^r - versin θ]
+  ;;	= e^r [1 - e^{-r} - versin θ]
+  ;;	= e^r [-expm1(-r) - versin θ]		(b)
+  ;;
+  ;;	e^r cos θ - 1
+  ;;	= e^{r + log cos θ} - 1
+  ;;	= e^{r + log (1 - versin θ)} - 1	(c)
+  ;;	(provided cos θ > 0)
+  ;;
+  ;; When e^r overflows, if e^r cos θ - 1 doesn't overflow we can
+  ;; compute it with e^{r - 1} (e cos θ) - 1, and hope that e cos θ
+  ;; can't be small enough that there's cancellation.  (XXX)
+  ;;
+  ;; When cos θ <= 0, the naive e^r cos θ - 1 works fine because the
+  ;; subtraction won't amplify error in e^r cos θ.
+  ;;
+  ;; There seems to be no particular advantage to (c).
+  ;;
+  ;; The hard case is when r > 0 and cos θ ≈ 1/e^r; alas, all of the
+  ;; options are bad in parts of that region.  For small and moderate r
+  ;; we choose (a), since unlike (b) it avoids catastrophic
+  ;; cancellation when r ≫ 1 and θ ≈ (2n + 1) π/2.  For example,
+  ;;
+  ;;	(real-part (expm1 (make-rectangular 36 (* 5 (atan 1 0)))))
+  ;;	;True:  .31993397863942879634230060038119570859185188547658...
+  ;;	;Naive: .31993397863942885
+  ;;	;(a):   .31993397863942863
+  ;;	;(b):  0.0
+  ;;	;(c):   .31993397863942774 [log(cos θ)]
+  ;;	;(c):  -.04271429438047255 [log1p(-versin θ)]
+  ;;
+  ;;	(real-part (expm1 (make-rectangular 36 (* 7 (atan 1 0)))))
+  ;;	;True:  -2.8479075700952003148792208405336462778540355878772...
+  ;;	;Naive: -2.8479075700952
+  ;;	;(a):	-2.8479075700952
+  ;;	;(b):	-3.
+  ;;	;(c):	[N/A; cos θ < 0]
+  ;;
+  (let ((c (flo:cos t)))
+    (cond ((flo:> r flo:greatest-normal-exponent-base-e)
+	   ;; e^{r - 1} (e cos θ) - 1, to avoid overflow
+	   (flo:*- (flo:exp (flo:- r 1.)) (flo:* (flo:exp 1.) c) 1.))
+	  ((flo:< c 0.)
+	   ;; e^r cos θ - 1, no cancellation because e^r cos θ < 0
+	   (flo:*- (flo:exp r) c 1.))
+	  (else
+	   ;; (e^r - 1) cos θ - versin θ, cancellation may happen if
+	   ;; e^r ~ cos θ but it tends to do a better job than the
+	   ;; naive e^r cos θ - 1.
+	   (flo:*- (flo:expm1 r) c (flo:versin t))))))
+
+(define (flo:expcosm1 r t) (flo:%expcosm1 flo:exp flo:expm1 r t))
+(define (flo:exp2cosm1 r t) (flo:%expcosm1 flo:exp2 flo:exp2m1 r t))
+(define (flo:exp10cosm1 r t) (flo:%expcosm1 flo:exp10 flo:exp10m1 r t))
 
 (define (complex:complex? object)
   (or (recnum? object) ((copy real:real?) object)))
@@ -1711,45 +2292,133 @@ USA.
 	(else
 	 (error:wrong-type-argument z #f 'conjugate))))
 
+(define (complex:invert z)
+  (if (recnum? z)
+      (let ((zr (rec:real-part z))
+	    (zi (rec:imag-part z)))
+	(cond ((real:exact0= zr)
+	       (make-recnum 0 (real:/ -1 zi)))
+	      ((or (flonum? zr) (flonum? zi))
+	       (flo:compdiv 1. 0.
+			    (real:->inexact zr) (real:->inexact zi)
+			    make-recnum))
+	      (else
+	       (let ((d (real:+ (real:square zr) (real:square zi))))
+		 (make-recnum (real:/ zr d)
+			      (real:/ (real:negate zi) d))))))
+      ((copy real:invert) z)))
+
+(define (complex:abs x)
+  (if (recnum? x) (real:abs (rec:real-arg 'abs x)) ((copy real:abs) x)))
+
 (define (complex:/ z1 z2)
+  (define (kernel a b c d)
+    (flo:compdiv a b c d make-recnum))
   (if (recnum? z1)
       (if (recnum? z2)
 	  (let ((z1r (rec:real-part z1))
 		(z1i (rec:imag-part z1))
 		(z2r (rec:real-part z2))
 		(z2i (rec:imag-part z2)))
-	    (let ((d (real:+ (real:square z2r) (real:square z2i)))
-		  (u
-		   (if (or (real:exact0= z1r) (real:exact0= z2r))
-		       (real:* z1i z2i)
-		       (real:+ (real:* z1r z2r) (real:* z1i z2i))))
-		  (v
-		   (if (real:exact0= z2r)
-		       (real:negate (real:* z1r z2i))
-		       (real:- (real:* z1i z2r) (real:* z1r z2i)))))
-	      (complex:%make-rectangular (real:/ u d) (real:/ v d))))
+	    (cond ((real:exact0= z2r)
+		   ;; (a + i b)/(i c) = b/c - i a/c
+		   (complex:%make-rectangular (real:/ z1i z2i)
+					      (real:negate (real:/ z1r z2i))))
+		  ((or (flonum? z1r) (flonum? z1i) (flonum? z2r) (flonum? z2i))
+		   (kernel (real:->inexact z1r) (real:->inexact z1i)
+			   (real:->inexact z2r) (real:->inexact z2i)))
+		  (else
+		   (let ((d (rat:+ (rat:square z2r) (rat:square z2i)))
+			 (u
+			  (if (rat:zero? z1r)
+			      (rat:* z1i z2i)
+			      (rat:+ (rat:* z1r z2r) (rat:* z1i z2i))))
+			 (v
+			  (rat:- (rat:* z1i z2r) (rat:* z1r z2i))))
+		     (complex:%make-rectangular (rat:/ u d) (rat:/ v d))))))
 	  (make-recnum (real:/ (rec:real-part z1) z2)
 		       (real:/ (rec:imag-part z1) z2)))
       (if (recnum? z2)
 	  (let ((z2r (rec:real-part z2))
 		(z2i (rec:imag-part z2)))
-	    (let ((d (real:+ (real:square z2r) (real:square z2i))))
-	      (complex:%make-rectangular
-	       (real:/ (real:* z1 z2r) d)
-	       (real:/ (real:negate (real:* z1 z2i)) d))))
+	    (cond ((real:exact0= z2r)
+		   ;; a/(i b) = -i a/b
+		   (complex:%make-rectangular 0 (real:negate (real:/ z1 z2i))))
+		  ((or (flonum? z1) (flonum? z2r) (flonum? z2i))
+		   (kernel (real:->inexact z1) 0.
+			   (real:->inexact z2r) (real:->inexact z2i)))
+		  (else
+		   (let ((d (rat:+ (rat:square z2r) (rat:square z2i))))
+		     (complex:%make-rectangular
+		      (rat:/ (rat:* z1 z2r) d)
+		      (rat:/ (rat:negate (rat:* z1 z2i)) d))))))
 	  ((copy real:/) z1 z2))))
+
+;;; Complex division.  We use the compdiv_robust algorithm from
+;;;
+;;;	Michael Baudin and Robert L. Smith, `A Robust Complex Division
+;;;	in Scilab', October 2012, pp. 19--21.
+;;;	https://arxiv.org/abs/1210.4539v2
+;;;
+;;; which avoids spurious overflow and underflow.  This does not take
+;;; advantage of FMA.
 
-(define (complex:invert z)
-  (if (recnum? z)
-      (let ((zr (rec:real-part z))
-	    (zi (rec:imag-part z)))
-	(let ((d (real:+ (real:square zr) (real:square zi))))
-	  (make-recnum (real:/ zr d)
-		       (real:/ (real:negate zi) d))))
-      ((copy real:invert) z)))
-
-(define (complex:abs x)
-  (if (recnum? x) (real:abs (rec:real-arg 'abs x)) ((copy real:abs) x)))
+(define (flo:compdiv a b c d k)
+  ;; e + f i := (a + b i)/(c + d i)
+  (define (robust-internal a b c d k)
+    ;; Decide whether to compute z/w or conj(-conj(i z)/-conj(i w)).
+    (if (flo:safe<= (flo:abs d) (flo:abs c))
+	(robust-subinternal a b c d (lambda (e f) (k e f)))
+	(robust-subinternal b a d c (lambda (e f) (k e (flo:negate f))))))
+  (define (robust-subinternal a b c d k)
+    (assert (not (flo:safe> (flo:abs d) (flo:abs c))))
+    (let* ((r (flo:/ d c))
+	   (t (flo:/ 1. (flo:+ c (flo:* d r))))
+	   (e (internal-compreal a b c d r t))
+	   (a (flo:negate a))
+	   (f (internal-compreal b a c d r t)))
+      (k e f)))
+  (define (internal-compreal a b c d r t)
+    (if (not (flo:safe-zero? r))
+	(let ((br (flo:* b r)))
+	  (if (not (flo:safe-zero? br))
+	      (flo:* (flo:+ a br) t)
+	      (flo:*+ a t (flo:* (flo:* b t) r))))
+	(flo:* (flo:*+ d (flo:/ b c) a) t)))
+  (let ((ab (flo:max (flo:abs a) (flo:abs b)))
+	(cd (flo:max (flo:abs c) (flo:abs d)))
+	(scale 1.)
+	(Be (flo:/ flo:radix. (flo:square flo:ulp-of-one)))
+	(OV flo:largest-positive-normal)
+	(UN flo:smallest-positive-normal))
+    ;; Scale to avoid overflow.
+    ((lambda (k)
+       (if (flo:safe>= ab (flo:/ OV 2.))
+	   (k (flo:/ a 2.) (flo:/ b 2.) (flo:* scale 2.))
+	   (k a b scale)))
+     (lambda (a b scale)
+       ((lambda (k)
+	  (if (flo:safe>= cd (flo:/ OV 2.))
+	      (k (flo:/ c 2.) (flo:/ d 2.) (flo:/ scale 2.))
+	      (k c d scale)))
+	(lambda (c d scale)
+	  ;; Scale to avoid underflow.
+	  ((lambda (k)
+	     (if (flo:safe<= ab (flo:* UN (flo:/ flo:radix. flo:ulp-of-one)))
+		 (k (flo:* a Be) (flo:* b Be) (flo:/ scale Be))
+		 (k a b scale)))
+	   (lambda (a b scale)
+	     ((lambda (k)
+		(if (flo:safe<= cd
+				(flo:* UN (flo:/ flo:radix. flo:ulp-of-one)))
+		    (k (flo:* c Be) (flo:* d Be) (flo:* scale Be))
+		    (k c d scale)))
+	      (lambda (c d scale)
+		;; Compute scaled division, and rescale result.
+		((lambda (k) (robust-internal a b c d k))
+		 (lambda (e f)
+		   (k (flo:* e scale)
+		      (flo:* f scale))))))))))))))
 
 (define (complex:quotient n d)
   (real:quotient (complex:real-arg 'quotient n)
@@ -1859,38 +2528,120 @@ USA.
   (real:simplest-exact-rational (complex:real-arg 'simplest-rational x)
 				(complex:real-arg 'simplest-rational y)))
 
-(define (complex:exp z)
+(define-integrable (complex:%exp real:exp flo:exp bound base z)
+  (define (real-case z)
+    ((copy real:exp) z))
   (if (recnum? z)
-      (complex:%make-polar (real:exp (rec:real-part z))
-			   (rec:imag-part z))
-      ((copy real:exp) z)))
+      (let ((r (rec:real-part z))
+	    (t (rec:imag-part z)))
+	;; If e^r would overflow, break it into e^r = e * e^{r - 1} so
+	;; we can compute the real and imaginary parts as
+	;;
+	;;	e^{r - 1} * (e * cos(t))
+	;;	e^{r - 1} * (e * sin(t)),
+	;;
+	;; which avoids intermediate overflow in the event e^r cos t
+	;; and e^r sin t don't overflow after all.  If r is this large,
+	;; r - 1 is computed exactly or we overflow anyway.
+	(if (real:< r bound)
+	    (complex:%make-polar (real-case r) t)
+	    (let ((r (real:->inexact r))
+		  (t (real:->inexact t)))
+	      (let ((u (flo:exp (flo:- r 1.))))
+		(make-recnum
+		 (flo:* u (flo:* base (flo:cos t)))
+		 (flo:* u (flo:* base (flo:sin t))))))))
+      (real-case z)))
 
-(define (complex:log z)
+(define (complex:exp z)
+  (complex:%exp real:exp flo:exp
+		flo:greatest-normal-exponent-base-e (flo:exp 1.) z))
+
+(define (complex:exp2 z)
+  (complex:%exp real:exp2 flo:exp2
+		flo:greatest-normal-exponent-base-2 2. z))
+
+(define (complex:exp10 z)
+  (complex:%exp real:exp10 flo:exp10
+		flo:greatest-normal-exponent-base-10 10. z))
+
+(define-integrable (complex:%log real:log complex:log-magnitude z)
+  (define (real-case z)
+    ((copy real:log) z))
   (cond ((recnum? z)
-	 (complex:%make-rectangular (real:log (complex:magnitude z))
+	 (complex:%make-rectangular (complex:log-magnitude z)
 				    (complex:angle z)))
 	((real:negative? z)
-	 (make-recnum (real:log (real:negate z)) rec:pi))
+	 (make-recnum (real-case (real:negate z)) rec:pi))
 	(else
-	 ((copy real:log) z))))
+	 (real-case z))))
 
-(define (complex:expm1 z)
+(define (complex:log z) (complex:%log real:log complex:log-magnitude z))
+(define (complex:log2 z) (complex:%log real:log2 complex:log2-magnitude z))
+(define (complex:log10 z) (complex:%log real:log10 complex:log10-magnitude z))
+
+(define-integrable (complex:%expm1 real:expm1 flo:expcosm1 flo:exp bound base
+				   z)
   (if (recnum? z)
-      (complex:-1+ (complex:exp z))	;XXX
+      (let ((r (real:->inexact (rec:real-part z)))
+	    (t (real:->inexact (rec:imag-part z))))
+	;;	e^{r + i θ} - 1
+	;;	= e^r (cos θ + i sin θ) - 1
+	;;	= e^r cos θ - 1 + i e^r sin θ
+	;;
+	;; Computing e^r sin θ is easy -- multiplication won't amplify
+	;; relative error in the factors so we just have to worry about
+	;; overflow.  The tricky part is computing e^r cos θ - 1.
+	(make-recnum
+	 (flo:expcosm1 r t)
+	 (if (flo:<= r bound)
+	     (flo:* (flo:exp r) (flo:sin t))
+	     ;; e^r sin t = e^{r - 1} * (e * sin t)
+	     (flo:* (flo:exp (flo:- r 1.)) (flo:* base (flo:sin t))))))
       ((copy real:expm1) z)))
 
+(define (complex:expm1 z)
+  (complex:%expm1 real:expm1 flo:expcosm1 flo:exp
+		  flo:greatest-normal-exponent-base-e (flo:exp 1.) z))
+
+(define (complex:exp2m1 z)
+  (complex:%expm1 real:exp2m1 flo:exp2cosm1 flo:exp2
+		  flo:greatest-normal-exponent-base-2 2. z))
+
+(define (complex:exp10m1 z)
+  (complex:%expm1 real:exp10m1 flo:exp10cosm1 flo:exp10
+		  flo:greatest-normal-exponent-base-10 10. z))
+
+(define-integrable (complex:%log1p real:log1p real:log complex:log1p-magnitude
+				   z)
+  (cond ((recnum? z)
+	 ;; When x in [-2, -1/2], 1 + x is evaluated exactly, so the
+	 ;; error in the imaginary part is just the error in atan2;
+	 ;; when x not in [-2, -1/2], atan2(y, 1 + x) dampens error in
+	 ;; 1 + x so the error is around 2*eps + O(eps^2) if atan2
+	 ;; error is bounded by eps.
+	 (complex:%make-rectangular (complex:log1p-magnitude z)
+				    (real:atan2 (rec:imag-part z)
+						(real:+ 1 (rec:real-part z)))))
+	((real:< z -1)
+	 (make-recnum (real:log (real:- -1 z)) rec:pi))
+	(else
+	 ((copy real:log1p) z))))
+
 (define (complex:log1p z)
-  (if (or (recnum? z)
-	  (and (real:real? z)
-	       (<= z -1)))
-      (complex:log (complex:1+ z))	;XXX
-      ((copy real:log1p) z)))
+  (complex:%log1p real:log1p real:log complex:log1p-magnitude z))
+
+(define (complex:log2p1 z)
+  (complex:%log1p real:log2p1 real:log2 complex:log2p1-magnitude z))
+
+(define (complex:log10p1 z)
+  (complex:%log1p real:log10p1 real:log10 complex:log10p1-magnitude z))
 
 (define (complex:log1m z)
   (if (and (real:real? z) (real:< 1 z))
       (make-recnum (real:log (real:- z 1)) (real:negate rec:pi))
       (complex:log1p (complex:negate z))))
-
+
 (define (complex:sin z)
   (if (recnum? z)
       (complex:/ (let ((iz (complex:+i* z)))
@@ -1916,6 +2667,72 @@ USA.
 	   (complex:/ (complex:- e+iz e-iz)
 		      (complex:+ e+iz e-iz)))))
       ((copy real:tan) z)))
+
+(define (complex:versin z)
+  (if (recnum? z)
+      (complex:* 2 (square (complex:sin (complex:/ z 2))))
+      ((copy real:versin) z)))
+
+(define (complex:exsec z)
+  (if (recnum? z)
+      (complex:/ (complex:versin z) (complex:cos z))
+      ((copy real:exsec) z)))
+
+(define-integrable (complex:%log-magnitude real:log flo:log-hypot z)
+  ;; log|z| = (1/2) log(x^2 + y^2)
+  (if (recnum? z)
+      (let ((x (rec:real-part z))
+	    (y (rec:imag-part z)))
+	;; Exact y = 0 is not possible -- z would not be a recnum in
+	;; that case.  So we only have to consider exact z = ±i.
+	(if (and (real:exact0= x)
+		 (real:exact1= (real:abs y)))
+	    0
+	    (flo:log-hypot (real:->inexact x) (real:->inexact y))))
+      (real:log (real:abs z))))
+
+(define (complex:log-magnitude z)
+  (complex:%log-magnitude real:log flo:log-hypot z))
+
+(define (complex:log2-magnitude z)
+  (complex:%log-magnitude real:log2 flo:log2-hypot z))
+
+(define (complex:log10-magnitude z)
+  (complex:%log-magnitude real:log10 flo:log10-hypot z))
+
+(define-integrable (complex:%log1p-magnitude real:log1p real:log
+					     flo:log1p-magnitude z)
+  ;;
+  ;;	log|1 + z|
+  ;;	= log(sqrt((1 + x)^2 + y^2))
+  ;;	= (1/2) log((1 + x)^2 + y^2)
+  ;;	= (1/2) log(1 + 2 x + x^2 + y^2)
+  ;;
+  (cond ((recnum? z)
+	 (let ((x (rec:real-part z))
+	       (y (rec:imag-part z)))
+	   (if (and (real:exact? x)
+		    (real:= x -1)
+		    (real:exact1= (real:abs y)))
+	       0
+	       (flo:log1p-magnitude (real:->inexact x) (real:->inexact y)))))
+	((real:< z -1)
+	 ;; z < -1, so 1 + z < 0 and thus |1 + z| = -(1 + z) = -1 - z.
+	 ;; If -2 <= z <= -1, then the subtraction is computed exactly
+	 ;; by the Sterbenz lemma; if z < -2, then log is reasonably
+	 ;; well-conditioned, so it won't amplify error in -1 - z.
+	 (real:log (real:- -1 z)))
+	(else
+	 (real:log1p z))))
+
+(define (complex:log1p-magnitude z)
+  (complex:%log1p-magnitude real:log1p real:log flo:log1p-magnitude z))
+
+(define (complex:log2p1-magnitude z)
+  (complex:%log1p-magnitude real:log2p1 real:log2 flo:log2p1-magnitude z))
+
+(define (complex:log10p1-magnitude z)
+  (complex:%log1p-magnitude real:log10p1 real:log10 flo:log10p1-magnitude z))
 
 ;;; Complex arguments -- ASIN
 ;;;   The danger in the complex case happens for large y when
@@ -1968,6 +2785,18 @@ USA.
       (rec:atan z)
       ((copy real:atan) z)))
 
+(define (complex:aversin z)
+  (if (recnum? z)			;XXX figure out branch cuts
+      (complex:* 2 (complex:asin (complex:sqrt (complex:/ z 2))))
+      ((copy real:aversin) z)))
+
+(define (complex:aexsec z)
+  (if (recnum? z)			;XXX figure out branch cuts
+      (complex:atan
+       (complex:* (complex:sqrt z)
+		  (complex:sqrt (complex:+ z 2))))
+      ((copy real:aexsec) z)))
+
 (define (complex:atan2 y x)
   (let ((rec-case
 	 (lambda (y x)
@@ -1985,7 +2814,7 @@ USA.
 	       (complex:- (complex:log1p iz)
 			  (complex:log1m iz)))
 	     +2i))
-
+
 (define (complex:angle z)
   (cond ((recnum? z)
 	 (if (and (complex:exact? z)
@@ -2010,13 +2839,15 @@ USA.
 			  (real:sqrt (real:1+ (real:square (real:/ w v)))))))
 	    (flo:hypot (real:->inexact ar) (real:->inexact ai))))
       (real:abs z)))
-
+
 (define (complex:sqrt z)
   (define (x>=0 x)
     ((copy real:sqrt) x))
   (cond ((recnum? z)
 	 (let ((x (rec:real-part z))
 	       (y (rec:imag-part z)))
+	   (define (sqrt-hypot)
+	     (flo:sqrt-hypot (real:->inexact x) (real:->inexact y)))
 	   (cond ((real:safe-zero? y)
 		  (assert (not (real:exact0= y)))
 		  (if (real:safe-negative? x)
@@ -2030,10 +2861,17 @@ USA.
 		    (complex:%make-rectangular
 		     sqrt-abs-y/2
 		     (real:copysign sqrt-abs-y/2 y))))
+		 ((and (real:finite? x) (real:finite? y))
+		  (complex:%make-polar
+		   (if (and (real:exact? x) (real:exact? y))
+		       (let ((s (real:sqrt (complex:magnitude z))))
+			 (if (real:exact? s) s (sqrt-hypot)))
+		       (sqrt-hypot))
+		   (real:/ (complex:angle z) 2)))
 		 ((eq? (real:infinite? x) (real:infinite? y))
-		  ;; Standard formula.  Works when both inputs are
-		  ;; finite, when both inputs are infinite, and when
-		  ;; both inputs are NaN.
+		  ;; Standard formula.  Works when both inputs are are
+		  ;; infinite and when both inputs are NaN.  Would work
+		  ;; when both inputs are finite, except for overflow.
 		  (complex:%make-polar (x>=0 (complex:magnitude z))
 				       (real:/ (complex:angle z) 2)))
 		 ((real:finite? x)
@@ -2055,6 +2893,30 @@ USA.
 	(else
 	 (x>=0 z))))
 
+(define (complex:sqrt1pm1 z)
+  (define (real-case x)
+    ((copy real:sqrt1pm1) x))
+  (cond ((recnum? z)
+	 (let ((y (rec:imag-part z)))
+	   (if (real:zero? y)
+	       (complex:%make-rectangular (real-case (rec:real-part z)) y)
+	       (complex:-1+ (complex:sqrt (complex:1+ z))))))
+	((real:< z -1)
+	 (complex:%make-rectangular -1 (real:sqrt (real:- -1 z))))
+	(else
+	 (real-case z))))
+
+(define (complex:rsqrt z)
+  (define (x>=0 x)
+    ((copy real:rsqrt) x))
+  (cond ((recnum? z)
+	 (complex:/ 1 (complex:sqrt z)))
+	((real:safe-negative? z)
+	 ;; sqrt(-1/x) = -i/sqrt(x)
+	 (complex:%make-rectangular 0 (real:negate (x>=0 (real:negate z)))))
+	(else
+	 (x>=0 z))))
+
 (define (complex:expt z1 z2)
   (cond ((complex:zero? z1)
 	 (cond ((eqv? z2 0)
@@ -2094,6 +2956,16 @@ USA.
 	 (complex:exp (complex:* (complex:log z1) z2)))
 	(else
 	 (real:expt z1 z2))))
+
+(define (complex:compound x n)
+  (if (or (recnum? x) (recnum? n))
+      (complex:exp (complex:* n (complex:log1p x)))
+      ((copy real:compound) x n)))
+
+(define (complex:compoundm1 x n)
+  (if (or (recnum? x) (recnum? n))
+      (complex:expm1 (complex:* n (complex:log1p x)))
+      ((copy real:compoundm1) x n)))
 
 (define (complex:make-rectangular real imag)
   (let ((check-arg
@@ -2239,6 +3111,12 @@ USA.
       (complex:atan z)
       (complex:atan2 z x)))
 
+(define (atan/pi y/x #!optional x)
+  (if (default-object? x)
+      (real:atan/pi y/x)
+      (let ((y y/x))
+	(real:atan2/pi y x))))
+
 (define (square z)
   (complex:* z z))
 
@@ -2250,7 +3128,7 @@ USA.
 ;;; Lemma 1.  If |d| < 1 - 1/2^n, then 1/(1 + d) <= 2^n for n > 1.
 ;;;
 ;;; Proof.  If d is nonnegative, then 1 + d >= 1, so that 1/(1 + d)
-;;; <= 1.  If d is negative, then 1 - 1/2^n <= d <= 0, so that 1 + d
+;;; <= 1.  If d is negative, then 0 <= -d <= 1 - 1/2^n so that 1 + d
 ;;; >= 1/2^n, and hence 1/(1 + d) <= 2^n.  QED.
 ;;;
 ;;; Lemma 2. If b = a*(1 + d)/(1 + d') for |d'| < 1/2 and nonzero a, b,
@@ -2366,7 +3244,7 @@ USA.
     ;; to always lie in [-1/2, +1/2], since in +/-[1/2, 1] we have
     ;; only fixed-point precision.
     ;;
-    (cond ((flo:safe< x (flo:negate flo:log2))
+    (cond ((flo:safe< x (flo:negate (flo:log 2.)))
 	   ;; Let d0 be the error of exp, and d1 the error of log1p.
 	   ;; Since x <= log(1/2), we have e^x <= 1/2 = 1 - 1/2, and
 	   ;; thus 1/2 <= 1 - e^x, so that by Lemma 4,
@@ -2380,7 +3258,7 @@ USA.
 	   ;;	|d1| + |d'| + |d1| |d'|
 	   ;;	<= 9 eps + 8 eps^2.
 	   ;;
-	   (flo:log1p-guarded (flo:negate (flo:exp x))))
+	   (flo:log1p (flo:negate (flo:exp x))))
 	  ((flo:safe< x 0.)
 	   ;; Let d0 be the error of expm1, and d1 the error of log.
 	   ;; We have:
@@ -2400,7 +3278,7 @@ USA.
 	   ;;	<= |d1| + 4 |d0| + 4 |d1 d0|
 	   ;;	<= 5 eps + 4 eps^2.
 	   ;;
-	   (flo:log (flo:negate (flo:expm1-guarded x))))
+	   (flo:log (flo:negate (flo:expm1 x))))
 	  ((flo:safe-zero? x)
 	   ;; Negative infinity.
 	   (flo:/ (identity-procedure -1.) 0.))
@@ -2462,7 +3340,7 @@ USA.
 	   ;;
 	   ;; provided e^x does not overflow.
 	   ;;
-	   (flo:log1p-guarded (flo:exp x)))
+	   (flo:log1p (flo:exp x)))
 
 	  ;; log1pexp, continued: x >= log(1/sqrt(eps)) so far
 	  ((flo:<= x (flo:negate flo:log-error-bound))
@@ -2526,18 +3404,22 @@ USA.
   ;;
   ;; 1. No inputs.  Empty sum is zero, so yield log(0) = -inf.
   ;; 2. One input.  Computation is exact.  Preserve it.
-  ;; 3. Maximum +inf.  Sum overflows, so yield it (unless NaN).
+  ;; 3. Maximum +inf.  Sum overflows, so yield +inf (or NaN, if one of
+  ;;    the inputs is NaN).
+  ;;
+  ;; Overflow is not possible otherwise because everything is
+  ;; normalized to be below zero.
   ;;
   ;; Most likely all the inputs are finite, so prioritize that case by
   ;; checking for +inf first -- if there is a NaN, the usual
-  ;; computation will propagate it.
+  ;; computation will propagate it anyway.  Case (3) is not needed if
+  ;; there's only one +inf, but if there's more than one, we need to
+  ;; handle specially it to avoid computing +inf - +inf in the
+  ;; normalization.
   ;;
-  ;; Overflow is not possible because everything is normalized to be
-  ;; below zero.
-  ;;
-  (cond ((not (pair? l))
+  (cond ((not (pair? l))		;(1)
 	 (flo:-inf.0))
-	((not (pair? (cdr l)))
+	((not (pair? (cdr l)))		;(2)
 	 (guarantee-real (car l) 'logsumexp)
 	 (car l))
 	(else
@@ -2550,22 +3432,24 @@ USA.
 		   (if (<= x xmax)
 		       (loop (+ i 1) imax xmax)
 		       (loop (+ i 1) i x)))
-		 ;; Avoid arithmetic on +inf.0 and just pass it
-		 ;; through.
-		 (if (= xmax +inf.0)
+		 ;; Avoid arithmetic on +inf (specifically, avoid
+		 ;; intermediate +inf - +inf in case there's more than
+		 ;; one of them), and just pass it through (or the
+		 ;; first NaN).
+		 (if (= xmax +inf.0)	;(3)
 		     (or (find nan? l) +inf.0)
 		     ;; Compute xmax + log(1 + sum_i e^{xi - xmax}), with
 		     ;; imax omitted from the sum.
 		     (let loop ((i 0) (sumexp 0))
 		       (if (>= i n)
 			   (+ xmax (log1p sumexp))
-			   (let ((x (vector-ref v i)))
-			     (cond ((= x -inf.0)
-				    (loop (+ i 1) (exact->inexact sumexp)))
-				   ((= i imax)
-				    (loop (+ i 1) sumexp))
-				   (else
-				    (loop (+ i 1)
+			   (loop (+ i 1)
+				 (let ((x (vector-ref v i)))
+				   (cond ((= x -inf.0)
+					  (exact->inexact sumexp))
+					 ((= i imax)
+					  sumexp)
+					 (else
 					  (+ sumexp
 					     (exp (- x xmax))))))))))))))))
 

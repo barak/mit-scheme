@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -46,6 +47,9 @@ USA.
 	(read-http-response request port)))))
 
 (define (call-with-http-client-socket uri callee)
+  (let ((scheme (uri-scheme uri)))
+    (if (not (or (not scheme) (eq? 'http scheme)))
+	(error "Unsupported HTTP scheme:" scheme)))
   (let ((port
 	 (let ((auth (uri-authority uri)))
 	   (open-binary-tcp-stream-socket (uri-authority-host auth)
@@ -55,11 +59,14 @@ USA.
       value)))
 
 (define (http-client-request method uri headers body)
-  (guarantee absolute-uri? uri)
+  (guarantee standard-http-request-uri? uri)
   (make-http-request method
 		     (make-uri #f
 			       #f
-			       (uri-path uri)
+			       (let ((path (uri-path uri)))
+				 (if (null? path)
+				     '("" "")
+				     path))
 			       (uri-query uri)
 			       (uri-fragment uri))
 		     http-version:1.1

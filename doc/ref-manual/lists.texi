@@ -539,16 +539,34 @@ a proper list.
 @end deffn
 
 @deffn {SRFI 1 procedure} length+ clist
-@var{Clist} must be a proper, dotted, or circular list.  If
-@var{clist} is a circular list, returns @code{#f}, otherwise returns
-the number of pairs comprising the list (which is the same as the
-length for a proper list).
+@var{Clist} must be a proper or circular list.  If @var{clist} is a
+circular list, returns @code{#f}, otherwise returns the number of
+pairs comprising the list (which is the same as the length for a
+proper list).
 
 @example
 @group
 (length+ (list 'a 'b 'c))               @result{} 3
-(length+ (cons* 'a 'b 'c))              @result{} 2
+(length+ (cons* 'a 'b 'c))              @error{}
 (length+ (circular-list 'a 'b 'c))      @result{} #f
+@end group
+@end example
+@end deffn
+
+@deffn procedure count-pairs object
+Counts the number of pairs in a list-like @var{object}.  If
+@var{object} is a proper list, returns the same value as
+@code{length}.  If @var{object} is a dotted list, returns the number
+of pairs including the last one.  If @var{object} is a circular list,
+counts the number of pairs up to and including the one with the
+backwards link.  If @var{object} is any other object, returns @code{0}
+as apropriate for an empty dotted list.
+
+@example
+@group
+(count-pairs (list 'a 'b 'c))           @result{} 3
+(count-pairs (cons* 'a 'b 'c))          @result{} 2
+(count-pairs (circular-list 'a 'b 'c))  @result{} 3
 @end group
 @end example
 @end deffn
@@ -975,24 +993,31 @@ This could be used to define @code{memv} as follows:
 @cindex mapping, of list
 
 @deffn {standard procedure} map procedure list list @dots{}
-@var{Procedure} must be a procedure taking as many arguments as there
-are @var{list}s.  If more than one @var{list} is given, then they must
-all be the same length.  @code{map} applies @var{procedure} element-wise
-to the elements of the @var{list}s and returns a list of the results, in
-order from left to right.  The dynamic order in which @var{procedure} is
-applied to the elements of the @var{list}s is unspecified; use
-@code{for-each} to sequence side effects.
+It is an error if @var{procedure} does not accept as many arguments as
+there are @var{list}s and return a single value.
+
+The @code{map} procedure applies @var{procedure} element-wise to the
+elements of the @var{list}s and returns a list of the results, in
+order.  If more than one @var{list} is given and not all lists are the
+same length, @code{map} terminates when the shortest list runs out.
+The @var{list}s can be circular, but it is an error if all of them
+are circular.  It is an error for @var{procedure} to mutate any of the
+lists.  The dynamic order in which @var{procedure} is applied to the
+elements of the @var{list}s is unspecified.  If multiple returns occur
+from @code{map}, the values returned by earlier returns are not
+mutated.
 
 @example
 @group
-(map cadr '((a b) (d e) (g h)))           @result{} (b e h)
-(map (lambda (n) (expt n n)) '(1 2 3 4))  @result{} (1 4 27 256)
-(map + '(1 2 3) '(4 5 6))                 @result{} (5 7 9)
+(map cadr '((a b) (d e) (g h)))         @result{} (b e h)
+(map (lambda (n) (expt n n)) '(1 2 3 4 5))
+                                        @result{} (1 4 27 256 3125)
+(map + '(1 2 3) '(4 5 6 7))             @result{} (5 7 9)
 (let ((count 0))
   (map (lambda (ignored)
          (set! count (+ count 1))
          count)
-       '(a b c)))                         @result{} @r{unspecified}
+       '(a b)))                         @result{} (1 2) @r{or} (2 1)
 @end group
 @end example
 @end deffn
@@ -1085,12 +1110,20 @@ Deprecated, use @code{fold-right} instead.  Equivalent to
 
 
 @deffn {standard procedure} for-each procedure list list @dots{}
+It is an error if @var{procedure} does not accept as many arguments as
+there are @var{list}s.
+
 The arguments to @code{for-each} are like the arguments to @code{map},
 but @code{for-each} calls @var{procedure} for its side effects rather
 than for its values.  Unlike @code{map}, @code{for-each} is guaranteed
-to call @var{procedure} on the elements of the @var{list}s in order from
-the first element to the last, and the value returned by @code{for-each}
-is unspecified.
+to call @var{procedure} on the elements of the @var{list}s in order
+from the first element(s) to the last, and the value returned by
+@code{for-each} is unspecified.  If more than one @var{list} is given
+and not all lists have the same length, @code{for-each} terminates
+when the shortest @var{list} runs out.  The @var{list}s can be
+circular, but it is an error if all of them are circular.
+
+It is an error for @var{procedure} to mutate any of the lists.
 
 @example
 @group
@@ -1383,19 +1416,23 @@ destructively modifies @var{list}.  Because the result may not be
 @end deffn
 
 
-@deffn procedure sort sequence procedure
-@deffnx procedure merge-sort sequence procedure
-@deffnx procedure quick-sort sequence procedure
+@deffn procedure sort sequence procedure [key]
+@deffnx procedure merge-sort sequence procedure [key]
+@deffnx procedure quick-sort sequence procedure [key]
 @cindex total ordering (defn)
-@var{Sequence} must be either a list or a vector.  @var{Procedure} must be a
-procedure of two arguments that defines a @dfn{total ordering} on the
-elements of @var{sequence}.  In other words, if @var{x} and @var{y} are two
-distinct elements of @var{sequence}, then it must be the case that
+@var{Sequence} must be either a list or a vector.
+@var{Key}, if specified, must be a procedure of one argument that maps
+an element of @var{sequence} to a key fit for comparison by
+@var{procedure}; by default, @var{key} is the identity.
+@var{Procedure} must be a procedure of two arguments that defines a
+@dfn{total ordering} on the keys of @var{sequence}.
+In other words, if @var{x} and @var{y} are two distinct elements of
+@var{sequence}, then it must be the case that
 
 @example
 @group
-(and (@var{procedure} @var{x} @var{y})
-     (@var{procedure} @var{y} @var{x}))
+(and (@var{procedure} (@var{key} @var{x}) (@var{key} @var{y}))
+     (@var{procedure} (@var{key} @var{y}) (@var{key} @var{x})))
      @result{} #f
 @end group
 @end example
@@ -1403,24 +1440,39 @@ distinct elements of @var{sequence}, then it must be the case that
 If @var{sequence} is a list (vector), @code{sort} returns a newly
 allocated list (vector) whose elements are those of @var{sequence},
 except that they are rearranged to be sorted in the order defined by
-@var{procedure}.  So, for example, if the elements of @var{sequence} are
-numbers, and @var{procedure} is @code{<}, then the resulting elements
-are sorted in monotonically nondecreasing order.  Likewise, if
-@var{procedure} is @code{>}, the resulting elements are sorted in
-monotonically nonincreasing order.  To be precise, if @var{x} and
-@var{y} are any two adjacent elements in the result, where @var{x}
-precedes @var{y}, it is the case that
+@var{procedure} and @var{key}.
+So, for example, if the elements of @var{sequence} are numbers, and
+@var{procedure} is @code{<}, then the resulting elements are sorted in
+monotonically nondecreasing order.
+Likewise, if @var{procedure} is @code{>}, the resulting elements are
+sorted in monotonically nonincreasing order.
+To be precise, if @var{x} and @var{y} are any two adjacent elements in
+the result, where @var{x} precedes @var{y}, it is the case that
 
 @example
 @group
-(@var{procedure} @var{y} @var{x})
+(@var{procedure} (@var{key} @var{y}) (@var{key} @var{x}))
      @result{} #f
 @end group
 @end example
 
 Two sorting algorithms are implemented: @code{merge-sort} and
-@code{quick-sort}.  The procedure @code{sort} is an alias for
-@code{merge-sort}.
+@code{quick-sort}.
+The procedure @code{sort} is an alias for @code{merge-sort}.
+@code{Merge-sort} is stable, meaning that it preserves the order in
+@var{sequence} of elements which are equivalent under @var{procedure}
+and @var{key}; @code{quick-sort} is not stable, so it does not
+guarantee this.
 
 See also the definition of @code{sort!}.
+
+@example
+@group
+(merge-sort '((2 . foo) (2 . bar) (1 . baz) (3 . quux)) < car)
+@result{} ((1 . baz) (2 . foo) (2 . bar) (3 . quux))
+
+(quick-sort '((2 . foo) (2 . bar) (1 . baz) (3 . quux)) < car)
+@result{} ((1 . baz) (2 . bar) (2 . foo) (3 . quux))
+@end group
+@end example
 @end deffn

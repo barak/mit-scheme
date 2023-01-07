@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -257,6 +258,9 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
   FLONUM_RESULT (result);						\
 }
 
+/* FLONUM-EXPM1 and FLONUM-LOG1P are legacy primitives whose domain
+   restrictions are inherited from their i387 implementation.  */
+
 DEFINE_PRIMITIVE ("FLONUM-EXPM1", Prim_flonum_expm1, 1, 1, 0)
 #ifdef HAVE_EXPM1
      RESTRICTED_TRANSCENDENTAL_FUNCTION
@@ -280,17 +284,15 @@ DEFINE_PRIMITIVE ("FLONUM-LOG1P", Prim_flonum_log1p, 1, 1, 0)
 #endif
 
 DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
-{
-  double x;
-  double result;
-  PRIMITIVE_HEADER (1);
-  x = (arg_flonum (1));
-  result = (log (x));
-  FLONUM_RESULT (result);
-}
-
+     SIMPLE_TRANSCENDENTAL_FUNCTION (log)
+DEFINE_PRIMITIVE ("FLONUM-LOG2", Prim_flonum_log2, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (log2)
+/* XXX log10, log2p1, log10p1 */
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
+DEFINE_PRIMITIVE ("FLONUM-EXP2", Prim_flonum_exp2, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (exp2)
+/* XXX exp10, exp2m1, exp10m1 */
 
 DEFINE_PRIMITIVE ("FLONUM-SINH", Prim_flonum_sinh, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (sinh)

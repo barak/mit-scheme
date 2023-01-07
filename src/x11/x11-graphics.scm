@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -138,7 +139,7 @@ USA.
 
 (define (x-graphics-draw-points window x-vector y-vector)
   (let* ((n-points (flo:vector-length x-vector))
-	 (points (malloc (* n-points (C-sizeof "XPoint")))))
+	 (points (malloc (* n-points (C-sizeof "XPoint")) '|XPoint|)))
     (if (not (= n-points (flo:vector-length y-vector)))
 	(error:bad-range-argument y-vector 'x-graphics-draw-points))
     (C-call "x_graphics_draw_points" window x-vector y-vector n-points points)
@@ -146,7 +147,7 @@ USA.
 
 (define (x-graphics-draw-lines window x-vector y-vector)
   (let* ((n-points (flo:vector-length x-vector))
-	 (points (malloc (* n-points (C-sizeof "XPoint")))))
+	 (points (malloc (* n-points (C-sizeof "XPoint")) '|XPoint|)))
     (if (not (= n-points (flo:vector-length y-vector)))
 	(error:bad-range-argument y-vector 'x-graphics-draw-lines))
     (C-call "x_graphics_draw_lines" window x-vector y-vector n-points points)
@@ -178,7 +179,7 @@ USA.
   (let ((length (flo:vector-length vector)))
     (if (not (even? length))
 	(error:bad-range-argument vector 'x-graphics-fill-polygon))
-    (let ((points (malloc (* (/ length 2) (C-sizeof "XPoint")))))
+    (let ((points (malloc (* (/ length 2) (C-sizeof "XPoint")) '|XPoint|)))
       (C-call "x_graphics_fill_polygon" window vector length points)
       (free points))))
 

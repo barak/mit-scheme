@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,6 +32,8 @@ USA.
 ;;;   Transfer coding is assumed to always be "identity".
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime uri))
 
 (define-record-type <http-request>
     (%make-http-request method uri version headers body)
@@ -99,17 +102,13 @@ USA.
   (and (http-request? object)
        (not (http-request-version object))))
 
-(define-guarantee simple-http-request "simple HTTP request")
-
 (define (make-simple-http-request uri)
-  (guarantee simple-http-request-uri? uri 'make-http-request)
+  (guarantee simple-http-request-uri? uri 'make-simple-http-request)
   (%make-http-request '|GET| uri #f '() (bytevector)))
 
 (define (simple-http-response? object)
   (and (http-response? object)
        (not (http-response-version object))))
-
-(define-guarantee simple-http-response "simple HTTP response")
 
 (define (make-simple-http-response body)
   (guarantee bytevector? body 'make-simple-http-response)
@@ -119,33 +118,37 @@ USA.
   (or (http-request? object)
       (http-response? object)))
 
-(define-guarantee http-message "HTTP message")
-
 (define (http-message-headers message)
   (cond ((http-request? message) (http-request-headers message))
 	((http-response? message) (http-response-headers message))
-	(else (error:not-http-message message 'http-message-headers))))
+	(else (error:not-a http-message? message 'http-message-headers))))
 
 (define (http-message-body message)
   (cond ((http-request? message) (http-request-body message))
 	((http-response? message) (http-response-body message))
-	(else (error:not-http-message message 'http-message-body))))
+	(else (error:not-a http-message? message 'http-message-body))))
 
 (define (http-request-uri? object)
   (or (simple-http-request-uri? object)
-      (absolute-uri? object)
+      (standard-http-request-uri? object)
       (eq? object '*)
       (uri-authority? object)))
-
-(define-guarantee http-request-uri "HTTP URI")
+(register-predicate! http-request-uri? 'http-request-uri?)
 
 (define (simple-http-request-uri? object)
-  (and (uri? object)
-       (not (uri-scheme object))
+  (and (relative-uri? object)
        (not (uri-authority object))
        (uri-path-absolute? (uri-path object))))
+(register-predicate! simple-http-request-uri? 'simple-http-request-uri?
+		     '<= relative-uri?
+		     '<= http-request-uri?)
 
-(define-guarantee simple-http-request-uri "simple HTTP URI")
+(define (standard-http-request-uri? object)
+  (and (absolute-uri? object)
+       (uri-authority object)))
+(register-predicate! standard-http-request-uri? 'standard-http-request-uri?
+		     '<= absolute-uri?
+		     '<= http-request-uri?)
 
 ;;;; Output
 
@@ -169,16 +172,12 @@ USA.
       (begin
 	(write-u8 (char->integer #\space) port)
 	(write-http-version (http-request-version request) port)
-	(write-u8 (char->integer #\return) port)
-	(write-u8 (char->integer #\linefeed) port)
+	(newline-ascii port)
 	(write-http-headers (http-request-headers request) port)
 	(write-bytevector (http-request-body request) port))
       (begin
-	(newline port)))
+	(newline-ascii port)))
   (flush-output-port port))
-
-(define (write-ascii string port)
-  (write-bytevector (string->utf8 string) port))
 
 (define (write-http-response response port)
   (if (http-response-version response)
@@ -188,10 +187,17 @@ USA.
 	(write-ascii (write-to-string (http-response-status response)) port)
 	(write-u8 (char->integer #\space) port)
 	(write-ascii (http-response-reason response) port)
-	(newline port)
+	(newline-ascii port)
 	(write-http-headers (http-response-headers response) port)))
   (write-bytevector (http-response-body response) port)
   (flush-output-port port))
+
+(define (write-ascii string port)
+  (write-bytevector (string->utf8 string) port))
+
+(define (newline-ascii port)
+  (write-u8 (char->integer #\return) port)
+  (write-u8 (char->integer #\linefeed) port))
 
 ;;;; Input
 
@@ -211,7 +217,7 @@ USA.
 	    (cond ((eof-object? byte)
 		   (if (builder 'empty?)
 		       byte
-		       (builder)))
+		       (builder 'immutable)))
 		  ((fix:= 13 byte)
 		   (let ((line (builder)))
 		     (if (fix:= 10 (peek-u8 port))
@@ -242,7 +248,7 @@ USA.
 	    (let ((b.t
 		   (or (%read-chunked-body headers port)
 		       (%read-delimited-body headers port)
-		       (%no-read-body))))
+		       (%read-no-body))))
 	      (make-http-request method uri version
 				 (append! headers (cdr b.t))
 				 (car b.t))))))))
@@ -261,7 +267,7 @@ USA.
 		       (or (%read-chunked-body headers port)
 			   (%read-delimited-body headers port)
 			   (%read-terminal-body headers port)
-			   (%no-read-body)))))
+			   (%read-no-body)))))
 	      (make-http-response version status reason
 				  (append! headers (cdr b.t))
 				  (car b.t))))))))
@@ -336,15 +342,14 @@ USA.
 		   (write-u8 (bytevector-u8-ref buffer i) output))
 		 (loop)))))))))
 
-(define (%no-read-body)
-  (error "Unable to determine HTTP message body length."))
+(define (%read-no-body)
+  '(#u8()))
 
 ;;;; Request and response lines
 
 (define parse-request-line
   (*parser
-   (seq (map string->symbol
-	     (match (+ (char-set char-set:http-token))))
+   (seq (match (+ (char-set char-set:http-token)))
 	" "
 	(alt (map intern (match "*"))
 	     parse-absolute-uri
@@ -363,7 +368,7 @@ USA.
 
 (define parse-simple-request
   (*parser
-   (seq (map string->symbol (match "GET"))
+   (seq (match "GET")
 	" "
 	parse-uri-path-absolute)))
 

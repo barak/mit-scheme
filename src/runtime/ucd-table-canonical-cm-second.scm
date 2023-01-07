@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,7 +27,7 @@ USA.
 
 ;;;; UCD property: canonical-cm-second
 
-;;; Generated from Unicode 9.0.0
+;;; Generated from Unicode 13.0.0
 
 (declare (usual-integrations))
 
@@ -406,61 +407,62 @@ USA.
     #(#\x1133e #\x11357)
     #(#\x114b0 #\x114ba #\x114bd)
     #(#\x115af)
-    #(#\x115af)))
+    #(#\x115af)
+    #(#\x11930)))
 
 (define ucd-canonical-cm-second-values
   #(#(#\x226e)
     #(#\x2260)
     #(#\x226f)
-    #(#\À #\Á #\Â #\Ã #\x100 #\x102 #\x226 #\Ä #\x1ea2 #\Å #\x1cd #\x200 #\x202 #\x1ea0 #\x1e00 #\x104)
+    #(#\xc0 #\xc1 #\xc2 #\xc3 #\x100 #\x102 #\x226 #\xc4 #\x1ea2 #\xc5 #\x1cd #\x200 #\x202 #\x1ea0 #\x1e00 #\x104)
     #(#\x1e02 #\x1e04 #\x1e06)
-    #(#\x106 #\x108 #\x10a #\x10c #\Ç)
+    #(#\x106 #\x108 #\x10a #\x10c #\xc7)
     #(#\x1e0a #\x10e #\x1e0c #\x1e10 #\x1e12 #\x1e0e)
-    #(#\È #\É #\Ê #\x1ebc #\x112 #\x114 #\x116 #\Ë #\x1eba #\x11a #\x204 #\x206 #\x1eb8 #\x228 #\x118 #\x1e18 #\x1e1a)
+    #(#\xc8 #\xc9 #\xca #\x1ebc #\x112 #\x114 #\x116 #\xcb #\x1eba #\x11a #\x204 #\x206 #\x1eb8 #\x228 #\x118 #\x1e18 #\x1e1a)
     #(#\x1e1e)
     #(#\x1f4 #\x11c #\x1e20 #\x11e #\x120 #\x1e6 #\x122)
     #(#\x124 #\x1e22 #\x1e26 #\x21e #\x1e24 #\x1e28 #\x1e2a)
-    #(#\Ì #\Í #\Î #\x128 #\x12a #\x12c #\x130 #\Ï #\x1ec8 #\x1cf #\x208 #\x20a #\x1eca #\x12e #\x1e2c)
+    #(#\xcc #\xcd #\xce #\x128 #\x12a #\x12c #\x130 #\xcf #\x1ec8 #\x1cf #\x208 #\x20a #\x1eca #\x12e #\x1e2c)
     #(#\x134)
     #(#\x1e30 #\x1e8 #\x1e32 #\x136 #\x1e34)
     #(#\x139 #\x13d #\x1e36 #\x13b #\x1e3c #\x1e3a)
     #(#\x1e3e #\x1e40 #\x1e42)
-    #(#\x1f8 #\x143 #\Ñ #\x1e44 #\x147 #\x1e46 #\x145 #\x1e4a #\x1e48)
-    #(#\Ò #\Ó #\Ô #\Õ #\x14c #\x14e #\x22e #\Ö #\x1ece #\x150 #\x1d1 #\x20c #\x20e #\x1a0 #\x1ecc #\x1ea)
+    #(#\x1f8 #\x143 #\xd1 #\x1e44 #\x147 #\x1e46 #\x145 #\x1e4a #\x1e48)
+    #(#\xd2 #\xd3 #\xd4 #\xd5 #\x14c #\x14e #\x22e #\xd6 #\x1ece #\x150 #\x1d1 #\x20c #\x20e #\x1a0 #\x1ecc #\x1ea)
     #(#\x1e54 #\x1e56)
     #(#\x154 #\x1e58 #\x158 #\x210 #\x212 #\x1e5a #\x156 #\x1e5e)
     #(#\x15a #\x15c #\x1e60 #\x160 #\x1e62 #\x218 #\x15e)
     #(#\x1e6a #\x164 #\x1e6c #\x21a #\x162 #\x1e70 #\x1e6e)
-    #(#\Ù #\Ú #\Û #\x168 #\x16a #\x16c #\Ü #\x1ee6 #\x16e #\x170 #\x1d3 #\x214 #\x216 #\x1af #\x1ee4 #\x1e72 #\x172 #\x1e76 #\x1e74)
+    #(#\xd9 #\xda #\xdb #\x168 #\x16a #\x16c #\xdc #\x1ee6 #\x16e #\x170 #\x1d3 #\x214 #\x216 #\x1af #\x1ee4 #\x1e72 #\x172 #\x1e76 #\x1e74)
     #(#\x1e7c #\x1e7e)
     #(#\x1e80 #\x1e82 #\x174 #\x1e86 #\x1e84 #\x1e88)
     #(#\x1e8a #\x1e8c)
-    #(#\x1ef2 #\Ý #\x176 #\x1ef8 #\x232 #\x1e8e #\x178 #\x1ef6 #\x1ef4)
+    #(#\x1ef2 #\xdd #\x176 #\x1ef8 #\x232 #\x1e8e #\x178 #\x1ef6 #\x1ef4)
     #(#\x179 #\x1e90 #\x17b #\x17d #\x1e92 #\x1e94)
-    #(#\à #\á #\â #\ã #\x101 #\x103 #\x227 #\ä #\x1ea3 #\å #\x1ce #\x201 #\x203 #\x1ea1 #\x1e01 #\x105)
+    #(#\xe0 #\xe1 #\xe2 #\xe3 #\x101 #\x103 #\x227 #\xe4 #\x1ea3 #\xe5 #\x1ce #\x201 #\x203 #\x1ea1 #\x1e01 #\x105)
     #(#\x1e03 #\x1e05 #\x1e07)
-    #(#\x107 #\x109 #\x10b #\x10d #\ç)
+    #(#\x107 #\x109 #\x10b #\x10d #\xe7)
     #(#\x1e0b #\x10f #\x1e0d #\x1e11 #\x1e13 #\x1e0f)
-    #(#\è #\é #\ê #\x1ebd #\x113 #\x115 #\x117 #\ë #\x1ebb #\x11b #\x205 #\x207 #\x1eb9 #\x229 #\x119 #\x1e19 #\x1e1b)
+    #(#\xe8 #\xe9 #\xea #\x1ebd #\x113 #\x115 #\x117 #\xeb #\x1ebb #\x11b #\x205 #\x207 #\x1eb9 #\x229 #\x119 #\x1e19 #\x1e1b)
     #(#\x1e1f)
     #(#\x1f5 #\x11d #\x1e21 #\x11f #\x121 #\x1e7 #\x123)
     #(#\x125 #\x1e23 #\x1e27 #\x21f #\x1e25 #\x1e29 #\x1e2b #\x1e96)
-    #(#\ì #\í #\î #\x129 #\x12b #\x12d #\ï #\x1ec9 #\x1d0 #\x209 #\x20b #\x1ecb #\x12f #\x1e2d)
+    #(#\xec #\xed #\xee #\x129 #\x12b #\x12d #\xef #\x1ec9 #\x1d0 #\x209 #\x20b #\x1ecb #\x12f #\x1e2d)
     #(#\x135 #\x1f0)
     #(#\x1e31 #\x1e9 #\x1e33 #\x137 #\x1e35)
     #(#\x13a #\x13e #\x1e37 #\x13c #\x1e3d #\x1e3b)
     #(#\x1e3f #\x1e41 #\x1e43)
-    #(#\x1f9 #\x144 #\ñ #\x1e45 #\x148 #\x1e47 #\x146 #\x1e4b #\x1e49)
-    #(#\ò #\ó #\ô #\õ #\x14d #\x14f #\x22f #\ö #\x1ecf #\x151 #\x1d2 #\x20d #\x20f #\x1a1 #\x1ecd #\x1eb)
+    #(#\x1f9 #\x144 #\xf1 #\x1e45 #\x148 #\x1e47 #\x146 #\x1e4b #\x1e49)
+    #(#\xf2 #\xf3 #\xf4 #\xf5 #\x14d #\x14f #\x22f #\xf6 #\x1ecf #\x151 #\x1d2 #\x20d #\x20f #\x1a1 #\x1ecd #\x1eb)
     #(#\x1e55 #\x1e57)
     #(#\x155 #\x1e59 #\x159 #\x211 #\x213 #\x1e5b #\x157 #\x1e5f)
     #(#\x15b #\x15d #\x1e61 #\x161 #\x1e63 #\x219 #\x15f)
     #(#\x1e6b #\x1e97 #\x165 #\x1e6d #\x21b #\x163 #\x1e71 #\x1e6f)
-    #(#\ù #\ú #\û #\x169 #\x16b #\x16d #\ü #\x1ee7 #\x16f #\x171 #\x1d4 #\x215 #\x217 #\x1b0 #\x1ee5 #\x1e73 #\x173 #\x1e77 #\x1e75)
+    #(#\xf9 #\xfa #\xfb #\x169 #\x16b #\x16d #\xfc #\x1ee7 #\x16f #\x171 #\x1d4 #\x215 #\x217 #\x1b0 #\x1ee5 #\x1e73 #\x173 #\x1e77 #\x1e75)
     #(#\x1e7d #\x1e7f)
     #(#\x1e81 #\x1e83 #\x175 #\x1e87 #\x1e85 #\x1e98 #\x1e89)
     #(#\x1e8b #\x1e8d)
-    #(#\x1ef3 #\ý #\x177 #\x1ef9 #\x233 #\x1e8f #\ÿ #\x1ef7 #\x1e99 #\x1ef5)
+    #(#\x1ef3 #\xfd #\x177 #\x1ef9 #\x233 #\x1e8f #\xff #\x1ef7 #\x1e99 #\x1ef5)
     #(#\x17a #\x1e91 #\x17c #\x17e #\x1e93 #\x1e95)
     #(#\x1fed #\x385 #\x1fc1)
     #(#\x1ea6 #\x1ea4 #\x1eaa #\x1ea8)
@@ -784,4 +786,5 @@ USA.
     #(#\x1134b #\x1134c)
     #(#\x114bc #\x114bb #\x114be)
     #(#\x115ba)
-    #(#\x115bb)))
+    #(#\x115bb)
+    #(#\x11938)))

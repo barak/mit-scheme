@@ -3,8 +3,8 @@
 // Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 //     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 //     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
-//     2015, 2016, 2017, 2018, 2019, 2020 Massachusetts Institute of
-//     Technology
+//     2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts
+//     Institute of Technology
 //
 // This file is part of MIT/GNU Scheme.
 //
@@ -27,6 +27,8 @@
 // Scheme compiled code support for AArch64
 ///////////////////////////////////////////////////////////////////////////////
 
+changecom()
+
 ifdef(`SUPPRESS_LEADING_UNDERSCORE',
 	`define(SYMBOL,`$1')',
 	`define(SYMBOL,`_$1')')
@@ -34,16 +36,23 @@ ifdef(`SUPPRESS_LEADING_UNDERSCORE',
 	// Symbol definitions.
 	//
 	// XXX Use .def/.endef or .func/.endfunc?
-define(GLOBAL,`	.globl $1
+define(GLOBAL,`	.globl SYMBOL($1)
+	.p2align 2
 SYMBOL($1):')
-define(LOCAL,`
+define(LOCAL,`	.p2align 2
 SYMBOL($1):')
-define(END,`	.size SYMBOL($1),.-SYMBOL($1)')
+ifdef(`__APPLE__',
+	`define(END,`')',
+	`define(END,`	.size SYMBOL($1),.-SYMBOL($1)')')
 
 	// gas has this for arm32 but not for aarch64, no idea why.
-define(ADRL,`
-	adrp	$1, :pg_hi21:$2
-	add	$1, $1, #:lo12:$2')
+ifdef(`__APPLE__',
+	`define(ADRL,`
+	adrp	$1, SYMBOL($2)@PAGE
+	add	$1, $1, #SYMBOL($2)@PAGEOFF')',
+	`define(ADRL,`
+	adrp	$1, :pg_hi21:SYMBOL($2)
+	add	$1, $1, #:lo12:SYMBOL($2)')')
 
 	// For some reason these are not automatically defined in gas?
 	ip0	.req x16
@@ -69,7 +78,27 @@ define(ADRL,`
 
 	// Interpreter register block offsets.  Must agree with
 	// const.h.
+	.equiv	REGBLOCK_MEMTOP,	0
+	.equiv	REGBLOCK_INT_MASK,	1
 	.equiv	REGBLOCK_VAL,		2
+	.equiv	REGBLOCK_STACK_GUARD,	11
+	.equiv	REGBLOCK_INT_CODE,	12
+
+	// Interrupt numbers.  Must agree with intrpt.h.
+	.equiv	INTBIT_Stack_Overflow,	0
+	.equiv	INTBIT_GC,		2
+	.equiv	MAX_INTERRUPT_NUMBER,	0xf
+
+	.equiv	INT_Stack_Overflow,	(1 << INTBIT_Stack_Overflow)
+	.equiv	INT_GC,			(1 << INTBIT_GC)
+
+	.equiv	INT_Mask,		((1 << (MAX_INTERRUPT_NUMBER + 1)) - 1)
+
+	.equiv	TC_LENGTH,		6	// bits in type tag
+	.equiv	DATUM_LENGTH,		58	// bits in datum
+	.equiv	DATUM_MASK,		(1 << DATUM_LENGTH) - 1
+
+	.equiv	TC_COMPILED_ENTRY,	40
 
 ///////////////////////////////////////////////////////////////////////////////
 // Entering Scheme from C
@@ -112,7 +141,7 @@ GLOBAL(C_to_interface)
 	ADRL(HOOKS,hooks)		// address of hook table
 
 	// Set parameters for interface_to_scheme.  Note
-	// APPLICAND_PC=x17, APPLICAND=x0, so ordering is important
+	// APPLICAND_PC=x17, APPLICAND=x1, so ordering is important
 	// here.
 	mov	APPLICAND_PC, x1
 	mov	APPLICAND, x0
@@ -265,12 +294,28 @@ END(interface_to_scheme_return)
 	//	arity, load its PC into APPLICAND_PC=x17.  Otherwise,
 	//	load apply_setup_fail into APPLICAND_PC=x17 to defer to
 	//	microcode.  Then return to link register.  Caller is
-	//	expected to jump to APPLICAND_PC=x17.
-	//
-	//	Not yet implemented fully.
+	//	expected to jump to APPLICAND_PC=x17.  No restrictions
+	//	on register use -- caller has already saved its
+	//	registers.
 	//
 LOCAL(apply_setup)
-	ADRL(APPLICAND_PC,apply_setup_fail)
+	// Split into type@x3 and datum@x4, and verify that the type is
+	// TC_COMPILED_ENTRY.
+	lsr	x3, APPLICAND, #DATUM_LENGTH
+	and	x4, APPLICAND, #DATUM_MASK
+	cmp	x3, #TC_COMPILED_ENTRY
+	b.ne	1f
+
+	// Load format word and PC offset, and verify frame size match.
+	ldursb	x3, [x4, #-12]		// x3 := signed frame size
+	ldr	x5, [x4, #-8]		// x5 := PC offset
+	cmp	x3, x2			// branch if frame size mismatch
+	b.ne	1f
+
+	add	APPLICAND_PC, x4, x5
+	ret
+
+1:	ADRL(APPLICAND_PC,apply_setup_fail)
 	ret
 END(apply_setup)
 
@@ -289,21 +334,98 @@ END(apply_setup_fail)
 // Scheme miscellaneous primitive subroutine hooks
 ///////////////////////////////////////////////////////////////////////////////
 
-	// fixnum_shift
+	// fixnum_shift(x@x0, n@x1)
 	//
-	//	Compute a left shift, handling all possible signs of
-	//	both inputs.  Not yet implemented.
+	//	Compute an arithmetic shift, handling all possible
+	//	signs of both inputs.  Both inputs are `detagged
+	//	fixnums' -- representing n by n 2^t, so the low t bits
+	//	are all zero, where t is TC_LENGTH.
+	//
+	//	Destroys x1; returns result in x0.
 	//
 LOCAL(fixnum_shift)
-	hlt	#0
-END(fixnum_shift)
+	cmp	x1, #0
+	asr	x1, x1, #TC_LENGTH
+	b.lt	2f
 
-	// set_interrupt_enables
+	// Positive/left shift -- return x * 2^n.
+	cmp	x1, #DATUM_LENGTH
+	b.ge	1f
+	lsl	x0, x0, x1
+	ret
+
+	// Shift beyond datum width, so result is always zero.
+1:	mov	x0, #0
+	ret
+
+	// Negative/right shift -- return floor(x / 2^n).
+2:	neg	x1, x1
+	cmp	x1, #DATUM_LENGTH
+	b.ge	3f
+	asr	x0, x0, x1
+	// Must return a detagged fixnum by clearing the low bits.
+	bic	x0, x0, #((1 << TC_LENGTH) - 1)
+	ret
+
+	// Shift amount is wider than the datum width, so the result is
+	// 0 or -1 depending on the sign.
+3:	asr	x0, x0, #63
+	bic	x0, x0, #((1 << TC_LENGTH) - 1)
+	ret
+END(fixnum_shift)
+
+	// set_interrupt_enables(value=x0, tagged_mask=x1)
 	//
 	//	Set the interrupt mask, and adjust stack_guard and
-	//	memtop accordingly.  Not yet implemented.
+	//	memtop accordingly.  Must preserve x0.
+	//
 LOCAL(set_interrupt_enables)
-	hlt	#0
+	// Store the updated interrupt mask.  Can't read the interrupt
+	// code until after we've done that.
+	and	x1, x1, #INT_Mask		// x1 := mask
+	str	x1, [REGS, #(REGBLOCK_INT_MASK*8)]
+
+	// This logic more or less follows COMPILER_SETUP_INTERRUPT.
+
+	// Get the pending interrupts.
+	ldr	x2, [REGS, #(REGBLOCK_INT_CODE*8)]	// x2 := pending intrs
+
+	// Load the expected values for the memtop and stack_guard
+	// registers.
+	ADRL(x3,heap_alloc_limit)		// x3 := &heap_alloc_limit
+	ldr	x3, [x3]			// x3 := heap_alloc_limit
+	ADRL(x4,stack_guard)			// x4 := &stack_guard
+	ldr	x4, [x4]			// x4 := stack_guard
+
+	// If interrupts are pending, or if if GC interrupts or stack
+	// overflow interrupts are blocked, branch to the slow path.
+	tst	x1, x2
+	b.ne	3f
+	tbz	x1, #INTBIT_GC, 4f
+1:	tbz	x1, #INTBIT_Stack_Overflow, 5f
+
+2:	// Set the registers.  (Can't use stp because non-adjacent.)
+	str	x3, [REGS, #(REGBLOCK_MEMTOP*8)]
+	str	x4, [REGS, #(REGBLOCK_STACK_GUARD*8)]
+
+	// All set!
+	ret
+
+3:	// Interrupt pending -- set memtop to zero so we stop at the
+	// first safe point.
+	mov	x3, #0
+	b	1b
+
+4:	// GC interrupt disabled, set memtop register to heap_end.
+	ADRL(x3,heap_end)
+	ldr	x3, [x3]
+	b	1b
+
+5:	// Stack overflow interrupt disabled -- set stack_guard
+	// register to stack_start.
+	ADRL(x4,stack_start)
+	ldr	x4, [x4]
+	b	2b
 END(set_interrupt_enables)
 
 ///////////////////////////////////////////////////////////////////////////////

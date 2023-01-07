@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -185,23 +186,20 @@ USA.
 
 ;;;; Utilities for the rules
 
-(define (require-register! machine-reg)
-  (flush-register! machine-reg)
-  (need-register! machine-reg))
-
-(define-integrable (flush-register! machine-reg)
-  (prefix-instructions! (clear-registers! machine-reg)))
-
 (define (rtl-target:=machine-register! rtl-reg machine-reg)
+  ;; Assert that in the code generated for this RTL instruction, the
+  ;; value for rtl-reg ends up stored in machine-reg.  Ensures that if
+  ;; machine-reg is an alias for a pseudo, the pseudo will have another
+  ;; alias or be saved in its home.
   (if (machine-register? rtl-reg)
       (begin
-	(require-register! machine-reg)
+	(prefix-instructions! (clear-registers! machine-reg))
 	(if (not (= rtl-reg machine-reg))
 	    (suffix-instructions!
 	     (register->register-transfer machine-reg rtl-reg))))
       (begin
 	(delete-register! rtl-reg)
-	(flush-register! machine-reg)
+	(prefix-instructions! (clear-registers! machine-reg))
 	(add-pseudo-register-alias! rtl-reg machine-reg))))
 
 ;;; OBJECT->MACHINE-REGISTER! takes only general registers, not float
@@ -211,7 +209,7 @@ USA.
 (define (object->machine-register! object mreg)
   ;; This ordering allows LOAD-CONSTANT to use MREG as a temporary.
   (let ((code (load-constant (INST-EA (R ,mreg)) object)))
-    (require-register! mreg)
+    (prefix-instructions! (clear-registers! mreg))
     code))
 
 (define (assign-register->register target source)
@@ -225,25 +223,43 @@ USA.
   (LAP (LEA Q ,target (@PCR ,label-expr))))
 
 (define (compare/register*register reg1 reg2)
+  (testcmp/register*register reg1 reg2 'CMP))
+
+(define (compare/reference*non-pointer register non-pointer)
+  (testcmp/reference*non-pointer register non-pointer 'CMP))
+
+(define (compare/reference*literal register literal)
+  (testcmp/reference*literal register literal 'CMP))
+
+(define (test/register*register reg1 reg2)
+  (testcmp/register*register reg1 reg2 'TEST))
+
+(define (test/reference*non-pointer register non-pointer)
+  (testcmp/reference*non-pointer register non-pointer 'TEST))
+
+(define (test/reference*literal register literal)
+  (testcmp/reference*literal register literal 'TEST))
+
+(define (testcmp/register*register reg1 reg2 op)
   (cond ((register-alias reg1 'GENERAL)
 	 =>
 	 (lambda (alias)
-	   (LAP (CMP Q ,(register-reference alias) ,(any-reference reg2)))))
+	   (LAP (,op Q ,(register-reference alias) ,(any-reference reg2)))))
 	((register-alias reg2 'GENERAL)
 	 =>
 	 (lambda (alias)
-	   (LAP (CMP Q ,(any-reference reg1) ,(register-reference alias)))))
+	   (LAP (,op Q ,(any-reference reg1) ,(register-reference alias)))))
 	(else
-	 (LAP (CMP Q ,(source-register-reference reg1)
+	 (LAP (,op Q ,(source-register-reference reg1)
 		   ,(any-reference reg2))))))
 
-(define (compare/reference*non-pointer register non-pointer)
-  (compare/reference*literal register (non-pointer->literal non-pointer)))
+(define (testcmp/reference*non-pointer register non-pointer op)
+  (testcmp/reference*literal register (non-pointer->literal non-pointer) op))
 
-(define (compare/reference*literal reference literal)
+(define (testcmp/reference*literal reference literal op)
   (with-unsigned-immediate-operand literal
     (lambda (operand)
-      (LAP (CMP Q ,reference ,operand)))))
+      (LAP (,op Q ,reference ,operand)))))
 
 ;;;; Literals and Constants
 
