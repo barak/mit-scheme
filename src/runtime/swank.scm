@@ -8,7 +8,8 @@ License as distributed with Emacs (press C-h C-c for details).
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -257,9 +258,9 @@ USA.
 	 (package/environment (find-package (read-from-string pstring) #t)))))
 
 (define (env->pstring env)
-  (let ((package (environment->package env)))
-    (if package
-	(write-to-string (package/name package))
+  (let ((name (environment-name env)))
+    (if name
+	(write-to-string name)
 	(string anonymous-package-prefix (hash-object env)))))
 
 (define anonymous-package-prefix
@@ -1026,8 +1027,7 @@ swank:xref
 	      (iline "cdr" (cdr pair)))))
 
 (define (inspect-environment env)
-  (let ((package (environment->package env))
-	(tail
+  (let ((tail
 	 (let loop ((bindings (environment-bindings env)))
 	   (if (pair? bindings)
 	       (cons-stream (let ((binding (car bindings)))
@@ -1043,9 +1043,10 @@ swank:xref
 	       (if (environment-has-parent? env)
 		   (stream (iline "(<parent>)" (environment-parent env)))
 		   (stream))))))
-    (if package
-	(cons-stream (iline "(package)" package) tail)
-	tail)))
+    (let-values (((name type) (environment-name&type env)))
+      (if name
+	  (cons-stream (iline (string-append "(" type ")") name) tail)
+	  tail))))
 
 (define (inspect-vector o)
   (let ((len (vector-length o)))

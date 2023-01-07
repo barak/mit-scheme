@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,3 +44,24 @@ USA.
 	 (if old
 	     (set-environment-variable! var old)
 	     (delete-environment-variable! var)))))))
+
+(define-test 'list-smoke
+  (lambda ()
+    (get-environment-variables)))
+
+(define-test 'set-list-assoc
+  (lambda ()
+    (let* ((var "FOOBAR")
+	   (val "MUMBLEFROTZ")
+	   (old (get-environment-variable var)))
+      (dynamic-wind
+	(lambda () 0)
+	(lambda ()
+	  (set-environment-variable! var val)
+	  (assert-equal (assoc var (get-environment-variables))
+			(cons var val))
+	  0)
+	(lambda ()
+	  (if old
+	      (set-environment-variable! var old)
+	      (delete-environment-variable! var)))))))

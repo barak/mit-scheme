@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,106 +30,82 @@ USA.
 
 (declare (usual-integrations))
 
-(add-boot-deps! '(runtime ucd-glue))
+(add-boot-deps! '(runtime ucd-glue) '(runtime ucd-segmentation))
 
+(define evolver)
+(define string-word-breaks)
+(add-boot-init!
+ (lambda ()
+   (set! evolver
+	 (make-evolver codes abbrevs extra-states ucd-wb+ep-value rules))
+   (set! string-word-breaks (evolver-interpreter evolver))
+   unspecific))
+
 (define codes
   '(carriage-return
     double-quote
-    emoji-base
-    emoji-base-gaz
-    emoji-modifier
     extend-num-let
     extend
     format
-    glue-after-zwj
     hebrew-letter
     katakana
-    letter
+    letter-ep
+    letter+ep
     linefeed
     mid-num-let
     mid-letter
     mid-num
     newline
     numeric
-    regional-indicator
+    ri
     single-quote
-    other
+    white-seg-space
+    other-ep
+    other+ep
     zwj))
 
-(define extra-states
-  '((save xletter)
-    (save hldq)
-    (save xnumeric)
-    ri*2))
+(define abbrevs
+  '((crlf (or newline carriage-return linefeed))
+    (ahletter (or letter-ep letter+ep hebrew-letter))
+    (mid-num-let-q (or mid-num-let single-quote))
+    (ext-pict (or letter+ep other+ep))
+    (efz (or extend format zwj))
+    (efz* (* _ efz))))
 
-(define transitions
+(define extra-states
+  '(ri*2))
+
+(define rules
   '((sot / any)
     (any / eot)
+    (sot _ eot)
 
     (carriage-return _ linefeed)
-    ((newline carriage-return linefeed) / any)
-    (any / (newline carriage-return linefeed))
+    (crlf / any)
+    (any / crlf)
 
-    (zwj _ (glue-after-zwj emoji-base-gaz))
+    (zwj _ ext-pict)
+    (white-seg-space _ white-seg-space)
 
-    (zwj _ (extend format zwj))
-    (any _ (extend format zwj) (from))
+    (any _ efz)
 
-    ((letter hebrew-letter) _ (letter hebrew-letter))
-    ((letter hebrew-letter) ? (mid-letter mid-num-let single-quote) xletter)
-    (xletter (_ _) (letter hebrew-letter))
+    (ahletter efz* _ ahletter)
 
-    ((letter hebrew-letter) ? (mid-letter mid-num-let single-quote) xletter)
-    (xletter (_ _) (letter hebrew-letter))
+    (ahletter efz* _ (or mid-letter mid-num-let-q) efz* _ ahletter)
+    (hebrew-letter efz* _ single-quote)
+    (hebrew-letter efz* _ double-quote efz* _ hebrew-letter)
 
-    (hebrew-letter _ single-quote)
-    (hebrew-letter ? double-quote hldq)
-    (hldq (_ _) hebrew-letter)
+    (numeric efz* _ numeric)
+    (ahletter efz* _ numeric)
+    (numeric efz* _ ahletter)
 
-    (numeric _ numeric)
-    ((letter hebrew-letter) _ numeric)
-    (numeric _ (letter hebrew-letter))
+    (numeric efz* _ (or mid-num mid-num-let-q) efz* _ numeric)
 
-    (numeric ? (mid-num mid-num-let single-quote) xnumeric)
-    (xnumeric (_ _) numeric)
+    (katakana efz* _ katakana)
 
-    (katakana _ katakana)
+    ((or ahletter numeric katakana extend-num-let) efz* _ extend-num-let)
+    (extend-num-let efz* _ (or ahletter numeric katakana))
 
-    (extend-num-let _ extend-num-let)
-    ((letter hebrew-letter numeric katakana) _ extend-num-let)
-    (extend-num-let _ (letter hebrew-letter numeric katakana))
-
-    ((emoji-base emoji-base-gaz) _ emoji-modifier)
-
-    (regional-indicator _ regional-indicator ri*2)
+    (ri efz* _ ri ri*2)
 
     (any / any)))
-
-(define evolver)
-(define string-wb-fold)
-(define string-wb-fold-right)
-(define string-wb-stream)
-(define string->wb-names)
-(define show-transitions)
-(add-boot-init!
- (lambda ()
-   (set! evolver (make-evolver codes extra-states ucd-wb-value transitions))
-   (set! string-wb-fold (folder evolver 'string-wb-fold))
-   (set! string-wb-fold-right (right-folder evolver 'string-wb-fold-right))
-   (set! string-wb-stream (streamer evolver 'string-wb-stream))
-   (set! string->wb-names (evolver-string->code-names evolver))
-   (set! show-transitions (evolver-show-transitions evolver))
-   unspecific))
-
-(define (string-word-breaks string)
-  (let loop ((stream (string-wb-stream string)))
-    (if (pair? stream)
-	(cons (car stream) (loop (force (cdr stream))))
-	'())))
-
-(define (find-word-breaks string knil kons)
-  (string-wb-fold (lambda (break prev-break acc)
-		    (declare (ignore prev-break))
-		    (kons break acc))
-		  knil
-		  string))

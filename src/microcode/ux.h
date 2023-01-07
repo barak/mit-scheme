@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -113,7 +114,6 @@ USA.
 
 #include "config.h"
 
-#include <errno.h>
 #include <grp.h>
 #include <pwd.h>
 #include <signal.h>
@@ -137,8 +137,11 @@ USA.
 #  define USE_MAP_FIXED 1
 #endif
 
-/* GNU C library defines environ if __USE_GNU is defined.  */
-#ifndef __USE_GNU
+/* GNU C library defines environ if __USE_GNU is defined.  musl libc
+   defines environ unconditionally, even though, when combined with
+   -Wredundant-decls, this breaks the POSIX requirement that users must
+   explicitly declare environ.  */
+#if !defined __USE_GNU && !defined MUSL
   extern char ** environ;
 #endif
 
@@ -210,15 +213,9 @@ USA.
 #  endif
 #endif
 
-#ifdef TIME_WITH_SYS_TIME
+#include <time.h>
+#ifdef HAVE_SYS_TIME_H
 #  include <sys/time.h>
-#  include <time.h>
-#else
-#  ifdef HAVE_SYS_TIME_H
-#    include <sys/time.h>
-#  else
-#    include <time.h>
-#  endif
 #endif
 
 #ifdef HAVE_SYS_TIMEX_H
@@ -312,7 +309,7 @@ USA.
 #include "osscheme.h"
 #include "syscall.h"
 
-typedef RETSIGTYPE Tsignal_handler_result;
+typedef void Tsignal_handler_result;
 
 #ifdef _POSIX_REALTIME_SIGNALS
 #  define HAVE_SIGACTION_SIGINFO_SIGNALS
@@ -321,14 +318,10 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #ifdef HAVE_SIGACTION_SIGINFO_SIGNALS
    typedef void (*Tsignal_handler) (int, siginfo_t *, void *);
 #else
-   typedef RETSIGTYPE (*Tsignal_handler) (int);
+   typedef void (*Tsignal_handler) (int);
 #endif
 
-#ifdef VOID_SIGNAL_HANDLERS
-#  define SIGNAL_HANDLER_RETURN() return
-#else
-#  define SIGNAL_HANDLER_RETURN() return (0)
-#endif
+#define SIGNAL_HANDLER_RETURN() return
 
 /* Crufty, but it will work here. */
 #ifndef ENOSYS
@@ -641,6 +634,10 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #else
    extern int UX_closefrom (int);
 #  define EMULATE_CLOSEFROM
+#endif
+
+#ifdef HAVE_SYS_UTSNAME_H
+#  define UX_uname uname
 #endif
 
 /* poll is somewhat busted on Mac OSX 10.4 (Tiger), so use select.  */

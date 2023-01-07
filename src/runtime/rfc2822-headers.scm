@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -188,7 +189,7 @@ USA.
 	    (cond ((eof-object? byte)
 		   (if (builder 'empty?)
 		       byte
-		       (builder)))
+		       (builder 'immutable)))
 		  ((fix:= 13 byte)
 		   (let ((byte (peek-u8 port)))
 		     (cond ((eof-object? byte)
@@ -199,7 +200,7 @@ USA.
 			   (else
 			    (parse-error port "Invalid line ending:"
 					 'read-ascii-line))))
-		   (builder))
+		   (builder 'immutable))
 		  ((fix:= 10 byte)
 		   (parse-error port "Invalid line ending:" 'read-ascii-line))
 		  ((and (fix:<= 32 byte) (fix:<= byte 126))
@@ -213,9 +214,12 @@ USA.
   (let ((byte (peek-u8 port)))
     (cond ((eof-object? byte)
 	   byte)
-	  ((and (fix:<= 32 byte) (fix:<= byte 126))
+	  ((or (fix:= 13 byte)
+	       (fix:= 10 byte)
+	       (and (fix:<= 32 byte) (fix:<= byte 126)))
 	   (integer->char byte))
-	  (else (parse-error port "Illegal character:" 'peek-ascii-char)))))
+	  (else
+	   (parse-error port "Illegal character:" byte 'peek-ascii-char)))))
 
 (define (skip-wsp-left string start end)
   (let loop ((i start))

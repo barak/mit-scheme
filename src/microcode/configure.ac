@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [11.2], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [12.1], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -9,7 +9,8 @@ AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,7 +35,8 @@ AH_TOP([/*
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -77,15 +79,9 @@ AH_BOTTOM(
 
 #include <sys/types.h>
 
-#ifdef TIME_WITH_SYS_TIME
+#include <time.h>
+#ifdef HAVE_SYS_TIME_H
 #  include <sys/time.h>
-#  include <time.h>
-#else
-#  ifdef HAVE_SYS_TIME_H
-#    include <sys/time.h>
-#  else
-#    include <time.h>
-#  endif
 #endif
 
 #ifdef HAVE_TERMIOS_H
@@ -181,7 +177,6 @@ SAVED_LDFLAGS=${LDFLAGS}
 dnl Checks for programs.
 AC_CHECK_TOOL([AS], [as])
 AC_PROG_CC
-AC_PROG_CC_STDC
 if test "x${ac_cv_prog_cc_c99}" != xno; then
    AC_DEFINE([HAVE_STDC_99], [1], [Does the compiler support C99?])
 fi
@@ -263,10 +258,10 @@ if test x"${GCC}" = xyes; then
 	AC_MSG_CHECKING([for compiler $flag])
 	SAVED_CFLAGS=${CFLAGS}
 	CFLAGS="${SAVED_CFLAGS} ${flag} -Werror"
-	AC_TRY_COMPILE([],[],
-	    [AC_MSG_RESULT(yes)
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[]])],
+            [AC_MSG_RESULT(yes)
              CFLAGS="${SAVED_CFLAGS} ${flag}"],
-	    [AC_MSG_RESULT(no)
+            [AC_MSG_RESULT(no)
 	     CFLAGS=${SAVED_CFLAGS}])
     done
 
@@ -310,6 +305,12 @@ linux-gnu)
     DO_GCC_TESTS=yes
     GNU_LD=yes
     ;;
+linux-musl)
+    M4_FLAGS="${M4_FLAGS} -P __linux__,1"
+    CPPFLAGS="${CPPFLAGS} -DMUSL"
+    DO_GCC_TESTS=yes
+    GNU_LD=yes
+    ;;
 freebsd*)
     M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
     DO_GCC_TESTS=yes
@@ -321,6 +322,7 @@ dragonfly*)
     GNU_LD=yes
     ;;
 darwin*)
+    M4_FLAGS="${M4_FLAGS} -P __APPLE__,1"
     if test -n "${with_macos_version}"; then
 	MACOS=${with_macos_version}
 	MACOS_CFLAGS="-mmacosx-version-min=${MACOS}"
@@ -433,30 +435,22 @@ AC_CHECK_LIB([m], [exp])
 
 dnl Checks for header files.
 AC_HEADER_DIRENT
-AC_HEADER_STDC
 AC_HEADER_STDBOOL
 AC_HEADER_SYS_WAIT
-AC_HEADER_TIME
-AC_CHECK_HEADERS([bsdtty.h fcntl.h fenv.h ieeefp.h limits.h malloc.h poll.h])
-AC_CHECK_HEADERS([sgtty.h stropts.h time.h])
-AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mount.h sys/param.h])
-AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/time.h sys/timex.h sys/un.h])
+AC_CHECK_HEADERS_ONCE([sys/time.h])
+
+AC_CHECK_HEADERS([bsdtty.h dlfcn.h fcntl.h fenv.h ieeefp.h malloc.h netdb.h])
+AC_CHECK_HEADERS([poll.h sgtty.h stdint.h stropts.h])
+AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mman.h sys/mount.h sys/param.h])
+AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/timex.h sys/un.h sys/utsname.h])
 AC_CHECK_HEADERS([sys/vfs.h])
 AC_CHECK_HEADERS([termio.h termios.h unistd.h util.h utime.h])
-AC_CHECK_HEADERS([dlfcn.h netdb.h signal.h])
-AC_CHECK_HEADERS([sys/mman.h float.h assert.h stdint.h])
 
 define([SCM_INC_TIME],
     [
-    #ifdef TIME_WITH_SYS_TIME
+    #include <time.h>
+    #ifdef HAVE_SYS_TIME_H
     #  include <sys/time.h>
-    #  include <time.h>
-    #else
-    #  ifdef HAVE_SYS_TIME_H
-    #    include <sys/time.h>
-    #  else
-    #    include <time.h>
-    #  endif
     #endif
     ])
 
@@ -512,7 +506,6 @@ dnl Checks for types and structs
 AC_TYPE_MODE_T
 AC_TYPE_OFF_T
 AC_TYPE_PID_T
-AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
 AC_TYPE_UID_T
 
@@ -556,18 +549,6 @@ AC_CHECK_TYPE([nlink_t],
     [AC_DEFINE([nlink_t], [short],
 	[Define to 'short' if undefined.])])
 
-AC_CHECK_TYPE([clock_t],
-    [],
-    [AC_DEFINE([clock_t], [unsigned long],
-	[Define to `unsigned long' if <time.h> doesn't define.])],
-    [SCM_INC_TIME])
-
-AC_CHECK_TYPE([time_t],
-    [],
-    [AC_DEFINE([time_t], [long],
-	[Define to `long' if <time.h> doesn't define.])],
-    [SCM_INC_TIME])
-
 AC_CHECK_TYPE([socklen_t],
     [],
     [AC_DEFINE([socklen_t], [int],
@@ -585,6 +566,8 @@ AC_CHECK_TYPE([speed_t],
     [AC_DEFINE([speed_t], [short],
 	[Define to `short' if <termios.h> doesn't define.])],
     [SCM_INC_TERMIO])
+
+AC_CHECK_DECLS([__environ, environ])
 
 define([SCM_INC_FENV],
     [
@@ -730,7 +713,6 @@ AC_CHECK_TYPE([struct timex],
     [SCM_INC_SYS_TIMEX])
 
 dnl Checks for compiler characteristics.
-AC_C_BIGENDIAN
 AC_C_CHAR_UNSIGNED
 AC_C_CONST
 
@@ -739,11 +721,9 @@ AC_FUNC_GETPGRP
 AC_FUNC_MEMCMP
 AC_FUNC_MMAP
 AC_FUNC_SETPGRP
-AC_FUNC_SETVBUF_REVERSED
 AC_FUNC_UTIME_NULL
-AC_FUNC_VFORK
+AC_FUNC_FORK
 AC_FUNC_VPRINTF
-AC_FUNC_WAIT3
 AC_CHECK_FUNCS([clock_gettime closefrom ctermid])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([expm1])
@@ -765,11 +745,6 @@ AC_CHECK_FUNCS([strtoul symlink sync_file_range sysconf])
 AC_CHECK_FUNCS([times truncate])
 AC_CHECK_FUNCS([utime])
 AC_CHECK_FUNCS([waitpid])
-
-if test ${ac_cv_type_signal} = void; then
-    AC_DEFINE([VOID_SIGNAL_HANDLERS], [1],
-	[Define if RETSIGTYPE is `void'.])
-fi
 
 dnl Checks for system characteristics.
 AC_PATH_X

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,13 +44,13 @@ USA.
 			(guarantee symbol? name 'make-library-db))
 		    (make-equal-hash-table)))
 
-(define (registered-library? name db)
-  (hash-table-exists? (%db-table db) name))
+(define (registered-library? key db)
+  (hash-table-exists? (%db-table db) key))
 
-(define (registered-library name db)
-  (let ((library (hash-table-ref/default (%db-table db) name #f)))
+(define (registered-library key db)
+  (let ((library (hash-table-ref/default (%db-table db) key #f)))
     (if (not library)
-	(error "No library of this name in database:" name db))
+	(error "No library with this key in database:" key db))
     library))
 
 (define (registered-libraries db)
@@ -58,12 +59,12 @@ USA.
 (define (register-library! library db)
   (if (library-registered? library)
       (error "Library already registered:" library))
-  (let ((name (library-name library))
+  (let ((key (library-key library))
 	(table (%db-table db)))
-    (let ((library* (hash-table-ref/default table name #f)))
+    (let ((library* (hash-table-ref/default table key #f)))
       (cond ((not library*)
 	     (%set-library-db! library db)
-	     (hash-table-set! table name library)
+	     (hash-table-set! table key library)
 	     library)
 	    ((library-preregistered? library*)
 	     (%set-library-alist! library* library)
@@ -71,7 +72,7 @@ USA.
 	    (else
 	     (warn "Replacing library:" library* db)
 	     (%set-library-db! library db)
-	     (hash-table-set! table name library)
+	     (hash-table-set! table key library)
 	     (%set-library-db! library* #f)
 	     library)))))
 
@@ -81,12 +82,12 @@ USA.
 	    libraries))
 
 (define (deregister-library! library db)
-  (let ((name (library-name library)))
-    (if (not (registered-library? name db))
+  (let ((key (library-key library)))
+    (if (not (registered-library? key db))
 	(error "Library not registered here:" library db))
     (if (not (library-preregistered? library))
 	(warn "Removing library:" library db))
-    (hash-table-delete! (%db-table db) name)
+    (hash-table-delete! (%db-table db) key)
     (%set-library-db! library #f)))
 
 (define (copy-library-db db #!optional new-name)
@@ -108,6 +109,25 @@ USA.
   (db %library-db %set-library-db!)
   (alist %library-alist)
   (original-alist %library-original-alist))
+
+(define-print-method library?
+  (standard-print-method 'library
+    (lambda (library)
+      (let ((name (library-name library)))
+	(if name
+	    (list name)
+	    '())))))
+
+(define-pp-describer library?
+  (lambda (library)
+    (cons (list 'db (%library-db library))
+	  (map (lambda (p)
+		 (list (car p) (cdr p)))
+	       (cdr (%library-alist library))))))
+
+(define (library-key library)
+  (or (library-name library)
+      (list '|#[program]| (hash-object library))))
 
 (define (alist->library name alist)
   (%make-library name
@@ -141,6 +161,10 @@ USA.
     (parsed-contents ())
     (filename #f)))
 
+(define (copy-library library)
+  (alist->library (library-name library)
+		  (alist-copy (cdr (%library-original-alist library)))))
+
 (define (library-registered? library)
   (and (%library-db library) #t))
 
@@ -148,7 +172,7 @@ USA.
   (let ((db (%library-db library)))
     (if (not db) (error "Library not registered:" library))
     db))
-
+
 (define (library-has? key library)
   (if (and (memq key properties-requiring-load)
 	   (library-preregistered? library))
@@ -178,25 +202,6 @@ USA.
 (define properties-requiring-load
   '(contents))
 
-(define (copy-library library)
-  (alist->library (library-name library)
-		  (alist-copy (cdr (%library-original-alist library)))))
-
-(define-print-method library?
-  (standard-print-method 'library
-    (lambda (library)
-      (let ((name (library-name library)))
-	(if name
-	    (list name)
-	    '())))))
-
-(define-pp-describer library?
-  (lambda (library)
-    (cons (list 'db (%library-db library))
-	  (map (lambda (p)
-		 (list (car p) (cdr p)))
-	       (cdr (%library-alist library))))))
-
 (define (library-accessor key)
   (lambda (library)
     (library-get key library)))
@@ -205,7 +210,7 @@ USA.
 (define library-contents (library-accessor 'contents))
 (define library-environment (library-accessor 'environment))
 (define library-eval-result (library-accessor 'eval-result))
-(define library-exports (library-accessor 'exports))
+(define library-export-groups (library-accessor 'export-groups))
 (define library-filename (library-accessor 'filename))
 (define library-free-names (library-accessor 'free-names))
 (define library-imports (library-accessor 'imports))
@@ -243,6 +248,52 @@ USA.
 (define (load-preregistered-library! library)
   (parameterize ((current-library-db (library-db library)))
     (load (library-filename library))))
+
+;;;; Export groups
+
+;;; An export group can be private, meaning that only the library specified in
+;;; library-name may import the group's exports.  It can also be public, in
+;;; which case library-name is #f.
+
+(define-record-type <export-group>
+    (make-export-group library-name exports)
+    export-group?
+  (library-name export-group-library-name)
+  (exports export-group-exports))
+
+(define-print-method export-group?
+  (standard-print-method 'export-group
+    (lambda (group)
+      (list (export-group-library-name group)))))
+
+(define (library-exports library #!optional importing-library)
+  (let ((groups (library-export-groups library)))
+    (if (or (not importing-library)
+	    (default-object? importing-library))
+	(let ((public
+	       (find (lambda (group)
+		       (not (export-group-library-name group)))
+		     groups)))
+	  (if public
+	      (export-group-exports public)
+	      '()))
+	(fold (lambda (group exports)
+		(let ((export-to (export-group-library-name group))
+		      (importing-name (library-name importing-library)))
+		  (if (or (not export-to)
+			  (library-name=? export-to importing-name))
+		      (append (export-group-exports group) exports)
+		      exports)))
+	      '()
+	      groups))))
+
+(define (export-group->list group)
+  (cons (export-group-library-name group)
+	(map library-ixport->list (export-group-exports group))))
+
+(define (list->export-group list)
+  (make-export-group (car list)
+		     (map list->library-ixport (cdr list))))
 
 ;;;; Automatic properties
 

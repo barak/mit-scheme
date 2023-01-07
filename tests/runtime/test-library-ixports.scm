@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -65,9 +66,7 @@ USA.
 					       'create-foo-quux)))
       (assert-lset= library-ixport=?
 		    (library-exports library)
-		    (map (lambda (export)
-			   (convert-export (library-name library) export))
-			 ex1-exports)))))
+		    (convert-exports (library-name library) ex1-exports)))))
 
 (define-test 'mit-libraries:srfi-140
   (lambda ()
@@ -160,3 +159,78 @@ USA.
     (utf8->string utf8->mstring)
     (vector->string vector->mstring)
     (xsubstring xmsubstring)))
+
+(define-test 'test-private-exports
+  (lambda ()
+    (let ((source (read-r7rs-source private-exports-example-filename))
+	  (db (copy-library-db host-library-db)))
+      (register-r7rs-source! source db)
+      (let ((amap-base (registered-library '(test amap) db))
+	    (amap-impl (registered-library '(test amap impl) db)))
+	(assert-lset= library-ixport=?
+		      (library-exports amap-base)
+		      (convert-exports '(test amap)
+				       expected-amap-base-exports))
+	(assert-lset= library-ixport=?
+		      (library-exports amap-impl)
+		      (convert-exports '(test amap impl)
+				       expected-amap-impl-exports))
+	(assert-lset= library-ixport=?
+		      (library-exports amap-impl amap-base)
+		      (convert-exports '(test amap impl)
+				       expected-amap-impl-exports-private))))))
+
+(define expected-amap-base-exports
+  '(alist->amap
+    amap->alist
+    amap-args
+    amap-clean!
+    amap-clear!
+    amap-comparator
+    amap-contains?
+    amap-copy
+    amap-count
+    amap-delete!
+    amap-difference!
+    amap-empty-copy
+    amap-empty?
+    amap-entries
+    amap-find
+    amap-fold
+    amap-for-each
+    amap-implementation-name
+    amap-intern!
+    amap-intersection!
+    amap-keys
+    amap-map
+    amap-map!
+    amap-map->list
+    amap-mutable?
+    amap-pop!
+    amap-prune!
+    amap-ref
+    amap-ref/default
+    amap-set!
+    amap-size
+    amap-unfold
+    amap-union!
+    amap-update!
+    amap-update!/default
+    amap-values
+    amap-xor!
+    amap=?
+    amap?
+    make-amap))
+
+(define expected-amap-impl-exports
+  '(all-amap-args
+    amap-implementation-names
+    amap-implementation-supported-args
+    amap-implementation-supports-args?
+    amap-implementation-supports-comparator?
+    define-amap-implementation
+    define-amap-implementation-selector
+    make-amap-implementation))
+
+(define expected-amap-impl-exports-private
+  (cons 'select-impl expected-amap-impl-exports))

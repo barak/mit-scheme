@@ -3,8 +3,8 @@
 ## Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 ##     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 ##     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
-##     2015, 2016, 2017, 2018, 2019, 2020 Massachusetts Institute of
-##     Technology
+##     2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts
+##     Institute of Technology
 ##
 ## This file is part of MIT/GNU Scheme.
 ##
@@ -93,6 +93,11 @@ TAGS_FILES = $(sources)
 EXTRA_DIST += $(sources) compile.sh make.scm compile.scm imail.pkg
 
 install-data-hook:
+	( echo '(add-plugin "imail" "@MIT_SCHEME_PROJECT@"'; \
+	  echo '            ""'; \
+	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
+	  echo '            "")' ) \
+	| $(MIT_SCHEME_EXE) --batch-mode
 
 install-html: install-html-am
 	( echo '(add-plugin "imail" "@MIT_SCHEME_PROJECT@"'; \
@@ -102,3 +107,10 @@ install-html: install-html-am
 	| $(MIT_SCHEME_EXE) --batch-mode
 
 uninstall-hook:
+	( echo '(remove-plugin "imail" "@MIT_SCHEME_PROJECT@"'; \
+	  echo '               ""'; \
+	  echo '               "$(DESTDIR)$(scmlibdir)"'; \
+	  echo '               "$(DESTDIR)$(scmdocdir)")' ) \
+	| $(MIT_SCHEME_EXE) --batch-mode
+	[ -d "$(DESTDIR)$(scmlib_subdir)" ] \
+	&& rmdir "$(DESTDIR)$(scmlib_subdir)"

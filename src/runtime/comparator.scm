@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -191,109 +192,91 @@ USA.
        (cond ((=? comparator object1 object2) if=)
 	     ((<? comparator object1 object2) if<)
 	     (else if>))))))
+
+(define (comparator-max-in-list comp list)
+  (let ((< (comparator-ordering-predicate comp)))
+    (let loop ((max (car list)) (list (cdr list)))
+      (if (null? list)
+          max
+          (if (< max (car list))
+              (loop (car list) (cdr list))
+              (loop max (cdr list)))))))
+
+(define (comparator-min-in-list comp list)
+  (let ((< (comparator-ordering-predicate comp)))
+    (let loop ((min (car list)) (list (cdr list)))
+      (if (null? list)
+          min
+          (if (< min (car list))
+              (loop min (cdr list))
+              (loop (car list) (cdr list)))))))
+
+(define (comparator-max comp . args)
+  (comparator-max-in-list comp args))
+
+(define (comparator-min comp . args)
+  (comparator-min-in-list comp args))
 
 ;;;; Specific comparators
 
 (define (make-eq-comparator)
-  the-eq-comparator)
+  eq-comparator)
 
-(define-deferred the-eq-comparator
+(define-deferred eq-comparator
   (make-comparator any-object? eq? #f eq-hash #t))
 
 (define (make-eqv-comparator)
-  the-eqv-comparator)
+  eqv-comparator)
 
-(define-deferred the-eqv-comparator
+(define-deferred eqv-comparator
   (make-comparator any-object? eqv? #f eqv-hash #t))
 
 (define (make-equal-comparator)
-  the-equal-comparator)
+  equal-comparator)
 
-(define-deferred the-equal-comparator
+(define-deferred equal-comparator
   (make-comparator any-object? equal? #f equal-hash #t))
 
-(define (boolean-comparator)
-  the-boolean-comparator)
-
-(define-deferred the-boolean-comparator
+(define-deferred boolean-comparator
   (make-comparator boolean? boolean=? boolean<? boolean-hash #f))
 
-(define (char-comparator)
-  the-char-comparator)
-
-(define-deferred the-char-comparator
+(define-deferred char-comparator
   (make-comparator char? char=? char<? char-hash #f))
 
-(define (char-ci-comparator)
-  the-char-ci-comparator)
-
-(define-deferred the-char-ci-comparator
+(define-deferred char-ci-comparator
   (make-comparator char? char-ci=? char-ci<? char-ci-hash #f))
 
-(define (string-comparator)
-  the-string-comparator)
-
-(define-deferred the-string-comparator
+(define-deferred string-comparator
   (make-comparator string? string=? string<? string-hash #f))
 
-(define (string-ci-comparator)
-  the-string-ci-comparator)
-
-(define-deferred the-string-ci-comparator
+(define-deferred string-ci-comparator
   (make-comparator string? string-ci=? string-ci<? string-ci-hash #f))
-
-(define (symbol-comparator)
-  the-symbol-comparator)
 
-(define-deferred the-symbol-comparator
+(define-deferred symbol-comparator
   (make-comparator symbol? symbol=? symbol<? symbol-hash #f))
 
-(define (interned-symbol-comparator)
-  the-interned-symbol-comparator)
-
-(define-deferred the-interned-symbol-comparator
+(define-deferred interned-symbol-comparator
   (make-comparator interned-symbol? eq? symbol<? eq-hash #t))
 
-(define (bytevector-comparator)
-  the-bytevector-comparator)
-
-(define-deferred the-bytevector-comparator
+(define-deferred bytevector-comparator
   (make-comparator bytevector? bytevector=? bytevector<? bytevector-hash #f))
 
-(define (number-comparator)
-  the-number-comparator)
-
-(define-deferred the-number-comparator
+(define-deferred number-comparator
   (make-comparator number? = #f number-hash #f))
 
-(define (real-comparator)
-  the-real-comparator)
-
-(define-deferred the-real-comparator
+(define-deferred real-comparator
   (make-comparator real? = < number-hash #f))
 
-(define (fixnum-comparator)
-  the-fixnum-comparator)
-
-(define-deferred the-fixnum-comparator
+(define-deferred fixnum-comparator
   (make-comparator fix:fixnum? fix:= fix:< fixnum-hash #f))
 
-(define (flonum-comparator)
-  the-flonum-comparator)
-
-(define-deferred the-flonum-comparator
+(define-deferred flonum-comparator
   (make-comparator flo:flonum? flo:= flo:< number-hash #f))
 
-(define (char-set-comparator)
-  the-char-set-comparator)
-
-(define-deferred the-char-set-comparator
+(define-deferred char-set-comparator
   (make-comparator char-set? char-set= char-set< char-set-hash #f))
 
-(define (exact-integer-comparator)
-  the-exact-integer-comparator)
-
-(define-deferred the-exact-integer-comparator
+(define-deferred exact-integer-comparator
   (make-comparator exact-integer? int:= int:< number-hash #f))
 
 ;;;; Compound comparators
@@ -970,7 +953,7 @@ USA.
 ;;;; Default comparator
 
 (define (make-default-comparator)
-  the-default-comparator)
+  default-comparator)
 
 (define (comparator-register-default! comparator)
   (let ((? (%comparator-? comparator)))
@@ -1022,12 +1005,24 @@ USA.
  (lambda ()
    (register-hash! default-hash #t)))
 
-(define-deferred the-default-comparator
+(define-deferred default-comparator
   (make-comparator any-object?
 		   default=
 		   default<
 		   default-hash
 		   #t))
+
+(define-deferred pair-comparator
+  (make-pair-comparator default-comparator default-comparator))
+
+(define-deferred weak-pair-comparator
+  (make-weak-pair-comparator default-comparator default-comparator))
+
+(define-deferred list-comparator
+  (uniform-list-comparator default-comparator))
+
+(define-deferred vector-comparator
+  (uniform-vector-comparator default-comparator))
 
 (add-boot-init!
  (lambda ()
@@ -1038,14 +1033,17 @@ USA.
      (lambda (x y) (declare (ignore x y)) #f)
      (lambda (x) (declare (ignore x)) (%combine-hashes 2777 (initial-hash))))
 
-   (comparator-register-default! (boolean-comparator))
-   (comparator-register-default! (bytevector-comparator))
-   (comparator-register-default! (char-comparator))
-   (comparator-register-default! (char-set-comparator))
-   (comparator-register-default! (fixnum-comparator))
-   (comparator-register-default! (string-comparator))
-   (comparator-register-default! (real-comparator))
-   (comparator-register-default! (symbol-comparator))
+   (comparator-register-default! boolean-comparator)
+   (comparator-register-default! bytevector-comparator)
+   (comparator-register-default! char-comparator)
+   (comparator-register-default! char-set-comparator)
+   (comparator-register-default! fixnum-comparator)
+   (comparator-register-default! string-comparator)
+   (comparator-register-default! real-comparator)
+   (comparator-register-default! symbol-comparator)
+   (comparator-register-default! pair-comparator)
+   (comparator-register-default! weak-pair-comparator)
+   (comparator-register-default! vector-comparator)
 
    (define-default-type bit-string? bit-string=? #f eq-hash)
    (define-default-type cell? eq? #f eq-hash)
@@ -1056,9 +1054,4 @@ USA.
      (lambda (x y)
        (or (< (real-part x) (real-part y))
 	   (< (imag-part x) (imag-part y))))
-     eqv-hash)
-
-   (let ((dc (make-default-comparator)))
-     (comparator-register-default! (make-pair-comparator dc dc))
-     (comparator-register-default! (make-weak-pair-comparator dc dc))
-     (comparator-register-default! (uniform-vector-comparator dc)))))
+     eqv-hash)))

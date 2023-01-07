@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -259,6 +260,7 @@ USA.
   ;; aliases.  Thus the target register can "inherit" the alias, which
   ;; means that the assignment is accomplished without moving any
   ;; data.
+  (assert (not (machine-register? register)))
   (set! *register-map*
 	(add-pseudo-register-alias *register-map* register alias false))
   (need-register! alias))
@@ -309,15 +311,20 @@ USA.
 (define (clear-registers! . registers)
   (if (null? registers)
       '()
-      (let loop ((map *register-map*) (registers registers))
-	(save-machine-register map (car registers)
-	  (lambda (map instructions)
+      (let loop
+	  ((map *register-map*)
+	   (needed-registers (eqv-set-union registers *needed-registers*))
+	   (registers registers))
+	(save-machine-register map needed-registers (car registers)
+	  (lambda (map needed-registers instructions)
 	    (let ((map (delete-machine-register map (car registers))))
 	      (if (null? (cdr registers))
 		  (begin
 		    (set! *register-map* map)
+		    (set! *needed-registers* needed-registers)
 		    instructions)
-		  (append! instructions (loop map (cdr registers))))))))))
+		  (append! instructions
+			   (loop map needed-registers (cdr registers))))))))))
 
 (define (standard-register-reference register preferred-type alternate-types?)
   ;; Generate a standard reference for `register'.  This procedure
@@ -361,14 +368,24 @@ USA.
 
 (define (load-machine-register! source-register machine-register)
   ;; Copy the contents of `source-register' to `machine-register'.
+  (define (last-reference-already-there)
+    ;; The machine register already holds the source (either because it
+    ;; is an alias for the source, or because the source literally is
+    ;; the machine register), so all we need to do is delete it from
+    ;; the map and mark it needed so nothing else will try to reuse it.
+    (delete-register! machine-register)
+    (need-register! machine-register)
+    (LAP))
   (if (machine-register? source-register)
-      (LAP ,@(clear-registers! machine-register)
-	   ,@(if (eqv? source-register machine-register)
-		 (LAP)
-		 (register->register-transfer source-register
+      (if (eqv? source-register machine-register)
+	  (last-reference-already-there)
+	  (LAP ,@(clear-registers! machine-register)
+	       ,@(register->register-transfer source-register
 					      machine-register)))
       (if (is-alias-for-register? machine-register source-register)
-	  (clear-registers! machine-register)
+	  (if (dead-register? source-register)
+	      (last-reference-already-there)
+	      (clear-registers! machine-register))
 	  (let ((source-reference
 		 (if (register-value-class=word? source-register)
 		     (standard-register-reference source-register false true)
@@ -427,7 +444,7 @@ USA.
 	  (standard-register-reference source type true)
 	  target))
 	target))))
-
+
 (define (reuse-pseudo-register-alias! source type if-reusable if-not)
   (reuse-pseudo-register-alias source type
     (lambda (alias)
@@ -445,15 +462,39 @@ USA.
   ;; aliases, then one of its aliases may be reused.
   (if (machine-register? source)
       (if-not)
-      (let ((alias (register-alias source type)))
-	(cond ((not alias)
-	       (if-not))
-	      ((dead-register? source)
-	       (if-reusable alias))
-	      ((not (alias-is-unique? alias))
-	       (if-reusable alias))
-	      (else
-	       (if-not))))))
+      (let* ((all-aliases
+	      (or (pseudo-register-aliases *register-map* source) '()))
+	     (typed-aliases
+	      (if type
+		  (filter (lambda (alias)
+			    (register-type? alias type))
+			  all-aliases)
+		  all-aliases))
+	     (usable-aliases
+	      (eqv-set-difference typed-aliases *needed-registers*)))
+	(if (pair? usable-aliases)
+	    (let ((alias (car usable-aliases)))
+	      ;; XXX Not clear that need-register! here is necessary or
+	      ;; even appropriate, especially if we end up branching to
+	      ;; if-not rather than if-reusable, but it mimics the past
+	      ;; behaviour of reuse-pseudo-register-alias (via a since
+	      ;; removed call to register-alias), and shall remain
+	      ;; until proven removable and tested.
+	      ;;
+	      ;; In particular, most if-reusable continuations will
+	      ;; either explicitly issue need-register! or issue
+	      ;; delete-register!, whereas if we're not using the
+	      ;; register then it's hard to imagine why we should mark
+	      ;; it needed.  However, need-register! does affect what
+	      ;; aliases register-alias and standard-register-reference
+	      ;; may return, which some callers may (inadvertently)
+	      ;; rely on.
+	      (need-register! alias)
+	      (if (or (not (alias-is-unique? alias))
+		      (dead-register? source))
+		  (if-reusable alias)
+		  (if-not)))
+	    (if-not)))))
 
 ;;; The following procedures are used when the copy is going to be
 ;;; transformed, and the machine has 3 operand instructions, which

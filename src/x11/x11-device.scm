@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,6 +44,31 @@ USA.
   (+ event-mask:normal (shift-left 1 event-type:take-focus)))
 
 (define user-event-mask:default (shift-left 1 event-type:button-down))
+
+(define (->flovec object)
+  (cond ((flo:flonum? object)
+	 object)
+	((vector-of-type? object number?)
+	 (let* ((n (vector-length object))
+		(v (flo:vector-cons n)))
+	   (let loop ((i 0))
+	     (if (fix:< i n)
+		 (begin
+		   (flo:vector-set! v i (->flonum (vector-ref object i)))
+		   (loop (fix:+ i 1)))))
+	   v))
+	((list-of-type?->length object number?)
+	 => (lambda (n)
+	      (let ((v (flo:vector-cons n)))
+		(let loop ((i 0) (items object))
+		  (if (pair? items)
+		      (begin
+			(flo:vector-set! v i (->flonum (car items)))
+			(loop (fix:+ i 1) (cdr items)))))
+		v)))
+	(else
+	 (error:wrong-type-argument object "list/vector of numbers"
+				    '->flovec))))
 
 ;;;; X11 graphics device
 
@@ -476,7 +502,9 @@ USA.
 			(->flonum y-end)))
 
 (define (x-graphics/draw-lines device xv yv)
-  (x-graphics-draw-lines (x-graphics-device/xw device) xv yv))
+  (x-graphics-draw-lines (x-graphics-device/xw device)
+			 (->flovec xv)
+			 (->flovec yv)))
 
 (define (x-graphics/draw-point device x y)
   (x-graphics-draw-point (x-graphics-device/xw device)
@@ -484,7 +512,9 @@ USA.
 			 (->flonum y)))
 
 (define (x-graphics/draw-points device xv yv)
-  (x-graphics-draw-points (x-graphics-device/xw device) xv yv))
+  (x-graphics-draw-points (x-graphics-device/xw device)
+			  (->flovec xv)
+			  (->flovec yv)))
 
 (define (x-graphics/draw-text device x y string)
   (x-graphics-draw-string (x-graphics-device/xw device)
@@ -609,9 +639,9 @@ USA.
 		       360.
 		       #t))
 
-(define (x-graphics/fill-polygon device point-vector)
+(define (x-graphics/fill-polygon device points)
   (x-graphics-fill-polygon (x-graphics-device/xw device)
-			   (vector-map ->flonum point-vector)))
+			   (->flovec points)))
 
 (define (x-graphics/copy-area device source-x-left source-y-top width height
 			      destination-x-left destination-y-top)

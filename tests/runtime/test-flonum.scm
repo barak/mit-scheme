@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1136,19 +1137,19 @@ USA.
   (define-enumerated-test 'min-num-snan-left inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:min-num (flo:snan 123) x)))
-                      (flo:qnan 123))))
+		      x)))
   (define-enumerated-test 'max-num-snan-left inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:max-num (flo:snan 123) x)))
-                      (flo:qnan 123))))
+		      x)))
   (define-enumerated-test 'min-num-snan-right inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:min-num x (flo:snan 123))))
-                      (flo:qnan 123))))
+		      x)))
   (define-enumerated-test 'max-num-snan-right inputs
     (lambda (x)
       (assert-eqv-nan (no-traps (lambda () (flo:max-num x (flo:snan 123))))
-                      (flo:qnan 123))))
+		      x)))
   (define-test 'min-num-snan-both
     (lambda ()
       (assert-qnan
@@ -1161,20 +1162,24 @@ USA.
   ;; Min/max magnitude number -- signalling cases (XXX test exceptions too)
   (define-enumerated-test 'min-mag-num-snan-left inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:min-mag-num (flo:snan 123) x)))
-                      (flo:qnan 123))))
+      (assert-eqv-nan
+       (no-traps (lambda () (flo:min-mag-num (flo:snan 123) x)))
+       x)))
   (define-enumerated-test 'max-mag-num-snan-left inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:max-mag-num (flo:snan 123) x)))
-                      (flo:qnan 123))))
+      (assert-eqv-nan
+       (no-traps (lambda () (flo:max-mag-num (flo:snan 123) x)))
+       x)))
   (define-enumerated-test 'min-mag-num-snan-right inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:min-mag-num x (flo:snan 123))))
-                      (flo:qnan 123))))
+      (assert-eqv-nan
+       (no-traps (lambda () (flo:min-mag-num x (flo:snan 123))))
+       x)))
   (define-enumerated-test 'max-mag-num-snan-right inputs
     (lambda (x)
-      (assert-eqv-nan (no-traps (lambda () (flo:max-mag-num x (flo:snan 123))))
-                      (flo:qnan 123))))
+      (assert-eqv-nan
+       (no-traps (lambda () (flo:max-mag-num x (flo:snan 123))))
+       x)))
   (define-test 'min-mag-num-snan-both
     (lambda ()
       (assert-qnan

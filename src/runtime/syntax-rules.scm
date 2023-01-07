@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,6 +26,7 @@ USA.
 |#
 
 ;;;; Rule-based Syntactic Expanders
+;;; package: (runtime syntax syntax-rules)
 
 ;;; See "Syntactic Extensions in the Programming Language Lisp", by
 ;;; Eugene Kohlbecker, Ph.D. dissertation, Indiana University, 1986.
@@ -33,252 +35,366 @@ USA.
 ;;; implementation by Kent Dybvig, and includes some ideas from
 ;;; another implementation by Jonathan Rees.
 
+;;; Implementation comments:
+
+;;; Parsing of syntax-rules clauses is complex due to the interaction of quoting
+;;; mechanisms, overriding of ellipses, and identifier comparison.  This is
+;;; mitigated here by a rewriting phase that transforms them into an
+;;; easily-walked form that consists of nested lists keyed by symbols.  The form
+;;; memoizes identifiers so that they can be compared using eq?.
+
+;;; The rewritten forms are then checked for various syntactic restrictions that
+;;; are different for patterns and templates.  Patterns are checked for excess
+;;; ellipses, but not templates where it is allowed.  Ellipsis depth is computed
+;;; for the pattern variables, and then checked in the template to make sure
+;;; that references have the correct depth and nesting relationships.
+
+;;; One special exception is dotted-list patterns, where the RHS of the dotted
+;;; list is an identifier.  In that case no ellipses are allowed in the LHS of
+;;; the pattern, because otherwise matching would require backtracking and there
+;;; would be more than one possible match.
+
+;;; The generated code is then simple, deferring most of the work to the
+;;; procedures syntax-rules:match-datum and syntax-rules:expand-template.  These
+;;; names must be bound in the global environment since that's the only means we
+;;; have for efficiently referencing them in the generated code.
+
 (declare (usual-integrations))
 
 (define-syntax syntax-rules
   (er-macro-transformer
    (lambda (form rename compare)
-
-     (define (process ellipsis keywords clauses)
-       (if (any-duplicates? keywords eq?)
-	   (syntax-error "Keywords list contains duplicates:" keywords))
-       (let ((ellipsis
-	      (if (memq ellipsis keywords)
-		  #f
-		  ellipsis))
+     (let-values
+	 (((ellipsis literals clauses)
+	   (cond ((syntax-match? '((* identifier)
+				   * ((identifier . datum) datum))
+				 (cdr form))
+		  (values (rename '...) (cadr form) (cddr form)))
+		 ((syntax-match? '(identifier
+				   (* identifier)
+				   * ((identifier . datum) datum))
+				 (cdr form))
+		  (values (cadr form) (caddr form) (cdddr form)))
+		 (else
+		  (ill-formed-syntax form)))))
+       (let ((underscore (rename '_))
 	     (r-form (new-identifier 'form))
 	     (r-rename (new-identifier 'rename))
 	     (r-compare (new-identifier 'compare)))
 	 `(,(rename 'er-macro-transformer)
 	   (,(rename 'lambda)
 	    (,r-form ,r-rename ,r-compare)
-	    (,(rename 'declare) (ignorable ,r-rename ,r-compare))
-	    ,(let loop ((clauses clauses))
+	    ,@(if (null? clauses)
+		  `((,(rename 'declare) (ignore ,r-rename ,r-compare)))
+		  '())
+	    ,(let loop
+		 ((clauses
+		   (parse-clauses ellipsis literals clauses underscore
+				  compare)))
 	       (if (pair? clauses)
-		   (let ((pattern (caar clauses)))
-		     (let ((sids
-			    (parse-pattern rename compare ellipsis keywords
-					   pattern r-form)))
-		       `(,(rename 'if)
-			 ,(generate-match rename compare ellipsis keywords
-					  r-rename r-compare
-					  pattern r-form)
-			 ,(generate-output rename compare ellipsis
-					   r-rename sids (cadar clauses))
-			 ,(loop (cdr clauses)))))
-		   `(,(rename 'ill-formed-syntax) ,r-form)))))))
+		   (let ((pattern (caar clauses))
+			 (template (cadar clauses))
+			 (r-dict (new-identifier 'dict)))
+		     `(let ((,r-dict
+			     (,(rename 'syntax-rules:match-datum)
+			      ,(syntax-quote pattern)
+			      (cdr ,r-form)
+			     ,r-rename
+			     ,r-compare)))
+			(if ,r-dict
+			    (,(rename 'syntax-rules:expand-template)
+			     ,(syntax-quote template)
+			     ,r-dict
+			     ,r-rename)
+			    ,(loop (cdr clauses)))))
+		   `(,(rename 'ill-formed-syntax) ,r-form))))))))))
 
-     (cond ((syntax-match? '((* identifier)
-			     * ((identifier . datum) expression))
-			   (cdr form))
-	    (process '... (cadr form) (cddr form)))
-	   ((syntax-match? '(identifier
-			     (* identifier)
-			     * ((identifier . datum) expression))
-			   (cdr form))
-	    (process (cadr form) (caddr form) (cdddr form)))
-	   (else
-	    (ill-formed-syntax form))))))
+(define (parse-clauses ellipsis literals clauses underscore compare)
+  (if (any-duplicates? literals compare)
+      (syntax-error "Literals list contains duplicates:" literals))
+  (let ((rewrite (make-rewriter ellipsis literals underscore compare)))
+    (map (lambda (clause)
+	   (parse-clause rewrite (car clause) (cadr clause)))
+	 clauses)))
+
+(define (parse-clause rewrite pattern template)
+  (if (not (and (pair? pattern) (identifier? (car pattern))))
+      (syntax-error "Pattern must start with identifier:" pattern))
+  (let ((p (rewrite (cdr pattern)))
+	(t (rewrite template)))
+    (check-for-multiple-segments p pattern)
+    (let ((pvs (compute-segments p))
+	  (tvs (compute-segments t)))
+      (if (any-duplicates? pvs eq? car)
+	  (syntax-error "Duplicate vars in pattern:" pattern))
+      (check-template-var-references tvs pvs))
+    (list p t)))
 
-(define (parse-pattern rename compare ellipsis keywords pattern expression)
-  (let loop
-      ((pattern pattern)
-       (expression expression)
-       (sids '())
-       (control #f)
-       (ellipsis ellipsis))
-    (cond ((identifier? pattern)
-	   (if (and ellipsis (compare pattern (rename ellipsis)))
-	       (syntax-error "Misplaced ellipsis:" pattern))
-	   (if (memq pattern keywords)
-	       sids
-	       (cons (make-sid pattern expression control) sids)))
-	  ((ellipsis-quote? rename compare ellipsis pattern)
-	   (loop (cadr pattern) expression sids control #f))
-	  ((zero-or-more? rename compare ellipsis pattern)
-	   (if (not (null? (cddr pattern)))
-	       (syntax-error "Misplaced ellipsis:" pattern))
-	   (let ((variable (new-identifier 'control)))
-	     (loop (car pattern)
-		   variable
-		   sids
-		   (make-sid variable expression control)
-		   ellipsis)))
-	  ((pair? pattern)
-	   (loop (car pattern)
-		 `(,(rename 'car) ,expression)
-		 (loop (cdr pattern)
-		       `(,(rename 'cdr) ,expression)
-		       sids
-		       control
-		       ellipsis)
-		 control
-		 ellipsis))
-	  (else sids))))
+(define (make-rewriter ellipsis literals underscore compare)
 
-(define-record-type <sid>
-    (make-sid name expression control)
-    sid?
-  (name sid-name)
-  (expression sid-expression)
-  (control sid-control))
+  (define (rewriter ellipsis literals)
+
+    (define (rewrite x)
+      (cond ((pair? x)
+	     (if (and (ellipsis-id? (car x))
+		      (pair? (cdr x))
+		      (null? (cddr x)))
+		 ((rewriter #f (cons ellipsis literals))
+		  (cadr x))
+		 (let-values (((x y) (scan-elts x '())))
+		   (if (null? x)
+		       (cons 'list (reverse y))
+		       (cons 'dotted-list (reverse (cons (rewrite x) y)))))))
+	    ((vector? x)
+	     (let-values (((x y) (scan-elts (vector->list x) '())))
+	       (declare (ignore x))
+	       (cons 'vector (reverse y))))
+	    ((identifier? x)
+	     (cond ((member x literals compare)
+		    (list 'literal (strip-syntactic-closures x)))
+		   ((compare underscore x)
+		    (list 'anon-var))
+		   (else
+		    (if (ellipsis? x)
+			(syntax-error "Misplaced ellipsis"))
+		    (list 'var (memoize x)))))
+	    ((null? x)
+	     (list 'list))
+	    (else
+	     (if (not (or (string? x) (char? x) (boolean? x) (number? x)
+			  (lambda-tag? x)))
+		 (syntax-error "Ill-formed pattern:" x))
+	     (list 'literal x))))
+
+    (define (scan-elts x y)
+      (if (pair? x)
+	  (let loop ((t (cdr x)) (w (rewrite (car x))))
+	    (if (and (pair? t)
+		     (ellipsis-id? (car t)))
+		(loop (cdr t) (list '* w))
+		(scan-elts t (cons w y))))
+	  (values x y)))
+
+    (define (ellipsis? id)
+      (and ellipsis (compare id ellipsis)))
+
+    (define (ellipsis-id? object)
+      (and (identifier? object)
+	   (ellipsis? object)))
+
+    rewrite)
+
+  (define memoize
+    (let ((ids '()))
+      (lambda (id)
+	(let ((p (member id ids compare)))
+	  (if p
+	      (car p)
+	      (begin
+		(set! ids (cons id ids))
+		id))))))
+
+  (rewriter (if (member ellipsis literals compare) #f ellipsis)
+	    literals))
 
-(define (generate-match rename compare ellipsis keywords r-rename r-compare
-			pattern expression)
-  (letrec
-      ((loop
-	(lambda (pattern expression ellipsis)
-	  (cond ((identifier? pattern)
-		 (if (memq pattern keywords)
-		     (let-ify rename expression
-		       (lambda (expr)
-			 `(,(rename 'and)
-			   (,(rename 'identifier?) ,expr)
-			   (,r-compare ,expr
-				       (,r-rename ,(syntax-quote pattern))))))
-		     `#t))
-		((ellipsis-quote? rename compare ellipsis pattern)
-		 (loop (cadr pattern) expression #f))
-		((zero-or-more? rename compare ellipsis pattern)
-		 ;; (cddr pattern) guaranteed null by parser above.
-		 (do-list (car pattern) expression ellipsis))
-		((pair? pattern)
-		 (let-ify rename expression
-		   (lambda (expr)
-		     `(,(rename 'and)
-		       (,(rename 'pair?) ,expr)
-		       ,(loop (car pattern)
-			      `(,(rename 'car) ,expr)
-			      ellipsis)
-		       ,(loop (cdr pattern)
-			      `(,(rename 'cdr) ,expr)
-			      ellipsis)))))
-		((null? pattern)
-		 `(,(rename 'null?) ,expression))
-		(else
-		 `(,(rename 'equal?) ,expression
-				     (,(rename 'quote) ,pattern))))))
-       (do-list
-	(lambda (pattern expression ellipsis)
-	  (let ((r-loop (new-identifier 'loop))
-		(r-l (new-identifier 'l)))
-	    `((,(rename 'let)
-	       ()
-	       (,(rename 'define)
-		(,r-loop ,r-l)
-		(,(rename 'if)
-		 (,(rename 'null?) ,r-l)
-		 #t
-		 (,(rename 'and)
-		  (,(rename 'pair?) ,r-l)
-		  ,(loop pattern `(,(rename 'car) ,r-l) ellipsis)
-		  (,r-loop (,(rename 'cdr) ,r-l)))))
-	       ,r-loop)
-	      ,expression)))))
-    (loop pattern expression ellipsis)))
+(define (check-for-multiple-segments p pattern)
+  (let loop ((p p))
+    (case (car p)
+      ((list dotted-list vector)
+       (if (fix:> (count segment? (cdr p)) 1)
+	   (syntax-error "Only one ellipsis allowed in pattern:" pattern))
+       (if (any (lambda (elt) (fix:> (count-segments elt) 1)) (cdr p))
+	   (syntax-error "No nested ellipses allowed in pattern:" pattern))
+       (for-each (lambda (elt)
+		   (loop (strip-segments elt)))
+		 (cdr p)))
+      ((var literal anon-var) unspecific)
+      (else (error "Unknown element marker:" p)))))
 
-(define (let-ify rename expression generate-body)
-  (if (identifier? expression)
-      (generate-body expression)
-      (let ((temp (new-identifier 'temp)))
-	`(,(rename 'let) ((,temp ,expression)) ,(generate-body temp)))))
+(define (compute-segments y)
+  (reverse
+   (let loop ((y y) (segs '()) (vars '()))
+     (case (car y)
+       ((list dotted-list vector)
+	(fold (lambda (elt vars)
+		(loop (strip-segments elt)
+		      (append (make-list (count-segments elt) '*) segs)
+		      vars))
+	      vars
+	      (cdr y)))
+       ((var) (cons (cons (cadr y) segs) vars))
+       ((literal anon-var) vars)
+       (else (error "Unknown element marker:" y))))))
+
+(define (check-template-var-references tvs pvs)
+  (let ((vars
+	 (remove (lambda (tv.s)
+		   (let ((pv.s (assq (car tv.s) pvs)))
+		     (or (not pv.s)
+			 (fix:>= (length (cdr tv.s)) (length (cdr pv.s))))))
+		 tvs)))
+    (if (pair? vars)
+	(syntax-error "Mismatched ellipsis depth in template:" vars)))
+  (let ((table (make-hash-table eq-comparator)))
+    (for-each
+     (lambda (tv.s)
+       (let* ((tv (car tv.s))
+	      (pv.s (assq tv pvs)))
+	 (if pv.s
+	     (let ((ts (cdr tv.s))
+		   (ps (cdr pv.s)))
+	       (let loop
+		   ((ts (drop ts (fix:- (length ts) (length ps))))
+		    (ps ps))
+		 (if (pair? ts)
+		     (begin
+		       (hash-table-update!/default table ts
+			 (lambda (entry)
+			   (let ((part (assq ps entry)))
+			     (if part
+				 (begin
+				   (if (not (memq tv (cdr part)))
+				       (set-cdr! part (cons tv (cdr part))))
+				   entry)
+				 (cons (list ps tv) entry))))
+			 '())
+		       (loop (cdr ts) (cdr ps)))))))))
+     tvs)
+    (let ((mismatches
+	   (filter-map (lambda (value)
+			 (and (pair? (cdr value))
+			      (map cdr value)))
+		       (hash-table-values table))))
+      (if (pair? mismatches)
+	  (syntax-error "Mismatched ellipses in template:" mismatches)))))
 
-(define (generate-output rename compare ellipsis r-rename sids template)
-  (let loop ((template template) (ellipses '()) (ellipsis* ellipsis))
-    (cond ((identifier? template)
-	   (let ((sid
-		  (find (lambda (sid)
-			  (eq? (sid-name sid) template))
-			sids)))
-	     (if sid
-		 (begin
-		   (add-control! sid ellipses)
-		   (sid-expression sid))
-		 `(,r-rename ,(syntax-quote template)))))
-	  ((ellipsis-quote? rename compare ellipsis* template)
-	   (loop (cadr template) ellipses #f))
-	  ((zero-or-more? rename compare ellipsis* template)
-	   (optimized-append rename compare
-			     (let ((ellipsis (make-ellipsis '())))
-			       (generate-ellipsis rename
-						  ellipsis
-						  (loop (car template)
-							(cons ellipsis ellipses)
-							ellipsis*)))
-			     (loop (cddr template) ellipses ellipsis*)))
-	  ((pair? template)
-	   (optimized-cons rename compare
-			   (loop (car template) ellipses ellipsis*)
-			   (loop (cdr template) ellipses ellipsis*)))
-	  (else
-	   `(,(rename 'quote) ,template)))))
+(define (syntax-rules:match-datum pattern datum rename compare)
 
-(define (add-control! sid ellipses)
-  (let ((control (sid-control sid)))
-    (if control
-	(begin
-	  (if (not (pair? ellipses))
-	      (syntax-error "Missing ellipsis in expansion."))
-	  (let ((sids (ellipsis-sids (car ellipses))))
-	    (if (memq control sids)
-		(if (not (eq? control (car sids)))
-		    (error "illegal control/ellipsis combination:"
-			   control sids))
-		(set-ellipsis-sids! (car ellipses) (cons control sids))))
-	  (add-control! control (cdr ellipses))))))
+  (define (match-datum pat datum dict k)
 
-(define (generate-ellipsis rename ellipsis body)
-  ;; Generation of body will have filled in the sids:
-  (let ((sids (ellipsis-sids ellipsis)))
-    (if (not (pair? sids))
-	(syntax-error "Missing ellipsis in expansion."))
-    ;; Optimize trivial case:
-    (if (and (eq? body (sid-name (car sids)))
-	     (null? (cdr sids)))
-	(sid-expression (car sids))
-	`(,(rename 'map) (,(rename 'lambda) ,(map sid-name sids) ,body)
-			 ,@(map sid-expression sids)))))
+    (define (k-list pats data dict)
+      (and (null? pats)
+	   (null? data)
+	   (k dict)))
 
-(define-record-type <ellipsis>
-    (make-ellipsis sids)
-    ellipsis?
-  (sids ellipsis-sids set-ellipsis-sids!))
+    (let ((x (cdr pat)))
+      (case (car pat)
+	((list)
+	 (and (list? datum)
+	      (match-segment x datum dict (length x) (length datum) k-list)))
+	((vector)
+	 (and (vector? datum)
+	      (match-segment x (vector->list datum) dict (length x)
+			     (vector-length datum) k-list)))
+	((dotted-list)
+	 (match-segment x datum dict (fix:- (length x) 1) (count-pairs datum)
+	   (lambda (pats datum dict)
+	     (match-datum (car pats) datum dict k))))
+	((literal)
+	 (and (let ((literal (car x)))
+		(if (identifier? literal)
+		    (and (identifier? datum)
+			 (compare (rename literal) datum))
+		    (equal? literal datum)))
+	      (k dict)))
+	((var) (k (dict-add (car x) datum dict)))
+	((anon-var) (k dict))
+	(else (error "Unknown element marker:" pat)))))
+
+  (define (match-segment pats data dict n m k)
+    (let ((i (list-index segment? pats)))
+      (if (and i (fix:<= i m))
+	  (fixed pats data dict i
+	    (lambda (pats data dict)
+	      (let ((n (fix:- (fix:- n i) 1))
+		    (m (fix:- m i))
+		    (pat (segment-body (car pats))))
+		(let loop ((data data) (m m) (dicts '()))
+		  (if (fix:< n m)
+		      (match-datum pat (car data) (new-dict)
+			(lambda (dict)
+			  (loop (cdr data) (fix:- m 1) (cons dict dicts))))
+		      (fixed (cdr pats) data (wrap-dicts dicts dict)
+			     n k))))))
+	  (and (fix:<= n m)
+	       (fixed pats data dict n k)))))
+
+  (define (fixed pats data dict n k)
+    (if (fix:> n 0)
+	(match-datum (car pats) (car data) dict
+	  (lambda (dict)
+	    (fixed (cdr pats) (cdr data) dict (fix:- n 1) k)))
+	(k pats data dict)))
+
+  (match-datum pattern datum (new-dict) (lambda (dict) dict)))
 
-(define (optimized-append rename compare x y)
-  (cond ((constant-null? rename compare x) y)
-	((constant-null? rename compare y) x)
-	(else `(,(rename 'append) ,x ,y))))
+(define (syntax-rules:expand-template template dict rename)
 
-(define (optimized-cons rename compare a d)
-  (cond ((and (constant? rename compare a)
-	      (constant? rename compare d))
-	 `(,(rename 'quote)
-	   ,(cons (constant->datum rename compare a)
-		  (constant->datum rename compare d))))
-	((constant-null? rename compare d)
-	 `(,(rename 'list) ,a))
-	((and (pair? d)
-	      (compare (car d) (rename 'list))
-	      (list? (cdr d)))
-	 `(,(rename 'list) ,a ,@(cdr d)))
-	(else
-	 `(,(rename 'cons) ,a ,d))))
+  (define (loop t dict)
 
-(define (ellipsis-quote? rename compare ellipsis pattern)
-  (and ellipsis
-       (pair? pattern)
-       (identifier? (car pattern))
-       (compare (car pattern) (rename ellipsis))
-       (pair? (cdr pattern))
-       (null? (cddr pattern))))
+    (define (per-elt elt)
+      (let expand-segment ((elt elt) (dict dict))
+	(if (segment? elt)
+	    (append-map (lambda (dict)
+			  (expand-segment (segment-body elt) dict))
+			(unwrap-dict dict (segment-vars elt)))
+	    (list (loop elt dict)))))
 
-(define (zero-or-more? rename compare ellipsis pattern)
-  (and ellipsis
-       (pair? pattern)
-       (pair? (cdr pattern))
-       (identifier? (cadr pattern))
-       (compare (cadr pattern) (rename ellipsis))))
+    (case (car t)
+      ((list) (append-map per-elt (cdr t)))
+      ((vector) (list->vector (append-map per-elt (cdr t))))
+      ((dotted-list)
+       (let ((n (fix:- (length (cdr t)) 1)))
+	 (let scan ((i 0) (elts (cdr t)))
+	   (if (fix:< i n)
+	       (append (per-elt (car elts)) (scan (fix:+ i 1) (cdr elts)))
+	       (loop (car elts) dict)))))
+      ((var)
+       (let ((datum (dict-lookup (cadr t) dict)))
+	 (if (eq? datum no-datum)
+	     (rename (cadr t))
+	     datum)))
+      ((literal) (cadr t))
+      ((anon-var) (rename '_))
+      (else (error "Unknown element marker:" t))))
 
+  (add-segment-vars! template)
+  (loop template dict))
+
+(define (add-segment-vars! t)
+  (let loop ((t t) (ids '()))
+    (case (car t)
+      ((list dotted-list vector)
+       (fold (lambda (elt ids)
+	       (if (segment? elt)
+		   (let ((ids* (loop (strip-segments (segment-body elt)) '())))
+		     (do ((elt elt (segment-body elt)))
+			 ((not (segment? elt)))
+		       (set-cdr! (cdr elt) (list ids*)))
+		     (lset-union eq? ids* ids))
+		   (loop elt ids)))
+	     ids
+	     (cdr t)))
+      ((var) (lset-adjoin eq? ids (cadr t)))
+      ((literal anon-var) ids)
+      (else (error "Unknown element marker:" t)))))
+
+(define-integrable (segment? elt) (eq? '* (car elt)))
+(define-integrable (segment-body elt) (cadr elt))
+(define-integrable (segment-vars elt) (caddr elt))
+
+(define (strip-segments elt)
+  (if (segment? elt)
+      (strip-segments (segment-body elt))
+      elt))
+
+(define (count-segments elt)
+  (let loop ((elt elt) (n 0))
+    (if (segment? elt)
+	(loop (segment-body elt) (fix:+ n 1))
+	n)))
+
+;; Like quote but doesn't strip syntactic closures:
 (define (syntax-quote expression)
   `(,(classifier->keyword
       (lambda (form senv hist)
@@ -286,29 +402,58 @@ USA.
 	(constant-item (serror-ctx form senv hist) (cadr form))))
     ,expression))
 
-(define (constant-null? rename compare expr)
-  (and (quoted? rename compare expr)
-       (eqv? '() (quoted-datum expr))))
+(define-integrable (new-dict) (make-dict '()))
+(define-integrable (make-dict bindings) bindings)
+(define-integrable (dict-add id datum dict)
+  (cons (make-binding id datum 0) dict))
+(define-integrable (dict-bindings dict) dict)
+(define (dict-ids dict) (map binding-id (dict-bindings dict)))
+(define-integrable (make-binding id datum depth) (list id datum depth))
+(define-integrable (binding-id binding) (car binding))
+(define-integrable (binding-datum binding) (cadr binding))
+(define-integrable (binding-depth binding) (caddr binding))
+(define no-datum (list 'no-datum))
 
-(define (constant? rename compare expr)
-  (or (quoted? rename compare expr)
-      (boolean? expr)
-      (bytevector? expr)
-      (char? expr)
-      (number? expr)
-      (string? expr)
-      (vector? expr)))
+(define (dict-lookup id dict)
+  (let ((binding (assq id (dict-bindings dict))))
+    (if binding
+	(binding-datum binding)
+	no-datum)))
 
-(define (constant->datum rename compare expr)
-  (if (quoted? rename compare expr)
-      (quoted-datum expr)
-      expr))
+(define (wrap-dicts dicts tail)
+  (make-dict
+   (map* tail
+	 (lambda (id)
+	  (let ((matches
+		 (map (lambda (dict)
+			(assq id (dict-bindings dict)))
+		      dicts)))
+	    (make-binding id
+			  (reverse (map (lambda (match)
+					  (if match (binding-datum match) '()))
+					matches))
+			  (fix:+ (binding-depth
+				  (find (lambda (match) match) matches))
+				 1))))
+	(apply lset-union eq? (map dict-ids dicts)))))
 
-(define (quoted-datum expr)
-  (cadr expr))
-
-(define (quoted? rename compare expr)
-  (and (pair? expr)
-       (compare (car expr) (rename 'quote))
-       (pair? (cdr expr))
-       (null? (cddr expr))))
+(define (unwrap-dict dict ids)
+  (let-values (((seg non-seg)
+		(partition (lambda (binding)
+			     (fix:> (binding-depth binding) 0))
+			   (filter (lambda (binding)
+				     (memq (binding-id binding) ids))
+				   (dict-bindings dict)))))
+    (let loop
+	((items
+	  (map (lambda (binding)
+		 (let ((id (binding-id binding))
+		       (depth (fix:- (binding-depth binding) 1)))
+		   (map (lambda (datum)
+			  (make-binding id datum depth))
+			(binding-datum binding))))
+	       seg)))
+      (if (and (pair? items) (pair? (car items)))
+	  (cons (make-dict (append non-seg (map car items)))
+		(loop (map cdr items)))
+	  '()))))

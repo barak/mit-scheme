@@ -142,23 +142,51 @@ initialized from the corresponding elements of @var{vector}.  The
 remaining elements of the result are unspecified.
 @end deffn
 
-@deffn procedure vector-map procedure vector
+@deffn {standard procedure} vector-map procedure vector vector @dots{}
 @cindex mapping, of vector
-@var{Procedure} must be a procedure of one argument.  @code{vector-map}
-applies @var{procedure} element-wise to the elements of @var{vector} and
-returns a newly allocated vector of the results, in order from left to
-right.  The dynamic order in which @var{procedure} is applied to the
-elements of @var{vector} is unspecified.
+It is an error if @var{procedure} does not accept as many arguments as
+there are @var{vector}s and return a single value.
+
+The @code{vector-map} procedure applies @var{procedure} element-wise
+to the elements of the @var{vector}s and returns a vector of the
+results, in order.  If more than one @var{vector} is given and not all
+vectors are the same length, @code{vector-map} terminates when the
+shortest vector runs out.  The dynamic order in which @var{procedure}
+is applied to the elements of the @var{vector}s is unspecified.  If
+multiple returns occur from @code{vector-map}, the values returned by
+earlier returns are not mutated.
 
 @example
 @group
-(vector-map cadr '#((a b) (d e) (g h)))     @result{}  #(b e h)
-(vector-map (lambda (n) (expt n n)) '#(1 2 3 4))
-                                            @result{}  #(1 4 27 256)
-(vector-map + '#(5 7 9))                    @result{}  #(5 7 9)
+(vector-map cadr '#((a b) (d e) (g h))) @result{}  #(b e h)
+(vector-map (lambda (n) (expt n n)) '#(1 2 3 4 5))
+                                        @result{}  #(1 4 27 256 3125)
+(vector-map + '#(1 2 3) '#(4 5 6 7))    @result{}  #(5 7 9)
+(let ((count 0))
+  (vector-map (lambda (ignored)
+                (set! count (+ count 1))
+                count)
+              '#(a b)))                 @result{} #(1 2) @r{or} #(2 1)
 @end group
 @end example
 @end deffn
+
+@deffn {standard procedure} vector-for-each procedure vector vector @dots{}
+It is an error if @var{procedure} does not accept as many arguments as
+there are @var{vector}s.
+
+The arguments to @code{vector-for-each} are like the arguments to
+@code{vector-map}, but @code{vector-for-each} calls @var{procedure} for
+its side effects rather than for its values.  Unlike @code{vector-map},
+@code{vector-for-each} is guaranteed to call @var{procedure} on the
+elements of the @var{vector}s in order from the first element(s) to
+the last, and the value returned by @code{vector-for-each} is
+unspecified.  If more than one @var{vector} is given and not all
+vectors have the same length, @code{vector-for-each} terminates when
+the shortest @var{vector} runs out.  It is an error for
+@var{procedure} to mutate any of the vectors.
+@end deffn
+
 
 @node Selecting Vector Components, Cutting Vectors, Construction of Vectors, Vectors
 @section Selecting Vector Components
@@ -301,15 +329,18 @@ vector.
 @end table
 @end deffn
 
-@deffn procedure sort! vector procedure
-@deffnx procedure merge-sort! vector procedure
-@deffnx procedure quick-sort! vector procedure
+@deffn procedure sort! vector procedure key
+@deffnx procedure merge-sort! vector procedure key
+@deffnx procedure quick-sort! vector procedure key
+@var{Key}, if specified, must be a procedure of one argument that maps
+an element of @var{sequence} to a key fit for comparison by
+@var{procedure}; by default, @var{key} is the identity.
 @var{Procedure} must be a procedure of two arguments that defines a
-@dfn{total ordering} on the elements of @var{vector}.  The elements of
-@var{vector} are rearranged so that they are sorted in the order defined
-by @var{procedure}.  The elements are rearranged in place, that is,
-@var{vector} is destructively modified so that its elements are in the
-new order.
+@dfn{total ordering} on the keys of @var{vector}.
+The elements of @var{vector} are rearranged so that they are sorted in
+the order defined by @var{procedure} and @var{key}.
+The elements are rearranged in place, that is, @var{vector} is
+destructively modified so that its elements are in the new order.
 
 @code{sort!} returns @var{vector} as its value.
 

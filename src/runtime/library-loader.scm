@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,9 +45,9 @@ USA.
     (syntax-library-forms (expand-contents parsed-contents) env)))
 
 (define-automatic-property 'imports-used
-    '(imports exports free-names bound-names)
+    '(imports export-groups free-names bound-names)
   #f
-  (lambda (imports exports free-names bound-names)
+  (lambda (imports groups free-names bound-names)
     (let ((imports-to
 	   (lset-difference eq?
 			    (map library-ixport-to imports)
@@ -60,11 +61,19 @@ USA.
 				imports-to
 				(lset-union eq?
 					    free-names
-					    (map library-ixport-from
-						 exports)))))
+					    (all-exported-names groups)))))
 	(filter (lambda (import)
 		  (memq (library-ixport-to import) used))
 		imports)))))
+
+(define (all-exported-names groups)
+  (fold (lambda (group names)
+	  (lset-union eq?
+		      (map library-ixport-from
+			   (export-group-exports group))
+		      names))
+	'()
+	groups))
 
 (define (expand-contents contents)
   (append-map (lambda (directive)
@@ -90,21 +99,24 @@ USA.
     (and (registered-library? name db)
 	 (library-has? 'environment (registered-library name db)))))
 
-(define (make-environment-from-imports imports db #!optional sealed?)
+(define (make-environment-from-imports imports db importing-library sealed?)
   (let ((env
 	 ((if sealed?
 	      make-root-top-level-environment
 	      make-top-level-environment)
 	  (delete-duplicates (map library-ixport-to imports) eq?))))
-    (add-imports-to-env! imports env db)
+    (add-imports-to-env! imports env db importing-library)
+    (if importing-library (set-environment->library! env importing-library))
     env))
 
-(define (add-imports-to-env! imports env db)
+(define (add-imports-to-env! imports env db importing-library)
   (let ((grouped
 	 (let ((table (make-strong-eq-hash-table)))
 	   (for-each (lambda (import)
-		       (let-values (((senv sname)
-				     (library-import-source import db)))
+		       (let-values
+			   (((senv sname)
+			     (library-import-source import db
+						    importing-library)))
 			 (hash-table-update! table (library-ixport-to import)
 			   (lambda (sources) (cons (cons senv sname) sources))
 			   (lambda () '()))))
@@ -145,49 +157,97 @@ USA.
 			     (environment-define env tname value))))))
 		other))))
 
-(define (library-import-source import db)
+(define (library-import-source import db importing-library)
   (let ((name (library-ixport-from import))
 	(library (registered-library (library-ixport-from-library import) db)))
     (let ((export
 	   (find (lambda (export)
 		   (eq? name (library-ixport-to export)))
-		 (library-exports library))))
+		 (library-exports library importing-library))))
       (if (not export)
 	  (error "Not an exported name:" name))
       (values (library-environment library)
 	      (library-ixport-from export)))))
 
-(define-automatic-property 'imports-environment '(imports db)
-  (lambda (imports db)
+(define-automatic-property 'imports-environment '(imports db library)
+  (lambda (imports db library)
+    (declare (ignore library))
     (every (lambda (import)
 	     (environment-available? import db))
 	   imports))
-  make-environment-from-imports)
+  (lambda (imports db library)
+    (make-environment-from-imports imports db library #t)))
 
 (define (environment . import-sets)
   (let ((db (current-library-db)))
     (make-environment-from-imports (import-sets->imports import-sets db)
-				   db)))
+				   db #f #t)))
 
 (define (top-level-environment . import-sets)
   (let ((db (current-library-db)))
     (make-environment-from-imports (import-sets->imports import-sets db)
-				   db
-				   #f)))
+				   db #f #f)))
+
+(define (scheme-report-environment version)
+  (if (not (eqv? version 5))
+      (error "Unsupported version:" version))
+  (environment '(scheme r5rs)))
+
+(define (null-environment version)
+  (if (not (eqv? version 5))
+      (error "Unsupported version:" version))
+  (environment '(only (scheme r5rs)
+		      ... => _ and begin case cond define define-syntax delay do
+		      else if lambda let let* let-syntax letrec letrec-syntax or
+		      quasiquote quote set! syntax-rules)))
 
 (define (repl-import . import-sets)
   (let ((db (current-library-db)))
     (add-imports-to-env! (import-sets->imports import-sets db)
 			 (nearest-repl/environment)
-			 db)))
+			 db
+			 #f)))
 
+(define (environment->library env)
+  (let ((value
+	 (and (eq? 'normal
+		   (environment-reference-type env environment-library-tag))
+	      (environment-lookup env environment-library-tag))))
+    (and (library? value)
+	 value)))
+
+(define (set-environment->library! env library)
+  (environment-define env environment-library-tag library))
+
+(define-integrable environment-library-tag
+  '|#[(library database)library-tag]|)
+
+(define (environment-name environment)
+  (cond ((environment->package environment) => package/name)
+	((environment->library environment) => library-key)
+	(else #f)))
+
+(define (environment-name&type environment)
+  (cond ((environment->package environment)
+	 => (lambda (package)
+	      (values (package/name package) "package")))
+	((environment->library environment)
+	 => (lambda (library)
+	      (values (library-key library) "library")))
+	(else
+	 (values #f #f))))
+
+(define (environment-has-name? environment)
+  (or (environment->package environment)
+      (environment->library environment)))
+
 (define (import-sets->imports import-sets db)
   (parsed-imports->imports (map parse-import-set import-sets) db))
 
 (define (make-environment-from-parsed-imports parsed-imports)
   (let ((db (current-library-db)))
     (make-environment-from-imports (parsed-imports->imports parsed-imports db)
-				   db)))
+				   db #f #t)))
 
 (define (parsed-imports->imports parsed-imports db)
   (let ((imports (expand-parsed-imports parsed-imports db)))
@@ -223,19 +283,6 @@ USA.
     (for-each trace libraries)
     (make-digraph (hash-table-keys table)
 		  (lambda (library) (hash-table-ref table library)))))
-
-(define (scheme-report-environment version)
-  (if (not (eqv? version 5))
-      (error "Unsupported version:" version))
-  (environment '(scheme r5rs)))
-
-(define (null-environment version)
-  (if (not (eqv? version 5))
-      (error "Unsupported version:" version))
-  (environment '(only (scheme r5rs)
-		      ... => _ and begin case cond define define-syntax delay do
-		      else if lambda let let* let-syntax letrec letrec-syntax or
-		      quasiquote quote set! syntax-rules)))
 
 ;;;; Evaluation
 
@@ -336,7 +383,7 @@ USA.
 	(equal? (file-type-com file-types:program) type))))
 
 (define-deferred group-scheme-files
-  (partition-generator pathname-name (string-comparator) cons '()))
+  (partition-generator pathname-name string-comparator cons '()))
 
 (define (preregister-scheme-file! file-group root db)
 
@@ -363,7 +410,7 @@ USA.
 	(let ((scode (fasload file)))
 	  (if (r7rs-scode-file? scode)
 	      (let ((libs (r7rs-scode-file-libraries scode)))
-		(if (every scode-library-version-current? libs)
+		(if (every scode-library-version-usable? libs)
 		    (succeed (let ((ns (->namestring file)))
 			       (map (lambda (lib)
 				      (scode-library->library lib ns))

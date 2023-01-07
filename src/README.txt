@@ -39,9 +39,6 @@ The core subsystem consists of these directories:
 * "star-parser" contains the pattern-matching parser language
   extension.
 
-* "win32" contains extra parts of the run-time library that are
-  specific to the Microsoft Windows platform.
-
 * "xml" contains support for XML and XHTML I/O.
 
 * "ffi" provides syntax for calling foreign (C) functions and
@@ -74,12 +71,9 @@ There are a few C/Unix FFI plugins:
   drop-in replacement for the microcode module based package (runtime
   gdbm).
 
-* "blowfish" wraps libssl or libcrypto blowfish functions, and
+* "blowfish" implements the obsolete Blowfish block cipher, and
   provides a drop-in replacement for the microcode module based
   package (runtime blowfish).
-
-* "mcrypt" wraps libmcrypt and provides replacements for the mcrypt-*
-  procedures implemented in (runtime crypto).
 
 * "pgsql" wraps libpq and provides a drop-in replacement for the
   microcode module based package (runtime postgresql).

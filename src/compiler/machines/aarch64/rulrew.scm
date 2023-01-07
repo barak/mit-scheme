@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -139,9 +140,6 @@ USA.
   ;; have to change this.
   (rtl:make-address->fixnum (rtl:object->datum-expression source)))
 
-#|
-;;; Disabled until we have fixnum rules with constant operands.
-
 (define-rule rewriting
   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
                  (REGISTER (? operand-1 register-known-value))
@@ -191,7 +189,6 @@ USA.
   (QUALIFIER (and (rtl:register? operand-1)
                   (rtl:constant-fixnum-test operand-2 (lambda (n) n true))))
   (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 #F))
-|#
 
 (define (rtl:constant-fixnum? expression)
   (and (rtl:constant? expression)

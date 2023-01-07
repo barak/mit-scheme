@@ -1333,11 +1333,36 @@ this operation are proportional to the logarithm of the number of
 assocations in @var{rb-tree}.
 @end deffn
 
+@deffn procedure rb-tree/ref rb-tree key [fail [succeed]]
+Returns the datum associated with @var{key} in @var{rb-tree}.  If
+@var{rb-tree} doesn't contain an association for @var{key}, calls
+@var{fail} with argument @var{key} and returns that result; in this
+situation it is an error if @var{fail} is not provided.  If there is
+an associated datum and @var{succeed} is provided, then it is called
+with that datum and the resulting value returned.
+@end deffn
+
 @deffn procedure rb-tree/delete! rb-tree key
 If @var{rb-tree} contains an association for @var{key}, removes it.
 Returns an unspecified value.  The average and worst-case times required
 by this operation are proportional to the logarithm of the number of
 assocations in @var{rb-tree}.
+@end deffn
+
+@deffn procedure rb-tree/update! rb-tree key updater [fail [succeed]]
+Updates the datum associated with @var{key} in @var{rb-tree}.  Calls
+@var{updater} with the current datum, and replaces that datum with the
+result of the call.  If there is no current datum, calls @var{fail}
+with argument @var{key} and uses the resulting value in its place; in
+this situation it is an error if @var{fail} is not provided.  If
+@var{succeed} is provided and there is an existing datum, then it is
+called with that datum and the resulting value is used in its place.
+@end deffn
+
+@deffn procedure rb-tree/intern! rb-tree key fail
+Guarantees that @var{rb-tree} contains an association for @var{key}.
+If there is none, then @var{fail} is called with no arguments and the
+resulting value is associated with @var{key}.
 @end deffn
 
 @deffn procedure rb-tree->alist rb-tree

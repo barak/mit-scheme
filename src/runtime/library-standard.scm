@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,7 +48,8 @@ USA.
 	 (let ((library (car p))
 	       (exports (cdr p)))
 	   (make-library library
-			 'exports (convert-exports exports)
+			 'export-groups
+			 (list (make-export-group #f (convert-exports exports)))
 			 'environment system-global-environment)))
        standard-libraries))
 
@@ -119,7 +121,8 @@ USA.
      (assert error if not)
      (begin0 let)
      (case begin eq? eqv? if let or quote)
-     (case-lambda apply default-object? error fix:= fix:>= if lambda length let)
+     (case-lambda apply default-object? error fix:= fix:>= if lambda length let
+		  make-arity-dispatched-procedure)
      (circular-stream cons delay letrec)
      (cond begin if let)
      (cond-expand begin)
@@ -146,6 +149,8 @@ USA.
      (parameterize cons lambda list parameterize*)
      (quasiquote append cons list list->vector quote vector)
      (receive call-with-values lambda)
+     (syntax-rules declare er-macro-transformer ill-formed-syntax lambda
+		   syntax-rules:expand-template syntax-rules:match-datum)
      (unless begin if not)
      (when begin if))))
 
@@ -971,6 +976,14 @@ USA.
     make-hash-table
     string-ci-hash
     string-hash))
+
+(define-standard-library '(srfi 112)
+  '(cpu-architecture
+    implementation-name
+    implementation-version
+    machine-name
+    os-name
+    os-version))
 
 (define-standard-library '(srfi 115)
   '(char-set->sre
@@ -1057,8 +1070,11 @@ USA.
     =?
     >=?
     >?
+    boolean-comparator
     boolean-hash
+    char-ci-comparator
     char-ci-hash
+    char-comparator
     char-hash
     comparator-check-type
     comparator-equality-predicate
@@ -1066,15 +1082,24 @@ USA.
     comparator-hash-function
     comparator-hashable?
     comparator-if<=>
+    comparator-max
+    comparator-max-in-list
+    comparator-min
+    comparator-min-in-list
     comparator-ordered?
     comparator-ordering-predicate
     comparator-register-default!
     comparator-test-type
     comparator-type-test-predicate
     comparator?
+    default-comparator
     default-hash
+    eq-comparator
+    equal-comparator
+    eqv-comparator
     hash-bound
     hash-salt
+    list-comparator
     make-comparator
     make-default-comparator
     make-eq-comparator
@@ -1084,10 +1109,20 @@ USA.
     make-pair-comparator
     make-vector-comparator
     number-hash
+    pair-comparator
+    real-comparator
+    string-ci-comparator
     string-ci-hash
+    string-comparator
     string-hash
-    symbol-hash))
+    symbol-hash
+    vector-comparator))
 
+(define-standard-library '(srfi 129)
+  '(char-title-case?
+    char-titlecase
+    string-titlecase))
+
 (define-standard-library '(srfi 131)
   '(define-record-type))
 
@@ -1137,6 +1172,85 @@ USA.
     fxxor
     fxzero?))
 
+(define-standard-library '(srfi 158)
+  '(bytevector->generator
+    bytevector-accumulator
+    bytevector-accumulator!
+    circular-generator
+    count-accumulator
+    gappend
+    gcombine
+    gcons*
+    gdelete
+    gdelete-neighbor-dups
+    gdrop
+    gdrop-while
+    generator
+    generator->list
+    generator->reverse-list
+    generator->string
+    generator->vector
+    generator->vector!
+    generator-any
+    generator-count
+    generator-every
+    generator-find
+    generator-fold
+    generator-for-each
+    generator-map->list
+    generator-unfold
+    gfilter
+    gflatten
+    ggroup
+    gindex
+    gmap
+    gmerge
+    gremove
+    gselect
+    gstate-filter
+    gtake
+    gtake-while
+    list->generator
+    list-accumulator
+    make-accumulator
+    make-coroutine-generator
+    make-for-each-generator
+    make-iota-generator
+    make-range-generator
+    make-unfold-generator
+    product-accumulator
+    reverse-list-accumulator
+    reverse-vector->generator
+    reverse-vector-accumulator
+    string->generator
+    string-accumulator
+    sum-accumulator
+    vector->generator
+    vector-accumulator
+    vector-accumulator!))
+
+(define-standard-library '(srfi 162)
+  '(boolean-comparator
+    char-ci-comparator
+    char-comparator
+    comparator-max
+    comparator-max-in-list
+    comparator-min
+    comparator-min-in-list
+    default-comparator
+    eq-comparator
+    equal-comparator
+    eqv-comparator
+    list-comparator
+    pair-comparator
+    real-comparator
+    string-ci-comparator
+    string-comparator
+    vector-comparator))
+
+(define-standard-library '(srfi 219)
+  '(define))
+
 ;;;; Synthetic libraries
 
 ;;; A synthetic library is one that's derived from legacy packages, much like a
@@ -1181,7 +1295,8 @@ USA.
 
 (define (make-synthetic-library library exports environment)
   (register-library! (make-library library
-				   'exports exports
+				   'export-groups
+				   (list (make-export-group #f exports))
 				   'environment environment)
 		     host-library-db))
 

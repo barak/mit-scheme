@@ -1,15 +1,17 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [11.2], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [12.1], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
+AC_CONFIG_HEADERS([dummy-config.h])
 AC_PROG_MAKE_SET
 
 AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -129,11 +131,6 @@ AC_ARG_ENABLE([pgsql],
     AS_HELP_STRING([--enable-pgsql],
 	[Add support for the PostgreSQL support [[no]]]))
 : ${enable_pgsql=no}
-
-AC_ARG_ENABLE([mcrypt],
-    AS_HELP_STRING([--enable-mcrypt],
-	[Add support for the mcrypt support [[no]]]))
-: ${enable_mcrypt=no}
 
 AC_CANONICAL_HOST
 
@@ -262,10 +259,10 @@ but ${message}
 
 If you have installed MIT/GNU Scheme in an unusual location, set the
 environment variable MIT_SCHEME_EXE to the name or pathname of the
-MIT/GNU Scheme executable, which is usually \`mit-scheme' or
-\`/usr/local/bin/mit-scheme', and set the environment variable
+MIT/GNU Scheme executable, which is usually `mit-scheme' or
+`/usr/local/bin/mit-scheme', and set the environment variable
 MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme library
-directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
+directory, which is usually `/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
 ])
     fi
 fi
@@ -329,15 +326,6 @@ else
     IF_IMAIL="#!imail: "
     AC_MSG_RESULT([no])
 fi
-AC_MSG_CHECKING([configuring mcrypt plugin])
-if test x"${enable_mcrypt}" = xyes; then
-    OPTION_SUBDIRS="${OPTION_SUBDIRS} mcrypt"
-    IF_MCRYPT=
-    AC_MSG_RESULT([yes])
-else
-    IF_MCRYPT="#!mcrypt: "
-    AC_MSG_RESULT([no])
-fi
 AC_MSG_CHECKING([configuring pgsql plugin])
 if test x"${enable_pgsql}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} pgsql"
@@ -376,7 +364,6 @@ AC_SUBST([IF_EDWIN])
 AC_SUBST([IF_GDBM])
 AC_SUBST([IF_IMAIL])
 AC_SUBST([IF_LIARC])
-AC_SUBST([IF_MCRYPT])
 AC_SUBST([IF_NATIVE])
 AC_SUBST([IF_PGSQL])
 AC_SUBST([IF_SVM])
@@ -430,9 +417,6 @@ fi
 if test x"${enable_imail}" = xyes; then
     AC_CONFIG_SUBDIRS([imail])
 fi
-if test x"${enable_mcrypt}" = xyes; then
-    AC_CONFIG_SUBDIRS([mcrypt])
-fi
 if test x"${enable_pgsql}" = xyes; then
     AC_CONFIG_SUBDIRS([pgsql])
 fi
@@ -456,7 +440,6 @@ sf/Makefile
 sos/Makefile
 ssp/Makefile
 star-parser/Makefile
-win32/Makefile
 xdoc/Makefile
 xml/Makefile
 ])

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,6 +35,10 @@ USA.
 			       (string-pad-left (number->string
 						 (random-integer 10000))
 						4 #\0))))
+    (let ((input (merge-pathnames "Tags.sh" root-dir)))
+      (let ((results (translation (read-file-leader input))))
+	(if (pair? results)
+	    (translate-file input suffix results))))
     (for-each (lambda (dir)
 		(translate-directory (merge-pathnames dir root-dir)
 				     suffix
@@ -103,9 +108,21 @@ USA.
 			"config.guess"
 			"config.status"
 			"config.sub"
-			"configure"
 			"install-sh"
 			"mkinstalldirs"))
+	      (seq (alt "doc" "src"
+			(seq "src/"
+			     (alt "berkeley-db"
+				  "blowfish"
+				  "edwin"
+				  "gdbm"
+				  "imail"
+				  "microcode"
+				  "pgsql"
+				  "x11"
+				  "x11-screen"))
+			"tests/ffi")
+		   "/configure")
 	      (seq "html/"
 		   (+ (any-char))
 		   ".html")
@@ -171,7 +188,6 @@ USA.
 			"blowfish"
 			"ffi"
 			"gdbm"
-			"mcrypt"
 			"pgsql"
 			"x11"
 			"x11-screen")
@@ -186,12 +202,15 @@ USA.
 	      "dist/make-upload-files"
 	      "dist/scheme-inst.nsi"
 	      "doc/ffi/Makefile.in"
+	      "doc/bootstrap"
 	      "doc/index.html"
 	      "doc/info-dir"
 	      "doc/mit-scheme.1"
 	      "doc/ref-manual/gfdl.texinfo"
 	      "doc/ref-manual/tools.scm"
 	      "src/berkeley-db/configure.ac"
+	      "src/blowfish/blowfish.c"
+	      "src/blowfish/blowfish.h"
 	      "src/compiler/base/fasdump.scm"
 	      "src/edwin/TUTORIAL"
 	      "src/edwin/diff.scm"
@@ -212,7 +231,9 @@ USA.
 	      "src/win32/tests/CLIPBRD.SCM"
 	      "tests/libraries/test-srfi-140.scm"
 	      "tests/runtime/test-division.scm"
-	      "tests/runtime/test-string-normalization-data")
+	      "tests/runtime/test-string-normalization-data"
+	      "tests/runtime/test-ucd-data/test-ucd-grapheme-data"
+	      "tests/runtime/test-ucd-data/test-ucd-word-data")
 	 (line-end))))
 
 (define (read-file-leader pathname)

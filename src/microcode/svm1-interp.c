@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,6 +31,11 @@ USA.
 #include "fixnum.h"
 #include "svm1-defns.h"
 #include "cmpintmd/svm1.h"
+
+#undef not
+#undef and
+#undef or
+#undef xor
 
 #ifndef __GNUC__
 #  define GNUC_PREREQ(x, y) 0
@@ -1284,8 +1290,9 @@ DEFINE_BINARY_WR (xor, XOR, OP_XOR)
 DEFINE_INST (lsh)
 {
   DECODE_SVM1_INST_LSH (target, source1, source2);
-  long n = (TO_SIGNED (WREG_REF (source2)));
-  WREG_SET (target, FIXNUM_LSH((WREG_REF (source1)), n));
+  long n1 = (TO_SIGNED (WREG_REF (source1)));
+  long n2 = (TO_SIGNED (WREG_REF (source2)));
+  WREG_SET (target, FIXNUM_LSH(n1, n2));
   NEXT_PC;
 }
 

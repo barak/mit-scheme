@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,6 +38,10 @@ extern const char * OS_current_user_home_directory (void);
 
 #ifdef HAVE_SOCKETS
 #  include "uxsock.h"
+#endif
+
+#ifdef HAVE_SYS_UTSNAME_H
+#  include "sys/utsname.h"
 #endif
 
 DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
@@ -276,6 +281,24 @@ DEFINE_PRIMITIVE ("MACOSX-MAIN-BUNDLE-DIR",
     UX_free ((void *) path);
     PRIMITIVE_RETURN (result);
   }
+#else
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
+}
+
+DEFINE_PRIMITIVE ("uname", Prim_uname, 0, 0, 0)
+{
+#ifdef HAVE_SYS_UTSNAME_H
+  struct utsname buf;
+  STD_VOID_SYSTEM_CALL (syscall_uname, (UX_uname (&buf)));
+  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 5, true));
+  VECTOR_SET (v, 0, (char_pointer_to_string (buf.sysname)));
+  VECTOR_SET (v, 1, (char_pointer_to_string (buf.nodename)));
+  VECTOR_SET (v, 2, (char_pointer_to_string (buf.release)));
+  VECTOR_SET (v, 3, (char_pointer_to_string (buf.version)));
+  VECTOR_SET (v, 4, (char_pointer_to_string (buf.machine)));
+  PRIMITIVE_RETURN (v);
 #else
   error_unimplemented_primitive ();
   PRIMITIVE_RETURN (UNSPECIFIC);

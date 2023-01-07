@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,9 +41,13 @@ USA.
 
 (define known-tests
   '(
+    "compiler/test-closure"
     ("compiler/test-fasdump" (compiler portable-fasdump))
     "compiler/test-fgopt-conect"
+    "compiler/test-fixnum"
+    "compiler/test-lsh"
     "compiler/test-open-code"
+    "compiler/test-remquo"
     "compiler/test-toplev"
     "compiler/test-varname"
     "compiler/test-vartrap"
@@ -59,11 +64,11 @@ USA.
     "runtime/test-access"
     "runtime/test-amap"
     "runtime/test-arith"
-    "runtime/test-ieee754"
     "runtime/test-binary-port"
     "runtime/test-bit-string"
     "runtime/test-bundle"
     "runtime/test-bytevector"
+    "runtime/test-case-lambda"
     ("runtime/test-char" (runtime))
     ("runtime/test-char-set" (runtime character-set))
     "runtime/test-comparator"
@@ -74,12 +79,15 @@ USA.
     "runtime/test-dynamic-env"
     "runtime/test-entity"
     "runtime/test-ephemeron"
+    ("runtime/test-equals" inline)
     ("runtime/test-file-attributes" (runtime))
     "runtime/test-floenv"
     "runtime/test-flonum"
     "runtime/test-flonum.bin"
     "runtime/test-flonum.com"
+    "runtime/test-generator"
     "runtime/test-hash-table"
+    "runtime/test-ieee754"
     "runtime/test-integer-bits"
     "runtime/test-letrec"
     ("runtime/test-library-parser" (runtime library))
@@ -88,6 +96,7 @@ USA.
     "runtime/test-list"
     "runtime/test-md5"
     "runtime/test-mime-codec"
+    "runtime/test-msort"
     "runtime/test-numpar"
     "runtime/test-optional"
     "runtime/test-optional.bin"
@@ -97,9 +106,11 @@ USA.
     "runtime/test-pp"
     "runtime/test-predicate"
     ("runtime/test-predicate-dispatch" (runtime predicate-dispatch))
+    "runtime/test-primitive-arithmetic"
     ("runtime/test-printer" (runtime printer))
     "runtime/test-process"
     "runtime/test-promise"
+    "runtime/test-qsort"
     "runtime/test-random"
     "runtime/test-readwrite"
     "runtime/test-record"
@@ -109,12 +120,14 @@ USA.
     "runtime/test-simple-matcher"
     ("runtime/test-srfi-1" inline)
     "runtime/test-srfi-115"
+    "runtime/test-srfi-129"
     "runtime/test-string"
     "runtime/test-string-normalization"
     "runtime/test-string-search"
     "runtime/test-syncproc"
     "runtime/test-syntax"
     "runtime/test-syntax-rename"
+    ("runtime/test-syntax-rules" (runtime syntax syntax-rules))
     "runtime/test-thread-queue"
     "runtime/test-trie"
     "runtime/test-ucd-grapheme"
@@ -180,9 +193,8 @@ USA.
 			  (if (not (default-object? environment))
 			      (begin
 				(write-string " in environment " output-port)
-				(write (cond ((environment->package environment)
-					      => package/name)
-					     (else environment))
+				(write (or (environment-name environment)
+					   environment)
 				       output-port))))
 		      (lambda ()
 			(if inline?

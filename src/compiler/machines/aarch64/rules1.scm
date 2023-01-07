@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,32 +44,19 @@ USA.
   (ASSIGN (REGISTER (? target))
           (CONS-POINTER (REGISTER (? type))
                         (REGISTER (? datum))))
-  (reuse-pseudo-register-alias! datum 'GENERAL
-    (lambda (alias)
-      ;; If we already have a reusable machine register loaded with the
-      ;; datum, use bit field insertion to set the type, and treat it
-      ;; as an alias for the target.
-      (let ((type (standard-source! type))
-            (lsb scheme-datum-width)
-            (width scheme-type-width))
-        (delete-dead-registers!)
-        (add-pseudo-register-alias! target alias)
-        (LAP (BFI X ,alias ,type (&U ,lsb) (&U ,width)))))
-    (lambda ()
-      ;; No advantage to using bit field insertion since we'd need two
-      ;; instructions anyway, so just shift and or.
-      (standard-binary target type datum
-        (lambda (target type datum)
-          (LAP (LSL X ,target ,type (&U ,scheme-datum-width))
-               (ORR X ,target ,target ,datum)))))))
+  (standard-binary target type datum
+    (lambda (target type datum)
+      (LAP (ORR X ,target ,datum (LSL ,type ,scheme-datum-width))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
           (CONS-POINTER (MACHINE-CONSTANT (? type))
                         (REGISTER (? datum))))
-  (standard-unary target datum
-    (lambda (target datum)
-      (affix-type target type datum general-temporary!))))
+  (if (zero? type)
+      (assign-register->register target datum)
+      (standard-unary target datum
+        (lambda (target datum)
+          (affix-type target type datum general-temporary!)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))

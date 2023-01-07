@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -747,95 +748,166 @@ USA.
         (MACRO 64 (ADRP-ADD X ,temp (@PCO ,(* 4 offset)))) ;(*)
         (MACRO 32 (LDR X ,Rt ,temp)))))))
 
+;;; C3.2.2 Load/Store register (unscaled offset)
+
+(let-syntax
+    ((define-load/store-unscaled-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic opc S) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              ;; Zero offset.
+              (((? sf sf-size)
+                (? Rt register-31=z)
+                (? Rn register-31=sp))
+               (BITS (1 1)
+                     (1 sf)
+                     (3 #b111)
+                     (1 ,S)
+                     (2 #b00)
+                     (2 ,opc)
+                     (1 0)
+                     (9 0 SIGNED)       ;imm9
+                     (2 #b00)
+                     (5 Rn)
+                     (5 Rt)))
+              ;; Nonzero offset.
+              (((? sf sf-size)
+                (? Rt register-31=z)
+                (+ (? Rn register-31=sp) (& (? imm signed-9))))
+               (BITS (1 1)
+                     (1 sf)
+                     (3 #b111)
+                     (1 ,S)
+                     (2 #b00)
+                     (2 ,opc)
+                     (1 0)
+                     (9 imm SIGNED)
+                     (2 #b00)
+                     (5 Rn)
+                     (5 Rt)))))))))
+  (define-load/store-unscaled-instruction LDUR #b01 0)
+  (define-load/store-unscaled-instruction STUR #b00 0))
+
+(define-instruction LDURS
+  ;; Zero offset
+  (((? size load-signed-size)
+    (? Rt register-31=z)
+    (? Rn register-31=sp))
+   (BITS (2 size)
+         (3 #b111)
+         (1 0)                          ;S
+         (2 #b00)
+         (2 #b10)                       ;opc
+         (1 0)
+         (9 0 SIGNED)                   ;imm9
+         (2 #b00)
+         (5 Rn)
+         (5 Rt)))
+  (((? size load-signed-size)
+    (? Rt register-31=z)
+    (+ (? Rn register-31=sp) (& (? imm signed-9))))
+   (BITS (2 size)
+         (3 #b111)
+         (1 0)                          ;S
+         (2 #b00)
+         (2 #b10)                       ;opc
+         (1 0)
+         (9 imm SIGNED)
+         (2 #b00)
+         (5 Rn)
+         (5 Rt))))
+
 ;;; C3.2.3 Load/Store Pair
 
 (let-syntax
     ((define-load/store-pair-instruction
-      (sc-macro-transformer
-       (lambda (form environment)
-         environment
-         (receive (mnemonic L) (apply values (cdr form))
-           `(define-instruction ,mnemonic
-              ;; Zero offset.
-              (((? sf sf-size)
-                (? Rt1 register-31=z)
-                (? Rt2 register-31=z)
-                (? Rn register-31=sp))
-               (BITS (1 sf)
-                     (1 0)              ;opc[1]
-                     (3 #b101)
-                     (1 0)
-                     (1 0)
-                     (2 #b10)
-                     (1 ,L)
-                     (7 0)              ;offset=0
-                     (5 Rt2)
-                     (5 Rn)
-                     (5 Rt1)))
-              ;; Signed offset, 32-bit operand size.
-              ((W (? Rt1 register-31=z)
-                  (? Rt2 register-31=z)
-                  (+ (? Rn register-31=sp)) (& (* 4 (? imm signed-7))))
-               (BITS (1 0)              ;sf=0, 32-bit operand size
-                     (1 0)              ;opc[1]
-                     (3 #b101)
-                     (1 0)
-                     (1 0)
-                     (2 #b10)
-                     (1 ,L)
-                     (7 imm SIGNED)
-                     (5 Rt2)
-                     (5 Rn)
-                     (5 Rt1)))
+       (sc-macro-transformer
+        (lambda (form environment)
+          environment
+          (receive (mnemonic L) (apply values (cdr form))
+            `(define-instruction ,mnemonic
+               ;; Zero offset.
+               (((? sf sf-size)
+                 (? Rt1 register-31=z)
+                 (? Rt2 register-31=z)
+                 (? Rn register-31=sp))
+                (BITS (1 sf)
+                      (1 0)             ;opc[1]
+                      (3 #b101)
+                      (1 0)
+                      (1 0)
+                      (2 #b10)
+                      (1 ,L)
+                      (7 0)             ;offset=0
+                      (5 Rt2)
+                      (5 Rn)
+                      (5 Rt1)))
+               ;; Signed offset, 32-bit operand size.
+               ((W (? Rt1 register-31=z)
+                   (? Rt2 register-31=z)
+                   (+ (? Rn register-31=sp)) (& (* 4 (? imm signed-7))))
+                (BITS (1 0)             ;sf=0, 32-bit operand size
+                      (1 0)             ;opc[1]
+                      (3 #b101)
+                      (1 0)
+                      (1 0)
+                      (2 #b10)
+                      (1 ,L)
+                      (7 imm SIGNED)
+                      (5 Rt2)
+                      (5 Rn)
+                      (5 Rt1)))
 
-              ;; Signed offset, 64-bit operand size.
-              ((X (? Rt1 register-31=z)
-                  (? Rt2 register-31=z)
-                  (+ (? Rn register-31=sp)) (& (* 8 (? imm signed-7))))
-               (BITS (1 1)              ;sf=1, 64-bit operand size
-                     (1 0)              ;opc[1]
-                     (3 #b101)
-                     (1 0)
-                     (1 0)
-                     (2 #b10)
-                     (1 ,L)
-                     (7 imm SIGNED)
-                     (5 Rt2)
-                     (5 Rn)
-                     (5 Rt1)))
-              ;; Pre/post-index signed offset.
-              ((W (? Rt1 register-31=z)
-                  (? Rt2 register-31=z)
-                  ((? pre/post load/store-pre/post-index)
-                   (? Rn register-31=sp)
-                   (& (* 4 (? imm signed-7)))))
-               (BITS (1 0)              ;sf=0, 32-bit operand size
-                     (1 0)              ;opc[1]
-                     (3 #b101)
-                     (1 0)
-                     (1 0)
-                     (2 pre/post)
-                     (1 ,L)
-                     (7 imm SIGNED)
-                     (5 Rt2)
-                     (5 Rn)
-                     (5 Rt1)))
-              ((X (? Rt1 register-31=z)
-                  (? Rt2 register-31=z)
-                  ((? pre/post load/store-pre/post-index)
-                   (? Rn register-31=sp)
-                   (& (* 8 (? imm signed-7)))))
-               (BITS (1 1)              ;sf=1, 64-bit operand size
-                     (1 0)              ;opc[1]
-                     (3 #b101)
-                     (1 0)
-                     (1 0)
-                     (2 pre/post)
-                     (1 ,L)
-                     (7 imm SIGNED)
-                     (5 Rt2)
-                     (5 Rn)
-                     (5 Rt1)))))))))
+               ;; Signed offset, 64-bit operand size.
+               ((X (? Rt1 register-31=z)
+                   (? Rt2 register-31=z)
+                   (+ (? Rn register-31=sp)) (& (* 8 (? imm signed-7))))
+                (BITS (1 1)             ;sf=1, 64-bit operand size
+                      (1 0)             ;opc[1]
+                      (3 #b101)
+                      (1 0)
+                      (1 0)
+                      (2 #b10)
+                      (1 ,L)
+                      (7 imm SIGNED)
+                      (5 Rt2)
+                      (5 Rn)
+                      (5 Rt1)))
+               ;; Pre/post-index signed offset.
+               ((W (? Rt1 register-31=z)
+                   (? Rt2 register-31=z)
+                   ((? pre/post load/store-pre/post-index)
+                    (? Rn register-31=sp)
+                    (& (* 4 (? imm signed-7)))))
+                (BITS (1 0)             ;sf=0, 32-bit operand size
+                      (1 0)             ;opc[1]
+                      (3 #b101)
+                      (1 0)
+                      (1 0)
+                      (2 pre/post)
+                      (1 ,L)
+                      (7 imm SIGNED)
+                      (5 Rt2)
+                      (5 Rn)
+                      (5 Rt1)))
+               ((X (? Rt1 register-31=z)
+                   (? Rt2 register-31=z)
+                   ((? pre/post load/store-pre/post-index)
+                    (? Rn register-31=sp)
+                    (& (* 8 (? imm signed-7)))))
+                (BITS (1 1)             ;sf=1, 64-bit operand size
+                      (1 0)             ;opc[1]
+                      (3 #b101)
+                      (1 0)
+                      (1 0)
+                      (2 pre/post)
+                      (1 ,L)
+                      (7 imm SIGNED)
+                      (5 Rt2)
+                      (5 Rn)
+                      (5 Rt1)))))))))
   (define-load/store-pair-instruction LDP 1)
   (define-load/store-pair-instruction STP 0))
 
@@ -1551,6 +1623,56 @@ USA.
 (define-instruction CNEG
   (((? sf) (? condition) (? Rd) (? Rn))
    (MACRO 32 (CSNEG ,sf ,(invert-branch-condition condition) ,Rd ,Rn ,Rn))))
+
+;;; C3.4.12 Conditional comparison
+
+(let-syntax
+    ((define-conditional-compare-instruction
+      (sc-macro-transformer
+       (lambda (form environment)
+         environment
+         (receive (mnemonic op) (apply values (cdr form))
+           `(define-instruction ,mnemonic
+              (((? sf sf-size)
+                (? condition branch-condition)
+                (? Rn register-31=z)
+                (? Rm register-31=z)
+                (&U (? nzcv unsigned-4)))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 1)
+                     (1 1)
+                     (4 #b1010)
+                     (3 #b010)
+                     (5 Rm)
+                     (4 condition)
+                     (1 0)
+                     (1 0)
+                     (5 Rn)
+                     (1 0)
+                     (4 nzcv)))
+              (((? sf sf-size)
+                (? condition branch-condition)
+                (? Rn register-31=z)
+                (&U (? imm unsigned-5))
+                (&U (? nzcv unsigned-4)))
+               (BITS (1 sf)
+                     (1 ,op)
+                     (1 1)
+                     (1 1)
+                     (4 #b1010)
+                     (3 #b010)
+                     (5 imm)
+                     (4 condition)
+                     (1 1)
+                     (1 0)
+                     (5 Rn)
+                     (1 0)
+                     (4 nzcv)))))))))
+  ;; Conditional Compare Negative
+  (define-conditional-compare-instruction CCMN 0)
+  ;; Conditional Compare
+  (define-conditional-compare-instruction CCMP 1))
 
 ;;; Local Variables:
 ;;; eval: (put 'variable-width 'scheme-indent-function 2)

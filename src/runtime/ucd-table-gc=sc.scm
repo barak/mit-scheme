@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,7 +27,7 @@ USA.
 
 ;;;; UCD property: gc=Sc
 
-;;; Generated from Unicode 9.0.0
+;;; Generated from Unicode 13.0.0
 
 (declare (usual-integrations))
 
@@ -34,4 +35,4 @@ USA.
   (char-in-set? char char-set:gc=symbol:currency))
 
 (define-deferred char-set:gc=symbol:currency
-  (char-set* '(36 (162 . 166) 1423 1547 (2546 . 2548) 2555 2801 3065 3647 6107 (8352 . 8383) 43064 65020 65129 65284 (65504 . 65506) (65509 . 65511))))
+  (char-set* '(36 (162 . 166) 1423 1547 (2046 . 2048) (2546 . 2548) 2555 2801 3065 3647 6107 (8352 . 8384) 43064 65020 65129 65284 (65504 . 65506) (65509 . 65511) (73693 . 73697) 123647 126128)))

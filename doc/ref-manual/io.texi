@@ -906,12 +906,6 @@ requiring calls to @code{flush-output-port}.
 In this section, all optional arguments called @var{port} default to
 the current output port.
 
-@strong{Note}: MIT/GNU Scheme doesn't support datum labels, so any
-behavior in @code{write}, @code{write-shared}, or @code{write-simple}
-that depends on datum labels is not implemented.  At present all three
-of these procedures are equivalent.  This will be remedied in a future
-release.
-
 @deffn {standard procedure} write object [port]
 Writes a representation of @var{object} to the given textual output
 @var{port}.  Strings that appear in the written representation are

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,65 +73,3 @@ USA.
 	  (procedure buffer))
 	(lambda ()
 	  (bytevector-fill! buffer 0)))))
-
-;;;; The mcrypt library
-
-(define mcrypt-linked? #f)
-
-(define (mcrypt-available?)
-  (and (plugin-available? "mcrypt")
-       (or mcrypt-linked?
-	   (begin
-	     (load-option 'mcrypt)
-	     (mcrypt-link!)
-	     #t))))
-
-(define (mcrypt-link!)
-  (for-each
-    (let ((runtime (->environment '(runtime crypto)))
-	  (mcrypt (->environment '(mcrypt))))
-      (lambda (name)
-	(environment-link-name runtime mcrypt name)))
-    mcrypt-names)
-  (set! mcrypt-linked? #t))
-
-(define mcrypt-names
-  '(mcrypt-algorithm-name
-    mcrypt-algorithm-names
-    mcrypt-block-algorithm-mode?
-    mcrypt-block-algorithm?
-    mcrypt-block-mode?
-    mcrypt-context?
-    mcrypt-decrypt!
-    mcrypt-encrypt
-    mcrypt-encrypt!
-    mcrypt-encrypt-port
-    mcrypt-end
-    mcrypt-init
-    mcrypt-init-vector-size
-    mcrypt-key-size
-    mcrypt-mode-name
-    mcrypt-mode-names
-    mcrypt-open-module
-    mcrypt-self-test
-    mcrypt-supported-key-sizes))
-
-(define mcrypt-algorithm-name)
-(define mcrypt-algorithm-names)
-(define mcrypt-block-algorithm-mode?)
-(define mcrypt-block-algorithm?)
-(define mcrypt-block-mode?)
-(define mcrypt-context?)
-(define mcrypt-decrypt!)
-(define mcrypt-encrypt)
-(define mcrypt-encrypt!)
-(define mcrypt-encrypt-port)
-(define mcrypt-end)
-(define mcrypt-init)
-(define mcrypt-init-vector-size)
-(define mcrypt-key-size)
-(define mcrypt-mode-name)
-(define mcrypt-mode-names)
-(define mcrypt-open-module)
-(define mcrypt-self-test)
-(define mcrypt-supported-key-sizes)

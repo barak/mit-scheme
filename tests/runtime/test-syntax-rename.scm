@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -62,10 +63,10 @@ USA.
 	      (outer car)
 	      (let ((car 15))
 		(cons car (inner))))))
-      (assert-equal (unsyntax (syntax expr test-environment))
-		    '(let ((.car.1 13))
-		       (let ((.car.2 15))
-			 (cons .car.2 (list car .car.1))))))))
+      (assert-matches (unsyntax (syntax expr test-environment))
+		      '(let ((?x1 13))
+			 (let ((?x2 15))
+			   (cons ?x2 (list car ?x1))))))))
 
 (define-test 'keyword-environments
   (lambda ()
@@ -84,3 +85,25 @@ USA.
 				(+ a x)))
 			    system-global-environment))
 		  '(begin (define a 3) (define b 4) (define (c x) (+ a x))))))
+
+(define-test 'bug-63507
+  (lambda ()
+    (let ((result
+	   (unsyntax
+	    (syntax
+	     '(let ()
+		(define-syntax foo
+		  (syntax-rules ()
+		    ((foo x)
+		     (let ((t x))
+		       t))))
+		(foo 123))
+	     test-environment))))
+      (assert-matches result
+		      '(let ()
+			 (let ((?x 123))
+			   ?x)))
+      (assert-true
+       (string-prefix? ".t."
+		       (symbol->string
+			(identifier->symbol (caddr (caddr result)))))))))

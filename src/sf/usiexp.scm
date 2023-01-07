@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -205,6 +206,19 @@ USA.
 		    (cadr ops)))
       #f))
 
+;;;; Flonum Operations
+
+(define (flonum-fmsub-expansion expr ops block)
+  (if (and (pair? ops)
+	   (pair? (cdr ops))
+	   (pair? (cddr ops))
+	   (null? (cdddr ops)))
+      (pcall expr block (ucode-primitive flonum-fma 3)
+	     (car ops)
+	     (cadr ops)
+	     (pcall #f block (ucode-primitive flonum-negate 1) (caddr ops)))
+      #f))
+
 ;;;; N-ary Arithmetic Field Operations
 
 (define (right-accumulation identity make-binary)
@@ -242,7 +256,45 @@ USA.
   (right-accumulation 1
     (lambda (expr block x y)
       (pcall expr block (ucode-primitive &*) x y))))
+
+(define bitwise-and-expansion
+  (right-accumulation -1
+    (lambda (expr block x y)
+      (pcall expr block (ucode-primitive integer-bitwise-and 2) x y))))
+
+(define bitwise-xor-expansion
+  (right-accumulation 0
+    (lambda (expr block x y)
+      (pcall expr block (ucode-primitive integer-bitwise-xor 2) x y))))
+
+(define bitwise-ior-expansion
+  (right-accumulation 0
+    (lambda (expr block x y)
+      (pcall expr block (ucode-primitive integer-bitwise-ior 2) x y))))
+
+(define bitwise-eqv-expansion
+  (right-accumulation -1
+    (lambda (expr block x y)
+      (pcall expr block (ucode-primitive integer-bitwise-eqv 2) x y))))
 
+(define (bitwise-andc1-expansion expr operands block)
+  (and (length=? operands 2)
+       (let ((x (car operands))
+	     (y (cadr operands)))
+	 (pcall expr block (ucode-primitive integer-bitwise-andc2 2) y x))))
+
+(define (arithmetic-shift-expansion expr operands block)
+  (and (length=? operands 2)
+       (let ((x (car operands))
+	     (s (cadr operands)))
+	 (and (constant? (cadr operands))
+	      (if (negative? (constant/value s))
+		  (pcall expr block (ucode-primitive integer-shift-right 2)
+			 x
+			 (constant/make #f (- (constant/value s))))
+		  (pcall expr block (ucode-primitive integer-shift-left 2)
+			 x s))))))
+
 (define (expt-expansion expr operands block)
   (let ((make-binder
 	 (lambda (make-body)
@@ -790,6 +842,12 @@ USA.
 	 (cons '= =-expansion)
 	 (cons '> >-expansion)
 	 (cons 'apply apply*-expansion)
+	 (cons 'arithmetic-shift arithmetic-shift-expansion)
+	 (cons 'bitwise-and bitwise-and-expansion)
+	 (cons 'bitwise-andc1 bitwise-andc1-expansion)
+	 (cons 'bitwise-eqv bitwise-eqv-expansion)
+	 (cons 'bitwise-ior bitwise-ior-expansion)
+	 (cons 'bitwise-xor bitwise-xor-expansion)
 	 (cons 'caaaar caaaar-expansion)
 	 (cons 'caaadr caaadr-expansion)
 	 (cons 'caaar caaar-expansion)
@@ -837,6 +895,7 @@ USA.
 	 (cons 'fix:<= fx<=?-expansion)
 	 (cons 'fix:= fx=?-expansion)
 	 (cons 'fix:>= fx>=?-expansion)
+	 (cons 'flo:*- flonum-fmsub-expansion)
 	 (cons 'fourth fourth-expansion)
 	 (cons 'fx<? fx<?-expansion)
 	 (cons 'fx<=? fx<=?-expansion)

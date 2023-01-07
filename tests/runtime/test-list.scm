@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,6 +49,191 @@ USA.
     (assert-equal (append! (list 'x) 'y) '(x . y))
     (assert-equal (append! (list 'x) (list 'y) 'z) '(x y . z))))
 
+(define-test 'take
+  (lambda ()
+    (assert-equal (take '() 0) '())
+    (assert-error (lambda () (take '() 1)))
+    (assert-equal (take '(a) 0) '())
+    (assert-equal (take '(a) 1) '(a))
+    (assert-error (lambda () (take '(a) 2)))
+    (assert-equal (take '(a b c) 0) '())
+    (assert-equal (take '(a b c) 1) '(a))
+    (assert-equal (take '(a b c) 2) '(a b))
+    (assert-equal (take '(a b c) 3) '(a b c))))
+
+(define-test 'take-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (length (take l n)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'take!
+  (lambda ()
+    (assert-equal (take! (list-copy '()) 0) '())
+    (assert-error (lambda () (take! (list-copy '()) 1)))
+    (assert-equal (take! (list-copy '(a)) 0) '())
+    (assert-equal (take! (list-copy '(a)) 1) '(a))
+    (assert-error (lambda () (take! (list-copy '(a)) 2)))
+    (assert-equal (take! (list-copy '(a b c)) 0) '())
+    (assert-equal (take! (list-copy '(a b c)) 1) '(a))
+    (assert-equal (take! (list-copy '(a b c)) 2) '(a b))
+    (assert-equal (take! (list-copy '(a b c)) 3) '(a b c))))
+
+(define-test 'take!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (length (take! l n)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+
+       n))))
+
+(define-test 'drop
+  (lambda ()
+    (assert-equal (drop '() 0) '())
+    (assert-error (lambda () (drop '() 1)))
+    (assert-equal (drop '(a) 0) '(a))
+    (assert-equal (drop '(a) 1) '())
+    (assert-error (lambda () (drop '(a) 2)))
+    (assert-equal (drop '(a b c) 0) '(a b c))
+    (assert-equal (drop '(a b c) 1) '(b c))
+    (assert-equal (drop '(a b c) 2) '(c))
+    (assert-equal (drop '(a b c) 3) '())))
+
+(define-test 'drop-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (append (make-list n 0) '(1))))
+      (assert-equal
+       (carefully (lambda () (length (drop l 1)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'take-right
+  (lambda ()
+    (assert-equal (take-right '() 0) '())
+    (assert-error (lambda () (take-right '() 1)))
+    (assert-equal (take-right '(a) 0) '())
+    (assert-equal (take-right '(a) 1) '(a))
+    (assert-error (lambda () (take-right '(a) 2)))
+    (assert-equal (take-right '(a b c) 0) '())
+    (assert-equal (take-right '(a b c) 1) '(c))
+    (assert-equal (take-right '(a b c) 2) '(b c))
+    (assert-equal (take-right '(a b c) 3) '(a b c))))
+
+(define-test 'take-right-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (length (take-right l n)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'drop-right
+  (lambda ()
+    (assert-equal (drop-right '() 0) '())
+    (assert-error (lambda () (drop-right '() 1)))
+    (assert-equal (drop-right '(a) 0) '(a))
+    (assert-equal (drop-right '(a) 1) '())
+    (assert-error (lambda () (drop-right '(a) 2)))
+    (assert-equal (drop-right '(a b c) 0) '(a b c))
+    (assert-equal (drop-right '(a b c) 1) '(a b))
+    (assert-equal (drop-right '(a b c) 2) '(a))
+    (assert-equal (drop-right '(a b c) 3) '())))
+
+(define-test 'drop-right-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (append (make-list n 0) '(1))))
+      (assert-equal
+       (carefully (lambda () (length (drop-right l 1)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'drop-right!
+  (lambda ()
+    (assert-equal (drop-right! (list-copy '()) 0) '())
+    (assert-error (lambda () (drop-right! (list-copy '()) 1)))
+    (assert-equal (drop-right! (list-copy '(a)) 0) '(a))
+    (assert-equal (drop-right! (list-copy '(a)) 1) '())
+    (assert-error (lambda () (drop-right! (list-copy '(a)) 2)))
+    (assert-equal (drop-right! (list-copy '(a b c)) 0) '(a b c))
+    (assert-equal (drop-right! (list-copy '(a b c)) 1) '(a b))
+    (assert-equal (drop-right! (list-copy '(a b c)) 2) '(a))
+    (assert-equal (drop-right! (list-copy '(a b c)) 3) '())))
+
+(define-test 'drop-right!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (append (make-list n 0) '(1))))
+      (assert-equal
+       (carefully (lambda () (length (drop-right! l 1)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'split-at
+  (lambda ()
+    (define (splat L k) (receive (a b) (split-at L k) (list a b)))
+    (assert-equal (splat '() 0) '(() ()))
+    (assert-error (lambda () (splat '() 1)))
+    (assert-equal (splat '(a) 0) '(() (a)))
+    (assert-equal (splat '(a) 1) '((a) ()))
+    (assert-error (lambda () (splat '(a) 2)))
+    (assert-equal (splat '(a b c) 0) '(() (a b c)))
+    (assert-equal (splat '(a b c) 1) '((a) (b c)))
+    (assert-equal (splat '(a b c) 2) '((a b) (c)))
+    (assert-equal (splat '(a b c) 3) '((a b c) ()))))
+
+(define-test 'split-at-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (append (make-list n 0) '(1))))
+      (assert-equal
+       (carefully (lambda () (receive (a b) (split-at l n) b (length a)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'split-at!
+  (lambda ()
+    (define (splat L k) (receive (a b) (split-at! (list-copy L) k) (list a b)))
+    (assert-equal (splat '() 0) '(() ()))
+    (assert-error (lambda () (splat '() 1)))
+    (assert-equal (splat '(a) 0) '(() (a)))
+    (assert-equal (splat '(a) 1) '((a) ()))
+    (assert-error (lambda () (splat '(a) 2)))
+    (assert-equal (splat '(a b c) 0) '(() (a b c)))
+    (assert-equal (splat '(a b c) 1) '((a) (b c)))
+    (assert-equal (splat '(a b c) 2) '((a b) (c)))
+    (assert-equal (splat '(a b c) 3) '((a b c) ()))))
+
+(define-test 'split-at!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (append (make-list n 0) '(1))))
+      (assert-equal
+       (carefully (lambda () (receive (a b) (split-at! l n) b (length a)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'map
+  (lambda ()
+    (assert-equal (map - '()) '())
+    (assert-equal (map - '(1)) '(-1))
+    (assert-equal (map - '(1 2 3 4)) '(-1 -2 -3 -4))))
+
 (define-test 'map-long
   (lambda ()
     (let* ((n (words-in-stack))
@@ -58,68 +244,288 @@ USA.
 		  (lambda () 'timeout))
        n))))
 
+(define-test 'map-in-order
+  (lambda ()
+    (define (f)
+      (let ((n 0))
+	(lambda (x)
+	  (set! n (+ n 1))
+	  (list x n))))
+    (assert-equal (map-in-order (f) '()) '())
+    (assert-equal (map-in-order (f) '(a)) '((a 1)))
+    (assert-equal (map-in-order (f) '(a b c d))
+		  '((a 1) (b 2) (c 3) (d 4)))))
+
 (define-test 'map-in-order-long
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (length (map-in-order - l)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (length (map-in-order - l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'filter-map
+  (lambda ()
+    (define (f n) (and (even? n) (/ n 2)))
+    (assert-equal (filter-map f '()) '())
+    (assert-equal (filter-map f '(0)) '(0))
+    (assert-equal (filter-map f '(1)) '())
+    (assert-equal (filter-map f '(0 2 4 6)) '(0 1 2 3))
+    (assert-equal (filter-map f '(1 3 5 7)) '())
+    (assert-equal (filter-map f '(0 1 2 3 4 5 6 7)) '(0 1 2 3))))
 
 (define-test 'filter-map-long
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (length (filter-map zero? l)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (length (filter-map zero? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'filter
+  (lambda ()
+    (assert-equal (filter even? '()) '())
+    (assert-equal (filter even? '(0)) '(0))
+    (assert-equal (filter even? '(1)) '())
+    (assert-equal (filter even? '(0 2 4 6)) '(0 2 4 6))
+    (assert-equal (filter even? '(1 3 5 7)) '())
+    (assert-equal (filter even? '(0 1 2 3 4 5 6 7)) '(0 2 4 6))))
 
 (define-test 'filter-long
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (length (filter zero? l)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (length (filter zero? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'filter!
+  (lambda ()
+    (assert-equal (filter! even? (list-copy '())) '())
+    (assert-equal (filter! even? (list-copy '(0))) '(0))
+    (assert-equal (filter! even? (list-copy '(1))) '())
+    (assert-equal (filter! even? (list-copy '(0 2 4 6))) '(0 2 4 6))
+    (assert-equal (filter! even? (list-copy '(1 3 5 7))) '())
+    (assert-equal (filter! even? (list-copy '(0 1 2 3 4 5 6 7))) '(0 2 4 6))))
+
+(define-test 'filter!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (length (filter! zero? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'remove
+  (lambda ()
+    (assert-equal (remove even? '()) '())
+    (assert-equal (remove even? '(0)) '())
+    (assert-equal (remove even? '(1)) '(1))
+    (assert-equal (remove even? '(0 2 4 6)) '())
+    (assert-equal (remove even? '(1 3 5 7)) '(1 3 5 7))
+    (assert-equal (remove even? '(0 1 2 3 4 5 6 7)) '(1 3 5 7))))
 
 (define-test 'remove-long
   (lambda ()
     (let* ((n (words-in-stack))
 	   (l (make-list n 0)))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda () (length (remove positive? l)))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  n))))))
+      (assert-equal
+       (carefully (lambda () (length (remove positive? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'remove!
+  (lambda ()
+    (assert-equal (remove! even? (list-copy '())) '())
+    (assert-equal (remove! even? (list-copy '(0))) '())
+    (assert-equal (remove! even? (list-copy '(1))) '(1))
+    (assert-equal (remove! even? (list-copy '(0 2 4 6))) '())
+    (assert-equal (remove! even? (list-copy '(1 3 5 7))) '(1 3 5 7))
+    (assert-equal (remove! even? (list-copy '(0 1 2 3 4 5 6 7))) '(1 3 5 7))))
+
+(define-test 'remove!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (length (remove! positive? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'partition
+  (lambda ()
+    (define (part f L) (receive (a b) (partition f L) (list a b)))
+    (assert-equal (part even? '()) '(() ()))
+    (assert-equal (part even? '(0)) '((0) ()))
+    (assert-equal (part even? '(1)) '(() (1)))
+    (assert-equal (part even? '(0 2 4 6)) '((0 2 4 6) ()))
+    (assert-equal (part even? '(1 3 5 7)) '(() (1 3 5 7)))
+    (assert-equal (part even? '(0 1 2 3 4 5 6 7)) '((0 2 4 6) (1 3 5 7)))))
 
 (define-test 'partition-long
   (lambda ()
     (let* ((n (words-in-stack))
 	   (n (- n (remainder n 2)))
 	   (l (list-tabulate n (lambda (i) i))))
-      (expect-failure
-       (lambda ()
-	 (assert-equal
-	  (carefully (lambda ()
-		       (receive (a b) (partition even? l)
-			 (list (length a) (length b))))
-		     (lambda () 'overflow)
-		     (lambda () 'timeout))
-	  (list (quotient n 2) (quotient n 2))))))))
+      (assert-equal
+       (carefully (lambda ()
+		    (receive (a b) (partition even? l)
+		      (list (length a) (length b))))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       (list (quotient n 2) (quotient n 2))))))
+
+(define-test 'partition!
+  (lambda ()
+    (define (part f L) (receive (a b) (partition! f (list-copy L)) (list a b)))
+    (assert-equal (part even? '()) '(() ()))
+    (assert-equal (part even? '(0)) '((0) ()))
+    (assert-equal (part even? '(1)) '(() (1)))
+    (assert-equal (part even? '(0 2 4 6)) '((0 2 4 6) ()))
+    (assert-equal (part even? '(1 3 5 7)) '(() (1 3 5 7)))
+    (assert-equal (part even? '(0 1 2 3 4 5 6 7)) '((0 2 4 6) (1 3 5 7)))))
+
+(define-test 'partition!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (n (- n (remainder n 2)))
+	   (l (list-tabulate n (lambda (i) i))))
+      (assert-equal
+       (carefully (lambda ()
+		    (receive (a b) (partition! even? l)
+		      (list (length a) (length b))))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       (list (quotient n 2) (quotient n 2))))))
+
+(define-test 'delete-duplicates
+  (lambda ()
+    (assert-equal (delete-duplicates '()) '())
+    (assert-equal (delete-duplicates '(x)) '(x))
+    (assert-equal (delete-duplicates '(x x)) '(x))
+    (assert-equal (delete-duplicates '(x x y)) '(x y))
+    (assert-equal (delete-duplicates '(x y x)) '(x y))
+    (assert-equal (delete-duplicates '(x y y)) '(x y))
+    (assert-equal (delete-duplicates '(x x y y)) '(x y))
+    (assert-equal (delete-duplicates '(x y x y)) '(x y))
+    (assert-equal (delete-duplicates '(x y y x)) '(x y))))
+
+;; Runs in quadratic time, so this tends to time out before returning!
+
+#;
+(define-test 'delete-duplicates-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (append (iota n) (list (- n 1)))))
+      (assert-equal
+       (carefully (lambda () (length (delete-duplicates l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'delete-duplicates!
+  (lambda ()
+    (assert-equal (delete-duplicates! (list-copy '())) '())
+    (assert-equal (delete-duplicates! (list-copy '(x))) '(x))
+    (assert-equal (delete-duplicates! (list-copy '(x x))) '(x))
+    (assert-equal (delete-duplicates! (list-copy '(x x y))) '(x y))
+    (assert-equal (delete-duplicates! (list-copy '(x y x))) '(x y))
+    (assert-equal (delete-duplicates! (list-copy '(x y y))) '(x y))
+    (assert-equal (delete-duplicates! (list-copy '(x x y y))) '(x y))
+    (assert-equal (delete-duplicates! (list-copy '(x y x y))) '(x y))
+    (assert-equal (delete-duplicates! (list-copy '(x y y x))) '(x y))))
+
+#;
+(define-test 'delete-duplicates!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (append (iota n) (list (- n 1)))))
+      (assert-equal
+       (carefully (lambda () (length (delete-duplicates! l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'take-while-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (length (take-while zero? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'drop-while-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (append (make-list n 0) '(1))))
+      (assert-equal
+       (carefully (lambda () (length (drop-while zero? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       1))))
+
+(define-test 'take-while!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (length (take-while! zero? l)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'span-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (receive (a b) (span zero? l) b (length a)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'span!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (receive (a b) (span! zero? l) b (length a)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'break-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda ()
+		    (receive (a b) (break positive? l) b (length a)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
+
+(define-test 'break!-long
+  (lambda ()
+    (let* ((n (words-in-stack))
+	   (l (make-list n 0)))
+      (assert-equal
+       (carefully (lambda () (receive (a b) (break! positive? l) b (length a)))
+		  (lambda () 'overflow)
+		  (lambda () 'timeout))
+       n))))
 
 (define-test 'delv-long
   (lambda ()

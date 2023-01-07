@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -218,7 +219,8 @@ extern void gc_scan_oldspace (SCHEME_OBJECT *, SCHEME_OBJECT *);
 extern void gc_scan_tospace (SCHEME_OBJECT *, SCHEME_OBJECT *);
 
 extern void std_gc_death (const char *, ...)
-  ATTRIBUTE ((__noreturn__, __format__ (__printf__, 1, 2)));
+  NORETURN
+  PRINTFLIKE (1, 2);
 extern void gc_no_cc_support (void) NORETURN;
 extern void gc_bad_type (SCHEME_OBJECT) NORETURN;
 

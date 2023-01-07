@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,10 +30,6 @@ USA.
 #ifndef SCM_CONFSHARED_H
 #define SCM_CONFSHARED_H
 
-#ifndef __STDC__
-#  include "error: compiler must support ANSI C"
-#endif
-
 /* Enable the stepper.  */
 #define COMPILE_STEPPER 1
 
@@ -50,43 +47,27 @@ USA.
 #define FALSE 0
 #define TRUE 1
 
-#include <stdio.h>
+/* According to autoconf 2.71 all these headers can be assumed to exist. */
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <float.h>
+#include <iso646.h>
+#include <limits.h>
 #include <math.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <wchar.h>
+#include <wctype.h>
 
-#if STDC_HEADERS
-#  include <stdlib.h>
-#  include <stdarg.h>
-#  include <stddef.h>
-#  include <string.h>
-#  include <ctype.h>
-#  include <limits.h>
-#  include <float.h>
-#  include <assert.h>
-#else
-#  ifdef HAVE_LIMITS_H
-#    include <limits.h>
-#  endif
-#  ifdef HAVE_FLOAT_H
-#    include <float.h>
-#  else
-#    include "float.h"
-#  endif
-#  ifdef HAVE_ASSERT_H
-#    include <assert.h>
-#  endif
-#  ifdef HAVE_MALLOC_H
-#    include <malloc.h>
-#  endif
-#  if !HAVE_STRCHR
-#    define strchr index
-#    define strrchr rindex
-#  endif
-   extern char * strchr ();
-   extern char * strrchr ();
-#  if !HAVE_MEMCPY
-#    define memcpy(d, s, n) bcopy ((s), (d), (n))
-#    define memmove(d, s, n) bcopy ((s), (d), (n))
-#  endif
+#ifdef HAVE_STDINT_H
+#  include <stdint.h>
 #endif
 
 #ifdef HAVE_STDBOOL_H
@@ -96,22 +77,13 @@ USA.
 #    ifdef __cplusplus
        typedef bool _Bool;
 #    else
-       typedef unsigned char _Bool;
+       define _Bool signed char;
 #    endif
 #  endif
 #  define bool _Bool
 #  define false 0
 #  define true 1
 #  define __bool_true_false_are_defined 1
-#  if ((defined (__GNUC__)) && (__GNUC__ < 3))
-     /* Old versions of GCC have an incompatible <stdbool.h>.
-	This declaration should prevent them from overriding our defs.  */
-#    define __STDBOOL_H__ 1
-#  endif
-#endif
-
-#ifdef HAVE_STDINT_H
-#  include <stdint.h>
 #endif
 
 #if (CHAR_BIT != 8)
@@ -145,9 +117,17 @@ USA.
 #if ((defined (__GNUC__)) && (__GNUC__ >= 3))
 #  define ATTRIBUTE(x) __attribute__ (x)
 #  define NORETURN __attribute__ ((__noreturn__))
+#  define UNUSED __attribute__ ((__unused__))
 #else
 #  define ATTRIBUTE(x)
 #  define NORETURN
+#  define UNUSED
+#endif
+
+#if ((defined (__GNUC__)) && (__GNUC__ >= 4))
+#  define PRINTFLIKE(n,m) ATTRIBUTE ((__format__ (__printf__, n, m)))
+#else
+#  define PRINTFLIKE(n,m) /* nothing */
 #endif
 
 /* This detection should probably be done in configure.ac rather than here. */

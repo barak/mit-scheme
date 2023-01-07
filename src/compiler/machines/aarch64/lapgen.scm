@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -175,13 +176,13 @@ USA.
 (define (load-register register ea)
   (case (register-type register)
     ((GENERAL) (LAP (LDR X ,register ,ea)))
-    ((FLOAT) (LAP (LDR D ,(float-register->fpr register) ,ea)))
+    ((FLOAT) (LAP (LDR.V D ,(float-register->fpr register) ,ea)))
     (else (error "Unknown register type:" register))))
 
 (define (store-register register ea)
   (case (register-type register)
     ((GENERAL) (LAP (STR X ,register ,ea)))
-    ((FLOAT) (LAP (STR D ,(float-register->fpr register) ,ea)))
+    ((FLOAT) (LAP (STR.V D ,(float-register->fpr register) ,ea)))
     (else (error "Unknown register type:" register))))
 
 ;;; Utilities
@@ -212,23 +213,20 @@ USA.
   (move-to-alias-register! source (register-type source) target)
   (LAP))
 
-(define (require-register! machine-reg)
-  (flush-register! machine-reg)
-  (need-register! machine-reg))
-
-(define (flush-register! machine-reg)
-  (prefix-instructions! (clear-registers! machine-reg)))
-
 (define (rtl-target:=machine-register! rtl-reg machine-reg)
+  ;; Assert that in the code generated for this RTL instruction, the
+  ;; value for rtl-reg ends up stored in machine-reg.  Ensures that if
+  ;; machine-reg is an alias for a pseudo, the pseudo will have another
+  ;; alias or be saved in its home.
   (if (machine-register? rtl-reg)
       (begin
-        (require-register! machine-reg)
+        (prefix-instructions! (clear-registers! machine-reg))
         (if (not (= rtl-reg machine-reg))
             (suffix-instructions!
              (register->register-transfer machine-reg rtl-reg))))
       (begin
         (delete-register! rtl-reg)
-        (flush-register! machine-reg)
+        (prefix-instructions! (clear-registers! machine-reg))
         (add-pseudo-register-alias! rtl-reg machine-reg))))
 
 (define (register-expression expression)
@@ -420,14 +418,16 @@ USA.
          (sub `(LSL (&U ,(shift-right (- imm) 12)) 12)))
         (else
          (let ((temp (get-temporary)))
-           (LAP ,@(load-unsigned-immediate temp imm)
+           (LAP ,@(if (< imm 0)         ;XXX
+                      (load-signed-immediate temp imm)
+                      (load-unsigned-immediate temp imm))
                 ,@(add temp))))))
 
 (define (affix-type target type datum get-temporary)
   (assert (<= scheme-type-width 16))
   (assert (<= 48 scheme-datum-width))
   (cond ((zero? type)
-         (assign-register->register target datum))
+         (register->register-transfer datum target))
         ((logical-imm-u64 (make-non-pointer-literal type 0))
          ;; Works for tags with only contiguous one bits, including
          ;; tags with only one bit set.
@@ -445,15 +445,10 @@ USA.
                 (ORR X ,target ,temp ,datum))))))
 
 (define (object->type target source)
-  (let ((lsb scheme-datum-width)
-        (width scheme-type-width))
-    (LAP (UBFX X ,target ,source (&U ,lsb) (&U ,width)))))
+  (LAP (LSR X ,target ,source (&U ,scheme-datum-width))))
 
 (define (object->datum target source)
-  (let ((lsb 0)
-        (width scheme-datum-width))
-    ;; Alternatively, use BFC to clear the top scheme-type-width bits.
-    (LAP (UBFX X ,target ,source (&U ,lsb) (&U ,width)))))
+  (LAP (AND X ,target ,source (&U ,(bit-mask scheme-datum-width 0)))))
 
 (define (object->address target source)
   (object->datum target source))

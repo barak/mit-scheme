@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1676,11 +1677,16 @@ returns a machine register of the specified type that is a valid alias
 for that RTL register if there is one, or false if there is none.
 This procedure should only be used for source operand RTL registers.
 If the register type is false, then REGISTER-ALIAS will return any
-valid alias.
+valid alias.  The alias is not marked as needed (see NEED-REGISTER!),
+so it may overlap with temporary registers allocated later using
+ALLOCATE-TEMPORARY-REGISTER!, or with target registers allocated after
+DELETE-DEAD-REGISTERS! using ALLOCATE-ALIAS-REGISTER!.
 
 * LOAD-ALIAS-REGISTER! is like REGISTER-ALIAS but always returns a
 machine register, allocating one of the specified type if necessary.
 This procedure should only be used for source operand RTL registers.
+The alias is marked as needed (see NEED-REGISTER!), so it is
+guaranteed never to overlap with any temporary or target registers.
 
 * REFERENCE-ALIAS-REGISTER! performs the same action as
 LOAD-ALIAS-REGISTER! but returns a register reference instead of an
@@ -1707,7 +1713,11 @@ that there really is no preference for the type, and any reference is
 valid.  STANDARD-REGISTER-REFERENCE should be used only for source
 operands (i.e. those that already contain data), and may return a
 memory reference for those machines with general addressing modes if
-there is no preferred type and alternates are acceptable.
+there is no preferred type and alternates are acceptable.  The
+resulting alias may not be marked as needed (see NEED-REGISTER!), so
+it may overlap with temporary registers allocated later using
+ALLOCATE-TEMPORARY-REGISTER!, or with target registers allocated after
+DELETE-DEAD-REGISTERS! using ALLOCATE-ALIAS-REGISTER!.
 
 * MOVE-TO-ALIAS-REGISTER! expects a source RTL register, a register
 type, and a target RTL register.  It returns a new alias for the
@@ -1747,7 +1757,13 @@ need to invoke it explicitly when calling out-of-line routines.
 register and generates code that copies the current value of the RTL
 register to the machine register.  It is used to pass arguments in
 fixed registers to out-of-line code, typically in the compiled code
-runtime library.
+runtime library.  LOAD-MACHINE-REGISTER! implies CLEAR-REGISTERS! on
+the RTL machine register -- there's no need to call CLEAR-REGISTERS!
+first.  Callers issuing multiple LOAD-MACHINE-REGISTER! calls should
+call NEED-REGISTER! for all of the registers up front, before any of
+the LOAD-MACHINE-REGISTER! calls, in order to avoid moving temporaries
+into machine registers that LOAD-MACHINE-REGISTER! is about to reassign
+anyway.
 
 * ADD-PSEUDO-REGISTER-ALIAS! expects an RTL pseudo-register and an
 available machine register (no longer an alias), and makes the
@@ -1755,15 +1771,19 @@ specified machine register an alias for the pseudo-register.
 
 * CLEAR-REGISTERS! expects any number of RTL registers and clears them
 from the register map, preserving their current contents in memory if
-needed.  It returns the code that will perform the required motion at
-runtime.  It should be used before invoking LOAD-MACHINE-REGISTER! to
-ensure that the potentially valid previous contents of the machine
-register have been saved.
+needed.  It has the side effect of NEED-REGISTER! on all the registers
+so they will not be allocated as temporaries; however, if the caller
+needs temporaries of its own, it should allocate them up front in order
+to avoid unnecessary register motion in case a spill is needed.
+CLEAR-MAP! returns the code that will perform the required motion at
+runtime.
 
 * CLEAR-MAP! deletes all aliases from the register map, pushing the
 data only held in aliases into the memory homes if needed.  This
 procedure returns an assembly language code fragment, and is typically
-used before invoking out-of-line code.
+used before invoking out-of-line code.  CLEAR-MAP! implies
+DELETE-DEAD-REGISTERS! -- there's no need to DELETE-DEAD-REGISTERS!
+first before CLEAR-MAP!.
 
 * DELETE-DEAD-REGISTERS! informs the register allocator that RTL
 pseudo registers whose contents will not be needed after the current

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -275,3 +276,67 @@ USA.
 		 object)
       (assert-eq (eval (read-from-string abbrev) system-global-environment)
 		 object))))
+
+(define-enumerated-test 'dot-good
+  `(("(a . b)" (a . b))
+    ("(a b c . d)" (a b c . d)))
+  (lambda (string value)
+    (assert-equal (read-from-string string) value)))
+
+(define-enumerated-test 'dot-bad
+  `(("(.)")
+    ("(a .)")
+    ("(. a )")
+    ("(a . . b)")
+    (".")
+    ("#(a b c . d)")
+    ("#u8(0 1 2 . 3)"))
+  (lambda (string)
+    (assert-error (lambda () (read-from-string string))
+		  (list condition-type:read-error))))
+
+(define-test 'datum-labels-good
+  (lambda ()
+    (let ((x (read-from-string "(a #1=(b c) #1#)")))
+      (assert-list x)
+      (assert-= (length x) 3)
+      (assert-eq (car x) 'a)
+      (assert-equal (cadr x) '(b c))
+      (assert-eq (cadr x) (caddr x)))
+    (let ((x (read-from-string "(a #1=(b . #1#))")))
+      (assert-list x)
+      (assert-= (length x) 2)
+      (assert-eq (car x) 'a)
+      (assert-pair (cadr x))
+      (assert-eq (car (cadr x)) 'b)
+      (assert-eq (cdr (cadr x)) (cadr x)))
+    (let ((x (read-from-string "(a #1=(b . #1#) #2=(c . #1#))")))
+      (assert-list x)
+      (assert-= (length x) 3)
+      (assert-eq (car x) 'a)
+      (assert-pair (cadr x))
+      (assert-eq (car (cadr x)) 'b)
+      (assert-eq (cdr (cadr x)) (cadr x))
+      (assert-pair (caddr x))
+      (assert-eq (car (caddr x)) 'c)
+      (assert-eq (cdr (caddr x)) (cadr x)))
+    (let ((x (read-from-string "(a #1=(b . #1#) #2=(c . #1#) #2#)")))
+      (assert-list x)
+      (assert-= (length x) 4)
+      (assert-eq (car x) 'a)
+      (assert-pair (cadr x))
+      (assert-eq (car (cadr x)) 'b)
+      (assert-eq (cdr (cadr x)) (cadr x))
+      (assert-pair (caddr x))
+      (assert-eq (car (caddr x)) 'c)
+      (assert-eq (cdr (caddr x)) (cadr x))
+      (assert-eq (cadddr x) (caddr x)))))
+
+(define-test 'datum-labels-bad
+  (lambda ()
+    (assert-error (lambda () (read-from-string "#1#"))
+		  (list condition-type:read-error))
+    (assert-error (lambda () (read-from-string "(#1=(a b) #1=(b c))"))
+		  (list condition-type:read-error))
+    (assert-error (lambda () (read-from-string "(#1# #1=(b c))"))
+		  (list condition-type:read-error))))

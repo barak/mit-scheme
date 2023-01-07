@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,22 +30,33 @@ USA.
 
 #include "config.h"
 
-typedef enum { CONSOLE_OUTPUT, ERROR_OUTPUT, FATAL_OUTPUT } outf_channel;
+#include <stdio.h>
+
+typedef struct
+{
+  enum { OUTF_CONSOLE, OUTF_ERROR, OUTF_FATAL, OUTF_FILE } type;
+  void * cookie;
+} outf_channel;
+
+extern outf_channel CONSOLE_OUTPUT;
+extern outf_channel ERROR_OUTPUT;
+extern outf_channel FATAL_OUTPUT;
+extern outf_channel FILE_OUTPUT (FILE *);
 
 extern void outf (outf_channel, const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 2, 3)));
+  PRINTFLIKE (2, 3);
 
 extern void outf_console (const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+  PRINTFLIKE (1, 2);
 
 extern void outf_error (const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+  PRINTFLIKE (1, 2);
 
 extern void outf_fatal (const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+  PRINTFLIKE (1, 2);
 
 extern void outf_error_line (const char *, ...)
-  ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+  PRINTFLIKE (1, 2);
 
 extern void voutf (outf_channel, const char *, va_list);
 extern void voutf_console (const char *, va_list);

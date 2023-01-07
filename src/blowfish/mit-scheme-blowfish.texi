@@ -2,7 +2,7 @@
 @comment %**start of header
 @setfilename mit-scheme-blowfish.info
 @include version.texi
-@set SCMVERS 11.2
+@set SCMVERS 12.1
 @settitle MIT/GNU Scheme Blowfish Plugin Manual
 @comment %**end of header
 
@@ -12,7 +12,8 @@ This manual documents MIT/GNU Scheme Blowfish @value{VERSION}.
 Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
-    2016, 2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute
+    of Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -58,13 +59,12 @@ Documentation License.''
 @node Introduction
 @chapter Introduction
 
-This plugin is a dynamically loadable wrapper of the Blowfish block
-cipher C API as implemented by libssl (OpenSSL).
+This plugin is a dynamically loadable implementation of the Blowfish
+block cipher.
 
-The cipher operates on 64 bit (8 byte) blocks of data and uses a
-variable size key.  Keys with 128 bits (16 bytes) are considered good
-for modest encryption.  Blowfish can be used in the same modes as DES,
-is quite a bit faster than DES, and much faster than IDEA or RC2.
+The Blowfish block cipher is totally obsolete and you should never use
+it for new data.
+It is provided only for compatibility with existing ciphertext.
 
 The plugin includes a Scheme procedure to feed bytes from a binary
 input port to the library, and write the encrypted bytes to a binary
@@ -78,32 +78,31 @@ decryption phase.
 
 @deffn Procedure blowfish-set-key bytes
 Generate a Blowfish key from @var{bytes}, which must be 72 bytes or
-less in length.  For text keys (strings), apply @code{md5-string}
-and use the digest for @var{bytes}.
+less in length.
+For text keys (strings), it was historical practice to apply
+@code{md5-string} and use the digest for @var{bytes}.
+This practice has always been ill-advised, instead of using a
+password-based key derivation function to raise the cost of brute
+force password search; it is mentioned only for compatibility with
+existing ciphertexts.
 @end deffn
 
 @deffn Procedure blowfish-ecb input output key encyrpt?
-Apply Blowfish in Electronic Code Book mode.
+Apply the Blowfish block cipher to a single 64-bit block.
 @var{Input} is an 8-byte byte vector.
 @var{Output} is an 8-byte byte vector.
 @var{Key} is a Blowfish key.
 @var{Encrypt?} specifies whether to encrypt (when @code{#t}) or decrypt
 (when @code{#f}).
+
+The misnomer `ECB' stands for `Electronic Code Book' for historical
+reasons.
 @end deffn
 
-The mode functions below all operate on variable length data.  They
-all take an initialization vector which needs to be passed along into
-the next call of the same function for the same message.  The vector
-may be initialized with anything, but the recipient needs to know what
-it was initialized with, or it won't be able to decrypt.  Some
-programs and protocols simplify this, like SSH, where the vector is
-simply initialized to zero.  @code{Blowfish-cbc} operates on data that
-is a multiple of 8 bytes long, while @code{blowfish-cfb64} and
-@code{blowfish-ofb64} are used to encrypt any number of bytes.  The
-purpose of the latter two is to simulate stream ciphers, and
-therefore, they have a parameter @code{num}, the current offset in the
-initialization vector, which should start at zero and be stored
-between calls.
+The mode functions below all operate on variable length data.
+They all take an initialization vector which must be the same for
+decrypting a ciphertext as it was for encrypting the plaintext to
+yield that ciphertext.
 
 @deffn Procedure blowfish-cbc input output key init encrypt?
 Apply Blowfish in Cipher Block Chaining mode.
@@ -111,8 +110,11 @@ Apply Blowfish in Cipher Block Chaining mode.
 @var{Output} is the same number of bytes as in Input.
 @var{Key} is a Blowfish key.
 @var{Init} is an 8 byte initialization vector;
-  it is modified after each call.
-  The value from any call may be passed in to a later call.
+  it is modified after each call to incrementally process a long
+  message.
+  The value from any call may be passed in to a later call to continue
+  processing the same message.
+  The initial value must be unpredictable in advance by an adversary.
 @var{Encrypt?} specifies whether to encrypt (when @code{#t}) or decrypt
 (when @code{#f}).
 @end deffn
@@ -124,7 +126,8 @@ Apply Blowfish in Cipher Feed-Back mode.
 @var{Key} is a Blowfish key.
 @var{Init} is an 8 byte initialization vector;
   it is modified after each call.
-  The value from any call may be passed in to a later call.
+  The value from any call may be passed in to a later call to
+  incrementally process a long message.
   The initial value must be unique for each message/key pair.
 @var{Num} is an integer from 0 to 7 inclusive, the low 3 bits of the
   number of bytes that have previously been processed in this stream.
@@ -139,8 +142,10 @@ Apply Blowfish in Output Feed-Back mode.
 @var{Ostart} specifies the first byte to write in @var{Output}.
 @var{Key} is a Blowfish key.
 @var{Init} is an 8 byte initialization vector;
-  it is modified after each call.
-  The value from any call may be passed in to a later call.
+  it is modified after each call to incrementally process a long
+  message.
+  The value from any call may be passed in to a later call to continue
+  processing the same message.
   The initial value must be unique for each message/key pair.
 @var{Num} is an integer from 0 to 7 inclusive, the low 3 bits of the
   number of bytes that have previously been processed in this stream.
@@ -160,9 +165,7 @@ the latter).
 @end deffn
 
 @deffn Procedure compute-blowfish-init-vector
-Returns a new initialization vector that includes a timestamp with a
-resolution of milliseconds, plus 20 random bits.  This should make it
-very likely unique.
+Returns a uniform random initialization vector
 @end deffn
 
 The Blowfish cipher was invented and described by Counterpane (see
@@ -183,17 +186,6 @@ Electronic funds transfer - Requirements for interfaces,
 Part 5.2: Modes of operation for an n-bit block cipher algorithm
 Appendix A
 @end smallexample
-
-@section Electronic Codebook Mode (ECB)
-
-64 bits are enciphered at a time.
-
-The order of the blocks can be rearranged without detection.
-
-The same plain text block always produces the same cipher text block
-(for the same key) making it vulnerable to a dictionary attack.
-
-An error will only affect one cipher text block.
 
 @section Cipher Block Chaining Mode (CBC)
 

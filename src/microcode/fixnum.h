@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,14 +30,11 @@ USA.
 
 #define MAX_BIT_SHIFT DATUM_LENGTH
 
-#define RIGHT_SHIFT_UNSIGNED(source, number)				\
-  (((number) > MAX_BIT_SHIFT)						\
-   ? 0									\
-   : ((((unsigned long) (source)) & DATUM_MASK) >> (number)))
-
 #define RIGHT_SHIFT(source, number)					\
   (((number) > MAX_BIT_SHIFT)						\
    ? 0									\
+   : ((source) < 0)							\
+   ? ((long) (~ ((~ ((unsigned long) (source))) >> (number))))		\
    : ((source) >> (number)))
 
 #define LEFT_SHIFT(source, number)					\
@@ -47,7 +45,7 @@ USA.
 #define FIXNUM_LSH(source, number)					\
   (((number) >= 0)							\
    ? (LEFT_SHIFT (source, number))					\
-   : (RIGHT_SHIFT_UNSIGNED (source, (- (number)))))
+   : (RIGHT_SHIFT (source, (- (number)))))
 
 #define FIXNUM_REMAINDER(source1, source2)				\
   (((source2) > 0)							\

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -71,6 +72,17 @@ USA.
     (bit-string? bit-string?)
     (bit-substring-find-next-set-bit bit-substring-find-next-set-bit)
     (bit-substring-move-right! bit-substring-move-right!)
+    (bitwise-and integer-bitwise-and 2)
+    (bitwise-andc1 integer-bitwise-andc1 2)
+    (bitwise-andc2 integer-bitwise-andc2 2)
+    (bitwise-eqv integer-bitwise-eqv 2)
+    (bitwise-ior integer-bitwise-ior 2)
+    (bitwise-nand integer-bitwise-nand 2)
+    (bitwise-nor integer-bitwise-nor 2)
+    (bitwise-not integer-bitwise-not 1)
+    (bitwise-orc1 integer-bitwise-orc1 2)
+    (bitwise-orc2 integer-bitwise-orc2 2)
+    (bitwise-xor integer-bitwise-xor 2)
     (bytevector-length bytevector-length 1)
     (bytevector-u8-ref bytevector-u8-ref 2)
     (bytevector-u8-set! bytevector-u8-set! 3)
@@ -129,7 +141,6 @@ USA.
     (flo:copysign flonum-copysign 2)
     (flo:cos flonum-cos)
     (flo:exp flonum-exp)
-    (flo:expm1 flonum-expm1)
     (flo:expt flonum-expt)
     (flo:fast-fma? flonum-fast-fma? 0)
     (flo:finite? flonum-is-finite? 1)
@@ -139,12 +150,13 @@ USA.
     (flo:fma flonum-fma 3)
     (flo:infinite? flonum-is-infinite? 1)
     (flo:log flonum-log)
-    (flo:log1p flonum-log1p)
     (flo:nan? flonum-is-nan? 1)
     (flo:negate flonum-negate)
     (flo:negative? flonum-negative?)
     (flo:normal? flonum-is-normal? 1)
     (flo:positive? flonum-positive?)
+    (flo:primitive-expm1 flonum-expm1)
+    (flo:primitive-log1p flonum-log1p)
     (flo:round flonum-round)
     (flo:round->exact flonum-round->exact)
     (flo:safe-zero? flonum-is-zero? 1)
@@ -228,6 +240,8 @@ USA.
     (set-cdr! set-cdr!)
     (set-cell-contents! set-cell-contents!)
     (set-interrupt-enables! set-interrupt-enables!)
+    (shift-left integer-shift-left 2)
+    (shift-right integer-shift-right 2)
     (stack-address-offset stack-address-offset)
     (system-hunk3-cxr0 system-hunk3-cxr0)
     (system-hunk3-cxr1 system-hunk3-cxr1)

@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -178,32 +179,64 @@ USA.
        (lambda (bindings body-forms)
 	 (let ((body (apply scons-begin body-forms)))
 	   (case (length bindings)
-	     ((0)
-	      (scons-let '() body))
+	     ((0) (scons-let '() body))
 	     ((1)
-	      (scons-cwv (car (car bindings))
-			 (scons-lambda '() (cadr (car bindings)))
-			 body))
+	      (let ((b (car bindings)))
+		(if (bvl-single? (car b))
+		    (scons-let (list (list (caar b) (cadr b)))
+		      body)
+		    (scons-cwv (car b)
+			       (scons-lambda '() (cadr b))
+			       body))))
 	     (else
 	      (let-values-multi bindings body)))))))))
 
 (define (let-values-multi bindings body)
-  (let ((temps
-	 (map (lambda (index)
-		(new-identifier (symbol 'temp- index)))
-	      (iota (length bindings))))
-	(thunks
-	 (map (lambda (binding)
-		(scons-lambda () (cadr binding)))
-	      bindings)))
-    (scons-let (map list temps thunks)
-      (let loop ((bvls (map car bindings)) (temps temps))
-	(if (pair? bvls)
-	    (scons-cwv (car bvls)
-		       (car temps)
-		       (loop (cdr bvls) (cdr temps)))
-	    body)))))
+  (receive (single multi)
+      (partition (lambda (b)
+		   (bvl-single? (car b)))
+		 bindings)
+    (if (null? multi)
+	(scons-let (map (lambda (b)
+			  (list (caar b) (cadr b)))
+			single)
+	  body)
+	(let ((stemps (map make-temp single))
+	      (mtemps (map make-temp multi)))
+	  (scons-let
+	      (append (map (lambda (b t)
+			     (list t (cadr b)))
+			   single
+			   stemps)
+		      (map (lambda (b t)
+			     (list t (scons-lambda '() (cadr b))))
+			   multi
+			   mtemps))
+	    (fold (lambda (b t expr)
+		    (scons-cwv (car b) t expr))
+		  (if (null? single)
+		      body
+		      (scons-let (map (lambda (b t)
+					(list (caar b) t))
+				      single
+				      stemps)
+			body))
+		  multi
+		  mtemps))))))
 
+(define (bvl-single? bvl)
+  (and (pair? bvl)
+       (null? (cdr bvl))))
+
+(define (make-temp x)
+  (declare (ignore x))
+  (generate-uninterned-symbol))
+
+(define (scons-cwv bvl thunk body)
+  (scons-call (scons-close 'call-with-values)
+	      thunk
+	      (scons-lambda bvl body)))
+
 (define-syntax $let*-values
   (syntax-rules ()
     ((let*-values () body0 body1 ...)
@@ -224,11 +257,6 @@ USA.
 		    (scons-lambda '() expr)
 		    (apply scons-begin body-forms)))))))
 
-(define (scons-cwv bvl thunk body)
-  (scons-call (scons-close 'call-with-values)
-	      thunk
-	      (scons-lambda bvl body)))
-
 ;;; SRFI 2: and-let*
 
 ;;; The SRFI document is a little unclear about the semantics, imposes
@@ -514,91 +542,125 @@ USA.
 						  names
 						  temps))))))))))))
 
-;;; This optimizes some simple cases, but it could be better.  Among other
-;;; things it could take advantage of arity-dispatched procedures in the right
-;;; circumstances.
-
 (define $case-lambda
   (spar-transformer->runtime
    (delay
-     (scons-rule `((* (subform (cons ,r4rs-lambda-list? (+ any)))))
+     (scons-rule `((* (subform (cons ,mit-lambda-list? (+ any)))))
        (lambda (clauses)
 	 (if (pair? clauses)
-	     (let ((clauses (case-lambda-eliminate-redundant-clauses clauses)))
-	       (if (pair? (cdr clauses))
-		   (let ((arities
-			  (map r4rs-lambda-list-arity (map car clauses)))
-			 (temps
-			  (map (lambda (i)
-				 (new-identifier (symbol 'p i)))
-			       (iota (length clauses)))))
-		     (scons-let (map (lambda (temp clause)
-				       (list temp
-					     (apply scons-lambda clause)))
-				     temps
-				     clauses)
-		       (let ((choices (map cons arities temps)))
-			 (if (every exact-nonnegative-integer? arities)
-			     (case-lambda-no-rest choices)
-			     (case-lambda-rest choices)))))
-		   (apply scons-lambda (car clauses))))
+	     (receive (m bindings entries rest-case)
+		 (parse-case-lambda clauses)
+	       (let ((cases (assign-cases m entries)))
+		 (generate-case-lambda (remove-unused-bindings bindings cases)
+				       rest-case
+				       cases)))
 	     (case-lambda-no-choices)))))))
 
-(define (case-lambda-eliminate-redundant-clauses clauses)
-  ;; For now just handle fixed arities.  Handling variable arities needs
-  ;; something like intervals or an inversion list, which is a lot of hair.
-  (let loop ((clauses clauses) (arities '()))
-    (if (pair? clauses)
-	(let ((arity (r4rs-lambda-list-arity (caar clauses))))
-	  (if (memv arity arities)
-	      (loop (cdr clauses) arities)
-	      (cons (car clauses) (loop (cdr clauses) (cons arity arities)))))
-	'())))
+(define (parse-case-lambda clauses)
+  (let loop
+      ((i 0)
+       (clauses clauses)
+       (m #f)
+       (bindings '())
+       (entries '())
+       (rest-case #f))
+    (if (not (pair? clauses))
+	(values m (reverse! bindings) (reverse! entries) rest-case)
+	(let ((name (new-identifier (symbol 'case-lambda- i)))
+	      (bvl (caar clauses))
+	      (body (cdar clauses)))
+	  (receive (required optional rest) (parse-mit-lambda-list bvl)
+	    (let ((arity
+		   (make-procedure-arity (length required)
+					 (and (not rest)
+					      (+ (length required)
+						 (length optional))))))
+	      (loop (+ i 1)
+		    (cdr clauses)
+		    (let ((m*
+			   (or (procedure-arity-max arity)
+			       (procedure-arity-min arity))))
+		      (if m (max m m*) m*))
+		    (cons (cons* name bvl body) bindings)
+		    (cons (cons arity name) entries)
+		    (or rest-case
+			(and rest
+			     (cons* name required optional rest))))))))))
+
+(define (assign-cases m entries)
+  (let ((cases (make-vector (+ m 1) #f)))
+    (do ((entries entries (cdr entries)))
+	((not (pair? entries)))
+      (let ((arity (caar entries))
+	    (name (cdar entries)))
+	(do ((i (procedure-arity-min arity) (+ i 1)))
+	    ((> i (or (procedure-arity-max arity) m)))
+	  (if (not (vector-ref cases i))
+	      (vector-set! cases i name)))))
+    (vector->list cases)))
+
+(define (remove-unused-bindings bindings cases)
+  (filter (lambda (binding)
+	    (memq (car binding) cases))
+	  bindings))
 
-(define (case-lambda-no-rest choices)
-  (let ((choices (sort choices (lambda (c1 c2) (fix:< (car c1) (car c2))))))
-    (let ((low (apply min (map car choices)))
-	  (high (apply max (map car choices))))
-      (let ((args
-	     (map (lambda (i)
-		    (new-identifier (symbol 'a i)))
-		  (iota high))))
+(define (generate-case-lambda bindings rest-case cases)
+  (let ((default (and rest-case (new-identifier 'default))))
+    ;; If there is a default case, create a local lambda with fixed
+    ;; arity for a jump to it, to avoid going through `apply'.
+    (scons-let
+	(generate-case-lambda-default-bindings bindings rest-case default)
+      ;; Always constructing the LET with every binding has the side
+      ;; effect that later on, SF will warn if any clauses are unused.
+      ;; It would be better to warn earlier on here when we can show
+      ;; what the clause is, but this will serve.
+      (scons-let (generate-case-lambda-bindings bindings rest-case default)
+	(if (and rest-case (every (lambda (c) (eq? c (car rest-case))) cases))
+	    (car rest-case)
+	    (apply scons-call
+		   'make-arity-dispatched-procedure
+		   (and rest-case
+			(generate-case-lambda-rest-case rest-case default))
+		   cases))))))
 
-	(define (choose i)
-	  (let ((choice (assv i choices))
-		(args* (take args i)))
-	    (if choice
-		(apply scons-call (cdr choice) args*)
-		(scons-call 'error "No matching case-lambda clause:"
-			    (apply scons-call 'list args*)))))
+(define (generate-case-lambda-default-bindings bindings rest-case default)
+  (if rest-case
+      (let ((required (cadr rest-case))
+	    (optional (caddr rest-case))
+	    (rest (cdddr rest-case))
+	    (body (cddr (assq (car rest-case) bindings))))
+	`((,default
+	   ,(apply scons-lambda `(,@required ,@optional ,rest) body))))
+      '()))
 
-	(scons-lambda (append (take args low)
-			      (list #!optional)
-			      (drop args low))
-	  (let loop ((i low))
-	    (if (fix:< i high)
-		(scons-if (scons-call 'default-object? (list-ref args i))
-			  (choose i)
-			  (loop (fix:+ i 1)))
-		(choose i))))))))
+(define (generate-case-lambda-bindings bindings rest-case default)
+  (map (lambda (binding)
+	 (let ((name (car binding))
+	       (bvl (cadr binding))
+	       (body (cddr binding)))
+	   (list name
+		 (if (and rest-case (eq? name (car rest-case)))
+		     (let ((required (cadr rest-case))
+			   (optional (caddr rest-case))
+			   (rest (cdddr rest-case)))
+		       (scons-lambda bvl
+			 (apply scons-call
+				default
+				(append required optional (list rest)))))
+		     (apply scons-lambda bvl body)))))
+       bindings))
 
-(define (case-lambda-rest choices)
-  (let ((args (new-identifier 'args))
-	(nargs (new-identifier 'nargs)))
-    (scons-lambda args
-      (scons-let (list (list nargs (scons-call 'length args)))
-	(let loop ((choices choices))
-	  (if (pair? choices)
-	      (scons-if (scons-call (if (procedure-arity-max (caar choices))
-					'fix:=
-					'fix:>=)
-				    nargs
-				    (procedure-arity-min (caar choices)))
-			(scons-call 'apply (cdar choices) args)
-			(loop (cdr choices)))
-	      (scons-call 'error
-			  "No matching case-lambda clause:"
-			  args)))))))
+(define (generate-case-lambda-rest-case rest-case default)
+  (let ((self (new-identifier 'self))
+	(required (cadr rest-case))
+	(optional (caddr rest-case))
+	(rest (cdddr rest-case)))
+    (scons-lambda `(,self
+		    ,@required
+		    ,@(if (pair? optional) `((#!optional ,@optional)) '())
+		    . ,rest)
+      (scons-declare (list 'ignore self))
+      (apply scons-call default (append required optional (list rest))))))
 
 (define (case-lambda-no-choices)
   (let ((args (new-identifier 'args)))
@@ -733,6 +795,8 @@ USA.
 	  ((id=? 'or (car req)) (eval-or (cdr req)))
 	  ((id=? 'and (car req)) (eval-and (cdr req)))
 	  ((id=? 'not (car req)) (not (eval-req (cadr req))))
+	  ((id=? 'library (car req))
+	   (registered-library? (cadr req) (current-library-db)))
 	  (else (error "Unknown requirement:" req))))
 
   (define (supported-feature? id)

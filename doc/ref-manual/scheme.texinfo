@@ -1,8 +1,8 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-ref
-@set VERSION 11.2
-@set UPDATED 2020-06-16
+@set VERSION 12.1
+@set UPDATED 2022-11-10
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -18,7 +18,8 @@ This manual documents MIT/GNU Scheme @value{VERSION}.
 Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
-    2016, 2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute
+    of Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -111,6 +112,13 @@ Documentation License.''
 % Explicit hyphen that doesn't block automatic hyphenation, in words
 % like `log-probability'.
 \gdef\hy{-\penalty0\hskip0pt\relax}
+
+% Handy historical trigonometric functions.
+\gdef\versin{\mathop{\rm versin}}
+\gdef\exsec{\mathop{\rm exsec}}
+
+\gdef\lvert{\mathopen\vert}
+\gdef\rvert{\mathclose\vert}
 @end tex
 
 @ifnottex
@@ -183,7 +191,6 @@ MIT/GNU Scheme
 * Operating-System Interface::  
 * Error System::                
 * Graphics::                    
-* Win32 Package Reference::     
 * Standards Support::           
 * GNU Free Documentation License::  
 * Binding Index::               
@@ -281,6 +288,7 @@ Numbers
 * Syntax of numerical constants::
 * Numerical operations::
 * Numerical input and output::
+* Bit operations::
 * Fixnum and Flonum Operations::
 * Random Number Generation::
 
@@ -508,35 +516,12 @@ Graphics
 * Custom Graphics Operations::
 * Images::
 * X Graphics::                  Graphics on the X Window System
-* Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
 
 X Graphics
 
 * X Graphics Type::
 * Utilities for X Graphics::
 * Custom Operations on X Graphics Devices::
-
-Win32 Graphics
-
-* Win32 Graphics Type::
-* Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
-
-Win32 Package Reference
-
-* Win32 Package Overview::
-* Foreign function interface::
-* Device Independent Bitmap Utilities::
-
-Foreign Function Interface
-
-* Windows Types::
-* Windows Foreign Procedures::
-* Win32 API names and procedures::
-
-Device Independent Bitmap Utilities
-
-* DIB procedures::
-* Other parts of the DIB Utilities implementation::
 
 Standards Support
 
@@ -550,15 +535,19 @@ Standards Support
 * SRFI 27::
 * SRFI 39::
 * SRFI 69::
+* SRFI 112::
 * SRFI 115::
 * SRFI 124::
 * SRFI 125::
 * SRFI 128::
+* SRFI 129::
 * SRFI 131::
 * SRFI 133::
 * SRFI 140::
 * SRFI 143::
 * SRFI 158::
+* SRFI 162::
+* SRFI 219::
 
 @end detailmenu
 @end menu
@@ -581,7 +570,6 @@ Standards Support
 @include os-interface.texi
 @include error.texi
 @include graphics.texi
-@include win32-packaging.texi
 @include standards.texi
 @include gfdl.texinfo
 @include binding-index.texi

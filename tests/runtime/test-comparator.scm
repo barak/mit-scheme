@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -101,22 +102,22 @@ USA.
 (define-test 'predicates
   (lambda ()
     (assert-false (comparator? =))
-    (let ((c (make-eq-comparator)))
+    (let ((c eq-comparator))
       (assert-true (comparator? c))
       (assert-false (comparator-ordered? c))
       (assert-true (comparator-hashable? c))
       (assert-true (comparator-rehash-after-gc? c)))
-    (let ((c (make-equal-comparator)))
+    (let ((c equal-comparator))
       (assert-true (comparator? c))
       (assert-false (comparator-ordered? c))
       (assert-true (comparator-hashable? c))
       (assert-true (comparator-rehash-after-gc? c)))
-    (let ((c (real-comparator)))
+    (let ((c real-comparator))
       (assert-true (comparator? c))
       (assert-true (comparator-ordered? c))
       (assert-true (comparator-hashable? c))
       (assert-false (comparator-rehash-after-gc? c)))
-    (let ((c (make-default-comparator)))
+    (let ((c default-comparator))
       (assert-true (comparator? c))
       (assert-true (comparator-ordered? c))
       (assert-true (comparator-hashable? c))
@@ -124,11 +125,11 @@ USA.
 
 (define-test 'comparator-if
   (lambda ()
-    (assert-eq (comparator-if<=> (real-comparator) 1 2 'less 'equal 'greater)
+    (assert-eq (comparator-if<=> real-comparator 1 2 'less 'equal 'greater)
 	       'less)
-    (assert-eq (comparator-if<=> (real-comparator) 1 1 'less 'equal 'greater)
+    (assert-eq (comparator-if<=> real-comparator 1 1 'less 'equal 'greater)
 	       'equal)
-    (assert-eq (comparator-if<=> (real-comparator) 2 1 'less 'equal 'greater)
+    (assert-eq (comparator-if<=> real-comparator 2 1 'less 'equal 'greater)
 	       'greater)
     (assert-eq (comparator-if<=> "1" "2" 'less 'equal 'greater)
 	       'less)
@@ -148,10 +149,10 @@ USA.
 
 (define-test 'basic
   (lambda ()
-    (let ((c (boolean-comparator)))
+    (let ((c boolean-comparator))
       (basic-tests boolean-items c boolean=? boolean<? boolean-hash)
       (test-combinations basic-tests boolean-items c))
-    (let ((c (fixnum-comparator)))
+    (let ((c fixnum-comparator))
       (basic-tests small-fixnum-items c = < fixnum-hash)
       (test-combinations basic-tests small-fixnum-items c))))
 
@@ -182,6 +183,13 @@ USA.
 		    (assert-= h (expected-hash item)
 			      'expression `(comparator-hash ,item))))
 		items)))
+
+(define-test 'comparator-min/max
+  (lambda ()
+    (assert-equal (comparator-max real-comparator 1 5 3 2 -2) 5)
+    (assert-equal (comparator-min real-comparator 1 5 3 2 -2) -2)
+    (assert-equal (comparator-max-in-list real-comparator '(1 5 3 2 -2)) 5)
+    (assert-equal (comparator-min-in-list real-comparator '(1 5 3 2 -2)) -2)))
 
 (define (comparison-tests items c1 c2)
   (lambda ()
@@ -220,7 +228,7 @@ USA.
 
 (define-test 'comparison
   (list
-   (let ((dc (make-default-comparator)))
+   (let ((dc default-comparator))
      (define (run-default items c1 c2)
        (list (lambda ()
 	       (assert-eq (comparator-ordered? c1)
@@ -245,52 +253,52 @@ USA.
 
      (list
       (run-default boolean-items
-		   (boolean-comparator)
+		   boolean-comparator
 		   (make-comparator boolean?
 				    boolean=?
 				    boolean<?
 				    boolean-hash))
       (run-default bytevector-items
-		   (bytevector-comparator)
+		   bytevector-comparator
 		   (make-comparator bytevector?
 				    bytevector=?
 				    bytevector<?
 				    bytevector-hash))
       (run-default char-items
-		   (char-comparator)
+		   char-comparator
 		   (make-comparator char? char=? char<? char-hash))
       (run-default fixnum-items
-		   (fixnum-comparator)
+		   fixnum-comparator
 		   (make-comparator fix:fixnum? fix:= fix:< fixnum-hash))
       (run-default flonum-items
-		   (real-comparator)
+		   real-comparator
 		   (make-comparator real? = < number-hash))
       (run-default string-items
-		   (string-comparator)
+		   string-comparator
 		   (make-comparator string? string=? string<? string-hash))
       (run-default symbol-items
-		   (symbol-comparator)
+		   symbol-comparator
 		   (make-comparator symbol? symbol=? symbol<? symbol-hash))))
     (comparison-tests char-items
-		      (char-ci-comparator)
+		      char-ci-comparator
 		      (make-comparator char?
 				       char-ci=?
 				       char-ci<?
 				       char-ci-hash))
     (comparison-tests flonum-items
-		      (flonum-comparator)
+		      flonum-comparator
 		      (make-comparator flo:flonum? flo:= flo:< number-hash))
     (comparison-tests flonum-items
-		      (number-comparator)
+		      number-comparator
 		      (make-comparator number? = #f number-hash))
     (comparison-tests string-items
-		      (string-ci-comparator)
+		      string-ci-comparator
 		      (make-comparator string?
 				       string-ci=?
 				       string-ci<?
 				       string-ci-hash))
     (comparison-tests symbol-items
-		      (interned-symbol-comparator)
+		      interned-symbol-comparator
 		      (make-comparator interned-symbol? eq? symbol<? eq-hash))))
 
 (define (test-combinations test items c)

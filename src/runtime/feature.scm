@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,13 +73,18 @@ USA.
     srfi-39	;Parameter objects
     srfi-62	;S-expression comments
     srfi-69	;Basic Hash Tables
+    srfi-112	;Environment Inquiry
     srfi-115	;Scheme Regular Expressions
     srfi-124	;Ephemerons
     srfi-125	;Intermediate hash tables
     srfi-128	;Comparators (reduced)
+    srfi-129	;Titlecase procedures
     srfi-131	;ERR5RS Record Syntax (reduced)
     srfi-133	;Vector Library (R7RS-compatible)
     srfi-143	;Fixnums
+    srfi-158	;Generators and Accumulators
+    srfi-162	;Comparators sublibrary
+    srfi-219	;Define higher-order lambda
 
     ;; SRFI 115 features
     regexp-unicode

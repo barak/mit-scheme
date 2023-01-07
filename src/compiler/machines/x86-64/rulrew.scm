@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -154,12 +155,14 @@ USA.
 (define-rule rewriting
   (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:cons-non-pointer? source))
-  (rtl:make-object->fixnum (rtl:cons-non-pointer-datum source)))
+  (rtl:make-address->fixnum (rtl:cons-non-pointer-datum source)))
 
 (define-rule rewriting
-  (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
+  (ADDRESS->FIXNUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:object->datum? source))
-  (rtl:make-object->fixnum (rtl:object->datum-expression source)))
+  ;; Pun: ADDRESS->FIXNUM has the same effect as OBJECT->FIXNUM even on
+  ;; tagged objects.
+  (rtl:make-address->fixnum (rtl:object->datum-expression source)))
 
 (define-rule rewriting
   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
@@ -223,6 +226,44 @@ USA.
 	      (let ((n (rtl:constant-value expression)))
 		(and (fix:fixnum? n)
 		     (predicate n)))))))
+
+;; For commutative operators, sort a constant operand to be second.
+
+(define-rule pre-cse-rewriting
+  (FIXNUM-2-ARGS (? operator) (? operand-1) (? operand-2) (? overflow?))
+  (QUALIFIER
+   (and (memq operator
+	      '(PLUS-FIXNUM MULTIPLY-FIXNUM FIXNUM-AND FIXNUM-OR FIXNUM-XOR))
+	(let ((match
+	       (constant-matcher rtl:object->fixnum?
+				 rtl:object->fixnum-expression)))
+	  (and (fix:fixnum? (match operand-1))
+	       (not (fix:fixnum? (match operand-2)))))))
+  (rtl:make-fixnum-2-args operator operand-2 operand-1 overflow?))
+
+(define-rule pre-cse-rewriting
+  (FLONUM-2-ARGS (? operator) (? operand-1) (? operand-2) (? overflow?))
+  (QUALIFIER
+   (and (memq operator '(FLONUM-ADD FLONUM-MULTIPLY FLONUM-HYPOT))
+	(let ((match
+	       (constant-matcher rtl:object->float?
+				 rtl:object->float-expression)))
+	  (and (flo:flonum? (match operand-1))
+	       (not (flo:flonum? (match operand-2)))))))
+  (rtl:make-flonum-2-args operator operand-2 operand-1 overflow?))
+
+(define ((constant-matcher predicate accessor) expression)
+  (define (deregister expression)
+    (if (rtl:register? expression)
+	(register-known-value (rtl:register-number expression))
+	expression))
+  (let ((expression (deregister expression)))
+    (and expression
+	 (predicate expression)
+	 (let ((subexpression (deregister (accessor expression))))
+	   (and subexpression
+		(rtl:constant? subexpression)
+		(rtl:constant-value subexpression))))))
 
 ;;;; Indexed addressing modes
 

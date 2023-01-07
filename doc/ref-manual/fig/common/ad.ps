@@ -117,6 +117,32 @@
     T                           % T(cos(x))
 } def
 
+/Ttan                           % Tx => T(tan(x))
+{
+    dup Tsin                    % Tx T(sin(x))
+    exch Tcos                   % T(sin(x)) T(cos(x))
+    Tdiv                        % T(sin(x)/cos(x))
+} def
+
+/Tversin                        % Tx => T(versin(x)) = T(1-cos(x))
+{
+    Tqv                         % x dx
+    exch dup                    % dx x x
+    versin exch sin             % dx versin(x) sin(x)
+    3 -1 roll                   % versin(x) sin(x) dx
+    0.017453292519943295 mul
+    mul                         % versin(x) sin(x)*dx
+    T                           % T(versin(x))
+} def
+
+/Texsec                         % Tx => T(exsec(x)) = T(versin(x)/cos(x))
+{
+    dup                         % Tx Tx
+    Tversin exch                % T(versin(x)) Tx
+    Tcos                        % T(versin(x)) T(cos(x))
+    Tdiv                        % T(versin(x)/cos(x))
+} def
+
 /Tlogistic                      % Tx => T(1/(1+e^{-x}))
 {
     0.0 Tconst exch Tsub Texp	% T(e^{-x})

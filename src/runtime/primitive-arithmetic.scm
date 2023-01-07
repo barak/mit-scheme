@@ -3,7 +3,8 @@
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-    2017, 2018, 2019, 2020 Massachusetts Institute of Technology
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -337,9 +338,11 @@ USA.
   (flo:negate flonum-negate 1)
   (flo:abs flonum-abs 1)
   (flo:exp flonum-exp 1)
-  (flo:expm1 flonum-expm1 1)
+  (flo:exp2 flonum-exp2 1)
+  (flo:primitive-expm1 flonum-expm1 1)
   (flo:log flonum-log 1)
-  (flo:log1p flonum-log1p 1)
+  (flo:log2 flonum-log2 1)
+  (flo:primitive-log1p flonum-log1p 1)
   (flo:sin flonum-sin 1)
   (flo:cos flonum-cos 1)
   (flo:tan flonum-tan 1)
@@ -530,18 +533,14 @@ USA.
 (define (flo:invalid-minmax-num x y)
   (cond ((not (flo:nan? x))
 	 (assert (flo:nan? y))
-	 (if (flo:nan-quiet? y)
-	     x
-	     (begin
-	       (flo:raise-exceptions! (flo:exception:invalid-operation))
-	       (flo:quieten-nan y))))
+	 (if (not (flo:nan-quiet? y))
+	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
+	 x)
 	((not (flo:nan? y))
 	 (assert (flo:nan? x))
-	 (if (flo:nan-quiet? x)
-	     y
-	     (begin
-	       (flo:raise-exceptions! (flo:exception:invalid-operation))
-	       (flo:quieten-nan x))))
+	 (if (not (flo:nan-quiet? x))
+	     (flo:raise-exceptions! (flo:exception:invalid-operation)))
+	 y)
 	;; Both are NaN.
 	((not (or (flo:nan-quiet? x) (flo:nan-quiet? y)))
 	 (flo:raise-exceptions! (flo:exception:invalid-operation))
