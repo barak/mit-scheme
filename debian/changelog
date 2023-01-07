@@ -1,3 +1,10 @@
+mit-scheme (12.1-1) unstable; urgency=medium
+
+  * New upstream release
+  * Forward port quilt patches; delete two that have been upstreamed
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Sat, 07 Jan 2023 16:25:46 +0000
+
 mit-scheme (11.2-4) unstable; urgency=medium
 
   * replace dependency mime-support with media-types (closes: #1010101)

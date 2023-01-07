@@ -7,7 +7,7 @@ Subject: verbose texi2dvi
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/doc/make-common.in b/doc/make-common.in
-index 78c1d95..2a48437 100644
+index 1d426cb..a46e1fd 100644
 --- a/doc/make-common.in
 +++ b/doc/make-common.in
 @@ -82,7 +82,7 @@ EPS2EPS = eps2eps

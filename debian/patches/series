@@ -1,7 +1,5 @@
 0001-allow-autoreconf-force.patch
 0002-AUXDIR_NAME-sans-arch.patch
 0003-sequentialize-docs.patch
-0004-makeinfo-5-fix.patch
 0005-man-page.patch
 0007-verbose-texi2dvi.patch
-0001-microcode-Make-definition-for-chacha_core-match-decl.patch
