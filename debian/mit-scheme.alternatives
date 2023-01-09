@@ -1,0 +1,31 @@
+## debian/rules
+# ifeq ($(DEB_HOST_GNU_CPU),x86_64)
+# export BIN_ARCH=x86-64
+# else
+# export BIN_ARCH=$(DEB_HOST_GNU_CPU)
+# endif
+
+## debian/mit-scheme.postinst
+# BIN_ARCH=${DPKG_MAINTSCRIPT_ARCH}
+# case ${BIN_ARCH} in
+# 	amd64|x86_64)
+# 	    BIN_ARCH=x86-64
+# 	    ;;
+# 	i486|i586)
+# 	    BIN_ARCH=i386
+# 	    ;;
+# esac
+
+Name: mit-scheme
+Link: /usr/bin/mit-scheme
+Alternative: /usr/bin/mit-scheme-${env:BIN_ARCH}
+Dependents:
+  /usr/share/man/man1/mit-scheme.1.gz mit-scheme.1.gz /usr/share/man/man1/mit-scheme-${env:BIN_ARCH}.1.gz
+Priority: 20
+
+Name: scheme
+Link: /usr/bin/scheme
+Alternative: /usr/bin/mit-scheme-${env:BIN_ARCH}
+Dependents:
+  /usr/share/man/man1/scheme.1.gz scheme.1.gz /usr/share/man/man1/mit-scheme-${env:BIN_ARCH}.1.gz
+Priority: 20
