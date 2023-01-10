@@ -44,6 +44,77 @@ USA.
 
 (add-boot-deps! '(runtime dynamic) '(runtime error-handler))
 
+#|
+Additional notes about syntax:
+
+* There are two distinct models to our syntax: (1) syntax-rules, which
+  is a term-rewriting language that doesn't understand the code it's
+  transforming; and (2) syntactic-closures, which is an
+  environment-based model that understands the code and maps each name
+  in it to a specific "meaning".  These models are somewhat at odds,
+  but because syntax-rules is careful to introduce syntactic closures
+  only around identifiers, other macros won't encounter them in
+  unusual places (e.g. between the second and third arguments of a
+  combination).
+
+* Hand-written syntactic-closures macros generally parse their
+  structure into appropriate syntactic units and close over those
+  units.  A well-written macro also won't introduce a closure in an
+  unusual place, though this isn't generally true for any macro.
+
+* It's probably wise to expect that syntactic closures can appear in
+  unusual places and be prepared to deal with it.  This both guards
+  against poorly written macros, and allows the implementation of
+  syntax-rules to be less restrictive in where it inserts closures.
+
+* When a closed identifier appears as the LHS of a binding, it _must_
+  mean that this is a "renamed" identifier.  This is because the blind
+  actions of syntax-rules will create these instances, and that's how
+  they must be interpreted for syntax-rules expansions to work.
+
+  The problem is that syntax-rules has a very restrictive way of
+  dealing with identifiers in the template: if the identifier appears
+  in the pattern, then it's a pattern variable, and gets translated
+  into a reference to that part of the form being transformed;
+  otherwise it must be closed in the macro's definition environment
+  because it's a reference to, say, 'let or 'lambda.
+
+  But this breaks down when the template identifier is inserted into
+  the LHS of a binder, where its closure does _not_ refer to a free
+  reference in the definition environment.
+
+* The flip side of this is that a closed identifier appearing as an
+  expression is ambiguous: is it meant to match a "renamed" identifier
+  binding, or is it a raw identifier meant to be looked up in the
+  closure's environment?  Even if we had perfectly modeled
+  environments, we still couldn't tell: if the template binds the
+  closed identifier 'begin then a subsequent reference to that closed
+  identifier might still refer to the binding even though 'begin has a
+  defined meaning in the closing environment.
+
+  It's actually worse than this: suppose that there's a binding for a
+  closed 'begin, and somewhere deep inside the scope of the binding,
+  invisible to the syntax-rules macro, there's a RHS reference to
+  'begin closed in the definition environment.  What does it refer to?
+
+* We can't optimize the closure of a closure in this case.  Say that a
+  syntax-rules instance has some closed identifiers in its template,
+  and that one of those closed identifiers is inserted into the LHS of
+  a binding.  This means we're binding a closure of a closure.  If we
+  optimize the outer closure away, then we might inadvertently capture
+  some reference to the inner closure.
+
+* A macro written using sc-macro-transformer can't expand into a
+  definition in the usage environment.  (Unless it swaps its
+  environments, making it an rsc-macro-transformer.)  The reason for
+  this is that the LHS identifier will always be closed in the macro's
+  definition environment, not in its usage environment.  We could
+  allow the use of a closed identifier in a definition to mean that
+  the binding is performed in the closure environment, but that
+  conflicts with the way that syntax-rules works.
+
+|#
+
 ;;;; Top level
 
 (define (syntax form environment)
