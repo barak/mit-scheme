@@ -674,10 +674,9 @@ the entire list is taken, e.g. @code{(take lis (length lis))}.
 @end deffn
 
 
-@deffn {obsolete procedure} list-head x i
+@deffn {procedure} list-head x i
 @deffnx {standard procedure} list-tail x i
 Equivalent to @code{take} and @code{drop}, respectively.
-@code{list-head} is deprecated and should not be used.
 @code{list-tail} is defined by @rseven{}.
 @end deffn
 
