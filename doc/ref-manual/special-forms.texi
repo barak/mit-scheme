@@ -2046,9 +2046,9 @@ that follow the group.  For example, the following are errors:
 @node Pattern Language, Syntactic Closures, Syntactic Binding Constructs, Macros
 @subsection Pattern Language
 
-MIT/GNU Scheme supports a high-level pattern language for specifying macro
-transformers.  This pattern language is defined by the Revised^4 Report
-and is portable to other conforming Scheme implementations.  To use the
+MIT/GNU Scheme supports a high-level pattern language for specifying
+macro transformers.  This pattern language is defined by @rseven{} and
+is portable to other conforming Scheme implementations.  To use the
 pattern language, specify a @var{transformer-spec} as a
 @code{syntax-rules} form:
 
@@ -2070,7 +2070,11 @@ following
 @example
 (@var{pattern} @dots{})
 (@var{pattern} @var{pattern} @dots{} . @var{pattern})
-(@var{pattern} @dots{} @var{pattern} @var{ellipsis})
+(@var{pattern} @dots{} @var{pattern} @var{ellipsis} @var{pattern} @dots{})
+(@var{pattern} @dots{} @var{pattern} @var{ellipsis} @var{pattern} @dots{} . @var{pattern})
+(@var{ellipsis} @var{pattern})
+#(@var{pattern} @dots{})
+#(@var{pattern} @dots{} @var{pattern} @var{ellipsis} @var{pattern} @dots{})
 @end example
 
 @noindent
@@ -2080,12 +2084,15 @@ following
 @example
 (@var{element} @dots{})
 (@var{element} @var{element} @dots{} . @var{template})
+(@var{ellipsis} @var{template})
+#(@var{element} @dots{})
 @end example
 
 @vindex ...
 where an @var{element} is a @var{template} optionally followed by an
-@var{ellipsis} and an @var{ellipsis} is the identifier @samp{...} (which
-cannot be used as an identifier in either a template or a pattern).
+@var{ellipsis}.  An @var{ellipsis} is either the identifier specified
+in the second form of @code{syntax-rules}, or the default identifier
+@code{...} (three consecutive dots) otherwise.
 
 An instance of @code{syntax-rules} produces a new macro transformer by
 specifying a sequence of hygienic rewrite rules.  A use of a macro whose
@@ -2095,16 +2102,24 @@ keyword is associated with a transformer specified by
 a match is found, the macro use is transcribed hygienically according to
 the template.
 
-An identifier that appears in the pattern of a @var{syntax-rule} is a
-@dfn{pattern-variable}, unless it is the keyword that begins the
-pattern, is listed in @var{literals}, or is the identifier @samp{...}.
+An identifier appearing in the pattern of a @var{syntax-rule} can be
+underscore (_), a literal identifier listed in the list of
+@var{literals}, or the @var{ellipsis}.  All other identifiers
+appearing within a @var{pattern} are @dfn{pattern variables}.
+
+The keyword at the beginning of the pattern in a @var{syntax rule} is
+not involved in the matching and is considered neither a pattern
+variable nor a literal identifier.
+
 Pattern variables match arbitrary input elements and are used to refer
 to elements of the input in the template.  It is an error for the same
 pattern variable to appear more than once in a @var{pattern}.
 
-The keyword at the beginning of the pattern in a @var{syntax-rule} is
-not involved in the matching and is not considered a pattern variable or
-literal identifier.
+Underscores also match arbitrary input elements but are not pattern
+variables and so cannot be used to refer to those elements. If an
+underscore appears in the @var{literals} list, then that takes
+precedence and underscores in the @var{pattern} match as
+literals. Multiple underscores can appear in a @var{pattern}.
 
 Identifiers that appear in @var{literals} are interpreted as literal
 identifiers to be matched against corresponding subforms of the input.
@@ -2113,96 +2128,60 @@ an identifier and either both its occurrence in the macro expression and
 its occurrence in the macro definition have the same lexical binding, or
 the two identifiers are equal and both have no lexical binding.
 
-A subpattern followed by @samp{...} can match zero or more elements of
-the input.  It is an error for @samp{...} to appear in @var{literals}.
-Within a pattern the identifier @samp{...} must follow the last element
-of a nonempty sequence of subpatterns.
-
-More formally, an input form @var{F} matches a pattern @var{P} if and
-only if:
-
-@itemize @bullet
-@item
-@var{P} is a non-literal identifier; or
-
-@item
-@var{P} is a literal identifier and @var{F} is an identifier with the
-same binding; or
-
-@item
-@var{P} is a list @code{(@var{P_1} @dots{} @var{P_n})} and @var{F} is a
-list of @var{n} forms that match @var{P_1} through @var{P_n},
-respectively; or
-
-@item
-@var{P} is an improper list @code{(@var{P_1} @var{P_2} @dots{} @var{P_n}
-. @var{P_n+1})} and @var{F} is a list or improper list of @var{n} or
-more forms that match @var{P_1} through @var{P_n}, respectively, and
-whose @var{n}th ``cdr'' matches @var{P_n+1}; or
-
-@item
-@var{P} is of the form @code{(@var{P_1} @dots{} @var{P_n} @var{P_n+1}
-@var{ellipsis})} where @var{ellipsis} is the identifier @samp{...} and
-@var{F} is a proper list of at least @var{n} forms, the first @var{n} of
-which match @var{P_1} through @var{P_n}, respectively, and each
-remaining element of @var{F} matches @var{P_n+1}; or
-
-@item
-@var{P} is a datum and @var{F} is equal to @var{P} in the sense of the
-@code{equal?} procedure.
-@end itemize
+A subpattern followed by @var{ellipsis} can match zero or more
+elements of the input, unless @var{ellipsis} appears in the
+@var{literals}, in which case it is matched as a literal.
 
 It is an error to use a macro keyword, within the scope of its
 binding, in an expression that does not match any of the patterns.
 
 When a macro use is transcribed according to the template of the
-matching @var{syntax rule}, pattern variables that occur in the template
-are replaced by the subforms they match in the input.  Pattern variables
-that occur in subpatterns followed by one or more instances of the
-identifier @samp{...} are allowed only in subtemplates that are followed
-by as many instances of @samp{...}.  They are replaced in the output by
-all of the subforms they match in the input, distributed as indicated.
-It is an error if the output cannot be built up as specified.
+matching @var{syntax rule}, pattern variables that occur in the
+template are replaced by the subforms they match in the input.
+Pattern variables that occur in subpatterns followed by one or more
+instances of the identifier @var{ellipsis} are allowed only in
+subtemplates that are followed by at least as many instances of
+@var{ellipsis}.  They are replaced in the output by all of the
+subforms they match in the input, distributed as indicated.  It is an
+error if the output cannot be built up as specified.
 
 Identifiers that appear in the template but are not pattern variables or
-the identifier @samp{...} are inserted into the output as literal
+the identifier @var{ellipsis} are inserted into the output as literal
 identifiers.  If a literal identifier is inserted as a free identifier
 then it refers to the binding of that identifier within whose scope the
 instance of @code{syntax-rules} appears.  If a literal identifier is
 inserted as a bound identifier then it is in effect renamed to prevent
 inadvertent captures of free identifiers.
 
-@example
-@group
-(let ((=> #f))
-  (cond (#t => 'ok)))           @result{} ok
-@end group
-@end example
+A pattern of the form (@var{ellipsis} @var{pattern}) is identical to
+@var{pattern}, except that ellipses within the pattern have no
+special meaning.  That is, any ellipses contained within
+@var{pattern} are treated as literal identifiers.  In particular,
+the pattern (@var{ellipsis} @var{ellipsis}) matches a single
+@var{ellipsis}.
 
-The macro transformer for @code{cond} recognizes @code{=>}
-as a local variable, and hence an expression, and not as the
-top-level identifier @code{=>}, which the macro transformer treats
-as a syntactic keyword.  Thus the example expands into
-
-@example
-@group
-(let ((=> #f))
-  (if #t (begin => 'ok)))
-@end group
-@end example
-
-instead of
+A template of the form (@var{ellipsis} @var{template}) is identical to
+@var{template}, except that ellipses within the template have no
+special meaning.  That is, any ellipses contained within
+@var{template} are treated as ordinary identifiers.  In particular,
+the template (@var{ellipsis} @var{ellipsis}) produces a single
+@var{ellipsis}.  This allows syntactic abstractions to expand into
+code containing ellipses.
 
 @example
 @group
-(let ((=> #f))
-  (let ((temp #t))
-    (if temp 
-        ('ok temp))))
+(define-syntax be-like-begin
+  (syntax-rules ()
+    ((be-like-begin name)
+     (define-syntax name
+       (syntax-rules ()
+         ((name expr (... ...))
+          (begin expr (... ...))))))))
+
+(be-like-begin sequence)
+(sequence 1 2 3 4)                   @result{} 4
 @end group
 @end example
-
-which would result in an invalid procedure call.
 @end deffn
 
 @node Syntactic Closures, Explicit Renaming, Pattern Language, Macros
@@ -2215,7 +2194,7 @@ Jonathan Rees.  The main feature of the syntactic-closures mechanism is
 its simplicity and its close relationship to the environment models
 commonly used with Scheme.  Using the mechanism to write macro
 transformers is somewhat cumbersome and can be confusing for the newly
-initiated, but it is easily mastered.
+initiated, but once understood is powerful.
 
 @menu
 * Syntax Terminology::
@@ -2252,15 +2231,14 @@ define
 @end example
 
 @item
-@cindex alias
 @cindex identifier
-@cindex synthetic identifier
-An @dfn{alias} is an alternate name for a given symbol.  It can appear
-anywhere in a form that the symbol could be used, and when quoted it is
-replaced by the symbol; however, it does not satisfy the predicate
-@code{symbol?}.  Macro transformers rarely distinguish symbols from
-aliases, referring to both as @dfn{identifiers}.  Another name for an
-alias is @dfn{synthetic identifier}; this document uses both names.
+@cindex alias
+An @dfn{identifier} is either a symbol or an alias.  An @dfn{alias} is
+a syntactic closure whose form is an identifier.  An alias can appear
+anywhere in a form that a symbol is allowed, and when quoted it is
+replaced by its underlying symbol; however, it does not satisfy the
+predicate @code{symbol?}.  Macro transformers do not distinguish
+symbols from aliases.
 
 @item
 @cindex syntactic environment
@@ -2276,9 +2254,9 @@ necessary for interpreting the meaning of a particular form.
 @cindex syntactic closure
 A @dfn{syntactic closure} consists of a form, a syntactic environment,
 and a list of identifiers.  All identifiers in the form take their
-meaning from the syntactic environment, except those in the given list.
-The identifiers in the list are to have their meanings determined
-later.
+meaning from the syntactic environment, except those in the given
+list.  The identifiers in the list have their meanings determined by
+the environment in which the syntactic closure is used.
 
 A syntactic closure may be used in any context in which its form could
 have been used.  Since a syntactic closure is also a form, it may not
@@ -2394,9 +2372,9 @@ from above, rewritten in this style:
 (define-syntax push
   (rsc-macro-transformer
    (lambda (exp env)
-     `(,(make-syntactic-closure env '() 'SET!)
+     `(,(make-syntactic-closure env '() 'set!)
        ,(caddr exp)
-       (,(make-syntactic-closure env '() 'CONS)
+       (,(make-syntactic-closure env '() 'cons)
         ,(cadr exp)
         ,(caddr exp))))))
 @end group
@@ -2419,9 +2397,9 @@ technique can be used to effect the opposite emulation as well.)
      (capture-syntactic-environment
       (lambda (env)
         (make-syntactic-closure usage-env '()
-          `(,(make-syntactic-closure env '() 'SET!)
+          `(,(make-syntactic-closure env '() 'set!)
             ,(caddr exp)
-            (,(make-syntactic-closure env '() 'CONS)
+            (,(make-syntactic-closure env '() 'cons)
              ,(cadr exp)
              ,(caddr exp)))))))))
 @end group
@@ -2484,8 +2462,8 @@ a form.  Returns a new syntactic closure of @var{form} in
 @end example
 @end deffn
 
-To obtain a syntactic environment other than the usage environment,
-use @code{capture-syntactic-environment}.
+To obtain a specific syntactic environment, use
+@code{capture-syntactic-environment}.
 
 @deffn procedure capture-syntactic-environment procedure
 @code{capture-syntactic-environment} returns a form that will, when
@@ -2569,10 +2547,10 @@ as follows:
                   ,(capture-syntactic-environment
                     (lambda (env)
                       `(lambda (,id)
-                         (,(make-syntactic-closure env '() `if)
+                         (,(make-syntactic-closure env '() 'if)
                           ,(close test (list id))
                           ,(close return (list id))
-                          (,(make-syntactic-closure env '() `loop)
+                          (,(make-syntactic-closure env '() 'loop)
                            ,(close step (list id)))))))))
           (loop ,(close init '())))))))
 @end group
@@ -2655,7 +2633,7 @@ Returns @code{#t} if @var{object} is an identifier, otherwise returns
 @end example
 @end deffn
 
-The predicate @code{eq?} is used to determine if two identifers are
+The predicate @code{eq?} is used to determine if two identifiers are
 ``the same''.  Thus @code{eq?} can be used to compare identifiers
 exactly as it would be used to compare symbols.  Often, though, it is
 useful to know whether two identifiers ``mean the same thing''.  For
@@ -2663,10 +2641,10 @@ example, the @code{cond} macro uses the symbol @code{else} to identify
 the final clause in the conditional.  A macro transformer for
 @code{cond} cannot just look for the symbol @code{else}, because the
 @code{cond} form might be the output of another macro transformer that
-replaced the symbol @code{else} with an alias.  Instead the transformer
-must look for an identifier that ``means the same thing'' in the usage
-environment as the symbol @code{else} means in the transformer
-environment.
+replaced the symbol @code{else} with an alias.  Instead the
+transformer must look for an identifier that ``means the same thing''
+in the usage environment as the symbol @code{else} means in the
+transformer environment.
 
 @deffn procedure identifier=? environment1 identifier1 environment2 identifier2
 @var{Environment1} and @var{environment2} must be syntactic
@@ -2692,17 +2670,17 @@ Examples:
 @end group
 
 @group
-(let-syntax ((bar foo))
+(let-syntax ((bar begin))
   (let-syntax
-      ((foo
+      ((begin
         (sc-macro-transformer
          (lambda (form env)
            (capture-syntactic-environment
             (lambda (transformer-env)
-              (identifier=? transformer-env 'foo
+              (identifier=? transformer-env 'begin
                             env (cadr form))))))))
-    (list (foo foo)
-          (foo bar))))
+    (list (begin begin)
+          (begin bar))))
                         @result{} (#f #t)
 @end group
 @end example
@@ -2710,13 +2688,14 @@ Examples:
 
 Sometimes it is useful to be able to introduce a new identifier that is
 guaranteed to be different from any existing identifier, similarly to
-the way that @code{generate-uninterned-symbol} is used. 
+the way that @code{string->uninterned-symbol} is used. 
 
-@deffn procedure make-synthetic-identifier identifier
-Creates and returns and new synthetic identifier (alias) that is
-guaranteed to be different from all existing identifiers.
-@var{Identifier} is any existing identifier, which is used in deriving
-the name of the new identifier.
+@deffn procedure new-identifier identifier
+@deffnx {obsolete procedure} make-synthetic-identifier identifier
+Creates and returns a new identifier that is guaranteed to be
+different from all existing identifiers.  @var{Identifier} is any
+existing identifier, which is used in deriving the name of the new
+identifier.
 @end deffn
 
 @node Explicit Renaming,  , Syntactic Closures, Macros
@@ -2747,10 +2726,9 @@ a comparison predicate, and returns a new form.  The first argument, the
 @cindex renaming procedure
 The second argument to a transformation procedure is a @dfn{renaming
 procedure} that takes the representation of an identifier as its
-argument and returns the representation of a fresh identifier that
-occurs nowhere else in the program.  For example, the transformation
-procedure for a simplified version of the @code{let} macro might be
-written as
+argument and closes that identifier in the syntactic environment in
+which the macro is defined.  For example, the transformation procedure
+for a simplified version of the @code{let} macro might be written as
 
 @example
 @group
@@ -2781,13 +2759,10 @@ a local binding.  The renaming effectively creates an fresh alias for
 @end example
 
 The expression returned by the transformation procedure will be expanded
-in the syntactic environment obtained from the syntactic environment of
-the macro application by binding any fresh identifiers generated by the
-renaming procedure to the denotations of the original identifiers in the
-syntactic environment in which the macro was defined.  This means that a
-renamed identifier will denote the same thing as the original identifier
-unless the transformation procedure that renamed the identifier placed
-an occurrence of it in a binding position.
+in the syntactic environment in which the macro was used.  In the
+above example, since the use of @code{lambda} was renamed, its meaning
+will be taken from the environment of the macro's definition, ignoring
+whatever meaning it has in the environment of the macro's use.
 
 The renaming procedure acts as a mathematical function in the sense that
 the identifiers obtained from any two calls with the same argument will
@@ -2907,9 +2882,12 @@ practice rather than introducing new functionality.
 
 @cindex SRFI 0
 @usrfi{0} is a mechanism for portably determining the availability of
-@uref{https://srfi.schemers.org/,@acronym{SRFI}} @dfn{features}.  The
-@code{cond-expand} special form conditionally expands according to the
-features available.
+@uref{https://srfi.schemers.org/,@acronym{SRFI}} @dfn{features}.  It
+has been incorporated into @rseven{} making it required for
+conformance.
+
+The @code{cond-expand} special form conditionally expands according to
+the features available.
 
 @deffn {standard special form} cond-expand clause clause dots{}
 Each @var{clause} has the form
@@ -2918,36 +2896,42 @@ Each @var{clause} has the form
 (@var{feature-requirement} @var{expression} @dots{})
 @end example
 
-where @var{feature-requirement} can have one of the following forms:
+The last clause can be an ``else clause'', which has the form
+
+@example
+(else @var{expression} @dots{})
+@end example
+
+A @var{feature-requirement} takes one of the following forms:
 
 @example
 @group
 @var{feature-identifier}
+(library @var{library-name})
 (and @var{feature-requirement} @dots{})
 (or @var{feature-requirement} @dots{})
 (not @var{feature-requirement})
-else
 @end group
 @end example
 
-(Note that at most one @code{else} clause may be present, and it must
-always be the last clause.)
+Each implementation maintains a list of feature identifiers that are
+present, as well as a list of libraries that can be imported.  The
+value of a @var{feature requirement} is determined by replacing each
+@var{feature identifier} and (library @var{library name}) on the
+implementation’s lists with @code{#t}, and all other feature
+identifiers and library names with @code{#f}, then evaluating the
+resulting expression as a Scheme boolean expression under the normal
+interpretation of @code{and}, @code{or}, and @code{not}.
 
-The @code{cond-expand} special form tests for the existence of features
-at macro-expansion time.  It either expands into the body of one of its
-@var{clause}s or signals an error during syntactic processing.
-@code{cond-expand} expands into the body of the first @var{clause} whose
-@var{feature-requirement} is currently satisfied (an @code{else}
-@var{clause}, if present, is selected if none of the previous
-@var{clauses} is selected).
-
-A @var{feature-requirement} has an obvious interpretation as a logical
-formula, where the @var{feature-identifier} variables have meaning true
-if the feature corresponding to the @var{feature-identifier}, as
-specified in the @acronym{SRFI} registry, is in effect at the location
-of the @code{cond-expand} form, and false otherwise.  A
-@var{feature-requirement} is satisfied if its formula is true under this
-interpretation.
+A @code{cond-expand} is then expanded by evaluating the @var{feature
+requirement}s of successive @var{clause}s in order until one of them
+returns @code{#t}.  When a true clause is found, the corresponding
+@var{expression}s are expanded to a @code{begin}, and the remaining
+clauses are ignored.  If none of the @var{feature requirement}s
+evaluate to @code{#t}, then if there is an else clause, its
+@var{expression}s are included.  Otherwise, the behavior of the
+@code{cond-expand} is unspecified.  Unlike @code{cond},
+@code{cond-expand} does not depend on the value of any variables.
 
 @example
 @group
@@ -2957,25 +2941,24 @@ interpretation.
   ((or srfi-1 srfi-10)
    (write 2))
   (else))
-
-(cond-expand
-  (command-line
-   (define (program-name) (car (argv)))))
 @end group
 @end example
 
-The second example assumes that @code{command-line} is an alias for some
-feature which gives access to command line arguments.  Note that an
-error will be signaled at macro-expansion time if this feature is not
-present.
-
-Note that MIT/GNU Scheme allows @code{cond-expand} in any context where a
-special form is allowed.  This is an extension of the semantics defined
-by @asrfi{0}, which only allows @code{cond-expand} at top level.
+@example
+@group
+(cond-expand
+  (have-argv
+   (define (program-name) (car (argv)))))
+@end group
+@end example
 @end deffn
 
 @node receive (SRFI 8), and-let* (SRFI 2), cond-expand (SRFI 0), SRFI syntax
 @subsection receive (SRFI 8)
+
+Note: Usually it is preferable to use @code{let-values} instead of
+@code{receive}, as the former is defined by @rseven{} and likely to be
+more portable.
 
 @cindex SRFI 8
 @usrfi{8} defines a convenient syntax to bind an identifier to each of
@@ -3119,12 +3102,13 @@ Example:
 @subsection define-record-type (SRFI 9)
 
 @cindex SRFI 9
-The @samp{define-record-type} syntax described in @usrfi{9} is a slight
-simplification of one written for Scheme 48 by Jonathan Rees.  Unlike
-many record-defining special forms, it does not create any new
-identifiers.  Instead, the names of the record type, predicate,
-constructor, and so on are all listed explicitly in the source.  This
-has the following advantages:
+@cindex SRFI 131
+The @samp{define-record-type} syntax described in @usrfi{9},
+@usrfi{131}, and @rseven{} is a variant of one written for Scheme 48
+by Jonathan Rees.  Unlike many record-defining special forms, it does
+not create any new identifiers.  Instead, the names of the record
+type, predicate, constructor, and so on are all listed explicitly in
+the source.  This has the following advantages:
 
 @itemize @bullet
 @item
