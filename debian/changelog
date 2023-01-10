@@ -1,3 +1,14 @@
+mit-scheme (11.2-5) UNRELEASED; urgency=medium
+
+  * Remove constraints unnecessary since buster:
+    + Build-Depends: Drop versioned constraint on mit-scheme.
+    + mit-scheme-dbg: Drop versioned constraint on mit-scheme in Replaces.
+    + mit-scheme-dbg: Drop versioned constraint on mit-scheme in Breaks.
+    + mit-scheme-doc: Drop versioned constraint on mit-scheme in Replaces.
+    + mit-scheme-doc: Drop versioned constraint on mit-scheme in Breaks.
+
+ -- Debian Janitor <janitor@jelmer.uk>  Sun, 24 Apr 2022 21:16:23 -0000
+
 mit-scheme (12.1-2) unstable; urgency=medium
 
   * enable blowfish, gdbm, and pgsql

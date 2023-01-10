@@ -3,7 +3,7 @@ Section: lisp
 Priority: optional
 Maintainer: Barak A. Pearlmutter <bap@debian.org>
 Build-Depends: debhelper-compat (= 13),
-		mit-scheme (>= 10),
+		mit-scheme,
 		libssl-dev, libmhash-dev, libmcrypt-dev,
 		libgdbm-dev, libpq-dev,
 		libncurses5-dev,
@@ -37,8 +37,6 @@ Architecture: amd64
 Multi-Arch: same
 Depends: mit-scheme (= ${binary:Version}), ${misc:Depends}
 Enhances: mit-scheme (= ${binary:Version})
-Breaks: mit-scheme (<< 7.7.90+20060414-0)
-Replaces: mit-scheme (<< 7.7.90+20060414-0)
 Description: MIT/GNU Scheme debugging files
  MIT/GNU Scheme is an implementation of the Scheme programming language,
  providing an interpreter, compiler, source-code debugger, integrated
@@ -57,8 +55,6 @@ Architecture: all
 Multi-Arch: foreign
 Depends: ${misc:Depends}
 Enhances: mit-scheme (= ${binary:Version})
-Breaks: mit-scheme (<< 7.7.90+20060414-0)
-Replaces: mit-scheme (<< 7.7.90+20060414-0)
 Description: MIT/GNU Scheme documentation
  MIT/GNU Scheme is an implementation of the Scheme programming language,
  providing an interpreter, compiler, source-code debugger, integrated
