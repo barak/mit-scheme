@@ -1,7 +1,7 @@
 mit-scheme (12.1-2) unstable; urgency=medium
 
   [ Barak A. Pearlmutter ]
-  * enable blowfish, gdbm, and pgsql
+  * enable blowfish, gdbm, and pgsql (build dependency on libpq-dev)
   [ Debian Janitor ]
   * Remove constraints unnecessary since buster:
     + Build-Depends: Drop versioned constraint on mit-scheme.
@@ -10,7 +10,7 @@ mit-scheme (12.1-2) unstable; urgency=medium
     + mit-scheme-doc: Drop versioned constraint on mit-scheme in Replaces.
     + mit-scheme-doc: Drop versioned constraint on mit-scheme in Breaks.
 
- -- Barak A. Pearlmutter <bap@debian.org>  Tue, 10 Jan 2023 21:30:02 +0000
+ -- Barak A. Pearlmutter <bap@debian.org>  Tue, 10 Jan 2023 21:56:01 +0000
 
 mit-scheme (12.1-1) unstable; urgency=medium
 
