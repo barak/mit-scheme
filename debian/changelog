@@ -1,3 +1,9 @@
+mit-scheme (12.1-2) unstable; urgency=medium
+
+  * enable blowfish, gdbm, and pgsql
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Tue, 10 Jan 2023 19:40:06 +0000
+
 mit-scheme (12.1-1) unstable; urgency=medium
 
   * New upstream release

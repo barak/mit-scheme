@@ -28,6 +28,10 @@ CONF_FLAGS += --enable-html=/usr/share/doc/mit-scheme-doc/html
 CONF_FLAGS += --enable-pdf=/usr/share/doc/mit-scheme-doc/pdf
 CONF_FLAGS += --enable-ps=no
 
+CONF_FLAGS += --enable-blowfish=yes
+CONF_FLAGS += --enable-gdbm=yes
+CONF_FLAGS += --enable-pgsql=yes
+
 # According to https://savannah.gnu.org/support/?110264 a build error like
 #
 #  Bad compiled-code version in FASL File: make.com
