@@ -45,14 +45,10 @@ USA.
 
 ;;; The rewritten forms are then checked for various syntactic restrictions that
 ;;; are different for patterns and templates.  Patterns are checked for excess
-;;; ellipses, but not templates where it is allowed.  Ellipsis depth is computed
-;;; for the pattern variables, and then checked in the template to make sure
-;;; that references have the correct depth and nesting relationships.
-
-;;; One special exception is dotted-list patterns, where the RHS of the dotted
-;;; list is an identifier.  In that case no ellipses are allowed in the LHS of
-;;; the pattern, because otherwise matching would require backtracking and there
-;;; would be more than one possible match.
+;;; ellipses, but not templates where it is allowed.  Ellipsis depth and
+;;; grouping is computed for the pattern variables, and then checked in the
+;;; template to make sure that references have the correct depth and nesting
+;;; relationships.
 
 ;;; The generated code is then simple, deferring most of the work to the
 ;;; procedures syntax-rules:match-datum and syntax-rules:expand-template.  These
