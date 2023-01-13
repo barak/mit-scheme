@@ -29,7 +29,7 @@ Copyright (c) 1993-1994 Stephen Adams
 This program was written by Stephen Adams, based on the following
 reference:
 
-  Stephen Adams, Implemeting Sets Efficiently in a Functional
+  Stephen Adams, Implementing Sets Efficiently in a Functional
      Language, CSTR 92-10, Department of Electronics and Computer
      Science, University of Southampton, 1992.
   <http://groups.csail.mit.edu/mac/users/adams/BB/>
@@ -43,7 +43,7 @@ The data structure was originally introduced in
 The algorithm proposed by Nievergelt & Reingold requires the ratio of
 sizes of the two subtrees of each node to be bounded by an irrational
 factor, which is slow to evaluate in integer arithmetic.  Adams
-proposed a simpler balance condition involvig only a single integer
+proposed a simpler balance condition involving only a single integer
 multiplication, but it turns out to be wrong, as explained in
 
    Yoichi Hirai and Kazuhiko Yamamoto, `Balancing weight-balanced
