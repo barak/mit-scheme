@@ -107,7 +107,7 @@ USA.
 	      package))))
 
 (define-integrable package-name-tag
-  '|#[(package)package-name-tag]|)
+  '| (package) package-name-tag|)
 
 (define (find-package name #!optional error?)
   (let package-loop ((packages *packages*))

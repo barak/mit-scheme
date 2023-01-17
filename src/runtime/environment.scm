@@ -254,7 +254,7 @@ USA.
   (let ((result '()))
     (for-each-interned-symbol
      (lambda (name)
-       (if (not (special-unbound-name? name))
+       (if (not (hidden-variable-name? name))
 	   (let ((value
 		  (map-reference-trap-value
 		   (lambda ()
@@ -263,10 +263,6 @@ USA.
 		      (keep? value))
 		 (set! result (cons (map-entry name value) result)))))))
     result))
-
-(define (special-unbound-name? name)
-  (or (eq? name package-name-tag)
-      (eq? name environment-library-tag)))
 
 ;;;; Interpreter Environments
 
@@ -357,7 +353,7 @@ USA.
 	  (let ((index (fix:- index 1)))
 	    (loop index
 		  (let ((name (vector-ref name-vector index)))
-		    (if (special-unbound-name? name)
+		    (if (hidden-variable-name? name)
 			result
 			(let ((value (ic-frame-arg frame index)))
 			  (if (or (unbound-reference-trap? value)
@@ -373,7 +369,7 @@ USA.
 	  (loop (fix:+ index 1)
 		(let ((p (vector-ref extension index)))
 		  (let ((name (car p)))
-		    (if (special-unbound-name? name)
+		    (if (hidden-variable-name? name)
 			result
 			(let ((value
 			       (map-reference-trap-value (lambda () (cdr p)))))

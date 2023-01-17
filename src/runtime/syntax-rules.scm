@@ -51,9 +51,10 @@ USA.
 ;;; relationships.
 
 ;;; The generated code is then simple, deferring most of the work to the
-;;; procedures syntax-rules:match-datum and syntax-rules:expand-template.  These
-;;; names must be bound in the global environment since that's the only means we
-;;; have for efficiently referencing them in the generated code.
+;;; procedures match-datum and expand-template.  These names are bound to hidden
+;;; variables in the global environment since that's the only means we have for
+;;; efficiently referencing them in the generated code while not exposing them
+;;; to end users.
 
 (declare (usual-integrations))
 
@@ -92,18 +93,23 @@ USA.
 			 (template (cadar clauses))
 			 (r-dict (new-identifier 'dict)))
 		     `(let ((,r-dict
-			     (,(rename 'syntax-rules:match-datum)
+			     (,(global-ref rename 'match-datum)
 			      ,(syntax-quote pattern)
 			      (cdr ,r-form)
 			     ,r-rename
 			     ,r-compare)))
 			(if ,r-dict
-			    (,(rename 'syntax-rules:expand-template)
+			    (,(global-ref rename 'expand-template)
 			     ,(syntax-quote template)
 			     ,r-dict
 			     ,r-rename)
 			    ,(loop (cdr clauses)))))
 		   `(,(rename 'ill-formed-syntax) ,r-form))))))))))
+
+(define (global-ref rename name)
+  `(,(rename 'access)
+    ,(symbol " (runtime syntax syntax-rules) " name)
+    ,(rename 'system-global-environment)))
 
 (define (parse-clauses ellipsis literals clauses underscore compare)
   (if (any-duplicates? literals compare)
@@ -264,9 +270,9 @@ USA.
       (if (pair? mismatches)
 	  (syntax-error "Mismatched ellipses in template:" mismatches)))))
 
-(define (syntax-rules:match-datum pattern datum rename compare)
+(define (match-datum pattern datum rename compare)
 
-  (define (match-datum pat datum dict k)
+  (define (match pat datum dict k)
 
     (define (k-list pats data dict)
       (and (null? pats)
@@ -285,7 +291,7 @@ USA.
 	((dotted-list)
 	 (match-segment x datum dict (fix:- (length x) 1) (count-pairs datum)
 	   (lambda (pats datum dict)
-	     (match-datum (car pats) datum dict k))))
+	     (match (car pats) datum dict k))))
 	((literal)
 	 (and (let ((literal (car x)))
 		(if (identifier? literal)
@@ -307,7 +313,7 @@ USA.
 		    (pat (segment-body (car pats))))
 		(let loop ((data data) (m m) (dicts '()))
 		  (if (fix:< n m)
-		      (match-datum pat (car data) (new-dict)
+		      (match pat (car data) (new-dict)
 			(lambda (dict)
 			  (loop (cdr data) (fix:- m 1) (cons dict dicts))))
 		      (fixed (cdr pats) data (wrap-dicts dicts dict)
@@ -317,14 +323,14 @@ USA.
 
   (define (fixed pats data dict n k)
     (if (fix:> n 0)
-	(match-datum (car pats) (car data) dict
+	(match (car pats) (car data) dict
 	  (lambda (dict)
 	    (fixed (cdr pats) (cdr data) dict (fix:- n 1) k)))
 	(k pats data dict)))
 
-  (match-datum pattern datum (new-dict) (lambda (dict) dict)))
+  (match pattern datum (new-dict) (lambda (dict) dict)))
 
-(define (syntax-rules:expand-template template dict rename)
+(define (expand-template template dict rename)
 
   (define (loop t dict)
 

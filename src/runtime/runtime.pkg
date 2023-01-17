@@ -1034,7 +1034,9 @@ USA.
 	  symbol=?			;(scheme base)
 	  symbol>?
 	  symbol?			;(scheme base)
-	  uninterned-symbol?))
+	  uninterned-symbol?)
+  (export (runtime)
+	  hidden-variable-name?))
 
 (define-package (runtime microcode-data)
   (files "microcode-data")
@@ -5357,9 +5359,12 @@ USA.
   (files "syntax-rules")
   (parent (runtime syntax))
   (export ()
-	  syntax-rules
-	  syntax-rules:expand-template
-	  syntax-rules:match-datum))
+	  (| (runtime syntax syntax-rules) expand-template| expand-template)
+	  (| (runtime syntax syntax-rules) match-datum| match-datum)
+	  ;; Next two must be kept until after 12.2 or 13.1 release:
+	  (syntax-rules:expand-template expand-template)
+	  (syntax-rules:match-datum match-datum)
+	  syntax-rules))
 
 (define-package (runtime syntax defstruct)
   (files "defstr")

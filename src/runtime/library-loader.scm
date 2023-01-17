@@ -220,7 +220,7 @@ USA.
   (environment-define env environment-library-tag library))
 
 (define-integrable environment-library-tag
-  '|#[(library database)library-tag]|)
+  '| (library database) library-tag|)
 
 (define (environment-name environment)
   (cond ((environment->package environment) => package/name)

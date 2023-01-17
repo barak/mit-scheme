@@ -130,6 +130,10 @@ USA.
 	      (else
 	       (error "Invalid argument to generate-uninterned-symbol:"
 		      argument)))))))
+
+(define (hidden-variable-name? object)
+  (and (interned-symbol? object)
+       (string-prefix? " " (symbol->string object))))
 
 (define-integrable (->bytes maybe-string)
   (object-new-type (ucode-type bytevector) maybe-string))
