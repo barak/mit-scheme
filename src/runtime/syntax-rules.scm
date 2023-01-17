@@ -421,23 +421,25 @@ USA.
     (if binding
 	(binding-datum binding)
 	no-datum)))
-
+
 (define (wrap-dicts dicts tail)
   (make-dict
-   (map* tail
-	 (lambda (id)
-	  (let ((matches
-		 (map (lambda (dict)
-			(assq id (dict-bindings dict)))
-		      dicts)))
-	    (make-binding id
-			  (reverse (map (lambda (match)
-					  (if match (binding-datum match) '()))
-					matches))
-			  (fix:+ (binding-depth
-				  (find (lambda (match) match) matches))
-				 1))))
-	(apply lset-union eq? (map dict-ids dicts)))))
+   (fold (lambda (id bindings)
+	   (cons (let ((matches
+			(map (lambda (dict)
+			       (assq id (dict-bindings dict)))
+			     dicts)))
+		   (make-binding id
+				 (reverse
+				  (map (lambda (match)
+					 (if match (binding-datum match) '()))
+				       matches))
+				 (fix:+ (binding-depth
+					 (find (lambda (match) match) matches))
+					1)))
+		 bindings))
+	 tail
+	 (apply lset-union eq? (map dict-ids dicts)))))
 
 (define (unwrap-dict dict ids)
   (let-values (((seg non-seg)
