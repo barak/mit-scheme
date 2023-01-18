@@ -3882,8 +3882,6 @@ USA.
   (guarantee-real x 'log-logistic)
   (- (log1pexp (- x))))
 
-;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
-
 (define =)
 (define <)
 (define >)
@@ -3909,8 +3907,6 @@ USA.
 
 (define (odd? n)
   (not (complex:even? n)))
-
-;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 
 (define +)
 (define *)
