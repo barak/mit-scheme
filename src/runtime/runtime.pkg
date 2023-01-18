@@ -1145,15 +1145,17 @@ USA.
 
 (define-package (runtime os-primitives)
   (parent (runtime))
-  (files "os-primitives")
+  (files "os-primitives" "unxprm")
   (export ()
 	  (file-attributes file-attributes-direct)
 	  copy-file
+	  cpu-architecture		;(srfi 112)
 	  current-home-directory
 	  current-user-name
 	  decode-file-time
 	  decoded-time->file-time
 	  default-line-ending
+	  delete-environment-variable!
 	  encode-file-time
 	  file-access-time
 	  file-access-time-direct
@@ -1162,11 +1164,14 @@ USA.
 	  file-attributes-indirect
 	  file-attributes/access-time
 	  file-attributes/change-time
+	  file-attributes/gid
+	  file-attributes/inode-number
 	  file-attributes/length
 	  file-attributes/mode-string
 	  file-attributes/modification-time
 	  file-attributes/n-links
 	  file-attributes/type
+	  file-attributes/uid
 	  file-length
 	  file-line-ending
 	  file-modes
@@ -1176,9 +1181,14 @@ USA.
 	  file-time->global-decoded-time
 	  file-time->local-decoded-time
 	  file-time->universal-time
-	  get-environment-variables	;(scheme process-context)
 	  get-environment-variable	;(scheme process-context)
+	  get-environment-variables	;(scheme process-context)
+	  implementation-name		;(srfi 112)
+	  implementation-version	;(srfi 112)
 	  init-file-specifier->pathname
+	  machine-name			;(srfi 112)
+	  os-name			;(srfi 112)
+	  os-version			;(srfi 112)
 	  os/exec-path
 	  os/executable-pathname-types
 	  os/find-program
@@ -1187,36 +1197,20 @@ USA.
 	  os/parse-path-string
 	  os/shell-file-name
 	  os/suffix-mime-type
+	  set-environment-variable!
 	  set-file-modes!
 	  set-file-times!
 	  temporary-directory-pathname
 	  temporary-file-pathname
 	  universal-time->file-time
+	  unix/current-gid
+	  unix/current-pid
+	  unix/current-uid
+	  unix/gid->string
+	  unix/system
+	  unix/uid->string
+	  unix/uname
 	  user-home-directory))
-
-(os-type-case
- ((unix)
-  (extend-package (runtime os-primitives)
-    (files "unxprm")
-    (export ()
-	    cpu-architecture		;(srfi 112)
-	    delete-environment-variable!
-	    file-attributes/gid
-	    file-attributes/inode-number
-	    file-attributes/uid
-	    implementation-name		;(srfi 112)
-	    implementation-version	;(srfi 112)
-	    machine-name		;(srfi 112)
-	    os-name			;(srfi 112)
-	    os-version			;(srfi 112)
-	    set-environment-variable!
-	    unix/current-gid
-	    unix/current-pid
-	    unix/current-uid
-	    unix/gid->string
-	    unix/system
-	    unix/uid->string
-	    unix/uname))))
 
 (define-package (runtime legacy-string)
   (files "legacy-string")
@@ -2170,19 +2164,12 @@ USA.
 	  stack-frame/debugging-info))
 
 (define-package (runtime directory)
+  (files "unxdir")
   (parent (runtime))
   (export (runtime pathname)
 	  *expand-directory-prefixes?*)
   (export ()
 	  directory-read))
-
-(os-type-case
- ((unix)
-  (extend-package (runtime directory)
-    (files "unxdir")))
- ((nt)
-  (extend-package (runtime directory)
-    (files "ntdir"))))
 
 (define-package (runtime emacs-interface)
   (files "emacs")
@@ -4773,9 +4760,7 @@ USA.
 	  make-graphics-device-type))
 
 (define-package (runtime x-graphics)
-  (file-case os-type
-    ((unix) "x11graph")
-    (else))
+  (files "x11graph")
   (parent (runtime))
   (export deprecated ()
 	  create-x-colormap

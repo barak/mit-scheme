@@ -328,12 +328,7 @@ USA.
 (package/add-child! (find-package '()) 'package environment-for-package)
 
 (define packages-file
-  (let ((name
-	 (string-append "runtime-"
-			(cond ((eq? os-name 'nt) "w32")
-			      ((eq? os-name 'unix) "unx")
-			      (else "unk"))
-			".pkd")))
+  (let ((name "runtime-unx.pkd"))
     (or (initialize-c-compiled-block (string-append runtime-prefix name))
 	(fasload name #f))))
 
