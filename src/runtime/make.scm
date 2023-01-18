@@ -108,8 +108,6 @@ USA.
 (define-integrable substring-move-right!
   (ucode-primitive substring-move-right!))
 
-(define microcode-identification (microcode-identify))
-(define os-name-string (vector-ref microcode-identification 8))
 (define tty-output-descriptor (tty-output-channel))
 
 (define (tty-write-string string)
@@ -290,13 +288,7 @@ USA.
 	prim
 	(lambda (name) name #f))))
 
-(define os-name
-  (intern os-name-string))
-
-(define newline-string
-  (if (eq? 'unix os-name)
-      "\n"
-      "\r\n"))
+(define newline-string "\n")
 
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
