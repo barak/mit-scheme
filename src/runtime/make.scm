@@ -438,9 +438,7 @@ USA.
   ;; Load everything else.
   ((lexical-reference environment-for-package 'load-packages-from-file)
    packages-file
-   `((sort-type . merge-sort)
-     (os-type . ,os-name)
-     (options . no-load))
+   `((options . no-load))
    (lambda (filename package)
      (if (not (or (string=? filename "make")
 		  (string=? filename "packag")
