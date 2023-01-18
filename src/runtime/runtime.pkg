@@ -3707,7 +3707,8 @@ USA.
   (export deprecated ()
 	  (flonum-unparser:engineering-output flonum-printer:engineering-output)
 	  (flonum-unparser:normal-output flonum-printer:normal-output)
-	  (flonum-unparser:scientific-output flonum-printer:scientific-output))
+	  (flonum-unparser:scientific-output flonum-printer:scientific-output)
+	  flonum-unparser-cutoff)
   (export ()
 	  (-1+ complex:-1+)
 	  (1+ complex:1+)
@@ -3867,7 +3868,6 @@ USA.
 	  flonum-printer:engineering-output
 	  flonum-printer:normal-output
 	  flonum-printer:scientific-output
-	  flonum-unparser-cutoff
 	  gcd				;(scheme base)
 	  inexact?			;(scheme base)
 	  integer-divide-quotient
