@@ -263,7 +263,6 @@ USA.
     (encapsulate list
       (list 'define-library
 	    (match-if library-name?)
-
 	    (* (object r7rs-declaration-parser))))))
 
 (define r7rs-declaration-parser
