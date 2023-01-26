@@ -115,6 +115,7 @@ int fedisableexcept(unsigned int excepts)
 #define VECTOR_8B_POINTER STRING_POINTER
 #define allocate_vector_8b allocate_string
 
+ATTRIBUTE((__unused__))
 static SCHEME_OBJECT
 arg_vector_8b (int n)
 {
@@ -130,9 +131,10 @@ typedef char fenv_t;
 typedef char fexcept_t;
 #endif
 
-static bool scheme_fenv_p = false;
-static fenv_t scheme_fenv;
+ATTRIBUTE((__unused__)) static bool scheme_fenv_p = false;
+ATTRIBUTE((__unused__)) static fenv_t scheme_fenv;
 
+ATTRIBUTE((__unused__))
 static void
 cache_float_environment (void)
 {
@@ -404,6 +406,7 @@ exceptions_scheme_to_machine (int except_scheme)
   PRIMITIVE_RETURN						\
     (ULONG_TO_FIXNUM (exceptions_machine_to_scheme (EXCEPTIONS)))
 
+ATTRIBUTE((__unused__))
 static int
 arg_float_exceptions (int n)
 {
