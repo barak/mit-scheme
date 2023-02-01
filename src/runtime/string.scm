@@ -1457,8 +1457,7 @@ USA.
 ;;;; Append
 
 (define (string-append . strings)
-  (%string-concatenate strings 'string-append)
-  (string-concatenate strings))
+  (%string-concatenate strings 'string-append))
 
 (define (string-concatenate strings)
   (%string-concatenate strings 'string-concatenate))
