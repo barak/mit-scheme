@@ -84,7 +84,6 @@ USA.
 (define-integrable garbage-collect (ucode-primitive garbage-collect))
 (define-integrable lexical-reference (ucode-primitive lexical-reference))
 (define-integrable link-variables (ucode-primitive link-variables 4))
-(define-integrable microcode-identify (ucode-primitive microcode-identify))
 (define-integrable scode-eval (ucode-primitive scode-eval))
 (define-integrable string->symbol (ucode-primitive string->symbol))
 (define-integrable string-allocate (ucode-primitive string-allocate))
