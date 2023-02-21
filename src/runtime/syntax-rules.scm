@@ -109,7 +109,7 @@ USA.
 (define (global-ref rename name)
   `(,(rename 'access)
     ,(symbol " (runtime syntax syntax-rules) " name)
-    ,(rename 'system-global-environment)))
+    #f))
 
 (define (parse-clauses ellipsis literals clauses underscore compare)
   (if (any-duplicates? literals compare)
