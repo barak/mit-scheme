@@ -89,10 +89,10 @@ fi
 for KEYWORD in ${KEYWORDS}; do
     case ${KEYWORD} in
     rm-bin)
-	maybe_rm *.bin *.ext *.nib *.txe
+	maybe_rm *.bin *.ext *.nib *.txe *.binld
 	;;
     rm-com)
-	maybe_rm *.com *.bci *.moc *.fni *.o *.so *.sl *.dylib
+	maybe_rm *.com *.bci *.moc *.fni *.o *.so *.sl *.dylib *.comld *.bcild
 	;;
     rm-pkg)
 	maybe_rm *-unx.crf *-unx.fre *-unx.pkd *-unx.dkp
