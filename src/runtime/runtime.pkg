@@ -2708,6 +2708,8 @@ USA.
 	  char-set:iso-8859-7
 	  char-set:iso-8859-8
 	  char-set:iso-8859-9
+	  condition-type:char-decoding-error
+	  condition-type:char-encoding-error
 	  known-input-port-coding?
 	  known-input-port-codings
 	  known-output-port-coding?
