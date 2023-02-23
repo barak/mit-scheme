@@ -493,10 +493,7 @@ USA.
 ;;;; Consuming Generator Values
 
 (define (generator->list gen #!optional n)
-  (generator-fold-right cons '()
-			(if (default-object? n)
-			    gen
-			    (gtake gen n))))
+  (reverse (generator->reverse-list gen n)))
 
 (define (generator->reverse-list gen #!optional n)
   (generator-fold cons '()
