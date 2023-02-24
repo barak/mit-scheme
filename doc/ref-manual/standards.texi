@@ -24,6 +24,7 @@
 * SRFI 143::
 * SRFI 158::
 * SRFI 162::
+* SRFI 180::
 * SRFI 219::
 @end menu
 
@@ -2315,7 +2316,7 @@ All names are bound in the @mitgnu{} global environment.
 @item @nicode{vector-accumulator!}
 @end multitable
 
-@node SRFI 162, SRFI 219, SRFI 158, Standards Support
+@node SRFI 162, SRFI 180, SRFI 158, Standards Support
 @section SRFI 162: Comparators sublibrary
 @findex boolean-comparator
 @findex char-ci-comparator
@@ -2370,7 +2371,54 @@ All names are bound in the @mitgnu{} global environment.
 @item @nicode{vector-comparator}
 @end multitable
 
-@node SRFI 219,  , SRFI 162, Standards Support
+@node SRFI 180, SRFI 219, SRFI 162, Standards Support
+@section SRFI 180: JSON
+@findex json-accumulator
+@findex json-accumulator-trace?
+@findex json-error?
+@findex json-error-reason
+@findex json-fold
+@findex json-generator
+@findex json-lines-read
+@findex json-nesting-depth-limit
+@findex json-null?
+@findex json-number-of-character-limit
+@findex json-read
+@findex json-sequence-read
+@findex json-write
+
+@cartouche
+@table @b
+@item Description
+A set of procedures for reading and writing JSON.
+@item URL
+@srfiurl{180}
+@item Support
+Fully supported.
+@item Libraries
+@nicode{(srfi 180)}
+@item Global
+No bindings in the @mitgnu{} global environment.
+@end table
+@end cartouche
+
+@multitable @columnfractions .5 .5
+@item @nicode{json-accumulator}
+@tab @nicode{json-accumulator-trace?}
+@item @nicode{json-error?}
+@tab @nicode{json-error-reason}
+@item @nicode{json-fold}
+@tab @nicode{json-generator}
+@item @nicode{json-lines-read}
+@tab @nicode{json-nesting-depth-limit}
+@item @nicode{json-null?}
+@tab @nicode{json-number-of-character-limit}
+@item @nicode{json-read}
+@tab @nicode{json-sequence-read}
+@item @nicode{json-write}
+@end multitable
+
+@node SRFI 219,  , SRFI 180, Standards Support
 @section SRFI 219: Define higher-order lambda
 @findex define
 

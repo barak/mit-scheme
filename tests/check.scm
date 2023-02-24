@@ -141,6 +141,7 @@ USA.
     ("libraries/test-srfi-133" inline)
     ("libraries/test-srfi-140" inline)
     ("libraries/test-srfi-143" inline)
+    "libraries/test-srfi-180"
     ))
 
 (with-working-directory-pathname

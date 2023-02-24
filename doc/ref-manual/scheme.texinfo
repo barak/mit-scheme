@@ -547,6 +547,7 @@ Standards Support
 * SRFI 143::
 * SRFI 158::
 * SRFI 162::
+* SRFI 180::
 * SRFI 219::
 
 @end detailmenu
