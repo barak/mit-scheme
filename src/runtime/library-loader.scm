@@ -201,10 +201,11 @@ USA.
 		      else if lambda let let* let-syntax letrec letrec-syntax or
 		      quasiquote quote set! syntax-rules)))
 
-(define (repl-import . import-sets)
+(define (import-to-top-level-environment! env . import-sets)
+  (guarantee top-level-environment? env 'import-to-top-level-environment!)
   (let ((db (current-library-db)))
     (add-imports-to-env! (import-sets->imports import-sets db)
-			 (nearest-repl/environment)
+			 env
 			 db
 			 #f)))
 

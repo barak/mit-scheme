@@ -6629,6 +6629,7 @@ USA.
 	  environment-name
 	  environment-name&type
 	  find-scheme-libraries!
+	  import-to-top-level-environment!
 	  null-environment		;(scheme r5rs)
 	  scheme-report-environment	;(scheme r5rs)
 	  top-level-environment
@@ -6638,7 +6639,6 @@ USA.
 	  eval-r7rs-scode-file
 	  eval-r7rs-source
 	  make-environment-from-parsed-imports
-	  repl-import
 	  syntax-r7rs-source)
   (export (runtime environment)
 	  environment-library-tag))

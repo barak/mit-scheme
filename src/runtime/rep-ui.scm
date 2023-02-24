@@ -371,4 +371,6 @@ If ENV is not provided, generates a new top-level environment."
   "Imports IMPORT-SETS into the current REPL environment.
 Syntax is identical to that defined by R7RS section 5.2."
   (lambda import-sets
-    (apply repl-import import-sets)))
+    (apply import-to-top-level-environment!
+	   (nearest-repl/environment)
+	   import-sets)))
