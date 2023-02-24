@@ -711,7 +711,7 @@ USA.
       (lambda (condition)
 	(let ((value
 	       (handler
-		(if (r7rs-tunnel? condition)
+		(if (r7rs-error-condition? condition)
 		    (access-condition condition 'object)
 		    condition)))
 	      (restart (find-restart 'use-value condition)))
@@ -722,14 +722,14 @@ USA.
 (define (raise object)
   (if (condition? object)
       (error object)
-      (error condition-type:r7rs-tunnel object)))
+      (error condition-type:r7rs-error object)))
 
 (define (raise-continuable object)
   (if (condition? object)
       (error object)
       (signal-standard (signal-with-fallback standard-error-handler)
 		       bind-raise-continuable-restarts
-		       make-r7rs-tunnel
+		       make-r7rs-error
 		       object)))
 
 (define (bind-raise-continuable-restarts continuation thunk)
@@ -741,15 +741,43 @@ USA.
 		 "Value to use (an expression to evaluate)")))
       thunk))
 
-(define (error-object-message condition)
-  (if (%condition-has-type? condition condition-type:simple-error)
-      (access-condition condition 'message)
-      (condition/report-string condition)))
+(define (error-object? object)
+  (or (error-condition? object)
+      (%r7rs-error-record? object)))
 
-(define (error-object-irritants condition)
-  (if (%condition-has-type? condition condition-type:simple-error)
-      (list-copy (access-condition condition 'irritants))
-      '()))
+(define (error-object-message object)
+  (cond ((error-condition? object)
+	 (if (%condition-has-type? object condition-type:simple-error)
+	     (access-condition object 'message)
+	     (condition/report-string object)))
+	((%r7rs-error-record? object)
+	 (%r7rs-error-record-message object))
+	(else
+	 (error:not-a error-object? object 'error-object-message))))
+
+(define (error-object-irritants object)
+  (cond ((error-condition? object)
+	 (if (%condition-has-type? object condition-type:simple-error)
+	     (access-condition object 'irritants)
+	     '()))
+	((%r7rs-error-record? object)
+	 (%r7rs-error-record-irritants object))
+	(else
+	 (error:not-a error-object? object 'error-object-message))))
+
+(define (%r7rs-error-record? object)
+  (and (record? object)
+       (let* ((rtd (record-type-descriptor object))
+	      (field-names (record-type-field-names rtd)))
+	 (and (memq 'r7rs-error-message field-names)
+	      (memq 'r7rs-error-irritants field-names)
+	      #t))))
+
+(define (%r7rs-error-record-message r)
+  ((record-accessor (record-type-descriptor r) 'r7rs-error-message) r))
+
+(define (%r7rs-error-record-irritants r)
+  ((record-accessor (record-type-descriptor r) 'r7rs-error-irritants) r))
 
 ;;;; Basic Condition Types
 
@@ -776,18 +804,24 @@ USA.
 (define-deferred condition-type:error
   (make-condition-type 'error condition-type:serious-condition '() #f))
 
-(define-deferred error-object?
+(define-deferred error-condition?
   (condition-predicate condition-type:error))
 
-(define-deferred condition-type:r7rs-tunnel
-  (make-condition-type 'r7rs-tunnel condition-type:error '(object)
+(define-deferred condition-type:r7rs-error
+  (make-condition-type 'r7rs-error condition-type:error '(object)
     (lambda (condition port)
-      (write-string "The object " port)
-      (write (access-condition condition 'object) port)
-      (write-string " was raised." port))))
+      (let ((object (access-condition condition 'object)))
+	(if (%r7rs-error-record? object)
+	    (format-error-message (%r7rs-error-record-message object)
+				  (%r7rs-error-record-irritants object)
+				  port)
+	    (begin
+	      (write-string "The object " port)
+	      (write object port)
+	      (write-string " was raised." port)))))))
 
-(define-deferred r7rs-tunnel?
-  (condition-predicate condition-type:r7rs-tunnel))
+(define-deferred r7rs-error-condition?
+  (condition-predicate condition-type:r7rs-error))
 
 (define (reporter/simple-condition condition port)
   (format-error-message (access-condition condition 'message)
@@ -1178,8 +1212,8 @@ USA.
   (condition-constructor condition-type:simple-warning
 			 '(message irritants)))
 
-(define-deferred make-r7rs-tunnel
-  (condition-constructor condition-type:r7rs-tunnel
+(define-deferred make-r7rs-error
+  (condition-constructor condition-type:r7rs-error
 			 '(object)))
 
 (define-deferred error:wrong-type-datum

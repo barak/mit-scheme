@@ -2492,6 +2492,7 @@ USA.
 	  muffle-warning
 	  param:standard-error-hook
 	  param:standard-warning-hook
+	  r7rs-error-condition?
 	  raise				;(scheme base)
 	  raise-continuable		;(scheme base)
 	  restart/effector

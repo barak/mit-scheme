@@ -299,7 +299,7 @@ USA.
 
 (define (write-feature tag p port)
   (write-tag tag port)
-  (receive (pattern objects) (decode-feature (car p) (cdr p))
+  (let-values (((pattern objects) (decode-feature (car p) (cdr p))))
     (guarantee list? pattern)
     (guarantee list? objects)
     (if (not (= (count marker? pattern) (length objects)))
@@ -435,9 +435,13 @@ USA.
   (predicate-assertion non-empty-list? "a non-empty list"))
 
 (define-for-tests (assert-error thunk #!optional condition-types . properties)
-  (let ((condition-types (if (default-object? condition-types)
-			     (list condition-type:error)
-			     condition-types)))
+  (let-values (((condition-types filter)
+		(cond ((default-object? condition-types)
+		       (values (list condition-type:error) #f))
+		      ((procedure? condition-types)
+		       (values (list condition-type:error) condition-types))
+		      (else
+		       (values condition-types #f)))))
     (let ((result
 	   (call-with-current-continuation
 	     (lambda (k)
@@ -445,11 +449,29 @@ USA.
 		     (bind-condition-handler
 			 condition-types
 			 (lambda (condition)
-			   (k (cons #t condition)))
+			   (k
+			    (cons (if filter
+				      (filter condition)
+				      #t)
+				  condition)))
 		       thunk))))))
       (apply maybe-fail
 	     (car result)
 	     (if (car result) 'condition 'result-object) (cdr result)
+	     'expectation-pattern
+	     (cond (filter
+		    (list (list "an error condition satisfying" (marker))
+			  filter))
+		   ((null? condition-types)
+		    (list (list "any condition")))
+		   ((null? (cdr condition-types))
+		    (if (equal? condition-type:error (car condition-types))
+			(list (list "an error condition"))
+			(list (list "a condition of type" (marker))
+			      (car condition-types))))
+		   (else
+		    (list (list "a condition of one of the types" (marker))
+			  condition-types)))
 	     'expectation-object condition-types
 	     properties))))
 

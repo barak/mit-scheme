@@ -80,6 +80,7 @@ USA.
     "runtime/test-entity"
     "runtime/test-ephemeron"
     ("runtime/test-equals" inline)
+    "runtime/test-error"
     ("runtime/test-file-attributes" (runtime))
     "runtime/test-floenv"
     "runtime/test-flonum"
