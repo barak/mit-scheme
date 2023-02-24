@@ -712,7 +712,7 @@ USA.
 	(let ((value
 	       (handler
 		(if (r7rs-error-condition? condition)
-		    (access-condition condition 'object)
+		    (r7rs-error-condition-object condition)
 		    condition)))
 	      (restart (find-restart 'use-value condition)))
 	  (if restart
@@ -810,7 +810,7 @@ USA.
 (define-deferred condition-type:r7rs-error
   (make-condition-type 'r7rs-error condition-type:error '(object)
     (lambda (condition port)
-      (let ((object (access-condition condition 'object)))
+      (let ((object (r7rs-error-condition-object condition)))
 	(if (%r7rs-error-record? object)
 	    (format-error-message (%r7rs-error-record-message object)
 				  (%r7rs-error-record-irritants object)
@@ -822,6 +822,9 @@ USA.
 
 (define-deferred r7rs-error-condition?
   (condition-predicate condition-type:r7rs-error))
+
+(define-deferred r7rs-error-condition-object
+  (condition-accessor condition-type:r7rs-error 'object))
 
 (define (reporter/simple-condition condition port)
   (format-error-message (access-condition condition 'message)
