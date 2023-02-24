@@ -358,7 +358,7 @@ USA.
     (if (pair? pathnames)
 	(let ((pathname (car pathnames))
 	      (pathnames (cdr pathnames)))
-	  (case (file-type-direct pathname)
+	  (case (file-type-indirect pathname)
 	    ((regular)
 	     (loop pathnames
 		   (if (predicate pathname)

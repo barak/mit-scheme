@@ -25,7 +25,8 @@ USA.
 
 |#
 
-(for-each compile-file
-	  (directory-read
-	   (merge-pathnames "*.sld"
-			    (directory-pathname (current-load-pathname)))))
+(let ((dir (directory-pathname (current-load-pathname))))
+  (parameterize ((current-library-db (new-library-db)))
+    (find-scheme-libraries! dir)
+    (for-each compile-file
+	      (directory-read (merge-pathnames "*.sld" dir)))))
