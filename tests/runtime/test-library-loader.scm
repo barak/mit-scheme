@@ -35,7 +35,8 @@ USA.
   (lambda ()
     (let ((source (read-r7rs-source r7rs-example-filename))
 	  (db (new-library-db 'test)))
-      (let ((program (register-r7rs-source! source db)))
+      (let ((program
+	     (r7rs-source-program (register-r7rs-source! source db))))
 	(assert-equal (unsyntax (library-contents program))
 		      '(begin
 			 (define grid (make-grid 24 24))

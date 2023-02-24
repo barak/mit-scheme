@@ -35,8 +35,8 @@ USA.
 ;;;; Syntax
 
 (define (syntax-r7rs-source source db)
-  (register-r7rs-source! source (copy-library-db db))
-  (r7rs-source->scode-file source))
+  (r7rs-source->scode-file
+   (register-r7rs-source! source (copy-library-db db))))
 
 (define-automatic-property '(contents bound-names free-names)
     '(parsed-contents imports-environment)
@@ -288,9 +288,10 @@ USA.
 ;;;; Evaluation
 
 (define (eval-r7rs-source source)
-  (let ((program (register-r7rs-source! source (current-library-db))))
-    (if program
-	(library-eval-result program))))
+  (let ((source* (register-r7rs-source! source (current-library-db))))
+    (let ((program (r7rs-source-program source*)))
+      (if program
+	  (library-eval-result program)))))
 
 (define (eval-r7rs-scode-file scode pathname)
   (fold (lambda (library result)

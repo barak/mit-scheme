@@ -77,9 +77,9 @@ USA.
 	     library)))))
 
 (define (register-libraries! libraries db)
-  (for-each (lambda (library)
-	      (register-library! library db))
-	    libraries))
+  (map (lambda (library)
+	 (register-library! library db))
+       libraries))
 
 (define (deregister-library! library db)
   (let ((key (library-key library)))

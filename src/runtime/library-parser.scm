@@ -135,10 +135,11 @@ USA.
 	libraries)))
 
 (define (register-r7rs-source! source db)
-  (register-libraries! (r7rs-source-libraries source) db)
-  (let ((program (r7rs-source-program source)))
-    (and program
-	 (register-library! program db))))
+  (make-r7rs-source
+   (register-libraries! (r7rs-source-libraries source) db)
+   (let ((program (r7rs-source-program source)))
+     (and program
+	  (register-library! program db)))))
 
 (define (top-level-define-library-parser parser)
   (lambda (form #!optional pathname)
