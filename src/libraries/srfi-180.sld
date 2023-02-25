@@ -49,5 +49,7 @@ USA.
           json-number-of-character-limit
           json-read
           json-sequence-read
-          json-write)
+          json-write
+          json-write-indented		;not in SRFI
+	  )
   (include "srfi-180-impl.scm"))

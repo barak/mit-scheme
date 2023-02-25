@@ -489,24 +489,32 @@ USA.
     final))
 
 (define json-accumulator
-  (std-output-proc %json-accumulator ()))
+  (std-output-proc %json-accumulator #f ()))
 
 (define json-accumulator-trace?
   (make-parameter #f))
 
-(define (%json-accumulator a)
-  (let ((trace? (json-accumulator-trace?))
-        (state 'initial)
-        (state-stack '()))
+(define (%json-accumulator indent-allowed? a)
+  (let ((state 'initial)
+        (state-stack '())
+	(indent #f))
+
+    (define (dispatch token)
+      (case state
+	((initial) (initial token))
+	((array-first) (array-first token))
+	((array-next) (array-next token))
+	((object-first) (object-first token))
+	((object-value) (object-value token))
+	((object-next) (object-next token))
+	((final) (final token))
+	(else (error "Unknown state:" state))))
 
     (define-syntax define-state
       (syntax-rules ()
         ((_ (name token) transitions ...)
          (define (name token)
-           (if trace?
-               (begin
-                 (write (list state token state-stack))
-                 (newline)))
+	   (maybe-trace token)
            (let ((tname (token-name token)))
              (case tname
                transitions ...
@@ -523,20 +531,20 @@ USA.
 
     (define-state (array-next token)
       ((array-end) (end-struct! token))
-      ((array-start object-start) (a ", ") (start-struct! token 'array-next))
-      ((string non-string) (a ", ") (do-atom! token 'array-next)))
+      ((array-start object-start) (comma) (start-struct! token 'array-next))
+      ((string non-string) (comma) (do-atom! token 'array-next)))
 
     (define-state (object-first token)
       ((object-end) (end-struct! token))
       ((string) (write-string token) (set! state 'object-value)))
 
     (define-state (object-value token)
-      ((array-start object-start) (a ": ") (start-struct! token 'object-next))
-      ((string non-string) (a ": ") (do-atom! token 'object-next)))
+      ((array-start object-start) (colon) (start-struct! token 'object-next))
+      ((string non-string) (colon) (do-atom! token 'object-next)))
 
     (define-state (object-next token)
       ((object-end) (end-struct! token))
-      ((string) (a ", ") (write-string token) (set! state 'object-value)))
+      ((string) (comma) (write-string token) (set! state 'object-value)))
 
     (define-state (final token)
       ((eof) token))
@@ -545,6 +553,7 @@ USA.
       (let ((start
              (lambda (opener new-state)
                (a opener)
+	       (maybe-indent #f)
                (set! state new-state)
                (set! state-stack (cons k-state state-stack)))))
         (if (eq? 'array-start token)
@@ -552,6 +561,7 @@ USA.
             (start #\{ 'object-first))))
 
     (define (end-struct! token)
+      (maybe-indent #f)
       (a (if (eq? 'array-end token) #\] #\}))
       (set! state (car state-stack))
       (set! state-stack (cdr state-stack)))
@@ -591,16 +601,44 @@ USA.
                   (a (number->string n 16)))
                 (a c))))))
 
-    (lambda (token)
-      (case state
-        ((initial) (initial token))
-        ((array-first) (array-first token))
-        ((array-next) (array-next token))
-        ((object-first) (object-first token))
-        ((object-value) (object-value token))
-        ((object-next) (object-next token))
-        ((final) (final token))
-        (else (error "Unknown state:" state))))))
+    (define (comma)
+      (a #\,)
+      (maybe-indent #t))
+
+    (define (colon)
+      (a #\:)
+      (maybe-indent #t))
+
+    (define (maybe-indent or-space?)
+      (cond (indent
+	     (a #\newline)
+	     (do ((i 0 (fx+ i 1)))
+		 ((not (fx<? i indent)))
+	       (a #\space)
+	       (a #\space))
+	     (set! indent #f))
+	    (or-space?
+	     (a #\space))))
+
+    (define maybe-trace
+      (if (json-accumulator-trace?)
+	  (lambda (token)
+	    (write (list state token state-stack))
+	    (newline))
+	  (lambda (token) token)))
+
+
+    (if indent-allowed?
+	(lambda (token)
+	  ;; An indent token affects the next token read.  It's assumed that
+	  ;; there won't be multiple sequential indent tokens, but if so only
+	  ;; the last one has an effect.
+	  (if (and (pair? token) (eq? 'indent (car token)))
+	      (begin
+		(maybe-trace token)
+		(set! indent (cdr token)))
+	      (dispatch token)))
+	dispatch)))
 
 (define json-write
   (std-output-proc %json-write (value)))
@@ -608,10 +646,7 @@ USA.
 (define (%json-write value a)
   (let ((a (%json-accumulator a)))
     (let loop ((value value))
-      (cond ((or (eq? 'null value)
-                 (boolean? value)
-                 (string? value)
-                 (json-number? value))
+      (cond ((json-atom? value)
              (a value))
             ((vector? value)
              (a 'array-start)
@@ -631,6 +666,67 @@ USA.
             (else
              (json-error "Invalid JSON value:" value))))))
 
-(define (json-number? token)
-  (or (and (integer? token) (exact? token))
-      (and (rational? token) (inexact? token))))
+(define (json-atom? value)
+  (or (eq? 'null value)
+      (boolean? value)
+      (string? value)
+      (json-number? value)))
+
+(define (json-number? value)
+  (or (and (integer? value) (exact? value))
+      (and (rational? value) (inexact? value))))
+
+(define json-write-indented
+  (std-output-proc %json-write-indented (value)))
+
+(define (%json-write-indented value a)
+  (let ((a (%json-accumulator #t a)))
+    (let loop ((value value) (depth 0))
+      (cond ((json-atom? value)
+             (a value))
+            ((vector? value)
+	     (let ((depth* (fx+ depth 1))
+		   (n (vector-length value)))
+	       (cond ((fx=? n 0)
+		      (a 'array-start)
+		      (a 'array-end))
+		     ((and (fx=? n 1)
+			   (json-atom? (vector-ref value 0)))
+		      (a 'array-start)
+		      (a (vector-ref value 0))
+		      (a 'array-end))
+		     (else
+		      (a (cons 'indent depth*))
+		      (a 'array-start)
+		      (loop (vector-ref value 0) depth*)
+		      (do ((i 1 (fx+ i 1)))
+			  ((not (fx<? i n)))
+			(a (cons 'indent depth*))
+			(loop (vector-ref value 1) depth*))
+		      (a (cons 'indent depth))
+		      (a 'array-end)))))
+            ((and (list? value)
+                  (every (lambda (elt)
+                           (and (pair? elt)
+                                (symbol? (car elt))))
+                         value))
+	     (if (pair? value)
+		 (let* ((depth* (fx+ depth 1))
+			(write-elt
+			 (lambda (elt)
+			   (a (symbol->string (car elt)))
+			   (loop (cdr elt) depth*))))
+		   (a (cons 'indent depth*))
+		   (a 'object-start)
+		   (write-elt (car value))
+		   (for-each (lambda (elt)
+			       (a (cons 'indent depth*))
+			       (write-elt elt))
+			     (cdr value))
+		   (a (cons 'indent depth))
+		   (a 'object-end))
+		 (begin
+		   (a 'object-start)
+		   (a 'object-end))))
+            (else
+             (json-error "Invalid JSON value:" value))))))
