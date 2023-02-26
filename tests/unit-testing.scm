@@ -458,7 +458,7 @@ USA.
       (apply maybe-fail
 	     (car result)
 	     (if (car result) 'condition 'result-object) (cdr result)
-	     'expectation-pattern
+	     'expectation
 	     (cond (filter
 		    (list (list "an error condition satisfying" (marker))
 			  filter))
@@ -472,7 +472,6 @@ USA.
 		   (else
 		    (list (list "a condition of one of the types" (marker))
 			  condition-types)))
-	     'expectation-object condition-types
 	     properties))))
 
 (define-for-tests (error-assertion . condition-types)
