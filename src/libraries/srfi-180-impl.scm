@@ -547,7 +547,7 @@ USA.
       ((string) (comma) (write-string token) (set! state 'object-value)))
 
     (define-state (final token)
-      ((eof) token))
+      ((eof) (a token)))
 
     (define (start-struct! token k-state)
       (let ((start
@@ -571,12 +571,12 @@ USA.
       (set! state new-state))
 
     (define (write-atom token)
-      (cond ((eq? 'null token) (a "null"))
-            ((eq? #f token) (a "false"))
-            ((eq? #t token) (a "true"))
+      (cond ((eq? 'null token) (string-for-each a "null"))
+            ((eq? #f token) (string-for-each a "false"))
+            ((eq? #t token) (string-for-each a "true"))
             ((eof-object? token) (a token))
             ((string? token) (write-string token))
-            ((json-number? token) (a (number->string token)))
+            ((json-number? token) (write-number token))
             (else (json-error "Invalid token:" token))))
 
     (define (write-string s)
@@ -600,6 +600,17 @@ USA.
                   (a "\\u")
                   (a (number->string n 16)))
                 (a c))))))
+
+    (define (write-number x)
+      (let ((s (number->string x)))
+	(string-for-each
+	 (if (regexp-matches? number-regexp s)
+	     a
+	     (lambda (c)
+	       (a c)
+	       (if (eqv? #\. c)
+		   (a #\0))))
+	 s)))
 
     (define (comma)
       (a #\,)
@@ -644,7 +655,7 @@ USA.
   (std-output-proc %json-write (value)))
 
 (define (%json-write value a)
-  (let ((a (%json-accumulator a)))
+  (let ((a (json-accumulator a)))
     (let loop ((value value))
       (cond ((json-atom? value)
              (a value))

@@ -32,6 +32,8 @@ USA.
 
 (declare (usual-integrations))
 
+;;;; Input tests
+
 (import-to-top-level-environment! (the-environment)
 				  '(srfi 180))
 
@@ -915,3 +917,146 @@ USA.
 
 (define-test 'json-sequence-read
   (std-input-test-cases 'json-sequence-read json-sequence-read))
+
+;;;; Output tests
+
+(define valid-test-atom-map
+  (let ((fast-items
+	 '((null "null")
+	   (#f "false")
+	   (#t "true")
+	   ("string1" "\"string1\"")
+	   ("string2" "\"string2\"")
+	   (3.14159 "3.14159"))))
+    (if keep-it-fast!?
+	fast-items
+	(append fast-items
+		'(("" "\"\"")
+		  ("s" "\"s\"")
+		  (0 "0")
+		  (1 "1")
+		  (-1 "-1")
+		  (0. "0.0")
+		  (1. "1.0")
+		  (-1. "-1.0"))))))
+
+(define (valid-test-values)
+  (let* ((atoms (map car valid-test-atom-map))
+	 (keys (map string->symbol (filter string? atoms)))
+	 (trivial-values
+	  (append atoms '(#() ())))
+	 (simple-objects
+	  (let ((bindings
+		 (append-map (lambda (value)
+			       (map (lambda (key)
+				      (cons key value))
+				    keys))
+			     trivial-values)))
+	    (append (map list bindings)
+		    (pairs-of bindings))))
+	 (simple-values
+	  (append trivial-values
+		  (map vector trivial-values)
+		  (map list->vector (pairs-of trivial-values))
+		  simple-objects)))
+    (append simple-values
+	    (map vector simple-values)
+	    (map (lambda (object)
+		   `((key . ,object)))
+		 simple-objects))))
+
+(define (pairs-of items)
+  (append-map (lambda (item1)
+                (map (lambda (item2)
+                       (list item1 item2))
+                     items))
+              items))
+
+(define test-case-value car)
+(define test-case-tokens cadr)
+(define test-case-json caddr)
+
+(define valid-test-cases
+  (delay
+    (map (lambda (value)
+	   (list value
+		 (value->tokens value)
+		 (value->json value)))
+	 (valid-test-values))))
+
+(define (value->tokens value)
+  (cond ((assoc value valid-test-atom-map)
+         (list value))
+        ((vector? value)
+         `(array-start ,@(append-map value->tokens (vector->list value))
+                       array-end))
+        ((object-value? value)
+         `(object-start ,@(fold-right (lambda (es acc)
+                                        (cons (symbol->string (car es))
+                                              (append (value->tokens (cdr es))
+                                                      acc)))
+                                      '()
+                                      value)
+                        object-end))
+        (else (error "Invalid JSON value:" value))))
+
+(define (value->json value)
+  (let ((builder (string-builder)))
+    (let loop ((value value))
+      (cond ((assoc value valid-test-atom-map)
+             => (lambda (e)
+                  (builder (cadr e))))
+            ((vector? value)
+             (builder #\[)
+             (let ((n (vector-length value)))
+               (if (> n 0)
+                   (begin
+                     (loop (vector-ref value 0))
+                     (do ((i 1 (+ i 1)))
+                         ((not (< i n)))
+                       (builder ", ")
+                       (loop (vector-ref value 1))))))
+             (builder #\]))
+            ((object-value? value)
+             (builder #\{)
+             (if (pair? value)
+                 (let ((write-binding
+                        (lambda (e)
+                          (builder #\")
+                          (builder (symbol->string (car e)))
+                          (builder #\")
+                          (builder ": ")
+                          (loop (cdr e)))))
+                   (write-binding (car value))
+                   (for-each (lambda (e)
+                               (builder ", ")
+                               (write-binding e))
+                             (cdr value))))
+             (builder #\}))
+            (else (error "Invalid JSON value:" value))))
+    (builder)))
+
+(define (object-value? value)
+  (and (list? value)
+       (every (lambda (e)
+                (and (pair? e)
+                     (symbol? (car e))))
+              value)))
+
+(define-test 'json-accumulator-positive
+  (map (lambda (test-case)
+	 (lambda ()
+	   (let ((a (json-accumulator (string-accumulator))))
+	     (for-each a (test-case-tokens test-case))
+	     (assert-equal (a (eof-object))
+			   (test-case-json test-case)))))
+       (force valid-test-cases)))
+
+(define-test 'json-write-positive
+  (map (lambda (test-case)
+	 (lambda ()
+	   (let ((a (string-accumulator)))
+	     (json-write (test-case-value test-case) a)
+	     (assert-equal (a (eof-object))
+			   (test-case-json test-case)))))
+       (force valid-test-cases)))
