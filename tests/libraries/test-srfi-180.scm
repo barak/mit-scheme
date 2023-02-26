@@ -1060,3 +1060,88 @@ USA.
 	     (assert-equal (a (eof-object))
 			   (test-case-json test-case)))))
        (force valid-test-cases)))
+
+(define-test 'json-generator-extra
+  (map (lambda (test-case)
+	 (lambda ()
+	   (assert-equal (generator->list
+			  (json-generator
+			   (string->generator (test-case-json test-case))))
+			 (test-case-tokens test-case))))
+       (force valid-test-cases)))
+
+(define-test 'json-read-extra
+  (map (lambda (test-case)
+	 (lambda ()
+	   (assert-equal (json-read
+			   (string->generator (test-case-json test-case)))
+			 (test-case-value test-case))))
+       (force valid-test-cases)))
+
+;;; Check that every invalid transition generates an appropriate error.
+
+(define (invalid-transitions)
+  (map (lambda (state)
+	 (list state
+	       (lset-difference eq?
+				all-token-types
+				(cadr (assq state valid-transitions)))))
+       all-states))
+
+(define all-states
+  '(initial
+    array-first
+    array-next
+    object-first
+    object-value
+    object-next
+    final))
+
+(define all-token-types
+  '(string
+    non-string
+    array-start
+    array-end
+    object-start
+    object-end
+    eof))
+
+(define valid-transitions
+  '((initial (array-start object-start string non-string))
+    (array-first (array-end array-start object-start string non-string))
+    (array-next (array-end array-start object-start string non-string))
+    (object-first (object-end string))
+    (object-value (array-start object-start string non-string))
+    (object-next (object-end string))
+    (final (eof))))
+
+;; How to get a json-accumulator into a particular state.
+(define state-prefixes
+  '((initial ())
+    (array-first (array-start))
+    (array-next (array-start 3.14159))
+    (object-first (object-start))
+    (object-value (object-start "key"))
+    (object-next (object-start "key" 3.14159))
+    (final (array-start array-end))))
+
+(define (type->token type)
+  (case type
+    ((string) "string")
+    ((non-string) 3.14159)
+    ((eof) (eof-object))
+    (else type)))
+
+(define-test 'invalid-transitions
+  (append-map
+   (lambda (transitions)
+     (let ((state (car transitions)))
+       (map (lambda (type)
+	      (let ((expect (invalid-token-in-state type state)))
+		(lambda ()
+		  (let ((a (json-accumulator (string-accumulator))))
+		    (for-each a (cadr (assq state state-prefixes)))
+		    (assert-error (lambda () (a (type->token type)))
+				  (condition-expectation-matcher expect))))))
+	    (cadr transitions))))
+   (invalid-transitions)))
