@@ -60,14 +60,14 @@ USA.
     ratio
 
     swank	;Provides SWANK module for SLIME
-    srfi-0	;COND-EXPAND
+    srfi-0	;Feature-based conditional expansion construct
     srfi-1	;List Library
     srfi-2	;AND-LET*
     srfi-6	;Basic String Ports
-    srfi-8	;RECEIVE
-    srfi-9	;DEFINE-RECORD-TYPE
+    srfi-8	;receive: Binding to multiple values
+    srfi-9	;Defining Record Types
     srfi-14	;Character-set Library
-    srfi-23	;ERROR
+    srfi-23	;Error reporting mechanism
     srfi-27	;Sources of Random Bits
     srfi-30	;Nested Multi-Line Comments (#| ... |#)
     srfi-39	;Parameter objects
