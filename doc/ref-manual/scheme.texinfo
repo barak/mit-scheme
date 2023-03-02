@@ -525,30 +525,7 @@ X Graphics
 
 Standards Support
 
-* R7RS::
-* SRFI 1::
-* SRFI 2::
-* SRFI 8::
-* SRFI 9::
-* SRFI 14::
-* SRFI 23::
-* SRFI 27::
-* SRFI 39::
-* SRFI 69::
-* SRFI 112::
-* SRFI 115::
-* SRFI 124::
-* SRFI 125::
-* SRFI 128::
-* SRFI 129::
-* SRFI 131::
-* SRFI 133::
-* SRFI 140::
-* SRFI 143::
-* SRFI 158::
-* SRFI 162::
-* SRFI 180::
-* SRFI 219::
+@include standards-menu.texi
 
 @end detailmenu
 @end menu

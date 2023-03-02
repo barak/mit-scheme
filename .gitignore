@@ -81,6 +81,8 @@ doc/imail/mit-scheme-imail/
 doc/make-common
 doc/ref-manual/Makefile
 doc/ref-manual/mit-scheme-ref/
+doc/ref-manual/standards-menu.texi
+doc/ref-manual/standards.texi
 doc/sos/Makefile
 doc/sos/mit-scheme-sos/
 doc/user-manual/Makefile

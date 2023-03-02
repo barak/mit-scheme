@@ -50,6 +50,7 @@ SOURCES = \
     overview.texi \
     procedures.texi \
     special-forms.texi \
+    standards-menu.texi \
     standards.texi \
     strings.texi \
     vectors.texi
@@ -92,3 +93,6 @@ $(FIGURES_EPS): fig/common/math.ps
 $(FIGURES_EPS): fig/common/newton.ps
 $(FIGURES_EPS): fig/common/plot.ps
 $(FIGURES_EPS): fig/common/splinterp.ps
+
+standards.texi standards-menu.texi: ../../etc/standards/standards.scm
+	../../etc/standards/generate-standards-doc.sh
