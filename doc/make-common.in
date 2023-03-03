@@ -134,6 +134,7 @@ clean: mostlyclean
 	rm -rf $(TEXINFO_ROOT).pg $(TEXINFO_ROOT).tp
 	rm -rf $(TEXINFO_ROOT).cp* $(TEXINFO_ROOT).fn* $(TEXINFO_ROOT).ky*
 	rm -rf $(TEXINFO_ROOT).nv* $(TEXINFO_ROOT).op* $(TEXINFO_ROOT).vr*
+	rm -f $(EXTRA_CLEAN_TARGETS)
 
 distclean: clean
 	rm -f Makefile

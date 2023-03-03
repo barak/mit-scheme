@@ -29,8 +29,10 @@ VPATH = @srcdir@
 
 TARGET_ROOT = mit-scheme-ref
 TEXINFO_ROOT = scheme
+STD_TARGETS = standards.texi standards-menu.texi
 SOURCES = \
     $(TEXINFO_ROOT).texinfo \
+    $(STD_TARGETS) \
     acknowledgements.texi \
     associations.texi \
     binding-index.texi \
@@ -50,8 +52,6 @@ SOURCES = \
     overview.texi \
     procedures.texi \
     special-forms.texi \
-    standards-menu.texi \
-    standards.texi \
     strings.texi \
     vectors.texi
 
@@ -81,10 +81,11 @@ FIGURES_EPS = \
 	fig/logithalf.eps \
 	fig/loglogistic.eps \
 	fig/sqrt1pm1.eps \
-	fig/versin.eps \
-	# end of FIGURES_EPS
+	fig/versin.eps
 
 EPS2EPSFLAGS = -Ifig
+
+EXTRA_CLEAN_TARGETS = $(STD_TARGETS) $(FIGURES_EPS)
 
 include $(top_srcdir)/make-common
 
@@ -94,5 +95,6 @@ $(FIGURES_EPS): fig/common/newton.ps
 $(FIGURES_EPS): fig/common/plot.ps
 $(FIGURES_EPS): fig/common/splinterp.ps
 
-standards.texi standards-menu.texi: ../../etc/standards/standards.scm
-	../../etc/standards/generate-standards-doc.sh
+STDDIR = $(top_srcdir)/../etc/standards
+$(STD_TARGETS) &: $(STDDIR)/standards.scm
+	$(STDDIR)/generate-standards-doc.sh $(abspath $(STD_TARGETS))

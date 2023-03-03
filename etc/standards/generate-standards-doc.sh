@@ -1,8 +1,7 @@
 #!/bin/bash
 set -e
 
-cd "$(dirname "${0}")"
-
+HERE=$(dirname "${0}")
 mit-scheme --batch-mode \
-           --load standards generate-standards-doc \
-           --eval '(generate-standards.texi "../../doc/ref-manual/")' '(exit)'
+           --load "${HERE}"/standards "${HERE}"/generate-standards-doc \
+           --eval "(generate-standards.texi \"${1}\" \"${2}\")" '(exit)'

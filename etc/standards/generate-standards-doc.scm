@@ -27,11 +27,9 @@ USA.
 
 (declare (usual-integrations))
 
-(define (generate-standards.texi dir)
-  (call-with-output-file (merge-pathnames "standards.texi" dir)
-    generate-standards-file)
-  (call-with-output-file (merge-pathnames "standards-menu.texi" dir)
-    generate-menu-entries))
+(define (generate-standards.texi sfile smfile)
+  (call-with-output-file sfile generate-standards-file)
+  (call-with-output-file smfile generate-menu-entries))
 
 (define (generate-standards-file port)
   (write-string "@node " port)
