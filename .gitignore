@@ -157,7 +157,6 @@ src/rcs/Clean.sh
 src/rcs/Setup.sh
 src/rcs/Stage.sh
 src/rcs/Tags.sh
-src/runtime/Clean.sh
 src/runtime/Makefile
 src/runtime/Makefile.in
 src/runtime/Setup.sh

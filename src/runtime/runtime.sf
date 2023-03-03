@@ -27,6 +27,10 @@ USA.
 
 (load-option '*parser)			;for url.scm
 (fluid-let ((sf/default-syntax-table (->environment '(runtime))))
+  (let ((target "library-standard.bin"))
+    (if (and (file-exists? target)
+	     (file-modification-time<? target "generated-standard-libs"))
+	(delete-file target)))
   (sf-directory "."))
 
 ;; Guarantee that the package modeller is loaded.  load-option ensures

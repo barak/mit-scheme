@@ -25,6 +25,8 @@ USA.
 
 |#
 
+;;;; Generate texinfo standards support
+
 (declare (usual-integrations))
 
 (define (generate-standards.texi sfile smfile)
@@ -42,7 +44,7 @@ USA.
   (write-string "@menu\n" port)
   (generate-menu-entries port)
   (write-string "@end menu\n" port)
-  (let loop ((stds standards) (prev top-node))
+  (let loop ((stds (doc-standards)) (prev top-node))
     (when (pair? stds)
       (generate-std-node (car stds)
 			 (if (pair? (cdr stds))
@@ -58,12 +60,26 @@ USA.
 	      (write-string "* " port)
 	      (write-string (std-node-name std) port)
 	      (write-string "::\n" port))
-	    standards))
+	    (doc-standards)))
+
+(define (doc-standards)
+  (filter (lambda (std)
+	    (or (srfi? std)
+		(std-prop std 'node-name #f #f)))
+	  standards))
+
+(define (std-node-name std)
+  (if (srfi? std)
+      (string-append "SRFI " (srfi-number-string std))
+      (std-prop std 'node-name cadr)))
+
+(define top-node "Standards Support")
 
 (define (generate-std-node std next-node prev-node port)
   (let ((node (std-node-name std))
-	(support (std-support std))
-	(global (std-global std)))
+	(support (std-prop std 'support cdr))
+	(global (std-prop std 'global cdr))
+	(libs (std-libraries std)))
     (newline port)
     (write-string "@node " port)
     (write-string node port)
@@ -81,15 +97,16 @@ USA.
 		(write-string "@findex " port)
 		(write name port)
 		(newline port))
-	      (sort-names (std-all-names std)))
+	      (std-all-names std))
     (newline port)
     (write-string "@cartouche\n" port)
     (write-string "@table @b\n" port)
     (write-string "@item Description\n" port)
-    (wrap-lines (std-description std) port)
+    (wrap-line (std-description std) port)
     (write-string "@item URL\n" port)
+    (write-string "@url{" port)
     (write-string (std-url std) port)
-    (newline port)
+    (write-string "}\n" port)
     (write-string "@item Support\n" port)
     (write-string (case (car support)
 		    ((full) "Fully")
@@ -103,28 +120,27 @@ USA.
 	  (write-string "@itemize @bullet\n" port)
 	  (for-each (lambda (exception)
 		      (write-string "@item\n" port)
-		      (wrap-lines exception port))
+		      (wrap-line (string-concatenate exception) port))
 		    (cdr support))
 	  (write-string "@end itemize\n" port))
 	(write-string ".\n" port))
     (write-string "@item Libraries\n" port)
-    (let ((libs (std-libraries std)))
-      (cond ((null? libs)
-	     (write-string "No libraries.\n" port))
-	    ((and (= 2 (length libs))
-		  (string? (cadr libs)))
-	     (write-nicode (car libs) port)
-	     (write-string " " port)
-	     (write-string (cadr libs) port)
-	     (newline port))
-	    (else
-	     (let loop ((libs libs) (col 0))
-	       (when (pair? libs)
-		 (write-nicode (car libs) port)
-		 (if (and (pair? (cdr libs)) (= 3 col))
-		     (write-string "@*" port))
-		 (newline port)
-		 (loop (cdr libs) (modulo (+ col 1) 4)))))))
+    (cond ((null? libs)
+	   (write-string "No libraries.\n" port))
+	  ((and (= 2 (length libs))
+		(string? (cadr libs)))
+	   (write-nicode (car libs) port)
+	   (write-string " " port)
+	   (write-string (cadr libs) port)
+	   (newline port))
+	  (else
+	   (let loop ((libs libs) (col 0))
+	     (when (pair? libs)
+	       (write-nicode (car libs) port)
+	       (if (and (pair? (cdr libs)) (= 3 col))
+		   (write-string "@*" port))
+	       (newline port)
+	       (loop (cdr libs) (modulo (+ col 1) 4))))))
     (write-string "@item Global\n" port)
     (wrap-line
      (string-append (case (car global)
@@ -142,7 +158,7 @@ USA.
     (format-bindings std port)))
 
 (define (format-bindings std port)
-  (let ((n-cols (std-name-columns std))
+  (let ((n-cols (std-prop std 'columns cadr #f))
 	(bound (std-bound std))
 	(unbound (std-unbound std))
 	(unimplemented (std-unimplemented std)))
@@ -183,86 +199,13 @@ USA.
 		    (write-nicode name port)
 		    (newline port))
 		  (columns n-cols (length names))
-		  (sort-names names))
+		  names)
 	(write-string "@end multitable\n" port))
       (begin
 	(write-string "@noindent\n" port)
 	(write-nicode (car names) port)
 	(newline port))))
 
-(define top-node "Standards Support")
-
-(define (std-node-name std)
-  (if (srfi? std)
-      (string-append "SRFI " (srfi-number-string std))
-      (cadr (assq 'node-name std))))
-
-(define (std-title std)
-  (if (srfi? std)
-      (srfi-title std)
-      (cadr (assq 'title std))))
-
-(define (std-description std)
-  (cdr (assq 'description std)))
-
-(define (std-bound std) (std-names 'bound std))
-(define (std-unbound std) (std-names 'unbound std))
-(define (std-unimplemented std) (std-names 'unimplemented std))
-
-(define (std-names keyword std)
-  (let ((p (assq keyword std)))
-    (if p
-	(cdr p)
-	'())))
-
-(define (std-all-names std)
-  (append (std-bound std)
-	  (std-unbound std)
-	  (std-unimplemented std)))
-
-(define (std-name-columns std)
-  (let ((p (assq 'columns std)))
-    (and p
-	 (cadr p))))
-
-(define (std-url std)
-  (if (srfi? std)
-      (string-append "@srfiurl{" (srfi-number-string std) "}")
-      (cadr (assq 'url std))))
-
-(define (std-support std)
-  (cdr (assq 'support std)))
-
-(define (std-libraries std)
-  (let ((p (assq 'libraries std)))
-    (cond (p (cdr p))
-	  ((srfi? std) `((srfi ,(srfi-number std))))
-	  (else (error "Invalid std" std)))))
-
-(define (std-global std)
-  (cdr (assq 'global std)))
-
-(define (srfi? std)
-  (assq 'srfi std))
-
-(define (srfi-number-string srfi)
-  (number->string (srfi-number srfi)))
-
-(define (srfi-number srfi)
-  (cadr (assq 'srfi srfi)))
-
-(define (srfi-title srfi)
-  (string-append "SRFI "
-		 (srfi-number-string srfi)
-		 ": "
-		 (cadr (assq 'title srfi))))
-
-(define (sort-names names)
-  (sort names
-	(lambda (a b)
-	  (string<? (symbol->string a)
-		    (symbol->string b)))))
-
 (define (columns n-cols n-items)
   (generator->list (apply circular-generator (iota n-cols))
 		   n-items))
@@ -312,9 +255,6 @@ USA.
 		(write-string word port)
 		(loop (cdr words) n start-sentence?*))))))
   (newline port))
-
-(define (wrap-lines strings port)
-  (wrap-line (string-concatenate strings) port))
 
 (define word-splitter
   (string-splitter))

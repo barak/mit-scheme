@@ -6561,7 +6561,9 @@ USA.
 	  host-library-db
 	  new-library-db)
   (export (runtime)
-	  standard-library-globals))
+	  standard-library-globals)
+  (export (runtime feature)
+	  srfi-features))
 
 (define-package (runtime library import/export)
   (files "library-ixports")

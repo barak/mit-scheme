@@ -219,12 +219,16 @@ compile-runtime: $(TOOLCHAIN)
 	$(CROSS_HOST) runtime
 
 .PHONY: syntax-runtime
-syntax-runtime: $(TOOLCHAIN)
+syntax-runtime: $(TOOLCHAIN) runtime/generated-standard-libs
 	(echo '(with-working-directory-pathname "runtime"' && \
 	 echo '  (lambda () (load "runtime.sf")))') \
 	| $(TOOL_COMPILER)
 
 runtime/runtime-unx.pkd: $(RUNTIME_CREF_TARGETS)
+
+STDDIR = $(top_srcdir)/../etc/standards
+runtime/generated-standard-libs: $(STDDIR)/standards.scm
+	$(STDDIR)/generate-standard-libs.sh $(abspath $@)
 
 ################
 # SF

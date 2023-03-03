@@ -34,6 +34,7 @@ USA.
 
 (define (features)
   (append constant-features
+	  srfi-features
 	  computed-features
 	  (compiler-features)))
 
@@ -60,36 +61,7 @@ USA.
     ratio
 
     swank	;Provides SWANK module for SLIME
-    srfi-0	;Feature-based conditional expansion construct
-    srfi-1	;List Library
-    srfi-2	;AND-LET*
-    srfi-6	;Basic String Ports
-    srfi-8	;receive: Binding to multiple values
-    srfi-9	;Defining Record Types
-    srfi-14	;Character-set Library
-    srfi-23	;Error reporting mechanism
-    srfi-27	;Sources of Random Bits
-    srfi-30	;Nested Multi-Line Comments (#| ... |#)
-    srfi-39	;Parameter objects
-    srfi-62	;S-expression comments
-    srfi-69	;Basic Hash Tables
-    srfi-112	;Environment Inquiry
-    srfi-115	;Scheme Regular Expressions
-    srfi-124	;Ephemerons
-    srfi-125	;Intermediate hash tables
-    srfi-128	;Comparators (reduced)
-    srfi-129	;Titlecase procedures
-    srfi-131	;ERR5RS Record Syntax (reduced)
-    srfi-133	;Vector Library (R7RS-compatible)
-    srfi-143	;Fixnums
-    srfi-158	;Generators and Accumulators
-    srfi-162	;Comparators sublibrary
-    srfi-180	;JSON
-    srfi-219	;Define higher-order lambda
-
-    ;; SRFI 115 features
-    regexp-unicode
-    regexp-non-greedy))
+    ))
 
 (define computed-features)
 (define (reset-computed-features!)

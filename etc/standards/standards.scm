@@ -1,8 +1,108 @@
+#| -*-Scheme-*-
+
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018, 2019, 2020, 2021, 2022 Massachusetts Institute of
+    Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
+
+|#
+
+;;;; Database of supported standards
+
+(declare (usual-integrations))
+
+(define (std-prop std keyword selector #!optional alt-value)
+  (let ((prop (assq keyword std)))
+    (if prop
+	(if selector (selector prop) prop)
+	(begin
+	  (if (default-object? alt-value)
+	      (error "Missing required value:" keyword std))
+	  alt-value))))
+
+(define (std-names . keywords)
+
+  (define (get std)
+    (sort-names
+     (append-map
+      (lambda (keyword)
+	(std-prop std keyword
+		  (lambda (prop)
+		    (fold (lambda (name names)
+			    (if (pair? name)
+				(append (get (find-lib-std name)) names)
+				(cons name names)))
+			  '()
+			  (cdr prop)))
+		  '()))
+      keywords)))
+
+  (define (find-lib-std lib)
+    (or (find (lambda (std) (equal? lib (std-library std)))
+	      standards)
+	(error "Reference to unknown standard library:" lib)))
+
+  get)
+
+(define (sort-names names)
+  (sort names (lambda (a b) (string<? (symbol->string a) (symbol->string b)))))
+
+(define std-bound (std-names 'bound))
+(define std-bound+extra (std-names 'bound 'bound-extra))
+(define std-unbound (std-names 'unbound))
+(define std-unimplemented (std-names 'unimplemented))
+(define std-all-names (std-names 'bound 'unbound 'unimplemented))
+
+(define (std-library std)
+  (or (std-prop std 'library cadr #f)
+      (std-prop std 'srfi #f #f)))
+
+(define (std-libraries std)
+  (or (std-prop std 'libraries cdr #f)
+      (std-prop std 'srfi list)))
+
+(define (std-url std)
+  (if (srfi? std)
+      (let ((n (srfi-number-string std)))
+	(string-append "https://srfi.schemers.org/srfi-" n "/srfi-" n ".html"))
+      (std-prop std 'url cadr)))
+
+(define (std-title std)
+  (let ((title (std-prop std 'title cadr)))
+    (if (srfi? std)
+	(string-append "SRFI " (srfi-number-string std) ": " title)
+	(std-prop std 'title cadr))))
+
+(define (std-description std)
+  (string-concatenate (std-prop std 'description cdr)))
+
+(define (srfi? std) (std-prop std 'srfi cadr #f))
+(define (srfi-number srfi) (std-prop srfi 'srfi cadr))
+(define (srfi-number-string srfi) (number->string (srfi-number srfi)))
+
 (define standards
   '(((node-name "R7RS")
      (title "Revised@sup{7} Report on the Algorithmic Language Scheme")
      (description "The core standard for the Scheme language.")
-     (url "@url{@value{R7RS_URL}}")
+     (url "https://small.r7rs.org/attachment/r7rs.pdf")
      (support full
 	      ("Multiple values aren't supported correctly."
 	       "  Instead @code{values} returns a special record containing"
@@ -27,6 +127,24 @@
 		(scheme write))
      (global all)
      (columns 3)
+     (bound (scheme base)
+	    (scheme case-lambda)
+	    (scheme char)
+	    (scheme complex)
+	    (scheme cxr)
+	    (scheme eval)
+	    (scheme file)
+	    (scheme inexact)
+	    (scheme lazy)
+	    (scheme load)
+	    (scheme process-context)
+	    (scheme read)
+	    (scheme repl)
+	    (scheme time)
+	    (scheme write)))
+    ((library (scheme base))
+     (support full)
+     (global all)
      (bound *
 	    +
 	    -
@@ -40,16 +158,12 @@
 	    >=
 	    _
 	    abs
-	    acos
 	    and
-	    angle
 	    append
 	    apply
-	    asin
 	    assoc
 	    assq
 	    assv
-	    atan
 	    begin
 	    binary-port?
 	    boolean=?
@@ -62,60 +176,20 @@
 	    bytevector-u8-ref
 	    bytevector-u8-set!
 	    bytevector?
-	    caaaar
-	    caaadr
-	    caaar
-	    caadar
-	    caaddr
-	    caadr
 	    caar
-	    cadaar
-	    cadadr
-	    cadar
-	    caddar
-	    cadddr
-	    caddr
 	    cadr
 	    call-with-current-continuation
-	    call-with-input-file
-	    call-with-output-file
 	    call-with-port
 	    call-with-values
 	    call/cc
 	    car
 	    case
-	    case-lambda
-	    cdaaar
-	    cdaadr
-	    cdaar
-	    cdadar
-	    cdaddr
-	    cdadr
 	    cdar
-	    cddaar
-	    cddadr
-	    cddar
-	    cdddar
-	    cddddr
-	    cdddr
 	    cddr
 	    cdr
 	    ceiling
 	    char->integer
-	    char-alphabetic?
-	    char-ci<=?
-	    char-ci<?
-	    char-ci=?
-	    char-ci>=?
-	    char-ci>?
-	    char-downcase
-	    char-foldcase
-	    char-lower-case?
-	    char-numeric?
 	    char-ready?
-	    char-upcase
-	    char-upper-case?
-	    char-whitespace?
 	    char<=?
 	    char<?
 	    char=?
@@ -125,32 +199,21 @@
 	    close-input-port
 	    close-output-port
 	    close-port
-	    command-line
 	    complex?
 	    cond
 	    cond-expand
 	    cons
-	    cos
 	    current-error-port
 	    current-input-port
-	    current-jiffy
 	    current-output-port
-	    current-second
 	    define
 	    define-record-type
 	    define-syntax
 	    define-values
-	    delay
-	    delay-force
-	    delete-file
 	    denominator
-	    digit-value
-	    display
 	    do
 	    dynamic-wind
 	    else
-	    emergency-exit
-	    environment
 	    eof-object
 	    eof-object?
 	    eq?
@@ -160,45 +223,33 @@
 	    error-object-irritants
 	    error-object-message
 	    error-object?
-	    eval
 	    even?
 	    exact
 	    exact-integer-sqrt
 	    exact-integer?
 	    exact?
-	    exit
-	    exp
 	    expt
 	    features
 	    file-error?
-	    file-exists?
-	    finite?
 	    floor
 	    floor-quotient
 	    floor-remainder
 	    floor/
 	    flush-output-port
 	    for-each
-	    force
 	    gcd
-	    get-environment-variable
-	    get-environment-variables
 	    get-output-bytevector
 	    get-output-string
 	    guard
 	    if
-	    imag-part
 	    include
 	    include-ci
 	    inexact
 	    inexact?
-	    infinite?
 	    input-port-open?
 	    input-port?
 	    integer->char
 	    integer?
-	    interaction-environment
-	    jiffies-per-second
 	    lambda
 	    lcm
 	    length
@@ -218,15 +269,9 @@
 	    list-set!
 	    list-tail
 	    list?
-	    load
-	    log
-	    magnitude
 	    make-bytevector
 	    make-list
 	    make-parameter
-	    make-polar
-	    make-promise
-	    make-rectangular
 	    make-string
 	    make-vector
 	    map
@@ -236,7 +281,6 @@
 	    memv
 	    min
 	    modulo
-	    nan?
 	    negative?
 	    newline
 	    not
@@ -245,13 +289,9 @@
 	    number?
 	    numerator
 	    odd?
-	    open-binary-input-file
-	    open-binary-output-file
 	    open-input-bytevector
-	    open-input-file
 	    open-input-string
 	    open-output-bytevector
-	    open-output-file
 	    open-output-string
 	    or
 	    output-port-open?
@@ -263,7 +303,6 @@
 	    port?
 	    positive?
 	    procedure?
-	    promise?
 	    quasiquote
 	    quote
 	    quotient
@@ -271,7 +310,6 @@
 	    raise-continuable
 	    rational?
 	    rationalize
-	    read
 	    read-bytevector
 	    read-bytevector!
 	    read-char
@@ -279,7 +317,6 @@
 	    read-line
 	    read-string
 	    read-u8
-	    real-part
 	    real?
 	    remainder
 	    reverse
@@ -287,8 +324,6 @@
 	    set!
 	    set-car!
 	    set-cdr!
-	    sin
-	    sqrt
 	    square
 	    string
 	    string->list
@@ -297,22 +332,14 @@
 	    string->utf8
 	    string->vector
 	    string-append
-	    string-ci<=?
-	    string-ci<?
-	    string-ci=?
-	    string-ci>=?
-	    string-ci>?
 	    string-copy
 	    string-copy!
-	    string-downcase
 	    string-fill!
-	    string-foldcase
 	    string-for-each
 	    string-length
 	    string-map
 	    string-ref
 	    string-set!
-	    string-upcase
 	    string<=?
 	    string<?
 	    string=?
@@ -325,7 +352,6 @@
 	    symbol?
 	    syntax-error
 	    syntax-rules
-	    tan
 	    textual-port?
 	    truncate
 	    truncate-quotient
@@ -352,16 +378,382 @@
 	    vector?
 	    when
 	    with-exception-handler
-	    with-input-from-file
-	    with-output-to-file
-	    write
 	    write-bytevector
 	    write-char
-	    write-shared
-	    write-simple
 	    write-string
 	    write-u8
 	    zero?))
+    ((library (scheme case-lambda))
+     (support full)
+     (global all)
+     (bound case-lambda))
+    ((library (scheme char))
+     (support full)
+     (global all)
+     (bound char-alphabetic?
+	    char-ci<=?
+	    char-ci<?
+	    char-ci=?
+	    char-ci>=?
+	    char-ci>?
+	    char-downcase
+	    char-foldcase
+	    char-lower-case?
+	    char-numeric?
+	    char-upcase
+	    char-upper-case?
+	    char-whitespace?
+	    digit-value
+	    string-ci<=?
+	    string-ci<?
+	    string-ci=?
+	    string-ci>=?
+	    string-ci>?
+	    string-downcase
+	    string-foldcase
+	    string-upcase))
+    ((library (scheme complex))
+     (support full)
+     (global all)
+     (bound angle
+	    imag-part
+	    magnitude
+	    make-polar
+	    make-rectangular
+	    real-part))
+    ((library (scheme cxr))
+     (support full)
+     (global all)
+     (bound caaaar
+	    caaadr
+	    caaar
+	    caadar
+	    caaddr
+	    caadr
+	    cadaar
+	    cadadr
+	    cadar
+	    caddar
+	    cadddr
+	    caddr
+	    cdaaar
+	    cdaadr
+	    cdaar
+	    cdadar
+	    cdaddr
+	    cdadr
+	    cddaar
+	    cddadr
+	    cddar
+	    cdddar
+	    cddddr
+	    cdddr))
+    ((library (scheme eval))
+     (support full)
+     (global all)
+     (bound environment
+	    eval))
+    ((library (scheme file))
+     (support full)
+     (global all)
+     (bound call-with-input-file
+	    call-with-output-file
+	    delete-file
+	    file-exists?
+	    open-binary-input-file
+	    open-binary-output-file
+	    open-input-file
+	    open-output-file
+	    with-input-from-file
+	    with-output-to-file))
+    ((library (scheme inexact))
+     (support full)
+     (global all)
+     (bound acos
+	    asin
+	    atan
+	    cos
+	    exp
+	    finite?
+	    infinite?
+	    log
+	    nan?
+	    sin
+	    sqrt
+	    tan))
+    ((library (scheme lazy))
+     (support full)
+     (global all)
+     (bound delay
+	    delay-force
+	    force
+	    make-promise
+	    promise?))
+    ((library (scheme load))
+     (support full)
+     (global all)
+     (bound load))
+    ((library (scheme process-context))
+     (support full)
+     (global all)
+     (bound command-line
+	    emergency-exit
+	    exit
+	    get-environment-variable
+	    get-environment-variables))
+    ((library (scheme read))
+     (support full)
+     (global all)
+     (bound read))
+    ((library (scheme repl))
+     (support full)
+     (global all)
+     (bound interaction-environment))
+    ((library (scheme time))
+     (support full)
+     (global all)
+     (bound current-jiffy
+	    current-second
+	    jiffies-per-second))
+    ((library (scheme write))
+     (support full)
+     (global all)
+     (bound display
+	    write
+	    write-shared
+	    write-simple))
+    ((library (scheme r5rs))
+     (support full)
+     (global all)
+     (bound *
+	    +
+	    -
+	    ...
+	    /
+	    <
+	    <=
+	    =
+	    =>
+	    >
+	    >=
+	    _
+	    abs
+	    acos
+	    and
+	    angle
+	    append
+	    apply
+	    asin
+	    assoc
+	    assq
+	    assv
+	    atan
+	    begin
+	    boolean?
+	    caaaar
+	    caaadr
+	    caaar
+	    caadar
+	    caaddr
+	    caadr
+	    caar
+	    cadaar
+	    cadadr
+	    cadar
+	    caddar
+	    cadddr
+	    caddr
+	    cadr
+	    call-with-current-continuation
+	    call-with-input-file
+	    call-with-output-file
+	    call-with-values
+	    car
+	    case
+	    cdaaar
+	    cdaadr
+	    cdaar
+	    cdadar
+	    cdaddr
+	    cdadr
+	    cdar
+	    cddaar
+	    cddadr
+	    cddar
+	    cdddar
+	    cddddr
+	    cdddr
+	    cddr
+	    cdr
+	    ceiling
+	    char->integer
+	    char-alphabetic?
+	    char-ci<=?
+	    char-ci<?
+	    char-ci=?
+	    char-ci>=?
+	    char-ci>?
+	    char-downcase
+	    char-lower-case?
+	    char-numeric?
+	    char-ready?
+	    char-upcase
+	    char-upper-case?
+	    char-whitespace?
+	    char<=?
+	    char<?
+	    char=?
+	    char>=?
+	    char>?
+	    char?
+	    close-input-port
+	    close-output-port
+	    complex?
+	    cond
+	    cons
+	    cos
+	    current-input-port
+	    current-output-port
+	    define
+	    define-syntax
+	    delay
+	    denominator
+	    display
+	    do
+	    dynamic-wind
+	    else
+	    eof-object?
+	    eq?
+	    equal?
+	    eqv?
+	    eval
+	    even?
+	    exact->inexact
+	    exact?
+	    exp
+	    expt
+	    floor
+	    for-each
+	    force
+	    gcd
+	    if
+	    imag-part
+	    inexact->exact
+	    inexact?
+	    input-port?
+	    integer->char
+	    integer?
+	    interaction-environment lambda
+	    lcm
+	    length
+	    let
+	    let*
+	    let-syntax
+	    letrec
+	    letrec-syntax
+	    list
+	    list->string
+	    list->vector
+	    list-ref
+	    list-tail
+	    list?
+	    load
+	    log
+	    magnitude
+	    make-polar
+	    make-rectangular
+	    make-string
+	    make-vector
+	    map
+	    max
+	    member
+	    memq
+	    memv
+	    min
+	    modulo
+	    negative?
+	    newline
+	    not
+	    null-environment
+	    null?
+	    number->string
+	    number?
+	    numerator
+	    odd?
+	    open-input-file
+	    open-output-file
+	    or
+	    output-port?
+	    pair?
+	    peek-char
+	    positive?
+	    procedure?
+	    quasiquote
+	    quote
+	    quotient
+	    rational?
+	    rationalize
+	    read
+	    read-char
+	    real-part
+	    real?
+	    remainder
+	    reverse
+	    round
+	    scheme-report-environment
+	    set!
+	    set-car!
+	    set-cdr!
+	    sin
+	    sqrt
+	    string
+	    string->list
+	    string->number
+	    string->symbol
+	    string-append
+	    string-ci<=?
+	    string-ci<?
+	    string-ci=?
+	    string-ci>=?
+	    string-ci>?
+	    string-copy
+	    string-fill!
+	    string-length
+	    string-ref
+	    string-set!
+	    string<=?
+	    string<?
+	    string=?
+	    string>=?
+	    string>?
+	    string?
+	    substring
+	    symbol->string
+	    symbol?
+	    syntax-rules
+	    tan
+	    truncate
+	    values
+	    vector
+	    vector->list
+	    vector-fill!
+	    vector-length
+	    vector-ref
+	    vector-set!
+	    vector?
+	    with-input-from-file
+	    with-output-to-file
+	    write
+	    write-char
+	    zero?))
+    ((srfi 0)
+     (title "Feature-based conditional expansion construct")
+     (description
+      "A means of customizing code based on implementation features."
+      "  Superseded by @rseven{}.")
+     (support full)
+     (global all)
+     (bound cond-expand))
     ((srfi 1)
      (title "List Library")
      (description
@@ -525,6 +917,14 @@
      (support full)
      (global all)
      (bound and-let*))
+    ((srfi 6)
+     (title "Basic String Ports")
+     (description "Ports for string I/O.")
+     (support full)
+     (global all)
+     (bound get-output-string
+	    open-input-string
+	    open-output-string))
     ((srfi 8)
      (title "@code{receive}")
      (description
@@ -637,6 +1037,13 @@
 	    random-source-state-ref
 	    random-source-state-set!
 	    random-source?))
+    ((srfi 30)
+     (title "Nested Multi-line Comments")
+     (description
+      "Multi-line comments that start with @samp{#|} and end with @samp{|#}."
+      "  Superseded by @rseven{}.")
+     (support full)
+     (global none))
     ((srfi 39)
      (title "Parameter Objects")
      (description
@@ -645,6 +1052,14 @@
      (global all)
      (bound make-parameter
 	    parameterize))
+    ((srfi 62)
+     (title "S-expression comments")
+     (description
+      "Lexical syntax that allows individual S-expressions to be made into"
+      " comments, by prefixing them with @samp{#;}."
+      "  Superseded by @rseven{}.")
+     (support full)
+     (global none))
     ((srfi 69)
      (title "Basic Hash Tables")
      (description
@@ -695,6 +1110,8 @@
       "An implementation of regular expressions using Scheme syntax.")
      (support full)
      (global all)
+     (features regexp-unicode
+	       regexp-non-greedy)
      (bound char-set->sre
 	    regexp
 	    regexp-extract
@@ -821,7 +1238,8 @@
 	    number-hash
 	    string-ci-hash
 	    string-hash
-	    symbol-hash))
+	    symbol-hash)
+     (bound-extra (srfi 162)))
     ((srfi 129)
      (title "Titlecase procedures")
      (description "An implementation of procedures for title case.")
