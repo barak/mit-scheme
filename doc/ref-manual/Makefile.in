@@ -53,7 +53,8 @@ SOURCES = \
     procedures.texi \
     special-forms.texi \
     strings.texi \
-    vectors.texi
+    vectors.texi \
+    # end of SOURCES
 
 FIGURES_EPS = \
 	fig/cn-expm1.eps \
@@ -81,7 +82,8 @@ FIGURES_EPS = \
 	fig/logithalf.eps \
 	fig/loglogistic.eps \
 	fig/sqrt1pm1.eps \
-	fig/versin.eps
+	fig/versin.eps \
+	# end of FIGURES_EPS
 
 EPS2EPSFLAGS = -Ifig
 
