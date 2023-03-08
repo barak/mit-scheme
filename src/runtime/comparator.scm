@@ -223,61 +223,61 @@ USA.
   eq-comparator)
 
 (define-deferred eq-comparator
-  (make-comparator any-object? eq? #f eq-hash #t))
+  (make-comparator any-object? eq? #f eq-hash))
 
 (define (make-eqv-comparator)
   eqv-comparator)
 
 (define-deferred eqv-comparator
-  (make-comparator any-object? eqv? #f eqv-hash #t))
+  (make-comparator any-object? eqv? #f eqv-hash))
 
 (define (make-equal-comparator)
   equal-comparator)
 
 (define-deferred equal-comparator
-  (make-comparator any-object? equal? #f equal-hash #t))
+  (make-comparator any-object? equal? #f equal-hash))
 
 (define-deferred boolean-comparator
-  (make-comparator boolean? boolean=? boolean<? boolean-hash #f))
+  (make-comparator boolean? boolean=? boolean<? boolean-hash))
 
 (define-deferred char-comparator
-  (make-comparator char? char=? char<? char-hash #f))
+  (make-comparator char? char=? char<? char-hash))
 
 (define-deferred char-ci-comparator
-  (make-comparator char? char-ci=? char-ci<? char-ci-hash #f))
+  (make-comparator char? char-ci=? char-ci<? char-ci-hash))
 
 (define-deferred string-comparator
-  (make-comparator string? string=? string<? string-hash #f))
+  (make-comparator string? string=? string<? string-hash))
 
 (define-deferred string-ci-comparator
-  (make-comparator string? string-ci=? string-ci<? string-ci-hash #f))
+  (make-comparator string? string-ci=? string-ci<? string-ci-hash))
 
 (define-deferred symbol-comparator
-  (make-comparator symbol? symbol=? symbol<? symbol-hash #f))
+  (make-comparator symbol? symbol=? symbol<? symbol-hash))
 
 (define-deferred interned-symbol-comparator
-  (make-comparator interned-symbol? eq? symbol<? eq-hash #t))
+  (make-comparator interned-symbol? eq? symbol<? eq-hash))
 
 (define-deferred bytevector-comparator
-  (make-comparator bytevector? bytevector=? bytevector<? bytevector-hash #f))
+  (make-comparator bytevector? bytevector=? bytevector<? bytevector-hash))
 
 (define-deferred number-comparator
-  (make-comparator number? = #f number-hash #f))
+  (make-comparator number? = #f number-hash))
 
 (define-deferred real-comparator
-  (make-comparator real? = < number-hash #f))
+  (make-comparator real? = < number-hash))
 
 (define-deferred fixnum-comparator
-  (make-comparator fix:fixnum? fix:= fix:< fixnum-hash #f))
+  (make-comparator fix:fixnum? fix:= fix:< fixnum-hash))
 
 (define-deferred flonum-comparator
-  (make-comparator flo:flonum? flo:= flo:< number-hash #f))
+  (make-comparator flo:flonum? flo:= flo:< number-hash))
 
 (define-deferred char-set-comparator
-  (make-comparator char-set? char-set= char-set< char-set-hash #f))
+  (make-comparator char-set? char-set= char-set< char-set-hash))
 
 (define-deferred exact-integer-comparator
-  (make-comparator exact-integer? int:= int:< number-hash #f))
+  (make-comparator exact-integer? int:= int:< number-hash))
 
 ;;;; Compound comparators
 
@@ -1006,11 +1006,7 @@ USA.
    (register-hash! default-hash #t)))
 
 (define-deferred default-comparator
-  (make-comparator any-object?
-		   default=
-		   default<
-		   default-hash
-		   #t))
+  (make-comparator any-object? default= default< default-hash))
 
 (define-deferred pair-comparator
   (make-pair-comparator default-comparator default-comparator))
