@@ -184,4 +184,5 @@ USA.
 	      (null? (cddr operands))))))
 
 (define (macro-reference-trap-expression-transformer expression)
-  (cadr (scode-combination-operands (cadr (scode-combination-operands expression)))))
+  (cadr (scode-combination-operands
+	 (cadr (scode-combination-operands expression)))))
