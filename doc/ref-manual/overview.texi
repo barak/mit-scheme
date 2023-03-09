@@ -989,45 +989,12 @@ Note that syntactic keywords and variable bindings share the same
 namespace.  A local variable binding may shadow a syntactic keyword, and
 a local syntactic-keyword definition may shadow a variable binding.
 
-The following list contains all of the syntactic keywords that are
-defined when MIT/GNU Scheme is initialized:
+To see all of the syntactic keywords that are defined when MIT/GNU
+Scheme is initialized, evaluate the following expression:
 
-@multitable @columnfractions .33 .33 .33
-@item access
-@tab and
-@tab begin
-@item case
-@tab cond
-@tab cons-stream
-@item declare
-@tab define
-@item define-integrable
-@tab define-structure
-@tab define-syntax
-@item delay
-@tab do
-@tab er-macro-transformer
-@item fluid-let
-@tab if
-@tab lambda
-@item let
-@tab let*
-@tab let*-syntax
-@item let-syntax
-@tab letrec
-@tab letrec-syntax
-@item local-declare
-@tab named-lambda
-@tab non-hygienic-macro-transformer
-@item or
-@tab quasiquote
-@tab quote
-@item rsc-macro-transformer
-@tab sc-macro-transformer
-@tab set!
-@item syntax-rules
-@tab the-environment
-@end multitable
+@example
+(environment-macro-names system-global-environment)
+@end example
 
 @node Procedure Call Syntax,  , Special Form Syntax, Expressions
 @subsection Procedure Call Syntax
