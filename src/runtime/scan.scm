@@ -200,7 +200,7 @@ USA.
 
 (define (open-block-descriptor? object)
   (and (vector? object)
-       (fix:> (vector-length object) 0)
+       (fix:= 3 (vector-length object))
        (eq? open-block-tag (vector-ref object 0))))
 
 (define-integrable open-block-tag '|#[open-block]|)
