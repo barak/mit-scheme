@@ -108,6 +108,72 @@ USA.
   (guarantee scode-definition? definition 'scode-definition-value)
   (map-reference-trap (lambda () (system-pair-cdr definition))))
 
+;;;; Syntax definition
+
+(define (make-scode-macro-definition name transformer)
+  (guarantee macro-transformer-expr? transformer 'make-scode-macro-definition)
+  (make-scode-definition name
+			 (make-macro-reference-trap-expression transformer)))
+
+(define (scode-macro-definition? object)
+  (and (scode-definition? object)
+       (let ((value (scode-definition-value object)))
+	 (and (macro-reference-trap-expression? value)
+	      (macro-transformer-expr?
+	       (macro-reference-trap-expression-transformer value))))))
+
+(define (scode-macro-definition-name defn)
+  (guarantee scode-macro-definition? defn 'scode-macro-definition-name)
+  (scode-definition-name defn))
+
+(define (scode-macro-definition-transformer defn)
+  (guarantee scode-macro-definition? defn 'scode-macro-definition-transformer)
+  (macro-reference-trap-expression-transformer (scode-definition-value defn)))
+
+(define (make-macro-transformer-expr keyword transformer)
+  (let ((procedure
+	 (or (keyword->procedure keyword)
+	     (error "Unknown macro-transformer keyword:" keyword))))
+    (make-scode-combination (make-scode-absolute-reference procedure)
+			    (list transformer
+				  (make-scode-the-environment)))))
+
+(define (macro-transformer-expr? object)
+  (and (scode-combination? object)
+       (let ((operator (scode-combination-operator object)))
+	 (and (scode-access? operator)
+	      (procedure->keyword (scode-access-name operator))
+	      (eq? system-global-environment
+		   (scode-access-environment operator))))
+       (let ((operands (scode-combination-operands object)))
+	 (and (= 2 (length operands))
+	      (scode-lambda? (car operands))
+	      (scode-the-environment? (cadr operands))))))
+
+(define (macro-transformer-expr-keyword scode)
+  (procedure->keyword (scode-access-name (scode-combination-operator scode))))
+
+(define (macro-transformer-expr-lambda scode)
+  (car (scode-combination-operands scode)))
+
+(define (keyword->procedure keyword)
+  (let ((p (assq keyword transformer-keywords)))
+    (and p
+	 (cdr p))))
+
+(define (procedure->keyword procedure)
+  (let ((p
+	 (find (lambda (p) (eq? procedure (cdr p)))
+	       transformer-keywords)))
+    (and p
+	 (car p))))
+
+(define transformer-keywords
+  '((sc-macro-transformer . sc-macro-transformer->expander)
+    (rsc-macro-transformer . rsc-macro-transformer->expander)
+    (er-macro-transformer . er-macro-transformer->expander)
+    (spar-macro-transformer . spar-macro-transformer->expander)))
+
 ;;;; Assignment
 
 (define (make-scode-assignment name value)

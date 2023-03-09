@@ -166,11 +166,15 @@ USA.
 (define (unexpand-definition environment name value)
   (cond ((and (eq? #t (unsyntaxer:macroize?))
 	      (macro-reference-trap-expression? value))
-	 (or (rewrite-macro-defn
-	      environment
-	      name
-	      (macro-reference-trap-expression-transformer value))
-	     `(define ,name ,(unsyntax-object environment value))))
+	 (let ((transformer
+		(macro-reference-trap-expression-transformer value)))
+	   (if (macro-transformer-expr? transformer)
+	       `(define-syntax ,name
+		  (,(macro-transformer-expr-keyword transformer)
+		   ,(unsyntax-object
+		     environment
+		     (macro-transformer-expr-lambda transformer))))
+	       `(define ,name ,(unsyntax-object environment value)))))
 	((and (eq? #t (unsyntaxer:macroize?))
 	      (scode-lambda? value)
 	      (not (has-substitution? value)))
@@ -186,35 +190,6 @@ USA.
 		    ,@(unexpand-binding-value environment value))))))
 	(else
 	 `(define ,name ,@(unexpand-binding-value environment value)))))
-
-(define (rewrite-macro-defn environment name transformer)
-  (and (scode-combination? transformer)
-       (let ((operator (scode-combination-operator transformer))
-	     (operands (scode-combination-operands transformer)))
-	 (and (scode-access? operator)
-	      (eq? system-global-environment
-		   (scode-access-environment operator))
-	      ;; Two args for legacy; three for new.
-	      ;; Erase legacy support after 9.3 release.
-	      (or (= 2 (length operands))
-		  (= 3 (length operands)))
-	      (scode-lambda? (car operands))
-	      (scode-the-environment? (cadr operands))
-	      (let ((rewrite
-		     (lambda (keyword)
-		       `(define-syntax ,name
-			  (,keyword
-			   ,(unsyntax-object environment (car operands)))))))
-		(case (scode-access-name operator)
-		  ((sc-macro-transformer->expander)
-		   (rewrite 'sc-macro-transformer))
-		  ((rsc-macro-transformer->expander)
-		   (rewrite 'rsc-macro-transformer))
-		  ((er-macro-transformer->expander)
-		   (rewrite 'er-macro-transformer))
-		  ((spar-macro-transformer->expander)
-		   (rewrite 'spar-macro-transformer))
-		  (else #f)))))))
 
 (define (unsyntax-assignment-object environment assignment)
   `(set! ,(scode-assignment-name assignment)

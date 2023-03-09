@@ -4355,6 +4355,10 @@ USA.
 	  unmapped-unbound-reference-trap?)
   (export (runtime syntax)
 	  make-macro-reference-trap-expression)
+  (export (runtime scode)
+	  macro-reference-trap-expression-transformer
+	  macro-reference-trap-expression?
+	  make-macro-reference-trap-expression)
   (export (runtime unsyntaxer)
 	  macro-reference-trap-expression-transformer
 	  macro-reference-trap-expression?)
@@ -4488,6 +4492,10 @@ USA.
   (files "scode")
   (parent (runtime))
   (export ()
+	  macro-transformer-expr-keyword
+	  macro-transformer-expr-lambda
+	  macro-transformer-expr?
+	  make-macro-transformer-expr
 	  make-scode-absolute-reference
 	  make-scode-access
 	  make-scode-assignment
@@ -4499,6 +4507,7 @@ USA.
 	  make-scode-definition
 	  make-scode-delay
 	  make-scode-disjunction
+	  make-scode-macro-definition
 	  make-scode-quotation
 	  make-scode-sequence
 	  make-scode-the-environment
@@ -4542,6 +4551,9 @@ USA.
 	  scode-lambda-name:internal-lambda
 	  scode-lambda-name:let
 	  scode-lambda-name:unnamed
+	  scode-macro-definition-name
+	  scode-macro-definition-transformer
+	  scode-macro-definition?
 	  scode-quotation-expression
 	  scode-quotation?
 	  scode-sequence-actions

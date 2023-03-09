@@ -34,7 +34,8 @@ USA.
 
 ;;;; Macro transformers
 
-(define (transformer-classifier transformer->item
+(define (transformer-classifier transformer-keyword
+				transformer->item
 				transformer->expander-name)
   (lambda (form senv hist)
     (scheck '(_ expression) form senv hist)
@@ -47,7 +48,7 @@ USA.
        senv
        (expr-item (serror-ctx form senv hist) '()
 	 (lambda ()
-	   (output/top-level-syntax-expander transformer->expander-name
+	   (output/top-level-syntax-expander transformer-keyword
 					     transformer))
 	 (lambda ()
 	   `(,transformer->expander-name ,transformer)))))))
@@ -55,25 +56,29 @@ USA.
 (define $sc-macro-transformer
   ;; "Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-classifier sc-macro-transformer->item
+   (transformer-classifier 'sc-macro-transformer
+			   sc-macro-transformer->item
 			   'sc-macro-transformer->expander)))
 
 (define $rsc-macro-transformer
   ;; "Reversed Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-classifier rsc-macro-transformer->item
+   (transformer-classifier 'rsc-macro-transformer
+			   rsc-macro-transformer->item
 			   'rsc-macro-transformer->expander)))
 
 (define $er-macro-transformer
   ;; "Explicit Renaming" transformer
   (classifier->runtime
-   (transformer-classifier er-macro-transformer->item
+   (transformer-classifier 'er-macro-transformer
+			   er-macro-transformer->item
 			   'er-macro-transformer->expander)))
 
 (define $spar-macro-transformer
   ;; "Syntax PARser" transformer
   (classifier->runtime
-   (transformer-classifier spar-macro-transformer->item
+   (transformer-classifier 'spar-macro-transformer
+			   spar-macro-transformer->item
 			   'spar-macro-transformer->expander)))
 
 ;;;; Core primitives
