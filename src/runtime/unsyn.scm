@@ -205,7 +205,8 @@ USA.
   (let ((expression
 	 (unsyntax-object environment (scode-comment-expression comment))))
     (if (unsyntaxer:show-comments?)
-	`(comment ,(scode-comment-text comment) ,expression)
+	`(comment ,(scode-comment-text comment)
+		  ,(unsyntax-object environment expression))
 	expression)))
 
 (define (unsyntax-declaration-object environment declaration)
