@@ -88,9 +88,6 @@ USA.
   (receive (required optional rest) (parse-mit-lambda-list lambda-list)
     (make-lambda* name required optional rest body)))
 
-(define (output/unassigned-test name)
-  (make-scode-unassigned? name))
-
 (define (output/unassigned)
   (make-unassigned-reference-trap))
 
