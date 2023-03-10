@@ -713,7 +713,7 @@ USA.
 		      (do ((i 1 (fx+ i 1)))
 			  ((not (fx<? i n)))
 			(a (cons 'indent depth*))
-			(loop (vector-ref value 1) depth*))
+			(loop (vector-ref value i) depth*))
 		      (a (cons 'indent depth))
 		      (a 'array-end)))))
             ((and (list? value)
