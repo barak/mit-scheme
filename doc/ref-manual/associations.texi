@@ -103,24 +103,24 @@ empty list); otherwise returns @code{#f}.  Any @var{object} satisfying this
 predicate also satisfies @code{list?}.
 @end deffn
 
-@deffn procedure assq object alist
-@deffnx procedure assv object alist
-@deffnx procedure assoc object alist
+@deffn {standard procedure} assq object alist
+@deffnx {standard procedure} assv object alist
+@deffnx {standard procedure} assoc object alist [compare]
 @cindex searching, of alist
 @findex eq?
 @findex eqv?
 @findex equal?
+
+It is an error if @var{alist} (for “association list”) is not a list
+of pairs.
+
 These procedures find the first pair in @var{alist} whose car field is
-@var{object}, and return that pair; the returned pair is always an
-@emph{element} of @var{alist}, @emph{not} one of the pairs from which
-@var{alist} is composed.  If no pair in @var{alist} has @var{object} as
-its car, @code{#f} (n.b.: not the empty list) is returned.  @code{assq}
-uses @code{eq?} to compare @var{object} with the car fields of the pairs
-in @var{alist}, while @code{assv} uses @code{eqv?} and @code{assoc} uses
-@code{equal?}.@footnote{Although they are often used as predicates,
-@code{assq}, @code{assv}, and @code{assoc} do not have question marks in
-their names because they return useful values rather than just @code{#t}
-or @code{#f}.}
+@var{object}, and return that pair.  If no pair in @var{alist} has
+@var{object} as its car, @code{#f} (not the empty list) is returned.
+The @code{assq} procedure uses @code{eq?} to compare @var{object} with
+the car fields of the pairs in @var{alist}, while @code{assv} uses
+@code{eqv?} and @code{assoc} uses @var{compare} if given and
+@code{equal?} otherwise.
 
 @example
 @group
@@ -130,10 +130,15 @@ or @code{#f}.}
 (assq 'd e)                             @result{}  #f
 (assq (list 'a) '(((a)) ((b)) ((c))))   @result{}  #f
 (assoc (list 'a) '(((a)) ((b)) ((c))))  @result{}  ((a))
+(assoc 2.0 ’((1 1) (2 4) (3 9)) =)      @result{}  (2 4)
 (assq 5 '((2 3) (5 7) (11 13)))         @result{}  @r{unspecified}
 (assv 5 '((2 3) (5 7) (11 13)))         @result{}  (5 7)
 @end group
 @end example
+
+Although they are often used as predicates, @code{assq}, @code{assv},
+and @code{assoc} do not have question marks in their names because
+they return useful values rather than just @code{#t} or @code{#f}.
 @end deffn
 
 @deffn procedure association-procedure predicate selector

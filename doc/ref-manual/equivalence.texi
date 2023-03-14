@@ -16,7 +16,7 @@ described in this section, @code{eq?} is the finest or most
 discriminating, and @code{equal?} is the coarsest.  @code{eqv?} is
 slightly less discriminating than @code{eq?}.
 
-@deffn procedure eqv? obj1 obj2
+@deffn {standard procedure} eqv? obj1 obj2
 The @code{eqv?} procedure defines a useful equivalence relation on
 objects.  Briefly, it returns @code{#t} if @var{obj1} and @var{obj2}
 should normally be regarded as the same object.
@@ -216,7 +216,7 @@ or bit pattern to represent both.
 @end deffn
 
 @page
-@deffn procedure eq? obj1 obj2
+@deffn {standard procedure} eq? obj1 obj2
 @code{eq?} is similar to @code{eqv?} except that in some cases it is
 capable of discerning distinctions finer than those detectable by
 @code{eqv?}.
@@ -262,13 +262,19 @@ it obeys the same constraints as @code{eqv?}.
 @end deffn
 
 @page
-@deffn procedure equal? obj1 obj2
-@cindex circular structure
-@code{equal?} recursively compares the contents of pairs, vectors, and
-strings, applying @code{eqv?} on other objects such as numbers, symbols,
-and records.  A rule of thumb is that objects are generally
-@code{equal?} if they print the same.  @code{equal?} may fail to
-terminate if its arguments are circular data structures.
+@deffn {standard procedure} equal? obj1 obj2
+The @code{equal?} procedure, when applied to pairs, vectors, strings
+and bytevectors, recursively compares them, returning @code{#t} when
+the unfoldings of its arguments into (possibly infinite) trees are
+equal (in the sense of @code{equal?}) as ordered trees, and @code{#f}
+otherwise.  It returns the same as @code{eqv?} when applied to
+booleans, symbols, numbers, characters, ports, procedures, and the
+empty list.  If two objects are @code{eqv?}, they must be
+@code{equal?} as well. In all other cases, @code{equal?}  may return
+either @code{#t} or @code{#f}.
+
+Even if its arguments are circular data structures, @code{equal?}
+must always terminate.
 
 @example
 @group
@@ -280,8 +286,13 @@ terminate if its arguments are circular data structures.
 (equal? 2 2)                    @result{}  #t
 (equal? (make-vector 5 'a)
         (make-vector 5 'a))     @result{}  #t
+(equal? ’#1=(a b . #1#)
+        ’#2=(a b a b . #2#))    @result{}  #t
 (equal? (lambda (x) x)
         (lambda (y) y))         @result{}  @r{unspecified}
 @end group
 @end example
+
+@emph{Note}: A rule of thumb is that objects are generally
+@code{equal?} if they print the same.
 @end deffn

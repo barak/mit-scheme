@@ -950,16 +950,15 @@ Returns the first pair of @var{list} whose car satisfies
 @deffn {standard procedure} memq object list
 @deffnx {standard procedure} memv object list
 @deffnx {standard procedure} member object list [compare]
-These procedures return the first pair of @var{list} whose car is
-@var{object}; the returned pair is always one from which @var{list} is
-composed.  If @var{object} does not occur in @var{list}, @code{#f}
-(n.b.: not the empty list) is returned.  @code{memq} uses @code{eq?}
-to compare @var{object} with the elements of @var{list}, while
-@code{memv} uses @code{eqv?} and @code{member} uses @var{compare}, or
-@code{equal?} if @var{compare} is not supplied.@footnote{Although they
-are often used as predicates, @code{memq}, @code{memv}, and
-@code{member} do not have question marks in their names because they
-return useful values rather than just @code{#t} or @code{#f}.}
+These procedures return the first sublist of @var{list} whose car is
+@var{object}, where the sublists of @var{list} are the non-empty lists
+returned by @code{(list-tail @var{list} @var{k})} for @var{k} less
+than the length of @var{list}. If @var{object} does not occur in
+@var{list}, @code{#f} (not the empty list) is returned.  The
+@code{memq} procedure uses @code{eq?}  to compare @var{object} with
+the elements of @var{list}, while @code{memv} uses @code{eqv?} and
+@code{member} uses @var{compare} if given and @code{equal?}
+otherwise.
 
 @example
 @group
@@ -968,10 +967,15 @@ return useful values rather than just @code{#t} or @code{#f}.}
 (memq 'a '(b c d))                      @result{} #f
 (memq (list 'a) '(b (a) c))             @result{} #f
 (member (list 'a) '(b (a) c))           @result{} ((a) c)
+(member "B" ’("a" "b" "c") string-ci=?) @result{} ("b" "c")
 (memq 101 '(100 101 102))               @result{} @r{unspecified}
 (memv 101 '(100 101 102))               @result{} (101 102)
 @end group
 @end example
+
+Although they are often used as predicates, @code{memq}, @code{memv},
+and @code{member} do not have question marks in their names because
+they return useful values rather than just @code{#t} or @code{#f}.
 @end deffn
 
 
