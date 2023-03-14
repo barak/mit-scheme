@@ -1,0 +1,4 @@
+Change to <code>equal?</code> that detects circularity added a
+significant constant-time cost; that cost has been ameliorated by
+using a hybrid approach with a fast test followed by a slow one if
+needed.

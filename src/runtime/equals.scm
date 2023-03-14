@@ -34,71 +34,64 @@ USA.
   eq?)
 
 (define (eqv? x y)
-  ;; EQV? is officially supposed to work on booleans, characters, and
-  ;; numbers specially, but it turns out that EQ? does the right thing
-  ;; for everything but numbers, so we take advantage of that.
   (or (eq? x y)
       (and (number? x)
 	   (number? y)
 	   (number:eqv? x y))))
 
 (define (equal? x y)
+  (equal?-limited x y (lambda () (equal?-detected x y))))
 
-  (define (recur x y)
-    (or (eq? x y)
-	(detect-circ x y)))
+(define (equal?-limited x y if-limited)
+  (let ((limit equal?-limit)
+        (count 0))
+    (let loop
+        ((x x)
+         (y y)
+         (s (lambda () #t))
+         (f (lambda () #f)))
+      (if (fx<? count limit)
+          (begin
+            (set! count (fx+ count 1))
+            (if (eqv? x y)
+                (s)
+                (equal?-step loop x y s f)))
+          (if-limited)))))
+
+(define-integrable equal?-limit
+  100000)
+
+(define (equal?-detected x y)
+
+  (define (loop x y s f)
+    (if (eqv? x y)
+        (s)
+	(detect-circ x y s f)))
 
   (define detect-circ
     (make-detect-circ
-     (lambda (x y)
-       (cond ((pair? x)
-	      (and (pair? y)
-		   (recur (car x) (car y))
-		   (recur (cdr x) (cdr y))))
-	     ((vector? x)
-	      (and (vector? y)
-		   (let ((size (vector-length x)))
-		     (and (fix:= size (vector-length y))
-			  (let loop ((index 0))
-			    (or (fix:= index size)
-				(and (recur (vector-ref x index)
-					    (vector-ref y index))
-				     (loop (fix:+ index 1)))))))))
-	     ((weak-pair? x)
-	      (and (weak-pair? y)
-		   (recur (weak-car x) (weak-car y))
-		   (recur (weak-cdr x) (weak-cdr y))))
-	     ((cell? x)
-	      (and (cell? y)
-		   (recur (cell-contents x)
-			  (cell-contents y))))
-	     (else
-	      (equal?-helper x y))))))
+     (lambda (x y s f)
+       (equal?-step loop x y s f))))
 
-  (recur x y))
-
-(define (equal-hash key)
-  (cond ((primitive-object-hash key))
-	((string? key) (string-hash key))
-	((pathname? key) (string-hash (->namestring key)))
-	((bit-string? key)
-	 (primitive-object-hash (bit-string->unsigned-integer key)))
-	(else (eq-hash key))))
+  (loop x y (lambda () #t) (lambda () #f)))
 
 (define (make-detect-circ continue)
   continue)
 
 (define ((make-mdc make-ht) continue)
+  ;; HT must be pair-eqv table.
   (let ((ht (make-ht)))
-    (lambda (x y)
+    (lambda (x y s f)
       (let ((key (cons x y)))
-	(hash-table-ref ht key
-			(lambda ()
-			  (hash-table-set! ht key #t)
-			  (let ((v (continue x y)))
-			    (hash-table-set! ht key v)
-			    v))
-			(lambda (v) v))))))
+        (hash-table-ref ht key
+                        (lambda ()
+                          (hash-table-set! ht key #t)
+                          (continue x y s
+                                    (lambda ()
+                                      (hash-table-set! ht key #f)
+                                      (f))))
+                        (lambda (v)
+                          (if v (s) (f))))))))
 
 ;;; This file gets loaded before the boot-dependency code, so defer registration
 ;;; until it's available.
@@ -110,10 +103,59 @@ USA.
      (set! make-detect-circ
 	   (make-mdc
 	    (hash-table-constructor
-	     (make-pair-comparator eq-comparator eq-comparator))))
+	     (make-pair-comparator eqv-comparator eqv-comparator))))
      unspecific)))
 
-(define (equal?-helper x y)
+(define (equal-hash key)
+  (cond ((primitive-object-hash key))
+	((string? key) (string-hash key))
+	((pathname? key) (string-hash (->namestring key)))
+	((bit-string? key)
+	 (primitive-object-hash (bit-string->unsigned-integer key)))
+	(else (eq-hash key))))
+
+(define-integrable (equal?-step loop x y s f)
+  (cond ((pair? x)
+         (if (pair? y)
+             (loop (car x)
+                   (car y)
+                   (lambda () (loop (cdr x) (cdr y) s f))
+                   f)
+             (f)))
+        ((vector? x)
+         (if (vector? y)
+             (let ((n (vector-length x)))
+               (if (fx=? n (vector-length y))
+                   (if (fx>? n 0)
+                       (let ((n-1 (fx- n 1)))
+                         (let per-elt ((i 0))
+                           (loop (vector-ref x i)
+                                 (vector-ref y i)
+                                 (if (fx<? i n-1)
+                                     (lambda () (per-elt (fx+ i 1)))
+                                     s)
+                                 f)))
+                       (s))
+                   (f)))
+             (f)))
+        ((weak-pair? x)
+         (if (weak-pair? y)
+             (loop (weak-car x)
+                   (weak-car y)
+                   (lambda () (loop (weak-cdr x) (weak-cdr y) s f))
+                   f)
+             (f)))
+        ((cell? x)
+         (if (cell? y)
+             (loop (cell-contents x)
+                   (cell-contents y)
+                   s
+                   f)
+             (f)))
+        ((equal?-helper x y) (s))
+	(else (f))))
+
+(define-integrable (equal?-helper x y)
   (cond ((number? x)
 	 (and (number? y)
 	      (number:eqv? x y)))
