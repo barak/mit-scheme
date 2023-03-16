@@ -6797,11 +6797,13 @@ USA.
 	  comparator-max-in-list	;(srfi 162)
 	  comparator-min		;(srfi 162)
 	  comparator-min-in-list	;(srfi 162)
+	  comparator-one		;(srfi 228)
 	  comparator-ordered?		;(srfi 128)
 	  comparator-ordering-predicate	;(srfi 128)
 	  comparator-register-default!	;(srfi 128)
 	  comparator-rehash-after-gc?
 	  comparator-test-type		;(srfi 128)
+	  comparator-zero		;(srfi 228)
 	  comparator?			;(srfi 128)
 	  default-comparator		;(srfi 162)
 	  default-hash			;(srfi 128)
@@ -6830,8 +6832,11 @@ USA.
 	  make-eqv-comparator		;(srfi 128)
 	  make-list-comparator		;(srfi 128)
 	  make-pair-comparator		;(srfi 128)
+	  make-product-comparator	;(srfi 228)
+	  make-sum-comparator		;(srfi 228)
 	  make-vector-comparator	;(srfi 128)
 	  make-weak-pair-comparator
+	  make-wrapper-comparator	;(srfi 228)
 	  number-comparator
 	  pair-comparator		;(srfi 162)
 	  pair-comparator-car

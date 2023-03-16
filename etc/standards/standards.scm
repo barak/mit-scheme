@@ -1530,8 +1530,18 @@ USA.
 	    json-write))
     ((srfi 219)
      (title "Define higher-order lambda")
-     (description "Higher-order lambda syntax for @code{define}")
+     (description "Higher-order lambda syntax for @code{define}.")
      (support full)
      (libraries)
      (global all)
-     (bound define))))
+     (bound define))
+    ((srfi 228)
+     (title "Combining Comparators")
+     (description "Procedures for simple comparator combinations.")
+     (support full)
+     (global all)
+     (bound comparator-one
+	    comparator-zero
+	    make-product-comparator
+	    make-sum-comparator
+	    make-wrapper-comparator))))

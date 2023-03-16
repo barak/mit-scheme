@@ -26,6 +26,7 @@ USA.
 |#
 
 ;;;; SRFI 128: Comparators
+;;;; SRFI 228: Composing Comparators
 ;;; package: (runtime comparator)
 
 (declare (usual-integrations))
@@ -869,6 +870,82 @@ USA.
 	      (loop (fix:+ i 1)
 		    (%combine-hashes (elt-hash (vector-ref v i)) result))
 	      result))))))
+
+;;;; SRFI 228
+
+(define (make-wrapper-comparator type-test unwrap contents-comparator)
+  (let ((= (%comparator-= contents-comparator))
+	(< (%comparator-< contents-comparator))
+	(hash (%comparator-hash contents-comparator)))
+    (make-comparator type-test
+		     (lambda (a b) (= (unwrap a) (unwrap b)))
+		     (and < (lambda (a b) (< (unwrap a) (unwrap b))))
+		     (and hash (lambda (x) (hash (unwrap x)))))))
+
+(define (make-product-comparator . comparators)
+  (if (pair? comparators)
+      (let ((?s (delete-duplicates (map %comparator-? comparators) eqv?))
+	    (=s (map %comparator-= comparators))
+	    (<s (map %comparator-< comparators))
+	    (hashes (map %comparator-hash comparators)))
+        (make-comparator
+         (lambda (a) (every (lambda (?) (? a)) ?s))
+         (lambda (a b) (every (lambda (=) (= a b)) =s))
+         (and (every (lambda (<) <) <s)
+              (lambda (a b)
+		(let loop ((=s =s) (<s <s))
+		  (and (pair? =s)
+		       (or ((car <s) a b)
+			   (and ((car =s) a b)
+				(loop (cdr =s) (cdr <s))))))))
+         (and (every (lambda (hash) hash) hashes)
+              (lambda (a)
+		(fold bitwise-xor
+		      0
+		      (map (lambda (hash) (hash a)) hashes))))))
+      comparator-one))
+
+(define (make-sum-comparator . comparators)
+  (if (pair? comparators)
+      (let ((cmp
+	     (lambda (a)
+	       (find (lambda (c) ((%comparator-? c) a))
+		     comparators))))
+	(make-comparator
+	 (let ((?s (map %comparator-? comparators)))
+	   (lambda (a)
+	     (any (lambda (?) (? a)) ?s)))
+	 (lambda (a b)
+	   (let ((c (cmp a)))
+	     (and (eq? c (cmp b))
+		  ((%comparator-= c) a b))))
+	 (and (every %comparator-< comparators)
+	      (lambda (a b)
+		(let ((ca (cmp a))
+		      (cb (cmp b)))
+		  (if (eq? ca cb)
+		      ((%comparator-< ca) a b)
+		      (eq? ca
+			   (find (lambda (c) (or (eq? c ca) (eq? c cb)))
+				 comparators))))))
+	 (and (every %comparator-hash comparators)
+	      (lambda (a)
+		((%comparator-hash (cmp a)) a)))))
+      comparator-zero))
+
+(define-deferred comparator-one
+  (make-comparator
+   (lambda (a) (declare (ignore a)) #t)
+   (lambda (a b) (declare (ignore a b)) #t)
+   (lambda (a b) (declare (ignore a b)) #f)
+   (lambda (a) (declare (ignore a)) 0)))
+
+(define-deferred comparator-zero
+  (make-comparator
+   (lambda (a) (declare (ignore a)) #f)
+   (lambda (a b) (error "can't compare" a b))
+   (lambda (a b) (error "can't compare" a b))
+   (lambda (a) (error "can't hash" a))))
 
 ;;;; Hash functions
 
