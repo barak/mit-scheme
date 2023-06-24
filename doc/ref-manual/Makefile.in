@@ -98,5 +98,6 @@ $(FIGURES_EPS): fig/common/plot.ps
 $(FIGURES_EPS): fig/common/splinterp.ps
 
 STDDIR = $(top_srcdir)/../etc/standards
-$(STD_TARGETS) &: $(STDDIR)/standards.scm
-	$(STDDIR)/generate-standards-doc.sh $(abspath $(STD_TARGETS))
+$(STD_TARGETS): $(STDDIR)/standards.scm
+$(STD_TARGETS): $(STDDIR)/generate-standards-doc.sh
+	$(STDDIR)/generate-standards-doc.sh $@

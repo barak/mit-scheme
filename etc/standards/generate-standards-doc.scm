@@ -29,8 +29,10 @@ USA.
 
 (declare (usual-integrations))
 
-(define (generate-standards.texi sfile smfile)
-  (call-with-output-file sfile generate-standards-file)
+(define (generate-standards.texi sfile)
+  (call-with-output-file sfile generate-standards-file))
+
+(define (generate-standards-menu.texi smfile)
   (call-with-output-file smfile generate-menu-entries))
 
 (define (generate-standards-file port)
