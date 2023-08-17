@@ -75,103 +75,97 @@ extern void fixup_float_environment (void);
  * ordered alphabetically by return code name.
  */
 
-#define SIGNAL_INTERRUPT(Masked_Code)					\
-{									\
-  setup_interrupt (Masked_Code);					\
-  goto perform_application;						\
+static inline void
+prepare_pop_return_interrupt (unsigned long rc, SCHEME_OBJECT val)
+{
+  PUSH_CONT_RC (rc, GET_EXP);
+  PUSH_CONT_RC (RC_RESTORE_VALUE, val);
 }
 
-#define PREPARE_POP_RETURN_INTERRUPT(rc, value) do			\
-{									\
-  SCHEME_OBJECT temp = (value);						\
-  PUSH_CONT_RC (rc, GET_EXP);						\
-  PUSH_CONT_RC (RC_RESTORE_VALUE, temp);				\
-} while (0)
-
-#define PREPARE_APPLY_INTERRUPT() do					\
-{									\
-  SET_EXP (SHARP_F);							\
-  PREPARE_POP_RETURN_INTERRUPT						\
-    (RC_INTERNAL_APPLY_VAL, (APPLY_FRAME_PROCEDURE ()));		\
-} while (0)
-
-#define APPLICATION_ERROR(code) do					\
-{									\
-  PUSH_CONT_RC (RC_INTERNAL_APPLY_VAL, SHARP_F);			\
-  SET_VAL (APPLY_FRAME_PROCEDURE ());					\
-  Do_Micro_Error (code, true);						\
-  goto internal_apply;							\
-} while (0)
-
-#define IMMEDIATE_GC(N)							\
-{									\
-  REQUEST_GC (N);							\
-  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());				\
+static inline void
+prepare_apply_interrupt(void)
+{
+  SET_EXP (SHARP_F);
+  prepare_pop_return_interrupt
+    (RC_INTERNAL_APPLY_VAL, (APPLY_FRAME_PROCEDURE ()));
 }
 
-#define EVAL_GC_CHECK(Amount)						\
-{									\
-  if (GC_NEEDED_P (Amount))						\
-    {									\
-      PREPARE_EVAL_REPEAT ();						\
-      IMMEDIATE_GC (Amount);						\
-    }									\
+static inline void
+application_error(long code)
+{
+  PUSH_CONT_RC (RC_INTERNAL_APPLY_VAL, SHARP_F);
+  SET_VAL (APPLY_FRAME_PROCEDURE ());
+  Do_Micro_Error (code, true);
 }
 
-#define PREPARE_EVAL_REPEAT() do					\
-{									\
-  STACK_CHECK (CONTINUATION_SIZE + 1);					\
-  STACK_PUSH (GET_ENV);							\
-  PUSH_CONT_RC (RC_EVAL_ERROR, GET_EXP);				\
-} while (0)
+static inline void
+immediate_gc (unsigned long n)
+{
+  REQUEST_GC (n);
+  setup_interrupt (PENDING_INTERRUPTS ());
+}
 
-#define EVAL_ERROR(code) do						\
-{									\
-  Do_Micro_Error (code, false);						\
-  goto internal_apply;							\
-} while (0)
-
-#define POP_RETURN_ERROR(code) do                                       \
+#define EVAL_GC_CHECK(Amount)                                           \
 {                                                                       \
-  SAVE_CONT ();                                                         \
-  Do_Micro_Error (code, true);                                          \
-  goto internal_apply;                                                  \
-} while (0)
+  if (GC_NEEDED_P (Amount))                                             \
+    {                                                                   \
+      prepare_eval_repeat ();                                           \
+      immediate_gc (Amount);                                            \
+      goto perform_application;                                         \
+    }                                                                   \
+}
 
-#define PROCEED_AFTER_PRIMITIVE() SET_PRIMITIVE (SHARP_F)
+static inline void
+prepare_eval_repeat (void)
+{
+  STACK_CHECK (CONTINUATION_SIZE + 1);
+  STACK_PUSH (GET_ENV);
+  PUSH_CONT_RC (RC_EVAL_ERROR, GET_EXP);
+}
+
+static inline void
+pop_return_error (long code)
+{
+  SAVE_CONT ();
+  Do_Micro_Error (code, true);
+}
 
-#define REDUCES_TO(expression) do					\
-{									\
-  SET_EXP (expression);							\
-  NEW_REDUCTION (GET_EXP, GET_ENV);					\
-  goto do_expression;							\
-} while (0)
+static inline void
+reduces_to (SCHEME_OBJECT exp)
+{
+  SET_EXP (exp);
+  NEW_REDUCTION (GET_EXP, GET_ENV);
+}
 
-#define REDUCES_TO_NTH(n) REDUCES_TO (MEMORY_REF (GET_EXP, (n)))
+static inline void
+reduces_to_nth (unsigned long n)
+{
+  reduces_to (MEMORY_REF (GET_EXP, n));
+}
 
-#define DO_NTH_THEN(rc, n) do						\
-{									\
-  PUSH_CONT_RC (rc, GET_EXP);						\
-  SET_EXP (MEMORY_REF (GET_EXP, (n)));					\
-  NEW_SUBPROBLEM (GET_EXP, GET_ENV);					\
-  goto do_expression;							\
-} while (0)
+static inline void
+do_nth_then (unsigned long rc, unsigned long n)
+{
+  PUSH_CONT_RC (rc, GET_EXP);
+  SET_EXP (MEMORY_REF (GET_EXP, n));
+  NEW_SUBPROBLEM (GET_EXP, GET_ENV);
+}
 
-#define PUSH_NTH_THEN(rc, n) do						\
-{									\
-  PUSH_CONT_RC (rc, GET_EXP);						\
-  SET_EXP (MEMORY_REF (GET_EXP, (n)));					\
-  NEW_SUBPROBLEM (GET_EXP, GET_ENV);					\
-  goto do_expression;							\
-} while (0)
+static inline void
+push_nth_then (unsigned long rc, unsigned long n)
+{
+  PUSH_CONT_RC (rc, GET_EXP);
+  SET_EXP (MEMORY_REF (GET_EXP, n));
+  NEW_SUBPROBLEM (GET_EXP, GET_ENV);
+}
 
-#define DO_ANOTHER_THEN(rc, n) do					\
-{									\
-  PUSH_CONT_RC (rc, GET_EXP);						\
-  SET_EXP (MEMORY_REF (GET_EXP, (n)));					\
-  REUSE_SUBPROBLEM (GET_EXP, GET_ENV);					\
-  goto do_expression;							\
-} while (0)
+static inline void
+do_another_then (unsigned long rc, unsigned long n)
+{
+  PUSH_CONT_RC (rc, GET_EXP);
+  SET_EXP (MEMORY_REF (GET_EXP, n));
+  REUSE_SUBPROBLEM (GET_EXP, GET_ENV);
+}
 
 #ifdef COMPILE_STEPPER
 
@@ -269,49 +263,53 @@ Interpret (void)
       break;			/* fall into eval */
 
     case PRIM_APPLY:
-      PROCEED_AFTER_PRIMITIVE ();
+      SET_PRIMITIVE (SHARP_F);
       goto internal_apply;
 
     case PRIM_NO_TRAP_APPLY:
-      PROCEED_AFTER_PRIMITIVE ();
+      SET_PRIMITIVE (SHARP_F);
       goto Apply_Non_Trapping;
 
     case PRIM_APPLY_INTERRUPT:
-      PROCEED_AFTER_PRIMITIVE ();
-      PREPARE_APPLY_INTERRUPT ();
-      SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+      SET_PRIMITIVE (SHARP_F);
+      prepare_apply_interrupt ();
+      setup_interrupt (PENDING_INTERRUPTS ());
+      goto perform_application;
 
     case PRIM_APPLY_ERROR:
-      PROCEED_AFTER_PRIMITIVE ();
-      APPLICATION_ERROR (prim_apply_error_code);
+      SET_PRIMITIVE (SHARP_F);
+      application_error (prim_apply_error_code);
+      goto internal_apply;
 
     case PRIM_DO_EXPRESSION:
       SET_VAL (GET_EXP);
-      PROCEED_AFTER_PRIMITIVE ();
-      REDUCES_TO (GET_VAL);
+      SET_PRIMITIVE (SHARP_F);
+      reduces_to (GET_VAL);
+      goto do_expression;
 
     case PRIM_NO_TRAP_EVAL:
       SET_VAL (GET_EXP);
-      PROCEED_AFTER_PRIMITIVE ();
+      SET_PRIMITIVE (SHARP_F);
       NEW_REDUCTION (GET_VAL, GET_ENV);
       goto eval_non_trapping;
 
     case PRIM_POP_RETURN:
-      PROCEED_AFTER_PRIMITIVE ();
+      SET_PRIMITIVE (SHARP_F);
       goto pop_return;
 
     case PRIM_RETURN_TO_C:
-      PROCEED_AFTER_PRIMITIVE ();
+      SET_PRIMITIVE (SHARP_F);
       unbind_interpreter_state (interpreter_state);
       return;
 
     case PRIM_NO_TRAP_POP_RETURN:
-      PROCEED_AFTER_PRIMITIVE ();
+      SET_PRIMITIVE (SHARP_F);
       goto pop_return_non_trapping;
 
     case PRIM_INTERRUPT:
       back_out_of_primitive ();
-      SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+      setup_interrupt (PENDING_INTERRUPTS ());
+      goto perform_application;
 
     case PRIM_ABORT_TO_C:
       back_out_of_primitive ();
@@ -431,12 +429,14 @@ Interpret (void)
 
     case TC_ACCESS:
       STACK_CHECK (CONTINUATION_SIZE);
-      PUSH_NTH_THEN (RC_EXECUTE_ACCESS_FINISH, ACCESS_ENVIRONMENT);
+      push_nth_then (RC_EXECUTE_ACCESS_FINISH, ACCESS_ENVIRONMENT);
+      goto do_expression;
 
     case TC_ASSIGNMENT:
       STACK_CHECK (CONTINUATION_SIZE + 1);
       STACK_PUSH (GET_ENV);
-      PUSH_NTH_THEN (RC_EXECUTE_ASSIGNMENT_FINISH, ASSIGN_VALUE);
+      push_nth_then (RC_EXECUTE_ASSIGNMENT_FINISH, ASSIGN_VALUE);
+      goto do_expression;
 
     case TC_BROKEN_HEART:
       Microcode_Termination (TERM_BROKEN_HEART);
@@ -451,19 +451,23 @@ Interpret (void)
 	if (nargs == 0)
 	  {
 	    PUSH_APPLY_FRAME_HEADER (0);
-	    DO_NTH_THEN (RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
+	    do_nth_then (RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
+            goto do_expression;
 	  }
 	STACK_PUSH (GET_ENV);
-	DO_NTH_THEN (RC_COMB_SAVE_VALUE, nargs + 1);
+	do_nth_then (RC_COMB_SAVE_VALUE, nargs + 1);
+        goto do_expression;
       }
 
     case TC_COMMENT:
-      REDUCES_TO_NTH (COMMENT_EXPRESSION);
+      reduces_to_nth (COMMENT_EXPRESSION);
+      goto do_expression;
 
     case TC_CONDITIONAL:
       STACK_CHECK (CONTINUATION_SIZE + 1);
       STACK_PUSH (GET_ENV);
-      PUSH_NTH_THEN (RC_CONDITIONAL_DECIDE, COND_PREDICATE);
+      push_nth_then (RC_CONDITIONAL_DECIDE, COND_PREDICATE);
+      goto do_expression;
 
 #ifdef CC_SUPPORT_P
     case TC_COMPILED_ENTRY:
@@ -474,7 +478,8 @@ Interpret (void)
     case TC_DEFINITION:
       STACK_CHECK (CONTINUATION_SIZE + 1);
       STACK_PUSH (GET_ENV);
-      PUSH_NTH_THEN (RC_EXECUTE_DEFINITION_FINISH, DEFINE_VALUE);
+      push_nth_then (RC_EXECUTE_DEFINITION_FINISH, DEFINE_VALUE);
+      goto do_expression;
 
     case TC_DELAY:
       /* Deliberately omitted: EVAL_GC_CHECK (2); */
@@ -487,7 +492,8 @@ Interpret (void)
     case TC_DISJUNCTION:
       STACK_CHECK (CONTINUATION_SIZE + 1);
       STACK_PUSH (GET_ENV);
-      PUSH_NTH_THEN (RC_DISJUNCTION_DECIDE, OR_PREDICATE);
+      push_nth_then (RC_DISJUNCTION_DECIDE, OR_PREDICATE);
+      goto do_expression;
 
     case TC_EXTENDED_LAMBDA:
       /* Deliberately omitted: EVAL_GC_CHECK (2); */
@@ -507,7 +513,8 @@ Interpret (void)
       break;
 
     case TC_MANIFEST_NM_VECTOR:
-      EVAL_ERROR (ERR_EXECUTE_MANIFEST_VECTOR);
+      Do_Micro_Error (ERR_EXECUTE_MANIFEST_VECTOR, false);
+      goto internal_apply;
 
     case TC_SCODE_QUOTE:
       SET_VAL (MEMORY_REF (GET_EXP, SCODE_QUOTE_OBJECT));
@@ -516,10 +523,12 @@ Interpret (void)
     case TC_SEQUENCE:
       STACK_CHECK (CONTINUATION_SIZE + 1);
       STACK_PUSH (GET_ENV);
-      PUSH_NTH_THEN (RC_EXECUTE_SEQUENCE_FINISH, SEQUENCE_1);
+      push_nth_then (RC_EXECUTE_SEQUENCE_FINISH, SEQUENCE_1);
+      goto do_expression;
 
     case TC_SYNTAX_ERROR:
-      EVAL_ERROR (ERR_SYNTAX_ERROR);
+      Do_Micro_Error (ERR_SYNTAX_ERROR, false);
+      goto internal_apply;
 
     case TC_THE_ENVIRONMENT:
       SET_VAL (GET_ENV);
@@ -542,10 +551,12 @@ Interpret (void)
 	/* Back out of the evaluation. */
 	if (code == PRIM_INTERRUPT)
 	  {
-            PREPARE_EVAL_REPEAT ();
-            SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+            prepare_eval_repeat ();
+            setup_interrupt (PENDING_INTERRUPTS ());
+            goto perform_application;
           }
-	EVAL_ERROR (code);
+	Do_Micro_Error (code, false);
+        goto internal_apply;
       }
     }
 
@@ -607,13 +618,15 @@ Interpret (void)
 	if (arg > 0)
 	  {
 	    STACK_PUSH (GET_ENV);
-	    DO_ANOTHER_THEN (RC_COMB_SAVE_VALUE, COMB_ARG_1_SLOT - 1 + arg);
+	    do_another_then (RC_COMB_SAVE_VALUE, COMB_ARG_1_SLOT - 1 + arg);
+            goto do_expression;
 	  }
 	else
 	  {
 	    // apply_frame_header
 	    STACK_PUSH (MEMORY_REF (GET_EXP, COMB_VECTOR_HEADER));
-	    DO_ANOTHER_THEN (RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
+	    do_another_then (RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
+            goto do_expression;
 	  }
       }
 
@@ -662,8 +675,9 @@ Interpret (void)
     case RC_CONDITIONAL_DECIDE:
       END_SUBPROBLEM ();
       SET_ENV (STACK_POP ());
-      REDUCES_TO_NTH
+      reduces_to_nth
 	((GET_VAL == SHARP_F) ? COND_ALTERNATIVE : COND_CONSEQUENT);
+      goto do_expression;
 
     case RC_DISJUNCTION_DECIDE:
       /* Return predicate if it isn't #F; else do ALTERNATIVE */
@@ -671,7 +685,8 @@ Interpret (void)
       SET_ENV (STACK_POP ());
       if (GET_VAL != SHARP_F)
 	goto pop_return;
-      REDUCES_TO_NTH (OR_ALTERNATIVE);
+      reduces_to_nth (OR_ALTERNATIVE);
+      goto do_expression;
 
     case RC_END_OF_COMPUTATION:
       {
@@ -694,7 +709,8 @@ Interpret (void)
     case RC_EVAL_ERROR:
       /* Should be called RC_REDO_EVALUATION. */
       SET_ENV (STACK_POP ());
-      REDUCES_TO (GET_EXP);
+      reduces_to (GET_EXP);
+      goto do_expression;
 
     case RC_EXECUTE_ACCESS_FINISH:
       {
@@ -707,11 +723,15 @@ Interpret (void)
 	  SET_VAL (val);
 	else if (code == PRIM_INTERRUPT)
 	  {
-	    PREPARE_POP_RETURN_INTERRUPT (RC_EXECUTE_ACCESS_FINISH, GET_VAL);
-	    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+	    prepare_pop_return_interrupt (RC_EXECUTE_ACCESS_FINISH, GET_VAL);
+	    setup_interrupt (PENDING_INTERRUPTS ());
+            goto perform_application;
 	  }
 	else
-	  POP_RETURN_ERROR (code);
+          {
+	    pop_return_error (code);
+            goto internal_apply;
+          }
       }
       END_SUBPROBLEM ();
       break;
@@ -737,12 +757,16 @@ Interpret (void)
 	    STACK_PUSH (GET_ENV);
 	    if (code == PRIM_INTERRUPT)
 	      {
-		PREPARE_POP_RETURN_INTERRUPT
+		prepare_pop_return_interrupt
 		  (RC_EXECUTE_ASSIGNMENT_FINISH, GET_VAL);
-		SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+		setup_interrupt (PENDING_INTERRUPTS ());
+                goto perform_application;
 	      }
 	    else
-	      POP_RETURN_ERROR (code);
+              {
+                pop_return_error (code);
+                goto internal_apply;
+              }
 	  }
       }
       END_SUBPROBLEM ();
@@ -763,12 +787,14 @@ Interpret (void)
 	STACK_PUSH (GET_ENV);
 	if (result == PRIM_INTERRUPT)
 	  {
-	    PREPARE_POP_RETURN_INTERRUPT
+	    prepare_pop_return_interrupt
 	      (RC_EXECUTE_DEFINITION_FINISH, value);
-	    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+	    setup_interrupt (PENDING_INTERRUPTS ());
+            goto perform_application;
 	  }
 	SET_VAL (value);
-	POP_RETURN_ERROR (result);
+	pop_return_error (result);
+        goto internal_apply;
       }
 
     case RC_HALT:
@@ -836,8 +862,9 @@ Interpret (void)
       if (PENDING_INTERRUPTS_P)
 	{
 	  unsigned long interrupts = (PENDING_INTERRUPTS ());
-	  PREPARE_APPLY_INTERRUPT ();
-	  SIGNAL_INTERRUPT (interrupts);
+	  prepare_apply_interrupt ();
+	  setup_interrupt (interrupts);
+          goto perform_application;
 	}
 
     perform_application:
@@ -878,7 +905,10 @@ Interpret (void)
 	    {
 	      SCHEME_OBJECT applicator = record_applicator (proc);
 	      if (applicator == SHARP_F)
-		APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
+                {
+		  application_error (ERR_INAPPLICABLE_OBJECT);
+                  goto internal_apply;
+                }
 	      unsigned long frame_size = (APPLY_FRAME_SIZE ());
 	      (STACK_REF (0)) = applicator;
 	      PUSH_APPLY_FRAME_HEADER (frame_size);
@@ -895,13 +925,17 @@ Interpret (void)
 		if (! (frame_size == nparams
                        || (OBJECT_TYPE (lambda) == TC_LEXPR
                            && frame_size < nparams)))
-		  APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+                  {
+		    application_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+                    goto internal_apply;
+                  }
 	      }
               unsigned long nwords = frame_size + 1;
 	      if (GC_NEEDED_P (nwords))
 		{
-		  PREPARE_APPLY_INTERRUPT ();
-		  IMMEDIATE_GC (nwords);
+		  prepare_apply_interrupt ();
+		  immediate_gc (nwords);
+                  goto perform_application;
 		}
 	      {
 		SCHEME_OBJECT * end = Free + nwords;
@@ -911,13 +945,17 @@ Interpret (void)
 		while (Free < end)
 		  *Free++ = STACK_POP ();
 		SET_ENV (env);
-		REDUCES_TO (MEMORY_REF (lambda, LAMBDA_SCODE));
+		reduces_to (MEMORY_REF (lambda, LAMBDA_SCODE));
+                goto do_expression;
 	      }
 	    }
 
 	  case TC_CONTROL_POINT:
 	    if ((APPLY_FRAME_SIZE ()) != 2)
-	      APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+              {
+                application_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+                goto internal_apply;
+              }
 	    SET_VAL (* (APPLY_FRAME_ARGS ()));
 	    unpack_control_point (proc);
 	    RESET_HISTORY ();
@@ -928,7 +966,10 @@ Interpret (void)
 
 	  case TC_PRIMITIVE:
 	    if (!IMPLEMENTED_PRIMITIVE_P (proc))
-	      APPLICATION_ERROR (ERR_UNIMPLEMENTED_PRIMITIVE);
+              {
+                application_error (ERR_UNIMPLEMENTED_PRIMITIVE);
+                goto internal_apply;
+              }
 	    {
 	      unsigned long n_args = (APPLY_FRAME_N_ARGS ());
 
@@ -938,7 +979,10 @@ Interpret (void)
 	      if (n_args != (PRIMITIVE_ARITY (proc)))
 		{
 		  if ((PRIMITIVE_ARITY (proc)) != LEXPR_PRIMITIVE_ARITY)
-		    APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+                    {
+		      application_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+                      goto internal_apply;
+                    }
 		  SET_LEXPR_ACTUALS (n_args);
 		}
 	      stack_pointer = (APPLY_FRAME_ARGS ());
@@ -960,7 +1004,8 @@ Interpret (void)
 	      if (nargs < reqs || (rest == 0 && nargs > nfixed))
 		{
 		  PUSH_APPLY_FRAME_HEADER (nargs);
-		  APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+		  application_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+                  goto internal_apply;
 		}
 
 	      unsigned long size = /* proc: */ 1 + nfixed + rest;
@@ -972,8 +1017,9 @@ Interpret (void)
 	      if (GC_NEEDED_P (nwords))
 		{
 		  PUSH_APPLY_FRAME_HEADER (nargs);
-		  PREPARE_APPLY_INTERRUPT ();
-		  IMMEDIATE_GC (nwords);
+		  prepare_apply_interrupt ();
+		  immediate_gc (nwords);
+                  goto perform_application;
 		}
 	      SCHEME_OBJECT * scan = Free;
 	      SCHEME_OBJECT temp = MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan);
@@ -1008,7 +1054,8 @@ Interpret (void)
 		}
 	      Free = scan;
 	      SET_ENV (temp);
-	      REDUCES_TO (ELAMBDA_BODY (lambda));
+	      reduces_to (ELAMBDA_BODY (lambda));
+              goto do_expression;
 	    }
 
 #ifdef CC_SUPPORT_P
@@ -1027,15 +1074,18 @@ Interpret (void)
 		  goto internal_apply;
 
 		case PRIM_INTERRUPT:
-		  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+		  setup_interrupt (PENDING_INTERRUPTS ());
+                  goto perform_application;
 
 		case PRIM_APPLY_INTERRUPT:
-		  PREPARE_APPLY_INTERRUPT ();
-		  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+		  prepare_apply_interrupt ();
+		  setup_interrupt (PENDING_INTERRUPTS ());
+                  goto perform_application;
 
 		case ERR_INAPPLICABLE_OBJECT:
 		case ERR_WRONG_NUMBER_OF_ARGUMENTS:
-		  APPLICATION_ERROR (dispatch_code);
+		  application_error (dispatch_code);
+                  goto internal_apply;
 
 		default:
 		  Do_Micro_Error (dispatch_code, true);
@@ -1045,7 +1095,8 @@ Interpret (void)
 #endif
 
 	  default:
-	    APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
+	    application_error (ERR_INAPPLICABLE_OBJECT);
+            goto internal_apply;
 	  }
       }
 
@@ -1089,7 +1140,8 @@ Interpret (void)
 	    SAVE_CONT ();
 	    STACK_CHECK (CONTINUATION_SIZE);
 	    PUSH_CONT_RC (RC_RESTORE_VALUE, GET_VAL);
-	    IMMEDIATE_GC (HEAP_AVAILABLE);
+	    immediate_gc (HEAP_AVAILABLE);
+            goto perform_application;
 	  }
 	prev_restore_history_offset = (OBJECT_DATUM (STACK_POP ()));
 	(void) STACK_POP ();
@@ -1107,7 +1159,8 @@ Interpret (void)
       if (PENDING_INTERRUPTS_P)
 	{
 	  PUSH_CONT_RC (RC_RESTORE_VALUE, GET_VAL);
-	  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+	  setup_interrupt (PENDING_INTERRUPTS ());
+          goto perform_application;
 	}
       break;
 
@@ -1121,7 +1174,8 @@ Interpret (void)
     case RC_EXECUTE_SEQUENCE_FINISH:
       END_SUBPROBLEM ();
       SET_ENV (STACK_POP ());
-      REDUCES_TO_NTH (SEQUENCE_2);
+      reduces_to_nth (SEQUENCE_2);
+      goto do_expression;
 
     case RC_SNAP_NEED_THUNK:
       /* Don't snap thunk twice; evaluation of the thunk's body might
@@ -1136,7 +1190,8 @@ Interpret (void)
       break;
 
     default:
-      POP_RETURN_ERROR (ERR_INAPPLICABLE_CONTINUATION);
+      pop_return_error (ERR_INAPPLICABLE_CONTINUATION);
+      goto internal_apply;
     }
   goto pop_return;
 }
