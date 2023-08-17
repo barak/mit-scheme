@@ -74,44 +74,26 @@ USA.
 #define OR_PREDICATE		0
 #define OR_ALTERNATIVE		1
 
-/* EXTENDED_LAMBDA operation:
- * Support for optional parameters and auxiliary local variables.  The
- * Extended Lambda is similar to LAMBDA, except that it has an extra
- * word called the ARG_COUNT.  This contains an 8-bit count of the
- * number of optional arguments, an 8-bit count of the number of
- * required (formal) parameters, and a bit to indicate that additional
- * (rest) arguments are allowed.  The vector of argument names
- * contains, of course, a size count which allows the calculation of
- * the number of auxiliary variables required.  Auxiliary variables
- * are created for any internal DEFINEs which are found at syntax time
- * in the body of a LAMBDA-like special form.
- */
+// EXTENDED_LAMBDA operation:
+// Support for optional parameters and auxiliary local variables.
+// EXTENDED_LAMBDA is similar to LAMBDA, except that it has an extra word called
+// ARG_COUNTS.  This contains an 8-bit count of the number of optional
+// arguments, an 8-bit count of the number of required parameters, and a bit to
+// indicate that rest arguments are allowed.  The vector of argument names
+// contains a size count, which allows the calculation of the number of
+// auxiliary variables required.  (Auxiliary variables are created for any
+// internal DEFINEs which are found at syntax time in the body of a LAMBDA-like
+// special form.)
 
-#define ELAMBDA_SCODE      0
-#define ELAMBDA_NAMES      1
-#define ELAMBDA_ARG_COUNT  2
+#define ELAMBDA_BODY(lambda) (MEMORY_REF ((lambda), 0))
+#define ELAMBDA_NAMES(lambda) (MEMORY_REF ((lambda), 1))
+#define ELAMBDA_ARG_COUNTS(lambda) ((unsigned long) (MEMORY_REF ((lambda), 2)))
 
-/* Masks.  The infomation on the number of each type of argument is
- * separated at byte boundaries for easy extraction in the 68000 code.
- */
+#define ELAMBDA_N_NAMES(lambda) ((VECTOR_LENGTH (ELAMBDA_NAMES (lambda))) - 1)
 
-#define EL_OPTS_MASK		0xFF
-#define EL_FORMALS_MASK		0xFF00
-#define EL_REST_MASK		0x10000
-#define EL_FORMALS_SHIFT	8
-#define EL_REST_SHIFT		16
-
-/* Selectors */
-
-#define Get_Body_Elambda(Addr)  (MEMORY_REF (Addr, ELAMBDA_SCODE))
-#define Get_Names_Elambda(Addr) (MEMORY_REF (Addr, ELAMBDA_NAMES))
-#define Get_Count_Elambda(Addr) (MEMORY_REF (Addr, ELAMBDA_ARG_COUNT))
-#define Elambda_Formals_Count(Addr) \
-     ((((long) Addr) & EL_FORMALS_MASK) >> EL_FORMALS_SHIFT)
-#define Elambda_Opts_Count(Addr) \
-     (((long) Addr) & EL_OPTS_MASK)
-#define Elambda_Rest_Flag(Addr) \
-     ((((long) Addr) & EL_REST_MASK) >> EL_REST_SHIFT)
+#define ELAMBDA_REQS(lambda) (((ELAMBDA_ARG_COUNTS (lambda)) >> 8) & 0xFF)
+#define ELAMBDA_OPTS(lambda) ((ELAMBDA_ARG_COUNTS (lambda)) & 0xFF)
+#define ELAMBDA_REST(lambda) (((ELAMBDA_ARG_COUNTS (lambda)) >> 16) & 0x1)
 
 /* LAMBDA operation:
  * Object representing a LAMBDA expression with a fixed number of

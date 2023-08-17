@@ -55,7 +55,7 @@ extern void fixup_float_environment (void);
  * passing style as follows.  At every point where you would
  * call EVAL to handle a sub-form, you put a jump back to
  * do_expression.  Now, if there was code after the call to
- * EVAL you first push a "return code" (using SAVE_CONT) on
+ * EVAL you first push a "return code" (using PUSH_CONT) on
  * the stack and move the code that used to be after the
  * call down into the part of this file after the tag
  * pop_return.
@@ -81,28 +81,23 @@ extern void fixup_float_environment (void);
   goto perform_application;						\
 }
 
-#define PREPARE_POP_RETURN_INTERRUPT(Return_Code, Contents_of_Val)	\
+#define PREPARE_POP_RETURN_INTERRUPT(rc, value) do			\
 {									\
-  SCHEME_OBJECT temp = (Contents_of_Val);				\
-  SET_RC (Return_Code);							\
-  SAVE_CONT ();								\
-  SET_RC (RC_RESTORE_VALUE);						\
-  SET_EXP (temp);							\
-  SAVE_CONT ();								\
-}
+  SCHEME_OBJECT temp = (value);						\
+  PUSH_CONT_RC (rc, GET_EXP);						\
+  PUSH_CONT_RC (RC_RESTORE_VALUE, temp);				\
+} while (0)
 
-#define PREPARE_APPLY_INTERRUPT()					\
+#define PREPARE_APPLY_INTERRUPT() do					\
 {									\
   SET_EXP (SHARP_F);							\
   PREPARE_POP_RETURN_INTERRUPT						\
     (RC_INTERNAL_APPLY_VAL, (APPLY_FRAME_PROCEDURE ()));		\
-}
+} while (0)
 
 #define APPLICATION_ERROR(code) do					\
 {									\
-  SET_EXP (SHARP_F);							\
-  SET_RC (RC_INTERNAL_APPLY_VAL);					\
-  SAVE_CONT ();								\
+  PUSH_CONT_RC (RC_INTERNAL_APPLY_VAL, SHARP_F);			\
   SET_VAL (APPLY_FRAME_PROCEDURE ());					\
   Do_Micro_Error (code, true);						\
   goto internal_apply;							\
@@ -125,11 +120,9 @@ extern void fixup_float_environment (void);
 
 #define PREPARE_EVAL_REPEAT() do					\
 {									\
-  Will_Push (CONTINUATION_SIZE + 1);					\
-  PUSH_ENV ();								\
-  SET_RC (RC_EVAL_ERROR);						\
-  SAVE_CONT ();								\
-  Pushed ();								\
+  STACK_CHECK (CONTINUATION_SIZE + 1);					\
+  STACK_PUSH (GET_ENV);							\
+  PUSH_CONT_RC (RC_EVAL_ERROR, GET_EXP);				\
 } while (0)
 
 #define EVAL_ERROR(code) do						\
@@ -138,11 +131,11 @@ extern void fixup_float_environment (void);
   goto internal_apply;							\
 } while (0)
 
-#define POP_RETURN_ERROR(code) do					\
-{									\
-  SAVE_CONT ();								\
-  Do_Micro_Error (code, true);						\
-  goto internal_apply;							\
+#define POP_RETURN_ERROR(code) do                                       \
+{                                                                       \
+  SAVE_CONT ();                                                         \
+  Do_Micro_Error (code, true);                                          \
+  goto internal_apply;                                                  \
 } while (0)
 
 #define PROCEED_AFTER_PRIMITIVE() SET_PRIMITIVE (SHARP_F)
@@ -156,28 +149,26 @@ extern void fixup_float_environment (void);
 
 #define REDUCES_TO_NTH(n) REDUCES_TO (MEMORY_REF (GET_EXP, (n)))
 
-#define DO_NTH_THEN(Return_Code, n) do					\
+#define DO_NTH_THEN(rc, n) do						\
 {									\
-  SET_RC (Return_Code);							\
-  SAVE_CONT ();								\
+  PUSH_CONT_RC (rc, GET_EXP);						\
   SET_EXP (MEMORY_REF (GET_EXP, (n)));					\
   NEW_SUBPROBLEM (GET_EXP, GET_ENV);					\
   goto do_expression;							\
 } while (0)
 
-#define PUSH_NTH_THEN(Return_Code, n)					\
-  SET_RC (Return_Code);							\
-  SAVE_CONT ();								\
+#define PUSH_NTH_THEN(rc, n) do						\
+{									\
+  PUSH_CONT_RC (rc, GET_EXP);						\
   SET_EXP (MEMORY_REF (GET_EXP, (n)));					\
   NEW_SUBPROBLEM (GET_EXP, GET_ENV);					\
-  Pushed ();								\
-  goto do_expression
+  goto do_expression;							\
+} while (0)
 
-#define DO_ANOTHER_THEN(Return_Code, N) do				\
+#define DO_ANOTHER_THEN(rc, n) do					\
 {									\
-  SET_RC (Return_Code);							\
-  SAVE_CONT ();								\
-  SET_EXP (MEMORY_REF (GET_EXP, (N)));					\
+  PUSH_CONT_RC (rc, GET_EXP);						\
+  SET_EXP (MEMORY_REF (GET_EXP, (n)));					\
   REUSE_SUBPROBLEM (GET_EXP, GET_ENV);					\
   goto do_expression;							\
 } while (0)
@@ -370,7 +361,7 @@ Interpret (void)
      This indicates that another expression must be evaluated and them
      some additional processing will be performed before the value of
      this S-Code item available.  Thus a new continuation is created
-     and placed on the stack (using SAVE_CONT), the new expression is
+     and placed on the stack (using PUSH_CONT), the new expression is
      placed in the GET_EXP, and processing continues at do_expression.
      */
 
@@ -387,12 +378,11 @@ Interpret (void)
       && ((FETCH_EVAL_TRAPPER ()) != SHARP_F))
     {
       trapping = false;
-      Will_Push (4);
-      PUSH_ENV ();
-      PUSH_EXP ();
+      STACK_CHECK (4);
+      STACK_PUSH (GET_ENV);
+      STACK_PUSH (GET_EXP);
       STACK_PUSH (FETCH_EVAL_TRAPPER ());
       PUSH_APPLY_FRAME_HEADER (2);
-      Pushed ();
       goto Apply_Non_Trapping;
     }
 #endif /* COMPILE_STEPPER */
@@ -403,7 +393,7 @@ Interpret (void)
 #endif
   switch (OBJECT_TYPE (GET_EXP))
     {
-    case TC_BIG_FIXNUM:         /* The self evaluating items */
+    case TC_BIG_FIXNUM:		/* The self evaluating items */
     case TC_BIG_FLONUM:
     case TC_BYTEVECTOR:
     case TC_CHARACTER:
@@ -440,12 +430,12 @@ Interpret (void)
       break;
 
     case TC_ACCESS:
-      Will_Push (CONTINUATION_SIZE);
+      STACK_CHECK (CONTINUATION_SIZE);
       PUSH_NTH_THEN (RC_EXECUTE_ACCESS_FINISH, ACCESS_ENVIRONMENT);
 
     case TC_ASSIGNMENT:
-      Will_Push (CONTINUATION_SIZE + 1);
-      PUSH_ENV ();
+      STACK_CHECK (CONTINUATION_SIZE + 1);
+      STACK_PUSH (GET_ENV);
       PUSH_NTH_THEN (RC_EXECUTE_ASSIGNMENT_FINISH, ASSIGN_VALUE);
 
     case TC_BROKEN_HEART:
@@ -453,27 +443,26 @@ Interpret (void)
 
     case TC_COMBINATION:
       {
-	long length = ((VECTOR_LENGTH (GET_EXP)) - 1);
-	Will_Push (length + 2 + CONTINUATION_SIZE);
-	stack_pointer = (STACK_LOC (-length));
-        STACK_PUSH (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, length));
+	unsigned long nargs = VECTOR_LENGTH (GET_EXP) - 1;
+	STACK_CHECK (CONTINUATION_SIZE + 2 + nargs);
+	stack_pointer = STACK_LOC (-nargs);
+	STACK_PUSH (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, nargs));
 	/* The finger: last argument number */
-	Pushed ();
-        if (length == 0)
+	if (nargs == 0)
 	  {
-	    PUSH_APPLY_FRAME_HEADER (0); /* Frame size */
+	    PUSH_APPLY_FRAME_HEADER (0);
 	    DO_NTH_THEN (RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
 	  }
-	PUSH_ENV ();
-	DO_NTH_THEN (RC_COMB_SAVE_VALUE, (length + 1));
+	STACK_PUSH (GET_ENV);
+	DO_NTH_THEN (RC_COMB_SAVE_VALUE, nargs + 1);
       }
 
     case TC_COMMENT:
       REDUCES_TO_NTH (COMMENT_EXPRESSION);
 
     case TC_CONDITIONAL:
-      Will_Push (CONTINUATION_SIZE + 1);
-      PUSH_ENV ();
+      STACK_CHECK (CONTINUATION_SIZE + 1);
+      STACK_PUSH (GET_ENV);
       PUSH_NTH_THEN (RC_CONDITIONAL_DECIDE, COND_PREDICATE);
 
 #ifdef CC_SUPPORT_P
@@ -483,8 +472,8 @@ Interpret (void)
 #endif
 
     case TC_DEFINITION:
-      Will_Push (CONTINUATION_SIZE + 1);
-      PUSH_ENV ();
+      STACK_CHECK (CONTINUATION_SIZE + 1);
+      STACK_PUSH (GET_ENV);
       PUSH_NTH_THEN (RC_EXECUTE_DEFINITION_FINISH, DEFINE_VALUE);
 
     case TC_DELAY:
@@ -496,8 +485,8 @@ Interpret (void)
       break;
 
     case TC_DISJUNCTION:
-      Will_Push (CONTINUATION_SIZE + 1);
-      PUSH_ENV ();
+      STACK_CHECK (CONTINUATION_SIZE + 1);
+      STACK_PUSH (GET_ENV);
       PUSH_NTH_THEN (RC_DISJUNCTION_DECIDE, OR_PREDICATE);
 
     case TC_EXTENDED_LAMBDA:
@@ -525,8 +514,8 @@ Interpret (void)
       break;
 
     case TC_SEQUENCE:
-      Will_Push (CONTINUATION_SIZE + 1);
-      PUSH_ENV ();
+      STACK_CHECK (CONTINUATION_SIZE + 1);
+      STACK_PUSH (GET_ENV);
       PUSH_NTH_THEN (RC_EXECUTE_SEQUENCE_FINISH, SEQUENCE_1);
 
     case TC_SYNTAX_ERROR:
@@ -538,22 +527,25 @@ Interpret (void)
 
     case TC_VARIABLE:
       {
-	SCHEME_OBJECT val = GET_VAL;
-	SCHEME_OBJECT name = (VARIABLE_SYMBOL (GET_EXP));
-	long temp = (lookup_variable (GET_ENV, name, (&val)));
-        if ((VARIABLE_SAFE_P (GET_EXP)) && (temp == ERR_UNASSIGNED_VARIABLE))
-          val = UNASSIGNED_OBJECT;
-	else if (temp != PRIM_DONE)
+	SCHEME_OBJECT val;
+	long code = lookup_variable (GET_ENV, VARIABLE_SYMBOL (GET_EXP), &val);
+	if (code == PRIM_DONE)
+          {
+	    SET_VAL (val);
+            break;
+          }
+	if (VARIABLE_SAFE_P (GET_EXP) && code == ERR_UNASSIGNED_VARIABLE)
+          {
+	    SET_VAL (UNASSIGNED_OBJECT);
+            break;
+          }
+	/* Back out of the evaluation. */
+	if (code == PRIM_INTERRUPT)
 	  {
-	    /* Back out of the evaluation. */
-	    if (temp == PRIM_INTERRUPT)
-	      {
-		PREPARE_EVAL_REPEAT ();
-		SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
-	      }
-	    EVAL_ERROR (temp);
-	  }
-	SET_VAL (val);
+            PREPARE_EVAL_REPEAT ();
+            SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+          }
+	EVAL_ERROR (code);
       }
     }
 
@@ -567,12 +559,11 @@ Interpret (void)
       && (!WITHIN_CRITICAL_SECTION_P ())
       && ((FETCH_RETURN_TRAPPER ()) != SHARP_F))
     {
-      Will_Push (3);
-      trapping = false;
-      PUSH_VAL ();
+      STACK_CHECK (3);
+      STACK_PUSH (GET_VAL);
       STACK_PUSH (FETCH_RETURN_TRAPPER ());
       PUSH_APPLY_FRAME_HEADER (1);
-      Pushed ();
+      trapping = false;
       goto Apply_Non_Trapping;
     }
 #endif /* COMPILE_STEPPER */
@@ -581,11 +572,12 @@ Interpret (void)
 #ifdef POP_RETURN_UCODE_HOOK
   POP_RETURN_UCODE_HOOK ();
 #endif
-  RESTORE_CONT ();
+  SET_RET (STACK_POP ());
+  SET_EXP (STACK_POP ());
 #ifdef ENABLE_DEBUGGING_TOOLS
   if (!RETURN_CODE_P (GET_RET))
     {
-      PUSH_VAL ();		/* For possible stack trace */
+      STACK_PUSH (GET_VAL);	/* For possible stack trace */
       SAVE_CONT ();
       Microcode_Termination (TERM_BAD_STACK);
     }
@@ -605,24 +597,24 @@ Interpret (void)
 
     case RC_COMB_SAVE_VALUE:
       {
-	long Arg_Number;
-
-	POP_ENV ();
-	Arg_Number = ((OBJECT_DATUM (STACK_REF (STACK_COMB_FINGER))) - 1);
-	(STACK_REF (STACK_COMB_FIRST_ARG + Arg_Number)) = GET_VAL;
-	(STACK_REF (STACK_COMB_FINGER))
-	  = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, Arg_Number));
+	SET_ENV (STACK_POP ());
+	unsigned long arg = OBJECT_DATUM (STACK_REF (STACK_COMB_FINGER)) - 1;
+	STACK_REF (STACK_COMB_FIRST_ARG + arg) = GET_VAL;
+	STACK_REF (STACK_COMB_FINGER)
+	  = MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, arg);
 	/* DO NOT count on the type code being NMVector here, since
 	   the stack parser may create them with #F here! */
-	if (Arg_Number > 0)
+	if (arg > 0)
 	  {
-	    PUSH_ENV ();
-	    DO_ANOTHER_THEN
-	      (RC_COMB_SAVE_VALUE, ((COMB_ARG_1_SLOT - 1) + Arg_Number));
+	    STACK_PUSH (GET_ENV);
+	    DO_ANOTHER_THEN (RC_COMB_SAVE_VALUE, COMB_ARG_1_SLOT - 1 + arg);
 	  }
-	/* Frame Size */
-	STACK_PUSH (MEMORY_REF (GET_EXP, 0));
-	DO_ANOTHER_THEN (RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
+	else
+	  {
+	    // apply_frame_header
+	    STACK_PUSH (MEMORY_REF (GET_EXP, COMB_VECTOR_HEADER));
+	    DO_ANOTHER_THEN (RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
+	  }
       }
 
 #ifdef CC_SUPPORT_P
@@ -669,14 +661,14 @@ Interpret (void)
 
     case RC_CONDITIONAL_DECIDE:
       END_SUBPROBLEM ();
-      POP_ENV ();
+      SET_ENV (STACK_POP ());
       REDUCES_TO_NTH
 	((GET_VAL == SHARP_F) ? COND_ALTERNATIVE : COND_CONSEQUENT);
 
     case RC_DISJUNCTION_DECIDE:
       /* Return predicate if it isn't #F; else do ALTERNATIVE */
       END_SUBPROBLEM ();
-      POP_ENV ();
+      SET_ENV (STACK_POP ());
       if (GET_VAL != SHARP_F)
 	goto pop_return;
       REDUCES_TO_NTH (OR_ALTERNATIVE);
@@ -684,9 +676,8 @@ Interpret (void)
     case RC_END_OF_COMPUTATION:
       {
 	/* Signals bottom of stack */
-
-	interpreter_state_t previous_state;
-	previous_state = (interpreter_state -> previous_state);
+	interpreter_state_t previous_state
+	  = (interpreter_state -> previous_state);
 	if (previous_state == NULL_INTERPRETER_STATE)
 	  {
 	    termination_end_of_computation ();
@@ -702,17 +693,16 @@ Interpret (void)
 
     case RC_EVAL_ERROR:
       /* Should be called RC_REDO_EVALUATION. */
-      POP_ENV ();
+      SET_ENV (STACK_POP ());
       REDUCES_TO (GET_EXP);
 
     case RC_EXECUTE_ACCESS_FINISH:
       {
 	SCHEME_OBJECT val;
-	long code;
-
-	code = (lookup_variable (GET_VAL,
-				 (MEMORY_REF (GET_EXP, ACCESS_NAME)),
-				 (&val)));
+	long code
+	  = (lookup_variable (GET_VAL,
+			      (MEMORY_REF (GET_EXP, ACCESS_NAME)),
+			      (&val)));
 	if (code == PRIM_DONE)
 	  SET_VAL (val);
 	else if (code == PRIM_INTERRUPT)
@@ -732,7 +722,7 @@ Interpret (void)
 	SCHEME_OBJECT old_val;
 	long code;
 
-	POP_ENV ();
+	SET_ENV (STACK_POP ());
 	if (TC_VARIABLE == (OBJECT_TYPE (variable)))
 	  code = (assign_variable (GET_ENV,
 				   (VARIABLE_SYMBOL (variable)),
@@ -744,7 +734,7 @@ Interpret (void)
 	  SET_VAL (old_val);
 	else
 	  {
-	    PUSH_ENV ();
+	    STACK_PUSH (GET_ENV);
 	    if (code == PRIM_INTERRUPT)
 	      {
 		PREPARE_POP_RETURN_INTERRUPT
@@ -762,25 +752,23 @@ Interpret (void)
       {
 	SCHEME_OBJECT name = (MEMORY_REF (GET_EXP, DEFINE_NAME));
 	SCHEME_OBJECT value = GET_VAL;
-        long result;
-
-        POP_ENV ();
-        result = (define_variable (GET_ENV, name, value));
-        if (result == PRIM_DONE)
+	SET_ENV (STACK_POP ());
+	long result = (define_variable (GET_ENV, name, value));
+	if (result == PRIM_DONE)
 	  {
 	    END_SUBPROBLEM ();
 	    SET_VAL (name);
 	    break;
 	  }
-	PUSH_ENV ();
+	STACK_PUSH (GET_ENV);
 	if (result == PRIM_INTERRUPT)
 	  {
-	    PREPARE_POP_RETURN_INTERRUPT (RC_EXECUTE_DEFINITION_FINISH,
-					  value);
+	    PREPARE_POP_RETURN_INTERRUPT
+	      (RC_EXECUTE_DEFINITION_FINISH, value);
 	    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 	  }
 	SET_VAL (value);
-        POP_RETURN_ERROR (result);
+	POP_RETURN_ERROR (result);
       }
 
     case RC_HALT:
@@ -790,21 +778,21 @@ Interpret (void)
       {
 	/* This just reinvokes the handler */
 	SCHEME_OBJECT info = (STACK_REF (0));
-	SCHEME_OBJECT handler = SHARP_F;
 	SAVE_CONT ();
-	if (VECTOR_P (fixed_objects))
-	  handler = (VECTOR_REF (fixed_objects, TRAP_HANDLER));
+	SCHEME_OBJECT handler
+	  = ((VECTOR_P (fixed_objects))
+	     ? (VECTOR_REF (fixed_objects, TRAP_HANDLER))
+	     : SHARP_F);
 	if (handler == SHARP_F)
 	  {
 	    outf_fatal ("There is no trap handler for recovery!\n");
 	    termination_trap ();
 	    /*NOTREACHED*/
 	  }
-	Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
+	STACK_CHECK (STACK_ENV_EXTRA_SLOTS + 2);
 	STACK_PUSH (info);
 	STACK_PUSH (handler);
 	PUSH_APPLY_FRAME_HEADER (1);
-	Pushed ();
       }
       goto internal_apply;
 
@@ -819,16 +807,16 @@ Interpret (void)
 	 - A procedure.
 	 - The actual (evaluated) arguments.
 
-	 No registers (except the stack pointer) are meaning full at
+	 No registers (except the stack pointer) are meaningful at
 	 this point.  Before interrupts or errors are processed, some
 	 registers are cleared to avoid holding onto garbage if a
 	 garbage collection occurs.  */
 
     case RC_INTERNAL_APPLY_VAL:
     internal_apply_val:
-
       (APPLY_FRAME_PROCEDURE ()) = GET_VAL;
       FALLTHROUGH ();
+
     case RC_INTERNAL_APPLY:
     internal_apply:
 
@@ -856,29 +844,27 @@ Interpret (void)
 #ifdef APPLY_UCODE_HOOK
       APPLY_UCODE_HOOK ();
 #endif
+    apply_dispatch:
       {
-	SCHEME_OBJECT Function = (APPLY_FRAME_PROCEDURE ());
-
-      apply_dispatch:
-	switch (OBJECT_TYPE (Function))
+	SCHEME_OBJECT proc = (APPLY_FRAME_PROCEDURE ());
+	switch (OBJECT_TYPE (proc))
 	  {
 	  case TC_ENTITY:
 	    {
 	      unsigned long frame_size = (APPLY_FRAME_SIZE ());
-	      SCHEME_OBJECT data = (MEMORY_REF (Function, ENTITY_DATA));
+	      SCHEME_OBJECT data = (MEMORY_REF (proc, ENTITY_DATA));
 	      if ((VECTOR_P (data))
 		  && (frame_size < (VECTOR_LENGTH (data)))
 		  && ((VECTOR_REF (data, frame_size)) != SHARP_F)
 		  && ((VECTOR_REF (data, 0))
 		      == (VECTOR_REF (fixed_objects, ARITY_DISPATCHER_TAG))))
 		{
-		  Function = (VECTOR_REF (data, frame_size));
-		  (APPLY_FRAME_PROCEDURE ()) = Function;
+		  (APPLY_FRAME_PROCEDURE ()) = (VECTOR_REF (data, frame_size));
 		  goto apply_dispatch;
 		}
-
-	      (STACK_REF (0)) = (MEMORY_REF (Function, ENTITY_OPERATOR));
+	      (STACK_REF (0)) = (MEMORY_REF (proc, ENTITY_OPERATOR));
 	      PUSH_APPLY_FRAME_HEADER (frame_size);
+
 	    entity_apply:
 	      /* This must be done to prevent an infinite push loop by
 		 an entity whose handler is the entity itself or some
@@ -890,7 +876,7 @@ Interpret (void)
 
 	  case TC_RECORD:
 	    {
-	      SCHEME_OBJECT applicator = record_applicator(Function);
+	      SCHEME_OBJECT applicator = record_applicator (proc);
 	      if (applicator == SHARP_F)
 		APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
 	      unsigned long frame_size = (APPLY_FRAME_SIZE ());
@@ -899,190 +885,168 @@ Interpret (void)
 	      goto entity_apply;
 	    }
 
-	    case TC_PROCEDURE:
+	  case TC_PROCEDURE:
+	    {
+	      unsigned long frame_size = APPLY_FRAME_SIZE ();
+	      SCHEME_OBJECT lambda = MEMORY_REF (proc, PROCEDURE_LAMBDA_EXPR);
 	      {
-		unsigned long frame_size = (APPLY_FRAME_SIZE ());
-		Function = (MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
-		{
-		  SCHEME_OBJECT formals
-		    = (MEMORY_REF (Function, LAMBDA_FORMALS));
-
-		  if ((frame_size != (VECTOR_LENGTH (formals)))
-		      && (((OBJECT_TYPE (Function)) != TC_LEXPR)
-			  || (frame_size < (VECTOR_LENGTH (formals)))))
-		    APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-		}
-		if (GC_NEEDED_P (frame_size + 1))
-		  {
-		    PREPARE_APPLY_INTERRUPT ();
-		    IMMEDIATE_GC (frame_size + 1);
-		  }
-		{
-		  SCHEME_OBJECT * end = (Free + 1 + frame_size);
-		  SCHEME_OBJECT env
-		    = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, Free));
-		  (*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, frame_size));
-		  (void) STACK_POP ();
-		  while (Free < end)
-		    (*Free++) = (STACK_POP ());
-		  SET_ENV (env);
-		  REDUCES_TO (MEMORY_REF (Function, LAMBDA_SCODE));
-		}
+		unsigned long nparams
+                  = VECTOR_LENGTH (MEMORY_REF (lambda, LAMBDA_FORMALS));
+		if (! (frame_size == nparams
+                       || (OBJECT_TYPE (lambda) == TC_LEXPR
+                           && frame_size < nparams)))
+		  APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
 	      }
+              unsigned long nwords = frame_size + 1;
+	      if (GC_NEEDED_P (nwords))
+		{
+		  PREPARE_APPLY_INTERRUPT ();
+		  IMMEDIATE_GC (nwords);
+		}
+	      {
+		SCHEME_OBJECT * end = Free + nwords;
+		SCHEME_OBJECT env = MAKE_POINTER_OBJECT (TC_ENVIRONMENT, Free);
+		*Free++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, frame_size);
+		(void) STACK_POP (); // discard apply_frame_header
+		while (Free < end)
+		  *Free++ = STACK_POP ();
+		SET_ENV (env);
+		REDUCES_TO (MEMORY_REF (lambda, LAMBDA_SCODE));
+	      }
+	    }
 
-	    case TC_CONTROL_POINT:
-	      if ((APPLY_FRAME_SIZE ()) != 2)
-		APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-	      SET_VAL (* (APPLY_FRAME_ARGS ()));
-	      unpack_control_point (Function);
-	      RESET_HISTORY ();
+	  case TC_CONTROL_POINT:
+	    if ((APPLY_FRAME_SIZE ()) != 2)
+	      APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+	    SET_VAL (* (APPLY_FRAME_ARGS ()));
+	    unpack_control_point (proc);
+	    RESET_HISTORY ();
+	    goto pop_return;
+
+	    /* After checking the number of arguments, remove the
+	       frame header since primitives do not expect it. */
+
+	  case TC_PRIMITIVE:
+	    if (!IMPLEMENTED_PRIMITIVE_P (proc))
+	      APPLICATION_ERROR (ERR_UNIMPLEMENTED_PRIMITIVE);
+	    {
+	      unsigned long n_args = (APPLY_FRAME_N_ARGS ());
+
+	      /* Note that the first test below will fail for lexpr
+		 primitives.  */
+
+	      if (n_args != (PRIMITIVE_ARITY (proc)))
+		{
+		  if ((PRIMITIVE_ARITY (proc)) != LEXPR_PRIMITIVE_ARITY)
+		    APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+		  SET_LEXPR_ACTUALS (n_args);
+		}
+	      stack_pointer = (APPLY_FRAME_ARGS ());
+	      SET_EXP (proc);
+	      APPLY_PRIMITIVE_FROM_INTERPRETER (proc);
+	      POP_PRIMITIVE_FRAME (n_args);
 	      goto pop_return;
+	    }
 
-	      /* After checking the number of arguments, remove the
-		 frame header since primitives do not expect it. */
+	  case TC_EXTENDED_PROCEDURE:
+	    {
+	      SCHEME_OBJECT lambda = GET_PROCEDURE_LAMBDA (proc);
+	      unsigned long reqs = ELAMBDA_REQS (lambda);
+	      unsigned long opts = ELAMBDA_OPTS (lambda);
+	      unsigned long rest = ELAMBDA_REST (lambda);
+	      unsigned long nfixed = reqs + opts;
+	      unsigned long nargs = POP_APPLY_FRAME_HEADER ();
 
-	    case TC_PRIMITIVE:
-	      if (!IMPLEMENTED_PRIMITIVE_P (Function))
-		APPLICATION_ERROR (ERR_UNIMPLEMENTED_PRIMITIVE);
-	      {
-		unsigned long n_args = (APPLY_FRAME_N_ARGS ());
+	      if (nargs < reqs || (rest == 0 && nargs > nfixed))
+		{
+		  PUSH_APPLY_FRAME_HEADER (nargs);
+		  APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+		}
 
-		/* Note that the first test below will fail for lexpr
-		   primitives.  */
-
-		if (n_args != (PRIMITIVE_ARITY (Function)))
-		  {
-		    if ((PRIMITIVE_ARITY (Function)) != LEXPR_PRIMITIVE_ARITY)
-		      APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-		    SET_LEXPR_ACTUALS (n_args);
-		  }
-		stack_pointer = (APPLY_FRAME_ARGS ());
-		SET_EXP (Function);
-		APPLY_PRIMITIVE_FROM_INTERPRETER (Function);
-		POP_PRIMITIVE_FRAME (n_args);
-		goto pop_return;
-	      }
-
-	    case TC_EXTENDED_PROCEDURE:
-	      {
-		SCHEME_OBJECT lambda;
-		SCHEME_OBJECT temp;
-		unsigned long nargs;
-		unsigned long nparams;
-		unsigned long formals;
-		unsigned long params;
-		unsigned long auxes;
-		long rest_flag;
-		long size;
-		long i;
-		SCHEME_OBJECT * scan;
-
-		nargs = (POP_APPLY_FRAME_HEADER ());
-		lambda = (MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
-		Function = (MEMORY_REF (lambda, ELAMBDA_NAMES));
-		nparams = ((VECTOR_LENGTH (Function)) - 1);
-		Function = (Get_Count_Elambda (lambda));
-		formals = (Elambda_Formals_Count (Function));
-		params = ((Elambda_Opts_Count (Function)) + formals);
-		rest_flag = (Elambda_Rest_Flag (Function));
-		auxes = (nparams - (params + rest_flag));
-
-		if ((nargs < formals) || (!rest_flag && (nargs > params)))
-		  {
-		    PUSH_APPLY_FRAME_HEADER (nargs);
-		    APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-		  }
-		/* size includes the procedure slot, but not the header.  */
-		size = (params + rest_flag + auxes + 1);
-		if (GC_NEEDED_P
-		    (size + 1
-		     + ((nargs > params)
-			? (2 * (nargs - params))
-			: 0)))
-		  {
-		    PUSH_APPLY_FRAME_HEADER (nargs);
-		    PREPARE_APPLY_INTERRUPT ();
-		    IMMEDIATE_GC
-		      (size + 1
-		       + ((nargs > params)
-			  ? (2 * (nargs - params))
-			  : 0));
-		  }
-		scan = Free;
-		temp = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
-		(*scan++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, size));
-		if (nargs <= params)
-		  {
-		    for (i = (nargs + 1); (--i) >= 0; )
-		      (*scan++) = (STACK_POP ());
-		    for (i = (params - nargs); (--i) >= 0; )
-		      (*scan++) = DEFAULT_OBJECT;
-		    if (rest_flag)
-		      (*scan++) = EMPTY_LIST;
-		    for (i = auxes; (--i) >= 0; )
-		      (*scan++) = UNASSIGNED_OBJECT;
-		  }
-		else
-		  {
-		    /* rest_flag must be true. */
-		    SCHEME_OBJECT list
-		      = (MAKE_POINTER_OBJECT (TC_LIST, (scan + size)));
-		    for (i = (params + 1); (--i) >= 0; )
-		      (*scan++) = (STACK_POP ());
-		    (*scan++) = list;
-		    for (i = auxes; (--i) >= 0; )
-		      (*scan++) = UNASSIGNED_OBJECT;
-		    /* Now scan == OBJECT_ADDRESS (list) */
-		    for (i = (nargs - params); (--i) >= 0; )
-		      {
-			(*scan++) = (STACK_POP ());
-			(*scan) = MAKE_POINTER_OBJECT (TC_LIST, (scan + 1));
-			scan += 1;
-		      }
-		    (scan[-1]) = EMPTY_LIST;
-		  }
-
-		Free = scan;
-		SET_ENV (temp);
-		REDUCES_TO (Get_Body_Elambda (lambda));
-	      }
+	      unsigned long size = /* proc: */ 1 + nfixed + rest;
+              unsigned long nwords
+                = 1             // vector header
+                  + size
+                  // rest list:
+                  + (nargs > nfixed) ? 2 * (nargs - nfixed) : 0;
+	      if (GC_NEEDED_P (nwords))
+		{
+		  PUSH_APPLY_FRAME_HEADER (nargs);
+		  PREPARE_APPLY_INTERRUPT ();
+		  IMMEDIATE_GC (nwords);
+		}
+	      SCHEME_OBJECT * scan = Free;
+	      SCHEME_OBJECT temp = MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan);
+	      *scan++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, size);
+	      if (nargs <= nfixed)
+		{
+                  *scan++ = STACK_POP (); // proc
+		  for (unsigned int i = 0; i < nargs; i += 1)
+		    *scan++ = STACK_POP ();
+		  for (unsigned int i = nargs; i < nfixed; i += 1)
+		    *scan++ = DEFAULT_OBJECT;
+		  if (rest == 1)
+		    *scan++ = EMPTY_LIST;
+		}
+	      else
+		{
+		  /* assert (rest == 1) */
+		  SCHEME_OBJECT list
+		    = MAKE_POINTER_OBJECT (TC_LIST, scan + size);
+                  *scan++ = STACK_POP (); // proc
+		  for (unsigned int i = 0; i < nfixed; i += 1)
+		    *scan++ = STACK_POP ();
+		  *scan++ = list;
+		  /* Now scan == OBJECT_ADDRESS (list) */
+		  for (unsigned int i = nfixed; i < nargs; i += 1)
+		    {
+		      *scan++ = STACK_POP ();
+		      *scan = MAKE_POINTER_OBJECT (TC_LIST, scan + 1);
+		      scan += 1;
+		    }
+		  scan[-1] = EMPTY_LIST;
+		}
+	      Free = scan;
+	      SET_ENV (temp);
+	      REDUCES_TO (ELAMBDA_BODY (lambda));
+	    }
 
 #ifdef CC_SUPPORT_P
-	    case TC_COMPILED_ENTRY:
-	      {
-		guarantee_cc_return (1 + (APPLY_FRAME_SIZE ()));
-		dispatch_code = (apply_compiled_procedure ());
+	  case TC_COMPILED_ENTRY:
+	    {
+	      guarantee_cc_return (1 + (APPLY_FRAME_SIZE ()));
+	      dispatch_code = (apply_compiled_procedure ());
 
-	      return_from_compiled_code:
-		switch (dispatch_code)
-		  {
-		  case PRIM_DONE:
-		    goto pop_return;
+	    return_from_compiled_code:
+	      switch (dispatch_code)
+		{
+		case PRIM_DONE:
+		  goto pop_return;
 
-		  case PRIM_APPLY:
-		    goto internal_apply;
+		case PRIM_APPLY:
+		  goto internal_apply;
 
-		  case PRIM_INTERRUPT:
-		    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+		case PRIM_INTERRUPT:
+		  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 
-		  case PRIM_APPLY_INTERRUPT:
-		    PREPARE_APPLY_INTERRUPT ();
-		    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+		case PRIM_APPLY_INTERRUPT:
+		  PREPARE_APPLY_INTERRUPT ();
+		  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 
-		  case ERR_INAPPLICABLE_OBJECT:
-		  case ERR_WRONG_NUMBER_OF_ARGUMENTS:
-		    APPLICATION_ERROR (dispatch_code);
+		case ERR_INAPPLICABLE_OBJECT:
+		case ERR_WRONG_NUMBER_OF_ARGUMENTS:
+		  APPLICATION_ERROR (dispatch_code);
 
-		  default:
-		    Do_Micro_Error (dispatch_code, true);
-		    goto internal_apply;
-		  }
-	      }
+		default:
+		  Do_Micro_Error (dispatch_code, true);
+		  goto internal_apply;
+		}
+	    }
 #endif
 
-	    default:
-	      APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
-	    }
+	  default:
+	    APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
+	  }
       }
 
     case RC_JOIN_STACKLETS:
@@ -1104,7 +1068,7 @@ Interpret (void)
       break;
 
       /* The following two return codes are both used to restore a
-	 saved history object.  The difference is that the first does
+	 saved history object.	The difference is that the first does
 	 not copy the history object while the second does.  In both
 	 cases, the GET_EXP contains the history object and the
 	 next item to be popped off the stack contains the offset back
@@ -1123,11 +1087,8 @@ Interpret (void)
 	if (!restore_history (GET_EXP))
 	  {
 	    SAVE_CONT ();
-	    Will_Push (CONTINUATION_SIZE);
-	    SET_EXP (GET_VAL);
-	    SET_RC (RC_RESTORE_VALUE);
-	    SAVE_CONT ();
-	    Pushed ();
+	    STACK_CHECK (CONTINUATION_SIZE);
+	    PUSH_CONT_RC (RC_RESTORE_VALUE, GET_VAL);
 	    IMMEDIATE_GC (HEAP_AVAILABLE);
 	  }
 	prev_restore_history_offset = (OBJECT_DATUM (STACK_POP ()));
@@ -1142,12 +1103,10 @@ Interpret (void)
     case RC_RESTORE_INT_MASK:
       SET_INTERRUPT_MASK (UNSIGNED_FIXNUM_TO_LONG (GET_EXP));
       if (GC_NEEDED_P (0))
-        REQUEST_GC (0);
+	REQUEST_GC (0);
       if (PENDING_INTERRUPTS_P)
 	{
-	  SET_RC (RC_RESTORE_VALUE);
-	  SET_EXP (GET_VAL);
-	  SAVE_CONT ();
+	  PUSH_CONT_RC (RC_RESTORE_VALUE, GET_VAL);
 	  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 	}
       break;
@@ -1155,13 +1114,13 @@ Interpret (void)
     case RC_STACK_MARKER:
       /* Frame consists of the return code followed by two objects.
 	 The first object has already been popped into GET_EXP,
-         so just pop the second argument.  */
+	 so just pop the second argument.  */
       stack_pointer = (STACK_LOCATIVE_OFFSET (stack_pointer, 1));
       break;
 
     case RC_EXECUTE_SEQUENCE_FINISH:
       END_SUBPROBLEM ();
-      POP_ENV ();
+      SET_ENV (STACK_POP ());
       REDUCES_TO_NTH (SEQUENCE_2);
 
     case RC_SNAP_NEED_THUNK:

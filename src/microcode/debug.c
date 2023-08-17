@@ -537,10 +537,10 @@ print_lambda (outf_channel stream, SCHEME_OBJECT lambda)
 static void
 print_extended_lambda (outf_channel stream, SCHEME_OBJECT elambda)
 {
-  SCHEME_OBJECT names = (Get_Names_Elambda (elambda));
-  unsigned n_req = (Elambda_Formals_Count (elambda));
-  unsigned n_opt = (Elambda_Opts_Count (elambda));
-  unsigned n_rest = (Elambda_Rest_Flag (elambda));
+  SCHEME_OBJECT names = (ELAMBDA_NAMES (elambda));
+  unsigned n_req = (ELAMBDA_REQS (elambda));
+  unsigned n_opt = (ELAMBDA_OPTS (elambda));
+  unsigned n_rest = (ELAMBDA_REST (elambda));
   unsigned n_names = (n_req + n_opt + n_rest);
   unsigned n_params = (n_names - 1);
 

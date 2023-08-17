@@ -33,13 +33,18 @@ USA.
 #include "object.h"
 #include "stack.h"
 
-/* Note: SAVE_CONT must match the definitions in sdata.h */
+/* Note: PUSH_CONT must match the definitions in sdata.h */
 
-#define SAVE_CONT() do							\
-{									\
-  PUSH_EXP ();								\
-  PUSH_RET ();								\
+#define PUSH_CONT(ret, value) do                                        \
+{                                                                       \
+  STACK_PUSH (value);                                                   \
+  STACK_PUSH (ret);                                                     \
 } while (0)
+
+#define PUSH_CONT_RC(rc, value)                                         \
+  PUSH_CONT ((MAKE_RETURN_CODE (rc)), (value))
+
+#define SAVE_CONT() PUSH_CONT (GET_RET, GET_EXP)
 
 #define RESTORE_CONT() do						\
 {									\
