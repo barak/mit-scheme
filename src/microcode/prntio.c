@@ -112,13 +112,13 @@ object_to_channel_vector (SCHEME_OBJECT channel_vector,
 {
   unsigned int index = 0;
   Tchannel tty_input_channel = (OS_tty_input_channel ());
-  unsigned long nc = (VECTOR_LENGTH (channel_vector));
+  unsigned long nc = (vector_length (channel_vector));
   Tchannel * channels
     = ((nc == 0) ? 0 : (dstack_alloc (nc * (sizeof (Tchannel)))));
   while (index < nc)
     {
       Tchannel channel
-	= (arg_to_channel ((VECTOR_REF (channel_vector, (index))), argno));
+	= (arg_to_channel ((vector_ref (channel_vector, (index))), argno));
       if (channel == tty_input_channel)
 	{
 	  (*console_index) = index;
@@ -221,9 +221,9 @@ static void
 parse_subprocess_options (int arg, int * hide_windows_p)
 {
   SCHEME_OBJECT options = (VECTOR_ARG (arg));
-  if ((VECTOR_LENGTH (options)) < 1)
+  if ((vector_length (options)) < 1)
     error_bad_range_arg (arg);
-  (*hide_windows_p) = (OBJECT_TO_BOOLEAN (VECTOR_REF (options, 0)));
+  (*hide_windows_p) = (OBJECT_TO_BOOLEAN (vector_ref (options, 0)));
 }
 
 DEFINE_PRIMITIVE ("NT-MAKE-SUBPROCESS", Prim_NT_make_subprocess, 8, 8,

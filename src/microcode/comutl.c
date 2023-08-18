@@ -283,23 +283,23 @@ DEFINE_PRIMITIVE ("LIARC-COMPILED-BLOCKS", Prim_liarc_compiled_code_blocks,
     void * object_proc;
 
     for (i = 0; (i < n); i += 1)
-      VECTOR_SET (v, i, (allocate_marked_vector (TC_VECTOR, 4, true)));
+      vector_set (v, i, (allocate_marked_vector (TC_VECTOR, 4, true)));
 
     for (i = 0; (i < n); i += 1)
       {
-	SCHEME_OBJECT vi = (VECTOR_REF (v, i));
+	SCHEME_OBJECT vi = (vector_ref (v, i));
 	get_liarc_compiled_block_data
 	  (i, (&name), (&code_proc), (&data_proc), (&object_proc));
-	VECTOR_SET (vi, 0, (char_pointer_to_string (name)));
-	VECTOR_SET (vi, 1,
+	vector_set (vi, 0, (char_pointer_to_string (name)));
+	vector_set (vi, 1,
 		    ((code_proc == 0)
 		     ? SHARP_F
 		     : (ulong_to_integer ((unsigned long) code_proc))));
-	VECTOR_SET (vi, 2,
+	vector_set (vi, 2,
 		    ((data_proc == 0)
 		     ? SHARP_F
 		     : (ulong_to_integer ((unsigned long) data_proc))));
-	VECTOR_SET (vi, 3,
+	vector_set (vi, 3,
 		    ((object_proc == 0)
 		     ? SHARP_F
 		     : (ulong_to_integer ((unsigned long) object_proc))));

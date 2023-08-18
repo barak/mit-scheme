@@ -52,9 +52,9 @@ static void *
 arg_host (unsigned int arg)
 {
   CHECK_ARG (arg, STRING_P);
-  if ((STRING_LENGTH (ARG_REF (arg))) != (OS_host_address_length ()))
+  if ((legacy_string_length (ARG_REF (arg))) != (OS_host_address_length ()))
     error_bad_range_arg (arg);
-  return (STRING_POINTER (ARG_REF (arg)));
+  return (legacy_string_data (ARG_REF (arg)));
 }
 
 static Tchannel
@@ -148,7 +148,7 @@ The result is a vector of strings, or #F if no such host exists.")
 	{
 	  SCHEME_OBJECT result =
 	    (allocate_marked_vector (TC_VECTOR, (end - addresses), 1));
-	  SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
+	  SCHEME_OBJECT * scan_result = (vector_loc (result, 0));
 	  unsigned int length = (OS_host_address_length ());
 	  while (addresses < end)
 	    (*scan_result++) =
@@ -213,7 +213,7 @@ DEFINE_PRIMITIVE ("HOST-ADDRESS-ANY", Prim_host_address_any, 0, 0, 0)
   SOCKET_CODE
     ({
       SCHEME_OBJECT result = (allocate_string (OS_host_address_length ()));
-      OS_host_address_any (STRING_POINTER (result));
+      OS_host_address_any (legacy_string_data (result));
       PRIMITIVE_RETURN (result);
     });
 }
@@ -224,7 +224,7 @@ DEFINE_PRIMITIVE ("HOST-ADDRESS-LOOPBACK", Prim_host_address_loopback, 0, 0, 0)
   SOCKET_CODE
     ({
       SCHEME_OBJECT result = (allocate_string (OS_host_address_length ()));
-      OS_host_address_loopback (STRING_POINTER (result));
+      OS_host_address_loopback (legacy_string_data (result));
       PRIMITIVE_RETURN (result);
     });
 }

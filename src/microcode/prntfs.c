@@ -201,12 +201,12 @@ dword_pair_to_integer (DWORD low, DWORD high)
 }
 
 #define STORE_FILE_TIME(index, name)					\
-  VECTOR_SET (result, (index),						\
+  vector_set (result, (index),						\
 	      (ulong_to_integer						\
 	       (((name) == 0) ? 0 : (file_time_to_unix_time (name)))))
 
 #define ATTRIBUTE_LETTER(index, mask, letter)				\
-  STRING_SET (modes, (index), ((attributes & (mask)) ? (letter) : '-'))
+  legacy_string_set (modes, (index), ((attributes & (mask)) ? (letter) : '-'))
 
 /* Maximum number of words needed for an attributes vector.
    This is intentionally higher than strictly necessary.  */
@@ -221,24 +221,24 @@ create_attributes_vector (DWORD attributes, DWORD nlinks,
 {
   SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 11, 0));
   SCHEME_OBJECT modes = (allocate_string (6));
-  VECTOR_SET (result, 0,
+  vector_set (result, 0,
 	      (BOOLEAN_TO_OBJECT (attributes & FILE_ATTRIBUTE_DIRECTORY)));
-  VECTOR_SET (result, 1, (ulong_to_integer (nlinks)));
-  VECTOR_SET (result, 2, (ulong_to_integer (uid)));
-  VECTOR_SET (result, 3, (ulong_to_integer (gid)));
+  vector_set (result, 1, (ulong_to_integer (nlinks)));
+  vector_set (result, 2, (ulong_to_integer (uid)));
+  vector_set (result, 3, (ulong_to_integer (gid)));
   STORE_FILE_TIME(4, atime);
   STORE_FILE_TIME(5, mtime);
   STORE_FILE_TIME(6, ctime);
-  VECTOR_SET (result, 7, (dword_pair_to_integer (size_low, size_high)));
+  vector_set (result, 7, (dword_pair_to_integer (size_low, size_high)));
   ATTRIBUTE_LETTER (0, FILE_ATTRIBUTE_DIRECTORY, 'd');
   ATTRIBUTE_LETTER (1, FILE_ATTRIBUTE_READONLY, 'r');
   ATTRIBUTE_LETTER (2, FILE_ATTRIBUTE_HIDDEN, 'h');
   ATTRIBUTE_LETTER (3, FILE_ATTRIBUTE_SYSTEM, 's');
   ATTRIBUTE_LETTER (4, FILE_ATTRIBUTE_ARCHIVE, 'a');
   ATTRIBUTE_LETTER (5, FILE_ATTRIBUTE_COMPRESSED, 'c');
-  VECTOR_SET (result, 8, modes);
-  VECTOR_SET (result, 9, (dword_pair_to_integer (inode_low, inode_high)));
-  VECTOR_SET (result, 10, (ulong_to_integer (attributes)));
+  vector_set (result, 8, modes);
+  vector_set (result, 9, (dword_pair_to_integer (inode_low, inode_high)));
+  vector_set (result, 10, (ulong_to_integer (attributes)));
   return (result);
 }
 
@@ -306,11 +306,11 @@ DEFINE_PRIMITIVE ("NT-GET-VOLUME-INFORMATION", Prim_NT_get_vol_info, 1, 1, 0)
 			       (sizeof (file_system_name)))))
     PRIMITIVE_RETURN (SHARP_F);
   result = (allocate_marked_vector (TC_VECTOR, 5, 1));
-  VECTOR_SET (result, 0, (char_pointer_to_string (name)));
-  VECTOR_SET (result, 1, (ulong_to_integer (serial_number)));
-  VECTOR_SET (result, 2, (ulong_to_integer (max_component_length)));
-  VECTOR_SET (result, 3, (ulong_to_integer (file_system_flags)));
-  VECTOR_SET (result, 4, (char_pointer_to_string (file_system_name)));
+  vector_set (result, 0, (char_pointer_to_string (name)));
+  vector_set (result, 1, (ulong_to_integer (serial_number)));
+  vector_set (result, 2, (ulong_to_integer (max_component_length)));
+  vector_set (result, 3, (ulong_to_integer (file_system_flags)));
+  vector_set (result, 4, (char_pointer_to_string (file_system_name)));
   PRIMITIVE_RETURN (result);
 }
 

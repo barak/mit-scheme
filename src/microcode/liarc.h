@@ -110,7 +110,7 @@ typedef unsigned long entry_count_t;
 #define ALLOCATE_RECORD(len)						\
   (OBJECT_NEW_TYPE (TC_RECORD, (ALLOCATE_VECTOR (len))))
 
-#define RECORD_SET(rec, off, val) VECTOR_SET ((rec), (off), (val))
+#define RECORD_SET(rec, off, val) vector_set ((rec), (off), (val))
 
 #define INLINE_DOUBLE_TO_FLONUM(src, tgt) do				\
 {									\

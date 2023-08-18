@@ -116,7 +116,7 @@ extern long arg_ascii_integer (int);
 
 #define STRING_ARG(arg)							\
   ((STRING_P (ARG_REF (arg)))						\
-   ? (STRING_POINTER (ARG_REF (arg)))					\
+   ? (legacy_string_data (ARG_REF (arg)))					\
    : ((error_wrong_type_arg (arg)), ((char *) 0)))
 
 extern unsigned char * arg_extended_string (unsigned int, unsigned long *);

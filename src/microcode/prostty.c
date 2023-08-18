@@ -123,7 +123,7 @@ DEFINE_PRIMITIVE ("TTY-GET-INTERRUPT-CHARS", Prim_tty_get_interrupt_chars, 0, 0,
     SCHEME_OBJECT result = (allocate_string (num_chars * 2));
     cc_t * int_chars = (OS_ctty_get_int_chars ());
     cc_t * int_handlers = (OS_ctty_get_int_char_handlers ());
-    char * scan = (STRING_POINTER (result));
+    char * scan = (legacy_string_data (result));
 
     for (i = 0; i < num_chars; i++)
     {
@@ -148,11 +148,11 @@ STRING must be in the correct form for this operating system.")
     char * scan;
 
     if (! ((STRING_P (argument))
-	   && (((unsigned int) (STRING_LENGTH (argument)))
+	   && (((unsigned int) (legacy_string_length (argument)))
 	       == (num_chars * 2))))
       error_wrong_type_arg (1);
 
-    for (i = 0, scan = (STRING_POINTER (argument)); i < num_chars; i++)
+    for (i = 0, scan = (legacy_string_data (argument)); i < num_chars; i++)
       {
 	(int_chars[i]) = (*scan++);
 	(int_handlers[i]) = (*scan++);

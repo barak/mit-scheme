@@ -32,7 +32,7 @@ USA.
 {									\
   canonicalize_primitive_context ();					\
  Will_Push (STACK_ENV_EXTRA_SLOTS + 1);					\
-  STACK_PUSH (VECTOR_REF (fixed_objects, slot));			\
+  STACK_PUSH (vector_ref (fixed_objects, slot));			\
   PUSH_APPLY_FRAME_HEADER (arity);					\
  Pushed ();								\
   PRIMITIVE_ABORT (PRIM_APPLY);						\

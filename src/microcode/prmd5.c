@@ -57,9 +57,9 @@ The digest is returned as a 16-byte bytevector.")
     struct md5 context;
     md5_init (&context);
     md5_update ((&context),
-		(BYTEVECTOR_POINTER (bytevector)),
-		(BYTEVECTOR_LENGTH (bytevector)));
-    md5_final ((&context), (BYTEVECTOR_POINTER (result)));
+		(bytevector_data (bytevector)),
+		(bytevector_length (bytevector)));
+    md5_final ((&context), (bytevector_data (result)));
     PRIMITIVE_RETURN (result);
   }
 }
@@ -72,7 +72,7 @@ Create and return an MD5 digest context.")
   do_md5_selftest ();
   {
     SCHEME_OBJECT context = (allocate_bytevector (sizeof (struct md5)));
-    md5_init ((struct md5 *) (BYTEVECTOR_POINTER (context)));
+    md5_init ((struct md5 *) (bytevector_data (context)));
     PRIMITIVE_RETURN (context);
   }
 }
@@ -81,10 +81,10 @@ static struct md5 *
 md5_context_arg (int arg)
 {
   CHECK_ARG (arg, BYTEVECTOR_P);
-  if ((BYTEVECTOR_LENGTH (ARG_REF (arg))) != (sizeof (struct md5)))
+  if ((bytevector_length (ARG_REF (arg))) != (sizeof (struct md5)))
     error_bad_range_arg (arg);
   do_md5_selftest ();
-  return ((struct md5 *) (BYTEVECTOR_POINTER (ARG_REF (arg))));
+  return ((struct md5 *) (bytevector_data (ARG_REF (arg))));
 }
 
 DEFINE_PRIMITIVE ("MD5-UPDATE", Prim_md5_update, 4, 4,
@@ -96,10 +96,10 @@ Update CONTEXT with the contents of the subbytevector (BYTEVECTOR,START,END).")
   {
     SCHEME_OBJECT bytevector = (ARG_REF (2));
     unsigned long end
-      = (arg_ulong_index_integer (4, ((BYTEVECTOR_LENGTH (bytevector)) + 1)));
+      = (arg_ulong_index_integer (4, ((bytevector_length (bytevector)) + 1)));
     unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
     md5_update ((md5_context_arg (1)),
-		(BYTEVECTOR_LOC (bytevector, start)),
+		(bytevector_loc (bytevector, start)),
 		(end - start));
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
@@ -113,7 +113,7 @@ Finalize CONTEXT and return the digest as a 16-byte bytevector.")
   {
     struct md5 * context = (md5_context_arg (1));
     SCHEME_OBJECT result = (allocate_bytevector (MD5_HASHLEN));
-    md5_final (context, (BYTEVECTOR_POINTER (result)));
+    md5_final (context, (bytevector_data (result)));
     PRIMITIVE_RETURN (result);
   }
 }

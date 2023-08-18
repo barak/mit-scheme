@@ -288,7 +288,7 @@ the primitive GC daemons before returning.")
 
   RENAME_CRITICAL_SECTION ("garbage collector daemon");
   {
-    SCHEME_OBJECT daemon = (VECTOR_REF (fixed_objects, GC_DAEMON));
+    SCHEME_OBJECT daemon = (vector_ref (fixed_objects, GC_DAEMON));
     if (daemon == SHARP_F)
       PRIMITIVE_ABORT (PRIM_POP_RETURN);
 
@@ -314,7 +314,7 @@ std_gc_pt1 (void)
   saved_to = (get_newspace_ptr ());
   add_to_tospace (fixed_objects);
   add_to_tospace
-    (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));
+    (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history_register));
 
   current_gc_table = (std_gc_table ());
   gc_scan_oldspace (stack_pointer, stack_end);
@@ -343,16 +343,16 @@ std_gc_pt2 (void)
       = (compute_ephemeron_array_length
 	 (ephemeron_count + n_ephemerons_requested));
     if (!HEAP_AVAILABLE_P
-	((VECTOR_DATA + length) + (n_ephemerons_requested * EPHEMERON_SIZE)))
+	(1 + length + (n_ephemerons_requested * EPHEMERON_SIZE)))
       {
 	if (ephemeron_request_hard_p)
-	  gc_space_needed += (VECTOR_DATA + length);
+	  gc_space_needed += (1 + length);
 	length = (compute_ephemeron_array_length (ephemeron_count));
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
 	/* This should never trigger, because we discard the previous
 	   ephemeron array, which always has room for at least as many
 	   ephemerons as are now live.  */
-	if (!HEAP_AVAILABLE_P (VECTOR_DATA + length))
+	if (!HEAP_AVAILABLE_P (1 + length))
 	  std_gc_death ("No room for ephemeron array");
 #endif
       }
@@ -392,7 +392,7 @@ DEFINE_PRIMITIVE ("GC-TRACE-REFERENCES", Prim_gc_trace_references, 2, 2, 0)
     SCHEME_OBJECT collector = (ARG_REF (2));
     if (! ((collector == SHARP_F)
 	   || ((VECTOR_P (collector))
-	       && ((VECTOR_LENGTH (collector)) >= 1))))
+	       && ((vector_length (collector)) >= 1))))
       error_wrong_type_arg (2);
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
     collect_gc_object_references ((ARG_REF (1)), collector);
@@ -442,7 +442,7 @@ ephemeron_array_big_enough_p (unsigned long n)
   return
     ((n == 0)
      || ((VECTOR_P (ephemeron_array))
-	 && (n <= (VECTOR_LENGTH (ephemeron_array)))));
+	 && (n <= (vector_length (ephemeron_array)))));
 }
 
 unsigned long
@@ -451,7 +451,7 @@ compute_extra_ephemeron_space (unsigned long n)
   if (ephemeron_array_big_enough_p (n))
     return (0);
   else
-    return (VECTOR_DATA + (compute_ephemeron_array_length (n)));
+    return 1 + compute_ephemeron_array_length (n);
 }
 
 void
@@ -461,7 +461,7 @@ guarantee_extra_ephemeron_space (unsigned long n)
   if (!ephemeron_array_big_enough_p (n))
     {
       unsigned long length = (compute_ephemeron_array_length (n));
-      assert (HEAP_AVAILABLE_P (VECTOR_DATA + length));
+      assert (HEAP_AVAILABLE_P (1 + length));
       ephemeron_array = (make_vector (length, SHARP_F, false));
     }
 }
@@ -487,7 +487,7 @@ DEFINE_PRIMITIVE ("MAKE-EPHEMERON", Prim_make_ephemeron, 2, 2, 0)
     {
       unsigned long length
 	= (compute_ephemeron_array_length (ephemeron_count));
-      gc_if_needed_for_ephemeron (VECTOR_DATA + length);
+      gc_if_needed_for_ephemeron (1 + length);
       ephemeron_array = (make_vector (length, SHARP_F, false));
     }
   {

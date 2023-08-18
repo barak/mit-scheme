@@ -95,7 +95,7 @@ DEFINE_PRIMITIVE ("TERMINAL-GET-STATE", Prim_terminal_get_state, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     SCHEME_OBJECT result = (allocate_string (OS_terminal_state_size ()));
-    OS_terminal_get_state ((arg_terminal (1)), (STRING_POINTER (result)));
+    OS_terminal_get_state ((arg_terminal (1)), (legacy_string_data (result)));
     PRIMITIVE_RETURN (result);
   }
 }
@@ -106,10 +106,10 @@ DEFINE_PRIMITIVE ("TERMINAL-SET-STATE", Prim_terminal_set_state, 2, 2, 0)
   CHECK_ARG (2, STRING_P);
   {
     SCHEME_OBJECT state = (ARG_REF (2));
-    if (((unsigned int) (STRING_LENGTH (state)))
+    if (((unsigned int) (legacy_string_length (state)))
 	!= (OS_terminal_state_size ()))
       error_bad_range_arg (2);
-    OS_terminal_set_state ((arg_terminal (1)), (STRING_POINTER (state)));
+    OS_terminal_set_state ((arg_terminal (1)), (legacy_string_data (state)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

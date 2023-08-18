@@ -48,10 +48,10 @@ USA.
 int
 is_alien (SCM alien)
 {
-  if ((RECORD_P (alien)) && ((VECTOR_LENGTH (alien)) == 4))
+  if ((RECORD_P (alien)) && ((vector_length (alien)) == 4))
     {
-      SCM high = (VECTOR_REF (alien, 1));
-      SCM low  = (VECTOR_REF (alien, 2));
+      SCM high = (vector_ref (alien, 1));
+      SCM low  = (vector_ref (alien, 2));
       if ((UNSIGNED_FIXNUM_P (high)) && (UNSIGNED_FIXNUM_P (low)))
 	return (1);
     }
@@ -61,8 +61,8 @@ is_alien (SCM alien)
 void *
 alien_address (SCM alien)
 {
-  unsigned long high = (FIXNUM_TO_ULONG (VECTOR_REF (alien, 1)));
-  unsigned long low = (FIXNUM_TO_ULONG (VECTOR_REF (alien, 2)));
+  unsigned long high = (FIXNUM_TO_ULONG (vector_ref (alien, 1)));
+  unsigned long low = (FIXNUM_TO_ULONG (vector_ref (alien, 2)));
   return ((void *) ((high << HALF_WORD_SHIFT) + low));
 }
 
@@ -70,8 +70,8 @@ void
 set_alien_address (SCM alien, const void * ptr)
 {
   unsigned long addr = ((unsigned long) ptr);
-  VECTOR_SET (alien, 1, (ULONG_TO_FIXNUM (addr >> HALF_WORD_SHIFT)));
-  VECTOR_SET (alien, 2, (ULONG_TO_FIXNUM (addr & HALF_WORD_MASK)));
+  vector_set (alien, 1, (ULONG_TO_FIXNUM (addr >> HALF_WORD_SHIFT)));
+  vector_set (alien, 2, (ULONG_TO_FIXNUM (addr & HALF_WORD_MASK)));
 }
 
 SCM
@@ -155,45 +155,17 @@ DEFINE_PRIMITIVE ("C-PEEK-POINTER", Prim_peek_pointer, 3, 3, 0)
   }
 }
 
-int
-max_code_point (unsigned char * cp, int n_bytes)
-{
-  unsigned char *scan = cp;
-  unsigned char *end = cp + n_bytes;
-  int max = 0;
-  while (scan < end)
-    {
-      unsigned char c = *scan++;
-      if (max < c) max = c;
-    }
-  return max;
-}
-
 SCM
-bytes_to_ustring (char * bytes, int n_bytes)
+bytes_to_ustring (char* bytes, int n_bytes)
 {
-  int max_cp = max_code_point ((unsigned char *)bytes, n_bytes);
-  if (max_cp < 0x80)
-    {
-      SCM result = (allocate_non_marked_vector
-		    (TC_UNICODE_STRING,
-		     ((BYTES_TO_WORDS (n_bytes + 1)) + BYTEVECTOR_LENGTH_SIZE),
-		     true));
-      unsigned char * dest = (BYTEVECTOR_POINTER (result));
-      /* 0x1d sets the cp-size to 1 and the nfc, nfc-set and nfd flags
-	 to true.  This must be kept in sync with "runtime/ustring.scm". */
-      MEMORY_SET (result, BYTEVECTOR_LENGTH_INDEX,
-		  (MAKE_OBJECT (0x1d, n_bytes)));
-      memcpy (dest, bytes, n_bytes + 1);
-      return (result);
-    }
-  else
-    {
-      SCM result = (allocate_bytevector (n_bytes + 1));
-      unsigned char * dest = (BYTEVECTOR_POINTER (result));
-      memcpy (dest, bytes, n_bytes + 1);
-      return (result);
-    }
+  SCM result
+    = allocate_non_marked_vector
+	(TC_UNICODE_STRING, ustring_length_to_gc_length (n_bytes, 1), true);
+  set_nm_vector_subheader
+    (result, make_ustring_subheader (1, USTRING_FLAGS_ALL, n_bytes));
+  uint8_t* dest = bytevector_data (result);
+  memcpy (dest, bytes, n_bytes + 1);
+  return result;
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRING", Prim_peek_cstring, 2, 2, 0)
@@ -297,8 +269,8 @@ DEFINE_PRIMITIVE ("C-PEEK-BYTES", Prim_peek_bytes, 5, 5, 0)
     const void * src = (ALIEN_ADDRESS_LOC (void *));
     int count = (UNSIGNED_FIXNUM_ARG (3));
     SCM bytevector = (ARG_REF (4));
-    int index = arg_index_integer (5, (BYTEVECTOR_LENGTH (bytevector)));
-    void * dest = BYTEVECTOR_LOC (bytevector, index);
+    int index = arg_index_integer (5, (bytevector_length (bytevector)));
+    void * dest = bytevector_loc (bytevector, index);
     memcpy (dest, src, count);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -371,8 +343,8 @@ DEFINE_PRIMITIVE ("C-POKE-STRING", Prim_poke_string, 3, 3, 0)
   {
     SCM string = (ARG_REF (3));
     strncpy ((ALIEN_ADDRESS_LOC (char)),
-	     (STRING_POINTER (string)),
-	     ((STRING_LENGTH (string)) + 1));
+	     (legacy_string_data (string)),
+	     ((legacy_string_length (string)) + 1));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -388,8 +360,8 @@ DEFINE_PRIMITIVE ("C-POKE-STRING!", Prim_poke_string_bang, 3, 3, 0)
   {
     char * ptr = (ALIEN_ADDRESS_LOC (char));
     SCM string = (ARG_REF (3));
-    unsigned long n_chars = ((STRING_LENGTH (string)) + 1);
-    strncpy (ptr, (STRING_POINTER (string)), n_chars);
+    unsigned long n_chars = ((legacy_string_length (string)) + 1);
+    strncpy (ptr, (legacy_string_data (string)), n_chars);
     set_alien_address ((ARG_REF (1)), (ptr + n_chars));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -405,8 +377,8 @@ DEFINE_PRIMITIVE ("C-POKE-BYTES", Prim_poke_bytes, 5, 5, 0)
     void * dest = (ALIEN_ADDRESS_LOC (void *));
     int count = (UNSIGNED_FIXNUM_ARG (3));
     SCM string = (ARG_REF (4));
-    int index = arg_index_integer (5, (STRING_LENGTH (string)));
-    const void * src = STRING_LOC (string, index);
+    int index = arg_index_integer (5, (legacy_string_length (string)));
+    const void * src = legacy_string_loc (string, index);
     memcpy (dest, src, count);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -798,7 +770,7 @@ valid_callback_handler (void)
 
   SCM handler;
 
-  handler = (VECTOR_REF (fixed_objects, CALLBACK_HANDLER));
+  handler = (vector_ref (fixed_objects, CALLBACK_HANDLER));
   if (! interpreter_applicable_p (handler))
     {
       outf_error_line ("\nWarning: bogus callback handler: 0x%x.",
@@ -856,7 +828,7 @@ arg_alien_entry (int argn)
   /* Expect an alien-function.  Return its address. */
 
   SCM alienf = VECTOR_ARG (argn);
-  int length = VECTOR_LENGTH (alienf);
+  int length = vector_length (alienf);
   if (length < 3)
     error_wrong_type_arg (argn);
   return (alien_address (alienf));
@@ -871,7 +843,7 @@ arg_pointer (int argn)
   if ((INTEGER_P (arg)) && (integer_zero_p (arg)))
     return ((void *)0);
   if (STRING_P (arg))
-    return ((void *) (STRING_POINTER (arg)));
+    return ((void *) (legacy_string_data (arg)));
   if ((INTEGER_P (arg)) && (integer_to_ulong_p (arg)))
     {
       unsigned char * result = lookup_external_string (arg, NULL);
@@ -1097,7 +1069,7 @@ DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
     SCM arg = ARG_REF (1);
     if (STRING_P (arg))
       {
-	char * string = ((char *) STRING_LOC (arg, 0));
+	char * string = ((char *) legacy_string_loc (arg, 0));
 	outf_error ("%s", string);
 	outf_flush_error ();
       }

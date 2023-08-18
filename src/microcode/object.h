@@ -238,95 +238,60 @@ extern bool string_p (SCHEME_OBJECT);
 #define MEMORY_SET(obj, i, value) ((MEMORY_REF (obj, i)) = (value))
 #define MEMORY_LOC(obj, i) (& (MEMORY_REF (obj, i)))
 
-/* Pair Operations */
+static inline SCHEME_OBJECT
+memory_ref_0 (SCHEME_OBJECT obj)
+{
+  return MEMORY_REF (obj, 0);
+}
 
-#define PAIR_CAR_LOC(pair) (MEMORY_LOC ((pair), CONS_CAR))
-#define PAIR_CDR_LOC(pair) (MEMORY_LOC ((pair), CONS_CDR))
-#define PAIR_CAR(pair) (MEMORY_REF ((pair), CONS_CAR))
-#define PAIR_CDR(pair) (MEMORY_REF ((pair), CONS_CDR))
-#define SET_PAIR_CAR(pair, car) MEMORY_SET ((pair), CONS_CAR, (car))
-#define SET_PAIR_CDR(pair, cdr) MEMORY_SET ((pair), CONS_CDR, (cdr))
+static inline SCHEME_OBJECT
+memory_ref_1 (SCHEME_OBJECT obj)
+{
+  return MEMORY_REF (obj, 1);
+}
 
-/* Vector Operations */
+static inline SCHEME_OBJECT
+memory_ref_2 (SCHEME_OBJECT obj)
+{
+  return MEMORY_REF (obj, 2);
+}
 
-#define VECTOR_LENGTH(v) (OBJECT_DATUM (MEMORY_REF ((v), 0)))
+static inline SCHEME_OBJECT*
+memory_loc_0 (SCHEME_OBJECT obj)
+{
+  return MEMORY_LOC (obj, 0);
+}
 
-#define SET_VECTOR_LENGTH(v, length)					\
-  (MEMORY_SET ((v), 0, (OBJECT_NEW_DATUM ((MEMORY_REF ((v), 0)), (length)))))
+static inline SCHEME_OBJECT*
+memory_loc_1 (SCHEME_OBJECT obj)
+{
+  return MEMORY_LOC (obj, 1);
+}
 
-#define VECTOR_LOC(v, i) (MEMORY_LOC ((v), ((i) + 1)))
-#define VECTOR_REF(v, i) (MEMORY_REF ((v), ((i) + 1)))
-#define VECTOR_SET(v, i, object) MEMORY_SET ((v), ((i) + 1), (object))
+static inline SCHEME_OBJECT*
+memory_loc_2 (SCHEME_OBJECT obj)
+{
+  return MEMORY_LOC (obj, 2);
+}
+
+static inline void
+memory_set_0 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
+{
+  MEMORY_SET (obj, 0, val);
+}
+
+static inline void
+memory_set_1 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
+{
+  MEMORY_SET (obj, 1, val);
+}
+
+static inline void
+memory_set_2 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
+{
+  MEMORY_SET (obj, 2, val);
+}
 
-/* Bytevector operations */
-
-/* Add 1 word to length to account for string header word. */
-#define BYTEVECTOR_LENGTH_TO_GC_LENGTH(n_chars)                         \
-  ((BYTES_TO_WORDS (n_chars)) + BYTEVECTOR_LENGTH_SIZE)
-
-#define BYTEVECTOR_DATA_LENGTH(v) ((VECTOR_LENGTH (v)) - BYTEVECTOR_LENGTH_SIZE)
-
-#define BYTEVECTOR_LENGTH(v)                                            \
-  (OBJECT_DATUM (MEMORY_REF ((v), BYTEVECTOR_LENGTH_INDEX)))
-
-#define SET_BYTEVECTOR_LENGTH(v, n_bytes)                               \
-  MEMORY_SET ((v), BYTEVECTOR_LENGTH_INDEX, (MAKE_OBJECT (0, (n_bytes))))
-
-#define BYTEVECTOR_POINTER(v) ((uint8_t *) (MEMORY_LOC ((v), BYTEVECTOR_DATA)))
-#define BYTEVECTOR_LOC(v, i) ((BYTEVECTOR_POINTER (v)) + (i))
-#define BYTEVECTOR_REF(s, i) (* (BYTEVECTOR_LOC ((s), (i))))
-#define BYTEVECTOR_SET(s, i, c) ((* (BYTEVECTOR_LOC ((s), (i)))) = (c))
-
-/* Unicode string operations */
-
-#define UNICODE_STRING_CP_LENGTH(u)					\
-  (OBJECT_DATUM (MEMORY_REF ((u), UNICODE_STRING_LENGTH_INDEX)))
-
-#define UNICODE_STRING_FLAGS(u)						\
-  (OBJECT_TYPE (MEMORY_REF ((u), UNICODE_STRING_LENGTH_INDEX)))
-
-/* This must be kept in sync with "runtime/string.scm". */
-#define UNICODE_STRING_BYTES_PER_CP(u)					\
-  ((((UNICODE_STRING_FLAGS (u)) & 0x3) == 0)				\
-   ? 3									\
-   : ((UNICODE_STRING_FLAGS (u)) & 0x3))
-
-#define UNICODE_STRING_BYTE_LENGTH(u)					\
-  ((UNICODE_STRING_CP_LENGTH (u)) * (UNICODE_STRING_BYTES_PER_CP (u)))
-
-#define UNICODE_STRING_POINTER(u)					\
-  ((uint8_t *) (MEMORY_LOC ((u), UNICODE_STRING_DATA)))
-
-/* Legacy string operations */
-
-/* Legacy strings are laid out exactly the same way as bytevectors,
-   except that they have a zero byte at the end that isn't included in
-   the string's length. */
-
-#define STRING_LENGTH_TO_GC_LENGTH(n_chars)				\
-  (BYTEVECTOR_LENGTH_TO_GC_LENGTH ((n_chars) + 1))
-#define STRING_LENGTH BYTEVECTOR_LENGTH
-
-#define SET_STRING_LENGTH(s, n_chars) do                                \
-{                                                                       \
-  SET_BYTEVECTOR_LENGTH((s), (n_chars));                                \
-  STRING_SET ((s), (n_chars), '\0');                                    \
-} while (0)
-
-/* Subtract 1 to account for the fact that we maintain a '\0'
-   at the end of the string. */
-#define MAXIMUM_STRING_LENGTH(s)                                        \
-  (((BYTEVECTOR_DATA_LENGTH (s)) * (sizeof (SCHEME_OBJECT))) - 1)
-
-#define SET_MAXIMUM_STRING_LENGTH(s, n_chars)				\
-  (SET_VECTOR_LENGTH ((s), (STRING_LENGTH_TO_GC_LENGTH (n_chars))))
-
-#define STRING_BYTE_PTR BYTEVECTOR_POINTER
-#define STRING_POINTER(s) ((char *) (STRING_BYTE_PTR (s)))
-#define STRING_LOC(s, i) (((unsigned char *) (STRING_BYTE_PTR (s))) + (i))
-#define STRING_REF(s, i) (* (STRING_LOC ((s), (i))))
-#define STRING_SET(s, i, c) ((* (STRING_LOC ((s), (i)))) = (c))
-
 /* Character Operations */
 
 #define ASCII_LENGTH CHAR_BIT	/* CHAR_BIT in config.h - 8 for unix  */
@@ -457,10 +422,10 @@ extern bool string_p (SCHEME_OBJECT);
 /* Flonum-vector Operations */
 
 #define FLOATING_VECTOR_LENGTH(vector)					\
-  ((VECTOR_LENGTH (vector)) / FLONUM_SIZE)
+  ((vector_length (vector)) / FLONUM_SIZE)
 
 #define FLOATING_VECTOR_LOC(vector, index)				\
-  ((double *) (VECTOR_LOC ((vector), ((index) * FLONUM_SIZE))))
+  ((double *) (vector_loc ((vector), ((index) * FLONUM_SIZE))))
 
 #define FLOATING_VECTOR_REF(vector, index)				\
   (* (FLOATING_VECTOR_LOC ((vector), (index))))

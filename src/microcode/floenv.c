@@ -110,9 +110,9 @@ int fedisableexcept(unsigned int excepts)
 #  pragma STDC FENV_ACCESS ON
 #endif
 
-#define VECTOR_8B_LENGTH STRING_LENGTH
+#define VECTOR_8B_LENGTH legacy_string_length
 #define VECTOR_8B_P STRING_P
-#define VECTOR_8B_POINTER STRING_POINTER
+#define VECTOR_8B_POINTER legacy_string_data
 #define allocate_vector_8b allocate_string
 
 ATTRIBUTE((__unused__))

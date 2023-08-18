@@ -98,7 +98,7 @@ DEFINE_PRIMITIVE ("CHANNEL-TABLE", Prim_channel_table, 0, 0,
       Tchannel * scan_channels = channels;
       SCHEME_OBJECT vector =
 	(allocate_marked_vector (TC_VECTOR, n_channels, 1));
-      SCHEME_OBJECT * scan_vector = (VECTOR_LOC (vector, 0));
+      SCHEME_OBJECT * scan_vector = (vector_loc (vector, 0));
       SCHEME_OBJECT * end_vector = (scan_vector + n_channels);
       while (scan_vector < end_vector)
 	(*scan_vector++) = (long_to_integer (*scan_channels++));
@@ -328,9 +328,9 @@ DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
     SCHEME_OBJECT vmode = (VECTOR_ARG (4));
     int result;
 
-    if ((VECTOR_LENGTH (vfd)) < rl)
+    if ((vector_length (vfd)) < rl)
       error_bad_range_arg (3);
-    if ((VECTOR_LENGTH (vmode)) < rl)
+    if ((vector_length (vmode)) < rl)
       error_bad_range_arg (4);
     result = ((rl == 0)
 	      ? (OS_pause (blockp, 0))
@@ -347,8 +347,8 @@ DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
 	    OS_select_registry_result (r, i, (&fd), (&mode));
 	    if (mode > 0)
 	      {
-		VECTOR_SET (vfd, iv, (long_to_integer (fd)));
-		VECTOR_SET (vmode, iv, (ulong_to_integer (mode)));
+		vector_set (vfd, iv, (long_to_integer (fd)));
+		vector_set (vmode, iv, (ulong_to_integer (mode)));
 		iv += 1;
 	      }
 	    i += 1;

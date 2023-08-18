@@ -41,7 +41,7 @@ USA.
    : ((error_wrong_type_arg (argument_number)), ((SCHEME_OBJECT) 0)))
 
 #define ARG_VECTOR_INDEX(argument_number, vector)			\
-  (arg_index_integer (argument_number, (VECTOR_LENGTH (vector))))
+  (arg_index_integer (argument_number, (vector_length (vector))))
 
 #define ARG_GC_VECTOR(argument_number)					\
   ((GC_TYPE_VECTOR (ARG_REF (argument_number)))				\
@@ -126,7 +126,7 @@ DEFINE_PRIMITIVE ("VECTOR", Prim_vector, 0, LEXPR, 0)
       (allocate_marked_vector (TC_VECTOR, GET_LEXPR_ACTUALS, true));
     SCHEME_OBJECT * argument_scan = (ARG_LOC (1));
     SCHEME_OBJECT * argument_limit = (ARG_LOC (GET_LEXPR_ACTUALS + 1));
-    SCHEME_OBJECT * result_scan = (VECTOR_LOC (result, 0));
+    SCHEME_OBJECT * result_scan = (vector_loc (result, 0));
     while (argument_scan != argument_limit)
       (*result_scan++) = (STACK_LOCATIVE_POP (argument_scan));
     PRIMITIVE_RETURN (result);
@@ -154,7 +154,7 @@ DEFINE_PRIMITIVE ("%RECORD", Prim_record, 0, LEXPR, 0)
       SCHEME_OBJECT result = (allocate_marked_vector (TC_RECORD, nargs, true));
       SCHEME_OBJECT * argument_scan = (ARG_LOC (1));
       SCHEME_OBJECT * argument_limit = (ARG_LOC (nargs + 1));
-      SCHEME_OBJECT * result_scan = (VECTOR_LOC (result, 0));
+      SCHEME_OBJECT * result_scan = (vector_loc (result, 0));
       while (argument_scan != argument_limit)
 	(*result_scan++) = (STACK_LOCATIVE_POP (argument_scan));
       PRIMITIVE_RETURN (result);
@@ -189,7 +189,7 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_sys_vector, 1, 1, 0)
 #define VECTOR_LENGTH_PRIMITIVE(arg_type)				\
 {									\
   PRIMITIVE_HEADER (1);							\
-  PRIMITIVE_RETURN (long_to_integer (VECTOR_LENGTH (arg_type (1))));	\
+  PRIMITIVE_RETURN (long_to_integer (vector_length (arg_type (1))));	\
 }
 
 DEFINE_PRIMITIVE ("VECTOR-LENGTH", Prim_vector_length, 1, 1, 0)
@@ -207,7 +207,7 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SIZE", Prim_sys_vec_size, 1, 1, 0)
   PRIMITIVE_HEADER (2);							\
   vector = (arg_type (1));						\
   PRIMITIVE_RETURN							\
-    (VECTOR_REF (vector, (ARG_VECTOR_INDEX (2, vector))));		\
+    (vector_ref (vector, (ARG_VECTOR_INDEX (2, vector))));		\
 }
 
 DEFINE_PRIMITIVE ("VECTOR-REF", Prim_vector_ref, 2, 2, 0)
@@ -226,7 +226,7 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR-REF", Prim_sys_vector_ref, 2, 2, 0)
   vector = (arg_type (1));						\
   {									\
     SCHEME_OBJECT new_value = (ARG_REF (3));				\
-    VECTOR_SET (vector, (ARG_VECTOR_INDEX (2, vector)), new_value);	\
+    vector_set (vector, (ARG_VECTOR_INDEX (2, vector)), new_value);	\
   }									\
   PRIMITIVE_RETURN (UNSPECIFIC);					\
 }
@@ -249,7 +249,7 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SET!", Prim_sys_vec_set, 3, 3, 0)
   vector = (arg_type (1));						\
   start = (arg_nonnegative_integer (2));				\
   end = (arg_nonnegative_integer (3));					\
-  if (end > ((long) (VECTOR_LENGTH (vector))))				\
+  if (end > ((long) (vector_length (vector))))				\
     error_bad_range_arg (3);						\
   if (start > end)							\
     error_bad_range_arg (2);						\
@@ -267,8 +267,8 @@ subvector_to_list (SCHEME_OBJECT vector, long start, long end)
     return (EMPTY_LIST);
   Primitive_GC_If_Needed (2 * (end - start));
   result = (MAKE_POINTER_OBJECT (TC_LIST, Free));
-  scan = (VECTOR_LOC (vector, start));
-  end_scan = (VECTOR_LOC (vector, (end - 1)));
+  scan = (vector_loc (vector, start));
+  end_scan = (vector_loc (vector, (end - 1)));
   pair_scan = Free;
   while (scan < end_scan)
     {
@@ -342,20 +342,20 @@ DEFINE_PRIMITIVE ("SYSTEM-LIST-TO-VECTOR", Prim_sys_list_to_vector, 2, 2, 0)
   end1 = (arg_nonnegative_integer (3));					\
   vector2 = (ARG_VECTOR (4));						\
   start2 = (arg_nonnegative_integer (5));				\
-  if (end1 > ((long) (VECTOR_LENGTH (vector1))))			\
+  if (end1 > ((long) (vector_length (vector1))))			\
     error_bad_range_arg (3);						\
   if (start1 > end1)							\
     error_bad_range_arg (2);						\
   length = (end1 - start1);						\
   end2 = (start2 + length);						\
-  if (end2 > ((long) (VECTOR_LENGTH (vector2))))			\
+  if (end2 > ((long) (vector_length (vector2))))			\
     error_bad_range_arg (5);
 
 DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-RIGHT!", Prim_subvector_move_right, 5, 5, 0)
 {
   SUBVECTOR_MOVE_PREFIX ();
-  scan1 = (VECTOR_LOC (vector1, end1));
-  scan2 = (VECTOR_LOC (vector2, end2));
+  scan1 = (vector_loc (vector1, end1));
+  scan2 = (vector_loc (vector2, end2));
   while ((length--) > 0)
     (*--scan2) = (*--scan1);
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -364,8 +364,8 @@ DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-RIGHT!", Prim_subvector_move_right, 5, 5, 0)
 DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-LEFT!", Prim_subvector_move_left, 5, 5, 0)
 {
   SUBVECTOR_MOVE_PREFIX ();
-  scan1 = (VECTOR_LOC (vector1, start1));
-  scan2 = (VECTOR_LOC (vector2, start2));
+  scan1 = (vector_loc (vector1, start1));
+  scan2 = (vector_loc (vector2, start2));
   while ((length--) > 0)
     (*scan2++) = (*scan1++);
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -383,12 +383,12 @@ DEFINE_PRIMITIVE ("SUBVECTOR-FILL!", Prim_vector_fill, 4, 4, 0)
   start = (arg_nonnegative_integer (2));
   end = (arg_nonnegative_integer (3));
   fill_value = (ARG_REF (4));
-  if (end > ((long) (VECTOR_LENGTH (vector))))
+  if (end > ((long) (vector_length (vector))))
     error_bad_range_arg (3);
   if (start > end)
     error_bad_range_arg (2);
   length = (end - start);
-  scan = (VECTOR_LOC (vector, start));
+  scan = (vector_loc (vector, start));
   while ((length--) > 0)
     (*scan++) = fill_value;
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -407,10 +407,10 @@ record_applicator (SCHEME_OBJECT record)
 {
   SCHEME_OBJECT marker = (record_marker (record));
   return ((RECORD_P (marker))
-	  && ((VECTOR_REF (marker, 0))
-	      == (VECTOR_REF (fixed_objects, FIXOBJ_RECORD_TAG))))
-    ? (VECTOR_REF (marker,
-		   (FIXNUM_TO_ULONG (VECTOR_REF (fixed_objects,
+	  && ((vector_ref (marker, 0))
+	      == (vector_ref (fixed_objects, FIXOBJ_RECORD_TAG))))
+    ? (vector_ref (marker,
+		   (FIXNUM_TO_ULONG (vector_ref (fixed_objects,
 						 FIXOBJ_RECORD_APP_INDEX)))))
     : SHARP_F;
 }
@@ -418,11 +418,11 @@ record_applicator (SCHEME_OBJECT record)
 static SCHEME_OBJECT
 record_marker (SCHEME_OBJECT record)
 {
-  SCHEME_OBJECT marker = (VECTOR_REF (record, 0));
+  SCHEME_OBJECT marker = (vector_ref (record, 0));
   return (((OBJECT_TYPE (marker)) == TC_CONSTANT)
 	  && ((OBJECT_DATUM (marker)) >= FASDUMP_RECORD_MARKER_START)
 	  && ((OBJECT_DATUM (marker)) < FASDUMP_RECORD_MARKER_END))
-    ? (VECTOR_REF ((VECTOR_REF (fixed_objects, FIXOBJ_PROXIED_RECORD_TYPES)),
+    ? (vector_ref ((vector_ref (fixed_objects, FIXOBJ_PROXIED_RECORD_TYPES)),
 		   ((OBJECT_DATUM (marker)) - FASDUMP_RECORD_MARKER_START)))
     : marker;
 }

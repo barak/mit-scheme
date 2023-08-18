@@ -37,11 +37,11 @@ USA.
 static void
 install_traps (SCHEME_OBJECT state)
 {
-  VECTOR_SET (fixed_objects, STEPPER_STATE, state);
+  vector_set (fixed_objects, STEPPER_STATE, state);
   trapping
-    = ((OBJECT_TO_BOOLEAN (MEMORY_REF (state, HUNK_CXR0)))
-       || (OBJECT_TO_BOOLEAN (MEMORY_REF (state, HUNK_CXR1)))
-       || (OBJECT_TO_BOOLEAN (MEMORY_REF (state, HUNK_CXR2))));
+    = OBJECT_TO_BOOLEAN (hunk3_ref_0 (state))
+       || OBJECT_TO_BOOLEAN (hunk3_ref_1 (state))
+       || OBJECT_TO_BOOLEAN (hunk3_ref_2 (state));
 }
 
 /* (PRIMITIVE-EVAL-STEP EXPRESSION ENV HUNK3)

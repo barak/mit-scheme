@@ -83,7 +83,7 @@ DEFINE_PRIMITIVE ("GET-ENVIRONMENT", Prim_get_environment, 0, 0, 0)
     }
 
   SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, n, true));
-  SCHEME_OBJECT * to = (VECTOR_LOC (v, 0));
+  SCHEME_OBJECT * to = (vector_loc (v, 0));
   scan = (LPTSTR) env_block;
   while ((*scan) != '\0')
     {
@@ -95,7 +95,7 @@ DEFINE_PRIMITIVE ("GET-ENVIRONMENT", Prim_get_environment, 0, 0, 0)
 }
 
 #define VQRESULT(index, value)						\
-  VECTOR_SET (result, index, (ulong_to_integer (value)))
+  vector_set (result, index, (ulong_to_integer (value)))
 
 
 DEFINE_PRIMITIVE ("WIN32-VIRTUAL-QUERY", Prim_win32_virtual_query, 1, 1, 0)
@@ -299,12 +299,12 @@ DEFINE_PRIMITIVE ("win32-set-registry-value", Prim_win32_set_registry_value, 4, 
       case REG_EXPAND_SZ:
       case REG_MULTI_SZ:
 	CHECK_ARG (4, STRING_P);
-	data_length = ((STRING_LENGTH (ARG_REF (4))) + 1);
+	data_length = ((legacy_string_length (ARG_REF (4))) + 1);
 	data = ((BYTE *) (STRING_BYTE_PTR (ARG_REF (4))));
 	break;
       default:
 	CHECK_ARG (4, STRING_P);
-	data_length = (STRING_LENGTH (ARG_REF (4)));
+	data_length = (legacy_string_length (ARG_REF (4)));
 	data = ((BYTE *) (STRING_BYTE_PTR (ARG_REF (4))));
 	break;
 	break;
@@ -336,12 +336,12 @@ DEFINE_PRIMITIVE ("win32-enumerate-registry-key", Prim_win32_enumerate_registry_
   GUARANTEE_RESULT_SPACE ();
   CHECK_ARG (3, STRING_P);
   {
-    DWORD buffer_size = ((STRING_LENGTH (ARG_REF (3))) + 1);
+    DWORD buffer_size = ((legacy_string_length (ARG_REF (3))) + 1);
     FILETIME last_write_time;
     LONG code
       = (RegEnumKeyEx ((HKEY_ARG (1)),
 		       ((DWORD) (arg_ulong_integer (2))),
-		       (STRING_POINTER (ARG_REF (3))),
+		       (legacy_string_data (ARG_REF (3))),
 		       (&buffer_size),
 		       0, 0, 0, (&last_write_time)));
     if (code == ERROR_NO_MORE_ITEMS)
@@ -378,11 +378,11 @@ DEFINE_PRIMITIVE ("win32-query-info-registry-key", Prim_win32_query_info_registr
       max_sub_key_length -= 1;
     {
       SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 5, 1));
-      VECTOR_SET (result, 0, (ulong_to_integer (n_sub_keys)));
-      VECTOR_SET (result, 1, (ulong_to_integer (max_sub_key_length)));
-      VECTOR_SET (result, 2, (ulong_to_integer (n_values)));
-      VECTOR_SET (result, 3, (ulong_to_integer (max_value_name_length)));
-      VECTOR_SET (result, 4, (ulong_to_integer (max_value_length)));
+      vector_set (result, 0, (ulong_to_integer (n_sub_keys)));
+      vector_set (result, 1, (ulong_to_integer (max_sub_key_length)));
+      vector_set (result, 2, (ulong_to_integer (n_values)));
+      vector_set (result, 3, (ulong_to_integer (max_value_name_length)));
+      vector_set (result, 4, (ulong_to_integer (max_value_length)));
       PRIMITIVE_RETURN (result);
     }
   }
@@ -396,22 +396,22 @@ DEFINE_PRIMITIVE ("win32-enumerate-registry-value", Prim_win32_enumerate_registr
   if ((ARG_REF (4)) != SHARP_F)
     CHECK_ARG (4, STRING_P);
   {
-    DWORD name_size = ((STRING_LENGTH (ARG_REF (3))) + 1);
+    DWORD name_size = ((legacy_string_length (ARG_REF (3))) + 1);
     DWORD data_type;
     DWORD data_size
       = (((ARG_REF (4)) == SHARP_F)
 	 ? 0
-	 : (STRING_LENGTH (ARG_REF (4))));
+	 : (legacy_string_length (ARG_REF (4))));
     LONG code
       = (RegEnumValue ((HKEY_ARG (1)),
 		       ((DWORD) (arg_ulong_integer (2))),
-		       ((LPTSTR) (STRING_POINTER (ARG_REF (3)))),
+		       ((LPTSTR) (legacy_string_data (ARG_REF (3)))),
 		       (&name_size),
 		       0,
 		       (&data_type),
 		       (((ARG_REF (4)) == SHARP_F)
 			? 0
-			: ((LPBYTE) (STRING_POINTER (ARG_REF (4))))),
+			: ((LPBYTE) (legacy_string_data (ARG_REF (4))))),
 		       (&data_size)));
     if (code == ERROR_NO_MORE_ITEMS)
       PRIMITIVE_RETURN (SHARP_F);
@@ -419,9 +419,9 @@ DEFINE_PRIMITIVE ("win32-enumerate-registry-value", Prim_win32_enumerate_registr
       NT_error_api_call (code, apicall_RegEnumValue);
     {
       SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 3, 1));
-      VECTOR_SET (result, 0, (ulong_to_integer (name_size)));
-      VECTOR_SET (result, 1, (ulong_to_integer (data_type)));
-      VECTOR_SET (result, 2, (ulong_to_integer (data_size)));
+      vector_set (result, 0, (ulong_to_integer (name_size)));
+      vector_set (result, 1, (ulong_to_integer (data_type)));
+      vector_set (result, 2, (ulong_to_integer (data_size)));
       PRIMITIVE_RETURN (result);
     }
   }
@@ -524,9 +524,9 @@ DEFINE_PRIMITIVE ("win32-expand-environment-strings", Prim_win32_expand_environm
   {
     DWORD n_chars
       = (ExpandEnvironmentStrings
-	 (((LPCTSTR) (STRING_POINTER (ARG_REF (1)))),
-	  ((LPTSTR) (STRING_POINTER (ARG_REF (2)))),
-	  ((STRING_LENGTH (ARG_REF (2))) + 1)));
+	 (((LPCTSTR) (legacy_string_data (ARG_REF (1)))),
+	  ((LPTSTR) (legacy_string_data (ARG_REF (2)))),
+	  ((legacy_string_length (ARG_REF (2))) + 1)));
     if (n_chars == 0)
       NT_error_api_call ((GetLastError ()), apicall_ExpandEnvironmentStrings);
     PRIMITIVE_RETURN (ulong_to_integer (n_chars - 1));

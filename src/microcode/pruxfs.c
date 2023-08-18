@@ -173,29 +173,29 @@ file_attributes_internal (struct stat * s)
   switch ((s -> st_mode) & S_IFMT)
     {
     case S_IFDIR:
-      VECTOR_SET (result, 0, SHARP_T);
+      vector_set (result, 0, SHARP_T);
       break;
 #ifdef S_IFLNK
     case S_IFLNK:
-      VECTOR_SET (result, 0,
+      vector_set (result, 0,
 		  (char_pointer_to_string
-		   (OS_file_soft_link_p (STRING_POINTER (ARG_REF (1))))));
+		   (OS_file_soft_link_p (legacy_string_data (ARG_REF (1))))));
       break;
 #endif
     default:
-      VECTOR_SET (result, 0, SHARP_F);
+      vector_set (result, 0, SHARP_F);
       break;
     }
-  VECTOR_SET (result, 1, (intmax_to_integer (s -> st_nlink)));
-  VECTOR_SET (result, 2, (intmax_to_integer (s -> st_uid)));
-  VECTOR_SET (result, 3, (intmax_to_integer (s -> st_gid)));
-  VECTOR_SET (result, 4, (intmax_to_integer (s -> st_atime)));
-  VECTOR_SET (result, 5, (intmax_to_integer (s -> st_mtime)));
-  VECTOR_SET (result, 6, (intmax_to_integer (s -> st_ctime)));
-  VECTOR_SET (result, 7, (intmax_to_integer (s -> st_size)));
-  file_mode_string (s, (STRING_POINTER (modes)));
-  VECTOR_SET (result, 8, modes);
-  VECTOR_SET (result, 9, (intmax_to_integer (s -> st_ino)));
+  vector_set (result, 1, (intmax_to_integer (s -> st_nlink)));
+  vector_set (result, 2, (intmax_to_integer (s -> st_uid)));
+  vector_set (result, 3, (intmax_to_integer (s -> st_gid)));
+  vector_set (result, 4, (intmax_to_integer (s -> st_atime)));
+  vector_set (result, 5, (intmax_to_integer (s -> st_mtime)));
+  vector_set (result, 6, (intmax_to_integer (s -> st_ctime)));
+  vector_set (result, 7, (intmax_to_integer (s -> st_size)));
+  file_mode_string (s, (legacy_string_data (modes)));
+  vector_set (result, 8, modes);
+  vector_set (result, 9, (intmax_to_integer (s -> st_ino)));
   return (result);
 }
 

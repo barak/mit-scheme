@@ -235,21 +235,21 @@ allocate_control_point (unsigned long n, bool gc_p)
 {
   SCHEME_OBJECT cp
     = (allocate_marked_vector (TC_CONTROL_POINT, (n + 2), gc_p));
-  VECTOR_SET (cp, 0, SHARP_F);
-  VECTOR_SET (cp, 1, (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)));
+  vector_set (cp, 0, SHARP_F);
+  vector_set (cp, 1, (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)));
   return (cp);
 }
 
 SCHEME_OBJECT *
 control_point_start (SCHEME_OBJECT cp)
 {
-  return (VECTOR_LOC (cp, 2));
+  return (vector_loc (cp, 2));
 }
 
 SCHEME_OBJECT *
 control_point_end (SCHEME_OBJECT cp)
 {
-  return (VECTOR_LOC (cp, (VECTOR_LENGTH (cp))));
+  return (vector_loc (cp, (vector_length (cp))));
 }
 
 void
@@ -293,7 +293,7 @@ DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3,
     STACK_PUSH (environment);
     STACK_PUSH (irritants);
     STACK_PUSH (message);
-    STACK_PUSH (VECTOR_REF (fixed_objects, Error_Procedure));
+    STACK_PUSH (vector_ref (fixed_objects, Error_Procedure));
     PUSH_APPLY_FRAME_HEADER (3);
   Pushed ();
     PRIMITIVE_ABORT (PRIM_APPLY);
@@ -329,20 +329,20 @@ memoized yet.")
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, PROMISE_P);
   {
-    SCHEME_OBJECT thunk = (ARG_REF (1));
-    SCHEME_OBJECT State = (MEMORY_REF (thunk, THUNK_SNAPPED));
+    SCHEME_OBJECT delayed = (ARG_REF (1));
+    SCHEME_OBJECT State = delayed_snapped (delayed);
     if (State == SHARP_T)
-      PRIMITIVE_RETURN (MEMORY_REF (thunk, THUNK_VALUE));
+      PRIMITIVE_RETURN (delayed_value (delayed));
     else if (State ==  FIXNUM_ZERO)
     {
-      /* New-style thunk used by compiled code. */
+      /* New-style delayed used by compiled code. */
       canonicalize_primitive_context ();
       POP_PRIMITIVE_FRAME (1);
      Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
       SET_RC (RC_SNAP_NEED_THUNK);
-      SET_EXP (thunk);
+      SET_EXP (delayed);
       SAVE_CONT ();
-      STACK_PUSH (MEMORY_REF (thunk, THUNK_VALUE));
+      STACK_PUSH (delayed_value (delayed));
       PUSH_APPLY_FRAME_HEADER (0);
      Pushed ();
       PRIMITIVE_ABORT (PRIM_APPLY);
@@ -351,16 +351,16 @@ memoized yet.")
     }
     else
     {
-      /* Old-style thunk used by interpreted code. */
+      /* Old-style delayed used by interpreted code. */
       canonicalize_primitive_context ();
       POP_PRIMITIVE_FRAME (1);
      Will_Push (CONTINUATION_SIZE);
       SET_RC (RC_SNAP_NEED_THUNK);
-      SET_EXP (thunk);
+      SET_EXP (delayed);
       SAVE_CONT ();
      Pushed ();
-      SET_ENV (MEMORY_REF (thunk, THUNK_ENVIRONMENT));
-      SET_EXP (MEMORY_REF (thunk, THUNK_PROCEDURE));
+      SET_ENV (delayed_env (delayed));
+      SET_EXP (delayed_proc (delayed));
       PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
       /*NOTREACHED*/
       PRIMITIVE_RETURN (UNSPECIFIC);
@@ -581,7 +581,7 @@ initialize_history (void)
   /* Dummy History Structure */
   history_register = (make_dummy_history ());
   return
-    (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, (make_dummy_history ())));
+    (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, (make_dummy_history ())));
 }
 
 DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_set_current_history, 1, 1,
@@ -665,7 +665,7 @@ Set the fixed objects vector (TM) to NEW-FOV.")
   {
     SCHEME_OBJECT old = fixed_objects;
     SCHEME_OBJECT new = (ARG_REF (1));
-    if ((VECTOR_LENGTH (new)) < N_FIXED_OBJECTS)
+    if ((vector_length (new)) < N_FIXED_OBJECTS)
       error_bad_range_arg (1);
     fixed_objects = new;
     PRIMITIVE_RETURN (old);

@@ -594,7 +594,7 @@ setup_trap_frame (int signo,
 
   handler
     = ((VECTOR_P (fixed_objects))
-       ? (VECTOR_REF (fixed_objects, TRAP_HANDLER))
+       ? (vector_ref (fixed_objects, TRAP_HANDLER))
        : SHARP_F);
   if (!INTERPRETER_APPLICABLE_P (handler))
     {

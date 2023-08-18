@@ -72,12 +72,12 @@ attempt_termination_backout (int code)
     return;
   {
     SCHEME_OBJECT Term_Vector
-      = (VECTOR_REF (fixed_objects, Termination_Proc_Vector));
+      = (vector_ref (fixed_objects, Termination_Proc_Vector));
     if ((! (VECTOR_P (Term_Vector)))
-	|| (((long) (VECTOR_LENGTH (Term_Vector))) <= code))
+	|| (((long) (vector_length (Term_Vector))) <= code))
       return;
     {
-      SCHEME_OBJECT Handler = (VECTOR_REF (Term_Vector, code));
+      SCHEME_OBJECT Handler = (vector_ref (Term_Vector, code));
       if (Handler == SHARP_F)
 	return;
      Will_Push (CONTINUATION_SIZE
@@ -271,7 +271,7 @@ edwin_auto_save (void)
 
   position =
     ((VECTOR_P (fixed_objects))
-     ? (VECTOR_REF (fixed_objects, FIXOBJ_EDWIN_AUTO_SAVE))
+     ? (vector_ref (fixed_objects, FIXOBJ_EDWIN_AUTO_SAVE))
      : EMPTY_LIST);
   while (PAIR_P (position))
     {
@@ -283,7 +283,7 @@ edwin_auto_save (void)
 	  && ((GROUP_MODIFIED_P (PAIR_CAR (entry))) == SHARP_T))
 	{
 	  SCHEME_OBJECT group = (PAIR_CAR (entry));
-	  char * namestring = (STRING_POINTER (PAIR_CDR (entry)));
+	  char * namestring = (legacy_string_data (PAIR_CDR (entry)));
 	  unsigned long length;
 	  unsigned char * start = (GROUP_TEXT (group, (&length)));
 	  unsigned char * end = (start + length);
@@ -317,7 +317,7 @@ delete_temp_files (void)
 
   position =
     ((VECTOR_P (fixed_objects))
-     ? (VECTOR_REF (fixed_objects, FIXOBJ_FILES_TO_DELETE))
+     ? (vector_ref (fixed_objects, FIXOBJ_FILES_TO_DELETE))
      : EMPTY_LIST);
   while (PAIR_P (position))
     {
@@ -327,7 +327,7 @@ delete_temp_files (void)
 	{
 	  bind_interpreter_state (&new_state);
 	  if ((setjmp (interpreter_catch_env)) == 0)
-	    OS_file_remove (STRING_POINTER (entry));
+	    OS_file_remove (legacy_string_data (entry));
 	  unbind_interpreter_state (&new_state);
 	}
     }

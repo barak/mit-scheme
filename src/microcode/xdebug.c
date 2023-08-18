@@ -234,8 +234,8 @@ DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
   CHECK_ARG (1, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (1));
-    SCHEME_OBJECT symbol = (find_symbol ((STRING_LENGTH (string)),
-					 (STRING_POINTER (string))));
+    SCHEME_OBJECT symbol = (find_symbol ((legacy_string_length (string)),
+					 (legacy_string_data (string))));
     if (symbol == SHARP_F)
       outf_console ("\nNot interned.\n");
     else

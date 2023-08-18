@@ -29,483 +29,588 @@ USA.
    file SDATA.SCM in the runtime system.  */
 
 #ifndef SCM_SDATA_H
-#define SCM_SDATA_H
+#define SCM_SDATA_H 1
+
+#include "object.h"
+#include "extern.h"
+#include "stack.h"
+#include "trap.h"
 
-/* Alphabetical order.  Every type of object is described either with a
-   comment or with offsets describing locations of various parts. */
+// Vectors
 
-/* ADDRESS
- * is a FIXNUM.  It represents a 24-bit address.  Not a pointer type.
- */
+#define vector_header memory_ref_0
+#define set_vector_header memory_set_0
+#define vector_ref_0 memory_ref_1
+#define vector_set_0 memory_set_1
+#define vector_loc_0 memory_loc_1
+#define vector_ref_1 memory_ref_2
+#define vector_set_1 memory_set_2
+#define vector_loc_1 memory_loc_2
+#define vector_ref_2 memory_ref_3
+#define vector_set_2 memory_set_3
+#define vector_loc_2 memory_loc_3
 
-/* BIG_FIXNUM (bignum).
- * See the file BIGNUM.C
- */
+static inline SCHEME_OBJECT
+make_vector_header (unsigned long length)
+{
+  return MAKE_OBJECT (TC_MANIFEST_VECTOR, length);
+}
 
-/* BIG_FLONUM (flonum).
- * Implementation dependent format (uses C data type "double").  Pointer
- * to implemetation defined floating point format.
- */
+static inline SCHEME_OBJECT
+vector_length (SCHEME_OBJECT v)
+{
+  return OBJECT_DATUM (vector_header (v));
+}
 
-/* BROKEN_HEART.
- * "Forwarding address" used by garbage collector to indicate that an
- * object has been moved to a new location.  These should never be
- * encountered by the interpreter!
- */
+static inline void
+set_vector_length (SCHEME_OBJECT v, unsigned long new_length)
+{
+  set_vector_header (v, OBJECT_NEW_DATUM (vector_header (v), new_length));
+}
 
-/* CELL.
- * An object that points to one other object (extra indirection).
- * Used by the compiler to share objects.
- */
-#define CELL_CONTENTS		0
+static inline SCHEME_OBJECT
+vector_ref (SCHEME_OBJECT v, unsigned long index)
+{
+  return MEMORY_REF (v, index + 1);
+}
 
-/* BYTEVECTOR
- * Format consists of the normal non-marked vector header
- * (BYTEVECTOR_HEADER) followed by the number of bytes in the vector
- * (with type-code 0), followed by the bytes themselves.
- */
-#define BYTEVECTOR_HEADER	0
-#define BYTEVECTOR_LENGTH_INDEX	1
-#define BYTEVECTOR_LENGTH_SIZE	1
-#define BYTEVECTOR_DATA		2
+static inline void
+vector_set (SCHEME_OBJECT v, unsigned long index, SCHEME_OBJECT object)
+{
+  MEMORY_SET (v, index + 1, object);
+}
 
-#define UNICODE_STRING_HEADER 0
-#define UNICODE_STRING_LENGTH_INDEX 1
-#define UNICODE_STRING_DATA 2
+static inline SCHEME_OBJECT*
+vector_loc (SCHEME_OBJECT v, unsigned long index)
+{
+  return MEMORY_LOC (v, index + 1);
+}
+
+// Non-marked vectors
+
+static inline SCHEME_OBJECT
+make_nmv_header (unsigned long length)
+{
+  return MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, length);
+}
+
+#define nm_vector_subheader memory_ref_1
+#define set_nm_vector_subheader memory_set_1
+#define nm_vector_data memory_loc_2
+
+static inline unsigned long
+nm_vector_data_length (SCHEME_OBJECT nmv)
+{
+  return vector_length (nmv) - 1;
+}
+
+static inline void
+set_nm_vector_data_length (SCHEME_OBJECT nmv, unsigned long nwords)
+{
+  set_vector_length (nmv, make_nmv_header (nwords + 1));
+}
 
-/* COMPILED_PROCEDURE */
-#define COMP_PROCEDURE_ADDRESS	0
-#define COMP_PROCEDURE_ENV	1
+// Bytevectors
 
-/* CONTINUATION
- * Pushed on the control stack by the interpreter, each has two parts:
- * the return address within the interpreter (represented as a type
- * code RETURN_ADDRESS and address part RC_xxx), and an expression
- * which was being evaluated at that time (sometimes just used as
- * additional data needed at the return point).  The offsets given
- * here are with respect to the stack pointer as it is located
- * immediately after pushing a continuation (or, of course,
- * immediately before popping it back).
- *
- * HISTORY_SIZE is the size of a RESTORE_HISTORY (or
- * RESTORE_DONT_COPY_HISTORY) continuation.
- */
+static inline uint8_t*
+bytevector_data (SCHEME_OBJECT bv)
+{
+  return (uint8_t*) nm_vector_data (bv);
+}
 
-#define CONTINUATION_EXPRESSION    1
-#define CONTINUATION_RETURN_CODE   0
-#define CONTINUATION_SIZE          2
-#define HISTORY_SIZE		   (CONTINUATION_SIZE + 2)
+static inline uint8_t*
+bytevector_loc (SCHEME_OBJECT bv, unsigned long index)
+{
+  return bytevector_data (bv) + index;
+}
 
-/* DELAYED
- * The object returned by a DELAY operation.  Consists initially of a
- * procedure to be APPLYed and environment.  After the FORCE primitive
- * is applied to the object, the result is stored in the DELAYED object
- * and further FORCEs return this same result.  I.e. FORCE memoizes the
- * value of the DELAYED object.  For historical reasons, such an object
- * is called a 'thunk.'
- */
-#define THUNK_SNAPPED		0
-#define THUNK_VALUE		1
-#define THUNK_ENVIRONMENT	0
-#define THUNK_PROCEDURE		1
+static inline uint8_t
+bytevector_ref (SCHEME_OBJECT bv, unsigned long index)
+{
+  return *bytevector_loc (bv, index);
+}
 
-/* ENTITY
-   A cons of a procedure and something else.
-   When invoked, it invokes (tail recurses) into the procedure passing
-   the entity and the arguments to it.
- */
+static inline void
+bytevector_set (SCHEME_OBJECT bv, unsigned long index, uint8_t b)
+{
+  *bytevector_loc (bv, index) = b;
+}
 
-#define ENTITY_OPERATOR		0
-#define ENTITY_DATA		1
+static inline unsigned long
+bytevector_length_to_gc_length (unsigned long nbytes)
+{
+  // Add 1 for subheader
+  return 1 + BYTES_TO_WORDS (nbytes + 1);
+}
+
+static inline SCHEME_OBJECT
+make_bytevector_subheader (unsigned long nbytes)
+{
+  return MAKE_OBJECT (0, nbytes);
+}
+
+static inline unsigned long
+bytevector_length (SCHEME_OBJECT bv)
+{
+  return OBJECT_DATUM (nm_vector_subheader (bv));
+}
+
+static inline void
+set_bytevector_length (SCHEME_OBJECT bv, unsigned long nbytes)
+{
+  set_nm_vector_subheader (bv, make_bytevector_subheader (nbytes));
+  bytevector_set (bv, nbytes, 0x00);
+}
 
-/* ENVIRONMENT
- * Associates identifiers with values.
- * The identifiers are either from a lambda-binding (as in a procedure
- * call) or a incremental (run-time) DEFINE (known as an 'auxilliary'
- * binding).
- * When an environment frame is created, it only contains lambda
- * bindings.  If incremental defines are performed in it, it acquires
- * an extension which contains a list of the auxiliary bindings.
- *
- * Besides the lambda bindings, an environment frame contains a
- * pointer to the procedure which created it.  It is through this
- * procedure that the parent frame is found.
- *
- * An environment frame has three distinct stages in its formation:
- * - A STACK_COMBINATION is the structure built on the stack to
- * evaluate normal (long) combinations.  It contains a slot for the
- * finger and the combination whose operands are being evaluated.
- * Only some of the argument slots in a stack-combination are
- * meaningful: those which have already been evaluated (those not
- * "hidden" by the finger).  This is the first stage.
- * - A STACK_ENVIRONMENT is the format used at Internal_Apply
- * just as an application is about to occur.
- * - An ENVIRONMENT is a real environment frame, containing
- * associations between names and values.  It is the final stage, and
- * corresponds to the structure described above.
- */
+// Unicode strings
 
-#define ENVIRONMENT_HEADER	0
-#define ENVIRONMENT_FUNCTION	1
-#define ENVIRONMENT_FIRST_ARG	2
+#define USTRING_FLAG_NFC (0x1)
+#define USTRING_FLAG_NFC_SET (0x2)
+#define USTRING_FLAG_NFD (0x4)
+#define USTRING_FLAGS_ALL (0x7)
+
+static inline uint8_t*
+ustring_data (SCHEME_OBJECT string)
+{
+  return (uint8_t*) nm_vector_data (string);
+}
+
+static inline uint8_t
+ustring_bytes_per_cp (SCHEME_OBJECT string)
+{
+  return OBJECT_TYPE (nm_vector_subheader (string)) & 0x3;
+}
+
+static inline uint8_t
+ustring_flags (SCHEME_OBJECT string)
+{
+  return (OBJECT_TYPE (nm_vector_subheader (string)) >> 2) & USTRING_FLAGS_ALL;
+}
+
+static inline unsigned long
+ustring_length_to_gc_length (unsigned long length, uint8_t bytes_per_cp)
+{
+  switch (bytes_per_cp)
+    {
+    case 1:
+      // Add 1 word for subheader, 1 byte for trailing 0
+      return 1 + BYTES_TO_WORDS (length + 1);
+    case 2:
+      // Add 1 word for subheader
+      return 1 + BYTES_TO_WORDS (length * 2);
+    default:
+      // Add 1 word for subheader
+      return 1 + BYTES_TO_WORDS (length * 3);
+    }
+}
+
+static inline SCHEME_OBJECT
+make_ustring_subheader (uint8_t bytes_per_cp, uint8_t flags, unsigned long ncps)
+{
+  return MAKE_OBJECT ((flags & USTRING_FLAGS_ALL) << 2 | (bytes_per_cp & 0x3),
+                      ncps);
+}
+
+static inline unsigned long
+ustring_length (SCHEME_OBJECT string)
+{
+  return OBJECT_DATUM (nm_vector_subheader (string));
+}
+
+// Legacy strings
+
+/* Legacy strings are laid out exactly the same way as bytevectors,
+   except that they have a zero byte at the end that isn't included in
+   the string's length. */
+
+#define set_legacy_string_header set_vector_header
+
+static inline char*
+legacy_string_data (SCHEME_OBJECT string)
+{
+  return (char*) nm_vector_data (string);
+}
+
+static inline unsigned char*
+legacy_string_loc (SCHEME_OBJECT string, unsigned long index)
+{
+  return ((unsigned char*) legacy_string_data (string)) + index;
+}
+
+static inline unsigned char
+legacy_string_ref (SCHEME_OBJECT string, unsigned long index)
+{
+  return *legacy_string_loc (string, index);
+}
+
+static inline void
+legacy_string_set (SCHEME_OBJECT string, unsigned long index, unsigned char c)
+{
+  *legacy_string_loc (string, index) = c;
+}
+
+static inline unsigned long
+legacy_string_length_to_gc_length (unsigned long nchars)
+{
+  // Add 1 for subheader
+  return 1 + BYTES_TO_WORDS (nchars + 1);
+}
+
+static inline SCHEME_OBJECT
+make_legacy_string_subheader (unsigned long nchars)
+{
+  return MAKE_OBJECT (0, nchars);
+}
+
+static inline unsigned long
+legacy_string_length (SCHEME_OBJECT string)
+{
+  return OBJECT_DATUM (nm_vector_subheader (string));
+}
+
+static inline void
+set_legacy_string_length (SCHEME_OBJECT string, unsigned long nchars)
+{
+  set_nm_vector_subheader (string, make_legacy_string_subheader (nchars));
+  legacy_string_set (string, nchars, '\0');
+}
+
+static inline unsigned long
+legacy_string_max_length (SCHEME_OBJECT string)
+{
+  return (nm_vector_data_length (string) * sizeof (SCHEME_OBJECT)) - 1;
+}
+
+static inline void
+set_legacy_string_max_length (SCHEME_OBJECT string, unsigned long nchars)
+{
+  set_nm_vector_data_length (string,
+                             legacy_string_length_to_gc_length (nchars));
+}
+
+#define cell_contents memory_ref_0
+#define set_cell_contents memory_set_0
+
+// Delayed objects
+
+#define delayed_snapped memory_ref_0
+#define delayed_value memory_ref_1
+#define delayed_env memory_ref_0
+#define delayed_proc memory_ref_1
+
+static inline SCHEME_OBJECT
+make_delayed (SCHEME_OBJECT proc, SCHEME_OBJECT env)
+{
+  SCHEME_OBJECT delayed = MAKE_POINTER_OBJECT (TC_DELAYED, Free);
+  *Free++ = proc;
+  *Free++ = env;
+  return delayed;
+}
+
+static inline SCHEME_OBJECT
+snap_delayed (SCHEME_OBJECT delayed, SCHEME_OBJECT val)
+{
+  // Don't snap thunk twice; evaluation of the thunk's body might have snapped
+  // it already.
+  if (MEMORY_REF (delayed, 0) == SHARP_T)
+    return MEMORY_REF (delayed, 1);
+  MEMORY_SET (delayed, 0, SHARP_T);
+  MEMORY_SET (delayed, 1, val);
+  return val;
+}
+
+// Entities
+
+#define entity_operator memory_ref_0
+#define entity_data memory_ref_1
+
+// Procedures
+
+static inline SCHEME_OBJECT
+make_procedure (SCHEME_OBJECT lambda, SCHEME_OBJECT env)
+{
+  SCHEME_OBJECT proc = MAKE_POINTER_OBJECT (TC_PROCEDURE, Free);
+  *Free++ = lambda;
+  *Free++ = env;
+  return proc;
+}
+
+static inline SCHEME_OBJECT
+make_extended_procedure (SCHEME_OBJECT lambda, SCHEME_OBJECT env)
+{
+  SCHEME_OBJECT proc = MAKE_POINTER_OBJECT (TC_EXTENDED_PROCEDURE, Free);
+  *Free++ = lambda;
+  *Free++ = env;
+  return proc;
+}
+
+#define proc_lambda memory_ref_0
+#define proc_environment memory_ref_1
+
+// Environments
+
+#define env_header memory_ref_0
+#define env_proc memory_ref_1
+#define set_env_extension memory_set_1
+#define env_vals memory_loc_2
+
+static inline SCHEME_OBJECT
+env_parent (SCHEME_OBJECT env)
+{
+  return proc_environment (env_proc (env));
+}
+
+static inline SCHEME_OBJECT*
+env_val_cell (SCHEME_OBJECT env, unsigned long index)
+{
+  return env_vals (env) + index;
+}
 
 #define STACK_ENV_EXTRA_SLOTS   1
 #define STACK_ENV_HEADER        0
 #define STACK_ENV_FUNCTION      1
 #define STACK_ENV_FIRST_ARG     2
 
-#define STACK_COMB_FINGER       0
-#define STACK_COMB_FIRST_ARG    1
-
 /* An environment chain always ends in a pointer with type code
-   of GLOBAL_ENV.  This will contain an address part which
+   of TC_GLOBAL_ENV.  This will contain an address part which
    either indicates that the lookup should continue on to the
    true global environment, or terminate at this frame.
 
    We arrange for the global environment to be the same as #F, and the
    end chain to be different by toggling the lowest bit:  */
 
-#define GLOBAL_ENV     (OBJECT_TYPE (SHARP_F))
-#define THE_GLOBAL_ENV (MAKE_OBJECT (GLOBAL_ENV, (OBJECT_DATUM (SHARP_F))))
-#define THE_NULL_ENV (MAKE_OBJECT (GLOBAL_ENV, ((OBJECT_DATUM (SHARP_F)) ^ 1)))
+#define THE_GLOBAL_ENV (MAKE_OBJECT (TC_GLOBAL_ENV, OBJECT_DATUM (SHARP_F)))
+#define THE_NULL_ENV (MAKE_OBJECT (TC_GLOBAL_ENV, OBJECT_DATUM (SHARP_F) ^ 1))
 
 #define GLOBAL_FRAME_P(frame) ((frame) == THE_GLOBAL_ENV)
 #define NULL_FRAME_P(frame) ((frame) == THE_NULL_ENV)
-#define PROCEDURE_FRAME_P(frame) ((OBJECT_TYPE (frame)) == TC_ENVIRONMENT)
+#define PROCEDURE_FRAME_P(frame) (OBJECT_TYPE (frame) == TC_ENVIRONMENT)
 
-#define GET_FRAME_PARENT(frame)						\
-  (GET_PROCEDURE_ENVIRONMENT (GET_FRAME_PROCEDURE (frame)))
+// Frame extensions
 
-#define GET_FRAME_PROCEDURE(frame)					\
-  (MEMORY_REF ((frame), ENVIRONMENT_FUNCTION))
+#define frame_extension_p VECTOR_P
+#define frame_extension_parent vector_ref_0
+#define set_frame_extension_parent vector_set_0
+#define frame_extension_proc vector_ref_1
+#define set_frame_extension_proc vector_set_1
 
-#define SET_FRAME_EXTENSION(frame, extension)				\
-  MEMORY_SET ((frame), ENVIRONMENT_FUNCTION, (extension))
+#define FRAME_EXTENSION_MIN_SIZE 4
 
-#define GET_FRAME_ARG_CELL(frame, index)				\
-  (MEMORY_LOC ((frame), (ENVIRONMENT_FIRST_ARG + (index))))
+static inline unsigned long
+frame_extension_length (SCHEME_OBJECT ext)
+{
+  return FIXNUM_TO_ULONG (vector_ref (ext, 2));
+}
 
-/* Environment extension objects:
+static inline void
+set_frame_extension_length (SCHEME_OBJECT ext, unsigned long n)
+{
+  vector_set (ext, 2, ULONG_TO_FIXNUM (n));
+}
 
-   These objects replace the procedure in environment frames when an
-   aux slot is desired.  The parent frame is copied into the extension
-   so that the "compiled" lookup code does not have to check whether
-   the frame has been extended or not.
+static inline unsigned long
+frame_extension_max_length (SCHEME_OBJECT ext)
+{
+  return vector_length (ext) - 3;
+}
 
-   Note that for the code to work, ENV_EXTENSION_PARENT_FRAME must be
-   equal to PROCEDURE_ENVIRONMENT.
+static inline SCHEME_OBJECT*
+frame_extension_bindings (SCHEME_OBJECT ext)
+{
+  return vector_loc (ext, 3);
+}
 
-   The following constants are implicitely hard-coded in lookup.c,
-   where a new extension object is consed in extend_frame.
- */
+static inline bool
+extended_frame_p (SCHEME_OBJECT frame)
+{
+  return frame_extension_p (env_proc (frame));
+}
 
-#define ENV_EXTENSION_HEADER		0
-#define ENV_EXTENSION_PARENT_FRAME	1
-#define ENV_EXTENSION_PROCEDURE		2
-#define ENV_EXTENSION_COUNT		3
-#define ENV_EXTENSION_MIN_SIZE		4
+static inline SCHEME_OBJECT
+extended_frame_proc (SCHEME_OBJECT frame)
+{
+  return frame_extension_proc (env_proc (frame));
+}
 
-#define EXTENDED_FRAME_P(frame)						\
-  (FRAME_EXTENSION_P (GET_FRAME_PROCEDURE (frame)))
+static inline SCHEME_OBJECT*
+extended_frame_bindings (SCHEME_OBJECT frame)
+{
+  return frame_extension_bindings (env_proc (frame));
+}
 
-#define FRAME_EXTENSION_P VECTOR_P
+static inline unsigned long
+extended_frame_length (SCHEME_OBJECT frame)
+{
+  return frame_extension_length (env_proc (frame));
+}
 
-#define GET_EXTENDED_FRAME_BINDINGS(frame)				\
-  (GET_FRAME_EXTENSION_BINDINGS (GET_FRAME_PROCEDURE (frame)))
+static inline unsigned long
+extended_frame_max_length (SCHEME_OBJECT frame)
+{
+  return frame_extension_max_length (env_proc (frame));
+}
 
-#define GET_FRAME_EXTENSION_BINDINGS(extension)				\
-  ((OBJECT_ADDRESS (extension)) + ENV_EXTENSION_MIN_SIZE)
-
-#define GET_EXTENDED_FRAME_LENGTH(frame)				\
-  (GET_FRAME_EXTENSION_LENGTH (GET_FRAME_PROCEDURE (frame)))
-
-#define GET_FRAME_EXTENSION_LENGTH(extension)				\
-  (UNSIGNED_FIXNUM_TO_LONG						\
-   ((OBJECT_ADDRESS (extension)) [ENV_EXTENSION_COUNT]))
-
-#define SET_EXTENDED_FRAME_LENGTH(frame, length)			\
-  (SET_FRAME_EXTENSION_LENGTH ((GET_FRAME_PROCEDURE (frame)), (length)))
-
-#define SET_FRAME_EXTENSION_LENGTH(extension, length)			\
-  (((OBJECT_ADDRESS (extension)) [ENV_EXTENSION_COUNT])			\
-   = (LONG_TO_UNSIGNED_FIXNUM (length)))
-
-#define GET_MAX_EXTENDED_FRAME_LENGTH(frame)				\
-  (GET_MAX_FRAME_EXTENSION_LENGTH (GET_FRAME_PROCEDURE (frame)))
-
-#define GET_MAX_FRAME_EXTENSION_LENGTH(extension)			\
-  ((VECTOR_LENGTH (extension)) - (ENV_EXTENSION_MIN_SIZE - 1))
-
-#define GET_EXTENDED_FRAME_PROCEDURE(frame)				\
-  (GET_FRAME_EXTENSION_PROCEDURE (GET_FRAME_PROCEDURE (frame)))
-
-#define GET_FRAME_EXTENSION_PROCEDURE(extension)			\
-  (MEMORY_REF ((extension), ENV_EXTENSION_PROCEDURE))
-
-#define SET_FRAME_EXTENSION_PROCEDURE(extension, procedure)		\
-  MEMORY_SET ((extension), ENV_EXTENSION_PROCEDURE, (procedure))
-
-#define SET_FRAME_EXTENSION_PARENT_FRAME(extension, frame)		\
-  MEMORY_SET ((extension), ENV_EXTENSION_PARENT_FRAME, (frame))
+static inline void
+set_extended_frame_length (SCHEME_OBJECT frame, unsigned long n)
+{
+  return set_frame_extension_length (env_proc (frame), n);
+}
 
-/* EXTENDED_FIXNUM
- * Not used in the C version.  On the 68000 this is used for 24-bit
- * integers, while FIXNUM is used for 16-bit integers.
- */
+#define hunk3_ref_0 memory_ref_0
+#define hunk3_set_0 memory_set_0
+#define hunk3_loc_0 memory_loc_0
+#define hunk3_ref_1 memory_ref_1
+#define hunk3_set_1 memory_set_1
+#define hunk3_loc_1 memory_loc_1
+#define hunk3_ref_2 memory_ref_2
+#define hunk3_set_2 memory_set_2
+#define hunk3_loc_2 memory_loc_2
 
-/* EXTENDED_PROCEDURE
- * Type of procedure created by evaluation of EXTENDED_LAMBDA.
- * It's fields are the same as those for PROCEDURE.
- */
+// Symbols
 
-/* FALSE
- * Alternate name for NULL.  This is the type code of objects which are
- * considered as false for the value of predicates.
- */
+#define symbol_name memory_ref_0
+#define set_symbol_name memory_set_0
+#define symbol_global_value memory_ref_1
+#define set_symbol_global_value memory_set_1
+#define symbol_global_value_cell memory_loc_1
 
-/* FIXNUM
- * Small integer.  Fits in the datum portion of a SCHEME_OBJECT.
- */
+// For GC:
+#define SYMBOL_GLOBAL_VALUE 1
 
-/* HUNK3
- * User object like a CONS, but with 3 slots rather than 2.
- */
-#define HUNK3_CXR0		0
-#define HUNK3_CXR1		1
-#define HUNK3_CXR2		2
+// Pairs
 
-/* Old code uses these */
+#define pair_car memory_ref_0
+#define pair_cdr memory_ref_1
+#define set_pair_car memory_set_0
+#define set_pair_cdr memory_set_1
+#define pair_car_loc memory_loc_0
+#define pair_cdr_loc memory_loc_1
 
-#define HUNK_CXR0		HUNK3_CXR0
-#define HUNK_CXR1		HUNK3_CXR1
-#define HUNK_CXR2		HUNK3_CXR2
+#define PAIR_CAR pair_car
+#define PAIR_CDR pair_cdr
+#define SET_PAIR_CAR set_pair_car
+#define SET_PAIR_CDR set_pair_cdr
+#define PAIR_CAR_LOC pair_car_loc
+#define PAIR_CDR_LOC pair_cdr_loc
 
-/* INTERNED_SYMBOL
- * A symbol, such as the result of evaluating (QUOTE A).  Some
- * important properties of symbols are that they have a print name,
- * and may be 'interned' so that all instances of a symbol with the
- * same name share a unique object.  The storage pointed to by a
- * symbol includes both the print name (a string) and the value cell
- * associated with a variable of that name in the global environment.
- */
-#define SYMBOL_NAME		0
-#define SYMBOL_GLOBAL_VALUE	1
-
-#define SYMBOL_GLOBAL_VALUE_CELL(symbol)				\
-  (MEMORY_LOC ((symbol), SYMBOL_GLOBAL_VALUE))
-
-#define GET_SYMBOL_GLOBAL_VALUE(symbol)					\
-  (* (SYMBOL_GLOBAL_VALUE_CELL (symbol)))
-
-#define SET_SYMBOL_GLOBAL_VALUE(symbol, value)				\
-  ((* (SYMBOL_GLOBAL_VALUE_CELL (symbol))) = (value))
-
-#define GET_SYMBOL_NAME(symbol) (MEMORY_REF ((symbol), SYMBOL_NAME))
-
-#define SET_SYMBOL_NAME(symbol, name)					\
-  MEMORY_SET ((symbol), SYMBOL_NAME, (name))
-
-/* LIST
- * Ordinary CONS cell as supplied to a user.  Perhaps this data type is
- * misnamed ... CONS or PAIR would be better.
- */
-#define CONS_CAR		0
-#define CONS_CDR		1
-
-/* MANIFEST_NM_VECTOR
- * Not a true object, this type code is used to indicate the start of a
- * vector which contains objects other than Scheme pointers.  The
- * address portion indicates the number of cells of non-pointers
- * which follow the header word.  For use primarily in garbage
- * collection to indicate the number of words to copy but not trace.
- */
+// For GC:
+#define CONS_CDR 1
 
-/* MANIFEST_SPECIAL_NM_VECTOR Similar to MANIFEST_NM_VECTOR but the
- * contents are relocated when loaded by the FALOADer.  This header
- * occurs in pure and constant space to indicate the start of a region
- * which contains Pointers to addresses which are known never to move in
- * the operation of the system.
- */
+// Pointer reference traps
 
-/* MANIFEST_VECTOR
- * Synonym for NULL, used as first cell in a vector object to indicate
- * how many cells it occupies.  Usage is similar to MANIFEST_NM_VECTOR
- */
+#define ptr_ref_trap_tag memory_ref_0
+#define ptr_ref_trap_cache memory_ref_1
+#define set_ptr_ref_trap_cache memory_set_1
 
-/* NON_MARKED_VECTOR
- * User-visible object containing arbitrary bits.  Not currently used.
- * The data portion will always point to a MANIFEST_NM_VECTOR or
- * MANIFEST_SPECIAL_NM_VECTOR specifying the length of the vector.
- */
-#define NM_VECTOR_HEADER	0
-#define NM_ENTRY_COUNT		1
-#define NM_DATA			2
-#define NM_HEADER_LENGTH	2
+#define PTR_REF_TRAP_SIZE 2
 
-/* NULL
- * The type code used by predicates to test for 'false' and by list
- * operations for testing for the end of a list.
- */
+static inline SCHEME_OBJECT
+make_ptr_ref_trap (unsigned long tag, SCHEME_OBJECT cache)
+{
+  SCHEME_OBJECT trap = MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free);
+  *Free++ = ULONG_TO_FIXNUM (tag);
+  *Free++ = cache;
+  return trap;
+}
 
-/* PRIMITIVE
- * The data portion contains a number specifying a particular primitive
- * operation to be performed.  An object of type PRIMITIVE can be
- * APPLYed in the same way an object of type PROCEDURE can be.
- */
+// Reference-trap caches
 
-/* PROCEDURE (formerly CLOSURE)
- * Consists of two parts: a LAMBDA expression and the environment
- * in which the LAMBDA was evaluated to yield the PROCEDURE.
- */
-#define PROCEDURE_LAMBDA_EXPR	0
-#define PROCEDURE_ENVIRONMENT	1
+enum cache_ref_kind
+{
+  LOOKUP_CACHE,
+  ASSIGNMENT_CACHE,
+  OPERATOR_CACHE
+};
 
-#define GET_PROCEDURE_LAMBDA(procedure)					\
-  (MEMORY_REF ((procedure), PROCEDURE_LAMBDA_EXPR))
+#define cache_value hunk3_ref_0
+#define set_cache_value hunk3_set_0
+#define cache_clone hunk3_ref_1
+#define set_cache_clone hunk3_set_1
+#define cache_refs hunk3_ref_2
+#define set_cache_refs hunk3_set_2
 
-#define GET_PROCEDURE_ENVIRONMENT(procedure)				\
-  (MEMORY_REF ((procedure), PROCEDURE_ENVIRONMENT))
+#define CACHE_SIZE 3
+#define CACHE_REFS_SIZE 3
+
+static inline SCHEME_OBJECT
+make_cache (SCHEME_OBJECT value, SCHEME_OBJECT clone, SCHEME_OBJECT refs)
+{
+  SCHEME_OBJECT cache = MAKE_POINTER_OBJECT (CACHE_TYPE, Free);
+  *Free++ = value;
+  *Free++ = clone;
+  *Free++ = refs;
+  return cache;
+}
+
+static inline bool
+cache_clone_p (SCHEME_OBJECT cache)
+{
+  return cache_value (cache) == EXPENSIVE_OBJECT;
+}
+
+static inline SCHEME_OBJECT
+make_cache_clone (SCHEME_OBJECT cache)
+{
+  return make_cache (EXPENSIVE_OBJECT, cache, cache_refs (cache));
+}
+
+static inline SCHEME_OBJECT
+make_cache_refs (void)
+{
+  SCHEME_OBJECT refs = MAKE_POINTER_OBJECT (CACHE_REFERENCES_TYPE, Free);
+  *Free++ = EMPTY_LIST;
+  *Free++ = EMPTY_LIST;
+  *Free++ = EMPTY_LIST;
+  return refs;
+}
+
+static inline SCHEME_OBJECT*
+cache_lookup_refs (SCHEME_OBJECT cache)
+{
+  return hunk3_loc_0 (cache_refs (cache));
+}
+
+static inline SCHEME_OBJECT*
+cache_assignment_refs (SCHEME_OBJECT cache)
+{
+  return hunk3_loc_1 (cache_refs (cache));
+}
+
+static inline SCHEME_OBJECT*
+cache_operator_refs (SCHEME_OBJECT cache)
+{
+  return hunk3_loc_2 (cache_refs (cache));
+}
+
+static inline SCHEME_OBJECT*
+cache_kind_refs (SCHEME_OBJECT cache, enum cache_ref_kind kind)
+{
+  switch (kind)
+    {
+    case LOOKUP_CACHE: return cache_lookup_refs (cache);
+    case ASSIGNMENT_CACHE: return cache_assignment_refs (cache);
+    case OPERATOR_CACHE: return cache_operator_refs (cache);
+    default: return 0;
+    }
+}
+
+#define cache_ref_block pair_car
+#define set_cache_ref_block set_pair_car
+
+static inline unsigned long
+cache_ref_offset (SCHEME_OBJECT ref)
+{
+  return OBJECT_DATUM (pair_cdr (ref));
+}
+
+static inline void
+set_cache_ref_offset (SCHEME_OBJECT ref, unsigned long offset)
+{
+  set_pair_cdr (ref, ULONG_TO_FIXNUM (offset));
+}
 
-/* QUAD or HUNK4
- * Like a pair but with 4 components.
- */
+// Ephemerons
 
-#define HUNK4_CXR0				0
-#define HUNK4_CXR1				1
-#define HUNK4_CXR2				2
-#define HUNK4_CXR3				3
-
-/* REFERENCE_TRAP
- * Causes the variable lookup code to trap.
- * Used to implement a variety of features.
- * This type code is really the collection of two, done this way for
- * efficiency.  Traps whose datum is less than TRAP_MAX_IMMEDIATE are
- * immediate (not pointers).  The rest are pairs.  The garbage
- * collector deals with them specially.  */
-
-#define TRAP_TAG				0
-#define TRAP_EXTRA				1
-
-#define GET_TRAP_TAG(object)						\
-  (MEMORY_REF ((object), TRAP_TAG))
-
-#define GET_TRAP_EXTRA(object)						\
-  (MEMORY_REF ((object), TRAP_EXTRA))
-
-#define SET_TRAP_EXTRA(object, extra)					\
-  MEMORY_SET ((object), TRAP_EXTRA, (extra))
-
-#define GET_TRAP_CACHE GET_TRAP_EXTRA
-#define SET_TRAP_CACHE SET_TRAP_EXTRA
-
-#define CACHE_CELL				HUNK3_CXR0
-#define CACHE_CLONE				HUNK3_CXR1
-#define CACHE_REFERENCES			HUNK3_CXR2
-
-#define CACHE_REFERENCES_LOOKUP			HUNK3_CXR0
-#define CACHE_REFERENCES_ASSIGNMENT		HUNK3_CXR1
-#define CACHE_REFERENCES_OPERATOR		HUNK3_CXR2
-
-
-#define GET_CACHE_VALUE(cache)						\
-  (MEMORY_REF ((cache), CACHE_CELL))
-
-#define SET_CACHE_VALUE(cache, value)					\
-  MEMORY_SET ((cache), CACHE_CELL, (value))
-
-#define GET_CACHE_CLONE(cache)						\
-  (MEMORY_REF ((cache), CACHE_CLONE))
-
-#define SET_CACHE_CLONE(cache, clone)					\
-  MEMORY_SET ((cache), CACHE_CLONE, (clone))
-
-#define GET_CACHE_REFERENCES_OBJECT(cache)				\
-  (MEMORY_REF ((cache), CACHE_REFERENCES))
-
-
-#define GET_CACHE_REFERENCES(cache, kind)				\
-  (MEMORY_LOC ((GET_CACHE_REFERENCES_OBJECT (cache)), (kind)))
-
-#define GET_CACHE_LOOKUP_REFERENCES(cache)				\
-  (GET_CACHE_REFERENCES ((cache), CACHE_REFERENCES_LOOKUP))
-
-#define GET_CACHE_ASSIGNMENT_REFERENCES(cache)				\
-  (GET_CACHE_REFERENCES ((cache), CACHE_REFERENCES_ASSIGNMENT))
-
-#define GET_CACHE_OPERATOR_REFERENCES(cache)				\
-  (GET_CACHE_REFERENCES ((cache), CACHE_REFERENCES_OPERATOR))
-
-
-#define GET_CACHE_REFERENCE_BLOCK(reference)				\
-  (PAIR_CAR (reference))
-
-#define SET_CACHE_REFERENCE_BLOCK(reference, block)			\
-  SET_PAIR_CAR (reference, block)
-
-#define GET_CACHE_REFERENCE_OFFSET(reference)				\
-  (OBJECT_DATUM (PAIR_CDR (reference)))
-
-#define SET_CACHE_REFERENCE_OFFSET(reference, offset)			\
-  (SET_PAIR_CDR ((reference), (LONG_TO_UNSIGNED_FIXNUM (offset))))
-
-/* RETURN_CODE
- * Represents an address where computation is to continue.  These can be
- * thought of as states in a finite state machine, labels in an assembly
- * language program, or continuations in a formal semantics.  When the
- * interpretation of a single SCode item requires the EVALuation of a
- * subproblem, a RETURN_CODE is left behind indicating where computation
- * continues after the evaluation.
- */
-
-/* TRUE
- * The initial binding of the variable T is to an object of this type.
- * This type is the beginnings of a possible move toward a system where
- * predicates check for TRUE / FALSE rather than not-NULL / NULL.
- */
-
-/* UNINTERNED_SYMBOL
- * This indicates that the object is in the format of an INTERNED_SYMBOL
- * but is not interned.
- */
-
-/* VECTOR
- * A group of contiguous cells with a header (of type MANIFEST_VECTOR)
- * indicating the length of the group.
- */
-#define VECTOR_DATA		1
-
-/* VECTOR_16B
- * Points to a MANIFEST_NM_VECTOR or MANIFEST_SPECIAL_NM_VECTOR header.
- * The format is described under NON_MARKED_VECTOR.  The contents are to
- * be treated as an array of 16-bit signed or unsigned quantities.  Not
- * currently used.
- */
-
-/* VECTOR_1B
- * Similar to VECTOR_16B, but used for a compact representation of an
- * array of booleans.
- */
-
-/* VECTOR_8B
- * An alternate name of CHARACTER_STRING.
- */
-
-/* COMPLEX
- * System Pair with REAL in CAR and IMAGINARY in CDR
- */
-
-#define COMPLEX_REAL		0
-#define COMPLEX_IMAG		1
-
-/* EPHEMERON
- * Similar to a weak pair, but the datum is weakly referenced too.  The
- * key and datum are simultaneously dropped iff the only references to
- * the key go through the datum.  Every ephemeron has extra slots for
- * data structures that the garbage collector needs to implement this,
- * so that the garbage collector need not allocate auxiliary storage.
- */
-
-#define EPHEMERON_MANIFEST	0
 #define EPHEMERON_KEY		1
 #define EPHEMERON_DATUM		2
 #define EPHEMERON_LIST		3

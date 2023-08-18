@@ -145,7 +145,7 @@ DEFINE_PRIMITIVE ("REHASH", Prim_rehash, 2, 2, 0)
   long table_size, counter;
   SCHEME_OBJECT *bucket;
   PRIMITIVE_HEADER (2);
-  table_size = (VECTOR_LENGTH (ARG_REF (1)));
+  table_size = (vector_length (ARG_REF (1)));
 
   /* First cleanup the hash table */
   counter = table_size;

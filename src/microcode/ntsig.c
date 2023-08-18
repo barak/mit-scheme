@@ -471,15 +471,15 @@ NT_initialize_fov (SCHEME_OBJECT fov)
     (INT_Stack_Overflow | INT_Global_GC | INT_GC),
   };
 
-  iv = (VECTOR_REF (fov, SYSTEM_INTERRUPT_VECTOR));
-  imv = (VECTOR_REF (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
+  iv = (vector_ref (fov, SYSTEM_INTERRUPT_VECTOR));
+  imv = (vector_ref (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
   prim = (make_primitive ("MICROCODE-POLL-INTERRUPT-HANDLER", 2));
 
   for (ctr = 0; ctr < ((sizeof (interrupt_numbers)) / (sizeof (int))); ctr++)
   {
     in = interrupt_numbers[ctr];
-    VECTOR_SET (iv, in, prim);
-    VECTOR_SET (imv, in, (long_to_integer (interrupt_masks[ctr])));
+    vector_set (iv, in, prim);
+    vector_set (imv, in, (long_to_integer (interrupt_masks[ctr])));
   }
   return;
 }

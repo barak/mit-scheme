@@ -380,7 +380,7 @@ find_primitive_cname (const char * name, bool intern_p, bool allow_p, int arity)
 SCHEME_OBJECT
 find_primitive (SCHEME_OBJECT sname, bool intern_p, bool allow_p, int arity)
 {
-  return (find_primitive_cname (STRING_POINTER (sname),
+  return (find_primitive_cname (legacy_string_data (sname),
 				intern_p, allow_p, arity));
 }
 
@@ -486,7 +486,7 @@ make_table_entry (unsigned long code, SCHEME_OBJECT * start)
        ? null_string
        : (Primitive_Name_Table[code]));
   unsigned long n_chars = (strlen (source));
-  unsigned long n_words = (STRING_LENGTH_TO_GC_LENGTH (n_chars));
+  unsigned long n_words = (legacy_string_length_to_gc_length (n_chars));
 
   (*start++) = (LONG_TO_FIXNUM (Primitive_Arity_Table[code]));
   (*start++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, n_words));
@@ -499,10 +499,10 @@ static unsigned long
 table_entry_length (unsigned long code)
 {
   return
-    ((STRING_LENGTH_TO_GC_LENGTH (((Primitive_Name_Table[code]) == 0)
-				  ? 0
-				  : (strlen (Primitive_Name_Table[code]))))
-     + 2);
+    legacy_string_length_to_gc_length (Primitive_Name_Table[code] == 0
+				       ? 0
+				       : (strlen (Primitive_Name_Table[code])))
+    + 2;
 }
 
 void

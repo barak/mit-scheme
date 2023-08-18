@@ -440,9 +440,9 @@ arg_dbt (int n)
   SCHEME_OBJECT s = (ARG_REF (n));
   if (!STRING_P (s))
     error_wrong_type_arg (n);
-  if ((STRING_LENGTH (s)) != (sizeof (DBT)))
+  if ((legacy_string_length (s)) != (sizeof (DBT)))
     error_bad_range_arg (n);
-  return ((DBT *) (STRING_POINTER (s)));
+  return ((DBT *) (legacy_string_data (s)));
 }
 
 DEFINE_PRIMITIVE ("DB4:DB-GET-PAGESIZE", Prim_db4_db_get_pagesize, 2, 2, 0)
@@ -467,9 +467,9 @@ DEFINE_PRIMITIVE ("DB4:INIT-DBT", Prim_db4_init_dbt, 4, 4, 0)
   {
     DBT * dbt = (arg_dbt (1));
     SCHEME_OBJECT s = (ARG_REF (2));
-    u_int32_t ulen = (STRING_LENGTH (s));
+    u_int32_t ulen = (legacy_string_length (s));
     memset (dbt, 0, (sizeof (*dbt)));
-    (dbt -> data) = (STRING_POINTER (s));
+    (dbt -> data) = (legacy_string_data (s));
     (dbt -> size) = ulen;
     (dbt -> ulen) = ulen;
     (dbt -> flags) = DB_DBT_USERMEM;
@@ -604,9 +604,9 @@ arg_db_lock (int n)
   SCHEME_OBJECT s = (ARG_REF (n));
   if (!STRING_P (s))
     error_wrong_type_arg (n);
-  if ((STRING_LENGTH (s)) != (sizeof (DB_LOCK)))
+  if ((legacy_string_length (s)) != (sizeof (DB_LOCK)))
     error_bad_range_arg (n);
-  return ((DB_LOCK *) (STRING_POINTER (s)));
+  return ((DB_LOCK *) (legacy_string_data (s)));
 }
 
 DEFINE_PRIMITIVE ("DB4:DB-ENV-LOCK-ID", Prim_db4_db_env_lock_id, 2, 2, 0)

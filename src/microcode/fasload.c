@@ -247,8 +247,8 @@ read_band_file (SCHEME_OBJECT s)
   void * old_name;
 
   transaction_begin ();
-  file_name = (OS_malloc ((STRING_LENGTH (s)) + 1));
-  strcpy (((char *) file_name), (STRING_POINTER (s)));
+  file_name = (OS_malloc ((legacy_string_length (s)) + 1));
+  strcpy (((char *) file_name), (legacy_string_data (s)));
   state = (dstack_alloc (sizeof (struct load_band_termination_state)));
   (state->file_name) = file_name;
   (state->no_return_p) = false;
@@ -652,22 +652,20 @@ intern_block_table (void)
 static
 DEFINE_GC_HANDLER (intern_handle_symbol)
 {
-  if (BROKEN_HEART_P (GET_SYMBOL_GLOBAL_VALUE (object)))
+  if (BROKEN_HEART_P (symbol_global_value (object)))
     {
-      SET_SYMBOL_GLOBAL_VALUE (object, UNBOUND_OBJECT);
+      set_symbol_global_value (object, UNBOUND_OBJECT);
       {
 	SCHEME_OBJECT new = (intern_symbol (object));
 	if (new != object)
 	  {
 	    (*scan) = new;
-	    SET_SYMBOL_NAME (object, (OBJECT_NEW_TYPE (TC_BROKEN_HEART, new)));
+	    set_symbol_name (object, OBJECT_NEW_TYPE (TC_BROKEN_HEART, new));
 	  }
       }
     }
-  else if (BROKEN_HEART_P (GET_SYMBOL_NAME (object)))
-    (*scan)
-      = (MAKE_OBJECT_FROM_OBJECTS (object,
-				   (GET_SYMBOL_NAME (object))));
+  else if (BROKEN_HEART_P (symbol_name (object)))
+    (*scan) = (MAKE_OBJECT_FROM_OBJECTS (object, (symbol_name (object))));
   return (scan + 1);
 }
 

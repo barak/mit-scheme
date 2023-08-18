@@ -51,24 +51,24 @@ typedef long bignum_length_type;
 
 /* BIGNUM_TO_POINTER casts a bignum object to a digit array pointer. */
 #define BIGNUM_TO_POINTER(bignum)					\
-  ((bignum_digit_type *) (VECTOR_LOC ((bignum), 0)))
+  ((bignum_digit_type *) (vector_loc ((bignum), 0)))
 
 /* BIGNUM_REDUCE_LENGTH allows the memory system to reclaim some
    space when a bignum's length is reduced from its original value. */
 #define BIGNUM_REDUCE_LENGTH(target, source, length)			\
 {									\
   unsigned long new_gc_length = (BIGNUM_LENGTH_TO_GC_LENGTH (length));	\
-  unsigned long old_gc_length = (VECTOR_LENGTH (source));		\
+  unsigned long old_gc_length = (vector_length (source));		\
   unsigned long delta;							\
   assert (new_gc_length <= old_gc_length);				\
   delta = (old_gc_length - new_gc_length);				\
   if (delta == 1)							\
-    VECTOR_SET (source, new_gc_length, SHARP_F);			\
+    vector_set (source, new_gc_length, SHARP_F);			\
   else if (delta > 1)							\
-    VECTOR_SET (source, new_gc_length,					\
+    vector_set (source, new_gc_length,					\
 		(MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, delta - 1)));	\
   if (delta != 0)							\
-    SET_VECTOR_LENGTH (source, new_gc_length);				\
+    set_vector_length (source, new_gc_length);				\
   (target) = (source);							\
 }
 

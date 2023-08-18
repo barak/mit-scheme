@@ -34,8 +34,8 @@ uint8_t *
 arg_bytevector (int n, unsigned long * len_r)
 {
   CHECK_ARG (n, BYTEVECTOR_P);
-  (*len_r) = (BYTEVECTOR_LENGTH (ARG_REF (n)));
-  return (BYTEVECTOR_POINTER (ARG_REF (n)));
+  *len_r = bytevector_length (ARG_REF (n));
+  return bytevector_data (ARG_REF (n));
 }
 
 static uint8_t
@@ -57,19 +57,19 @@ allocate_bytevector (unsigned long nbytes)
   SCHEME_OBJECT result
     = (allocate_non_marked_vector
        (TC_BYTEVECTOR,
-        ((BYTES_TO_WORDS (nbytes + 1)) + BYTEVECTOR_LENGTH_SIZE),
+        bytevector_length_to_gc_length (nbytes),
         true));
-  SET_BYTEVECTOR_LENGTH (result, nbytes);
-  ((BYTEVECTOR_POINTER (result)) [nbytes]) = '\0';
-  return (result);
+  set_bytevector_length (result, nbytes);
+  bytevector_set (result, nbytes, 0x00);
+  return result;
 }
 
 SCHEME_OBJECT
 memory_to_bytevector (unsigned long n_bytes, const void * vp)
 {
   SCHEME_OBJECT result = (allocate_bytevector (n_bytes));
-  memcpy ((BYTEVECTOR_POINTER (result)), vp, n_bytes);
-  return (result);
+  memcpy (bytevector_data (result), vp, n_bytes);
+  return result;
 }
 
 DEFINE_PRIMITIVE ("allocate-bytevector", Prim_allocate_bytevector, 1, 1, 0)
@@ -88,7 +88,7 @@ DEFINE_PRIMITIVE ("bytevector-length", Prim_bytevector_length, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, BYTEVECTOR_P);
-  PRIMITIVE_RETURN (ulong_to_integer (BYTEVECTOR_LENGTH (ARG_REF (1))));
+  PRIMITIVE_RETURN (ulong_to_integer (bytevector_length (ARG_REF (1))));
 }
 
 DEFINE_PRIMITIVE ("bytevector-u8-ref", Prim_bytevector_u8_ref, 2, 2, 0)

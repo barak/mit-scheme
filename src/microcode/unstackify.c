@@ -456,7 +456,7 @@ unstackify_pop_and_vector_set (unsigned long N)
 {
   SCHEME_OBJECT el = (unstackify_pop ());
   SCHEME_OBJECT vec = (unstackify_tos ());
-  VECTOR_SET (vec, N, el);
+  vector_set (vec, N, el);
 }
 
 static void
@@ -466,7 +466,7 @@ unstackify_push_vector (unsigned long N)
   unsigned long i;
 
   for (i = 0; (i < N); i += 1)
-    VECTOR_SET (vec, i, (unstackify_pop ()));
+    vector_set (vec, i, (unstackify_pop ()));
 
   unstackify_push (vec);
 }

@@ -178,7 +178,7 @@ DEFINE_PRIMITIVE ("GET-ENVIRONMENT", Prim_get_environment, 0, 0, 0)
   while ((*scan++) != 0)
     n += 1;
   SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, n, true));
-  SCHEME_OBJECT * to = (VECTOR_LOC (v, 0));
+  SCHEME_OBJECT * to = (vector_loc (v, 0));
   scan = environ;
   while ((*scan) != 0)
     (*to++) = (char_pointer_to_string (*scan++));
@@ -271,7 +271,7 @@ DEFINE_PRIMITIVE ("MACOSX-MAIN-BUNDLE-DIR",
 
     if (path == 0)
       PRIMITIVE_RETURN (SHARP_F);
-    n_words = (1 + (STRING_LENGTH_TO_GC_LENGTH (strlen (path))));
+    n_words = (1 + (legacy_string_length_TO_GC_LENGTH (strlen (path))));
     if (GC_NEEDED_P (n_words))
       {
 	UX_free ((void *) path);
@@ -293,11 +293,11 @@ DEFINE_PRIMITIVE ("uname", Prim_uname, 0, 0, 0)
   struct utsname buf;
   STD_VOID_SYSTEM_CALL (syscall_uname, (UX_uname (&buf)));
   SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 5, true));
-  VECTOR_SET (v, 0, (char_pointer_to_string (buf.sysname)));
-  VECTOR_SET (v, 1, (char_pointer_to_string (buf.nodename)));
-  VECTOR_SET (v, 2, (char_pointer_to_string (buf.release)));
-  VECTOR_SET (v, 3, (char_pointer_to_string (buf.version)));
-  VECTOR_SET (v, 4, (char_pointer_to_string (buf.machine)));
+  vector_set (v, 0, (char_pointer_to_string (buf.sysname)));
+  vector_set (v, 1, (char_pointer_to_string (buf.nodename)));
+  vector_set (v, 2, (char_pointer_to_string (buf.release)));
+  vector_set (v, 3, (char_pointer_to_string (buf.version)));
+  vector_set (v, 4, (char_pointer_to_string (buf.machine)));
   PRIMITIVE_RETURN (v);
 #else
   error_unimplemented_primitive ();

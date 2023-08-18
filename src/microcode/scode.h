@@ -29,109 +29,101 @@ USA.
    described in terms of the slots in the data structure. */
 
 #ifndef SCM_SCODE_H
-#define SCM_SCODE_H
+#define SCM_SCODE_H 1
+
+#include "object.h"
+#include "sdata.h"
 
-/* Here are the definitions of the the executable operations for the
-   interpreter.  This file should parallel the file SCODE.SCM in the
-   runtime system.  The interpreter dispatches on the type code of a
-   pointer to determine what operation to perform.  The format of the
-   storage block this points to is described below.  Offsets are the
-   number of cells from the location pointed to by the operation. */
+#define access_env memory_ref_0
+#define access_name memory_ref_1
 
-/* ALPHABETICALLY LISTED BY TYPE CODE NAME */
+#define assignment_name memory_ref_0
+#define assignment_value memory_ref_1
 
-/* ACCESS operation: */
-#define ACCESS_ENVIRONMENT	0
-#define ACCESS_NAME		1
+#define combination_header memory_ref_0
+#define combination_operator memory_ref_1
 
-/* ASSIGNMENT operation: */
-#define ASSIGN_NAME		0
-#define ASSIGN_VALUE		1
+static inline unsigned long
+combination_size (SCHEME_OBJECT exp)
+{
+  return OBJECT_DATUM (combination_header (exp));
+}
 
-/* COMBINATIONS are vector-like: */
-#define COMB_VECTOR_HEADER	0
-#define COMB_FN_SLOT		1
-#define COMB_ARG_1_SLOT		2
+static inline SCHEME_OBJECT*
+combination_exprs (SCHEME_OBJECT exp)
+{
+  return MEMORY_LOC (exp, 1);
+}
 
-/* COMMENT operation: */
-#define COMMENT_EXPRESSION	0
-#define COMMENT_TEXT		1
+static inline SCHEME_OBJECT
+combination_expr (SCHEME_OBJECT exp, unsigned long n)
+{
+  return vector_ref (exp, n);
+}
 
-/* CONDITIONAL operation (used for COND, IF, AND): */
-#define COND_PREDICATE		0
-#define COND_CONSEQUENT		1
-#define COND_ALTERNATIVE	2
+#define comment_expression memory_ref_0
+#define comment_text memory_ref_1
+
+#define conditional_predicate memory_ref_0
+#define conditional_consequent memory_ref_1
+#define conditional_alternative memory_ref_2
+
+#define definition_name memory_ref_0
+#define definition_value memory_ref_1
+
+#define delay_object memory_ref_0
+
+#define disjunction_predicate memory_ref_0
+#define disjunction_alternative memory_ref_1
 
-/* DEFINITION operation: */
-#define DEFINE_NAME		0
-#define DEFINE_VALUE		1
+#define lambda_body memory_ref_0
+#define lambda_names memory_ref_1
 
-/* DELAY operation: */
-#define DELAY_OBJECT		0
-#define DELAY_UNUSED		1
+static inline SCHEME_OBJECT*
+lambda_params (SCHEME_OBJECT exp)
+{
+  return vector_loc (lambda_names (exp), 1);
+}
 
-/* DISJUNCTION or OR operation: */
-#define OR_PREDICATE		0
-#define OR_ALTERNATIVE		1
+static inline unsigned long
+lambda_n_params (SCHEME_OBJECT exp)
+{
+  return vector_length (lambda_names (exp)) - 1;
+}
 
-// EXTENDED_LAMBDA operation:
-// Support for optional parameters and auxiliary local variables.
-// EXTENDED_LAMBDA is similar to LAMBDA, except that it has an extra word called
-// ARG_COUNTS.  This contains an 8-bit count of the number of optional
-// arguments, an 8-bit count of the number of required parameters, and a bit to
-// indicate that rest arguments are allowed.  The vector of argument names
-// contains a size count, which allows the calculation of the number of
-// auxiliary variables required.  (Auxiliary variables are created for any
-// internal DEFINEs which are found at syntax time in the body of a LAMBDA-like
-// special form.)
+#define elambda_body memory_ref_0
+#define elambda_names memory_ref_1
+#define elambda_arg_counts memory_ref_2
 
-#define ELAMBDA_BODY(lambda) (MEMORY_REF ((lambda), 0))
-#define ELAMBDA_NAMES(lambda) (MEMORY_REF ((lambda), 1))
-#define ELAMBDA_ARG_COUNTS(lambda) ((unsigned long) (MEMORY_REF ((lambda), 2)))
+static inline unsigned long
+elambda_reqs (SCHEME_OBJECT exp)
+{
+  return (elambda_arg_counts (exp) >> 8) & 0xFF;
+}
 
-#define ELAMBDA_N_NAMES(lambda) ((VECTOR_LENGTH (ELAMBDA_NAMES (lambda))) - 1)
+static inline unsigned long
+elambda_opts (SCHEME_OBJECT exp)
+{
+  return elambda_arg_counts (exp) & 0xFF;
+}
 
-#define ELAMBDA_REQS(lambda) (((ELAMBDA_ARG_COUNTS (lambda)) >> 8) & 0xFF)
-#define ELAMBDA_OPTS(lambda) ((ELAMBDA_ARG_COUNTS (lambda)) & 0xFF)
-#define ELAMBDA_REST(lambda) (((ELAMBDA_ARG_COUNTS (lambda)) >> 16) & 0x1)
-
-/* LAMBDA operation:
- * Object representing a LAMBDA expression with a fixed number of
- * arguments.  It consists of a list of the names of the arguments
- * (the first is the name by which the procedure refers to itself) and
- * the SCode for the procedure.
- */
+static inline unsigned long
+elambda_rest (SCHEME_OBJECT exp)
+{
+  return (elambda_arg_counts (exp) >> 16) & 0x1;
+}
 
-#define LAMBDA_SCODE		0
-#define LAMBDA_FORMALS		1
+#define scode_quote_object memory_ref_0
 
-#define GET_LAMBDA_FORMALS(lambda)					\
-  (MEMORY_REF ((lambda), LAMBDA_FORMALS))
+#define sequence_1 memory_ref_0
+#define sequence_2 memory_ref_1
 
-#define GET_LAMBDA_PARAMETERS(lambda)					\
-  (MEMORY_LOC ((GET_LAMBDA_FORMALS (lambda)), (VECTOR_DATA + 1)))
+#define variable_name memory_ref_0
 
-#define GET_LAMBDA_N_PARAMETERS(lambda)					\
-  ((VECTOR_LENGTH (GET_LAMBDA_FORMALS (lambda))) - 1)
-
-/* LEXPR
- * Same as LAMBDA (q.v.) except additional arguments are permitted
- * beyond those indicated in the LAMBDA_FORMALS list.
- */
-
-/* SCODE_QUOTE returns itself */
-#define SCODE_QUOTE_OBJECT	0
-#define SCODE_QUOTE_IGNORED	1
-
-/* SEQUENCE operations */
-#define SEQUENCE_1		0
-#define SEQUENCE_2		1
-
-/* VARIABLE operation.
- * Corresponds to a variable lookup or variable reference. Contains the
- * symbol referenced
- */
-#define VARIABLE_SYMBOL(variable) (MEMORY_REF ((variable), 0))
-#define VARIABLE_SAFE_P(variable) ((MEMORY_REF ((variable), 1)) == SHARP_F)
+static inline bool
+variable_safe_p (SCHEME_OBJECT exp)
+{
+  return memory_ref_1 (exp) == SHARP_F;
+}
 
 #endif /* not SCM_SCODE_H */

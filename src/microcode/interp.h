@@ -33,18 +33,29 @@ USA.
 #include "object.h"
 #include "stack.h"
 
-/* Note: PUSH_CONT must match the definitions in sdata.h */
+/* Note: push_cont must match the definitions in sdata.h */
 
-#define PUSH_CONT(ret, value) do                                        \
-{                                                                       \
-  STACK_PUSH (value);                                                   \
-  STACK_PUSH (ret);                                                     \
-} while (0)
+static inline void
+push_cont (SCHEME_OBJECT ret, SCHEME_OBJECT val)
+{
+  STACK_PUSH (val);
+  STACK_PUSH (ret);
+}
 
-#define PUSH_CONT_RC(rc, value)                                         \
-  PUSH_CONT ((MAKE_RETURN_CODE (rc)), (value))
+static inline void
+push_cont_rc (unsigned long rc, SCHEME_OBJECT val)
+{
+  push_cont (MAKE_RETURN_CODE (rc), val);
+}
 
-#define SAVE_CONT() PUSH_CONT (GET_RET, GET_EXP)
+static inline void
+push_cont_env (unsigned long rc, SCHEME_OBJECT exp, SCHEME_OBJECT env)
+{
+  STACK_PUSH (env);
+  push_cont_rc (rc, exp);
+}
+
+#define SAVE_CONT() push_cont (GET_RET, GET_EXP)
 
 #define RESTORE_CONT() do						\
 {									\
@@ -53,11 +64,16 @@ USA.
 } while (0)
 
 #define CONT_RC(offset) (OBJECT_DATUM (CONT_RET (offset)))
-#define CONT_RET(offset) (STACK_REF ((offset) + CONTINUATION_RETURN_CODE))
-#define CONT_EXP(offset) (STACK_REF ((offset) + CONTINUATION_EXPRESSION))
+#define CONT_RET(offset) (STACK_REF (offset))
+#define CONT_EXP(offset) (STACK_REF ((offset) + 1))
+
+#define CONTINUATION_SIZE 2
+#define HISTORY_SIZE (CONTINUATION_SIZE + 2)
 
 #define PUSH_APPLY_FRAME_HEADER(n_args)					\
-  STACK_PUSH (MAKE_OBJECT (0, ((n_args) + 1)))
+  STACK_PUSH (make_apply_frame_header ((n_args) + 1))
+
+#define make_apply_frame_header make_vector_header
 
 #define POP_APPLY_FRAME_HEADER() APPLY_FRAME_HEADER_N_ARGS (STACK_POP ())
 #define APPLY_FRAME_HEADER_N_ARGS(header) ((OBJECT_DATUM (header)) - 1)

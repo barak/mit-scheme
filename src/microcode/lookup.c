@@ -36,9 +36,6 @@ USA.
 #  define SPACE_PER_UUO_LINK 10
 #endif
 
-/* Cache objects are 3-tuples.  */
-#define SPACE_PER_CACHE 3
-
 /* Each reference uses a pair and a weak pair, and potentially two
    more pairs if the reference introduces a new name.  */
 #define SPACE_PER_REFERENCE 8
@@ -79,7 +76,7 @@ USA.
    : (value))
 
 #define EXTERNAL_UNASSIGNED_OBJECT					\
-  (VECTOR_REF (fixed_objects, NON_OBJECT))
+  (vector_ref (fixed_objects, NON_OBJECT))
 
 #define PALIST_COND(palist_var) (PAIR_P (*palist_var))
 
@@ -99,13 +96,13 @@ USA.
 #define PREFS_HEADER(prefs_var)						\
   PREFS_HEADER_1 (prefs_var, (PAIR_CAR (*prefs_var)))
 
-#define PREFS_HEADER_1(prefs_var, cache)				\
-{									\
-  if ((GET_CACHE_REFERENCE_BLOCK (cache)) == GC_RECLAIMED)		\
-    {									\
-      (*prefs_var) = (PAIR_CDR (*prefs_var));				\
-      continue;								\
-    }									\
+#define PREFS_HEADER_1(prefs_var, cache)                                \
+{                                                                       \
+  if (cache_ref_block (cache) == GC_RECLAIMED)                          \
+    {                                                                   \
+      *prefs_var = PAIR_CDR (*prefs_var);                               \
+      continue;                                                         \
+    }                                                                   \
 }
 
 #define PREFS_FOOTER(prefs_var) do					\
@@ -115,7 +112,7 @@ USA.
 
 #define WALK_REFERENCES(refs_pointer, ref_var, body)			\
 {									\
-  SCHEME_OBJECT * WR_palist = (refs_pointer);				\
+  SCHEME_OBJECT* WR_palist = (refs_pointer);				\
   while (PALIST_COND (WR_palist))					\
     {									\
       PALIST_HEADER (WR_palist, WR_prefs);				\
@@ -157,9 +154,9 @@ static long update_cache_references
 static SCHEME_OBJECT * find_binding_cell
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
 static SCHEME_OBJECT * scan_frame
-  (SCHEME_OBJECT, SCHEME_OBJECT, int);
+  (SCHEME_OBJECT, SCHEME_OBJECT, bool);
 static SCHEME_OBJECT * scan_procedure_bindings
-  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, int);
+  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, bool);
 static unsigned long count_references
   (SCHEME_OBJECT *);
 static void update_assignment_references
@@ -168,21 +165,22 @@ static long guarantee_cache
   (SCHEME_OBJECT *);
 static void update_clone
   (SCHEME_OBJECT);
-static long make_cache
-  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
+static long make_clone
+  (SCHEME_OBJECT, SCHEME_OBJECT*);
 
 #ifdef CC_SUPPORT_P
 
 static long update_uuo_links
   (SCHEME_OBJECT, SCHEME_OBJECT);
 static void move_all_references
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned int);
+  (SCHEME_OBJECT, SCHEME_OBJECT, enum cache_ref_kind);
 static long add_cache_reference
-  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, unsigned int);
+  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long,
+   enum cache_ref_kind);
 static void add_reference
   (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
 static void install_cache
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, unsigned int);
+  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, enum cache_ref_kind);
 static void install_operator_cache
   (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
 static unsigned long ref_pairs_to_move
@@ -236,7 +234,7 @@ lookup_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
       return (ERR_MACRO_BINDING);
 
     case TRAP_COMPILER_CACHED:
-      return (lookup_variable_cache ((GET_TRAP_CACHE (value)), value_ret));
+      return (lookup_variable_cache (ptr_ref_trap_cache (value), value_ret));
 
     default:
       return (ERR_ILLEGAL_REFERENCE_TRAP);
@@ -246,7 +244,7 @@ lookup_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 static long
 lookup_variable_cache (SCHEME_OBJECT cache, SCHEME_OBJECT * value_ret)
 {
-  SCHEME_OBJECT value = (GET_CACHE_VALUE (cache));
+  SCHEME_OBJECT value = cache_value (cache);
   switch (get_trap_kind (value))
     {
     case NON_TRAP_KIND:
@@ -386,7 +384,7 @@ assign_variable_end (SCHEME_OBJECT * cell, SCHEME_OBJECT value,
     case TRAP_COMPILER_CACHED:
       return
 	(assign_variable_cache
-	 ((GET_TRAP_CACHE (old_value)), value, value_ret, force_p));
+	 (ptr_ref_trap_cache (old_value), value, value_ret, force_p));
 
     default:
       return (ERR_ILLEGAL_REFERENCE_TRAP);
@@ -400,7 +398,7 @@ static long
 assign_variable_cache (SCHEME_OBJECT cache, SCHEME_OBJECT value,
 		       SCHEME_OBJECT * value_ret, int force_p)
 {
-  SCHEME_OBJECT old_value = (GET_CACHE_VALUE (cache));
+  SCHEME_OBJECT old_value = cache_value (cache);
   switch (get_trap_kind (old_value))
     {
     case NON_TRAP_KIND:
@@ -408,27 +406,27 @@ assign_variable_cache (SCHEME_OBJECT cache, SCHEME_OBJECT value,
       break;
 
     case TRAP_UNBOUND:
-      if (force_p)
-	break;
-      return (ERR_UNBOUND_VARIABLE);
+      if (!force_p)
+        return ERR_UNBOUND_VARIABLE;
+      break;
 
     case TRAP_MACRO:
-      if (force_p)
-	break;
-      return (ERR_MACRO_BINDING);
+      if (!force_p)
+        return ERR_MACRO_BINDING;
+      break;
 
     default:
-      return (ERR_ILLEGAL_REFERENCE_TRAP);
+      return ERR_ILLEGAL_REFERENCE_TRAP;
     }
-  (*value_ret) = (MAP_FROM_UNASSIGNED (old_value));
+  *value_ret = MAP_FROM_UNASSIGNED (old_value);
   /* Perform the assignment.  If there are any operator references to
      this variable, update their links.  */
 #ifdef CC_SUPPORT_P
-  if (PAIR_P (* (GET_CACHE_OPERATOR_REFERENCES (cache))))
-    return (update_uuo_links (cache, (MAP_TO_UNASSIGNED (value))));
+  if (PAIR_P (*cache_operator_refs (cache)))
+    return (update_uuo_links (cache, MAP_TO_UNASSIGNED (value)));
 #endif
-  SET_CACHE_VALUE (cache, (MAP_TO_UNASSIGNED (value)));
-  return (PRIM_DONE);
+  set_cache_value (cache, MAP_TO_UNASSIGNED (value));
+  return PRIM_DONE;
 }
 
 #ifdef CC_SUPPORT_P
@@ -436,18 +434,18 @@ static long
 update_uuo_links (SCHEME_OBJECT cache, SCHEME_OBJECT new_value)
 {
   GC_CHECK
-    (((count_references (GET_CACHE_OPERATOR_REFERENCES (cache)))
+    ((count_references (cache_operator_refs (cache))
       * SPACE_PER_UUO_LINK)
-     + SPACE_PER_CACHE);
-  SET_CACHE_VALUE (cache, new_value);
+     + CACHE_SIZE);
+  set_cache_value (cache, new_value);
   update_clone (cache);
   WALK_REFERENCES
-    ((GET_CACHE_OPERATOR_REFERENCES (cache)),
+    (cache_operator_refs (cache),
      reference,
      {
        install_operator_cache (cache,
-			       (GET_CACHE_REFERENCE_BLOCK (reference)),
-			       (GET_CACHE_REFERENCE_OFFSET (reference)));
+			       cache_ref_block (reference),
+			       cache_ref_offset (reference));
      });
   return (PRIM_DONE);
 }
@@ -462,7 +460,7 @@ define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 
   /* If there is already a binding, just assign to it.  */
   {
-    SCHEME_OBJECT * cell = (scan_frame (environment, symbol, 1));
+    SCHEME_OBJECT * cell = scan_frame (environment, symbol, true);
     SCHEME_OBJECT old_value;
     if (cell != 0)
       {
@@ -483,11 +481,11 @@ define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
      now refer to the new binding instead.  */
   {
     SCHEME_OBJECT * shadowed_cell
-      = (find_binding_cell ((GET_FRAME_PARENT (environment)), symbol, 0));
+      = (find_binding_cell (env_parent (environment), symbol, 0));
     SCHEME_OBJECT old_cache
       = (((shadowed_cell != 0)
 	  && ((get_trap_kind (*shadowed_cell)) == TRAP_COMPILER_CACHED))
-	 ? (GET_TRAP_CACHE (*shadowed_cell))
+	 ? ptr_ref_trap_cache (*shadowed_cell)
 	 : SHARP_F);
 
     /* Make sure there is enough space available to move any
@@ -514,32 +512,32 @@ extend_environment (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		    SCHEME_OBJECT value)
 {
   SCHEME_OBJECT pair = (cons (symbol, (MAP_TO_UNASSIGNED (value))));
-  unsigned long length = (GET_EXTENDED_FRAME_LENGTH (environment));
-  ((GET_EXTENDED_FRAME_BINDINGS (environment)) [length]) = pair;
-  SET_EXTENDED_FRAME_LENGTH (environment, (length + 1));
-  return (PAIR_CDR_LOC (pair));
+  unsigned long length = (extended_frame_length (environment));
+  extended_frame_bindings (environment) [length] = pair;
+  set_extended_frame_length (environment, length + 1);
+  return pair_cdr_loc (pair);
 }
 
 static long
 guarantee_extension_space (SCHEME_OBJECT environment)
 {
-  if (EXTENDED_FRAME_P (environment))
+  if (extended_frame_p (environment))
     /* Guarantee that there is room in the extension for a binding.  */
     {
-      unsigned long length = (GET_EXTENDED_FRAME_LENGTH (environment));
-      if (length == (GET_MAX_EXTENDED_FRAME_LENGTH (environment)))
+      unsigned long length = extended_frame_length (environment);
+      if (length == extended_frame_max_length (environment))
 	{
 	  SCHEME_OBJECT extension;
 	  RETURN_IF_ERROR
 	    (allocate_frame_extension
-	     ((2 * length),
-	      (GET_EXTENDED_FRAME_PROCEDURE (environment)),
-	      (&extension)));
-	  memcpy ((GET_FRAME_EXTENSION_BINDINGS (extension)),
-		  (GET_EXTENDED_FRAME_BINDINGS (environment)),
-		  (length * (sizeof (SCHEME_OBJECT))));
-	  SET_FRAME_EXTENSION_LENGTH (extension, length);
-	  SET_FRAME_EXTENSION (environment, extension);
+	     (2 * length,
+	      extended_frame_proc (environment),
+	      &extension));
+	  memcpy (frame_extension_bindings (extension),
+		  extended_frame_bindings (environment),
+		  length * sizeof (SCHEME_OBJECT));
+	  set_frame_extension_length (extension, length);
+	  set_env_extension (environment, extension);
 	}
     }
   else
@@ -548,9 +546,9 @@ guarantee_extension_space (SCHEME_OBJECT environment)
       SCHEME_OBJECT extension;
       RETURN_IF_ERROR
 	(allocate_frame_extension (16,
-				   (GET_FRAME_PROCEDURE (environment)),
-				   (&extension)));
-      SET_FRAME_EXTENSION (environment, extension);
+				   env_proc (environment),
+				   &extension));
+      set_env_extension (environment, extension);
     }
   return (PRIM_DONE);
 }
@@ -559,17 +557,14 @@ static long
 allocate_frame_extension (unsigned long length, SCHEME_OBJECT procedure,
 			  SCHEME_OBJECT * extension_ret)
 {
-  unsigned long n_words = (ENV_EXTENSION_MIN_SIZE + length);
+  unsigned long n_words = FRAME_EXTENSION_MIN_SIZE + length;
   GC_CHECK (n_words);
-  {
-    SCHEME_OBJECT extension = (make_vector ((n_words - 1), SHARP_F, 0));
-    SET_FRAME_EXTENSION_PARENT_FRAME
-      (extension, (GET_PROCEDURE_ENVIRONMENT (procedure)));
-    SET_FRAME_EXTENSION_PROCEDURE (extension, procedure);
-    SET_FRAME_EXTENSION_LENGTH (extension, 0);
-    (*extension_ret) = extension;
-    return (PRIM_DONE);
-  }
+  SCHEME_OBJECT extension = make_vector (n_words - 1, SHARP_F, false);
+  set_frame_extension_parent (extension, proc_environment (procedure));
+  set_frame_extension_proc (extension, procedure);
+  set_frame_extension_length (extension, 0);
+  *extension_ret = extension;
+  return PRIM_DONE;
 }
 
 long
@@ -594,7 +589,7 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
   if (source_kind == TRAP_UNBOUND)
     return (ERR_UNBOUND_VARIABLE);
 
-  target_cell = (scan_frame (target_environment, target_symbol, 1));
+  target_cell = scan_frame (target_environment, target_symbol, true);
   if (target_cell == source_cell)
     return (PRIM_DONE);
 
@@ -604,34 +599,31 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
   if ((target_cell != 0)
       && ((get_trap_kind (*target_cell)) == TRAP_COMPILER_CACHED))
     {
-      SCHEME_OBJECT target_cache = (GET_TRAP_CACHE (*target_cell));
+      SCHEME_OBJECT target_cache = (ptr_ref_trap_cache (*target_cell));
       if (source_kind == TRAP_COMPILER_CACHED)
 	{
-	  SCHEME_OBJECT source_cache = (GET_TRAP_CACHE (*source_cell));
+	  SCHEME_OBJECT source_cache = (ptr_ref_trap_cache (*source_cell));
 	  if (source_cache == target_cache)
 	    /* Already linked.  */
 	    return (PRIM_DONE);
 	  GC_CHECK
-	    (((count_references (GET_CACHE_OPERATOR_REFERENCES (target_cache)))
+	    ((count_references (cache_operator_refs (target_cache))
 	      * SPACE_PER_UUO_LINK)
-	     + (2 * SPACE_PER_CACHE));
-	  SET_CACHE_VALUE (target_cache, (GET_CACHE_VALUE (source_cache)));
+	     + (2 * CACHE_SIZE));
+	  set_cache_value (target_cache, (cache_value (source_cache)));
 #ifdef CC_SUPPORT_P
-	  move_all_references
-	    (source_cache, target_cache, CACHE_REFERENCES_LOOKUP);
-	  move_all_references
-	    (source_cache, target_cache, CACHE_REFERENCES_ASSIGNMENT);
-	  move_all_references
-	    (source_cache, target_cache, CACHE_REFERENCES_OPERATOR);
+	  move_all_references (source_cache, target_cache, LOOKUP_CACHE);
+	  move_all_references (source_cache, target_cache, ASSIGNMENT_CACHE);
+	  move_all_references (source_cache, target_cache, OPERATOR_CACHE);
 #endif
 	  update_clone (source_cache);
 	  update_clone (target_cache);
 
 	  /* Make sure both traps share the same cache: */
-	  SET_TRAP_CACHE ((*source_cell), target_cache);
+	  set_ptr_ref_trap_cache (*source_cell, target_cache);
 	}
       else
-	SET_CACHE_VALUE (target_cache, (*source_cell));
+	set_cache_value (target_cache, *source_cell);
       (*source_cell) = (*target_cell);
       return (PRIM_DONE);
     }
@@ -643,19 +635,19 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
 #ifdef CC_SUPPORT_P
 static void
 move_all_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT to_cache,
-		     unsigned int reference_kind)
+		     enum cache_ref_kind kind)
 {
-  SCHEME_OBJECT * pfrom = (GET_CACHE_REFERENCES (from_cache, reference_kind));
-  SCHEME_OBJECT * pto = (GET_CACHE_REFERENCES (to_cache, reference_kind));
+  SCHEME_OBJECT* pfrom = cache_kind_refs (from_cache, kind);
+  SCHEME_OBJECT* pto = cache_kind_refs (to_cache, kind);
 
   WALK_REFERENCES
     (pfrom,
      reference,
      {
        install_cache (to_cache,
-		      (GET_CACHE_REFERENCE_BLOCK (reference)),
-		      (GET_CACHE_REFERENCE_OFFSET (reference)),
-		      reference_kind);
+		      (cache_ref_block (reference)),
+		      (cache_ref_offset (reference)),
+		      kind);
      });
 
   while (PAIR_P (*pto))
@@ -688,8 +680,8 @@ unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 
     case TRAP_COMPILER_CACHED:
       {
-	SCHEME_OBJECT cache = (GET_TRAP_CACHE (*cell));
-	switch (get_trap_kind (GET_CACHE_VALUE (cache)))
+	SCHEME_OBJECT cache = (ptr_ref_trap_cache (*cell));
+	switch (get_trap_kind (cache_value (cache)))
 	  {
 	  case TRAP_UNBOUND:
 	    (*value_ret) = SHARP_F;
@@ -705,7 +697,7 @@ unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 	      }
 	    else
 	      {
-		SET_CACHE_VALUE (cache, UNBOUND_OBJECT);
+		set_cache_value (cache, UNBOUND_OBJECT);
 	      }
 	    (*value_ret) = SHARP_T;
 	    return (PRIM_DONE);
@@ -724,9 +716,9 @@ static long
 unbind_cached_variable (SCHEME_OBJECT * cell, SCHEME_OBJECT frame,
 			SCHEME_OBJECT symbol)
 {
-  SCHEME_OBJECT cache = (GET_TRAP_CACHE (*cell));
+  SCHEME_OBJECT cache = (ptr_ref_trap_cache (*cell));
   SCHEME_OBJECT * shadowed_cell
-    = (find_binding_cell ((GET_FRAME_PARENT (frame)), symbol, 0));
+    = (find_binding_cell (env_parent (frame), symbol, 0));
   GC_CHECK (update_cache_refs_space (cache, frame, symbol));
   unbind_variable_1 (cell, frame, symbol);
   return (update_cache_references (cache, shadowed_cell, frame, symbol));
@@ -736,10 +728,10 @@ static void
 unbind_variable_1 (SCHEME_OBJECT * cell,
 		   SCHEME_OBJECT frame, SCHEME_OBJECT symbol)
 {
-  if ((PROCEDURE_FRAME_P (frame)) && (EXTENDED_FRAME_P (frame)))
+  if (PROCEDURE_FRAME_P (frame) && extended_frame_p (frame))
     {
-      SCHEME_OBJECT * start = (GET_EXTENDED_FRAME_BINDINGS (frame));
-      unsigned long length = (GET_EXTENDED_FRAME_LENGTH (frame));
+      SCHEME_OBJECT * start = extended_frame_bindings (frame);
+      unsigned long length = extended_frame_length (frame);
       unsigned long index = 0;
       while (index < length)
 	{
@@ -747,7 +739,7 @@ unbind_variable_1 (SCHEME_OBJECT * cell,
 	    {
 	      if (index < (length - 1))
 		(start[index]) = (start [length - 1]);
-	      SET_EXTENDED_FRAME_LENGTH (frame, (length - 1));
+	      set_extended_frame_length (frame, length - 1);
 	      (start [length - 1]) = SHARP_F;
 	      return;
 	    }
@@ -768,7 +760,7 @@ compiler_cache_lookup (SCHEME_OBJECT name, SCHEME_OBJECT block,
   return
     (add_cache_reference ((cc_block_environment (block)),
 			  name, block, offset,
-			  CACHE_REFERENCES_LOOKUP));
+			  LOOKUP_CACHE));
 }
 
 long
@@ -778,7 +770,7 @@ compiler_cache_assignment (SCHEME_OBJECT name, SCHEME_OBJECT block,
   return
     (add_cache_reference ((cc_block_environment (block)),
 			  name, block, offset,
-			  CACHE_REFERENCES_ASSIGNMENT));
+			  ASSIGNMENT_CACHE));
 }
 
 long
@@ -788,7 +780,7 @@ compiler_cache_operator (SCHEME_OBJECT name, SCHEME_OBJECT block,
   return
     (add_cache_reference ((cc_block_environment (block)),
 			  name, block, offset,
-			  CACHE_REFERENCES_OPERATOR));
+			  OPERATOR_CACHE));
 }
 
 long
@@ -798,23 +790,23 @@ compiler_cache_global_operator (SCHEME_OBJECT name, SCHEME_OBJECT block,
   return
     (add_cache_reference (THE_GLOBAL_ENV,
 			  name, block, offset,
-			  CACHE_REFERENCES_OPERATOR));
+			  OPERATOR_CACHE));
 }
 
 SCHEME_OBJECT
 compiler_var_error (SCHEME_OBJECT cache, SCHEME_OBJECT block,
-		    unsigned int reference_kind)
+		    enum cache_ref_kind kind)
 {
   WALK_REFERENCES
-    ((GET_CACHE_REFERENCES (cache, reference_kind)),
+    (cache_kind_refs (cache, kind),
      reference,
      {
        /* If this reference is in the right block, return the symbol
 	  being referenced.  */
-       if ((GET_CACHE_REFERENCE_BLOCK (reference)) == block)
-	 return (PAIR_CAR (PAIR_CAR (*WR_palist)));
+       if (cache_ref_block (reference) == block)
+	 return PAIR_CAR (PAIR_CAR (*WR_palist));
      });
-  return (SHARP_F);
+  return SHARP_F;
 }
 
 long
@@ -859,15 +851,11 @@ long
 compiler_assignment_trap (SCHEME_OBJECT cache, SCHEME_OBJECT value,
 			  SCHEME_OBJECT * value_ret)
 {
-  return
-    (assign_variable_cache
-     ((((GET_CACHE_VALUE (cache)) == EXPENSIVE_OBJECT)
-       /* The cache is a clone.  Get the real cache object.  */
-       ? (GET_CACHE_CLONE (cache))
-       : cache),
-      value,
-      value_ret,
-      0));
+  return assign_variable_cache
+           (cache_clone_p (cache) ? cache_clone (cache) : cache,
+            value,
+            value_ret,
+            0);
 }
 
 long
@@ -888,7 +876,7 @@ compiler_operator_reference_trap (SCHEME_OBJECT cache,
      block.  Together, these specify the location where the variable
      cache is to be stored.
 
-   + reference_kind specifies the kind of reference that is being cached.
+   + kind specifies the kind of reference that is being cached.
 
    add_cache_reference creates a variable cache for the specified variable,
    if needed, and stores it in the location specified by (block,
@@ -920,10 +908,10 @@ compiler_operator_reference_trap (SCHEME_OBJECT cache,
 static long
 add_cache_reference (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		     SCHEME_OBJECT block, unsigned long offset,
-		     unsigned int reference_kind)
+		     enum cache_ref_kind kind)
 {
   SCHEME_OBJECT frame = 0;
-  SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, (&frame)));
+  SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, &frame));
   if (cell == 0)
     {
       /* There's no binding for the variable, and we don't have access
@@ -937,14 +925,13 @@ add_cache_reference (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
   /* This procedure must complete to keep the data structures
      consistent, so we do a GC check in advance to guarantee that all
      of the allocations will finish.  */
-  GC_CHECK ((2 * SPACE_PER_CACHE) + SPACE_PER_REFERENCE + SPACE_PER_UUO_LINK);
+  GC_CHECK ((2 * CACHE_SIZE) + SPACE_PER_REFERENCE + SPACE_PER_UUO_LINK);
   DIE_IF_ERROR (guarantee_cache (cell));
   {
-    SCHEME_OBJECT cache = (GET_TRAP_CACHE (*cell));
-    add_reference
-      ((GET_CACHE_REFERENCES (cache, reference_kind)), symbol, block, offset);
+    SCHEME_OBJECT cache = (ptr_ref_trap_cache (*cell));
+    add_reference (cache_kind_refs (cache, kind), symbol, block, offset);
     update_clone (cache);
-    install_cache (cache, block, offset, reference_kind);
+    install_cache (cache, block, offset, kind);
   }
   return (PRIM_DONE);
 }
@@ -962,11 +949,11 @@ add_reference (SCHEME_OBJECT * palist,
     {
       while (PREFS_COND (prefs))
 	{
-	  if ((GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (*prefs))) == GC_RECLAIMED)
+	  if (cache_ref_block (pair_car (*prefs)) == GC_RECLAIMED)
 	    {
 	      /* Reuse this pair.  */
-	      SET_CACHE_REFERENCE_BLOCK ((PAIR_CAR (*prefs)), block);
-	      SET_CACHE_REFERENCE_OFFSET ((PAIR_CAR (*prefs)), offset);
+	      set_cache_ref_block (pair_car (*prefs), block);
+	      set_cache_ref_offset (pair_car (*prefs), offset);
 	      return;
 	    }
 	  PREFS_FOOTER (prefs);
@@ -989,24 +976,24 @@ add_reference (SCHEME_OBJECT * palist,
 
 static void
 install_cache (SCHEME_OBJECT cache, SCHEME_OBJECT block, unsigned long offset,
-	       unsigned int reference_kind)
+	       enum cache_ref_kind kind)
 {
-  switch (reference_kind)
+  switch (kind)
     {
-    case CACHE_REFERENCES_LOOKUP:
+    case LOOKUP_CACHE:
       write_variable_cache (cache, block, offset);
       break;
 
-    case CACHE_REFERENCES_ASSIGNMENT:
+    case ASSIGNMENT_CACHE:
       write_variable_cache
-	((((GET_CACHE_CLONE (cache)) != SHARP_F)
-	  ? (GET_CACHE_CLONE (cache))
-	  : cache),
+	((cache_clone (cache) != SHARP_F)
+	 ? cache_clone (cache)
+	 : cache,
 	 block,
 	 offset);
       break;
 
-    case CACHE_REFERENCES_OPERATOR:
+    case OPERATOR_CACHE:
       install_operator_cache (cache, block, offset);
       break;
 
@@ -1020,7 +1007,7 @@ static void
 install_operator_cache (SCHEME_OBJECT cache,
 			SCHEME_OBJECT block, unsigned long offset)
 {
-  SCHEME_OBJECT value = (GET_CACHE_VALUE (cache));
+  SCHEME_OBJECT value = cache_value (cache);
   DIE_IF_ERROR (make_uuo_link (value, cache, block, offset));
 }
 
@@ -1032,14 +1019,13 @@ update_cache_refs_space (SCHEME_OBJECT from_cache, SCHEME_OBJECT environment,
 {
 #ifdef CC_SUPPORT_P
   return
-    ((update_cache_refs_space_1
-      (from_cache, CACHE_REFERENCES_LOOKUP, environment, symbol))
-     + (update_cache_refs_space_1
-	(from_cache, CACHE_REFERENCES_ASSIGNMENT, environment, symbol))
-     + (update_cache_refs_space_1
-	(from_cache, CACHE_REFERENCES_OPERATOR, environment, symbol)));
+    update_cache_refs_space_1 (from_cache, LOOKUP_CACHE, environment, symbol)
+    + update_cache_refs_space_1
+	(from_cache, ASSIGNMENT_CACHE, environment, symbol)
+    + update_cache_refs_space_1
+	(from_cache, OPERATOR_CACHE, environment, symbol);
 #else
-  return (0);
+  return 0;
 #endif
 }
 
@@ -1047,17 +1033,17 @@ update_cache_refs_space (SCHEME_OBJECT from_cache, SCHEME_OBJECT environment,
    cache refs from one cache to another.  */
 
 static unsigned long
-update_cache_refs_space_1 (SCHEME_OBJECT from_cache, unsigned int kind,
+update_cache_refs_space_1 (SCHEME_OBJECT from_cache, enum cache_ref_kind kind,
 			   SCHEME_OBJECT environment, SCHEME_OBJECT symbol)
 {
-  SCHEME_OBJECT * from_palist = (GET_CACHE_REFERENCES (from_cache, kind));
+  SCHEME_OBJECT * from_palist = cache_kind_refs (from_cache, kind);
   unsigned long n_refs = (ref_pairs_to_move (from_palist, environment, symbol));
   unsigned long result = 0;
   if (n_refs > 0)
     {
       /* Space for new cache and new alist entry, if needed.  */
-      result += (SPACE_PER_CACHE + 4);
-      if (kind == CACHE_REFERENCES_OPERATOR)
+      result += (CACHE_SIZE + 4);
+      if (kind == OPERATOR_CACHE)
 	/* space for new trampolines, if needed.  */
 	result += (n_refs * SPACE_PER_UUO_LINK);
     }
@@ -1072,17 +1058,14 @@ update_cache_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT * to_cell,
     {
       DIE_IF_ERROR (guarantee_cache (to_cell));
       {
-	SCHEME_OBJECT to_cache = (GET_TRAP_CACHE (*to_cell));
+	SCHEME_OBJECT to_cache = (ptr_ref_trap_cache (*to_cell));
 #ifdef CC_SUPPORT_P
 	move_ref_pairs
-	  (from_cache, to_cache, CACHE_REFERENCES_LOOKUP,
-	   environment, symbol);
+	  (from_cache, to_cache, LOOKUP_CACHE, environment, symbol);
 	move_ref_pairs
-	  (from_cache, to_cache, CACHE_REFERENCES_ASSIGNMENT,
-	   environment, symbol);
+	  (from_cache, to_cache, ASSIGNMENT_CACHE, environment, symbol);
 	move_ref_pairs
-	  (from_cache, to_cache, CACHE_REFERENCES_OPERATOR,
-	   environment, symbol);
+	  (from_cache, to_cache, OPERATOR_CACHE, environment, symbol);
 #endif
 	update_clone (to_cache);
       }
@@ -1090,12 +1073,9 @@ update_cache_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT * to_cell,
 #ifdef CC_SUPPORT_P
   else
     {
-      delete_ref_pairs
-	(from_cache, CACHE_REFERENCES_LOOKUP, environment, symbol);
-      delete_ref_pairs
-	(from_cache, CACHE_REFERENCES_ASSIGNMENT, environment, symbol);
-      delete_ref_pairs
-	(from_cache, CACHE_REFERENCES_OPERATOR, environment, symbol);
+      delete_ref_pairs (from_cache, LOOKUP_CACHE, environment, symbol);
+      delete_ref_pairs (from_cache, ASSIGNMENT_CACHE, environment, symbol);
+      delete_ref_pairs (from_cache, OPERATOR_CACHE, environment, symbol);
     }
 #endif
   update_clone (from_cache);
@@ -1125,7 +1105,7 @@ static void
 delete_ref_pairs (SCHEME_OBJECT from_cache, unsigned int kind,
 		  SCHEME_OBJECT environment, SCHEME_OBJECT symbol)
 {
-  SCHEME_OBJECT * from_palist = (GET_CACHE_REFERENCES (from_cache, kind));
+  SCHEME_OBJECT * from_palist = cache_kind_refs (from_cache, kind);
   SCHEME_OBJECT * from_prefs = (find_references_named (from_palist, symbol));
   if (from_prefs != 0)
     while (PREFS_COND (from_prefs))
@@ -1142,13 +1122,11 @@ delete_ref_pairs (SCHEME_OBJECT from_cache, unsigned int kind,
 
 static void
 move_ref_pairs (SCHEME_OBJECT from_cache, SCHEME_OBJECT to_cache,
-		unsigned int reference_kind, SCHEME_OBJECT environment,
+		enum cache_ref_kind kind, SCHEME_OBJECT environment,
 		SCHEME_OBJECT symbol)
 {
-  SCHEME_OBJECT * from_palist
-    = (GET_CACHE_REFERENCES (from_cache, reference_kind));
-  SCHEME_OBJECT * to_palist
-    = (GET_CACHE_REFERENCES (to_cache, reference_kind));
+  SCHEME_OBJECT * from_palist = cache_kind_refs (from_cache, kind);
+  SCHEME_OBJECT * to_palist = cache_kind_refs (to_cache, kind);
   SCHEME_OBJECT * from_prefs = (find_references_named (from_palist, symbol));
   SCHEME_OBJECT * to_prefs = (find_references_named (to_palist, symbol));
   if (from_prefs != 0)
@@ -1164,9 +1142,9 @@ move_ref_pairs (SCHEME_OBJECT from_cache, SCHEME_OBJECT to_cache,
 	    SET_PAIR_CDR (p, (*to_prefs));
 	    (*to_prefs) = p;
 	    install_cache (to_cache,
-			   (GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (p))),
-			   (GET_CACHE_REFERENCE_OFFSET (PAIR_CAR (p))),
-			   reference_kind);
+			   cache_ref_block (pair_car (p)),
+			   cache_ref_offset (pair_car (p)),
+			   kind);
 	    continue;
 	  }
 	PREFS_FOOTER (from_prefs);
@@ -1187,12 +1165,12 @@ move_ref_pair_p (SCHEME_OBJECT ref_pair, SCHEME_OBJECT ancestor)
 {
   SCHEME_OBJECT descendant
     = (cc_block_environment
-       (GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (ref_pair))));
+       (cache_ref_block (pair_car (ref_pair))));
   while (PROCEDURE_FRAME_P (descendant))
     {
       if (descendant == ancestor)
 	return (1);
-      descendant = (GET_FRAME_PARENT (descendant));
+      descendant = env_parent (descendant);
     }
   return (descendant == ancestor);
 }
@@ -1215,83 +1193,79 @@ find_binding_cell (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
   SCHEME_OBJECT frame = environment;
   while (1)
     {
-      SCHEME_OBJECT * cell = (scan_frame (frame, symbol, 0));
+      SCHEME_OBJECT* cell = scan_frame (frame, symbol, false);
       if ((cell != 0)
 	  /* This is safe because if 'frame' was the global frame then
 	     'cell' would be non-null.  Therefore 'frame' must be a
 	     procedure frame.  */
-	  || (!ENVIRONMENT_P (GET_FRAME_PARENT (frame))))
+	  || (!ENVIRONMENT_P (env_parent (frame))))
 	{
 	  if (frame_ret != 0)
 	    (*frame_ret) = frame;
 	  return (cell);
 	}
-      frame = (GET_FRAME_PARENT (frame));
+      frame = env_parent (frame);
     }
 }
 
 static SCHEME_OBJECT *
-scan_frame (SCHEME_OBJECT frame, SCHEME_OBJECT symbol, int find_unbound_p)
+scan_frame (SCHEME_OBJECT frame, SCHEME_OBJECT symbol, bool find_unbound_p)
 {
   if (PROCEDURE_FRAME_P (frame))
     {
-      if (EXTENDED_FRAME_P (frame))
+      if (extended_frame_p (frame))
 	{
 	  /* Search for a binding in the extension. */
-	  SCHEME_OBJECT * scan = (GET_EXTENDED_FRAME_BINDINGS (frame));
-	  SCHEME_OBJECT * end = (scan + (GET_EXTENDED_FRAME_LENGTH (frame)));
+	  SCHEME_OBJECT* scan = extended_frame_bindings (frame);
+	  SCHEME_OBJECT* end = scan + extended_frame_length (frame);
 	  while (scan < end)
 	    {
-	      if ((PAIR_CAR (*scan)) == symbol)
-		return (PAIR_CDR_LOC (*scan));
+	      if (pair_car (*scan) == symbol)
+		return pair_cdr_loc (*scan);
 	      scan += 1;
 	    }
 	  return
-	    (scan_procedure_bindings ((GET_EXTENDED_FRAME_PROCEDURE (frame)),
-				      frame, symbol, find_unbound_p));
+	    scan_procedure_bindings
+              (extended_frame_proc (frame), frame, symbol, find_unbound_p);
 	}
       return
-	(scan_procedure_bindings ((GET_FRAME_PROCEDURE (frame)),
-				  frame, symbol, find_unbound_p));
+	scan_procedure_bindings
+          (env_proc (frame), frame, symbol, find_unbound_p);
     }
   assert (GLOBAL_FRAME_P (frame));
-  return (SYMBOL_GLOBAL_VALUE_CELL (symbol));
+  return symbol_global_value_cell (symbol);
 }
 
-static SCHEME_OBJECT *
+static SCHEME_OBJECT*
 scan_procedure_bindings (SCHEME_OBJECT procedure, SCHEME_OBJECT frame,
-			 SCHEME_OBJECT symbol, int find_unbound_p)
+			 SCHEME_OBJECT name, bool find_unbound_p)
 {
-  SCHEME_OBJECT lambda = (GET_PROCEDURE_LAMBDA (procedure));
-  SCHEME_OBJECT * start = (GET_LAMBDA_PARAMETERS (lambda));
-  SCHEME_OBJECT * scan = start;
-  SCHEME_OBJECT * end = (scan + (GET_LAMBDA_N_PARAMETERS (lambda)));
+  SCHEME_OBJECT lambda = proc_lambda (procedure);
+  SCHEME_OBJECT* start = lambda_params (lambda);
+  SCHEME_OBJECT* end = start + lambda_n_params (lambda);
+  SCHEME_OBJECT* scan = start;
   while (scan < end)
     {
-      if ((*scan) == symbol)
+      if (*scan == name)
 	{
-	  SCHEME_OBJECT * cell = (GET_FRAME_ARG_CELL (frame, (scan - start)));
-	  if (find_unbound_p || ((*cell) != UNBOUND_OBJECT))
-	    return (cell);
+	  SCHEME_OBJECT* cell = env_vals (frame) + (scan - start);
+	  if (find_unbound_p || (*cell != UNBOUND_OBJECT))
+	    return cell;
 	}
       scan += 1;
     }
-  return (0);
+  return 0;
 }
 
 trap_kind_t
 get_trap_kind (SCHEME_OBJECT object)
 {
-  if (REFERENCE_TRAP_P (object))
-    {
-      unsigned long datum = (OBJECT_DATUM (object));
-      return
-	((datum <= TRAP_MAX_IMMEDIATE)
+  if (!REFERENCE_TRAP_P (object))
+    return NON_TRAP_KIND;
+  unsigned long datum = OBJECT_DATUM (object);
+  return (datum <= TRAP_MAX_IMMEDIATE)
 	 ? datum
-	 : (OBJECT_DATUM (GET_TRAP_TAG (object))));
-    }
-  else
-    return (NON_TRAP_KIND);
+	 : OBJECT_DATUM (ptr_ref_trap_tag (object));
 }
 
 static unsigned long
@@ -1321,82 +1295,63 @@ update_assignment_references (SCHEME_OBJECT cache)
 {
 #ifdef CC_SUPPORT_P
   SCHEME_OBJECT reference_cache
-    = (((GET_CACHE_CLONE (cache)) != SHARP_F)
-       ? (GET_CACHE_CLONE (cache))
-       : cache);
+    = (cache_clone (cache) != SHARP_F)
+      ? cache_clone (cache)
+      : cache;
   WALK_REFERENCES
-    ((GET_CACHE_ASSIGNMENT_REFERENCES (cache)),
+    (cache_assignment_refs (cache),
      reference,
      {
        write_variable_cache
 	 (reference_cache,
-	  (GET_CACHE_REFERENCE_BLOCK (reference)),
-	  (GET_CACHE_REFERENCE_OFFSET (reference)));
+	  cache_ref_block (reference),
+	  cache_ref_offset (reference));
      });
 #endif
 }
 
 static long
-guarantee_cache (SCHEME_OBJECT * cell)
+guarantee_cache (SCHEME_OBJECT* cell)
 {
-  SCHEME_OBJECT references;
-  SCHEME_OBJECT cache;
+  if (get_trap_kind (*cell) == TRAP_COMPILER_CACHED)
+    return PRIM_DONE;
 
-  if ((get_trap_kind (*cell)) == TRAP_COMPILER_CACHED)
-    return (PRIM_DONE);
-
-  GC_CHECK (3);
-  references = (MAKE_POINTER_OBJECT (CACHE_REFERENCES_TYPE, Free));
-  (*Free++) = EMPTY_LIST;
-  (*Free++) = EMPTY_LIST;
-  (*Free++) = EMPTY_LIST;
-
-  RETURN_IF_ERROR (make_cache ((*cell), SHARP_F, references, (&cache)));
-
-  GC_CHECK (2);
-  (*Free++) = (LONG_TO_UNSIGNED_FIXNUM (TRAP_COMPILER_CACHED));
-  (*Free++) = cache;
-  (*cell) = (MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, (Free - 2)));
-  return (PRIM_DONE);
+  GC_CHECK (PTR_REF_TRAP_SIZE + CACHE_SIZE + CACHE_REFS_SIZE);
+  *cell
+    = make_ptr_ref_trap (TRAP_COMPILER_CACHED,
+                         make_cache (*cell, SHARP_F, make_cache_refs ()));
+  return PRIM_DONE;
 }
 
 static void
 update_clone (SCHEME_OBJECT cache)
 {
-  if ((PAIR_P (* (GET_CACHE_ASSIGNMENT_REFERENCES (cache))))
-      && (PAIR_P (* (GET_CACHE_OPERATOR_REFERENCES (cache)))))
+  if (PAIR_P (*cache_assignment_refs (cache))
+      && PAIR_P (*cache_operator_refs (cache)))
     {
-      if ((GET_CACHE_CLONE (cache)) == SHARP_F)
+      if (cache_clone (cache) == SHARP_F)
 	{
 	  SCHEME_OBJECT clone;
-	  DIE_IF_ERROR
-	    (make_cache (EXPENSIVE_OBJECT,
-			 cache,
-			 (GET_CACHE_REFERENCES_OBJECT (cache)),
-			 (&clone)));
-	  SET_CACHE_CLONE (cache, clone);
+	  DIE_IF_ERROR (make_clone (cache, &clone));
+	  set_cache_clone (cache, clone);
 	  update_assignment_references (cache);
 	}
     }
   else
     {
-      if ((GET_CACHE_CLONE (cache)) != SHARP_F)
+      if (cache_clone (cache) != SHARP_F)
 	{
-	  SET_CACHE_CLONE (cache, SHARP_F);
+	  set_cache_clone (cache, SHARP_F);
 	  update_assignment_references (cache);
 	}
     }
 }
 
 static long
-make_cache (SCHEME_OBJECT value, SCHEME_OBJECT clone, SCHEME_OBJECT references,
-	    SCHEME_OBJECT * cache_ret)
+make_clone (SCHEME_OBJECT cache, SCHEME_OBJECT* cache_ret)
 {
-  GC_CHECK (3);
-  (*Free++) = value;
-  (*Free++) = clone;
-  (*Free++) = references;
-  (*cache_ret) = (MAKE_POINTER_OBJECT (CACHE_TYPE, (Free - 3)));
+  GC_CHECK (CACHE_SIZE);
+  *cache_ret = make_cache_clone (cache);
   return (PRIM_DONE);
 }
 

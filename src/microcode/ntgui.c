@@ -251,7 +251,7 @@ scheme_object_to_windows_object (SCHEME_OBJECT thing)
       return  integer_to_long (thing);
 
     if (STRING_P (thing))
-      return  (long) (STRING_POINTER (thing));
+      return  (long) (legacy_string_data (thing));
 
     if (thing==SHARP_F)
       return  0;
@@ -260,7 +260,7 @@ scheme_object_to_windows_object (SCHEME_OBJECT thing)
 
     if (OBJECT_TYPE (thing) == TC_VECTOR_1B ||
         OBJECT_TYPE (thing) == TC_VECTOR_16B)
-      return  (long) VECTOR_LOC (thing, 0);
+      return  (long) vector_loc (thing, 0);
 
     return  (long)thing;
 }
@@ -443,8 +443,8 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
 
     CHECK_ARG (1, STRING_P);
     CHECK_ARG (2, STRING_P);
-    class_name = (STRING_POINTER (ARG_REF (1)));
-    window_name = (STRING_POINTER (ARG_REF (2)));
+    class_name = (legacy_string_data (ARG_REF (1)));
+    window_name = (legacy_string_data (ARG_REF (2)));
     style = integer_to_ulong (ARG_REF (3));
     x = (int) arg_ulong_default (4, ((unsigned long) CW_USEDEFAULT));
     y = (int) arg_ulong_default (5, ((unsigned long) CW_USEDEFAULT));
@@ -528,7 +528,7 @@ DEFINE_PRIMITIVE ("NT:GET-MODULE-HANDLE", Prim_get_module_handle, 1, 1,
     PRIMITIVE_HEADER (1);
 
     CHECK_ARG (1, STRING_P);
-    it = GetModuleHandle (STRING_POINTER (ARG_REF (1)));
+    it = GetModuleHandle (legacy_string_data (ARG_REF (1)));
     PRIMITIVE_RETURN (long_to_integer ((long) it));
 }
 
@@ -540,7 +540,7 @@ DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
     PRIMITIVE_HEADER (1);
 
     CHECK_ARG (1, STRING_P);
-    it = LoadLibrary ((LPSTR) (STRING_POINTER (ARG_REF (1))));
+    it = LoadLibrary ((LPSTR) (legacy_string_data (ARG_REF (1))));
     PRIMITIVE_RETURN (long_to_integer ((long) it));
 }
 
@@ -570,7 +570,7 @@ DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
     module   = (HMODULE) arg_integer (1);
     function = ARG_REF (2);
     if (STRING_P (function))
-      function_name = (STRING_POINTER (function));
+      function_name = (legacy_string_data (function));
     else
       function_name = (LPSTR) arg_integer (2);
 
@@ -594,7 +594,7 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
     wParam  = arg_integer (3);
     thing = ARG_REF (4);
     if (STRING_P (thing))
-      lParam = (LPARAM) (STRING_POINTER (thing));
+      lParam = (LPARAM) (legacy_string_data (thing));
     else
       lParam = arg_integer (4);
 
@@ -680,7 +680,7 @@ DEFINE_PRIMITIVE ("INT32-OFFSET-REF", Prim_int32_offset_ref, 2, 2,
       long *base;
       int  offset;
       CHECK_ARG (1, STRING_P);
-      base = (long*) (STRING_POINTER (ARG_REF (1)));
+      base = (long*) (legacy_string_data (ARG_REF (1)));
       offset  = arg_integer (2);
       PRIMITIVE_RETURN ( long_to_integer(* (long*) (((char*)base)+offset) ) );
     }
@@ -696,7 +696,7 @@ DEFINE_PRIMITIVE ("INT32-OFFSET-SET!", Prim_int32_offset_set, 3, 3,
       int  offset;
       long value;
       CHECK_ARG (1, STRING_P);
-      base   = (long*) (STRING_POINTER (ARG_REF (1)));
+      base   = (long*) (legacy_string_data (ARG_REF (1)));
       offset = arg_integer (2);
       value  = scheme_object_to_windows_object (ARG_REF (3));
       * (long*) (((char*)base)+offset)  =  value;
@@ -713,7 +713,7 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-REF", Prim_uint32_offset_ref, 2, 2,
       unsigned long *base;
       int  offset;
       CHECK_ARG (1, STRING_P);
-      base = (unsigned long*) (STRING_POINTER (ARG_REF (1)));
+      base = (unsigned long*) (legacy_string_data (ARG_REF (1)));
       offset  = arg_integer (2);
       PRIMITIVE_RETURN
 	(ulong_to_integer(* (unsigned long*) (((char*)base)+offset)));
@@ -730,7 +730,7 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-SET!", Prim_uint32_offset_set, 3, 3,
       int  offset;
       unsigned long value;
       CHECK_ARG (1, STRING_P);
-      base   = (unsigned long*) (STRING_POINTER (ARG_REF (1)));
+      base   = (unsigned long*) (legacy_string_data (ARG_REF (1)));
       offset = arg_integer (2);
       value  = scheme_object_to_windows_object (ARG_REF (3));
       * (unsigned long*) (((char*)base)+offset)  =  value;
@@ -876,7 +876,7 @@ Returns #f if there are no events in the queue.")
   WRITE_UNSIGNED ((unsigned long) (event -> handle));			\
 }
 
-#define WRITE_RESULT(object) VECTOR_SET (result, (index++), (object))
+#define WRITE_RESULT(object) vector_set (result, (index++), (object))
 #define WRITE_UNSIGNED(n) WRITE_RESULT (ulong_to_integer (n))
 #define WRITE_SIGNED(n) WRITE_RESULT (long_to_integer (n))
 #define WRITE_FLAG(n) WRITE_RESULT (((n) == 0) ? SHARP_F : SHARP_T)
@@ -1009,9 +1009,9 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-WRITE-SUBSTRING!", Prim_win32_screen_write_subst
     if (!screen)
       error_bad_range_arg (1);
     CHECK_ARG (4, STRING_P);
-    if (start > STRING_LENGTH (ARG_REF (4)))
+    if (start > legacy_string_length (ARG_REF (4)))
       error_bad_range_arg (5);
-    if (end > STRING_LENGTH (ARG_REF (4)))
+    if (end > legacy_string_length (ARG_REF (4)))
       error_bad_range_arg (6);
     Screen_SetAttributeDirect (screen, (SCREEN_ATTRIBUTE) arg_integer (7));
     WriteScreenBlock_NoInvalidRect (screen,

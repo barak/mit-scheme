@@ -37,18 +37,18 @@ extern int re_max_failures;
 
 #define RE_CHAR_SET_P(object)						\
   ((STRING_P (object)) &&						\
-   ((STRING_LENGTH (object)) == (MAX_ASCII / ASCII_LENGTH)))
+   ((legacy_string_length (object)) == (MAX_ASCII / ASCII_LENGTH)))
 
 #define CHAR_SET_P(argument)						\
-  ((STRING_P (argument)) && ((STRING_LENGTH (argument)) == MAX_ASCII))
+  ((STRING_P (argument)) && ((legacy_string_length (argument)) == MAX_ASCII))
 
 #define CHAR_TRANSLATION_P(argument)					\
-  ((STRING_P (argument)) && ((STRING_LENGTH (argument)) == MAX_ASCII))
+  ((STRING_P (argument)) && ((legacy_string_length (argument)) == MAX_ASCII))
 
 #define RE_REGISTERS_P(object)						\
   (((object) == SHARP_F) ||						\
    ((VECTOR_P (object)) &&						\
-    ((VECTOR_LENGTH (object)) == (RE_NREGS + RE_NREGS))))
+    ((vector_length (object)) == (RE_NREGS + RE_NREGS))))
 
 #define RE_MATCH_RESULTS(result, vector) do				\
 {									\
@@ -62,14 +62,14 @@ extern int re_max_failures;
 	  for (i = 0; (i < RE_NREGS); i += 1)				\
 	    {								\
 	      index = ((registers . start) [i]);			\
-	      VECTOR_SET						\
+	      vector_set						\
 		(vector,						\
 		 i,							\
 		 ((index == -1)						\
 		  ? SHARP_F						\
 		  : (long_to_integer (index))));			\
 	      index = ((registers . end) [i]);				\
-	      VECTOR_SET						\
+	      vector_set						\
 		(vector,						\
 		 (i + RE_NREGS),					\
 		 ((index == -1)						\
@@ -95,7 +95,7 @@ DEFINE_PRIMITIVE ("RE-CHAR-SET-ADJOIN!", Prim_re_char_set_adjoin, 2, 2, 0)
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, RE_CHAR_SET_P);
   ascii = (arg_ascii_integer (2));
-  (* (STRING_LOC ((ARG_REF (1)), (ascii / ASCII_LENGTH)))) |=
+  (* (legacy_string_loc ((ARG_REF (1)), (ascii / ASCII_LENGTH)))) |=
     (1 << (ascii % ASCII_LENGTH));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -112,11 +112,11 @@ DEFINE_PRIMITIVE ("RE-COMPILE-FASTMAP", Prim_re_compile_fastmap, 4, 4, 0)
   CHECK_ARG (4, CHAR_SET_P);
   can_be_null =
     (re_compile_fastmap
-     ((STRING_LOC (pattern, 0)),
-      (STRING_LOC (pattern, (STRING_LENGTH (pattern)))),
-      (STRING_LOC ((ARG_REF (2)), 0)),
+     ((legacy_string_loc (pattern, 0)),
+      (legacy_string_loc (pattern, (legacy_string_length (pattern)))),
+      (legacy_string_loc ((ARG_REF (2)), 0)),
       (ARG_REF (3)),
-      (STRING_LOC ((ARG_REF (4)), 0))));
+      (legacy_string_loc ((ARG_REF (4)), 0))));
   if (can_be_null >= 0)
     PRIMITIVE_RETURN (long_to_integer (can_be_null));
   else if (can_be_null == (-2))
@@ -152,17 +152,17 @@ DEFINE_PRIMITIVE ("RE-COMPILE-FASTMAP", Prim_re_compile_fastmap, 4, 4, 0)
   CHECK_ARG (5, STRING_P);						\
   match_start = (arg_nonnegative_integer (6));				\
   match_end = (arg_nonnegative_integer (7));				\
-  text = (STRING_LOC ((ARG_REF (5)), 0));				\
-  text_end = (STRING_LENGTH (ARG_REF (5)));				\
+  text = (legacy_string_loc ((ARG_REF (5)), 0));				\
+  text_end = (legacy_string_length (ARG_REF (5)));				\
   if (match_end > text_end) error_bad_range_arg (7);			\
   if (match_start > match_end) error_bad_range_arg (6);			\
   re_max_failures = 20000;						\
   re_buffer_initialize							\
-    ((& buffer), (STRING_LOC ((ARG_REF (2)), 0)), (ARG_REF (3)),	\
+    ((& buffer), (legacy_string_loc ((ARG_REF (2)), 0)), (ARG_REF (3)),	\
      text, 0, text_end, text_end, text_end);				\
   result =								\
-    (procedure ((STRING_LOC (regexp, 0)),				\
-		(STRING_LOC (regexp, (STRING_LENGTH (regexp)))),	\
+    (procedure ((legacy_string_loc (regexp, 0)),				\
+		(legacy_string_loc (regexp, (legacy_string_length (regexp)))),	\
 		(& buffer),						\
 		(((ARG_REF (4)) == SHARP_F) ? NULL : (& registers)),	\
 		(& (text [match_start])),				\
@@ -214,11 +214,11 @@ DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-BACKWARD", Prim_re_search_substr_backward
   if (match_start < text_start) error_bad_range_arg (6);		\
   re_max_failures = 20000;						\
   re_buffer_initialize							\
-    ((& buffer), (STRING_LOC ((ARG_REF (2)), 0)), (ARG_REF (3)),	\
+    ((& buffer), (legacy_string_loc ((ARG_REF (2)), 0)), (ARG_REF (3)),	\
      text, text_start, text_end, gap_start, (GROUP_GAP_END (group)));	\
   result =								\
-    (procedure ((STRING_LOC (regexp, 0)),				\
-		(STRING_LOC (regexp, (STRING_LENGTH (regexp)))),	\
+    (procedure ((legacy_string_loc (regexp, 0)),				\
+		(legacy_string_loc (regexp, (legacy_string_length (regexp)))),	\
 		(& buffer),						\
 		(((ARG_REF (4)) == SHARP_F) ? NULL : (& registers)),	\
 		(& (text [match_start])),				\

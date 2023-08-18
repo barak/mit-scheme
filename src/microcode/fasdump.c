@@ -525,16 +525,12 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
   Primitive_GC_If_Needed (5);
   initialize_fasl_header (true, true);
   {
-    SCHEME_OBJECT comb;
-    SCHEME_OBJECT root;
+    SCHEME_OBJECT comb = MAKE_POINTER_OBJECT (TC_COMBINATION, to);
+    *to++ = make_vector_header (2);
+    *to++ = ARG_REF (1);
+    *to++ = SHARP_F;
 
-    comb = (MAKE_POINTER_OBJECT (TC_COMBINATION, to));
-    (to[COMB_VECTOR_HEADER]) = MAKE_OBJECT(TC_MANIFEST_VECTOR, 2);
-    (to[COMB_FN_SLOT]) = (ARG_REF (1));
-    (to[COMB_ARG_1_SLOT]) = SHARP_F;
-    to += 3;
-
-    root = (MAKE_POINTER_OBJECT (TC_LIST, to));
+    SCHEME_OBJECT root = (MAKE_POINTER_OBJECT (TC_LIST, to));
     (*to++) = comb;
     (*to++) = compiler_utilities;
 

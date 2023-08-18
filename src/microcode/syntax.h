@@ -98,9 +98,9 @@ enum syntaxcode			/* The possible syntax codes. */
 extern unsigned char syntax_spec_code [0x80];
 
 #define SYNTAX_TABLE_P(argument)					\
-  ((VECTOR_P (argument)) && ((VECTOR_LENGTH (argument)) == 0x100))
+  ((VECTOR_P (argument)) && ((vector_length (argument)) == 0x100))
 
 #define SYNTAX_TABLE_TYPE SCHEME_OBJECT
 
 #define SYNTAX_TABLE_REF(table, index)					\
-  (VECTOR_REF ((table), ((index) & 0xFF)))
+  (vector_ref ((table), ((index) & 0xFF)))

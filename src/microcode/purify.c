@@ -71,7 +71,7 @@ PURE? is ignored.")
  Pushed ();
 
   RENAME_CRITICAL_SECTION ("purify daemon");
-  daemon = (VECTOR_REF (fixed_objects, GC_DAEMON));
+  daemon = (vector_ref (fixed_objects, GC_DAEMON));
   if (daemon != SHARP_F)
     {
      Will_Push (2);

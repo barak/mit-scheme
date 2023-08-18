@@ -141,9 +141,6 @@ static SCHEME_OBJECT ephemeron_list = SHARP_F;
 static SCHEME_OBJECT ephemeron_queue = SHARP_F;
 static bool scanning_ephemerons_p = false;
 
-extern SCHEME_OBJECT ephemeron_array;
-extern unsigned long ephemeron_count;
-
 static void queue_ephemerons_for_key (SCHEME_OBJECT *);
 static SCHEME_OBJECT gc_transport_weak_pair (SCHEME_OBJECT);
 static SCHEME_OBJECT gc_transport_ephemeron (SCHEME_OBJECT);
@@ -449,7 +446,7 @@ DEFINE_GC_TUPLE_HANDLER (gc_tuple)
     new_address = GC_TRANSPORT_WORDS (from, n_words, false);
     /* A little hack to localize lists.  Transport CDRs eagerly. */
     if (n_words == 2) {
-      SCHEME_OBJECT cdr = READ_TOSPACE(new_address + CONS_CDR);
+      SCHEME_OBJECT cdr = READ_TOSPACE (new_address + CONS_CDR);
       while (OBJECT_TYPE(cdr) == TC_LIST &&
              (GC_PRECHECK_FROM(OBJECT_ADDRESS(cdr)) == 0)) {
         cdr = READ_TOSPACE(GC_TRANSPORT_WORDS(OBJECT_ADDRESS(cdr), 2, false) +
@@ -891,8 +888,8 @@ static void
 queue_ephemerons_for_key (SCHEME_OBJECT * addr)
 {
   SCHEME_OBJECT ht = ephemeron_array;
-  unsigned long index = (((unsigned long) addr) % (VECTOR_LENGTH (ht)));
-  SCHEME_OBJECT * entry_loc = (VECTOR_LOC (ht, index));
+  unsigned long index = (((unsigned long) addr) % (vector_length (ht)));
+  SCHEME_OBJECT * entry_loc = (vector_loc (ht, index));
   SCHEME_OBJECT entry;
 
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
@@ -972,9 +969,9 @@ gc_transport_ephemeron (SCHEME_OBJECT old_ephemeron)
   WRITE_TOSPACE (new_addr, UNMARKED_EPHEMERON_MANIFEST);
 
   /* Map its key back to it.  */
-  index = (((unsigned long) old_key_addr) % (VECTOR_LENGTH (ht)));
-  WRITE_TOSPACE ((new_addr + EPHEMERON_NEXT), (VECTOR_REF (ht, index)));
-  VECTOR_SET (ht, index, new_ephemeron);
+  index = (((unsigned long) old_key_addr) % (vector_length (ht)));
+  WRITE_TOSPACE ((new_addr + EPHEMERON_NEXT), (vector_ref (ht, index)));
+  vector_set (ht, index, new_ephemeron);
 
   /* Link it up in the ephemeron list.  */
   WRITE_TOSPACE ((new_addr + EPHEMERON_LIST), ephemeron_list);
@@ -1236,12 +1233,12 @@ initialize_gc_object_references (void)
 	  (TC_MANIFEST_NM_VECTOR,
 	   (OBJECT_DATUM (MEMORY_REF (gc_object_references, 0))))));
       gc_object_references_count = 0;
-      gc_object_references_scan = (VECTOR_LOC (gc_object_references, 1));
+      gc_object_references_scan = (vector_loc (gc_object_references, 1));
       gc_object_references_end
-	= (VECTOR_LOC (gc_object_references,
-		       (VECTOR_LENGTH (gc_object_references))));
+	= (vector_loc (gc_object_references,
+		       (vector_length (gc_object_references))));
       /* Wipe the table.  */
-      VECTOR_SET (gc_object_references, 0, FIXNUM_ZERO);
+      vector_set (gc_object_references, 0, FIXNUM_ZERO);
       {
 	SCHEME_OBJECT * scan = gc_object_references_scan;
 	while (scan < gc_object_references_end)
@@ -1263,14 +1260,14 @@ finalize_gc_object_references (void)
 	  SCHEME_OBJECT * to_addr
 	    = (NEWSPACE_TO_TOSPACE (OBJECT_ADDRESS (header)));
 	  SCHEME_OBJECT * scan_to = to_addr;
-	  SCHEME_OBJECT * scan_from = (VECTOR_LOC (gc_object_references, 0));
+	  SCHEME_OBJECT * scan_from = (vector_loc (gc_object_references, 0));
 
 	  /* Change back to marked vector.  */
 	  (*scan_to++)
 	    = (MAKE_OBJECT (TC_MANIFEST_VECTOR, (OBJECT_DATUM (*to_addr))));
 
 	  /* Store the count in the table.  */
-	  VECTOR_SET (gc_object_references, 0,
+	  vector_set (gc_object_references, 0,
 		      (ULONG_TO_FIXNUM (gc_object_references_count)));
 
 	  /* Make sure tospace copy is up to date.  */

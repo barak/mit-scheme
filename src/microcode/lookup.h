@@ -30,6 +30,7 @@ USA.
 #ifndef SCM_LOOKUP_H
 #define SCM_LOOKUP_H
 
+#include "sdata.h"
 #include "trap.h"
 
 extern long lookup_variable
@@ -63,7 +64,7 @@ extern long compiler_cache_global_operator
   (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
 
 extern SCHEME_OBJECT compiler_var_error
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned int);
+  (SCHEME_OBJECT, SCHEME_OBJECT, enum cache_ref_kind);
 
 extern long compiler_lookup_trap
   (SCHEME_OBJECT, SCHEME_OBJECT *);

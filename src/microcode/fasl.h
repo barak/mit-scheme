@@ -34,6 +34,7 @@ USA.
 #define SCM_FASL_H 1
 
 #include "object.h"
+#include "sdata.h"
 #include "cmpint.h"
 
 #if (SIZEOF_UNSIGNED_LONG == 4)

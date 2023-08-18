@@ -65,24 +65,24 @@ DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
   PRIMITIVE_HEADER (2);							\
   {									\
     SCHEME_OBJECT vec = (VECTOR_ARG (1));				\
-    unsigned int len = (VECTOR_LENGTH (vec));				\
+    unsigned int len = (vector_length (vec));				\
     struct time_structure ts;						\
     if (! (len >= 10))							\
       error_bad_range_arg (1);						\
     proc (((time_t) (arg_index_integer_to_intmax (2, TIME_T_MAX))), &ts); \
-    VECTOR_SET (vec, 1, (ulong_to_integer (ts . second)));		\
-    VECTOR_SET (vec, 2, (ulong_to_integer (ts . minute)));		\
-    VECTOR_SET (vec, 3, (ulong_to_integer (ts . hour)));		\
-    VECTOR_SET (vec, 4, (ulong_to_integer (ts . day)));			\
-    VECTOR_SET (vec, 5, (ulong_to_integer (ts . month)));		\
-    VECTOR_SET (vec, 6, (ulong_to_integer (ts . year)));		\
-    VECTOR_SET (vec, 7, (ulong_to_integer (ts . day_of_week)));		\
-    VECTOR_SET								\
+    vector_set (vec, 1, (ulong_to_integer (ts . second)));		\
+    vector_set (vec, 2, (ulong_to_integer (ts . minute)));		\
+    vector_set (vec, 3, (ulong_to_integer (ts . hour)));		\
+    vector_set (vec, 4, (ulong_to_integer (ts . day)));			\
+    vector_set (vec, 5, (ulong_to_integer (ts . month)));		\
+    vector_set (vec, 6, (ulong_to_integer (ts . year)));		\
+    vector_set (vec, 7, (ulong_to_integer (ts . day_of_week)));		\
+    vector_set								\
       (vec, 8,								\
        (((ts . daylight_savings_time) < 0)				\
 	? SHARP_F							\
 	: (long_to_integer (ts . daylight_savings_time))));		\
-    VECTOR_SET								\
+    vector_set								\
       (vec, 9,								\
        (((ts . time_zone) == INT_MAX)					\
 	? SHARP_F							\
@@ -112,25 +112,25 @@ DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
   PRIMITIVE_HEADER (1);
 
   vec = (VECTOR_ARG (1));
-  len = (VECTOR_LENGTH (vec));
+  len = (vector_length (vec));
   if (! (len >= 8))
     error_bad_range_arg (1);
-  (ts . second) = (integer_to_ulong (VECTOR_REF (vec, 1)));
-  (ts . minute) = (integer_to_ulong (VECTOR_REF (vec, 2)));
-  (ts . hour) = (integer_to_ulong (VECTOR_REF (vec, 3)));
-  (ts . day) = (integer_to_ulong (VECTOR_REF (vec, 4)));
-  (ts . month) = (integer_to_ulong (VECTOR_REF (vec, 5)));
-  (ts . year) = (integer_to_ulong (VECTOR_REF (vec, 6)));
-  (ts . day_of_week) = (integer_to_ulong (VECTOR_REF (vec, 7)));
+  (ts . second) = (integer_to_ulong (vector_ref (vec, 1)));
+  (ts . minute) = (integer_to_ulong (vector_ref (vec, 2)));
+  (ts . hour) = (integer_to_ulong (vector_ref (vec, 3)));
+  (ts . day) = (integer_to_ulong (vector_ref (vec, 4)));
+  (ts . month) = (integer_to_ulong (vector_ref (vec, 5)));
+  (ts . year) = (integer_to_ulong (vector_ref (vec, 6)));
+  (ts . day_of_week) = (integer_to_ulong (vector_ref (vec, 7)));
   (ts . daylight_savings_time)
-    = (((len > 8) && (INTEGER_P (VECTOR_REF (vec, 8))))
-       ? (integer_to_long (VECTOR_REF (vec, 8)))
+    = (((len > 8) && (INTEGER_P (vector_ref (vec, 8))))
+       ? (integer_to_long (vector_ref (vec, 8)))
        : (-1));
   (ts . time_zone)
     = (((len > 9)
-	&& (INTEGER_P (VECTOR_REF (vec, 9)))
-	&& (integer_to_long_p (VECTOR_REF (vec, 9))))
-       ? (integer_to_long (VECTOR_REF (vec, 9)))
+	&& (INTEGER_P (vector_ref (vec, 9)))
+	&& (integer_to_long_p (vector_ref (vec, 9))))
+       ? (integer_to_long (vector_ref (vec, 9)))
        : INT_MAX);
   PRIMITIVE_RETURN (intmax_to_integer (OS_encode_time (&ts)));
 }

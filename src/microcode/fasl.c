@@ -360,7 +360,7 @@ faslhdr_utilities_end (fasl_header_t * h)
   if (((__FASLHDR_UTILITIES_END (h)) == 0)
       && (VECTOR_P (FASLHDR_UTILITIES_VECTOR (h))))
     (__FASLHDR_UTILITIES_END (h))
-      = (VECTOR_LOC ((FASLHDR_UTILITIES_VECTOR (h)),
-		     (VECTOR_LENGTH (FASLHDR_UTILITIES_VECTOR (h)))));
+      = (vector_loc ((FASLHDR_UTILITIES_VECTOR (h)),
+		     (vector_length (FASLHDR_UTILITIES_VECTOR (h)))));
   return (__FASLHDR_UTILITIES_END (h));
 }

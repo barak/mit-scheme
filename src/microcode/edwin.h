@@ -31,18 +31,18 @@ USA.
 #define GROUP_P VECTOR_P
 
 #define GROUP_TEXT(group, len_r)					\
-  (string_to_char_pointer ((VECTOR_REF ((group), 1)), (len_r)))
+  (string_to_char_pointer ((vector_ref ((group), 1)), (len_r)))
 
 #define GROUP_TEXT_LOC(group, offset) ((GROUP_TEXT ((group), 0)) + (offset))
-#define GROUP_GAP_START(group) (FIXNUM_TO_ULONG (VECTOR_REF ((group), 2)))
-#define GROUP_GAP_LENGTH(group) (FIXNUM_TO_ULONG (VECTOR_REF ((group), 3)))
-#define GROUP_GAP_END(group) (FIXNUM_TO_ULONG (VECTOR_REF ((group), 4)))
+#define GROUP_GAP_START(group) (FIXNUM_TO_ULONG (vector_ref ((group), 2)))
+#define GROUP_GAP_LENGTH(group) (FIXNUM_TO_ULONG (vector_ref ((group), 3)))
+#define GROUP_GAP_END(group) (FIXNUM_TO_ULONG (vector_ref ((group), 4)))
 
-#define GROUP_START_MARK(group) (VECTOR_REF ((group), 6))
-#define GROUP_END_MARK(group) (VECTOR_REF ((group), 7))
-#define GROUP_MODIFIED_P(group) (VECTOR_REF ((group), 16))
+#define GROUP_START_MARK(group) (vector_ref ((group), 6))
+#define GROUP_END_MARK(group) (vector_ref ((group), 7))
+#define GROUP_MODIFIED_P(group) (vector_ref ((group), 16))
 
 #define MARK_P RECORD_P
-#define MARK_GROUP(mark) (VECTOR_REF ((mark), 1))
-#define MARK_INDEX(mark) (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF ((mark), 2)))
-#define MARK_LEFT_INSERTING(mark) ((VECTOR_REF ((mark), 3)) != SHARP_F)
+#define MARK_GROUP(mark) (vector_ref ((mark), 1))
+#define MARK_INDEX(mark) (UNSIGNED_FIXNUM_TO_LONG (vector_ref ((mark), 2)))
+#define MARK_LEFT_INSERTING(mark) ((vector_ref ((mark), 3)) != SHARP_F)

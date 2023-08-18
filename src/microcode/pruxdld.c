@@ -122,9 +122,9 @@ dld_load (const char * path)
   if (handle == 0)
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
-      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
-      VECTOR_SET (v, 1, (char_pointer_to_string ("dlopen")));
-      VECTOR_SET (v, 2, (char_pointer_to_string (dlerror ())));
+      vector_set (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
+      vector_set (v, 1, (char_pointer_to_string ("dlopen")));
+      vector_set (v, 2, (char_pointer_to_string (dlerror ())));
       error_with_argument (v);
     }
   if (n_loaded_handles == loaded_handles_size)
@@ -165,9 +165,9 @@ dld_unload (void * handle)
   if ((dlclose (handle)) != 0)
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
-      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
-      VECTOR_SET (v, 1, (char_pointer_to_string ("dlclose")));
-      VECTOR_SET (v, 2, (char_pointer_to_string (dlerror ())));
+      vector_set (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
+      vector_set (v, 1, (char_pointer_to_string ("dlclose")));
+      vector_set (v, 2, (char_pointer_to_string (dlerror ())));
       error_with_argument (v);
     }
   {
@@ -216,9 +216,9 @@ dld_lookup (void * handle, const char * symbol)
   if (error_string != 0)
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
-      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
-      VECTOR_SET (v, 1, (char_pointer_to_string ("dlsym")));
-      VECTOR_SET (v, 2, (char_pointer_to_string (error_string)));
+      vector_set (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
+      vector_set (v, 1, (char_pointer_to_string ("dlsym")));
+      vector_set (v, 2, (char_pointer_to_string (error_string)));
       error_with_argument (v);
     }
   return (address);

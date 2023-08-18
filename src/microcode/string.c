@@ -34,10 +34,10 @@ USA.
 bool
 string_p (SCHEME_OBJECT object)
 {
-  return ((LEGACY_STRING_P (object))
-          || (BYTEVECTOR_P (object))
-          || ((UNICODE_STRING_P (object))
-	      && ((UNICODE_STRING_BYTES_PER_CP (object)) == 1)));
+  return LEGACY_STRING_P (object)
+         || BYTEVECTOR_P (object)
+         || (UNICODE_STRING_P (object)
+	     && ustring_bytes_per_cp (object) == 1);
 }
 
 SCHEME_OBJECT
@@ -45,9 +45,9 @@ allocate_string (unsigned long nbytes)
 {
   SCHEME_OBJECT result
     = (allocate_non_marked_vector (TC_CHARACTER_STRING,
-				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
+				   (legacy_string_length_to_gc_length (nbytes)),
 				   true));
-  SET_STRING_LENGTH (result, nbytes);
+  set_legacy_string_length (result, nbytes);
   return (result);
 }
 
@@ -56,9 +56,9 @@ allocate_string_no_gc (unsigned long nbytes)
 {
   SCHEME_OBJECT result
     = (allocate_non_marked_vector (TC_CHARACTER_STRING,
-				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
+				   (legacy_string_length_to_gc_length (nbytes)),
 				   false));
-  SET_STRING_LENGTH (result, nbytes);
+  set_legacy_string_length (result, nbytes);
   return (result);
 }
 
@@ -66,7 +66,7 @@ SCHEME_OBJECT
 memory_to_string (unsigned long n_bytes, const void * vp)
 {
   SCHEME_OBJECT result = (allocate_string (n_bytes));
-  memcpy ((STRING_POINTER (result)), vp, n_bytes);
+  memcpy ((legacy_string_data (result)), vp, n_bytes);
   return (result);
 }
 
@@ -74,7 +74,7 @@ SCHEME_OBJECT
 memory_to_string_no_gc (unsigned long n_bytes, const void * vp)
 {
   SCHEME_OBJECT result = (allocate_string_no_gc (n_bytes));
-  memcpy ((STRING_POINTER (result)), vp, n_bytes);
+  memcpy ((legacy_string_data (result)), vp, n_bytes);
   return (result);
 }
 
@@ -100,8 +100,8 @@ unsigned char *
 string_to_char_pointer (SCHEME_OBJECT string, unsigned long * lp)
 {
   if (lp != 0)
-    (*lp) = (STRING_LENGTH (string));
-  return (STRING_LOC (string, 0));
+    (*lp) = (legacy_string_length (string));
+  return (legacy_string_loc (string, 0));
 }
 
 /* Currently the strings used in symbols have type codes in the length
@@ -123,7 +123,7 @@ DEFINE_PRIMITIVE ("STRING-LENGTH", Prim_string_length, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, STRING_P);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (STRING_LENGTH (ARG_REF (1))));
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (legacy_string_length (ARG_REF (1))));
 }
 
 DEFINE_PRIMITIVE ("STRING-MAXIMUM-LENGTH", Prim_string_maximum_length, 1, 1, 0)
@@ -131,7 +131,7 @@ DEFINE_PRIMITIVE ("STRING-MAXIMUM-LENGTH", Prim_string_maximum_length, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, STRING_P);
   PRIMITIVE_RETURN
-    (LONG_TO_UNSIGNED_FIXNUM (MAXIMUM_STRING_LENGTH (ARG_REF (1))));
+    (LONG_TO_UNSIGNED_FIXNUM (legacy_string_max_length (ARG_REF (1))));
 }
 
 DEFINE_PRIMITIVE ("SET-STRING-LENGTH!", Prim_set_string_length, 2, 2, 0)
@@ -140,9 +140,9 @@ DEFINE_PRIMITIVE ("SET-STRING-LENGTH!", Prim_set_string_length, 2, 2, 0)
   CHECK_ARG (1, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (1));
-    SET_STRING_LENGTH
+    set_legacy_string_length
       (string,
-       (arg_index_integer (2, ((MAXIMUM_STRING_LENGTH (string)) + 1))));
+       (arg_index_integer (2, ((legacy_string_max_length (string)) + 1))));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -154,14 +154,10 @@ DEFINE_PRIMITIVE ("SET-STRING-MAXIMUM-LENGTH!", Prim_set_string_maximum_length, 
   {
     SCHEME_OBJECT string = (ARG_REF (1));
     long length
-      = (arg_index_integer (2, ((MAXIMUM_STRING_LENGTH (string)) + 1)));
-    if (length < (STRING_LENGTH (string)))
-      SET_STRING_LENGTH (string, length);
-    MEMORY_SET
-      (string,
-       BYTEVECTOR_HEADER,
-       (MAKE_OBJECT
-	(TC_MANIFEST_NM_VECTOR, ((BYTES_TO_WORDS (length + 1)) + 1))));
+      = (arg_index_integer (2, ((legacy_string_max_length (string)) + 1)));
+    if (length < (legacy_string_length (string)))
+      set_legacy_string_length (string, length);
+    set_legacy_string_max_length (string, length);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -174,8 +170,8 @@ DEFINE_PRIMITIVE ("SET-STRING-MAXIMUM-LENGTH!", Prim_set_string_maximum_length, 
     SCHEME_OBJECT string = (ARG_REF (1));				\
     PRIMITIVE_RETURN							\
       (process_result							\
-       (STRING_REF							\
-	(string, (arg_index_integer (2, (STRING_LENGTH (string)))))));	\
+       (legacy_string_ref							\
+	(string, (arg_index_integer (2, (legacy_string_length (string)))))));	\
   }									\
 }
 
@@ -191,9 +187,9 @@ DEFINE_PRIMITIVE ("VECTOR-8B-REF", Prim_vec_8b_ref, 2, 2, 0)
   CHECK_ARG (1, STRING_P);						\
   {									\
     SCHEME_OBJECT string = (ARG_REF (1));				\
-    STRING_SET								\
+    legacy_string_set								\
       (string,								\
-       (arg_index_integer (2, (STRING_LENGTH (string)))),		\
+       (arg_index_integer (2, (legacy_string_length (string)))),		\
        ((unsigned char) (get_ascii (3))));				\
   }									\
   PRIMITIVE_RETURN (UNSPECIFIC);					\
@@ -254,12 +250,12 @@ DEFINE_PRIMITIVE ("SUBSTRING-MOVE-LEFT!", Prim_substring_move_left, 5, 5, 0)
   string = (ARG_REF (1));						\
   start = (arg_nonnegative_integer (2));				\
   end = (arg_nonnegative_integer (3));					\
-  if (end > (STRING_LENGTH (string)))					\
+  if (end > (legacy_string_length (string)))					\
     error_bad_range_arg (3);						\
   if (start > end)							\
     error_bad_range_arg (2);						\
   length = (end - start);						\
-  scan = (STRING_LOC (string, start));					\
+  scan = (legacy_string_loc (string, start));					\
   while ((length--) > 0)						\
     {									\
       temp = (*scan);							\
@@ -355,12 +351,12 @@ DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR-CI", Prim_vec_8b_find_prev_char_
   start = (arg_nonnegative_integer (2));				\
   end = (arg_nonnegative_integer (3));					\
   CHECK_ARG (4, STRING_P);						\
-  char_set = (STRING_LOC ((ARG_REF (4)), 0));				\
+  char_set = (legacy_string_loc ((ARG_REF (4)), 0));				\
   if (end > length)							\
     error_bad_range_arg (3);						\
   if (start > end)							\
     error_bad_range_arg (2);						\
-  if ((STRING_LENGTH (ARG_REF (4))) != MAX_ASCII)			\
+  if ((legacy_string_length (ARG_REF (4))) != MAX_ASCII)			\
     error_bad_range_arg (4)
 
 DEFINE_PRIMITIVE ("SUBSTRING-FIND-NEXT-CHAR-IN-SET", Prim_find_next_char_in_set, 4, 4, 0)
@@ -390,18 +386,18 @@ DEFINE_PRIMITIVE ("SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET", Prim_find_prev_char_in_
   unsigned char *string1_start, *string2_start;			\
   PRIMITIVE_HEADER (6);						\
   CHECK_ARG (1, STRING_P);					\
-  string1_start = (STRING_LOC ((ARG_REF (1)), 0));		\
+  string1_start = (legacy_string_loc ((ARG_REF (1)), 0));		\
   start1 = (arg_nonnegative_integer (2));			\
   end1 = (arg_nonnegative_integer (3));				\
   CHECK_ARG (4, STRING_P);					\
-  string2_start = (STRING_LOC ((ARG_REF (4)), 0));		\
+  string2_start = (legacy_string_loc ((ARG_REF (4)), 0));		\
   start2 = (arg_nonnegative_integer (5));			\
   end2 = (arg_nonnegative_integer (6));				\
-  if (end1 > (STRING_LENGTH (ARG_REF (1))))			\
+  if (end1 > (legacy_string_length (ARG_REF (1))))			\
     error_bad_range_arg (3);					\
   if (start1 > end1)						\
     error_bad_range_arg (2);					\
-  if (end2 > (STRING_LENGTH (ARG_REF (4))))			\
+  if (end2 > (legacy_string_length (ARG_REF (4))))			\
     error_bad_range_arg (6);					\
   if (start2 > end2)						\
     error_bad_range_arg (5)
@@ -646,8 +642,8 @@ arg_extended_string (unsigned int n, unsigned long * lp)
   if (STRING_P (object))
     {
       if (lp != 0)
-	(*lp) = (STRING_LENGTH (object));
-      return ((unsigned char *) (STRING_POINTER (object)));
+	(*lp) = (legacy_string_length (object));
+      return ((unsigned char *) (legacy_string_data (object)));
     }
   else if ((INTEGER_P (object)) && (integer_to_ulong_p (object)))
     {

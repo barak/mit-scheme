@@ -51,9 +51,9 @@ compiled_entry_filename (SCHEME_OBJECT entry)
   SCHEME_OBJECT result = (compiled_entry_debug_filename (entry));
   return
     ((STRING_P (result))
-     ? (STRING_POINTER (result))
+     ? (legacy_string_data (result))
      : (PAIR_P (result))
-     ? (STRING_POINTER (PAIR_CAR (result)))
+     ? (legacy_string_data (PAIR_CAR (result)))
      : "**** filename not known ****");
 }
 
@@ -85,52 +85,39 @@ compiled_block_debug_filename (SCHEME_OBJECT block)
 #endif /* CC_SUPPORT_P */
 
 void
-Show_Env (SCHEME_OBJECT The_Env)
+Show_Env (SCHEME_OBJECT env)
 {
-  SCHEME_OBJECT *name_ptr, procedure, *value_ptr, extension;
-  long count, i;
-
-  procedure = MEMORY_REF (The_Env, ENVIRONMENT_FUNCTION);
-  value_ptr = MEMORY_LOC (The_Env, ENVIRONMENT_FIRST_ARG);
-
-  if (FRAME_EXTENSION_P (procedure))
-  {
-    extension = procedure;
-    procedure = MEMORY_REF (extension, ENV_EXTENSION_PROCEDURE);
-  }
-  else
-    extension = SHARP_F;
-
-  if ((OBJECT_TYPE (procedure) != TC_PROCEDURE) &&
-      (OBJECT_TYPE (procedure) != TC_EXTENDED_PROCEDURE))
-  {
-    outf_error ("Not created by a procedure");
-    return;
-  }
-  name_ptr = MEMORY_LOC (procedure, PROCEDURE_LAMBDA_EXPR);
-  name_ptr = MEMORY_LOC (*name_ptr, LAMBDA_FORMALS);
-  count = VECTOR_LENGTH (*name_ptr) - 1;
-
-  name_ptr = MEMORY_LOC (*name_ptr, 2);
-  for (i = 0; i < count; i++)
-  {
-    Print_Expression (*name_ptr++, "Name ");
-    Print_Expression (*value_ptr++, " Value ");
-    outf_error ("\n");
-  }
-  if (extension != SHARP_F)
-  {
-    outf_error ("Auxiliary Variables\n");
-    count = (GET_FRAME_EXTENSION_LENGTH (extension));
-    for (i = 0, name_ptr = (GET_FRAME_EXTENSION_BINDINGS (extension));
-	 i < count;
-	 i++, name_ptr++)
+  SCHEME_OBJECT proc
+    = extended_frame_p (env) ? extended_frame_proc (env) : env_proc (env);
+  if (! (OBJECT_TYPE (proc) == TC_PROCEDURE
+         || OBJECT_TYPE (proc) == TC_EXTENDED_PROCEDURE))
     {
-      Print_Expression ((PAIR_CAR (*name_ptr)), "Name ");
-      Print_Expression ((PAIR_CDR (*name_ptr)), " Value ");
+      outf_error ("Not created by a procedure\n");
+      return;
+    }
+  SCHEME_OBJECT lambda = proc_lambda (proc);
+  SCHEME_OBJECT* params = lambda_params (lambda);
+  SCHEME_OBJECT* end_params = params + lambda_n_params (lambda);
+  SCHEME_OBJECT* vals = env_vals (env);
+  while (params < end_params)
+    {
+      Print_Expression (*params++, "Name ");
+      Print_Expression (*vals++, " Value ");
       outf_error ("\n");
     }
-  }
+  if (extended_frame_p (env))
+    {
+      outf_error ("Auxiliary Variables\n");
+      SCHEME_OBJECT* bindings = extended_frame_bindings (env);
+      SCHEME_OBJECT* end_bindings = bindings + extended_frame_length (env);
+      while (bindings < end_bindings)
+        {
+          Print_Expression (pair_car (*bindings), "Name ");
+          Print_Expression (pair_cdr (*bindings), " Value ");
+          outf_error ("\n");
+          bindings += 1;
+        }
+    }
 }
 
 static void
@@ -167,13 +154,13 @@ static void
 print_vector (outf_channel stream, SCHEME_OBJECT vector)
 {
   outf (stream, "#(");
-  unsigned long length = (VECTOR_LENGTH (vector));
+  unsigned long length = (vector_length (vector));
   unsigned long end = ((length < MAX_LIST_PRINT) ? length : MAX_LIST_PRINT);
   for (unsigned long i = 0; i < end; i++)
     {
       if (i > 0)
 	outf (stream, " ");
-      print_object (stream, (VECTOR_REF (vector, i)));
+      print_object (stream, (vector_ref (vector, i)));
     }
   if (end < length)
     outf (stream, "...[%ld more]", (length - end));
@@ -184,13 +171,13 @@ static void
 print_bytevector (outf_channel stream, SCHEME_OBJECT vector)
 {
   outf (stream, "#u8(");
-  unsigned long length = (BYTEVECTOR_LENGTH (vector));
+  unsigned long length = bytevector_length (vector);
   unsigned long end = ((length < 20) ? length : 20);
   for (unsigned long i = 0; i < end; i++)
     {
       if (i > 0)
 	outf (stream, " ");
-      outf (stream, "%d", (BYTEVECTOR_REF (vector, i)));
+      outf (stream, "%d", bytevector_ref (vector, i));
     }
   if (end < length)
     outf (stream, "...[%ld more]", (length - end));
@@ -224,7 +211,7 @@ Print_Return (const char * String)
 static void
 print_simple (outf_channel stream, SCHEME_OBJECT object)
 {
-  unsigned int type = (OBJECT_TYPE (object));
+  unsigned int type = OBJECT_TYPE (object);
   const char * name = 0;
   if (type < TYPE_CODE_LIMIT)
     name = (type_names[type]);
@@ -265,16 +252,16 @@ print_char (outf_channel stream, unsigned int cp)
 }
 
 static void
-print_string (outf_channel stream, SCHEME_OBJECT string)
+print_legacy_string (outf_channel stream, SCHEME_OBJECT string)
 {
   long length, long_enough;
   long i;
   char * next;
 
   outf (stream, "\"");
-  length = (STRING_LENGTH (string));
+  length = (legacy_string_length (string));
   long_enough = (length < 100 ? length : 90);
-  next = (STRING_POINTER (string));
+  next = (legacy_string_data (string));
   for (i = 0; (i < long_enough); i += 1)
     print_char (stream, *next++);
   if (length != long_enough)
@@ -285,33 +272,24 @@ print_string (outf_channel stream, SCHEME_OBJECT string)
 static void
 print_ustring (outf_channel stream, SCHEME_OBJECT string)
 {
-  unsigned long length = (STRING_LENGTH (string));
-  unsigned long long_enough = (length < 100 ? length : 90);
-  unsigned char * next = (STRING_LOC (string, 0));
-  unsigned char cp_size
-    = ((OBJECT_TYPE (MEMORY_REF (string, BYTEVECTOR_LENGTH_INDEX))) & 0x03);
-  if (cp_size == 0)
-    {
-      print_simple (stream, string);
-      return;
-    }
-
+  unsigned long length = ustring_length (string);
+  unsigned long long_enough = (length < 100) ? length : 90;
+  uint8_t* next = ustring_data (string);
+  uint8_t bytes_per_cp = ustring_bytes_per_cp (string);
   outf (stream, "\"");
-  for (unsigned long i = 0; (i < long_enough); i += 1)
+  for (unsigned long i = 0; i < long_enough; i += 1)
     {
-      unsigned int cp;
-      switch (cp_size) {
+      unsigned int cp = (unsigned int) *next++;
+      switch (bytes_per_cp) {
       case 1:
-	cp = *next++;
 	break;
       case 2:
-	cp = *next++;
-	cp |= (*next++ << 8);
+	cp |= (((unsigned int) *next++) << 8);
 	break;
+      case 0:
       case 3:
-	cp = *next++;
-	cp |= (*next++ << 8);
-	cp |= (*next++ << 16);
+	cp |= (((unsigned int) *next++) << 8);
+	cp |= (((unsigned int) *next++) << 16);
 	break;
       }
       print_char (stream, cp);
@@ -330,10 +308,10 @@ print_symbol (outf_channel stream, SCHEME_OBJECT symbol)
   unsigned long i;
   char * next;
 
-  string = (MEMORY_REF (symbol, SYMBOL_NAME));
-  length = (STRING_LENGTH (string));
+  string = symbol_name (symbol);
+  length = (legacy_string_length (string));
   limit = ((length > 64) ? 64 : length);
-  next = (STRING_POINTER (string));
+  next = (legacy_string_data (string));
   for (i = 0; (i < limit); i += 1)
     {
       int c = (*next++);
@@ -355,8 +333,8 @@ print_filename (outf_channel stream, SCHEME_OBJECT filename)
   char * end;
   char * slash;
 
-  length = (STRING_LENGTH (filename));
-  scan = (STRING_POINTER (filename));
+  length = (legacy_string_length (filename));
+  scan = (legacy_string_data (filename));
   end = (scan + length);
   slash = scan;
   while (scan < end)
@@ -377,18 +355,17 @@ DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
 }
 
 static void
-print_expression (outf_channel stream,
-		  SCHEME_OBJECT expression, const char * string)
+print_expression (outf_channel stream, SCHEME_OBJECT expr, const char* prefix)
 {
-  if ((string [0]) != 0)
-    outf (stream, "%s: ", string);
-  print_object (stream, expression);
+  if ((prefix [0]) != 0)
+    outf (stream, "%s: ", prefix);
+  print_object (stream, expr);
 }
 
 void
-Print_Expression (SCHEME_OBJECT expression, const char * string)
+Print_Expression (SCHEME_OBJECT expr, const char * prefix)
 {
-  print_expression (ERROR_OUTPUT, expression, string);
+  print_expression (ERROR_OUTPUT, expr, prefix);
 }
 
 static void
@@ -497,62 +474,48 @@ anonymous_procedure_name_p (SCHEME_OBJECT name)
 static void
 print_lambda (outf_channel stream, SCHEME_OBJECT lambda)
 {
-  SCHEME_OBJECT names = (GET_LAMBDA_FORMALS (lambda));
-  unsigned n_names = (VECTOR_LENGTH (names));
-
-  SCHEME_OBJECT name = (VECTOR_REF (names, 0));
-  bool anon = anonymous_procedure_name_p (name);
-  if (n_names == 1)
+  SCHEME_OBJECT names = lambda_names (lambda);
+  SCHEME_OBJECT* scan = vector_loc (names, 0);
+  SCHEME_OBJECT* end = vector_loc (names, vector_length (names));
+  SCHEME_OBJECT lambda_name = *scan++;
+  if (anonymous_procedure_name_p (lambda_name))
     {
-      if (anon)
-        outf (stream, "[lambda () ");
-      else
-        {
-          outf (stream, "[named-lambda (");
-          print_symbol (stream, name);
-          outf (stream, ")");
-        }
+      outf (stream, "[lambda (");
+      if (scan < end)
+        print_symbol (stream, *scan++);
     }
   else
     {
-      if (anon)
-        outf (stream, "[lambda (");
-      else
-        {
-          outf (stream, "[named-lambda (");
-          print_symbol (stream, name);
-          outf (stream, " ");
-        }
-      for (unsigned i = 1; i < n_names; i++)
-        {
-          if (i > 1)
-            outf (stream, " ");
-          print_symbol (stream, (VECTOR_REF (names, i)));
-        }
-      outf (stream, ")");
+      outf (stream, "[named-lambda (");
+      print_symbol (stream, lambda_name);
     }
-  outf (stream, " %#lx]", (OBJECT_DATUM (lambda)));
+  while (scan < end)
+    {
+      outf (stream, " ");
+      print_symbol (stream, *scan++);
+    }
+  outf (stream, ") %#lx]", OBJECT_DATUM (lambda));
 }
 
 static void
-print_extended_lambda (outf_channel stream, SCHEME_OBJECT elambda)
+print_extended_lambda (outf_channel stream, SCHEME_OBJECT lambda)
 {
-  SCHEME_OBJECT names = (ELAMBDA_NAMES (elambda));
-  unsigned n_req = (ELAMBDA_REQS (elambda));
-  unsigned n_opt = (ELAMBDA_OPTS (elambda));
-  unsigned n_rest = (ELAMBDA_REST (elambda));
-  unsigned n_names = (n_req + n_opt + n_rest);
-  unsigned n_params = (n_names - 1);
+  SCHEME_OBJECT names = elambda_names (lambda);
+  SCHEME_OBJECT* scan = vector_loc (names, 0);
+  SCHEME_OBJECT lambda_name = *scan++;
+  bool anon = anonymous_procedure_name_p (lambda_name);
 
-  SCHEME_OBJECT name = (VECTOR_REF (names, 0));
-  bool anon = anonymous_procedure_name_p (name);
-  if (anon && (n_params == n_rest))
+  SCHEME_OBJECT* end_reqs = scan + elambda_reqs (lambda);
+  SCHEME_OBJECT* end_opts = end_reqs + elambda_opts (lambda);
+  SCHEME_OBJECT* end_rest = end_opts + elambda_rest (lambda);
+
+  if (anon && scan == end_opts)
     {
       outf (stream, "[lambda ");
-      if (n_rest == 0)
+      if (end_opts == end_rest)
         outf (stream, "()");
       else
-        print_symbol (stream, (VECTOR_REF (names, 1)));
+        print_symbol (stream, *scan);
     }
   else
     {
@@ -561,31 +524,29 @@ print_extended_lambda (outf_channel stream, SCHEME_OBJECT elambda)
       else
         {
           outf (stream, "[named-lambda (");
-          print_symbol (stream, name);
+          print_symbol (stream, lambda_name);
           outf (stream, " ");
         }
-
-      unsigned end_req = (1 + n_req);
-      unsigned end_opt = (end_req + n_opt);
-      for (unsigned i = 1; i < n_names; i++)
+      SCHEME_OBJECT* first = scan;
+      while (scan < end_rest)
         {
-          if (i > 1)
+          if (scan > first)
             outf (stream, " ");
-          if (i == end_req && n_opt > 0)
-            outf (stream, "%s ", (constant_string (OPTIONAL_MARKER)));
-          else if (i == end_opt && n_rest > 0)
+          if (scan == end_reqs && scan < end_opts)
+            outf (stream, "%s ", constant_string (OPTIONAL_MARKER));
+          else if (scan == end_opts && scan < end_rest)
             outf (stream, ". ");
-          print_symbol (stream, (VECTOR_REF (names, i)));
+          print_symbol (stream, *scan++);
         }
       outf (stream, ")");
     }
-  outf (stream, " %#lx]", (OBJECT_DATUM (elambda)));
+  outf (stream, " %#lx]", OBJECT_DATUM (lambda));
 }
 
 static void
 print_object (outf_channel stream, SCHEME_OBJECT obj)
 {
-  const char* s = (constant_string (obj));
+  const char* s = constant_string (obj);
   if (s != 0)
     {
       outf (stream, "%s", s);
@@ -596,8 +557,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       outf (stream, "[return-to-interpreter]");
       return;
     }
-
-  else if (obj == reflect_to_interface)
+  if (obj == reflect_to_interface)
     {
       outf (stream, "[reflect-to-interface]");
       return;
@@ -607,24 +567,24 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
     {
     case TC_ACCESS:
       outf (stream, "[access ");
-      print_symbol (stream, (MEMORY_REF (obj, ACCESS_NAME)));
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_symbol (stream, access_name (obj));
+      outf (stream, " %#lx]", OBJECT_DATUM (obj));
       return;
 
     case TC_ASSIGNMENT:
       outf (stream, "[set! ");
-      print_symbol (stream, (VARIABLE_SYMBOL (MEMORY_REF (obj, ASSIGN_NAME))));
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_symbol (stream, variable_name (assignment_name (obj)));
+      outf (stream, " %#lx]", OBJECT_DATUM (obj));
       return;
 
     case TC_DEFINITION:
       outf (stream, "[define ");
-      print_symbol (stream, (MEMORY_REF (obj, DEFINE_NAME)));
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_symbol (stream, definition_name (obj));
+      outf (stream, " %#lx]", OBJECT_DATUM (obj));
       return;
 
     case TC_CHARACTER_STRING:
-      print_string (stream, obj);
+      print_legacy_string (stream, obj);
       return;
 
     case TC_BYTEVECTOR:
@@ -636,11 +596,11 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
       return;
 
     case TC_FIXNUM:
-      outf (stream, "%ld", ((long) (FIXNUM_TO_LONG (obj))));
+      outf (stream, "%ld", FIXNUM_TO_LONG (obj));
       return;
 
     case TC_BIG_FLONUM:
-      outf (stream, "%lf", (FLONUM_TO_DOUBLE (obj)));
+      outf (stream, "%lf", FLONUM_TO_DOUBLE (obj));
       return;
 
     case TC_WEAK_CONS:
@@ -659,7 +619,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
     case TC_UNINTERNED_SYMBOL:
       outf (stream, "[uninterned ");
       print_symbol (stream, obj);
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      outf (stream, " %#lx]", OBJECT_DATUM (obj));
       return;
 
     case TC_INTERNED_SYMBOL:
@@ -668,29 +628,26 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_VARIABLE:
       outf (stream, "[variable ");
-      print_symbol (stream, (VARIABLE_SYMBOL (obj)));
-      if (VARIABLE_SAFE_P (obj))
+      print_symbol (stream, variable_name (obj));
+      if (variable_safe_p (obj))
         outf (stream, " (safe)");
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      outf (stream, " %#lx]", OBJECT_DATUM (obj));
       return;
 
     case TC_COMBINATION:
       outf (stream, "[combination ");
-      print_object (stream, (MEMORY_REF (obj, COMB_FN_SLOT)));
-      outf (stream, " ... (%ld args)", (VECTOR_LENGTH (obj)) - 1);
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_object (stream, combination_expr (obj, 0));
+      outf (stream, " ... (%ld args)", combination_size (obj) - 1);
+      outf (stream, " %#lx]", OBJECT_DATUM (obj));
       return;
 
     case TC_ENVIRONMENT:
       outf (stream, "[environment from ");
-      {
-	SCHEME_OBJECT procedure;
-	procedure = (MEMORY_REF (obj, ENVIRONMENT_FUNCTION));
-	if ((OBJECT_TYPE (procedure)) == TC_QUAD)
-	  procedure = (MEMORY_REF (procedure, ENV_EXTENSION_PROCEDURE));
-	print_object (stream, procedure);
-      }
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_object (stream,
+                    extended_frame_p (obj)
+                    ? extended_frame_proc (obj)
+                    : env_proc (obj));
+      outf (stream, " %#lx]", OBJECT_DATUM (obj));
       return;
 
     case TC_EXTENDED_LAMBDA:
@@ -699,8 +656,8 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_EXTENDED_PROCEDURE:
       outf (stream, "[extended-procedure ");
-      print_object (stream, (MEMORY_REF (obj, PROCEDURE_LAMBDA_EXPR)));
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_object (stream, proc_lambda (obj));
+      outf (stream, " %#lx]", OBJECT_DATUM (obj));
       return;
 
     case TC_LAMBDA:
@@ -715,19 +672,19 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_PROCEDURE:
       outf (stream, "[procedure ");
-      print_object (stream, (MEMORY_REF (obj, PROCEDURE_LAMBDA_EXPR)));
-      outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+      print_object (stream, proc_lambda (obj));
+      outf (stream, " %#lx]", OBJECT_DATUM (obj));
       return;
 
     case TC_REFERENCE_TRAP:
-      if ((OBJECT_DATUM (obj)) <= TRAP_MAX_IMMEDIATE)
+      if (OBJECT_DATUM (obj) <= TRAP_MAX_IMMEDIATE)
 	print_simple (stream, obj);
       else
 	{
 	  outf (stream, "[reference-trap");
-	  print_expression (stream, (MEMORY_REF (obj, TRAP_TAG)), " tag");
-	  print_expression (stream, (MEMORY_REF (obj, TRAP_EXTRA)), " extra");
-	  outf (stream, " %#lx]", (OBJECT_DATUM (obj)));
+	  print_expression (stream, ptr_ref_trap_tag (obj), " tag");
+	  print_expression (stream, ptr_ref_trap_cache (obj), " cache");
+	  outf (stream, " %#lx]", OBJECT_DATUM (obj));
 	}
       return;
 
@@ -743,7 +700,7 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_CHARACTER:
       {
-        unsigned long code = (OBJECT_DATUM (obj));
+        unsigned long code = OBJECT_DATUM (obj);
         const char* name;
         switch (code)
           {
@@ -797,22 +754,20 @@ Print (SCHEME_OBJECT Expr)
 }
 
 static bool
-print_one_continuation_frame (outf_channel stream, SCHEME_OBJECT Temp)
+print_one_continuation_frame (outf_channel stream, SCHEME_OBJECT ret)
 {
-  SCHEME_OBJECT Expr;
-
   outf (stream, "\n    ");
-  print_expression (stream, Temp, "Return code");
+  print_expression (stream, ret, "Return code");
   outf (stream, "\n    ");
-  Expr = (STACK_POP ());
-  print_expression (stream, Expr, "Expression");
+  SCHEME_OBJECT expr = STACK_POP ();
+  print_expression (stream, expr, "Expression");
   outf (stream, "\n");
-  if (((OBJECT_DATUM (Temp)) == RC_END_OF_COMPUTATION)
-      || ((OBJECT_DATUM (Temp)) == RC_HALT))
-    return (true);
-  if ((OBJECT_DATUM (Temp)) == RC_JOIN_STACKLETS)
-    stack_pointer = (control_point_start (Expr));
-  return (false);
+  if (OBJECT_DATUM (ret) == RC_END_OF_COMPUTATION
+      || OBJECT_DATUM (ret) == RC_HALT)
+    return true;
+  if (OBJECT_DATUM (ret) == RC_JOIN_STACKLETS)
+    stack_pointer = control_point_start (expr);
+  return false;
 }
 
 extern bool Print_One_Continuation_Frame (SCHEME_OBJECT);

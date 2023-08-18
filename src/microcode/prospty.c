@@ -57,9 +57,9 @@ Returns a vector #(CHANNEL MASTER-NAME SLAVE-NAME).")
     OS_channel_close_on_abort (channel);
     {
       SCHEME_OBJECT vector = (allocate_marked_vector (TC_VECTOR, 3, 1));
-      VECTOR_SET (vector, 0, (long_to_integer (channel)));
-      VECTOR_SET (vector, 1, (char_pointer_to_string (master_name)));
-      VECTOR_SET (vector, 2, (char_pointer_to_string (slave_name)));
+      vector_set (vector, 0, (long_to_integer (channel)));
+      vector_set (vector, 1, (char_pointer_to_string (master_name)));
+      vector_set (vector, 2, (char_pointer_to_string (slave_name)));
       transaction_commit ();
       PRIMITIVE_RETURN (vector);
     }

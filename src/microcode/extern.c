@@ -197,7 +197,7 @@ whether the corresponding primitive is implemented or not.")
     }
   PRIMITIVE_RETURN
     (find_primitive
-     ((MEMORY_REF (name, SYMBOL_NAME)), intern_p, allow_p, arity));
+     (symbol_name (name), intern_p, allow_p, arity));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-OPEN-CODED?", Prim_primitive_procedure_open_coded, 1, 1,

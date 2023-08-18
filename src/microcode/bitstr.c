@@ -283,7 +283,7 @@ Returns true iff the two bit strings contain the same bits.")
     error_bad_range_arg (1);						\
   scan1 = (BIT_STRING_HIGH_PTR (bit_string_1));				\
   scan2 = (BIT_STRING_HIGH_PTR (bit_string_2));				\
-  for (i = ((VECTOR_LENGTH (bit_string_1)) - 1); (i > 0); i -= 1)	\
+  for (i = ((vector_length (bit_string_1)) - 1); (i > 0); i -= 1)	\
     (* (DEC_BIT_STRING_PTR (scan1))) action				\
       (* (DEC_BIT_STRING_PTR (scan2)));					\
   PRIMITIVE_RETURN (UNSPECIFIC);					\
@@ -695,7 +695,7 @@ This operation is the inverse of `unsigned-integer->bit-string'.")
     ((nbits > 0)
      ? ((* (DEC_BIT_STRING_PTR (scan))) & (LOW_MASK (nbits)))
      : (* (DEC_BIT_STRING_PTR (scan))));
-  for (nwords = ((VECTOR_LENGTH (bit_string)) - 1); (nwords > 0); nwords -= 1)
+  for (nwords = ((vector_length (bit_string)) - 1); (nwords > 0); nwords -= 1)
     {
       if (word != 0)
 	break;

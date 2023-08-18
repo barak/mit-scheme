@@ -396,7 +396,7 @@ DEFINE_PRIMITIVE ("CELL?", Prim_cell_p, 1, 1, 0)
 DEFINE_PRIMITIVE ("CELL-CONTENTS", Prim_cell_contents, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (MEMORY_REF ((CELL_ARG (1)), CELL_CONTENTS));
+  PRIMITIVE_RETURN (cell_contents (CELL_ARG (1)));
 }
 
 /* (SET-CELL-CONTENTS! CELL OBJECT)
@@ -405,12 +405,8 @@ DEFINE_PRIMITIVE ("CELL-CONTENTS", Prim_cell_contents, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("SET-CELL-CONTENTS!", Prim_set_cell_contents, 2, 2, 0)
 {
-  SCHEME_OBJECT cell;
-  SCHEME_OBJECT object;
   PRIMITIVE_HEADER (2);
-  cell = (CELL_ARG (1));
-  object = (ARG_REF (2));
-  MEMORY_SET (cell, CELL_CONTENTS, object);
+  set_cell_contents ((CELL_ARG (1)), (ARG_REF (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -443,7 +439,7 @@ DEFINE_PRIMITIVE ("primitive-memory-hash", Prim_primitive_memory_hash, 3, 3, 0)
   if (!((GC_TYPE_VECTOR (object))
 	&& ((OBJECT_TYPE (MEMORY_REF (object, 0))) == TC_MANIFEST_NM_VECTOR)))
     error_wrong_type_arg (1);
-  unsigned long nwords = (VECTOR_LENGTH (object));
+  unsigned long nwords = (vector_length (object));
   unsigned long start = (arg_ulong_integer (2));
   unsigned long end = (arg_ulong_integer (3));
 

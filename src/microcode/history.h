@@ -41,10 +41,10 @@ USA.
 #define RIB_NEXT_REDUCTION	2
 #define RIB_MARK		2
 
-#define HISTORY_MARK_TYPE (UNMARKED_HISTORY_TYPE ^ MARKED_HISTORY_TYPE)
+#define HISTORY_MARK_TYPE (TC_HISTORY_UNMARKED ^ TC_HISTORY_MARKED)
 #define HISTORY_MARK_MASK (((unsigned long) HISTORY_MARK_TYPE) << DATUM_LENGTH)
 
-#if ((UNMARKED_HISTORY_TYPE | HISTORY_MARK_TYPE) != MARKED_HISTORY_TYPE)
+#if ((TC_HISTORY_UNMARKED | HISTORY_MARK_TYPE) != TC_HISTORY_MARKED)
 #include "error: Bad history types in types.h and history.h"
 #endif
 
@@ -52,7 +52,7 @@ USA.
 #define HISTORY_UNMARK(object) (object) &=~ HISTORY_MARK_MASK
 #define HISTORY_MARKED_P(object) (((object) & HISTORY_MARK_MASK) != 0)
 
-#define READ_DUMMY_HISTORY() VECTOR_REF (fixed_objects, DUMMY_HISTORY)
+#define READ_DUMMY_HISTORY() vector_ref (fixed_objects, DUMMY_HISTORY)
 
 #define SAVE_HISTORY_LENGTH (2 + CONTINUATION_SIZE)
 #define SAVE_HISTORY save_history

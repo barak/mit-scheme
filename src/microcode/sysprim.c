@@ -120,18 +120,18 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
   PRIMITIVE_HEADER (0);
   {
     SCHEME_OBJECT v = (make_vector (12, SHARP_F, true));
-    VECTOR_SET (v, 0, (ULONG_TO_FIXNUM (sizeof (SCHEME_OBJECT))));
-    VECTOR_SET (v, 1, (CONVERT_ADDRESS (constant_start)));
-    VECTOR_SET (v, 2, (CONVERT_ADDRESS (constant_alloc_next)));
-    VECTOR_SET (v, 3, (CONVERT_ADDRESS (constant_end)));
-    VECTOR_SET (v, 4, (CONVERT_ADDRESS (heap_start)));
-    VECTOR_SET (v, 5, (CONVERT_ADDRESS (Free)));
-    VECTOR_SET (v, 6, (CONVERT_ADDRESS (heap_alloc_limit)));
-    VECTOR_SET (v, 7, (CONVERT_ADDRESS (heap_end)));
-    VECTOR_SET (v, 8, (CONVERT_ADDRESS (stack_start)));
-    VECTOR_SET (v, 9, (CONVERT_ADDRESS (stack_pointer)));
-    VECTOR_SET (v, 10, (CONVERT_ADDRESS (stack_guard)));
-    VECTOR_SET (v, 11, (CONVERT_ADDRESS (stack_end)));
+    vector_set (v, 0, (ULONG_TO_FIXNUM (sizeof (SCHEME_OBJECT))));
+    vector_set (v, 1, (CONVERT_ADDRESS (constant_start)));
+    vector_set (v, 2, (CONVERT_ADDRESS (constant_alloc_next)));
+    vector_set (v, 3, (CONVERT_ADDRESS (constant_end)));
+    vector_set (v, 4, (CONVERT_ADDRESS (heap_start)));
+    vector_set (v, 5, (CONVERT_ADDRESS (Free)));
+    vector_set (v, 6, (CONVERT_ADDRESS (heap_alloc_limit)));
+    vector_set (v, 7, (CONVERT_ADDRESS (heap_end)));
+    vector_set (v, 8, (CONVERT_ADDRESS (stack_start)));
+    vector_set (v, 9, (CONVERT_ADDRESS (stack_pointer)));
+    vector_set (v, 10, (CONVERT_ADDRESS (stack_guard)));
+    vector_set (v, 11, (CONVERT_ADDRESS (stack_end)));
     PRIMITIVE_RETURN (v);
   }
 }

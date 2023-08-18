@@ -92,22 +92,22 @@ SCHEME_OBJECT
 make_microcode_identification_vector (void)
 {
   SCHEME_OBJECT v = (make_vector (IDENTITY_LENGTH, SHARP_F, true));
-  VECTOR_SET (v, ID_RELEASE, SHARP_F);
-  VECTOR_SET (v, ID_MICRO_VERSION, (char_pointer_to_string (PACKAGE_VERSION)));
-  VECTOR_SET (v, ID_PRINTER_WIDTH, (ULONG_TO_FIXNUM (OS_tty_x_size ())));
-  VECTOR_SET (v, ID_PRINTER_LENGTH, (ULONG_TO_FIXNUM (OS_tty_y_size ())));
-  VECTOR_SET (v, ID_NEW_LINE_CHARACTER, (ASCII_TO_CHAR ('\n')));
-  VECTOR_SET (v, ID_FLONUM_PRECISION, (ULONG_TO_FIXNUM (DBL_MANT_DIG)));
-  VECTOR_SET (v, ID_FLONUM_EPSILON, (double_to_flonum ((double) DBL_EPSILON)));
-  VECTOR_SET (v, ID_OS_NAME, (char_pointer_to_string (OS_Name)));
-  VECTOR_SET (v, ID_OS_VARIANT, (char_pointer_to_string (OS_Variant)));
-  VECTOR_SET (v, ID_STACK_TYPE, (char_pointer_to_string ("standard")));
-  VECTOR_SET (v, ID_MACHINE_TYPE, (char_pointer_to_string (MACHINE_TYPE)));
-  VECTOR_SET (v, ID_FLONUM_EXP_MIN, (LONG_TO_FIXNUM (DBL_MIN_EXP - 1)));
-  VECTOR_SET (v, ID_FLONUM_EXP_MAX, (LONG_TO_FIXNUM (DBL_MAX_EXP - 1)));
-  VECTOR_SET (v, ID_NONNEG_FIXNUM_LENGTH, (ULONG_TO_FIXNUM (FIXNUM_LENGTH)));
-  VECTOR_SET (v, ID_NONNEG_FIXNUM_MASK, (ULONG_TO_FIXNUM (FIXNUM_MASK)));
-  VECTOR_SET (v, ID_CC_ARCH, (char_pointer_to_string (cc_arch_name ())));
+  vector_set (v, ID_RELEASE, SHARP_F);
+  vector_set (v, ID_MICRO_VERSION, (char_pointer_to_string (PACKAGE_VERSION)));
+  vector_set (v, ID_PRINTER_WIDTH, (ULONG_TO_FIXNUM (OS_tty_x_size ())));
+  vector_set (v, ID_PRINTER_LENGTH, (ULONG_TO_FIXNUM (OS_tty_y_size ())));
+  vector_set (v, ID_NEW_LINE_CHARACTER, (ASCII_TO_CHAR ('\n')));
+  vector_set (v, ID_FLONUM_PRECISION, (ULONG_TO_FIXNUM (DBL_MANT_DIG)));
+  vector_set (v, ID_FLONUM_EPSILON, (double_to_flonum ((double) DBL_EPSILON)));
+  vector_set (v, ID_OS_NAME, (char_pointer_to_string (OS_Name)));
+  vector_set (v, ID_OS_VARIANT, (char_pointer_to_string (OS_Variant)));
+  vector_set (v, ID_STACK_TYPE, (char_pointer_to_string ("standard")));
+  vector_set (v, ID_MACHINE_TYPE, (char_pointer_to_string (MACHINE_TYPE)));
+  vector_set (v, ID_FLONUM_EXP_MIN, (LONG_TO_FIXNUM (DBL_MIN_EXP - 1)));
+  vector_set (v, ID_FLONUM_EXP_MAX, (LONG_TO_FIXNUM (DBL_MAX_EXP - 1)));
+  vector_set (v, ID_NONNEG_FIXNUM_LENGTH, (ULONG_TO_FIXNUM (FIXNUM_LENGTH)));
+  vector_set (v, ID_NONNEG_FIXNUM_MASK, (ULONG_TO_FIXNUM (FIXNUM_MASK)));
+  vector_set (v, ID_CC_ARCH, (char_pointer_to_string (cc_arch_name ())));
   return (v);
 }
 
@@ -127,7 +127,7 @@ cc_arch_name (void)
 }
 
 #define STORE_FIXOBJ(slot, object)					\
-  VECTOR_SET (fixed_objects, slot, object)
+  vector_set (fixed_objects, slot, object)
 
 #define STORE_NAME_VECTOR(slot, names, length)				\
   STORE_FIXOBJ (slot, (names_to_vector (length, names)))
@@ -218,7 +218,7 @@ names_to_vector (unsigned long length, const char ** names)
   SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, length, true));
   unsigned long i;
   for (i = 0; (i < length); i += 1)
-    VECTOR_SET (v, i,
+    vector_set (v, i,
 		(((names[i]) == 0)
 		 ? SHARP_F
 		 : (char_pointer_to_symbol (names[i]))));

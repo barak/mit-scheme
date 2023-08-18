@@ -243,7 +243,7 @@ DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0
     {
       SCHEME_OBJECT result =
 	(allocate_marked_vector (TC_VECTOR, (end - scan), true));
-      SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
+      SCHEME_OBJECT * scan_result = (vector_loc (result, 0));
       while (scan < end)
 	(*scan_result++) = (char_pointer_to_string (*scan++));
       PRIMITIVE_RETURN (result);
@@ -257,7 +257,7 @@ argv_to_object (int argc, const char ** argv)
   SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, argc, 1));
   const char ** scan = argv;
   const char ** end = (scan + argc);
-  SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
+  SCHEME_OBJECT * scan_result = (vector_loc (result, 0));
   while (scan < end)
     (*scan_result++) = (char_pointer_to_string (*scan++));
   return (result);
@@ -294,14 +294,14 @@ DEFINE_PRIMITIVE ("RELOAD-SAVE-STRING", Prim_reload_save_string, 1, 1, 0)
     {
       CHECK_ARG (1, STRING_P);
       SCHEME_OBJECT string = (ARG_REF (1));
-      unsigned int length = (STRING_LENGTH (string));
+      unsigned int length = legacy_string_length (string);
       if (length > 0)
         {
           reload_saved_legacy_p = (LEGACY_STRING_P (string));
           reload_saved_string = (OS_malloc (length));
           reload_saved_string_length = length;
 
-          memcpy (reload_saved_string, (STRING_POINTER (string)), length);
+          memcpy (reload_saved_string, legacy_string_data (string), length);
         }
     }
   PRIMITIVE_RETURN (UNSPECIFIC);

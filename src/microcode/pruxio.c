@@ -149,8 +149,8 @@ string_vector_p (SCHEME_OBJECT vector)
   if (! (VECTOR_P (vector)))
     return (0);
   {
-    unsigned long length = (VECTOR_LENGTH (vector));
-    SCHEME_OBJECT * scan = (VECTOR_LOC (vector, 0));
+    unsigned long length = (vector_length (vector));
+    SCHEME_OBJECT * scan = (vector_loc (vector, 0));
     SCHEME_OBJECT * end = (scan + length);
     while (scan < end)
       if (! (STRING_P (*scan++)))
@@ -162,13 +162,13 @@ string_vector_p (SCHEME_OBJECT vector)
 static const char **
 convert_string_vector (SCHEME_OBJECT vector)
 {
-  unsigned long length = (VECTOR_LENGTH (vector));
+  unsigned long length = (vector_length (vector));
   char ** result = (dstack_alloc ((length + 1) * (sizeof (char *))));
-  SCHEME_OBJECT * scan = (VECTOR_LOC (vector, 0));
+  SCHEME_OBJECT * scan = (vector_loc (vector, 0));
   SCHEME_OBJECT * end = (scan + length);
   char ** scan_result = result;
   while (scan < end)
-    (*scan_result++) = (STRING_POINTER (*scan++));
+    (*scan_result++) = (legacy_string_data (*scan++));
   (*scan_result) = 0;
   return ((const char **) result);
 }

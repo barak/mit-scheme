@@ -60,10 +60,10 @@ compute_interrupt_handler_mask (SCHEME_OBJECT interrupt_masks,
 				unsigned long interrupt_number)
 {
   if ((VECTOR_P (interrupt_masks))
-      && (interrupt_number <= (VECTOR_LENGTH (interrupt_masks))))
+      && (interrupt_number <= (vector_length (interrupt_masks))))
     {
       SCHEME_OBJECT mask
-	= (VECTOR_REF (interrupt_masks, interrupt_number));
+	= (vector_ref (interrupt_masks, interrupt_number));
       if ((INTEGER_P (mask)) && (integer_to_ulong_p (mask)))
 	/* Guarantee that the given interrupt is disabled.  */
 	return ((integer_to_ulong (mask)) &~ (1UL << interrupt_number));
@@ -97,7 +97,7 @@ initialize_interrupt_mask_vector (void)
   unsigned long interrupt_number = 0;
   while (interrupt_number <= MAX_INTERRUPT_NUMBER)
     {
-      VECTOR_SET (v,
+      vector_set (v,
 		  interrupt_number,
 		  (ulong_to_integer ((1UL << interrupt_number) - 1)));
       interrupt_number += 1;
@@ -123,17 +123,17 @@ setup_interrupt (unsigned long masked_interrupts)
       outf_fatal ("\nInvalid fixed-objects vector");
       terminate_no_interrupt_handler (masked_interrupts);
     }
-  interrupt_handlers = (VECTOR_REF (fixed_objects, SYSTEM_INTERRUPT_VECTOR));
-  interrupt_masks = (VECTOR_REF (fixed_objects, FIXOBJ_INTERRUPT_MASK_VECTOR));
+  interrupt_handlers = (vector_ref (fixed_objects, SYSTEM_INTERRUPT_VECTOR));
+  interrupt_masks = (vector_ref (fixed_objects, FIXOBJ_INTERRUPT_MASK_VECTOR));
   if (! ((VECTOR_P (interrupt_handlers))
-	 && (interrupt_number < (VECTOR_LENGTH (interrupt_handlers)))))
+	 && (interrupt_number < (vector_length (interrupt_handlers)))))
     {
       outf_fatal ("\nUnable to get interrupt handler.");
       terminate_no_interrupt_handler (masked_interrupts);
     }
   interrupt_mask
     = (compute_interrupt_handler_mask (interrupt_masks, interrupt_number));
-  interrupt_handler = (VECTOR_REF (interrupt_handlers, interrupt_number));
+  interrupt_handler = (vector_ref (interrupt_handlers, interrupt_number));
 
   stop_history ();
   preserve_interrupt_mask ();
@@ -333,8 +333,8 @@ error_with_argument (SCHEME_OBJECT argument)
   error_argument = argument;
   signal_error_from_primitive
     (((VECTOR_P (argument))
-      && ((VECTOR_LENGTH (argument)) > 0)
-      && ((VECTOR_REF (argument, 0))
+      && ((vector_length (argument)) > 0)
+      && ((vector_ref (argument, 0))
 	  == (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL))))
      ? ERR_IN_SYSTEM_CALL
      : ERR_WITH_ARGUMENT);
@@ -347,9 +347,9 @@ error_in_system_call (enum syserr_names err, enum syscall_names name)
   /* System call errors have some additional information.
      Encode this as a vector in place of the error code.  */
   SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 0));
-  VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
-  VECTOR_SET (v, 1, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) err)));
-  VECTOR_SET (v, 2, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) name)));
+  vector_set (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
+  vector_set (v, 1, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) err)));
+  vector_set (v, 2, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) name)));
   error_argument = v;
   signal_error_from_primitive (ERR_IN_SYSTEM_CALL);
   /*NOTREACHED*/
@@ -540,15 +540,15 @@ hash_object (SCHEME_OBJECT object)
     {
     case TC_BYTEVECTOR:
     case TC_CHARACTER_STRING:
-      return (memory_hash ((BYTEVECTOR_LENGTH (object)),
-			   (BYTEVECTOR_POINTER (object))));
+      return (memory_hash ((bytevector_length (object)),
+			   (bytevector_data (object))));
 
     case TC_INTERNED_SYMBOL:
     case TC_UNINTERNED_SYMBOL:
       {
-	SCHEME_OBJECT name = (MEMORY_REF (object, SYMBOL_NAME));
-	return (memory_hash ((BYTEVECTOR_LENGTH (name)),
-			     (BYTEVECTOR_POINTER (name))));
+	SCHEME_OBJECT name = symbol_name (object);
+	return (memory_hash (bytevector_length (name),
+			     bytevector_data (name)));
       }
 
     case TC_BIG_FIXNUM:
@@ -573,8 +573,8 @@ hash_object (SCHEME_OBJECT object)
 
     case TC_VECTOR:
       {
-	const SCHEME_OBJECT * scan = (VECTOR_LOC (object, 0));
-	const SCHEME_OBJECT * end = (scan + (VECTOR_LENGTH (object)));
+	const SCHEME_OBJECT * scan = (vector_loc (object, 0));
+	const SCHEME_OBJECT * end = (scan + (vector_length (object)));
 	uint32_t result = (initial_hash ());
 	while (scan < end)
 	  result = (combine_hashes (result, (hash_object (*scan++))));
@@ -592,7 +592,7 @@ hash_object (SCHEME_OBJECT object)
 uint32_t
 initial_hash (void)
 {
-  SCHEME_OBJECT object = (VECTOR_REF (fixed_objects, FIXOBJ_INITIAL_HASH));
+  SCHEME_OBJECT object = (vector_ref (fixed_objects, FIXOBJ_INITIAL_HASH));
   if ((FIXNUM_P (object)) && (FIXNUM_TO_ULONG_P (object)))
     {
       unsigned long value = (FIXNUM_TO_ULONG (object));
@@ -622,13 +622,13 @@ interpreter_applicable_p (SCHEME_OBJECT object)
 
     case TC_ENTITY:
       {
-	object = (MEMORY_REF (object, ENTITY_OPERATOR));
+	object = entity_operator (object);
 	goto tail_recurse;
       }
 
     case TC_RECORD:
       {
-	SCHEME_OBJECT applicator = record_applicator(object);
+	SCHEME_OBJECT applicator = record_applicator (object);
 	if (applicator == SHARP_F)
 	  return (false);
 	object = applicator;
@@ -729,13 +729,13 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
   {
     SCHEME_OBJECT error_vector = SHARP_F;
     if (VECTOR_P (fixed_objects))
-      error_vector = (VECTOR_REF (fixed_objects, SYSTEM_ERROR_VECTOR));
+      error_vector = (vector_ref (fixed_objects, SYSTEM_ERROR_VECTOR));
     if (!VECTOR_P (error_vector))
       error_death (error_code, "No error handlers");
-    if ((error_code >= 0) && (error_code < (VECTOR_LENGTH (error_vector))))
-      handler = (VECTOR_REF (error_vector, error_code));
-    else if (ERR_BAD_ERROR_CODE < (VECTOR_LENGTH (error_vector)))
-      handler = (VECTOR_REF (error_vector, ERR_BAD_ERROR_CODE));
+    if ((error_code >= 0) && (error_code < (vector_length (error_vector))))
+      handler = (vector_ref (error_vector, error_code));
+    else if (ERR_BAD_ERROR_CODE < (vector_length (error_vector)))
+      handler = (vector_ref (error_vector, ERR_BAD_ERROR_CODE));
     else
       error_death (error_code, "No error handlers");
   }
@@ -780,16 +780,16 @@ make_dummy_history (void)
   (Free[RIB_EXP]) = SHARP_F;
   (Free[RIB_ENV]) = SHARP_F;
   (Free[RIB_NEXT_REDUCTION])
-    = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, rib));
+    = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, rib));
   Free += 3;
   {
     SCHEME_OBJECT * history = Free;
     (Free[HIST_RIB])
-      = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, rib));
+      = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, rib));
     (Free[HIST_NEXT_SUBPROBLEM])
-      = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history));
+      = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history));
     (Free[HIST_PREV_SUBPROBLEM])
-      = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history));
+      = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history));
     Free += 3;
     return (history);
   }
@@ -809,7 +809,7 @@ save_history (unsigned long rc)
   Will_Push (HISTORY_SIZE);
   STACK_PUSH (SHARP_F);		/* Prev_Restore_History_Stacklet */
   STACK_PUSH (ULONG_TO_FIXNUM (prev_restore_history_offset));
-  SET_EXP (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));
+  SET_EXP (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history_register));
   SET_RC (rc);
   SAVE_CONT ();
   Pushed ();
@@ -843,7 +843,7 @@ stop_history (void)
   SCHEME_OBJECT exp = GET_EXP;
   SCHEME_OBJECT ret = GET_RET;
   SAVE_HISTORY (RC_RESTORE_DONT_COPY_HISTORY);
-  prev_restore_history_offset = (STACK_N_PUSHED + CONTINUATION_RETURN_CODE);
+  prev_restore_history_offset = STACK_N_PUSHED;
   SET_RET (ret);
   SET_EXP (exp);
 }
@@ -877,7 +877,7 @@ new_reduction (SCHEME_OBJECT expression, SCHEME_OBJECT environment)
     = (OBJECT_ADDRESS
        (MEMORY_REF ((history_register[HIST_RIB]), RIB_NEXT_REDUCTION)));
   (history_register[HIST_RIB])
-    = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, rib));
+    = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, rib));
   (rib[RIB_ENV]) = (environment);
   (rib[RIB_EXP]) = (expression);
   HISTORY_UNMARK (rib[RIB_MARK]);
@@ -1039,14 +1039,14 @@ record_primitive_entry (SCHEME_OBJECT primitive)
   if (VECTOR_P (fixed_objects))
     {
       SCHEME_OBJECT table
-	= (VECTOR_REF (fixed_objects, Primitive_Profiling_Table));
+	= (vector_ref (fixed_objects, Primitive_Profiling_Table));
       if (VECTOR_P (table))
 	{
 	  unsigned long index = (OBJECT_DATUM (primitive));
-	  VECTOR_SET (table,
+	  vector_set (table,
 		      index,
 		      (ulong_to_integer
-		       (1 + (integer_to_ulong (VECTOR_REF (table, index))))));
+		       (1 + (integer_to_ulong (vector_ref (table, index))))));
 	}
     }
 }

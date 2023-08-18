@@ -320,12 +320,9 @@ long C_return_value;
   COMPILER_END_SUBPROBLEM ();						\
 } while (false)
 
-#define CHECK_LAST_RETURN_CODE() do					\
-{									\
-  assert								\
-    (RETURN_CODE_P							\
-     (STACK_LOCATIVE_REFERENCE (last_return_code,			\
-				CONTINUATION_RETURN_CODE)));		\
+#define CHECK_LAST_RETURN_CODE() do                                     \
+{                                                                       \
+  assert (RETURN_CODE_P (*last_return_code));                           \
 } while (false)
 
 /* Initialization */
@@ -678,19 +675,19 @@ DEFINE_SCHEME_UTILITY_2 (comutil_apply, procedure, frame_size)
       {
       case TC_ENTITY:
 	{
-	  SCHEME_OBJECT data = (MEMORY_REF (procedure, ENTITY_DATA));
+	  SCHEME_OBJECT data = entity_data (procedure);
 	  if ((VECTOR_P (data))
-	      && ((VECTOR_LENGTH (data)) > frame_size)
-	      && ((VECTOR_REF (data, 0))
-		  == (VECTOR_REF (fixed_objects, ARITY_DISPATCHER_TAG)))
-	      && ((VECTOR_REF (data, frame_size)) != SHARP_F))
+	      && ((vector_length (data)) > frame_size)
+	      && ((vector_ref (data, 0))
+		  == (vector_ref (fixed_objects, ARITY_DISPATCHER_TAG)))
+	      && ((vector_ref (data, frame_size)) != SHARP_F))
 	    {
-	      procedure = (VECTOR_REF (data, frame_size));
+	      procedure = (vector_ref (data, frame_size));
 	      break;
 	    }
 	}
 	{
-	  SCHEME_OBJECT operator = (MEMORY_REF (procedure, ENTITY_OPERATOR));
+	  SCHEME_OBJECT operator = entity_operator (procedure);
 	  if (!CC_ENTRY_P (operator))
 	    goto handle_in_interpreter;
 	  STACK_PUSH (procedure);
@@ -816,7 +813,7 @@ DEFINE_SCHEME_UTILITY_1 (comutil_error, frame_size)
 {
   DECLARE_UTILITY_ARG (unsigned long, frame_size);
   TAIL_CALL_2 (comutil_apply,
-	       (VECTOR_REF (fixed_objects, CC_ERROR_PROCEDURE)),
+	       (vector_ref (fixed_objects, CC_ERROR_PROCEDURE)),
 	       frame_size);
 }
 
@@ -1079,7 +1076,7 @@ SCHEME_OBJECT
 cc_block_linkage_info (SCHEME_OBJECT block)
 {
   SCHEME_OBJECT * const_addr
-    = (VECTOR_LOC (block, (1 + (VECTOR_LENGTH (MAKE_POINTER_OBJECT (TC_VECTOR, (VECTOR_LOC (block, 0))))))));
+    = (vector_loc (block, (1 + (vector_length (MAKE_POINTER_OBJECT (TC_VECTOR, (vector_loc (block, 0))))))));
   SCHEME_OBJECT * block_end = (CC_BLOCK_END (block));
   unsigned long n_sections;
   unsigned long n_words;
@@ -1121,15 +1118,15 @@ read_linkage_sections (SCHEME_OBJECT * const_addr,
 {
   SCHEME_OBJECT * scan = const_addr;
   SCHEME_OBJECT sections = (make_vector (n_sections, SHARP_F, false));
-  SCHEME_OBJECT * sp = (VECTOR_LOC (sections, 0));
-  SCHEME_OBJECT * spe = (VECTOR_LOC (sections, (VECTOR_LENGTH (sections))));
+  SCHEME_OBJECT * sp = (vector_loc (sections, 0));
+  SCHEME_OBJECT * spe = (vector_loc (sections, (vector_length (sections))));
   while (sp < spe)
     {
       SCHEME_OBJECT h = (*scan++);
       SCHEME_OBJECT section
 	= (make_vector ((1 + (linkage_section_count (h))), SHARP_F, false));
-      SCHEME_OBJECT * p = (VECTOR_LOC (section, 0));
-      SCHEME_OBJECT * pe = (VECTOR_LOC (section, (VECTOR_LENGTH (section))));
+      SCHEME_OBJECT * p = (vector_loc (section, 0));
+      SCHEME_OBJECT * pe = (vector_loc (section, (vector_length (section))));
 
       (*p++) = (ULONG_TO_FIXNUM ((unsigned long) (linkage_section_type (h))));
       if (section_execute_p (h))
@@ -1284,8 +1281,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_assignment_trap,
       STACK_PUSH (sra);
       STACK_PUSH (new_val);
       STACK_PUSH (cc_block_environment (block));
-      STACK_PUSH
-	(compiler_var_error (cache, block, CACHE_REFERENCES_ASSIGNMENT));
+      STACK_PUSH (compiler_var_error (cache, block, ASSIGNMENT_CACHE));
       SAVE_LAST_RETURN_CODE (RC_COMP_ASSIGNMENT_TRAP_RESTART);
       RETURN_TO_C (code);
     }
@@ -1330,8 +1326,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_cache_lookup_apply,
       STACK_PUSH (block);
       STACK_PUSH (ULONG_TO_FIXNUM (frame_size));
       STACK_PUSH (cc_block_environment (block));
-      STACK_PUSH
-	(compiler_var_error (cache, block, CACHE_REFERENCES_OPERATOR));
+      STACK_PUSH (compiler_var_error (cache, block, OPERATOR_CACHE));
       SAVE_LAST_RETURN_CODE (RC_COMP_CACHE_REF_APPLY_RESTART);
       RETURN_TO_C (code);
     }
@@ -1384,7 +1379,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lookup_trap, ret_addr, cache_addr)
       SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (cc_block_environment (block));
-      STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_LOOKUP));
+      STACK_PUSH (compiler_var_error (cache, block, LOOKUP_CACHE));
       SAVE_LAST_RETURN_CODE (RC_COMP_LOOKUP_TRAP_RESTART);
       RETURN_TO_C (code);
     }
@@ -1425,7 +1420,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_safe_lookup_trap, ret_addr, cache_addr)
       SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (cc_block_environment (block));
-      STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_LOOKUP));
+      STACK_PUSH (compiler_var_error (cache, block, LOOKUP_CACHE));
       SAVE_LAST_RETURN_CODE (RC_COMP_SAFE_REF_TRAP_RESTART);
       RETURN_TO_C (code);
     }
@@ -1466,7 +1461,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_unassigned_p_trap, ret_addr, cache_addr)
       SCHEME_OBJECT block = (cc_return_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (cc_block_environment (block));
-      STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_LOOKUP));
+      STACK_PUSH (compiler_var_error (cache, block, LOOKUP_CACHE));
       SAVE_LAST_RETURN_CODE (RC_COMP_UNASSIGNED_TRAP_RESTART);
       RETURN_TO_C (code);
     }
@@ -1503,7 +1498,7 @@ DEFINE_SCHEME_ENTRY (comp_unassigned_p_trap_restart)
 DEFINE_SCHEME_UTILITY_0 (name)						\
 {									\
   TAIL_CALL_2								\
-    (comutil_apply, (VECTOR_REF (fixed_objects, fobj_index)), (arity));	\
+    (comutil_apply, (vector_ref (fixed_objects, fobj_index)), (arity));	\
 }
 
 COMPILER_ARITH_PRIM (comutil_decrement, GENERIC_TRAMPOLINE_PREDECESSOR, 2)
@@ -1553,17 +1548,17 @@ apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
 	case TC_ENTITY:
 	  {
 	    unsigned long frame_size = (n_args + 1);
-	    SCHEME_OBJECT data = (MEMORY_REF (procedure, ENTITY_DATA));
+	    SCHEME_OBJECT data = entity_data (procedure);
 	    if ((VECTOR_P (data))
-		&& (frame_size < (VECTOR_LENGTH (data)))
-		&& ((VECTOR_REF (data, 0))
-		    == (VECTOR_REF (fixed_objects, ARITY_DISPATCHER_TAG))))
-	      procedure = (VECTOR_REF (data, frame_size));
+		&& (frame_size < (vector_length (data)))
+		&& ((vector_ref (data, 0))
+		    == (vector_ref (fixed_objects, ARITY_DISPATCHER_TAG))))
+	      procedure = (vector_ref (data, frame_size));
 	    else
 	      {
 		STACK_PUSH (procedure);
 		n_args += 1;
-		procedure = (MEMORY_REF (procedure, ENTITY_OPERATOR));
+		procedure = entity_operator (procedure);
 	      }
 	  }
 	  continue;
@@ -1916,7 +1911,7 @@ make_linkage_section_marker (linkage_section_type_t type, unsigned long count)
 SCHEME_OBJECT
 cc_block_debugging_info (SCHEME_OBJECT block)
 {
-  return (VECTOR_REF (block, ((VECTOR_LENGTH (block)) - 2)));
+  return (vector_ref (block, ((vector_length (block)) - 2)));
 }
 
 /* Returns the environment where 'block' was evaluated. */
@@ -1924,7 +1919,7 @@ cc_block_debugging_info (SCHEME_OBJECT block)
 SCHEME_OBJECT
 cc_block_environment (SCHEME_OBJECT block)
 {
-  return (VECTOR_REF (block, ((VECTOR_LENGTH (block)) - 1)));
+  return (vector_ref (block, ((vector_length (block)) - 1)));
 }
 
 /* Returns offsets of entry points from start of block in byte units
@@ -2412,8 +2407,7 @@ DEFINE_TRAMPOLINE (comutil_operator_lookup_trap)
       /* Next three for debugger.  */
       STACK_PUSH (ULONG_TO_FIXNUM (frame_size));
       STACK_PUSH (cc_block_environment (block));
-      STACK_PUSH
-	(compiler_var_error (cache, block, CACHE_REFERENCES_OPERATOR));
+      STACK_PUSH (compiler_var_error (cache, block, OPERATOR_CACHE));
       SAVE_LAST_RETURN_CODE (RC_COMP_OP_REF_TRAP_RESTART);
       RETURN_TO_C (code);
     }
@@ -2500,14 +2494,14 @@ make_uuo_link (SCHEME_OBJECT procedure,
 
     case TC_ENTITY:
       {
-	SCHEME_OBJECT data = (MEMORY_REF (procedure, ENTITY_DATA));
+	SCHEME_OBJECT data = entity_data (procedure);
 	if ((VECTOR_P (data))
-	    && (frame_size < (VECTOR_LENGTH (data)))
-	    && ((VECTOR_REF (data, frame_size)) != SHARP_F)
-	    && ((VECTOR_REF (data, 0))
-		== (VECTOR_REF (fixed_objects, ARITY_DISPATCHER_TAG))))
+	    && (frame_size < (vector_length (data)))
+	    && ((vector_ref (data, frame_size)) != SHARP_F)
+	    && ((vector_ref (data, 0))
+		== (vector_ref (fixed_objects, ARITY_DISPATCHER_TAG))))
 	  {
-	    procedure = (VECTOR_REF (data, frame_size));
+	    procedure = (vector_ref (data, frame_size));
 	    goto loop;
 	  }
 	kind = TRAMPOLINE_K_APPLY;
@@ -2814,7 +2808,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_compiled_code_bkpt, entry_addr, state)
   STACK_PUSH (stack_ptr);
   STACK_PUSH (entry);
   TAIL_CALL_2 (comutil_apply,
-	       (VECTOR_REF (fixed_objects, CC_BKPT_PROCEDURE)),
+	       (vector_ref (fixed_objects, CC_BKPT_PROCEDURE)),
 	       4);
 }
 
@@ -2830,7 +2824,7 @@ DEFINE_SCHEME_UTILITY_1 (comutil_compiled_closure_bkpt, entry_addr)
   STACK_PUSH (stack_ptr);
   STACK_PUSH (entry);
   TAIL_CALL_2 (comutil_apply,
-	       (VECTOR_REF (fixed_objects, CC_BKPT_PROCEDURE)),
+	       (vector_ref (fixed_objects, CC_BKPT_PROCEDURE)),
 	       4);
 }
 
