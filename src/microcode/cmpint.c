@@ -525,7 +525,7 @@ guarantee_cc_return (unsigned long offset)
       last_return_code = (STACK_LOC (offset));
       CHECK_LAST_RETURN_CODE ();
       open_stack_gap (offset, 1);
-      (STACK_REF (offset)) = return_to_interpreter;
+      stack_set (offset, return_to_interpreter);
     }
 }
 
@@ -557,23 +557,23 @@ guarantee_interp_return (void)
 static void
 open_stack_gap (unsigned long offset, unsigned long n_words)
 {
-  SCHEME_OBJECT * scan_from = (STACK_LOC (0));
-  SCHEME_OBJECT * scan_end = (STACK_LOC (offset));
-  SCHEME_OBJECT * scan_to = (STACK_LOC (-n_words));
-  while (scan_from != scan_end)
-    (STACK_LOCATIVE_POP (scan_to)) = (STACK_LOCATIVE_POP (scan_from));
-  stack_pointer = (STACK_LOC (-n_words));
+  SCHEME_OBJECT* scan_from = stack_pointer;
+  SCHEME_OBJECT* scan_end = stack_pointer + offset;
+  SCHEME_OBJECT* scan_to = stack_pointer - n_words;
+  while (scan_from < scan_end)
+    *scan_to++ = *scan_from++;
+  stack_pointer -= n_words;
 }
 
 static void
 close_stack_gap (unsigned long offset, unsigned long n_words)
 {
-  SCHEME_OBJECT * scan_from = (STACK_LOC (offset));
-  SCHEME_OBJECT * scan_end = (STACK_LOC (0));
-  SCHEME_OBJECT * scan_to = (STACK_LOC (offset + n_words));
-  while (scan_from != scan_end)
-    (STACK_LOCATIVE_PUSH (scan_to)) = (STACK_LOCATIVE_PUSH (scan_from));
-  stack_pointer = (STACK_LOC (n_words));
+  SCHEME_OBJECT* scan_from = stack_pointer + offset;
+  SCHEME_OBJECT* scan_end = stack_pointer;
+  SCHEME_OBJECT* scan_to = scan_from + n_words;
+  while (scan_from > scan_end)
+    *--scan_to = *--scan_from;
+  stack_pointer += n_words;
 }
 
 static void
@@ -1677,7 +1677,7 @@ setup_lexpr_invocation (SCHEME_OBJECT procedure,
 	  recover_from_apply_error (procedure, n_args);
 	  return (PRIM_APPLY_INTERRUPT);
 	}
-      (STACK_REF (n_max)) = EMPTY_LIST;
+      stack_set (n_max, EMPTY_LIST);
       return (PRIM_DONE);
     }
   {
@@ -2715,7 +2715,7 @@ bkpt_proceed (insn_t * ep, SCHEME_OBJECT handle, SCHEME_OBJECT state)
 	 && ((CC_RETURN_ADDRESS (STACK_REF (BKPT_PROCEED_FRAME_SIZE))) == ep)))
     error_external_return ();
   PUSH_REFLECTION (REFLECT_CODE_CC_BKPT);
-  stack_pointer = (STACK_LOC (-BKPT_PROCEED_FRAME_SIZE));
+  decrement_sp (BKPT_PROCEED_FRAME_SIZE);
   return (SHARP_F);
 }
 

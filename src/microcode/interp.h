@@ -31,15 +31,33 @@ USA.
 #define SCM_INTERP_H 1
 
 #include "object.h"
+#include "intrpt.h"
 #include "stack.h"
 
+static inline void
+stack_check_fatal (const char* s)
+{
+  if (stack_overflowed_p ())
+    stack_death (s);
+}
+
+static inline void
+stack_check (unsigned long n)
+{
+  if (!stack_can_push_p (n))
+    {
+      stack_check_fatal ("STACK_CHECK");
+      REQUEST_INTERRUPT (INT_Stack_Overflow);
+    }
+}
+
 /* Note: push_cont must match the definitions in sdata.h */
 
 static inline void
 push_cont (SCHEME_OBJECT ret, SCHEME_OBJECT val)
 {
-  STACK_PUSH (val);
-  STACK_PUSH (ret);
+  stack_push (val);
+  stack_push (ret);
 }
 
 static inline void
@@ -51,36 +69,103 @@ push_cont_rc (unsigned long rc, SCHEME_OBJECT val)
 static inline void
 push_cont_env (unsigned long rc, SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
-  STACK_PUSH (env);
+  stack_push (env);
   push_cont_rc (rc, exp);
 }
 
-#define SAVE_CONT() push_cont (GET_RET, GET_EXP)
+static inline void
+save_cont (void)
+{
+  push_cont (GET_RET, GET_EXP);
+}
 
-#define RESTORE_CONT() do						\
-{									\
-  POP_RET ();								\
-  POP_EXP ();								\
-} while (0)
+static inline void
+restore_cont (void)
+{
+  SET_RET (stack_pop ());
+  SET_EXP (stack_pop ());
+}
+
+#define STACK_CHECK_FATAL stack_check_fatal
+#define STACK_CHECK stack_check
+#define SAVE_CONT save_cont
+#define RESTORE_CONT restore_cont
 
 #define CONT_RC(offset) (OBJECT_DATUM (CONT_RET (offset)))
-#define CONT_RET(offset) (STACK_REF (offset))
-#define CONT_EXP(offset) (STACK_REF ((offset) + 1))
+#define CONT_RET(offset) (stack_ref (offset))
+#define CONT_EXP(offset) (stack_ref ((offset) + 1))
 
 #define CONTINUATION_SIZE 2
 #define HISTORY_SIZE (CONTINUATION_SIZE + 2)
 
-#define PUSH_APPLY_FRAME_HEADER(n_args)					\
-  STACK_PUSH (make_apply_frame_header ((n_args) + 1))
-
 #define make_apply_frame_header make_vector_header
 
-#define POP_APPLY_FRAME_HEADER() APPLY_FRAME_HEADER_N_ARGS (STACK_POP ())
-#define APPLY_FRAME_HEADER_N_ARGS(header) ((OBJECT_DATUM (header)) - 1)
-#define APPLY_FRAME_SIZE() (OBJECT_DATUM (STACK_REF (0)))
-#define APPLY_FRAME_N_ARGS() (APPLY_FRAME_HEADER_N_ARGS (STACK_REF (0)))
-#define APPLY_FRAME_PROCEDURE() (STACK_REF (1))
-#define APPLY_FRAME_ARGS() (STACK_LOC (2))
+static inline unsigned long
+apply_frame_header_size (SCHEME_OBJECT header)
+{
+  return OBJECT_DATUM (header);
+}
+
+static inline unsigned long
+apply_frame_header_n_args (SCHEME_OBJECT header)
+{
+  return apply_frame_header_size (header) - 1;
+}
+
+static inline SCHEME_OBJECT
+apply_frame_header (void)
+{
+  return stack_ref (0);
+}
+
+static inline SCHEME_OBJECT
+apply_frame_proc (void)
+{
+  return stack_ref (1);
+}
+
+static inline void
+set_apply_frame_proc (SCHEME_OBJECT proc)
+{
+  return stack_set (1, proc);
+}
+
+static inline SCHEME_OBJECT
+apply_frame_first_arg (void)
+{
+  return stack_ref (2);
+}
+
+static inline unsigned long
+apply_frame_size (void)
+{
+  return apply_frame_header_size (apply_frame_header ());
+}
+
+static inline unsigned long
+apply_frame_n_args (void)
+{
+  return apply_frame_header_n_args (apply_frame_header ());
+}
+
+static inline void
+push_apply_frame_header (unsigned long nargs)
+{
+  stack_push (make_apply_frame_header (nargs + 1));
+}
+
+static inline unsigned long
+pop_apply_frame_header (void)
+{
+  return apply_frame_header_n_args (stack_pop ());
+}
+
+#define PUSH_APPLY_FRAME_HEADER push_apply_frame_header
+#define POP_APPLY_FRAME_HEADER pop_apply_frame_header
+#define APPLY_FRAME_HEADER_N_ARGS apply_frame_header_n_args
+#define APPLY_FRAME_SIZE apply_frame_size
+#define APPLY_FRAME_N_ARGS apply_frame_n_args
+#define APPLY_FRAME_PROCEDURE apply_frame_proc
 
 #define CHECK_RETURN_CODE(code, offset)					\
   ((CONT_RET (offset)) == (MAKE_RETURN_CODE (code)))
@@ -109,23 +194,19 @@ push_cont_env (unsigned long rc, SCHEME_OBJECT exp, SCHEME_OBJECT env)
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
-#define Will_Push(N)							\
-{									\
-  SCHEME_OBJECT * Will_Push_Limit;					\
-									\
-  STACK_CHECK (N);							\
-  Will_Push_Limit = (STACK_LOC (- (N)))
+#define Will_Push(n)                                                    \
+{                                                                       \
+  stack_check (n);                                                      \
+  SCHEME_OBJECT* Will_Push_Limit = stack_pointer - (n)
 
-#define Pushed()							\
-  if (STACK_LOCATIVE_ABOVE_P (stack_pointer, Will_Push_Limit))		\
-    {									\
-      Stack_Death ();							\
-    }									\
+#define Pushed()                                                        \
+  if (stack_pointer < Will_Push_Limit)                                  \
+    Stack_Death ();                                                     \
 }
 
 #else
 
-#define Will_Push(N) STACK_CHECK (N)
+#define Will_Push(n) stack_check (n)
 #define Pushed()
 
 #endif
@@ -135,8 +216,8 @@ push_cont_env (unsigned long rc, SCHEME_OBJECT exp, SCHEME_OBJECT env)
    may use less.  M in Finished_Eventual_Pushing is the amount not yet
    pushed.  */
 
-#define Will_Eventually_Push(N) STACK_CHECK (N)
-#define Finished_Eventual_Pushing(M)
+#define Will_Eventually_Push(n) stack_check (n)
+#define Finished_Eventual_Pushing(m)
 
 /* Primitive utility macros */
 
@@ -166,7 +247,7 @@ push_cont_env (unsigned long rc, SCHEME_OBJECT exp, SCHEME_OBJECT env)
   SET_PRIMITIVE (SHARP_F);						\
 } while (0)
 
-#define POP_PRIMITIVE_FRAME(arity) (stack_pointer = (STACK_LOC (arity)))
+#define POP_PRIMITIVE_FRAME(arity) (increment_sp (arity))
 
 typedef struct interpreter_state_s * interpreter_state_t;
 

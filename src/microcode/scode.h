@@ -40,26 +40,8 @@ USA.
 #define assignment_name memory_ref_0
 #define assignment_value memory_ref_1
 
-#define combination_header memory_ref_0
-#define combination_operator memory_ref_1
-
-static inline unsigned long
-combination_size (SCHEME_OBJECT exp)
-{
-  return OBJECT_DATUM (combination_header (exp));
-}
-
-static inline SCHEME_OBJECT*
-combination_exprs (SCHEME_OBJECT exp)
-{
-  return MEMORY_LOC (exp, 1);
-}
-
-static inline SCHEME_OBJECT
-combination_expr (SCHEME_OBJECT exp, unsigned long n)
-{
-  return vector_ref (exp, n);
-}
+#define combination_size vector_length
+#define combination_expr vector_ref
 
 #define comment_expression memory_ref_0
 #define comment_text memory_ref_1

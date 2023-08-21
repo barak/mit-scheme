@@ -176,7 +176,7 @@ static void
 error_death (long code, const char * message)
 {
   death_blow = code;
-  outf_fatal ("\nMicrocode Error: %s.\n", message);
+  outf_fatal ("Microcode Error: %s.\n", message);
   err_print (code, FATAL_OUTPUT);
   outf_error ("\n**** Stack Trace ****\n\n");
   Back_Trace (ERROR_OUTPUT);
@@ -695,7 +695,6 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
 	  outf_error ("\n");
 	}
       Print_Return ("Return code");
-      outf_error ("\n");
     }
 #endif
 

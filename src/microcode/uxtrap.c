@@ -201,7 +201,7 @@ trap_handler (const char * message,
 	      SIGCONTEXT_T * scp)
 {
   int code = (SIGINFO_CODE (info));
-  bool stack_overflowed_p = (STACK_OVERFLOWED_P ());
+  bool stack_overflowed = stack_overflowed_p ();
   enum trap_state old_trap_state = trap_state;
 
   if (old_trap_state == trap_state_exitting_hard)
@@ -218,13 +218,13 @@ trap_handler (const char * message,
       fprintf (stdout, ">> [signal %d (%s), code %d]\n",
 	       signo, (find_signal_name (signo)), code);
     }
-  else if (stack_overflowed_p || (old_trap_state != trap_state_recover))
+  else if (stack_overflowed || (old_trap_state != trap_state_recover))
     {
       fprintf (stdout, "\n>> A %s has occurred.\n", message);
       fprintf (stdout, ">> [signal %d (%s), code %d]\n",
 	       signo, (find_signal_name (signo)), code);
     }
-  if (stack_overflowed_p)
+  if (stack_overflowed)
     {
       fputs (">> The stack has overflowed overwriting adjacent memory.\n",
 	     stdout);
@@ -253,7 +253,7 @@ trap_handler (const char * message,
       break;
 
     case trap_state_recover:
-      if ((WITHIN_CRITICAL_SECTION_P ()) || stack_overflowed_p)
+      if ((WITHIN_CRITICAL_SECTION_P ()) || stack_overflowed)
 	fprintf (stdout, ">> Successful recovery is unlikely.\n");
       else
 	{

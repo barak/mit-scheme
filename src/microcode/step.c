@@ -83,43 +83,36 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
   PRIMITIVE_HEADER (3);
   canonicalize_primitive_context ();
   CHECK_ARG (3, HUNK3_P);
-  {
-    SCHEME_OBJECT hooks = (ARG_REF (3));
-    long number_of_args = 0;
+
+  SCHEME_OBJECT procedure = ARG_REF (1);
+  SCHEME_OBJECT argument_list = ARG_REF (2);
+  SCHEME_OBJECT hooks = ARG_REF (3);
+
+  SCHEME_OBJECT scan_list = argument_list;
+  unsigned long number_of_args = 0;
+  while (PAIR_P (scan_list))
     {
-      SCHEME_OBJECT procedure = (ARG_REF (1));
-      SCHEME_OBJECT argument_list = (ARG_REF (2));
-      {
-	SCHEME_OBJECT scan_list;
-	scan_list = argument_list;
-	while (PAIR_P (scan_list))
-	  {
-	    number_of_args += 1;
-	    scan_list = (PAIR_CDR (scan_list));
-	  }
-	if (!EMPTY_LIST_P (scan_list))
-	  error_wrong_type_arg (2);
-      }
-      POP_PRIMITIVE_FRAME (3);
-      install_traps (hooks);
-      {
-	SCHEME_OBJECT * scan_stack = (STACK_LOC (- number_of_args));
-	SCHEME_OBJECT scan_list;
-	long i;
-	Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
-	stack_pointer = scan_stack;
-	scan_list = argument_list;
-	for (i = number_of_args; (i > 0); i -= 1)
-	  {
-	    (*scan_stack++) = (PAIR_CAR (scan_list));
-	    scan_list = (PAIR_CDR (scan_list));
-	  }
-	STACK_PUSH (procedure);
-	PUSH_APPLY_FRAME_HEADER (number_of_args);
-	Pushed ();
-      }
+      number_of_args += 1;
+      scan_list = (PAIR_CDR (scan_list));
     }
-  }
+  if (!EMPTY_LIST_P (scan_list))
+    error_wrong_type_arg (2);
+
+  POP_PRIMITIVE_FRAME (3);
+  install_traps (hooks);
+
+  Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
+  decrement_sp (number_of_args);
+  scan_list = argument_list;
+  SCHEME_OBJECT* scan_stack = stack_pointer;
+  while (PAIR_P (scan_list))
+    {
+      *scan_stack++ = pair_car (scan_list);
+      scan_list = pair_cdr (scan_list);
+    }
+  stack_push (procedure);
+  stack_push (make_apply_frame_header (number_of_args + 1));
+  Pushed ();
   PRIMITIVE_ABORT (PRIM_NO_TRAP_APPLY);
   /*NOTREACHED*/
   PRIMITIVE_RETURN (UNSPECIFIC);

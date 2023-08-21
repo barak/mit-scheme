@@ -37,7 +37,7 @@ static void with_new_interrupt_mask (unsigned long);
 
 /* This is a kludge to compensate for the interpreter popping
    a primitive's frame off the stack after it returns.  */
-#define UN_POP_PRIMITIVE_FRAME(n) (stack_pointer = (STACK_LOC (-(n))))
+#define UN_POP_PRIMITIVE_FRAME(n) (decrement_sp (n))
 
 DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, "(PROCEDURE ARG-LIST)\n\
 Invokes PROCEDURE on the arguments in ARG-LIST.")
@@ -87,14 +87,13 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
 
     {
       SCHEME_OBJECT p1 = args;
-      SCHEME_OBJECT * sp = (STACK_LOC (-n_args));
-      SCHEME_OBJECT * s1 = sp;
-      while (s1 != stack_pointer)
+      SCHEME_OBJECT* s1 = stack_pointer - n_args;
+      while (s1 < stack_pointer)
 	{
-	  (STACK_LOCATIVE_POP (s1)) = (PAIR_CAR (p1));
-	  p1 = (PAIR_CDR (p1));
+          *s1++ = pair_car (p1);
+	  p1 = pair_cdr (p1);
 	}
-      stack_pointer = sp;
+      decrement_sp (n_args);
     }
 
 #ifdef CC_SUPPORT_P

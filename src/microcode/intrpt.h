@@ -27,6 +27,12 @@ USA.
 
 /* Interrupt manipulation utilities. */
 
+#ifndef SCM_INTRPT_H
+#define SCM_INTRPT_H 1
+
+#include "extern.h"
+#include "stack.h"
+
 /* Interrupt bits -- scanned from LSB (1) to MSB (16) */
 
 #define INT_Stack_Overflow	0x0001UL /* Local interrupt */
@@ -128,3 +134,5 @@ USA.
 #  define GRAB_INTERRUPT_REGISTERS()
 #  define RELEASE_INTERRUPT_REGISTERS()
 #endif
+
+#endif                          // SCM_INTRPT_H
