@@ -87,6 +87,12 @@ USA.
 		  (close-parts close clause))
 		clauses)))))
 
+(define (scons-cons a b)
+  (make-open-expr
+   (lambda (close)
+     (cons (close-part close a)
+	   (close-part close b)))))
+
 (define (scons-declare . decls)
   (make-open-expr
    (lambda (close)
@@ -125,6 +131,11 @@ USA.
      (cons* (close 'lambda)
 	    bvl
 	    (close-parts close body-forms)))))
+
+(define (scons-list . items)
+  (make-open-expr
+   (lambda (close)
+     (apply list (close-parts close items)))))
 
 (define (scons-named-lambda bvl . body-forms)
   (make-open-expr

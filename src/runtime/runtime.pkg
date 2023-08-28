@@ -5212,6 +5212,7 @@ USA.
 	  scons-call
 	  scons-close
 	  scons-cond
+	  scons-cons
 	  scons-declare
 	  scons-define
 	  scons-delay
@@ -5221,6 +5222,7 @@ USA.
 	  scons-let-syntax
 	  scons-letrec
 	  scons-letrec*
+	  scons-list
 	  scons-named-lambda
 	  scons-named-let
 	  scons-or
