@@ -35,29 +35,88 @@ USA.
 ;;; Each bundle also carries a type that can be used to identify it.  Normally
 ;;; the type is shared between bundles with the same general structure.
 
+;;; Old-style bundles are created by a combination of the make-bundle-predicate
+;;; procedure and the bundle macro.  They store their bindings in an alist and
+;;; access is done by calling the bundle as above or using the bundle-ref
+;;; procedure.
+
+;;; New-style bundles are created by the define-bundle macro.  They store their
+;;; bindings as record fields.  The macro defines a procedure for each field,
+;;; which accepts the bundle as the first argument and calls the field's
+;;; procedure with the remaining arguments.
+
 (declare (usual-integrations))
 
-(define (make-bundle-predicate name)
-  (record-predicate (make-record-type name '() <bundle>)))
+;;; New style
 
-(define-integrable (%predicate->record-type predicate)
-  (predicate->dispatch-tag predicate))
+(define <bundle>
+  (make-record-type 'bundle '()
+    'applicator
+    (lambda (b name . args)
+      (apply ((record-accessor (record-type-descriptor b) name) b)
+	     args))))
+
+(define %new-bundle?
+  (record-predicate <bundle>))
+
+(define-integrable (%new-bundle->alist bundle)
+  (let ((rtd (record-type-descriptor bundle)))
+    (map (lambda (name)
+	   (cons name ((record-accessor rtd name) bundle)))
+	 (record-type-field-names rtd))))
+
+(define-integrable (%new-bundle-names bundle)
+  (record-type-field-names (record-type-descriptor bundle)))
+
+;;;; Old style
+
+(define <old-bundle>
+  (make-record-type 'old-bundle '(alist)
+		    'applicator
+		    (lambda (b name . args)
+		      (apply (bundle-ref b name) args))))
+
+(define %old-bundle?
+  (record-predicate <old-bundle>))
+
+(define %old-bundle-alist
+  (record-accessor <old-bundle> 'alist))
+
+(define-print-method %old-bundle?
+  (standard-print-method
+      (lambda (bundle)
+	(record-type-name (record-type-descriptor bundle)))
+    (lambda (bundle)
+      (let ((handler (bundle-ref bundle 'summarize-self #f)))
+	(if handler
+	    (handler)
+	    '())))))
+
+(define-pp-describer %old-bundle?
+  (lambda (bundle)
+    (let ((handler (bundle-ref bundle 'describe-self #f)))
+      (if handler
+	  (handler)
+	  (map (lambda (p) `(,(car p) ,(cdr p)))
+	       (%old-bundle-alist bundle))))))
+
+(define-integrable (make-bundle-predicate name)
+  (record-predicate (make-record-type name '() <old-bundle>)))
+
+(define (bundle-predicate bundle)
+  (guarantee %old-bundle? bundle 'bundle-predicate)
+  (record-predicate (record-type-descriptor bundle)))
 
 (define (bundle-predicate? object)
   (and (predicate? object)
-       (predicate<= object bundle?)))
+       (predicate<= object %old-bundle?)))
 
 (seq:after-predicate 'add-action!
   (lambda ()
     (register-predicate! bundle-predicate? 'bundle-predicate '<= predicate?)))
 
-(define (alist->bundle predicate alist)
-  (guarantee %bundle-alist? alist 'alist->bundle)
-  ((record-constructor
-    (if predicate
-	(%bundle-predicate->record-type predicate)
-	<bundle>))
-   (alist-copy alist)))
+(define-integrable (%predicate->record-type predicate)
+  (predicate->dispatch-tag predicate))
 
 (define %bundle-predicate->record-type
   %predicate->record-type)
@@ -70,51 +129,41 @@ USA.
 	    (%predicate->record-type predicate)))
     unspecific))
 
+(define (alist->bundle predicate alist)
+  (guarantee %bundle-alist? alist 'alist->bundle)
+  ((record-constructor
+    (if predicate
+	(%bundle-predicate->record-type predicate)
+	<old-bundle>))
+   (alist-copy alist)))
+
 (define (%bundle-alist? object)
   (and (alist? object)
        (every (lambda (p)
                 (symbol? (car p)))
               object)))
-
-(define <bundle>
-  (make-record-type '<bundle> '(alist)
-		    'applicator
-		    (lambda (bundle name . args)
-		      (apply (bundle-ref bundle name) args))))
-
-(define bundle?
-  (record-predicate <bundle>))
-
-(define bundle-alist
-  (record-accessor <bundle> 'alist))
-
-(define-print-method bundle?
-  (standard-print-method
-      (lambda (bundle)
-	(record-type-name (record-type-descriptor bundle)))
-    (lambda (bundle)
-      (let ((handler (bundle-ref bundle 'summarize-self #f)))
-	(if handler
-	    (handler)
-	    '())))))
-
-(define-pp-describer bundle?
-  (lambda (bundle)
-    (let ((handler (bundle-ref bundle 'describe-self #f)))
-      (if handler
-	  (handler)
-	  (map (lambda (p) `(,(car p) ,(cdr p)))
-	       (bundle-alist bundle))))))
 
-(define (bundle-predicate bundle)
-  (guarantee bundle? bundle 'bundle-type)
-  (record-predicate (record-type-descriptor bundle)))
+;;; Either style, mostly for backward compatibility
+
+(define (bundle? object)
+  (or (%old-bundle? object)
+      (%new-bundle? object)))
 
 (define (bundle->alist bundle)
-  (alist-copy (bundle-alist bundle)))
+  (cond ((%old-bundle? bundle)
+	 (alist-copy (%old-bundle-alist bundle)))
+	((%new-bundle? bundle)
+	 (%new-bundle->alist bundle))
+	(else
+	 (error:not-a bundle? bundle 'bundle->alist))))
 
 (define (bundle-names bundle)
-  (map car (bundle-alist bundle)))
+  (cond ((%old-bundle? bundle)
+	 (map car (%old-bundle-alist bundle)))
+	((%new-bundle? bundle)
+	 (%new-bundle-names bundle))
+	(else
+	 (error:not-a bundle? bundle 'bundle-name))))
 
 (define (bundle-ref bundle name #!optional get-default)
   (guarantee symbol? name 'bundle-ref)
@@ -126,7 +175,7 @@ USA.
 		  (error "Unknown bundle name:" name)))
 	       (else
 		get-default))))
-    (let ((p (assq name (bundle-alist bundle))))
+    (let ((p (assq name (bundle->alist bundle))))
       (if p
 	  (cdr p)
 	  (get-default)))))

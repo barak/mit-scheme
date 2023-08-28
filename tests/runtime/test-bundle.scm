@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define-test 'simple
+(define-test 'simple-old-style
   (lambda ()
     (define (x) 10)
     (define (y) 20)
@@ -49,14 +49,53 @@ USA.
 
     (simple-tests (bundle #f x y z))
 
-    (assert-true (bundle-predicate? bundle?))
-    (simple-tests (bundle bundle? x y z))
-
     (let ((predicate (make-bundle-predicate 'foo)))
       (assert-true (bundle-predicate? predicate))
       (let ((b (bundle predicate x y z)))
 	(assert-true (predicate b))
 	(simple-tests b)))))
+
+(define-test 'simple-new-style
+  (lambda ()
+    (define-bundle-type <foo>
+	make-foo
+	foo?
+      (foo-p1 x)
+      (foo-p2 x #!optional y)
+      (foo-p3 x . ys))
+
+    (define a-foo
+      (let ((z 15))
+	(define (p1 x)
+	  (+ x z))
+	(define (p2 x #!optional y)
+	  (if (default-object? y)
+	      (p1 x)
+	      (+ x (* y z))))
+	(define (p3 x . ys)
+	  (+ x (* (apply + ys) z)))
+	(make-foo p1 p2 p3)))
+
+    (assert-true (bundle? a-foo))
+    (assert-true (foo? a-foo))
+
+    (assert-eqv (foo-p1 a-foo 2) 17)
+    (assert-eqv (foo-p2 a-foo 2) 17)
+    (assert-eqv (foo-p2 a-foo 2 3) 47)
+    (assert-eqv (foo-p3 a-foo 2) 2)
+    (assert-eqv (foo-p3 a-foo 2 1) 17)
+    (assert-eqv (foo-p3 a-foo 2 3) 47)
+    (assert-eqv (foo-p3 a-foo 2 3 5) 122)
+    (assert-eqv (foo-p3 a-foo 2 3 5 7) 227)
+
+    (assert-eqv (a-foo 'foo-p1 2) 17)
+    (assert-eqv (a-foo 'foo-p2 2) 17)
+    (assert-eqv (a-foo 'foo-p2 2 3) 47)
+    (assert-eqv (a-foo 'foo-p3 2) 2)
+    (assert-eqv (a-foo 'foo-p3 2 1) 17)
+    (assert-eqv (a-foo 'foo-p3 2 3) 47)
+    (assert-eqv (a-foo 'foo-p3 2 3 5) 122)
+    (assert-eqv (a-foo 'foo-p3 2 3 5 7) 227)))
 
 (define-test 'metadata-table
   (lambda ()

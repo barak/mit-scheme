@@ -1056,9 +1056,59 @@ USA.
 			   swap!
 			   (apply scons-lambda '() body-forms)
 			   swap!)))))))))
-
+
 (define-syntax $bundle
   (syntax-rules ()
     (($bundle predicate name ...)
      (alist->bundle predicate
                     (list (cons 'name name) ...)))))
+
+;;; Possible improvement: check argument arity in bundle constructor.
+(define $define-bundle-type
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `(id id id
+		      (* ,(lambda (form)
+			    (and (pair? form)
+				 (identifier? (car form))
+				 (mit-lambda-list? (cdr form))))))
+       (lambda (type-name maker-name pred-name field-specs)
+	 (let ((getter-names
+		(map (lambda (field-spec)
+		       (symbol " get-" (car field-spec)))
+		     field-specs)))
+	   (apply scons-begin
+		  (scons-bundle-type type-name maker-name pred-name
+				     field-specs getter-names)
+                  (map (lambda (field-spec getter-name)
+			 (scons-bundle-invoker (car field-spec)
+                                               (cdr field-spec)
+					       getter-name))
+                       field-specs
+		       getter-names))))))))
+
+(define (scons-bundle-type type-name maker-name pred-name
+			   field-specs getter-names)
+  (apply scons-call
+	 (scons-close 'define-record-type)
+	 (scons-list type-name (scons-close '<bundle>))
+	 maker-name
+	 pred-name
+	 (map (lambda (field-spec getter-name)
+		(scons-list (car field-spec) getter-name))
+	      field-specs
+	      getter-names)))
+
+(define (scons-bundle-invoker field-name bvl getter-name)
+  (let ((robj (new-identifier 'object)))
+    (let-values (((req opt rest) (parse-mit-lambda-list bvl)))
+      (scons-define field-name
+        (scons-named-lambda (cons* field-name robj bvl)
+	  (if rest
+	      (apply scons-call
+		     (scons-close 'apply)
+		     (scons-call getter-name robj)
+		     (append req opt (list rest)))
+	      (apply scons-call
+		     (scons-call getter-name robj)
+		     (append req opt))))))))

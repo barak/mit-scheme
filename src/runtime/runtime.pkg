@@ -2327,6 +2327,7 @@ USA.
   (files "bundle")
   (parent (runtime))
   (export ()
+	  <bundle>
 	  alist->bundle
 	  bundle->alist
 	  bundle-combine
@@ -5328,6 +5329,7 @@ USA.
 	  (cond-expand $cond-expand)	;(scheme base)
 	  (cons-stream $cons-stream)
 	  (cons-stream* $cons-stream*)
+	  (define-bundle-type $define-bundle-type)
 	  (define-integrable $define-integrable)
 	  (define-record-type $define-record-type) ;(scheme base)
 	  (define-values $define-values) ;(scheme base)
