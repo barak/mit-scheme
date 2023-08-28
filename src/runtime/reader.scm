@@ -794,7 +794,6 @@ USA.
 	  ((string-maybe-ci=? db name "optional") lambda-tag:optional)
 	  ((string-maybe-ci=? db name "rest") lambda-tag:rest)
 	  ((string-maybe-ci=? db name "key") lambda-tag:key)
-	  ((string-maybe-ci=? db name "aux") lambda-tag:aux)
 	  ((string-maybe-ci=? db name "eof") (eof-object))
 	  ((string-maybe-ci=? db name "default") (default-object))
 	  ((string-maybe-ci=? db name "unspecific") unspecific)

@@ -941,7 +941,7 @@ USA.
 		      (and rest-arg
 			   (variable/name rest-arg)))))
       `(procedure ,name
-		  ,(make-lambda-list required optional rest '())
+		  ,(make-lambda-list required optional rest)
 		  ,(expression->list (procedure/body expression))))))
 
 (define-method/expression->list 'quotation

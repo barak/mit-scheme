@@ -3468,7 +3468,6 @@ USA.
   (parent (runtime))
   (export ()
 	  fold-r4rs-lambda-list
-	  lambda-tag:aux
 	  lambda-tag:key
 	  lambda-tag:optional
 	  lambda-tag:rest

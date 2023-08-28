@@ -689,8 +689,6 @@ USA.
           ((char? object) (if-non-pointer tc:character (char->integer object)))
           ((eqv? object #f) (if-non-pointer tc:false false:false))
           ((eqv? object #t) (if-non-pointer tc:constant constant:true))
-          ((eqv? object (aux-object))
-           (if-non-pointer tc:constant constant:aux))
           ((eqv? object (default-object))
            (if-non-pointer tc:constant constant:default))
           ((eqv? object (eof-object))
@@ -1061,7 +1059,6 @@ USA.
 (define constant:key 5)
 (define constant:eof 6)
 (define constant:default 7)
-(define constant:aux 8)
 (define constant:null 9)
 (define constant:weak-false 10)
 
@@ -1129,7 +1126,6 @@ USA.
 
 ;;; XXX Hurk.
 
-(define (aux-object) #!aux)
 (define (default-object) #!default)
 (define (eof-object) (call-with-input-string "" read)) ;XXX
 (define (key-object) #!key)

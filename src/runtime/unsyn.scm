@@ -182,7 +182,7 @@ USA.
 	   (lambda (lambda-name required optional rest body)
 	     (if (eq? lambda-name name)
 		 `(define (,name
-			   . ,(make-lambda-list required optional rest '()))
+			   . ,(make-lambda-list required optional rest))
 		    ,@(with-bindings environment value
 			(lambda (environment*)
 			  (unsyntax-lambda-body environment* body))))
@@ -375,7 +375,7 @@ USA.
   (lambda-components* expression
     (lambda (name required optional rest body)
       (collect-lambda name
-		      (make-lambda-list required optional rest '())
+		      (make-lambda-list required optional rest)
 		      (with-bindings environment expression
 			(lambda (environment*)
 			  (unsyntax-lambda-body environment* body)))))))
@@ -391,8 +391,8 @@ USA.
 				 'unsyntax-lambda-list))
   (lambda-components* expression
     (lambda (name required optional rest body)
-      name body
-      (make-lambda-list required optional rest '()))))
+      (declare (ignore name body))
+      (make-lambda-list required optional rest))))
 
 (define (unsyntax-lambda-body environment body)
   (if (scode-open-block? body)

@@ -95,8 +95,7 @@ USA.
 	(let ((arg-list (make-lambda-list
 			 (procedure/required procedure)
 			 (procedure/optional procedure)
-			 (procedure/rest procedure)
-			 '())))
+			 (procedure/rest procedure))))
 	  (if (procedure/name procedure)
 	      `(named-lambda (,(procedure/name procedure) ,@arg-list)
 		 ...)

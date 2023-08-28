@@ -457,7 +457,6 @@ constant_string (SCHEME_OBJECT obj)
     case KEY_MARKER: return "#!key";
     case EOF_OBJECT: return "#!eof";
     case DEFAULT_OBJECT: return "#!default";
-    case AUX_MARKER: return "#!aux";
     case EMPTY_LIST: return "()";
     case GC_RECLAIMED: return "#!reclaimed";
     default: return 0;

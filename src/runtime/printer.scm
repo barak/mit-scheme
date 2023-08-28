@@ -624,7 +624,6 @@ USA.
 	       ((eq? object #t) "#t")
 	       ((default-object? object) "#!default")
 	       ((eof-object? object) "#!eof")
-	       ((eq? object lambda-tag:aux) "#!aux")
 	       ((eq? object lambda-tag:key) "#!key")
 	       ((eq? object lambda-tag:optional) "#!optional")
 	       ((eq? object lambda-tag:rest) "#!rest")

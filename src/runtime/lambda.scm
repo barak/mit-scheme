@@ -358,8 +358,7 @@ USA.
        (make-lambda-list
 	(subvector->list bound 1 (+ n-required 1))
 	(subvector->list bound (+ n-required 1) (+ n-optional n-required 1))
-	(and rest? (vector-ref bound (+ n-optional n-required 1)))
-	'())))))
+	(and rest? (vector-ref bound (+ n-optional n-required 1))))))))
 
 (define (xlambda-name xlambda)
   (guarantee-xlambda xlambda 'xlambda-name)
@@ -541,8 +540,7 @@ USA.
     (make-lambda-list
      (subvector->list bound 1 (vector-length bound))
      '()
-     #f
-     '())))
+     #f)))
 
 (define (slambda-bound? slambda symbol)
   (let ((bound (%slambda-names-vector slambda)))

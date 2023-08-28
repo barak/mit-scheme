@@ -484,7 +484,7 @@ memory_set_2 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
    5 #!key
    6 #!eof
    7 #!default
-   8 #!aux
+   8 unused (was #!aux)
    9 '()
    10 #!reclaimed
    ...
@@ -499,7 +499,6 @@ memory_set_2 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
 #define KEY_MARKER		MAKE_OBJECT (TC_CONSTANT, 5)
 #define EOF_OBJECT		MAKE_OBJECT (TC_CONSTANT, 6)
 #define DEFAULT_OBJECT		MAKE_OBJECT (TC_CONSTANT, 7)
-#define AUX_MARKER		MAKE_OBJECT (TC_CONSTANT, 8)
 #define EMPTY_LIST		MAKE_OBJECT (TC_CONSTANT, 9)
 #define GC_RECLAIMED		MAKE_OBJECT (TC_CONSTANT, 10)
 #define FASDUMP_RECORD_MARKER_START 0x100

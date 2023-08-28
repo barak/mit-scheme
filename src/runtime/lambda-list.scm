@@ -140,11 +140,9 @@ USA.
 (define lambda-tag:optional (object-new-type (ucode-type constant) 3))
 (define lambda-tag:rest (object-new-type (ucode-type constant) 4))
 (define lambda-tag:key (object-new-type (ucode-type constant) 5))
-(define lambda-tag:aux (object-new-type (ucode-type constant) 8))
 
 (define (lambda-tag? object)
-  (or (eq? object lambda-tag:aux)
-      (eq? object lambda-tag:key)
+  (or (eq? object lambda-tag:key)
       (eq? object lambda-tag:optional)
       (eq? object lambda-tag:rest)
 
@@ -220,23 +218,15 @@ USA.
 	    (procedure bvl)
 	    '()))))
 
-;;; Aux is almost always the empty list.
-(define (make-lambda-list required optional rest aux)
+;;; #!aux is neither implemented nor used, so ignore it.
+(define (make-lambda-list required optional rest #!optional aux)
+  (declare (ignore aux))
   (guarantee list-of-unique-symbols? required)
   (guarantee list-of-unique-symbols? optional)
-  (if rest
-      (guarantee symbol? rest))
-  (guarantee list-of-unique-symbols? aux)
-  (let ((rest-aux-tail (if (not rest)
-			   (if (null? aux)
-			       '()
-			       (cons lambda-tag:aux aux))
-			   (if (null? aux)
-			       rest
-			       (cons* lambda-tag:rest rest
-				      lambda-tag:aux aux)))))
+  (if rest (guarantee symbol? rest))
+  (let ((rest-tail (if (not rest) '() rest)))
     (append required
 	    (if (null? optional)
-		rest-aux-tail
+		rest-tail
 		(cons lambda-tag:optional
-		      (append optional rest-aux-tail))))))
+		      (append optional rest-tail))))))
