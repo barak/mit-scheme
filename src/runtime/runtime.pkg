@@ -5389,7 +5389,10 @@ USA.
 	  ucode-primitive
 	  ucode-return-address
 	  ucode-type
-	  variable-setter))
+	  variable-setter)
+  (export (package)
+	  ucode-primitive
+	  ucode-type))
 
 (define-package (runtime system)
   (files "system")
