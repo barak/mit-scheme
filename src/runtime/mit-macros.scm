@@ -850,30 +850,31 @@ USA.
 		    (scons-define pred-name
 		      (scons-call (scons-close 'record-predicate) type-name))
 		    (default-object))
-		(append-map (lambda (field-spec index)
-			      (let ((name (car field-spec))
-				    (accessor (cadr field-spec))
-				    (modifier (caddr field-spec)))
-				(append
-				 (scons-record-accessor
-				  accessor
-				  type-name
-				  parent
-				  pred-name
-				  name
-				  index)
-				 (if modifier
-				     (scons-record-modifier
-				      modifier
-				      type-name
-				      parent
-				      pred-name
-				      name
-				      index)
-				     '()))))
-			    field-specs
-			    ;; Start at 1, after the record type descriptor.
-			    (iota (length field-specs) 1))))))))
+		(let ((parent (or parent (get-keyword-value options 'parent-type #f))))
+		  (append-map (lambda (field-spec index)
+				(let ((name (car field-spec))
+				      (accessor (cadr field-spec))
+				      (modifier (caddr field-spec)))
+				  (append
+				   (scons-record-accessor
+				    accessor
+				    type-name
+				    parent
+				    pred-name
+				    name
+				    index)
+				   (if modifier
+				       (scons-record-modifier
+					modifier
+					type-name
+					parent
+					pred-name
+					name
+					index)
+				       '()))))
+			      field-specs
+			      ;; Start at 1, after the record type descriptor.
+			      (iota (length field-specs) 1)))))))))
 
 (define (scons-record-fields field-specs)
   (if (every (lambda (spec) (null? (cadddr spec))) field-specs)
