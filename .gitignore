@@ -30,6 +30,7 @@
 *.rtl
 *.txe
 *~
+.ccls-cache/
 .edwin-ffi
 /C-*/
 /C/
