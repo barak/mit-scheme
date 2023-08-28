@@ -10,7 +10,7 @@ COMMAND=${1}
 
 TOPDIR=../src ../src/etc/Clean.sh ${COMMAND}
 
-for SUBDIR in compiler microcode runtime sos star-parser xml; do
+for SUBDIR in compiler libraries microcode runtime sos star-parser xml; do
     echo "Cleaning in ${SUBDIR}"
     (cd ${SUBDIR} && TOPDIR=../../src ../../src/etc/Clean.sh ${COMMAND})
 done
