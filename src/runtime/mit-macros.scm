@@ -894,7 +894,7 @@ USA.
 
 (define (scons-record-options parent options)
   (if parent
-      (list parent)
+      (list (scons-quote 'parent-type) parent)
       (scons-keyword-list options)))
 
 (define (scons-keyword-list keylist)
@@ -1074,42 +1074,38 @@ USA.
 				 (identifier? (car form))
 				 (mit-lambda-list? (cdr form))))))
        (lambda (type-name maker-name pred-name field-specs)
-	 (let ((getter-names
+	 (apply scons-begin
+		(scons-define type-name
+		  (scons-call (scons-close 'make-record-type)
+			      (scons-quote type-name)
+			      (scons-quote (map car field-specs))
+			      (scons-quote 'parent-type)
+			      (scons-close '<bundle>)))
+		(scons-define maker-name
+		  (scons-call (scons-close 'record-constructor) type-name))
+		(scons-define pred-name
+		  (scons-call (scons-close 'record-predicate) type-name))
 		(map (lambda (field-spec)
-		       (symbol " get-" (car field-spec)))
-		     field-specs)))
-	   (apply scons-begin
-		  (scons-bundle-type type-name maker-name pred-name
-				     field-specs getter-names)
-                  (map (lambda (field-spec getter-name)
-			 (scons-bundle-invoker (car field-spec)
-                                               (cdr field-spec)
-					       getter-name))
-                       field-specs
-		       getter-names))))))))
+		       (scons-bundle-invoker type-name
+					     (car field-spec)
+					     (cdr field-spec)))
+		     field-specs)))))))
 
-(define (scons-bundle-type type-name maker-name pred-name
-			   field-specs getter-names)
-  (apply scons-call
-	 (scons-close 'define-record-type)
-	 (scons-list type-name (scons-close '<bundle>))
-	 maker-name
-	 pred-name
-	 (map (lambda (field-spec getter-name)
-		(scons-list (car field-spec) getter-name))
-	      field-specs
-	      getter-names)))
-
-(define (scons-bundle-invoker field-name bvl getter-name)
-  (let ((robj (new-identifier 'object)))
+(define (scons-bundle-invoker type-name field-name bvl)
+  (let ((racc (new-identifier 'accessor))
+	(robj (new-identifier 'object)))
     (let-values (((req opt rest) (parse-mit-lambda-list bvl)))
       (scons-define field-name
-        (scons-named-lambda (cons* field-name robj bvl)
-	  (if rest
-	      (apply scons-call
-		     (scons-close 'apply)
-		     (scons-call getter-name robj)
-		     (append req opt (list rest)))
-	      (apply scons-call
-		     (scons-call getter-name robj)
-		     (append req opt))))))))
+	(scons-let (list (list racc
+			       (scons-call (scons-close 'record-accessor)
+					   type-name
+					   (scons-quote field-name))))
+          (scons-named-lambda (cons* field-name robj bvl)
+	    (if rest
+		(apply scons-call
+		       (scons-close 'apply)
+		       (scons-call racc robj)
+		       (append req opt (list rest)))
+		(apply scons-call
+		       (scons-call racc robj)
+		       (append req opt)))))))))
