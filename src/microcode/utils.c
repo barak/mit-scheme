@@ -206,10 +206,10 @@ canonicalize_primitive_context (void)
   n_args = (PRIMITIVE_N_ARGUMENTS (primitive));
 
 #ifdef CC_SUPPORT_P
-  if (CC_RETURN_P (STACK_REF (n_args)))
+  if (CC_RETURN_P (stack_ref (n_args)))
     {
       /* The primitive has been invoked from compiled code. */
-      STACK_PUSH (primitive);
+      stack_push (primitive);
       PUSH_APPLY_FRAME_HEADER (n_args);
       guarantee_interp_return ();
       SET_PRIMITIVE (SHARP_F);
@@ -218,7 +218,7 @@ canonicalize_primitive_context (void)
     }
 #endif
 
-  assert (RETURN_CODE_P (STACK_REF (n_args)));
+  assert (RETURN_CODE_P (stack_ref (n_args)));
 }
 
 /* back_out_of_primitive sets the registers up so that the backout
@@ -230,7 +230,7 @@ back_out_of_primitive (void)
 {
   SCHEME_OBJECT primitive = GET_PRIMITIVE;
   assert (PRIMITIVE_P (primitive));
-  STACK_PUSH (primitive);
+  stack_push (primitive);
   PUSH_APPLY_FRAME_HEADER (PRIMITIVE_N_ARGUMENTS (primitive));
   guarantee_interp_return ();
   SET_PRIMITIVE (SHARP_F);
@@ -827,7 +827,7 @@ stop_history (void)
   SCHEME_OBJECT exp = GET_EXP;
   SCHEME_OBJECT ret = GET_RET;
   SAVE_HISTORY (RC_RESTORE_DONT_COPY_HISTORY);
-  prev_restore_history_offset = STACK_N_PUSHED;
+  prev_restore_history_offset = stack_n_pushed ();
   SET_RET (ret);
   SET_EXP (exp);
 }

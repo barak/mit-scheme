@@ -641,7 +641,7 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
   CSTACK_PUSH (CallbackKernel, kernel);
 
   /* For a traceable stack... */
-  STACK_PUSH (c_call_continue);
+  stack_push (c_call_continue);
   PUSH_APPLY_FRAME_HEADER (nargs);
   SET_RC (RC_INTERNAL_APPLY);
   SET_EXP (c_call_continue);
@@ -660,10 +660,10 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
 
   if (stack_pointer != saved_stack_pointer
 #ifdef ENABLE_DEBUGGING_TOOLS
-      || ((STACK_REF (0)) != (MAKE_RETURN_CODE (RC_INTERNAL_APPLY)))
-      || ((STACK_REF (1)) != c_call_continue)
-      || ((STACK_REF (2)) != (MAKE_OBJECT (0, nargs+1)))
-      || ((STACK_REF (3)) != c_call_continue)
+      || ((stack_ref (0)) != (MAKE_RETURN_CODE (RC_INTERNAL_APPLY)))
+      || ((stack_ref (1)) != c_call_continue)
+      || ((stack_ref (2)) != (MAKE_OBJECT (0, nargs+1)))
+      || ((stack_ref (3)) != c_call_continue)
 #endif
       )
     {
@@ -674,7 +674,7 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
       /*NOTREACHED*/
     }
 
-  stack_pointer = STACK_LOC (4);
+  stack_pointer = stack_loc (4);
   last_return_code = saved_last_return_code;
   SET_PRIMITIVE (c_call_continue);
   SET_LEXPR_ACTUALS (nargs);
@@ -1088,14 +1088,14 @@ re_enter_scheme (void)
 
   assert (GET_PRIMITIVE == SHARP_F);
   assert (GET_EXP == SHARP_F);
-  assert ((STACK_REF (0)) == (MAKE_RETURN_CODE (RC_INTERNAL_APPLY)));
-  assert ((STACK_REF (1)) == SHARP_F);
-  assert ((OBJECT_TYPE (STACK_REF (2))) == TC_FALSE);
-  assert ((STACK_REF (3)) == c_call_continue);
+  assert ((stack_ref (0)) == (MAKE_RETURN_CODE (RC_INTERNAL_APPLY)));
+  assert ((stack_ref (1)) == SHARP_F);
+  assert ((OBJECT_TYPE (stack_ref (2))) == TC_FALSE);
+  assert ((stack_ref (3)) == c_call_continue);
 
   SET_PRIMITIVE (c_call_continue);
-  SET_LEXPR_ACTUALS (APPLY_FRAME_HEADER_N_ARGS (STACK_REF (2)));
-  stack_pointer = STACK_LOC (4);
+  SET_LEXPR_ACTUALS (APPLY_FRAME_HEADER_N_ARGS (stack_ref (2)));
+  stack_pointer = stack_loc (4);
   alienate_float_environment ();
 }
 

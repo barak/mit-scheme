@@ -100,16 +100,6 @@ stack_can_push_p (unsigned long n)
   return stack_pointer - n >= stack_guard;
 }
 
-#define STACK_PUSH stack_push
-#define STACK_POP stack_pop
-#define STACK_LOC stack_loc
-#define STACK_REF stack_ref
-#define STACK_SET stack_set
-#define STACK_N_PUSHED (stack_n_pushed ())
-#define SET_STACK_LIMITS set_stack_limits
-#define STACK_OVERFLOWED_P stack_overflowed_p
-#define CAN_PUSH_P stack_can_push_p
-
 #define STACK_BOTTOM stack_end
 #define STACK_TOP stack_start
 

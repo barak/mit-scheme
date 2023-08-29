@@ -85,8 +85,8 @@ SCHEME_OBJECT fn_name (void)
     error_wrong_type_arg (argument);					\
 } while (0)
 
-#define ARG_LOC(argument) (STACK_LOC (argument - 1))
-#define ARG_REF(argument) (STACK_REF (argument - 1))
+#define ARG_LOC(argument) (stack_loc (argument - 1))
+#define ARG_REF(argument) (stack_ref (argument - 1))
 
 extern void signal_error_from_primitive (long) NORETURN;
 extern void signal_interrupt_from_primitive (void) NORETURN;

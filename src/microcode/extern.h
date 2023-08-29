@@ -82,19 +82,19 @@ extern void set_ulong_register (unsigned int, unsigned long);
 #define SET_INT_CODE(v)		SET_REG_N (INT_CODE, v)
 #define SET_REFLECTOR(v)	SET_REG_O (REFLECT_TO_INTERFACE, v)
 
-#define PUSH_ENV() STACK_PUSH (GET_ENV)
-#define PUSH_VAL() STACK_PUSH (GET_VAL)
-#define PUSH_EXP() STACK_PUSH (GET_EXP)
-#define PUSH_RET() STACK_PUSH (GET_RET)
+#define PUSH_ENV() stack_push (GET_ENV)
+#define PUSH_VAL() stack_push (GET_VAL)
+#define PUSH_EXP() stack_push (GET_EXP)
+#define PUSH_RET() stack_push (GET_RET)
 
-#define POP_ENV() SET_ENV (STACK_POP ())
-#define POP_VAL() SET_VAL (STACK_POP ())
-#define POP_EXP() SET_EXP (STACK_POP ())
-#define POP_RET() SET_RET (STACK_POP ())
+#define POP_ENV() SET_ENV (stack_pop ())
+#define POP_VAL() SET_VAL (stack_pop ())
+#define POP_EXP() SET_EXP (stack_pop ())
+#define POP_RET() SET_RET (stack_pop ())
 
 #define GET_RC (OBJECT_DATUM (GET_RET))
 #define SET_RC(code) SET_RET (MAKE_OBJECT (TC_RETURN_CODE, (code)))
-#define PUSH_RC(code) STACK_PUSH (MAKE_OBJECT (TC_RETURN_CODE, (code)))
+#define PUSH_RC(code) stack_push (MAKE_OBJECT (TC_RETURN_CODE, (code)))
 
 #ifdef ENABLE_DEBUGGING_TOOLS
    extern bool Eval_Debug;

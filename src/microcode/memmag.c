@@ -182,7 +182,7 @@ reset_allocator_parameters (unsigned long n_constant, unsigned long reserved)
 {
   heap_reserved = ((reserved == 0) ? DEFAULT_HEAP_RESERVED : reserved);
   gc_space_needed = 0;
-  SET_STACK_LIMITS (memory_block_start, saved_stack_size);
+  set_stack_limits (memory_block_start, saved_stack_size);
   constant_start = (memory_block_start + saved_stack_size);
   constant_alloc_next = constant_start;
   constant_end = (constant_alloc_next + n_constant + CONSTANT_SPACE_FUDGE);

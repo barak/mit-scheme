@@ -758,7 +758,7 @@ print_one_continuation_frame (outf_channel stream, SCHEME_OBJECT ret)
   outf (stream, "\n    ");
   print_expression (stream, ret, "Return code");
   outf (stream, "\n    ");
-  SCHEME_OBJECT expr = STACK_POP ();
+  SCHEME_OBJECT expr = stack_pop ();
   print_expression (stream, expr, "Expression");
   outf (stream, "\n");
   if (OBJECT_DATUM (ret) == RC_END_OF_COMPUTATION
@@ -835,7 +835,7 @@ Back_Trace (outf_channel stream)
 	}
 #endif
       outf (stream, "{%#lx}", ((unsigned long) stack_pointer));
-      Temp = (STACK_POP ());
+      Temp = (stack_pop ());
       if (RETURN_CODE_P (Temp))
 	{
 	  if (print_one_continuation_frame (stream, Temp))
@@ -847,7 +847,7 @@ Back_Trace (outf_channel stream)
 	  if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
 	    {
 	      outf (stream, " (skipping)");
-	      stack_pointer = (STACK_LOC (OBJECT_DATUM (Temp)));
+	      stack_pointer = (stack_loc (OBJECT_DATUM (Temp)));
 	    }
 	  outf (stream, "\n");
 	}
@@ -868,7 +868,7 @@ print_stack (SCHEME_OBJECT * sp)
 extern void
 Debug_Stack_Trace(void)
 {
-  print_stack(STACK_LOC(0));
+  print_stack(stack_loc(0));
 }
 
 static bool
@@ -904,7 +904,7 @@ Print_Primitive (SCHEME_OBJECT primitive)
   for (i = 0; i < NArgs; i++)
   {
     sprintf (buffer, "...Arg %ld", ((long) (i + 1)));
-    print_expression (ERROR_OUTPUT, (STACK_REF (i)), buffer);
+    print_expression (ERROR_OUTPUT, (stack_ref (i)), buffer);
     outf_error ("\n");
   }
 }

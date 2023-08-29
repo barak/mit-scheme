@@ -217,7 +217,7 @@ typedef unsigned long entry_count_t;
   UNCACHE_VARIABLES ();							\
   PRIMITIVE_APPLY (prim);						\
   POP_PRIMITIVE_FRAME (nargs);						\
-  IPdest = (OBJECT_ADDRESS (STACK_POP ()));				\
+  IPdest = (OBJECT_ADDRESS (stack_pop ()));				\
   CACHE_VARIABLES ();							\
   JUMP (IPdest);							\
 } while (false)

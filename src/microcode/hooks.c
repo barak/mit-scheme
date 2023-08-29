@@ -81,7 +81,7 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
 	error_wrong_type_arg (2);
     }
 
-    if (!CAN_PUSH_P (n_args + 2))
+    if (!stack_can_push_p (n_args + 2))
       error_bad_range_arg (2);
     POP_PRIMITIVE_FRAME (2);
 
@@ -97,7 +97,7 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
     }
 
 #ifdef CC_SUPPORT_P
-    if (CC_RETURN_P (STACK_REF (n_args)))
+    if (CC_RETURN_P (stack_ref (n_args)))
       {
 	apply_compiled_from_primitive (n_args, procedure);
 	UN_POP_PRIMITIVE_FRAME (2);
@@ -105,11 +105,11 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
       }
     else
       {
-	assert (RETURN_CODE_P (STACK_REF (n_args)));
+	assert (RETURN_CODE_P (stack_ref (n_args)));
       }
 #endif
 
-    STACK_PUSH (procedure);
+    stack_push (procedure);
     PUSH_APPLY_FRAME_HEADER (n_args);
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/
@@ -139,7 +139,7 @@ Invoke PROCEDURE with a copy of the current control stack.")
        RC_JOIN_STACKLETS frame, there's no need to create a new
        control point.  */
 
-    if (((STACK_LOC (1 + CONT_SIZE)) == STACK_BOTTOM)
+    if (((stack_loc (1 + CONT_SIZE)) == STACK_BOTTOM)
 	&& (CHECK_RETURN_CODE (RC_JOIN_STACKLETS, 1))
 	&& (CONTROL_POINT_P (CONT_EXP (1))))
       {
@@ -152,7 +152,7 @@ Invoke PROCEDURE with a copy of the current control stack.")
       {
 	cp = (allocate_control_point ((CONT_SIZE
 				       + HISTORY_CONT_SIZE
-				       + (STACK_N_PUSHED - 1)),
+				       + (stack_n_pushed () - 1)),
 				      true));
 	POP_PRIMITIVE_FRAME (1);
 
@@ -161,11 +161,11 @@ Invoke PROCEDURE with a copy of the current control stack.")
 	prev_restore_history_offset = 0;
 	{
 	  SCHEME_OBJECT * scan = (control_point_start (cp));
-	  while (STACK_N_PUSHED > 0)
-	    (*scan++) = (STACK_POP ());
+	  while (stack_n_pushed () > 0)
+	    (*scan++) = (stack_pop ());
 	}
 #ifdef ENABLE_DEBUGGING_TOOLS
-	if (STACK_N_PUSHED != 0)
+	if (stack_n_pushed () != 0)
 	  Microcode_Termination (TERM_BAD_STACK);
 #endif
 
@@ -257,9 +257,9 @@ unpack_control_point (SCHEME_OBJECT cp)
     stack_pointer = STACK_BOTTOM;
     CLEAR_INTERRUPT (INT_Stack_Overflow);
     STACK_CHECK (scan_from - end_from);
-    
+
     while (scan_from > end_from)
-      STACK_PUSH (*--scan_from);
+      stack_push (*--scan_from);
   }
   STACK_RESET ();
 }
@@ -478,7 +478,7 @@ and MARKER2 is data identifying the marker instance.")
 
   SCHEME_OBJECT thunk = (ARG_REF (1));
 #ifdef CC_SUPPORT_P
-  if ((CC_RETURN_P (STACK_REF (3))) && (CC_ENTRY_P (thunk)))
+  if ((CC_RETURN_P (stack_ref (3))) && (CC_ENTRY_P (thunk)))
     {
       increment_sp (1);
       compiled_with_stack_marker (thunk);
@@ -530,7 +530,7 @@ with_new_interrupt_mask (unsigned long new_mask)
   SCHEME_OBJECT receiver = (ARG_REF (2));
 
 #ifdef CC_SUPPORT_P
-  if ((CC_RETURN_P (STACK_REF (2))) && (CC_ENTRY_P (receiver)))
+  if ((CC_RETURN_P (stack_ref (2))) && (CC_ENTRY_P (receiver)))
     {
       unsigned long current_mask = GET_INT_MASK;
       POP_PRIMITIVE_FRAME (2);

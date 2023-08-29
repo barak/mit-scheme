@@ -945,7 +945,7 @@ trap_recover (DWORD code, PCONTEXT context)
 static void
 nt_trap_handler (DWORD code, PCONTEXT context)
 {
-  bool stack_overflowed_p = (STACK_OVERFLOWED_P ());
+  bool stack_overflowed_p = (stack_overflowed_p ());
   enum trap_state old_trap_state = trap_state;
   int flags;
 
