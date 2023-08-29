@@ -28,16 +28,15 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 
-#define INDIRECT(slot, arity)						\
-{									\
-  canonicalize_primitive_context ();					\
- Will_Push (STACK_ENV_EXTRA_SLOTS + 1);					\
-  STACK_PUSH (vector_ref (fixed_objects, slot));			\
-  PUSH_APPLY_FRAME_HEADER (arity);					\
- Pushed ();								\
-  PRIMITIVE_ABORT (PRIM_APPLY);						\
-  /*NOTREACHED*/							\
-  PRIMITIVE_RETURN (UNSPECIFIC);					\
+#define INDIRECT(slot, arity)                                           \
+{                                                                       \
+  canonicalize_primitive_context ();                                    \
+  stack_check (2);                                                      \
+  stack_push (vector_ref (fixed_objects, slot));                        \
+  stack_push (make_apply_frame_header (arity + 1));                     \
+  PRIMITIVE_ABORT (PRIM_APPLY);                                         \
+  /*NOTREACHED*/                                                        \
+  PRIMITIVE_RETURN (UNSPECIFIC);                                        \
 }
 
 #define INDIRECT_TEST_1(test, slot)					\

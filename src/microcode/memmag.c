@@ -278,13 +278,11 @@ the primitive GC daemons before returning.")
   std_gc_pt1 ();
   std_gc_pt2 ();
 
-  Will_Push (CONTINUATION_SIZE);
-  SET_RC (RC_NORMAL_GC_DONE);
-  SET_EXP (ULONG_TO_FIXNUM ((HEAP_AVAILABLE > gc_space_needed)
-			    ? (HEAP_AVAILABLE - gc_space_needed)
-			    : 0));
-  SAVE_CONT ();
-  Pushed ();
+  stack_check (CONT_SIZE);
+  push_cont_rc (RC_NORMAL_GC_DONE,
+                ULONG_TO_FIXNUM ((HEAP_AVAILABLE > gc_space_needed)
+                                 ? HEAP_AVAILABLE - gc_space_needed
+                                 : 0));
 
   RENAME_CRITICAL_SECTION ("garbage collector daemon");
   {
@@ -292,10 +290,9 @@ the primitive GC daemons before returning.")
     if (daemon == SHARP_F)
       PRIMITIVE_ABORT (PRIM_POP_RETURN);
 
-    Will_Push (2);
-    STACK_PUSH (daemon);
-    PUSH_APPLY_FRAME_HEADER (0);
-    Pushed ();
+    stack_check (2);
+    stack_push (daemon);
+    stack_push (make_apply_frame_header (1));
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/
   }

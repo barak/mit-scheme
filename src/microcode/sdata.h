@@ -366,11 +366,6 @@ env_val_cell (SCHEME_OBJECT env, unsigned long index)
   return env_vals (env) + index;
 }
 
-#define STACK_ENV_EXTRA_SLOTS   1
-#define STACK_ENV_HEADER        0
-#define STACK_ENV_FUNCTION      1
-#define STACK_ENV_FIRST_ARG     2
-
 /* An environment chain always ends in a pointer with type code
    of TC_GLOBAL_ENV.  This will contain an address part which
    either indicates that the lookup should continue on to the

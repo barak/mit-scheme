@@ -54,7 +54,6 @@ USA.
 
 #define READ_DUMMY_HISTORY() vector_ref (fixed_objects, DUMMY_HISTORY)
 
-#define SAVE_HISTORY_LENGTH (2 + CONTINUATION_SIZE)
 #define SAVE_HISTORY save_history
 #define RESET_HISTORY reset_history
 

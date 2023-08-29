@@ -514,34 +514,28 @@ setup_trap_frame (DWORD code,
     stack_pointer = temp_stack_end;
     stack_guard = temp_stack;
   }
-
- Will_Push (7 + CONTINUATION_SIZE);
-  STACK_PUSH (trinfo -> extra_trap_info);
-  STACK_PUSH (trinfo -> pc_info_2);
-  STACK_PUSH (trinfo -> pc_info_1);
-  STACK_PUSH (trinfo -> state);
-  STACK_PUSH (BOOLEAN_TO_OBJECT (stack_recovered_p));
-  STACK_PUSH (trap_code);
-  STACK_PUSH (trap_name);
-  SET_RC (RC_HARDWARE_TRAP);
-  SET_EXP (long_to_integer (code));
-  SAVE_CONT ();
- Pushed ();
+
+  stack_check (7 + CONT_SIZE);
+  stack_push (trinfo->extra_trap_info);
+  stack_push (trinfo->pc_info_2);
+  stack_push (trinfo->pc_info_1);
+  stack_push (trinfo->state);
+  stack_push (BOOLEAN_TO_OBJECT (stack_recovered_p));
+  stack_push (trap_code);
+  stack_push (trap_name);
+  push_cont_rc (RC_HARDWARE_TRAP, long_to_integer (code));
   if (stack_recovered_p
       /* This may want to be done in other cases, but this may be enough. */
       && (trinfo->state == STATE_COMPILED_CODE))
     stop_history ();
+  history_register = make_dummy_history ();
+  stack_check (3);
+  stack_push (trap_name);
+  stack_push (handler);
+  stack_push (make_apply_frame_header (2));
 
-  history_register = (make_dummy_history ());
- Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
-  STACK_PUSH (trap_name);
-  STACK_PUSH (handler);
-  PUSH_APPLY_FRAME_HEADER (1);
- Pushed ();
   SET_INTERRUPT_MASK (saved_mask);
-
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "setup_trap_frame done."));
-  return;
 }
 
 /* Heuristic recovery from processor traps/exceptions.

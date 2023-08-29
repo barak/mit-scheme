@@ -179,11 +179,8 @@ start_scheme (void)
   trapping = false;
 
   /* Give the interpreter something to chew on, and ... */
-  Will_Push (CONTINUATION_SIZE);
-  SET_RC (RC_END_OF_COMPUTATION);
-  SET_EXP (SHARP_F);
-  SAVE_CONT ();
-  Pushed ();
+  stack_check (CONT_SIZE);
+  push_cont_rc (RC_END_OF_COMPUTATION, SHARP_F);
 
   SET_EXP (expr);
 

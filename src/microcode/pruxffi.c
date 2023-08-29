@@ -649,16 +649,11 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
 
   saved_stack_pointer = stack_pointer;
   saved_last_return_code = last_return_code;
- Will_Push ((2 * CONTINUATION_SIZE) + STACK_ENV_EXTRA_SLOTS + 1);
-  SET_RC (RC_END_OF_COMPUTATION);
-  SET_EXP (run_callback);
-  SAVE_CONT ();
-  STACK_PUSH (run_callback);
-  PUSH_APPLY_FRAME_HEADER (0);
-  SET_RC (RC_INTERNAL_APPLY);
-  SET_EXP (run_callback);
-  SAVE_CONT ();
- Pushed ();
+  stack_check ((2 * CONT_SIZE) + 2);
+  push_cont_rc (RC_END_OF_COMPUTATION, run_callback);
+  stack_push (run_callback);
+  stack_push (make_apply_frame_header (1));
+  push_cont_rc (RC_INTERNAL_APPLY, run_callback);
   last_return_code = stack_pointer;
   SET_EXP (SHARP_F);
   Re_Enter_Interpreter ();
@@ -752,15 +747,12 @@ callback_run_handler (long callback_id, SCM arglist)
   handler = valid_callback_handler ();
   fixnum_id = valid_callback_id (callback_id);
 
-  Will_Push (3 + STACK_ENV_EXTRA_SLOTS + CONTINUATION_SIZE);
-  STACK_PUSH (arglist);
-  STACK_PUSH (fixnum_id);
-  STACK_PUSH (handler);
-  PUSH_APPLY_FRAME_HEADER (2);
-  SET_RC (RC_INTERNAL_APPLY);
-  SET_EXP (run_callback);
-  SAVE_CONT ();
-  Pushed ();
+  stack_check (4 + CONT_SIZE);
+  stack_push (arglist);
+  stack_push (fixnum_id);
+  stack_push (handler);
+  stack_push (make_apply_frame_header (3));
+  push_cont_rc (RC_INTERNAL_APPLY, run_callback);
 }
 
 static SCM

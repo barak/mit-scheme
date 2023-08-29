@@ -139,7 +139,7 @@ Invoke PROCEDURE with a copy of the current control stack.")
        RC_JOIN_STACKLETS frame, there's no need to create a new
        control point.  */
 
-    if (((STACK_LOC (1 + CONTINUATION_SIZE)) == STACK_BOTTOM)
+    if (((STACK_LOC (1 + CONT_SIZE)) == STACK_BOTTOM)
 	&& (CHECK_RETURN_CODE (RC_JOIN_STACKLETS, 1))
 	&& (CONTROL_POINT_P (CONT_EXP (1))))
       {
@@ -150,8 +150,8 @@ Invoke PROCEDURE with a copy of the current control stack.")
       }
     else
       {
-	cp = (allocate_control_point ((CONTINUATION_SIZE
-				       + HISTORY_SIZE
+	cp = (allocate_control_point ((CONT_SIZE
+				       + HISTORY_CONT_SIZE
 				       + (STACK_N_PUSHED - 1)),
 				      true));
 	POP_PRIMITIVE_FRAME (1);
@@ -171,13 +171,11 @@ Invoke PROCEDURE with a copy of the current control stack.")
 
 	CLEAR_INTERRUPT (INT_Stack_Overflow);
 	STACK_RESET ();
-	SET_RC (RC_JOIN_STACKLETS);
-	SET_EXP (cp);
-	SAVE_CONT ();
+        push_cont_rc (RC_JOIN_STACKLETS, cp);
       }
 
-    STACK_PUSH (cp);
-    STACK_PUSH (procedure);
+    stack_push (cp);
+    stack_push (procedure);
     PUSH_APPLY_FRAME_HEADER (1);
   }
   PRIMITIVE_ABORT (PRIM_APPLY);
@@ -200,29 +198,22 @@ DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2,
 		  "(CONTROL-POINT THUNK)\n\
 Invoke THUNK with CONTROL-POINT as its control stack.")
 {
-  SCHEME_OBJECT control_point, thunk;
   PRIMITIVE_HEADER (2);
 
   canonicalize_primitive_context();
   CHECK_ARG (1, CONTROL_POINT_P);
-  control_point = (ARG_REF (1));
-  thunk = (ARG_REF (2));
+  SCHEME_OBJECT control_point = (ARG_REF (1));
+  SCHEME_OBJECT thunk = (ARG_REF (2));
 
   stack_pointer = STACK_BOTTOM;
   /* We've discarded the history with the stack contents.  */
   prev_restore_history_offset = 0;
   CLEAR_INTERRUPT (INT_Stack_Overflow);
 
- Will_Push (CONTINUATION_SIZE);
-  SET_EXP (control_point);
-  SET_RC (RC_JOIN_STACKLETS);
-  SAVE_CONT ();
- Pushed ();
-
- Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
-  STACK_PUSH (thunk);
-  PUSH_APPLY_FRAME_HEADER (0);
- Pushed ();
+  stack_check (CONT_SIZE + 2);
+  push_cont_rc (RC_JOIN_STACKLETS, control_point);
+  stack_push (thunk);
+  stack_push (make_apply_frame_header (1));
 
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
@@ -278,27 +269,26 @@ DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3,
 {
   PRIMITIVE_HEADER (3);
   canonicalize_primitive_context ();
-  {
-    SCHEME_OBJECT message = (ARG_REF (1));
-    SCHEME_OBJECT irritants = (ARG_REF (2));
-    SCHEME_OBJECT environment = (ARG_REF (3));
-    /* This is done outside the Will_Push because the space for it
-       is guaranteed by the interpreter before it gets here.
-       If done inside, this could break when using stacklets. */
-    back_out_of_primitive ();
-  Will_Push (HISTORY_SIZE + STACK_ENV_EXTRA_SLOTS + 4);
-    stop_history ();
-    /* Stepping should be cleared here! */
-    STACK_PUSH (environment);
-    STACK_PUSH (irritants);
-    STACK_PUSH (message);
-    STACK_PUSH (vector_ref (fixed_objects, Error_Procedure));
-    PUSH_APPLY_FRAME_HEADER (3);
-  Pushed ();
-    PRIMITIVE_ABORT (PRIM_APPLY);
-    /*NOTREACHED*/
-    PRIMITIVE_RETURN (UNSPECIFIC);
-  }
+
+  SCHEME_OBJECT message = ARG_REF (1);
+  SCHEME_OBJECT irritants = ARG_REF (2);
+  SCHEME_OBJECT environment = ARG_REF (3);
+  /* This is done outside the stack_check because the space for it
+     is guaranteed by the interpreter before it gets here.
+     If done inside, this could break when using stacklets. */
+  back_out_of_primitive ();
+  stack_check (HISTORY_CONT_SIZE + 5);
+  stop_history ();
+  /* Stepping should be cleared here! */
+  stack_push (environment);
+  stack_push (irritants);
+  stack_push (message);
+  stack_push (vector_ref (fixed_objects, Error_Procedure));
+  stack_push (make_apply_frame_header (4));
+
+  PRIMITIVE_ABORT (PRIM_APPLY);
+  /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_scode_eval, 2, 2,
@@ -327,44 +317,40 @@ memoized yet.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, PROMISE_P);
-  {
-    SCHEME_OBJECT delayed = (ARG_REF (1));
-    SCHEME_OBJECT State = delayed_snapped (delayed);
-    if (State == SHARP_T)
-      PRIMITIVE_RETURN (delayed_value (delayed));
-    else if (State ==  FIXNUM_ZERO)
+  SCHEME_OBJECT delayed = ARG_REF (1);
+  SCHEME_OBJECT state = delayed_snapped (delayed);
+  if (state == SHARP_T)
+    PRIMITIVE_RETURN (delayed_value (delayed));
+  else if (state ==  FIXNUM_ZERO)
     {
       /* New-style delayed used by compiled code. */
       canonicalize_primitive_context ();
       POP_PRIMITIVE_FRAME (1);
-     Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
-      SET_RC (RC_SNAP_NEED_THUNK);
-      SET_EXP (delayed);
-      SAVE_CONT ();
-      STACK_PUSH (delayed_value (delayed));
-      PUSH_APPLY_FRAME_HEADER (0);
-     Pushed ();
+
+      stack_check (CONT_SIZE + 2);
+      push_cont_rc (RC_SNAP_NEED_THUNK, delayed);
+      stack_push (delayed_value (delayed));
+      stack_push (make_apply_frame_header (1));
+
       PRIMITIVE_ABORT (PRIM_APPLY);
       /*NOTREACHED*/
       PRIMITIVE_RETURN (UNSPECIFIC);
     }
-    else
+  else
     {
       /* Old-style delayed used by interpreted code. */
       canonicalize_primitive_context ();
       POP_PRIMITIVE_FRAME (1);
-     Will_Push (CONTINUATION_SIZE);
-      SET_RC (RC_SNAP_NEED_THUNK);
-      SET_EXP (delayed);
-      SAVE_CONT ();
-     Pushed ();
+
+      stack_check (CONT_SIZE);
+      push_cont_rc (RC_SNAP_NEED_THUNK, delayed);
       SET_ENV (delayed_env (delayed));
       SET_EXP (delayed_proc (delayed));
+
       PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
       /*NOTREACHED*/
       PRIMITIVE_RETURN (UNSPECIFIC);
     }
-  }
 }
 
 /* Interrupts */
@@ -460,23 +446,20 @@ identified by the continuation parser.")
 {
   PRIMITIVE_HEADER (LEXPR);
   canonicalize_primitive_context ();
-  {
-    unsigned long nargs = GET_LEXPR_ACTUALS;
-    if (nargs < 2)
-      signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-    {
-      SCHEME_OBJECT thunk = (STACK_POP ());
-      PUSH_APPLY_FRAME_HEADER (nargs - 2);
-      SET_ENV (THE_NULL_ENV);
-      SET_EXP (SHARP_F);
-      SET_RC (RC_INTERNAL_APPLY);
-      SAVE_CONT ();
-    Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
-      STACK_PUSH (thunk);
-      PUSH_APPLY_FRAME_HEADER (0);
-    Pushed ();
-    }
-  }
+
+  unsigned long nargs = GET_LEXPR_ACTUALS;
+  if (nargs < 2)
+    signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+
+  SCHEME_OBJECT thunk = stack_pop ();
+  stack_push (make_apply_frame_header (nargs - 1));
+  SET_ENV (THE_NULL_ENV);
+  push_cont_rc (RC_INTERNAL_APPLY, SHARP_F);
+
+  stack_check (2);
+  stack_push (thunk);
+  stack_push (make_apply_frame_header (1));
+
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -492,28 +475,27 @@ By convention, MARKER1 is a tag identifying the kind of marker,\n\
 and MARKER2 is data identifying the marker instance.")
 {
   PRIMITIVE_HEADER (3);
-  {
-    SCHEME_OBJECT thunk = (ARG_REF (1));
+
+  SCHEME_OBJECT thunk = (ARG_REF (1));
 #ifdef CC_SUPPORT_P
-    if ((CC_RETURN_P (STACK_REF (3))) && (CC_ENTRY_P (thunk)))
-      {
-	(void) STACK_POP ();
-	compiled_with_stack_marker (thunk);
-	UN_POP_PRIMITIVE_FRAME (3);
-      }
-    else
+  if ((CC_RETURN_P (STACK_REF (3))) && (CC_ENTRY_P (thunk)))
+    {
+      increment_sp (1);
+      compiled_with_stack_marker (thunk);
+      UN_POP_PRIMITIVE_FRAME (3);
+    }
+  else
 #endif
-      {
-	canonicalize_primitive_context ();
-	(void) STACK_POP ();
-	STACK_PUSH (MAKE_RETURN_CODE (RC_STACK_MARKER));
-	Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
-	STACK_PUSH (thunk);
-	PUSH_APPLY_FRAME_HEADER (0);
-	Pushed ();
-	PRIMITIVE_ABORT (PRIM_APPLY);
-	/*NOTREACHED*/
-      }
+  {
+    canonicalize_primitive_context ();
+    increment_sp (1);
+    stack_push (MAKE_RETURN_CODE (RC_STACK_MARKER));
+    stack_check (2);
+    stack_push (thunk);
+    stack_push (make_apply_frame_header (1));
+
+    PRIMITIVE_ABORT (PRIM_APPLY);
+    /*NOTREACHED*/
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -562,11 +544,12 @@ with_new_interrupt_mask (unsigned long new_mask)
       canonicalize_primitive_context ();
       POP_PRIMITIVE_FRAME (2);
       preserve_interrupt_mask ();
-      Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
-      STACK_PUSH (ULONG_TO_FIXNUM (GET_INT_MASK));
-      STACK_PUSH (receiver);
-      PUSH_APPLY_FRAME_HEADER (1);
-      Pushed ();
+
+      stack_check (3);
+      stack_push (ULONG_TO_FIXNUM (GET_INT_MASK));
+      stack_push (receiver);
+      stack_push (make_apply_frame_header (2));
+
       SET_INTERRUPT_MASK (new_mask);
       PRIMITIVE_ABORT (PRIM_APPLY);
     }
@@ -635,10 +618,10 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
       }
     POP_PRIMITIVE_FRAME (1);
     stop_history ();
-  Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
-    STACK_PUSH (thunk);
-    PUSH_APPLY_FRAME_HEADER (0);
-  Pushed ();
+    stack_check (2);
+    stack_push (thunk);
+    stack_push (make_apply_frame_header (1));
+
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/
     PRIMITIVE_RETURN (UNSPECIFIC);

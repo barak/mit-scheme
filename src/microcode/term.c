@@ -66,37 +66,31 @@ static void
 attempt_termination_backout (int code)
 {
   outf_flush_error(); /* NOT flush_fatal */
-  if ((WITHIN_CRITICAL_SECTION_P ())
-      || (code == TERM_HALT)
-      || (! (VECTOR_P (fixed_objects))))
+  if (WITHIN_CRITICAL_SECTION_P ()
+      || code == TERM_HALT
+      || !VECTOR_P (fixed_objects))
     return;
-  {
-    SCHEME_OBJECT Term_Vector
-      = (vector_ref (fixed_objects, Termination_Proc_Vector));
-    if ((! (VECTOR_P (Term_Vector)))
-	|| (((long) (vector_length (Term_Vector))) <= code))
-      return;
-    {
-      SCHEME_OBJECT Handler = (vector_ref (Term_Vector, code));
-      if (Handler == SHARP_F)
-	return;
-     Will_Push (CONTINUATION_SIZE
-		+ STACK_ENV_EXTRA_SLOTS
-		+ ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
-      SET_RC (RC_HALT);
-      SET_EXP (LONG_TO_UNSIGNED_FIXNUM (code));
-      SAVE_CONT ();
-      if (code == TERM_NO_ERROR_HANDLER)
-	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (death_blow));
-      PUSH_VAL ();		/* Arg 3 */
-      PUSH_ENV ();		/* Arg 2 */
-      PUSH_EXP ();		/* Arg 1 */
-      STACK_PUSH (Handler);	/* The handler function */
-      PUSH_APPLY_FRAME_HEADER ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3);
-     Pushed ();
-      abort_to_interpreter (PRIM_NO_TRAP_APPLY);
-    }
-  }
+
+  SCHEME_OBJECT term_vector
+    = vector_ref (fixed_objects, Termination_Proc_Vector);
+  if (! (VECTOR_P (term_vector)
+         && code < (long) vector_length (term_vector)))
+    return;
+  SCHEME_OBJECT handler = (vector_ref (term_vector, code));
+  if (handler == SHARP_F)
+    return;
+
+  unsigned long frame_size = (code == TERM_NO_ERROR_HANDLER) ? 5 : 4;
+  stack_check (CONT_SIZE + frame_size + 1);
+  push_cont_rc (RC_HALT, LONG_TO_UNSIGNED_FIXNUM (code));
+  if (code == TERM_NO_ERROR_HANDLER)
+    stack_push (LONG_TO_UNSIGNED_FIXNUM (death_blow));
+  stack_push (GET_VAL);
+  stack_push (GET_ENV);
+  stack_push (GET_EXP);
+  stack_push (handler);
+  stack_push (make_apply_frame_header (frame_size));
+  abort_to_interpreter (PRIM_NO_TRAP_APPLY);
 }
 
 static void

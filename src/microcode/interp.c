@@ -191,7 +191,7 @@ eval_error (long code, SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
   if (code == PRIM_INTERRUPT)
     {
-      stack_check (CONTINUATION_SIZE + 1);
+      stack_check (ENV_CONT_SIZE);
       push_cont_env (RC_EVAL_ERROR, exp, env);
       return handle_interrupt ();
     }
@@ -289,7 +289,7 @@ return_from_compiled_code (long code)
 static inline action_t
 eval_access (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
-  stack_check (CONTINUATION_SIZE);
+  stack_check (CONT_SIZE);
   push_cont_rc (RC_EXECUTE_ACCESS_FINISH, exp);
   return eval_subproblem (access_env (exp), env);
 }
@@ -297,7 +297,7 @@ eval_access (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 static inline action_t
 eval_assignment (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
-  stack_check (CONTINUATION_SIZE + 1);
+  stack_check (ENV_CONT_SIZE);
   push_cont_env (RC_EXECUTE_ASSIGNMENT_FINISH, exp, env);
   return eval_subproblem (assignment_value (exp), env);
 }
@@ -306,7 +306,7 @@ static inline action_t
 eval_combination (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
   unsigned long nargs = combination_size (exp) - 1;
-  stack_check (CONTINUATION_SIZE + 2 + nargs);
+  stack_check (CONT_SIZE + 2 + nargs);
   decrement_sp (nargs);
   stack_push (make_nmv_header (nargs));
   if (nargs == 0)
@@ -338,7 +338,7 @@ eval_compiled_entry (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 static inline action_t
 eval_conditional (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
-  stack_check (CONTINUATION_SIZE + 1);
+  stack_check (ENV_CONT_SIZE);
   push_cont_env (RC_CONDITIONAL_DECIDE, exp, env);
   return eval_subproblem (conditional_predicate (exp), env);
 }
@@ -346,7 +346,7 @@ eval_conditional (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 static inline action_t
 eval_definition (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
-  stack_check (CONTINUATION_SIZE + 1);
+  stack_check (ENV_CONT_SIZE);
   push_cont_env (RC_EXECUTE_DEFINITION_FINISH, exp, env);
   return eval_subproblem (definition_value (exp), env);
 }
@@ -360,7 +360,7 @@ eval_delay (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 static inline action_t
 eval_disjunction (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
-  stack_check (CONTINUATION_SIZE + 1);
+  stack_check (ENV_CONT_SIZE);
   push_cont_env (RC_DISJUNCTION_DECIDE, exp, env);
   return eval_subproblem (disjunction_predicate (exp), env);
 }
@@ -386,7 +386,7 @@ eval_scode_quote (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 static inline action_t
 eval_sequence (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
-  stack_check (CONTINUATION_SIZE + 1);
+  stack_check (ENV_CONT_SIZE);
   push_cont_env (RC_EXECUTE_SEQUENCE_FINISH, exp, env);
   return eval_subproblem (sequence_1 (exp), env);
 }
@@ -579,7 +579,7 @@ apply_control_point (SCHEME_OBJECT proc)
 {
   if (apply_frame_size () != 2)
     return apply_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-  SET_VAL (apply_frame_first_arg ());
+  SET_VAL (*apply_frame_args ());
   unpack_control_point (proc);
   RESET_HISTORY ();
   return ACTION_RETURN;
@@ -705,7 +705,6 @@ return_comb_save_value (void)
     push_cont_env (RC_COMB_SAVE_VALUE, exp, env);
   else
     {
-      // apply_frame_header
       stack_push (make_apply_frame_header (combination_size (exp)));
       push_cont_rc (RC_COMB_APPLY_FUNCTION, exp);
     }
@@ -821,7 +820,7 @@ return_hardware_trap (void)
       termination_trap ();
       /*NOTREACHED*/
     }
-  stack_check (STACK_ENV_EXTRA_SLOTS + 2);
+  stack_check (3);
   stack_push (info);
   stack_push (handler);
   stack_push (make_apply_frame_header (2));

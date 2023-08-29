@@ -137,7 +137,7 @@ setup_interrupt (unsigned long masked_interrupts)
 
   stop_history ();
   preserve_interrupt_mask ();
- Will_Push (STACK_ENV_EXTRA_SLOTS + 3);
+  stack_check (4);
 
   /* There used to be some code here for gc checks, but that is done
      uniformly now by RC_NORMAL_GC_DONE. */
@@ -146,11 +146,10 @@ setup_interrupt (unsigned long masked_interrupts)
      user supplied interrupt routine.  It will be given two arguments:
      the UNmasked interrupt requests, and the currently enabled
      interrupts.  */
-  STACK_PUSH (ULONG_TO_FIXNUM (GET_INT_MASK));
-  STACK_PUSH (ULONG_TO_FIXNUM (GET_INT_CODE));
-  STACK_PUSH (interrupt_handler);
-  PUSH_APPLY_FRAME_HEADER (2);
- Pushed ();
+  stack_push (ULONG_TO_FIXNUM (GET_INT_MASK));
+  stack_push (ULONG_TO_FIXNUM (GET_INT_CODE));
+  stack_push (interrupt_handler);
+  stack_push (make_apply_frame_header (3));
   /* Turn off interrupts: */
   SET_INTERRUPT_MASK (interrupt_mask);
 }
@@ -183,23 +182,12 @@ error_death (long code, const char * message)
   termination_no_error_handler ();
   /*NOTREACHED*/
 }
-
-void
-Stack_Death (void)
-{
-  outf_fatal("\nWill_Push vs. Pushed inconsistency.\n");
-  Microcode_Termination (TERM_BAD_STACK);
-  /*NOTREACHED*/
-}
 
 void
 preserve_interrupt_mask (void)
 {
- Will_Push (CONTINUATION_SIZE);
-  SET_RC (RC_RESTORE_INT_MASK);
-  SET_EXP (ULONG_TO_FIXNUM (GET_INT_MASK));
-  SAVE_CONT ();
- Pushed ();
+  stack_check (CONT_SIZE);
+  push_cont_rc (RC_RESTORE_INT_MASK, ULONG_TO_FIXNUM (GET_INT_MASK));
 }
 
 /* canonicalize_primitive_context should be used by "unsafe"
@@ -669,23 +657,22 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
   if (Print_Errors)
     {
       err_print (error_code, ERROR_OUTPUT);
-      if ((GET_RC == RC_INTERNAL_APPLY)
-	  || (GET_RC == RC_INTERNAL_APPLY_VAL))
+      if (GET_RC == RC_INTERNAL_APPLY
+	  || GET_RC == RC_INTERNAL_APPLY_VAL)
 	{
-	  Print_Expression (STACK_REF(CONTINUATION_SIZE + STACK_ENV_FUNCTION),
-			    "Procedure");
+          SCHEME_OBJECT* next_frame = stack_loc (CONT_SIZE);
+	  Print_Expression (apply_frame_ptr_proc (next_frame), "Procedure");
 	  outf_error ("\n");
-	  {
-	    int i, nargs = (APPLY_FRAME_HEADER_N_ARGS
-			    (STACK_REF(CONTINUATION_SIZE + STACK_ENV_HEADER)));
-	    for (i = 0; i < nargs; i += 1)
-	      {
-		outf_error ("Argument %d: ", i+1);
-		Print_Expression ((STACK_REF(CONTINUATION_SIZE
-					     + STACK_ENV_FIRST_ARG + i)), "");
-		outf_error ("\n");
-	      }
-	  }
+
+          SCHEME_OBJECT* args = apply_frame_ptr_args (next_frame);
+          SCHEME_OBJECT* scan = args;
+          SCHEME_OBJECT* end = args + apply_frame_header_n_args (next_frame);
+          while (scan < end)
+	    {
+              outf_error ("Argument %d: ", scan - args);
+              Print_Expression (*scan++, "");
+              outf_error ("\n");
+            }
 	}
       else
 	{
@@ -716,25 +703,26 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
   debug_slotno = local_slotno;
 #endif
 
-  Will_Push (CONTINUATION_SIZE + (from_pop_return_p ? 0 : 1));
   if (from_pop_return_p)
-    SET_EXP (GET_VAL);
+    {
+      stack_check (CONT_SIZE);
+      push_cont_rc (RC_POP_RETURN_ERROR, GET_VAL);
+    }
   else
-    PUSH_ENV ();
-  SET_RC (from_pop_return_p ? RC_POP_RETURN_ERROR : RC_EVAL_ERROR);
-  SAVE_CONT ();
-  Pushed ();
-
+    {
+      stack_check (ENV_CONT_SIZE);
+      push_cont_env (RC_EVAL_ERROR, GET_EXP, GET_ENV);
+    }
   {
     SCHEME_OBJECT error_vector = SHARP_F;
     if (VECTOR_P (fixed_objects))
-      error_vector = (vector_ref (fixed_objects, SYSTEM_ERROR_VECTOR));
+      error_vector = vector_ref (fixed_objects, SYSTEM_ERROR_VECTOR);
     if (!VECTOR_P (error_vector))
       error_death (error_code, "No error handlers");
-    if ((error_code >= 0) && (error_code < (vector_length (error_vector))))
-      handler = (vector_ref (error_vector, error_code));
-    else if (ERR_BAD_ERROR_CODE < (vector_length (error_vector)))
-      handler = (vector_ref (error_vector, ERR_BAD_ERROR_CODE));
+    if (error_code >= 0 && error_code < vector_length (error_vector))
+      handler = vector_ref (error_vector, error_code);
+    else if (ERR_BAD_ERROR_CODE < vector_length (error_vector))
+      handler = vector_ref (error_vector, ERR_BAD_ERROR_CODE);
     else
       error_death (error_code, "No error handlers");
   }
@@ -743,17 +731,16 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
   stop_history ();
   preserve_interrupt_mask ();
 
-  Will_Push (STACK_ENV_EXTRA_SLOTS + 3);
+  stack_check (4);
   /* Arg 2:     interrupt mask */
-  STACK_PUSH (ULONG_TO_FIXNUM (GET_INT_MASK));
+  stack_push (ULONG_TO_FIXNUM (GET_INT_MASK));
   /* Arg 1:     error code  */
   if ((error_code == ERR_WITH_ARGUMENT) || (error_code == ERR_IN_SYSTEM_CALL))
-    STACK_PUSH (error_argument);
+    stack_push (error_argument);
   else
-    STACK_PUSH (long_to_integer (error_code));
-  STACK_PUSH (handler);
-  PUSH_APPLY_FRAME_HEADER (2);
-  Pushed ();
+    stack_push (long_to_integer (error_code));
+  stack_push (handler);
+  stack_push (make_apply_frame_header (3));
 
   /* Disable all interrupts */
   SET_INTERRUPT_MASK (0);
@@ -805,14 +792,12 @@ make_dummy_history (void)
 void
 save_history (unsigned long rc)
 {
-  Will_Push (HISTORY_SIZE);
-  STACK_PUSH (SHARP_F);		/* Prev_Restore_History_Stacklet */
-  STACK_PUSH (ULONG_TO_FIXNUM (prev_restore_history_offset));
-  SET_EXP (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history_register));
-  SET_RC (rc);
-  SAVE_CONT ();
-  Pushed ();
-  history_register = (OBJECT_ADDRESS (READ_DUMMY_HISTORY ()));
+  stack_check (HISTORY_CONT_SIZE);
+  stack_push (SHARP_F);		/* Prev_Restore_History_Stacklet */
+  stack_push (ULONG_TO_FIXNUM (prev_restore_history_offset));
+  push_cont_rc (rc,
+                MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history_register));
+  history_register = OBJECT_ADDRESS (READ_DUMMY_HISTORY ());
 }
 
 /* restore_history pops a history object off the stack and makes a
@@ -1068,12 +1053,9 @@ extern SCHEME_OBJECT C_call_scheme
 
 SCHEME_OBJECT
 C_call_scheme (SCHEME_OBJECT proc,
-       long n_args,
-       SCHEME_OBJECT * argvec)
+               long n_args,
+               SCHEME_OBJECT* argvec)
 {
-  SCHEME_OBJECT primitive, prim_lexpr, * sp, result;
-  SCHEME_OBJECT * callers_last_return_code;
-
 #ifdef CC_IS_NATIVE
   extern void * C_Frame_Pointer;
   extern void * C_Stack_Pointer;
@@ -1083,44 +1065,36 @@ C_call_scheme (SCHEME_OBJECT proc,
   __try
 #endif
 #endif
-  {
-    primitive = GET_PRIMITIVE;
-    prim_lexpr = GET_LEXPR_ACTUALS;
-    callers_last_return_code = last_return_code;
+  SCHEME_OBJECT primitive = GET_PRIMITIVE;
+  SCHEME_OBJECT prim_lexpr = GET_LEXPR_ACTUALS;
+  SCHEME_OBJECT* callers_last_return_code = last_return_code;
 
-    if (! (PRIMITIVE_P (primitive)))
+  if (!PRIMITIVE_P (primitive))
+    {
       abort_to_interpreter (ERR_CANNOT_RECURSE);
       /*NOTREACHED*/
-    sp = stack_pointer;
-
-   Will_Push ((2 * CONTINUATION_SIZE) + (n_args + STACK_ENV_EXTRA_SLOTS + 1));
-    {
-      long i;
-
-      SET_RC (RC_END_OF_COMPUTATION);
-      SET_EXP (primitive);
-      SAVE_CONT ();
-
-      for (i = n_args; --i >= 0; )
-	STACK_PUSH (argvec[i]);
-      STACK_PUSH (proc);
-      PUSH_APPLY_FRAME_HEADER (n_args);
-
-      SET_RC (RC_INTERNAL_APPLY);
-      SET_EXP (SHARP_F);
-      SAVE_CONT ();
     }
-   Pushed ();
-    result = (Re_Enter_Interpreter ());
+  SCHEME_OBJECT* sp = stack_pointer;
 
-    if (stack_pointer != sp)
-      signal_error_from_primitive (ERR_STACK_HAS_SLIPPED);
-      /*NOTREACHED*/
+  stack_check ((2 * CONT_SIZE) + n_args + 2);
+  push_cont_rc (RC_END_OF_COMPUTATION, primitive);
 
-    last_return_code = callers_last_return_code;
-    SET_LEXPR_ACTUALS (prim_lexpr);
-    SET_PRIMITIVE (primitive);
-  }
+  SCHEME_OBJECT* end = argvec + n_args;
+  while (argvec < end)
+    stack_push (*argvec++);
+  stack_push (proc);
+  stack_push (make_apply_frame_header (n_args + 1);
+  push_cont_rc (RC_INTERNAL_APPLY, SHARP_F);
+
+  SCHEME_OBJECT result = Re_Enter_Interpreter ();
+
+  if (stack_pointer != sp)
+    signal_error_from_primitive (ERR_STACK_HAS_SLIPPED);
+  /*NOTREACHED*/
+
+  last_return_code = callers_last_return_code;
+  SET_LEXPR_ACTUALS (prim_lexpr);
+  SET_PRIMITIVE (primitive);
 #ifdef CC_IS_NATIVE
 #ifdef CL386
   __finally
@@ -1131,7 +1105,7 @@ C_call_scheme (SCHEME_OBJECT proc,
   }
 #endif
 
-  return  result;
+  return result;
 }
 
 #endif /* __WIN32__ */

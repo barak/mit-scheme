@@ -616,37 +616,30 @@ setup_trap_frame (int signo,
   else
     {
       INITIALIZE_STACK ();
-     Will_Push (CONTINUATION_SIZE);
-      SET_RC (RC_END_OF_COMPUTATION);
-      SET_EXP (SHARP_F);
-      SAVE_CONT ();
-     Pushed ();
+      stack_check (CONT_SIZE);
+      push_cont_rc (RC_END_OF_COMPUTATION, SHARP_F);
     }
 
- Will_Push (7 + CONTINUATION_SIZE);
-  STACK_PUSH (trinfo -> extra_trap_info);
-  STACK_PUSH (trinfo -> pc_info_2);
-  STACK_PUSH (trinfo -> pc_info_1);
-  STACK_PUSH (trinfo -> state);
-  STACK_PUSH (BOOLEAN_TO_OBJECT (new_stack_pointer != 0));
-  STACK_PUSH (find_signal_code_name (signo, info, scp));
-  STACK_PUSH (signal_name);
-  SET_RC (RC_HARDWARE_TRAP);
-  SET_EXP (long_to_integer (signo));
-  SAVE_CONT ();
- Pushed ();
+  stack_check (7 + CONT_SIZE);
+  stack_push (trinfo -> extra_trap_info);
+  stack_push (trinfo -> pc_info_2);
+  stack_push (trinfo -> pc_info_1);
+  stack_push (trinfo -> state);
+  stack_push (BOOLEAN_TO_OBJECT (new_stack_pointer != 0));
+  stack_push (find_signal_code_name (signo, info, scp));
+  stack_push (signal_name);
+  push_cont_rc (RC_HARDWARE_TRAP, long_to_integer (signo));
 
-  if ((new_stack_pointer != 0)
+  if (new_stack_pointer != 0
       /* This may want to do it in other cases, but this may be enough. */
-      && ((trinfo -> state) == STATE_COMPILED_CODE))
+      && trinfo->state == STATE_COMPILED_CODE)
     stop_history ();
-  history_register = (make_dummy_history ());
+  history_register = make_dummy_history ();
 
- Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
-  STACK_PUSH (signal_name);
-  STACK_PUSH (handler);
-  PUSH_APPLY_FRAME_HEADER (1);
- Pushed ();
+  stack_check (3);
+  stack_push (signal_name);
+  stack_push (handler);
+  stack_push (make_apply_frame_header (2));
 
   SET_INTERRUPT_MASK (saved_mask);
   abort_to_interpreter (PRIM_APPLY);

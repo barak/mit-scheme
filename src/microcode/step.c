@@ -101,7 +101,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
   POP_PRIMITIVE_FRAME (3);
   install_traps (hooks);
 
-  Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
+  stack_check (number_of_args + 2);
   decrement_sp (number_of_args);
   scan_list = argument_list;
   SCHEME_OBJECT* scan_stack = stack_pointer;
@@ -112,7 +112,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
     }
   stack_push (procedure);
   stack_push (make_apply_frame_header (number_of_args + 1));
-  Pushed ();
+
   PRIMITIVE_ABORT (PRIM_NO_TRAP_APPLY);
   /*NOTREACHED*/
   PRIMITIVE_RETURN (UNSPECIFIC);

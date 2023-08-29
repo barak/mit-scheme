@@ -44,43 +44,34 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3,
 Copy OBJECT from the heap into constant/pure space.\n\
 PURE? is ignored.")
 {
-  SCHEME_OBJECT object;
-  unsigned long safety_margin;
-  SCHEME_OBJECT daemon;
   PRIMITIVE_HEADER (3);
-
   canonicalize_primitive_context ();
+
   STACK_CHECK_FATAL ("PURIFY");
 
-  object = (ARG_REF (1));
-  safety_margin = (ARG_HEAP_RESERVED (3));
+  SCHEME_OBJECT object = ARG_REF (1);
+  unsigned long safety_margin = ARG_HEAP_RESERVED (3);
   POP_PRIMITIVE_FRAME (3);
 
   ENTER_CRITICAL_SECTION ("purify");
   heap_reserved = safety_margin;
   purify (object);
 
- Will_Push (CONTINUATION_SIZE);
-  SET_RC (RC_NORMAL_GC_DONE);
-  SET_EXP
-    (cons (SHARP_T,
-	   (ULONG_TO_FIXNUM ((HEAP_AVAILABLE > gc_space_needed)
-			     ? (HEAP_AVAILABLE - gc_space_needed)
-			     : 0))));
-  SAVE_CONT ();
- Pushed ();
+  stack_check (CONT_SIZE);
+  push_cont_rc (RC_NORMAL_GC_DONE,
+                cons (SHARP_T,
+                      ULONG_TO_FIXNUM ((HEAP_AVAILABLE > gc_space_needed)
+                                       ? HEAP_AVAILABLE - gc_space_needed
+                                       : 0)));
 
   RENAME_CRITICAL_SECTION ("purify daemon");
-  daemon = (vector_ref (fixed_objects, GC_DAEMON));
-  if (daemon != SHARP_F)
-    {
-     Will_Push (2);
-      STACK_PUSH (daemon);
-      PUSH_APPLY_FRAME_HEADER (0);
-     Pushed ();
-      PRIMITIVE_ABORT (PRIM_APPLY);
-    }
-  PRIMITIVE_ABORT (PRIM_POP_RETURN);
+  SCHEME_OBJECT daemon = vector_ref (fixed_objects, GC_DAEMON);
+  if (daemon == SHARP_F)
+    PRIMITIVE_ABORT (PRIM_POP_RETURN);
+  stack_check (2);
+  stack_push (daemon);
+  stack_push (make_apply_frame_header (1));
+  PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

@@ -31,6 +31,7 @@ USA.
 #define SCM_INTERP_H 1
 
 #include "object.h"
+#include "const.h"
 #include "intrpt.h"
 #include "stack.h"
 
@@ -91,12 +92,48 @@ restore_cont (void)
 #define SAVE_CONT save_cont
 #define RESTORE_CONT restore_cont
 
-#define CONT_RC(offset) (OBJECT_DATUM (CONT_RET (offset)))
 #define CONT_RET(offset) (stack_ref (offset))
 #define CONT_EXP(offset) (stack_ref ((offset) + 1))
 
-#define CONTINUATION_SIZE 2
-#define HISTORY_SIZE (CONTINUATION_SIZE + 2)
+#define CONT_SIZE 2
+#define ENV_CONT_SIZE (CONT_SIZE + 1)
+#define HISTORY_CONT_SIZE (CONT_SIZE + 2)
+
+static inline SCHEME_OBJECT
+cont_frame_ret (SCHEME_OBJECT* frame)
+{
+  return frame[0];
+}
+
+static inline SCHEME_OBJECT
+cont_frame_rc (SCHEME_OBJECT* frame)
+{
+  return OBJECT_DATUM (cont_frame_ret (frame));
+}
+
+static inline SCHEME_OBJECT
+cont_frame_exp (SCHEME_OBJECT* frame)
+{
+  return frame[1];
+}
+
+static inline SCHEME_OBJECT
+cont_frame_env (SCHEME_OBJECT* frame)
+{
+  return frame[2];
+}
+
+static inline void
+discard_cont_frame (void)
+{
+  increment_sp (2);
+}
+
+static inline void
+discard_cont_env_frame (void)
+{
+  increment_sp (3);
+}
 
 #define make_apply_frame_header make_vector_header
 
@@ -113,15 +150,33 @@ apply_frame_header_n_args (SCHEME_OBJECT header)
 }
 
 static inline SCHEME_OBJECT
+apply_frame_ptr_header (SCHEME_OBJECT* frame)
+{
+  return frame[0];
+}
+
+static inline SCHEME_OBJECT
+apply_frame_ptr_proc (SCHEME_OBJECT* frame)
+{
+  return frame[1];
+}
+
+static inline SCHEME_OBJECT*
+apply_frame_ptr_args (SCHEME_OBJECT* frame)
+{
+  return frame + 2;
+}
+
+static inline SCHEME_OBJECT
 apply_frame_header (void)
 {
-  return stack_ref (0);
+  return apply_frame_ptr_header (stack_pointer);
 }
 
 static inline SCHEME_OBJECT
 apply_frame_proc (void)
 {
-  return stack_ref (1);
+  return apply_frame_ptr_proc (stack_pointer);
 }
 
 static inline void
@@ -130,10 +185,10 @@ set_apply_frame_proc (SCHEME_OBJECT proc)
   return stack_set (1, proc);
 }
 
-static inline SCHEME_OBJECT
-apply_frame_first_arg (void)
+static inline SCHEME_OBJECT*
+apply_frame_args (void)
 {
-  return stack_ref (2);
+  return apply_frame_ptr_args (stack_pointer);
 }
 
 static inline unsigned long
@@ -189,35 +244,6 @@ pop_apply_frame_header (void)
 #define APPLY_PRIMITIVE_FROM_INTERPRETER PRIMITIVE_APPLY
 
 #endif
-
-/* Stack manipulation */
-
-#ifdef ENABLE_DEBUGGING_TOOLS
-
-#define Will_Push(n)                                                    \
-{                                                                       \
-  stack_check (n);                                                      \
-  SCHEME_OBJECT* Will_Push_Limit = stack_pointer - (n)
-
-#define Pushed()                                                        \
-  if (stack_pointer < Will_Push_Limit)                                  \
-    Stack_Death ();                                                     \
-}
-
-#else
-
-#define Will_Push(n) stack_check (n)
-#define Pushed()
-
-#endif
-
-/* N in Will_Eventually_Push is the maximum contiguous (single return
-   code) amount that this operation may take.  On the average case it
-   may use less.  M in Finished_Eventual_Pushing is the amount not yet
-   pushed.  */
-
-#define Will_Eventually_Push(n) stack_check (n)
-#define Finished_Eventual_Pushing(m)
 
 /* Primitive utility macros */
 

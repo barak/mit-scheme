@@ -515,7 +515,7 @@ guarantee_cc_return (unsigned long offset)
   if (CHECK_RETURN_CODE (RC_REENTER_COMPILED_CODE, offset))
     {
       unsigned long lrc = (FIXNUM_TO_ULONG (CONT_EXP (offset)));
-      close_stack_gap (offset, CONTINUATION_SIZE);
+      close_stack_gap (offset, CONT_SIZE);
       last_return_code = (STACK_LOC (offset + lrc));
       CHECK_LAST_RETURN_CODE ();
       COMPILER_END_SUBPROBLEM ();
@@ -544,10 +544,10 @@ guarantee_interp_return (void)
     }
   else
     {
-      open_stack_gap (offset, CONTINUATION_SIZE);
+      open_stack_gap (offset, CONT_SIZE);
       {
 	SCHEME_OBJECT * sp = stack_pointer;
-	stack_pointer = (STACK_LOC (offset + CONTINUATION_SIZE));
+	stack_pointer = (STACK_LOC (offset + CONT_SIZE));
 	SAVE_LAST_RETURN_CODE (RC_REENTER_COMPILED_CODE);
 	stack_pointer = sp;
       }
