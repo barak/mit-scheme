@@ -203,9 +203,8 @@ eval_error (long code, SCHEME_OBJECT exp, SCHEME_OBJECT env)
 static inline action_t
 apply_error (long code)
 {
-  // **** Next two lines should be exchanged
-  push_cont_rc (RC_INTERNAL_APPLY_VAL, SHARP_F);
   SET_VAL (apply_frame_proc ());
+  push_cont_rc (RC_INTERNAL_APPLY_VAL, SHARP_F);
   return handle_error (code, true);
 }
 
