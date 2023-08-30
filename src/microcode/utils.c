@@ -821,7 +821,7 @@ stop_history (void)
 {
   SCHEME_OBJECT exp = GET_EXP;
   SCHEME_OBJECT ret = GET_RET;
-  SAVE_HISTORY (RC_RESTORE_DONT_COPY_HISTORY);
+  save_history (RC_RESTORE_DONT_COPY_HISTORY);
   prev_restore_history_offset = stack_n_pushed ();
   SET_RET (ret);
   SET_EXP (exp);

@@ -82,7 +82,6 @@ restore_cont (void)
 
 #define CONT_SIZE 2
 #define ENV_CONT_SIZE (CONT_SIZE + 1)
-#define HISTORY_CONT_SIZE (CONT_SIZE + 2)
 
 static inline SCHEME_OBJECT
 cont_frame_ret (SCHEME_OBJECT* frame)

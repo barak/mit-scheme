@@ -53,9 +53,7 @@ USA.
 #define HISTORY_MARKED_P(object) (((object) & HISTORY_MARK_MASK) != 0)
 
 #define READ_DUMMY_HISTORY() vector_ref (fixed_objects, DUMMY_HISTORY)
-
-#define SAVE_HISTORY save_history
-#define RESET_HISTORY reset_history
+#define HISTORY_CONT_SIZE (CONT_SIZE + 2)
 
 #ifndef DISABLE_HISTORY
 #  define NEW_SUBPROBLEM new_subproblem
@@ -75,11 +73,11 @@ USA.
 #  define COMPILER_END_SUBPROBLEM() do {} while (false)
 #endif
 
-extern SCHEME_OBJECT * history_register;
+extern SCHEME_OBJECT* history_register;
 extern unsigned long prev_restore_history_offset;
 
 extern void reset_history (void);
-extern SCHEME_OBJECT * make_dummy_history (void);
+extern SCHEME_OBJECT* make_dummy_history (void);
 extern void save_history (unsigned long);
 extern bool restore_history (SCHEME_OBJECT);
 extern void stop_history (void);
@@ -89,4 +87,3 @@ extern void new_reduction (SCHEME_OBJECT, SCHEME_OBJECT);
 extern void end_subproblem (void);
 extern void compiler_new_subproblem (void);
 extern void compiler_new_reduction (void);
-

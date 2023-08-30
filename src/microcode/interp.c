@@ -611,7 +611,7 @@ apply_control_point (SCHEME_OBJECT proc)
     return apply_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
   SET_VAL (*apply_frame_args ());
   unpack_control_point (proc);
-  RESET_HISTORY ();
+  reset_history ();
   return ACTION_RETURN;
 }
 

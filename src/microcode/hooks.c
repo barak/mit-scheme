@@ -157,7 +157,7 @@ Invoke PROCEDURE with a copy of the current control stack.")
 				      true));
 	pop_primitive_frame (1);
 
-	SAVE_HISTORY (RC_RESTORE_HISTORY);
+	save_history (RC_RESTORE_HISTORY);
 	preserve_interrupt_mask ();
 	prev_restore_history_offset = 0;
 	{
