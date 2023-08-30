@@ -84,11 +84,12 @@ typedef enum
   REFLECT_CODE_COMPILED_INVOCATION,
 } reflect_code_t;
 
-#define PUSH_REFLECTION(code) do					\
-{									\
-  stack_push (ULONG_TO_FIXNUM (code));					\
-  stack_push (reflect_to_interface);					\
-} while (false)
+static inline void
+push_reflection (reflect_code_t code)
+{
+  stack_push (ULONG_TO_FIXNUM ((unsigned long) code));
+  stack_push (reflect_to_interface);
+}
 
 #define TC_TRAMPOLINE_HEADER TC_FIXNUM
 #define TRAMPOLINE_TABLE_SIZE 4
@@ -301,29 +302,29 @@ long C_return_value;
 #  define ASM_RESET_HOOK() do {} while (false)
 #endif
 
-#define SAVE_LAST_RETURN_CODE(code) do					\
-{									\
-  {									\
-    long SLRC_offset							\
-      = (STACK_LOCATIVE_DIFFERENCE (stack_pointer, last_return_code));	\
-    assert (SLRC_offset > 0);						\
-    stack_push (LONG_TO_FIXNUM (SLRC_offset));				\
-  }									\
-  PUSH_RC (code);							\
-  COMPILER_NEW_SUBPROBLEM ();						\
-} while (false)
+static inline void
+save_last_return_code (long code)
+{
+  unsigned long offset
+    = STACK_LOCATIVE_DIFFERENCE (stack_pointer, last_return_code);
+  assert (offset > 0);
+  push_cont_rc (code, ULONG_TO_FIXNUM (offset));
+  COMPILER_NEW_SUBPROBLEM ();
+}
 
-#define RESTORE_LAST_RETURN_CODE() do					\
-{									\
-  last_return_code = (stack_loc (FIXNUM_TO_ULONG (GET_EXP)));		\
-  CHECK_LAST_RETURN_CODE ();						\
-  COMPILER_END_SUBPROBLEM ();						\
-} while (false)
+static inline void
+check_last_return_code (void)
+{
+  assert (RETURN_CODE_P (*last_return_code));
+}
 
-#define CHECK_LAST_RETURN_CODE() do                                     \
-{                                                                       \
-  assert (RETURN_CODE_P (*last_return_code));                           \
-} while (false)
+static inline void
+restore_last_return_code (void)
+{
+  last_return_code = stack_loc (FIXNUM_TO_ULONG (GET_EXP));
+  check_last_return_code ();
+  COMPILER_END_SUBPROBLEM ();
+}
 
 /* Initialization */
 
@@ -476,7 +477,7 @@ compiled_continuation_p (insn_t * entry_addr)
 
 DEFINE_SCHEME_ENTRY (return_to_compiled_code)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
 
   SCHEME_OBJECT cont = stack_pop ();
   /* Due to a mistake, continuations for microcode utilities are
@@ -518,13 +519,13 @@ guarantee_cc_return (unsigned long offset)
       unsigned long lrc = FIXNUM_TO_ULONG (cont_frame_exp (frame));
       close_stack_gap (offset, CONT_SIZE);
       last_return_code = stack_loc (offset + lrc);
-      CHECK_LAST_RETURN_CODE ();
+      check_last_return_code ();
       COMPILER_END_SUBPROBLEM ();
     }
   else
     {
       last_return_code = frame;
-      CHECK_LAST_RETURN_CODE ();
+      check_last_return_code ();
       open_stack_gap (offset, 1);
       stack_set (offset, return_to_interpreter);
     }
@@ -549,7 +550,7 @@ guarantee_interp_return (void)
       open_stack_gap (offset, CONT_SIZE);
       SCHEME_OBJECT* sp = stack_pointer;
       stack_pointer = stack_loc (offset + CONT_SIZE);
-      SAVE_LAST_RETURN_CODE (RC_REENTER_COMPILED_CODE);
+      save_last_return_code (RC_REENTER_COMPILED_CODE);
       stack_pointer = sp;
     }
 }
@@ -1053,13 +1054,13 @@ back_out_of_link_section (link_cc_state_t * s)
   stack_push (MAKE_CC_BLOCK (s->block_address));
   stack_push (ULONG_TO_FIXNUM ((s->n_entries) - (s->n_linked_entries)));
   stack_push (ULONG_TO_FIXNUM (s->n_entries));
-  SAVE_LAST_RETURN_CODE (RC_COMP_LINK_CACHES_RESTART);
+  save_last_return_code (RC_COMP_LINK_CACHES_RESTART);
 }
 
 static void
 restore_link_cc_state (link_cc_state_t * s)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
   (s->n_entries) = (object_datum (stack_pop ()));
   (s->n_linked_entries) = ((s->n_entries) - (object_datum (stack_pop ())));
   (s->block_address) = (object_address (stack_pop ()));
@@ -1246,13 +1247,13 @@ compiler_interrupt_common (utility_result_t * DSU_result,
     stack_push (MAKE_CC_ENTRY (entry_address));
   assert (CC_ENTRY_P (stack_ref (0)));
   stack_push (state);
-  SAVE_LAST_RETURN_CODE (RC_COMP_INTERRUPT_RESTART);
+  save_last_return_code (RC_COMP_INTERRUPT_RESTART);
   RETURN_TO_C (PRIM_INTERRUPT);
 }
 
 DEFINE_SCHEME_ENTRY (comp_interrupt_restart)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
   {
     SCHEME_OBJECT state = (stack_pop ());
     SET_ENV (state);
@@ -1282,7 +1283,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_assignment_trap,
       stack_push (new_val);
       stack_push (cc_block_environment (block));
       stack_push (compiler_var_error (cache, block, ASSIGNMENT_CACHE));
-      SAVE_LAST_RETURN_CODE (RC_COMP_ASSIGNMENT_TRAP_RESTART);
+      save_last_return_code (RC_COMP_ASSIGNMENT_TRAP_RESTART);
       RETURN_TO_C (code);
     }
   SET_VAL (old_val);
@@ -1291,7 +1292,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_assignment_trap,
 
 DEFINE_SCHEME_ENTRY (comp_assignment_trap_restart)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
   {
     SCHEME_OBJECT name = (stack_pop ());
     SCHEME_OBJECT environment = (stack_pop ());
@@ -1303,7 +1304,7 @@ DEFINE_SCHEME_ENTRY (comp_assignment_trap_restart)
 	stack_push (new_val);
 	stack_push (environment);
 	stack_push (name);
-	SAVE_LAST_RETURN_CODE (RC_COMP_ASSIGNMENT_TRAP_RESTART);
+	save_last_return_code (RC_COMP_ASSIGNMENT_TRAP_RESTART);
 	return (code);
       }
     SET_VAL (old_val);
@@ -1327,7 +1328,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_cache_lookup_apply,
       stack_push (ULONG_TO_FIXNUM (frame_size));
       stack_push (cc_block_environment (block));
       stack_push (compiler_var_error (cache, block, OPERATOR_CACHE));
-      SAVE_LAST_RETURN_CODE (RC_COMP_CACHE_REF_APPLY_RESTART);
+      save_last_return_code (RC_COMP_CACHE_REF_APPLY_RESTART);
       RETURN_TO_C (code);
     }
   TAIL_CALL_2 (comutil_apply, value, frame_size);
@@ -1335,7 +1336,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_cache_lookup_apply,
 
 DEFINE_SCHEME_ENTRY (comp_cache_lookup_apply_restart)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
   {
     SCHEME_OBJECT name = (stack_pop ());
     SCHEME_OBJECT environment = (stack_pop ());
@@ -1350,7 +1351,7 @@ DEFINE_SCHEME_ENTRY (comp_cache_lookup_apply_restart)
 	  stack_push (frame_size);
 	  stack_push (environment);
 	  stack_push (name);
-	  SAVE_LAST_RETURN_CODE (RC_COMP_CACHE_REF_APPLY_RESTART);
+	  save_last_return_code (RC_COMP_CACHE_REF_APPLY_RESTART);
 	  return (code);
 	}
     }
@@ -1380,7 +1381,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lookup_trap, ret_addr, cache_addr)
       stack_push (sra);
       stack_push (cc_block_environment (block));
       stack_push (compiler_var_error (cache, block, LOOKUP_CACHE));
-      SAVE_LAST_RETURN_CODE (RC_COMP_LOOKUP_TRAP_RESTART);
+      save_last_return_code (RC_COMP_LOOKUP_TRAP_RESTART);
       RETURN_TO_C (code);
     }
   SET_VAL (val);
@@ -1389,7 +1390,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lookup_trap, ret_addr, cache_addr)
 
 DEFINE_SCHEME_ENTRY (comp_lookup_trap_restart)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
   {
     SCHEME_OBJECT name = (stack_pop ());
     SCHEME_OBJECT environment = (stack_pop ());
@@ -1399,7 +1400,7 @@ DEFINE_SCHEME_ENTRY (comp_lookup_trap_restart)
       {
 	stack_push (environment);
 	stack_push (name);
-	SAVE_LAST_RETURN_CODE (RC_COMP_LOOKUP_TRAP_RESTART);
+	save_last_return_code (RC_COMP_LOOKUP_TRAP_RESTART);
 	return (code);
       }
     SET_VAL (val);
@@ -1421,7 +1422,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_safe_lookup_trap, ret_addr, cache_addr)
       stack_push (sra);
       stack_push (cc_block_environment (block));
       stack_push (compiler_var_error (cache, block, LOOKUP_CACHE));
-      SAVE_LAST_RETURN_CODE (RC_COMP_SAFE_REF_TRAP_RESTART);
+      save_last_return_code (RC_COMP_SAFE_REF_TRAP_RESTART);
       RETURN_TO_C (code);
     }
   SET_VAL (val);
@@ -1430,7 +1431,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_safe_lookup_trap, ret_addr, cache_addr)
 
 DEFINE_SCHEME_ENTRY (comp_safe_lookup_trap_restart)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
   {
     SCHEME_OBJECT name = (stack_pop ());
     SCHEME_OBJECT environment = (stack_pop ());
@@ -1440,7 +1441,7 @@ DEFINE_SCHEME_ENTRY (comp_safe_lookup_trap_restart)
       {
 	stack_push (environment);
 	stack_push (name);
-	SAVE_LAST_RETURN_CODE (RC_COMP_SAFE_REF_TRAP_RESTART);
+	save_last_return_code (RC_COMP_SAFE_REF_TRAP_RESTART);
 	return (code);
       }
     SET_VAL (val);
@@ -1462,7 +1463,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_unassigned_p_trap, ret_addr, cache_addr)
       stack_push (sra);
       stack_push (cc_block_environment (block));
       stack_push (compiler_var_error (cache, block, LOOKUP_CACHE));
-      SAVE_LAST_RETURN_CODE (RC_COMP_UNASSIGNED_TRAP_RESTART);
+      save_last_return_code (RC_COMP_UNASSIGNED_TRAP_RESTART);
       RETURN_TO_C (code);
     }
   SET_VAL (val);
@@ -1471,7 +1472,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_unassigned_p_trap, ret_addr, cache_addr)
 
 DEFINE_SCHEME_ENTRY (comp_unassigned_p_trap_restart)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
   {
     SCHEME_OBJECT name = (stack_pop ());
     SCHEME_OBJECT environment = (stack_pop ());
@@ -1481,7 +1482,7 @@ DEFINE_SCHEME_ENTRY (comp_unassigned_p_trap_restart)
       {
 	stack_push (environment);
 	stack_push (name);
-	SAVE_LAST_RETURN_CODE (RC_COMP_UNASSIGNED_TRAP_RESTART);
+	save_last_return_code (RC_COMP_UNASSIGNED_TRAP_RESTART);
 	return (code);
       }
     SET_VAL (val);
@@ -1523,13 +1524,13 @@ DEFINE_SCHEME_UTILITY_2 (comutil_primitive_error, ret_addr, primitive)
   DECLARE_UTILITY_ARG (SCHEME_OBJECT, primitive);
   stack_push (MAKE_CC_ENTRY (ret_addr));
   stack_push (primitive);
-  SAVE_LAST_RETURN_CODE (RC_COMP_ERROR_RESTART);
+  save_last_return_code (RC_COMP_ERROR_RESTART);
   RETURN_TO_C (ERR_COMPILED_CODE_ERROR);
 }
 
 DEFINE_SCHEME_ENTRY (comp_error_restart)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
   (void) stack_pop ();		/* primitive */
   JUMP_TO_CC_ENTRY (stack_pop ());
 }
@@ -1578,7 +1579,7 @@ apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
 	default:
 	  stack_push (procedure);
 	  PUSH_APPLY_FRAME_HEADER (n_args);
-	  PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
+	  push_reflection (REFLECT_CODE_INTERNAL_APPLY);
 	  return;
 	}
     }
@@ -1590,7 +1591,7 @@ compiled_with_interrupt_mask (unsigned long old_mask,
 			      unsigned long new_mask)
 {
   stack_push (ULONG_TO_FIXNUM (old_mask));
-  PUSH_REFLECTION (REFLECT_CODE_RESTORE_INTERRUPT_MASK);
+  push_reflection (REFLECT_CODE_RESTORE_INTERRUPT_MASK);
   stack_push (ULONG_TO_FIXNUM (new_mask));
   setup_compiled_invocation_from_primitive (receiver, 1);
 }
@@ -1598,7 +1599,7 @@ compiled_with_interrupt_mask (unsigned long old_mask,
 void
 compiled_with_stack_marker (SCHEME_OBJECT thunk)
 {
-  PUSH_REFLECTION (REFLECT_CODE_STACK_MARKER);
+  push_reflection (REFLECT_CODE_STACK_MARKER);
   setup_compiled_invocation_from_primitive (thunk, 0);
 }
 
@@ -1617,7 +1618,7 @@ setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
       PRIMITIVE_ABORT (code);
     }
   stack_push (procedure);
-  PUSH_REFLECTION (REFLECT_CODE_COMPILED_INVOCATION);
+  push_reflection (REFLECT_CODE_COMPILED_INVOCATION);
 }
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns
@@ -2226,7 +2227,7 @@ DEFINE_TRAMPOLINE (comutil_reflect_to_interface)
       /* Attempt to process interrupts before really proceeding. */
       if (Free >= GET_MEMTOP)
 	{
-	  PUSH_REFLECTION (REFLECT_CODE_CC_BKPT);
+	  push_reflection (REFLECT_CODE_CC_BKPT);
 	  compiler_interrupt_common (DSU_result, 0, SHARP_F);
 	  return;
 	}
@@ -2408,7 +2409,7 @@ DEFINE_TRAMPOLINE (comutil_operator_lookup_trap)
       stack_push (ULONG_TO_FIXNUM (frame_size));
       stack_push (cc_block_environment (block));
       stack_push (compiler_var_error (cache, block, OPERATOR_CACHE));
-      SAVE_LAST_RETURN_CODE (RC_COMP_OP_REF_TRAP_RESTART);
+      save_last_return_code (RC_COMP_OP_REF_TRAP_RESTART);
       RETURN_TO_C (code);
     }
   TAIL_CALL_2 (comutil_apply, procedure, frame_size);
@@ -2420,7 +2421,7 @@ DEFINE_TRAMPOLINE (comutil_operator_lookup_trap)
 
 DEFINE_SCHEME_ENTRY (comp_op_lookup_trap_restart)
 {
-  RESTORE_LAST_RETURN_CODE ();
+  restore_last_return_code ();
   /* Discard debugger info.  */
   stack_pointer = (stack_loc (3));
   {
@@ -2714,7 +2715,7 @@ bkpt_proceed (insn_t * ep, SCHEME_OBJECT handle, SCHEME_OBJECT state)
   if (! ((CC_RETURN_P (stack_ref (BKPT_PROCEED_FRAME_SIZE)))
 	 && ((CC_RETURN_ADDRESS (stack_ref (BKPT_PROCEED_FRAME_SIZE))) == ep)))
     error_external_return ();
-  PUSH_REFLECTION (REFLECT_CODE_CC_BKPT);
+  push_reflection (REFLECT_CODE_CC_BKPT);
   decrement_sp (BKPT_PROCEED_FRAME_SIZE);
   return (SHARP_F);
 }

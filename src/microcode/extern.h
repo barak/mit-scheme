@@ -41,60 +41,71 @@ USA.
    extern SCHEME_OBJECT Registers [];
 #endif
 
-#define GET_REG_O(i) (Registers[REGBLOCK_##i])
-#define GET_REG_P(i) ((SCHEME_OBJECT *) (Registers[REGBLOCK_##i]))
-#define GET_REG_N(i) ((unsigned long) (Registers[REGBLOCK_##i]))
+static inline SCHEME_OBJECT
+get_register (unsigned int index)
+{
+  return Registers[index];
+}
 
-#define SET_REG_O(i, v) ((Registers[REGBLOCK_##i]) = (v))
-#define SET_REG_P(i, v) (set_ptr_register ((REGBLOCK_##i), (v)))
-#define SET_REG_N(i, v) (set_ulong_register ((REGBLOCK_##i), (v)))
+static inline SCHEME_OBJECT*
+get_ptr_register (unsigned int index)
+{
+  return (SCHEME_OBJECT*) get_register (index);
+}
 
-extern void set_ptr_register (unsigned int, SCHEME_OBJECT *);
-extern void set_ulong_register (unsigned int, unsigned long);
+static inline unsigned long
+get_ulong_register (unsigned int index)
+{
+  return (unsigned long) get_register (index);
+}
 
-#define GET_MEMTOP		GET_REG_P (MEMTOP)
-#define GET_INT_MASK		GET_REG_N (INT_MASK)
-#define GET_VAL			GET_REG_O (VAL)
-#define GET_ENV			GET_REG_O (ENV)
-#define GET_CC_TEMP		GET_REG_O (CC_TEMP)
-#define GET_EXP			GET_REG_O (EXPR)
-#define GET_RET			GET_REG_O (RETURN)
-#define GET_LEXPR_ACTUALS	GET_REG_N (LEXPR_ACTUALS)
-#define GET_PRIMITIVE		GET_REG_O (PRIMITIVE)
-#define GET_CLOSURE_FREE	GET_REG_P (CLOSURE_FREE)
-#define GET_CLOSURE_SPACE	GET_REG_P (CLOSURE_SPACE)
-#define GET_STACK_GUARD		GET_REG_P (STACK_GUARD)
-#define GET_INT_CODE		GET_REG_N (INT_CODE)
-#define GET_REFLECTOR		GET_REG_O (REFLECT_TO_INTERFACE)
+static inline void
+set_register (unsigned int index, SCHEME_OBJECT object)
+{
+  Registers[index] = object;
+}
 
-#define SET_MEMTOP(v)		SET_REG_P (MEMTOP, v)
-#define SET_INT_MASK(v)		SET_REG_N (INT_MASK, v)
-#define SET_VAL(v)		SET_REG_O (VAL, v)
-#define SET_ENV(v)		SET_REG_O (ENV, v)
-#define SET_CC_TEMP(v)		SET_REG_O (COMPILER_TEMP, v)
-#define SET_EXP(v)		SET_REG_O (EXPR, v)
-#define SET_RET(v)		SET_REG_O (RETURN, v)
-#define SET_LEXPR_ACTUALS(v)	SET_REG_N (LEXPR_ACTUALS, v)
-#define SET_PRIMITIVE(v)	SET_REG_O (PRIMITIVE, v)
-#define SET_CLOSURE_FREE(v)	SET_REG_P (CLOSURE_FREE, v)
-#define SET_CLOSURE_SPACE(v)	SET_REG_P (CLOSURE_SPACE, v)
-#define SET_STACK_GUARD(v)	SET_REG_P (STACK_GUARD, v)
-#define SET_INT_CODE(v)		SET_REG_N (INT_CODE, v)
-#define SET_REFLECTOR(v)	SET_REG_O (REFLECT_TO_INTERFACE, v)
+static inline void
+set_ptr_register (unsigned int index, SCHEME_OBJECT* p)
+{
+  set_register (index, (SCHEME_OBJECT) p);
+}
 
-#define PUSH_ENV() stack_push (GET_ENV)
-#define PUSH_VAL() stack_push (GET_VAL)
-#define PUSH_EXP() stack_push (GET_EXP)
-#define PUSH_RET() stack_push (GET_RET)
+static inline void
+set_ulong_register (unsigned int index, unsigned long value)
+{
+  set_register (index, (SCHEME_OBJECT) value);
+}
 
-#define POP_ENV() SET_ENV (stack_pop ())
-#define POP_VAL() SET_VAL (stack_pop ())
-#define POP_EXP() SET_EXP (stack_pop ())
-#define POP_RET() SET_RET (stack_pop ())
+#define GET_MEMTOP		get_ptr_register (REGBLOCK_MEMTOP)
+#define GET_INT_MASK		get_ulong_register (REGBLOCK_INT_MASK)
+#define GET_VAL			get_register (REGBLOCK_VAL)
+#define GET_ENV			get_register (REGBLOCK_ENV)
+#define GET_CC_TEMP		get_register (REGBLOCK_CC_TEMP)
+#define GET_EXP			get_register (REGBLOCK_EXPR)
+#define GET_RET			get_register (REGBLOCK_RETURN)
+#define GET_LEXPR_ACTUALS	get_ulong_register (REGBLOCK_LEXPR_ACTUALS)
+#define GET_PRIMITIVE		get_register (REGBLOCK_PRIMITIVE)
+#define GET_CLOSURE_FREE	get_ptr_register (REGBLOCK_CLOSURE_FREE)
+#define GET_CLOSURE_SPACE	get_ptr_register (REGBLOCK_CLOSURE_SPACE)
+#define GET_STACK_GUARD		get_ptr_register (REGBLOCK_STACK_GUARD)
+#define GET_INT_CODE		get_ulong_register (REGBLOCK_INT_CODE)
+#define GET_REFLECTOR		get_register (REGBLOCK_REFLECT_TO_INTERFACE)
 
-#define GET_RC (object_datum (GET_RET))
-#define SET_RC(code) SET_RET (make_object (TC_RETURN_CODE, (code)))
-#define PUSH_RC(code) stack_push (make_object (TC_RETURN_CODE, (code)))
+#define SET_MEMTOP(v)		set_ptr_register (REGBLOCK_MEMTOP, (v))
+#define SET_INT_MASK(v)		set_ulong_register (REGBLOCK_INT_MASK, (v))
+#define SET_VAL(v)		set_register (REGBLOCK_VAL, (v))
+#define SET_ENV(v)		set_register (REGBLOCK_ENV, (v))
+#define SET_CC_TEMP(v)		set_register (REGBLOCK_COMPILER_TEMP, (v))
+#define SET_EXP(v)		set_register (REGBLOCK_EXPR, (v))
+#define SET_RET(v)		set_register (REGBLOCK_RETURN, (v))
+#define SET_LEXPR_ACTUALS(v)	set_ulong_register (REGBLOCK_LEXPR_ACTUALS, (v))
+#define SET_PRIMITIVE(v)	set_register (REGBLOCK_PRIMITIVE, (v))
+#define SET_CLOSURE_FREE(v)	set_ptr_register (REGBLOCK_CLOSURE_FREE, (v))
+#define SET_CLOSURE_SPACE(v)	set_ptr_register (REGBLOCK_CLOSURE_SPACE, (v))
+#define SET_STACK_GUARD(v)	set_ptr_register (REGBLOCK_STACK_GUARD, (v))
+#define SET_INT_CODE(v)		set_ulong_register (REGBLOCK_INT_CODE, (v))
+#define SET_REFLECTOR(v)	set_register (REGBLOCK_REFLECT_TO_INTERFACE, (v))
 
 #ifdef ENABLE_DEBUGGING_TOOLS
    extern bool Eval_Debug;

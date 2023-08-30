@@ -655,8 +655,8 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
   if (Print_Errors)
     {
       err_print (error_code, ERROR_OUTPUT);
-      if (GET_RC == RC_INTERNAL_APPLY
-	  || GET_RC == RC_INTERNAL_APPLY_VAL)
+      if (object_datum (GET_RET) == RC_INTERNAL_APPLY
+	  || object_datum (GET_RET) == RC_INTERNAL_APPLY_VAL)
 	{
           SCHEME_OBJECT* next_frame = stack_loc (CONT_SIZE);
 	  Print_Expression (apply_frame_ptr_proc (next_frame), "Procedure");
@@ -1107,15 +1107,3 @@ C_call_scheme (SCHEME_OBJECT proc,
 }
 
 #endif /* __WIN32__ */
-
-void
-set_ptr_register (unsigned int index, SCHEME_OBJECT * p)
-{
-  (Registers[index]) = ((SCHEME_OBJECT) p);
-}
-
-void
-set_ulong_register (unsigned int index, unsigned long value)
-{
-  (Registers[index]) = ((SCHEME_OBJECT) value);
-}
