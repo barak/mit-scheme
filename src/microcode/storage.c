@@ -122,11 +122,6 @@ bool ephemeron_request_hard_p;
    unsigned int local_circle [100];
 #endif
 
-const char * CONT_PRINT_RETURN_MESSAGE =   "SAVE_CONT, return code";
-const char * CONT_PRINT_EXPR_MESSAGE   =   "SAVE_CONT, expression";
-const char * RESTORE_CONT_RETURN_MESSAGE = "RESTORE_CONT, return code";
-const char * RESTORE_CONT_EXPR_MESSAGE =   "RESTORE_CONT, expression";
-
 /* Interpreter code name and message tables */
 
 unsigned long MAX_RETURN = MAX_RETURN_CODE;

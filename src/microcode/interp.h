@@ -75,12 +75,6 @@ push_cont_env (unsigned long rc, SCHEME_OBJECT exp, SCHEME_OBJECT env)
 }
 
 static inline void
-save_cont (void)
-{
-  push_cont (GET_RET, GET_EXP);
-}
-
-static inline void
 restore_cont (void)
 {
   SET_RET (stack_pop ());
@@ -89,11 +83,6 @@ restore_cont (void)
 
 #define STACK_CHECK_FATAL stack_check_fatal
 #define STACK_CHECK stack_check
-#define SAVE_CONT save_cont
-#define RESTORE_CONT restore_cont
-
-#define CONT_RET(offset) (stack_ref (offset))
-#define CONT_EXP(offset) (stack_ref ((offset) + 1))
 
 #define CONT_SIZE 2
 #define ENV_CONT_SIZE (CONT_SIZE + 1)
@@ -216,9 +205,6 @@ pop_apply_frame_header (void)
 #define APPLY_FRAME_SIZE apply_frame_size
 #define APPLY_FRAME_N_ARGS apply_frame_n_args
 #define APPLY_FRAME_PROCEDURE apply_frame_proc
-
-#define CHECK_RETURN_CODE(code, offset)					\
-  ((CONT_RET (offset)) == (MAKE_RETURN_CODE (code)))
 
 #if 0
 /* Saving history is required for C_call_scheme to work correctly

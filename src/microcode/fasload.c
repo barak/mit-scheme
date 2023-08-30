@@ -198,17 +198,16 @@ Restores the heap and constant space from the contents of the file\n\
 NAMESTRING, which is typically a file created by DUMP-BAND.  The file\n\
 can, however, be any file which can be loaded with BINARY-FASLOAD.")
 {
-  SCHEME_OBJECT result;
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
   canonicalize_primitive_context ();
-  result = (read_band_file (ARG_REF (1)));
+  SCHEME_OBJECT result = read_band_file (ARG_REF (1));
 
   /* Reset implementation state parameters.  */
   INITIALIZE_INTERRUPTS (0);
 #ifdef CC_SUPPORT_P
-  compiler_utilities = (PAIR_CDR (result));
+  compiler_utilities = pair_cdr (result);
   if (compiler_utilities != SHARP_F)
     compiler_reset (compiler_utilities);
   else
@@ -217,15 +216,13 @@ can, however, be any file which can be loaded with BINARY-FASLOAD.")
   fixed_objects = SHARP_F;
 
   /* Setup initial program */
-  SET_RC (RC_END_OF_COMPUTATION);
-  SET_EXP (SHARP_F);
-  SAVE_CONT ();
-  SET_EXP (PAIR_CAR (result));
+  push_cont_rc (RC_END_OF_COMPUTATION, SHARP_F);
+  SET_EXP (pair_car (result));
   SET_ENV (THE_GLOBAL_ENV);
 
   /* Clear various interpreter state parameters.  */
   trapping = false;
-  history_register = (make_dummy_history ());
+  history_register = make_dummy_history ();
   prev_restore_history_offset = 0;
   CC_TRANSPORT_END ();
   execute_reload_cleanups ();

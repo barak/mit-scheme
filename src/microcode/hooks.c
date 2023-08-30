@@ -139,12 +139,13 @@ Invoke PROCEDURE with a copy of the current control stack.")
        RC_JOIN_STACKLETS frame, there's no need to create a new
        control point.  */
 
-    if (((stack_loc (1 + CONT_SIZE)) == STACK_BOTTOM)
-	&& (CHECK_RETURN_CODE (RC_JOIN_STACKLETS, 1))
-	&& (CONTROL_POINT_P (CONT_EXP (1))))
+    if (stack_loc (1 + CONT_SIZE) == STACK_BOTTOM
+	&& cont_frame_ret (stack_loc (1))
+            == MAKE_RETURN_CODE (RC_JOIN_STACKLETS)
+	&& CONTROL_POINT_P (cont_frame_exp (stack_loc (1))))
       {
-	cp = (CONT_EXP (1));
-	history_register = (object_address (READ_DUMMY_HISTORY ()));
+	cp = cont_frame_exp (stack_loc (1));
+	history_register = object_address (READ_DUMMY_HISTORY ());
 	POP_PRIMITIVE_FRAME (1);
 	STACK_RESET ();
       }

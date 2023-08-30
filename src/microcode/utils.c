@@ -231,12 +231,10 @@ back_out_of_primitive (void)
   SCHEME_OBJECT primitive = GET_PRIMITIVE;
   assert (PRIMITIVE_P (primitive));
   stack_push (primitive);
-  PUSH_APPLY_FRAME_HEADER (PRIMITIVE_N_ARGUMENTS (primitive));
+  stack_push (make_apply_frame_header (PRIMITIVE_N_ARGUMENTS (primitive) + 1));
   guarantee_interp_return ();
   SET_PRIMITIVE (SHARP_F);
-  SET_EXP (SHARP_F);
-  SET_RC (RC_INTERNAL_APPLY);
-  SAVE_CONT ();
+  push_cont_rc (RC_INTERNAL_APPLY, SHARP_F);
   SET_ENV (THE_NULL_ENV);
   SET_VAL (SHARP_F);
 }

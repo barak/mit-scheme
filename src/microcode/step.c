@@ -31,7 +31,7 @@ USA.
 #include "prims.h"
 
 /* UGLY ... this knows (a) that it is called with the primitive frame
-   already popped off the stack; and (b) the order in which SAVE_CONT
+   already popped off the stack; and (b) the order in which push_cont
    stores things on the stack.  */
 
 static void

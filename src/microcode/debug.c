@@ -811,8 +811,8 @@ Stack (int count)
   dump_stack (ERROR_OUTPUT, stack_pointer, stack_end, count);
 }
 
-/* Back_Trace relies on (a) only a call to SAVE_CONT puts a return code on the
-   stack; (b) SAVE_CONT pushes the expression first.  */
+/* Back_Trace relies on (a) only a call to push_cont puts a return code on the
+   stack; (b) push_cont pushes the expression first.  */
 
 void
 Back_Trace (outf_channel stream)

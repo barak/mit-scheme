@@ -642,10 +642,8 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
 
   /* For a traceable stack... */
   stack_push (c_call_continue);
-  PUSH_APPLY_FRAME_HEADER (nargs);
-  SET_RC (RC_INTERNAL_APPLY);
-  SET_EXP (c_call_continue);
-  SAVE_CONT ();
+  stack_push (make_apply_frame_header (nargs + 1));
+  push_cont_rc (RC_INTERNAL_APPLY, c_call_continue);
 
   saved_stack_pointer = stack_pointer;
   saved_last_return_code = last_return_code;

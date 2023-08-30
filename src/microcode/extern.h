@@ -164,11 +164,6 @@ extern SCHEME_OBJECT fixed_objects;
 extern SCHEME_OBJECT ephemeron_array;
 extern unsigned long ephemeron_count;
 
-extern const char * CONT_PRINT_RETURN_MESSAGE;
-extern const char * CONT_PRINT_EXPR_MESSAGE;
-extern const char * RESTORE_CONT_RETURN_MESSAGE;
-extern const char * RESTORE_CONT_EXPR_MESSAGE;
-
 extern unsigned long MAX_RETURN;
 
 extern const char * Return_Names [];

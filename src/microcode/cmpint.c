@@ -477,52 +477,53 @@ compiled_continuation_p (insn_t * entry_addr)
 DEFINE_SCHEME_ENTRY (return_to_compiled_code)
 {
   RESTORE_LAST_RETURN_CODE ();
-  {
-    SCHEME_OBJECT cont = (stack_pop ());
-    /* Due to a mistake, continuations for microcode utilities are
-       represented as compiled entries.  Should fix eventually.  */
-    if (CC_RETURN_P (cont))
-      {
-	insn_t * ret_addr = (CC_RETURN_ADDRESS (cont));
-	insn_t * entry_addr =
-	  (CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr));
-	if (!compiled_continuation_p (entry_addr))
-	  goto bad;
-	JUMP_TO_CC_RETURN (cont);
-      }
-    else if (CC_ENTRY_P (cont))
-      {
-	insn_t * entry_addr = (CC_ENTRY_ADDRESS (cont));
-	if (!compiled_continuation_p (entry_addr))
-	  goto bad;
-	JUMP_TO_CC_ENTRY (cont);
-      }
-    else
-      {
-bad:	stack_push (cont);
-	SAVE_CONT ();
-	return (ERR_INAPPLICABLE_OBJECT);
-      }
-  }
+
+  SCHEME_OBJECT cont = stack_pop ();
+  /* Due to a mistake, continuations for microcode utilities are
+     represented as compiled entries.  Should fix eventually.  */
+  if (CC_RETURN_P (cont))
+    {
+      insn_t* ret_addr = CC_RETURN_ADDRESS (cont);
+      insn_t* entry_addr = CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr);
+      if (!compiled_continuation_p (entry_addr))
+	goto bad;
+      JUMP_TO_CC_RETURN (cont);
+    }
+  else if (CC_ENTRY_P (cont))
+    {
+      insn_t* entry_addr = CC_ENTRY_ADDRESS (cont);
+      if (!compiled_continuation_p (entry_addr))
+	goto bad;
+      JUMP_TO_CC_ENTRY (cont);
+    }
+  else
+    {
+    bad:
+      stack_push (cont);
+      push_cont (GET_RET, GET_EXP);
+      return ERR_INAPPLICABLE_OBJECT;
+    }
 }
 
 void
 guarantee_cc_return (unsigned long offset)
 {
-  if (CC_RETURN_P (stack_ref (offset)))
+  SCHEME_OBJECT* frame = stack_loc (offset);
+  SCHEME_OBJECT ret = cont_frame_ret (frame);
+  if (CC_RETURN_P (ret))
     return;
-  assert (RETURN_CODE_P (CONT_RET (offset)));
-  if (CHECK_RETURN_CODE (RC_REENTER_COMPILED_CODE, offset))
+  assert (RETURN_CODE_P (ret));
+  if (object_datum (ret) == RC_REENTER_COMPILED_CODE)
     {
-      unsigned long lrc = (FIXNUM_TO_ULONG (CONT_EXP (offset)));
+      unsigned long lrc = FIXNUM_TO_ULONG (cont_frame_exp (frame));
       close_stack_gap (offset, CONT_SIZE);
-      last_return_code = (stack_loc (offset + lrc));
+      last_return_code = stack_loc (offset + lrc);
       CHECK_LAST_RETURN_CODE ();
       COMPILER_END_SUBPROBLEM ();
     }
   else
     {
-      last_return_code = (stack_loc (offset));
+      last_return_code = frame;
       CHECK_LAST_RETURN_CODE ();
       open_stack_gap (offset, 1);
       stack_set (offset, return_to_interpreter);
@@ -532,25 +533,24 @@ guarantee_cc_return (unsigned long offset)
 void
 guarantee_interp_return (void)
 {
-  unsigned long offset = (1 + (APPLY_FRAME_SIZE ()));
-  if (RETURN_CODE_P (CONT_RET (offset)))
+  unsigned long offset = 1 + apply_frame_size ();
+  SCHEME_OBJECT* frame = stack_loc (offset);
+  if (RETURN_CODE_P (cont_frame_ret (frame)))
     return;
-  assert (CC_RETURN_P (stack_ref (offset)));
-  if ((stack_ref (offset)) == return_to_interpreter)
+  assert (CC_RETURN_P (cont_frame_ret (frame)));
+  if (cont_frame_ret (frame) == return_to_interpreter)
     {
-      assert (RETURN_CODE_P (CONT_RET (offset + 1)));
+      assert (RETURN_CODE_P (cont_frame_ret (stack_loc (offset + 1))));
       close_stack_gap (offset, 1);
       COMPILER_NEW_REDUCTION ();
     }
   else
     {
       open_stack_gap (offset, CONT_SIZE);
-      {
-	SCHEME_OBJECT * sp = stack_pointer;
-	stack_pointer = (stack_loc (offset + CONT_SIZE));
-	SAVE_LAST_RETURN_CODE (RC_REENTER_COMPILED_CODE);
-	stack_pointer = sp;
-      }
+      SCHEME_OBJECT* sp = stack_pointer;
+      stack_pointer = stack_loc (offset + CONT_SIZE);
+      SAVE_LAST_RETURN_CODE (RC_REENTER_COMPILED_CODE);
+      stack_pointer = sp;
     }
 }
 

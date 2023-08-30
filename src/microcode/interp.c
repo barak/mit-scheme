@@ -233,7 +233,7 @@ apply_interrupt (void)
 static inline void
 prepare_return_interrupt (void)
 {
-  save_cont ();
+  push_cont (GET_RET, GET_EXP);
   push_cont_rc (RC_RESTORE_VALUE, GET_VAL);
 }
 
@@ -245,7 +245,7 @@ return_error (long code)
       prepare_return_interrupt ();
       return handle_interrupt ();
     }
-  save_cont ();
+  push_cont (GET_RET, GET_EXP);
   return handle_error (code, true);
 }
 
@@ -809,7 +809,7 @@ return_hardware_trap (void)
 {
   /* This just reinvokes the handler */
   SCHEME_OBJECT info = stack_ref (0);
-  save_cont ();
+  push_cont (GET_RET, GET_EXP);
   SCHEME_OBJECT handler
     = VECTOR_P (fixed_objects)
       ? vector_ref (fixed_objects, TRAP_HANDLER)
@@ -835,7 +835,7 @@ return_normal_gc_done (void)
   if (GC_NEEDED_P (gc_space_needed))
     termination_gc_out_of_space ();
   gc_space_needed = 0;
-  EXIT_CRITICAL_SECTION ({ save_cont (); });
+  EXIT_CRITICAL_SECTION ({ push_cont (GET_RET, GET_EXP); });
   return ACTION_RETURN;
 }
 
@@ -926,7 +926,7 @@ apply_cont (variant_t variant)
   if (!RETURN_CODE_P (GET_RET))
     {
       stack_push (GET_VAL);	/* For possible stack trace */
-      save_cont ();
+      push_cont (GET_RET, GET_EXP);
       Microcode_Termination (TERM_BAD_STACK);
     }
 #endif
