@@ -59,7 +59,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
     SCHEME_OBJECT environment = (ARG_REF (2));
     SCHEME_OBJECT hooks = (ARG_REF (3));
     canonicalize_primitive_context ();
-    POP_PRIMITIVE_FRAME (3);
+    pop_primitive_frame (3);
     install_traps (hooks);
     SET_EXP (expression);
     SET_ENV (environment);
@@ -98,7 +98,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
   if (!EMPTY_LIST_P (scan_list))
     error_wrong_type_arg (2);
 
-  POP_PRIMITIVE_FRAME (3);
+  pop_primitive_frame (3);
   install_traps (hooks);
 
   stack_check (number_of_args + 2);
@@ -133,7 +133,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-RETURN-STEP", Prim_return_step, 2, 2, 0)
     SCHEME_OBJECT value = (ARG_REF (1));
     SCHEME_OBJECT hooks = (ARG_REF (2));
 
-    POP_PRIMITIVE_FRAME (2);
+    pop_primitive_frame (2);
     install_traps (hooks);
     SET_VAL (value);
     PRIMITIVE_ABORT (PRIM_NO_TRAP_POP_RETURN);

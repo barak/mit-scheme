@@ -210,16 +210,14 @@ typedef unsigned long entry_count_t;
 #define INVOKE_PRIMITIVE_DECLS
 #define INVOKE_PRIMITIVE_TARGET
 
-#define INVOKE_PRIMITIVE(prim, nargs) do				\
-{									\
-  SCHEME_OBJECT * IPdest;						\
-									\
-  UNCACHE_VARIABLES ();							\
-  PRIMITIVE_APPLY (prim);						\
-  POP_PRIMITIVE_FRAME (nargs);						\
-  IPdest = (object_address (stack_pop ()));				\
-  CACHE_VARIABLES ();							\
-  JUMP (IPdest);							\
+#define INVOKE_PRIMITIVE(prim, nargs) do                                \
+{                                                                       \
+  UNCACHE_VARIABLES ();                                                 \
+  apply_primitive_external (prim);                                      \
+  pop_primitive_frame (nargs);                                          \
+  SCHEME_OBJECT* IPdest = object_address (stack_pop ());                \
+  CACHE_VARIABLES ();                                                   \
+  JUMP (IPdest);                                                        \
 } while (false)
 
 #define INVOKE_INTERFACE_DECLS

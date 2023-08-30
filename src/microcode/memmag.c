@@ -263,7 +263,7 @@ the primitive GC daemons before returning.")
       heap_reserved = (ARG_HEAP_RESERVED (1));
       heap_alloc_limit = (heap_end - heap_reserved);
     }
-  POP_PRIMITIVE_FRAME (1);
+  pop_primitive_frame (1);
 
   ENTER_CRITICAL_SECTION ("garbage collector");
 

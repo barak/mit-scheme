@@ -37,7 +37,7 @@ static void with_new_interrupt_mask (unsigned long);
 
 /* This is a kludge to compensate for the interpreter popping
    a primitive's frame off the stack after it returns.  */
-#define UN_POP_PRIMITIVE_FRAME(n) (decrement_sp (n))
+#define un_pop_primitive_frame decrement_sp
 
 DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, "(PROCEDURE ARG-LIST)\n\
 Invokes PROCEDURE on the arguments in ARG-LIST.")
@@ -83,7 +83,7 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
 
     if (!stack_can_push_p (n_args + 2))
       error_bad_range_arg (2);
-    POP_PRIMITIVE_FRAME (2);
+    pop_primitive_frame (2);
 
     {
       SCHEME_OBJECT p1 = args;
@@ -100,7 +100,7 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
     if (CC_RETURN_P (stack_ref (n_args)))
       {
 	apply_compiled_from_primitive (n_args, procedure);
-	UN_POP_PRIMITIVE_FRAME (2);
+	un_pop_primitive_frame (2);
 	PRIMITIVE_RETURN (UNSPECIFIC);
       }
     else
@@ -110,7 +110,7 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
 #endif
 
     stack_push (procedure);
-    PUSH_APPLY_FRAME_HEADER (n_args);
+    stack_push (make_apply_frame_header (n_args + 1));
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/
     PRIMITIVE_RETURN (UNSPECIFIC);
@@ -146,7 +146,7 @@ Invoke PROCEDURE with a copy of the current control stack.")
       {
 	cp = cont_frame_exp (stack_loc (1));
 	history_register = object_address (READ_DUMMY_HISTORY ());
-	POP_PRIMITIVE_FRAME (1);
+	pop_primitive_frame (1);
 	STACK_RESET ();
       }
     else
@@ -155,7 +155,7 @@ Invoke PROCEDURE with a copy of the current control stack.")
 				       + HISTORY_CONT_SIZE
 				       + (stack_n_pushed () - 1)),
 				      true));
-	POP_PRIMITIVE_FRAME (1);
+	pop_primitive_frame (1);
 
 	SAVE_HISTORY (RC_RESTORE_HISTORY);
 	preserve_interrupt_mask ();
@@ -177,7 +177,7 @@ Invoke PROCEDURE with a copy of the current control stack.")
 
     stack_push (cp);
     stack_push (procedure);
-    PUSH_APPLY_FRAME_HEADER (1);
+    stack_push (make_apply_frame_header (2));
   }
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
@@ -302,7 +302,7 @@ Evaluate SCODE-EXPRESSION in ENVIRONMENT.")
   {
     SCHEME_OBJECT expression = (ARG_REF (1));
     SCHEME_OBJECT environment = (ARG_REF (2));
-    POP_PRIMITIVE_FRAME (2);
+    pop_primitive_frame (2);
     SET_ENV (environment);
     SET_EXP (expression);
   }
@@ -326,7 +326,7 @@ memoized yet.")
     {
       /* New-style delayed used by compiled code. */
       canonicalize_primitive_context ();
-      POP_PRIMITIVE_FRAME (1);
+      pop_primitive_frame (1);
 
       stack_check (CONT_SIZE + 2);
       push_cont_rc (RC_SNAP_NEED_THUNK, delayed);
@@ -341,7 +341,7 @@ memoized yet.")
     {
       /* Old-style delayed used by interpreted code. */
       canonicalize_primitive_context ();
-      POP_PRIMITIVE_FRAME (1);
+      pop_primitive_frame (1);
 
       stack_check (CONT_SIZE);
       push_cont_rc (RC_SNAP_NEED_THUNK, delayed);
@@ -483,7 +483,7 @@ and MARKER2 is data identifying the marker instance.")
     {
       increment_sp (1);
       compiled_with_stack_marker (thunk);
-      UN_POP_PRIMITIVE_FRAME (3);
+      un_pop_primitive_frame (3);
     }
   else
 #endif
@@ -534,16 +534,16 @@ with_new_interrupt_mask (unsigned long new_mask)
   if ((CC_RETURN_P (stack_ref (2))) && (CC_ENTRY_P (receiver)))
     {
       unsigned long current_mask = GET_INT_MASK;
-      POP_PRIMITIVE_FRAME (2);
+      pop_primitive_frame (2);
       compiled_with_interrupt_mask (current_mask, receiver, new_mask);
-      UN_POP_PRIMITIVE_FRAME (2);
+      un_pop_primitive_frame (2);
       SET_INTERRUPT_MASK (new_mask);
     }
   else
 #endif
     {
       canonicalize_primitive_context ();
-      POP_PRIMITIVE_FRAME (2);
+      pop_primitive_frame (2);
       preserve_interrupt_mask ();
 
       stack_check (3);
@@ -580,7 +580,7 @@ Set the interpreter's history object to HISTORY.")
 #else
   history_register = (object_address (READ_DUMMY_HISTORY ()));
 #endif
-  POP_PRIMITIVE_FRAME (1);
+  pop_primitive_frame (1);
   PRIMITIVE_ABORT (PRIM_POP_RETURN);
   /*NOTREACHED*/
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -617,7 +617,7 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
 				  rib));
 	}
       }
-    POP_PRIMITIVE_FRAME (1);
+    pop_primitive_frame (1);
     stop_history ();
     stack_check (2);
     stack_push (thunk);

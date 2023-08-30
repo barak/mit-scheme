@@ -51,7 +51,7 @@ PURE? is ignored.")
 
   SCHEME_OBJECT object = ARG_REF (1);
   unsigned long safety_margin = ARG_HEAP_RESERVED (3);
-  POP_PRIMITIVE_FRAME (3);
+  pop_primitive_frame (3);
 
   ENTER_CRITICAL_SECTION ("purify");
   heap_reserved = safety_margin;

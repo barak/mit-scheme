@@ -200,17 +200,15 @@ void
 canonicalize_primitive_context (void)
 {
   SCHEME_OBJECT primitive = GET_PRIMITIVE;
-  unsigned long n_args;
-
   assert (PRIMITIVE_P (primitive));
-  n_args = (PRIMITIVE_N_ARGUMENTS (primitive));
+  unsigned long n_args = PRIMITIVE_N_ARGUMENTS (primitive);
 
 #ifdef CC_SUPPORT_P
   if (CC_RETURN_P (stack_ref (n_args)))
     {
       /* The primitive has been invoked from compiled code. */
       stack_push (primitive);
-      PUSH_APPLY_FRAME_HEADER (n_args);
+      stack_push (make_apply_frame_header (n_args + 1));
       guarantee_interp_return ();
       SET_PRIMITIVE (SHARP_F);
       PRIMITIVE_ABORT (PRIM_APPLY);
@@ -964,49 +962,6 @@ copy_history (SCHEME_OBJECT hist_obj)
   Free = free;
   return (new_hunk);
 }
-
-/* If a "debugging" version of the interpreter is made, then this
-   procedure is called to actually invoke a primitive.  When a
-   "production" version is made, all of the consistency checks are
-   omitted and a macro from "interp.h" is used to directly code the
-   call to the primitive function. */
-
-#ifdef ENABLE_DEBUGGING_TOOLS
-
-void
-primitive_apply_internal (SCHEME_OBJECT primitive)
-{
-  if (Primitive_Debug)
-    Print_Primitive (primitive);
-#if 0
-  {
-    SCHEME_OBJECT * saved_stack = stack_pointer;
-    PRIMITIVE_APPLY_INTERNAL (primitive);
-    /* Some primitives violate this condition, for example,
-       WITH-INTERRUPT-MASK.  */
-    if (saved_stack != stack_pointer)
-      {
-	unsigned long arity = (PRIMITIVE_N_ARGUMENTS (primitive));
-	Print_Expression (primitive, "Stack bad after ");
-	outf_fatal ("\nStack was %#lx, now %#lx, #args=%lu.\n",
-		    ((unsigned long) saved_stack),
-		    ((unsigned long) stack_pointer),
-		    arity);
-	Microcode_Termination (TERM_EXIT);
-      }
-  }
-#else
-  PRIMITIVE_APPLY_INTERNAL (primitive);
-#endif
-  if (Primitive_Debug)
-    {
-      Print_Expression (GET_VAL, "Primitive Result");
-      outf_error("\n");
-      outf_flush_error();
-    }
-}
-
-#endif /* ENABLE_DEBUGGING_TOOLS */
 
 #ifdef ENABLE_PRIMITIVE_PROFILING
 

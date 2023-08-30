@@ -453,9 +453,9 @@ DEFINE_SCHEME_ENTRY (enter_compiled_expression)
 
 DEFINE_SCHEME_ENTRY (apply_compiled_procedure)
 {
-  unsigned long n_args = (POP_APPLY_FRAME_HEADER ());
-  SCHEME_OBJECT procedure = (stack_pop ());
-  long code = (setup_compiled_invocation (procedure, n_args));
+  unsigned long n_args = apply_frame_header_n_args (stack_pop ());
+  SCHEME_OBJECT procedure = stack_pop ();
+  long code = setup_compiled_invocation (procedure, n_args);
   if (code != PRIM_DONE)
     return (code);
   JUMP_TO_CC_ENTRY (procedure);
@@ -581,7 +581,7 @@ static void
 recover_from_apply_error (SCHEME_OBJECT procedure, unsigned long n_args)
 {
   stack_push (procedure);
-  PUSH_APPLY_FRAME_HEADER (n_args);
+  stack_push (make_apply_frame_header (n_args + 1));
   guarantee_interp_return ();
 }
 
@@ -788,8 +788,8 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lexpr_apply, address, n_args)
 DEFINE_SCHEME_UTILITY_1 (comutil_primitive_apply, primitive)
 {
   DECLARE_UTILITY_ARG (SCHEME_OBJECT, primitive);
-  PRIMITIVE_APPLY (primitive);
-  POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
+  apply_primitive_external (primitive);
+  pop_primitive_frame (PRIMITIVE_ARITY (primitive));
   INVOKE_RETURN_ADDRESS ();
 }
 
@@ -801,8 +801,8 @@ DEFINE_SCHEME_UTILITY_1 (comutil_primitive_apply, primitive)
 DEFINE_SCHEME_UTILITY_1 (comutil_primitive_lexpr_apply, primitive)
 {
   DECLARE_UTILITY_ARG (SCHEME_OBJECT, primitive);
-  PRIMITIVE_APPLY (primitive);
-  POP_PRIMITIVE_FRAME (GET_LEXPR_ACTUALS);
+  apply_primitive_external (primitive);
+  pop_primitive_frame (GET_LEXPR_ACTUALS);
   INVOKE_RETURN_ADDRESS ();
 }
 
@@ -1356,7 +1356,7 @@ DEFINE_SCHEME_ENTRY (comp_cache_lookup_apply_restart)
 	}
     }
     stack_push (value);
-    PUSH_APPLY_FRAME_HEADER ((FIXNUM_TO_ULONG (frame_size)) - 1);
+    stack_push (make_apply_frame_header (FIXNUM_TO_ULONG (frame_size)));
     if (CC_ENTRY_P (value))
       return (apply_compiled_procedure ());
     guarantee_interp_return ();
@@ -1548,7 +1548,7 @@ apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
 
 	case TC_ENTITY:
 	  {
-	    unsigned long frame_size = (n_args + 1);
+	    unsigned long frame_size = n_args + 1;
 	    SCHEME_OBJECT data = entity_data (procedure);
 	    if ((VECTOR_P (data))
 		&& (frame_size < (vector_length (data)))
@@ -1578,7 +1578,7 @@ apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
 	handle_in_interpreter:
 	default:
 	  stack_push (procedure);
-	  PUSH_APPLY_FRAME_HEADER (n_args);
+	  stack_push (make_apply_frame_header (n_args + 1));
 	  push_reflection (REFLECT_CODE_INTERNAL_APPLY);
 	  return;
 	}
@@ -2263,7 +2263,7 @@ DEFINE_TRAMPOLINE (comutil_operator_primitive_trap)
 DEFINE_TRAMPOLINE (comutil_operator_lexpr_trap)
 {
   INIT_TRAMPOLINE_2 (procedure, frame_header);
-  SET_LEXPR_ACTUALS (APPLY_FRAME_HEADER_N_ARGS (frame_header));
+  SET_LEXPR_ACTUALS (apply_frame_header_n_args (frame_header));
   TAIL_CALL_1 (comutil_primitive_lexpr_apply, procedure);
 }
 

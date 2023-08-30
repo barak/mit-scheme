@@ -1092,7 +1092,7 @@ re_enter_scheme (void)
   assert ((stack_ref (3)) == c_call_continue);
 
   SET_PRIMITIVE (c_call_continue);
-  SET_LEXPR_ACTUALS (APPLY_FRAME_HEADER_N_ARGS (stack_ref (2)));
+  SET_LEXPR_ACTUALS (apply_frame_header_n_args (stack_ref (2)));
   stack_pointer = stack_loc (4);
   alienate_float_environment ();
 }

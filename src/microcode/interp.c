@@ -83,10 +83,10 @@ variant_interrupt_p (variant_t variant)
 
 // Interpreter state
 
-interpreter_state_t interpreter_state = NULL_INTERPRETER_STATE;
+interpreter_state_t* interpreter_state = NULL_INTERPRETER_STATE;
 
 void
-bind_interpreter_state (interpreter_state_t s)
+bind_interpreter_state (interpreter_state_t* s)
 {
   s->previous_state = interpreter_state;
   s->nesting_level
@@ -98,7 +98,7 @@ bind_interpreter_state (interpreter_state_t s)
 }
 
 void
-unbind_interpreter_state (interpreter_state_t s)
+unbind_interpreter_state (interpreter_state_t* s)
 {
   interpreter_state = s;
   unsigned long old_mask = GET_INT_MASK;
@@ -488,11 +488,41 @@ apply_primitive (SCHEME_OBJECT proc)
   // Primitives don't need header or proc
   increment_sp (2);
   SET_EXP (proc);
-  APPLY_PRIMITIVE_FROM_INTERPRETER (proc);
-  POP_PRIMITIVE_FRAME (n_args);
+#ifdef ENABLE_DEBUGGING_TOOLS
+  if (Primitive_Debug)
+    Print_Primitive (proc);
+#endif
+  apply_primitive_external (proc);
+#ifdef ENABLE_DEBUGGING_TOOLS
+  if (Primitive_Debug)
+    {
+      Print_Expression (GET_VAL, "Primitive Result");
+      outf_error("\n");
+      outf_flush_error();
+    }
+#endif
+  pop_primitive_frame (n_args);
   return ACTION_RETURN;
 }
 
+void
+apply_primitive_external (SCHEME_OBJECT proc)
+{
+  void* position = dstack_position;
+  SET_PRIMITIVE (proc);
+  Free_primitive = Free;
+  SET_VAL ((*Primitive_Procedure_Table [PRIMITIVE_NUMBER (proc)]) ());
+  /* If the primitive failed to unwind the dynamic stack, lose. */
+  if (position != dstack_position)
+    {
+      outf_fatal ("\nPrimitive slipped the dynamic stack: %s\n",
+                  PRIMITIVE_NAME (proc));
+      Microcode_Termination (TERM_EXIT);
+    }
+  SET_PRIMITIVE (SHARP_F);
+  Free_primitive = 0;
+}
+
 static inline action_t
 apply_procedure (SCHEME_OBJECT proc)
 {
@@ -739,7 +769,7 @@ static inline action_t
 return_end_of_computation (void)
 {
   /* Signals bottom of stack */
-  interpreter_state_t previous_state = interpreter_state->previous_state;
+  interpreter_state_t* previous_state = interpreter_state->previous_state;
   if (previous_state == NULL_INTERPRETER_STATE)
     {
       termination_end_of_computation ();

@@ -186,98 +186,30 @@ apply_frame_n_args (void)
 {
   return apply_frame_header_n_args (apply_frame_header ());
 }
-
-static inline void
-push_apply_frame_header (unsigned long nargs)
-{
-  stack_push (make_apply_frame_header (nargs + 1));
-}
-
-static inline unsigned long
-pop_apply_frame_header (void)
-{
-  return apply_frame_header_n_args (stack_pop ());
-}
-
-#define PUSH_APPLY_FRAME_HEADER push_apply_frame_header
-#define POP_APPLY_FRAME_HEADER pop_apply_frame_header
-#define APPLY_FRAME_HEADER_N_ARGS apply_frame_header_n_args
-#define APPLY_FRAME_SIZE apply_frame_size
-#define APPLY_FRAME_N_ARGS apply_frame_n_args
-#define APPLY_FRAME_PROCEDURE apply_frame_proc
-
-#if 0
-/* Saving history is required for C_call_scheme to work correctly
-   because the recursive call to Interpret() can rotate the history.  */
-
-#define APPLY_PRIMITIVE_FROM_INTERPRETER(primitive) do			\
-{									\
-  SCHEME_OBJECT * APFI_saved_history = history_register;		\
-  PRIMITIVE_APPLY (primitive);						\
-  history_register = APFI_saved_history;				\
-} while (0)
-
-#else
-/* C_call_scheme must save/restore history_register on/from the stack
-   so that it will be relocated if the call to Interpret() causes a
-   garbage collection. */
-
-#define APPLY_PRIMITIVE_FROM_INTERPRETER PRIMITIVE_APPLY
-
-#endif
 
-/* Primitive utility macros */
+#define pop_primitive_frame increment_sp
 
-#ifndef ENABLE_DEBUGGING_TOOLS
-#  define PRIMITIVE_APPLY PRIMITIVE_APPLY_INTERNAL
-#else
-   extern void primitive_apply_internal (SCHEME_OBJECT);
-#  define PRIMITIVE_APPLY primitive_apply_internal
-#endif
-
-#define PRIMITIVE_APPLY_INTERNAL(primitive) do				\
-{									\
-  void * PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
-  SET_PRIMITIVE (primitive);						\
-  Free_primitive = Free;						\
-  SET_VAL								\
-    ((* (Primitive_Procedure_Table [PRIMITIVE_NUMBER (primitive)]))	\
-     ());								\
-  /* If the primitive failed to unwind the dynamic stack, lose. */	\
-  if (PRIMITIVE_APPLY_INTERNAL_position != dstack_position)		\
-    {									\
-      outf_fatal ("\nPrimitive slipped the dynamic stack: %s\n",	\
-		  (PRIMITIVE_NAME (primitive)));			\
-      Microcode_Termination (TERM_EXIT);				\
-    }									\
-  Free_primitive = 0;							\
-  SET_PRIMITIVE (SHARP_F);						\
-} while (0)
-
-#define POP_PRIMITIVE_FRAME(arity) (increment_sp (arity))
-
-typedef struct interpreter_state_s * interpreter_state_t;
-
-struct interpreter_state_s
+typedef struct interpreter_state_s
 {
-  interpreter_state_t previous_state;
+  struct interpreter_state_s* previous_state;
   unsigned int nesting_level;
-  void * dstack_position;
+  void* dstack_position;
   jmp_buf catch_env;
   int throw_argument;
-};
+} interpreter_state_t;
 
 #define interpreter_catch_dstack_position interpreter_state->dstack_position
 #define interpreter_catch_env interpreter_state->catch_env
 #define interpreter_throw_argument interpreter_state->throw_argument
-#define NULL_INTERPRETER_STATE ((interpreter_state_t) 0)
+#define NULL_INTERPRETER_STATE ((interpreter_state_t*) 0)
 
+extern void apply_primitive_external (SCHEME_OBJECT);
 extern void abort_to_interpreter (int) NORETURN;
 extern int abort_to_interpreter_argument (void);
 
-extern interpreter_state_t interpreter_state;
+extern interpreter_state_t* interpreter_state;
 extern long prim_apply_error_code;
-extern void bind_interpreter_state (interpreter_state_t);
-extern void unbind_interpreter_state (interpreter_state_t);
+extern void bind_interpreter_state (interpreter_state_t*);
+extern void unbind_interpreter_state (interpreter_state_t*);
 
 #endif /* not SCM_INTERP_H */
