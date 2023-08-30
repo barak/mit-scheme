@@ -84,24 +84,21 @@ DEFINE_PRIMITIVE ("CLOSE-LOST-OPEN-FILES", Prim_close_lost_open_files, 1, 1, 0)
 
 static void
 rehash_pair (SCHEME_OBJECT pair, SCHEME_OBJECT hash_table,
-       long table_size)
+             unsigned long table_size)
 {
-  long object_datum, hash_address;
-  SCHEME_OBJECT * new_pair;
-
-  object_datum = (OBJECT_DATUM (PAIR_CAR (pair)));
-  hash_address = (2 + (object_datum % table_size));
-  new_pair = Free;
-  *Free++ = (OBJECT_NEW_TYPE (TC_LIST, pair));
-  *Free++ = (MEMORY_REF (hash_table, hash_address));
-  MEMORY_SET (hash_table,
+  unsigned long datum = object_datum (PAIR_CAR (pair));
+  unsigned long hash_address = 2 + (datum % table_size);
+  SCHEME_OBJECT* new_pair = Free;
+  *Free++ = (object_new_type (TC_LIST, pair));
+  *Free++ = (memory_ref (hash_table, hash_address));
+  memory_set (hash_table,
 		   hash_address,
-		   (MAKE_POINTER_OBJECT (TC_LIST, new_pair)));
+		   (make_pointer_object (TC_LIST, new_pair)));
 }
 
 static void
 rehash_bucket (SCHEME_OBJECT * bucket, SCHEME_OBJECT hash_table,
-       long table_size)
+               unsigned long table_size)
 {
   SCHEME_OBJECT weak_pair;
 
@@ -118,7 +115,7 @@ rehash_bucket (SCHEME_OBJECT * bucket, SCHEME_OBJECT hash_table,
 
 static void
 splice_and_rehash_bucket (SCHEME_OBJECT * bucket, SCHEME_OBJECT hash_table,
-       long table_size)
+                          unsigned long table_size)
 {
   SCHEME_OBJECT weak_pair;
 
@@ -142,28 +139,26 @@ splice_and_rehash_bucket (SCHEME_OBJECT * bucket, SCHEME_OBJECT hash_table,
 
 DEFINE_PRIMITIVE ("REHASH", Prim_rehash, 2, 2, 0)
 {
-  long table_size, counter;
-  SCHEME_OBJECT *bucket;
   PRIMITIVE_HEADER (2);
-  table_size = (vector_length (ARG_REF (1)));
 
   /* First cleanup the hash table */
-  counter = table_size;
-  bucket = (MEMORY_LOC ((ARG_REF (2)), 2));
-  while ((counter--) > 0)
-    (*bucket++) = EMPTY_LIST;
+  unsigned long table_size = vector_length (ARG_REF (1));
+  unsigned long counter = table_size;
+  SCHEME_OBJECT* bucket = memory_loc (ARG_REF (2), 2);
+  while (counter-- > 0)
+    *bucket++ = EMPTY_LIST;
 
   /* Now rehash all the entries from the unhash table and maybe splice
      the buckets. */
   counter = table_size;
-  bucket = (MEMORY_LOC ((ARG_REF (1)), 1));
-  while ((counter--) > 0)
+  bucket = memory_loc (ARG_REF (1), 1);
+  while (counter-- > 0)
     {
-      if ((PAIR_CAR (*bucket)) == SHARP_T)
+      if (PAIR_CAR (*bucket) == SHARP_T)
 	splice_and_rehash_bucket
-	  ((PAIR_CDR_LOC (*bucket)), (ARG_REF (2)), table_size);
+          (PAIR_CDR_LOC (*bucket), ARG_REF (2), table_size);
       else
-	rehash_bucket ((PAIR_CDR_LOC (*bucket)), (ARG_REF (2)), table_size);
+	rehash_bucket (PAIR_CDR_LOC (*bucket), ARG_REF (2), table_size);
       bucket += 1;
     }
   PRIMITIVE_RETURN (UNSPECIFIC);

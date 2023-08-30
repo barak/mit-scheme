@@ -364,7 +364,7 @@ make_compiler_utilities (void)
       outf_fatal ("Can't allocate compiler_utilities.\n");
       Microcode_Termination (TERM_NO_SPACE);
     }
-  h1 = (OBJECT_NEW_TYPE (TC_MANIFEST_VECTOR, h1));
+  h1 = (object_new_type (TC_MANIFEST_VECTOR, h1));
 
   block = Free;
   Free += n_words;
@@ -406,10 +406,10 @@ compiler_reset (SCHEME_OBJECT new_block)
   SCHEME_OBJECT * nbp;
 
   COMPILER_UTILITIES_HEADERS ((&h1), (&h2), (&n_words));
-  h1 = (OBJECT_NEW_TYPE (TC_MANIFEST_VECTOR, h1));
+  h1 = (object_new_type (TC_MANIFEST_VECTOR, h1));
   if (! ((CC_BLOCK_P (new_block))
-	 && ((MEMORY_REF (new_block, 0)) == h1)
-	 && ((MEMORY_REF (new_block, 1)) == h2)))
+	 && ((memory_ref (new_block, 0)) == h1)
+	 && ((memory_ref (new_block, 1)) == h2)))
     {
       outf_fatal ("\nThe world image being restored is incompatible"
 		  " with this microcode.\n");
@@ -417,7 +417,7 @@ compiler_reset (SCHEME_OBJECT new_block)
       /*NOTREACHED*/
     }
 
-  nbp = (OBJECT_ADDRESS (new_block));
+  nbp = (object_address (new_block));
   compiler_utilities = new_block;
   return_to_interpreter = (MAKE_CC_RETURN (trampoline_return_addr (nbp, 0)));
   reflect_to_interface = (MAKE_CC_RETURN (trampoline_return_addr (nbp, 1)));
@@ -671,7 +671,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_apply, procedure, frame_size)
   DECLARE_UTILITY_ARG (unsigned long, frame_size);
 
   while (1)
-    switch (OBJECT_TYPE (procedure))
+    switch (object_type (procedure))
       {
       case TC_ENTITY:
 	{
@@ -1060,12 +1060,12 @@ static void
 restore_link_cc_state (link_cc_state_t * s)
 {
   RESTORE_LAST_RETURN_CODE ();
-  (s->n_entries) = (OBJECT_DATUM (stack_pop ()));
-  (s->n_linked_entries) = ((s->n_entries) - (OBJECT_DATUM (stack_pop ())));
-  (s->block_address) = (OBJECT_ADDRESS (stack_pop ()));
-  (s->scan) = ((s->block_address) + (OBJECT_DATUM (stack_pop ())));
-  (s->scan0) = ((s->block_address) + (OBJECT_DATUM (stack_pop ())));
-  (s->n_sections) = (OBJECT_DATUM (stack_pop ()));
+  (s->n_entries) = (object_datum (stack_pop ()));
+  (s->n_linked_entries) = ((s->n_entries) - (object_datum (stack_pop ())));
+  (s->block_address) = (object_address (stack_pop ()));
+  (s->scan) = ((s->block_address) + (object_datum (stack_pop ())));
+  (s->scan0) = ((s->block_address) + (object_datum (stack_pop ())));
+  (s->n_sections) = (object_datum (stack_pop ()));
   (s->return_address) = (CC_RETURN_ADDRESS (stack_pop ()));
 
   (s->n_linked_sections) = 0;
@@ -1076,7 +1076,7 @@ SCHEME_OBJECT
 cc_block_linkage_info (SCHEME_OBJECT block)
 {
   SCHEME_OBJECT * const_addr
-    = (vector_loc (block, (1 + (vector_length (MAKE_POINTER_OBJECT (TC_VECTOR, (vector_loc (block, 0))))))));
+    = (vector_loc (block, (1 + (vector_length (make_pointer_object (TC_VECTOR, (vector_loc (block, 0))))))));
   SCHEME_OBJECT * block_end = (CC_BLOCK_END (block));
   unsigned long n_sections;
   unsigned long n_words;
@@ -1271,7 +1271,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_assignment_trap,
   DECLARE_UTILITY_ARG (insn_t *, ret_addr);
   DECLARE_UTILITY_ARG (SCHEME_OBJECT *, cache_addr);
   DECLARE_UTILITY_ARG (SCHEME_OBJECT, new_val);
-  SCHEME_OBJECT cache = (MAKE_POINTER_OBJECT (CACHE_TYPE, cache_addr));
+  SCHEME_OBJECT cache = (make_pointer_object (CACHE_TYPE, cache_addr));
   SCHEME_OBJECT old_val;
   long code = (compiler_assignment_trap (cache, new_val, (&old_val)));
   if (code != PRIM_DONE)
@@ -1317,7 +1317,7 @@ DEFINE_SCHEME_UTILITY_3 (comutil_cache_lookup_apply,
   DECLARE_UTILITY_ARG (SCHEME_OBJECT *, cache_addr);
   DECLARE_UTILITY_ARG (SCHEME_OBJECT *, block_addr);
   DECLARE_UTILITY_ARG (unsigned long, frame_size);
-  SCHEME_OBJECT cache = (MAKE_POINTER_OBJECT (CACHE_TYPE, cache_addr));
+  SCHEME_OBJECT cache = (make_pointer_object (CACHE_TYPE, cache_addr));
   SCHEME_OBJECT value;
   long code = (compiler_lookup_trap (cache, (&value)));
   if (code != PRIM_DONE)
@@ -1370,7 +1370,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_lookup_trap, ret_addr, cache_addr)
 {
   DECLARE_UTILITY_ARG (insn_t *, ret_addr);
   DECLARE_UTILITY_ARG (SCHEME_OBJECT *, cache_addr);
-  SCHEME_OBJECT cache = (MAKE_POINTER_OBJECT (CACHE_TYPE, cache_addr));
+  SCHEME_OBJECT cache = (make_pointer_object (CACHE_TYPE, cache_addr));
   SCHEME_OBJECT val;
   long code = (compiler_lookup_trap (cache, (&val)));
   if (code != PRIM_DONE)
@@ -1411,7 +1411,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_safe_lookup_trap, ret_addr, cache_addr)
 {
   DECLARE_UTILITY_ARG (insn_t *, ret_addr);
   DECLARE_UTILITY_ARG (SCHEME_OBJECT *, cache_addr);
-  SCHEME_OBJECT cache = (MAKE_POINTER_OBJECT (CACHE_TYPE, cache_addr));
+  SCHEME_OBJECT cache = (make_pointer_object (CACHE_TYPE, cache_addr));
   SCHEME_OBJECT val;
   long code = (compiler_safe_lookup_trap (cache, (&val)));
   if (code != PRIM_DONE)
@@ -1452,7 +1452,7 @@ DEFINE_SCHEME_UTILITY_2 (comutil_unassigned_p_trap, ret_addr, cache_addr)
 {
   DECLARE_UTILITY_ARG (insn_t *, ret_addr);
   DECLARE_UTILITY_ARG (SCHEME_OBJECT *, cache_addr);
-  SCHEME_OBJECT cache = (MAKE_POINTER_OBJECT (CACHE_TYPE, cache_addr));
+  SCHEME_OBJECT cache = (make_pointer_object (CACHE_TYPE, cache_addr));
   SCHEME_OBJECT val;
   long code = (compiler_unassigned_p_trap (cache, (&val)));
   if (code != PRIM_DONE)
@@ -1539,7 +1539,7 @@ apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
 {
   while (true)
     {
-      switch (OBJECT_TYPE (procedure))
+      switch (object_type (procedure))
 	{
 	case TC_COMPILED_ENTRY:
 	  setup_compiled_invocation_from_primitive (procedure, n_args);
@@ -1690,14 +1690,14 @@ setup_lexpr_invocation (SCHEME_OBJECT procedure,
       }
   }
   {
-    SCHEME_OBJECT rest_arg = (MAKE_POINTER_OBJECT (TC_LIST, Free));
+    SCHEME_OBJECT rest_arg = (make_pointer_object (TC_LIST, Free));
     SCHEME_OBJECT * p1 = (stack_loc (n_max));
     {
       unsigned long i;
       for (i = n_max; (i < n_args); i += 1)
 	{
 	  (Free[0]) = (STACK_LOCATIVE_POP (p1));
-	  (Free[1]) = (MAKE_POINTER_OBJECT (TC_LIST, (Free + 2)));
+	  (Free[1]) = (make_pointer_object (TC_LIST, (Free + 2)));
 	  Free += 2;
 	}
     }
@@ -1858,14 +1858,14 @@ unlinked_section_start_p (SCHEME_OBJECT * mp, SCHEME_OBJECT * end)
   SCHEME_OBJECT marker = (*mp);
   return
     ((FIXNUM_P (marker))
-     && (((OBJECT_DATUM (marker)) >> 16) < N_LINKAGE_SECTION_TYPES)
-     && ((mp + 1 + ((OBJECT_DATUM (marker)) & 0xFFFFUL)) < end));
+     && (((object_datum (marker)) >> 16) < N_LINKAGE_SECTION_TYPES)
+     && ((mp + 1 + ((object_datum (marker)) & 0xFFFFUL)) < end));
 }
 
 linkage_section_type_t
 linkage_section_type (SCHEME_OBJECT marker)
 {
-  unsigned long type = ((OBJECT_DATUM (marker)) >> 16);
+  unsigned long type = ((object_datum (marker)) >> 16);
   assert (type < N_LINKAGE_SECTION_TYPES);
   return ((linkage_section_type_t) type);
 }
@@ -1879,7 +1879,7 @@ unsigned long
 linkage_section_count (SCHEME_OBJECT marker)
 {
   linkage_section_type_t type = (linkage_section_type (marker));
-  unsigned long n_words = ((OBJECT_DATUM (marker)) & 0xFFFFUL);
+  unsigned long n_words = ((object_datum (marker)) & 0xFFFFUL);
   return (((type == LINKAGE_SECTION_TYPE_OPERATOR)
 	   || (type == LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR))
 	  ? (UUO_WORDS_TO_COUNT (n_words))
@@ -1898,7 +1898,7 @@ make_linkage_section_marker (linkage_section_type_t type, unsigned long count)
        ? (UUO_COUNT_TO_WORDS (count))
        : count);
   assert (n_words < 0x10000);
-  return (MAKE_OBJECT (TC_LINKAGE_SECTION,
+  return (make_object (TC_LINKAGE_SECTION,
 		       ((((unsigned long) (type)) << 16) | n_words)));
 }
 
@@ -1944,7 +1944,7 @@ cc_return_to_block_offset (SCHEME_OBJECT ret)
 bool
 cc_block_closure_p (SCHEME_OBJECT block)
 {
-  return (cc_block_address_closure_p (OBJECT_ADDRESS (block)));
+  return (cc_block_address_closure_p (object_address (block)));
 }
 
 bool
@@ -1957,7 +1957,7 @@ static bool
 cc_block_address_closure_p (SCHEME_OBJECT * block_addr)
 {
   SCHEME_OBJECT header_word = (*block_addr);
-  return (((OBJECT_TYPE (header_word)) == TC_MANIFEST_CLOSURE));
+  return (((object_type (header_word)) == TC_MANIFEST_CLOSURE));
 }
 
 /* Return the entry point ultimately invoked by the compiled closure
@@ -1973,7 +1973,7 @@ void
 declare_compiled_code_block (SCHEME_OBJECT block)
 {
 #ifdef PUSH_D_CACHE_REGION
-  PUSH_D_CACHE_REGION ((OBJECT_ADDRESS (block)), (CC_BLOCK_LENGTH (block)));
+  PUSH_D_CACHE_REGION ((object_address (block)), (CC_BLOCK_LENGTH (block)));
 #endif
 }
 
@@ -1982,7 +1982,7 @@ write_variable_cache (SCHEME_OBJECT cache,
 		      SCHEME_OBJECT block,
 		      unsigned long offset)
 {
-  MEMORY_SET (block, offset, ((SCHEME_OBJECT) (OBJECT_ADDRESS (cache))));
+  memory_set (block, offset, ((SCHEME_OBJECT) (object_address (cache))));
 }
 
 /* Get a compiled procedure from a cached operator reference. */
@@ -1991,7 +1991,7 @@ SCHEME_OBJECT
 read_uuo_link (SCHEME_OBJECT block, unsigned long offset)
 {
   return
-    (MAKE_CC_ENTRY (read_uuo_target_no_reloc (MEMORY_LOC (block, offset))));
+    (MAKE_CC_ENTRY (read_uuo_target_no_reloc (memory_loc (block, offset))));
 }
 
 static void
@@ -2198,7 +2198,7 @@ DEFINE_TRAMPOLINE (comutil_reflect_to_interface)
 {
   SCHEME_OBJECT code = (stack_pop ());
 
-  switch (OBJECT_DATUM (code))
+  switch (object_datum (code))
     {
     case REFLECT_CODE_COMPILED_INVOCATION:
       {
@@ -2208,13 +2208,13 @@ DEFINE_TRAMPOLINE (comutil_reflect_to_interface)
 
     case REFLECT_CODE_INTERNAL_APPLY:
       {
-	unsigned long frame_size = (OBJECT_DATUM (stack_pop ()));
+	unsigned long frame_size = (object_datum (stack_pop ()));
 	SCHEME_OBJECT procedure = (stack_pop ());
 	TAIL_CALL_2 (comutil_apply, procedure, frame_size);
       }
 
     case REFLECT_CODE_RESTORE_INTERRUPT_MASK:
-      SET_INTERRUPT_MASK (OBJECT_DATUM (stack_pop ()));
+      SET_INTERRUPT_MASK (object_datum (stack_pop ()));
       INVOKE_RETURN_ADDRESS ();
 
     case REFLECT_CODE_STACK_MARKER:
@@ -2250,7 +2250,7 @@ DEFINE_TRAMPOLINE (comutil_reflect_to_interface)
 DEFINE_TRAMPOLINE (comutil_operator_apply_trap)
 {
   INIT_TRAMPOLINE_2 (procedure, frame_header);
-  TAIL_CALL_2 (comutil_apply, procedure, (OBJECT_DATUM (frame_header)));
+  TAIL_CALL_2 (comutil_apply, procedure, (object_datum (frame_header)));
 }
 
 DEFINE_TRAMPOLINE (comutil_operator_primitive_trap)
@@ -2397,7 +2397,7 @@ DEFINE_TRAMPOLINE (comutil_operator_4_3_trap)
 DEFINE_TRAMPOLINE (comutil_operator_lookup_trap)
 {
   INIT_TRAMPOLINE_3 (cache, block, offset);
-  SCHEME_OBJECT * cache_addr = (MEMORY_LOC (block, (OBJECT_DATUM (offset))));
+  SCHEME_OBJECT * cache_addr = (memory_loc (block, (object_datum (offset))));
   unsigned long frame_size = (read_uuo_frame_size (cache_addr));
   SCHEME_OBJECT procedure;
   long code = (compiler_operator_reference_trap (cache, (&procedure)));
@@ -2427,8 +2427,8 @@ DEFINE_SCHEME_ENTRY (comp_op_lookup_trap_restart)
     SCHEME_OBJECT * store
       = (trampoline_storage (cc_entry_to_block_address (stack_pop ())));
     SCHEME_OBJECT block = (store[1]);
-    unsigned long offset = (OBJECT_DATUM (store[2]));
-    ENTER_SCHEME_ENTRY (read_uuo_target_no_reloc (MEMORY_LOC (block, offset)));
+    unsigned long offset = (object_datum (store[2]));
+    ENTER_SCHEME_ENTRY (read_uuo_target_no_reloc (memory_loc (block, offset)));
   }
 }
 
@@ -2441,7 +2441,7 @@ make_uuo_link (SCHEME_OBJECT procedure,
 	       SCHEME_OBJECT block,
 	       unsigned long offset)
 {
-  SCHEME_OBJECT * cache_address = (MEMORY_LOC (block, offset));
+  SCHEME_OBJECT * cache_address = (memory_loc (block, offset));
   unsigned long frame_size = (read_uuo_frame_size (cache_address));
   trampoline_type_t kind;
   long result;
@@ -2451,7 +2451,7 @@ make_uuo_link (SCHEME_OBJECT procedure,
     return (make_fake_uuo_link (cache, block, offset));
 
  loop:
-  switch (OBJECT_TYPE (procedure))
+  switch (object_type (procedure))
     {
     case TC_COMPILED_ENTRY:
       {
@@ -2557,7 +2557,7 @@ make_fake_uuo_link (SCHEME_OBJECT cache,
       return (result);
   }
   {
-    SCHEME_OBJECT * cache_address = (MEMORY_LOC (block, offset));
+    SCHEME_OBJECT * cache_address = (memory_loc (block, offset));
     write_uuo_link (trampoline, cache_address);
   }
   return (PRIM_DONE);
@@ -2636,8 +2636,8 @@ make_trampoline_headers (unsigned long n_entries, unsigned long n_store,
 {
   unsigned long n1 = (trampoline_entry_size (n_entries));
   unsigned long n2 = (1 + n1 + n_store);
-  (*h1_r) = (MAKE_OBJECT (TC_TRAMPOLINE_HEADER, n2));
-  (*h2_r) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, n1));
+  (*h1_r) = (make_object (TC_TRAMPOLINE_HEADER, n2));
+  (*h2_r) = (make_nmv_header (n1));
   (*n_words_r) = (1 + n2);
 }
 
@@ -2673,7 +2673,7 @@ fill_trampoline (SCHEME_OBJECT * block,
 SCHEME_OBJECT *
 trampoline_storage (SCHEME_OBJECT * block)
 {
-  return (block + 2 + (OBJECT_DATUM (block[1])));
+  return (block + 2 + (object_datum (block[1])));
 }
 
 static long

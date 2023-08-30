@@ -50,7 +50,7 @@ arg_unsigned_fixnum (int n)
   SCHEME_OBJECT argument = (ARG_REF (n));
   if (!FIXNUM_P (argument))
     error_wrong_type_arg (n);
-  return (OBJECT_DATUM (argument));
+  return (object_datum (argument));
 }
 
 /* Predicates */
@@ -250,7 +250,7 @@ DEFINE_PRIMITIVE ("GCD-FIXNUM", Prim_gcd_fixnum, 2, 2, 0)
 /* Bitwise operations */
 
 #define LOGICAL_RESULT(fixnum)						\
-  PRIMITIVE_RETURN (MAKE_OBJECT (TC_FIXNUM, ((fixnum) & DATUM_MASK)))
+  PRIMITIVE_RETURN (make_object (TC_FIXNUM, ((fixnum) & DATUM_MASK)))
 
 #define BINARY_LOGICAL_OP(operation)					\
 {									\

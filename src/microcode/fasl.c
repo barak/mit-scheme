@@ -161,43 +161,43 @@ encode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
   (raw[FASL_OFFSET_HEAP_BASE])
     = (MAKE_BROKEN_HEART (FASLHDR_HEAP_START (h)));
   (raw[FASL_OFFSET_HEAP_SIZE])
-    = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_HEAP_SIZE (h))));
+    = (make_object (TC_BROKEN_HEART, (FASLHDR_HEAP_SIZE (h))));
 
   if ((FASLHDR_VERSION (h)) >= FASL_VERSION_STACK_END)
     (raw[FASL_OFFSET_HEAP_RSVD])
-      = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_HEAP_RESERVED (h))));
+      = (make_object (TC_BROKEN_HEART, (FASLHDR_HEAP_RESERVED (h))));
 
   (raw[FASL_OFFSET_CONST_BASE])
     = (MAKE_BROKEN_HEART (FASLHDR_CONSTANT_START (h)));
   (raw[FASL_OFFSET_CONST_SIZE])
-    = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_CONSTANT_SIZE (h))));
+    = (make_object (TC_BROKEN_HEART, (FASLHDR_CONSTANT_SIZE (h))));
 
   if ((FASLHDR_VERSION (h)) >= FASL_VERSION_STACK_END)
     {
       (raw[FASL_OFFSET_STACK_START])
 	= (MAKE_BROKEN_HEART (FASLHDR_STACK_START (h)));
       (raw[FASL_OFFSET_STACK_SIZE])
-	= (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_STACK_SIZE (h))));
+	= (make_object (TC_BROKEN_HEART, (FASLHDR_STACK_SIZE (h))));
     }
   else
     (raw[FASL_OFFSET_STACK_START])
       = (MAKE_BROKEN_HEART (FASLHDR_STACK_END (h)));
 
   (raw[FASL_OFFSET_PRIM_LENGTH])
-    = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_N_PRIMITIVES (h))));
+    = (make_object (TC_BROKEN_HEART, (FASLHDR_N_PRIMITIVES (h))));
   (raw[FASL_OFFSET_PRIM_SIZE])
-    = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_PRIMITIVE_TABLE_SIZE (h))));
+    = (make_object (TC_BROKEN_HEART, (FASLHDR_PRIMITIVE_TABLE_SIZE (h))));
 
   (raw[FASL_OFFSET_C_LENGTH])
-    = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_N_C_CODE_BLOCKS (h))));
+    = (make_object (TC_BROKEN_HEART, (FASLHDR_N_C_CODE_BLOCKS (h))));
   (raw[FASL_OFFSET_C_SIZE])
-    = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_C_CODE_TABLE_SIZE (h))));
+    = (make_object (TC_BROKEN_HEART, (FASLHDR_C_CODE_TABLE_SIZE (h))));
 
   (raw[FASL_OFFSET_UT_BASE]) = (FASLHDR_UTILITIES_VECTOR (h));
 
   if ((FASLHDR_VERSION (h)) >= FASL_VERSION_EPHEMERONS)
     (raw[FASL_OFFSET_EPHEMERONS])
-      = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_EPHEMERON_COUNT (h))));
+      = (make_object (TC_BROKEN_HEART, (FASLHDR_EPHEMERON_COUNT (h))));
 }
 
 static bool
@@ -230,17 +230,17 @@ decode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
       = (fasl_object_address ((raw[FASL_OFFSET_HEAP_BASE]), h));
     (FASLHDR_HEAP_END (h))
       = ((FASLHDR_HEAP_START (h))
-	 + (OBJECT_DATUM (raw[FASL_OFFSET_HEAP_SIZE])));
+	 + (object_datum (raw[FASL_OFFSET_HEAP_SIZE])));
     (FASLHDR_HEAP_RESERVED (h))
       = (((FASLHDR_VERSION (h)) >= FASL_VERSION_STACK_END)
-	 ? (OBJECT_DATUM (raw[FASL_OFFSET_HEAP_RSVD]))
+	 ? (object_datum (raw[FASL_OFFSET_HEAP_RSVD]))
 	 : 0);
 
     (FASLHDR_CONSTANT_START (h))
       = (fasl_object_address ((raw[FASL_OFFSET_CONST_BASE]), h));
     (FASLHDR_CONSTANT_END (h))
       = ((FASLHDR_CONSTANT_START (h))
-	 + (OBJECT_DATUM (raw[FASL_OFFSET_CONST_SIZE])));
+	 + (object_datum (raw[FASL_OFFSET_CONST_SIZE])));
 
     if ((FASLHDR_VERSION (h)) >= FASL_VERSION_STACK_END)
       {
@@ -248,7 +248,7 @@ decode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
 	  = (fasl_object_address ((raw[FASL_OFFSET_STACK_START]), h));
 	(FASLHDR_STACK_END (h))
 	  = ((FASLHDR_STACK_START (h))
-	     + (OBJECT_DATUM (raw[FASL_OFFSET_STACK_SIZE])));
+	     + (object_datum (raw[FASL_OFFSET_STACK_SIZE])));
       }
     else
       /* In older versions, the "stack start" field held "stack
@@ -264,14 +264,14 @@ decode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
       }
 
     (FASLHDR_N_PRIMITIVES (h))
-      = (OBJECT_DATUM (raw[FASL_OFFSET_PRIM_LENGTH]));
+      = (object_datum (raw[FASL_OFFSET_PRIM_LENGTH]));
     (FASLHDR_PRIMITIVE_TABLE_SIZE (h))
-      = (OBJECT_DATUM (raw[FASL_OFFSET_PRIM_SIZE]));
+      = (object_datum (raw[FASL_OFFSET_PRIM_SIZE]));
 
     (FASLHDR_N_C_CODE_BLOCKS (h))
-      = (OBJECT_DATUM (raw[FASL_OFFSET_C_LENGTH]));
+      = (object_datum (raw[FASL_OFFSET_C_LENGTH]));
     (FASLHDR_C_CODE_TABLE_SIZE (h))
-      = (OBJECT_DATUM (raw[FASL_OFFSET_C_SIZE]));
+      = (object_datum (raw[FASL_OFFSET_C_SIZE]));
 
     {
       SCHEME_OBJECT ruv = (raw[FASL_OFFSET_UT_BASE]);
@@ -283,16 +283,16 @@ decode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
       else
 	{
 	  SCHEME_OBJECT fuv
-	    = (OBJECT_NEW_ADDRESS (ruv, (fasl_object_address (ruv, h))));
+	    = (object_new_address (ruv, (fasl_object_address (ruv, h))));
 	  (FASLHDR_UTILITIES_VECTOR (h)) = fuv;
-	  (FASLHDR_UTILITIES_START (h)) = (OBJECT_ADDRESS (fuv));
+	  (FASLHDR_UTILITIES_START (h)) = (object_address (fuv));
 	}
     }
     (__FASLHDR_UTILITIES_END (h)) = 0;
   }
   if ((FASLHDR_VERSION (h)) >= FASL_VERSION_EPHEMERONS)
     (FASLHDR_EPHEMERON_COUNT (h))
-      = (OBJECT_DATUM (raw[FASL_OFFSET_EPHEMERONS]));
+      = (object_datum (raw[FASL_OFFSET_EPHEMERONS]));
   return (true);
 }
 
@@ -300,9 +300,9 @@ SCHEME_OBJECT *
 fasl_object_address (SCHEME_OBJECT o, fasl_header_t * h)
 {
   if ((FASLHDR_MEMORY_BASE (h)) != 0)
-    return ((FASLHDR_MEMORY_BASE (h)) + (OBJECT_DATUM (o)));
+    return ((FASLHDR_MEMORY_BASE (h)) + (object_datum (o)));
   if ((FASLHDR_ARCH (h)) == CURRENT_FASL_ARCH)
-    return (OBJECT_ADDRESS (o));
+    return (object_address (o));
   abort ();
   return (0);
 }
@@ -311,7 +311,7 @@ insn_t *
 fasl_cc_address (SCHEME_OBJECT o, fasl_header_t * h)
 {
   if ((FASLHDR_MEMORY_BASE (h)) != 0)
-    return (((insn_t *) (FASLHDR_MEMORY_BASE (h))) + (OBJECT_DATUM (o)));
+    return (((insn_t *) (FASLHDR_MEMORY_BASE (h))) + (object_datum (o)));
   if ((FASLHDR_ARCH (h)) == CURRENT_FASL_ARCH)
     return (CC_ENTRY_ADDRESS (o));
   abort ();
@@ -322,7 +322,7 @@ insn_t *
 fasl_cc_return (SCHEME_OBJECT o, fasl_header_t * h)
 {
   if ((FASLHDR_MEMORY_BASE (h)) != 0)
-    return (((insn_t *) (FASLHDR_MEMORY_BASE (h))) + (OBJECT_DATUM (o)));
+    return (((insn_t *) (FASLHDR_MEMORY_BASE (h))) + (object_datum (o)));
   if ((FASLHDR_ARCH (h)) == CURRENT_FASL_ARCH)
     return (CC_RETURN_ADDRESS (o));
   abort ();
@@ -335,9 +335,9 @@ fasl_raw_address_to_object (unsigned int type,
 			    fasl_header_t * h)
 {
   if ((FASLHDR_MEMORY_BASE (h)) != 0)
-    return (MAKE_OBJECT (type, (address - (FASLHDR_MEMORY_BASE (h)))));
+    return (make_object (type, (address - (FASLHDR_MEMORY_BASE (h)))));
   if ((FASLHDR_ARCH (h)) == CURRENT_FASL_ARCH)
-    return (MAKE_POINTER_OBJECT (type, address));
+    return (make_pointer_object (type, address));
   abort ();
   return (UNSPECIFIC);
 }
@@ -346,7 +346,7 @@ SCHEME_OBJECT
 fasl_raw_address_to_cc_entry (insn_t * address, fasl_header_t * h)
 {
   if ((FASLHDR_MEMORY_BASE (h)) != 0)
-    return (MAKE_OBJECT (TC_COMPILED_ENTRY,
+    return (make_object (TC_COMPILED_ENTRY,
 			 (address - ((insn_t *) (FASLHDR_MEMORY_BASE (h))))));
   if ((FASLHDR_ARCH (h)) == CURRENT_FASL_ARCH)
     return (MAKE_CC_ENTRY (address));

@@ -327,7 +327,7 @@ make_primitive (const char * name, int arity)
   return
     ((result == SHARP_F)
      ? SHARP_F
-     : (OBJECT_NEW_TYPE (TC_PRIMITIVE, result)));
+     : (object_new_type (TC_PRIMITIVE, result)));
 }
 
 SCHEME_OBJECT
@@ -426,7 +426,7 @@ free_prim_renumber (void * vpr)
 SCHEME_OBJECT
 renumber_primitive (SCHEME_OBJECT primitive, prim_renumber_t * pr)
 {
-  unsigned long old = (OBJECT_DATUM (primitive));
+  unsigned long old = (object_datum (primitive));
   unsigned long new = ((pr->internal) [old]);
   if (new == ULONG_MAX)
     {
@@ -434,7 +434,7 @@ renumber_primitive (SCHEME_OBJECT primitive, prim_renumber_t * pr)
       ((pr->internal) [old]) = new;
       ((pr->external) [new]) = old;
     }
-  return (OBJECT_NEW_DATUM (primitive, new));
+  return (object_new_datum (primitive, new));
 }
 
 unsigned long
@@ -489,8 +489,8 @@ make_table_entry (unsigned long code, SCHEME_OBJECT * start)
   unsigned long n_words = (legacy_string_length_to_gc_length (n_chars));
 
   (*start++) = (LONG_TO_FIXNUM (Primitive_Arity_Table[code]));
-  (*start++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, n_words));
-  (*start) = (MAKE_OBJECT (0, n_chars));
+  (*start++) = (make_nmv_header (n_words));
+  (*start) = (make_object (0, n_chars));
   memcpy ((start + 1), source, (n_chars + 1));
   return (start + n_words);
 }
@@ -516,13 +516,13 @@ import_primitive_table (SCHEME_OBJECT * entries,
       long arity = (FIXNUM_TO_LONG (*entries++));
       SCHEME_OBJECT prim
 	= (find_primitive
-	   ((MAKE_POINTER_OBJECT (TC_CHARACTER_STRING, entries)),
+	   ((make_pointer_object (TC_CHARACTER_STRING, entries)),
 	    true, true, arity));
 
       if (!PRIMITIVE_P (prim))
 	signal_error_from_primitive (ERR_WRONG_ARITY_PRIMITIVES);
 
       (*primitives++) = prim;
-      entries += (1 + (OBJECT_DATUM (*entries)));
+      entries += (1 + (object_datum (*entries)));
     }
 }

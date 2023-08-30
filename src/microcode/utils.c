@@ -501,7 +501,7 @@ memory_hash (unsigned long length, const void * vp)
 bool
 hashable_object_p (SCHEME_OBJECT object)
 {
-  switch (OBJECT_TYPE (object))
+  switch (object_type (object))
     {
     case TC_BYTEVECTOR:
     case TC_CHARACTER_STRING:
@@ -524,7 +524,7 @@ hashable_object_p (SCHEME_OBJECT object)
 uint32_t
 hash_object (SCHEME_OBJECT object)
 {
-  switch (OBJECT_TYPE (object))
+  switch (object_type (object))
     {
     case TC_BYTEVECTOR:
     case TC_CHARACTER_STRING:
@@ -551,8 +551,8 @@ hash_object (SCHEME_OBJECT object)
 
     case TC_RATNUM:
     case TC_COMPLEX:
-      return (combine_hashes ((hash_object (MEMORY_REF (object, 0))),
-			      (hash_object (MEMORY_REF (object, 1)))));
+      return (combine_hashes ((hash_object (memory_ref (object, 0))),
+			      (hash_object (memory_ref (object, 1)))));
 
     case TC_LIST:
     case TC_WEAK_CONS:
@@ -570,7 +570,7 @@ hash_object (SCHEME_OBJECT object)
       }
 
     case TC_CELL:
-      return (hash_object (MEMORY_REF (object, 0)));
+      return (hash_object (memory_ref (object, 0)));
 
     default:
       return (0);
@@ -600,7 +600,7 @@ bool
 interpreter_applicable_p (SCHEME_OBJECT object)
 {
  tail_recurse:
-  switch (OBJECT_TYPE (object))
+  switch (object_type (object))
     {
     case TC_PRIMITIVE:
     case TC_PROCEDURE:
@@ -755,7 +755,7 @@ reset_history (void)
   history_register
     = (((VECTOR_P (fixed_objects))
 	&& ((READ_DUMMY_HISTORY ()) != SHARP_F))
-       ? (OBJECT_ADDRESS (READ_DUMMY_HISTORY ()))
+       ? (object_address (READ_DUMMY_HISTORY ()))
        : (make_dummy_history ()));
 }
 
@@ -766,16 +766,16 @@ make_dummy_history (void)
   (Free[RIB_EXP]) = SHARP_F;
   (Free[RIB_ENV]) = SHARP_F;
   (Free[RIB_NEXT_REDUCTION])
-    = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, rib));
+    = (make_pointer_object (TC_HISTORY_UNMARKED, rib));
   Free += 3;
   {
     SCHEME_OBJECT * history = Free;
     (Free[HIST_RIB])
-      = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, rib));
+      = (make_pointer_object (TC_HISTORY_UNMARKED, rib));
     (Free[HIST_NEXT_SUBPROBLEM])
-      = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history));
+      = (make_pointer_object (TC_HISTORY_UNMARKED, history));
     (Free[HIST_PREV_SUBPROBLEM])
-      = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history));
+      = (make_pointer_object (TC_HISTORY_UNMARKED, history));
     Free += 3;
     return (history);
   }
@@ -796,8 +796,8 @@ save_history (unsigned long rc)
   stack_push (SHARP_F);		/* Prev_Restore_History_Stacklet */
   stack_push (ULONG_TO_FIXNUM (prev_restore_history_offset));
   push_cont_rc (rc,
-                MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history_register));
-  history_register = OBJECT_ADDRESS (READ_DUMMY_HISTORY ());
+                make_pointer_object (TC_HISTORY_UNMARKED, history_register));
+  history_register = object_address (READ_DUMMY_HISTORY ());
 }
 
 /* restore_history pops a history object off the stack and makes a
@@ -810,7 +810,7 @@ restore_history (SCHEME_OBJECT hist_obj)
   SCHEME_OBJECT new_hist = (copy_history (hist_obj));
   if (new_hist == SHARP_F)
     return (false);
-  history_register = (OBJECT_ADDRESS (new_hist));
+  history_register = (object_address (new_hist));
   return (true);
 }
 
@@ -835,10 +835,10 @@ stop_history (void)
 void
 new_subproblem (SCHEME_OBJECT expression, SCHEME_OBJECT environment)
 {
-  history_register = (OBJECT_ADDRESS (history_register[HIST_NEXT_SUBPROBLEM]));
+  history_register = (object_address (history_register[HIST_NEXT_SUBPROBLEM]));
   HISTORY_MARK (history_register[HIST_MARK]);
   {
-    SCHEME_OBJECT * rib = (OBJECT_ADDRESS (history_register[HIST_RIB]));
+    SCHEME_OBJECT * rib = (object_address (history_register[HIST_RIB]));
     HISTORY_MARK (rib[RIB_MARK]);
     (rib[RIB_ENV]) = environment;
     (rib[RIB_EXP]) = expression;
@@ -848,7 +848,7 @@ new_subproblem (SCHEME_OBJECT expression, SCHEME_OBJECT environment)
 void
 reuse_subproblem (SCHEME_OBJECT expression, SCHEME_OBJECT environment)
 {
-  SCHEME_OBJECT * rib = (OBJECT_ADDRESS (history_register[HIST_RIB]));
+  SCHEME_OBJECT * rib = (object_address (history_register[HIST_RIB]));
   HISTORY_MARK (rib[RIB_MARK]);
   (rib[RIB_ENV]) = environment;
   (rib[RIB_EXP]) = expression;
@@ -858,10 +858,10 @@ void
 new_reduction (SCHEME_OBJECT expression, SCHEME_OBJECT environment)
 {
   SCHEME_OBJECT * rib
-    = (OBJECT_ADDRESS
-       (MEMORY_REF ((history_register[HIST_RIB]), RIB_NEXT_REDUCTION)));
+    = (object_address
+       (memory_ref ((history_register[HIST_RIB]), RIB_NEXT_REDUCTION)));
   (history_register[HIST_RIB])
-    = (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, rib));
+    = (make_pointer_object (TC_HISTORY_UNMARKED, rib));
   (rib[RIB_ENV]) = (environment);
   (rib[RIB_EXP]) = (expression);
   HISTORY_UNMARK (rib[RIB_MARK]);
@@ -871,7 +871,7 @@ void
 end_subproblem (void)
 {
   HISTORY_UNMARK (history_register[HIST_MARK]);
-  history_register = (OBJECT_ADDRESS (history_register[HIST_PREV_SUBPROBLEM]));
+  history_register = (object_address (history_register[HIST_PREV_SUBPROBLEM]));
 }
 
 void
@@ -902,8 +902,8 @@ copy_history (SCHEME_OBJECT hist_obj)
     return (SHARP_F);
   space_left -= 3;
 
-  vert_type = (OBJECT_TYPE (hist_obj));
-  orig_hist = (OBJECT_ADDRESS (hist_obj));
+  vert_type = (object_type (hist_obj));
+  orig_hist = (object_address (hist_obj));
   hist_ptr = orig_hist;
   last_hunk = (heap_end - 3);
   free = Free;
@@ -915,19 +915,19 @@ copy_history (SCHEME_OBJECT hist_obj)
 	return (SHARP_F);
       space_left -= 3;
 
-      new_hunk = (MAKE_POINTER_OBJECT (vert_type, free));
+      new_hunk = (make_pointer_object (vert_type, free));
       (last_hunk[HIST_NEXT_SUBPROBLEM]) = new_hunk;
 
       (free[HIST_PREV_SUBPROBLEM])
-	= (MAKE_POINTER_OBJECT ((OBJECT_TYPE (hist_ptr[HIST_PREV_SUBPROBLEM])),
+	= (make_pointer_object ((object_type (hist_ptr[HIST_PREV_SUBPROBLEM])),
 				last_hunk));
       last_hunk = free;
       free += 3;
 
       /* Copy the rib. */
       temp = (hist_ptr[HIST_RIB]);
-      rib_type = (OBJECT_TYPE (temp));
-      orig_rib = (OBJECT_ADDRESS (temp));
+      rib_type = (object_type (temp));
+      orig_rib = (object_address (temp));
       rib_slot = (last_hunk + HIST_RIB);
 
       source_rib = orig_rib;
@@ -938,30 +938,30 @@ copy_history (SCHEME_OBJECT hist_obj)
 	    return (SHARP_F);
 	  space_left -= 3;
 
-	  (*rib_slot) = (MAKE_POINTER_OBJECT (rib_type, free));
+	  (*rib_slot) = (make_pointer_object (rib_type, free));
 	  (free[RIB_EXP]) = (source_rib[RIB_EXP]);
 	  (free[RIB_ENV]) = (source_rib[RIB_ENV]);
 	  rib_slot = (free + RIB_NEXT_REDUCTION);
 	  free += 3;
 	  temp = (source_rib[RIB_NEXT_REDUCTION]);
-	  rib_type = (OBJECT_TYPE (temp));
-	  source_rib = (OBJECT_ADDRESS (temp));
+	  rib_type = (object_type (temp));
+	  source_rib = (object_address (temp));
 	}
       while (source_rib != orig_rib);
 
-      (*rib_slot) = (OBJECT_NEW_TYPE (rib_type, (last_hunk[HIST_RIB])));
+      (*rib_slot) = (object_new_type (rib_type, (last_hunk[HIST_RIB])));
 
       temp = (hist_ptr[HIST_NEXT_SUBPROBLEM]);
-      vert_type = (OBJECT_TYPE (temp));
-      hist_ptr = (OBJECT_ADDRESS (temp));
+      vert_type = (object_type (temp));
+      hist_ptr = (object_address (temp));
     }
   while (hist_ptr != orig_hist);
 
   new_hunk = (heap_end [HIST_NEXT_SUBPROBLEM - 3]);
-  (last_hunk[HIST_NEXT_SUBPROBLEM]) = (OBJECT_NEW_TYPE (vert_type, new_hunk));
-  MEMORY_SET (new_hunk, HIST_PREV_SUBPROBLEM,
-	      (MAKE_POINTER_OBJECT
-	       ((OBJECT_TYPE (hist_ptr[HIST_PREV_SUBPROBLEM])),
+  (last_hunk[HIST_NEXT_SUBPROBLEM]) = (object_new_type (vert_type, new_hunk));
+  memory_set (new_hunk, HIST_PREV_SUBPROBLEM,
+	      (make_pointer_object
+	       ((object_type (hist_ptr[HIST_PREV_SUBPROBLEM])),
 		last_hunk)));
   Free = free;
   return (new_hunk);
@@ -1026,7 +1026,7 @@ record_primitive_entry (SCHEME_OBJECT primitive)
 	= (vector_ref (fixed_objects, Primitive_Profiling_Table));
       if (VECTOR_P (table))
 	{
-	  unsigned long index = (OBJECT_DATUM (primitive));
+	  unsigned long index = (object_datum (primitive));
 	  vector_set (table,
 		      index,
 		      (ulong_to_integer

@@ -380,7 +380,7 @@ load_file (fasl_file_handle_t handle, unsigned long old_ephemeron_count)
   new_utilities
     = ((compiler_utilities == SHARP_F)
        ? 0
-       : (OBJECT_ADDRESS (compiler_utilities)));
+       : (object_address (compiler_utilities)));
 
   Free = (read_from_file (Free, (FASLHDR_HEAP_SIZE (fh)), handle));
   constant_alloc_next
@@ -509,10 +509,10 @@ relocate_block_table (void)
 static
 DEFINE_GC_HANDLER (handle_primitive)
 {
-  unsigned long datum = (OBJECT_DATUM (object));
+  unsigned long datum = (object_datum (object));
   unsigned long high_bits = (datum >> HALF_DATUM_LENGTH);
   (*scan)
-    = (MAKE_OBJECT_FROM_OBJECTS
+    = (make_object_from_objects
        (object,
 	(new_prim_table [((high_bits != 0) ? high_bits : datum)])));
   return (scan + 1);
@@ -535,7 +535,7 @@ fasload_raw_address_to_cc_entry (insn_t * address)
 }
 
 #define RELOCATE_OBJECT(object)						\
-  (OBJECT_NEW_ADDRESS ((object),					\
+  (object_new_address ((object),					\
 		       ((SCHEME_OBJECT *)				\
 			(relocate_address (OLD_ADDRESS (object))))))
 
@@ -660,12 +660,12 @@ DEFINE_GC_HANDLER (intern_handle_symbol)
 	if (new != object)
 	  {
 	    (*scan) = new;
-	    set_symbol_name (object, OBJECT_NEW_TYPE (TC_BROKEN_HEART, new));
+	    set_symbol_name (object, object_new_type (TC_BROKEN_HEART, new));
 	  }
       }
     }
   else if (BROKEN_HEART_P (symbol_name (object)))
-    (*scan) = (MAKE_OBJECT_FROM_OBJECTS (object, (symbol_name (object))));
+    (*scan) = (make_object_from_objects (object, (symbol_name (object))));
   return (scan + 1);
 }
 

@@ -441,7 +441,7 @@ unstackify_pop_and_set_cXr (unsigned long N)
 {
   SCHEME_OBJECT cXr = (unstackify_pop ());
   SCHEME_OBJECT pair = (unstackify_tos ());
-  MEMORY_SET (pair, N, cXr);
+  memory_set (pair, N, cXr);
 }
 
 static void
@@ -740,7 +740,7 @@ static void
 stackify_push_constant (stackify_opcode_t op)
 {
   unsigned long N = (unstackify_read_ulong ());
-  unstackify_push (MAKE_OBJECT (TC_CONSTANT, N));
+  unstackify_push (make_object (TC_CONSTANT, N));
 }
 
 static inline void
@@ -826,7 +826,7 @@ static void
 stackify_push_nm_header (stackify_opcode_t op)
 {
   unstackify_push
-    (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (unstackify_read_ulong ())));
+    (make_nmv_header ((unstackify_read_ulong ())));
 }
 
 static void
@@ -850,7 +850,7 @@ static void
 stackify_retag_cc_block (stackify_opcode_t op)
 {
   unstackify_push
-    (OBJECT_NEW_TYPE (TC_COMPILED_CODE_BLOCK, (unstackify_pop ())));
+    (object_new_type (TC_COMPILED_CODE_BLOCK, (unstackify_pop ())));
 }
 
 static void
@@ -864,7 +864,7 @@ stackify_cc_block_to_entry (stackify_opcode_t op)
 static void
 stackify_push_return_code (stackify_opcode_t op)
 {
-  unstackify_push (MAKE_OBJECT (TC_RETURN_CODE, (unstackify_read_ulong ())));
+  unstackify_push (make_object (TC_RETURN_CODE, (unstackify_read_ulong ())));
 }
 
 static void

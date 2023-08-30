@@ -66,7 +66,7 @@ typedef long bignum_length_type;
     vector_set (source, new_gc_length, SHARP_F);			\
   else if (delta > 1)							\
     vector_set (source, new_gc_length,					\
-		(MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, delta - 1)));	\
+		(make_nmv_header (delta - 1)));	\
   if (delta != 0)							\
     set_vector_length (source, new_gc_length);				\
   (target) = (source);							\

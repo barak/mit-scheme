@@ -258,8 +258,8 @@ scheme_object_to_windows_object (SCHEME_OBJECT thing)
     if (thing==SHARP_T)
       return  1;
 
-    if (OBJECT_TYPE (thing) == TC_VECTOR_1B ||
-        OBJECT_TYPE (thing) == TC_VECTOR_16B)
+    if (object_type (thing) == TC_VECTOR_1B ||
+        object_type (thing) == TC_VECTOR_16B)
       return  (long) vector_loc (thing, 0);
 
     return  (long)thing;
@@ -349,7 +349,7 @@ DEFINE_PRIMITIVE ("SET-GENERAL-SCHEME-WNDPROC", Prim_set_general_scheme_wndproc,
   PRIMITIVE_HEADER(1);
   {
     SCHEME_OBJECT  wndproc = ARG_REF(1);
-    if (!ADDRESS_IN_CONSTANT_P (OBJECT_ADDRESS (wndproc)))
+    if (!ADDRESS_IN_CONSTANT_P (object_address (wndproc)))
       signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
     general_scheme_wndproc = wndproc;
     PRIMITIVE_RETURN (UNSPECIFIC);

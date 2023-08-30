@@ -82,7 +82,7 @@ typedef unsigned long entry_count_t;
 
 #define ADDRESS_TO_LONG(source) ((long) (source))
 
-#define LONG_TO_ADDRESS(source) (DATUM_TO_ADDRESS (source))
+#define LONG_TO_ADDRESS(source) (datum_to_address (source))
 
 #define C_STRING_TO_SCHEME_STRING(len, str)				\
   (MEMORY_TO_STRING ((len), ((const uint8_t *) (str))))
@@ -102,13 +102,13 @@ typedef unsigned long entry_count_t;
   ((insn_t) (((offset) << 17) | (code_word)))
 
 #define MAKE_LINKER_HEADER(kind, count)					\
-  (OBJECT_NEW_TYPE (TC_FIXNUM,						\
+  (object_new_type (TC_FIXNUM,						\
 		    (make_linkage_section_marker ((kind), (count)))))
 
 #define ALLOCATE_VECTOR(len) (MAKE_VECTOR ((len), SHARP_F, true))
 
 #define ALLOCATE_RECORD(len)						\
-  (OBJECT_NEW_TYPE (TC_RECORD, (ALLOCATE_VECTOR (len))))
+  (object_new_type (TC_RECORD, (ALLOCATE_VECTOR (len))))
 
 #define RECORD_SET(rec, off, val) vector_set ((rec), (off), (val))
 
@@ -120,21 +120,21 @@ typedef unsigned long entry_count_t;
   ALIGN_FLOAT (Rhp);							\
   val = Rhp;								\
   Rhp += (1 + (BYTES_TO_WORDS (sizeof (double))));			\
-  (*val) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,				\
+  (*val) = (make_object (TC_MANIFEST_NM_VECTOR,				\
 			 (BYTES_TO_WORDS (sizeof (double)))));		\
   (* ((double *) (val + 1))) = num;					\
-  (tgt) = (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (val)));			\
+  (tgt) = (make_pointer_object (TC_BIG_FLONUM, (val)));			\
 } while (false)
 
 #define MAKE_RATIO(num, den)						\
-  (OBJECT_NEW_TYPE (TC_RATNUM, (CONS ((num), (den)))))
+  (object_new_type (TC_RATNUM, (CONS ((num), (den)))))
 
 #define MAKE_COMPLEX(real, imag)					\
-  (OBJECT_NEW_TYPE (TC_COMPLEX, (CONS ((real), (imag)))))
+  (object_new_type (TC_COMPLEX, (CONS ((real), (imag)))))
 
 #define CC_BLOCK_TO_ENTRY(block, offset)				\
-  (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY,				\
-			((OBJECT_ADDRESS (block)) + (offset))))
+  (make_pointer_object (TC_COMPILED_ENTRY,				\
+			((object_address (block)) + (offset))))
 
 #define INDEX_FIXNUM_P(arg) ((FIXNUM_P(arg)) && (FIXNUM_TO_ULONG_P (arg)))
 
@@ -217,7 +217,7 @@ typedef unsigned long entry_count_t;
   UNCACHE_VARIABLES ();							\
   PRIMITIVE_APPLY (prim);						\
   POP_PRIMITIVE_FRAME (nargs);						\
-  IPdest = (OBJECT_ADDRESS (stack_pop ()));				\
+  IPdest = (object_address (stack_pop ()));				\
   CACHE_VARIABLES ();							\
   JUMP (IPdest);							\
 } while (false)
@@ -281,7 +281,7 @@ typedef unsigned long entry_count_t;
 {									\
   SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) (Rpc[1]));			\
   current_block = (entry - offset);					\
-  (*--Rsp) = (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, Rpc));		\
+  (*--Rsp) = (make_pointer_object (TC_COMPILED_ENTRY, Rpc));		\
 } while (false)
 
 /* Linking and initialization */

@@ -223,7 +223,7 @@ initialize_svm1 (void)
   WREG_SET (SVM1_REG_STACK_POINTER, ((word_t)stack_pointer));		\
   WREG_SET (SVM1_REG_FREE_POINTER, ((word_t)Free));			\
   WREG_SET (SVM1_REG_VALUE, GET_VAL);					\
-  WREG_SET (SVM1_REG_DYNAMIC_LINK, ((word_t)(OBJECT_ADDRESS(GET_VAL)))); \
+  WREG_SET (SVM1_REG_DYNAMIC_LINK, ((word_t)(object_address(GET_VAL)))); \
 } while (0)
 
 #define EXPORT_REGS() do						\
@@ -551,11 +551,11 @@ DEFINE_INST (load_immediate_fr_flt)
 #define TYPE_CODE_MASK_LOW (N_TYPE_CODES - 1U)
 
 #define X_MAKE_OBJECT(t, d)						\
-  (MAKE_OBJECT (((t) & TYPE_CODE_MASK_LOW), ((d) & DATUM_MASK)))
+  (make_object (((t) & TYPE_CODE_MASK_LOW), ((d) & DATUM_MASK)))
 
-#define X_MAKE_PTR(t, a) (X_MAKE_OBJECT (t, (ADDRESS_TO_DATUM (a))))
+#define X_MAKE_PTR(t, a) (X_MAKE_OBJECT (t, (address_to_datum (a))))
 
-#define X_OBJECT_ADDRESS(o) ((word_t) (OBJECT_ADDRESS (o)))
+#define X_OBJECT_ADDRESS(o) ((word_t) (object_address (o)))
 
 #define X_FIXNUM_TO_LONG(o)						\
   ((((long) (o)) << TYPE_CODE_LENGTH) >> TYPE_CODE_LENGTH)
@@ -691,7 +691,7 @@ DEFINE_INST (jump_indir_wr)
 }
 
 #define IJUMP(offset)							\
-  NEW_PC (BYTE_ADDR (OBJECT_ADDRESS (* ((SCHEME_OBJECT *) (PC + (offset))))))
+  NEW_PC (BYTE_ADDR (object_address (* ((SCHEME_OBJECT *) (PC + (offset))))))
 
 DEFINE_INST (ijump_u8)
 {
@@ -847,7 +847,7 @@ DEFINE_CJF_1 (pl, pu, s32, S32)
 
 #define CMP_FIX(a) (LONG_TO_FIXNUM_P (a))
 #define CMP_NFIX(a) (!CMP_FIX (a))
-#define CMP_IFIX(a) (((a) & SIGN_MASK) == (MAKE_OBJECT (TC_FIXNUM, 0)))
+#define CMP_IFIX(a) (((a) & SIGN_MASK) == (make_object (TC_FIXNUM, 0)))
 #define CMP_NIFIX(a) (!CMP_IFIX (a))
 
 DEFINE_CJF (fix, FIX)
@@ -1117,7 +1117,7 @@ DEFINE_INTERRUPT_TEST (dynamic_link,
 
 DEFINE_INST (pop_return)
 {
-  return (BYTE_ADDR (OBJECT_ADDRESS (pop_object ())));
+  return (BYTE_ADDR (object_address (pop_object ())));
 }
 
 DEFINE_INST (enter_closure)
@@ -1141,7 +1141,7 @@ DEFINE_INST (enter_closure)
     push_object
       (MAKE_CC_ENTRY
        ((insn_t *) ((SCHEME_OBJECT *) (block + CLOSURE_ENTRY_OFFSET))));
-    NEW_PC (BYTE_ADDR (OBJECT_ADDRESS (targets[index])));
+    NEW_PC (BYTE_ADDR (object_address (targets[index])));
   }
 }
 
@@ -1149,7 +1149,7 @@ DEFINE_INST (flonum_header_u8)
 {
   DECODE_SVM1_INST_FLONUM_HEADER_U8 (target, value);
   WREG_SET (target,
-	    (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (FLONUM_SIZE * value))));
+	    (make_nmv_header ((FLONUM_SIZE * value))));
   NEXT_PC;
 }
 
@@ -1157,7 +1157,7 @@ DEFINE_INST (flonum_header_u16)
 {
   DECODE_SVM1_INST_FLONUM_HEADER_U16 (target, value);
   WREG_SET (target,
-	    (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (FLONUM_SIZE * value))));
+	    (make_nmv_header ((FLONUM_SIZE * value))));
   NEXT_PC;
 }
 
@@ -1225,8 +1225,8 @@ DEFINE_UNARY_WR (decrement_wr, DECREMENT_WR, WDECR)
 DEFINE_UNARY_WR (abs_wr, ABS_WR, WABS)
 DEFINE_UNARY_WR (not, NOT, ~)
 
-DEFINE_UNARY_WR (object_type, OBJECT_TYPE, OBJECT_TYPE)
-DEFINE_UNARY_WR (object_datum, OBJECT_DATUM, OBJECT_DATUM)
+DEFINE_UNARY_WR (object_type, OBJECT_TYPE, object_type)
+DEFINE_UNARY_WR (object_datum, OBJECT_DATUM, object_datum)
 DEFINE_UNARY_WR (object_address, OBJECT_ADDRESS, X_OBJECT_ADDRESS)
 DEFINE_UNARY_WR (fixnum_to_integer, FIXNUM_TO_INTEGER, X_FIXNUM_TO_LONG)
 DEFINE_UNARY_WR (integer_to_fixnum, INTEGER_TO_FIXNUM, LONG_TO_FIXNUM)

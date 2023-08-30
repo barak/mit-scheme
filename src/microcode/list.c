@@ -44,7 +44,7 @@ cons (SCHEME_OBJECT car, SCHEME_OBJECT cdr)
   Primitive_GC_If_Needed (2);
   (*Free++) = car;
   (*Free++) = cdr;
-  return (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2)));
+  return (make_pointer_object (TC_LIST, (Free - 2)));
 }
 
 DEFINE_PRIMITIVE ("cons", Prim_cons, 2, 2,
@@ -153,7 +153,7 @@ system_pair_cons (long type, SCHEME_OBJECT car, SCHEME_OBJECT cdr)
   Primitive_GC_If_Needed (2);
   (*Free++) = car;
   (*Free++) = cdr;
-  return (MAKE_POINTER_OBJECT (type, (Free - 2)));
+  return (make_pointer_object (type, (Free - 2)));
 }
 
 DEFINE_PRIMITIVE ("system-pair-cons", Prim_sys_pair_cons, 3, 3, 0)
@@ -205,7 +205,7 @@ DEFINE_PRIMITIVE ("%make-tagged-object", Prim_make_tagged_object, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   Primitive_GC_If_Needed (2);
-  SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (TC_TAGGED_OBJECT, Free));
+  SCHEME_OBJECT result = (make_pointer_object (TC_TAGGED_OBJECT, Free));
   (*Free++) = (ARG_REF (1));
   (*Free++) = (ARG_REF (2));
   PRIMITIVE_RETURN (result);
@@ -215,14 +215,14 @@ DEFINE_PRIMITIVE ("%tagged-object-tag", Prim_tagged_object_tag, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, TAGGED_OBJECT_P);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_REF (1)), 0));
+  PRIMITIVE_RETURN (memory_ref ((ARG_REF (1)), 0));
 }
 
 DEFINE_PRIMITIVE ("%tagged-object-datum", Prim_tagged_object_datum, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, TAGGED_OBJECT_P);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_REF (1)), 1));
+  PRIMITIVE_RETURN (memory_ref ((ARG_REF (1)), 1));
 }
 
 DEFINE_PRIMITIVE ("weak-pair?", Prim_weak_pair_p, 1, 1, 0)
@@ -235,7 +235,7 @@ DEFINE_PRIMITIVE ("weak-cons", Prim_weak_cons, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   Primitive_GC_If_Needed (2);
-  SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (TC_WEAK_CONS, Free));
+  SCHEME_OBJECT result = (make_pointer_object (TC_WEAK_CONS, Free));
   (*Free++) = (ARG_REF (1));
   (*Free++) = (ARG_REF (2));
   PRIMITIVE_RETURN (result);
@@ -245,21 +245,21 @@ DEFINE_PRIMITIVE ("weak-car", Prim_weak_car, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, WEAK_PAIR_P);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_REF (1)), 0));
+  PRIMITIVE_RETURN (memory_ref ((ARG_REF (1)), 0));
 }
 
 DEFINE_PRIMITIVE ("weak-cdr", Prim_weak_cdr, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, WEAK_PAIR_P);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_REF (1)), 1));
+  PRIMITIVE_RETURN (memory_ref ((ARG_REF (1)), 1));
 }
 
 DEFINE_PRIMITIVE ("weak-set-car!", Prim_weak_set_car, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, WEAK_PAIR_P);
-  MEMORY_SET ((ARG_REF (1)), 0, (ARG_REF (2)));
+  memory_set ((ARG_REF (1)), 0, (ARG_REF (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -267,6 +267,6 @@ DEFINE_PRIMITIVE ("weak-set-cdr!", Prim_weak_set_cdr, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, WEAK_PAIR_P);
-  MEMORY_SET ((ARG_REF (1)), 1, (ARG_REF (2)));
+  memory_set ((ARG_REF (1)), 1, (ARG_REF (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

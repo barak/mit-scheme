@@ -1262,10 +1262,10 @@ get_trap_kind (SCHEME_OBJECT object)
 {
   if (!REFERENCE_TRAP_P (object))
     return NON_TRAP_KIND;
-  unsigned long datum = OBJECT_DATUM (object);
+  unsigned long datum = object_datum (object);
   return (datum <= TRAP_MAX_IMMEDIATE)
 	 ? datum
-	 : OBJECT_DATUM (ptr_ref_trap_tag (object));
+	 : object_datum (ptr_ref_trap_tag (object));
 }
 
 static unsigned long
@@ -1363,7 +1363,7 @@ make_cache_reference (SCHEME_OBJECT block, unsigned long offset,
   GC_CHECK (2);
   (*Free++) = block;
   (*Free++) = (LONG_TO_UNSIGNED_FIXNUM (offset));
-  (*ref_ret) = (MAKE_POINTER_OBJECT (TC_WEAK_CONS, (Free - 2)));
+  (*ref_ret) = (make_pointer_object (TC_WEAK_CONS, (Free - 2)));
   return (PRIM_DONE);
 }
 #endif

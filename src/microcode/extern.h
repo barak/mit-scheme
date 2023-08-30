@@ -92,9 +92,9 @@ extern void set_ulong_register (unsigned int, unsigned long);
 #define POP_EXP() SET_EXP (stack_pop ())
 #define POP_RET() SET_RET (stack_pop ())
 
-#define GET_RC (OBJECT_DATUM (GET_RET))
-#define SET_RC(code) SET_RET (MAKE_OBJECT (TC_RETURN_CODE, (code)))
-#define PUSH_RC(code) stack_push (MAKE_OBJECT (TC_RETURN_CODE, (code)))
+#define GET_RC (object_datum (GET_RET))
+#define SET_RC(code) SET_RET (make_object (TC_RETURN_CODE, (code)))
+#define PUSH_RC(code) stack_push (make_object (TC_RETURN_CODE, (code)))
 
 #ifdef ENABLE_DEBUGGING_TOOLS
    extern bool Eval_Debug;

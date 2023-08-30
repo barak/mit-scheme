@@ -426,7 +426,7 @@ eval (SCHEME_OBJECT exp, SCHEME_OBJECT env, variant_t variant)
   EVAL_UCODE_HOOK ();
 #endif
 
-  switch (OBJECT_TYPE (exp))
+  switch (object_type (exp))
     {
     case TC_ACCESS:
       return eval_access (exp, env);
@@ -501,7 +501,7 @@ apply_procedure (SCHEME_OBJECT proc)
   {
     SCHEME_OBJECT names = lambda_names (lambda);
     if (! (frame_size == vector_length (names)
-           || (OBJECT_TYPE (lambda) == TC_LEXPR
+           || (object_type (lambda) == TC_LEXPR
                && frame_size < vector_length (names))))
       return apply_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
   }
@@ -509,7 +509,7 @@ apply_procedure (SCHEME_OBJECT proc)
   if (GC_NEEDED_P (nwords))
     return apply_immediate_gc (nwords);
   SCHEME_OBJECT* end = Free + nwords;
-  SCHEME_OBJECT env = MAKE_POINTER_OBJECT (TC_ENVIRONMENT, Free);
+  SCHEME_OBJECT env = make_pointer_object (TC_ENVIRONMENT, Free);
   *Free++ = make_vector_header (frame_size);
   increment_sp (1); // discard apply_frame_header
   while (Free < end)
@@ -540,8 +540,8 @@ apply_extended_procedure (SCHEME_OBJECT proc)
     return apply_immediate_gc (nwords);
   increment_sp (1);             // discard apply-frame header
   SCHEME_OBJECT* scan = Free;
-  SCHEME_OBJECT env = MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan);
-  *scan++ = MAKE_OBJECT (TC_MANIFEST_VECTOR, size);
+  SCHEME_OBJECT env = make_pointer_object (TC_ENVIRONMENT, scan);
+  *scan++ = make_vector_header (size);
   if (nargs <= nfixed)
     {
       *scan++ = stack_pop (); // proc
@@ -556,16 +556,16 @@ apply_extended_procedure (SCHEME_OBJECT proc)
     {
       /* assert (rest == 1) */
       SCHEME_OBJECT list
-        = MAKE_POINTER_OBJECT (TC_LIST, scan + size);
+        = make_pointer_object (TC_LIST, scan + size);
       *scan++ = stack_pop (); // proc
       for (unsigned int i = 0; i < nfixed; i += 1)
         *scan++ = stack_pop ();
       *scan++ = list;
-      /* Now scan == OBJECT_ADDRESS (list) */
+      /* Now scan == object_address (list) */
       for (unsigned int i = nfixed; i < nargs; i += 1)
         {
           *scan++ = stack_pop ();
-          *scan = MAKE_POINTER_OBJECT (TC_LIST, scan + 1);
+          *scan = make_pointer_object (TC_LIST, scan + 1);
           scan += 1;
         }
       scan[-1] = EMPTY_LIST;
@@ -655,7 +655,7 @@ apply (variant_t variant)
 #endif
 
   SCHEME_OBJECT proc = apply_frame_proc ();
-  switch (OBJECT_TYPE (proc))
+  switch (object_type (proc))
     {
     case TC_ENTITY:
       return apply_entity (proc);
@@ -698,7 +698,7 @@ return_comb_save_value (void)
 {
   SCHEME_OBJECT env = stack_pop ();
   SCHEME_OBJECT exp = GET_EXP;
-  unsigned long arg = OBJECT_DATUM (stack_ref (0)) - 1;
+  unsigned long arg = object_datum (stack_ref (0)) - 1;
   stack_set (1 + arg, GET_VAL);
   stack_set (0, make_nmv_header (arg));
   if (arg > 0)
@@ -777,7 +777,7 @@ return_assignment_finish (void)
   SCHEME_OBJECT variable = assignment_name (GET_EXP);
   SCHEME_OBJECT old_val;
   long code
-    = (OBJECT_TYPE (variable) == TC_VARIABLE)
+    = (object_type (variable) == TC_VARIABLE)
       ? assign_variable (env, variable_name (variable), GET_VAL, &old_val)
       : ERR_BAD_FRAME;
   if (code == PRIM_DONE)
@@ -848,9 +848,9 @@ return_normal_gc_done (void)
 static inline action_t
 return_restore_dont_copy_history (void)
 {
-  prev_restore_history_offset = OBJECT_DATUM (stack_pop ());
+  prev_restore_history_offset = object_datum (stack_pop ());
   increment_sp (1);       // obsolete field
-  history_register = OBJECT_ADDRESS (GET_EXP);
+  history_register = object_address (GET_EXP);
   return ACTION_RETURN;
 }
 
@@ -859,7 +859,7 @@ return_restore_history (void)
 {
   if (!restore_history (GET_EXP))
     return return_immediate_gc (HEAP_AVAILABLE);
-  prev_restore_history_offset = (OBJECT_DATUM (stack_pop ()));
+  prev_restore_history_offset = (object_datum (stack_pop ()));
   increment_sp (1);       // obsolete field
   if (prev_restore_history_offset > 0)
     *(stack_end - prev_restore_history_offset)
@@ -931,7 +931,7 @@ apply_cont (variant_t variant)
     }
 #endif
 
-  switch (OBJECT_DATUM (GET_RET))
+  switch (object_datum (GET_RET))
     {
     case RC_COMB_APPLY_FUNCTION:
       return return_comb_apply_function ();

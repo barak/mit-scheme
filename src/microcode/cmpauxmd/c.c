@@ -630,7 +630,7 @@ memory_to_uninterned_symbol (unsigned long length, const void * string)
 {
   SCHEME_OBJECT name = (memory_to_string (length, string));
   SCHEME_OBJECT res = (CONS (name, UNBOUND_OBJECT));
-  return (OBJECT_NEW_TYPE (TC_UNINTERNED_SYMBOL, res));
+  return (object_new_type (TC_UNINTERNED_SYMBOL, res));
 }
 
 SCHEME_OBJECT

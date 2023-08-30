@@ -108,7 +108,7 @@ cont_frame_ret (SCHEME_OBJECT* frame)
 static inline SCHEME_OBJECT
 cont_frame_rc (SCHEME_OBJECT* frame)
 {
-  return OBJECT_DATUM (cont_frame_ret (frame));
+  return object_datum (cont_frame_ret (frame));
 }
 
 static inline SCHEME_OBJECT
@@ -136,12 +136,7 @@ discard_cont_env_frame (void)
 }
 
 #define make_apply_frame_header make_vector_header
-
-static inline unsigned long
-apply_frame_header_size (SCHEME_OBJECT header)
-{
-  return OBJECT_DATUM (header);
-}
+#define apply_frame_header_size object_datum
 
 static inline unsigned long
 apply_frame_header_n_args (SCHEME_OBJECT header)

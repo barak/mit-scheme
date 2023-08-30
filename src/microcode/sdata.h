@@ -53,37 +53,37 @@ USA.
 static inline SCHEME_OBJECT
 make_vector_header (unsigned long length)
 {
-  return MAKE_OBJECT (TC_MANIFEST_VECTOR, length);
+  return make_object (TC_MANIFEST_VECTOR, length);
 }
 
 static inline SCHEME_OBJECT
 vector_length (SCHEME_OBJECT v)
 {
-  return OBJECT_DATUM (vector_header (v));
+  return object_datum (vector_header (v));
 }
 
 static inline void
 set_vector_length (SCHEME_OBJECT v, unsigned long new_length)
 {
-  set_vector_header (v, OBJECT_NEW_DATUM (vector_header (v), new_length));
+  set_vector_header (v, object_new_datum (vector_header (v), new_length));
 }
 
 static inline SCHEME_OBJECT
 vector_ref (SCHEME_OBJECT v, unsigned long index)
 {
-  return MEMORY_REF (v, index + 1);
+  return memory_ref (v, index + 1);
 }
 
 static inline void
 vector_set (SCHEME_OBJECT v, unsigned long index, SCHEME_OBJECT object)
 {
-  MEMORY_SET (v, index + 1, object);
+  memory_set (v, index + 1, object);
 }
 
 static inline SCHEME_OBJECT*
 vector_loc (SCHEME_OBJECT v, unsigned long index)
 {
-  return MEMORY_LOC (v, index + 1);
+  return memory_loc (v, index + 1);
 }
 
 // Non-marked vectors
@@ -91,7 +91,7 @@ vector_loc (SCHEME_OBJECT v, unsigned long index)
 static inline SCHEME_OBJECT
 make_nmv_header (unsigned long length)
 {
-  return MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, length);
+  return make_object (TC_MANIFEST_NM_VECTOR, length);
 }
 
 #define nm_vector_subheader memory_ref_1
@@ -146,13 +146,13 @@ bytevector_length_to_gc_length (unsigned long nbytes)
 static inline SCHEME_OBJECT
 make_bytevector_subheader (unsigned long nbytes)
 {
-  return MAKE_OBJECT (0, nbytes);
+  return make_object (0, nbytes);
 }
 
 static inline unsigned long
 bytevector_length (SCHEME_OBJECT bv)
 {
-  return OBJECT_DATUM (nm_vector_subheader (bv));
+  return object_datum (nm_vector_subheader (bv));
 }
 
 static inline void
@@ -178,13 +178,13 @@ ustring_data (SCHEME_OBJECT string)
 static inline uint8_t
 ustring_bytes_per_cp (SCHEME_OBJECT string)
 {
-  return OBJECT_TYPE (nm_vector_subheader (string)) & 0x3;
+  return object_type (nm_vector_subheader (string)) & 0x3;
 }
 
 static inline uint8_t
 ustring_flags (SCHEME_OBJECT string)
 {
-  return (OBJECT_TYPE (nm_vector_subheader (string)) >> 2) & USTRING_FLAGS_ALL;
+  return (object_type (nm_vector_subheader (string)) >> 2) & USTRING_FLAGS_ALL;
 }
 
 static inline unsigned long
@@ -207,14 +207,14 @@ ustring_length_to_gc_length (unsigned long length, uint8_t bytes_per_cp)
 static inline SCHEME_OBJECT
 make_ustring_subheader (uint8_t bytes_per_cp, uint8_t flags, unsigned long ncps)
 {
-  return MAKE_OBJECT ((flags & USTRING_FLAGS_ALL) << 2 | (bytes_per_cp & 0x3),
+  return make_object ((flags & USTRING_FLAGS_ALL) << 2 | (bytes_per_cp & 0x3),
                       ncps);
 }
 
 static inline unsigned long
 ustring_length (SCHEME_OBJECT string)
 {
-  return OBJECT_DATUM (nm_vector_subheader (string));
+  return object_datum (nm_vector_subheader (string));
 }
 
 // Legacy strings
@@ -259,13 +259,13 @@ legacy_string_length_to_gc_length (unsigned long nchars)
 static inline SCHEME_OBJECT
 make_legacy_string_subheader (unsigned long nchars)
 {
-  return MAKE_OBJECT (0, nchars);
+  return make_object (0, nchars);
 }
 
 static inline unsigned long
 legacy_string_length (SCHEME_OBJECT string)
 {
-  return OBJECT_DATUM (nm_vector_subheader (string));
+  return object_datum (nm_vector_subheader (string));
 }
 
 static inline void
@@ -301,7 +301,7 @@ set_legacy_string_max_length (SCHEME_OBJECT string, unsigned long nchars)
 static inline SCHEME_OBJECT
 make_delayed (SCHEME_OBJECT proc, SCHEME_OBJECT env)
 {
-  SCHEME_OBJECT delayed = MAKE_POINTER_OBJECT (TC_DELAYED, Free);
+  SCHEME_OBJECT delayed = make_pointer_object (TC_DELAYED, Free);
   *Free++ = proc;
   *Free++ = env;
   return delayed;
@@ -312,10 +312,10 @@ snap_delayed (SCHEME_OBJECT delayed, SCHEME_OBJECT val)
 {
   // Don't snap thunk twice; evaluation of the thunk's body might have snapped
   // it already.
-  if (MEMORY_REF (delayed, 0) == SHARP_T)
-    return MEMORY_REF (delayed, 1);
-  MEMORY_SET (delayed, 0, SHARP_T);
-  MEMORY_SET (delayed, 1, val);
+  if (memory_ref (delayed, 0) == SHARP_T)
+    return memory_ref (delayed, 1);
+  memory_set (delayed, 0, SHARP_T);
+  memory_set (delayed, 1, val);
   return val;
 }
 
@@ -329,7 +329,7 @@ snap_delayed (SCHEME_OBJECT delayed, SCHEME_OBJECT val)
 static inline SCHEME_OBJECT
 make_procedure (SCHEME_OBJECT lambda, SCHEME_OBJECT env)
 {
-  SCHEME_OBJECT proc = MAKE_POINTER_OBJECT (TC_PROCEDURE, Free);
+  SCHEME_OBJECT proc = make_pointer_object (TC_PROCEDURE, Free);
   *Free++ = lambda;
   *Free++ = env;
   return proc;
@@ -338,7 +338,7 @@ make_procedure (SCHEME_OBJECT lambda, SCHEME_OBJECT env)
 static inline SCHEME_OBJECT
 make_extended_procedure (SCHEME_OBJECT lambda, SCHEME_OBJECT env)
 {
-  SCHEME_OBJECT proc = MAKE_POINTER_OBJECT (TC_EXTENDED_PROCEDURE, Free);
+  SCHEME_OBJECT proc = make_pointer_object (TC_EXTENDED_PROCEDURE, Free);
   *Free++ = lambda;
   *Free++ = env;
   return proc;
@@ -365,21 +365,6 @@ env_val_cell (SCHEME_OBJECT env, unsigned long index)
 {
   return env_vals (env) + index;
 }
-
-/* An environment chain always ends in a pointer with type code
-   of TC_GLOBAL_ENV.  This will contain an address part which
-   either indicates that the lookup should continue on to the
-   true global environment, or terminate at this frame.
-
-   We arrange for the global environment to be the same as #F, and the
-   end chain to be different by toggling the lowest bit:  */
-
-#define THE_GLOBAL_ENV (MAKE_OBJECT (TC_GLOBAL_ENV, OBJECT_DATUM (SHARP_F)))
-#define THE_NULL_ENV (MAKE_OBJECT (TC_GLOBAL_ENV, OBJECT_DATUM (SHARP_F) ^ 1))
-
-#define GLOBAL_FRAME_P(frame) ((frame) == THE_GLOBAL_ENV)
-#define NULL_FRAME_P(frame) ((frame) == THE_NULL_ENV)
-#define PROCEDURE_FRAME_P(frame) (OBJECT_TYPE (frame) == TC_ENVIRONMENT)
 
 // Frame extensions
 
@@ -502,7 +487,7 @@ set_extended_frame_length (SCHEME_OBJECT frame, unsigned long n)
 static inline SCHEME_OBJECT
 make_ptr_ref_trap (unsigned long tag, SCHEME_OBJECT cache)
 {
-  SCHEME_OBJECT trap = MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free);
+  SCHEME_OBJECT trap = make_pointer_object (TC_REFERENCE_TRAP, Free);
   *Free++ = ULONG_TO_FIXNUM (tag);
   *Free++ = cache;
   return trap;
@@ -530,7 +515,7 @@ enum cache_ref_kind
 static inline SCHEME_OBJECT
 make_cache (SCHEME_OBJECT value, SCHEME_OBJECT clone, SCHEME_OBJECT refs)
 {
-  SCHEME_OBJECT cache = MAKE_POINTER_OBJECT (CACHE_TYPE, Free);
+  SCHEME_OBJECT cache = make_pointer_object (CACHE_TYPE, Free);
   *Free++ = value;
   *Free++ = clone;
   *Free++ = refs;
@@ -552,7 +537,7 @@ make_cache_clone (SCHEME_OBJECT cache)
 static inline SCHEME_OBJECT
 make_cache_refs (void)
 {
-  SCHEME_OBJECT refs = MAKE_POINTER_OBJECT (CACHE_REFERENCES_TYPE, Free);
+  SCHEME_OBJECT refs = make_pointer_object (CACHE_REFERENCES_TYPE, Free);
   *Free++ = EMPTY_LIST;
   *Free++ = EMPTY_LIST;
   *Free++ = EMPTY_LIST;
@@ -595,7 +580,7 @@ cache_kind_refs (SCHEME_OBJECT cache, enum cache_ref_kind kind)
 static inline unsigned long
 cache_ref_offset (SCHEME_OBJECT ref)
 {
-  return OBJECT_DATUM (pair_cdr (ref));
+  return object_datum (pair_cdr (ref));
 }
 
 static inline void
@@ -614,9 +599,9 @@ set_cache_ref_offset (SCHEME_OBJECT ref, unsigned long offset)
 #define EPHEMERON_SIZE		5
 
 #define MARKED_EPHEMERON_MANIFEST				\
-  (MAKE_OBJECT (TC_MANIFEST_VECTOR, (EPHEMERON_SIZE - 1)))
+  (make_vector_header ((EPHEMERON_SIZE - 1)))
 
 #define UNMARKED_EPHEMERON_MANIFEST				\
-  (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (EPHEMERON_SIZE - 1)))
+  (make_nmv_header ((EPHEMERON_SIZE - 1)))
 
 #endif /* not SCM_SDATA_H */

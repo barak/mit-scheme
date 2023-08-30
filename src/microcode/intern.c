@@ -93,7 +93,7 @@ replace_symbol_bucket_type (SCHEME_OBJECT symbol, unsigned int type)
         {
           if (element == symbol)
             {
-              (*bucket) = (OBJECT_NEW_TYPE (type, list));
+              (*bucket) = (object_new_type (type, list));
               return;
             }
           bucket = (PAIR_CDR_LOC (list));
@@ -119,7 +119,7 @@ static SCHEME_OBJECT
 make_symbol (SCHEME_OBJECT name, SCHEME_OBJECT * cell)
 {
   Primitive_GC_If_Needed (4);
-  SCHEME_OBJECT symbol = MAKE_POINTER_OBJECT (TC_INTERNED_SYMBOL, Free);
+  SCHEME_OBJECT symbol = make_pointer_object (TC_INTERNED_SYMBOL, Free);
   *Free++ = name;
   *Free++ = UNBOUND_OBJECT;
   *cell = system_pair_cons (TC_WEAK_CONS, symbol, EMPTY_LIST);
@@ -173,10 +173,10 @@ intern_symbol (SCHEME_OBJECT symbol)
       /* Eliminate legacy strings as names. */
       if (LEGACY_STRING_P (name))
 	{
-	  name = OBJECT_NEW_TYPE (TC_BYTEVECTOR, name);
+	  name = object_new_type (TC_BYTEVECTOR, name);
           set_symbol_name (symbol, name);
 	}
-      SCHEME_OBJECT result = OBJECT_NEW_TYPE (TC_INTERNED_SYMBOL, symbol);
+      SCHEME_OBJECT result = object_new_type (TC_INTERNED_SYMBOL, symbol);
       *cell = system_pair_cons (TC_WEAK_CONS, result, EMPTY_LIST);
       return result;
     }

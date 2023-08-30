@@ -357,16 +357,16 @@ DEFINE_GC_OBJECT_HANDLER (fasdump_cc_entry)
 
   cc_seen_p = true;
   old_addr = (cc_entry_to_block_address (object));
-  if (old_addr == (OBJECT_ADDRESS (compiler_utilities)))
+  if (old_addr == (object_address (compiler_utilities)))
     return (object);
   new_addr = (GC_PRECHECK_FROM (old_addr));
   if (new_addr == 0)
     {
-      length = (OBJECT_DATUM (*old_addr));
+      length = (object_datum (*old_addr));
       new_addr = (GC_TRANSPORT_WORDS (old_addr, (1 + length), true));
       eptr = (new_addr + length);
       if ((current_env_mode == FE_DROP_CC)
-	  && ((OBJECT_TYPE (read_tospace (eptr))) == TC_ENVIRONMENT))
+	  && ((object_type (read_tospace (eptr))) == TC_ENVIRONMENT))
 	write_tospace (eptr, SHARP_F);
     }
   return (CC_ENTRY_NEW_BLOCK (object, new_addr, old_addr));
@@ -379,7 +379,7 @@ DEFINE_GC_OBJECT_HANDLER (fasdump_cc_entry)
 static
 DEFINE_GC_PRECHECK_FROM (fasdump_precheck_from)
 {
-  return ((BROKEN_HEART_P (*from)) ? (OBJECT_ADDRESS (*from)) : 0);
+  return ((BROKEN_HEART_P (*from)) ? (object_address (*from)) : 0);
 }
 
 static
@@ -417,17 +417,17 @@ DEFINE_GC_HANDLER (handle_linkage_section)
 static
 DEFINE_GC_HANDLER (handle_symbol)
 {
-  SCHEME_OBJECT * from = (OBJECT_ADDRESS (object));
+  SCHEME_OBJECT * from = (object_address (object));
   SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (from));
   if (new_address == 0)
     {
       new_address = (GC_TRANSPORT_WORDS (from, 2, false));
       write_tospace ((new_address + SYMBOL_GLOBAL_VALUE),
-		     (((OBJECT_TYPE (object)) == TC_INTERNED_SYMBOL)
+		     (((object_type (object)) == TC_INTERNED_SYMBOL)
 		      ? BROKEN_HEART_ZERO
 		      : UNBOUND_OBJECT));
     }
-  (*scan) = (OBJECT_NEW_ADDRESS (object, new_address));
+  (*scan) = (object_new_address (object, new_address));
   return (scan + 1);
 }
 
@@ -435,7 +435,7 @@ static
 DEFINE_GC_HANDLER (handle_broken_heart)
 {
   return
-    (((OBJECT_DATUM (object)) == 0)
+    (((object_datum (object)) == 0)
      ? (scan + 1)
      : (gc_handle_broken_heart (scan, object)));
 }
@@ -453,7 +453,7 @@ static
 DEFINE_GC_HANDLER (handle_ephemeron)
 {
   /* Count each one once by counting only if there is no borken heart.  */
-  if (0 == (GC_PRECHECK_FROM (OBJECT_ADDRESS (object))))
+  if (0 == (GC_PRECHECK_FROM (object_address (object))))
     dumped_ephemeron_count += 1;
   return (gc_handle_unaligned_vector (scan, object));
 }
@@ -519,18 +519,18 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
   bool result;
   PRIMITIVE_HEADER (2);
 
-  CHECK_ARG (1, INTERPRETER_APPLICABLE_P);
+  CHECK_ARG (1, interpreter_applicable_p);
   filename = ((const char *) (arg_extended_string (2, NULL)));
 
   Primitive_GC_If_Needed (5);
   initialize_fasl_header (true, true);
   {
-    SCHEME_OBJECT comb = MAKE_POINTER_OBJECT (TC_COMBINATION, to);
+    SCHEME_OBJECT comb = make_pointer_object (TC_COMBINATION, to);
     *to++ = make_vector_header (2);
     *to++ = ARG_REF (1);
     *to++ = SHARP_F;
 
-    SCHEME_OBJECT root = (MAKE_POINTER_OBJECT (TC_LIST, to));
+    SCHEME_OBJECT root = (make_pointer_object (TC_LIST, to));
     (*to++) = comb;
     (*to++) = compiler_utilities;
 

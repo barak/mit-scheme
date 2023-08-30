@@ -54,8 +54,8 @@ allocate_vector (unsigned int type,
 		 unsigned long length,
 		 SCHEME_OBJECT ** fp)
 {
-  SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (type, (*fp)));
-  (*(*fp)++) = (MAKE_OBJECT (manifest_type, length));
+  SCHEME_OBJECT result = (make_pointer_object (type, (*fp)));
+  (*(*fp)++) = (make_object (manifest_type, length));
   (*fp) += length;
   return (result);
 }
@@ -88,8 +88,8 @@ make_marked_vector (unsigned int type,
 {
   if (gc_check_p)
     Primitive_GC_If_Needed (length + 1);
-  SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (type, Free));
-  (*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, length));
+  SCHEME_OBJECT result = (make_pointer_object (type, Free));
+  (*Free++) = (make_vector_header (length));
   while ((length--) > 0)
     (*Free++) = fill_value;
   return (result);
@@ -266,7 +266,7 @@ subvector_to_list (SCHEME_OBJECT vector, long start, long end)
   if (start == end)
     return (EMPTY_LIST);
   Primitive_GC_If_Needed (2 * (end - start));
-  result = (MAKE_POINTER_OBJECT (TC_LIST, Free));
+  result = (make_pointer_object (TC_LIST, Free));
   scan = (vector_loc (vector, start));
   end_scan = (vector_loc (vector, (end - 1)));
   pair_scan = Free;
@@ -274,7 +274,7 @@ subvector_to_list (SCHEME_OBJECT vector, long start, long end)
     {
       Free += 2;
       (*pair_scan++) = (*scan++);
-      (*pair_scan++) = (MAKE_POINTER_OBJECT (TC_LIST, Free));
+      (*pair_scan++) = (make_pointer_object (TC_LIST, Free));
     }
   Free += 2;
   (*pair_scan++) = (*scan);
@@ -307,8 +307,8 @@ list_to_vector (unsigned long result_type, long argument_number)
     }
   if (!EMPTY_LIST_P (list))
     error_wrong_type_arg (argument_number);
-  (*result) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, count));
-  return (MAKE_POINTER_OBJECT (result_type, result));
+  (*result) = (make_vector_header (count));
+  return (make_pointer_object (result_type, result));
 }
 
 DEFINE_PRIMITIVE ("LIST->VECTOR", Prim_list_to_vector, 1, 1, 0)
@@ -419,10 +419,10 @@ static SCHEME_OBJECT
 record_marker (SCHEME_OBJECT record)
 {
   SCHEME_OBJECT marker = (vector_ref (record, 0));
-  return (((OBJECT_TYPE (marker)) == TC_CONSTANT)
-	  && ((OBJECT_DATUM (marker)) >= FASDUMP_RECORD_MARKER_START)
-	  && ((OBJECT_DATUM (marker)) < FASDUMP_RECORD_MARKER_END))
+  return (((object_type (marker)) == TC_CONSTANT)
+	  && ((object_datum (marker)) >= FASDUMP_RECORD_MARKER_START)
+	  && ((object_datum (marker)) < FASDUMP_RECORD_MARKER_END))
     ? (vector_ref ((vector_ref (fixed_objects, FIXOBJ_PROXIED_RECORD_TYPES)),
-		   ((OBJECT_DATUM (marker)) - FASDUMP_RECORD_MARKER_START)))
+		   ((object_datum (marker)) - FASDUMP_RECORD_MARKER_START)))
     : marker;
 }

@@ -51,9 +51,9 @@ Find_Occurrence (SCHEME_OBJECT * From,
       Obj = What;
       for (; From < To; From++)
       {
-	if (OBJECT_TYPE (*From) == TC_MANIFEST_NM_VECTOR)
+	if (object_type (*From) == TC_MANIFEST_NM_VECTOR)
 	{
-	  From += OBJECT_DATUM (*From);
+	  From += object_datum (*From);
 	}
 	else if (*From == Obj)
 	{
@@ -65,14 +65,14 @@ Find_Occurrence (SCHEME_OBJECT * From,
 
     case ADDRESS_EQ:
     {
-      Obj = OBJECT_DATUM (What);
+      Obj = object_datum (What);
       for (; From < To; From++)
       {
-	if (OBJECT_TYPE (*From) == TC_MANIFEST_NM_VECTOR)
+	if (object_type (*From) == TC_MANIFEST_NM_VECTOR)
 	{
-	  From += OBJECT_DATUM (*From);
+	  From += object_datum (*From);
 	}
-	else if ((OBJECT_DATUM (*From) == Obj)
+	else if ((object_datum (*From) == Obj)
 		 && (!GC_TYPE_NON_POINTER (*From)))
 	  return From;
       }
@@ -80,14 +80,14 @@ Find_Occurrence (SCHEME_OBJECT * From,
     }
     case DATUM_EQ:
     {
-      Obj = OBJECT_DATUM (What);
+      Obj = object_datum (What);
       for (; From < To; From++)
       {
-	if (OBJECT_TYPE (*From) == TC_MANIFEST_NM_VECTOR)
+	if (object_type (*From) == TC_MANIFEST_NM_VECTOR)
 	{
-	  From += OBJECT_DATUM (*From);
+	  From += object_datum (*From);
 	}
-	else if (OBJECT_DATUM (*From) == Obj)
+	else if (object_datum (*From) == Obj)
 	{
 	  return From;
 	}
@@ -172,8 +172,8 @@ Find_Who_Points (SCHEME_OBJECT Obj, int Find_Mode, int Collect_Mode)
   }
   if (store_p)
   {
-    *Saved_Free = (MAKE_OBJECT (TC_MANIFEST_VECTOR, n));
-    return (MAKE_POINTER_OBJECT (TC_VECTOR, Saved_Free));
+    *Saved_Free = (make_vector_header (n));
+    return (make_pointer_object (TC_VECTOR, Saved_Free));
   }
   else
   {
@@ -241,7 +241,7 @@ DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
     else
       {
 	outf_console ("\nInterned Symbol: 0x%lx", ((long) symbol));
-	Print_Expression (MEMORY_REF (symbol, SYMBOL_GLOBAL_VALUE), "Value");
+	Print_Expression (memory_ref (symbol, SYMBOL_GLOBAL_VALUE), "Value");
 	outf_console ("\n");
       }
   }
@@ -263,8 +263,8 @@ DEFINE_PRIMITIVE ("DEBUG-FIND-WHO-POINTS", Prim_debug_find_who_points, 3, 3, 0)
   PRIMITIVE_RETURN
     (Find_Who_Points
      ((ARG_REF (1)),
-      (OBJECT_DATUM (ARG_REF (2))),
-      (OBJECT_DATUM (ARG_REF (3)))));
+      (object_datum (ARG_REF (2))),
+      (object_datum (ARG_REF (3)))));
 }
 
 DEFINE_PRIMITIVE ("DEBUG-PRINT-MEMORY", Prim_debug_print_memory, 2, 2, 0)
@@ -274,8 +274,8 @@ DEFINE_PRIMITIVE ("DEBUG-PRINT-MEMORY", Prim_debug_print_memory, 2, 2, 0)
   object = (ARG_REF (1));
   Print_Memory
     (((GC_TYPE_NON_POINTER (object))
-      ? ((SCHEME_OBJECT *) (OBJECT_DATUM (object)))
-      : (OBJECT_ADDRESS (object))),
-     (OBJECT_DATUM (ARG_REF (2))));
+      ? ((SCHEME_OBJECT *) (object_datum (object)))
+      : (object_address (object))),
+     (object_datum (ARG_REF (2))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

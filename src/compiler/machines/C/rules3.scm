@@ -529,7 +529,7 @@ USA.
 	   (c:if-goto (c:> 'counter n-code-blocks) done)
 	   (c:= 'blocks (c:cref code-blocks-label))
 	   (c:= 'sub_block
-		(c:object-address (c:ecall "MEMORY_REF" 'blocks 'counter)))
+		(c:object-address (c:ecall "memory_ref" 'blocks 'counter)))
 	   (c:= (c:aref 'sub_block (c:object-datum (c:aref 'sub_block 0)))
 		(c:env-reg))
 	   (c:= 'section (c:aref 'sections 'counter))

@@ -581,16 +581,16 @@ USA.
   (c:ubinary "-" a b))
 
 (define (c:make-object type datum)
-  (c:ecall "MAKE_OBJECT" type datum))
+  (c:ecall "make_object" type datum))
 
 (define (c:make-pointer-object type address)
-  (c:ecall "MAKE_POINTER_OBJECT" type address))
+  (c:ecall "make_pointer_object" type address))
 
 (define (c:object-type expr)
-  (c:ecall "OBJECT_TYPE" expr))
+  (c:ecall "object_type" expr))
 
 (define (c:object-datum expr)
-  (c:ecall "OBJECT_DATUM" expr))
+  (c:ecall "object_datum" expr))
 
 (define (c:object-address expr)
-  (c:ecall "OBJECT_ADDRESS" expr))
+  (c:ecall "object_address" expr))

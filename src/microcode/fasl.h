@@ -84,14 +84,14 @@ USA.
 
 /* The '1' here is for upwards compatibility.  */
 #define MAKE_FASL_VERSION(s, a)					\
-  (MAKE_OBJECT (1, ((((unsigned long) (s)) << FASL_ARCH_LENGTH) | (a))))
+  (make_object (1, ((((unsigned long) (s)) << FASL_ARCH_LENGTH) | (a))))
 
 #define CI_VERSION(P) (((P) >> HALF_DATUM_LENGTH) & HALF_DATUM_MASK)
 #define CI_PROCESSOR(P) ((cc_arch_t) ((P) & HALF_DATUM_MASK))
-#define CI_BAND_P(P) ((OBJECT_TYPE (P)) == TC_CONSTANT)
+#define CI_BAND_P(P) ((object_type (P)) == TC_CONSTANT)
 
 #define MAKE_CI_VERSION(b, v, a)					\
-  (MAKE_OBJECT (((b) ? TC_CONSTANT : TC_FALSE),				\
+  (make_object (((b) ? TC_CONSTANT : TC_FALSE),				\
 		((((unsigned long) (v)) << HALF_DATUM_LENGTH)		\
 		 | ((unsigned long) (a)))))
 

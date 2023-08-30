@@ -662,7 +662,7 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
 #ifdef ENABLE_DEBUGGING_TOOLS
       || ((stack_ref (0)) != (MAKE_RETURN_CODE (RC_INTERNAL_APPLY)))
       || ((stack_ref (1)) != c_call_continue)
-      || ((stack_ref (2)) != (MAKE_OBJECT (0, nargs+1)))
+      || ((stack_ref (2)) != (make_object (0, nargs+1)))
       || ((stack_ref (3)) != c_call_continue)
 #endif
       )
@@ -846,7 +846,7 @@ arg_pointer (int argn)
   if (is_alien (arg))
     return (alien_address (arg));
   if (FLONUM_P (arg))
-    return ((void *) (MEMORY_LOC ((arg), 1)));
+    return ((void *) (memory_loc ((arg), 1)));
 
   error_wrong_type_arg (argn);
   /*NOTREACHED*/
@@ -922,8 +922,8 @@ cons_alien (const void * addr)
 
   SCM alien;
   Primitive_GC_If_Needed (5);
-  alien = (MAKE_POINTER_OBJECT (TC_RECORD, Free));
-  (*Free++) = MAKE_OBJECT (TC_MANIFEST_VECTOR, 4);
+  alien = (make_pointer_object (TC_RECORD, Free));
+  (*Free++) = make_vector_header (4);
   (*Free++) = SHARP_F;
   (*Free++) = FIXNUM_ZERO;
   (*Free++) = FIXNUM_ZERO;
@@ -1048,7 +1048,7 @@ flovec_length (double *first)
 {
   /* FIRST must be the first double in a flonum/flovec. */
 
-  SCM vector = MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (((SCM *)first) - 1));
+  SCM vector = make_pointer_object (TC_BIG_FLONUM, (((SCM *)first) - 1));
   return (FLOATING_VECTOR_LENGTH (vector));
 }
 
@@ -1090,7 +1090,7 @@ re_enter_scheme (void)
   assert (GET_EXP == SHARP_F);
   assert ((stack_ref (0)) == (MAKE_RETURN_CODE (RC_INTERNAL_APPLY)));
   assert ((stack_ref (1)) == SHARP_F);
-  assert ((OBJECT_TYPE (stack_ref (2))) == TC_FALSE);
+  assert ((object_type (stack_ref (2))) == TC_FALSE);
   assert ((stack_ref (3)) == c_call_continue);
 
   SET_PRIMITIVE (c_call_continue);

@@ -163,7 +163,7 @@ static void tospace_open (void) NORETURN;
    static SCHEME_OBJECT * gc_to_history [GC_SCAN_HISTORY_SIZE];
 
    static SCHEME_OBJECT gc_trap
-     = (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_MAX_IMMEDIATE));
+     = (make_object (TC_REFERENCE_TRAP, TRAP_MAX_IMMEDIATE));
    static SCHEME_OBJECT * gc_scan_trap = 0;
    static SCHEME_OBJECT * gc_to_trap = 0;
 
@@ -432,7 +432,7 @@ run_gc_loop (SCHEME_OBJECT * scan, SCHEME_OBJECT ** pend)
 	  current_scan = scan;
 	  current_object = object;
 	  scan
-	    = ((* (GCT_ENTRY (current_gc_table, (OBJECT_TYPE (object)))))
+	    = ((* (GCT_ENTRY (current_gc_table, (object_type (object)))))
 	       (scan, object));
 	}
     }
@@ -440,35 +440,35 @@ run_gc_loop (SCHEME_OBJECT * scan, SCHEME_OBJECT ** pend)
 
 DEFINE_GC_TUPLE_HANDLER (gc_tuple)
 {
-  SCHEME_OBJECT * from = (OBJECT_ADDRESS (tuple));
+  SCHEME_OBJECT * from = (object_address (tuple));
   SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (from));
   if (new_address == 0) {
     new_address = GC_TRANSPORT_WORDS (from, n_words, false);
     /* A little hack to localize lists.  Transport CDRs eagerly. */
     if (n_words == 2) {
       SCHEME_OBJECT cdr = READ_TOSPACE (new_address + CONS_CDR);
-      while (OBJECT_TYPE(cdr) == TC_LIST &&
-             (GC_PRECHECK_FROM(OBJECT_ADDRESS(cdr)) == 0)) {
-        cdr = READ_TOSPACE(GC_TRANSPORT_WORDS(OBJECT_ADDRESS(cdr), 2, false) +
+      while (object_type(cdr) == TC_LIST &&
+             (GC_PRECHECK_FROM(object_address(cdr)) == 0)) {
+        cdr = READ_TOSPACE(GC_TRANSPORT_WORDS(object_address(cdr), 2, false) +
                            CONS_CDR);
       }
     }
   }
   return
-      (OBJECT_NEW_ADDRESS(tuple, new_address));
+      (object_new_address(tuple, new_address));
 }
 
 
 DEFINE_GC_VECTOR_HANDLER (gc_vector)
 {
-  SCHEME_OBJECT * from = (OBJECT_ADDRESS (vector));
+  SCHEME_OBJECT * from = (object_address (vector));
   SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (from));
   return
-    (OBJECT_NEW_ADDRESS (vector,
+    (object_new_address (vector,
 			 ((new_address != 0)
 			  ? new_address
 			  : (GC_TRANSPORT_WORDS (from,
-						 (1 + (OBJECT_DATUM (*from))),
+						 (1 + (object_datum (*from))),
 						 align_p)))));
 }
 
@@ -478,8 +478,8 @@ DEFINE_GC_OBJECT_HANDLER (gc_cc_entry)
   SCHEME_OBJECT old_block = (cc_entry_to_block (object));
   SCHEME_OBJECT new_block = (GC_HANDLE_VECTOR (old_block, true));
   return (CC_ENTRY_NEW_BLOCK (object,
-			      (OBJECT_ADDRESS (new_block)),
-			      (OBJECT_ADDRESS (old_block))));
+			      (object_address (new_block)),
+			      (object_address (old_block))));
 #else
   gc_no_cc_support ();
   return (object);
@@ -492,8 +492,8 @@ DEFINE_GC_OBJECT_HANDLER (gc_cc_return)
   SCHEME_OBJECT old_block = (cc_return_to_block (object));
   SCHEME_OBJECT new_block = (GC_HANDLE_VECTOR (old_block, true));
   return (CC_RETURN_NEW_BLOCK (object,
-			       (OBJECT_ADDRESS (new_block)),
-			       (OBJECT_ADDRESS (old_block))));
+			       (object_address (new_block)),
+			       (object_address (old_block))));
 #else
   gc_no_cc_support ();
   return (object);
@@ -511,7 +511,7 @@ DEFINE_GC_PRECHECK_FROM (gc_precheck_from)
   if (!ADDRESS_IN_FROMSPACE_P (from))
     return (from);
   if (BROKEN_HEART_P (*from))
-    return (OBJECT_ADDRESS (*from));
+    return (object_address (*from));
   if (scanning_ephemerons_p)
     /* It would be nice if we had the new address, too; that way we
        could eliminate a post-processing loop over the list of all
@@ -542,7 +542,7 @@ DEFINE_GC_TRANSPORT_WORDS (gc_transport_words)
   if (align_p)
     while (!FLOATING_ALIGNED_P (newspace_next))
       {
-	(*tospace_next++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));
+	(*tospace_next++) = (make_nmv_header (0));
 	newspace_next += 1;
       }
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
@@ -609,20 +609,20 @@ DEFINE_GC_HANDLER (gc_handle_quadruple)
 
 DEFINE_GC_HANDLER (gc_handle_weak_pair)
 {
-  SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (OBJECT_ADDRESS (object)));
+  SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (object_address (object)));
   (*scan)
     = ((new_address != 0)
-       ? (OBJECT_NEW_ADDRESS (object, new_address))
+       ? (object_new_address (object, new_address))
        : (gc_transport_weak_pair (object)));
   return (scan + 1);
 }
 
 DEFINE_GC_HANDLER (gc_handle_ephemeron)
 {
-  SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (OBJECT_ADDRESS (object)));
+  SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (object_address (object)));
   (*scan)
     = ((new_address != 0)
-       ? (OBJECT_NEW_ADDRESS (object, new_address))
+       ? (object_new_address (object, new_address))
        : (gc_transport_ephemeron (object)));
   return (scan + 1);
 }
@@ -659,12 +659,12 @@ DEFINE_GC_HANDLER (gc_handle_broken_heart)
 
 DEFINE_GC_HANDLER (gc_handle_nmv)
 {
-  return (scan + 1 + (OBJECT_DATUM (object)));
+  return (scan + 1 + (object_datum (object)));
 }
 
 DEFINE_GC_HANDLER (gc_handle_reference_trap)
 {
-  (*scan) = (((OBJECT_DATUM (object)) <= TRAP_MAX_IMMEDIATE)
+  (*scan) = (((object_datum (object)) <= TRAP_MAX_IMMEDIATE)
 	     ? object
 	     : (GC_HANDLE_TUPLE (object, 2)));
   return (scan + 1);
@@ -673,13 +673,13 @@ DEFINE_GC_HANDLER (gc_handle_reference_trap)
 SCHEME_OBJECT
 gc_raw_address_to_object (unsigned int type, SCHEME_OBJECT * address)
 {
-  return (MAKE_POINTER_OBJECT (type, address));
+  return (make_pointer_object (type, address));
 }
 
 SCHEME_OBJECT *
 gc_object_to_raw_address (SCHEME_OBJECT object)
 {
-  return (OBJECT_ADDRESS (object));
+  return (object_address (object));
 }
 
 SCHEME_OBJECT
@@ -823,7 +823,7 @@ weak_referent_address (SCHEME_OBJECT object)
   switch (gc_ptr_type (object))
     {
     case GC_POINTER_NORMAL:
-      return (OBJECT_ADDRESS (object));
+      return (object_address (object));
 
     case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P
@@ -852,16 +852,16 @@ weak_referent_forward (SCHEME_OBJECT object, SCHEME_OBJECT collected)
   switch (gc_ptr_type (object))
     {
     case GC_POINTER_NORMAL:
-      addr = (OBJECT_ADDRESS (object));
+      addr = (object_address (object));
       if (BROKEN_HEART_P (*addr))
-	return (MAKE_OBJECT_FROM_OBJECTS (object, (*addr)));
+	return (make_object_from_objects (object, (*addr)));
       return (collected);
 
     case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P
       addr = (cc_entry_address_to_block_address (CC_ENTRY_ADDRESS (object)));
       if (BROKEN_HEART_P (*addr))
-	return (CC_ENTRY_NEW_BLOCK (object, (OBJECT_ADDRESS (*addr)), addr));
+	return (CC_ENTRY_NEW_BLOCK (object, (object_address (*addr)), addr));
 #else
       gc_no_cc_support ();
 #endif
@@ -871,7 +871,7 @@ weak_referent_forward (SCHEME_OBJECT object, SCHEME_OBJECT collected)
 #ifdef CC_SUPPORT_P
       addr = (cc_return_address_to_block_address (CC_RETURN_ADDRESS (object)));
       if (BROKEN_HEART_P (*addr))
-	return (CC_RETURN_NEW_BLOCK (object, (OBJECT_ADDRESS (*addr)), addr));
+	return (CC_RETURN_NEW_BLOCK (object, (object_address (*addr)), addr));
 #else
       gc_no_cc_support ();
 #endif
@@ -902,7 +902,7 @@ queue_ephemerons_for_key (SCHEME_OBJECT * addr)
 
   while (EPHEMERON_P (entry = (*entry_loc)))
     {
-      SCHEME_OBJECT * entry_addr = (OBJECT_ADDRESS (entry));
+      SCHEME_OBJECT * entry_addr = (object_address (entry));
       SCHEME_OBJECT * next_loc
 	= (NEWSPACE_TO_TOSPACE (entry_addr + EPHEMERON_NEXT));
       SCHEME_OBJECT * key_addr
@@ -920,33 +920,33 @@ queue_ephemerons_for_key (SCHEME_OBJECT * addr)
 static SCHEME_OBJECT
 gc_transport_weak_pair (SCHEME_OBJECT pair)
 {
-  SCHEME_OBJECT * old_addr = (OBJECT_ADDRESS (pair));
+  SCHEME_OBJECT * old_addr = (object_address (pair));
   SCHEME_OBJECT * new_addr = (GC_TRANSPORT_WORDS (old_addr, 2, false));
   SCHEME_OBJECT old_car = (READ_TOSPACE (new_addr));
   SCHEME_OBJECT * caddr = (weak_referent_address (old_car));
 
   if ((caddr != 0) && (ADDRESS_IN_FROMSPACE_P (caddr)))
     {
-      WRITE_TOSPACE (new_addr, (OBJECT_NEW_TYPE (TC_FALSE, old_car)));
+      WRITE_TOSPACE (new_addr, (object_new_type (TC_FALSE, old_car)));
       (old_addr[1])
 	= ((weak_chain == 0)
-	   ? (MAKE_OBJECT ((OBJECT_TYPE (old_car)), 0))
-	   : (MAKE_POINTER_OBJECT ((OBJECT_TYPE (old_car)), weak_chain)));
+	   ? (make_object ((object_type (old_car)), 0))
+	   : (make_pointer_object ((object_type (old_car)), weak_chain)));
       weak_chain = old_addr;
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
       weak_chain_length += 1;
 #endif
     }
-  return (OBJECT_NEW_ADDRESS (pair, new_addr));
+  return (object_new_address (pair, new_addr));
 }
 
 static SCHEME_OBJECT
 gc_transport_ephemeron (SCHEME_OBJECT old_ephemeron)
 {
-  SCHEME_OBJECT * old_addr = (OBJECT_ADDRESS (old_ephemeron));
+  SCHEME_OBJECT * old_addr = (object_address (old_ephemeron));
   SCHEME_OBJECT * new_addr
     = (GC_TRANSPORT_WORDS (old_addr, EPHEMERON_SIZE, false));
-  SCHEME_OBJECT new_ephemeron = (OBJECT_NEW_ADDRESS (old_ephemeron, new_addr));
+  SCHEME_OBJECT new_ephemeron = (object_new_address (old_ephemeron, new_addr));
   SCHEME_OBJECT old_key = (READ_TOSPACE (new_addr + EPHEMERON_KEY));
   SCHEME_OBJECT * old_key_addr = (weak_referent_address (old_key));
   SCHEME_OBJECT index;
@@ -999,7 +999,7 @@ scan_newspace_addr (SCHEME_OBJECT * addr)
 
   current_scan = scan;
   current_object = object;
-  scan = ((* (GCT_ENTRY (current_gc_table, (OBJECT_TYPE (object)))))
+  scan = ((* (GCT_ENTRY (current_gc_table, (object_type (object)))))
 	  (scan, object));
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
   if (scan != (addr + 1))
@@ -1017,7 +1017,7 @@ scan_ephemerons (void)
   scanning_ephemerons_p = true;
   while (EPHEMERON_P (ephemeron))
     {
-      SCHEME_OBJECT * ephemeron_addr = (OBJECT_ADDRESS (ephemeron));
+      SCHEME_OBJECT * ephemeron_addr = (object_address (ephemeron));
       SCHEME_OBJECT old_key = (READ_TOSPACE (ephemeron_addr + EPHEMERON_KEY));
       ephemeron = (READ_TOSPACE (ephemeron_addr + EPHEMERON_LIST));
       /* It is tempting to scan the ephemeron's datum right here and
@@ -1033,7 +1033,7 @@ scan_ephemerons (void)
     }
   while (EPHEMERON_P (ephemeron = ephemeron_queue))
     {
-      SCHEME_OBJECT * ephemeron_addr = (OBJECT_ADDRESS (ephemeron));
+      SCHEME_OBJECT * ephemeron_addr = (object_address (ephemeron));
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
       {
 	SCHEME_OBJECT key = (READ_TOSPACE (ephemeron_addr + EPHEMERON_KEY));
@@ -1068,7 +1068,7 @@ update_ephemerons (void)
   SCHEME_OBJECT ephemeron = ephemeron_list;
   while (EPHEMERON_P (ephemeron))
     {
-      SCHEME_OBJECT * ephemeron_addr = (OBJECT_ADDRESS (ephemeron));
+      SCHEME_OBJECT * ephemeron_addr = (object_address (ephemeron));
       SCHEME_OBJECT * key_loc = (ephemeron_addr + EPHEMERON_KEY);
       SCHEME_OBJECT old_key = (READ_TOSPACE (key_loc));
       SCHEME_OBJECT new_key = (weak_referent_forward (old_key, SHARP_F));
@@ -1095,14 +1095,14 @@ update_weak_pairs (void)
 #endif
   while (weak_chain != 0)
     {
-      SCHEME_OBJECT * new_addr = (OBJECT_ADDRESS (weak_chain[0]));
+      SCHEME_OBJECT * new_addr = (object_address (weak_chain[0]));
       SCHEME_OBJECT obj = (weak_chain[1]);
       SCHEME_OBJECT old_car
-	= (OBJECT_NEW_TYPE ((OBJECT_TYPE (obj)),
+	= (object_new_type ((object_type (obj)),
 			    (READ_TOSPACE (new_addr))));
 
       WRITE_TOSPACE (new_addr, (weak_referent_forward (old_car, GC_RECLAIMED)));
-      weak_chain = (((OBJECT_DATUM (obj)) == 0) ? 0 : (OBJECT_ADDRESS (obj)));
+      weak_chain = (((object_datum (obj)) == 0) ? 0 : (object_address (obj)));
     }
 }
 
@@ -1158,7 +1158,7 @@ void
 gc_bad_type (SCHEME_OBJECT object)
 {
   std_gc_death ("bad type code: %#02lx %#lx",
-		(OBJECT_TYPE (object)),
+		(object_type (object)),
 		object);
 }
 
@@ -1227,11 +1227,11 @@ initialize_gc_object_references (void)
   if (gc_object_references != SHARP_F)
     {
       /* Temporarily change to non-marked vector.  */
-      MEMORY_SET
+      memory_set
 	(gc_object_references, 0,
-	 (MAKE_OBJECT
+	 (make_object
 	  (TC_MANIFEST_NM_VECTOR,
-	   (OBJECT_DATUM (MEMORY_REF (gc_object_references, 0))))));
+	   (object_datum (memory_ref (gc_object_references, 0))))));
       gc_object_references_count = 0;
       gc_object_references_scan = (vector_loc (gc_object_references, 1));
       gc_object_references_end
@@ -1254,17 +1254,17 @@ finalize_gc_object_references (void)
 {
   if (gc_object_references != SHARP_F)
     {
-      SCHEME_OBJECT header = (MEMORY_REF (gc_object_references, 0));
+      SCHEME_OBJECT header = (memory_ref (gc_object_references, 0));
       if (BROKEN_HEART_P (header))
 	{
 	  SCHEME_OBJECT * to_addr
-	    = (NEWSPACE_TO_TOSPACE (OBJECT_ADDRESS (header)));
+	    = (NEWSPACE_TO_TOSPACE (object_address (header)));
 	  SCHEME_OBJECT * scan_to = to_addr;
 	  SCHEME_OBJECT * scan_from = (vector_loc (gc_object_references, 0));
 
 	  /* Change back to marked vector.  */
 	  (*scan_to++)
-	    = (MAKE_OBJECT (TC_MANIFEST_VECTOR, (OBJECT_DATUM (*to_addr))));
+	    = (make_vector_header ((object_datum (*to_addr))));
 
 	  /* Store the count in the table.  */
 	  vector_set (gc_object_references, 0,
@@ -1370,7 +1370,7 @@ gc_ptr_type (SCHEME_OBJECT object)
     case GC_SPECIAL:
       return
 	(((REFERENCE_TRAP_P (object))
-	  && ((OBJECT_DATUM (object)) >= TRAP_MAX_IMMEDIATE))
+	  && ((object_datum (object)) >= TRAP_MAX_IMMEDIATE))
 	 ? GC_POINTER_NORMAL
 	 : GC_POINTER_NOT);
 
@@ -1397,7 +1397,7 @@ get_object_address (SCHEME_OBJECT object)
   switch (gc_ptr_type (object))
     {
     case GC_POINTER_NORMAL:
-      return (OBJECT_ADDRESS (object));
+      return (object_address (object));
 
     case GC_POINTER_COMPILED_ENTRY:
 #ifdef CC_SUPPORT_P

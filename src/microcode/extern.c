@@ -50,7 +50,7 @@ number (i.e. external representation) of the desired result.")
     case TC_RETURN_CODE:
       if (number > MAX_RETURN_CODE)
 	error_bad_range_arg (2);
-      PRIMITIVE_RETURN (MAKE_OBJECT (tc, number));
+      PRIMITIVE_RETURN (make_object (tc, number));
 
     case TC_PRIMITIVE:
       if (number > (NUMBER_OF_PRIMITIVES ()))
@@ -75,13 +75,13 @@ the internal address.")
   PRIMITIVE_HEADER (2);
   tc = (arg_nonnegative_integer (1));
   address = (ARG_REF (2));
-  if ((OBJECT_TYPE (address)) != tc)
+  if ((object_type (address)) != tc)
     error_wrong_type_arg (2);
   switch (tc)
     {
     case TC_RETURN_CODE:
       {
-	long number = (OBJECT_DATUM (address));
+	long number = (object_datum (address));
 	if (number > MAX_RETURN_CODE)
 	  error_bad_range_arg (2);
 	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (number));

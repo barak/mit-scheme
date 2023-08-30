@@ -139,39 +139,39 @@ extern bool read_cc_entry_offset (cc_entry_offset_t *, insn_t *);
 extern bool write_cc_entry_offset (cc_entry_offset_t *, insn_t *);
 
 #define MAKE_CC_BLOCK(address)						\
-  (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, (address)))
+  (make_pointer_object (TC_COMPILED_CODE_BLOCK, (address)))
 
 #define MAKE_CC_STACK_ENV(address)					\
-  (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, (address)))
+  (make_pointer_object (TC_STACK_ENVIRONMENT, (address)))
 
-#define CC_BLOCK_LENGTH(block) (CC_BLOCK_ADDR_LENGTH (OBJECT_ADDRESS (block)))
-#define CC_BLOCK_END(block) (CC_BLOCK_ADDR_END (OBJECT_ADDRESS (block)))
-#define CC_BLOCK_ADDR_LENGTH(addr) ((OBJECT_DATUM (*addr)) + 1)
+#define CC_BLOCK_LENGTH(block) (CC_BLOCK_ADDR_LENGTH (object_address (block)))
+#define CC_BLOCK_END(block) (CC_BLOCK_ADDR_END (object_address (block)))
+#define CC_BLOCK_ADDR_LENGTH(addr) ((object_datum (*addr)) + 1)
 #define CC_BLOCK_ADDR_END(addr) ((addr) + (CC_BLOCK_ADDR_LENGTH (addr)))
 
-#define CC_ENTRY_P(object) ((OBJECT_TYPE (object)) == TC_COMPILED_ENTRY)
-#define CC_RETURN_P(object) ((OBJECT_TYPE (object)) == TC_COMPILED_RETURN)
-#define CC_BLOCK_P(object) ((OBJECT_TYPE (object)) == TC_COMPILED_CODE_BLOCK)
-#define CC_STACK_ENV_P(object) ((OBJECT_TYPE (object)) == TC_STACK_ENVIRONMENT)
+#define CC_ENTRY_P(object) ((object_type (object)) == TC_COMPILED_ENTRY)
+#define CC_RETURN_P(object) ((object_type (object)) == TC_COMPILED_RETURN)
+#define CC_BLOCK_P(object) ((object_type (object)) == TC_COMPILED_CODE_BLOCK)
+#define CC_STACK_ENV_P(object) ((object_type (object)) == TC_STACK_ENVIRONMENT)
 
 static inline insn_t *
 CC_ENTRY_ADDRESS (SCHEME_OBJECT obj)
 {
   assert (CC_ENTRY_P (obj));
-  return ((insn_t *) (OBJECT_ADDRESS (obj)));
+  return ((insn_t *) (object_address (obj)));
 }
 
 static inline SCHEME_OBJECT
 MAKE_CC_ENTRY (insn_t * addr)
 {
-  return (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, ((SCHEME_OBJECT *) addr)));
+  return (make_pointer_object (TC_COMPILED_ENTRY, ((SCHEME_OBJECT *) addr)));
 }
 
 static inline SCHEME_OBJECT
 CC_ENTRY_NEW_ADDRESS (SCHEME_OBJECT entry, insn_t * addr)
 {
   assert (CC_ENTRY_P (entry));
-  return (OBJECT_NEW_ADDRESS (entry, addr));
+  return (object_new_address (entry, (SCHEME_OBJECT*) addr));
 }
 
 static inline SCHEME_OBJECT
@@ -189,20 +189,20 @@ static inline insn_t *
 CC_RETURN_ADDRESS (SCHEME_OBJECT obj)
 {
   assert (CC_RETURN_P (obj));
-  return ((insn_t *) (OBJECT_ADDRESS (obj)));
+  return ((insn_t *) (object_address (obj)));
 }
 
 static inline SCHEME_OBJECT
 MAKE_CC_RETURN (insn_t * addr)
 {
-  return (MAKE_POINTER_OBJECT (TC_COMPILED_RETURN, ((SCHEME_OBJECT *) addr)));
+  return (make_pointer_object (TC_COMPILED_RETURN, ((SCHEME_OBJECT *) addr)));
 }
 
 static inline SCHEME_OBJECT
 CC_RETURN_NEW_ADDRESS (SCHEME_OBJECT entry, insn_t * addr)
 {
   assert (CC_RETURN_P (entry));
-  return (OBJECT_NEW_ADDRESS (entry, addr));
+  return (object_new_address (entry, (SCHEME_OBJECT*) addr));
 }
 
 static inline SCHEME_OBJECT

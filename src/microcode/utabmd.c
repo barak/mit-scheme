@@ -139,7 +139,7 @@ void
 initialize_fixed_objects_vector (void)
 {
   fixed_objects = (make_vector (N_FIXED_OBJECTS, SHARP_F, false));
-  STORE_FIXOBJ (NON_OBJECT, (MAKE_OBJECT (TC_CONSTANT, 2)));
+  STORE_FIXOBJ (NON_OBJECT, (make_object (TC_CONSTANT, 2)));
   STORE_FIXOBJ (SYSTEM_INTERRUPT_VECTOR,
 		(initialize_interrupt_handler_vector ()));
   STORE_FIXOBJ (FIXOBJ_INTERRUPT_MASK_VECTOR,

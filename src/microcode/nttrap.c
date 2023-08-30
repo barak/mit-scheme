@@ -480,7 +480,7 @@ setup_trap_frame (DWORD code,
     = ((VECTOR_P (fixed_objects))
        ? (vector_ref (fixed_objects, TRAP_HANDLER))
        : SHARP_F);
-  if (!INTERPRETER_APPLICABLE_P (handler))
+  if (!interpreter_applicable_p (handler))
     {
       trap_noise_start ();
       trap_noise ("There is no trap handler for recovery!\n");
@@ -752,7 +752,7 @@ pc_in_hyperspace:
       (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (utility_index));
       (trinfo . pc_info_2) = UNSPECIFIC;
     }
-    else if ((OBJECT_TYPE (primitive)) != TC_PRIMITIVE)
+    else if ((object_type (primitive)) != TC_PRIMITIVE)
     {
       (trinfo . state) = STATE_UNKNOWN;
       (trinfo . pc_info_1) = SHARP_F;
@@ -789,8 +789,8 @@ pc_in_hyperspace:
     xtra_info = Free;
     Free += (1 + (IA32_NREGS + 2));
     (trinfo . extra_trap_info) =
-      (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, xtra_info));
-    (*xtra_info++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (IA32_NREGS + 2)));
+      (make_pointer_object (TC_NON_MARKED_VECTOR, xtra_info));
+    (*xtra_info++) = (make_nmv_header ((IA32_NREGS + 2)));
     (*xtra_info++) = ((SCHEME_OBJECT) the_pc);
     (*xtra_info++) = ((SCHEME_OBJECT) scheme_sp);
     {
@@ -871,7 +871,7 @@ find_block_address_in_area (char * pc_value,
   while (((char *) area) < pc_value)
     {
       SCHEME_OBJECT object = (*area);
-      switch (OBJECT_TYPE (object))
+      switch (object_type (object))
 	{
 	case TC_LINKAGE_SECTION:
 	  {
@@ -899,7 +899,7 @@ find_block_address_in_area (char * pc_value,
 
 	case TC_MANIFEST_NM_VECTOR:
 	  {
-	    unsigned long count = (OBJECT_DATUM (object));
+	    unsigned long count = (object_datum (object));
 	    if (((char *) (area + (count + 1))) < pc_value)
 	      {
 		area += (count + 1);
@@ -910,8 +910,8 @@ find_block_address_in_area (char * pc_value,
 	      SCHEME_OBJECT * block = (area - 1);
 	      return
 		(((area > first_valid)
-		  && ((OBJECT_TYPE (*block)) == TC_MANIFEST_VECTOR)
-		  && ((OBJECT_DATUM (*block)) >= (count + 1))
+		  && ((object_type (*block)) == TC_MANIFEST_VECTOR)
+		  && ((object_datum (*block)) >= (count + 1))
 		  && (plausible_cc_block_p (block)))
 		 ? block
 		 : 0);

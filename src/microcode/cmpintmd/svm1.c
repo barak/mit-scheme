@@ -307,7 +307,7 @@ compiled_closure_entry_to_target (insn_t * entry)
 unsigned int
 read_uuo_frame_size (SCHEME_OBJECT * saddr)
 {
-  return (OBJECT_DATUM (saddr[0]));
+  return (object_datum (saddr[0]));
 }
 
 SCHEME_OBJECT

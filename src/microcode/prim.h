@@ -50,9 +50,9 @@ extern SCHEME_OBJECT install_primitive
 
 extern SCHEME_OBJECT Prim_unimplemented (void);
 
-#define PRIMITIVE_NUMBER(primitive) (OBJECT_DATUM (primitive))
+#define PRIMITIVE_NUMBER(primitive) (object_datum (primitive))
 
-#define MAKE_PRIMITIVE_OBJECT(index) (MAKE_OBJECT (TC_PRIMITIVE, (index)))
+#define MAKE_PRIMITIVE_OBJECT(index) (make_object (TC_PRIMITIVE, (index)))
 
 #define IMPLEMENTED_PRIMITIVE_P(prim)					\
   ((Primitive_Procedure_Table[(PRIMITIVE_NUMBER (prim))])		\

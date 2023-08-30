@@ -127,9 +127,9 @@ setup_memory (unsigned long heap_size,
     goto allocation_too_large;
 
   /* Allocate */
-  ALLOCATE_HEAP_SPACE ((stack_size + heap_size + constant_size),
-		       memory_block_start,
-		       memory_block_end);
+  allocate_heap_space ((stack_size + heap_size + constant_size),
+		       &memory_block_start,
+		       &memory_block_end);
 
   /* Consistency check 3 */
   if (memory_block_start == 0)
@@ -140,7 +140,7 @@ setup_memory (unsigned long heap_size,
     }
 
   /* Consistency check 4 */
-  if ((ADDRESS_TO_DATUM (memory_block_end)) > DATUM_MASK)
+  if ((address_to_datum (memory_block_end)) > DATUM_MASK)
     {
     allocation_too_large:
       outf_fatal ("Requested allocation is too large.\n");
@@ -311,7 +311,7 @@ std_gc_pt1 (void)
   saved_to = (get_newspace_ptr ());
   add_to_tospace (fixed_objects);
   add_to_tospace
-    (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, history_register));
+    (make_pointer_object (TC_HISTORY_UNMARKED, history_register));
 
   current_gc_table = (std_gc_table ());
   gc_scan_oldspace (stack_pointer, stack_end);
@@ -332,7 +332,7 @@ std_gc_pt2 (void)
   Free = p;
 
   fixed_objects = (*saved_to++);
-  history_register = (OBJECT_ADDRESS (*saved_to++));
+  history_register = (object_address (*saved_to++));
   saved_to = 0;
 
   {
@@ -495,6 +495,6 @@ DEFINE_PRIMITIVE ("MAKE-EPHEMERON", Prim_make_ephemeron, 2, 2, 0)
     (*Free++) = SHARP_F;	/* list */
     (*Free++) = SHARP_F;	/* queue */
     assert ((Free - addr) == EPHEMERON_SIZE);
-    PRIMITIVE_RETURN (MAKE_POINTER_OBJECT (TC_EPHEMERON, addr));
+    PRIMITIVE_RETURN (make_pointer_object (TC_EPHEMERON, addr));
   }
 }

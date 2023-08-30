@@ -100,7 +100,7 @@ Return the value of the free pointer tagged with TYPE-CODE")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (MAKE_POINTER_OBJECT ((arg_ulong_index_integer (1, N_TYPE_CODES)), Free));
+    (make_pointer_object ((arg_ulong_index_integer (1, N_TYPE_CODES)), Free));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-INCREMENT-FREE", Prim_increment_free, 1, 1,
@@ -113,7 +113,7 @@ Advance the free pointer by N-WORDS words.")
 }
 
 #define CONVERT_ADDRESS(address)					\
-  (ulong_to_integer (ADDRESS_TO_DATUM (address)))
+  (ulong_to_integer (address_to_datum (address)))
 
 DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
 {

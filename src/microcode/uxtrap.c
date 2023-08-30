@@ -400,7 +400,7 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 #endif
 
     case pcl_unknown:
-      if (((OBJECT_TYPE (primitive)) == TC_PRIMITIVE)
+      if (((object_type (primitive)) == TC_PRIMITIVE)
 	  && (ADDRESS_IN_STACK_P (stack_pointer)) && (ALIGNED_P (stack_pointer))
 	  && (ADDRESS_IN_HEAP_P (Free)) && (ALIGNED_P (Free)))
 	{
@@ -442,9 +442,8 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 
   /* Encode the registers.  */
   (recovery_info . extra_trap_info) =
-    (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, Free));
-  (*Free++) =
-    (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (2 + SIGCONTEXT_NREGS)));
+    (make_pointer_object (TC_NON_MARKED_VECTOR, Free));
+  (*Free++) = (make_nmv_header ((2 + SIGCONTEXT_NREGS)));
   (*Free++) = ((SCHEME_OBJECT) pc);
   (*Free++) = ((SCHEME_OBJECT) (SIGCONTEXT_SP (scp)));
   {
@@ -488,7 +487,7 @@ find_block_address (unsigned long pc, SCHEME_OBJECT * area_start)
   while (area < pcp)
     {
       SCHEME_OBJECT object = (*area);
-      switch (OBJECT_TYPE (object))
+      switch (object_type (object))
 	{
 	case TC_LINKAGE_SECTION:
 	  {
@@ -514,7 +513,7 @@ find_block_address (unsigned long pc, SCHEME_OBJECT * area_start)
 
 	case TC_MANIFEST_NM_VECTOR:
 	  {
-	    unsigned long count = (OBJECT_DATUM (object));
+	    unsigned long count = (object_datum (object));
 	    if ((area + (count + 1)) < pcp)
 	      {
 		area += (count + 1);
@@ -525,9 +524,9 @@ find_block_address (unsigned long pc, SCHEME_OBJECT * area_start)
 		SCHEME_OBJECT * block = (area - 1);
 		return
 		  (((area != first_valid)
-		    && (((OBJECT_TYPE (*block)) == TC_MANIFEST_VECTOR)
-			|| ((OBJECT_TYPE (*block)) == FIXNUM_MARKER))
-		    && ((OBJECT_DATUM (*block)) >= (count + 1))
+		    && (((object_type (*block)) == TC_MANIFEST_VECTOR)
+			|| ((object_type (*block)) == FIXNUM_MARKER))
+		    && ((object_datum (*block)) >= (count + 1))
 		    && (plausible_cc_block_p (block)))
 		   ? block
 		   : 0);
@@ -596,7 +595,7 @@ setup_trap_frame (int signo,
     = ((VECTOR_P (fixed_objects))
        ? (vector_ref (fixed_objects, TRAP_HANDLER))
        : SHARP_F);
-  if (!INTERPRETER_APPLICABLE_P (handler))
+  if (!interpreter_applicable_p (handler))
     {
       fprintf (stderr, "There is no trap handler for recovery!\n");
       fflush (stderr);
@@ -744,14 +743,14 @@ classify_pc (unsigned long pc,
 		(*r_index) = index;
 	      return (pcl_utility);
 	    }
-	  if ((OBJECT_TYPE (GET_PRIMITIVE)) == TC_PRIMITIVE)
+	  if ((object_type (GET_PRIMITIVE)) == TC_PRIMITIVE)
 	    return (pcl_primitive);
 	}
 #endif /* ADDRESS_UCODE_P */
     }
 #else
   if ((ADDRESS_UCODE_P (pc))
-      && ((OBJECT_TYPE (GET_PRIMITIVE)) == TC_PRIMITIVE))
+      && ((object_type (GET_PRIMITIVE)) == TC_PRIMITIVE))
     return (pcl_primitive);
 #endif
   return (pcl_unknown);

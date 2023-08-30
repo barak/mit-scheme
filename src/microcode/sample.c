@@ -107,7 +107,7 @@ DEFINE_PRIMITIVE ("IDENTITY", Prim_identity, 1, 1, 0)
    otherwise they would be done twice.
 
    A pair is object which has a type TC_LIST and points to the first
-   element of the pair.  The macro MAKE_POINTER_OBJECT takes a type
+   element of the pair.  The macro make_pointer_object takes a type
    code and an address or data and returns a scheme object with that
    type code and that address or data.  See scheme.h and the files
    included there for the possible type codes.  The following is the

@@ -153,13 +153,13 @@ start_scheme (void)
       SCHEME_OBJECT fn_object = (char_pointer_to_string (option_fasl_file));
       SCHEME_OBJECT prim2 = (make_primitive ("SCODE-EVAL", 2));
       SCHEME_OBJECT * inner_arg = Free;
-      (*Free++) = MAKE_OBJECT (TC_MANIFEST_VECTOR, 2);
+      (*Free++) = make_vector_header (2);
       (*Free++) = prim1;
       (*Free++) = fn_object;
-      expr = (MAKE_POINTER_OBJECT (TC_COMBINATION, Free));
-      (*Free++) = MAKE_OBJECT (TC_MANIFEST_VECTOR, 3);
+      expr = (make_pointer_object (TC_COMBINATION, Free));
+      (*Free++) = make_vector_header (3);
       (*Free++) = prim2;
-      (*Free++) = (MAKE_POINTER_OBJECT (TC_COMBINATION, inner_arg));
+      (*Free++) = (make_pointer_object (TC_COMBINATION, inner_arg));
       (*Free++) = THE_GLOBAL_ENV;
     }
   else
@@ -167,8 +167,8 @@ start_scheme (void)
       /* (LOAD-BAND <file>) */
       SCHEME_OBJECT prim = (make_primitive ("LOAD-BAND", 1));
       SCHEME_OBJECT fn_object = (char_pointer_to_string (option_band_file));
-      expr = (MAKE_POINTER_OBJECT (TC_COMBINATION, Free));
-      (*Free++) = MAKE_OBJECT (TC_MANIFEST_VECTOR, 2);
+      expr = (make_pointer_object (TC_COMBINATION, Free));
+      (*Free++) = make_vector_header (2);
       (*Free++) = prim;
       (*Free++) = fn_object;
     }

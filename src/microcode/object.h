@@ -44,75 +44,33 @@ typedef unsigned long SCHEME_OBJECT;
 #define SIZEOF_SCHEME_OBJECT SIZEOF_UNSIGNED_LONG
 #define OBJECT_LENGTH ((unsigned int) (CHAR_BIT * SIZEOF_UNSIGNED_LONG))
 
-#if (TYPE_CODE_LENGTH == 6U)
-#  define N_TYPE_CODES (0x40)
-#  if (SIZEOF_UNSIGNED_LONG == 4) /* 32 bit word versions */
-#    define DATUM_LENGTH	(26U)
-#    define DATUM_MASK		(0x03FFFFFFL)
-#    define TYPE_CODE_MASK	(0XFC000000L)
-#    define FIXNUM_LENGTH	(25U) /* doesn't include sign */
-#    define FIXNUM_MASK		(0x01FFFFFFL)
-#    define FIXNUM_SIGN_BIT	(0x02000000L)
-#    define SIGN_MASK		(0xFE000000L)
-#    define SMALLEST_FIXNUM	(-33554432L)
-#    define BIGGEST_FIXNUM	(33554431L)
-#    define HALF_DATUM_LENGTH	(13U)
-#    define HALF_DATUM_MASK	(0x00001FFFL)
-#  endif
-#  if (SIZEOF_UNSIGNED_LONG == 8) /* 64 bit word versions */
-#    define DATUM_LENGTH	(58U)
-#    define DATUM_MASK		(0x03FFFFFFFFFFFFFFL)
-#    define TYPE_CODE_MASK	(0XFC00000000000000L)
-#    define FIXNUM_LENGTH	(57U) /* doesn't include sign */
-#    define FIXNUM_MASK		(0x01FFFFFFFFFFFFFFL)
-#    define FIXNUM_SIGN_BIT	(0x0200000000000000L)
-#    define SIGN_MASK		(0xFE00000000000000L)
-#    define SMALLEST_FIXNUM	(-144115188075855872L)
-#    define BIGGEST_FIXNUM	(144115188075855871L)
-#    define HALF_DATUM_LENGTH	(29U)
-#    define HALF_DATUM_MASK	(0x000000001FFFFFFFL)
-#  endif
+#define N_TYPE_CODES (0x40)
+#if (SIZEOF_UNSIGNED_LONG == 4) /* 32 bit word versions */
+#  define DATUM_LENGTH		(26U)
+#  define DATUM_MASK		(0x03FFFFFFL)
+#  define TYPE_CODE_MASK	(0XFC000000L)
+#  define FIXNUM_LENGTH		(25U) /* doesn't include sign */
+#  define FIXNUM_MASK		(0x01FFFFFFL)
+#  define FIXNUM_SIGN_BIT	(0x02000000L)
+#  define SIGN_MASK		(0xFE000000L)
+#  define SMALLEST_FIXNUM	(-33554432L)
+#  define BIGGEST_FIXNUM	(33554431L)
+#  define HALF_DATUM_LENGTH	(13U)
+#  define HALF_DATUM_MASK	(0x00001FFFL)
 #endif
-
-#ifndef DATUM_LENGTH		/* Safe versions */
-#  define N_TYPE_CODES		(1U << TYPE_CODE_LENGTH)
-#  define DATUM_LENGTH		(OBJECT_LENGTH - TYPE_CODE_LENGTH)
-#  define DATUM_MASK		((1UL << DATUM_LENGTH) - 1UL)
-#  define TYPE_CODE_MASK	((N_TYPE_CODES - 1U) << DATUM_LENGTH)
-#  define FIXNUM_LENGTH		(DATUM_LENGTH - 1U) /* doesn't include sign */
-#  define FIXNUM_MASK		((1UL << FIXNUM_LENGTH) - 1UL)
-#  define FIXNUM_SIGN_BIT	(1UL << FIXNUM_LENGTH)
-#  define SIGN_MASK							\
-  (((unsigned long) ((N_TYPE_CODES * 2U) - 1U)) << FIXNUM_LENGTH)
-#  define SMALLEST_FIXNUM	SIGN_MASK
-#  define BIGGEST_FIXNUM	((1UL << FIXNUM_LENGTH) - 1UL)
-#  define HALF_DATUM_LENGTH	(DATUM_LENGTH / 2U)
-#  define HALF_DATUM_MASK	((1UL << HALF_DATUM_LENGTH) - 1UL)
+#if (SIZEOF_UNSIGNED_LONG == 8) /* 64 bit word versions */
+#  define DATUM_LENGTH		(58U)
+#  define DATUM_MASK		(0x03FFFFFFFFFFFFFFL)
+#  define TYPE_CODE_MASK	(0XFC00000000000000L)
+#  define FIXNUM_LENGTH		(57U) /* doesn't include sign */
+#  define FIXNUM_MASK		(0x01FFFFFFFFFFFFFFL)
+#  define FIXNUM_SIGN_BIT	(0x0200000000000000L)
+#  define SIGN_MASK		(0xFE00000000000000L)
+#  define SMALLEST_FIXNUM	(-144115188075855872L)
+#  define BIGGEST_FIXNUM	(144115188075855871L)
+#  define HALF_DATUM_LENGTH	(29U)
+#  define HALF_DATUM_MASK	(0x000000001FFFFFFFL)
 #endif
-
-/* Basic object structure */
-
-#define OBJECT_TYPE(object) ((object) >> DATUM_LENGTH)
-#define OBJECT_DATUM(object) ((object) & DATUM_MASK)
-#define OBJECT_ADDRESS(object) (DATUM_TO_ADDRESS (OBJECT_DATUM (object)))
-
-#define MAKE_OBJECT(type, datum)					\
-  ((((unsigned long) (type)) << DATUM_LENGTH) | (datum))
-
-#define OBJECT_NEW_TYPE(type, datum_object)				\
-  (MAKE_OBJECT ((type), (OBJECT_DATUM (datum_object))))
-
-#define OBJECT_NEW_DATUM(type_object, datum)				\
-  (MAKE_OBJECT ((OBJECT_TYPE (type_object)), (datum)))
-
-#define MAKE_OBJECT_FROM_OBJECTS(type_object, datum_object)		\
-  (MAKE_OBJECT ((OBJECT_TYPE (type_object)), (OBJECT_DATUM (datum_object))))
-
-#define MAKE_POINTER_OBJECT(type, address)				\
-  (MAKE_OBJECT ((type), (ADDRESS_TO_DATUM (address))))
-
-#define OBJECT_NEW_ADDRESS(object, address)				\
-  (OBJECT_NEW_DATUM ((object), (ADDRESS_TO_DATUM (address))))
 
 /* Machine dependencies */
 
@@ -122,174 +80,332 @@ typedef unsigned long SCHEME_OBJECT;
 
 #ifdef HEAP_IN_LOW_MEMORY	/* Storing absolute addresses */
 
-#define ALLOCATE_HEAP_SPACE(space, low, high) do			\
-{									\
-  unsigned long _space = (space);					\
-  SCHEME_OBJECT * _low							\
-    = ((SCHEME_OBJECT *)						\
-       (HEAP_MALLOC ((sizeof (SCHEME_OBJECT)) * _space)));		\
-									\
-  (low) = _low;								\
-  (high) = (_low + _space);						\
-} while (0)
+  static inline void
+  allocate_heap_space (size_t size, SCHEME_OBJECT** low_r,
+                       SCHEME_OBJECT** high_r)
+  {
+    SCHEME_OBJECT* low
+      = (SCHEME_OBJECT*) HEAP_MALLOC (sizeof (SCHEME_OBJECT) * size);
+    *low_r = low;
+    *high_r = low + size;
+  }
 
-#ifndef DATUM_TO_ADDRESS
-#  define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) (datum))
+  static inline SCHEME_OBJECT*
+  datum_to_address (unsigned long datum)
+  {
+    return (SCHEME_OBJECT*) datum;
+  }
+
+  static inline unsigned long
+  address_to_datum (SCHEME_OBJECT* address)
+  {
+    return (unsigned long) address;
+  }
+
+#else
+
+  extern SCHEME_OBJECT* memory_base;
+
+  static inline void
+  allocate_heap_space (size_t size, SCHEME_OBJECT** low_r,
+                       SCHEME_OBJECT** high_r)
+  {
+    memory_base = (SCHEME_OBJECT*) HEAP_MALLOC (sizeof (SCHEME_OBJECT) * size);
+    *low_r = memory_base;
+    *high_r = memory_base + size;
+  }
+
+  #define MEMBASE memory_base
+
+  /* These use the MEMBASE macro so that C-compiled code can cache
+     memory_base locally and use the local version.  */
+
+  static inline SCHEME_OBJECT*
+  datum_to_address (unsigned long datum)
+  {
+    return MEMBASE + datum;
+  }
+
+  static inline unsigned long
+  address_to_datum (SCHEME_OBJECT* address)
+  {
+    return address - MEMBASE;
+  }
+
 #endif
+
+/* Basic object structure */
 
-#ifndef ADDRESS_TO_DATUM
-#  define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) (address))
-#endif
+static inline unsigned long
+object_type (SCHEME_OBJECT object)
+{
+  return ((unsigned long) object) >> DATUM_LENGTH;
+}
 
-#else /* not HEAP_IN_LOW_MEMORY */
+static inline unsigned long
+object_datum (SCHEME_OBJECT object)
+{
+  return ((unsigned long) object) & DATUM_MASK;
+}
 
-extern SCHEME_OBJECT * memory_base;
+static inline SCHEME_OBJECT*
+object_address (SCHEME_OBJECT object)
+{
+  return datum_to_address (object_datum (object));
+}
 
-#define ALLOCATE_HEAP_SPACE(space, low, high) do			\
-{									\
-  unsigned long _space = (space);					\
-  memory_base = ((SCHEME_OBJECT *)					\
-		 (HEAP_MALLOC ((sizeof (SCHEME_OBJECT)) * _space)));	\
-  (low) = memory_base;							\
-  (high) = (memory_base + _space);					\
-} while (0)
+static inline SCHEME_OBJECT
+make_object (unsigned long type, unsigned long datum)
+{
+  return type << DATUM_LENGTH | datum;
+}
 
-#define MEMBASE memory_base
+static inline SCHEME_OBJECT
+object_new_type (unsigned long type, SCHEME_OBJECT datum_obj)
+{
+  return make_object (type, object_datum (datum_obj));
+}
 
-/* These use the MEMBASE macro so that C-compiled code can cache
-   memory_base locally and use the local version.  */
+static inline SCHEME_OBJECT
+object_new_datum (SCHEME_OBJECT type_obj, unsigned long datum)
+{
+  return make_object (object_type (type_obj), datum);
+}
 
-#ifndef DATUM_TO_ADDRESS
-#  define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) ((datum) + MEMBASE))
-#endif
+static inline SCHEME_OBJECT
+make_object_from_objects (SCHEME_OBJECT type_obj, SCHEME_OBJECT datum_obj)
+{
+  return make_object (object_type (type_obj), object_datum (datum_obj));
+}
 
-#ifndef ADDRESS_TO_DATUM
-#  define ADDRESS_TO_DATUM(address)					\
-  ((SCHEME_OBJECT) (((SCHEME_OBJECT *) (address)) - MEMBASE))
-#endif
+static inline SCHEME_OBJECT
+make_pointer_object (unsigned long type, SCHEME_OBJECT* address)
+{
+  return make_object (type, address_to_datum (address));
+}
 
-#endif /* not HEAP_IN_LOW_MEMORY */
+static inline SCHEME_OBJECT
+object_new_address (SCHEME_OBJECT type_obj, SCHEME_OBJECT* address)
+{
+  return object_new_datum (type_obj, address_to_datum (address));
+}
+
+// Important constant objects
+
+/* Assigned TC_CONSTANT datum values:
+   0 #t
+   1 unspecific
+   2 [non-object]
+   3 #!optional
+   4 #!rest
+   5 #!key
+   6 #!eof
+   7 #!default
+   8 unused (was #!aux)
+   9 '()
+   10 #!reclaimed
+   ...
+   0x100 -> 0x1FF reserved for fasdumpable records
+ */
+
+#define CONSTANT_OBJECT(tc, datum)                                     \
+  (((unsigned long) tc) << DATUM_LENGTH | datum)
+
+#define SHARP_F			CONSTANT_OBJECT (TC_FALSE, 0)
+#define SHARP_T			CONSTANT_OBJECT (TC_CONSTANT, 0)
+#define UNSPECIFIC		CONSTANT_OBJECT (TC_CONSTANT, 1)
+#define OPTIONAL_MARKER		CONSTANT_OBJECT (TC_CONSTANT, 3)
+#define REST_MARKER		CONSTANT_OBJECT (TC_CONSTANT, 4)
+#define KEY_MARKER		CONSTANT_OBJECT (TC_CONSTANT, 5)
+#define EOF_OBJECT		CONSTANT_OBJECT (TC_CONSTANT, 6)
+#define DEFAULT_OBJECT		CONSTANT_OBJECT (TC_CONSTANT, 7)
+#define EMPTY_LIST		CONSTANT_OBJECT (TC_CONSTANT, 9)
+#define GC_RECLAIMED		CONSTANT_OBJECT (TC_CONSTANT, 10)
+#define FASDUMP_RECORD_MARKER_START 0x100
+#define FASDUMP_RECORD_MARKER_END 0x200
+#define BROKEN_HEART_ZERO	CONSTANT_OBJECT (TC_BROKEN_HEART, 0)
+
+/* An environment chain always ends in a pointer with type code
+   of TC_GLOBAL_ENV.  This will contain an address part which
+   either indicates that the lookup should continue on to the
+   true global environment, or terminate at this frame.
+
+   We arrange for the global environment to be the same as #F, and the
+   end chain to be different by toggling the lowest bit:  */
+
+#define THE_GLOBAL_ENV		CONSTANT_OBJECT (TC_GLOBAL_ENV, 0)
+#define THE_NULL_ENV		CONSTANT_OBJECT (TC_GLOBAL_ENV, 1)
 
 /* Lots of type predicates */
 
-#define FIXNUM_P(object) ((OBJECT_TYPE (object)) == TC_FIXNUM)
-#define BIGNUM_P(object) ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM)
-#define FLONUM_P(object) ((OBJECT_TYPE (object)) == TC_BIG_FLONUM)
-#define COMPLEX_P(object) ((OBJECT_TYPE (object)) == TC_COMPLEX)
-#define CHARACTER_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER)
-#define BYTEVECTOR_P(object) ((OBJECT_TYPE (object)) == TC_BYTEVECTOR)
-#define LEGACY_STRING_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER_STRING)
-#define UNICODE_STRING_P(object) ((OBJECT_TYPE (object)) == TC_UNICODE_STRING)
-#define BIT_STRING_P(object) ((OBJECT_TYPE (object)) == TC_BIT_STRING)
-#define CELL_P(object) ((OBJECT_TYPE (object)) == TC_CELL)
-#define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
-#define WEAK_PAIR_P(object) ((OBJECT_TYPE (object)) == TC_WEAK_CONS)
-#define TAGGED_OBJECT_P(object) ((OBJECT_TYPE (object)) == TC_TAGGED_OBJECT)
-#define VECTOR_P(object) ((OBJECT_TYPE (object)) == TC_VECTOR)
-#define RECORD_P(object) ((OBJECT_TYPE (object)) == TC_RECORD)
-#define BOOLEAN_P(object) (((object) == SHARP_T) || ((object) == SHARP_F))
-#define REFERENCE_TRAP_P(object) ((OBJECT_TYPE (object)) == TC_REFERENCE_TRAP)
-#define PRIMITIVE_P(object) ((OBJECT_TYPE (object)) == TC_PRIMITIVE)
-#define PROMISE_P(object) ((OBJECT_TYPE (object)) == TC_DELAYED)
-#define APPARENT_LIST_P(object) ((EMPTY_LIST_P (object)) || (PAIR_P (object)))
-#define CONTROL_POINT_P(object) ((OBJECT_TYPE (object)) == TC_CONTROL_POINT)
-#define BROKEN_HEART_P(object) ((OBJECT_TYPE (object)) == TC_BROKEN_HEART)
-#define RETURN_CODE_P(object) ((OBJECT_TYPE (object)) == TC_RETURN_CODE)
-#define EPHEMERON_P(object) ((OBJECT_TYPE (object)) == TC_EPHEMERON)
+#define DEFINE_SIMPLE_TYPE_PRED(name, tc)                               \
+static inline bool                                                      \
+name (SCHEME_OBJECT object)                                             \
+{                                                                       \
+  return object_type (object) == tc;                                    \
+}
+
+DEFINE_SIMPLE_TYPE_PRED (BIGNUM_P, TC_BIG_FIXNUM)
+DEFINE_SIMPLE_TYPE_PRED (BIT_STRING_P, TC_BIT_STRING)
+DEFINE_SIMPLE_TYPE_PRED (BROKEN_HEART_P, TC_BROKEN_HEART)
+DEFINE_SIMPLE_TYPE_PRED (BYTEVECTOR_P, TC_BYTEVECTOR)
+DEFINE_SIMPLE_TYPE_PRED (CELL_P, TC_CELL)
+DEFINE_SIMPLE_TYPE_PRED (CHARACTER_P, TC_CHARACTER)
+DEFINE_SIMPLE_TYPE_PRED (COMPLEX_P, TC_COMPLEX)
+DEFINE_SIMPLE_TYPE_PRED (CONTROL_POINT_P, TC_CONTROL_POINT)
+DEFINE_SIMPLE_TYPE_PRED (EPHEMERON_P, TC_EPHEMERON)
+DEFINE_SIMPLE_TYPE_PRED (FIXNUM_P, TC_FIXNUM)
+DEFINE_SIMPLE_TYPE_PRED (FLONUM_P, TC_BIG_FLONUM)
+DEFINE_SIMPLE_TYPE_PRED (INTERNED_SYMBOL_P, TC_INTERNED_SYMBOL)
+DEFINE_SIMPLE_TYPE_PRED (LEGACY_STRING_P, TC_CHARACTER_STRING)
+DEFINE_SIMPLE_TYPE_PRED (nmv_header_p, TC_MANIFEST_NM_VECTOR)
+DEFINE_SIMPLE_TYPE_PRED (NON_MARKED_VECTOR_P, TC_NON_MARKED_VECTOR)
+DEFINE_SIMPLE_TYPE_PRED (PAIR_P, TC_LIST)
+DEFINE_SIMPLE_TYPE_PRED (PRIMITIVE_P, TC_PRIMITIVE)
+DEFINE_SIMPLE_TYPE_PRED (PROCEDURE_FRAME_P, TC_ENVIRONMENT)
+DEFINE_SIMPLE_TYPE_PRED (PROMISE_P, TC_DELAYED)
+DEFINE_SIMPLE_TYPE_PRED (RECORD_P, TC_RECORD)
+DEFINE_SIMPLE_TYPE_PRED (REFERENCE_TRAP_P, TC_REFERENCE_TRAP)
+DEFINE_SIMPLE_TYPE_PRED (RETURN_CODE_P, TC_RETURN_CODE)
+DEFINE_SIMPLE_TYPE_PRED (TAGGED_OBJECT_P, TC_TAGGED_OBJECT)
+DEFINE_SIMPLE_TYPE_PRED (UNICODE_STRING_P, TC_UNICODE_STRING)
+DEFINE_SIMPLE_TYPE_PRED (UNINTERNED_SYMBOL_P, TC_UNINTERNED_SYMBOL)
+DEFINE_SIMPLE_TYPE_PRED (vector_header_p, TC_MANIFEST_VECTOR)
+DEFINE_SIMPLE_TYPE_PRED (VECTOR_P, TC_VECTOR)
+DEFINE_SIMPLE_TYPE_PRED (WEAK_PAIR_P, TC_WEAK_CONS)
+
+#undef DEFINE_SIMPLE_TYPE_PRED
 
 #define STRING_P string_p
 extern bool string_p (SCHEME_OBJECT);
 
-#define NON_MARKED_VECTOR_P(object)					\
-  ((OBJECT_TYPE (object)) == TC_NON_MARKED_VECTOR)
+static inline bool
+BOOLEAN_P (SCHEME_OBJECT object)
+{
+  return object == SHARP_T || object == SHARP_F;
+}
 
-#define SYMBOL_P(object)						\
-  ((INTERNED_SYMBOL_P (object)) || (UNINTERNED_SYMBOL_P (object)))
+static inline bool
+SYMBOL_P (SCHEME_OBJECT object)
+{
+  return INTERNED_SYMBOL_P (object) || UNINTERNED_SYMBOL_P (object);
+}
 
-#define INTERNED_SYMBOL_P(object)					\
-  ((OBJECT_TYPE (object)) == TC_INTERNED_SYMBOL)
+static inline bool
+INTEGER_P (SCHEME_OBJECT object)
+{
+  return FIXNUM_P (object) || BIGNUM_P (object);
+}
 
-#define UNINTERNED_SYMBOL_P(object)					\
-  ((OBJECT_TYPE (object)) == TC_UNINTERNED_SYMBOL)
+static inline bool
+REAL_P (SCHEME_OBJECT object)
+{
+  return INTEGER_P (object) || FLONUM_P (object);
+}
 
-#define INTEGER_P(object)						\
-  (((OBJECT_TYPE (object)) == TC_FIXNUM)				\
-   || ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM))
+static inline bool
+HUNK3_P (SCHEME_OBJECT object)
+{
+  return object_type (object) == TC_HUNK3_A
+         || object_type (object) == TC_HUNK3_B;
+}
 
-#define REAL_P(object)							\
-  (((OBJECT_TYPE (object)) == TC_FIXNUM)				\
-   || ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM)				\
-   || ((OBJECT_TYPE (object)) == TC_BIG_FLONUM))
+static inline bool
+GLOBAL_FRAME_P (SCHEME_OBJECT object)
+{
+  return object == THE_GLOBAL_ENV;
+}
 
-#define HUNK3_P(object)							\
-  (((OBJECT_TYPE (object)) == TC_HUNK3_A)				\
-   || ((OBJECT_TYPE (object)) == TC_HUNK3_B))
+static inline bool
+NULL_FRAME_P (SCHEME_OBJECT object)
+{
+  return object == THE_NULL_ENV;
+}
 
-#define INTERPRETER_APPLICABLE_P interpreter_applicable_p
+static inline bool
+ENVIRONMENT_P (SCHEME_OBJECT object)
+{
+  return PROCEDURE_FRAME_P (object) || GLOBAL_FRAME_P (object);
+}
 
-#define ENVIRONMENT_P(env)						\
-  (((OBJECT_TYPE (env)) == TC_ENVIRONMENT) || (GLOBAL_FRAME_P (env)))
-
-#define EMPTY_LIST_P(object) ((object) == EMPTY_LIST)
+static inline bool
+EMPTY_LIST_P (SCHEME_OBJECT object)
+{
+  return object == EMPTY_LIST;
+}
 
 /* Memory Operations */
 
-#define MEMORY_REF(obj, i) ((OBJECT_ADDRESS (obj)) [(i)])
-#define MEMORY_SET(obj, i, value) ((MEMORY_REF (obj, i)) = (value))
-#define MEMORY_LOC(obj, i) (& (MEMORY_REF (obj, i)))
+static inline SCHEME_OBJECT
+memory_ref (SCHEME_OBJECT obj, unsigned long index)
+{
+  return object_address (obj) [index];
+}
+
+static inline SCHEME_OBJECT*
+memory_loc (SCHEME_OBJECT obj, unsigned long index)
+{
+  return object_address (obj) + index;
+}
+
+static inline void
+memory_set (SCHEME_OBJECT obj, unsigned long index, SCHEME_OBJECT val)
+{
+  object_address (obj) [index] = val;
+}
 
 static inline SCHEME_OBJECT
 memory_ref_0 (SCHEME_OBJECT obj)
 {
-  return MEMORY_REF (obj, 0);
+  return memory_ref (obj, 0);
 }
 
 static inline SCHEME_OBJECT
 memory_ref_1 (SCHEME_OBJECT obj)
 {
-  return MEMORY_REF (obj, 1);
+  return memory_ref (obj, 1);
 }
 
 static inline SCHEME_OBJECT
 memory_ref_2 (SCHEME_OBJECT obj)
 {
-  return MEMORY_REF (obj, 2);
+  return memory_ref (obj, 2);
 }
 
 static inline SCHEME_OBJECT*
 memory_loc_0 (SCHEME_OBJECT obj)
 {
-  return MEMORY_LOC (obj, 0);
+  return memory_loc (obj, 0);
 }
 
 static inline SCHEME_OBJECT*
 memory_loc_1 (SCHEME_OBJECT obj)
 {
-  return MEMORY_LOC (obj, 1);
+  return memory_loc (obj, 1);
 }
 
 static inline SCHEME_OBJECT*
 memory_loc_2 (SCHEME_OBJECT obj)
 {
-  return MEMORY_LOC (obj, 2);
+  return memory_loc (obj, 2);
 }
 
 static inline void
 memory_set_0 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
 {
-  MEMORY_SET (obj, 0, val);
+  memory_set (obj, 0, val);
 }
 
 static inline void
 memory_set_1 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
 {
-  MEMORY_SET (obj, 1, val);
+  memory_set (obj, 1, val);
 }
 
 static inline void
 memory_set_2 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
 {
-  MEMORY_SET (obj, 2, val);
+  memory_set (obj, 2, val);
 }
 
 /* Character Operations */
@@ -314,41 +430,41 @@ memory_set_2 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
 #define CHAR_MASK_BITS (MAX_BITS - 1)
 #define MASK_MIT_ASCII (MAX_MIT_ASCII - 1)
 
-#define ASCII_TO_CHAR(ascii) (MAKE_OBJECT (TC_CHARACTER, (ascii)))
-#define CHAR_TO_ASCII_P(object) ((OBJECT_DATUM (object)) < MAX_ASCII)
+#define ASCII_TO_CHAR(ascii) (make_object (TC_CHARACTER, (ascii)))
+#define CHAR_TO_ASCII_P(object) ((object_datum (object)) < MAX_ASCII)
 #define CHAR_TO_ASCII(object) ((object) & MASK_ASCII)
 
 #define MAKE_CHAR(bits, code)						\
-  (MAKE_OBJECT (TC_CHARACTER,						\
+  (make_object (TC_CHARACTER,						\
 		((((unsigned long) (bits)) << (CODE_LENGTH))		\
 		 | ((unsigned long) (code)))))
 
-#define CHAR_BITS(c) (((OBJECT_DATUM (c)) >> CODE_LENGTH) & CHAR_MASK_BITS)
-#define CHAR_CODE(c) ((OBJECT_DATUM (c)) & CHAR_MASK_CODE)
+#define CHAR_BITS(c) (((object_datum (c)) >> CODE_LENGTH) & CHAR_MASK_BITS)
+#define CHAR_CODE(c) ((object_datum (c)) & CHAR_MASK_CODE)
 
 /* Fixnum Operations */
 
-#define FIXNUM_ZERO_P(fixnum) ((OBJECT_DATUM (fixnum)) == 0)
+#define FIXNUM_ZERO_P(fixnum) ((object_datum (fixnum)) == 0)
 #define FIXNUM_NEGATIVE_P(fixnum) (((fixnum) & FIXNUM_SIGN_BIT) != 0)
 #define UNSIGNED_FIXNUM_P(x) ((FIXNUM_P (x)) && (!FIXNUM_NEGATIVE_P (x)))
-#define FIXNUM_EQUAL_P(x, y) ((OBJECT_DATUM (x)) == (OBJECT_DATUM (y)))
+#define FIXNUM_EQUAL_P(x, y) ((object_datum (x)) == (object_datum (y)))
 #define FIXNUM_LESS_P(x, y) ((FIXNUM_TO_LONG (x)) < (FIXNUM_TO_LONG (y)))
 
 #define FIXNUM_POSITIVE_P(fixnum)					\
   (! ((FIXNUM_ZERO_P (fixnum)) || (FIXNUM_NEGATIVE_P (fixnum))))
 
-#define UNSIGNED_FIXNUM_TO_LONG(fixnum) ((long) (OBJECT_DATUM (fixnum)))
+#define UNSIGNED_FIXNUM_TO_LONG(fixnum) ((long) (object_datum (fixnum)))
 #define LONG_TO_UNSIGNED_FIXNUM_P(n) ((((unsigned long) (n)) & SIGN_MASK) == 0)
 
 #define LONG_TO_UNSIGNED_FIXNUM(n)					\
-  (MAKE_OBJECT (TC_FIXNUM, ((unsigned long) (n))))
+  (make_object (TC_FIXNUM, ((unsigned long) (n))))
 
 #define LONG_TO_FIXNUM_P(n)						\
   (((((unsigned long) (n)) & SIGN_MASK) == 0)				\
    || ((((unsigned long) (n)) & SIGN_MASK) == SIGN_MASK))
 
 #define LONG_TO_FIXNUM(n)						\
-  (MAKE_OBJECT (TC_FIXNUM, (((unsigned long) (n)) & DATUM_MASK)))
+  (make_object (TC_FIXNUM, (((unsigned long) (n)) & DATUM_MASK)))
 
 #define FIXNUM_TO_LONG(fixnum)						\
   ((long)								\
@@ -356,9 +472,9 @@ memory_set_2 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
     - ((((unsigned long) TC_FIXNUM) << DATUM_LENGTH) | FIXNUM_SIGN_BIT)))
 
 #define ULONG_TO_FIXNUM_P(n) (((n) & SIGN_MASK) == 0)
-#define ULONG_TO_FIXNUM(n) (MAKE_OBJECT (TC_FIXNUM, (n)))
-#define FIXNUM_TO_ULONG_P(fixnum) (((OBJECT_DATUM (fixnum)) & SIGN_MASK) == 0)
-#define FIXNUM_TO_ULONG(fixnum) (OBJECT_DATUM (fixnum))
+#define ULONG_TO_FIXNUM(n) (make_object (TC_FIXNUM, (n)))
+#define FIXNUM_TO_ULONG_P(fixnum) (((object_datum (fixnum)) & SIGN_MASK) == 0)
+#define FIXNUM_TO_ULONG(fixnum) (object_datum (fixnum))
 
 #define FIXNUM_ZERO (ULONG_TO_FIXNUM (0))
 
@@ -411,7 +527,7 @@ memory_set_2 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
 #define FLONUM_SIZE (BYTES_TO_WORDS (sizeof (double)))
 
 #define FLONUM_TO_DOUBLE(object)					\
-  (* ((double *) (MEMORY_LOC ((object), 1))))
+  (* ((double *) (memory_loc ((object), 1))))
 
 #define FLOAT_TO_FLONUM(expression)					\
   (double_to_flonum ((double) (expression)))
@@ -452,9 +568,9 @@ memory_set_2 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
 #define OBJECT_TO_BOOLEAN(object) ((object) != SHARP_F)
 
 #define MAKE_BROKEN_HEART(address)					\
-  (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, (address)))
+  (make_pointer_object (TC_BROKEN_HEART, (address)))
 
-#define MAKE_RETURN_CODE(n) (MAKE_OBJECT (TC_RETURN_CODE, (n)))
+#define MAKE_RETURN_CODE(n) (make_object (TC_RETURN_CODE, (n)))
 
 #define BYTES_TO_WORDS(nbytes)						\
   (((nbytes) + ((sizeof (SCHEME_OBJECT)) - 1)) / (sizeof (SCHEME_OBJECT)))
@@ -472,39 +588,9 @@ memory_set_2 (SCHEME_OBJECT obj, SCHEME_OBJECT val)
 #define ALIGN_FLOAT(loc) do						\
 {									\
   while (!FLOATING_ALIGNED_P (loc))					\
-    (*(loc)++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));		\
+    (*(loc)++) = (make_nmv_header (0));		\
 } while (0)
-
-/* Assigned TC_CONSTANT datum values:
-   0 #t
-   1 unspecific
-   2 [non-object]
-   3 #!optional
-   4 #!rest
-   5 #!key
-   6 #!eof
-   7 #!default
-   8 unused (was #!aux)
-   9 '()
-   10 #!reclaimed
-   ...
-   0x100 -> 0x1FF reserved for fasdumpable records
- */
-
-#define SHARP_F			MAKE_OBJECT (TC_FALSE, 0)
-#define SHARP_T			MAKE_OBJECT (TC_CONSTANT, 0)
-#define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
-#define OPTIONAL_MARKER		MAKE_OBJECT (TC_CONSTANT, 3)
-#define REST_MARKER		MAKE_OBJECT (TC_CONSTANT, 4)
-#define KEY_MARKER		MAKE_OBJECT (TC_CONSTANT, 5)
-#define EOF_OBJECT		MAKE_OBJECT (TC_CONSTANT, 6)
-#define DEFAULT_OBJECT		MAKE_OBJECT (TC_CONSTANT, 7)
-#define EMPTY_LIST		MAKE_OBJECT (TC_CONSTANT, 9)
-#define GC_RECLAIMED		MAKE_OBJECT (TC_CONSTANT, 10)
-#define FASDUMP_RECORD_MARKER_START 0x100
-#define FASDUMP_RECORD_MARKER_END 0x200
-#define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
-
+
 /* Last immediate reference trap. */
 #define TRAP_MAX_IMMEDIATE 9
 

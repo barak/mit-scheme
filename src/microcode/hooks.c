@@ -144,7 +144,7 @@ Invoke PROCEDURE with a copy of the current control stack.")
 	&& (CONTROL_POINT_P (CONT_EXP (1))))
       {
 	cp = (CONT_EXP (1));
-	history_register = (OBJECT_ADDRESS (READ_DUMMY_HISTORY ()));
+	history_register = (object_address (READ_DUMMY_HISTORY ()));
 	POP_PRIMITIVE_FRAME (1);
 	STACK_RESET ();
       }
@@ -226,7 +226,7 @@ allocate_control_point (unsigned long n, bool gc_p)
   SCHEME_OBJECT cp
     = (allocate_marked_vector (TC_CONTROL_POINT, (n + 2), gc_p));
   vector_set (cp, 0, SHARP_F);
-  vector_set (cp, 1, (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)));
+  vector_set (cp, 1, (make_nmv_header (0)));
   return (cp);
 }
 
@@ -563,7 +563,7 @@ initialize_history (void)
   /* Dummy History Structure */
   history_register = (make_dummy_history ());
   return
-    (MAKE_POINTER_OBJECT (TC_HISTORY_UNMARKED, (make_dummy_history ())));
+    (make_pointer_object (TC_HISTORY_UNMARKED, (make_dummy_history ())));
 }
 
 DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_set_current_history, 1, 1,
@@ -575,9 +575,9 @@ Set the interpreter's history object to HISTORY.")
   CHECK_ARG (1, HUNK3_P);
   SET_VAL (*history_register);
 #ifndef DISABLE_HISTORY
-  history_register = (OBJECT_ADDRESS (ARG_REF (1)));
+  history_register = (object_address (ARG_REF (1)));
 #else
-  history_register = (OBJECT_ADDRESS (READ_DUMMY_HISTORY ()));
+  history_register = (object_address (READ_DUMMY_HISTORY ()));
 #endif
   POP_PRIMITIVE_FRAME (1);
   PRIMITIVE_ABORT (PRIM_POP_RETURN);
@@ -593,9 +593,9 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
   {
     SCHEME_OBJECT thunk = (ARG_REF (1));
     /* Remove one reduction from the history before saving it */
-    SCHEME_OBJECT * first_rib = (OBJECT_ADDRESS (history_register [HIST_RIB]));
+    SCHEME_OBJECT * first_rib = (object_address (history_register [HIST_RIB]));
     SCHEME_OBJECT * second_rib =
-      (OBJECT_ADDRESS (first_rib [RIB_NEXT_REDUCTION]));
+      (object_address (first_rib [RIB_NEXT_REDUCTION]));
     if ((first_rib != second_rib) &&
 	(! (HISTORY_MARKED_P (first_rib [RIB_MARK]))))
       {
@@ -605,14 +605,14 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
 	  while (1)
 	    {
 	      SCHEME_OBJECT * next_rib =
-		(OBJECT_ADDRESS (rib [RIB_NEXT_REDUCTION]));
+		(object_address (rib [RIB_NEXT_REDUCTION]));
 	      if (next_rib == first_rib)
 		break;
 	      rib = next_rib;
 	    }
 	  /* This maintains the mark in (history_register [HIST_RIB]). */
 	  (history_register [HIST_RIB]) =
-	    (MAKE_POINTER_OBJECT ((OBJECT_TYPE (history_register [HIST_RIB])),
+	    (make_pointer_object ((object_type (history_register [HIST_RIB])),
 				  rib));
 	}
       }

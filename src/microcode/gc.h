@@ -48,7 +48,7 @@ typedef enum
 } gc_type_t;
 
 #define GC_TYPE_TO_INT(type) ((int) (type))
-#define GC_TYPE(object) (GC_TYPE_CODE (OBJECT_TYPE (object)))
+#define GC_TYPE(object) (GC_TYPE_CODE (object_type (object)))
 #define GC_TYPE_CODE gc_type_code
 
 #define GC_TYPE_NON_POINTER(object)	((GC_TYPE (object)) == GC_NON_POINTER)

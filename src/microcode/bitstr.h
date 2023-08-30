@@ -37,14 +37,14 @@ USA.
 #define ANY_MASK(nbits, offset) ((LOW_MASK (nbits)) << (offset))
 
 #define BIT_STRING_LENGTH(bit_string)					\
-  ((long) (MEMORY_REF ((bit_string), BIT_STRING_LENGTH_OFFSET)))
+  ((long) (memory_ref ((bit_string), BIT_STRING_LENGTH_OFFSET)))
 
 #define BIT_STRING_MSW(bit_string)					\
   (BIT_STRING_WORD (BIT_STRING_HIGH_PTR (bit_string)))
 
 #define BIT_STRING_LSW(bit_string)					\
   (BIT_STRING_WORD							\
-   (MEMORY_LOC								\
+   (memory_loc								\
     ((bit_string), (BIT_STRING_INDEX_TO_WORD ((bit_string), 0)))))
 
 /* Byte order dependencies. */
@@ -79,10 +79,10 @@ The "size in bits" is a C "long" integer.
 */
 
 #define BIT_STRING_HIGH_PTR(bit_string)					\
-  (MEMORY_LOC ((bit_string), ((vector_length (bit_string)) + 1)))
+  (memory_loc ((bit_string), ((vector_length (bit_string)) + 1)))
 
 #define BIT_STRING_LOW_PTR(bit_string)					\
-  (MEMORY_LOC ((bit_string), BIT_STRING_FIRST_WORD))
+  (memory_loc ((bit_string), BIT_STRING_FIRST_WORD))
 
 #define BIT_STRING_WORD(ptr)		(*((ptr) - 1))
 #define DEC_BIT_STRING_PTR(ptr)		(--(ptr))
@@ -97,7 +97,7 @@ The "size in bits" is a C "long" integer.
   ((((word) - (BIT_STRING_FIRST_WORD + 1)) * OBJECT_LENGTH) + (bit))
 
 #define READ_BITS_PTR(object, offset, end)				\
-  (MEMORY_LOC								\
+  (memory_loc								\
    ((object), (BIT_STRING_LENGTH_TO_GC_LENGTH (((offset) + (end)) - 1))))
 
 #define COMPUTE_READ_BITS_OFFSET(offset, end)				\
@@ -136,10 +136,10 @@ The "size in bits" is a C "long" integer.
 */
 
 #define BIT_STRING_HIGH_PTR(bit_string)					\
-  (MEMORY_LOC ((bit_string), BIT_STRING_FIRST_WORD))
+  (memory_loc ((bit_string), BIT_STRING_FIRST_WORD))
 
 #define BIT_STRING_LOW_PTR(bit_string)					\
-  (MEMORY_LOC ((bit_string), ((vector_length (bit_string)) + 1)))
+  (memory_loc ((bit_string), ((vector_length (bit_string)) + 1)))
 
 #define BIT_STRING_WORD(ptr)		(*(ptr))
 #define DEC_BIT_STRING_PTR(ptr)		((ptr)++)
@@ -156,7 +156,7 @@ The "size in bits" is a C "long" integer.
   ((((vector_length (string)) - (word)) * OBJECT_LENGTH) + (bit))
 
 #define READ_BITS_PTR(object, offset, end)				\
-  (MEMORY_LOC ((object), ((offset) / OBJECT_LENGTH)))
+  (memory_loc ((object), ((offset) / OBJECT_LENGTH)))
 
 #define COMPUTE_READ_BITS_OFFSET(offset, end)				\
   (offset) = ((offset) % OBJECT_LENGTH);

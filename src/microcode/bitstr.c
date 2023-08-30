@@ -46,7 +46,7 @@ allocate_bit_string (unsigned long length)
 
   total_pointers = (1 + (BIT_STRING_LENGTH_TO_GC_LENGTH (length)));
   result = (allocate_non_marked_vector (TC_BIT_STRING, total_pointers, true));
-  MEMORY_SET (result, BIT_STRING_LENGTH_OFFSET, length);
+  memory_set (result, BIT_STRING_LENGTH_OFFSET, length);
   return (result);
 }
 
@@ -143,7 +143,7 @@ Returns the number of bits in BIT-STRING.")
     error_bad_range_arg (2);						\
 									\
   ptr =									\
-    (MEMORY_LOC								\
+    (memory_loc								\
      (bit_string, (BIT_STRING_INDEX_TO_WORD (bit_string, index))));	\
   mask = (1L << (index % OBJECT_LENGTH))
 
@@ -340,11 +340,11 @@ are the same).")
      the expression `(-1 / OBJECT_LENGTH)' is either 0 or -1, at
      the discretion of the C compiler being used.  This doesn't
      matter because if `end' is zero, then no bits will be moved. */
-  copy_bits ((MEMORY_LOC
+  copy_bits ((memory_loc
 	      (bit_string_1,
 	       (BIT_STRING_INDEX_TO_WORD (bit_string_1, (end1 - 1))))),
 	    ((end1_mod == 0) ? 0 : (OBJECT_LENGTH - end1_mod)),
-	    (MEMORY_LOC
+	    (memory_loc
 	     (bit_string_2,
 	      (BIT_STRING_INDEX_TO_WORD (bit_string_2, (end2 - 1))))),
 	    ((end2_mod == 0) ? 0 : (OBJECT_LENGTH - end2_mod)),
@@ -624,7 +624,7 @@ bit_string_to_bignum (unsigned long nbits, SCHEME_OBJECT bitstr)
   (context.mask) = (LOW_MASK (((nbits - 1) % (CHAR_BIT)) + 1));
   (context.source_ptr)
     = ((unsigned char *)
-       (MEMORY_LOC (bitstr, (BIT_STRING_INDEX_TO_WORD (bitstr, (nbits - 1))))));
+       (memory_loc (bitstr, (BIT_STRING_INDEX_TO_WORD (bitstr, (nbits - 1))))));
 
   if (ndigits != 0)
     {
@@ -731,7 +731,7 @@ Read the contents of memory at the address (POINTER,OFFSET) into BIT-STRING.")
   READ_BITS_INITIALIZE ();
   copy_bits (start,
 	     offset,
-	     (MEMORY_LOC
+	     (memory_loc
 	      (bit_string,
 	       (BIT_STRING_INDEX_TO_WORD (bit_string, (end - 1))))),
 	     ((end_mod == 0) ? 0 : (OBJECT_LENGTH - end_mod)),
@@ -744,7 +744,7 @@ DEFINE_PRIMITIVE ("WRITE-BITS!", Prim_write_bits_x, 3, 3,
 Write the contents of BIT-STRING in memory at the address (POINTER,OFFSET).")
 {
   READ_BITS_INITIALIZE ();
-  copy_bits ((MEMORY_LOC
+  copy_bits ((memory_loc
 	      (bit_string,
 	       (BIT_STRING_INDEX_TO_WORD (bit_string, (end - 1))))),
 	     ((end_mod == 0) ? 0 : (OBJECT_LENGTH - end_mod)),
@@ -779,7 +779,7 @@ Write the contents of BIT-STRING in memory at the address (POINTER,OFFSET).")
   bit = (start % OBJECT_LENGTH);					\
   end_word = (BIT_STRING_INDEX_TO_WORD (bit_string, (end - 1)));	\
   end_bit = (((end - 1) % OBJECT_LENGTH) + 1);				\
-  scan = (MEMORY_LOC (bit_string, word))
+  scan = (memory_loc (bit_string, word))
 
 #define FIND_NEXT_SET_LOOP(init_bit)					\
 {									\
@@ -843,7 +843,7 @@ bit_string_set (SCHEME_OBJECT bitstr, long index, int value)
   unsigned long mask;
   SCHEME_OBJECT * ptr;
 
-  ptr = (MEMORY_LOC (bitstr, (BIT_STRING_INDEX_TO_WORD (bitstr, index))));
+  ptr = (memory_loc (bitstr, (BIT_STRING_INDEX_TO_WORD (bitstr, index))));
   mask = (1L << (index % OBJECT_LENGTH));
   if (value == 0)
     (BIT_STRING_WORD (ptr)) &= (~mask);

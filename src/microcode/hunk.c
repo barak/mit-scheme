@@ -39,7 +39,7 @@ hunk3_cons (SCHEME_OBJECT cxr0,
   (*Free++) = cxr0;
   (*Free++) = cxr1;
   (*Free++) = cxr2;
-  return (MAKE_POINTER_OBJECT (TC_HUNK3, (Free - 3)));
+  return (make_pointer_object (TC_HUNK3, (Free - 3)));
 }
 
 DEFINE_PRIMITIVE ("HUNK3-CONS", Prim_hunk3_cons, 3, 3, 0)
@@ -52,7 +52,7 @@ DEFINE_PRIMITIVE ("HUNK3-CXR", Prim_hunk3_cxr, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, HUNK3_P);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_REF (1)), (arg_index_integer (2, 3))));
+  PRIMITIVE_RETURN (memory_ref ((ARG_REF (1)), (arg_index_integer (2, 3))));
 }
 
 DEFINE_PRIMITIVE ("HUNK3-SET-CXR!", Prim_hunk3_set_cxr, 3, 3, 0)
@@ -63,7 +63,7 @@ DEFINE_PRIMITIVE ("HUNK3-SET-CXR!", Prim_hunk3_set_cxr, 3, 3, 0)
     SCHEME_OBJECT hunk3 = (ARG_REF (1));
     long index = (arg_index_integer (2, 3));
     SCHEME_OBJECT object = (ARG_REF (3));
-    MEMORY_SET (hunk3, index, object);
+    memory_set (hunk3, index, object);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -76,19 +76,19 @@ DEFINE_PRIMITIVE ("HUNK3-SET-CXR!", Prim_hunk3_set_cxr, 3, 3, 0)
 DEFINE_PRIMITIVE ("SYSTEM-HUNK3-CXR0", Prim_sys_h3_0, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_GC_TRIPLE (1)), 0));
+  PRIMITIVE_RETURN (memory_ref ((ARG_GC_TRIPLE (1)), 0));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-HUNK3-CXR1", Prim_sys_h3_1, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_GC_TRIPLE (1)), 1));
+  PRIMITIVE_RETURN (memory_ref ((ARG_GC_TRIPLE (1)), 1));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-HUNK3-CXR2", Prim_sys_h3_2, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_GC_TRIPLE (1)), 2));
+  PRIMITIVE_RETURN (memory_ref ((ARG_GC_TRIPLE (1)), 2));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-HUNK3-SET-CXR0!", Prim_sh3_set_0, 2, 2, 0)
@@ -97,7 +97,7 @@ DEFINE_PRIMITIVE ("SYSTEM-HUNK3-SET-CXR0!", Prim_sh3_set_0, 2, 2, 0)
   {
     SCHEME_OBJECT hunk3 = (ARG_GC_TRIPLE (1));
     SCHEME_OBJECT object = (ARG_REF (2));
-    MEMORY_SET (hunk3, 0, object);
+    memory_set (hunk3, 0, object);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -108,7 +108,7 @@ DEFINE_PRIMITIVE ("SYSTEM-HUNK3-SET-CXR1!", Prim_sh3_set_1, 2, 2, 0)
   {
     SCHEME_OBJECT hunk3 = (ARG_GC_TRIPLE (1));
     SCHEME_OBJECT object = (ARG_REF (2));
-    MEMORY_SET (hunk3, 1, object);
+    memory_set (hunk3, 1, object);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -119,7 +119,7 @@ DEFINE_PRIMITIVE ("SYSTEM-HUNK3-SET-CXR2!", Prim_sh3_set_2, 2, 2, 0)
   {
     SCHEME_OBJECT hunk3 = (ARG_GC_TRIPLE (1));
     SCHEME_OBJECT object = (ARG_REF (2));
-    MEMORY_SET (hunk3, 2, object);
+    memory_set (hunk3, 2, object);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

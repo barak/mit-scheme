@@ -89,7 +89,7 @@ DEFINE_PRIMITIVE ("INTEGER->CHAR", Prim_integer_to_char, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (MAKE_OBJECT (TC_CHARACTER, (arg_index_integer (1, MAX_MIT_ASCII))));
+    (make_object (TC_CHARACTER, (arg_index_integer (1, MAX_MIT_ASCII))));
 }
 
 long
@@ -141,7 +141,7 @@ DEFINE_PRIMITIVE ("CHAR-ASCII?", Prim_char_ascii_p, 1, 1, 0)
   {
     SCHEME_OBJECT character = ARG_REF (1);
     PRIMITIVE_RETURN
-      (((OBJECT_DATUM (character)) >= MAX_ASCII) ?
+      (((object_datum (character)) >= MAX_ASCII) ?
        SHARP_F :
        (LONG_TO_UNSIGNED_FIXNUM (CHAR_TO_ASCII (character))));
   }

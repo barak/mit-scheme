@@ -44,8 +44,8 @@ DEFINE_PRIMITIVE ("FLOATING-VECTOR-CONS", Prim_floating_vector_cons, 1, 1, 0)
 
     ALIGN_FLOAT (Free);
     Primitive_GC_If_Needed (length_in_words + 1);
-    result = (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, Free));
-    (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, length_in_words));
+    result = (make_pointer_object (TC_BIG_FLONUM, Free));
+    (*Free++) = (make_nmv_header (length_in_words));
     vect = ((double *) Free);
     while ((length--) > 0) (*vect++) = 0.0;
     Free = ((SCHEME_OBJECT *) vect);

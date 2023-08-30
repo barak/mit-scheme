@@ -77,6 +77,6 @@ extern long compiler_unassigned_p_trap
 extern long compiler_assignment_trap
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
 
-#define UNCOMPILED_VARIABLE (MAKE_OBJECT (TC_CONSTANT, 0))
+#define UNCOMPILED_VARIABLE (make_object (TC_CONSTANT, 0))
 
 #endif /* not SCM_LOOKUP_H */
