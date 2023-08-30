@@ -523,7 +523,7 @@ setup_trap_frame (DWORD code,
   stack_push (BOOLEAN_TO_OBJECT (stack_recovered_p));
   stack_push (trap_code);
   stack_push (trap_name);
-  push_cont_rc (RC_HARDWARE_TRAP, long_to_integer (code));
+  push_cont (RC_HARDWARE_TRAP, long_to_integer (code));
   if (stack_recovered_p
       /* This may want to be done in other cases, but this may be enough. */
       && (trinfo->state == STATE_COMPILED_CODE))

@@ -643,15 +643,15 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
   /* For a traceable stack... */
   stack_push (c_call_continue);
   stack_push (make_apply_frame_header (nargs + 1));
-  push_cont_rc (RC_INTERNAL_APPLY, c_call_continue);
+  push_cont (RC_INTERNAL_APPLY, c_call_continue);
 
   saved_stack_pointer = stack_pointer;
   saved_last_return_code = last_return_code;
   stack_check ((2 * CONT_SIZE) + 2);
-  push_cont_rc (RC_END_OF_COMPUTATION, run_callback);
+  push_cont (RC_END_OF_COMPUTATION, run_callback);
   stack_push (run_callback);
   stack_push (make_apply_frame_header (1));
-  push_cont_rc (RC_INTERNAL_APPLY, run_callback);
+  push_cont (RC_INTERNAL_APPLY, run_callback);
   last_return_code = stack_pointer;
   SET_EXP (SHARP_F);
   Re_Enter_Interpreter ();
@@ -750,7 +750,7 @@ callback_run_handler (long callback_id, SCM arglist)
   stack_push (fixnum_id);
   stack_push (handler);
   stack_push (make_apply_frame_header (3));
-  push_cont_rc (RC_INTERNAL_APPLY, run_callback);
+  push_cont (RC_INTERNAL_APPLY, run_callback);
 }
 
 static SCM

@@ -246,7 +246,7 @@ the primitive GC daemons before returning.")
   PRIMITIVE_HEADER (1);
   canonicalize_primitive_context ();
 
-  STACK_CHECK_FATAL ("GC");
+  stack_check_fatal ("GC");
   if (Free > heap_end)
     {
       outf_fatal ("\nGC has been delayed too long!\n");
@@ -279,10 +279,10 @@ the primitive GC daemons before returning.")
   std_gc_pt2 ();
 
   stack_check (CONT_SIZE);
-  push_cont_rc (RC_NORMAL_GC_DONE,
-                ULONG_TO_FIXNUM ((HEAP_AVAILABLE > gc_space_needed)
-                                 ? HEAP_AVAILABLE - gc_space_needed
-                                 : 0));
+  push_cont (RC_NORMAL_GC_DONE,
+             ULONG_TO_FIXNUM ((HEAP_AVAILABLE > gc_space_needed)
+                              ? HEAP_AVAILABLE - gc_space_needed
+                              : 0));
 
   RENAME_CRITICAL_SECTION ("garbage collector daemon");
   {

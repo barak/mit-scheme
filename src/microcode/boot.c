@@ -180,7 +180,7 @@ start_scheme (void)
 
   /* Give the interpreter something to chew on, and ... */
   stack_check (CONT_SIZE);
-  push_cont_rc (RC_END_OF_COMPUTATION, SHARP_F);
+  push_cont (RC_END_OF_COMPUTATION, SHARP_F);
 
   SET_EXP (expr);
 

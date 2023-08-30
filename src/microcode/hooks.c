@@ -172,7 +172,7 @@ Invoke PROCEDURE with a copy of the current control stack.")
 
 	CLEAR_INTERRUPT (INT_Stack_Overflow);
 	STACK_RESET ();
-        push_cont_rc (RC_JOIN_STACKLETS, cp);
+        push_cont (RC_JOIN_STACKLETS, cp);
       }
 
     stack_push (cp);
@@ -212,7 +212,7 @@ Invoke THUNK with CONTROL-POINT as its control stack.")
   CLEAR_INTERRUPT (INT_Stack_Overflow);
 
   stack_check (CONT_SIZE + 2);
-  push_cont_rc (RC_JOIN_STACKLETS, control_point);
+  push_cont (RC_JOIN_STACKLETS, control_point);
   stack_push (thunk);
   stack_push (make_apply_frame_header (1));
 
@@ -257,7 +257,7 @@ unpack_control_point (SCHEME_OBJECT cp)
 
     stack_pointer = STACK_BOTTOM;
     CLEAR_INTERRUPT (INT_Stack_Overflow);
-    STACK_CHECK (scan_from - end_from);
+    stack_check (scan_from - end_from);
 
     while (scan_from > end_from)
       stack_push (*--scan_from);
@@ -329,7 +329,7 @@ memoized yet.")
       pop_primitive_frame (1);
 
       stack_check (CONT_SIZE + 2);
-      push_cont_rc (RC_SNAP_NEED_THUNK, delayed);
+      push_cont (RC_SNAP_NEED_THUNK, delayed);
       stack_push (delayed_value (delayed));
       stack_push (make_apply_frame_header (1));
 
@@ -344,7 +344,7 @@ memoized yet.")
       pop_primitive_frame (1);
 
       stack_check (CONT_SIZE);
-      push_cont_rc (RC_SNAP_NEED_THUNK, delayed);
+      push_cont (RC_SNAP_NEED_THUNK, delayed);
       SET_ENV (delayed_env (delayed));
       SET_EXP (delayed_proc (delayed));
 
@@ -455,7 +455,7 @@ identified by the continuation parser.")
   SCHEME_OBJECT thunk = stack_pop ();
   stack_push (make_apply_frame_header (nargs - 1));
   SET_ENV (THE_NULL_ENV);
-  push_cont_rc (RC_INTERNAL_APPLY, SHARP_F);
+  push_cont (RC_INTERNAL_APPLY, SHARP_F);
 
   stack_check (2);
   stack_push (thunk);

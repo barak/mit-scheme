@@ -47,31 +47,30 @@ stack_check (unsigned long n)
 {
   if (!stack_can_push_p (n))
     {
-      stack_check_fatal ("STACK_CHECK");
+      stack_check_fatal ("stack_check");
       REQUEST_INTERRUPT (INT_Stack_Overflow);
     }
 }
 
-/* Note: push_cont must match the definitions in sdata.h */
-
 static inline void
-push_cont (SCHEME_OBJECT ret, SCHEME_OBJECT val)
+re_push_cont (void)
 {
-  stack_push (val);
-  stack_push (ret);
+  stack_push (GET_EXP);
+  stack_push (GET_RET);
 }
 
 static inline void
-push_cont_rc (unsigned long rc, SCHEME_OBJECT val)
+push_cont (unsigned long rc, SCHEME_OBJECT exp)
 {
-  push_cont (MAKE_RETURN_CODE (rc), val);
+  stack_push (exp);
+  stack_push (MAKE_RETURN_CODE (rc));
 }
 
 static inline void
-push_cont_env (unsigned long rc, SCHEME_OBJECT exp, SCHEME_OBJECT env)
+push_env_cont (unsigned long rc, SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
   stack_push (env);
-  push_cont_rc (rc, exp);
+  push_cont (rc, exp);
 }
 
 static inline void
@@ -80,9 +79,6 @@ restore_cont (void)
   SET_RET (stack_pop ());
   SET_EXP (stack_pop ());
 }
-
-#define STACK_CHECK_FATAL stack_check_fatal
-#define STACK_CHECK stack_check
 
 #define CONT_SIZE 2
 #define ENV_CONT_SIZE (CONT_SIZE + 1)

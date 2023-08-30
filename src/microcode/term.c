@@ -82,7 +82,7 @@ attempt_termination_backout (int code)
 
   unsigned long frame_size = (code == TERM_NO_ERROR_HANDLER) ? 5 : 4;
   stack_check (CONT_SIZE + frame_size + 1);
-  push_cont_rc (RC_HALT, LONG_TO_UNSIGNED_FIXNUM (code));
+  push_cont (RC_HALT, LONG_TO_UNSIGNED_FIXNUM (code));
   if (code == TERM_NO_ERROR_HANDLER)
     stack_push (LONG_TO_UNSIGNED_FIXNUM (death_blow));
   stack_push (GET_VAL);

@@ -308,7 +308,7 @@ save_last_return_code (long code)
   unsigned long offset
     = STACK_LOCATIVE_DIFFERENCE (stack_pointer, last_return_code);
   assert (offset > 0);
-  push_cont_rc (code, ULONG_TO_FIXNUM (offset));
+  push_cont (code, ULONG_TO_FIXNUM (offset));
   COMPILER_NEW_SUBPROBLEM ();
 }
 
@@ -501,7 +501,7 @@ DEFINE_SCHEME_ENTRY (return_to_compiled_code)
     {
     bad:
       stack_push (cont);
-      push_cont (GET_RET, GET_EXP);
+      re_push_cont ();
       return ERR_INAPPLICABLE_OBJECT;
     }
 }
@@ -1242,7 +1242,7 @@ compiler_interrupt_common (utility_result_t * DSU_result,
 {
   if (!FREE_OK_P (Free))
     REQUEST_GC (Free - heap_alloc_limit);
-  STACK_CHECK (0);
+  stack_check (0);
   if (entry_address != 0)
     stack_push (MAKE_CC_ENTRY (entry_address));
   assert (CC_ENTRY_P (stack_ref (0)));
@@ -1720,7 +1720,7 @@ open_gap (unsigned long n_args, unsigned long n_needed)
 {
   unsigned long n_defaults = (n_needed - n_args);
 
-  STACK_CHECK (n_defaults);
+  stack_check (n_defaults);
   if (PENDING_INTERRUPTS_P)
     return (true);
 

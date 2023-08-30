@@ -187,7 +187,7 @@ void
 preserve_interrupt_mask (void)
 {
   stack_check (CONT_SIZE);
-  push_cont_rc (RC_RESTORE_INT_MASK, ULONG_TO_FIXNUM (GET_INT_MASK));
+  push_cont (RC_RESTORE_INT_MASK, ULONG_TO_FIXNUM (GET_INT_MASK));
 }
 
 /* canonicalize_primitive_context should be used by "unsafe"
@@ -232,7 +232,7 @@ back_out_of_primitive (void)
   stack_push (make_apply_frame_header (PRIMITIVE_N_ARGUMENTS (primitive) + 1));
   guarantee_interp_return ();
   SET_PRIMITIVE (SHARP_F);
-  push_cont_rc (RC_INTERNAL_APPLY, SHARP_F);
+  push_cont (RC_INTERNAL_APPLY, SHARP_F);
   SET_ENV (THE_NULL_ENV);
   SET_VAL (SHARP_F);
 }
@@ -702,12 +702,12 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
   if (from_pop_return_p)
     {
       stack_check (CONT_SIZE);
-      push_cont_rc (RC_POP_RETURN_ERROR, GET_VAL);
+      push_cont (RC_POP_RETURN_ERROR, GET_VAL);
     }
   else
     {
       stack_check (ENV_CONT_SIZE);
-      push_cont_env (RC_EVAL_ERROR, GET_EXP, GET_ENV);
+      push_env_cont (RC_EVAL_ERROR, GET_EXP, GET_ENV);
     }
   {
     SCHEME_OBJECT error_vector = SHARP_F;
@@ -791,8 +791,7 @@ save_history (unsigned long rc)
   stack_check (HISTORY_CONT_SIZE);
   stack_push (SHARP_F);		/* Prev_Restore_History_Stacklet */
   stack_push (ULONG_TO_FIXNUM (prev_restore_history_offset));
-  push_cont_rc (rc,
-                make_pointer_object (TC_HISTORY_UNMARKED, history_register));
+  push_cont (rc, make_pointer_object (TC_HISTORY_UNMARKED, history_register));
   history_register = object_address (READ_DUMMY_HISTORY ());
 }
 
@@ -1030,14 +1029,14 @@ C_call_scheme (SCHEME_OBJECT proc,
   SCHEME_OBJECT* sp = stack_pointer;
 
   stack_check ((2 * CONT_SIZE) + n_args + 2);
-  push_cont_rc (RC_END_OF_COMPUTATION, primitive);
+  push_cont (RC_END_OF_COMPUTATION, primitive);
 
   SCHEME_OBJECT* end = argvec + n_args;
   while (argvec < end)
     stack_push (*argvec++);
   stack_push (proc);
   stack_push (make_apply_frame_header (n_args + 1);
-  push_cont_rc (RC_INTERNAL_APPLY, SHARP_F);
+  push_cont (RC_INTERNAL_APPLY, SHARP_F);
 
   SCHEME_OBJECT result = Re_Enter_Interpreter ();
 

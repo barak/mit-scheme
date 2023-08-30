@@ -616,7 +616,7 @@ setup_trap_frame (int signo,
     {
       INITIALIZE_STACK ();
       stack_check (CONT_SIZE);
-      push_cont_rc (RC_END_OF_COMPUTATION, SHARP_F);
+      push_cont (RC_END_OF_COMPUTATION, SHARP_F);
     }
 
   stack_check (7 + CONT_SIZE);
@@ -627,7 +627,7 @@ setup_trap_frame (int signo,
   stack_push (BOOLEAN_TO_OBJECT (new_stack_pointer != 0));
   stack_push (find_signal_code_name (signo, info, scp));
   stack_push (signal_name);
-  push_cont_rc (RC_HARDWARE_TRAP, long_to_integer (signo));
+  push_cont (RC_HARDWARE_TRAP, long_to_integer (signo));
 
   if (new_stack_pointer != 0
       /* This may want to do it in other cases, but this may be enough. */

@@ -192,7 +192,7 @@ eval_error (long code, SCHEME_OBJECT exp, SCHEME_OBJECT env)
   if (code == PRIM_INTERRUPT)
     {
       stack_check (ENV_CONT_SIZE);
-      push_cont_env (RC_EVAL_ERROR, exp, env);
+      push_env_cont (RC_EVAL_ERROR, exp, env);
       return handle_interrupt ();
     }
   SET_EXP (exp);
@@ -204,7 +204,7 @@ static inline action_t
 apply_error (long code)
 {
   SET_VAL (apply_frame_proc ());
-  push_cont_rc (RC_INTERNAL_APPLY_VAL, SHARP_F);
+  push_cont (RC_INTERNAL_APPLY_VAL, SHARP_F);
   return handle_error (code, true);
 }
 
@@ -212,8 +212,8 @@ static inline void
 prepare_apply_interrupt (void)
 {
   SCHEME_OBJECT value = apply_frame_proc ();
-  push_cont_rc (RC_INTERNAL_APPLY_VAL, SHARP_F);
-  push_cont_rc (RC_RESTORE_VALUE, value);
+  push_cont (RC_INTERNAL_APPLY_VAL, SHARP_F);
+  push_cont (RC_RESTORE_VALUE, value);
 }
 
 static inline action_t
@@ -233,8 +233,8 @@ apply_interrupt (void)
 static inline void
 prepare_return_interrupt (void)
 {
-  push_cont (GET_RET, GET_EXP);
-  push_cont_rc (RC_RESTORE_VALUE, GET_VAL);
+  re_push_cont ();
+  push_cont (RC_RESTORE_VALUE, GET_VAL);
 }
 
 static inline action_t
@@ -245,7 +245,7 @@ return_error (long code)
       prepare_return_interrupt ();
       return handle_interrupt ();
     }
-  push_cont (GET_RET, GET_EXP);
+  re_push_cont ();
   return handle_error (code, true);
 }
 
@@ -290,7 +290,7 @@ static inline action_t
 eval_access (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
   stack_check (CONT_SIZE);
-  push_cont_rc (RC_EXECUTE_ACCESS_FINISH, exp);
+  push_cont (RC_EXECUTE_ACCESS_FINISH, exp);
   return eval_subproblem (access_env (exp), env);
 }
 
@@ -298,7 +298,7 @@ static inline action_t
 eval_assignment (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
   stack_check (ENV_CONT_SIZE);
-  push_cont_env (RC_EXECUTE_ASSIGNMENT_FINISH, exp, env);
+  push_env_cont (RC_EXECUTE_ASSIGNMENT_FINISH, exp, env);
   return eval_subproblem (assignment_value (exp), env);
 }
 
@@ -312,10 +312,10 @@ eval_combination (SCHEME_OBJECT exp, SCHEME_OBJECT env)
   if (nargs == 0)
     {
       stack_push (make_apply_frame_header (1));
-      push_cont_rc (RC_COMB_APPLY_FUNCTION, exp);
+      push_cont (RC_COMB_APPLY_FUNCTION, exp);
     }
   else
-    push_cont_env (RC_COMB_SAVE_VALUE, exp, env);
+    push_env_cont (RC_COMB_SAVE_VALUE, exp, env);
   return eval_subproblem (combination_expr (exp, nargs), env);
 }
 
@@ -339,7 +339,7 @@ static inline action_t
 eval_conditional (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
   stack_check (ENV_CONT_SIZE);
-  push_cont_env (RC_CONDITIONAL_DECIDE, exp, env);
+  push_env_cont (RC_CONDITIONAL_DECIDE, exp, env);
   return eval_subproblem (conditional_predicate (exp), env);
 }
 
@@ -347,7 +347,7 @@ static inline action_t
 eval_definition (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
   stack_check (ENV_CONT_SIZE);
-  push_cont_env (RC_EXECUTE_DEFINITION_FINISH, exp, env);
+  push_env_cont (RC_EXECUTE_DEFINITION_FINISH, exp, env);
   return eval_subproblem (definition_value (exp), env);
 }
 
@@ -361,7 +361,7 @@ static inline action_t
 eval_disjunction (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
   stack_check (ENV_CONT_SIZE);
-  push_cont_env (RC_DISJUNCTION_DECIDE, exp, env);
+  push_env_cont (RC_DISJUNCTION_DECIDE, exp, env);
   return eval_subproblem (disjunction_predicate (exp), env);
 }
 
@@ -387,7 +387,7 @@ static inline action_t
 eval_sequence (SCHEME_OBJECT exp, SCHEME_OBJECT env)
 {
   stack_check (ENV_CONT_SIZE);
-  push_cont_env (RC_EXECUTE_SEQUENCE_FINISH, exp, env);
+  push_env_cont (RC_EXECUTE_SEQUENCE_FINISH, exp, env);
   return eval_subproblem (sequence_1 (exp), env);
 }
 
@@ -732,11 +732,11 @@ return_comb_save_value (void)
   stack_set (1 + arg, GET_VAL);
   stack_set (0, make_nmv_header (arg));
   if (arg > 0)
-    push_cont_env (RC_COMB_SAVE_VALUE, exp, env);
+    push_env_cont (RC_COMB_SAVE_VALUE, exp, env);
   else
     {
       stack_push (make_apply_frame_header (combination_size (exp)));
-      push_cont_rc (RC_COMB_APPLY_FUNCTION, exp);
+      push_cont (RC_COMB_APPLY_FUNCTION, exp);
     }
   SCHEME_OBJECT new_exp = combination_expr (exp, arg);
   REUSE_SUBPROBLEM (new_exp, env);
@@ -839,7 +839,7 @@ return_hardware_trap (void)
 {
   /* This just reinvokes the handler */
   SCHEME_OBJECT info = stack_ref (0);
-  push_cont (GET_RET, GET_EXP);
+  re_push_cont ();
   SCHEME_OBJECT handler
     = VECTOR_P (fixed_objects)
       ? vector_ref (fixed_objects, TRAP_HANDLER)
@@ -865,7 +865,7 @@ return_normal_gc_done (void)
   if (GC_NEEDED_P (gc_space_needed))
     termination_gc_out_of_space ();
   gc_space_needed = 0;
-  EXIT_CRITICAL_SECTION ({ push_cont (GET_RET, GET_EXP); });
+  EXIT_CRITICAL_SECTION ({ re_push_cont (); });
   return ACTION_RETURN;
 }
 
@@ -905,7 +905,7 @@ return_restore_int_mask (void)
     REQUEST_GC (0);
   if (PENDING_INTERRUPTS_P)
     {
-      push_cont_rc (RC_RESTORE_VALUE, GET_VAL);
+      push_cont (RC_RESTORE_VALUE, GET_VAL);
       return handle_interrupt ();
     }
   return ACTION_RETURN;
@@ -956,7 +956,7 @@ apply_cont (variant_t variant)
   if (!RETURN_CODE_P (GET_RET))
     {
       stack_push (GET_VAL);	/* For possible stack trace */
-      push_cont (GET_RET, GET_EXP);
+      re_push_cont ();
       Microcode_Termination (TERM_BAD_STACK);
     }
 #endif

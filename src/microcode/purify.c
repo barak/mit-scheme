@@ -47,7 +47,7 @@ PURE? is ignored.")
   PRIMITIVE_HEADER (3);
   canonicalize_primitive_context ();
 
-  STACK_CHECK_FATAL ("PURIFY");
+  stack_check_fatal ("PURIFY");
 
   SCHEME_OBJECT object = ARG_REF (1);
   unsigned long safety_margin = ARG_HEAP_RESERVED (3);
@@ -58,11 +58,11 @@ PURE? is ignored.")
   purify (object);
 
   stack_check (CONT_SIZE);
-  push_cont_rc (RC_NORMAL_GC_DONE,
-                cons (SHARP_T,
-                      ULONG_TO_FIXNUM ((HEAP_AVAILABLE > gc_space_needed)
-                                       ? HEAP_AVAILABLE - gc_space_needed
-                                       : 0)));
+  push_cont (RC_NORMAL_GC_DONE,
+             cons (SHARP_T,
+                   ULONG_TO_FIXNUM ((HEAP_AVAILABLE > gc_space_needed)
+                                    ? HEAP_AVAILABLE - gc_space_needed
+                                    : 0)));
 
   RENAME_CRITICAL_SECTION ("purify daemon");
   SCHEME_OBJECT daemon = vector_ref (fixed_objects, GC_DAEMON);
@@ -83,7 +83,7 @@ purify (SCHEME_OBJECT object)
   SCHEME_OBJECT * new_constant_alloc_next;
   SCHEME_OBJECT * heap_copy_start;
 
-  STACK_CHECK_FATAL ("PURIFY");
+  stack_check_fatal ("PURIFY");
 
   open_tospace (constant_alloc_next);
   initialize_weak_chain ();

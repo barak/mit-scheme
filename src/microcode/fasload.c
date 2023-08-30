@@ -216,7 +216,7 @@ can, however, be any file which can be loaded with BINARY-FASLOAD.")
   fixed_objects = SHARP_F;
 
   /* Setup initial program */
-  push_cont_rc (RC_END_OF_COMPUTATION, SHARP_F);
+  push_cont (RC_END_OF_COMPUTATION, SHARP_F);
   SET_EXP (pair_car (result));
   SET_ENV (THE_GLOBAL_ENV);
 
