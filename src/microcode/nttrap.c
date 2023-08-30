@@ -752,7 +752,7 @@ pc_in_hyperspace:
       (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (utility_index));
       (trinfo . pc_info_2) = UNSPECIFIC;
     }
-    else if ((object_type (primitive)) != TC_PRIMITIVE)
+    else if (PRIMITIVE_P (primitive))
     {
       (trinfo . state) = STATE_UNKNOWN;
       (trinfo . pc_info_1) = SHARP_F;

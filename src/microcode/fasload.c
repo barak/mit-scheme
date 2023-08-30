@@ -471,7 +471,7 @@ primitive_numbers_unchanged_p (SCHEME_OBJECT * table)
   unsigned long count;
 
   for (count = 0; (count < (FASLHDR_N_PRIMITIVES (fh))); count += 1)
-    if ((table[count]) != (MAKE_PRIMITIVE_OBJECT (count)))
+    if ((table[count]) != (make_primitive_object (count)))
       return (false);
   return (true);
 }

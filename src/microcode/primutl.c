@@ -197,7 +197,7 @@ initialize_primitives (void)
 		    primitive_aliases[counter].name);
 	initialization_error ("aliasing", primitive_aliases[counter].alias);
       }
-      index = (PRIMITIVE_NUMBER (old));
+      index = (primitive_number (old));
     }
 
     new = (tree_insert (prim_procedure_tree,
@@ -230,11 +230,11 @@ declare_primitive_internal (bool override_p,
   if (prim != ((tree_node) NULL))
   {
     index = prim->value;
-    primitive = (MAKE_PRIMITIVE_OBJECT (prim->value));
-    if ((((PRIMITIVE_ARITY (primitive)) != nargs_hi)
-	 && ((PRIMITIVE_ARITY (primitive)) != UNKNOWN_PRIMITIVE_ARITY))
-	|| ((IMPLEMENTED_PRIMITIVE_P (primitive)) && (! override_p)))
-      return (LONG_TO_UNSIGNED_FIXNUM (PRIMITIVE_NUMBER (primitive)));
+    primitive = (make_primitive_object (prim->value));
+    if ((((primitive_arity (primitive)) != nargs_hi)
+	 && ((primitive_arity (primitive)) != UNKNOWN_PRIMITIVE_ARITY))
+	|| ((primitive_implemented_p (primitive)) && (! override_p)))
+      return (LONG_TO_UNSIGNED_FIXNUM (primitive_number (primitive)));
     if (docstr == 0)
       ndocstr = (Primitive_Documentation_Table[index]);
   }
@@ -256,7 +256,7 @@ declare_primitive_internal (bool override_p,
     prim_procedure_tree = prim;
 
     MAX_PRIMITIVE += 1;
-    primitive = (MAKE_PRIMITIVE_OBJECT (index));
+    primitive = (make_primitive_object (index));
     Primitive_Name_Table[index]        = name;
   }
 
@@ -336,24 +336,24 @@ find_primitive_cname (const char * name, bool intern_p, bool allow_p, int arity)
   tree_node prim = (tree_lookup (prim_procedure_tree, name));
   if (prim != 0)
     {
-      SCHEME_OBJECT primitive = (MAKE_PRIMITIVE_OBJECT (prim->value));
+      SCHEME_OBJECT primitive = (make_primitive_object (prim->value));
 
-      if ((!allow_p) && (!IMPLEMENTED_PRIMITIVE_P (primitive)))
+      if ((!allow_p) && (!primitive_implemented_p (primitive)))
 	return (SHARP_F);
 
       if ((arity == UNKNOWN_PRIMITIVE_ARITY)
-	  || (arity == (PRIMITIVE_ARITY (primitive))))
+	  || (arity == (primitive_arity (primitive))))
 	return (primitive);
 
-      if ((PRIMITIVE_ARITY (primitive)) == UNKNOWN_PRIMITIVE_ARITY)
+      if ((primitive_arity (primitive)) == UNKNOWN_PRIMITIVE_ARITY)
 	{
 	  /* We've just learned the arity of the primitive. */
-	  (Primitive_Arity_Table[PRIMITIVE_NUMBER (primitive)]) = arity;
+	  (Primitive_Arity_Table[primitive_number (primitive)]) = arity;
 	  return (primitive);
 	}
 
       /* Arity mismatch, notify the runtime system. */
-      return (LONG_TO_FIXNUM (PRIMITIVE_ARITY (primitive)));
+      return (LONG_TO_FIXNUM (primitive_arity (primitive)));
     }
 
   if (!intern_p)
@@ -506,23 +506,22 @@ table_entry_length (unsigned long code)
 }
 
 void
-import_primitive_table (SCHEME_OBJECT * entries,
+import_primitive_table (SCHEME_OBJECT* entries,
 			unsigned long n_entries,
-			SCHEME_OBJECT * primitives)
+			SCHEME_OBJECT* primitives)
 {
-  unsigned long i;
-  for (i = 0; (i < n_entries); i += 1)
+  for (unsigned long i = 0; i < n_entries; i += 1)
     {
-      long arity = (FIXNUM_TO_LONG (*entries++));
+      unsigned long arity = FIXNUM_TO_ULONG (*entries++);
       SCHEME_OBJECT prim
-	= (find_primitive
-	   ((make_pointer_object (TC_CHARACTER_STRING, entries)),
-	    true, true, arity));
+	= find_primitive
+	    (make_pointer_object (TC_CHARACTER_STRING, entries),
+	     true, true, arity);
 
       if (!PRIMITIVE_P (prim))
 	signal_error_from_primitive (ERR_WRONG_ARITY_PRIMITIVES);
 
-      (*primitives++) = prim;
-      entries += (1 + (object_datum (*entries)));
+      *primitives++ = prim;
+      entries += 1 + object_datum (*entries);
     }
 }

@@ -476,13 +476,13 @@ eval (SCHEME_OBJECT exp, SCHEME_OBJECT env, variant_t variant)
 static inline action_t
 apply_primitive (SCHEME_OBJECT proc)
 {
-  if (!IMPLEMENTED_PRIMITIVE_P (proc))
+  if (!primitive_implemented_p (proc))
     return apply_error (ERR_UNIMPLEMENTED_PRIMITIVE);
 
   unsigned long n_args = apply_frame_n_args ();
-  if (PRIMITIVE_ARITY (proc) == LEXPR_PRIMITIVE_ARITY)
+  if (primitive_arity (proc) == LEXPR_PRIMITIVE_ARITY)
     SET_LEXPR_ACTUALS (n_args);
-  else if (PRIMITIVE_ARITY (proc) != n_args)
+  else if (primitive_arity (proc) != n_args)
     return apply_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
 
   // Primitives don't need header or proc
@@ -511,12 +511,12 @@ apply_primitive_external (SCHEME_OBJECT proc)
   void* position = dstack_position;
   SET_PRIMITIVE (proc);
   Free_primitive = Free;
-  SET_VAL ((*Primitive_Procedure_Table [PRIMITIVE_NUMBER (proc)]) ());
+  SET_VAL ((*Primitive_Procedure_Table [primitive_number (proc)]) ());
   /* If the primitive failed to unwind the dynamic stack, lose. */
   if (position != dstack_position)
     {
       outf_fatal ("\nPrimitive slipped the dynamic stack: %s\n",
-                  PRIMITIVE_NAME (proc));
+                  primitive_name (proc));
       Microcode_Termination (TERM_EXIT);
     }
   SET_PRIMITIVE (SHARP_F);

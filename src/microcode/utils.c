@@ -201,7 +201,7 @@ canonicalize_primitive_context (void)
 {
   SCHEME_OBJECT primitive = GET_PRIMITIVE;
   assert (PRIMITIVE_P (primitive));
-  unsigned long n_args = PRIMITIVE_N_ARGUMENTS (primitive);
+  unsigned long n_args = primitive_n_args (primitive);
 
 #ifdef CC_SUPPORT_P
   if (CC_RETURN_P (stack_ref (n_args)))
@@ -229,7 +229,7 @@ back_out_of_primitive (void)
   SCHEME_OBJECT primitive = GET_PRIMITIVE;
   assert (PRIMITIVE_P (primitive));
   stack_push (primitive);
-  stack_push (make_apply_frame_header (PRIMITIVE_N_ARGUMENTS (primitive) + 1));
+  stack_push (make_apply_frame_header (primitive_n_args (primitive) + 1));
   guarantee_interp_return ();
   SET_PRIMITIVE (SHARP_F);
   push_cont (RC_INTERNAL_APPLY, SHARP_F);

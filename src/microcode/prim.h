@@ -35,45 +35,68 @@ USA.
 
 typedef SCHEME_OBJECT (*primitive_procedure_t) (void);
 
-extern primitive_procedure_t * Primitive_Procedure_Table;
-extern int * Primitive_Arity_Table;
-extern int * Primitive_Count_Table;
-extern const char ** Primitive_Name_Table;
-extern const char ** Primitive_Documentation_Table;
+extern primitive_procedure_t* Primitive_Procedure_Table;
+extern int* Primitive_Arity_Table;
+extern int* Primitive_Count_Table;
+extern const char** Primitive_Name_Table;
+extern const char** Primitive_Documentation_Table;
 extern unsigned long MAX_PRIMITIVE;
 
 extern SCHEME_OBJECT declare_primitive
-  (const char *, primitive_procedure_t, int, int, const char *);
+  (const char*, primitive_procedure_t, int, int, const char*);
 
 extern SCHEME_OBJECT install_primitive
-  (const char *, primitive_procedure_t, int, int, const char *);
+  (const char*, primitive_procedure_t, int, int, const char*);
 
 extern SCHEME_OBJECT Prim_unimplemented (void);
 
-#define PRIMITIVE_NUMBER(primitive) (object_datum (primitive))
+#define primitive_number object_datum
 
-#define MAKE_PRIMITIVE_OBJECT(index) (make_object (TC_PRIMITIVE, (index)))
+static inline SCHEME_OBJECT
+make_primitive_object (unsigned long index)
+{
+  return make_object (TC_PRIMITIVE, index);
+}
 
-#define IMPLEMENTED_PRIMITIVE_P(prim)					\
-  ((Primitive_Procedure_Table[(PRIMITIVE_NUMBER (prim))])		\
-   != Prim_unimplemented)
+static inline const char*
+primitive_name (SCHEME_OBJECT prim)
+{
+  return Primitive_Name_Table [primitive_number (prim)];
+}
 
-#define NUMBER_OF_PRIMITIVES()	(MAX_PRIMITIVE)
+static inline int
+primitive_arity (SCHEME_OBJECT prim)
+{
+  return Primitive_Arity_Table [primitive_number (prim)];
+}
 
-#define PRIMITIVE_ARITY(prim)						\
-  (Primitive_Arity_Table [PRIMITIVE_NUMBER (prim)])
+static inline const char*
+primitive_documentation (SCHEME_OBJECT prim)
+{
+  return Primitive_Documentation_Table [primitive_number (prim)];
+}
 
-#define PRIMITIVE_DOCUMENTATION(prim)					\
-  (Primitive_Documentation_Table[(PRIMITIVE_NUMBER (prim))])
+static inline primitive_procedure_t
+primitive_procedure (SCHEME_OBJECT prim)
+{
+  return Primitive_Procedure_Table [primitive_number (prim)];
+}
 
-#define PRIMITIVE_NAME(prim)						\
-  (Primitive_Name_Table[(PRIMITIVE_NUMBER (prim))])
+static inline bool
+primitive_implemented_p (SCHEME_OBJECT prim)
+{
+  return primitive_procedure (prim) != Prim_unimplemented;
+}
 
-#define PRIMITIVE_N_PARAMETERS(prim) (PRIMITIVE_ARITY (prim))
+static inline unsigned long
+primitive_n_args (SCHEME_OBJECT prim)
+{
+  return (primitive_arity (prim) == LEXPR_PRIMITIVE_ARITY)
+         ? GET_LEXPR_ACTUALS
+         : primitive_arity (prim);
+}
 
-#define PRIMITIVE_N_ARGUMENTS(prim)					\
-  (((PRIMITIVE_ARITY (prim)) == LEXPR_PRIMITIVE_ARITY)			\
-   ? GET_LEXPR_ACTUALS							\
-   : (PRIMITIVE_ARITY (prim)))
+#define NUMBER_OF_PRIMITIVES MAX_PRIMITIVE
+#define pop_primitive_frame increment_sp
 
 #endif /* SCM_PRIM_H */

@@ -400,7 +400,7 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 #endif
 
     case pcl_unknown:
-      if (((object_type (primitive)) == TC_PRIMITIVE)
+      if (PRIMITIVE_P (primitive)
 	  && (ADDRESS_IN_STACK_P (stack_pointer)) && (ALIGNED_P (stack_pointer))
 	  && (ADDRESS_IN_HEAP_P (Free)) && (ALIGNED_P (Free)))
 	{
@@ -743,14 +743,13 @@ classify_pc (unsigned long pc,
 		(*r_index) = index;
 	      return (pcl_utility);
 	    }
-	  if ((object_type (GET_PRIMITIVE)) == TC_PRIMITIVE)
+	  if (PRIMITIVE_P (GET_PRIMITIVE))
 	    return (pcl_primitive);
 	}
 #endif /* ADDRESS_UCODE_P */
     }
 #else
-  if ((ADDRESS_UCODE_P (pc))
-      && ((object_type (GET_PRIMITIVE)) == TC_PRIMITIVE))
+  if (ADDRESS_UCODE_P (pc) && PRIMITIVE_P (GET_PRIMITIVE))
     return (pcl_primitive);
 #endif
   return (pcl_unknown);

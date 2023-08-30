@@ -53,9 +53,9 @@ number (i.e. external representation) of the desired result.")
       PRIMITIVE_RETURN (make_object (tc, number));
 
     case TC_PRIMITIVE:
-      if (number > (NUMBER_OF_PRIMITIVES ()))
+      if (number > NUMBER_OF_PRIMITIVES)
 	error_bad_range_arg (2);
-      PRIMITIVE_RETURN (MAKE_PRIMITIVE_OBJECT (number));
+      PRIMITIVE_RETURN (make_primitive_object (number));
 
     default:
       error_bad_range_arg (1);
@@ -88,7 +88,7 @@ the internal address.")
       }
 
     case TC_PRIMITIVE:
-      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (PRIMITIVE_NUMBER (address)));
+      PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (primitive_number (address)));
 
     default:
       error_bad_range_arg (1);
@@ -104,10 +104,9 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-ARITY", Prim_primitive_procedure_arity, 1
   CHECK_ARG (1, PRIMITIVE_P);
   {
     SCHEME_OBJECT primitive = (ARG_REF (1));
-    if ((PRIMITIVE_NUMBER (primitive))
-	> ((unsigned long) (NUMBER_OF_PRIMITIVES ())))
+    if (primitive_number (primitive) > NUMBER_OF_PRIMITIVES)
       error_bad_range_arg (1);
-    PRIMITIVE_RETURN (LONG_TO_FIXNUM (PRIMITIVE_ARITY (primitive)));
+    PRIMITIVE_RETURN (LONG_TO_FIXNUM (primitive_arity (primitive)));
   }
 }
 
@@ -119,11 +118,10 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION",
   CHECK_ARG (1, PRIMITIVE_P);
   {
     SCHEME_OBJECT primitive = (ARG_REF (1));
-    if ((PRIMITIVE_NUMBER (primitive))
-	> ((unsigned long) (NUMBER_OF_PRIMITIVES ())))
+    if (primitive_number (primitive) > NUMBER_OF_PRIMITIVES)
       error_bad_range_arg (1);
     {
-      const char * answer = (PRIMITIVE_DOCUMENTATION (primitive));
+      const char * answer = (primitive_documentation (primitive));
       PRIMITIVE_RETURN
 	((answer == 0)
 	 ? SHARP_F
@@ -139,8 +137,8 @@ the cdr is the count of undefined primitives that are referenced.")
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN
-    (cons ((LONG_TO_UNSIGNED_FIXNUM ((NUMBER_OF_PRIMITIVES ()))),
-	   (LONG_TO_UNSIGNED_FIXNUM (0))));
+    (cons (ULONG_TO_FIXNUM (NUMBER_OF_PRIMITIVES),
+	   ULONG_TO_FIXNUM (0)));
 }
 
 DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1,
@@ -152,10 +150,10 @@ DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1,
     if (! ((PRIMITIVE_P (primitive)) || (FIXNUM_P (primitive))))
       error_wrong_type_arg (1);
     {
-      long number = (PRIMITIVE_NUMBER (primitive));
-      if ((number < 0) || (number > (NUMBER_OF_PRIMITIVES ())))
+      long number = (primitive_number (primitive));
+      if (number < 0 || number > NUMBER_OF_PRIMITIVES)
 	error_bad_range_arg (1);
-      PRIMITIVE_RETURN (char_pointer_to_string (PRIMITIVE_NAME (primitive)));
+      PRIMITIVE_RETURN (char_pointer_to_string (primitive_name (primitive)));
     }
   }
 }

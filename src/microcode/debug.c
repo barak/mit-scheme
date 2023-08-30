@@ -874,10 +874,10 @@ Debug_Stack_Trace(void)
 static bool
 print_primitive_name (outf_channel stream, SCHEME_OBJECT primitive)
 {
-  const char * name = (PRIMITIVE_NAME (primitive));
+  const char * name = (primitive_name (primitive));
   if (name == 0)
   {
-    outf (stream, "Unknown primitive %#08lx", (PRIMITIVE_NUMBER (primitive)));
+    outf (stream, "Unknown primitive %#08lx", (primitive_number (primitive)));
     return false;
   }
   else
@@ -895,7 +895,7 @@ Print_Primitive (SCHEME_OBJECT primitive)
 
   outf_error ("Primitive: ");
   if (print_primitive_name (ERROR_OUTPUT, primitive))
-    NArgs = (PRIMITIVE_ARITY (primitive));
+    NArgs = (primitive_arity (primitive));
   else
     NArgs = 3;	        /* Unknown primitive */
 

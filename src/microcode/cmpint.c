@@ -719,9 +719,9 @@ DEFINE_SCHEME_UTILITY_2 (comutil_apply, procedure, frame_size)
 	RETURN_TO_SCHEME_ENTRY (CC_ENTRY_ADDRESS (procedure));
 
       case TC_PRIMITIVE:
-	if (IMPLEMENTED_PRIMITIVE_P (procedure))
+	if (primitive_implemented_p (procedure))
 	  {
-	    int arity = (PRIMITIVE_ARITY (procedure));
+	    int arity = (primitive_arity (procedure));
 	    if (arity == (frame_size - 1))
 	      TAIL_CALL_1 (comutil_primitive_apply, procedure);
 	    else if (arity == LEXPR)
@@ -789,7 +789,7 @@ DEFINE_SCHEME_UTILITY_1 (comutil_primitive_apply, primitive)
 {
   DECLARE_UTILITY_ARG (SCHEME_OBJECT, primitive);
   apply_primitive_external (primitive);
-  pop_primitive_frame (PRIMITIVE_ARITY (primitive));
+  pop_primitive_frame (primitive_arity (primitive));
   INVOKE_RETURN_ADDRESS ();
 }
 
@@ -2511,7 +2511,7 @@ make_uuo_link (SCHEME_OBJECT procedure,
 
     case TC_PRIMITIVE:
       {
-	long arity = (PRIMITIVE_ARITY (procedure));
+	long arity = (primitive_arity (procedure));
 	if (arity == ((long) (frame_size - 1)))
 	  {
 	    kind = TRAMPOLINE_K_PRIMITIVE;

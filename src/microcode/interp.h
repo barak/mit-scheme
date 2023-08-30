@@ -181,9 +181,9 @@ apply_frame_n_args (void)
 {
   return apply_frame_header_n_args (apply_frame_header ());
 }
-
-#define pop_primitive_frame increment_sp
 
+extern void apply_primitive_external (SCHEME_OBJECT);
+
 typedef struct interpreter_state_s
 {
   struct interpreter_state_s* previous_state;
@@ -198,13 +198,11 @@ typedef struct interpreter_state_s
 #define interpreter_throw_argument interpreter_state->throw_argument
 #define NULL_INTERPRETER_STATE ((interpreter_state_t*) 0)
 
-extern void apply_primitive_external (SCHEME_OBJECT);
-extern void abort_to_interpreter (int) NORETURN;
-extern int abort_to_interpreter_argument (void);
-
 extern interpreter_state_t* interpreter_state;
 extern long prim_apply_error_code;
 extern void bind_interpreter_state (interpreter_state_t*);
 extern void unbind_interpreter_state (interpreter_state_t*);
+extern void abort_to_interpreter (int) NORETURN;
+extern int abort_to_interpreter_argument (void);
 
 #endif /* not SCM_INTERP_H */
