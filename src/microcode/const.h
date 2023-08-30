@@ -72,7 +72,6 @@ USA.
 #define PRIM_APPLY_ERROR		-10
 #define PRIM_NO_TRAP_POP_RETURN		-11
 #define PRIM_RETURN_TO_C		-12
-#define PRIM_ABORT_TO_C			-13
 
 #define ABORT_NAME_TABLE						\
 {									\

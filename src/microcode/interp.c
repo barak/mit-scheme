@@ -1088,11 +1088,6 @@ handle_throw (int code)
       back_out_of_primitive ();
       return handle_interrupt ();
 
-    case PRIM_ABORT_TO_C:
-      back_out_of_primitive ();
-      unbind_interpreter_state (interpreter_state);
-      return ACTION_DONE;
-
     default:
       back_out_of_primitive ();
       return handle_error (code, true);
