@@ -183,9 +183,10 @@ apply_frame_n_args (void)
   return apply_frame_header_n_args (apply_frame_header ());
 }
 
+extern SCHEME_OBJECT* next_stack_frame (SCHEME_OBJECT*);
 extern unsigned long next_stack_frame_offset (SCHEME_OBJECT*);
 extern void apply_primitive_external (SCHEME_OBJECT);
-
+
 typedef struct interpreter_state_s
 {
   struct interpreter_state_s* previous_state;

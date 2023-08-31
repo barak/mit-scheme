@@ -292,7 +292,6 @@ return_from_compiled_code (long code)
 }
 #endif
 
-// Should be static but not currently used.
 SCHEME_OBJECT*
 next_stack_frame (SCHEME_OBJECT* frame)
 {
