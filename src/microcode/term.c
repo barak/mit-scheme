@@ -261,7 +261,7 @@ static void
 edwin_auto_save (void)
 {
   static SCHEME_OBJECT position;
-  static struct interpreter_state_s new_state;
+  static interpreter_state_t new_state;
 
   position =
     ((VECTOR_P (fixed_objects))
@@ -286,7 +286,7 @@ edwin_auto_save (void)
 	  if ((start < gap_start) || (gap_end < end))
 	    {
 	      bind_interpreter_state (&new_state);
-	      if ((setjmp (interpreter_catch_env)) == 0)
+	      if ((setjmp (*interpreter_catch_env ())) == 0)
 		{
 		  Tchannel channel;
 		  outf_error_line ("Auto-saving file \"%s\"", namestring);
@@ -307,7 +307,7 @@ static void
 delete_temp_files (void)
 {
   static SCHEME_OBJECT position;
-  static struct interpreter_state_s new_state;
+  static interpreter_state_t new_state;
 
   position =
     ((VECTOR_P (fixed_objects))
@@ -320,7 +320,7 @@ delete_temp_files (void)
       if (STRING_P (entry))
 	{
 	  bind_interpreter_state (&new_state);
-	  if ((setjmp (interpreter_catch_env)) == 0)
+	  if ((setjmp (*interpreter_catch_env ())) == 0)
 	    OS_file_remove (legacy_string_data (entry));
 	  unbind_interpreter_state (&new_state);
 	}

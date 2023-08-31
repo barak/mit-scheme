@@ -193,16 +193,11 @@ typedef struct interpreter_state_s
   int throw_argument;
 } interpreter_state_t;
 
-#define interpreter_catch_dstack_position interpreter_state->dstack_position
-#define interpreter_catch_env interpreter_state->catch_env
-#define interpreter_throw_argument interpreter_state->throw_argument
-#define NULL_INTERPRETER_STATE ((interpreter_state_t*) 0)
-
-extern interpreter_state_t* interpreter_state;
 extern long prim_apply_error_code;
 extern void bind_interpreter_state (interpreter_state_t*);
 extern void unbind_interpreter_state (interpreter_state_t*);
 extern void abort_to_interpreter (int) NORETURN;
+extern jmp_buf* interpreter_catch_env (void);
 extern int abort_to_interpreter_argument (void);
 
 #endif /* not SCM_INTERP_H */

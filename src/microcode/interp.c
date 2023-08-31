@@ -83,7 +83,9 @@ variant_interrupt_p (variant_t variant)
 
 // Interpreter state
 
-interpreter_state_t* interpreter_state = NULL_INTERPRETER_STATE;
+#define NULL_INTERPRETER_STATE ((interpreter_state_t*) 0)
+
+static interpreter_state_t* interpreter_state = NULL_INTERPRETER_STATE;
 
 void
 bind_interpreter_state (interpreter_state_t* s)
@@ -118,20 +120,26 @@ abort_to_interpreter (int argument)
       termination_init_error ();
     }
 
-  interpreter_throw_argument = argument;
+  interpreter_state->throw_argument = argument;
   unsigned long old_mask = GET_INT_MASK;
   SET_INTERRUPT_MASK (0);
-  dstack_set_position (interpreter_catch_dstack_position);
+  dstack_set_position (interpreter_state->dstack_position);
   SET_INTERRUPT_MASK (old_mask);
   obstack_free (&scratch_obstack, 0);
   obstack_init (&scratch_obstack);
-  longjmp (interpreter_catch_env, argument);
+  longjmp (interpreter_state->catch_env, argument);
+}
+
+jmp_buf*
+interpreter_catch_env (void)
+{
+  return &interpreter_state->catch_env;
 }
 
 int
 abort_to_interpreter_argument (void)
 {
-  return interpreter_throw_argument;
+  return interpreter_state->throw_argument;
 }
 
 long prim_apply_error_code;
@@ -775,7 +783,7 @@ return_end_of_computation (void)
       termination_end_of_computation ();
       /*NOTREACHED*/
     }
-  dstack_position = interpreter_catch_dstack_position;
+  dstack_position = interpreter_state->dstack_position;
   interpreter_state = previous_state;
   return ACTION_DONE;
 }
@@ -1097,9 +1105,9 @@ handle_throw (int code)
 void
 Interpret (void)
 {
-  struct interpreter_state_s new_state;
+  interpreter_state_t new_state;
   bind_interpreter_state (&new_state);
-  int code = (setjmp (interpreter_catch_env));
+  int code = (setjmp (interpreter_state->catch_env));
   preserve_signal_mask ();
   fixup_float_environment ();
 
