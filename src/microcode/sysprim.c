@@ -202,3 +202,26 @@ DEFINE_PRIMITIVE ("CC-BLOCK-LINKAGE-INFO", Prim_cc_block_linkage_info, 1, 1, 0)
   CHECK_ARG (1, CC_BLOCK_P);
   PRIMITIVE_RETURN (cc_block_linkage_info (ARG_REF (1)));
 }
+
+DEFINE_PRIMITIVE ("control-point-next-frame", Prim_cpoint_next_frame, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, CONTROL_POINT_P);
+  SCHEME_OBJECT cpoint = ARG_REF (1);
+  unsigned long length = vector_length (cpoint);
+  unsigned long index = arg_ulong_index_integer (2, length);
+  SCHEME_OBJECT* frame = vector_loc (cpoint, index);
+  if (!RETURN_CODE_P (cont_frame_ret (frame)))
+    error_bad_range_arg (1);
+  unsigned long offset = next_stack_frame_offset (frame);
+  if (offset == ULONG_MAX)
+    PRIMITIVE_RETURN (SHARP_F);
+  unsigned long next_index = index + offset;
+  if (next_index > length)
+    error_external_return ();
+  if (next_index < length
+      && !RETURN_CODE_P (cont_frame_ret (vector_loc (cpoint, next_index))))
+    error_external_return ();
+  assert (ULONG_TO_FIXNUM_P (next_index));
+  return ULONG_TO_FIXNUM (next_index);
+}

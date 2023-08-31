@@ -119,6 +119,7 @@ discard_cont_env_frame (void)
   increment_sp (3);
 }
 
+#define apply_frame_header_p vector_header_p
 #define make_apply_frame_header make_vector_header
 #define apply_frame_header_size object_datum
 
@@ -182,6 +183,7 @@ apply_frame_n_args (void)
   return apply_frame_header_n_args (apply_frame_header ());
 }
 
+extern unsigned long next_stack_frame_offset (SCHEME_OBJECT*);
 extern void apply_primitive_external (SCHEME_OBJECT);
 
 typedef struct interpreter_state_s

@@ -296,93 +296,88 @@ return_from_compiled_code (long code)
 SCHEME_OBJECT*
 next_stack_frame (SCHEME_OBJECT* frame)
 {
-  SCHEME_OBJECT* next_frame;
+  unsigned long offset = next_stack_frame_offset (frame);
+  if (offset == ULONG_MAX)
+    return 0;
+  SCHEME_OBJECT* next_frame = frame + offset;
+  if (next_frame < stack_end)
+    assert (RETURN_CODE_P (cont_frame_ret (next_frame)));
+  return next_frame;
+}
+
+unsigned long
+next_stack_frame_offset (SCHEME_OBJECT* frame)
+{
   switch (cont_frame_rc (frame))
     {
     case RC_END_OF_COMPUTATION:
     case RC_EXECUTE_ACCESS_FINISH:
-    case RC_SNAP_NEED_THUNK:
+    case RC_HALT:
+    case RC_JOIN_STACKLETS:
     case RC_NORMAL_GC_DONE:
-    case RC_RESTORE_VALUE:
     case RC_POP_RETURN_ERROR:
     case RC_RESTORE_INT_MASK:
-    case RC_HALT:
-      next_frame = frame + CONT_SIZE;
-      break;
+    case RC_RESTORE_VALUE:
+    case RC_SNAP_NEED_THUNK:
+      return CONT_SIZE;
 
-    case RC_EXECUTE_ASSIGNMENT_FINISH:
-    case RC_EXECUTE_DEFINITION_FINISH:
-    case RC_EXECUTE_SEQUENCE_FINISH:
     case RC_CONDITIONAL_DECIDE:
     case RC_DISJUNCTION_DECIDE:
     case RC_EVAL_ERROR:
-      next_frame = frame + ENV_CONT_SIZE;
-      break;
+    case RC_EXECUTE_ASSIGNMENT_FINISH:
+    case RC_EXECUTE_DEFINITION_FINISH:
+    case RC_EXECUTE_SEQUENCE_FINISH:
+      return ENV_CONT_SIZE;
 
     case RC_RESTORE_DONT_COPY_HISTORY:
     case RC_RESTORE_HISTORY:
-      next_frame = frame + HISTORY_CONT_SIZE;
-      break;
+      return HISTORY_CONT_SIZE;
 
     case RC_STACK_MARKER:
-      next_frame = frame + (CONT_SIZE + 1);
-      break;
+      return CONT_SIZE + 1;
 
     case RC_HARDWARE_TRAP:
-      next_frame = frame + (CONT_SIZE + 7);
-      break;
+      return CONT_SIZE + 7;
 
-    case RC_JOIN_STACKLETS:
-      next_frame = frame + CONT_SIZE;
-      assert (next_frame == stack_end);
-      break;
-
-    case RC_INTERNAL_APPLY:
     case RC_COMB_APPLY_FUNCTION:
+    case RC_INTERNAL_APPLY:
     case RC_INTERNAL_APPLY_VAL:
-      next_frame
-        = frame
-          + (CONT_SIZE
-             + 1
-             + apply_frame_header_size
-                 (apply_frame_ptr_header (frame + CONT_SIZE)));
-      break;
-
-    case RC_REENTER_COMPILED_CODE:
-    case RC_COMP_INTERRUPT_RESTART:
-    case RC_COMP_LOOKUP_TRAP_RESTART:
-    case RC_COMP_ASSIGNMENT_TRAP_RESTART:
-    case RC_COMP_OP_REF_TRAP_RESTART:
-    case RC_COMP_CACHE_REF_APPLY_RESTART:
-    case RC_COMP_SAFE_REF_TRAP_RESTART:
-    case RC_COMP_UNASSIGNED_TRAP_RESTART:
-    case RC_COMP_LINK_CACHES_RESTART:
-    case RC_COMP_ERROR_RESTART:
       {
-        SCHEME_OBJECT offset = cont_frame_exp (frame);
-        assert (FIXNUM_P (offset) && FIXNUM_POSITIVE_P (offset));
-        next_frame = frame + (CONT_SIZE + FIXNUM_TO_ULONG (offset));
+        SCHEME_OBJECT header = apply_frame_ptr_header (frame + CONT_SIZE);
+        assert (apply_frame_header_p (header));
+        return CONT_SIZE + 1 + apply_frame_header_size (header);
       }
-      break;
-
-    case RC_POP_FROM_COMPILED_CODE:
-      // Should never appear on stack
-      return 0;
 
     case RC_COMB_SAVE_VALUE:
       {
-        SCHEME_OBJECT combination = cont_frame_exp (frame);
-        assert (object_type (combination) == TC_COMBINATION);
-        next_frame = frame + (ENV_CONT_SIZE + combination_size (combination));
+        SCHEME_OBJECT exp = cont_frame_exp (frame);
+        assert (combination_p (exp));
+        return ENV_CONT_SIZE + combination_size (exp);
       }
-      break;
+
+    case RC_COMP_ASSIGNMENT_TRAP_RESTART:
+    case RC_COMP_CACHE_REF_APPLY_RESTART:
+    case RC_COMP_ERROR_RESTART:
+    case RC_COMP_INTERRUPT_RESTART:
+    case RC_COMP_LINK_CACHES_RESTART:
+    case RC_COMP_LOOKUP_TRAP_RESTART:
+    case RC_COMP_OP_REF_TRAP_RESTART:
+    case RC_COMP_SAFE_REF_TRAP_RESTART:
+    case RC_COMP_UNASSIGNED_TRAP_RESTART:
+    case RC_REENTER_COMPILED_CODE:
+      {
+        SCHEME_OBJECT offset = cont_frame_exp (frame);
+        assert (FIXNUM_P (offset) && FIXNUM_POSITIVE_P (offset));
+        return CONT_SIZE + FIXNUM_TO_ULONG (offset);
+      }
+
+    case RC_POP_FROM_COMPILED_CODE:
+      // Should never appear on stack
+      return ULONG_MAX;
 
     default:
-      return 0;
+      return ULONG_MAX;
     }
-  if (next_frame < stack_end)
-    assert (RETURN_CODE_P (cont_frame_ret (next_frame)));
-  return next_frame;
 }
 
 // Eval

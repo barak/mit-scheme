@@ -40,6 +40,7 @@ USA.
 #define assignment_name memory_ref_0
 #define assignment_value memory_ref_1
 
+DEFINE_SIMPLE_TYPE_PRED (combination_p, TC_COMBINATION)
 #define combination_size vector_length
 #define combination_expr vector_ref
 
