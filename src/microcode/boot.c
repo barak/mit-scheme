@@ -175,6 +175,7 @@ start_scheme (void)
 
   /* Setup registers */
   INITIALIZE_INTERRUPTS (0);
+  SET_EXP (expr);
   SET_ENV (THE_GLOBAL_ENV);
   trapping = false;
 
@@ -182,10 +183,8 @@ start_scheme (void)
   stack_check (CONT_SIZE);
   push_cont (RC_END_OF_COMPUTATION, SHARP_F);
 
-  SET_EXP (expr);
-
   /* Go to it! */
-  if (! ((SP_OK_P (stack_pointer)) && (Free <= heap_alloc_limit)))
+  if (! (SP_OK_P (stack_pointer) && Free <= heap_alloc_limit))
     {
       outf_fatal ("Configuration won't hold initial data.\n");
       termination_init_error ();
