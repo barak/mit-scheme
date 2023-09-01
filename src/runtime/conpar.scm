@@ -790,7 +790,7 @@ USA.
 
     (standard-frame 'halt 2)
     (standard-frame 'join-stacklets 2)
-    (standard-frame 'non-existent-continuation 2)
+    (standard-frame 'end-of-computation 2)
     (standard-frame 'pop-return-error 2)
     (standard-frame 'restore-value 2)
 

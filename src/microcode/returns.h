@@ -198,9 +198,9 @@ typedef enum
 } return_frame_type_t;
 
 extern unsigned long MAX_RETURN;
-extern const char** return_code_names (size_t*);
+extern SCHEME_OBJECT make_return_code_names_table (void);
+extern SCHEME_OBJECT make_frame_type_info_table (void);
 extern const char* return_code_name (SCHEME_OBJECT);
-extern const char** return_frame_type_names (size_t*);
 extern return_frame_type_t return_frame_type (SCHEME_OBJECT);
 extern SCHEME_OBJECT* next_stack_frame (SCHEME_OBJECT*);
 extern unsigned long next_stack_frame_offset (SCHEME_OBJECT*);

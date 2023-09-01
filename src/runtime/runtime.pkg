@@ -3679,7 +3679,7 @@ USA.
   (export (runtime continuation-parser)
 	  microcode-return/code-limit)
   (export (runtime control-point)
-	  microcode-return-frame-type/code->name)
+	  microcode-return-frame-types)
   (export (runtime garbage-collector)
 	  fixed-objects-vector-slot)
   (export (runtime gc-daemons)

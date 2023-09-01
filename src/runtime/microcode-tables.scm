@@ -107,14 +107,8 @@ USA.
 (define-deferred return-frame-types-slot
   (fixed-object/name->code 'return-frame-types))
 
-(define (microcode-return-frame-type/name->code name)
-  (microcode-table-search return-frame-types-slot name))
-
-(define (microcode-return-frame-type/code->name code)
-  (microcode-table-ref return-frame-types-slot code))
-
-(define (microcode-return-frame-type/code-limit)
-  (microcode-table-length return-frame-types-slot))
+(define (microcode-return-frame-types)
+  (vector-ref (get-fixed-objects-vector) return-frame-types-slot))
 
 (define-deferred errors-slot
   (fixed-object/name->code 'microcode-errors-vector))

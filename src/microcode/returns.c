@@ -32,7 +32,7 @@ USA.
 
 static const char* return_code_names_table[] =
 {
-/* 0x00 */              "non-existent-continuation",
+/* 0x00 */              "end-of-computation",
 /* 0x01 */              "join-stacklets",
 /* 0x02 */              0,
 /* 0x03 */              "internal-apply",
@@ -243,11 +243,18 @@ static return_frame_type_t return_frame_types_table[] =
 
 unsigned long MAX_RETURN = MAX_RETURN_CODE;
 
-const char**
-return_code_names (size_t* length_ret)
+SCHEME_OBJECT
+make_return_code_names_table (void)
 {
-  *length_ret = MAX_RETURN_CODE + 1;
-  return return_code_names_table;
+  SCHEME_OBJECT table
+    = allocate_marked_vector (TC_VECTOR, MAX_RETURN_CODE + 1, true);
+  for (unsigned int rc = 0; rc <= MAX_RETURN_CODE; rc += 1)
+    {
+      const char* name = return_code_names_table[rc];
+      vector_set (table, rc,
+                  (name == 0) ? SHARP_F : char_pointer_to_symbol (name));
+    }
+  return table;
 }
 
 const char*
@@ -259,13 +266,6 @@ return_code_name (SCHEME_OBJECT ret)
   return return_code_names_table[index];
 }
 
-const char**
-return_frame_type_names (size_t* length_ret)
-{
-  *length_ret = RETURN_FRAME_TYPE_LIMIT;
-  return return_frame_type_names_table;
-}
-
 return_frame_type_t
 return_frame_type (SCHEME_OBJECT ret)
 {
@@ -273,6 +273,129 @@ return_frame_type (SCHEME_OBJECT ret)
   unsigned long index = object_datum (ret);
   assert (index <= MAX_RETURN_CODE);
   return return_frame_types_table[index];
+}
+
+static SCHEME_OBJECT
+allocate_ftti_entry (return_frame_type_t type, unsigned long n)
+{
+  SCHEME_OBJECT entry = allocate_marked_vector (TC_VECTOR, (2 * n) + 1, true);
+  vector_set (entry, 0,
+              char_pointer_to_symbol (return_frame_type_names_table[type]));
+  return entry;
+}
+
+static SCHEME_OBJECT
+make_ftti_entry (return_frame_type_t type)
+{
+  SCHEME_OBJECT entry;
+  unsigned long i = 1;
+  switch (type)
+    {
+    case RETURN_UNDEFINED:
+      return SHARP_F;
+
+    case RETURN_WITH_ARG:
+      entry = allocate_ftti_entry (type, 1);
+      vector_set (entry, i++, SHARP_F);
+      vector_set (entry, i, ULONG_TO_FIXNUM (1));
+      return entry;
+
+    case RETURN_EXP_ENV:
+      entry = allocate_ftti_entry (type, 2);
+      vector_set (entry, i++, char_pointer_to_symbol ("expression"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
+      vector_set (entry, i++, char_pointer_to_symbol ("environment"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (2));
+      return entry;
+
+    case RETURN_HISTORY:
+      entry = allocate_ftti_entry (type, 2);
+      vector_set (entry, i++, char_pointer_to_symbol ("history"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
+      vector_set (entry, i++, char_pointer_to_symbol ("next-history-offset"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (2));
+      return entry;
+
+    case RETURN_APPLY:
+      entry = allocate_ftti_entry (type, 2);
+      vector_set (entry, i++, char_pointer_to_symbol ("procedure"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (3));
+      vector_set (entry, i++, char_pointer_to_symbol ("arguments"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (4));
+      return entry;
+
+    case RETURN_COMPILED_CODE:
+      entry = allocate_ftti_entry (type, 1);
+      vector_set (entry, i++, char_pointer_to_symbol ("cc-frames"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (2));
+      return entry;
+
+    case RETURN_COMBINATION_SAVE:
+      entry = allocate_ftti_entry (type, 4);
+      vector_set (entry, i++, char_pointer_to_symbol ("expression"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
+      vector_set (entry, i++, char_pointer_to_symbol ("environment"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (2));
+      vector_set (entry, i++, char_pointer_to_symbol ("number-of-blanks"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (3));
+      vector_set (entry, i++, char_pointer_to_symbol ("saved-args"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (4));
+      return entry;
+
+    case RETURN_STACK_MARKER:
+      entry = allocate_ftti_entry (type, 2);
+      vector_set (entry, i++, char_pointer_to_symbol ("marker-1"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
+      vector_set (entry, i++, char_pointer_to_symbol ("marker-2"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (2));
+      return entry;
+
+    case RETURN_HARDWARE_TRAP:
+      entry = allocate_ftti_entry (type, 8);
+      vector_set (entry, i++, char_pointer_to_symbol ("signal-number"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
+      vector_set (entry, i++, char_pointer_to_symbol ("signal-name"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (2));
+      vector_set (entry, i++, char_pointer_to_symbol ("code-name"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (3));
+      vector_set (entry, i++, char_pointer_to_symbol ("sp-valid?"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (4));
+      vector_set (entry, i++, char_pointer_to_symbol ("recovery-state"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (5));
+      vector_set (entry, i++, char_pointer_to_symbol ("pc-info-1"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (6));
+      vector_set (entry, i++, char_pointer_to_symbol ("pc-info-2"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (7));
+      vector_set (entry, i++, char_pointer_to_symbol ("extra-info"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (8));
+      return entry;
+
+    default:
+      abort ();
+    }
+}
+
+static inline void
+init_ftti_entry (SCHEME_OBJECT table, return_frame_type_t type)
+{
+  vector_set (table, type, make_ftti_entry (type));
+}
+
+SCHEME_OBJECT
+make_frame_type_info_table (void)
+{
+  SCHEME_OBJECT table
+    = allocate_marked_vector (TC_VECTOR, RETURN_FRAME_TYPE_LIMIT, true);
+  init_ftti_entry (table, RETURN_UNDEFINED);
+  init_ftti_entry (table, RETURN_WITH_ARG);
+  init_ftti_entry (table, RETURN_EXP_ENV);
+  init_ftti_entry (table, RETURN_HISTORY);
+  init_ftti_entry (table, RETURN_APPLY);
+  init_ftti_entry (table, RETURN_COMPILED_CODE);
+  init_ftti_entry (table, RETURN_COMBINATION_SAVE);
+  init_ftti_entry (table, RETURN_STACK_MARKER);
+  init_ftti_entry (table, RETURN_HARDWARE_TRAP);
+  return table;
 }
 
 SCHEME_OBJECT*

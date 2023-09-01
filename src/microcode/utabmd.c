@@ -160,18 +160,14 @@ initialize_fixed_objects_vector (void)
   fixobj_set (OBARRAY, make_vector (OBARRAY_SIZE, EMPTY_LIST, false));
 
   fixobj_set_names (TYPES_VECTOR, type_names, TYPE_CODE_LIMIT);
-
-  size_t length;
-  const char** names = return_code_names (&length);
-  fixobj_set_names (RETURNS_VECTOR, names, length);
-  names = return_frame_type_names (&length);
-  fixobj_set_names (RETURN_FRAMES_VECTOR, names, length);
-
   fixobj_set_names (ERRORS_VECTOR, Error_Names, (MAX_ERROR + 1));
   fixobj_set_names (TERMINATION_VECTOR, Term_Names, (MAX_TERMINATION + 1));
-  fixobj_set_names (FIXED_OBJECTS_SLOTS,
-		     fixed_objects_names, (N_FIXED_OBJECTS + 1));
+  fixobj_set_names
+    (FIXED_OBJECTS_SLOTS, fixed_objects_names, N_FIXED_OBJECTS + 1);
   fixobj_set_names (IDENTIFICATION_VECTOR, identity_names, N_IDENTITY_NAMES);
+
+  fixobj_set (RETURNS_VECTOR, make_return_code_names_table());
+  fixobj_set (RETURN_FRAMES_VECTOR, make_frame_type_info_table ());
 
   fixobj_set (DUMMY_HISTORY, initialize_history ());
   fixobj_set (FIXOBJ_BIGNUM_ONE, long_to_bignum (1));
