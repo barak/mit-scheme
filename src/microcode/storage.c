@@ -124,9 +124,6 @@ bool ephemeron_request_hard_p;
 
 /* Interpreter code name and message tables */
 
-unsigned long MAX_RETURN = MAX_RETURN_CODE;
-
-const char * Return_Names [] = RETURN_NAME_TABLE;	/* in returns.h */
 const char * type_names [] = TYPE_NAME_TABLE;		/* in types.h */
 const char * Abort_Names [] = ABORT_NAME_TABLE;		/* in const.h */
 const char * Error_Names [] = ERROR_NAME_TABLE;		/* in errors.h */

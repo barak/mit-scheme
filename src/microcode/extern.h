@@ -175,9 +175,6 @@ extern SCHEME_OBJECT fixed_objects;
 extern SCHEME_OBJECT ephemeron_array;
 extern unsigned long ephemeron_count;
 
-extern unsigned long MAX_RETURN;
-
-extern const char * Return_Names [];
 extern const char * type_names [];
 extern const char * Abort_Names [];
 extern const char * Error_Names [];

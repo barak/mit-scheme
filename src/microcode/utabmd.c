@@ -126,68 +126,83 @@ cc_arch_name (void)
     }
 }
 
-#define STORE_FIXOBJ(slot, object)					\
-  vector_set (fixed_objects, slot, object)
+static inline void
+fixobj_set (unsigned int slot, SCHEME_OBJECT object)
+{
+  vector_set (fixed_objects, slot, object);
+}
 
-#define STORE_NAME_VECTOR(slot, names, length)				\
-  STORE_FIXOBJ (slot, (names_to_vector (length, names)))
+static inline void
+fixobj_set_names (unsigned int slot, const char** names, size_t length)
+{
+  fixobj_set (slot, names_to_vector (length, names));
+}
 
-#define STORE_GENERIC(slot, name, arity)				\
-  STORE_FIXOBJ (slot, (make_primitive (name, arity)))
+static inline void
+fixobj_set_prim (unsigned int slot, const char* name, int arity)
+{
+  fixobj_set (slot, make_primitive (name, arity));
+}
 
 void
 initialize_fixed_objects_vector (void)
 {
-  fixed_objects = (make_vector (N_FIXED_OBJECTS, SHARP_F, false));
-  STORE_FIXOBJ (NON_OBJECT, (make_object (TC_CONSTANT, 2)));
-  STORE_FIXOBJ (SYSTEM_INTERRUPT_VECTOR,
-		(initialize_interrupt_handler_vector ()));
-  STORE_FIXOBJ (FIXOBJ_INTERRUPT_MASK_VECTOR,
-		(initialize_interrupt_mask_vector ()));
+  fixed_objects = make_vector (N_FIXED_OBJECTS, SHARP_F, false);
+  fixobj_set (NON_OBJECT, make_object (TC_CONSTANT, 2));
+  fixobj_set (SYSTEM_INTERRUPT_VECTOR,
+	      initialize_interrupt_handler_vector ());
+  fixobj_set (FIXOBJ_INTERRUPT_MASK_VECTOR,
+	      initialize_interrupt_mask_vector ());
   /* Error vector is not needed at boot time */
-  STORE_FIXOBJ (SYSTEM_ERROR_VECTOR, SHARP_F);
+  fixobj_set (SYSTEM_ERROR_VECTOR, SHARP_F);
 
   /* This must happen before we initialize name vectors.  */
-  STORE_FIXOBJ (OBARRAY, (make_vector (OBARRAY_SIZE, EMPTY_LIST, false)));
+  fixobj_set (OBARRAY, make_vector (OBARRAY_SIZE, EMPTY_LIST, false));
 
-  STORE_NAME_VECTOR (TYPES_VECTOR, type_names, TYPE_CODE_LIMIT);
-  STORE_NAME_VECTOR (RETURNS_VECTOR, Return_Names, (MAX_RETURN_CODE + 1));
-  STORE_NAME_VECTOR (ERRORS_VECTOR, Error_Names, (MAX_ERROR + 1));
-  STORE_NAME_VECTOR (Termination_Vector, Term_Names, (MAX_TERMINATION + 1));
-  STORE_NAME_VECTOR (FIXED_OBJECTS_SLOTS,
+  fixobj_set_names (TYPES_VECTOR, type_names, TYPE_CODE_LIMIT);
+
+  size_t length;
+  const char** names = return_code_names (&length);
+  fixobj_set_names (RETURNS_VECTOR, names, length);
+  names = return_frame_type_names (&length);
+  fixobj_set_names (RETURN_FRAMES_VECTOR, names, length);
+
+  fixobj_set_names (ERRORS_VECTOR, Error_Names, (MAX_ERROR + 1));
+  fixobj_set_names (TERMINATION_VECTOR, Term_Names, (MAX_TERMINATION + 1));
+  fixobj_set_names (FIXED_OBJECTS_SLOTS,
 		     fixed_objects_names, (N_FIXED_OBJECTS + 1));
-  STORE_NAME_VECTOR (IDENTIFICATION_VECTOR, identity_names, N_IDENTITY_NAMES);
+  fixobj_set_names (IDENTIFICATION_VECTOR, identity_names, N_IDENTITY_NAMES);
 
-  STORE_FIXOBJ (DUMMY_HISTORY, (initialize_history ()));
-  STORE_FIXOBJ (Bignum_One, (long_to_bignum (1)));
-  STORE_FIXOBJ (FIXOBJ_EDWIN_AUTO_SAVE, EMPTY_LIST);
-  STORE_FIXOBJ (FIXOBJ_FILES_TO_DELETE, EMPTY_LIST);
-  STORE_FIXOBJ (FIXOBJ_SYSTEM_CALL_NAMES, (fixed_objects_syscall_names ()));
-  STORE_FIXOBJ (FIXOBJ_SYSTEM_CALL_ERRORS, (fixed_objects_syserr_names ()));
-  STORE_FIXOBJ (FIXOBJ_GC_RECLAIMED, GC_RECLAIMED);
+  fixobj_set (DUMMY_HISTORY, initialize_history ());
+  fixobj_set (FIXOBJ_BIGNUM_ONE, long_to_bignum (1));
+  fixobj_set (FIXOBJ_EDWIN_AUTO_SAVE, EMPTY_LIST);
+  fixobj_set (FIXOBJ_FILES_TO_DELETE, EMPTY_LIST);
+  fixobj_set (FIXOBJ_SYSTEM_CALL_NAMES, fixed_objects_syscall_names ());
+  fixobj_set (FIXOBJ_SYSTEM_CALL_ERRORS, fixed_objects_syserr_names ());
+  fixobj_set (FIXOBJ_GC_RECLAIMED, GC_RECLAIMED);
 
-  STORE_GENERIC (GENERIC_TRAMPOLINE_ZERO_P, "INTEGER-ZERO?", 1);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_POSITIVE_P, "INTEGER-POSITIVE?", 1);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_NEGATIVE_P, "INTEGER-NEGATIVE?", 1);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_SUCCESSOR, "INTEGER-ADD-1", 1);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_PREDECESSOR, "INTEGER-SUBTRACT-1", 1);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_EQUAL_P, "INTEGER-EQUAL?", 2);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_LESS_P, "INTEGER-LESS?", 2);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_GREATER_P, "INTEGER-GREATER?", 2);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_ADD, "INTEGER-ADD", 2);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_SUBTRACT, "INTEGER-SUBTRACT", 2);
-  STORE_GENERIC (GENERIC_TRAMPOLINE_MULTIPLY, "INTEGER-MULTIPLY", 2);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_ZERO_P, "integer-zero?", 1);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_POSITIVE_P, "integer-positive?", 1);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_NEGATIVE_P, "integer-negative?", 1);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_SUCCESSOR, "integer-add-1", 1);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_PREDECESSOR, "integer-subtract-1", 1);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_EQUAL_P, "integer-equal?", 2);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_LESS_P, "integer-less?", 2);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_GREATER_P, "integer-greater?", 2);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_ADD, "integer-add", 2);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_SUBTRACT, "integer-subtract", 2);
+  fixobj_set_prim (GENERIC_TRAMPOLINE_MULTIPLY, "integer-multiply", 2);
 
-  STORE_FIXOBJ (GENERIC_TRAMPOLINE_DIVIDE, SHARP_F);
-  STORE_FIXOBJ (GENERIC_TRAMPOLINE_QUOTIENT, SHARP_F);
-  STORE_FIXOBJ (GENERIC_TRAMPOLINE_REMAINDER, SHARP_F);
-  STORE_FIXOBJ (GENERIC_TRAMPOLINE_MODULO, SHARP_F);
+  fixobj_set (GENERIC_TRAMPOLINE_DIVIDE, SHARP_F);
+  fixobj_set (GENERIC_TRAMPOLINE_QUOTIENT, SHARP_F);
+  fixobj_set (GENERIC_TRAMPOLINE_REMAINDER, SHARP_F);
+  fixobj_set (GENERIC_TRAMPOLINE_MODULO, SHARP_F);
 
-  STORE_FIXOBJ (FIXOBJ_PROXIED_RECORD_TYPES,
-		(make_vector ((FASDUMP_RECORD_MARKER_END
-			       - FASDUMP_RECORD_MARKER_START),
-			      SHARP_F,
-			      false)));
+  fixobj_set (FIXOBJ_PROXIED_RECORD_TYPES,
+	      (make_vector (FASDUMP_RECORD_MARKER_END
+                            - FASDUMP_RECORD_MARKER_START,
+			    SHARP_F,
+			    false)));
 
 #ifdef __WIN32__
   NT_initialize_fov (fixed_objects);

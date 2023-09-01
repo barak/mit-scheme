@@ -185,19 +185,15 @@ print_bytevector (outf_channel stream, SCHEME_OBJECT vector)
 }
 
 static void
-print_return_name (outf_channel stream, SCHEME_OBJECT Ptr)
+print_return_name (outf_channel stream, SCHEME_OBJECT ret)
 {
-  unsigned long index = (object_datum (Ptr));
-  if (index <= MAX_RETURN)
+  const char* name = return_code_name (ret);
+  if (name != 0 && name[0] != '\0')
     {
-      const char * name = (Return_Names[index]);
-      if ((name != 0) && ((name[0]) != '\0'))
-	{
-	  outf (stream, "%s", name);
-	  return;
-	}
+      outf (stream, "%s", name);
+      return;
     }
-  outf (stream, "[0x%lx]", index);
+  outf (stream, "[0x%lx]", object_datum (ret));
 }
 
 void

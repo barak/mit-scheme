@@ -72,7 +72,7 @@ attempt_termination_backout (int code)
     return;
 
   SCHEME_OBJECT term_vector
-    = vector_ref (fixed_objects, Termination_Proc_Vector);
+    = vector_ref (fixed_objects, TERMINATION_PROC_VECTOR);
   if (! (VECTOR_P (term_vector)
          && code < (long) vector_length (term_vector)))
     return;

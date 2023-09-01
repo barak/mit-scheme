@@ -975,7 +975,7 @@ record_primitive_entry (SCHEME_OBJECT primitive)
   if (VECTOR_P (fixed_objects))
     {
       SCHEME_OBJECT table
-	= (vector_ref (fixed_objects, Primitive_Profiling_Table));
+	= (vector_ref (fixed_objects, PRIMITIVE_PROFILING_TABLE));
       if (VECTOR_P (table))
 	{
 	  unsigned long index = (object_datum (primitive));

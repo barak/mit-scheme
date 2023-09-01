@@ -81,6 +81,9 @@ USA.
 		   i
 		   (loop (fix:+ i 1)))))))))
 
+(define (microcode-table-length slot)
+  (vector-length (vector-ref (get-fixed-objects-vector) slot)))
+
 (define (microcode-table-ref slot index)
   (let ((v (vector-ref (get-fixed-objects-vector) slot)))
     (and (fix:< index (vector-length v))
@@ -99,7 +102,19 @@ USA.
   (microcode-table-ref returns-slot code))
 
 (define (microcode-return/code-limit)
-  (vector-length (vector-ref (get-fixed-objects-vector) returns-slot)))
+  (microcode-table-length returns-slot))
+
+(define-deferred return-frame-types-slot
+  (fixed-object/name->code 'return-frame-types))
+
+(define (microcode-return-frame-type/name->code name)
+  (microcode-table-search return-frame-types-slot name))
+
+(define (microcode-return-frame-type/code->name code)
+  (microcode-table-ref return-frame-types-slot code))
+
+(define (microcode-return-frame-type/code-limit)
+  (microcode-table-length return-frame-types-slot))
 
 (define-deferred errors-slot
   (fixed-object/name->code 'microcode-errors-vector))
@@ -111,7 +126,7 @@ USA.
   (microcode-table-ref errors-slot code))
 
 (define (microcode-error/code-limit)
-  (vector-length (vector-ref (get-fixed-objects-vector) errors-slot)))
+  (microcode-table-length errors-slot))
 
 (define-deferred terminations-slot
   (fixed-object/name->code 'microcode-terminations-vector))
@@ -123,7 +138,7 @@ USA.
   (microcode-table-ref terminations-slot code))
 
 (define (microcode-termination/code-limit)
-  (vector-length (vector-ref (get-fixed-objects-vector) terminations-slot)))
+  (microcode-table-length terminations-slot))
 
 (define-deferred system-call-names-slot
   (fixed-object/name->code 'system-call-names))
@@ -160,7 +175,7 @@ USA.
   (microcode-table-ref types-slot code))
 
 (define (microcode-type/code-limit)
-  (vector-length (vector-ref (get-fixed-objects-vector) types-slot)))
+  (microcode-table-length types-slot))
 
 (define type-aliases
   '((false manifest-vector global-environment)

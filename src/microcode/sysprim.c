@@ -223,5 +223,12 @@ DEFINE_PRIMITIVE ("control-point-next-frame", Prim_cpoint_next_frame, 2, 2, 0)
       && !RETURN_CODE_P (cont_frame_ret (vector_loc (cpoint, next_index))))
     error_external_return ();
   assert (ULONG_TO_FIXNUM_P (next_index));
-  return ULONG_TO_FIXNUM (next_index);
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (next_index));
+}
+
+DEFINE_PRIMITIVE ("return-frame-type", Prim_return_frame_type, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, RETURN_CODE_P);
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (return_frame_type (ARG_REF (1))));
 }

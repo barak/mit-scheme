@@ -284,7 +284,7 @@ DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3,
   stack_push (environment);
   stack_push (irritants);
   stack_push (message);
-  stack_push (vector_ref (fixed_objects, Error_Procedure));
+  stack_push (vector_ref (fixed_objects, ERROR_PROCEDURE));
   stack_push (make_apply_frame_header (4));
 
   PRIMITIVE_ABORT (PRIM_APPLY);
