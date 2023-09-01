@@ -54,6 +54,111 @@ USA.
 (define-integrable first-element-index
   (control-point-index 6))
 
+(define-integrable control-point-next-frame
+  (ucode-primitive control-point-next-frame 2))
+
+(define-integrable return-frame-type
+  (ucode-primitive return-frame-type 1))
+
+(define-integrable primitive-datum-ref
+  (ucode-primitive primitive-datum-ref 2))
+
+(define (control-point->raw-frame-generator control-point)
+  (let ((index)
+	(end))
+
+    (define (new-cp! cp)
+      (set! control-point cp)
+      (set! index 2)
+      (set! end (system-vector-length cp)))
+
+    (define (generator)
+      (if (fix:< index end)
+	  (let ((index* (control-point-next-frame control-point index)))
+	    (let ((frame (make-vector (fix:- index* index))))
+	      (do ((i index (fix:+ i 1))
+		   (j 0 (fix:+ j 1)))
+		  ((not (fix:< i index*))
+		   (set! index index*))
+		(vector-set! frame j (system-vector-ref control-point i)))
+	      (if (eq? (ucode-return-address join-stacklets)
+		       (vector-ref frame 0))
+		  (new-cp! (vector-ref frame 1)))
+	      frame))
+	  (eof-object)))
+
+    (new-cp! control-point)
+    generator))
+
+(define (decode-raw-control-point-frame frame)
+  (let* ((return-address (vector-ref frame 0))
+	 (return-code-name (return-address/name return-address))
+	 (frame-type (return-frame-type return-address))
+	 (frame-type-name
+	  (microcode-return-frame-type/code->name frame-type)))
+
+    (define (finish names values)
+      (vector return-code-name frame-type-name names values))
+
+    (define (return-with-arg-names)
+      (case return-code-name
+	((join-stacklets) '#(control-point))
+	((access-continue) '#(expression))
+	((force-snap-thunk) '#(delayed))
+	((normal-garbage-collect-done) '#(gc-result))
+	((restore-value pop-return-error) '#(value))
+	((restore-interrupt-mask) '#(interrupt-mask))
+	((halt) '#(termination-code))
+	(else '#(argument))))
+
+    (case frame-type-name
+      ((return-with-arg)
+       (finish (return-with-arg-names)
+	       (vector (vector-ref frame 1))))
+      ((return-exp-env return-stack-marker)
+       (finish '#(expression environment)
+	       (vector (vector-ref frame 1)
+		       (vector-ref frame 2))))
+      ((return-history)
+       (finish '#(history next-history-offset)
+	       (vector (vector-ref frame 1)
+		       (vector-ref frame 2))))
+      ((return-stack-marker)
+       (finish '#(marker-1 marker-2)
+	       (vector (vector-ref frame 1)
+		       (vector-ref frame 2))))
+      ((return-apply)
+       (finish '#(procedure arguments)
+	       (vector (vector-ref frame 3)
+		       (vector-copy frame 4))))
+      ((return-compiled-code)
+       (finish '#(cc-frames)
+	       (vector (vector-copy frame 2))))
+      ((return-combination-save)
+       ;; The index to primitive-datum-ref is relative to the address of
+       ;; the object.  For a vector, that's one greater than the vector
+       ;; index.
+       (finish '#(expression environment number-of-blanks saved-args)
+	       (let ((n-blanks (primitive-datum-ref frame 4)))
+		 (vector (vector-ref frame 1)
+			 (vector-ref frame 2)
+			 n-blanks
+			 (vector-copy frame (fix:+ 4 n-blanks))))))
+      ((return-hardware_trap)
+       (finish '#(signal-number signal-name code-name sp-valid?
+				recovery-state pc-info-1 pc-info-2
+				extra-info)
+	       (vector-copy frame 1)))
+      (else
+       (error "Unknown return-frame-type code:" frame-type-name)))))
+
+(define (decoded-control-point-frame->alist frame)
+  (cons* (list 'return-code (vector-ref frame 0))
+	 (list 'frame-type (vector-ref frame 1))
+	 (map list
+	      (vector->list (vector-ref frame 2))
+	      (vector->list (vector-ref frame 3)))))
+
 #|
 
 ;;; Disabled because some procedures in conpar.scm and environment.scm

@@ -2011,7 +2011,8 @@ USA.
 (define-package (runtime control-point)
   (files "cpoint")
   (parent (runtime))
-  (export ()
+  (export (runtime)
+	  control-point->raw-frame-generator
 	  control-point/element-stream
 	  control-point/history
 	  control-point/interrupt-mask
@@ -2020,6 +2021,8 @@ USA.
 	  control-point/previous-history-control-point
 	  control-point/previous-history-offset
 	  control-point?
+	  decode-raw-control-point-frame
+	  decoded-control-point-frame->alist
 	  make-control-point))
 
 (define-package (runtime date/time)
@@ -3675,6 +3678,8 @@ USA.
 	  update-fixed-objects-item!)
   (export (runtime continuation-parser)
 	  microcode-return/code-limit)
+  (export (runtime control-point)
+	  microcode-return-frame-type/code->name)
   (export (runtime garbage-collector)
 	  fixed-objects-vector-slot)
   (export (runtime gc-daemons)
