@@ -157,7 +157,7 @@ USA.
 		 n-blanks
 		 (vector-ref info 7)
 		 (vector-copy frame (vector-ref info 8)))))
-      ((return-hardware_trap)
+      ((return-hardware-trap)
        (vector return-code-name
 	       (vector-ref info 1)
 	       (vector-ref frame (vector-ref info 2))

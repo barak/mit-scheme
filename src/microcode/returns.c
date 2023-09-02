@@ -140,7 +140,7 @@ static const char* return_frame_type_names_table[] =
   "return-compiled-address",
   "return-combination-save",
   "return-stack-marker",
-  "return-hardware_trap"
+  "return-hardware-trap"
 };
 
 static return_frame_type_t return_frame_types_table[] =
