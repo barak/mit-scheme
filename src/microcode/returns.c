@@ -132,114 +132,120 @@ static const char* return_code_names_table[] =
 static const char* return_frame_type_names_table[] =
 {
   0,
-  "return-with-arg",
-  "return-exp-env",
-  "return-history",
-  "return-apply",
-  "return-compiled-code",
-  "return-compiled-address",
-  "return-combination-save",
-  "return-stack-marker",
-  "return-hardware-trap"
+  "with-arg",
+  "exp+env",
+  "history",
+  "apply",
+  "return-to-compiled-code",
+  "compiled-address",
+  "combination-save",
+  "stack-marker",
+  "hardware-trap",
+  "return-to-interpreter",
+  "cc-internal-apply",
+  "cc-restore-interrupt-mask",
+  "cc-stack-marker",
+  "cc-bpkt",
+  "cc-invocation"
 };
 
 static return_frame_type_t return_frame_types_table[] =
 {
-  RETURN_WITH_ARG,              /* 0x00 arg: ignored? */
-  RETURN_WITH_ARG,              /* 0x01 arg: control point */
-  RETURN_UNDEFINED,             /* 0x02 */
-  RETURN_APPLY,                 /* 0x03 */
-  RETURN_UNDEFINED,             /* 0x04 */
-  RETURN_HISTORY,               /* 0x05 */
-  RETURN_UNDEFINED,             /* 0x06 */
-  RETURN_UNDEFINED,             /* 0x07 */
-  RETURN_EXP_ENV,               /* 0x08 */
-  RETURN_EXP_ENV,               /* 0x09 */
-  RETURN_WITH_ARG,              /* 0x0a arg: expression */
-  RETURN_UNDEFINED,             /* 0x0b */
-  RETURN_EXP_ENV,               /* 0x0c */
-  RETURN_UNDEFINED,             /* 0x0d */
-  RETURN_UNDEFINED,             /* 0x0e */
-  RETURN_EXP_ENV,               /* 0x0f */
-  RETURN_EXP_ENV,               /* 0x10 */
-  RETURN_UNDEFINED,             /* 0x11 */
-  RETURN_APPLY,                 /* 0x12 */
-  RETURN_UNDEFINED,             /* 0x13 */
-  RETURN_UNDEFINED,             /* 0x14 */
-  RETURN_COMBINATION_SAVE,      /* 0x15 */
-  RETURN_UNDEFINED,             /* 0x16 */
-  RETURN_UNDEFINED,             /* 0x17 */
-  RETURN_UNDEFINED,             /* 0x18 */
-  RETURN_UNDEFINED,             /* 0x19 */
-  RETURN_UNDEFINED,             /* 0x1a */
-  RETURN_UNDEFINED,             /* 0x1b */
-  RETURN_WITH_ARG,              /* 0x1c arg: delayed */
-  RETURN_COMPILED_CODE,         /* 0x1d */
-  RETURN_UNDEFINED,             /* 0x1e */
-  RETURN_UNDEFINED,             /* 0x1f */
-  RETURN_WITH_ARG,              /* 0x20 arg: GC result */
-  RETURN_UNDEFINED,             /* 0x21 */
-  RETURN_UNDEFINED,             /* 0x22 */
-  RETURN_UNDEFINED,             /* 0x23 */
-  RETURN_UNDEFINED,             /* 0x24 */
-  RETURN_UNDEFINED,             /* 0x25 */
-  RETURN_UNDEFINED,             /* 0x26 */
-  RETURN_UNDEFINED,             /* 0x27 */
-  RETURN_UNDEFINED,             /* 0x28 */
-  RETURN_UNDEFINED,             /* 0x29 */
-  RETURN_UNDEFINED,             /* 0x2a */
-  RETURN_UNDEFINED,             /* 0x2b */
-  RETURN_UNDEFINED,             /* 0x2c */
-  RETURN_UNDEFINED,             /* 0x2d */
-  RETURN_WITH_ARG,              /* 0x2e arg: value */
-  RETURN_HISTORY,               /* 0x2f */
-  RETURN_UNDEFINED,             /* 0x30 */
-  RETURN_UNDEFINED,             /* 0x31 */
-  RETURN_UNDEFINED,             /* 0x32 */
-  RETURN_UNDEFINED,             /* 0x33 */
-  RETURN_UNDEFINED,             /* 0x34 */
-  RETURN_UNDEFINED,             /* 0x35 */
-  RETURN_UNDEFINED,             /* 0x36 */
-  RETURN_UNDEFINED,             /* 0x37 */
-  RETURN_UNDEFINED,             /* 0x38 */
-  RETURN_UNDEFINED,             /* 0x39 */
-  RETURN_UNDEFINED,             /* 0x3a */
-  RETURN_UNDEFINED,             /* 0x3b */
-  RETURN_UNDEFINED,             /* 0x3c */
-  RETURN_UNDEFINED,             /* 0x3d */
-  RETURN_UNDEFINED,             /* 0x3e */
-  RETURN_UNDEFINED,             /* 0x3f */
-  RETURN_WITH_ARG,              /* 0x40 arg: value */
-  RETURN_EXP_ENV,               /* 0x41 */
-  RETURN_STACK_MARKER,          /* 0x42 */
-  RETURN_COMPILED_CODE,         /* 0x43 */
-  RETURN_UNDEFINED,             /* 0x44 */
-  RETURN_WITH_ARG,              /* 0x45 arg: interrupt mask */
-  RETURN_WITH_ARG,              /* 0x46 arg: termination code */
-  RETURN_UNDEFINED,             /* 0x47 */
-  RETURN_UNDEFINED,             /* 0x48 */
-  RETURN_UNDEFINED,             /* 0x49 */
-  RETURN_UNDEFINED,             /* 0x4a */
-  RETURN_UNDEFINED,             /* 0x4b */
-  RETURN_UNDEFINED,             /* 0x4c */
-  RETURN_UNDEFINED,             /* 0x4d */
-  RETURN_UNDEFINED,             /* 0x4e */
-  RETURN_UNDEFINED,             /* 0x4f */
-  RETURN_UNDEFINED,             /* 0x50 */
-  RETURN_UNDEFINED,             /* 0x51 */
-  RETURN_UNDEFINED,             /* 0x52 */
-  RETURN_COMPILED_CODE,         /* 0x53 */
-  RETURN_COMPILED_CODE,         /* 0x54 */
-  RETURN_UNDEFINED,             /* 0x55 */
-  RETURN_COMPILED_CODE,         /* 0x56 */
-  RETURN_COMPILED_CODE,         /* 0x57 */
-  RETURN_COMPILED_CODE,         /* 0x58 */
-  RETURN_COMPILED_CODE,         /* 0x59 */
-  RETURN_UNDEFINED,             /* 0x5a */
-  RETURN_COMPILED_CODE,         /* 0x5b */
-  RETURN_HARDWARE_TRAP,         /* 0x5c */
-  RETURN_APPLY,                 /* 0x5d */
-  RETURN_COMPILED_CODE          /* 0x5e */
+  RFT_WITH_ARG,                 // 0x00 arg: ignored?
+  RFT_WITH_ARG,                 // 0x01 arg: control point
+  RFT_UNDEFINED,                // 0x02
+  RFT_APPLY,                    // 0x03
+  RFT_UNDEFINED,                // 0x04
+  RFT_HISTORY,                  // 0x05
+  RFT_UNDEFINED,                // 0x06
+  RFT_UNDEFINED,                // 0x07
+  RFT_EXP_ENV,                  // 0x08
+  RFT_EXP_ENV,                  // 0x09
+  RFT_WITH_ARG,                 // 0x0a arg: expression
+  RFT_UNDEFINED,                // 0x0b
+  RFT_EXP_ENV,                  // 0x0c
+  RFT_UNDEFINED,                // 0x0d
+  RFT_UNDEFINED,                // 0x0e
+  RFT_EXP_ENV,                  // 0x0f
+  RFT_EXP_ENV,                  // 0x10
+  RFT_UNDEFINED,                // 0x11
+  RFT_APPLY,                    // 0x12
+  RFT_UNDEFINED,                // 0x13
+  RFT_UNDEFINED,                // 0x14
+  RFT_COMBINATION_SAVE,         // 0x15
+  RFT_UNDEFINED,                // 0x16
+  RFT_UNDEFINED,                // 0x17
+  RFT_UNDEFINED,                // 0x18
+  RFT_UNDEFINED,                // 0x19
+  RFT_UNDEFINED,                // 0x1a
+  RFT_UNDEFINED,                // 0x1b
+  RFT_WITH_ARG,                 // 0x1c arg: delayed
+  RFT_COMPILED_CODE,            // 0x1d
+  RFT_UNDEFINED,                // 0x1e
+  RFT_UNDEFINED,                // 0x1f
+  RFT_WITH_ARG,                 // 0x20 arg: GC result
+  RFT_UNDEFINED,                // 0x21
+  RFT_UNDEFINED,                // 0x22
+  RFT_UNDEFINED,                // 0x23
+  RFT_UNDEFINED,                // 0x24
+  RFT_UNDEFINED,                // 0x25
+  RFT_UNDEFINED,                // 0x26
+  RFT_UNDEFINED,                // 0x27
+  RFT_UNDEFINED,                // 0x28
+  RFT_UNDEFINED,                // 0x29
+  RFT_UNDEFINED,                // 0x2a
+  RFT_UNDEFINED,                // 0x2b
+  RFT_UNDEFINED,                // 0x2c
+  RFT_UNDEFINED,                // 0x2d
+  RFT_WITH_ARG,                 // 0x2e arg: value
+  RFT_HISTORY,                  // 0x2f
+  RFT_UNDEFINED,                // 0x30
+  RFT_UNDEFINED,                // 0x31
+  RFT_UNDEFINED,                // 0x32
+  RFT_UNDEFINED,                // 0x33
+  RFT_UNDEFINED,                // 0x34
+  RFT_UNDEFINED,                // 0x35
+  RFT_UNDEFINED,                // 0x36
+  RFT_UNDEFINED,                // 0x37
+  RFT_UNDEFINED,                // 0x38
+  RFT_UNDEFINED,                // 0x39
+  RFT_UNDEFINED,                // 0x3a
+  RFT_UNDEFINED,                // 0x3b
+  RFT_UNDEFINED,                // 0x3c
+  RFT_UNDEFINED,                // 0x3d
+  RFT_UNDEFINED,                // 0x3e
+  RFT_UNDEFINED,                // 0x3f
+  RFT_WITH_ARG,                 // 0x40 arg: value
+  RFT_EXP_ENV,                  // 0x41
+  RFT_STACK_MARKER,             // 0x42
+  RFT_COMPILED_CODE,            // 0x43
+  RFT_UNDEFINED,                // 0x44
+  RFT_WITH_ARG,                 // 0x45 arg: interrupt mask
+  RFT_WITH_ARG,                 // 0x46 arg: termination code
+  RFT_UNDEFINED,                // 0x47
+  RFT_UNDEFINED,                // 0x48
+  RFT_UNDEFINED,                // 0x49
+  RFT_UNDEFINED,                // 0x4a
+  RFT_UNDEFINED,                // 0x4b
+  RFT_UNDEFINED,                // 0x4c
+  RFT_UNDEFINED,                // 0x4d
+  RFT_UNDEFINED,                // 0x4e
+  RFT_UNDEFINED,                // 0x4f
+  RFT_UNDEFINED,                // 0x50
+  RFT_UNDEFINED,                // 0x51
+  RFT_UNDEFINED,                // 0x52
+  RFT_COMPILED_CODE,            // 0x53
+  RFT_COMPILED_CODE,            // 0x54
+  RFT_UNDEFINED,                // 0x55
+  RFT_COMPILED_CODE,            // 0x56
+  RFT_COMPILED_CODE,            // 0x57
+  RFT_COMPILED_CODE,            // 0x58
+  RFT_COMPILED_CODE,            // 0x59
+  RFT_UNDEFINED,                // 0x5a
+  RFT_COMPILED_CODE,            // 0x5b
+  RFT_HARDWARE_TRAP,            // 0x5c
+  RFT_APPLY,                    // 0x5d
+  RFT_COMPILED_CODE             // 0x5e
 };
 
 unsigned long MAX_RETURN = MAX_RETURN_CODE;
@@ -277,12 +283,17 @@ return_address_p (SCHEME_OBJECT object)
 }
 
 return_frame_type_t
-return_frame_type (SCHEME_OBJECT ret)
+return_frame_type (SCHEME_OBJECT* frame)
 {
+  SCHEME_OBJECT ret = *frame;
   assert (return_address_p (ret));
 #ifdef CC_SUPPORT_P
   if (CC_RETURN_P (ret))
-    return RETURN_COMPILED_ADDRESS;
+    return (ret == return_to_interpreter)
+           ? RFT_RETURN_TO_INTERPRETER
+           : (ret == reflect_to_interface)
+             ? reflect_to_interface_frame_type (frame)
+             : RFT_COMPILED_ADDRESS;
 #endif
   unsigned long index = object_datum (ret);
   assert (index <= MAX_RETURN_CODE);
@@ -305,16 +316,16 @@ make_ftti_entry (return_frame_type_t type)
   unsigned long i = 1;
   switch (type)
     {
-    case RETURN_UNDEFINED:
+    case RFT_UNDEFINED:
       return SHARP_F;
 
-    case RETURN_WITH_ARG:
+    case RFT_WITH_ARG:
       entry = allocate_ftti_entry (type, 1);
       vector_set (entry, i++, SHARP_F);
       vector_set (entry, i, ULONG_TO_FIXNUM (1));
       return entry;
 
-    case RETURN_EXP_ENV:
+    case RFT_EXP_ENV:
       entry = allocate_ftti_entry (type, 2);
       vector_set (entry, i++, char_pointer_to_symbol ("expression"));
       vector_set (entry, i++, ULONG_TO_FIXNUM (1));
@@ -322,7 +333,7 @@ make_ftti_entry (return_frame_type_t type)
       vector_set (entry, i, ULONG_TO_FIXNUM (2));
       return entry;
 
-    case RETURN_HISTORY:
+    case RFT_HISTORY:
       entry = allocate_ftti_entry (type, 2);
       vector_set (entry, i++, char_pointer_to_symbol ("history"));
       vector_set (entry, i++, ULONG_TO_FIXNUM (1));
@@ -330,7 +341,8 @@ make_ftti_entry (return_frame_type_t type)
       vector_set (entry, i, ULONG_TO_FIXNUM (2));
       return entry;
 
-    case RETURN_APPLY:
+    case RFT_APPLY:
+    case RFT_CC_INTERNAL_APPLY:
       entry = allocate_ftti_entry (type, 2);
       vector_set (entry, i++, char_pointer_to_symbol ("procedure"));
       vector_set (entry, i++, ULONG_TO_FIXNUM (3));
@@ -338,19 +350,19 @@ make_ftti_entry (return_frame_type_t type)
       vector_set (entry, i, ULONG_TO_FIXNUM (4));
       return entry;
 
-    case RETURN_COMPILED_CODE:
+    case RFT_COMPILED_CODE:
       entry = allocate_ftti_entry (type, 1);
       vector_set (entry, i++, char_pointer_to_symbol ("offset"));
       vector_set (entry, i, ULONG_TO_FIXNUM (1));
       return entry;
 
-    case RETURN_COMPILED_ADDRESS:
+    case RFT_COMPILED_ADDRESS:
       entry = allocate_ftti_entry (type, 1);
       vector_set (entry, i++, char_pointer_to_symbol ("cc-frame"));
       vector_set (entry, i, ULONG_TO_FIXNUM (1));
       return entry;
 
-    case RETURN_COMBINATION_SAVE:
+    case RFT_COMBINATION_SAVE:
       entry = allocate_ftti_entry (type, 4);
       vector_set (entry, i++, char_pointer_to_symbol ("expression"));
       vector_set (entry, i++, ULONG_TO_FIXNUM (1));
@@ -362,7 +374,7 @@ make_ftti_entry (return_frame_type_t type)
       vector_set (entry, i, ULONG_TO_FIXNUM (4));
       return entry;
 
-    case RETURN_STACK_MARKER:
+    case RFT_STACK_MARKER:
       entry = allocate_ftti_entry (type, 2);
       vector_set (entry, i++, char_pointer_to_symbol ("marker-1"));
       vector_set (entry, i++, ULONG_TO_FIXNUM (1));
@@ -370,7 +382,7 @@ make_ftti_entry (return_frame_type_t type)
       vector_set (entry, i, ULONG_TO_FIXNUM (2));
       return entry;
 
-    case RETURN_HARDWARE_TRAP:
+    case RFT_HARDWARE_TRAP:
       entry = allocate_ftti_entry (type, 8);
       vector_set (entry, i++, char_pointer_to_symbol ("signal-number"));
       vector_set (entry, i++, ULONG_TO_FIXNUM (1));
@@ -390,6 +402,32 @@ make_ftti_entry (return_frame_type_t type)
       vector_set (entry, i, ULONG_TO_FIXNUM (8));
       return entry;
 
+    case RFT_RETURN_TO_INTERPRETER:
+      return allocate_ftti_entry (type, 0);
+
+    case RFT_CC_RESTORE_INTERRUPT_MASK:
+      entry = allocate_ftti_entry (type, 1);
+      vector_set (entry, i++, char_pointer_to_symbol ("interrupt-mask"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (2));
+      return entry;
+
+    case RFT_CC_STACK_MARKER:
+      entry = allocate_ftti_entry (type, 2);
+      vector_set (entry, i++, char_pointer_to_symbol ("marker-1"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (2));
+      vector_set (entry, i++, char_pointer_to_symbol ("marker-2"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (3));
+      return entry;
+
+    case RFT_CC_BKPT:
+    case RFT_CC_INVOCATION:
+      entry = allocate_ftti_entry (type, 2);
+      vector_set (entry, i++, char_pointer_to_symbol ("procedure"));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (2));
+      vector_set (entry, i++, char_pointer_to_symbol ("arguments"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (3));
+      return entry;
+
     default:
       abort ();
     }
@@ -404,17 +442,23 @@ init_ftti_entry (SCHEME_OBJECT table, return_frame_type_t type)
 SCHEME_OBJECT
 make_frame_type_info_table (void)
 {
-  SCHEME_OBJECT table = allocate_vector (RETURN_FRAME_TYPE_LIMIT, true);
-  init_ftti_entry (table, RETURN_UNDEFINED);
-  init_ftti_entry (table, RETURN_WITH_ARG);
-  init_ftti_entry (table, RETURN_EXP_ENV);
-  init_ftti_entry (table, RETURN_HISTORY);
-  init_ftti_entry (table, RETURN_APPLY);
-  init_ftti_entry (table, RETURN_COMPILED_CODE);
-  init_ftti_entry (table, RETURN_COMPILED_ADDRESS);
-  init_ftti_entry (table, RETURN_COMBINATION_SAVE);
-  init_ftti_entry (table, RETURN_STACK_MARKER);
-  init_ftti_entry (table, RETURN_HARDWARE_TRAP);
+  SCHEME_OBJECT table = allocate_vector (RFT_LIMIT, true);
+  init_ftti_entry (table, RFT_UNDEFINED);
+  init_ftti_entry (table, RFT_WITH_ARG);
+  init_ftti_entry (table, RFT_EXP_ENV);
+  init_ftti_entry (table, RFT_HISTORY);
+  init_ftti_entry (table, RFT_APPLY);
+  init_ftti_entry (table, RFT_COMPILED_CODE);
+  init_ftti_entry (table, RFT_COMPILED_ADDRESS);
+  init_ftti_entry (table, RFT_COMBINATION_SAVE);
+  init_ftti_entry (table, RFT_STACK_MARKER);
+  init_ftti_entry (table, RFT_HARDWARE_TRAP);
+  init_ftti_entry (table, RFT_RETURN_TO_INTERPRETER);
+  init_ftti_entry (table, RFT_CC_INTERNAL_APPLY);
+  init_ftti_entry (table, RFT_CC_RESTORE_INTERRUPT_MASK);
+  init_ftti_entry (table, RFT_CC_STACK_MARKER);
+  init_ftti_entry (table, RFT_CC_BKPT);
+  init_ftti_entry (table, RFT_CC_INVOCATION);
   return table;
 }
 
@@ -433,63 +477,60 @@ next_stack_frame (SCHEME_OBJECT* frame)
 unsigned long
 next_stack_frame_offset (SCHEME_OBJECT* frame)
 {
-  SCHEME_OBJECT ret = *frame;
-#ifdef CC_SUPPORT_P
-  if (CC_RETURN_P (ret))
+  switch (return_frame_type (frame))
     {
-      if (ret == return_to_interpreter)
-        return 1;
-      if (ret == reflect_to_interface)
-        return reflect_to_interpreter_offset (frame);
-      cc_entry_type_t cet;
-      if (read_cc_entry_type
-            (&cet,
-             CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (CC_RETURN_ADDRESS (ret))))
-        return ULONG_MAX;
-      return 1 + cet.args.for_continuation.offset;
-    }
-#endif
-  switch (return_frame_type (ret))
-    {
-    case RETURN_WITH_ARG:
+    case RFT_WITH_ARG:
       return CONT_SIZE;
 
-    case RETURN_EXP_ENV:
+    case RFT_EXP_ENV:
       return ENV_CONT_SIZE;
 
-    case RETURN_HISTORY:
+    case RFT_HISTORY:
       return HISTORY_CONT_SIZE;
 
-    case RETURN_STACK_MARKER:
+    case RFT_STACK_MARKER:
       return CONT_SIZE + 1;
 
-    case RETURN_HARDWARE_TRAP:
+    case RFT_HARDWARE_TRAP:
       return CONT_SIZE + 7;
 
-    case RETURN_APPLY:
+    case RFT_APPLY:
       {
         SCHEME_OBJECT header = apply_frame_ptr_header (frame + CONT_SIZE);
         assert (apply_frame_header_p (header));
         return CONT_SIZE + 1 + apply_frame_header_size (header);
       }
 
-    case RETURN_COMBINATION_SAVE:
+    case RFT_COMBINATION_SAVE:
       {
         SCHEME_OBJECT exp = cont_frame_exp (frame);
         assert (combination_p (exp));
         return ENV_CONT_SIZE + combination_size (exp);
       }
 
-    case RETURN_COMPILED_CODE:
-      {
+    case RFT_COMPILED_CODE:
+      return CONT_SIZE;
+
 #ifdef CC_SUPPORT_P
-        return CONT_SIZE;
-#else
-        SCHEME_OBJECT offset = cont_frame_exp (frame);
-        assert (FIXNUM_P (offset) && FIXNUM_POSITIVE_P (offset));
-        return CONT_SIZE + FIXNUM_TO_ULONG (offset);
-#endif
+    case RFT_COMPILED_ADDRESS:
+      {
+        cc_entry_type_t cet;
+        if (read_cc_entry_type
+              (&cet,
+               CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (CC_RETURN_ADDRESS (*frame))))
+          return ULONG_MAX;
+        return 1 + cet.args.for_continuation.offset;
       }
+#endif
+
+    case RFT_RETURN_TO_INTERPRETER:
+      return 1;
+
+    case RFT_CC_RESTORE_INTERRUPT_MASK:
+    case RFT_CC_STACK_MARKER:
+    case RFT_CC_BKPT:
+    case RFT_CC_INVOCATION:
+      return reflect_to_interface_offset (frame);
 
     default:
       return ULONG_MAX;

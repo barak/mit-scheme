@@ -167,7 +167,7 @@ initialize_fixed_objects_vector (void)
   fixobj_set_names (IDENTIFICATION_VECTOR, identity_names, N_IDENTITY_NAMES);
 
   fixobj_set (RETURNS_VECTOR, make_return_code_names_table());
-  fixobj_set (RETURN_FRAMES_VECTOR, make_frame_type_info_table ());
+  fixobj_set (FIXOBJ_RETURN_FRAMES_VECTOR, make_frame_type_info_table ());
 
   fixobj_set (DUMMY_HISTORY, initialize_history ());
   fixobj_set (FIXOBJ_BIGNUM_ONE, long_to_bignum (1));
@@ -199,6 +199,9 @@ initialize_fixed_objects_vector (void)
                             - FASDUMP_RECORD_MARKER_START,
 			    SHARP_F,
 			    false)));
+#ifdef CC_SUPPORT_P
+  fixobj_set (FIXOBJ_REFLECT_CODE_NAMES, make_reflect_code_table ());
+#endif
 
 #ifdef __WIN32__
   NT_initialize_fov (fixed_objects);
@@ -226,7 +229,7 @@ fixed_objects_syserr_names (void)
 static SCHEME_OBJECT
 names_to_vector (unsigned long length, const char ** names)
 {
-  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, length, true));
+  SCHEME_OBJECT v = (allocate_vector (length, true));
   unsigned long i;
   for (i = 0; (i < length); i += 1)
     vector_set (v, i,

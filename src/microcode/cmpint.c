@@ -82,6 +82,7 @@ typedef enum
   REFLECT_CODE_UNUSED_6,
   REFLECT_CODE_UNUSED_7,
   REFLECT_CODE_COMPILED_INVOCATION,
+  REFLECT_CODE_LIMIT
 } reflect_code_t;
 
 static inline void
@@ -1632,8 +1633,31 @@ procedure_frame_size (SCHEME_OBJECT proc)
            + cet.args.for_procedure.rest_p;
 }
 
+return_frame_type_t
+reflect_to_interface_frame_type (SCHEME_OBJECT* frame)
+{
+  SCHEME_OBJECT code_object = frame[1];
+  assert (FIXNUM_P (code_object) && FIXNUM_TO_ULONG_P (code_object));
+  unsigned long code = FIXNUM_TO_ULONG (code_object);
+  switch (code)
+    {
+    case REFLECT_CODE_INTERNAL_APPLY:
+      return RFT_CC_INTERNAL_APPLY;
+    case REFLECT_CODE_RESTORE_INTERRUPT_MASK:
+      return RFT_CC_RESTORE_INTERRUPT_MASK;
+    case REFLECT_CODE_STACK_MARKER:
+      return RFT_CC_STACK_MARKER;
+    case REFLECT_CODE_CC_BKPT:
+      return RFT_CC_BKPT;
+    case REFLECT_CODE_COMPILED_INVOCATION:
+      return RFT_CC_INVOCATION;
+    default:
+      return RFT_UNDEFINED;
+    }
+}
+
 unsigned long
-reflect_to_interpreter_offset (SCHEME_OBJECT* frame)
+reflect_to_interface_offset (SCHEME_OBJECT* frame)
 {
   SCHEME_OBJECT code_object = frame[1];
   assert (FIXNUM_P (code_object) && FIXNUM_TO_ULONG_P (code_object));
@@ -1665,6 +1689,24 @@ reflect_to_interpreter_offset (SCHEME_OBJECT* frame)
       return ULONG_MAX;
     }
 }
+
+SCHEME_OBJECT
+make_reflect_code_table (void)
+{
+  SCHEME_OBJECT table = make_vector (REFLECT_CODE_LIMIT, SHARP_F, true);
+  vector_set (table, REFLECT_CODE_INTERNAL_APPLY,
+              char_pointer_to_string ("internal-apply"));
+  vector_set (table, REFLECT_CODE_RESTORE_INTERRUPT_MASK,
+              char_pointer_to_string ("restore-interrupt-mask"));
+  vector_set (table, REFLECT_CODE_STACK_MARKER,
+              char_pointer_to_string ("stack-marker"));
+  vector_set (table, REFLECT_CODE_CC_BKPT,
+              char_pointer_to_string ("cc-bkpt"));
+  vector_set (table, REFLECT_CODE_COMPILED_INVOCATION,
+              char_pointer_to_string ("comiled-invocation"));
+  return table;
+}
+
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns
    PRIM_DONE when successful, otherwise sets up the call frame for

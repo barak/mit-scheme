@@ -95,14 +95,14 @@ USA.
 
 typedef enum
 {
-  RETURN_UNDEFINED,
-  RETURN_WITH_ARG,
+  RFT_UNDEFINED,
+  RFT_WITH_ARG,
   // +-------------+
   // | return code |
   // +-------------+
   // | <arg>       |
   // +-------------+
-  RETURN_EXP_ENV,
+  RFT_EXP_ENV,
   // +-------------+
   // | return code |
   // +-------------+
@@ -110,7 +110,7 @@ typedef enum
   // +-------------+
   // | environment |
   // +-------------+
-  RETURN_HISTORY,
+  RFT_HISTORY,
   // +-------------+
   // | return code |
   // +-------------+
@@ -120,7 +120,7 @@ typedef enum
   // +-------------+
   // | (unused)    |
   // +-------------+
-  RETURN_APPLY,
+  RFT_APPLY,
   // +-------------+
   // | return code |
   // +-------------+
@@ -138,7 +138,7 @@ typedef enum
   // .             .
   // .             .
   // +-------------+
-  RETURN_COMPILED_CODE,
+  RFT_COMPILED_CODE,
   // +-------------+
   // | return code |
   // +-------------+
@@ -148,7 +148,7 @@ typedef enum
   // . cc frames   .
   // .             .
   // +-------------+
-  RETURN_COMPILED_ADDRESS,
+  RFT_COMPILED_ADDRESS,
   // +-------------+
   // | return addr |
   // +-------------+
@@ -156,7 +156,7 @@ typedef enum
   // . other words .
   // .             .
   // +-------------+
-  RETURN_COMBINATION_SAVE,
+  RFT_COMBINATION_SAVE,
   // +-------------+
   // | return code |
   // +-------------+
@@ -174,7 +174,7 @@ typedef enum
   // . saved args  .
   // .             .
   // +-------------+
-  RETURN_STACK_MARKER,
+  RFT_STACK_MARKER,
   // +-------------+
   // | return code |
   // +-------------+
@@ -182,7 +182,7 @@ typedef enum
   // +-------------+
   // | marker 2    |
   // +-------------+
-  RETURN_HARDWARE_TRAP,
+  RFT_HARDWARE_TRAP,
   // +-------------+
   // | return code |
   // +-------------+
@@ -202,7 +202,79 @@ typedef enum
   // +-------------+
   // | extra info  |
   // +-------------+
-  RETURN_FRAME_TYPE_LIMIT
+  RFT_RETURN_TO_INTERPRETER,
+  // +-------------+
+  // | return addr |
+  // +-------------+
+  RFT_CC_INTERNAL_APPLY,
+  // +-------------+
+  // | rti-address |
+  // +-------------+
+  // | code = 0    |
+  // +-------------+
+  // | AF header   | (number of words to follow)
+  // +-------------+
+  // | procedure   |
+  // +-------------+
+  // | argument 0  |
+  // +-------------+
+  // | argument 1  |
+  // +-------------+
+  // .             .
+  // .             .
+  // .             .
+  // +-------------+
+  RFT_CC_RESTORE_INTERRUPT_MASK,
+  // +-------------+
+  // | rti-address |
+  // +-------------+
+  // | code = 1    |
+  // +-------------+
+  // | int mask    |
+  // +-------------+
+  RFT_CC_STACK_MARKER,
+  // +-------------+
+  // | rti-address |
+  // +-------------+
+  // | code = 2    |
+  // +-------------+
+  // | marker 1    |
+  // +-------------+
+  // | marker 2    |
+  // +-------------+
+  RFT_CC_BKPT,
+  // +-------------+
+  // | rti-address |
+  // +-------------+
+  // | code = 3    |
+  // +-------------+
+  // | CC proc     |
+  // +-------------+
+  // | argument 0  |
+  // +-------------+
+  // | argument 1  |
+  // +-------------+
+  // .             .
+  // .             .
+  // .             .
+  // +-------------+
+  RFT_CC_INVOCATION,
+  // +-------------+
+  // | rti-address |
+  // +-------------+
+  // | code = 8    |
+  // +-------------+
+  // | CC proc     |
+  // +-------------+
+  // | argument 0  |
+  // +-------------+
+  // | argument 1  |
+  // +-------------+
+  // .             .
+  // .             .
+  // .             .
+  // +-------------+
+  RFT_LIMIT
 } return_frame_type_t;
 
 extern unsigned long MAX_RETURN;
@@ -210,7 +282,7 @@ extern SCHEME_OBJECT make_return_code_names_table (void);
 extern SCHEME_OBJECT make_frame_type_info_table (void);
 extern const char* return_code_name (SCHEME_OBJECT);
 extern bool return_address_p (SCHEME_OBJECT);
-extern return_frame_type_t return_frame_type (SCHEME_OBJECT);
+extern return_frame_type_t return_frame_type (SCHEME_OBJECT*);
 extern SCHEME_OBJECT* next_stack_frame (SCHEME_OBJECT*);
 extern unsigned long next_stack_frame_offset (SCHEME_OBJECT*);
 

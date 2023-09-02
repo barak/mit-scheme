@@ -32,6 +32,7 @@ USA.
 
 #include "config.h"
 #include "object.h"
+#include "returns.h"
 
 #define COMPILER_INTERFACE_VERSION 4
 
@@ -476,7 +477,9 @@ extern void apply_compiled_from_primitive (unsigned long, SCHEME_OBJECT);
 extern void compiled_with_interrupt_mask
   (unsigned long, SCHEME_OBJECT, unsigned long);
 extern void compiled_with_stack_marker (SCHEME_OBJECT);
-extern unsigned long reflect_to_interpreter_offset (SCHEME_OBJECT*);
+return_frame_type_t reflect_to_interface_frame_type (SCHEME_OBJECT*);
+extern unsigned long reflect_to_interface_offset (SCHEME_OBJECT*);
+extern SCHEME_OBJECT make_reflect_code_table (void);
 
 extern void compiler_initialize (bool);
 extern void compiler_reset (SCHEME_OBJECT);

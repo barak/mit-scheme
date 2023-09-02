@@ -185,6 +185,15 @@ USA.
     (triple hunk3 hunk3-b marked-history)
     (reference-trap unassigned)
     (recnum complex)))
+
+(define-deferred reflect-code-names-slot
+  (fixed-object/name->code 'reflect-code-names))
+
+(define (microcode-reflect-name->code name)
+  (microcode-table-search reflect-code-names-slot name))
+
+(define (microcode-reflect-code->name code)
+  (microcode-table-ref reflect-code-names-slot code))
 
 ;;;; Microcode identification
 

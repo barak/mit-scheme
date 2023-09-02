@@ -226,9 +226,12 @@ DEFINE_PRIMITIVE ("control-point-next-frame", Prim_cpoint_next_frame, 2, 2, 0)
   PRIMITIVE_RETURN (ULONG_TO_FIXNUM (next_index));
 }
 
-DEFINE_PRIMITIVE ("return-frame-type", Prim_return_frame_type, 1, 1, 0)
+DEFINE_PRIMITIVE ("return-frame-type", Prim_return_frame_type, 2, 2, 0)
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, return_address_p);
-  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (return_frame_type (ARG_REF (1))));
+  SCHEME_OBJECT v = ARG_REF (1);
+  if (! (VECTOR_P (v) || CONTROL_POINT_P (v)))
+    error_wrong_type_arg (1);
+  unsigned long i = arg_ulong_index_integer (2, vector_length (v));
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (return_frame_type (vector_loc (v, i))));
 }
