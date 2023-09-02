@@ -1049,7 +1049,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
   start -= 1;
 
  done:
-  result = (allocate_marked_vector (TC_VECTOR, SSF_STATE_LENGTH, true));
+  result = (allocate_vector (SSF_STATE_LENGTH, true));
   vector_set (result, SSF_STATE_DEPTH, (LONG_TO_FIXNUM (depth)));
   vector_set
     (result, SSF_STATE_IN_STRING_P,

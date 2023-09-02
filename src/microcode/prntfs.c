@@ -219,7 +219,7 @@ create_attributes_vector (DWORD attributes, DWORD nlinks,
 			  DWORD size_low, DWORD size_high,
 			  DWORD inode_low, DWORD inode_high)
 {
-  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 11, 0));
+  SCHEME_OBJECT result = (allocate_vector (11, 0));
   SCHEME_OBJECT modes = (allocate_string (6));
   vector_set (result, 0,
 	      (BOOLEAN_TO_OBJECT (attributes & FILE_ATTRIBUTE_DIRECTORY)));
@@ -305,7 +305,7 @@ DEFINE_PRIMITIVE ("NT-GET-VOLUME-INFORMATION", Prim_NT_get_vol_info, 1, 1, 0)
 			       file_system_name,
 			       (sizeof (file_system_name)))))
     PRIMITIVE_RETURN (SHARP_F);
-  result = (allocate_marked_vector (TC_VECTOR, 5, 1));
+  result = (allocate_vector (5, 1));
   vector_set (result, 0, (char_pointer_to_string (name)));
   vector_set (result, 1, (ulong_to_integer (serial_number)));
   vector_set (result, 2, (ulong_to_integer (max_component_length)));

@@ -121,7 +121,7 @@ dld_load (const char * path)
   handle = (dlopen (path, (RTLD_NOW | RTLD_GLOBAL)));
   if (handle == 0)
     {
-      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
+      SCHEME_OBJECT v = (allocate_vector (3, 1));
       vector_set (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
       vector_set (v, 1, (char_pointer_to_string ("dlopen")));
       vector_set (v, 2, (char_pointer_to_string (dlerror ())));
@@ -164,7 +164,7 @@ dld_unload (void * handle)
   dld_finalize (handle);
   if ((dlclose (handle)) != 0)
     {
-      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
+      SCHEME_OBJECT v = (allocate_vector (3, 1));
       vector_set (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
       vector_set (v, 1, (char_pointer_to_string ("dlclose")));
       vector_set (v, 2, (char_pointer_to_string (dlerror ())));
@@ -215,7 +215,7 @@ dld_lookup (void * handle, const char * symbol)
   error_string = (dlerror ());
   if (error_string != 0)
     {
-      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
+      SCHEME_OBJECT v = (allocate_vector (3, 1));
       vector_set (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
       vector_set (v, 1, (char_pointer_to_string ("dlsym")));
       vector_set (v, 2, (char_pointer_to_string (error_string)));

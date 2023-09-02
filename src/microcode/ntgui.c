@@ -869,11 +869,11 @@ Returns #f if there are no events in the queue.")
   }
 }
 
-#define INIT_RESULT(n)							\
-{									\
-  result = (allocate_marked_vector (TC_VECTOR, ((n) + 2), 1));		\
-  WRITE_UNSIGNED (event -> type);					\
-  WRITE_UNSIGNED ((unsigned long) (event -> handle));			\
+#define INIT_RESULT(n)                                                  \
+{                                                                       \
+  result = (allocate_vector (((n) + 2), 1));                            \
+  WRITE_UNSIGNED (event -> type);                                       \
+  WRITE_UNSIGNED ((unsigned long) (event -> handle));                   \
 }
 
 #define WRITE_RESULT(object) vector_set (result, (index++), (object))

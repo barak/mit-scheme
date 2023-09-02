@@ -275,7 +275,7 @@ DEFINE_PRIMITIVE ("LIARC-COMPILED-BLOCKS", Prim_liarc_compiled_code_blocks,
 #ifdef CC_IS_C
   {
     unsigned long n = (liarc_n_compiled_blocks ());
-    SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, n, true));
+    SCHEME_OBJECT v = (allocate_vector (n, true));
     unsigned long i;
     const char * name;
     void * code_proc;
@@ -283,7 +283,7 @@ DEFINE_PRIMITIVE ("LIARC-COMPILED-BLOCKS", Prim_liarc_compiled_code_blocks,
     void * object_proc;
 
     for (i = 0; (i < n); i += 1)
-      vector_set (v, i, (allocate_marked_vector (TC_VECTOR, 4, true)));
+      vector_set (v, i, (allocate_vector (4, true)));
 
     for (i = 0; (i < n); i += 1)
       {

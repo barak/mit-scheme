@@ -237,8 +237,7 @@ DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0
 	end += 1;
       }
     {
-      SCHEME_OBJECT result =
-	(allocate_marked_vector (TC_VECTOR, (end - scan), true));
+      SCHEME_OBJECT result = (allocate_vector ((end - scan), true));
       SCHEME_OBJECT * scan_result = (vector_loc (result, 0));
       while (scan < end)
 	(*scan_result++) = (char_pointer_to_string (*scan++));
@@ -250,7 +249,7 @@ DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0
 static SCHEME_OBJECT
 argv_to_object (int argc, const char ** argv)
 {
-  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, argc, 1));
+  SCHEME_OBJECT result = (allocate_vector (argc, 1));
   const char ** scan = argv;
   const char ** end = (scan + argc);
   SCHEME_OBJECT * scan_result = (vector_loc (result, 0));

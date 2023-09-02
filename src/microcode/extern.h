@@ -287,12 +287,11 @@ extern long char_upcase (long);
 extern SCHEME_OBJECT cons (SCHEME_OBJECT, SCHEME_OBJECT);
 extern SCHEME_OBJECT system_pair_cons (long, SCHEME_OBJECT, SCHEME_OBJECT);
 extern SCHEME_OBJECT hunk3_cons (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT);
-extern SCHEME_OBJECT allocate_vector
-  (unsigned int, unsigned int, unsigned long, SCHEME_OBJECT **);
 extern SCHEME_OBJECT allocate_non_marked_vector
   (unsigned int, unsigned long, bool);
 extern SCHEME_OBJECT allocate_marked_vector
   (unsigned int, unsigned long, bool);
+extern SCHEME_OBJECT allocate_vector (unsigned long, bool);
 extern SCHEME_OBJECT make_vector (unsigned long, SCHEME_OBJECT, bool);
 extern SCHEME_OBJECT record_applicator (SCHEME_OBJECT);
 extern SCHEME_OBJECT allocate_string (unsigned long);

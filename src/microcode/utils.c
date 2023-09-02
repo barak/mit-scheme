@@ -330,7 +330,7 @@ error_in_system_call (enum syserr_names err, enum syscall_names name)
 {
   /* System call errors have some additional information.
      Encode this as a vector in place of the error code.  */
-  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 0));
+  SCHEME_OBJECT v = (allocate_vector (3, 0));
   vector_set (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
   vector_set (v, 1, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) err)));
   vector_set (v, 2, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) name)));

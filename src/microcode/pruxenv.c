@@ -177,7 +177,7 @@ DEFINE_PRIMITIVE ("GET-ENVIRONMENT", Prim_get_environment, 0, 0, 0)
   int n = 0;
   while ((*scan++) != 0)
     n += 1;
-  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, n, true));
+  SCHEME_OBJECT v = (allocate_vector (n, true));
   SCHEME_OBJECT * to = (vector_loc (v, 0));
   scan = environ;
   while ((*scan) != 0)
@@ -292,7 +292,7 @@ DEFINE_PRIMITIVE ("uname", Prim_uname, 0, 0, 0)
 #ifdef HAVE_SYS_UTSNAME_H
   struct utsname buf;
   STD_VOID_SYSTEM_CALL (syscall_uname, (UX_uname (&buf)));
-  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 5, true));
+  SCHEME_OBJECT v = (allocate_vector (5, true));
   vector_set (v, 0, (char_pointer_to_string (buf.sysname)));
   vector_set (v, 1, (char_pointer_to_string (buf.nodename)));
   vector_set (v, 2, (char_pointer_to_string (buf.release)));

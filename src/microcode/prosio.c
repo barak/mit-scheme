@@ -96,8 +96,7 @@ DEFINE_PRIMITIVE ("CHANNEL-TABLE", Prim_channel_table, 0, 0,
     {
       Tchannel * channels = (obstack_finish (&scratch_obstack));
       Tchannel * scan_channels = channels;
-      SCHEME_OBJECT vector =
-	(allocate_marked_vector (TC_VECTOR, n_channels, 1));
+      SCHEME_OBJECT vector = (allocate_vector (n_channels, 1));
       SCHEME_OBJECT * scan_vector = (vector_loc (vector, 0));
       SCHEME_OBJECT * end_vector = (scan_vector + n_channels);
       while (scan_vector < end_vector)

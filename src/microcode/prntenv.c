@@ -82,7 +82,7 @@ DEFINE_PRIMITIVE ("GET-ENVIRONMENT", Prim_get_environment, 0, 0, 0)
       scan += (lstrlen(scan) + 1);
     }
 
-  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, n, true));
+  SCHEME_OBJECT v = (allocate_vector (n, true));
   SCHEME_OBJECT * to = (vector_loc (v, 0));
   scan = (LPTSTR) env_block;
   while ((*scan) != '\0')
@@ -106,7 +106,7 @@ DEFINE_PRIMITIVE ("WIN32-VIRTUAL-QUERY", Prim_win32_virtual_query, 1, 1, 0)
     SCHEME_OBJECT result;
     (void) VirtualQuery
       (((LPCVOID) (arg_ulong_integer (1))), (&info), (sizeof (info)));
-    result = (allocate_marked_vector (TC_VECTOR, 7, 1));
+    result = (allocate_vector (7, 1));
     VQRESULT (0, ((unsigned long) (info.BaseAddress)));
     VQRESULT (1, ((unsigned long) (info.AllocationBase)));
     VQRESULT (2, (info.AllocationProtect));
@@ -377,7 +377,7 @@ DEFINE_PRIMITIVE ("win32-query-info-registry-key", Prim_win32_query_info_registr
     if (NT_windows_type == wintype_95)
       max_sub_key_length -= 1;
     {
-      SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 5, 1));
+      SCHEME_OBJECT result = (allocate_vector (5, 1));
       vector_set (result, 0, (ulong_to_integer (n_sub_keys)));
       vector_set (result, 1, (ulong_to_integer (max_sub_key_length)));
       vector_set (result, 2, (ulong_to_integer (n_values)));
@@ -418,7 +418,7 @@ DEFINE_PRIMITIVE ("win32-enumerate-registry-value", Prim_win32_enumerate_registr
     if (code != ERROR_SUCCESS)
       NT_error_api_call (code, apicall_RegEnumValue);
     {
-      SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 3, 1));
+      SCHEME_OBJECT result = (allocate_vector (3, 1));
       vector_set (result, 0, (ulong_to_integer (name_size)));
       vector_set (result, 1, (ulong_to_integer (data_type)));
       vector_set (result, 2, (ulong_to_integer (data_size)));

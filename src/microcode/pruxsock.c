@@ -147,7 +147,7 @@ The result is a vector of strings, or #F if no such host exists.")
 	end -= 1;
 	{
 	  SCHEME_OBJECT result =
-	    (allocate_marked_vector (TC_VECTOR, (end - addresses), 1));
+	    (allocate_vector ((end - addresses), 1));
 	  SCHEME_OBJECT * scan_result = (vector_loc (result, 0));
 	  unsigned int length = (OS_host_address_length ());
 	  while (addresses < end)

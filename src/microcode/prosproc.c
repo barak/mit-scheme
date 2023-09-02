@@ -63,8 +63,7 @@ DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
     while ((*end_environ) != 0)
       end_environ += 1;
     {
-      SCHEME_OBJECT result
-	= (allocate_marked_vector (TC_VECTOR, (end_environ - environ), true));
+      SCHEME_OBJECT result = (allocate_vector ((end_environ - environ), true));
       SCHEME_OBJECT * scan_result = (vector_loc (result, 0));
       while (scan_environ < end_environ)
 	(*scan_result++) = (char_pointer_to_string (*scan_environ++));
@@ -99,8 +98,7 @@ DEFINE_PRIMITIVE ("PROCESS-TABLE", Prim_process_table, 0, 0,
     {
       Tprocess * processes = (obstack_finish (&scratch_obstack));
       Tprocess * scan_processes = processes;
-      SCHEME_OBJECT vector
-	= (allocate_marked_vector (TC_VECTOR, n_processes, 1));
+      SCHEME_OBJECT vector = (allocate_vector (n_processes, 1));
       SCHEME_OBJECT * scan_vector = (vector_loc (vector, 0));
       SCHEME_OBJECT * end_vector = (scan_vector + n_processes);
       while (scan_vector < end_vector)

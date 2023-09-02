@@ -168,7 +168,7 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 
 static SCHEME_OBJECT
 file_attributes_internal (struct stat * s)
 {
-  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 10, true));
+  SCHEME_OBJECT result = (allocate_vector (10, true));
   SCHEME_OBJECT modes = (allocate_string (10));
   switch ((s -> st_mode) & S_IFMT)
     {

@@ -49,35 +49,37 @@ USA.
    : ((error_wrong_type_arg (argument_number)), ((SCHEME_OBJECT) 0)))
 
 SCHEME_OBJECT
-allocate_vector (unsigned int type,
-		 unsigned int manifest_type,
-		 unsigned long length,
-		 SCHEME_OBJECT ** fp)
+allocate_vector_internal (unsigned int type, unsigned int manifest_type,
+                          unsigned long length, SCHEME_OBJECT ** fp)
 {
-  SCHEME_OBJECT result = (make_pointer_object (type, (*fp)));
-  (*(*fp)++) = (make_object (manifest_type, length));
-  (*fp) += length;
-  return (result);
+  SCHEME_OBJECT result = make_pointer_object (type, *fp);
+  *(*fp)++ = make_object (manifest_type, length);
+  *fp += length;
+  return result;
 }
 
 SCHEME_OBJECT
-allocate_non_marked_vector (unsigned int type,
-			    unsigned long length,
-			    bool gc_check_p)
+allocate_non_marked_vector (unsigned int type, unsigned long length,
+                            bool gc_check_p)
 {
   if (gc_check_p)
     Primitive_GC_If_Needed (1 + length);
-  return (allocate_vector (type, TC_MANIFEST_NM_VECTOR, length, (&Free)));
+  return allocate_vector_internal (type, TC_MANIFEST_NM_VECTOR, length, &Free);
 }
 
 SCHEME_OBJECT
-allocate_marked_vector (unsigned int type,
-			unsigned long length,
-			bool gc_check_p)
+allocate_marked_vector (unsigned int type, unsigned long length,
+                        bool gc_check_p)
 {
   if (gc_check_p)
     Primitive_GC_If_Needed (1 + length);
-  return (allocate_vector (type, TC_MANIFEST_VECTOR, length, (&Free)));
+  return allocate_vector_internal (type, TC_MANIFEST_VECTOR, length, &Free);
+}
+
+SCHEME_OBJECT
+allocate_vector (unsigned long length, bool gc_check_p)
+{
+  return allocate_marked_vector (TC_VECTOR, length, gc_check_p);
 }
 
 SCHEME_OBJECT
@@ -122,8 +124,7 @@ DEFINE_PRIMITIVE ("VECTOR", Prim_vector, 0, LEXPR, 0)
 {
   PRIMITIVE_HEADER (LEXPR);
   {
-    SCHEME_OBJECT result =
-      (allocate_marked_vector (TC_VECTOR, GET_LEXPR_ACTUALS, true));
+    SCHEME_OBJECT result = (allocate_vector (GET_LEXPR_ACTUALS, true));
     SCHEME_OBJECT * argument_scan = (ARG_LOC (1));
     SCHEME_OBJECT * argument_limit = (ARG_LOC (GET_LEXPR_ACTUALS + 1));
     SCHEME_OBJECT * result_scan = (vector_loc (result, 0));

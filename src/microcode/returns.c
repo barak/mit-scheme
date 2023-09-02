@@ -247,8 +247,7 @@ unsigned long MAX_RETURN = MAX_RETURN_CODE;
 SCHEME_OBJECT
 make_return_code_names_table (void)
 {
-  SCHEME_OBJECT table
-    = allocate_marked_vector (TC_VECTOR, MAX_RETURN_CODE + 1, true);
+  SCHEME_OBJECT table = allocate_vector (MAX_RETURN_CODE + 1, true);
   for (unsigned int rc = 0; rc <= MAX_RETURN_CODE; rc += 1)
     {
       const char* name = return_code_names_table[rc];
@@ -293,7 +292,7 @@ return_frame_type (SCHEME_OBJECT ret)
 static SCHEME_OBJECT
 allocate_ftti_entry (return_frame_type_t type, unsigned long n)
 {
-  SCHEME_OBJECT entry = allocate_marked_vector (TC_VECTOR, (2 * n) + 1, true);
+  SCHEME_OBJECT entry = allocate_vector ((2 * n) + 1, true);
   vector_set (entry, 0,
               char_pointer_to_symbol (return_frame_type_names_table[type]));
   return entry;
@@ -405,8 +404,7 @@ init_ftti_entry (SCHEME_OBJECT table, return_frame_type_t type)
 SCHEME_OBJECT
 make_frame_type_info_table (void)
 {
-  SCHEME_OBJECT table
-    = allocate_marked_vector (TC_VECTOR, RETURN_FRAME_TYPE_LIMIT, true);
+  SCHEME_OBJECT table = allocate_vector (RETURN_FRAME_TYPE_LIMIT, true);
   init_ftti_entry (table, RETURN_UNDEFINED);
   init_ftti_entry (table, RETURN_WITH_ARG);
   init_ftti_entry (table, RETURN_EXP_ENV);
