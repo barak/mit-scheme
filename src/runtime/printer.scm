@@ -883,7 +883,13 @@ USA.
     (*print-with-brackets (if closure? 'compiled-closure type)
 			  entry
 			  context
-      (cons* (let ((name (and procedure? (compiled-procedure/name entry))))
+      (cons* (let ((name
+		    (cond (procedure? (compiled-procedure/name entry))
+			  ((compiled-continuation/return-to-interpreter? entry)
+			   "return-to-interpreter")
+			  ((compiled-continuation/reflect-to-interface? entry)
+			   "reflect-to-interface")
+			  (else #f))))
 	       (cons-if (and name (printing-item *print-string name))
 			(cc-block-info (compiled-entry/block entry))))
 	     (printing-item *print-hex (compiled-entry/offset entry))
