@@ -3672,44 +3672,30 @@ USA.
 	  fixed-objects-item?
 	  fixed-objects-modifier
 	  fixed-objects-updater
+	  fixed-objects-vector-slot
+	  get-microcode-version
+	  microcode-error/code->name
+	  microcode-error/code-limit
+	  microcode-error/name->code
+	  microcode-reflect-code->name
+	  microcode-reflect-name->code
+	  microcode-return-frame-types
+	  microcode-return/code->name
+	  microcode-return/code-limit
+	  microcode-return/name->code
+	  microcode-system-call-error/code->name
+	  microcode-system-call-error/name->code
+	  microcode-system-call/code->name
+	  microcode-system-call/name->code
+	  microcode-termination/code->name
+	  microcode-termination/code-limit
+	  microcode-termination/name->code
 	  microcode-type/code->name
 	  microcode-type/name->code
 	  set-fixed-objects-item!
 	  update-fixed-objects-item!)
-  (export (runtime continuation-parser)
-	  microcode-return/code-limit)
-  (export (runtime control-point)
-	  microcode-reflect-code->name
-	  microcode-return-frame-types)
-  (export (runtime garbage-collector)
-	  fixed-objects-vector-slot)
-  (export (runtime gc-daemons)
-	  fixed-objects-vector-slot)
-  (export (runtime interrupt-handler)
-	  fixed-objects-vector-slot
-	  microcode-termination/code-limit)
-  (export (runtime microcode-data)
-	  microcode-error/name->code
-	  microcode-return/code->name
-	  microcode-return/name->code
-	  microcode-termination/name->code)
-  (export (runtime microcode-errors)
-	  fixed-objects-vector-slot
-	  microcode-error/code->name
-	  microcode-error/code-limit
-	  microcode-error/name->code
-	  microcode-return/code->name
-	  microcode-return/name->code
-	  microcode-system-call-error/code->name
-	  microcode-system-call-error/name->code
-	  microcode-system-call/code->name)
-  (export (runtime miscellaneous-global)
-	  microcode-termination/code-limit
-	  microcode-termination/name->code)
   (export (runtime save/restore)
-	  read-microcode-identification!)
-  (export (runtime version)
-	  get-microcode-version))
+	  read-microcode-identification!))
 
 (define-package (runtime number)
   (files "arith" "dragon4")
