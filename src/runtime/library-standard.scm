@@ -205,6 +205,9 @@ USA.
 (define-synthetic-library '(mit library) '(runtime)
   (package-predicate:name-prefix '(runtime library)))
 
+(define-synthetic-library '(mit runtime) '(runtime)
+  (package-predicate:name-prefix '(runtime)))
+
 (define initial-host-library-db)
 (define (initialize-synthetic-libraries! package-file)
   (for-each (lambda (p)
