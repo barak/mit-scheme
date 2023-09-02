@@ -1620,6 +1620,51 @@ setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
   stack_push (procedure);
   push_reflection (REFLECT_CODE_COMPILED_INVOCATION);
 }
+
+static unsigned long
+procedure_frame_size (SCHEME_OBJECT proc)
+{
+  cc_entry_type_t cet;
+  return read_cc_entry_type (&cet, CC_ENTRY_ADDRESS (proc))
+         ? ULONG_MAX
+         : + cet.args.for_procedure.n_required
+           + cet.args.for_procedure.n_optional
+           + cet.args.for_procedure.rest_p;
+}
+
+unsigned long
+reflect_to_interpreter_offset (SCHEME_OBJECT* frame)
+{
+  SCHEME_OBJECT code_object = frame[1];
+  assert (FIXNUM_P (code_object) && FIXNUM_TO_ULONG_P (code_object));
+  unsigned long code = FIXNUM_TO_ULONG (code_object);
+  switch (code)
+    {
+    case REFLECT_CODE_INTERNAL_APPLY:
+      return 3 + apply_frame_header_size (frame[2]);
+    case REFLECT_CODE_RESTORE_INTERRUPT_MASK:
+      return 3;
+    case REFLECT_CODE_STACK_MARKER:
+      return 4;
+    case REFLECT_CODE_CC_BKPT:
+      {
+        unsigned long offset = procedure_frame_size (frame[2]);
+        return (offset == ULONG_MAX)
+               ? offset
+               : 1 + offset;
+      }
+    case REFLECT_CODE_COMPILED_INVOCATION:
+      {
+        unsigned long offset = procedure_frame_size (frame[2]);
+        return (offset == ULONG_MAX)
+               ? offset
+               : 3 + offset;
+      }
+    default:
+      assert (true);
+      return ULONG_MAX;
+    }
+}
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns
    PRIM_DONE when successful, otherwise sets up the call frame for

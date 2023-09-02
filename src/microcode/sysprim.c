@@ -211,7 +211,7 @@ DEFINE_PRIMITIVE ("control-point-next-frame", Prim_cpoint_next_frame, 2, 2, 0)
   unsigned long length = vector_length (cpoint);
   unsigned long index = arg_ulong_index_integer (2, length);
   SCHEME_OBJECT* frame = vector_loc (cpoint, index);
-  if (!RETURN_CODE_P (cont_frame_ret (frame)))
+  if (!return_address_p (*frame))
     error_bad_range_arg (1);
   unsigned long offset = next_stack_frame_offset (frame);
   if (offset == ULONG_MAX)
@@ -220,7 +220,7 @@ DEFINE_PRIMITIVE ("control-point-next-frame", Prim_cpoint_next_frame, 2, 2, 0)
   if (next_index > length)
     error_external_return ();
   if (next_index < length
-      && !RETURN_CODE_P (cont_frame_ret (vector_loc (cpoint, next_index))))
+      && !return_address_p (*vector_loc (cpoint, next_index)))
     error_external_return ();
   assert (ULONG_TO_FIXNUM_P (next_index));
   PRIMITIVE_RETURN (ULONG_TO_FIXNUM (next_index));
@@ -229,6 +229,6 @@ DEFINE_PRIMITIVE ("control-point-next-frame", Prim_cpoint_next_frame, 2, 2, 0)
 DEFINE_PRIMITIVE ("return-frame-type", Prim_return_frame_type, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, RETURN_CODE_P);
+  CHECK_ARG (1, return_address_p);
   PRIMITIVE_RETURN (ULONG_TO_FIXNUM (return_frame_type (ARG_REF (1))));
 }

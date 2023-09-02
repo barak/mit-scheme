@@ -97,7 +97,9 @@ USA.
 
 (define (decode-raw-control-point-frame frame)
   (let* ((return-address (vector-ref frame 0))
-	 (return-code-name (return-address/name return-address))
+	 (return-code-name
+	  (and (interpreter-return-address? return-address)
+	       (return-address/name return-address)))
 	 (frame-type (return-frame-type return-address))
 	 (info (vector-ref return-frame-types frame-type)))
 
@@ -134,6 +136,10 @@ USA.
 	       (vector-copy frame (vector-ref info 4))))
       ((return-compiled-code)
        (vector return-code-name
+	       (vector-ref info 1)
+	       (vector-ref frame (vector-ref info 2))))
+      ((return-compiled-address)
+       (vector return-address
 	       (vector-ref info 1)
 	       (vector-copy frame (vector-ref info 2))))
       ((return-combination-save)

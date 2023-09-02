@@ -137,6 +137,7 @@ static const char* return_frame_type_names_table[] =
   "return-history",
   "return-apply",
   "return-compiled-code",
+  "return-compiled-address",
   "return-combination-save",
   "return-stack-marker",
   "return-hardware_trap"
@@ -266,10 +267,24 @@ return_code_name (SCHEME_OBJECT ret)
   return return_code_names_table[index];
 }
 
+bool
+return_address_p (SCHEME_OBJECT object)
+{
+#ifdef CC_SUPPORT_P
+  return RETURN_CODE_P (object) || CC_RETURN_P (object);
+#else
+  return RETURN_CODE_P (object);
+#endif
+}
+
 return_frame_type_t
 return_frame_type (SCHEME_OBJECT ret)
 {
-  assert (RETURN_CODE_P (ret));
+  assert (return_address_p (ret));
+#ifdef CC_SUPPORT_P
+  if (CC_RETURN_P (ret))
+    return RETURN_COMPILED_ADDRESS;
+#endif
   unsigned long index = object_datum (ret);
   assert (index <= MAX_RETURN_CODE);
   return return_frame_types_table[index];
@@ -326,8 +341,14 @@ make_ftti_entry (return_frame_type_t type)
 
     case RETURN_COMPILED_CODE:
       entry = allocate_ftti_entry (type, 1);
-      vector_set (entry, i++, char_pointer_to_symbol ("cc-frames"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (2));
+      vector_set (entry, i++, char_pointer_to_symbol ("offset"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (1));
+      return entry;
+
+    case RETURN_COMPILED_ADDRESS:
+      entry = allocate_ftti_entry (type, 1);
+      vector_set (entry, i++, char_pointer_to_symbol ("cc-frame"));
+      vector_set (entry, i, ULONG_TO_FIXNUM (1));
       return entry;
 
     case RETURN_COMBINATION_SAVE:
@@ -392,6 +413,7 @@ make_frame_type_info_table (void)
   init_ftti_entry (table, RETURN_HISTORY);
   init_ftti_entry (table, RETURN_APPLY);
   init_ftti_entry (table, RETURN_COMPILED_CODE);
+  init_ftti_entry (table, RETURN_COMPILED_ADDRESS);
   init_ftti_entry (table, RETURN_COMBINATION_SAVE);
   init_ftti_entry (table, RETURN_STACK_MARKER);
   init_ftti_entry (table, RETURN_HARDWARE_TRAP);
@@ -406,14 +428,29 @@ next_stack_frame (SCHEME_OBJECT* frame)
     return 0;
   SCHEME_OBJECT* next_frame = frame + offset;
   if (next_frame < stack_end)
-    assert (RETURN_CODE_P (cont_frame_ret (next_frame)));
+    assert (return_address_p (*next_frame));
   return next_frame;
 }
 
 unsigned long
 next_stack_frame_offset (SCHEME_OBJECT* frame)
 {
-  SCHEME_OBJECT ret = cont_frame_ret (frame);
+  SCHEME_OBJECT ret = *frame;
+#ifdef CC_SUPPORT_P
+  if (CC_RETURN_P (ret))
+    {
+      if (ret == return_to_interpreter)
+        return 1;
+      if (ret == reflect_to_interface)
+        return reflect_to_interpreter_offset (frame);
+      cc_entry_type_t cet;
+      if (read_cc_entry_type
+            (&cet,
+             CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (CC_RETURN_ADDRESS (ret))))
+        return ULONG_MAX;
+      return 1 + cet.args.for_continuation.offset;
+    }
+#endif
   switch (return_frame_type (ret))
     {
     case RETURN_WITH_ARG:
@@ -447,9 +484,13 @@ next_stack_frame_offset (SCHEME_OBJECT* frame)
 
     case RETURN_COMPILED_CODE:
       {
+#ifdef CC_SUPPORT_P
+        return CONT_SIZE;
+#else
         SCHEME_OBJECT offset = cont_frame_exp (frame);
         assert (FIXNUM_P (offset) && FIXNUM_POSITIVE_P (offset));
         return CONT_SIZE + FIXNUM_TO_ULONG (offset);
+#endif
       }
 
     default:

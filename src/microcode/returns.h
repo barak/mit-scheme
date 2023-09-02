@@ -148,6 +148,14 @@ typedef enum
   // . cc frames   .
   // .             .
   // +-------------+
+  RETURN_COMPILED_ADDRESS,
+  // +-------------+
+  // | return addr |
+  // +-------------+
+  // .             .
+  // . other words .
+  // .             .
+  // +-------------+
   RETURN_COMBINATION_SAVE,
   // +-------------+
   // | return code |
@@ -201,6 +209,7 @@ extern unsigned long MAX_RETURN;
 extern SCHEME_OBJECT make_return_code_names_table (void);
 extern SCHEME_OBJECT make_frame_type_info_table (void);
 extern const char* return_code_name (SCHEME_OBJECT);
+extern bool return_address_p (SCHEME_OBJECT);
 extern return_frame_type_t return_frame_type (SCHEME_OBJECT);
 extern SCHEME_OBJECT* next_stack_frame (SCHEME_OBJECT*);
 extern unsigned long next_stack_frame_offset (SCHEME_OBJECT*);
