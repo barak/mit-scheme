@@ -122,8 +122,11 @@ USA.
 	      (cpoint-frame-fields frame))))
 
 (define (decode-raw-control-point-frame frame)
-  (let ((return-address (vector-ref frame 0))
-	(info (vector-ref return-frame-types (return-frame-type frame 0))))
+  (let ((info (vector-ref return-frame-types (return-frame-type frame 0)))
+	(return-code-name
+	 (let ((address (vector-ref frame 0)))
+	   (and (interpreter-return-address? address)
+		(return-address/name address)))))
 
     (define (make ftype . alist)
       (make-cpoint-frame ftype frame alist))
@@ -140,9 +143,7 @@ USA.
     (define-integrable (rest-elts index)
       (cons (name index) (vector-copy frame (val-loc index))))
 
-    (let ((return-code-name
-	   (and (interpreter-return-address? return-address)
-		(return-address/name return-address)))
+    (let (
 	  (frame-type-name (vector-ref info 0)))
       (case frame-type-name
 	((with-arg)
@@ -168,7 +169,7 @@ USA.
 	((return-to-compiled-code)
 	 (make return-code-name (elt 0)))
 	((compiled-address)
-	 (make return-address (rest-elts 0)))
+	 (make frame-type-name))
 	((combination-save)
 	 ;; The index to primitive-datum-ref is relative to the address of
 	 ;; the object.  For a vector, that's one greater than the vector
@@ -193,6 +194,79 @@ USA.
 	 (make frame-type-name (elt 0) (elt 1)))
 	(else
 	 (error "Unknown return-frame-type code:" frame-type-name))))))
+
+
+(define (cpoint-frame-subproblem? frame)
+  (let ((p (assq (cpoint-frame-type frame) subproblem-frame-type-map)))
+    (if (not p)
+	(error "Unknown frame type:" frame))
+    (cadr p)))
+
+(define (cpoint-frame-history-subproblem? frame)
+  (let ((p (assq (cpoint-frame-type frame) subproblem-frame-type-map)))
+    (if (not p)
+	(error "Unknown frame type:" frame))
+    (caddr p)))
+
+(define subproblem-frame-type-map
+  '((access-continue #t #t)
+    (assignment-continue #t #t)
+    (cc-bkpt #t #f)
+    (cc-internal-apply #t #f)
+    (cc-invocation #t #f)
+    (cc-restore-interrupt-mask #t #f)
+    (cc-stack-marker #t #f)
+    (combination-apply #t #t)
+    (combination-save-value #t #t)
+    (compiled-address #t #f)
+    (compiler-assignment-trap-restart #t #t)
+    (compiler-error-restart #t #t)
+    (compiler-interrupt-restart #f #t)
+    (compiler-link-caches-restart #f #t)
+    (compiler-lookup-apply-trap-restart #t #t)
+    (compiler-operator-lookup-trap-restart #t #t)
+    (compiler-reference-trap-restart #t #t)
+    (compiler-safe-reference-trap-restart #t #t)
+    (compiler-unassigned?-trap-restart #t #t)
+    (conditional-decide #t #t)
+    (definition-continue #t #t)
+    (disjunction-decide #t #t)
+    (end-of-computation #f #f)
+    (eval-error #t #t)
+    (force-snap-thunk #t #t)
+    (halt #f #f)
+    (hardware-trap #t #f)
+    (internal-apply #t #f)
+    (internal-apply-val #t #f)
+    (join-stacklets #f #f)
+    (pop-return-error #f #f)
+    (reenter-compiled-code #f #t)
+    (restore-dont-copy-history #f #f)
+    (restore-history #f #f)
+    (restore-interrupt-mask #f #f)
+    (restore-value #f #f)
+    (return-to-interpreter #f #t)
+    (sequence-continue #t #t)
+    (stack-marker #f #f)))
+
+(define (cpoint-frames->cpoint frames)
+  (object-new-type (ucode-type control-point)
+		   (vector-concatenate
+		    (cons '#(#f 0)
+			  (cpoint-frames-raw-prefix frames)))))
+
+(define (cpoint-frames-raw-prefix frames)
+  (let ((join
+	 (find (lambda (frame)
+		 (eq? 'join-stacklets (cpoint-frame-type frame)))
+	       frames)))
+    (if join
+	(let loop ((frames frames) (raw '()))
+	  (let ((raw (cons (cpoint-frame-raw (car frames)) raw)))
+	    (if (eq? (car frames) join)
+		(reverse raw)
+		(loop (cdr frames) raw))))
+	(map cpoint-frame-raw frames))))
 
 #|
 

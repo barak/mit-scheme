@@ -2024,9 +2024,12 @@ USA.
 	  control-point/previous-history-offset
 	  control-point?
 	  cpoint-frame->alist
+	  cpoint-frame-history-subproblem?
 	  cpoint-frame-keywords
 	  cpoint-frame-ref
+	  cpoint-frame-subproblem?
 	  cpoint-frame-type
+	  cpoint-frames->cpoint
 	  make-control-point))
 
 (define-package (runtime date/time)
