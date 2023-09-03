@@ -130,15 +130,19 @@ USA.
       result)))
 
 (define (vector-append . vectors)
+  (%vector-concatenate vectors 'vector-append))
+
+(define (vector-concatenate vectors)
+  (%vector-concatenate vectors 'vector-concatenate))
+
+(define (%vector-concatenate vectors caller)
   (let ((result
 	 (make-vector
-	  (let loop ((vectors vectors) (length 0))
-	    (if (pair? vectors)
-		(begin
-		  (guarantee vector? (car vectors) 'vector-append)
-		  (loop (cdr vectors)
-			(fix:+ (vector-length (car vectors)) length)))
-		length)))))
+	  (fold (lambda (v n)
+		  (guarantee vector? v caller)
+		  (fix:+ (vector-length v) n))
+		0
+		vectors))))
     (let loop ((vectors vectors) (index 0))
       (if (pair? vectors)
 	  (let ((size (vector-length (car vectors))))

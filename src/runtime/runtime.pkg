@@ -1113,6 +1113,7 @@ USA.
 	  vector-append			;(scheme base)
 	  vector-binary-search
 	  vector-builder
+	  vector-concatenate
 	  vector-copy			;(scheme base)
 	  vector-copy!			;(scheme base)
 	  vector-eighth
