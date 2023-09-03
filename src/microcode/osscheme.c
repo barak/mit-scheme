@@ -118,7 +118,7 @@ void
 debug_back_trace (outf_channel stream)
 {
   outf (stream, "*** Scheme Microcode Back Trace: ***\n");
-  Back_Trace (stream);
+  debug_stack_trace (stream);
   outf (stream, "*** End of Back Trace ***\n");
   outf_flush (stream);
 }
@@ -126,5 +126,5 @@ debug_back_trace (outf_channel stream)
 void
 debug_examine_memory (long address, const char * label)
 {
-  Print_Expression ((* ((SCHEME_OBJECT *) address)), ((char *) label));
+  debug_print_expr ((* ((SCHEME_OBJECT *) address)), ((char *) label));
 }

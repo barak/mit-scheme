@@ -39,7 +39,7 @@ USA.
 
 static void print_object (outf_channel, SCHEME_OBJECT);
 static bool print_primitive_name (outf_channel, SCHEME_OBJECT);
-static void print_expression (outf_channel, SCHEME_OBJECT, const char *);
+static void print_expression (outf_channel, SCHEME_OBJECT, const char*);
 
 /* Compiled Code Debugging */
 
@@ -85,14 +85,14 @@ compiled_block_debug_filename (SCHEME_OBJECT block)
 #endif /* CC_SUPPORT_P */
 
 void
-Show_Env (SCHEME_OBJECT env)
+debug_print_env (outf_channel stream, SCHEME_OBJECT env)
 {
   SCHEME_OBJECT proc
     = extended_frame_p (env) ? extended_frame_proc (env) : env_proc (env);
   if (! (object_type (proc) == TC_PROCEDURE
          || object_type (proc) == TC_EXTENDED_PROCEDURE))
     {
-      outf_error ("Not created by a procedure\n");
+      outf (stream, "Not created by a procedure\n");
       return;
     }
   SCHEME_OBJECT lambda = proc_lambda (proc);
@@ -101,20 +101,20 @@ Show_Env (SCHEME_OBJECT env)
   SCHEME_OBJECT* vals = env_vals (env);
   while (params < end_params)
     {
-      Print_Expression (*params++, "Name ");
-      Print_Expression (*vals++, " Value ");
-      outf_error ("\n");
+      print_expression (stream, *params++, "Name");
+      print_expression (stream, *vals++, " Value");
+      outf (stream, "\n");
     }
   if (extended_frame_p (env))
     {
-      outf_error ("Auxiliary Variables\n");
+      outf (stream, "Extra bindings\n");
       SCHEME_OBJECT* bindings = extended_frame_bindings (env);
       SCHEME_OBJECT* end_bindings = bindings + extended_frame_length (env);
       while (bindings < end_bindings)
         {
-          Print_Expression (pair_car (*bindings), "Name ");
-          Print_Expression (pair_cdr (*bindings), " Value ");
-          outf_error ("\n");
+          print_expression (stream, pair_car (*bindings), "Name");
+          print_expression (stream, pair_cdr (*bindings), " Value");
+          outf (stream, "\n");
           bindings += 1;
         }
     }
@@ -127,14 +127,14 @@ print_list (outf_channel stream, SCHEME_OBJECT pair)
 
   outf (stream, "(");
   count = 0;
-  while (((PAIR_P (pair)) || (WEAK_PAIR_P (pair))) && (count < MAX_LIST_PRINT))
+  while ((PAIR_P (pair) || WEAK_PAIR_P (pair)) && count < MAX_LIST_PRINT)
     {
       if (count > 0)
 	outf (stream, " ");
       print_expression (stream,
-			(PAIR_CAR (pair)),
-			((WEAK_PAIR_P (pair)) ? "{weak}" : ""));
-      pair = (PAIR_CDR (pair));
+			PAIR_CAR (pair),
+			(WEAK_PAIR_P (pair)) ? "{weak}" : "");
+      pair = PAIR_CDR (pair);
       count += 1;
     }
   if (!EMPTY_LIST_P (pair))
@@ -195,14 +195,6 @@ print_return_name (outf_channel stream, SCHEME_OBJECT ret)
     }
   outf (stream, "[0x%lx]", object_datum (ret));
 }
-
-void
-Print_Return (const char * String)
-{
-  outf_error ("%s: ", String);
-  print_return_name (ERROR_OUTPUT, GET_RET);
-  outf_error ("\n");
-}
 
 static void
 print_simple (outf_channel stream, SCHEME_OBJECT object)
@@ -210,7 +202,7 @@ print_simple (outf_channel stream, SCHEME_OBJECT object)
   unsigned int type = object_type (object);
   const char * name = 0;
   if (type < TYPE_CODE_LIMIT)
-    name = (type_names[type]);
+    name = type_names[type];
   if (name != 0)
     outf (stream, "[%s", name);
   else
@@ -324,17 +316,12 @@ print_symbol (outf_channel stream, SCHEME_OBJECT symbol)
 static void
 print_filename (outf_channel stream, SCHEME_OBJECT filename)
 {
-  long length;
-  char * scan;
-  char * end;
-  char * slash;
-
-  length = (legacy_string_length (filename));
-  scan = (legacy_string_data (filename));
-  end = (scan + length);
-  slash = scan;
+  long length = legacy_string_length (filename);
+  char* scan = legacy_string_data (filename);
+  char* end = scan + length;
+  char* slash = scan;
   while (scan < end)
-    if ((*scan++) == '/')
+    if (*scan++ == '/')
       slash = scan;
   outf (stream, "\"%s\"", slash);
 }
@@ -344,10 +331,9 @@ DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
   "A cheap, built-in printer intended for debugging the interpreter.")
 {
   PRIMITIVE_HEADER (1);
-
   print_object (ERROR_OUTPUT, ARG_REF (1));
   outf_error ("\n");
-  return (SHARP_F);
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
 static void
@@ -359,7 +345,7 @@ print_expression (outf_channel stream, SCHEME_OBJECT expr, const char* prefix)
 }
 
 void
-Print_Expression (SCHEME_OBJECT expr, const char * prefix)
+debug_print_expr (SCHEME_OBJECT expr, const char* prefix)
 {
   print_expression (ERROR_OUTPUT, expr, prefix);
 }
@@ -726,8 +712,8 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     case TC_COMPILED_RETURN:
       {
-	insn_t * ret_addr = (CC_RETURN_ADDRESS (obj));
-	insn_t * entry_addr = (CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr));
+	insn_t* ret_addr = CC_RETURN_ADDRESS (obj);
+	insn_t* entry_addr = CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (ret_addr);
 	SCHEME_OBJECT entry =
 	  (make_pointer_object (TC_COMPILED_ENTRY, (SCHEME_OBJECT*) entry_addr));
 	print_compiled_entry (stream, entry);
@@ -737,40 +723,48 @@ print_object (outf_channel stream, SCHEME_OBJECT obj)
 
     default:
       print_simple (stream, obj);
+      return;
     }
 }
 
 void
-Print (SCHEME_OBJECT Expr)
+debug_print (SCHEME_OBJECT object)
 {
-  print_object (ERROR_OUTPUT, Expr);
-  outf_error ("\n");
+  if (PROCEDURE_FRAME_P (object))
+    debug_print_env (ERROR_OUTPUT, object);
+  else
+    {
+      print_object (ERROR_OUTPUT, object);
+      outf_error ("\n");
+    }
   outf_flush_error ();
 }
 
 static bool
-print_one_continuation_frame (outf_channel stream, SCHEME_OBJECT ret)
+print_one_continuation_frame (outf_channel stream, SCHEME_OBJECT ret,
+                              SCHEME_OBJECT** sp)
 {
   outf (stream, "\n    ");
   print_expression (stream, ret, "Return code");
   outf (stream, "\n    ");
-  SCHEME_OBJECT expr = stack_pop ();
+  SCHEME_OBJECT expr = *(*sp)++;
   print_expression (stream, expr, "Expression");
   outf (stream, "\n");
   if (object_datum (ret) == RC_END_OF_COMPUTATION
       || object_datum (ret) == RC_HALT)
     return true;
   if (object_datum (ret) == RC_JOIN_STACKLETS)
-    stack_pointer = control_point_start (expr);
+    *sp = control_point_start (expr);
   return false;
 }
 
 extern bool Print_One_Continuation_Frame (SCHEME_OBJECT);
 
 bool
-Print_One_Continuation_Frame (SCHEME_OBJECT Temp)
+Print_One_Continuation_Frame (SCHEME_OBJECT ret)
 {
-  return (print_one_continuation_frame (ERROR_OUTPUT, Temp));
+  SCHEME_OBJECT* scan = stack_pointer;
+  return print_one_continuation_frame (ERROR_OUTPUT, ret, &scan);
 }
 
 /* Code to dump the Scheme stack. */
@@ -807,102 +801,77 @@ Stack (int count)
   dump_stack (ERROR_OUTPUT, stack_pointer, stack_end, count);
 }
 
-/* Back_Trace relies on (a) only a call to push_cont puts a return code on the
-   stack; (b) push_cont pushes the expression first.  */
+// debug_stack_trace() relies on: (a) only a call to push_cont() puts a return
+// code on the stack; (b) push_cont() pushes the expression first.
 
 void
-Back_Trace (outf_channel stream)
+debug_stack_trace (outf_channel stream)
 {
-  SCHEME_OBJECT Temp, * Old_Stack;
 
-  Old_Stack = stack_pointer;
+  SCHEME_OBJECT* scan = stack_pointer;
   while (true)
     {
-#if 0
-      /* Not useful since this code prints the contents of control
-	 points as well.  */
-      if (!ADDRESS_IN_STACK_P (stack_pointer))
+      outf (stream, "{%#lx}", (unsigned long) scan);
+      SCHEME_OBJECT object = *scan++;
+      if (RETURN_CODE_P (object))
 	{
-	  if (stack_pointer == Old_Stack)
-	    outf (stream, "\n[Invalid stack pointer.]\n");
-	  else
-	    outf (stream, "\n[Stack ends abruptly.]\n");
-	  break;
-	}
-#endif
-      outf (stream, "{%#lx}", ((unsigned long) stack_pointer));
-      Temp = (stack_pop ());
-      if (RETURN_CODE_P (Temp))
-	{
-	  if (print_one_continuation_frame (stream, Temp))
+	  if (print_one_continuation_frame (stream, object, &scan))
 	    break;
 	}
       else
 	{
-	  print_expression (stream, Temp, "  ...");
-	  if ((object_type (Temp)) == TC_MANIFEST_NM_VECTOR)
+	  print_expression (stream, object, "  ...");
+	  if (object_type (object) == TC_MANIFEST_NM_VECTOR)
 	    {
 	      outf (stream, " (skipping)");
-	      stack_pointer = (stack_loc (object_datum (Temp)));
+              scan += object_datum (object);
 	    }
 	  outf (stream, "\n");
 	}
     }
-  stack_pointer = Old_Stack;
   outf_flush (stream);
 }
 
 void
-print_stack (SCHEME_OBJECT * sp)
+debug_print_stack (void)
 {
-  SCHEME_OBJECT * saved_sp = stack_pointer;
-  stack_pointer = sp;
-  Back_Trace (ERROR_OUTPUT);
-  stack_pointer = saved_sp;
-}
-
-extern void
-Debug_Stack_Trace(void)
-{
-  print_stack(stack_loc(0));
+  debug_stack_trace (ERROR_OUTPUT);
 }
 
 static bool
 print_primitive_name (outf_channel stream, SCHEME_OBJECT primitive)
 {
-  const char * name = (primitive_name (primitive));
+  const char* name = primitive_name (primitive);
   if (name == 0)
-  {
-    outf (stream, "Unknown primitive %#08lx", (primitive_number (primitive)));
-    return false;
-  }
+    outf (stream, "Unknown primitive %#08lx", primitive_number (primitive));
   else
-  {
     outf (stream, "%s", name);
-    return true;
-  }
+  return name != 0;
 }
 
+// Assumes it's called when LEXPR_ACTUALS is set.
 void
-Print_Primitive (SCHEME_OBJECT primitive)
+debug_print_primitive (SCHEME_OBJECT primitive)
 {
-  char buffer[40];
-  int NArgs, i;
-
   outf_error ("Primitive: ");
-  if (print_primitive_name (ERROR_OUTPUT, primitive))
-    NArgs = (primitive_arity (primitive));
-  else
-    NArgs = 3;	        /* Unknown primitive */
-
+  bool known = print_primitive_name (ERROR_OUTPUT, primitive);
   outf_error ("\n");
 
-  for (i = 0; i < NArgs; i++)
-  {
-    sprintf (buffer, "...Arg %ld", ((long) (i + 1)));
-    print_expression (ERROR_OUTPUT, (stack_ref (i)), buffer);
-    outf_error ("\n");
-  }
+  unsigned long nargs;
+  if (known)
+    {
+      int arity = primitive_arity (primitive);
+      nargs = (arity < 0) ? GET_LEXPR_ACTUALS : arity;
+    }
+  else
+    nargs = 0;
+  for (unsigned long i = 0; i < nargs; i++)
+    {
+      char buffer[40];
+      sprintf (buffer, "...Arg %lud", i + 1);
+      print_expression (ERROR_OUTPUT, stack_ref (i), buffer);
+      outf_error ("\n");
+    }
 }
 
 /* Code for scanning the heap for obviously broken or invalid objects. */
@@ -1319,7 +1288,7 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 		area = next;
 	      }
 	      break;
-	      
+
 	    default:
 	      outf_error ("%#lx: Invalid special\n", (unsigned long)area);
 	      complaints += 1;
@@ -1385,7 +1354,7 @@ verify_stack (SCHEME_OBJECT * sp, SCHEME_OBJECT * bottom)
 }
 
 bool
-verify_heap (void)
+debug_verify_heap (void)
 {
   bool c = verify_heap_area ("constants", constant_start, constant_alloc_next);
   bool h = verify_heap_area ("heap", heap_start, Free);
@@ -1397,7 +1366,7 @@ verify_heap (void)
 #else  /* !ENABLE_DEBUGGING_TOOLS */
 
 bool
-verify_heap (void)
+debug_verify_heap (void)
 {
   return true;
 }
@@ -1410,7 +1379,7 @@ Complains if a scan of the heap encounters anything unexpected.\n\
 Returns #T if the scan was successful and #F if there were any complaints.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (verify_heap () ? SHARP_T : SHARP_F);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (debug_verify_heap ()));
 }
 
 /* Code for interactively setting and clearing the interpreter
@@ -1601,6 +1570,6 @@ DEFINE_PRIMITIVE("SET-DEBUG-FLAGS!", Prim_set_debug_flags, 2, 2,
   "(FLAG_NUMBER BOOLEAN)")
 {
   PRIMITIVE_HEADER (2);
-  set_flag ((arg_integer (1)), (BOOLEAN_ARG (2)));
+  set_flag (arg_integer (1), BOOLEAN_ARG (2));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

@@ -161,7 +161,7 @@ termination_suffix_trace (int code)
   if (Trace_On_Error)
     {
       outf_error ("\n\n**** Stack trace ****\n\n");
-      Back_Trace (ERROR_OUTPUT);
+      debug_stack_trace (ERROR_OUTPUT);
     }
   termination_suffix (code, 1, true);
 }
@@ -191,7 +191,7 @@ void
 termination_end_of_computation (void)
 {
   termination_prefix (TERM_END_OF_COMPUTATION);
-  Print_Expression (GET_VAL, "Final result");
+  debug_print_expr (GET_VAL, "Final result");
   outf_console("\n");
   termination_suffix (TERM_END_OF_COMPUTATION, 0, false);
 }

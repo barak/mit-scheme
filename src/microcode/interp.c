@@ -498,13 +498,13 @@ apply_primitive (SCHEME_OBJECT proc)
   SET_EXP (proc);
 #ifdef ENABLE_DEBUGGING_TOOLS
   if (Primitive_Debug)
-    Print_Primitive (proc);
+    debug_print_primitive (proc);
 #endif
   apply_primitive_external (proc);
 #ifdef ENABLE_DEBUGGING_TOOLS
   if (Primitive_Debug)
     {
-      Print_Expression (GET_VAL, "Primitive Result");
+      debug_print_expr (GET_VAL, "Primitive Result");
       outf_error("\n");
       outf_flush_error();
     }

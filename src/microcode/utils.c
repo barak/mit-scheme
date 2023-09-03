@@ -178,7 +178,7 @@ error_death (long code, const char * message)
   outf_fatal ("Microcode Error: %s.\n", message);
   err_print (code, FATAL_OUTPUT);
   outf_error ("\n**** Stack Trace ****\n\n");
-  Back_Trace (ERROR_OUTPUT);
+  debug_stack_trace (ERROR_OUTPUT);
   termination_no_error_handler ();
   /*NOTREACHED*/
 }
@@ -657,7 +657,7 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
 	  || object_datum (GET_RET) == RC_INTERNAL_APPLY_VAL)
 	{
           SCHEME_OBJECT* next_frame = stack_loc (CONT_SIZE);
-	  Print_Expression (apply_frame_ptr_proc (next_frame), "Procedure");
+	  debug_print_expr (apply_frame_ptr_proc (next_frame), "Procedure");
 	  outf_error ("\n");
 
           SCHEME_OBJECT* args = apply_frame_ptr_args (next_frame);
@@ -666,25 +666,26 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
           while (scan < end)
 	    {
               outf_error ("Argument %d: ", scan - args);
-              Print_Expression (*scan++, "");
+              debug_print_expr (*scan++, "");
               outf_error ("\n");
             }
 	}
       else
 	{
-	  Print_Expression (GET_EXP, "Expression");
+	  debug_print_expr (GET_EXP, "Expression");
 	  outf_error ("\n");
-	  Print_Expression (GET_ENV, "Environment");
+	  debug_print_expr (GET_ENV, "Environment");
 	  outf_error ("\n");
 	}
-      Print_Return ("Return code");
+      debug_print_expr (GET_RET, "Return code");
+      outf_error ("\n");
     }
 #endif
 
   if (Trace_On_Error)
     {
       outf_error ("\n\n**** Stack Trace ****\n\n");
-      Back_Trace (ERROR_OUTPUT);
+      debug_stack_trace (ERROR_OUTPUT);
     }
 
 #ifdef ENABLE_DEBUGGING_TOOLS

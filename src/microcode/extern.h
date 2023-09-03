@@ -125,7 +125,6 @@ set_ulong_register (unsigned int index, unsigned long value)
    extern bool Bignum_Debug;
    extern bool Print_Errors;
 
-   extern bool verify_heap (void);
    extern void Pop_Return_Break_Point (void);
    extern unsigned int debug_slotno;
    extern unsigned int debug_nslots;
@@ -398,12 +397,15 @@ extern void unpack_control_point (SCHEME_OBJECT);
 
 /* Debugging utilities */
 
-extern void Back_Trace (outf_channel);
-extern void Debug_Stack_Trace (void);
-extern void Debug_Print (SCHEME_OBJECT, bool);
-extern void Show_Env (SCHEME_OBJECT);
-extern void Print_Return (const char *);
-extern void Print_Expression (SCHEME_OBJECT, const char *);
-extern void Print_Primitive (SCHEME_OBJECT);
+// Intended for use in debugger:
+extern void debug_print (SCHEME_OBJECT);
+extern void debug_print_stack (void);
+
+// Intended for use in the code base:
+extern bool debug_verify_heap (void);
+extern void debug_print_env (outf_channel, SCHEME_OBJECT);
+extern void debug_print_expr (SCHEME_OBJECT, const char*);
+extern void debug_print_primitive (SCHEME_OBJECT);
+extern void debug_stack_trace (outf_channel);
 
 #endif /* not SCM_EXTERN_H */

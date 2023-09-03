@@ -209,21 +209,19 @@ Print_Memory (SCHEME_OBJECT * Where, long How_Many)
 
 DEFINE_PRIMITIVE ("DEBUG-SHOW-ENV", Prim_debug_show_env, 1, 1, 0)
 {
-  SCHEME_OBJECT environment;
   PRIMITIVE_HEADER (1);
-
-  environment = (ARG_REF (1));
-  outf_console ("\n*** Environment = 0x%lx ***\n", ((long) environment));
-  Show_Env (environment);
+  CHECK_ARG (1, PROCEDURE_FRAME_P);
+  SCHEME_OBJECT environment = ARG_REF (1);
+  outf_console ("\n*** Environment = 0x%lx ***\n", (long) environment);
+  debug_print_env (environment);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("DEBUG-STACK-TRACE", Prim_debug_stack_trace, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-
   outf_console ("\n*** Back Trace: ***\n");
-  Back_Trace (CONSOLE_OUTPUT);
+  debug_stack_trace (CONSOLE_OUTPUT);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -241,7 +239,7 @@ DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
     else
       {
 	outf_console ("\nInterned Symbol: 0x%lx", ((long) symbol));
-	Print_Expression (memory_ref (symbol, SYMBOL_GLOBAL_VALUE), "Value");
+	debug_print_expr (memory_ref (symbol, SYMBOL_GLOBAL_VALUE), "Value");
 	outf_console ("\n");
       }
   }
