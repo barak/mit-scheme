@@ -4931,6 +4931,7 @@ USA.
 	  condition-type:illegal-stream-element
 	  empty-stream?
 	  head
+	  generator->stream
 	  list->stream
 	  make-prime-numbers-stream
 	  prime-numbers-stream

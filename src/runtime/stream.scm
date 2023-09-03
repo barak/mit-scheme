@@ -306,6 +306,14 @@ USA.
    (reset-primes!)
    (add-secondary-gc-daemon! reset-primes!)))
 
+(define (generator->stream g)
+  (define (stream-generator)
+    (let ((object (g)))
+      (if (eof-object? object)
+	  the-empty-stream
+	  (cons-stream object (stream-generator)))))
+  stream-generator)
+
 (define condition-type:illegal-stream-element)
 (define error:illegal-stream-element)
 (seq:after-conditions 'add-action!
