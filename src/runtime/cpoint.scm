@@ -99,110 +99,100 @@ USA.
     (new-cp! control-point)
     generator))
 
-(define (cpoint-frame-type frame)
-  (vector-ref frame 0))
+(define-record-type <cpoint-frame>
+    make-cpoint-frame
+    cpoint-frame?
+  (type cpoint-frame-type)
+  (raw cpoint-frame-raw)
+  (fields cpoint-frame-fields))
 
 (define (cpoint-frame-ref frame keyword)
-  (let ((end (vector-length frame)))
-    (let loop ((i 1))
-      (if (not (fix:< i end))
-	  (error "Unknown frame keyword:" keyword))
-      (if (eq? keyword (vector-ref frame i))
-	  (vector-ref frame (fix:+ i 1))
-	  (loop (fix:+ i 2))))))
+  (let ((p (assq keyword (cpoint-frame-fields frame))))
+    (if (not p)
+	(error "Unknown frame keyword:" keyword))
+    (cdr p)))
 
 (define (cpoint-frame-keywords frame)
-  (let ((end (vector-length frame)))
-    (let loop ((i 1) (keywords '()))
-      (if (fix:< i end)
-	  (loop (fix:+ i 2) (cons (vector-ref frame i) keywords))
-	  (reverse keywords)))))
+  (map car (cpoint-frame-fields frame)))
 
 (define (cpoint-frame->alist frame)
-  (cons (cons 'return-code (vector-ref frame 0))
-	(let ((end (vector-length frame)))
-	  (let loop ((i 1) (alist '()))
-	    (if (fix:< i end)
-		(loop (fix:+ i 2)
-		      (cons (cons (vector-ref frame i)
-				  (vector-ref frame (fix:+ i 1)))
-			    alist))
-		(reverse alist))))))
+  (cons* (list 'frame-type (cpoint-frame-type frame))
+	 (list 'raw-frame (cpoint-frame-raw frame))
+	 (map (lambda (p) (list (car p) (cdr p)))
+	      (cpoint-frame-fields frame))))
 
 (define (decode-raw-control-point-frame frame)
-  (let* ((return-address (vector-ref frame 0))
-	 (frame-type (return-frame-type frame 0))
-	 (return-code-name
-	  (and (interpreter-return-address? return-address)
-	       (return-address/name return-address)))
-	 (info (vector-ref return-frame-types frame-type))
-	 (type-name (vector-ref info 0)))
-    (case type-name
-      ((with-arg)
-       (let ((name
-	      (case return-code-name
-		((join-stacklets) 'control-point)
-		((access-continue) 'expression)
-		((force-snap-thunk) 'delayed)
-		((normal-garbage-collect-done) 'gc-result)
-		((restore-value pop-return-error) 'value)
-		((restore-interrupt-mask) 'interrupt-mask)
-		((halt) 'termination-code)
-		(else #f))))
-	 (if name
-	     (vector return-code-name
-		     name (vector-ref frame (vector-ref info 2)))
-	     (vector return-code-name))))
-      ((exp+env history stack-marker)
-       (vector return-code-name
-	       (vector-ref info 1) (vector-ref frame (vector-ref info 2))
-	       (vector-ref info 3) (vector-ref frame (vector-ref info 4))))
-      ((apply)
-       (vector return-code-name
-	       (vector-ref info 1) (vector-ref frame (vector-ref info 2))
-	       (vector-ref info 3) (vector-copy frame (vector-ref info 4))))
-      ((return-to-compiled-code)
-       (vector return-code-name
-	       (vector-ref info 1) (vector-ref frame (vector-ref info 2))))
-      ((compiled-address)
-       (vector return-address
-	       (vector-ref info 1) (vector-copy frame (vector-ref info 2))))
-      ((combination-save)
-       ;; The index to primitive-datum-ref is relative to the address of
-       ;; the object.  For a vector, that's one greater than the vector
-       ;; index.
-       (let ((n-blanks
-	      (primitive-datum-ref frame (fix:+ 1 (vector-ref info 6)))))
-	 (vector return-code-name
-		 (vector-ref info 1) (vector-ref frame (vector-ref info 2))
-		 (vector-ref info 3) (vector-ref frame (vector-ref info 4))
-		 (vector-ref info 5) n-blanks
-		 (vector-ref info 7) (vector-copy frame (vector-ref info 8)))))
-      ((hardware-trap)
-       (vector return-code-name
-	       (vector-ref info 1) (vector-ref frame (vector-ref info 2))
-	       (vector-ref info 3) (vector-ref frame (vector-ref info 4))
-	       (vector-ref info 5) (vector-ref frame (vector-ref info 6))
-	       (vector-ref info 7) (vector-ref frame (vector-ref info 8))
-	       (vector-ref info 9) (vector-ref frame (vector-ref info 10))
-	       (vector-ref info 11) (vector-ref frame (vector-ref info 12))
-	       (vector-ref info 13) (vector-ref frame (vector-ref info 14))
-	       (vector-ref info 15) (vector-ref frame (vector-ref info 16))))
-      ((return-to-interpreter)
-       (vector type-name))
-      ((cc-internal-apply cc-bkpt cc-invocation)
-       (vector type-name
-	       (vector-ref info 1) (vector-ref frame (vector-ref info 2))
-	       (vector-ref info 3) (vector-copy frame (vector-ref info 4))))
-      ((cc-restore-interrupt-mask)
-       (vector type-name
-	       (vector-ref info 1) (vector-ref frame (vector-ref info 2))))
-      ((cc-stack-marker)
-       (vector type-name
-	       (vector-ref info 1) (vector-ref frame (vector-ref info 2))
-	       (vector-ref info 3) (vector-ref frame (vector-ref info 4))))
-      (else
-       (error "Unknown return-frame-type code:" (vector-ref info 0))))))
+  (let ((return-address (vector-ref frame 0))
+	(info (vector-ref return-frame-types (return-frame-type frame 0))))
+
+    (define (make ftype . alist)
+      (make-cpoint-frame ftype frame alist))
+
+    (define-integrable (name index)
+      (vector-ref info (fix:+ 1 (fix:* 2 index))))
+
+    (define-integrable (val-loc index)
+      (vector-ref info (fix:+ 2 (fix:* 2 index))))
+
+    (define-integrable (elt index)
+      (cons (name index) (vector-ref frame (val-loc index))))
+
+    (define-integrable (rest-elts index)
+      (cons (name index) (vector-copy frame (val-loc index))))
+
+    (let ((return-code-name
+	   (and (interpreter-return-address? return-address)
+		(return-address/name return-address)))
+	  (frame-type-name (vector-ref info 0)))
+      (case frame-type-name
+	((with-arg)
+	 (let ((name
+		(case return-code-name
+		  ((join-stacklets) 'control-point)
+		  ((access-continue) 'expression)
+		  ((force-snap-thunk) 'delayed)
+		  ((normal-garbage-collect-done) 'gc-result)
+		  ((restore-value pop-return-error) 'value)
+		  ((restore-interrupt-mask) 'interrupt-mask)
+		  ((halt) 'termination-code)
+		  (else #f))))
+	   (if name
+	       (make-cpoint-frame return-code-name frame
+				  (list (cons name
+					      (vector-ref frame (val-loc 0)))))
+	       (make return-code-name))))
+	((exp+env history stack-marker)
+	 (make return-code-name (elt 0) (elt 1)))
+	((apply)
+	 (make return-code-name (elt 0) (rest-elts 1)))
+	((return-to-compiled-code)
+	 (make return-code-name (elt 0)))
+	((compiled-address)
+	 (make return-address (rest-elts 0)))
+	((combination-save)
+	 ;; The index to primitive-datum-ref is relative to the address of
+	 ;; the object.  For a vector, that's one greater than the vector
+	 ;; index.
+	 (let ((n-blanks
+		(primitive-datum-ref frame (fix:+ 1 (vector-ref info 6)))))
+	   (make return-code-name
+		 (elt 0)
+		 (elt 1)
+		 n-blanks
+		 (rest-elts (fix:+ (vector-ref info 8) n-blanks)))))
+	((hardware-trap)
+	 (make return-code-name (elt 0) (elt 1) (elt 2) (elt 3)
+	       (elt 4) (elt 5) (elt 6) (elt 7)))
+	((return-to-interpreter)
+	 (make frame-type-name))
+	((cc-internal-apply cc-bkpt cc-invocation)
+	 (make frame-type-name (elt 0) (rest-elts 1)))
+	((cc-restore-interrupt-mask)
+	 (make frame-type-name (elt 0)))
+	((cc-stack-marker)
+	 (make frame-type-name (elt 0) (elt 1)))
+	(else
+	 (error "Unknown return-frame-type code:" frame-type-name))))))
 
 #|
 
