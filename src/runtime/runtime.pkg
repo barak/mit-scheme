@@ -2012,6 +2012,7 @@ USA.
   (files "cpoint")
   (parent (runtime))
   (export (runtime)
+	  control-point->frame-generator
 	  control-point->raw-frame-generator
 	  control-point/element-stream
 	  control-point/history
@@ -2021,8 +2022,10 @@ USA.
 	  control-point/previous-history-control-point
 	  control-point/previous-history-offset
 	  control-point?
-	  decode-raw-control-point-frame
-	  decoded-control-point-frame->alist
+	  cpoint-frame->alist
+	  cpoint-frame-keywords
+	  cpoint-frame-ref
+	  cpoint-frame-type
 	  make-control-point))
 
 (define-package (runtime date/time)
