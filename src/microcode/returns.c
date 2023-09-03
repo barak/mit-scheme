@@ -376,9 +376,9 @@ make_ftti_entry (return_frame_type_t type)
 
     case RFT_STACK_MARKER:
       entry = allocate_ftti_entry (type, 2);
-      vector_set (entry, i++, char_pointer_to_symbol ("marker-1"));
+      vector_set (entry, i++, char_pointer_to_symbol ("marker-type"));
       vector_set (entry, i++, ULONG_TO_FIXNUM (1));
-      vector_set (entry, i++, char_pointer_to_symbol ("marker-2"));
+      vector_set (entry, i++, char_pointer_to_symbol ("marker-instance"));
       vector_set (entry, i, ULONG_TO_FIXNUM (2));
       return entry;
 
@@ -413,9 +413,9 @@ make_ftti_entry (return_frame_type_t type)
 
     case RFT_CC_STACK_MARKER:
       entry = allocate_ftti_entry (type, 2);
-      vector_set (entry, i++, char_pointer_to_symbol ("marker-1"));
+      vector_set (entry, i++, char_pointer_to_symbol ("marker-type"));
       vector_set (entry, i++, ULONG_TO_FIXNUM (2));
-      vector_set (entry, i++, char_pointer_to_symbol ("marker-2"));
+      vector_set (entry, i++, char_pointer_to_symbol ("marker-instance"));
       vector_set (entry, i, ULONG_TO_FIXNUM (3));
       return entry;
 
