@@ -227,7 +227,7 @@ allocate_control_point (unsigned long n, bool gc_p)
   SCHEME_OBJECT cp
     = (allocate_marked_vector (TC_CONTROL_POINT, (n + 2), gc_p));
   vector_set (cp, 0, SHARP_F);
-  vector_set (cp, 1, (make_nmv_header (0)));
+  vector_set (cp, 1, ULONG_TO_FIXNUM (0));
   return (cp);
 }
 
