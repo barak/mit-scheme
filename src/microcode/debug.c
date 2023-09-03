@@ -807,7 +807,6 @@ Stack (int count)
 void
 debug_stack_trace (outf_channel stream)
 {
-
   SCHEME_OBJECT* scan = stack_pointer;
   while (true)
     {
