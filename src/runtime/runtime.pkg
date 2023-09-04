@@ -2011,21 +2011,25 @@ USA.
   (export (runtime debugging-info)
 	  stack-frame/type))
 
+(define-package (runtime control-point)
+  (files "cpoint")
+  (parent (runtime))
+  (export (runtime)
+	  control-point/element-stream
+	  control-point/history
+	  control-point/interrupt-mask
+	  control-point/n-elements
+	  control-point/next-control-point
+	  control-point/previous-history-control-point
+	  control-point/previous-history-offset
+	  control-point?
+	  make-control-point))
+
 (define-package (runtime new-continuation-parser)
   (files "continuation-parser")
   (parent (runtime))
   (export (runtime)
-	  continuation->stack-frame*)
-  (export (runtime stack-frame)
-	  pstate-block-thread-events?
-	  pstate-dynamic-state
-	  pstate-history
-	  pstate-previous-type))
-
-(define-package (runtime stack-frame)
-  (files "stack-frame")
-  (parent (runtime))
-  (export (runtime)
+	  continuation->stack-frame*
 	  stack-frame*->continuation
 	  stack-frame*/block-thread-events?
 	  stack-frame*/compiled-code?
@@ -2046,24 +2050,15 @@ USA.
 	  stack-frame*/return-code
 	  stack-frame*/skip-non-subproblems
 	  stack-frame*/subproblem?
-	  stack-frame*?)
-  (export (runtime new-continuation-parser)
-	  make-stack-frame))
+	  stack-frame*?))
 
-(define-package (runtime control-point)
-  (files "cpoint")
+(define-package (runtime new-control-point)
+  (files "control-point")
   (parent (runtime))
   (export (runtime)
 	  control-point->frame-generator
 	  control-point->raw-frame-generator
-	  control-point/element-stream
-	  control-point/history
-	  control-point/interrupt-mask
-	  control-point/n-elements
-	  control-point/next-control-point
-	  control-point/previous-history-control-point
-	  control-point/previous-history-offset
-	  control-point?
+	  ;;control-point?
 	  cpoint-frame->alist
 	  cpoint-frame-compiled-address?
 	  cpoint-frame-compiled-code?
@@ -2083,8 +2078,7 @@ USA.
 	  cpoint-frame-subproblem?
 	  cpoint-frame-type
 	  cpoint-frames->control-point
-	  decode-raw-control-point-frame
-	  make-control-point))
+	  decode-raw-control-point-frame))
 
 (define-package (runtime date/time)
   (files "datime")
@@ -3001,9 +2995,8 @@ USA.
 	  history-transform
 	  history-untransform)
   (export (runtime new-continuation-parser)
-	  history-transform)
-  (export (runtime stack-frame)
-	  history-reductions))
+	  history-reductions
+	  history-transform))
 
 (define-package (runtime compress)
   (file-case options
