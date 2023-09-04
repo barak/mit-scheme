@@ -100,15 +100,15 @@ USA.
 	 (map (lambda (p) (list (car p) (cdr p)))
 	      (cpoint-frame-fields frame))))
 
-(define (decode-raw-control-point-frame frame)
-  (let ((info (vector-ref return-frame-types (return-frame-type frame 0)))
+(define (decode-raw-control-point-frame raw)
+  (let ((info (vector-ref return-frame-types (return-frame-type raw 0)))
 	(return-code-name
-	 (let ((address (vector-ref frame 0)))
+	 (let ((address (vector-ref raw 0)))
 	   (and (interpreter-return-address? address)
 		(return-address/name address)))))
 
     (define (make ftype . alist)
-      (make-cpoint-frame ftype frame alist))
+      (make-cpoint-frame ftype raw alist))
 
     (define-integrable (name index)
       (vector-ref info (fix:+ 1 (fix:* 2 index))))
@@ -117,10 +117,10 @@ USA.
       (vector-ref info (fix:+ 2 (fix:* 2 index))))
 
     (define-integrable (elt index)
-      (cons (name index) (vector-ref frame (val-loc index))))
+      (cons (name index) (vector-ref raw (val-loc index))))
 
     (define-integrable (rest-elts index)
-      (cons (name index) (vector-copy frame (val-loc index))))
+      (cons (name index) (vector->list raw (val-loc index))))
 
     (let ((frame-type-name (vector-ref info 0)))
       (case frame-type-name
@@ -136,9 +136,9 @@ USA.
 		  ((halt) 'termination-code)
 		  (else #f))))
 	   (if name
-	       (make-cpoint-frame return-code-name frame
+	       (make-cpoint-frame return-code-name raw
 				  (list (cons name
-					      (vector-ref frame (val-loc 0)))))
+					      (vector-ref raw (val-loc 0)))))
 	       (make return-code-name))))
 	((exp+env history stack-marker)
 	 (make return-code-name (elt 0) (elt 1)))
@@ -149,17 +149,16 @@ USA.
 	((compiled-address)
 	 (make frame-type-name))
 	((combination-save)
-	 ;; The index to primitive-datum-ref is relative to the address of
-	 ;; the object.  For a vector, that's one greater than the vector
-	 ;; index.
+	 ;; The index to primitive-datum-ref is relative to the address of the
+	 ;; object.  For a vector, that's one greater than the vector index.
 	 (let ((n-blanks
-		(primitive-datum-ref frame (fix:+ 1 (val-loc 2)))))
+		(primitive-datum-ref raw (fix:+ 1 (val-loc 2)))))
 	   (make return-code-name
 		 (elt 0)
 		 (elt 1)
-		 n-blanks
+		 (cons (name 2) n-blanks)
 		 (cons (name 3)
-		       (vector-copy frame (fix:+ (val-loc 3) n-blanks))))))
+		       (vector->list raw (fix:+ (val-loc 3) n-blanks))))))
 	((hardware-trap)
 	 (make return-code-name (elt 0) (elt 1) (elt 2) (elt 3)
 	       (elt 4) (elt 5) (elt 6) (elt 7)))
