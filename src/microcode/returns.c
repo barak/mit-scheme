@@ -357,10 +357,7 @@ make_ftti_entry (return_frame_type_t type)
       return entry;
 
     case RFT_COMPILED_ADDRESS:
-      entry = allocate_ftti_entry (type, 1);
-      vector_set (entry, i++, char_pointer_to_symbol ("cc-frame"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (1));
-      return entry;
+      return allocate_ftti_entry (type, 0);
 
     case RFT_COMBINATION_SAVE:
       entry = allocate_ftti_entry (type, 4);
