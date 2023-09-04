@@ -40,8 +40,9 @@ USA.
 (define-deferred return-frame-types
   (microcode-return-frame-types))
 
-(define-integrable (control-point? object)
+(define (control-point? object)
   (object-type? (ucode-type control-point) object))
+(register-predicate! control-point? 'control-point)
 
 (define (control-point->frame-generator control-point)
   (gmap decode-raw-control-point-frame

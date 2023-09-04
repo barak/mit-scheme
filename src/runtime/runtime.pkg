@@ -2022,7 +2022,6 @@ USA.
 	  control-point/next-control-point
 	  control-point/previous-history-control-point
 	  control-point/previous-history-offset
-	  control-point?
 	  make-control-point))
 
 (define-package (runtime new-continuation-parser)
@@ -2058,7 +2057,7 @@ USA.
   (export (runtime)
 	  control-point->frame-generator
 	  control-point->raw-frame-generator
-	  ;;control-point?
+	  control-point?
 	  cpoint-frame->alist
 	  cpoint-frame-compiled-address?
 	  cpoint-frame-compiled-code?

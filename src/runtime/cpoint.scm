@@ -30,9 +30,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable (control-point? object)
-  (object-type? (ucode-type control-point) object))
-
 (define-integrable (control-point/interrupt-mask control-point)
   (control-point-ref control-point 1))
 
