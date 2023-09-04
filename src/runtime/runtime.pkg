@@ -2011,6 +2011,45 @@ USA.
   (export (runtime debugging-info)
 	  stack-frame/type))
 
+(define-package (runtime new-continuation-parser)
+  (files "continuation-parser")
+  (parent (runtime))
+  (export (runtime)
+	  continuation->stack-frame*)
+  (export (runtime stack-frame)
+	  pstate-block-thread-events?
+	  pstate-dynamic-state
+	  pstate-history
+	  pstate-previous-type))
+
+(define-package (runtime stack-frame)
+  (files "stack-frame")
+  (parent (runtime))
+  (export (runtime)
+	  stack-frame*->continuation
+	  stack-frame*/block-thread-events?
+	  stack-frame*/compiled-code?
+	  stack-frame*/compiled-return-address?
+	  stack-frame*/dynamic-state
+	  stack-frame*/elements
+	  stack-frame*/hardware-trap-code
+	  stack-frame*/hardware-trap?
+	  stack-frame*/length
+	  stack-frame*/next
+	  stack-frame*/next-subproblem
+	  stack-frame*/previous-type
+	  stack-frame*/reductions
+	  stack-frame*/ref
+	  stack-frame*/repl-eval-boundary?
+	  stack-frame*/resolve-stack-address
+	  stack-frame*/return-address
+	  stack-frame*/return-code
+	  stack-frame*/skip-non-subproblems
+	  stack-frame*/subproblem?
+	  stack-frame*?)
+  (export (runtime new-continuation-parser)
+	  make-stack-frame))
+
 (define-package (runtime control-point)
   (files "cpoint")
   (parent (runtime))
@@ -2960,7 +2999,11 @@ USA.
 	  history-reductions
 	  history-superproblem
 	  history-transform
-	  history-untransform))
+	  history-untransform)
+  (export (runtime new-continuation-parser)
+	  history-transform)
+  (export (runtime stack-frame)
+	  history-reductions))
 
 (define-package (runtime compress)
   (file-case options
@@ -4920,6 +4963,9 @@ USA.
 	  get-dynamic-state
 	  set-dynamic-state!)
   (export (runtime continuation-parser)
+	  %translate-to-state-point
+	  merge-dynamic-state)
+  (export (runtime new-continuation-parser)
 	  %translate-to-state-point
 	  merge-dynamic-state)
   (export (runtime thread)
