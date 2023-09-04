@@ -891,8 +891,7 @@ USA.
   (command/print-reduction dstate port))
 
 (define (special-history-subproblem? dstate)
-  (eq? (stack-frame/type (dstate/subproblem dstate))
-       stack-frame-type/compiled-return-address))
+  (stack-frame/compiled-return-address? (dstate/subproblem dstate)))
 
 ;;;; Utilities
 

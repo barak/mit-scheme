@@ -1973,6 +1973,7 @@ USA.
 	  stack-frame->continuation
 	  stack-frame/block-thread-events?
 	  stack-frame/compiled-code?
+	  stack-frame/compiled-return-address?
 	  stack-frame/dynamic-state
 	  stack-frame/elements
 	  stack-frame/interrupt-mask
@@ -1991,7 +1992,6 @@ USA.
 	  stack-frame/return-code
 	  stack-frame/skip-non-subproblems
 	  stack-frame/subproblem?
-	  stack-frame/type
 	  stack-frame?)
   (export (runtime)
 	  hardware-trap-frame?
@@ -2007,7 +2007,9 @@ USA.
 	  stack-frame-type/interrupt-compiled-procedure
 	  stack-frame-type/properties
 	  stack-frame-type/subproblem?
-	  stack-frame-type?))
+	  stack-frame-type?)
+  (export (runtime debugging-info)
+	  stack-frame/type))
 
 (define-package (runtime control-point)
   (files "cpoint")

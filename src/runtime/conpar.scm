@@ -126,6 +126,9 @@ USA.
 	  (values frame offset)
 	  (loop (stack-frame/next frame) (fix:- offset length))))))
 
+(define (stack-frame/compiled-return-address? stack-frame)
+  (eq? (stack-frame/type stack-frame) stack-frame-type/compiled-return-address))
+
 (define (stack-frame/skip-non-subproblems stack-frame)
   (let ((type (stack-frame/type stack-frame)))
     (cond ((and (stack-frame/subproblem? stack-frame)

@@ -91,8 +91,7 @@
 			  ;; continuation looks different.
 			  (stack-frame/next-subproblem
 			   (continuation/first-subproblem continuation))))
-		     (and (eq? stack-frame-type/compiled-return-address
-			       (stack-frame/type stack-frame))
+		     (and (stack-frame/compiled-return-address? stack-frame)
 			  (stack-frame/return-address stack-frame))))))))
      (do () ((not (eq? event-return-address 'uninitialized)))
        (suspend-current-thread))
@@ -145,8 +144,7 @@
 (define (stack-sampler-interrupt-stack-frame? stack-frame)
   (let ((return-address event-return-address))
     (and (compiled-return-address? return-address)
-         (eq? stack-frame-type/compiled-return-address
-              (stack-frame/type stack-frame))
+         (stack-frame/compiled-return-address? stack-frame)
          (eq? event-return-address (stack-frame/return-address stack-frame)))))
 
 (define-deferred stack-sampling-return-address
@@ -155,8 +153,7 @@
 (define (stack-sampling-stack-frame? stack-frame)
   (let ((return-address (stack-sampling-return-address)))
     (and (compiled-return-address? return-address)
-         (eq? stack-frame-type/compiled-return-address
-              (stack-frame/type stack-frame))
+         (stack-frame/compiled-return-address? stack-frame)
          (eq? return-address (stack-frame/return-address stack-frame)))))
 
 (define (with-stack-sampling-continuation thunk)
@@ -167,8 +164,7 @@
    (call-with-current-continuation
      (lambda (continuation)
        (let ((stack-frame (continuation/first-subproblem continuation)))
-         (if (eq? stack-frame-type/compiled-return-address
-                  (stack-frame/type stack-frame))
+         (if (stack-frame/compiled-return-address? stack-frame)
              (parameterize ((stack-sampling-return-address
                              (stack-frame/return-address stack-frame)))
                (thunk))
