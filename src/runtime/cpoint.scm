@@ -112,6 +112,9 @@ USA.
 	(error "Unknown frame keyword:" keyword))
     (cdr p)))
 
+(define (cpoint-frame-has? frame keyword)
+  (and (assq keyword (cpoint-frame-fields frame)) #t))
+
 (define (cpoint-frame-keywords frame)
   (map car (cpoint-frame-fields frame)))
 
@@ -143,8 +146,7 @@ USA.
     (define-integrable (rest-elts index)
       (cons (name index) (vector-copy frame (val-loc index))))
 
-    (let (
-	  (frame-type-name (vector-ref info 0)))
+    (let ((frame-type-name (vector-ref info 0)))
       (case frame-type-name
 	((with-arg)
 	 (let ((name
@@ -175,12 +177,13 @@ USA.
 	 ;; the object.  For a vector, that's one greater than the vector
 	 ;; index.
 	 (let ((n-blanks
-		(primitive-datum-ref frame (fix:+ 1 (vector-ref info 6)))))
+		(primitive-datum-ref frame (fix:+ 1 (val-loc 2)))))
 	   (make return-code-name
 		 (elt 0)
 		 (elt 1)
 		 n-blanks
-		 (rest-elts (fix:+ (vector-ref info 8) n-blanks)))))
+		 (cons (name 3)
+		       (vector-copy frame (fix:+ (val-loc 3) n-blanks))))))
 	((hardware-trap)
 	 (make return-code-name (elt 0) (elt 1) (elt 2) (elt 3)
 	       (elt 4) (elt 5) (elt 6) (elt 7)))
@@ -195,7 +198,6 @@ USA.
 	(else
 	 (error "Unknown return-frame-type code:" frame-type-name))))))
 
-
 (define (cpoint-frame-subproblem? frame)
   (let ((p (assq (cpoint-frame-type frame) subproblem-frame-type-map)))
     (if (not p)
@@ -248,8 +250,41 @@ USA.
     (return-to-interpreter #f #t)
     (sequence-continue #t #t)
     (stack-marker #f #f)))
+
+(define (cpoint-frame-compiled-address? frame)
+  (eq? 'compiled-address (cpoint-frame-type frame)))
 
-(define (cpoint-frames->cpoint frames)
+(define (cpoint-frame-compiled-code? frame)
+  (compiled-return-address? (cpoint-frame-return-address frame)))
+
+(define (cpoint-frame-length frame)
+  (vector-length (cpoint-frame-raw frame)))
+
+;;; stack-frame/ref
+;;; Not exact equivalent: doesn't access succeeding frames.
+(define (cpoint-frame-elt frame index)
+  (vector-ref (cpoint-frame-raw frame) index))
+
+(define (cpoint-frame-repl-eval-boundary? frame)
+  (and (or (eq? 'stack-marker (cpoint-frame-type frame))
+	   (eq? 'cc-stack-marker (cpoint-frame-type frame)))
+       (eqv? with-repl-eval-boundary (cpoint-frame-ref frame 'marker-type))))
+
+(define-integrable (cpoint-frame-return-address frame)
+  (vector-ref (cpoint-frame-raw frame) 0))
+
+(define (cpoint-frame-return-code frame)
+  (let ((return-address (cpoint-frame-return-address frame)))
+    (and (interpreter-return-address? return-address)
+	 (return-address/code return-address))))
+
+(define (cpoint-frame-hardware-trap? frame)
+  (eq? 'hardware-trap (cpoint-frame-type frame)))
+
+(define (cpoint-frame-hardware-trap-code frame)
+  (cdr (cpoint-frame-ref frame 'code-name)))
+
+(define (cpoint-frames->control-point frames)
   (object-new-type (ucode-type control-point)
 		   (vector-concatenate
 		    (cons '#(#f 0)

@@ -73,6 +73,7 @@ USA.
     ("runtime/test-char-set" (runtime character-set))
     "runtime/test-comparator"
     ("runtime/test-compound-predicate" (runtime compound-predicate))
+    ("runtime/test-cpoint" (runtime))
     ("runtime/test-digraph" (runtime))
     "runtime/test-division"
     "runtime/test-dragon4"
@@ -187,7 +188,7 @@ USA.
 					    'notify? #f
 					    'summarize? #f)))
 
-		  (receive (pathname environment inline?) (parse-entry)
+		  (let-values (((pathname environment inline?) (parse-entry)))
 		    (with-notification
 			(lambda (output-port)
 			  (write-string "Running tests in " output-port)

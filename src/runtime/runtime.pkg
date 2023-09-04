@@ -1956,7 +1956,7 @@ USA.
 	  call-with-current-continuation ;(scheme base)
 	  continuation?
 	  within-continuation)
-  (export (runtime continuation-parser)
+  (export (runtime)
 	  continuation/block-thread-events?
 	  continuation/control-point
 	  continuation/dynamic-state
@@ -2024,12 +2024,25 @@ USA.
 	  control-point/previous-history-offset
 	  control-point?
 	  cpoint-frame->alist
+	  cpoint-frame-compiled-address?
+	  cpoint-frame-compiled-code?
+	  cpoint-frame-elt
+	  cpoint-frame-fields
+	  cpoint-frame-hardware-trap-code
+	  cpoint-frame-hardware-trap?
+	  cpoint-frame-has?
 	  cpoint-frame-history-subproblem?
 	  cpoint-frame-keywords
+	  cpoint-frame-length
+	  cpoint-frame-raw
 	  cpoint-frame-ref
+	  cpoint-frame-repl-eval-boundary?
+	  cpoint-frame-return-address
+	  cpoint-frame-return-code
 	  cpoint-frame-subproblem?
 	  cpoint-frame-type
-	  cpoint-frames->cpoint
+	  cpoint-frames->control-point
+	  decode-raw-control-point-frame
 	  make-control-point))
 
 (define-package (runtime date/time)
