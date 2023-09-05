@@ -235,3 +235,11 @@ DEFINE_PRIMITIVE ("return-frame-type", Prim_return_frame_type, 2, 2, 0)
   unsigned long i = arg_ulong_index_integer (2, vector_length (v));
   PRIMITIVE_RETURN (ULONG_TO_FIXNUM (return_frame_type (vector_loc (v, i))));
 }
+
+DEFINE_PRIMITIVE ("return-code-frame-type", Prim_return_code_frame_type, 1, 1,
+                  0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, RETURN_CODE_P);
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (return_code_frame_type (ARG_REF (1))));
+}

@@ -295,9 +295,15 @@ return_frame_type (SCHEME_OBJECT* frame)
              ? reflect_to_interface_frame_type (frame)
              : RFT_COMPILED_ADDRESS;
 #endif
-  unsigned long index = object_datum (ret);
-  assert (index <= MAX_RETURN_CODE);
-  return return_frame_types_table[index];
+  return return_code_frame_type (ret);
+}
+
+return_frame_type_t
+return_code_frame_type (SCHEME_OBJECT ret)
+{
+  unsigned long rc = object_datum (ret);
+  assert (rc <= MAX_RETURN_CODE);
+  return return_frame_types_table[rc];
 }
 
 static SCHEME_OBJECT
