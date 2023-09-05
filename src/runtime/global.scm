@@ -99,6 +99,17 @@ USA.
 (define (false-procedure . args) args #f)
 (define (true-procedure . args) args #t)
 
+(define (compose . args)
+  (compose* args))
+
+(define (compose* args)
+  (fold-right (lambda (f g)
+		(if (eqv? g identity-procedure)
+		    f
+		    (lambda (x) (f (g x)))))
+	      identity-procedure
+	      args))
+
 (define (eval expression environment)
   (extended-scode-eval (syntax expression environment) environment))
 

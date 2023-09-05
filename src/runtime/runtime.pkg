@@ -786,6 +786,8 @@ USA.
 	  append-hook-to-list
 	  bind-cell-contents!
 	  cd
+	  compose
+	  compose*
 	  constant-procedure
 	  edit
 	  edwin
