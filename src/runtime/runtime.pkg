@@ -2062,26 +2062,30 @@ USA.
 	  control-point->raw-frame-generator
 	  control-point-frames
 	  control-point?
-	  cpoint-frame-compiled-address?
-	  cpoint-frame-compiled-code?
 	  cpoint-frame-cpoint-end
-	  cpoint-frame-elt
 	  cpoint-frame-end
-	  cpoint-frame-fields
-	  cpoint-frame-hardware-trap-code
-	  cpoint-frame-hardware-trap?
-	  cpoint-frame-has?
-	  cpoint-frame-history-subproblem?
-	  cpoint-frame-keywords
+	  cpoint-frame-field-name?
+	  cpoint-frame-field-names
+	  cpoint-frame-field-value
 	  cpoint-frame-length
 	  cpoint-frame-raw
 	  cpoint-frame-ref
-	  cpoint-frame-repl-eval-boundary?
 	  cpoint-frame-return-address
 	  cpoint-frame-return-code
 	  cpoint-frame-start
-	  cpoint-frame-subproblem?
 	  cpoint-frame-type
+	  cpoint-frame:compiled-address?
+	  cpoint-frame:compiled-code?
+	  cpoint-frame:hardware-trap?
+	  cpoint-frame:history-subproblem?
+	  cpoint-frame:join-stacklets?
+	  cpoint-frame:repl-eval-boundary?
+	  cpoint-frame:restore-history?
+	  cpoint-frame:restore-interrupt-mask?
+	  cpoint-frame:return-to-compiled-code?
+	  cpoint-frame:stack-marker-of-type?
+	  cpoint-frame:stack-marker?
+	  cpoint-frame:subproblem?
 	  cpoint-frames->control-point)
   (export (runtime new-continuation-parser)
 	  old-control-point))

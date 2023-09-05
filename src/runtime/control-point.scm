@@ -37,6 +37,9 @@ USA.
   (return-frame-type 2)
   (primitive-datum-ref 2))
 
+(define-deferred return-frame-types
+  (microcode-return-frame-types))
+
 (define (control-point? object)
   (object-type? (ucode-type control-point) object))
 (register-predicate! control-point? 'control-point)
@@ -87,31 +90,6 @@ USA.
 
     (new-cp! control-point)
     generator))
-
-(define-record-type <cpoint-frame>
-    make-cpoint-frame
-    cpoint-frame?
-  (type cpoint-frame-type)
-  (index cpoint-frame-start)		;index of frame within control point
-  (cpoint-end cpoint-frame-cpoint-end)	;length of control point
-  (raw cpoint-frame-raw)
-  (fields cpoint-frame-fields))
-
-(define (cpoint-frame-end cpoint)
-  (fix:+ (cpoint-frame-start cpoint)
-	 (cpoint-frame-length cpoint)))
-
-(define (cpoint-frame-ref frame keyword)
-  (let ((p (assq keyword (cpoint-frame-fields frame))))
-    (if (not p)
-	(error "Unknown frame keyword:" keyword))
-    (cdr p)))
-
-(define (cpoint-frame-has? frame keyword)
-  (and (assq keyword (cpoint-frame-fields frame)) #t))
-
-(define (cpoint-frame-keywords frame)
-  (map car (cpoint-frame-fields frame)))
 
 (define (decode-raw-control-point-frame raw-result)
   (let ((findex (vector-ref raw-result 0))
@@ -187,17 +165,78 @@ USA.
 	   (make frame-type-name (elt 0) (elt 1)))
 	  (else
 	   (error "Unknown return-frame-type code:" frame-type-name)))))))
-
-(define-deferred return-frame-types
-  (microcode-return-frame-types))
 
-(define (cpoint-frame-subproblem? frame)
+;;;; Frame abstraction
+
+(define-record-type <cpoint-frame>
+    make-cpoint-frame
+    cpoint-frame?
+  (type cpoint-frame-type)
+  (index cpoint-frame-start)		;index of frame within control point
+  (cpoint-end cpoint-frame-cpoint-end)	;length of control point
+  (raw cpoint-frame-raw)
+  (fields cpoint-frame-fields))
+
+(define (cpoint-frame-end cpoint)
+  (fix:+ (cpoint-frame-start cpoint)
+	 (cpoint-frame-length cpoint)))
+
+(define (cpoint-frame-field-value frame name)
+  (let ((p (assq name (cpoint-frame-fields frame))))
+    (if (not p)
+	(error "Unknown frame field name:" name))
+    (cdr p)))
+
+(define (cpoint-frame-field-name? frame name)
+  (and (assq name (cpoint-frame-fields frame)) #t))
+
+(define (cpoint-frame-field-names frame)
+  (map car (cpoint-frame-fields frame)))
+
+(define (cpoint-frame:compiled-address? frame)
+  (eq? (cpoint-frame-type frame) 'compiled-address))
+
+(define (cpoint-frame:compiled-code? frame)
+  (compiled-return-address? (cpoint-frame-return-address frame)))
+
+(define (cpoint-frame:hardware-trap? frame)
+  (eq? (cpoint-frame-type frame) 'hardware-trap))
+
+(define (cpoint-frame:join-stacklets? frame)
+  (eq? (cpoint-frame-type frame) 'join-stacklets))
+
+(define (cpoint-frame:restore-interrupt-mask? frame)
+  (let ((type (cpoint-frame-type frame)))
+    (or (eq? type 'restore-interrupt-mask)
+	(eq? type 'cc-restore-interrupt-mask))))
+
+(define (cpoint-frame:restore-history? frame)
+  (let ((type (cpoint-frame-type frame)))
+    (or (eq? type 'restore-history)
+	(eq? type 'restore-dont-copy-history))))
+
+(define (cpoint-frame:return-to-compiled-code? frame)
+  (eq? (cpoint-frame-type frame) 'return-to-compiled-code))
+
+(define (cpoint-frame:stack-marker? frame)
+  (let ((type (cpoint-frame-type frame)))
+    (or (eq? type 'stack-marker)
+	(eq? type 'cc-stack-marker))))
+
+(define (cpoint-frame:stack-marker-of-type? marker-type frame)
+  (and (cpoint-frame:stack-marker? frame)
+       (eq? marker-type (cpoint-frame-field-value frame 'marker-type))))
+
+(define (cpoint-frame:repl-eval-boundary? frame)
+  (cpoint-frame:stack-marker-of-type? with-repl-eval-boundary frame))
+
+(define (cpoint-frame:subproblem? frame)
   (let ((p (assq (cpoint-frame-type frame) subproblem-frame-type-map)))
     (if (not p)
 	(error "Unknown frame type:" frame))
     (cadr p)))
 
-(define (cpoint-frame-history-subproblem? frame)
+(define (cpoint-frame:history-subproblem? frame)
   (let ((p (assq (cpoint-frame-type frame) subproblem-frame-type-map)))
     (if (not p)
 	(error "Unknown frame type:" frame))
@@ -207,10 +246,10 @@ USA.
   '((access-continue #t #t)
     (assignment-continue #t #t)
     (cc-bkpt #t #f)
-    (cc-internal-apply #t #f)
-    (cc-invocation #t #f)
-    (cc-restore-interrupt-mask #t #f)
-    (cc-stack-marker #t #f)
+    (cc-internal-apply #f #f)
+    (cc-invocation #f #f)
+    (cc-restore-interrupt-mask #f #f)
+    (cc-stack-marker #f #f)
     (combination-apply #t #t)
     (combination-save-value #t #t)
     (compiled-address #t #f)
@@ -244,22 +283,11 @@ USA.
     (sequence-continue #t #t)
     (stack-marker #f #f)))
 
-(define (cpoint-frame-compiled-address? frame)
-  (eq? 'compiled-address (cpoint-frame-type frame)))
-
-(define (cpoint-frame-compiled-code? frame)
-  (compiled-return-address? (cpoint-frame-return-address frame)))
-
 (define (cpoint-frame-length frame)
   (vector-length (cpoint-frame-raw frame)))
 
-(define (cpoint-frame-elt frame index)
+(define (cpoint-frame-ref frame index)
   (vector-ref (cpoint-frame-raw frame) index))
-
-(define (cpoint-frame-repl-eval-boundary? frame)
-  (and (or (eq? 'stack-marker (cpoint-frame-type frame))
-	   (eq? 'cc-stack-marker (cpoint-frame-type frame)))
-       (eqv? with-repl-eval-boundary (cpoint-frame-ref frame 'marker-type))))
 
 (define-integrable (cpoint-frame-return-address frame)
   (vector-ref (cpoint-frame-raw frame) 0))
@@ -269,20 +297,11 @@ USA.
     (and (interpreter-return-address? return-address)
 	 (return-address/code return-address))))
 
-(define (cpoint-frame-hardware-trap? frame)
-  (eq? 'hardware-trap (cpoint-frame-type frame)))
-
-(define (cpoint-frame-hardware-trap-code frame)
-  (cdr (cpoint-frame-ref frame 'code-name)))
-
 (define (cpoint-frames->control-point frames)
   (make-control-point (cpoint-frames-raw-prefix frames)))
 
 (define (cpoint-frames-raw-prefix frames)
-  (let ((join
-	 (find (lambda (frame)
-		 (eq? 'join-stacklets (cpoint-frame-type frame)))
-	       frames)))
+  (let ((join (find cpoint-frame:join-stacklets? frames)))
     (if join
 	(let loop ((frames frames) (raw '()))
 	  (let ((raw (cons (cpoint-frame-raw (car frames)) raw)))

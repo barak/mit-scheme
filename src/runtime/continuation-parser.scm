@@ -107,39 +107,17 @@ USA.
   (lambda (value cpoint)
     (let ((keyword (filter cpoint)))
       (if keyword
-	  (cpoint-frame-ref cpoint keyword)
+	  (cpoint-frame-field-value cpoint keyword)
 	  value))))
-
-(define (join-stacklets-frame? cpoint)
-  (eq? (cpoint-frame-type cpoint) 'join-stacklets))
-
-(define (restore-interrupt-mask-frame? cpoint)
-  (let ((type (cpoint-frame-type cpoint)))
-    (or (eq? type 'restore-interrupt-mask)
-	(eq? type 'cc-restore-interrupt-mask))))
-
-(define (restore-history-frame? cpoint)
-  (let ((type (cpoint-frame-type cpoint)))
-    (or (eq? type 'restore-history)
-	(eq? type 'restore-dont-copy-history))))
-
-(define (return-to-compiled-code-frame? cpoint)
-  (eq? (cpoint-frame-type cpoint) 'return-to-compiled-code))
-
-(define (stack-marker-frame-of-type? marker-type cpoint)
-  (and (let ((type (cpoint-frame-type cpoint)))
-	 (or (eq? type 'stack-marker)
-	     (eq? type 'cc-stack-marker)))
-       (eq? marker-type (cpoint-frame-ref cpoint 'marker-type))))
 
 (define (stack-marker-type-filter marker-type)
   (lambda (cpoint)
-    (and (stack-marker-frame-of-type? marker-type cpoint)
+    (and (cpoint-frame:stack-marker-of-type? marker-type cpoint)
 	 'marker-instance)))
 
 (define-item 'previous-type #f
   (lambda (value cpoint)
-    (if (join-stacklets-frame? cpoint)
+    (if (cpoint-frame:join-stacklets? cpoint)
 	value
 	(cpoint-frame-type cpoint))))
 
@@ -152,21 +130,21 @@ USA.
 (define-item 'interrupt-mask #f
   (simple-item-updater
    (lambda (cpoint)
-     (cond ((restore-interrupt-mask-frame? cpoint)
+     (cond ((cpoint-frame:restore-interrupt-mask? cpoint)
 	    'interrupt-mask)
-	   ((stack-marker-frame-of-type? 'set-interrupt-enables! cpoint)
+	   ((cpoint-frame:stack-marker-of-type? 'set-interrupt-enables! cpoint)
 	    'marker-instance)
 	   (else #f)))))
 
 (define-item 'history #f
   (lambda (value cpoint)
-    (if (restore-history-frame? cpoint)
-	(history-transform (cpoint-frame-ref cpoint 'history))
+    (if (cpoint-frame:restore-history? cpoint)
+	(history-transform (cpoint-frame-field-value cpoint 'history))
 	value)))
 
 (define-item 'next-restore-history 0
   (lambda (value cpoint)
-    (if (restore-history-frame? cpoint)
+    (if (cpoint-frame:restore-history? cpoint)
 	(begin
 	  (assert (or (fix:= value 0)
 		      (fix:= value (cpoint-frame-start cpoint))))
@@ -180,7 +158,7 @@ USA.
 	  value))))
 
 (define (cpoint-frame-next-restore-history cpoint)
-  (let ((offset (cpoint-frame-ref cpoint 'previous-restore-history-offset)))
+  (let ((offset (cpoint-frame-field-value cpoint 'previous-restore-history-offset)))
     (if (fix:= offset 0)
 	0
 	(fix:- (cpoint-frame-cpoint-end cpoint) offset))))
@@ -193,14 +171,14 @@ USA.
 
 (define-item 'next-return-code #f
   (lambda (value cpoint)
-    (if (cpoint-frame-compiled-code? cpoint)
+    (if (cpoint-frame:compiled-code? cpoint)
 	(begin
 	  (assert (and value (fix:>= value (cpoint-frame-end cpoint))))
 	  value)
 	(begin
 	  (assert (or (not value) (fix:= value (cpoint-frame-start cpoint))))
-	  (if (return-to-compiled-code-frame? cpoint)
-	      (let ((index (cpoint-frame-ref cpoint 'last-return-code)))
+	  (if (cpoint-frame:return-to-compiled-code? cpoint)
+	      (let ((index (cpoint-frame-field-value cpoint 'last-return-code)))
 		;; Check that index is in appropriate range.
 		(assert (fix:> index 0))
 		(assert (fix:< index (cpoint-frame-cpoint-end cpoint)))
@@ -236,10 +214,10 @@ USA.
   (pstate-item-ref (stack-frame-pstate frame) 'block-thread-events?))
 
 (define (stack-frame*/compiled-return-address? frame)
-  (cpoint-frame-compiled-address? (stack-frame-cpoint frame)))
+  (cpoint-frame:compiled-address? (stack-frame-cpoint frame)))
 
 (define (stack-frame*/compiled-code? frame)
-  (cpoint-frame-compiled-code? (stack-frame-cpoint frame)))
+  (cpoint-frame:compiled-code? (stack-frame-cpoint frame)))
 
 (define (stack-frame*/dynamic-state frame)
   (pstate-item-ref (stack-frame-pstate frame) 'dynamic-state))
@@ -250,16 +228,9 @@ USA.
 (define (stack-frame*/length frame)
   (cpoint-frame-length (stack-frame-cpoint frame)))
 
-(define (stack-frame*/next-subproblem frame)
-  (if (stack-frame*/subproblem? frame)
-      (let ((frame* (stack-frame*/next frame)))
-	(and frame*
-	     (stack-frame*/skip-non-subproblems frame*)))
-      (stack-frame*/skip-non-subproblems frame)))
-
 (define (stack-frame*/previous-type frame)
   (pstate-item-ref (stack-frame-pstate frame) 'previous-type))
-
+
 (define (stack-frame*/reductions frame)
   (let ((history (pstate-item-ref (stack-frame-pstate frame) 'history)))
     (if (eq? history undefined-history)
@@ -274,23 +245,28 @@ USA.
   (let loop ((frame frame) (i index))
     (let ((n (stack-frame*/length frame)))
       (if (fix:< i n)
-	  (cpoint-frame-elt (stack-frame-cpoint frame) i)
+	  (cpoint-frame-ref (stack-frame-cpoint frame) i)
 	  (let ((frame* (stack-frame*/next frame)))
 	    (if (not frame*)
 		(error:bad-range-argument i 'stack-frame*/ref))
 	    (loop frame (fix:- i n)))))))
-
+
 (define (stack-frame*/repl-eval-boundary? frame)
-  (cpoint-frame-repl-eval-boundary? (stack-frame-cpoint frame)))
+  (cpoint-frame:repl-eval-boundary? (stack-frame-cpoint frame)))
 
-;;; The old parser kept track of the "offset" of the current stack frame by
-;;; counting the distance between the start of that frame and the end of the
-;;; control point that it was in.  It used the result of the
-;;; stack-address-offset primitive and the tracked offset to create an index
-;;; which could then be used to identify the frame that the offset points into.
 (define (stack-frame*/resolve-stack-address frame address)
-  (declare (ignore frame address))
-  (error "Unimplemented."))
+  (let* ((offset (stack-address-offset address))
+	 (index
+	  (fix:- (let ((cpoint (stack-frame-cpoint frame)))
+		   (fix:- (cpoint-frame-cpoint-end cpoint)
+			  (cpoint-frame-start cpoint)))
+		 offset)))
+    (assert (fix:>= index 0))
+    (let loop ((frame frame) (index index))
+      (let ((length (stack-frame/length frame)))
+	(if (fix:< index length)
+	    (values frame index)
+	    (loop (stack-frame/next frame) (fix:- index length)))))))
 
 (define (stack-frame*/return-address frame)
   (cpoint-frame-return-address (stack-frame-cpoint frame)))
@@ -298,24 +274,33 @@ USA.
 (define (stack-frame*/return-code frame)
   (cpoint-frame-return-code (stack-frame-cpoint frame)))
 
-;;; The conpar logic for this is a little complex.
+(define (stack-frame*/next-subproblem frame)
+  (if (stack-frame*/subproblem? frame)
+      (let ((frame* (stack-frame*/next frame)))
+	(and frame*
+	     (stack-frame*/skip-non-subproblems frame*)))
+      (stack-frame*/skip-non-subproblems frame)))
+
 (define (stack-frame*/skip-non-subproblems frame)
-  (declare (ignore frame))
-  (error "Unimplemented."))
+  (if (stack-frame*/subproblem? frame)
+      frame
+      (let ((frame* (stack-frame*/next frame)))
+	(and frame*
+	     (stack-frame*/skip-non-subproblems frame*)))))
 
 (define (stack-frame*/subproblem? frame)
   (let ((cpoint (stack-frame-cpoint frame)))
-    (or (cpoint-frame-subproblem? cpoint)
-	(cpoint-frame-repl-eval-boundary? cpoint))))
+    (or (cpoint-frame:subproblem? cpoint)
+	(cpoint-frame:repl-eval-boundary? cpoint))))
 
 (define (stack-frame*/hardware-trap? frame)
-  (cpoint-frame-hardware-trap? (stack-frame-cpoint frame)))
+  (cpoint-frame:hardware-trap? (stack-frame-cpoint frame)))
 (register-predicate! stack-frame*/hardware-trap? 'stack-frame*/hardware-trap
 		     '<= stack-frame?)
 
 (define (stack-frame*/hardware-trap-code frame)
-  (guarantee hardware-trap-frame? frame 'stack-frame*/hardware-trap-code)
-  (cpoint-frame-hardware-trap-code (stack-frame-cpoint frame)))
+  (guarantee stack-frame*/hardware-trap? frame 'stack-frame*/hardware-trap-code)
+  (cdr (cpoint-frame-field-value (stack-frame-cpoint frame) 'code-name)))
 
 ;; debugging-info/compiled-code?
 ;; debugging-info/undefined-environment?
