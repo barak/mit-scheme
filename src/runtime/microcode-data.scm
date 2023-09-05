@@ -30,6 +30,13 @@ USA.
 
 (declare (usual-integrations))
 
+(define-primitives
+  (compiled-code-address->block 1)
+  (compiled-code-address->offset 1)
+  (primitive-datum-ref 2)
+  (primitive-type-ref 2)
+  (stack-address-offset 1))
+
 (define (return-address? object)
   (or (interpreter-return-address? object)
       (compiled-return-address? object)))
@@ -67,9 +74,14 @@ USA.
 ;;;; Compiled Code Entries
 
 (define (compiled-code-address? object)
-  (or (let ((type (microcode-type/name->code 'compiled-return)))
-	(and type (object-type? type object)))
-      (object-type? (ucode-type compiled-entry) object)))
+  (or (compiled-entry-address? object)
+      (compiled-return-address? object)))
+
+(define-integrable (compiled-entry-address? object)
+  (object-type? (ucode-type compiled-entry) object))
+
+(define-integrable (compiled-return-address? object)
+  (object-type? (ucode-type compiled-return) object))
 
 (define-integrable (stack-address? object)
   (object-type? (ucode-type stack-environment) object))
@@ -77,15 +89,6 @@ USA.
 (define (compiled-expression? object)
   (and (compiled-code-address? object)
        (eq? (compiled-entry-type object) 'compiled-expression)))
-
-(define (compiled-return-address? object)
-  (and (compiled-code-address? object)
-       (eq? (compiled-entry-type object) 'compiled-return-address)))
-
-(define-primitives
-  (stack-address-offset 1)
-  (compiled-code-address->block 1)
-  (compiled-code-address->offset 1))
 
 (define (discriminate-compiled-entry entry
 				     if-procedure
@@ -162,12 +165,7 @@ contains constants derived from the source program.
   (compiled-code-address->block (fasload filename)))
 
 (define (compiled-code-block/manifest-closure? block)
-  (object-type?
-   (ucode-type manifest-closure)
-   ;; This combination returns an unsafe object, but since it
-   ;; is used as an argument to a primitive, I can get away
-   ;; with not turning off the garbage collector.
-   ((ucode-primitive primitive-object-ref 2) block 0)))
+  (fix:= (ucode-type manifest-closure) (primitive-type-ref block 0)))
 
 (define (compiled-code-block/index->offset index)
   (* (1+ index) compiled-code-block/bytes-per-object))
@@ -199,8 +197,8 @@ contains constants derived from the source program.
     (let loop ((index  marked-start))
       (if (>= index end)
 	  end
-	  (let ((type  (object-type (system-vector-ref block index)))
-		(datum (object-datum (system-vector-ref block index))))
+	  (let ((type  (primitive-type-ref block (fix:+ index 1)))
+		(datum (primitive-datum-ref block (fix:+ index 1))))
 	    (cond ((= type (ucode-type manifest-closure))
 		   (loop (+ index 1 4)))
 		  ((or (= type (ucode-type linkage-section))   ;; linked or..

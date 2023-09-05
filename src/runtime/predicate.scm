@@ -252,9 +252,17 @@ USA.
    (register-predicate! bitless-char? 'bitless-char '<= char?)
    (register-predicate! code-point-list? 'code-point-list '<= list?)
    (register-predicate! compiled-code-address? 'compiled-code-address)
+   (register-predicate! return-address? 'return-address)
+   (register-predicate! compiled-entry-address? 'compiled-entry-address
+			'<= compiled-code-address?)
+   (register-predicate! compiled-return-address? 'compiled-return-address
+			'<= compiled-code-address?
+			'<= return-address?)
+   (register-predicate! interpreter-return-address? 'interpreter-return-address
+			'<= return-address?)
+   (register-predicate! compiled-expression? 'compiled-expression
+			'<= compiled-code-address?)
    (register-predicate! compiled-code-block? 'compiled-code-block)
-   (register-predicate! compiled-expression? 'compiled-expression)
-   (register-predicate! compiled-return-address? 'compiled-return-address)
    (register-predicate! control-point? 'control-point)
    (register-predicate! ephemeron? 'ephemeron)
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)

@@ -1065,6 +1065,7 @@ USA.
 	  compiled-continuation/next-continuation-offset
 	  compiled-continuation/reflect-to-interface?
 	  compiled-continuation/return-to-interpreter?
+	  compiled-entry-address?
 	  compiled-entry-type
 	  compiled-expression?
 	  compiled-return-address?
