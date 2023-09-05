@@ -158,7 +158,8 @@ USA.
 	  value))))
 
 (define (cpoint-frame-next-restore-history cpoint)
-  (let ((offset (cpoint-frame-field-value cpoint 'previous-restore-history-offset)))
+  (let ((offset
+	 (cpoint-frame-field-value cpoint 'previous-restore-history-offset)))
     (if (fix:= offset 0)
 	0
 	(fix:- (cpoint-frame-cpoint-end cpoint) offset))))
@@ -194,7 +195,7 @@ USA.
   (pstate stack-frame-pstate)
   (%next stack-frame-%next))
 
-(define (stack-frame-cpoint frame)
+(define (stack-frame*/cpoint-frame frame)
   (pstate-cpoint-frame (stack-frame-pstate frame)))
 
 (define (stack-frame*/next frame)
@@ -214,19 +215,19 @@ USA.
   (pstate-item-ref (stack-frame-pstate frame) 'block-thread-events?))
 
 (define (stack-frame*/compiled-return-address? frame)
-  (cpoint-frame:compiled-address? (stack-frame-cpoint frame)))
+  (cpoint-frame:compiled-address? (stack-frame*/cpoint-frame frame)))
 
 (define (stack-frame*/compiled-code? frame)
-  (cpoint-frame:compiled-code? (stack-frame-cpoint frame)))
+  (cpoint-frame:compiled-code? (stack-frame*/cpoint-frame frame)))
 
 (define (stack-frame*/dynamic-state frame)
   (pstate-item-ref (stack-frame-pstate frame) 'dynamic-state))
 
 (define (stack-frame*/elements frame)
-  (cpoint-frame-raw (stack-frame-cpoint frame)))
+  (cpoint-frame-raw (stack-frame*/cpoint-frame frame)))
 
 (define (stack-frame*/length frame)
-  (cpoint-frame-length (stack-frame-cpoint frame)))
+  (cpoint-frame-length (stack-frame*/cpoint-frame frame)))
 
 (define (stack-frame*/previous-type frame)
   (pstate-item-ref (stack-frame-pstate frame) 'previous-type))
@@ -245,19 +246,19 @@ USA.
   (let loop ((frame frame) (i index))
     (let ((n (stack-frame*/length frame)))
       (if (fix:< i n)
-	  (cpoint-frame-ref (stack-frame-cpoint frame) i)
+	  (cpoint-frame-ref (stack-frame*/cpoint-frame frame) i)
 	  (let ((frame* (stack-frame*/next frame)))
 	    (if (not frame*)
 		(error:bad-range-argument i 'stack-frame*/ref))
 	    (loop frame (fix:- i n)))))))
 
 (define (stack-frame*/repl-eval-boundary? frame)
-  (cpoint-frame:repl-eval-boundary? (stack-frame-cpoint frame)))
+  (cpoint-frame:repl-eval-boundary? (stack-frame*/cpoint-frame frame)))
 
 (define (stack-frame*/resolve-stack-address frame address)
   (let* ((offset (stack-address-offset address))
 	 (index
-	  (fix:- (let ((cpoint (stack-frame-cpoint frame)))
+	  (fix:- (let ((cpoint (stack-frame*/cpoint-frame frame)))
 		   (fix:- (cpoint-frame-cpoint-end cpoint)
 			  (cpoint-frame-start cpoint)))
 		 offset)))
@@ -269,10 +270,10 @@ USA.
 	    (loop (stack-frame/next frame) (fix:- index length)))))))
 
 (define (stack-frame*/return-address frame)
-  (cpoint-frame-return-address (stack-frame-cpoint frame)))
+  (cpoint-frame-return-address (stack-frame*/cpoint-frame frame)))
 
 (define (stack-frame*/return-code frame)
-  (cpoint-frame-return-code (stack-frame-cpoint frame)))
+  (cpoint-frame-return-code (stack-frame*/cpoint-frame frame)))
 
 (define (stack-frame*/next-subproblem frame)
   (if (stack-frame*/subproblem? frame)
@@ -289,23 +290,15 @@ USA.
 	     (stack-frame*/skip-non-subproblems frame*)))))
 
 (define (stack-frame*/subproblem? frame)
-  (let ((cpoint (stack-frame-cpoint frame)))
+  (let ((cpoint (stack-frame*/cpoint-frame frame)))
     (or (cpoint-frame:subproblem? cpoint)
 	(cpoint-frame:repl-eval-boundary? cpoint))))
 
 (define (stack-frame*/hardware-trap? frame)
-  (cpoint-frame:hardware-trap? (stack-frame-cpoint frame)))
+  (cpoint-frame:hardware-trap? (stack-frame*/cpoint-frame frame)))
 (register-predicate! stack-frame*/hardware-trap? 'stack-frame*/hardware-trap
 		     '<= stack-frame?)
 
 (define (stack-frame*/hardware-trap-code frame)
   (guarantee stack-frame*/hardware-trap? frame 'stack-frame*/hardware-trap-code)
-  (cdr (cpoint-frame-field-value (stack-frame-cpoint frame) 'code-name)))
-
-;; debugging-info/compiled-code?
-;; debugging-info/undefined-environment?
-;; debugging-info/undefined-expression?
-;; debugging-info/unknown-expression?
-;; debugging-info/noise
-;; debugging-info/noise?
-;; stack-frame*/debugging-info
+  (cdr (cpoint-frame-field-value (stack-frame*/cpoint-frame frame) 'code-name)))

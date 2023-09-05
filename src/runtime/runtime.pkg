@@ -2036,6 +2036,7 @@ USA.
 	  stack-frame*/block-thread-events?
 	  stack-frame*/compiled-code?
 	  stack-frame*/compiled-return-address?
+	  stack-frame*/cpoint-frame
 	  stack-frame*/dynamic-state
 	  stack-frame*/elements
 	  stack-frame*/hardware-trap-code
