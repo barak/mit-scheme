@@ -2060,11 +2060,13 @@ USA.
   (export (runtime)
 	  control-point->frame-generator
 	  control-point->raw-frame-generator
+	  control-point-frames
 	  control-point?
-	  cpoint-frame->alist
 	  cpoint-frame-compiled-address?
 	  cpoint-frame-compiled-code?
+	  cpoint-frame-cpoint-end
 	  cpoint-frame-elt
+	  cpoint-frame-end
 	  cpoint-frame-fields
 	  cpoint-frame-hardware-trap-code
 	  cpoint-frame-hardware-trap?
@@ -2077,10 +2079,12 @@ USA.
 	  cpoint-frame-repl-eval-boundary?
 	  cpoint-frame-return-address
 	  cpoint-frame-return-code
+	  cpoint-frame-start
 	  cpoint-frame-subproblem?
 	  cpoint-frame-type
-	  cpoint-frames->control-point
-	  decode-raw-control-point-frame))
+	  cpoint-frames->control-point)
+  (export (runtime new-continuation-parser)
+	  old-control-point))
 
 (define-package (runtime date/time)
   (files "datime")
@@ -6707,8 +6711,7 @@ USA.
 	  import-to-top-level-environment!
 	  null-environment		;(scheme r5rs)
 	  scheme-report-environment	;(scheme r5rs)
-	  top-level-environment
-	  )
+	  top-level-environment)
   (export (runtime)
 	  environment->library
 	  eval-r7rs-scode-file

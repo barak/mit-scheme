@@ -337,7 +337,8 @@ make_ftti_entry (return_frame_type_t type)
       entry = allocate_ftti_entry (type, 2);
       vector_set (entry, i++, char_pointer_to_symbol ("history"));
       vector_set (entry, i++, ULONG_TO_FIXNUM (1));
-      vector_set (entry, i++, char_pointer_to_symbol ("next-history-offset"));
+      vector_set (entry, i++,
+                  char_pointer_to_symbol ("previous-restore-history-offset"));
       vector_set (entry, i, ULONG_TO_FIXNUM (2));
       return entry;
 
@@ -352,7 +353,7 @@ make_ftti_entry (return_frame_type_t type)
 
     case RFT_COMPILED_CODE:
       entry = allocate_ftti_entry (type, 1);
-      vector_set (entry, i++, char_pointer_to_symbol ("offset"));
+      vector_set (entry, i++, char_pointer_to_symbol ("last-return-code"));
       vector_set (entry, i, ULONG_TO_FIXNUM (1));
       return entry;
 

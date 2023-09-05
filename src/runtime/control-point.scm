@@ -37,12 +37,22 @@ USA.
   (return-frame-type 2)
   (primitive-datum-ref 2))
 
-(define-deferred return-frame-types
-  (microcode-return-frame-types))
-
 (define (control-point? object)
   (object-type? (ucode-type control-point) object))
 (register-predicate! control-point? 'control-point)
+
+(define (make-control-point raw-frames)
+  (object-new-type (ucode-type control-point)
+		   (vector-concatenate (cons '#(#f 0) raw-frames))))
+
+(define-integrable (control-point-start-index)
+  2)
+
+(define-integrable (control-point-length control-point)
+  (system-vector-length control-point))
+
+(define (control-point-frames control-point)
+  (generator->list (control-point->frame-generator control-point)))
 
 (define (control-point->frame-generator control-point)
   (gmap decode-raw-control-point-frame
@@ -54,22 +64,25 @@ USA.
 
     (define (new-cp! cp)
       (set! control-point cp)
-      (set! index 2)
-      (set! end (system-vector-length cp)))
+      (set! index (control-point-start-index))
+      (set! end (control-point-length cp)))
 
     (define (generator)
       (if (fix:< index end)
-	  (let ((index* (control-point-next-frame control-point index)))
-	    (let ((frame (make-vector (fix:- index* index))))
-	      (do ((i index (fix:+ i 1))
-		   (j 0 (fix:+ j 1)))
-		  ((not (fix:< i index*))
-		   (set! index index*))
-		(vector-set! frame j (system-vector-ref control-point i)))
-	      (if (eq? (ucode-return-address join-stacklets)
-		       (vector-ref frame 0))
-		  (new-cp! (vector-ref frame 1)))
-	      frame))
+	  (let* ((index* (control-point-next-frame control-point index))
+		 (frame (make-vector (fix:- index* index)))
+		 (result (vector index end frame)))
+	    (do ((i index (fix:+ i 1))
+		 (j 0 (fix:+ j 1)))
+		((not (fix:< i index*))
+		 (set! index index*))
+	      (vector-set! frame j (system-vector-ref control-point i)))
+	    (if (eq? (ucode-return-address join-stacklets)
+		     (vector-ref frame 0))
+		(begin
+		  (assert (fix:= index* end))
+		  (new-cp! (vector-ref frame 1))))
+	    result)
 	  (eof-object)))
 
     (new-cp! control-point)
@@ -79,8 +92,14 @@ USA.
     make-cpoint-frame
     cpoint-frame?
   (type cpoint-frame-type)
+  (index cpoint-frame-start)		;index of frame within control point
+  (cpoint-end cpoint-frame-cpoint-end)	;length of control point
   (raw cpoint-frame-raw)
   (fields cpoint-frame-fields))
+
+(define (cpoint-frame-end cpoint)
+  (fix:+ (cpoint-frame-start cpoint)
+	 (cpoint-frame-length cpoint)))
 
 (define (cpoint-frame-ref frame keyword)
   (let ((p (assq keyword (cpoint-frame-fields frame))))
@@ -93,85 +112,84 @@ USA.
 
 (define (cpoint-frame-keywords frame)
   (map car (cpoint-frame-fields frame)))
-
-(define (cpoint-frame->alist frame)
-  (cons* (list 'frame-type (cpoint-frame-type frame))
-	 (list 'raw-frame (cpoint-frame-raw frame))
-	 (map (lambda (p) (list (car p) (cdr p)))
-	      (cpoint-frame-fields frame))))
 
-(define (decode-raw-control-point-frame raw)
-  (let ((info (vector-ref return-frame-types (return-frame-type raw 0)))
-	(return-code-name
-	 (let ((address (vector-ref raw 0)))
-	   (and (interpreter-return-address? address)
-		(return-address/name address)))))
+(define (decode-raw-control-point-frame raw-result)
+  (let ((findex (vector-ref raw-result 0))
+	(cpend (vector-ref raw-result 1))
+	(raw (vector-ref raw-result 2)))
+    (let ((info (vector-ref return-frame-types (return-frame-type raw 0)))
+	  (return-code-name
+	   (let ((address (vector-ref raw 0)))
+	     (and (interpreter-return-address? address)
+		  (return-address/name address)))))
 
-    (define (make ftype . alist)
-      (make-cpoint-frame ftype raw alist))
+      (define (make ftype . alist)
+	(make-cpoint-frame ftype findex cpend raw alist))
 
-    (define-integrable (name index)
-      (vector-ref info (fix:+ 1 (fix:* 2 index))))
+      (define-integrable (name index)
+	(vector-ref info (fix:+ 1 (fix:* 2 index))))
 
-    (define-integrable (val-loc index)
-      (vector-ref info (fix:+ 2 (fix:* 2 index))))
+      (define-integrable (val-loc index)
+	(vector-ref info (fix:+ 2 (fix:* 2 index))))
 
-    (define-integrable (elt index)
-      (cons (name index) (vector-ref raw (val-loc index))))
+      (define-integrable (elt index)
+	(cons (name index) (vector-ref raw (val-loc index))))
 
-    (define-integrable (rest-elts index)
-      (cons (name index) (vector->list raw (val-loc index))))
+      (define-integrable (rest-elts index)
+	(cons (name index) (vector->list raw (val-loc index))))
 
-    (let ((frame-type-name (vector-ref info 0)))
-      (case frame-type-name
-	((with-arg)
-	 (let ((name
-		(case return-code-name
-		  ((join-stacklets) 'control-point)
-		  ((access-continue) 'expression)
-		  ((force-snap-thunk) 'delayed)
-		  ((normal-garbage-collect-done) 'gc-result)
-		  ((restore-value pop-return-error) 'value)
-		  ((restore-interrupt-mask) 'interrupt-mask)
-		  ((halt) 'termination-code)
-		  (else #f))))
-	   (if name
-	       (make-cpoint-frame return-code-name raw
-				  (list (cons name
-					      (vector-ref raw (val-loc 0)))))
-	       (make return-code-name))))
-	((exp+env history stack-marker)
-	 (make return-code-name (elt 0) (elt 1)))
-	((apply)
-	 (make return-code-name (elt 0) (rest-elts 1)))
-	((return-to-compiled-code)
-	 (make return-code-name (elt 0)))
-	((compiled-address)
-	 (make frame-type-name))
-	((combination-save)
-	 ;; The index to primitive-datum-ref is relative to the address of the
-	 ;; object.  For a vector, that's one greater than the vector index.
-	 (let ((n-blanks
-		(primitive-datum-ref raw (fix:+ 1 (val-loc 2)))))
-	   (make return-code-name
-		 (elt 0)
-		 (elt 1)
-		 (cons (name 2) n-blanks)
-		 (cons (name 3)
-		       (vector->list raw (fix:+ (val-loc 3) n-blanks))))))
-	((hardware-trap)
-	 (make return-code-name (elt 0) (elt 1) (elt 2) (elt 3)
-	       (elt 4) (elt 5) (elt 6) (elt 7)))
-	((return-to-interpreter)
-	 (make frame-type-name))
-	((cc-internal-apply cc-bkpt cc-invocation)
-	 (make frame-type-name (elt 0) (rest-elts 1)))
-	((cc-restore-interrupt-mask)
-	 (make frame-type-name (elt 0)))
-	((cc-stack-marker)
-	 (make frame-type-name (elt 0) (elt 1)))
-	(else
-	 (error "Unknown return-frame-type code:" frame-type-name))))))
+      (let ((frame-type-name (vector-ref info 0)))
+	(case frame-type-name
+	  ((with-arg)
+	   (let ((name
+		  (case return-code-name
+		    ((join-stacklets) 'control-point)
+		    ((access-continue) 'expression)
+		    ((force-snap-thunk) 'delayed)
+		    ((normal-garbage-collect-done) 'gc-result)
+		    ((restore-value pop-return-error) 'value)
+		    ((restore-interrupt-mask) 'interrupt-mask)
+		    ((halt) 'termination-code)
+		    (else #f))))
+	     (if name
+		 (make return-code-name
+		       (cons name (vector-ref raw (val-loc 0))))
+		 (make return-code-name))))
+	  ((exp+env history stack-marker)
+	   (make return-code-name (elt 0) (elt 1)))
+	  ((apply)
+	   (make return-code-name (elt 0) (rest-elts 1)))
+	  ((return-to-compiled-code)
+	   (make return-code-name (elt 0)))
+	  ((compiled-address)
+	   (make frame-type-name))
+	  ((combination-save)
+	   ;; The index to primitive-datum-ref is relative to the address of the
+	   ;; object.  For a vector, that's one greater than the vector index.
+	   (let ((n-blanks
+		  (primitive-datum-ref raw (fix:+ 1 (val-loc 2)))))
+	     (make return-code-name
+		   (elt 0)
+		   (elt 1)
+		   (cons (name 2) n-blanks)
+		   (cons (name 3)
+			 (vector->list raw (fix:+ (val-loc 3) n-blanks))))))
+	  ((hardware-trap)
+	   (make return-code-name (elt 0) (elt 1) (elt 2) (elt 3)
+		 (elt 4) (elt 5) (elt 6) (elt 7)))
+	  ((return-to-interpreter)
+	   (make frame-type-name))
+	  ((cc-internal-apply cc-bkpt cc-invocation)
+	   (make frame-type-name (elt 0) (rest-elts 1)))
+	  ((cc-restore-interrupt-mask)
+	   (make frame-type-name (elt 0)))
+	  ((cc-stack-marker)
+	   (make frame-type-name (elt 0) (elt 1)))
+	  (else
+	   (error "Unknown return-frame-type code:" frame-type-name)))))))
+
+(define-deferred return-frame-types
+  (microcode-return-frame-types))
 
 (define (cpoint-frame-subproblem? frame)
   (let ((p (assq (cpoint-frame-type frame) subproblem-frame-type-map)))
@@ -258,10 +276,7 @@ USA.
   (cdr (cpoint-frame-ref frame 'code-name)))
 
 (define (cpoint-frames->control-point frames)
-  (object-new-type (ucode-type control-point)
-		   (vector-concatenate
-		    (cons '#(#f 0)
-			  (cpoint-frames-raw-prefix frames)))))
+  (make-control-point (cpoint-frames-raw-prefix frames)))
 
 (define (cpoint-frames-raw-prefix frames)
   (let ((join
@@ -275,3 +290,30 @@ USA.
 		(reverse raw)
 		(loop (cdr frames) raw))))
 	(map cpoint-frame-raw frames))))
+
+(define (old-control-point frames interrupt-mask history
+			   previous-restore-history-offset)
+  (make-control-point
+   (old-raw-frames (cpoint-frames-raw-prefix frames)
+		   interrupt-mask history previous-restore-history-offset)))
+
+(define (old-raw-frames frames interrupt-mask history
+			previous-restore-history-offset)
+  (if (and (pair? frames)
+	   (pair? (cdr frames))
+	   (let ((f1 (car frames))
+		 (f2 (car frames)))
+	     (and (eq? (vector-ref f1 0)
+		       (ucode-return-address restore-interrupt-mask))
+		  (eqv? (vector-ref f1 1) interrupt-mask)
+		  (eq? (vector-ref f2 0) (ucode-return-address restore-history))
+		  (eq? (vector-ref f2 1) history)
+		  (eqv? (vector-ref f2 2) previous-restore-history-offset))))
+      frames
+      (cons* (vector (ucode-return-address restore-interrupt-mask)
+		     interrupt-mask)
+	     (vector (ucode-return-address restore-history)
+		     history
+		     previous-restore-history-offset
+		     #f)
+	     frames)))

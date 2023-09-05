@@ -32,132 +32,208 @@ USA.
 
 (add-boot-deps! '(runtime microcode-tables) '(runtime history))
 
-(define (continuation->stack-frame* continuation)
-  (parse-control-point (continuation/control-point continuation)
-		       (continuation/dynamic-state continuation)
-		       (continuation/block-thread-events? continuation)))
-
-(define (parse-control-point control-point dynamic-state block-thread-events?)
-  (let ((frames
-	 (generator->stream (control-point->frame-generator control-point))))
-    (parse-one-frame
-     (make-pstate frames dynamic-state block-thread-events? #f #f #f #f))))
-
-(define (parse-one-frame pstate)
-  (let ((frames (pstate-frames pstate)))
-    (and (stream-pair? frames)
-	 (let ((frame (stream-car frames)))
-	   (case (cpoint-frame-type frame)
-	     ((restore-interrupt-mask cc-restore-interrupt-mask)
-	      (parse-one-frame
-	       (pstate-new-interrupt-mask pstate
-		 (cpoint-frame-ref frame 'interrupt-mask))))
-	     ((restore-history restore-dont-copy-history)
-	      (parse-one-frame
-	       (pstate-new-history pstate
-		 (history-transform (cpoint-frame-ref frame 'history))
-		 (cpoint-frame-ref frame 'next-history-offset))))
-	     ((stack-marker cc-stack-marker)
-	      (let ((marker-type (cpoint-frame-ref frame 'marker-type))
-		    (marker-instance (cpoint-frame-ref frame 'marker-instance)))
-		(cond ((eq? marker-type %translate-to-state-point)
-		       (parse-one-frame
-			(pstate-new-dynamic-state pstate
-			  (merge-dynamic-state (pstate-dynamic-state pstate)
-					       marker-instance))))
-		      ((eq? marker-type 'set-interrupt-enables!)
-		       (parse-one-frame
-			(pstate-new-interrupt-mask pstate
-			  marker-instance)))
-		      ((eq? marker-type 'with-thread-events-blocked)
-		       (parse-one-frame
-			(pstate-new-block-thread-events? pstate
-			  marker-instance)))
-		      (else
-		       (emit-frame frame pstate)))))
-	     (else
-	      (emit-frame frame pstate)))))))
-
-(define (emit-frame cpoint-frame pstate)
-  (make-stack-frame cpoint-frame
-		    pstate
-		    (delay (parse-one-frame (pstate-next-frame pstate)))))
-
-;;;; Parser state
-
 (define-record-type <pstate>
     make-pstate
     pstate?
-  (frames pstate-frames)
-  (dynamic-state pstate-dynamic-state)
-  (block-thread-events? pstate-block-thread-events?)
-  (interrupt-mask pstate-interrupt-mask)
-  (history pstate-history)
-  (history-offset pstate-history-offset)
-  (previous-type pstate-previous-type))
+  (cpoint-frames pstate-cpoint-frames)
+  (item-bindings pstate-item-bindings))
 
-(define (pstate-next-frame pstate)
-  (make-pstate (stream-cdr (pstate-frames pstate))
-	       (pstate-dynamic-state pstate)
-	       (pstate-block-thread-events? pstate)
-	       (pstate-interrupt-mask pstate)
-	       (pstate-history pstate)
-	       (pstate-history-offset pstate)
-	       (cpoint-frame-type (stream-car (pstate-frames pstate)))))
+(define (continuation->stack-frame* continuation)
+  (parse-one-frame
+   (make-pstate
+    (control-point-frames (continuation/control-point continuation))
+    (initial-item-bindings
+     'dynamic-state (continuation/dynamic-state continuation)
+     'block-thread-events? (continuation/block-thread-events? continuation)))))
 
-(define (pstate-new-dynamic-state pstate dynamic-state)
-  (make-pstate (stream-cdr (pstate-frames pstate))
-	       dynamic-state
-	       (pstate-block-thread-events? pstate)
-	       (pstate-interrupt-mask pstate)
-	       (pstate-history pstate)
-	       (pstate-history-offset pstate)
-	       (pstate-previous-type pstate)))
+(define (parse-one-frame pstate)
+  (let ((cpoints (pstate-cpoint-frames pstate)))
+    (and (pair? cpoints)
+	 (make-stack-frame
+	  pstate
+	  (delay
+	    (parse-one-frame
+	     (make-pstate (cdr cpoints)
+			  (update-item-bindings (pstate-item-bindings pstate)
+						(car cpoints)))))))))
 
-(define (pstate-new-block-thread-events? pstate block-thread-events?)
-  (make-pstate (stream-cdr (pstate-frames pstate))
-	       (pstate-dynamic-state pstate)
-	       block-thread-events?
-	       (pstate-interrupt-mask pstate)
-	       (pstate-history pstate)
-	       (pstate-history-offset pstate)
-	       (pstate-previous-type pstate)))
+(define (pstate-cpoint-frame pstate)
+  (car (pstate-cpoint-frames pstate)))
 
-(define (pstate-new-interrupt-mask pstate interrupt-mask)
-  (make-pstate (stream-cdr (pstate-frames pstate))
-	       (pstate-dynamic-state pstate)
-	       (pstate-block-thread-events? pstate)
-	       interrupt-mask
-	       (pstate-history pstate)
-	       (pstate-history-offset pstate)
-	       (pstate-previous-type pstate)))
+(define (pstate-item-ref pstate name)
+  (item-bindings-ref (pstate-item-bindings pstate) name))
+
+;;;; Tracked items
 
-(define (pstate-new-history pstate history history-offset)
-  (make-pstate (stream-cdr (pstate-frames pstate))
-	       (pstate-dynamic-state pstate)
-	       (pstate-block-thread-events? pstate)
-	       (pstate-interrupt-mask pstate)
-	       history
-	       history-offset
-	       (pstate-previous-type pstate)))
+(define (define-item name initial-value updater)
+  (let ((entry (vector name initial-value updater))
+	(tail
+	 (find-tail (lambda (entry)
+		      (eq? (vector-ref entry 0) name))
+		    defined-items)))
+    (if tail
+	(set-car! tail entry)
+	(set! defined-items (cons entry defined-items)))))
+
+(define defined-items
+  '())
+
+(define (initial-item-bindings . inits)
+  (map (lambda (entry)
+	 (cons entry
+	       (let* ((name (vector-ref entry 0))
+		      (value (get-keyword-value inits name)))
+		 (if (default-object? value)
+		     (vector-ref entry 1)
+		     value))))
+       defined-items))
+
+(define (item-bindings-ref bindings name)
+  (let ((p
+	 (find (lambda (binding)
+		 (eq? (vector-ref (car binding) 0) name))
+	       bindings)))
+    (if (not p)
+	(error "Unknown item name:" name))
+    (cdr p)))
+
+(define (update-item-bindings bindings cpoint)
+  (map (lambda (binding)
+	 (cons (car binding)
+	       ((vector-ref (car binding) 2) (cdr binding) cpoint)))
+       bindings))
+
+(define (simple-item-updater filter)
+  (lambda (value cpoint)
+    (let ((keyword (filter cpoint)))
+      (if keyword
+	  (cpoint-frame-ref cpoint keyword)
+	  value))))
+
+(define (join-stacklets-frame? cpoint)
+  (eq? (cpoint-frame-type cpoint) 'join-stacklets))
+
+(define (restore-interrupt-mask-frame? cpoint)
+  (let ((type (cpoint-frame-type cpoint)))
+    (or (eq? type 'restore-interrupt-mask)
+	(eq? type 'cc-restore-interrupt-mask))))
+
+(define (restore-history-frame? cpoint)
+  (let ((type (cpoint-frame-type cpoint)))
+    (or (eq? type 'restore-history)
+	(eq? type 'restore-dont-copy-history))))
+
+(define (return-to-compiled-code-frame? cpoint)
+  (eq? (cpoint-frame-type cpoint) 'return-to-compiled-code))
+
+(define (stack-marker-frame-of-type? marker-type cpoint)
+  (and (let ((type (cpoint-frame-type cpoint)))
+	 (or (eq? type 'stack-marker)
+	     (eq? type 'cc-stack-marker)))
+       (eq? marker-type (cpoint-frame-ref cpoint 'marker-type))))
+
+(define (stack-marker-type-filter marker-type)
+  (lambda (cpoint)
+    (and (stack-marker-frame-of-type? marker-type cpoint)
+	 'marker-instance)))
+
+(define-item 'previous-type #f
+  (lambda (value cpoint)
+    (if (join-stacklets-frame? cpoint)
+	value
+	(cpoint-frame-type cpoint))))
+
+(define-item 'dynamic-state #f
+  (simple-item-updater (stack-marker-type-filter %translate-to-state-point)))
+
+(define-item 'block-thread-events? #f
+  (simple-item-updater (stack-marker-type-filter 'with-thread-events-blocked)))
+
+(define-item 'interrupt-mask #f
+  (simple-item-updater
+   (lambda (cpoint)
+     (cond ((restore-interrupt-mask-frame? cpoint)
+	    'interrupt-mask)
+	   ((stack-marker-frame-of-type? 'set-interrupt-enables! cpoint)
+	    'marker-instance)
+	   (else #f)))))
+
+(define-item 'history #f
+  (lambda (value cpoint)
+    (if (restore-history-frame? cpoint)
+	(history-transform (cpoint-frame-ref cpoint 'history))
+	value)))
+
+(define-item 'next-restore-history 0
+  (lambda (value cpoint)
+    (if (restore-history-frame? cpoint)
+	(begin
+	  (assert (or (fix:= value 0)
+		      (fix:= value (cpoint-frame-start cpoint))))
+	  (let ((index (cpoint-frame-next-restore-history cpoint)))
+	    (assert (or (fix:= index 0)
+			(fix:>= index (cpoint-frame-end cpoint))))
+	    index))
+	(begin
+	  (assert (or (fix:= value 0)
+		      (fix:>= value (cpoint-frame-end cpoint))))
+	  value))))
+
+(define (cpoint-frame-next-restore-history cpoint)
+  (let ((offset (cpoint-frame-ref cpoint 'previous-restore-history-offset)))
+    (if (fix:= offset 0)
+	0
+	(fix:- (cpoint-frame-cpoint-end cpoint) offset))))
+
+(define (pstate-previous-restore-history-offset pstate)
+  (let ((index (pstate-item-ref pstate 'next-restore-history)))
+    (if (fix:= index 0)
+	0
+	(fix:- (cpoint-frame-cpoint-end (pstate-cpoint-frame pstate)) index))))
+
+(define-item 'next-return-code #f
+  (lambda (value cpoint)
+    (if (cpoint-frame-compiled-code? cpoint)
+	(begin
+	  (assert (and value (fix:>= value (cpoint-frame-end cpoint))))
+	  value)
+	(begin
+	  (assert (or (not value) (fix:= value (cpoint-frame-start cpoint))))
+	  (if (return-to-compiled-code-frame? cpoint)
+	      (let ((index (cpoint-frame-ref cpoint 'last-return-code)))
+		;; Check that index is in appropriate range.
+		(assert (fix:> index 0))
+		(assert (fix:< index (cpoint-frame-cpoint-end cpoint)))
+		(assert (fix:>= index (cpoint-frame-end cpoint)))
+		index)
+	      #f)))))
 
 ;;;; Stack-frame abstraction
 
 (define-record-type <stack-frame>
     make-stack-frame
     stack-frame*?
-  (cpoint stack-frame-cpoint)
   (pstate stack-frame-pstate)
   (%next stack-frame-%next))
 
-;; Needs to add in frames: restore-interrupt-mask and restore-history unless
-;; they are already there.
+(define (stack-frame-cpoint frame)
+  (pstate-cpoint-frame (stack-frame-pstate frame)))
+
+(define (stack-frame*/next frame)
+  (force (stack-frame-%next frame)))
+
 (define (stack-frame*->continuation frame)
-  (declare (ignore frame))
-  (error "Unimplemented."))
+  (let ((pstate (stack-frame-pstate frame)))
+    (make-continuation
+     (old-control-point (pstate-cpoint-frames pstate)
+			(pstate-item-ref pstate 'interrupt-mask)
+			(pstate-item-ref pstate 'history)
+			(pstate-previous-restore-history-offset pstate))
+     (pstate-item-ref pstate 'dynamic-state)
+     (pstate-item-ref pstate 'block-thread-events?))))
 
 (define (stack-frame*/block-thread-events? frame)
-  (pstate-block-thread-events? (stack-frame-pstate frame)))
+  (pstate-item-ref (stack-frame-pstate frame) 'block-thread-events?))
 
 (define (stack-frame*/compiled-return-address? frame)
   (cpoint-frame-compiled-address? (stack-frame-cpoint frame)))
@@ -166,16 +242,13 @@ USA.
   (cpoint-frame-compiled-code? (stack-frame-cpoint frame)))
 
 (define (stack-frame*/dynamic-state frame)
-  (pstate-dynamic-state (stack-frame-pstate frame)))
+  (pstate-item-ref (stack-frame-pstate frame) 'dynamic-state))
 
 (define (stack-frame*/elements frame)
   (cpoint-frame-raw (stack-frame-cpoint frame)))
 
 (define (stack-frame*/length frame)
   (cpoint-frame-length (stack-frame-cpoint frame)))
-
-(define (stack-frame*/next frame)
-  (force (stack-frame-%next frame)))
 
 (define (stack-frame*/next-subproblem frame)
   (if (stack-frame*/subproblem? frame)
@@ -185,10 +258,10 @@ USA.
       (stack-frame*/skip-non-subproblems frame)))
 
 (define (stack-frame*/previous-type frame)
-  (pstate-previous-type (stack-frame-pstate frame)))
-
+  (pstate-item-ref (stack-frame-pstate frame) 'previous-type))
+
 (define (stack-frame*/reductions frame)
-  (let ((history (pstate-history (stack-frame-pstate frame))))
+  (let ((history (pstate-item-ref (stack-frame-pstate frame) 'history)))
     (if (eq? history undefined-history)
 	'()
 	(history-reductions history))))
@@ -214,7 +287,7 @@ USA.
 ;;; counting the distance between the start of that frame and the end of the
 ;;; control point that it was in.  It used the result of the
 ;;; stack-address-offset primitive and the tracked offset to create an index
-;;; which could then be used to identify the frame that the offset point into.
+;;; which could then be used to identify the frame that the offset points into.
 (define (stack-frame*/resolve-stack-address frame address)
   (declare (ignore frame address))
   (error "Unimplemented."))
@@ -251,10 +324,3 @@ USA.
 ;; debugging-info/noise
 ;; debugging-info/noise?
 ;; stack-frame*/debugging-info
-
-;;; Local Variables:
-;;; eval: (put 'pstate-new-dynamic-state 'scheme-indent-hook 1)
-;;; eval: (put 'pstate-new-block-thread-events? 'scheme-indent-hook 1)
-;;; eval: (put 'pstate-new-interrupt-mask 'scheme-indent-hook 1)
-;;; eval: (put 'pstate-new-history 'scheme-indent-hook 1)
-;;; End:
