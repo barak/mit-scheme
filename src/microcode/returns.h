@@ -97,6 +97,7 @@ typedef enum
 {
   RFT_UNDEFINED,
   RFT_WITH_ARG,
+  RFT_WITH_ARG_SUBPROBLEM,
   // +-------------+
   // | return code |
   // +-------------+
@@ -121,6 +122,7 @@ typedef enum
   // | (unused)    |
   // +-------------+
   RFT_APPLY,
+  RFT_COMBINATION_APPLY,
   // +-------------+
   // | return code |
   // +-------------+
@@ -139,6 +141,7 @@ typedef enum
   // .             .
   // +-------------+
   RFT_COMPILED_CODE,
+  RFT_COMPILED_CODE_SUBPROBLEM,
   // +-------------+
   // | return code |
   // +-------------+

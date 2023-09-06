@@ -102,13 +102,13 @@ USA.
 		  (return-address/name address)))))
 
       (define (make ftype . alist)
-	(make-cpoint-frame ftype findex cpend raw alist))
+	(make-cpoint-frame ftype findex cpend raw info alist))
 
       (define-integrable (name index)
-	(vector-ref info (fix:+ 1 (fix:* 2 index))))
+	(vector-ref info (fix:+ 3 (fix:* 2 index))))
 
       (define-integrable (val-loc index)
-	(vector-ref info (fix:+ 2 (fix:* 2 index))))
+	(vector-ref info (fix:+ 4 (fix:* 2 index))))
 
       (define-integrable (elt index)
 	(cons (name index) (vector-ref raw (val-loc index))))
@@ -175,11 +175,32 @@ USA.
   (index cpoint-frame-start)		;index of frame within control point
   (cpoint-end cpoint-frame-cpoint-end)	;length of control point
   (raw cpoint-frame-raw)
+  (info cpoint-frame-info)
   (fields cpoint-frame-fields))
 
 (define (cpoint-frame-end cpoint)
   (fix:+ (cpoint-frame-start cpoint)
 	 (cpoint-frame-length cpoint)))
+
+(define (cpoint-frame-length frame)
+  (vector-length (cpoint-frame-raw frame)))
+
+(define (cpoint-frame-ref frame index)
+  (vector-ref (cpoint-frame-raw frame) index))
+
+(define (cpoint-frame-return-address frame)
+  (vector-ref (cpoint-frame-raw frame) 0))
+
+(define (cpoint-frame-return-code frame)
+  (let ((return-address (cpoint-frame-return-address frame)))
+    (and (interpreter-return-address? return-address)
+	 (return-address/code return-address))))
+
+(define (cpoint-frame:subproblem? frame)
+  (vector-ref (cpoint-frame-info frame) 1))
+
+(define (cpoint-frame:history-subproblem? frame)
+  (vector-ref (cpoint-frame-info frame) 2))
 
 (define (cpoint-frame-field-value frame name)
   (let ((p (assq name (cpoint-frame-fields frame))))
@@ -229,73 +250,6 @@ USA.
 
 (define (cpoint-frame:repl-eval-boundary? frame)
   (cpoint-frame:stack-marker-of-type? with-repl-eval-boundary frame))
-
-(define (cpoint-frame:subproblem? frame)
-  (let ((p (assq (cpoint-frame-type frame) subproblem-frame-type-map)))
-    (if (not p)
-	(error "Unknown frame type:" frame))
-    (cadr p)))
-
-(define (cpoint-frame:history-subproblem? frame)
-  (let ((p (assq (cpoint-frame-type frame) subproblem-frame-type-map)))
-    (if (not p)
-	(error "Unknown frame type:" frame))
-    (caddr p)))
-
-(define subproblem-frame-type-map
-  '((access-continue #t #t)
-    (assignment-continue #t #t)
-    (cc-bkpt #t #f)
-    (cc-internal-apply #f #f)
-    (cc-invocation #f #f)
-    (cc-restore-interrupt-mask #f #f)
-    (cc-stack-marker #f #f)
-    (combination-apply #t #t)
-    (combination-save-value #t #t)
-    (compiled-address #t #f)
-    (compiler-assignment-trap-restart #t #t)
-    (compiler-error-restart #t #t)
-    (compiler-interrupt-restart #f #t)
-    (compiler-link-caches-restart #f #t)
-    (compiler-lookup-apply-trap-restart #t #t)
-    (compiler-operator-lookup-trap-restart #t #t)
-    (compiler-reference-trap-restart #t #t)
-    (compiler-safe-reference-trap-restart #t #t)
-    (compiler-unassigned?-trap-restart #t #t)
-    (conditional-decide #t #t)
-    (definition-continue #t #t)
-    (disjunction-decide #t #t)
-    (end-of-computation #f #f)
-    (eval-error #t #t)
-    (force-snap-thunk #t #t)
-    (halt #f #f)
-    (hardware-trap #t #f)
-    (internal-apply #t #f)
-    (internal-apply-val #t #f)
-    (join-stacklets #f #f)
-    (pop-return-error #f #f)
-    (reenter-compiled-code #f #t)
-    (restore-dont-copy-history #f #f)
-    (restore-history #f #f)
-    (restore-interrupt-mask #f #f)
-    (restore-value #f #f)
-    (return-to-interpreter #f #t)
-    (sequence-continue #t #t)
-    (stack-marker #f #f)))
-
-(define (cpoint-frame-length frame)
-  (vector-length (cpoint-frame-raw frame)))
-
-(define (cpoint-frame-ref frame index)
-  (vector-ref (cpoint-frame-raw frame) index))
-
-(define-integrable (cpoint-frame-return-address frame)
-  (vector-ref (cpoint-frame-raw frame) 0))
-
-(define (cpoint-frame-return-code frame)
-  (let ((return-address (cpoint-frame-return-address frame)))
-    (and (interpreter-return-address? return-address)
-	 (return-address/code return-address))))
 
 (define (cpoint-frames->control-point frames)
   (make-control-point (cpoint-frames-raw-prefix frames)))

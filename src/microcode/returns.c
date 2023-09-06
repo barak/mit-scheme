@@ -133,10 +133,13 @@ static const char* return_frame_type_names_table[] =
 {
   0,
   "with-arg",
+  "with-arg-subproblem",
   "exp+env",
   "history",
   "apply",
+  "combination-apply",
   "return-to-compiled-code",
+  "return-to-compiled-code-subproblem",
   "compiled-address",
   "combination-save",
   "stack-marker",
@@ -161,7 +164,7 @@ static return_frame_type_t return_frame_types_table[] =
   RFT_UNDEFINED,                // 0x07
   RFT_EXP_ENV,                  // 0x08
   RFT_EXP_ENV,                  // 0x09
-  RFT_WITH_ARG,                 // 0x0a arg: expression
+  RFT_WITH_ARG_SUBPROBLEM,      // 0x0a arg: expression
   RFT_UNDEFINED,                // 0x0b
   RFT_EXP_ENV,                  // 0x0c
   RFT_UNDEFINED,                // 0x0d
@@ -169,7 +172,7 @@ static return_frame_type_t return_frame_types_table[] =
   RFT_EXP_ENV,                  // 0x0f
   RFT_EXP_ENV,                  // 0x10
   RFT_UNDEFINED,                // 0x11
-  RFT_APPLY,                    // 0x12
+  RFT_COMBINATION_APPLY,        // 0x12
   RFT_UNDEFINED,                // 0x13
   RFT_UNDEFINED,                // 0x14
   RFT_COMBINATION_SAVE,         // 0x15
@@ -179,7 +182,7 @@ static return_frame_type_t return_frame_types_table[] =
   RFT_UNDEFINED,                // 0x19
   RFT_UNDEFINED,                // 0x1a
   RFT_UNDEFINED,                // 0x1b
-  RFT_WITH_ARG,                 // 0x1c arg: delayed
+  RFT_WITH_ARG_SUBPROBLEM,      // 0x1c arg: delayed
   RFT_COMPILED_CODE,            // 0x1d
   RFT_UNDEFINED,                // 0x1e
   RFT_UNDEFINED,                // 0x1f
@@ -234,18 +237,18 @@ static return_frame_type_t return_frame_types_table[] =
   RFT_UNDEFINED,                // 0x50
   RFT_UNDEFINED,                // 0x51
   RFT_UNDEFINED,                // 0x52
-  RFT_COMPILED_CODE,            // 0x53
-  RFT_COMPILED_CODE,            // 0x54
+  RFT_COMPILED_CODE_SUBPROBLEM, // 0x53
+  RFT_COMPILED_CODE_SUBPROBLEM, // 0x54
   RFT_UNDEFINED,                // 0x55
-  RFT_COMPILED_CODE,            // 0x56
-  RFT_COMPILED_CODE,            // 0x57
-  RFT_COMPILED_CODE,            // 0x58
-  RFT_COMPILED_CODE,            // 0x59
+  RFT_COMPILED_CODE_SUBPROBLEM, // 0x56
+  RFT_COMPILED_CODE_SUBPROBLEM, // 0x57
+  RFT_COMPILED_CODE_SUBPROBLEM, // 0x58
+  RFT_COMPILED_CODE_SUBPROBLEM, // 0x59
   RFT_UNDEFINED,                // 0x5a
   RFT_COMPILED_CODE,            // 0x5b
   RFT_HARDWARE_TRAP,            // 0x5c
   RFT_APPLY,                    // 0x5d
-  RFT_COMPILED_CODE             // 0x5e
+  RFT_COMPILED_CODE_SUBPROBLEM  // 0x5e
 };
 
 unsigned long MAX_RETURN = MAX_RETURN_CODE;
@@ -306,163 +309,134 @@ return_code_frame_type (SCHEME_OBJECT ret)
   return return_frame_types_table[rc];
 }
 
-static SCHEME_OBJECT
-allocate_ftti_entry (return_frame_type_t type, unsigned long n)
+typedef struct
 {
-  SCHEME_OBJECT entry = allocate_vector ((2 * n) + 1, true);
-  vector_set (entry, 0,
+  unsigned int index;
+  const char* name;
+} field_defn_t;
+
+static field_defn_t with_arg_fields [] =
+  {
+    { 1, 0 }
+  };
+
+static field_defn_t exp_env_fields [] =
+  {
+    { 1, "expression" },
+    { 2, "environment" }
+  };
+
+static field_defn_t history_fields [] =
+  {
+    { 1, "history" },
+    { 2, "previous-restore-history-offset" }
+  };
+
+static field_defn_t apply_fields [] =
+  {
+    { 3, "procedure" },
+    { 4, "arguments" }
+  };
+
+static field_defn_t compiled_code_fields [] =
+  {
+    { 1, "last-return-code" }
+  };
+
+static field_defn_t combination_save_fields [] =
+  {
+    { 1, "expression" },
+    { 2, "environment" },
+    { 3, "number-of-blanks" },
+    { 4, "saved-args" }
+  };
+
+static field_defn_t stack_marker_fields [] =
+  {
+    { 1, "marker-type" },
+    { 2, "marker-instance" }
+  };
+
+static field_defn_t hardware_trap_fields [] =
+  {
+    { 1, "signal-number" },
+    { 2, "signal-name" },
+    { 3, "code-name" },
+    { 4, "sp-valid?" },
+    { 5, "recovery-state" },
+    { 6, "pc-info-1" },
+    { 7, "pc-info-2" },
+    { 8, "extra-info" }
+  };
+
+static field_defn_t cc_int_mask_fields [] =
+  {
+    { 2, "interrupt-mask" }
+  };
+
+static field_defn_t cc_stack_marker_fields [] =
+  {
+    { 2, "marker-type" },
+    { 3, "marker-instance" }
+  };
+
+static field_defn_t cc_invocation_fields [] =
+  {
+    { 2, "procedure" },
+    { 3, "arguments" }
+  };
+
+#define FTIE(type, subp, hsubp, n_fields, fields)                       \
+{                                                                       \
+  vector_set (table, type,                                              \
+              allocate_ftti_entry                                       \
+                (type, subp, hsubp, n_fields, fields));                 \
+}
+
+static SCHEME_OBJECT
+allocate_ftti_entry (return_frame_type_t type, bool subp, bool history_subp,
+                     unsigned int n_fields, field_defn_t* fields)
+{
+  SCHEME_OBJECT entry = allocate_vector ((2 * n_fields) + 3, true);
+  unsigned int i = 0;
+  vector_set (entry, i++,
               char_pointer_to_symbol (return_frame_type_names_table[type]));
-  return entry;
-}
-
-static SCHEME_OBJECT
-make_ftti_entry (return_frame_type_t type)
-{
-  SCHEME_OBJECT entry;
-  unsigned long i = 1;
-  switch (type)
+  vector_set (entry, i++, BOOLEAN_TO_OBJECT (subp));
+  vector_set (entry, i++, BOOLEAN_TO_OBJECT (history_subp));
+  for (unsigned int j = 0; j < n_fields; j += 1)
     {
-    case RFT_UNDEFINED:
-      return SHARP_F;
-
-    case RFT_WITH_ARG:
-      entry = allocate_ftti_entry (type, 1);
-      vector_set (entry, i++, SHARP_F);
-      vector_set (entry, i, ULONG_TO_FIXNUM (1));
-      return entry;
-
-    case RFT_EXP_ENV:
-      entry = allocate_ftti_entry (type, 2);
-      vector_set (entry, i++, char_pointer_to_symbol ("expression"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
-      vector_set (entry, i++, char_pointer_to_symbol ("environment"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (2));
-      return entry;
-
-    case RFT_HISTORY:
-      entry = allocate_ftti_entry (type, 2);
-      vector_set (entry, i++, char_pointer_to_symbol ("history"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
       vector_set (entry, i++,
-                  char_pointer_to_symbol ("previous-restore-history-offset"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (2));
-      return entry;
-
-    case RFT_APPLY:
-    case RFT_CC_INTERNAL_APPLY:
-      entry = allocate_ftti_entry (type, 2);
-      vector_set (entry, i++, char_pointer_to_symbol ("procedure"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (3));
-      vector_set (entry, i++, char_pointer_to_symbol ("arguments"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (4));
-      return entry;
-
-    case RFT_COMPILED_CODE:
-      entry = allocate_ftti_entry (type, 1);
-      vector_set (entry, i++, char_pointer_to_symbol ("last-return-code"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (1));
-      return entry;
-
-    case RFT_COMPILED_ADDRESS:
-      return allocate_ftti_entry (type, 0);
-
-    case RFT_COMBINATION_SAVE:
-      entry = allocate_ftti_entry (type, 4);
-      vector_set (entry, i++, char_pointer_to_symbol ("expression"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
-      vector_set (entry, i++, char_pointer_to_symbol ("environment"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (2));
-      vector_set (entry, i++, char_pointer_to_symbol ("number-of-blanks"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (3));
-      vector_set (entry, i++, char_pointer_to_symbol ("saved-args"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (4));
-      return entry;
-
-    case RFT_STACK_MARKER:
-      entry = allocate_ftti_entry (type, 2);
-      vector_set (entry, i++, char_pointer_to_symbol ("marker-type"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
-      vector_set (entry, i++, char_pointer_to_symbol ("marker-instance"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (2));
-      return entry;
-
-    case RFT_HARDWARE_TRAP:
-      entry = allocate_ftti_entry (type, 8);
-      vector_set (entry, i++, char_pointer_to_symbol ("signal-number"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (1));
-      vector_set (entry, i++, char_pointer_to_symbol ("signal-name"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (2));
-      vector_set (entry, i++, char_pointer_to_symbol ("code-name"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (3));
-      vector_set (entry, i++, char_pointer_to_symbol ("sp-valid?"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (4));
-      vector_set (entry, i++, char_pointer_to_symbol ("recovery-state"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (5));
-      vector_set (entry, i++, char_pointer_to_symbol ("pc-info-1"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (6));
-      vector_set (entry, i++, char_pointer_to_symbol ("pc-info-2"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (7));
-      vector_set (entry, i++, char_pointer_to_symbol ("extra-info"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (8));
-      return entry;
-
-    case RFT_RETURN_TO_INTERPRETER:
-      return allocate_ftti_entry (type, 0);
-
-    case RFT_CC_RESTORE_INTERRUPT_MASK:
-      entry = allocate_ftti_entry (type, 1);
-      vector_set (entry, i++, char_pointer_to_symbol ("interrupt-mask"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (2));
-      return entry;
-
-    case RFT_CC_STACK_MARKER:
-      entry = allocate_ftti_entry (type, 2);
-      vector_set (entry, i++, char_pointer_to_symbol ("marker-type"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (2));
-      vector_set (entry, i++, char_pointer_to_symbol ("marker-instance"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (3));
-      return entry;
-
-    case RFT_CC_BKPT:
-    case RFT_CC_INVOCATION:
-      entry = allocate_ftti_entry (type, 2);
-      vector_set (entry, i++, char_pointer_to_symbol ("procedure"));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (2));
-      vector_set (entry, i++, char_pointer_to_symbol ("arguments"));
-      vector_set (entry, i, ULONG_TO_FIXNUM (3));
-      return entry;
-
-    default:
-      abort ();
+                  (fields[j].name == 0)
+                  ? SHARP_F
+                  : char_pointer_to_symbol (fields[j].name));
+      vector_set (entry, i++, ULONG_TO_FIXNUM (fields[j].index));
     }
-}
-
-static inline void
-init_ftti_entry (SCHEME_OBJECT table, return_frame_type_t type)
-{
-  vector_set (table, type, make_ftti_entry (type));
+  return entry;
 }
 
 SCHEME_OBJECT
 make_frame_type_info_table (void)
 {
   SCHEME_OBJECT table = allocate_vector (RFT_LIMIT, true);
-  init_ftti_entry (table, RFT_UNDEFINED);
-  init_ftti_entry (table, RFT_WITH_ARG);
-  init_ftti_entry (table, RFT_EXP_ENV);
-  init_ftti_entry (table, RFT_HISTORY);
-  init_ftti_entry (table, RFT_APPLY);
-  init_ftti_entry (table, RFT_COMPILED_CODE);
-  init_ftti_entry (table, RFT_COMPILED_ADDRESS);
-  init_ftti_entry (table, RFT_COMBINATION_SAVE);
-  init_ftti_entry (table, RFT_STACK_MARKER);
-  init_ftti_entry (table, RFT_HARDWARE_TRAP);
-  init_ftti_entry (table, RFT_RETURN_TO_INTERPRETER);
-  init_ftti_entry (table, RFT_CC_INTERNAL_APPLY);
-  init_ftti_entry (table, RFT_CC_RESTORE_INTERRUPT_MASK);
-  init_ftti_entry (table, RFT_CC_STACK_MARKER);
-  init_ftti_entry (table, RFT_CC_BKPT);
-  init_ftti_entry (table, RFT_CC_INVOCATION);
+  vector_set (table, RFT_UNDEFINED, SHARP_F);
+  FTIE (RFT_WITH_ARG, false, false, 1, with_arg_fields);
+  FTIE (RFT_WITH_ARG_SUBPROBLEM, true, true, 1, with_arg_fields);
+  FTIE (RFT_EXP_ENV, true, true, 2, exp_env_fields);
+  FTIE (RFT_HISTORY, false, false, 2, history_fields);
+  FTIE (RFT_APPLY, true, false, 2, apply_fields);
+  FTIE (RFT_COMBINATION_APPLY, true, true, 2, apply_fields);
+  FTIE (RFT_COMPILED_CODE, false, true, 1, compiled_code_fields);
+  FTIE (RFT_COMPILED_CODE_SUBPROBLEM, true, true, 1, compiled_code_fields);
+  FTIE (RFT_COMPILED_ADDRESS, true, false, 0, 0);
+  FTIE (RFT_COMBINATION_SAVE, true, true, 4, combination_save_fields);
+  FTIE (RFT_STACK_MARKER, false, false, 2, stack_marker_fields);
+  FTIE (RFT_HARDWARE_TRAP, true, false, 8, hardware_trap_fields);
+  FTIE (RFT_RETURN_TO_INTERPRETER, false, true, 0, 0);
+  FTIE (RFT_CC_INTERNAL_APPLY, false, false, 2, apply_fields);
+  FTIE (RFT_CC_RESTORE_INTERRUPT_MASK, false, false, 1, cc_int_mask_fields);
+  FTIE (RFT_CC_STACK_MARKER, false, false, 2, cc_stack_marker_fields);
+  FTIE (RFT_CC_BKPT, true, false, 2, cc_invocation_fields);
+  FTIE (RFT_CC_INVOCATION, false, false, 2, cc_invocation_fields);
   return table;
 }
 
