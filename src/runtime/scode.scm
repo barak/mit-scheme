@@ -56,9 +56,7 @@ USA.
 ;;;; Quotation
 
 (define (make-scode-quotation expression)
-  (system-pair-cons (ucode-type quotation)
-		    (unmap-reference-trap expression)
-		    '()))
+  (safe-system-pair-cons (ucode-type quotation) expression '()))
 
 (define (scode-quotation? object)
   (object-type? (ucode-type quotation) object))
@@ -66,15 +64,16 @@ USA.
 
 (define (scode-quotation-expression quotation)
   (guarantee scode-quotation? quotation 'scode-quotation-expression)
-  (map-reference-trap (lambda () (system-pair-car quotation))))
+  (safe-system-pair-car quotation))
 
 ;;;; Variable
 
 (define (make-scode-variable name #!optional safe?)
   (guarantee symbol? name 'make-scode-variable)
-  (system-hunk3-cons (ucode-type variable) name
-		     (or (default-object? safe?) (not safe?))
-		     #f))
+  (safe-system-triple-cons (ucode-type variable)
+			   name
+			   (or (default-object? safe?) (not safe?))
+			   #f))
 
 (define (scode-variable? object)
   (object-type? (ucode-type variable) object))
@@ -82,19 +81,17 @@ USA.
 
 (define (scode-variable-name variable)
   (guarantee scode-variable? variable 'scode-variable-name)
-  (system-hunk3-cxr0 variable))
+  (safe-system-triple-first variable))
 
 (define (scode-variable-safe? variable)
   (guarantee scode-variable? variable 'scode-variable-safe?)
-  (not (system-hunk3-cxr1 variable)))
+  (not (safe-system-triple-second variable)))
 
 ;;;; Definition
 
 (define (make-scode-definition name value)
   (guarantee symbol? name 'make-scode-definition)
-  (system-pair-cons (ucode-type definition)
-		    (unmap-reference-trap name)
-		    (unmap-reference-trap value)))
+  (safe-system-pair-cons (ucode-type definition) name value))
 
 (define (scode-definition? object)
   (object-type? (ucode-type definition) object))
@@ -102,11 +99,11 @@ USA.
 
 (define (scode-definition-name definition)
   (guarantee scode-definition? definition 'scode-definition-name)
-  (system-pair-car definition))
+  (safe-system-pair-car definition))
 
 (define (scode-definition-value definition)
   (guarantee scode-definition? definition 'scode-definition-value)
-  (map-reference-trap (lambda () (system-pair-cdr definition))))
+  (safe-system-pair-cdr definition))
 
 ;;;; Syntax definition
 
@@ -178,9 +175,9 @@ USA.
 
 (define (make-scode-assignment name value)
   (guarantee symbol? name 'make-scode-assignment)
-  (system-pair-cons (ucode-type assignment)
-		    (make-scode-variable name)
-		    (unmap-reference-trap value)))
+  (safe-system-pair-cons (ucode-type assignment)
+			 (make-scode-variable name)
+			 value))
 
 (define (scode-assignment? object)
   (object-type? (ucode-type assignment) object))
@@ -188,18 +185,16 @@ USA.
 
 (define (scode-assignment-name assignment)
   (guarantee scode-assignment? assignment 'scode-assignment-name)
-  (scode-variable-name (system-pair-car assignment)))
+  (scode-variable-name (safe-system-pair-car assignment)))
 
 (define (scode-assignment-value assignment)
   (guarantee scode-assignment? assignment 'scode-assignment-value)
-  (map-reference-trap (lambda () (system-pair-cdr assignment))))
+  (safe-system-pair-cdr assignment))
 
 ;;;; Comment
 
 (define (make-scode-comment text expression)
-  (system-pair-cons (ucode-type comment)
-		    (unmap-reference-trap expression)
-		    text))
+  (safe-system-pair-cons (ucode-type comment) expression text))
 
 (define (scode-comment? object)
   (object-type? (ucode-type comment) object))
@@ -222,11 +217,11 @@ USA.
 
 (define (scode-comment-expression comment)
   (guarantee scode-comment? comment 'scode-comment-expression)
-  (map-reference-trap (lambda () (system-pair-car comment))))
+  (safe-system-pair-car comment))
 
 (define (set-scode-comment-expression! comment expression)
   (guarantee scode-comment? comment 'set-scode-comment-expression!)
-  (system-pair-set-car! comment (unmap-reference-trap expression)))
+  (safe-system-pair-set-car! comment expression))
 
 ;;;; Declaration
 
@@ -264,9 +259,7 @@ USA.
 
 (define (make-scode-access environment name)
   (guarantee symbol? name 'make-scode-access)
-  (system-pair-cons (ucode-type access)
-		    (unmap-reference-trap environment)
-		    name))
+  (safe-system-pair-cons (ucode-type access) environment name))
 
 (define (scode-access? object)
   (object-type? (ucode-type access) object))
@@ -274,11 +267,11 @@ USA.
 
 (define (scode-access-environment access)
   (guarantee scode-access? access 'scode-access-environment)
-  (map-reference-trap (lambda () (system-pair-car access))))
+  (safe-system-pair-car access))
 
 (define (scode-access-name access)
   (guarantee scode-access? access 'scode-access-name)
-  (system-pair-cdr access))
+  (safe-system-pair-cdr access))
 
 ;;;; Absolute Reference
 
@@ -302,9 +295,7 @@ USA.
 ;;;; Delay
 
 (define (make-scode-delay expression)
-  (system-pair-cons (ucode-type delay)
-		    (unmap-reference-trap expression)
-		    '()))
+  (safe-system-pair-cons (ucode-type delay) expression '()))
 
 (define (scode-delay? object)
   (object-type? (ucode-type delay) object))
@@ -312,7 +303,7 @@ USA.
 
 (define (scode-delay-expression delay)
   (guarantee scode-delay? delay 'scode-delay-expression)
-  (map-reference-trap (lambda () (system-pair-car delay))))
+  (safe-system-pair-car delay))
 
 ;;;; Sequence
 
@@ -322,27 +313,32 @@ USA.
     (if (pair? actions)
 	(let loop ((actions actions))
 	  (if (pair? (cdr actions))
-	      (system-pair-cons (ucode-type sequence)
-				(unmap-reference-trap (car actions))
-				(unmap-reference-trap (loop (cdr actions))))
+	      (%make-scode-sequence (car actions) (loop (cdr actions)))
 	      (car actions)))
 	(empty-sequence))))
+
+(define (%make-scode-sequence first rest)
+  (safe-system-pair-cons (ucode-type sequence) first rest))
 
 (define (scode-sequence? object)
   (object-type? (ucode-type sequence) object))
 (register-predicate! scode-sequence? 'scode-sequence)
 
+(define (scode-sequence-first expression)
+  (guarantee scode-sequence? expression 'scode-sequence-first)
+  (safe-system-pair-car expression))
+
+(define (scode-sequence-rest expression)
+  (guarantee scode-sequence? expression 'scode-sequence-rest)
+  (safe-system-pair-cdr expression))
+
 (define (scode-sequence-actions expression)
-  (cond ((not (scode-sequence? expression)) (list expression))
-	((sequence-empty? expression) '())
-	(else
-	 (append-map scode-sequence-actions
-		     (list (map-reference-trap
-			    (lambda ()
-			      (system-pair-car expression)))
-			   (map-reference-trap
-			    (lambda ()
-			      (system-pair-cdr expression))))))))
+  (if (scode-sequence? expression)
+      (if (sequence-empty? expression)
+	  '()
+	  (append (scode-sequence-actions (safe-system-pair-car expression))
+		  (scode-sequence-actions (safe-system-pair-cdr expression))))
+      (list expression)))
 
 (define (empty-sequence)
   (system-pair-cons (ucode-type sequence) #!unspecific #!unspecific))
@@ -354,14 +350,15 @@ USA.
 ;;;; Combination
 
 (define (make-scode-combination operator operands)
-  (guarantee list? operands 'make-scode-combination)
-  (system-list->vector (ucode-type combination)
-		       (cons (unmap-reference-trap operator)
-			     (let loop ((operands operands))
-			       (if (pair? operands)
-				   (cons (unmap-reference-trap (car operands))
-					 (loop (cdr operands)))
-				   '())))))
+  (let ((comb
+	 (safe-system-vector-cons (ucode-type combination)
+				  (fix:+ 1 (length operands)))))
+    (safe-system-vector-set! comb 0 operator)
+    (do ((operands operands (cdr operands))
+	 (i 1 (fix:+ i 1)))
+	((not (pair? operands)))
+      (safe-system-vector-set! comb i (car operands)))
+    comb))
 
 (define (scode-combination? object)
   (object-type? (ucode-type combination) object))
@@ -369,19 +366,15 @@ USA.
 
 (define (scode-combination-operator combination)
   (guarantee scode-combination? combination 'scode-combination-operator)
-  (map-reference-trap (lambda () (system-vector-ref combination 0))))
+  (safe-system-vector-ref combination 0))
 
 (define (scode-combination-operands combination)
   (guarantee scode-combination? combination 'scode-combination-operands)
-  (let loop
-      ((operands
-	(system-subvector->list combination
-				1
-				(system-vector-length combination))))
-    (if (pair? operands)
-	(cons (map-reference-trap (lambda () (car operands)))
-	      (loop (cdr operands)))
-	'())))
+  (reverse
+   (fold (lambda (index operands)
+	   (cons (safe-system-vector-ref combination index) operands))
+	 '()
+	 (iota (fix:- (system-vector-length combination) 1) 1))))
 
 ;;;; Unassigned?
 
@@ -407,10 +400,10 @@ USA.
 ;;;; Conditional
 
 (define (make-scode-conditional predicate consequent alternative)
-  (object-new-type (ucode-type conditional)
-		   (hunk3-cons (unmap-reference-trap predicate)
-			       (unmap-reference-trap consequent)
-			       (unmap-reference-trap alternative))))
+  (safe-system-triple-cons (ucode-type conditional)
+			   predicate
+			   consequent
+			   alternative))
 
 (define (scode-conditional? object)
   (object-type? (ucode-type conditional) object))
@@ -420,22 +413,20 @@ USA.
 
 (define (scode-conditional-predicate conditional)
   (guarantee scode-conditional? conditional 'scode-conditional-predicate)
-  (map-reference-trap (lambda () (system-hunk3-cxr0 conditional))))
+  (safe-system-triple-first conditional))
 
 (define (scode-conditional-consequent conditional)
   (guarantee scode-conditional? conditional 'scode-conditional-consequent)
-  (map-reference-trap (lambda () (system-hunk3-cxr1 conditional))))
+  (safe-system-triple-second conditional))
 
 (define (scode-conditional-alternative conditional)
   (guarantee scode-conditional? conditional 'scode-conditional-alternative)
-  (map-reference-trap (lambda () (system-hunk3-cxr2 conditional))))
+  (safe-system-triple-third conditional))
 
 ;;;; Disjunction
 
 (define (make-scode-disjunction predicate alternative)
-  (system-pair-cons (ucode-type disjunction)
-		    (unmap-reference-trap predicate)
-		    (unmap-reference-trap alternative)))
+  (safe-system-pair-cons (ucode-type disjunction) predicate alternative))
 
 (define (scode-disjunction? object)
   (object-type? (ucode-type disjunction) object))
@@ -443,11 +434,11 @@ USA.
 
 (define (scode-disjunction-predicate disjunction)
   (guarantee scode-disjunction? disjunction 'scode-disjunction-predicate)
-  (map-reference-trap (lambda () (system-pair-car disjunction))))
+  (safe-system-pair-car disjunction))
 
 (define (scode-disjunction-alternative disjunction)
   (guarantee scode-disjunction? disjunction 'scode-disjunction-alternative)
-  (map-reference-trap (lambda () (system-pair-cdr disjunction))))
+  (safe-system-pair-cdr disjunction))
 
 ;;;; Declaration
 
@@ -521,9 +512,9 @@ USA.
 ;;; Simple representation
 
 (define (make-slambda name required body)
-  (system-pair-cons (ucode-type lambda)
-		    (unmap-reference-trap body)
-		    (list->vector (cons name required))))
+  (safe-system-pair-cons (ucode-type lambda)
+			 body
+			 (list->vector (cons name required))))
 
 (define (slambda? object)
   (object-type? (ucode-type lambda) object))
@@ -536,7 +527,7 @@ USA.
     (subvector->list v 1 (vector-length v))))
 
 (define (slambda-body slambda)
-  (map-reference-trap (lambda () (system-pair-car slambda))))
+  (safe-system-pair-car slambda))
 
 ;;; Extended representation
 
@@ -551,39 +542,39 @@ USA.
 	   (fix:or (fix:or n-optional
 			   (fix:lsh n-required 8))
 		   (fix:lsh (if rest 1 0) 16)))))
-    (object-new-type (ucode-type extended-lambda)
-		     (hunk3-cons (unmap-reference-trap body)
-				 v
-				 arity))))
+    (safe-system-triple-cons (ucode-type extended-lambda) body v arity)))
 
 (define (xlambda? object)
   (object-type? (ucode-type extended-lambda) object))
 
 (define (xlambda-name xlambda)
-  (vector-ref (system-hunk3-cxr1 xlambda) 0))
+  (vector-ref (safe-system-triple-second xlambda) 0))
 
 (define (xlambda-required xlambda)
-  (receive (optional-start optional-end rest?) (decode-xlambda-arity xlambda)
+  (let-values (((optional-start optional-end rest?)
+		(decode-xlambda-arity xlambda)))
     (declare (ignore optional-end rest?))
-    (subvector->list (system-hunk3-cxr1 xlambda) 1 optional-start)))
+    (vector->list (safe-system-triple-second xlambda) 1 optional-start)))
 
 (define (xlambda-optional xlambda)
-  (receive (optional-start optional-end rest?) (decode-xlambda-arity xlambda)
+  (let-values (((optional-start optional-end rest?)
+		(decode-xlambda-arity xlambda)))
     (declare (ignore rest?))
-    (subvector->list (system-hunk3-cxr1 xlambda) optional-start optional-end)))
+    (vector->list (safe-system-triple-second xlambda) optional-start optional-end)))
 
 (define (xlambda-rest xlambda)
-  (receive (optional-start optional-end rest?) (decode-xlambda-arity xlambda)
+  (let-values (((optional-start optional-end rest?)
+		(decode-xlambda-arity xlambda)))
     (declare (ignore optional-start))
     (and rest?
-	 (vector-ref (system-hunk3-cxr1 xlambda) optional-end))))
+	 (vector-ref (safe-system-triple-second xlambda) optional-end))))
 
 (define (decode-xlambda-arity xlambda)
-  (let ((arity (object-datum (system-hunk3-cxr2 xlambda))))
+  (let ((arity (object-datum (safe-system-triple-third xlambda))))
     (let ((optional-start (fix:+ 1 (fix:and (fix:lsh arity -8) #xff))))
       (values optional-start
 	      (fix:+ optional-start (fix:and arity #xff))
 	      (fix:= 1 (fix:lsh arity -16))))))
 
 (define (xlambda-body xlambda)
-  (map-reference-trap (lambda () (system-hunk3-cxr0 xlambda))))
+  (safe-system-triple-first xlambda))

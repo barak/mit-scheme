@@ -4609,6 +4609,8 @@ USA.
 	  scode-quotation-expression
 	  scode-quotation?
 	  scode-sequence-actions
+	  scode-sequence-first
+	  scode-sequence-rest
 	  scode-sequence?
 	  scode-the-environment?
 	  scode-unassigned?-name
