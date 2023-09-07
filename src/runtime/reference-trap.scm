@@ -43,14 +43,34 @@ USA.
   (extra #f read-only #t))
 
 (define-primitives
-  primitive-object-type?
-  primitive-object-set-type
-  primitive-object-ref)
+  (primitive-datum-ref 2)
+  (primitive-object-ref 2)
+  (primitive-object-ref-new-type 3)
+  (primitive-object-set! 3)
+  (primitive-object-set-type 2)
+  (primitive-object-type? 2)
+  (primitive-type-set! 3))
+
+(define (%safe-map-reference-trap object index)
+  (let ((kind (primitive-datum-ref object index)))
+    (if (reference-trap-kind-immediate? kind)
+	(make-immediate-reference-trap kind)
+	(let ((pair
+	       (primitive-object-ref-new-type object index (ucode-type pair))))
+	  (make-reference-trap (car pair) (cdr pair))))))
+
+(define (%safe-unmap-reference-trap object index trap)
+  (primitive-object-set! object index
+			 (let ((kind (reference-trap-kind trap)))
+			   (if (reference-trap-kind-immediate? kind)
+			       kind
+			       (cons kind (reference-trap-extra trap)))))
+  (primitive-type-set! object index (ucode-type reference-trap)))
 
 (define (map-reference-trap getter)
   (if (primitive-object-type? (ucode-type reference-trap) (getter))
       (let ((index (object-datum (getter))))
-	(if (<= index trap-max-immediate)
+	(if (reference-trap-kind-immediate? index)
 	    (make-immediate-reference-trap index)
 	    (make-reference-trap (primitive-object-ref (getter) 0)
 				 (primitive-object-ref (getter) 1))))
@@ -60,7 +80,7 @@ USA.
   (if (reference-trap? trap)
       (primitive-object-set-type
        (ucode-type reference-trap)
-       (if (<= (reference-trap-kind trap) trap-max-immediate)
+       (if (reference-trap-kind-immediate? (reference-trap-kind trap))
 	   (reference-trap-kind trap)
 	   (cons (reference-trap-kind trap)
 		 (reference-trap-extra trap))))
@@ -68,6 +88,12 @@ USA.
 
 ;;; The following must agree with the microcode.
 (define-integrable trap-max-immediate 9)
+
+(define-integrable (reference-trap-kind-immediate? kind)
+  (<= kind trap-max-immediate))
+
+(define (reference-trap-kind-pointer? kind)
+  (> kind trap-max-immediate))
 
 (define (reference-trap-kind-name kind)
   (case kind
@@ -97,23 +123,12 @@ USA.
 (define (make-unmapped-unassigned-reference-trap)
   (primitive-object-set-type (ucode-type reference-trap) 0))
 
-(define (unmapped-unassigned-reference-trap? getter)
-  (and (primitive-object-type? (ucode-type reference-trap) (getter))
-       (fix:= 0 (object-datum (getter)))))
-
 (define (make-unbound-reference-trap)
   (make-immediate-reference-trap 2))
 
 (define (unbound-reference-trap? object)
   (and (reference-trap? object)
        (fix:= 2 (reference-trap-kind object))))
-
-(define (make-unmapped-unbound-reference-trap)
-  (primitive-object-set-type (ucode-type reference-trap) 2))
-
-(define (unmapped-unbound-reference-trap? getter)
-  (and (primitive-object-type? (ucode-type reference-trap) (getter))
-       (fix:= 2 (object-datum (getter)))))
 
 (define (cached-reference-trap? object)
   (and (reference-trap? object)
@@ -123,16 +138,15 @@ USA.
   (if (not (cached-reference-trap? trap))
       (error:wrong-type-argument trap "cached reference trap"
 				 'cached-reference-trap-value))
-  (map-reference-trap
-   (let ((cache (reference-trap-extra trap)))
-     (lambda ()
-       (primitive-object-ref cache 0)))))
+  (safe-system-triple-first (reference-trap-extra trap)))
 
 (define (map-reference-trap-value getter)
-  (let ((value (map-reference-trap getter)))
-    (if (cached-reference-trap? value)
-	(cached-reference-trap-value value)
-	value)))
+  (reference-cache-value (map-reference-trap getter)))
+
+(define (reference-cache-value value)
+  (if (cached-reference-trap? value)
+      (cached-reference-trap-value value)
+      value))
 
 (define (make-macro-reference-trap transformer)
   (make-reference-trap 15 transformer))
@@ -150,12 +164,6 @@ USA.
 (define (make-unmapped-macro-reference-trap transformer)
   (primitive-object-set-type (ucode-type reference-trap)
 			     (cons 15 transformer)))
-
-(define (unmapped-macro-reference-trap? getter)
-  (and (primitive-object-type? (ucode-type reference-trap) (getter))
-       (let ((index (object-datum (getter))))
-	 (and (> index trap-max-immediate)
-	      (fix:= 15 (primitive-object-ref (getter) 0))))))
 
 (define (make-macro-reference-trap-expression transformer)
   (make-scode-combination

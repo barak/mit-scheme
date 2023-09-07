@@ -41,6 +41,24 @@ arg_datum (int arg)
 {
   return (arg_ulong_index_integer (arg, (1L << DATUM_LENGTH)));
 }
+
+static bool
+safe_object_new_type_p (SCHEME_OBJECT object, unsigned long type_code)
+{
+  gc_type_t gc_type_old = GC_TYPE (object);
+  gc_type_t gc_type_new = GC_TYPE_CODE (type_code);
+  if (gc_type_old == GC_UNDEFINED || gc_type_new == GC_UNDEFINED)
+    return false;
+  if (object_type (object) == TC_REFERENCE_TRAP)
+    return (object_datum (object) < TRAP_MAX_IMMEDIATE)
+           ? gc_type_new == GC_NON_POINTER
+           : type_code == TC_PAIR;
+  if (type_code == TC_REFERENCE_TRAP)
+    return gc_type_old == GC_NON_POINTER || PAIR_P (object);
+  if (gc_type_old == GC_SPECIAL || gc_type_new == GC_SPECIAL)
+    return false;
+  return gc_type_new == gc_type_old;
+}
 
 /* Low level object manipulation */
 
@@ -167,6 +185,25 @@ Fetches the object at offset INDEX in OBJECT.")
   SCHEME_OBJECT * address = (arg_address (1));
   unsigned long index = (arg_ulong_integer (2));
   PRIMITIVE_RETURN (address[index]);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-REF-NEW-TYPE", Prim_prim_obj_ref_new_type,
+                  3, 3,
+                  "(OBJECT INDEX TYPE)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the object at offset INDEX in OBJECT and replaces its type with TYPE.\n\
+Effectively like the following but memory-safe:\n\
+   (object-set-type (primitive-object-ref OBJECT INDEX) TYPE)")
+{
+  PRIMITIVE_HEADER (3);
+  SCHEME_OBJECT* address = arg_address (1);
+  unsigned long index = arg_ulong_integer (2);
+  unsigned long type_code = arg_type (3);
+  SCHEME_OBJECT object = address[index];
+  if (!safe_object_new_type_p (object, type_code))
+    error_bad_range_arg (1);
+  PRIMITIVE_RETURN (object_new_type (type_code, object));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-TYPE-REF", Prim_prim_type_ref, 2, 2,
@@ -324,16 +361,11 @@ DEFINE_PRIMITIVE ("OBJECT-DATUM", Prim_object_datum, 1, 1, 0)
 DEFINE_PRIMITIVE ("OBJECT-SET-TYPE", Prim_object_set_type, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  {
-    unsigned long type_code = (arg_type (1));
-    SCHEME_OBJECT object = (ARG_REF (2));
-    gc_type_t gc_type = (GC_TYPE_CODE (type_code));
-    if ((gc_type == GC_UNDEFINED)
-	|| ((gc_type != GC_NON_POINTER)
-	    && (gc_type != (GC_TYPE (object)))))
-      error_bad_range_arg (1);
-    PRIMITIVE_RETURN (object_new_type (type_code, object));
-  }
+  unsigned long type_code = arg_type (1);
+  SCHEME_OBJECT object = ARG_REF (2);
+  if (!safe_object_new_type_p (object, type_code))
+    error_bad_range_arg (1);
+  PRIMITIVE_RETURN (object_new_type (type_code, object));
 }
 
 /* (EQ? OBJECT-1 OBJECT-2)

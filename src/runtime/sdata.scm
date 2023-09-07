@@ -29,91 +29,125 @@ USA.
 ;;; package: (runtime scode-data)
 
 (declare (usual-integrations))
+
+(define-primitives
+  (make-non-pointer-object 1)
+  (object-new-type object-set-type 2)
+  (primitive-datum-ref 2)
+  (primitive-datum-set! 3)
+  (primitive-object-ref 2)
+  (primitive-object-ref-new-type 3)
+  (primitive-object-set! 3)
+  (primitive-type-ref 2)
+  (primitive-type-set! 3)
+  (system-pair? 1)
+  (system-vector-length system-vector-size 1)
+  (system-vector? 1)
+  (triple-cons hunk3-cons 3))
 
-(define (&typed-singleton-cons type element)
-  ((ucode-primitive system-pair-cons) type (unmap-reference-trap element) '()))
+(define-record-type <manifest-nmv>
+    make-manifest-nmv
+    manifest-nmv?
+  (datum manifest-nmv-datum))
 
-(define (&singleton-element singleton)
-  (map-reference-trap
-   (lambda ()
-     ((ucode-primitive system-pair-car) singleton))))
+(define (%safe-memory-ref object index)
+  (let ((type (primitive-type-ref object index)))
+    (cond ((fix:= type (ucode-type reference-trap))
+	   (%safe-map-reference-trap object index))
+	  ((fix:= type (ucode-type manifest-nm-vector))
+	   (make-manifest-nmv (primitive-datum-ref object index)))
+	  (else
+	   (primitive-object-ref object index)))))
 
-(define (&singleton-set-element! singleton new-element)
-  ((ucode-primitive system-pair-set-car!)
-   singleton
-   (unmap-reference-trap new-element)))
+(define (%safe-memory-set! object index value)
+  (cond ((reference-trap? value)
+	 (%safe-unmap-reference-trap object index value))
+	((manifest-nmv? value)
+	 (primitive-object-set! object index
+				(make-non-pointer-object
+				 (manifest-nmv-datum value)))
+	 (primitive-type-set! object index (ucode-type manifest-nm-vector)))
+	(else
+	 (primitive-object-set! object index value))))
 
-(define (&typed-pair-cons type car cdr)
-  ((ucode-primitive system-pair-cons)
-   type
-   (unmap-reference-trap car)
-   (unmap-reference-trap cdr)))
+(define (safe-system-pair-cons type car cdr)
+  (if (not (eq? 'pair (type-code->gc-type type)))
+      (error:bad-range-argument type 'safe-system-pair-cons))
+  (let ((pair (cons #f #f)))
+    (%safe-memory-set! pair 0 car)
+    (%safe-memory-set! pair 1 cdr)
+    (object-new-type type pair)))
 
-(define (&pair-car pair)
-  (map-reference-trap (lambda () ((ucode-primitive system-pair-car) pair))))
+(define (safe-system-pair-car pair)
+  (guarantee system-pair? pair 'safe-system-pair-car)
+  (%safe-memory-ref pair 0))
 
-(define (&pair-set-car! pair new-car)
-  ((ucode-primitive system-pair-set-car!) pair (unmap-reference-trap new-car)))
+(define (safe-system-pair-cdr pair)
+  (guarantee system-pair? pair 'safe-system-pair-cdr)
+  (%safe-memory-ref pair 1))
 
-(define (&pair-cdr pair)
-  (map-reference-trap (lambda () ((ucode-primitive system-pair-cdr) pair))))
+(define (safe-system-pair-set-car! pair value)
+  (guarantee system-pair? pair 'safe-system-pair-set-car!)
+  (%safe-memory-set! pair 0 value))
 
-(define (&pair-set-cdr! pair new-cdr)
-  ((ucode-primitive system-pair-set-cdr!) pair (unmap-reference-trap new-cdr)))
+(define (safe-system-pair-set-cdr! pair value)
+  (guarantee system-pair? pair 'safe-system-pair-set-cdr!)
+  (%safe-memory-set! pair 1 value))
 
-(define (&typed-triple-cons type first second third)
-  (object-new-type type
-		   ((ucode-primitive hunk3-cons)
-		    (unmap-reference-trap first)
-		    (unmap-reference-trap second)
-		    (unmap-reference-trap third))))
+(define (system-triple? object)
+  (eq? 'triple (object-gc-type object)))
 
-(define (&triple-first triple)
-  (map-reference-trap (lambda () ((ucode-primitive system-hunk3-cxr0) triple))))
+(define (safe-system-triple-cons type first second third)
+  (if (not (eq? 'triple (type-code->gc-type type)))
+      (error:bad-range-argument type 'safe-system-triple-cons))
+  (let ((triple (triple-cons #f #f #f)))
+    (%safe-memory-set! triple 0 first)
+    (%safe-memory-set! triple 1 second)
+    (%safe-memory-set! triple 2 third)
+    (object-new-type type triple)))
 
-(define (&triple-set-first! triple new-first)
-  ((ucode-primitive system-hunk3-set-cxr0!)
-   triple
-   (unmap-reference-trap new-first)))
+(define (safe-triple-cons first second third)
+  (safe-system-triple-cons (ucode-type hunk3) first second third))
 
-(define (&triple-second triple)
-  (map-reference-trap (lambda () ((ucode-primitive system-hunk3-cxr1) triple))))
+(define (safe-system-triple-first triple)
+  (guarantee system-triple? triple 'safe-system-triple-first)
+  (%safe-memory-ref triple 0))
 
-(define (&triple-set-second! triple new-second)
-  ((ucode-primitive system-hunk3-set-cxr1!)
-   triple
-   (unmap-reference-trap new-second)))
+(define (safe-system-triple-second triple)
+  (guarantee system-triple? triple 'safe-system-triple-second)
+  (%safe-memory-ref triple 1))
 
-(define (&triple-third triple)
-  (map-reference-trap (lambda () ((ucode-primitive system-hunk3-cxr2) triple))))
+(define (safe-system-triple-third triple)
+  (guarantee system-triple? triple 'safe-system-triple-third)
+  (%safe-memory-ref triple 2))
 
-(define (&triple-set-third! triple new-third)
-  ((ucode-primitive system-hunk3-set-cxr2!)
-   triple
-   (unmap-reference-trap new-third)))
+(define (safe-system-triple-set-first! triple value)
+  (guarantee system-triple? triple 'safe-system-triple-set-first!)
+  (%safe-memory-set! triple 0 value))
 
-(define (&typed-vector-cons type elements)
-  ((ucode-primitive system-list-to-vector)
-   type
-   (let loop ((elements elements))
-     (if (null? elements)
-	 '()
-	 (cons (unmap-reference-trap (car elements))
-	       (loop (cdr elements)))))))
+(define (safe-system-triple-set-second! triple value)
+  (guarantee system-triple? triple 'safe-system-triple-set-second!)
+  (%safe-memory-set! triple 1 value))
 
-(define (&vector-length vector)
-  ((ucode-primitive system-vector-size) vector))
+(define (safe-system-triple-set-third! triple value)
+  (guarantee system-triple? triple 'safe-system-triple-set-third!)
+  (%safe-memory-set! triple 2 value))
 
-(define (&vector-ref vector index)
-  (map-reference-trap
-   (lambda ()
-     ((ucode-primitive system-vector-ref) vector index))))
+(define (safe-system-vector-cons type length)
+  (if (not (eq? 'vector (type-code->gc-type type)))
+      (error:bad-range-argument type 'safe-system-vector-cons))
+  (object-new-type type (make-vector length)))
 
-(define (&subvector->list vector start stop)
-  (let loop
-      ((sublist
-	((ucode-primitive system-subvector-to-list) vector start stop)))
-    (if (null? sublist)
-	'()
-	(cons (map-reference-trap (lambda () (car sublist)))
-	      (loop (cdr sublist))))))
+(define (safe-system-vector-ref vector index)
+  (guarantee system-vector? vector 'safe-system-vector-ref)
+  (guarantee non-negative-fixnum? index 'safe-system-vector-ref)
+  (if (not (fix:< index (system-vector-length vector)))
+      (error:bad-range-argument index 'safe-system-vector-ref))
+  (%safe-memory-ref vector (fix:+ 1 index)))
+
+(define (safe-system-vector-set! vector index value)
+  (guarantee system-vector? vector 'safe-system-vector-set!)
+  (guarantee non-negative-fixnum? index 'safe-system-vector-set!)
+  (if (not (fix:< index (system-vector-length vector)))
+      (error:bad-range-argument index 'safe-system-vector-set!))
+  (%safe-memory-set! vector (fix:+ 1 index) value))

@@ -28,7 +28,7 @@ USA.
 /* Type code definitions */
 
 #define TC_FALSE			0x00
-#define TC_LIST				0x01
+#define TC_PAIR				0x01
 #define TC_CHARACTER			0x02
 #define	TC_SCODE_QUOTE			0x03
 #define	TC_COMPILED_RETURN		0x04
@@ -175,6 +175,7 @@ USA.
 
 #define TC_GLOBAL_ENV TC_FALSE
 #define TC_MANIFEST_VECTOR TC_FALSE
+#define TC_LIST TC_PAIR
 #define TC_BIT_STRING TC_VECTOR_1B
 #define TC_HUNK3 TC_HUNK3_B
 #define TC_HISTORY_UNMARKED TC_HUNK3_A

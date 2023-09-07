@@ -129,7 +129,7 @@ USA.
 	    (stack-frame/ref frame 2)
 	    (validate-subexpression
 	     frame
-	     (&vector-ref expression (stack-frame/ref frame 3))))))
+	     (safe-system-vector-ref expression (stack-frame/ref frame 3))))))
 
 (define (method/eval-error frame)
   (values (stack-frame/ref frame 1)
@@ -225,12 +225,12 @@ USA.
 			       (select-subexp expression))))))
 		     (case (vector-ref source-code 0)
 		       ((sequence-continue)
-			(win &pair-car))
+			(win safe-system-pair-car))
 		       ((assignment-continue
 			 definition-continue)
-			(win &pair-cdr))
+			(win safe-system-pair-cdr))
 		       ((conditional-decide)
-			(win &triple-first))
+			(win safe-system-triple-first))
 		       ((combination-operand)
 			(values
 			 expression
@@ -270,15 +270,15 @@ USA.
  (lambda ()
    (record-method 'combination-apply method/null)
    (record-method 'reenter-compiled-code method/null)
-   (let ((method (method/standard &pair-car)))
+   (let ((method (method/standard safe-system-pair-car)))
      (record-method 'disjunction-decide method)
      (record-method 'sequence-continue method))
-   (let ((method (method/standard &pair-cdr)))
+   (let ((method (method/standard safe-system-pair-cdr)))
      (record-method 'assignment-continue method)
      (record-method 'definition-continue method))
-   (let ((method (method/standard &triple-first)))
+   (let ((method (method/standard safe-system-triple-first)))
      (record-method 'conditional-decide method))
-   (let ((method (method/expression-only &pair-car)))
+   (let ((method (method/expression-only safe-system-pair-car)))
      (record-method 'access-continue method))
    (record-method 'combination-save-value method/combination-save-value)
    (record-method 'eval-error method/eval-error)
@@ -310,11 +310,11 @@ USA.
     stack-frame-type/interrupt-compiled-expression
     method/compiled-code)))
 
-(define (&vector-second vector)
-  (&vector-ref vector 1))
+(define (safe-system-vector-second vector)
+  (safe-system-vector-ref vector 1))
 
-(define (&vector-fourth vector)
-  (&vector-ref vector 3))
+(define (safe-system-vector-fourth vector)
+  (safe-system-vector-ref vector 3))
 
 (define (record-method name method)
   (set-stack-frame-type/debugging-info-method!

@@ -282,13 +282,13 @@ USA.
 (define-guarantee xlambda "an extended lambda")
 
 (define (%xlambda-body xlambda)
-  (&triple-first xlambda))
+  (safe-system-triple-first xlambda))
 
 (define (%xlambda-names-vector xlambda)
-  (&triple-second xlambda))
+  (safe-system-triple-second xlambda))
 
 (define (%xlambda-encoded-arity xlambda)
-  (object-datum (&triple-third xlambda)))
+  (object-datum (safe-system-triple-third xlambda)))
 
 (define (xlambda-body xlambda)
   (guarantee-xlambda xlambda 'xlambda-body)
@@ -313,7 +313,7 @@ USA.
 		(= (car qr2) 1)))))
 
 (define (make-xlambda name required optional rest auxiliary body)
-  (&typed-triple-cons
+  (safe-system-triple-cons
    (ucode-type extended-lambda)
    (make-auxiliary-lambda auxiliary body)
    (list->vector
@@ -338,7 +338,7 @@ USA.
 			  #f)
 		      (append
 		       (subvector->list bound astart (vector-length bound))
-		       (lambda-body-auxiliary (&triple-first xlambda)))
+		       (lambda-body-auxiliary (safe-system-triple-first xlambda)))
 		      (xlambda-unwrapped-body xlambda))))))))
 
 (define (xlambda-arity xlambda offset)
@@ -381,7 +381,7 @@ USA.
       (auxiliary-bound? (%xlambda-body xlambda) symbol)))
 
 (define (xlambda-has-internal-lambda? xlambda)
-  (lambda-body-has-internal-lambda? (&triple-first xlambda)))
+  (lambda-body-has-internal-lambda? (safe-system-triple-first xlambda)))
 
 (define xlambda-wrap-body!)
 (define xlambda-wrapper-components)
@@ -393,13 +393,13 @@ USA.
   (let ((internal (xlambda-has-internal-lambda? xlambda)))
     (if internal
 	(slambda-body internal)
-	(&triple-first xlambda))))
+	(safe-system-triple-first xlambda))))
 
 (define (xlambda/set-physical-body! xlambda body)
   (let ((internal (xlambda-has-internal-lambda? xlambda)))
     (if internal
 	(set-slambda-body! internal body)
-	(&triple-set-first! xlambda body))))
+	(safe-system-triple-set-first! xlambda body))))
 
 ;;;; Generic Lambda
 
@@ -507,8 +507,9 @@ USA.
   (%slambda-names-vector slambda))
 
 (define (make-slambda name required body)
-  (&typed-pair-cons (ucode-type lambda)
-		    body (list->vector (cons name required))))
+  (safe-system-pair-cons (ucode-type lambda)
+			 body
+			 (list->vector (cons name required))))
 
 (define-integrable (slambda? object)
   (object-type? (ucode-type lambda) object))
@@ -516,13 +517,13 @@ USA.
 (define-guarantee slambda "simple lambda")
 
 (define-integrable (%slambda-body slambda)
-  (&pair-car slambda))
+  (safe-system-pair-car slambda))
 
 (define-integrable (%set-slambda-body! slambda body)
-  (&pair-set-car! slambda body))
+  (safe-system-pair-set-car! slambda body))
 
 (define-integrable (%slambda-names-vector slambda)
-  (&pair-cdr slambda))
+  (safe-system-pair-cdr slambda))
 
 (define (%slambda-arity slambda offset)
   (make-lambda-arity

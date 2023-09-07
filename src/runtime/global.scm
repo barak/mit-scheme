@@ -53,7 +53,7 @@ USA.
   make-non-pointer-object
 
   ;; System Compound Datatypes
-  system-pair-cons system-pair?
+  system-pair-cons
   system-pair-car system-pair-set-car!
   system-pair-cdr system-pair-set-cdr!
 
@@ -64,7 +64,6 @@ USA.
 
   (system-list->vector system-list-to-vector)
   (system-subvector->list system-subvector-to-list)
-  system-vector?
   (system-vector-length system-vector-size)
   system-vector-ref
   system-vector-set!
@@ -300,7 +299,7 @@ USA.
     ((gc-internal)
      (or (object-type? (ucode-type manifest-nm-vector) object)
 	 (and (object-type? (ucode-type reference-trap) object)
-	      (<= (object-datum object) trap-max-immediate))))
+	      (reference-trap-kind-immediate? (object-datum object)))))
     (else #f)))
 
 (define (object-pointer? object)
@@ -309,7 +308,7 @@ USA.
     ((gc-internal)
      (or (object-type? (ucode-type broken-heart) object)
 	 (and (object-type? (ucode-type reference-trap) object)
-	      (> (object-datum object) trap-max-immediate))))
+	      (reference-trap-kind-pointer? (object-datum object)))))
     (else #f)))
 
 (define (non-pointer-type-code? code)

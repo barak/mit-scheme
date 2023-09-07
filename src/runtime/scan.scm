@@ -134,9 +134,9 @@ USA.
 
     (if (null? declarations)
 	body*
-	(&typed-pair-cons (ucode-type sequence)
-			  (make-scode-block-declaration declarations)
-			  body*))))
+	(safe-system-pair-cons (ucode-type sequence)
+			       (make-scode-block-declaration declarations)
+			       body*))))
 
 ;;;; Open Block
 

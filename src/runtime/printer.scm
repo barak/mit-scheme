@@ -276,8 +276,8 @@ USA.
 	    ((pair? object)
 	     (if (mark! object)
 		 (begin
-		   (walk (safe-car object))
-		   (walk (safe-cdr object))
+		   (walk (safe-system-pair-car object))
+		   (walk (safe-system-pair-cdr object))
 		   (maybe-unmark! object))))
 	    ((vector? object)
 	     (if (mark! object)
@@ -285,13 +285,14 @@ USA.
 		   (let ((end (vector-length object)))
 		     (let loop ((i 0))
 		       (if (< i end)
-			   (if (nmv-header? object i)
-			       ;; An embedded non-marked vector: skip over and
-			       ;; continue.
-			       (loop (+ i 1 (nmv-header-length object i)))
-			       (begin
-				 (walk (safe-vector-ref object i))
-				 (loop (+ i 1)))))))
+			   (let ((elt (safe-system-vector-ref object i)))
+			     (if (manifest-nmv? elt)
+				 ;; An embedded non-marked vector: skip over and
+				 ;; continue.
+				 (loop (+ i 1 (manifest-nmv-datum elt)))
+				 (begin
+				   (walk elt)
+				   (loop (+ i 1))))))))
 		   (maybe-unmark! object))))
 	    ((promise? object)
 	     (if (mark! object)
@@ -333,7 +334,7 @@ USA.
 			   (cons key values)
 			   values))
 		     '())))
-
+
 (define (print-object object context)
   (if (let ((label (datum-label object context)))
         (or (not label)
@@ -346,7 +347,7 @@ USA.
     (print-number (cdr label) context)
     (*print-char (if def? #\= #\#) context)
     def?))
-
+
 (define (print-object-1 object context)
   (cond ((string-slice? object)
 	 (print-string object context))
@@ -461,22 +462,6 @@ USA.
 (define (*print-readable-hash object context)
   (*print-string "#@" context)
   (*print-hash object context))
-
-(define (safe-car pair)
-  (map-reference-trap (lambda () (car pair))))
-
-(define (safe-cdr pair)
-  (map-reference-trap (lambda () (cdr pair))))
-
-(define (nmv-header? vector index)
-  (fix:= (ucode-type manifest-nm-vector)
-	 ((ucode-primitive primitive-type-ref 2) vector (fix:+ 1 index))))
-
-(define (nmv-header-length vector index)
-  ((ucode-primitive primitive-datum-ref 2) vector (fix:+ 1 index)))
-
-(define (safe-vector-ref vector index)
-  (map-reference-trap (lambda () (vector-ref vector index))))
 
 (define (allowed-char? char context)
   (char-in-set? char (context-char-set context)))
@@ -770,13 +755,14 @@ USA.
 	(*general-print-items 0 context* print-object 0
 	  (lambda (index k)
 	    (if (< index end)
-		(if (nmv-header? vector index)
-		    ;; An embedded non-marked vector: skip over and continue.
-		    (let ((length (nmv-header-length vector index)))
-		      (k (symbol "#[non-marked section of length " length "]")
-			 (+ index 1 length)))
-		    (k (safe-vector-ref vector index)
-		       (+ index 1)))))))
+		(let ((elt (safe-system-vector-ref vector index)))
+		  (if (manifest-nmv? elt)
+		      ;; An embedded non-marked vector: skip over and continue.
+		      (let ((length (manifest-nmv-datum elt)))
+			(k (symbol "#[non-marked section of length " length "]")
+			   (+ index 1 length)))
+		      (k elt
+			 (+ index 1))))))))
       (*print-char #\) context*))))
 
 (define (print-bytevector bytevector context)
@@ -806,8 +792,8 @@ USA.
   (limit-print-depth context
     (lambda (context*)
       (*print-char #\( context*)
-      (print-object (safe-car list) context*)
-      (*general-print-items (safe-cdr list) context* print-object 1
+      (print-object (safe-system-pair-car list) context*)
+      (*general-print-items (safe-system-pair-cdr list) context* print-object 1
 	(lambda (tail k)
 	  (cond ((datum-label tail context*)
 		 => (lambda (label)
@@ -815,7 +801,7 @@ USA.
 		      (if (print-datum-label label context*)
 			  (print-object-1 tail context*))))
 		((pair? tail)
-		 (k (safe-car tail) (safe-cdr tail)))
+		 (k (safe-system-pair-car tail) (safe-system-pair-cdr tail)))
 		((not (null? tail))
 		 (*print-string " . " context*)
 		 (print-object-1 tail context*)))))
@@ -823,9 +809,9 @@ USA.
 
 (define (prefix-pair? object)
   (and (get-param:printer-abbreviate-quotations?)
-       (pair? (safe-cdr object))
-       (null? (safe-cdr (safe-cdr object)))
-       (case (safe-car object)
+       (pair? (safe-system-pair-cdr object))
+       (null? (safe-system-pair-cdr (safe-system-pair-cdr object)))
+       (case (safe-system-pair-car object)
          ((quote) "'")
          ((quasiquote) "`")
          ((unquote) ",")
@@ -834,14 +820,15 @@ USA.
 
 (define (print-prefix-pair prefix pair context)
   (*print-string prefix context)
-  (print-object (safe-car (safe-cdr pair)) context))
+  (print-object (safe-system-pair-car (safe-system-pair-cdr pair)) context))
 
 (define (print-stream-pair stream-pair context)
   (limit-print-depth context
     (lambda (context*)
       (*print-char #\{ context*)
-      (print-object (safe-car stream-pair) context*)
-      (*general-print-items (safe-cdr stream-pair) context* print-object 1
+      (print-object (safe-system-pair-car stream-pair) context*)
+      (*general-print-items (safe-system-pair-cdr stream-pair)
+			    context* print-object 1
 	(lambda (tail k)
 	  (cond ((not (promise? tail))
 		 (*print-string " . " context*)
@@ -852,7 +839,8 @@ USA.
 		 (let ((value (promise-value tail)))
 		   (cond ((empty-stream? value))
 			 ((stream-pair? value)
-			  (k (safe-car value) (safe-cdr value)))
+			  (k (safe-system-pair-car value)
+			     (safe-system-pair-cdr value)))
 			 (else
 			  (*print-string " . " context*)
 			  (print-object value context*))))))))

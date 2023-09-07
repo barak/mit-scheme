@@ -56,11 +56,11 @@ USA.
 	      symbols)))
 
 (define (string->uninterned-symbol string #!optional start end)
-  ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
-				      (string->utf8
-				       (string->nfc
-					(substring string start end)))
-				      (make-unmapped-unbound-reference-trap)))
+  (safe-system-pair-cons (ucode-type uninterned-symbol)
+			 (string->utf8
+			  (string->nfc
+			   (substring string start end)))
+			 (make-unbound-reference-trap)))
 
 (define (string->symbol string #!optional start end)
   ((ucode-primitive string->symbol)

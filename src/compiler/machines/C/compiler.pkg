@@ -453,12 +453,12 @@ USA.
   (export (compiler top-level)
 	  canonicalize/top-level
 	  construct-graph)
-  (import (runtime scode-data)
-	  &pair-car
-	  &pair-cdr
-	  &triple-first
-	  &triple-second
-	  &triple-third))
+  (import (runtime)
+	  safe-system-pair-car
+	  safe-system-pair-cdr
+	  safe-system-triple-first
+	  safe-system-triple-second
+	  safe-system-triple-third))
 
 (define-package (compiler fg-optimizer)
   (files "fgopt/outer"			;outer analysis

@@ -870,12 +870,10 @@ USA.
 	  system-pair-cons
 	  system-pair-set-car!
 	  system-pair-set-cdr!
-	  system-pair?
 	  system-subvector->list
 	  system-vector-length
 	  system-vector-ref
 	  system-vector-set!
-	  system-vector?
 	  true-procedure
 	  type-code->gc-type
 	  unbind-variable
@@ -4393,38 +4391,31 @@ USA.
   (files "reference-trap")
   (parent (runtime))
   (export ()
-	  cached-reference-trap-value
-	  cached-reference-trap?
 	  macro-reference-trap-transformer
 	  macro-reference-trap?
 	  make-macro-reference-trap
 	  make-unassigned-reference-trap
 	  make-unbound-reference-trap
-	  make-unmapped-macro-reference-trap
-	  make-unmapped-unassigned-reference-trap
-	  make-unmapped-unbound-reference-trap
 	  map-reference-trap
 	  map-reference-trap-value
+	  reference-cache-value
 	  reference-trap-kind
+	  reference-trap-kind-immediate?
 	  reference-trap-kind-name
+	  reference-trap-kind-pointer?
 	  reference-trap?
 	  unassigned-reference-trap?
 	  unbound-reference-trap?
-	  unmap-reference-trap
-	  unmapped-macro-reference-trap?
-	  unmapped-unassigned-reference-trap?
-	  unmapped-unbound-reference-trap?)
-  (export (runtime syntax)
-	  make-macro-reference-trap-expression)
-  (export (runtime scode)
+	  unmap-reference-trap)
+  (export (runtime)
 	  macro-reference-trap-expression-transformer
 	  macro-reference-trap-expression?
-	  make-macro-reference-trap-expression)
-  (export (runtime unsyntaxer)
-	  macro-reference-trap-expression-transformer
-	  macro-reference-trap-expression?)
-  (export (runtime miscellaneous-global)
-	  trap-max-immediate))
+	  make-macro-reference-trap-expression
+	  make-unmapped-macro-reference-trap
+	  make-unmapped-unassigned-reference-trap)
+  (export (runtime scode-data)
+	  %safe-map-reference-trap
+	  %safe-unmap-reference-trap))
 
 (define-package (runtime rep)
   (files "rep")
@@ -4632,39 +4623,28 @@ USA.
 (define-package (runtime scode-data)
   (files "sdata")
   (parent (runtime))
-  (export (runtime lambda-abstraction)
-	  &pair-car
-	  &pair-cdr
-	  &pair-set-car!
-	  &pair-set-cdr!
-	  &triple-first
-	  &triple-second
-	  &triple-set-first!
-	  &triple-set-second!
-	  &triple-set-third!
-	  &triple-third
-	  &typed-pair-cons
-	  &typed-triple-cons)
-  (export (runtime scode-scan)
-	  &pair-car
-	  &pair-cdr
-	  &pair-set-car!
-	  &pair-set-cdr!
-	  &triple-first
-	  &triple-second
-	  &triple-set-first!
-	  &triple-set-second!
-	  &triple-set-third!
-	  &triple-third
-	  &typed-pair-cons
-	  &typed-triple-cons)
-  (export (runtime debugging-info)
-	  &pair-car
-	  &pair-cdr
-	  &triple-first
-	  &triple-second
-	  &triple-third
-	  &vector-ref))
+  (export (runtime)
+	  manifest-nmv-datum
+	  manifest-nmv?
+	  safe-system-pair-car
+	  safe-system-pair-cdr
+	  safe-system-pair-cons
+	  safe-system-pair-set-car!
+	  safe-system-pair-set-cdr!
+	  safe-system-triple-cons
+	  safe-system-triple-first
+	  safe-system-triple-second
+	  safe-system-triple-set-first!
+	  safe-system-triple-set-second!
+	  safe-system-triple-set-third!
+	  safe-system-triple-third
+	  safe-system-vector-cons
+	  safe-system-vector-ref
+	  safe-system-vector-set!
+	  safe-triple-cons
+	  system-pair?
+	  system-triple?
+	  system-vector?))
 
 (define-package (runtime scode-scan)
   (files "scan")

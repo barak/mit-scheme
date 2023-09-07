@@ -163,7 +163,10 @@ USA.
  (lambda ()
    (register-predicate! %record? '%record)
    (register-predicate! %tagged-object? 'tagged-object)
-   (register-predicate! predicate? 'predicate)))
+   (register-predicate! predicate? 'predicate)
+   (register-predicate! system-pair? 'system-pair)
+   (register-predicate! system-triple? 'system-triple)
+   (register-predicate! system-vector? 'system-vector)))
 
 ;;; Registration of standard predicates
 (add-boot-init!
@@ -177,11 +180,11 @@ USA.
    (register-predicate! gc-reclaimed-object? 'gc-reclaimed-object)
    (register-predicate! list? 'list)
    (register-predicate! number? 'number)
-   (register-predicate! pair? 'pair)
+   (register-predicate! pair? 'pair '<= system-pair?)
    (register-predicate! procedure? 'procedure)
    (register-predicate! string? 'string)
    (register-predicate! symbol? 'symbol)
-   (register-predicate! vector? 'vector)
+   (register-predicate! vector? 'vector '<= system-vector?)
 
    (register-predicate! real? 'real-number '<= number?)
    (register-predicate! rational? 'rational-number '<= real?)
