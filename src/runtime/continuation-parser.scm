@@ -297,7 +297,7 @@ USA.
 (define (stack-frame*/hardware-trap? frame)
   (cpoint-frame:hardware-trap? (stack-frame*/cpoint-frame frame)))
 (register-predicate! stack-frame*/hardware-trap? 'stack-frame*/hardware-trap
-		     '<= stack-frame?)
+		     '<= stack-frame*?)
 
 (define (stack-frame*/hardware-trap-code frame)
   (guarantee stack-frame*/hardware-trap? frame 'stack-frame*/hardware-trap-code)
