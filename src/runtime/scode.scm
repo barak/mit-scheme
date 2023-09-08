@@ -291,28 +291,7 @@ USA.
 (define (scode-absolute-reference-to? object name)
   (and (scode-absolute-reference? object)
        (eq? name (scode-absolute-reference-name object))))
-
-;;;; Unassigned?
-
-(define (make-scode-unassigned? name)
-  (make-scode-combination (ucode-primitive lexical-unassigned?)
-			  (list (make-scode-the-environment) name)))
-
-(define (scode-unassigned?? object)
-  (and (scode-combination? object)
-       (eq? (scode-combination-operator object)
-	    (ucode-primitive lexical-unassigned?))
-       (let ((operands (scode-combination-operands object)))
-	 (and (= 2 (length operands))
-	      (scode-the-environment? (car operands))
-	      (symbol? (cadr operands))))))
-(register-predicate! scode-unassigned?? 'scode-unassigned?
-		     '<= scode-combination?)
-
-(define (scode-unassigned?-name expression)
-  (guarantee scode-unassigned?? expression 'scode-unassigned?-name)
-  (cadr (scode-combination-operands expression)))
-
+
 ;;;; Delay
 
 (define (make-scode-delay expression)
@@ -325,7 +304,7 @@ USA.
 (define (scode-delay-expression delay)
   (guarantee scode-delay? delay 'scode-delay-expression)
   (safe-system-pair-car delay))
-
+
 ;;;; Sequence
 
 (define (make-scode-sequence actions)
@@ -367,7 +346,7 @@ USA.
 (define (sequence-empty? sequence)
   (and (eq? #!unspecific (system-pair-car sequence))
        (eq? #!unspecific (system-pair-cdr sequence))))
-
+
 ;;;; Combination
 
 (define (make-scode-combination operator operands)
@@ -400,6 +379,27 @@ USA.
 	   (cons (safe-system-vector-ref combination index) operands))
 	 '()
 	 (iota (fix:- (system-vector-length combination) 1) 1))))
+
+;;;; Unassigned?
+
+(define (make-scode-unassigned? name)
+  (make-scode-combination (ucode-primitive lexical-unassigned?)
+			  (list (make-scode-the-environment) name)))
+
+(define (scode-unassigned?? object)
+  (and (scode-combination? object)
+       (eq? (scode-combination-operator object)
+	    (ucode-primitive lexical-unassigned?))
+       (let ((operands (scode-combination-operands object)))
+	 (and (= 2 (length operands))
+	      (scode-the-environment? (car operands))
+	      (symbol? (cadr operands))))))
+(register-predicate! scode-unassigned?? 'scode-unassigned?
+		     '<= scode-combination?)
+
+(define (scode-unassigned?-name expression)
+  (guarantee scode-unassigned?? expression 'scode-unassigned?-name)
+  (cadr (scode-combination-operands expression)))
 
 ;;;; Conditional
 
