@@ -1568,7 +1568,7 @@ apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
 
 	case TC_RECORD:
 	  {
-	    SCHEME_OBJECT applicator = record_applicator(procedure);
+	    SCHEME_OBJECT applicator = record_applicator (procedure);
 	    if (applicator == SHARP_F)
 	      goto handle_in_interpreter;
 	    stack_push (procedure);
@@ -1623,17 +1623,6 @@ setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
   push_reflection (REFLECT_CODE_COMPILED_INVOCATION);
 }
 
-static unsigned long
-procedure_frame_size (SCHEME_OBJECT proc)
-{
-  cc_entry_type_t cet;
-  return read_cc_entry_type (&cet, CC_ENTRY_ADDRESS (proc))
-         ? ULONG_MAX
-         : + cet.args.for_procedure.n_required
-           + cet.args.for_procedure.n_optional
-           + cet.args.for_procedure.rest_p;
-}
-
 return_frame_type_t
 reflect_to_interface_frame_type (SCHEME_OBJECT* frame)
 {
@@ -1673,17 +1662,8 @@ cpoint_reflect_to_interface_next (SCHEME_OBJECT cpoint, unsigned long index)
     case REFLECT_CODE_STACK_MARKER:
       return index + 4;
     case REFLECT_CODE_CC_BKPT:
-      {
-        unsigned long offset
-          = procedure_frame_size (vector_ref (cpoint, index + 2));
-        return index + offset + ((offset == ULONG_MAX) ? 0 : 1);
-      }
     case REFLECT_CODE_COMPILED_INVOCATION:
-      {
-        unsigned long offset
-          = procedure_frame_size (vector_ref (cpoint, index + 2));
-        return index + offset + ((offset == ULONG_MAX) ? 0 : 3);
-      }
+      return cpoint_compiled_address_next (cpoint, index + 2);
     default:
       return ULONG_MAX;
     }
@@ -1808,15 +1788,17 @@ cpoint_compiled_code_next (SCHEME_OBJECT cpoint, unsigned long index)
         return index + CONT_SIZE + 1;
       }
 
-    case RC_COMP_CACHE_REF_APPLY_RESTART:
-    case RC_COMP_ASSIGNMENT_TRAP_RESTART:
-    case RC_COMP_OP_REF_TRAP_RESTART:
-      return index + CONT_SIZE + 4;
-
     case RC_COMP_LOOKUP_TRAP_RESTART:
     case RC_COMP_SAFE_REF_TRAP_RESTART:
     case RC_COMP_UNASSIGNED_TRAP_RESTART:
       return index + CONT_SIZE + 3;
+
+    case RC_COMP_ASSIGNMENT_TRAP_RESTART:
+      return index + CONT_SIZE + 4;
+
+    case RC_COMP_CACHE_REF_APPLY_RESTART:
+    case RC_COMP_OP_REF_TRAP_RESTART:
+      return cpoint_compiled_address_next (cpoint, index + CONT_SIZE + 4);
 
     case RC_COMP_ERROR_RESTART:
       return index + CONT_SIZE + 2;

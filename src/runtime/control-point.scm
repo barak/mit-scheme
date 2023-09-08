@@ -141,7 +141,7 @@ USA.
 	   (apply make return-code-name (elt 0)
 		  (return-to-cc-extra-fields return-code-name raw)))
 	  ((compiled-address)
-	   (apply make frame-type-name (cc-address-extra-fields raw)))
+	   (apply make frame-type-name (cc-address-extra-fields raw 0)))
 	  ((combination-save)
 	   ;; The index to primitive-datum-ref is relative to the address of the
 	   ;; object.  For a vector, that's one greater than the vector index.
@@ -167,35 +167,34 @@ USA.
 	  (else
 	   (error "Unknown return-frame-type code:" frame-type-name)))))))
 
-(define (cc-address-extra-fields raw)
-  (let ((entry (vector-ref raw 0)))
-    (if (eq? (compiled-entry-type entry) 'compiled-procedure)
+(define (cc-address-extra-fields raw index)
+  (let ((entry (vector-ref raw index)))
+    (if (compiled-procedure? entry)
 	(list (cons 'procedure entry)
-	      (cons 'arguments (vector->list raw 1)))
+	      (cons 'arguments (vector->list raw (fix:+ index 1))))
 	(list (cons 'entry entry)))))
 
 (define (return-to-cc-extra-fields return-code-name raw)
   (case return-code-name
-    ((compiler-lookup-apply-trap-restart
-      compiler-reference-trap-restart
+    ((compiler-reference-trap-restart
       compiler-safe-reference-trap-restart
-      compiler-unassigned?-trap-restart
-      compiler-operator-lookup-trap-restart)
+      compiler-unassigned?-trap-restart)
      (list (cons 'variable (vector-ref raw 2))
 	   (cons 'environment (vector-ref raw 3))))
     ((compiler-assignment-trap-restart)
      (list (cons 'variable (vector-ref raw 2))
 	   (cons 'environment (vector-ref raw 3))
 	   (cons 'value (safe-system-vector-ref raw 4))))
+    ((compiler-lookup-apply-trap-restart
+      compiler-operator-lookup-trap-restart)
+     (cons* (cons 'variable (vector-ref raw 2))
+	    (cons 'environment (vector-ref raw 3))
+	    (cc-address-extra-fields raw 4)))
     ((compiler-error-restart)
      (list (cons 'primitive (vector-ref raw 2))))
     ((compiler-interrupt-restart)
      (cons (cons 'state (vector-ref raw 2))
-	   (let ((entry (vector-ref raw 3)))
-	     (if (compiled-procedure? entry)
-		 (list (cons 'procedure entry)
-		       (cons 'arguments (vector->list raw 4)))
-		 (list (cons 'entry entry))))))
+	   (cc-address-extra-fields raw 3)))
     (else
      '())))
 
