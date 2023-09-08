@@ -221,7 +221,7 @@ static return_frame_type_t return_frame_types_table[] =
   RFT_WITH_ARG,                 // 0x40 arg: value
   RFT_EXP_ENV,                  // 0x41
   RFT_STACK_MARKER,             // 0x42
-  RFT_COMPILED_CODE,            // 0x43
+  RFT_COMPILED_CODE_SUBPROBLEM, // 0x43
   RFT_UNDEFINED,                // 0x44
   RFT_WITH_ARG,                 // 0x45 arg: interrupt mask
   RFT_WITH_ARG,                 // 0x46 arg: termination code
@@ -297,6 +297,8 @@ return_frame_type (SCHEME_OBJECT* frame)
            : (ret == reflect_to_interface)
              ? reflect_to_interface_frame_type (frame)
              : RFT_COMPILED_ADDRESS;
+  if (CC_ENTRY_P (ret))
+    return RFT_COMPILED_ADDRESS;
 #endif
   return return_code_frame_type (ret);
 }
@@ -440,75 +442,61 @@ make_frame_type_info_table (void)
   return table;
 }
 
-SCHEME_OBJECT*
-next_stack_frame (SCHEME_OBJECT* frame)
-{
-  unsigned long offset = next_stack_frame_offset (frame);
-  if (offset == ULONG_MAX)
-    return 0;
-  SCHEME_OBJECT* next_frame = frame + offset;
-  if (next_frame < stack_end)
-    assert (return_address_p (*next_frame));
-  return next_frame;
-}
-
 unsigned long
-next_stack_frame_offset (SCHEME_OBJECT* frame)
+cpoint_next_frame (SCHEME_OBJECT cpoint, unsigned long index)
 {
+  SCHEME_OBJECT* frame = vector_loc (cpoint, index);
   switch (return_frame_type (frame))
     {
     case RFT_WITH_ARG:
-      return CONT_SIZE;
+    case RFT_WITH_ARG_SUBPROBLEM:
+      return index + CONT_SIZE;
 
     case RFT_EXP_ENV:
-      return ENV_CONT_SIZE;
+      return index + ENV_CONT_SIZE;
 
     case RFT_HISTORY:
-      return HISTORY_CONT_SIZE;
+      return index + HISTORY_CONT_SIZE;
 
     case RFT_STACK_MARKER:
-      return CONT_SIZE + 1;
+      return index + CONT_SIZE + 1;
 
     case RFT_HARDWARE_TRAP:
-      return CONT_SIZE + 7;
+      return index + CONT_SIZE + 7;
 
     case RFT_APPLY:
+    case RFT_COMBINATION_APPLY:
+    case RFT_CC_INTERNAL_APPLY:
       {
         SCHEME_OBJECT header = apply_frame_ptr_header (frame + CONT_SIZE);
         assert (apply_frame_header_p (header));
-        return CONT_SIZE + 1 + apply_frame_header_size (header);
+        return index + CONT_SIZE + 1 + apply_frame_header_size (header);
       }
 
     case RFT_COMBINATION_SAVE:
       {
         SCHEME_OBJECT exp = cont_frame_exp (frame);
         assert (combination_p (exp));
-        return ENV_CONT_SIZE + combination_size (exp);
+        return index + ENV_CONT_SIZE + combination_size (exp);
       }
-
-    case RFT_COMPILED_CODE:
-      return CONT_SIZE;
 
 #ifdef CC_SUPPORT_P
+    case RFT_COMPILED_CODE:
+    case RFT_COMPILED_CODE_SUBPROBLEM:
+      return cpoint_compiled_code_next (cpoint, index);
+
     case RFT_COMPILED_ADDRESS:
-      {
-        cc_entry_type_t cet;
-        if (read_cc_entry_type
-              (&cet,
-               CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (CC_RETURN_ADDRESS (*frame))))
-          return ULONG_MAX;
-        return 1 + cet.args.for_continuation.offset;
-      }
-#endif
+      return cpoint_compiled_address_next (cpoint, index);
 
     case RFT_RETURN_TO_INTERPRETER:
-      return 1;
+      return index + 1;
 
     case RFT_CC_RESTORE_INTERRUPT_MASK:
     case RFT_CC_STACK_MARKER:
     case RFT_CC_BKPT:
     case RFT_CC_INVOCATION:
-      return reflect_to_interface_offset (frame);
+      return cpoint_reflect_to_interface_next (cpoint, index);
+#endif
 
     default:
       return ULONG_MAX;

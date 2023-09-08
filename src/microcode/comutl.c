@@ -89,72 +89,66 @@ DEFINE_PRIMITIVE ("COMPILED-ENTRY-KIND", Prim_compiled_entry_kind, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, CC_ENTRY_OR_RETURN_P);
-  {
-    insn_t * addr;
-    cc_entry_type_t cet;
-    unsigned long kind = 4;
-    unsigned long field1 = 0;
-    long field2 = 0;
 
-    if (CC_ENTRY_P (ARG_REF (1)))
-      addr = (CC_ENTRY_ADDRESS (ARG_REF (1)));
-    else
-      addr =
-	(CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (CC_RETURN_ADDRESS (ARG_REF (1))));
+  SCHEME_OBJECT entry = ARG_REF (1);
 
-    if (!read_cc_entry_type ((&cet), addr))
-      switch (cet.marker)
-	{
-	case CET_PROCEDURE:
-	  kind = 0;
-	  field1 = (1 + (cet.args.for_procedure.n_required));
-	  field2 = (field1 + (cet.args.for_procedure.n_optional));
-	  if (cet.args.for_procedure.rest_p)
-	    field2 = (- (field2 + 1));
-	  break;
+  cc_entry_type_group_t group = CETG_UNKNOWN;
+  unsigned long field1 = 0;
+  long field2 = 0;
 
-	case CET_CONTINUATION:
-	  kind = 1;
-	  field1 = 0;
-	  field2 = (cet.args.for_continuation.offset);
-	  break;
+  cc_entry_type_t cet;
+  if (!read_cc_entry_type (&cet, cc_entry_to_address (entry)))
+    switch (cet.marker)
+      {
+      case CET_PROCEDURE:
+	group = CETG_PROCEDURE;
+	field1 = 1 + cet.args.for_procedure.n_required;
+	field2 = field1 + cet.args.for_procedure.n_optional;
+	if (cet.args.for_procedure.rest_p)
+	  field2 = - (field2 + 1);
+	break;
 
-	case CET_EXPRESSION:
-	  kind = 2;
-	  field1 = 0;
-	  field2 = 0;
-	  break;
+      case CET_CONTINUATION:
+	group = CETG_CONTINUATION;
+	field1 = 0;
+	field2 = cet.args.for_continuation.offset;
+	break;
 
-	case CET_INTERNAL_CONTINUATION:
-	  kind = 1;
-	  field1 = 1;
-	  field2 = (-1);
-	  break;
+      case CET_EXPRESSION:
+	group = CETG_EXPRESSION;
+	field1 = 0;
+	field2 = 0;
+	break;
 
-	case CET_INTERNAL_PROCEDURE:
-	case CET_TRAMPOLINE:
-	  kind = 3;
-	  field1 = 1;
-	  field2 = 0;
-	  break;
+      case CET_INTERNAL_CONTINUATION:
+	group = CETG_CONTINUATION;
+	field1 = 1;
+	field2 = -1;
+	break;
 
-	case CET_RETURN_TO_INTERPRETER:
-	  kind = 1;
-	  field1 = 2;
-	  field2 = ((ARG_REF (1)) != return_to_interpreter);
-	  break;
+      case CET_INTERNAL_PROCEDURE:
+      case CET_TRAMPOLINE:
+	group = CETG_INTERNAL_PROCEDURE;
+	field1 = 1;
+	field2 = 0;
+	break;
 
-	case CET_CLOSURE:
-	  kind = 3;
-	  field1 = 0;
-	  field2 = 0;
-	  break;
-	}
-    PRIMITIVE_RETURN
-      (hunk3_cons ((ULONG_TO_FIXNUM (kind)),
-		   (ULONG_TO_FIXNUM (field1)),
-		   (LONG_TO_FIXNUM (field2))));
-  }
+      case CET_RETURN_TO_INTERPRETER:
+	group = CETG_CONTINUATION;
+	field1 = 2;
+	field2 = entry != return_to_interpreter;
+	break;
+
+      case CET_CLOSURE:
+	group = CETG_INTERNAL_PROCEDURE;
+	field1 = 0;
+	field2 = 0;
+	break;
+      }
+  PRIMITIVE_RETURN
+    (hunk3_cons (ULONG_TO_FIXNUM (group),
+		 ULONG_TO_FIXNUM (field1),
+		 LONG_TO_FIXNUM (field2)));
 }
 
 DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2,

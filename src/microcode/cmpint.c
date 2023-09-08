@@ -1237,16 +1237,17 @@ compiler_interrupt_return_to_entry (void)
 }
 
 void
-compiler_interrupt_common (utility_result_t * DSU_result,
-			   insn_t * entry_address,
+compiler_interrupt_common (utility_result_t* DSU_result,
+			   insn_t* entry_address,
 			   SCHEME_OBJECT state)
 {
   if (!FREE_OK_P (Free))
     REQUEST_GC (Free - heap_alloc_limit);
   stack_check (0);
-  if (entry_address != 0)
+  if (entry_address == 0)
+    assert (CC_ENTRY_P (stack_ref (0)));
+  else
     stack_push (MAKE_CC_ENTRY (entry_address));
-  assert (CC_ENTRY_P (stack_ref (0)));
   stack_push (state);
   save_last_return_code (RC_COMP_INTERRUPT_RESTART);
   RETURN_TO_C (PRIM_INTERRUPT);
@@ -1657,35 +1658,33 @@ reflect_to_interface_frame_type (SCHEME_OBJECT* frame)
 }
 
 unsigned long
-reflect_to_interface_offset (SCHEME_OBJECT* frame)
+cpoint_reflect_to_interface_next (SCHEME_OBJECT cpoint, unsigned long index)
 {
-  SCHEME_OBJECT code_object = frame[1];
+  SCHEME_OBJECT code_object = vector_ref (cpoint, index + 1);
   assert (FIXNUM_P (code_object) && FIXNUM_TO_ULONG_P (code_object));
   unsigned long code = FIXNUM_TO_ULONG (code_object);
   switch (code)
     {
     case REFLECT_CODE_INTERNAL_APPLY:
-      return 3 + apply_frame_header_size (frame[2]);
+      return index + 3
+             + apply_frame_header_size (vector_ref (cpoint, index + 2));
     case REFLECT_CODE_RESTORE_INTERRUPT_MASK:
-      return 3;
+      return index + 3;
     case REFLECT_CODE_STACK_MARKER:
-      return 4;
+      return index + 4;
     case REFLECT_CODE_CC_BKPT:
       {
-        unsigned long offset = procedure_frame_size (frame[2]);
-        return (offset == ULONG_MAX)
-               ? offset
-               : 1 + offset;
+        unsigned long offset
+          = procedure_frame_size (vector_ref (cpoint, index + 2));
+        return index + offset + ((offset == ULONG_MAX) ? 0 : 1);
       }
     case REFLECT_CODE_COMPILED_INVOCATION:
       {
-        unsigned long offset = procedure_frame_size (frame[2]);
-        return (offset == ULONG_MAX)
-               ? offset
-               : 3 + offset;
+        unsigned long offset
+          = procedure_frame_size (vector_ref (cpoint, index + 2));
+        return index + offset + ((offset == ULONG_MAX) ? 0 : 3);
       }
     default:
-      assert (true);
       return ULONG_MAX;
     }
 }
@@ -1707,6 +1706,125 @@ make_reflect_code_table (void)
   return table;
 }
 
+cc_entry_type_group_t
+cc_entry_type_marker_group (cc_entry_type_marker_t marker)
+{
+  switch (marker)
+    {
+    case CET_PROCEDURE:
+      return CETG_PROCEDURE;
+
+    case CET_CONTINUATION:
+    case CET_INTERNAL_CONTINUATION:
+    case CET_RETURN_TO_INTERPRETER:
+      return CETG_CONTINUATION;
+
+    case CET_EXPRESSION:
+      return CETG_EXPRESSION;
+
+    case CET_INTERNAL_PROCEDURE:
+    case CET_TRAMPOLINE:
+    case CET_CLOSURE:
+      return CETG_INTERNAL_PROCEDURE;
+
+    default:
+      return CETG_UNKNOWN;
+    }
+}
+
+cc_entry_type_group_t
+cc_entry_type_group (SCHEME_OBJECT entry)
+{
+  cc_entry_type_t cet;
+  return read_cc_entry_type (&cet, cc_entry_to_address (entry))
+         ? CETG_UNKNOWN
+         : cc_entry_type_marker_group (cet.marker);
+}
+
+static unsigned long
+compiled_entry_frame_size (cc_entry_type_t* cet)
+{
+  switch (cc_entry_type_marker_group (cet->marker))
+    {
+    case CETG_PROCEDURE:
+      return 1
+             + cet->args.for_procedure.n_required
+             + cet->args.for_procedure.n_optional
+             + cet->args.for_procedure.rest_p;
+
+    case CETG_CONTINUATION:
+      return 1 + cet->args.for_continuation.offset;
+
+    case CETG_EXPRESSION:
+    case CETG_INTERNAL_PROCEDURE:
+      return 1;
+
+    default:
+      return ULONG_MAX;
+    }
+}
+
+unsigned long
+cpoint_compiled_address_next (SCHEME_OBJECT cpoint, unsigned long index)
+{
+  SCHEME_OBJECT entry = vector_ref (cpoint, index);
+  cc_entry_type_t cet;
+  if (read_cc_entry_type (&cet, cc_entry_to_address (entry)))
+    return ULONG_MAX;
+  return index + compiled_entry_frame_size (&cet);
+}
+
+unsigned long
+cpoint_compiled_code_next (SCHEME_OBJECT cpoint, unsigned long index)
+{
+  unsigned long rc = object_datum (vector_ref (cpoint, index));
+  switch (rc)
+    {
+    case RC_REENTER_COMPILED_CODE:
+      return index + CONT_SIZE;
+
+    case RC_COMP_LINK_CACHES_RESTART:
+      return index + CONT_SIZE + 7;
+
+    case RC_COMP_INTERRUPT_RESTART:
+      {
+        SCHEME_OBJECT entry = vector_ref (cpoint, index + 3);
+        if (CC_ENTRY_P (entry))
+          {
+            cc_entry_type_t cet;
+            if (read_cc_entry_type (&cet, cc_entry_to_address (entry)))
+              return ULONG_MAX;
+
+            if (cc_entry_type_marker_group (cet.marker)
+                == CETG_INTERNAL_PROCEDURE)
+              {
+                SCHEME_OBJECT dlink = vector_ref (cpoint, index + 2);
+                if (CC_STACK_ENV_P (dlink))
+                  return vector_length (cpoint)
+                         - (stack_end - object_address (dlink));
+              }
+            return index + CONT_SIZE + 1 + compiled_entry_frame_size (&cet);
+          }
+        return index + CONT_SIZE + 1;
+      }
+
+    case RC_COMP_CACHE_REF_APPLY_RESTART:
+    case RC_COMP_ASSIGNMENT_TRAP_RESTART:
+    case RC_COMP_OP_REF_TRAP_RESTART:
+      return index + CONT_SIZE + 4;
+
+    case RC_COMP_LOOKUP_TRAP_RESTART:
+    case RC_COMP_SAFE_REF_TRAP_RESTART:
+    case RC_COMP_UNASSIGNED_TRAP_RESTART:
+      return index + CONT_SIZE + 3;
+
+    case RC_COMP_ERROR_RESTART:
+      return index + CONT_SIZE + 2;
+
+    default:
+      return ULONG_MAX;
+    }
+}
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns
    PRIM_DONE when successful, otherwise sets up the call frame for

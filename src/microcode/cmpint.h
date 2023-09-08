@@ -36,9 +36,6 @@ USA.
 
 #define COMPILER_INTERFACE_VERSION 4
 
-typedef struct cc_entry_type_s cc_entry_type_t;
-typedef struct cc_entry_offset_s cc_entry_offset_t;
-
 #include "cmpintmd.h"
 
 #ifdef NO_CC_SUPPORT_P
@@ -95,7 +92,7 @@ typedef enum
   CET_CLOSURE
 } cc_entry_type_marker_t;
 
-struct cc_entry_type_s
+typedef struct
 {
   cc_entry_type_marker_t marker;
   union
@@ -113,28 +110,41 @@ struct cc_entry_type_s
 	  unsigned long offset;
 	} for_continuation;
     } args;
-};
+} cc_entry_type_t;
 
 extern void make_compiled_procedure_type
-  (cc_entry_type_t *, unsigned int, unsigned int, bool);
-extern void make_compiled_continuation_type (cc_entry_type_t *, unsigned long);
-extern void make_cc_entry_type (cc_entry_type_t *, cc_entry_type_marker_t);
+  (cc_entry_type_t*, unsigned int, unsigned int, bool);
+extern void make_compiled_continuation_type (cc_entry_type_t*, unsigned long);
+extern void make_cc_entry_type (cc_entry_type_t*, cc_entry_type_marker_t);
+
+extern bool read_cc_entry_type (cc_entry_type_t*, insn_t*);
+extern bool write_cc_entry_type (cc_entry_type_t*, insn_t*);
+
+extern bool decode_old_style_format_word (cc_entry_type_t*, unsigned short);
+extern bool encode_old_style_format_word (cc_entry_type_t*, unsigned short*);
+
+typedef enum
+{
+  CETG_PROCEDURE,
+  CETG_CONTINUATION,
+  CETG_EXPRESSION,
+  CETG_INTERNAL_PROCEDURE,
+  CETG_UNKNOWN
+} cc_entry_type_group_t;
+
+extern cc_entry_type_group_t cc_entry_type_marker_group
+  (cc_entry_type_marker_t);
+extern cc_entry_type_group_t cc_entry_type_group (SCHEME_OBJECT);
 
-extern bool read_cc_entry_type (cc_entry_type_t *, insn_t *);
-extern bool write_cc_entry_type (cc_entry_type_t *, insn_t *);
-
-extern bool decode_old_style_format_word (cc_entry_type_t *, unsigned short);
-extern bool encode_old_style_format_word (cc_entry_type_t *, unsigned short *);
-
 /* If continued_p is false, then offset is the distance in insn_t
    units between the entry and the CC block.  Otherwise, offset is the
    distance in insn_t units between this entry and a preceding one.
    */
-struct cc_entry_offset_s
+typedef struct
 {
   unsigned long offset;
   bool continued_p;
-};
+} cc_entry_offset_t;
 
 extern bool read_cc_entry_offset (cc_entry_offset_t *, insn_t *);
 extern bool write_cc_entry_offset (cc_entry_offset_t *, insn_t *);
@@ -213,6 +223,16 @@ CC_RETURN_NEW_BLOCK (SCHEME_OBJECT entry,
 {
   size_t offset = ((CC_RETURN_ADDRESS (entry)) - ((insn_t *) old_block));
   return (CC_RETURN_NEW_ADDRESS (entry, (((insn_t *) new_block) + offset)));
+}
+
+static inline insn_t*
+cc_entry_to_address (SCHEME_OBJECT entry)
+{
+  if (CC_ENTRY_P (entry))
+    return CC_ENTRY_ADDRESS (entry);
+  if (CC_RETURN_P (entry))
+    return CC_RETURN_ADDRESS_TO_ENTRY_ADDRESS (CC_RETURN_ADDRESS (entry));
+  return 0;
 }
 
 extern unsigned long cc_entry_to_block_offset (SCHEME_OBJECT);
@@ -478,8 +498,12 @@ extern void compiled_with_interrupt_mask
   (unsigned long, SCHEME_OBJECT, unsigned long);
 extern void compiled_with_stack_marker (SCHEME_OBJECT);
 return_frame_type_t reflect_to_interface_frame_type (SCHEME_OBJECT*);
-extern unsigned long reflect_to_interface_offset (SCHEME_OBJECT*);
+extern unsigned long cpoint_reflect_to_interface_next
+  (SCHEME_OBJECT, unsigned long);
 extern SCHEME_OBJECT make_reflect_code_table (void);
+extern unsigned long cpoint_compiled_address_next
+  (SCHEME_OBJECT, unsigned long);
+extern unsigned long cpoint_compiled_code_next (SCHEME_OBJECT, unsigned long);
 
 extern void compiler_initialize (bool);
 extern void compiler_reset (SCHEME_OBJECT);

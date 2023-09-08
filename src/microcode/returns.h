@@ -287,7 +287,6 @@ extern const char* return_code_name (SCHEME_OBJECT);
 extern bool return_address_p (SCHEME_OBJECT);
 extern return_frame_type_t return_frame_type (SCHEME_OBJECT*);
 extern return_frame_type_t return_code_frame_type (SCHEME_OBJECT);
-extern SCHEME_OBJECT* next_stack_frame (SCHEME_OBJECT*);
-extern unsigned long next_stack_frame_offset (SCHEME_OBJECT*);
+extern unsigned long cpoint_next_frame (SCHEME_OBJECT, unsigned long);
 
 #endif                          // SCM_RETURNS_H
