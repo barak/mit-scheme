@@ -302,3 +302,6 @@ USA.
 (define (stack-frame*/hardware-trap-code frame)
   (guarantee stack-frame*/hardware-trap? frame 'stack-frame*/hardware-trap-code)
   (cdr (cpoint-frame-field-value (stack-frame*/cpoint-frame frame) 'code-name)))
+
+(define (stack-frame*/debugging-info* frame)
+  (cpoint-frame-debugging-info* (stack-frame*/cpoint-frame frame)))

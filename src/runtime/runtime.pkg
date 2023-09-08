@@ -2035,6 +2035,7 @@ USA.
 	  stack-frame*/compiled-code?
 	  stack-frame*/compiled-return-address?
 	  stack-frame*/cpoint-frame
+	  stack-frame*/debugging-info*
 	  stack-frame*/dynamic-state
 	  stack-frame*/elements
 	  stack-frame*/hardware-trap-code
@@ -2088,7 +2089,25 @@ USA.
 	  cpoint-frame:subproblem?
 	  cpoint-frames->control-point)
   (export (runtime new-continuation-parser)
-	  old-control-point))
+	  old-control-point)
+  (export (runtime new-debugging-info)
+	  describe-cpoint-hardware-trap-frame))
+
+(define-package (runtime new-debugging-info)
+  (files "debugging-info")
+  (parent (runtime))
+  (export (runtime)
+	  cpoint-frame-debugging-info*
+	  debugging-info*/apply-printer
+	  debugging-info*/compiled-code?
+	  debugging-info*/environment
+	  debugging-info*/expression
+	  debugging-info*/printer?
+	  debugging-info*/subexpression
+	  debugging-info*/undefined-environment?
+	  debugging-info*/undefined-expression?
+	  debugging-info*/unknown-expression?
+	  debugging-info*?))
 
 (define-package (runtime date/time)
   (files "datime")

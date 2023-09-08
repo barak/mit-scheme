@@ -325,3 +325,73 @@ USA.
 		     previous-restore-history-offset
 		     #f)
 	     frames)))
+
+(define (describe-cpoint-hardware-trap-frame cpoint verbose? port)
+
+  (define (write-hex value port)
+    (if (< value #x10)
+	(write value port)
+	(begin
+	  (write-string "#x" port)
+	  (write-string (number->string value #x10) port))))
+
+  (let ((name (cpoint-frame-field-value cpoint 'signal-name))
+	(state (cpoint-frame-field-value cpoint 'recovery-state)))
+    (if (not name)
+	(write-string "User microcode reset" port)
+	(let ((code (cpoint-frame-field-value cpoint 'code-name)))
+	  (write-string "Hardware trap " port)
+	  (write-string name port)
+	  (write-string " (")
+	  (if (and (pair? code) (cdr code))
+	      (write-string (cdr code) port)
+	      (begin
+		(write-string "code = " port)
+		(write-hex (if (pair? code) (car code) code) port)))
+	  (write-string ")" port)))
+    (if verbose?
+	(let ((pc-info-1 (cpoint-frame-field-value cpoint 'pc-info-1))
+	      (pc-info-2 (cpoint-frame-field-value cpoint 'pc-info-2)))
+	  (case state
+	    ((0)				; unknown
+	     (write-string " at an unknown location." port))
+	    ((1)				; primitive
+	     (write-string " within " port)
+	     (write pc-info-1 port))
+	    ((2)				; compiled code
+	     (write-string " at offset " port)
+	     (write-hex pc-info-2 port)
+	     (newline port)
+	     (write-string "within " port)
+	     (let ((block pc-info-1))
+	       (write block port)
+	       (let-values (((filename index library)
+			     (compiled-code-block/filename-and-index block)))
+		 (declare (ignore index library))
+		 (if filename
+		     (begin
+		       (write-string " (" port)
+		       (write filename port)
+		       (write-string ")" port))))))
+	    ((3)				; probably compiled-code
+	     (write-string " at an unknown compiled-code location." port))
+	    ((4)				; builtin (i.e. hook)
+	     (let ((name ((ucode-primitive builtin-index->name 1) pc-info-1)))
+	       (if name
+		   (begin
+		     (write-string " in assembly-language utility " port)
+		     (write-string name port))
+		   (begin
+		     (write-string " in unknown assembly-language utility " port)
+		     (write-hex pc-info-1 port)))))
+	    ((5)				; utility
+	     (let ((name ((ucode-primitive utility-index->name 1) pc-info-1)))
+	       (if name
+		   (begin
+		     (write-string " in compiled-code utility " port)
+		     (write-string name port))
+		   (begin
+		     (write-string " in unknown compiled-code utility " port)
+		     (write-hex pc-info-1 port)))))
+	    (else
+	     (error "Unknown state:" state)))))))
