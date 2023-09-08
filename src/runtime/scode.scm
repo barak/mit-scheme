@@ -292,6 +292,27 @@ USA.
   (and (scode-absolute-reference? object)
        (eq? name (scode-absolute-reference-name object))))
 
+;;;; Unassigned?
+
+(define (make-scode-unassigned? name)
+  (make-scode-combination (ucode-primitive lexical-unassigned?)
+			  (list (make-scode-the-environment) name)))
+
+(define (scode-unassigned?? object)
+  (and (scode-combination? object)
+       (eq? (scode-combination-operator object)
+	    (ucode-primitive lexical-unassigned?))
+       (let ((operands (scode-combination-operands object)))
+	 (and (= 2 (length operands))
+	      (scode-the-environment? (car operands))
+	      (symbol? (cadr operands))))))
+(register-predicate! scode-unassigned?? 'scode-unassigned?
+		     '<= scode-combination?)
+
+(define (scode-unassigned?-name expression)
+  (guarantee scode-unassigned?? expression 'scode-unassigned?-name)
+  (cadr (scode-combination-operands expression)))
+
 ;;;; Delay
 
 (define (make-scode-delay expression)
@@ -368,6 +389,10 @@ USA.
   (guarantee scode-combination? combination 'scode-combination-operator)
   (safe-system-vector-ref combination 0))
 
+(define (scode-combination-operand combination index)
+  (guarantee scode-combination? combination 'scode-combination-operand)
+  (safe-system-vector-ref combination (fix:+ 1 index)))
+
 (define (scode-combination-operands combination)
   (guarantee scode-combination? combination 'scode-combination-operands)
   (reverse
@@ -375,27 +400,6 @@ USA.
 	   (cons (safe-system-vector-ref combination index) operands))
 	 '()
 	 (iota (fix:- (system-vector-length combination) 1) 1))))
-
-;;;; Unassigned?
-
-(define (make-scode-unassigned? name)
-  (make-scode-combination (ucode-primitive lexical-unassigned?)
-			  (list (make-scode-the-environment) name)))
-
-(define (scode-unassigned?? object)
-  (and (scode-combination? object)
-       (eq? (scode-combination-operator object)
-	    (ucode-primitive lexical-unassigned?))
-       (let ((operands (scode-combination-operands object)))
-	 (and (= 2 (length operands))
-	      (scode-the-environment? (car operands))
-	      (symbol? (cadr operands))))))
-(register-predicate! scode-unassigned?? 'scode-unassigned?
-		     '<= scode-combination?)
-
-(define (scode-unassigned?-name expression)
-  (guarantee scode-unassigned?? expression 'scode-unassigned?-name)
-  (cadr (scode-combination-operands expression)))
 
 ;;;; Conditional
 
@@ -560,7 +564,9 @@ USA.
   (let-values (((optional-start optional-end rest?)
 		(decode-xlambda-arity xlambda)))
     (declare (ignore rest?))
-    (vector->list (safe-system-triple-second xlambda) optional-start optional-end)))
+    (vector->list (safe-system-triple-second xlambda)
+		  optional-start
+		  optional-end)))
 
 (define (xlambda-rest xlambda)
   (let-values (((optional-start optional-end rest?)

@@ -4577,6 +4577,7 @@ USA.
 	  scode-assignment?
 	  scode-block-declaration-text
 	  scode-block-declaration?
+	  scode-combination-operand
 	  scode-combination-operands
 	  scode-combination-operator
 	  scode-combination?
