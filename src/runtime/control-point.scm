@@ -138,9 +138,10 @@ USA.
 	  ((apply)
 	   (make return-code-name (elt 0) (rest-elts 1)))
 	  ((return-to-compiled-code)
-	   (make return-code-name (elt 0)))
+	   (apply make return-code-name (elt 0)
+		  (return-to-cc-extra-fields return-code-name raw)))
 	  ((compiled-address)
-	   (make frame-type-name))
+	   (apply make frame-type-name (cc-address-extra-fields raw)))
 	  ((combination-save)
 	   ;; The index to primitive-datum-ref is relative to the address of the
 	   ;; object.  For a vector, that's one greater than the vector index.
@@ -165,6 +166,38 @@ USA.
 	   (make frame-type-name (elt 0) (elt 1)))
 	  (else
 	   (error "Unknown return-frame-type code:" frame-type-name)))))))
+
+(define (cc-address-extra-fields raw)
+  (let ((entry (vector-ref raw 0)))
+    (if (eq? (compiled-entry-type entry) 'compiled-procedure)
+	(list (cons 'procedure entry)
+	      (cons 'arguments (vector->list raw 1)))
+	(list (cons 'entry entry)))))
+
+(define (return-to-cc-extra-fields return-code-name raw)
+  (case return-code-name
+    ((compiler-lookup-apply-trap-restart
+      compiler-reference-trap-restart
+      compiler-safe-reference-trap-restart
+      compiler-unassigned?-trap-restart
+      compiler-operator-lookup-trap-restart)
+     (list (cons 'variable (vector-ref raw 2))
+	   (cons 'environment (vector-ref raw 3))))
+    ((compiler-assignment-trap-restart)
+     (list (cons 'variable (vector-ref raw 2))
+	   (cons 'environment (vector-ref raw 3))
+	   (cons 'value (safe-system-vector-ref raw 4))))
+    ((compiler-error-restart)
+     (list (cons 'primitive (vector-ref raw 2))))
+    ((compiler-interrupt-restart)
+     (cons (cons 'state (vector-ref raw 2))
+	   (let ((entry (vector-ref raw 3)))
+	     (if (compiled-procedure? entry)
+		 (list (cons 'procedure entry)
+		       (cons 'arguments (vector->list raw 4)))
+		 (list (cons 'entry entry))))))
+    (else
+     '())))
 
 ;;;; Frame abstraction
 
@@ -196,6 +229,9 @@ USA.
     (and (interpreter-return-address? return-address)
 	 (return-address/code return-address))))
 
+(define (cpoint-frame-return-type frame)
+  (vector-ref (cpoint-frame-info frame) 0))
+
 (define (cpoint-frame:subproblem? frame)
   (vector-ref (cpoint-frame-info frame) 1))
 
@@ -225,7 +261,7 @@ USA.
 
 (define (cpoint-frame:join-stacklets? frame)
   (eq? (cpoint-frame-type frame) 'join-stacklets))
-
+
 (define (cpoint-frame:restore-interrupt-mask? frame)
   (let ((type (cpoint-frame-type frame)))
     (or (eq? type 'restore-interrupt-mask)

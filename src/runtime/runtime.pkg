@@ -2071,6 +2071,7 @@ USA.
 	  cpoint-frame-ref
 	  cpoint-frame-return-address
 	  cpoint-frame-return-code
+	  cpoint-frame-return-type
 	  cpoint-frame-start
 	  cpoint-frame-type
 	  cpoint-frame:compiled-address?
