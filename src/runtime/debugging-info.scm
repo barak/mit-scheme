@@ -83,7 +83,7 @@ USA.
 	(and code
 	     (alist-table-ref return-code-generators
 			      (microcode-return/code->name code)
-			      #f)))
+			      (lambda () #f))))
       (alist-table-ref return-type-generators
 		       (cframe-return-type frame))))
 
