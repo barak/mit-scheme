@@ -174,7 +174,7 @@ USA.
   (lambda (value cpoint)
     (if (cpoint-frame:compiled-code? cpoint)
 	(begin
-	  (assert (and value (fix:>= value (cpoint-frame-end cpoint))))
+	  (assert (or (not value) (fix:>= value (cpoint-frame-end cpoint))))
 	  value)
 	(begin
 	  (assert (or (not value) (fix:= value (cpoint-frame-start cpoint))))
