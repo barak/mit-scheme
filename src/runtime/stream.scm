@@ -312,7 +312,7 @@ USA.
       (if (eof-object? object)
 	  the-empty-stream
 	  (cons-stream object (stream-generator)))))
-  stream-generator)
+  (stream-generator))
 
 (define condition-type:illegal-stream-element)
 (define error:illegal-stream-element)
