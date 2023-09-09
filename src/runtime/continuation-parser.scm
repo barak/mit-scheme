@@ -190,17 +190,18 @@ USA.
 
 (define-pp-describer cframe?
   (lambda (frame)
-    (cons* (list 'start (cframe-start frame))
-	   (list 'length (cframe-length frame))
-	   (list 'raw (cframe-raw frame))
-	   (list 'fields
-		 (map (lambda (field)
-			(list (car field) (cdr field)))
-		      (cframe-fields frame)))
-	   (list 'tracked-items
-		 (map (lambda (item)
-			(list (car item) (cdr item)))
-		      (cframe-tracked-items frame))))))
+    (list (list 'start (cframe-start frame))
+	  (list 'length (cframe-length frame))
+	  (list 'raw (cframe-raw frame))
+	  (cons 'fields
+		(map (lambda (field)
+		       (list (car field) (cdr field)))
+		     (cframe-fields frame)))
+	  (cons 'tracked-items
+		(map (lambda (item)
+		       (list (tracked-item-name item)
+			     (tracked-item-value item)))
+		     (cframe-tracked-items frame))))))
 
 (define (cframe-end frame)
   (fix:+ (cframe-start frame)
