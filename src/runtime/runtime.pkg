@@ -1894,10 +1894,6 @@ USA.
 	  with-directory-rewriting-rule)
   (export (runtime program-copier)
 	  dbg-info-vector?)
-  (export (runtime debugger-command-loop)
-	  special-form-procedure-name?)
-  (export (runtime stack-sampler)
-	  special-form-procedure-name?)
   (export (runtime environment)
 	  dbg-block/find-name
 	  dbg-block/ic-parent-index
@@ -4621,6 +4617,7 @@ USA.
 	  scode-disjunction-predicate
 	  scode-disjunction?
 	  scode-expression?
+	  scode-lambda-name->syntax-name
 	  scode-lambda-name:fluid-let
 	  scode-lambda-name:internal-lambda
 	  scode-lambda-name:let

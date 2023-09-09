@@ -321,23 +321,13 @@ USA.
   (let ((procedure
 	 (compiled-entry/dbg-object entry load-debugging-info-on-demand?)))
     (and procedure
-	 (let ((name (dbg-procedure/name procedure)))
-	   (or (special-form-procedure-name? name)
-	       (symbol->string name))))))
+	 (symbol->string
+	  (let ((name (dbg-procedure/name procedure)))
+	    (or (scode-lambda-name->syntax-name name)
+		name))))))
 
 (define load-debugging-info-on-demand?
   #f)
-
-(define (special-form-procedure-name? name)
-  (let ((association (assq name special-form-procedure-names)))
-    (and association
-	 (symbol->string (cdr association)))))
-
-(define-deferred special-form-procedure-names
-  `((,scode-lambda-name:unnamed . lambda)
-    (,scode-lambda-name:internal-lambda . lambda)
-    (,scode-lambda-name:let . let)
-    (,scode-lambda-name:fluid-let . fluid-let)))
 
 (define (compiled-procedure/lambda entry)
   (let ((procedure (compiled-entry/dbg-object entry)))

@@ -508,10 +508,21 @@ USA.
 	((xlambda? lambda) (xlambda-body lambda))
 	(else (error:not-a scode-lambda? lambda 'scode-lambda-body))))
 
+(define (scode-lambda-name->syntax-name name)
+  (let ((association (assq name special-form-procedure-names)))
+    (and association
+	 (cdr association))))
+
 (define scode-lambda-name:unnamed '|#[unnamed-procedure]|)
 (define scode-lambda-name:let '|#[let-procedure]|)
 (define scode-lambda-name:fluid-let '|#[fluid-let-procedure]|)
 (define scode-lambda-name:internal-lambda '|#[internal-lambda]|)
+
+(define special-form-procedure-names
+  `((,scode-lambda-name:unnamed . lambda)
+    (,scode-lambda-name:internal-lambda . lambda)
+    (,scode-lambda-name:let . let)
+    (,scode-lambda-name:fluid-let . fluid-let)))
 
 ;;; Simple representation
 

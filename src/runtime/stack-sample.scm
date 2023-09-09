@@ -317,8 +317,7 @@
                          (recur (environment-parent environment))
                          '())))
                 (if name
-                    (cons (cond ((special-form-procedure-name? name)
-                                 => (lambda (rename) (list (intern rename))))
+                    (cons (cond ((scode-lambda-name->syntax-name name) => list)
                                 (else name))
                           names)
                     names))))

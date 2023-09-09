@@ -452,7 +452,7 @@ USA.
 	   (and (environment? environment)
 		(environment-procedure-name environment))))
       (if (or (not name)
-	      (special-form-procedure-name? name))
+	      (scode-lambda-name->syntax-name name))
 	  ""
 	  (output-to-string 20
 	    (lambda ()
