@@ -1879,7 +1879,6 @@ USA.
 	  compiled-code-block/filename-and-index
 	  compiled-entry/filename-and-index
 	  compiled-entry/block
-	  compiled-entry/dbg-object
 	  compiled-entry/offset
 	  compiled-expression/scode
 	  compiled-procedure/name
@@ -1887,6 +1886,15 @@ USA.
 	  discard-debugging-info!
 	  load-debugging-info-on-demand?
 	  uncompress-ports)
+  (export (runtime)
+	  compiled-entry/dbg-object
+	  dbg-continuation/source-code
+	  dbg-continuation?
+	  dbg-expression?
+	  dbg-procedure/block
+	  dbg-procedure/source-code
+	  dbg-procedure?
+	  dbg-variable?)
   (export (runtime load)
 	  dbg-info-vector/purification-root
 	  dbg-info-vector?
@@ -1907,28 +1915,16 @@ USA.
 	  dbg-block/stack-link
 	  dbg-block/static-link-index
 	  dbg-block/type
-	  dbg-continuation?
 	  dbg-continuation/block
 	  dbg-continuation/offset
-	  dbg-expression?
-	  dbg-procedure?
 	  dbg-procedure/block
 	  dbg-procedure/name
 	  dbg-procedure/required
 	  dbg-procedure/optional
 	  dbg-procedure/rest
-	  dbg-procedure/source-code
 	  dbg-variable/name
 	  dbg-variable/type
-	  dbg-variable/value
-	  dbg-variable?)
-  (export (runtime debugging-info)
-	  dbg-continuation?
-	  dbg-continuation/source-code
-	  dbg-procedure?
-	  dbg-procedure/block
-	  dbg-procedure/source-code
-	  dbg-expression?)
+	  dbg-variable/value)
   (export (runtime compress)
 	  uncompress-internal
 	  write-compressed-file-marker)
