@@ -2060,6 +2060,7 @@ USA.
   (export (runtime)
 	  control-point->frame-generator
 	  control-point->raw-frame-generator
+	  control-point-frame-stream
 	  control-point-frames
 	  control-point?
 	  cpoint-frame-cpoint-end

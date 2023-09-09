@@ -57,6 +57,9 @@ USA.
 (define (control-point-frames control-point)
   (generator->list (control-point->frame-generator control-point)))
 
+(define (control-point-frame-stream control-point)
+  (generator->stream (control-point->frame-generator control-point)))
+
 (define (control-point->frame-generator control-point)
   (gmap decode-raw-control-point-frame
 	(control-point->raw-frame-generator control-point)))
