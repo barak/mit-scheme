@@ -73,6 +73,7 @@ USA.
     ("runtime/test-char-set" (runtime character-set))
     "runtime/test-comparator"
     ("runtime/test-compound-predicate" (runtime compound-predicate))
+    ("runtime/test-continuation-parser" (runtime))
     ("runtime/test-control-point" (runtime))
     ("runtime/test-digraph" (runtime))
     "runtime/test-division"

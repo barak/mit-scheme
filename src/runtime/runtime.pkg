@@ -2021,71 +2021,41 @@ USA.
   (files "continuation-parser")
   (parent (runtime))
   (export (runtime)
-	  continuation->stack-frame*
-	  stack-frame*->continuation
-	  stack-frame*/block-thread-events?
-	  stack-frame*/compiled-code?
-	  stack-frame*/compiled-return-address?
-	  stack-frame*/cpoint-frame
-	  stack-frame*/dynamic-state
-	  stack-frame*/elements
-	  stack-frame*/field-name?
-	  stack-frame*/field-value
-	  stack-frame*/hardware-trap-code
-	  stack-frame*/hardware-trap?
-	  stack-frame*/length
-	  stack-frame*/next
-	  stack-frame*/next-subproblem
-	  stack-frame*/previous-type
-	  stack-frame*/reductions
-	  stack-frame*/ref
-	  stack-frame*/repl-eval-boundary?
-	  stack-frame*/resolve-stack-address
-	  stack-frame*/return-address
-	  stack-frame*/return-code
-	  stack-frame*/skip-non-subproblems
-	  stack-frame*/subproblem?
-	  stack-frame*?))
+	  cframe-compiled-code?
+	  cframe-cpoint-end
+	  cframe-end
+	  cframe-field-name?
+	  cframe-field-names
+	  cframe-field-value
+	  cframe-length
+	  cframe-raw
+	  cframe-ref
+	  cframe-return-address
+	  cframe-return-code
+	  cframe-return-type
+	  cframe-start
+	  cframe-stream->continuation
+	  cframe-stream->control-point
+	  cframe-stream-next-subproblem
+	  cframe-stream-ref
+	  cframe-stream-resolve-stack-address
+	  cframe-stream-skip-non-subproblems
+	  cframe-tracked-item-name?
+	  cframe-tracked-item-names
+	  cframe-tracked-item-value
+	  cframe-type
+	  continuation->cframe-stream
+	  continuation->frame-generator)
+  (export (runtime new-debugging-info)
+	  describe-hardware-trap-frame))
 
 (define-package (runtime new-control-point)
   (files "control-point")
   (parent (runtime))
   (export (runtime)
-	  control-point->frame-generator
 	  control-point->raw-frame-generator
-	  control-point-frame-stream
-	  control-point-frames
 	  control-point?
-	  cpoint-frame-cpoint-end
-	  cpoint-frame-end
-	  cpoint-frame-field-name?
-	  cpoint-frame-field-names
-	  cpoint-frame-field-value
-	  cpoint-frame-length
-	  cpoint-frame-raw
-	  cpoint-frame-ref
-	  cpoint-frame-return-address
-	  cpoint-frame-return-code
-	  cpoint-frame-return-type
-	  cpoint-frame-start
-	  cpoint-frame-type
-	  cpoint-frame:compiled-address?
-	  cpoint-frame:compiled-code?
-	  cpoint-frame:hardware-trap?
-	  cpoint-frame:history-subproblem?
-	  cpoint-frame:join-stacklets?
-	  cpoint-frame:repl-eval-boundary?
-	  cpoint-frame:restore-history?
-	  cpoint-frame:restore-interrupt-mask?
-	  cpoint-frame:return-to-compiled-code?
-	  cpoint-frame:stack-marker-of-type?
-	  cpoint-frame:stack-marker?
-	  cpoint-frame:subproblem?
-	  cpoint-frames->control-point)
-  (export (runtime new-continuation-parser)
-	  old-control-point)
-  (export (runtime new-debugging-info)
-	  describe-cpoint-hardware-trap-frame))
+	  make-control-point*))
 
 (define-package (runtime new-debugging-info)
   (files "debugging-info")
@@ -2101,7 +2071,7 @@ USA.
 	  debugging-info*/undefined-expression?
 	  debugging-info*/unknown-expression?
 	  debugging-info*?
-	  stack-frame*/debugging-info*))
+	  cframe-debugging-info))
 
 (define-package (runtime date/time)
   (files "datime")

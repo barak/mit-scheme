@@ -69,7 +69,7 @@ USA.
 
 (define compiled-code (make-compiled-code))
 
-(define (stack-frame*/debugging-info* frame)
+(define (cframe-debugging-info frame)
   ((get-frame-generator frame) frame))
 
 (define (define-return-code-generator type generator)
@@ -79,14 +79,13 @@ USA.
   (alist-table-set! return-type-generators frame-type generator))
 
 (define (get-frame-generator frame)
-  (let ((cpoint (stack-frame*/cpoint-frame frame)))
-    (or (let ((code (cpoint-frame-return-code cpoint)))
-	  (and code
-	       (alist-table-ref return-code-generators
-				(microcode-return/code->name code)
-				#f)))
-	(alist-table-ref return-type-generators
-			 (cpoint-frame-return-type cpoint)))))
+  (or (let ((code (cframe-return-code frame)))
+	(and code
+	     (alist-table-ref return-code-generators
+			      (microcode-return/code->name code)
+			      #f)))
+      (alist-table-ref return-type-generators
+		       (cframe-return-type frame))))
 
 (define return-code-generators (alist-table eq?))
 (define return-type-generators (alist-table eq?))
@@ -101,7 +100,8 @@ USA.
 	(else (error "Can't select subexpression:" exp))))
 
 (define (validate-subexp subexp frame)
-  (if (eq? (stack-frame*/previous-type frame) 'pop-return-error)
+  (if (eq? (cframe-tracked-item-value frame 'previous-type)
+	   'pop-return-error)
       undefined-exp
       subexp))
 
@@ -123,13 +123,13 @@ USA.
 
 (define (generate-application frame)
   (make-debugging-info (make-scode-combination
-			(stack-frame*/field-value frame 'procedure)
-			(stack-frame*/field-value frame 'arguments))
+			(cframe-field-value frame 'procedure)
+			(cframe-field-value frame 'arguments))
 		       undefined-env
 		       undefined-exp))
 
 (define (generate-compiled-address frame)
-  (or (let ((entry (stack-frame*/return-address frame)))
+  (or (let ((entry (cframe-return-address frame)))
 	(and entry
 	     (let ((dbg (compiled-entry/dbg-object entry)))
 	       (and dbg
@@ -154,12 +154,12 @@ USA.
 	       sequence-continue)
 	      (make-debugging-info
 	       exp
-	       (stack-frame*/environment frame undefined-env)
+	       (cframe-environment frame undefined-env)
 	       (validate-subexp (select-subexp exp) frame)))
 	     ((combination-operand)
 	      (make-debugging-info
 	       exp
-	       (stack-frame*/environment frame undefined-env)
+	       (cframe-environment frame undefined-env)
 	       (validate-subexp
 		(scode-combination-element exp (vector-ref source 2))
 		frame)))
@@ -174,11 +174,11 @@ USA.
 (define (gen-cc-procedure dbg frame)
   (make-debugging-info (scode-lambda-body (dbg-procedure/source-code dbg))
 		       (and (dbg-procedure/block dbg)
-			    (stack-frame*/environment frame undefined-env))
+			    (cframe-environment frame undefined-env))
 		       undefined-exp))
 
 ;; TODO: requires changes in "environment.scm".
-(define (stack-frame*/environment frame undefined-env)
+(define (cframe-environment frame undefined-env)
   (declare (ignore frame))
   undefined-env)
 
@@ -186,7 +186,7 @@ USA.
 
 (define-return-code-generator 'access-continue
   (lambda (frame)
-    (let ((exp (stack-frame*/field-value frame 'expression)))
+    (let ((exp (cframe-field-value frame 'expression)))
       (make-debugging-info exp
 			   undefined-env
 			   (validate-subexp (select-subexp exp) frame)))))
@@ -195,15 +195,15 @@ USA.
 
 (define-return-type-generator 'exp+env
   (lambda (frame)
-    (let ((exp (stack-frame*/field-value frame 'expression)))
+    (let ((exp (cframe-field-value frame 'expression)))
       (make-debugging-info exp
-			   (stack-frame*/field-value frame 'environment)
+			   (cframe-field-value frame 'environment)
 			   (validate-subexp (select-subexp exp) frame)))))
 
 (define-return-code-generator 'eval-error
   (lambda (frame)
-    (make-debugging-info (stack-frame*/field-value frame 'expression)
-			 (stack-frame*/field-value frame 'environment)
+    (make-debugging-info (cframe-field-value frame 'expression)
+			 (cframe-field-value frame 'environment)
 			 undefined-exp)))
 
 ;; type: apply
@@ -221,14 +221,14 @@ USA.
 (define-return-code-generator 'compiler-assignment-trap-restart
   (lambda (frame)
     (make-debugging-info
-     (make-scode-assignment (stack-frame*/field-value frame 'variable)
-			    (stack-frame*/field-value frame 'value))
-     (stack-frame*/field-value frame 'environment)
+     (make-scode-assignment (cframe-field-value frame 'variable)
+			    (cframe-field-value frame 'value))
+     (cframe-field-value frame 'environment)
      undefined-exp)))
 
 (define-return-code-generator 'compiler-error-restart
   (lambda (frame)
-    (let ((primitive (stack-frame*/field-value frame 'primitive)))
+    (let ((primitive (cframe-field-value frame 'primitive)))
       (if (primitive-procedure? primitive)
 	  (make-debugging-info
 	   (make-scode-combination (make-scode-variable 'apply)
@@ -243,9 +243,9 @@ USA.
 (define (generate-compiler-lookup-apply-trap-restart frame)
   (make-debugging-info
    (make-scode-combination
-    (make-scode-variable (stack-frame*/field-value frame 'variable))
-    (stack-frame*/field-value frame 'arguments))
-   (stack-frame*/field-value frame 'environment)
+    (make-scode-variable (cframe-field-value frame 'variable))
+    (cframe-field-value frame 'arguments))
+   (cframe-field-value frame 'environment)
    undefined-exp))
 
 (define-return-code-generator 'compiler-lookup-apply-trap-restart
@@ -257,22 +257,22 @@ USA.
 (define-return-code-generator 'compiler-reference-trap-restart
   (lambda (frame)
     (make-debugging-info
-     (make-scode-variable (stack-frame*/field-value frame 'variable))
-     (stack-frame*/field-value frame 'environment)
+     (make-scode-variable (cframe-field-value frame 'variable))
+     (cframe-field-value frame 'environment)
      undefined-exp)))
 
 (define-return-code-generator 'compiler-safe-reference-trap-restart
   (lambda (frame)
     (make-debugging-info
-     (make-scode-variable (stack-frame*/field-value frame 'variable) #t)
-     (stack-frame*/field-value frame 'environment)
+     (make-scode-variable (cframe-field-value frame 'variable) #t)
+     (cframe-field-value frame 'environment)
      undefined-exp)))
 
 (define-return-code-generator 'compiler-unassigned?-trap-restart
   (lambda (frame)
     (make-debugging-info
-     (make-scode-unassigned? (stack-frame*/field-value frame 'variable))
-     (stack-frame*/field-value frame 'environment)
+     (make-scode-unassigned? (cframe-field-value frame 'variable))
+     (cframe-field-value frame 'environment)
      undefined-exp)))
 
 (define-return-code-generator 'reenter-compiled-code
@@ -282,10 +282,10 @@ USA.
 
 (define-return-type-generator 'combination-save
   (lambda (frame)
-    (let ((exp (stack-frame*/field-value frame 'expression))
-	  (arg (fix:- (stack-frame*/field-value frame 'number-of-blanks) 1)))
+    (let ((exp (cframe-field-value frame 'expression))
+	  (arg (fix:- (cframe-field-value frame 'number-of-blanks) 1)))
       (make-debugging-info exp
-			   (stack-frame*/field-value frame 'environment)
+			   (cframe-field-value frame 'environment)
 			   (validate-subexp (scode-combination-operand exp arg)
 					    frame)))))
 
@@ -294,8 +294,7 @@ USA.
     (make-debugging-info
      (make-printer
       (lambda (verbose? port)
-	(describe-cpoint-hardware-trap-frame
-	 (stack-frame*/cpoint-frame frame) verbose? port)))
+	(describe-hardware-trap-frame frame verbose? port)))
      undefined-env
      undefined-exp)))
 

@@ -32,38 +32,379 @@ USA.
 
 (add-boot-deps! '(runtime microcode-tables) '(runtime history))
 
-(define-record-type <pstate>
-    make-pstate
-    pstate?
-  (cpoint-frames pstate-cpoint-frame-stream)
-  (item-bindings pstate-item-bindings))
+(define-primitives
+  (return-frame-type 2)
+  (primitive-datum-ref 2))
 
-(define (continuation->stack-frame* continuation)
-  (parse-one-frame
-   (make-pstate
-    (control-point-frame-stream (continuation/control-point continuation))
-    (initial-item-bindings
-     'dynamic-state (continuation/dynamic-state continuation)
-     'block-thread-events? (continuation/block-thread-events? continuation)))))
+(define-deferred return-frame-types
+  (microcode-return-frame-types))
 
-(define (parse-one-frame pstate)
-  (let ((cpoints (pstate-cpoint-frame-stream pstate)))
-    (and (stream-pair? cpoints)
-	 (make-stack-frame
-	  pstate
-	  (delay
-	    (parse-one-frame
-	     (make-pstate (stream-cdr cpoints)
-			  (update-item-bindings (pstate-item-bindings pstate)
-						(stream-car cpoints)))))))))
+(define (continuation->frame-generator continuation)
+  (let ((graw
+	 (control-point->raw-frame-generator
+	  (continuation/control-point continuation)))
+	(tracked-items
+	 (initial-tracked-items
+	  'dynamic-state
+	  (continuation/dynamic-state continuation)
+	  'block-thread-events?
+	  (continuation/block-thread-events? continuation))))
 
-(define (pstate-cpoint-frame pstate)
-  (stream-car (pstate-cpoint-frame-stream pstate)))
+    (define (generator)
+      (let ((raw-result (graw)))
+	(if (eof-object? raw-result)
+	    raw-result
+	    (let ((frame (decode-raw-result raw-result tracked-items)))
+	      (set! tracked-items (update-tracked-items tracked-items frame))
+	      frame))))
 
-(define (pstate-item-ref pstate name)
-  (item-bindings-ref (pstate-item-bindings pstate) name))
+    generator))
+
+(define (continuation->cframe-stream continuation)
+  (generator->stream (continuation->frame-generator continuation)))
+
+(define (decode-raw-result raw-result bindings)
+  (let ((findex (vector-ref raw-result 0))
+	(cpend (vector-ref raw-result 1))
+	(raw (vector-ref raw-result 2)))
+    (let ((info (vector-ref return-frame-types (return-frame-type raw 0)))
+	  (return-code-name
+	   (let ((address (vector-ref raw 0)))
+	     (and (interpreter-return-address? address)
+		  (return-address/name address)))))
+
+      (define (make ftype . alist)
+	(make-cframe ftype findex cpend raw info alist bindings))
+
+      (define-integrable (name index)
+	(vector-ref info (fix:+ 3 (fix:* 2 index))))
+
+      (define-integrable (val-loc index)
+	(vector-ref info (fix:+ 4 (fix:* 2 index))))
+
+      (define-integrable (elt index)
+	(cons (name index) (vector-ref raw (val-loc index))))
+
+      (define-integrable (rest-elts index)
+	(cons (name index) (vector->list raw (val-loc index))))
+
+      (let ((frame-type-name (vector-ref info 0)))
+	(case frame-type-name
+	  ((with-arg)
+	   (let ((name
+		  (case return-code-name
+		    ((join-stacklets) 'control-point)
+		    ((access-continue) 'expression)
+		    ((force-snap-thunk) 'delayed)
+		    ((normal-garbage-collect-done) 'gc-result)
+		    ((restore-value pop-return-error) 'value)
+		    ((restore-interrupt-mask) 'interrupt-mask)
+		    ((halt) 'termination-code)
+		    (else #f))))
+	     (if name
+		 (make return-code-name
+		       (cons name (vector-ref raw (val-loc 0))))
+		 (make return-code-name))))
+	  ((exp+env history stack-marker)
+	   (make return-code-name (elt 0) (elt 1)))
+	  ((apply)
+	   (make return-code-name (elt 0) (rest-elts 1)))
+	  ((return-to-compiled-code)
+	   (apply make return-code-name (elt 0)
+		  (return-to-cc-extra-fields return-code-name raw)))
+	  ((compiled-address)
+	   (apply make frame-type-name (cc-address-extra-fields raw 0)))
+	  ((combination-save)
+	   ;; The index to primitive-datum-ref is relative to the address of the
+	   ;; object.  For a vector, that's one greater than the vector index.
+	   (let ((n-blanks
+		  (primitive-datum-ref raw (fix:+ 1 (val-loc 2)))))
+	     (make return-code-name
+		   (elt 0)
+		   (elt 1)
+		   (cons (name 2) n-blanks)
+		   (cons (name 3)
+			 (vector->list raw (fix:+ (val-loc 3) n-blanks))))))
+	  ((hardware-trap)
+	   (make return-code-name (elt 0) (elt 1) (elt 2) (elt 3)
+		 (elt 4) (elt 5) (elt 6) (elt 7)))
+	  ((return-to-interpreter)
+	   (make frame-type-name))
+	  ((cc-internal-apply cc-bkpt cc-invocation)
+	   (make frame-type-name (elt 0) (rest-elts 1)))
+	  ((cc-restore-interrupt-mask)
+	   (make frame-type-name (elt 0)))
+	  ((cc-stack-marker)
+	   (make frame-type-name (elt 0) (elt 1)))
+	  (else
+	   (error "Unknown return-frame-type code:" frame-type-name)))))))
+
+(define (cc-address-extra-fields raw index)
+  (let ((entry (vector-ref raw index)))
+    (if (compiled-procedure? entry)
+	(list (cons 'procedure entry)
+	      (cons 'arguments (vector->list raw (fix:+ index 1))))
+	(list (cons 'entry entry)))))
+
+(define (return-to-cc-extra-fields return-code-name raw)
+  (case return-code-name
+    ((compiler-reference-trap-restart
+      compiler-safe-reference-trap-restart
+      compiler-unassigned?-trap-restart)
+     (list (cons 'variable (vector-ref raw 2))
+	   (cons 'environment (vector-ref raw 3))))
+    ((compiler-assignment-trap-restart)
+     (list (cons 'variable (vector-ref raw 2))
+	   (cons 'environment (vector-ref raw 3))
+	   (cons 'value (safe-system-vector-ref raw 4))))
+    ((compiler-lookup-apply-trap-restart
+      compiler-operator-lookup-trap-restart)
+     (cons* (cons 'variable (vector-ref raw 2))
+	    (cons 'environment (vector-ref raw 3))
+	    (cc-address-extra-fields raw 4)))
+    ((compiler-error-restart)
+     (list (cons 'primitive (vector-ref raw 2))))
+    ((compiler-interrupt-restart)
+     (cons (cons 'state (vector-ref raw 2))
+	   (cc-address-extra-fields raw 3)))
+    (else
+     '())))
+
+;;;; Frame abstraction
+
+(define-record-type <cframe>
+    make-cframe
+    cframe?
+  (type cframe-type)
+  (start cframe-start)			;index of frame within control point
+  (cpoint-end cframe-cpoint-end)	;length of control point
+  (raw cframe-raw)
+  (info cframe-info)
+  (fields cframe-fields)
+  (tracked-items cframe-tracked-items))
+
+(define-print-method cframe?
+  (standard-print-method 'cframe
+    (lambda (frame)
+      (list (cframe-type frame)))))
+
+(define-pp-describer cframe?
+  (lambda (frame)
+    (cons* (list 'start (cframe-start frame))
+	   (list 'length (cframe-length frame))
+	   (list 'raw (cframe-raw frame))
+	   (list 'fields
+		 (map (lambda (field)
+			(list (car field) (cdr field)))
+		      (cframe-fields frame)))
+	   (list 'tracked-items
+		 (map (lambda (item)
+			(list (car item) (cdr item)))
+		      (cframe-tracked-items frame))))))
+
+(define (cframe-end frame)
+  (fix:+ (cframe-start frame)
+	 (cframe-length frame)))
+
+(define (cframe-length frame)
+  (vector-length (cframe-raw frame)))
+
+(define (cframe-ref frame index)
+  (vector-ref (cframe-raw frame) index))
+
+(define (cframe-return-address frame)
+  (vector-ref (cframe-raw frame) 0))
+
+(define (cframe-return-code frame)
+  (let ((return-address (cframe-return-address frame)))
+    (and (interpreter-return-address? return-address)
+	 (return-address/code return-address))))
+
+(define (cframe-compiled-code? frame)
+  (compiled-return-address? (cframe-return-address frame)))
+
+(define (cframe-return-type frame)
+  (vector-ref (cframe-info frame) 0))
+
+(define (cframe-subproblem? frame)
+  (or (vector-ref (cframe-info frame) 1)
+      (cframe:stack-marker-of-type? with-repl-eval-boundary frame)))
+
+(define (cframe-history-subproblem? frame)
+  (vector-ref (cframe-info frame) 2))
+
+(define (cframe-field-value frame name)
+  (let ((p (assq name (cframe-fields frame))))
+    (if (not p)
+	(error "Unknown frame field name:" name))
+    (cdr p)))
+
+(define (cframe-field-name? frame name)
+  (and (assq name (cframe-fields frame)) #t))
+
+(define (cframe-field-names frame)
+  (map car (cframe-fields frame)))
+
+(define (cframe-tracked-item-value frame name)
+  (let ((item (find-tracked-item (cframe-tracked-items frame) name)))
+    (if (not item)
+	(error "Unknown tracked item name:" name))
+    (tracked-item-value item)))
+
+(define (cframe-tracked-item-names frame)
+  (map tracked-item-name (cframe-tracked-items frame)))
+
+(define (cframe-tracked-item-name? frame name)
+  (and (find-tracked-item (cframe-tracked-items frame) name) #t))
+
+(define (cframe:join-stacklets? frame)
+  (eq? (cframe-type frame) 'join-stacklets))
+
+(define (cframe:restore-interrupt-mask? frame)
+  (let ((type (cframe-type frame)))
+    (or (eq? type 'restore-interrupt-mask)
+	(eq? type 'cc-restore-interrupt-mask))))
+
+(define (cframe:restore-history? frame)
+  (let ((type (cframe-type frame)))
+    (or (eq? type 'restore-history)
+	(eq? type 'restore-dont-copy-history))))
+
+(define (cframe:return-to-compiled-code? frame)
+  (eq? (cframe-type frame) 'return-to-compiled-code))
+
+(define (cframe:stack-marker? frame)
+  (let ((type (cframe-type frame)))
+    (or (eq? type 'stack-marker)
+	(eq? type 'cc-stack-marker))))
+
+(define (cframe:stack-marker-of-type? marker-type frame)
+  (and (cframe:stack-marker? frame)
+       (eq? marker-type (cframe-field-value frame 'marker-type))))
+
+;;;; Frame-stream operations
+
+(define (cframe-stream-next-subproblem frames)
+  (if (cframe-subproblem? (stream-car frames))
+      (let ((frames* (stream-cdr frames)))
+	(and (stream-pair? frames*)
+	     (cframe-stream-skip-non-subproblems frames*)))
+      (cframe-stream-skip-non-subproblems frames)))
+
+(define (cframe-stream-skip-non-subproblems frames)
+  (if (cframe-subproblem? (stream-car frames))
+      frames
+      (let ((frames* (stream-cdr frames)))
+	(if (stream-pair? frames*)
+	    (cframe-stream-skip-non-subproblems frames*)
+	    frames*))))
+
+(define (cframe-stream-ref frames index)
+  (guarantee non-negative-fixnum? index 'cframe-stream-ref)
+  (let-values (((frames* index*) (find-frame-with-index frames index)))
+    (if (not (stream-pair? frames*))
+	(error:bad-range-argument index 'cframe-stream-ref))
+    (cframe-ref (stream-car frames*) index*)))
+
+(define (cframe-stream-resolve-stack-address frames address)
+  (let* ((offset (stack-address-offset address))
+	 (index
+	  (fix:- (let ((frame (stream-car frames)))
+		   (fix:- (cframe-cpoint-end frame)
+			  (cframe-start frame)))
+		 offset)))
+    (assert (fix:>= index 0))
+    (let-values (((frames* index*) (find-frame-with-index frames index)))
+      (if (not (stream-pair? frames*))
+	  (error:bad-range-argument frames 'cframe-stream-resolve-stack-address))
+      (values frames* index*))))
+
+(define (find-frame-with-index frames index)
+  (let ((n (cframe-length (stream-car frames))))
+    (if (fix:< index n)
+	(values frames index)
+	(let ((frames* (stream-cdr frames)))
+	  (if (stream-pair? frames*)
+	      (find-frame-with-index frames* (fix:- index n))
+	      (values frames* index))))))
+
+(define (cframe-stream->continuation frames)
+  (let ((frame (stream-car frames)))
+    (make-continuation
+     (make-control-point*
+      (old-raw-frames (cframe-stream-raw-prefix frames)
+		      (cframe-tracked-item-value frame 'interrupt-mask)
+		      (cframe-tracked-item-value frame 'history)
+		      (cframe-previous-restore-history-offset frame)))
+     (cframe-tracked-item-value frame 'dynamic-state)
+     (cframe-tracked-item-value frame 'block-thread-events?))))
+
+(define (cframe-stream->control-point frames)
+  (make-control-point* (cframe-stream-raw-prefix frames)))
+
+(define (cframe-stream-raw-prefix frames)
+  (let loop ((frames frames) (raw '()))
+    (let ((frame (stream-car frames))
+	  (frames* (stream-cdr frames)))
+      (let ((raw (cons (cframe-raw frame) raw)))
+	(if (or (cframe:join-stacklets? frame)
+		(not (stream-pair? frames*)))
+	    (reverse raw)
+	    (loop frames* raw))))))
+
+(define (old-raw-frames frames interrupt-mask history
+			previous-restore-history-offset)
+  (if (and (pair? frames)
+	   (pair? (cdr frames))
+	   (let ((f1 (car frames))
+		 (f2 (car frames)))
+	     (and (eq? (vector-ref f1 0)
+		       (ucode-return-address restore-interrupt-mask))
+		  (eqv? (vector-ref f1 1) interrupt-mask)
+		  (eq? (vector-ref f2 0) (ucode-return-address restore-history))
+		  (eq? (vector-ref f2 1) history)
+		  (eqv? (vector-ref f2 2) previous-restore-history-offset))))
+      frames
+      (cons* (vector (ucode-return-address restore-interrupt-mask)
+		     interrupt-mask)
+	     (vector (ucode-return-address restore-history)
+		     history
+		     previous-restore-history-offset
+		     #f)
+	     frames)))
 
 ;;;; Tracked items
+
+(define (initial-tracked-items . inits)
+  (map (lambda (entry)
+	 (cons entry
+	       (let ((value (get-keyword-value inits (vector-ref entry 0))))
+		 (if (default-object? value)
+		     (vector-ref entry 1)
+		     value))))
+       defined-items))
+
+(define (update-tracked-items items frame)
+  (map (lambda (item)
+	 (cons (car item)
+	       ((tracked-item-updater item)
+		(tracked-item-value item)
+		frame)))
+       items))
+
+(define (find-tracked-item items name)
+  (find (lambda (item)
+	  (eq? (tracked-item-name item) name))
+	items))
+
+(define-integrable (tracked-item-name item)
+  (vector-ref (car item) 0))
+
+(define-integrable (tracked-item-updater item)
+  (vector-ref (car item) 2))
+
+(define-integrable (tracked-item-value item)
+  (cdr item))
 
 (define (define-item name initial-value updater)
   (let ((entry (vector name initial-value updater))
@@ -78,48 +419,23 @@ USA.
 (define defined-items
   '())
 
-(define (initial-item-bindings . inits)
-  (map (lambda (entry)
-	 (cons entry
-	       (let* ((name (vector-ref entry 0))
-		      (value (get-keyword-value inits name)))
-		 (if (default-object? value)
-		     (vector-ref entry 1)
-		     value))))
-       defined-items))
-
-(define (item-bindings-ref bindings name)
-  (let ((p
-	 (find (lambda (binding)
-		 (eq? (vector-ref (car binding) 0) name))
-	       bindings)))
-    (if (not p)
-	(error "Unknown item name:" name))
-    (cdr p)))
-
-(define (update-item-bindings bindings cpoint)
-  (map (lambda (binding)
-	 (cons (car binding)
-	       ((vector-ref (car binding) 2) (cdr binding) cpoint)))
-       bindings))
-
 (define (simple-item-updater filter)
-  (lambda (value cpoint)
-    (let ((keyword (filter cpoint)))
+  (lambda (value frame)
+    (let ((keyword (filter frame)))
       (if keyword
-	  (cpoint-frame-field-value cpoint keyword)
+	  (cframe-field-value frame keyword)
 	  value))))
 
 (define (stack-marker-type-filter marker-type)
-  (lambda (cpoint)
-    (and (cpoint-frame:stack-marker-of-type? marker-type cpoint)
+  (lambda (frame)
+    (and (cframe:stack-marker-of-type? marker-type frame)
 	 'marker-instance)))
 
 (define-item 'previous-type #f
-  (lambda (value cpoint)
-    (if (cpoint-frame:join-stacklets? cpoint)
+  (lambda (value frame)
+    (if (cframe:join-stacklets? frame)
 	value
-	(cpoint-frame-type cpoint))))
+	(cframe-type frame))))
 
 (define-item 'dynamic-state #f
   (simple-item-updater (stack-marker-type-filter %translate-to-state-point)))
@@ -129,200 +445,130 @@ USA.
 
 (define-item 'interrupt-mask #f
   (simple-item-updater
-   (lambda (cpoint)
-     (cond ((cpoint-frame:restore-interrupt-mask? cpoint)
+   (lambda (frame)
+     (cond ((cframe:restore-interrupt-mask? frame)
 	    'interrupt-mask)
-	   ((cpoint-frame:stack-marker-of-type? 'set-interrupt-enables! cpoint)
+	   ((cframe:stack-marker-of-type? 'set-interrupt-enables! frame)
 	    'marker-instance)
 	   (else #f)))))
 
 (define-item 'history #f
-  (lambda (value cpoint)
-    (if (cpoint-frame:restore-history? cpoint)
-	(history-transform (cpoint-frame-field-value cpoint 'history))
+  (lambda (value frame)
+    (if (cframe:restore-history? frame)
+	(history-transform (cframe-field-value frame 'history))
 	value)))
 
 (define-item 'next-restore-history 0
-  (lambda (value cpoint)
-    (if (cpoint-frame:restore-history? cpoint)
+  (lambda (value frame)
+    (if (cframe:restore-history? frame)
 	(begin
 	  (assert (or (fix:= value 0)
-		      (fix:= value (cpoint-frame-start cpoint))))
-	  (let ((index (cpoint-frame-next-restore-history cpoint)))
+		      (fix:= value (cframe-start frame))))
+	  (let ((index (cframe-next-restore-history frame)))
 	    (assert (or (fix:= index 0)
-			(fix:>= index (cpoint-frame-end cpoint))))
+			(fix:>= index (cframe-end frame))))
 	    index))
 	(begin
 	  (assert (or (fix:= value 0)
-		      (fix:>= value (cpoint-frame-end cpoint))))
+		      (fix:>= value (cframe-end frame))))
 	  value))))
 
-(define (cpoint-frame-next-restore-history cpoint)
-  (let ((offset
-	 (cpoint-frame-field-value cpoint 'previous-restore-history-offset)))
+(define (cframe-next-restore-history frame)
+  (let ((offset (cframe-field-value frame 'previous-restore-history-offset)))
     (if (fix:= offset 0)
 	0
-	(fix:- (cpoint-frame-cpoint-end cpoint) offset))))
+	(fix:- (cframe-cpoint-end frame) offset))))
 
-(define (pstate-previous-restore-history-offset pstate)
-  (let ((index (pstate-item-ref pstate 'next-restore-history)))
+(define (cframe-previous-restore-history-offset frame)
+  (let ((index (cframe-tracked-item-value frame 'next-restore-history)))
     (if (fix:= index 0)
 	0
-	(fix:- (cpoint-frame-cpoint-end (pstate-cpoint-frame pstate)) index))))
+	(fix:- (cframe-cpoint-end frame) index))))
 
 (define-item 'next-return-code #f
-  (lambda (value cpoint)
-    (if (cpoint-frame:compiled-code? cpoint)
+  (lambda (value frame)
+    (if (cframe-compiled-code? frame)
 	(begin
-	  (assert (or (not value) (fix:>= value (cpoint-frame-end cpoint))))
+	  (assert (or (not value) (fix:>= value (cframe-end frame))))
 	  value)
 	(begin
-	  (assert (or (not value) (fix:= value (cpoint-frame-start cpoint))))
-	  (if (cpoint-frame:return-to-compiled-code? cpoint)
-	      (let ((index (cpoint-frame-field-value cpoint 'last-return-code)))
+	  (assert (or (not value) (fix:= value (cframe-start frame))))
+	  (if (cframe:return-to-compiled-code? frame)
+	      (let ((index (cframe-field-value frame 'last-return-code)))
 		;; Check that index is in appropriate range.
 		(assert (fix:> index 0))
-		(assert (fix:< index (cpoint-frame-cpoint-end cpoint)))
-		(assert (fix:>= index (cpoint-frame-end cpoint)))
+		(assert (fix:< index (cframe-cpoint-end frame)))
+		(assert (fix:>= index (cframe-end frame)))
 		index)
 	      #f)))))
 
-;;;; Stack-frame abstraction
+(define (describe-hardware-trap-frame frame verbose? port)
 
-(define-record-type <stack-frame>
-    make-stack-frame
-    stack-frame*?
-  (pstate stack-frame-pstate)
-  (%next stack-frame-%next))
+  (define (write-hex value port)
+    (if (< value #x10)
+	(write value port)
+	(begin
+	  (write-string "#x" port)
+	  (write-string (number->string value #x10) port))))
 
-(define-print-method stack-frame*?
-  (standard-print-method 'stack-frame
-    (lambda (frame)
-      (list (cpoint-frame-type (stack-frame*/cpoint-frame frame))))))
-
-(define-pp-describer stack-frame*?
-  (lambda (frame)
-    (cons (list 'cpoint-frame (stack-frame*/cpoint-frame frame))
-	  (map (lambda (binding)
-		 (list (vector-ref (car binding) 0)
-		       (cdr binding)))
-	       (pstate-item-bindings (stack-frame-pstate frame))))))
-
-(define (stack-frame*/cpoint-frame frame)
-  (pstate-cpoint-frame (stack-frame-pstate frame)))
-
-(define (stack-frame*/next frame)
-  (force (stack-frame-%next frame)))
-
-(define (stack-frame*->continuation frame)
-  (let ((pstate (stack-frame-pstate frame)))
-    (make-continuation
-     (old-control-point (pstate-cpoint-frame-stream pstate)
-			(pstate-item-ref pstate 'interrupt-mask)
-			(pstate-item-ref pstate 'history)
-			(pstate-previous-restore-history-offset pstate))
-     (pstate-item-ref pstate 'dynamic-state)
-     (pstate-item-ref pstate 'block-thread-events?))))
-
-(define (stack-frame*/block-thread-events? frame)
-  (pstate-item-ref (stack-frame-pstate frame) 'block-thread-events?))
-
-(define (stack-frame*/compiled-return-address? frame)
-  (cpoint-frame:compiled-address? (stack-frame*/cpoint-frame frame)))
-
-(define (stack-frame*/compiled-code? frame)
-  (cpoint-frame:compiled-code? (stack-frame*/cpoint-frame frame)))
-
-(define (stack-frame*/dynamic-state frame)
-  (pstate-item-ref (stack-frame-pstate frame) 'dynamic-state))
-
-(define (stack-frame*/elements frame)
-  (cpoint-frame-raw (stack-frame*/cpoint-frame frame)))
-
-(define (stack-frame*/length frame)
-  (cpoint-frame-length (stack-frame*/cpoint-frame frame)))
-
-(define (stack-frame*/previous-type frame)
-  (pstate-item-ref (stack-frame-pstate frame) 'previous-type))
-
-(define (stack-frame*/reductions frame)
-  (let ((history (pstate-item-ref (stack-frame-pstate frame) 'history)))
-    (if (eq? history undefined-history)
-	'()
-	(history-reductions history))))
-
-(define undefined-history
-  (list 'undefined-history))
-
-(define (stack-frame*/ref frame index)
-  (guarantee non-negative-fixnum? index 'stack-frame*/ref)
-  (let-values (((frame* index*) (find-frame-with-index frame index)))
-    (if (not frame*)
-	(error:bad-range-argument index 'stack-frame*/ref))
-    (cpoint-frame-ref (stack-frame*/cpoint-frame frame*) index*)))
-
-(define (stack-frame*/repl-eval-boundary? frame)
-  (cpoint-frame:repl-eval-boundary? (stack-frame*/cpoint-frame frame)))
-
-(define (stack-frame*/resolve-stack-address frame address)
-  (let* ((offset (stack-address-offset address))
-	 (index
-	  (fix:- (let ((cpoint (stack-frame*/cpoint-frame frame)))
-		   (fix:- (cpoint-frame-cpoint-end cpoint)
-			  (cpoint-frame-start cpoint)))
-		 offset)))
-    (assert (fix:>= index 0))
-    (let-values (((frame* index*) (find-frame-with-index frame index)))
-      (if (not frame*)
-	  (error:bad-range-argument frame 'stack-frame*/resolve-stack-address))
-      (values frame* index*))))
-
-(define (find-frame-with-index frame index)
-  (let ((n (stack-frame*/length frame)))
-    (cond ((fix:< index n)
-	   (values frame index))
-	  ((stack-frame*/next frame)
-	   => (lambda (frame*)
-		(find-frame-with-index frame* (fix:- index n))))
-	  (else
-	   (values #f index)))))
-
-(define (stack-frame*/return-address frame)
-  (cpoint-frame-return-address (stack-frame*/cpoint-frame frame)))
-
-(define (stack-frame*/return-code frame)
-  (cpoint-frame-return-code (stack-frame*/cpoint-frame frame)))
-
-(define (stack-frame*/next-subproblem frame)
-  (if (stack-frame*/subproblem? frame)
-      (let ((frame* (stack-frame*/next frame)))
-	(and frame*
-	     (stack-frame*/skip-non-subproblems frame*)))
-      (stack-frame*/skip-non-subproblems frame)))
-
-(define (stack-frame*/skip-non-subproblems frame)
-  (if (stack-frame*/subproblem? frame)
-      frame
-      (let ((frame* (stack-frame*/next frame)))
-	(and frame*
-	     (stack-frame*/skip-non-subproblems frame*)))))
-
-(define (stack-frame*/subproblem? frame)
-  (let ((cpoint (stack-frame*/cpoint-frame frame)))
-    (or (cpoint-frame:subproblem? cpoint)
-	(cpoint-frame:repl-eval-boundary? cpoint))))
-
-(define (stack-frame*/hardware-trap? frame)
-  (cpoint-frame:hardware-trap? (stack-frame*/cpoint-frame frame)))
-(register-predicate! stack-frame*/hardware-trap? 'stack-frame*/hardware-trap
-		     '<= stack-frame*?)
-
-(define (stack-frame*/hardware-trap-code frame)
-  (guarantee stack-frame*/hardware-trap? frame 'stack-frame*/hardware-trap-code)
-  (cdr (cpoint-frame-field-value (stack-frame*/cpoint-frame frame) 'code-name)))
-
-(define (stack-frame*/field-name? frame name)
-  (cpoint-frame-field-name? (stack-frame*/cpoint-frame frame) name))
-
-(define (stack-frame*/field-value frame name)
-  (cpoint-frame-field-value (stack-frame*/cpoint-frame frame) name))
+  (let ((name (cframe-field-value frame 'signal-name))
+	(state (cframe-field-value frame 'recovery-state)))
+    (if (not name)
+	(write-string "User microcode reset" port)
+	(let ((code (cframe-field-value frame 'code-name)))
+	  (write-string "Hardware trap " port)
+	  (write-string name port)
+	  (write-string " (")
+	  (if (and (pair? code) (cdr code))
+	      (write-string (cdr code) port)
+	      (begin
+		(write-string "code = " port)
+		(write-hex (if (pair? code) (car code) code) port)))
+	  (write-string ")" port)))
+    (if verbose?
+	(let ((pc-info-1 (cframe-field-value frame 'pc-info-1))
+	      (pc-info-2 (cframe-field-value frame 'pc-info-2)))
+	  (case state
+	    ((0)				; unknown
+	     (write-string " at an unknown location." port))
+	    ((1)				; primitive
+	     (write-string " within " port)
+	     (write pc-info-1 port))
+	    ((2)				; compiled code
+	     (write-string " at offset " port)
+	     (write-hex pc-info-2 port)
+	     (newline port)
+	     (write-string "within " port)
+	     (let ((block pc-info-1))
+	       (write block port)
+	       (let-values (((filename index library)
+			     (compiled-code-block/filename-and-index block)))
+		 (declare (ignore index library))
+		 (if filename
+		     (begin
+		       (write-string " (" port)
+		       (write filename port)
+		       (write-string ")" port))))))
+	    ((3)				; probably compiled-code
+	     (write-string " at an unknown compiled-code location." port))
+	    ((4)				; builtin (i.e. hook)
+	     (let ((name ((ucode-primitive builtin-index->name 1) pc-info-1)))
+	       (if name
+		   (begin
+		     (write-string " in assembly-language utility " port)
+		     (write-string name port))
+		   (begin
+		     (write-string " in unknown assembly-language utility "
+				   port)
+		     (write-hex pc-info-1 port)))))
+	    ((5)				; utility
+	     (let ((name ((ucode-primitive utility-index->name 1) pc-info-1)))
+	       (if name
+		   (begin
+		     (write-string " in compiled-code utility " port)
+		     (write-string name port))
+		   (begin
+		     (write-string " in unknown compiled-code utility " port)
+		     (write-hex pc-info-1 port)))))
+	    (else
+	     (error "Unknown state:" state)))))))
