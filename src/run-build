@@ -1,17 +1,18 @@
-#!/bin/sh
-set -e
-MIT_SCHEME_EXE=${0}
-case ${MIT_SCHEME_EXE} in
-/*)
-    ;;
-*)
-    MIT_SCHEME_EXE=`pwd`/${MIT_SCHEME_EXE}
-    ;;
+#!/bin/bash
+set -eu
+SCRIPT=${0}
+case ${SCRIPT} in
+    /*)
+        HERE=$(dirname "${SCRIPT}")
+        ;;
+    *)
+        HERE=$(dirname "$(pwd)/${SCRIPT}")
+        ;;
 esac
-HERE=`dirname "${MIT_SCHEME_EXE}"`
-MITSCHEME_INF_DIRECTORY=${HERE}
+MIT_SCHEME_EXE=${HERE}/microcode/scheme
+MITSCHEME_INF_DIRECTORY=${HERE}/lib
 MITSCHEME_LIBRARY_PATH=${HERE}/lib
 export MIT_SCHEME_EXE
 export MITSCHEME_INF_DIRECTORY
 export MITSCHEME_LIBRARY_PATH
-exec "${HERE}"/microcode/scheme "${@}"
+exec "${MIT_SCHEME_EXE}" "${@}"
