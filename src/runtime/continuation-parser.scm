@@ -271,9 +271,6 @@ USA.
     (or (eq? type 'restore-history)
 	(eq? type 'restore-dont-copy-history))))
 
-(define (cframe:return-to-compiled-code? frame)
-  (eq? (cframe-type frame) 'return-to-compiled-code))
-
 (define (cframe:stack-marker? frame)
   (let ((type (cframe-type frame)))
     (or (eq? type 'stack-marker)
@@ -490,16 +487,15 @@ USA.
   (lambda (value frame)
     (if (cframe-compiled-code? frame)
 	(begin
-	  (assert (or (not value) (fix:>= value (cframe-end frame))))
+	  (assert (and value (fix:>= value (cframe-end frame))))
 	  value)
 	(begin
 	  (assert (or (not value) (fix:= value (cframe-start frame))))
-	  (if (cframe:return-to-compiled-code? frame)
-	      (let ((index (cframe-field-value frame 'last-return-code)))
-		;; Check that index is in appropriate range.
-		(assert (fix:> index 0))
+	  (if (eq? (cframe-type frame) 'reenter-compiled-code)
+	      (let ((index
+		     (fix:+ (cframe-end frame)
+			    (cframe-field-value frame 'last-return-code))))
 		(assert (fix:< index (cframe-cpoint-end frame)))
-		(assert (fix:>= index (cframe-end frame)))
 		index)
 	      #f)))))
 
