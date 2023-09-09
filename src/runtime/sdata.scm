@@ -50,6 +50,11 @@ USA.
     manifest-nmv?
   (datum manifest-nmv-datum))
 
+(define-print-method manifest-nmv?
+  (standard-print-method 'manifest-nmv
+    (lambda (m-nmv)
+      (list (manifest-nmv-datum m-nmv)))))
+
 (define (%safe-memory-ref object index)
   (let ((type (primitive-type-ref object index)))
     (cond ((fix:= type (ucode-type reference-trap))
@@ -69,14 +74,45 @@ USA.
 	 (primitive-type-set! object index (ucode-type manifest-nm-vector)))
 	(else
 	 (primitive-object-set! object index value))))
+
+(define (safe-cons car cdr)
+  (let ((pair (cons #f #f)))
+    (%safe-memory-set! pair 0 car)
+    (%safe-memory-set! pair 1 cdr)
+    pair))
+
+(define-integrable (%safe-car pair)
+  (%safe-memory-ref pair 0))
+
+(define-integrable (%safe-cdr pair)
+  (%safe-memory-ref pair 1))
+
+(define-integrable (%safe-set-car! pair value)
+  (%safe-memory-set! pair 0 value))
+
+(define-integrable (%safe-set-cdr! pair value)
+  (%safe-memory-set! pair 1 value))
+
+(define (safe-car pair)
+  (guarantee pair? pair 'safe-car)
+  (%safe-memory-ref pair 0))
+
+(define (safe-cdr pair)
+  (guarantee pair? pair 'safe-cdr)
+  (%safe-memory-ref pair 1))
+
+(define (safe-set-car! pair value)
+  (guarantee pair? pair 'safe-set-car!)
+  (%safe-memory-set! pair 0 value))
+
+(define (safe-set-cdr! pair value)
+  (guarantee pair? pair 'safe-set-cdr!)
+  (%safe-memory-set! pair 1 value))
 
 (define (safe-system-pair-cons type car cdr)
   (if (not (eq? 'pair (type-code->gc-type type)))
       (error:bad-range-argument type 'safe-system-pair-cons))
-  (let ((pair (cons #f #f)))
-    (%safe-memory-set! pair 0 car)
-    (%safe-memory-set! pair 1 cdr)
-    (object-new-type type pair)))
+  (object-new-type type (safe-cons car cdr)))
 
 (define (safe-system-pair-car pair)
   (guarantee system-pair? pair 'safe-system-pair-car)
@@ -132,6 +168,38 @@ USA.
 (define (safe-system-triple-set-third! triple value)
   (guarantee system-triple? triple 'safe-system-triple-set-third!)
   (%safe-memory-set! triple 2 value))
+
+(define-integrable (%safe-vector-ref vector index)
+  (%safe-memory-ref vector (fix:+ 1 index)))
+
+(define-integrable (%safe-vector-set! vector index value)
+  (%safe-memory-set! vector (fix:+ 1 index) value))
+
+(define (%safe-vector->list vector start end)
+  (fold-right (lambda (index list)
+		(cons (%safe-vector-ref vector index) list))
+	      '()
+	      (iota (fix:- end start))))
+
+(define (safe-vector-ref vector index)
+  (guarantee vector? vector 'safe-vector-ref)
+  (guarantee non-negative-fixnum? index 'safe-vector-ref)
+  (if (not (fix:< index (vector-length vector)))
+      (error:bad-range-argument index 'safe-vector-ref))
+  (%safe-vector-ref vector index))
+
+(define (safe-vector-set! vector index value)
+  (guarantee vector? vector 'safe-vector-set!)
+  (guarantee non-negative-fixnum? index 'safe-vector-set!)
+  (if (not (fix:< index (vector-length vector)))
+      (error:bad-range-argument index 'safe-vector-set!))
+  (%safe-vector-set! vector index value))
+
+(define (safe-vector->list vector #!optional start end)
+  (guarantee vector? vector 'safe-vector->list)
+  (let ((end (fix:end-index end (vector-length vector) 'safe-vector->list))
+	(start (fix:start-index start end 'safe-vector->list)))
+    (%safe-vector->list vector start end)))
 
 (define (safe-system-vector-cons type length)
   (if (not (eq? 'vector (type-code->gc-type type)))
@@ -143,11 +211,19 @@ USA.
   (guarantee non-negative-fixnum? index 'safe-system-vector-ref)
   (if (not (fix:< index (system-vector-length vector)))
       (error:bad-range-argument index 'safe-system-vector-ref))
-  (%safe-memory-ref vector (fix:+ 1 index)))
+  (%safe-vector-ref vector index))
 
 (define (safe-system-vector-set! vector index value)
   (guarantee system-vector? vector 'safe-system-vector-set!)
   (guarantee non-negative-fixnum? index 'safe-system-vector-set!)
   (if (not (fix:< index (system-vector-length vector)))
       (error:bad-range-argument index 'safe-system-vector-set!))
-  (%safe-memory-set! vector (fix:+ 1 index) value))
+  (%safe-vector-set! vector index value))
+
+(define (safe-system-vector->list vector #!optional start end)
+  (guarantee system-vector? vector 'safe-system-vector->list)
+  (let ((end
+	 (fix:end-index end (system-vector-length vector)
+			'safe-system-vector->list))
+	(start (fix:start-index start end 'safe-system-vector->list)))
+    (%safe-vector->list vector start end)))

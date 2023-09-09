@@ -474,7 +474,7 @@ USA.
 
     (define (try-columns n-columns)
       (let* ((nodev (list->vector nodes))
-	     (last-size (node-size (vector-ref nodev (-1+ n-nodes)))))
+	     (last-size (node-size (safe-vector-ref nodev (-1+ n-nodes)))))
 
 	(define (fit? n-cols widths)
 	  ;; This must check that all rows fit.
@@ -491,7 +491,7 @@ USA.
 		     (width 0))
 	    (if (>= posn n-nodes)
 		width
-		(let ((next (node-size (vector-ref nodev posn))))
+		(let ((next (node-size (safe-vector-ref nodev posn))))
 		  (loop (+ posn step)
 			(if (> next width) next width))))))
 
@@ -779,7 +779,7 @@ USA.
 	   (if (zero? (vector-length object))
 	       (walk-custom object list-depth)
 	       (make-prefix-node "#"
-				 (walk-pair (vector->list object)
+				 (walk-pair (safe-vector->list object)
 					    list-depth))))
 	  ((primitive-procedure? object)
 	   (if (get-param:pp-primitives-by-name?)
@@ -854,7 +854,7 @@ USA.
 	((pretty-printer-highlight? object)
 	 #t)
 	((vector? object)
-	 (partially-highlighted? (vector->list object)))
+	 (partially-highlighted? (safe-vector->list object)))
 	(else
 	 #f)))
 
@@ -932,7 +932,7 @@ USA.
 	     (make-prefix-node
 	      "#"
 	      (walk-vector-terminating
-	       (vector->list object)
+	       (safe-vector->list object)
 	       half-pointer/queue list-depth))))
 	((primitive-procedure? object)
 	 (if (get-param:pp-primitives-by-name?)

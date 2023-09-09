@@ -4615,6 +4615,11 @@ USA.
   (export (runtime)
 	  manifest-nmv-datum
 	  manifest-nmv?
+	  safe-car
+	  safe-cdr
+	  safe-cons
+	  safe-set-car!
+	  safe-set-cdr!
 	  safe-system-pair-car
 	  safe-system-pair-cdr
 	  safe-system-pair-cons
@@ -4627,10 +4632,14 @@ USA.
 	  safe-system-triple-set-second!
 	  safe-system-triple-set-third!
 	  safe-system-triple-third
+	  safe-system-vector->list
 	  safe-system-vector-cons
 	  safe-system-vector-ref
 	  safe-system-vector-set!
 	  safe-triple-cons
+	  safe-vector->list
+	  safe-vector-ref
+	  safe-vector-set!
 	  system-pair?
 	  system-triple?
 	  system-vector?))
