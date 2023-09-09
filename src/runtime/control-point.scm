@@ -207,15 +207,29 @@ USA.
     make-cpoint-frame
     cpoint-frame?
   (type cpoint-frame-type)
-  (index cpoint-frame-start)		;index of frame within control point
+  (start cpoint-frame-start)		;index of frame within control point
   (cpoint-end cpoint-frame-cpoint-end)	;length of control point
   (raw cpoint-frame-raw)
   (info cpoint-frame-info)
   (fields cpoint-frame-fields))
 
-(define (cpoint-frame-end cpoint)
-  (fix:+ (cpoint-frame-start cpoint)
-	 (cpoint-frame-length cpoint)))
+(define-print-method cpoint-frame?
+  (standard-print-method 'cpoint-frame
+    (lambda (frame)
+      (list (cpoint-frame-type frame)))))
+
+(define-pp-describer cpoint-frame?
+  (lambda (frame)
+    (cons* (list 'start (cpoint-frame-start frame))
+	   (list 'length (cpoint-frame-length frame))
+	   (list 'raw (cpoint-frame-raw frame))
+	   (map (lambda (field)
+		  (list (car field) (cdr field)))
+		(cpoint-frame-fields frame)))))
+
+(define (cpoint-frame-end frame)
+  (fix:+ (cpoint-frame-start frame)
+	 (cpoint-frame-length frame)))
 
 (define (cpoint-frame-length frame)
   (vector-length (cpoint-frame-raw frame)))
@@ -305,7 +319,7 @@ USA.
 (define (old-control-point frames interrupt-mask history
 			   previous-restore-history-offset)
   (make-control-point
-   (old-raw-frames (cpoint-frames-raw-prefix frames)
+   (old-raw-frames (cpoint-frames-raw-prefix (stream->list frames))
 		   interrupt-mask history previous-restore-history-offset)))
 
 (define (old-raw-frames frames interrupt-mask history
@@ -385,7 +399,8 @@ USA.
 		     (write-string " in assembly-language utility " port)
 		     (write-string name port))
 		   (begin
-		     (write-string " in unknown assembly-language utility " port)
+		     (write-string " in unknown assembly-language utility "
+				   port)
 		     (write-hex pc-info-1 port)))))
 	    ((5)				; utility
 	     (let ((name ((ucode-primitive utility-index->name 1) pc-info-1)))

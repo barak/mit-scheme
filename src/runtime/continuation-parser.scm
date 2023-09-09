@@ -35,30 +35,30 @@ USA.
 (define-record-type <pstate>
     make-pstate
     pstate?
-  (cpoint-frames pstate-cpoint-frames)
+  (cpoint-frames pstate-cpoint-frame-stream)
   (item-bindings pstate-item-bindings))
 
 (define (continuation->stack-frame* continuation)
   (parse-one-frame
    (make-pstate
-    (control-point-frames (continuation/control-point continuation))
+    (control-point-frame-stream (continuation/control-point continuation))
     (initial-item-bindings
      'dynamic-state (continuation/dynamic-state continuation)
      'block-thread-events? (continuation/block-thread-events? continuation)))))
 
 (define (parse-one-frame pstate)
-  (let ((cpoints (pstate-cpoint-frames pstate)))
-    (and (pair? cpoints)
+  (let ((cpoints (pstate-cpoint-frame-stream pstate)))
+    (and (stream-pair? cpoints)
 	 (make-stack-frame
 	  pstate
 	  (delay
 	    (parse-one-frame
-	     (make-pstate (cdr cpoints)
+	     (make-pstate (stream-cdr cpoints)
 			  (update-item-bindings (pstate-item-bindings pstate)
-						(car cpoints)))))))))
+						(stream-car cpoints)))))))))
 
 (define (pstate-cpoint-frame pstate)
-  (car (pstate-cpoint-frames pstate)))
+  (stream-car (pstate-cpoint-frame-stream pstate)))
 
 (define (pstate-item-ref pstate name)
   (item-bindings-ref (pstate-item-bindings pstate) name))
@@ -195,6 +195,19 @@ USA.
   (pstate stack-frame-pstate)
   (%next stack-frame-%next))
 
+(define-print-method stack-frame*?
+  (standard-print-method 'stack-frame
+    (lambda (frame)
+      (list (cpoint-frame-type (stack-frame*/cpoint-frame frame))))))
+
+(define-pp-describer stack-frame*?
+  (lambda (frame)
+    (cons (list 'cpoint-frame (stack-frame*/cpoint-frame frame))
+	  (map (lambda (binding)
+		 (list (vector-ref (car binding) 0)
+		       (cdr binding)))
+	       (pstate-item-bindings (stack-frame-pstate frame))))))
+
 (define (stack-frame*/cpoint-frame frame)
   (pstate-cpoint-frame (stack-frame-pstate frame)))
 
@@ -204,7 +217,7 @@ USA.
 (define (stack-frame*->continuation frame)
   (let ((pstate (stack-frame-pstate frame)))
     (make-continuation
-     (old-control-point (pstate-cpoint-frames pstate)
+     (old-control-point (pstate-cpoint-frame-stream pstate)
 			(pstate-item-ref pstate 'interrupt-mask)
 			(pstate-item-ref pstate 'history)
 			(pstate-previous-restore-history-offset pstate))
@@ -243,14 +256,10 @@ USA.
 
 (define (stack-frame*/ref frame index)
   (guarantee non-negative-fixnum? index 'stack-frame*/ref)
-  (let loop ((frame frame) (i index))
-    (let ((n (stack-frame*/length frame)))
-      (if (fix:< i n)
-	  (cpoint-frame-ref (stack-frame*/cpoint-frame frame) i)
-	  (let ((frame* (stack-frame*/next frame)))
-	    (if (not frame*)
-		(error:bad-range-argument i 'stack-frame*/ref))
-	    (loop frame (fix:- i n)))))))
+  (let-values (((frame* index*) (find-frame-with-index frame index)))
+    (if (not frame*)
+	(error:bad-range-argument index 'stack-frame*/ref))
+    (cpoint-frame-ref (stack-frame*/cpoint-frame frame*) index*)))
 
 (define (stack-frame*/repl-eval-boundary? frame)
   (cpoint-frame:repl-eval-boundary? (stack-frame*/cpoint-frame frame)))
@@ -263,11 +272,20 @@ USA.
 			  (cpoint-frame-start cpoint)))
 		 offset)))
     (assert (fix:>= index 0))
-    (let loop ((frame frame) (index index))
-      (let ((length (stack-frame/length frame)))
-	(if (fix:< index length)
-	    (values frame index)
-	    (loop (stack-frame/next frame) (fix:- index length)))))))
+    (let-values (((frame* index*) (find-frame-with-index frame index)))
+      (if (not frame*)
+	  (error:bad-range-argument frame 'stack-frame*/resolve-stack-address))
+      (values frame* index*))))
+
+(define (find-frame-with-index frame index)
+  (let ((n (stack-frame*/length frame)))
+    (cond ((fix:< index n)
+	   (values frame index))
+	  ((stack-frame*/next frame)
+	   => (lambda (frame*)
+		(find-frame-with-index frame* (fix:- index n))))
+	  (else
+	   (values #f index)))))
 
 (define (stack-frame*/return-address frame)
   (cpoint-frame-return-address (stack-frame*/cpoint-frame frame)))
