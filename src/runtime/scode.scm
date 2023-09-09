@@ -364,13 +364,15 @@ USA.
   (object-type? (ucode-type combination) object))
 (register-predicate! scode-combination? 'scode-combination)
 
+(define (scode-combination-element combination index)
+  (guarantee scode-combination? combination 'scode-combination-element)
+  (safe-system-vector-ref combination index))
+
 (define (scode-combination-operator combination)
-  (guarantee scode-combination? combination 'scode-combination-operator)
-  (safe-system-vector-ref combination 0))
+  (scode-combination-element combination 0))
 
 (define (scode-combination-operand combination index)
-  (guarantee scode-combination? combination 'scode-combination-operand)
-  (safe-system-vector-ref combination (fix:+ 1 index)))
+  (scode-combination-element combination (fix:+ 1 index)))
 
 (define (scode-combination-operands combination)
   (guarantee scode-combination? combination 'scode-combination-operands)

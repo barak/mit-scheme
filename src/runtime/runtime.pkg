@@ -4593,6 +4593,7 @@ USA.
 	  scode-assignment?
 	  scode-block-declaration-text
 	  scode-block-declaration?
+	  scode-combination-element
 	  scode-combination-operand
 	  scode-combination-operands
 	  scode-combination-operator
