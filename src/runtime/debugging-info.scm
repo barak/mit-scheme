@@ -46,23 +46,31 @@ USA.
   ((printer-procedure printer) verbose? port))
 
 (define-record-type <undefined-expression>
-    undefined-expression
+    make-undefined-expression
     debugging-info*/undefined-expression?)
 
-(define-record-type <unknown-expression>
-    unknown-expression
-    debugging-info*/unknown-expression?)
-
-(define-record-type <compiled-code>
-    compiled-code
-    debugging-info*/compiled-code?)
+(define undefined-exp (make-undefined-expression))
 
 (define-record-type <undefined-environment>
-    undefined-environment
+    make-undefined-environment
     debugging-info*/undefined-environment?)
 
-(define (cpoint-frame-debugging-info* cpoint)
-  ((get-frame-generator cpoint) cpoint))
+(define undefined-env (make-undefined-environment))
+
+(define-record-type <unknown-expression>
+    make-unknown-expression
+    debugging-info*/unknown-expression?)
+
+(define unknown-exp (make-unknown-expression))
+
+(define-record-type <compiled-code>
+    make-compiled-code
+    debugging-info*/compiled-code?)
+
+(define compiled-code (make-compiled-code))
+
+(define (stack-frame*/debugging-info* frame)
+  ((get-frame-generator frame) frame))
 
 (define (define-return-code-generator type generator)
   (alist-table-set! return-code-generators type generator))
@@ -70,19 +78,20 @@ USA.
 (define (define-return-type-generator frame-type generator)
   (alist-table-set! return-type-generators frame-type generator))
 
-(define (get-frame-generator cpoint)
-  (or (let ((code (cpoint-frame-return-code cpoint)))
-	(and code
-	     (alist-table-ref return-code-generators
-			      (microcode-return/code->name code)
-			      #f)))
-      (alist-table-ref return-type-generators
-		       (cpoint-frame-return-code cpoint))))
+(define (get-frame-generator frame)
+  (let ((cpoint (stack-frame*/cpoint-frame frame)))
+    (or (let ((code (cpoint-frame-return-code cpoint)))
+	  (and code
+	       (alist-table-ref return-code-generators
+				(microcode-return/code->name code)
+				#f)))
+	(alist-table-ref return-type-generators
+			 (cpoint-frame-return-type cpoint)))))
 
 (define return-code-generators (alist-table eq?))
 (define return-type-generators (alist-table eq?))
 
-(define (select-subexpression exp)
+(define (select-subexp exp)
   (cond ((scode-access? exp) (scode-access-environment exp))
 	((scode-assignment? exp) (scode-assignment-value exp))
 	((scode-conditional? exp) (scode-conditional-predicate exp))
@@ -91,58 +100,111 @@ USA.
 	((scode-sequence? exp) (scode-sequence-first exp))
 	(else (error "Can't select subexpression:" exp))))
 
-(define (generate-null cpoint)
-  (declare (ignore cpoint))
-  (make-debugging-info (undefined-expression)
-		       (undefined-environment)
-		       (undefined-expression)))
+(define (validate-subexp subexp frame)
+  (if (eq? (stack-frame*/previous-type frame) 'pop-return-error)
+      undefined-exp
+      subexp))
 
-(define (generate-default cpoint)
+(define (generate-null frame)
+  (declare (ignore frame))
+  (make-debugging-info undefined-exp
+		       undefined-env
+		       undefined-exp))
+
+(define (generate-default frame)
   (make-debugging-info (make-printer
 			(lambda (verbose? port)
 			  (write-string "Unknown " port)
 			  (if verbose?
-			      (pp cpoint port)
-			      (write cpoint port))))
-		       (undefined-environment)
-		       (undefined-expression)))
+			      (pp frame port)
+			      (write frame port))))
+		       undefined-env
+		       undefined-exp))
 
-(define (generate-application cpoint)
+(define (generate-application frame)
   (make-debugging-info (make-scode-combination
-			(cpoint-frame-field-value cpoint 'procedure)
-			(cpoint-frame-field-value cpoint 'arguments))
-		       (undefined-environment)
-		       (undefined-expression)))
+			(stack-frame*/field-value frame 'procedure)
+			(stack-frame*/field-value frame 'arguments))
+		       undefined-env
+		       undefined-exp))
+
+(define (generate-compiled-address frame)
+  (or (let ((entry (stack-frame*/return-address frame)))
+	(and entry
+	     (let ((dbg (compiled-entry/dbg-object entry)))
+	       (and dbg
+		    (cond ((dbg-continuation? dbg)
+			   (gen-cc-continuation dbg frame))
+			  ((dbg-procedure? dbg)
+			   (gen-cc-procedure dbg frame))
+			  (else #f))))))
+      (generate-default frame)))
 
-;; TODO: Needs to look at debugging information in the compiled code.
-(define (generate-compiled-address cpoint)
-  (if (cpoint-frame-field-name? cpoint 'procedure)
-      (generate-application cpoint)
-      (generate-default cpoint)))
+(define (gen-cc-continuation dbg frame)
+  (let ((source (dbg-continuation/source-code dbg)))
+    (and (vector? source)
+	 (fix:>= (vector-length source) 2)
+	 (let ((exp (vector-ref source 1)))
+	   (case (vector-ref source 0)
+	     ((access-continue
+	       assignment-continue
+	       conditional-decide
+	       conditional-predicate
+	       definition-continue
+	       sequence-continue)
+	      (make-debugging-info
+	       exp
+	       (stack-frame*/environment frame undefined-env)
+	       (validate-subexp (select-subexp exp) frame)))
+	     ((combination-operand)
+	      (make-debugging-info
+	       exp
+	       (stack-frame*/environment frame undefined-env)
+	       (validate-subexp
+		(scode-combination-element exp (vector-ref source 2))
+		frame)))
+	     ((combination-element
+	       conditional-predicate
+	       sequence-element)
+	      (make-debugging-info exp
+				   undefined-env
+				   (vector-ref source 2)))
+	     (else #f))))))
+
+(define (gen-cc-procedure dbg frame)
+  (make-debugging-info (scode-lambda-body (dbg-procedure/source-code dbg))
+		       (and (dbg-procedure/block dbg)
+			    (stack-frame*/environment frame undefined-env))
+		       undefined-exp))
+
+;; TODO: requires changes in "environment.scm".
+(define (stack-frame*/environment frame undefined-env)
+  (declare (ignore frame))
+  undefined-env)
 
 ;; type: with-arg-subproblem
 
 (define-return-code-generator 'access-continue
-  (lambda (cpoint)
-    (let ((exp (cpoint-frame-field-value cpoint 'expression)))
+  (lambda (frame)
+    (let ((exp (stack-frame*/field-value frame 'expression)))
       (make-debugging-info exp
-			   (undefined-environment)
-			   (select-subexpression exp)))))
+			   undefined-env
+			   (validate-subexp (select-subexp exp) frame)))))
 
 ;; type: exp+env
 
 (define-return-type-generator 'exp+env
-  (lambda (cpoint)
-    (let ((exp (cpoint-frame-field-value cpoint 'expression)))
+  (lambda (frame)
+    (let ((exp (stack-frame*/field-value frame 'expression)))
       (make-debugging-info exp
-			   (cpoint-frame-field-value cpoint 'environment)
-			   (select-subexpression exp)))))
+			   (stack-frame*/field-value frame 'environment)
+			   (validate-subexp (select-subexp exp) frame)))))
 
 (define-return-code-generator 'eval-error
-  (lambda (cpoint)
-    (make-debugging-info (cpoint-frame-field-value cpoint 'expression)
-			 (cpoint-frame-field-value cpoint 'environment)
-			 (undefined-expression))))
+  (lambda (frame)
+    (make-debugging-info (stack-frame*/field-value frame 'expression)
+			 (stack-frame*/field-value frame 'environment)
+			 undefined-exp)))
 
 ;; type: apply
 
@@ -157,34 +219,34 @@ USA.
 ;; type: return-to-compiled-code-subproblem
 
 (define-return-code-generator 'compiler-assignment-trap-restart
-  (lambda (cpoint)
+  (lambda (frame)
     (make-debugging-info
-     (make-scode-assignment (cpoint-frame-field-value cpoint 'variable)
-			    (cpoint-frame-field-value cpoint 'value))
-     (cpoint-frame-field-value cpoint 'environment)
-     (undefined-expression))))
+     (make-scode-assignment (stack-frame*/field-value frame 'variable)
+			    (stack-frame*/field-value frame 'value))
+     (stack-frame*/field-value frame 'environment)
+     undefined-exp)))
 
 (define-return-code-generator 'compiler-error-restart
-  (lambda (cpoint)
-    (let ((primitive (cpoint-frame-field-value cpoint 'primitive)))
+  (lambda (frame)
+    (let ((primitive (stack-frame*/field-value frame 'primitive)))
       (if (primitive-procedure? primitive)
 	  (make-debugging-info
 	   (make-scode-combination (make-scode-variable 'apply)
-				   (list primitive (unknown-expression)))
-	   (undefined-environment)
-	   (undefined-expression))
-	  (generate-default cpoint)))))
+				   (list primitive unknown-exp))
+	   undefined-env
+	   undefined-exp)
+	  (generate-default frame)))))
 
 (define-return-code-generator 'compiler-interrupt-restart
   generate-compiled-address)
 
-(define (generate-compiler-lookup-apply-trap-restart cpoint)
+(define (generate-compiler-lookup-apply-trap-restart frame)
   (make-debugging-info
    (make-scode-combination
-    (make-scode-variable (cpoint-frame-field-value cpoint 'variable))
-    (cpoint-frame-field-value cpoint 'arguments))
-   (cpoint-frame-field-value cpoint 'environment)
-   (undefined-expression)))
+    (make-scode-variable (stack-frame*/field-value frame 'variable))
+    (stack-frame*/field-value frame 'arguments))
+   (stack-frame*/field-value frame 'environment)
+   undefined-exp))
 
 (define-return-code-generator 'compiler-lookup-apply-trap-restart
   generate-compiler-lookup-apply-trap-restart)
@@ -193,25 +255,25 @@ USA.
   generate-compiler-lookup-apply-trap-restart)
 
 (define-return-code-generator 'compiler-reference-trap-restart
-  (lambda (cpoint)
+  (lambda (frame)
     (make-debugging-info
-     (make-scode-variable (cpoint-frame-field-value cpoint 'variable))
-     (cpoint-frame-field-value cpoint 'environment)
-     (undefined-expression))))
+     (make-scode-variable (stack-frame*/field-value frame 'variable))
+     (stack-frame*/field-value frame 'environment)
+     undefined-exp)))
 
 (define-return-code-generator 'compiler-safe-reference-trap-restart
-  (lambda (cpoint)
+  (lambda (frame)
     (make-debugging-info
-     (make-scode-variable (cpoint-frame-field-value cpoint 'variable) #t)
-     (cpoint-frame-field-value cpoint 'environment)
-     (undefined-expression))))
+     (make-scode-variable (stack-frame*/field-value frame 'variable) #t)
+     (stack-frame*/field-value frame 'environment)
+     undefined-exp)))
 
 (define-return-code-generator 'compiler-unassigned?-trap-restart
-  (lambda (cpoint)
+  (lambda (frame)
     (make-debugging-info
-     (make-scode-unassigned? (cpoint-frame-field-value cpoint 'variable))
-     (cpoint-frame-field-value cpoint 'environment)
-     (undefined-expression))))
+     (make-scode-unassigned? (stack-frame*/field-value frame 'variable))
+     (stack-frame*/field-value frame 'environment)
+     undefined-exp)))
 
 (define-return-code-generator 'reenter-compiled-code
   generate-null)
@@ -219,21 +281,23 @@ USA.
 ;;; other types
 
 (define-return-type-generator 'combination-save
-  (lambda (cpoint)
-    (let ((exp (cpoint-frame-field-value cpoint 'expression))
-	  (arg (fix:- (cpoint-frame-field-value cpoint 'number-of-blanks) 1)))
+  (lambda (frame)
+    (let ((exp (stack-frame*/field-value frame 'expression))
+	  (arg (fix:- (stack-frame*/field-value frame 'number-of-blanks) 1)))
       (make-debugging-info exp
-			   (cpoint-frame-field-value cpoint 'environment)
-			   (scode-combination-operand exp arg)))))
+			   (stack-frame*/field-value frame 'environment)
+			   (validate-subexp (scode-combination-operand exp arg)
+					    frame)))))
 
 (define-return-type-generator 'hardware-trap
-  (lambda (cpoint)
+  (lambda (frame)
     (make-debugging-info
      (make-printer
       (lambda (verbose? port)
-	(describe-cpoint-hardware-trap-frame cpoint verbose? port)))
-     (undefined-environment)
-     (undefined-expression))))
+	(describe-cpoint-hardware-trap-frame
+	 (stack-frame*/cpoint-frame frame) verbose? port)))
+     undefined-env
+     undefined-exp)))
 
 (define-return-type-generator 'compiled-address
   generate-compiled-address)

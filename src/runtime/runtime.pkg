@@ -2027,9 +2027,10 @@ USA.
 	  stack-frame*/compiled-code?
 	  stack-frame*/compiled-return-address?
 	  stack-frame*/cpoint-frame
-	  stack-frame*/debugging-info*
 	  stack-frame*/dynamic-state
 	  stack-frame*/elements
+	  stack-frame*/field-name?
+	  stack-frame*/field-value
 	  stack-frame*/hardware-trap-code
 	  stack-frame*/hardware-trap?
 	  stack-frame*/length
@@ -2090,7 +2091,6 @@ USA.
   (files "debugging-info")
   (parent (runtime))
   (export (runtime)
-	  cpoint-frame-debugging-info*
 	  debugging-info*/apply-printer
 	  debugging-info*/compiled-code?
 	  debugging-info*/environment
@@ -2100,7 +2100,8 @@ USA.
 	  debugging-info*/undefined-environment?
 	  debugging-info*/undefined-expression?
 	  debugging-info*/unknown-expression?
-	  debugging-info*?))
+	  debugging-info*?
+	  stack-frame*/debugging-info*))
 
 (define-package (runtime date/time)
   (files "datime")
