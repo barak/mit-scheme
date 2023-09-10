@@ -1,1 +1,1 @@
-(lambda () (or (error "foo") 1))
+(list (lambda () (or (error "foo") 1)))

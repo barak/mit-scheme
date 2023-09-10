@@ -1,1 +1,1 @@
-(lambda () (access the-name (error "foo")))
+(list (lambda () (access the-name (error "foo"))))

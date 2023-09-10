@@ -345,6 +345,12 @@ static field_defn_t compiled_code_fields [] =
     { 1, "last-return-code" }
   };
 
+static field_defn_t combination_apply_fields [] =
+  {
+    { 1, "expression" },
+    { 4, "arguments" }
+  };
+
 static field_defn_t combination_save_fields [] =
   {
     { 1, "expression" },
@@ -426,7 +432,7 @@ make_frame_type_info_table (void)
   FTIE (RFT_EXP_ENV, true, true, 2, exp_env_fields);
   FTIE (RFT_HISTORY, false, false, 2, history_fields);
   FTIE (RFT_APPLY, true, false, 2, apply_fields);
-  FTIE (RFT_COMBINATION_APPLY, true, true, 2, apply_fields);
+  FTIE (RFT_COMBINATION_APPLY, true, true, 2, combination_apply_fields);
   FTIE (RFT_COMPILED_CODE, false, true, 1, compiled_code_fields);
   FTIE (RFT_COMPILED_CODE_SUBPROBLEM, true, true, 1, compiled_code_fields);
   FTIE (RFT_COMPILED_ADDRESS, true, false, 0, 0);

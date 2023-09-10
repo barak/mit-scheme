@@ -1,2 +1,2 @@
 (define the-name)
-(lambda () (set! the-name (error "foo")) unassigned)
+(list (lambda () (set! the-name (error "foo")) unassigned))

@@ -90,6 +90,14 @@ USA.
 
       (let ((frame-type-name (vector-ref info 0)))
 	(case frame-type-name
+	  ((return-to-interpreter)
+	   (make frame-type-name))
+	  ((cc-restore-interrupt-mask)
+	   (make frame-type-name (elt 0)))
+	  ((exp+env history stack-marker cc-stack-marker)
+	   (make return-code-name (elt 0) (elt 1)))
+	  ((apply combination-apply cc-internal-apply cc-bkpt cc-invocation)
+	   (make return-code-name (elt 0) (rest-elts 1)))
 	  ((with-arg with-arg-subproblem)
 	   (let ((name
 		  (case return-code-name
@@ -105,10 +113,6 @@ USA.
 		 (make return-code-name
 		       (cons name (vector-ref raw (val-loc 0))))
 		 (make return-code-name))))
-	  ((exp+env history stack-marker)
-	   (make return-code-name (elt 0) (elt 1)))
-	  ((apply combination-apply)
-	   (make return-code-name (elt 0) (rest-elts 1)))
 	  ((return-to-compiled-code)
 	   (apply make return-code-name (elt 0)
 		  (return-to-cc-extra-fields return-code-name raw)))
@@ -128,14 +132,6 @@ USA.
 	  ((hardware-trap)
 	   (make return-code-name (elt 0) (elt 1) (elt 2) (elt 3)
 		 (elt 4) (elt 5) (elt 6) (elt 7)))
-	  ((return-to-interpreter)
-	   (make frame-type-name))
-	  ((cc-internal-apply cc-bkpt cc-invocation)
-	   (make frame-type-name (elt 0) (rest-elts 1)))
-	  ((cc-restore-interrupt-mask)
-	   (make frame-type-name (elt 0)))
-	  ((cc-stack-marker)
-	   (make frame-type-name (elt 0) (elt 1)))
 	  (else
 	   (error "Unknown return-frame-type code:" frame-type-name)))))))
 
@@ -234,11 +230,14 @@ USA.
 (define (cframe-history-subproblem? frame)
   (vector-ref (cframe-info frame) 2))
 
-(define (cframe-field-value frame name)
+(define (cframe-field-value frame name #!optional default)
   (let ((p (assq name (cframe-fields frame))))
-    (if (not p)
-	(error "Unknown frame field name:" name))
-    (cdr p)))
+    (if p
+	(cdr p)
+	(begin
+	  (if (default-object? default)
+	      (error "Unknown frame field name:" name))
+	  default))))
 
 (define (cframe-field-name? frame name)
   (and (assq name (cframe-fields frame)) #t))

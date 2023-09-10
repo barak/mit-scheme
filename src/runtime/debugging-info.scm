@@ -214,7 +214,11 @@ USA.
 ;; type: combination-apply
 
 (define-return-type-generator 'combination-apply
-  generate-null)
+  (lambda (frame)
+    (let ((exp (cframe-field-value frame 'expression)))
+      (make-debugging-info exp
+			   undefined-env
+			   (scode-combination-operator exp)))))
 
 ;; type: return-to-compiled-code-subproblem
 
@@ -283,10 +287,10 @@ USA.
 (define-return-type-generator 'combination-save
   (lambda (frame)
     (let ((exp (cframe-field-value frame 'expression))
-	  (arg (fix:- (cframe-field-value frame 'number-of-blanks) 1)))
+	  (arg (cframe-field-value frame 'number-of-blanks)))
       (make-debugging-info exp
 			   (cframe-field-value frame 'environment)
-			   (validate-subexp (scode-combination-operand exp arg)
+			   (validate-subexp (scode-combination-element exp arg)
 					    frame)))))
 
 (define-return-type-generator 'hardware-trap
