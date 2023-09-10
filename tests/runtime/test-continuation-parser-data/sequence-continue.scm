@@ -1,0 +1,1 @@
+(lambda () (error "foo") (+ 1 2))

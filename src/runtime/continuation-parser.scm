@@ -90,7 +90,7 @@ USA.
 
       (let ((frame-type-name (vector-ref info 0)))
 	(case frame-type-name
-	  ((with-arg)
+	  ((with-arg with-arg-subproblem)
 	   (let ((name
 		  (case return-code-name
 		    ((join-stacklets) 'control-point)
@@ -107,7 +107,7 @@ USA.
 		 (make return-code-name))))
 	  ((exp+env history stack-marker)
 	   (make return-code-name (elt 0) (elt 1)))
-	  ((apply)
+	  ((apply combination-apply)
 	   (make return-code-name (elt 0) (rest-elts 1)))
 	  ((return-to-compiled-code)
 	   (apply make return-code-name (elt 0)

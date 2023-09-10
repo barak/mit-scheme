@@ -1,0 +1,1 @@
+(lambda () (or (error "foo") 1))
