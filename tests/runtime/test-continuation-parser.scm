@@ -33,8 +33,8 @@ USA.
 
 ;; [x] access-continue
 ;; [x] assignment-continue
-;; [ ] combination-apply
-;; [ ] combination-save-value
+;; [x] combination-apply
+;; [x] combination-save-value
 ;; [ ] compiler-assignment-trap-restart
 ;; [ ] compiler-error-restart
 ;; [ ] compiler-lookup-apply-trap-restart
@@ -261,7 +261,8 @@ USA.
 			 (assert-eqv (debugging-info*/expression info)
 				     exp)
 			 (if env-field
-			     (assert-eqv (debugging-info*/environment info) env*)
+			     (assert-eqv (debugging-info*/environment info)
+					 env*)
 			     (assert-true
 			      (debugging-info*/undefined-environment?
 			       (debugging-info*/environment info))))
