@@ -46,9 +46,26 @@ USA.
   (triple-cons hunk3-cons 3))
 
 (define-record-type <manifest-nmv>
-    make-manifest-nmv
+    %make-manifest-nmv
     manifest-nmv?
   (datum manifest-nmv-datum))
+
+(define (make-manifest-nmv datum)
+  (if (< datum (vector-length small-manifest-nmv))
+      (or (vector-ref small-manifest-nmv datum)
+	  (let ((result (%make-manifest-nmv datum)))
+	    (vector-set! small-manifest-nmv datum result)
+	    result))
+      (let ((p (assv datum large-manifest-nmv)))
+	(if p
+	    (cdr p)
+	    (let ((result (%make-manifest-nmv datum)))
+	      (set! large-manifest-nmv
+		    (cons (cons datum result) large-manifest-nmv))
+	      result)))))
+
+(define small-manifest-nmv (make-vector 64 #f))
+(define large-manifest-nmv '())
 
 (define-print-method manifest-nmv?
   (standard-print-method 'manifest-nmv
