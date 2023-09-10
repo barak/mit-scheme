@@ -105,6 +105,11 @@ USA.
       undefined-exp
       subexp))
 
+(define (squote object)
+  (if (scode-constant? object)
+      object
+      (make-scode-quotation object)))
+
 (define (generate-null frame)
   (declare (ignore frame))
   (make-debugging-info undefined-exp
@@ -123,8 +128,8 @@ USA.
 
 (define (generate-application frame)
   (make-debugging-info (make-scode-combination
-			(cframe-field-value frame 'procedure)
-			(cframe-field-value frame 'arguments))
+			(squote (cframe-field-value frame 'procedure))
+			(map squote (cframe-field-value frame 'arguments)))
 		       undefined-env
 		       undefined-exp))
 
@@ -226,7 +231,7 @@ USA.
   (lambda (frame)
     (make-debugging-info
      (make-scode-assignment (cframe-field-value frame 'variable)
-			    (cframe-field-value frame 'value))
+			    (squote (cframe-field-value frame 'value)))
      (cframe-field-value frame 'environment)
      undefined-exp)))
 
@@ -248,7 +253,7 @@ USA.
   (make-debugging-info
    (make-scode-combination
     (make-scode-variable (cframe-field-value frame 'variable))
-    (cframe-field-value frame 'arguments))
+    (map squote (cframe-field-value frame 'arguments)))
    (cframe-field-value frame 'environment)
    undefined-exp))
 
