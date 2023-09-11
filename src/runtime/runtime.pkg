@@ -2052,8 +2052,8 @@ USA.
 	  cframe-tracked-item-names
 	  cframe-tracked-item-value
 	  cframe-type
-	  continuation->cframe-stream
-	  continuation->frame-generator))
+	  continuation->cframe-generator
+	  continuation->cframe-stream))
 
 (define-package (runtime new-control-point)
   (files "control-point")

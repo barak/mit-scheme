@@ -38,7 +38,7 @@ USA.
 (define-deferred return-frame-types
   (microcode-return-frame-types))
 
-(define (continuation->frame-generator continuation)
+(define (continuation->cframe-generator continuation)
   (let ((graw
 	 (control-point->raw-frame-generator
 	  (continuation/control-point continuation)))
@@ -60,7 +60,7 @@ USA.
     generator))
 
 (define (continuation->cframe-stream continuation)
-  (generator->stream (continuation->frame-generator continuation)))
+  (generator->stream (continuation->cframe-generator continuation)))
 
 (define (decode-raw-result raw-result bindings)
   (let ((findex (vector-ref raw-result 0))
