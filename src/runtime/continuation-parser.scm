@@ -309,7 +309,8 @@ USA.
     (assert (fix:>= index 0))
     (let-values (((frames* index*) (find-frame-with-index frames index)))
       (if (not (stream-pair? frames*))
-	  (error:bad-range-argument frames 'cframe-stream-resolve-stack-address))
+	  (error:bad-range-argument frames
+				    'cframe-stream-resolve-stack-address))
       (values frames* index*))))
 
 (define (find-frame-with-index frames index)
@@ -494,6 +495,272 @@ USA.
 		index)
 	      #f)))))
 
+;;;; Debugging info
+
+(define (cframe-dbg-expression frame)
+  (call-frame-generator frame 'expression undefined-exp))
+
+(define (cframe-dbg-environment frame)
+  (call-frame-generator frame 'environment undefined-env))
+
+(define (cframe-dbg-subexpression frame)
+  (if (eq? (cframe-tracked-item-value frame 'previous-type)
+	   'pop-return-error)
+      undefined-exp
+      (call-frame-generator frame 'subexpression undefined-exp)))
+
+(define (define-return-code-generators type . keylist)
+  (alist-table-set! return-code-generators type (keyword-list->alist keylist)))
+
+(define (define-return-type-generators frame-type . keylist)
+  (alist-table-set! return-type-generators frame-type
+		    (keyword-list->alist keylist)))
+
+(define (call-frame-generator frame keyword default)
+  (let* ((alist
+	 (or (let ((code (cframe-return-code frame)))
+	       (and code
+		    (alist-table-ref return-code-generators
+				     (microcode-return/code->name code)
+				     (lambda () #f))))
+	     (alist-table-ref return-type-generators
+			      (cframe-return-type frame)
+			      (lambda () '()))))
+	 (p (assq keyword alist)))
+    (if p
+	((cdr p) frame)
+	default)))
+
+(define return-code-generators (alist-table eq?))
+(define return-type-generators (alist-table eq?))
+
+(define (select-subexp exp)
+  (cond ((scode-access? exp) (scode-access-environment exp))
+	((scode-assignment? exp) (scode-assignment-value exp))
+	((scode-conditional? exp) (scode-conditional-predicate exp))
+	((scode-definition? exp) (scode-definition-value exp))
+	((scode-disjunction? exp) (scode-disjunction-predicate exp))
+	((scode-sequence? exp) (scode-sequence-first exp))
+	(else (error "Can't select subexpression:" exp))))
+
+(define (squote object)
+  (if (scode-constant? object)
+      object
+      (make-scode-quotation object)))
+
+(define (standard-expression frame)
+  (cframe-field-value frame 'expression))
+
+(define (standard-environment frame)
+  (cframe-field-value frame 'environment))
+
+(define (standard-subexpression frame)
+  (select-subexp (cframe-field-value frame 'expression)))
+
+(define (default-expression frame)
+  (make-printer
+   (lambda (verbose? port)
+     (write-string "Unknown " port)
+     (if verbose?
+	 (pp frame port)
+	 (write frame port)))))
+
+(define (apply-expression frame)
+  (make-scode-combination (squote (cframe-field-value frame 'procedure))
+			  (map squote (cframe-field-value frame 'arguments))))
+
+;; TODO: requires changes in "environment.scm".
+(define (cframe-environment frame undefined-env)
+  (declare (ignore frame))
+  undefined-env)
+
+(define-record-type <printer>
+    make-printer
+    cframe-dbg-printer?
+  (procedure printer-procedure))
+
+(define (cframe-dbg-printer-apply printer verbose? port)
+  ((printer-procedure printer) verbose? port))
+
+(define-record-type <undefined-expression>
+    make-undefined-expression
+    cframe-dbg-expression-undefined?)
+
+(define undefined-exp (make-undefined-expression))
+
+(define-record-type <undefined-environment>
+    make-undefined-environment
+    cframe-dbg-environment-undefined?)
+
+(define undefined-env (make-undefined-environment))
+
+(define-record-type <compiled-expression>
+    make-compiled-expression
+    cframe-dbg-expression-compiled?)
+
+(define compiled-exp (make-compiled-expression))
+
+(define-return-code-generators 'access-continue
+  'expression standard-expression
+  'subexpression standard-subexpression)
+
+(define-return-type-generators 'exp+env
+  'expression standard-expression
+  'environment standard-environment
+  'subexpression standard-subexpression)
+
+(define-return-code-generators 'eval-error
+  'expression standard-expression
+  'environment standard-environment)
+
+(define-return-type-generators 'apply
+  'expression apply-expression)
+
+(define-return-type-generators 'cc-bkpt
+  'expression apply-expression)
+
+(define-return-type-generators 'combination-apply
+  'expression standard-expression
+  'subexpression
+  (lambda (frame)
+    (scode-combination-operator (cframe-field-value frame 'expression))))
+
+(define-return-type-generators 'combination-save
+  'expression standard-expression
+  'environment standard-environment
+  'subexpression
+  (lambda (frame)
+    (scode-combination-element (cframe-field-value frame 'expression)
+			       (cframe-field-value frame 'number-of-blanks))))
+
+(define-return-code-generators 'compiler-assignment-trap-restart
+  'expression
+  (lambda (frame)
+    (make-scode-assignment (cframe-field-value frame 'variable)
+			   (squote (cframe-field-value frame 'value))))
+  'environment standard-environment)
+
+(define-return-code-generators 'compiler-error-restart
+  'expression
+  (lambda (frame)
+    (let ((prim (cframe-field-value frame 'primitive)))
+      (if (primitive-procedure? prim)
+	  (make-scode-combination (make-scode-variable 'apply)
+				  (list prim))
+	  undefined-exp))))
+
+(define (cc-lookup-apply-exp frame)
+  (make-scode-combination
+   (make-scode-variable (cframe-field-value frame 'variable))
+   (map squote (cframe-field-value frame 'arguments))))
+
+(define-return-code-generators 'compiler-lookup-apply-trap-restart
+  'expression cc-lookup-apply-exp
+  'environment standard-environment)
+
+(define-return-code-generators 'compiler-operator-lookup-trap-restart
+  'expression cc-lookup-apply-exp
+  'environment standard-environment)
+
+(define-return-code-generators 'compiler-reference-trap-restart
+  'expression
+  (lambda (frame)
+    (make-scode-variable (cframe-field-value frame 'variable)))
+  'environment standard-environment)
+
+(define-return-code-generators 'compiler-safe-reference-trap-restart
+  'expression
+  (lambda (frame)
+    (make-scode-variable (cframe-field-value frame 'variable) #t))
+  'environment standard-environment)
+
+(define-return-code-generators 'compiler-unassigned?-trap-restart
+  'expression
+  (lambda (frame)
+    (make-scode-unassigned? (cframe-field-value frame 'variable) #t))
+  'environment standard-environment)
+
+(define ((cc-accessor cont-accessor proc-accessor default) frame)
+  (let ((dbg (compiled-entry/dbg-object (cframe-return-address frame))))
+    (cond ((dbg-continuation? dbg)
+	   (if (let ((source (dbg-continuation/source-code dbg)))
+		 (and (vector? source)
+		      (fix:>= (vector-length source) 2)))
+	       (cont-accessor dbg frame)
+	       undefined-exp))
+	  ((dbg-procedure? dbg) (proc-accessor dbg frame))
+	  (else default))))
+
+(define cc-exp
+  (cc-accessor (lambda (dbg frame)
+		 (declare (ignore frame))
+		 (let ((source (dbg-continuation/source-code dbg)))
+		   (case (vector-ref source 0)
+		     ((access-continue assignment-continue combination-element
+				       combination-operand conditional-decide
+				       conditional-predicate
+				       conditional-predicate definition-continue
+				       sequence-continue sequence-element)
+		      (vector-ref source 1))
+		     (else compiled-exp))))
+	       (lambda (dbg frame)
+		 (declare (ignore frame))
+		 (scode-lambda-body (dbg-procedure/source-code dbg)))
+	       compiled-exp))
+
+(define cc-env
+  (cc-accessor (lambda (dbg frame)
+		 (let ((source (dbg-continuation/source-code dbg)))
+		   (case (vector-ref source 0)
+		     ((access-continue assignment-continue combination-operand
+				       conditional-decide conditional-predicate
+				       definition-continue sequence-continue)
+		      (cframe-environment frame undefined-env))
+		     (else undefined-env))))
+	       (lambda (dbg frame)
+		 (if (dbg-procedure/block dbg)
+		     (cframe-environment frame undefined-env)
+		     undefined-env))
+	       undefined-env))
+
+(define cc-subexp
+  (cc-accessor (lambda (dbg frame)
+		 (declare (ignore frame))
+		 (let ((source (dbg-continuation/source-code dbg)))
+		   (case (vector-ref source 0)
+		     ((access-continue assignment-continue conditional-decide
+				       conditional-predicate definition-continue
+				       sequence-continue)
+		      (select-subexp (vector-ref source 1)))
+		     ((combination-operand)
+		      (scode-combination-element (vector-ref source 1)
+						 (vector-ref source 2)))
+		     ((combination-element conditional-predicate
+					   sequence-element)
+		      (vector-ref source 2))
+		     (else undefined-exp))))
+	       (lambda (dbg frame)
+		 (declare (ignore frame))
+		 (scode-lambda-body (dbg-procedure/source-code dbg)))
+	       undefined-exp))
+
+(define-return-code-generators 'compiler-interrupt-restart
+  'expression cc-exp
+  'environment cc-env
+  'subexpression cc-subexp)
+
+(define-return-type-generators 'compiled-address
+  'expression cc-exp
+  'environment cc-env
+  'subexpression cc-subexp)
+
+(define-return-type-generators 'hardware-trap
+  'expression
+  (lambda (frame)
+    (make-printer
+     (lambda (verbose? port)
+       (describe-hardware-trap-frame frame verbose? port)))))
+
 (define (describe-hardware-trap-frame frame verbose? port)
 
   (define (write-hex value port)

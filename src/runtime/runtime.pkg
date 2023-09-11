@@ -2023,6 +2023,14 @@ USA.
   (export (runtime)
 	  cframe-compiled-code?
 	  cframe-cpoint-end
+	  cframe-dbg-environment
+	  cframe-dbg-environment-undefined?
+	  cframe-dbg-expression
+	  cframe-dbg-expression-compiled?
+	  cframe-dbg-expression-undefined?
+	  cframe-dbg-printer-apply
+	  cframe-dbg-printer?
+	  cframe-dbg-subexpression
 	  cframe-end
 	  cframe-field-name?
 	  cframe-field-names
@@ -2045,9 +2053,7 @@ USA.
 	  cframe-tracked-item-value
 	  cframe-type
 	  continuation->cframe-stream
-	  continuation->frame-generator)
-  (export (runtime new-debugging-info)
-	  describe-hardware-trap-frame))
+	  continuation->frame-generator))
 
 (define-package (runtime new-control-point)
   (files "control-point")
@@ -2056,22 +2062,6 @@ USA.
 	  control-point->raw-frame-generator
 	  control-point?
 	  make-control-point*))
-
-(define-package (runtime new-debugging-info)
-  (files "debugging-info")
-  (parent (runtime))
-  (export (runtime)
-	  debugging-info*/apply-printer
-	  debugging-info*/compiled-code?
-	  debugging-info*/environment
-	  debugging-info*/expression
-	  debugging-info*/printer?
-	  debugging-info*/subexpression
-	  debugging-info*/undefined-environment?
-	  debugging-info*/undefined-expression?
-	  debugging-info*/unknown-expression?
-	  debugging-info*?
-	  cframe-debugging-info))
 
 (define-package (runtime date/time)
   (files "datime")

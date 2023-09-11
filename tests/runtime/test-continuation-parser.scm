@@ -131,8 +131,14 @@ USA.
 
 (define (define-frame type . keylist)
   (alist-table-set! defined-frames type
-		    (cons (cons 'type type)
-			  (keyword-list->alist keylist))))
+    (let ((alist (keyword-list->alist keylist)))
+      (append (if (assq 'frame-type alist)
+		  '()
+		  (list (cons 'frame-type type)))
+	      (if (assq 'test-file alist)
+		  '()
+		  (list (cons 'test-file (symbol->string type))))
+	      alist))))
 
 (define (frame-props)
   (alist-table-values defined-frames))
@@ -147,15 +153,14 @@ USA.
 	  default))))
 
 (define (frame-info props)
-  (values (prop-ref props 'type)
-	  (prop-ref props 'exp-field)
-	  (prop-ref props 'env-field #f)
+  (values (prop-ref props 'test-file)
+	  (prop-ref props 'frame-type)
 	  (prop-ref props 'exp-pred)
 	  (frame-subexp props 'frame-subexp 'exp-subexp)))
 
 (define (frame-cc-info props)
-  (values (prop-ref props 'type 'compiled-address)
-	  (prop-ref props 'cc-type 'compiled-address)
+  (values (prop-ref props 'test-file)
+	  (prop-ref props 'cc-frame-type 'compiled-address)
 	  (prop-ref props 'cc-exp-pred (prop-ref props 'exp-pred))
 	  (frame-subexp props 'cc-frame-subexp 'cc-exp-subexp 'exp-subexp)))
 
@@ -171,7 +176,6 @@ USA.
 		   (loop (cdr exp-subexps))))))))
 
 (define-frame 'access-continue
-  'exp-field 'expression
   'exp-pred scode-access?
   'exp-subexp scode-access-environment
   'cc-exp-pred
@@ -184,19 +188,14 @@ USA.
     (scode-combination-operand exp 0)))
 
 (define-frame 'assignment-continue
-  'exp-field 'expression
-  'env-field 'environment
   'exp-pred scode-assignment?
   'exp-subexp scode-assignment-value)
 
 (define-frame 'combination-apply
-  'exp-field 'expression
   'exp-pred scode-combination?
   'exp-subexp scode-combination-operator)
 
 (define-frame 'combination-save-value
-  'exp-field 'expression
-  'env-field 'environment
   'exp-pred scode-combination?
   'frame-subexp
   (lambda (frame exp)
@@ -204,8 +203,6 @@ USA.
 			       (cframe-field-value frame 'number-of-blanks))))
 
 (define-frame 'conditional-decide
-  'exp-field 'expression
-  'env-field 'environment
   'exp-pred scode-conditional?
   'exp-subexp scode-conditional-predicate)
 
@@ -217,8 +214,6 @@ USA.
   'exp-subexp scode-definition-value)
 
 (define-frame 'disjunction-decide
-  'exp-field 'expression
-  'env-field 'environment
   'exp-pred scode-disjunction?
   'exp-subexp scode-disjunction-predicate
   'cc-exp-pred
@@ -234,67 +229,46 @@ USA.
     (scode-combination-operand exp 0)))
 
 (define-frame 'sequence-continue
-  'exp-field 'expression
-  'env-field 'environment
   'exp-pred scode-sequence?
   'exp-subexp scode-sequence-first)
 
 (define-test 'simple-interpreted-subproblems
   (map (lambda (props)
-	 (let-values (((type exp-field env-field exp-pred get-subexp)
+	 (let-values (((test-file frame-type exp-pred get-subexp)
 		       (frame-info props)))
 	   (lambda ()
 	     (let ((env (make-top-level-environment)))
-	       (define (do-one thunk)
-		 (let ((cfs
-			(cframe-stream-skip-non-subproblems
-			 (get-cframe-stream thunk))))
-		   (assert-true (stream-pair? cfs))
-		   (let ((cf (stream-car cfs)))
-		     (assert-eq (cframe-type cf) type)
-		     (let ((exp (cframe-field-value cf exp-field))
-			   (env* (cframe-field-value cf env-field #f)))
-		       (assert-true (exp-pred exp))
-		       (if env-field
-			   (assert-eqv (environment-parent env*) env))
-		       (let ((info (cframe-debugging-info cf)))
-			 (assert-eqv (debugging-info*/expression info)
-				     exp)
-			 (if env-field
-			     (assert-eqv (debugging-info*/environment info)
-					 env*)
-			     (assert-true
-			      (debugging-info*/undefined-environment?
-			       (debugging-info*/environment info))))
-			 (if get-subexp
-			     (assert-eqv (debugging-info*/subexpression info)
-					 (get-subexp cf exp))))))))
-	       (map do-one
-		    (load (data-pathname
-			   (string-append (symbol->string type) ".scm"))
-			  env))))))
+	       ((simple-subproblem-runner frame-type exp-pred get-subexp env)
+		(load (data-pathname (pathname-new-type test-file "scm"))
+		      env))))))
        (frame-props)))
 
 (define-test 'simple-compiled-subproblems
   (map (lambda (props)
-	 (let-values (((type cc-type exp-pred get-subexp)
+	 (let-values (((test-file frame-type exp-pred get-subexp)
 		       (frame-cc-info props)))
 	   (lambda ()
-	     (let ((env (make-top-level-environment)))
-	       (define (do-one thunk)
-		 (let ((cfs
-			(cframe-stream-skip-non-subproblems
-			 (get-cframe-stream thunk))))
-		   (assert-true (stream-pair? cfs))
-		   (let ((cf (stream-car cfs)))
-		     (assert-eq (cframe-type cf) cc-type)
-		     (let* ((info (cframe-debugging-info cf))
-			    (exp (debugging-info*/expression info)))
-		       (assert-true (exp-pred exp))
-		       (if get-subexp
-			   (assert-eqv (debugging-info*/subexpression info)
-				       (get-subexp cf exp)))))))
-	       (let ((pn (data-pathname (symbol->string type))))
-		 (compile-file pn)
-		 (map do-one (load pn env)))))))
+	     (let ((env (make-top-level-environment))
+		   (pn (data-pathname test-file)))
+	       (compile-file pn)
+	       ((simple-subproblem-runner frame-type exp-pred get-subexp env)
+		(load pn env))))))
        (frame-props)))
+
+(define ((simple-subproblem-runner frame-type exp-pred get-subexp env) thunks)
+  (for-each (lambda (thunk)
+	      (let ((cfs
+		     (cframe-stream-skip-non-subproblems
+		      (get-cframe-stream thunk))))
+		(assert-true (stream-pair? cfs))
+		(let ((cf (stream-car cfs)))
+		  (assert-eq (cframe-type cf) frame-type)
+		  (let ((exp (cframe-dbg-expression cf))
+			(env* (cframe-dbg-environment cf))
+			(subexp (cframe-dbg-subexpression cf)))
+		    (assert-true (exp-pred exp))
+		    (if (not (cframe-dbg-environment-undefined? env*))
+			(assert-eqv (environment-parent env*) env))
+		    (if get-subexp
+			(assert-eqv subexp (get-subexp cf exp)))))))
+	    thunks))
