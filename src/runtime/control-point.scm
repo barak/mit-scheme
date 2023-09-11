@@ -40,8 +40,25 @@ USA.
 (register-predicate! control-point? 'control-point)
 
 (define (make-control-point* raw-frames)
-  (object-new-type (ucode-type control-point)
-		   (vector-concatenate (cons '#(#f 0) raw-frames))))
+  (let ((cp
+	 (safe-system-vector-cons (ucode-type control-point)
+				  (fold (lambda (frame n)
+					  (fix:+ (vector-length frame) n))
+					2
+					raw-frames))))
+    (safe-system-vector-set! cp 0 #f)
+    (safe-system-vector-set! cp 1 0)
+    (let loop ((raw-frames raw-frames) (index 2))
+      (if (pair? raw-frames)
+	  (let* ((frame (car raw-frames))
+		 (n (vector-length frame)))
+	    (let copy ((i 0) (index* index))
+	      (if (fix:< i n)
+		  (begin
+		    (safe-system-vector-set! cp index* (vector-ref frame i))
+		    (copy (fix:+ i 1) (fix:+ index* 1)))
+		  (loop (cdr raw-frames) index*))))))
+    cp))
 
 (define-integrable (control-point-start-index)
   2)
@@ -67,7 +84,7 @@ USA.
 		 (j 0 (fix:+ j 1)))
 		((not (fix:< i index*))
 		 (set! index index*))
-	      (vector-set! frame j (system-vector-ref control-point i)))
+	      (vector-set! frame j (safe-system-vector-ref control-point i)))
 	    (if (eq? (ucode-return-address join-stacklets)
 		     (vector-ref frame 0))
 		(begin

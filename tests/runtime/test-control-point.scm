@@ -64,5 +64,5 @@ USA.
 			       (new-ref (cdr results) (vector-ref frame 1))
 			       (loop (cdr results) j)))
 			(assert-eqv (vector-ref frame i)
-				    (system-vector-ref ref j))))))
+				    (safe-system-vector-ref ref j))))))
 		(assert-eqv index end))))))))

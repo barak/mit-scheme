@@ -33,8 +33,7 @@ USA.
 (add-boot-deps! '(runtime microcode-tables) '(runtime history))
 
 (define-primitives
-  (return-frame-type 2)
-  (primitive-datum-ref 2))
+  (return-frame-type 2))
 
 (define-deferred return-frame-types
   (microcode-return-frame-types))
@@ -119,10 +118,7 @@ USA.
 	  ((compiled-address)
 	   (apply make frame-type-name (cc-address-extra-fields raw 0)))
 	  ((combination-save)
-	   ;; The index to primitive-datum-ref is relative to the address of the
-	   ;; object.  For a vector, that's one greater than the vector index.
-	   (let ((n-blanks
-		  (primitive-datum-ref raw (fix:+ 1 (val-loc 2)))))
+	   (let ((n-blanks (manifest-nmv-datum (vector-ref raw (val-loc 2)))))
 	     (make return-code-name
 		   (elt 0)
 		   (elt 1)
@@ -152,7 +148,7 @@ USA.
     ((compiler-assignment-trap-restart)
      (list (cons 'variable (vector-ref raw 2))
 	   (cons 'environment (vector-ref raw 3))
-	   (cons 'value (safe-system-vector-ref raw 4))))
+	   (cons 'value (vector-ref raw 4))))
     ((compiler-lookup-apply-trap-restart
       compiler-operator-lookup-trap-restart)
      (cons* (cons 'variable (vector-ref raw 2))
