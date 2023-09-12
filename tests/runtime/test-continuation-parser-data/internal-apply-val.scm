@@ -1,0 +1,1 @@
+(list (lambda () ((make-primitive-procedure 'no-such 1) "foo")))

@@ -33,8 +33,10 @@ USA.
 
 ;; [x] access-continue
 ;; [x] assignment-continue
+;; [ ] cc-bkpt (cc)
 ;; [x] combination-apply
 ;; [x] combination-save-value
+;; [x] compiled-address (cc)
 ;; [ ] compiler-assignment-trap-restart
 ;; [ ] compiler-error-restart
 ;; [ ] compiler-lookup-apply-trap-restart
@@ -47,28 +49,26 @@ USA.
 ;; [x] disjunction-decide
 ;; [ ] eval-error
 ;; [ ] hardware-trap
-;; [ ] internal-apply
-;; [ ] internal-apply-val
+;; [x] internal-apply
+;; [x] internal-apply-val
 ;; [x] sequence-continue
-;; [ ] compiled-address (cc)
-;; [ ] cc-bkpt (cc)
 
 ;; Non-subproblems:
 
-;; [ ] compiler-interrupt-restart
-;; [ ] compiler-link-caches-restart
-;; [ ] reenter-compiled-code
-;; [ ] pop-return-error
-;; [ ] restore-interrupt-mask
-;; [ ] restore-dont-copy-history
-;; [ ] restore-history
-;; [ ] restore-value
-;; [ ] stack-marker
-;; [ ] return-to-interpreter (cc)
 ;; [ ] cc-internal-apply (cc)
+;; [ ] cc-invocation (cc)
 ;; [ ] cc-restore-interrupt-mask (cc)
 ;; [ ] cc-stack-marker (cc)
-;; [ ] cc-invocation (cc)
+;; [ ] compiler-interrupt-restart
+;; [ ] compiler-link-caches-restart
+;; [ ] pop-return-error
+;; [ ] reenter-compiled-code
+;; [ ] restore-dont-copy-history
+;; [ ] restore-history
+;; [ ] restore-interrupt-mask
+;; [ ] restore-value
+;; [ ] return-to-interpreter (cc)
+;; [ ] stack-marker
 
 (define reference-cont)
 (call-with-current-continuation
@@ -186,6 +186,14 @@ USA.
   'cc-exp-subexp
   (lambda (exp)
     (scode-combination-operand exp 0)))
+
+(define-frame 'internal-apply
+  'exp-pred scode-combination?
+  'cc-frame-type 'internal-apply)
+
+(define-frame 'internal-apply-val
+  'exp-pred scode-combination?
+  'cc-frame-type 'internal-apply-val)
 
 (define-frame 'assignment-continue
   'exp-pred scode-assignment?

@@ -1,0 +1,1 @@
+(list (lambda () ((make-primitive-procedure 'error-procedure) "foo" '() #f)))
