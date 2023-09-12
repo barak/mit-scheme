@@ -1798,7 +1798,11 @@ cpoint_compiled_code_next (SCHEME_OBJECT cpoint, unsigned long index)
 
     case RC_COMP_CACHE_REF_APPLY_RESTART:
     case RC_COMP_OP_REF_TRAP_RESTART:
-      return cpoint_compiled_address_next (cpoint, index + CONT_SIZE + 4);
+      {
+        unsigned long frame_size
+          = FIXNUM_TO_ULONG (vector_ref (cpoint, index + CONT_SIZE + 2));
+        return index + CONT_SIZE + 4 + (frame_size - 1);
+      }
 
     case RC_COMP_ERROR_RESTART:
       return index + CONT_SIZE + 2;

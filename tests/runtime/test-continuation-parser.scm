@@ -29,23 +29,25 @@ USA.
 
 ;;; Frame types to test
 
+;;; [ ] untested; [x] tested; [?] can't test?
+
 ;; Subproblems:
 
 ;; [x] access-continue
 ;; [x] assignment-continue
-;; [ ] cc-bkpt (cc)
+;; [ ] cc-bkpt
 ;; [x] combination-apply
 ;; [x] combination-save-value
-;; [x] compiled-address (cc)
-;; [ ] compiler-assignment-trap-restart
+;; [x] compiled-address
+;; [x] compiler-assignment-trap-restart
 ;; [ ] compiler-error-restart
 ;; [ ] compiler-lookup-apply-trap-restart
-;; [ ] compiler-operator-lookup-trap-restart
-;; [ ] compiler-reference-trap-restart
-;; [ ] compiler-safe-reference-trap-restart
-;; [ ] compiler-unassigned?-trap-restart
+;; [x] compiler-operator-lookup-trap-restart
+;; [x] compiler-reference-trap-restart
+;; [x] compiler-safe-reference-trap-restart
+;; [?] compiler-unassigned?-trap-restart
 ;; [x] conditional-decide
-;; [ ] definition-continue
+;; [?] definition-continue
 ;; [x] disjunction-decide
 ;; [ ] eval-error
 ;; [ ] hardware-trap
@@ -55,10 +57,10 @@ USA.
 
 ;; Non-subproblems:
 
-;; [ ] cc-internal-apply (cc)
-;; [ ] cc-invocation (cc)
-;; [ ] cc-restore-interrupt-mask (cc)
-;; [ ] cc-stack-marker (cc)
+;; [ ] cc-internal-apply
+;; [ ] cc-invocation
+;; [ ] cc-restore-interrupt-mask
+;; [ ] cc-stack-marker
 ;; [ ] compiler-interrupt-restart
 ;; [ ] compiler-link-caches-restart
 ;; [ ] pop-return-error
@@ -67,7 +69,7 @@ USA.
 ;; [ ] restore-history
 ;; [ ] restore-interrupt-mask
 ;; [ ] restore-value
-;; [ ] return-to-interpreter (cc)
+;; [ ] return-to-interpreter
 ;; [ ] stack-marker
 
 (define reference-cont)
@@ -152,17 +154,23 @@ USA.
 	      (error "Unknown property:" name))
 	  default))))
 
-(define (frame-info props)
+(define (frame-int-info props)
   (values (prop-ref props 'test-file)
 	  (prop-ref props 'frame-type)
 	  (prop-ref props 'exp-pred)
 	  (frame-subexp props 'frame-subexp 'exp-subexp)))
 
+(define (frame-int? props)
+  (prop-ref props 'int? #t))
+
 (define (frame-cc-info props)
   (values (prop-ref props 'test-file)
-	  (prop-ref props 'cc-frame-type 'compiled-address)
+	  (prop-ref props 'cc-frame-type (prop-ref props 'frame-type))
 	  (prop-ref props 'cc-exp-pred (prop-ref props 'exp-pred))
 	  (frame-subexp props 'cc-frame-subexp 'cc-exp-subexp 'exp-subexp)))
+
+(define (frame-cc? props)
+  (prop-ref props 'cc? #t))
 
 (define (frame-subexp props keyword . exp-subexps)
   (or (prop-ref props keyword #f)
@@ -178,6 +186,7 @@ USA.
 (define-frame 'access-continue
   'exp-pred scode-access?
   'exp-subexp scode-access-environment
+  'cc-frame-type 'compiled-address
   'cc-exp-pred
   (lambda (exp)
     (and (scode-combination? exp)
@@ -188,31 +197,75 @@ USA.
     (scode-combination-operand exp 0)))
 
 (define-frame 'internal-apply
-  'exp-pred scode-combination?
-  'cc-frame-type 'internal-apply)
+  'exp-pred scode-combination?)
 
 (define-frame 'internal-apply-val
-  'exp-pred scode-combination?
-  'cc-frame-type 'internal-apply-val)
+  'exp-pred scode-combination?)
 
 (define-frame 'assignment-continue
   'exp-pred scode-assignment?
-  'exp-subexp scode-assignment-value)
+  'exp-subexp scode-assignment-value
+  'cc-frame-type 'compiled-address)
 
 (define-frame 'combination-apply
   'exp-pred scode-combination?
-  'exp-subexp scode-combination-operator)
+  'exp-subexp scode-combination-operator
+  'cc-frame-type 'compiled-address)
 
 (define-frame 'combination-save-value
   'exp-pred scode-combination?
   'frame-subexp
   (lambda (frame exp)
     (scode-combination-element exp
-			       (cframe-field-value frame 'number-of-blanks))))
+			       (cframe-field-value frame 'number-of-blanks)))
+  'cc-frame-type 'compiled-address)
+
+(define-frame 'compiler-assignment-trap-restart
+  'int? #f
+  'exp-pred
+  (lambda (exp)
+    (and (scode-assignment? exp)
+	 (eq? (scode-assignment-name exp) 'no-such-variable)
+	 (eqv? (scode-assignment-value exp) 3))))
+
+(define-frame 'compiler-operator-lookup-trap-restart
+  'int? #f
+  'exp-pred
+  (lambda (exp)
+    (and (scode-combination? exp)
+	 (let ((op (scode-combination-operator exp)))
+	   (and (scode-variable? op)
+		(eq? (scode-variable-name op) 'no-such-variable)))
+	 (equal? (scode-combination-operands exp) '(13)))))
+
+(define-frame 'compiler-reference-trap-restart
+  'int? #f
+  'exp-pred
+  (lambda (exp)
+    (and (scode-variable? exp)
+	 (eq? (scode-variable-name exp) 'no-such-variable)
+	 (not (scode-variable-safe? exp)))))
+
+(define-frame 'compiler-safe-reference-trap-restart
+  'int? #f
+  'exp-pred
+  (lambda (exp)
+    (and (scode-variable? exp)
+	 (eq? (scode-variable-name exp) 'no-such-variable)
+	 (scode-variable-safe? exp))))
+
+;; (define-frame 'compiler-unassigned?-trap-restart
+;;   'test-file "compiler-unassigned-trap-restart"
+;;   'int? #f
+;;   'exp-pred
+;;   (lambda (exp)
+;;     (and (scode-unassigned?? exp)
+;; 	 (eq? (scode-unassigned?-name exp) 'no-such-variable))))
 
 (define-frame 'conditional-decide
   'exp-pred scode-conditional?
-  'exp-subexp scode-conditional-predicate)
+  'exp-subexp scode-conditional-predicate
+  'cc-frame-type 'compiled-address)
 
 #;
 (define-frame 'definition-continue
@@ -224,6 +277,7 @@ USA.
 (define-frame 'disjunction-decide
   'exp-pred scode-disjunction?
   'exp-subexp scode-disjunction-predicate
+  'cc-frame-type 'compiled-address
   'cc-exp-pred
   (lambda (exp)
     (and (scode-combination? exp)
@@ -238,30 +292,39 @@ USA.
 
 (define-frame 'sequence-continue
   'exp-pred scode-sequence?
-  'exp-subexp scode-sequence-first)
+  'exp-subexp scode-sequence-first
+  'cc-frame-type 'compiled-address)
 
 (define-test 'simple-interpreted-subproblems
   (map (lambda (props)
-	 (let-values (((test-file frame-type exp-pred get-subexp)
-		       (frame-info props)))
-	   (lambda ()
-	     (let ((env (make-top-level-environment)))
-	       ((simple-subproblem-runner frame-type exp-pred get-subexp env)
-		(load (data-pathname (pathname-new-type test-file "scm"))
-		      env))))))
+	 (if (frame-int? props)
+	     (let-values (((test-file frame-type exp-pred get-subexp)
+			   (frame-int-info props)))
+	       (lambda ()
+		 (let ((env (make-top-level-environment)))
+		   ((simple-subproblem-runner frame-type exp-pred get-subexp
+					      env)
+		    (load (data-pathname (pathname-new-type test-file "scm"))
+			  env)))))
+	     (lambda () unspecific)))
        (frame-props)))
 
-(define-test 'simple-compiled-subproblems
-  (map (lambda (props)
-	 (let-values (((test-file frame-type exp-pred get-subexp)
-		       (frame-cc-info props)))
-	   (lambda ()
-	     (let ((env (make-top-level-environment))
-		   (pn (data-pathname test-file)))
-	       (compile-file pn)
-	       ((simple-subproblem-runner frame-type exp-pred get-subexp env)
-		(load pn env))))))
-       (frame-props)))
+(cond-expand
+  ((not target-arch=none)
+   (define-test 'simple-compiled-subproblems
+     (map (lambda (props)
+	    (if (frame-cc? props)
+		(let-values (((test-file frame-type exp-pred get-subexp)
+			      (frame-cc-info props)))
+		  (lambda ()
+		    (let ((env (make-top-level-environment))
+			  (pn (data-pathname test-file)))
+		      (compile-file pn)
+		      ((simple-subproblem-runner frame-type exp-pred get-subexp
+						 env)
+		       (load pn env)))))
+		(lambda () unspecific)))
+	  (frame-props)))))
 
 (define ((simple-subproblem-runner frame-type exp-pred get-subexp env) thunks)
   (for-each (lambda (thunk)
@@ -275,7 +338,8 @@ USA.
 			(env* (cframe-dbg-environment cf))
 			(subexp (cframe-dbg-subexpression cf)))
 		    (assert-true (exp-pred exp))
-		    (if (not (cframe-dbg-environment-undefined? env*))
+		    (if (not (or (cframe-dbg-environment-undefined? env*)
+				 (eq? env* env)))
 			(assert-eqv (environment-parent env*) env))
 		    (if get-subexp
 			(assert-eqv subexp (get-subexp cf exp)))))))

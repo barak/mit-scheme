@@ -112,7 +112,7 @@ USA.
 		 (make return-code-name
 		       (cons name (vector-ref raw (val-loc 0))))
 		 (make return-code-name))))
-	  ((return-to-compiled-code)
+	  ((return-to-compiled-code return-to-compiled-code-subproblem)
 	   (apply make return-code-name (elt 0)
 		  (return-to-cc-extra-fields return-code-name raw)))
 	  ((compiled-address)
@@ -151,9 +151,9 @@ USA.
 	   (cons 'value (vector-ref raw 4))))
     ((compiler-lookup-apply-trap-restart
       compiler-operator-lookup-trap-restart)
-     (cons* (cons 'variable (vector-ref raw 2))
-	    (cons 'environment (vector-ref raw 3))
-	    (cc-address-extra-fields raw 4)))
+     (list (cons 'variable (vector-ref raw 2))
+	   (cons 'environment (vector-ref raw 3))
+	   (cons 'arguments (vector->list raw 6))))
     ((compiler-error-restart)
      (list (cons 'primitive (vector-ref raw 2))))
     ((compiler-interrupt-restart)

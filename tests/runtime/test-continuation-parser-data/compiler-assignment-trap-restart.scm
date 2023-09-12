@@ -1,0 +1,1 @@
+(list (lambda () (set! no-such-variable 3) unspecific))

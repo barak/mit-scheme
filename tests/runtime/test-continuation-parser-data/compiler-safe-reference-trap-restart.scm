@@ -1,0 +1,1 @@
+(list (lambda () (safe-reference no-such-variable)))
