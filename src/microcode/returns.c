@@ -325,19 +325,19 @@ static field_defn_t with_arg_fields [] =
 static field_defn_t exp_env_fields [] =
   {
     { 1, "expression" },
-    { 2, "environment" }
+    { CONT_SIZE, "environment" }
   };
 
 static field_defn_t history_fields [] =
   {
     { 1, "history" },
-    { 2, "previous-restore-history-offset" }
+    { CONT_SIZE, "previous-restore-history-offset" }
   };
 
 static field_defn_t apply_fields [] =
   {
-    { 3, "procedure" },
-    { 4, "arguments" }
+    { CONT_SIZE + 1, "procedure" },
+    { CONT_SIZE + 2, "arguments" }
   };
 
 static field_defn_t compiled_code_fields [] =
@@ -348,50 +348,50 @@ static field_defn_t compiled_code_fields [] =
 static field_defn_t combination_apply_fields [] =
   {
     { 1, "expression" },
-    { 4, "arguments" }
+    { CONT_SIZE + 2, "arguments" }
   };
 
 static field_defn_t combination_save_fields [] =
   {
     { 1, "expression" },
-    { 2, "environment" },
-    { 3, "number-of-blanks" },
-    { 4, "saved-args" }
+    { CONT_SIZE, "environment" },
+    { CONT_SIZE + 1, "number-of-blanks" },
+    { CONT_SIZE + 2, "saved-args" }
   };
 
 static field_defn_t stack_marker_fields [] =
   {
     { 1, "marker-type" },
-    { 2, "marker-instance" }
+    { CONT_SIZE, "marker-instance" }
   };
 
 static field_defn_t hardware_trap_fields [] =
   {
     { 1, "signal-number" },
-    { 2, "signal-name" },
-    { 3, "code-name" },
-    { 4, "sp-valid?" },
-    { 5, "recovery-state" },
-    { 6, "pc-info-1" },
-    { 7, "pc-info-2" },
-    { 8, "extra-info" }
+    { CONT_SIZE, "signal-name" },
+    { CONT_SIZE + 1, "code-name" },
+    { CONT_SIZE + 2, "sp-valid?" },
+    { CONT_SIZE + 3, "recovery-state" },
+    { CONT_SIZE + 4, "pc-info-1" },
+    { CONT_SIZE + 5, "pc-info-2" },
+    { CONT_SIZE + 6, "extra-info" }
   };
 
 static field_defn_t cc_int_mask_fields [] =
   {
-    { 2, "interrupt-mask" }
+    { CONT_SIZE, "interrupt-mask" }
   };
 
 static field_defn_t cc_stack_marker_fields [] =
   {
-    { 2, "marker-type" },
-    { 3, "marker-instance" }
+    { CONT_SIZE, "marker-type" },
+    { CONT_SIZE + 1, "marker-instance" }
   };
 
 static field_defn_t cc_invocation_fields [] =
   {
-    { 2, "procedure" },
-    { 3, "arguments" }
+    { CONT_SIZE, "procedure" },
+    { CONT_SIZE + 1, "arguments" }
   };
 
 #define FTIE(type, subp, hsubp, n_fields, fields)                       \
