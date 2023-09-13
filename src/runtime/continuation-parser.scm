@@ -93,10 +93,14 @@ USA.
 	   (make frame-type-name))
 	  ((cc-restore-interrupt-mask)
 	   (make frame-type-name (elt 0)))
-	  ((exp+env history stack-marker cc-stack-marker)
+	  ((exp+env history stack-marker)
 	   (make return-code-name (elt 0) (elt 1)))
-	  ((apply combination-apply cc-internal-apply cc-bkpt cc-invocation)
+	  ((cc-stack-marker)
+	   (make frame-type-name (elt 0) (elt 1)))
+	  ((apply combination-apply)
 	   (make return-code-name (elt 0) (rest-elts 1)))
+	  ((cc-internal-apply cc-bkpt cc-invocation)
+	   (make frame-type-name (elt 0) (rest-elts 1)))
 	  ((with-arg with-arg-subproblem)
 	   (let ((name
 		  (case return-code-name
