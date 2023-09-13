@@ -40,8 +40,8 @@ USA.
 ;; [x] combination-save-value
 ;; [x] compiled-address
 ;; [x] compiler-assignment-trap-restart
-;; [ ] compiler-error-restart
-;; [ ] compiler-lookup-apply-trap-restart
+;; [?] compiler-error-restart
+;; [?] compiler-lookup-apply-trap-restart
 ;; [x] compiler-operator-lookup-trap-restart
 ;; [x] compiler-reference-trap-restart
 ;; [x] compiler-safe-reference-trap-restart
@@ -227,7 +227,7 @@ USA.
     (and (scode-assignment? exp)
 	 (eq? (scode-assignment-name exp) 'no-such-variable)
 	 (eqv? (scode-assignment-value exp) 3))))
-
+
 (define-frame 'compiler-operator-lookup-trap-restart
   'int? #f
   'exp-pred
@@ -254,25 +254,10 @@ USA.
 	 (eq? (scode-variable-name exp) 'no-such-variable)
 	 (scode-variable-safe? exp))))
 
-;; (define-frame 'compiler-unassigned?-trap-restart
-;;   'test-file "compiler-unassigned-trap-restart"
-;;   'int? #f
-;;   'exp-pred
-;;   (lambda (exp)
-;;     (and (scode-unassigned?? exp)
-;; 	 (eq? (scode-unassigned?-name exp) 'no-such-variable))))
-
 (define-frame 'conditional-decide
   'exp-pred scode-conditional?
   'exp-subexp scode-conditional-predicate
   'cc-frame-type 'compiled-address)
-
-#;
-(define-frame 'definition-continue
-  'exp-field 'expression
-  'env-field 'environment
-  'exp-pred scode-definition?
-  'exp-subexp scode-definition-value)
 
 (define-frame 'disjunction-decide
   'exp-pred scode-disjunction?
