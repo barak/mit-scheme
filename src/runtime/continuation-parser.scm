@@ -71,36 +71,37 @@ USA.
 	   (let ((address (vector-ref raw 0)))
 	     (and (interpreter-return-address? address)
 		  (return-address/name address)))))
-
-      (define (make ftype . alist)
-	(make-cframe ftype findex cpend raw info alist bindings))
-
-      (define-integrable (name index)
-	(vector-ref info (fix:+ 3 (fix:* 2 index))))
-
-      (define-integrable (val-loc index)
-	(vector-ref info (fix:+ 4 (fix:* 2 index))))
-
-      (define-integrable (elt index)
-	(cons (name index) (vector-ref raw (val-loc index))))
-
-      (define-integrable (rest-elts index)
-	(cons (name index) (vector->list raw (val-loc index))))
-
       (let ((frame-type-name (vector-ref info 0)))
+
+	(define (make . alist)
+	  (make-cframe (or return-code-name frame-type-name) findex cpend raw
+		       info alist bindings))
+
+	(define-integrable (name index)
+	  (vector-ref info (fix:+ 3 (fix:* 2 index))))
+
+	(define-integrable (val-loc index)
+	  (vector-ref info (fix:+ 4 (fix:* 2 index))))
+
+	(define-integrable (elt index)
+	  (cons (name index) (vector-ref raw (val-loc index))))
+
+	(define-integrable (rest-elts index)
+	  (cons (name index) (vector->list raw (val-loc index))))
+
 	(case frame-type-name
 	  ((return-to-interpreter)
-	   (make frame-type-name))
+	   (make))
 	  ((cc-restore-interrupt-mask)
-	   (make frame-type-name (elt 0)))
+	   (make (elt 0)))
 	  ((exp+env history stack-marker)
-	   (make return-code-name (elt 0) (elt 1)))
+	   (make (elt 0) (elt 1)))
 	  ((cc-stack-marker)
-	   (make frame-type-name (elt 0) (elt 1)))
+	   (make (elt 0) (elt 1)))
 	  ((apply combination-apply)
-	   (make return-code-name (elt 0) (rest-elts 1)))
+	   (make (elt 0) (rest-elts 1)))
 	  ((cc-internal-apply cc-bkpt cc-invocation)
-	   (make frame-type-name (elt 0) (rest-elts 1)))
+	   (make (elt 0) (rest-elts 1)))
 	  ((with-arg with-arg-subproblem)
 	   (let ((name
 		  (case return-code-name
@@ -113,24 +114,22 @@ USA.
 		    ((halt) 'termination-code)
 		    (else #f))))
 	     (if name
-		 (make return-code-name
-		       (cons name (vector-ref raw (val-loc 0))))
-		 (make return-code-name))))
+		 (make (cons name (vector-ref raw (val-loc 0))))
+		 (make))))
 	  ((return-to-compiled-code return-to-compiled-code-subproblem)
-	   (apply make return-code-name (elt 0)
+	   (apply make (elt 0)
 		  (return-to-cc-extra-fields return-code-name raw)))
 	  ((compiled-address)
-	   (apply make frame-type-name (cc-address-extra-fields raw 0)))
+	   (apply make (cc-address-extra-fields raw 0)))
 	  ((combination-save)
 	   (let ((n-blanks (manifest-nmv-datum (vector-ref raw (val-loc 2)))))
-	     (make return-code-name
-		   (elt 0)
+	     (make (elt 0)
 		   (elt 1)
 		   (cons (name 2) n-blanks)
 		   (cons (name 3)
 			 (vector->list raw (fix:+ (val-loc 3) n-blanks))))))
 	  ((hardware-trap)
-	   (make return-code-name (elt 0) (elt 1) (elt 2) (elt 3)
+	   (make (elt 0) (elt 1) (elt 2) (elt 3)
 		 (elt 4) (elt 5) (elt 6) (elt 7)))
 	  (else
 	   (error "Unknown return-frame-type code:" frame-type-name)))))))
