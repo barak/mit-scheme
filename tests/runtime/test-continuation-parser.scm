@@ -94,10 +94,9 @@ USA.
 	 (let* ((raw (cframe-raw frame))
 		(end (vector-length raw)))
 	   (assert-eqv (cframe-length frame) end)
-	   (for-each (lambda (i)
-		       (assert-eqv (cframe-ref frame i)
-				   (vector-ref raw i)))
-		     (iota end)))
+	   (compare-seqs end
+			 (lambda (i) (cframe-ref frame i))
+			 (lambda (i) (vector-ref raw i))))
 	 (let ((return (cframe-ref frame 0)))
 	   (assert-eqv (cframe-return-address frame)
 		       return)
@@ -112,10 +111,22 @@ USA.
 	(let ((end (system-vector-length cp))
 	      (reference-cp (continuation/control-point reference-cont)))
 	  (assert-eqv end (system-vector-length reference-cp))
-	  (for-each (lambda (i)
-		      (assert-eqv (system-vector-ref cp i)
-				  (system-vector-ref reference-cp i)))
-		    (iota end)))))))
+	  (compare-seqs end
+			(lambda (i)
+			  (safe-system-vector-ref cp i))
+			(lambda (i)
+			  (safe-system-vector-ref reference-cp i))))))))
+
+(define (compare-seqs end get1 get2)
+  (let loop ((i 0))
+    (if (fix:< i end)
+	(let ((elt (get1 i)))
+	  (assert-eqv elt (get2 i))
+	  (loop
+	   (let ((i* (fix:+ i 1)))
+	     (if (manifest-nmv? elt)
+		 (fix:+ i* (manifest-nmv-datum elt))
+		 i*)))))))
 
 (define (get-continuation thunk)
   (call-with-current-continuation
