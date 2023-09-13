@@ -328,16 +328,17 @@ USA.
 (define (cframe-stream->continuation frames)
   (let ((frame (stream-car frames)))
     (make-continuation
-     (make-control-point*
-      (old-raw-frames (cframe-stream-raw-prefix frames)
-		      (cframe-tracked-item-value frame 'interrupt-mask)
-		      (cframe-tracked-item-value frame 'history)
-		      (cframe-previous-restore-history-offset frame)))
+     (cframe-stream->control-point frames)
      (cframe-tracked-item-value frame 'dynamic-state)
      (cframe-tracked-item-value frame 'block-thread-events?))))
 
 (define (cframe-stream->control-point frames)
-  (make-control-point* (cframe-stream-raw-prefix frames)))
+  (let ((frame (stream-car frames)))
+    (make-control-point*
+     (cp-raw-frames (cframe-stream-raw-prefix frames)
+		    (cframe-tracked-item-value frame 'interrupt-mask)
+		    (cframe-tracked-item-value frame 'history)
+		    (cframe-previous-restore-history-offset frame)))))
 
 (define (cframe-stream-raw-prefix frames)
   (let loop ((frames frames) (raw '()))
@@ -349,18 +350,14 @@ USA.
 	    (reverse raw)
 	    (loop frames* raw))))))
 
-(define (old-raw-frames frames interrupt-mask history
-			previous-restore-history-offset)
+(define (cp-raw-frames frames interrupt-mask history
+		       previous-restore-history-offset)
   (if (and (pair? frames)
 	   (pair? (cdr frames))
-	   (let ((f1 (car frames))
-		 (f2 (car frames)))
-	     (and (eq? (vector-ref f1 0)
-		       (ucode-return-address restore-interrupt-mask))
-		  (eqv? (vector-ref f1 1) interrupt-mask)
-		  (eq? (vector-ref f2 0) (ucode-return-address restore-history))
-		  (eq? (vector-ref f2 1) history)
-		  (eqv? (vector-ref f2 2) previous-restore-history-offset))))
+	   (and (eq? (vector-ref (car frames) 0)
+		     (ucode-return-address restore-interrupt-mask))
+		(eq? (vector-ref (cadr frames) 0)
+		     (ucode-return-address restore-history))))
       frames
       (cons* (vector (ucode-return-address restore-interrupt-mask)
 		     interrupt-mask)
