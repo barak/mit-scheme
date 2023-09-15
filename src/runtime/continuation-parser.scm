@@ -736,7 +736,7 @@ USA.
 		 (and (vector? source)
 		      (fix:>= (vector-length source) 2)))
 	       (cont-accessor dbg frame)
-	       undefined-exp))
+	       default))
 	  ((dbg-procedure? dbg) (proc-accessor dbg frame))
 	  (else default))))
 
