@@ -36,12 +36,11 @@ USA.
 	(let ((rename (scode-lambda-name->syntax-name name)))
 	  (if rename
 	      (begin
-		(write-string "a " port)
-		(write-dbg-upcase-name rename port)
-		(write-string " special form" port))
+		(write-string "the special form: " port)
+		(write rename port))
 	      (begin
 		(write-string "the procedure: " port)
-		(write-dbg-upcase-name name port))))
+		(write name port))))
 	(write-string "an unknown procedure" port))))
 
 (define (show-environment-procedure environment port)
