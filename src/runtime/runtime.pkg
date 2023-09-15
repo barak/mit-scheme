@@ -4485,8 +4485,7 @@ USA.
 	  ve
 	  with-repl-eval-boundary)
   (export (runtime)
-	  nearest-repl/named-environment)
-  (export (runtime debugger)
+	  nearest-repl/named-environment
 	  write-restarts)
   (export (runtime emacs-interface)
 	  hook/error-decision
@@ -5535,23 +5534,19 @@ USA.
 	  prompt-for-string
 	  call-with-pass-phrase
 	  with-notification)
-  (export (runtime rep)
-	  port/set-default-environment
-	  port/write-values)
-  (export (runtime rep)
-	  port/set-default-directory)
-  (export (runtime debugger-command-loop)
+  (export (runtime)
 	  port/debugger-failure
 	  port/debugger-message
-	  port/debugger-presentation)
+	  port/debugger-presentation
+	  port/set-default-directory
+	  port/set-default-environment
+	  port/write-values)
   (export (runtime gc-statistics)
 	  port/gc-finish
 	  port/gc-start)
   (export (runtime emacs-interface)
 	  port/read-finish
-	  port/read-start)
-  (export (runtime swank)
-	  port/write-values))
+	  port/read-start))
 
 (define-package (runtime thread)
   (files "thread-low" "thread")
