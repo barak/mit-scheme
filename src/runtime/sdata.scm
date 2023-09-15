@@ -30,6 +30,8 @@ USA.
 
 (declare (usual-integrations))
 
+(add-boot-deps! '(runtime reader))
+
 (define-primitives
   (make-non-pointer-object 1)
   (object-new-type object-set-type 2)
@@ -64,13 +66,24 @@ USA.
 		    (cons (cons datum result) large-manifest-nmv))
 	      result)))))
 
+(add-boot-init!
+ (lambda ()
+   (define-bracketed-reader-method 'manifest-nmv
+     (lambda (objects lose)
+       (if (and (pair? objects)
+		(non-negative-fixnum? (car objects))
+		(null? (cdr objects)))
+	   (make-manifest-nmv (car objects))
+	   (lose))))))
+
 (define small-manifest-nmv (make-vector 64 #f))
 (define large-manifest-nmv '())
 
 (define-print-method manifest-nmv?
   (standard-print-method 'manifest-nmv
     (lambda (m-nmv)
-      (list (manifest-nmv-datum m-nmv)))))
+      (list (manifest-nmv-datum m-nmv)))
+    #f))
 
 (define (%safe-memory-ref object index)
   (let ((type (primitive-type-ref object index)))

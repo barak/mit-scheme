@@ -119,9 +119,10 @@ USA.
     (lambda ()
       (define-print-method predicate print-method))))
 
-(define (standard-print-method name #!optional get-parts)
+(define (standard-print-method name #!optional get-parts hash?)
   (%record standard-print-method-tag
 	   name
+	   hash?
 	   (if (and get-parts (not (default-object? get-parts)))
 	       get-parts
 	       (lambda (object)
@@ -133,7 +134,7 @@ USA.
 
 (define (standard-print-method? object)
   (and (%record? object)
-       (fix:= 3 (%record-length object))
+       (fix:= 4 (%record-length object))
        (eq? standard-print-method-tag (%record-ref object 0))))
 
 (define (standard-print-method-name spm object)
@@ -142,8 +143,11 @@ USA.
 	(name object)
 	name)))
 
+(define (standard-print-method-hash? spm)
+  (%record-ref spm 2))
+
 (define (standard-print-method-parts spm object)
-  ((%record-ref spm 2) object))
+  ((%record-ref spm 3) object))
 
 (define-integrable standard-print-method-tag
   '|#[standard-print-method-tag]|)
@@ -172,8 +176,8 @@ USA.
 
 (define (simple-parser-method procedure)
   (lambda (objects lose)
-    (or (and (pair? (cdr objects))
-	     (procedure (cddr objects)))
+    (or (and (pair? objects)
+	     (procedure (cdr objects)))
 	(lose))))
 
 ;;;; Predicate registrations

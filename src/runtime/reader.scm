@@ -569,28 +569,31 @@ USA.
 
 (define (handler:hashed-object db ctx char1 char2)
   ctx char1 char2
+  (let* ((objects (read-bracketed-objects db))
+	 (lose (lambda () (error:illegal-hashed-object objects)))
+	 (default-method
+	   (lambda (objects lose)
+	     (if (pair? objects)
+		 (read-unhash (car objects))
+		 (lose))))
+	 (method
+	  (and (pair? objects)
+	       (interned-symbol? (car objects))
+	       (hash-table-ref/default hashed-object-interns
+				       (car objects)
+				       default-method))))
+    (if method
+	(bind-condition-handler (list condition-type:error)
+	    (lambda (condition) condition (lose))
+	  (lambda ()
+	    (method (cdr objects) lose)))
+	(lose))))
+
+(define (read-bracketed-objects db)
   (let loop ((objects '()))
     (let ((object (read-in-context db ctx:close-bracket-ok)))
       (if (close-bracket-token? object)
-	  (let* ((objects (reverse! objects))
-		 (lose (lambda () (error:illegal-hashed-object objects)))
-		 (default-method
-		   (lambda (objects lose)
-		     (if (pair? (cdr objects))
-			 (read-unhash (cadr objects))
-			 (lose))))
-		 (method
-		  (and (pair? objects)
-		       (interned-symbol? (car objects))
-		       (hash-table-ref/default hashed-object-interns
-					       (car objects)
-					       default-method))))
-	    (if method
-		(bind-condition-handler (list condition-type:error)
-		    (lambda (condition) condition (lose))
-		  (lambda ()
-		    (method objects lose)))
-		(lose)))
+	  (reverse! objects)
 	  (loop (cons object objects))))))
 
 (define (handler:close-bracket db ctx char)

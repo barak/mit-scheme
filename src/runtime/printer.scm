@@ -356,6 +356,7 @@ USA.
 	      (if (standard-print-method? print-method)
 		  (*print-with-brackets
 		   (standard-print-method-name print-method object)
+		   (standard-print-method-hash? print-method)
 		   object
 		   context
 		   (standard-print-method-parts print-method object))
@@ -492,7 +493,7 @@ USA.
 	    (print-item item context)
 	    (loop rest (+ n-printed 1))))))))
 
-(define (*print-with-brackets name object context items)
+(define (*print-with-brackets name hash? object context items)
   (if (get-param:print-with-maximum-readability?)
       (*print-readable-hash object context)
       (let ((context* (context-in-brackets context)))
@@ -500,7 +501,8 @@ USA.
 	(*print-items (cons*-if (if (string? name)
 				    (printing-item *print-string name)
 				    name)
-				(and (or (param:print-hash-number-in-objects?)
+				(and hash?
+				     (or (param:print-hash-number-in-objects?)
 					 (null? items))
 				     (printing-item *print-hash object))
 				items)
@@ -555,12 +557,14 @@ USA.
 ;;;; Printer methods
 
 (define (print-default object context)
-  (let ((type (user-object-type object)))
-    (case (object-gc-type object)
-      ((cell pair triple quadruple vector compiled-entry compiled-return)
-       (*print-with-brackets type object context '()))
-      (else                             ;non-pointer, undefined, gc-internal
-       (*print-with-brackets type object context (maybe-print-datum object))))))
+  (let ((type (user-object-type object))
+	(items
+	 (case (object-gc-type object)
+	   ((cell pair triple quadruple vector compiled-entry compiled-return)
+	    '())
+	   (else			;non-pointer, undefined, gc-internal
+	    (maybe-print-datum object)))))
+    (*print-with-brackets type #t object context items)))
 
 (define (user-object-type object)
   (let ((type-code (object-type object)))
@@ -617,7 +621,7 @@ USA.
 	       (else #f))))
     (if string
 	(*print-string string context)
-	(*print-with-brackets (user-object-type object) object context
+	(*print-with-brackets (user-object-type object) #t object context
 	  (list (printing-item *print-datum object))))))
 
 (define (print-interned-symbol symbol context)
@@ -626,7 +630,7 @@ USA.
 (define (print-uninterned-symbol symbol context)
   (if (get-param:print-uninterned-symbols-by-name?)
       (print-symbol-name (symbol->string symbol) context)
-      (*print-with-brackets 'uninterned-symbol symbol context
+      (*print-with-brackets 'uninterned-symbol #t symbol context
 	(list (printing-item print-symbol-name (symbol->string symbol))))))
 
 (define (print-symbol symbol context)
@@ -771,7 +775,7 @@ USA.
       (*print-char #\) context*))))
 
 (define (print-record record context)
-  (*print-with-brackets 'record record context '()))
+  (*print-with-brackets 'record #t record context '()))
 
 (define (print-pair pair context)
   (cond ((prefix-pair? pair)
@@ -842,7 +846,7 @@ USA.
 ;;;; Procedures
 
 (define (print-compound-procedure procedure context)
-  (*print-with-brackets 'compound-procedure procedure context
+  (*print-with-brackets 'compound-procedure #t procedure context
     (let ((name (scode-lambda-name (procedure-lambda procedure))))
       (list-if (and (get-param:print-compound-procedure-names?)
 		    (not (eq? name scode-lambda-name:unnamed))
@@ -851,7 +855,7 @@ USA.
 (define (print-primitive-procedure procedure context)
   (if (get-param:print-primitives-by-name?)
       (print-object (primitive-procedure-name procedure) context)
-      (*print-with-brackets 'primitive-procedure procedure context
+      (*print-with-brackets 'primitive-procedure #t procedure context
 	(list (primitive-procedure-name procedure)))))
 
 (define (print-compiled-entry entry context)
@@ -862,6 +866,7 @@ USA.
                (compiled-code-block/manifest-closure?
                 (compiled-code-address->block entry)))))
     (*print-with-brackets (if closure? 'compiled-closure type)
+			  #t
 			  entry
 			  context
       (cons* (let ((name
@@ -880,7 +885,7 @@ USA.
 		      (printing-item *print-datum entry))))))
 
 (define (print-compiled-code-block block context)
-  (*print-with-brackets 'compiled-code-block block context
+  (*print-with-brackets 'compiled-code-block #t block context
     (list (cc-block-info block)
 	  (list (printing-item *print-datum block)))))
 
@@ -898,26 +903,26 @@ USA.
 ;;;; Miscellaneous
 
 (define (print-return-address return-address context)
-  (*print-with-brackets 'return-address return-address context
+  (*print-with-brackets 'return-address #t return-address context
     (list (return-address/name return-address))))
 
 (define (print-assignment assignment context)
-  (*print-with-brackets 'assignment assignment context
+  (*print-with-brackets 'assignment #t assignment context
     (list (scode-assignment-name assignment))))
 
 (define (print-definition definition context)
-  (*print-with-brackets 'definition definition context
+  (*print-with-brackets 'definition #t definition context
     (list (scode-definition-name definition))))
 
 (define (print-lambda lambda-object context)
-  (*print-with-brackets 'lambda lambda-object context
+  (*print-with-brackets 'lambda #t lambda-object context
     (list (scode-lambda-name lambda-object))))
 
 (define (print-variable variable context)
   (*print-with-brackets (if (scode-variable-safe? variable)
 			    'safe-variable
 			    'variable)
-			variable context
+			#t variable context
     (list (scode-variable-name variable))))
 
 (define (print-number object context)
@@ -944,7 +949,7 @@ USA.
       (print-floating-vector flonum context)))
 
 (define (print-floating-vector v context)
-  (*print-with-brackets 'floating-vector v context
+  (*print-with-brackets 'floating-vector #t v context
     (map (lambda (index)
 	   (printing-item print-number (flo:vector-ref v index)))
 	 (iota (flo:vector-length v)))))
@@ -952,10 +957,10 @@ USA.
 (define (print-entity entity context)
 
   (define (plain name)
-    (*print-with-brackets name entity context '()))
+    (*print-with-brackets name #t entity context '()))
 
   (define (named-arity-dispatched-procedure name)
-    (*print-with-brackets 'arity-dispatched-procedure entity context
+    (*print-with-brackets 'arity-dispatched-procedure #t entity context
       (list (printing-item *print-string name))))
 
   (cond ((continuation? entity)
@@ -974,7 +979,7 @@ USA.
 	 (plain 'entity))))
 
 (define (print-tagged-object object context)
-  (*print-with-brackets 'tagged-object object context
+  (*print-with-brackets 'tagged-object #t object context
     (list (let ((tag (%tagged-object-tag object)))
 	    (if (dispatch-tag? tag)
 		(dispatch-tag-print-name tag)

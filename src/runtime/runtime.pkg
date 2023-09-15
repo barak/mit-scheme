@@ -219,6 +219,7 @@ USA.
   (export (runtime predicate)
 	  set-predicate-tag!)
   (export (runtime printer)
+	  standard-print-method-hash?
 	  standard-print-method-name
 	  standard-print-method-parts
 	  standard-print-method?)

@@ -162,14 +162,14 @@ USA.
 (define-test 'partially-marked-vector
   (lambda ()
     (let ((v (make-vector 10)))
-      (insert-nmv! v 2 5)
+      (insert-nmv! v 2 2)
       (assert-prints-as write v
-			"#(#f #f |#[non-marked section of length 5]| #f #f)"))
+	"#(#f #f #[manifest-nmv 2] #f #f #f #f #f #f #f)"))
     (let ((v (make-vector 10)))
-      (insert-nmv! v 0 5)
+      (insert-nmv! v 0 3)
       (assert-prints-as write v
-			"#(|#[non-marked section of length 5]| #f #f #f #f)"))
+	"#(#[manifest-nmv 3] #f #f #f #f #f #f #f #f #f)"))
     (let ((v (make-vector 10)))
       (insert-nmv! v 4 5)
       (assert-prints-as write v
-			"#(#f #f #f #f |#[non-marked section of length 5]|)"))))
+	"#(#f #f #f #f #[manifest-nmv 5] #f #f #f #f #f)"))))
