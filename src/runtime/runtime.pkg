@@ -2065,6 +2065,59 @@ USA.
 	  control-point?
 	  make-control-point*))
 
+(define-package (runtime new-debugger-state)
+  (files "debugger-state")
+  (parent (runtime))
+  (export (runtime)
+	  dstate-all-subproblems
+	  dstate-child-environment
+	  dstate-condition
+	  dstate-current-environment
+	  dstate-current-environment-index
+	  dstate-current-reduction
+	  dstate-earlier-reduction
+	  dstate-earlier-subproblem
+	  dstate-earliest-reduction
+	  dstate-environment
+	  dstate-expression
+	  dstate-frame
+	  dstate-frames
+	  dstate-have-environment?
+	  dstate-have-reductions?
+	  dstate-later-reduction
+	  dstate-later-subproblem
+	  dstate-latest-reduction
+	  dstate-n-reductions
+	  dstate-n-subproblems
+	  dstate-next-frame?
+	  dstate-nth-reduction
+	  dstate-nth-subproblem
+	  dstate-other-thread
+	  dstate-parent-environment
+	  dstate-reduction
+	  dstate-reduction-index
+	  dstate-start-using-history
+	  dstate-stop-using-history
+	  dstate-subexpression
+	  dstate-subproblem-index
+	  dstate?
+	  initial-dstate
+	  ))
+
+(define-package (runtime new-debugger)
+  (files "debugger")
+  (parent (runtime debugger-command-loop))
+  (export ()
+	  ;; debugger:auto-toggle?
+	  ;; debugger:count-subproblems-limit
+	  ;; debugger:list-breadth-limit
+	  ;; debugger:list-depth-limit
+	  ;; debugger:print-return-values?
+	  ;; debugger:string-length-limit
+	  ;; debugger:student-walk?
+	  ;; debugger:use-history?
+	  ndebug))
+
 (define-package (runtime date/time)
   (files "datime")
   (parent (runtime))
@@ -2184,6 +2237,7 @@ USA.
 	  debugger-message
 	  debugger-presentation
 	  output-to-string
+	  print-environment-name
 	  print-user-friendly-name
 	  show-environment-bindings
 	  show-environment-name
@@ -2567,7 +2621,7 @@ USA.
   (export (runtime rep)
 	  param:bound-restarts
 	  dynamic-handler-frames)
-  (export (runtime debugger)
+  (export (runtime debugger-command-loop)
 	  continue-from-derived-thread-error)
   (export (runtime stream)
 	  ordinal-number-string

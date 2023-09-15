@@ -122,6 +122,10 @@ USA.
       (show-environment-bindings environment brief? port)))
 
 (define (show-environment-name environment port)
+  (print-environment-name environment port)
+  (newline port))
+
+(define (print-environment-name environment port)
   (write-string "Environment " port)
   (let ((name (environment-name environment)))
     (if name
@@ -130,8 +134,7 @@ USA.
 	  (write name port))
 	(begin
 	  (write-string "created by " port)
-	  (print-user-friendly-name environment port))))
-  (newline port))
+	  (print-user-friendly-name environment port)))))
 
 (define (show-environment-bindings environment brief? port)
   (let ((bindings
