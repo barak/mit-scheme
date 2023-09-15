@@ -81,38 +81,46 @@ USA.
 			 '())
 	      message))
 
+(define debugger:catch-internal-errors? #t)
+
 (define (letter-commands/driver cmdl)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (let ((port (cmdl/port cmdl)))
-       (bind-condition-handler (list condition-type:error)
-	   (lambda (condition)
-	     (beep port)
-	     (fresh-line port)
-	     (write-string ";Ignoring error:\n;" port)
-	     (write-condition-report condition port)
-	     (continuation unspecific))
-	 (lambda ()
-	   (let* ((state (cmdl/state cmdl))
-		  (command-set (vector-ref state 0)))
-	     (let loop ()
-	       (let ((proc
-		      (command-set-proc command-set
-					(char-upcase
-					 (prompt-for-command-char
-					  (cons 'standard (vector-ref state 1))
-					  port)))))
-		 (if proc
-		     (let ((result (proc (vector-ref state 2) port)))
-		       (if (command-set-immutable-state? command-set)
-			   (vector-set! state 2 result)
-			   result))
-		     (begin
-		       (beep port)
-		       (newline port)
-		       (write-string "Unknown command character" port)
-		       (loop)))))))))))
+  (if debugger:catch-internal-errors?
+      (call-with-current-continuation
+       (lambda (continuation)
+	 (bind-condition-handler (list condition-type:error)
+	     (lambda (condition)
+	       (let ((port (cmdl/port cmdl)))
+		 (beep port)
+		 (fresh-line port)
+		 (write-string ";Ignoring error:\n;" port)
+		 (write-condition-report condition port))
+	       (continuation unspecific))
+	   (lambda () (%driver cmdl)))))
+      (%driver cmdl))
   (cmdl-message/null))
+
+(define (%driver cmdl)
+  (let ((port (cmdl/port cmdl))
+	(state (cmdl/state cmdl)))
+    (let ((command-set (vector-ref state 0)))
+      (let loop ()
+	(let ((proc
+	       (command-set-proc command-set
+				 (char-upcase
+				  (prompt-for-command-char
+				   (cons 'standard (vector-ref state 1))
+				   port)))))
+	  (if proc
+	      (let ((result (proc (vector-ref state 2) port)))
+		(if (command-set-immutable-state? command-set)
+		    (vector-set! state 2 result)
+		    result))
+	      (begin
+		(beep port)
+		(newline port)
+		(write-string "Unknown command character" port)
+		(loop))))))))
+
 
 (define ((standard-help-command command-set) state port)
   (for-each (lambda (letter)

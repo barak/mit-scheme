@@ -2226,7 +2226,9 @@ USA.
 
 (define-package (runtime debugger-command-loop)
   (files "dbgcmd")
-  (parent (runtime)))
+  (parent (runtime))
+  (export ()
+	  debugger:catch-internal-errors?))
 
 (define-package (runtime debugger-utilities)
   (files "dbgutl")
