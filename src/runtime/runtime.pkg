@@ -2972,14 +2972,15 @@ USA.
   (parent (runtime))
   (export ()
 	  with-new-history)
-  (export (runtime continuation-parser)
+  (export (runtime)
+	  dummy-history
+	  history-reduction-environment
+	  history-reduction-expression
 	  history-reductions
+	  history-reductions-wrap-around?
 	  history-superproblem
 	  history-transform
-	  history-untransform)
-  (export (runtime new-continuation-parser)
-	  history-reductions
-	  history-transform))
+	  history-untransform))
 
 (define-package (runtime compress)
   (file-case options

@@ -188,6 +188,9 @@ USA.
 				 (loop next)))))
 	      '()))))
 
+(define (dummy-history)
+  the-empty-history)
+
 (define-deferred the-empty-history
   (list (fixed-objects-item 'dummy-history)))
 
@@ -230,3 +233,14 @@ USA.
 
 (define-integrable (history-untransform history)
   (car history))
+
+(define (history-reduction-expression reduction)
+  (car reduction))
+
+(define (history-reduction-environment reduction)
+  (cadr reduction))
+
+(define (history-reductions-wrap-around? reductions)
+  (or (eq? reductions 'wrap-around)
+      (and (pair? reductions)
+	   (eq? (cdr (last-pair reductions)) 'wrap-around))))
