@@ -475,8 +475,57 @@ USA.
   (start-index stack-ccenv/start-index))
 (set-predicate<=! stack-ccenv? environment?)
 
+;;; Kludgerous adapter for different stack-frame models
+;;; To be removed after the old one is gone
+
 (define (stack-frame/environment frame default)
-  (let* ((ret-add (stack-frame/return-address frame))
+  (gframe-environment (stack-frame->gframe frame) default))
+
+(define (cframe-stream-environment frames default)
+  (gframe-environment (cframe-stream->gframe frames) default))
+
+(define-record-type <gframe>
+    make-gframe
+    gframe?
+  (return-address gframe-method:return-address)
+  (ref gframe-method:ref)
+  (length gframe-method:length)
+  (resolve-stack-address gframe-method:resolve-stack-address))
+
+(define (gframe-return-address gf)
+  ((gframe-method:return-address gf)))
+
+(define (gframe-ref gf index)
+  ((gframe-method:ref gf) index))
+
+(define (gframe-length gf)
+  ((gframe-method:length gf)))
+
+(define (gframe-resolve-stack-address gf address)
+  ((gframe-method:resolve-stack-address gf) address))
+
+(define (stack-frame->gframe frame)
+  (make-gframe
+   (lambda () (stack-frame/return-address frame))
+   (lambda (index) (stack-frame/ref frame index))
+   (lambda () (stack-frame/length frame))
+   (lambda (address)
+     (let-values (((frame* index)
+                   (stack-frame/resolve-stack-address frame address)))
+       (values (stack-frame->gframe frame*) index)))))
+
+(define (cframe-stream->gframe frames)
+  (make-gframe
+   (lambda () (cframe-return-address (stream-car frames)))
+   (lambda (index) (cframe-stream-ref frames index))
+   (lambda () (cframe-length (stream-car frames)))
+   (lambda (address)
+     (let-values (((frames* index)
+                   (cframe-stream-resolve-stack-address frames address)))
+       (values (cframe-stream->gframe frames*) index)))))
+
+(define (gframe-environment frame default)
+  (let* ((ret-add (gframe-return-address frame))
 	 (object (compiled-entry/dbg-object ret-add)))
     (cond ((not object)
 	   default)
@@ -493,7 +542,7 @@ USA.
 		  (let ((index (dbg-block/ic-parent-index block)))
 		    (if index
 			(guarantee-interpreter-environment
-			 (stack-frame/ref frame index))
+			 (gframe-ref frame index))
 			default)))
 		 (else
 		  (error "Illegal continuation parent block" parent))))))
@@ -563,7 +612,7 @@ USA.
 		 (cond ((not stack-link)
 			(call-with-values
 			    (lambda ()
-			      (stack-frame/resolve-stack-address
+			      (gframe-resolve-stack-address
 			       frame
 			       (stack-ccenv/static-link environment)))
 			  (lambda (frame index)
@@ -598,14 +647,14 @@ USA.
 		  (stack-ccenv/static-link environment)
 		  (compiled-code-block/environment
 		   (compiled-code-address->block
-		    (stack-frame/return-address
+		    (gframe-return-address
 		     (stack-ccenv/frame environment)))))))
 	    (else
 	     (error "illegal parent block" parent)))
 	  (let ((environment
 		 (compiled-code-block/environment
 		   (compiled-code-address->block
-		    (stack-frame/return-address
+		    (gframe-return-address
 		     (stack-ccenv/frame environment))))))
 	    (if (ic-environment? environment)
 		environment
@@ -678,7 +727,7 @@ USA.
   (let ((cell (list #f)))
     (set-car!
      cell
-     (stack-frame/ref (stack-ccenv/frame environment)
+     (gframe-ref (stack-ccenv/frame environment)
 		      (+ (stack-ccenv/start-index environment) index)))
     (map-reference-trap (lambda () (car cell)))))
 
@@ -711,12 +760,12 @@ USA.
 
 (define (find-stack-element environment procedure name)
   (let ((frame (stack-ccenv/frame environment)))
-    (stack-frame/ref
+    (gframe-ref
      frame
      (let ((index
 	    (find-stack-index (stack-ccenv/block environment)
 			      (stack-ccenv/start-index environment)
-			      (stack-frame/length frame)
+			      (gframe-length frame)
 			      procedure)))
        (if (not index)
 	   (error (string-append "Unable to find " name) environment))

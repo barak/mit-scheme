@@ -162,7 +162,7 @@ USA.
 ;;;; Display commands
 
 (define (command/print-subproblem-or-reduction dstate port)
-  (if (dstate-have-reductions? dstate)
+  (if (dstate-has-reductions? dstate)
       (command/print-reduction dstate port)
       (command/print-subproblem dstate port))
   dstate)
@@ -176,7 +176,7 @@ USA.
 (define (command/print-reduction dstate port)
   (port/debugger-presentation port
     (lambda ()
-      (print-reduction (dstate-reduction dstate)
+      (print-reduction (dstate-current-reduction dstate)
 		       (dstate-subproblem-index dstate)
 		       (dstate-reduction-index dstate)
 		       port)))
@@ -184,7 +184,7 @@ USA.
 
 (define (command/print-reductions dstate port)
   (let ((subproblem-index (dstate-subproblem-index dstate)))
-    (if (dstate-have-reductions? dstate)
+    (if (dstate-has-reductions? dstate)
 	(port/debugger-presentation port
 	  (lambda ()
 	    (write-string "Execution history for this subproblem:" port)
@@ -283,7 +283,7 @@ USA.
 (define-integrable subexpression-marker '<!>)
 
 (define (print-subproblem-environment dstate port)
-  (if (dstate-have-environment? dstate)
+  (if (dstate-has-environment? dstate)
       (print-environment (dstate-environment dstate) port)
       (begin
 	(newline port)
@@ -358,7 +358,7 @@ USA.
 	      (let ((frame (stream-car frames)))
 		(terse-print-expression level
 					(cframe-dbg-expression frame)
-					(cframe-dbg-environment frame)
+					(cframe-stream-dbg-environment frames)
 					port)
 		(loop (stream-car frames) (+ level 1))))))))
   dstate)
@@ -459,7 +459,7 @@ USA.
 
 (define (command/earlier-reduction dstate port)
   (let ((dstate* (dstate-start-using-history dstate)))
-    (if (dstate-have-reductions? dstate*)
+    (if (dstate-has-reductions? dstate*)
 	(let ((dstate**
 	       (and (not (only-latest-reduction? dstate*))
 		    (dstate-earlier-reduction dstate*))))
@@ -478,7 +478,7 @@ USA.
 
 (define (command/later-reduction dstate port)
   (let ((dstate* (dstate-start-using-history dstate)))
-    (if (dstate-have-reductions? dstate*)
+    (if (dstate-has-reductions? dstate*)
 	(let ((dstate** (dstate-later-reduction dstate*)))
 	  (if dstate**
 	      (command/print-reduction dstate** port)
@@ -497,21 +497,21 @@ USA.
 ;;;; Environment motion and display
 
 (define (command/show-current-frame dstate port)
-  (if (dstate-have-environment? dstate)
+  (if (dstate-has-environment? dstate)
       (show-current-frame dstate #f port)
       (begin
 	(undefined-environment port)
 	dstate)))
 
 (define (command/show-all-frames dstate port)
-  (if (dstate-have-environment? dstate)
+  (if (dstate-has-environment? dstate)
       (show-frames (dstate-current-environment dstate) 0 port)
       (begin
 	(undefined-environment port)
 	dstate)))
 
 (define (command/move-to-parent-environment dstate port)
-  (if (dstate-have-environment? dstate)
+  (if (dstate-has-environment? dstate)
       (let ((dstate* (dstate-parent-environment dstate)))
 	(if dstate*
 	    (begin
@@ -525,7 +525,7 @@ USA.
 	dstate)))
 
 (define (command/move-to-child-environment dstate port)
-  (if (dstate-have-environment? dstate)
+  (if (dstate-has-environment? dstate)
       (let ((dstate* (dstate-child-environment dstate)))
 	(if dstate*
 	    (begin
@@ -690,7 +690,7 @@ USA.
       (cframe-dbg-expression-compiled? expression)))
 
 (define (get-evaluation-environment dstate port)
-  (if (dstate-have-environment? dstate)
+  (if (dstate-has-environment? dstate)
       (dstate-environment dstate)
       (begin
 	(debugger-message
@@ -700,7 +700,7 @@ using the read-eval-print environment instead.")
 	(nearest-repl/environment))))
 
 (define (with-current-environment dstate port receiver)
-  (if (dstate-have-environment? dstate)
+  (if (dstate-has-environment? dstate)
       (receiver (dstate-environment dstate))
       (undefined-environment port)))
 

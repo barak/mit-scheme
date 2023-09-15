@@ -304,7 +304,7 @@ USA.
 (define (cframe-reduction frame index)
   (list-ref (%cframe-reductions frame) index))
 
-(define (cframe-any-reductions? frame)
+(define (cframe-has-reductions? frame)
   (pair? (%cframe-reductions frame)))
 
 (define (cframe-n-reductions frame)
@@ -549,8 +549,12 @@ USA.
 (define (cframe-dbg-expression frame)
   (call-frame-generator frame 'expression undefined-exp))
 
-(define (cframe-dbg-environment frame)
-  (call-frame-generator frame 'environment undefined-env))
+(define (cframe-stream-dbg-environment frames)
+  (let ((frame (stream-car frames)))
+    (let ((generator (frame-generator frame 'cc-environment)))
+      (if generator
+	  (generator frames)
+	  (call-frame-generator frame 'environment undefined-env)))))
 
 (define (cframe-dbg-subexpression frame)
   (if (eq? (cframe-tracked-item-value frame 'previous-type)
@@ -566,6 +570,12 @@ USA.
 		    (keyword-list->alist keylist)))
 
 (define (call-frame-generator frame keyword default)
+  (let ((generator (frame-generator frame keyword)))
+    (if generator
+	(generator frame)
+	default)))
+
+(define (frame-generator frame keyword)
   (let* ((alist
 	 (or (let ((code (cframe-return-code frame)))
 	       (and code
@@ -576,9 +586,8 @@ USA.
 			      (cframe-return-type frame)
 			      (lambda () '()))))
 	 (p (assq keyword alist)))
-    (if p
-	((cdr p) frame)
-	default)))
+    (and p
+	 (cdr p))))
 
 (define return-code-generators (alist-table eq?))
 (define return-type-generators (alist-table eq?))
@@ -617,11 +626,6 @@ USA.
 (define (apply-expression frame)
   (make-scode-combination (squote (cframe-field-value frame 'procedure))
 			  (map squote (cframe-field-value frame 'arguments))))
-
-;; TODO: requires changes in "environment.scm".
-(define (cframe-environment frame undefined-env)
-  (declare (ignore frame))
-  undefined-env)
 
 (define-record-type <printer>
     make-printer
@@ -729,19 +733,21 @@ USA.
     (make-scode-unassigned? (cframe-field-value frame 'variable) #t))
   'environment standard-environment)
 
-(define ((cc-accessor cont-accessor proc-accessor default) frame)
-  (let ((dbg (compiled-entry/dbg-object (cframe-return-address frame))))
+(define ((cc-accessor get-frame cont-accessor proc-accessor default) arg)
+  (let ((dbg
+	 (compiled-entry/dbg-object (cframe-return-address (get-frame arg)))))
     (cond ((dbg-continuation? dbg)
 	   (if (let ((source (dbg-continuation/source-code dbg)))
 		 (and (vector? source)
 		      (fix:>= (vector-length source) 2)))
-	       (cont-accessor dbg frame)
+	       (cont-accessor dbg arg)
 	       default))
-	  ((dbg-procedure? dbg) (proc-accessor dbg frame))
+	  ((dbg-procedure? dbg) (proc-accessor dbg arg))
 	  (else default))))
 
 (define cc-exp
-  (cc-accessor (lambda (dbg frame)
+  (cc-accessor (lambda (frame) frame)
+	       (lambda (dbg frame)
 		 (declare (ignore frame))
 		 (let ((source (dbg-continuation/source-code dbg)))
 		   (case (vector-ref source 0)
@@ -758,22 +764,24 @@ USA.
 	       compiled-exp))
 
 (define cc-env
-  (cc-accessor (lambda (dbg frame)
+  (cc-accessor (lambda (frames) (stream-car frames))
+	       (lambda (dbg frames)
 		 (let ((source (dbg-continuation/source-code dbg)))
 		   (case (vector-ref source 0)
 		     ((access-continue assignment-continue combination-operand
 				       conditional-decide conditional-predicate
 				       definition-continue sequence-continue)
-		      (cframe-environment frame undefined-env))
+		      (cframe-stream-environment frames undefined-env))
 		     (else undefined-env))))
-	       (lambda (dbg frame)
+	       (lambda (dbg frames)
 		 (if (dbg-procedure/block dbg)
-		     (cframe-environment frame undefined-env)
+		     (cframe-stream-environment frames undefined-env)
 		     undefined-env))
 	       undefined-env))
 
 (define cc-subexp
-  (cc-accessor (lambda (dbg frame)
+  (cc-accessor (lambda (frame) frame)
+	       (lambda (dbg frame)
 		 (declare (ignore frame))
 		 (let ((source (dbg-continuation/source-code dbg)))
 		   (case (vector-ref source 0)
@@ -795,12 +803,12 @@ USA.
 
 (define-return-code-generators 'compiler-interrupt-restart
   'expression cc-exp
-  'environment cc-env
+  'cc-environment cc-env
   'subexpression cc-subexp)
 
 (define-return-type-generators 'compiled-address
   'expression cc-exp
-  'environment cc-env
+  'cc-environment cc-env
   'subexpression cc-subexp)
 
 (define-return-type-generators 'hardware-trap

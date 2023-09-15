@@ -2021,11 +2021,9 @@ USA.
   (files "continuation-parser")
   (parent (runtime))
   (export (runtime)
-	  cframe-any-reductions?
 	  cframe-compiled-address?
 	  cframe-compiled-code?
 	  cframe-cpoint-end
-	  cframe-dbg-environment
 	  cframe-dbg-environment-undefined?
 	  cframe-dbg-expression
 	  cframe-dbg-expression-compiled?
@@ -2036,6 +2034,7 @@ USA.
 	  cframe-end
 	  cframe-field-names
 	  cframe-field-value
+	  cframe-has-reductions?
 	  cframe-length
 	  cframe-n-reductions
 	  cframe-raw
@@ -2048,6 +2047,7 @@ USA.
 	  cframe-start
 	  cframe-stream->continuation
 	  cframe-stream->control-point
+	  cframe-stream-dbg-environment
 	  cframe-stream-ref
 	  cframe-stream-resolve-stack-address
 	  cframe-subproblem?
@@ -2082,8 +2082,8 @@ USA.
 	  dstate-expression
 	  dstate-frame
 	  dstate-frames
-	  dstate-have-environment?
-	  dstate-have-reductions?
+	  dstate-has-environment?
+	  dstate-has-reductions?
 	  dstate-later-reduction
 	  dstate-later-subproblem
 	  dstate-latest-reduction
@@ -2481,7 +2481,9 @@ USA.
 	  ic-environment/arguments
 	  ic-environment/procedure)
   (export (runtime debugging-info)
-	  stack-frame/environment))
+	  stack-frame/environment)
+  (export (runtime new-continuation-parser)
+	  cframe-stream-environment))
 
 (define-package (runtime environment-inspector)
   (files "where")

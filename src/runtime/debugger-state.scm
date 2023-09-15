@@ -63,19 +63,19 @@ USA.
 (define (dstate-subexpression dstate)
   (cframe-dbg-subexpression (dstate-frame dstate)))
 
-(define (dstate-have-environment? dstate)
+(define (dstate-has-environment? dstate)
   (pair? (dstate-env-list dstate)))
 
 (define (dstate-environment dstate)
-  (assert (dstate-have-environment? dstate))
+  (assert (dstate-has-environment? dstate))
   (car (last-pair (dstate-env-list dstate))))
 
 (define (dstate-current-environment dstate)
-  (assert (dstate-have-environment? dstate))
+  (assert (dstate-has-environment? dstate))
   (car (dstate-env-list dstate)))
 
 (define (dstate-current-environment-index dstate)
-  (assert (dstate-have-environment? dstate))
+  (assert (dstate-has-environment? dstate))
   (length (cdr (dstate-env-list dstate))))
 
 (define (dstate-using-history? dstate)
@@ -94,8 +94,8 @@ USA.
 (define (dstate-reduction dstate index)
   (cframe-reduction (dstate-frame dstate) index))
 
-(define (dstate-have-reductions? dstate)
-  (and (%dstate-reduction-index dstate) #t))
+(define (dstate-has-reductions? dstate)
+  (cframe-has-reductions? (dstate-frame dstate)))
 
 (define (dstate-reduction-index dstate)
   (let ((index (%dstate-reduction-index dstate)))
@@ -149,23 +149,23 @@ USA.
 	(length stack))))
 
 (define (dstate-earlier-reduction dstate)
-  (assert (dstate-have-reductions? dstate))
+  (assert (dstate-has-reductions? dstate))
   (let ((index (%dstate-reduction-index dstate)))
     (and (fix:< (fix:+ index 1) (dstate-n-reductions dstate))
 	 (select-reduction (fix:+ index 1) dstate))))
 
 (define (dstate-later-reduction dstate)
-  (assert (dstate-have-reductions? dstate))
+  (assert (dstate-has-reductions? dstate))
   (let ((index (%dstate-reduction-index dstate)))
     (and (fix:> index 0)
 	 (select-reduction (fix:- index 1) dstate))))
 
 (define (dstate-latest-reduction dstate)
-  (assert (dstate-have-reductions? dstate))
+  (assert (dstate-has-reductions? dstate))
   (select-reduction 0 dstate))
 
 (define (dstate-earliest-reduction dstate)
-  (assert (dstate-have-reductions? dstate))
+  (assert (dstate-has-reductions? dstate))
   (select-reduction (fix:- (dstate-n-reductions dstate) 1) dstate))
 
 (define (dstate-nth-reduction dstate index)
@@ -174,7 +174,7 @@ USA.
   (select-reduction index dstate))
 
 (define (dstate-parent-environment dstate)
-  (assert (dstate-have-environment? dstate))
+  (assert (dstate-has-environment? dstate))
   (let ((env (dstate-current-environment dstate)))
     (and (eq? #t (environment-has-parent? env))
 	 (select-environment (cons (environment-parent env)
@@ -182,7 +182,7 @@ USA.
 			     dstate))))
 
 (define (dstate-child-environment dstate)
-  (assert (dstate-have-environment? dstate))
+  (assert (dstate-has-environment? dstate))
   (let ((env-list (cdr (dstate-env-list dstate))))
     (and (pair? env-list)
 	 (select-environment env-list dstate))))
@@ -242,9 +242,9 @@ USA.
 (define (index-and-env-list frames hist-state)
   (let ((frame (stream-car frames)))
     (if (and (hist-state-using-history? hist-state)
-	     (cframe-any-reductions? frame))
+	     (cframe-has-reductions? frame))
 	(values 0 (reduction-env-list frame 0))
-	(let ((env (cframe-dbg-environment frame)))
+	(let ((env (cframe-stream-dbg-environment frames)))
 	  (if (cframe-dbg-environment-undefined? env)
 	      (values #f '())
 	      (values 0 (list env)))))))

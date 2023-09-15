@@ -331,7 +331,7 @@ USA.
 		(let ((cf (stream-car cfs)))
 		  (assert-eq (cframe-type cf) frame-type)
 		  (let ((exp (cframe-dbg-expression cf))
-			(env* (cframe-dbg-environment cf))
+			(env* (cframe-stream-dbg-environment cfs))
 			(subexp (cframe-dbg-subexpression cf)))
 		    (assert-true (exp-pred exp))
 		    (if (not (or (cframe-dbg-environment-undefined? env*)
