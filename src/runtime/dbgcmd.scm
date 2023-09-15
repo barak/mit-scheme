@@ -30,8 +30,15 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-command-set name definitions)
-  (let ((command-set (list name)))
+(define-record-type <command-set>
+    %make-command-set
+    command-set?
+  (name command-set-name)
+  (commands command-set-commands)
+  (props command-set-props))
+
+(define (make-command-set name definitions . props)
+  (let ((command-set (%make-command-set name (alist-table char=?) props)))
     (for-each (lambda (entry)
 		(define-letter-command command-set
 		  (car entry)
@@ -42,18 +49,32 @@ USA.
 	      definitions)
     command-set))
 
-(define (define-letter-command command-set new-command function help-text)
-  (let ((entry (assv new-command (cdr command-set))))
-    (if entry
-	(set-cdr! entry (list function help-text))
-	(let loop ((command-set command-set))
-	  (if (or (null? (cdr command-set))
-		  (char<? new-command (caadr command-set)))
-	      (set-cdr! command-set
-			(cons (list new-command function help-text)
-			      (cdr command-set)))
-	      (loop (cdr command-set)))))))
+(define (define-letter-command command-set letter proc help-text)
+  (alist-table-set! (command-set-commands command-set)
+		    letter
+		    (cons proc help-text)))
 
+(define (command-set-proc command-set letter)
+  (alist-table-ref (command-set-commands command-set)
+		   letter
+		   (lambda () #f)
+		   car))
+
+(define (command-set-help-text command-set letter)
+  (alist-table-ref (command-set-commands command-set)
+		   letter
+		   (lambda () #f)
+		   cdr))
+
+(define (command-set-letters command-set)
+  (sort (alist-table-keys (command-set-commands command-set)) char<?))
+
+(define (command-set-prop command-set keyword default-value)
+  (get-keyword-value (command-set-props command-set) keyword default-value))
+
+(define (command-set-immutable-state? command-set)
+  (command-set-prop command-set 'immutable-state? #f))
+
 (define (letter-commands command-set message prompt state)
   (cmdl/start (push-cmdl letter-commands/driver
 			 (vector command-set prompt state)
@@ -72,40 +93,41 @@ USA.
 	     (write-condition-report condition port)
 	     (continuation unspecific))
 	 (lambda ()
-	   (let ((state (cmdl/state cmdl)))
-	     (let ((command-set (vector-ref state 0))
-		   (prompt (vector-ref state 1))
-		   (state (vector-ref state 2)))
-	       (let loop ()
-		 (let ((entry
-			(assv (char-upcase
-			       (prompt-for-command-char (cons 'standard prompt)
-							port))
-			      (cdr command-set))))
-		   (if entry
-		       ((cadr entry) state port)
-		       (begin
-			 (beep port)
-			 (newline port)
-			 (write-string "Unknown command character" port)
-			 (loop))))))))))))
+	   (let* ((state (cmdl/state cmdl))
+		  (command-set (vector-ref state 0)))
+	     (let loop ()
+	       (let ((proc
+		      (command-set-proc command-set
+					(char-upcase
+					 (prompt-for-command-char
+					  (cons 'standard (vector-ref state 1))
+					  port)))))
+		 (if proc
+		     (let ((result (proc (vector-ref state 2) port)))
+		       (if (command-set-immutable-state? command-set)
+			   (vector-set! state 2 result)
+			   result))
+		     (begin
+		       (beep port)
+		       (newline port)
+		       (write-string "Unknown command character" port)
+		       (loop)))))))))))
   (cmdl-message/null))
 
 (define ((standard-help-command command-set) state port)
-  state					;ignore
-  (for-each (lambda (entry)
+  (for-each (lambda (letter)
 	      (newline port)
 	      (write-string "   " port)
-	      (write-char (car entry) port)
+	      (write-char letter port)
 	      (write-string "   " port)
-	      (write-string (caddr entry) port))
-	    (cdr command-set))
-  unspecific)
+	      (write-string (command-set-help-text command-set letter) port))
+	    (command-set-letters command-set))
+  state)
 
 (define (standard-exit-command state port)
-  state					;ignore
   (continue)
-  (debugger-failure port "Can't exit; use a restart command instead."))
+  (debugger-failure port "Can't exit; use a restart command instead.")
+  state)
 
 (define (leaving-command-loop thunk)
   (hook/leaving-command-loop thunk))
