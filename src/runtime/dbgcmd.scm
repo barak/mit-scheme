@@ -42,32 +42,39 @@ USA.
     (for-each (lambda (entry)
 		(define-letter-command command-set
 		  (car entry)
+		  (caddr entry)
 		  (if (eq? standard-help-command (cadr entry))
 		      (standard-help-command command-set)
-		      (cadr entry))
-		  (caddr entry)))
+		      (cadr entry))))
 	      definitions)
     command-set))
 
-(define (define-letter-command command-set letter proc help-text)
+(define (define-letter-command command-set letter help-text proc)
   (alist-table-set! (command-set-commands command-set)
 		    letter
 		    (cons proc help-text)))
 
 (define (command-set-proc command-set letter)
-  (alist-table-ref (command-set-commands command-set)
-		   letter
-		   (lambda () #f)
-		   car))
+  (command-set-entry command-set letter car))
 
 (define (command-set-help-text command-set letter)
-  (alist-table-ref (command-set-commands command-set)
-		   letter
-		   (lambda () #f)
-		   cdr))
+  (command-set-entry command-set letter cdr))
+
+(define (command-set-entry command-set letter succeed)
+  (or (alist-table-ref (command-set-commands command-set)
+		       letter
+		       (lambda () #f)
+		       succeed)
+      (alist-table-ref (command-set-commands command-set)
+		       (char-upcase letter)
+		       (lambda () #f)
+		       succeed)))
 
 (define (command-set-letters command-set)
-  (sort (alist-table-keys (command-set-commands command-set)) char<?))
+  (let ((keys (alist-table-keys (command-set-commands command-set))))
+    (let-values (((upcased normal) (partition char-upper-case? keys)))
+      (append (sort normal char<?)
+	      (sort upcased char<?)))))
 
 (define (command-set-prop command-set keyword default-value)
   (get-keyword-value (command-set-props command-set) keyword default-value))
@@ -106,31 +113,35 @@ USA.
       (let loop ()
 	(let ((proc
 	       (command-set-proc command-set
-				 (char-upcase
-				  (prompt-for-command-char
-				   (cons 'standard (vector-ref state 1))
-				   port)))))
+				 (prompt-for-command-char
+				  (cons 'standard (vector-ref state 1))
+				  port))))
 	  (if proc
 	      (let ((result (proc (vector-ref state 2) port)))
 		(if (command-set-immutable-state? command-set)
-		    (vector-set! state 2 result)
-		    result))
+		    (vector-set! state 2 result)))
 	      (begin
-		(beep port)
-		(newline port)
-		(write-string "Unknown command character" port)
+		(debugger-failure port "Unknown command character.")
 		(loop))))))))
 
-
 (define ((standard-help-command command-set) state port)
-  (for-each (lambda (letter)
-	      (newline port)
-	      (write-string "   " port)
-	      (write-char letter port)
-	      (write-string "   " port)
-	      (write-string (command-set-help-text command-set letter) port))
-	    (command-set-letters command-set))
+  (print-help command-set port)
   state)
+
+(define (print-help command-set port)
+
+  (define (print-line letter)
+    (write-string "   " port)
+    (write-char letter port)
+    (write-string "   " port)
+    (write-string (command-set-help-text command-set letter) port))
+
+  (let ((letters (command-set-letters command-set)))
+    (print-line (car letters))
+    (for-each (lambda (letter)
+		(newline port)
+		(print-line letter))
+	      (cdr letters))))
 
 (define (standard-exit-command state port)
   (continue)

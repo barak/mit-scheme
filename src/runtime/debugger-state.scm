@@ -26,7 +26,7 @@ USA.
 |#
 
 ;;;; Debugger state
-;;; package: (runtime debugger-state)
+;;; package: (runtime new-debugger-state)
 
 (declare (usual-integrations))
 
@@ -81,10 +81,6 @@ USA.
 (define (dstate-using-history? dstate)
   (hist-state-using-history? (dstate-hist-state dstate)))
 
-(define (hist-state-using-history? hist-state)
-  (or (eq? hist-state 'always)
-      (eq? hist-state 'now)))
-
 (define (dstate-auto-toggle? dstate)
   (not (eq? (dstate-hist-state dstate) 'disabled)))
 
@@ -137,16 +133,12 @@ USA.
 (define (dstate-later-subproblem dstate)
   (let ((stack (dstate-stack dstate)))
     (and (pair? stack)
-	 (select-subproblem (car stack)
-			    (cdr stack)
-			    dstate))))
+	 (select-subproblem (car stack) (cdr stack) dstate))))
 
 (define (dstate-nth-subproblem dstate index)
   (let-values (((frames stack) (subproblem-ref dstate index)))
-    (if (stream-pair? frames)
-	(select-subproblem frames stack dstate)
-	;; index exceeded this number
-	(length stack))))
+    (and (stream-pair? frames)
+	 (select-subproblem frames stack dstate))))
 
 (define (dstate-earlier-reduction dstate)
   (assert (dstate-has-reductions? dstate))
@@ -169,8 +161,7 @@ USA.
   (select-reduction (fix:- (dstate-n-reductions dstate) 1) dstate))
 
 (define (dstate-nth-reduction dstate index)
-  (assert (fix:>= index 0))
-  (assert (fix:< index (dstate-n-reductions dstate)))
+  (assert (and (fix:>= index 0) (fix:< index (dstate-n-reductions dstate))))
   (select-reduction index dstate))
 
 (define (dstate-parent-environment dstate)
@@ -249,6 +240,10 @@ USA.
 	      (values #f '())
 	      (values 0 (list env)))))))
 
+(define (hist-state-using-history? hist-state)
+  (or (eq? hist-state 'always)
+      (eq? hist-state 'now)))
+
 (define (reduction-env-list frame index)
   (list
    (history-reduction-environment
@@ -257,10 +252,9 @@ USA.
 (define (subproblem-ref dstate index)
   (let loop ((i 0) (frames (dstate-all-subproblems dstate)) (stack '()))
     (if (fix:< i index)
-	(let ((i* (fix:+ i 1))
-	      (frames* (stream-cdr frames))
+	(let ((frames* (stream-cdr frames))
 	      (stack* (cons frames stack)))
 	  (if (stream-pair? frames*)
-	      (loop i* frames* stack*)
+	      (loop (fix:+ i 1) frames* stack*)
 	      (values frames* stack*)))
 	(values frames stack))))

@@ -140,6 +140,10 @@ USA.
 	 (sort (environment-bindings environment)
 	   (lambda (a b) (symbol<? (car a) (car b))))))
     (let ((n-bindings (length bindings))
+	  (limit
+	   (cond ((not brief?) detailed-bindings-limit)
+		 ((exact-positive-integer? brief?) brief?)
+		 (else brief-bindings-limit)))
 	  (finish
 	   (lambda (bindings)
 	     (newline port)
@@ -149,21 +153,21 @@ USA.
       (cond ((= n-bindings 0)
 	     (write-string " has no bindings" port)
 	     (newline port))
-	    ((and brief? (> n-bindings brief-bindings-limit))
+	    ((<= n-bindings limit)
+	     (write-string " has bindings:" port)
+	     (newline port)
+	     (finish bindings))
+	    (else
 	     (write-string " has " port)
 	     (write n-bindings port)
 	     (write-string " bindings (first " port)
-	     (write brief-bindings-limit port)
+	     (write limit port)
 	     (write-string " shown):" port)
 	     (newline port)
-	     (finish (take bindings brief-bindings-limit)))
-	    (else
-	     (write-string " has bindings:" port)
-	     (newline port)
-	     (finish bindings))))))
+	     (finish (take bindings limit)))))))
 
-(define brief-bindings-limit
-  16)
+(define brief-bindings-limit 16)
+(define detailed-bindings-limit 64)
 
 (define (print-binding binding port)
   (write-string
