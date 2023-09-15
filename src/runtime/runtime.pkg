@@ -2021,6 +2021,8 @@ USA.
   (files "continuation-parser")
   (parent (runtime))
   (export (runtime)
+	  cframe-any-reductions?
+	  cframe-compiled-address?
 	  cframe-compiled-code?
 	  cframe-cpoint-end
 	  cframe-dbg-environment
@@ -2032,23 +2034,23 @@ USA.
 	  cframe-dbg-printer?
 	  cframe-dbg-subexpression
 	  cframe-end
-	  cframe-field-name?
 	  cframe-field-names
 	  cframe-field-value
 	  cframe-length
+	  cframe-n-reductions
 	  cframe-raw
+	  cframe-reduction
 	  cframe-ref
+	  cframe-repl-eval-boundary?
 	  cframe-return-address
 	  cframe-return-code
 	  cframe-return-type
 	  cframe-start
 	  cframe-stream->continuation
 	  cframe-stream->control-point
-	  cframe-stream-next-subproblem
 	  cframe-stream-ref
 	  cframe-stream-resolve-stack-address
-	  cframe-stream-skip-non-subproblems
-	  cframe-tracked-item-name?
+	  cframe-subproblem?
 	  cframe-tracked-item-names
 	  cframe-tracked-item-value
 	  cframe-type

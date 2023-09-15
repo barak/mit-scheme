@@ -38,10 +38,14 @@ USA.
 (define-deferred return-frame-types
   (microcode-return-frame-types))
 
+(define (continuation->cframe-stream continuation)
+  (generator->stream (continuation->cframe-generator continuation)))
+
 (define (continuation->cframe-generator continuation)
-  (let ((graw
-	 (control-point->raw-frame-generator
-	  (continuation/control-point continuation)))
+  (let ((raw-results
+	 (generator->stream
+	  (control-point->raw-frame-generator
+	   (continuation/control-point continuation))))
 	(tracked-items
 	 (initial-tracked-items
 	  'dynamic-state
@@ -50,44 +54,76 @@ USA.
 	  (continuation/block-thread-events? continuation))))
 
     (define (generator)
-      (let ((raw-result (graw)))
-	(if (eof-object? raw-result)
-	    raw-result
-	    (let ((frame (decode-raw-result raw-result tracked-items)))
+      (if (stream-pair? raw-results)
+	  (let ((raw-result (stream-car raw-results)))
+	    (set! raw-results (stream-cdr raw-results))
+	    (let ((frame
+		   (decode-raw-result raw-result
+				      tracked-items
+				      (next-type raw-results))))
 	      (set! tracked-items (update-tracked-items tracked-items frame))
-	      frame))))
+	      frame))
+	  (eof-object)))
 
     generator))
 
-(define (continuation->cframe-stream continuation)
-  (generator->stream (continuation->cframe-generator continuation)))
+(define (next-type raw-results)
+  (and (stream-pair? raw-results)
+       (let ((raw (raw-result-frame (stream-car raw-results))))
+	 (or (raw-frame-return-code-name raw)
+	     (frame-info-type (raw-frame-type-info raw))))))
+
+(define-integrable (raw-result-field-start raw-result)
+  (vector-ref raw-result 0))
+
+(define-integrable (raw-result-cp-end raw-result)
+  (vector-ref raw-result 1))
+
+(define-integrable (raw-result-frame raw-result)
+  (vector-ref raw-result 2))
+
+(define (raw-frame-return-code-name raw)
+  (let ((address (vector-ref raw 0)))
+    (and (interpreter-return-address? address)
+	 (return-address/name address))))
+
+(define-integrable (raw-frame-type-info raw)
+  (vector-ref return-frame-types (return-frame-type raw 0)))
+
+(define-integrable (frame-info-type info)
+  (vector-ref info 0))
+
+(define-integrable (frame-info-subproblem? info)
+  (vector-ref info 1))
+
+(define-integrable (frame-info-history-subproblem? info)
+  (vector-ref info 2))
+
+(define-integrable (frame-info-field-name info index)
+  (vector-ref info (fix:+ 3 (fix:* 2 index))))
+
+(define-integrable (frame-info-field-index info index)
+  (vector-ref info (fix:+ 4 (fix:* 2 index))))
 
-(define (decode-raw-result raw-result bindings)
-  (let ((findex (vector-ref raw-result 0))
-	(cpend (vector-ref raw-result 1))
-	(raw (vector-ref raw-result 2)))
-    (let ((info (vector-ref return-frame-types (return-frame-type raw 0)))
-	  (return-code-name
-	   (let ((address (vector-ref raw 0)))
-	     (and (interpreter-return-address? address)
-		  (return-address/name address)))))
-      (let ((frame-type-name (vector-ref info 0)))
+(define (decode-raw-result raw-result bindings next-type)
+  (let ((raw (raw-result-frame raw-result)))
+    (let ((info (raw-frame-type-info raw))
+	  (return-code-name (raw-frame-return-code-name raw)))
+      (let ((frame-type-name (frame-info-type info)))
 
 	(define (make . alist)
-	  (make-cframe (or return-code-name frame-type-name) findex cpend raw
-		       info alist bindings))
-
-	(define-integrable (name index)
-	  (vector-ref info (fix:+ 3 (fix:* 2 index))))
-
-	(define-integrable (val-loc index)
-	  (vector-ref info (fix:+ 4 (fix:* 2 index))))
+	  (make-cframe (or return-code-name frame-type-name)
+		       (raw-result-field-start raw-result)
+		       (raw-result-cp-end raw-result)
+		       raw info next-type alist bindings))
 
 	(define-integrable (elt index)
-	  (cons (name index) (vector-ref raw (val-loc index))))
+	  (cons (frame-info-field-name info index)
+		(vector-ref raw (frame-info-field-index info index))))
 
 	(define-integrable (rest-elts index)
-	  (cons (name index) (vector->list raw (val-loc index))))
+	  (cons (frame-info-field-name info index)
+		(vector->list raw (frame-info-field-index info index))))
 
 	(case frame-type-name
 	  ((return-to-interpreter)
@@ -114,7 +150,8 @@ USA.
 		    ((halt) 'termination-code)
 		    (else #f))))
 	     (if name
-		 (make (cons name (vector-ref raw (val-loc 0))))
+		 (make (cons name
+			     (vector-ref raw (frame-info-field-index info 0))))
 		 (make))))
 	  ((return-to-compiled-code return-to-compiled-code-subproblem)
 	   (apply make (elt 0)
@@ -122,12 +159,16 @@ USA.
 	  ((compiled-address)
 	   (apply make (cc-address-extra-fields raw 0)))
 	  ((combination-save)
-	   (let ((n-blanks (manifest-nmv-datum (vector-ref raw (val-loc 2)))))
+	   (let ((n-blanks
+		  (manifest-nmv-datum
+		   (vector-ref raw (frame-info-field-index info 2)))))
 	     (make (elt 0)
 		   (elt 1)
-		   (cons (name 2) n-blanks)
-		   (cons (name 3)
-			 (vector->list raw (fix:+ (val-loc 3) n-blanks))))))
+		   (cons (frame-info-field-name info 2) n-blanks)
+		   (cons (frame-info-field-name info 3)
+			 (vector->list
+			  raw
+			  (fix:+ (frame-info-field-index info 3) n-blanks))))))
 	  ((hardware-trap)
 	   (make (elt 0) (elt 1) (elt 2) (elt 3)
 		 (elt 4) (elt 5) (elt 6) (elt 7)))
@@ -175,6 +216,7 @@ USA.
   (cpoint-end cframe-cpoint-end)	;length of control point
   (raw cframe-raw)
   (info cframe-info)
+  (next-type cframe-next-type)
   (fields cframe-fields)
   (tracked-items cframe-tracked-items))
 
@@ -223,11 +265,16 @@ USA.
   (vector-ref (cframe-info frame) 0))
 
 (define (cframe-subproblem? frame)
-  (or (vector-ref (cframe-info frame) 1)
-      (cframe:stack-marker-of-type? with-repl-eval-boundary frame)))
+  (vector-ref (cframe-info frame) 1))
 
 (define (cframe-history-subproblem? frame)
-  (vector-ref (cframe-info frame) 2))
+  (case (cframe-type frame)
+    ((compiled-address) (eq? (cframe-next-type frame) 'return-to-interpreter))
+    ((apply) (not (eq? (cframe-next-type frame) 'reenter-compiled-code)))
+    (else (vector-ref (cframe-info frame) 2))))
+
+(define (cframe-repl-eval-boundary? frame)
+  (cframe:stack-marker-of-type? with-repl-eval-boundary frame))
 
 (define (cframe-field-value frame name #!optional default)
   (let ((p (assq name (cframe-fields frame))))
@@ -238,9 +285,6 @@ USA.
 	      (error "Unknown frame field name:" name))
 	  default))))
 
-(define (cframe-field-name? frame name)
-  (and (assq name (cframe-fields frame)) #t))
-
 (define (cframe-field-names frame)
   (map car (cframe-fields frame)))
 
@@ -250,11 +294,27 @@ USA.
 	(error "Unknown tracked item name:" name))
     (tracked-item-value item)))
 
-(define (cframe-tracked-item-names frame)
-  (map tracked-item-name (cframe-tracked-items frame)))
+(define (cframe-history frame)
+  (let ((history (cframe-tracked-item-value frame 'history)))
+    (if (and (cframe-history-subproblem? frame)
+	     (cframe-subproblem? frame))
+	history
+	(dummy-history))))
 
-(define (cframe-tracked-item-name? frame name)
-  (and (find-tracked-item (cframe-tracked-items frame) name) #t))
+(define (cframe-reduction frame index)
+  (list-ref (%cframe-reductions frame) index))
+
+(define (cframe-any-reductions? frame)
+  (pair? (%cframe-reductions frame)))
+
+(define (cframe-n-reductions frame)
+  (count-pairs (%cframe-reductions frame)))
+
+(define (%cframe-reductions frame)
+  (history-reductions (cframe-history frame)))
+
+(define (cframe-compiled-address? frame)
+  (eq? (cframe-type frame) 'compiled-address))
 
 (define (cframe:join-stacklets? frame)
   (eq? (cframe-type frame) 'join-stacklets))
@@ -279,21 +339,6 @@ USA.
        (eq? marker-type (cframe-field-value frame 'marker-type))))
 
 ;;;; Frame-stream operations
-
-(define (cframe-stream-next-subproblem frames)
-  (if (cframe-subproblem? (stream-car frames))
-      (let ((frames* (stream-cdr frames)))
-	(and (stream-pair? frames*)
-	     (cframe-stream-skip-non-subproblems frames*)))
-      (cframe-stream-skip-non-subproblems frames)))
-
-(define (cframe-stream-skip-non-subproblems frames)
-  (if (cframe-subproblem? (stream-car frames))
-      frames
-      (let ((frames* (stream-cdr frames)))
-	(if (stream-pair? frames*)
-	    (cframe-stream-skip-non-subproblems frames*)
-	    frames*))))
 
 (define (cframe-stream-ref frames index)
   (guarantee non-negative-fixnum? index 'cframe-stream-ref)
@@ -324,7 +369,7 @@ USA.
 	  (if (stream-pair? frames*)
 	      (find-frame-with-index frames* (fix:- index n))
 	      (values frames* index))))))
-
+
 (define (cframe-stream->continuation frames)
   (let ((frame (stream-car frames)))
     (make-continuation
@@ -413,6 +458,9 @@ USA.
 (define defined-items
   '())
 
+(define (cframe-tracked-item-names)
+  (map (lambda (entry) (vector-ref entry 0)) defined-items))
+
 (define (simple-item-updater filter)
   (lambda (value frame)
     (let ((keyword (filter frame)))
@@ -448,9 +496,10 @@ USA.
 
 (define-item 'history #f
   (lambda (value frame)
-    (if (cframe:restore-history? frame)
-	(history-transform (cframe-field-value frame 'history))
-	value)))
+    (cond ((cframe:restore-history? frame)
+	   (history-transform (cframe-field-value frame 'history)))
+	  ((cframe-history-subproblem? frame) (history-superproblem value))
+	  (else value))))
 
 (define-item 'next-restore-history 0
   (lambda (value frame)

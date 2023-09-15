@@ -325,8 +325,8 @@ USA.
 (define ((simple-subproblem-runner frame-type exp-pred get-subexp env) thunks)
   (for-each (lambda (thunk)
 	      (let ((cfs
-		     (cframe-stream-skip-non-subproblems
-		      (get-cframe-stream thunk))))
+		     (stream-filter cframe-subproblem?
+				    (get-cframe-stream thunk))))
 		(assert-true (stream-pair? cfs))
 		(let ((cf (stream-car cfs)))
 		  (assert-eq (cframe-type cf) frame-type)
