@@ -60,11 +60,24 @@ USA.
 		  (loop (cdr raw-frames) index*))))))
     cp))
 
-(define-integrable (control-point-start-index)
-  2)
+(define-integrable (%control-point-length control-point)
+  (fix:- (system-vector-length control-point) 2))
 
-(define-integrable (control-point-length control-point)
-  (system-vector-length control-point))
+(define-integrable (%control-point-ref control-point index)
+  (safe-system-vector-ref control-point (fix:+ index 2)))
+
+(define-integrable (%next-frame control-point index)
+  (fix:- (control-point-next-frame control-point (fix:+ index 2)) 2))
+
+(define (control-point-length control-point)
+  (guarantee control-point? control-point 'control-point-length)
+  (%control-point-length control-point))
+
+(define (control-point-ref control-point index)
+  (guarantee non-negative-fixnum? index 'control-point-ref)
+  (if (not (fix:< index (control-point-length control-point)))
+      (error:bad-range-argument index 'control-point-ref))
+  (%control-point-ref control-point index))
 
 (define (control-point->raw-frame-generator control-point)
   (let ((index)
@@ -72,17 +85,17 @@ USA.
 
     (define (new-cp! cp)
       (set! control-point cp)
-      (set! index (control-point-start-index))
-      (set! end (control-point-length cp)))
+      (set! index 0)
+      (set! end (%control-point-length cp)))
 
     (define (generator)
       (if (fix:< index end)
-	  (let* ((index* (control-point-next-frame control-point index))
+	  (let* ((index* (%next-frame control-point index))
 		 (frame (make-vector (fix:- index* index)))
 		 (result (vector index end frame)))
 	    (let loop ((i index) (j 0))
 	      (if (fix:< i index*)
-		  (let ((elt (safe-system-vector-ref control-point i)))
+		  (let ((elt (%control-point-ref control-point i)))
 		    (vector-set! frame j elt)
 		    (let ((i* (fix:+ i 1))
 			  (j* (fix:+ j 1)))

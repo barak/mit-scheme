@@ -2065,6 +2065,8 @@ USA.
   (parent (runtime))
   (export (runtime)
 	  control-point->raw-frame-generator
+	  control-point-length
+	  control-point-ref
 	  control-point?
 	  make-control-point*))
 

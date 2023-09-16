@@ -108,24 +108,24 @@ USA.
        frames)
       (let ((cp (cframe-stream->control-point frames)))
 	(assert-true (control-point? cp))
-	(let ((end (system-vector-length cp))
-	      (reference-cp (continuation/control-point reference-cont)))
-	  (assert-eqv end (system-vector-length reference-cp))
+	(let* ((reference-cp (continuation/control-point reference-cont))
+	       (end (control-point-length reference-cp)))
+	  (assert-eqv (control-point-length cp) (+ end 6))
 	  (compare-seqs end
 			(lambda (i)
-			  (safe-system-vector-ref cp i))
+			  (control-point-ref cp (+ i 6)))
 			(lambda (i)
-			  (safe-system-vector-ref reference-cp i))))))))
+			  (control-point-ref reference-cp i))))))))
 
 (define (compare-seqs end get1 get2)
   (let loop ((i 0))
-    (if (fix:< i end)
+    (if (< i end)
 	(let ((elt (get1 i)))
 	  (assert-eqv elt (get2 i))
 	  (loop
-	   (let ((i* (fix:+ i 1)))
+	   (let ((i* (+ i 1)))
 	     (if (manifest-nmv? elt)
-		 (fix:+ i* (manifest-nmv-datum elt))
+		 (+ i* (manifest-nmv-datum elt))
 		 i*)))))))
 
 (define (get-continuation thunk)
