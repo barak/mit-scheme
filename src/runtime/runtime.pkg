@@ -2024,7 +2024,6 @@ USA.
   (export (runtime)
 	  cframe-compiled-address?
 	  cframe-compiled-code?
-	  cframe-cpoint-end
 	  cframe-dbg-environment-undefined?
 	  cframe-dbg-expression
 	  cframe-dbg-expression-compiled?
@@ -2032,7 +2031,6 @@ USA.
 	  cframe-dbg-printer-apply
 	  cframe-dbg-printer?
 	  cframe-dbg-subexpression
-	  cframe-end
 	  cframe-field-names
 	  cframe-field-value
 	  cframe-has-reductions?
@@ -2045,7 +2043,6 @@ USA.
 	  cframe-return-address
 	  cframe-return-code
 	  cframe-return-type
-	  cframe-start
 	  cframe-stream->continuation
 	  cframe-stream->control-point
 	  cframe-stream-dbg-environment
