@@ -36,15 +36,19 @@ USA.
   (and (pair? stream)
        (promise? (cdr stream))))
 
-(define-guarantee stream-pair "stream pair")
+(define-integrable (%stream-car stream)
+  (car stream))
+
+(define-integrable (%stream-cdr stream)
+  (force (cdr stream)))
 
 (define (stream-car stream)
   (guarantee stream-pair? stream 'stream-car)
-  (car stream))
+  (%stream-car stream))
 
 (define (stream-cdr stream)
   (guarantee stream-pair? stream 'stream-cdr)
-  (force (cdr stream)))
+  (%stream-cdr stream))
 
 (define the-empty-stream '())
 (define stream-null? null?)
@@ -54,17 +58,19 @@ USA.
 (define head stream-car)
 (define tail stream-cdr)
 
+(define (null-stream? s #!optional caller)
+  (cond ((null? s) #t)
+	((stream-pair? s) #f)
+	(else (error:illegal-stream-element stream caller 0))))
+
 (define (stream . list)
   (list->stream list))
 
 (define (stream-length stream)
   (let loop ((stream stream) (n 0))
-    (if (stream-pair? stream)
-	(loop (force (cdr stream)) (+ n 1))
-	(begin
-	  (if (not (null? stream))
-	      (error:illegal-stream-element stream 'stream-length 0))
-	  n))))
+    (if (null-stream? stream 'stream-length)
+	n
+	(loop (%stream-cdr stream) (+ n 1)))))
 
 (define (stream-ref stream index)
   (let ((tail (stream-tail stream index)))
@@ -79,8 +85,8 @@ USA.
 	(begin
 	  (if (not (stream-pair? stream))
 	      (error:bad-range-argument index 'stream-head))
-	  (cons (car stream)
-		(loop (force (cdr stream)) (- index 1))))
+	  (cons (%stream-car stream)
+		(loop (%stream-cdr stream) (- index 1))))
 	'())))
 
 (define (stream-tail stream index)
@@ -90,26 +96,38 @@ USA.
 	(begin
 	  (if (not (stream-pair? stream))
 	      (error:bad-range-argument index 'stream-tail))
-	  (loop (force (cdr stream)) (- index 1)))
+	  (loop (%stream-cdr stream) (- index 1)))
 	stream)))
 
 (define (stream-last stream)
   (stream-car (stream-last-pair stream)))
 
 (define (stream-last-pair stream)
-  (if (not (stream-pair? stream))
-      (if (null? stream)
-	  (error:bad-range-argument stream 'stream-last-pair)
-	  (error:illegal-stream-element stream 'stream-last-pair 0)))
+  (if (null-stream? stream 'stream-last-pair)
+      (error:bad-range-argument stream 'stream-last-pair))
   (let loop ((stream stream))
-    (let ((next (force (cdr stream))))
-      (if (stream-pair? next)
-	  (loop next)
-	  (begin
-	    (if (not (null? next))
-		(error:illegal-stream-element stream 'stream-last-pair 0))
-	    stream)))))
+    (let ((next (%stream-cdr stream)))
+      (if (null-stream? next 'stream-last-pair)
+	  stream
+	  (loop next)))))
 
+(define (stream-drop-while predicate stream)
+  (let loop ((stream stream))
+    (if (and (not (null-stream? stream 'stream-drop-while))
+	     (predicate (%stream-car stream)))
+	(loop (%stream-cdr stream))
+	stream)))
+
+(define (stream-take-while predicate stream)
+  (let loop ((stream stream))
+    (cond ((null-stream? stream 'stream-take-while)
+	   stream)
+	  ((predicate (%stream-car stream))
+	   (cons (%stream-car stream)
+		 (loop (%stream-cdr stream))))
+	  (else
+	   the-empty-stream))))
+
 (define (stream-map procedure stream . streams)
   (cond ((pair? streams)
 	 (let loop ((streams (cons stream streams)))
@@ -121,13 +139,10 @@ USA.
 	((and (procedure? procedure)
 	      (or (null? stream) (stream-pair? stream)))
 	 (let loop ((stream stream))
-	   (if (stream-pair? stream)
-	       (cons-stream (procedure (car stream))
-			    (loop (force (cdr stream))))
-	       (begin
-		 (if (not (null? stream))
-		     (error:illegal-stream-element stream 'stream-map 1))
-		 '()))))
+	   (if (null-stream? stream 'stream-map)
+	       stream
+	       (cons-stream (procedure (%stream-car stream))
+			    (loop (%stream-cdr stream))))))
 	((and (procedure? stream)
 	      (or (null? procedure) (stream-pair? procedure)))
 	 ;; Kludge: accept arguments in old order.
@@ -144,120 +159,93 @@ USA.
 		(apply procedure cars)
 		(loop (map force cdrs))))))
       (let loop ((stream stream))
-	(cond ((stream-pair? stream)
-	       (procedure (car stream))
-	       (loop (force (cdr stream))))
-	      ((not (null? stream))
-	       (error:illegal-stream-element stream 'stream-for-each 1))))))
+	(if (not (null-stream? stream 'stream-for-each))
+	    (begin
+	      (procedure (%stream-car stream))
+	      (loop (%stream-cdr stream)))))))
 
 (define (split-streams streams operator)
   (let ((cars (list 'cars))
 	(cdrs (list 'cdrs)))
-    (let loop ((streams streams) (cars-tail cars) (cdrs-tail cdrs) (n 0))
+    (let loop ((streams streams) (cars-tail cars) (cdrs-tail cdrs))
       (if (pair? streams)
 	  (let ((stream (car streams)))
-	    (if (stream-pair? stream)
+	    (if (null-stream? stream operator)
+		(values '() '())
 		(let ((cars-tail* (list (car stream)))
 		      (cdrs-tail* (list (cdr stream))))
 		  (set-cdr! cars-tail cars-tail*)
 		  (set-cdr! cdrs-tail cdrs-tail*)
-		  (loop (cdr streams) cars-tail* cdrs-tail* (fix:+ n 1)))
-		(begin
-		  (if (not (null? stream))
-		      (error:illegal-stream-element stream operator n))
-		  (values '() '()))))
+		  (loop (cdr streams) cars-tail* cdrs-tail*))))
 	  (values (cdr cars) (cdr cdrs))))))
 
 (define (stream-append-map procedure stream . streams)
   (let ((sappend
 	 (lambda (s1 s2)
 	   (let loop ((s s1))
-	     (if (stream-pair? s)
-		 (cons-stream (car s) (loop (force (cdr s))))
-		 (begin
-		   (if (not (null? s))
-		       (error:illegal-stream-element s1 'stream-append 0))
-		   (force s2)))))))
+	     (if (null-stream? s 'stream-append-map)
+		 (force s2)
+		 (cons-stream (%stream-car s) (loop (%stream-cdr s))))))))
     (if (pair? streams)
 	(let loop ((streams (cons stream streams)))
 	  (receive (cars cdrs) (split-streams streams 'stream-append-map)
 	    (if (pair? cars)
 		(sappend (apply procedure cars)
 			 (delay (loop (map force cdrs))))
-		'())))
+		the-empty-stream)))
 	(let loop ((stream stream))
-	  (if (stream-pair? stream)
-	      (sappend (procedure (car stream))
-		       (delay (loop (force (cdr stream)))))
-	      (begin
-		(if (not (null? stream))
-		    (error:illegal-stream-element stream 'stream-append-map 1))
-		'()))))))
+	  (if (null-stream? stream 'stream-append-map)
+	      stream
+	      (sappend (procedure (%stream-car stream))
+		       (delay (loop (%stream-cdr stream)))))))))
 
 (define (stream-append . streams)
   (if (pair? streams)
-      (let outer-loop ((streams streams) (n 0))
+      (let outer-loop ((streams streams))
 	(if (pair? (cdr streams))
 	    (let inner-loop ((stream (car streams)))
-	      (if (stream-pair? stream)
-		  (cons-stream (car stream)
-			       (inner-loop (force (cdr stream))))
-		  (begin
-		    (if (not (null? stream))
-			(error:illegal-stream-element stream 'stream-append n))
-		    (outer-loop (cdr streams) (fix:+ n 1)))))
+	      (if (null-stream? stream 'stream-append)
+		  (outer-loop (cdr streams))
+		  (cons-stream (%stream-car stream)
+			       (inner-loop (%stream-cdr stream)))))
 	    (car streams)))
-      '()))
+      the-empty-stream))
 
 (define (stream-accumulate procedure initial stream)
-  (if (stream-pair? stream)
-      (procedure (car stream)
-		 (stream-accumulate procedure initial (force (cdr stream))))
-      (begin
-	(if (not (null? stream))
-	    (error:illegal-stream-element stream 'stream-accumulate 2))
-	initial)))
+  (let loop ((stream stream))
+    (if (null-stream? stream 'stream-accumulate)
+	initial
+	(procedure (%stream-car stream)
+		   (loop (%stream-cdr stream))))))
 
 (define (stream-filter predicate stream)
-  (if (stream-pair? stream)
-      (if (predicate (car stream))
-	  (cons-stream (car stream)
-		       (stream-filter predicate (force (cdr stream))))
-	  (stream-filter predicate (force (cdr stream))))
-      (begin
-	(if (not (null? stream))
-	    (error:illegal-stream-element stream 'stream-filter 1))
-	'())))
+  (let loop ((stream stream))
+    (cond ((null-stream? stream 'stream-filter)
+	   stream)
+	  ((predicate (%stream-car stream))
+	   (cons-stream (%stream-car stream)
+			(loop (%stream-cdr stream))))
+	  (else
+	   (loop (%stream-cdr stream))))))
 
 (define (stream-truncate stream predicate)
-  (if (stream-pair? stream)
-      (if (predicate (head stream))
-	  the-empty-stream
-	  (cons-stream (head stream)
-		       (stream-truncate (tail stream) predicate)))
-      (begin
-	(if (not (null? stream))
-	    (error:illegal-stream-element stream 'stream-truncate 1))
-	'())))
+  (stream-take-while predicate stream))
 
 (define (stream-write stream #!optional port)
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee textual-output-port? port 'stream-write))))
-    (if (stream-pair? stream)
+    (if (null-stream? stream 'stream-write)
+	(write-string "{}" port)
 	(begin
 	  (write-char #\{ port)
-	  (write (car stream) port)
+	  (write (%stream-car stream) port)
 	  (stream-for-each (lambda (object)
 			     (write-char #\space port)
 			     (write object port))
-			   (force (cdr stream)))
-	  (write-char #\} port))
-	(begin
-	  (if (not (null? stream))
-	      (error:illegal-stream-element stream 'stream-write 0))
-	  (write-string "{}" port)))))
+			   (%stream-cdr stream))
+	  (write-char #\} port)))))
 
 (define (list->stream list)
   (if (pair? list)
@@ -268,11 +256,10 @@ USA.
 	'())))
 
 (define (stream->list stream)
-  (let loop ((s stream)
-	     (elements '()))
-    (cond ((stream-pair? s) (loop (tail s) (cons (head s) elements)))
-	  ((null? s) (reverse elements))
-	  (else (error:illegal-stream-element s 'stream->list 0)))))
+  (let loop ((s stream) (elements '()))
+    (if (null-stream? s 'stream->list)
+	(reverse elements)
+	(loop (%stream-cdr s) (cons (%stream-car s) elements)))))
 
 (define (make-prime-numbers-stream)
   (let ((limit (fix:- (fix:largest-value) 2)))
@@ -280,21 +267,21 @@ USA.
     (define (fixnum-filter n)
       (if (fix:<= n limit)
 	  (let loop ((ps odd-primes))
-	    (cond ((fix:< n (fix:* (car ps) (car ps)))
+	    (cond ((fix:< n (fix:* (%stream-car ps) (%stream-car ps)))
 		   (cons-stream n (fixnum-filter (fix:+ n 2))))
-		  ((fix:= 0 (fix:remainder n (car ps)))
+		  ((fix:= 0 (fix:remainder n (%stream-car ps)))
 		   (fixnum-filter (fix:+ n 2)))
 		  (else
-		   (loop (force (cdr ps))))))
+		   (loop (%stream-cdr ps)))))
 	  (generic-filter n)))
     (define (generic-filter n)
       (let loop ((ps odd-primes))
-	(cond ((< n (square (car ps)))
+	(cond ((< n (square (%stream-car ps)))
 	       (cons-stream n (generic-filter (+ n 2))))
-	      ((= 0 (remainder n (car ps)))
+	      ((= 0 (remainder n (%stream-car ps)))
 	       (generic-filter (+ n 2)))
 	      (else
-	       (loop (force (cdr ps)))))))
+	       (loop (%stream-cdr ps))))))
     (cons-stream 2 odd-primes)))
 
 (define prime-numbers-stream)
@@ -322,21 +309,12 @@ USA.
 	  (make-condition-type 'illegal-stream-element
 	      condition-type:wrong-type-argument
 	      '()
-	    (lambda (condition port)
-	      (write-string "The object " port)
-	      (write (access-condition condition 'datum) port)
-	      (write-string ", passed as the " port)
-	      (write-string (ordinal-number-string
-			     (+ (access-condition condition 'operand) 1))
-			    port)
-	      (write-string " argument to " port)
-	      (write-operator (access-condition condition 'operator) port)
-	      (write-string ", is not a stream." port))))
+	    #f))
     (set! error:illegal-stream-element
 	  (let ((signaller
 		 (condition-signaller condition-type:illegal-stream-element
-				      '(type datum operator operand)
+				      '(type datum operator)
 				      standard-error-handler)))
-	    (named-lambda (error:illegal-stream-element stream operator operand)
-	      (signaller "stream" stream operator operand))))
+	    (named-lambda (error:illegal-stream-element stream operator)
+	      (signaller "stream" stream operator))))
     unspecific))

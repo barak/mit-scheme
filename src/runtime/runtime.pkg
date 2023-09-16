@@ -5028,6 +5028,8 @@ USA.
 (define-package (runtime stream)
   (files "stream")
   (parent (runtime))
+  (export deprecated ()
+	  stream-truncate)
   (export ()
 	  condition-type:illegal-stream-element
 	  empty-stream?
@@ -5035,6 +5037,7 @@ USA.
 	  generator->stream
 	  list->stream
 	  make-prime-numbers-stream
+	  null-stream?
 	  prime-numbers-stream
 	  stream
 	  stream->list
@@ -5043,6 +5046,7 @@ USA.
 	  stream-append-map
 	  stream-car
 	  stream-cdr
+	  stream-drop-while
 	  stream-filter
 	  stream-first
 	  stream-for-each
@@ -5056,7 +5060,7 @@ USA.
 	  stream-ref
 	  stream-rest
 	  stream-tail
-	  stream-truncate
+	  stream-take-while
 	  stream-write
 	  tail
 	  the-empty-stream))
