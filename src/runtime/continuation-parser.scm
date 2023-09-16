@@ -435,7 +435,7 @@ USA.
 	 (cons entry
 	       (let ((value (get-keyword-value inits (vector-ref entry 0))))
 		 (if (default-object? value)
-		     (vector-ref entry 1)
+		     ((vector-ref entry 1))
 		     value))))
        defined-items))
 
@@ -461,8 +461,8 @@ USA.
 (define-integrable (tracked-item-value item)
   (cdr item))
 
-(define (define-item name initial-value updater)
-  (let ((entry (vector name initial-value updater))
+(define (define-item name initializer updater)
+  (let ((entry (vector name initializer updater))
 	(tail
 	 (find-tail (lambda (entry)
 		      (eq? (vector-ref entry 0) name))
@@ -489,19 +489,19 @@ USA.
     (and (cframe:stack-marker-of-type? marker-type frame)
 	 'marker-instance)))
 
-(define-item 'previous-type #f
+(define-item 'previous-type (lambda () #f)
   (lambda (value frame)
     (if (cframe:join-stacklets? frame)
 	value
 	(cframe-type frame))))
 
-(define-item 'dynamic-state #f
+(define-item 'dynamic-state (lambda () #f)
   (simple-item-updater (stack-marker-type-filter %translate-to-state-point)))
 
-(define-item 'block-thread-events? #f
+(define-item 'block-thread-events? (lambda () #f)
   (simple-item-updater (stack-marker-type-filter 'with-thread-events-blocked)))
 
-(define-item 'interrupt-mask #f
+(define-item 'interrupt-mask (lambda () #f)
   (simple-item-updater
    (lambda (frame)
      (cond ((cframe:restore-interrupt-mask? frame)
@@ -510,15 +510,14 @@ USA.
 	    'marker-instance)
 	   (else #f)))))
 
-(define-item 'history #f
+(define-item 'history (lambda () (dummy-history))
   (lambda (value frame)
     (cond ((cframe:restore-history? frame)
 	   (history-transform (cframe-field-value frame 'history)))
 	  ((cframe-history-subproblem? frame) (history-superproblem value))
-	  ((not value) (dummy-history))
 	  (else value))))
 
-(define-item 'next-restore-history 0
+(define-item 'next-restore-history (lambda () 0)
   (lambda (value frame)
     (if (cframe:restore-history? frame)
 	(begin
@@ -539,7 +538,7 @@ USA.
 		      (fix:>= value (cframe-end frame))))
 	  value))))
 
-(define-item 'next-return-code #f
+(define-item 'next-return-code (lambda () #f)
   (lambda (value frame)
     (if (cframe-compiled-code? frame)
 	(begin
