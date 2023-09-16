@@ -2049,6 +2049,8 @@ USA.
 	  cframe-stream->continuation
 	  cframe-stream->control-point
 	  cframe-stream-dbg-environment
+	  cframe-stream-first-subproblem
+	  cframe-stream-next-subproblem
 	  cframe-stream-ref
 	  cframe-stream-resolve-stack-address
 	  cframe-subproblem?
@@ -2073,16 +2075,17 @@ USA.
 	  dstate-all-subproblems
 	  dstate-child-environment
 	  dstate-condition
+	  dstate-continuation
 	  dstate-current-environment
 	  dstate-current-environment-index
 	  dstate-current-reduction
 	  dstate-earlier-reduction
 	  dstate-earlier-subproblem
+	  dstate-earlier-subproblem?
 	  dstate-earliest-reduction
 	  dstate-environment
 	  dstate-expression
 	  dstate-frame
-	  dstate-frames
 	  dstate-has-environment?
 	  dstate-has-reductions?
 	  dstate-later-reduction
@@ -2090,7 +2093,6 @@ USA.
 	  dstate-latest-reduction
 	  dstate-n-reductions
 	  dstate-n-subproblems
-	  dstate-next-frame?
 	  dstate-nth-reduction
 	  dstate-nth-subproblem
 	  dstate-other-thread
@@ -2101,9 +2103,9 @@ USA.
 	  dstate-stop-using-history
 	  dstate-subexpression
 	  dstate-subproblem-index
+	  dstate-use-history?
 	  dstate?
-	  initial-dstate
-	  ))
+	  initial-dstate))
 
 (define-package (runtime new-debugger)
   (files "debugger")

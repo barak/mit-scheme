@@ -123,7 +123,7 @@ USA.
 (define (print-frame-summary dstate port)
   (port/debugger-presentation port
     (lambda ()
-      (if (dstate-has-reductions? dstate)
+      (if (dstate-use-history? dstate)
 	  (print-reduction (dstate-current-reduction dstate)
 			   (dstate-subproblem-index dstate)
 			   (dstate-reduction-index dstate)
@@ -195,7 +195,7 @@ USA.
 	   (write-string adjective port)
 	   (write-string " subproblem level)" port))))
     (write index port)
-    (cond ((not (dstate-next-frame? dstate))
+    (cond ((not (dstate-earlier-subproblem? dstate))
 	   (qualify-level (if (zero? index) "only" "highest")))
 	  ((zero? index)
 	   (qualify-level "lowest")))))
@@ -203,7 +203,17 @@ USA.
 (define (print-subproblem-expression dstate port)
   (let ((expression (dstate-expression dstate))
 	(frame (dstate-frame dstate)))
-    (cond ((not (invalid-expression? expression))
+    (cond ((or (cframe-dbg-expression-undefined? expression)
+	       (cframe-dbg-expression-compiled? expression))
+	   (write-string (if (cframe-compiled-address? frame)
+			     "Compiled code expression unknown"
+			     "Expression unknown")
+			 port)
+	   (newline port)
+	   (write (cframe-return-address frame) port))
+	  ((cframe-dbg-printer? expression)
+	   (cframe-dbg-printer-apply expression #t port))
+	  (else
 	   (write-string (if (cframe-compiled-address? frame)
 			     "Compiled code expression (from stack):"
 			     "Expression (from stack):")
@@ -224,16 +234,8 @@ USA.
 		   (write subexpression-marker port)
 		   (write-string "):" port)
 		   (newline port)
-		   (debugger-pp subexpression expression-indentation port)))))
-	  ((cframe-dbg-printer? expression)
-	   (cframe-dbg-printer-apply expression #t port))
-	  (else
-	   (write-string (if (cframe-compiled-address? frame)
-			     "Compiled code expression unknown"
-			     "Expression unknown")
-			 port)
-	   (newline port)
-	   (write (cframe-return-address frame) port)))))
+		   (debugger-pp subexpression expression-indentation
+				port))))))))
 
 (define-integrable subexpression-marker '<!>)
 
@@ -416,7 +418,7 @@ USA.
   "move (Back) to next reduction (earlier in time)"
   (lambda (dstate port)
     (let ((dstate* (dstate-start-using-history dstate)))
-      (if (dstate-has-reductions? dstate*)
+      (if (dstate-use-history? dstate*)
 	  (let ((dstate**
 		 (and (not (only-latest-reduction? dstate*))
 		      (dstate-earlier-reduction dstate*))))
@@ -437,7 +439,7 @@ USA.
   "move (Forward) to previous reduction (later in time)"
   (lambda (dstate port)
     (let ((dstate* (dstate-start-using-history dstate)))
-      (if (dstate-has-reductions? dstate*)
+      (if (dstate-use-history? dstate*)
 	  (let ((dstate** (dstate-later-reduction dstate*)))
 	    (if dstate**
 		(print-frame-summary dstate** port)
@@ -581,39 +583,27 @@ USA.
 
 ;;;; Advanced hacking commands
 
-(define-command #\z
+(define-command #\Z
   "return FROM the current subproblem with a value"
   (lambda (dstate port)
-    (let ((frames (stream-cdr (dstate-frames dstate))))
-      (if (stream-pair? frames)
-	  (enter-subproblem dstate port frames)
+    (let ((dstate* (dstate-earlier-subproblem dstate)))
+      (if dstate*
+	  (enter-subproblem dstate* port)
 	  (begin
 	    (debugger-failure port "Can't continue!!!")
 	    dstate)))))
 
-(define-command #\j
+(define-command #\J
   "return TO the current subproblem with a value"
   (lambda (dstate port)
-    (enter-subproblem dstate port (dstate-frames dstate))))
+    (enter-subproblem dstate port)))
 
-(define (enter-subproblem dstate port frames)
-  (let ((invalid-expression?
-	 (invalid-expression? (dstate-expression dstate)))
-	(environment (get-evaluation-environment dstate port)))
+(define (enter-subproblem dstate port)
+  (let ((exp (dstate-expression dstate))
+	(env (get-evaluation-environment dstate port)))
     (let ((value
-	   (let ((expression
-		  (prompt-for-expression
-		   (string-append
-		    "Expression to EVALUATE and CONTINUE with"
-		    (if invalid-expression?
-			""
-			" ($ to retry)"))
-		   port)))
-	     (if (and (not invalid-expression?)
-		      (eq? expression '$))
-		 (debug/scode-eval (dstate-expression dstate)
-				   environment)
-		 (debug/eval expression environment)))))
+	   (prompt-for-evaluated-value
+	    "Expression to EVALUATE and CONTINUE with" exp env port)))
       (if (or (not debugger:print-return-values?)
 	      (begin
 		(newline port)
@@ -621,7 +611,7 @@ USA.
 		(newline port)
 		(write value port)
 		(prompt-for-confirmation "Confirm" port)))
-	  (let ((k (cframe-stream->continuation frames))
+	  (let ((k (dstate-continuation dstate))
 		(thread (dstate-other-thread dstate)))
 	    (if thread
 		(begin
@@ -633,8 +623,8 @@ USA.
 		(k value))))))
   dstate)
 
-(define-command #\F
-  "show the elements of the stack Frame, in raw form"
+(define-command #\M
+  "show the elements of the stack frame, in raw form"
   (lambda (dstate port)
     (port/debugger-presentation port
       (lambda ()
@@ -652,18 +642,10 @@ USA.
       (lambda ()
 	(write-string "Debugger state:" port)
 	(newline port)
-	(pp dstate port)
-	(newline port)
-	(write-string "Stack frame:" port)
-	(newline port)
-	(pp (dstate-frame dstate) port)))
+	(pp dstate port)))
     dstate))
 
 ;;;; Utilities
-
-(define (invalid-expression? expression)
-  (or (cframe-dbg-expression-undefined? expression)
-      (cframe-dbg-expression-compiled? expression)))
 
 (define (get-evaluation-environment dstate port)
   (if (dstate-has-environment? dstate)
@@ -729,3 +711,16 @@ using the read-eval-print environment instead.")
 	     (loop))
 	    (else
 	     expression)))))
+
+(define (prompt-for-evaluated-value prompt exp env port)
+  (let ((exp-evaluable?
+	 (not (or (cframe-dbg-expression-undefined? exp)
+		  (cframe-dbg-expression-compiled? exp)
+		  (cframe-dbg-printer? exp)))))
+    (let ((exp*
+	   (prompt-for-expression
+	    (string-append prompt (if exp-evaluable? " ($ to retry)" ""))
+	    port)))
+      (if (and exp-evaluable? (eq? exp* '$))
+	  (debug/scode-eval exp env)
+	  (debug/eval exp* env)))))

@@ -340,6 +340,16 @@ USA.
 
 ;;;; Frame-stream operations
 
+(define (cframe-stream-first-subproblem frames)
+  (stream-drop-while (lambda (frame)
+		       (not (cframe-subproblem? frame)))
+		     frames))
+
+(define (cframe-stream-next-subproblem frames)
+  (assert (and (stream-pair? frames)
+	       (cframe-subproblem? (stream-car frames))))
+  (cframe-stream-first-subproblem (stream-cdr frames)))
+
 (define (cframe-stream-ref frames index)
   (guarantee non-negative-fixnum? index 'cframe-stream-ref)
   (let-values (((frames* index*) (find-frame-with-index frames index)))
@@ -376,16 +386,17 @@ USA.
      (cframe-stream->control-point frames)
      (cframe-tracked-item-value frame 'dynamic-state)
      (cframe-tracked-item-value frame 'block-thread-events?))))
-
+
 (define (cframe-stream->control-point frames)
-  (let ((frame (stream-car frames)))
-    (make-control-point*
-     (cp-raw-frames (cframe-stream-raw-prefix frames)
-		    (cframe-tracked-item-value frame 'interrupt-mask)
-		    (cframe-tracked-item-value frame 'history)
-		    (cframe-previous-restore-history-offset frame)))))
+  (make-control-point* (generate-raw-frames frames)))
 
-(define (cframe-stream-raw-prefix frames)
+(define (generate-raw-frames frames)
+  (let ((frame (stream-car frames)))
+    (cons* (raw-restore-history frame)
+	   (raw-restore-interrupt-mask frame)
+	   (raw-reenter-cc frame (raw-prefix frames)))))
+
+(define (raw-prefix frames)
   (let loop ((frames frames) (raw '()))
     (let ((frame (stream-car frames))
 	  (frames* (stream-cdr frames)))
@@ -395,22 +406,27 @@ USA.
 	    (reverse raw)
 	    (loop frames* raw))))))
 
-(define (cp-raw-frames frames interrupt-mask history
-		       previous-restore-history-offset)
-  (if (and (pair? frames)
-	   (pair? (cdr frames))
-	   (and (eq? (vector-ref (car frames) 0)
-		     (ucode-return-address restore-interrupt-mask))
-		(eq? (vector-ref (cadr frames) 0)
-		     (ucode-return-address restore-history))))
-      frames
-      (cons* (vector (ucode-return-address restore-interrupt-mask)
-		     interrupt-mask)
-	     (vector (ucode-return-address restore-history)
-		     history
-		     previous-restore-history-offset
-		     #f)
-	     frames)))
+(define (raw-restore-history frame)
+  (vector (ucode-return-address restore-history)
+	  (history-untransform (cframe-tracked-item-value frame 'history))
+	  (let ((index
+		 (cframe-tracked-item-value frame 'next-restore-history)))
+	    (if (fix:= index 0)
+		0
+		(fix:- (cframe-cpoint-end frame) index)))
+	  #f))
+
+(define (raw-restore-interrupt-mask frame)
+  (vector (ucode-return-address restore-interrupt-mask)
+	  (cframe-tracked-item-value frame 'interrupt-mask)))
+
+(define (raw-reenter-cc frame raw-frames)
+  (let ((next-code (cframe-tracked-item-value frame 'next-return-code)))
+    (if next-code
+	(cons (vector (ucode-return-address reenter-compiled-code)
+		      (fix:- next-code (cframe-start frame)))
+	      raw-frames)
+	raw-frames)))
 
 ;;;; Tracked items
 
@@ -499,6 +515,7 @@ USA.
     (cond ((cframe:restore-history? frame)
 	   (history-transform (cframe-field-value frame 'history)))
 	  ((cframe-history-subproblem? frame) (history-superproblem value))
+	  ((not value) (dummy-history))
 	  (else value))))
 
 (define-item 'next-restore-history 0
@@ -507,7 +524,13 @@ USA.
 	(begin
 	  (assert (or (fix:= value 0)
 		      (fix:= value (cframe-start frame))))
-	  (let ((index (cframe-next-restore-history frame)))
+	  (let ((index
+		 (let ((offset
+			(cframe-field-value frame
+					    'previous-restore-history-offset)))
+		   (if (fix:= offset 0)
+		       0
+		       (fix:- (cframe-cpoint-end frame) offset)))))
 	    (assert (or (fix:= index 0)
 			(fix:>= index (cframe-end frame))))
 	    index))
@@ -515,18 +538,6 @@ USA.
 	  (assert (or (fix:= value 0)
 		      (fix:>= value (cframe-end frame))))
 	  value))))
-
-(define (cframe-next-restore-history frame)
-  (let ((offset (cframe-field-value frame 'previous-restore-history-offset)))
-    (if (fix:= offset 0)
-	0
-	(fix:- (cframe-cpoint-end frame) offset))))
-
-(define (cframe-previous-restore-history-offset frame)
-  (let ((index (cframe-tracked-item-value frame 'next-restore-history)))
-    (if (fix:= index 0)
-	0
-	(fix:- (cframe-cpoint-end frame) index))))
 
 (define-item 'next-return-code #f
   (lambda (value frame)

@@ -43,9 +43,6 @@ USA.
 (define (dstate-frame dstate)
   (stream-car (dstate-frames dstate)))
 
-(define (dstate-next-frame? dstate)
-  (stream-pair? (stream-cdr (dstate-frames dstate))))
-
 (define (dstate-subproblem-index dstate)
   (length (dstate-stack dstate)))
 
@@ -53,9 +50,10 @@ USA.
   (stream-length (dstate-all-subproblems dstate)))
 
 (define (dstate-all-subproblems dstate)
-  (if (pair? (dstate-stack dstate))
-      (car (last-pair (dstate-stack dstate)))
-      (dstate-frames dstate)))
+  (stream-filter cframe-subproblem?
+		 (if (pair? (dstate-stack dstate))
+		     (car (last-pair (dstate-stack dstate)))
+		     (dstate-frames dstate))))
 
 (define (dstate-expression dstate)
   (cframe-dbg-expression (dstate-frame dstate)))
@@ -78,15 +76,16 @@ USA.
   (assert (dstate-has-environment? dstate))
   (length (cdr (dstate-env-list dstate))))
 
-(define (dstate-using-history? dstate)
-  (hist-state-using-history? (dstate-hist-state dstate)))
+(define (dstate-use-history? dstate)
+  (and (hist-state-using-history? (dstate-hist-state dstate))
+       (dstate-has-reductions? dstate)))
 
 (define (dstate-auto-toggle? dstate)
   (not (eq? (dstate-hist-state dstate) 'disabled)))
 
 (define (dstate-enabled? dstate)
   (eq? (dstate-hist-state dstate) 'enabled))
-
+
 (define (dstate-reduction dstate index)
   (cframe-reduction (dstate-frame dstate) index))
 
@@ -109,11 +108,11 @@ USA.
   (let ((condition (dstate-condition dstate)))
     (and condition
 	 (condition/other-thread condition))))
-
+
 (define (initial-dstate continuation condition)
   (let ((frames
-	 (stream-filter cframe-subproblem?
-			(continuation->cframe-stream continuation))))
+	 (cframe-stream-first-subproblem
+	  (continuation->cframe-stream continuation))))
     (assert (stream-pair? frames))
     (new-subproblem frames
 		    '()
@@ -122,9 +121,12 @@ USA.
 			  (else 'disabled))
 		    condition)))
 
+(define (dstate-earlier-subproblem? dstate)
+  (stream-pair? (cframe-stream-next-subproblem (dstate-frames dstate))))
+
 (define (dstate-earlier-subproblem dstate)
   (let* ((frames (dstate-frames dstate))
-	 (next (stream-cdr frames)))
+	 (next (cframe-stream-next-subproblem frames)))
     (and (stream-pair? next)
 	 (select-subproblem next
 			    (cons frames (dstate-stack dstate))
@@ -139,7 +141,7 @@ USA.
   (let-values (((frames stack) (subproblem-ref dstate index)))
     (and (stream-pair? frames)
 	 (select-subproblem frames stack dstate))))
-
+
 (define (dstate-earlier-reduction dstate)
   (assert (dstate-has-reductions? dstate))
   (let ((index (%dstate-reduction-index dstate)))
@@ -187,6 +189,9 @@ USA.
   (if (eq? (dstate-hist-state dstate) 'now)
       (new-hist-state 'enabled dstate)
       dstate))
+
+(define (dstate-continuation dstate)
+  (cframe-stream->continuation (dstate-frames dstate)))
 
 (define (select-subproblem frames stack dstate)
   (new-subproblem frames
