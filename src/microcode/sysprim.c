@@ -211,7 +211,7 @@ DEFINE_PRIMITIVE ("control-point-next-frame", Prim_cpoint_next_frame, 2, 2, 0)
   unsigned long length = vector_length (cpoint);
   unsigned long index = arg_ulong_index_integer (2, length);
   if (!return_address_p (vector_ref (cpoint, index)))
-    error_bad_range_arg (1);
+    error_bad_range_arg (2);
   unsigned long next_index = cpoint_next_frame (cpoint, index);
   if (next_index == ULONG_MAX)
     PRIMITIVE_RETURN (SHARP_F);
