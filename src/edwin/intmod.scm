@@ -598,8 +598,11 @@ If this is an error, the debugger examines the error condition."
 	 object)))))
 
 (define (start-continuation-browser port condition)
-  ((ref-command browse-continuation) condition)
-  (buffer-put! (current-buffer) 'INVOKE-CONTINUATION
+  ((case (ref-variable debugger-default)
+     ((debug) (ref-command debug-continuation))
+     ((continuation-browser) (ref-command continuation-browser-start)))
+   condition)
+  (buffer-put! (current-buffer) 'invoke-continuation
     (lambda (continuation arguments)
       (if (not (buffer-alive? (port/buffer port)))
 	  (editor-error

@@ -116,16 +116,16 @@ USA.
 			  #f
 			  '()
 			  (make-1d-table))))
-      (buffer-put! buffer 'BROWSER browser)
+      (buffer-put! buffer 'browser browser)
       browser)))
 
 (define (kill-browser-buffer buffer)
-  (let ((browser (buffer-get buffer 'BROWSER)))
+  (let ((browser (buffer-get buffer 'browser)))
     (if browser
 	(for-each kill-buffer (browser/buffers browser)))))
 
 (define (buffer-browser buffer)
-  (let ((browser (buffer-get buffer 'BROWSER)))
+  (let ((browser (buffer-get buffer 'browser)))
     (if (not browser)
 	(error "This buffer has no associated browser:" buffer))
     browser))
@@ -166,10 +166,10 @@ USA.
      (set-browser/buffers! browser
 			   (delq! buffer (browser/buffers browser)))))
   (set-browser/buffers! browser (cons buffer (browser/buffers browser)))
-  (buffer-put! buffer 'ASSOCIATED-WITH-BROWSER browser))
+  (buffer-put! buffer 'associated-with-browser browser))
 
 (define (browser/new-screen browser)
-  (let ((pair (1d-table/get (browser/properties browser) 'NEW-SCREEN #f)))
+  (let ((pair (1d-table/get (browser/properties browser) 'new-screen #f)))
     (and pair
 	 (let ((screen (weak-car pair)))
 	   (and (screen? screen)
@@ -177,7 +177,7 @@ USA.
 
 (define (set-browser/new-screen! browser screen)
   (1d-table/put! (browser/properties browser)
-		 'NEW-SCREEN
+		 'new-screen
 		 (weak-cons screen #f)))
 
 ;;;; Browser Commands
@@ -300,16 +300,15 @@ USA.
 
 (define (bline/description-buffer bline)
   (let* ((buffer
-	  (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER #f))
+	  (1d-table/get (bline/properties bline) 'description-buffer #f))
 	 (get-environment
 	  (1d-table/get (bline-type/properties (bline/type bline))
-			'GET-ENVIRONMENT
+			'get-environment
 			#f))
-	 (env-exists? (if get-environment
-			  (let ((environment* (get-environment bline)))
-			    (environment? environment*))
-			  #f))
-	 (environment (if env-exists? (get-environment bline) #f)))
+	 (env-exists?
+	  (and get-environment
+	       (environment? (get-environment bline))))
+	 (environment (and env-exists? (get-environment bline))))
     (if (and buffer (buffer-alive? buffer))
 	buffer
 	(let ((write-description
@@ -328,7 +327,7 @@ USA.
 			      (debugger-newline port)))))
 			(set-buffer-point! buffer (buffer-start buffer))
 		    (1d-table/put! (bline/properties bline)
-				   'DESCRIPTION-BUFFER
+				   'description-buffer
 				   buffer)
 		    (read-only-between (buffer-start buffer)
 				       (buffer-end buffer))
@@ -364,14 +363,14 @@ USA.
 		   (other-screen screen 1 #t))
 	      (delete-screen! screen))))
       ;; Kill the buffer, then maybe select another browser.
-      (let ((browser (get-buffer-browser buffer 'ASSOCIATED-WITH-BROWSER)))
+      (let ((browser (get-buffer-browser buffer 'associated-with-browser)))
 	(kill-buffer-interactive buffer)
 	(let ((browser
 	       (or browser
 		   (let ((buffer (current-buffer)))
-		     (or (get-buffer-browser buffer 'BROWSER)
+		     (or (get-buffer-browser buffer 'browser)
 			 (get-buffer-browser buffer
-					     'ASSOCIATED-WITH-BROWSER))))))
+					     'associated-with-browser))))))
 	  (if browser
 	      (let ((buffer (browser/buffer browser)))
 		(select-buffer buffer)
@@ -387,7 +386,7 @@ USA.
 
 (define (maybe-restart-buffer-thread buffer)
   (let ((cont (maybe-get-continuation buffer))
-	(thread (buffer-get buffer 'THREAD)))
+	(thread (buffer-get buffer 'thread)))
     (if (and thread cont)
 	(if (eq? thread editor-thread)
 	    (signal-thread-event editor-thread (lambda () (cont unspecific)))
@@ -403,24 +402,22 @@ USA.
   ()
   (lambda ()
     (let* ((buffer (current-buffer))
-	   (thread (buffer-get buffer 'THREAD)))
+	   (thread (buffer-get buffer 'thread)))
       (if (thread? thread)
 	  (let ((value (prompt-for-expression-value
 			"Please enter a value to continue with"))
 		(cont (maybe-get-continuation buffer)))
-	    (buffer-remove! buffer 'THREAD)
+	    (buffer-remove! buffer 'thread)
 	    ((ref-command browser-quit))
-	    (cond ((eq? thread editor-thread)
-		   (signal-thread-event editor-thread (lambda ()
-							(cont value))))
-		  (else
-		   (set! value? #t)
-		   (restart-thread thread #t (lambda ()
-					       (cont value))))))
+	    (if (eq? thread editor-thread)
+		(signal-thread-event editor-thread (lambda () (cont value)))
+		(begin
+		  (set! value? #t)
+		  (restart-thread thread #t (lambda () (cont value))))))
 	  (invoke-restarts #f)))))
 
 (define (maybe-get-continuation buffer)
-  (let ((object (browser/object (buffer-get buffer 'BROWSER))))
+  (let ((object (browser/object (buffer-get buffer 'browser))))
     (and (continuation? object)
 	 object)))
 
@@ -431,9 +428,10 @@ USA.
 	 (bline (mark->bline mark))
 	 (browser (bline/browser bline))
 	 (buffer
-	  (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER #f))
-	 (condition (browser/object browser)))
-    (if (condition? condition)
+	  (1d-table/get (bline/properties bline) 'description-buffer #f))
+	 (dstate (browser/object browser))
+	 (condition (dstate-condition dstate)))
+    (if condition
 	(fluid-let ((prompt-for-confirmation
 		     (lambda (prompt #!optional port)
 		       port
@@ -463,9 +461,7 @@ USA.
 	      (write-string "  " port)
 	      (write-condition-report condition port)
 	      (debugger-newline port)
-	      (command/condition-restart
-	       (initial-dstate (condition/continuation condition) condition)
-	       port))))
+	      (call-debugger-command 'invoke-restart dstate port))))
 	(message "No condition to restart from."))))
 
 (define (call-with-interface-port mark receiver)
@@ -496,7 +492,7 @@ USA.
     (if (and (not avoid-deletion?)
 	     (ref-variable debugger-quit-on-return?))
 	((ref-command browser-quit)))
-    ((or (buffer-get buffer 'INVOKE-CONTINUATION) apply)
+    ((or (buffer-get buffer 'invoke-continuation) apply)
      continuation arguments)))
 
 ;;;; Where
@@ -510,10 +506,10 @@ USA.
 
 (define (bline/environment-browser-buffer bline)
   (let ((environment (bline/evaluation-environment bline)))
-    (bline/attached-buffer bline 'ENVIRONMENT-BROWSER
+    (bline/attached-buffer bline 'environment-browser
       (lambda ()
 	(or (find (lambda (buffer)
-		    (let ((browser (buffer-get buffer 'BROWSER)))
+		    (let ((browser (buffer-get buffer 'browser)))
 		      (and browser
 			   (eq? environment (browser/object browser)))))
 		  (buffer-list))
@@ -537,7 +533,7 @@ USA.
 (define (bline/evaluation-environment bline)
   (let ((get-environment
 	 (1d-table/get (bline-type/properties (bline/type bline))
-		       'GET-ENVIRONMENT
+		       'get-environment
 		       #f))
 	(lose
 	 (lambda () (editor-error "The selected line has no environment."))))
@@ -805,19 +801,19 @@ USA.
 
 (define (boolean-or-ask? object)
   (or (boolean? object)
-      (eq? 'ASK object)))
+      (eq? 'ask object)))
 
 (define-variable debugger-one-at-a-time?
   "Allow only one debugger buffer to exist at a given time.
-#T means delete an existing debugger buffer before making a new one.
-#F means leave existing buffers alone.
-'ASK means ask user what to do each time."
-  'ASK
+#t means delete an existing debugger buffer before making a new one.
+#f means leave existing buffers alone.
+'ask means ask user what to do each time."
+  'ask
   boolean-or-ask?)
 
 (define-variable debugger-max-subproblems
   "Maximum number of subproblems displayed when debugger starts.
-Set this variable to #F to disable this limit."
+Set this variable to #f to disable this limit."
   10
   (lambda (object)
     (or (not object)
@@ -846,7 +842,7 @@ Quitting the debugger kills the debugger buffer and any associated buffers."
 
 (define-variable environment-package-limit
   "Packages with more than this number of bindings will be abbreviated.
-Set this variable to #F to disable this abbreviation."
+Set this variable to #f to disable this abbreviation."
   10
   (lambda (object)
     (or (not object)
@@ -854,27 +850,27 @@ Set this variable to #F to disable this abbreviation."
 
 (define-variable debugger-show-help-message?
   "True means show the help message, false means don't."
-  #T
+  #t
   boolean?)
 
 (define-variable debugger-start-new-frame?
-  "#T means create a new frame whenever the debugger is invoked.
-#F means continue in same frame.
-'ASK means ask user."
-  #T
+  "#t means create a new frame whenever the debugger is invoked.
+#f means continue in same frame.
+'ask means ask user."
+  #t
   boolean-or-ask?)
 (define edwin-variable$debugger-start-new-screen?
   edwin-variable$debugger-start-new-frame?)
 
 (define-variable debugger-hide-system-code?
   "True means don't show subproblems created by the runtime system."
-  #T
+  #t
   boolean?)
 
 (define-variable debugger-show-frames?
   "If true show the environment frames in the description buffer.
 If false show the bindings without frames."
-  #T
+  #t
   boolean?)
 
 (define-variable debugger-show-inner-frame-topmost?
@@ -882,7 +878,7 @@ If false show the bindings without frames."
 If false, frames are displayed with the outer (most global) frame topmost,
 like in a 6.001 style environment diagram.  This is the default.
 If true, frames are display innermost first."
-  #F
+  #f
   boolean?)
 
 (define-variable debugger-compact-display?
@@ -891,17 +887,8 @@ If false, more blank lines are produced between display elements.
 This variable is usually set to #F, but setting it to #T is useful
 to get more information in a short window, for example, when using
 a fixed size terminal."
-  #F
+  #f
   boolean?)
-
-;;; These bindings are included only because they are exported by the
-;;; alternate debugger, artdebug, which also lives in this package.
-;;; They appear to CREF to be needed yet not bound.
-
-(define edwin-variable$debugger-expand-reductions?)
-(define edwin-variable$debugger-open-markers?)
-(define edwin-variable$debugger-split-window?)
-(define edwin-variable$debugger-verbose-mode?)
 
 ;;;; Predicates
 
@@ -949,7 +936,7 @@ The buffer below shows the current subproblem or reduction.
 	(let ((start-debugger
 	       (lambda ()
 		 (fluid-let ((starting-debugger? #t))
-		   (select-continuation-browser-buffer condition)))))
+		   (select-debugger-buffer condition)))))
 	  (if ask?
 	      (if (cleanup-pop-up-buffers
 		   (lambda ()
@@ -964,7 +951,7 @@ The buffer below shows the current subproblem or reduction.
 		(editor-beep))))
 	(return-to-command-loop condition))))
 
-(define (select-continuation-browser-buffer object #!optional thread)
+(define (select-debugger-buffer object #!optional thread)
   (set! value? #f)
   (let ((buffers (find-debugger-buffers)))
     (if (and (pair? buffers)
@@ -974,7 +961,7 @@ The buffer below shows the current subproblem or reduction.
 		  "Another debugger buffer exists.  Delete it")
 		 (ref-variable debugger-one-at-a-time? #f)))
 	(kill-buffer (car buffers))))
-  (let ((buffer (continuation-browser-buffer object)))
+  (let ((buffer (debugger-buffer object)))
     (let ((thread (and (not (default-object? thread)) thread)))
       (if thread
 	  (buffer-put! buffer 'THREAD thread)))
@@ -984,10 +971,10 @@ The buffer below shows the current subproblem or reduction.
 	  (select-buffer buffer)))
     ((ref-command browser-select-line) (buffer-point buffer))))
 
-(define-command browse-continuation
-  "Invoke the continuation-browser on CONTINUATION."
+(define-command debug-continuation
+  "Invoke the debugger on CONTINUATION."
   "XBrowse Continuation"
-  select-continuation-browser-buffer)
+  select-debugger-buffer)
 
 (define (make-debug-screen buffer)
   (and (multiple-screens?)
@@ -1025,55 +1012,54 @@ The buffer below shows the current subproblem or reduction.
 
 (define default-screen-geometry #f)
 
-(define (continuation-browser-buffer object)
-  (let ((browser
-	 (make-browser "*debug*"
-		       (ref-mode-object continuation-browser)
-		       object))
-	(blines
-	 (continuation->blines object
-	  (ref-variable debugger-max-subproblems))))
-    (let ((buffer (browser/buffer browser)))
-      (let ((mark (buffer-end buffer)))
-	(with-buffer-open mark
-	  (lambda ()
-	    (call-with-output-mark mark
-	      (lambda (port)
-		(if (ref-variable debugger-show-help-message?)
-		    (write-string debugger-help-message port))
-		(debugger-newline port)
-		(if (condition? object)
-		    (begin
-		      (write-string "The " port)
-		      (write-string (if (condition/error? object)
-					"error"
-					"condition")
-				    port)
-		      (write-string " that started the debugger is:" port)
-		      (debugger-newline port)
-		      (debugger-newline port)
-		      (write-string "  " port)
-		      (with-output-highlighted port
-			(lambda ()
-			  (write-condition-report object port)))
-		      (debugger-newline port)))
-		(debugger-newline port))))))
-      (insert-blines browser 0 blines)
-      (set-buffer-point! buffer
-			 (if (null? blines)
-			     (buffer-end buffer)
-			     (bline/start-mark (car blines))))
-      buffer)))
+(define (debugger-buffer object)
+  (let ((dstate (initial-dstate object)))
+    (let ((browser
+	   (make-browser "*debug*"
+			 (ref-mode-object debugger)
+			 dstate))
+	  (blines (debugger-blines dstate)))
+      (let ((buffer (browser/buffer browser)))
+	(let ((mark (buffer-end buffer)))
+	  (with-buffer-open mark
+	    (lambda ()
+	      (call-with-output-mark mark
+		(lambda (port)
+		  (if (ref-variable debugger-show-help-message?)
+		      (write-string debugger-help-message port))
+		  (debugger-newline port)
+		  (if (condition? object)
+		      (begin
+			(write-string "The " port)
+			(write-string (if (condition/error? object)
+					  "error"
+					  "condition")
+				      port)
+			(write-string " that started the debugger is:" port)
+			(debugger-newline port)
+			(debugger-newline port)
+			(write-string "  " port)
+			(with-output-highlighted port
+			  (lambda ()
+			    (write-condition-report object port)))
+			(debugger-newline port)))
+		  (debugger-newline port))))))
+	(insert-blines browser 0 blines)
+	(set-buffer-point! buffer
+			   (if (null? blines)
+			       (buffer-end buffer)
+			       (bline/start-mark (car blines))))
+	buffer))))
 
 (define (find-debugger-buffers)
-  (filter (let ((debugger-mode (ref-mode-object continuation-browser)))
+  (filter (let ((debugger-mode (ref-mode-object debugger)))
 	    (lambda (buffer)
 	      (eq? (buffer-major-mode buffer) debugger-mode)))
 	  (buffer-list)))
 
 ;;;; Continuation Browser Mode
 
-(define-major-mode continuation-browser read-only "Debug"
+(define-major-mode debugger read-only "Debug"
   "                     ******* Debugger Help *******
 
 Commands:
@@ -1156,16 +1142,16 @@ automatically deleted when you quit the debugger.  If you wish to keep
 one of these buffers, simply rename it using `M-x rename-buffer': once
 it has been renamed, it will not be deleted automatically.")
 
-(define-key 'continuation-browser #\p 'quit-with-restart-value)
-(define-key 'continuation-browser down 'browser-next-line)
-(define-key 'continuation-browser up 'browser-previous-line)
-(define-key 'continuation-browser button1-down 'debugger-mouse-select-bline)
-(define-key 'continuation-browser #\c-n 'browser-next-line)
-(define-key 'continuation-browser #\c-p 'browser-previous-line)
-(define-key 'continuation-browser #\? 'describe-mode)
-(define-key 'continuation-browser #\q 'browser-quit)
-(define-key 'continuation-browser #\space 'browser-select-line)
-(define-key 'continuation-browser #\e 'browser-where)
+(define-key 'debugger #\p 'quit-with-restart-value)
+(define-key 'debugger down 'browser-next-line)
+(define-key 'debugger up 'browser-previous-line)
+(define-key 'debugger button1-down 'debugger-mouse-select-bline)
+(define-key 'debugger #\c-n 'browser-next-line)
+(define-key 'debugger #\c-p 'browser-previous-line)
+(define-key 'debugger #\? 'describe-mode)
+(define-key 'debugger #\q 'browser-quit)
+(define-key 'debugger #\space 'browser-select-line)
+(define-key 'debugger #\e 'browser-where)
 
 ;;;; Subproblems
 
@@ -1179,7 +1165,10 @@ it has been renamed, it will not be deleted automatically.")
 
 ;;; Stops displaying subproblems past marked frame by default.
 
-(define (continuation->blines object limit)
+(define (debugger-blines dstate)
+
+  (define limit
+    (ref-variable debugger-max-subproblems))
 
   (define (continue dstate parent prev limit* hide-system-frames?)
     (link-deferred-blines
@@ -1212,10 +1201,7 @@ it has been renamed, it will not be deleted automatically.")
 			   (and limit (+ limit* limit))
 			   #f))))))))
 
-  (continue (initial-dstate object)
-	    #f
-	    #f
-	    limit
+  (continue dstate #f #f limit
 	    (ref-variable debugger-hide-system-code?)))
 
 (define (get-dstate-entries dstate limit hide-system-frames?)
@@ -1355,7 +1341,7 @@ it has been renamed, it will not be deleted automatically.")
   (make-bline-type reduction/write-summary reduction/write-description))
 
 (1d-table/put! (bline-type/properties bline-type:reduction)
-	       'GET-ENVIRONMENT
+	       'get-environment
 	       (lambda (bline)
 		 (dstate-history-environment (bline/object bline))))
 
@@ -1549,7 +1535,7 @@ once it has been renamed, it will not be deleted automatically.")
   (make-bline-type environment/write-summary environment/write-description))
 
 (1d-table/put! (bline-type/properties bline-type:environment)
-	       'GET-ENVIRONMENT
+	       'get-environment
 	       bline/object)
 
 (define (bline/offset-string number)

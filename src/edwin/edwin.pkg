@@ -985,33 +985,32 @@ USA.
   (parent (edwin))
   (export (edwin)
 	  debug-scheme-error
-	  edwin-command$browse-continuation
 	  edwin-command$browse-environment
 	  edwin-command$browser-next-line
 	  edwin-command$browser-previous-line
 	  edwin-command$browser-quit
 	  edwin-command$browser-select-line
 	  edwin-command$browser-where
-	  edwin-mode$continuation-browser
+	  edwin-command$debug-continuation
+	  edwin-mode$debugger
 	  edwin-mode$environment-browser
 	  edwin-variable$debugger-confirm-return?
-	  edwin-variable$debugger-expand-reductions?
 	  edwin-variable$debugger-hide-system-code?
 	  edwin-variable$debugger-max-subproblems
 	  edwin-variable$debugger-one-at-a-time?
-	  edwin-variable$debugger-open-markers?
 	  edwin-variable$debugger-quit-on-restart?
 	  edwin-variable$debugger-quit-on-return?
 	  edwin-variable$debugger-show-help-message?
-	  edwin-variable$debugger-split-window?
 	  edwin-variable$debugger-start-new-frame?
 	  edwin-variable$debugger-start-new-screen?
-	  edwin-variable$debugger-verbose-mode?
 	  edwin-variable$environment-package-limit)
+  (export (edwin continuation-browser)
+	  debugger-pp-highlight-subexpression)
   (import (runtime new-debugger)
-	  command/condition-restart)
+	  call-debugger-command)
   (import (runtime new-debugger-state)
 	  dstate-cc-frame?
+	  dstate-condition
 	  dstate-dbg-environment
 	  dstate-dbg-expression
 	  dstate-dbg-subexpression
@@ -1047,6 +1046,88 @@ USA.
 	  port/mark)
   (import (runtime rep)
 	  default/repl-eval
+	  write-restarts))
+
+(define-package (edwin continuation-browser)
+  (files "artdebug")
+  (parent (edwin))
+  (export (edwin)
+	  browse-scheme-error
+	  edwin-command$continuation-browser-abort-all
+	  edwin-command$continuation-browser-abort-previous
+	  edwin-command$continuation-browser-backward-reduction
+	  edwin-command$continuation-browser-backward-subproblem
+	  edwin-command$continuation-browser-condition-restart
+	  edwin-command$continuation-browser-display-stack-elements
+	  edwin-command$continuation-browser-eval-defun
+	  edwin-command$continuation-browser-eval-last-sexp
+	  edwin-command$continuation-browser-eval-last-sexp/dynamic
+	  edwin-command$continuation-browser-eval-region
+	  edwin-command$continuation-browser-eval-region/dynamic
+	  edwin-command$continuation-browser-expand-reductions
+	  edwin-command$continuation-browser-expand-subproblems
+	  edwin-command$continuation-browser-forward-reduction
+	  edwin-command$continuation-browser-forward-subproblem
+	  edwin-command$continuation-browser-frame
+	  edwin-command$continuation-browser-go-to
+	  edwin-command$continuation-browser-print-environment
+	  edwin-command$continuation-browser-print-environment-procedure
+	  edwin-command$continuation-browser-print-expression
+	  edwin-command$continuation-browser-print-subproblem-summary
+	  edwin-command$continuation-browser-retry
+	  edwin-command$continuation-browser-return-from
+	  edwin-command$continuation-browser-return-to
+	  edwin-command$continuation-browser-show-all-frames
+	  edwin-command$continuation-browser-show-current-frame
+	  edwin-command$continuation-browser-start
+	  edwin-mode$continuation-browser
+	  edwin-variable$debugger-default
+	  edwin-variable$debugger-debug-evaluations?
+	  edwin-variable$debugger-expand-reductions?
+	  edwin-variable$debugger-open-markers?
+	  edwin-variable$debugger-split-window?
+	  edwin-variable$debugger-verbose-mode?)
+  (import (runtime new-debugger)
+	  call-debugger-command)
+  (import (runtime new-debugger-state)
+	  dstate-cc-frame?
+	  dstate-condition
+	  dstate-continuation
+	  dstate-current-environment
+	  dstate-current-reduction
+	  dstate-dbg-environment
+	  dstate-dbg-expression
+	  dstate-dbg-subexpression
+	  dstate-earlier-subproblem
+	  dstate-has-environment?
+	  dstate-history-expression
+	  dstate-n-reductions
+	  dstate-n-subproblems
+	  dstate-nth-reduction
+	  dstate-nth-subproblem
+	  dstate-raw-frame
+	  dstate-reduction
+	  dstate-subproblem-index
+	  dstate-system-boundary?
+	  dstate-use-history?
+	  initial-dstate)
+  (import (runtime new-continuation-parser)
+	  dbg-expression-compiled?
+	  dbg-expression-undefined?
+	  dbg-printer-apply
+	  dbg-printer?)
+  (import (runtime debugger-utilities)
+	  debugger-pp
+	  print-reduction-expression
+	  print-subproblem-environment
+	  print-subproblem-expression
+	  show-environment-name)
+  (import (runtime error-handler)
+	  hook/invoke-restart)
+  (import (runtime history)
+	  history-reduction-environment
+	  history-reduction-expression)
+  (import (runtime rep)
 	  write-restarts))
 
 (define-package (edwin text-properties)

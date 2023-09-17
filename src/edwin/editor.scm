@@ -288,10 +288,15 @@ with the contents of the startup message."
 	  (or (name->variable (symbol 'DEBUG-ON- error-type '-ERROR) #f)
 	      (ref-variable-object debug-on-internal-error)))))
     (if p
-	(debug-scheme-error error-type condition (eq? p 'ASK))))
+	((scheme-error-debugger) error-type condition (eq? p 'ASK))))
   (standard-error-report error-type condition #f)
   (editor-beep)
   (return-to-command-loop condition))
+
+(define (scheme-error-debugger)
+  (case (ref-variable debugger-default)
+    ((debug) debug-scheme-error)
+    ((continuation-browser) browse-scheme-error)))
 
 (define-variable debug-on-internal-error
   "True means enter debugger if an internal error is signalled.

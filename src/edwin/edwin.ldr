@@ -186,6 +186,7 @@ USA.
 	  ((nt) (load "win32com" (->environment '(edwin win-commands)))))
 	;; debug depends on button1-down defined in mousecom
 	(load "debug" (->environment '(edwin debugger)))
+	(load "artdebug" (->environment '(edwin continuation-browser)))
 
 	(let ((env (->environment '(edwin dired))))
 	  (load "dired" env)
