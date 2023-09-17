@@ -273,9 +273,6 @@ USA.
     ((apply) (not (eq? (cframe-next-type frame) 'reenter-compiled-code)))
     (else (vector-ref (cframe-info frame) 2))))
 
-(define (cframe-repl-eval-boundary? frame)
-  (cframe:stack-marker-of-type? with-repl-eval-boundary frame))
-
 (define (cframe-field-value frame name #!optional default)
   (let ((p (assq name (cframe-fields frame))))
     (if p
@@ -337,6 +334,9 @@ USA.
 (define (cframe:stack-marker-of-type? marker-type frame)
   (and (cframe:stack-marker? frame)
        (eq? marker-type (cframe-field-value frame 'marker-type))))
+
+(define (cframe:repl-eval-boundary? frame)
+  (cframe:stack-marker-of-type? with-repl-eval-boundary frame))
 
 ;;;; Frame-stream operations
 
@@ -461,7 +461,7 @@ USA.
 (define-integrable (tracked-item-value item)
   (cdr item))
 
-(define (define-item name initializer updater)
+(define (define-tracked-item name initializer updater)
   (let ((entry (vector name initializer updater))
 	(tail
 	 (find-tail (lambda (entry)
@@ -489,19 +489,19 @@ USA.
     (and (cframe:stack-marker-of-type? marker-type frame)
 	 'marker-instance)))
 
-(define-item 'previous-type (lambda () #f)
+(define-tracked-item 'previous-type (lambda () #f)
   (lambda (value frame)
     (if (cframe:join-stacklets? frame)
 	value
 	(cframe-type frame))))
 
-(define-item 'dynamic-state (lambda () #f)
+(define-tracked-item 'dynamic-state (lambda () #f)
   (simple-item-updater (stack-marker-type-filter %translate-to-state-point)))
 
-(define-item 'block-thread-events? (lambda () #f)
+(define-tracked-item 'block-thread-events? (lambda () #f)
   (simple-item-updater (stack-marker-type-filter 'with-thread-events-blocked)))
 
-(define-item 'interrupt-mask (lambda () #f)
+(define-tracked-item 'interrupt-mask (lambda () #f)
   (simple-item-updater
    (lambda (frame)
      (cond ((cframe:restore-interrupt-mask? frame)
@@ -510,14 +510,14 @@ USA.
 	    'marker-instance)
 	   (else #f)))))
 
-(define-item 'history (lambda () (dummy-history))
+(define-tracked-item 'history (lambda () (dummy-history))
   (lambda (value frame)
     (cond ((cframe:restore-history? frame)
 	   (history-transform (cframe-field-value frame 'history)))
 	  ((cframe-history-subproblem? frame) (history-superproblem value))
 	  (else value))))
 
-(define-item 'next-restore-history (lambda () 0)
+(define-tracked-item 'next-restore-history (lambda () 0)
   (lambda (value frame)
     (if (cframe:restore-history? frame)
 	(begin
@@ -538,7 +538,7 @@ USA.
 		      (fix:>= value (cframe-end frame))))
 	  value))))
 
-(define-item 'next-return-code (lambda () #f)
+(define-tracked-item 'next-return-code (lambda () #f)
   (lambda (value frame)
     (if (cframe-compiled-code? frame)
 	(begin
@@ -553,6 +553,13 @@ USA.
 		(assert (fix:< index (cframe-cpoint-end frame)))
 		index)
 	      #f)))))
+
+(define-tracked-item 'system-frame? (lambda () #f)
+  (lambda (value frame)
+    (case value
+      ((#f) (and (cframe:repl-eval-boundary? frame) 'boundary))
+      ((boundary) 'internal)
+      (else value))))
 
 ;;;; Debugging info
 
@@ -639,27 +646,27 @@ USA.
 
 (define-record-type <printer>
     make-printer
-    cframe-dbg-printer?
+    dbg-printer?
   (procedure printer-procedure))
 
-(define (cframe-dbg-printer-apply printer verbose? port)
+(define (dbg-printer-apply printer verbose? port)
   ((printer-procedure printer) verbose? port))
 
 (define-record-type <undefined-expression>
     make-undefined-expression
-    cframe-dbg-expression-undefined?)
+    dbg-expression-undefined?)
 
 (define undefined-exp (make-undefined-expression))
 
 (define-record-type <undefined-environment>
     make-undefined-environment
-    cframe-dbg-environment-undefined?)
+    dbg-environment-undefined?)
 
 (define undefined-env (make-undefined-environment))
 
 (define-record-type <compiled-expression>
     make-compiled-expression
-    cframe-dbg-expression-compiled?)
+    dbg-expression-compiled?)
 
 (define compiled-exp (make-compiled-expression))
 
@@ -764,8 +771,9 @@ USA.
 		     ((access-continue assignment-continue combination-element
 				       combination-operand conditional-decide
 				       conditional-predicate
-				       conditional-predicate definition-continue
-				       sequence-continue sequence-element)
+				       conditional-predicate
+				       definition-continue sequence-continue
+				       sequence-element)
 		      (vector-ref source 1))
 		     (else compiled-exp))))
 	       (lambda (dbg frame)
@@ -796,8 +804,8 @@ USA.
 		 (let ((source (dbg-continuation/source-code dbg)))
 		   (case (vector-ref source 0)
 		     ((access-continue assignment-continue conditional-decide
-				       conditional-predicate definition-continue
-				       sequence-continue)
+				       conditional-predicate
+				       definition-continue sequence-continue)
 		      (select-subexp (vector-ref source 1)))
 		     ((combination-operand)
 		      (scode-combination-element (vector-ref source 1)

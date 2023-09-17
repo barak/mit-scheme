@@ -945,15 +945,6 @@ using the read-eval-print environment instead.")
 
 (define (reason+message reason message)
   (string-titlecase (if reason (string-append reason "; " message) message)))
-
-(define (debugger-pp expression indentation port)
-  (parameterize ((param:printer-list-depth-limit debugger:list-depth-limit)
-		 (param:printer-list-breadth-limit debugger:list-breadth-limit)
-		 (param:printer-string-length-limit
-		  debugger:string-length-limit))
-    (pretty-print expression port #t indentation)))
-
-(define expression-indentation 4)
 
 (define (prompt-for-nonnegative-integer prompt limit port)
   (prompt-for-integer prompt 0 limit port))

@@ -299,16 +299,13 @@ USA.
 ;;; inferior repl is started below the other descriptions.
 
 (define (bline/description-buffer bline)
-  (let* ((system?
-	  (and (subproblem? (bline/object bline))
-	       (system-frame? (subproblem/stack-frame (bline/object bline)))))
-	 (buffer
+  (let* ((buffer
 	  (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER #f))
 	 (get-environment
 	  (1d-table/get (bline-type/properties (bline/type bline))
 			'GET-ENVIRONMENT
 			#f))
-	 (env-exists? (if (and get-environment (not system?))
+	 (env-exists? (if get-environment
 			  (let ((environment* (get-environment bline)))
 			    (environment? environment*))
 			  #f))
@@ -317,9 +314,9 @@ USA.
 	buffer
 	(let ((write-description
 	       (bline-type/write-description (bline/type bline))))
-	  ((message-wrapper #t "Computing, please wait")
-	   (lambda ()
-	     (and write-description
+	  (and write-description
+	       ((message-wrapper #t "Computing, please wait")
+		(lambda ()
 		  (let ((buffer (browser/new-buffer (bline/browser bline) #f)))
 		    (call-with-output-mark (buffer-start buffer)
 		      (lambda (port)
@@ -430,47 +427,46 @@ USA.
 ;;;Method for invoking the standard restarts from within the
 ;;;debugger.
 (define (invoke-restarts avoid-deletion?)
-    (let* ((mark (current-point))
-	   (bline (mark->bline mark))
-	   (browser (bline/browser bline))
-	   (buffer
-	    (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER #f))
-	   (condition
-	    (browser/object browser)))
-      (if (condition? condition)
-	  (fluid-let ((prompt-for-confirmation
-		       (lambda (prompt #!optional port)
-			 port
-			 (call-with-interface-port (buffer-end buffer)
-			   (lambda (port)
-			     port
-			     (prompt-for-yes-or-no? prompt)))))
-		      (prompt-for-evaluated-expression
-		       (lambda (prompt #!optional environment port)
-			 port
-			 (call-with-interface-port (buffer-end buffer)
-			   (lambda (port)
-			     port
-			     (repl-eval (prompt-for-expression prompt)
-					environment)))))
-		      (hook/invoke-restart
-		       (lambda (continuation arguments)
-			 (invoke-continuation continuation
-					      arguments
-					      avoid-deletion?))))
-	    (call-with-interface-port
-	     (let ((buff (new-buffer " *debug*-RESTARTS")))
-	       (add-browser-buffer! browser buff)
-	       (pop-up-buffer buff #f)
-	       (buffer-start buff))
-	     (lambda (port)
-	       (write-string "  " port)
-	       (write-condition-report condition port)
-	       (debugger-newline port)
-	       (command/condition-restart
-		(make-initial-dstate condition)
-		port))))
-	  (message "No condition to restart from."))))
+  (let* ((mark (current-point))
+	 (bline (mark->bline mark))
+	 (browser (bline/browser bline))
+	 (buffer
+	  (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER #f))
+	 (condition (browser/object browser)))
+    (if (condition? condition)
+	(fluid-let ((prompt-for-confirmation
+		     (lambda (prompt #!optional port)
+		       port
+		       (call-with-interface-port (buffer-end buffer)
+			 (lambda (port)
+			   (declare (ignore port))
+			   (prompt-for-yes-or-no? prompt)))))
+		    (prompt-for-evaluated-expression
+		     (lambda (prompt #!optional environment port)
+		       (declare (ignore port))
+		       (call-with-interface-port (buffer-end buffer)
+			 (lambda (port)
+			   (declare (ignore port))
+			   (repl-eval (prompt-for-expression prompt)
+				      environment)))))
+		    (hook/invoke-restart
+		     (lambda (continuation arguments)
+		       (invoke-continuation continuation
+					    arguments
+					    avoid-deletion?))))
+	  (call-with-interface-port
+	      (let ((buff (new-buffer " *debug*-RESTARTS")))
+		(add-browser-buffer! browser buff)
+		(pop-up-buffer buff #f)
+		(buffer-start buff))
+	    (lambda (port)
+	      (write-string "  " port)
+	      (write-condition-report condition port)
+	      (debugger-newline port)
+	      (command/condition-restart
+	       (initial-dstate (condition/continuation condition) condition)
+	       port))))
+	(message "No condition to restart from."))))
 
 (define (call-with-interface-port mark receiver)
   (let ((mark (mark-left-inserting-copy mark)))
@@ -518,7 +514,8 @@ USA.
       (lambda ()
 	(or (find (lambda (buffer)
 		    (let ((browser (buffer-get buffer 'BROWSER)))
-		      (and browser (eq? environment (browser/object browser)))))
+		      (and browser
+			   (eq? environment (browser/object browser)))))
 		  (buffer-list))
 	    (environment-browser-buffer environment))))))
 
@@ -726,8 +723,7 @@ USA.
 ;;;; Browser Line Types
 
 (define-record-type <browser-line-type>
-    (%make-bline-type write-summary write-description selection-mark
-		      properties)
+    (%make-bline-type write-summary write-description properties)
     bline-type?
 
   ;; Procedure that is called to generate the browser line that
@@ -744,29 +740,36 @@ USA.
   ;; be #F to indicate that the object is not normally viewed.
   (write-description bline-type/write-description)
 
-  ;; Procedure that generates the standard mark at which the point
-  ;; should be placed when this object is selected.  One argument:
-  ;; BLINE.  This component may be a nonnegative exact integer meaning
-  ;; an offset from the START-MARK of the bline.
-  (selection-mark bline-type/selection-mark)
-
   (properties bline-type/properties))
 
-(define (make-bline-type write-summary write-description selection-mark)
-  (%make-bline-type write-summary
-		    write-description
-		    selection-mark
-		    (make-1d-table)))
+(define (make-bline-type write-summary write-description)
+  (%make-bline-type write-summary write-description (make-1d-table)))
+
+(define (link-deferred-blines items parent prev get-tail)
+  (if (pair? items)
+      (let ((item (car items)))
+	(if (pair? item)
+	    (let ((bline ((car item) parent prev)))
+	      (cons bline
+		    (link-deferred-blines (cdr item) bline #f
+		      (lambda (parent* prev*)
+			(declare (ignore parent* prev*))
+			(link-deferred-blines (cdr items) parent bline
+					      get-tail)))))
+	    (let ((bline (item parent prev)))
+	      (cons bline
+		    (link-deferred-blines (cdr items) parent bline
+					  get-tail)))))
+      (get-tail parent prev)))
 
-(define (make-continuation-bline expander parent prev)
-  (make-bline expander bline-type:continuation-line parent prev))
-
-(define (continuation-line/write-summary bline port)
-  bline
-  (write-string "--more--" port))
+(define ((continuation-bline expander) parent prev)
+  (make-bline (expander parent prev) bline-type:continuation-line parent prev))
 
 (define bline-type:continuation-line
-  (make-bline-type continuation-line/write-summary #f 0))
+  (make-bline-type (lambda (bline port)
+		     (declare (ignore bline))
+		     (write-string "--more--" port))
+		   #f))
 
 (define (bline/continuation? bline)
   (eq? (bline/type bline) bline-type:continuation-line))
@@ -778,6 +781,25 @@ USA.
     (delete-blines browser index (+ index 1))
     (insert-blines browser index expansion)
     (car expansion)))
+
+(define ((dummy-bline write-summary write-description) parent prev)
+  (make-bline (cons write-summary write-description)
+	      bline-type:dummy parent prev))
+
+(define bline-type:dummy
+  (make-bline-type (lambda (bline port)
+		     ((car (bline/object bline)) port))
+		   (lambda (bline port)
+		     ((cdr (bline/object bline)) port))))
+
+(define (boundary-bline)
+  (dummy-bline
+   (lambda (port)
+     (write-string "***************Internal System Code Follows***********"
+		   port))
+   (lambda (port)
+     (write-string "The subproblems which follow are part of the" port)
+     (write-string " internal system workings." port))))
 
 ;;;; Control Variables
 
@@ -885,21 +907,10 @@ a fixed size terminal."
 
 ;;; Determines if a frame is marked.
 
-(define (system-frame? stack-frame)
-  (stack-frame/repl-eval-boundary? stack-frame))
-
 ;;; Bad implementation to determine for breaks if a value to proceed
 ;;; with is desired.
 
 (define value? #f)
-
-(define (invalid-subexpression? subexpression)
-  (or (debugging-info/undefined-expression? subexpression)
-      (debugging-info/unknown-expression? subexpression)))
-
-(define (invalid-expression? expression)
-  (or (debugging-info/undefined-expression? expression)
-      (debugging-info/compiled-code? expression)))
 
 ;;;; Help Messages
 
@@ -1020,15 +1031,7 @@ The buffer below shows the current subproblem or reduction.
 		       (ref-mode-object continuation-browser)
 		       object))
 	(blines
-	 (continuation->blines
-	  (cond ((continuation? object)
-		 object)
-		((condition? object)
-		 (condition/continuation object))
-		(else
-		 (error:wrong-type-argument object
-					    "condition or continuation"
-					    'CONTINUATION-BROWSER-BUFFER)))
+	 (continuation->blines object
 	  (ref-variable debugger-max-subproblems))))
     (let ((buffer (browser/buffer browser)))
       (let ((mark (buffer-end buffer)))
@@ -1176,241 +1179,185 @@ it has been renamed, it will not be deleted automatically.")
 
 ;;; Stops displaying subproblems past marked frame by default.
 
-(define (continuation->blines continuation limit)
-  (let ((beyond-system-code #f))
-    (let loop ((frame (continuation/first-subproblem continuation))
-	       (prev #f)
-	       (n 0))
-      (if (not frame)
-	  '()
-	  (let* ((next-subproblem
-		  (lambda (bline)
-		    (loop (stack-frame/next-subproblem frame)
-			  bline
-			  (+ n 1))))
-		 (walk-reductions
-		  (lambda (bline reductions)
-		    (cons bline
-			  (let loop ((reductions reductions) (prev #f))
-			    (if (null? reductions)
-				(next-subproblem bline)
-				(let ((bline
-				       (make-bline (car reductions)
-						   bline-type:reduction
-						   bline
-						   prev)))
-				  (cons bline
-					(loop (cdr reductions) bline))))))))
-		 (continue
-		  (lambda ()
-		    (let* ((subproblem (stack-frame->subproblem frame n)))
-		      (if debugger:student-walk?
-			  (let ((reductions
-				 (subproblem/reductions subproblem)))
-			    (if (null? reductions)
-				(let ((bline
-				       (make-bline subproblem
-						   bline-type:subproblem
-						   #f
-						   prev)))
-				  (cons bline
-					(next-subproblem bline)))
-				(let ((bline
-				       (make-bline (car reductions)
-						   bline-type:reduction
-						   #f
-						   prev)))
-				  (walk-reductions bline
-						   (if (> n 0)
-						       '()
-						       (cdr reductions))))))
-			  (walk-reductions
-			   (make-bline subproblem
-				       bline-type:subproblem
-				       #f
-				       prev)
-			   (subproblem/reductions subproblem)))))))
-	    (cond ((and (not (ref-variable debugger-hide-system-code?))
-			(system-frame? frame))
-		   (loop (stack-frame/next-subproblem frame)
-			 prev
-			 n))
-		  ((or (and limit (>= n limit))
-		       (if (system-frame? frame)
-			   (begin (set! beyond-system-code #t) #t)
-			   #f)
-		       beyond-system-code)
-		   (list (make-continuation-bline continue #f prev)))
-		  (else (continue))))))))
+(define (continuation->blines object limit)
+
+  (define (continue dstate parent prev limit* hide-system-frames?)
+    (link-deferred-blines
+     (pre-process (get-dstate-entries dstate limit* hide-system-frames?)
+		  limit*)
+     parent
+     prev
+     (lambda (parent* prev*)
+       (declare (ignore parent* prev*))
+       '())))
+
+  (define (pre-process entries limit*)
+    (cond ((pair? entries)
+	   (let* ((entry (car entries))
+		  (dstate (car entry)))
+	     (let ((rest
+		    (cons (cons (subproblem-bline dstate)
+				(map reduction-bline (cdr entry)))
+			  (pre-process (cdr entries) limit*))))
+	       (if (dstate-system-boundary? dstate)
+		   (cons (boundary-bline) rest)
+		   rest))))
+	  ((null? entries) '())
+	  (else
+	   (list
+	    (continuation-bline
+	     (lambda (parent prev)
+	       (lambda ()
+		 (continue entries parent prev
+			   (and limit (+ limit* limit))
+			   #f))))))))
+
+  (continue (initial-dstate object)
+	    #f
+	    #f
+	    limit
+	    (ref-variable debugger-hide-system-code?)))
+
+(define (get-dstate-entries dstate limit hide-system-frames?)
+  (let loop ((dstate dstate))
+    (if (or (and limit (>= (dstate-subproblem-index dstate) limit))
+	    (and hide-system-frames? (dstate-system-boundary? dstate)))
+	dstate
+	(cons (cons dstate
+		    (if (and debugger:student-walk?
+			     (> (dstate-subproblem-index dstate) 0))
+			'()
+			(map (lambda (i) (dstate-nth-reduction dstate i))
+			     (iota (dstate-n-reductions dstate)))))
+	      (let ((next (dstate-earlier-subproblem dstate)))
+		(if next
+		    (loop next)
+		    '()))))))
 
-(define-record-type <subproblem>
-    (make-subproblem stack-frame expression environment subexpression number)
-    subproblem?
-  (stack-frame subproblem/stack-frame)
-  (expression subproblem/expression)
-  (environment subproblem/environment)
-  (subexpression subproblem/subexpression)
-  (number subproblem/number))
-
-(define (stack-frame->subproblem frame number)
-  (receive (expression environment subexpression)
-      (stack-frame/debugging-info frame)
-    (make-subproblem frame expression environment subexpression number)))
-
-(define-record-type <reduction>
-    (make-reduction subproblem expression environment number)
-    reduction?
-  (subproblem reduction/subproblem)
-  (expression reduction/expression)
-  (environment reduction/environment)
-  (number reduction/number))
-
-(define (subproblem/reductions subproblem)
-  (let ((frame (subproblem/stack-frame subproblem)))
-    (let loop ((reductions (stack-frame/reductions frame)) (n 0))
-      (if (pair? reductions)
-	  (cons (make-reduction subproblem
-				(caar reductions)
-				(cadar reductions)
-				n)
-		(loop (cdr reductions) (+ n 1)))
-	  '()))))
-
 (define (subproblem/write-summary bline port)
-  (let* ((subproblem (bline/object bline))
-	 (frame (subproblem/stack-frame subproblem)))
-    (if (system-frame? frame)
-	(write-string "***************Internal System Code Follows***********"
-		      port)
-	(begin
-	  (write-string "S" port)
-	  (write-string (bline/offset-string (subproblem/number subproblem))
-			port)
-	  (write-string " " port)
-	  (let ((expression (subproblem/expression subproblem))
-		(subexpression (subproblem/subexpression subproblem)))
-	    (cond ((debugging-info/compiled-code? expression)
-		   (write-string ";unknown compiled code" port))
-		  ((not (debugging-info/undefined-expression? expression))
-		   (parameterize ((param:print-primitives-by-name? #t))
-		     (write
-		      (unsyntax (if (invalid-subexpression? subexpression)
-				    expression
-				    subexpression)))))
-		  ((debugging-info/noise? expression)
-		   (write-string ";" port)
-		   (write-string ((debugging-info/noise expression) #f)
-				 port))
-		  (else
-		   (write-string ";undefined expression" port))))))))
+  (let ((dstate (bline/object bline)))
+    (write-string "S" port)
+    (write-string (bline/offset-string (dstate-subproblem-index dstate))
+		  port)
+    (write-string " " port)
+    (let ((expression (dstate-dbg-expression dstate))
+	  (subexpression (dstate-dbg-subexpression dstate)))
+      (cond ((dbg-expression-undefined? expression)
+	     (write-string ";undefined expression" port))
+	    ((dbg-expression-compiled? expression)
+	     (write-string ";unknown compiled code" port))
+	    ((dbg-printer? expression)
+	     (write-string ";" port)
+	     (dbg-printer-apply expression #f port))
+	    (else
+	     (parameterize ((param:print-primitives-by-name? #t))
+	       (write
+		(unsyntax (if (dbg-expression-undefined? subexpression)
+			      expression
+			      subexpression)))))))))
 
 (define (subproblem/write-description bline port)
-  (let* ((subproblem (bline/object bline))
-	 (frame (subproblem/stack-frame subproblem)))
-    (cond ((system-frame? frame)
-	   (write-string "The subproblems which follow are part of the " port)
+  (let ((dstate (bline/object bline)))
+    (write-string "                         Subproblem Level: " port)
+    (write (dstate-subproblem-index dstate) port)
+    (debugger-newline port)
+    (debugger-newline port)
+    (let ((expression (dstate-dbg-expression dstate)))
+      (cond ((or (dbg-expression-undefined? expression)
+		 (dbg-expression-compiled? expression))
+	     (write-string (if (dstate-cc-frame? dstate)
+			       "Compiled expression unknown"
+			       "Expression unknown")
+			   port)
+	     (debugger-newline port)
+	     (write (dstate-return-address dstate) port))
+	    ((dbg-printer? expression)
+	     (dbg-printer-apply expression #t port))
+	    (else
+	     (write-string (if (dstate-cc-frame? dstate)
+			       "Compiled expression"
+			       "Expression")
+			   port)
+	     (write-string " (from stack):" port)
+	     (debugger-newline port)
+	     (write-string
+	      " Subproblem being executed is highlighted.\n"
+	      port)
+	     (debugger-newline port)
+	     (let ((subexpression (dstate-dbg-subexpression dstate)))
+	       (if (dbg-expression-undefined? subexpression)
+		   (debugger-pp expression expression-indentation port)
+		   (debugger-pp-highlight-subexpression
+		    expression
+		    subexpression
+		    expression-indentation
+		    port))))))
+    (let ((environment (dstate-dbg-environment dstate)))
+      (if (not (dbg-environment-undefined? environment))
+	  (begin
+	    (debugger-newline port)
+	    (debugger-newline port)
+	    (desc-show-environment-name-and-bindings environment
+						     port))))))
 
-	   (write-string "internal system workings." port))
-	  (else
-	   (write-string "                         SUBPROBLEM LEVEL: " port)
-	   (write (subproblem/number subproblem) port)
-	   (debugger-newline port)
-	   (debugger-newline port)
-	   (let ((expression (subproblem/expression subproblem))
-		 (frame (subproblem/stack-frame subproblem)))
-	     (cond ((not (invalid-expression? expression))
-		    (write-string (if (stack-frame/compiled-code? frame)
-				      "COMPILED expression"
-				      "Expression")
-				  port)
-		    (write-string " (from stack):" port)
-		    (debugger-newline port)
-		    (write-string
-		     " Subproblem being executed is highlighted.\n"
-		     port)
-		    (debugger-newline port)
-		    (let ((subexpression
-			   (subproblem/subexpression subproblem)))
-		      (if (invalid-subexpression? subexpression)
-			  (debugger-pp expression expression-indentation port)
-			  (debugger-pp-highlight-subexpression
-			   expression
-			   subexpression
-			   expression-indentation
-			   port))))
-		   ((debugging-info/noise? expression)
-		    (write-string ((debugging-info/noise expression) #t)
-				  port))
-		   (else
-		    (write-string (if (stack-frame/compiled-code? frame)
-				      "Compiled expression unknown"
-				      "Expression unknown")
-				  port)
-		    (debugger-newline port)
-		    (write (stack-frame/return-address frame) port))))
-	   (let ((environment (subproblem/environment subproblem)))
-	     (if (not (debugging-info/undefined-environment? environment))
-		 (begin
-		   (debugger-newline port)
-		   (debugger-newline port)
-		   (desc-show-environment-name-and-bindings environment
-							    port))))))))
+(define ((subproblem-bline dstate) parent prev)
+  (make-bline dstate bline-type:subproblem parent prev))
 
 (define bline-type:subproblem
-  (make-bline-type subproblem/write-summary
-		   subproblem/write-description
-		   1))
+  (make-bline-type subproblem/write-summary subproblem/write-description))
 
 (1d-table/put! (bline-type/properties bline-type:subproblem)
 	       'GET-ENVIRONMENT
 	       (lambda (bline)
-		 (subproblem/environment (bline/object bline))))
+		 (dstate-dbg-environment (bline/object bline))))
 
 ;;;; Reductions
 
 (define (reduction/write-summary bline port)
-  (let ((reduction (bline/object bline)))
+  (let ((dstate (bline/object bline)))
     (if (bline/parent bline)
 	(begin
 	  (write-string "R" port)
-	  (write-string (bline/offset-string (reduction/number reduction))
+	  (write-string (bline/offset-string (dstate-reduction-index dstate))
 			port))
 	(begin
 	  (write-string "S" port)
-	  (write-string
-	   (bline/offset-string
-	    (subproblem/number (reduction/subproblem reduction)))
-	   port)))
+	  (write-string (bline/offset-string (dstate-subproblem-index dstate))
+			port)))
     (write-string " " port)
     (parameterize ((param:print-primitives-by-name? #t))
-      (write (unsyntax (reduction/expression reduction)) port))))
+      (write (unsyntax (dstate-history-expression dstate)) port))))
 
 (define (reduction/write-description bline port)
-  (let ((reduction (bline/object bline)))
-    (write-string "              SUBPROBLEM LEVEL: " port)
-    (write (subproblem/number (reduction/subproblem reduction)) port)
-    (write-string "  REDUCTION NUMBER: " port)
-    (write (reduction/number reduction) port)
+  (let ((dstate (bline/object bline)))
+    (write-string "              Subproblem Level: " port)
+    (write (dstate-subproblem-index dstate) port)
+    (write-string "  Reduction Number: " port)
+    (write (dstate-reduction-index dstate) port)
     (debugger-newline port)
     (debugger-newline port)
     (write-string "Expression (from execution history):" port)
     (debugger-newline port)
     (debugger-newline port)
-    (debugger-pp (reduction/expression reduction) expression-indentation port)
+    (debugger-pp (dstate-history-expression dstate)
+		 expression-indentation
+		 port)
     (debugger-newline port)
     (debugger-newline port)
-    (desc-show-environment-name-and-bindings (reduction/environment reduction)
-					port)))
+    (desc-show-environment-name-and-bindings
+     (dstate-history-environment dstate)
+     port)))
+
+(define ((reduction-bline dstate) parent prev)
+  (make-bline dstate bline-type:reduction parent prev))
 
 (define bline-type:reduction
-  (make-bline-type reduction/write-summary
-		   reduction/write-description
-		   1))
+  (make-bline-type reduction/write-summary reduction/write-description))
 
 (1d-table/put! (bline-type/properties bline-type:reduction)
 	       'GET-ENVIRONMENT
 	       (lambda (bline)
-		 (reduction/environment (bline/object bline))))
+		 (dstate-history-environment (bline/object bline))))
 
 ;;;; Environments
 
@@ -1448,7 +1395,7 @@ it has been renamed, it will not be deleted automatically.")
 
 (define (environment->blines environment)
   (let loop ((environment environment) (prev #f))
-    (let ((bline (make-bline environment bline-type:environment #f prev)))
+    (let ((bline (environment-bline environment #f prev)))
       (cons bline
 	    (if (eq? #t (environment-has-parent? environment))
 		(loop (environment-parent environment) bline)
@@ -1595,10 +1542,11 @@ once it has been renamed, it will not be deleted automatically.")
 			       port))))))
     (debugger-newline port)))
 
+(define (environment-bline environment parent prev)
+  (make-bline environment bline-type:environment parent prev))
+
 (define bline-type:environment
-  (make-bline-type environment/write-summary
-		   environment/write-description
-		   1))
+  (make-bline-type environment/write-summary environment/write-description))
 
 (1d-table/put! (bline-type/properties bline-type:environment)
 	       'GET-ENVIRONMENT
@@ -1787,3 +1735,7 @@ once it has been renamed, it will not be deleted automatically.")
 				  (lambda () (write value)))
 		port)))))
     (debugger-newline port)))
+
+;;; Local Variables:
+;;; eval: (put 'call-with-interface-port 'scheme-indent-function 1)
+;;; End:

@@ -334,7 +334,7 @@ USA.
 			(env* (cframe-stream-dbg-environment cfs))
 			(subexp (cframe-dbg-subexpression cf)))
 		    (assert-true (exp-pred exp))
-		    (if (not (or (cframe-dbg-environment-undefined? env*)
+		    (if (not (or (dbg-environment-undefined? env*)
 				 (eq? env* env)))
 			(assert-eqv (environment-parent env*) env))
 		    (if get-subexp

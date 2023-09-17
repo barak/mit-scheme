@@ -40,25 +40,17 @@ USA.
 ;; (define debugger:string-length-limit 70)
 
 (define (ndebug #!optional object)
-  (cond ((default-object? object)
-	 (let ((condition (nearest-repl/condition)))
-	   (if condition
-	       (debug-internal (condition/continuation condition)
-			       condition)
-	       (call-with-current-continuation
-		 (lambda (k)
-		   (debug-internal k #f))))))
-	((condition? object)
-	 (debug-internal (condition/continuation object) object))
-	((continuation? object)
-	 (debug-internal object #f))
-	(else
-	 (error:wrong-type-argument object
-				    "condition or continuation"
-				    'debug))))
+  (if (default-object? object)
+      (let ((condition (nearest-repl/condition)))
+	(if condition
+	    (debug-internal condition)
+	    (call-with-current-continuation
+	      (lambda (k)
+		(debug-internal k)))))
+      (debug-internal object)))
 
-(define (debug-internal continuation condition)
-  (let ((dstate (initial-dstate continuation condition)))
+(define (debug-internal object)
+  (let ((dstate (initial-dstate object)))
     (with-simple-restart 'continue "Return from DEBUG."
       (lambda ()
 	(letter-commands
@@ -96,10 +88,10 @@ USA.
 	 dstate)))))
 
 (define (count-subproblems dstate)
-  (let loop ((frames (dstate-all-subproblems dstate)) (n 0))
-    (if (and (stream-pair? frames)
+  (let loop ((dstates (dstate-all-subproblems dstate)) (n 0))
+    (if (and (stream-pair? dstates)
 	     (<= n debugger:count-subproblems-limit))
-	(loop (stream-cdr frames) (+ n 1))
+	(loop (stream-cdr dstates) (+ n 1))
 	n)))
 
 (define-deferred command-set
@@ -159,14 +151,14 @@ USA.
   (lambda (dstate port)
     (port/debugger-presentation port
       (lambda ()
-	(let ((expression (dstate-expression dstate)))
-	  (cond ((cframe-dbg-expression-compiled? expression)
+	(let ((expression (dstate-dbg-expression dstate)))
+	  (cond ((dbg-expression-compiled? expression)
 		 (write-string ";compiled code" port))
-		((cframe-dbg-expression-undefined? expression)
+		((dbg-expression-undefined? expression)
 		 (write-string ";undefined expression" port))
-		((cframe-dbg-printer? expression)
+		((dbg-printer? expression)
 		 (write-string ";" port)
-		 (cframe-dbg-printer-apply expression #f port))
+		 (dbg-printer-apply expression #f port))
 		(else
 		 (pretty-print expression port #t 0))))))
     dstate))
@@ -199,52 +191,6 @@ USA.
 	   (qualify-level (if (zero? index) "only" "highest")))
 	  ((zero? index)
 	   (qualify-level "lowest")))))
-
-(define (print-subproblem-expression dstate port)
-  (let ((expression (dstate-expression dstate))
-	(frame (dstate-frame dstate)))
-    (cond ((or (cframe-dbg-expression-undefined? expression)
-	       (cframe-dbg-expression-compiled? expression))
-	   (write-string (if (cframe-compiled-address? frame)
-			     "Compiled code expression unknown"
-			     "Expression unknown")
-			 port)
-	   (newline port)
-	   (write (cframe-return-address frame) port))
-	  ((cframe-dbg-printer? expression)
-	   (cframe-dbg-printer-apply expression #t port))
-	  (else
-	   (write-string (if (cframe-compiled-address? frame)
-			     "Compiled code expression (from stack):"
-			     "Expression (from stack):")
-			 port)
-	   (newline port)
-	   (let ((subexpression (dstate-subexpression dstate)))
-	     (if (cframe-dbg-expression-undefined? subexpression)
-		 (debugger-pp expression expression-indentation port)
-		 (begin
-		   (debugger-pp
-		    (unsyntax-with-substitutions
-		     expression
-		     (list (cons subexpression subexpression-marker)))
-		    expression-indentation
-		    port)
-		   (newline port)
-		   (write-string " subproblem being executed (marked by " port)
-		   (write subexpression-marker port)
-		   (write-string "):" port)
-		   (newline port)
-		   (debugger-pp subexpression expression-indentation
-				port))))))))
-
-(define-integrable subexpression-marker '<!>)
-
-(define (print-subproblem-environment dstate port)
-  (if (dstate-has-environment? dstate)
-      (print-environment (dstate-environment dstate) port)
-      (begin
-	(newline port)
-	(write-string "There is no current environment." port))))
 
 (define (print-subproblem-reduction dstate port)
   (let ((n-reductions (dstate-n-reductions dstate)))
@@ -272,56 +218,27 @@ USA.
   (write subproblem-index port)
   (write-string "  Reduction number: " port)
   (write reduction-index port))
-
-(define (print-reduction-expression reduction port)
-  (write-string "Expression (from execution history):" port)
-  (newline port)
-  (debugger-pp (history-reduction-expression reduction)
-	       expression-indentation
-	       port))
-
-(define (print-reduction-environment reduction port)
-  (print-environment (history-reduction-environment reduction)
-		     port))
-
-(define (print-environment environment port)
-  (newline port)
-  (print-environment-name environment port)
-  (if (not (environment-has-name? environment))
-      (begin
-	(newline port)
-	(let ((arguments (environment-arguments environment)))
-	  (if (eq? arguments 'unknown)
-	      (show-environment-bindings environment #t port)
-	      (begin
-		(write-string " applied to: " port)
-		(write-string
-		 (cdr
-		  (write-to-string
-		   arguments
-		   (- (output-port/x-size port) 11)))
-		 port)))))))
 
 ;;;; Subproblem summary
 
 (define-command #\h
   "prints a summary (History) of all subproblems"
   (lambda (dstate port)
-    (let ((frames (dstate-all-subproblems dstate)))
+    (let ((dstates (dstate-all-subproblems dstate)))
       (port/debugger-presentation port
 	(lambda ()
-	  (write-string "SL#  Procedure-name          Expression" port)
+	  (write-string "SL#  Procedure/form          Expression" port)
 	  (newline port)
-	  (let loop ((frames frames) (level 0))
-	    (if (stream-pair? frames)
+	  (let loop ((dstates dstates) (level 0))
+	    (if (stream-pair? dstates)
 		(begin
-		  (terse-print-expression level frames port)
-		  (loop (stream-cdr frames) (+ level 1))))))))
+		  (terse-print-expression level (stream-car dstates) port)
+		  (loop (stream-cdr dstates) (+ level 1))))))))
     dstate))
 
-(define (terse-print-expression level frames port)
-  (let ((expression (cframe-dbg-expression (stream-car frames)))
-	(environment (cframe-stream-dbg-environment frames)))
+(define (terse-print-expression level dstate port)
+  (let ((expression (dstate-dbg-expression dstate))
+	(environment (dstate-dbg-environment dstate)))
     (newline port)
     (write-string (string-pad-right (number->string level) 4) port)
     (write-string " " port)
@@ -330,25 +247,25 @@ USA.
       (let ((name
 	     (and (environment? environment)
 		  (environment-procedure-name environment))))
-	(if (or (not name)
-		(scode-lambda-name->syntax-name name))
+	(if (not name)
 	    ""
 	    (output-to-string 20
-			      (lambda ()
-				(write-dbg-name name (current-output-port))))))
+	      (lambda ()
+		(write-dbg-name (or (scode-lambda-name->syntax-name name)
+				    name)
+				(current-output-port))))))
       20)
      port)
     (write-string "    " port)
     (write-string
-     (cond ((cframe-dbg-expression-compiled? expression)
+     (cond ((dbg-expression-compiled? expression)
 	    ";compiled code")
-	   ((cframe-dbg-expression-undefined? expression)
+	   ((dbg-expression-undefined? expression)
 	    ";undefined expression")
-	   ((cframe-dbg-printer? expression)
+	   ((dbg-printer? expression)
 	    (output-to-string terse-print-expression-limit
 	      (lambda ()
-		(cframe-dbg-printer-apply expression #f
-					  (current-output-port)))))
+		(dbg-printer-apply expression #f (current-output-port)))))
 	   (else
 	    (output-to-string terse-print-expression-limit
 	      (lambda ()
@@ -542,44 +459,45 @@ USA.
 	  (debugger-failure port "No condition to report.")))
     dstate))
 
+(define (command/condition-restart dstate port)
+  (let ((condition (dstate-condition dstate)))
+    (let ((restarts
+	   (if condition
+	       (condition/restarts condition)
+	       (bound-restarts))))
+      (if (null? restarts)
+	  (debugger-failure port "No options to choose from.")
+	  (let ((n-restarts (length restarts))
+		(write-index
+		 (lambda (index port)
+		   (write-string (string-pad-left (number->string index) 3)
+				 port)
+		   (write-string ":" port))))
+	    (let ((invoke-option
+		   (lambda (n)
+		     (invoke-restart-interactively
+		      (list-ref restarts (- n-restarts n))
+		      condition))))
+	      (port/debugger-presentation port
+		(lambda ()
+		  (if (= n-restarts 1)
+		      (begin
+			(write-string "There is only one option:" port)
+			(write-restarts restarts port write-index)
+			(if (prompt-for-confirmation "Use this option" port)
+			    (invoke-option 1)))
+		      (begin
+			(write-string "Choose an option by number:" port)
+			(write-restarts restarts port write-index)
+			(invoke-option
+			 (prompt-for-integer "Option number"
+					     1
+					     (+ n-restarts 1)
+					     port))))))))))))
+
 (define-command #\k
   "continue the program using a standard restart option"
-  (lambda (dstate port)
-    (let ((condition (dstate-condition dstate)))
-      (let ((restarts
-	     (if condition
-		 (condition/restarts condition)
-		 (bound-restarts))))
-	(if (null? restarts)
-	    (debugger-failure port "No options to choose from.")
-	    (let ((n-restarts (length restarts))
-		  (write-index
-		   (lambda (index port)
-		     (write-string (string-pad-left (number->string index) 3)
-				   port)
-		     (write-string ":" port))))
-	      (let ((invoke-option
-		     (lambda (n)
-		       (invoke-restart-interactively
-			(list-ref restarts (- n-restarts n))
-			condition))))
-		(port/debugger-presentation port
-		  (lambda ()
-		    (if (= n-restarts 1)
-			(begin
-			  (write-string "There is only one option:" port)
-			  (write-restarts restarts port write-index)
-			  (if (prompt-for-confirmation "Use this option" port)
-			      (invoke-option 1)))
-			(begin
-			  (write-string "Choose an option by number:" port)
-			  (write-restarts restarts port write-index)
-			  (invoke-option
-			   (prompt-for-integer "Option number"
-					       1
-					       (+ n-restarts 1)
-					       port)))))))))))
-    dstate))
+  command/condition-restart)
 
 ;;;; Advanced hacking commands
 
@@ -599,7 +517,7 @@ USA.
     (enter-subproblem dstate port)))
 
 (define (enter-subproblem dstate port)
-  (let ((exp (dstate-expression dstate))
+  (let ((exp (dstate-dbg-expression dstate))
 	(env (get-evaluation-environment dstate port)))
     (let ((value
 	   (prompt-for-evaluated-value
@@ -632,7 +550,7 @@ USA.
 	(vector-for-each (lambda (element)
 			   (newline port)
 			   (write element port))
-			 (cframe-raw (dstate-frame dstate)))))
+			 (dstate-raw-frame dstate))))
     dstate))
 
 (define-command #\S
@@ -669,15 +587,6 @@ using the read-eval-print environment instead.")
 (define (reason+message reason message)
   (string-titlecase (if reason (string-append reason "; " message) message)))
 
-(define (debugger-pp expression indentation port)
-  (parameterize ((param:printer-list-depth-limit debugger:list-depth-limit)
-		 (param:printer-list-breadth-limit debugger:list-breadth-limit)
-		 (param:printer-string-length-limit
-		  debugger:string-length-limit))
-    (pretty-print expression port #t indentation)))
-
-(define expression-indentation 4)
-
 (define (prompt-for-nonnegative-integer prompt limit port)
   (prompt-for-integer prompt 0 limit port))
 
@@ -714,9 +623,9 @@ using the read-eval-print environment instead.")
 
 (define (prompt-for-evaluated-value prompt exp env port)
   (let ((exp-evaluable?
-	 (not (or (cframe-dbg-expression-undefined? exp)
-		  (cframe-dbg-expression-compiled? exp)
-		  (cframe-dbg-printer? exp)))))
+	 (not (or (dbg-expression-undefined? exp)
+		  (dbg-expression-compiled? exp)
+		  (dbg-printer? exp)))))
     (let ((exp*
 	   (prompt-for-expression
 	    (string-append prompt (if exp-evaluable? " ($ to retry)" ""))

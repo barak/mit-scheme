@@ -1008,41 +1008,39 @@ USA.
 	  edwin-variable$debugger-start-new-screen?
 	  edwin-variable$debugger-verbose-mode?
 	  edwin-variable$environment-package-limit)
-  (import (runtime debugger)
-	  command/condition-restart
-	  command/frame
-	  command/print-environment-procedure
-	  command/print-expression
-	  command/show-all-frames
-	  command/show-current-frame
+  (import (runtime new-debugger)
+	  command/condition-restart)
+  (import (runtime new-debugger-state)
+	  dstate-cc-frame?
+	  dstate-dbg-environment
+	  dstate-dbg-expression
+	  dstate-dbg-subexpression
+	  dstate-earlier-subproblem
+	  dstate-history-environment
+	  dstate-history-expression
+	  dstate-n-reductions
+	  dstate-nth-reduction
+	  dstate-reduction-index
+	  dstate-return-address
+	  dstate-subproblem-index
+	  dstate-system-boundary?
+	  initial-dstate)
+  (import (runtime new-continuation-parser)
+	  dbg-environment-undefined?
+	  dbg-expression-compiled?
+	  dbg-expression-undefined?
+	  dbg-printer-apply
+	  dbg-printer?)
+  (import (runtime debugger-utilities)
 	  debugger-pp
-	  dstate/condition
-	  dstate/environment-list
-	  dstate/expression
-	  dstate/number-of-reductions
-	  dstate/previous-subproblems
-	  dstate/reduction
-	  dstate/reduction-number
-	  dstate/subexpression
-	  dstate/subproblem
-	  dstate/subproblem-number
-	  dstate/using-history?
 	  expression-indentation
-	  improper-list-length
-	  make-initial-dstate
+	  output-to-string
+	  print-binding
 	  print-reduction-expression
 	  print-subproblem-environment
 	  print-subproblem-expression
-	  reduction-environment
-	  reduction-expression
-	  set-current-subproblem!
-	  set-dstate/environment-list!
-	  set-dstate/reduction-number!)
-  (import (runtime debugger-utilities)
-	  print-binding
-	  output-to-string
-	  write-dbg-name
-	  print-user-friendly-name)
+	  print-user-friendly-name
+	  write-dbg-name)
   (import (runtime error-handler)
 	  hook/invoke-restart)
   (import (edwin buffer-output-port)
@@ -1603,7 +1601,7 @@ USA.
 	  edwin-command$stepper-step-until-visibly
 	  edwin-command$stepper-summary
 	  edwin-mode$stepper)
-  (import (runtime debugger)
+  (import (runtime debugger-utilities)
 	  debugger-pp)
   (import (runtime stepper)
 	  step-output

@@ -43,6 +43,19 @@ USA.
 (define (dstate-frame dstate)
   (stream-car (dstate-frames dstate)))
 
+(define (dstate-return-address dstate)
+  (cframe-return-address (dstate-frame dstate)))
+
+(define (dstate-system-boundary? dstate)
+  (eq? (cframe-tracked-item-value (dstate-frame dstate) 'system-frame?)
+       'boundary))
+
+(define (dstate-cc-frame? dstate)
+  (cframe-compiled-address? (dstate-frame dstate)))
+
+(define (dstate-raw-frame dstate)
+  (cframe-raw (dstate-frame dstate)))
+
 (define (dstate-subproblem-index dstate)
   (length (dstate-stack dstate)))
 
@@ -50,16 +63,21 @@ USA.
   (stream-length (dstate-all-subproblems dstate)))
 
 (define (dstate-all-subproblems dstate)
-  (stream-filter cframe-subproblem?
-		 (if (pair? (dstate-stack dstate))
-		     (car (last-pair (dstate-stack dstate)))
-		     (dstate-frames dstate))))
+  (let loop ((dstate (dstate-root dstate)))
+    (cons-stream dstate
+		 (let ((next (dstate-earlier-subproblem dstate)))
+		   (if next
+		       (loop next)
+		       the-empty-stream)))))
 
-(define (dstate-expression dstate)
+(define (dstate-dbg-expression dstate)
   (cframe-dbg-expression (dstate-frame dstate)))
 
-(define (dstate-subexpression dstate)
+(define (dstate-dbg-subexpression dstate)
   (cframe-dbg-subexpression (dstate-frame dstate)))
+
+(define (dstate-dbg-environment dstate)
+  (cframe-stream-dbg-environment (dstate-frames dstate)))
 
 (define (dstate-has-environment? dstate)
   (pair? (dstate-env-list dstate)))
@@ -104,12 +122,32 @@ USA.
   (and (%dstate-reduction-index dstate)
        (dstate-reduction dstate (%dstate-reduction-index dstate))))
 
+(define (dstate-history-expression dstate)
+  (let ((reduction (dstate-current-reduction dstate)))
+    (assert reduction)
+    (history-reduction-expression reduction)))
+
+(define (dstate-history-environment dstate)
+  (let ((reduction (dstate-current-reduction dstate)))
+    (assert reduction)
+    (history-reduction-environment reduction)))
+
 (define (dstate-other-thread dstate)
   (let ((condition (dstate-condition dstate)))
     (and condition
 	 (condition/other-thread condition))))
 
-(define (initial-dstate continuation condition)
+(define (initial-dstate object)
+  (cond ((condition? object)
+	 (%initial-dstate (condition/continuation object) object))
+	((continuation? object)
+	 (%initial-dstate object #f))
+	(else
+	 (error:wrong-type-argument object
+				    "condition or continuation"
+				    'initial-dstate))))
+
+(define (%initial-dstate continuation condition)
   (let ((frames
 	 (cframe-stream-first-subproblem
 	  (continuation->cframe-stream continuation))))
@@ -125,22 +163,21 @@ USA.
   (stream-pair? (cframe-stream-next-subproblem (dstate-frames dstate))))
 
 (define (dstate-earlier-subproblem dstate)
-  (let* ((frames (dstate-frames dstate))
-	 (next (cframe-stream-next-subproblem frames)))
+  (let ((next (cframe-stream-next-subproblem (dstate-frames dstate))))
     (and (stream-pair? next)
 	 (select-subproblem next
-			    (cons frames (dstate-stack dstate))
+			    (cons dstate (dstate-stack dstate))
 			    dstate))))
 
 (define (dstate-later-subproblem dstate)
   (let ((stack (dstate-stack dstate)))
     (and (pair? stack)
-	 (select-subproblem (car stack) (cdr stack) dstate))))
+	 (select-subproblem (dstate-frames (car stack)) (cdr stack) dstate))))
 
 (define (dstate-nth-subproblem dstate index)
-  (let-values (((frames stack) (subproblem-ref dstate index)))
-    (and (stream-pair? frames)
-	 (select-subproblem frames stack dstate))))
+  (let-values (((dstate* stack) (subproblem-ref dstate index)))
+    (and dstate*
+	 (select-subproblem (dstate-frames dstate*) stack dstate))))
 
 (define (dstate-earlier-reduction dstate)
   (assert (dstate-has-reductions? dstate))
@@ -241,7 +278,7 @@ USA.
 	     (cframe-has-reductions? frame))
 	(values 0 (reduction-env-list frame 0))
 	(let ((env (cframe-stream-dbg-environment frames)))
-	  (if (cframe-dbg-environment-undefined? env)
+	  (if (dbg-environment-undefined? env)
 	      (values #f '())
 	      (values 0 (list env)))))))
 
@@ -255,11 +292,15 @@ USA.
     (cframe-reduction frame index))))
 
 (define (subproblem-ref dstate index)
-  (let loop ((i 0) (frames (dstate-all-subproblems dstate)) (stack '()))
+  (let loop ((i 0) (dstate (dstate-root dstate)) (stack '()))
     (if (fix:< i index)
-	(let ((frames* (stream-cdr frames))
-	      (stack* (cons frames stack)))
-	  (if (stream-pair? frames*)
-	      (loop (fix:+ i 1) frames* stack*)
-	      (values frames* stack*)))
-	(values frames stack))))
+	(let ((next (dstate-earlier-subproblem dstate)))
+	  (if next
+	      (loop (fix:+ i 1) next (cons dstate stack))
+	      (values next (cons dstate stack))))
+	(values dstate stack))))
+
+(define (dstate-root dstate)
+  (if (pair? (dstate-stack dstate))
+      (car (last-pair (dstate-stack dstate)))
+      dstate))

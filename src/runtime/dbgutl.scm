@@ -135,40 +135,6 @@ USA.
 	  (write-string "created by " port)
 	  (print-user-friendly-name environment port)))))
 
-(define (show-environment-bindings environment brief? port)
-  (let ((bindings
-	 (sort (environment-bindings environment)
-	   (lambda (a b) (symbol<? (car a) (car b))))))
-    (let ((n-bindings (length bindings))
-	  (limit
-	   (cond ((not brief?) detailed-bindings-limit)
-		 ((exact-positive-integer? brief?) brief?)
-		 (else brief-bindings-limit)))
-	  (finish
-	   (lambda (bindings)
-	     (newline port)
-	     (for-each (lambda (binding)
-			 (print-binding binding port))
-		       bindings))))
-      (cond ((= n-bindings 0)
-	     (write-string " has no bindings" port)
-	     (newline port))
-	    ((<= n-bindings limit)
-	     (write-string " has bindings:" port)
-	     (newline port)
-	     (finish bindings))
-	    (else
-	     (write-string " has " port)
-	     (write n-bindings port)
-	     (write-string " bindings (first " port)
-	     (write limit port)
-	     (write-string " shown):" port)
-	     (newline port)
-	     (finish (take bindings limit)))))))
-
-(define brief-bindings-limit 16)
-(define detailed-bindings-limit 64)
-
 (define (print-binding binding port)
   (write-string
    (let ((x-size (- (output-port/x-size port) 1)))
@@ -203,3 +169,120 @@ USA.
 
 (define (debugger-presentation port thunk)
   (port/debugger-presentation port thunk))
+
+(define (debugger-pp expression indentation port)
+  (parameterize ((param:printer-list-depth-limit debugger:list-depth-limit)
+		 (param:printer-list-breadth-limit debugger:list-breadth-limit)
+		 (param:printer-string-length-limit
+		  debugger:string-length-limit))
+    (pretty-print expression port #t indentation)))
+
+(define expression-indentation 4)
+
+(define (show-environment-bindings environment brief? port)
+  (let ((bindings
+	 (sort (environment-bindings environment)
+	   (lambda (a b) (symbol<? (car a) (car b))))))
+    (let ((n-bindings (length bindings))
+	  (limit
+	   (cond ((not brief?) detailed-bindings-limit)
+		 ((exact-positive-integer? brief?) brief?)
+		 (else brief-bindings-limit)))
+	  (finish
+	   (lambda (bindings)
+	     (newline port)
+	     (for-each (lambda (binding)
+			 (print-binding binding port))
+		       bindings))))
+      (cond ((= n-bindings 0)
+	     (write-string " has no bindings" port)
+	     (newline port))
+	    ((<= n-bindings limit)
+	     (write-string " has bindings:" port)
+	     (newline port)
+	     (finish bindings))
+	    (else
+	     (write-string " has " port)
+	     (write n-bindings port)
+	     (write-string " bindings (first " port)
+	     (write limit port)
+	     (write-string " shown):" port)
+	     (newline port)
+	     (finish (take bindings limit)))))))
+
+(define brief-bindings-limit 16)
+(define detailed-bindings-limit 64)
+
+(define (print-reduction-expression reduction port)
+  (write-string "Expression (from execution history):" port)
+  (newline port)
+  (debugger-pp (history-reduction-expression reduction)
+	       expression-indentation
+	       port))
+
+(define (print-reduction-environment reduction port)
+  (print-environment (history-reduction-environment reduction)
+		     port))
+
+(define (print-subproblem-expression dstate port)
+  (let ((expression (dstate-dbg-expression dstate)))
+    (cond ((dbg-expression-undefined? expression)
+	   (write-string "Expression unknown" port)
+	   (newline port)
+	   (write (dstate-return-address dstate) port))
+	  ((dbg-expression-compiled? expression)
+	   (write-string "Compiled code expression unknown" port)
+	   (newline port)
+	   (write (dstate-return-address dstate) port))
+	  ((dbg-printer? expression)
+	   (dbg-printer-apply expression #t port))
+	  (else
+	   (write-string (if (dstate-cc-frame? dstate)
+			     "Compiled code expression (from stack):"
+			     "Expression (from stack):")
+			 port)
+	   (newline port)
+	   (let ((subexpression (dstate-dbg-subexpression dstate)))
+	     (if (dbg-expression-undefined? subexpression)
+		 (debugger-pp expression expression-indentation port)
+		 (begin
+		   (debugger-pp
+		    (unsyntax-with-substitutions
+		     expression
+		     (list (cons subexpression subexpression-marker)))
+		    expression-indentation
+		    port)
+		   (newline port)
+		   (write-string " subproblem being executed (marked by " port)
+		   (write subexpression-marker port)
+		   (write-string "):" port)
+		   (newline port)
+		   (debugger-pp subexpression expression-indentation
+				port))))))))
+
+(define-integrable subexpression-marker '<!>)
+
+(define (print-subproblem-environment dstate port)
+  (if (dstate-has-environment? dstate)
+      (print-environment (dstate-environment dstate) port)
+      (begin
+	(newline port)
+	(write-string "There is no current environment." port))))
+
+(define (print-environment environment port)
+  (newline port)
+  (print-environment-name environment port)
+  (if (not (environment-has-name? environment))
+      (begin
+	(newline port)
+	(let ((arguments (environment-arguments environment)))
+	  (if (eq? arguments 'unknown)
+	      (show-environment-bindings environment #t port)
+	      (begin
+		(write-string " applied to: " port)
+		(write-string
+		 (cdr
+		  (write-to-string
+		   arguments
+		   (- (output-port/x-size port) 11)))
+		 port)))))))

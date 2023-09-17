@@ -2024,12 +2024,7 @@ USA.
   (export (runtime)
 	  cframe-compiled-address?
 	  cframe-compiled-code?
-	  cframe-dbg-environment-undefined?
 	  cframe-dbg-expression
-	  cframe-dbg-expression-compiled?
-	  cframe-dbg-expression-undefined?
-	  cframe-dbg-printer-apply
-	  cframe-dbg-printer?
 	  cframe-dbg-subexpression
 	  cframe-field-names
 	  cframe-field-value
@@ -2039,7 +2034,6 @@ USA.
 	  cframe-raw
 	  cframe-reduction
 	  cframe-ref
-	  cframe-repl-eval-boundary?
 	  cframe-return-address
 	  cframe-return-code
 	  cframe-return-type
@@ -2055,7 +2049,12 @@ USA.
 	  cframe-tracked-item-value
 	  cframe-type
 	  continuation->cframe-generator
-	  continuation->cframe-stream))
+	  continuation->cframe-stream
+	  dbg-environment-undefined?
+	  dbg-expression-compiled?
+	  dbg-expression-undefined?
+	  dbg-printer-apply
+	  dbg-printer?))
 
 (define-package (runtime new-control-point)
   (files "control-point")
@@ -2072,21 +2071,25 @@ USA.
   (parent (runtime))
   (export (runtime)
 	  dstate-all-subproblems
+	  dstate-cc-frame?
 	  dstate-child-environment
 	  dstate-condition
 	  dstate-continuation
 	  dstate-current-environment
 	  dstate-current-environment-index
 	  dstate-current-reduction
+	  dstate-dbg-environment
+	  dstate-dbg-expression
+	  dstate-dbg-subexpression
 	  dstate-earlier-reduction
 	  dstate-earlier-subproblem
 	  dstate-earlier-subproblem?
 	  dstate-earliest-reduction
 	  dstate-environment
-	  dstate-expression
-	  dstate-frame
 	  dstate-has-environment?
 	  dstate-has-reductions?
+	  dstate-history-environment
+	  dstate-history-expression
 	  dstate-later-reduction
 	  dstate-later-subproblem
 	  dstate-latest-reduction
@@ -2096,12 +2099,14 @@ USA.
 	  dstate-nth-subproblem
 	  dstate-other-thread
 	  dstate-parent-environment
+	  dstate-raw-frame
 	  dstate-reduction
 	  dstate-reduction-index
+	  dstate-return-address
 	  dstate-start-using-history
 	  dstate-stop-using-history
-	  dstate-subexpression
 	  dstate-subproblem-index
+	  dstate-system-boundary?
 	  dstate-use-history?
 	  dstate?
 	  initial-dstate))
@@ -2239,9 +2244,16 @@ USA.
 	  debug/read-eval-print-1
 	  debugger-failure
 	  debugger-message
+	  debugger-pp
 	  debugger-presentation
+	  expression-indentation
 	  output-to-string
+	  print-environment
 	  print-environment-name
+	  print-reduction-environment
+	  print-reduction-expression
+	  print-subproblem-environment
+	  print-subproblem-expression
 	  print-user-friendly-name
 	  show-environment-bindings
 	  show-environment-name
