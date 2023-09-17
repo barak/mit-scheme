@@ -2103,6 +2103,7 @@ USA.
 	  dstate-reduction
 	  dstate-reduction-index
 	  dstate-return-address
+	  dstate-root
 	  dstate-start-using-history
 	  dstate-stop-using-history
 	  dstate-subproblem-index
