@@ -100,14 +100,21 @@ USA.
       (#\q ,standard-exit-command "Quit (exit debugger)"))
     'immutable-state? #t))
 
-(define (define-command letter help-text proc)
+(define-deferred command-procedures
+  (alist-table eq?))
+
+(define (define-command name letter help-text proc)
   (add-boot-init!
    (lambda ()
-     (define-letter-command command-set letter help-text proc))))
+     (define-letter-command command-set letter help-text proc)
+     (alist-table-set! command-procedures name proc))))
 
+(define (call-debugger-command name dstate port)
+  ((alist-table-ref command-procedures name) dstate port))
+
 ;;;; Display commands
 
-(define-command #\t
+(define-command 'print-subproblem-summary #\t
   "print the current subproblem or reduction"
   (lambda (dstate port)
     (print-frame-summary dstate port)))
@@ -123,7 +130,7 @@ USA.
 	  (print-subproblem dstate port))))
   dstate)
 
-(define-command #\r
+(define-command 'print-reductions #\r
   "print the execution history (Reductions) of the current subproblem level"
   (lambda (dstate port)
     (let ((subproblem-index (dstate-subproblem-index dstate)))
@@ -146,7 +153,7 @@ USA.
 	   "There is no execution history for this subproblem.")))
     dstate))
 
-(define-command #\l
+(define-command 'print-subproblem-expression #\l
   "(List expression) pretty print the current expression"
   (lambda (dstate port)
     (port/debugger-presentation port
@@ -163,7 +170,7 @@ USA.
 		 (pretty-print expression port #t 0))))))
     dstate))
 
-(define-command #\o
+(define-command 'print-environment-procedure #\o
   "pretty print the procedure that created the current environment"
   (lambda (dstate port)
     (with-current-environment dstate port
@@ -191,7 +198,7 @@ USA.
 	   (qualify-level (if (zero? index) "only" "highest")))
 	  ((zero? index)
 	   (qualify-level "lowest")))))
-
+
 (define (print-subproblem-reduction dstate port)
   (let ((n-reductions (dstate-n-reductions dstate)))
     (newline port)
@@ -221,7 +228,7 @@ USA.
 
 ;;;; Subproblem summary
 
-(define-command #\h
+(define-command 'print-subproblem-summary #\h
   "prints a summary (History) of all subproblems"
   (lambda (dstate port)
     (let ((dstates (dstate-all-subproblems dstate)))
@@ -277,7 +284,7 @@ USA.
 
 ;;;; Subproblem motion
 
-(define-command #\u
+(define-command 'move-to-earlier-subproblem #\u
   "move (Up) to the next subproblem (earlier in time)"
   (lambda (dstate port)
     (earlier-subproblem (dstate-stop-using-history dstate) port #f #f)))
@@ -294,7 +301,7 @@ USA.
 			   "already at highest subproblem level."))
 	  dstate))))
 
-(define-command #\d
+(define-command 'move-to-later-subproblem #\d
   "move (Down) to the previous subproblem (later in time)"
   (lambda (dstate port)
     (later-subproblem (dstate-stop-using-history dstate) port #f #f)))
@@ -311,7 +318,7 @@ USA.
 			   "already at lowest subproblem level."))
 	  dstate))))
 
-(define-command #\g
+(define-command 'move-to-specified-subproblem #\g
   "Go to a particular subproblem"
   (lambda (dstate port)
     (let ((dstate* (dstate-stop-using-history dstate)))
@@ -331,7 +338,7 @@ USA.
   (and debugger:student-walk?
        (> (dstate-subproblem-index dstate) 0)))
 
-(define-command #\b
+(define-command 'move-to-earlier-reduction #\b
   "move (Back) to next reduction (earlier in time)"
   (lambda (dstate port)
     (let ((dstate* (dstate-start-using-history dstate)))
@@ -352,7 +359,7 @@ USA.
 		    dstate**))))
 	  (earlier-subproblem dstate* port #f #f)))))
 
-(define-command #\f
+(define-command 'move-to-later-reduction #\f
   "move (Forward) to previous reduction (later in time)"
   (lambda (dstate port)
     (let ((dstate* (dstate-start-using-history dstate)))
@@ -374,14 +381,14 @@ USA.
 
 ;;;; Environment motion and display
 
-(define-command #\c
+(define-command 'print-current-env-frame #\c
   "show bindings of identifiers in the Current environment"
   (lambda (dstate port)
     (if (dstate-has-environment? dstate)
 	(print-current-frame dstate #f port)
 	(undefined-environment dstate port))))
 
-(define-command #\a
+(define-command 'print-all-env-frames #\a
   "show All bindings in current environment and its ancestors"
   (lambda (dstate port)
     (if (dstate-has-environment? dstate)
@@ -390,7 +397,7 @@ USA.
 	  dstate)
 	(undefined-environment dstate port))))
 
-(define-command #\p
+(define-command 'move-to-parent-environment #\p
   "move to environment that is Parent of current environment"
   (lambda (dstate port)
     (if (dstate-has-environment? dstate)
@@ -403,7 +410,7 @@ USA.
 		dstate)))
 	(undefined-environment dstate port))))
 
-(define-command #\s
+(define-command 'move-to-child-environment #\s
   "move to child of current environment (in current chain)"
   (lambda (dstate port)
     (if (dstate-has-environment? dstate)
@@ -426,7 +433,7 @@ USA.
 		  port)))
   dstate)
 
-(define-command #\e
+(define-command 'repl-in-current-env-frame #\e
   "Enter a read-eval-print loop in the current environment"
   (lambda (dstate port)
     (debug/read-eval-print (get-evaluation-environment dstate port)
@@ -434,13 +441,13 @@ USA.
 			   "the environment for this frame")
     dstate))
 
-(define-command #\v
+(define-command 'eval-in-current-env-frame #\v
   "eValuate expression in current environment"
   (lambda (dstate port)
     (debug/read-eval-print-1 (get-evaluation-environment dstate port) port)
     dstate))
 
-(define-command #\w
+(define-command 'inspect-current-env-frame #\w
   "enter environment inspector (Where) on the current environment"
   (lambda (dstate port)
     (with-current-environment dstate port debug/where)
@@ -448,7 +455,7 @@ USA.
 
 ;;;; Condition commands
 
-(define-command #\i
+(define-command 'print-condition-report #\i
   "redisplay the error message Info"
   (lambda (dstate port)
     (let ((condition (dstate-condition dstate)))
@@ -459,50 +466,49 @@ USA.
 	  (debugger-failure port "No condition to report.")))
     dstate))
 
-(define (command/condition-restart dstate port)
-  (let ((condition (dstate-condition dstate)))
-    (let ((restarts
-	   (if condition
-	       (condition/restarts condition)
-	       (bound-restarts))))
-      (if (null? restarts)
-	  (debugger-failure port "No options to choose from.")
-	  (let ((n-restarts (length restarts))
-		(write-index
-		 (lambda (index port)
-		   (write-string (string-pad-left (number->string index) 3)
-				 port)
-		   (write-string ":" port))))
-	    (let ((invoke-option
-		   (lambda (n)
-		     (invoke-restart-interactively
-		      (list-ref restarts (- n-restarts n))
-		      condition))))
-	      (port/debugger-presentation port
-		(lambda ()
-		  (if (= n-restarts 1)
-		      (begin
-			(write-string "There is only one option:" port)
-			(write-restarts restarts port write-index)
-			(if (prompt-for-confirmation "Use this option" port)
-			    (invoke-option 1)))
-		      (begin
-			(write-string "Choose an option by number:" port)
-			(write-restarts restarts port write-index)
-			(invoke-option
-			 (prompt-for-integer "Option number"
-					     1
-					     (+ n-restarts 1)
-					     port))))))))))))
 
-(define-command #\k
+(define-command 'invoke-restart #\k
   "continue the program using a standard restart option"
-  command/condition-restart)
+  (lambda (dstate port)
+    (let ((condition (dstate-condition dstate)))
+      (let ((restarts
+	     (if condition
+		 (condition/restarts condition)
+		 (bound-restarts))))
+	(if (null? restarts)
+	    (debugger-failure port "No options to choose from.")
+	    (let ((n-restarts (length restarts))
+		  (write-index
+		   (lambda (index port)
+		     (write-string (string-pad-left (number->string index) 3)
+				   port)
+		     (write-string ":" port))))
+	      (let ((invoke-option
+		     (lambda (n)
+		       (invoke-restart-interactively
+			(list-ref restarts (- n-restarts n))
+			condition))))
+		(port/debugger-presentation port
+		  (lambda ()
+		    (if (= n-restarts 1)
+			(begin
+			  (write-string "There is only one option:" port)
+			  (write-restarts restarts port write-index)
+			  (if (prompt-for-confirmation "Use this option" port)
+			      (invoke-option 1)))
+			(begin
+			  (write-string "Choose an option by number:" port)
+			  (write-restarts restarts port write-index)
+			  (invoke-option
+			   (prompt-for-integer "Option number"
+					       1
+					       (+ n-restarts 1)
+					       port)))))))))))))
 
 ;;;; Advanced hacking commands
 
-(define-command #\Z
-  "return FROM the current subproblem with a value"
+(define-command 'return-from-subproblem #\Z
+  "return from the current subproblem with a value"
   (lambda (dstate port)
     (let ((dstate* (dstate-earlier-subproblem dstate)))
       (if dstate*
@@ -511,8 +517,8 @@ USA.
 	    (debugger-failure port "Can't continue!!!")
 	    dstate)))))
 
-(define-command #\J
-  "return TO the current subproblem with a value"
+(define-command 'return-to-subproblem #\J
+  "return to the current subproblem with a value"
   (lambda (dstate port)
     (enter-subproblem dstate port)))
 
@@ -541,7 +547,7 @@ USA.
 		(k value))))))
   dstate)
 
-(define-command #\M
+(define-command 'print-raw-stack-frame #\M
   "show the elements of the stack frame, in raw form"
   (lambda (dstate port)
     (port/debugger-presentation port
@@ -553,7 +559,7 @@ USA.
 			 (dstate-raw-frame dstate))))
     dstate))
 
-(define-command #\S
+(define-command 'print-internal-state #\S
   "show the debugger's internal State"
   (lambda (dstate port)
     (port/debugger-presentation port

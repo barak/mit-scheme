@@ -2116,6 +2116,7 @@ USA.
   (files "debugger")
   (parent (runtime debugger-command-loop))
   (export ()
+	  call-debugger-command
 	  ;; debugger:auto-toggle?
 	  ;; debugger:count-subproblems-limit
 	  ;; debugger:list-breadth-limit
