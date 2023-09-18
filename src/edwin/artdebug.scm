@@ -166,8 +166,8 @@ in a subproblem whose reductions aren't already inserted."
 	   select-buffer)
        buffer))))
 
-(define-integrable (buffer-dstate buffer)
-  (buffer-get buffer 'debug-state))
+(define-integrable (buffer-ctree buffer)
+  (buffer-get buffer 'ctree))
 
 ;;;; Main Entry
 
@@ -181,9 +181,9 @@ in a subproblem whose reductions aren't already inserted."
 		  "Another debugger buffer exists.  Delete it")))
 	(kill-buffer (car buffers))))
   (let ((buffer (new-buffer "*debug*"))
-	(dstate (initial-dstate object)))
+	(ctree (->ctree object)))
     (set-buffer-major-mode! buffer (ref-mode-object continuation-browser))
-    (buffer-put! buffer 'debug-state dstate)
+    (buffer-put! buffer 'ctree ctree)
     (let ((max-subproblems (ref-variable debugger-max-subproblems buffer))
 	  (hide-system-code? (ref-variable debugger-hide-system-code? buffer)))
       (with-group-undo-disabled (buffer-group buffer)
@@ -200,22 +200,25 @@ in a subproblem whose reductions aren't already inserted."
 		  (newline port)
 		  (newline port)
 		  (print-restarts object buffer port)))
-	    (if (let loop ((dstate dstate))
+	    (if (let loop ((snode (ctree-subproblems ctree)))
 		  (or (and max-subproblems
-			   (= (dstate-subproblem-index dstate)
+			   (= (ctree-subproblem-index snode)
 			      max-subproblems))
-		      (and hide-system-code? (dstate-system-boundary? dstate))
+		      (and hide-system-code?
+			   (ctree-subproblem-system-boundary? snode))
 		      (begin
 			(newline port)
-			(print-subproblem dstate port)
-			(let ((next (dstate-earlier-subproblem dstate)))
+			(print-subproblem snode port)
+			(let ((next (ctree-subproblem-earlier snode)))
 			  (and next
 			       (loop next))))))
 		(display-more-subproblems-message buffer)))))
       (let ((point (forward-subproblem (buffer-start buffer) 1)))
 	(set-buffer-point! buffer point)
 	(if (ref-variable debugger-verbose-mode? buffer)
-	    (invoke-debugger-command 'print-subproblem-summary point))
+	    (call-with-interface-port point
+	      (lambda (port)
+		(print-cnode-summary (mark-cnode point) port))))
 	(push-buffer-mark! buffer point)
 	(buffer-not-modified! buffer)
 	buffer))))
@@ -424,10 +427,6 @@ Use \\[kill-buffer] to quit the debugger."
   'continuation-browser-abort-previous)
 (define-key 'continuation-browser '(#\C-c #\C-M-y)
   'continuation-browser-display-stack-elements)
-
-(define (debugger-command-invocation name)
-  (lambda ()
-    (invoke-debugger-command name (current-point))))
 
 ;;;; Evaluation Commands
 
@@ -436,7 +435,7 @@ Use \\[kill-buffer] to quit the debugger."
   "r"
   (lambda (region)
     (let ((environment
-	   (dstate-evaluation-environment (start-evaluation region))))
+	   (cnode-evaluation-environment (start-evaluation region))))
       (fluid-let ((in-debugger-evaluation? #t))
 	(evaluate-region region environment)))))
 
@@ -444,7 +443,7 @@ Use \\[kill-buffer] to quit the debugger."
   (if (region-contains-marker? region)
       (editor-error "Can't evaluate region containing markers."))
   (set-current-point! (region-end region))
-  (debug-dstate (region-start region)))
+  (mark-cnode (region-start region)))
 
 (define-command continuation-browser-eval-defun
   "Evaluate definition that point is in or before."
@@ -467,9 +466,11 @@ Use \\[kill-buffer] to quit the debugger."
 The evaluation occurs in the dynamic state of the current frame."
   "r"
   (lambda (region)
-    (let ((dstate (start-evaluation region)))
-      (let ((environment (dstate-evaluation-environment dstate))
-	    (continuation (dstate-continuation dstate))
+    (let ((cnode (start-evaluation region)))
+      (let ((environment (cnode-evaluation-environment cnode))
+	    (continuation
+	     (ctree-subproblem->continuation
+	      (ctree-subproblem cnode)))
 	    (old-hook hook/repl-eval))
 	(fluid-let
 	    ((in-debugger-evaluation? #t)
@@ -582,12 +583,20 @@ Move to the last subproblem if the subproblem number is too high."
 (define-command continuation-browser-show-all-frames
   "Print the bindings of all frames of the current environment."
   ()
-  (debugger-command-invocation 'print-all-env-frames))
+  (lambda ()
+    (display-current-environment
+     (lambda (env port)
+       (show-frames env 0 port)))))
 
 (define-command continuation-browser-show-current-frame
   "Print the bindings of the current frame of the current environment."
   ()
-  (debugger-command-invocation 'print-current-env-frame))
+  (lambda ()
+    (display-current-environment
+     (lambda (env port)
+       (debugger-presentation port
+	 (lambda ()
+	   (show-frame env #f #f port)))))))
 
 (define-command continuation-browser-print-environment
   "Identify the environment of the current frame."
@@ -598,7 +607,7 @@ Move to the last subproblem if the subproblem number is too high."
 	(lambda (port)
 	  (debugger-presentation port
 	    (lambda ()
-	      (print-subproblem-environment (debug-dstate point) port))))))))
+	      (print-subproblem-environment (mark-snode point) port))))))))
 
 (define-command continuation-browser-print-expression
   "Pretty print the current expression."
@@ -608,7 +617,7 @@ Move to the last subproblem if the subproblem number is too high."
       (call-with-interface-port point
 	(lambda (port)
 	  (push-current-mark! point)
-	  (let ((dstate (debug-dstate point))
+	  (let ((cnode (mark-cnode point))
 		(message
 		 (lambda (string)
 		   (fresh-line port)
@@ -617,11 +626,10 @@ Move to the last subproblem if the subproblem number is too high."
 		(pp (lambda (obj)
 		      (fresh-line port)
 		      (pp obj port #t))))
-
-	    (if (dstate-use-history? dstate)
-		(pp (dstate-history-expression dstate))
-		(let ((exp (dstate-dbg-expression dstate))
-		      (sub (dstate-dbg-subexpression dstate)))
+	    (if (ctree-reduction? cnode)
+		(pp (ctree-reduction-expression cnode))
+		(let ((exp (ctree-subproblem-expression cnode))
+		      (sub (ctree-subproblem-subexpression cnode)))
 		  (cond ((or (dbg-expression-compiled? exp)
 			     (dbg-expression-undefined? exp))
 			 (message "Unknown expression"))
@@ -633,13 +641,14 @@ Move to the last subproblem if the subproblem number is too high."
 			((or argument (dbg-expression-undefined? sub))
 			 (pp exp port))
 			(else
-			 (debugger-pp-highlight-subexpression exp sub 0
-							      port)))))))))))
+			 (debugger-pp-highlight-subexpression
+			  exp sub 0 port)))))))))))
 
 (define-command continuation-browser-print-environment-procedure
   "Pretty print the procedure that created the current environment."
   ()
-  (debugger-command-invocation 'print-environment-procedure))
+  (lambda ()
+    (display-current-environment show-environment-procedure)))
 
 (define-command continuation-browser-expand-reductions
   "Expand all the reductions of the current subproblem.
@@ -652,18 +661,14 @@ If already expanded, move the point to one of the reductions."
 	   "Reductions for this subproblem already expanded.")
 	  (expand-reductions point)))))
 
-(define (command/print-subproblem-or-reduction dstate port)
-  (debugger-presentation port
-    (lambda ()
-      (let ((reduction (dstate-current-reduction dstate)))
-	(if reduction
-	    (print-reduction-expression reduction port)
-	    (print-subproblem-expression dstate port))))))
-
 (define-command continuation-browser-print-subproblem-summary
   "Print the current subproblem or reduction in the standard format."
   ()
-  (debugger-command-invocation 'print-subproblem-summary))
+  (lambda ()
+    (let ((mark (current-point)))
+      (call-with-interface-port mark
+	(lambda (port)
+	  (print-cnode-summary (mark-cnode mark) port))))))
 
 (define-command continuation-browser-expand-subproblems
   "Expand all subproblems, or ARG more subproblems if argument is given."
@@ -683,7 +688,11 @@ If already expanded, move the point to one of the reductions."
 (define-command continuation-browser-frame
   "Show the current subproblem's stack frame in internal format."
   ()
-  (debugger-command-invocation 'print-raw-stack-frame))
+  (lambda ()
+    (let ((mark (current-point)))
+      (call-with-interface-port mark
+	(lambda (port)
+	  (print-raw-frame (mark-snode mark) port))))))
 
 ;;;; Miscellaneous Commands
 
@@ -697,7 +706,10 @@ Prefix argument means do not kill the debugger buffer."
 		   (invoke-continuation continuation
 					arguments
 					avoid-deletion?))))
-      (invoke-debugger-command 'invoke-restart (current-point)))))
+      (let ((point (current-point)))
+	(call-with-interface-port point
+	  (lambda (port)
+	    (debug/invoke-restart (mark-ctree point) port)))))))
 
 (define-command continuation-browser-return-to
   "Return TO the current subproblem with a value.
@@ -706,7 +718,7 @@ of the expression before the point.
 Prefix argument means do not kill the debugger buffer."
   "P"
   (lambda (avoid-deletion?)
-    (subproblem-enter (debug-dstate (current-point))
+    (subproblem-enter (mark-snode (current-point))
 		      ((ref-command continuation-browser-eval-last-sexp))
 		      avoid-deletion?)))
 
@@ -718,7 +730,7 @@ Prefix argument means do not kill the debugger buffer."
   "P"
   (lambda (avoid-deletion?)
     (subproblem-enter (guarantee-earlier-subproblem
-		       (debug-dstate (current-point)))
+		       (mark-snode (current-point)))
 		      ((ref-command continuation-browser-eval-last-sexp))
 		      avoid-deletion?)))
 
@@ -727,15 +739,13 @@ Prefix argument means do not kill the debugger buffer."
 Prefix argument means do not kill the debugger buffer."
   "P"
   (lambda (avoid-deletion?)
-    (let ((dstate (debug-dstate (current-point))))
+    (let ((snode (mark-snode (current-point))))
+      (if (not (ctree-subproblem-has-expression? snode))
+	  (editor-error "Can't retry; invalid expression."))
       (subproblem-enter
-       (guarantee-earlier-subproblem dstate)
-       (let ((expression (dstate-dbg-expression dstate)))
-	 (if (or (dbg-expression-compiled? expression)
-		 (dbg-expression-undefined? expression))
-	     (editor-error "Can't retry; invalid expression" expression))
-	 (extended-scode-eval expression
-			      (dstate-current-environment dstate)))
+       (guarantee-earlier-subproblem snode)
+       (extended-scode-eval (ctree-subproblem-expression snode)
+			    (ctree-subproblem-environment snode))
        avoid-deletion?))))
 
 (define-command continuation-browser-abort-all
@@ -755,13 +765,12 @@ Prefix argument means do not kill the debugger buffer."
   ()
   (lambda ()
     (let* ((point (current-point))
-	   (dstate (debug-dstate point)))
+	   (vec (ctree-subproblem-raw-frame (mark-snode point))))
       (call-with-interface-port point
 	(lambda (port)
 	  (push-current-mark! point)
 	  (fresh-line port)
-	  (let* ((vec (dstate-raw-frame dstate))
-		 (depth (-1+ (vector-length vec)))
+	  (let* ((depth (-1+ (vector-length vec)))
 		 (mlen (string-length (number->string depth)))
 		 (pad-len (max 5 mlen))
 		 (padded
@@ -802,10 +811,11 @@ Prefix argument means do not kill the debugger buffer."
 	  (newline port)
 	  (newline port))))))
 
-(define (subproblem-enter subproblem value avoid-deletion?)
+(define (subproblem-enter cnode value avoid-deletion?)
   (if (or (not (ref-variable debugger-confirm-return?))
 	  (prompt-for-confirmation? "Continue with this value"))
-      (invoke-continuation (stack-frame->continuation subproblem)
+      (invoke-continuation (ctree-subproblem->continuation
+			    (ctree-subproblem cnode))
 			   (list value)
 			   avoid-deletion?)))
 
@@ -817,13 +827,12 @@ Prefix argument means do not kill the debugger buffer."
     ((or (buffer-get buffer 'invoke-continuation) apply)
      continuation arguments)))
 
-(define (guarantee-earlier-subproblem dstate)
-  (or (dstate-earlier-subproblem dstate)
+(define (guarantee-earlier-subproblem cnode)
+  (or (ctree-subproblem-earlier (ctree-subproblem cnode))
       (editor-error "Can't continue; no earlier subproblem")))
 
 (define (current-restarts)
-  (let* ((dstate (debug-dstate (current-point)))
-	 (condition (dstate-condition dstate)))
+  (let ((condition (ctree-condition (mark-ctree (current-point)))))
     (if condition
 	(condition/restarts condition)
 	(bound-restarts))))
@@ -881,13 +890,13 @@ Prefix argument means do not kill the debugger buffer."
 
 (define (expand-reductions mark)
   (let ((port (mark->output-port mark))
-	(dstate (debug-dstate mark)))
-    (let ((si (dstate-subproblem-index dstate))
-	  (rn (dstate-n-reductions dstate)))
-      (do ((ri 0 (+ ri 1)))
-	  ((not (< ri rn)))
-	(newline port)
-	(print-reduction si ri (dstate-reduction dstate ri) port)))))
+	(snode (mark-snode mark)))
+    (let loop ((rnode (ctree-subproblem-reductions snode)))
+      (if rnode
+	  (begin
+	    (newline port)
+	    (print-reduction rnode port)
+	    (loop (ctree-reduction-earlier rnode)))))))
 
 (define (reductions-expanded? mark)
   ;; Return true whenever expansion is impossible at MARK, even if
@@ -927,17 +936,17 @@ Prefix argument means do not kill the debugger buffer."
   "#"
   string?)
 
-(define (print-subproblem dstate port)
+(define (print-subproblem snode port)
   (print-history-level
-   (dstate-cc-frame? dstate)
-   (dstate-subproblem-index dstate)
-   (let ((reductions (dstate-n-reductions dstate)))
+   (ctree-subproblem-cc-frame? snode)
+   (ctree-subproblem-index snode)
+   (let ((reductions (ctree-subproblem-n-reductions snode)))
      (if (zero? reductions)
 	 " -------- "
 	 (string-append " #R=" (number->string reductions) " --- ")))
    (lambda (port*)
-     (let ((exp (dstate-dbg-expression dstate))
-	   (sub (dstate-dbg-subexpression dstate)))
+     (let ((exp (ctree-subproblem-expression snode))
+	   (sub (ctree-subproblem-subexpression snode)))
        (cond ((dbg-expression-undefined? exp)
 	      (write-string ";undefined expression" port*))
 	     ((dbg-expression-compiled? exp)
@@ -946,7 +955,7 @@ Prefix argument means do not kill the debugger buffer."
 	      (dbg-printer-apply exp #f port*))
 	     (else
 	      (print-with-subexpression exp sub port*)))))
-   (dstate-dbg-environment dstate)
+   (ctree-subproblem-environment snode)
    port))
 
 (define (print-with-subexpression expression subexpression port)
@@ -965,16 +974,16 @@ Prefix argument means do not kill the debugger buffer."
 			   (ref-variable subexpression-end-marker))))))
 		 port)))))
 
-(define (print-reduction subproblem-number reduction-number reduction port)
+(define (print-reduction rnode port)
   (print-history-level
    #f
-   subproblem-number
-   (string-append ", R=" (number->string reduction-number) " --- ")
+   (ctree-subproblem-index (ctree-reduction->subproblem rnode))
+   (string-append ", R=" (ctree-reduction-index rnode) " --- ")
    (lambda (port*)
      (print-reduction-as-subexpression
-      (history-reduction-expression reduction)
+      (ctree-reduction-expression rnode)
       port*))
-   (history-reduction-environment reduction)
+   (ctree-reduction-environment rnode)
    port))
 
 (define (print-reduction-as-subexpression expression port)
@@ -1148,38 +1157,52 @@ Prefix argument means do not kill the debugger buffer."
 (define marker-regexp
   "^-[CI]- S=\\([0-9]+\\)\\(, R=[0-9]+\\| #R=[0-9]+\\|\\)")
 
-;;;; Debugger State
+;;;; Continuation tree
 
-(define (debug-dstate mark)
-  (or (let ((dstate (buffer-dstate (mark-buffer mark)))
+(define (mark-cnode mark)
+  (let ((snode (mark-snode mark)))
+    (let ((rn (current-reduction-number mark)))
+      (or (and rn (ctree-subproblem-nth-reduction snode rn))
+	  snode))))
+
+(define (mark-snode mark)
+  (or (let ((ctree (mark-ctree mark))
 	    (sn (current-subproblem-number mark)))
 	(and sn
-	     (let ((dstate* (dstate-nth-subproblem dstate sn)))
-	       (and dstate*
-		    (let ((rn (current-reduction-number mark)))
-		      (if rn
-			  (dstate-nth-reduction dstate* rn)
-			  dstate*))))))
-      (editor-error "Cannot find environment for evaluation.")))
+	     (ctree-nth-subproblem ctree sn)))
+      (editor-error "Cannot find subproblem.")))
+
+(define (mark-ctree mark)
+  (buffer-ctree (mark-buffer mark)))
 
 (define (count-subproblems buffer)
-  (dstate-n-subproblems (buffer-dstate buffer)))
+  (ctree-n-subproblems (buffer-ctree buffer)))
 
 (define (nth-subproblem buffer n)
-  (or (dstate-nth-subproblem (buffer-dstate buffer) n)
+  (or (ctree-nth-subproblem (buffer-ctree buffer) n)
       (editor-error "No such subproblem" n)))
 
-(define (dstate-evaluation-environment dstate)
-  (if (dstate-has-environment? dstate)
-      (dstate-current-environment dstate)
-      (evaluation-environment-no-repl)))
+(define (cnode-evaluation-environment cnode)
+  (cond ((ctree-reduction? cnode)
+	 (ctree-reduction-environment cnode))
+	((ctree-subproblem-has-environment? cnode)
+	 (ctree-subproblem-environment cnode))
+	(else
+	 (evaluation-environment-no-repl))))
+
+(define (display-current-environment printer)
+  (let* ((point (current-point))
+	 (cnode (mark-cnode point)))
+    (call-with-interface-port point
+      (lambda (port)
+	(cond ((ctree-reduction? cnode)
+	       (printer (ctree-reduction-environment cnode) port))
+	      ((ctree-subproblem-has-environment? cnode)
+	       (printer (ctree-subproblem-environment cnode) port))
+	      (else
+	       (no-current-environment port)))))))
 
 ;;;; Interface Port
-
-(define (invoke-debugger-command name mark)
-  (call-with-interface-port mark
-    (lambda (port)
-      (call-debugger-command name (debug-dstate mark) port))))
 
 (define (call-with-interface-port mark receiver)
   (let ((mark (mark-left-inserting-copy mark)))

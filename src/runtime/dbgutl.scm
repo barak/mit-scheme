@@ -112,13 +112,16 @@ USA.
 
 (define (show-frame environment depth brief? port)
   (show-environment-name environment port)
-  (if (not (negative? depth))
+  (if (exact-nonnegative-integer? depth)
       (begin
 	(write-string "Depth (relative to initial environment): " port)
 	(write depth port)
 	(newline port)))
   (if (not (and (environment-has-name? environment) brief?))
       (show-environment-bindings environment brief? port)))
+
+(define (no-current-environment port)
+  (debugger-failure port "There is no current environment."))
 
 (define (show-environment-name environment port)
   (print-environment-name environment port)
@@ -213,58 +216,58 @@ USA.
 (define brief-bindings-limit 16)
 (define detailed-bindings-limit 64)
 
-(define (print-reduction-expression reduction port)
+(define (print-reduction-expression rnode port)
   (write-string "Expression (from execution history):" port)
   (newline port)
-  (debugger-pp (history-reduction-expression reduction)
+  (debugger-pp (ctree-reduction-expression rnode)
 	       expression-indentation
 	       port))
 
-(define (print-reduction-environment reduction port)
-  (print-environment (history-reduction-environment reduction)
+(define (print-reduction-environment rnode port)
+  (print-environment (ctree-reduction-environment rnode)
 		     port))
 
-(define (print-subproblem-expression dstate port)
-  (let ((expression (dstate-dbg-expression dstate)))
+(define (print-subproblem-expression snode port)
+  (let ((expression (ctree-subproblem-expression snode))
+	(subexpression (ctree-subproblem-subexpression snode)))
     (cond ((dbg-expression-undefined? expression)
 	   (write-string "Expression unknown" port)
 	   (newline port)
-	   (write (dstate-return-address dstate) port))
+	   (write (ctree-subproblem-return-address snode) port))
 	  ((dbg-expression-compiled? expression)
 	   (write-string "Compiled code expression unknown" port)
 	   (newline port)
-	   (write (dstate-return-address dstate) port))
+	   (write (ctree-subproblem-return-address snode) port))
 	  ((dbg-printer? expression)
 	   (dbg-printer-apply expression #t port))
 	  (else
-	   (write-string (if (dstate-cc-frame? dstate)
+	   (write-string (if (ctree-subproblem-cc-frame? snode)
 			     "Compiled code expression (from stack):"
 			     "Expression (from stack):")
 			 port)
 	   (newline port)
-	   (let ((subexpression (dstate-dbg-subexpression dstate)))
-	     (if (dbg-expression-undefined? subexpression)
-		 (debugger-pp expression expression-indentation port)
-		 (begin
-		   (debugger-pp
-		    (unsyntax-with-substitutions
-		     expression
-		     (list (cons subexpression subexpression-marker)))
-		    expression-indentation
-		    port)
-		   (newline port)
-		   (write-string " subproblem being executed (marked by " port)
-		   (write subexpression-marker port)
-		   (write-string "):" port)
-		   (newline port)
-		   (debugger-pp subexpression expression-indentation
-				port))))))))
+	   (if (dbg-expression-undefined? subexpression)
+	       (debugger-pp expression expression-indentation port)
+	       (begin
+		 (debugger-pp
+		  (unsyntax-with-substitutions
+		   expression
+		   (list (cons subexpression subexpression-marker)))
+		  expression-indentation
+		  port)
+		 (newline port)
+		 (write-string " subproblem being executed (marked by " port)
+		 (write subexpression-marker port)
+		 (write-string "):" port)
+		 (newline port)
+		 (debugger-pp subexpression expression-indentation
+			      port)))))))
 
 (define-integrable subexpression-marker '<!>)
 
-(define (print-subproblem-environment dstate port)
-  (if (dstate-has-environment? dstate)
-      (print-environment (dstate-environment dstate) port)
+(define (print-subproblem-environment snode port)
+  (if (ctree-subproblem-has-environment? snode)
+      (print-environment (ctree-subproblem-environment snode) port)
       (begin
 	(newline port)
 	(write-string "There is no current environment." port))))
@@ -286,3 +289,87 @@ USA.
 		   arguments
 		   (- (output-port/x-size port) 11)))
 		 port)))))))
+
+(define (debug/invoke-restart ctree port)
+  (let ((condition (ctree-condition ctree)))
+    (let ((restarts
+	   (if condition
+	       (condition/restarts condition)
+	       (bound-restarts))))
+      (if (null? restarts)
+	  (debugger-failure port "No options to choose from.")
+	  (let ((n-restarts (length restarts))
+		(write-index
+		 (lambda (index port)
+		   (write-string (string-pad-left (number->string index) 3)
+				 port)
+		   (write-string ":" port))))
+	    (let ((invoke-option
+		   (lambda (n)
+		     (invoke-restart-interactively
+		      (list-ref restarts (- n-restarts n))
+		      condition))))
+	      (port/debugger-presentation port
+		(lambda ()
+		  (if (= n-restarts 1)
+		      (begin
+			(write-string "There is only one option:" port)
+			(write-restarts restarts port write-index)
+			(if (prompt-for-confirmation "Use this option" port)
+			    (invoke-option 1)))
+		      (begin
+			(write-string "Choose an option by number:" port)
+			(write-restarts restarts port write-index)
+			(invoke-option
+			 (prompt-for-integer "Option number"
+					     1
+					     (+ n-restarts 1)
+					     port))))))))))))
+
+(define (prompt-for-nonnegative-integer prompt limit port)
+  (prompt-for-integer prompt 0 limit port))
+
+(define (prompt-for-integer prompt lower upper port)
+  (let loop ()
+    (let ((expression
+	   (prompt-for-expression
+	    (string-append
+	     prompt
+	     (if lower
+		 (if upper
+		     (string-append " (" (number->string lower)
+				    " through "
+				    (number->string (- upper 1))
+				    " inclusive)")
+		     (string-append " (minimum " (number->string lower) ")"))
+		 (if upper
+		     (string-append " (maximum "
+				    (number->string (- upper 1))
+				    ")")
+		     "")))
+	    port)))
+      (cond ((not (exact-integer? expression))
+	     (debugger-failure port prompt " must be exact integer.")
+	     (loop))
+	    ((and lower (< expression lower))
+	     (debugger-failure port prompt " too small.")
+	     (loop))
+	    ((and upper (>= expression upper))
+	     (debugger-failure port prompt " too large.")
+	     (loop))
+	    (else
+	     expression)))))
+
+(define (prompt-for-evaluated-value prompt snode port)
+  (let ((exp-evaluable? (ctree-subproblem-has-expression? snode)))
+    (let ((exp
+	   (prompt-for-expression
+	    (string-append prompt (if exp-evaluable? " ($ to retry)" ""))
+	    port))
+	  (env
+	   (if (ctree-subproblem-has-environment? snode)
+	       (ctree-subproblem-environment snode)
+	       (nearest-repl/environment))))
+      (if (and exp-evaluable? (eq? exp '$))
+	  (debug/scode-eval (ctree-subproblem-expression snode) env)
+	  (debug/eval exp env)))))

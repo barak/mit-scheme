@@ -1007,37 +1007,41 @@ USA.
   (export (edwin continuation-browser)
 	  debugger-pp-highlight-subexpression)
   (import (runtime new-debugger)
-	  call-debugger-command)
-  (import (runtime new-debugger-state)
-	  dstate-cc-frame?
-	  dstate-condition
-	  dstate-dbg-environment
-	  dstate-dbg-expression
-	  dstate-dbg-subexpression
-	  dstate-earlier-subproblem
-	  dstate-history-environment
-	  dstate-history-expression
-	  dstate-n-reductions
-	  dstate-nth-reduction
-	  dstate-reduction-index
-	  dstate-return-address
-	  dstate-subproblem-index
-	  dstate-system-boundary?
-	  initial-dstate)
+	  invoke-restart)
   (import (runtime new-continuation-parser)
 	  dbg-environment-undefined?
 	  dbg-expression-compiled?
 	  dbg-expression-undefined?
 	  dbg-printer-apply
 	  dbg-printer?)
+  (import (runtime continuation-tree)
+	  ->ctree
+	  ctree-condition
+	  ctree-continuation
+	  ctree-reduction->subproblem
+	  ctree-reduction-earlier
+	  ctree-reduction-environment
+	  ctree-reduction-expression
+	  ctree-reduction-index
+	  ctree-subproblem-cc-frame?
+	  ctree-subproblem-earlier
+	  ctree-subproblem-environment
+	  ctree-subproblem-expression
+	  ctree-subproblem-has-environment?
+	  ctree-subproblem-has-subexpression?
+	  ctree-subproblem-index
+	  ctree-subproblem-reductions
+	  ctree-subproblem-return-address
+	  ctree-subproblem-subexpression
+	  ctree-subproblem-system-boundary?
+	  ctree-subproblems
+	  ctree?)
   (import (runtime debugger-utilities)
+	  debug/invoke-restart
 	  debugger-pp
 	  expression-indentation
 	  output-to-string
 	  print-binding
-	  print-reduction-expression
-	  print-subproblem-environment
-	  print-subproblem-expression
 	  print-user-friendly-name
 	  write-dbg-name)
   (import (runtime error-handler)
@@ -1045,8 +1049,7 @@ USA.
   (import (edwin buffer-output-port)
 	  port/mark)
   (import (runtime rep)
-	  default/repl-eval
-	  write-restarts))
+	  default/repl-eval))
 
 (define-package (edwin continuation-browser)
   (files "artdebug")
@@ -1087,46 +1090,54 @@ USA.
 	  edwin-variable$debugger-open-markers?
 	  edwin-variable$debugger-split-window?
 	  edwin-variable$debugger-verbose-mode?)
-  (import (runtime new-debugger)
-	  call-debugger-command)
-  (import (runtime new-debugger-state)
-	  dstate-cc-frame?
-	  dstate-condition
-	  dstate-continuation
-	  dstate-current-environment
-	  dstate-current-reduction
-	  dstate-dbg-environment
-	  dstate-dbg-expression
-	  dstate-dbg-subexpression
-	  dstate-earlier-subproblem
-	  dstate-has-environment?
-	  dstate-history-expression
-	  dstate-n-reductions
-	  dstate-n-subproblems
-	  dstate-nth-reduction
-	  dstate-nth-subproblem
-	  dstate-raw-frame
-	  dstate-reduction
-	  dstate-subproblem-index
-	  dstate-system-boundary?
-	  dstate-use-history?
-	  initial-dstate)
   (import (runtime new-continuation-parser)
 	  dbg-expression-compiled?
 	  dbg-expression-undefined?
 	  dbg-printer-apply
 	  dbg-printer?)
+  (import (runtime continuation-tree)
+	  ->ctree
+	  ctree-condition
+	  ctree-n-subproblems
+	  ctree-nth-subproblem
+	  ctree-reduction->subproblem
+	  ctree-reduction-earlier
+	  ctree-reduction-environment
+	  ctree-reduction-expression
+	  ctree-reduction-index
+	  ctree-reduction?
+	  ctree-subproblem
+	  ctree-subproblem->continuation
+	  ctree-subproblem-cc-frame?
+	  ctree-subproblem-earlier
+	  ctree-subproblem-environment
+	  ctree-subproblem-expression
+	  ctree-subproblem-has-environment?
+	  ctree-subproblem-has-expression?
+	  ctree-subproblem-has-subexpression?
+	  ctree-subproblem-index
+	  ctree-subproblem-n-reductions
+	  ctree-subproblem-nth-reduction
+	  ctree-subproblem-raw-frame
+	  ctree-subproblem-reductions
+	  ctree-subproblem-return-address
+	  ctree-subproblem-subexpression
+	  ctree-subproblem-system-boundary?
+	  ctree-subproblems)
+  (import (runtime new-debugger)
+	  print-cnode-summary
+	  print-raw-frame)
   (import (runtime debugger-utilities)
+	  debug/invoke-restart
 	  debugger-pp
-	  print-reduction-expression
+	  no-current-environment
 	  print-subproblem-environment
-	  print-subproblem-expression
-	  show-environment-name)
+	  show-environment-name
+	  show-environment-procedure
+	  show-frame
+	  show-frames)
   (import (runtime error-handler)
 	  hook/invoke-restart)
-  (import (runtime history)
-	  history-reduction-environment
-	  history-reduction-expression)
   (import (runtime rep)
 	  write-restarts))
 

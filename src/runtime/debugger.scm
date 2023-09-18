@@ -50,7 +50,11 @@ USA.
       (debug-internal object)))
 
 (define (debug-internal object)
-  (let ((dstate (initial-dstate object)))
+  (let ((dstate
+	 (new-subproblem (ctree-subproblems (->ctree object))
+			 (cond (debugger:use-history? 'always)
+			       (debugger:auto-toggle? 'enabled)
+			       (else 'disabled)))))
     (with-simple-restart 'continue "Return from DEBUG."
       (lambda ()
 	(letter-commands
@@ -86,13 +90,110 @@ USA.
 	     "You are now in the debugger.  Type q to quit, ? for commands.")))
 	 "debug>"
 	 dstate)))))
+
+(define-record-type <dstate>
+    make-dstate
+    dstate?
+  (ctree-node dstate-ctree-node)
+  (hist-state dstate-hist-state)
+  (env-list dstate-env-list))
+
+(define (select-subproblem snode dstate)
+  (new-subproblem snode (dstate-hist-state dstate)))
+
+(define (new-subproblem snode hist-state)
+  (let ((rnode
+	 (and (hist-state:using-history? hist-state)
+	      (ctree-subproblem-reductions snode))))
+    (if rnode
+	(new-reduction rnode hist-state)
+	(make-dstate snode
+		     hist-state
+		     (if (ctree-subproblem-has-environment? snode)
+			 (list (ctree-subproblem-environment snode))
+			 '())))))
+
+(define (select-reduction rnode dstate)
+  (new-reduction rnode (dstate-hist-state dstate)))
+
+(define (new-reduction rnode hist-state)
+  (make-dstate rnode
+	       hist-state
+	       (list (ctree-reduction-environment rnode))))
+
+(define (dstate-using-history? dstate)
+  (hist-state:using-history? (dstate-hist-state dstate)))
+
+(define (hist-state:using-history? hist-state)
+  (or (eq? hist-state 'always)
+      (eq? hist-state 'now)))
+
+(define (dstate-start-using-history dstate)
+  (if (eq? (dstate-hist-state dstate) 'enabled)
+      (new-hist-state 'now dstate)
+      dstate))
+
+(define (dstate-stop-using-history dstate)
+  (if (eq? (dstate-hist-state dstate) 'now)
+      (new-hist-state 'enabled dstate)
+      dstate))
+
+(define (new-hist-state hist-state dstate)
+  (make-dstate (dstate-ctree-node dstate)
+	       hist-state
+	       (dstate-env-list dstate)))
+
+(define (dstate-has-environment? dstate)
+  (pair? (dstate-env-list dstate)))
+
+(define (dstate-environment dstate)
+  (let ((envs (dstate-env-list dstate)))
+    (assert (pair? envs))
+    (car envs)))
+
+(define (dstate-environment-index dstate)
+  (let ((envs (dstate-env-list dstate)))
+    (assert (pair? envs))
+    (length (cdr envs))))
+
+(define (dstate-parent-environment dstate)
+  (let ((envs (dstate-env-list dstate)))
+    (assert (pair? envs))
+    (and (eq? #t (environment-has-parent? (car envs)))
+	 (select-environment (cons (environment-parent (car envs)) envs)
+			     dstate))))
+
+(define (dstate-child-environment dstate)
+  (let ((envs (dstate-env-list dstate)))
+    (assert (pair? envs))
+    (and (pair? (cdr envs))
+	 (select-environment (cdr envs) dstate))))
+
+(define (select-environment env-list dstate)
+  (make-dstate (dstate-ctree-node dstate)
+	       (dstate-hist-state dstate)
+	       env-list))
+
+(define (dstate-ctree-subproblem dstate)
+  (ctree-subproblem (dstate-ctree-node dstate)))
+
+(define (dstate-ctree dstate)
+  (->ctree (dstate-ctree-node dstate)))
 
 (define (count-subproblems dstate)
-  (let loop ((dstates (dstate-all-subproblems dstate)) (n 0))
-    (if (and (stream-pair? dstates)
+  (let loop ((node (ctree-subproblems (dstate-ctree dstate))) (n 0))
+    (if (and node
 	     (<= n debugger:count-subproblems-limit))
-	(loop (stream-cdr dstates) (+ n 1))
+	(loop (ctree-subproblem-earlier node) (+ n 1))
 	n)))
+
+(define (dstate-other-thread dstate)
+  (let ((condition (ctree-condition (dstate-ctree dstate))))
+    (and condition
+	 (condition/other-thread condition))))
+
+(define (dstate-condition dstate)
+  (ctree-condition (dstate-ctree dstate)))
 
 (define-deferred command-set
   (make-command-set 'debug-commands
@@ -119,46 +220,36 @@ USA.
   (lambda (dstate port)
     (print-frame-summary dstate port)))
 
-(define (print-frame-summary dstate port)
-  (port/debugger-presentation port
-    (lambda ()
-      (if (dstate-use-history? dstate)
-	  (print-reduction (dstate-current-reduction dstate)
-			   (dstate-subproblem-index dstate)
-			   (dstate-reduction-index dstate)
-			   port)
-	  (print-subproblem dstate port))))
-  dstate)
-
 (define-command 'print-reductions #\r
   "print the execution history (Reductions) of the current subproblem level"
   (lambda (dstate port)
-    (let ((subproblem-index (dstate-subproblem-index dstate)))
-      (if (dstate-has-reductions? dstate)
-	  (port/debugger-presentation port
-	    (lambda ()
-	      (write-string "Execution history for this subproblem:" port)
-	      (for-each
-	       (lambda (i)
-		 (newline port)
-		 (write-string "----------------------------------------" port)
-		 (newline port)
-		 (print-reduction (dstate-reduction dstate i)
-				  subproblem-index
-				  i
-				  port))
-	       (iota (dstate-n-reductions dstate)))))
-	  (debugger-failure
-	   port
-	   "There is no execution history for this subproblem.")))
+    (let ((snode (dstate-ctree-subproblem dstate)))
+      (let ((rnode (ctree-subproblem-reductions snode)))
+	(if rnode
+	    (port/debugger-presentation port
+	      (lambda ()
+		(write-string "Execution history for this subproblem:" port)
+		(let loop ((rnode rnode))
+		   (newline port)
+		   (write-string "----------------------------------------"
+				 port)
+		   (newline port)
+		   (print-reduction rnode port)
+		   (let ((rnode* (ctree-reduction-earlier rnode)))
+		     (if rnode*
+			 (loop rnode*))))))
+	    (debugger-failure
+	     port
+	     "There is no execution history for this subproblem."))))
     dstate))
 
 (define-command 'print-subproblem-expression #\l
-  "(List expression) pretty print the current expression"
+  "(List expression) pretty print this subproblem's expression"
   (lambda (dstate port)
     (port/debugger-presentation port
       (lambda ()
-	(let ((expression (dstate-dbg-expression dstate)))
+	(let ((expression
+	       (ctree-subproblem-expression (dstate-ctree-subproblem dstate))))
 	  (cond ((dbg-expression-compiled? expression)
 		 (write-string ";compiled code" port))
 		((dbg-expression-undefined? expression)
@@ -178,29 +269,41 @@ USA.
 	(show-environment-procedure environment port)))
     dstate))
 
-(define (print-subproblem dstate port)
-  (print-subproblem-identification dstate port)
-  (newline port)
-  (print-subproblem-expression dstate port)
-  (print-subproblem-environment dstate port)
-  (print-subproblem-reduction dstate port))
+(define (print-frame-summary dstate port)
+  (print-cnode-summary (dstate-ctree-node dstate) port)
+  dstate)
 
-(define (print-subproblem-identification dstate port)
+(define (print-cnode-summary cnode port)
+  (port/debugger-presentation port
+    (lambda ()
+      (if (ctree-reduction? cnode)
+	  (print-reduction cnode port)
+	  (print-subproblem cnode port)))))
+
+(define (print-subproblem snode port)
+  (print-subproblem-identification snode port)
+  (newline port)
+  (print-subproblem-expression snode port)
+  (print-subproblem-environment snode port)
+  (print-subproblem-reduction snode port))
+
+(define (print-subproblem-identification snode port)
   (write-string "Subproblem level: " port)
-  (let ((index (dstate-subproblem-index dstate))
-	(qualify-level
+  (let ((qualify-level
 	 (lambda (adjective)
 	   (write-string " (this is the " port)
 	   (write-string adjective port)
 	   (write-string " subproblem level)" port))))
-    (write index port)
-    (cond ((not (dstate-earlier-subproblem? dstate))
-	   (qualify-level (if (zero? index) "only" "highest")))
-	  ((zero? index)
-	   (qualify-level "lowest")))))
+    (write (ctree-subproblem-index snode) port)
+    (if (not (ctree-subproblem-earlier snode))
+	(if (not (ctree-subproblem-later snode))
+	    (qualify-level "only")
+	    (qualify-level "earliest"))
+	(if (not (ctree-subproblem-later snode))
+	    (qualify-level "latest")))))
 
-(define (print-subproblem-reduction dstate port)
-  (let ((n-reductions (dstate-n-reductions dstate)))
+(define (print-subproblem-reduction snode port)
+  (let ((n-reductions (ctree-subproblem-n-reductions snode)))
     (newline port)
     (if (> n-reductions 0)
 	(begin
@@ -214,40 +317,41 @@ USA.
 	(write-string "There is no execution history for this subproblem."
 		      port))))
 
-(define (print-reduction reduction subproblem-index reduction-index port)
-  (print-reduction-identification subproblem-index reduction-index port)
+(define (print-reduction rnode port)
+  (print-reduction-identification rnode port)
   (newline port)
-  (print-reduction-expression reduction port)
-  (print-reduction-environment reduction port))
+  (print-reduction-expression rnode port)
+  (print-reduction-environment rnode port))
 
-(define (print-reduction-identification subproblem-index reduction-index port)
+(define (print-reduction-identification rnode port)
   (write-string "Subproblem level: " port)
-  (write subproblem-index port)
+  (write (ctree-subproblem-index (ctree-reduction->subproblem rnode)) port)
   (write-string "  Reduction number: " port)
-  (write reduction-index port))
+  (write (ctree-reduction-index rnode) port))
 
 ;;;; Subproblem summary
 
 (define-command 'print-subproblem-summary #\h
   "prints a summary (History) of all subproblems"
   (lambda (dstate port)
-    (let ((dstates (dstate-all-subproblems dstate)))
-      (port/debugger-presentation port
-	(lambda ()
-	  (write-string "SL#  Procedure/form          Expression" port)
-	  (newline port)
-	  (let loop ((dstates dstates) (level 0))
-	    (if (stream-pair? dstates)
-		(begin
-		  (terse-print-expression level (stream-car dstates) port)
-		  (loop (stream-cdr dstates) (+ level 1))))))))
+    (port/debugger-presentation port
+      (lambda ()
+	(write-string "SL#  Procedure/form          Expression" port)
+	(newline port)
+	(let loop ((snode (ctree-subproblems (dstate-ctree dstate))))
+	  (if snode
+	      (begin
+		(terse-print-expression snode port)
+		(loop (ctree-subproblem-earlier snode)))))))
     dstate))
 
-(define (terse-print-expression level dstate port)
-  (let ((expression (dstate-dbg-expression dstate))
-	(environment (dstate-dbg-environment dstate)))
+(define (terse-print-expression snode port)
+  (let ((expression (ctree-subproblem-expression snode))
+	(environment (ctree-subproblem-environment snode)))
     (newline port)
-    (write-string (string-pad-right (number->string level) 4) port)
+    (write-string
+     (string-pad-right (number->string (ctree-subproblem-index snode)) 4)
+     port)
     (write-string " " port)
     (write-string
      (string-pad-right
@@ -258,8 +362,7 @@ USA.
 	    ""
 	    (output-to-string 20
 	      (lambda ()
-		(write-dbg-name (or (scode-lambda-name->syntax-name name)
-				    name)
+		(write-dbg-name (or (scode-lambda-name->syntax-name name) name)
 				(current-output-port))))))
       20)
      port)
@@ -290,9 +393,12 @@ USA.
     (earlier-subproblem (dstate-stop-using-history dstate) port #f #f)))
 
 (define (earlier-subproblem dstate port failure-reason if-succeed)
-  (let ((dstate* (dstate-earlier-subproblem dstate)))
-    (if dstate*
-	(print-frame-summary (if if-succeed (if-succeed dstate* port) dstate*)
+  (let ((snode (ctree-subproblem-earlier (dstate-ctree-subproblem dstate))))
+    (if snode
+	(print-frame-summary (let ((dstate* (select-subproblem snode dstate)))
+			       (if if-succeed
+				   (if-succeed dstate* port)
+				   dstate*))
 			     port)
 	(begin
 	  (debugger-failure
@@ -307,9 +413,12 @@ USA.
     (later-subproblem (dstate-stop-using-history dstate) port #f #f)))
 
 (define (later-subproblem dstate port failure-reason if-succeed)
-  (let ((dstate* (dstate-later-subproblem dstate)))
-    (if dstate*
-	(print-frame-summary (if if-succeed (if-succeed dstate* port) dstate*)
+  (let ((snode (ctree-subproblem-later (dstate-ctree-subproblem dstate))))
+    (if snode
+	(print-frame-summary (let ((dstate* (select-subproblem snode dstate)))
+			       (if if-succeed
+				   (if-succeed dstate* port)
+				   dstate*))
 			     port)
 	(begin
 	  (debugger-failure
@@ -322,62 +431,77 @@ USA.
   "Go to a particular subproblem"
   (lambda (dstate port)
     (let ((dstate* (dstate-stop-using-history dstate)))
-      (let loop ((limit #f))
-	(let ((dstate**
-	       (dstate-nth-subproblem
-		dstate*
-		(prompt-for-nonnegative-integer "Subproblem number" limit
-						port))))
-	  (if dstate**
-	      (print-frame-summary dstate** port)
-	      (loop (dstate-n-subproblems dstate*))))))))
+      (let ((ctree (dstate-ctree dstate*)))
+	(let loop ((limit #f))
+	  (let ((snode
+		 (ctree-nth-subproblem
+		  ctree
+		  (prompt-for-nonnegative-integer "Subproblem number" limit
+						  port))))
+	    (if snode
+		(print-frame-summary (select-subproblem snode dstate*) port)
+		(loop (ctree-n-subproblems ctree)))))))))
 
 ;;;; Reduction motion
 
-(define (only-latest-reduction? dstate)
+(define (only-latest-reduction? cnode)
   (and debugger:student-walk?
-       (> (dstate-subproblem-index dstate) 0)))
+       (> (ctree-subproblem-index cnode) 0)))
 
 (define-command 'move-to-earlier-reduction #\b
   "move (Back) to next reduction (earlier in time)"
   (lambda (dstate port)
     (let ((dstate* (dstate-start-using-history dstate)))
-      (if (dstate-use-history? dstate*)
-	  (let ((dstate**
-		 (and (not (only-latest-reduction? dstate*))
-		      (dstate-earlier-reduction dstate*))))
-	    (if dstate**
-		(print-frame-summary dstate** port)
+      (if (dstate-using-history? dstate*)
+	  (let ((rnode
+		 (let ((cnode (dstate-ctree-node dstate*)))
+		   (and (ctree-reduction? cnode)
+			(not (only-latest-reduction? cnode))
+			(ctree-reduction-earlier cnode)))))
+	    (if rnode
+		(print-frame-summary (select-reduction rnode dstate*)
+				     port)
 		(earlier-subproblem dstate* port "no more reductions"
-		  (lambda (dstate** port)
-		    (if (not debugger:student-walk?)
-			(debugger-message
-			 port
-			 (reason+message
-			  "no more reductions"
-			  "going to the next (less recent) subproblem.")))
-		    dstate**))))
+				    select-latest-reduction)))
 	  (earlier-subproblem dstate* port #f #f)))))
+
+(define (select-latest-reduction dstate port)
+  (if (not debugger:student-walk?)
+      (debugger-message
+       port
+       (reason+message
+	"no more reductions"
+	"going to the next (less recent) subproblem.")))
+  dstate)
 
 (define-command 'move-to-later-reduction #\f
   "move (Forward) to previous reduction (later in time)"
   (lambda (dstate port)
     (let ((dstate* (dstate-start-using-history dstate)))
-      (if (dstate-use-history? dstate*)
-	  (let ((dstate** (dstate-later-reduction dstate*)))
-	    (if dstate**
-		(print-frame-summary dstate** port)
+      (if (dstate-using-history? dstate*)
+	  (let ((rnode
+		 (let ((cnode (dstate-ctree-node dstate*)))
+		   (and (ctree-reduction? cnode)
+			(not (only-latest-reduction? cnode))
+			(ctree-reduction-later cnode)))))
+	    (if rnode
+		(print-frame-summary (select-reduction rnode dstate*) port)
 		(later-subproblem dstate port "no more reductions"
-		  (lambda (dstate** port)
-		    (debugger-message
-		     port
-		     (reason+message
-		      "no more reductions"
-		      "going to the previous (more recent) subproblem."))
-		    (if (only-latest-reduction? dstate**)
-			dstate**
-			(dstate-earliest-reduction dstate**))))))
+				  select-earliest-reduction)))
 	  (later-subproblem dstate port #f #f)))))
+
+(define (select-earliest-reduction dstate port)
+  (if (not debugger:student-walk?)
+      (debugger-message
+       port
+       (reason+message
+	"no more reductions"
+	"going to the previous (more recent) subproblem.")))
+  (let ((cnode (dstate-ctree-node dstate)))
+    (if (and (ctree-reduction? cnode)
+	     (not (only-latest-reduction? cnode)))
+	(select-reduction (ctree-reduction-earliest cnode) dstate)
+	dstate)))
 
 ;;;; Environment motion and display
 
@@ -393,7 +517,7 @@ USA.
   (lambda (dstate port)
     (if (dstate-has-environment? dstate)
 	(begin
-	  (show-frames (dstate-current-environment dstate) 0 port)
+	  (show-frames (dstate-environment dstate) 0 port)
 	  dstate)
 	(undefined-environment dstate port))))
 
@@ -427,8 +551,8 @@ USA.
 (define (print-current-frame dstate brief? port)
   (port/debugger-presentation port
     (lambda ()
-      (show-frame (dstate-current-environment dstate)
-		  (dstate-current-environment-index dstate)
+      (show-frame (dstate-environment dstate)
+		  (dstate-environment-index dstate)
 		  brief?
 		  port)))
   dstate)
@@ -470,94 +594,67 @@ USA.
 (define-command 'invoke-restart #\k
   "continue the program using a standard restart option"
   (lambda (dstate port)
-    (let ((condition (dstate-condition dstate)))
-      (let ((restarts
-	     (if condition
-		 (condition/restarts condition)
-		 (bound-restarts))))
-	(if (null? restarts)
-	    (debugger-failure port "No options to choose from.")
-	    (let ((n-restarts (length restarts))
-		  (write-index
-		   (lambda (index port)
-		     (write-string (string-pad-left (number->string index) 3)
-				   port)
-		     (write-string ":" port))))
-	      (let ((invoke-option
-		     (lambda (n)
-		       (invoke-restart-interactively
-			(list-ref restarts (- n-restarts n))
-			condition))))
-		(port/debugger-presentation port
-		  (lambda ()
-		    (if (= n-restarts 1)
-			(begin
-			  (write-string "There is only one option:" port)
-			  (write-restarts restarts port write-index)
-			  (if (prompt-for-confirmation "Use this option" port)
-			      (invoke-option 1)))
-			(begin
-			  (write-string "Choose an option by number:" port)
-			  (write-restarts restarts port write-index)
-			  (invoke-option
-			   (prompt-for-integer "Option number"
-					       1
-					       (+ n-restarts 1)
-					       port)))))))))))))
+    (debug/invoke-restart (dstate-ctree dstate) port)))
 
 ;;;; Advanced hacking commands
 
 (define-command 'return-from-subproblem #\Z
   "return from the current subproblem with a value"
   (lambda (dstate port)
-    (let ((dstate* (dstate-earlier-subproblem dstate)))
-      (if dstate*
-	  (enter-subproblem dstate* port)
-	  (begin
-	    (debugger-failure port "Can't continue!!!")
-	    dstate)))))
+    (let ((snode
+	   (ctree-subproblem-earlier (dstate-ctree-subproblem dstate))))
+      (if snode
+	  (enter-subproblem snode
+			    (ctree-condition (dstate-ctree dstate))
+			    port)
+	  (debugger-failure port "Can't continue!!!")))
+    dstate))
 
 (define-command 'return-to-subproblem #\J
   "return to the current subproblem with a value"
   (lambda (dstate port)
-    (enter-subproblem dstate port)))
+    (enter-subproblem (dstate-ctree-subproblem dstate)
+		      (ctree-condition (dstate-ctree dstate))
+		      port)
+    dstate))
 
-(define (enter-subproblem dstate port)
-  (let ((exp (dstate-dbg-expression dstate))
-	(env (get-evaluation-environment dstate port)))
-    (let ((value
-	   (prompt-for-evaluated-value
-	    "Expression to EVALUATE and CONTINUE with" exp env port)))
-      (if (or (not debugger:print-return-values?)
+(define (enter-subproblem snode condition port)
+  (let ((value
+	 (prompt-for-evaluated-value
+	  "Expression to EVALUATE and CONTINUE with" snode port)))
+    (if (or (not debugger:print-return-values?)
+	    (begin
+	      (newline port)
+	      (write-string "That evaluates to:" port)
+	      (newline port)
+	      (write value port)
+	      (prompt-for-confirmation "Confirm" port)))
+	(let ((k (ctree-subproblem->continuation snode))
+	      (thread
+	       (and condition
+		    (condition/other-thread condition))))
+	  (if thread
 	      (begin
-		(newline port)
-		(write-string "That evaluates to:" port)
-		(newline port)
-		(write value port)
-		(prompt-for-confirmation "Confirm" port)))
-	  (let ((k (dstate-continuation dstate))
-		(thread (dstate-other-thread dstate)))
-	    (if thread
-		(begin
-		  (restart-thread thread 'ask
-		    (lambda ()
-		      (k value)))
-		  (continue-from-derived-thread-error
-		   (dstate-condition dstate)))
-		(k value))))))
-  dstate)
+		(restart-thread thread 'ask
+		  (lambda ()
+		    (k value)))
+		(continue-from-derived-thread-error condition))
+	      (k value))))))
 
 (define-command 'print-raw-stack-frame #\M
   "show the elements of the stack frame, in raw form"
   (lambda (dstate port)
-    (port/debugger-presentation port
-      (lambda ()
-	(write-string "Stack frame elements:" port)
-	(vector-for-each (lambda (element)
-			   (newline port)
-			   (write element port))
-			 (dstate-raw-frame dstate))))
+    (print-raw-frame (dstate-ctree-subproblem dstate) port)
     dstate))
+
+(define (print-raw-frame snode port)
+  (port/debugger-presentation port
+    (lambda ()
+      (write-string "Stack frame elements:" port)
+      (vector-for-each (lambda (element)
+			 (newline port)
+			 (write element port))
+		       (ctree-subproblem-raw-frame snode)))))
 
 (define-command 'print-internal-state #\S
   "show the debugger's internal State"
@@ -573,7 +670,7 @@ USA.
 
 (define (get-evaluation-environment dstate port)
   (if (dstate-has-environment? dstate)
-      (dstate-current-environment dstate)
+      (dstate-environment dstate)
       (begin
 	(debugger-message
 	 port
@@ -587,55 +684,8 @@ using the read-eval-print environment instead.")
       (undefined-environment dstate port)))
 
 (define (undefined-environment dstate port)
-  (debugger-failure port "There is no current environment.")
+  (no-current-environment port)
   dstate)
 
 (define (reason+message reason message)
   (string-titlecase (if reason (string-append reason "; " message) message)))
-
-(define (prompt-for-nonnegative-integer prompt limit port)
-  (prompt-for-integer prompt 0 limit port))
-
-(define (prompt-for-integer prompt lower upper port)
-  (let loop ()
-    (let ((expression
-	   (prompt-for-expression
-	    (string-append
-	     prompt
-	     (if lower
-		 (if upper
-		     (string-append " (" (number->string lower)
-				    " through "
-				    (number->string (- upper 1))
-				    " inclusive)")
-		     (string-append " (minimum " (number->string lower) ")"))
-		 (if upper
-		     (string-append " (maximum "
-				    (number->string (- upper 1))
-				    ")")
-		     "")))
-	    port)))
-      (cond ((not (exact-integer? expression))
-	     (debugger-failure port prompt " must be exact integer.")
-	     (loop))
-	    ((and lower (< expression lower))
-	     (debugger-failure port prompt " too small.")
-	     (loop))
-	    ((and upper (>= expression upper))
-	     (debugger-failure port prompt " too large.")
-	     (loop))
-	    (else
-	     expression)))))
-
-(define (prompt-for-evaluated-value prompt exp env port)
-  (let ((exp-evaluable?
-	 (not (or (dbg-expression-undefined? exp)
-		  (dbg-expression-compiled? exp)
-		  (dbg-printer? exp)))))
-    (let ((exp*
-	   (prompt-for-expression
-	    (string-append prompt (if exp-evaluable? " ($ to retry)" ""))
-	    port)))
-      (if (and exp-evaluable? (eq? exp* '$))
-	  (debug/scode-eval exp env)
-	  (debug/eval exp* env)))))

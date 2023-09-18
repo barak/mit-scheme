@@ -2056,6 +2056,47 @@ USA.
 	  dbg-printer-apply
 	  dbg-printer?))
 
+(define-package (runtime continuation-tree)
+  (files "continuation-tree")
+  (parent (runtime))
+  (export (runtime)
+	  ->ctree
+	  ctree-condition
+	  ctree-continuation
+	  ctree-n-subproblems
+	  ctree-nth-subproblem
+	  ctree-reduction->subproblem
+	  ctree-reduction-earlier
+	  ctree-reduction-earliest
+	  ctree-reduction-environment
+	  ctree-reduction-expression
+	  ctree-reduction-index
+	  ctree-reduction-later
+	  ctree-reduction-latest
+	  ctree-reduction?
+	  ctree-subproblem
+	  ctree-subproblem->continuation
+	  ctree-subproblem->ctree
+	  ctree-subproblem-cc-frame?
+	  ctree-subproblem-earlier
+	  ctree-subproblem-environment
+	  ctree-subproblem-expression
+	  ctree-subproblem-has-environment?
+	  ctree-subproblem-has-expression?
+	  ctree-subproblem-has-subexpression?
+	  ctree-subproblem-index
+	  ctree-subproblem-later
+	  ctree-subproblem-n-reductions
+	  ctree-subproblem-nth-reduction
+	  ctree-subproblem-raw-frame
+	  ctree-subproblem-reductions
+	  ctree-subproblem-return-address
+	  ctree-subproblem-subexpression
+	  ctree-subproblem-system-boundary?
+	  ctree-subproblem?
+	  ctree-subproblems
+	  ctree?))
+
 (define-package (runtime new-control-point)
   (files "control-point")
   (parent (runtime))
@@ -2065,52 +2106,6 @@ USA.
 	  control-point-ref
 	  control-point?
 	  make-control-point*))
-
-(define-package (runtime new-debugger-state)
-  (files "debugger-state")
-  (parent (runtime))
-  (export (runtime)
-	  dstate-all-subproblems
-	  dstate-cc-frame?
-	  dstate-child-environment
-	  dstate-condition
-	  dstate-continuation
-	  dstate-current-environment
-	  dstate-current-environment-index
-	  dstate-current-reduction
-	  dstate-dbg-environment
-	  dstate-dbg-expression
-	  dstate-dbg-subexpression
-	  dstate-earlier-reduction
-	  dstate-earlier-subproblem
-	  dstate-earlier-subproblem?
-	  dstate-earliest-reduction
-	  dstate-environment
-	  dstate-has-environment?
-	  dstate-has-reductions?
-	  dstate-history-environment
-	  dstate-history-expression
-	  dstate-later-reduction
-	  dstate-later-subproblem
-	  dstate-latest-reduction
-	  dstate-n-reductions
-	  dstate-n-subproblems
-	  dstate-nth-reduction
-	  dstate-nth-subproblem
-	  dstate-other-thread
-	  dstate-parent-environment
-	  dstate-raw-frame
-	  dstate-reduction
-	  dstate-reduction-index
-	  dstate-return-address
-	  dstate-root
-	  dstate-start-using-history
-	  dstate-stop-using-history
-	  dstate-subproblem-index
-	  dstate-system-boundary?
-	  dstate-use-history?
-	  dstate?
-	  initial-dstate))
 
 (define-package (runtime new-debugger)
   (files "debugger")
@@ -2243,12 +2238,14 @@ USA.
   (files "dbgutl")
   (parent (runtime debugger-command-loop))
   (export (runtime debugger-command-loop)
+	  debug/invoke-restart
 	  debug/read-eval-print-1
 	  debugger-failure
 	  debugger-message
 	  debugger-pp
 	  debugger-presentation
 	  expression-indentation
+	  no-current-environment
 	  output-to-string
 	  print-environment
 	  print-environment-name
@@ -2257,6 +2254,9 @@ USA.
 	  print-subproblem-environment
 	  print-subproblem-expression
 	  print-user-friendly-name
+	  prompt-for-evaluated-value
+	  prompt-for-integer
+	  prompt-for-nonnegative-integer
 	  show-environment-bindings
 	  show-environment-name
 	  show-environment-procedure

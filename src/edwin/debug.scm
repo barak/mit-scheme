@@ -418,8 +418,8 @@ USA.
 
 (define (maybe-get-continuation buffer)
   (let ((object (browser/object (buffer-get buffer 'browser))))
-    (and (continuation? object)
-	 object)))
+    (and (ctree? object)
+	 (ctree-continuation object))))
 
 ;;;Method for invoking the standard restarts from within the
 ;;;debugger.
@@ -429,8 +429,8 @@ USA.
 	 (browser (bline/browser bline))
 	 (buffer
 	  (1d-table/get (bline/properties bline) 'description-buffer #f))
-	 (dstate (browser/object browser))
-	 (condition (dstate-condition dstate)))
+	 (ctree (browser/object browser))
+	 (condition (ctree-condition ctree)))
     (if condition
 	(fluid-let ((prompt-for-confirmation
 		     (lambda (prompt #!optional port)
@@ -461,7 +461,7 @@ USA.
 	      (write-string "  " port)
 	      (write-condition-report condition port)
 	      (debugger-newline port)
-	      (call-debugger-command 'invoke-restart dstate port))))
+	      (debug/invoke-restart ctree port))))
 	(message "No condition to restart from."))))
 
 (define (call-with-interface-port mark receiver)
@@ -1013,12 +1013,12 @@ The buffer below shows the current subproblem or reduction.
 (define default-screen-geometry #f)
 
 (define (debugger-buffer object)
-  (let ((dstate (initial-dstate object)))
+  (let ((ctree (->ctree object)))
     (let ((browser
 	   (make-browser "*debug*"
 			 (ref-mode-object debugger)
-			 dstate))
-	  (blines (debugger-blines dstate)))
+			 ctree))
+	  (blines (debugger-blines ctree)))
       (let ((buffer (browser/buffer browser)))
 	(let ((mark (buffer-end buffer)))
 	  (with-buffer-open mark
@@ -1165,14 +1165,14 @@ it has been renamed, it will not be deleted automatically.")
 
 ;;; Stops displaying subproblems past marked frame by default.
 
-(define (debugger-blines dstate)
+(define (debugger-blines ctree)
 
   (define limit
     (ref-variable debugger-max-subproblems))
 
-  (define (continue dstate parent prev limit* hide-system-frames?)
+  (define (continue snode parent prev limit* hide-system-frames?)
     (link-deferred-blines
-     (pre-process (get-dstate-entries dstate limit* hide-system-frames?)
+     (pre-process (get-snode-entries snode limit* hide-system-frames?)
 		  limit*)
      parent
      prev
@@ -1183,12 +1183,12 @@ it has been renamed, it will not be deleted automatically.")
   (define (pre-process entries limit*)
     (cond ((pair? entries)
 	   (let* ((entry (car entries))
-		  (dstate (car entry)))
+		  (snode (car entry)))
 	     (let ((rest
-		    (cons (cons (subproblem-bline dstate)
+		    (cons (cons (subproblem-bline snode)
 				(map reduction-bline (cdr entry)))
 			  (pre-process (cdr entries) limit*))))
-	       (if (dstate-system-boundary? dstate)
+	       (if (ctree-subproblem-system-boundary? snode)
 		   (cons (boundary-bline) rest)
 		   rest))))
 	  ((null? entries) '())
@@ -1201,33 +1201,37 @@ it has been renamed, it will not be deleted automatically.")
 			   (and limit (+ limit* limit))
 			   #f))))))))
 
-  (continue dstate #f #f limit
+  (continue (ctree-subproblems ctree) #f #f limit
 	    (ref-variable debugger-hide-system-code?)))
 
-(define (get-dstate-entries dstate limit hide-system-frames?)
-  (let loop ((dstate dstate))
-    (if (or (and limit (>= (dstate-subproblem-index dstate) limit))
-	    (and hide-system-frames? (dstate-system-boundary? dstate)))
-	dstate
-	(cons (cons dstate
+(define (get-snode-entries snode limit hide-system-frames?)
+  (let loop ((snode snode))
+    (if (or (and limit (>= (ctree-subproblem-index snode) limit))
+	    (and hide-system-frames?
+		 (ctree-subproblem-system-boundary? snode)))
+	snode
+	(cons (cons snode
 		    (if (and debugger:student-walk?
-			     (> (dstate-subproblem-index dstate) 0))
+			     (> (ctree-subproblem-index snode) 0))
 			'()
-			(map (lambda (i) (dstate-nth-reduction dstate i))
-			     (iota (dstate-n-reductions dstate)))))
-	      (let ((next (dstate-earlier-subproblem dstate)))
+			(let rloop
+			    ((rnode (ctree-subproblem-reductions snode)))
+			  (if rnode
+			      (cons rnode
+				    (rloop (ctree-reduction-earlier rnode)))
+			      '()))))
+	      (let ((next (ctree-subproblem-earlier snode)))
 		(if next
 		    (loop next)
 		    '()))))))
 
 (define (subproblem/write-summary bline port)
-  (let ((dstate (bline/object bline)))
+  (let ((snode (bline/object bline)))
     (write-string "S" port)
-    (write-string (bline/offset-string (dstate-subproblem-index dstate))
+    (write-string (bline/offset-string (ctree-subproblem-index snode))
 		  port)
     (write-string " " port)
-    (let ((expression (dstate-dbg-expression dstate))
-	  (subexpression (dstate-dbg-subexpression dstate)))
+    (let ((expression (ctree-subproblem-expression snode)))
       (cond ((dbg-expression-undefined? expression)
 	     (write-string ";undefined expression" port))
 	    ((dbg-expression-compiled? expression)
@@ -1238,29 +1242,29 @@ it has been renamed, it will not be deleted automatically.")
 	    (else
 	     (parameterize ((param:print-primitives-by-name? #t))
 	       (write
-		(unsyntax (if (dbg-expression-undefined? subexpression)
-			      expression
-			      subexpression)))))))))
+		(unsyntax (if (ctree-subproblem-has-subexpression? snode)
+			      (ctree-subproblem-subexpression snode)
+			      expression)))))))))
 
 (define (subproblem/write-description bline port)
-  (let ((dstate (bline/object bline)))
+  (let ((snode (bline/object bline)))
     (write-string "                         Subproblem Level: " port)
-    (write (dstate-subproblem-index dstate) port)
+    (write (ctree-subproblem-index snode) port)
     (debugger-newline port)
     (debugger-newline port)
-    (let ((expression (dstate-dbg-expression dstate)))
+    (let ((expression (ctree-subproblem-expression snode)))
       (cond ((or (dbg-expression-undefined? expression)
 		 (dbg-expression-compiled? expression))
-	     (write-string (if (dstate-cc-frame? dstate)
+	     (write-string (if (ctree-subproblem-cc-frame? snode)
 			       "Compiled expression unknown"
 			       "Expression unknown")
 			   port)
 	     (debugger-newline port)
-	     (write (dstate-return-address dstate) port))
+	     (write (ctree-subproblem-return-address snode) port))
 	    ((dbg-printer? expression)
 	     (dbg-printer-apply expression #t port))
 	    (else
-	     (write-string (if (dstate-cc-frame? dstate)
+	     (write-string (if (ctree-subproblem-cc-frame? snode)
 			       "Compiled expression"
 			       "Expression")
 			   port)
@@ -1270,72 +1274,73 @@ it has been renamed, it will not be deleted automatically.")
 	      " Subproblem being executed is highlighted.\n"
 	      port)
 	     (debugger-newline port)
-	     (let ((subexpression (dstate-dbg-subexpression dstate)))
-	       (if (dbg-expression-undefined? subexpression)
-		   (debugger-pp expression expression-indentation port)
-		   (debugger-pp-highlight-subexpression
-		    expression
-		    subexpression
-		    expression-indentation
-		    port))))))
-    (let ((environment (dstate-dbg-environment dstate)))
-      (if (not (dbg-environment-undefined? environment))
-	  (begin
-	    (debugger-newline port)
-	    (debugger-newline port)
-	    (desc-show-environment-name-and-bindings environment
-						     port))))))
+	     (if (ctree-subproblem-has-subexpression? snode)
+		 (debugger-pp-highlight-subexpression
+		  expression
+		  (ctree-subproblem-subexpression snode)
+		  expression-indentation
+		  port)
+		 (debugger-pp expression expression-indentation port)))))
+    (if (ctree-subproblem-has-environment? snode)
+	(begin
+	  (debugger-newline port)
+	  (debugger-newline port)
+	  (desc-show-environment-name-and-bindings
+	   (ctree-subproblem-environment snode)
+	   port)))))
 
-(define ((subproblem-bline dstate) parent prev)
-  (make-bline dstate bline-type:subproblem parent prev))
+(define ((subproblem-bline snode) parent prev)
+  (make-bline snode bline-type:subproblem parent prev))
 
 (define bline-type:subproblem
   (make-bline-type subproblem/write-summary subproblem/write-description))
 
 (1d-table/put! (bline-type/properties bline-type:subproblem)
-	       'GET-ENVIRONMENT
+	       'get-environment
 	       (lambda (bline)
-		 (dstate-dbg-environment (bline/object bline))))
+		 (ctree-subproblem-environment (bline/object bline))))
 
 ;;;; Reductions
 
 (define (reduction/write-summary bline port)
-  (let ((dstate (bline/object bline)))
+  (let ((rnode (bline/object bline)))
     (if (bline/parent bline)
 	(begin
 	  (write-string "R" port)
-	  (write-string (bline/offset-string (dstate-reduction-index dstate))
+	  (write-string (bline/offset-string (ctree-reduction-index rnode))
 			port))
 	(begin
 	  (write-string "S" port)
-	  (write-string (bline/offset-string (dstate-subproblem-index dstate))
-			port)))
+	  (write-string (bline/offset-string
+			 (ctree-subproblem-index
+			  (ctree-reduction->subproblem rnode))
+			port))))
     (write-string " " port)
     (parameterize ((param:print-primitives-by-name? #t))
-      (write (unsyntax (dstate-history-expression dstate)) port))))
+      (write (unsyntax (ctree-reduction-expression rnode)) port))))
 
 (define (reduction/write-description bline port)
-  (let ((dstate (bline/object bline)))
+  (let ((rnode (bline/object bline)))
     (write-string "              Subproblem Level: " port)
-    (write (dstate-subproblem-index dstate) port)
+    (write (ctree-subproblem-index (ctree-reduction->subproblem rnode)) port)
     (write-string "  Reduction Number: " port)
-    (write (dstate-reduction-index dstate) port)
+    (write (ctree-reduction-index rnode) port)
     (debugger-newline port)
     (debugger-newline port)
     (write-string "Expression (from execution history):" port)
     (debugger-newline port)
     (debugger-newline port)
-    (debugger-pp (dstate-history-expression dstate)
+    (debugger-pp (ctree-reduction-expression rnode)
 		 expression-indentation
 		 port)
     (debugger-newline port)
     (debugger-newline port)
     (desc-show-environment-name-and-bindings
-     (dstate-history-environment dstate)
+     (ctree-reduction-environment rnode)
      port)))
 
-(define ((reduction-bline dstate) parent prev)
-  (make-bline dstate bline-type:reduction parent prev))
+(define ((reduction-bline rnode) parent prev)
+  (make-bline rnode bline-type:reduction parent prev))
 
 (define bline-type:reduction
   (make-bline-type reduction/write-summary reduction/write-description))
@@ -1343,7 +1348,7 @@ it has been renamed, it will not be deleted automatically.")
 (1d-table/put! (bline-type/properties bline-type:reduction)
 	       'get-environment
 	       (lambda (bline)
-		 (dstate-history-environment (bline/object bline))))
+		 (ctree-reduction-environment (bline/object bline))))
 
 ;;;; Environments
 
@@ -1360,7 +1365,7 @@ it has been renamed, it will not be deleted automatically.")
     (let ((browser
 	   (make-browser "*where*"
 			 (ref-mode-object environment-browser)
-			 object))
+			 environment))
 	  (blines (environment->blines environment)))
 
       (let ((buffer (browser/buffer browser)))
