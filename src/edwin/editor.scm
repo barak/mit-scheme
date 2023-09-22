@@ -294,9 +294,11 @@ with the contents of the startup message."
   (return-to-command-loop condition))
 
 (define (scheme-error-debugger)
-  (case (ref-variable debugger-default)
-    ((debug) debug-scheme-error)
-    ((continuation-browser) browse-scheme-error)))
+  (let ((value (ref-variable debugger-default)))
+    (case value
+      ((debug) debug-scheme-error)
+      ((continuation-browser) browse-scheme-error)
+      (else (error "Unknown value for debugger-default:" value)))))
 
 (define-variable debug-on-internal-error
   "True means enter debugger if an internal error is signalled.

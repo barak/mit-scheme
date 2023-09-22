@@ -123,7 +123,7 @@ in a subproblem whose reductions aren't already inserted."
 'debug specifies the standard debugger
 'continuation-browser specifies the continuation browser."
   'debug
-  (lambda (object) (memq object '(debugger continuation-browser))))
+  (lambda (object) (memq object '(debug continuation-browser))))
 
 (define starting-debugger? #f)
 (define in-debugger-evaluation? #f)
@@ -978,7 +978,9 @@ Prefix argument means do not kill the debugger buffer."
   (print-history-level
    #f
    (ctree-subproblem-index (ctree-reduction->subproblem rnode))
-   (string-append ", R=" (ctree-reduction-index rnode) " --- ")
+   (string-append ", R="
+		  (number->string (ctree-reduction-index rnode))
+		  " --- ")
    (lambda (port*)
      (print-reduction-as-subexpression
       (ctree-reduction-expression rnode)

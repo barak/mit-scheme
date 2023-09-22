@@ -1006,8 +1006,6 @@ USA.
 	  edwin-variable$environment-package-limit)
   (export (edwin continuation-browser)
 	  debugger-pp-highlight-subexpression)
-  (import (runtime new-debugger)
-	  invoke-restart)
   (import (runtime new-continuation-parser)
 	  dbg-environment-undefined?
 	  dbg-expression-compiled?
