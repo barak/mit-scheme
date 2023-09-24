@@ -29,6 +29,9 @@ USA.
 ;;; package: (runtime continuation-tree)
 
 (declare (usual-integrations))
+
+(add-boot-deps! '(runtime compound-predicate)
+		'(runtime comparator))
 
 (define-record-type <ctree>
     %make-ctree
@@ -37,31 +40,25 @@ USA.
   (continuation ctree-continuation)
   (condition ctree-condition))
 
-(define (make-ctree continuation condition)
-  (letrec
-      ((ctree
-	(%make-ctree (delay
-		       (make-snodes
-			(cframe-stream-first-subproblem
-			 (continuation->cframe-stream continuation))
-			ctree))
-		     continuation
-		     condition)))
-    ctree))
-
-(define (->ctree object)
-  (cond ((ctree? object)
-	 object)
-	((condition? object)
-	 (make-ctree (condition/continuation object) object))
-	((continuation? object)
-	 (make-ctree object #f))
-	((ctree-subproblem? object)
-	 (ctree-subproblem->ctree object))
-	((ctree-reduction? object)
-	 (ctree-subproblem->ctree (ctree-reduction->subproblem object)))
-	(else
-	 (error "Can't coerce to a ctree:" object))))
+(define (make-ctree object)
+  (let ((make
+	 (lambda (continuation condition)
+	   (letrec
+	       ((ctree
+		 (%make-ctree (delay
+				(make-snodes
+				 (cframe-stream-first-subproblem
+				  (continuation->cframe-stream continuation))
+				 ctree))
+			      continuation
+			      condition)))
+	     ctree))))
+    (cond ((condition? object)
+	   (make (condition/continuation object) object))
+	  ((continuation? object)
+	   (make object #f))
+	  (else
+	   (error "Must be a condition or continuation:" object)))))
 
 (define (ctree-subproblems ctree)
   (force (%ctree-subproblems ctree)))
@@ -78,6 +75,19 @@ USA.
 	 (if (fix:< i index)
 	     (loop (ctree-subproblem-earlier snode) (fix:+ i 1))
 	     snode))))
+
+(define (->ctree object)
+  (cond ((ctree? object) object)
+	((ctree-subproblem? object) (ctree-subproblem-ctree object))
+	((ctree-reduction? object) (ctree-reduction-ctree object))
+	(else (error:not-a ctree-element? object))))
+
+
+(define (->ctree-subproblem object)
+  (cond ((ctree? object) (ctree-subproblems object))
+	((ctree-subproblem? object) object)
+	((ctree-reduction? object) (ctree-reduction-subproblem object))
+	(else (error:not-a ctree-element? object))))
 
 ;;;; Subproblem nodes
 
@@ -86,7 +96,7 @@ USA.
     ctree-subproblem?
   (frames snode-frames)
   (index ctree-subproblem-index)
-  (tree ctree-subproblem->ctree)
+  (tree ctree-subproblem-ctree)
   (later ctree-subproblem-later)
   (earlier %ctree-subproblem-earlier)
   (expression ctree-subproblem-expression)
@@ -162,7 +172,7 @@ USA.
     make-rnode
     ctree-reduction?
   (index ctree-reduction-index)
-  (snode ctree-reduction->subproblem)
+  (snode ctree-reduction-subproblem)
   (later ctree-reduction-later)
   (earlier %ctree-reduction-earlier)
   (expression ctree-reduction-expression)
@@ -185,7 +195,7 @@ USA.
   (force (%ctree-reduction-earlier rnode)))
 
 (define (ctree-reduction-latest rnode)
-  (ctree-subproblem-reductions (ctree-reduction->subproblem rnode)))
+  (ctree-subproblem-reductions (ctree-reduction-subproblem rnode)))
 
 (define (ctree-reduction-earliest rnode)
   (let loop ((rnode rnode))
@@ -194,8 +204,10 @@ USA.
 	  (and rnode* (loop rnode*))
 	  rnode))))
 
-(define (ctree-subproblem object)
-  (cond ((ctree? object) (ctree-subproblems object))
-	((ctree-subproblem? object) object)
-	((ctree-reduction? object) (ctree-reduction->subproblem object))
-	(else (error "Not a ctree object:" object))))
+(define (ctree-reduction-ctree rnode)
+  (ctree-subproblem-ctree (ctree-reduction-subproblem rnode)))
+
+(define-deferred ctree-element?
+  (disjoin ctree?
+	   ctree-subproblem?
+	   ctree-reduction?))

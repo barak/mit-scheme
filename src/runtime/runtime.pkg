@@ -2061,11 +2061,12 @@ USA.
   (parent (runtime))
   (export (runtime)
 	  ->ctree
+	  ->ctree-subproblem
 	  ctree-condition
 	  ctree-continuation
 	  ctree-n-subproblems
 	  ctree-nth-subproblem
-	  ctree-reduction->subproblem
+	  ctree-reduction-ctree
 	  ctree-reduction-earlier
 	  ctree-reduction-earliest
 	  ctree-reduction-environment
@@ -2073,11 +2074,11 @@ USA.
 	  ctree-reduction-index
 	  ctree-reduction-later
 	  ctree-reduction-latest
+	  ctree-reduction-subproblem
 	  ctree-reduction?
-	  ctree-subproblem
 	  ctree-subproblem->continuation
-	  ctree-subproblem->ctree
 	  ctree-subproblem-cc-frame?
+	  ctree-subproblem-ctree
 	  ctree-subproblem-earlier
 	  ctree-subproblem-environment
 	  ctree-subproblem-expression
@@ -2095,7 +2096,8 @@ USA.
 	  ctree-subproblem-system-boundary?
 	  ctree-subproblem?
 	  ctree-subproblems
-	  ctree?))
+	  ctree?
+	  make-ctree))
 
 (define-package (runtime new-control-point)
   (files "control-point")

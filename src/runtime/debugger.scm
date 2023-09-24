@@ -51,7 +51,7 @@ USA.
 
 (define (debug-internal object)
   (let ((dstate
-	 (new-subproblem (ctree-subproblems (->ctree object))
+	 (new-subproblem (ctree-subproblems (make-ctree object))
 			 (cond (debugger:use-history? 'always)
 			       (debugger:auto-toggle? 'enabled)
 			       (else 'disabled)))))
@@ -175,7 +175,7 @@ USA.
 	       env-list))
 
 (define (dstate-ctree-subproblem dstate)
-  (ctree-subproblem (dstate-ctree-node dstate)))
+  (->ctree-subproblem (dstate-ctree-node dstate)))
 
 (define (dstate-ctree dstate)
   (->ctree (dstate-ctree-node dstate)))
@@ -325,7 +325,7 @@ USA.
 
 (define (print-reduction-identification rnode port)
   (write-string "Subproblem level: " port)
-  (write (ctree-subproblem-index (ctree-reduction->subproblem rnode)) port)
+  (write (ctree-subproblem-index (ctree-reduction-subproblem rnode)) port)
   (write-string "  Reduction number: " port)
   (write (ctree-reduction-index rnode) port))
 

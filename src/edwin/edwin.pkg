@@ -1013,10 +1013,9 @@ USA.
 	  dbg-printer-apply
 	  dbg-printer?)
   (import (runtime continuation-tree)
-	  ->ctree
 	  ctree-condition
 	  ctree-continuation
-	  ctree-reduction->subproblem
+	  ctree-reduction-subproblem
 	  ctree-reduction-earlier
 	  ctree-reduction-environment
 	  ctree-reduction-expression
@@ -1033,7 +1032,8 @@ USA.
 	  ctree-subproblem-subexpression
 	  ctree-subproblem-system-boundary?
 	  ctree-subproblems
-	  ctree?)
+	  ctree?
+	  make-ctree)
   (import (runtime debugger-utilities)
 	  debug/invoke-restart
 	  debugger-pp
@@ -1095,16 +1095,16 @@ USA.
 	  dbg-printer?)
   (import (runtime continuation-tree)
 	  ->ctree
+	  ->ctree-subproblem
 	  ctree-condition
 	  ctree-n-subproblems
 	  ctree-nth-subproblem
-	  ctree-reduction->subproblem
 	  ctree-reduction-earlier
 	  ctree-reduction-environment
 	  ctree-reduction-expression
 	  ctree-reduction-index
+	  ctree-reduction-subproblem
 	  ctree-reduction?
-	  ctree-subproblem
 	  ctree-subproblem->continuation
 	  ctree-subproblem-cc-frame?
 	  ctree-subproblem-earlier
@@ -1121,7 +1121,8 @@ USA.
 	  ctree-subproblem-return-address
 	  ctree-subproblem-subexpression
 	  ctree-subproblem-system-boundary?
-	  ctree-subproblems)
+	  ctree-subproblems
+	  make-ctree)
   (import (runtime new-debugger)
 	  print-cnode-summary
 	  print-raw-frame)

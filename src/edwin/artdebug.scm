@@ -181,7 +181,7 @@ in a subproblem whose reductions aren't already inserted."
 		  "Another debugger buffer exists.  Delete it")))
 	(kill-buffer (car buffers))))
   (let ((buffer (new-buffer "*debug*"))
-	(ctree (->ctree object)))
+	(ctree (make-ctree object)))
     (set-buffer-major-mode! buffer (ref-mode-object continuation-browser))
     (buffer-put! buffer 'ctree ctree)
     (let ((max-subproblems (ref-variable debugger-max-subproblems buffer))
@@ -470,7 +470,7 @@ The evaluation occurs in the dynamic state of the current frame."
       (let ((environment (cnode-evaluation-environment cnode))
 	    (continuation
 	     (ctree-subproblem->continuation
-	      (ctree-subproblem cnode)))
+	      (->ctree-subproblem cnode)))
 	    (old-hook hook/repl-eval))
 	(fluid-let
 	    ((in-debugger-evaluation? #t)
@@ -815,7 +815,7 @@ Prefix argument means do not kill the debugger buffer."
   (if (or (not (ref-variable debugger-confirm-return?))
 	  (prompt-for-confirmation? "Continue with this value"))
       (invoke-continuation (ctree-subproblem->continuation
-			    (ctree-subproblem cnode))
+			    (->ctree-subproblem cnode))
 			   (list value)
 			   avoid-deletion?)))
 
@@ -828,7 +828,7 @@ Prefix argument means do not kill the debugger buffer."
      continuation arguments)))
 
 (define (guarantee-earlier-subproblem cnode)
-  (or (ctree-subproblem-earlier (ctree-subproblem cnode))
+  (or (ctree-subproblem-earlier (->ctree-subproblem cnode))
       (editor-error "Can't continue; no earlier subproblem")))
 
 (define (current-restarts)
@@ -977,7 +977,7 @@ Prefix argument means do not kill the debugger buffer."
 (define (print-reduction rnode port)
   (print-history-level
    #f
-   (ctree-subproblem-index (ctree-reduction->subproblem rnode))
+   (ctree-subproblem-index (ctree-reduction-subproblem rnode))
    (string-append ", R="
 		  (number->string (ctree-reduction-index rnode))
 		  " --- ")

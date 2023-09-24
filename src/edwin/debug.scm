@@ -1013,7 +1013,7 @@ The buffer below shows the current subproblem or reduction.
 (define default-screen-geometry #f)
 
 (define (debugger-buffer object)
-  (let ((ctree (->ctree object)))
+  (let ((ctree (make-ctree object)))
     (let ((browser
 	   (make-browser "*debug*"
 			 (ref-mode-object debugger)
@@ -1313,7 +1313,7 @@ it has been renamed, it will not be deleted automatically.")
 	  (write-string "S" port)
 	  (write-string (bline/offset-string
 			 (ctree-subproblem-index
-			  (ctree-reduction->subproblem rnode))
+			  (ctree-reduction-subproblem rnode))
 			port))))
     (write-string " " port)
     (parameterize ((param:print-primitives-by-name? #t))
@@ -1322,7 +1322,7 @@ it has been renamed, it will not be deleted automatically.")
 (define (reduction/write-description bline port)
   (let ((rnode (bline/object bline)))
     (write-string "              Subproblem Level: " port)
-    (write (ctree-subproblem-index (ctree-reduction->subproblem rnode)) port)
+    (write (ctree-subproblem-index (ctree-reduction-subproblem rnode)) port)
     (write-string "  Reduction Number: " port)
     (write (ctree-reduction-index rnode) port)
     (debugger-newline port)
