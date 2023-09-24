@@ -40,7 +40,8 @@ USA.
   (dispatch-metatag-constructor compound-tag-metatag 'make-compound-tag))
 
 (define (make-compound-tag predicate key operands)
-  (%make-compound-tag (cons (key-operator key) (map dispatch-tag-name operands))
+  (%make-compound-tag (cons (key-operator key)
+			    (map dispatch-tag-name operands))
 		      predicate
 		      key
 		      operands))
@@ -158,11 +159,10 @@ USA.
 	  (make-compound-tag datum-test key tags))))))
 
 (define (%get-unordered-predicates-table key)
-  (hash-table-intern! unordered-predicates-tables
-		      key
-		      (hash-table-constructor
-		       (weak-lset-comparator (make-eqv-comparator))
-		       'weak-values)))
+  (hash-table-intern! unordered-predicates-tables key
+    (lambda ()
+      (make-hash-table (weak-lset-comparator eqv-comparator)
+		       'weak-values))))
 
 (define-deferred unordered-predicates-tables
   (make-strong-eq-hash-table))
