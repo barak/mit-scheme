@@ -247,7 +247,9 @@ USA.
 
 (define (load-preregistered-library! library)
   (parameterize ((current-library-db (library-db library)))
-    (load (library-filename library))))
+    ;; Ignore pathname type so loader can select the right version in the
+    ;; normal way.
+    (load (pathname-new-type (library-filename library) #f))))
 
 ;;;; Export groups
 
