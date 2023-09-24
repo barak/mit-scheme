@@ -145,7 +145,8 @@ USA.
 		  (let ((tname (car p))
 			(source (cadr p)))
 		    (let ((value
-			   (environment-safe-lookup (car source) (cdr source))))
+			   (environment-safe-lookup (car source)
+						    (cdr source))))
 		      (cond ((macro-reference-trap? value)
 			     (environment-define-macro
 			      env tname
@@ -197,9 +198,9 @@ USA.
   (if (not (eqv? version 5))
       (error "Unsupported version:" version))
   (environment '(only (scheme r5rs)
-		      ... => _ and begin case cond define define-syntax delay do
-		      else if lambda let let* let-syntax letrec letrec-syntax or
-		      quasiquote quote set! syntax-rules)))
+		      ... => _ and begin case cond define define-syntax delay
+		      do else if lambda let let* let-syntax letrec
+		      letrec-syntax or quasiquote quote set! syntax-rules)))
 
 (define (import-to-top-level-environment! env . import-sets)
   (guarantee top-level-environment? env 'import-to-top-level-environment!)
