@@ -30,16 +30,16 @@ USA.
 
 (declare (usual-integrations))
 
-;; (define debugger:student-walk? #f)
-;; (define debugger:print-return-values? #f)
-;; (define debugger:auto-toggle? #t)
-;; (define debugger:count-subproblems-limit 10)
-;; (define debugger:use-history? #f)
-;; (define debugger:list-depth-limit 5)
-;; (define debugger:list-breadth-limit 5)
-;; (define debugger:string-length-limit 70)
+(define debugger:student-walk? #f)
+(define debugger:print-return-values? #f)
+(define debugger:auto-toggle? #t)
+(define debugger:count-subproblems-limit 10)
+(define debugger:use-history? #f)
+(define debugger:list-depth-limit 5)
+(define debugger:list-breadth-limit 5)
+(define debugger:string-length-limit 70)
 
-(define (ndebug #!optional object)
+(define (debug #!optional object)
   (if (default-object? object)
       (let ((condition (nearest-repl/condition)))
 	(if condition

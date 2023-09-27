@@ -2116,15 +2116,15 @@ USA.
   (parent (runtime debugger-command-loop))
   (export ()
 	  call-debugger-command
-	  ;; debugger:auto-toggle?
-	  ;; debugger:count-subproblems-limit
-	  ;; debugger:list-breadth-limit
-	  ;; debugger:list-depth-limit
-	  ;; debugger:print-return-values?
-	  ;; debugger:string-length-limit
-	  ;; debugger:student-walk?
-	  ;; debugger:use-history?
-	  ndebug))
+	  debug
+	  debugger:auto-toggle?
+	  debugger:count-subproblems-limit
+	  debugger:list-breadth-limit
+	  debugger:list-depth-limit
+	  debugger:print-return-values?
+	  debugger:string-length-limit
+	  debugger:student-walk?
+	  debugger:use-history?))
 
 (define-package (runtime date/time)
   (files "datime")
@@ -2216,21 +2216,6 @@ USA.
 	  write-decoded-time-as-xml-rpc-iso8601
 	  write-time-zone
 	  xml-rpc-iso8601-string->decoded-time))
-
-(define-package (runtime debugger)
-  (files "debug")
-  (parent (runtime debugger-command-loop))
-  (export ()
-	  debug
-	  debugger:auto-toggle?
-	  debugger:count-subproblems-limit
-	  debugger:list-breadth-limit
-	  debugger:list-depth-limit
-	  debugger:print-return-values?
-	  debugger:string-length-limit
-	  debugger:student-walk?
-	  debugger:use-history?
-	  stack-trace))
 
 (define-package (runtime debugger-command-loop)
   (files "dbgcmd")
