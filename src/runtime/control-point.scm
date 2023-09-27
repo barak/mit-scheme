@@ -26,7 +26,7 @@ USA.
 |#
 
 ;;;; Control Points
-;;; package: (runtime new-control-point)
+;;; package: (runtime control-point)
 
 (declare (usual-integrations))
 
@@ -39,7 +39,7 @@ USA.
   (object-type? (ucode-type control-point) object))
 (register-predicate! control-point? 'control-point)
 
-(define (make-control-point* raw-frames)
+(define (make-control-point raw-frames)
   (let ((cp
 	 (safe-system-vector-cons (ucode-type control-point)
 				  (fold (lambda (frame n)

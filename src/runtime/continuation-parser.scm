@@ -26,7 +26,7 @@ USA.
 |#
 
 ;;;; Continuation Parser
-;;; package: (runtime new-continuation-parser)
+;;; package: (runtime continuation-parser)
 
 (declare (usual-integrations))
 
@@ -388,7 +388,7 @@ USA.
      (cframe-tracked-item-value frame 'block-thread-events?))))
 
 (define (cframe-stream->control-point frames)
-  (make-control-point* (generate-raw-frames frames)))
+  (make-control-point (generate-raw-frames frames)))
 
 (define (generate-raw-frames frames)
   (let ((frame (stream-car frames)))

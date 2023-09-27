@@ -1959,66 +1959,6 @@ USA.
 	  %within-continuation))
 
 (define-package (runtime continuation-parser)
-  (files "conpar")
-  (parent (runtime))
-  (export ()
-	  continuation->stack-frame
-	  continuation/first-subproblem
-	  stack-frame->continuation
-	  stack-frame/block-thread-events?
-	  stack-frame/compiled-code?
-	  stack-frame/compiled-return-address?
-	  stack-frame/dynamic-state
-	  stack-frame/elements
-	  stack-frame/interrupt-mask
-	  stack-frame/last-return-code
-	  stack-frame/length
-	  stack-frame/next
-	  stack-frame/next-subproblem
-	  stack-frame/offset
-	  stack-frame/previous-type
-	  stack-frame/properties
-	  stack-frame/reductions
-	  stack-frame/ref
-	  stack-frame/repl-eval-boundary?
-	  stack-frame/resolve-stack-address
-	  stack-frame/return-address
-	  stack-frame/return-code
-	  stack-frame/skip-non-subproblems
-	  stack-frame/subproblem?
-	  stack-frame?)
-  (export (runtime)
-	  hardware-trap-frame?
-	  hardware-trap-frame/describe
-	  hardware-trap-frame/print-registers
-	  hardware-trap-frame/print-stack
-	  hardware-trap-frame/code
-	  microcode-return/code->type
-	  microcode-return/name->type
-	  stack-frame-type/code
-	  stack-frame-type/compiled-return-address
-	  stack-frame-type/interrupt-compiled-expression
-	  stack-frame-type/interrupt-compiled-procedure
-	  stack-frame-type/properties
-	  stack-frame-type/subproblem?
-	  stack-frame-type?)
-  (export (runtime debugging-info)
-	  stack-frame/type))
-
-(define-package (runtime control-point)
-  (files "cpoint")
-  (parent (runtime))
-  (export (runtime)
-	  control-point/element-stream
-	  control-point/history
-	  control-point/interrupt-mask
-	  control-point/n-elements
-	  control-point/next-control-point
-	  control-point/previous-history-control-point
-	  control-point/previous-history-offset
-	  make-control-point))
-
-(define-package (runtime new-continuation-parser)
   (files "continuation-parser")
   (parent (runtime))
   (export (runtime)
@@ -2101,7 +2041,7 @@ USA.
 	  ctree?
 	  make-ctree))
 
-(define-package (runtime new-control-point)
+(define-package (runtime control-point)
   (files "control-point")
   (parent (runtime))
   (export (runtime)
@@ -2109,9 +2049,9 @@ USA.
 	  control-point-length
 	  control-point-ref
 	  control-point?
-	  make-control-point*))
+	  make-control-point))
 
-(define-package (runtime new-debugger)
+(define-package (runtime debugger)
   (files "debugger")
   (parent (runtime debugger-command-loop))
   (export ()
@@ -2253,20 +2193,6 @@ USA.
 	  show-frames
 	  write-dbg-name))
 
-(define-package (runtime debugging-info)
-  (files "framex")
-  (parent (runtime))
-  (export ()
-	  debugging-info/compiled-code?
-	  debugging-info/evaluated-object-value
-	  debugging-info/evaluated-object?
-	  debugging-info/undefined-environment?
-	  debugging-info/undefined-expression?
-	  debugging-info/unknown-expression?
-	  debugging-info/noise
-	  debugging-info/noise?
-	  stack-frame/debugging-info))
-
 (define-package (runtime directory)
   (files "unxdir")
   (parent (runtime))
@@ -2329,8 +2255,6 @@ USA.
 	  set-entity-procedure!
 	  thunk?
 	  unary-procedure?)
-  (export (runtime continuation-parser)
-	  compiled-procedure-frame-size)
   (export (runtime predicate-tagging)
 	  %entity-is-apply-hook?))
 
@@ -2485,7 +2409,7 @@ USA.
   (export (runtime advice)
 	  ic-environment/arguments
 	  ic-environment/procedure)
-  (export (runtime new-continuation-parser)
+  (export (runtime continuation-parser)
 	  cframe-stream-environment))
 
 (define-package (runtime environment-inspector)
@@ -4998,9 +4922,6 @@ USA.
 	  get-dynamic-state
 	  set-dynamic-state!)
   (export (runtime continuation-parser)
-	  %translate-to-state-point
-	  merge-dynamic-state)
-  (export (runtime new-continuation-parser)
 	  %translate-to-state-point
 	  merge-dynamic-state)
   (export (runtime thread)

@@ -27,6 +27,8 @@ USA.
 
 ;;;; Edwin buffer packaging info
 
+;;; TODO: Should be generated from package graph.
+
 (declare (usual-integrations))
 
 (standard-scheme-find-file-initialization
@@ -43,16 +45,13 @@ USA.
     ("chrsyn"	(runtime char-syntax))
     ("codwlk"	(runtime scode-walker))
     ("condvar"	(runtime thread condition-variable))
-    ("conpar"	(runtime continuation-parser))
     ("console-io" (runtime console-i/o-port))
     ("contin"	(runtime continuation))
-    ("cpoint"	(runtime control-point))
     ("cpress"	(runtime compress))
     ("crypto"	(runtime crypto))
     ("datime"	(runtime date/time))
     ("dbgcmd"	(runtime debugger-command-loop))
     ("dbgutl"	(runtime debugger-utilities))
-    ("debug"	(runtime debugger))
     ("defstr"	(runtime syntax defstruct))
     ("dispatch-cache" (runtime tagged-dispatch))
     ("dispatch-tag" (runtime tagged-dispatch))
@@ -69,7 +68,6 @@ USA.
     ("file-io"	(runtime file-i/o-port))
     ("floenv"	(runtime floating-point-environment))
     ("format"	(runtime format))
-    ("framex"	(runtime debugging-info))
     ("gc"	(runtime garbage-collector))
     ("gcdemn"	(runtime gc-daemons))
     ("gcfinal"	(runtime gc-finalizer))

@@ -1006,7 +1006,7 @@ USA.
 	  edwin-variable$environment-package-limit)
   (export (edwin continuation-browser)
 	  debugger-pp-highlight-subexpression)
-  (import (runtime new-continuation-parser)
+  (import (runtime continuation-parser)
 	  dbg-environment-undefined?
 	  dbg-expression-compiled?
 	  dbg-expression-undefined?
@@ -1088,7 +1088,7 @@ USA.
 	  edwin-variable$debugger-open-markers?
 	  edwin-variable$debugger-split-window?
 	  edwin-variable$debugger-verbose-mode?)
-  (import (runtime new-continuation-parser)
+  (import (runtime continuation-parser)
 	  dbg-expression-compiled?
 	  dbg-expression-undefined?
 	  dbg-printer-apply
@@ -1123,7 +1123,7 @@ USA.
 	  ctree-subproblem-system-boundary?
 	  ctree-subproblems
 	  make-ctree)
-  (import (runtime new-debugger)
+  (import (runtime debugger)
 	  print-cnode-summary
 	  print-raw-frame)
   (import (runtime debugger-utilities)

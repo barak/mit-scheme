@@ -26,7 +26,7 @@ USA.
 |#
 
 ;;;; Debugger
-;;; package: (runtime new-debugger)
+;;; package: (runtime debugger)
 
 (declare (usual-integrations))
 
