@@ -79,7 +79,7 @@
 	 (call-with-current-continuation
 	   (lambda (continuation)
 	     (set! event-return-address
-		   (let ((stack-frame
+		   (let ((frames
 			  ;; Total kludge here.  If thread.scm changes,
 			  ;; this will have to change too.  Note that
 			  ;; this magic subproblem skippage is not
@@ -89,10 +89,12 @@
 			  ;; event to run, while during sampling the
 			  ;; event is run by a timer interrupt, whose
 			  ;; continuation looks different.
-			  (stack-frame/next-subproblem
-			   (continuation/first-subproblem continuation))))
-		     (and (stack-frame/compiled-return-address? stack-frame)
-			  (stack-frame/return-address stack-frame))))))))
+			  (cframe-stream-next-subproblem
+			   (cframe-stream-first-subproblem
+			    (continuation->cframe-stream continuation)))))
+		     (and (stream-pair? frames)
+			  (cframe-compiled-code? (stream-car frames))
+			  (cframe-return-address (stream-car frames)))))))))
      (do () ((not (eq? event-return-address 'uninitialized)))
        (suspend-current-thread))
      (if (not blocked?)
@@ -141,20 +143,8 @@
                   (invoke-restart ignore))
               go))))))
 
-(define (stack-sampler-interrupt-stack-frame? stack-frame)
-  (let ((return-address event-return-address))
-    (and (compiled-return-address? return-address)
-         (stack-frame/compiled-return-address? stack-frame)
-         (eq? event-return-address (stack-frame/return-address stack-frame)))))
-
 (define-deferred stack-sampling-return-address
   (make-unsettable-parameter #f))
-
-(define (stack-sampling-stack-frame? stack-frame)
-  (let ((return-address (stack-sampling-return-address)))
-    (and (compiled-return-address? return-address)
-         (stack-frame/compiled-return-address? stack-frame)
-         (eq? return-address (stack-frame/return-address stack-frame)))))
 
 (define (with-stack-sampling-continuation thunk)
   ;; Calling IDENTITY-PROCEDURE here creates a continuation with a
@@ -163,12 +153,20 @@
   (identity-procedure
    (call-with-current-continuation
      (lambda (continuation)
-       (let ((stack-frame (continuation/first-subproblem continuation)))
-         (if (stack-frame/compiled-return-address? stack-frame)
+       (let ((frames
+	      (cframe-stream-first-subproblem
+	       (continuation->cframe-stream continuation))))
+         (if (and (stream-pair? frames)
+		  (cframe-compiled-code? (stream-car frames)))
              (parameterize ((stack-sampling-return-address
-                             (stack-frame/return-address stack-frame)))
+                             (cframe-return-address (stream-car frames))))
                (thunk))
              (thunk)))))))
+
+(define (stack-sampling-stack-frame? frames)
+  (let ((return-address (stack-sampling-return-address)))
+    (and (compiled-return-address? return-address)
+         (eq? return-address (cframe-return-address (stream-car frames))))))
 
 ;;;; Profile Data
 
@@ -212,21 +210,22 @@
           (lambda () 0)))))
 
 (define (continuation->pframes continuation profile)
-  (let ((stack-frame
-         (find-first-subproblem (continuation->stack-frame continuation))))
-    (and stack-frame
-         (let loop ((stack-frame stack-frame) (pframes '()))
-           (let* ((pframe (intern-pframe stack-frame profile))
+  (let ((cframes
+         (find-first-subproblem (continuation->cframe-stream continuation))))
+    (and (stream-pair? cframes)
+         (let loop ((cframes cframes) (pframes '()))
+           (let* ((pframe (intern-pframe cframes profile))
                   ;; XXX Stick in a dummy record?
                   (pframes (if pframe (cons pframe pframes) pframes)))
-             (let ((stack-frame (find-next-subproblem stack-frame)))
-               (if (and stack-frame
-                        (not (stack-sampling-stack-frame? stack-frame)))
-                   (loop stack-frame pframes)
+             (let ((cframes (find-next-subproblem cframes)))
+               (if (and (stream-pair? cframes)
+			(not (stack-sampling-stack-frame? cframes)))
+                   (loop cframes pframes)
                    pframes)))))))
 
-(define (intern-pframe stack-frame profile)
-  (let ((return-address (stack-frame/return-address stack-frame)))
+(define (intern-pframe cframes profile)
+  (let* ((cframe (stream-car cframes))
+	 (return-address (cframe-return-address cframe)))
     (if (compiled-code-address? return-address)
         (let ((return-address
                (if (compiled-closure? return-address)
@@ -234,34 +233,41 @@
                    return-address)))
           (hash-table-intern! (profile.pframes profile) return-address
             (lambda ()
-              (receive (expression environment subexpression)
-                       (stack-frame/debugging-info stack-frame)
-                (make-pframe return-address
-                             expression
-                             subexpression
-                             (environment-ancestry-names environment))))))
+              (make-pframe return-address
+			   (cframe-dbg-expression cframe)
+			   (cframe-dbg-subexpression cframe)
+			   (environment-ancestry-names
+			    (cframe-stream-dbg-environment cframes))))))
         ;; What to do for interpreted code?  Fetch the debugging
         ;; information and use the expression, subexpression, and
         ;; environment ancestry names as the key?
         #f)))
 
-(define (find-first-subproblem stack-frame)
-  (let loop ((next (stack-frame/skip-non-subproblems stack-frame)))
-    (cond ((stack-sampler-interrupt-stack-frame? next)
-           ;; Another kludge about the internals of thread.scm.
-           (cond ((stack-frame/next-subproblem next) => find-next-subproblem)
-                 (else #f)))
-          ((stack-frame/next-subproblem next) => loop)
-          (else (find-subproblem stack-frame)))))
+(define (find-first-subproblem cframes)
+  (let loop ((next (cframe-stream-first-subproblem cframes)))
+    (let ((next2 (cframe-stream-next-subproblem next)))
+      (cond ((stack-sampler-interrupt-stack-frame? next)
+             ;; Another kludge about the internals of thread.scm.
+	     (and (stream-pair? next2)
+		  (find-next-subproblem next2)))
+            ((stream-pair? next2) (loop next2))
+            (else (find-subproblem cframes))))))
 
-(define (find-subproblem stack-frame)
-  (if (compiled-code-address? (stack-frame/return-address stack-frame))
-      stack-frame
-      (find-next-subproblem stack-frame)))
+(define (stack-sampler-interrupt-stack-frame? cframes)
+  (let ((return-address event-return-address))
+    (and (compiled-return-address? return-address)
+         (eq? event-return-address
+	      (cframe-return-address (stream-car cframes))))))
 
-(define (find-next-subproblem stack-frame)
-  (cond ((stack-frame/next-subproblem stack-frame) => find-subproblem)
-        (else #f)))
+(define (find-subproblem cframes)
+  (if (cframe-compiled-code? (stream-pair? cframes))
+      cframes
+      (find-next-subproblem cframes)))
+
+(define (find-next-subproblem cframes)
+  (let ((next (cframe-stream-next-subproblem cframes)))
+    (and (stream-pair? next)
+	 (find-subproblem next))))
 
 ;;;; Display
 
@@ -336,8 +342,7 @@
          => (lambda (description)
               (write-string description output-port)
               (newline output-port)))
-        ((or (debugging-info/undefined-expression? subexpression)
-             (debugging-info/unknown-expression? subexpression))
+        ((dbg-expression-undefined? subexpression)
          (newline output-port)
          (profile-pp expression output-port))
         (else
@@ -352,10 +357,10 @@
           output-port))))
 
 (define (invalid-expression-description expression)
-  (cond ((debugging-info/compiled-code? expression)
+  (cond ((dbg-expression-compiled? expression)
          ;++ Should this display the compiled entry itself?
          " compiled code")
-        ((debugging-info/undefined-expression? expression)
+        ((dbg-expression-undefined? expression)
          " undefined expression")
         (else #f)))
 
