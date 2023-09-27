@@ -2094,6 +2094,7 @@ USA.
 	  ctree-subproblem-return-address
 	  ctree-subproblem-subexpression
 	  ctree-subproblem-system-boundary?
+	  ctree-subproblem-system-frame?
 	  ctree-subproblem?
 	  ctree-subproblems
 	  ctree?

@@ -143,9 +143,11 @@ USA.
 (define (ctree-subproblem-return-address snode)
   (cframe-return-address (snode-frame snode)))
 
+(define (ctree-subproblem-system-frame? snode)
+  (cframe-tracked-item-value (snode-frame snode) 'system-frame?))
+
 (define (ctree-subproblem-system-boundary? snode)
-  (eq? (cframe-tracked-item-value (snode-frame snode) 'system-frame?)
-       'boundary))
+  (eq? (ctree-subproblem-system-frame? snode) 'boundary))
 
 (define (ctree-subproblem-cc-frame? snode)
   (cframe-compiled-address? (snode-frame snode)))
