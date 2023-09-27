@@ -135,15 +135,6 @@ USA.
 (define (top-level-abort)
   (invoke-restart (*top-level-restart*)))
 
-(define (bound-restarts-for-emacs)
-  (let loop ((restarts (bound-restarts)))
-    (if (pair? restarts)
-	(cons (car restarts)
-	      (if (eq? (car restarts) (*top-level-restart*))
-		  '()
-		  (loop (cdr restarts))))
-	'())))
-
 (define (process-one-message socket level)
   (dispatch (decode-message socket (read-packet socket)) socket level))
 
@@ -329,14 +320,14 @@ USA.
    #f))
 
 (define (swank:pprint-eval socket string)
-  socket
+  (declare (ignore socket))
   (pprint-to-string (eval (read-from-string string)
 			  (buffer-env))))
 
 ;;;; Compilation
 
 (define (swank:compile-string-for-emacs socket string . x)
-  socket x
+  (declare (ignore socket x))
   (let ((sexps (snarf-string string)))
     (call-compiler
      (lambda ()
@@ -379,7 +370,7 @@ USA.
       (load file (buffer-env)))))
 
 (define (swank:disassemble-symbol socket string)
-  socket
+  (declare (ignore socket))
   (call-with-output-string
     (lambda (port)
       (parameterize ((current-output-port port))
@@ -389,16 +380,16 @@ USA.
 
 ;;;; Directory Functions
 (define (swank:default-directory socket)
-  socket
+  (declare (ignore socket))
   (->namestring (working-directory-pathname)))
 
 (define (swank:set-default-directory socket directory)
-  socket
+  (declare (ignore socket))
   (->namestring (set-working-directory-pathname! directory)))
-
+
 ;;;; Describe
 (define (swank:describe-symbol socket symbol)
-  socket
+  (declare (ignore socket))
   (let* ((env (buffer-env))
 	 (package (env->pstring env))
 	 (symbol (string->symbol symbol))
@@ -434,7 +425,7 @@ USA.
   (swank:describe-symbol socket function))
 
 (define (swank:describe-definition-for-emacs socket name type)
-  type
+  (declare (ignore type))
   (swank:describe-symbol socket name))
 
 (define (get-object-type-name obj)
@@ -464,19 +455,19 @@ USA.
 ;;;; Miscellaneous
 
 (define (swank:set-package socket pstring)
-  socket
+  (declare (ignore socket))
   (let ((env (pstring->env pstring)))
     (set-current-environment! env)
     (let ((pstring (env->pstring env)))
       (list pstring pstring))))
 
 (define (swank:create-repl socket . args)
-  socket args
+  (declare (ignore socket args))
   (let ((pstring (env->pstring (make-top-level-environment))))
     (list pstring pstring)))
 
 (define (swank:swank-macroexpand-all socket string)
-  socket
+  (declare (ignore socket))
   (call-with-output-string
     (lambda (port)
       (pp (syntax (read-from-string string)
@@ -487,26 +478,19 @@ USA.
 (define swank:swank-macroexpand swank:swank-macroexpand-all)
 
 (define (swank:operator-arglist socket name pstring)
-  socket
+  (declare (ignore socket))
   (let ((v (ignore-errors
 	    (lambda ()
 	      (call-with-output-string
 		(lambda (port)
 		  (parameterize ((current-output-port port))
-		    (carefully-pa
+		    (pa
 		     (eval (read-from-string name)
 			   (pstring->env pstring))))))))))
     (if (condition? v) 'nil v)))
 
-(define (carefully-pa o)
-  (cond ((arity-dispatched-procedure? o)
-	 ;; MIT Scheme crashes for (pa /)
-	 (display "arity-dispatched-procedure"))
-	((procedure? o) (pa o))
-	(else (error "Not a procedure"))))
-
 (define (swank:connection-info socket)
-  socket
+  (declare (ignore socket))
   (let ((pstring (env->pstring (buffer-env))))
     `(:pid ,(unix/current-pid)
       :package (:name ,pstring :prompt ,pstring)
@@ -519,23 +503,9 @@ USA.
        ("utf-8-unix" "iso-latin-1-unix")))))
 
 (define (swank:swank-require socket packages)
-  socket
-  packages
+  (declare (ignore socket packages))
   '())
-
-(define swank-extra-documentation
-  '((let bindings . body)
-    (let* bindings . body)
-    (letrec bindings . body)
-    (receive bindings expression . body)
-    (define name . body)
-    (quote expression)
-    (quasiquote expression)
-    (unquote expression)
-    (unquote-splicing expression)
-    (if test then else)
-    (set! name value)))
-
+
 (define (procedure-parameters symbol env)
   (let ((type (environment-reference-type env symbol)))
     (let ((ans (if (eq? type 'normal)
@@ -556,6 +526,19 @@ USA.
 			 #f)))))
       ans)))
 
+(define swank-extra-documentation
+  '((let bindings . body)
+    (let* bindings . body)
+    (letrec bindings . body)
+    (receive bindings expression . body)
+    (define name . body)
+    (quote expression)
+    (quasiquote expression)
+    (unquote expression)
+    (unquote-splicing expression)
+    (if test then else)
+    (set! name value)))
+
 (define (find-string-before-swank-cursor-marker expr)
   (if (list? expr)
       (if (member 'swank::%cursor-marker% expr)
@@ -568,7 +551,7 @@ USA.
       #f))
 
 (define (swank:autodoc socket expr . params)
-  socket params
+  (declare (ignore socket params))
   (let ((op-string (find-string-before-swank-cursor-marker expr)))
     (if op-string
 	(let* ((op (string->symbol op-string))
@@ -578,18 +561,18 @@ USA.
 	(list ':not-available 't))))
 
 (define (swank:quit-lisp socket)
-  socket
+  (declare (ignore socket))
   (exit))
 
 ;;;; Some unimplemented stuff.
 
 (define (swank:buffer-first-change socket filename)
-  socket filename
+  (declare (ignore socket filename))
   'nil)
 
 ;; M-. is beyond my capabilities.
 (define (swank:find-definitions-for-emacs socket name)
-  socket name
+  (declare (ignore socket name))
   'nil)
 
 #|
@@ -656,20 +639,31 @@ swank:xref
 
 ;;;; Debugger
 
-(define-structure (sldb-state (conc-name sldb-state.))
-  condition
-  restarts)
+(define-record-type <sldb>
+    (%make-sldb ctree restarts)
+    sldb?
+  (ctree sldb-ctree)
+  (restarts sldb-restarts))
 
-(define-deferred *sldb-state*
+(define (make-sldb condition)
+  (%make-sldb (make-ctree condition)
+	      (take-while (let ((tl (*top-level-restart*)))
+			    (lambda (restart)
+			      (not (eq? restart tl))))
+			  (condition/restarts condition))))
+
+(define (sldb-get-frame index)
+  (ctree-nth-subproblem (sldb-ctree (*sldb*)) index))
+
+(define-deferred *sldb*
   (make-unsettable-parameter #f))
 
 (define (invoke-sldb socket level condition)
-  (parameterize ((*sldb-state*
-		  (make-sldb-state condition (bound-restarts-for-emacs))))
+  (parameterize ((*sldb* (make-sldb condition)))
     (dynamic-wind
      (lambda () #f)
      (lambda ()
-       (write-message `(:debug 0 ,level ,@(sldb-info (*sldb-state*) 0 20))
+       (write-message `(:debug 0 ,level ,@(sldb-info (*sldb*) 0 20))
 		      socket)
        (sldb-loop level socket))
      (lambda ()
@@ -683,121 +677,83 @@ swank:xref
   (sldb-loop level socket))
 
 (define (sldb-info state start end)
-  (let ((c (sldb-state.condition state))
-	(rs (sldb-state.restarts state)))
-    (list (list (condition/report-string c)
+  (list (let ((c (ctree-condition (sldb-ctree state))))
+	  (list (condition/report-string c)
 		(string "  [" (condition-type/name (condition/type c)) "]")
-		'nil)
-	  (sldb-restarts rs)
-	  (sldb-backtrace c start end)
-	  ;;'((0 "dummy frame"))
-	  (list (*index*)))))
-
-(define (sldb-restarts restarts)
-  (map (lambda (r)
-	 (list (symbol->string (restart/name r))
-	       (call-with-output-string
-		(lambda (p) (write-restart-report r p)))))
-       restarts))
+		'nil))
+	(map (lambda (r)
+	       (list (symbol->string (restart/name r))
+		     (call-with-output-string
+		      (lambda (p)
+			(write-restart-report r p)))))
+	     (sldb-restarts state))
+	(sldb-backtrace state start end)
+	;;'((0 "dummy frame"))
+	(list (*index*))))
 
 (define (swank:throw-to-toplevel socket . args)
-  socket args
+  (declare (ignore socket args))
   (top-level-abort))
 
 (define (swank:sldb-abort socket . args)
-  socket args
-  (abort (sldb-state.restarts (*sldb-state*))))
+  (declare (ignore socket args))
+  (abort (sldb-restarts (*sldb*))))
 
 (define (swank:sldb-continue socket . args)
-  socket args
-  (continue (sldb-state.restarts (*sldb-state*))))
+  (declare (ignore socket args))
+  (continue (sldb-restarts (*sldb*))))
 
 (define (swank:invoke-nth-restart-for-emacs socket sldb-level n)
-  sldb-level
+  (declare (ignore sldb-level))
   (write-message `(:return (:abort "NIL") ,(*index*)) socket)
-  (invoke-restart (list-ref (sldb-state.restarts (*sldb-state*)) n)))
+  (invoke-restart (list-ref (sldb-restarts (*sldb*)) n)))
 
 (define (swank:debugger-info-for-emacs socket from to)
-  socket
-  (sldb-info (*sldb-state*) from to))
+  (declare (ignore socket))
+  (sldb-info (*sldb*) from to))
 
 (define (swank:backtrace socket from to)
-  socket
-  (sldb-backtrace (sldb-state.condition (*sldb-state*)) from to))
+  (declare (ignore socket))
+  (sldb-backtrace (*sldb*) from to))
 
-(define (sldb-backtrace condition from to)
-  (sldb-backtrace-aux (condition/continuation condition) from to))
+(define (sldb-backtrace state from to)
+  (let loop ((snode (ctree-nth-subproblem (sldb-ctree state) from)))
+    (if (and snode
+	     (not (ctree-subproblem-system-frame? snode))
+	     (< (ctree-subproblem-index snode) to))
+	(cons (frame->string snode)
+	      (loop (ctree-subproblem-earlier snode)))
+	'())))
 
-(define (sldb-backtrace-aux k from to)
-  (let ((l (map frame->string (substream (continuation->frames k) from to))))
-    (let loop ((i from) (l l))
-      (if (null? l)
-	  '()
-	  (cons (list i (car l)) (loop (+ i 1) (cdr l)))))))
-
-;; Stack parser fails for this:
-;; (map (lambda (x) x) "/tmp/x.x")
-
-(define (continuation->frames k)
-  (let loop ((frame (continuation->stack-frame k)))
-    (if (or (not frame)
-	    (stack-frame/repl-eval-boundary? frame))
-	(stream)
-	(cons-stream frame
-		     (let ((next
-			    (ignore-errors
-			     (lambda ()
-			       (stack-frame/next-subproblem frame)))))
-		       (if (condition? next)
-			   (stream next)
-			   (loop next)))))))
-
-(define (frame->string frame)
-  (if (condition? frame)
-      (string "Bogus frame: " frame
-	      " " (condition/report-string frame))
-      (call-with-output-string (lambda (p) (print-frame frame p)))))
-
-(define (print-frame frame port)
-  (receive (expression environment subexpression)
-      (stack-frame/debugging-info frame)
-    environment
-    (cond ((debugging-info/compiled-code? expression)
-	   (write-string ";unknown compiled code" port))
-	  ((not (debugging-info/undefined-expression? expression))
-	   (parameterize ((param:print-primitives-by-name? #t))
-	     (write
-	      (unsyntax
-	       (if (or (debugging-info/undefined-expression? subexpression)
-		       (debugging-info/unknown-expression? subexpression))
-		   expression
-		   subexpression))
-	      port)))
-	  ((debugging-info/noise? expression)
-	   (write-string ";" port)
-	   (write-string ((debugging-info/noise expression) #f)
-			 port))
-	  (else
-	   (write-string ";undefined expression" port)))))
+(define (frame->string snode)
+  (call-with-output-string
+    (lambda (port)
+      (let ((expression (ctree-subproblem-expression snode)))
+	(cond ((dbg-expression-undefined? expression)
+	       (write-string ";undefined expression" port))
+	      ((dbg-expression-compiled? expression)
+	       (write-string ";compiled code" port))
+	      ((dbg-printer? expression)
+	       (write-string ";" port)
+	       (dbg-printer-apply expression #f port))
+	      (else
+	       (parameterize ((param:print-primitives-by-name? #t))
+		 (write
+		  (unsyntax
+		   (if (ctree-subproblem-has-subexpression? snode)
+		       (ctree-subproblem-subexpression snode)
+		       expression))
+		  port))))))))
 
-(define (substream s from to)
-  (let loop ((i 0) (l '()) (s s))
-    (cond ((or (= i to) (stream-null? s)) (reverse l))
-	  ((< i from) (loop (+ i 1) l (stream-cdr s)))
-	  (else (loop (+ i 1) (cons (stream-car s) l) (stream-cdr s))))))
-
-(define (swank:frame-locals-and-catch-tags socket frame)
-  socket
-  (list (map frame-var>elisp (frame-vars (sldb-get-frame frame)))
+(define (swank:frame-locals-and-catch-tags socket frame-index)
+  (declare (ignore socket))
+  (list (map frame-var>elisp (frame-vars (sldb-get-frame frame-index)))
 	'()))
 
-(define (frame-vars frame)
-  (receive (expression environment subexpression)
-      (stack-frame/debugging-info frame)
-    expression subexpression
-    (if (environment? environment)
-	(environment>frame-vars environment)
-	'())))
+(define (frame-vars snode)
+  (if (and snode (ctree-subproblem-has-environment? snode))
+      (environment>frame-vars (ctree-subproblem-environment snode))
+      '()))
 
 (define (environment>frame-vars environment)
   (let loop ((e environment))
@@ -810,30 +766,22 @@ swank:xref
 
 (define (frame-var>elisp b)
   (list ':name (write-to-string (car b))
-	':value (cond ((null? (cdr b)) "{unavailable}")
-		      (else (->line (cadr b))))
+	':value (if (pair? (cdr b)) (->line (cadr b)) "{unavailable}")
 	':id 0))
 
-(define (sldb-get-frame index)
-  (stream-ref (continuation->frames
-	       (condition/continuation
-		(sldb-state.condition (*sldb-state*))))
-	      index))
-
-(define (frame-var-value frame var)
-  (let ((binding (list-ref (frame-vars frame) var)))
-    (cond ((cdr binding) (cadr binding))
-	  (else unspecific))))
-
-(define (swank:inspect-frame-var socket frame var)
-  socket
+(define (swank:inspect-frame-var socket frame-index var-index)
+  (declare (ignore socket))
   (reset-inspector)
-  (inspect-object (frame-var-value (sldb-get-frame frame) var)))
+  (inspect-object
+   (let ((binding (list-ref (sldb-get-frame frame-index) var-index)))
+     (if (pair? (cdr binding))
+	 (cadr binding)
+	 unspecific))))
 
 ;;;; Completion
 
 (define (swank:simple-completions socket string pstring)
-  socket
+  (declare (ignore socket))
   (let ((strings (all-completions string (pstring->env pstring))))
     (list (sort strings string<?)
 	  (longest-common-prefix strings))))
@@ -860,9 +808,9 @@ swank:xref
 
 ;;;; Apropos
 
-(define (swank:apropos-list-for-emacs socket text external-only? case-sensitive?
-				      pstring)
-  socket case-sensitive?
+(define (swank:apropos-list-for-emacs socket text external-only?
+				      case-sensitive? pstring)
+  (declare (ignore socket case-sensitive?))
   (let ((env
 	 (if (elisp-true? external-only?)
 	     system-global-environment
@@ -881,7 +829,7 @@ swank:xref
 	 (apropos-list text env #t))))
 
 (define (swank:list-all-package-names socket . args)
-  socket args
+  (declare (ignore socket args))
   (map (lambda (package) (env->pstring (package/environment package)))
        (all-packages)))
 
@@ -903,7 +851,7 @@ swank:xref
   unspecific)
 
 (define (swank:init-inspector socket string)
-  socket
+  (declare (ignore socket))
   (reset-inspector)
   (inspect-object (eval (read-from-string string)
 			(buffer-env))))
@@ -937,6 +885,12 @@ swank:xref
 	      (+ to 1000))
 	  from to)))
 
+(define (substream s from to)
+  (let loop ((i 0) (l '()) (s s))
+    (cond ((or (= i to) (stream-null? s)) (reverse l))
+	  ((< i from) (loop (+ i 1) l (stream-cdr s)))
+	  (else (loop (+ i 1) (cons (stream-car s) l) (stream-cdr s))))))
+
 (define (prepare-parts ps parts)
   (define (line label value)
     `(,(string label ": ")
@@ -952,30 +906,30 @@ swank:xref
 	      ps))
 
 (define (swank:inspect-nth-part socket index)
-  socket
+  (declare (ignore socket))
   (inspect-object
    (hash-table-ref/default (istate-parts istate) index 'no-such-part)))
 
 (define (swank:quit-inspector socket)
-  socket
+  (declare (ignore socket))
   (reset-inspector))
 
 (define (swank:inspector-pop socket)
-  socket
+  (declare (ignore socket))
   (cond ((istate-previous istate)
 	 (set! istate (istate-previous istate))
 	 (istate->elisp istate))
 	(else 'nil)))
 
 (define (swank:inspector-next socket)
-  socket
+  (declare (ignore socket))
   (cond ((istate-next istate)
 	 (set! istate (istate-next istate))
 	 (istate->elisp istate))
 	(else 'nil)))
 
 (define (swank:inspector-range socket from to)
-  socket
+  (declare (ignore socket))
   (prepare-range (istate-parts istate)
 		 (istate-content istate)
 		 from to))
