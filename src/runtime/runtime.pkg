@@ -2485,8 +2485,6 @@ USA.
   (export (runtime advice)
 	  ic-environment/arguments
 	  ic-environment/procedure)
-  (export (runtime debugging-info)
-	  stack-frame/environment)
   (export (runtime new-continuation-parser)
 	  cframe-stream-environment))
 

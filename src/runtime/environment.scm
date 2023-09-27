@@ -468,64 +468,15 @@ USA.
 ;;;; Compiled Code Environments
 
 (define-record-type <stack-ccenv>
-    (make-stack-ccenv block frame start-index)
+    (make-stack-ccenv block cframes start-index)
     stack-ccenv?
   (block stack-ccenv/block)
-  (frame stack-ccenv/frame)
+  (cframes stack-ccenv/cframes)
   (start-index stack-ccenv/start-index))
 (set-predicate<=! stack-ccenv? environment?)
 
-;;; Kludgerous adapter for different stack-frame models
-;;; To be removed after the old one is gone
-
-(define (stack-frame/environment frame default)
-  (gframe-environment (stack-frame->gframe frame) default))
-
-(define (cframe-stream-environment frames default)
-  (gframe-environment (cframe-stream->gframe frames) default))
-
-(define-record-type <gframe>
-    make-gframe
-    gframe?
-  (return-address gframe-method:return-address)
-  (ref gframe-method:ref)
-  (length gframe-method:length)
-  (resolve-stack-address gframe-method:resolve-stack-address))
-
-(define (gframe-return-address gf)
-  ((gframe-method:return-address gf)))
-
-(define (gframe-ref gf index)
-  ((gframe-method:ref gf) index))
-
-(define (gframe-length gf)
-  ((gframe-method:length gf)))
-
-(define (gframe-resolve-stack-address gf address)
-  ((gframe-method:resolve-stack-address gf) address))
-
-(define (stack-frame->gframe frame)
-  (make-gframe
-   (lambda () (stack-frame/return-address frame))
-   (lambda (index) (stack-frame/ref frame index))
-   (lambda () (stack-frame/length frame))
-   (lambda (address)
-     (let-values (((frame* index)
-                   (stack-frame/resolve-stack-address frame address)))
-       (values (stack-frame->gframe frame*) index)))))
-
-(define (cframe-stream->gframe frames)
-  (make-gframe
-   (lambda () (cframe-return-address (stream-car frames)))
-   (lambda (index) (cframe-stream-ref frames index))
-   (lambda () (cframe-length (stream-car frames)))
-   (lambda (address)
-     (let-values (((frames* index)
-                   (cframe-stream-resolve-stack-address frames address)))
-       (values (cframe-stream->gframe frames*) index)))))
-
-(define (gframe-environment frame default)
-  (let* ((ret-add (gframe-return-address frame))
+(define (cframe-stream-environment cframes default)
+  (let* ((ret-add (cframe-return-address (stream-car cframes)))
 	 (object (compiled-entry/dbg-object ret-add)))
     (cond ((not object)
 	   default)
@@ -535,14 +486,14 @@ USA.
 	       (case (dbg-block/type parent)
 		 ((stack)
 		  (make-stack-ccenv parent
-				    frame
+				    cframes
 				    (+ (dbg-continuation/offset object)
 				       (dbg-block/length block))))
 		 ((ic)
 		  (let ((index (dbg-block/ic-parent-index block)))
 		    (if index
 			(guarantee-interpreter-environment
-			 (gframe-ref frame index))
+			 (cframe-stream-ref cframes index))
 			default)))
 		 (else
 		  (error "Illegal continuation parent block" parent))))))
@@ -551,7 +502,7 @@ USA.
 	     (case (dbg-block/type block)
 	       ((stack)
 		(make-stack-ccenv block
-				  frame
+				  cframes
 				  (if (compiled-closure? ret-add) 0 1)))
 	       (else
 		(error "Illegal procedure block" block)))))
@@ -604,27 +555,25 @@ USA.
 	    ((stack)
 	     (let loop
 		 ((block block)
-		  (frame (stack-ccenv/frame environment))
+		  (cframes (stack-ccenv/cframes environment))
 		  (index
 		   (+ (stack-ccenv/start-index environment)
 		      (dbg-block/length block))))
 	       (let ((stack-link (dbg-block/stack-link block)))
 		 (cond ((not stack-link)
-			(call-with-values
-			    (lambda ()
-			      (gframe-resolve-stack-address
-			       frame
-			       (stack-ccenv/static-link environment)))
-			  (lambda (frame index)
-			    (let ((block (dbg-block/parent block)))
-			      (if (eq? block parent)
-				  (make-stack-ccenv parent frame index)
-				  (loop block frame index))))))
+			(let-values (((cframes* index)
+				      (cframe-stream-resolve-stack-address
+				       cframes
+				       (stack-ccenv/static-link environment))))
+			  (let ((block (dbg-block/parent block)))
+			    (if (eq? block parent)
+				(make-stack-ccenv parent cframes* index)
+				(loop block cframes* index)))))
 		       ((eq? stack-link parent)
-			(make-stack-ccenv parent frame index))
+			(make-stack-ccenv parent cframes index))
 		       (else
 			(loop stack-link
-			      frame
+			      cframes
 			      (+ (vector-length
 				  (dbg-block/layout-vector stack-link))
 				 (case (dbg-block/type stack-link)
@@ -647,15 +596,17 @@ USA.
 		  (stack-ccenv/static-link environment)
 		  (compiled-code-block/environment
 		   (compiled-code-address->block
-		    (gframe-return-address
-		     (stack-ccenv/frame environment)))))))
+		    (cframe-return-address
+		     (stream-car
+		      (stack-ccenv/cframes environment))))))))
 	    (else
 	     (error "illegal parent block" parent)))
 	  (let ((environment
 		 (compiled-code-block/environment
 		   (compiled-code-address->block
-		    (gframe-return-address
-		     (stack-ccenv/frame environment))))))
+		    (cframe-return-address
+		     (stream-car
+		      (stack-ccenv/cframes environment)))))))
 	    (if (ic-environment? environment)
 		environment
 		system-global-environment))))))
@@ -727,8 +678,8 @@ USA.
   (let ((cell (list #f)))
     (set-car!
      cell
-     (gframe-ref (stack-ccenv/frame environment)
-		      (+ (stack-ccenv/start-index environment) index)))
+     (cframe-stream-ref (stack-ccenv/cframes environment)
+			(+ (stack-ccenv/start-index environment) index)))
     (map-reference-trap (lambda () (car cell)))))
 
 (define (stack-ccenv/static-link environment)
@@ -759,13 +710,13 @@ USA.
     closure))
 
 (define (find-stack-element environment procedure name)
-  (let ((frame (stack-ccenv/frame environment)))
-    (gframe-ref
-     frame
+  (let ((cframes (stack-ccenv/cframes environment)))
+    (cframe-stream-ref
+     cframes
      (let ((index
 	    (find-stack-index (stack-ccenv/block environment)
 			      (stack-ccenv/start-index environment)
-			      (gframe-length frame)
+			      (cframe-length (stream-car cframes))
 			      procedure)))
        (if (not index)
 	   (error (string-append "Unable to find " name) environment))

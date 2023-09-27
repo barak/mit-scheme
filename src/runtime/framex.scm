@@ -198,73 +198,70 @@ USA.
 	(hardware-trap-frame/describe frame long?)))))
 
 (define (method/compiled-code frame)
-  (let ((get-environment
+  (let ((object
+	 (compiled-entry/dbg-object (stack-frame/return-address frame)))
+	(lose
 	 (lambda ()
-	   (stack-frame/environment frame undefined-environment))))
-    (let ((object
-	   (compiled-entry/dbg-object (stack-frame/return-address frame)))
-	  (lose
-	   (lambda ()
-	     (values compiled-code (get-environment) undefined-expression))))
-      (cond ((not object)
-	     (lose))
-	    ((dbg-continuation? object)
-	     (let ((source-code (dbg-continuation/source-code object)))
-	       (if (and (vector? source-code)
-			(not (zero? (vector-length source-code))))
-		   (let* ((expression (vector-ref source-code 1))
-			  (win2
-			   (lambda (environment subexp)
-			     (values expression environment subexp)))
-			  (win
-			   (lambda (select-subexp)
-			     (win2
-			      (get-environment)
-			      (validate-subexpression
-			       frame
-			       (select-subexp expression))))))
-		     (case (vector-ref source-code 0)
-		       ((sequence-continue)
-			(win safe-system-pair-car))
-		       ((assignment-continue
-			 definition-continue)
-			(win safe-system-pair-cdr))
-		       ((conditional-decide)
-			(win safe-system-triple-first))
-		       ((combination-operand)
-			(values
-			 expression
-			 (get-environment)
-			 (validate-subexpression
-			  frame
-			  (if (zero? (vector-ref source-code 2))
-			      (scode-combination-operator expression)
-			      (list-ref (scode-combination-operands expression)
-					(-1+ (vector-ref source-code 2)))))))
-		       ((combination-element)
-			(win2 undefined-environment
-			      (vector-ref source-code 2)))
-		       ((sequence-element)
-			(win2 undefined-environment
-			      (vector-ref source-code 2)))
-		       ((conditional-predicate)
-			(win2 undefined-environment
-			      (vector-ref source-code 2)))
-		       (else
-			(lose))))
-		   (lose))))
-	    ((dbg-procedure? object)
-	     (values (scode-lambda-body (dbg-procedure/source-code object))
-		     (and (dbg-procedure/block object)
-			  (get-environment))
-		     undefined-expression))
-	    #|
-	    ((dbg-expression? object)
-	     ;; no expression!
-	     (lose))
-	    |#
-	    (else
-	     (lose))))))
+	   (values compiled-code undefined-environment undefined-expression))))
+    (cond ((not object)
+	   (lose))
+	  ((dbg-continuation? object)
+	   (let ((source-code (dbg-continuation/source-code object)))
+	     (if (and (vector? source-code)
+		      (not (zero? (vector-length source-code))))
+		 (let* ((expression (vector-ref source-code 1))
+			(win2
+			 (lambda (environment subexp)
+			   (values expression environment subexp)))
+			(win
+			 (lambda (select-subexp)
+			   (win2
+			    undefined-environment
+			    (validate-subexpression
+			     frame
+			     (select-subexp expression))))))
+		   (case (vector-ref source-code 0)
+		     ((sequence-continue)
+		      (win safe-system-pair-car))
+		     ((assignment-continue
+		       definition-continue)
+		      (win safe-system-pair-cdr))
+		     ((conditional-decide)
+		      (win safe-system-triple-first))
+		     ((combination-operand)
+		      (values
+		       expression
+		       undefined-environment
+		       (validate-subexpression
+			frame
+			(if (zero? (vector-ref source-code 2))
+			    (scode-combination-operator expression)
+			    (list-ref (scode-combination-operands expression)
+				      (-1+ (vector-ref source-code 2)))))))
+		     ((combination-element)
+		      (win2 undefined-environment
+			    (vector-ref source-code 2)))
+		     ((sequence-element)
+		      (win2 undefined-environment
+			    (vector-ref source-code 2)))
+		     ((conditional-predicate)
+		      (win2 undefined-environment
+			    (vector-ref source-code 2)))
+		     (else
+		      (lose))))
+		 (lose))))
+	  ((dbg-procedure? object)
+	   (values (scode-lambda-body (dbg-procedure/source-code object))
+		   (and (dbg-procedure/block object)
+			undefined-environment)
+		   undefined-expression))
+	  #|
+	  ((dbg-expression? object)
+	   ;; no expression!
+	   (lose))
+	  |#
+	  (else
+	   (lose)))))
 
 (add-boot-init!
  (lambda ()
