@@ -32,6 +32,7 @@
 *~
 .ccls-cache/
 .edwin-ffi
+.dir-locals-2.el
 /C-*/
 /C/
 /LOG
