@@ -978,14 +978,9 @@ USA.
 	(values environment message))))
 
 (define (continuation/first-subproblem-environment continuation)
-  (let ((frame (continuation/first-subproblem continuation)))
-    (if frame
-	(call-with-values (lambda () (stack-frame/debugging-info frame))
-	  (lambda (expression environment subexpression)
-	    expression subexpression
-	    (if (debugging-info/undefined-environment? environment)
-		'no-environment
-		environment)))
+  (let ((snode (ctree-subproblems (make-ctree continuation))))
+    (if (and snode (ctree-subproblem-has-environment? snode))
+	(ctree-subproblem-environment snode)
 	'no-environment)))
 
 (define condition-type:breakpoint)
