@@ -188,11 +188,14 @@ USA.
 ;;;; Continuation Parsing
 
 (define (continuation/next-continuation continuation)
-  (let ((first-subproblem (continuation/first-subproblem continuation)))
-    (and first-subproblem
-	 (let ((next-subproblem (stack-frame/next first-subproblem)))
-	   (and next-subproblem
-		(stack-frame->continuation next-subproblem))))))
+  (let ((frames (continuation->frames continuation)))
+    (and (stream-pair? frames)
+	 (cframe-stream->continuation frames))))
+
+(define (continuation->frames continuation)
+  (cframe-stream-next-subproblem
+   (cframe-stream-first-subproblem
+    (continuation->cframe-stream continuation))))
 
 ;; With the 8.0 compiler, we do not want to restart a primitive that
 ;; signalled a bad argument type or range.  This allows the compiler
@@ -200,75 +203,64 @@ USA.
 ;; apply frame of a primitive called from compiled code:
 
 (define (continuation/next-continuation/no-compiled-code continuation)
-  (let ((first-subproblem (continuation/first-subproblem continuation)))
-    (and first-subproblem
-	 (let ((next-subproblem (stack-frame/next first-subproblem)))
-	   (and next-subproblem
-		(if (and (apply-frame? first-subproblem)
+  (let ((frames (continuation->frames continuation)))
+    (and (stream-pair? frames)
+	 (not (let ((frame (stream-car frames)))
+		    (and (eq? (cframe-type frame) 'apply)
 			 (primitive-procedure?
-			  (apply-frame/operator first-subproblem))
-			 (let ((further-subproblem
-				(stack-frame/next next-subproblem)))
-			   (stack-frame/compiled-code? further-subproblem)))
-		    #f
-		    (stack-frame->continuation next-subproblem)))))))
+			  (cframe-field-value frame 'procedure))
+			 (let ((next (cframe-stream-next-subproblem frames)))
+			   (and (stream-pair? next)
+				(eq? (cframe-type (stream-car next))
+				     'compiled-address))))))
+	 (cframe-stream->continuation frames))))
 
 (define (continuation-restartable? continuation)
   continuation)
 
-(define-integrable (frame/type frame)
-  (microcode-return/code->name (stack-frame/return-code frame)))
+(define (continuation/first-subproblem continuation)
+  (stream-car
+   (cframe-stream-first-subproblem
+    (continuation->cframe-stream continuation))))
 
-(define (apply-frame? frame)
-  (let ((code (stack-frame/return-code frame)))
-    (and code
-	 (or (= return-code:internal-apply code)
-	     (= return-code:internal-apply-val code)))))
+(define (apply-frame? cframe)
+  (eq? (cframe-type cframe) 'apply))
 
-(define-integrable (apply-frame/operator frame)
-  (stack-frame/ref frame 3))
+(define (apply-frame/operator cframe)
+  (cframe-field-value cframe 'procedure))
 
-(define-integrable (apply-frame/operand frame index)
-  (stack-frame/ref frame (+ 4 index)))
+(define (apply-frame/operand cframe index)
+  (list-ref (apply-frame/operands cframe) index))
 
-(define (apply-frame/operands frame)
-  (let ((elements (stack-frame/elements frame)))
-    (subvector->list elements 4 (vector-length elements))))
+(define (apply-frame/operands cframe)
+  (cframe-field-value cframe 'arguments))
 
-(define-integrable (eval-frame/expression frame)
-  (stack-frame/ref frame 1))
+(define (eval-frame/expression cframe)
+  (cframe-field-value cframe 'expression))
 
-(define-integrable (eval-frame/environment frame)
-  (stack-frame/ref frame 2))
+(define (eval-frame/environment cframe)
+  (cframe-field-value cframe 'environment))
 
 (define (pop-return-frame/value continuation)
-  (let loop ((frame (continuation->stack-frame continuation)))
-    (if (or (not frame) (stack-frame/subproblem? frame))
+  (let loop ((cframes (continuation->cframe-stream continuation)))
+    (if (or (not (stream-pair? cframes))
+	    (cframe-subproblem? (stream-car cframes)))
 	(error "Can't find POP-RETURN-ERROR frame."))
-    (if (let ((code (stack-frame/return-code frame)))
-	  (and code
-	       (= return-code:pop-return-error code)))
-	(stack-frame/ref frame 1)
-	(loop (stack-frame/next frame)))))
+    (if (eq? (cframe-type (stream-car cframes)) 'pop-return-error)
+	(cframe-field-value (stream-car cframes) 'value)
+	(loop (stream-cdr cframes)))))
 
-(define-integrable (reference-trap-frame/name frame)
-  (stack-frame/ref frame 2))
+(define (reference-trap-frame/name cframe)
+  (cframe-field-value cframe 'variable))
 
-(define-integrable (reference-trap-frame/environment frame)
-  (stack-frame/ref frame 3))
-
-(define-integrable (compiled-code-error-frame? frame)
-  (let ((code (stack-frame/return-code frame)))
-    (and code
-	 (= return-code:compiler-error-restart code))))
+(define (reference-trap-frame/environment cframe)
+  (cframe-field-value cframe 'environment))
 
-(define-integrable (compiled-code-error-frame/irritant frame)
-  (stack-frame/ref frame 2))
+(define (compiled-code-error-frame? cframe)
+  (eq? (cframe-type cframe) 'compiler-error-restart))
 
-(define return-code:internal-apply)
-(define return-code:internal-apply-val)
-(define return-code:pop-return-error)
-(define return-code:compiler-error-restart)
+(define (compiled-code-error-frame/irritant cframe)
+  (cframe-field-value cframe 'primitive))
 
 ;;;; Utilities
 
@@ -365,18 +357,6 @@ USA.
 
 (add-boot-init!
  (lambda ()
-
-(set! return-code:internal-apply
-  (microcode-return/name->code 'internal-apply))
-
-(set! return-code:internal-apply-val
-  (microcode-return/name->code 'internal-apply-val))
-
-(set! return-code:pop-return-error
-  (microcode-return/name->code 'pop-return-error))
-
-(set! return-code:compiler-error-restart
-  (microcode-return/name->code 'compiler-error-restart))
 
 (set! error-handler-vector
   (make-vector (microcode-error/code-limit)
@@ -481,7 +461,7 @@ USA.
 
 (define (signal-variable-error continuation signal-reference signal-other)
   (let ((frame (continuation/first-subproblem continuation)))
-    (case (frame/type frame)
+    (case (cframe-type frame)
       ((eval-error)
        (let ((expression (eval-frame/expression frame)))
 	 (if (scode-variable? expression)
@@ -978,8 +958,8 @@ USA.
 		 (signal-user-microcode-reset k)
 		 (let ((code
 			(let ((frame (continuation/first-subproblem k)))
-			  (and (hardware-trap-frame? frame)
-			       (hardware-trap-frame/code frame)))))
+			  (and (eq? (cframe-type frame) 'hardware-trap)
+			       (cframe-field-value frame 'code-name)))))
 		   (if (string=? "SIGFPE" name)
 		       ((case (and (string? code)
 				   (normalize-trap-code-name code))
