@@ -2031,6 +2031,7 @@ USA.
 	  cframe-has-reductions?
 	  cframe-length
 	  cframe-n-reductions
+	  cframe-next-type
 	  cframe-raw
 	  cframe-reduction
 	  cframe-ref
