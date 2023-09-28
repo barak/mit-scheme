@@ -260,9 +260,6 @@ USA.
 
 (define (cframe-compiled-code? frame)
   (compiled-return-address? (cframe-return-address frame)))
-
-(define (cframe-return-type frame)
-  (vector-ref (cframe-info frame) 0))
 
 (define (cframe-subproblem? frame)
   (vector-ref (cframe-info frame) 1))
@@ -599,7 +596,7 @@ USA.
 				     (microcode-return/code->name code)
 				     (lambda () #f))))
 	     (alist-table-ref return-type-generators
-			      (cframe-return-type frame)
+			      (vector-ref (cframe-info frame) 0)
 			      (lambda () '()))))
 	 (p (assq keyword alist)))
     (and p

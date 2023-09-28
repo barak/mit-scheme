@@ -1977,7 +1977,6 @@ USA.
 	  cframe-ref
 	  cframe-return-address
 	  cframe-return-code
-	  cframe-return-type
 	  cframe-stream->continuation
 	  cframe-stream->control-point
 	  cframe-stream-dbg-environment
