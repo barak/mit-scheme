@@ -227,7 +227,7 @@ USA.
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
-	 (guarantee-restarts restarts operator)
+	 (guarantee-list-of restart? restarts operator)
 	 (list-copy restarts))))
 
 (define (condition-of-type? object type)
@@ -305,27 +305,14 @@ USA.
 (define-deferred param:bound-restarts
   (make-unsettable-parameter '()))
 
-(define-structure (restart
-		   (conc-name %restart/)
-		   (constructor %make-restart
-				(name reporter effector interactor))
-		   (print-procedure
-		    (standard-print-method 'restart
-		      (lambda (restart)
-			(let ((name (%restart/name restart)))
-			  (if name
-			      (list name)
-			      '()))))))
-  (name #f read-only #t)
-  (reporter #f read-only #t)
-  (effector #f read-only #t)
-  (interactor #f)
-  (properties (make-1d-table) read-only #t))
-
-(define-guarantee restart "restart")
-
-(define-integrable (guarantee-restarts object caller)
-  (guarantee-list-of restart? object caller))
+(define-record-type <restart>
+    make-restart
+    restart?
+  (name restart/name)
+  (reporter restart/reporter)
+  (effector restart/effector)
+  (interactor restart/interactor set-restart/interactor!)
+  (properties restart/properties))
 
 (define (with-restart name reporter effector interactor thunk)
   (if name (guarantee symbol? name 'with-restart))
@@ -336,7 +323,8 @@ USA.
   (if (not (or (not interactor) (procedure? interactor)))
       (error:wrong-type-argument interactor "interactor" 'with-restart))
   (parameterize ((param:bound-restarts
-		  (cons (%make-restart name reporter effector interactor)
+		  (cons (make-restart name reporter effector interactor
+				      (make-1d-table))
 			(param:bound-restarts))))
     (thunk)))
 
@@ -346,29 +334,22 @@ USA.
      (with-restart name reporter (lambda () (continuation unspecific)) values
        thunk))))
 
-(define (restart/name restart)
-  (guarantee-restart restart 'restart/name)
-  (%restart/name restart))
-
 (define (write-restart-report restart port)
-  (guarantee-restart restart 'write-restart-report)
+  (guarantee restart? restart 'write-restart-report)
   (guarantee textual-output-port? port 'write-restart-report)
-  (let ((reporter (%restart/reporter restart)))
+  (let ((reporter (restart/reporter restart)))
     (if (string? reporter)
 	(write-string reporter port)
 	(reporter port))))
 
-(define (restart/effector restart)
-  (guarantee-restart restart 'restart/effector)
-  (%restart/effector restart))
-
-(define (restart/interactor restart)
-  (guarantee-restart restart 'restart/interactor)
-  (%restart/interactor restart))
-
-(define (restart/properties restart)
-  (guarantee-restart restart 'restart/properties)
-  (%restart/properties restart))
+(define (restart/report-string restart)
+  (guarantee restart? restart 'restart/report-string)
+  (let ((reporter (restart/reporter restart)))
+    (if (string? reporter)
+	reporter
+	(call-with-output-string
+	  (lambda (port)
+	    (reporter port))))))
 
 (define (restart/get restart key)
   (if (eq? key 'interactive)
@@ -377,7 +358,7 @@ USA.
 
 (define (restart/put! restart key datum)
   (if (eq? key 'interactive)
-      (set-%restart/interactor! restart datum)
+      (set-restart/interactor! restart datum)
       (1d-table/put! (restart/properties restart) key datum)))
 
 (define (bind-restart name reporter effector receiver)
@@ -386,14 +367,14 @@ USA.
       (receiver (car (param:bound-restarts))))))
 
 (define (invoke-restart restart . arguments)
-  (guarantee-restart restart 'invoke-restart)
-  (hook/invoke-restart (%restart/effector restart) arguments))
+  (guarantee restart? restart 'invoke-restart)
+  (hook/invoke-restart (restart/effector restart) arguments))
 
 (define (invoke-restart-interactively restart #!optional condition)
-  (guarantee-restart restart 'invoke-restart-interactively)
-  (let ((effector (%restart/effector restart))
+  (guarantee restart? restart 'invoke-restart-interactively)
+  (let ((effector (restart/effector restart))
 	(arguments
-	 (let ((interactor (%restart/interactor restart)))
+	 (let ((interactor (restart/interactor restart)))
 	   (if interactor
 	       (call-with-values interactor list)
 	       '())))
@@ -442,7 +423,7 @@ USA.
 (define (%find-restart name restarts)
   (let loop ((restarts restarts))
     (and (pair? restarts)
-	 (if (eq? name (%restart/name (car restarts)))
+	 (if (eq? name (restart/name (car restarts)))
 	     (car restarts)
 	     (loop (cdr restarts))))))
 
@@ -454,13 +435,13 @@ USA.
   (let ((restart (%find-restart 'abort (restarts-default restarts 'abort))))
     (if (not restart)
 	(error:no-such-restart 'abort))
-    ((%restart/effector restart))))
+    ((restart/effector restart))))
 
 (define (continue #!optional restarts)
   (let ((restart
 	 (%find-restart 'continue (restarts-default restarts 'continue))))
     (if restart
-	((%restart/effector restart)))))
+	((restart/effector restart)))))
 
 (define (muffle-warning #!optional restarts)
   (let ((restart
@@ -468,27 +449,27 @@ USA.
 			(restarts-default restarts 'muffle-warning))))
     (if (not restart)
 	(error:no-such-restart 'muffle-warning))
-    ((%restart/effector restart))))
+    ((restart/effector restart))))
 
 (define (retry #!optional restarts)
   (let ((restart
 	 (%find-restart 'retry (restarts-default restarts 'retry))))
     (if restart
-	((%restart/effector restart)))))
+	((restart/effector restart)))))
 
 (define (store-value datum #!optional restarts)
   (let ((restart
 	 (%find-restart 'store-value
 			(restarts-default restarts 'store-value))))
     (if restart
-	((%restart/effector restart) datum))))
+	((restart/effector restart) datum))))
 
 (define (use-value datum #!optional restarts)
   (let ((restart
 	 (%find-restart 'use-value
 			(restarts-default restarts 'use-value))))
     (if restart
-	((%restart/effector restart) datum))))
+	((restart/effector restart) datum))))
 
 (define (restarts-default restarts name)
   (cond ((or (default-object? restarts)
@@ -497,7 +478,7 @@ USA.
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
-	 (guarantee-restarts restarts name)
+	 (guarantee-list-of restart? restarts name)
 	 restarts)))
 
 ;;;; Condition Signalling and Handling

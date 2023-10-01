@@ -2530,6 +2530,7 @@ USA.
 	  restart/name
 	  restart/properties
 	  restart/put!
+	  restart/report-string
 	  restart?
 	  retry
 	  signal-condition
