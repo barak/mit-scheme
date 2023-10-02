@@ -217,7 +217,9 @@ DEFINE_PRIMITIVE ("control-point-next-frame", Prim_cpoint_next_frame, 2, 2, 0)
     PRIMITIVE_RETURN (SHARP_F);
   if (! (next_index == length
          || (next_index < length
-             && return_address_p (vector_ref (cpoint, next_index)))))
+             && (vector_ref (cpoint, index)
+                 == MAKE_RETURN_CODE (RC_HARDWARE_TRAP)
+                 || return_address_p (vector_ref (cpoint, next_index))))))
     error_external_return ();
   assert (ULONG_TO_FIXNUM_P (next_index));
   PRIMITIVE_RETURN (ULONG_TO_FIXNUM (next_index));

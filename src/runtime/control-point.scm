@@ -66,8 +66,10 @@ USA.
 (define-integrable (%control-point-ref control-point index)
   (safe-system-vector-ref control-point (fix:+ index 2)))
 
-(define-integrable (%next-frame control-point index)
-  (fix:- (control-point-next-frame control-point (fix:+ index 2)) 2))
+(define (%next-frame control-point index)
+  (let ((result (control-point-next-frame control-point (fix:+ index 2))))
+    (and result
+	 (fix:- result 2))))
 
 (define (control-point-length control-point)
   (guarantee control-point? control-point 'control-point-length)
@@ -78,7 +80,7 @@ USA.
   (if (not (fix:< index (control-point-length control-point)))
       (error:bad-range-argument index 'control-point-ref))
   (%control-point-ref control-point index))
-
+
 (define (control-point->raw-frame-generator control-point)
   (let ((index)
 	(end))
@@ -90,7 +92,7 @@ USA.
 
     (define (generator)
       (if (fix:< index end)
-	  (let* ((index* (%next-frame control-point index))
+	  (let* ((index* (next-frame))
 		 (frame (make-vector (fix:- index* index)))
 		 (result (vector index end frame)))
 	    (let loop ((i index) (j 0))
@@ -113,6 +115,41 @@ USA.
 		  (new-cp! (vector-ref frame 1))))
 	    result)
 	  (eof-object)))
+
+    (define (next-frame)
+      (cond ((eq? (ucode-return-address hardware-trap)
+		  (%control-point-ref control-point index))
+	     (find-return (%next-frame control-point index)))
+	    ((%next-frame control-point index) => (lambda (i) i))
+	    (else
+	     (let ((index*
+		    (fix:- end
+			   (stack-address-offset
+			    (find-dlink (fix:+ index 1))))))
+	       (if (fix:< index* 0)
+		   (error "Dynamic link out of range:" index*))
+	       (if (not (return-address?
+			 (%control-point-ref control-point index*)))
+		   (error "Dynamic link points at non-return:" index*))
+	       index*))))
+
+    ;; Search for the dynamic link.  This heuristic compensates for the
+    ;; compiler omitting its location in the object code.
+    (define (find-dlink i)
+      (if (not (fix:< i end))
+	  (error "Unable to find dynamic link."))
+      (let ((elt (%control-point-ref control-point i)))
+	(if (stack-address? elt)
+	    elt
+	    (find-dlink (fix:+ i 1)))))
+
+    ;; Heuristic for hardware-trap, which often has other stuff after it.
+    (define (find-return i)
+      (if (fix:< i end)
+	  (if (return-address? (%control-point-ref control-point i))
+	      i
+	      (find-return (fix:+ i 1)))
+	  end))
 
     (new-cp! control-point)
     generator))

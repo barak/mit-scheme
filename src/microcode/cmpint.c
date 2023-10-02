@@ -304,25 +304,29 @@ long C_return_value;
 #endif
 
 static inline void
-save_last_return_code (long code)
+check_last_return_code (void)
 {
-  unsigned long offset
-    = STACK_LOCATIVE_DIFFERENCE (stack_pointer, last_return_code);
-  assert (offset > 0);
-  push_cont (code, ULONG_TO_FIXNUM (offset));
-  COMPILER_NEW_SUBPROBLEM ();
+  assert (last_return_code > stack_start);
+  assert (last_return_code <= stack_end);
+  if (last_return_code < stack_end)
+    assert (RETURN_CODE_P (*last_return_code));
 }
 
 static inline void
-check_last_return_code (void)
+save_last_return_code (long code)
 {
-  assert (RETURN_CODE_P (*last_return_code));
+  check_last_return_code ();
+  unsigned long offset
+    = STACK_LOCATIVE_DIFFERENCE (stack_pointer, last_return_code);
+  assert (offset > 0);
+  push_cont (code, ULONG_TO_FIXNUM (offset + CONT_SIZE));
+  COMPILER_NEW_SUBPROBLEM ();
 }
 
 static inline void
 restore_last_return_code (void)
 {
-  last_return_code = stack_loc (FIXNUM_TO_ULONG (GET_EXP));
+  last_return_code = stack_loc (FIXNUM_TO_ULONG (GET_EXP) - CONT_SIZE);
   check_last_return_code ();
   COMPILER_END_SUBPROBLEM ();
 }
@@ -517,7 +521,7 @@ guarantee_cc_return (unsigned long offset)
   assert (RETURN_CODE_P (ret));
   if (object_datum (ret) == RC_REENTER_COMPILED_CODE)
     {
-      unsigned long lrc = FIXNUM_TO_ULONG (cont_frame_exp (frame));
+      unsigned long lrc = FIXNUM_TO_ULONG (cont_frame_exp (frame)) - CONT_SIZE;
       close_stack_gap (offset, CONT_SIZE);
       last_return_code = stack_loc (offset + lrc);
       check_last_return_code ();
@@ -1733,7 +1737,9 @@ compiled_entry_frame_size (cc_entry_type_t* cet)
              + cet->args.for_procedure.rest_p;
 
     case CETG_CONTINUATION:
-      return 1 + cet->args.for_continuation.offset;
+      return (cet->marker == CET_CONTINUATION)
+             ? 1 + cet->args.for_continuation.offset
+             : ULONG_MAX;
 
     case CETG_EXPRESSION:
     case CETG_INTERNAL_PROCEDURE:
@@ -1751,7 +1757,8 @@ cpoint_compiled_address_next (SCHEME_OBJECT cpoint, unsigned long index)
   cc_entry_type_t cet;
   if (read_cc_entry_type (&cet, cc_entry_to_address (entry)))
     return ULONG_MAX;
-  return index + compiled_entry_frame_size (&cet);
+  unsigned long size = compiled_entry_frame_size (&cet);
+  return (size == ULONG_MAX) ? size : index + size;
 }
 
 unsigned long
@@ -1783,7 +1790,8 @@ cpoint_compiled_code_next (SCHEME_OBJECT cpoint, unsigned long index)
                   return vector_length (cpoint)
                          - (stack_end - object_address (dlink));
               }
-            return index + CONT_SIZE + 1 + compiled_entry_frame_size (&cet);
+            unsigned long size = compiled_entry_frame_size (&cet);
+            return (size == ULONG_MAX) ? size : index + CONT_SIZE + 1 + size;
           }
         return index + CONT_SIZE + 1;
       }
@@ -1791,10 +1799,10 @@ cpoint_compiled_code_next (SCHEME_OBJECT cpoint, unsigned long index)
     case RC_COMP_LOOKUP_TRAP_RESTART:
     case RC_COMP_SAFE_REF_TRAP_RESTART:
     case RC_COMP_UNASSIGNED_TRAP_RESTART:
-      return index + CONT_SIZE + 3;
+      return index + CONT_SIZE + 2;
 
     case RC_COMP_ASSIGNMENT_TRAP_RESTART:
-      return index + CONT_SIZE + 4;
+      return index + CONT_SIZE + 3;
 
     case RC_COMP_CACHE_REF_APPLY_RESTART:
     case RC_COMP_OP_REF_TRAP_RESTART:
@@ -1805,7 +1813,7 @@ cpoint_compiled_code_next (SCHEME_OBJECT cpoint, unsigned long index)
       }
 
     case RC_COMP_ERROR_RESTART:
-      return index + CONT_SIZE + 2;
+      return index + CONT_SIZE + 1;
 
     default:
       return ULONG_MAX;

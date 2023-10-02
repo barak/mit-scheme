@@ -546,13 +546,12 @@ USA.
 	  value)
 	(begin
 	  (assert (or (not value) (fix:= value (cframe-start frame))))
-	  (if (eq? (cframe-type frame) 'reenter-compiled-code)
-	      (let ((index
-		     (fix:+ (cframe-end frame)
-			    (cframe-field-value frame 'last-return-code))))
-		(assert (fix:< index (cframe-cpoint-end frame)))
-		index)
-	      #f)))))
+	  (let ((lrc (cframe-field-value frame 'last-return-code #f)))
+	    (if lrc
+		(let ((index (fix:+ (cframe-start frame) lrc)))
+		  (assert (fix:< index (cframe-cpoint-end frame)))
+		  index)
+		#f))))))
 
 (define-tracked-item 'system-frame? (lambda () #f)
   (lambda (value frame)

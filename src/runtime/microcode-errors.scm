@@ -206,7 +206,7 @@ USA.
   (let ((frames (continuation->frames continuation)))
     (and (stream-pair? frames)
 	 (not (let ((frame (stream-car frames)))
-		    (and (eq? (cframe-type frame) 'apply)
+		    (and (apply-frame? frame)
 			 (primitive-procedure?
 			  (cframe-field-value frame 'procedure))
 			 (let ((next (cframe-stream-next-subproblem frames)))
@@ -224,7 +224,8 @@ USA.
     (continuation->cframe-stream continuation))))
 
 (define (apply-frame? cframe)
-  (eq? (cframe-type cframe) 'apply))
+  (or (eq? (cframe-type cframe) 'internal-apply)
+      (eq? (cframe-type cframe) 'internal-apply-val)))
 
 (define (apply-frame/operator cframe)
   (cframe-field-value cframe 'procedure))
@@ -958,8 +959,12 @@ USA.
 		 (signal-user-microcode-reset k)
 		 (let ((code
 			(let ((frame (continuation/first-subproblem k)))
-			  (and (eq? (cframe-type frame) 'hardware-trap)
-			       (cframe-field-value frame 'code-name)))))
+			  (let ((code
+				 (and (eq? (cframe-type frame) 'hardware-trap)
+				      (cframe-field-value frame 'code-name))))
+			    (if (pair? code)
+				(cdr code)
+				(and (string? code) code))))))
 		   (if (string=? "SIGFPE" name)
 		       ((case (and (string? code)
 				   (normalize-trap-code-name code))
