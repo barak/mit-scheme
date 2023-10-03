@@ -283,6 +283,7 @@ typedef enum
 extern unsigned long MAX_RETURN;
 extern SCHEME_OBJECT make_return_code_names_table (void);
 extern SCHEME_OBJECT make_frame_type_info_table (void);
+extern SCHEME_OBJECT make_frame_code_info_table (void);
 extern const char* return_code_name (SCHEME_OBJECT);
 extern bool return_address_p (SCHEME_OBJECT);
 extern return_frame_type_t return_frame_type (SCHEME_OBJECT*);

@@ -38,6 +38,9 @@ USA.
 (define-deferred return-frame-types
   (microcode-return-frame-types))
 
+(define-deferred return-code-fields
+  (microcode-return-code-fields))
+
 (define (continuation->cframe-stream continuation)
   (generator->stream (continuation->cframe-generator continuation)))
 
@@ -72,7 +75,7 @@ USA.
        (let ((raw (raw-result-frame (stream-car raw-results))))
 	 (or (raw-frame-return-code-name raw)
 	     (frame-info-type (raw-frame-type-info raw))))))
-
+
 (define-integrable (raw-result-field-start raw-result)
   (vector-ref raw-result 0))
 
@@ -104,6 +107,17 @@ USA.
 
 (define-integrable (frame-info-field-index info index)
   (vector-ref info (fix:+ 4 (fix:* 2 index))))
+
+(define (raw-frame-code-fields raw)
+  (let ((address (vector-ref raw 0)))
+    (and (interpreter-return-address? address)
+	 (vector-ref return-code-fields (return-address/code address)))))
+
+(define-integrable (frame-code-field-name fields index)
+  (vector-ref fields (fix:* 2 index)))
+
+(define-integrable (frame-code-field-index fields index)
+  (vector-ref fields (fix:+ 1 (fix:* 2 index))))
 
 (define (decode-raw-result raw-result bindings next-type)
   (let ((raw (raw-result-frame raw-result)))
@@ -154,8 +168,9 @@ USA.
 			     (vector-ref raw (frame-info-field-index info 0))))
 		 (make))))
 	  ((return-to-compiled-code return-to-compiled-code-subproblem)
-	   (apply make (elt 0)
-		  (return-to-cc-extra-fields return-code-name raw)))
+	   (apply make
+		  (or (return-to-cc-fields return-code-name raw)
+		      (list (elt 0)))))
 	  ((compiled-address)
 	   (apply make (cc-address-extra-fields raw 0)))
 	  ((combination-save)
@@ -182,29 +197,38 @@ USA.
 	      (cons 'arguments (vector->list raw (fix:+ index 1))))
 	(list (cons 'entry entry)))))
 
-(define (return-to-cc-extra-fields return-code-name raw)
-  (case return-code-name
-    ((compiler-reference-trap-restart
-      compiler-safe-reference-trap-restart
-      compiler-unassigned?-trap-restart)
-     (list (cons 'variable (vector-ref raw 2))
-	   (cons 'environment (vector-ref raw 3))))
-    ((compiler-assignment-trap-restart)
-     (list (cons 'variable (vector-ref raw 2))
-	   (cons 'environment (vector-ref raw 3))
-	   (cons 'value (vector-ref raw 4))))
-    ((compiler-lookup-apply-trap-restart
-      compiler-operator-lookup-trap-restart)
-     (list (cons 'variable (vector-ref raw 2))
-	   (cons 'environment (vector-ref raw 3))
-	   (cons 'arguments (vector->list raw 6))))
-    ((compiler-error-restart)
-     (list (cons 'primitive (vector-ref raw 2))))
-    ((compiler-interrupt-restart)
-     (cons (cons 'state (vector-ref raw 2))
-	   (cc-address-extra-fields raw 3)))
-    (else
-     '())))
+(define (return-to-cc-fields return-code-name raw)
+  (let ((fields (raw-frame-code-fields raw)))
+
+    (define-integrable (elt index)
+      (cons (frame-code-field-name fields index)
+	    (vector-ref raw (frame-code-field-index fields index))))
+
+    (define-integrable (rest-elts index)
+      (cons (frame-code-field-name fields index)
+	    (vector->list raw (frame-code-field-index fields index))))
+
+    (and fields
+	 (case return-code-name
+	   ((compiler-reference-trap-restart
+	     compiler-safe-reference-trap-restart
+	     compiler-unassigned?-trap-restart)
+	    (list (elt 0) (elt 1) (elt 2)))
+	   ((compiler-assignment-trap-restart)
+	    (list (elt 0) (elt 1) (elt 2) (elt 3)))
+	   ((compiler-lookup-apply-trap-restart
+	     compiler-operator-lookup-trap-restart)
+	    (list (elt 0) (elt 1) (elt 2) (rest-elts 3)))
+	   ((compiler-error-restart)
+	    (list (elt 0) (elt 1)))
+	   ((compiler-interrupt-restart)
+	    (cons (elt 0) (elt 1)
+		  (cc-address-extra-fields
+		   raw
+		   (frame-code-field-index fields 2))))
+	   (else
+	    (error "Field data available but unexpected:"
+		   return-code-name))))))
 
 ;;;; Frame abstraction
 

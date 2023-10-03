@@ -3708,6 +3708,7 @@ USA.
 	  microcode-error/name->code
 	  microcode-reflect-code->name
 	  microcode-reflect-name->code
+	  microcode-return-code-fields
 	  microcode-return-frame-types
 	  microcode-return/code->name
 	  microcode-return/code-limit

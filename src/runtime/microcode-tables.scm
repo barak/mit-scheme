@@ -110,6 +110,12 @@ USA.
 (define (microcode-return-frame-types)
   (vector-ref (get-fixed-objects-vector) return-frame-types-slot))
 
+(define-deferred return-code-fields-slot
+  (fixed-object/name->code 'return-code-fields))
+
+(define (microcode-return-code-fields)
+  (vector-ref (get-fixed-objects-vector) return-code-fields-slot))
+
 (define-deferred errors-slot
   (fixed-object/name->code 'microcode-errors-vector))
 

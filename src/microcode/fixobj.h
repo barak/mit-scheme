@@ -57,9 +57,9 @@ USA.
 #define TERMINATION_PROC_VECTOR 0x17    /* Handlers for terminations. */
 #define FIXOBJ_GC_RECLAIMED     0x18    /* Stored in weak car when reclaimed. */
 #define FIXOBJ_INITIAL_HASH     0x19    /* Used when hashing vectors. */
-#define FIXOBJ_RETURN_FRAMES_VECTOR     0x1A // Names of return frame types.
+#define FIXOBJ_RETURN_FRAMES_VECTOR     0x1A // return-frame info by type
 #define FIXOBJ_REFLECT_CODE_NAMES       0x1B // reflect_to_interface codes
-/* #define UNUSED               0x1C */
+#define FIXOBJ_RETURN_CODES_VECTOR      0x1C // return-frame fields by code
 #define ERROR_PROCEDURE         0x1D    /* User invoked error handler. */
 /* #define UNUSED               0x1E */
 /* #define UNUSED               0x1F */
@@ -149,7 +149,7 @@ USA.
   /* 0x19 */    "initial-hash",                                         \
   /* 0x1A */    "return-frame-types",                                   \
   /* 0x1B */    "reflect-code-names",                                   \
-  /* 0x1C */    0,                                                      \
+  /* 0x1C */    "return-code-fields",                                   \
   /* 0x1D */    "error-procedure",                                      \
   /* 0x1E */    0,                                                      \
   /* 0x1F */    0,                                                      \

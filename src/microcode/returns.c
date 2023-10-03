@@ -376,7 +376,7 @@ static field_defn_t hardware_trap_fields [] =
     { CONT_SIZE + 5, "pc-info-2" },
     { CONT_SIZE + 6, "extra-info" }
   };
-
+
 static field_defn_t cc_int_mask_fields [] =
   {
     { CONT_SIZE, "interrupt-mask" }
@@ -393,17 +393,67 @@ static field_defn_t cc_invocation_fields [] =
     { CONT_SIZE, "procedure" },
     { CONT_SIZE + 1, "arguments" }
   };
+
+static field_defn_t cc_ref_trap_fields [] =
+  {
+    { 1, "last-return-code" },
+    { CONT_SIZE, "variable" },
+    { CONT_SIZE + 1, "environment" }
+  };
+
+static field_defn_t cc_set_trap_fields [] =
+  {
+    { 1, "last-return-code" },
+    { CONT_SIZE, "variable" },
+    { CONT_SIZE + 1, "environment" },
+    { CONT_SIZE + 2, "value" }
+  };
+
+static field_defn_t cc_ref_apply_trap_fields [] =
+  {
+    { 1, "last-return-code" },
+    { CONT_SIZE, "variable" },
+    { CONT_SIZE + 1, "environment" },
+    { CONT_SIZE + 4, "arguments" }
+  };
+
+static field_defn_t cc_error_restart_fields [] =
+  {
+    { 1, "last-return-code" },
+    { CONT_SIZE, "primitive" }
+  };
+
+static field_defn_t cc_interrupt_restart_fields [] =
+  {
+    { 1, "last-return-code" },
+    { CONT_SIZE, "state" },
+    { CONT_SIZE + 1, 0 },
+  };
 
 #define FTIE(type, subp, hsubp, n_fields, fields)                       \
 {                                                                       \
   vector_set (table, type,                                              \
-              allocate_ftti_entry                                       \
+              make_ftit_entry                                           \
                 (type, subp, hsubp, n_fields, fields));                 \
 }
 
+static void
+fill_field_info (SCHEME_OBJECT v, unsigned int i, unsigned int n_fields,
+                 field_defn_t* fields)
+{
+  for (unsigned int j = 0; j < n_fields; j += 1)
+    {
+      vector_set (v, i++,
+                  (fields[j].name == 0)
+                  ? SHARP_F
+                  : char_pointer_to_symbol (fields[j].name));
+      vector_set (v, i++, ULONG_TO_FIXNUM (fields[j].index));
+    }
+}
+
 static SCHEME_OBJECT
-allocate_ftti_entry (return_frame_type_t type, bool subp, bool history_subp,
-                     unsigned int n_fields, field_defn_t* fields)
+make_ftit_entry (return_frame_type_t type, bool subp, bool history_subp,
+                 unsigned int n_fields, field_defn_t* fields)
 {
   SCHEME_OBJECT entry = allocate_vector ((2 * n_fields) + 3, true);
   unsigned int i = 0;
@@ -411,14 +461,7 @@ allocate_ftti_entry (return_frame_type_t type, bool subp, bool history_subp,
               char_pointer_to_symbol (return_frame_type_names_table[type]));
   vector_set (entry, i++, BOOLEAN_TO_OBJECT (subp));
   vector_set (entry, i++, BOOLEAN_TO_OBJECT (history_subp));
-  for (unsigned int j = 0; j < n_fields; j += 1)
-    {
-      vector_set (entry, i++,
-                  (fields[j].name == 0)
-                  ? SHARP_F
-                  : char_pointer_to_symbol (fields[j].name));
-      vector_set (entry, i++, ULONG_TO_FIXNUM (fields[j].index));
-    }
+  fill_field_info (entry, i, n_fields, fields);
   return entry;
 }
 
@@ -445,6 +488,37 @@ make_frame_type_info_table (void)
   FTIE (RFT_CC_STACK_MARKER, false, false, 2, cc_stack_marker_fields);
   FTIE (RFT_CC_BKPT, true, false, 2, cc_invocation_fields);
   FTIE (RFT_CC_INVOCATION, false, false, 2, cc_invocation_fields);
+  return table;
+}
+
+static SCHEME_OBJECT
+make_fcit_entry (unsigned int n_fields, field_defn_t* fields)
+{
+  SCHEME_OBJECT entry = allocate_vector ((2 * n_fields), true);
+  fill_field_info (entry, 0, n_fields, fields);
+  return entry;
+}
+
+SCHEME_OBJECT
+make_frame_code_info_table (void)
+{
+  SCHEME_OBJECT table = make_vector (MAX_RETURN_CODE + 1, SHARP_F, true);
+
+  SCHEME_OBJECT e1 = make_fcit_entry (3, cc_ref_trap_fields);
+  vector_set (table, RC_COMP_LOOKUP_TRAP_RESTART, e1);
+  vector_set (table, RC_COMP_SAFE_REF_TRAP_RESTART, e1);
+  vector_set (table, RC_COMP_UNASSIGNED_TRAP_RESTART, e1);
+
+  SCHEME_OBJECT e2 = make_fcit_entry (4, cc_ref_apply_trap_fields);
+  vector_set (table, RC_COMP_OP_REF_TRAP_RESTART, e2);
+  vector_set (table, RC_COMP_CACHE_REF_APPLY_RESTART, e2);
+
+  vector_set (table, RC_COMP_ASSIGNMENT_TRAP_RESTART,
+              make_fcit_entry (4, cc_set_trap_fields));
+  vector_set (table, RC_COMP_ERROR_RESTART,
+              make_fcit_entry (2, cc_error_restart_fields));
+  vector_set (table, RC_COMP_INTERRUPT_RESTART,
+              make_fcit_entry (3, cc_interrupt_restart_fields));
   return table;
 }
 

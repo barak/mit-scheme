@@ -168,6 +168,7 @@ initialize_fixed_objects_vector (void)
 
   fixobj_set (RETURNS_VECTOR, make_return_code_names_table());
   fixobj_set (FIXOBJ_RETURN_FRAMES_VECTOR, make_frame_type_info_table ());
+  fixobj_set (FIXOBJ_RETURN_CODES_VECTOR, make_frame_code_info_table ());
 
   fixobj_set (DUMMY_HISTORY, initialize_history ());
   fixobj_set (FIXOBJ_BIGNUM_ONE, long_to_bignum (1));
