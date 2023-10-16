@@ -148,7 +148,7 @@ USA.
     (let ((scode (loader)))
       (if purify? (purify (load/purification-root scode)))
       (if (r7rs-scode-file? scode)
-	  (eval-r7rs-scode-file scode pathname)
+	  (notify-r7rs-program (eval-r7rs-scode-file scode pathname))
 	  (extended-scode-eval scode environment)))))
 
 (define (source-loader pathname)
@@ -156,7 +156,7 @@ USA.
     (declare (ignore purify?))
     (let ((source (read-r7rs-source pathname)))
       (if source
-	  (eval-r7rs-source source)
+	  (notify-r7rs-program (eval-r7rs-source source))
 	  (call-with-input-file pathname
 	    (lambda (port)
 	      (let loop ((value unspecific))
@@ -164,6 +164,13 @@ USA.
 		  (if (eof-object? sexp)
 		      value
 		      (loop (repl-eval sexp environment)))))))))))
+
+(define (notify-r7rs-program program)
+  (when (and program (not (suppress-loading-message?)))
+    (with-notification
+	(lambda (port)
+	  (write-string "Loaded program: " port)
+	  (write (library-key program) port)))))
 
 (define (wrap-loader pathname loader)
   (lambda (environment purify?)
@@ -289,10 +296,10 @@ USA.
 
 (define (init-notifier pathname)
   (lambda (thunk)
-    (write-notification-line
-     (lambda (port)
-       (write-string "Initialized " port)
-       (write (enough-namestring pathname) port)))
+    (with-notification
+	(lambda (port)
+	  (write-string "Initialized " port)
+	  (write (enough-namestring pathname) port)))
     (thunk)))
 
 (define (load/push-hook! hook)

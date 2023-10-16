@@ -6655,6 +6655,7 @@ USA.
 	  library->scode-library
 	  make-r7rs-scode-file
 	  r7rs-source->scode-file
+	  register-r7rs-scode-file!
 	  scode-library->library))
 
 (define-package (runtime library loader)

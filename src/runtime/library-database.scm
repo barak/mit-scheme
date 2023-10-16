@@ -113,10 +113,9 @@ USA.
 (define-print-method library?
   (standard-print-method 'library
     (lambda (library)
-      (let ((name (library-name library)))
-	(if name
-	    (list name)
-	    '())))))
+      (cond ((library-name library) => (lambda (name) (list name)))
+	    ((library-filename library) => (lambda (fn) (list fn)))
+	    (else '())))))
 
 (define-pp-describer library?
   (lambda (library)
@@ -127,7 +126,7 @@ USA.
 
 (define (library-key library)
   (or (library-name library)
-      (list '|#[program]| (hash-object library))))
+      (list 'program (hash-object library))))
 
 (define (alist->library name alist)
   (%make-library name

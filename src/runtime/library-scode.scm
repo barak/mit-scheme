@@ -202,3 +202,12 @@ USA.
   (make-scode-sequence
    (map-in-order procedure
 		 (r7rs-scode-file-elements scode))))
+
+(define (register-r7rs-scode-file! scode pathname)
+  (map-r7rs-scode-file
+   (let ((filename (->namestring pathname))
+	 (db (current-library-db)))
+     (lambda (library)
+       (library->scode-library
+	(register-library! (scode-library->library library filename) db))))
+   scode))

@@ -291,20 +291,18 @@ USA.
 (define (eval-r7rs-source source)
   (let ((source* (register-r7rs-source! source (current-library-db))))
     (let ((program (r7rs-source-program source*)))
-      (if program
-	  (library-eval-result program)))))
+      (and program
+	   (begin
+	     (library-eval-result program) ;force evaluation
+	     program)))))
 
 (define (eval-r7rs-scode-file scode pathname)
-  (fold (lambda (library result)
-	  (declare (ignore result))
-	  (library-eval-result library))
-	unspecific
-	(let ((filename (->namestring pathname))
-	      (db (current-library-db)))
-	  (map (lambda (library)
-		 (register-library! (scode-library->library library filename)
-				    db))
-	       (r7rs-scode-file-elements scode)))))
+  (let ((scode* (register-r7rs-scode-file! scode pathname)))
+    (let ((program (r7rs-scode-file-program scode*)))
+      (and program
+	   (begin
+	     (library-eval-result program)
+	     program)))))
 
 (define-automatic-property '(eval-result environment)
     '(contents imports-environment name)
