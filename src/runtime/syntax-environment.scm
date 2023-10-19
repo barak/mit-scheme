@@ -334,11 +334,10 @@ USA.
 	    ((syntactic-closure? identifier) #f)
 	    ((environment-lookup-macro env identifier))
 	    (else
-	     (and (environment-bound? env identifier)
-		  ;; Capture free runtime references:
-		  (let ((item (var-item identifier)))
-		    (set! free (cons (cons identifier item) free))
-		    item)))))
+	     ;; Capture free runtime references:
+	     (let ((item (var-item identifier)))
+	       (set! free (cons (cons identifier item) free))
+	       item))))
 
     (define (store identifier item)
       (cond ((assq identifier bound)

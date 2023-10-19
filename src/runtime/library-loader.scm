@@ -45,17 +45,22 @@ USA.
     (syntax-library-forms (expand-contents parsed-contents) env)))
 
 (define-automatic-property 'imports-used
-    '(imports export-groups free-names bound-names)
+    '(imports export-groups free-names bound-names library)
   #f
-  (lambda (imports groups free-names bound-names)
+  (lambda (imports groups free-names bound-names library)
     (let ((imports-to
 	   (lset-difference eq?
 			    (map library-ixport-to imports)
 			    bound-names)))
       (let ((missing (lset-difference eq? free-names imports-to)))
 	(if (pair? missing)
-	    (warn "Library has free references not provided by imports:"
-		  missing)))
+	    (with-notification
+		(lambda (port)
+		  (write-string "Library " port)
+		  (write (library-key library) port)
+		  (write-string " has free references not provided by imports: "
+				port)
+		  (write missing port)))))
       (let ((used
 	     (lset-intersection eq?
 				imports-to
@@ -293,7 +298,8 @@ USA.
     (let ((program (r7rs-source-program source*)))
       (and program
 	   (begin
-	     (library-eval-result program) ;force evaluation
+	     (library-eval-result program)  ;force evaluation
+	     (library-imports-used program) ;warn about unbound names
 	     program)))))
 
 (define (eval-r7rs-scode-file scode pathname)
@@ -301,7 +307,8 @@ USA.
     (let ((program (r7rs-scode-file-program scode*)))
       (and program
 	   (begin
-	     (library-eval-result program)
+	     (library-eval-result program)  ;force evaluation
+	     (library-imports-used program) ;warn about unbound names
 	     program)))))
 
 (define-automatic-property '(eval-result environment)
