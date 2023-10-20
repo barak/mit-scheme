@@ -5154,6 +5154,7 @@ USA.
 	  bind-keyword
 	  bind-variable
 	  lookup-identifier
+	  lookup-identifier-no-cache
 	  make-classifier-senv
 	  make-internal-senv
 	  make-keyword-internal-senv

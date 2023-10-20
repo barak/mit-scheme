@@ -391,15 +391,15 @@ Additional notes about syntax:
 	 (error:not-a identifier? identifier 'identifier->symbol))))
 
 (define (identifier=? senv-1 identifier-1 senv-2 identifier-2)
-  (let ((item-1 (lookup-identifier identifier-1 senv-1))
-	(item-2 (lookup-identifier identifier-2 senv-2)))
+  (let ((item-1 (lookup-identifier-no-cache identifier-1 senv-1))
+	(item-2 (lookup-identifier-no-cache identifier-2 senv-2)))
     (or (eq? item-1 item-2)
 	;; This is necessary because an identifier that is not explicitly bound
 	;; by an environment is mapped to a variable item, and the variable
-	;; items are not memoized by the runtime syntactic environments.  Fixing
-	;; this would require doing that memoizing, and also ensuring that
-	;; runtime-environment->syntactic memoized its result as well.  Avoiding
-	;; that complexity requires this small tweak.
+	;; items are not memoized by the runtime syntactic environments.
+	;; Fixing this would require doing that memoizing, and also ensuring
+	;; that runtime-environment->syntactic memoized its result as well.
+	;; Avoiding that complexity requires this small tweak.
 	(and (var-item? item-1)
 	     (var-item? item-2)
 	     (eq? (var-item-id item-1)

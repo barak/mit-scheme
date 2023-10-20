@@ -74,14 +74,20 @@ USA.
 (define (senv-top-level? senv)
   (memq ((senv-get-type senv)) '(top-level sealed)))
 
-(define (lookup-identifier identifier senv)
-  (guarantee identifier? identifier 'lookup-identifier)
+(define ((%make-lookup caller cache?) identifier senv)
+  (guarantee identifier? identifier caller)
   (let loop ((id identifier) (senv senv))
-    (or ((senv-lookup senv) id)
+    (or ((senv-lookup senv) id cache?)
 	(if (syntactic-closure? id)
 	    (loop (syntactic-closure-form id)
 		  (syntactic-closure-senv id))
 	    (var-item id)))))
+
+(define lookup-identifier
+  (%make-lookup 'lookup-identifier #t))
+
+(define lookup-identifier-no-cache
+  (%make-lookup 'lookup-identifier-no-cache #f))
 
 (define (reserve-keyword identifier senv)
   (guarantee identifier? identifier 'reserve-keyword)
@@ -129,7 +135,8 @@ USA.
     (define (get-runtime)
       env)
 
-    (define (lookup identifier)
+    (define (lookup identifier cache?)
+      (declare (ignore cache?))
       (let ((binding (assq identifier bound)))
 	(if binding
 	    (cdr binding)
@@ -161,7 +168,8 @@ USA.
   (define (get-runtime)
     env)
 
-  (define (lookup identifier)
+  (define (lookup identifier cache?)
+    (declare (ignore cache?))
     (runtime-lookup identifier env))
 
   (define (store identifier item)
@@ -185,7 +193,8 @@ USA.
   (define (get-runtime)
     (error "Can't evaluate in keyword environment."))
 
-  (define (lookup identifier)
+  (define (lookup identifier cache?)
+    (declare (ignore cache?))
     (and (eq? name identifier)
 	 item))
 
@@ -215,11 +224,11 @@ USA.
     (define (get-type)
       'internal)
 
-    (define (lookup identifier)
+    (define (lookup identifier cache?)
       (let ((binding (assq identifier bound)))
 	(if binding
 	    (cdr binding)
-	    ((senv-lookup parent) identifier))))
+	    ((senv-lookup parent) identifier cache?))))
 
     (define (store identifier item)
       (cond ((assq identifier bound)
@@ -247,11 +256,11 @@ USA.
     (define (get-type)
       'keyword-internal)
 
-    (define (lookup identifier)
+    (define (lookup identifier cache?)
       (let ((binding (assq identifier bound)))
 	(if binding
 	    (cdr binding)
-	    ((senv-lookup parent) identifier))))
+	    ((senv-lookup parent) identifier cache?))))
 
     (define (store identifier item)
       (if (keywordish-item? item)
@@ -289,8 +298,8 @@ USA.
 	  ;; result of a partially-closed transformer.  ****
 	  (error "Can't evaluate in partial syntactic environment"))
 
-	(define (lookup identifier)
-	  ((senv-lookup (select-env identifier)) identifier))
+	(define (lookup identifier cache?)
+	  ((senv-lookup (select-env identifier)) identifier cache?))
 
 	(define (store identifier item)
 	  ;; **** Shouldn't this be a syntax error?  It can happen as the
@@ -327,16 +336,17 @@ USA.
     (define (get-runtime)
       env)
 
-    (define (lookup identifier)
+    (define (lookup identifier cache?)
       (cond ((or (assq identifier bound)
 		 (assq identifier free))
 	     => cdr)
 	    ((syntactic-closure? identifier) #f)
 	    ((environment-lookup-macro env identifier))
 	    (else
-	     ;; Capture free runtime references:
 	     (let ((item (var-item identifier)))
-	       (set! free (cons (cons identifier item) free))
+	       ;; Capture free runtime references:
+	       (if cache?
+		   (set! free (cons (cons identifier item) free)))
 	       item))))
 
     (define (store identifier item)
