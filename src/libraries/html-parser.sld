@@ -25,7 +25,7 @@ USA.
 
 |#
 
-;;;; HTML parser thta can output SXML
+;;;; HTML parser that can output SXML
 
 (define-library (mit html-parser)
   (import (scheme base)
