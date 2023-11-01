@@ -58,7 +58,7 @@ USA.
 		(lambda (port)
 		  (write-string "Library " port)
 		  (write (library-key library) port)
-		  (write-string " has free references not provided by imports: "
+		  (write-string " has free references not provided by imports:"
 				port)
 		  (write missing port)))))
       (let ((used
