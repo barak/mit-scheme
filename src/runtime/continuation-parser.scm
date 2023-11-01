@@ -191,11 +191,13 @@ USA.
 	   (error "Unknown return-frame-type code:" frame-type-name)))))))
 
 (define (cc-address-extra-fields raw index)
-  (let ((entry (vector-ref raw index)))
-    (if (compiled-procedure? entry)
-	(list (cons 'procedure entry)
-	      (cons 'arguments (vector->list raw (fix:+ index 1))))
-	(list (cons 'entry entry)))))
+  (if (fix:< index (vector-length raw))
+      (let ((entry (vector-ref raw index)))
+	(if (compiled-procedure? entry)
+	    (list (cons 'procedure entry)
+		  (cons 'arguments (vector->list raw (fix:+ index 1))))
+	    (list (cons 'entry entry))))
+      '()))
 
 (define (return-to-cc-fields return-code-name raw)
   (let ((fields (raw-frame-code-fields raw)))
@@ -222,7 +224,7 @@ USA.
 	   ((compiler-error-restart)
 	    (list (elt 0) (elt 1)))
 	   ((compiler-interrupt-restart)
-	    (cons (elt 0) (elt 1)
+	    (cons* (elt 0) (elt 1)
 		  (cc-address-extra-fields
 		   raw
 		   (frame-code-field-index fields 2))))
@@ -769,6 +771,8 @@ USA.
   (lambda (frame)
     (make-scode-unassigned? (cframe-field-value frame 'variable) #t))
   'environment standard-environment)
+
+(define-return-code-generators 'compiler-interrupt-restart)
 
 (define ((cc-accessor get-frame cont-accessor proc-accessor default) arg)
   (let ((dbg
@@ -838,11 +842,6 @@ USA.
 		 (declare (ignore frame))
 		 (scode-lambda-body (dbg-procedure/source-code dbg)))
 	       undefined-exp))
-
-(define-return-code-generators 'compiler-interrupt-restart
-  'expression cc-exp
-  'cc-environment cc-env
-  'subexpression cc-subexp)
 
 (define-return-type-generators 'compiled-address
   'expression cc-exp

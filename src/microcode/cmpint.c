@@ -480,6 +480,13 @@ compiled_continuation_p (insn_t * entry_addr)
   return true;
 }
 
+bool
+cc_return_address_p (SCHEME_OBJECT object)
+{
+  insn_t* addr = cc_entry_to_address (object);
+  return addr != 0 && compiled_continuation_p (addr);
+}
+
 DEFINE_SCHEME_ENTRY (return_to_compiled_code)
 {
   restore_last_return_code ();
@@ -1775,7 +1782,8 @@ cpoint_compiled_code_next (SCHEME_OBJECT cpoint, unsigned long index)
 
     case RC_COMP_INTERRUPT_RESTART:
       {
-        SCHEME_OBJECT entry = vector_ref (cpoint, index + 3);
+        unsigned long i2 = index + CONT_SIZE + 1;
+        SCHEME_OBJECT entry = vector_ref (cpoint, i2);
         if (CC_ENTRY_P (entry))
           {
             cc_entry_type_t cet;
@@ -1785,15 +1793,13 @@ cpoint_compiled_code_next (SCHEME_OBJECT cpoint, unsigned long index)
             if (cc_entry_type_marker_group (cet.marker)
                 == CETG_INTERNAL_PROCEDURE)
               {
-                SCHEME_OBJECT dlink = vector_ref (cpoint, index + 2);
+                SCHEME_OBJECT dlink = vector_ref (cpoint, index + CONT_SIZE);
                 if (CC_STACK_ENV_P (dlink))
                   return vector_length (cpoint)
                          - (stack_end - object_address (dlink));
               }
-            unsigned long size = compiled_entry_frame_size (&cet);
-            return (size == ULONG_MAX) ? size : index + CONT_SIZE + 1 + size;
           }
-        return index + CONT_SIZE + 1;
+        return i2;
       }
 
     case RC_COMP_LOOKUP_TRAP_RESTART:

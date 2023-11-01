@@ -279,7 +279,7 @@ bool
 return_address_p (SCHEME_OBJECT object)
 {
 #ifdef CC_SUPPORT_P
-  return RETURN_CODE_P (object) || CC_RETURN_P (object);
+  return RETURN_CODE_P (object) || cc_return_address_p (object);
 #else
   return RETURN_CODE_P (object);
 #endif

@@ -491,6 +491,7 @@ extern long enter_compiled_expression (void);
 extern void guarantee_cc_return (unsigned long);
 extern void guarantee_interp_return (void);
 extern long apply_compiled_procedure (void);
+extern bool cc_return_address_p (SCHEME_OBJECT);
 extern long return_to_compiled_code (void);
 
 extern void apply_compiled_from_primitive (unsigned long, SCHEME_OBJECT);
