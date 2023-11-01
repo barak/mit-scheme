@@ -135,10 +135,20 @@ USA.
 		 (cons 'library alist)))
 
 (define (%set-library-alist! library library*)
-  (set-cdr! (%library-alist library)
-	    (alist-copy (cdr (%library-alist library*))))
-  (set-cdr! (%library-original-alist library)
-	    (alist-copy (cdr (%library-original-alist library*)))))
+  (let ((l1 (cdr (%library-alist library*))))
+    (let ((index (index-of-tail l1 (cdr (%library-original-alist library*))))
+	  (l3 (alist-copy l1)))
+      (set-cdr! (%library-alist library) l3)
+      (set-cdr! (%library-original-alist library) (drop l3 index)))))
+
+(define (index-of-tail l1 l2)
+  (let loop ((l l1) (i 0))
+    (if (eq? l l2)
+	i
+	(begin
+	  (if (not (pair? l))
+	      (error "Library original alist not tail:" l2))
+	  (loop (cdr l) (fix:+ i 1))))))
 
 (define (make-library name . keylist)
   (if name (guarantee library-name? name 'make-library))
