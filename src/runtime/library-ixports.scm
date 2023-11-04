@@ -65,25 +65,6 @@ USA.
 (define (list->library-ixport list)
   (apply make-library-ixport list))
 
-(define (library-ixports->library-names ixports)
-  (fold (lambda (ixport libraries)
-	  (lset-adjoin library-name=?
-		       libraries
-		       (library-ixport-from-library ixport)))
-	'()
-	ixports))
-
-(define (library-ixports->libraries ixports db)
-  (let ((names (library-ixports->library-names ixports)))
-    (let ((unregistered
-	   (remove (lambda (name)
-		     (registered-library? name db))
-		   names)))
-      (if (pair? unregistered)
-	  (error "Unknown libraries:" unregistered)))
-    (map (lambda (name) (registered-library name db))
-	 names)))
-
 (define-print-method library-ixport?
   (standard-print-method 'library-ixport
     library-ixport->list))
@@ -105,10 +86,6 @@ USA.
 		   imports)
       imports)))
 
-(define-automatic-property 'imports '(parsed-imports db library)
-  #f
-  expand-parsed-imports)
-
 (define (parsed-import-libraries parsed-import library libraries)
   ((case (car parsed-import)
      ((r7rs-import) r7rs-parsed-import-libraries)
@@ -122,10 +99,34 @@ USA.
      ((mit-import) mit-expand-parsed-import)
      (else (error "Unknown parsed import:" parsed-import)))
    parsed-import db library imports))
+
+(define-automatic-property 'imports '(parsed-imports db library)
+  expand-parsed-imports)
+
+(define (library-ixports->library-names ixports)
+  (fold (lambda (ixport libraries)
+	  (lset-adjoin library-name=?
+		       libraries
+		       (library-ixport-from-library ixport)))
+	'()
+	ixports))
+
+(define (library-ixports->libraries ixports db)
+  (let ((names (library-ixports->library-names ixports)))
+    (let ((unregistered
+	   (remove (lambda (name)
+		     (registered-library? name db))
+		   names)))
+      (if (pair? unregistered)
+	  (error "Unregistered libraries:" unregistered)))
+    (map (lambda (name) (registered-library name db))
+	 names)))
+
+(define-automatic-property 'imports-libraries '(imports db)
+  library-ixports->libraries)
 
 (define-automatic-property 'export-groups
-  '(parsed-exports bound-names imports library)
-  #f
+    '(parsed-exports bound-names imports library)
   (lambda (parsed-exports bound-names imports library)
     (check-libraries-exist parsed-export-libraries
 			   parsed-exports
@@ -243,7 +244,7 @@ USA.
 	(warn (string-append "Duplicate " noun ":") dupes))))
 
 (define (find-dupes get-key adjoin-value items)
-  (let ((table (make-strong-eq-hash-table)))
+  (let ((table (make-hash-table eq-comparator)))
     (for-each (lambda (item)
 		(hash-table-update! table
 				    (get-key item)

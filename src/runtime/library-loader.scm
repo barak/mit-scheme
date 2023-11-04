@@ -40,13 +40,11 @@ USA.
 
 (define-automatic-property '(contents bound-names free-names)
     '(parsed-contents imports-environment)
-  #f
   (lambda (parsed-contents env)
     (syntax-library-forms (expand-contents parsed-contents) env)))
 
 (define-automatic-property 'imports-used
     '(imports export-groups free-names bound-names library)
-  #f
   (lambda (imports groups free-names bound-names library)
     (let ((imports-to
 	   (lset-difference eq?
@@ -99,10 +97,9 @@ USA.
 
 ;;;; Imports environment
 
-(define (environment-available? import db)
-  (let ((name (library-ixport-from-library import)))
-    (and (registered-library? name db)
-	 (library-has? 'environment (registered-library name db)))))
+(define-automatic-property 'imports-environment '(imports db library)
+  (lambda (imports db library)
+    (make-environment-from-imports imports db library #t)))
 
 (define (make-environment-from-imports imports db importing-library sealed?)
   (let ((env
@@ -116,7 +113,7 @@ USA.
 
 (define (add-imports-to-env! imports env db importing-library)
   (let ((grouped
-	 (let ((table (make-strong-eq-hash-table)))
+	 (let ((table (make-hash-table eq-comparator)))
 	   (for-each (lambda (import)
 		       (let-values
 			   (((senv sname)
@@ -162,7 +159,7 @@ USA.
 			    (else
 			     (environment-define env tname value))))))
 		other))))
-
+
 (define (library-import-source import db importing-library)
   (let ((name (library-ixport-from import))
 	(library (registered-library (library-ixport-from-library import) db)))
@@ -174,16 +171,39 @@ USA.
 	  (error "Not an exported name:" name))
       (values (library-environment library)
 	      (library-ixport-from export)))))
-
-(define-automatic-property 'imports-environment '(imports db library)
-  (lambda (imports db library)
-    (declare (ignore library))
-    (every (lambda (import)
-	     (environment-available? import db))
-	   imports))
-  (lambda (imports db library)
-    (make-environment-from-imports imports db library #t)))
 
+(define (environment->library env)
+  (let ((value
+	 (and (eq? 'normal
+		   (environment-reference-type env environment-library-tag))
+	      (environment-lookup env environment-library-tag))))
+    (and (library? value)
+	 (eq? env (library-environment value))
+	 value)))
+
+(define (set-environment->library! env library)
+  (environment-define env environment-library-tag library))
+
+(define-integrable environment-library-tag
+  '| (library database) library-tag|)
+
+(define (environment-name environment)
+  (cond ((environment->package environment) => package/name)
+	((environment->library environment) => library-key)
+	(else #f)))
+
+(define (environment-name&type environment)
+  (cond ((environment->package environment)
+	 => (lambda (package) (values (package/name package) "package")))
+	((environment->library environment)
+	 => (lambda (library) (values (library-key library) "library")))
+	(else
+	 (values #f #f))))
+
+(define (environment-has-name? environment)
+  (or (environment->package environment)
+      (environment->library environment)))
+
 (define (environment . import-sets)
   (let ((db (current-library-db)))
     (make-environment-from-imports (import-sets->imports import-sets db)
@@ -215,39 +235,6 @@ USA.
 			 db
 			 #f)))
 
-(define (environment->library env)
-  (let ((value
-	 (and (eq? 'normal
-		   (environment-reference-type env environment-library-tag))
-	      (environment-lookup env environment-library-tag))))
-    (and (library? value)
-	 value)))
-
-(define (set-environment->library! env library)
-  (environment-define env environment-library-tag library))
-
-(define-integrable environment-library-tag
-  '| (library database) library-tag|)
-
-(define (environment-name environment)
-  (cond ((environment->package environment) => package/name)
-	((environment->library environment) => library-key)
-	(else #f)))
-
-(define (environment-name&type environment)
-  (cond ((environment->package environment)
-	 => (lambda (package)
-	      (values (package/name package) "package")))
-	((environment->library environment)
-	 => (lambda (library)
-	      (values (library-key library) "library")))
-	(else
-	 (values #f #f))))
-
-(define (environment-has-name? environment)
-  (or (environment->package environment)
-      (environment->library environment)))
-
 (define (import-sets->imports import-sets db)
   (parsed-imports->imports (map parse-import-set import-sets) db))
 
@@ -257,39 +244,31 @@ USA.
 				   db #f #t)))
 
 (define (parsed-imports->imports parsed-imports db)
-  (let ((imports (expand-parsed-imports parsed-imports db)))
-    (maybe-load-libraries! imports db)
-    (let ((unavailable
-	   (remove (lambda (import)
-		     (environment-available? import db))
-		   imports)))
-      (if (pair? unavailable)
-	  (error "Imported libraries unavailable:"
-		 (library-ixports->library-names unavailable))))
-    imports))
-
-(define (maybe-load-libraries! imports db)
-  (let ((libraries (library-ixports->libraries imports db)))
+  (let* ((imports (expand-parsed-imports parsed-imports db))
+	 (libraries (library-ixports->libraries imports db)))
     (if (any library-preregistered? libraries)
 	(for-each load-preregistered-library!
 		  (reverse
 		   (filter library-preregistered?
-			   ((compute-dependency-graph libraries db)
-			    'topological-sort)))))))
+			   ((compute-dependency-graph libraries)
+			    'topological-sort)))))
+    (let ((unavailable (remove library-instantiated? libraries)))
+      (if (pair? unavailable)
+	  (error "Imported libraries unavailable:"
+		 (map library-name unavailable))))
+    imports))
 
-(define (compute-dependency-graph libraries db)
-  (let ((table (make-key-weak-eq-hash-table)))
+(define (compute-dependency-graph libraries)
+  (let ((table (make-hash-table eq-comparator)))
 
     (define (trace library)
       (if (not (hash-table-exists? table library))
-	  (let ((deps
-		 (library-ixports->libraries (library-imports library) db)))
-	    (hash-table-set! table library deps)
-	    (for-each trace deps))))
+	  (begin
+	    (hash-table-set! table library #t)
+	    (for-each trace (library-imports-libraries library)))))
 
     (for-each trace libraries)
-    (make-digraph (hash-table-keys table)
-		  (lambda (library) (hash-table-ref table library)))))
+    (make-digraph (hash-table-keys table) library-imports-libraries)))
 
 ;;;; Evaluation
 
@@ -313,11 +292,13 @@ USA.
 
 (define-automatic-property '(eval-result environment)
     '(contents imports-environment name)
-  #f
   (lambda (contents env name)
     (let ((result (scode-eval contents env)))
       (values (or name result)
 	      env))))
+
+(define (library-instantiated? library)
+  (library-has? 'environment library))
 
 ;;;; Preregistration
 

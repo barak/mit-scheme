@@ -239,7 +239,6 @@ USA.
 	   (cdr p)))))
 
 (define-automatic-property 'mit-defines '(parsed-defines db library)
-  #f
   (lambda (parsed-defines db library)
     (fold (lambda (def defs)
 	    (if (eq? 'mit-define (car def))

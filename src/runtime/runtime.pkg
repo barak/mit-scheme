@@ -6536,6 +6536,7 @@ USA.
 	  library-has?
 	  library-imports
 	  library-imports-environment
+	  library-imports-libraries
 	  library-imports-used
 	  library-key
 	  library-name
@@ -6544,6 +6545,7 @@ USA.
 	  library-parsed-imports
 	  library-registered?
 	  library?
+	  lookup-library
 	  registered-libraries
 	  registered-library
 	  registered-library?)
@@ -6569,6 +6571,8 @@ USA.
   (files "library-parser")
   (parent (runtime library))
   (export (runtime)
+	  library-name-comparator
+	  library-name-elt-comparator
 	  library-name-elt<?
 	  library-name-elt=?
 	  library-name-elt?

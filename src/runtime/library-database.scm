@@ -42,16 +42,19 @@ USA.
   (%make-library-db (if (or (default-object? name) (not name))
 			#f
 			(guarantee symbol? name 'make-library-db))
-		    (make-equal-hash-table)))
+		    (make-hash-table library-name-comparator)))
 
 (define (registered-library? key db)
   (hash-table-exists? (%db-table db) key))
 
 (define (registered-library key db)
-  (let ((library (hash-table-ref/default (%db-table db) key #f)))
+  (let ((library (lookup-library key db)))
     (if (not library)
 	(error "No library with this key in database:" key db))
     library))
+
+(define (lookup-library key db)
+  (hash-table-ref/default (%db-table db) key #f))
 
 (define (registered-libraries db)
   (hash-table-values (%db-table db)))
@@ -224,6 +227,7 @@ USA.
 (define library-free-names (library-accessor 'free-names))
 (define library-imports (library-accessor 'imports))
 (define library-imports-environment (library-accessor 'imports-environment))
+(define library-imports-libraries (library-accessor 'imports-libraries))
 (define library-imports-used (library-accessor 'imports-used))
 (define library-parsed-contents (library-accessor 'parsed-contents))
 (define library-parsed-imports (library-accessor 'parsed-imports))
@@ -308,12 +312,11 @@ USA.
 
 ;;;; Automatic properties
 
-(define (define-automatic-property prop deps guard generator)
+(define (define-automatic-property prop deps generator)
   (guarantee auto-property-key? prop 'define-automatic-property)
   (guarantee-list-of symbol? deps 'define-automatic-property)
   (set! automatic-properties
-	(cons (make-auto (if (symbol? prop) (list prop) prop)
-			 generator guard deps)
+	(cons (make-auto (if (symbol? prop) (list prop) prop) generator deps)
 	      automatic-properties))
   unspecific)
 
@@ -324,11 +327,10 @@ USA.
 (register-predicate! auto-property-key? 'automatic-property-key)
 
 (define-record-type <auto>
-    (make-auto keys generator guard deps)
+    (make-auto keys generator deps)
     auto?
   (keys auto-keys)
   (generator auto-generator)
-  (guard auto-guard)
   (deps auto-deps))
 
 (define (auto-property key)
@@ -338,20 +340,16 @@ USA.
 (define automatic-properties '())
 
 (define (auto-runnable? auto library)
-  (and (auto-deps-available? auto library)
-       (or (not (auto-guard auto))
-	   (apply-auto (auto-guard auto) auto library))))
+  (auto-deps-available? auto library))
 
 (define (auto-unready-deps auto library)
-  (if (auto-deps-available? auto library)
-      (list "guard expr")
-      (filter-map (lambda (key)
-		    (and (not (auto-dep-available? key library))
-			 (let ((auto* (auto-property key)))
-			   (if auto*
-			       (cons key (auto-unready-deps auto* library))
-			       key))))
-		  (auto-deps auto))))
+  (filter-map (lambda (key)
+		(and (not (auto-dep-available? key library))
+		     (let ((auto* (auto-property key)))
+		       (if auto*
+			   (cons key (auto-unready-deps auto* library))
+			   key))))
+	      (auto-deps auto)))
 
 (define (run-auto auto library)
   (let-values ((all-values (apply-auto (auto-generator auto) auto library)))

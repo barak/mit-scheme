@@ -203,7 +203,7 @@ USA.
 			   ((r7rs-export mit-export) 'export)
 			   ((mit-define) 'define)
 			   (else 'content)))
-		       (make-eq-comparator)
+		       eq-comparator
 		       cons-last!
 		       '()))
 
@@ -504,3 +504,9 @@ USA.
   (if (member name names library-name=?)
       names
       (cons name names)))
+
+(define-deferred library-name-elt-comparator
+  (make-comparator library-name-elt? eqv? library-name-elt<? eqv-hash))
+
+(define-deferred library-name-comparator
+  (uniform-list-comparator library-name-elt-comparator))
