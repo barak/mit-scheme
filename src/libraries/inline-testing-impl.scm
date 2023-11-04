@@ -29,8 +29,8 @@ USA.
 
 ;;; The idea behind this tester is that it executes a file of expressions, in
 ;;; order, except that some of the expressions will be annotated with
-;;; "expectations" that must be satisfied by the evaluation of the corresponding
-;;; expression.
+;;; "expectations" that must be satisfied by the evaluation of the
+;;; corresponding expression.
 
 ;;; For example,
 ;;;
@@ -41,8 +41,8 @@ USA.
 ;;; printed output, and others can be defined as needed.
 
 ;;; This style of testing closely resembles a transcript, and has the advantage
-;;; that the code can just be loaded normally and it does the same thing without
-;;; checking the expectations.
+;;; that the code can just be loaded normally and it does the same thing
+;;; without checking the expectations.
 
 ;;; This was developed as a response to GJS's dislike of the standard testing
 ;;; framework.  Gerry prefers to just type at the interpreter and keep a
@@ -168,8 +168,8 @@ USA.
 
 ;;; Lots or hair here to let the test driver deal with "interesting" uses of
 ;;; continuations.  In particular, the state of the driver is moved outside of
-;;; the control structure, so that if there are multiple returns from evaluating
-;;; an expression, the "current" expectations are used for each.
+;;; the control structure, so that if there are multiple returns from
+;;; evaluating an expression, the "current" expectations are used for each.
 
 (define groups-to-test (make-settable-parameter (default-object)))
 (define current-group (make-settable-parameter (default-object)))
