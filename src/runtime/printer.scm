@@ -566,6 +566,10 @@ USA.
 	    (maybe-print-datum object)))))
     (*print-with-brackets type #t object context items)))
 
+(define (print-datum object context)
+  (*print-with-brackets (user-object-type object) #f object context
+			(list (printing-item *print-datum object))))
+
 (define (user-object-type object)
   (let ((type-code (object-type object)))
     (let ((type-name (microcode-type/code->name type-code)))
@@ -605,7 +609,7 @@ USA.
 (define (print-false object context)
   (if (eq? object #f)
       (*print-string "#f" context)
-      (print-default object context)))
+      (print-datum object context)))
 
 (define (print-constant object context)
   (let ((string
@@ -621,8 +625,7 @@ USA.
 	       (else #f))))
     (if string
 	(*print-string string context)
-	(*print-with-brackets (user-object-type object) #t object context
-	  (list (printing-item *print-datum object))))))
+	(print-datum object context))))
 
 (define (print-interned-symbol symbol context)
   (print-symbol symbol context))
