@@ -49,7 +49,8 @@ USA.
 	       (exports (cdr p)))
 	   (make-library library
 			 'export-groups
-			 (list (make-export-group #f (convert-exports exports)))
+			 (list
+			  (make-export-group #f (convert-exports exports)))
 			 'environment system-global-environment)))
        standard-libraries))
 
@@ -115,7 +116,7 @@ USA.
 				 extra)))
 			 '()
 			 names))))
-
+
 (define-deferred macro-deps
   (flatten-macro-deps
    '((and if)
@@ -138,8 +139,8 @@ USA.
      (delay delay-force make-promise)
      (delay-force lambda make-unforced-promise)
      (do begin if let)
-     (guard begin call-with-current-continuation if lambda let raise-continuable
-	    with-exception-handler)
+     (guard begin call-with-current-continuation if lambda let
+	    raise-continuable with-exception-handler)
      (include begin)
      (include-ci begin)
      (let declare lambda letrec letrec* named-lambda)
@@ -215,10 +216,12 @@ USA.
 		    (source-package (cadr p))
 		    (package-pred (caddr p)))
 		(make-synthetic-library library
-		  (get-exports package-file library source-package package-pred)
+		  (get-exports package-file library source-package
+			       package-pred)
 		  (->environment source-package))))
 	    synthetic-libraries)
-  (set! initial-host-library-db (copy-library-db host-library-db 'initial-host))
+  (set! initial-host-library-db
+	(copy-library-db host-library-db 'initial-host))
   (check-standard-libraries!))
 
 (define (new-library-db #!optional name)
@@ -232,10 +235,11 @@ USA.
 		     host-library-db))
 
 (define (get-exports package-file library source-package package-pred)
-  (append-map (lambda (pd)
-		(package-exports pd library source-package))
-	      (filter package-pred
-		      (vector->list (package-file/descriptions package-file)))))
+  (append-map
+   (lambda (pd)
+     (package-exports pd library source-package))
+   (filter package-pred
+	   (vector->list (package-file/descriptions package-file)))))
 
 (define (package-exports pd library source-package)
   (filter-map (lambda (link)
