@@ -3508,6 +3508,7 @@ USA.
 	  make-lambda-list
 	  map-mit-lambda-list
 	  map-r4rs-lambda-list
+	  mit-lambda-list-names
 	  mit-lambda-list?
 	  parse-mit-lambda-list
 	  parse-r4rs-lambda-list

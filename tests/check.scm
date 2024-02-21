@@ -92,6 +92,7 @@ USA.
     "runtime/test-hash-table"
     "runtime/test-ieee754"
     "runtime/test-integer-bits"
+    "runtime/test-lambda-list"
     "runtime/test-letrec"
     ("runtime/test-library-parser" (runtime library))
     ("runtime/test-library-ixports" (runtime library))

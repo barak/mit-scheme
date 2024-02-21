@@ -159,53 +159,6 @@ USA.
       (eq? object scode-lambda-name:unnamed)
       ))
 
-(define (parse-mit-lambda-list lambda-list)
-  (let ((required (list '()))
-	(optional (list '())))
-    (define (parse-parameters cell pattern)
-      (let loop ((pattern pattern))
-	(cond ((null? pattern) (finish #f))
-	      ((identifier? pattern) (finish pattern))
-	      ((not (pair? pattern)) (bad-lambda-list pattern))
-	      ((eq? (car pattern) lambda-tag:rest)
-	       (if (and (pair? (cdr pattern)) (null? (cddr pattern)))
-		   (cond ((identifier? (cadr pattern)) (finish (cadr pattern)))
-			 ((and (pair? (cadr pattern))
-			       (identifier? (caadr pattern)))
-			  (finish (caadr pattern)))
-			 (else (bad-lambda-list (cdr pattern))))
-		   (bad-lambda-list (cdr pattern))))
-	      ((eq? (car pattern) lambda-tag:optional)
-	       (if (eq? cell required)
-		   (parse-parameters optional (cdr pattern))
-		   (bad-lambda-list pattern)))
-	      ((identifier? (car pattern))
-	       (set-car! cell (cons (car pattern) (car cell)))
-	       (loop (cdr pattern)))
-	      ((and (pair? (car pattern)) (identifier? (caar pattern)))
-	       (set-car! cell (cons (caar pattern) (car cell)))
-	       (loop (cdr pattern)))
-	      (else (bad-lambda-list pattern)))))
-
-    (define (finish rest)
-      (let ((required (reverse! (car required)))
-	    (optional (reverse! (car optional))))
-	(do ((parameters
-	      (append required optional (if rest (list rest) '()))
-	      (cdr parameters)))
-	    ((null? parameters))
-	  (if (memq (car parameters) (cdr parameters))
-	      (error "lambda list has duplicate parameter:"
-		     (car parameters)
-		     (error-irritant/noise " in")
-		     lambda-list)))
-	(values required optional rest)))
-
-    (define (bad-lambda-list pattern)
-      (error:not-a mit-lambda-list? pattern 'parse-mit-lambda-list))
-
-    (parse-parameters required lambda-list)))
-
 (define (map-mit-lambda-list procedure bvl)
   (let loop ((bvl bvl))
     (if (pair? bvl)
@@ -230,3 +183,81 @@ USA.
 		rest-tail
 		(cons lambda-tag:optional
 		      (append optional rest-tail))))))
+
+(define (parse-mit-lambda-list bvl)
+  (let-values (((all required optional rest)
+		(%parse-mit-lambda-list bvl 'parse-mit-lambda-list)))
+    (declare (ignore all))
+    (values (reverse! required)
+	    (reverse! optional)
+	    rest)))
+
+(define (mit-lambda-list-names bvl)
+  (let-values (((all required optional rest)
+		(%parse-mit-lambda-list bvl 'mit-lambda-list-names)))
+    (declare (ignore required optional rest))
+    (reverse! all)))
+
+(define (%parse-mit-lambda-list bvl caller)
+
+  (define (do-reqs pattern all reqs)
+    (do-rest pattern
+	     all
+	     (lambda (all rest)
+	       (finish all reqs '() rest))
+	     (lambda ()
+	       (if (eq? (car pattern) lambda-tag:optional)
+		   (if (pair? (cdr pattern))
+		       (let ((id (do-id (cadr pattern))))
+			 (do-opts (cddr pattern)
+				  (cons id all)
+				  reqs
+				  (list id)))
+		       (lose))
+		   (let ((id (do-id (car pattern))))
+		     (do-reqs (cdr pattern)
+			      (cons id all)
+			      (cons id reqs)))))))
+
+  (define (do-opts pattern all reqs opts)
+    (do-rest pattern
+	     all
+	     (lambda (all rest)
+	       (finish all reqs opts rest))
+	     (lambda ()
+	       (let ((id (do-id (car pattern))))
+		 (do-opts (cdr pattern)
+			  (cons id all)
+			  reqs
+			  (cons id opts))))))
+
+  (define (do-rest pattern all s f)
+    (cond ((null? pattern)
+	   (s all #f))
+	  ((identifier? pattern)
+	   (s (cons pattern all) pattern))
+	  ((not (pair? pattern))
+	   (lose))
+	  ((eq? (car pattern) lambda-tag:rest)
+	   (if (and (pair? (cdr pattern))
+		    (null? (cddr pattern)))
+	       (let ((id (do-id (cadr pattern))))
+		 (s (cons id all) id))
+	       (lose)))
+	  (else
+	   (f))))
+
+  (define (do-id pattern)
+    (cond ((identifier? pattern) pattern)
+	  ((and (pair? pattern) (identifier? (car pattern))) (car pattern))
+	  (else (lose))))
+
+  (define (finish all reqs opts rest)
+    (if (any-duplicates? all eq?)
+	(lose)
+	(values all reqs opts rest)))
+
+  (define (lose)
+    (error:not-a mit-lambda-list? bvl caller))
+
+  (do-reqs bvl '() '()))
