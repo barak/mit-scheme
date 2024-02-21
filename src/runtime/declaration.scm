@@ -26,27 +26,16 @@ USA.
 |#
 
 ;;;; Declarations
-;;; package: (runtime syntax declaration)
+;;; package: (runtime declaration)
 
 (declare (usual-integrations))
 
-(define (define-declaration name pattern mapper folder)
-  (let ((entry (assq name known-declarations))
-	(value (list pattern mapper folder)))
-    (if entry
-	(set-cdr! entry value)
-	(begin
-	  (set! known-declarations
-		(cons (cons name value)
-		      known-declarations))
-	  unspecific))))
-
-(define (map-decl-ids procedure declaration)
+(define (map-declaration-ids procedure declaration)
   (operate-on-decl-ids (lambda (handlers declaration)
 			 ((car handlers) procedure declaration biselector:cr))
 		       declaration))
 
-(define (fold-decl-ids procedure initial declaration)
+(define (fold-declaration-ids procedure initial declaration)
   (operate-on-decl-ids (lambda (handlers declaration)
 			 ((cadr handlers) procedure initial declaration))
 		       declaration))
@@ -65,6 +54,17 @@ USA.
 	(begin
 	  (warn "Unknown declaration:" declaration)
 	  declaration))))
+
+(define (define-declaration name pattern mapper folder)
+  (let ((entry (assq name known-declarations))
+	(value (list pattern mapper folder)))
+    (if entry
+	(set-cdr! entry value)
+	(begin
+	  (set! known-declarations
+		(cons (cons name value)
+		      known-declarations))
+	  unspecific))))
 
 (define known-declarations '())
 

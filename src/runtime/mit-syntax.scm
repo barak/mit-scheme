@@ -471,12 +471,12 @@ USA.
 	     (decl-item ctx
 	       (delay
 		 (smap (lambda (decl hist)
-			 (map-decl-ids (lambda (id selector)
-					 (classify-id id
-						      senv
-						      (hist-select selector
-								   hist)))
-				       decl))
+			 (map-declaration-ids
+			  (lambda (id selector)
+			    (classify-id id
+					 senv
+					 (hist-select selector hist)))
+			  decl))
 		       decls
 		       (hist-cadr hist))))))
        (spar-subform)

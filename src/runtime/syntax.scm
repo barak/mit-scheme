@@ -447,52 +447,6 @@ Additional notes about syntax:
 	      (loop (cdr forms) (hist-cdr hist)))
 	'())))
 
-;;;; Binary selectors
-
-(define (biselect-car selector)
-  (biselect-append biselector:car selector))
-
-(define (biselect-cdr selector)
-  (biselect-append biselector:cdr selector))
-
-(define (biselect-cadr selector)
-  (biselect-append biselector:cadr selector))
-
-(define (biselect-cddr selector)
-  (biselect-append biselector:cddr selector))
-
-;; Selector order is:
-;; (= biselector:cadr (biselect-append biselector:car biselector:cdr))
-(define (biselect-append . selectors)
-  (reduce (lambda (s1 s2)
-	    (let ((n (- (integer-length s1) 1)))
-	      (+ (shift-left s2 n)
-		 (- s1 (shift-left 1 n)))))
-	  biselector:cr
-	  selectors))
-
-(define (biselect-list-elts list selector)
-  (if (pair? list)
-      (cons (biselect-car selector)
-	    (biselect-list-elts (cdr list) (biselect-cdr selector)))
-      '()))
-
-(define (subform-select selector form)
-  (if (> selector 1)
-      (subform-select (quotient selector 2)
-		      (if (even? selector) (car form) (cdr form)))
-      form))
-
-(define-integrable biselector:cr     #b00001)
-(define-integrable biselector:car    #b00010)
-(define-integrable biselector:cdr    #b00011)
-(define-integrable biselector:cadr   #b00101)
-(define-integrable biselector:cddr   #b00111)
-(define-integrable biselector:caddr  #b01011)
-(define-integrable biselector:cdddr  #b01111)
-(define-integrable biselector:cadddr #b10111)
-(define-integrable biselector:cddddr #b11111)
-
 ;;;; Errors
 
 (define-record-type <serror-ctx>

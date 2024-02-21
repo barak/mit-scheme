@@ -31,20 +31,20 @@ USA.
 ;;; The classifier replaces each locally-bound identifier with a
 ;;; freshly-generated rename, and binds the identifier to a variable item whose
 ;;; name is the rename.  Since each syntactic environment has its own renamer,
-;;; this means that an identifier's rename is governed by what environment it is
-;;; closed in.
+;;; this means that an identifier's rename is governed by what environment it
+;;; is closed in.
 ;;;
 ;;; Top-level identifiers are never renamed.
 ;;;
 ;;; After code generation, in which the program's local-variable identifiers
 ;;; have all been renamed, there is a post-pass that looks at each of the
 ;;; locally-bound identifiers to determine whether it is safe to restore it to
-;;; its original name.  For each bound identifier in a given frame, we determine
-;;; whether it can be restored to its original name by looking for name
-;;; collisions.  A name collision occurs when one of the bound identifiers has
-;;; an original name that is the same as the original name of one of the free
-;;; identifiers.  If there are no name collisions, then it is safe to restore
-;;; the original name.
+;;; its original name.  For each bound identifier in a given frame, we
+;;; determine whether it can be restored to its original name by looking for
+;;; name collisions.  A name collision occurs when one of the bound identifiers
+;;; has an original name that is the same as the original name of one of the
+;;; free identifiers.  If there are no name collisions, then it is safe to
+;;; restore the original name.
 
 (declare (usual-integrations))
 
@@ -191,10 +191,10 @@ USA.
    (define-cs-handler scode-declaration?
      (lambda (expression mark-safe!)
        (fold (lambda (declaration ids)
-	       (fold-decl-ids (lambda (id ids)
-				(lset-adjoin eq? ids id))
-			      ids
-			      declaration))
+	       (fold-declaration-ids (lambda (id ids)
+				       (lset-adjoin eq? ids id))
+				     ids
+				     declaration))
 	     (compute-substitution (scode-declaration-expression expression)
 				   mark-safe!)
 	     (scode-declaration-text expression))))
@@ -312,21 +312,22 @@ USA.
        (make-scode-open-block
 	(map substitution (scode-open-block-names expression))
 	(map (lambda (declaration)
-	       (map-decl-ids (lambda (id selector)
-			       (declare (ignore selector))
-			       (substitution id))
-			     declaration))
+	       (map-declaration-ids (lambda (id selector)
+				      (declare (ignore selector))
+				      (substitution id))
+				    declaration))
 	     (scode-open-block-declarations expression))
-	(alpha-substitute substitution (scode-open-block-actions expression)))))
+	(alpha-substitute substitution
+			  (scode-open-block-actions expression)))))
 
    (define-as-handler scode-declaration?
      (lambda (substitution expression)
        (make-scode-declaration
 	(map (lambda (declaration)
-	       (map-decl-ids (lambda (id selector)
-			       (declare (ignore selector))
-			       (substitution id))
-			     declaration))
+	       (map-declaration-ids (lambda (id selector)
+				      (declare (ignore selector))
+				      (substitution id))
+				    declaration))
 	     (scode-declaration-text expression))
 	(alpha-substitute substitution
 			  (scode-declaration-expression expression)))))

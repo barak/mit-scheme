@@ -3373,6 +3373,22 @@ USA.
 	  association-procedure
 	  assq				;(scheme base)
 	  assv				;(scheme base)
+	  biselect-append
+	  biselect-cadr
+	  biselect-car
+	  biselect-cddr
+	  biselect-cdr
+	  biselect-list-elts
+	  biselect-ref
+	  biselector:cadddr
+	  biselector:caddr
+	  biselector:cadr
+	  biselector:car
+	  biselector:cddddr
+	  biselector:cdddr
+	  biselector:cddr
+	  biselector:cdr
+	  biselector:cr
 	  caaaar			;(scheme cxr)
 	  caaadr			;(scheme cxr)
 	  caaar				;(scheme cxr)
@@ -5044,20 +5060,6 @@ USA.
 	  syntax-library-forms)
   (export (runtime syntax)
 	  apply-classifier-item
-	  biselect-cadr
-	  biselect-car
-	  biselect-cddr
-	  biselect-cdr
-	  biselect-list-elts
-	  biselector:cadddr
-	  biselector:caddr
-	  biselector:cadr
-	  biselector:car
-	  biselector:cddddr
-	  biselector:cdddr
-	  biselector:cddr
-	  biselector:cdr
-	  biselector:cr
 	  classify-form
 	  hist-cadr
 	  hist-car
@@ -5074,7 +5076,6 @@ USA.
 	  serror-ctx-senv
 	  serror-ctx?
 	  smap
-	  subform-select
 	  trace-reduce)
   (export (runtime syntax parser)
 	  with-error-context))
@@ -5294,12 +5295,12 @@ USA.
 	  quoted-identifier?
 	  transformer-eval))
 
-(define-package (runtime syntax declaration)
-  (files "syntax-declaration")
-  (parent (runtime syntax))
-  (export (runtime syntax)
-	  fold-decl-ids
-	  map-decl-ids))
+(define-package (runtime declaration)
+  (files "declaration")
+  (parent ())
+  (export ()
+	  fold-declaration-ids
+	  map-declaration-ids))
 
 (define-package (runtime syntax mit)
   (files "mit-syntax")
