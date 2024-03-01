@@ -2208,10 +2208,6 @@ USA.
   (files "procedure")
   (parent (runtime))
   (export ()
-	  %entity-extra
-	  %entity-procedure
-	  %set-entity-extra!
-	  %set-entity-procedure!
 	  apply-hook-extra
 	  apply-hook-procedure
 	  apply-hook?
@@ -2253,9 +2249,7 @@ USA.
 	  set-entity-extra!
 	  set-entity-procedure!
 	  thunk?
-	  unary-procedure?)
-  (export (runtime predicate-tagging)
-	  %entity-is-apply-hook?))
+	  unary-procedure?))
 
 (define-package (runtime predicate)
   (files "predicate")

@@ -644,6 +644,24 @@ apply_entity (SCHEME_OBJECT proc)
 }
 
 static inline action_t
+apply_apply_hook (SCHEME_OBJECT proc)
+{
+  unsigned long frame_size = apply_frame_size ();
+  SCHEME_OBJECT data = apply_hook_data (proc);
+  if (VECTOR_P (data)
+      && frame_size < vector_length (data)
+      && vector_ref (data, frame_size) != SHARP_F
+      && vector_ref (data, 0)
+         == vector_ref (fixed_objects, ARITY_DISPATCHER_TAG))
+    {
+      set_apply_frame_proc (vector_ref (data, frame_size));
+      return ACTION_APPLY_NO_INTERRUPT;
+    }
+  set_apply_frame_proc (apply_hook_operator (proc));
+  return ACTION_APPLY;
+}
+
+static inline action_t
 apply_record (SCHEME_OBJECT proc)
 {
   SCHEME_OBJECT applicator = record_applicator (proc);
@@ -697,6 +715,9 @@ apply (variant_t variant)
     {
     case TC_ENTITY:
       return apply_entity (proc);
+
+    case TC_APPLY_HOOK:
+      return apply_apply_hook (proc);
 
     case TC_RECORD:
       return apply_record (proc);

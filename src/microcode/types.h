@@ -34,7 +34,7 @@ USA.
 #define	TC_COMPILED_RETURN		0x04
 #define TC_UNINTERNED_SYMBOL		0x05
 #define TC_BIG_FLONUM			0x06
-/* #define TC_COMBINATION_1		0x07 */
+#define TC_APPLY_HOOK			0x07
 #define TC_CONSTANT			0x08
 #define TC_EXTENDED_PROCEDURE		0x09
 #define TC_VECTOR			0x0A
@@ -112,7 +112,7 @@ USA.
   /* 0x04 */			"compiled-return",			\
   /* 0x05 */			"uninterned-symbol",			\
   /* 0x06 */			"flonum",				\
-  /* 0x07 */			0,					\
+  /* 0x07 */			"apply-hook",				\
   /* 0x08 */			"constant",				\
   /* 0x09 */			"extended-procedure",			\
   /* 0x0A */			"vector",				\

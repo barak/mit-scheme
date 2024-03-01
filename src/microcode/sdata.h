@@ -324,6 +324,11 @@ snap_delayed (SCHEME_OBJECT delayed, SCHEME_OBJECT val)
 #define entity_operator memory_ref_0
 #define entity_data memory_ref_1
 
+// Apply hooks
+
+#define apply_hook_operator memory_ref_0
+#define apply_hook_data memory_ref_1
+
 // Procedures
 
 static inline SCHEME_OBJECT

@@ -177,12 +177,16 @@ USA.
 	       (top-dispatch-tag))))))
 
    (define-primitive-predicate-method 'entity
-     (let ((apply-hook-tag (predicate->dispatch-tag apply-hook?))
-	   (entity-tag (predicate->dispatch-tag entity?)))
+     (let ((entity-tag (predicate->dispatch-tag entity?)))
        (lambda (object)
-	 (if (%entity-is-apply-hook? object)
-	     apply-hook-tag
-	     entity-tag))))
+	 (declare (ignore object))
+	 entity-tag)))
+
+   (define-primitive-predicate-method 'apply-hook
+     (let ((apply-hook-tag (predicate->dispatch-tag apply-hook?)))
+       (lambda (object)
+	 (declare (ignore object))
+	 apply-hook-tag)))
 
    (define-primitive-predicate-method 'record
      (let ((default-tag (predicate->dispatch-tag %record?)))

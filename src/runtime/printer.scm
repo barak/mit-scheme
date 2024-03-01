@@ -968,10 +968,8 @@ USA.
 
   (cond ((continuation? entity)
          (plain 'continuation))
-        ((apply-hook? entity)
-         (plain 'apply-hook))
         ((arity-dispatched-procedure? entity)
-         (let ((proc  (%entity-procedure entity)))
+         (let ((proc (entity-procedure entity)))
            (cond ((and (compiled-code-address? proc)
                        (compiled-procedure? proc)
                        (compiled-procedure/name proc))
@@ -980,6 +978,12 @@ USA.
 		  (plain 'arity-dispatched-procedure)))))
         (else
 	 (plain 'entity))))
+
+(define (print-apply-hook apply-hook context)
+  (*print-with-brackets (if (continuation? apply-hook)
+			    'continuation
+			    'apply-hook)
+			#t apply-hook context '()))
 
 (define (print-tagged-object object context)
   (*print-with-brackets 'tagged-object #t object context
