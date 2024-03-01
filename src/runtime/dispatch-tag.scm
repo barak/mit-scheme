@@ -104,9 +104,8 @@ USA.
 
 (define-deferred get-tag-cache-number
   (let ((modulus
-	 (int:quotient
-	  (let loop ((n 2)) (if (fix:fixnum? n) (loop (int:* n 2)) n))
-	  tag-cache-number-adds-ok))
+	 (int:quotient (int:+ fx-greatest 1)
+		       tag-cache-number-adds-ok))
 	(state (make-random-state #t)))
     (lambda ()
       (random modulus state))))
