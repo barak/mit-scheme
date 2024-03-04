@@ -290,7 +290,7 @@ USA.
 
 (define boolean-valued-function-primitives
   (list (ucode-primitive %record?)
-	(ucode-primitive %tagged-vector? 1)
+	(ucode-primitive %tagged-object? 1)
 	(ucode-primitive &<)
 	(ucode-primitive &=)
 	(ucode-primitive &>)
@@ -348,7 +348,7 @@ USA.
 
 (define additional-side-effect-free-primitives
   (list (ucode-primitive %make-record 2)
-	(ucode-primitive %make-tagged-vector 2)
+	(ucode-primitive %make-tagged-object 2)
 	(ucode-primitive %record)
 	(ucode-primitive allocate-bytevector 1)
 	(ucode-primitive cons)
@@ -364,8 +364,8 @@ USA.
 (define additional-function-primitives
   (list (ucode-primitive %record-length)
 	(ucode-primitive %record-ref)
-	(ucode-primitive %tagged-vector-datum 1)
-	(ucode-primitive %tagged-vector-tag 1)
+	(ucode-primitive %tagged-object-datum 1)
+	(ucode-primitive %tagged-object-tag 1)
 	(ucode-primitive &*)
 	(ucode-primitive &+)
 	(ucode-primitive &-)

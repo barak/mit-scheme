@@ -270,8 +270,8 @@ USA.
   (or (system-global-environment? object)
       (ic-environment? object)))
 
-(define-integrable (ic-environment? object)
-  (object-type? (ucode-type environment) object))
+(define (ic-environment? object)
+  (%ic-environment? object))
 
 (register-predicate! interpreter-environment? 'top-level-environment
 		     '<= environment?)
@@ -446,11 +446,10 @@ USA.
       (error:wrong-type-argument names "list of symbols" procedure))
   (system-list->vector
    (ucode-type environment)
-   (cons (system-pair-cons (ucode-type procedure)
-			   (make-slambda scode-lambda-name:unnamed
-					 names
-					 unspecific)
-			   environment)
+   (cons (%make-simple-procedure (make-slambda scode-lambda-name:unnamed
+					       names
+					       unspecific)
+				 environment)
 	 (if (eq? values 'default)
 	     (let ((values (make-list (length names))))
 	       (do ((values values (cdr values)))

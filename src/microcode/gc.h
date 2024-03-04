@@ -32,7 +32,7 @@ USA.
 
 #include "object.h"
 
-/* Must match %ENCODE-GC-TYPE in runtime/global.scm.  */
+/* Must match gct-names in runtime/primitive-data.scm.  */
 typedef enum
 {
   GC_COMPILED_ENTRY = -4,

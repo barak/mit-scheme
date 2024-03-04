@@ -50,6 +50,7 @@ USA.
 	  int:gcd
 	  int:lcm
 	  int:modulo
+	  object-type?
 	  rat:denominator
 	  rat:numerator
 	  reduce-comparator

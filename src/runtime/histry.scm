@@ -34,26 +34,29 @@ USA.
 
 ;;; Vertebrae
 
+(define-primitives
+  (hunk3-cons 3))
+
 (define-integrable (make-vertebra rib deeper shallower)
   (history:unmark (hunk3-cons rib deeper shallower)))
 
-(define-integrable vertebra-rib system-hunk3-cxr0)
-(define-integrable deeper-vertebra system-hunk3-cxr1)
-(define-integrable shallower-vertebra system-hunk3-cxr2)
-(define-integrable set-vertebra-rib! system-hunk3-set-cxr0!)
-(define-integrable set-deeper-vertebra! system-hunk3-set-cxr1!)
-(define-integrable set-shallower-vertebra! system-hunk3-set-cxr2!)
+(define-integrable vertebra-rib system-triple-first)
+(define-integrable deeper-vertebra system-triple-second)
+(define-integrable shallower-vertebra system-triple-third)
+(define-integrable set-vertebra-rib! system-triple-set-first!)
+(define-integrable set-deeper-vertebra! system-triple-set-second!)
+(define-integrable set-shallower-vertebra! system-triple-set-third!)
 
 (define-integrable (marked-vertebra? vertebra)
-  (history:marked? (system-hunk3-cxr1 vertebra)))
+  (history:marked? (system-triple-second vertebra)))
 
 (define (mark-vertebra! vertebra)
-  (system-hunk3-set-cxr1! vertebra
-			  (history:mark (system-hunk3-cxr1 vertebra))))
+  (system-triple-set-second! vertebra
+			     (history:mark (system-triple-second vertebra))))
 
 (define (unmark-vertebra! vertebra)
-  (system-hunk3-set-cxr1! vertebra
-			  (history:unmark (system-hunk3-cxr1 vertebra))))
+  (system-triple-set-second! vertebra
+			     (history:unmark (system-triple-second vertebra))))
 
 (define-integrable (same-vertebra? x y)
   (= (object-datum x) (object-datum y)))
@@ -67,23 +70,23 @@ USA.
 (define-integrable (make-reduction expression environment next)
   (history:unmark (hunk3-cons expression environment next)))
 
-(define-integrable reduction-expression system-hunk3-cxr0)
-(define-integrable reduction-environment system-hunk3-cxr1)
-(define-integrable next-reduction system-hunk3-cxr2)
-(define-integrable set-reduction-expression! system-hunk3-set-cxr0!)
-(define-integrable set-reduction-environment! system-hunk3-set-cxr1!)
-(define-integrable set-next-reduction! system-hunk3-set-cxr2!)
+(define-integrable reduction-expression system-triple-first)
+(define-integrable reduction-environment system-triple-second)
+(define-integrable next-reduction system-triple-third)
+(define-integrable set-reduction-expression! system-triple-set-first!)
+(define-integrable set-reduction-environment! system-triple-set-second!)
+(define-integrable set-next-reduction! system-triple-set-third!)
 
 (define-integrable (marked-reduction? reduction)
-  (history:marked? (system-hunk3-cxr2 reduction)))
+  (history:marked? (system-triple-third reduction)))
 
 (define (mark-reduction! reduction)
-  (system-hunk3-set-cxr2! reduction
-			  (history:mark (system-hunk3-cxr2 reduction))))
+  (system-triple-set-third! reduction
+			    (history:mark (system-triple-third reduction))))
 
 (define (unmark-reduction! reduction)
-  (system-hunk3-set-cxr2! reduction
-			  (history:unmark (system-hunk3-cxr2 reduction))))
+  (system-triple-set-third! reduction
+			    (history:unmark (system-triple-third reduction))))
 
 (define-integrable (same-reduction? x y)
   (= (object-datum x) (object-datum y)))

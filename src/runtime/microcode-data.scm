@@ -95,14 +95,14 @@ USA.
 				     if-return-address
 				     if-expression
 				     if-other)
-  (case (system-hunk3-cxr0 ((ucode-primitive compiled-entry-kind 1) entry))
+  (case (system-triple-first ((ucode-primitive compiled-entry-kind 1) entry))
     ((0) (if-procedure))
     ((1) (if-return-address))
     ((2) (if-expression))
     (else (if-other))))
 
 (define (compiled-entry-type entry)
-  (case (system-hunk3-cxr0 ((ucode-primitive compiled-entry-kind 1) entry))
+  (case (system-triple-first ((ucode-primitive compiled-entry-kind 1) entry))
     ((0) 'compiled-procedure)
     ((1) 'compiled-return-address)
     ((2) 'compiled-expression)
@@ -110,19 +110,19 @@ USA.
 
 (define (compiled-continuation/next-continuation-offset entry)
   (let ((offset
-	 (system-hunk3-cxr2 ((ucode-primitive compiled-entry-kind 1) entry))))
+	 (system-triple-third ((ucode-primitive compiled-entry-kind 1) entry))))
     (and (not (negative? offset))
 	 offset)))
 
 (define (compiled-continuation/return-to-interpreter? entry)
   (let ((kind ((ucode-primitive compiled-entry-kind 1) entry)))
-    (and (fix:= (system-hunk3-cxr1 kind) 2)
-	 (fix:= (system-hunk3-cxr2 kind) 0))))
+    (and (fix:= (system-triple-second kind) 2)
+	 (fix:= (system-triple-third kind) 0))))
 
 (define (compiled-continuation/reflect-to-interface? entry)
   (let ((kind ((ucode-primitive compiled-entry-kind 1) entry)))
-    (and (fix:= (system-hunk3-cxr1 kind) 2)
-	 (not (fix:= (system-hunk3-cxr2 kind) 0)))))
+    (and (fix:= (system-triple-second kind) 2)
+	 (not (fix:= (system-triple-third kind) 0)))))
 
 (define (stack-address->index address start-offset)
   (if (not (stack-address? address))

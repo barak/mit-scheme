@@ -84,19 +84,19 @@ USA.
   (object-type? (ucode-type big-fixnum) object))
 
 (define-integrable (make-ratnum n d)
-  (system-pair-cons (ucode-type ratnum) n d))
+  (%make-ratnum n d))
 
 (define-integrable (ratnum? object)
-  (object-type? (ucode-type ratnum) object))
+  (%ratnum? object))
 
 (define-integrable (ratnum-numerator ratnum)
-  (system-pair-car ratnum))
+  (%ratnum-numerator ratnum))
 
 (define-integrable (ratnum-denominator ratnum)
-  (system-pair-cdr ratnum))
+  (%ratnum-denominator ratnum))
 
 (define-integrable (flonum? object)
-  (object-type? (ucode-type big-flonum) object))
+  (%flonum? object))
 
 (define (flo:normalize x)
   (let ((r (%flo:normalize x)))
@@ -109,16 +109,16 @@ USA.
   flo:truncate->exact)
 
 (define-integrable (recnum? object)
-  (object-type? (ucode-type recnum) object))
+  (%recnum? object))
 
 (define-integrable (make-recnum real imag)
-  (system-pair-cons (ucode-type recnum) real imag))
+  (%make-recnum real imag))
 
 (define-integrable (rec:real-part recnum)
-  (system-pair-car recnum))
+  (%recnum-real recnum))
 
 (define-integrable (rec:imag-part recnum)
-  (system-pair-cdr recnum))
+  (%recnum-imaginary recnum))
 
 ;;;; Constants
 

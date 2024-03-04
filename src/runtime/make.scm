@@ -173,13 +173,15 @@ USA.
 	 => (lambda (procedure)
 	      (print-package-name "initialize:" package-name)
 	      (tty-write-string " [")
-	      (tty-write-string (system-pair-car procedure-name))
+	      (tty-write-string
+	       ((ucode-primitive system-pair-car 1) procedure-name))
 	      (tty-write-string "]")
 	      (procedure)))
 	(else
 	 (print-package-name "Package" package-name)
 	 (tty-write-string " is missing initialization procedure ")
-	 (tty-write-string (system-pair-car procedure-name))
+	 (tty-write-string
+	  ((ucode-primitive system-pair-car 1) procedure-name))
 	 (fatal-error "Could not initialize package"))))
 
 (define (print-package-name prefix package-name)
@@ -191,7 +193,7 @@ USA.
 	(begin
 	  (if (not (eq? name package-name))
 	      (tty-write-string " "))
-	  (tty-write-string (system-pair-car (car name)))
+	  (tty-write-string ((ucode-primitive system-pair-car 1) (car name)))
 	  (loop (cdr name)))))
   (tty-write-string ")"))
 
@@ -338,6 +340,7 @@ USA.
        '(("gcdemn" . (runtime gc-daemons))
 	 ("gc" . (runtime garbage-collector))
 	 ("boot-seq" . (runtime))
+	 ("primitive-data" . (runtime primitive-data))
 	 ("boot" . (runtime boot-definitions))
 	 ("generator" . (runtime generator))
 	 ("weak-pair" . (runtime weak-pair))

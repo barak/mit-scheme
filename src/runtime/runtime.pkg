@@ -156,20 +156,9 @@ USA.
 	  (with-values call-with-values)
 	  without-interrupts)
   (export ()
-	  %make-record
-	  %make-tagged-object
-	  %record
-	  %record-length
-	  %record-ref
-	  %record-set!
-	  %record?
-	  %tagged-object-datum
-	  %tagged-object-tag
-	  %tagged-object?
 	  bracketed-print-method
 	  bytes-per-object
 	  call-with-values		;(scheme base)
-	  cell-contents
 	  cell?
 	  default-object
 	  default-object?
@@ -196,7 +185,6 @@ USA.
 	  interrupt-mask/gc-ok
 	  interrupt-mask/none
 	  interrupt-mask/timer-ok
-	  make-cell
 	  make-promise			;(scheme lazy)
 	  make-unforced-promise
 	  object-constant?
@@ -207,7 +195,6 @@ USA.
 	  promise-value
 	  promise?			;(scheme lazy)
 	  register-predicate!
-	  set-cell-contents!
 	  set-dispatch-tag<=!
 	  set-predicate<=!
 	  simple-parser-method
@@ -809,7 +796,6 @@ USA.
 	  hook-list?
 	  hook/scode-eval
 	  host-big-endian?
-	  hunk3-cons
 	  identity-procedure
 	  impurify
 	  lexical-assignment
@@ -824,27 +810,14 @@ USA.
 	  make-ephemeron		;(srfi 124)
 	  make-hashed-metadata-table
 	  make-hook-list
-	  make-non-pointer-object
 	  make-sequence-builder
-	  non-pointer-type-code?
 	  null-procedure
 	  obarray->list
 	  object-component-binder
-	  object-datum
-	  object-gc-type
-	  object-new-type
-	  object-non-pointer?
-	  object-pointer?
-	  object-type
-	  object-type?
 	  pa
 	  param:exit-hook
 	  param:suspend-hook
 	  partition-generator
-	  pointer-type-code?
-	  primitive-memory-hash
-	  primitive-object-hash
-	  primitive-object-hash-2
 	  primitive-procedure-arity
 	  primitive-procedure-documentation
 	  pwd
@@ -858,25 +831,7 @@ USA.
 	  set-ephemeron-key!
 	  set-interrupt-enables!
 	  show-time
-	  system-hunk3-cons
-	  system-hunk3-cxr0
-	  system-hunk3-cxr1
-	  system-hunk3-cxr2
-	  system-hunk3-set-cxr0!
-	  system-hunk3-set-cxr1!
-	  system-hunk3-set-cxr2!
-	  system-list->vector
-	  system-pair-car
-	  system-pair-cdr
-	  system-pair-cons
-	  system-pair-set-car!
-	  system-pair-set-cdr!
-	  system-subvector->list
-	  system-vector-length
-	  system-vector-ref
-	  system-vector-set!
 	  true-procedure
-	  type-code->gc-type
 	  unbind-variable
 	  undefined-value?
 	  unspecific
@@ -4606,7 +4561,6 @@ USA.
 	  manifest-nmv?
 	  safe-car
 	  safe-cdr
-	  safe-cons
 	  safe-set-car!
 	  safe-set-cdr!
 	  safe-system-pair-car
@@ -4625,13 +4579,9 @@ USA.
 	  safe-system-vector-cons
 	  safe-system-vector-ref
 	  safe-system-vector-set!
-	  safe-triple-cons
 	  safe-vector->list
 	  safe-vector-ref
-	  safe-vector-set!
-	  system-pair?
-	  system-triple?
-	  system-vector?))
+	  safe-vector-set!))
 
 (define-package (runtime scode-scan)
   (files "scan")
@@ -6976,3 +6926,143 @@ USA.
 (define-package (runtime amap alist)
   (files "amap-alist")
   (parent (runtime)))
+
+(define-package (runtime primitive-data)
+  (files "primitive-data")
+  (parent (runtime))
+  (export ()
+	  %make-tagged-object
+	  %record
+	  %record-length
+	  %record-ref
+	  %record-set!
+	  %record?
+	  %tagged-object-datum
+	  %tagged-object-tag
+	  %tagged-object?
+	  cell-contents
+	  make-cell
+	  set-cell-contents!)
+  (export (runtime)
+	  %any-object?
+	  %apply-hook-extra
+	  %apply-hook-procedure
+	  %apply-hook?
+	  %bignum?
+	  %bit-string?
+	  %broken-heart?
+	  %bytevector?
+	  %cell?
+	  %char?
+	  %compiled-code-block?
+	  %compiled-entry-address?
+	  %compiled-return-address?
+	  %compound-procedure-environment
+	  %compound-procedure-lambda
+	  %compound-procedure?
+	  %constant?
+	  %control-point?
+	  %delayed-forced?
+	  %delayed-value
+	  %delayed?
+	  %entity-extra
+	  %entity-procedure
+	  %entity?
+	  %ephemeron?
+	  %extended-procedure?
+	  %fixnum?
+	  %flonum?
+	  %gc-non-pointer-type-code?
+	  %gc-non-pointer?
+	  %gc-pointer-type-code?
+	  %gc-pointer?
+	  %hunk3-a?
+	  %hunk3-b?
+	  %ic-environment?
+	  %interned-symbol?
+	  %legacy-string?
+	  %make-apply-hook
+	  %make-delayed
+	  %make-entity
+	  %make-ratnum
+	  %make-recnum
+	  %make-record
+	  %make-simple-procedure
+	  %manifest-nm-vector?
+	  %no-object?
+	  %pair?
+	  %primitive-procedure?
+	  %ratnum-denominator
+	  %ratnum-numerator
+	  %ratnum?
+	  %recnum-imaginary
+	  %recnum-real
+	  %recnum?
+	  %scode-access?
+	  %scode-assignment?
+	  %scode-combination?
+	  %scode-comment?
+	  %scode-conditional?
+	  %scode-definition?
+	  %scode-delay?
+	  %scode-disjunction?
+	  %scode-extended-lambda?
+	  %scode-lexpr?
+	  %scode-quotation?
+	  %scode-sequence?
+	  %scode-simple-lambda?
+	  %scode-the-environment?
+	  %scode-variable?
+	  %set-apply-hook-extra!
+	  %set-apply-hook-procedure!
+	  %set-entity-extra!
+	  %set-entity-procedure!
+	  %simple-procedure?
+	  %stack-address?
+	  %symbol-name
+	  %symbol-value
+	  %unicode-string?
+	  %uninterned-symbol?
+	  %vector?
+	  %weak-pair?
+	  make-non-pointer-object
+	  non-pointer-type-code?
+	  object-datum
+	  object-new-type
+	  object-non-pointer?
+	  object-pointer?
+	  object-type
+	  object-type?
+	  pointer-type-code?
+	  primitive-memory-hash
+	  primitive-object-hash
+	  primitive-object-hash-2
+	  primitive-object-ref
+	  primitive-object-set!
+	  system-cell-type-code?
+	  system-cell?
+	  system-list->vector
+	  system-pair-car
+	  system-pair-cdr
+	  system-pair-cons
+	  system-pair-set-car!
+	  system-pair-set-cdr!
+	  system-pair-type-code?
+	  system-pair?
+	  system-quadruple-type-code?
+	  system-quadruple?
+	  system-triple-cons
+	  system-triple-first
+	  system-triple-second
+	  system-triple-third
+	  system-triple-set-first!
+	  system-triple-set-second!
+	  system-triple-set-third!
+	  system-triple-type-code?
+	  system-triple?
+	  system-vector-length
+	  system-vector-ref
+	  system-vector-set!
+	  system-vector-type-code?
+	  system-vector?
+	  ))

@@ -170,15 +170,14 @@ USA.
   (%%copy-triple type obj))
 
 (define (%%copy-triple type obj)
-  (let ((the-cxr0 (system-hunk3-cxr0 obj))
-	(the-cxr1 (system-hunk3-cxr1 obj))
-	(the-cxr2 (system-hunk3-cxr2 obj)))
-    (let* ((new (hunk3-cons the-cxr0 the-cxr1 the-cxr2))
-	   (typed (object-new-type type new)))
+  (let ((the-cxr0 (system-triple-first obj))
+	(the-cxr1 (system-triple-second obj))
+	(the-cxr2 (system-triple-third obj)))
+    (let ((typed (system-triple-cons type the-cxr0 the-cxr1 the-cxr2)))
       (add-association! obj typed)
-      (system-hunk3-set-cxr0! new (copy-object the-cxr0))
-      (system-hunk3-set-cxr1! new (copy-object the-cxr1))
-      (system-hunk3-set-cxr2! new (copy-object the-cxr2))
+      (system-triple-set-first! typed (copy-object the-cxr0))
+      (system-triple-set-second! typed (copy-object the-cxr1))
+      (system-triple-set-third! typed (copy-object the-cxr2))
       typed)))
 
 #|

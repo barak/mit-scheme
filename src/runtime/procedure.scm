@@ -85,9 +85,9 @@ USA.
 	  (else (error:wrong-type-argument procedure "procedure" caller)))))
 
 (define (skip-entities object)
-  (cond ((entity? object)
+  (cond ((%entity? object)
 	 (skip-entities (%entity-procedure object)))
-	((apply-hook? object)
+	((%apply-hook? object)
 	 (skip-entities (%apply-hook-procedure object)))
 	((applicable-record? object)
 	 (skip-entities (record-applicator object)))
@@ -107,15 +107,15 @@ USA.
 	   (let ((info (compiled-entry-kind p)))
 	     ;; max = (-1)^tail? * (1 + req + opt + tail?)
 	     ;; min = (1 + req)
-	     (cons (fix:- (system-hunk3-cxr1 info) 1)
-		   (let ((max (system-hunk3-cxr2 info)))
+	     (cons (fix:- (system-triple-second info) 1)
+		   (let ((max (system-triple-third info)))
 		     (and (fix:>= max 0)
 			  (fix:- max 1))))))
-	  ((entity? p)
+	  ((%entity? p)
 	   (let ((p* (%entity-procedure p)))
 	     (or (%arity-1 (loop p*))
 		 (error "Illegal arity for entity:" p*))))
-	  ((apply-hook? p)
+	  ((%apply-hook? p)
 	   (loop (%apply-hook-procedure p)))
 	  ((applicable-record? p)
 	   (let ((p* (record-applicator p)))
@@ -140,7 +140,7 @@ USA.
 	 (let ((min (fix:- (vector-length (system-pair-cdr l)) 1)))
 	   (cons min min)))
 	((object-type? (ucode-type extended-lambda) l)
-	 (let ((arity (object-datum (system-hunk3-cxr2 l))))
+	 (let ((arity (object-datum (system-triple-third l))))
 	   (let ((n-required (fix:and (fix:lsh arity -8) #xff))
 		 (n-optional (fix:and arity #xff)))
 	     (cond ((fix:= 1 (fix:lsh arity -16))
@@ -244,9 +244,6 @@ USA.
 
 ;;;; Interpreted Procedures
 
-(define-integrable (%primitive-procedure? object)
-  (object-type? (ucode-type primitive) object))
-
 (define-integrable (%primitive-procedure-name procedure)
   (intern ((ucode-primitive get-primitive-name) procedure)))
 
@@ -283,17 +280,6 @@ USA.
     (guarantee primitive-procedure? procedure* caller)
     procedure*))
 
-(declare (integrate-operator %compound-procedure?))
-(define (%compound-procedure? object)
-  (or (object-type? (ucode-type procedure) object)
-      (object-type? (ucode-type extended-procedure) object)))
-
-(define-integrable (%compound-procedure-lambda procedure)
-  (system-pair-car procedure))
-
-(define-integrable (%compound-procedure-environment procedure)
-  (system-pair-cdr procedure))
-
 (define (compound-procedure? object)
   (%compound-procedure? (skip-entities object)))
 
@@ -301,7 +287,7 @@ USA.
 
 (define-integrable (%compiled-procedure? object)
   (and (object-type? (ucode-type compiled-entry) object)
-       (eq? 0 (system-hunk3-cxr0 (compiled-entry-kind object)))))
+       (eq? 0 (system-triple-first (compiled-entry-kind object)))))
 
 (define-integrable compiled-entry-kind
   (ucode-primitive compiled-entry-kind 1))
@@ -313,15 +299,15 @@ USA.
 (define (compiled-procedure-frame-size procedure)
   (let loop ((p procedure))
     (cond ((%compiled-procedure? p)
-	   (let ((max (system-hunk3-cxr2 (compiled-entry-kind p))))
+	   (let ((max (system-triple-third (compiled-entry-kind p))))
 	     ;; max = (-1)^tail? * (1 + req + opt + tail?)
 	     ;; frame = req + opt + tail?
 	     (if (< max 0)
 		 (- -1 max)
 		 (- max 1))))
-	  ((entity? p)
+	  ((%entity? p)
 	   (+ (loop (%entity-procedure p)) 1))
-	  ((apply-hook? p)
+	  ((%apply-hook? p)
 	   (loop (%apply-hook-procedure p)))
 	  (else
 	   (error:wrong-type-argument procedure "compiled procedure"
@@ -373,11 +359,11 @@ USA.
 
 ;;;; Entities and Apply Hooks
 
-(define-integrable (make-entity procedure extra)
-  (system-pair-cons (ucode-type entity) procedure extra))
+(define (entity? object)
+  (%entity? object))
 
-(define-integrable (entity? object)
-  (object-type? (ucode-type entity) object))
+(define (make-entity procedure extra)
+  (%make-entity procedure extra))
 
 (define (entity-procedure entity)
   (guarantee entity? entity 'entity-procedure)
@@ -391,48 +377,35 @@ USA.
   (guarantee entity? entity 'set-entity-procedure!)
   (if (procedure-chains-to procedure entity)
       (error:bad-range-argument procedure 'set-entity-procedure!))
-  (system-pair-set-car! entity procedure))
+  (%set-entity-procedure! entity procedure))
 
 (define (set-entity-extra! entity extra)
   (guarantee entity? entity 'set-entity-extra!)
-  (system-pair-set-cdr! entity extra))
+  (%set-entity-extra! entity extra))
 
-(define-integrable (%entity-procedure entity)
-  (system-pair-car entity))
+(define (apply-hook? object)
+  (%apply-hook? object))
 
-(define-integrable (%entity-extra entity)
-  (system-pair-cdr entity))
-
-(define-integrable apply-hook-type
-  ;; TODO: replace #x07 with (ucode-type apply-hook).
-  #x07)
-
-(define-integrable (make-apply-hook procedure extra)
-  (system-pair-cons apply-hook-type procedure extra))
-
-(define-integrable (apply-hook? object)
-  (object-type? apply-hook-type object))
+(define (make-apply-hook procedure extra)
+  (%make-apply-hook procedure extra))
 
 (define (apply-hook-procedure apply-hook)
   (guarantee apply-hook? apply-hook 'apply-hook-procedure)
   (%apply-hook-procedure apply-hook))
 
-(define-integrable (%apply-hook-procedure apply-hook)
-  (system-pair-car apply-hook))
-
 (define (apply-hook-extra apply-hook)
   (guarantee apply-hook? apply-hook 'apply-hook-extra)
-  (system-pair-cdr apply-hook))
+  (%apply-hook-extra apply-hook))
 
 (define (set-apply-hook-procedure! apply-hook procedure)
   (guarantee apply-hook? apply-hook 'set-apply-hook-procedure!)
   (if (procedure-chains-to procedure apply-hook)
       (error:bad-range-argument procedure 'set-apply-hook-procedure!))
-  (system-pair-set-car! apply-hook procedure))
+  (%set-apply-hook-procedure! apply-hook procedure))
 
 (define (set-apply-hook-extra! apply-hook extra)
   (guarantee apply-hook? apply-hook 'set-apply-hook-extra!)
-  (system-pair-set-cdr! apply-hook extra))
+  (%set-apply-hook-extra! apply-hook extra))
 
 ;;;; Arity dispatched entities
 
@@ -446,7 +419,7 @@ USA.
 		      dispatched-cases))))
 
 (define (arity-dispatched-procedure? object)
-  (and (entity? object)
+  (and (%entity? object)
        (vector? (entity-extra object))
        (fix:< 0 (vector-length (entity-extra object)))
        (eq? (vector-ref (entity-extra object) 0) arity-dispatcher-tag)))
@@ -462,7 +435,7 @@ USA.
   (let loop ((p1 p1))
     (if (eq? p1 p2)
 	#t
-	(cond ((entity? p1)
+	(cond ((%entity? p1)
 	       (if (arity-dispatched-procedure? p1)
 		   (let ((v (%entity-extra p1)))
 		     (let ((n (vector-length v)))
@@ -475,5 +448,5 @@ USA.
 				 (per-arity (fix:+ i 1)))
 			     #f))))
 		   (loop (%entity-procedure p1))))
-	      ((apply-hook? p1) (loop (%apply-hook-procedure p1)))
+	      ((%apply-hook? p1) (loop (%apply-hook-procedure p1)))
 	      (else #f)))))

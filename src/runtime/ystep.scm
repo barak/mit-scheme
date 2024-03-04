@@ -166,6 +166,9 @@ USA.
 
 ;;;; Low-level Hooks
 
+(define-primitives
+  (hunk3-cons 3))
+
 (define (make-stepper-hooks state)
   (letrec
       ((hooks
@@ -197,7 +200,7 @@ USA.
 	(hunk3-cons
 	 (lambda (expr env)
 	   (if (and (<= skip-evals 0) (<= skip-returns 0))
-	       ((system-hunk3-cxr0 (stepper-hooks state)) expr env)
+	       ((system-triple-first (stepper-hooks state)) expr env)
 	       (begin
 		 (set! skip-evals (- skip-evals 1))
 		 (hook-record state (list 'eval expr env))
@@ -205,7 +208,7 @@ USA.
 	 #f
 	 (lambda (result)
 	   (if (and (<= skip-evals 0) (<= skip-returns 0))
-	       ((system-hunk3-cxr2 (stepper-hooks state)) result)
+	       ((system-triple-third (stepper-hooks state)) result)
 	       (begin
 		 (set! skip-returns (- skip-returns 1))
 		 (hook-record state (list 'result result))

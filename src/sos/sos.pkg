@@ -30,7 +30,9 @@ USA.
 (global-definitions "../runtime/runtime")
 
 (define-package (sos)
-  (parent (runtime)))
+  (parent (runtime))
+  (import (runtime)
+	  object-new-type))
 
 (define-package (sos generic-procedure eqht)
   (files "geneqht")

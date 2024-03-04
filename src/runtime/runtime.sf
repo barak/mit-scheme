@@ -26,12 +26,15 @@ USA.
 |#
 
 (load-option '*parser)			;for url.scm
+(let ((target "library-standard.bin"))
+  (if (and (file-exists? target)
+	   (file-modification-time<? target "generated-standard-libs"))
+      (delete-file target)))
 (fluid-let ((sf/default-syntax-table (->environment '(runtime))))
-  (let ((target "library-standard.bin"))
-    (if (and (file-exists? target)
-	     (file-modification-time<? target "generated-standard-libs"))
-	(delete-file target)))
-  (sf-directory "."))
+  (sf-conditionally "primitive-data")
+  (fluid-let ((sf/default-declarations
+	       '((integrate-external "primitive-data"))))
+    (sf-directory ".")))
 
 ;; Guarantee that the package modeller is loaded.  load-option ensures
 ;; that when cross-syntaxing the cref `native' to the running system

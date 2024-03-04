@@ -30,46 +30,6 @@ USA.
 
 (declare (usual-integrations))
 
-;;;; Low-level structure primitives.
-
-(define-primitives
-  (%make-tagged-object 2)
-  (%record -1)
-  (%record-length 1)
-  (%record-ref 2)
-  (%record-set! 3)
-  (%record? 1)
-  (%tagged-object-datum 1)
-  (%tagged-object-tag 1)
-  (%tagged-object? 1))
-
-(define (%make-record tag length #!optional fill)
-  (let ((fill (if (default-object? fill) #f fill)))
-    (let-syntax
-	((expand-cases
-	  (sc-macro-transformer
-	   (lambda (form use-env)
-	     (declare (ignore use-env))
-	     (let ((limit (cadr form))	;must be a power of 2
-		   (gen-accessor
-		    (lambda (i)
-		      `(%record tag ,@(make-list (- i 1) 'fill)))))
-	       `(if (and (fix:fixnum? length)
-			 (fix:> length 0)
-			 (fix:<= length ,limit))
-		    ,(let loop ((low 1) (high limit))
-		       (if (< low high)
-			   (let ((mid (quotient (- (+ high low) 1) 2)))
-			     `(if (fix:<= length ,mid)
-				  ,(loop low mid)
-				  ,(loop (+ mid 1) high)))
-			   (gen-accessor low)))
-		    (let ((record
-			   ((ucode-primitive %make-record 2) length fill)))
-		      (%record-set! record 0 tag)
-		      record)))))))
-      (expand-cases 16))))
-
 ;;;; Interrupt control
 
 (define interrupt-bit/stack     #x0001)
@@ -253,34 +213,33 @@ USA.
 
 ;;;; Promises
 
-(define-primitives make-cell cell? cell-contents set-cell-contents!)
+(define (cell? object) (%cell? object))
 (register-predicate! cell? 'cell)
 
 (declare (integrate-operator promise?))
 (define (promise? object)
   (and (cell? object)
        (cell? (cell-contents object))
-       (object-type? (ucode-type delayed)
-		     (cell-contents (cell-contents object)))))
+       (%delayed? (cell-contents (cell-contents object)))))
 (register-predicate! promise? 'promise '<= cell?)
 
 (define (make-promise object)
-  (make-cell (make-cell (system-pair-cons (ucode-type delayed) #t object))))
+  (make-cell (make-cell (%make-delayed #t object))))
 
 (define (make-unforced-promise thunk)
   ;(guarantee thunk? thunk 'make-unforced-promise)
-  (make-cell (make-cell (system-pair-cons (ucode-type delayed) #f thunk))))
+  (make-cell (make-cell (%make-delayed #f thunk))))
 
 ;;; Don't use multiple-values here because this gets called before they are
 ;;; defined.
 (define-integrable (%promise-parts promise k)
   (let ((p (cell-contents (cell-contents promise))))
-    (k (system-pair-car p)
-       (system-pair-cdr p))))
+    (k (%delayed-forced? p)
+       (%delayed-value p))))
 
 (define (promise-forced? promise)
   (guarantee promise? promise 'promise-forced?)
-  (system-pair-car (cell-contents (cell-contents promise))))
+  (%delayed-forced? (cell-contents (cell-contents promise))))
 
 (define (promise-value promise)
   (guarantee promise? promise 'promise-value)
@@ -306,7 +265,7 @@ USA.
 	    (without-interrupts
 	     (lambda ()
 	       (let ((q (cell-contents promise)))
-		 (if (not (system-pair-car (cell-contents q)))
+		 (if (not (%delayed-forced? (cell-contents q)))
 		     (let ((q* (cell-contents promise*)))
 		       ;; Reduce the chain of indirections by one link so
 		       ;; that we don't accumulate space.

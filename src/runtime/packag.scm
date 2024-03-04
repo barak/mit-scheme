@@ -29,6 +29,13 @@ USA.
 ;;; package: (package)
 
 (declare (usual-integrations))
+
+(define-primitives
+  (object-datum 1)
+  (object-new-type object-set-type 2)
+  (object-type 1)
+  (system-pair-cons 3)
+  (vector-cons 2))
 
 ;;; Kludge -- package objects want to be records, but this file must
 ;;; be loaded first, before the record package.  The way we solve this
@@ -399,11 +406,8 @@ USA.
 	   (do ((names names (cdr names))
 		(n 1 (fix:+ n 1)))
 	       ((not (pair? names)) n))))
-      (let ((vn ((ucode-primitive vector-cons) n #f))
-	    (vv
-	     ((ucode-primitive vector-cons)
-	      n
-	      (make-unmapped-unassigned-reference-trap))))
+      (let ((vn (vector-cons n #f))
+	    (vv (vector-cons n (make-unmapped-unassigned-reference-trap))))
 	(vector-set! vn 0 'dummy-procedure)
 	(do ((names names (cdr names))
 	     (j 1 (fix:+ j 1)))
@@ -415,12 +419,11 @@ USA.
 							 #f
 							 vn)
 				       environment))
-	((ucode-primitive object-set-type) (ucode-type environment) vv)))))
+	(object-new-type (ucode-type environment) vv)))))
 
 (define null-environment
-  ((ucode-primitive object-set-type)
-   ((ucode-primitive object-type) #f)
-   (fix:xor ((ucode-primitive object-datum) #f) 1)))
+  (object-new-type (object-type #f)
+		   (fix:xor (object-datum #f) 1)))
 
 (define (find-package-environment name)
   (package/environment (find-package name)))

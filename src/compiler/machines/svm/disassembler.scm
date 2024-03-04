@@ -313,13 +313,13 @@ USA.
   (let* ((cache ((ucode-primitive primitive-object-set-type 2)
 		 (ucode-type hunk3)
 		 (system-vector-ref block index)))
-	 (refs (system-hunk3-cxr2 cache))
+	 (refs (system-triple-third cache))
 	 (entry
 	  (find (lambda (e)
 		  (weak-assq block (cdr e)))
 		(case kind
-		  ((1) (system-hunk3-cxr0 refs))
-		  ((2) (system-hunk3-cxr1 refs))
+		  ((1) (system-triple-first refs))
+		  ((2) (system-triple-second refs))
 		  (else (error "Not a kind of variable cache:" kind))))))
     (write-string "variable cache for ")
     (if (pair? entry)

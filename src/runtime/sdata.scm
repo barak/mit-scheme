@@ -33,19 +33,13 @@ USA.
 (add-boot-deps! '(runtime reader))
 
 (define-primitives
-  (make-non-pointer-object 1)
-  (object-new-type object-set-type 2)
   (primitive-datum-ref 2)
   (primitive-datum-set! 3)
   (primitive-object-ref 2)
   (primitive-object-ref-new-type 3)
   (primitive-object-set! 3)
   (primitive-type-ref 2)
-  (primitive-type-set! 3)
-  (system-pair? 1)
-  (system-vector-length system-vector-size 1)
-  (system-vector? 1)
-  (triple-cons hunk3-cons 3))
+  (primitive-type-set! 3))
 
 (define-record-type <manifest-nmv>
     %make-manifest-nmv
@@ -105,12 +99,6 @@ USA.
 	(else
 	 (primitive-object-set! object index value))))
 
-(define (safe-cons car cdr)
-  (let ((pair (cons #f #f)))
-    (%safe-memory-set! pair 0 car)
-    (%safe-memory-set! pair 1 cdr)
-    pair))
-
 (define-integrable (%safe-car pair)
   (%safe-memory-ref pair 0))
 
@@ -140,9 +128,12 @@ USA.
   (%safe-memory-set! pair 1 value))
 
 (define (safe-system-pair-cons type car cdr)
-  (if (not (eq? 'pair (type-code->gc-type type)))
+  (if (not (system-pair-type-code? type))
       (error:bad-range-argument type 'safe-system-pair-cons))
-  (object-new-type type (safe-cons car cdr)))
+  (let ((pair (system-pair-cons type #f #f)))
+    (%safe-memory-set! pair 0 car)
+    (%safe-memory-set! pair 1 cdr)
+    pair))
 
 (define (safe-system-pair-car pair)
   (guarantee system-pair? pair 'safe-system-pair-car)
@@ -160,20 +151,14 @@ USA.
   (guarantee system-pair? pair 'safe-system-pair-set-cdr!)
   (%safe-memory-set! pair 1 value))
 
-(define (system-triple? object)
-  (eq? 'triple (object-gc-type object)))
-
 (define (safe-system-triple-cons type first second third)
-  (if (not (eq? 'triple (type-code->gc-type type)))
+  (if (not (system-triple-type-code? type))
       (error:bad-range-argument type 'safe-system-triple-cons))
-  (let ((triple (triple-cons #f #f #f)))
+  (let ((triple (system-triple-cons type #f #f #f)))
     (%safe-memory-set! triple 0 first)
     (%safe-memory-set! triple 1 second)
     (%safe-memory-set! triple 2 third)
-    (object-new-type type triple)))
-
-(define (safe-triple-cons first second third)
-  (safe-system-triple-cons (ucode-type hunk3) first second third))
+    triple))
 
 (define (safe-system-triple-first triple)
   (guarantee system-triple? triple 'safe-system-triple-first)
@@ -232,7 +217,7 @@ USA.
     (%safe-vector->list vector start end)))
 
 (define (safe-system-vector-cons type length)
-  (if (not (eq? 'vector (type-code->gc-type type)))
+  (if (not (system-vector-type-code? type))
       (error:bad-range-argument type 'safe-system-vector-cons))
   (object-new-type type (make-vector length)))
 

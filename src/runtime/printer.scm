@@ -557,14 +557,12 @@ USA.
 ;;;; Printer methods
 
 (define (print-default object context)
-  (let ((type (user-object-type object))
-	(items
-	 (case (object-gc-type object)
-	   ((cell pair triple quadruple vector compiled-entry compiled-return)
-	    '())
-	   (else			;non-pointer, undefined, gc-internal
-	    (maybe-print-datum object)))))
-    (*print-with-brackets type #t object context items)))
+  (*print-with-brackets (user-object-type object)
+			#t object context
+			(if (%gc-pointer? object)
+			    '()
+			    ;; non-pointer, undefined, gc-internal
+			    (maybe-print-datum object))))
 
 (define (print-datum object context)
   (*print-with-brackets (user-object-type object) #f object context

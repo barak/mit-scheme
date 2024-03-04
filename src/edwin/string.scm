@@ -42,6 +42,7 @@ USA.
 ;;;; Primitives
 
 (define-primitives
+  (object-type? 2)
   (primitive-byte-ref 2)
   (primitive-byte-set! 3)
   (primitive-datum-ref 2)

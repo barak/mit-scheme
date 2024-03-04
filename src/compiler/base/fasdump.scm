@@ -954,9 +954,9 @@ USA.
          (with-fasdump-words state 3
            (lambda ()
              (fasdump-object state (scode-variable-name scode))
-             ;; Rest of variable object has no accessors:
-             (fasdump-object state (system-hunk3-cxr1 scode))
-             (fasdump-object state (system-hunk3-cxr2 scode)))))
+             (fasdump-object state (scode-variable-safe? scode))
+             ;; No accessors for this field:
+             (fasdump-object state (system-triple-third scode)))))
         (else
          (error "Fasdump bug -- this is not scode!" scode))))
 

@@ -99,6 +99,19 @@ USA.
 	  compiler:show-subphases?
 	  compiler:show-time-reports?
 	  compiler:use-multiclosures?)
+  (import (runtime)
+	  make-non-pointer-object
+	  object-datum
+	  object-new-type
+	  object-non-pointer?
+	  object-type
+	  object-type?
+	  system-triple-first
+	  system-triple-second
+	  system-triple-third
+	  system-vector-length
+	  system-vector-ref
+	  system-vector-set!)
   (import (runtime system-macros)
 	  ucode-primitive
 	  ucode-type)
@@ -384,7 +397,7 @@ USA.
 
 (define-package (compiler portable-fasdump)
   (files "base/fasdump")
-  (parent ())			       	;** This code should be portable.
+  (parent ())				;** This code should be portable.
   (export ()
 	  fasl-format:aarch64be
 	  fasl-format:aarch64le
@@ -402,7 +415,9 @@ USA.
 	  fasl-format:svm1-64be
 	  fasl-format:svm1-64le
 	  fasl-format:x86-64
-	  portable-fasdump))
+	  portable-fasdump)
+  (import (runtime)
+	  system-triple-third))
 
 (define-package (compiler constraints)
    (files "base/constr")

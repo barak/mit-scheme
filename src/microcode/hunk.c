@@ -30,16 +30,23 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 
-SCHEME_OBJECT
-hunk3_cons (SCHEME_OBJECT cxr0,
-       SCHEME_OBJECT cxr1,
-       SCHEME_OBJECT cxr2)
+static SCHEME_OBJECT
+system_hunk3_cons (unsigned long type,
+                   SCHEME_OBJECT cxr0,
+                   SCHEME_OBJECT cxr1,
+                   SCHEME_OBJECT cxr2)
 {
   Primitive_GC_If_Needed (3);
   (*Free++) = cxr0;
   (*Free++) = cxr1;
   (*Free++) = cxr2;
-  return (make_pointer_object (TC_HUNK3, (Free - 3)));
+  return make_pointer_object (type, (Free - 3));
+}
+
+SCHEME_OBJECT
+hunk3_cons (SCHEME_OBJECT cxr0, SCHEME_OBJECT cxr1, SCHEME_OBJECT cxr2)
+{
+  return system_hunk3_cons (TC_HUNK3, cxr0, cxr1, cxr2);
 }
 
 DEFINE_PRIMITIVE ("HUNK3-CONS", Prim_hunk3_cons, 3, 3, 0)
@@ -68,6 +75,16 @@ DEFINE_PRIMITIVE ("HUNK3-SET-CXR!", Prim_hunk3_set_cxr, 3, 3, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("system-hunk3-cons", Prim_sys_hunk3_cons, 4, 4, 0)
+{
+  PRIMITIVE_HEADER (4);
+  unsigned long type = (arg_ulong_index_integer (1, N_TYPE_CODES));
+  if ((GC_TYPE_CODE (type)) != GC_TRIPLE)
+    error_bad_range_arg (1);
+  PRIMITIVE_RETURN
+    (system_hunk3_cons (type, (ARG_REF (2)), (ARG_REF (3)), (ARG_REF (4))));
+}
+
 #define ARG_GC_TRIPLE(arg_number)					\
   ((GC_TYPE_TRIPLE (ARG_REF (arg_number)))				\
    ? (ARG_REF (arg_number))						\
@@ -123,4 +140,3 @@ DEFINE_PRIMITIVE ("SYSTEM-HUNK3-SET-CXR2!", Prim_sh3_set_2, 2, 2, 0)
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-

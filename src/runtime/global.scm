@@ -43,35 +43,7 @@ USA.
 
   ;; Environment
   lexical-reference lexical-assignment local-assignment
-  lexical-unassigned? lexical-unbound? lexical-unreferenceable?
-
-  ;; Pointers
-  (object-type 1)
-  (object-datum 1)
-  (object-type? 2)
-  (object-new-type object-set-type 2)
-  make-non-pointer-object
-
-  ;; System Compound Datatypes
-  system-pair-cons
-  system-pair-car system-pair-set-car!
-  system-pair-cdr system-pair-set-cdr!
-
-  hunk3-cons
-  system-hunk3-cxr0 system-hunk3-set-cxr0!
-  system-hunk3-cxr1 system-hunk3-set-cxr1!
-  system-hunk3-cxr2 system-hunk3-set-cxr2!
-
-  (system-list->vector system-list-to-vector)
-  (system-subvector->list system-subvector-to-list)
-  (system-vector-length system-vector-size)
-  system-vector-ref
-  system-vector-set!
-
-  primitive-object-ref primitive-object-set!
-  (primitive-object-hash 1)
-  (primitive-object-hash-2 2)
-  (primitive-memory-hash 3))
+  lexical-unassigned? lexical-unbound? lexical-unreferenceable?)
 
 (define (host-big-endian?)
   host-big-endian?-saved)
@@ -117,9 +89,6 @@ USA.
 
 (define hook/scode-eval
   (ucode-primitive scode-eval))
-
-(define-integrable (system-hunk3-cons type cxr0 cxr1 cxr2)
-  (object-new-type type (hunk3-cons cxr0 cxr1 cxr2)))
 
 (define (limit-interrupts! limit-mask)
   (set-interrupt-enables! (fix:and limit-mask (get-interrupt-enables))))
@@ -277,52 +246,6 @@ USA.
 (define (unbind-variable environment name)
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
 
-(define (object-gc-type object)
-  (%encode-gc-type ((ucode-primitive object-gc-type 1) object)))
-
-(define (type-code->gc-type code)
-  (%encode-gc-type ((ucode-primitive type->gc-type 1) code)))
-
-(define (%encode-gc-type t)
-  (if (not (and (fix:fixnum? t)
-		(fix:>= t -4)
-		(fix:<= t 5)))
-      (error "Illegal GC-type value:" t))
-  ;; Must match enum gc_type_t in microcode/gc.h.
-  (vector-ref '#(compiled-entry vector gc-internal undefined non-pointer
-				cell pair triple quadruple compiled-return)
-	      (fix:+ t 4)))
-
-(define (object-non-pointer? object)
-  (case (object-gc-type object)
-    ((non-pointer) #t)
-    ((gc-internal)
-     (or (object-type? (ucode-type manifest-nm-vector) object)
-	 (and (object-type? (ucode-type reference-trap) object)
-	      (reference-trap-kind-immediate? (object-datum object)))))
-    (else #f)))
-
-(define (object-pointer? object)
-  (case (object-gc-type object)
-    ((cell pair triple quadruple vector compiled-entry) #t)
-    ((gc-internal)
-     (or (object-type? (ucode-type broken-heart) object)
-	 (and (object-type? (ucode-type reference-trap) object)
-	      (reference-trap-kind-pointer? (object-datum object)))))
-    (else #f)))
-
-(define (non-pointer-type-code? code)
-  (case (type-code->gc-type code)
-    ((non-pointer) #t)
-    ((gc-internal) (fix:= (ucode-type manifest-nm-vector) code))
-    (else #f)))
-
-(define (pointer-type-code? code)
-  (case (type-code->gc-type code)
-    ((cell pair triple quadruple vector compiled-entry compiled-return) #t)
-    ((gc-internal) (fix:= (ucode-type broken-heart) code))
-    (else #f)))
-
 (define (undefined-value? object)
   ;; Note: the printer takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:

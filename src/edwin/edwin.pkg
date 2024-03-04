@@ -105,8 +105,11 @@ USA.
   (parent ())
   (import (runtime)
 	  define-primitives
+	  object-pointer?
 	  ucode-primitive
-	  ucode-type)
+	  ucode-type
+	  system-vector-length
+	  system-vector-set!)
   (import (runtime char-syntax)
 	  char-syntax-table/entries)
   (import (runtime character)

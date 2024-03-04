@@ -44,6 +44,8 @@ USA.
 	  library-ixport-to
 	  map-r7rs-scode-file
 	  map-scode-library
+	  object-type
+	  object-type?
 	  r7rs-scode-file?
 	  r7rs-source?
 	  read-r7rs-source

@@ -36,11 +36,11 @@ USA.
   (or (interned-symbol? object)
       (uninterned-symbol? object)))
 
-(define-integrable (interned-symbol? object)
-  (object-type? (ucode-type interned-symbol) object))
+(define (interned-symbol? object)
+  (%interned-symbol? object))
 
-(define-integrable (uninterned-symbol? object)
-  (object-type? (ucode-type uninterned-symbol) object))
+(define (uninterned-symbol? object)
+  (%uninterned-symbol? object))
 
 (define-guarantee symbol "symbol")
 (define-guarantee interned-symbol "interned symbol")

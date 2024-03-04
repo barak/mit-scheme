@@ -101,6 +101,19 @@ USA.
 	  compiler:show-subphases?
 	  compiler:show-time-reports?
 	  compiler:use-multiclosures?)
+  (import (runtime)
+	  make-non-pointer-object
+	  object-datum
+	  object-new-type
+	  object-non-pointer?
+	  object-type
+	  object-type?
+	  system-triple-first
+	  system-triple-second
+	  system-triple-third
+	  system-vector-length
+	  system-vector-ref
+	  system-vector-set!)
   (import (runtime system-macros)
 	  ucode-primitive
 	  ucode-type)

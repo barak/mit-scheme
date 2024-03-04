@@ -148,7 +148,7 @@ USA.
 	   (expression-tag (predicate->dispatch-tag compiled-expression?))
 	   (default-tag (predicate->dispatch-tag compiled-code-address?)))
        (lambda (entry)
-	 (case (system-hunk3-cxr0
+	 (case (system-triple-first
 		((ucode-primitive compiled-entry-kind 1) entry))
 	   ((0) procedure-tag)
 	   ((1) return-tag)
