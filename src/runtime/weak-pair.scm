@@ -26,7 +26,7 @@ USA.
 |#
 
 ;;;; Weak pairs
-;;; package: (runtime boot-definitions)
+;;; package: (runtime weak-pair)
 
 (declare (usual-integrations))
 
