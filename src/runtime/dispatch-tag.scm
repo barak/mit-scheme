@@ -26,6 +26,7 @@ USA.
 |#
 
 ;;;; Tags for efficient dispatching
+;;; package: (runtime tagged-dispatch)
 
 ;;; From "Efficient Method Dispatch in PCL", Gregor Kiczales and Luis
 ;;; Rodriguez, Proceedings of the 1990 ACM Conference on Lisp and
