@@ -59,11 +59,10 @@ USA.
   (or (symbol? object)
       (and (pair? object)
 	   (symbol? (car object))
-	   (list? (cdr object))
-	   (every (lambda (elt)
-		    (or (object-non-pointer? elt)
-			(tag-name? elt)))
-		  (cdr object)))))
+	   (list-of-type? (cdr object)
+			  (lambda (elt)
+			    (or (object-non-pointer? elt)
+				(tag-name? elt)))))))
 (register-predicate! tag-name? 'dispatch-tag-name)
 
 (define (dispatch-tag? object)
@@ -129,6 +128,10 @@ USA.
     (if (predicate? predicate)
 	(error "Can't assign multiple tags to the same predicate:" name))
     (%make-tag metatag name predicate extra)))
+
+(define (dispatch-metatag-predicate metatag)
+  (guarantee dispatch-metatag? metatag 'dispatch-metatag-predicate)
+  (%dispatch-tag->predicate metatag))
 
 (define (dispatch-metatag? object)
   (and (%record? object)

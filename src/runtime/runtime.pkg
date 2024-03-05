@@ -5739,6 +5739,7 @@ USA.
   (parent (runtime))
   (export ()
 	  dispatch-metatag-constructor
+	  dispatch-metatag-predicate
 	  dispatch-metatag?
 	  dispatch-tag->predicate
 	  dispatch-tag-extra
