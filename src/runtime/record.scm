@@ -34,8 +34,6 @@ USA.
 (declare (usual-integrations))
 (declare (integrate-external "dispatch-tag"))
 
-(add-boot-deps! '(runtime tagged-dispatch))
-
 (define-primitives
   (vector-cons 2))
 

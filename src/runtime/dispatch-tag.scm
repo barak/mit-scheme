@@ -34,27 +34,31 @@ USA.
 ;;; September 16, 1992 PCL implementation.
 
 (declare (usual-integrations))
-
-(add-boot-deps! '(runtime random-number))
 
-(define (%make-tag metatag name predicate extra)
-  (let ((tag
-	 (apply %record
-		metatag
-		(get-tag-cache-number)
-		(get-tag-cache-number)
-		(get-tag-cache-number)
-		(get-tag-cache-number)
-		(get-tag-cache-number)
-		(get-tag-cache-number)
-		(get-tag-cache-number)
-		(get-tag-cache-number)
-		name
-		predicate
-		(weak-list-set eq?)
-		extra)))
-    (set-predicate-tag! predicate tag)
-    tag))
+(define (%%make-tag metatag cache-number name predicate extra)
+  (apply %record
+	 metatag
+	 (cache-number)
+	 (cache-number)
+	 (cache-number)
+	 (cache-number)
+	 (cache-number)
+	 (cache-number)
+	 (cache-number)
+	 (cache-number)
+	 name
+	 predicate
+	 (weak-list-set eq?)
+	 extra))
+
+(define %make-tag
+  (named-lambda (cold-load:%make-tag metatag name predicate extra)
+    (let ((tag (%%make-tag metatag (lambda () #f) name predicate extra)))
+      (set-predicate-tag! predicate tag)
+      (set! need-cache-numbers (cons tag need-cache-numbers))
+      tag)))
+
+(define need-cache-numbers '())
 
 (define (tag-name? object)
   (or (symbol? object)
@@ -91,7 +95,7 @@ USA.
 
 (define-integrable (%dispatch-tag-extra-index index)
   (fix:+ 12 index))
-
+
 (define-integrable tag-cache-number-adds-ok
   ;; This constant controls the number of non-zero bits tag cache
   ;; numbers will have.
@@ -102,13 +106,31 @@ USA.
   ;; primary cache locations from multiple tags.
   4)
 
-(define-deferred get-tag-cache-number
-  (let ((modulus
-	 (int:quotient (int:+ fx-greatest 1)
-		       tag-cache-number-adds-ok))
-	(state (make-random-state #t)))
-    (lambda ()
-      (random modulus state))))
+(define get-tag-cache-number)
+(define metatag-tag)
+(define (initialize-cache-numbers!)
+  (set! get-tag-cache-number
+	(let ((modulus
+	       (int:quotient (int:+ fx-greatest 1)
+			     tag-cache-number-adds-ok))
+	      (state (make-random-state #t)))
+	  (lambda ()
+	    (random modulus state))))
+  (for-each (lambda (tag)
+	      (do ((i 1 (fix:+ i 1)))
+		  ((not (fix:< i 9)))
+		(%record-set! tag i get-tag-cache-number)))
+	    need-cache-numbers)
+  (set! need-cache-numbers)
+  (set! %make-tag
+	(named-lambda (%make-tag metatag name predicate extra)
+	  (let ((tag
+		 (%%make-tag metatag get-tag-cache-number name predicate
+			     extra)))
+	    (set-predicate-tag! predicate tag)
+	    tag)))
+  (set! metatag-tag (%make-tag #f 'metatag dispatch-metatag? '()))
+  (%record-set! metatag-tag 0 metatag-tag))
 
 (define (make-dispatch-metatag name)
   (guarantee tag-name? name 'make-dispatch-metatag)
@@ -138,12 +160,6 @@ USA.
   (and (%record? object)
        (eq? metatag-tag (%record-ref object 0))))
 (set-predicate<=! dispatch-metatag? dispatch-tag?)
-
-(define metatag-tag)
-(add-boot-init!
- (lambda ()
-   (set! metatag-tag (%make-tag #f 'metatag dispatch-metatag? '()))
-   (%record-set! metatag-tag 0 metatag-tag)))
 
 (define (dispatch-tag-metatag tag)
   (guarantee dispatch-tag? tag 'dispatch-tag-metatag)
