@@ -119,7 +119,7 @@ USA.
   (for-each (lambda (tag)
 	      (do ((i 1 (fix:+ i 1)))
 		  ((not (fix:< i 9)))
-		(%record-set! tag i get-tag-cache-number)))
+		(%record-set! tag i (get-tag-cache-number))))
 	    need-cache-numbers)
   (set! need-cache-numbers)
   (set! %make-tag
