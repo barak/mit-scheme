@@ -5735,11 +5735,10 @@ USA.
 	  gdbm_writer))
 
 (define-package (runtime tagged-dispatch)
-  (files "dispatch-tag" "dispatch-cache")
+  (files "dispatch-low" "dispatch-tag" "dispatch-cache")
   (parent (runtime))
   (export ()
 	  dispatch-metatag-constructor
-	  dispatch-metatag-predicate
 	  dispatch-metatag?
 	  dispatch-tag->predicate
 	  dispatch-tag-extra
@@ -5747,14 +5746,14 @@ USA.
 	  dispatch-tag-extra-ref
 	  dispatch-tag-metatag
 	  dispatch-tag-name
-	  dispatch-tag-print-name
 	  dispatch-tag?
 	  make-dispatch-metatag)
   (export (runtime compound-predicate)
 	  %dispatch-tag-extra-set!)
   (export (runtime predicate)
 	  add-dispatch-tag-superset
-	  any-dispatch-tag-superset)
+	  any-dispatch-tag-superset
+	  tag-name?)
   (export (runtime predicate-dispatch)
 	  fill-cache
 	  new-cache
@@ -5764,11 +5763,11 @@ USA.
 	  probe-cache-3
 	  probe-cache-4)
   (export (runtime record)
-	  %dispatch-tag->predicate
 	  %dispatch-tag-extra-index
 	  %dispatch-tag-extra-ref
 	  %dispatch-tag-extra-set!
-	  %dispatch-tag-name))
+	  %dispatch-tag-name
+	  %dispatch-tag-predicate))
 
 (define-package (runtime crypto)
   (files "crypto")

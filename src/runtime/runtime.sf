@@ -32,6 +32,7 @@ USA.
       (delete-file target)))
 (fluid-let ((sf/default-syntax-table (->environment '(runtime))))
   (sf-conditionally "primitive-data")
+  (sf-conditionally "dispatch-low")
   (fluid-let ((sf/default-declarations
 	       '((integrate-external "primitive-data"))))
     (sf-directory ".")))

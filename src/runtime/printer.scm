@@ -987,6 +987,6 @@ USA.
   (*print-with-brackets 'tagged-object #t object context
     (list (let ((tag (%tagged-object-tag object)))
 	    (if (dispatch-tag? tag)
-		(dispatch-tag-print-name tag)
+		(dispatch-tag-name tag)
 		tag))
 	  (%tagged-object-datum object))))

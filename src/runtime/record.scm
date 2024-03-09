@@ -32,7 +32,7 @@ USA.
 ;;; conforms to R7RS and SRFI 131
 
 (declare (usual-integrations))
-(declare (integrate-external "dispatch-tag"))
+(declare (integrate-external "dispatch-low"))
 
 (define-primitives
   (vector-cons 2))
@@ -94,7 +94,7 @@ USA.
 (define make-record-field-options)
 (add-boot-init!
  (lambda ()
-   (set! %record-metatag (make-dispatch-metatag 'record-tag))
+   (set! %record-metatag (make-dispatch-metatag 'record))
    (set! record-type? (dispatch-tag->predicate %record-metatag))
    (set! %%make-record-type
 	 (dispatch-metatag-constructor %record-metatag 'make-record-type))
@@ -616,7 +616,7 @@ USA.
 
 (define (record-predicate record-type)
   (guarantee record-type? record-type 'record-predicate)
-  (%dispatch-tag->predicate record-type))
+  (%dispatch-tag-predicate record-type))
 
 (define (record-accessor record-type field-name)
   (guarantee record-type? record-type 'record-accessor)
@@ -682,7 +682,7 @@ USA.
 (define-print-method record?
   (standard-print-method
    (lambda (record)
-     (dispatch-tag-print-name (record-type-descriptor record)))))
+     (dispatch-tag-name (record-type-descriptor record)))))
 
 (define-pp-describer record?
   (lambda (record)
@@ -700,11 +700,11 @@ USA.
 (define %print-record-type
   (standard-print-method 'record-type
     (lambda (type)
-      (list (dispatch-tag-print-name type)))))
+      (list (dispatch-tag-name type)))))
 
 (define (%pp-record-type record-type)
   `((name ,(%dispatch-tag-name record-type))
-    (predicate ,(%dispatch-tag->predicate record-type))
+    (predicate ,(%dispatch-tag-predicate record-type))
     (start-index ,(%record-type-start-index record-type))
     (end-index ,(%record-type-end-index record-type))
     (fields-by-index ,(%record-type-fields-by-index record-type))

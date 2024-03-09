@@ -33,7 +33,7 @@ USA.
 (add-boot-deps! '(runtime predicate)
 		'(runtime hash-table))
 
-(define compound-tag-metatag (make-dispatch-metatag 'compound-tag))
+(define compound-tag-metatag (make-dispatch-metatag 'compound))
 (define compound-tag? (dispatch-tag->predicate compound-tag-metatag))
 
 (define %make-compound-tag

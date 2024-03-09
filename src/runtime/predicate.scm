@@ -127,7 +127,7 @@ USA.
      (set! register-predicate!
 	   (let ((make-simple-tag
 		  (dispatch-metatag-constructor
-		   (make-dispatch-metatag 'simple-tag)
+		   (make-dispatch-metatag 'simple)
 		   'register-predicate!)))
 	     (named-lambda (register-predicate! predicate name . keylist)
 	       (guarantee keyword-list? keylist 'register-predicate!)
@@ -135,7 +135,7 @@ USA.
 		      (let ((tag (get-predicate-tag predicate #f)))
 			(if tag
 			    (begin
-			      (if (not (eq? name (dispatch-tag-name tag)))
+			      (if (not (equal? name (dispatch-tag-name tag)))
 				  (error "Can't re-register predicate:"
 					 predicate name))
 			      tag)

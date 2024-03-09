@@ -32,7 +32,7 @@ USA.
 
 (add-boot-deps! '(runtime predicate) '(runtime memoizer))
 
-(define parametric-tag-metatag (make-dispatch-metatag 'parametric-tag))
+(define parametric-tag-metatag (make-dispatch-metatag 'parametric))
 (define parametric-tag? (dispatch-tag->predicate parametric-tag-metatag))
 
 (define %make-parametric-tag

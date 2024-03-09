@@ -33,33 +33,9 @@ USA.
 ;;; Functional Programming.  Parts of this code are based on the
 ;;; September 16, 1992 PCL implementation.
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external "dispatch-low"))
 
-(define (%%make-tag metatag cache-number name predicate extra)
-  (apply %record
-	 metatag
-	 (cache-number)
-	 (cache-number)
-	 (cache-number)
-	 (cache-number)
-	 (cache-number)
-	 (cache-number)
-	 (cache-number)
-	 (cache-number)
-	 name
-	 predicate
-	 (weak-list-set eq?)
-	 extra))
-
-(define %make-tag
-  (named-lambda (cold-load:%make-tag metatag name predicate extra)
-    (let ((tag (%%make-tag metatag (lambda () #f) name predicate extra)))
-      (set-predicate-tag! predicate tag)
-      (set! need-cache-numbers (cons tag need-cache-numbers))
-      tag)))
-
-(define need-cache-numbers '())
-
 (define (tag-name? object)
   (or (symbol? object)
       (and (pair? object)
@@ -71,67 +47,13 @@ USA.
 (register-predicate! tag-name? 'dispatch-tag-name)
 
 (define (dispatch-tag? object)
-  (and (%record? object)
-       (dispatch-metatag? (%record-ref object 0))))
+  (%dispatch-tag? object))
 (register-predicate! dispatch-tag? 'tag '<= %record?)
 
-(define-integrable (%dispatch-tag-name tag)
-  (%record-ref tag 9))
+(define (dispatch-metatag? object)
+  (%dispatch-metatag? object))
+(set-predicate<=! dispatch-metatag? dispatch-tag?)
 
-(define-integrable (%dispatch-tag->predicate tag)
-  (%record-ref tag 10))
-
-(define-integrable (%tag-supersets tag)
-  (%record-ref tag 11))
-
-(define-integrable (%dispatch-tag-extra-length tag)
-  (fix:- (%record-length tag) 12))
-
-(define-integrable (%dispatch-tag-extra-ref tag index)
-  (%record-ref tag (%dispatch-tag-extra-index index)))
-
-(define-integrable (%dispatch-tag-extra-set! tag index value)
-  (%record-set! tag (%dispatch-tag-extra-index index) value))
-
-(define-integrable (%dispatch-tag-extra-index index)
-  (fix:+ 12 index))
-
-(define-integrable tag-cache-number-adds-ok
-  ;; This constant controls the number of non-zero bits tag cache
-  ;; numbers will have.
-  ;;
-  ;; The value of this constant is the number of tag cache numbers
-  ;; that can be added and still be certain the result will be a
-  ;; fixnum.  This is implicitly used by all the code that computes
-  ;; primary cache locations from multiple tags.
-  4)
-
-(define get-tag-cache-number)
-(define metatag-tag)
-(define (initialize-cache-numbers!)
-  (set! get-tag-cache-number
-	(let ((modulus
-	       (int:quotient (int:+ fx-greatest 1)
-			     tag-cache-number-adds-ok))
-	      (state (make-random-state #t)))
-	  (lambda ()
-	    (random modulus state))))
-  (for-each (lambda (tag)
-	      (do ((i 1 (fix:+ i 1)))
-		  ((not (fix:< i 9)))
-		(%record-set! tag i (get-tag-cache-number))))
-	    need-cache-numbers)
-  (set! need-cache-numbers)
-  (set! %make-tag
-	(named-lambda (%make-tag metatag name predicate extra)
-	  (let ((tag
-		 (%%make-tag metatag get-tag-cache-number name predicate
-			     extra)))
-	    (set-predicate-tag! predicate tag)
-	    tag)))
-  (set! metatag-tag (%make-tag #f 'metatag dispatch-metatag? '()))
-  (%record-set! metatag-tag 0 metatag-tag))
-
 (define (make-dispatch-metatag name)
   (guarantee tag-name? name 'make-dispatch-metatag)
   (letrec*
@@ -140,6 +62,7 @@ USA.
 	  (and (%record? object)
 	       (eq? metatag (%record-ref object 0)))))
        (metatag (%make-tag metatag-tag name predicate '())))
+    (set-predicate-tag! predicate metatag)
     (set-dispatch-tag<=! metatag metatag-tag)
     metatag))
 
@@ -150,20 +73,13 @@ USA.
     (guarantee unary-procedure? predicate caller)
     (if (predicate? predicate)
 	(error "Can't assign multiple tags to the same predicate:" name))
-    (%make-tag metatag name predicate extra)))
+    (let ((tag (%make-tag metatag name predicate extra)))
+      (set-predicate-tag! predicate tag)
+      tag)))
 
-(define (dispatch-metatag-predicate metatag)
-  (guarantee dispatch-metatag? metatag 'dispatch-metatag-predicate)
-  (%dispatch-tag->predicate metatag))
-
-(define (dispatch-metatag? object)
-  (and (%record? object)
-       (eq? metatag-tag (%record-ref object 0))))
-(set-predicate<=! dispatch-metatag? dispatch-tag?)
-
 (define (dispatch-tag-metatag tag)
   (guarantee dispatch-tag? tag 'dispatch-tag-metatag)
-  (%record-ref tag 0))
+  (%dispatch-tag-metatag tag))
 
 (define (dispatch-tag-name tag)
   (guarantee dispatch-tag? tag 'dispatch-tag-name)
@@ -171,7 +87,7 @@ USA.
 
 (define (dispatch-tag->predicate tag)
   (guarantee dispatch-tag? tag 'dispatch-tag->predicate)
-  (%dispatch-tag->predicate tag))
+  (%dispatch-tag-predicate tag))
 
 (define (dispatch-tag-extra-ref tag index)
   (guarantee dispatch-tag? tag 'dispatch-tag-extra-ref)
@@ -188,25 +104,23 @@ USA.
 
 (define (any-dispatch-tag-superset procedure tag)
   (guarantee dispatch-tag? tag 'any-dispatch-tag-superset)
-  (weak-list-set-any procedure (%tag-supersets tag)))
+  (%any-dispatch-tag-superset procedure tag))
 
 (define (add-dispatch-tag-superset tag superset)
   (guarantee dispatch-tag? tag 'add-dispatch-tag-superset)
   (guarantee dispatch-tag? superset 'add-dispatch-tag-superset)
-  (weak-list-set-add! superset (%tag-supersets tag)))
+  (%add-dispatch-tag-superset! tag superset))
 
 (define-print-method dispatch-tag?
-  (standard-print-method
-   (lambda (tag)
-     (if (dispatch-metatag? tag) 'dispatch-metatag 'dispatch-tag))
-   (lambda (tag)
-     (list (dispatch-tag-print-name tag)))))
+  (standard-print-method 'dispatch-tag
+    (lambda (tag)
+      (list (dispatch-tag-name tag)
+	    (dispatch-tag-name (dispatch-tag-metatag tag))))))
 
-(define (dispatch-tag-print-name tag)
-  (let ((name (dispatch-tag-name tag)))
-    (if (symbol? name)
-	(strip-angle-brackets name)
-	name)))
+(define-print-method dispatch-metatag?
+  (standard-print-method 'dispatch-metatag
+    (lambda (tag)
+      (list (dispatch-tag-name tag)))))
 
 (define-pp-describer dispatch-tag?
   (lambda (tag)

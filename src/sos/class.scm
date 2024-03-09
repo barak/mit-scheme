@@ -75,7 +75,7 @@ USA.
     class))
 
 (define class-metatag
-  (make-dispatch-metatag 'class-tag))
+  (make-dispatch-metatag 'class))
 
 (define class-tag?
   (dispatch-tag->predicate class-metatag))

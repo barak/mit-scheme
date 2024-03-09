@@ -344,6 +344,7 @@ USA.
 	 ("boot" . (runtime boot-definitions))
 	 ("generator" . (runtime generator))
 	 ("weak-pair" . (runtime weak-pair))
+	 ("dispatch-low" . (runtime tagged-dispatch))
 	 ("dispatch-tag" . (runtime tagged-dispatch))
 	 ("queue" . (runtime simple-queue))
 	 ("equals" . (runtime equality))
