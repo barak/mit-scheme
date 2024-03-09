@@ -5739,14 +5739,12 @@ USA.
   (parent (runtime))
   (export ()
 	  dispatch-metatag-constructor
-	  dispatch-metatag?
 	  dispatch-tag->predicate
 	  dispatch-tag-extra
 	  dispatch-tag-extra-length
 	  dispatch-tag-extra-ref
 	  dispatch-tag-metatag
 	  dispatch-tag-name
-	  dispatch-tag?
 	  make-dispatch-metatag)
   (export (runtime compound-predicate)
 	  %dispatch-tag-extra-set!)
@@ -5762,12 +5760,40 @@ USA.
 	  probe-cache-2
 	  probe-cache-3
 	  probe-cache-4)
+  (export (runtime types)
+	  %dispatch-metatag?
+	  %make-dispatch-metatag
+	  %make-tag
+	  metatag-tag)
   (export (runtime record)
 	  %dispatch-tag-extra-index
 	  %dispatch-tag-extra-ref
 	  %dispatch-tag-extra-set!
 	  %dispatch-tag-name
 	  %dispatch-tag-predicate))
+
+(define-package (runtime types)
+  (files "types")
+  (parent (runtime))
+  (export ()
+	  %record?
+	  complement-type
+	  conjoin-types
+	  disjoin-types
+	  dispatch-metatag?
+	  dispatch-tag?
+	  restrict-type
+	  system-cell?
+	  system-pair?
+	  system-quadruple?
+	  system-triple?
+	  system-vector?
+	  type-name
+	  type-parts
+	  type-test
+	  type?)
+  (export (runtime)
+	  make-type))
 
 (define-package (runtime crypto)
   (files "crypto")
@@ -6936,7 +6962,7 @@ USA.
 	  %record-length
 	  %record-ref
 	  %record-set!
-	  %record?
+	  %%record?
 	  %tagged-object-datum
 	  %tagged-object-tag
 	  %tagged-object?
@@ -7021,6 +7047,11 @@ USA.
 	  %stack-address?
 	  %symbol-name
 	  %symbol-value
+	  %system-cell?
+	  %system-pair?
+	  %system-quadruple?
+	  %system-triple?
+	  %system-vector?
 	  %unicode-string?
 	  %uninterned-symbol?
 	  %vector?
@@ -7040,7 +7071,6 @@ USA.
 	  primitive-object-ref
 	  primitive-object-set!
 	  system-cell-type-code?
-	  system-cell?
 	  system-list->vector
 	  system-pair-car
 	  system-pair-cdr
@@ -7048,21 +7078,17 @@ USA.
 	  system-pair-set-car!
 	  system-pair-set-cdr!
 	  system-pair-type-code?
-	  system-pair?
 	  system-quadruple-type-code?
-	  system-quadruple?
 	  system-triple-cons
 	  system-triple-first
 	  system-triple-second
-	  system-triple-third
 	  system-triple-set-first!
 	  system-triple-set-second!
 	  system-triple-set-third!
+	  system-triple-third
 	  system-triple-type-code?
-	  system-triple?
 	  system-vector-length
 	  system-vector-ref
 	  system-vector-set!
 	  system-vector-type-code?
-	  system-vector?
 	  ))

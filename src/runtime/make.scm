@@ -345,6 +345,7 @@ USA.
 	 ("generator" . (runtime generator))
 	 ("weak-pair" . (runtime weak-pair))
 	 ("dispatch-low" . (runtime tagged-dispatch))
+	 ("types" . (runtime types))
 	 ("dispatch-tag" . (runtime tagged-dispatch))
 	 ("queue" . (runtime simple-queue))
 	 ("equals" . (runtime equality))

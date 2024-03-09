@@ -46,14 +46,6 @@ USA.
 				(tag-name? elt)))))))
 (register-predicate! tag-name? 'dispatch-tag-name)
 
-(define (dispatch-tag? object)
-  (%dispatch-tag? object))
-(register-predicate! dispatch-tag? 'tag '<= %record?)
-
-(define (dispatch-metatag? object)
-  (%dispatch-metatag? object))
-(set-predicate<=! dispatch-metatag? dispatch-tag?)
-
 (define (make-dispatch-metatag name)
   (guarantee tag-name? name 'make-dispatch-metatag)
   (letrec*

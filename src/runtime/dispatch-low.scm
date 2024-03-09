@@ -35,7 +35,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (%%make-tag metatag cache-number name predicate extra)
+(define (%%make-tag metatag cache-number name predicate supersets extra)
   (apply %record
 	 metatag
 	 (cache-number)
@@ -48,11 +48,11 @@ USA.
 	 (cache-number)
 	 name
 	 predicate
-	 (weak-list-set eq?)
+	 supersets
 	 extra))
 
 (define (cold-load:%make-tag metatag name predicate extra)
-  (let ((tag (%%make-tag metatag (lambda () #f) name predicate extra)))
+  (let ((tag (%%make-tag metatag (lambda () #f) name predicate #f extra)))
     (set! need-cache-numbers (cons tag need-cache-numbers))
     tag))
 
@@ -73,8 +73,14 @@ USA.
 (define-integrable (%dispatch-tag-predicate tag)
   (%record-ref tag 10))
 
+(define-integrable (%set-dispatch-tag-predicate! tag predicate)
+  (%record-set! tag 10 predicate))
+
 (define-integrable (%tag-supersets tag)
   (%record-ref tag 11))
+
+(define-integrable (%set-tag-supersets! tag supersets)
+  (%record-set! tag 11 supersets))
 
 (define-integrable (%dispatch-tag-extra-length tag)
   (fix:- (%record-length tag) 12))
@@ -109,6 +115,10 @@ USA.
 
   metatag)
 
+(define metatag-tag
+  (%make-tag #f 'metatag %dispatch-metatag? '()))
+(%record-set! metatag-tag 0 metatag-tag)
+
 (define (%dispatch-metatag-constructor metatag)
   (lambda (name predicate . extra)
     (%make-tag metatag name predicate extra)))
@@ -124,7 +134,6 @@ USA.
   4)
 
 (define get-tag-cache-number)
-(define metatag-tag)
 (define (initialize-cache-numbers!)
   (set! get-tag-cache-number
 	(let ((modulus
@@ -136,12 +145,13 @@ USA.
   (for-each (lambda (tag)
 	      (do ((i 1 (fix:+ i 1)))
 		  ((not (fix:< i 9)))
-		(%record-set! tag i (get-tag-cache-number))))
+		(%record-set! tag i (get-tag-cache-number)))
+	      (%set-tag-supersets! tag (weak-list-set eq?)))
 	    need-cache-numbers)
   (set! need-cache-numbers)
   (set! %make-tag
 	(named-lambda (%make-tag metatag name predicate extra)
-	  (%%make-tag metatag get-tag-cache-number name predicate extra)))
-  (set! metatag-tag (%make-tag #f 'metatag dispatch-metatag? '()))
-  (%record-set! metatag-tag 0 metatag-tag)
+	  (%%make-tag metatag get-tag-cache-number name predicate
+		      (weak-list-set eq?) extra)))
+  (%set-dispatch-tag-predicate! metatag-tag dispatch-metatag?)
   (set-predicate-tag! dispatch-metatag? metatag-tag))

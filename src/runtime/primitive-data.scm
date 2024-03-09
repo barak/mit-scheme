@@ -111,7 +111,7 @@ USA.
 (define-integrable (%recnum? object)
   (object-type? (ucode-type recnum) object))
 
-(define-integrable (%record? object)
+(define-integrable (%%record? object)
   (object-type? (ucode-type record) object))
 
 (define-integrable (%scode-access? object)
@@ -245,31 +245,31 @@ USA.
 (define-integrable (match-gct-mask mask code)
   (not (fix:= 0 (fix:and mask (fix:lsh 1 (gct-code->index code))))))
 
-(define-integrable (system-cell? object)
+(define-integrable (%system-cell? object)
   (fix:= 1 ((ucode-primitive object-gc-type 1) object)))
 
 (define-integrable (system-cell-type-code? code)
   (fix:= 1 ((ucode-primitive type->gc-type 1) code)))
 
-(define-integrable (system-pair? object)
+(define-integrable (%system-pair? object)
   (fix:= 2 ((ucode-primitive object-gc-type 1) object)))
 
 (define-integrable (system-pair-type-code? code)
   (fix:= 2 ((ucode-primitive type->gc-type 1) code)))
 
-(define-integrable (system-triple? object)
+(define-integrable (%system-triple? object)
   (fix:= 3 ((ucode-primitive object-gc-type 1) object)))
 
 (define-integrable (system-triple-type-code? code)
   (fix:= 3 ((ucode-primitive type->gc-type 1) code)))
 
-(define-integrable (system-quadruple? object)
+(define-integrable (%system-quadruple? object)
   (fix:= 4 ((ucode-primitive object-gc-type 1) object)))
 
 (define-integrable (system-quadruple-type-code? code)
   (fix:= 4 ((ucode-primitive type->gc-type 1) code)))
 
-(define-integrable (system-vector? object)
+(define-integrable (%system-vector? object)
   (fix:= -3 ((ucode-primitive object-gc-type 1) object)))
 
 (define-integrable (system-vector-type-code? code)
