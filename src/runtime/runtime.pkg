@@ -5811,6 +5811,7 @@ USA.
 	  scode-extended-lambda?
 	  scode-lexpr?
 	  scode-simple-lambda?
+	  set-type<=!
 	  simple-procedure?
 	  simple-type
 	  unicode-string?))

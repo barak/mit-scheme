@@ -57,20 +57,22 @@ USA.
       (%make-record-type type-name field-specs parent-type
 			 applicator instance-marker))))
 
-(define (valid-field-specs? object)
-  (and (list? object)
-       (every field-spec? object)
-       (not (any-duplicates? object eq? field-spec-name))))
+(define valid-field-specs?
+  (restrict-type list?
+    (lambda (object)
+      (and (every field-spec? object)
+	   (not (any-duplicates? object eq? field-spec-name))))))
 (register-predicate! valid-field-specs? 'valid-field-specs '<= list?)
 
-(define (field-spec? object)
-  (or (symbol? object)
-      (and (pair? object)
-	   (symbol? (car object))
-	   (or (and (pair? (cdr object))
-		    (%valid-default-init? (cadr object))
-		    (null? (cddr object)))
-	       (keyword-list? (cdr object))))))
+(define field-spec?
+  (disjoin-types symbol?
+		 (restrict-type pair?
+		   (lambda (p)
+		     (and (symbol? (car p))
+			  (or (and (pair? (cdr p))
+				   (%valid-default-init? (cadr p))
+				   (null? (cddr p)))
+			      (keyword-list? (cdr p))))))))
 
 (define (make-field-spec name init)
   (if init
@@ -118,11 +120,11 @@ USA.
   (let* ((start-index (if parent-type (%record-type-end-index parent-type) 0))
 	 (end-index (+ start-index 1 (length field-specs))))
 
-    (define (make-type predicate)
+    (define (make-type test)
       (let ((fields-by-index
 	     (generate-fields-by-index field-specs parent-type start-index)))
 	(%%make-record-type type-name
-			    predicate
+			    (simple-type type-name test)
 			    start-index
 			    end-index
 			    fields-by-index
@@ -137,6 +139,10 @@ USA.
 				  instance-marker make-type)
 	       (%make-normal-type start-index end-index parent-type
 				  make-type))))
+      (set-type<=! (record-predicate type)
+		   (if parent-type
+		       (record-predicate parent-type)
+		       record?))
       (set-predicate<=! (record-predicate type)
 			(if parent-type
 			    (record-predicate parent-type)
@@ -414,10 +420,11 @@ USA.
 		   (iota (length (cdr form)))))))))
   (enumerate-proxies pathname host))
 
-(define (record? object)
-  (and (%record? object)
-       (%record->root-type object)
-       #t))
+(define record?
+  (restrict-type %record?
+    (lambda (object)
+      (and (%record->root-type object)
+	   #t))))
 
 (define (record-type-descriptor record)
   (guarantee record? record 'record-type-descriptor)
