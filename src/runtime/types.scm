@@ -288,32 +288,3 @@ USA.
     (lambda (record)
       (eq? metatag-tag (%record-ref record 0)))))
 (set-type<=! dispatch-metatag? dispatch-tag?)
-
-#|
-
-(define simple-string?
-  (disjoin-types unicode-string? legacy-string?))
-
-(define mutable-simple-string?
-  (disjoin-types legacy-string?
-		 (restrict-type unicode-string? %ustring-mutable?)))
-
-(define immutable-simple-string?
-  (restrict-type unicode-string? %ustring-immutable?))
-
-(define string?
-  (disjoin-types simple-string? slice?))
-
-(define mutable-string?
-  (disjoin-types mutable-simple-string?
-		 (restrict-type slice?
-		   (lambda (slice)
-		     (mutable-simple-string? (slice-string slice))))))
-
-(define immutable-string?
-  (disjoin-types immutable-simple-string?
-		 (restrict-type slice?
-		   (lambda (slice)
-		     (immutable-simple-string? (slice-string slice))))))
-
-|#
