@@ -41,8 +41,7 @@ USA.
   (vector -1)
   (vector-length 1)
   (vector-ref 2)
-  (vector-set! 3)
-  (vector? 1))
+  (vector-set! 3))
 
 (define-integrable (guarantee-subvector vector start end procedure)
   (guarantee vector? vector procedure)

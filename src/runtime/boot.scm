@@ -213,16 +213,6 @@ USA.
 
 ;;;; Promises
 
-(define (cell? object) (%cell? object))
-(register-predicate! cell? 'cell)
-
-(declare (integrate-operator promise?))
-(define (promise? object)
-  (and (cell? object)
-       (cell? (cell-contents object))
-       (%delayed? (cell-contents (cell-contents object)))))
-(register-predicate! promise? 'promise '<= cell?)
-
 (define (make-promise object)
   (make-cell (make-cell (%make-delayed #t object))))
 
@@ -276,12 +266,20 @@ USA.
 		       (set-cell-contents! promise* q))))))
 	    (%force promise))))))
 
-(define-print-method promise?
-  (standard-print-method 'promise
-    (lambda (promise)
-      (if (promise-forced? promise)
-	  (list '(evaluated) (promise-value promise))
-	  (list '(unevaluated))))))
+(define promise?)
+(seq:after-files-loaded 'add-action!
+  (lambda ()
+    (set! promise?
+	  (restrict-type cell?
+	    (lambda (cell)
+	      (and (cell? (cell-contents cell))
+		   (%delayed? (cell-contents (cell-contents cell)))))))
+    (define-print-method promise?
+      (standard-print-method 'promise
+	(lambda (promise)
+	  (if (promise-forced? promise)
+	      (list '(evaluated) (promise-value promise))
+	      (list '(unevaluated))))))))
 
 ;;;; Multiple values
 

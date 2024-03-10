@@ -175,6 +175,7 @@ USA.
                    (cdr form)))))))
   (define-primitive-types
     any-object
+    apply-hook
     bignum
     bit-string
     broken-heart
@@ -198,6 +199,7 @@ USA.
     hunk3-b
     ic-environment
     interned-symbol
+    interpreter-return-address
     legacy-string
     manifest-nm-vector
     no-object
@@ -228,7 +230,7 @@ USA.
     system-quadruple
     system-triple
     system-vector
-    tagged-object
+    %tagged-object
     unicode-string
     uninterned-symbol
     vector
@@ -236,33 +238,14 @@ USA.
 
 (define dispatch-tag?
   (restrict-type %record?
-		 (lambda (record)
-		   (%dispatch-metatag? (%record-ref record 0)))))
-(register-predicate! dispatch-tag? 'tag '<= %record?)
+    (lambda (record)
+      (%dispatch-metatag? (%record-ref record 0)))))
 
 (define dispatch-metatag?
   (restrict-type %record?
-		 (lambda (record)
-		   (eq? metatag-tag (%record-ref record 0)))))
+    (lambda (record)
+      (eq? metatag-tag (%record-ref record 0)))))
 (set-type<=! dispatch-metatag? dispatch-tag?)
-(set-predicate<=! dispatch-metatag? dispatch-tag?)
-
-(define object-non-pointer?
-  (disjoin-types gc-non-pointer? manifest-nm-vector?))
-
-(define object-pointer?
-  (disjoin-types gc-pointer? broken-heart?))
-
-(define compiled-code-address?
-  (disjoin-types compiled-entry-address? compiled-return-address?))
-
-(define compiled-expression?
-  (restrict-type compiled-code-address?
-    (lambda (entry)
-      (eq? 'compiled-expression (compiled-entry-type entry)))))
-
-(define symbol?
-  (disjoin-types interned-symbol? uninterned-symbol?))
 
 #|
 

@@ -54,14 +54,14 @@ USA.
 
 (define (initialize-package!)
   (define ((dispatch-0 op-name clambda-op xlambda-op) *lambda)
-    ((cond ((slambda? *lambda) clambda-op)
-	   ((xlambda? *lambda) xlambda-op)
+    ((cond ((scode-simple-lambda? *lambda) clambda-op)
+	   ((scode-extended-lambda? *lambda) xlambda-op)
 	   (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
      *lambda))
 
   (define ((dispatch-1 op-name clambda-op xlambda-op) *lambda arg)
-    ((cond ((slambda? *lambda) clambda-op)
-	   ((xlambda? *lambda) xlambda-op)
+    ((cond ((scode-simple-lambda? *lambda) clambda-op)
+	   ((scode-extended-lambda? *lambda) xlambda-op)
 	   (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
      *lambda arg))
 
@@ -276,11 +276,6 @@ USA.
 
 ;;;; Extended Lambda
 
-(define (xlambda? object)
-  (object-type? (ucode-type extended-lambda) object))
-
-(define-guarantee xlambda "an extended lambda")
-
 (define (%xlambda-body xlambda)
   (safe-system-triple-first xlambda))
 
@@ -291,15 +286,15 @@ USA.
   (object-datum (safe-system-triple-third xlambda)))
 
 (define (xlambda-body xlambda)
-  (guarantee-xlambda xlambda 'xlambda-body)
+  (guarantee scode-extended-lambda? xlambda 'xlambda-body)
   (%xlambda-body xlambda))
 
 (define (xlambda-names-vector xlambda)
-  (guarantee-xlambda xlambda 'xlambda-names-vector)
+  (guarantee scode-extended-lambda? xlambda 'xlambda-names-vector)
   (%xlambda-names-vector xlambda))
 
 (define (xlambda-encoded-arity xlambda)
-  (guarantee-xlambda xlambda 'xlambda-encoded-arity)
+  (guarantee scode-extended-lambda? xlambda 'xlambda-encoded-arity)
   (%xlambda-encoded-arity xlambda))
 
 (define (encode-xlambda-arity n-required n-optional rest?)
@@ -322,7 +317,7 @@ USA.
     (encode-xlambda-arity (length required) (length optional) rest))))
 
 (define (xlambda-components xlambda receiver)
-  (guarantee-xlambda xlambda 'xlambda-components)
+  (guarantee scode-extended-lambda? xlambda 'xlambda-components)
   (decode-xlambda-arity
    (%xlambda-encoded-arity xlambda)
    (lambda (n-required n-optional rest?)
@@ -361,21 +356,21 @@ USA.
 	(and rest? (vector-ref bound (+ n-optional n-required 1))))))))
 
 (define (xlambda-name xlambda)
-  (guarantee-xlambda xlambda 'xlambda-name)
+  (guarantee scode-extended-lambda? xlambda 'xlambda-name)
   (vector-ref (%xlambda-names-vector xlambda) 0))
 
 (define (xlambda-interface xlambda)
-  (guarantee-xlambda xlambda 'xlambda-interface)
+  (guarantee scode-extended-lambda? xlambda 'xlambda-interface)
   (%xlambda-interface xlambda))
 
 (define (xlambda-bound xlambda)
-  (guarantee-xlambda xlambda 'xlambda-bound)
+  (guarantee scode-extended-lambda? xlambda 'xlambda-bound)
   (append (let ((names (%xlambda-names-vector xlambda)))
 	    (subvector->list names 1 (vector-length names)))
 	  (lambda-body-auxiliary (%xlambda-body xlambda))))
 
 (define (xlambda-bound? xlambda symbol)
-  (guarantee-xlambda xlambda 'xlambda-bound?)
+  (guarantee scode-extended-lambda? xlambda 'xlambda-bound?)
   (or (let ((bound (%xlambda-names-vector xlambda)))
 	(subvector-find-next-element bound 1 (vector-length bound) symbol))
       (auxiliary-bound? (%xlambda-body xlambda) symbol)))
@@ -402,11 +397,6 @@ USA.
 	(safe-system-triple-set-first! xlambda body))))
 
 ;;;; Generic Lambda
-
-(define (scode-lambda? object)
-  (or (slambda? object)
-      (xlambda? object)))
-(register-predicate! scode-lambda? 'scode-lambda)
 
 (define (make-scode-lambda name required optional rest auxiliary declarations
 			   body)
@@ -475,46 +465,41 @@ USA.
 
 ;;;; Simple Lambda
 (define (slambda-arity slambda offset)
-  (guarantee-slambda slambda 'slambda-arity)
+  (guarantee scode-simple-lambda? slambda 'slambda-arity)
   (%slambda-arity slambda offset))
 
 (define (slambda-auxiliary slambda)
-  (guarantee-slambda slambda 'slambda-auxiliary)
+  (guarantee scode-simple-lambda? slambda 'slambda-auxiliary)
   (%slambda-auxiliary slambda))
 
 (define (slambda-body slambda)
-  (guarantee-slambda slambda 'slambda-body)
+  (guarantee scode-simple-lambda? slambda 'slambda-body)
   (%slambda-body slambda))
 
 (define (set-slambda-body! slambda new-body)
-  (guarantee-slambda slambda 'set-slambda-body!)
+  (guarantee scode-simple-lambda? slambda 'set-slambda-body!)
   (%set-slambda-body! slambda new-body))
 
 (define (slambda-components slambda receiver)
-  (guarantee-slambda slambda 'slambda-components)
+  (guarantee scode-simple-lambda? slambda 'slambda-components)
   (%slambda-components slambda receiver))
 
 (define (slambda-interface slambda)
-  (guarantee-slambda slambda 'slambda-interface)
+  (guarantee scode-simple-lambda? slambda 'slambda-interface)
   (%slambda-interface slambda))
 
 (define (slambda-name slambda)
-  (guarantee-slambda slambda 'slambda-name)
+  (guarantee scode-simple-lambda? slambda 'slambda-name)
   (%slambda-name slambda))
 
 (define (slambda-names-vector slambda)
-  (guarantee-slambda slambda 'slambda-names-vector)
+  (guarantee scode-simple-lambda? slambda 'slambda-names-vector)
   (%slambda-names-vector slambda))
 
 (define (make-slambda name required body)
   (safe-system-pair-cons (ucode-type lambda)
 			 body
 			 (list->vector (cons name required))))
-
-(define-integrable (slambda? object)
-  (object-type? (ucode-type lambda) object))
-
-(define-guarantee slambda "simple lambda")
 
 (define-integrable (%slambda-body slambda)
   (safe-system-pair-car slambda))
@@ -567,11 +552,11 @@ USA.
 			      (make-unassigned auxiliary))))
 
 (define (internal-lambda? *lambda)
-  (and (slambda? *lambda)
+  (and (scode-simple-lambda? *lambda)
        (eq? (slambda-name *lambda) scode-lambda-name:internal-lambda)))
 
 (define (internal-lambda-bound? *lambda symbol)
-  (and (slambda? *lambda)
+  (and (scode-simple-lambda? *lambda)
        (slambda-bound? *lambda symbol)))
 
 (define (make-unassigned auxiliary)

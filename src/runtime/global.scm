@@ -246,6 +246,12 @@ USA.
 (define (unbind-variable environment name)
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
 
+(define object-non-pointer?
+  (disjoin-types gc-non-pointer? manifest-nm-vector?))
+
+(define object-pointer?
+  (disjoin-types gc-pointer? broken-heart?))
+
 (define (undefined-value? object)
   ;; Note: the printer takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
@@ -574,35 +580,30 @@ USA.
 (define (make-ephemeron key datum)
   ((ucode-primitive make-ephemeron 2) (canonicalize key) (canonicalize datum)))
 
-(define (ephemeron? object)
-  (object-type? (ucode-type ephemeron) object))
-
-(define-guarantee ephemeron "ephemeron")
-
 (define (ephemeron-key ephemeron)
-  (guarantee-ephemeron ephemeron 'ephemeron-key)
+  (guarantee ephemeron? ephemeron 'ephemeron-key)
   (decanonicalize (primitive-object-ref ephemeron 1)))
 
 (define (ephemeron-datum ephemeron)
-  (guarantee-ephemeron ephemeron 'ephemeron-datum)
+  (guarantee ephemeron? ephemeron 'ephemeron-datum)
   (decanonicalize (primitive-object-ref ephemeron 2)))
 
 (define (set-ephemeron-key! ephemeron key)
-  (guarantee-ephemeron ephemeron 'set-ephemeron-key!)
+  (guarantee ephemeron? ephemeron 'set-ephemeron-key!)
   (let ((key* (primitive-object-ref ephemeron 1)))
     (if key* (primitive-object-set! ephemeron 1 (canonicalize key)))
     (reference-barrier key*))
   unspecific)
 
 (define (set-ephemeron-datum! ephemeron datum)
-  (guarantee-ephemeron ephemeron 'set-ephemeron-datum!)
+  (guarantee ephemeron? ephemeron 'set-ephemeron-datum!)
   (let ((key (primitive-object-ref ephemeron 1)))
     (if key (primitive-object-set! ephemeron 2 (canonicalize datum)))
     (reference-barrier key))
   unspecific)
 
 (define (ephemeron-broken? ephemeron)
-  (guarantee-ephemeron ephemeron 'ephemeron-broken?)
+  (guarantee ephemeron? ephemeron 'ephemeron-broken?)
   (not (primitive-object-ref ephemeron 1)))
 
 ;;;; Partitioning

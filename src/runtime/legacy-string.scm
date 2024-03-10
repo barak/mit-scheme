@@ -32,7 +32,6 @@ USA.
 
 (define-primitives
   (string-allocate 1)
-  (legacy-string? string? 1)
   (vector-8b-length string-length 1)
   (vector-8b-ref 2)
   (vector-8b-set! 3))

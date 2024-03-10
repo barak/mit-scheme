@@ -105,7 +105,6 @@ USA.
 	  bit-string-xor!
 	  bit-string-zero?
 	  bit-string=?
-	  bit-string?
 	  bit-substring
 	  bit-substring-extend
 	  bit-substring-find-next-set-bit
@@ -159,7 +158,6 @@ USA.
 	  bracketed-print-method
 	  bytes-per-object
 	  call-with-values		;(scheme base)
-	  cell?
 	  default-object
 	  default-object?
 	  define-pp-describer
@@ -384,7 +382,6 @@ USA.
 	  weak-memq
 	  weak-memv
 	  weak-pair/car?
-	  weak-pair?
 	  weak-remove
 	  weak-remove!
 	  weak-reverse!
@@ -426,7 +423,6 @@ USA.
 	  (fix:> fx>?)
 	  (fix:>= fx>=?)
 	  (fix:and fxand)
-	  (fix:fixnum? fixnum?)
 	  (fix:lsh fxarithmetic-shift)
 	  (fix:max fxmax)
 	  (fix:min fxmin)
@@ -452,7 +448,6 @@ USA.
 	  fix:largest-value
 	  fix:smallest-value
 	  fix:start-index
-	  fixnum?			;(srfi 143)
 	  fx*				;(srfi 143)
 	  fx*/carry			;(srfi 143)
 	  fx+				;(srfi 143)
@@ -784,7 +779,6 @@ USA.
 	  ephemeron-broken?		;(srfi 124)
 	  ephemeron-datum		;(srfi 124)
 	  ephemeron-key			;(srfi 124)
-	  ephemeron?			;(srfi 124)
 	  error-procedure
 	  eval				;(scheme eval)
 	  exit				;(scheme process-context)
@@ -842,6 +836,8 @@ USA.
 	  with-interrupt-mask)
   (export (runtime)
 	  get-fixed-objects-vector
+	  object-non-pointer?
+	  object-pointer?
 	  strip-angle-brackets)
   (import (runtime thread)
 	  with-obarray-lock))
@@ -979,7 +975,6 @@ USA.
   (export ()
 	  intern
 	  intern-soft
-	  interned-symbol?
 	  generate-uninterned-symbol
 	  string->symbol		;(scheme base)
 	  string->uninterned-symbol
@@ -989,8 +984,7 @@ USA.
 	  symbol<?
 	  symbol=?			;(scheme base)
 	  symbol>?
-	  symbol?			;(scheme base)
-	  uninterned-symbol?)
+	  symbol?)			;(scheme base)
   (export (runtime)
 	  hidden-variable-name?))
 
@@ -1015,20 +1009,16 @@ USA.
 	  compiled-code-block/marked-start
 	  compiled-code-block/offset->index
 	  compiled-code-block/read-file
-	  compiled-code-block?
 	  compiled-continuation/next-continuation-offset
 	  compiled-continuation/reflect-to-interface?
 	  compiled-continuation/return-to-interpreter?
-	  compiled-entry-address?
 	  compiled-entry-type
 	  compiled-expression?
-	  compiled-return-address?
 	  discriminate-compiled-entry
 	  environment-extension-aux-list
 	  environment-extension-parent
 	  environment-extension-procedure
 	  environment-extension?
-	  interpreter-return-address?
 	  make-return-address
 	  microcode-error
 	  microcode-return
@@ -1040,8 +1030,7 @@ USA.
 	  set-compiled-code-block/debugging-info!
 	  set-environment-extension-parent!
 	  stack-address->index
-	  stack-address-offset
-	  stack-address?))
+	  stack-address-offset))
 
 (define-package (runtime vector)
   (files "vector")
@@ -1098,8 +1087,7 @@ USA.
 	  vector-sixth
 	  vector-tail
 	  vector-third
-	  vector-uniform?
-	  vector?))
+	  vector-uniform?))
 
 (define-package (runtime os-primitives)
   (parent (runtime))
@@ -1174,8 +1162,6 @@ USA.
   (files "legacy-string")
   (parent (runtime))
   (export deprecated ()
-	  (vector-8b? legacy-string?)
-	  legacy-string?
 	  make-legacy-string
 	  make-vector-8b
 	  vector-8b-length
@@ -1354,7 +1340,6 @@ USA.
 	  bytevector-zero-explicit!
 	  bytevector<?
 	  bytevector=?
-	  bytevector?			;(scheme base)
 	  exact-nonnegative-integer->bytevector
 	  hexadecimal->bytevector
 	  iso8859-1->string
@@ -1490,7 +1475,6 @@ USA.
 	  char=?			;(scheme base)
 	  char>=?			;(scheme base)
 	  char>?			;(scheme base)
-	  char?				;(scheme base)
 	  clear-char-bits
 	  code-point-general-category
 	  decode-utf8-char
@@ -2002,7 +1986,6 @@ USA.
 	  control-point->raw-frame-generator
 	  control-point-length
 	  control-point-ref
-	  control-point?
 	  make-control-point))
 
 (define-package (runtime debugger)
@@ -2165,7 +2148,6 @@ USA.
   (export ()
 	  apply-hook-extra
 	  apply-hook-procedure
-	  apply-hook?
 	  arity-dispatched-procedure?
 	  binary-procedure?
 	  compiled-closure->entry
@@ -2176,7 +2158,6 @@ USA.
 	  compound-procedure?
 	  entity-extra
 	  entity-procedure
-	  entity?
 	  guarantee-procedure-of-arity
 	  implemented-primitive-procedure?
 	  make-apply-hook
@@ -2185,7 +2166,6 @@ USA.
 	  make-primitive-procedure
 	  make-procedure-arity
 	  primitive-procedure-name
-	  primitive-procedure?
 	  procedure-arity
 	  procedure-arity-intersection
 	  procedure-arity-max
@@ -2210,14 +2190,12 @@ USA.
   (files "predicate")
   (parent (runtime))
   (export ()
-	  any-object?
 	  bottom-dispatch-tag
 	  dispatch-tag-is-bottom?
 	  dispatch-tag-is-top?
 	  dispatch-tag<=
 	  dispatch-tag=
 	  dispatch-tag>=
-	  no-object?
 	  predicate-name
 	  predicate<=
 	  predicate>=
@@ -2347,7 +2325,6 @@ USA.
 	  environment?
 	  (extend-ic-environment extend-top-level-environment)
 	  extend-top-level-environment
-	  ic-environment?
 	  interpreter-environment?
 	  (make-null-interpreter-environment make-root-top-level-environment)
 	  make-root-top-level-environment
@@ -3236,7 +3213,6 @@ USA.
 	  scode-lambda-components
 	  scode-lambda-interface
 	  scode-lambda-name
-	  scode-lambda?
 	  set-scode-lambda-body!)
   (export (runtime advice)
 	  lambda-unwrap-body!
@@ -3444,7 +3420,6 @@ USA.
 	  null-list?			;(srfi 1)
 	  null?				;(scheme base)
 	  count-pairs
-	  pair?				;(scheme base)
 	  reduce			;(srfi 1)
 	  reduce-right			;(srfi 1)
 	  restricted-keyword-list?
@@ -4498,57 +4473,46 @@ USA.
 	  scode-absolute-reference?
 	  scode-access-environment
 	  scode-access-name
-	  scode-access?
 	  scode-assignment-name
 	  scode-assignment-value
-	  scode-assignment?
 	  scode-block-declaration-text
 	  scode-block-declaration?
 	  scode-combination-element
 	  scode-combination-operand
 	  scode-combination-operands
 	  scode-combination-operator
-	  scode-combination?
 	  scode-comment-expression
 	  scode-comment-text
-	  scode-comment?
 	  scode-conditional-alternative
 	  scode-conditional-consequent
 	  scode-conditional-predicate
-	  scode-conditional?
 	  scode-constant?
 	  scode-declaration-expression
 	  scode-declaration-text
 	  scode-declaration?
 	  scode-definition-name
 	  scode-definition-value
-	  scode-definition?
 	  scode-delay-expression
-	  scode-delay?
 	  scode-disjunction-alternative
 	  scode-disjunction-predicate
-	  scode-disjunction?
 	  scode-expression?
 	  scode-lambda-name->syntax-name
 	  scode-lambda-name:fluid-let
 	  scode-lambda-name:internal-lambda
 	  scode-lambda-name:let
 	  scode-lambda-name:unnamed
+	  scode-lambda?
 	  scode-macro-definition-name
 	  scode-macro-definition-transformer
 	  scode-macro-definition?
 	  scode-quotation-expression
-	  scode-quotation?
 	  scode-sequence-actions
 	  scode-sequence-first
 	  scode-sequence-rest
-	  scode-sequence?
-	  scode-the-environment?
 	  scode-unassigned?-name
 	  scode-unassigned??
 	  scode-variable-name
 	  scode-variable-safe?
-	  scode-variable?
 	  undefined-scode-conditional-branch)
   (export (runtime lambda-abstraction)
 	  set-scode-comment-expression!))
@@ -5776,13 +5740,47 @@ USA.
   (files "types")
   (parent (runtime))
   (export ()
+	  (fix:fixnum? fixnum?)
+	  (vector-8b? legacy-string?)
 	  %record?
+	  %tagged-object?
+	  any-object?
+	  apply-hook?
+	  bit-string?
+	  bytevector?			;(scheme base)
+	  cell?
+	  char?				;(scheme base)
+	  compiled-code-block?
+	  compiled-entry-address?
+	  compiled-return-address?
 	  complement-type
 	  conjoin-types
 	  disjoin-types
 	  dispatch-metatag?
 	  dispatch-tag?
+	  entity?
+	  ephemeron?			;(srfi 124)
+	  fixnum?			;(srfi 143)
+	  ic-environment?
+	  interned-symbol?
+	  interpreter-return-address?
+	  no-object?
+	  pair?				;(scheme base)
+	  primitive-procedure?
 	  restrict-type
+	  scode-access?
+	  scode-assignment?
+	  scode-combination?
+	  scode-comment?
+	  scode-conditional?
+	  scode-definition?
+	  scode-delay?
+	  scode-disjunction?
+	  scode-quotation?
+	  scode-sequence?
+	  scode-the-environment?
+	  scode-variable?
+	  stack-address?
 	  system-cell?
 	  system-pair?
 	  system-quadruple?
@@ -5791,9 +5789,31 @@ USA.
 	  type-name
 	  type-parts
 	  type-test
-	  type?)
+	  type?
+	  uninterned-symbol?
+	  vector?
+	  weak-pair?)
   (export (runtime)
-	  make-type))
+	  bignum?
+	  broken-heart?
+	  constant?
+	  control-point?
+	  delayed?
+	  extended-procedure?
+	  flonum?
+	  gc-non-pointer?
+	  gc-pointer?
+	  hunk3-a?
+	  hunk3-b?
+	  legacy-string?
+	  manifest-nm-vector?
+	  ratnum?
+	  recnum?
+	  scode-extended-lambda?
+	  scode-lexpr?
+	  scode-simple-lambda?
+	  simple-procedure?
+	  unicode-string?))
 
 (define-package (runtime crypto)
   (files "crypto")
@@ -6965,7 +6985,7 @@ USA.
 	  %%record?
 	  %tagged-object-datum
 	  %tagged-object-tag
-	  %tagged-object?
+	  %%tagged-object?
 	  cell-contents
 	  make-cell
 	  set-cell-contents!)
@@ -7006,6 +7026,7 @@ USA.
 	  %hunk3-b?
 	  %ic-environment?
 	  %interned-symbol?
+	  %interpreter-return-address?
 	  %legacy-string?
 	  %make-apply-hook
 	  %make-delayed
@@ -7060,8 +7081,6 @@ USA.
 	  non-pointer-type-code?
 	  object-datum
 	  object-new-type
-	  object-non-pointer?
-	  object-pointer?
 	  object-type
 	  object-type?
 	  pointer-type-code?

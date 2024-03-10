@@ -1132,5 +1132,4 @@ USA.
 (define (optional-object) #!optional)
 (define (rest-object) #!rest)
 (define (unspecific-object) #!unspecific)
-(define (weak-false)
-  (object-new-type (microcode-type 'constant) 10))
+(define (weak-false) (gc-reclaimed-object))

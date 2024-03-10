@@ -270,9 +270,6 @@ USA.
   (or (system-global-environment? object)
       (ic-environment? object)))
 
-(define (ic-environment? object)
-  (%ic-environment? object))
-
 (register-predicate! interpreter-environment? 'top-level-environment
 		     '<= environment?)
 (register-predicate! system-global-environment? 'system-global-environment

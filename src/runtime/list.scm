@@ -73,7 +73,6 @@ USA.
   (cons 2)
   (general-car-cdr 2)
   (null? 1)
-  (pair? 1)
   (set-car! 2)
   (set-cdr! 2))
 

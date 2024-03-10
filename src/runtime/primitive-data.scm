@@ -114,6 +114,9 @@ USA.
 (define-integrable (%%record? object)
   (object-type? (ucode-type record) object))
 
+(define-integrable (%interpreter-return-address? object)
+  (object-type? (ucode-type return-address) object))
+
 (define-integrable (%scode-access? object)
   (object-type? (ucode-type access) object))
 
@@ -165,7 +168,7 @@ USA.
 (define-integrable (%stack-address? object)
   (object-type? (ucode-type stack-environment) object))
 
-(define-integrable (%tagged-object? object)
+(define-integrable (%%tagged-object? object)
   (object-type? (ucode-type tagged-object) object))
 
 (define-integrable (%unicode-string? object)
@@ -274,14 +277,6 @@ USA.
 
 (define-integrable (system-vector-type-code? code)
   (fix:= -3 ((ucode-primitive type->gc-type 1) code)))
-
-(define (object-non-pointer? object)
-  (or (%gc-non-pointer? object)
-      (%manifest-nm-vector? object)))
-
-(define (object-pointer? object)
-  (or (%gc-pointer? object)
-      (%broken-heart? object)))
 
 (define (non-pointer-type-code? code)
   (or (%gc-non-pointer-type-code? code)

@@ -33,7 +33,6 @@ USA.
 (add-boot-deps! seq:after-files-loaded)
 
 (define-primitives
-  (char? 1)
   (char->integer 1)
   (integer->char 1))
 

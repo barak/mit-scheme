@@ -42,7 +42,6 @@ USA.
   (fix:andc fixnum-andc 2)
   (fix:divide divide-fixnum 2)
   (fix:gcd gcd-fixnum 2)
-  (fixnum? fixnum? 1)
   (fx* multiply-fixnum 2)
   (fx+ plus-fixnum 2)
   (fx- minus-fixnum 2)
@@ -57,25 +56,24 @@ USA.
   (fxpositive? positive-fixnum? 1)
   (fxquotient fixnum-quotient 2)
   (fxremainder fixnum-remainder 2)
-  (fxzero? zero-fixnum? 1)
-  (non-negative-fixnum? index-fixnum? 1))
+  (fxzero? zero-fixnum? 1))
 
 (define (fxabs n) (if (fx<? n 0) (fx- 0 n) n))
 (define (fxarithmetic-shift-right n m) (fxarithmetic-shift n (fx- 0 m)))
 (define (fxneg n) (fx- 0 n))
 (define (fxsquare n) (fx* n n))
 
-(define (positive-fixnum? object)
-  (and (fixnum? object)
-       (fxpositive? object)))
+(define positive-fixnum?
+  (restrict-type fixnum? fxpositive?))
 
-(define (negative-fixnum? object)
-  (and (fixnum? object)
-       (fxnegative? object)))
+(define negative-fixnum?
+  (restrict-type fixnum? fxnegative?))
 
-(define (non-positive-fixnum? object)
-  (and (fixnum? object)
-       (not (fxpositive? object))))
+(define non-positive-fixnum?
+  (restrict-type fixnum? (lambda (fixnum) (not (fxpositive? fixnum)))))
+
+(define non-negative-fixnum?
+  (restrict-type fixnum? (lambda (fixnum) (not (fxnegative? fixnum)))))
 
 (define (fxodd? n)
   (fix:= (fix:and n 1) 1))

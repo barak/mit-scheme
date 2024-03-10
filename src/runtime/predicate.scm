@@ -86,14 +86,6 @@ USA.
 (define-deferred dispatch-tag<=-cache (make-key-weak-list-eq-hash-table))
 (define dispatch-tag<=-overrides '())
 
-(define (any-object? object)
-  (declare (ignore object))
-  #t)
-
-(define (no-object? object)
-  (declare (ignore object))
-  #f)
-
 (define (top-dispatch-tag) the-top-dispatch-tag)
 (define (bottom-dispatch-tag) the-bottom-dispatch-tag)
 
@@ -164,9 +156,13 @@ USA.
    (register-predicate! %record? '%record)
    (register-predicate! %tagged-object? 'tagged-object)
    (register-predicate! predicate? 'predicate)
+   (register-predicate! system-cell? 'system-cell)
    (register-predicate! system-pair? 'system-pair)
+   (register-predicate! system-quadruple? 'system-quadruple)
    (register-predicate! system-triple? 'system-triple)
-   (register-predicate! system-vector? 'system-vector)))
+   (register-predicate! system-vector? 'system-vector)
+   (register-predicate! dispatch-tag? 'dispatch-tag '<= %record?)
+   (set-predicate<=! dispatch-metatag? dispatch-tag?)))
 
 ;;; Registration of standard predicates
 (add-boot-init!
@@ -253,6 +249,7 @@ USA.
    (register-predicate! ascii-char? 'ascii-char '<= 8-bit-char?)
    (register-predicate! bit-string? 'bit-string)
    (register-predicate! bitless-char? 'bitless-char '<= char?)
+   (register-predicate! cell? 'cell)
    (register-predicate! code-point-list? 'code-point-list '<= list?)
    (register-predicate! compiled-code-address? 'compiled-code-address)
    (register-predicate! return-address? 'return-address)
@@ -271,6 +268,9 @@ USA.
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
    (register-predicate! keyword? 'keyword '<= symbol?)
    (register-predicate! lambda-tag? 'lambda-tag)
+   (register-predicate! legacy-string? 'legacy-string)
+   (register-predicate! object-non-pointer? 'object-non-pointer)
+   (register-predicate! object-pointer? 'object-pointer)
    (register-predicate! named-structure? 'named-structure)
    (register-predicate! named-list? 'named-list
 			'<= non-empty-list?
@@ -278,6 +278,7 @@ USA.
    (register-predicate! named-vector? 'named-vector
 			'<= vector?
 			'<= named-structure?)
+   (register-predicate! promise? 'promise '<= cell?)
    (register-predicate! record? 'record
 			'<= %record?
 			'<= named-structure?)
@@ -294,4 +295,23 @@ USA.
    (register-predicate! weak-alist? 'weak-association-list '<= list?)
    (register-predicate! weak-list-set? 'weak-list-set '<= %record?)
    (register-predicate! weak-list? 'weak-list)
-   (register-predicate! weak-pair? 'weak-pair)))
+   (register-predicate! weak-pair? 'weak-pair)
+   (register-predicate! scode-delay? 'scode-delay)
+   (register-predicate! scode-quotation? 'scode-quotation)
+   (register-predicate! scode-sequence? 'scode-sequence)
+   (register-predicate! scode-variable? 'scode-variable)
+   (register-predicate! scode-definition? 'scode-definition)
+   (register-predicate! scode-assignment? 'scode-assignment)
+   (register-predicate! scode-comment? 'scode-comment)
+   (register-predicate! scode-declaration? 'scode-declaration
+			'<= scode-comment?)
+   (register-predicate! scode-the-environment? 'scode-the-environment)
+   (register-predicate! scode-access? 'scode-access)
+   (register-predicate! scode-absolute-reference? 'scode-absolute-reference
+			'<= scode-access?)
+   (register-predicate! scode-combination? 'scode-combination)
+   (register-predicate! scode-unassigned?? 'scode-unassigned?
+			'<= scode-combination?)
+   (register-predicate! scode-conditional? 'scode-conditional)
+   (register-predicate! scode-disjunction? 'scode-disjunction)
+   (register-predicate! scode-lambda? 'scode-lambda)))

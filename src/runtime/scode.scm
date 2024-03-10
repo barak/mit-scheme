@@ -58,10 +58,6 @@ USA.
 (define (make-scode-quotation expression)
   (safe-system-pair-cons (ucode-type quotation) expression '()))
 
-(define (scode-quotation? object)
-  (object-type? (ucode-type quotation) object))
-(register-predicate! scode-quotation? 'scode-quotation)
-
 (define (scode-quotation-expression quotation)
   (guarantee scode-quotation? quotation 'scode-quotation-expression)
   (safe-system-pair-car quotation))
@@ -74,10 +70,6 @@ USA.
 			   name
 			   (or (default-object? safe?) (not safe?))
 			   #f))
-
-(define (scode-variable? object)
-  (object-type? (ucode-type variable) object))
-(register-predicate! scode-variable? 'scode-variable)
 
 (define (scode-variable-name variable)
   (guarantee scode-variable? variable 'scode-variable-name)
@@ -92,10 +84,6 @@ USA.
 (define (make-scode-definition name value)
   (guarantee symbol? name 'make-scode-definition)
   (safe-system-pair-cons (ucode-type definition) name value))
-
-(define (scode-definition? object)
-  (object-type? (ucode-type definition) object))
-(register-predicate! scode-definition? 'scode-definition)
 
 (define (scode-definition-name definition)
   (guarantee scode-definition? definition 'scode-definition-name)
@@ -179,10 +167,6 @@ USA.
 			 (make-scode-variable name)
 			 value))
 
-(define (scode-assignment? object)
-  (object-type? (ucode-type assignment) object))
-(register-predicate! scode-assignment? 'scode-assignment)
-
 (define (scode-assignment-name assignment)
   (guarantee scode-assignment? assignment 'scode-assignment-name)
   (scode-variable-name (safe-system-pair-car assignment)))
@@ -195,10 +179,6 @@ USA.
 
 (define (make-scode-comment text expression)
   (safe-system-pair-cons (ucode-type comment) expression text))
-
-(define (scode-comment? object)
-  (object-type? (ucode-type comment) object))
-(register-predicate! scode-comment? 'scode-comment)
 
 (define-print-method scode-comment?
   (standard-print-method
@@ -228,12 +208,12 @@ USA.
 (define (make-scode-declaration text expression)
   (make-scode-comment (cons declaration-tag text) expression))
 
-(define (scode-declaration? object)
-  (and (scode-comment? object)
-       (let ((text (scode-comment-text object)))
-	 (and (pair? text)
-	      (eq? (car text) declaration-tag)))))
-(register-predicate! scode-declaration? 'scode-declaration '<= scode-comment?)
+(define scode-declaration?
+  (restrict-type scode-comment?
+    (lambda (comment)
+      (let ((text (scode-comment-text comment)))
+	(and (pair? text)
+	     (eq? (car text) declaration-tag))))))
 
 (define-integrable declaration-tag
   '|#[declaration]|)
@@ -251,19 +231,11 @@ USA.
 (define (make-scode-the-environment)
   (object-new-type (ucode-type the-environment) 0))
 
-(define (scode-the-environment? object)
-  (object-type? (ucode-type the-environment) object))
-(register-predicate! scode-the-environment? 'scode-the-environment)
-
 ;;;; Access
 
 (define (make-scode-access environment name)
   (guarantee symbol? name 'make-scode-access)
   (safe-system-pair-cons (ucode-type access) environment name))
-
-(define (scode-access? object)
-  (object-type? (ucode-type access) object))
-(register-predicate! scode-access? 'scode-access)
 
 (define (scode-access-environment access)
   (guarantee scode-access? access 'scode-access-environment)
@@ -278,14 +250,14 @@ USA.
 (define (make-scode-absolute-reference name)
   (make-scode-access system-global-environment name))
 
-(define (scode-absolute-reference? object)
-  (and (scode-access? object)
-       (system-global-environment? (scode-access-environment object))))
-(register-predicate! scode-absolute-reference? 'scode-absolute-reference
-		     '<= scode-access?)
+(define scode-absolute-reference?
+  (restrict-type scode-access?
+    (lambda (object)
+      (system-global-environment? (scode-access-environment object)))))
 
 (define (scode-absolute-reference-name reference)
-  (guarantee scode-absolute-reference? reference 'scode-absolute-reference-name)
+  (guarantee scode-absolute-reference? reference
+	     'scode-absolute-reference-name)
   (scode-access-name reference))
 
 (define (scode-absolute-reference-to? object name)
@@ -296,10 +268,6 @@ USA.
 
 (define (make-scode-delay expression)
   (safe-system-pair-cons (ucode-type delay) expression '()))
-
-(define (scode-delay? object)
-  (object-type? (ucode-type delay) object))
-(register-predicate! scode-delay? 'scode-delay)
 
 (define (scode-delay-expression delay)
   (guarantee scode-delay? delay 'scode-delay-expression)
@@ -319,10 +287,6 @@ USA.
 
 (define (%make-scode-sequence first rest)
   (safe-system-pair-cons (ucode-type sequence) first rest))
-
-(define (scode-sequence? object)
-  (object-type? (ucode-type sequence) object))
-(register-predicate! scode-sequence? 'scode-sequence)
 
 (define (scode-sequence-first expression)
   (guarantee scode-sequence? expression 'scode-sequence-first)
@@ -360,10 +324,6 @@ USA.
       (safe-system-vector-set! comb i (car operands)))
     comb))
 
-(define (scode-combination? object)
-  (object-type? (ucode-type combination) object))
-(register-predicate! scode-combination? 'scode-combination)
-
 (define (scode-combination-element combination index)
   (guarantee scode-combination? combination 'scode-combination-element)
   (safe-system-vector-ref combination index))
@@ -388,16 +348,15 @@ USA.
   (make-scode-combination (ucode-primitive lexical-unassigned?)
 			  (list (make-scode-the-environment) name)))
 
-(define (scode-unassigned?? object)
-  (and (scode-combination? object)
-       (eq? (scode-combination-operator object)
-	    (ucode-primitive lexical-unassigned?))
-       (let ((operands (scode-combination-operands object)))
-	 (and (= 2 (length operands))
-	      (scode-the-environment? (car operands))
-	      (symbol? (cadr operands))))))
-(register-predicate! scode-unassigned?? 'scode-unassigned?
-		     '<= scode-combination?)
+(define scode-unassigned??
+  (restrict-type scode-combination?
+    (lambda (comb)
+       (and (eq? (scode-combination-operator comb)
+		 (ucode-primitive lexical-unassigned?))
+	    (let ((operands (scode-combination-operands comb)))
+	      (and (= 2 (length operands))
+		   (scode-the-environment? (car operands))
+		   (symbol? (cadr operands))))))))
 
 (define (scode-unassigned?-name expression)
   (guarantee scode-unassigned?? expression 'scode-unassigned?-name)
@@ -410,10 +369,6 @@ USA.
 			   predicate
 			   consequent
 			   alternative))
-
-(define (scode-conditional? object)
-  (object-type? (ucode-type conditional) object))
-(register-predicate! scode-conditional? 'scode-conditional)
 
 (define undefined-scode-conditional-branch unspecific)
 
@@ -434,10 +389,6 @@ USA.
 (define (make-scode-disjunction predicate alternative)
   (safe-system-pair-cons (ucode-type disjunction) predicate alternative))
 
-(define (scode-disjunction? object)
-  (object-type? (ucode-type disjunction) object))
-(register-predicate! scode-disjunction? 'scode-disjunction)
-
 (define (scode-disjunction-predicate disjunction)
   (guarantee scode-disjunction? disjunction 'scode-disjunction-predicate)
   (safe-system-pair-car disjunction))
@@ -457,7 +408,8 @@ USA.
        (eq? block-declaration-marker (vector-ref object 0))))
 
 (define (scode-block-declaration-text declaration)
-  (guarantee scode-block-declaration? declaration 'scode-block-declaration-text)
+  (guarantee scode-block-declaration? declaration
+	     'scode-block-declaration-text)
   (vector-ref declaration 1))
 
 (define block-declaration-marker
@@ -480,34 +432,32 @@ USA.
 	 (error "Unable to encode these lambda parameters:"
 		required optional))))
 
-(define (scode-lambda? object)
-  (or (slambda? object)
-      (xlambda? object)))
-(register-predicate! scode-lambda? 'scode-lambda)
+(define scode-lambda?
+  (disjoin-types scode-simple-lambda? scode-extended-lambda?))
 
 (define (scode-lambda-name lambda)
-  (cond ((slambda? lambda) (slambda-name lambda))
-	((xlambda? lambda) (xlambda-name lambda))
+  (cond ((scode-simple-lambda? lambda) (slambda-name lambda))
+	((scode-extended-lambda? lambda) (xlambda-name lambda))
 	(else (error:not-a scode-lambda? lambda 'scode-lambda-name))))
 
 (define (scode-lambda-required lambda)
-  (cond ((slambda? lambda) (slambda-required lambda))
-	((xlambda? lambda) (xlambda-required lambda))
+  (cond ((scode-simple-lambda? lambda) (slambda-required lambda))
+	((scode-extended-lambda? lambda) (xlambda-required lambda))
 	(else (error:not-a scode-lambda? lambda 'scode-lambda-required))))
 
 (define (scode-lambda-optional lambda)
-  (cond ((slambda? lambda) '())
-	((xlambda? lambda) (xlambda-optional lambda))
+  (cond ((scode-simple-lambda? lambda) '())
+	((scode-extended-lambda? lambda) (xlambda-optional lambda))
 	(else (error:not-a scode-lambda? lambda 'scode-lambda-optional))))
 
 (define (scode-lambda-rest lambda)
-  (cond ((slambda? lambda) #f)
-	((xlambda? lambda) (xlambda-rest lambda))
+  (cond ((scode-simple-lambda? lambda) #f)
+	((scode-extended-lambda? lambda) (xlambda-rest lambda))
 	(else (error:not-a scode-lambda? lambda 'scode-lambda-rest))))
 
 (define (scode-lambda-body lambda)
-  (cond ((slambda? lambda) (slambda-body lambda))
-	((xlambda? lambda) (xlambda-body lambda))
+  (cond ((scode-simple-lambda? lambda) (slambda-body lambda))
+	((scode-extended-lambda? lambda) (xlambda-body lambda))
 	(else (error:not-a scode-lambda? lambda 'scode-lambda-body))))
 
 (define (scode-lambda-name->syntax-name name)
@@ -533,9 +483,6 @@ USA.
 			 body
 			 (list->vector (cons name required))))
 
-(define (slambda? object)
-  (object-type? (ucode-type lambda) object))
-
 (define (slambda-name slambda)
   (vector-ref (system-pair-cdr slambda) 0))
 
@@ -560,9 +507,6 @@ USA.
 			   (fix:lsh n-required 8))
 		   (fix:lsh (if rest 1 0) 16)))))
     (safe-system-triple-cons (ucode-type extended-lambda) body v arity)))
-
-(define (xlambda? object)
-  (object-type? (ucode-type extended-lambda) object))
 
 (define (xlambda-name xlambda)
   (vector-ref (safe-system-triple-second xlambda) 0))

@@ -34,7 +34,6 @@ USA.
   (weak-car 1)
   (weak-cdr 1)
   (weak-cons 2)
-  (weak-pair? 1)
   (weak-set-car! 2)
   (weak-set-cdr! 2))
 

@@ -37,12 +37,9 @@ USA.
   (primitive-type-ref 2)
   (stack-address-offset 1))
 
-(define (return-address? object)
-  (or (interpreter-return-address? object)
-      (compiled-return-address? object)))
-
-(define-integrable (interpreter-return-address? object)
-  (object-type? (ucode-type return-address) object))
+(define return-address?
+  (disjoin-types interpreter-return-address?
+		 compiled-return-address?))
 
 (define-integrable (make-return-address code)
   ((ucode-primitive map-code-to-machine-address 2) (ucode-type return-address)
@@ -73,22 +70,13 @@ USA.
 
 ;;;; Compiled Code Entries
 
-(define (compiled-code-address? object)
-  (or (compiled-entry-address? object)
-      (compiled-return-address? object)))
+(define compiled-code-address?
+  (disjoin-types compiled-entry-address? compiled-return-address?))
 
-(define-integrable (compiled-entry-address? object)
-  (object-type? (ucode-type compiled-entry) object))
-
-(define-integrable (compiled-return-address? object)
-  (object-type? (ucode-type compiled-return) object))
-
-(define-integrable (stack-address? object)
-  (object-type? (ucode-type stack-environment) object))
-
-(define (compiled-expression? object)
-  (and (compiled-code-address? object)
-       (eq? (compiled-entry-type object) 'compiled-expression)))
+(define compiled-expression?
+  (restrict-type compiled-code-address?
+    (lambda (entry)
+      (eq? 'compiled-expression (compiled-entry-type entry)))))
 
 (define (discriminate-compiled-entry entry
 				     if-procedure
@@ -157,9 +145,6 @@ contains constants derived from the source program.
 |#
 
 (define compiled-code-block/bytes-per-object)
-
-(define-integrable (compiled-code-block? object)
-  (object-type? (ucode-type compiled-code-block) object))
 
 (define-integrable (compiled-code-block/read-file filename)
   (compiled-code-address->block (fasload filename)))

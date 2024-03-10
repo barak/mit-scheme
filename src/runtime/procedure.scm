@@ -252,9 +252,6 @@ USA.
    (%primitive-procedure-name procedure)
    #f))
 
-(define (primitive-procedure? object)
-  (%primitive-procedure? (skip-entities object)))
-
 (define (make-primitive-procedure name #!optional arity)
   (let ((arity (if (default-object? arity) #f arity)))
     (let ((result ((ucode-primitive get-primitive-address) name arity)))
@@ -359,9 +356,6 @@ USA.
 
 ;;;; Entities and Apply Hooks
 
-(define (entity? object)
-  (%entity? object))
-
 (define (make-entity procedure extra)
   (%make-entity procedure extra))
 
@@ -382,9 +376,6 @@ USA.
 (define (set-entity-extra! entity extra)
   (guarantee entity? entity 'set-entity-extra!)
   (%set-entity-extra! entity extra))
-
-(define (apply-hook? object)
-  (%apply-hook? object))
 
 (define (make-apply-hook procedure extra)
   (%make-apply-hook procedure extra))

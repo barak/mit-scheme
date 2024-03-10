@@ -34,9 +34,9 @@ USA.
 		'(runtime character)
 		'(runtime miscellaneous-global))
 
-(define (u8? object)
-  (and (index-fixnum? object)
-       (fix:< object #x100)))
+(define u8?
+  (restrict-type index-fixnum?
+		 (lambda (fixnum) (fix:< fixnum #x100))))
 (register-predicate! u8? 'u8 '<= index-fixnum?)
 
 (define (make-bytevector k #!optional byte)

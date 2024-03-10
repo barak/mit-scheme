@@ -31,7 +31,7 @@ USA.
 (declare (usual-integrations))
 
 (define-primitives
-  bit-string-allocate make-bit-string bit-string?
+  bit-string-allocate make-bit-string
   bit-string-length bit-string-ref bit-string-clear! bit-string-set!
   bit-string-zero? bit-string=?
   bit-string-fill! bit-string-move! bit-string-movec!
