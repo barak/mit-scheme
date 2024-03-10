@@ -44,7 +44,7 @@ USA.
       (if (not (or (seq 'triggered?)
 		   (let loop ((scan befores))
 		     (and (pair? scan)
-			  (or (eqv? seq (car scan))
+			  (or (eq? seq (car scan))
 			      (loop (cdr scan)))))))
 	  (begin
 	    (set! befores (cons seq befores))
@@ -163,13 +163,20 @@ USA.
       (thunk)))
 
 (define (add-boot-deps! . deps)
-  (let ((seq (current-package-sequencer)))
-    (for-each (lambda (dep)
-		(seq 'add-before!
-		     (if (pair? dep)
-			 (package-name->sequencer dep)
-			 dep)))
-	      deps)))
+  (%add-boot-deps! (current-package-sequencer) deps))
+
+(define (conjoin-boot-deps . deps)
+  (let ((seq (boot-sequencer)))
+    (%add-boot-deps! seq deps)
+    seq))
+
+(define (%add-boot-deps! seq deps)
+  (for-each (lambda (dep)
+	      (seq 'add-before!
+		   (if (pair? dep)
+		       (package-name->sequencer dep)
+		       dep)))
+	    deps))
 
 (define (current-package-sequencer)
   (package-sequencer (current-package)))

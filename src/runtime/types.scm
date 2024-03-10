@@ -73,6 +73,13 @@ USA.
 (define (type-test type)
   (guarantee type? type 'type-test)
   (%apply-hook-procedure type))
+
+(define (type-supersets type)
+  (guarantee type? type 'type-supersets)
+  (weak-list-set->list (%type-supersets type)))
+
+(define-integrable (%type-supersets type)
+  (%tag-supersets (%apply-hook-extra type)))
 
 (define (restrict-type type restriction)
   (let ((subset
@@ -92,7 +99,7 @@ USA.
 	 (car types))
 	(else
 	 (let ((disjunction
-		(make-type 'disjoin-types
+		(make-type 'disjoin
 			   types
 			   (if (null? (cddr types))
 			       (let ((test1 (type-test (car types)))
@@ -140,26 +147,53 @@ USA.
 	       (lambda (object)
 		 (not (test object))))))
 
+(define (type<= type1 type2)
+  (guarantee type? type1 'type<=)
+  (guarantee type? type2 'type<=)
+  (%type<= type1 type2))
+
+(define (%type<= type1 type2)
+  (hash-table-intern! type<=-cache
+		      (weak-list type1 type2)
+    (lambda ()
+      (or (eq? type1 type2)
+	  (eq? type1 no-object?)
+	  (eq? type2 any-object?)
+	  (and (not (eq? type1 any-object?))
+	       (not (eq? type2 no-object?))
+	       (weak-list-set-any (lambda (type) (%type<= type type2))
+				  (%type-supersets type1)))))))
+
 (define (cold-load:set-type<=! subset superset)
   (set! deferred-relations
 	(cons (cons subset superset) deferred-relations))
   unspecific)
 
-(define deferred-relations '())
+(define after-cold-load:set-type<=!
+  (named-lambda (set-type<=! subset superset)
+    (guarantee type? subset 'set-type<=!)
+    (guarantee type? superset 'set-type<=!)
+    (if (%type<= superset subset)
+	(error "Illegal type loop:" subset superset))
+    (weak-list-set-add! superset (%type-supersets subset))
+    (hash-table-clear! type<=-cache)))
 
 (define set-type<=! cold-load:set-type<=!)
 
-
-#|
-(define (type<= type1 type2)
-  )
-
-(define (set-type<=! subset superset)
-  (if (type<= superset subset)
-      (error "Not allowed to create a superset loop:" subset superset))
-  (%add-dispatch-tag-superset! (%apply-hook-extra subset) superset)
-  (hash-table-clear! dispatch-tag<=-cache))
-|#
+(define deferred-relations '())
+(define type<=-cache)
+(define (initialize-package!)
+  (let ((seq (conjoin-boot-deps '(runtime comparator) '(runtime hash-table))))
+    (seq 'add-action!
+      (lambda ()
+	(set! type<=-cache
+	      (make-hash-table (uniform-weak-list-comparator eq-comparator)))
+	(set! set-type<=! after-cold-load:set-type<=!)
+	(for-each (lambda (e)
+		    (set-type<=! (car e) (cdr e)))
+		  deferred-relations)
+	(set! deferred-relations)
+	unspecific))))
 
 ;;;; Primitive types
 

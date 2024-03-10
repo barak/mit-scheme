@@ -134,6 +134,7 @@ USA.
     ("runtime/test-syntax-rules" (runtime syntax syntax-rules))
     "runtime/test-thread-queue"
     "runtime/test-trie"
+    "runtime/test-types"
     "runtime/test-ucd-grapheme"
     "runtime/test-ucd-word"
     "runtime/test-url"
