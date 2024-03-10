@@ -72,7 +72,6 @@ USA.
   (cdr 1)
   (cons 2)
   (general-car-cdr 2)
-  (null? 1)
   (set-car! 2)
   (set-cdr! 2))
 
@@ -145,33 +144,39 @@ USA.
 
 ;;;; Predicates
 
-(define (list? object)
-  (let loop ((l1 object) (l2 object))
-    (if (pair? l1)
-	(let ((l1 (cdr l1)))
-	  (and (not (eq? l1 l2))
-	       (if (pair? l1)
-		   (loop (cdr l1) (cdr l2))
-		   (null? l1))))
-	(null? l1))))
+(define list?
+  (simple-type 'list
+    (lambda (object)
+      (let loop ((l1 object) (l2 object))
+	(if (pair? l1)
+	    (let ((l1 (cdr l1)))
+	      (and (not (eq? l1 l2))
+		   (if (pair? l1)
+		       (loop (cdr l1) (cdr l2))
+		       (null? l1))))
+	    (null? l1))))))
 
-(define (dotted-list? object)
-  (let loop ((l1 object) (l2 object))
-    (if (pair? l1)
-	(let ((l1 (cdr l1)))
-	  (and (not (eq? l1 l2))
-	       (if (pair? l1)
-		   (loop (cdr l1) (cdr l2))
-		   (not (null? l1)))))
-	(not (null? l1)))))
+(define dotted-list?
+  (simple-type 'dotted-list
+    (lambda (object)
+      (let loop ((l1 object) (l2 object))
+	(if (pair? l1)
+	    (let ((l1 (cdr l1)))
+	      (and (not (eq? l1 l2))
+		   (if (pair? l1)
+		       (loop (cdr l1) (cdr l2))
+		       (not (null? l1)))))
+	    (not (null? l1)))))))
 
-(define (circular-list? object)
-  (let loop ((l1 object) (l2 object))
-    (and (pair? l1)
-	 (let ((l1 (cdr l1)))
-	   (or (eq? l1 l2)
-	       (and (pair? l1)
-		    (loop (cdr l1) (cdr l2))))))))
+(define circular-list?
+  (simple-type 'circular-list
+    (lambda (object)
+      (let loop ((l1 object) (l2 object))
+	(and (pair? l1)
+	     (let ((l1 (cdr l1)))
+	       (or (eq? l1 l2)
+		   (and (pair? l1)
+			(loop (cdr l1) (cdr l2))))))))))
 
 (define (null-list? object #!optional caller)
   (%null-list? object caller))
@@ -180,13 +185,14 @@ USA.
   (cond ((null? object) #t)
 	((pair? object) #f)
 	(else (error:not-a list? object caller))))
+
+(define non-empty-list?
+  (restrict-type pair?
+    (lambda (p)
+      (list? (cdr p)))))
 
-(define (non-empty-list? object)
-  (and (pair? object)
-       (list? (cdr object))))
-
-(define (not-pair? x)
-  (not (pair? x)))
+(define not-pair?
+  (complement-type pair?))
 
 (define (list= elt= . lists)
 
@@ -917,8 +923,10 @@ USA.
 
 ;;;; Association lists
 
-(define (alist? object)
-  (list-of-type? object pair?))
+(define alist?
+  (restrict-type list?
+    (lambda (items)
+      (every pair? items))))
 
 (define (alist-cons key datum alist)
   (cons (cons key datum) alist))
@@ -1056,15 +1064,17 @@ USA.
 
 ;;;; Keyword lists
 
-(define (keyword-list? object)
-  (declare (no-type-checks))
-  (let loop ((l1 object) (l2 object))
-    (if (pair? l1)
-	(and (symbol? (car l1))
-	     (pair? (cdr l1))
-	     (not (eq? (cdr l1) l2))
-	     (loop (cdr (cdr l1)) (cdr l1)))
-	(null? l1))))
+(define keyword-list?
+  (simple-type 'keyword-list
+    (lambda (object)
+      (declare (no-type-checks))
+      (let loop ((l1 object) (l2 object))
+	(if (pair? l1)
+	    (and (symbol? (car l1))
+		 (pair? (cdr l1))
+		 (not (eq? (cdr l1) l2))
+		 (loop (cdr (cdr l1)) (cdr l1)))
+	    (null? l1))))))
 
 (define (restricted-keyword-list? object keywords)
   (let loop ((l1 object) (l2 object))
@@ -1084,15 +1094,17 @@ USA.
 			     "restricted keyword list"
 			     (if (default-object? caller) #f caller)))
 
-(define (unique-keyword-list? object)
-  (let loop ((l1 object) (l2 object) (symbols '()))
-    (if (pair? l1)
-	(and (symbol? (car l1))
-	     (not (memq (car l1) symbols))
-	     (pair? (cdr l1))
-	     (not (eq? (cdr l1) l2))
-	     (loop (cdr (cdr l1)) (cdr l1) (cons (car l1) symbols)))
-	(null? l1))))
+(define unique-keyword-list?
+  (simple-type 'unique-keyword-list
+    (lambda (object)
+      (let loop ((l1 object) (l2 object) (symbols '()))
+	(if (pair? l1)
+	    (and (symbol? (car l1))
+		 (not (memq (car l1) symbols))
+		 (pair? (cdr l1))
+		 (not (eq? (cdr l1) l2))
+		 (loop (cdr (cdr l1)) (cdr l1) (cons (car l1) symbols)))
+	    (null? l1))))))
 
 (define-integrable (%null-keyword-list? object caller)
   (cond ((null? object) #t)

@@ -53,9 +53,10 @@ USA.
 (define-integrable (char-bits char)
   (fix:lsh (char->integer char) -21))
 
-(define (bitless-char? object)
-  (and (char? object)
-       (fix:< (char->integer object) char-code-limit)))
+(define bitless-char?
+  (restrict-type char?
+    (lambda (char)
+      (fix:< (char->integer char) char-code-limit))))
 
 (define (char->bitless-char char)
   (integer->char (char-code char)))
@@ -78,19 +79,17 @@ USA.
   (%make-char (char-code char)
 	      (fix:andc (char-bits char) bits)))
 
-(define (8-bit-char? object)
-  (and (char? object)
-       (char-8-bit? object)))
-
 (define-integrable (char-8-bit? char)
   (fix:< (char->integer char) #x100))
 
-(define (ascii-char? object)
-  (and (char? object)
-       (char-ascii? object)))
+(define 8-bit-char?
+  (restrict-type char? char-8-bit?))
 
 (define-integrable (char-ascii? char)
   (fix:< (char->integer char) #x80))
+
+(define ascii-char?
+  (restrict-type char? char-ascii?))
 
 (define (char=-predicate char)
   (guarantee char? char 'char=-predicate)
@@ -178,10 +177,10 @@ USA.
   (and (char-numeric? char)
        (ucd-nv-value char)))
 
-(define (radix? object)
-  (and (index-fixnum? object)
-       (fix:<= 2 object)
-       (fix:<= object 36)))
+(define radix?
+  (restrict-type non-negative-fixnum?
+    (lambda (n)
+      (fix:<= 2 n 36))))
 
 (define (digit->char digit #!optional radix)
   (let ((radix
@@ -367,13 +366,15 @@ USA.
 
 ;;;; Unicode characters
 
-(define (unicode-scalar-value? object)
-  (and (unicode-code-point? object)
-       (not (utf16-surrogate? object))))
+(define unicode-code-point?
+  (restrict-type index-fixnum?
+    (lambda (n)
+      (fx<? n char-code-limit))))
 
-(define (unicode-code-point? object)
-  (and (index-fixnum? object)
-       (fix:< object char-code-limit)))
+(define unicode-scalar-value?
+  (restrict-type unicode-code-point?
+    (lambda (cp)
+      (not (utf16-surrogate? cp)))))
 
 (define (%char->scalar-value char #!optional caller)
   (let ((n (char->integer char)))

@@ -59,6 +59,9 @@ USA.
 		(list parts)))
     predicate))
 
+(define-integrable (simple-type name test)
+  (make-type name '() test))
+
 (define type?
   (make-type 'type '() %type?))
 
@@ -83,7 +86,7 @@ USA.
 
 (define (restrict-type type restriction)
   (let ((subset
-	 (make-type 'restrict-type
+	 (make-type 'restriction
 		    (list type)
 		    (let ((test (type-test type)))
 		      (lambda (object)
@@ -205,13 +208,14 @@ USA.
           `(,(r 'begin)
             ,@(map (lambda (name)
                      `(define ,(symbol name '?)
-                        (,(r 'make-type) ',name '() ,(symbol '% name '?))))
+                        (,(r 'simple-type) ',name ,(symbol '% name '?))))
                    (cdr form)))))))
   (define-primitive-types
     any-object
     apply-hook
     bignum
     bit-string
+    boolean
     broken-heart
     bytevector
     cell
@@ -221,14 +225,17 @@ USA.
     compiled-return-address
     constant
     control-point
+    default-object
     delayed
     entity
+    eof-object
     ephemeron
     extended-procedure
     fixnum
     flonum
     gc-non-pointer
     gc-pointer
+    gc-reclaimed-object
     hunk3-a
     hunk3-b
     ic-environment
@@ -237,6 +244,7 @@ USA.
     legacy-string
     manifest-nm-vector
     no-object
+    null
     pair
     primitive-procedure
     ratnum

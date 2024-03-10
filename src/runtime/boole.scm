@@ -36,10 +36,6 @@ USA.
 (define false #f)
 (define true #t)
 
-(define (boolean? object)
-  (or (eq? object #f)
-      (eq? object #t)))
-
 ;; R7RS says that the args to this procedure must satisfy boolean?.
 ;; We relax that to allow any object.
 (define (boolean=? b1 b2 . bs)

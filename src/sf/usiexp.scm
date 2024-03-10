@@ -722,13 +722,12 @@ USA.
 (define (exact-integer?-expansion expr operands block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
-      (make-operand-binding
-       expr block (car operands)
-       (lambda (block operand)
-	 (make-disjunction
-	  expr
-	  (make-type-test #f block (ucode-type fixnum) operand)
-	  (make-type-test #f block (ucode-type big-fixnum) operand))))
+      (make-operand-binding expr block (car operands)
+	(lambda (block operand)
+	  (make-disjunction
+	   expr
+	   (make-type-test #f block (ucode-type fixnum) operand)
+	   (make-type-test #f block (ucode-type big-fixnum) operand))))
       #f))
 
 (define (exact-rational?-expansion expr operands block)
@@ -760,14 +759,13 @@ USA.
 (define (symbol?-expansion expr operands block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
-      (make-operand-binding
-       expr block (car operands)
-       (lambda (block operand)
-	 (make-disjunction
-	  expr
-	  (make-type-test #f block (ucode-type interned-symbol) operand)
-	  (make-type-test #f block (ucode-type uninterned-symbol)
-			  operand))))
+      (make-operand-binding expr block (car operands)
+	(lambda (block operand)
+	  (make-disjunction
+	   expr
+	   (make-type-test #f block (ucode-type interned-symbol) operand)
+	   (make-type-test #f block (ucode-type uninterned-symbol)
+			   operand))))
       #f))
 
 (define (make-disjunction expr . clauses)
@@ -777,7 +775,7 @@ USA.
 	(disjunction/make (and expr (object/scode expr))
 			  (car clauses) (loop (cdr clauses))))))
 
-(define (make-type-test expr block type operand)
+(define-integrable (make-type-test expr block type operand)
   (pcall expr block
 	 (ucode-primitive object-type?)
 	 (constant/make #f type)
@@ -819,19 +817,30 @@ USA.
 	(papply expr block primitive operands)
 	#f)))
 
+(define-integrable (eq-test-expansion object)
+  (lambda (expr operands block)
+    (if (and (pair? operands)
+	     (null? (cdr operands)))
+	(make-eq-test expr block object (car operands))
+	#f)))
+
+(define-integrable (make-eq-test expr block object operand)
+  (pcall expr block
+	 (ucode-primitive eq?)
+	 operand
+	 (constant/make #f object)))
+
+(define null?-expansion
+  (eq-test-expansion '()))
+
 (define (default-object-expansion expr operands block)
   (declare (ignore block))
   (if (null? operands)
       (constant/make expr (default-object))
       #f))
 
-(define (default-object?-expansion expr operands block)
-  (if (and (pair? operands)
-	   (null? (cdr operands)))
-      (pcall expr block (ucode-primitive eq?)
-	     (car operands)
-	     (constant/make #f (default-object)))
-      #f))
+(define default-object?-expansion
+  (eq-test-expansion (default-object)))
 
 (define (eof-object-expansion expr operands block)
   (declare (ignore block))
@@ -839,33 +848,27 @@ USA.
       (constant/make expr (eof-object))
       #f))
 
-(define (eof-object?-expansion expr operands block)
-  (if (and (pair? operands)
-	   (null? (cdr operands)))
-      (pcall expr block (ucode-primitive eq?)
-	     (car operands)
-	     (constant/make #f (eof-object)))
-      #f))
-
-;;; RELNOTE: Don't integrate gc-reclaimed-object unless we're running on a
-;;; microcode that supports it.  After release, this can be made unconditional.
+(define eof-object?-expansion
+  (eq-test-expansion (eof-object)))
 
 (define (gc-reclaimed-object-expansion expr operands block)
   (declare (ignore block))
-  (let ((object (vector-ref ((ucode-primitive get-fixed-objects-vector)) #x18)))
-    (if (and object (null? operands))
-	(constant/make expr object)
-	#f)))
+  (if (null? operands)
+      (constant/make expr (gc-reclaimed-object))
+      #f))
 
-(define (gc-reclaimed-object?-expansion expr operands block)
-  (let ((object (vector-ref ((ucode-primitive get-fixed-objects-vector)) #x18)))
-    (if (and object
-	     (pair? operands)
-	     (null? (cdr operands)))
-	(pcall expr block (ucode-primitive eq?)
-	       (car operands)
-	       (constant/make #f object))
-	#f)))
+(define gc-reclaimed-object?-expansion
+  (eq-test-expansion (gc-reclaimed-object)))
+
+(define (boolean?-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (make-operand-binding expr block (car operands)
+	(lambda (block operand)
+	  (make-disjunction expr
+			    (make-eq-test #f block #f operand)
+			    (make-eq-test #f block #t operand))))
+      #f))
 
 ;;;; Tables
 
@@ -887,6 +890,7 @@ USA.
 		(cons 'bitwise-eqv bitwise-eqv-expansion)
 		(cons 'bitwise-ior bitwise-ior-expansion)
 		(cons 'bitwise-xor bitwise-xor-expansion)
+		(cons 'boolean? boolean?-expansion)
 		(cons 'caaaar caaaar-expansion)
 		(cons 'caaadr caaadr-expansion)
 		(cons 'caaar caaar-expansion)
@@ -954,6 +958,7 @@ USA.
 		(cons 'negative? negative?-expansion)
 		(cons 'no-object? no-object?-expansion)
 		(cons 'not not-expansion)
+		(cons 'null? null?-expansion)
 		(cons 'number? complex?-expansion)
 		(cons 'positive? positive?-expansion)
 		(cons 'quotient quotient-expansion)

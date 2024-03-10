@@ -322,25 +322,8 @@ USA.
   ((ucode-primitive constant?) object))
 
 (define (object-pure? object)
-  object
+  (declare (ignore object))
   #f)
-
-(define-integrable (default-object? object)
-  (eq? object #!default))
-
-(define-integrable (default-object)
-  #!default)
-
-;;; RELNOTE: After release, %gc-reclaimed can be replaced with #!reclaimed.
-
-(define (gc-reclaimed-object)
-  %gc-reclaimed)
-
-(define (gc-reclaimed-object? object)
-  (eq? %gc-reclaimed object))
-
-(define %gc-reclaimed
-  (vector-ref ((ucode-primitive get-fixed-objects-vector)) #x18))
 
 (define (gc-space-status)
   ((ucode-primitive gc-space-status)))

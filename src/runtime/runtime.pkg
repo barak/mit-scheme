@@ -140,7 +140,6 @@ USA.
 	  boolean/or
 	  boolean<?
 	  boolean=?			;(scheme base)
-	  boolean?			;(scheme base)
 	  false
 	  not
 	  true))
@@ -158,15 +157,11 @@ USA.
 	  bracketed-print-method
 	  bytes-per-object
 	  call-with-values		;(scheme base)
-	  default-object
-	  default-object?
 	  define-pp-describer
 	  define-print-method
 	  error:not-a
 	  error:not-a-list-of
 	  force				;(scheme lazy)
-	  gc-reclaimed-object
-	  gc-reclaimed-object?
 	  gc-space-status
 	  guarantee
 	  guarantee-list-of
@@ -3127,8 +3122,6 @@ USA.
 	  (discard-char read-char)
 	  (input-port/discard-char input-port/read-char)
 	  char-ready?			;(scheme base)
-	  eof-object			;(scheme base)
-	  eof-object?			;(scheme base)
 	  input-port/char-ready?
 	  input-port/line
 	  input-port/discard-chars
@@ -3418,7 +3411,6 @@ USA.
 	  non-empty-list?
 	  not-pair?			;(srfi 1)
 	  null-list?			;(srfi 1)
-	  null?				;(scheme base)
 	  count-pairs
 	  reduce			;(srfi 1)
 	  reduce-right			;(srfi 1)
@@ -5747,6 +5739,7 @@ USA.
 	  any-object?
 	  apply-hook?
 	  bit-string?
+	  boolean?			;(scheme base)
 	  bytevector?			;(scheme base)
 	  cell?
 	  char?				;(scheme base)
@@ -5755,16 +5748,20 @@ USA.
 	  compiled-return-address?
 	  complement-type
 	  conjoin-types
+	  default-object?
 	  disjoin-types
 	  dispatch-metatag?
 	  dispatch-tag?
 	  entity?
+	  eof-object?			;(scheme base)
 	  ephemeron?			;(srfi 124)
 	  fixnum?			;(srfi 143)
+	  gc-reclaimed-object?
 	  ic-environment?
 	  interned-symbol?
 	  interpreter-return-address?
 	  no-object?
+	  null?				;(scheme base)
 	  pair?				;(scheme base)
 	  primitive-procedure?
 	  restrict-type
@@ -5815,6 +5812,7 @@ USA.
 	  scode-lexpr?
 	  scode-simple-lambda?
 	  simple-procedure?
+	  simple-type
 	  unicode-string?))
 
 (define-package (runtime crypto)
@@ -6989,6 +6987,9 @@ USA.
 	  %tagged-object-tag
 	  %%tagged-object?
 	  cell-contents
+	  default-object
+	  eof-object			;(scheme base)
+	  gc-reclaimed-object
 	  make-cell
 	  set-cell-contents!)
   (export (runtime)
@@ -6998,6 +6999,7 @@ USA.
 	  %apply-hook?
 	  %bignum?
 	  %bit-string?
+	  %boolean?
 	  %broken-heart?
 	  %bytevector?
 	  %cell?
@@ -7010,12 +7012,14 @@ USA.
 	  %compound-procedure?
 	  %constant?
 	  %control-point?
+	  %default-object?
 	  %delayed-forced?
 	  %delayed-value
 	  %delayed?
 	  %entity-extra
 	  %entity-procedure
 	  %entity?
+	  %eof-object?
 	  %ephemeron?
 	  %extended-procedure?
 	  %fixnum?
@@ -7024,6 +7028,7 @@ USA.
 	  %gc-non-pointer?
 	  %gc-pointer-type-code?
 	  %gc-pointer?
+	  %gc-reclaimed-object?
 	  %hunk3-a?
 	  %hunk3-b?
 	  %ic-environment?
@@ -7039,6 +7044,7 @@ USA.
 	  %make-simple-procedure
 	  %manifest-nm-vector?
 	  %no-object?
+	  %null?
 	  %pair?
 	  %primitive-procedure?
 	  %ratnum-denominator

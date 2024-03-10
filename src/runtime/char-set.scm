@@ -51,24 +51,26 @@ USA.
   (table %char-set-table))
 
 (define (make-char-set low high)
-  (letrec*
-      ((predicate
-	(lambda (char)
-	  (and (char? char)
-	       (char-in-set? char char-set))))
-       (char-set
-	(%make-char-set low high predicate
-	  (delay
-	    (let ((table (make-bytevector #x100)))
-	      (do ((cp 0 (fix:+ cp 1)))
-		  ((not (fix:< cp #x100)))
-		(bytevector-u8-set! table cp
-				    (if (%code-point-in-char-set? cp char-set)
-					1
-					0)))
-	      table)))))
-    (register-predicate! predicate 'char-set-predicate '<= char?)
-    char-set))
+
+  (define predicate
+    (restrict-type char?
+      (lambda (char)
+	(char-in-set? char char-set))))
+
+  (define char-set
+    (%make-char-set low high predicate
+      (delay
+	(let ((table (make-bytevector #x100)))
+	  (do ((cp 0 (fix:+ cp 1)))
+	      ((not (fix:< cp #x100)))
+	    (bytevector-u8-set! table cp
+				(if (%code-point-in-char-set? cp char-set)
+				    1
+				    0)))
+	  table))))
+
+  (register-predicate! predicate 'char-set-predicate '<= char?)
+  char-set)
 
 (define-integrable %low-cps-per-byte 8)
 

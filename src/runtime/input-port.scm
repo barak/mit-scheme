@@ -101,14 +101,8 @@ USA.
 		   (loop)))))))))
 
 (define-integrable (make-eof-object port)
-  port
+  (declare (ignore port))
   (eof-object))
-
-(define-integrable (eof-object)
-  ((ucode-primitive primitive-object-set-type) (ucode-type constant) 6))
-
-(define-integrable (eof-object? object)
-  (eq? object (eof-object)))
 
 (define (input-port/eof? port)
   (let ((eof? (textual-port-operation port 'eof?)))

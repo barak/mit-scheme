@@ -182,14 +182,39 @@ USA.
 
 (define-integrable (%weak-pair? object)
   (object-type? (ucode-type weak-cons) object))
-
+
 (define-integrable (%any-object? object)
-   (declare (ignore object))
-   #t)
+  (declare (ignore object))
+  #t)
 
 (define-integrable (%no-object? object)
-   (declare (ignore object))
-   #f)
+  (declare (ignore object))
+  #f)
+
+(define-integrable (%null? object)
+  (eq? object '()))
+
+(define-integrable (%default-object? object)
+  (eq? object #!default))
+
+(define-integrable (default-object)
+  #!default)
+
+(define-integrable (%eof-object? object)
+  (eq? object (eof-object)))
+
+(define-integrable (eof-object)
+  ((ucode-primitive primitive-object-set-type) (ucode-type constant) 6))
+
+(define-integrable (%gc-reclaimed-object? object)
+  (eq? object #!reclaimed))
+
+(define-integrable (gc-reclaimed-object)
+  #!reclaimed)
+
+(define-integrable (%boolean? object)
+  (or (eq? object #f)
+      (eq? object #t)))
 
 (define (code->gct-name code)
   (if (not (and (fixnum? code)
