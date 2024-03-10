@@ -194,6 +194,9 @@ USA.
 (define-integrable (%null? object)
   (eq? object '()))
 
+(define-integrable (%false? object)
+  (eq? object #f))
+
 (define-integrable (%default-object? object)
   (eq? object #!default))
 

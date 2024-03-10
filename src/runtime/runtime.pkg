@@ -135,7 +135,6 @@ USA.
   (files "boole")
   (parent (runtime))
   (export ()
-	  (false? not)
 	  boolean/and
 	  boolean/or
 	  boolean<?
@@ -5755,6 +5754,7 @@ USA.
 	  entity?
 	  eof-object?			;(scheme base)
 	  ephemeron?			;(srfi 124)
+	  false?
 	  fixnum?			;(srfi 143)
 	  gc-reclaimed-object?
 	  ic-environment?
@@ -7023,6 +7023,7 @@ USA.
 	  %eof-object?
 	  %ephemeron?
 	  %extended-procedure?
+	  %false?
 	  %fixnum?
 	  %flonum?
 	  %gc-non-pointer-type-code?

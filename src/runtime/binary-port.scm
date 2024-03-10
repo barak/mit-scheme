@@ -70,25 +70,25 @@ USA.
     (and buffer
 	 (buffer-channel buffer))))
 
-(define (binary-input-port? object)
-  (and (binary-port? object)
-       (port-input-buffer object)
-       #t))
+(define binary-input-port?
+  (restrict-type binary-port?
+    (lambda (port)
+      (and (port-input-buffer port)
+	   #t))))
 (register-predicate! binary-input-port? 'binary-input-port
 		     '<= binary-port?)
 
-(define (binary-output-port? object)
-  (and (binary-port? object)
-       (port-output-buffer object)
-       #t))
+(define binary-output-port?
+  (restrict-type binary-port?
+    (lambda (port)
+      (and (port-output-buffer port)
+	   #t))))
 (register-predicate! binary-output-port? 'binary-output-port
 		     '<= binary-port?)
 
-(define (binary-i/o-port? object)
-  (and (binary-port? object)
-       (port-input-buffer object)
-       (port-output-buffer object)
-       #t))
+(define binary-i/o-port?
+  (conjoin-types binary-input-port?
+		 binary-output-port?))
 (register-predicate! binary-i/o-port? 'binary-i/o-port
 		     '<= binary-input-port?
 		     '<= binary-output-port?)

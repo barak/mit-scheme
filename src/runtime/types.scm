@@ -231,6 +231,7 @@ USA.
     eof-object
     ephemeron
     extended-procedure
+    false
     fixnum
     flonum
     gc-non-pointer

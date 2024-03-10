@@ -833,6 +833,9 @@ USA.
 (define null?-expansion
   (eq-test-expansion '()))
 
+(define false?-expansion
+  (eq-test-expansion #f))
+
 (define (default-object-expansion expr operands block)
   (declare (ignore block))
   (if (null? operands)
@@ -933,6 +936,7 @@ USA.
 		(cons 'exact-rational? exact-rational?-expansion)
 		(cons 'expt expt-expansion)
 		(cons 'eq? eq?-expansion)
+		(cons 'false? false?-expansion)
 		(cons 'fifth fifth-expansion)
 		(cons 'first first-expansion)
 		(cons 'fix:<= fx<=?-expansion)
@@ -945,7 +949,8 @@ USA.
 		(cons 'fx=? fx=?-expansion)
 		(cons 'fx>? fx>?-expansion)
 		(cons 'fx>=? fx>=?-expansion)
-		(cons 'fxarithmetic-shift-right fxarithmetic-shift-right-expansion)
+		(cons 'fxarithmetic-shift-right
+		      fxarithmetic-shift-right-expansion)
 		(cons 'fxneg fxneg-expansion)
 		(cons 'gc-reclaimed-object gc-reclaimed-object-expansion)
 		(cons 'gc-reclaimed-object? gc-reclaimed-object?-expansion)

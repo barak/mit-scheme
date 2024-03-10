@@ -30,13 +30,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (environment? object)
-  (or (system-global-environment? object)
-      (ic-environment? object)
-      (stack-ccenv? object)
-      (closure-ccenv? object)))
-(register-predicate! environment? 'environment)
-
 (define (->environment object #!optional caller)
   (let ((caller (if (default-object? caller) '->environment caller)))
     (cond ((environment? object) object)
@@ -231,8 +224,8 @@ USA.
 
 ;;;; Global environment
 
-(define-integrable (system-global-environment? object)
-  (eq? system-global-environment object))
+(define-integrable system-global-environment?
+  false?)
 
 (define (system-global-environment/bound-names)
   (walk-global object? map-entry/name))
@@ -266,21 +259,9 @@ USA.
 
 ;;;; Interpreter Environments
 
-(define (interpreter-environment? object)
-  (or (system-global-environment? object)
-      (ic-environment? object)))
-
-(register-predicate! interpreter-environment? 'top-level-environment
-		     '<= environment?)
-(register-predicate! system-global-environment? 'system-global-environment
-		     '<= top-level-environment?)
-(register-predicate! ic-environment? 'ic-environment
-		     '<= top-level-environment?)
-
-(define (guarantee-interpreter-environment object)
-  (if (not (interpreter-environment? object))
-      (error:wrong-type-datum object "interpreter environment"))
-  object)
+(define interpreter-environment?
+  (disjoin-types system-global-environment?
+		 ic-environment?))
 
 (define (interpreter-environment/reference-type environment name)
   (let ((i ((ucode-primitive lexical-reference-type 2) environment name))
@@ -469,7 +450,6 @@ USA.
   (block stack-ccenv/block)
   (cframes stack-ccenv/cframes)
   (start-index stack-ccenv/start-index))
-(set-predicate<=! stack-ccenv? environment?)
 
 (define (cframe-stream-environment cframes default)
   (let* ((ret-add (cframe-return-address (stream-car cframes)))
@@ -488,8 +468,8 @@ USA.
 		 ((ic)
 		  (let ((index (dbg-block/ic-parent-index block)))
 		    (if index
-			(guarantee-interpreter-environment
-			 (cframe-stream-ref cframes index))
+			(guarantee interpreter-environment?
+				   (cframe-stream-ref cframes index))
 			default)))
 		 (else
 		  (error "Illegal continuation parent block" parent))))))
@@ -522,9 +502,9 @@ USA.
 		 entry))
       (let ((parent (dbg-block/parent block)))
 	(define (use-compile-code-block-environment)
-	  (guarantee-interpreter-environment
-	   (compiled-code-block/environment
-	    (compiled-code-address->block entry))))
+	  (guarantee interpreter-environment?
+		     (compiled-code-block/environment
+		      (compiled-code-address->block entry))))
 	(if parent
 	    (case (dbg-block/type parent)
 	      ((closure)
@@ -587,14 +567,14 @@ USA.
 				 parent
 				 (stack-ccenv/normal-closure environment)))
 	    ((ic)
-	     (guarantee-interpreter-environment
-	      (if (dbg-block/static-link-index block)
-		  (stack-ccenv/static-link environment)
-		  (compiled-code-block/environment
-		   (compiled-code-address->block
-		    (cframe-return-address
-		     (stream-car
-		      (stack-ccenv/cframes environment))))))))
+	     (guarantee interpreter-environment?
+			(if (dbg-block/static-link-index block)
+			    (stack-ccenv/static-link environment)
+			    (compiled-code-block/environment
+			     (compiled-code-address->block
+			      (cframe-return-address
+			       (stream-car
+				(stack-ccenv/cframes environment))))))))
 	    (else
 	     (error "illegal parent block" parent)))
 	  (let ((environment
@@ -738,7 +718,6 @@ USA.
   (stack-block closure-ccenv/stack-block)
   (closure-block closure-ccenv/closure-block)
   (closure closure-ccenv/closure))
-(set-predicate<=! closure-ccenv? environment?)
 
 (define (closure-ccenv/bound-names environment)
   (map dbg-variable/name
@@ -832,11 +811,12 @@ USA.
 		   (make-closure-ccenv parent closure-block closure)
 		   (use-simulation))))
 	    ((ic)
-	     (guarantee-interpreter-environment
-	      (let ((index (dbg-block/ic-parent-index closure-block)))
-		(if index
-		    (closure/get-value closure closure-block index)
-		    (use-simulation)))))
+	     (guarantee interpreter-environment?
+			(let ((index
+			       (dbg-block/ic-parent-index closure-block)))
+			  (if index
+			      (closure/get-value closure closure-block index)
+			      (use-simulation)))))
 	    (else
 	     (error "Illegal parent block" parent)))
 	  (use-simulation)))))
@@ -929,3 +909,18 @@ USA.
   (let ((procedure (dbg-block/procedure block)))
     (and procedure
 	 (dbg-procedure/source-code procedure))))
+
+(define environment?
+  (disjoin-types system-global-environment?
+		 ic-environment?
+		 stack-ccenv?
+		 closure-ccenv?))
+(register-predicate! environment? 'environment)
+(register-predicate! interpreter-environment? 'top-level-environment
+		     '<= environment?)
+(register-predicate! system-global-environment? 'system-global-environment
+		     '<= top-level-environment?)
+(register-predicate! ic-environment? 'ic-environment
+		     '<= top-level-environment?)
+(set-predicate<=! stack-ccenv? environment?)
+(set-predicate<=! closure-ccenv? environment?)

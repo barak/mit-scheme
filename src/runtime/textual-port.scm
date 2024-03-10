@@ -395,28 +395,28 @@ USA.
   (%make-textual-port (make-thread-mutex) type state #f #f #f
 		      (make-alist-metadata-table)))
 
-(define (textual-input-port? object)
-  (and (textual-port? object)
-       (port-type-supports-input? (textual-port-type object))
-       #t))
+(define textual-input-port?
+  (restrict-type textual-port?
+    (lambda (port)
+      (and (port-type-supports-input? (textual-port-type port))
+	   #t))))
 (register-predicate! textual-input-port? 'textual-input-port
 		     '<= textual-port?)
 
-(define (textual-output-port? object)
-  (and (textual-port? object)
-       (port-type-supports-output? (textual-port-type object))
-       #t))
+(define textual-output-port?
+  (restrict-type textual-port?
+    (lambda (port)
+      (and (port-type-supports-output? (textual-port-type port))
+	   #t))))
 (register-predicate! textual-output-port? 'textual-output-port
 		     '<= textual-port?)
 
-(define (textual-i/o-port? object)
-  (and (textual-port? object)
-       (let ((type (textual-port-type object)))
-	 (and (port-type-supports-input? type)
-	      (port-type-supports-output? type)
-	      #t))))
+(define textual-i/o-port?
+  (conjoin-types textual-input-port?
+		 textual-output-port?))
 (register-predicate! textual-i/o-port? 'textual-i/o-port
-		     '<= textual-port?)
+		     '<= textual-input-port?
+		     '<= textual-output-port?)
 
 (define-print-method textual-port?
   (bracketed-print-method
@@ -600,22 +600,10 @@ USA.
 
 ;;;; Generic ports
 
-(define port?)
-(define input-port?)
-(define output-port?)
-(define i/o-port?)
-(add-boot-init!
- (lambda ()
-   (set! port? (disjoin textual-port? binary-port?))
-   (set! input-port? (disjoin textual-input-port? binary-input-port?))
-   (set! output-port? (disjoin textual-output-port? binary-output-port?))
-   (set! i/o-port? (disjoin textual-i/o-port? binary-i/o-port?))
-   unspecific))
-
-(define-guarantee port "port")
-(define-guarantee input-port "input port")
-(define-guarantee output-port "output port")
-(define-guarantee i/o-port "I/O port")
+(define port? (disjoin-types textual-port? binary-port?))
+(define input-port? (disjoin-types textual-input-port? binary-input-port?))
+(define output-port? (disjoin-types textual-output-port? binary-output-port?))
+(define i/o-port? (disjoin-types textual-i/o-port? binary-i/o-port?))
 
 (define (input-port-open? port)
   (cond ((binary-input-port? port) (binary-input-port-open? port))
