@@ -147,6 +147,8 @@ USA.
 			(if parent-type
 			    (record-predicate parent-type)
 			    record?))
+      (if (%record-type-proxy? instance-marker)
+	  (%set-proxied-record-type! instance-marker type))
       type)))
 
 (define (generate-fields-by-index field-specs parent-type start-index)
@@ -397,14 +399,18 @@ USA.
 (define-integrable (%proxy->record-type proxy)
   (vector-ref %proxied-record-types (%record-type-proxy->index proxy)))
 
-(define-integrable (%set-proxied-record-type! proxy type)
-  (vector-set! %proxied-record-types (%record-type-proxy->index proxy) type))
-
 (define %proxied-record-types)
 (seq:after-microcode-tables 'add-action!
   (lambda ()
     (set! %proxied-record-types (fixed-objects-item 'proxied-record-types))
     unspecific))
+
+(define-sequenced-procedure %set-proxied-record-type!
+  seq:after-microcode-tables
+  (lambda (proxy type)
+    (vector-set! %proxied-record-types
+		 (%record-type-proxy->index proxy)
+		 type)))
 
 (let-syntax
     ((enumerate-proxies
