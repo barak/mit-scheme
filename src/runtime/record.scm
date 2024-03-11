@@ -367,26 +367,25 @@ USA.
   (guarantee record-type? record-type 'record-type-parent)
   (%record-type-parent record-type))
 
-(define (applicable-record? object)
-  (and (%record->applicator object) #t))
+(define (%record-applicator record)
+  (let ((record-type (%record->root-type record)))
+    (and record-type
+	 (%record-type-applicator record-type))))
 
-(define (%record->applicator object)
-  (and (%record? object)
-       (let ((record-type (%record->root-type object)))
-	 (and record-type
-	      (%record-type-applicator record-type)))))
+(define applicable-record?
+  (restrict-type %record? %record-applicator))
 
 (define (record-applicator record)
-  (let ((applicator (%record->applicator record)))
+  (guarantee record? record 'record-applicator)
+  (let ((applicator (%record-applicator record)))
     (if (not applicator)
 	(error:not-a applicable-record? record 'record-applicator))
     applicator))
 
-(define (%record-type-proxy? object)
-  (and (object-type? (ucode-type constant) object)
-       (let ((v (object-new-type (ucode-type fixnum) object)))
-	 (and (fix:>= v #x100)
-	      (fix:< v #x200)))))
+(define %record-type-proxy?
+  (restrict-type constant?
+    (lambda (object)
+      (fx<=? #x100 (object-datum object) #x1FF))))
 (register-predicate! %record-type-proxy? 'record-type-proxy)
 
 (define-integrable (%record-type-proxy->index marker)

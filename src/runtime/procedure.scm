@@ -30,18 +30,66 @@ USA.
 
 (declare (usual-integrations))
 
+;;;; Types
+
+(define compound-procedure?
+  (disjoin-types simple-procedure?
+		 extended-procedure?))
+
+(define compiled-procedure?
+  (restrict-type compiled-entry-address?
+    (lambda (entry)
+      (eq? 0 (system-triple-first (compiled-entry-kind entry))))))
+
+(define compiled-closure?
+  (restrict-type compiled-procedure?
+    (lambda (entry)
+      (compiled-code-block/manifest-closure?
+	(compiled-code-address->block entry)))))
+
+(define procedure? %any-object?)
+(define thunk? %any-object?)
+(define unary-procedure? %any-object?)
+(define binary-procedure?)
+(define simple-arity?)
+(define general-arity?)
+(define procedure-arity?)
+(seq:after-record 'add-action!
+  (lambda ()
+    (set! procedure?
+	  (disjoin-types primitive-procedure?
+			 compound-procedure?
+			 compiled-procedure?
+			 apply-hook?
+			 entity?
+			 applicable-record?))
+    (set! thunk?
+	  (restrict-type procedure?
+	    (lambda (proc)
+	      (procedure-arity-valid? proc 0))))
+    (set! unary-procedure?
+	  (restrict-type procedure?
+	    (lambda (proc)
+	      (procedure-arity-valid? proc 1))))
+    (set! binary-procedure?
+	  (restrict-type procedure?
+	    (lambda (proc)
+	      (procedure-arity-valid? proc 2))))
+    (set! simple-arity?
+	  non-negative-fixnum?)
+    (set! general-arity?
+	  (restrict-type pair?
+	    (lambda (p)
+	      (and (non-negative-fixnum? (car p))
+		   (if (cdr p)
+		       (and (non-negative-fixnum? (cdr p))
+			    (fx>=? (cdr p) (car p)))
+		       #t)))))
+    (set! procedure-arity?
+	  (disjoin-types simple-arity? general-arity?))
+    unspecific))
+
 ;;;; Generic Procedures
-
-(define (procedure? object)
-  (let ((object (skip-entities object)))
-    (or (%compound-procedure? object)
-	(%primitive-procedure? object)
-	(%compiled-procedure? object))))
-
-(define-guarantee procedure "procedure")
-(define-guarantee compound-procedure "compound procedure")
-(define-guarantee primitive-procedure "primitive procedure")
-(define-guarantee compiled-procedure "compiled procedure")
 
 (define (procedure-lambda procedure)
   (discriminate-procedure procedure
@@ -79,9 +127,9 @@ USA.
 				caller)
   (declare (integrate if-primitive if-compound if-compiled caller))
   (let ((procedure* (skip-entities procedure)))
-    (cond ((%primitive-procedure? procedure*) (if-primitive procedure*))
-	  ((%compound-procedure? procedure*) (if-compound procedure*))
-	  ((%compiled-procedure? procedure*) (if-compiled procedure*))
+    (cond ((primitive-procedure? procedure*) (if-primitive procedure*))
+	  ((compound-procedure? procedure*) (if-compound procedure*))
+	  ((compiled-procedure? procedure*) (if-compiled procedure*))
 	  (else (error:wrong-type-argument procedure "procedure" caller)))))
 
 (define (skip-entities object)
@@ -96,14 +144,14 @@ USA.
 
 (define (procedure-arity procedure)
   (define (loop p)
-    (cond ((%primitive-procedure? p)
+    (cond ((primitive-procedure? p)
 	   (let ((arity ((ucode-primitive primitive-procedure-arity) p)))
 	     (if (fix:< arity 0)
 		 (cons 0 #f)
 		 (cons arity arity))))
-	  ((%compound-procedure? p)
+	  ((compound-procedure? p)
 	   (scode-lambda-arity (%compound-procedure-lambda p)))
-	  ((%compiled-procedure? p)
+	  ((compiled-procedure? p)
 	   (let ((info (compiled-entry-kind p)))
 	     ;; max = (-1)^tail? * (1 + req + opt + tail?)
 	     ;; min = (1 + req)
@@ -155,20 +203,6 @@ USA.
 (define (procedure-arity-valid? procedure arity)
   (procedure-arity<= arity (procedure-arity procedure)))
 
-(define (thunk? object)
-  (and (procedure? object)
-       (procedure-arity-valid? object 0)))
-
-(define-guarantee thunk "thunk")
-
-(define (unary-procedure? object)
-  (and (procedure? object)
-       (procedure-arity-valid? object 1)))
-
-(define (binary-procedure? object)
-  (and (procedure? object)
-       (procedure-arity-valid? object 2)))
-
 (define-integrable (procedure-of-arity? object arity)
   (and (procedure? object)
        (procedure-arity-valid? object arity)))
@@ -178,7 +212,7 @@ USA.
   (if (not (procedure-arity-valid? object arity))
       (error:bad-range-argument object caller))
   object)
-
+
 (define (make-procedure-arity min #!optional max simple-ok?)
   (guarantee index-fixnum? min 'make-procedure-arity)
   (let ((max
@@ -196,13 +230,6 @@ USA.
 	     (if (default-object? simple-ok?) #f simple-ok?))
 	min
 	(cons min max))))
-
-(define (procedure-arity? object)
-  (if (simple-arity? object)
-      #t
-      (general-arity? object)))
-
-(define-guarantee procedure-arity "procedure arity")
 
 (define (procedure-arity-min arity)
   (cond ((simple-arity? arity) arity)
@@ -230,17 +257,6 @@ USA.
 			  (if m1
 			      (if m2 (fix:min m1 m2) m1)
 			      m2))))
-
-(define-integrable (simple-arity? object)
-  (index-fixnum? object))
-
-(define-integrable (general-arity? object)
-  (and (pair? object)
-       (index-fixnum? (car object))
-       (if (cdr object)
-	   (and (index-fixnum? (cdr object))
-		(fix:>= (cdr object) (car object)))
-	   #t)))
 
 ;;;; Interpreted Procedures
 
@@ -265,70 +281,30 @@ USA.
       result)))
 
 (define (primitive-procedure-name procedure)
-  (%primitive-procedure-name
-   (%primitive-procedure-arg procedure 'primitive-procedure-name)))
+  (guarantee primitive-procedure? procedure 'primitive-procedure-name)
+  (%primitive-procedure-name procedure))
 
 (define (implemented-primitive-procedure? procedure)
-  (%primitive-procedure-implemented?
-   (%primitive-procedure-arg procedure 'implemented-primitive-procedure?)))
-
-(define (%primitive-procedure-arg procedure caller)
-  (let ((procedure* (skip-entities procedure)))
-    (guarantee primitive-procedure? procedure* caller)
-    procedure*))
-
-(define (compound-procedure? object)
-  (%compound-procedure? (skip-entities object)))
+  (guarantee primitive-procedure? procedure 'implemented-primitive-procedure?)
+  (%primitive-procedure-implemented? procedure))
 
 ;;;; Compiled Procedures
 
-(define-integrable (%compiled-procedure? object)
-  (and (object-type? (ucode-type compiled-entry) object)
-       (eq? 0 (system-triple-first (compiled-entry-kind object)))))
+(define (compiled-procedure-frame-size procedure)
+  (guarantee compiled-procedure? procedure 'compiled-procedure-frame-size)
+  (let ((max (system-triple-third (compiled-entry-kind procedure))))
+    ;; max = (-1)^tail? * (1 + req + opt + tail?)
+    ;; frame = req + opt + tail?
+    (if (< max 0)
+	(- -1 max)
+	(- max 1))))
 
 (define-integrable compiled-entry-kind
   (ucode-primitive compiled-entry-kind 1))
 
-(define (compiled-procedure? object)
-  (let ((object (skip-entities object)))
-    (%compiled-procedure? object)))
-
-(define (compiled-procedure-frame-size procedure)
-  (let loop ((p procedure))
-    (cond ((%compiled-procedure? p)
-	   (let ((max (system-triple-third (compiled-entry-kind p))))
-	     ;; max = (-1)^tail? * (1 + req + opt + tail?)
-	     ;; frame = req + opt + tail?
-	     (if (< max 0)
-		 (- -1 max)
-		 (- max 1))))
-	  ((%entity? p)
-	   (+ (loop (%entity-procedure p)) 1))
-	  ((%apply-hook? p)
-	   (loop (%apply-hook-procedure p)))
-	  (else
-	   (error:wrong-type-argument procedure "compiled procedure"
-				      'compiled-procedure-frame-size)))))
-
-(define (%compiled-closure? object)
-  (and (%compiled-procedure? object)
-       (compiled-code-block/manifest-closure?
-	(compiled-code-address->block object))))
-
-(define %compiled-closure->entry
-  (ucode-primitive compiled-closure->entry 1))
-
-(define (compiled-closure? object)
-  (let ((object (skip-entities object)))
-    (%compiled-closure? object)))
-
 (define (compiled-closure->entry closure)
-  (%compiled-closure->entry
-   (let ((closure* (skip-entities closure)))
-     (if (not (%compiled-closure? closure*))
-	 (error:wrong-type-argument closure "compiled closure"
-				    'compiled-closure->entry))
-     closure*)))
+  (guarantee compiled-closure? closure 'compiled-closure->entry)
+  ((ucode-primitive compiled-closure->entry 1) closure))
 
 ;; In the following two procedures, offset can be #f to support
 ;; old-style 68020 closures.  When offset is not #f, it works on all
@@ -357,6 +333,7 @@ USA.
 ;;;; Entities and Apply Hooks
 
 (define (make-entity procedure extra)
+  (guarantee procedure? procedure 'make-entity)
   (%make-entity procedure extra))
 
 (define (entity-procedure entity)
@@ -369,7 +346,7 @@ USA.
 
 (define (set-entity-procedure! entity procedure)
   (guarantee entity? entity 'set-entity-procedure!)
-  (if (procedure-chains-to procedure entity)
+  (if (procedure-chains-to? procedure entity)
       (error:bad-range-argument procedure 'set-entity-procedure!))
   (%set-entity-procedure! entity procedure))
 
@@ -378,6 +355,7 @@ USA.
   (%set-entity-extra! entity extra))
 
 (define (make-apply-hook procedure extra)
+  (guarantee procedure? procedure 'make-apply-hook)
   (%make-apply-hook procedure extra))
 
 (define (apply-hook-procedure apply-hook)
@@ -390,7 +368,7 @@ USA.
 
 (define (set-apply-hook-procedure! apply-hook procedure)
   (guarantee apply-hook? apply-hook 'set-apply-hook-procedure!)
-  (if (procedure-chains-to procedure apply-hook)
+  (if (procedure-chains-to? procedure apply-hook)
       (error:bad-range-argument procedure 'set-apply-hook-procedure!))
   (%set-apply-hook-procedure! apply-hook procedure))
 
@@ -404,16 +382,20 @@ USA.
   ;; DISPATCHED-CASES are the procedures to invoke for 0, 1, 2 etc
   ;; arguments, or #F if the DEFAULT is to be used.  The DEFAULT has a
   ;; SELF argument.
-  (make-entity default
+  (make-entity (or default
+		   (lambda args
+		     (error "Unsupported arguments:" args)))
 	       (list->vector
 		(cons arity-dispatcher-tag
 		      dispatched-cases))))
 
-(define (arity-dispatched-procedure? object)
-  (and (%entity? object)
-       (vector? (entity-extra object))
-       (fix:< 0 (vector-length (entity-extra object)))
-       (eq? (vector-ref (entity-extra object) 0) arity-dispatcher-tag)))
+(define arity-dispatched-procedure?
+  (restrict-type entity?
+    (lambda (entity)
+      (let ((extra (entity-extra entity)))
+	(and (vector? extra)
+	     (fxpositive? (vector-length extra))
+	     (eq? arity-dispatcher-tag (vector-ref extra 0)))))))
 
 (define-integrable arity-dispatcher-tag
   '|#[(microcode)arity-dispatcher-tag]|)
@@ -422,7 +404,7 @@ USA.
   (lambda ()
     (set-fixed-objects-item! 'arity-dispatcher-tag arity-dispatcher-tag)))
 
-(define (procedure-chains-to p1 p2)
+(define (procedure-chains-to? p1 p2)
   (let loop ((p1 p1))
     (if (eq? p1 p2)
 	#t
@@ -440,4 +422,5 @@ USA.
 			     #f))))
 		   (loop (%entity-procedure p1))))
 	      ((%apply-hook? p1) (loop (%apply-hook-procedure p1)))
+	      ((applicable-record? p1) (loop (record-applicator p1)))
 	      (else #f)))))
