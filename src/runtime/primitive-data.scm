@@ -425,11 +425,6 @@ USA.
 (define-integrable (%set-apply-hook-extra! apply-hook extra)
   (system-pair-set-cdr! apply-hook extra))
 
-(declare (integrate-operator %compound-procedure?))
-(define (%compound-procedure? object)
-  (or (%simple-procedure? object)
-      (%extended-procedure? object)))
-
 (define-integrable (%make-simple-procedure lambda environment)
   (system-pair-cons (ucode-type procedure) lambda environment))
 

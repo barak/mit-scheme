@@ -7010,7 +7010,6 @@ USA.
 	  %compiled-return-address?
 	  %compound-procedure-environment
 	  %compound-procedure-lambda
-	  %compound-procedure?
 	  %constant?
 	  %control-point?
 	  %default-object?
@@ -7119,5 +7118,4 @@ USA.
 	  system-vector-length
 	  system-vector-ref
 	  system-vector-set!
-	  system-vector-type-code?
-	  ))
+	  system-vector-type-code?))
