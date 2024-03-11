@@ -662,15 +662,40 @@ USA.
 
 ;;;; Types
 
-(define (type-test-expansion type)
-  (lambda (expr operands block)
-    (if (and (pair? operands)
-	     (null? (cdr operands)))
-	(make-type-test expr block type (car operands))
-	#f)))
+(define (disjoint-tests tests)
+  (if (pair? (cdr tests))
+      (lambda (expr operands block)
+	(if (and (pair? operands)
+		 (null? (cdr operands)))
+	    (make-operand-binding expr block (car operands)
+	      (lambda (block operand)
+		(let loop ((test (car tests)) (tests (cdr tests)))
+		  (if (pair? tests)
+		      (disjunction/make (and expr (object/scode expr))
+					(test #f block operand)
+					(loop (car tests) (cdr tests)))
+		      (test #f block operand)))))
+	    #f))
+      (lambda (expr operands block)
+	(if (and (pair? operands)
+		 (null? (cdr operands)))
+	    ((car tests) expr block (car operands))
+	    #f))))
+
+(define (type-tests-expansion type-names)
+  (disjoint-tests
+   (map (lambda (type-name)
+	  (let ((type (microcode-type type-name)))
+	    (lambda (expr block operand)
+	      (pcall expr block (ucode-primitive object-type?)
+		     (constant/make #f type)
+		     operand))))
+	type-names)))
 
 (define simple-type-tests
   '((apply-hook? apply-hook)
+    (%record? record)
+    (%tagged-object? tagged-object)
     (bit-string? vector-1b)
     (bytevector? bytevector)
     (cell? cell)
@@ -678,15 +703,22 @@ USA.
     (compiled-code-block? compiled-code-block)
     (compiled-entry-address? compiled-entry)
     (compiled-return-address? compiled-return)
+    (complex? fixnum big-fixnum ratnum big-flonum recnum)
+    (compound-procedure? procedure extended-procedure)
     (entity? entity)
     (ephemeron? ephemeron)
+    (exact-integer? fixnum big-fixnum)
+    (exact-rational? fixnum big-fixnum ratnum)
+    (fix:fixnum? fixnum)
     (fixnum? fixnum)
+    (flo:flonum? big-flonum)
     (ic-environment? environment)
+    (int:integer? fixnum big-fixnum)
     (interned-symbol? interned-symbol)
     (interpreter-return-address? return-address)
+    (number? fixnum big-fixnum ratnum big-flonum recnum)
     (pair? pair)
     (primitive-procedure? primitive)
-    (%record? record)
     (scode-access? access)
     (scode-assignment? assignment)
     (scode-combination? combination)
@@ -700,10 +732,55 @@ USA.
     (scode-the-environment? the-environment)
     (scode-variable? variable)
     (stack-address? stack-environment)
-    (%tagged-object? tagged-object)
+    (symbol? interned-symbol uninterned-symbol)
     (uninterned-symbol? uninterned-symbol)
     (vector? vector)
     (weak-pair? weak-cons)))
+
+(define (eq-tests-expansion . objects)
+  (disjoint-tests
+   (map (lambda (object)
+	  (lambda (expr block operand)
+	    (pcall expr block (ucode-primitive eq?)
+		   (constant/make #f object)
+		   operand)))
+	objects)))
+
+(define null?-expansion
+  (eq-tests-expansion '()))
+
+(define false?-expansion
+  (eq-tests-expansion #f))
+
+(define boolean?-expansion
+  (eq-tests-expansion #f #t))
+
+(define (default-object-expansion expr operands block)
+  (declare (ignore block))
+  (if (null? operands)
+      (constant/make expr (default-object))
+      #f))
+
+(define default-object?-expansion
+  (eq-tests-expansion (default-object)))
+
+(define (eof-object-expansion expr operands block)
+  (declare (ignore block))
+  (if (null? operands)
+      (constant/make expr (eof-object))
+      #f))
+
+(define eof-object?-expansion
+  (eq-tests-expansion (eof-object)))
+
+(define (gc-reclaimed-object-expansion expr operands block)
+  (declare (ignore block))
+  (if (null? operands)
+      (constant/make expr (gc-reclaimed-object))
+      #f))
+
+(define gc-reclaimed-object?-expansion
+  (eq-tests-expansion (gc-reclaimed-object)))
 
 (define (any-object?-expansion expr operands block)
   (declare (ignore block))
@@ -718,68 +795,6 @@ USA.
 	   (null? (cdr operands)))
       (constant/make (and expr (object/scode expr)) #f)
       #f))
-
-(define (exact-integer?-expansion expr operands block)
-  (if (and (pair? operands)
-	   (null? (cdr operands)))
-      (make-operand-binding expr block (car operands)
-	(lambda (block operand)
-	  (make-disjunction
-	   expr
-	   (make-type-test #f block (ucode-type fixnum) operand)
-	   (make-type-test #f block (ucode-type big-fixnum) operand))))
-      #f))
-
-(define (exact-rational?-expansion expr operands block)
-  (if (and (pair? operands)
-	   (null? (cdr operands)))
-       (make-operand-binding expr block (car operands)
-	 (lambda (block operand)
-	   (make-disjunction
-	    expr
-	    (make-type-test #f block (ucode-type fixnum) operand)
-	    (make-type-test #f block (ucode-type big-fixnum) operand)
-	    (make-type-test #f block (ucode-type ratnum) operand))))
-       #f))
-
-(define (complex?-expansion expr operands block)
-  (if (and (pair? operands)
-	   (null? (cdr operands)))
-       (make-operand-binding expr block (car operands)
-	 (lambda (block operand)
-	   (make-disjunction
-	    expr
-	    (make-type-test #f block (ucode-type fixnum) operand)
-	    (make-type-test #f block (ucode-type big-fixnum) operand)
-	    (make-type-test #f block (ucode-type ratnum) operand)
-	    (make-type-test #f block (ucode-type big-flonum) operand)
-	    (make-type-test #f block (ucode-type recnum) operand))))
-       #f))
-
-(define (symbol?-expansion expr operands block)
-  (if (and (pair? operands)
-	   (null? (cdr operands)))
-      (make-operand-binding expr block (car operands)
-	(lambda (block operand)
-	  (make-disjunction
-	   expr
-	   (make-type-test #f block (ucode-type interned-symbol) operand)
-	   (make-type-test #f block (ucode-type uninterned-symbol)
-			   operand))))
-      #f))
-
-(define (make-disjunction expr . clauses)
-  (let loop ((clauses clauses))
-    (if (null? (cdr clauses))
-	(car clauses)
-	(disjunction/make (and expr (object/scode expr))
-			  (car clauses) (loop (cdr clauses))))))
-
-(define-integrable (make-type-test expr block type operand)
-  (pcall expr block
-	 (ucode-primitive object-type?)
-	 (constant/make #f type)
-	 operand))
 
 (define (string->symbol-expansion expr operands block)
   (declare (ignore block))
@@ -816,62 +831,6 @@ USA.
     (if (procedure-arity-valid? primitive (length operands))
 	(papply expr block primitive operands)
 	#f)))
-
-(define-integrable (eq-test-expansion object)
-  (lambda (expr operands block)
-    (if (and (pair? operands)
-	     (null? (cdr operands)))
-	(make-eq-test expr block object (car operands))
-	#f)))
-
-(define-integrable (make-eq-test expr block object operand)
-  (pcall expr block
-	 (ucode-primitive eq?)
-	 operand
-	 (constant/make #f object)))
-
-(define null?-expansion
-  (eq-test-expansion '()))
-
-(define false?-expansion
-  (eq-test-expansion #f))
-
-(define (default-object-expansion expr operands block)
-  (declare (ignore block))
-  (if (null? operands)
-      (constant/make expr (default-object))
-      #f))
-
-(define default-object?-expansion
-  (eq-test-expansion (default-object)))
-
-(define (eof-object-expansion expr operands block)
-  (declare (ignore block))
-  (if (null? operands)
-      (constant/make expr (eof-object))
-      #f))
-
-(define eof-object?-expansion
-  (eq-test-expansion (eof-object)))
-
-(define (gc-reclaimed-object-expansion expr operands block)
-  (declare (ignore block))
-  (if (null? operands)
-      (constant/make expr (gc-reclaimed-object))
-      #f))
-
-(define gc-reclaimed-object?-expansion
-  (eq-test-expansion (gc-reclaimed-object)))
-
-(define (boolean?-expansion expr operands block)
-  (if (and (pair? operands)
-	   (null? (cdr operands)))
-      (make-operand-binding expr block (car operands)
-	(lambda (block operand)
-	  (make-disjunction expr
-			    (make-eq-test #f block #f operand)
-			    (make-eq-test #f block #t operand))))
-      #f))
 
 ;;;; Tables
 
@@ -925,15 +884,12 @@ USA.
 		(cons 'cddr cddr-expansion)
 		(cons 'cdr cdr-expansion)
 		(cons 'char=? char=?-expansion)
-		(cons 'complex? complex?-expansion)
 		(cons 'cons* cons*-expansion)
 		(cons 'default-object default-object-expansion)
 		(cons 'default-object? default-object?-expansion)
 		(cons 'eighth eighth-expansion)
 		(cons 'eof-object eof-object-expansion)
 		(cons 'eof-object? eof-object?-expansion)
-		(cons 'exact-integer? exact-integer?-expansion)
-		(cons 'exact-rational? exact-rational?-expansion)
 		(cons 'expt expt-expansion)
 		(cons 'eq? eq?-expansion)
 		(cons 'false? false?-expansion)
@@ -956,7 +912,6 @@ USA.
 		(cons 'gc-reclaimed-object? gc-reclaimed-object?-expansion)
 		(cons 'guarantee guarantee-expansion)
 		(cons 'int:->flonum int:->flonum-expansion)
-		(cons 'int:integer? exact-integer?-expansion)
 		(cons 'intern intern-expansion)
 		(cons 'list list-expansion)
 		(cons 'make-bytevector make-bytevector-expansion)
@@ -964,7 +919,6 @@ USA.
 		(cons 'no-object? no-object?-expansion)
 		(cons 'not not-expansion)
 		(cons 'null? null?-expansion)
-		(cons 'number? complex?-expansion)
 		(cons 'positive? positive?-expansion)
 		(cons 'quotient quotient-expansion)
 		(cons 'remainder remainder-expansion)
@@ -972,12 +926,11 @@ USA.
 		(cons 'seventh seventh-expansion)
 		(cons 'sixth sixth-expansion)
 		(cons 'string->symbol string->symbol-expansion)
-		(cons 'symbol? symbol?-expansion)
 		(cons 'third third-expansion)
 		(cons 'zero? zero?-expansion))
 	  (map (lambda (e)
 		 (cons (car e)
-		       (type-test-expansion (microcode-type (cadr e)))))
+		       (type-tests-expansion (cdr e))))
 	       simple-type-tests)
 	  (map (lambda (p)
 		 (cons (car p)
