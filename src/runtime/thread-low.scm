@@ -33,10 +33,11 @@ USA.
 (define-integrable thread-mutex-tag
   '|#[(runtime thread)thread-mutex]|)
 
-(define-integrable (thread-mutex? object)
-  (and (%record? object)
-       (fix:= 3 (%record-length object))
-       (eq? (%record-ref object 0) thread-mutex-tag)))
+(define thread-mutex?
+  (restrict-type %record?
+    (lambda (r)
+      (and (fx=? 3 (%record-length r))
+	   (eq? thread-mutex-tag (%record-ref r 0))))))
 
 (define-integrable (make-thread-mutex)
   (%record thread-mutex-tag (make-ring) #f))
