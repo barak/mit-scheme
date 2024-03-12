@@ -49,15 +49,14 @@ USA.
 
 ;;; New style
 
-(define <bundle>
-  (make-record-type 'bundle '()
-    'applicator
-    (lambda (b name . args)
-      (apply ((record-accessor (record-type-descriptor b) name) b)
-	     args))))
-
-(define %new-bundle?
-  (record-predicate <bundle>))
+(define-record-type
+    (<bundle>
+     applicator
+     (lambda (b name . args)
+       (apply ((record-accessor (record-type-descriptor b) name) b)
+	      args)))
+    #f
+    %new-bundle?)
 
 (define-integrable (%new-bundle->alist bundle)
   (let ((rtd (record-type-descriptor bundle)))
@@ -70,17 +69,13 @@ USA.
 
 ;;;; Old style
 
-(define <old-bundle>
-  (make-record-type 'old-bundle '(alist)
-		    'applicator
-		    (lambda (b name . args)
-		      (apply (bundle-ref b name) args))))
-
-(define %old-bundle?
-  (record-predicate <old-bundle>))
-
-(define %old-bundle-alist
-  (record-accessor <old-bundle> 'alist))
+(define-record-type
+    (<old-bundle> applicator
+		  (lambda (b name . args)
+		    (apply (bundle-ref b name) args)))
+    #f
+    %old-bundle?
+  (alist %old-bundle-alist))
 
 (define-print-method %old-bundle?
   (standard-print-method
@@ -108,10 +103,9 @@ USA.
   (record-predicate (record-type-descriptor bundle)))
 
 (define bundle-predicate?
-  (simple-type 'bundle-predicate
-    (lambda (object)
-      (and (predicate? object)
-	   (predicate<= object %old-bundle?)))))
+  (restrict-type type?
+    (lambda (t)
+      (type<= t %old-bundle?))))
 
 (seq:after-predicate 'add-action!
   (lambda ()
