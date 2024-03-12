@@ -5764,6 +5764,7 @@ USA.
 	  type<=
 	  type?
 	  uniform-list-type
+	  uniform-string-type
 	  uninterned-symbol?
 	  vector?
 	  weak-pair?)

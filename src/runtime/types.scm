@@ -180,16 +180,6 @@ USA.
 		       (lambda (object*) (= object object*)))
 		     (lambda (object) (member object objects =))))))
 
-(define (uniform-list-type elt-type)
-  (let ((type
-	 (make-type 'uniform-list
-		    (list elt-type)
-		    (let ((elt-test (type-test elt-type)))
-		      (lambda (object)
-			(list-of-type? object elt-test))))))
-    (set-type<=! type list?)
-    type))
-
 (define (pair-type car-type cdr-type)
   (let ((type
 	 (make-type 'pair
@@ -202,6 +192,21 @@ USA.
 			     (cdr-test (cdr object))))))))
     (set-type<=! type pair?)
     type))
+
+(define (uniform-list-type elt-type)
+  (let ((type
+	 (make-type 'uniform-list
+		    (list elt-type)
+		    (let ((elt-test (type-test elt-type)))
+		      (lambda (object)
+			(list-of-type? object elt-test))))))
+    (set-type<=! type list?)
+    type))
+
+(define (uniform-string-type char-type)
+  (restrict-type string?
+    (lambda (s)
+      (string-every char-type s))))
 
 (define (type<= type1 type2)
   (guarantee type? type1 'type<=)
