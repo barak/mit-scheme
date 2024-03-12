@@ -32,14 +32,12 @@ USA.
 
 (add-boot-deps! '(runtime predicate))
 
-(define (predicate-dispatcher? object)
-  (and (entity? object)
-       (metadata? (entity-extra object))))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! predicate-dispatcher? 'predicate-dispatcher
-			'<= entity?)))
+(define predicate-dispatcher?
+  (restrict-type entity?
+    (lambda (e)
+      (metadata? (entity-extra e)))))
+(register-predicate! predicate-dispatcher? 'predicate-dispatcher
+		     '<= entity?)
 
 (define (get-metadata procedure caller)
   (let ((metadata (entity-extra procedure)))
