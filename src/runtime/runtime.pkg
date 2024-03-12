@@ -2203,16 +2203,11 @@ USA.
   (parent (runtime))
   (export ()
 	  complement
-	  complement?
 	  compound-predicate-constructor
-	  compound-predicate-operands
-	  compound-predicate?
 	  conjoin
 	  conjoin*
-	  conjoin?
 	  disjoin
 	  disjoin*
-	  disjoin?
 	  ordered-predicates-memoizer
 	  single-predicate-memoizer
 	  unordered-predicates-memoizer)

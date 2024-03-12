@@ -54,25 +54,16 @@ USA.
 
 (define-integrable (compound-tag-operands tag)
   (dispatch-tag-extra-ref tag 1))
-
-(define (compound-predicate? object)
-  (and (predicate? object)
-       (compound-tag? (predicate->dispatch-tag object))))
-(register-predicate! compound-predicate? 'compound-predicate '<= predicate?)
-
-(define (compound-predicate-operands predicate)
-  (map dispatch-tag->predicate
-       (compound-tag-operands (predicate->dispatch-tag predicate))))
 
 ;;;; Constructors
 
 (define (compound-predicate-constructor operator superset make-datum-test
 					make-operands make-memoizer)
-  (let-values (((constructor related-predicate? key)
+  (let-values (((constructor key)
 		(%constructor operator superset make-datum-test make-operands
 			      make-memoizer)))
     (declare (ignore key))
-    (values constructor related-predicate?)))
+    constructor))
 
 (define (%constructor operator superset make-datum-test make-operands
 		      make-memoizer)
@@ -80,13 +71,6 @@ USA.
 	(superset-tag
 	 (and (predicate? superset)
 	      (predicate->dispatch-tag superset))))
-
-    (define (related-predicate? object)
-      (and (predicate? object)
-	   (keyed-tag? key (predicate->dispatch-tag object))))
-    (register-predicate! related-predicate? (symbol operator '-predicate)
-			 '<= compound-predicate?)
-
     (values (lambda args
 	      (let ((datum-test (apply make-datum-test args))
 		    (operands (apply make-operands args))
@@ -101,7 +85,6 @@ USA.
 			  (set-dispatch-tag<=! tag superset-tag))
 		      (dispatch-tag->predicate tag))
 		    datum-test)))
-	    related-predicate?
 	    key)))
 
 (define (tag-predicate key)
@@ -187,7 +170,7 @@ USA.
 (define (disjoin . predicates)
   (disjoin* predicates))
 
-(define-values (disjoin* disjoin? disjoin-key)
+(define-values (disjoin* disjoin-key)
   (%constructor 'disjoin any-object?
     (lambda (predicates)
       (lambda (object)
@@ -203,7 +186,7 @@ USA.
 (define (conjoin . predicates)
   (conjoin* predicates))
 
-(define-values (conjoin* conjoin? conjoin-key)
+(define-values (conjoin* conjoin-key)
   (%constructor 'conjoin any-object?
     (lambda (predicates)
       (lambda (object)
@@ -246,7 +229,7 @@ USA.
 
 ;;;; Other combinators
 
-(define-values (complement complement?)
+(define complement
   (compound-predicate-constructor 'complement any-object?
     (lambda (predicate)
       (lambda (object)

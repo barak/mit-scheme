@@ -31,26 +31,11 @@ USA.
 
 (define-test 'compound
   (lambda ()
-    (test-compound-predicate-operations (disjoin) disjoin? '())
-    (test-compound-predicate-operations (conjoin) conjoin? '())
-
     (assert-eqv string? (disjoin string?))
     (assert-eqv string? (disjoin string? string?))
 
     (assert-eqv string? (conjoin string?))
-    (assert-eqv string? (conjoin string? string?))
-
-    (test-compound-predicate-operations (disjoin string? symbol?)
-                                        disjoin?
-                                        (list string? symbol?))
-    (test-compound-predicate-operations (conjoin string? symbol?)
-                                        conjoin?
-                                        (list string? symbol?))))
-
-(define (test-compound-predicate-operations predicate test operands)
-  (assert-true (compound-predicate? predicate))
-  (assert-true (test predicate))
-  (assert-lset= eqv? (compound-predicate-operands predicate) operands))
+    (assert-eqv string? (conjoin string? string?))))
 
 (define-test 'ordering
   (lambda ()

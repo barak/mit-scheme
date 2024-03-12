@@ -381,7 +381,7 @@ USA.
 
 (define-integrable (kpair-wrapper kpair? kar-valid? kar kdr)
 
-  (define-values (make-? is-?)
+  (define make-?
     (compound-predicate-constructor (predicate-name kpair?) kpair?
       (lambda (kar? kdr?)
 	(lambda (object)
@@ -584,7 +584,7 @@ USA.
     (lambda (celt)
       (hash-table-intern! table celt (lambda () (constructor celt))))))
 
-(define-values-deferred (uniform-list-predicate uniform-list-predicate?)
+(define-deferred uniform-list-predicate
   (compound-predicate-constructor 'uniform-list list?
     (lambda (elt-pred)
       (if (eqv? any-object? elt-pred)
@@ -694,8 +694,7 @@ USA.
 (define eq-lset< (%make-lset-< eq?))
 (define eqv-lset< (%make-lset-< eqv?))
 
-(define-values-deferred (uniform-weak-list-predicate
-			 uniform-weak-list-predicate?)
+(define-deferred uniform-weak-list-predicate
   (compound-predicate-constructor 'uniform-weak-list weak-list?
     (lambda (elt-pred)
       (if (eqv? any-object? elt-pred)
@@ -815,7 +814,7 @@ USA.
 (define eq-wlset< (%make-wlset-< eq?))
 (define eqv-wlset< (%make-wlset-< eqv?))
 
-(define-values-deferred (uniform-vector-predicate uniform-vector-predicate?)
+(define-deferred uniform-vector-predicate
   (compound-predicate-constructor 'uniform-vector vector?
     (lambda (elt-pred)
       (if (eqv? any-object? elt-pred)
