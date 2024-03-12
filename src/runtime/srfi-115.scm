@@ -34,15 +34,17 @@ USA.
 		'(runtime error-handler)
 		'(runtime ucd-glue))
 
-(define (valid-sre? object)
-  (and (or (match-cset-sre-rule initial-ctx object)
-	   (match-sre-rule initial-ctx object))
-       #t))
+(define valid-sre?
+  (simple-type 'valid-sre
+    (lambda (object)
+      (or (match-cset-sre-rule initial-ctx object)
+	  (match-sre-rule initial-ctx object)))))
 (register-predicate! valid-sre? 'source-regexp)
 
-(define (valid-cset-sre? object)
-  (and (match-cset-sre-rule initial-ctx object)
-       #t))
+(define valid-cset-sre?
+  (simple-type 'valid-cset-sre
+    (lambda (object)
+      (match-cset-sre-rule initial-ctx object))))
 (register-predicate! valid-cset-sre? 'char-set-regexp)
 
 (define (compile-sre-top-level sre)
@@ -267,16 +269,24 @@ USA.
 		 '()))))
 	(substring string start end))))
 
-(define (regexp-replace-subst? object)
-  (define (elt? object)
-    (or (string? object)
-	(regexp-match-key? object)
-	(eq? 'pre object)
-	(eq? 'post object)
-	(unary-procedure? object)))
-  (or (elt? object)
-      (list-of-type? object elt?)))
+(define regexp-match-key?
+  (disjoin-types interned-symbol?
+		 exact-nonnegative-integer?))
+(register-predicate! regexp-match-key? 'regexp-match-key)
+
+(define regexp-replace-subst?
+  (let ((elt-type
+	 (disjoin-types string?
+			regexp-match-key?
+			(memq-type '(pre post))
+			unary-procedure?)))
+    (disjoin-types elt-type
+		   (uniform-list-type elt-type))))
 (register-predicate! regexp-replace-subst? 'regexp-replace-subst)
+
+(define regexp-match-replacement?
+  (uniform-list-type (disjoin-types string? regexp-match-key?)))
+(register-predicate! regexp-match-replacement? 'regexp-match-replacement)
 
 (define (subst-match subst match string start end)
   (define (subst-elt elt)
@@ -295,19 +305,6 @@ USA.
   (if (list? subst)
       (string-append* (map subst-elt subst))
       (subst-elt subst)))
-
-(define (regexp-match-key? object)
-  (or (exact-nonnegative-integer? object)
-      (interned-symbol? object)))
-(register-predicate! regexp-match-key? 'regexp-match-key)
-
-(define (regexp-match-replacement? object)
-  (and (list? object)
-       (every (lambda (elt)
-		(or (string? elt)
-		    (regexp-match-key? elt)))
-	      object)))
-(register-predicate! regexp-match-replacement? 'regexp-match-replacement)
 
 (define (regexp-match-replace match repl)
   (guarantee regexp-match? match 'regexp-match-replace)

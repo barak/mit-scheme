@@ -152,16 +152,17 @@ USA.
 (define (%make-open-block-definition name)
   (make-scode-definition name (make-unassigned-reference-trap)))
 
-(define (scode-open-block? object)
-  (and (scode-sequence? object)
-       (let ((actions (scode-sequence-actions object)))
-	 (and (pair? actions)
-	      (open-block-descriptor? (car actions))
-	      (let ((names (%open-block-descriptor-names (car actions))))
-		(and (fix:> (length (cdr actions)) (length names))
-		     (every %open-block-definition-named?
-			    names
-			    (cdr actions))))))))
+(define scode-open-block?
+  (restrict-type scode-sequence?
+    (lambda (s)
+      (let ((actions (scode-sequence-actions s)))
+	(and (pair? actions)
+	     (open-block-descriptor? (car actions))
+	     (let ((names (%open-block-descriptor-names (car actions))))
+	       (and (fix:> (length (cdr actions)) (length names))
+		    (every %open-block-definition-named?
+			   names
+			   (cdr actions)))))))))
 (register-predicate! scode-open-block? 'open-block '<= scode-sequence?)
 
 (define (%open-block-definition-named? name expr)

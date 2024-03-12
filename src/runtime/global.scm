@@ -252,12 +252,14 @@ USA.
 (define object-pointer?
   (disjoin-types gc-pointer? broken-heart?))
 
-(define (undefined-value? object)
+(define undefined-value?
   ;; Note: the printer takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
   ;; (object-type? (ucode-type constant) object)
-  (or (eq? object unspecific)
-      (eq? object (object-new-type (ucode-type constant) 2))))
+  (restrict-type constant?
+    (lambda (constant)
+      (or (fx=? (object-datum constant) 1)
+	  (fx=? (object-datum constant) 2)))))
 
 (define unspecific
   (object-new-type (ucode-type constant) 1))

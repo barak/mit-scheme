@@ -423,7 +423,7 @@ USA.
 			(%index->record-type-proxy ,index)))
 		   (cdr form)
 		   (iota (length (cdr form)))))))))
-  (enumerate-proxies pathname host))
+  (enumerate-proxies pathname host reference-trap))
 
 (define record?
   (restrict-type %record?
@@ -798,20 +798,19 @@ USA.
 	    i
 	    (loop (fix:+ i 1)))))))
 
-(define (named-structure? object)
-  (or (named-list? object)
-      (named-vector? object)
-      (record? object)))
+(define named-list?
+  (restrict-type non-empty-list?
+    (lambda (p)
+      (structure-type-tag? (car p) 'list))))
 
-(define (named-list? object)
-  (and (pair? object)
-       (structure-type-tag? (car object) 'list)
-       (list? (cdr object))))
+(define named-vector?
+  (restrict-type vector?
+    (lambda (v)
+      (and (fxpositive? (vector-length v))
+	   (structure-type-tag? (vector-ref v 0) 'vector)))))
 
-(define (named-vector? object)
-  (and (vector? object)
-       (fix:> (vector-length object) 0)
-       (structure-type-tag? (vector-ref object 0) 'vector)))
+(define named-structure?
+  (disjoin-types named-list? named-vector? record?))
 
 (define (structure-type-tag? tag physical-type)
   (let ((type (tag->structure-type tag)))

@@ -31,13 +31,6 @@ USA.
 (declare (usual-integrations))
 (declare (integrate-external "string"))
 
-(define symbol?
-  (disjoin-types interned-symbol? uninterned-symbol?))
-
-(define-guarantee symbol "symbol")
-(define-guarantee interned-symbol "interned symbol")
-(define-guarantee uninterned-symbol "uninterned symbol")
-
 (define (symbol=? symbol1 symbol2 . symbols)
   (guarantee symbol? symbol1 'symbol=?)
   (guarantee symbol? symbol2 'symbol=?)

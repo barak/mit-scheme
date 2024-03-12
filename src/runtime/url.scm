@@ -70,29 +70,24 @@ USA.
 (define-deferred interned-uris
   (make-string-hash-table))
 
-(define (uri-absolute? uri)
+(define-integrable (uri-absolute? uri)
   (if (uri-scheme uri) #t #f))
 
-(define (uri-relative? uri)
+(define-integrable (uri-relative? uri)
   (if (uri-scheme uri) #f #t))
 
-(define (absolute-uri? object)
-  (and (uri? object)
-       (uri-absolute? object)))
+(define absolute-uri?
+  (restrict-type uri? uri-absolute?))
 (register-predicate! absolute-uri? 'absolute-uri '<= uri?)
 
-(define (relative-uri? object)
-  (and (uri? object)
-       (uri-relative? object)))
+(define relative-uri?
+  (restrict-type uri? uri-relative?))
 (register-predicate! relative-uri? 'relative-uri '<= uri?)
-
-(define-guarantee uri "URI")
-(define-guarantee absolute-uri "absolute URI")
-(define-guarantee relative-uri "relative URI")
 
-(define (uri-scheme? object)
-  (and (interned-symbol? object)
-       (*match-symbol matcher:scheme object)))
+(define uri-scheme?
+  (restrict-type interned-symbol?
+    (lambda (object)
+      (*match-symbol matcher:scheme object))))
 
 ;;; A well-formed path is a list of N segments which is equivalent to
 ;;; a string in which there is a slash between each adjacent pair of
@@ -101,23 +96,24 @@ USA.
 ;;; segment, and if it ends with a slash the internal form ends with
 ;;; an empty segment.
 
-(define (uri-path? object)
-  (list-of-type? object string?))
+(define uri-path?
+  (uniform-list-type string?))
 
 (define (uri-path-absolute? path)
   (guarantee uri-path? path 'uri-path-absolute?)
   (path-absolute? path))
 
-(define (path-absolute? path)
-  (and (pair? path)
-       (fix:= 0 (string-length (car path)))))
+(define path-absolute?
+  (restrict-type pair?
+    (lambda (p)
+      (fxzero? (string-length (car p))))))
 
 (define (uri-path-relative? path)
   (guarantee uri-path? path 'uri-path-relative?)
   (path-relative? path))
 
-(define-integrable (path-relative? path)
-  (not (path-absolute? path)))
+(define path-relative?
+  (complement-type path-absolute?))
 
 (define-record-type <uri-authority>
     (%make-uri-authority userinfo host port)
@@ -155,13 +151,6 @@ USA.
 
 (define (uri-port? object)
   (exact-nonnegative-integer? object))
-
-(define-guarantee uri-scheme "URI scheme")
-(define-guarantee uri-path "URI path")
-(define-guarantee uri-authority "URI authority")
-(define-guarantee uri-userinfo "URI userinfo")
-(define-guarantee uri-host "URI host")
-(define-guarantee uri-port "URI port")
 
 (define (uri=? u1 u2)
   (eq? (->uri u1 'uri=?)
@@ -328,7 +317,7 @@ USA.
 	  ((symbol? object)
 	   (do-string (symbol->string object)))
 	  (else
-	   (if caller (error:not-uri object caller))
+	   (if caller (error:not-a uri? object caller))
 	   #f))))
 
 (define (string->uri string #!optional start end)

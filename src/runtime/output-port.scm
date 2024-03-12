@@ -177,9 +177,7 @@ USA.
 
 (define (write-strings-in-columns strings port row-major? min-minor
 				  left-margin col-sep right-margin)
-  (if (not (list-of-type? strings string?))
-      (error:wrong-type-argument strings "list of strings"
-				 'write-strings-in-columns))
+  (guarantee-list-of string? strings 'write-strings-in-columns)
   (guarantee textual-output-port? port 'write-strings-in-columns)
   (guarantee exact-positive-integer? min-minor 'write-strings-in-columns)
   (guarantee string? left-margin 'write-strings-in-columns)

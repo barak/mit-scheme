@@ -211,14 +211,6 @@ USA.
   ;; Band ID
   band-id)
 
-(declare (integrate-operator guarantee-alien-function))
-(define (guarantee-alien-function object operator)
-  (if (not (alien-function? object))
-      (error:not-alien-function object operator)))
-
-(define (error:not-alien-function object operator)
-  (error:wrong-type-argument object "an alien function" operator))
-
 (define (make-alien-function name library return-type params filename)
   (%make-alien-function 0 0 (string-append "Scm_" name)
 			library return-type params filename #f))
@@ -372,7 +364,7 @@ USA.
 	      (loop (cdr consts)))))))
 
 (define (call-alien alien-function . args)
-  (guarantee-alien-function alien-function 'call-alien)
+  (guarantee alien-function? alien-function 'call-alien)
   (alien-function-cache! alien-function)
   (for-each
     (lambda (arg)

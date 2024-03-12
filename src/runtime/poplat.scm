@@ -36,9 +36,10 @@ USA.
 (define (%make-population mutex)
   (%record population-tag mutex (weak-list-set eqv?)))
 
-(define (population? object)
-  (and (%record? object)
-       (eq? population-tag (%record-ref object 0))))
+(define population?
+  (restrict-type %record?
+    (lambda (r)
+      (eq? population-tag (%record-ref r 0)))))
 (register-predicate! population? 'population '<= %record?)
 
 (define-integrable population-tag

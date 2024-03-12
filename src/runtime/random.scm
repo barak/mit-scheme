@@ -68,13 +68,12 @@ USA.
 (define-integrable (%make-random-state)
   (vector random-state-tag (make-bytevector 32 0)))
 
-(define (random-state? object)
-  (and (vector? object)
-       (fix:= 2 (vector-length object))
-       (eq? random-state-tag (vector-ref object 0))))
+(define random-state?
+  (restrict-type vector?
+    (lambda (v)
+      (and (fx=? 2 (vector-length v))
+	   (eq? random-state-tag (vector-ref v 0))))))
 (register-predicate! random-state? 'random-state '<= vector?)
-
-(define-guarantee random-state "random state")
 
 (define-print-method random-state?
   (standard-print-method 'random-state))
@@ -100,7 +99,7 @@ USA.
 	 (if (or (default-object? state) (not state))
 	     (or *random-state* default-random-source)
 	     state)))
-    (guarantee-random-state state procedure)
+    (guarantee random-state? state procedure)
     (with-random-state-lock state
       (lambda ()
 	(body state)))))
@@ -136,7 +135,7 @@ USA.
 (define-integrable ers:length 33)
 
 (define (export-random-state state)
-  (guarantee-random-state state 'export-random-state)
+  (guarantee random-state? state 'export-random-state)
   (let ((v (make-vector ers:length))
 	(key (random-state-key state)))
     (vector-set! v 0 ers:tag)
@@ -200,7 +199,7 @@ USA.
 	(bytevector-u8-set! key j byte)))))
 
 (define (random-source-make-integers source)
-  (guarantee-random-state source 'random-source-make-integers)
+  (guarantee random-state? source 'random-source-make-integers)
   (let ((state source))
     (lambda (modulus)
       (if (int:> modulus 0)
@@ -208,7 +207,7 @@ USA.
 	  (error:bad-range-argument modulus #f)))))
 
 (define (random-source-make-reals source #!optional unit)
-  (guarantee-random-state source 'random-source-make-reals)
+  (guarantee random-state? source 'random-source-make-reals)
   (let ((unit
 	 (if (default-object? unit)
 	     .5

@@ -141,23 +141,20 @@ USA.
 (define lambda-tag:rest (object-new-type (ucode-type constant) 4))
 (define lambda-tag:key (object-new-type (ucode-type constant) 5))
 
-(define (lambda-tag? object)
-  (or (eq? object lambda-tag:key)
-      (eq? object lambda-tag:optional)
-      (eq? object lambda-tag:rest)
+(define-deferred lambda-tag?
+  (memq-type
+   (list lambda-tag:key lambda-tag:optional lambda-tag:rest
+	 ;; The following ones are called `lambda-tag', but they are
+	 ;; semantically quite different from lambda list keywords.
+	 ;; This should be fixed some day.
 
-      ;; The following ones are called `lambda-tag', but they are
-      ;; semantically quite different from lambda list keywords.
-      ;; This should be fixed some day.
+	 ;; From lambda.scm
+	 scode-lambda-name:internal-lambda
 
-      ;; From lambda.scm
-      (eq? object scode-lambda-name:internal-lambda)
-
-      ;; From syntax-output.scm
-      (eq? object scode-lambda-name:fluid-let)
-      (eq? object scode-lambda-name:let)
-      (eq? object scode-lambda-name:unnamed)
-      ))
+	 ;; From syntax-output.scm
+	 scode-lambda-name:fluid-let
+	 scode-lambda-name:let
+	 scode-lambda-name:unnamed)))
 
 (define (map-mit-lambda-list procedure bvl)
   (let loop ((bvl bvl))

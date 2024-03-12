@@ -38,9 +38,10 @@ USA.
   (table %memoizer-metadata-table)
   (procedure %memoizer-metadata-procedure))
 
-(define (memoizer? object)
-  (and (apply-hook? object)
-       (memoizer-metadata? (apply-hook-extra object))))
+(define memoizer?
+  (restrict-type apply-hook?
+    (lambda (hook)
+      (memoizer-metadata? (apply-hook-extra hook)))))
 
 (define (make-memoizer table procedure impl)
   (guarantee hash-table? table 'make-memoizer)

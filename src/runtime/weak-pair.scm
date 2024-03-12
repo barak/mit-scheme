@@ -42,16 +42,18 @@ USA.
 
 ;;;; Weak lists
 
-(define (weak-list? object)
-  (declare (no-type-checks))
-  (let loop ((l1 object) (l2 object))
-    (if (weak-pair? l1)
-	(let ((l1 (weak-cdr l1)))
-	  (and (not (eq? l1 l2))
-	       (if (weak-pair? l1)
-		   (loop (weak-cdr l1) (weak-cdr l2))
-		   (null? l1))))
-	(null? l1))))
+(define weak-list?
+  (simple-type 'weak-list
+    (lambda (object)
+      (declare (no-type-checks))
+      (let loop ((l1 object) (l2 object))
+	(if (weak-pair? l1)
+	    (let ((l1 (weak-cdr l1)))
+	      (and (not (eq? l1 l2))
+		   (if (weak-pair? l1)
+		       (loop (weak-cdr l1) (weak-cdr l2))
+		       (null? l1))))
+	    (null? l1))))))
 
 (define (null-weak-list? object #!optional caller)
   (%null-weak-list? object caller))
@@ -550,8 +552,8 @@ USA.
 
 ;;;; Weak alists
 
-(define (weak-alist? object)
-  (list-of-type? weak-pair? object))
+(define weak-alist?
+  (uniform-list-type weak-pair?))
 
 (define (weak-alist-fold kons knil alist #!optional set-alist!)
   (%weak-alist-fold kons knil alist set-alist! 'weak-alist-fold))
@@ -842,9 +844,10 @@ USA.
 	   (if (default-object? finalizer) #f finalizer)
 	   '()))
 
-(define (weak-alist-table? object)
-  (and (%record? object)
-       (eq? weak-alist-table-tag (%record-ref object 0))))
+(define weak-alist-table?
+  (restrict-type %record?
+    (lambda (r)
+      (eq? weak-alist-table-tag (%record-ref r 0)))))
 
 (define-integrable weak-alist-table-tag
   '|#[(runtime weak-pair)weak-alist-table]|)
@@ -1120,9 +1123,10 @@ USA.
 (define (weak-list-set = . items)
   (%record weak-list-set-tag = (delete-duplicates items =)))
 
-(define (weak-list-set? object)
-  (and (%record? object)
-       (eq? weak-list-set-tag (%record-ref object 0))))
+(define weak-list-set?
+  (restrict-type %record?
+    (lambda (r)
+      (eq? weak-list-set-tag (%record-ref r 0)))))
 ;
 (define-integrable weak-list-set-tag
   '|#[(runtime weak-pair)weak-list-set]|)

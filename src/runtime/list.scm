@@ -1299,9 +1299,10 @@ USA.
 			(cdr items))
 		   (loop (cdr items))))))))
 
-(define (list-of-unique-symbols? object)
-  (and (list-of-type? object symbol?)
-       (not (any-duplicates? object eq?))))
+(define list-of-unique-symbols?
+  (restrict-type (uniform-list-type symbol?)
+    (lambda (elts)
+      (not (any-duplicates? elts eq?)))))
 
 (define (member-procedure = #!optional caller)
   (define-integrable (pred a b)

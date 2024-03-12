@@ -36,27 +36,31 @@ USA.
 (declare (usual-integrations)
 	 (integrate-external "dispatch-low"))
 
-(define (tag-name? object)
-  (or (symbol? object)
-      (and (pair? object)
-	   (symbol? (car object))
-	   (list-of-type? (cdr object)
-			  (lambda (elt)
-			    (or (object-non-pointer? elt)
-				(tag-name? elt)))))))
+(define tag-name?
+  (disjoin-types symbol?
+		 (restrict-type pair?
+		   (lambda (p)
+		     (and (symbol? (car p))
+			  (list-of-type? (cdr p)
+			    (lambda (elt)
+			      (or (object-non-pointer? elt)
+				  (tag-name? elt)))))))))
 (register-predicate! tag-name? 'dispatch-tag-name)
 
 (define (make-dispatch-metatag name)
   (guarantee tag-name? name 'make-dispatch-metatag)
-  (letrec*
-      ((predicate
-	(lambda (object)
-	  (and (%record? object)
-	       (eq? metatag (%record-ref object 0)))))
-       (metatag (%make-tag metatag-tag name predicate '())))
-    (set-predicate-tag! predicate metatag)
-    (set-dispatch-tag<=! metatag metatag-tag)
-    metatag))
+
+  (define type
+    (restrict-type %record?
+      (lambda (r)
+	(eq? metatag (%record-ref r 0)))))
+
+  (define metatag
+    (%make-tag metatag-tag name type '()))
+
+  (set-predicate-tag! type metatag)
+  (set-dispatch-tag<=! metatag metatag-tag)
+  metatag)
 
 (define (dispatch-metatag-constructor metatag #!optional caller)
   (guarantee dispatch-metatag? metatag 'dispatch-metatag-constructor)

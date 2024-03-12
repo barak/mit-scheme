@@ -128,27 +128,27 @@ USA.
 	((http-response? message) (http-response-body message))
 	(else (error:not-a http-message? message 'http-message-body))))
 
-(define (http-request-uri? object)
-  (or (simple-http-request-uri? object)
-      (standard-http-request-uri? object)
-      (eq? object '*)
-      (uri-authority? object)))
-(register-predicate! http-request-uri? 'http-request-uri?)
-
-(define (simple-http-request-uri? object)
-  (and (relative-uri? object)
-       (not (uri-authority object))
-       (uri-path-absolute? (uri-path object))))
+(define simple-http-request-uri?
+  (restrict-type relative-uri?
+    (lambda (uri)
+      (and (not (uri-authority uri))
+	   (uri-path-absolute? (uri-path uri))))))
 (register-predicate! simple-http-request-uri? 'simple-http-request-uri?
-		     '<= relative-uri?
-		     '<= http-request-uri?)
+		     '<= relative-uri?)
 
-(define (standard-http-request-uri? object)
-  (and (absolute-uri? object)
-       (uri-authority object)))
+(define standard-http-request-uri?
+  (restrict-type absolute-uri? uri-authority))
 (register-predicate! standard-http-request-uri? 'standard-http-request-uri?
-		     '<= absolute-uri?
-		     '<= http-request-uri?)
+		     '<= absolute-uri?)
+
+(define http-request-uri?
+  (disjoin-types simple-http-request-uri?
+		 standard-http-request-uri?
+		 (memq-type '(*))
+		 uri-authority?))
+(register-predicate! http-request-uri? 'http-request-uri?)
+(set-predicate<=! http-request-uri? simple-http-request-uri?)
+(set-predicate<=! http-request-uri? standard-http-request-uri?)
 
 ;;;; Output
 

@@ -305,7 +305,6 @@ USA.
 ;;;; Flonums
 
 (define-primitives
-  (flo:flonum? flonum? 1)
   (flo:zero? flonum-zero? 1)
   (flo:positive? flonum-positive? 1)
   (flo:negative? flonum-negative? 1)
@@ -642,7 +641,6 @@ USA.
 ;;;; Exact integers
 
 (define-primitives
-  (int:integer? integer? 1)
   (int:zero? integer-zero? 1)
   (int:positive? integer-positive? 1)
   (int:negative? integer-negative? 1)
@@ -658,6 +656,9 @@ USA.
   (int:divide integer-divide 2)
   (int:quotient integer-quotient 2)
   (int:remainder integer-remainder 2))
+
+(define int:integer?
+  (disjoin-types fixnum? bignum?))
 
 (define-integrable (int:<= n m) (not (int:> n m)))
 (define-integrable (int:>= n m) (not (int:< n m)))

@@ -420,8 +420,7 @@ USA.
 				 'make-root-top-level-environment))
 
 (define (%extend-top-level-environment environment names values procedure)
-  (if (not (list-of-type? names symbol?))
-      (error:wrong-type-argument names "list of symbols" procedure))
+  (guarantee-list-of symbol? names procedure)
   (system-list->vector
    (ucode-type environment)
    (cons (%make-simple-procedure (make-slambda scode-lambda-name:unnamed

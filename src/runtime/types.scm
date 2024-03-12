@@ -150,6 +150,59 @@ USA.
 	       (lambda (object)
 		 (not (test object))))))
 
+(define (memq-type objects)
+  (if (null? objects)
+      no-object?
+      (make-type 'memq
+		 '()
+		 (if (null? (cdr objects))
+		     (let ((object (car objects)))
+		       (lambda (object*) (eq? object object*)))
+		     (lambda (object) (memq object objects))))))
+
+(define (memv-type objects)
+  (if (null? objects)
+      no-object?
+      (make-type 'memv
+		 '()
+		 (if (null? (cdr objects))
+		     (let ((object (car objects)))
+		       (lambda (object*) (eqv? object object*)))
+		     (lambda (object) (memv object objects))))))
+
+(define (member-type objects #!optional =)
+  (if (null? objects)
+      no-object?
+      (make-type 'member
+		 '()
+		 (if (null? (cdr objects))
+		     (let ((object (car objects)))
+		       (lambda (object*) (= object object*)))
+		     (lambda (object) (member object objects =))))))
+
+(define (uniform-list-type elt-type)
+  (let ((type
+	 (make-type 'uniform-list
+		    (list elt-type)
+		    (let ((elt-test (type-test elt-type)))
+		      (lambda (object)
+			(list-of-type? object elt-test))))))
+    (set-type<=! type list?)
+    type))
+
+(define (pair-type car-type cdr-type)
+  (let ((type
+	 (make-type 'pair
+		    (list car-type cdr-type)
+		    (let ((car-test (type-test car-type))
+			  (cdr-test (type-test cdr-type)))
+		      (lambda (object)
+			(and (pair? object)
+			     (car-test (car object))
+			     (cdr-test (cdr object))))))))
+    (set-type<=! type pair?)
+    type))
+
 (define (type<= type1 type2)
   (guarantee type? type1 'type<=)
   (guarantee type? type2 'type<=)
@@ -289,3 +342,6 @@ USA.
     (lambda (record)
       (eq? metatag-tag (%record-ref record 0)))))
 (set-type<=! dispatch-metatag? dispatch-tag?)
+
+(define symbol?
+  (disjoin-types interned-symbol? uninterned-symbol?))

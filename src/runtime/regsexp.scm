@@ -32,8 +32,10 @@ USA.
 
 (add-boot-deps! '(runtime regexp rules) '(runtime error-handler))
 
-(define (regsexp? object)
-  (and (match-rule object) #t))
+(define regsexp?
+  (simple-type 'regsexp
+    (lambda (object)
+      (match-rule object))))
 (register-predicate! regsexp? 'regular-sexpression)
 
 (define (compile-regsexp regsexp)
@@ -251,19 +253,18 @@ USA.
 			    #f
 			    char))))))
 
-(define (regsexp-match? object)
-  (and (pair? object)
-       (exact-nonnegative-integer? (car object))
-       (pair? (cdr object))
-       (exact-nonnegative-integer? (cadr object))
-       (<= (car object) (cadr object))
-       (list? (cddr object))
-       (every (lambda (elt)
-		(and (pair? elt)
-		     (regsexp-group-key? (car elt))
-		     (string? (cdr elt))))
-	      (cddr object))))
-(register-predicate! regsexp-match? 'regsexp-match)
+(define regsexp-match?
+  (restrict-type pair?
+    (lambda (p)
+      (and (exact-nonnegative-integer? (car p))
+	   (pair? (cdr p))
+	   (exact-nonnegative-integer? (cadr p))
+	   (<= (car p) (cadr p))
+	   (list-of-type? (cddr p)
+			  (lambda (elt)
+			    (and (pair? elt)
+				 (regsexp-group-key? (car elt))
+				 (string? (cdr elt)))))))))
 
 (define (match-value key match caller)
   (let ((p (assv key (cddr match))))
@@ -271,11 +272,13 @@ USA.
 	(error:bad-range-argument key caller))
     (cdr p)))
 
-(define (regsexp-replacement? object)
-  (or (string? object)
-      (regsexp-group-key? object)
-      (and (list? object)
-	   (every regsexp-replacement? object))))
+(define regsexp-replacement?
+  (simple-type 'regsexp-replacement
+    (lambda (object)
+      (or (string? object)
+	  (regsexp-group-key? object)
+	  (and (list? object)
+	       (every regsexp-replacement? object))))))
 (register-predicate! regsexp-replacement? 'regsexp-replacement)
 
 (define (regsexp-replacer replacement)

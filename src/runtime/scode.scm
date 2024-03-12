@@ -32,25 +32,28 @@ USA.
 
 (add-boot-deps! '(runtime microcode-tables))
 
-;;;; Constant
-
-(define (scode-expression? object)
-  (or (vector-ref scode-type-vector (object-type object))
-      (and (compiled-code-address? object)
-	   (eq? 'compiled-expression (compiled-entry-type object)))))
+(define scode-expression?
+  (disjoin-types scode-access?
+		 scode-assignment?
+		 scode-combination?
+		 scode-comment?
+		 scode-conditional?
+		 scode-definition?
+		 scode-delay?
+		 scode-disjunction?
+		 scode-extended-lambda?
+		 scode-lexpr?
+		 scode-quotation?
+		 scode-sequence?
+		 scode-simple-lambda?
+		 scode-the-environment?
+		 scode-variable?
+		 (restrict-type compiled-code-address?
+		   (lambda (entry)
+		     (eq? 'compiled-expression (compiled-entry-type entry))))))
 (register-predicate! scode-expression? 'scode-expression)
 
-(define-deferred scode-type-vector
-  (let ((type-vector (make-vector (microcode-type/code-limit) #f)))
-    (for-each (lambda (name)
-		(vector-set! type-vector (microcode-type name) #t))
-	      '(access assignment combination comment conditional
-		       definition delay disjunction extended-lambda lambda
-		       lexpr quotation sequence the-environment variable))
-    type-vector))
-
-(define (scode-constant? object)
-  (not (scode-expression? object)))
+(define scode-constant? (complement-type scode-expression?))
 (register-predicate! scode-constant? 'scode-constant)
 
 ;;;; Quotation

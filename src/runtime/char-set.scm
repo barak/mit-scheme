@@ -309,14 +309,15 @@ USA.
 
 ;;;; Ranges
 
-(define (range? object)
-  (or (and (pair? object)
-	   (index-fixnum? (car object))
-	   (index-fixnum? (cdr object))
-           (fix:<= (cdr object) #x110000)
-	   (fix:<= (car object) (cdr object)))
-      (and (index-fixnum? object)
-	   (fix:< object #x110000))))
+(define range?
+  (disjoin-types (restrict-type non-negative-fixnum?
+		   (lambda (n)
+		     (fx<=? n #x110000)))
+		 (restrict-type pair?
+		   (lambda (p)
+		     (or (non-negative-fixnum? (car p))
+			 (non-negative-fixnum? (cdr p))
+			 (fx<=? (car p) (cdr p) #x110000))))))
 
 (define (make-range start end)
   (if (fix:= (fix:- end start) 1)
@@ -375,15 +376,15 @@ USA.
 
 ;;;; Code-point lists
 
-(define (code-point-list? object)
-  (list-of-type? object cpl-element?))
-
-(define (cpl-element? object)
-  (or (range? object)
-      (char? object)
-      (string? object)
-      (char-set? object)
-      (char-set-name? object)))
+(define cpl-element? any-object?)
+(define code-point-list? any-object?)
+(add-boot-init!
+ (lambda ()
+   (set! cpl-element?
+	 (disjoin-types range? char? string? char-set? char-set-name?))
+   (set! code-point-list?
+	 (uniform-list-type cpl-element?))
+   unspecific))
 
 (define (cpl->ilist cpl)
   (let loop ((cpl cpl) (ranges '()) (ilist '()))
@@ -412,8 +413,10 @@ USA.
 
 ;;;; Named char sets
 
-(define (char-set-name? object)
-  (and (find-named-char-set object) #t))
+(define char-set-name?
+  (restrict-type interned-symbol?
+    (lambda (s)
+      (and (find-named-char-set s) #t))))
 
 (define (char-set-names)
   (map caar (named-char-sets)))

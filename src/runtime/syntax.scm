@@ -360,19 +360,21 @@ Additional notes about syntax:
 
 ;;;; Identifiers
 
-(define (identifier? object)
-  (or (raw-identifier? object)
-      (closed-identifier? object)))
-
-(define (raw-identifier? object)
-  (and (symbol? object)
+(define raw-identifier?
+  (restrict-type symbol?
+    (lambda (s)
        ;; This makes `:keyword' objects be self-evaluating.
-       (not (keyword? object))))
+       (not (keyword? s)))))
 
-(define (closed-identifier? object)
-  (and (syntactic-closure? object)
-       (null? (syntactic-closure-free object))
-       (identifier? (syntactic-closure-form object))))
+(define closed-identifier?
+  (restrict-type syntactic-closure?
+    (lambda (sc)
+      (and (null? (syntactic-closure-free sc))
+	   (identifier? (syntactic-closure-form sc))))))
+
+(define identifier?
+  (disjoin-types raw-identifier?
+		 closed-identifier?))
 
 (register-predicate! identifier? 'identifier)
 (register-predicate! raw-identifier? 'raw-identifier '<= identifier?)

@@ -178,9 +178,10 @@ USA.
 (define-integrable (u16le-byte0 u16) (fix:and u16 #xFF))
 (define-integrable (u16le-byte1 u16) (fix:lsh u16 -8))
 
-(define (u16? object)
-  (and (index-fixnum? object)
-       (fix:< object #x10000)))
+(define u16?
+  (restrict-type non-negative-fixnum?
+    (lambda (n)
+      (fix:< n #x10000))))
 (register-predicate! u16? 'u16 '<= index-fixnum?)
 
 (define (bytevector-u16be-ref bytevector index)
@@ -241,9 +242,10 @@ USA.
    (define-integrable (u32be-byte2 u32) (fix:and (fix:lsh u32 -8) #xFF))
    (define-integrable (u32be-byte3 u32) (fix:and u32 #xFF))
 
-   (define (u32? object)
-     (and (index-fixnum? object)
-	  (fix:<= object #xFFFFFFFF)))
+   (define u32?
+     (restrict-type non-negative-fixnum?
+       (lambda (n)
+	 (fx<=? n #xFFFFFFFF))))
    (register-predicate! u32? 'u32 '<= index-fixnum?))
  ;; Must use bignums:
  (begin
@@ -265,9 +267,10 @@ USA.
    (define-integrable (u32be-byte3 u32)
      (int:remainder u32 #x100))
 
-   (define (u32? object)
-     (and (exact-nonnegative-integer? object)
-	  (int:<= object #xFFFFFFFF)))
+   (define u32?
+     (restrict-type exact-nonnegative-integer?
+       (lambda (n)
+	 (<= n #xFFFFFFFF))))
 
    (add-boot-init!
     (lambda ()

@@ -520,7 +520,6 @@ USA.
 	  flo:expt
 	  flo:fast-fma?
 	  flo:finite?
-	  flo:flonum?
 	  flo:floor
 	  flo:floor->exact
 	  flo:fma
@@ -977,8 +976,7 @@ USA.
 	  symbol-hash			;(srfi 128)
 	  symbol<?
 	  symbol=?			;(scheme base)
-	  symbol>?
-	  symbol?)			;(scheme base)
+	  symbol>?)
   (export (runtime)
 	  hidden-variable-name?))
 
@@ -4181,11 +4179,9 @@ USA.
 	  copy-alien-address!
 	  de-register-c-callback
 	  error:not-alien
-	  error:not-alien-function
 	  free
 	  generate-shim
 	  guarantee-alien
-	  guarantee-alien-function
 	  make-alien
 	  make-alien-to-free
 	  malloc
@@ -4280,7 +4276,9 @@ USA.
 	  record-type-field-index)
   (export (runtime pathname)
 	  record-type-proxy:host
-	  record-type-proxy:pathname))
+	  record-type-proxy:pathname)
+  (export (runtime reference-trap)
+	  record-type-proxy:reference-trap))
 
 (define-package (runtime reference-trap)
   (files "reference-trap")
@@ -5732,6 +5730,7 @@ USA.
   (parent (runtime))
   (export ()
 	  (fix:fixnum? fixnum?)
+	  (flo:flonum? flonum?)
 	  (vector-8b? legacy-string?)
 	  %record?
 	  %tagged-object?
@@ -5754,6 +5753,9 @@ USA.
 	  entity?
 	  eof-object?			;(scheme base)
 	  ephemeron?			;(srfi 124)
+	  member-type
+	  memq-type
+	  memv-type
 	  false?
 	  fixnum?			;(srfi 143)
 	  gc-reclaimed-object?
@@ -5778,6 +5780,7 @@ USA.
 	  scode-the-environment?
 	  scode-variable?
 	  stack-address?
+	  symbol?			;(scheme base)
 	  system-cell?
 	  system-pair?
 	  system-quadruple?
@@ -5789,6 +5792,7 @@ USA.
 	  type-test
 	  type<=
 	  type?
+	  uniform-list-type
 	  uninterned-symbol?
 	  vector?
 	  weak-pair?)

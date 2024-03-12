@@ -45,12 +45,11 @@ USA.
        string->symbol)
    (string-append keyword-prefix string)))
 
-(define (keyword? object)
-  (and (interned-symbol? object)
-       (string-prefix? keyword-prefix (symbol->string object))))
-
-(define-guarantee keyword "keyword")
+(define keyword?
+  (restrict-type interned-symbol?
+    (lambda (s)
+      (string-prefix? keyword-prefix (symbol->string s)))))
 
 (define (keyword->string keyword)
-  (guarantee-keyword keyword 'keyword->string)
+  (guarantee keyword? keyword 'keyword->string)
   (string-tail (symbol->string keyword) (string-length keyword-prefix)))

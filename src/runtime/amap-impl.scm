@@ -196,12 +196,12 @@ USA.
 	     prop-argsets))
        (or comparator-predicate any-object?)))))
 
-(define (amap-properties? object)
-  (list-of-type? object
-    (lambda (elt)
-      (and (pair? elt)
-	   (have-prop? (car elt))
-	   (non-empty-list? (cdr elt))))))
+(define amap-properties?
+  (uniform-list-type
+   (restrict-type pair?
+     (lambda (p)
+       (and (have-prop? (car p))
+	    (non-empty-list? (cdr p)))))))
 (register-predicate! amap-properties? 'amap-properties '<= list?)
 
 (define (combine-args-predicates preds)
@@ -367,15 +367,16 @@ USA.
 
 ;;;; Operations
 
-(define (amap-operations? object)
-  (and (list-of-type? object
-	 (lambda (elt)
-	   (and (pair? elt)
-		(operator? (car elt))
-		(pair? (cdr elt))
-		(procedure? (cadr elt))
-		(null? (cddr elt)))))
-       (not (any-duplicates? object eq? car))))
+(define amap-operations?
+  (restrict-type (uniform-list-type
+		  (restrict-type pair?
+		    (lambda (p)
+		      (and (operator? (car p))
+			   (pair? (cdr p))
+			   (procedure? (cadr p))
+			   (null? (cddr p))))))
+    (lambda (items)
+      (not (any-duplicates? items eq? car)))))
 (register-predicate! amap-operations? 'amap-operations '<= alist?)
 
 (define (organize-operations metadata operations)

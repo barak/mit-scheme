@@ -850,7 +850,9 @@ USA.
 		    (scons-define pred-name
 		      (scons-call (scons-close 'record-predicate) type-name))
 		    (default-object))
-		(let ((parent (or parent (get-keyword-value options 'parent-type #f))))
+		(let ((parent
+		       (or parent
+			   (get-keyword-value options 'parent-type #f))))
 		  (append-map (lambda (field-spec index)
 				(let ((name (car field-spec))
 				      (accessor (cadr field-spec))

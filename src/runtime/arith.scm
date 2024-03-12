@@ -80,23 +80,14 @@ USA.
   (integer-length-in-bits 1)
   (integer-shift-left 2))
 
-(define-integrable (int:bignum? object)
-  (object-type? (ucode-type big-fixnum) object))
-
 (define-integrable (make-ratnum n d)
   (%make-ratnum n d))
-
-(define-integrable (ratnum? object)
-  (%ratnum? object))
 
 (define-integrable (ratnum-numerator ratnum)
   (%ratnum-numerator ratnum))
 
 (define-integrable (ratnum-denominator ratnum)
   (%ratnum-denominator ratnum))
-
-(define-integrable (flonum? object)
-  (%flonum? object))
 
 (define (flo:normalize x)
   (let ((r (%flo:normalize x)))
@@ -107,9 +98,6 @@ USA.
 
 (define-integrable flo:->integer
   flo:truncate->exact)
-
-(define-integrable (recnum? object)
-  (%recnum? object))
 
 (define-integrable (make-recnum real imag)
   (%make-recnum real imag))
@@ -627,14 +615,8 @@ USA.
 	(else
 	 (list->string (n>0 number)))))
 
-(declare (integrate-operator rat:rational?))
-(define (rat:rational? object)
-  (or (ratnum? object)
-      (int:integer? object)))
-
-(define (rat:integer? object)
-  (and (not (ratnum? object))
-       (int:integer? object)))
+(define rat:rational? (disjoin-types int:integer? ratnum?))
+(define-integrable rat:integer? int:integer?)
 
 (define (rat:= q r)
   (if (ratnum? q)
@@ -1090,9 +1072,8 @@ USA.
 	(rat:* (flo:->integer (flo:denormalize f p))
 	       (rat:expt 2 (int:- e-p p)))))))
 
-(define (real:real? object)
-  (or (flonum? object)
-      (rat:rational? object)))
+(define real:real?
+  (disjoin-types rat:rational? flonum?))
 
 (define-integrable (real:0 exact?)
   (if exact? 0 0.0))
@@ -1101,13 +1082,15 @@ USA.
   (and (real:exact? x)
        (real:= 1 x)))
 
-(define (real:rational? x)
-  (if (flonum? x)
-      (not (or (flo:nan? x) (flo:infinite? x)))
-      (rat:rational? x)))
+(define real:rational?
+  (disjoin-types (restrict-type flonum?
+		   (lambda (x)
+		     (not (or (flo:nan? x) (flo:infinite? x)))))
+		 rat:rational?))
 
-(define (real:integer? x)
-  (if (flonum? x) (flo:integer? x) ((copy rat:integer?) x)))
+(define real:integer?
+  (disjoin-types (restrict-type flonum? flo:integer?)
+		 rat:integer?))
 
 (define (real:exact? x)
   (and (not (flonum? x))
@@ -2071,25 +2054,28 @@ USA.
 (define (flo:exp2cosm1 r t) (flo:%expcosm1 flo:exp2 flo:exp2m1 r t))
 (define (flo:exp10cosm1 r t) (flo:%expcosm1 flo:exp10 flo:exp10m1 r t))
 
-(define (complex:complex? object)
-  (or (recnum? object) ((copy real:real?) object)))
+(define complex:complex?
+  (disjoin-types real:real? recnum?))
 
-(define (complex:real? object)
-  (if (recnum? object)
-      (real:zero? (rec:imag-part object))
-      ((copy real:real?) object)))
+(define complex:real?
+  (disjoin-types real:real?
+		 (restrict-type recnum?
+		   (lambda (z)
+		     (real:zero? (rec:imag-part z))))))
 
-(define (complex:rational? object)
-  (if (recnum? object)
-      (and (real:zero? (rec:imag-part object))
-	   (real:rational? (rec:real-part object)))
-      ((copy real:rational?) object)))
+(define complex:rational?
+  (disjoin-types real:rational?
+		 (restrict-type recnum?
+		   (lambda (z)
+		     (and (real:zero? (rec:imag-part z))
+			  (real:rational? (rec:real-part z)))))))
 
-(define (complex:integer? object)
-  (if (recnum? object)
-      (and (real:zero? (rec:imag-part object))
-	   (real:integer? (rec:real-part object)))
-      ((copy real:integer?) object)))
+(define complex:integer?
+  (disjoin-types real:integer?
+		 (restrict-type recnum?
+		   (lambda (z)
+		     (and (real:zero? (rec:imag-part z))
+			  (real:integer? (rec:real-part z)))))))
 
 (define (complex:exact? z)
   (if (recnum? z)
@@ -3047,36 +3033,21 @@ USA.
 (define (inexact? z)
   (not (complex:exact? z)))
 
-(define (exact-nonnegative-integer? object)
-  (and (int:integer? object)
-       (not (int:negative? object))))
+(define exact-nonnegative-integer?
+  (restrict-type int:integer?
+    (lambda (n)
+      (not (int:negative? n)))))
 
-(define (exact-positive-integer? object)
-  (and (int:integer? object)
-       (int:positive? object)))
-
-(define-guarantee number "number")
-(define-guarantee complex "complex number")
-(define-guarantee real "real number")
-(define-guarantee rational "rational number")
-(define-guarantee integer "integer")
-(define-guarantee exact "exact number")
-(define-guarantee exact-rational "exact rational number")
-(define-guarantee exact-integer "exact integer")
-(define-guarantee inexact "inexact number")
-(define-guarantee exact-nonnegative-integer "exact non-negative integer")
-(define-guarantee exact-positive-integer "exact positive integer")
+(define exact-positive-integer?
+  (restrict-type int:integer?
+    (lambda (n)
+      (int:positive? n))))
 
 (define (non-negative? object)
   (not (negative? object)))
 
 (define (non-positive? object)
   (not (positive? object)))
-
-(define-guarantee positive "positive number")
-(define-guarantee negative "negative number")
-(define-guarantee non-positive "non-positive number")
-(define-guarantee non-negative "non-negative number")
 
 ;;; The following three procedures were originally just renamings of
 ;;; their COMPLEX: equivalents.  They have been rewritten this way to
@@ -3235,7 +3206,7 @@ USA.
 ;;; complement of a probability in log-space.
 
 (define (log1mexp x)
-  (guarantee-real x 'log1mexp)
+  (guarantee real? x 'log1mexp)
   ;; It is hard to imagine that this function maps any rational
   ;; numbers to rational numbers.  (XXX Proof?)
   ;;
@@ -3293,7 +3264,7 @@ USA.
 ;;; log(1 + e^x)
 
 (define (log1pexp x)
-  (guarantee-real x 'log1pexp)
+  (guarantee real? x 'log1pexp)
   ;; It is hard to imagine that this function maps any rational
   ;; numbers to rational numbers.  (XXX Proof?)
   ;;
@@ -3420,7 +3391,7 @@ USA.
   (cond ((not (pair? l))		;(1)
 	 (flo:-inf.0))
 	((not (pair? (cdr l)))		;(2)
-	 (guarantee-real (car l) 'logsumexp)
+	 (guarantee real? (car l) 'logsumexp)
 	 (car l))
 	(else
 	 (let* ((v (list->vector l))
@@ -3464,7 +3435,7 @@ USA.
 ;;; This implementation gives relative error bounded by 7 eps.
 
 (define (logistic x)
-  (guarantee-real x 'logistic)
+  (guarantee real? x 'logistic)
   (cond ((real:nan? x) x)		;Propagate NaN.
 	((< x flo:least-subnormal-exponent-base-e)
 	 ;; e^x/(1 + e^x) < e^x < smallest positive subnormal.
@@ -3613,7 +3584,7 @@ USA.
 ;;; This implementation gives relative error bounded by 10 eps.
 
 (define (logit p)
-  (guarantee-real p 'logit)
+  (guarantee real? p 'logit)
   (if (not (<= 0 p 1))
       (error:bad-range-argument p 'logit))
   ;; For small p, 1 - p is so close to 1 that log(p) is essentially
@@ -3693,7 +3664,7 @@ USA.
 ;;; bounded by 34 eps.
 
 (define (logit1/2+ p-1/2)
-  (guarantee-real p-1/2 'logit1/2+)
+  (guarantee real? p-1/2 'logit1/2+)
   (cond ((real:nan? p-1/2) p-1/2)
 	((not (<= -1/2 p-1/2 +1/2))
 	 ;; Outside [-1/2, +1/2] is invalid-operation.  If input is
@@ -3782,7 +3753,7 @@ USA.
 ;;; Inverse of log logistic.
 
 (define (logit-exp t)
-  (guarantee-real t 'logit-exp)
+  (guarantee real? t 'logit-exp)
   (cond ((real:nan? t) t)		;Propagate NaN.
 	((<= t flo:log-error-bound)
 	 ;; e^t < eps, so since log(e^t/(1 - e^t)) = t - log(1 - e^t),
@@ -3879,7 +3850,7 @@ USA.
 ;;; This is the log density of the logistic distribution.
 
 (define (log-logistic x)
-  (guarantee-real x 'log-logistic)
+  (guarantee real? x 'log-logistic)
   (- (log1pexp (- x))))
 
 (define =)
