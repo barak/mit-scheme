@@ -31,10 +31,6 @@ USA.
   (files "pgsql")
   (parent ())
   (initialization (initialize-package!))
-  (import (runtime string)
-	  cp1-ref
-	  ustring-cp-size
-	  ustring?)
   (export ()
 	  import-postgresql)
   (export (postgresql global)

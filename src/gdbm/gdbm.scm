@@ -69,12 +69,7 @@ USA.
 
 (define (->bytes string)
   ;; NOT necessarily null terminated
-  (if (and (or (bytevector? string)
-	       (and (ustring? string)
-		    (fix:= 1 (ustring-cp-size string))))
-	   (let ((end (string-length string)))
-	     (every-loop (lambda (cp) (fix:< cp #x80))
-			 cp1-ref string 0 end)))
+  (if (bytevector? string)
       string
       (string->utf8 string)))
 

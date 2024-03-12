@@ -35,10 +35,6 @@ USA.
 (define-package (x11 base)
   (files "x11-base")
   (parent (x11))
-  (import (runtime string)
-	  cp1-ref
-	  ustring-cp-size
-	  ustring?)
   (export (x11)
 	  ->cstring
 	  x-visual-deallocate
