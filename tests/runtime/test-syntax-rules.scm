@@ -32,7 +32,7 @@ USA.
 (define param-options
   (keyword-option-parser
    `((ellipsis ,symbol? ,(lambda () '...))
-     (literals ,(is-list-of symbol?) ,(lambda () '()))
+     (literals ,(uniform-list-type symbol?) ,(lambda () '()))
      (underscore ,symbol? ,(lambda () '_)))))
 
 (define (subst from to in)

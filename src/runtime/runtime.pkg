@@ -2219,30 +2219,6 @@ USA.
   (export (runtime predicate)
 	  %make-compound-tag))
 
-(define-package (runtime parametric-predicate)
-  (files "parametric-predicate")
-  (parent (runtime))
-  (export ()
-	  is-list-of
-	  is-non-empty-list-of
-	  is-pair-of
-	  make-predicate-template
-          parameter-binding-name
-          parameter-binding-polarity
-          parameter-binding-value
-          parameter-binding-values
-          parameter-binding?
-          parametric-predicate-bindings
-          parametric-predicate-template
-          parametric-predicate?
-          predicate-template-accessor
-          predicate-template-constructor
-          predicate-template-name
-          predicate-template-parameter-names
-          predicate-template-pattern
-          predicate-template-predicate
-          predicate-template?))
-
 (define-package (runtime predicate-tagging)
   (files "predicate-tagging")
   (parent (runtime))
