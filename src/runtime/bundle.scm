@@ -107,9 +107,11 @@ USA.
   (guarantee %old-bundle? bundle 'bundle-predicate)
   (record-predicate (record-type-descriptor bundle)))
 
-(define (bundle-predicate? object)
-  (and (predicate? object)
-       (predicate<= object %old-bundle?)))
+(define bundle-predicate?
+  (simple-type 'bundle-predicate
+    (lambda (object)
+      (and (predicate? object)
+	   (predicate<= object %old-bundle?)))))
 
 (seq:after-predicate 'add-action!
   (lambda ()
