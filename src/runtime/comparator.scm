@@ -79,7 +79,7 @@ USA.
 	(error "Comparator not hashable:" comparator))))
 
 (define simple-comparator?
-  (restrict-type comparator?
+  (refine-type comparator?
     (lambda (c)
       (not (%comparator-key c)))))
 (register-predicate! simple-comparator? 'simple-comparator '<= comparator?)
@@ -287,7 +287,7 @@ USA.
   (guarantee positive-fixnum? n-elts)
   (let ((key (make-key name)))
     (let ((predicate
-	   (restrict-type comparator?
+	   (refine-type comparator?
 	     (lambda (c)
 	       (eq? key (%comparator-key c))))))
       (register-predicate! predicate name '<= compound-comparator?)
@@ -326,7 +326,7 @@ USA.
 		     (iota n-elts))))))))
 
 (define compound-comparator?
-  (restrict-type comparator?
+  (refine-type comparator?
     (lambda (c)
       (key? (%comparator-key c)))))
 (register-predicate! compound-comparator? 'compound-comparator '<= comparator?)

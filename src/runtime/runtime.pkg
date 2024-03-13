@@ -5734,7 +5734,7 @@ USA.
 	  interpreter-return-address?
 	  no-object?
 	  primitive-procedure?
-	  restrict-type
+	  refine-type
 	  scode-access?
 	  scode-assignment?
 	  scode-combination?
@@ -5755,7 +5755,6 @@ USA.
 	  system-triple?
 	  system-vector?
 	  type-name
-	  type-parts
 	  type-supersets
 	  type-test
 	  type<=

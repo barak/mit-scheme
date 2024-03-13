@@ -142,7 +142,7 @@ USA.
 (define lambda-tag:key (object-new-type (ucode-type constant) 5))
 
 (define lambda-tag?
-  (disjoin-types (restrict-type misc-constant?
+  (disjoin-types (refine-type misc-constant?
 		   (lambda (object)
 		     (or (eq? object lambda-tag:key)
 			 (eq? object lambda-tag:optional)
@@ -150,7 +150,7 @@ USA.
 		 ;; The following are called `lambda-tag', but they are
 		 ;; semantically quite different from lambda list keywords.
 		 ;; This should be fixed some day.
-		 (restrict-type interned-symbol?
+		 (refine-type interned-symbol?
 		   (lambda (object)
 		     (or (eq? object scode-lambda-name:internal-lambda)
 			 (eq? object scode-lambda-name:fluid-let)

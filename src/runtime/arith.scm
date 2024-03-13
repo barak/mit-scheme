@@ -1083,13 +1083,13 @@ USA.
        (real:= 1 x)))
 
 (define real:rational?
-  (disjoin-types (restrict-type flonum?
+  (disjoin-types (refine-type flonum?
 		   (lambda (x)
 		     (not (or (flo:nan? x) (flo:infinite? x)))))
 		 rat:rational?))
 
 (define real:integer?
-  (disjoin-types (restrict-type flonum? flo:integer?)
+  (disjoin-types (refine-type flonum? flo:integer?)
 		 rat:integer?))
 
 (define (real:exact? x)
@@ -2059,20 +2059,20 @@ USA.
 
 (define complex:real?
   (disjoin-types real:real?
-		 (restrict-type recnum?
+		 (refine-type recnum?
 		   (lambda (z)
 		     (real:zero? (rec:imag-part z))))))
 
 (define complex:rational?
   (disjoin-types real:rational?
-		 (restrict-type recnum?
+		 (refine-type recnum?
 		   (lambda (z)
 		     (and (real:zero? (rec:imag-part z))
 			  (real:rational? (rec:real-part z)))))))
 
 (define complex:integer?
   (disjoin-types real:integer?
-		 (restrict-type recnum?
+		 (refine-type recnum?
 		   (lambda (z)
 		     (and (real:zero? (rec:imag-part z))
 			  (real:integer? (rec:real-part z)))))))
@@ -3034,12 +3034,12 @@ USA.
   (not (complex:exact? z)))
 
 (define exact-nonnegative-integer?
-  (restrict-type int:integer?
+  (refine-type int:integer?
     (lambda (n)
       (not (int:negative? n)))))
 
 (define exact-positive-integer?
-  (restrict-type int:integer?
+  (refine-type int:integer?
     (lambda (n)
       (int:positive? n))))
 

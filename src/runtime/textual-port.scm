@@ -396,7 +396,7 @@ USA.
 		      (make-alist-metadata-table)))
 
 (define textual-input-port?
-  (restrict-type textual-port?
+  (refine-type textual-port?
     (lambda (port)
       (and (port-type-supports-input? (textual-port-type port))
 	   #t))))
@@ -404,7 +404,7 @@ USA.
 		     '<= textual-port?)
 
 (define textual-output-port?
-  (restrict-type textual-port?
+  (refine-type textual-port?
     (lambda (port)
       (and (port-type-supports-output? (textual-port-type port))
 	   #t))))

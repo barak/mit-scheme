@@ -37,12 +37,12 @@ USA.
 (define true #t)
 
 (define false?
-  (restrict-type misc-false?
+  (refine-type misc-false?
     (lambda (object)
       (eq? #f object))))
 
 (define true?
-  (restrict-type misc-constant?
+  (refine-type misc-constant?
     (lambda (object)
       (eq? #t object))))
 

@@ -74,7 +74,7 @@ USA.
   (disjoin-types compiled-entry-address? compiled-return-address?))
 
 (define compiled-expression?
-  (restrict-type compiled-code-address?
+  (refine-type compiled-code-address?
     (lambda (entry)
       (eq? 'compiled-expression (compiled-entry-type entry)))))
 

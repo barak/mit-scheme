@@ -38,7 +38,7 @@ USA.
 
 (define tag-name?
   (disjoin-types symbol?
-		 (restrict-type pair?
+		 (refine-type pair?
 		   (lambda (p)
 		     (and (symbol? (car p))
 			  (list-of-type? (cdr p)
@@ -51,7 +51,7 @@ USA.
   (guarantee tag-name? name 'make-dispatch-metatag)
 
   (define type
-    (restrict-type %record?
+    (refine-type %record?
       (lambda (r)
 	(eq? metatag (%record-ref r 0)))))
 

@@ -53,7 +53,7 @@ USA.
 (define (make-char-set low high)
 
   (define predicate
-    (restrict-type char?
+    (refine-type char?
       (lambda (char)
 	(char-in-set? char char-set))))
 
@@ -310,10 +310,10 @@ USA.
 ;;;; Ranges
 
 (define range?
-  (disjoin-types (restrict-type non-negative-fixnum?
+  (disjoin-types (refine-type non-negative-fixnum?
 		   (lambda (n)
 		     (fx<=? n #x110000)))
-		 (restrict-type pair?
+		 (refine-type pair?
 		   (lambda (p)
 		     (or (non-negative-fixnum? (car p))
 			 (non-negative-fixnum? (cdr p))
@@ -414,7 +414,7 @@ USA.
 ;;;; Named char sets
 
 (define char-set-name?
-  (restrict-type interned-symbol?
+  (refine-type interned-symbol?
     (lambda (s)
       (and (find-named-char-set s) #t))))
 

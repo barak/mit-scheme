@@ -103,7 +103,7 @@ USA.
   (record-predicate (record-type-descriptor bundle)))
 
 (define bundle-predicate?
-  (restrict-type type?
+  (refine-type type?
     (lambda (t)
       (type<= t %old-bundle?))))
 

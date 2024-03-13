@@ -198,7 +198,7 @@ USA.
 
 (define amap-properties?
   (uniform-list-type
-   (restrict-type pair?
+   (refine-type pair?
      (lambda (p)
        (and (have-prop? (car p))
 	    (non-empty-list? (cdr p)))))))
@@ -368,13 +368,13 @@ USA.
 ;;;; Operations
 
 (define amap-operations?
-  (restrict-type (uniform-list-type
-		  (restrict-type pair?
-		    (lambda (p)
-		      (and (operator? (car p))
-			   (pair? (cdr p))
-			   (procedure? (cadr p))
-			   (null? (cddr p))))))
+  (refine-type (uniform-list-type
+		(refine-type pair?
+		  (lambda (p)
+		    (and (operator? (car p))
+			 (pair? (cdr p))
+			 (procedure? (cadr p))
+			 (null? (cddr p))))))
     (lambda (items)
       (not (any-duplicates? items eq? car)))))
 (register-predicate! amap-operations? 'amap-operations '<= alist?)

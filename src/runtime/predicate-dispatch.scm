@@ -33,7 +33,7 @@ USA.
 (add-boot-deps! '(runtime predicate))
 
 (define predicate-dispatcher?
-  (restrict-type entity?
+  (refine-type entity?
     (lambda (e)
       (metadata? (entity-extra e)))))
 (register-predicate! predicate-dispatcher? 'predicate-dispatcher

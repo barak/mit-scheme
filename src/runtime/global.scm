@@ -256,7 +256,7 @@ USA.
   ;; Note: the printer takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
   ;; (object-type? (ucode-type constant) object)
-  (restrict-type misc-constant?
+  (refine-type misc-constant?
     (lambda (constant)
       (or (fx=? (object-datum constant) 1)
 	  (fx=? (object-datum constant) 2)))))

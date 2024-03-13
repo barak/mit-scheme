@@ -54,7 +54,7 @@ USA.
   (%record 1d-table-tag (weak-alist-table eqv?)))
 
 (define 1d-table?
-  (restrict-type %record?
+  (refine-type %record?
     (lambda (object)
       (eq? 1d-table-tag (%record-ref object 0)))))
 (register-predicate! 1d-table? '1d-table '<= %record?)

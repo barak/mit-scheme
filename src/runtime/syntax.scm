@@ -361,13 +361,13 @@ Additional notes about syntax:
 ;;;; Identifiers
 
 (define raw-identifier?
-  (restrict-type symbol?
+  (refine-type symbol?
     (lambda (s)
        ;; This makes `:keyword' objects be self-evaluating.
        (not (keyword? s)))))
 
 (define closed-identifier?
-  (restrict-type syntactic-closure?
+  (refine-type syntactic-closure?
     (lambda (sc)
       (and (null? (syntactic-closure-free sc))
 	   (identifier? (syntactic-closure-form sc))))))

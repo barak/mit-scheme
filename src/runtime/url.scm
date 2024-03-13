@@ -77,15 +77,15 @@ USA.
   (if (uri-scheme uri) #f #t))
 
 (define absolute-uri?
-  (restrict-type uri? uri-absolute?))
+  (refine-type uri? uri-absolute?))
 (register-predicate! absolute-uri? 'absolute-uri '<= uri?)
 
 (define relative-uri?
-  (restrict-type uri? uri-relative?))
+  (refine-type uri? uri-relative?))
 (register-predicate! relative-uri? 'relative-uri '<= uri?)
 
 (define uri-scheme?
-  (restrict-type interned-symbol?
+  (refine-type interned-symbol?
     (lambda (object)
       (*match-symbol matcher:scheme object))))
 
@@ -104,7 +104,7 @@ USA.
   (path-absolute? path))
 
 (define path-absolute?
-  (restrict-type pair?
+  (refine-type pair?
     (lambda (p)
       (fxzero? (string-length (car p))))))
 

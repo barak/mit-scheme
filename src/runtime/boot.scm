@@ -270,10 +270,10 @@ USA.
 (seq:after-files-loaded 'add-action!
   (lambda ()
     (set! promise?
-	  (restrict-type cell?
+	  (refine-type cell?
 	    (lambda (cell)
 	      (and (cell? (cell-contents cell))
-		   (%delayed? (cell-contents (cell-contents cell)))))))
+		   (delayed? (cell-contents (cell-contents cell)))))))
     (define-print-method promise?
       (standard-print-method 'promise
 	(lambda (promise)

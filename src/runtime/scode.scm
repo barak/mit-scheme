@@ -48,7 +48,7 @@ USA.
 		 scode-simple-lambda?
 		 scode-the-environment?
 		 scode-variable?
-		 (restrict-type compiled-code-address?
+		 (refine-type compiled-code-address?
 		   (lambda (entry)
 		     (eq? 'compiled-expression (compiled-entry-type entry))))))
 (register-predicate! scode-expression? 'scode-expression)
@@ -212,7 +212,7 @@ USA.
   (make-scode-comment (cons declaration-tag text) expression))
 
 (define scode-declaration?
-  (restrict-type scode-comment?
+  (refine-type scode-comment?
     (lambda (comment)
       (let ((text (scode-comment-text comment)))
 	(and (pair? text)
@@ -254,7 +254,7 @@ USA.
   (make-scode-access system-global-environment name))
 
 (define scode-absolute-reference?
-  (restrict-type scode-access?
+  (refine-type scode-access?
     (lambda (object)
       (system-global-environment? (scode-access-environment object)))))
 
@@ -352,7 +352,7 @@ USA.
 			  (list (make-scode-the-environment) name)))
 
 (define scode-unassigned??
-  (restrict-type scode-combination?
+  (refine-type scode-combination?
     (lambda (comb)
        (and (eq? (scode-combination-operator comb)
 		 (ucode-primitive lexical-unassigned?))

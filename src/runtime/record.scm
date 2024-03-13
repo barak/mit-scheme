@@ -58,7 +58,7 @@ USA.
 			 applicator instance-marker))))
 
 (define valid-field-specs?
-  (restrict-type list?
+  (refine-type list?
     (lambda (object)
       (and (every field-spec? object)
 	   (not (any-duplicates? object eq? field-spec-name))))))
@@ -66,7 +66,7 @@ USA.
 
 (define field-spec?
   (disjoin-types symbol?
-		 (restrict-type pair?
+		 (refine-type pair?
 		   (lambda (p)
 		     (and (symbol? (car p))
 			  (or (and (pair? (cdr p))
@@ -375,7 +375,7 @@ USA.
 	 (%record-type-applicator record-type))))
 
 (define applicable-record?
-  (restrict-type %record? %record-applicator))
+  (refine-type %record? %record-applicator))
 
 (define (record-applicator record)
   (guarantee record? record 'record-applicator)
@@ -385,7 +385,7 @@ USA.
     applicator))
 
 (define %record-type-proxy?
-  (restrict-type misc-constant?
+  (refine-type misc-constant?
     (lambda (object)
       (fx<=? #x100 (object-datum object) #x1FF))))
 (register-predicate! %record-type-proxy? 'record-type-proxy)
@@ -426,7 +426,7 @@ USA.
   (enumerate-proxies pathname host reference-trap))
 
 (define record?
-  (restrict-type %record?
+  (refine-type %record?
     (lambda (object)
       (and (%record->root-type object)
 	   #t))))
@@ -799,12 +799,12 @@ USA.
 	    (loop (fix:+ i 1)))))))
 
 (define named-list?
-  (restrict-type non-empty-list?
+  (refine-type non-empty-list?
     (lambda (p)
       (structure-type-tag? (car p) 'list))))
 
 (define named-vector?
-  (restrict-type vector?
+  (refine-type vector?
     (lambda (v)
       (and (fxpositive? (vector-length v))
 	   (structure-type-tag? (vector-ref v 0) 'vector)))))

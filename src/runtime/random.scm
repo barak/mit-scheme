@@ -69,7 +69,7 @@ USA.
   (vector random-state-tag (make-bytevector 32 0)))
 
 (define random-state?
-  (restrict-type vector?
+  (refine-type vector?
     (lambda (v)
       (and (fx=? 2 (vector-length v))
 	   (eq? random-state-tag (vector-ref v 0))))))

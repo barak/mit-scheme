@@ -845,7 +845,7 @@ USA.
 	   '()))
 
 (define weak-alist-table?
-  (restrict-type %record?
+  (refine-type %record?
     (lambda (r)
       (eq? weak-alist-table-tag (%record-ref r 0)))))
 
@@ -1124,7 +1124,7 @@ USA.
   (%record weak-list-set-tag = (delete-duplicates items =)))
 
 (define weak-list-set?
-  (restrict-type %record?
+  (refine-type %record?
     (lambda (r)
       (eq? weak-list-set-tag (%record-ref r 0)))))
 ;

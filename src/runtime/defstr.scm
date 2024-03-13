@@ -767,7 +767,7 @@ differences:
 		  ,(close (structure/type-descriptor structure) context)))))
 	    ((vector)
 	     `((define ,predicate-name
-		 (,(absolute 'restrict-type context)
+		 (,(absolute 'refine-type context)
 		  ,(absolute 'vector? context)
 		  (lambda (v)
 		    (and (,(absolute 'fxpositive? context)
@@ -780,7 +780,7 @@ differences:
 		'<= ,(absolute 'vector? context))))
 	    ((list)
 	     `((define ,predicate-name
-		 (,(absolute 'restrict-type context)
+		 (,(absolute 'refine-type context)
 		  ,(absolute 'pair? context)
 		  (lambda (p)
 		    (,(absolute 'eq? context)

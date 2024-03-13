@@ -71,7 +71,7 @@ USA.
 	 (buffer-channel buffer))))
 
 (define binary-input-port?
-  (restrict-type binary-port?
+  (refine-type binary-port?
     (lambda (port)
       (and (port-input-buffer port)
 	   #t))))
@@ -79,7 +79,7 @@ USA.
 		     '<= binary-port?)
 
 (define binary-output-port?
-  (restrict-type binary-port?
+  (refine-type binary-port?
     (lambda (port)
       (and (port-output-buffer port)
 	   #t))))

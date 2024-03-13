@@ -129,7 +129,7 @@ USA.
 	(else (error:not-a http-message? message 'http-message-body))))
 
 (define simple-http-request-uri?
-  (restrict-type relative-uri?
+  (refine-type relative-uri?
     (lambda (uri)
       (and (not (uri-authority uri))
 	   (uri-path-absolute? (uri-path uri))))))
@@ -137,14 +137,14 @@ USA.
 		     '<= relative-uri?)
 
 (define standard-http-request-uri?
-  (restrict-type absolute-uri? uri-authority))
+  (refine-type absolute-uri? uri-authority))
 (register-predicate! standard-http-request-uri? 'standard-http-request-uri?
 		     '<= absolute-uri?)
 
 (define http-request-uri?
   (disjoin-types simple-http-request-uri?
 		 standard-http-request-uri?
-		 (restrict-type interned-symbol?
+		 (refine-type interned-symbol?
 		   (lambda (object)
 		     (eq? '* object)))
 		 uri-authority?))

@@ -64,16 +64,16 @@ USA.
 (define (fxsquare n) (fx* n n))
 
 (define positive-fixnum?
-  (restrict-type fixnum? fxpositive?))
+  (refine-type fixnum? fxpositive?))
 
 (define negative-fixnum?
-  (restrict-type fixnum? fxnegative?))
+  (refine-type fixnum? fxnegative?))
 
 (define non-positive-fixnum?
-  (restrict-type fixnum? (lambda (fixnum) (not (fxpositive? fixnum)))))
+  (refine-type fixnum? (lambda (fixnum) (not (fxpositive? fixnum)))))
 
 (define non-negative-fixnum?
-  (restrict-type fixnum? (lambda (fixnum) (not (fxnegative? fixnum)))))
+  (refine-type fixnum? (lambda (fixnum) (not (fxnegative? fixnum)))))
 
 (define (fxodd? n)
   (fix:= (fix:and n 1) 1))

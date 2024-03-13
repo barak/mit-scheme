@@ -247,8 +247,7 @@ USA.
   (char-set-union char-set:alphanumeric (string->char-set "_.:-")))
 
 (define xml-version?
-  (restrict-type
-      (uniform-string-type (char-set-predicate char-set:xml-version))
+  (refine-type (uniform-string-type (char-set-predicate char-set:xml-version))
     (lambda (s)
       (fxpositive? (string-length s)))))
 (register-predicate! xml-version? 'xml-version '<= string?)
@@ -256,7 +255,7 @@ USA.
 (define xml-encoding?
   (disjoin-types
    false?
-   (restrict-type string?
+   (refine-type string?
      (lambda (s)
        (let ((end (string-length s)))
 	 (and (fxpositive? end)

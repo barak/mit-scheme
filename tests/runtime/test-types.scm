@@ -34,21 +34,17 @@ USA.
     (let ((np (lambda (object) object #f)))
       (assert-false (type? np))
       (assert-type-error (lambda () (type-name np)))
-      (assert-type-error (lambda () (type-parts np)))
       (assert-type-error (lambda () (type-test np)))
       (assert-type-error (lambda () (type-supersets np))))))
 
 (define-test 'simple-type
   (lambda ()
     (test-type-operations symbol?
-			  '(disjoin interned-symbol uninterned-symbol))))
+			  '(disjunction interned-symbol uninterned-symbol))))
 
 (define (test-type-operations type name)
   (assert-true (type? type))
-  (assert-equal (type-name type) name)
-  (assert-lset= eq?
-		(type-parts type)
-		(list interned-symbol? uninterned-symbol?)))
+  (assert-equal (type-name type) name))
 
 (define-test 'ordering
   (lambda ()

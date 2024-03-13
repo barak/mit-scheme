@@ -56,18 +56,18 @@ USA.
   (disjoin-types unicode-string? legacy-string?))
 
 (define mutable-simple-string?
-  (disjoin-types (restrict-type unicode-string?
+  (disjoin-types (refine-type unicode-string?
 		   (lambda (ustring)
 		     (%ustring-mutable? ustring)))
 		 legacy-string?))
 
 (define immutable-simple-string?
-  (restrict-type unicode-string?
+  (refine-type unicode-string?
     (lambda (ustring)
       (%ustring-immutable? ustring))))
 
 (define slice?
-  (restrict-type %record?
+  (refine-type %record?
     (lambda (record)
       (and (fix:= 4 (%record-length record))
 	   (eq? %slice-tag (%record-ref record 0))))))
@@ -83,11 +83,11 @@ USA.
 
 (define mutable-string?
   (disjoin-types mutable-simple-string?
-		 (restrict-type slice? slice-mutable?)))
+		 (refine-type slice? slice-mutable?)))
 
 (define immutable-string?
   (disjoin-types immutable-simple-string?
-		 (restrict-type slice? slice-immutable?)))
+		 (refine-type slice? slice-immutable?)))
 
 (define (string-mutable? string)
   (cond ((%legacy-string? string))
@@ -915,7 +915,7 @@ USA.
 	(full-check))))
 
 (define nfc-string?
-  (restrict-type string? string-in-nfc?))
+  (refine-type string? string-in-nfc?))
 
 (define (string->nfc string)
   (if (and (%unicode-string? string)
@@ -1810,7 +1810,7 @@ USA.
 	(else (every-loop char-8-bit? ustring3-ref string start end))))))
 
 (define 8-bit-string?
-  (restrict-type string? string-8-bit?))
+  (refine-type string? string-8-bit?))
 
 (define-integrable (every-loop proc ref string start end)
   (let loop ((i start))

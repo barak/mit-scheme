@@ -39,7 +39,7 @@ USA.
   (procedure %memoizer-metadata-procedure))
 
 (define memoizer?
-  (restrict-type apply-hook?
+  (refine-type apply-hook?
     (lambda (hook)
       (memoizer-metadata? (apply-hook-extra hook)))))
 

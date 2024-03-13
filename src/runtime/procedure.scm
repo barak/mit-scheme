@@ -43,12 +43,12 @@ USA.
 		 extended-procedure?))
 
 (define compiled-procedure?
-  (restrict-type compiled-entry-address?
+  (refine-type compiled-entry-address?
     (lambda (entry)
       (eq? 0 (system-triple-first (compiled-entry-kind entry))))))
 
 (define compiled-closure?
-  (restrict-type compiled-procedure?
+  (refine-type compiled-procedure?
     (lambda (entry)
       (compiled-code-block/manifest-closure?
 	(compiled-code-address->block entry)))))
@@ -70,21 +70,21 @@ USA.
 			 entity?
 			 applicable-record?))
     (set! thunk?
-	  (restrict-type procedure?
+	  (refine-type procedure?
 	    (lambda (proc)
 	      (procedure-arity-valid? proc 0))))
     (set! unary-procedure?
-	  (restrict-type procedure?
+	  (refine-type procedure?
 	    (lambda (proc)
 	      (procedure-arity-valid? proc 1))))
     (set! binary-procedure?
-	  (restrict-type procedure?
+	  (refine-type procedure?
 	    (lambda (proc)
 	      (procedure-arity-valid? proc 2))))
     (set! simple-arity?
 	  non-negative-fixnum?)
     (set! general-arity?
-	  (restrict-type pair?
+	  (refine-type pair?
 	    (lambda (p)
 	      (and (non-negative-fixnum? (car p))
 		   (if (cdr p)
@@ -396,7 +396,7 @@ USA.
 		      dispatched-cases))))
 
 (define arity-dispatched-procedure?
-  (restrict-type entity?
+  (refine-type entity?
     (lambda (entity)
       (let ((extra (entity-extra entity)))
 	(and (vector? extra)
