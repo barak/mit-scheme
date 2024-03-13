@@ -135,13 +135,17 @@ USA.
   (files "boole")
   (parent (runtime))
   (export ()
+	  (system-global-environment? false?)
 	  boolean/and
 	  boolean/or
 	  boolean<?
 	  boolean=?			;(scheme base)
+	  boolean?			;(scheme base)
 	  false
+	  false?
 	  not
-	  true))
+	  true
+	  true?))
 
 (define-package (runtime boot-definitions)
   (files "boot")
@@ -2292,7 +2296,6 @@ USA.
 	  (make-null-interpreter-environment make-root-top-level-environment)
 	  make-root-top-level-environment
 	  make-top-level-environment
-	  system-global-environment?
 	  (top-level-environment? interpreter-environment?))
   (export (runtime advice)
 	  ic-environment/arguments
@@ -3217,6 +3220,7 @@ USA.
 	  reduce-left)
   (export ()
 	  (proper-list? list?)		;(srfi 1)
+	  (null? empty-list?)		;(scheme base)
 	  add-member-procedure
 	  alist->alist-table
 	  alist->keyword-list
@@ -5702,13 +5706,12 @@ USA.
   (export ()
 	  (fix:fixnum? fixnum?)
 	  (flo:flonum? flonum?)
-	  (vector-8b? legacy-string?)
+	  (pair? $pair?)		;(scheme base)
 	  %record?
 	  %tagged-object?
 	  any-object?
 	  apply-hook?
 	  bit-string?
-	  boolean?			;(scheme base)
 	  bytevector?			;(scheme base)
 	  cell?
 	  char?				;(scheme base)
@@ -5724,18 +5727,12 @@ USA.
 	  entity?
 	  eof-object?			;(scheme base)
 	  ephemeron?			;(srfi 124)
-	  member-type
-	  memq-type
-	  memv-type
-	  false?
 	  fixnum?			;(srfi 143)
 	  gc-reclaimed-object?
 	  ic-environment?
 	  interned-symbol?
 	  interpreter-return-address?
 	  no-object?
-	  null?				;(scheme base)
-	  pair?				;(scheme base)
 	  primitive-procedure?
 	  restrict-type
 	  scode-access?
@@ -5771,17 +5768,22 @@ USA.
   (export (runtime)
 	  bignum?
 	  broken-heart?
-	  constant?
+	  misc-constant?
 	  control-point?
 	  delayed?
 	  extended-procedure?
+	  misc-false?
 	  flonum?
+	  gc-non-pointer-type-code?
 	  gc-non-pointer?
+	  gc-pointer-type-code?
 	  gc-pointer?
 	  hunk3-a?
 	  hunk3-b?
 	  legacy-string?
 	  manifest-nm-vector?
+	  non-pointer-type-code?
+	  pointer-type-code?
 	  ratnum?
 	  recnum?
 	  scode-extended-lambda?
@@ -5790,6 +5792,11 @@ USA.
 	  set-type<=!
 	  simple-procedure?
 	  simple-type
+	  system-cell-type-code?
+	  system-pair-type-code?
+	  system-quadruple-type-code?
+	  system-triple-type-code?
+	  system-vector-type-code?
 	  unicode-string?))
 
 (define-package (runtime crypto)
@@ -6959,10 +6966,8 @@ USA.
 	  %record-length
 	  %record-ref
 	  %record-set!
-	  %%record?
 	  %tagged-object-datum
 	  %tagged-object-tag
-	  %%tagged-object?
 	  cell-contents
 	  default-object
 	  eof-object			;(scheme base)
@@ -6970,119 +6975,48 @@ USA.
 	  make-cell
 	  set-cell-contents!)
   (export (runtime)
-	  %any-object?
 	  %apply-hook-extra
 	  %apply-hook-procedure
-	  %apply-hook?
-	  %bignum?
-	  %bit-string?
-	  %boolean?
-	  %broken-heart?
-	  %bytevector?
-	  %cell?
-	  %char?
-	  %compiled-code-block?
-	  %compiled-entry-address?
-	  %compiled-return-address?
 	  %compound-procedure-environment
 	  %compound-procedure-lambda
-	  %constant?
-	  %control-point?
-	  %default-object?
 	  %delayed-forced?
 	  %delayed-value
-	  %delayed?
 	  %entity-extra
 	  %entity-procedure
-	  %entity?
-	  %eof-object?
-	  %ephemeron?
-	  %extended-procedure?
-	  %false?
-	  %fixnum?
-	  %flonum?
-	  %gc-non-pointer-type-code?
-	  %gc-non-pointer?
-	  %gc-pointer-type-code?
-	  %gc-pointer?
-	  %gc-reclaimed-object?
-	  %hunk3-a?
-	  %hunk3-b?
-	  %ic-environment?
-	  %interned-symbol?
-	  %interpreter-return-address?
-	  %legacy-string?
 	  %make-apply-hook
 	  %make-delayed
 	  %make-entity
 	  %make-ratnum
 	  %make-recnum
 	  %make-record
+	  %make-record
 	  %make-simple-procedure
-	  %manifest-nm-vector?
-	  %no-object?
-	  %null?
-	  %pair?
-	  %primitive-procedure?
 	  %ratnum-denominator
 	  %ratnum-numerator
-	  %ratnum?
 	  %recnum-imaginary
 	  %recnum-real
-	  %recnum?
-	  %scode-access?
-	  %scode-assignment?
-	  %scode-combination?
-	  %scode-comment?
-	  %scode-conditional?
-	  %scode-definition?
-	  %scode-delay?
-	  %scode-disjunction?
-	  %scode-extended-lambda?
-	  %scode-lexpr?
-	  %scode-quotation?
-	  %scode-sequence?
-	  %scode-simple-lambda?
-	  %scode-the-environment?
-	  %scode-variable?
 	  %set-apply-hook-extra!
 	  %set-apply-hook-procedure!
 	  %set-entity-extra!
 	  %set-entity-procedure!
-	  %simple-procedure?
-	  %stack-address?
 	  %symbol-name
 	  %symbol-value
-	  %system-cell?
-	  %system-pair?
-	  %system-quadruple?
-	  %system-triple?
-	  %system-vector?
-	  %unicode-string?
-	  %uninterned-symbol?
-	  %vector?
-	  %weak-pair?
 	  make-non-pointer-object
-	  non-pointer-type-code?
 	  object-datum
 	  object-new-type
 	  object-type
 	  object-type?
-	  pointer-type-code?
 	  primitive-memory-hash
 	  primitive-object-hash
 	  primitive-object-hash-2
 	  primitive-object-ref
 	  primitive-object-set!
-	  system-cell-type-code?
 	  system-list->vector
 	  system-pair-car
 	  system-pair-cdr
 	  system-pair-cons
 	  system-pair-set-car!
 	  system-pair-set-cdr!
-	  system-pair-type-code?
-	  system-quadruple-type-code?
 	  system-triple-cons
 	  system-triple-first
 	  system-triple-second
@@ -7090,8 +7024,10 @@ USA.
 	  system-triple-set-second!
 	  system-triple-set-third!
 	  system-triple-third
-	  system-triple-type-code?
 	  system-vector-length
 	  system-vector-ref
-	  system-vector-set!
-	  system-vector-type-code?))
+	  system-vector-set!)
+  (export (runtime procedure)
+	  apply-hook-type-code)
+  (export (runtime types)
+	  apply-hook-type-code))

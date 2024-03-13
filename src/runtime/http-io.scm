@@ -144,7 +144,9 @@ USA.
 (define http-request-uri?
   (disjoin-types simple-http-request-uri?
 		 standard-http-request-uri?
-		 (memq-type '(*))
+		 (restrict-type interned-symbol?
+		   (lambda (object)
+		     (eq? '* object)))
 		 uri-authority?))
 (register-predicate! http-request-uri? 'http-request-uri?)
 (set-predicate<=! http-request-uri? simple-http-request-uri?)

@@ -46,6 +46,12 @@ USA.
   (primitive-type-ref 2)
   (primitive-type-set! 3))
 
+(define-integrable (%legacy-string? object)
+  (object-type? (ucode-type string) object))
+
+(define-integrable (%unicode-string? object)
+  (object-type? (ucode-type unicode-string) object))
+
 (define simple-string?
   (disjoin-types unicode-string? legacy-string?))
 

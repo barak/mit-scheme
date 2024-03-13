@@ -37,16 +37,12 @@ USA.
 (define %type-tag?
   (%dispatch-tag-predicate %type-metatag))
 
-(define-integrable (%type? object)
-  (and (%apply-hook? object)
-       (%type-tag? (%apply-hook-extra object))))
-
 (define (make-type name parts test)
   (let ((predicate (%make-apply-hook test #f)))
     (%set-entity-extra!
      predicate
      (%make-tag %type-metatag
-		(if (%pair? parts)
+		(if (pair? parts)
 		    (cons name
 			  ;; Cold load: equiv to (map type-name parts)
 			  (let loop ((parts parts))
@@ -63,7 +59,9 @@ USA.
   (make-type name '() test))
 
 (define type?
-  (make-type 'type '() %type?))
+  (named-lambda (cold-load:type? object)
+    (declare (ignore object))
+    #t))
 
 (define (type-name type)
   (guarantee type? type 'type-name)
@@ -115,7 +113,7 @@ USA.
 				   (any (lambda (test) (test object))
 					tests)))))))
 	   (do ((types types (cdr types)))
-	       ((not (%pair? types)))
+	       ((not (pair? types)))
 	     (set-type<=! (car types) disjunction))
 	   disjunction))))
 
@@ -139,7 +137,7 @@ USA.
 				   (every (lambda (test) (test object))
 					  tests)))))))
 	   (do ((types types (cdr types)))
-	       ((not (%pair? types)))
+	       ((not (pair? types)))
 	     (set-type<=! conjunction (car types)))
 	   conjunction))))
 
@@ -150,36 +148,6 @@ USA.
 	       (lambda (object)
 		 (not (test object))))))
 
-(define (memq-type objects)
-  (if (null? objects)
-      no-object?
-      (make-type 'memq
-		 '()
-		 (if (null? (cdr objects))
-		     (let ((object (car objects)))
-		       (lambda (object*) (eq? object object*)))
-		     (lambda (object) (memq object objects))))))
-
-(define (memv-type objects)
-  (if (null? objects)
-      no-object?
-      (make-type 'memv
-		 '()
-		 (if (null? (cdr objects))
-		     (let ((object (car objects)))
-		       (lambda (object*) (eqv? object object*)))
-		     (lambda (object) (memv object objects))))))
-
-(define (member-type objects #!optional =)
-  (if (null? objects)
-      no-object?
-      (make-type 'member
-		 '()
-		 (if (null? (cdr objects))
-		     (let ((object (car objects)))
-		       (lambda (object*) (= object object*)))
-		     (lambda (object) (member object objects =))))))
-
 (define (pair-type car-type cdr-type)
   (let ((type
 	 (make-type 'pair
@@ -259,84 +227,76 @@ USA.
 ;;;; Primitive types
 
 (let-syntax
-    ((define-primitive-types
+    ((define-type
        (er-macro-transformer
         (lambda (form r c)
           (declare (ignore c))
-          `(,(r 'begin)
-            ,@(map (lambda (name)
-                     `(define ,(symbol name '?)
-                        (,(r 'simple-type) ',name ,(symbol '% name '?))))
-                   (cdr form)))))))
-  (define-primitive-types
-    any-object
-    apply-hook
-    bignum
-    bit-string
-    boolean
-    broken-heart
-    bytevector
-    cell
-    char
-    compiled-code-block
-    compiled-entry-address
-    compiled-return-address
-    constant
-    control-point
-    default-object
-    delayed
-    entity
-    eof-object
-    ephemeron
-    extended-procedure
-    false
-    fixnum
-    flonum
-    gc-non-pointer
-    gc-pointer
-    gc-reclaimed-object
-    hunk3-a
-    hunk3-b
-    ic-environment
-    interned-symbol
-    interpreter-return-address
-    legacy-string
-    manifest-nm-vector
-    no-object
-    null
-    pair
-    primitive-procedure
-    ratnum
-    recnum
-    %record
-    scode-access
-    scode-assignment
-    scode-combination
-    scode-comment
-    scode-conditional
-    scode-definition
-    scode-delay
-    scode-disjunction
-    scode-extended-lambda
-    scode-lexpr
-    scode-quotation
-    scode-sequence
-    scode-simple-lambda
-    scode-the-environment
-    scode-variable
-    simple-procedure
-    stack-address
-    system-cell
-    system-pair
-    system-quadruple
-    system-triple
-    system-vector
-    %tagged-object
-    unicode-string
-    uninterned-symbol
-    vector
-    weak-pair))
+	  (let ((name (cadr form))
+		(code (caddr form)))
+            `(define ,(symbol name '?)
+	       (,(r 'simple-type) ',name
+		(,(r 'lambda) (object)
+		 (,(r 'object-type?) ,code object)))))))))
+  (begin
+    (define-type apply-hook apply-hook-type-code)
+    (define-type bignum (ucode-type bignum))
+    (define-type bit-string (ucode-type vector-1b))
+    (define-type broken-heart (ucode-type broken-heart))
+    (define-type bytevector (ucode-type bytevector))
+    (define-type cell (ucode-type cell))
+    (define-type char (ucode-type character))
+    (define-type compiled-code-block (ucode-type compiled-code-block))
+    (define-type compiled-entry-address (ucode-type compiled-entry))
+    (define-type compiled-return-address (ucode-type compiled-return))
+    (define-type control-point (ucode-type control-point))
+    (define-type delayed (ucode-type delayed))
+    (define-type entity (ucode-type entity))
+    (define-type ephemeron (ucode-type ephemeron))
+    (define-type extended-procedure (ucode-type extended-procedure))
+    (define-type fixnum (ucode-type fixnum))
+    (define-type flonum (ucode-type flonum))
+    (define-type hunk3-a (ucode-type hunk3-a))
+    (define-type hunk3-b (ucode-type hunk3-b))
+    (define-type ic-environment (ucode-type environment))
+    (define-type interned-symbol (ucode-type interned-symbol))
+    (define-type interpreter-return-address (ucode-type return-address))
+    (define-type legacy-string (ucode-type string))
+    (define-type manifest-nm-vector (ucode-type manifest-nm-vector))
+    (define-type misc-constant (ucode-type constant))
+    (define-type misc-false (ucode-type false))
+    (define-type $pair (ucode-type pair))
+    (define-type primitive-procedure (ucode-type primitive))
+    (define-type ratnum (ucode-type ratnum))
+    (define-type recnum (ucode-type recnum))
+    (define-type %record (ucode-type record))
+    (define-type scode-access (ucode-type access))
+    (define-type scode-assignment (ucode-type assignment))
+    (define-type scode-combination (ucode-type combination))
+    (define-type scode-comment (ucode-type comment))
+    (define-type scode-conditional (ucode-type conditional))
+    (define-type scode-definition (ucode-type definition))
+    (define-type scode-delay (ucode-type delay))
+    (define-type scode-disjunction (ucode-type disjunction))
+    (define-type scode-extended-lambda (ucode-type extended-lambda))
+    (define-type scode-lexpr (ucode-type lexpr))
+    (define-type scode-quotation (ucode-type quotation))
+    (define-type scode-sequence (ucode-type sequence))
+    (define-type scode-simple-lambda (ucode-type lambda))
+    (define-type scode-the-environment (ucode-type the-environment))
+    (define-type scode-variable (ucode-type variable))
+    (define-type simple-procedure (ucode-type procedure))
+    (define-type stack-address (ucode-type stack-environment))
+    (define-type %tagged-object (ucode-type tagged-object))
+    (define-type unicode-string (ucode-type unicode-string))
+    (define-type uninterned-symbol (ucode-type uninterned-symbol))
+    (define-type vector (ucode-type vector))
+    (define-type weak-pair (ucode-type weak-cons))))
 
+(set! type?
+      (restrict-type apply-hook?
+	(lambda (hook)
+	  (%type-tag? (%apply-hook-extra hook)))))
+
 (define dispatch-tag?
   (restrict-type %record?
     (lambda (record)
@@ -348,5 +308,144 @@ USA.
       (eq? metatag-tag (%record-ref record 0)))))
 (set-type<=! dispatch-metatag? dispatch-tag?)
 
+(define any-object?
+  (simple-type 'any-object
+    (lambda (object)
+      (declare (ignore object))
+      #t)))
+
+(define no-object?
+  (simple-type 'no-object
+    (lambda (object)
+      (declare (ignore object))
+      #f)))
+
+(define default-object?
+  (restrict-type misc-constant?
+    (lambda (object)
+      (eq? #!default object))))
+
+(define eof-object?
+  (restrict-type misc-constant?
+    (lambda (object)
+      (eq? (eof-object) object))))
+
+(define gc-reclaimed-object?
+  (restrict-type misc-constant?
+    (lambda (object)
+      (eq? #!reclaimed object))))
+
 (define symbol?
   (disjoin-types interned-symbol? uninterned-symbol?))
+
+;;;; GC types
+
+(define (code->gct-name code)
+  (if (not (and (fixnum? code)
+		(fix:>= code -4)
+		(fix:<= code 5)))
+      (error "Illegal GC type code:" code))
+  (vector-ref gct-names (gct-code->index code)))
+
+(define-integrable (name->gct-code name)
+  (gct-index->code (name->gct-index name)))
+
+(define (names->gct-mask names)
+  (let loop ((names names) (mask 0))
+    (if (pair? names)
+	(loop (cdr names)
+	      (fix:or (fix:lsh 1 (name->gct-index (car names))) mask))
+	mask)))
+
+(define (name->gct-index name)
+  (let* ((v gct-names)
+	 (n (vector-length v)))
+    (let loop ((i 0))
+      (if (not (fix:< i n))
+	  (error "Illegal GC type name:" name))
+      (if (eq? name (vector-ref v i))
+	  i
+	  (loop (fix:+ i 1))))))
+
+(define-integrable (gct-code->index code)
+  (fix:+ code 4))
+
+(define-integrable (gct-index->code index)
+  (fix:- index 4))
+
+(define gct-names
+  ;; Must match gc_type_t in microcode/gc.h.
+  '#(compiled-entry vector gc-internal undefined non-pointer
+		    cell pair triple quadruple compiled-return))
+
+(define gc-non-pointer?
+  (simple-type 'gc-non-pointer
+    (lambda (object)
+      (fix:= 0 ((ucode-primitive object-gc-type 1) object)))))
+
+(define-integrable (gc-non-pointer-type-code? code)
+  (fix:= 0 ((ucode-primitive type->gc-type 1) code)))
+
+(define gc-pointer?
+  (simple-type 'gc-pointer
+    (lambda (object)
+      (match-gct-mask gc-pointer-mask
+		      ((ucode-primitive object-gc-type 1) object)))))
+
+(define-integrable (gc-pointer-type-code? code)
+  (match-gct-mask gc-pointer-mask ((ucode-primitive type->gc-type 1) code)))
+
+(define gc-pointer-mask
+  (names->gct-mask
+   '(cell pair triple quadruple vector compiled-entry compiled-return)))
+
+(define-integrable (match-gct-mask mask code)
+  (not (fix:= 0 (fix:and mask (fix:lsh 1 (gct-code->index code))))))
+
+(define system-cell?
+  (simple-type 'system-cell
+    (lambda (object)
+      (fix:= 1 ((ucode-primitive object-gc-type 1) object)))))
+
+(define (system-cell-type-code? code)
+  (fix:= 1 ((ucode-primitive type->gc-type 1) code)))
+
+(define system-pair?
+  (simple-type 'system-pair
+    (lambda (object)
+      (fix:= 2 ((ucode-primitive object-gc-type 1) object)))))
+
+(define (system-pair-type-code? code)
+  (fix:= 2 ((ucode-primitive type->gc-type 1) code)))
+
+(define system-triple?
+  (simple-type 'system-triple
+    (lambda (object)
+      (fix:= 3 ((ucode-primitive object-gc-type 1) object)))))
+
+(define (system-triple-type-code? code)
+  (fix:= 3 ((ucode-primitive type->gc-type 1) code)))
+
+(define system-quadruple?
+  (simple-type 'system-quadruple
+    (lambda (object)
+      (fix:= 4 ((ucode-primitive object-gc-type 1) object)))))
+
+(define (system-quadruple-type-code? code)
+  (fix:= 4 ((ucode-primitive type->gc-type 1) code)))
+
+(define system-vector?
+  (simple-type 'system-vector
+    (lambda (object)
+      (fix:= -3 ((ucode-primitive object-gc-type 1) object)))))
+
+(define (system-vector-type-code? code)
+  (fix:= -3 ((ucode-primitive type->gc-type 1) code)))
+
+(define (non-pointer-type-code? code)
+  (or (gc-non-pointer-type-code? code)
+      (fix:= (ucode-type manifest-nm-vector) code)))
+
+(define (pointer-type-code? code)
+  (or (gc-pointer-type-code? code)
+      (fix:= (ucode-type broken-heart) code)))

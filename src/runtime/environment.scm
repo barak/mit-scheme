@@ -224,9 +224,6 @@ USA.
 
 ;;;; Global environment
 
-(define-integrable system-global-environment?
-  false?)
-
 (define (system-global-environment/bound-names)
   (walk-global object? map-entry/name))
 

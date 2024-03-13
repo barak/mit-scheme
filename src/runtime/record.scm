@@ -385,7 +385,7 @@ USA.
     applicator))
 
 (define %record-type-proxy?
-  (restrict-type constant?
+  (restrict-type misc-constant?
     (lambda (object)
       (fx<=? #x100 (object-datum object) #x1FF))))
 (register-predicate! %record-type-proxy? 'record-type-proxy)

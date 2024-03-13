@@ -186,6 +186,11 @@ USA.
 	((pair? object) #f)
 	(else (error:not-a list? object caller))))
 
+(define empty-list?
+  (restrict-type misc-constant?
+    (lambda (object)
+      (eq? '() object))))
+
 (define non-empty-list?
   (restrict-type pair?
     (lambda (p)

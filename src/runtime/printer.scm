@@ -559,7 +559,7 @@ USA.
 (define (print-default object context)
   (*print-with-brackets (user-object-type object)
 			#t object context
-			(if (%gc-pointer? object)
+			(if (gc-pointer? object)
 			    '()
 			    ;; non-pointer, undefined, gc-internal
 			    (maybe-print-datum object))))

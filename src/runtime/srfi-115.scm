@@ -277,8 +277,7 @@ USA.
 (define regexp-replace-subst?
   (let ((elt-type
 	 (disjoin-types string?
-			regexp-match-key?
-			(memq-type '(pre post))
+			regexp-match-key? ;includes (pre post)
 			unary-procedure?)))
     (disjoin-types elt-type
 		   (uniform-list-type elt-type))))

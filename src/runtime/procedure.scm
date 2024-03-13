@@ -32,6 +32,12 @@ USA.
 
 ;;;; Types
 
+(define-integrable (%entity? object)
+  (object-type? (ucode-type entity) object))
+
+(define-integrable (%apply-hook? object)
+  (object-type? apply-hook-type-code object))
+
 (define compound-procedure?
   (disjoin-types simple-procedure?
 		 extended-procedure?))
@@ -47,9 +53,9 @@ USA.
       (compiled-code-block/manifest-closure?
 	(compiled-code-address->block entry)))))
 
-(define procedure? %any-object?)
-(define thunk? %any-object?)
-(define unary-procedure? %any-object?)
+(define procedure? any-object?)
+(define thunk? any-object?)
+(define unary-procedure? any-object?)
 (define binary-procedure?)
 (define simple-arity?)
 (define general-arity?)

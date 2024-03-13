@@ -31,10 +31,23 @@ USA.
 (declare (usual-integrations))
 
 (define-integrable (not object)
-  ((ucode-primitive not) object))
+  (if object #f #t))
 
 (define false #f)
 (define true #t)
+
+(define false?
+  (restrict-type misc-false?
+    (lambda (object)
+      (eq? #f object))))
+
+(define true?
+  (restrict-type misc-constant?
+    (lambda (object)
+      (eq? #t object))))
+
+(define boolean?
+  (disjoin-types false? true?))
 
 ;; R7RS says that the args to this procedure must satisfy boolean?.
 ;; We relax that to allow any object.

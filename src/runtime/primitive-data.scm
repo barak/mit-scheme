@@ -30,290 +30,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable (%bignum? object)
-  (object-type? (ucode-type bignum) object))
-
-(define-integrable (%bit-string? object)
-  (object-type? (ucode-type vector-1b) object))
-
-(define-integrable (%broken-heart? object)
-  (object-type? (ucode-type broken-heart) object))
-
-(define-integrable (%bytevector? object)
-  (object-type? (ucode-type bytevector) object))
-
-(define-integrable (%cell? object)
-  (object-type? (ucode-type cell) object))
-
-(define-integrable (%char? object)
-  (object-type? (ucode-type character) object))
-
-(define-integrable (%compiled-code-block? object)
-  (object-type? (ucode-type compiled-code-block) object))
-
-(define-integrable (%compiled-entry-address? object)
-  (object-type? (ucode-type compiled-entry) object))
-
-(define-integrable (%compiled-return-address? object)
-  (object-type? (ucode-type compiled-return) object))
-
-(define-integrable (%constant? object)
-  (object-type? (ucode-type constant) object))
-
-(define-integrable (%control-point? object)
-  (object-type? (ucode-type control-point) object))
-
-(define-integrable (%delayed? object)
-  (object-type? (ucode-type delayed) object))
-
-(define-integrable (%entity? object)
-  (object-type? (ucode-type entity) object))
-
-(define-integrable (%ephemeron? object)
-  (object-type? (ucode-type ephemeron) object))
-
-(define-integrable (%extended-procedure? object)
-  (object-type? (ucode-type extended-procedure) object))
-
-(define-integrable (%fixnum? object)
-  (object-type? (ucode-type fixnum) object))
-
-(define-integrable (%flonum? object)
-  (object-type? (ucode-type flonum) object))
-
-(define-integrable (%hunk3-a? object)
-  (object-type? (ucode-type hunk3-a) object))
-
-(define-integrable (%hunk3-b? object)
-  (object-type? (ucode-type hunk3-b) object))
-
-(define-integrable (%ic-environment? object)
-  (object-type? (ucode-type environment) object))
-
-(define-integrable (%interned-symbol? object)
-  (object-type? (ucode-type interned-symbol) object))
-
-(define-integrable (%legacy-string? object)
-  (object-type? (ucode-type string) object))
-
-(define-integrable (%manifest-nm-vector? object)
-  (object-type? (ucode-type manifest-nm-vector) object))
-
-(define-integrable (%pair? object)
-  (object-type? (ucode-type pair) object))
-
-(define-integrable (%primitive-procedure? object)
-  (object-type? (ucode-type primitive) object))
-
-(define-integrable (%ratnum? object)
-  (object-type? (ucode-type ratnum) object))
-
-(define-integrable (%recnum? object)
-  (object-type? (ucode-type recnum) object))
-
-(define-integrable (%%record? object)
-  (object-type? (ucode-type record) object))
-
-(define-integrable (%interpreter-return-address? object)
-  (object-type? (ucode-type return-address) object))
-
-(define-integrable (%scode-access? object)
-  (object-type? (ucode-type access) object))
-
-(define-integrable (%scode-assignment? object)
-  (object-type? (ucode-type assignment) object))
-
-(define-integrable (%scode-combination? object)
-  (object-type? (ucode-type combination) object))
-
-(define-integrable (%scode-comment? object)
-  (object-type? (ucode-type comment) object))
-
-(define-integrable (%scode-conditional? object)
-  (object-type? (ucode-type conditional) object))
-
-(define-integrable (%scode-definition? object)
-  (object-type? (ucode-type definition) object))
-
-(define-integrable (%scode-delay? object)
-  (object-type? (ucode-type delay) object))
-
-(define-integrable (%scode-disjunction? object)
-  (object-type? (ucode-type disjunction) object))
-
-(define-integrable (%scode-extended-lambda? object)
-  (object-type? (ucode-type extended-lambda) object))
-
-(define-integrable (%scode-lexpr? object)
-  (object-type? (ucode-type lexpr) object))
-
-(define-integrable (%scode-quotation? object)
-  (object-type? (ucode-type quotation) object))
-
-(define-integrable (%scode-sequence? object)
-  (object-type? (ucode-type sequence) object))
-
-(define-integrable (%scode-simple-lambda? object)
-  (object-type? (ucode-type lambda) object))
-
-(define-integrable (%scode-the-environment? object)
-  (object-type? (ucode-type the-environment) object))
-
-(define-integrable (%scode-variable? object)
-  (object-type? (ucode-type variable) object))
-
-(define-integrable (%simple-procedure? object)
-  (object-type? (ucode-type procedure) object))
-
-(define-integrable (%stack-address? object)
-  (object-type? (ucode-type stack-environment) object))
-
-(define-integrable (%%tagged-object? object)
-  (object-type? (ucode-type tagged-object) object))
-
-(define-integrable (%unicode-string? object)
-  (object-type? (ucode-type unicode-string) object))
-
-(define-integrable (%uninterned-symbol? object)
-  (object-type? (ucode-type uninterned-symbol) object))
-
-(define-integrable (%vector? object)
-  (object-type? (ucode-type vector) object))
-
-(define-integrable (%weak-pair? object)
-  (object-type? (ucode-type weak-cons) object))
-
-(define-integrable (%any-object? object)
-  (declare (ignore object))
-  #t)
-
-(define-integrable (%no-object? object)
-  (declare (ignore object))
-  #f)
-
-(define-integrable (%null? object)
-  (eq? object '()))
-
-(define-integrable (%false? object)
-  (eq? object #f))
-
-(define-integrable (%default-object? object)
-  (eq? object #!default))
-
-(define-integrable (default-object)
-  #!default)
-
-(define-integrable (%eof-object? object)
-  (eq? object (eof-object)))
-
-(define-integrable (eof-object)
-  ((ucode-primitive primitive-object-set-type) (ucode-type constant) 6))
-
-(define-integrable (%gc-reclaimed-object? object)
-  (eq? object #!reclaimed))
-
-(define-integrable (gc-reclaimed-object)
-  #!reclaimed)
-
-(define-integrable (%boolean? object)
-  (or (eq? object #f)
-      (eq? object #t)))
-
-(define (code->gct-name code)
-  (if (not (and (fixnum? code)
-		(fix:>= code -4)
-		(fix:<= code 5)))
-      (error "Illegal GC type code:" code))
-  (vector-ref gct-names (gct-code->index code)))
-
-(define-integrable (name->gct-code name)
-  (gct-index->code (name->gct-index name)))
-
-(define (names->gct-mask names)
-  (let loop ((names names) (mask 0))
-    (if (pair? names)
-	(loop (cdr names)
-	      (fix:or (fix:lsh 1 (name->gct-index (car names))) mask))
-	mask)))
-
-(define (name->gct-index name)
-  (let* ((v gct-names)
-	 (n (vector-length v)))
-    (let loop ((i 0))
-      (if (not (fix:< i n))
-	  (error "Illegal GC type name:" name))
-      (if (eq? name (vector-ref v i))
-	  i
-	  (loop (fix:+ i 1))))))
-
-(define-integrable (gct-code->index code)
-  (fix:+ code 4))
-
-(define-integrable (gct-index->code index)
-  (fix:- index 4))
-
-(define gct-names
-  ;; Must match gc_type_t in microcode/gc.h.
-  '#(compiled-entry vector gc-internal undefined non-pointer
-		    cell pair triple quadruple compiled-return))
-
-(define-integrable (%gc-non-pointer? object)
-  (fix:= 0 ((ucode-primitive object-gc-type 1) object)))
-
-(define-integrable (%gc-non-pointer-type-code? code)
-  (fix:= 0 ((ucode-primitive type->gc-type 1) code)))
-
-(define (%gc-pointer? object)
-  (match-gct-mask gc-pointer-mask ((ucode-primitive object-gc-type 1) object)))
-
-(define (%gc-pointer-type-code? code)
-  (match-gct-mask gc-pointer-mask ((ucode-primitive type->gc-type 1) code)))
-
-(define gc-pointer-mask
-  (names->gct-mask
-   '(cell pair triple quadruple vector compiled-entry compiled-return)))
-
-(define-integrable (match-gct-mask mask code)
-  (not (fix:= 0 (fix:and mask (fix:lsh 1 (gct-code->index code))))))
-
-(define-integrable (%system-cell? object)
-  (fix:= 1 ((ucode-primitive object-gc-type 1) object)))
-
-(define-integrable (system-cell-type-code? code)
-  (fix:= 1 ((ucode-primitive type->gc-type 1) code)))
-
-(define-integrable (%system-pair? object)
-  (fix:= 2 ((ucode-primitive object-gc-type 1) object)))
-
-(define-integrable (system-pair-type-code? code)
-  (fix:= 2 ((ucode-primitive type->gc-type 1) code)))
-
-(define-integrable (%system-triple? object)
-  (fix:= 3 ((ucode-primitive object-gc-type 1) object)))
-
-(define-integrable (system-triple-type-code? code)
-  (fix:= 3 ((ucode-primitive type->gc-type 1) code)))
-
-(define-integrable (%system-quadruple? object)
-  (fix:= 4 ((ucode-primitive object-gc-type 1) object)))
-
-(define-integrable (system-quadruple-type-code? code)
-  (fix:= 4 ((ucode-primitive type->gc-type 1) code)))
-
-(define-integrable (%system-vector? object)
-  (fix:= -3 ((ucode-primitive object-gc-type 1) object)))
-
-(define-integrable (system-vector-type-code? code)
-  (fix:= -3 ((ucode-primitive type->gc-type 1) code)))
-
-(define (non-pointer-type-code? code)
-  (or (%gc-non-pointer-type-code? code)
-      (fix:= (ucode-type manifest-nm-vector) code)))
-
-(define (pointer-type-code? code)
-  (or (%gc-pointer-type-code? code)
-      (fix:= (ucode-type broken-heart) code)))
-
 (define-primitives
   (%make-tagged-object 2)
   (%record -1)
@@ -352,6 +68,15 @@ USA.
   (system-vector-ref 2)
   (system-vector-set! 3))
 
+(define-integrable (default-object)
+  #!default)
+
+(define-integrable (eof-object)
+  ((ucode-primitive primitive-object-set-type) (ucode-type constant) 6))
+
+(define-integrable (gc-reclaimed-object)
+  #!reclaimed)
+
 (define (%make-record tag length #!optional fill)
   (let ((fill (if (default-object? fill) #f fill)))
     (let-syntax
@@ -387,7 +112,7 @@ USA.
 
 (define-integrable (%delayed-value delayed)
   (system-pair-cdr delayed))
-
+
 (define-integrable (%make-entity procedure extra)
   (system-pair-cons (ucode-type entity) procedure extra))
 
@@ -403,15 +128,12 @@ USA.
 (define-integrable (%set-entity-extra! entity extra)
   (system-pair-set-cdr! entity extra))
 
-(define-integrable apply-hook-type
+(define-integrable apply-hook-type-code
   ;; TODO: replace #x07 with (ucode-type apply-hook).
   #x07)
 
-(define-integrable (%apply-hook? object)
-  (object-type? apply-hook-type object))
-
 (define-integrable (%make-apply-hook procedure extra)
-  (system-pair-cons apply-hook-type procedure extra))
+  (system-pair-cons apply-hook-type-code procedure extra))
 
 (define-integrable (%apply-hook-procedure apply-hook)
   (system-pair-car apply-hook))
