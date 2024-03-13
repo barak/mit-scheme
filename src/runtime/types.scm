@@ -47,9 +47,12 @@ USA.
     (declare (ignore object))
     #t))
 
-(define (type-name type)
-  (guarantee type? type 'type-name)
-  (%dispatch-tag-name (%apply-hook-extra type)))
+(define (type->dispatch-tag type)
+  (guarantee type? type 'type->dispatch-tag)
+  (%apply-hook-extra type))
+
+(define-integrable (type-name type)
+  (%dispatch-tag-name (type->dispatch-tag type)))
 
 (define (type-test type)
   (guarantee type? type 'type-test)
@@ -61,6 +64,16 @@ USA.
 
 (define-integrable (%type-supersets type)
   (%tag-supersets (%apply-hook-extra type)))
+
+(define (object->type object)
+  (let ((code (object-type object)))
+    (let ((type (vector-ref primitive-types code))
+	  (method (vector-ref primitive-type-methods code)))
+      (if (not type)
+	  (error "Unknown type code:" code))
+      (if method
+	  (method type object)
+	  type))))
 
 (define (refine-type type restriction)
   (let ((subset
@@ -164,53 +177,6 @@ USA.
     (lambda (s)
       (string-every char-type s))))
 
-(define (type<= type1 type2)
-  (guarantee type? type1 'type<=)
-  (guarantee type? type2 'type<=)
-  (%type<= type1 type2))
-
-(define (%type<= type1 type2)
-  (hash-table-intern! type<=-cache
-		      (weak-list type1 type2)
-    (lambda ()
-      (or (eq? type1 type2)
-	  (eq? type1 no-object?)
-	  (eq? type2 any-object?)
-	  (and (not (eq? type1 any-object?))
-	       (not (eq? type2 no-object?))
-	       (weak-list-set-any (lambda (type) (%type<= type type2))
-				  (%type-supersets type1)))))))
-
-(define set-type<=!
-  (named-lambda (cold-load:set-type<=! subset superset)
-    (set! deferred-relations
-	  (cons (cons subset superset) deferred-relations))
-    unspecific))
-
-(define after-cold-load:set-type<=!
-  (named-lambda (set-type<=! subset superset)
-    (guarantee type? subset 'set-type<=!)
-    (guarantee type? superset 'set-type<=!)
-    (if (%type<= superset subset)
-	(error "Illegal type loop:" subset superset))
-    (weak-list-set-add! superset (%type-supersets subset))
-    (hash-table-clear! type<=-cache)))
-
-(define deferred-relations '())
-(define type<=-cache)
-(define (initialize-package!)
-  (let ((seq (conjoin-boot-deps '(runtime comparator) '(runtime hash-table))))
-    (seq 'add-action!
-      (lambda ()
-	(set! type<=-cache
-	      (make-hash-table (uniform-weak-list-comparator eq-comparator)))
-	(set! set-type<=! after-cold-load:set-type<=!)
-	(for-each (lambda (e)
-		    (set-type<=! (car e) (cdr e)))
-		  deferred-relations)
-	(set! deferred-relations)
-	unspecific))))
-
 ;;;; Primitive types
 
 (let-syntax
@@ -278,6 +244,183 @@ USA.
     (define-type uninterned-symbol (ucode-type uninterned-symbol))
     (define-type vector (ucode-type vector))
     (define-type weak-pair (ucode-type weak-cons))))
+
+(define primitive-type-bindings
+  (list (cons apply-hook? apply-hook-type-code)
+	(cons bignum? (ucode-type bignum))
+	(cons bit-string? (ucode-type vector-1b))
+	(cons broken-heart? (ucode-type broken-heart))
+	(cons bytevector? (ucode-type bytevector))
+	(cons cell? (ucode-type cell))
+	(cons char? (ucode-type character))
+	(cons compiled-code-block? (ucode-type compiled-code-block))
+	(cons compiled-entry-address? (ucode-type compiled-entry))
+	(cons compiled-return-address? (ucode-type compiled-return))
+	(cons misc-constant? (ucode-type constant))
+	(cons control-point? (ucode-type control-point))
+	(cons delayed? (ucode-type delayed))
+	(cons entity? (ucode-type entity))
+	(cons ephemeron? (ucode-type ephemeron))
+	(cons extended-procedure? (ucode-type extended-procedure))
+	(cons misc-false? (ucode-type false))
+	(cons fixnum? (ucode-type fixnum))
+	(cons flonum? (ucode-type flonum))
+	(cons hunk3-a? (ucode-type hunk3-a))
+	(cons hunk3-b? (ucode-type hunk3-b))
+	(cons ic-environment? (ucode-type environment))
+	(cons interned-symbol? (ucode-type interned-symbol))
+	(cons interpreter-return-address? (ucode-type return-address))
+	(cons legacy-string? (ucode-type string))
+	(cons manifest-nm-vector? (ucode-type manifest-nm-vector))
+	(cons pair? (ucode-type pair))
+	(cons primitive-procedure? (ucode-type primitive))
+	(cons ratnum? (ucode-type ratnum))
+	(cons recnum? (ucode-type recnum))
+	(cons %record? (ucode-type record))
+	(cons scode-access? (ucode-type access))
+	(cons scode-assignment? (ucode-type assignment))
+	(cons scode-combination? (ucode-type combination))
+	(cons scode-comment? (ucode-type comment))
+	(cons scode-conditional? (ucode-type conditional))
+	(cons scode-definition? (ucode-type definition))
+	(cons scode-delay? (ucode-type delay))
+	(cons scode-disjunction? (ucode-type disjunction))
+	(cons scode-extended-lambda? (ucode-type extended-lambda))
+	(cons scode-lexpr? (ucode-type lexpr))
+	(cons scode-quotation? (ucode-type quotation))
+	(cons scode-sequence? (ucode-type sequence))
+	(cons scode-simple-lambda? (ucode-type lambda))
+	(cons scode-the-environment? (ucode-type the-environment))
+	(cons scode-variable? (ucode-type variable))
+	(cons simple-procedure? (ucode-type procedure))
+	(cons stack-address? (ucode-type stack-environment))
+	(cons %tagged-object? (ucode-type tagged-object))
+	(cons unicode-string? (ucode-type unicode-string))
+	(cons uninterned-symbol? (ucode-type uninterned-symbol))
+	(cons vector? (ucode-type vector))
+	(cons weak-pair? (ucode-type weak-cons))))
+
+(define (install-type-methods!)
+  (define (define-method code method)
+    (vector-set! primitive-type-methods code method))
+
+  (define (simple-alternative alternative)
+    (lambda (fallback object)
+      (if (alternative object)
+	  alternative
+	  fallback)))
+
+  (define-method (ucode-type access)
+    (simple-alternative scode-absolute-reference?))
+
+  (define-method (ucode-type combination)
+    (simple-alternative scode-unassigned??))
+
+  (define-method (ucode-type comment)
+    (simple-alternative scode-declaration?))
+
+  (define-method (ucode-type compiled-entry)
+    (lambda (fallback entry)
+      (declare (ignore fallback))
+      (case (system-triple-first
+	     ((ucode-primitive compiled-entry-kind 1) entry))
+	((0) compiled-procedure?)
+	((1) compiled-return-address?)
+	((2) compiled-expression?)
+	(else compiled-code-address?))))
+
+  (define-method (ucode-type false)
+    (simple-alternative false?))
+
+  (define-method (ucode-type constant)
+    (let* ((constant-types
+	    (vector true?
+		    undefined-value?
+		    undefined-value?
+		    lambda-tag?
+		    lambda-tag?
+		    lambda-tag?
+		    eof-object?
+		    default-object?
+		    lambda-tag?
+		    null?
+		    gc-reclaimed-object?))
+	   (n-types (vector-length constant-types)))
+      (lambda (fallback object)
+	(let ((datum (object-datum object)))
+	  (cond ((and (fixnum? datum) (fx<? datum n-types))
+		 (vector-ref constant-types datum))
+		((record-type-proxy-datum? datum) record-type-proxy?)
+		(else fallback))))))
+
+  (define-method (ucode-type entity)
+    (simple-alternative arity-dispatched-procedure?))
+
+  (define-method (ucode-type record)
+    (simple-alternative record?))
+
+  (define-method (ucode-type sequence)
+    (simple-alternative scode-open-block?)))
+
+(define (type<= type1 type2)
+  (guarantee type? type1 'type<=)
+  (guarantee type? type2 'type<=)
+  (%type<= type1 type2))
+
+(define (%type<= type1 type2)
+  (hash-table-intern! type<=-cache
+		      (weak-list type1 type2)
+    (lambda ()
+      (or (eq? type1 type2)
+	  (eq? type1 no-object?)
+	  (eq? type2 any-object?)
+	  (and (not (eq? type1 any-object?))
+	       (not (eq? type2 no-object?))
+	       (weak-list-set-any (lambda (type) (%type<= type type2))
+				  (%type-supersets type1)))))))
+
+(define set-type<=!
+  (named-lambda (cold-load:set-type<=! subset superset)
+    (set! deferred-relations
+	  (cons (cons subset superset) deferred-relations))
+    unspecific))
+
+(define after-cold-load:set-type<=!
+  (named-lambda (set-type<=! subset superset)
+    (guarantee type? subset 'set-type<=!)
+    (guarantee type? superset 'set-type<=!)
+    (if (%type<= superset subset)
+	(error "Illegal type loop:" subset superset))
+    (weak-list-set-add! superset (%type-supersets subset))
+    (hash-table-clear! type<=-cache)))
+
+(define deferred-relations '())
+(define type<=-cache)
+(define primitive-types)
+(define primitive-type-methods)
+(define (initialize-package!)
+  (let ((seq (conjoin-boot-deps '(runtime comparator) '(runtime hash-table))))
+    (seq 'add-action!
+      (lambda ()
+	(set! type<=-cache
+	      (make-hash-table (uniform-weak-list-comparator eq-comparator)))
+	(set! set-type<=! after-cold-load:set-type<=!)
+	(for-each (lambda (e)
+		    (set-type<=! (car e) (cdr e)))
+		  deferred-relations)
+	(set! deferred-relations)
+	unspecific)))
+  (let ((seq (conjoin-boot-deps '(runtime microcode-tables))))
+    (seq 'add-action!
+      (lambda ()
+	(set! primitive-types
+	      (make-vector (microcode-type/code-limit) any-object?))
+	(for-each (lambda (e)
+		    (vector-set! primitive-types (cdr e) (car e)))
+		  primitive-type-bindings)
+	(set! primitive-type-methods
+	      (make-vector (microcode-type/code-limit) #f))
+	(install-type-methods!)))))
 
 (set! type?
       (refine-type apply-hook?

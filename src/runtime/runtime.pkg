@@ -4253,7 +4253,10 @@ USA.
 	  record-type-proxy:host
 	  record-type-proxy:pathname)
   (export (runtime reference-trap)
-	  record-type-proxy:reference-trap))
+	  record-type-proxy:reference-trap)
+  (export (runtime types)
+	  record-type-proxy-datum?
+	  record-type-proxy?))
 
 (define-package (runtime reference-trap)
   (files "reference-trap")
@@ -5733,6 +5736,7 @@ USA.
 	  interned-symbol?
 	  interpreter-return-address?
 	  no-object?
+	  object->type
 	  primitive-procedure?
 	  refine-type
 	  scode-access?
@@ -5754,6 +5758,7 @@ USA.
 	  system-quadruple?
 	  system-triple?
 	  system-vector?
+	  type->dispatch-tag
 	  type-name
 	  type-supersets
 	  type-test

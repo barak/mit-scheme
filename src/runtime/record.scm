@@ -384,10 +384,13 @@ USA.
 	(error:not-a applicable-record? record 'record-applicator))
     applicator))
 
+(define-integrable (record-type-proxy-datum? datum)
+  (fx<=? #x100 datum #x1FF))
+
 (define record-type-proxy?
   (refine-type misc-constant?
     (lambda (object)
-      (fx<=? #x100 (object-datum object) #x1FF))))
+      (record-type-proxy-datum? (object-datum object)))))
 (register-predicate! record-type-proxy? 'record-type-proxy)
 
 (define-integrable (%record-type-proxy->index marker)
