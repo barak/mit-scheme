@@ -69,10 +69,8 @@ USA.
   (let ((code (object-type object)))
     (let ((type (vector-ref primitive-types code))
 	  (method (vector-ref primitive-type-methods code)))
-      (if (not type)
-	  (error "Unknown type code:" code))
       (if method
-	  (method type object)
+	  (method object type)
 	  type))))
 
 (define (refine-type type restriction)
@@ -187,7 +185,10 @@ USA.
 	  (let ((name (cadr form))
 		(code (caddr form)))
             `(define ,(symbol name '?)
-	       (,(r 'simple-type) ',name
+	       (,(r 'simple-type)
+		',(if (pair? (cdddr form))
+		      (cadddr form)
+		      name)
 		(,(r 'lambda) (object)
 		 (,(r 'object-type?) ,code object)))))))))
   (begin
@@ -217,7 +218,7 @@ USA.
     (define-type manifest-nm-vector (ucode-type manifest-nm-vector))
     (define-type misc-constant (ucode-type constant))
     (define-type misc-false (ucode-type false))
-    (define-type $pair (ucode-type pair))
+    (define-type $pair (ucode-type pair) pair)
     (define-type primitive-procedure (ucode-type primitive))
     (define-type ratnum (ucode-type ratnum))
     (define-type recnum (ucode-type recnum))
@@ -305,7 +306,7 @@ USA.
     (vector-set! primitive-type-methods code method))
 
   (define (simple-alternative alternative)
-    (lambda (fallback object)
+    (lambda (object fallback)
       (if (alternative object)
 	  alternative
 	  fallback)))
@@ -320,7 +321,7 @@ USA.
     (simple-alternative scode-declaration?))
 
   (define-method (ucode-type compiled-entry)
-    (lambda (fallback entry)
+    (lambda (entry fallback)
       (declare (ignore fallback))
       (case (system-triple-first
 	     ((ucode-primitive compiled-entry-kind 1) entry))
@@ -346,7 +347,7 @@ USA.
 		    null?
 		    gc-reclaimed-object?))
 	   (n-types (vector-length constant-types)))
-      (lambda (fallback object)
+      (lambda (object fallback)
 	(let ((datum (object-datum object)))
 	  (cond ((and (fixnum? datum) (fx<? datum n-types))
 		 (vector-ref constant-types datum))
@@ -355,6 +356,9 @@ USA.
 
   (define-method (ucode-type entity)
     (simple-alternative arity-dispatched-procedure?))
+
+  (define-method apply-hook-type-code
+    (simple-alternative type?))
 
   (define-method (ucode-type record)
     (simple-alternative record?))
@@ -413,19 +417,23 @@ USA.
   (let ((seq (conjoin-boot-deps '(runtime microcode-tables))))
     (seq 'add-action!
       (lambda ()
-	(set! primitive-types
-	      (make-vector (microcode-type/code-limit) any-object?))
+	(let ((n-codes (microcode-type/code-limit)))
+	  (set! primitive-types (make-vector n-codes no-object?))
+	  (set! primitive-type-methods (make-vector n-codes #f)))
 	(for-each (lambda (e)
 		    (vector-set! primitive-types (cdr e) (car e)))
 		  primitive-type-bindings)
-	(set! primitive-type-methods
-	      (make-vector (microcode-type/code-limit) #f))
 	(install-type-methods!)))))
 
 (set! type?
       (refine-type apply-hook?
 	(lambda (hook)
 	  (%type-tag? (%apply-hook-extra hook)))))
+
+(define-print-method type?
+  (standard-print-method 'type
+    (lambda (type)
+      (list (type-name type)))))
 
 (define dispatch-tag?
   (refine-type %record?

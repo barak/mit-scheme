@@ -155,6 +155,7 @@ USA.
  (lambda ()
    (register-predicate! %record? '%record)
    (register-predicate! %tagged-object? 'tagged-object)
+   (register-predicate! type? 'type)
    (register-predicate! predicate? 'predicate)
    (register-predicate! system-cell? 'system-cell)
    (register-predicate! system-pair? 'system-pair)

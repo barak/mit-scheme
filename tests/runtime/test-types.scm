@@ -39,12 +39,16 @@ USA.
 
 (define-test 'simple-type
   (lambda ()
-    (test-type-operations symbol?
-			  '(disjunction interned-symbol uninterned-symbol))))
+    (assert-true (type? pair?))
+    (assert-eq (type-name pair?) 'pair)
+    (assert-null (type-supersets pair?))
 
-(define (test-type-operations type name)
-  (assert-true (type? type))
-  (assert-equal (type-name type) name))
+    (assert-true (type? symbol?))
+    (let ((name (type-name symbol?)))
+      (assert-true (pair? name))
+      (assert-eq (car name) 'disjunction)
+      (assert-lset= eq? (cdr name) '(interned-symbol uninterned-symbol)))
+    (assert-null (type-supersets pair?))))
 
 (define-test 'ordering
   (lambda ()
@@ -62,4 +66,17 @@ USA.
     (assert-false (type<= symbol? uninterned-symbol?))
     (assert-false (type<= interned-symbol? uninterned-symbol?))
     (assert-false (type<= uninterned-symbol? interned-symbol?))
-    ))
+
+    (assert-true (type<= type? apply-hook?))
+    (assert-false (type<= type? entity?))))
+
+(define-test 'object->type
+  (lambda ()
+    (assert-eq (object->type #f) false?)
+    (assert-eq (object->type (list 'a)) pair?)
+    (assert-eq (object->type 'a) interned-symbol?)
+    (assert-eq (object->type 0) fixnum?)
+    (assert-eq (object->type (expt 10. 40)) flonum?)
+    (assert-eq (object->type #!default) default-object?)
+    (assert-eq (object->type '()) null?)
+    (assert-eq (object->type type?) type?)))

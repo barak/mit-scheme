@@ -5731,6 +5731,7 @@ USA.
 	  eof-object?			;(scheme base)
 	  ephemeron?			;(srfi 124)
 	  fixnum?			;(srfi 143)
+	  flonum?			;(srfi 144)
 	  gc-reclaimed-object?
 	  ic-environment?
 	  interned-symbol?
@@ -5777,7 +5778,6 @@ USA.
 	  delayed?
 	  extended-procedure?
 	  misc-false?
-	  flonum?
 	  gc-non-pointer-type-code?
 	  gc-non-pointer?
 	  gc-pointer-type-code?
