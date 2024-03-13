@@ -616,18 +616,20 @@ Move to the last subproblem if the subproblem number is too high."
     (let ((point (current-point)))
       (call-with-interface-port point
 	(lambda (port)
+
+	  (define (message string)
+	    (fresh-line port)
+	    (write-string "; " port)
+	    (write-string string port))
+
+	  (define (pp* obj)
+	    (fresh-line port)
+	    (pp obj port #t))
+
 	  (push-current-mark! point)
-	  (let ((cnode (mark-cnode point))
-		(message
-		 (lambda (string)
-		   (fresh-line port)
-		   (write-string "; " port)
-		   (write-string string port)))
-		(pp (lambda (obj)
-		      (fresh-line port)
-		      (pp obj port #t))))
+	  (let ((cnode (mark-cnode point)))
 	    (if (ctree-reduction? cnode)
-		(pp (ctree-reduction-expression cnode))
+		(pp* (ctree-reduction-expression cnode))
 		(let ((exp (ctree-subproblem-expression cnode))
 		      (sub (ctree-subproblem-subexpression cnode)))
 		  (cond ((or (dbg-expression-compiled? exp)
@@ -639,7 +641,7 @@ Move to the last subproblem if the subproblem number is too high."
 			    (lambda (port)
 			      (dbg-printer-apply exp #t port)))))
 			((or argument (dbg-expression-undefined? sub))
-			 (pp exp port))
+			 (pp* exp))
 			(else
 			 (debugger-pp-highlight-subexpression
 			  exp sub 0 port)))))))))))
