@@ -6988,7 +6988,6 @@ USA.
 	  %make-ratnum
 	  %make-recnum
 	  %make-record
-	  %make-record
 	  %make-simple-procedure
 	  %ratnum-denominator
 	  %ratnum-numerator

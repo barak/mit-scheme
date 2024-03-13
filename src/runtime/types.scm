@@ -181,10 +181,11 @@ USA.
 	       (weak-list-set-any (lambda (type) (%type<= type type2))
 				  (%type-supersets type1)))))))
 
-(define (cold-load:set-type<=! subset superset)
-  (set! deferred-relations
-	(cons (cons subset superset) deferred-relations))
-  unspecific)
+(define set-type<=!
+  (named-lambda (cold-load:set-type<=! subset superset)
+    (set! deferred-relations
+	  (cons (cons subset superset) deferred-relations))
+    unspecific))
 
 (define after-cold-load:set-type<=!
   (named-lambda (set-type<=! subset superset)
@@ -194,8 +195,6 @@ USA.
 	(error "Illegal type loop:" subset superset))
     (weak-list-set-add! superset (%type-supersets subset))
     (hash-table-clear! type<=-cache)))
-
-(define set-type<=! cold-load:set-type<=!)
 
 (define deferred-relations '())
 (define type<=-cache)

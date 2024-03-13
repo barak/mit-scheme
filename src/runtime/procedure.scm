@@ -60,40 +60,39 @@ USA.
 (define simple-arity?)
 (define general-arity?)
 (define procedure-arity?)
-(seq:after-record 'add-action!
-  (lambda ()
-    (set! procedure?
-	  (disjoin-types primitive-procedure?
-			 compound-procedure?
-			 compiled-procedure?
-			 apply-hook?
-			 entity?
-			 applicable-record?))
-    (set! thunk?
-	  (refine-type procedure?
-	    (lambda (proc)
-	      (procedure-arity-valid? proc 0))))
-    (set! unary-procedure?
-	  (refine-type procedure?
-	    (lambda (proc)
-	      (procedure-arity-valid? proc 1))))
-    (set! binary-procedure?
-	  (refine-type procedure?
-	    (lambda (proc)
-	      (procedure-arity-valid? proc 2))))
-    (set! simple-arity?
-	  non-negative-fixnum?)
-    (set! general-arity?
-	  (refine-type pair?
-	    (lambda (p)
-	      (and (non-negative-fixnum? (car p))
-		   (if (cdr p)
-		       (and (non-negative-fixnum? (cdr p))
-			    (fx>=? (cdr p) (car p)))
-		       #t)))))
-    (set! procedure-arity?
-	  (disjoin-types simple-arity? general-arity?))
-    unspecific))
+(define (initialize-package!)
+  (set! procedure?
+	(disjoin-types primitive-procedure?
+		       compound-procedure?
+		       compiled-procedure?
+		       apply-hook?
+		       entity?
+		       applicable-record?))
+  (set! thunk?
+	(refine-type procedure?
+	  (lambda (proc)
+	    (procedure-arity-valid? proc 0))))
+  (set! unary-procedure?
+	(refine-type procedure?
+	  (lambda (proc)
+	    (procedure-arity-valid? proc 1))))
+  (set! binary-procedure?
+	(refine-type procedure?
+	  (lambda (proc)
+	    (procedure-arity-valid? proc 2))))
+  (set! simple-arity?
+	non-negative-fixnum?)
+  (set! general-arity?
+	(refine-type pair?
+	  (lambda (p)
+	    (and (non-negative-fixnum? (car p))
+		 (if (cdr p)
+		     (and (non-negative-fixnum? (cdr p))
+			  (fx>=? (cdr p) (car p)))
+		     #t)))))
+  (set! procedure-arity?
+	(disjoin-types simple-arity? general-arity?))
+  unspecific)
 
 ;;;; Generic Procedures
 

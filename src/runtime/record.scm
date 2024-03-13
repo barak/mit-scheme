@@ -104,7 +104,7 @@ USA.
 	 (keyword-option-parser
 	  (list (list 'parent-type record-type? (lambda () #f))
 		(list 'applicator procedure? (lambda () #f))
-		(list 'instance-marker %record-type-proxy? (lambda () #f)))))
+		(list 'instance-marker record-type-proxy? (lambda () #f)))))
    (set! make-record-field-options
 	 (keyword-option-parser
 	  (list (list 'default-init thunk? (lambda () #f)))))
@@ -147,7 +147,7 @@ USA.
 			(if parent-type
 			    (record-predicate parent-type)
 			    record?))
-      (if (%record-type-proxy? instance-marker)
+      (if (record-type-proxy? instance-marker)
 	  (%set-proxied-record-type! instance-marker type))
       type)))
 
@@ -329,7 +329,7 @@ USA.
 			index))
 
 (define (%record-type-fasdumpable? type)
-  (%record-type-proxy? (%record-type-instance-marker type)))
+  (record-type-proxy? (%record-type-instance-marker type)))
 
 (define (record-type-name record-type)
   (guarantee record-type? record-type 'record-type-name)
@@ -384,11 +384,11 @@ USA.
 	(error:not-a applicable-record? record 'record-applicator))
     applicator))
 
-(define %record-type-proxy?
+(define record-type-proxy?
   (refine-type misc-constant?
     (lambda (object)
       (fx<=? #x100 (object-datum object) #x1FF))))
-(register-predicate! %record-type-proxy? 'record-type-proxy)
+(register-predicate! record-type-proxy? 'record-type-proxy)
 
 (define-integrable (%record-type-proxy->index marker)
   (fix:- (object-new-type (ucode-type fixnum) marker) #x100))
@@ -451,7 +451,7 @@ USA.
 (define (%record-type-ref record index)
   (let ((marker (%record-ref record index)))
     (cond ((record-type? marker) marker)
-	  ((%record-type-proxy? marker) (%proxy->record-type marker))
+	  ((record-type-proxy? marker) (%proxy->record-type marker))
 	  (else #f))))
 
 (define (record-constructor record-type #!optional field-names)

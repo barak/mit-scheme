@@ -415,6 +415,7 @@ USA.
   (call-pkg-init-proc '(runtime garbage-collector) 'initialize-package!)
   (call-pkg-init-proc '(runtime tagged-dispatch) 'initialize-cache-numbers!)
   (call-pkg-init-proc '(runtime types) 'initialize-package!)
+  (call-pkg-init-proc '(runtime procedure) 'initialize-package!)
   (run-pkg-boot-inits '(runtime population))
   (run-pkg-boot-inits '(runtime 1d-property))
   (run-pkg-boot-inits '(runtime record))
