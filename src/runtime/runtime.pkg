@@ -5691,17 +5691,25 @@ USA.
 	  probe-cache-2
 	  probe-cache-3
 	  probe-cache-4)
-  (export (runtime types)
-	  %dispatch-metatag?
-	  %make-dispatch-metatag
-	  %make-tag
-	  metatag-tag)
   (export (runtime record)
 	  %dispatch-tag-extra-index
 	  %dispatch-tag-extra-ref
 	  %dispatch-tag-extra-set!
 	  %dispatch-tag-name
-	  %dispatch-tag-predicate))
+	  %dispatch-tag-predicate)
+  (export (runtime type-dispatch)
+	  fill-cache
+	  new-cache
+	  probe-cache
+	  probe-cache-1
+	  probe-cache-2
+	  probe-cache-3
+	  probe-cache-4)
+  (export (runtime types)
+	  %dispatch-metatag?
+	  %make-dispatch-metatag
+	  %make-tag
+	  metatag-tag))
 
 (define-package (runtime types)
   (files "types")
@@ -5802,6 +5810,18 @@ USA.
 	  system-triple-type-code?
 	  system-vector-type-code?
 	  unicode-string?))
+
+(define-package (runtime type-dispatch)
+  (files "type-dispatch")
+  (parent (runtime))
+  (export ()
+	  chaining-type-dispatcher
+	  define-type-dispatch-handler
+	  standard-type-dispatcher
+	  type-dispatcher-arity
+	  type-dispatcher-name
+	  type-dispatcher-rules
+	  type-dispatcher?))
 
 (define-package (runtime crypto)
   (files "crypto")

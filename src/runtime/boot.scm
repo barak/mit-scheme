@@ -74,10 +74,10 @@ USA.
 
 ;;;; Printing
 
-(define (define-print-method predicate print-method)
+(define (define-print-method type print-method)
   (seq:after-printer 'add-action!
     (lambda ()
-      (define-print-method predicate print-method))))
+      (define-print-method type print-method))))
 
 (define (standard-print-method name #!optional get-parts hash?)
   (%record standard-print-method-tag
@@ -92,10 +92,14 @@ USA.
 ;;; Would have used normal records here but the record abstraction is defined
 ;;; after this is needed.
 
-(define (standard-print-method? object)
-  (and (%record? object)
-       (fix:= 4 (%record-length object))
-       (eq? standard-print-method-tag (%record-ref object 0))))
+(define standard-print-method?)
+(define (initialize-package!)
+  (set! standard-print-method?
+	(refine-type %record?
+	  (lambda (r)
+	    (and (fx=? 4 (%record-length r))
+		 (eq? standard-print-method-tag (%record-ref r 0))))))
+  unspecific)
 
 (define (standard-print-method-name spm object)
   (let ((name (%record-ref spm 1)))
@@ -129,10 +133,10 @@ USA.
 	  (if printer (printer object port))
 	  (write-char #\] port)))))
 
-(define (define-pp-describer predicate describer)
+(define (define-pp-describer type describer)
   (seq:after-pretty-printer 'add-action!
     (lambda ()
-      (define-pp-describer predicate describer))))
+      (define-pp-describer type describer))))
 
 (define (simple-parser-method procedure)
   (lambda (objects lose)

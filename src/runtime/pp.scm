@@ -32,7 +32,7 @@ USA.
 
 (add-boot-deps! '(runtime compound-predicate)
 		'(runtime dynamic)
-		'(runtime predicate-dispatch))
+		'(runtime type-dispatch))
 
 ;; Controls the appearance of procedures in the CASE statement used
 ;; to describe an arity dispatched procedure:
@@ -160,15 +160,15 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! pp-description
-	 (standard-predicate-dispatcher 'pp-description 1
+	 (standard-type-dispatcher 'pp-description 1
 	   (lambda (object)
 	     (declare (ignore object))
 	     #f)))
 
    (set! define-pp-describer
-	 (named-lambda (define-pp-describer predicate describer)
-	   (define-predicate-dispatch-handler pp-description
-	     (list predicate)
+	 (named-lambda (define-pp-describer type describer)
+	   (define-type-dispatch-handler pp-description
+	     (list type)
 	     describer)))
 
    (define-pp-describer weak-pair?
@@ -176,7 +176,7 @@ USA.
        `((weak-car ,(weak-car wp))
 	 (weak-cdr ,(weak-cdr wp)))))
 
-   (define-pp-describer (conjoin cell? (complement promise?))
+   (define-pp-describer (conjoin-types cell? (complement-type promise?))
      (lambda (cell)
        `((contents ,(cell-contents cell)))))))
 

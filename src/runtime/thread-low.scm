@@ -58,10 +58,11 @@ USA.
 (define-integrable link-tag
   '|#[(runtime thread)link]|)
 
-(define-integrable (link? object)
-  (and (%record? object)
-       (fix:= 4 (%record-length object))
-       (eq? (%record-ref object 0) link-tag)))
+(define link?
+  (refine-type %record?
+    (lambda (r)
+      (and (fx=? 4 (%record-length r))
+	   (eq? link-tag (%record-ref r 0))))))
 (register-predicate! link? 'link '<= %record?)
 
 (define-integrable (make-link prev next item)

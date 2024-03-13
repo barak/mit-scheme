@@ -36,3 +36,42 @@ USA.
 ;;; the new runtime.  It contains temporary hacks that will be kept
 ;;; only until the new runtime is released.
 
+(eval
+ '(define (predicate-definitions structure)
+    (let ((predicate-name (structure/predicate structure)))
+      (if predicate-name
+	  (let* ((context (structure/context structure))
+		 (tag-expression
+		  (close (structure/tag-expression structure) context))
+		 (name (parser-context/name context)))
+	    (case (structure/physical-type structure)
+	      ((record)
+	       `((define ,predicate-name
+		   (,(absolute 'record-predicate context)
+		    ,(close (structure/type-descriptor structure) context)))))
+	      ((vector)
+	       `((define ,predicate-name
+		   (,(absolute 'refine-type context)
+		    ,(absolute 'vector? context)
+		    (lambda (v)
+		      (and (,(absolute 'fxpositive? context)
+			    (,(absolute 'vector-length context) v))
+			   (,(absolute 'eq? context)
+			    (,(absolute 'vector-ref context) v 0)
+			    ,tag-expression)))))
+		 (,(absolute 'register-predicate! context)
+		  ,predicate-name ',name
+		  '<= ,(absolute 'vector? context))))
+	      ((list)
+	       `((define ,predicate-name
+		   (,(absolute 'refine-type context)
+		    ,(absolute 'pair? context)
+		    (lambda (p)
+		      (,(absolute 'eq? context)
+		       (,(absolute 'car context) p 0)
+		       ,tag-expression))))
+		 (,(absolute 'register-predicate! context)
+		  ,predicate-name ',name
+		  '<= ,(absolute 'pair? context))))))
+	  '())))
+ (->environment '(runtime syntax defstruct)))

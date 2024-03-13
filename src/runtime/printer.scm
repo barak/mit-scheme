@@ -32,7 +32,7 @@ USA.
 
 (add-boot-deps! '(runtime microcode-tables)
 		'(runtime dynamic)
-		'(runtime predicate-dispatch))
+		'(runtime type-dispatch))
 
 (define *unparse-abbreviate-quotations?* #!default)
 (define *unparse-compound-procedure-names?* #!default)
@@ -377,7 +377,7 @@ USA.
 	 (standard-print-method-parts print-method object))))
 
 (define-deferred get-print-method
-  (standard-predicate-dispatcher 'get-print-method 1
+  (standard-type-dispatcher 'get-print-method 1
     (lambda (object)
       (declare (ignore object))
       #f)))
@@ -385,9 +385,9 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! define-print-method
-	 (named-lambda (define-print-method predicate print-method)
-	   (define-predicate-dispatch-handler get-print-method
-	     (list predicate)
+	 (named-lambda (define-print-method type print-method)
+	   (define-type-dispatch-handler get-print-method
+	     (list type)
 	     (lambda (object)
 	       (declare (ignore object))
 	       print-method))))
