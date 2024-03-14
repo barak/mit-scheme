@@ -31,7 +31,7 @@ USA.
 (declare (usual-integrations))
 
 (define type-dispatcher?
-  (refine-type apply-hook?
+  (refine-type 'type-dispatcher apply-hook?
     (lambda (e)
       (metadata? (%apply-hook-extra e)))))
 

@@ -54,7 +54,7 @@ USA.
   (fix:lsh (char->integer char) -21))
 
 (define bitless-char?
-  (refine-type char?
+  (refine-type 'bitless-char char?
     (lambda (char)
       (fix:< (char->integer char) char-code-limit))))
 
@@ -83,13 +83,13 @@ USA.
   (fix:< (char->integer char) #x100))
 
 (define 8-bit-char?
-  (refine-type char? char-8-bit?))
+  (refine-type '8-bit-char char? char-8-bit?))
 
 (define-integrable (char-ascii? char)
   (fix:< (char->integer char) #x80))
 
 (define ascii-char?
-  (refine-type char? char-ascii?))
+  (refine-type 'ascii-char char? char-ascii?))
 
 (define (char=-predicate char)
   (guarantee char? char 'char=-predicate)
@@ -178,7 +178,7 @@ USA.
        (ucd-nv-value char)))
 
 (define radix?
-  (refine-type non-negative-fixnum?
+  (refine-type 'radix non-negative-fixnum?
     (lambda (n)
       (fix:<= 2 n 36))))
 
@@ -367,12 +367,12 @@ USA.
 ;;;; Unicode characters
 
 (define unicode-code-point?
-  (refine-type index-fixnum?
+  (refine-type 'unicode-code-point index-fixnum?
     (lambda (n)
       (fx<? n char-code-limit))))
 
 (define unicode-scalar-value?
-  (refine-type unicode-code-point?
+  (refine-type 'unicode-scalar-value unicode-code-point?
     (lambda (cp)
       (not (utf16-surrogate? cp)))))
 

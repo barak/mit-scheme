@@ -232,47 +232,51 @@ USA.
   (name xml-name-symbol?))
 
 (define xml-whitespace-string?
-  (uniform-string-type (char-set-predicate char-set:xml-whitespace)))
+  (uniform-string-type 'xml-whitespace-string
+    (char-set-predicate char-set:xml-whitespace)))
 (register-predicate! xml-whitespace-string? 'xml-whitespace-string '<= string?)
 
 (define xml-misc-content-item?
-  (disjoin-types xml-comment?
-		 xml-whitespace-string?
-		 xml-processing-instructions?))
+  (disjoin-types 'xml-misc-content-item
+    xml-comment?
+    xml-whitespace-string?
+    xml-processing-instructions?))
 
 (define xml-misc-content?
-  (uniform-list-type xml-misc-content-item?))
+  (uniform-list-type 'xml-misc-content xml-misc-content-item?))
 
 (define char-set:xml-version
   (char-set-union char-set:alphanumeric (string->char-set "_.:-")))
 
 (define xml-version?
-  (refine-type (uniform-string-type (char-set-predicate char-set:xml-version))
+  (refine-type 'xml-version
+      (uniform-string-type #f (char-set-predicate char-set:xml-version))
     (lambda (s)
       (fxpositive? (string-length s)))))
 (register-predicate! xml-version? 'xml-version '<= string?)
 
 (define xml-encoding?
-  (disjoin-types
-   false?
-   (refine-type string?
-     (lambda (s)
-       (let ((end (string-length s)))
-	 (and (fxpositive? end)
-	      (char-alphabetic? (string-ref s 0))
-	      (string-every (char-set-predicate char-set:xml-encoding)
-			    (string-slice s 1))))))))
+  (disjoin-types 'xml-encoding
+    false?
+    (refine-type #f string?
+      (lambda (s)
+	(let ((end (string-length s)))
+	  (and (fxpositive? end)
+	       (char-alphabetic? (string-ref s 0))
+	       (string-every (char-set-predicate char-set:xml-encoding)
+			     (string-slice s 1))))))))
 (register-predicate! xml-encoding? 'xml-encoding '<= string?)
 
 (define char-set:xml-encoding
   (char-set-union char-set:alphanumeric (string->char-set "_.-")))
 
 (define string-of-xml-chars?
-  (uniform-string-type (char-set-predicate char-set:xml-char)))
+  (uniform-string-type 'string-of-xml-chars
+    (char-set-predicate char-set:xml-char)))
 (register-predicate! string-of-xml-chars? 'string-of-xml-chars '<= string?)
 
 (define xml-char-data?
-  (disjoin-types xml-char? string-of-xml-chars?))
+  (disjoin-types 'xml-char-data xml-char? string-of-xml-chars?))
 
 (define (canonicalize-char-data object)
   (cond ((xml-char? object) (string object))
@@ -293,13 +297,14 @@ USA.
 (register-predicate! xml-attribute-list? 'xml-attribute-list '<= string?)
 
 (define xml-content-item?
-  (disjoin-types xml-char-data?
-		 xml-comment?
-		 xml-element?
-		 xml-processing-instructions?))
+  (disjoin-types 'xml-content-item
+    xml-char-data?
+    xml-comment?
+    xml-element?
+    xml-processing-instructions?))
 
 (define xml-content?
-  (uniform-list-type xml-content-item?))
+  (uniform-list-type 'xml-content xml-content-item?))
 
 (define (canonicalize-content content)
   (letrec
@@ -379,7 +384,8 @@ USA.
 		  (string->char-set " \r\n-'()+,./:=?;!*#@$_%")))
 
 (define public-id?
-  (uniform-string-type (char-set-predicate char-set:xml-public-id)))
+  (uniform-string-type 'public-id
+    (char-set-predicate char-set:xml-public-id)))
 (register-predicate! public-id? 'public-id '<= string?)
 
 (define (!attlist-type? object)

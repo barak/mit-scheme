@@ -39,16 +39,17 @@ USA.
   (object-type? apply-hook-type-code object))
 
 (define compound-procedure?
-  (disjoin-types simple-procedure?
-		 extended-procedure?))
+  (disjoin-types 'compound-procedure
+    simple-procedure?
+    extended-procedure?))
 
 (define compiled-procedure?
-  (refine-type compiled-entry-address?
+  (refine-type 'compiled-procedure compiled-entry-address?
     (lambda (entry)
       (eq? 0 (system-triple-first (compiled-entry-kind entry))))))
 
 (define compiled-closure?
-  (refine-type compiled-procedure?
+  (refine-type 'compiled-closure compiled-procedure?
     (lambda (entry)
       (compiled-code-block/manifest-closure?
 	(compiled-code-address->block entry)))))
@@ -62,28 +63,29 @@ USA.
 (define procedure-arity?)
 (define (initialize-package!)
   (set! procedure?
-	(disjoin-types primitive-procedure?
-		       compound-procedure?
-		       compiled-procedure?
-		       apply-hook?
-		       entity?
-		       applicable-record?))
+	(disjoin-types 'procedure
+	  primitive-procedure?
+	  compound-procedure?
+	  compiled-procedure?
+	  apply-hook?
+	  entity?
+	  applicable-record?))
   (set! thunk?
-	(refine-type procedure?
+	(refine-type 'thunk procedure?
 	  (lambda (proc)
 	    (procedure-arity-valid? proc 0))))
   (set! unary-procedure?
-	(refine-type procedure?
+	(refine-type 'unary-procedure procedure?
 	  (lambda (proc)
 	    (procedure-arity-valid? proc 1))))
   (set! binary-procedure?
-	(refine-type procedure?
+	(refine-type 'binary-procedure procedure?
 	  (lambda (proc)
 	    (procedure-arity-valid? proc 2))))
   (set! simple-arity?
 	non-negative-fixnum?)
   (set! general-arity?
-	(refine-type pair?
+	(refine-type 'general-arity pair?
 	  (lambda (p)
 	    (and (non-negative-fixnum? (car p))
 		 (if (cdr p)
@@ -91,7 +93,7 @@ USA.
 			  (fx>=? (cdr p) (car p)))
 		     #t)))))
   (set! procedure-arity?
-	(disjoin-types simple-arity? general-arity?))
+	(disjoin-types 'procedure-arity simple-arity? general-arity?))
   unspecific)
 
 ;;;; Generic Procedures
@@ -395,7 +397,7 @@ USA.
 		      dispatched-cases))))
 
 (define arity-dispatched-procedure?
-  (refine-type entity?
+  (refine-type 'arity-dispatched-procedure entity?
     (lambda (entity)
       (let ((extra (entity-extra entity)))
 	(and (vector? extra)

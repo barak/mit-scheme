@@ -153,7 +153,7 @@ USA.
   (make-scode-definition name (make-unassigned-reference-trap)))
 
 (define scode-open-block?
-  (refine-type scode-sequence?
+  (refine-type 'scode-open-block scode-sequence?
     (lambda (s)
       (let ((actions (scode-sequence-actions s)))
 	(and (pair? actions)

@@ -53,7 +53,7 @@ USA.
 (define (make-char-set low high)
 
   (define predicate
-    (refine-type char?
+    (refine-type 'char-set-predicate char?
       (lambda (char)
 	(char-in-set? char char-set))))
 
@@ -310,14 +310,15 @@ USA.
 ;;;; Ranges
 
 (define range?
-  (disjoin-types (refine-type non-negative-fixnum?
-		   (lambda (n)
-		     (fx<=? n #x110000)))
-		 (refine-type pair?
-		   (lambda (p)
-		     (or (non-negative-fixnum? (car p))
-			 (non-negative-fixnum? (cdr p))
-			 (fx<=? (car p) (cdr p) #x110000))))))
+  (disjoin-types 'range
+    (refine-type #f non-negative-fixnum?
+      (lambda (n)
+	(fx<=? n #x110000)))
+    (refine-type #f pair?
+      (lambda (p)
+	(or (non-negative-fixnum? (car p))
+	    (non-negative-fixnum? (cdr p))
+	    (fx<=? (car p) (cdr p) #x110000))))))
 
 (define (make-range start end)
   (if (fix:= (fix:- end start) 1)
@@ -381,9 +382,10 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! cpl-element?
-	 (disjoin-types range? char? string? char-set? char-set-name?))
+	 (disjoin-types 'cpl-element
+	   range? char? string? char-set? char-set-name?))
    (set! code-point-list?
-	 (uniform-list-type cpl-element?))
+	 (uniform-list-type 'code-point-list cpl-element?))
    unspecific))
 
 (define (cpl->ilist cpl)
@@ -414,7 +416,7 @@ USA.
 ;;;; Named char sets
 
 (define char-set-name?
-  (refine-type interned-symbol?
+  (refine-type 'char-set-name interned-symbol?
     (lambda (s)
       (and (find-named-char-set s) #t))))
 

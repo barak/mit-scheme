@@ -55,10 +55,11 @@ USA.
     (register-predicate! root-tagged-vector? 'root-tagged-vector?
 			 '<= vector?)
     (named-lambda (make-vector-tag parent name enumeration)
-      (define (predicate object)
-	(and (vector? object)
-	     (fix:> (vector-length object) 0)
-	     (eq? tag (vector-ref object 0))))
+      (define predicate
+	(refine-type 'tagged-vector vector?
+	  (lambda (v)
+	    (and (fxpositive? (vector-length v))
+		 (eq? tag (vector-ref v 0))))))
       (define tag
 	(%make-vector-tag (or parent root-tag)
 			  name

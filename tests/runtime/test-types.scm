@@ -41,13 +41,15 @@ USA.
   (lambda ()
     (assert-true (type? pair?))
     (assert-eq (type-name pair?) 'pair)
+    (assert-eq (type-derivation pair?) #f)
     (assert-null (type-supersets pair?))
 
     (assert-true (type? symbol?))
-    (let ((name (type-name symbol?)))
-      (assert-true (pair? name))
-      (assert-eq (car name) 'disjunction)
-      (assert-lset= eq? (cdr name) '(interned-symbol uninterned-symbol)))
+    (assert-eq (type-name symbol?) 'symbol)
+    (let ((d (type-derivation symbol?)))
+      (assert-true (pair? d))
+      (assert-eq (car d) 'disjoin)
+      (assert-lset= eq? (cdr d) (list interned-symbol? uninterned-symbol?)))
     (assert-null (type-supersets pair?))))
 
 (define-test 'ordering

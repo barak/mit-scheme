@@ -53,21 +53,22 @@ USA.
   (object-type? (ucode-type unicode-string) object))
 
 (define simple-string?
-  (disjoin-types unicode-string? legacy-string?))
+  (disjoin-types 'simple-string unicode-string? legacy-string?))
 
 (define mutable-simple-string?
-  (disjoin-types (refine-type unicode-string?
-		   (lambda (ustring)
-		     (%ustring-mutable? ustring)))
-		 legacy-string?))
+  (disjoin-types 'mutable-simple-string
+    (refine-type #f unicode-string?
+      (lambda (ustring)
+	(%ustring-mutable? ustring)))
+    legacy-string?))
 
 (define immutable-simple-string?
-  (refine-type unicode-string?
+  (refine-type 'immutable-simple-string unicode-string?
     (lambda (ustring)
       (%ustring-immutable? ustring))))
 
 (define slice?
-  (refine-type %record?
+  (refine-type 'slice %record?
     (lambda (record)
       (and (fix:= 4 (%record-length record))
 	   (eq? %slice-tag (%record-ref record 0))))))
@@ -79,15 +80,17 @@ USA.
   (immutable-simple-string? (slice-string slice)))
 
 (define string?
-  (disjoin-types simple-string? slice?))
+  (disjoin-types 'string simple-string? slice?))
 
 (define mutable-string?
-  (disjoin-types mutable-simple-string?
-		 (refine-type slice? slice-mutable?)))
+  (disjoin-types 'mutable-string
+    mutable-simple-string?
+    (refine-type #f slice? slice-mutable?)))
 
 (define immutable-string?
-  (disjoin-types immutable-simple-string?
-		 (refine-type slice? slice-immutable?)))
+  (disjoin-types 'immutable-string
+    immutable-simple-string?
+    (refine-type #f slice? slice-immutable?)))
 
 (define (string-mutable? string)
   (cond ((%legacy-string? string))
@@ -915,7 +918,7 @@ USA.
 	(full-check))))
 
 (define nfc-string?
-  (refine-type string? string-in-nfc?))
+  (refine-type 'nfc-string string? string-in-nfc?))
 
 (define (string->nfc string)
   (if (and (%unicode-string? string)
@@ -1810,7 +1813,7 @@ USA.
 	(else (every-loop char-8-bit? ustring3-ref string start end))))))
 
 (define 8-bit-string?
-  (refine-type string? string-8-bit?))
+  (refine-type '8-bit-string string? string-8-bit?))
 
 (define-integrable (every-loop proc ref string start end)
   (let loop ((i start))

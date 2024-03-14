@@ -142,20 +142,21 @@ USA.
 (define lambda-tag:key (object-new-type (ucode-type constant) 5))
 
 (define lambda-tag?
-  (disjoin-types (refine-type misc-constant?
-		   (lambda (object)
-		     (or (eq? object lambda-tag:key)
-			 (eq? object lambda-tag:optional)
-			 (eq? object lambda-tag:rest))))
-		 ;; The following are called `lambda-tag', but they are
-		 ;; semantically quite different from lambda list keywords.
-		 ;; This should be fixed some day.
-		 (refine-type interned-symbol?
-		   (lambda (object)
-		     (or (eq? object scode-lambda-name:internal-lambda)
-			 (eq? object scode-lambda-name:fluid-let)
-			 (eq? object scode-lambda-name:let)
-			 (eq? object scode-lambda-name:unnamed))))))
+  (disjoin-types 'lambda-tag
+    (refine-type #f misc-constant?
+      (lambda (object)
+	(or (eq? object lambda-tag:key)
+	    (eq? object lambda-tag:optional)
+	    (eq? object lambda-tag:rest))))
+    ;; The following are called `lambda-tag', but they are
+    ;; semantically quite different from lambda list keywords.
+    ;; This should be fixed some day.
+    (refine-type #f interned-symbol?
+      (lambda (object)
+	(or (eq? object scode-lambda-name:internal-lambda)
+	    (eq? object scode-lambda-name:fluid-let)
+	    (eq? object scode-lambda-name:let)
+	    (eq? object scode-lambda-name:unnamed))))))
 
 (define (map-mit-lambda-list procedure bvl)
   (let loop ((bvl bvl))

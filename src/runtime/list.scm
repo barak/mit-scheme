@@ -187,17 +187,17 @@ USA.
 	(else (error:not-a list? object caller))))
 
 (define empty-list?
-  (refine-type misc-constant?
+  (refine-type 'null misc-constant?
     (lambda (object)
       (eq? '() object))))
 
 (define non-empty-list?
-  (refine-type pair?
+  (refine-type 'non-empty-list pair?
     (lambda (p)
       (list? (cdr p)))))
 
 (define not-pair?
-  (complement-type pair?))
+  (complement-type 'not-pair pair?))
 
 (define (list= elt= . lists)
 
@@ -929,7 +929,7 @@ USA.
 ;;;; Association lists
 
 (define alist?
-  (refine-type list?
+  (refine-type 'alist list?
     (lambda (items)
       (every pair? items))))
 
@@ -1305,7 +1305,7 @@ USA.
 		   (loop (cdr items))))))))
 
 (define list-of-unique-symbols?
-  (refine-type (uniform-list-type symbol?)
+  (refine-type 'list-of-unique-symbols (uniform-list-type #f symbol?)
     (lambda (elts)
       (not (any-duplicates? elts eq?)))))
 

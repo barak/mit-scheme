@@ -64,16 +64,20 @@ USA.
 (define (fxsquare n) (fx* n n))
 
 (define positive-fixnum?
-  (refine-type fixnum? fxpositive?))
+  (refine-type 'positive-fixnum fixnum? fxpositive?))
 
 (define negative-fixnum?
-  (refine-type fixnum? fxnegative?))
+  (refine-type 'negative-fixnum fixnum? fxnegative?))
 
 (define non-positive-fixnum?
-  (refine-type fixnum? (lambda (fixnum) (not (fxpositive? fixnum)))))
+  (refine-type 'non-positive-fixnum fixnum?
+    (lambda (fixnum)
+      (not (fxpositive? fixnum)))))
 
 (define non-negative-fixnum?
-  (refine-type fixnum? (lambda (fixnum) (not (fxnegative? fixnum)))))
+  (refine-type 'non-negative-fixnum fixnum?
+    (lambda (fixnum)
+      (not (fxnegative? fixnum)))))
 
 (define (fxodd? n)
   (fix:= (fix:and n 1) 1))
@@ -658,7 +662,7 @@ USA.
   (int:remainder integer-remainder 2))
 
 (define int:integer?
-  (disjoin-types fixnum? bignum?))
+  (disjoin-types 'int:integer fixnum? bignum?))
 
 (define-integrable (int:<= n m) (not (int:> n m)))
 (define-integrable (int:>= n m) (not (int:< n m)))

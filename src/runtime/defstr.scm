@@ -768,6 +768,7 @@ differences:
 	    ((vector)
 	     `((define ,predicate-name
 		 (,(absolute 'refine-type context)
+		  ',name
 		  ,(absolute 'vector? context)
 		  (lambda (v)
 		    (and (,(absolute 'fxpositive? context)
@@ -781,6 +782,7 @@ differences:
 	    ((list)
 	     `((define ,predicate-name
 		 (,(absolute 'refine-type context)
+		  ',name
 		  ,(absolute 'pair? context)
 		  (lambda (p)
 		    (,(absolute 'eq? context)

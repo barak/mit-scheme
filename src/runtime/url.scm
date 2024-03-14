@@ -77,15 +77,15 @@ USA.
   (if (uri-scheme uri) #f #t))
 
 (define absolute-uri?
-  (refine-type uri? uri-absolute?))
+  (refine-type 'absolute-uri uri? uri-absolute?))
 (register-predicate! absolute-uri? 'absolute-uri '<= uri?)
 
 (define relative-uri?
-  (refine-type uri? uri-relative?))
+  (refine-type 'relative-uri uri? uri-relative?))
 (register-predicate! relative-uri? 'relative-uri '<= uri?)
 
 (define uri-scheme?
-  (refine-type interned-symbol?
+  (refine-type 'uri-scheme interned-symbol?
     (lambda (object)
       (*match-symbol matcher:scheme object))))
 
@@ -97,14 +97,14 @@ USA.
 ;;; an empty segment.
 
 (define uri-path?
-  (uniform-list-type string?))
+  (uniform-list-type 'uri-path string?))
 
 (define (uri-path-absolute? path)
   (guarantee uri-path? path 'uri-path-absolute?)
   (path-absolute? path))
 
 (define path-absolute?
-  (refine-type pair?
+  (refine-type 'path-absolute pair?
     (lambda (p)
       (fxzero? (string-length (car p))))))
 
@@ -113,7 +113,7 @@ USA.
   (path-relative? path))
 
 (define path-relative?
-  (complement-type path-absolute?))
+  (complement-type 'path-relative path-absolute?))
 
 (define-record-type <uri-authority>
     (%make-uri-authority userinfo host port)

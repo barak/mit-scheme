@@ -33,27 +33,26 @@ USA.
 (add-boot-deps! '(runtime microcode-tables))
 
 (define scode-expression?
-  (disjoin-types scode-access?
-		 scode-assignment?
-		 scode-combination?
-		 scode-comment?
-		 scode-conditional?
-		 scode-definition?
-		 scode-delay?
-		 scode-disjunction?
-		 scode-extended-lambda?
-		 scode-lexpr?
-		 scode-quotation?
-		 scode-sequence?
-		 scode-simple-lambda?
-		 scode-the-environment?
-		 scode-variable?
-		 (refine-type compiled-code-address?
-		   (lambda (entry)
-		     (eq? 'compiled-expression (compiled-entry-type entry))))))
+  (disjoin-types 'scode-expression
+    scode-access?
+    scode-assignment?
+    scode-combination?
+    scode-comment?
+    scode-conditional?
+    scode-definition?
+    scode-delay?
+    scode-disjunction?
+    scode-extended-lambda?
+    scode-lexpr?
+    scode-quotation?
+    scode-sequence?
+    scode-simple-lambda?
+    scode-the-environment?
+    scode-variable?
+    compiled-expression?))
 (register-predicate! scode-expression? 'scode-expression)
 
-(define scode-constant? (complement-type scode-expression?))
+(define scode-constant? (complement-type 'scode-constant scode-expression?))
 (register-predicate! scode-constant? 'scode-constant)
 
 ;;;; Quotation
@@ -212,7 +211,7 @@ USA.
   (make-scode-comment (cons declaration-tag text) expression))
 
 (define scode-declaration?
-  (refine-type scode-comment?
+  (refine-type 'scode-declaration scode-comment?
     (lambda (comment)
       (let ((text (scode-comment-text comment)))
 	(and (pair? text)
@@ -254,7 +253,7 @@ USA.
   (make-scode-access system-global-environment name))
 
 (define scode-absolute-reference?
-  (refine-type scode-access?
+  (refine-type 'scode-absolute-reference scode-access?
     (lambda (object)
       (system-global-environment? (scode-access-environment object)))))
 
@@ -352,7 +351,7 @@ USA.
 			  (list (make-scode-the-environment) name)))
 
 (define scode-unassigned??
-  (refine-type scode-combination?
+  (refine-type 'scode-unassigned? scode-combination?
     (lambda (comb)
        (and (eq? (scode-combination-operator comb)
 		 (ucode-primitive lexical-unassigned?))
@@ -436,7 +435,7 @@ USA.
 		required optional))))
 
 (define scode-lambda?
-  (disjoin-types scode-simple-lambda? scode-extended-lambda?))
+  (disjoin-types 'scode-lambda scode-simple-lambda? scode-extended-lambda?))
 
 (define (scode-lambda-name lambda)
   (cond ((scode-simple-lambda? lambda) (slambda-name lambda))

@@ -257,8 +257,9 @@ USA.
 ;;;; Interpreter Environments
 
 (define interpreter-environment?
-  (disjoin-types system-global-environment?
-		 ic-environment?))
+  (disjoin-types 'interpreter-environment
+    system-global-environment?
+    ic-environment?))
 
 (define (interpreter-environment/reference-type environment name)
   (let ((i ((ucode-primitive lexical-reference-type 2) environment name))
@@ -907,10 +908,11 @@ USA.
 	 (dbg-procedure/source-code procedure))))
 
 (define environment?
-  (disjoin-types system-global-environment?
-		 ic-environment?
-		 stack-ccenv?
-		 closure-ccenv?))
+  (disjoin-types 'environment
+    system-global-environment?
+    ic-environment?
+    stack-ccenv?
+    closure-ccenv?))
 (register-predicate! environment? 'environment)
 (register-predicate! interpreter-environment? 'top-level-environment
 		     '<= environment?)

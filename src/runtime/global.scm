@@ -247,16 +247,16 @@ USA.
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
 
 (define object-non-pointer?
-  (disjoin-types gc-non-pointer? manifest-nm-vector?))
+  (disjoin-types 'object-non-pointer gc-non-pointer? manifest-nm-vector?))
 
 (define object-pointer?
-  (disjoin-types gc-pointer? broken-heart?))
+  (disjoin-types 'object-pointer gc-pointer? broken-heart?))
 
 (define undefined-value?
   ;; Note: the printer takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
   ;; (object-type? (ucode-type constant) object)
-  (refine-type misc-constant?
+  (refine-type 'undefined-value misc-constant?
     (lambda (constant)
       (or (fx=? (object-datum constant) 1)
 	  (fx=? (object-datum constant) 2)))))

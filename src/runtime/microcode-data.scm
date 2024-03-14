@@ -38,8 +38,9 @@ USA.
   (stack-address-offset 1))
 
 (define return-address?
-  (disjoin-types interpreter-return-address?
-		 compiled-return-address?))
+  (disjoin-types 'return-address
+    interpreter-return-address?
+    compiled-return-address?))
 
 (define-integrable (make-return-address code)
   ((ucode-primitive map-code-to-machine-address 2) (ucode-type return-address)
@@ -71,10 +72,12 @@ USA.
 ;;;; Compiled Code Entries
 
 (define compiled-code-address?
-  (disjoin-types compiled-entry-address? compiled-return-address?))
+  (disjoin-types 'compiled-code-address
+    compiled-entry-address?
+    compiled-return-address?))
 
 (define compiled-expression?
-  (refine-type compiled-code-address?
+  (refine-type 'compiled-expression compiled-code-address?
     (lambda (entry)
       (eq? 'compiled-expression (compiled-entry-type entry)))))
 

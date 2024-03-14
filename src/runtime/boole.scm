@@ -37,17 +37,17 @@ USA.
 (define true #t)
 
 (define false?
-  (refine-type misc-false?
+  (refine-type 'false misc-false?
     (lambda (object)
       (eq? #f object))))
 
 (define true?
-  (refine-type misc-constant?
+  (refine-type 'true misc-constant?
     (lambda (object)
       (eq? #t object))))
 
 (define boolean?
-  (disjoin-types false? true?))
+  (disjoin-types 'boolean false? true?))
 
 ;; R7RS says that the args to this procedure must satisfy boolean?.
 ;; We relax that to allow any object.

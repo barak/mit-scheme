@@ -42,9 +42,10 @@ USA.
   (guarantee dispatch-tag? tag 'MAKE-TAGGED-VECTOR)
   (apply %record tag elements))
 
-(define (tagged-vector? object)
-  (and (%record? object)
-       (dispatch-tag? (%record-ref object 0))))
+(define tagged-vector?
+  (refine-type 'tagged-vector %record?
+    (lambda (r)
+      (dispatch-tag? (%record-ref r 0)))))
 (register-predicate! tagged-vector? 'tagged-vector '<= %record?)
 
 (define (tagged-vector-tag vector)

@@ -361,20 +361,21 @@ Additional notes about syntax:
 ;;;; Identifiers
 
 (define raw-identifier?
-  (refine-type symbol?
+  (refine-type 'raw-identifier symbol?
     (lambda (s)
        ;; This makes `:keyword' objects be self-evaluating.
        (not (keyword? s)))))
 
 (define closed-identifier?
-  (refine-type syntactic-closure?
+  (refine-type 'closed-identifier syntactic-closure?
     (lambda (sc)
       (and (null? (syntactic-closure-free sc))
 	   (identifier? (syntactic-closure-form sc))))))
 
 (define identifier?
-  (disjoin-types raw-identifier?
-		 closed-identifier?))
+  (disjoin-types 'identifier
+    raw-identifier?
+    closed-identifier?))
 
 (register-predicate! identifier? 'identifier)
 (register-predicate! raw-identifier? 'raw-identifier '<= identifier?)

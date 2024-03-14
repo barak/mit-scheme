@@ -176,7 +176,7 @@ USA.
        `((weak-car ,(weak-car wp))
 	 (weak-cdr ,(weak-cdr wp)))))
 
-   (define-pp-describer (conjoin-types cell? (complement-type promise?))
+   (define-pp-describer (differ-types #f cell? promise?)
      (lambda (cell)
        `((contents ,(cell-contents cell)))))))
 

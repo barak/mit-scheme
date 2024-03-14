@@ -329,9 +329,10 @@ USA.
 (define initialize-instance
   (make-generic-procedure '(1 . #F) 'INITIALIZE-INSTANCE))
 
-(define (instance? object)
-  (and (tagged-vector? object)
-       (class-tag? (tagged-vector-tag object))))
+(define instance?
+  (refine-type 'instance tagged-vector?
+    (lambda (v)
+      (class-tag? (tagged-vector-tag v)))))
 (register-predicate! instance? 'instance '<= tagged-vector?)
 
 (define (instance-class instance)

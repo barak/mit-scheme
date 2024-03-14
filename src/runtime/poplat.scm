@@ -37,7 +37,7 @@ USA.
   (%record population-tag mutex (weak-list-set eqv?)))
 
 (define population?
-  (refine-type %record?
+  (refine-type 'population? %record?
     (lambda (r)
       (eq? population-tag (%record-ref r 0)))))
 (register-predicate! population? 'population '<= %record?)

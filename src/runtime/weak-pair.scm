@@ -553,7 +553,7 @@ USA.
 ;;;; Weak alists
 
 (define weak-alist?
-  (uniform-list-type weak-pair?))
+  (uniform-list-type 'weak-alist weak-pair?))
 
 (define (weak-alist-fold kons knil alist #!optional set-alist!)
   (%weak-alist-fold kons knil alist set-alist! 'weak-alist-fold))
@@ -845,7 +845,7 @@ USA.
 	   '()))
 
 (define weak-alist-table?
-  (refine-type %record?
+  (refine-type 'weak-alist-table %record?
     (lambda (r)
       (eq? weak-alist-table-tag (%record-ref r 0)))))
 
@@ -1124,7 +1124,7 @@ USA.
   (%record weak-list-set-tag = (delete-duplicates items =)))
 
 (define weak-list-set?
-  (refine-type %record?
+  (refine-type 'weak-list-set %record?
     (lambda (r)
       (eq? weak-list-set-tag (%record-ref r 0)))))
 ;

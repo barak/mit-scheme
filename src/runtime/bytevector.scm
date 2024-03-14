@@ -35,7 +35,7 @@ USA.
 		'(runtime miscellaneous-global))
 
 (define u8?
-  (refine-type index-fixnum?
+  (refine-type 'u8 index-fixnum?
     (lambda (fixnum)
       (fix:< fixnum #x100))))
 (register-predicate! u8? 'u8 '<= index-fixnum?)
@@ -180,7 +180,7 @@ USA.
 (define-integrable (u16le-byte1 u16) (fix:lsh u16 -8))
 
 (define u16?
-  (refine-type non-negative-fixnum?
+  (refine-type 'u16 non-negative-fixnum?
     (lambda (n)
       (fix:< n #x10000))))
 (register-predicate! u16? 'u16 '<= index-fixnum?)
@@ -244,7 +244,7 @@ USA.
    (define-integrable (u32be-byte3 u32) (fix:and u32 #xFF))
 
    (define u32?
-     (refine-type non-negative-fixnum?
+     (refine-type 'u32 non-negative-fixnum?
        (lambda (n)
 	 (fx<=? n #xFFFFFFFF))))
    (register-predicate! u32? 'u32 '<= index-fixnum?))
@@ -269,7 +269,7 @@ USA.
      (int:remainder u32 #x100))
 
    (define u32?
-     (refine-type exact-nonnegative-integer?
+     (refine-type 'u32 exact-nonnegative-integer?
        (lambda (n)
 	 (<= n #xFFFFFFFF))))
 

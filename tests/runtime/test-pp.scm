@@ -69,10 +69,11 @@ USA.
 (define-test 'custom
   (lambda ()
     (let ((tag (cons 0 0)))
-      (define (loser? object)
-        (and (vector? object)
-             (<= 1 (vector-length object))
-             (eq? tag (vector-ref object 0))))
+      (define loser?
+	(refine-type 'loser vector?
+	  (lambda (v)
+            (and (fxpositive? (vector-length v))
+		 (eq? tag (vector-ref v 0))))))
       (register-predicate! loser? 'loser? '<= vector?)
       (define-print-method loser?
         (standard-print-method

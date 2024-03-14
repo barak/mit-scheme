@@ -270,21 +270,25 @@ USA.
 	(substring string start end))))
 
 (define regexp-match-key?
-  (disjoin-types interned-symbol?
-		 exact-nonnegative-integer?))
+  (disjoin-types 'regexp-match-key
+    interned-symbol?
+    exact-nonnegative-integer?))
 (register-predicate! regexp-match-key? 'regexp-match-key)
 
 (define regexp-replace-subst?
   (let ((elt-type
-	 (disjoin-types string?
-			regexp-match-key? ;includes (pre post)
-			unary-procedure?)))
-    (disjoin-types elt-type
-		   (uniform-list-type elt-type))))
+	 (disjoin-types #f
+	   string?
+	   regexp-match-key?		;includes (pre post)
+	   unary-procedure?)))
+    (disjoin-types 'regexp-replace-subst
+      elt-type
+      (uniform-list-type #f elt-type))))
 (register-predicate! regexp-replace-subst? 'regexp-replace-subst)
 
 (define regexp-match-replacement?
-  (uniform-list-type (disjoin-types string? regexp-match-key?)))
+  (uniform-list-type 'regexp-match-replacement
+    (disjoin-types #f string? regexp-match-key?)))
 (register-predicate! regexp-match-replacement? 'regexp-match-replacement)
 
 (define (subst-match subst match string start end)

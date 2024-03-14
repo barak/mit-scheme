@@ -37,33 +37,53 @@ USA.
 (define %type-tag?
   (%dispatch-tag-predicate %type-metatag))
 
-(define (simple-type name test)
+(define (make-type name derivation test)
   (let ((predicate (%make-apply-hook test #f)))
-    (%set-entity-extra! predicate (%make-tag %type-metatag name predicate '()))
+    (%set-entity-extra! predicate
+			(%make-tag %type-metatag
+				   name predicate (list derivation)))
     predicate))
+
+(define-integrable (%type-dispatch-tag type)
+  (%apply-hook-extra type))
+
+(define-integrable (%type-test type)
+  (%apply-hook-procedure type))
 
 (define type?
   (named-lambda (cold-load:type? object)
     (declare (ignore object))
     #t))
 
-(define (type->dispatch-tag type)
-  (guarantee type? type 'type->dispatch-tag)
-  (%apply-hook-extra type))
-
-(define-integrable (type-name type)
-  (%dispatch-tag-name (type->dispatch-tag type)))
-
 (define (type-test type)
   (guarantee type? type 'type-test)
-  (%apply-hook-procedure type))
+  (%type-test type))
+
+(define (type-dispatch-tag type)
+  (guarantee type? type 'type-dispatch-tag)
+  (%type-dispatch-tag type))
+
+(define-integrable (type-name type)
+  (guarantee type? type 'type-name)
+  (%dispatch-tag-name (%type-dispatch-tag type)))
 
 (define (type-supersets type)
   (guarantee type? type 'type-supersets)
   (weak-list-set->list (%type-supersets type)))
 
 (define-integrable (%type-supersets type)
-  (%tag-supersets (%apply-hook-extra type)))
+  (%tag-supersets (%type-dispatch-tag type)))
+
+(define (type-derivation type)
+  (guarantee type? type 'type-derivation)
+  (%type-derivation type))
+
+(define-integrable (%type-derivation type)
+  (%dispatch-tag-extra-ref (%type-dispatch-tag type) 0))
+
+(define (%type-printer-name type)
+  (or (%dispatch-tag-name (%type-dispatch-tag type))
+      (%type-derivation type)))
 
 (define (object->type object)
   (let ((code (object-type object)))
@@ -73,17 +93,22 @@ USA.
 	  (method object type)
 	  type))))
 
-(define (refine-type type restriction)
+;;;; Type constructor and combinators
+
+(define (simple-type name test)
+  (make-type name #f test))
+
+(define (refine-type name type refinement)
   (let ((subset
-	 (simple-type (list 'refinement (type-name type))
+	 (make-type name (list 'refine type)
 	   (let ((test (type-test type)))
 	     (lambda (object)
 	       (and (test object)
-		    (restriction object)))))))
+		    (refinement object)))))))
     (set-type<=! subset type)
     subset))
 
-(define (disjoin-types . types)
+(define (disjoin-types name . types)
   (cond ((null? types) no-object?)
 	((null? (cdr types))
 	 (guarantee type? (car types) 'disjoin-types)
@@ -92,9 +117,7 @@ USA.
 	 (let ((type1 (car types))
 	       (type2 (cadr types)))
 	   (let ((disjunction
-		  (simple-type (list 'disjunction
-				     (type-name type1)
-				     (type-name type2))
+		  (make-type name (list 'disjoin type1 type2)
 		    (let ((test1 (type-test type1))
 			  (test2 (type-test type2)))
 		      (lambda (object)
@@ -105,7 +128,7 @@ USA.
 	     disjunction)))
 	(else
 	 (let ((disjunction
-		(simple-type (cons 'disjunction (map type-name types))
+		(make-type name (cons 'disjoin types)
 		  (let ((tests (map type-test types)))
 		    (lambda (object)
 		      (any (lambda (test) (test object))
@@ -114,8 +137,8 @@ USA.
 		       (set-type<=! type disjunction))
 		     types)
 	   disjunction))))
-
-(define (conjoin-types . types)
+
+(define (conjoin-types name . types)
   (cond ((null? types) any-object?)
 	((null? (cdr types))
 	 (guarantee type? (car types) 'conjoin-types)
@@ -124,9 +147,7 @@ USA.
 	 (let ((type1 (car types))
 	       (type2 (cadr types)))
 	   (let ((conjunction
-		  (simple-type (list 'conjunction
-				     (type-name type1)
-				     (type-name type2))
+		  (make-type name (list 'conjoin type1 type2)
 		    (let ((test1 (type-test type1))
 			  (test2 (type-test type2)))
 		      (lambda (object)
@@ -137,7 +158,7 @@ USA.
 	     conjunction)))
 	(else
 	 (let ((conjunction
-		(simple-type (cons 'conjunction (map type-name types))
+		(make-type name (cons 'conjoin types)
 		  (let ((tests (map type-test types)))
 		    (lambda (object)
 		      (every (lambda (test) (test object))
@@ -147,31 +168,39 @@ USA.
 		     types)
 	   conjunction))))
 
-(define (complement-type type)
-  (simple-type (list 'complement (type-name type))
+(define (complement-type name type)
+  (make-type name (list 'complement type)
     (let ((test (type-test type)))
       (lambda (object)
 	(not (test object))))))
-
-(define (pair-type car-type cdr-type)
-  (refine-type pair?
+
+(define (differ-types name type1 type2)
+  (make-type name (list 'differ type1 type2)
+    (let ((test1 (type-test type1))
+	  (test2 (type-test type2)))
+      (lambda (object)
+	(and (test1 object)
+	     (not (test2 object)))))))
+
+(define (pair-type name car-type cdr-type)
+  (refine-type name pair?
     (let ((car-test (type-test car-type))
 	  (cdr-test (type-test cdr-type)))
       (lambda (object)
 	(and (car-test (car object))
 	     (cdr-test (cdr object)))))))
 
-(define (uniform-list-type elt-type)
+(define (uniform-list-type name elt-type)
   (let ((type
-	 (simple-type (list 'uniform-list (type-name elt-type))
+	 (make-type name (list 'uniform-list elt-type)
 	   (let ((elt-test (type-test elt-type)))
 	     (lambda (object)
 	       (list-of-type? object elt-test))))))
     (set-type<=! type list?)
     type))
 
-(define (uniform-string-type char-type)
-  (refine-type string?
+(define (uniform-string-type name char-type)
+  (refine-type name string?
     (lambda (s)
       (string-every char-type s))))
 
@@ -366,22 +395,27 @@ USA.
   (define-method (ucode-type sequence)
     (simple-alternative scode-open-block?)))
 
-(define (type<= type1 type2)
-  (guarantee type? type1 'type<=)
-  (guarantee type? type2 'type<=)
-  (%type<= type1 type2))
+(define type<=
+  (named-lambda (cold-load:type<= type1 type2)
+    (let loop ((type1 type1))
+      (%type<= loop type1 type2))))
 
-(define (%type<= type1 type2)
-  (hash-table-intern! type<=-cache
-		      (weak-list type1 type2)
-    (lambda ()
-      (or (eq? type1 type2)
-	  (eq? type1 no-object?)
-	  (eq? type2 any-object?)
-	  (and (not (eq? type1 any-object?))
-	       (not (eq? type2 no-object?))
-	       (weak-list-set-any (lambda (type) (%type<= type type2))
-				  (%type-supersets type1)))))))
+(define after-cold-load:type<=
+  (named-lambda (type<= type1 type2)
+    (guarantee type? type1 'type<=)
+    (guarantee type? type2 'type<=)
+    (let loop ((type1 type1))
+      (hash-table-intern! type<=-cache (weak-list type1 type2)
+	(lambda ()
+	  (%type<= loop type1 type2))))))
+
+(define-integrable (%type<= loop type1 type2)
+  (or (eq? type1 type2)
+      (eq? type1 no-object?)
+      (eq? type2 any-object?)
+      (and (not (eq? type1 any-object?))
+	   (not (eq? type2 no-object?))
+	   (weak-list-set-any loop (%type-supersets type1)))))
 
 (define set-type<=!
   (named-lambda (cold-load:set-type<=! subset superset)
@@ -391,9 +425,7 @@ USA.
 
 (define after-cold-load:set-type<=!
   (named-lambda (set-type<=! subset superset)
-    (guarantee type? subset 'set-type<=!)
-    (guarantee type? superset 'set-type<=!)
-    (if (%type<= superset subset)
+    (if (type<= superset subset)
 	(error "Illegal type loop:" subset superset))
     (weak-list-set-add! superset (%type-supersets subset))
     (hash-table-clear! type<=-cache)))
@@ -408,6 +440,7 @@ USA.
       (lambda ()
 	(set! type<=-cache
 	      (make-hash-table (uniform-weak-list-comparator eq-comparator)))
+	(set! type<= after-cold-load:type<=)
 	(set! set-type<=! after-cold-load:set-type<=!)
 	(for-each (lambda (e)
 		    (set-type<=! (car e) (cdr e)))
@@ -426,22 +459,29 @@ USA.
 	(install-type-methods!)))))
 
 (set! type?
-      (refine-type apply-hook?
+      (refine-type 'type apply-hook?
 	(lambda (hook)
 	  (%type-tag? (%apply-hook-extra hook)))))
 
 (define-print-method type?
   (standard-print-method 'type
     (lambda (type)
-      (list (type-name type)))))
+      (list (or (type-name type) (type-derivation type))))))
+
+(define-pp-describer type?
+  (lambda (type)
+    (list (list 'name (type-name type))
+	  (list 'derivation (type-derivation type))
+	  (list 'dispatch-tag (type-dispatch-tag type))
+	  (list 'supersets (type-supersets type)))))
 
 (define dispatch-tag?
-  (refine-type %record?
+  (refine-type 'dispatch-tag %record?
     (lambda (record)
       (%dispatch-metatag? (%record-ref record 0)))))
 
 (define dispatch-metatag?
-  (refine-type %record?
+  (refine-type 'dispatch-metatag %record?
     (lambda (record)
       (eq? metatag-tag (%record-ref record 0)))))
 (set-type<=! dispatch-metatag? dispatch-tag?)
@@ -459,22 +499,22 @@ USA.
       #f)))
 
 (define default-object?
-  (refine-type misc-constant?
+  (refine-type 'default-object misc-constant?
     (lambda (object)
       (eq? #!default object))))
 
 (define eof-object?
-  (refine-type misc-constant?
+  (refine-type 'eof-object misc-constant?
     (lambda (object)
       (eq? (eof-object) object))))
 
 (define gc-reclaimed-object?
-  (refine-type misc-constant?
+  (refine-type 'gc-reclaimed-object misc-constant?
     (lambda (object)
       (eq? #!reclaimed object))))
 
 (define symbol?
-  (disjoin-types interned-symbol? uninterned-symbol?))
+  (disjoin-types 'symbol interned-symbol? uninterned-symbol?))
 
 ;;;; GC types
 

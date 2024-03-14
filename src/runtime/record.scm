@@ -58,21 +58,22 @@ USA.
 			 applicator instance-marker))))
 
 (define valid-field-specs?
-  (refine-type list?
+  (refine-type 'valid-field-specs list?
     (lambda (object)
       (and (every field-spec? object)
 	   (not (any-duplicates? object eq? field-spec-name))))))
 (register-predicate! valid-field-specs? 'valid-field-specs '<= list?)
 
 (define field-spec?
-  (disjoin-types symbol?
-		 (refine-type pair?
-		   (lambda (p)
-		     (and (symbol? (car p))
-			  (or (and (pair? (cdr p))
-				   (%valid-default-init? (cadr p))
-				   (null? (cddr p)))
-			      (keyword-list? (cdr p))))))))
+  (disjoin-types 'field-spec
+    symbol?
+    (refine-type #f pair?
+      (lambda (p)
+	(and (symbol? (car p))
+	     (or (and (pair? (cdr p))
+		      (%valid-default-init? (cadr p))
+		      (null? (cddr p)))
+		 (keyword-list? (cdr p))))))))
 
 (define (make-field-spec name init)
   (if init
@@ -375,7 +376,7 @@ USA.
 	 (%record-type-applicator record-type))))
 
 (define applicable-record?
-  (refine-type %record? %record-applicator))
+  (refine-type 'applicable-record %record? %record-applicator))
 
 (define (record-applicator record)
   (guarantee record? record 'record-applicator)
@@ -388,7 +389,7 @@ USA.
   (fx<=? #x100 datum #x1FF))
 
 (define record-type-proxy?
-  (refine-type misc-constant?
+  (refine-type 'record-type-proxy misc-constant?
     (lambda (object)
       (record-type-proxy-datum? (object-datum object)))))
 (register-predicate! record-type-proxy? 'record-type-proxy)
@@ -429,7 +430,7 @@ USA.
   (enumerate-proxies pathname host reference-trap))
 
 (define record?
-  (refine-type %record?
+  (refine-type 'record %record?
     (lambda (object)
       (and (%record->root-type object)
 	   #t))))
@@ -802,18 +803,18 @@ USA.
 	    (loop (fix:+ i 1)))))))
 
 (define named-list?
-  (refine-type non-empty-list?
+  (refine-type 'named-list non-empty-list?
     (lambda (p)
       (structure-type-tag? (car p) 'list))))
 
 (define named-vector?
-  (refine-type vector?
+  (refine-type 'named-vector vector?
     (lambda (v)
       (and (fxpositive? (vector-length v))
 	   (structure-type-tag? (vector-ref v 0) 'vector)))))
 
 (define named-structure?
-  (disjoin-types named-list? named-vector? record?))
+  (disjoin-types 'named-structure named-list? named-vector? record?))
 
 (define (structure-type-tag? tag physical-type)
   (let ((type (tag->structure-type tag)))

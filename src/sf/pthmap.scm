@@ -100,9 +100,9 @@ USA.
     (cons pathname-map/tag (node/make))))
 
 (set! pathname-map?
-  (named-lambda (pathname-map? object)
-    (and (pair? object)
-	 (eq? (car object) pathname-map/tag))))
+      (refine-type 'pathname-map pair?
+	(lambda (object)
+	  (eq? pathname-map/tag (car object)))))
 (register-predicate! pathname-map? 'pathname-map '<= pair?)
 
 (define-print-method pathname-map?

@@ -95,7 +95,7 @@ USA.
 (define standard-print-method?)
 (define (initialize-package!)
   (set! standard-print-method?
-	(refine-type %record?
+	(refine-type 'standard-print-method %record?
 	  (lambda (r)
 	    (and (fx=? 4 (%record-length r))
 		 (eq? standard-print-method-tag (%record-ref r 0))))))
@@ -208,12 +208,16 @@ USA.
                              caller))
 
 (define (predicate-description predicate)
-  (if (predicate? predicate)
-      (predicate-name predicate)
-      (call-with-output-string
-	(lambda (port)
-	  (write-string "object satisfying " port)
-	  (write predicate port)))))
+  (cond ((and (type? predicate)
+	      (type-name predicate))
+	 => write-to-string)
+	((predicate? predicate)
+	 (write-to-string (predicate-name predicate)))
+	(else
+	 (call-with-output-string
+	   (lambda (port)
+	     (write-string "object satisfying " port)
+	     (write predicate port))))))
 
 ;;;; Promises
 
@@ -274,7 +278,7 @@ USA.
 (seq:after-files-loaded 'add-action!
   (lambda ()
     (set! promise?
-	  (refine-type cell?
+	  (refine-type 'promise cell?
 	    (lambda (cell)
 	      (and (cell? (cell-contents cell))
 		   (delayed? (cell-contents (cell-contents cell)))))))

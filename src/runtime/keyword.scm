@@ -46,7 +46,7 @@ USA.
    (string-append keyword-prefix string)))
 
 (define keyword?
-  (refine-type interned-symbol?
+  (refine-type 'keyword interned-symbol?
     (lambda (s)
       (string-prefix? keyword-prefix (symbol->string s)))))
 

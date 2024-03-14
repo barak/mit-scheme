@@ -197,8 +197,8 @@ USA.
        (or comparator-predicate any-object?)))))
 
 (define amap-properties?
-  (uniform-list-type
-   (refine-type pair?
+  (uniform-list-type 'amap-properties
+   (refine-type #f pair?
      (lambda (p)
        (and (have-prop? (car p))
 	    (non-empty-list? (cdr p)))))))
@@ -368,8 +368,9 @@ USA.
 ;;;; Operations
 
 (define amap-operations?
-  (refine-type (uniform-list-type
-		(refine-type pair?
+  (refine-type 'amap-operations
+	       (uniform-list-type #f
+		(refine-type #f pair?
 		  (lambda (p)
 		    (and (operator? (car p))
 			 (pair? (cdr p))

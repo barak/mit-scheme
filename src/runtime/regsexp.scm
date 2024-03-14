@@ -254,7 +254,7 @@ USA.
 			    char))))))
 
 (define regsexp-match?
-  (refine-type pair?
+  (refine-type 'regsexp-match pair?
     (lambda (p)
       (and (exact-nonnegative-integer? (car p))
 	   (pair? (cdr p))

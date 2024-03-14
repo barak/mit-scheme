@@ -386,8 +386,7 @@ USA.
  (lambda ()
    (set! define-print-method
 	 (named-lambda (define-print-method type print-method)
-	   (define-type-dispatch-handler get-print-method
-	     (list type)
+	   (define-type-dispatch-handler get-print-method (list type)
 	     (lambda (object)
 	       (declare (ignore object))
 	       print-method))))

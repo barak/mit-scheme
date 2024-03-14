@@ -5732,6 +5732,7 @@ USA.
 	  complement-type
 	  conjoin-types
 	  default-object?
+	  differ-types
 	  disjoin-types
 	  dispatch-metatag?
 	  dispatch-tag?
@@ -5746,6 +5747,7 @@ USA.
 	  interpreter-return-address?
 	  no-object?
 	  object->type
+	  pair-type
 	  primitive-procedure?
 	  refine-type
 	  scode-access?
@@ -5767,7 +5769,8 @@ USA.
 	  system-quadruple?
 	  system-triple?
 	  system-vector?
-	  type->dispatch-tag
+	  type-derivation
+	  type-dispatch-tag
 	  type-name
 	  type-supersets
 	  type-test

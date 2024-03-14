@@ -396,7 +396,7 @@ USA.
 		      (make-alist-metadata-table)))
 
 (define textual-input-port?
-  (refine-type textual-port?
+  (refine-type 'textual-input-port textual-port?
     (lambda (port)
       (and (port-type-supports-input? (textual-port-type port))
 	   #t))))
@@ -404,7 +404,7 @@ USA.
 		     '<= textual-port?)
 
 (define textual-output-port?
-  (refine-type textual-port?
+  (refine-type 'textual-output-port textual-port?
     (lambda (port)
       (and (port-type-supports-output? (textual-port-type port))
 	   #t))))
@@ -412,8 +412,9 @@ USA.
 		     '<= textual-port?)
 
 (define textual-i/o-port?
-  (conjoin-types textual-input-port?
-		 textual-output-port?))
+  (conjoin-types 'textual-i/o-port
+    textual-input-port?
+    textual-output-port?))
 (register-predicate! textual-i/o-port? 'textual-i/o-port
 		     '<= textual-input-port?
 		     '<= textual-output-port?)
@@ -600,10 +601,17 @@ USA.
 
 ;;;; Generic ports
 
-(define port? (disjoin-types textual-port? binary-port?))
-(define input-port? (disjoin-types textual-input-port? binary-input-port?))
-(define output-port? (disjoin-types textual-output-port? binary-output-port?))
-(define i/o-port? (disjoin-types textual-i/o-port? binary-i/o-port?))
+(define port?
+  (disjoin-types 'port textual-port? binary-port?))
+
+(define input-port?
+  (disjoin-types 'input-port textual-input-port? binary-input-port?))
+
+(define output-port?
+  (disjoin-types 'output-port textual-output-port? binary-output-port?))
+
+(define i/o-port?
+  (disjoin-types 'i/o-port textual-i/o-port? binary-i/o-port?))
 
 (define (input-port-open? port)
   (cond ((binary-input-port? port) (binary-input-port-open? port))

@@ -34,7 +34,7 @@ USA.
   '|#[(runtime thread)thread-mutex]|)
 
 (define thread-mutex?
-  (refine-type %record?
+  (refine-type 'thread-mutex %record?
     (lambda (r)
       (and (fx=? 3 (%record-length r))
 	   (eq? thread-mutex-tag (%record-ref r 0))))))
@@ -59,7 +59,7 @@ USA.
   '|#[(runtime thread)link]|)
 
 (define link?
-  (refine-type %record?
+  (refine-type 'link %record?
     (lambda (r)
       (and (fx=? 4 (%record-length r))
 	   (eq? link-tag (%record-ref r 0))))))

@@ -37,11 +37,12 @@ USA.
 	 (integrate-external "dispatch-low"))
 
 (define tag-name?
-  (disjoin-types symbol?
-		 (refine-type pair?
-		   (lambda (p)
-		     (and (symbol? (car p))
-			  (list-of-type? (cdr p)
+  (disjoin-types 'tag-name
+    symbol?
+    (refine-type #f pair?
+      (lambda (p)
+	(and (symbol? (car p))
+	     (list-of-type? (cdr p)
 			    (lambda (elt)
 			      (or (object-non-pointer? elt)
 				  (tag-name? elt)))))))))
@@ -51,7 +52,7 @@ USA.
   (guarantee tag-name? name 'make-dispatch-metatag)
 
   (define type
-    (refine-type %record?
+    (refine-type name %record?
       (lambda (r)
 	(eq? metatag (%record-ref r 0)))))
 

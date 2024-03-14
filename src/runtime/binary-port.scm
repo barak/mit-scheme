@@ -71,7 +71,7 @@ USA.
 	 (buffer-channel buffer))))
 
 (define binary-input-port?
-  (refine-type binary-port?
+  (refine-type 'binary-input-port binary-port?
     (lambda (port)
       (and (port-input-buffer port)
 	   #t))))
@@ -79,7 +79,7 @@ USA.
 		     '<= binary-port?)
 
 (define binary-output-port?
-  (refine-type binary-port?
+  (refine-type 'binary-output-port binary-port?
     (lambda (port)
       (and (port-output-buffer port)
 	   #t))))
@@ -87,8 +87,9 @@ USA.
 		     '<= binary-port?)
 
 (define binary-i/o-port?
-  (conjoin-types binary-input-port?
-		 binary-output-port?))
+  (conjoin-types 'binary-i/o-port
+    binary-input-port?
+    binary-output-port?))
 (register-predicate! binary-i/o-port? 'binary-i/o-port
 		     '<= binary-input-port?
 		     '<= binary-output-port?)

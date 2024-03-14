@@ -615,7 +615,7 @@ USA.
 	(else
 	 (list->string (n>0 number)))))
 
-(define rat:rational? (disjoin-types int:integer? ratnum?))
+(define rat:rational? (disjoin-types 'rat:rational int:integer? ratnum?))
 (define-integrable rat:integer? int:integer?)
 
 (define (rat:= q r)
@@ -1073,7 +1073,7 @@ USA.
 	       (rat:expt 2 (int:- e-p p)))))))
 
 (define real:real?
-  (disjoin-types rat:rational? flonum?))
+  (disjoin-types 'real:real rat:rational? flonum?))
 
 (define-integrable (real:0 exact?)
   (if exact? 0 0.0))
@@ -1083,14 +1083,16 @@ USA.
        (real:= 1 x)))
 
 (define real:rational?
-  (disjoin-types (refine-type flonum?
-		   (lambda (x)
-		     (not (or (flo:nan? x) (flo:infinite? x)))))
-		 rat:rational?))
+  (disjoin-types 'real:rational
+    (refine-type #f flonum?
+      (lambda (x)
+	(not (or (flo:nan? x) (flo:infinite? x)))))
+    rat:rational?))
 
 (define real:integer?
-  (disjoin-types (refine-type flonum? flo:integer?)
-		 rat:integer?))
+  (disjoin-types 'real:integer
+    (refine-type #f flonum? flo:integer?)
+    rat:integer?))
 
 (define (real:exact? x)
   (and (not (flonum? x))
@@ -2055,27 +2057,30 @@ USA.
 (define (flo:exp10cosm1 r t) (flo:%expcosm1 flo:exp10 flo:exp10m1 r t))
 
 (define complex:complex?
-  (disjoin-types real:real? recnum?))
+  (disjoin-types 'complex? real:real? recnum?))
 
 (define complex:real?
-  (disjoin-types real:real?
-		 (refine-type recnum?
-		   (lambda (z)
-		     (real:zero? (rec:imag-part z))))))
+  (disjoin-types 'real?
+    real:real?
+    (refine-type #f recnum?
+      (lambda (z)
+	(real:zero? (rec:imag-part z))))))
 
 (define complex:rational?
-  (disjoin-types real:rational?
-		 (refine-type recnum?
-		   (lambda (z)
-		     (and (real:zero? (rec:imag-part z))
-			  (real:rational? (rec:real-part z)))))))
+  (disjoin-types 'rational
+    real:rational?
+    (refine-type #f recnum?
+      (lambda (z)
+	(and (real:zero? (rec:imag-part z))
+	     (real:rational? (rec:real-part z)))))))
 
 (define complex:integer?
-  (disjoin-types real:integer?
-		 (refine-type recnum?
-		   (lambda (z)
-		     (and (real:zero? (rec:imag-part z))
-			  (real:integer? (rec:real-part z)))))))
+  (disjoin-types 'integer
+    real:integer?
+    (refine-type #f recnum?
+      (lambda (z)
+	(and (real:zero? (rec:imag-part z))
+	     (real:integer? (rec:real-part z)))))))
 
 (define (complex:exact? z)
   (if (recnum? z)
@@ -3034,12 +3039,12 @@ USA.
   (not (complex:exact? z)))
 
 (define exact-nonnegative-integer?
-  (refine-type int:integer?
+  (refine-type 'exact-nonnegative-integer int:integer?
     (lambda (n)
       (not (int:negative? n)))))
 
 (define exact-positive-integer?
-  (refine-type int:integer?
+  (refine-type 'exact-positive-integer int:integer?
     (lambda (n)
       (int:positive? n))))
 
