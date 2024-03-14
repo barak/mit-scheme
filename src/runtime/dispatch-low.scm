@@ -35,7 +35,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (%%make-tag metatag cache-number name predicate supersets extra)
+(define (%%make-tag metatag cache-number name predicate supersets subsets
+		    extra)
   (apply %record
 	 metatag
 	 (cache-number)
@@ -49,10 +50,11 @@ USA.
 	 name
 	 predicate
 	 supersets
+	 subsets
 	 extra))
 
 (define (cold-load:%make-tag metatag name predicate extra)
-  (let ((tag (%%make-tag metatag (lambda () #f) name predicate #f extra)))
+  (let ((tag (%%make-tag metatag (lambda () #f) name predicate #f #f extra)))
     (set! need-cache-numbers (cons tag need-cache-numbers))
     tag))
 
@@ -76,14 +78,20 @@ USA.
 (define-integrable (%set-dispatch-tag-predicate! tag predicate)
   (%record-set! tag 10 predicate))
 
-(define-integrable (%tag-supersets tag)
+(define-integrable (%dispatch-tag-supersets tag)
   (%record-ref tag 11))
 
-(define-integrable (%set-tag-supersets! tag supersets)
+(define-integrable (%set-dispatch-tag-supersets! tag supersets)
   (%record-set! tag 11 supersets))
 
+(define-integrable (%dispatch-tag-subsets tag)
+  (%record-ref tag 12))
+
+(define-integrable (%set-dispatch-tag-subsets! tag supersets)
+  (%record-set! tag 12 supersets))
+
 (define-integrable (%dispatch-tag-extra-length tag)
-  (fix:- (%record-length tag) 12))
+  (fix:- (%record-length tag) 13))
 
 (define-integrable (%dispatch-tag-extra-ref tag index)
   (%record-ref tag (%dispatch-tag-extra-index index)))
@@ -92,13 +100,13 @@ USA.
   (%record-set! tag (%dispatch-tag-extra-index index) value))
 
 (define-integrable (%dispatch-tag-extra-index index)
-  (fix:+ 12 index))
+  (fix:+ 13 index))
 
 (define (%any-dispatch-tag-superset procedure tag)
-  (weak-list-set-any procedure (%tag-supersets tag)))
+  (weak-list-set-any procedure (%dispatch-tag-supersets tag)))
 
 (define (%add-dispatch-tag-superset! tag superset)
-  (weak-list-set-add! superset (%tag-supersets tag)))
+  (weak-list-set-add! superset (%dispatch-tag-supersets tag)))
 
 (define (%dispatch-metatag? object)
   (and (%record? object)
@@ -146,12 +154,15 @@ USA.
 	      (do ((i 1 (fix:+ i 1)))
 		  ((not (fix:< i 9)))
 		(%record-set! tag i (get-tag-cache-number)))
-	      (%set-tag-supersets! tag (weak-list-set eq?)))
+	      (%set-dispatch-tag-supersets! tag (weak-list-set eq?))
+	      (%set-dispatch-tag-subsets! tag (weak-list-set eq?)))
 	    need-cache-numbers)
   (set! need-cache-numbers)
   (set! %make-tag
 	(named-lambda (%make-tag metatag name predicate extra)
 	  (%%make-tag metatag get-tag-cache-number name predicate
-		      (weak-list-set eq?) extra)))
+		      (weak-list-set eq?)
+		      (weak-list-set eq?)
+		      extra)))
   (%set-dispatch-tag-predicate! metatag-tag dispatch-metatag?)
   (set-predicate-tag! dispatch-metatag? metatag-tag))

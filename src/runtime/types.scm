@@ -72,7 +72,14 @@ USA.
   (weak-list-set->list (%type-supersets type)))
 
 (define-integrable (%type-supersets type)
-  (%tag-supersets (%type-dispatch-tag type)))
+  (%dispatch-tag-supersets (%type-dispatch-tag type)))
+
+(define (type-subsets type)
+  (guarantee type? type 'type-subsets)
+  (weak-list-set->list (%type-subsets type)))
+
+(define-integrable (%type-subsets type)
+  (%dispatch-tag-subsets (%type-dispatch-tag type)))
 
 (define (type-derivation type)
   (guarantee type? type 'type-derivation)
@@ -96,7 +103,27 @@ USA.
 ;;;; Type constructor and combinators
 
 (define (simple-type name test)
-  (make-type name #f test))
+  (let ((type (make-type name #f test)))
+    (set! simple-types (weak-cons type simple-types))
+    type))
+
+(define simple-types '())
+
+(define (all-simple-types)
+  (weak-list->list simple-types))
+
+(define (all-types)
+  (let ((ht (make-hash-table eq-comparator)))
+
+    (define (do-type type)
+      (if (not (hash-table-contains? ht type))
+	  (begin
+	    (hash-table-set! ht type #t)
+	    (weak-list-set-for-each do-type (%type-subsets type))
+	    (weak-list-set-for-each do-type (%type-supersets type)))))
+
+    (weak-for-each do-type simple-types)
+    (hash-table-keys ht)))
 
 (define (refine-type name type refinement)
   (let ((subset
@@ -428,6 +455,7 @@ USA.
     (if (type<= superset subset)
 	(error "Illegal type loop:" subset superset))
     (weak-list-set-add! superset (%type-supersets subset))
+    (weak-list-set-add! subset (%type-subsets superset))
     (hash-table-clear! type<=-cache)))
 
 (define deferred-relations '())

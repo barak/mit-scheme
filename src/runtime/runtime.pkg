@@ -5707,6 +5707,8 @@ USA.
 	  probe-cache-4)
   (export (runtime types)
 	  %dispatch-metatag?
+	  %dispatch-tag-subsets
+	  %dispatch-tag-supersets
 	  %make-dispatch-metatag
 	  %make-tag
 	  metatag-tag))
@@ -5720,6 +5722,8 @@ USA.
 	  (pair? $pair?)		;(scheme base)
 	  %record?
 	  %tagged-object?
+	  all-simple-types
+	  all-types
 	  any-object?
 	  apply-hook?
 	  bit-string?
@@ -5772,6 +5776,7 @@ USA.
 	  type-derivation
 	  type-dispatch-tag
 	  type-name
+	  type-subsets
 	  type-supersets
 	  type-test
 	  type<=
