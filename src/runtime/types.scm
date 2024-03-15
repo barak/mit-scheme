@@ -41,7 +41,9 @@ USA.
   (let ((predicate (%make-apply-hook test #f)))
     (%set-entity-extra! predicate
 			(%make-tag %type-metatag
-				   name predicate (list derivation)))
+				   name
+				   predicate
+				   derivation))
     predicate))
 
 (define-integrable (%type-dispatch-tag type)

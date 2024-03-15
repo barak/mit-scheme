@@ -35,8 +35,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (%%make-tag metatag cache-number name predicate supersets subsets
-		    extra)
+(define-integrable (%%make-tag metatag cache-number name predicate
+			       supersets subsets extra)
   (apply %record
 	 metatag
 	 (cache-number)
@@ -53,7 +53,7 @@ USA.
 	 subsets
 	 extra))
 
-(define (cold-load:%make-tag metatag name predicate extra)
+(define (cold-load:%make-tag metatag name predicate . extra)
   (let ((tag (%%make-tag metatag (lambda () #f) name predicate #f #f extra)))
     (set! need-cache-numbers (cons tag need-cache-numbers))
     tag))
@@ -61,6 +61,13 @@ USA.
 (define need-cache-numbers '())
 
 (define %make-tag cold-load:%make-tag)
+
+(define after-cold-load:%make-tag
+  (named-lambda (%make-tag metatag name predicate . extra)
+    (%%make-tag metatag get-tag-cache-number name predicate
+		(weak-list-set eq?)
+		(weak-list-set eq?)
+		extra)))
 
 (define (%dispatch-tag? object)
   (and (%record? object)
@@ -119,17 +126,16 @@ USA.
 	 (eq? metatag (%record-ref object 0))))
 
   (define metatag
-    (%make-tag metatag-tag name test '()))
+    (%make-tag metatag-tag name test))
 
   metatag)
 
-(define metatag-tag
-  (%make-tag #f 'metatag %dispatch-metatag? '()))
+(define metatag-tag (%make-tag #f 'metatag %dispatch-metatag?))
 (%record-set! metatag-tag 0 metatag-tag)
 
 (define (%dispatch-metatag-constructor metatag)
   (lambda (name predicate . extra)
-    (%make-tag metatag name predicate extra)))
+    (apply %make-tag metatag name predicate extra)))
 
 (define-integrable tag-cache-number-adds-ok
   ;; This constant controls the number of non-zero bits tag cache
@@ -158,11 +164,6 @@ USA.
 	      (%set-dispatch-tag-subsets! tag (weak-list-set eq?)))
 	    need-cache-numbers)
   (set! need-cache-numbers)
-  (set! %make-tag
-	(named-lambda (%make-tag metatag name predicate extra)
-	  (%%make-tag metatag get-tag-cache-number name predicate
-		      (weak-list-set eq?)
-		      (weak-list-set eq?)
-		      extra)))
+  (set! %make-tag after-cold-load:%make-tag)
   (%set-dispatch-tag-predicate! metatag-tag dispatch-metatag?)
   (set-predicate-tag! dispatch-metatag? metatag-tag))

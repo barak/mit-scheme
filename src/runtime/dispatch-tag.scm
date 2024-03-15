@@ -57,7 +57,7 @@ USA.
 	(eq? metatag (%record-ref r 0)))))
 
   (define metatag
-    (%make-tag metatag-tag name type '()))
+    (%make-tag metatag-tag name type))
 
   (set-predicate-tag! type metatag)
   (set-dispatch-tag<=! metatag metatag-tag)
@@ -70,7 +70,7 @@ USA.
     (guarantee unary-procedure? predicate caller)
     (if (predicate? predicate)
 	(error "Can't assign multiple tags to the same predicate:" name))
-    (let ((tag (%make-tag metatag name predicate extra)))
+    (let ((tag (apply %make-tag metatag name predicate extra)))
       (set-predicate-tag! predicate tag)
       tag)))
 
