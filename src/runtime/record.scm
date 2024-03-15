@@ -443,14 +443,13 @@ USA.
   (%record-type-ref record 0))
 
 (define (%record->leaf-type record)
-  (let loop ((type (%record-type-ref record 0)))
-    (let ((type*
-	   (let ((end (%record-type-end-index type)))
-	     (and (fix:> (%record-length record) end)
-		  (%record-type-ref record end)))))
-      (if type*
-	  (loop type*)
-	  type))))
+  (let ((n (%record-length record)))
+    (let loop ((i 0))
+      (let* ((type (%record-type-ref record i))
+	     (end (%record-type-end-index type)))
+	(if (fx<? end n)
+	    (loop end)
+	    type)))))
 
 (define (%record-type-ref record index)
   (let ((marker (%record-ref record index)))
