@@ -204,12 +204,15 @@ USA.
 	(not (test object))))))
 
 (define (differ-types name type1 type2)
-  (make-type name (list 'differ type1 type2)
-    (let ((test1 (type-test type1))
-	  (test2 (type-test type2)))
-      (lambda (object)
-	(and (test1 object)
-	     (not (test2 object)))))))
+  (let ((type
+	 (make-type name (list 'differ type1 type2)
+	   (let ((test1 (type-test type1))
+		 (test2 (type-test type2)))
+	     (lambda (object)
+	       (and (test1 object)
+		    (not (test2 object))))))))
+    (set-type<=! type type1)
+    type))
 
 (define (pair-type name car-type cdr-type)
   (refine-type name pair?
@@ -230,8 +233,9 @@ USA.
 
 (define (uniform-string-type name char-type)
   (refine-type name string?
-    (lambda (s)
-      (string-every char-type s))))
+    (let ((char-test (type-test char-type)))
+      (lambda (s)
+	(string-every char-test s)))))
 
 ;;;; Primitive types
 
