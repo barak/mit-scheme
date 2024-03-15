@@ -48,9 +48,9 @@ USA.
 ;;; (set-version! <version>)
 ;;; (write-output-files)
 
-;;; The stages are split into two parts because the first stage is slow and only
-;;; needs to be run once.  The second stage might need tweaking to generate
-;;; better code, and consequently may need to be run repeatedly.
+;;; The stages are split into two parts because the first stage is slow and
+;;; only needs to be run once.  The second stage might need tweaking to
+;;; generate better code, and consequently may need to be run repeatedly.
 
 ;;; If no tweaking is needed, both stages can be run together by using the
 ;;; instructions for stage one and replacing (write-raw-files) with
@@ -785,14 +785,14 @@ USA.
   (let* ((full-name (metadata-full-name metadata))
 	 (boolean-key (metadata-boolean-key metadata))
 	 (char-set-name (symbol "char-set:" full-name)))
-    `((define (,(symbol "char-" full-name "?") char)
-	(char-in-set? char ,char-set-name))
-      (define-deferred ,char-set-name
+    `((define-deferred ,char-set-name
 	(char-set*
 	 ',(filter-map (lambda (value-map)
 			 (and (equal? boolean-key (cdr value-map))
 			      (car value-map)))
-		       prop-alist))))))
+		       prop-alist)))
+      (define-deferred ,(symbol "char-" full-name "?")
+	(char-set-predicate ,char-set-name)))))
 
 (define (code-generator:ccc prop-name metadata prop-alist proc-name)
   ((trie-code-generator value-manager:ccc)

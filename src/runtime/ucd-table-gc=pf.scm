@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=punctuation:final-quote? char)
-  (char-in-set? char char-set:gc=punctuation:final-quote))
-
 (define-deferred char-set:gc=punctuation:final-quote
   (char-set* '(187 8217 8221 8250 11779 11781 11786 11789 11805 11809)))
+
+(define-deferred char-gc=punctuation:final-quote?
+  (char-set-predicate char-set:gc=punctuation:final-quote))

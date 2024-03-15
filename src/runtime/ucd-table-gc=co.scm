@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=other:private-use? char)
-  (char-in-set? char char-set:gc=other:private-use))
-
 (define-deferred char-set:gc=other:private-use
   (char-set* '((57344 . 63744) (983040 . 1048574) (1048576 . 1114110))))
+
+(define-deferred char-gc=other:private-use?
+  (char-set-predicate char-set:gc=other:private-use))

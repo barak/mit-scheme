@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=number:letter? char)
-  (char-in-set? char char-set:gc=number:letter))
-
 (define-deferred char-set:gc=number:letter
   (char-set* '((5870 . 5873) (8544 . 8579) (8581 . 8585) 12295 (12321 . 12330) (12344 . 12347) (42726 . 42736) (65856 . 65909) 66369 66378 (66513 . 66518) (74752 . 74863))))
+
+(define-deferred char-gc=number:letter?
+  (char-set-predicate char-set:gc=number:letter))

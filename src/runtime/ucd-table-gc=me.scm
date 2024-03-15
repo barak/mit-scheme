@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=mark:enclosing? char)
-  (char-in-set? char char-set:gc=mark:enclosing))
-
 (define-deferred char-set:gc=mark:enclosing
   (char-set* '((1160 . 1162) 6846 (8413 . 8417) (8418 . 8421) (42608 . 42611))))
+
+(define-deferred char-gc=mark:enclosing?
+  (char-set-predicate char-set:gc=mark:enclosing))

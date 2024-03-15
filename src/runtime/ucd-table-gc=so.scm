@@ -31,9 +31,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=symbol:other? char)
-  (char-in-set? char char-set:gc=symbol:other))
-
 (define-deferred char-set:gc=symbol:other
   (char-set*
    '(166
@@ -218,3 +215,6 @@ USA.
      (129744 . 129751)
      (129792 . 129939)
      (129940 . 129995))))
+
+(define-deferred char-gc=symbol:other?
+  (char-set-predicate char-set:gc=symbol:other))

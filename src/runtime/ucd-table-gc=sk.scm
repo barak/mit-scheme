@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=symbol:modifier? char)
-  (char-in-set? char char-set:gc=symbol:modifier))
-
 (define-deferred char-set:gc=symbol:modifier
   (char-set* '(94 96 168 175 180 184 (706 . 710) (722 . 736) (741 . 748) 749 (751 . 768) 885 (900 . 902) 8125 (8127 . 8130) (8141 . 8144) (8157 . 8160) (8173 . 8176) (8189 . 8191) (12443 . 12445) (42752 . 42775) (42784 . 42786) (42889 . 42891) 43867 (43882 . 43884) (64434 . 64450) 65342 65344 65507 (127995 . 128000))))
+
+(define-deferred char-gc=symbol:modifier?
+  (char-set-predicate char-set:gc=symbol:modifier))

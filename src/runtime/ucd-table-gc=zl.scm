@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=separator:line? char)
-  (char-in-set? char char-set:gc=separator:line))
-
 (define-deferred char-set:gc=separator:line
   (char-set* '(8232)))
+
+(define-deferred char-gc=separator:line?
+  (char-set-predicate char-set:gc=separator:line))

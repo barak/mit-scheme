@@ -31,9 +31,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=letter:uppercase? char)
-  (char-in-set? char char-set:gc=letter:uppercase))
-
 (define-deferred char-set:gc=letter:uppercase
   (char-set*
    '((65 . 91)
@@ -674,3 +671,6 @@ USA.
      (120720 . 120745)
      120778
      (125184 . 125218))))
+
+(define-deferred char-gc=letter:uppercase?
+  (char-set-predicate char-set:gc=letter:uppercase))

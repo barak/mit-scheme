@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-whitespace? char)
-  (char-in-set? char char-set:whitespace))
-
 (define-deferred char-set:whitespace
   (char-set* '((9 . 14) 32 133 160 5760 (8192 . 8203) (8232 . 8234) 8239 8287 12288)))
+
+(define-deferred char-whitespace?
+  (char-set-predicate char-set:whitespace))

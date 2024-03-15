@@ -31,9 +31,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-nt=numeric? char)
-  (char-in-set? char char-set:nt=numeric))
-
 (define-deferred char-set:nt=numeric
   (char-set*
    '((188 . 191)
@@ -187,3 +184,6 @@ USA.
      146203
      156269
      194704)))
+
+(define-deferred char-nt=numeric?
+  (char-set-predicate char-set:nt=numeric))

@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=other:control? char)
-  (char-in-set? char char-set:gc=other:control))
-
 (define-deferred char-set:gc=other:control
   (char-set* '((0 . 32) (127 . 160))))
+
+(define-deferred char-gc=other:control?
+  (char-set-predicate char-set:gc=other:control))

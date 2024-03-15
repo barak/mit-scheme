@@ -31,9 +31,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=mark:nonspacing? char)
-  (char-in-set? char char-set:gc=mark:nonspacing))
-
 (define-deferred char-set:gc=mark:nonspacing
   (char-set*
    '((768 . 880)
@@ -363,3 +360,6 @@ USA.
      (125136 . 125143)
      (125252 . 125259)
      (917760 . 918000))))
+
+(define-deferred char-gc=mark:nonspacing?
+  (char-set-predicate char-set:gc=mark:nonspacing))

@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=punctuation:initial-quote? char)
-  (char-in-set? char char-set:gc=punctuation:initial-quote))
-
 (define-deferred char-set:gc=punctuation:initial-quote
   (char-set* '(171 8216 (8219 . 8221) 8223 8249 11778 11780 11785 11788 11804 11808)))
+
+(define-deferred char-gc=punctuation:initial-quote?
+  (char-set-predicate char-set:gc=punctuation:initial-quote))

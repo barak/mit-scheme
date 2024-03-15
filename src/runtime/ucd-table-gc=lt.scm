@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=letter:titlecase? char)
-  (char-in-set? char char-set:gc=letter:titlecase))
-
 (define-deferred char-set:gc=letter:titlecase
   (char-set* '(453 456 459 498 (8072 . 8080) (8088 . 8096) (8104 . 8112) 8124 8140 8188)))
+
+(define-deferred char-gc=letter:titlecase?
+  (char-set-predicate char-set:gc=letter:titlecase))

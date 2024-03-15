@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=other:format? char)
-  (char-in-set? char char-set:gc=other:format))
-
 (define-deferred char-set:gc=other:format
   (char-set* '(173 (1536 . 1542) 1564 1757 1807 2274 6158 (8203 . 8208) (8234 . 8239) (8288 . 8293) (8294 . 8304) 65279 (65529 . 65532) 69821 69837 (78896 . 78905) (113824 . 113828) (119155 . 119163) 917505 (917536 . 917632))))
+
+(define-deferred char-gc=other:format?
+  (char-set-predicate char-set:gc=other:format))

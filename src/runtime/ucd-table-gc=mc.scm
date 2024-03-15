@@ -31,9 +31,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=mark:spacing-combining? char)
-  (char-in-set? char char-set:gc=mark:spacing-combining))
-
 (define-deferred char-set:gc=mark:spacing-combining
   (char-set*
    '(2307
@@ -211,3 +208,6 @@ USA.
      (94192 . 94194)
      (119141 . 119143)
      (119149 . 119155))))
+
+(define-deferred char-gc=mark:spacing-combining?
+  (char-set-predicate char-set:gc=mark:spacing-combining))

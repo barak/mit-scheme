@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=punctuation:connector? char)
-  (char-in-set? char char-set:gc=punctuation:connector))
-
 (define-deferred char-set:gc=punctuation:connector
   (char-set* '(95 (8255 . 8257) 8276 (65075 . 65077) (65101 . 65104) 65343)))
+
+(define-deferred char-gc=punctuation:connector?
+  (char-set-predicate char-set:gc=punctuation:connector))

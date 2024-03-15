@@ -31,9 +31,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=other:not-assigned? char)
-  (char-in-set? char char-set:gc=other:not-assigned))
-
 (define-deferred char-set:gc=other:not-assigned
   (char-set*
    '((888 . 890)
@@ -713,3 +710,6 @@ USA.
      (918000 . 983040)
      (1048574 . 1048576)
      (1114110 . 1114112))))
+
+(define-deferred char-gc=other:not-assigned?
+  (char-set-predicate char-set:gc=other:not-assigned))

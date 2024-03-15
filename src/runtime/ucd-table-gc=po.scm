@@ -31,9 +31,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=punctuation:other? char)
-  (char-in-set? char char-set:gc=punctuation:other))
-
 (define-deferred char-set:gc=punctuation:other
   (char-set*
    '((33 . 36)
@@ -217,3 +214,6 @@ USA.
      113823
      (121479 . 121484)
      (125278 . 125280))))
+
+(define-deferred char-gc=punctuation:other?
+  (char-set-predicate char-set:gc=punctuation:other))

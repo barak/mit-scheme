@@ -31,8 +31,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (char-gc=other:surrogate? char)
-  (char-in-set? char char-set:gc=other:surrogate))
-
 (define-deferred char-set:gc=other:surrogate
   (char-set* '((55296 . 57344))))
+
+(define-deferred char-gc=other:surrogate?
+  (char-set-predicate char-set:gc=other:surrogate))
