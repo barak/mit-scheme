@@ -241,8 +241,7 @@ USA.
 
 	(define (set-handler! types handler)
 	  (let ((handler* (d:set-handler! types handler)))
-	    (if (not handler*)
-		(clear-cache!))
+	    (clear-cache!)
 	    handler*))
 
 	(define (handle-cache-miss args)
