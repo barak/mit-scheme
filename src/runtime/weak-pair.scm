@@ -844,13 +844,11 @@ USA.
 	   (if (default-object? finalizer) #f finalizer)
 	   '()))
 
-(define weak-alist-table?
-  (refine-type 'weak-alist-table %record?
-    (lambda (r)
-      (eq? weak-alist-table-tag (%record-ref r 0)))))
-
 (define-integrable weak-alist-table-tag
   '|#[(runtime weak-pair)weak-alist-table]|)
+
+(define weak-alist-table?
+  (%record-subtype 'weak-alist-table weak-alist-table-tag))
 
 (define-integrable (%table-key= table) (%record-ref table 1))
 (define-integrable (%table-finalizer table) (%record-ref table 2))
@@ -1123,14 +1121,9 @@ USA.
 (define (weak-list-set = . items)
   (%record weak-list-set-tag = (delete-duplicates items =)))
 
-(define weak-list-set?
-  (refine-type 'weak-list-set %record?
-    (lambda (r)
-      (eq? weak-list-set-tag (%record-ref r 0)))))
+(define-integrable weak-list-set-tag '|#[(runtime weak-pair)weak-list-set]|)
+(define weak-list-set? (%record-subtype 'weak-list-set weak-list-set-tag))
 ;
-(define-integrable weak-list-set-tag
-  '|#[(runtime weak-pair)weak-list-set]|)
-
 (define-integrable (%set-predicate set) (%record-ref set 1))
 
 (define-integrable (%set-items set) (%record-ref set 2))

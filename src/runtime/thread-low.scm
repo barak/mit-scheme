@@ -30,14 +30,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable thread-mutex-tag
-  '|#[(runtime thread)thread-mutex]|)
-
-(define thread-mutex?
-  (refine-type 'thread-mutex %record?
-    (lambda (r)
-      (and (fx=? 3 (%record-length r))
-	   (eq? thread-mutex-tag (%record-ref r 0))))))
+(define-integrable thread-mutex-tag '|#[(runtime thread)thread-mutex]|)
+(define thread-mutex? (%record-subtype 'thread-mutex thread-mutex-tag))
 
 (define-integrable (make-thread-mutex)
   (%record thread-mutex-tag (make-ring) #f))
@@ -55,14 +49,8 @@ USA.
   next
   item)
 
-(define-integrable link-tag
-  '|#[(runtime thread)link]|)
-
-(define link?
-  (refine-type 'link %record?
-    (lambda (r)
-      (and (fx=? 4 (%record-length r))
-	   (eq? link-tag (%record-ref r 0))))))
+(define-integrable link-tag '|#[(runtime thread)link]|)
+(define link? (%record-subtype 'link link-tag))
 (register-predicate! link? 'link '<= %record?)
 
 (define-integrable (make-link prev next item)

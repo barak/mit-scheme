@@ -53,14 +53,9 @@ USA.
 (define (%make-1d-table)
   (%record 1d-table-tag (weak-alist-table eqv?)))
 
-(define 1d-table?
-  (refine-type '1d-table? %record?
-    (lambda (object)
-      (eq? 1d-table-tag (%record-ref object 0)))))
+(define-integrable 1d-table-tag '|#[1D table]|)
+(define 1d-table? (%record-subtype '1d-table? 1d-table-tag))
 (register-predicate! 1d-table? '1d-table '<= %record?)
-
-(define-integrable 1d-table-tag
-  '|#[1D table]|)
 
 (define-integrable (%table-items table) (%record-ref table 1))
 

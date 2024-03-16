@@ -767,27 +767,17 @@ differences:
 		  ,(close (structure/type-descriptor structure) context)))))
 	    ((vector)
 	     `((define ,predicate-name
-		 (,(absolute 'refine-type context)
+		 (,(absolute 'tagged-vector-subtype context)
 		  ',name
-		  ,(absolute 'vector? context)
-		  (lambda (v)
-		    (and (,(absolute 'fxpositive? context)
-			  (,(absolute 'vector-length context) v))
-			 (,(absolute 'eq? context)
-			  (,(absolute 'vector-ref context) v 0)
-			  ,tag-expression)))))
+		  ,tag-expression))
 	       (,(absolute 'register-predicate! context)
 		,predicate-name ',name
 		'<= ,(absolute 'vector? context))))
 	    ((list)
 	     `((define ,predicate-name
-		 (,(absolute 'refine-type context)
+		 (,(absolute 'tagged-list-subtype context)
 		  ',name
-		  ,(absolute 'pair? context)
-		  (lambda (p)
-		    (,(absolute 'eq? context)
-		     (,(absolute 'car context) p 0)
-		     ,tag-expression))))
+		  ,tag-expression))
 	       (,(absolute 'register-predicate! context)
 		,predicate-name ',name
 		'<= ,(absolute 'pair? context))))))

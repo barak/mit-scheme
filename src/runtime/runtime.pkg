@@ -5717,6 +5717,7 @@ USA.
   (files "types")
   (parent (runtime))
   (export ()
+	  (default-object? $default-object?)
 	  (fix:fixnum? fixnum?)
 	  (flo:flonum? flonum?)
 	  (pair? $pair?)		;(scheme base)
@@ -5735,7 +5736,6 @@ USA.
 	  compiled-return-address?
 	  complement-type
 	  conjoin-types
-	  default-object?
 	  differ-types
 	  disjoin-types
 	  dispatch-metatag?
@@ -5773,9 +5773,12 @@ USA.
 	  system-quadruple?
 	  system-triple?
 	  system-vector?
+	  tagged-list-subtype
+	  tagged-vector-subtype
 	  type-derivation
 	  type-dispatch-tag
 	  type-name
+	  type-refinement
 	  type-subsets
 	  type-supersets
 	  type-test
@@ -5787,6 +5790,7 @@ USA.
 	  vector?
 	  weak-pair?)
   (export (runtime)
+	  %record-subtype
 	  bignum?
 	  broken-heart?
 	  misc-constant?

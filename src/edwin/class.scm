@@ -41,7 +41,7 @@ USA.
   object-size
   instance-transforms
   (methods #f read-only #t)
-  (predicate #f read-only #t))
+  (predicate #f))
 
 (define-print-method class?
   (standard-print-method 'class
@@ -88,10 +88,11 @@ USA.
     (vector-set! object 0 class)
     object))
 
-(define (object? object)
-  (and (vector? object)
-       (not (zero? (vector-length object)))
-       (class? (vector-ref object 0))))
+(define object?
+  (refine-type 'object vector?
+    (lambda (v)
+      (and (fxpositive? (vector-length v))
+	   (class? (vector-ref v 0))))))
 (register-predicate! object? 'object)
 
 (define-print-method object?

@@ -51,8 +51,8 @@ USA.
 			    (cons '()
 				  (and superclass
 				       (class-methods superclass)))
-			    (lambda (object)
-			      (object-of-class? class object))))
+			    #f))
+	     (set-class-predicate! class (tagged-vector-subtype name class))
 	     (named-structure/set-tag-description! class
 	       (new-make-define-structure-type
 		'VECTOR

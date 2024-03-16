@@ -334,13 +334,8 @@ USA.
 
 ;;;; Inferiors
 
-(define %inferior-tag
-  '|#[(edwin window) inferior]|)
-
-(define (%inferior? object)
-  (and (vector? object)
-       (fix:= 5 (vector-length object))
-       (eq? %inferior-tag (vector-ref object 0))))
+(define %inferior-tag '|#[(edwin window) inferior]|)
+(define %inferior? (tagged-vector-subtype 'inferior %inferior-tag))
 (register-predicate! %inferior? 'inferior '<= vector?)
 
 (define-integrable (%make-inferior window x-start y-start redisplay-flags)

@@ -57,13 +57,6 @@ USA.
       (%make-record-type type-name field-specs parent-type
 			 applicator instance-marker))))
 
-(define valid-field-specs?
-  (refine-type 'valid-field-specs list?
-    (lambda (object)
-      (and (every field-spec? object)
-	   (not (any-duplicates? object eq? field-spec-name))))))
-(register-predicate! valid-field-specs? 'valid-field-specs '<= list?)
-
 (define field-spec?
   (disjoin-types 'field-spec
     symbol?
@@ -74,6 +67,12 @@ USA.
 		      (%valid-default-init? (cadr p))
 		      (null? (cddr p)))
 		 (keyword-list? (cdr p))))))))
+
+(define valid-field-specs?
+  (refine-type 'valid-field-specs (uniform-list-type #f field-spec?)
+    (lambda (object)
+      (not (any-duplicates? object eq? field-spec-name)))))
+(register-predicate! valid-field-specs? 'valid-field-specs '<= list?)
 
 (define (make-field-spec name init)
   (if init
@@ -375,9 +374,6 @@ USA.
     (and record-type
 	 (%record-type-applicator record-type))))
 
-(define applicable-record?
-  (refine-type 'applicable-record %record? %record-applicator))
-
 (define (record-applicator record)
   (guarantee record? record 'record-applicator)
   (let ((applicator (%record-applicator record)))
@@ -434,6 +430,11 @@ USA.
     (lambda (object)
       (and (%record->root-type object)
 	   #t))))
+
+(define applicable-record?
+  (refine-type 'applicable-record record?
+    (lambda (r)
+      (and (%record-applicator r) #t))))
 
 (define (record-type-descriptor record)
   (guarantee record? record 'record-type-descriptor)

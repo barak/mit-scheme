@@ -425,14 +425,18 @@ USA.
 (define-for-tests assert-null
   (predicate-assertion null? "an empty list"))
 
+(define-for-tests assert-non-null
+  (predicate-assertion (lambda (object) (not (null? object)))
+		       "not an empty list"))
+
 (define-for-tests assert-pair
   (predicate-assertion pair? "a pair"))
 
 (define-for-tests assert-list
-  (predicate-assertion list? "a non-empty list"))
+  (predicate-assertion list? "a proper list"))
 
 (define-for-tests assert-non-empty-list
-  (predicate-assertion non-empty-list? "a non-empty list"))
+  (predicate-assertion non-empty-list? "a non-empty proper list"))
 
 (define-for-tests (assert-error thunk #!optional condition-types . properties)
   (let-values (((condition-types filter)
@@ -562,6 +566,8 @@ USA.
 (define-comparator string-ci=? 'string-ci=)
 (define-comparator string-ci>=? 'string-ci>=)
 (define-comparator string-ci>? 'string-ci>)
+
+(define-comparator type<= 'type<=)
 
 (define (binary-assertion negate? test pattern)
   (let ((test (if negate? (negate-test test) test))
@@ -651,6 +657,9 @@ USA.
 (define-for-tests assert-string-ci<= (simple-binary-assertion string-ci<=? #f))
 (define-for-tests assert-string-ci> (simple-binary-assertion string-ci>? #f))
 (define-for-tests assert-string-ci>= (simple-binary-assertion string-ci>=? #f))
+
+(define-for-tests assert-type<= (simple-binary-assertion type<= #f))
+(define-for-tests assert-type!<= (simple-binary-assertion type<= #t))
 
 (define-for-tests (member-assertion comparator negate?)
   (binary-assertion negate?
@@ -695,11 +704,26 @@ USA.
   (binary-assertion negate?
 		    (lambda (value expected)
 		      (lset= comparator value expected))
-		    (list "a list with"
+		    (list "an lset with"
 			  (if+ "the same elements as" "different elements from")
 			  (marker)
 			  "comparing elements with" (name-of comparator)
 			  "in any order")))
+
+(define (lset<=-assertion comparator negate?)
+  (binary-assertion negate?
+		    (lambda (value expected)
+		      (lset<= comparator value expected))
+		    (list "a subset of the elements in"
+			  (marker)
+			  "comparing elements with" (name-of comparator)
+			  "in any order")))
+
+(define-for-tests (assert-lset<= comparator lset1 lset2)
+  ((lset<=-assertion comparator #f) lset1 lset2))
+
+(define-for-tests (assert-lset!<= comparator lset1 lset2)
+  ((lset<=-assertion comparator #t) lset1 lset2))
 
 (define (trivial-matcher pattern expression #!optional value=?)
   (let ((value=? (if (default-object? value=?) equal? value=?)))

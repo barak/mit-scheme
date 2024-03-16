@@ -95,10 +95,7 @@ USA.
 (define standard-print-method?)
 (define (initialize-package!)
   (set! standard-print-method?
-	(refine-type 'standard-print-method %record?
-	  (lambda (r)
-	    (and (fx=? 4 (%record-length r))
-		 (eq? standard-print-method-tag (%record-ref r 0))))))
+	(%record-subtype 'standard-print-method standard-print-method-tag))
   unspecific)
 
 (define (standard-print-method-name spm object)

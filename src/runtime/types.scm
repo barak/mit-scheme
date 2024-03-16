@@ -37,13 +37,17 @@ USA.
 (define %type-tag?
   (%dispatch-tag-predicate %type-metatag))
 
-(define (make-type name derivation test)
+(define (make-type name derivation test #!optional refinement)
   (let ((predicate (%make-apply-hook test #f)))
     (%set-entity-extra! predicate
 			(%make-tag %type-metatag
 				   name
 				   predicate
-				   derivation))
+				   derivation
+				   (if (or (default-object? refinement)
+					   (not refinement))
+				       test
+				       refinement)))
     predicate))
 
 (define-integrable (%type-dispatch-tag type)
@@ -90,53 +94,74 @@ USA.
 (define-integrable (%type-derivation type)
   (%dispatch-tag-extra-ref (%type-dispatch-tag type) 0))
 
+(define (type-refinement type)
+  (guarantee type? type 'type-refinement)
+  (%type-refinement type))
+
+(define-integrable (%type-refinement type)
+  (%dispatch-tag-extra-ref (%type-dispatch-tag type) 1))
+
 (define (%type-printer-name type)
   (or (%dispatch-tag-name (%type-dispatch-tag type))
       (%type-derivation type)))
-
-(define (object->type object)
-  (let ((code (object-type object)))
-    (let ((type (vector-ref primitive-types code))
-	  (method (vector-ref primitive-type-methods code)))
-      (if method
-	  (method object type)
-	  type))))
 
 ;;;; Type constructor and combinators
 
-(define (simple-type name test)
-  (let ((type (make-type name #f test)))
-    (set! simple-types (weak-cons type simple-types))
-    type))
-
-(define simple-types '())
-
-(define (all-simple-types)
-  (weak-list->list simple-types))
-
-(define (all-types)
-  (let ((ht (make-hash-table eq-comparator)))
-
-    (define (do-type type)
-      (if (not (hash-table-contains? ht type))
-	  (begin
-	    (hash-table-set! ht type #t)
-	    (weak-list-set-for-each do-type (%type-subsets type))
-	    (weak-list-set-for-each do-type (%type-supersets type)))))
-
-    (weak-for-each do-type simple-types)
-    (hash-table-keys ht)))
-
-(define (refine-type name type refinement)
+(define (%refine-type name derivation type refinement)
   (let ((subset
-	 (make-type name (list 'refine type)
-	   (let ((test (type-test type)))
-	     (lambda (object)
-	       (and (test object)
-		    (refinement object)))))))
+	 (make-type name
+		    (or derivation (list 'refine type))
+		    (let ((test (type-test type)))
+		      (lambda (object)
+			(and (test object)
+			     (refinement object))))
+		    refinement)))
     (set-type<=! subset type)
     subset))
 
+(define (refine-type name type refinement)
+  (%refine-type name #f type refinement))
+
+(define (%record-subtype name tag)
+  (refine-type name %record?
+    (lambda (r)
+      (eq? tag (%record-ref r 0)))))
+
+(define (tagged-vector-subtype name tag)
+  (refine-type name vector?
+    (lambda (v)
+      (and (fxpositive? (vector-length v))
+	   (eq? tag (vector-ref v 0))))))
+
+(define (tagged-list-subtype name tag)
+  (refine-type name non-empty-list?
+    (lambda (list)
+      (eq? tag (car list)))))
+
+(define (differ-types name type1 type2)
+  (%refine-type name (list 'differ type1 type2) type1
+    (complement (type-test type2))))
+
+(define (pair-type name car-type cdr-type)
+  (%refine-type name (list 'pair car-type cdr-type) pair?
+    (let ((car-test (type-test car-type))
+	  (cdr-test (type-test cdr-type)))
+      (lambda (object)
+	(and (car-test (car object))
+	     (cdr-test (cdr object)))))))
+
+(define (uniform-list-type name elt-type)
+  (%refine-type name (list 'uniform-list elt-type) list?
+    (let ((elt-test (type-test elt-type)))
+      (lambda (elts)
+	(every elt-test elts)))))
+
+(define (uniform-string-type name char-type)
+  (%refine-type name (list 'uniform-string-type char-type) string?
+    (let ((char-test (type-test char-type)))
+      (lambda (s)
+	(string-every char-test s)))))
+
 (define (disjoin-types name . types)
   (cond ((null? types) no-object?)
 	((null? (cdr types))
@@ -166,7 +191,7 @@ USA.
 		       (set-type<=! type disjunction))
 		     types)
 	   disjunction))))
-
+
 (define (conjoin-types name . types)
   (cond ((null? types) any-object?)
 	((null? (cdr types))
@@ -202,40 +227,39 @@ USA.
     (let ((test (type-test type)))
       (lambda (object)
 	(not (test object))))))
-
-(define (differ-types name type1 type2)
-  (let ((type
-	 (make-type name (list 'differ type1 type2)
-	   (let ((test1 (type-test type1))
-		 (test2 (type-test type2)))
-	     (lambda (object)
-	       (and (test1 object)
-		    (not (test2 object))))))))
-    (set-type<=! type type1)
+
+(define (simple-type name test)
+  (let ((type (make-type name #f test)))
+    (set! simple-types (weak-cons type simple-types))
     type))
 
-(define (pair-type name car-type cdr-type)
-  (refine-type name pair?
-    (let ((car-test (type-test car-type))
-	  (cdr-test (type-test cdr-type)))
-      (lambda (object)
-	(and (car-test (car object))
-	     (cdr-test (cdr object)))))))
+(define (all-simple-types)
+  (weak-list->list simple-types))
 
-(define (uniform-list-type name elt-type)
-  (let ((type
-	 (make-type name (list 'uniform-list elt-type)
-	   (let ((elt-test (type-test elt-type)))
-	     (lambda (object)
-	       (list-of-type? object elt-test))))))
-    (set-type<=! type list?)
-    type))
+(define simple-types '())
 
-(define (uniform-string-type name char-type)
-  (refine-type name string?
-    (let ((char-test (type-test char-type)))
-      (lambda (s)
-	(string-every char-test s)))))
+(define (all-types)
+  (let ((ht (make-hash-table eq-comparator)))
+
+    (define (do-type type)
+      (if (not (hash-table-contains? ht type))
+	  (begin
+	    (hash-table-set! ht type #t)
+	    (weak-list-set-for-each do-type (%type-subsets type))
+	    (weak-list-set-for-each do-type (%type-supersets type)))))
+
+    (weak-for-each do-type simple-types)
+    (hash-table-keys ht)))
+
+(define (object->type object)
+  (let loop ((type (vector-ref primitive-types (object-type object))))
+    (let ((subtype
+	   (weak-list-set-find (lambda (subtype)
+				 ((%type-refinement subtype) object))
+			       (%type-subsets type))))
+      (if subtype
+	  (loop subtype)
+	  type))))
 
 ;;;; Primitive types
 
@@ -363,71 +387,6 @@ USA.
 	(cons vector? (ucode-type vector))
 	(cons weak-pair? (ucode-type weak-cons))))
 
-(define (install-type-methods!)
-  (define (define-method code method)
-    (vector-set! primitive-type-methods code method))
-
-  (define (simple-alternative alternative)
-    (lambda (object fallback)
-      (if (alternative object)
-	  alternative
-	  fallback)))
-
-  (define-method (ucode-type access)
-    (simple-alternative scode-absolute-reference?))
-
-  (define-method (ucode-type combination)
-    (simple-alternative scode-unassigned??))
-
-  (define-method (ucode-type comment)
-    (simple-alternative scode-declaration?))
-
-  (define-method (ucode-type compiled-entry)
-    (lambda (entry fallback)
-      (declare (ignore fallback))
-      (case (system-triple-first
-	     ((ucode-primitive compiled-entry-kind 1) entry))
-	((0) compiled-procedure?)
-	((1) compiled-return-address?)
-	((2) compiled-expression?)
-	(else compiled-code-address?))))
-
-  (define-method (ucode-type false)
-    (simple-alternative false?))
-
-  (define-method (ucode-type constant)
-    (let* ((constant-types
-	    (vector true?
-		    undefined-value?
-		    undefined-value?
-		    lambda-tag?
-		    lambda-tag?
-		    lambda-tag?
-		    eof-object?
-		    default-object?
-		    lambda-tag?
-		    null?
-		    gc-reclaimed-object?))
-	   (n-types (vector-length constant-types)))
-      (lambda (object fallback)
-	(let ((datum (object-datum object)))
-	  (cond ((and (fixnum? datum) (fx<? datum n-types))
-		 (vector-ref constant-types datum))
-		((record-type-proxy-datum? datum) record-type-proxy?)
-		(else fallback))))))
-
-  (define-method (ucode-type entity)
-    (simple-alternative arity-dispatched-procedure?))
-
-  (define-method apply-hook-type-code
-    (simple-alternative type?))
-
-  (define-method (ucode-type record)
-    (simple-alternative record?))
-
-  (define-method (ucode-type sequence)
-    (simple-alternative scode-open-block?)))
-
 (define type<=
   (named-lambda (cold-load:type<= type1 type2)
     (let loop ((type1 type1))
@@ -467,7 +426,6 @@ USA.
 (define deferred-relations '())
 (define type<=-cache)
 (define primitive-types)
-(define primitive-type-methods)
 (define (initialize-package!)
   (let ((seq (conjoin-boot-deps '(runtime comparator) '(runtime hash-table))))
     (seq 'add-action!
@@ -484,13 +442,11 @@ USA.
   (let ((seq (conjoin-boot-deps '(runtime microcode-tables))))
     (seq 'add-action!
       (lambda ()
-	(let ((n-codes (microcode-type/code-limit)))
-	  (set! primitive-types (make-vector n-codes no-object?))
-	  (set! primitive-type-methods (make-vector n-codes #f)))
+	(set! primitive-types
+	      (make-vector (microcode-type/code-limit) no-object?))
 	(for-each (lambda (e)
 		    (vector-set! primitive-types (cdr e) (car e)))
-		  primitive-type-bindings)
-	(install-type-methods!)))))
+		  primitive-type-bindings)))))
 
 (set! type?
       (refine-type 'type apply-hook?
@@ -507,17 +463,15 @@ USA.
     (list (list 'name (type-name type))
 	  (list 'derivation (type-derivation type))
 	  (list 'dispatch-tag (type-dispatch-tag type))
-	  (list 'supersets (type-supersets type)))))
+	  (list 'supersets (type-supersets type))
+	  (list 'subsets (type-subsets type)))))
 
 (define dispatch-tag?
   (refine-type 'dispatch-tag %record?
     (lambda (record)
       (%dispatch-metatag? (%record-ref record 0)))))
 
-(define dispatch-metatag?
-  (refine-type 'dispatch-metatag %record?
-    (lambda (record)
-      (eq? metatag-tag (%record-ref record 0)))))
+(define dispatch-metatag? (%record-subtype 'dispatch-metatag metatag-tag))
 (set-type<=! dispatch-metatag? dispatch-tag?)
 
 (define any-object?
@@ -532,7 +486,7 @@ USA.
       (declare (ignore object))
       #f)))
 
-(define default-object?
+(define $default-object?
   (refine-type 'default-object misc-constant?
     (lambda (object)
       (eq? #!default object))))

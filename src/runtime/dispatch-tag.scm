@@ -51,15 +51,14 @@ USA.
 (define (make-dispatch-metatag name)
   (guarantee tag-name? name 'make-dispatch-metatag)
 
-  (define type
-    (refine-type name %record?
-      (lambda (r)
-	(eq? metatag (%record-ref r 0)))))
-
   (define metatag
-    (%make-tag metatag-tag name type))
+    (%make-tag metatag-tag name #f))
 
-  (set-predicate-tag! type metatag)
+  (define predicate
+    (%record-subtype name metatag))
+
+  (%set-dispatch-tag-predicate! metatag predicate)
+  (set-predicate-tag! predicate metatag)
   (set-dispatch-tag<=! metatag metatag-tag)
   metatag)
 

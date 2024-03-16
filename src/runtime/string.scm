@@ -67,11 +67,8 @@ USA.
     (lambda (ustring)
       (%ustring-immutable? ustring))))
 
-(define slice?
-  (refine-type 'slice %record?
-    (lambda (record)
-      (and (fix:= 4 (%record-length record))
-	   (eq? %slice-tag (%record-ref record 0))))))
+(define-integrable %slice-tag '|#[(runtime string)slice]|)
+(define slice? (%record-subtype 'slice %slice-tag))
 
 (define (slice-mutable? slice)
   (mutable-simple-string? (slice-string slice)))
@@ -83,13 +80,11 @@ USA.
   (disjoin-types 'string simple-string? slice?))
 
 (define mutable-string?
-  (disjoin-types 'mutable-string
-    mutable-simple-string?
+  (disjoin-types 'mutable-string mutable-simple-string?
     (refine-type #f slice? slice-mutable?)))
 
 (define immutable-string?
-  (disjoin-types 'immutable-string
-    immutable-simple-string?
+  (disjoin-types 'immutable-string immutable-simple-string?
     (refine-type #f slice? slice-immutable?)))
 
 (define (string-mutable? string)
@@ -307,10 +302,6 @@ USA.
 
 (define-integrable (make-slice string start length)
   (%record %slice-tag string start length))
-
-(define-integrable %slice-tag
-  '|#[(runtime string)slice]|)
-
 (define-integrable (slice-string slice) (%record-ref slice 1))
 (define-integrable (slice-start slice) (%record-ref slice 2))
 (define-integrable (slice-length slice) (%record-ref slice 3))
