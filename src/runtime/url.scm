@@ -103,17 +103,16 @@ USA.
   (guarantee uri-path? path 'uri-path-absolute?)
   (path-absolute? path))
 
-(define path-absolute?
-  (refine-type 'path-absolute pair?
-    (lambda (p)
-      (fxzero? (string-length (car p))))))
+(define (path-absolute? path)
+  (and (pair? path)
+       (fix:= 0 (string-length (car path)))))
 
 (define (uri-path-relative? path)
   (guarantee uri-path? path 'uri-path-relative?)
   (path-relative? path))
 
-(define path-relative?
-  (complement-type 'path-relative path-absolute?))
+(define-integrable (path-relative? path)
+  (not (path-absolute? path)))
 
 (define-record-type <uri-authority>
     (%make-uri-authority userinfo host port)
