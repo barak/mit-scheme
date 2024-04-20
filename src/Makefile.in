@@ -228,7 +228,7 @@ runtime/runtime-unx.pkd: $(RUNTIME_CREF_TARGETS)
 
 STDDIR = $(top_srcdir)/../etc/standards
 runtime/generated-standard-libs: $(STDDIR)/standards.scm
-	$(STDDIR)/generate-standard-libs.sh $(abspath $@)
+	$(STDDIR)/generate-standard-libs.sh $@
 
 ################
 # SF
