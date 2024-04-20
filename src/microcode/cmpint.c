@@ -1793,14 +1793,18 @@ cpoint_compiled_code_next (SCHEME_OBJECT cpoint, unsigned long index)
             switch (cc_entry_type_marker_group (cet.marker))
               {
               case CETG_INTERNAL_PROCEDURE:
-                SCHEME_OBJECT dlink = vector_ref (cpoint, index + CONT_SIZE);
-                if (CC_STACK_ENV_P (dlink))
-                  return vector_length (cpoint)
-                         - (stack_end - object_address (dlink));
-                break;
+                {
+                  SCHEME_OBJECT dlink = vector_ref (cpoint, index + CONT_SIZE);
+                  if (CC_STACK_ENV_P (dlink))
+                    return vector_length (cpoint)
+                      - (stack_end - object_address (dlink));
+                  break;
+                }
               case CETG_PROCEDURE:
-                unsigned long size = compiled_entry_frame_size (&cet);
-                return (size == ULONG_MAX) ? size : i2 + size;
+                {
+                  unsigned long size = compiled_entry_frame_size (&cet);
+                  return (size == ULONG_MAX) ? size : i2 + size;
+                }
               default:
                 break;
               }
