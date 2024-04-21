@@ -148,7 +148,7 @@ static void unbind_variable_1
 static unsigned long update_cache_refs_space
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT);
 static unsigned long update_cache_refs_space_1
-  (SCHEME_OBJECT, unsigned int, SCHEME_OBJECT, SCHEME_OBJECT);
+  (SCHEME_OBJECT, enum cache_ref_kind, SCHEME_OBJECT, SCHEME_OBJECT);
 static long update_cache_references
   (SCHEME_OBJECT, SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT);
 static SCHEME_OBJECT * find_binding_cell
@@ -188,7 +188,8 @@ static unsigned long ref_pairs_to_move
 static void delete_ref_pairs
   (SCHEME_OBJECT, unsigned int, SCHEME_OBJECT, SCHEME_OBJECT);
 static void move_ref_pairs
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned int, SCHEME_OBJECT, SCHEME_OBJECT);
+  (SCHEME_OBJECT, SCHEME_OBJECT, enum cache_ref_kind, SCHEME_OBJECT,
+   SCHEME_OBJECT);
 static SCHEME_OBJECT * new_alist_entry
   (SCHEME_OBJECT *, SCHEME_OBJECT);
 static int move_ref_pair_p
