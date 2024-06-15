@@ -351,7 +351,7 @@ long
 assign_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		 SCHEME_OBJECT value, SCHEME_OBJECT * value_ret)
 {
-  if (! ((ENVIRONMENT_P (environment)) || (SYMBOL_P (symbol))))
+  if (! ((ENVIRONMENT_P (environment)) && (SYMBOL_P (symbol))))
     return (ERR_BAD_FRAME);
   {
     SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, 0));
@@ -456,7 +456,7 @@ long
 define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		 SCHEME_OBJECT value)
 {
-  if (! ((ENVIRONMENT_P (environment)) || (SYMBOL_P (symbol))))
+  if (! ((ENVIRONMENT_P (environment)) && (SYMBOL_P (symbol))))
     return (ERR_BAD_FRAME);
 
   /* If there is already a binding, just assign to it.  */
