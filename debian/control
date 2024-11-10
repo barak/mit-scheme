@@ -9,7 +9,7 @@ Build-Depends: debhelper-compat (= 13),
 		libncurses5-dev,
 		libx11-dev, libxt-dev,
 		libdb-dev, libltdl-dev,
-		libpq-dev, pkgconf | pkg-config,
+		pkgconf,
 		texinfo, texlive, ghostscript, texlive-plain-generic
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
