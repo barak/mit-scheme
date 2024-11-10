@@ -6,6 +6,7 @@ mit-scheme (12.1-4) unstable; urgency=medium
   * Running texi2any --html generates foo_html/ not foo/. Patch
     doc/make-common.in to copy foo_html/* to foo/ after each
     texi2any --html. Yes, this is a kludge. (Closes: #1057426)
+  * Bump policy
 
  -- Barak A. Pearlmutter <bap@debian.org>  Sun, 10 Nov 2024 16:04:20 +0000
 

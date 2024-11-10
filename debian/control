@@ -11,7 +11,7 @@ Build-Depends: debhelper-compat (= 13),
 		libdb-dev, libltdl-dev,
 		libpq-dev, pkgconf | pkg-config,
 		texinfo, texlive, ghostscript, texlive-plain-generic
-Standards-Version: 4.6.2
+Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://www.gnu.org/software/mit-scheme/
 Vcs-Git: https://salsa.debian.org/debian/mit-scheme.git
