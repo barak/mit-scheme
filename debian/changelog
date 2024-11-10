@@ -1,3 +1,11 @@
+mit-scheme (12.1-4) UNRELEASED; urgency=medium
+
+  * Use dh_installalternatives for the /usr/bin/scheme link.
+    (Maybe it could be used for the /usr/bin/mit-scheme link, but that
+    does some variable substitution with associated logic.)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Sun, 10 Nov 2024 15:58:51 +0000
+
 mit-scheme (12.1-3) unstable; urgency=medium
 
   * build dependency for pkg-config
