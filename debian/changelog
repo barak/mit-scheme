@@ -1,10 +1,13 @@
-mit-scheme (12.1-4) UNRELEASED; urgency=medium
+mit-scheme (12.1-4) unstable; urgency=medium
 
   * Use dh_installalternatives for the /usr/bin/scheme link.
     (Maybe it could be used for the /usr/bin/mit-scheme link, but that
     does some variable substitution with associated logic.)
+  * Running texi2any --html generates foo_html/ not foo/. Patch
+    doc/make-common.in to copy foo_html/* to foo/ after each
+    texi2any --html. Yes, this is a kludge. (Closes: #1057426)
 
- -- Barak A. Pearlmutter <bap@debian.org>  Sun, 10 Nov 2024 15:58:51 +0000
+ -- Barak A. Pearlmutter <bap@debian.org>  Sun, 10 Nov 2024 16:04:20 +0000
 
 mit-scheme (12.1-3) unstable; urgency=medium
 

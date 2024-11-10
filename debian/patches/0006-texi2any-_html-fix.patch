@@ -1,0 +1,34 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Sun, 10 Nov 2024 15:51:46 +0000
+Subject: texi2any _html fix
+
+Recent versions of texi2any dump html in foo_html/ instead of foo/,
+which is breaking the installation scripts.
+
+This is the cheesiest fix possible: add code that copies foo_html/* to foo/
+after each invocation of texi2any --html.
+
+See: https://bugs.debian.org/1057426
+---
+ doc/make-common.in | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/doc/make-common.in b/doc/make-common.in
+index a46e1fd..9a2d1e4 100644
+--- a/doc/make-common.in
++++ b/doc/make-common.in
+@@ -96,10 +96,14 @@ $(INFO_TARGET): $(SOURCES) $(FIGURES_PNG)
+ $(HTML_TARGET)/index.html: $(SOURCES) $(FIGURES_PNG)
+ 	rm -rf $(HTML_TARGET)
+ 	texi2any --html $(TEXINFO_ROOT).texinfo
++	mkdir -p $(HTML_TARGET)
++	-cp --verbose $(HTML_TARGET)_html/* $(HTML_TARGET)/
+ 
+ $(HTML_NOSPLIT_TARGET): $(SOURCES) $(FIGURES_PNG)
+ 	rm -f $(HTML_NOSPLIT_TARGET)
+ 	texi2any --html --no-split $(TEXINFO_ROOT).texinfo
++	mkdir -p $(HTML_TARGET)
++	-cp --verbose $(HTML_TARGET)_html/* $(HTML_TARGET)/
+ 
+ $(PDF_TARGET): $(SOURCES) $(FIGURES_PDF)
+ 	texi2dvi --pdf $(TEX_OPTIONS) --output=$@ $(TEXINFO_ROOT).texinfo
