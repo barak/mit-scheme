@@ -1,8 +1,5 @@
 mit-scheme (12.1-4) unstable; urgency=medium
 
-  * Use dh_installalternatives for the /usr/bin/scheme link.
-    (Maybe it could be used for the /usr/bin/mit-scheme link, but that
-    does some variable substitution with associated logic.)
   * Running texi2any --html generates foo_html/ not foo/. Patch
     doc/make-common.in to copy foo_html/* to foo/ after each
     texi2any --html. Yes, this is a kludge. (Closes: #1057426)
