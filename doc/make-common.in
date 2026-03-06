@@ -95,11 +95,11 @@ $(INFO_TARGET): $(SOURCES) $(FIGURES_PNG)
 
 $(HTML_TARGET)/index.html: $(SOURCES) $(FIGURES_PNG)
 	rm -rf $(HTML_TARGET)
-	texi2any --html $(TEXINFO_ROOT).texinfo
+	texi2any --html --output=$(HTML_TARGET) $(TEXINFO_ROOT).texinfo
 
 $(HTML_NOSPLIT_TARGET): $(SOURCES) $(FIGURES_PNG)
 	rm -f $(HTML_NOSPLIT_TARGET)
-	texi2any --html --no-split $(TEXINFO_ROOT).texinfo
+	texi2any --html --no-split --output=$(HTML_NOSPLIT_TARGET) $(TEXINFO_ROOT).texinfo
 
 $(PDF_TARGET): $(SOURCES) $(FIGURES_PDF)
 	texi2dvi --pdf $(TEX_OPTIONS) --output=$@ $(TEXINFO_ROOT).texinfo
