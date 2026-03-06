@@ -1746,6 +1746,7 @@ Suppose @var{x1}, @var{x2}, @var{x3}, and @var{x4} are real numbers and
 @end example
 
 @end ifinfo
+
 @noindent
 Then @code{make-rectangular} and @code{make-polar} return @var{z},
 @code{real-part} returns @var{x1}, @code{imag-part} returns @var{x2},
