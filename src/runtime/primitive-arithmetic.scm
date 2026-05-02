@@ -302,7 +302,8 @@ USA.
       0
       (begin
 	(guarantee index-fixnum? start caller)
-	(if (not (fix:<= start end))
+	(if (not (or (default-object? end)
+		     (fix:<= start end)))
 	    (error:bad-range-argument start caller))
 	start)))
 
