@@ -36,7 +36,9 @@ USA.
   (files "imail-util"
 	 "imail-mime"
 	 "imail-core")
-  (parent (edwin)))
+  (parent (edwin))
+  (import (runtime)
+	  object-new-type))
 
 (define-package (edwin imail file-folder)
   (files "imail-file")

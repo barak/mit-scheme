@@ -433,9 +433,7 @@ USA.
 	;; Check to make sure that the length didn't change under us
 	;; while we were reading.  If it did, this is no good.
 	(and (eqv? nread length)
-	     ((ucode-primitive object-new-type 2)
-	      type-code:legacy-string
-	      buffer))))))
+	     (object-new-type type-code:legacy-string buffer))))))
 
 (define (string-port/position port)
   (cond ((textual-port-operation port 'position)
