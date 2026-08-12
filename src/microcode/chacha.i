@@ -29,8 +29,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define	_POSIX_C_SOURCE	200809L
-
 #include "chacha.h"
 
 #include <stdint.h>

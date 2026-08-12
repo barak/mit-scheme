@@ -27,6 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define	_POSIX_C_SOURCE	200809L
+
 #include <stdint.h>
 
 static const uint8_t chacha8_core_selftest_vector[64] = {
