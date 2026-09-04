@@ -1,8 +1,7 @@
 Source: mit-scheme
 Section: lisp
-Priority: optional
 Maintainer: Barak A. Pearlmutter <bap@debian.org>
-Build-Depends: debhelper-compat (= 13),
+Build-Depends: debhelper-compat (= 14),
 		mit-scheme,
 		libssl-dev, libmhash-dev, libmcrypt-dev,
 		libgdbm-dev, libpq-dev,
@@ -11,8 +10,7 @@ Build-Depends: debhelper-compat (= 13),
 		libdb-dev, libltdl-dev,
 		pkgconf,
 		texinfo, texlive, ghostscript, texlive-plain-generic
-Standards-Version: 4.7.0
-Rules-Requires-Root: no
+Standards-Version: 4.7.4
 Homepage: https://www.gnu.org/software/mit-scheme/
 Vcs-Git: https://salsa.debian.org/debian/mit-scheme.git
 Vcs-Browser: https://salsa.debian.org/debian/mit-scheme

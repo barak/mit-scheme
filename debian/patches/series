@@ -4,3 +4,5 @@
 0005-man-page.patch
 0007-verbose-texi2dvi.patch
 0006-texi2any-_html-fix.patch
+0008-chacha-no-late-posix-c-source.patch
+0009-info-dircategory-scheme.patch
