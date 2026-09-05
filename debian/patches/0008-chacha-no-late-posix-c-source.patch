@@ -1,6 +1,7 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Fri, 4 Sep 2026 12:00:00 +0000
 Subject: chacha: drop ineffective late _POSIX_C_SOURCE definition
+
 Bug-Debian: https://bugs.debian.org/1145694
 Forwarded: no
 
@@ -29,6 +30,7 @@ those define it before any #include, where it works as intended.
  1 file changed, 2 deletions(-)
 
 diff --git a/src/microcode/chacha.i b/src/microcode/chacha.i
+index 7b97e30..1bbf321 100644
 --- a/src/microcode/chacha.i
 +++ b/src/microcode/chacha.i
 @@ -29,8 +29,6 @@

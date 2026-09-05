@@ -1,6 +1,7 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Fri, 4 Sep 2026 12:00:00 +0000
 Subject: file the info manuals under "The Algorithmic Language Scheme"
+
 Bug-Debian: https://bugs.debian.org/115450
 Forwarded: no
 
@@ -17,19 +18,20 @@ are listed together, and update doc/info-dir -- the fallback top-level
 Info node, installed only when none exists -- to match.
 ---
  doc/ffi/ffi.texinfo                   | 2 +-
+ doc/info-dir                          | 2 +-
  doc/ref-manual/scheme.texinfo         | 2 +-
  doc/sos/sos.texinfo                   | 2 +-
  doc/user-manual/user.texinfo          | 2 +-
- doc/info-dir                          | 2 +-
  src/blowfish/mit-scheme-blowfish.texi | 2 +-
  src/gdbm/mit-scheme-gdbm.texi         | 2 +-
  src/imail/mit-scheme-imail.texi       | 2 +-
  8 files changed, 8 insertions(+), 8 deletions(-)
 
 diff --git a/doc/ffi/ffi.texinfo b/doc/ffi/ffi.texinfo
+index df20607..4970f0d 100644
 --- a/doc/ffi/ffi.texinfo
 +++ b/doc/ffi/ffi.texinfo
-@@ -36,7 +36,7 @@
+@@ -36,7 +36,7 @@ Documentation License.''
  @end quotation
  @end copying
  
@@ -38,10 +40,24 @@ diff --git a/doc/ffi/ffi.texinfo b/doc/ffi/ffi.texinfo
  @direntry
  * MIT/GNU Scheme FFI: (mit-scheme-ffi).
                                  Foreign Function Interface
+diff --git a/doc/info-dir b/doc/info-dir
+index 37f0bfa..d27e63c 100644
+--- a/doc/info-dir
++++ b/doc/info-dir
+@@ -13,7 +13,7 @@ File: dir	Node: Top	This is the top of the INFO tree
+ 
+ * Menu:
+ 
+-Programming Languages
++The Algorithmic Language Scheme
+ 
+ * MIT/GNU Scheme FFI: (mit-scheme-ffi).
+                                 Foreign Function Interface
 diff --git a/doc/ref-manual/scheme.texinfo b/doc/ref-manual/scheme.texinfo
+index a79bd8a..d29d0dd 100644
 --- a/doc/ref-manual/scheme.texinfo
 +++ b/doc/ref-manual/scheme.texinfo
-@@ -38,7 +38,7 @@
+@@ -38,7 +38,7 @@ Documentation License.''
  @comment **** begin CLTL ****
  @comment **** end CLTL ****
  
@@ -51,9 +67,10 @@ diff --git a/doc/ref-manual/scheme.texinfo b/doc/ref-manual/scheme.texinfo
  * MIT/GNU Scheme Reference: (mit-scheme-ref).
                                  Reference Manual
 diff --git a/doc/sos/sos.texinfo b/doc/sos/sos.texinfo
+index dc0248f..effb34b 100644
 --- a/doc/sos/sos.texinfo
 +++ b/doc/sos/sos.texinfo
-@@ -33,7 +33,7 @@
+@@ -33,7 +33,7 @@ Documentation License.''
  @end quotation
  @end copying
  
@@ -63,9 +80,10 @@ diff --git a/doc/sos/sos.texinfo b/doc/sos/sos.texinfo
  * MIT/GNU Scheme SOS: (mit-scheme-sos).
                                  Scheme Object System
 diff --git a/doc/user-manual/user.texinfo b/doc/user-manual/user.texinfo
+index bf041bc..a36f0cf 100644
 --- a/doc/user-manual/user.texinfo
 +++ b/doc/user-manual/user.texinfo
-@@ -38,7 +38,7 @@
+@@ -38,7 +38,7 @@ Documentation License.''
  @end quotation
  @end copying
  
@@ -74,22 +92,11 @@ diff --git a/doc/user-manual/user.texinfo b/doc/user-manual/user.texinfo
  @direntry
  * MIT/GNU Scheme User: (mit-scheme-user).
                                  User's Manual
-diff --git a/doc/info-dir b/doc/info-dir
---- a/doc/info-dir
-+++ b/doc/info-dir
-@@ -13,7 +13,7 @@
- 
- * Menu:
- 
--Programming Languages
-+The Algorithmic Language Scheme
- 
- * MIT/GNU Scheme FFI: (mit-scheme-ffi).
-                                 Foreign Function Interface
 diff --git a/src/blowfish/mit-scheme-blowfish.texi b/src/blowfish/mit-scheme-blowfish.texi
+index 008072c..7a8ab8f 100644
 --- a/src/blowfish/mit-scheme-blowfish.texi
 +++ b/src/blowfish/mit-scheme-blowfish.texi
-@@ -25,7 +25,7 @@
+@@ -25,7 +25,7 @@ Documentation License.''
  @end quotation
  @end copying
  
@@ -99,9 +106,10 @@ diff --git a/src/blowfish/mit-scheme-blowfish.texi b/src/blowfish/mit-scheme-blo
  * MIT/GNU Scheme Blowfish: (mit-scheme-blowfish).
                                  Blowfish plugin.
 diff --git a/src/gdbm/mit-scheme-gdbm.texi b/src/gdbm/mit-scheme-gdbm.texi
+index 96412cc..5531e68 100644
 --- a/src/gdbm/mit-scheme-gdbm.texi
 +++ b/src/gdbm/mit-scheme-gdbm.texi
-@@ -40,7 +40,7 @@
+@@ -40,7 +40,7 @@ by the Free Software Foundation.
  @end quotation
  @end copying
  
@@ -111,9 +119,10 @@ diff --git a/src/gdbm/mit-scheme-gdbm.texi b/src/gdbm/mit-scheme-gdbm.texi
  * MIT/GNU Scheme GDBM: (mit-scheme-gdbm).
                                  GNU database manager plugin
 diff --git a/src/imail/mit-scheme-imail.texi b/src/imail/mit-scheme-imail.texi
+index 358c123..af91644 100644
 --- a/src/imail/mit-scheme-imail.texi
 +++ b/src/imail/mit-scheme-imail.texi
-@@ -31,7 +31,7 @@
+@@ -31,7 +31,7 @@ Documentation License.''
  @end quotation
  @end copying
  

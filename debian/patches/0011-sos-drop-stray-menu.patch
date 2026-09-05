@@ -1,6 +1,7 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Sat, 5 Sep 2026 12:00:00 +0000
 Subject: sos: drop the stray sibling menu in the Introduction node
+
 Forwarded: no
 
 Introduction is @unnumbered, so it is a sibling of the Classes ...
@@ -22,9 +23,10 @@ contradicting itself.
  1 file changed, 9 deletions(-)
 
 diff --git a/doc/sos/sos.texinfo b/doc/sos/sos.texinfo
+index effb34b..8b91353 100644
 --- a/doc/sos/sos.texinfo
 +++ b/doc/sos/sos.texinfo
-@@ -119,15 +119,6 @@
+@@ -119,15 +119,6 @@ The argument must be a procedure (@code{procedure?}).
  The argument must be a @dfn{slot descriptor} (@code{slot-descriptor?}).
  @end table
  

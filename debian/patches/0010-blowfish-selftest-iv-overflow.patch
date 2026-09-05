@@ -1,6 +1,7 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Sat, 5 Sep 2026 12:00:00 +0000
 Subject: blowfish: fix 8-byte stack overflow in the self test
+
 Forwarded: no
 
 blowfish_selftest() sets up the IV for each of the six chained-mode
@@ -25,50 +26,51 @@ being able to prove otherwise.  gcc already sees it:
     '__builtin___memcpy_chk' forming offset [8, 15] is out of the bounds
     [0, 8] of object 'block' with type 'uint8_t[8]' [-Warray-bounds=]
 
-Use sizeof IV, which is what was meant.
+Use sizeof(IV), which is what was meant.
 ---
- src/blowfish/blowfish.c | 12 +++++------
+ src/blowfish/blowfish.c | 12 ++++++------
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/src/blowfish/blowfish.c b/src/blowfish/blowfish.c
+index 144b1e8..75b74d8 100644
 --- a/src/blowfish/blowfish.c
 +++ b/src/blowfish/blowfish.c
-@@ -534,32 +534,32 @@
+@@ -534,32 +534,32 @@ blowfish_selftest(void)
  
  	blowfish_init(B, K, 16);
  
 -	memcpy(block, IV, 16);
-+	memcpy(block, IV, sizeof IV);
++	memcpy(block, IV, sizeof(IV));
  	blowfish_encrypt_cbc(B, block, P_cbc, buf, sizeof P_cbc);
  	if (memcmp(buf, C_cbc, sizeof C_cbc) != 0)
  		return -1;
  
 -	memcpy(block, IV, 16);
-+	memcpy(block, IV, sizeof IV);
++	memcpy(block, IV, sizeof(IV));
  	blowfish_decrypt_cbc(B, block, C_cbc, buf, sizeof P_cbc);
  	if (memcmp(buf, P_cbc, sizeof P_cbc) != 0)
  		return -1;
  
 -	memcpy(block, IV, 16);
-+	memcpy(block, IV, sizeof IV);
++	memcpy(block, IV, sizeof(IV));
  	blowfish_encrypt_cfb64(B, block, 0, P, buf, sizeof P);
  	if (memcmp(buf, C_cfb64, sizeof C_cfb64) != 0)
  		return -1;
  
 -	memcpy(block, IV, 16);
-+	memcpy(block, IV, sizeof IV);
++	memcpy(block, IV, sizeof(IV));
  	blowfish_decrypt_cfb64(B, block, 0, C_cfb64, buf, sizeof P);
  	if (memcmp(buf, P, sizeof P) != 0)
  		return -1;
  
 -	memcpy(block, IV, 16);
-+	memcpy(block, IV, sizeof IV);
++	memcpy(block, IV, sizeof(IV));
  	blowfish_encrypt_ofb64(B, block, 0, P, buf, sizeof P);
  	if (memcmp(buf, C_ofb64, sizeof C_ofb64) != 0)
  		return -1;
  
 -	memcpy(block, IV, 16);
-+	memcpy(block, IV, sizeof IV);
++	memcpy(block, IV, sizeof(IV));
  	blowfish_decrypt_ofb64(B, block, 0, C_ofb64, buf, sizeof P);
  	if (memcmp(buf, P, sizeof P) != 0)
  		return -1;
