@@ -119,15 +119,6 @@ The argument must be a procedure (@code{procedure?}).
 The argument must be a @dfn{slot descriptor} (@code{slot-descriptor?}).
 @end table
 
-@menu
-* Classes::                     
-* Instances::                   
-* Slots::                       
-* Generic Procedures::          
-* Methods::                     
-* Printing::                    
-@end menu
-
 @node Classes, Instances, Introduction, Top
 @chapter Classes
 
