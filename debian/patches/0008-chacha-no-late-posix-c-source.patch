@@ -1,6 +1,8 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Fri, 4 Sep 2026 12:00:00 +0000
 Subject: chacha: drop ineffective late _POSIX_C_SOURCE definition
+Bug-Debian: https://bugs.debian.org/1145694
+Forwarded: no
 
 chacha.i is not a translation unit of its own: it is included at the
 *end* of chacha8.c, chacha12.c and chacha20.c, each of which has
@@ -22,9 +24,6 @@ drop the definition rather than hoisting it into the three including
 files -- that would *narrow* the visible namespace, which is plainly
 not what was intended.  md5.c, keccak.c and blowfish.c keep theirs:
 those define it before any #include, where it works as intended.
-
-Bug-Debian: https://bugs.debian.org/1145694
-Forwarded: no
 ---
  src/microcode/chacha.i | 2 --
  1 file changed, 2 deletions(-)

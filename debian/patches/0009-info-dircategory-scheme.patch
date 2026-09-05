@@ -1,6 +1,8 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Fri, 4 Sep 2026 12:00:00 +0000
 Subject: file the info manuals under "The Algorithmic Language Scheme"
+Bug-Debian: https://bugs.debian.org/115450
+Forwarded: no
 
 The MIT/GNU Scheme manuals sit by themselves under "Programming
 Languages" in the top-level Info directory, while the other Scheme
@@ -13,9 +15,6 @@ Use the same @dircategory as everybody else, in all seven manuals (the
 four in doc/ plus the three plugin manuals under src/), so that they
 are listed together, and update doc/info-dir -- the fallback top-level
 Info node, installed only when none exists -- to match.
-
-Bug-Debian: https://bugs.debian.org/115450
-Forwarded: no
 ---
  doc/ffi/ffi.texinfo                   | 2 +-
  doc/ref-manual/scheme.texinfo         | 2 +-

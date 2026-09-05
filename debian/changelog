@@ -9,8 +9,31 @@ mit-scheme (12.1-5) unstable; urgency=medium
   * Put the Info manuals in the "The Algorithmic Language Scheme"
     section, alongside the other Scheme systems, instead of in
     "Programming Languages" on their own. (Closes: #115450)
+  * Patch blowfish_selftest to copy only the 8 bytes the Blowfish IV
+    actually has; it was copying 16, overrunning both source and
+    destination on the stack (gcc -Warray-bounds catches it).
+  * Drop the redundant update-alternatives --remove calls from the
+    postrm; the prerm already withdraws them, and by postrm time the
+    binary is gone, so those calls could leave /etc/alternatives
+    dangling.
+  * Build-depend on libncurses-dev rather than the obsolete libncurses5-
+    dev.
+  * Stop spelling out ${shlibs:Depends} and ${misc:Depends}; debhelper
+    compat 14 fills the dependency fields in on its own, and naming them
+    made dpkg-gencontrol warn.
+  * Also install the man page under the version-qualified name of the
+    real binary.
+  * Refer to the FSF licence page in debian/copyright instead of the old
+    postal address.
+  * Record the upstream bug tracker in debian/upstream/metadata.
+  * Add DEP-3 Forwarded: fields to the patches that lacked them.
+  * Override two lintian tags that do not apply: the interpreter's file
+    name is architecture-qualified, and the desktop entry's command
+    comes from update-alternatives.
+  * Patch sos.texinfo to drop a stray menu that claimed six sibling
+    chapters as children of the Introduction.
 
- -- Barak A. Pearlmutter <bap@debian.org>  Fri, 04 Sep 2026 17:45:40 +0100
+ -- Barak A. Pearlmutter <bap@debian.org>  Sat, 05 Sep 2026 14:25:13 +0100
 
 mit-scheme (12.1-4) unstable; urgency=medium
 

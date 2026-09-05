@@ -1,0 +1,5 @@
+# mit-scheme-dbg is not an obsolete-style ELF debug package: the ELF debugging
+# symbols go to the automatically generated mit-scheme-dbgsym.  What -dbg holds
+# is MIT/GNU Scheme's own .bci files, which the Scheme debugger reads to
+# describe compiled Scheme code, and for which there is no dbgsym equivalent.
+mit-scheme source: debian-control-has-obsolete-dbg-package

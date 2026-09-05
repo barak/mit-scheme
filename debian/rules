@@ -109,6 +109,10 @@ execute_after_dh_installman-arch:
 	@echo "install man page using arch; generic is via alternatives"
 	cd debian/mit-scheme/usr/share/man && \
 	 mv man1/mit-scheme.1 man1/mit-scheme-$(BIN_ARCH).1
+	@echo "the real binary is version-qualified; document it too"
+	cd debian/mit-scheme/usr/share/man && \
+	 ln -s mit-scheme-$(BIN_ARCH).1 \
+	       man1/mit-scheme-$(BIN_ARCH)-$(DEB_VERSION_UPSTREAM).1
 
 # Upstream changelog is over 5MB, leave a copy in the doc package but
 # remove it from the binary package to reduce bloat.

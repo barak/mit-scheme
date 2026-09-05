@@ -16,21 +16,13 @@ set -e
 #        * <disappearer's-postrm> `disappear' <r>overwrit>r> <new-version>
 # for details, see /usr/doc/packaging-manual/
 
+# The alternatives are withdrawn in the prerm, which is where
+# update-alternatives --remove belongs: by the time the postrm runs the
+# target binary is already gone, so --remove no longer recognises it and
+# leaves /etc/alternatives/mit-scheme marked site-specific and dangling.
+
 case "${1}" in
-(purge|upgrade|failed-upgrade|abort-install|abort-upgrade)
-    ;;
-(remove|disappear)
-    BIN_ARCH=${DPKG_MAINTSCRIPT_ARCH}
-    case ${BIN_ARCH} in
-	amd64|x86_64)
-	    BIN_ARCH=x86-64
-	    ;;
-	i486|i586)
-	    BIN_ARCH=i386
-	    ;;
-    esac
-    update-alternatives --remove mit-scheme /usr/bin/mit-scheme-${BIN_ARCH}
-    update-alternatives --remove scheme /usr/bin/mit-scheme
+(purge|remove|disappear|upgrade|failed-upgrade|abort-install|abort-upgrade)
     ;;
 (*)
     echo "postrm called with unknown argument \"${1}\"" >&2

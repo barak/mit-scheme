@@ -1,0 +1,42 @@
+From: "Barak A. Pearlmutter" <bap@debian.org>
+Date: Sat, 5 Sep 2026 12:00:00 +0000
+Subject: sos: drop the stray sibling menu in the Introduction node
+Forwarded: no
+
+Introduction is @unnumbered, so it is a sibling of the Classes ...
+Printing chapters, not their parent, and the Top node's master menu
+already lists all seven at the same level.  The extra menu at the end
+of Introduction claims those six chapters as its children, which
+contradicts the up pointers in their own @node lines:
+
+  sos.texinfo:123: warning: node up pointer for `Classes' is `Top'
+                            but up is `Introduction' in menu
+  ... and the same for Instances, Slots, Generic Procedures, Methods
+  and Printing.
+
+Delete the duplicate menu.  Nothing is lost -- the identical list is
+in Top's menu one screen earlier -- and the Info hierarchy stops
+contradicting itself.
+---
+ doc/sos/sos.texinfo | 9 ---------
+ 1 file changed, 9 deletions(-)
+
+diff --git a/doc/sos/sos.texinfo b/doc/sos/sos.texinfo
+--- a/doc/sos/sos.texinfo
++++ b/doc/sos/sos.texinfo
+@@ -119,15 +119,6 @@
+ The argument must be a @dfn{slot descriptor} (@code{slot-descriptor?}).
+ @end table
+ 
+-@menu
+-* Classes::                     
+-* Instances::                   
+-* Slots::                       
+-* Generic Procedures::          
+-* Methods::                     
+-* Printing::                    
+-@end menu
+-
+ @node Classes, Instances, Introduction, Top
+ @chapter Classes
+ 

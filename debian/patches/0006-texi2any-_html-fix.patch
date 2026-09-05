@@ -1,6 +1,7 @@
 From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
 Date: Sun, 10 Nov 2024 15:51:46 +0000
 Subject: texi2any _html fix
+Forwarded: no
 
 Recent versions of texi2any dump html in foo_html/ instead of foo/,
 which is breaking the installation scripts.

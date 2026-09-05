@@ -6,3 +6,5 @@
 0006-texi2any-_html-fix.patch
 0008-chacha-no-late-posix-c-source.patch
 0009-info-dircategory-scheme.patch
+0010-blowfish-selftest-iv-overflow.patch
+0011-sos-drop-stray-menu.patch
