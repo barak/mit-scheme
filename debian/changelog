@@ -1,3 +1,23 @@
+mit-scheme (12.1-6) unstable; urgency=medium
+
+  * Build for arm64 as well as amd64, using upstream's AArch64 native-
+    code back end (see #365530). Upstream's configure only auto-detects
+    x86, and names its back ends in its own way, so debian/rules now
+    keeps one mapping from the Debian architecture to upstream's name in
+    BIN_ARCH and drives --enable-native-code from it; postinst and prerm
+    learn the same mapping for arm64. Note that the first arm64 binary
+    still has to be bootstrapped by hand, as the build needs an existing
+    MIT/GNU Scheme.
+  * Mark the self-referential build dependency mit-scheme:native: it is
+    the build machine's Scheme that has to run, not the host
+    architecture's.
+  * Use $(DEB_HOST_MULTIARCH) rather than a hardcoded x86_64-linux-gnu
+    when removing the leftover empty lib directory.
+  * Describe the architecture mapping and the bootstrap problem in
+    README.Debian.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Wed, 09 Sep 2026 10:27:56 +0100
+
 mit-scheme (12.1-5) unstable; urgency=medium
 
   * Remove redundant build dependency.

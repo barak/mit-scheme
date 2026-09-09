@@ -23,6 +23,27 @@ override_dh_autoreconf:
 	  'for d in src doc; \
 	    do (cd $$d && autoreconf -f -i) done'
 
+# MIT/GNU Scheme names its native-code back ends itself, and the names are
+# neither Debian's nor GNU's.  The same string is used in three places -- the
+# --enable-native-code configure argument, the name of the installed
+# interpreter (mit-scheme-$(BIN_ARCH)-$(DEB_VERSION_UPSTREAM)) and the
+# mit-scheme-$(BIN_ARCH) symlink the alternatives point at -- so derive all of
+# them from one variable here.  Note that upstream's configure only
+# auto-detects the x86 family, so arm64 has to be told explicitly.
+
+ifeq ($(DEB_HOST_ARCH),amd64)
+BIN_ARCH := x86-64
+else ifeq ($(DEB_HOST_ARCH),arm64)
+BIN_ARCH := aarch64le
+else ifeq ($(DEB_HOST_ARCH),i386)
+BIN_ARCH := i386
+else
+BIN_ARCH := $(DEB_HOST_GNU_CPU)
+endif
+export BIN_ARCH
+
+CONF_FLAGS += --enable-native-code=$(BIN_ARCH)
+
 CONF_FLAGS += --docdir=/usr/share/doc/mit-scheme-doc
 CONF_FLAGS += --enable-html=/usr/share/doc/mit-scheme-doc/html
 CONF_FLAGS += --enable-pdf=/usr/share/doc/mit-scheme-doc/pdf
@@ -62,12 +83,6 @@ override_dh_auto_build:
 # -indep
 	dh_auto_build --sourcedirectory=doc
 
-ifeq ($(DEB_HOST_GNU_CPU),x86_64)
-export BIN_ARCH=x86-64
-else
-export BIN_ARCH=$(DEB_HOST_GNU_CPU)
-endif
-
 override_dh_auto_install:
 # -arch
 	dh_auto_install --sourcedirectory=src
@@ -103,7 +118,7 @@ execute_after_dh_install-arch:
 	 | tar -C debian/mit-scheme-dbg -xvf -
 	find debian/mit-scheme -name '*.bci' -delete
 	@echo "remove empty directory"
-	-rmdir debian/mit-scheme/usr/lib/x86_64-linux-gnu/mit-scheme/lib
+	-rmdir debian/mit-scheme/usr/lib/$(DEB_HOST_MULTIARCH)/mit-scheme/lib
 
 execute_after_dh_installman-arch:
 	@echo "install man page using arch; generic is via alternatives"

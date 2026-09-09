@@ -24,6 +24,9 @@ case "${1}" in
 	amd64|x86_64)
 	    BIN_ARCH=x86-64
 	    ;;
+	arm64)
+	    BIN_ARCH=aarch64le
+	    ;;
 	i486|i586)
 	    BIN_ARCH=i386
 	    ;;

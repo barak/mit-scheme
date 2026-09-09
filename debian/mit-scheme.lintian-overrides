@@ -1,5 +1,5 @@
 # The interpreter's file name embeds the MIT/GNU Scheme back end it was built
-# for -- mit-scheme-x86-64-12.1 here, mit-scheme-aarch64-12.1 elsewhere -- so
+# for -- mit-scheme-x86-64-12.1 here, mit-scheme-aarch64le-12.1 elsewhere -- so
 # the binaries shipped by different architectures of this Multi-Arch: same
 # package never share a path and so cannot conflict.  /usr/bin is the right
 # place for them: they are the alternatives that /usr/bin/mit-scheme and

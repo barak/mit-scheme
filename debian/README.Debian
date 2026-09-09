@@ -14,3 +14,43 @@ there won't be any crypto support in the resulting package.
 	libssl-dev
 	libmhash-dev
 	libmcrypt-dev
+
+Architectures and bootstrapping
+-------------------------------
+
+MIT/GNU Scheme's compiler is written in Scheme, so building the package
+requires a working MIT/GNU Scheme on the build machine -- hence the
+self-referential build dependency.  Upstream ships native-code back ends
+for x86-64 and AArch64 (as well as i386, a portable C back end and the
+SVM virtual machine); the packaging enables the x86-64 back end on amd64
+and the AArch64 one on arm64.
+
+Upstream's configure only auto-detects the x86 family, and it names its
+back ends in its own way -- "x86-64", "aarch64le" -- rather than using
+Debian or GNU architecture names.  debian/rules therefore keeps a single
+mapping from the Debian architecture to upstream's name, in the BIN_ARCH
+variable, and uses it both for --enable-native-code and for the file
+names that follow from it: the interpreter is installed as
+/usr/bin/mit-scheme-$BIN_ARCH-$VERSION, with an unversioned
+/usr/bin/mit-scheme-$BIN_ARCH symlink beside it, and that is what the
+mit-scheme and scheme alternatives point at.  The postinst and prerm
+repeat the mapping so that they can work it out from
+$DPKG_MAINTSCRIPT_ARCH at run time.
+
+Adding an architecture therefore needs an entry in the BIN_ARCH mapping
+in debian/rules and matching entries in debian/mit-scheme.postinst and
+debian/mit-scheme.prerm, plus the architecture in debian/control.
+
+The awkward part is the bootstrap.  Because the build needs an existing
+MIT/GNU Scheme, an architecture cannot build itself until a binary for
+it already exists in the archive, and a buildd has nothing to start
+from.  The compiler can, however, generate code for an architecture
+other than the one it is running on, which is how upstream ports Scheme
+to new machines: a cross build, with the compiler running on a machine
+that already has Scheme and emitting code for the new target.  The
+build dependency is marked mit-scheme:native to say that the dependency
+is on the build machine's Scheme, not the host architecture's.
+
+So the first binary for a new architecture has to be produced by hand
+and bootstrapped into the archive; after that, ordinary buildd builds
+take over.
