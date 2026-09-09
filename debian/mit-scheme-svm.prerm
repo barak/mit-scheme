@@ -1,5 +1,5 @@
 #!/bin/sh
-# prerm script for mit-scheme
+# prerm script for mit-scheme-svm
 #
 # see: dh_installdeb(1)
 
@@ -19,23 +19,20 @@ case "${1}" in
 (upgrade)
     ;;
 (remove|failed-upgrade|deconfigure)
-    BIN_ARCH=${DPKG_MAINTSCRIPT_ARCH}
-    case ${BIN_ARCH} in
-	amd64|x86_64)
-	    BIN_ARCH=x86-64
-	    ;;
-	arm64)
-	    BIN_ARCH=aarch64le
-	    ;;
-	i486|i586)
-	    BIN_ARCH=i386
-	    ;;
+    # The SVM back end is named by word size and byte order; ask dpkg rather
+    # than keeping a table of every architecture here.
+    BITS=$(dpkg-architecture -a"${DPKG_MAINTSCRIPT_ARCH}" -qDEB_HOST_ARCH_BITS 2>/dev/null)
+    ENDIAN=$(dpkg-architecture -a"${DPKG_MAINTSCRIPT_ARCH}" -qDEB_HOST_ARCH_ENDIAN 2>/dev/null)
+    case ${ENDIAN} in
+	big) ENDIAN=be ;;
+	*)   ENDIAN=le ;;
     esac
+    BIN_ARCH=svm1-${BITS}${ENDIAN}
     update-alternatives --remove mit-scheme /usr/bin/mit-scheme-${BIN_ARCH}
     update-alternatives --remove scheme /usr/bin/mit-scheme-${BIN_ARCH}
     ;;
 (*)
-    echo "prerm called with unknown argument \"${1}\"" >&2
+    echo "mit-scheme-svm prerm called with unknown argument \"${1}\"" >&2
     exit 1
     ;;
 esac

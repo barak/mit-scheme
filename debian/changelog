@@ -1,22 +1,50 @@
 mit-scheme (12.1-6) unstable; urgency=medium
 
-  * Build for arm64 as well as amd64, using upstream's AArch64 native-
-    code back end (see #365530). Upstream's configure only auto-detects
-    x86, and names its back ends in its own way, so debian/rules now
-    keeps one mapping from the Debian architecture to upstream's name in
-    BIN_ARCH and drives --enable-native-code from it; postinst and prerm
-    learn the same mapping for arm64. Note that the first arm64 binary
-    still has to be bootstrapped by hand, as the build needs an existing
-    MIT/GNU Scheme.
-  * Mark the self-referential build dependency mit-scheme:native: it is
-    the build machine's Scheme that has to run, not the host
-    architecture's.
-  * Use $(DEB_HOST_MULTIARCH) rather than a hardcoded x86_64-linux-gnu
-    when removing the leftover empty lib directory.
-  * Describe the architecture mapping and the bootstrap problem in
-    README.Debian.
+  * Put developer-relevant info in debian/NOTES.md, leaving README.Debian
+    for user-relevant info only.
+  * New binary package mit-scheme-svm, which uses a virtual machine rather
+    than a native back end. Co-installable with the native build; both
+    Provides: mit-scheme-interpreter. Control with build profiles
+    pkg.mit-scheme.nonative / pkg.mit-scheme.nosvm. A mapping from Debian
+    architecture to upstream back-end names, used in build options and
+    filenames, is in debian/rules. Which flavours can build on the current
+    arch comes from dh_listpackages, which isolates that information to
+    debian/control. (Note: scmutils, the only package depending on
+    mit-scheme, installs native .com files into the native flavour's
+    auxiliary directory, so it cannot use the -svm flavor.) Make
+    AUXDIR_NAME overridable, so the flavours can have separate aux
+    directories. Update mit-scheme alternative for multiple installed
+    flavors, with preference for native. Mark the self-referential build
+    dependency :native, and use $(DEB_HOST_MULTIARCH) rather than a
+    hardcoded triplet.
+  * Decide --enable-cross-compiling by checking which compiled-code format
+    the build-time-available mit-scheme produces, rather than comparing
+    versions; otherwise building the SVM flavour with a native Scheme
+    fails with fasl-file-bad-data when saving lib/runtime.com.
+  * Build for arm64, and, via the new SVM flavour, armhf, i386, and
+    ppc64el (closes: #365530). Include ppc64el confshared.h patch. (Note:
+    armhf has a machine type but does not define HEAP_IN_LOW_MEMORY, so it
+    cannot load bands or FASL files built anywhere else, and therefore
+    cannot be bootstrapped.)
+  * Record what makes an SVM band portable across architectures in
+    debian/NOTES.md.
+  * Bootstrap from a prebuilt SVM library when present in debian/prebuilt/
+    and no mit-scheme is installed. (This can avoid the need to manually
+    seed new architectures. See debian/NOTES.md and git branch
+    debian-bootstrap. Note: debian/prebuilt/ not currently in source
+    package because it's an enormous binary blob.)
+  * Override old-fsf-address-in-copyright-file (the Cambridge postal
+    address in debian/copyright is MIT's, which lintian mistakes for
+    the FSF's old address.)
+  * Install man page under the version-qualified name of real binary.
+  * Record upstream bug tracker in debian/upstream/metadata.
+  * Split dh_auto_* overrides into -arch and -indep, so architecture-only
+    builds no longer build the documentation. Move texlive,
+    texlive-plain-generic and ghostscript to Build-Depends-Indep: only
+    doc/ uses TeX, and that is now built only in the -indep sequence.
+    Keep texinfo because plugins under src/ run makeinfo.
 
- -- Barak A. Pearlmutter <bap@debian.org>  Wed, 09 Sep 2026 10:27:56 +0100
+ -- Barak A. Pearlmutter <bap@debian.org>  Fri, 11 Sep 2026 09:48:42 +0100
 
 mit-scheme (12.1-5) unstable; urgency=medium
 

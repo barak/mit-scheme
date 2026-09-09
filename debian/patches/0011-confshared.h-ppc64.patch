@@ -1,0 +1,52 @@
+From: "Barak A. Pearlmutter" <bap@debian.org>
+Date: Fri, 11 Sep 2026 09:00:00 +0000
+Subject: confshared.h ppc64
+
+Fix two 64-bit PowerPC problems in confshared.h
+
+First: gcc defines __powerpc__ on both 32-bit and 64-bit PowerPC, so
+on ppc64el both the __ppc__ and the __ppc64__ blocks were included, so
+MACHINE_TYPE and CURRENT_FASL_ARCH were each defined twice. The
+microcode is built with -Werror, so on ppc64el every file that
+includes confshared.h failed:
+
+  error: 'MACHINE_TYPE' redefined [-Werror]
+  error: 'CURRENT_FASL_ARCH' redefined [-Werror]
+
+Fix: guard the 32-bit definitions with !defined(__powerpc64__).
+
+Second: confshared.h should define HEAP_IN_LOW_MEMORY on 64-bit
+PowerPC, but the __ppc64__ block set only MACHINE_TYPE and
+CURRENT_FASL_ARCH, while __x86_64__ and __aarch64__ also set
+HEAP_IN_LOW_MEMORY. (That was masked because of issue above which
+loaded the 32-bit PowerPC block which does define it.)
+
+Fix: define HEAP_IN_LOW_MEMORY in the 64-bit PowePC block.
+---
+ src/microcode/confshared.h | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/microcode/confshared.h b/src/microcode/confshared.h
+index 2aca540..c27f209 100644
+--- a/src/microcode/confshared.h
++++ b/src/microcode/confshared.h
+@@ -568,7 +568,10 @@ extern void win32_stack_reset (void);
+ #define MAX_FLONUM_EXPONENT    1023
+ #endif
+ 
+-#ifdef __powerpc__
++/* gcc defines __powerpc__ on 64-bit PowerPC as well, so this has to exclude
++   __powerpc64__ explicitly; otherwise both blocks below fire and MACHINE_TYPE
++   and CURRENT_FASL_ARCH are each defined twice.  */
++#if defined(__powerpc__) && !defined(__powerpc64__)
+ #  define __ppc__ 1
+ #endif
+ 
+@@ -586,6 +589,7 @@ extern void win32_stack_reset (void);
+ #ifdef __ppc64__
+ #  define MACHINE_TYPE		"PowerPC-64"
+ #  define CURRENT_FASL_ARCH	FASL_PPC64
++#  define HEAP_IN_LOW_MEMORY	1
+ #endif
+ 
+ #ifdef __x86_64__

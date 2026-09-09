@@ -2,14 +2,19 @@ From: "Barak A. Pearlmutter" <barak+git@cs.nuim.ie>
 Date: Wed, 3 Jul 2013 21:00:45 +0100
 Subject: AUXDIR_NAME sans arch
 
-Forwarded: not-needed
+Sets AUXDIR_NAME=mit-scheme for debian, so the auxiliary directory is
+/usr/lib/<triplet>/mit-scheme rather than upstream's
+mit-scheme-<arch>-<version>. This is done while allowing an override,
+so that a second flavour of the same version (an SVM build alongside
+the native one, which should be co-installable) can be given its own
+auxiliary directory.
 ---
  src/configure.ac           | 2 +-
  src/microcode/configure.ac | 2 +-
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 81c8254..2fabc64 100644
+index 81c8254..f5d3790 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
 @@ -170,7 +170,7 @@ esac
@@ -17,12 +22,12 @@ index 81c8254..2fabc64 100644
  MIT_SCHEME_ARCH=${mit_scheme_native_code}
  MIT_SCHEME_VERSION=${PACKAGE_VERSION}
 -AUXDIR_NAME=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}
-+AUXDIR_NAME=mit-scheme
++: "${AUXDIR_NAME:=mit-scheme}"
  AUXDIR='$(libdir)'/${AUXDIR_NAME}
  MIT_SCHEME_LIBDIR=${AUXDIR}/
  MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
 diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
-index 0d98037..c823437 100644
+index 0d98037..5fabc47 100644
 --- a/src/microcode/configure.ac
 +++ b/src/microcode/configure.ac
 @@ -295,7 +295,7 @@ esac
@@ -30,7 +35,7 @@ index 0d98037..c823437 100644
  : "${MIT_SCHEME_ARCH:=${mit_scheme_native_code}}"
  : "${MIT_SCHEME_VERSION:=${PACKAGE_VERSION}}"
 -: "${AUXDIR_NAME:=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}}"
-+AUXDIR_NAME=mit-scheme
++: "${AUXDIR_NAME:=mit-scheme}"
  
  dnl Add OS-dependent customizations.  This must happen before checking
  dnl any headers or library routines, because it may add CFLAGS or

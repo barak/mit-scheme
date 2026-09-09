@@ -1,16 +1,15 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Fri, 4 Sep 2026 12:00:00 +0000
-Subject: file the info manuals under "The Algorithmic Language Scheme"
+Subject: info dircategory
 
 Bug-Debian: https://bugs.debian.org/115450
-Forwarded: no
 
-The MIT/GNU Scheme manuals sit by themselves under "Programming
-Languages" in the top-level Info directory, while the other Scheme
-systems packaged in Debian -- Guile, SCM, SLIB, XlibScm -- all use the
-"The Algorithmic Language Scheme" section.  The result is that a
-reader looking at (dir) finds the Scheme documentation split across
-two unrelated headings.
+File the info manuals under "The Algorithmic Language Scheme"
+
+The MIT/GNU Scheme manuals were by themselves under "Programming
+Languages" in the top-level Info directory, while other Debian Scheme
+systems (Guile, SCM, SLIB, XlibScm) all use section "The Algorithmic
+Language Scheme".
 
 Use the same @dircategory as everybody else, in all seven manuals (the
 four in doc/ plus the three plugin manuals under src/), so that they

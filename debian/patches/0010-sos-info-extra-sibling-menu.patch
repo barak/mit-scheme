@@ -1,12 +1,13 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Sat, 5 Sep 2026 12:00:00 +0000
-Subject: sos: drop the stray sibling menu in the Introduction node
+Subject: sos info extra sibling menu
 
-Forwarded: no
+There is a stray sibling menu in the Introduction node of sos.texi
+which messes up the info structure and should be deleted.
 
 Introduction is @unnumbered, so it is a sibling of the Classes ...
 Printing chapters, not their parent, and the Top node's master menu
-already lists all seven at the same level.  The extra menu at the end
+already lists all seven at the same level. The extra menu at the end
 of Introduction claims those six chapters as its children, which
 contradicts the up pointers in their own @node lines:
 
@@ -15,9 +16,8 @@ contradicts the up pointers in their own @node lines:
   ... and the same for Instances, Slots, Generic Procedures, Methods
   and Printing.
 
-Delete the duplicate menu.  Nothing is lost -- the identical list is
-in Top's menu one screen earlier -- and the Info hierarchy stops
-contradicting itself.
+Note that an identical list to the one deleted is in Top's menu one
+screen earlier.
 ---
  doc/sos/sos.texinfo | 9 ---------
  1 file changed, 9 deletions(-)

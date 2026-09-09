@@ -1,24 +1,22 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Sat, 5 Sep 2026 12:00:00 +0000
-Subject: blowfish: fix 8-byte stack overflow in the self test
+Subject: blowfish.c stack overflow
 
-Forwarded: no
-
+There is an 8-byte stack overflow in the self test for blowfish.c,
 blowfish_selftest() sets up the IV for each of the six chained-mode
 tests with
 
 	memcpy(block, IV, 16);
 
 but both IV and block are uint8_t[8] -- Blowfish has a 64-bit block,
-so an 8-byte IV is the only size that makes sense here.  The copy
-therefore reads 8 bytes past the end of IV and writes 8 bytes past the
-end of block, into whatever follows it on the stack (in practice buf[],
-which is overwritten immediately afterwards, which is why this has gone
-unnoticed).
+so an 8-byte IV is what makes sense. The copy thus reads 8 bytes past
+the end of IV and writes 8 bytes past the end of block, into whatever
+follows it on the stack (in practice buf[], which is overwritten
+immediately afterwards, which is why this has gone unnoticed).
 
-It is still undefined behaviour, and with _FORTIFY_SOURCE it is the
-kind of thing that turns into a runtime abort when the compiler stops
-being able to prove otherwise.  gcc already sees it:
+It is still undefined behaviour, and with _FORTIFY_SOURCE it might
+become a runtime abort when the compiler stops being able to prove
+otherwise. gcc already sees it:
 
   In function 'memcpy',
       inlined from 'blowfish_selftest' at blowfish.c:537:2:

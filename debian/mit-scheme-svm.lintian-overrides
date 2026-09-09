@@ -1,0 +1,8 @@
+# The only postal address in debian/copyright is MIT's own, in MIT's copyright
+# notice: "Massachusetts Institute of Technology, 77 Massachusetts Avenue,
+# Cambridge MA 02139".  The FSF once had a Cambridge MA 02139 address too, and
+# lintian looks for /Free Software Foundation.*02139/s -- with /s, so the
+# "Free Software Foundation" in the GPL grant paragraph matches MIT's postcode
+# twenty lines further down.  The licence text itself points at
+# <https://www.gnu.org/licenses/>, as it should.
+mit-scheme-svm: old-fsf-address-in-copyright-file

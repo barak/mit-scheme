@@ -1,5 +1,5 @@
 #!/bin/sh
-# postinst script for mit-scheme
+# postinst script for mit-scheme-svm
 #
 # see: dh_installdeb(1)
 
@@ -24,18 +24,15 @@ set -e
 
 case "${1}" in
 (configure)
-    BIN_ARCH=${DPKG_MAINTSCRIPT_ARCH}
-    case ${BIN_ARCH} in
-	amd64|x86_64)
-	    BIN_ARCH=x86-64
-	    ;;
-	arm64)
-	    BIN_ARCH=aarch64le
-	    ;;
-	i486|i586)
-	    BIN_ARCH=i386
-	    ;;
+    # The SVM back end is named by word size and byte order; ask dpkg rather
+    # than keeping a table of every architecture here.
+    BITS=$(dpkg-architecture -a"${DPKG_MAINTSCRIPT_ARCH}" -qDEB_HOST_ARCH_BITS 2>/dev/null)
+    ENDIAN=$(dpkg-architecture -a"${DPKG_MAINTSCRIPT_ARCH}" -qDEB_HOST_ARCH_ENDIAN 2>/dev/null)
+    case ${ENDIAN} in
+	big) ENDIAN=be ;;
+	*)   ENDIAN=le ;;
     esac
+    BIN_ARCH=svm1-${BITS}${ENDIAN}
     # Up to 12.1-5 the scheme alternative pointed at /usr/bin/mit-scheme,
     # which is itself an alternative.  Two flavours cannot share that, since
     # whichever was removed first would withdraw the entry from under the
@@ -44,18 +41,18 @@ case "${1}" in
     # never made.
     update-alternatives --remove scheme /usr/bin/mit-scheme
     update-alternatives \
-	--install /usr/bin/mit-scheme mit-scheme /usr/bin/mit-scheme-${BIN_ARCH} 20 \
+	--install /usr/bin/mit-scheme mit-scheme /usr/bin/mit-scheme-${BIN_ARCH} 10 \
 	--slave /usr/share/man/man1/mit-scheme.1.gz mit-scheme.1.gz \
 	    /usr/share/man/man1/mit-scheme-${BIN_ARCH}.1.gz
     update-alternatives \
-	--install /usr/bin/scheme scheme /usr/bin/mit-scheme-${BIN_ARCH} 20 \
+	--install /usr/bin/scheme scheme /usr/bin/mit-scheme-${BIN_ARCH} 10 \
 	--slave /usr/share/man/man1/scheme.1.gz scheme.1.gz \
 	    /usr/share/man/man1/mit-scheme-${BIN_ARCH}.1.gz
     ;;
 (abort-upgrade|abort-remove|abort-deconfigure)
     ;;
 (*)
-    echo "postinst called with unknown argument \"${1}\"" >&2
+    echo "mit-scheme-svm postinst called with unknown argument \"${1}\"" >&2
     exit 1
     ;;
 esac

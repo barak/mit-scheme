@@ -1,30 +1,31 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Fri, 4 Sep 2026 12:00:00 +0000
-Subject: chacha: drop ineffective late _POSIX_C_SOURCE definition
+Subject: chacha.i rm _POSIX_C_SOURCE
 
-Bug-Debian: https://bugs.debian.org/1145694
-Forwarded: no
+Drop ineffective late (re)definition of _POSIX_C_SOURCE in chacha.i
 
 chacha.i is not a translation unit of its own: it is included at the
 *end* of chacha8.c, chacha12.c and chacha20.c, each of which has
 already included <stdint.h> and hence <features.h>.  Defining
-_POSIX_C_SOURCE there therefore has no effect on which declarations
+_POSIX_C_SOURCE in chacha.i therefore has no effect on which declarations
 the libc headers expose, but it does redefine a macro <features.h> has
 already set.
 
 That redefinition used to be benign because glibc happened to pick the
-same value, 200809L.  Current glibc defines _POSIX_C_SOURCE as
-202405L, so the values now differ and gcc reports
+same value, 200809L. Current glibc defines _POSIX_C_SOURCE as 202405L,
+so the values differ and gcc reports
 
   chacha.i:32:9: error: '_POSIX_C_SOURCE' redefined [-Werror]
 
 which is fatal because the microcode is built with -Werror.
 
 Nothing in chacha.i or chacha.h needs anything beyond <stdint.h>, so
-drop the definition rather than hoisting it into the three including
-files -- that would *narrow* the visible namespace, which is plainly
-not what was intended.  md5.c, keccak.c and blowfish.c keep theirs:
-those define it before any #include, where it works as intended.
+drop the (re)definition rather than hoisting it into the three
+including files. md5.c, keccak.c and blowfish.c keep theirs: those
+define _POSIX_C_SOURCE before any #include so it works as intended.
+
+Bug-Debian: https://bugs.debian.org/1145694
+Forwarded: no
 ---
  src/microcode/chacha.i | 2 --
  1 file changed, 2 deletions(-)

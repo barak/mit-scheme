@@ -1,10 +1,11 @@
 0001-allow-autoreconf-force.patch
 0002-AUXDIR_NAME-sans-arch.patch
 0003-sequentialize-docs.patch
-0005-man-page.patch
-0007-verbose-texi2dvi.patch
+0004-man-page.patch
+0005-verbose-texi2dvi.patch
 0006-texi2any-_html-fix.patch
-0008-chacha-no-late-posix-c-source.patch
-0009-info-dircategory-scheme.patch
-0010-blowfish-selftest-iv-overflow.patch
-0011-sos-drop-stray-menu.patch
+0007-chacha.i-rm-_POSIX_C_SOURCE.patch
+0008-blowfish.c-stack-overflow.patch
+0009-info-dircategory.patch
+0010-sos-info-extra-sibling-menu.patch
+0011-confshared.h-ppc64.patch

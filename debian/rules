@@ -23,13 +23,10 @@ override_dh_autoreconf:
 	  'for d in src doc; \
 	    do (cd $$d && autoreconf -f -i) done'
 
-# MIT/GNU Scheme names its native-code back ends itself, and the names are
-# neither Debian's nor GNU's.  The same string is used in three places -- the
-# --enable-native-code configure argument, the name of the installed
-# interpreter (mit-scheme-$(BIN_ARCH)-$(DEB_VERSION_UPSTREAM)) and the
-# mit-scheme-$(BIN_ARCH) symlink the alternatives point at -- so derive all of
-# them from one variable here.  Note that upstream's configure only
-# auto-detects the x86 family, so arm64 has to be told explicitly.
+# Two flavours: native code, and upstream's SVM virtual machine.  Upstream
+# names its back ends its own way and its configure only auto-detects x86, so
+# each name is kept here and drives --enable-native-code, the installed
+# interpreter name and the alternatives symlink.  See debian/NOTES.md.
 
 ifeq ($(DEB_HOST_ARCH),amd64)
 BIN_ARCH := x86-64
@@ -37,12 +34,31 @@ else ifeq ($(DEB_HOST_ARCH),arm64)
 BIN_ARCH := aarch64le
 else ifeq ($(DEB_HOST_ARCH),i386)
 BIN_ARCH := i386
-else
-BIN_ARCH := $(DEB_HOST_GNU_CPU)
 endif
 export BIN_ARCH
 
-CONF_FLAGS += --enable-native-code=$(BIN_ARCH)
+# The SVM comes in four flavours, by word size and byte order.
+SVM_ARCH := svm1-$(DEB_HOST_ARCH_BITS)$(if $(filter little,$(DEB_HOST_ARCH_ENDIAN)),le,be)
+export SVM_ARCH
+
+# Its own auxiliary directory, or it would overwrite the native build's.
+SVM_AUXDIR_NAME := mit-scheme-svm
+SVM_BUILDDIR := build-svm
+
+# Ask dh_listpackages rather than working it out again: it already accounts
+# for the Architecture fields and the build profiles, so debian/control stays
+# the single source of truth.
+DH_PACKAGES := $(shell dh_listpackages)
+BUILD_NATIVE := $(if $(filter mit-scheme,$(DH_PACKAGES)),yes,no)
+BUILD_SVM := $(if $(filter mit-scheme-svm,$(DH_PACKAGES)),yes,no)
+
+# debian/control asking for a native build we have no back-end name for.
+ifeq ($(BUILD_NATIVE),yes)
+ifeq ($(BIN_ARCH),)
+$(error debian/control builds mit-scheme on $(DEB_HOST_ARCH), but there is no \
+        native back end mapped for it above)
+endif
+endif
 
 CONF_FLAGS += --docdir=/usr/share/doc/mit-scheme-doc
 CONF_FLAGS += --enable-html=/usr/share/doc/mit-scheme-doc/html
@@ -68,50 +84,126 @@ ifneq ($(INSTALLED_MAJOR_VERSION),$(BUILDING_MAJOR_VERSION))
 CONF_FLAGS += --enable-cross-compiling
 endif
 
-override_dh_auto_configure:
+# Cross-compile whenever the Scheme we build with disagrees with the target
+# about compiled-code format, or the build dies with fasl-file-bad-data when
+# saving lib/runtime.com.  That is the normal case for the SVM flavour.
+
+HOST_CODE_TYPE := $(shell mit-scheme --batch-mode --no-init-file \
+	--eval '(begin (display microcode-id/compiled-code-type) (%exit 0))' \
+	< /dev/null 2>/dev/null)
+
+# Nothing to build with?  Bootstrap from a prebuilt SVM library, if the
+# debian-bootstrap branch supplied one.  Compiler only; everything shipped is
+# still built from source.  See debian/NOTES.md.
+BOOTSTRAP_BUILDDIR := build-bootstrap
+ifeq ($(HOST_CODE_TYPE),)
+ifneq (,$(wildcard debian/prebuilt/$(SVM_ARCH)))
+BOOTSTRAP := yes
+HOST_CODE_TYPE := svm1
+MIT_SCHEME_EXE := $(CURDIR)/$(BOOTSTRAP_BUILDDIR)/run-build
+export MIT_SCHEME_EXE
+else
+BOOTSTRAP := no
+endif
+else
+BOOTSTRAP := no
+endif
+
+# Empty when no Scheme is installed; leave the native flags alone then.
+NATIVE_CONF_FLAGS :=
+ifneq ($(HOST_CODE_TYPE),)
+ifneq ($(HOST_CODE_TYPE),$(BIN_ARCH))
+NATIVE_CONF_FLAGS += --enable-cross-compiling
+endif
+endif
+
+# compiled-code-type says "svm1", without the size/endianness suffix.
+SVM_CONF_FLAGS :=
+ifneq ($(HOST_CODE_TYPE),svm1)
+SVM_CONF_FLAGS += --enable-cross-compiling
+endif
+
+override_dh_auto_configure-arch:
+	@test "$(BUILD_NATIVE)$(BUILD_SVM)" != nono || \
+	  { echo "both flavours disabled: nothing to build" >&2; exit 1; }
+ifeq ($(BOOTSTRAP),yes)
+	@echo "no MIT/GNU Scheme to build with; bootstrapping one from debian/prebuilt"
+	debian/bootstrap-scheme.sh $(SVM_ARCH) $(BOOTSTRAP_BUILDDIR)
+endif
 # -arch
-	dh_auto_configure --sourcedirectory=src -- $(CONF_FLAGS)
-# -indep
+ifeq ($(BUILD_NATIVE),yes)
+	dh_auto_configure --sourcedirectory=src -- \
+	  $(CONF_FLAGS) $(NATIVE_CONF_FLAGS) --enable-native-code=$(BIN_ARCH)
+endif
+ifeq ($(BUILD_SVM),yes)
+	@echo "second source tree for the SVM flavour"
+	rm -rf $(SVM_BUILDDIR)
+	cp -a src $(SVM_BUILDDIR)
+	AUXDIR_NAME=$(SVM_AUXDIR_NAME) \
+	 dh_auto_configure --sourcedirectory=$(SVM_BUILDDIR) -- \
+	  $(CONF_FLAGS) $(SVM_CONF_FLAGS) --enable-native-code=$(SVM_ARCH)
+endif
+
+override_dh_auto_configure-indep:
 	dh_auto_configure --sourcedirectory=doc -- $(CONF_FLAGS)
 
 # May wish to pass parameter in dh_auto_build
 #  SCHEME_COMPILER=mit-scheme
 
-override_dh_auto_build:
+override_dh_auto_build-arch:
 # -arch
+ifeq ($(BUILD_NATIVE),yes)
 	dh_auto_build --sourcedirectory=src
-# -indep
+endif
+ifeq ($(BUILD_SVM),yes)
+	dh_auto_build --sourcedirectory=$(SVM_BUILDDIR)
+endif
+
+override_dh_auto_build-indep:
 	dh_auto_build --sourcedirectory=doc
 
-override_dh_auto_install:
+override_dh_auto_install-arch:
 # -arch
-	dh_auto_install --sourcedirectory=src
-# -indep
-#	# This doesn't work because doc/ hasn't been *configured*
-#	# which hardly seems worth working around
-#	dh_auto_install --sourcedirectory=doc -- install-man
+ifeq ($(BUILD_NATIVE),yes)
+	dh_auto_install --sourcedirectory=src --destdir=debian/tmp
+endif
+ifeq ($(BUILD_SVM),yes)
+	dh_auto_install --sourcedirectory=$(SVM_BUILDDIR) --destdir=debian/tmp-svm
+endif
+
+override_dh_auto_install-indep:
 	dh_auto_install --sourcedirectory=doc -- install-html install-pdf
 
-execute_after_dh_auto_install:
-# -arch
+STAGED := $(if $(filter yes,$(BUILD_NATIVE)),debian/tmp) \
+	  $(if $(filter yes,$(BUILD_SVM)),debian/tmp-svm)
+
+execute_after_dh_auto_install-arch:
 	@echo "remove symbolic link executables"
-	cd debian/tmp/usr/bin && \
-	for f in scheme bchscheme mit-scheme mit-scheme-native; do \
-	  if [ -L $$f ]; then \
-	    rm --verbose -f $$f; \
-	  else \
-	    echo skipping $$f; \
-	  fi; \
+	for d in $(STAGED); do \
+	  (cd $$d/usr/bin && \
+	   for f in scheme bchscheme mit-scheme mit-scheme-native; do \
+	     if [ -L $$f ]; then \
+	       rm --verbose -f $$f; \
+	     else \
+	       echo skipping $$f; \
+	     fi; \
+	   done); \
 	done
-#	@echo "delete runtime.com for MYSTERIOUS reasons"
-#	@echo "stop doing this because it breaks future builds"
-#	find debian/tmp/usr/lib -name runtime.com -ls -delete
 	@echo "remove .la library support files as these are not actually used by the dynamic linker"
-	find debian/tmp -name '*.la' -ls -delete
+	find $(STAGED) -name '*.la' -ls -delete
+
+execute_after_dh_auto_install-indep:
 	@echo "allow dh scripts to compress info files themselves"
 	find debian/tmp \( -name '*.info.gz' -o -name '*.info-*.gz' \) -ls -exec gunzip '{}' ';'
 
+override_dh_install:
+ifeq ($(BUILD_SVM),yes)
+	dh_install -pmit-scheme-svm --sourcedir=debian/tmp-svm
+endif
+	dh_install --remaining-packages
+
 execute_after_dh_install-arch:
+ifeq ($(BUILD_NATIVE),yes)
 	@echo "All .bci files belong in -dbg, move them manually for robustness"
 	mkdir -p debian/mit-scheme-dbg
 	tar -C debian/mit-scheme --create --file=- --files-from=/dev/null $$(cd debian/mit-scheme && find -name '*.bci') \
@@ -119,15 +211,29 @@ execute_after_dh_install-arch:
 	find debian/mit-scheme -name '*.bci' -delete
 	@echo "remove empty directory"
 	-rmdir debian/mit-scheme/usr/lib/$(DEB_HOST_MULTIARCH)/mit-scheme/lib
+endif
+ifeq ($(BUILD_SVM),yes)
+	@echo "the SVM flavour has no -dbg package; drop its .bci files"
+	find debian/mit-scheme-svm -name '*.bci' -delete
+	-rmdir debian/mit-scheme-svm/usr/lib/$(DEB_HOST_MULTIARCH)/$(SVM_AUXDIR_NAME)/lib
+endif
+
+# Installed under the back-end-qualified name the real binary has; plain
+# mit-scheme.1 comes from the alternatives as a slave link.
+define install_manpage
+	cd debian/$(1)/usr/share/man && \
+	 mv man1/mit-scheme.1 man1/mit-scheme-$(2).1 && \
+	 ln -s mit-scheme-$(2).1 man1/mit-scheme-$(2)-$(DEB_VERSION_UPSTREAM).1
+
+endef
 
 execute_after_dh_installman-arch:
-	@echo "install man page using arch; generic is via alternatives"
-	cd debian/mit-scheme/usr/share/man && \
-	 mv man1/mit-scheme.1 man1/mit-scheme-$(BIN_ARCH).1
-	@echo "the real binary is version-qualified; document it too"
-	cd debian/mit-scheme/usr/share/man && \
-	 ln -s mit-scheme-$(BIN_ARCH).1 \
-	       man1/mit-scheme-$(BIN_ARCH)-$(DEB_VERSION_UPSTREAM).1
+ifeq ($(BUILD_NATIVE),yes)
+	$(call install_manpage,mit-scheme,$(BIN_ARCH))
+endif
+ifeq ($(BUILD_SVM),yes)
+	$(call install_manpage,mit-scheme-svm,$(SVM_ARCH))
+endif
 
 # Upstream changelog is over 5MB, leave a copy in the doc package but
 # remove it from the binary package to reduce bloat.
@@ -140,3 +246,4 @@ override_dh_installchangelogs-arch:
 
 override_dh_auto_clean:
 	-dh_auto_clean
+	rm -rf $(SVM_BUILDDIR) debian/tmp-svm $(BOOTSTRAP_BUILDDIR)
