@@ -1,8 +1,13 @@
 # autocrud
 /Makefile
+/Makefile.in
 /Makefile.tools
+/aclocal.m4
 /config.log
 /config.status
+/dummy-config.h
+/dummy-config.h.in
+/stamp-h1
 
 /makefiles_created
 /stamp_cross-finished

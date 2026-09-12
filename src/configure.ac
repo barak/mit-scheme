@@ -3,6 +3,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT([MIT/GNU Scheme], [13.0.50], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
+AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_HEADERS([dummy-config.h])
 AC_CONFIG_MACRO_DIR([microcode])
 AC_PROG_MAKE_SET
@@ -80,11 +81,11 @@ fi
 
 AC_ARG_WITH([default-target],
     AS_HELP_STRING([--with-default-target],
-	[Set the default make target [[all]]]))
+	[Set the default make target [[build-all]]]))
 if test x"${IS_NATIVE_RELEASE}" != x; then
     DEFAULT_DEFAULT_TARGET=compile-microcode
 else
-    DEFAULT_DEFAULT_TARGET=all
+    DEFAULT_DEFAULT_TARGET=build-all
 fi
 : ${with_default_target=${DEFAULT_DEFAULT_TARGET}}
 DEFAULT_TARGET=${with_default_target}
@@ -428,22 +429,17 @@ if test x"${enable_x11_screen}" = xyes; then
     AC_CONFIG_SUBDIRS([x11-screen])
 fi
 
-AC_CONFIG_FILES([
-Makefile
-Makefile.tools
-6001/Makefile
-compiler/Makefile
-cref/Makefile
-ffi/Makefile
-libraries/Makefile
-runtime/Makefile
-sf/Makefile
-sos/Makefile
-ssp/Makefile
-star-parser/Makefile
-xdoc/Makefile
-xml/Makefile
-])
+AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile.tools])
+
+dnl etc/create-makefiles.sh writes these above, during configure, because it
+dnl needs a working Scheme to work out what goes in them.  They therefore do
+dnl not exist when automake runs, and automake must not expect them; naming
+dnl them through a variable keeps them out of its sight.
+SUBDIR_MAKEFILES="6001/Makefile compiler/Makefile cref/Makefile \
+ffi/Makefile libraries/Makefile runtime/Makefile sf/Makefile sos/Makefile \
+ssp/Makefile star-parser/Makefile xdoc/Makefile xml/Makefile"
+AC_CONFIG_FILES([${SUBDIR_MAKEFILES}])
 AC_OUTPUT
 
 if test x"${mit_scheme_compiler_target}" = xc; then

@@ -21,53 +21,19 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# **** BEGIN BOILERPLATE ****
+## automake supplies the directory variables and INSTALL programs.
 
-SHELL = @SHELL@
 
-@SET_MAKE@
-
-srcdir = @srcdir@
-top_srcdir = @top_srcdir@
-VPATH = @srcdir@
-prefix = @prefix@
-exec_prefix = @exec_prefix@
-
-bindir = @bindir@
-sbindir = @sbindir@
-libexecdir = @libexecdir@
-datarootdir = @datarootdir@
-datadir = @datadir@
-sysconfdir = @sysconfdir@
-sharedstatedir = @sharedstatedir@
-localstatedir = @localstatedir@
-libdir = @libdir@
-infodir = @infodir@
-mandir = @mandir@
-includedir = @includedir@
-oldincludedir = /usr/include
-
-DESTDIR =
-top_builddir = @top_builddir@
-
-INSTALL = @INSTALL@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@
-INSTALL_DATA = @INSTALL_DATA@
-INSTALL_SCRIPT = @INSTALL_SCRIPT@
-
-LN_S = @LN_S@
-ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-mkinstalldirs = $(SHELL) $(top_srcdir)/microcode/mkinstalldirs
-
-# **** END BOILERPLATE ****
-
-.PHONY: default-target
-default-target: @DEFAULT_TARGET@
+## automake owns `all'; --with-default-target picks what it does.
+all-local: @DEFAULT_TARGET@
 
 LIARC_BOOT_BUNDLES = compiler cref sf star-parser
 LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) ffi sos ssp xml
 
-SUBDIRS = $(INSTALLED_SUBDIRS) xdoc
+## Not automake's SUBDIRS: nothing here is a sub-package to
+## recurse into, these are the directories Clean.sh, Tags.sh and
+## install walk.
+SRC_SUBDIRS = $(INSTALLED_SUBDIRS) xdoc
 INSTALLED_SUBDIRS = microcode runtime libraries $(OPTION_SUBDIRS) $(LIARC_BUNDLES)
 BASICS_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 OPTION_SUBDIRS = @OPTION_SUBDIRS@
@@ -134,7 +100,7 @@ TOOL_CROSS_HOST = $(TOOL_COMPILER) \
 @IF_NATIVE@CROSS_HOST = @:
 
 # This rule is for LIARC.
-.SUFFIXES: .bld .pkd .c
+SUFFIXES = .bld .pkd .c
 .pkd.c .bld.c: $(TOOLCHAIN)
 	echo '(cbf "$<")' | $(TOOL_COMPILER)
 
@@ -558,9 +524,14 @@ BLOWFISH_DEPEND_TARGETS = compile-blowfish
 compile-blowfish: $(PLUGINS_TOOLCHAIN)
 	+(cd blowfish && $(MAKE))
 
-.PHONY: compile-blowfish-c
-compile-blowfish-c:
-	+(cd blowfish && $(MAKE))
+## compile-blowfish-c builds the plugin's C without waiting for the Scheme
+## toolchain, which only the C back end needs: it links the plugin's C into
+## the microcode.  It runs the same recursive make as compile-blowfish, so
+## outside that back end it is a second name for the same work and lets -j
+## run two makes in one directory at once.  Hence the guard.
+@IF_LIARC@.PHONY: compile-blowfish-c
+@IF_LIARC@compile-blowfish-c:
+@IF_LIARC@	+(cd blowfish && $(MAKE))
 
 ################
 # gdbm
@@ -573,9 +544,14 @@ GDBM_DEPEND_TARGETS = compile-gdbm
 compile-gdbm: $(PLUGINS_TOOLCHAIN)
 	+(cd gdbm && $(MAKE))
 
-.PHONY: compile-gdbm-c
-compile-gdbm-c:
-	+(cd gdbm && $(MAKE))
+## compile-gdbm-c builds the plugin's C without waiting for the Scheme
+## toolchain, which only the C back end needs: it links the plugin's C into
+## the microcode.  It runs the same recursive make as compile-gdbm, so
+## outside that back end it is a second name for the same work and lets -j
+## run two makes in one directory at once.  Hence the guard.
+@IF_LIARC@.PHONY: compile-gdbm-c
+@IF_LIARC@compile-gdbm-c:
+@IF_LIARC@	+(cd gdbm && $(MAKE))
 
 ################
 # pgsql
@@ -588,9 +564,14 @@ PGSQL_DEPEND_TARGETS = compile-pgsql
 compile-pgsql: $(PLUGINS_TOOLCHAIN)
 	+(cd pgsql && $(MAKE))
 
-.PHONY: compile-pgsql-c
-compile-pgsql-c:
-	+(cd pgsql && $(MAKE))
+## compile-pgsql-c builds the plugin's C without waiting for the Scheme
+## toolchain, which only the C back end needs: it links the plugin's C into
+## the microcode.  It runs the same recursive make as compile-pgsql, so
+## outside that back end it is a second name for the same work and lets -j
+## run two makes in one directory at once.  Hence the guard.
+@IF_LIARC@.PHONY: compile-pgsql-c
+@IF_LIARC@compile-pgsql-c:
+@IF_LIARC@	+(cd pgsql && $(MAKE))
 
 ################
 # X11
@@ -603,9 +584,14 @@ X11_DEPEND_TARGETS = compile-x11
 compile-x11: $(PLUGINS_TOOLCHAIN)
 	+(cd x11 && $(MAKE))
 
-.PHONY: compile-x11-c
-compile-x11-c:
-	+(cd x11 && $(MAKE))
+## compile-x11-c builds the plugin's C without waiting for the Scheme
+## toolchain, which only the C back end needs: it links the plugin's C into
+## the microcode.  It runs the same recursive make as compile-x11, so
+## outside that back end it is a second name for the same work and lets -j
+## run two makes in one directory at once.  Hence the guard.
+@IF_LIARC@.PHONY: compile-x11-c
+@IF_LIARC@compile-x11-c:
+@IF_LIARC@	+(cd x11 && $(MAKE))
 
 ################
 # edwin
@@ -658,8 +644,8 @@ compile-x11-screen: $(X11_DEPEND_TARGETS)
 #	cross-toolchain if cross-compiling, and the newly built target
 #	tools.  Same as cross-host and then cross-target.
 #
-.PHONY: all
-all: cross-host
+.PHONY: build-all
+build-all: cross-host
 	$(MAKE) cross-target
 
 # cross-host
@@ -758,10 +744,10 @@ microcode/scheme:
 
 .PHONY: compile-microcode
 compile-microcode: microcode/scheme
-@IF_BLOWFISH@compile-microcode: compile-blowfish-c
-@IF_GDBM@compile-microcode: compile-gdbm-c
-@IF_PGSQL@compile-microcode: compile-pgsql-c
-@IF_X11@compile-microcode: compile-x11-c
+@IF_LIARC@@IF_BLOWFISH@compile-microcode: compile-blowfish-c
+@IF_LIARC@@IF_GDBM@compile-microcode: compile-gdbm-c
+@IF_LIARC@@IF_PGSQL@compile-microcode: compile-pgsql-c
+@IF_LIARC@@IF_X11@compile-microcode: compile-x11-c
 
 stamp_install-microcode: compile-microcode
 	(cd microcode; $(MAKE) install)
@@ -797,17 +783,30 @@ lib/all.com: $(CREF_DEPEND_TARGETS)
 # Miscellany
 ################
 
-.PHONY: check
-check:
+check-local:
 	./run-build --batch-mode --load ../tests/check.scm --eval '(%exit)'
 
 .PHONY: macosx-app
 macosx-app:
 	etc/macosx/make-app.sh
 
-.PHONY: mostlyclean clean distclean maintainer-clean c-clean
-mostlyclean clean distclean maintainer-clean c-clean:
-	$(top_srcdir)/Clean.sh $@ $(SUBDIRS) $(OPTION_SUBDIRS)
+CLEAN_SUBDIRS = $(SRC_SUBDIRS) $(OPTION_SUBDIRS)
+
+mostlyclean-local:
+	$(top_srcdir)/Clean.sh mostlyclean $(CLEAN_SUBDIRS)
+
+clean-local:
+	$(top_srcdir)/Clean.sh clean $(CLEAN_SUBDIRS)
+
+distclean-local:
+	$(top_srcdir)/Clean.sh distclean $(CLEAN_SUBDIRS)
+
+maintainer-clean-local:
+	$(top_srcdir)/Clean.sh maintainer-clean $(CLEAN_SUBDIRS)
+
+.PHONY: c-clean
+c-clean:
+	$(top_srcdir)/Clean.sh c-clean $(CLEAN_SUBDIRS)
 
 .PHONY: clean-boot-root
 clean-boot-root:
@@ -816,14 +815,13 @@ clean-boot-root:
 
 .PHONY: tags TAGS
 tags TAGS:
-	$(top_srcdir)/Tags.sh $(SUBDIRS)
+	$(top_srcdir)/Tags.sh $(SRC_SUBDIRS)
 
 .PHONY: subdir-list
 subdir-list:
-	@for D in $(SUBDIRS); do echo $$D; done
+	@for D in $(SRC_SUBDIRS); do echo $$D; done
 
-.PHONY: install
-install: install-standard @INSTALL_LIARC_BUNDLES@
+install-data-local: install-standard @INSTALL_LIARC_BUNDLES@
 
 .PHONY: install-standard
 install-standard: install-auxdir-top
@@ -835,7 +833,7 @@ install-basics: install-auxdir-top
 
 .PHONY: install-auxdir-top
 install-auxdir-top:
-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	$(MKDIR_P) $(DESTDIR)$(AUXDIR)
 	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
 	$(INSTALL_DATA) $(top_srcdir)/etc/plugins.scm $(DESTDIR)$(AUXDIR)/.
 	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
@@ -920,7 +918,7 @@ save:
 	@rm -rf saved-objects && \
 	mkdir saved-objects && \
 	( \
-	  find $(SUBDIRS) -type f \
+	  find $(SRC_SUBDIRS) -type f \
 	    \( \
 	      -name '*.bci' -o \
 	      -name '*.bin' -o \
