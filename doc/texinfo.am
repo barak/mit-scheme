@@ -1,0 +1,48 @@
+## -*-makefile-*-
+## Common rules for the manuals, included by each manual's Makefile.am.
+##
+## Each manual sets info_TEXINFOS to its single top-level source, whose base
+## name is also the installed base name, and TARGET_ROOT to that base name.
+##
+## automake builds the .info, .pdf, .ps, .dvi and the unsplit .html.  It gives
+## texi2dvi a private --build-dir per output, so the PDF and PostScript runs
+## no longer fight over the shared .aux/.toc/.cp/.fn files the way the
+## hand-written rules did, and it renders HTML via a private temporary.
+
+## Keep automake's $(TARGET_ROOT).html a single file, as before.
+AM_MAKEINFOHTMLFLAGS = --no-split
+
+## The split HTML tree is the one output automake does not cover.  Give
+## texi2any an explicit --output rather than letting it derive one, so this
+## run shares no intermediate directory with the unsplit run above and the
+## two are safe to run concurrently.
+html-local: $(TARGET_ROOT)/index.html
+
+$(TARGET_ROOT)/index.html: $(info_TEXINFOS) $(TEXI_FIGURES)
+	$(AM_V_GEN)rm -rf $(TARGET_ROOT) $(TARGET_ROOT).tmp
+	$(AM_V_at)$(MAKEINFO) $(AM_MAKEINFOFLAGS) $(MAKEINFOFLAGS) --html \
+	  -I $(srcdir) -o $(TARGET_ROOT).tmp \
+	  `test -f '$(info_TEXINFOS)' || echo '$(srcdir)/'`$(info_TEXINFOS)
+	$(AM_V_at)mv $(TARGET_ROOT).tmp $(TARGET_ROOT)
+
+install-html-local: $(TARGET_ROOT)/index.html
+	rm -rf $(DESTDIR)$(htmldir)/$(TARGET_ROOT)
+	$(MKDIR_P) $(DESTDIR)$(htmldir)/$(TARGET_ROOT)
+	$(INSTALL_DATA) $(TARGET_ROOT)/* $(DESTDIR)$(htmldir)/$(TARGET_ROOT)/.
+
+clean-local:
+	rm -rf $(TARGET_ROOT) $(TARGET_ROOT).tmp
+
+## --enable-html / --enable-pdf / --enable-ps decide what a plain "make"
+## produces, as they did before.
+if ENABLE_HTML
+all-local: html-am html-local
+endif
+if ENABLE_PDF
+all-local: pdf-am
+endif
+if ENABLE_PS
+all-local: ps-am
+endif
+
+.PHONY: html-local install-html-local

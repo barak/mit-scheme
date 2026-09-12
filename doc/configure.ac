@@ -4,7 +4,8 @@ AC_INIT([MIT/GNU Scheme documentation],
 	[13.0.50],
 	[bug-mit-scheme@gnu.org],
 	[mit-scheme-doc])
-AC_CONFIG_SRCDIR([ref-manual/scheme.texinfo])
+AC_CONFIG_SRCDIR([ref-manual/mit-scheme-ref.texi])
+AM_INIT_AUTOMAKE([foreign info-in-builddir])
 
 AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
@@ -41,8 +42,6 @@ AC_PROG_MAKE_SET
 AC_CHECK_PROG([INSTALL_INFO_PROG], [install-info], [install-info], [true])
 
 PROJECT=mit-scheme
-TARGETS=
-INST_TARGETS=
 
 AC_ARG_ENABLE([html],
     [AS_HELP_STRING([--enable-html],
@@ -53,8 +52,7 @@ if test x"${enable_html}" = xno; then
 elif test x"${enable_html}" != xyes; then
     htmldir=${enable_html}
 fi
-test x"${htmldir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT)/index.html"
-test x"${htmldir}" = x || INST_TARGETS="${INST_TARGETS} install-html"
+AM_CONDITIONAL([ENABLE_HTML], [test x"${htmldir}" != x])
 
 AC_ARG_ENABLE([pdf],
     [AS_HELP_STRING([--enable-pdf],
@@ -65,8 +63,7 @@ if test x"${enable_pdf}" = xno; then
 elif test x"${enable_pdf}" != xyes; then
     pdfdir=${enable_pdf}
 fi
-test x"${pdfdir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT).pdf"
-test x"${pdfdir}" = x || INST_TARGETS="${INST_TARGETS} install-pdf"
+AM_CONDITIONAL([ENABLE_PDF], [test x"${pdfdir}" != x])
 
 AC_ARG_ENABLE([ps],
     [AS_HELP_STRING([--enable-ps],
@@ -77,16 +74,12 @@ if test x"${enable_ps}" = xno; then
 elif test x"${enable_ps}" != xyes; then
     psdir=${enable_ps}
 fi
-test x"${psdir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT).ps"
-test x"${psdir}" = x || INST_TARGETS="${INST_TARGETS} install-ps"
+AM_CONDITIONAL([ENABLE_PS], [test x"${psdir}" != x])
 
 AC_SUBST([PROJECT])
-AC_SUBST([TARGETS])
-AC_SUBST([INST_TARGETS])
 
 AC_CONFIG_FILES([
 	Makefile
-	make-common
 	ffi/Makefile
 	ref-manual/Makefile
 	sos/Makefile

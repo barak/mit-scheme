@@ -52,6 +52,7 @@ changelog.txt
 doc/*/*.aux
 doc/*/*.cp
 doc/*/*.cps
+doc/*/*.dvi
 doc/*/*.fn
 doc/*/*.fns
 doc/*/*.html
@@ -66,12 +67,18 @@ doc/*/*.op
 doc/*/*.ops
 doc/*/*.pg
 doc/*/*.ps
+doc/*/*.t2d/
+doc/*/*.t2p/
 doc/*/*.toc
 doc/*/*.tp
 doc/*/*.tps
 doc/*/*.vr
 doc/*/*.vrs
+doc/*/Makefile.in
+doc/*/texinfo.tex
 doc/Makefile
+doc/Makefile.in
+doc/aclocal.m4
 doc/autom4te.cache/
 doc/config.log
 doc/config.status
@@ -79,8 +86,9 @@ doc/configure
 doc/ffi/Makefile
 doc/ffi/mit-scheme-ffi/
 doc/imail/Makefile
+doc/install-sh
 doc/imail/mit-scheme-imail/
-doc/make-common
+doc/missing
 doc/ref-manual/Makefile
 doc/ref-manual/mit-scheme-ref/
 doc/ref-manual/standards-menu.texi
