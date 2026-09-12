@@ -69,21 +69,6 @@ CONF_FLAGS += --enable-blowfish=yes
 CONF_FLAGS += --enable-gdbm=yes
 CONF_FLAGS += --enable-pgsql=yes
 
-# According to https://savannah.gnu.org/support/?110264 a build error like
-#
-#  Bad compiled-code version in FASL File: make.com
-#  File has: compiled-code interface 3; architecture 14.
-#  Expected: compiled-code interface 4; architecture 14.
-#
-# can occur when, e.g., 10.1.11 is installed but 11.1 is being built.
-# And can be prevented using a configuration flag.
-
-INSTALLED_MAJOR_VERSION:=$(shell dpkg --status mit-scheme | egrep '^Version:' | sed 's/^Version: //' | cut --delimiter=. --fields=1)
-BUILDING_MAJOR_VERSION:=$(shell echo $(DEB_VERSION_UPSTREAM) | cut --delimiter=. --fields=1)
-ifneq ($(INSTALLED_MAJOR_VERSION),$(BUILDING_MAJOR_VERSION))
-CONF_FLAGS += --enable-cross-compiling
-endif
-
 # Cross-compile whenever the Scheme we build with disagrees with the target
 # about compiled-code format, or the build dies with fasl-file-bad-data when
 # saving lib/runtime.com.  That is the normal case for the SVM flavour.

@@ -1,3 +1,10 @@
+mit-scheme (12.1-7) UNRELEASED; urgency=medium
+
+  * Drop leftover version-based --enable-cross-compiling test, superseded
+    in -6 by the compiled-code-format check.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Sat, 12 Sep 2026 18:44:46 +0100
+
 mit-scheme (12.1-6) unstable; urgency=medium
 
   * Put developer-relevant info in debian/NOTES.md, leaving README.Debian
@@ -21,9 +28,9 @@ mit-scheme (12.1-6) unstable; urgency=medium
     the build-time-available mit-scheme produces, rather than comparing
     versions; otherwise building the SVM flavour with a native Scheme
     fails with fasl-file-bad-data when saving lib/runtime.com.
-  * Build for arm64, and, via the new SVM flavour, armhf, i386, and
-    ppc64el (closes: #365530). Include ppc64el confshared.h patch. (Note:
-    armhf has a machine type but does not define HEAP_IN_LOW_MEMORY, so it
+  * Build for arm64, and, via the new SVM flavour, i386 and ppc64el
+    (closes: #365530). Include ppc64el confshared.h patch. (Note: armhf
+    has a machine type but does not define HEAP_IN_LOW_MEMORY, so it
     cannot load bands or FASL files built anywhere else, and therefore
     cannot be bootstrapped.)
   * Record what makes an SVM band portable across architectures in
