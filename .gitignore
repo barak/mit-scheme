@@ -141,7 +141,6 @@ src/imail/Tags.sh
 src/lib/
 src/microcode/*.ico
 src/microcode/Makefile
-src/microcode/Makefile.deps
 src/microcode/Makefile.in
 src/microcode/cmpauxmd.asm
 src/microcode/cmpauxmd/i386-nt.asm

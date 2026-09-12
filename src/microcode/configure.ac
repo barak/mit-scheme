@@ -4,6 +4,7 @@ AC_INIT([MIT/GNU Scheme], [13.0.50], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_MACRO_DIR([.])
 AC_CONFIG_HEADERS([config.h])
+AM_INIT_AUTOMAKE([foreign])
 AC_PROG_MAKE_SET
 
 AC_COPYRIGHT(

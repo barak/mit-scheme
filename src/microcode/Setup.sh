@@ -28,40 +28,11 @@
 
 set -eu
 
-autoheader=done
-autoconf=done
-makeinit=done
-
-clean ()
-{
-    if [ "x${autoheader}" != xdone ]; then
-	rm -f config.h.in
-    fi
-    if [ "x${autoconf}" != xdone ]; then
-	rm -f configure
-    fi
-    if [ "x${makeinit}" != xdone ]; then
-	rm -f Makefile.deps Makefile.in
-    fi
-}
-
-trap clean EXIT INT TERM
-
-if [ ! -f config.h.in ]; then
-    autoheader=clean
-    echo "autoheader"
-    autoheader
-    autoheader=done
-fi
 if [ ! -x configure ]; then
-    autoconf=clean
-    echo "autoconf"
-    autoconf
-    autoconf=done
+    echo "autoreconf -i"
+    autoreconf -i
 fi
 ( cd cmpauxmd && make ${1+"$@"} )
-if [ ! -f Makefile.in ]; then
-    makeinit=clean
+if [ ! -f liarc-vars ]; then
     makegen/makeinit.sh ${1+"$@"}
-    makeinit=done
 fi
