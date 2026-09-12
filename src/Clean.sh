@@ -71,7 +71,6 @@ fi
 
 if [ ${DIST} = yes ]; then
     maybe_rm Makefile
-    maybe_rm Makefile.tools
     maybe_rm boot-lib           # XXX What's this?
     maybe_rm config.cache
     maybe_rm config.log

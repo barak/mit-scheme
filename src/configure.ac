@@ -430,7 +430,6 @@ if test x"${enable_x11_screen}" = xyes; then
 fi
 
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([Makefile.tools])
 
 dnl etc/create-makefiles.sh writes these above, during configure, because it
 dnl needs a working Scheme to work out what goes in them.  They therefore do

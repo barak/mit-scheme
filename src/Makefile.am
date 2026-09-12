@@ -39,6 +39,16 @@ BASICS_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 OPTION_SUBDIRS = @OPTION_SUBDIRS@
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
+MIT_SCHEME_NATIVE_CODE = @mit_scheme_native_code@
+
+## Makefile.tools builds the cross-compilation toolchain.  It is a separate
+## makefile because it defines the same syntax-* and compile-* targets as
+## this one, for the host rather than the target; these are the only values
+## it needs from configure, so it is a plain file rather than a .in.
+TOOLS_VARS = MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' \
+	HOST_COMPILER_HEAP='$(HOST_COMPILER_HEAP)' \
+	MIT_SCHEME_NATIVE_CODE='$(MIT_SCHEME_NATIVE_CODE)'
 AUXDIR_NAME = @AUXDIR_NAME@
 AUXDIR = @AUXDIR@
 
@@ -114,12 +124,12 @@ stamp_toolchain: runtime/host-adapter.scm
 
 .PHONY: toolchain
 toolchain:
-	+$(MAKE) -f Makefile.tools
+	+$(MAKE) -f Makefile.tools $(TOOLS_VARS)
 	echo done > stamp_toolchain
 
 .PHONY: toolclean
 toolclean:
-	+$(MAKE) -f Makefile.tools clean
+	+$(MAKE) -f Makefile.tools $(TOOLS_VARS) clean
 	-rm -f stamp_toolchain
 
 # Plugins all depend on $(PLUGINS_TOOLCHAIN) to make sure that they can

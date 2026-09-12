@@ -23,45 +23,14 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# **** BEGIN BOILERPLATE ****
+# Not generated from a .in: the three values this needs are passed in by
+# the makefile that invokes it, so there is nothing for configure to
+# substitute here.  The boilerplate that used to sit in this spot defined
+# directory and install variables that nothing below ever referenced.
 
-SHELL = @SHELL@
-
-@SET_MAKE@
-
-srcdir = @srcdir@
-top_srcdir = @top_srcdir@
-VPATH = @srcdir@
-prefix = @prefix@
-exec_prefix = @exec_prefix@
-
-bindir = @bindir@
-sbindir = @sbindir@
-libexecdir = @libexecdir@
-datarootdir = @datarootdir@
-datadir = @datadir@
-sysconfdir = @sysconfdir@
-sharedstatedir = @sharedstatedir@
-localstatedir = @localstatedir@
-libdir = @libdir@
-infodir = @infodir@
-mandir = @mandir@
-includedir = @includedir@
-oldincludedir = /usr/include
-
-DESTDIR =
-top_builddir = @top_builddir@
-
-INSTALL = @INSTALL@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@
-INSTALL_DATA = @INSTALL_DATA@
-INSTALL_SCRIPT = @INSTALL_SCRIPT@
-
-LN_S = @LN_S@
-ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-mkinstalldirs = $(SHELL) $(top_srcdir)/microcode/mkinstalldirs
-
-# **** END BOILERPLATE ****
+MIT_SCHEME_EXE =
+HOST_COMPILER_HEAP =
+MIT_SCHEME_NATIVE_CODE =
 
 .PHONY: default-target
 default-target: all
@@ -69,7 +38,7 @@ default-target: all
 srcdir = .
 objdir = tools
 
-COMPILER_BACKEND = "`./compiler/choose-machine.sh @mit_scheme_native_code@`"
+COMPILER_BACKEND = "`./compiler/choose-machine.sh $(MIT_SCHEME_NATIVE_CODE)`"
 
 COMPILER_SETTINGS = \
   # end of COMPILER_SETTINGS
@@ -81,13 +50,11 @@ CREF_SETTINGS = \
   (set! cref/object-root (pathname-simplify (merge-pathnames "$(objdir)/"))) \
   (set! cref/source-root (pathname-simplify (merge-pathnames "$(srcdir)/"))) \
   # end of CREF_SETTINGS
-HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
 
 # Set CCTYPE to syntax for an interpreted toolchain.
 CCTYPE = compile
 FASL = `case $(CCTYPE) in compile) echo com;; syntax) echo bin;; esac`
 
-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 
 HOST_COMPILER = '$(MIT_SCHEME_EXE)' $(HOST_COMPILER_HEAP) \
   --batch-mode --no-init-file \
