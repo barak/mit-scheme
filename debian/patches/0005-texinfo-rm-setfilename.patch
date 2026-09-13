@@ -1,0 +1,95 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Sun, 13 Sep 2026 10:54:47 +0100
+Subject: texinfo rm setfilename
+
+@setfilename has not been needed since Texinfo 5.0, which takes the
+output name from the input file name, and giving it is now discouraged.
+Each of these names its output exactly as the file itself is named, so
+the line says nothing.
+---
+ doc/ffi/ffi.texinfo                   | 1 -
+ doc/ref-manual/scheme.texinfo         | 1 -
+ doc/sos/sos.texinfo                   | 1 -
+ doc/user-manual/user.texinfo          | 1 -
+ src/blowfish/mit-scheme-blowfish.texi | 1 -
+ src/gdbm/mit-scheme-gdbm.texi         | 1 -
+ src/imail/mit-scheme-imail.texi       | 1 -
+ 7 files changed, 7 deletions(-)
+
+diff --git a/doc/ffi/ffi.texinfo b/doc/ffi/ffi.texinfo
+index df20607..1a08be3 100644
+--- a/doc/ffi/ffi.texinfo
++++ b/doc/ffi/ffi.texinfo
+@@ -1,6 +1,5 @@
+ \input texinfo @c -*-Texinfo-*-
+ @comment %**start of header
+-@setfilename mit-scheme-ffi
+ @set VERSION 1.0
+ @set UPDATED 2018-06-10
+ @settitle FFI @value{VERSION}
+diff --git a/doc/ref-manual/scheme.texinfo b/doc/ref-manual/scheme.texinfo
+index a79bd8a..7b509f9 100644
+--- a/doc/ref-manual/scheme.texinfo
++++ b/doc/ref-manual/scheme.texinfo
+@@ -1,6 +1,5 @@
+ \input texinfo @c -*-texinfo-*-
+ @comment %**start of header
+-@setfilename mit-scheme-ref
+ @set VERSION 12.1
+ @set UPDATED 2022-11-10
+ @settitle MIT/GNU Scheme @value{VERSION}
+diff --git a/doc/sos/sos.texinfo b/doc/sos/sos.texinfo
+index 1bb87d5..5874a9b 100644
+--- a/doc/sos/sos.texinfo
++++ b/doc/sos/sos.texinfo
+@@ -1,6 +1,5 @@
+ \input texinfo @c -*-Texinfo-*-
+ @comment %**start of header
+-@setfilename mit-scheme-sos
+ @set EDITION 2.13
+ @set VERSION 1.9
+ @set UPDATED 2011-10-14
+diff --git a/doc/user-manual/user.texinfo b/doc/user-manual/user.texinfo
+index bf041bc..98a2ac9 100644
+--- a/doc/user-manual/user.texinfo
++++ b/doc/user-manual/user.texinfo
+@@ -1,6 +1,5 @@
+ \input texinfo @c -*-texinfo-*-
+ @comment %**start of header
+-@setfilename mit-scheme-user
+ @set VERSION 12.1
+ @set UPDATED 2021-02-19
+ @settitle MIT/GNU Scheme @value{VERSION}
+diff --git a/src/blowfish/mit-scheme-blowfish.texi b/src/blowfish/mit-scheme-blowfish.texi
+index 008072c..a119897 100644
+--- a/src/blowfish/mit-scheme-blowfish.texi
++++ b/src/blowfish/mit-scheme-blowfish.texi
+@@ -1,6 +1,5 @@
+ \input texinfo @c -*-texinfo-*-
+ @comment %**start of header
+-@setfilename mit-scheme-blowfish.info
+ @include version.texi
+ @set SCMVERS 12.1
+ @settitle MIT/GNU Scheme Blowfish Plugin Manual
+diff --git a/src/gdbm/mit-scheme-gdbm.texi b/src/gdbm/mit-scheme-gdbm.texi
+index 96412cc..0e79447 100644
+--- a/src/gdbm/mit-scheme-gdbm.texi
++++ b/src/gdbm/mit-scheme-gdbm.texi
+@@ -1,6 +1,5 @@
+ \input texinfo @c -*-texinfo-*-
+ @comment %**start of header
+-@setfilename mit-scheme-gdbm.info
+ @include version.texi
+ @set SCMVERS 12.1
+ @settitle MIT/GNU Scheme GDBM Plugin Manual
+diff --git a/src/imail/mit-scheme-imail.texi b/src/imail/mit-scheme-imail.texi
+index 358c123..f26f28e 100644
+--- a/src/imail/mit-scheme-imail.texi
++++ b/src/imail/mit-scheme-imail.texi
+@@ -1,6 +1,5 @@
+ \input texinfo @c -*-texinfo-*-
+ @comment %**start of header
+-@setfilename mit-scheme-imail.info
+ @set EDITION 1.9
+ @set VERSION 1.19
+ @set UPDATED 2011-10-14

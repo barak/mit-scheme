@@ -14,10 +14,10 @@ auxiliary directory.
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 81c8254..f5d3790 100644
+index c5ba6a3..8b09609 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
-@@ -170,7 +170,7 @@ esac
+@@ -168,7 +168,7 @@ esac
  
  MIT_SCHEME_ARCH=${mit_scheme_native_code}
  MIT_SCHEME_VERSION=${PACKAGE_VERSION}
@@ -27,10 +27,10 @@ index 81c8254..f5d3790 100644
  MIT_SCHEME_LIBDIR=${AUXDIR}/
  MIT_SCHEME_INCLUDEDIR=`pwd`/lib/
 diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
-index 0d98037..5fabc47 100644
+index e95e70c..cbdd9b0 100644
 --- a/src/microcode/configure.ac
 +++ b/src/microcode/configure.ac
-@@ -295,7 +295,7 @@ esac
+@@ -299,7 +299,7 @@ esac
  
  : "${MIT_SCHEME_ARCH:=${mit_scheme_native_code}}"
  : "${MIT_SCHEME_VERSION:=${PACKAGE_VERSION}}"

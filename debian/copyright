@@ -1,56 +1,48 @@
-This package was debianized by Chris Hanson <cph@debian.org> on
-Thu, 22 Feb 2001 11:50:57 -0500.
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: MIT/GNU Scheme
+Upstream-Contact: Chris Hanson <cph@debian.org>
+Source: https://www.gnu.org/software/mit-scheme/
+ http://savannah.gnu.org/projects/mit-scheme/
+ git://git.sv.gnu.org/mit-scheme.git
 
-It was downloaded from https://www.gnu.org/software/mit-scheme/
+Files: *
+Copyright: 1986-2022, Massachusetts Institute of Technology
+License: GPL-2+ with OpenSSL-exception
 
-See also: http://savannah.gnu.org/projects/mit-scheme/
-Upstream development repository: git://git.sv.gnu.org/mit-scheme.git
+Files: doc/*
+Copyright: 1991-2022, Massachusetts Institute of Technology
+License: GFDL-1.2+
 
-Upstream Author: Chris Hanson <cph@debian.org>
+License: GPL-2+ with OpenSSL-exception
+ MIT/GNU Scheme is released under the GNU General
+ Public License with the additional exemption that compiling,
+ linking, and/or using OpenSSL is allowed.
+ .
+ MIT/GNU Scheme is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License as
+ published by the Free Software Foundation; either version 2 of the
+ License, or (at your option) any later version.
+ .
+ MIT/GNU Scheme is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with MIT/GNU Scheme; if not, see
+ <https://www.gnu.org/licenses/>.
+ .
+ On Debian GNU/Linux systems, the complete text of the GNU General
+ Public License version 2 can be found in
+ `/usr/share/common-licenses/GPL-2'.
 
-Copyright:
-
-   MIT/GNU Scheme is Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991,
-   1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
-   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts
-   Institute of Technology, 77 Massachusetts Avenue, Cambridge MA
-   02139, USA.  MIT/GNU Scheme is released under the GNU General
-   Public License with the additional exemption that compiling,
-   linking, and/or using OpenSSL is allowed.
-
-   MIT/GNU Scheme is free software; you can redistribute it and/or
-   modify it under the terms of the GNU General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
-
-   MIT/GNU Scheme is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with MIT/GNU Scheme; if not, see
-   <https://www.gnu.org/licenses/>.
-
-   On Debian GNU/Linux systems, the complete text of the GNU General
-   Public License version 2 can be found in
-   `/usr/share/common-licenses/GPL-2'.
-
-   ----------------------------------------------------------------
-
-   The MIT/GNU Scheme Reference Manual and related manuals are
-   Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1999, 2000,
-   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Massachusetts Institute of Technology, 77 Massachusetts Avenue,
-   Cambridge MA 02139, USA.  They are released under the GNU Free
-   Documentation License.
-
-   Permission is granted to copy, distribute and/or modify these
-   documents under the terms of the GNU Free Documentation License,
-   Version 1.2 or any later version published by the Free Software
-   Foundation; with no Invariant Sections, with no Front-Cover Texts
-   and no Back-Cover Texts.
-
-   On Debian GNU/Linux systems, the complete text of the GNU Free
-   Documentation License version 1.2 can be found in
-   `/usr/share/common-licenses/GFDL-1.2'.
+License: GFDL-1.2+
+ Permission is granted to copy, distribute and/or modify these
+ documents under the terms of the GNU Free Documentation License,
+ Version 1.2 or any later version published by the Free Software
+ Foundation; with no Invariant Sections, with no Front-Cover Texts
+ and no Back-Cover Texts.
+ .
+ On Debian GNU/Linux systems, the complete text of the GNU Free
+ Documentation License version 1.2 can be found in
+ `/usr/share/common-licenses/GFDL-1.2'.

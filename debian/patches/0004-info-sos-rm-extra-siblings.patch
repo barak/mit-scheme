@@ -1,6 +1,6 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Sat, 5 Sep 2026 12:00:00 +0000
-Subject: sos info extra sibling menu
+Subject: info sos rm extra siblings
 
 There is a stray sibling menu in the Introduction node of sos.texi
 which messes up the info structure and should be deleted.
@@ -23,7 +23,7 @@ screen earlier.
  1 file changed, 9 deletions(-)
 
 diff --git a/doc/sos/sos.texinfo b/doc/sos/sos.texinfo
-index effb34b..8b91353 100644
+index dc0248f..1bb87d5 100644
 --- a/doc/sos/sos.texinfo
 +++ b/doc/sos/sos.texinfo
 @@ -119,15 +119,6 @@ The argument must be a procedure (@code{procedure?}).

@@ -1,0 +1,876 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Sat, 12 Sep 2026 20:20:00 +0100
+Subject: automake doc
+
+The hand-written rules ran texi2any and texi2dvi several times over one
+.texinfo in one directory, so the split and unsplit HTML runs shared an
+intermediate directory and the PDF and PostScript runs shared the TeX
+aux files.  info_TEXINFOS gives each output its own --build-dir, and
+.NOTPARALLEL goes.
+
+automake takes the info, pdf, ps and html names from the source file
+name, so the four top-level sources are renamed to the names they
+install under.
+
+The split HTML tree is the one output automake does not cover; it keeps
+an explicit rule, with its own --output.
+---
+ doc/Makefile.am                                    |  12 ++
+ doc/Makefile.in                                    | 149 ------------------
+ doc/configure.ac                                   |  17 +--
+ doc/ffi/Makefile.am                                |   9 ++
+ doc/ffi/Makefile.in                                |  12 --
+ doc/ffi/{ffi.texinfo => mit-scheme-ffi.texi}       |   0
+ doc/make-common.in                                 | 169 ---------------------
+ doc/ref-manual/Makefile.am                         | 100 ++++++++++++
+ doc/ref-manual/Makefile.in                         |  94 ------------
+ .../{scheme.texinfo => mit-scheme-ref.texi}        |   0
+ doc/sos/Makefile.am                                |   7 +
+ doc/sos/Makefile.in                                |  34 -----
+ doc/sos/{sos.texinfo => mit-scheme-sos.texi}       |   0
+ doc/texinfo.am                                     |  48 ++++++
+ doc/user-manual/Makefile.am                        |   7 +
+ doc/user-manual/Makefile.in                        |  34 -----
+ .../{user.texinfo => mit-scheme-user.texi}         |   0
+ 17 files changed, 188 insertions(+), 504 deletions(-)
+ create mode 100644 doc/Makefile.am
+ delete mode 100644 doc/Makefile.in
+ create mode 100644 doc/ffi/Makefile.am
+ delete mode 100644 doc/ffi/Makefile.in
+ rename doc/ffi/{ffi.texinfo => mit-scheme-ffi.texi} (100%)
+ delete mode 100644 doc/make-common.in
+ create mode 100644 doc/ref-manual/Makefile.am
+ delete mode 100644 doc/ref-manual/Makefile.in
+ rename doc/ref-manual/{scheme.texinfo => mit-scheme-ref.texi} (100%)
+ create mode 100644 doc/sos/Makefile.am
+ delete mode 100644 doc/sos/Makefile.in
+ rename doc/sos/{sos.texinfo => mit-scheme-sos.texi} (100%)
+ create mode 100644 doc/texinfo.am
+ create mode 100644 doc/user-manual/Makefile.am
+ delete mode 100644 doc/user-manual/Makefile.in
+ rename doc/user-manual/{user.texinfo => mit-scheme-user.texi} (100%)
+
+diff --git a/doc/Makefile.am b/doc/Makefile.am
+new file mode 100644
+index 0000000..7a0c0f4
+--- /dev/null
++++ b/doc/Makefile.am
+@@ -0,0 +1,12 @@
++## Process this file with automake to produce Makefile.in
++
++SUBDIRS = ffi ref-manual sos user-manual
++
++dist_man1_MANS = mit-scheme.1
++
++EXTRA_DIST = index.html
++
++# The manuals install under $(htmldir); this is the page that links them.
++install-html-local:
++	$(MKDIR_P) $(DESTDIR)$(htmldir)
++	$(INSTALL_DATA) $(srcdir)/index.html $(DESTDIR)$(htmldir)/.
+diff --git a/doc/Makefile.in b/doc/Makefile.in
+deleted file mode 100644
+index 10a9207..0000000
+--- a/doc/Makefile.in
++++ /dev/null
+@@ -1,149 +0,0 @@
+-# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+-#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+-#     2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts
+-#     Institute of Technology
+-#
+-# This file is part of MIT/GNU Scheme.
+-#
+-# MIT/GNU Scheme is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation; either version 2 of the
+-# License, or (at your option) any later version.
+-#
+-# MIT/GNU Scheme is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-# General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with MIT/GNU Scheme; if not, write to the Free Software
+-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+-# 02110-1301, USA.
+-
+-# **** BEGIN BOILERPLATE ****
+-
+-SHELL = @SHELL@
+-
+-@SET_MAKE@
+-
+-srcdir = @srcdir@
+-top_srcdir = @top_srcdir@
+-VPATH = @srcdir@
+-prefix = @prefix@
+-exec_prefix = @exec_prefix@
+-
+-bindir = @bindir@
+-sbindir = @sbindir@
+-libexecdir = @libexecdir@
+-datarootdir = @datarootdir@
+-datadir = @datadir@
+-sysconfdir = @sysconfdir@
+-sharedstatedir = @sharedstatedir@
+-localstatedir = @localstatedir@
+-libdir = @libdir@
+-infodir = @infodir@
+-mandir = @mandir@
+-includedir = @includedir@
+-docdir = @docdir@
+-oldincludedir = /usr/include
+-
+-PACKAGE_TARNAME = @PROJECT@
+-PROJECT = @PROJECT@
+-
+-DESTDIR =
+-top_builddir = .
+-
+-INSTALL = @INSTALL@
+-INSTALL_PROGRAM = @INSTALL_PROGRAM@
+-INSTALL_DATA = @INSTALL_DATA@
+-INSTALL_SCRIPT = @INSTALL_SCRIPT@
+-
+-LN_S = @LN_S@
+-ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+-mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+-
+-# **** END BOILERPLATE ****
+-
+-htmldir = @htmldir@
+-pdfdir = @pdfdir@
+-psdir = @psdir@
+-INST_TARGETS = @INST_TARGETS@
+-
+-SUBDIRS = ffi ref-manual sos user-manual
+-DISTCLEAN_FILES = Makefile make-common config.log config.status
+-
+-all:
+-	@for D in $(SUBDIRS); do \
+-	    echo "making $@ in $${D}";\
+-	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+-	done
+-
+-mostlyclean:
+-	@for D in $(SUBDIRS); do \
+-	    echo "making $@ in $${D}";\
+-	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+-	done
+-
+-clean:
+-	@for D in $(SUBDIRS); do \
+-	    echo "making $@ in $${D}";\
+-	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+-	done
+-
+-distclean:
+-	@for D in $(SUBDIRS); do \
+-	    echo "making $@ in $${D}";\
+-	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+-	done
+-	rm -f $(DISTCLEAN_FILES)
+-
+-maintainer-clean:
+-	@for D in $(SUBDIRS); do \
+-	    echo "making $@ in $${D}";\
+-	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+-	done
+-	rm -f $(DISTCLEAN_FILES) configure
+-	rm -rf autom4te.cache
+-
+-tags TAGS:
+-
+-install: install-info-gz install-man $(INST_TARGETS)
+-
+-install-info-gz install-info:
+-	$(mkinstalldirs) $(DESTDIR)$(infodir)
+-	if [ ! -e $(DESTDIR)$(infodir)/dir ]; then \
+-	    $(INSTALL_DATA) info-dir $(DESTDIR)$(infodir)/dir; fi
+-	@for D in $(SUBDIRS); do \
+-	    echo "making $@ in $${D}";\
+-	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+-	done
+-
+-install-man:
+-	$(mkinstalldirs) $(DESTDIR)$(mandir)/man1
+-	$(INSTALL_DATA) ${PROJECT}.1 $(DESTDIR)$(mandir)/man1/.
+-
+-install-html:
+-	$(mkinstalldirs) $(DESTDIR)$(htmldir)
+-	$(INSTALL_DATA) index.html $(DESTDIR)$(htmldir)/.
+-	@for D in $(SUBDIRS); do \
+-	    echo "making $@ in $${D}";\
+-	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+-	done
+-
+-install-pdf:
+-	$(mkinstalldirs) $(DESTDIR)$(pdfdir)
+-	@for D in $(SUBDIRS); do \
+-	    echo "making $@ in $${D}";\
+-	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+-	done
+-
+-install-ps:
+-	$(mkinstalldirs) $(DESTDIR)$(psdir)
+-	@for D in $(SUBDIRS); do \
+-	    echo "making $@ in $${D}";\
+-	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+-	done
+-
+-.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS
+-.PHONY: install install-man install-info install-html install-pdf install-ps
+diff --git a/doc/configure.ac b/doc/configure.ac
+index cd0ce3f..c011c83 100644
+--- a/doc/configure.ac
++++ b/doc/configure.ac
+@@ -4,7 +4,8 @@ AC_INIT([MIT/GNU Scheme documentation],
+ 	[12.1],
+ 	[bug-mit-scheme@gnu.org],
+ 	[mit-scheme-doc])
+-AC_CONFIG_SRCDIR([ref-manual/scheme.texinfo])
++AC_CONFIG_SRCDIR([ref-manual/mit-scheme-ref.texi])
++AM_INIT_AUTOMAKE([foreign info-in-builddir])
+ 
+ AC_COPYRIGHT(
+ [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+@@ -41,8 +42,6 @@ AC_PROG_MAKE_SET
+ AC_CHECK_PROG([INSTALL_INFO_PROG], [install-info], [install-info], [true])
+ 
+ PROJECT=mit-scheme
+-TARGETS=
+-INST_TARGETS=
+ 
+ AC_ARG_ENABLE([html],
+     [AS_HELP_STRING([--enable-html],
+@@ -53,8 +52,7 @@ if test x"${enable_html}" = xno; then
+ elif test x"${enable_html}" != xyes; then
+     htmldir=${enable_html}
+ fi
+-test x"${htmldir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT)/index.html"
+-test x"${htmldir}" = x || INST_TARGETS="${INST_TARGETS} install-html"
++AM_CONDITIONAL([ENABLE_HTML], [test x"${htmldir}" != x])
+ 
+ AC_ARG_ENABLE([pdf],
+     [AS_HELP_STRING([--enable-pdf],
+@@ -65,8 +63,7 @@ if test x"${enable_pdf}" = xno; then
+ elif test x"${enable_pdf}" != xyes; then
+     pdfdir=${enable_pdf}
+ fi
+-test x"${pdfdir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT).pdf"
+-test x"${pdfdir}" = x || INST_TARGETS="${INST_TARGETS} install-pdf"
++AM_CONDITIONAL([ENABLE_PDF], [test x"${pdfdir}" != x])
+ 
+ AC_ARG_ENABLE([ps],
+     [AS_HELP_STRING([--enable-ps],
+@@ -77,16 +74,12 @@ if test x"${enable_ps}" = xno; then
+ elif test x"${enable_ps}" != xyes; then
+     psdir=${enable_ps}
+ fi
+-test x"${psdir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT).ps"
+-test x"${psdir}" = x || INST_TARGETS="${INST_TARGETS} install-ps"
++AM_CONDITIONAL([ENABLE_PS], [test x"${psdir}" != x])
+ 
+ AC_SUBST([PROJECT])
+-AC_SUBST([TARGETS])
+-AC_SUBST([INST_TARGETS])
+ 
+ AC_CONFIG_FILES([
+ 	Makefile
+-	make-common
+ 	ffi/Makefile
+ 	ref-manual/Makefile
+ 	sos/Makefile
+diff --git a/doc/ffi/Makefile.am b/doc/ffi/Makefile.am
+new file mode 100644
+index 0000000..68ae3c6
+--- /dev/null
++++ b/doc/ffi/Makefile.am
+@@ -0,0 +1,9 @@
++## Process this file with automake to produce Makefile.in
++
++TARGET_ROOT = mit-scheme-ffi
++
++info_TEXINFOS = mit-scheme-ffi.texi
++
++EXTRA_DIST = prhello.cdecl prhello.scm
++
++include $(top_srcdir)/texinfo.am
+diff --git a/doc/ffi/Makefile.in b/doc/ffi/Makefile.in
+deleted file mode 100644
+index b239f72..0000000
+--- a/doc/ffi/Makefile.in
++++ /dev/null
+@@ -1,12 +0,0 @@
+-# doc/ffi/Makefile.in
+-
+-@SET_MAKE@
+-srcdir = @srcdir@
+-top_srcdir = @top_srcdir@
+-VPATH = @srcdir@
+-
+-SOURCES = ffi.texinfo prhello.cdecl prhello.scm
+-TEXINFO_ROOT = ffi
+-TARGET_ROOT = mit-scheme-ffi
+-
+-include $(top_srcdir)/make-common
+diff --git a/doc/ffi/ffi.texinfo b/doc/ffi/mit-scheme-ffi.texi
+similarity index 100%
+rename from doc/ffi/ffi.texinfo
+rename to doc/ffi/mit-scheme-ffi.texi
+diff --git a/doc/make-common.in b/doc/make-common.in
+deleted file mode 100644
+index cab6792..0000000
+--- a/doc/make-common.in
++++ /dev/null
+@@ -1,169 +0,0 @@
+-
+-# -*-makefile-*-
+-# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+-#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+-#     2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts
+-#     Institute of Technology
+-#
+-# This file is part of MIT/GNU Scheme.
+-#
+-# MIT/GNU Scheme is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation; either version 2 of the
+-# License, or (at your option) any later version.
+-#
+-# MIT/GNU Scheme is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-# General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with MIT/GNU Scheme; if not, write to the Free Software
+-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+-# 02110-1301, USA.
+-
+-# **** BEGIN BOILERPLATE ****
+-
+-SHELL = @SHELL@
+-
+-prefix = @prefix@
+-exec_prefix = @exec_prefix@
+-
+-bindir = @bindir@
+-sbindir = @sbindir@
+-libexecdir = @libexecdir@
+-datarootdir = @datarootdir@
+-datadir = @datadir@
+-sysconfdir = @sysconfdir@
+-sharedstatedir = @sharedstatedir@
+-localstatedir = @localstatedir@
+-libdir = @libdir@
+-docdir = @docdir@
+-infodir = @infodir@
+-mandir = @mandir@
+-includedir = @includedir@
+-oldincludedir = /usr/include
+-
+-PACKAGE_TARNAME = @PROJECT@
+-PROJECT = @PROJECT@
+-
+-DESTDIR =
+-top_builddir = .
+-
+-INSTALL = @INSTALL@
+-INSTALL_PROGRAM = @INSTALL_PROGRAM@
+-INSTALL_DATA = @INSTALL_DATA@
+-INSTALL_SCRIPT = @INSTALL_SCRIPT@
+-
+-LN_S = @LN_S@
+-ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+-mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+-
+-# **** END BOILERPLATE ****
+-
+-htmldir = @htmldir@
+-pdfdir = @pdfdir@
+-psdir = @psdir@
+-
+-INSTALL_INFO_PROG = @INSTALL_INFO_PROG@
+-TARGETS = @TARGETS@
+-INST_TARGETS = @INST_TARGETS@
+-
+-INFO_TARGET = $(TARGET_ROOT).info
+-HTML_TARGET = $(TARGET_ROOT)
+-HTML_NOSPLIT_TARGET = $(TARGET_ROOT).html
+-DVI_TARGET = $(TARGET_ROOT).dvi
+-PDF_TARGET = $(TARGET_ROOT).pdf
+-PS_TARGET = $(TARGET_ROOT).ps
+-
+-GS = gs
+-EPS2EPS = eps2eps
+-PS2PDF = ps2pdf
+-PS2PNG = $(GS) -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r300
+-
+-TEX_OPTIONS = --quiet $(EXTRA_TEX_OPTIONS)
+-
+-FIGURES_PNG = $(FIGURES_EPS:.eps=.png)
+-FIGURES_PDF = $(FIGURES_EPS:.eps=.pdf)
+-
+-all: $(INFO_TARGET) $(TARGETS)
+-
+-$(INFO_TARGET): $(SOURCES) $(FIGURES_PNG)
+-	rm -f $(INFO_TARGET)*
+-	texi2any --info --output=$(INFO_TARGET) $(TEXINFO_ROOT).texinfo
+-
+-$(HTML_TARGET)/index.html: $(SOURCES) $(FIGURES_PNG)
+-	rm -rf $(HTML_TARGET)
+-	texi2any --html $(TEXINFO_ROOT).texinfo
+-
+-$(HTML_NOSPLIT_TARGET): $(SOURCES) $(FIGURES_PNG)
+-	rm -f $(HTML_NOSPLIT_TARGET)
+-	texi2any --html --no-split $(TEXINFO_ROOT).texinfo
+-
+-$(PDF_TARGET): $(SOURCES) $(FIGURES_PDF)
+-	texi2dvi --pdf $(TEX_OPTIONS) --output=$@ $(TEXINFO_ROOT).texinfo
+-
+-$(PS_TARGET): $(SOURCES) $(FIGURES_EPS)
+-	-rm -f $(DVI_TARGET)
+-	texi2dvi --ps $(TEX_OPTIONS) --output=$@ $(TEXINFO_ROOT).texinfo
+-
+-.SUFFIXES: .eps
+-.SUFFIXES: .eps.in
+-.SUFFIXES: .pdf
+-.SUFFIXES: .png
+-
+-.eps.in.eps:
+-	$(EPS2EPS) $(EPS2EPSFLAGS) $< $@.tmp && mv -f $@.tmp $@
+-
+-.eps.pdf:
+-	$(PS2PDF) -dEPSCrop -sOutputFile=$@.tmp $< && mv -f $@.tmp $@
+-
+-.eps.png:
+-	$(PS2PNG) -dEPSCrop -sOutputFile=$@.tmp $< && mv -f $@.tmp $@
+-
+-mostlyclean:
+-
+-clean: mostlyclean
+-	rm -f $(INFO_TARGET)* $(PDF_TARGET) $(PS_TARGET)
+-	rm -f $(FIGURES_PDF)
+-	rm -f $(FIGURES_PNG)
+-	rm -rf $(HTML_TARGET)
+-	rm -f $(HTML_NOSPLIT_TARGET)
+-	rm -rf $(TEXINFO_ROOT).aux $(TEXINFO_ROOT).log $(TEXINFO_ROOT).toc
+-	rm -rf $(TEXINFO_ROOT).pg $(TEXINFO_ROOT).tp
+-	rm -rf $(TEXINFO_ROOT).cp* $(TEXINFO_ROOT).fn* $(TEXINFO_ROOT).ky*
+-	rm -rf $(TEXINFO_ROOT).nv* $(TEXINFO_ROOT).op* $(TEXINFO_ROOT).vr*
+-
+-distclean: clean
+-	rm -f Makefile
+-
+-maintainer-clean: distclean
+-
+-# The install rules depend on macro variables passwd down from the
+-# makefile in the top-level documentation directory.
+-
+-install: install-info-gz $(INST_TARGETS)
+-
+-install-info: $(INFO_TARGET)
+-	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
+-	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
+-	$(INSTALL_INFO_PROG) --info-dir $(DESTDIR)$(infodir)/ $(INFO_TARGET)
+-
+-install-info-gz: install-info
+-	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*
+-
+-install-html: $(HTML_TARGET)/index.html $(HTML_NOSPLIT_TARGET)
+-	-rm -rf $(DESTDIR)$(htmldir)/$(HTML_TARGET)
+-	$(mkinstalldirs) $(DESTDIR)$(htmldir)/$(HTML_TARGET)
+-	$(INSTALL_DATA) $(HTML_TARGET)/* $(DESTDIR)$(htmldir)/$(HTML_TARGET)/.
+-	$(INSTALL_DATA) $(HTML_NOSPLIT_TARGET) $(DESTDIR)$(htmldir)/.
+-
+-install-pdf: $(PDF_TARGET)
+-	$(INSTALL_DATA) $(PDF_TARGET) $(DESTDIR)$(pdfdir)/.
+-
+-install-ps: $(PS_TARGET)
+-	$(INSTALL_DATA) $(PS_TARGET) $(DESTDIR)$(psdir)/.
+-
+-.PHONY: all mostlyclean clean distclean maintainer-clean
+-.PHONY: install-info install-html install-pdf install-ps
+diff --git a/doc/ref-manual/Makefile.am b/doc/ref-manual/Makefile.am
+new file mode 100644
+index 0000000..397ecf2
+--- /dev/null
++++ b/doc/ref-manual/Makefile.am
+@@ -0,0 +1,100 @@
++## Process this file with automake to produce Makefile.in
++
++TARGET_ROOT = mit-scheme-ref
++
++info_TEXINFOS = mit-scheme-ref.texi
++
++mit_scheme_ref_TEXINFOS = \
++	acknowledgements.texi \
++	associations.texi \
++	binding-index.texi \
++	bit-strings.texi \
++	characters.texi \
++	concept-index.texi \
++	environments.texi \
++	equivalence.texi \
++	error.texi \
++	gfdl.texinfo \
++	graphics.texi \
++	io.texi \
++	lists.texi \
++	misc-datatypes.texi \
++	numbers.texi \
++	os-interface.texi \
++	overview.texi \
++	procedures.texi \
++	special-forms.texi \
++	standards.texi \
++	strings.texi \
++	vectors.texi
++
++FIGURES_EPS = \
++	fig/cn-expm1.eps \
++	fig/cn-exsec.eps \
++	fig/cn-log1mexp.eps \
++	fig/cn-log1p.eps \
++	fig/cn-log1pexp.eps \
++	fig/cn-logistic.eps \
++	fig/cn-logistichalf.eps \
++	fig/cn-logit.eps \
++	fig/cn-logitexp.eps \
++	fig/cn-logithalf.eps \
++	fig/cn-loglogistic.eps \
++	fig/cn-sqrt1pm1.eps \
++	fig/cn-versin.eps \
++	fig/expm1.eps \
++	fig/exsec.eps \
++	fig/log1mexp.eps \
++	fig/log1p.eps \
++	fig/log1pexp.eps \
++	fig/logistic.eps \
++	fig/logistichalf.eps \
++	fig/logit.eps \
++	fig/logitexp.eps \
++	fig/logithalf.eps \
++	fig/loglogistic.eps \
++	fig/sqrt1pm1.eps \
++	fig/versin.eps
++
++FIGURES_PNG = $(FIGURES_EPS:.eps=.png)
++FIGURES_PDF = $(FIGURES_EPS:.eps=.pdf)
++
++FIGURES_COMMON = \
++	fig/common/ad.ps \
++	fig/common/math.ps \
++	fig/common/newton.ps \
++	fig/common/plot.ps \
++	fig/common/splinterp.ps
++
++GS = gs
++EPS2EPS = eps2eps
++PS2PDF = ps2pdf
++PS2PNG = $(GS) -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r300
++EPS2EPSFLAGS = -Ifig
++
++# The Info and HTML forms embed the PNGs, TeX wants the PDFs.  These go in
++# _TEXINFOS rather than in per-output rules: naming a target that automake
++# also generates makes automake drop its own rule for it, which leaves the
++# output with prerequisites and no recipe.
++mit_scheme_ref_TEXINFOS += $(FIGURES_PNG) $(FIGURES_PDF)
++TEXI_FIGURES = $(FIGURES_PNG)
++
++$(FIGURES_EPS): $(FIGURES_COMMON)
++
++SUFFIXES = .eps.in .eps .pdf .png
++
++.eps.in.eps:
++	$(AM_V_GEN)$(MKDIR_P) fig && \
++	$(EPS2EPS) $(EPS2EPSFLAGS) $< $@.tmp && mv -f $@.tmp $@
++
++.eps.pdf:
++	$(AM_V_GEN)$(PS2PDF) -dEPSCrop -sOutputFile=$@.tmp $< && mv -f $@.tmp $@
++
++.eps.png:
++	$(AM_V_GEN)$(PS2PNG) -dEPSCrop -sOutputFile=$@.tmp $< && mv -f $@.tmp $@
++
++CLEANFILES = $(FIGURES_EPS) $(FIGURES_PNG) $(FIGURES_PDF)
++
++EXTRA_DIST = tools.scm $(FIGURES_COMMON) $(FIGURES_EPS:.eps=.eps.in)
++
++include $(top_srcdir)/texinfo.am
+diff --git a/doc/ref-manual/Makefile.in b/doc/ref-manual/Makefile.in
+deleted file mode 100644
+index d8419a5..0000000
+--- a/doc/ref-manual/Makefile.in
++++ /dev/null
+@@ -1,94 +0,0 @@
+-
+-# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+-#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+-#     2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts
+-#     Institute of Technology
+-#
+-# This file is part of MIT/GNU Scheme.
+-#
+-# MIT/GNU Scheme is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation; either version 2 of the
+-# License, or (at your option) any later version.
+-#
+-# MIT/GNU Scheme is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-# General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with MIT/GNU Scheme; if not, write to the Free Software
+-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+-# 02110-1301, USA.
+-
+-@SET_MAKE@
+-srcdir = @srcdir@
+-top_srcdir = @top_srcdir@
+-VPATH = @srcdir@
+-
+-TARGET_ROOT = mit-scheme-ref
+-TEXINFO_ROOT = scheme
+-SOURCES = \
+-    $(TEXINFO_ROOT).texinfo \
+-    acknowledgements.texi \
+-    associations.texi \
+-    binding-index.texi \
+-    bit-strings.texi \
+-    characters.texi \
+-    concept-index.texi \
+-    environments.texi \
+-    equivalence.texi \
+-    error.texi \
+-    gfdl.texinfo \
+-    graphics.texi \
+-    io.texi \
+-    lists.texi \
+-    misc-datatypes.texi \
+-    numbers.texi \
+-    os-interface.texi \
+-    overview.texi \
+-    procedures.texi \
+-    special-forms.texi \
+-    standards.texi \
+-    strings.texi \
+-    vectors.texi
+-
+-FIGURES_EPS = \
+-	fig/cn-expm1.eps \
+-	fig/cn-exsec.eps \
+-	fig/cn-log1mexp.eps \
+-	fig/cn-log1p.eps \
+-	fig/cn-log1pexp.eps \
+-	fig/cn-logistic.eps \
+-	fig/cn-logistichalf.eps \
+-	fig/cn-logit.eps \
+-	fig/cn-logitexp.eps \
+-	fig/cn-logithalf.eps \
+-	fig/cn-loglogistic.eps \
+-	fig/cn-sqrt1pm1.eps \
+-	fig/cn-versin.eps \
+-	fig/expm1.eps \
+-	fig/exsec.eps \
+-	fig/log1mexp.eps \
+-	fig/log1p.eps \
+-	fig/log1pexp.eps \
+-	fig/logistic.eps \
+-	fig/logistichalf.eps \
+-	fig/logit.eps \
+-	fig/logitexp.eps \
+-	fig/logithalf.eps \
+-	fig/loglogistic.eps \
+-	fig/sqrt1pm1.eps \
+-	fig/versin.eps \
+-	# end of FIGURES_EPS
+-
+-EPS2EPSFLAGS = -Ifig
+-
+-include $(top_srcdir)/make-common
+-
+-$(FIGURES_EPS): fig/common/ad.ps
+-$(FIGURES_EPS): fig/common/math.ps
+-$(FIGURES_EPS): fig/common/newton.ps
+-$(FIGURES_EPS): fig/common/plot.ps
+-$(FIGURES_EPS): fig/common/splinterp.ps
+diff --git a/doc/ref-manual/scheme.texinfo b/doc/ref-manual/mit-scheme-ref.texi
+similarity index 100%
+rename from doc/ref-manual/scheme.texinfo
+rename to doc/ref-manual/mit-scheme-ref.texi
+diff --git a/doc/sos/Makefile.am b/doc/sos/Makefile.am
+new file mode 100644
+index 0000000..30b28e8
+--- /dev/null
++++ b/doc/sos/Makefile.am
+@@ -0,0 +1,7 @@
++## Process this file with automake to produce Makefile.in
++
++TARGET_ROOT = mit-scheme-sos
++
++info_TEXINFOS = mit-scheme-sos.texi
++
++include $(top_srcdir)/texinfo.am
+diff --git a/doc/sos/Makefile.in b/doc/sos/Makefile.in
+deleted file mode 100644
+index 5075c3f..0000000
+--- a/doc/sos/Makefile.in
++++ /dev/null
+@@ -1,34 +0,0 @@
+-
+-# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+-#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+-#     2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts
+-#     Institute of Technology
+-#
+-# This file is part of MIT/GNU Scheme.
+-#
+-# MIT/GNU Scheme is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation; either version 2 of the
+-# License, or (at your option) any later version.
+-#
+-# MIT/GNU Scheme is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-# General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with MIT/GNU Scheme; if not, write to the Free Software
+-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+-# 02110-1301, USA.
+-
+-@SET_MAKE@
+-srcdir = @srcdir@
+-top_srcdir = @top_srcdir@
+-VPATH = @srcdir@
+-
+-TARGET_ROOT = mit-scheme-sos
+-TEXINFO_ROOT = sos
+-SOURCES = $(TEXINFO_ROOT).texinfo
+-
+-include $(top_srcdir)/make-common
+diff --git a/doc/sos/sos.texinfo b/doc/sos/mit-scheme-sos.texi
+similarity index 100%
+rename from doc/sos/sos.texinfo
+rename to doc/sos/mit-scheme-sos.texi
+diff --git a/doc/texinfo.am b/doc/texinfo.am
+new file mode 100644
+index 0000000..605c88d
+--- /dev/null
++++ b/doc/texinfo.am
+@@ -0,0 +1,48 @@
++## -*-makefile-*-
++## Common rules for the manuals, included by each manual's Makefile.am.
++##
++## Each manual sets info_TEXINFOS to its single top-level source, whose base
++## name is also the installed base name, and TARGET_ROOT to that base name.
++##
++## automake builds the .info, .pdf, .ps, .dvi and the unsplit .html.  It gives
++## texi2dvi a private --build-dir per output, so the PDF and PostScript runs
++## no longer fight over the shared .aux/.toc/.cp/.fn files the way the
++## hand-written rules did, and it renders HTML via a private temporary.
++
++## Keep automake's $(TARGET_ROOT).html a single file, as before.
++AM_MAKEINFOHTMLFLAGS = --no-split
++
++## The split HTML tree is the one output automake does not cover.  Give
++## texi2any an explicit --output rather than letting it derive one, so this
++## run shares no intermediate directory with the unsplit run above and the
++## two are safe to run concurrently.
++html-local: $(TARGET_ROOT)/index.html
++
++$(TARGET_ROOT)/index.html: $(info_TEXINFOS) $(TEXI_FIGURES)
++	$(AM_V_GEN)rm -rf $(TARGET_ROOT) $(TARGET_ROOT).tmp
++	$(AM_V_at)$(MAKEINFO) $(AM_MAKEINFOFLAGS) $(MAKEINFOFLAGS) --html \
++	  -I $(srcdir) -o $(TARGET_ROOT).tmp \
++	  `test -f '$(info_TEXINFOS)' || echo '$(srcdir)/'`$(info_TEXINFOS)
++	$(AM_V_at)mv $(TARGET_ROOT).tmp $(TARGET_ROOT)
++
++install-html-local: $(TARGET_ROOT)/index.html
++	rm -rf $(DESTDIR)$(htmldir)/$(TARGET_ROOT)
++	$(MKDIR_P) $(DESTDIR)$(htmldir)/$(TARGET_ROOT)
++	$(INSTALL_DATA) $(TARGET_ROOT)/* $(DESTDIR)$(htmldir)/$(TARGET_ROOT)/.
++
++clean-local:
++	rm -rf $(TARGET_ROOT) $(TARGET_ROOT).tmp
++
++## --enable-html / --enable-pdf / --enable-ps decide what a plain "make"
++## produces, as they did before.
++if ENABLE_HTML
++all-local: html-am html-local
++endif
++if ENABLE_PDF
++all-local: pdf-am
++endif
++if ENABLE_PS
++all-local: ps-am
++endif
++
++.PHONY: html-local install-html-local
+diff --git a/doc/user-manual/Makefile.am b/doc/user-manual/Makefile.am
+new file mode 100644
+index 0000000..29e40ec
+--- /dev/null
++++ b/doc/user-manual/Makefile.am
+@@ -0,0 +1,7 @@
++## Process this file with automake to produce Makefile.in
++
++TARGET_ROOT = mit-scheme-user
++
++info_TEXINFOS = mit-scheme-user.texi
++
++include $(top_srcdir)/texinfo.am
+diff --git a/doc/user-manual/Makefile.in b/doc/user-manual/Makefile.in
+deleted file mode 100644
+index 449c7c2..0000000
+--- a/doc/user-manual/Makefile.in
++++ /dev/null
+@@ -1,34 +0,0 @@
+-
+-# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+-#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+-#     2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts
+-#     Institute of Technology
+-#
+-# This file is part of MIT/GNU Scheme.
+-#
+-# MIT/GNU Scheme is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation; either version 2 of the
+-# License, or (at your option) any later version.
+-#
+-# MIT/GNU Scheme is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-# General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with MIT/GNU Scheme; if not, write to the Free Software
+-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+-# 02110-1301, USA.
+-
+-@SET_MAKE@
+-srcdir = @srcdir@
+-top_srcdir = @top_srcdir@
+-VPATH = @srcdir@
+-
+-TARGET_ROOT = mit-scheme-user
+-TEXINFO_ROOT = user
+-SOURCES = $(TEXINFO_ROOT).texinfo
+-
+-include $(top_srcdir)/make-common
+diff --git a/doc/user-manual/user.texinfo b/doc/user-manual/mit-scheme-user.texi
+similarity index 100%
+rename from doc/user-manual/user.texinfo
+rename to doc/user-manual/mit-scheme-user.texi

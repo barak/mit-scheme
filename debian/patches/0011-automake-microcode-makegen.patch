@@ -1,0 +1,563 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Sun, 13 Sep 2026 07:30:53 +0100
+Subject: automake microcode makegen
+
+makegen.scm wrote the whole Makefile.in from Makefile.in.in, plus
+Makefile.deps.  automake derives the objects and the header dependencies
+itself, so all that is left to generate is the source lists: it now
+writes makegen/sources.am, which Makefile.am includes, and
+Makefile.in.in goes.
+
+configure looks for a Scheme.  With one, editing a makegen/files-*.scm
+is enough: make refreshes the fragment while remaking its makefiles, and
+automake lists the fragment as a prerequisite of Makefile.in, so the
+change carries through to the object list.  The fragment is shipped, so
+a build without a Scheme uses it as it stands.
+
+The fragment carries no timestamp, so regenerating it when nothing has
+changed leaves the file alone and starts no rebuild.
+---
+ src/microcode/Makefile.am            |  45 ++++--
+ src/microcode/configure.ac           |   6 +
+ src/microcode/makegen/Makefile.in.in | 278 -----------------------------------
+ src/microcode/makegen/makegen.scm    | 123 ++++------------
+ src/microcode/makegen/sources.am     |  20 +++
+ 5 files changed, 89 insertions(+), 383 deletions(-)
+ delete mode 100644 src/microcode/makegen/Makefile.in.in
+ create mode 100644 src/microcode/makegen/sources.am
+
+diff --git a/src/microcode/Makefile.am b/src/microcode/Makefile.am
+index 7e01ee6..55e470b 100644
+--- a/src/microcode/Makefile.am
++++ b/src/microcode/Makefile.am
+@@ -21,20 +21,12 @@ AM_CPPFLAGS = -I. -I$(srcdir) @SCHEME_DEFS@ \
+ 
+ noinst_PROGRAMS = scheme
+ 
+-scheme_SOURCES = artutl.c avltree.c bkpt.c bignum.c bigprm.c bitstr.c boot.c \
+-	bytevector.c chacha12.c chacha20.c chacha8.c char.c daemon.c \
+-	debug.c dfloat.c error.c extern.c fasdump.c fasl.c fasload.c \
+-	fixnum.c floenv.c flonum.c fma.c gcloop.c generic.c hooks.c hunk.c \
+-	intern.c interp.c intprm.c keccak.c list.c lookprm.c lookup.c \
+-	md5.c memmag.c missing.c obstack.c option.c osscheme.c ostty.c \
+-	outf.c prchacha.c prentropy.c prim.c primutl.c prkeccak.c prmd5.c \
+-	ptrvec.c purify.c purutl.c regex.c rgxprim.c step.c storage.c \
+-	string.c syntax.c sysprim.c term.c transact.c utabmd.c utils.c \
+-	vector.c wind.c prosenv.c prosfile.c prosfs.c prosio.c prosproc.c \
+-	prospty.c prosterm.c prostty.c pruxsock.c intext.c pruxenv.c \
+-	pruxfs.c pruxio.c ux.c uxctty.c uxentropy.c uxenv.c uxfile.c \
+-	uxfs.c uxio.c uxproc.c uxsig.c uxsock.c uxterm.c uxtop.c uxtrap.c \
+-	uxtty.c uxutil.c
++## The source list is generated from makegen/files-*.scm; see the rule at
++## the foot of this file.
++include $(srcdir)/makegen/sources.am
++
++scheme_SOURCES = $(MICROCODE_CORE_SOURCES) $(MICROCODE_OS_PRIM_SOURCES) \
++	$(MICROCODE_UNIX_SOURCES)
+ 
+ ## Generated: the primitive table, built by findprim from the sources above.
+ nodist_scheme_SOURCES = usrdef.c
+@@ -140,3 +132,28 @@ DISTCLEANFILES = cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
+ 	cmpintmd-config.h cmpintmd.c liarc-cc liarc-ld
+ 
+ EXTRA_DIST = findprim.c Tags.sh
++
++## **** Regenerating the source list ****
++##
++## makegen/sources.am is generated from makegen/files-*.scm, and shipped, so
++## a build needs no Scheme to use it.  When configure does find a Scheme,
++## editing one of those lists is enough: make refreshes the fragment, and
++## automake's own rebuild rules then pick the change up.
++
++MAKEGEN_INPUTS = \
++	$(srcdir)/makegen/makegen.scm \
++	$(srcdir)/makegen/files-core.scm \
++	$(srcdir)/makegen/files-os-prim.scm \
++	$(srcdir)/makegen/files-unix.scm
++
++if HAVE_MAKEGEN_SCHEME
++$(srcdir)/makegen/sources.am: $(MAKEGEN_INPUTS)
++	cd $(srcdir) && $(MAKEGEN_SCHEME) --batch-mode --no-init-file \
++	  --eval '(begin (load "makegen/makegen.scm") (generate-sources-am) (%exit 0))'
++endif
++
++EXTRA_DIST += makegen/sources.am $(MAKEGEN_INPUTS) \
++	makegen/files-optional.scm makegen/files-other.scm \
++	makegen/bundles-liarc.scm makegen/dirs-liarc.scm \
++	makegen/pkds-liarc.scm makegen/liarc-base-rules makegen/m4.sh \
++	makegen/makeinit.sh
+diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
+index 6eda884..e95e70c 100644
+--- a/src/microcode/configure.ac
++++ b/src/microcode/configure.ac
+@@ -5,6 +5,12 @@ AC_CONFIG_SRCDIR([boot.c])
+ AC_CONFIG_MACRO_DIR([.])
+ AC_CONFIG_HEADERS([config.h])
+ AM_INIT_AUTOMAKE([foreign])
++
++dnl A Scheme here lets "make" refresh makegen/sources.am from
++dnl makegen/files-*.scm.  Without one the shipped fragment is used as it
++dnl stands, so this is not a build requirement.
++AC_CHECK_PROG([MAKEGEN_SCHEME], [mit-scheme], [mit-scheme])
++AM_CONDITIONAL([HAVE_MAKEGEN_SCHEME], [test x"${MAKEGEN_SCHEME}" != x])
+ AC_PROG_MAKE_SET
+ 
+ AC_COPYRIGHT(
+diff --git a/src/microcode/makegen/Makefile.in.in b/src/microcode/makegen/Makefile.in.in
+deleted file mode 100644
+index cd8fbe1..0000000
+--- a/src/microcode/makegen/Makefile.in.in
++++ /dev/null
+@@ -1,278 +0,0 @@
+-# -*- Makefile -*-
+-#
+-# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+-#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+-#     2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Massachusetts
+-#     Institute of Technology
+-#
+-# This file is part of MIT/GNU Scheme.
+-#
+-# MIT/GNU Scheme is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation; either version 2 of the
+-# License, or (at your option) any later version.
+-#
+-# MIT/GNU Scheme is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-# General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with MIT/GNU Scheme; if not, write to the Free Software
+-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+-# 02110-1301, USA.
+-
+-# **** BEGIN BOILERPLATE ****
+-
+-SHELL = @SHELL@
+-
+-@SET_MAKE@
+-
+-srcdir = @srcdir@
+-top_srcdir = @top_srcdir@
+-VPATH = @srcdir@
+-prefix = @prefix@
+-exec_prefix = @exec_prefix@
+-
+-bindir = @bindir@
+-sbindir = @sbindir@
+-libexecdir = @libexecdir@
+-datarootdir = @datarootdir@
+-datadir = @datadir@
+-sysconfdir = @sysconfdir@
+-sharedstatedir = @sharedstatedir@
+-localstatedir = @localstatedir@
+-libdir = @libdir@
+-infodir = @infodir@
+-mandir = @mandir@
+-includedir = @includedir@
+-oldincludedir = /usr/include
+-
+-DESTDIR =
+-top_builddir = @top_builddir@
+-
+-INSTALL = @INSTALL@
+-INSTALL_PROGRAM = @INSTALL_PROGRAM@
+-INSTALL_DATA = @INSTALL_DATA@
+-INSTALL_SCRIPT = @INSTALL_SCRIPT@
+-
+-ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+-mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+-
+-# **** END BOILERPLATE ****
+-
+-# **** Tool configuration ****
+-
+-MIT_SCHEME_ARCH = @MIT_SCHEME_ARCH@
+-MIT_SCHEME_VERSION = @MIT_SCHEME_VERSION@
+-AUXDIR_NAME = @AUXDIR_NAME@
+-EXE_NAME = mit-scheme-$(MIT_SCHEME_ARCH)-$(MIT_SCHEME_VERSION)
+-AUXDIR = $(libdir)/$(AUXDIR_NAME)
+-
+-CC = @CC@
+-HOST_CC = @HOST_CC@
+-CCLD = @CCLD@
+-M4 = $(srcdir)/makegen/m4.sh @M4@
+-AS = @AS@
+-TAR = tar
+-GZIP_ENV = --best
+-PAXCTL = @PAXCTL@
+-
+-DEFS = @DEFS@ @SCHEME_DEFS@ -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\"
+-CFLAGS = @CFLAGS@
+-CPPFLAGS = @CPPFLAGS@ -I. -I$(srcdir)
+-LDFLAGS = @LDFLAGS@
+-LIBS = @LIBS@
+-M4_FLAGS = @M4_FLAGS@
+-AS_FLAGS = @AS_FLAGS@
+-
+-COMPILE = $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS)
+-LINK = $(CCLD) $(LDFLAGS) -o $@
+-LINKTMP = $(CCLD) $(LDFLAGS) -o $@.tmp
+-EXPAND = $(M4) $(M4_FLAGS)
+-ASSEMBLE = $(AS) $(AS_FLAGS)
+-
+-# **** File configuration ****
+-
+-STD_SOURCES = @(write-sources "files-core")@ \
+-	@(write-sources "files-os-prim")@ \
+-	@(write-sources "files-unix")@ \
+-	$(OPTIONAL_SOURCES)
+-STD_OBJECTS = @(write-objects "files-core")@ \
+-	@(write-objects "files-os-prim")@ \
+-	@(write-objects "files-unix")@ \
+-	$(OPTIONAL_OBJECTS)
+-
+-GC_HEAD_FILES = @GC_HEAD_FILES@
+-OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
+-OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
+-
+-# **** Rules for C back end (part 1, variables) ****
+-
+-@LIARC_VARS@
+-
+-# **** Program definitions ****
+-
+-aux_PROGRAMS = @AUX_PROGRAMS@
+-aux_LIBS = 
+-aux_DATA = @AUX_DATA@
+-EXTRA_PROGRAMS = findprim
+-
+-scheme_SOURCES = $(STD_SOURCES) usrdef.c $(LIARC_SOURCES)
+-scheme_OBJECTS = $(STD_OBJECTS) usrdef.o $(LIARC_OBJECTS)
+-scheme_DEPENDENCIES = 
+-scheme_LDFLAGS = @SCHEME_LDFLAGS@
+-scheme_LIBS = $(LIBS)
+-SCHEME_EXE = scheme
+-
+-findprim_SOURCES = findprim.c
+-findprim_OBJECTS = findprim.o
+-findprim_DEPENDENCIES = 
+-findprim_LDFLAGS = 
+-findprim_LIBS = $(LIBS)
+-
+-ALL_PROGRAMS = $(aux_PROGRAMS) scheme
+-ALL_LIBS = $(aux_LIBS)
+-ALL_DATA = $(aux_DATA)
+-
+-MOSTLYCLEAN_FILES = *.o usrdef.c compinit.c compinit.h cmpauxmd.s \
+-	$(LIARC_OBJECTS)
+-
+-CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
+-
+-DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
+-	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
+-	cmpintmd-config.h cmpintmd.c liarc-cc liarc-ld
+-
+-MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-vars liarc-rules \
+-	config.h.in configure TAGS
+-
+-# **** Implicit rules ****
+-
+-.SUFFIXES:
+-.SUFFIXES: .c .o .s .m4
+-
+-.c.o:
+-	$(COMPILE) -o $@ -c $<
+-
+-.m4.s:
+-	-rm -f $@.tmp
+-	$(EXPAND) $< > $@.tmp && mv -f $@.tmp $@
+-
+-.s.o:
+-	$(ASSEMBLE) -o $@ $<
+-
+-# **** Main rules ****
+-
+-all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA)
+-
+-scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
+-	-rm -f $@
+-	$(LINKTMP) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
+-	$(PAXCTL) +m $@.tmp
+-	mv -f $@.tmp $@
+-
+-usrdef.c: $(STD_SOURCES) findprim Makefile
+-	-rm -f $@.tmp
+-	./findprim $(STD_SOURCES) > $@.tmp && mv -f $@.tmp $@
+-
+-findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
+-	-rm -f $@
+-	$(HOST_CC) -o $@ $(findprim_LDFLAGS) $(findprim_OBJECTS) \
+-		$(findprim_LIBS)
+-
+-findprim.o: findprim.c config.h
+-	$(HOST_CC) -o $@ $(findprim_CFLAGS) -c findprim.c
+-
+-gen-nonce: gen-nonce.o
+-	$(LINK) gen-nonce.o
+-
+-extract-liarc-decls: extract-liarc-decls.o
+-	$(LINK) extract-liarc-decls.o
+-
+-macosx-starter: macosx-starter.o
+-	$(LINK) macosx-starter.o
+-
+-tags: TAGS
+-TAGS:
+-	./Tags.sh
+-
+-mostlyclean:
+-	-rm -f $(MOSTLYCLEAN_FILES)
+-
+-clean: mostlyclean
+-	-rm -f $(CLEAN_FILES)
+-
+-distclean: clean
+-	-rm -f $(DISTCLEAN_FILES)
+-	-rm -rf autom4te.cache
+-
+-maintainer-clean: c-clean distclean
+-	-rm -f $(MAINTAINER_CLEAN_FILES)
+-	( cd cmpauxmd && $(MAKE) $@ )
+-
+-c-clean: clean
+-	-rm -f $(C_CLEAN_FILES)
+-
+-install: install-auxPROGRAMS install-auxLIBS install-auxDATA @INSTALL_INCLUDE@
+-	$(mkinstalldirs) $(DESTDIR)$(bindir)
+-	$(INSTALL_PROGRAM) scheme $(DESTDIR)$(bindir)/$(EXE_NAME)
+-	../etc/install-bin-symlinks.sh $(DESTDIR)$(bindir) $(EXE_NAME) $(MIT_SCHEME_ARCH)
+-
+-install-auxPROGRAMS: $(aux_PROGRAMS)
+-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+-	@list='$(aux_PROGRAMS)'; \
+-	for p in $$list; do \
+-	    if test -f $$p; then \
+-		echo "$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/."; \
+-		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/.; \
+-	    fi; \
+-	done
+-
+-install-auxLIBS: $(aux_LIBS)
+-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/lib
+-	@list='$(aux_LIBS)'; \
+-	for p in $$list; do \
+-	    if test -f $$p; then \
+-		echo "$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/."; \
+-		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/.; \
+-	    fi; \
+-	done
+-
+-install-auxDATA: $(aux_DATA)
+-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+-	@list='$(aux_DATA)'; \
+-	for p in $$list; do \
+-	    if test -f $$p; then \
+-		echo "$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/."; \
+-		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/.; \
+-	    fi; \
+-	done
+-	$(INSTALL_DATA) pruxffi.h $(DESTDIR)$(AUXDIR)/mit-scheme.h
+-
+-install-include:
+-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+-	$(INSTALL_SCRIPT) liarc-cc $(DESTDIR)$(AUXDIR)/.
+-	sed -e "s&^SCHEME_EXE=.*&SCHEME_EXE=$(bindir)/$(EXE_NAME)&" < liarc-ld > liarc-ld.install
+-	$(INSTALL_SCRIPT) liarc-ld.install $(DESTDIR)$(AUXDIR)/liarc-ld
+-	rm -f liarc-ld.install
+-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/include
+-	$(INSTALL_DATA) *.h $(DESTDIR)$(AUXDIR)/include/.
+-
+-.PHONY: default-target
+-.PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean c-clean
+-.PHONY: install install-auxPROGRAMS install-auxLIBS install-auxDATA
+-.PHONY: install-include
+-
+-# **** File dependencies ****
+-
+-@(write-dependencies)@
+-
+-# **** Rules for C back end (part 2, rules) ****
+-
+-@LIARC_RULES@
+-
+-# Tell versions [3.59,3.63) of GNU make to not export all variables.
+-# Otherwise a system limit (for SysV at least) may be exceeded.
+-.NOEXPORT:
+diff --git a/src/microcode/makegen/makegen.scm b/src/microcode/makegen/makegen.scm
+index ed94098..4404564 100644
+--- a/src/microcode/makegen/makegen.scm
++++ b/src/microcode/makegen/makegen.scm
+@@ -25,7 +25,7 @@ USA.
+ 
+ |#
+ 
+-;;;; Generate "Makefile.in" from template.
++;;;; Generate the microcode makefile fragment and the C back end rules.
+ 
+ (declare (usual-integrations))
+ 
+@@ -37,33 +37,37 @@ USA.
+ (define (generate-makefile)
+   (generate-liarc-variables)
+   (generate-liarc-rules)
+-  (let ((file-lists
+-	 (map (lambda (pathname)
+-		(cons (pathname-name pathname)
+-		      (read-file pathname)))
+-	      (filter (lambda (pathname)
+-			(re-string-match "^files-.+\\.scm$"
+-					 (file-namestring pathname)))
+-		      (directory-read "makegen/")))))
+-    (call-with-input-file "makegen/Makefile.in.in"
+-      (lambda (input)
+-	(call-with-output-file "Makefile.in"
+-	  (lambda (output)
+-	    (write-header output)
+-	    (let loop ()
+-	      (let ((char (read-char input)))
+-		(if (not (eof-object? char))
+-		    (if (and (char=? #\@ char)
+-			     (eqv? #\( (peek-char input)))
+-			(let ((command (read input)))
+-			  (if (eqv? #\@ (peek-char input))
+-			      (read-char input)
+-			      (error "Missing @ at end of command:" command))
+-			  (interpret-command command file-lists output)
+-			  (loop))
+-			(begin
+-			  (write-char char output)
+-			  (loop))))))))))))
++  (generate-sources-am))
++
++;;;; The microcode's Makefile.am includes makegen/sources.am.  automake
++;;;; derives the object list and the header dependencies itself, so the
++;;;; source lists are the only thing left to generate.  No timestamp goes
++;;;; in the output: it is under version control, and a header that changed
++;;;; on every run would show up as a diff each time.
++
++(define microcode-source-groups
++  '(("files-core" . "MICROCODE_CORE_SOURCES")
++    ("files-os-prim" . "MICROCODE_OS_PRIM_SOURCES")
++    ("files-unix" . "MICROCODE_UNIX_SOURCES")))
++
++(define (generate-sources-am)
++  (call-with-output-file "makegen/sources.am"
++    (lambda (output)
++      (write-string
++       "## Generated from makegen/files-*.scm by makegen/makegen.scm." output)
++      (newline output)
++      (write-string "## Do not edit." output)
++      (newline output)
++      (for-each (lambda (group)
++                  (newline output)
++                  (write-macro output
++                               (cdr group)
++                               (files+suffix
++                                (read-file
++                                 (string-append "makegen/" (car group) ".scm"))
++                                ".c")))
++                microcode-source-groups))))
++
+ 
+ (define (generate-liarc-variables)
+   (call-with-output-file "liarc-vars"
+@@ -142,69 +146,6 @@ USA.
+ 	   (string-append filename "-" suffix))
+ 	 suffixes)))
+ 
+-(define (interpret-command command file-lists output)
+-  (let ((malformed (lambda () (error "Malformed command:" command))))
+-    (if (not (and (pair? command)
+-		  (symbol? (car command))
+-		  (list? (cdr command))))
+-	(malformed))
+-    (let ((guarantee-nargs
+-	   (lambda (n)
+-	     (if (not (= n (length (cdr command))))
+-		 (malformed)))))
+-      (let ((write-suffixed
+-	     (lambda (suffix)
+-	       (guarantee-nargs 1)
+-	       (let ((entry (assoc (cadr command) file-lists)))
+-		 (if (not entry)
+-		     (malformed))
+-		 (let ((files (files+suffix (cdr entry) suffix)))
+-		   (if (pair? files)
+-		       (begin
+-			 (write-string (car files) output)
+-			 (write-items (cdr files) output))))))))
+-      (case (car command)
+-	((WRITE-SOURCES)
+-	 (write-suffixed ".c"))
+-	((WRITE-OBJECTS)
+-	 (write-suffixed ".o"))
+-	((WRITE-DEPENDENCIES)
+-	 (guarantee-nargs 0)
+-	 (write-dependencies file-lists "Makefile.deps" output))
+-	(else
+-	 (error "Unknown command:" command)))))))
+-
+-(define (write-dependencies file-lists deps-filename output)
+-  (maybe-update-dependencies
+-   deps-filename
+-   (sort (append-map (lambda (file-list)
+-		       (map (lambda (base) (string-append base ".c"))
+-			    (cdr file-list)))
+-		     file-lists)
+-	 string<?))
+-  (call-with-input-file deps-filename
+-    (lambda (input)
+-      (let ((buffer (make-string 4096)))
+-	(let loop ()
+-	  (let ((n (read-substring! buffer 0 4096 input)))
+-	    (if (> n 0)
+-		(begin
+-		  (write-substring buffer 0 n output)
+-		  (loop)))))))))
+-
+-(define (maybe-update-dependencies deps-filename source-files)
+-  (if (let ((mtime (file-modification-time deps-filename)))
+-	(or (not mtime)
+-	    (any (lambda (source-file)
+-		   (> (file-modification-time source-file) mtime))
+-		 source-files)))
+-      (let ((rules (map generate-rule source-files)))
+-	(call-with-output-file deps-filename
+-	  (lambda (output)
+-	    (for-each (lambda (rule)
+-			(write-rule output (car rule) (cdr rule)))
+-		      rules))))))
+-
+ (define (generate-rule filename)
+   (parse-rule
+    (unbreak-lines
+diff --git a/src/microcode/makegen/sources.am b/src/microcode/makegen/sources.am
+new file mode 100644
+index 0000000..4e06ae1
+--- /dev/null
++++ b/src/microcode/makegen/sources.am
+@@ -0,0 +1,20 @@
++## Generated from makegen/files-*.scm by makegen/makegen.scm.
++## Do not edit.
++
++MICROCODE_CORE_SOURCES = artutl.c avltree.c bkpt.c bignum.c bigprm.c bitstr.c \
++	  boot.c bytevector.c chacha12.c chacha20.c chacha8.c char.c daemon.c \
++	  debug.c dfloat.c error.c extern.c fasdump.c fasl.c fasload.c \
++	  fixnum.c floenv.c flonum.c fma.c gcloop.c generic.c hooks.c hunk.c \
++	  intern.c interp.c intprm.c keccak.c list.c lookprm.c lookup.c md5.c \
++	  memmag.c missing.c obstack.c option.c osscheme.c ostty.c outf.c \
++	  prchacha.c prentropy.c prim.c primutl.c prkeccak.c prmd5.c ptrvec.c \
++	  purify.c purutl.c regex.c rgxprim.c step.c storage.c string.c \
++	  syntax.c sysprim.c term.c transact.c utabmd.c utils.c vector.c \
++	  wind.c
++
++MICROCODE_OS_PRIM_SOURCES = prosenv.c prosfile.c prosfs.c prosio.c prosproc.c \
++	  prospty.c prosterm.c prostty.c pruxsock.c
++
++MICROCODE_UNIX_SOURCES = intext.c pruxenv.c pruxfs.c pruxio.c ux.c uxctty.c \
++	  uxentropy.c uxenv.c uxfile.c uxfs.c uxio.c uxproc.c uxsig.c \
++	  uxsock.c uxterm.c uxtop.c uxtrap.c uxtty.c uxutil.c

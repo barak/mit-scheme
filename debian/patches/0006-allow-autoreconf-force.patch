@@ -1,0 +1,49 @@
+From: "Barak A. Pearlmutter" <barak+git@cs.nuim.ie>
+Date: Mon, 22 Jul 2013 19:58:13 +0200
+Subject: allow autoreconf force
+
+Forwarded: no
+
+autoreconf --force in src/ regenerates configure without expanding
+MIT_SCHEME_NATIVE_CODE, and says nothing about it: no aclocal.m4 there,
+and nothing tells aclocal where the macro lives.
+
+- move src/microcode/aclocal.m4 to src/microcode/mit_scheme_native_code.m4,
+  aclocal.m4 being aclocal's own output file
+
+- name that directory with AC_CONFIG_MACRO_DIR in both configure.ac
+---
+ src/configure.ac                                        | 1 +
+ src/microcode/configure.ac                              | 1 +
+ src/microcode/{aclocal.m4 => mit_scheme_native_code.m4} | 0
+ 3 files changed, 2 insertions(+)
+ rename src/microcode/{aclocal.m4 => mit_scheme_native_code.m4} (100%)
+
+diff --git a/src/configure.ac b/src/configure.ac
+index 31dbf5d..09da91a 100644
+--- a/src/configure.ac
++++ b/src/configure.ac
+@@ -4,6 +4,7 @@ AC_INIT([MIT/GNU Scheme], [12.1], [bug-mit-scheme@gnu.org], [mit-scheme])
+ AC_CONFIG_SRCDIR([microcode/boot.c])
+ AC_CONFIG_AUX_DIR([microcode])
+ AC_CONFIG_HEADERS([dummy-config.h])
++AC_CONFIG_MACRO_DIR([microcode])
+ AC_PROG_MAKE_SET
+ 
+ AC_COPYRIGHT(
+diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
+index 4fde1a4..ba3d581 100644
+--- a/src/microcode/configure.ac
++++ b/src/microcode/configure.ac
+@@ -2,6 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
+ 
+ AC_INIT([MIT/GNU Scheme], [12.1], [bug-mit-scheme@gnu.org], [mit-scheme])
+ AC_CONFIG_SRCDIR([boot.c])
++AC_CONFIG_MACRO_DIR([.])
+ AC_CONFIG_HEADERS([config.h])
+ AC_PROG_MAKE_SET
+ 
+diff --git a/src/microcode/aclocal.m4 b/src/microcode/mit_scheme_native_code.m4
+similarity index 100%
+rename from src/microcode/aclocal.m4
+rename to src/microcode/mit_scheme_native_code.m4

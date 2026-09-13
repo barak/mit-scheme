@@ -1,0 +1,152 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Sat, 12 Sep 2026 23:33:58 +0100
+Subject: src makefile tools
+
+Of Makefile.tools.in's 27 substitutions only three were live:
+MIT_SCHEME_EXE, HOST_COMPILER_HEAP and mit_scheme_native_code.  The rest
+was a boilerplate block of directory and install variables nothing
+referenced, and srcdir, which the file sets to "." itself.  Pass the
+three in from the makefile that invokes it and no .in is needed.
+
+It stays a separate makefile: it defines the same seventeen syntax-* and
+compile-* targets as Makefile.am, for the host toolchain rather than the
+target, and "make -f" is what keeps the two apart.
+---
+ src/Makefile.am                           | 14 +++++++--
+ src/{Makefile.tools.in => Makefile.tools} | 51 ++++++-------------------------
+ src/configure.ac                          |  1 -
+ 3 files changed, 21 insertions(+), 45 deletions(-)
+ rename src/{Makefile.tools.in => Makefile.tools} (90%)
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 87523de..81baa0e 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -39,6 +39,16 @@ BASICS_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
+ OPTION_SUBDIRS = @OPTION_SUBDIRS@
+ 
+ MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
++HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
++MIT_SCHEME_NATIVE_CODE = @mit_scheme_native_code@
++
++## Makefile.tools builds the cross-compilation toolchain.  It is a separate
++## makefile because it defines the same syntax-* and compile-* targets as
++## this one, for the host rather than the target; these are the only values
++## it needs from configure, so it is a plain file rather than a .in.
++TOOLS_VARS = MIT_SCHEME_EXE='$(MIT_SCHEME_EXE)' \
++	HOST_COMPILER_HEAP='$(HOST_COMPILER_HEAP)' \
++	MIT_SCHEME_NATIVE_CODE='$(MIT_SCHEME_NATIVE_CODE)'
+ AUXDIR_NAME = @AUXDIR_NAME@
+ AUXDIR = @AUXDIR@
+ 
+@@ -114,12 +124,12 @@ stamp_toolchain: runtime/host-adapter.scm
+ 
+ .PHONY: toolchain
+ toolchain:
+-	+$(MAKE) -f Makefile.tools
++	+$(MAKE) -f Makefile.tools $(TOOLS_VARS)
+ 	echo done > stamp_toolchain
+ 
+ .PHONY: toolclean
+ toolclean:
+-	+$(MAKE) -f Makefile.tools clean
++	+$(MAKE) -f Makefile.tools $(TOOLS_VARS) clean
+ 	-rm -f stamp_toolchain
+ 
+ # Plugins all depend on $(PLUGINS_TOOLCHAIN) to make sure that they can
+diff --git a/src/Makefile.tools.in b/src/Makefile.tools
+similarity index 90%
+rename from src/Makefile.tools.in
+rename to src/Makefile.tools
+index 05aa5ea..6085490 100644
+--- a/src/Makefile.tools.in
++++ b/src/Makefile.tools
+@@ -23,45 +23,14 @@
+ # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ # 02110-1301, USA.
+ 
+-# **** BEGIN BOILERPLATE ****
+-
+-SHELL = @SHELL@
+-
+-@SET_MAKE@
+-
+-srcdir = @srcdir@
+-top_srcdir = @top_srcdir@
+-VPATH = @srcdir@
+-prefix = @prefix@
+-exec_prefix = @exec_prefix@
+-
+-bindir = @bindir@
+-sbindir = @sbindir@
+-libexecdir = @libexecdir@
+-datarootdir = @datarootdir@
+-datadir = @datadir@
+-sysconfdir = @sysconfdir@
+-sharedstatedir = @sharedstatedir@
+-localstatedir = @localstatedir@
+-libdir = @libdir@
+-infodir = @infodir@
+-mandir = @mandir@
+-includedir = @includedir@
+-oldincludedir = /usr/include
+-
+-DESTDIR =
+-top_builddir = @top_builddir@
+-
+-INSTALL = @INSTALL@
+-INSTALL_PROGRAM = @INSTALL_PROGRAM@
+-INSTALL_DATA = @INSTALL_DATA@
+-INSTALL_SCRIPT = @INSTALL_SCRIPT@
+-
+-LN_S = @LN_S@
+-ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+-mkinstalldirs = $(SHELL) $(top_srcdir)/microcode/mkinstalldirs
+-
+-# **** END BOILERPLATE ****
++# Not generated from a .in: the three values this needs are passed in by
++# the makefile that invokes it, so there is nothing for configure to
++# substitute here.  The boilerplate that used to sit in this spot defined
++# directory and install variables that nothing below ever referenced.
++
++MIT_SCHEME_EXE =
++HOST_COMPILER_HEAP =
++MIT_SCHEME_NATIVE_CODE =
+ 
+ .PHONY: default-target
+ default-target: all
+@@ -69,7 +38,7 @@ default-target: all
+ srcdir = .
+ objdir = tools
+ 
+-COMPILER_BACKEND = "`./compiler/choose-machine.sh @mit_scheme_native_code@`"
++COMPILER_BACKEND = "`./compiler/choose-machine.sh $(MIT_SCHEME_NATIVE_CODE)`"
+ 
+ COMPILER_SETTINGS = \
+   # end of COMPILER_SETTINGS
+@@ -81,13 +50,11 @@ CREF_SETTINGS = \
+   (set! cref/object-root (pathname-simplify (merge-pathnames "$(objdir)/"))) \
+   (set! cref/source-root (pathname-simplify (merge-pathnames "$(srcdir)/"))) \
+   # end of CREF_SETTINGS
+-HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
+ 
+ # Set CCTYPE to syntax for an interpreted toolchain.
+ CCTYPE = compile
+ FASL = `case $(CCTYPE) in compile) echo com;; syntax) echo bin;; esac`
+ 
+-MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+ 
+ HOST_COMPILER = '$(MIT_SCHEME_EXE)' $(HOST_COMPILER_HEAP) \
+   --batch-mode --no-init-file \
+diff --git a/src/configure.ac b/src/configure.ac
+index d7ddcb7..c5ba6a3 100644
+--- a/src/configure.ac
++++ b/src/configure.ac
+@@ -430,7 +430,6 @@ if test x"${enable_x11_screen}" = xyes; then
+ fi
+ 
+ AC_CONFIG_FILES([Makefile])
+-AC_CONFIG_FILES([Makefile.tools])
+ 
+ dnl etc/create-makefiles.sh writes these above, during configure, because it
+ dnl needs a working Scheme to work out what goes in them.  They therefore do

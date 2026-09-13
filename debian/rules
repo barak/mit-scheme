@@ -3,20 +3,15 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-# for DEB_HOST_GNU_CPU
+# for DEB_HOST_*
 include /usr/share/dpkg/architecture.mk
 # for DEB_VERSION_UPSTREAM
 include /usr/share/dpkg/pkg-info.mk
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
-# Passing --no-parallel because of some creepy race conditions, like
-# on building x11-compat which can get built twice and if the second
-# build happens at just the wrong time it interferes with the first
-# build or with an invocation of the generated executable.
-
 %:
-	dh $@ --no-parallel
+	dh $@
 
 override_dh_autoreconf:
 	dh_autoreconf sh -- -e -x -c \
