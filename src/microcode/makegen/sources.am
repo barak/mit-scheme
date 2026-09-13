@@ -1,0 +1,20 @@
+## Generated from makegen/files-*.scm by makegen/makegen.scm.
+## Do not edit.
+
+MICROCODE_CORE_SOURCES = artutl.c avltree.c bkpt.c bignum.c bigprm.c bitstr.c \
+	  boot.c bytevector.c chacha12.c chacha20.c chacha8.c char.c daemon.c \
+	  debug.c dfloat.c error.c extern.c fasdump.c fasl.c fasload.c \
+	  fixnum.c floenv.c flonum.c fma.c gcloop.c generic.c hooks.c hunk.c \
+	  intern.c interp.c intprm.c keccak.c list.c lookprm.c lookup.c md5.c \
+	  memmag.c missing.c obstack.c option.c osscheme.c ostty.c outf.c \
+	  prchacha.c prentropy.c prim.c primutl.c prkeccak.c prmd5.c ptrvec.c \
+	  purify.c purutl.c regex.c returns.c rgxprim.c step.c storage.c \
+	  string.c syntax.c sysprim.c term.c transact.c utabmd.c utils.c \
+	  vector.c wind.c
+
+MICROCODE_OS_PRIM_SOURCES = prosenv.c prosfile.c prosfs.c prosio.c prosproc.c \
+	  prospty.c prosterm.c prostty.c pruxsock.c
+
+MICROCODE_UNIX_SOURCES = intext.c pruxenv.c pruxfs.c pruxio.c ux.c uxctty.c \
+	  uxentropy.c uxenv.c uxfile.c uxfs.c uxio.c uxproc.c uxsig.c \
+	  uxsock.c uxterm.c uxtop.c uxtrap.c uxtty.c uxutil.c

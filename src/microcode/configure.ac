@@ -5,6 +5,12 @@ AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_MACRO_DIR([.])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign])
+
+dnl A Scheme here lets "make" refresh makegen/sources.am from
+dnl makegen/files-*.scm.  Without one the shipped fragment is used as it
+dnl stands, so this is not a build requirement.
+AC_CHECK_PROG([MAKEGEN_SCHEME], [mit-scheme], [mit-scheme])
+AM_CONDITIONAL([HAVE_MAKEGEN_SCHEME], [test x"${MAKEGEN_SCHEME}" != x])
 AC_PROG_MAKE_SET
 
 AC_COPYRIGHT(

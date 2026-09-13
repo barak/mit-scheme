@@ -25,7 +25,7 @@ USA.
 
 |#
 
-;;;; Generate "Makefile.in" from template.
+;;;; Generate the microcode makefile fragment and the C back end rules.
 
 (declare (usual-integrations))
 
@@ -37,33 +37,37 @@ USA.
 (define (generate-makefile)
   (generate-liarc-variables)
   (generate-liarc-rules)
-  (let ((file-lists
-	 (map (lambda (pathname)
-		(cons (pathname-name pathname)
-		      (read-file pathname)))
-	      (filter (lambda (pathname)
-			(re-string-match "^files-.+\\.scm$"
-					 (file-namestring pathname)))
-		      (directory-read "makegen/")))))
-    (call-with-input-file "makegen/Makefile.in.in"
-      (lambda (input)
-	(call-with-output-file "Makefile.in"
-	  (lambda (output)
-	    (write-header output)
-	    (let loop ()
-	      (let ((char (read-char input)))
-		(if (not (eof-object? char))
-		    (if (and (char=? #\@ char)
-			     (eqv? #\( (peek-char input)))
-			(let ((command (read input)))
-			  (if (eqv? #\@ (peek-char input))
-			      (read-char input)
-			      (error "Missing @ at end of command:" command))
-			  (interpret-command command file-lists output)
-			  (loop))
-			(begin
-			  (write-char char output)
-			  (loop))))))))))))
+  (generate-sources-am))
+
+;;;; The microcode's Makefile.am includes makegen/sources.am.  automake
+;;;; derives the object list and the header dependencies itself, so the
+;;;; source lists are the only thing left to generate.  No timestamp goes
+;;;; in the output: it is under version control, and a header that changed
+;;;; on every run would show up as a diff each time.
+
+(define microcode-source-groups
+  '(("files-core" . "MICROCODE_CORE_SOURCES")
+    ("files-os-prim" . "MICROCODE_OS_PRIM_SOURCES")
+    ("files-unix" . "MICROCODE_UNIX_SOURCES")))
+
+(define (generate-sources-am)
+  (call-with-output-file "makegen/sources.am"
+    (lambda (output)
+      (write-string
+       "## Generated from makegen/files-*.scm by makegen/makegen.scm." output)
+      (newline output)
+      (write-string "## Do not edit." output)
+      (newline output)
+      (for-each (lambda (group)
+                  (newline output)
+                  (write-macro output
+                               (cdr group)
+                               (files+suffix
+                                (read-file
+                                 (string-append "makegen/" (car group) ".scm"))
+                                ".c")))
+                microcode-source-groups))))
+
 
 (define (generate-liarc-variables)
   (call-with-output-file "liarc-vars"
@@ -142,69 +146,6 @@ USA.
 	   (string-append filename "-" suffix))
 	 suffixes)))
 
-(define (interpret-command command file-lists output)
-  (let ((malformed (lambda () (error "Malformed command:" command))))
-    (if (not (and (pair? command)
-		  (symbol? (car command))
-		  (list? (cdr command))))
-	(malformed))
-    (let ((guarantee-nargs
-	   (lambda (n)
-	     (if (not (= n (length (cdr command))))
-		 (malformed)))))
-      (let ((write-suffixed
-	     (lambda (suffix)
-	       (guarantee-nargs 1)
-	       (let ((entry (assoc (cadr command) file-lists)))
-		 (if (not entry)
-		     (malformed))
-		 (let ((files (files+suffix (cdr entry) suffix)))
-		   (if (pair? files)
-		       (begin
-			 (write-string (car files) output)
-			 (write-items (cdr files) output))))))))
-      (case (car command)
-	((WRITE-SOURCES)
-	 (write-suffixed ".c"))
-	((WRITE-OBJECTS)
-	 (write-suffixed ".o"))
-	((WRITE-DEPENDENCIES)
-	 (guarantee-nargs 0)
-	 (write-dependencies file-lists "Makefile.deps" output))
-	(else
-	 (error "Unknown command:" command)))))))
-
-(define (write-dependencies file-lists deps-filename output)
-  (maybe-update-dependencies
-   deps-filename
-   (sort (append-map (lambda (file-list)
-		       (map (lambda (base) (string-append base ".c"))
-			    (cdr file-list)))
-		     file-lists)
-	 string<?))
-  (call-with-input-file deps-filename
-    (lambda (input)
-      (let ((buffer (make-string 4096)))
-	(let loop ()
-	  (let ((n (read-substring! buffer 0 4096 input)))
-	    (if (> n 0)
-		(begin
-		  (write-substring buffer 0 n output)
-		  (loop)))))))))
-
-(define (maybe-update-dependencies deps-filename source-files)
-  (if (let ((mtime (file-modification-time deps-filename)))
-	(or (not mtime)
-	    (any (lambda (source-file)
-		   (> (file-modification-time source-file) mtime))
-		 source-files)))
-      (let ((rules (map generate-rule source-files)))
-	(call-with-output-file deps-filename
-	  (lambda (output)
-	    (for-each (lambda (rule)
-			(write-rule output (car rule) (cdr rule)))
-		      rules))))))
-
 (define (generate-rule filename)
   (parse-rule
    (unbreak-lines

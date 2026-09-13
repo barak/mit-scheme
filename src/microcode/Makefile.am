@@ -21,20 +21,12 @@ AM_CPPFLAGS = -I. -I$(srcdir) @SCHEME_DEFS@ \
 
 noinst_PROGRAMS = scheme
 
-scheme_SOURCES = artutl.c avltree.c bkpt.c bignum.c bigprm.c bitstr.c boot.c \
-	bytevector.c chacha12.c chacha20.c chacha8.c char.c daemon.c \
-	debug.c dfloat.c error.c extern.c fasdump.c fasl.c fasload.c \
-	fixnum.c floenv.c flonum.c fma.c gcloop.c generic.c hooks.c hunk.c \
-	intern.c interp.c intprm.c keccak.c list.c lookprm.c lookup.c \
-	md5.c memmag.c missing.c obstack.c option.c osscheme.c ostty.c \
-	outf.c prchacha.c prentropy.c prim.c primutl.c prkeccak.c prmd5.c \
-	ptrvec.c purify.c purutl.c regex.c rgxprim.c step.c storage.c \
-	string.c syntax.c sysprim.c term.c transact.c utabmd.c utils.c \
-	vector.c wind.c prosenv.c prosfile.c prosfs.c prosio.c prosproc.c \
-	prospty.c prosterm.c prostty.c pruxsock.c intext.c pruxenv.c \
-	pruxfs.c pruxio.c ux.c uxctty.c uxentropy.c uxenv.c uxfile.c \
-	uxfs.c uxio.c uxproc.c uxsig.c uxsock.c uxterm.c uxtop.c uxtrap.c \
-	uxtty.c uxutil.c
+## The source list is generated from makegen/files-*.scm; see the rule at
+## the foot of this file.
+include $(srcdir)/makegen/sources.am
+
+scheme_SOURCES = $(MICROCODE_CORE_SOURCES) $(MICROCODE_OS_PRIM_SOURCES) \
+	$(MICROCODE_UNIX_SOURCES)
 
 ## Generated: the primitive table, built by findprim from the sources above.
 nodist_scheme_SOURCES = usrdef.c
@@ -140,3 +132,28 @@ DISTCLEANFILES = cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
 	cmpintmd-config.h cmpintmd.c liarc-cc liarc-ld
 
 EXTRA_DIST = findprim.c Tags.sh
+
+## **** Regenerating the source list ****
+##
+## makegen/sources.am is generated from makegen/files-*.scm, and shipped, so
+## a build needs no Scheme to use it.  When configure does find a Scheme,
+## editing one of those lists is enough: make refreshes the fragment, and
+## automake's own rebuild rules then pick the change up.
+
+MAKEGEN_INPUTS = \
+	$(srcdir)/makegen/makegen.scm \
+	$(srcdir)/makegen/files-core.scm \
+	$(srcdir)/makegen/files-os-prim.scm \
+	$(srcdir)/makegen/files-unix.scm
+
+if HAVE_MAKEGEN_SCHEME
+$(srcdir)/makegen/sources.am: $(MAKEGEN_INPUTS)
+	cd $(srcdir) && $(MAKEGEN_SCHEME) --batch-mode --no-init-file \
+	  --eval '(begin (load "makegen/makegen.scm") (generate-sources-am) (%exit 0))'
+endif
+
+EXTRA_DIST += makegen/sources.am $(MAKEGEN_INPUTS) \
+	makegen/files-optional.scm makegen/files-other.scm \
+	makegen/bundles-liarc.scm makegen/dirs-liarc.scm \
+	makegen/pkds-liarc.scm makegen/liarc-base-rules makegen/m4.sh \
+	makegen/makeinit.sh
