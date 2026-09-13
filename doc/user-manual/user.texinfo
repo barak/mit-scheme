@@ -1,8 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
-@setfilename mit-scheme-user
 @set VERSION 13.0.50
-@set UPDATED 2020-06-12
+@set UPDATED 2021-02-19
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd

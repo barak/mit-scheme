@@ -1,6 +1,5 @@
 \input texinfo @c -*-Texinfo-*-
 @comment %**start of header
-@setfilename mit-scheme-ffi
 @set VERSION 1.0
 @set UPDATED 2018-06-10
 @settitle FFI @value{VERSION}

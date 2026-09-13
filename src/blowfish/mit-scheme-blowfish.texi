@@ -1,6 +1,5 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
-@setfilename mit-scheme-blowfish.info
 @include version.texi
 @set SCMVERS 13.0.50
 @settitle MIT/GNU Scheme Blowfish Plugin Manual

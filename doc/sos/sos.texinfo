@@ -1,6 +1,5 @@
 \input texinfo @c -*-Texinfo-*-
 @comment %**start of header
-@setfilename mit-scheme-sos
 @set EDITION 2.13
 @set VERSION 1.9
 @set UPDATED 2011-10-14
