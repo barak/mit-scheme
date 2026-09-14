@@ -7,13 +7,13 @@ Source: https://www.gnu.org/software/mit-scheme/
 
 Files: *
 Copyright: 1986-2022, Massachusetts Institute of Technology
-License: GPL-2+ with OpenSSL-exception
+License: GPL-2+ with OpenSSL exception
 
 Files: doc/*
 Copyright: 1991-2022, Massachusetts Institute of Technology
 License: GFDL-1.2+
 
-License: GPL-2+ with OpenSSL-exception
+License: GPL-2+ with OpenSSL exception
  MIT/GNU Scheme is released under the GNU General
  Public License with the additional exemption that compiling,
  linking, and/or using OpenSSL is allowed.
