@@ -10,6 +10,17 @@ include /usr/share/dpkg/pkg-info.mk
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
+# A Scheme heap block is 1024 words, so the microcode's default heap of 3072
+# blocks is 12MB on a 32-bit host, and compiling imail-imap with all of Edwin
+# loaded does not fit.  It cannot simply be made large: with
+# HEAP_IN_LOW_MEMORY the heap has to sit below 2^26 bytes in the address
+# space, so 16384 (64MB, the 64-bit default) will not even start.  10000 is
+# what src/configure.ac gives its own host compiler on svm1-32, for the same
+# reason, and only applies to invocations that do not pass --heap themselves.
+ifeq ($(DEB_HOST_ARCH_BITS),32)
+export MITSCHEME_HEAP_SIZE = 10000
+endif
+
 %:
 	dh $@
 
@@ -23,12 +34,20 @@ override_dh_autoreconf:
 # each name is kept here and drives --enable-native-code, the installed
 # interpreter name and the alternatives symlink.  See debian/NOTES.md.
 
+# BIN_ARCH is upstream's --enable-native-code name.  BIN_CODE_TYPE is what a
+# Scheme built for that back end reports as microcode-id/compiled-code-type
+# (cc_arch_name in src/microcode/utabmd.c), which is what the cross-compile
+# decision below compares against.  They agree except for aarch64, whose
+# --enable-native-code name carries the byte order.
 ifeq ($(DEB_HOST_ARCH),amd64)
 BIN_ARCH := x86-64
+BIN_CODE_TYPE := x86-64
 else ifeq ($(DEB_HOST_ARCH),arm64)
 BIN_ARCH := aarch64le
+BIN_CODE_TYPE := aarch64
 else ifeq ($(DEB_HOST_ARCH),i386)
 BIN_ARCH := i386
+BIN_CODE_TYPE := i386
 endif
 export BIN_ARCH
 
@@ -92,7 +111,7 @@ endif
 # Empty when no Scheme is installed; leave the native flags alone then.
 NATIVE_CONF_FLAGS :=
 ifneq ($(HOST_CODE_TYPE),)
-ifneq ($(HOST_CODE_TYPE),$(BIN_ARCH))
+ifneq ($(HOST_CODE_TYPE),$(BIN_CODE_TYPE))
 NATIVE_CONF_FLAGS += --enable-cross-compiling
 endif
 endif
@@ -133,10 +152,10 @@ override_dh_auto_configure-indep:
 override_dh_auto_build-arch:
 # -arch
 ifeq ($(BUILD_NATIVE),yes)
-	dh_auto_build --sourcedirectory=src
+	dh_auto_build --max-parallel=1 --sourcedirectory=src
 endif
 ifeq ($(BUILD_SVM),yes)
-	dh_auto_build --sourcedirectory=$(SVM_BUILDDIR)
+	dh_auto_build --max-parallel=1 --sourcedirectory=$(SVM_BUILDDIR)
 endif
 
 override_dh_auto_build-indep:
@@ -145,10 +164,10 @@ override_dh_auto_build-indep:
 override_dh_auto_install-arch:
 # -arch
 ifeq ($(BUILD_NATIVE),yes)
-	dh_auto_install --sourcedirectory=src --destdir=debian/tmp
+	dh_auto_install --max-parallel=1 --sourcedirectory=src --destdir=debian/tmp
 endif
 ifeq ($(BUILD_SVM),yes)
-	dh_auto_install --sourcedirectory=$(SVM_BUILDDIR) --destdir=debian/tmp-svm
+	dh_auto_install --max-parallel=1 --sourcedirectory=$(SVM_BUILDDIR) --destdir=debian/tmp-svm
 endif
 
 override_dh_auto_install-indep:

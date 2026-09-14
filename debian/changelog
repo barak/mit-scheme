@@ -1,6 +1,20 @@
-mit-scheme (12.1-8) UNRELEASED; urgency=medium
+mit-scheme (12.1-8) unstable; urgency=medium
 
+  * Fix DEP-5 debian/copyright exception syntax.
   * Upgrade upstream signing key to new packet format.
+  * Compare the bootstrap Scheme's compiled-code type against the name it
+    reports, not against the --enable-native-code name: an aarch64 Scheme
+    reports "aarch64", the back end is "aarch64le", and the mismatch made
+    native arm64 build cross-compile against itself. This was a problem on
+    the arm64 buildd in -7.
+  * Bootstrap arm64 from mit-scheme-svm, not mit-scheme: the native aarch64
+    Scheme segfaults as the host of a cross compilation, which building the
+    SVM flavour from it is. The SVM Scheme as host, as in -6, works.
+  * Set MITSCHEME_HEAP_SIZE=10000 on 32-bit hosts, the value configure
+    already gives the host compiler there: the default heap is 12MB, which
+    is too small to compiling imail-imap with Edwin loaded. (-6 got away
+    with it on i386 only because a leftover check made it a cross build.)
+  * Build the Scheme trees serially for extra safety.
 
  -- Barak A. Pearlmutter <bap@debian.org>  Mon, 14 Sep 2026 11:57:49 +0000
 

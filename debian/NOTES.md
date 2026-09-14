@@ -33,15 +33,18 @@ Here is what is currently packaged:
 `/usr/lib/<triplet>/mit-scheme` so requires the native code back-end.)
 
 The build can bootstrap from either mit-scheme:native or
-mit-scheme-svn:native. The former is preferred for efficiency, and
+mit-scheme-svm:native. The former is preferred for efficiency, and
 therefore the build dependency is set up to use that on architectures
-where it is available.
+where it is available. However alternatives are given to allow
+bootstrapping by seeding with either, to make ports and new version
+easier.
 
-    mit-scheme:native [amd64 arm64],
-    mit-scheme-svm:native [!amd64 !arm64],
+    mit-scheme:native [amd64] | mit-scheme-svm:native [amd64],
+    mit-scheme-svm:native [!amd64] | mit-scheme:native [!amd64],
 
-However alternatives are given to allow bootstrapping by seeding with
-either, to make ports and new version easier.
+arm64 has a native Scheme but does not bootstrap from it: it segfaults
+when used as the host of a cross compilation. Once this bug is fixed
+arm64 can be listed like am64.
 
 Building either can be switched off using build profiles:
 
