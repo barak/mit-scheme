@@ -1,3 +1,9 @@
+mit-scheme (12.1-8) UNRELEASED; urgency=medium
+
+  * Upgrade upstream signing key to new packet format.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Mon, 14 Sep 2026 11:57:49 +0000
+
 mit-scheme (12.1-7) unstable; urgency=medium
 
   * Drop leftover version-based --enable-cross-compiling test, superseded
