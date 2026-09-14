@@ -2,7 +2,8 @@ Source: mit-scheme
 Section: lisp
 Maintainer: Barak A. Pearlmutter <bap@debian.org>
 Build-Depends: debhelper-compat (= 14),
-		mit-scheme:native | mit-scheme-svm:native | mit-scheme-interpreter,
+		mit-scheme:native [amd64 arm64] | mit-scheme-svm:native [amd64 arm64],
+		mit-scheme-svm:native [!amd64 !arm64] | mit-scheme:native [!amd64 !arm64],
 		libssl-dev, libmhash-dev, libmcrypt-dev,
 		libgdbm-dev, libpq-dev,
 		libncurses-dev,
