@@ -1,4 +1,6 @@
 # autocrud
+/.deps/
+/.libs/
 /INSTALL
 /Makefile
 /Makefile.in
@@ -13,10 +15,27 @@
 /config.sub
 /configure
 /depcomp
+/gdbm-check.sh.log
+/gdbm-check.sh.trs
 /install-sh
+/libtool
 /ltmain.sh
 /m4/
 /mdate-sh
 /missing
 /test-driver
+/test-suite.log
 /texinfo.tex
+
+# build crud
+/gdbm-check.db
+/gdbm-const
+/gdbm-const.c
+/gdbm-const.scm
+/gdbm-shim.c
+/mit-scheme-gdbm.info
+/stamp-h1
+/stamp-scheme
+/stamp-shim
+/stamp-vti
+/version.texi

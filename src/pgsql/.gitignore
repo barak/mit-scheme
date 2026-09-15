@@ -1,4 +1,6 @@
 # autocrud
+/.deps/
+/.libs/
 /INSTALL
 /Makefile
 /Makefile.in
@@ -14,9 +16,21 @@
 /configure
 /depcomp
 /install-sh
+/libtool
 /ltmain.sh
 /m4/
 /missing
+/pgsql-check.sh.log
+/pgsql-check.sh.trs
 /test-driver
+/test-suite.log
 
+# build crud
+/pgsql-check.db
+/pgsql-const
+/pgsql-const.c
+/pgsql-const.scm
+/pgsql-shim.c
+/stamp-h1
 /stamp-scheme
+/stamp-shim

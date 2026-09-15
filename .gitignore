@@ -107,6 +107,7 @@ src/autom4te.cache/
 src/compiler/Makefile
 src/compiler/Makefile.in
 src/compiler/compiler.cbf
+src/compiler/config.guess
 src/compiler/compiler.pkg
 src/compiler/compiler.sf
 src/compiler/machines/vax/dinstr1.scm
@@ -169,6 +170,7 @@ src/rcs/Tags.sh
 src/runtime/Makefile
 src/runtime/Makefile.in
 src/runtime/Setup.sh
+src/runtime/generated-standard-libs
 src/runtime/Stage.sh
 src/runtime/Tags.sh
 src/sf/Clean.sh
