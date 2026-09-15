@@ -694,7 +694,7 @@ stamp_cross-finished: $(SOS_LIARC_TARGETS)
 stamp_cross-finished: $(SSP_LIARC_TARGETS)
 stamp_cross-finished: $(STAR_PARSER_LIARC_TARGETS)
 stamp_cross-finished: $(XML_LIARC_TARGETS)
-stamp_cross-finished: stamp_cross-host microcode/scheme
+stamp_cross-finished: stamp_lib stamp_cross-host microcode/scheme
 	(echo '$(NO_LIARC)' && \
 	 echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
@@ -772,6 +772,23 @@ microcode/svm1-defns.h: compiler/machines/svm/svm1-defns.h
 # Bands
 ################
 
+## lib/ is the in-tree stand-in for the installed library directory:
+## run-build points the built Scheme at it, and it is symlinks to the
+## source subdirectories, so lib/runtime/*.com, lib/include and so on are
+## where the installed layout has them.
+
+LIB_LINKS = compiler cref edwin ffi imail libraries runtime sf sos ssp \
+	star-parser x11 x11-screen xml
+
+stamp_lib:
+	. etc/functions.sh && maybe_mkdir lib \
+	  && maybe_link lib/include ../microcode \
+	  && maybe_link lib/mit-scheme.h ../microcode/pruxffi.h \
+	  && maybe_link lib/optiondb.scm ../etc/optiondb.scm \
+	  && for d in $(LIB_LINKS); do maybe_link lib/$$d ../$$d; done
+	echo done > $@
+
+lib/runtime.com: stamp_lib
 lib/runtime.com: microcode/scheme
 lib/runtime.com: $(RUNTIME_DEPEND_TARGETS)
 	(. etc/functions.sh && get_fasl_file && cd runtime \
@@ -858,13 +875,13 @@ all-liarc:
 	$(MAKE) compile-liarc-bundles build-bands
 
 .PHONY: build-bands
-build-bands:
+build-bands: stamp_lib
 	@$(top_srcdir)/etc/build-bands.sh
 
 # **** Make liarc distribution from native ****
 
 .PHONY: liarc-dist
-liarc-dist:
+liarc-dist: stamp_lib
 	@$(top_srcdir)/etc/compile-boot-compiler.sh "$(MIT_SCHEME_EXE)"
 	@$(top_srcdir)/etc/c-prepare.sh "$(MIT_SCHEME_EXE)"
 	$(MAKE) distclean
@@ -913,7 +930,7 @@ stamp_install-native-boot-compiler: stamp_build-native-boot-compiler
 	$(MAKE) install-auxdir-top
 	echo "done" > $@
 
-stamp_native-compile-scheme: compile-microcode
+stamp_native-compile-scheme: stamp_lib compile-microcode
 	@$(top_srcdir)/etc/compile.sh boot-root/bin/mit-scheme \
 	    --library boot-root/lib/$(AUXDIR_NAME) --band boot-compiler.com
 	echo "done" > $@
