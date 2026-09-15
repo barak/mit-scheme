@@ -169,8 +169,6 @@ SCHEME_LDFLAGS=
 LIARC_CFLAGS=
 LIARC_LDFLAGS=
 LIARC_LOADER='${SCHEME_EXE}'
-LIARC_VARS=/dev/null
-LIARC_RULES=/dev/null
 AUX_PROGRAMS=
 AUX_DATA=
 EXE_NAME=
@@ -881,8 +879,6 @@ none)
 c)
     AC_CONFIG_LINKS([cmpauxmd.c:cmpauxmd/c.c])
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
-    LIARC_VARS=liarc-vars
-    LIARC_RULES=liarc-rules
     AUX_PROGRAMS="gen-nonce extract-liarc-decls"
     INSTALL_INCLUDE=install-include
     ;;
@@ -899,6 +895,8 @@ svm1-32be|svm1-32le|svm1-64be|svm1-64le)
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     ;;
 esac
+
+AM_CONDITIONAL([LIARC], [test x"${mit_scheme_native_code}" = xc])
 
 if test x"${mit_scheme_compiler_target}" = xc; then
     AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
@@ -941,8 +939,6 @@ AC_SUBST([SCHEME_LDFLAGS])
 AC_SUBST([LIARC_CFLAGS])
 AC_SUBST([LIARC_LDFLAGS])
 AC_SUBST([LIARC_LOADER])
-AC_SUBST_FILE([LIARC_VARS])
-AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([AUX_PROGRAMS])
 AC_SUBST([AUX_DATA])
 AC_SUBST([MIT_SCHEME_ARCH])

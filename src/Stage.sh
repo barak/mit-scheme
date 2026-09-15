@@ -31,6 +31,9 @@ set -e
 . etc/functions.sh
 
 for SUBDIR in `MAKEFLAGS= make -s subdir-list | sort | uniq`; do
-    if [ ! -x $SUBDIR/Stage.sh ]; then continue; fi
-    run_cmd_in_dir $SUBDIR ./Stage.sh "$@"
+    if [ -x $SUBDIR/Stage.sh ]; then
+	run_cmd_in_dir $SUBDIR ./Stage.sh "$@"
+    else
+	run_cmd_in_dir $SUBDIR ../etc/Stage.sh "$@"
+    fi
 done

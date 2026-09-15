@@ -30,6 +30,6 @@ set -e
 : ${MIT_SCHEME_EXE:=mit-scheme-native}
 export MIT_SCHEME_EXE
 
-run_cmd ./Setup.sh
+run_cmd autoreconf -fi
 run_configure --enable-native-code=c ${1+"$@"}
 run_make liarc-dist

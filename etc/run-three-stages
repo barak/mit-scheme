@@ -80,7 +80,7 @@ run_stage ()
     [[ ${NORUN} = t ]] && return 0
     rm -rf ${STAGE}
     ${COPY} src ${STAGE}
-    (set -e; cd ${STAGE}; ./Setup.sh && ./configure "${CONFIG_ARGS[@]}" && make)
+    (set -e; cd ${STAGE}; autoreconf -fi && ./configure "${CONFIG_ARGS[@]}" && make)
     if ! [[ -f ${STAGE}/lib/all.com ]]; then
 	echo "${STAGE} failed"
 	exit 1

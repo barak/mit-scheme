@@ -50,7 +50,6 @@ export MIT_SCHEME_EXE
 # Please keep the following messages synchronized with the messages in
 # these files:
 #
-#   src/Setup.sh
 #   src/configure.ac
 #   src/etc/make-native.sh
 
@@ -97,7 +96,7 @@ ${cc_type} code rather than portable C code.
 EOF
 fi
 
-run_cmd ./Setup.sh
+run_cmd autoreconf -fi
 run_configure --prefix=`pwd`/boot-root ${NATIVE_CODE}
 run_cmd etc/compile-boot-compiler.sh "${MIT_SCHEME_EXE}"
 run_cmd_in_dir compiler run_make compile-liarc-bundle

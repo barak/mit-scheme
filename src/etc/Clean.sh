@@ -75,10 +75,6 @@ if [ ${DIST} = yes ]; then
 fi
 
 if [ ${MAINTAINER} = yes ]; then
-    maybe_unlink .edwin-ffi ed-ffi.scm
-    for FN in Clean.sh Setup.sh Stage.sh Tags.sh; do
-	maybe_unlink "${FN}" "${TOPDIR}/etc/${FN}"
-    done
     if [ -f Makefile-fragment ]; then
 	maybe_rm Makefile.in
 	maybe_rm Makefile-bundle

@@ -178,7 +178,6 @@ MIT_SCHEME_CC_TYPE=${mit_scheme_native_code}
 # Please keep the following messages synchronized with the messages in
 # these files:
 #
-#   src/Setup.sh
 #   src/configure.ac
 #   src/etc/make-native.sh
 

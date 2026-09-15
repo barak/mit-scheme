@@ -32,12 +32,12 @@ unstackify.o: unstackify.c stackops.h $(LIARC_HEAD_FILES)
 
 SYS_LIB_URI = http://www.gnu.org/software/mit-scheme/lib/
 
-stamp_compinit: $(LIARC_SOURCES) Makefile gen-nonce extract-liarc-decls
+stamp_compinit: $(LIARC_C_FILES) Makefile gen-nonce extract-liarc-decls
 	rm -f $@ compinit.c compinit.h
 	$(srcdir)/../etc/c-bundle.sh . static compinit \
 	    --rewrite "" $(SYS_LIB_URI)microcode/ \
 	    --rewrite ../runtime/ $(SYS_LIB_URI)runtime/ \
-	    $(LIARC_SOURCES)
+	    $(LIARC_C_FILES)
 	echo done > $@
 
 compinit.c compinit.h: stamp_compinit

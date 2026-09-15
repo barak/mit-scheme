@@ -82,9 +82,15 @@ if [ ${MAINTAINER} = yes ]; then
     maybe_rm config.sub config.guess
 fi
 
+# Sub-packages (those with a configure.ac) are cleaned by their own
+# makefiles unless they supply a Clean.sh; the Scheme subsystems all
+# use etc/Clean.sh.
 for SUBDIR in ${SUBDIRS}; do
     if test -x ${SUBDIR}/Clean.sh; then
 	echo "making ${COMMAND} in ${SUBDIR}"
 	( cd ${SUBDIR} && ./Clean.sh ${COMMAND} )
+    elif test ! -f ${SUBDIR}/configure.ac; then
+	echo "making ${COMMAND} in ${SUBDIR}"
+	( cd ${SUBDIR} && ../etc/Clean.sh ${COMMAND} )
     fi
 done

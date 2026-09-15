@@ -1,4 +1,4 @@
-## Generated from makegen/files-*.scm by makegen/makegen.scm.
+## Generated from makegen/*.scm by makegen/makegen.scm.
 ## Do not edit.
 
 MICROCODE_CORE_SOURCES = artutl.c avltree.c bkpt.c bignum.c bigprm.c bitstr.c \

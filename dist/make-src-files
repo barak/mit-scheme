@@ -68,7 +68,8 @@ my_mv "${PROJECT_NAME}" "${DIST_DIR}"
 cleanup_file "${DIST_DIR}"
 
 notify "Configuring the source tree"
-run_command "${SRC_OUT}"-config "${DIST_DIR}"/src ./Setup.sh
+run_command "${SRC_OUT}"-config "${DIST_DIR}"/src autoreconf -fi
+run_command_append "${SRC_OUT}"-config "${DIST_DIR}"/src/microcode/cmpauxmd make
 run_command_append "${SRC_OUT}"-config "${DIST_DIR}"/doc ./bootstrap
 
 notify "Creating archive file"

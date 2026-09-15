@@ -42,9 +42,15 @@ scheme_LDADD = @OPTIONAL_OBJECTS@ $(LIARC_OBJECTS)
 scheme_DEPENDENCIES = @OPTIONAL_OBJECTS@ $(LIARC_OBJECTS)
 scheme_LDFLAGS = @SCHEME_LDFLAGS@
 
-## **** Rules for C back end (part 1, variables) ****
+## **** C back end ****
+##
+## Its source lists are generated too, into makegen/liarc.am; the rules
+## are hand-written.
 
-@LIARC_VARS@
+if LIARC
+include $(srcdir)/makegen/liarc.am
+include $(srcdir)/makegen/liarc-base-rules
+endif
 
 ## **** Auxiliary programs ****
 ##
@@ -90,10 +96,6 @@ SUFFIXES = .m4 .s
 all-local: scheme$(EXEEXT)
 	@PAXCTL@ +m scheme$(EXEEXT)
 
-## **** Rules for C back end (part 2, rules) ****
-
-@LIARC_RULES@
-
 ## **** Installation ****
 ##
 ## The interpreter goes in under its versioned name, with the unversioned
@@ -133,27 +135,33 @@ DISTCLEANFILES = cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
 
 EXTRA_DIST = findprim.c Tags.sh
 
-## **** Regenerating the source list ****
+## **** Regenerating the source lists ****
 ##
-## makegen/sources.am is generated from makegen/files-*.scm, and shipped, so
-## a build needs no Scheme to use it.  When configure does find a Scheme,
-## editing one of those lists is enough: make refreshes the fragment, and
-## automake's own rebuild rules then pick the change up.
+## makegen/sources.am and makegen/liarc.am are generated from the lists in
+## makegen/*.scm, and shipped, so a build needs no Scheme to use them.
+## When configure does find a Scheme, editing one of those lists is
+## enough: make refreshes the fragments, and automake's own rebuild rules
+## then pick the change up.  liarc.am also lists the headers of
+## liarc-gendeps.c, found with makegen-cc, which configure writes.
 
 MAKEGEN_INPUTS = \
 	$(srcdir)/makegen/makegen.scm \
 	$(srcdir)/makegen/files-core.scm \
 	$(srcdir)/makegen/files-os-prim.scm \
-	$(srcdir)/makegen/files-unix.scm
+	$(srcdir)/makegen/files-unix.scm \
+	$(srcdir)/makegen/bundles-liarc.scm \
+	$(srcdir)/makegen/dirs-liarc.scm \
+	$(srcdir)/makegen/pkds-liarc.scm
 
 if HAVE_MAKEGEN_SCHEME
 $(srcdir)/makegen/sources.am: $(MAKEGEN_INPUTS)
 	cd $(srcdir) && $(MAKEGEN_SCHEME) --batch-mode --no-init-file \
 	  --eval '(begin (load "makegen/makegen.scm") (generate-sources-am) (%exit 0))'
+$(srcdir)/makegen/liarc.am: $(MAKEGEN_INPUTS) liarc-gendeps.c
+	cd $(srcdir) && $(MAKEGEN_SCHEME) --batch-mode --no-init-file \
+	  --eval '(begin (load "makegen/makegen.scm") (generate-liarc-am) (%exit 0))'
 endif
 
-EXTRA_DIST += makegen/sources.am $(MAKEGEN_INPUTS) \
+EXTRA_DIST += makegen/sources.am makegen/liarc.am $(MAKEGEN_INPUTS) \
 	makegen/files-optional.scm makegen/files-other.scm \
-	makegen/bundles-liarc.scm makegen/dirs-liarc.scm \
-	makegen/pkds-liarc.scm makegen/liarc-base-rules makegen/m4.sh \
-	makegen/makeinit.sh
+	makegen/liarc-base-rules makegen/m4.sh

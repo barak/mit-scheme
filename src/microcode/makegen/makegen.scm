@@ -34,16 +34,23 @@ USA.
 (load (merge-pathnames "../../etc/utilities"
 		       (directory-pathname (current-load-pathname))))
 
-(define (generate-makefile)
-  (generate-liarc-variables)
-  (generate-liarc-rules)
-  (generate-sources-am))
+(define (generate-fragments)
+  (generate-sources-am)
+  (generate-liarc-am))
 
-;;;; The microcode's Makefile.am includes makegen/sources.am.  automake
-;;;; derives the object list and the header dependencies itself, so the
-;;;; source lists are the only thing left to generate.  No timestamp goes
-;;;; in the output: it is under version control, and a header that changed
-;;;; on every run would show up as a diff each time.
+;;;; The microcode's Makefile.am includes makegen/sources.am, and for the
+;;;; C back end makegen/liarc.am.  automake derives the object list and
+;;;; the header dependencies itself, so the source lists are all that is
+;;;; left to generate.  No timestamp goes in the output: it is under
+;;;; version control, and a header that changed on every run would show
+;;;; up as a diff each time.
+
+(define (write-generated-header output)
+  (write-string
+   "## Generated from makegen/*.scm by makegen/makegen.scm." output)
+  (newline output)
+  (write-string "## Do not edit." output)
+  (newline output))
 
 (define microcode-source-groups
   '(("files-core" . "MICROCODE_CORE_SOURCES")
@@ -53,11 +60,7 @@ USA.
 (define (generate-sources-am)
   (call-with-output-file "makegen/sources.am"
     (lambda (output)
-      (write-string
-       "## Generated from makegen/files-*.scm by makegen/makegen.scm." output)
-      (newline output)
-      (write-string "## Do not edit." output)
-      (newline output)
+      (write-generated-header output)
       (for-each (lambda (group)
                   (newline output)
                   (write-macro output
@@ -69,16 +72,17 @@ USA.
                 microcode-source-groups))))
 
 
-(define (generate-liarc-variables)
-  (call-with-output-file "liarc-vars"
+(define (generate-liarc-am)
+  (call-with-output-file "makegen/liarc.am"
     (lambda (output)
-      (write-header output)
+      (write-generated-header output)
+      (newline output)
       (write-macro output
 		   "LIARC_HEAD_FILES"
 		   (cddr (generate-rule "liarc-gendeps.c")))
       (newline output)
       (let ((files (liarc-static-files)))
-	(write-macro output "LIARC_SOURCES" (files+suffix files ".c"))
+	(write-macro output "LIARC_C_FILES" (files+suffix files ".c"))
 	(newline output)
 	(write-macro output "LIARC_OBJECTS" (files+suffix files ".o"))
 	(newline output))
@@ -99,19 +103,6 @@ USA.
 (define (bundles+suffix bundles suffix)
   (files+suffix (map car bundles) suffix))
 
-(define (generate-liarc-rules)
-  (call-with-output-file "liarc-rules"
-    (lambda (output)
-      (write-header output)
-      (call-with-input-file "makegen/liarc-base-rules"
-	(lambda (input)
-	  (let loop ()
-	    (let ((char (read-char input)))
-	      (if (not (eof-object? char))
-		  (begin
-		    (write-char char output)
-		    (loop))))))))))
-
 (define (liarc-static-files)
   (append (append-map package-description-files
 		      (read-file "makegen/pkds-liarc.scm"))
