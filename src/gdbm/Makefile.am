@@ -32,10 +32,14 @@ scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
 scmlib_LTLIBRARIES = gdbm-shim.la
 scmlib_DATA = gdbm-types.bin gdbm-const.bin
 
-sources = @MIT_SCHEME_SCMs@
+sources = gdbm.scm
 cdecls = gdbm.cdecl
 
-binaries = @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+if LIARC
+binaries = $(sources:.scm=.bci) $(sources:.scm=.so)
+else
+binaries = $(sources:.scm=.bci) $(sources:.scm=.com)
+endif
 
 scmlib_sub_DATA = $(sources) $(binaries)
 scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
@@ -68,7 +72,8 @@ gdbm-const.bin: gdbm-const.scm
 gdbm-const.scm: gdbm-const$(EXEEXT)
 	./gdbm-const
 
-@MIT_SCHEME_DEPS@
+$(binaries): stamp-scheme
+@MIT_SCHEME_PKD@: stamp-scheme
 stamp-scheme: stamp-shim $(sources) gdbm-const.bin gdbm.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
@@ -81,7 +86,9 @@ mostlyclean-local:
 CLEANFILES = gdbm-const* gdbm-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-shim stamp-scheme
-CLEANFILES += @MIT_SCHEME_CLEAN@
+if LIARC
+CLEANFILES += $(sources:.scm=.c)
+endif
 
 TESTS = gdbm-check.sh
 CLEANFILES += gdbm-check.db

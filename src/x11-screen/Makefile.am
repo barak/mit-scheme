@@ -28,9 +28,13 @@ scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)x11-screen
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
 
-sources = @MIT_SCHEME_SCMs@
+sources = x11-screen.scm x11-key.scm x11-command.scm
 
-binaries = @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+if LIARC
+binaries = $(sources:.scm=.bci) $(sources:.scm=.so)
+else
+binaries = $(sources:.scm=.bci) $(sources:.scm=.com)
+endif
 
 scmlib_sub_DATA = $(sources) $(binaries)
 scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
@@ -38,14 +42,17 @@ scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 #info_TEXINFOS = mit-scheme-x11-screen.texi
 #AM_MAKEINFOHTMLFLAGS = --no-split
 
-@MIT_SCHEME_DEPS@
+$(binaries): stamp-scheme
+@MIT_SCHEME_PKD@: stamp-scheme
 stamp-scheme: $(sources) x11-screen.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
 
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-scheme
-CLEANFILES += @MIT_SCHEME_CLEAN@
+if LIARC
+CLEANFILES += $(sources:.scm=.c)
+endif
 
 TESTS = x11-screen-check.sh
 

@@ -32,10 +32,14 @@ scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
 scmlib_LTLIBRARIES = pgsql-shim.la
 scmlib_DATA = pgsql-types.bin pgsql-const.bin
 
-sources = @MIT_SCHEME_SCMs@
+sources = pgsql.scm
 cdecls = pgsql.cdecl
 
-binaries = @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+if LIARC
+binaries = $(sources:.scm=.bci) $(sources:.scm=.so)
+else
+binaries = $(sources:.scm=.bci) $(sources:.scm=.com)
+endif
 
 scmlib_sub_DATA = $(sources) $(binaries)
 scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
@@ -69,7 +73,8 @@ pgsql-const.bin: pgsql-const.scm
 pgsql-const.scm: pgsql-const$(EXEEXT)
 	./pgsql-const
 
-@MIT_SCHEME_DEPS@
+$(binaries): stamp-scheme
+@MIT_SCHEME_PKD@: stamp-scheme
 stamp-scheme: stamp-shim $(sources) pgsql-const.bin pgsql.pkg
 	MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) ./compile.sh
 	echo "done" > $@
@@ -82,7 +87,9 @@ mostlyclean-local:
 CLEANFILES = pgsql-const* pgsql-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-shim stamp-scheme
-CLEANFILES += @MIT_SCHEME_CLEAN@
+if LIARC
+CLEANFILES += $(sources:.scm=.c)
+endif
 
 TESTS = pgsql-check.sh
 CLEANFILES += pgsql-check.db

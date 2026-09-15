@@ -126,24 +126,7 @@ fi
 
 MIT_SCHEME_PKD="blowfish-${MIT_SCHEME_OS_SUFFIX}.pkd"
 
-for f in blowfish; do
-    MIT_SCHEME_SCMs="${MIT_SCHEME_SCMs} ${f}.scm"
-    MIT_SCHEME_BCIs="${MIT_SCHEME_BCIs} ${f}.bci"
-    MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
-${f}.bci: stamp-scheme"
-    if test x"${MIT_SCHEME_CC_TYPE}" = xc; then
-	MIT_SCHEME_COMs="${MIT_SCHEME_COMs} ${f}.so"
-	MIT_SCHEME_CLEAN="${MIT_SCHEME_CLEAN} ${f}.c"
-	MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
-${f}.so: stamp-scheme"
-    else
-	MIT_SCHEME_COMs="${MIT_SCHEME_COMs} ${f}.com"
-	MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
-${f}.com: stamp-scheme"
-    fi
-done
-MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
-${MIT_SCHEME_PKD}: stamp-scheme"
+AM_CONDITIONAL([LIARC], [test x"${MIT_SCHEME_CC_TYPE}" = xc])
 
 # Install plugin docs in Scheme's docdir.
 docdir='$(datarootdir)/doc/$(MIT_SCHEME_PROJECT)'
@@ -154,11 +137,5 @@ AC_SUBST([MIT_CFLAGS])
 AC_SUBST([MIT_SCHEME_LIBDIR])
 AC_SUBST([MIT_SCHEME_INCLUDEDIR])
 AC_SUBST([MIT_SCHEME_PKD])
-AC_SUBST([MIT_SCHEME_SCMs])
-AC_SUBST([MIT_SCHEME_BCIs])
-AC_SUBST([MIT_SCHEME_COMs])
-AC_SUBST([MIT_SCHEME_CLEAN])
-AC_SUBST([MIT_SCHEME_DEPS])
-AM_SUBST_NOTMAKE([MIT_SCHEME_DEPS])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
