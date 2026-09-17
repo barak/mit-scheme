@@ -553,7 +553,8 @@ DEFINE_INST (load_immediate_fr_flt)
 #define X_MAKE_OBJECT(t, d)						\
   (make_object (((t) & TYPE_CODE_MASK_LOW), ((d) & DATUM_MASK)))
 
-#define X_MAKE_PTR(t, a) (X_MAKE_OBJECT (t, (address_to_datum (a))))
+#define X_MAKE_PTR(t, a)						\
+  (X_MAKE_OBJECT (t, (address_to_datum ((SCHEME_OBJECT *) (a)))))
 
 #define X_OBJECT_ADDRESS(o) ((word_t) (object_address (o)))
 
@@ -1113,7 +1114,8 @@ DEFINE_INTERRUPT_TEST (continuation, 0, GET_VAL)
 
 DEFINE_INTERRUPT_TEST (dynamic_link,
 		       (PC - 1),
-		       (MAKE_CC_STACK_ENV (WREG_REF (SVM1_REG_DYNAMIC_LINK))))
+		       (MAKE_CC_STACK_ENV
+			((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_DYNAMIC_LINK)))))
 
 DEFINE_INST (pop_return)
 {
