@@ -227,11 +227,15 @@ for the band.\n\
               DEFAULT_LIBRARY_PATH, DEFAULT_STD_BAND);
 }
 
+/* In blocks of 1024 words: 128MB on 64-bit, 32MB on 32-bit.  The 32-bit
+   figure was 3072 (12MB), which is no longer enough to compile some of
+   the runtime, e.g. imail-imap.scm; and with HEAP_IN_LOW_MEMORY the whole
+   heap must lie below 64MB, which puts a ceiling on it.  */
 #ifndef DEFAULT_HEAP_SIZE
 #  if SIZEOF_UNSIGNED_LONG == 8
 #    define DEFAULT_HEAP_SIZE 16384
 #  else
-#    define DEFAULT_HEAP_SIZE 3072
+#    define DEFAULT_HEAP_SIZE 8192
 #  endif
 #endif
 
