@@ -182,6 +182,7 @@ USA.
   ;; there are typically over 300 names, this matters some.  I believe
   ;; this algorithm is linear in the number of names.
   (lambda (block deletions)
+    (usual-integrations/refresh!)
     (let ((deletions
 	   (append sf/usual-integrations-default-deletions deletions))
 	  (declarations '())

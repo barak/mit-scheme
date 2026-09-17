@@ -34,14 +34,32 @@ USA.
 (define usual-integrations/constant-names)
 (define usual-integrations/constant-values)
 (define usual-integrations/constant-alist)
+(define usual-integrations/constant-bytes-per-object #f)
+
+;;; The fixnum bounds depend on the word size, so when cross-compiling
+;;; to a different one the host's values are wrong for the target.
+;;; Assumes 6-bit type codes, as the rest of the system does.
+
+(define (global-constant-value name)
+  (let ((fx-width (- (* 8 (target-bytes-per-object)) 6)))
+    (case name
+      ((fx-width) fx-width)
+      ((fx-greatest) (- (expt 2 (- fx-width 1)) 1))
+      ((fx-least) (- (expt 2 (- fx-width 1))))
+      (else (environment-lookup system-global-environment name)))))
+
+(define (usual-integrations/refresh!)
+  (if (not (eqv? (target-bytes-per-object)
+		 usual-integrations/constant-bytes-per-object))
+      (usual-integrations/cache!)))
 
 (define (usual-integrations/cache!)
+  (set! usual-integrations/constant-bytes-per-object (target-bytes-per-object))
   (set! usual-integrations/constant-names
 	(list-copy global-constant-objects))
   (set! usual-integrations/constant-values
 	(map (lambda (name)
-	       (let ((object
-		      (environment-lookup system-global-environment name)))
+	       (let ((object (global-constant-value name)))
 		 (if (not (memq (microcode-type/code->name
 				 (object-type object))
 				'(bignum
@@ -60,8 +78,6 @@ USA.
   (set! usual-integrations/constant-alist
 	(map (lambda (name)
 	       (cons name
-		     (constant/make
-		      #f
-		      (environment-lookup system-global-environment name))))
+		     (constant/make #f (global-constant-value name))))
 	     usual-integrations/constant-names))
   unspecific)
