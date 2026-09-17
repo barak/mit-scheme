@@ -268,10 +268,11 @@ USA.
    (define-integrable (u32be-byte3 u32)
      (int:remainder u32 #x100))
 
-   (define u32?
-     (refine-type 'u32 exact-nonnegative-integer?
-       (lambda (n)
-	 (<= n #xFFFFFFFF))))
+   ;; Not a refinement: exact-nonnegative-integer? is not a type until
+   ;; "arith" is loaded, which is after this file.
+   (define (u32? object)
+     (and (exact-nonnegative-integer? object)
+	  (<= object #xFFFFFFFF)))
 
    (add-boot-init!
     (lambda ()
