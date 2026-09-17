@@ -400,6 +400,8 @@ USA.
 (define-package (compiler portable-fasdump)
   (files "base/fasdump")
   (parent ())			       	;** This code should be portable.
+  (import (runtime)
+	  system-triple-third)
   (export ()
 	  fasl-format:aarch64be
 	  fasl-format:aarch64le
