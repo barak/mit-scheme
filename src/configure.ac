@@ -268,12 +268,15 @@ directory, which is usually `/usr/local/lib/mit-scheme-${mit_scheme_native_code}
     fi
 fi
 
-# A 32bit host running LIAR/svm needs a large heap.
-case ${mit_scheme_native_code} in
-svm1-32be|svm1-32le)
-    HOST_COMPILER_HEAP="--heap 10000"
-    ;;
-esac
+# A 32-bit host running LIAR/svm needs a large heap.  (Its default is
+# 12MB; a 64-bit host's is 128MB, which this would cut down.)
+if test x"${MIT_SCHEME_EXE}" != xno-mit-scheme-needed; then
+    host_bytes_per_object=`echo "(display (bytes-per-object))" \
+                           | ${MIT_SCHEME_EXE} --batch-mode --no-init-file`
+    if test x"${host_bytes_per_object}" = x4; then
+        HOST_COMPILER_HEAP="--heap 10000"
+    fi
+fi
 
 if test x"${enable_x11}" = x && test x"${enable_default_plugins}" = xyes; then
     AC_PATH_X
