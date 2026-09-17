@@ -71,6 +71,7 @@ notify "Configuring the source tree"
 run_command "${SRC_OUT}"-config "${DIST_DIR}"/src autoreconf -fi
 run_command_append "${SRC_OUT}"-config "${DIST_DIR}"/src/microcode/cmpauxmd make
 run_command_append "${SRC_OUT}"-config "${DIST_DIR}"/doc ./bootstrap
+find "${DIST_DIR}" -name autom4te.cache -prune -exec rm -rf {} +
 
 notify "Creating archive file"
 make_tar_file "${SRC_OUT}" "${DIST_DIR}"
