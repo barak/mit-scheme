@@ -512,7 +512,7 @@ import_primitive_table (SCHEME_OBJECT* entries,
 {
   for (unsigned long i = 0; i < n_entries; i += 1)
     {
-      unsigned long arity = FIXNUM_TO_ULONG (*entries++);
+      long arity = (FIXNUM_TO_LONG (*entries++));
       SCHEME_OBJECT prim
 	= find_primitive
 	    (make_pointer_object (TC_CHARACTER_STRING, entries),
