@@ -263,9 +263,11 @@ END(scheme_to_interface)
 	//
 GLOBAL(interface_to_scheme)
 	// Restore value if it was in use, dynamic link if it was in
-	// use, Free, and stack_pointer.
+	// use, Free, and stack_pointer.  The dynamic link comes back
+	// as a stack-environment object (comutil_interrupt_dlink), so
+	// strip the type code, as x86-64 does.
 	ldr	VAL, [REGS,#(REGBLOCK_VAL*8)]
-	mov	DYNLINK, VAL
+	and	DYNLINK, VAL, #DATUM_MASK
 	ADRL(FREE,Free)			// address of Free pointer
 	ldr	FREE, [FREE]		// load current Free pointer
 	ADRL(SSP,stack_pointer)		// address of stack pointer
