@@ -586,7 +586,7 @@ extern void win32_stack_reset (void);
 #if defined(__powerpc__) || defined(__POWERPC__) || \
     defined(__ppc__) || defined(__PPC__)
 #  define SCHEME_POWERPC
-#  if defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__) \
+#  if defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__) || \
       defined(__64BIT__)
 #    define SCHEME_POWERPC64
 #  else
