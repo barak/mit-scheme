@@ -39,10 +39,10 @@ USA.
 #endif
 
 /* FIXME: Support these architectures.  */
-#ifdef __ppc__
+#ifdef SCHEME_POWERPC32
 #  undef ENABLE_TRAP_RECOVERY
 #endif
-#ifdef __ppc64__
+#ifdef SCHEME_POWERPC64
 #  undef ENABLE_TRAP_RECOVERY
 #endif
 #ifdef __ia64__

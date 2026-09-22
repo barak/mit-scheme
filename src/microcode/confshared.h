@@ -568,22 +568,43 @@ extern void win32_stack_reset (void);
 #define MAX_FLONUM_EXPONENT    1023
 #endif
 
-#ifdef __powerpc__
-#  define __ppc__ 1
+/*
+ * PowerPC architecture macros are a bit of a mess, depending on the
+ * toolchain you're using.
+ *
+ * References:
+ *
+ * https://wiki.raptorcs.com/wiki/Porting/Macros
+ * https://web.archive.org/web/20230922223518/https://wiki.raptorcs.com/wiki/Porting/Macros
+ *
+ * https://www.ibm.com/docs/en/xl-c-and-cpp-aix/16.1.0?topic=macros-related-platform
+ * https://archive.today/2026.09.22-163823/https://www.ibm.com/docs/en/xl-c-and-cpp-aix/16.1.0?topic=macros-related-platform
+ *
+ * https://www.ibm.com/docs/en/xl-c-and-cpp-aix/16.1.0?topic=features-macros-related-compiler-option-settings
+ * https://archive.today/2026.09.22-164923/https://www.ibm.com/docs/en/xl-c-and-cpp-aix/16.1.0?topic=features-macros-related-compiler-option-settings
+ */
+#if defined(__powerpc__) || defined(__POWERPC__) || \
+    defined(__ppc__) || defined(__PPC__)
+#  define SCHEME_POWERPC
+#  if defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__) \
+      defined(__64BIT__)
+#    define SCHEME_POWERPC64
+#  else
+#    define SCHEME_POWERPC32
+#  endif
+#elif defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__)
+#  define SCHEME_POWERPC
+#  define SCHEME_POWERPC64
 #endif
 
-#ifdef __powerpc64__
-#  define __ppc64__ 1
-#endif
-
-#ifdef __ppc__
+#ifdef SCHEME_POWERPC32
 #  define MACHINE_TYPE		"PowerPC-32"
 #  define CURRENT_FASL_ARCH	FASL_PPC32
 #  define FLOATING_ALIGNMENT	0x7
 #  define HEAP_IN_LOW_MEMORY
 #endif
 
-#ifdef __ppc64__
+#ifdef SCHEME_POWERPC64
 #  define MACHINE_TYPE		"PowerPC-64"
 #  define CURRENT_FASL_ARCH	FASL_PPC64
 #endif
