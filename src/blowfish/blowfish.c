@@ -511,12 +511,12 @@ blowfish_selftest(void)
 	unsigned i;
 
 	for (i = 0; i < 34; i++) {
-		blowfish_init(B, K8[i], 8);
+		blowfish_init(B, K8[i], sizeof K8[i]);
 		blowfish_encrypt(B, P8[i], block);
-		if (memcmp(block, C8[i], 8) != 0)
+		if (memcmp(block, C8[i], sizeof block) != 0)
 			return -1;
 		blowfish_decrypt(B, C8[i], block);
-		if (memcmp(block, P8[i], 8) != 0)
+		if (memcmp(block, P8[i], sizeof block) != 0)
 			return -1;
 		blowfish_clear(B);
 	}
@@ -524,42 +524,42 @@ blowfish_selftest(void)
 	for (i = 1; i <= 24; i++) {
 		blowfish_init(B, K24, i);
 		blowfish_encrypt(B, P24, block);
-		if (memcmp(block, C24[i - 1], 8) != 0)
+		if (memcmp(block, C24[i - 1], sizeof block) != 0)
 			return -1;
 		blowfish_decrypt(B, C24[i - 1], block);
-		if (memcmp(block, P24, 8) != 0)
+		if (memcmp(block, P24, sizeof block) != 0)
 			return -1;
 		blowfish_clear(B);
 	}
 
-	blowfish_init(B, K, 16);
+	blowfish_init(B, K, sizeof K);
 
-	memcpy(block, IV, 16);
+	memcpy(block, IV, sizeof block);
 	blowfish_encrypt_cbc(B, block, P_cbc, buf, sizeof P_cbc);
 	if (memcmp(buf, C_cbc, sizeof C_cbc) != 0)
 		return -1;
 
-	memcpy(block, IV, 16);
+	memcpy(block, IV, sizeof block);
 	blowfish_decrypt_cbc(B, block, C_cbc, buf, sizeof P_cbc);
 	if (memcmp(buf, P_cbc, sizeof P_cbc) != 0)
 		return -1;
 
-	memcpy(block, IV, 16);
+	memcpy(block, IV, sizeof block);
 	blowfish_encrypt_cfb64(B, block, 0, P, buf, sizeof P);
 	if (memcmp(buf, C_cfb64, sizeof C_cfb64) != 0)
 		return -1;
 
-	memcpy(block, IV, 16);
+	memcpy(block, IV, sizeof block);
 	blowfish_decrypt_cfb64(B, block, 0, C_cfb64, buf, sizeof P);
 	if (memcmp(buf, P, sizeof P) != 0)
 		return -1;
 
-	memcpy(block, IV, 16);
+	memcpy(block, IV, sizeof block);
 	blowfish_encrypt_ofb64(B, block, 0, P, buf, sizeof P);
 	if (memcmp(buf, C_ofb64, sizeof C_ofb64) != 0)
 		return -1;
 
-	memcpy(block, IV, 16);
+	memcpy(block, IV, sizeof block);
 	blowfish_decrypt_ofb64(B, block, 0, C_ofb64, buf, sizeof P);
 	if (memcmp(buf, P, sizeof P) != 0)
 		return -1;
