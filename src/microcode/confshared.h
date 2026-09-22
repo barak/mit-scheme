@@ -607,6 +607,7 @@ extern void win32_stack_reset (void);
 #ifdef SCHEME_POWERPC64
 #  define MACHINE_TYPE		"PowerPC-64"
 #  define CURRENT_FASL_ARCH	FASL_PPC64
+#  define HEAP_IN_LOW_MEMORY	1
 #endif
 
 #ifdef __x86_64__
