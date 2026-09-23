@@ -7,6 +7,15 @@ mit-scheme (12.1-9) unstable; urgency=medium
     MITSCHEME_HEAP_SIZE workaround from debian/rules.
   * Patch src/Clean.sh so make distclean no longer deletes
     src/Makefile.tools, which is a source file since -7.
+  * Patch the aarch64 microcode to strip the type code from the dynamic link
+    restored after an interrupt. A tagged stack pointer is invisible to
+    compiled code thanks to top-byte-ignore, but every stack check and the
+    GC's stack scan see a huge address, so a native arm64 Scheme could not
+    host a build: SIGSEGV at a point that depended on the memory layout,
+    reproducibly under sbuild and never in a login session. Reported
+    upstream. arm64 still bootstraps from mit-scheme-svm here, because the
+    buildd's host is the previous upload; it can switch to the native Scheme
+    once a fixed one is in the archive.
 
  -- Barak A. Pearlmutter <bap@debian.org>  Fri, 18 Sep 2026 07:18:19 +0100
 

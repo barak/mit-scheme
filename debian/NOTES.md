@@ -42,9 +42,14 @@ easier.
     mit-scheme:native [amd64] | mit-scheme-svm:native [amd64],
     mit-scheme-svm:native [!amd64] | mit-scheme:native [!amd64],
 
-arm64 has a native Scheme but does not bootstrap from it: it segfaults
-when used as the host of a cross compilation. Once this bug is fixed
-arm64 can be listed like am64.
+arm64 has a native Scheme but does not bootstrap from it yet. Before
+12.1-9 the aarch64 microcode restored the dynamic link with its type
+code still on after an interrupt (patch `0019-aarch64-dlink-mask`), and
+a native Scheme hosting a build died with SIGSEGV at a memory-layout
+dependent point -- under sbuild every time, in a login session never.
+12.1-9 fixes the microcode, but the buildd's host is the previous
+upload, so arm64 can only be listed like amd64 once a fixed
+`mit-scheme` is in the archive; then it should be.
 
 Building either can be switched off using build profiles:
 

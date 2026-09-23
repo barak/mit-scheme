@@ -16,3 +16,4 @@
 0016-sf-target-fixnum-bounds.patch
 0017-heap-32bit-default.patch
 0018-clean-keep-makefile-tools.patch
+0019-aarch64-dlink-mask.patch
