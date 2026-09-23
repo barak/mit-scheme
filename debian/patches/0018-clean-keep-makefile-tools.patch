@@ -1,0 +1,22 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Fri, 18 Sep 2026 12:11:55 +0100
+Subject: Clean.sh: keep Makefile.tools
+
+It is a source file now, not configure output, and "make distclean" must
+not delete it.
+---
+ src/Clean.sh | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/Clean.sh b/src/Clean.sh
+index 286aad3..728d8a1 100755
+--- a/src/Clean.sh
++++ b/src/Clean.sh
+@@ -71,7 +71,6 @@ fi
+ 
+ if [ ${DIST} = yes ]; then
+     maybe_rm Makefile
+-    maybe_rm Makefile.tools
+     maybe_rm boot-lib           # XXX What's this?
+     maybe_rm config.cache
+     maybe_rm config.log

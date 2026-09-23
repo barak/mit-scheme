@@ -5,6 +5,8 @@ mit-scheme (12.1-9) unstable; urgency=medium
     target's; sf integrates the target's fixnum bounds when cross-compiling.
     Together these make i386 build without help: drop the
     MITSCHEME_HEAP_SIZE workaround from debian/rules.
+  * Patch src/Clean.sh so make distclean no longer deletes
+    src/Makefile.tools, which is a source file since -7.
 
  -- Barak A. Pearlmutter <bap@debian.org>  Fri, 18 Sep 2026 07:18:19 +0100
 
