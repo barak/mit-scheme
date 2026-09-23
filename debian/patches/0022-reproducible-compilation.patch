@@ -1,0 +1,91 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Wed, 23 Sep 2026 08:13:41 +0100
+Subject: Make compilation output reproducible
+
+Two things made every build of the same source differ.
+
+compiler/base/toplev.scm gave each compiled file a *debugging-key* of
+(random-bytevector 32), stored in both the .com and its .bci to tie
+them together.  The default random source is seeded from entropy during
+the cold load and that state is frozen into the band, so every compiler
+process run from a given band draws the same sequence -- and a band
+built by the next build draws a different one.  Every .com and .bci in
+the tree therefore differed, by exactly those 32 bytes.  Derive the key
+from the input and output pathnames instead: still unique per
+compilation unit, and it changes whenever the pair does, so it detects
+a stale .bci at least as well as a random value did.
+
+sf/toplev.scm stamped every .bin with the wall clock.  Honour
+SOURCE_DATE_EPOCH when it is set.
+---
+ src/compiler/base/toplev.scm | 17 ++++++++++++++++-
+ src/sf/toplev.scm            | 14 +++++++++++++-
+ 2 files changed, 29 insertions(+), 2 deletions(-)
+
+diff --git a/src/compiler/base/toplev.scm b/src/compiler/base/toplev.scm
+index 749f461..f032a92 100644
+--- a/src/compiler/base/toplev.scm
++++ b/src/compiler/base/toplev.scm
+@@ -194,7 +194,9 @@ USA.
+ 		(maybe-open-file compiler:generate-lap-files?
+ 				 (pathname-new-type output-path "lap")
+ 		  (lambda (lap-port)
+-		    (fluid-let ((*debugging-key* (random-bytevector 32)))
++		    (fluid-let ((*debugging-key*
++				 (compilation-debugging-key input-path
++							    output-path)))
+ 		      (compile-scode/file/hook input-path output-path
+ 			(lambda ()
+ 			  (compile-bin-file-2 scode inf-path rtl-port
+@@ -241,6 +243,19 @@ USA.
+ (define *compiler-input-pathname*)
+ (define *compiler-output-pathname*)
+ (define *debugging-key*)
++
++;;; The key ties a compiled file to its debugging-info file.  It used to
++;;; be (random-bytevector 32), so two builds of the same source produced
++;;; a different .com and .bci for every file and the tree could not be
++;;; reproducible.  Derive it from the names of the two files instead:
++;;; that is what identifies the compilation unit, it is what the wrapper
++;;; already records alongside the key, and it is stable from one build to
++;;; the next.  Note that hashing the *contents* of the input would not
++;;; be, because sf's output is not yet reproducible itself.
++
++(define (compilation-debugging-key input-path output-path)
++  (bytevector-append (md5-bytevector (string->utf8 (->namestring input-path)))
++		     (md5-bytevector (string->utf8 (->namestring output-path)))))
+ (define *library-name*)
+ 
+ (define (maybe-open-file open? pathname receiver)
+diff --git a/src/sf/toplev.scm b/src/sf/toplev.scm
+index 1d2516e..12b1072 100644
+--- a/src/sf/toplev.scm
++++ b/src/sf/toplev.scm
+@@ -139,6 +139,18 @@ USA.
+ 		      bin-path)))
+ 	    #f)))
+ 
++;;; The date and time stamped into every .bin below come from the wall
++;;; clock, which makes two builds of the same source differ.  Honour
++;;; SOURCE_DATE_EPOCH when it is set, as the reproducible-builds
++;;; specification asks: <https://reproducible-builds.org/specs/source-date-epoch/>.
++
++(define (sf/start-date)
++  (let* ((string (get-environment-variable "SOURCE_DATE_EPOCH"))
++	 (epoch (and string (string->number string))))
++    (if (and epoch (exact-nonnegative-integer? epoch))
++	(file-time->global-decoded-time epoch)
++	(get-decoded-time))))
++
+ (define (sf/internal input-pathname bin-pathname spec-pathname
+ 		     environment declarations)
+   spec-pathname				;ignored
+@@ -146,7 +158,7 @@ USA.
+       (string-append "Skip processing file " (->namestring input-pathname))
+     (lambda ()
+       (let ((do-it
+-	     (let ((start-date (get-decoded-time)))
++	     (let ((start-date (sf/start-date)))
+ 	       (lambda ()
+ 		 (fasdump (make-scode-comment
+ 			   `((source-file . ,(->namestring input-pathname))

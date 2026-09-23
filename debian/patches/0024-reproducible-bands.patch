@@ -1,0 +1,146 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Wed, 23 Sep 2026 13:23:04 +0100
+Subject: Keep the clock and the entropy pool out of saved bands
+
+disk-save dumped the heap with the garbage collector's statistics
+history still in it -- a ring of records holding the universal time and
+the process- and real-time clock readings of this process's collections
+-- along with the decoded time it stashes for identify-world, the time
+the dumping process restored its own band, and the default random
+source's entropy-seeded state.  Every band therefore differed between
+builds, and since the compiler runs from a band, so did most of what it
+compiled.
+
+Before dumping, clear the statistics, go quiescent so that the dump's
+own collections record zeros rather than clock readings, forget the
+restore time, and give the random source a fixed state.  Reset and
+randomize again once the dump is done; a restored band resets through
+event:after-restore.  Take the saved-world time from SOURCE_DATE_EPOCH
+when it is set.
+---
+ src/runtime/gcstat.scm  | 38 +++++++++++++++++++++++++++++++++-----
+ src/runtime/runtime.pkg |  6 +++++-
+ src/runtime/savres.scm  | 21 ++++++++++++++++++++-
+ 3 files changed, 58 insertions(+), 7 deletions(-)
+
+diff --git a/src/runtime/gcstat.scm b/src/runtime/gcstat.scm
+index e36477b..9513dd2 100644
+--- a/src/runtime/gcstat.scm
++++ b/src/runtime/gcstat.scm
+@@ -48,15 +48,15 @@ USA.
+ 
+ (define (recorder/gc-start)
+   (port/gc-start (console-i/o-port))
+-  (set! this-gc-start-uctime (get-universal-time))
+-  (set! this-gc-start-clock (real-time-clock))
+-  (set! this-gc-start (process-time-clock))
++  (set! this-gc-start-uctime (if quiescent? 0 (get-universal-time)))
++  (set! this-gc-start-clock (if quiescent? 0 (real-time-clock)))
++  (set! this-gc-start (if quiescent? 0 (process-time-clock)))
+   unspecific)
+ 
+ (define (recorder/gc-finish ignored space-remaining)
+   ignored
+-  (let* ((end-time (process-time-clock))
+-	 (end-time-clock (real-time-clock)))
++  (let* ((end-time (if quiescent? 0 (process-time-clock)))
++	 (end-time-clock (if quiescent? 0 (real-time-clock))))
+     (increment-non-runtime! (- end-time this-gc-start))
+     (statistics-flip this-gc-start end-time
+ 		     space-remaining
+@@ -77,7 +77,35 @@ USA.
+ (define (gc-timestamp)
+   timestamp)
+ 
++;;; Dumping a band writes the whole heap, so a statistic recorded in
++;;; this process puts its clock readings into the band, and hence into
++;;; everything later compiled from it.  disk-save clears the history
++;;; and goes quiescent before it dumps, and resets afterwards; a
++;;; restored band resets through event:after-restore.
++
++(define (statistics-clear!)
++  ;; Like statistics-reset!, but reads no clock.
++  (set! timestamp (cons 1 (1+ (cdr timestamp))))
++  (set! total-gc-time 0)
++  (set! last-gc-start-clock #f)
++  (set! last-gc-end-clock 0)
++  (set! last-gc-start #f)
++  (set! last-gc-end 0)
++  (set! this-gc-start 0)
++  (set! this-gc-start-uctime 0)
++  (set! this-gc-start-clock 0)
++  (reset-recorder! '()))
++
++(define quiescent? #f)
++
++(define (statistics-suspend!)
++  ;; Collections still get recorded -- gc-notification wants a
++  ;; statistic to look at -- but with zeros where the clock readings
++  ;; would go.
++  (set! quiescent? #t))
++
+ (define (statistics-reset!)
++  (set! quiescent? #f)
+   (set! timestamp (cons 1 (1+ (cdr timestamp))))
+   (set! total-gc-time 0)
+   (set! last-gc-start-clock false)
+diff --git a/src/runtime/runtime.pkg b/src/runtime/runtime.pkg
+index 48cff53..11498b3 100644
+--- a/src/runtime/runtime.pkg
++++ b/src/runtime/runtime.pkg
+@@ -2697,7 +2697,11 @@ USA.
+ 	  gc-timestamp
+ 	  gctime)
+   (export (runtime gc-notification)
+-	  last-statistic))
++	  last-statistic)
++  (export (runtime save/restore)
++	  statistics-clear!
++	  statistics-reset!
++	  statistics-suspend!))
+ 
+ (define-package (runtime generic-i/o-port)
+   (files "generic-io")
+diff --git a/src/runtime/savres.scm b/src/runtime/savres.scm
+index c743c71..6104b0e 100644
+--- a/src/runtime/savres.scm
++++ b/src/runtime/savres.scm
+@@ -48,11 +48,28 @@ USA.
+ (define time-world-restored #f)
+ (define-deferred *within-restore-window?* (make-unsettable-parameter #f))
+ 
++(define (band-save-time)
++  (let* ((string (get-environment-variable "SOURCE_DATE_EPOCH"))
++	 (epoch (and string (string->number string))))
++    (if (and epoch (exact-nonnegative-integer? epoch))
++	(file-time->global-decoded-time epoch)
++	(local-decoded-time))))
++
+ (define (disk-save filename #!optional id)
+   (let ((filename* (disk-save-filename filename))
+ 	(id (if (default-object? id) world-id id))
+-	(time (local-decoded-time)))
++	(time (band-save-time)))
+     (set! filename #f)
++    ;; Anything left in the heap that this process picked up from the
++    ;; clock or the entropy pool would be dumped along with it, making
++    ;; the band -- and everything later compiled by it -- differ from
++    ;; build to build.  A restored band re-reads none of this: the
++    ;; random source is given a fixed state here and randomized again
++    ;; below, once the dump is done.
++    (statistics-clear!)
++    (statistics-suspend!)
++    (set! time-world-restored #f)
++    (random-source-pseudo-randomize! default-random-source 0 0)
+     (gc-clean)
+     ((without-interrupts
+       (lambda ()
+@@ -76,6 +93,8 @@ USA.
+ 			      (error "Disk save failed!"))))
+ 			(continuation
+ 			 (lambda ()
++			   (statistics-reset!)
++			   (random-source-randomize! default-random-source)
+ 			   (set! time-world-saved time)
+ 			   (if (string? id) unspecific #f)))))))
+ 		 ((ucode-primitive set-fixed-objects-vector!) fixed-objects))))

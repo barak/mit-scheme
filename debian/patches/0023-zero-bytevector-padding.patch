@@ -1,0 +1,79 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Wed, 23 Sep 2026 10:01:39 +0100
+Subject: Zero the padding at the end of bytevectors and strings
+
+Nothing reads those bytes, but fasdump writes whole words, so the heap
+garbage in them ends up in .bin and .com files and makes the build
+unreproducible (and leaks heap contents into the output).
+---
+ src/microcode/bytevector.c | 16 +++++++++++++++-
+ src/microcode/extern.h     |  1 +
+ src/microcode/string.c     |  2 ++
+ 3 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/src/microcode/bytevector.c b/src/microcode/bytevector.c
+index 6f16c6b..56be11f 100644
+--- a/src/microcode/bytevector.c
++++ b/src/microcode/bytevector.c
+@@ -51,6 +51,20 @@ arg_byte (int n)
+   return (uint8_t) value;
+ }
+ 
++/* Zero the slack between the end of the data and the end of the last
++   word of the allocation.  Nothing reads those bytes, but fasdump
++   writes whole words, so leaving them uninitialised puts heap garbage
++   into its output and makes it nondeterministic.  */
++
++void
++clear_bytevector_padding (SCHEME_OBJECT v, unsigned long nbytes)
++{
++  unsigned long allocated
++    = ((BYTEVECTOR_DATA_LENGTH (v)) * (sizeof (SCHEME_OBJECT)));
++  if (allocated > nbytes)
++    memset (((BYTEVECTOR_POINTER (v)) + nbytes), 0, (allocated - nbytes));
++}
++
+ SCHEME_OBJECT
+ allocate_bytevector (unsigned long nbytes)
+ {
+@@ -60,7 +74,7 @@ allocate_bytevector (unsigned long nbytes)
+         ((BYTES_TO_WORDS (nbytes + 1)) + BYTEVECTOR_LENGTH_SIZE),
+         true));
+   SET_BYTEVECTOR_LENGTH (result, nbytes);
+-  ((BYTEVECTOR_POINTER (result)) [nbytes]) = '\0';
++  clear_bytevector_padding (result, nbytes);
+   return (result);
+ }
+ 
+diff --git a/src/microcode/extern.h b/src/microcode/extern.h
+index 31553de..e66e5f8 100644
+--- a/src/microcode/extern.h
++++ b/src/microcode/extern.h
+@@ -300,6 +300,7 @@ extern SCHEME_OBJECT char_pointer_to_string (const char *);
+ extern SCHEME_OBJECT char_pointer_to_string_no_gc (const char *);
+ extern unsigned char * string_to_char_pointer (SCHEME_OBJECT, unsigned long *);
+ extern uint8_t * arg_bytevector (int, unsigned long *);
++extern void clear_bytevector_padding (SCHEME_OBJECT, unsigned long);
+ extern SCHEME_OBJECT allocate_bytevector (unsigned long);
+ extern SCHEME_OBJECT memory_to_bytevector (unsigned long, const void *);
+ extern SCHEME_OBJECT allocate_bit_string (unsigned long);
+diff --git a/src/microcode/string.c b/src/microcode/string.c
+index 1f02c8a..de67f2e 100644
+--- a/src/microcode/string.c
++++ b/src/microcode/string.c
+@@ -48,6 +48,7 @@ allocate_string (unsigned long nbytes)
+ 				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
+ 				   true));
+   SET_STRING_LENGTH (result, nbytes);
++  clear_bytevector_padding (result, nbytes);
+   return (result);
+ }
+ 
+@@ -59,6 +60,7 @@ allocate_string_no_gc (unsigned long nbytes)
+ 				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
+ 				   false));
+   SET_STRING_LENGTH (result, nbytes);
++  clear_bytevector_padding (result, nbytes);
+   return (result);
+ }
+ 

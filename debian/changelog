@@ -27,6 +27,16 @@ mit-scheme (12.1-9) unstable; urgency=medium
     dpkg-dev: that is not Essential and is absent from a minimal chroot,
     so mit-scheme-svm failed to configure there with status 127
     (piuparts).
+  * Make compilation reproducible. The compiler gave every file a random
+    32-byte debugging key; sf stamped every .bin with the wall clock;
+    fasdump wrote the uninitialised padding after every string and
+    bytevector; and a saved band carried the garbage collector's timing
+    history, the save time, and everything the cold load had drawn from
+    the entropy pool, so the compiler itself differed from build to
+    build. Derive the key from the compilation's pathnames, honour
+    SOURCE_DATE_EPOCH, zero the padding, and keep the clock and the
+    entropy pool out of bands. Two causes are left, both in the bands
+    only; see debian/NOTES.md.
 
  -- Barak A. Pearlmutter <bap@debian.org>  Fri, 18 Sep 2026 07:18:19 +0100
 

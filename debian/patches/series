@@ -19,3 +19,7 @@
 0019-aarch64-dlink-mask.patch
 0020-confshared.h-riscv64-loong64.patch
 0021-uxtrap.h-executable-start.patch
+0022-reproducible-compilation.patch
+0023-zero-bytevector-padding.patch
+0024-reproducible-bands.patch
+0025-deterministic-cold-load.patch

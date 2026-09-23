@@ -200,6 +200,57 @@ Upstream's "Portable C" back end is not an option: no release has ever
 shipped such a tarball, and `make liarc-dist` fails in 12.1 at
 `cref-unx.bin`.
 
+## Reproducibility
+
+Nothing in the Scheme parts of the build was reproducible before -9.
+Patches 0022-0025 fix four causes:
+
+* the compiler gave every file a random 32-byte `*debugging-key*`;
+* `sf` stamped every `.bin` with the wall clock;
+* `fasdump` wrote the uninitialised padding after every string and
+  bytevector, so heap garbage landed in `.bin` and `.com` files;
+* a band dumped by `disk-save` carried the garbage collector's timing
+  history, the save time, and whatever the cold load had drawn from the
+  entropy pool -- so the *compiler* differed between builds, and hence
+  most of what it compiled.
+
+Two causes are left, both of them upstream's to fix, and both confined
+to the bands: with a -9 Scheme as the build Scheme, 4 of the 1834
+installed files differ between two builds -- `runtime.com` and
+`all.com` of each flavour -- by a few hundred bytes in all.
+
+* `disk-save` keeps the band's filename outside the Scheme heap, in a
+  `malloc`ed external string, precisely so the path does not land in
+  the band -- but the address is held in a cell *and* in
+  `disk-save-filenames`' finalizer table, and ASLR moves it every run.
+  Clearing the cell leaves the finalizer's copy, and
+  `remove-from-gc-finalizer!` cannot be used to reach that one, because
+  removing an object also *runs* the finalizer, freeing the string the
+  dump is about to use. The address wants to live in the microcode.
+* A `gc-statistic` recorded before the dump can outlive it. disk-save
+  clears the history and makes its own collections record zeros, but a
+  record already handed to a thread as a `gc-notification` event is
+  still reachable from that thread's queue, and it holds the universal
+  time.
+
+Note also that the Scheme files in `mit-scheme` and `mit-scheme-dbg`
+are compiled by the *build* Scheme, so they only become reproducible
+once a Scheme with patch 0023 is the one in the archive; the
+`mit-scheme-svm` tree is compiled by the Scheme this build just made,
+and is reproducible now.
+
+To test, without a full double build: build `src` in place, then dump a
+band twice and compare.
+
+```sh
+cd src && autoreconf --install && ./configure && make
+for n in 1 2; do
+    echo '(disk-save "/tmp/b'$n'.band")' |
+        SOURCE_DATE_EPOCH=1 ./run-build --quiet --batch-mode
+done
+cmp -l /tmp/b1.band /tmp/b2.band | wc -l
+```
+
 ## Archive notes
 
 When porting to a new architecture, either native code or byte code,

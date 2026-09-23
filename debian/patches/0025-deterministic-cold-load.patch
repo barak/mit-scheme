@@ -1,0 +1,86 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Wed, 23 Sep 2026 13:23:14 +0100
+Subject: Do not seed the cold load from the entropy pool
+
+Whatever the cold load draws from the default random source is frozen
+into the band it produces: comparator.scm's hash salts, dispatch-tag's
+cache numbers.  Entropy there makes every band, and everything later
+compiled from it, differ between builds.
+
+Seed both deterministically.  Restoring a band has never reseeded, so
+a given band has always handed every process that runs it the same
+sequence -- this only changes which one.  (That it does so at all is a
+separate bug: (random n) returns the same value on every machine
+running a given band.)
+---
+ src/runtime/dispatch-tag.scm |  5 ++++-
+ src/runtime/random.scm       | 26 ++++++++++++++++++++++++--
+ src/runtime/runtime.pkg      |  2 ++
+ 3 files changed, 30 insertions(+), 3 deletions(-)
+
+diff --git a/src/runtime/dispatch-tag.scm b/src/runtime/dispatch-tag.scm
+index def1451..6f9e987 100644
+--- a/src/runtime/dispatch-tag.scm
++++ b/src/runtime/dispatch-tag.scm
+@@ -107,7 +107,10 @@ USA.
+ 	 (int:quotient
+ 	  (let loop ((n 2)) (if (fix:fixnum? n) (loop (int:* n 2)) n))
+ 	  tag-cache-number-adds-ok))
+-	(state (make-random-state #t)))
++	;; Not (make-random-state #t): these numbers only spread the
++	;; dispatch caches, and entropy here ends up frozen into every
++	;; saved band, different on every build.
++	(state (make-pseudo-random-state)))
+     (lambda ()
+       (random modulus state))))
+ 
+diff --git a/src/runtime/random.scm b/src/runtime/random.scm
+index 5fc9672..c6e14f3 100644
+--- a/src/runtime/random.scm
++++ b/src/runtime/random.scm
+@@ -518,8 +518,30 @@ USA.
+ (define (reset-default-random-source!)
+   (random-source-randomize! default-random-source))
+ 
+-(reset-default-random-source!)
+-(seq:after-files-loaded 'add-action! reset-default-random-source!)
++(define (%seed-random-state! state)
++  ;; Not the entropy pool.  Whatever is drawn from a state seeded
++  ;; during the cold load -- the hash salts in comparator.scm, the
++  ;; dispatch cache numbers in dispatch-tag.scm -- is frozen into the
++  ;; band the load produces, so entropy here makes every build differ.
++  ;; Restoring a band does not reseed, so a band has always handed
++  ;; every process that runs it the same sequence; this only changes
++  ;; which one.  (Open-coded: this runs before generic arithmetic and
++  ;; the thread system are up.)
++  (let ((key (random-state-key state)))
++    (do ((i 0 (fix:+ i 1)))
++	((fix:>= i 32) unspecific)
++      (bytevector-u8-set! key i 0))))
++
++(define (make-pseudo-random-state)
++  (let ((state (%make-random-state)))
++    (%seed-random-state! state)
++    state))
++
++(define (seed-default-random-source!)
++  (%seed-random-state! default-random-source))
++
++(seed-default-random-source!)
++(seq:after-files-loaded 'add-action! seed-default-random-source!)
+ 
+ (define (finalize-random-state-type!)
+   (named-structure/set-tag-description! random-state-tag
+diff --git a/src/runtime/runtime.pkg b/src/runtime/runtime.pkg
+index 11498b3..caedc90 100644
+--- a/src/runtime/runtime.pkg
++++ b/src/runtime/runtime.pkg
+@@ -4265,6 +4265,8 @@ USA.
+ (define-package (runtime random-number)
+   (files "random")
+   (parent (runtime))
++  (export (runtime tagged-dispatch)
++	  make-pseudo-random-state)
+   (export deprecated ()
+ 	  (flo:random-unit flo:random-unit-open))
+   (export ()
