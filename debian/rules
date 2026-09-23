@@ -226,6 +226,16 @@ endif
 # Upstream changelog is over 5MB, leave a copy in the doc package but
 # remove it from the binary package to reduce bloat.
 # See http://dedup.debian.net/.
+override_dh_installdeb:
+	dh_installdeb
+# The SVM maintainer scripts need the back end's name.  Working it out at
+# run time would mean calling dpkg-architecture, hence depending on
+# dpkg-dev, which is not Essential; substitute it here instead.
+	for f in debian/mit-scheme-svm/DEBIAN/postinst \
+		 debian/mit-scheme-svm/DEBIAN/prerm; do \
+	    if [ -f $$f ]; then sed -i 's/@SVM_ARCH@/$(SVM_ARCH)/g' $$f; fi; \
+	done
+
 override_dh_installchangelogs-arch:
 	dh_installchangelogs
 	-rm --verbose \

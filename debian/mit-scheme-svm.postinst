@@ -24,15 +24,12 @@ set -e
 
 case "${1}" in
 (configure)
-    # The SVM back end is named by word size and byte order; ask dpkg rather
-    # than keeping a table of every architecture here.
-    BITS=$(dpkg-architecture -a"${DPKG_MAINTSCRIPT_ARCH}" -qDEB_HOST_ARCH_BITS 2>/dev/null)
-    ENDIAN=$(dpkg-architecture -a"${DPKG_MAINTSCRIPT_ARCH}" -qDEB_HOST_ARCH_ENDIAN 2>/dev/null)
-    case ${ENDIAN} in
-	big) ENDIAN=be ;;
-	*)   ENDIAN=le ;;
-    esac
-    BIN_ARCH=svm1-${BITS}${ENDIAN}
+    # The SVM back end's name, substituted by debian/rules at build time.
+    # Asking dpkg-architecture here instead would mean depending on
+    # dpkg-dev, which is not Essential and is absent from a minimal
+    # chroot: the script then died with status 127 and the package would
+    # not install at all.
+    BIN_ARCH=@SVM_ARCH@
     # Up to 12.1-5 the scheme alternative pointed at /usr/bin/mit-scheme,
     # which is itself an alternative.  Two flavours cannot share that, since
     # whichever was removed first would withdraw the entry from under the

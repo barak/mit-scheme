@@ -22,6 +22,11 @@ mit-scheme (12.1-9) unstable; urgency=medium
     representation match the other 64-bit little-endian ports -- and
     uxtrap.h to use __executable_start rather than the legacy _init, which
     the newer ports do not provide.
+  * Substitute the SVM back end name into the maintainer scripts at
+    build time instead of calling dpkg-architecture, which lives in
+    dpkg-dev: that is not Essential and is absent from a minimal chroot,
+    so mit-scheme-svm failed to configure there with status 127
+    (piuparts).
 
  -- Barak A. Pearlmutter <bap@debian.org>  Fri, 18 Sep 2026 07:18:19 +0100
 
