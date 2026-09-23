@@ -10,17 +10,6 @@ include /usr/share/dpkg/pkg-info.mk
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
-# A Scheme heap block is 1024 words, so the microcode's default heap of 3072
-# blocks is 12MB on a 32-bit host, and compiling imail-imap with all of Edwin
-# loaded does not fit.  It cannot simply be made large: with
-# HEAP_IN_LOW_MEMORY the heap has to sit below 2^26 bytes in the address
-# space, so 16384 (64MB, the 64-bit default) will not even start.  10000 is
-# what src/configure.ac gives its own host compiler on svm1-32, for the same
-# reason, and only applies to invocations that do not pass --heap themselves.
-ifeq ($(DEB_HOST_ARCH_BITS),32)
-export MITSCHEME_HEAP_SIZE = 10000
-endif
-
 %:
 	dh $@
 
