@@ -23,10 +23,10 @@ bootstrapped onto both 32/64-bit, little endian, heap-in-low-memory.
 
 Here is what is currently packaged:
 
-| Package          | Back end     | Architecture             |
-|------------------|--------------|--------------------------|
-| `mit-scheme`     | native code  | amd64 arm64              |
-| `mit-scheme-svm` | SVM bytecode | amd64 arm64 i386 ppc64el |
+| Package          | Back end     | Architecture                             |
+|------------------|--------------|------------------------------------------|
+| `mit-scheme`     | native code  | amd64 arm64                              |
+| `mit-scheme-svm` | SVM bytecode | amd64 arm64 i386 ppc64el riscv64 loong64 |
 
 (Reverse dependency note: `scmutils` is the only package depending on
 `mit-scheme`. It installs native code `.com` files into
@@ -77,11 +77,17 @@ Adding an architecture means an entry in each of those, plus the
 `Architecture` field in `debian/control`, plus the corresponding list
 of architectures in Build-depends:.
 
-Note `src/microcode/confshared.h` only recognises i386, arm, aarch64,
-powerpc, powerpc64 and x86_64, and refuses to compile without a match.
-This means that s390x, riscv64, mips64el and loong64 cannot build the
-bytecode interpreter. All the supported architectures are
-little-endian.
+Note `src/microcode/confshared.h` refuses to compile without a machine
+type for the host. It recognises i386, arm, aarch64, powerpc, powerpc64
+and x86_64 upstream; -9 adds riscv64 and loong64, which need nothing but
+a machine type and `HEAP_IN_LOW_MEMORY` because they have no native back
+end. s390x and mips64el still have none, and s390x would additionally
+need a big-endian band (`svm1-64be`) to bootstrap from. All the supported
+architectures are little-endian.
+
+A new port also wants `uxtrap.h`'s `__executable_start` fix: the legacy
+`_init` symbol it used to reference is absent on the newer ports, and
+the microcode does not link without it.
 
 ## Cross-compiling
 

@@ -1,0 +1,38 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Tue, 22 Sep 2026 22:51:07 +0100
+Subject: uxtrap.h: use __executable_start, not the legacy _init
+
+Newer ports do not provide _init at all, so linking the microcode fails
+on loong64 with "undefined reference to `_init'".  __executable_start
+is supplied by the linker on every ELF target, and the NetBSD/aarch64
+case here already redefined _init to it.
+---
+ src/microcode/uxtrap.h | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/src/microcode/uxtrap.h b/src/microcode/uxtrap.h
+index ea2c300..628d56c 100644
+--- a/src/microcode/uxtrap.h
++++ b/src/microcode/uxtrap.h
+@@ -873,15 +873,14 @@ typedef struct
+ #endif
+ 
+ #if defined(__linux__) || defined(__NetBSD__)
+-#  if defined(__NetBSD__) && defined(__aarch64__)
+-/* NetBSD/aarch64 doesn't provide _init.  Maybe we should just always
+-   use __executable_start on NetBSD.  */
+-#    define _init __executable_start
+-#  endif
+-   extern unsigned int _init;
++/* _init is a legacy ELF symbol that the newer ports do not provide at
++   all -- linking fails on loong64 with "undefined reference to `_init'".
++   __executable_start is supplied by the linker on every ELF target, and
++   is what the NetBSD/aarch64 case here already used.  */
++   extern unsigned int __executable_start;
+    extern unsigned int etext;
+ #  define ADDRESS_UCODE_P(addr)						\
+-     ((((unsigned int *) (addr)) >= (&_init))				\
++     ((((unsigned int *) (addr)) >= (&__executable_start))		\
+       && (((unsigned int *) (addr)) <= (&etext)))
+ #endif
+ 

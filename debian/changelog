@@ -16,6 +16,12 @@ mit-scheme (12.1-9) unstable; urgency=medium
     upstream. arm64 still bootstraps from mit-scheme-svm here, because the
     buildd's host is the previous upload; it can switch to the native Scheme
     once a fixed one is in the archive.
+  * Build mit-scheme-svm on riscv64 and loong64. Patch confshared.h to
+    recognise them -- neither has a native back end, so they need only a
+    machine type and HEAP_IN_LOW_MEMORY, which makes their object
+    representation match the other 64-bit little-endian ports -- and
+    uxtrap.h to use __executable_start rather than the legacy _init, which
+    the newer ports do not provide.
 
  -- Barak A. Pearlmutter <bap@debian.org>  Fri, 18 Sep 2026 07:18:19 +0100
 

@@ -1,0 +1,44 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Tue, 22 Sep 2026 22:43:01 +0100
+Subject: confshared.h: recognise riscv64 and loong64 for the SVM back end
+
+Neither has a native-code back end, so all that is needed is a machine
+type for the configuration to be recognised at all, and
+HEAP_IN_LOW_MEMORY so that the object representation matches the other
+64-bit little-endian ports and a band built on one loads on the others.
+---
+ src/microcode/confshared.h | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/src/microcode/confshared.h b/src/microcode/confshared.h
+index c27f209..1db7803 100644
+--- a/src/microcode/confshared.h
++++ b/src/microcode/confshared.h
+@@ -619,6 +619,27 @@ extern void win32_stack_reset (void);
+ #  define HEAP_IN_LOW_MEMORY	1
+ #  define PC_ZERO_BITS		2
+ #endif
++
++/* Ports with no native-code back end, which run the SVM bytecode
++   interpreter instead.  All that is needed is MACHINE_TYPE, so that the
++   configuration is recognised at all, and HEAP_IN_LOW_MEMORY, which
++   selects the same object representation the other 64-bit little-endian
++   ports use, so that a band is interchangeable with them.
++   CURRENT_FASL_ARCH is overridden to svm_fasl_arch at the foot of this
++   file for an SVM build; the value here only keeps a non-SVM build of
++   the interpreter compiling.  */
++
++#if defined(__riscv) && (__riscv_xlen == 64)
++#  define MACHINE_TYPE		"RISC-V-64"
++#  define CURRENT_FASL_ARCH	FASL_UNKNOWN
++#  define HEAP_IN_LOW_MEMORY	1
++#endif
++
++#if defined(__loongarch__) && (__loongarch_grlen == 64)
++#  define MACHINE_TYPE		"LoongArch64"
++#  define CURRENT_FASL_ARCH	FASL_UNKNOWN
++#  define HEAP_IN_LOW_MEMORY	1
++#endif
+ 
+ #ifdef sonyrisc
+       /* On the Sony NEWS 3250, this procedure initializes the

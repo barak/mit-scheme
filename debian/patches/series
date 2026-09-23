@@ -17,3 +17,5 @@
 0017-heap-32bit-default.patch
 0018-clean-keep-makefile-tools.patch
 0019-aarch64-dlink-mask.patch
+0020-confshared.h-riscv64-loong64.patch
+0021-uxtrap.h-executable-start.patch

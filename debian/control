@@ -57,13 +57,13 @@ Description: MIT/GNU Scheme debugging files
  internals while you are debugging.
 
 Package: mit-scheme-svm
-# The architectures that can actually run this.  src/microcode/confshared.h
-# has no machine type for s390x, riscv64 or loong64 and refuses to compile
-# without one, so the limit is the microcode rather than the virtual machine.
-# armhf has a machine type but does not define HEAP_IN_LOW_MEMORY, so it can
-# load neither a band nor FASL files built anywhere else, and cannot be
-# bootstrapped; see debian/NOTES.md.
-Architecture: amd64 arm64 i386 ppc64el
+# The architectures that can actually run this.  The limit is
+# src/microcode/confshared.h, which refuses to compile without a machine
+# type for the host: riscv64 and loong64 gained one in -9, s390x and
+# mips64el still have none.  armhf has one but does not define
+# HEAP_IN_LOW_MEMORY, so it can load neither a band nor FASL files built
+# anywhere else and cannot be bootstrapped; see debian/NOTES.md.
+Architecture: amd64 arm64 i386 ppc64el riscv64 loong64
 Build-Profiles: <!pkg.mit-scheme.nosvm>
 Provides: mit-scheme-interpreter
 Recommends: media-types
