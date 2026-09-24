@@ -159,7 +159,11 @@ static inline void
 set_bytevector_length (SCHEME_OBJECT bv, unsigned long nbytes)
 {
   set_nm_vector_subheader (bv, make_bytevector_subheader (nbytes));
-  bytevector_set (bv, nbytes, 0x00);
+  // Zero to the end of the last allocated word, not just the terminator.
+  // Nothing reads the slack, but fasdump writes whole words, so leaving
+  // it uninitialised puts heap garbage in the output.
+  memset (bytevector_loc (bv, nbytes), 0,
+          (nm_vector_data_length (bv) * sizeof (SCHEME_OBJECT)) - nbytes);
 }
 
 // Unicode strings
@@ -272,7 +276,9 @@ static inline void
 set_legacy_string_length (SCHEME_OBJECT string, unsigned long nchars)
 {
   set_nm_vector_subheader (string, make_legacy_string_subheader (nchars));
-  legacy_string_set (string, nchars, '\0');
+  // Zero the slack as well as the terminator; see set_bytevector_length.
+  memset (legacy_string_loc (string, nchars), 0,
+          (nm_vector_data_length (string) * sizeof (SCHEME_OBJECT)) - nchars);
 }
 
 static inline unsigned long
