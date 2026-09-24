@@ -12,6 +12,7 @@ a given band has always handed every process that runs it the same
 sequence -- this only changes which one.  (That it does so at all is a
 separate bug: (random n) returns the same value on every machine
 running a given band.)
+Forwarded: yes
 ---
  src/runtime/dispatch-tag.scm |  5 ++++-
  src/runtime/random.scm       | 26 ++++++++++++++++++++++++--

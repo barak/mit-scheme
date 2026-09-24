@@ -16,6 +16,7 @@ a build without a Scheme uses it as it stands.
 
 The fragment carries no timestamp, so regenerating it when nothing has
 changed leaves the file alone and starts no rebuild.
+Forwarded: yes
 ---
  src/microcode/Makefile.am            |  45 ++++--
  src/microcode/configure.ac           |   6 +

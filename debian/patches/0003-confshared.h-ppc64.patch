@@ -22,6 +22,7 @@ HEAP_IN_LOW_MEMORY. (That was masked because of issue above which
 loaded the 32-bit PowerPC block which does define it.)
 
 Fix: define HEAP_IN_LOW_MEMORY in the 64-bit PowePC block.
+Applied-Upstream: f5c1801cd, 50fe4bea2 (the HEAP_IN_LOW_MEMORY half is still pending)
 ---
  src/microcode/confshared.h | 6 +++++-
  1 file changed, 5 insertions(+), 1 deletion(-)

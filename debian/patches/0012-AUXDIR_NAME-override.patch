@@ -10,6 +10,7 @@ to select the auxiliary directory name.  Default it the same way.
 The name is otherwise unchanged, so this only matters to a caller that
 sets the variable -- to install two flavours of one version side by side,
 for instance.
+Forwarded: yes
 ---
  src/configure.ac | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

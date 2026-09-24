@@ -9,6 +9,7 @@ hand-maintained header dependencies that automake derives itself.
 findprim keeps a hand-written rule: it runs during the build, so it is
 built with HOST_CC rather than CC, which automake cannot express.
 cmpauxmd keeps its m4 -> .s -> .o chain for the same reason.
+Forwarded: yes
 ---
  src/microcode/Makefile.am  | 142 +++++++++
  src/microcode/Makefile.in  | 738 ---------------------------------------------

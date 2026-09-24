@@ -11,6 +11,7 @@ from it was a huge number to every stack check and to the GC, and the
 build died with SIGSEGV at a point that depended on the memory layout
 -- reproducibly under sbuild, never in a login session.  x86-64 masks
 the value here; do the same.
+Forwarded: yes
 ---
  src/microcode/cmpauxmd/aarch64.m4 | 6 ++++--
  1 file changed, 4 insertions(+), 2 deletions(-)

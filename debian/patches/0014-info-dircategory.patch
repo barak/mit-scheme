@@ -1,8 +1,8 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Fri, 4 Sep 2026 12:00:00 +0000
 Subject: info dircategory
-
 Bug-Debian: https://bugs.debian.org/115450
+Forwarded: not-needed
 
 File the info manuals under "The Algorithmic Language Scheme"
 

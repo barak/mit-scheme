@@ -6,6 +6,7 @@ Neither has a native-code back end, so all that is needed is a machine
 type for the configuration to be recognised at all, and
 HEAP_IN_LOW_MEMORY so that the object representation matches the other
 64-bit little-endian ports and a band built on one loads on the others.
+Forwarded: yes
 ---
  src/microcode/confshared.h | 21 +++++++++++++++++++++
  1 file changed, 21 insertions(+)

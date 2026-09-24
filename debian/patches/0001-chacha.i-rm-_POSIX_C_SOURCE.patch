@@ -1,6 +1,8 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Fri, 4 Sep 2026 12:00:00 +0000
 Subject: chacha.i rm _POSIX_C_SOURCE
+Bug-Debian: https://bugs.debian.org/1145694
+Applied-Upstream: f466e7252 (upstream hoists the definition into the .c files instead)
 
 Drop ineffective late (re)definition of _POSIX_C_SOURCE in chacha.i
 
@@ -23,9 +25,6 @@ Nothing in chacha.i or chacha.h needs anything beyond <stdint.h>, so
 drop the (re)definition rather than hoisting it into the three
 including files. md5.c, keccak.c and blowfish.c keep theirs: those
 define _POSIX_C_SOURCE before any #include so it works as intended.
-
-Bug-Debian: https://bugs.debian.org/1145694
-Forwarded: no
 ---
  src/microcode/chacha.i | 2 --
  1 file changed, 2 deletions(-)

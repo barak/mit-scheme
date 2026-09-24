@@ -16,6 +16,7 @@ automake insists `all' is the default goal, so the aggregate that was
 called `all' is now build-all, and --with-default-target selects it.
 SUBDIRS becomes SRC_SUBDIRS, being a list for Clean.sh and Tags.sh to
 walk rather than sub-packages to recurse into.
+Forwarded: yes
 ---
  src/{Makefile.in => Makefile.am} | 140 +++++++++++++++++++--------------------
  src/configure.ac                 |  32 ++++-----

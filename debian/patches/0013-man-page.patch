@@ -1,10 +1,12 @@
 From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
 Date: Tue, 9 Jun 2020 11:44:33 +0100
-Subject: man page
+Subject: mit-scheme.1: escape literal hyphens
+Forwarded: yes
 
-Forwarded: no
-
-Minor updates to mit-scheme(1).
+In roff a bare "-" is a hyphen, which renders as an en dash in some
+output formats and breaks both copy-and-paste of option names and
+apropos(1) searches for them.  Option names and the command name want
+"\-"; the dash in the NAME line is a real dash, so it becomes "\(em".
 ---
  doc/mit-scheme.1 | 52 +++++++++++++++++++++++++++++++++-------------------
  1 file changed, 33 insertions(+), 19 deletions(-)

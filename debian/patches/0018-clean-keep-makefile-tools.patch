@@ -4,6 +4,7 @@ Subject: Clean.sh: keep Makefile.tools
 
 It is a source file now, not configure output, and "make distclean" must
 not delete it.
+Forwarded: yes
 ---
  src/Clean.sh | 1 -
  1 file changed, 1 deletion(-)

@@ -5,6 +5,7 @@ Subject: Zero the padding at the end of bytevectors and strings
 Nothing reads those bytes, but fasdump writes whole words, so the heap
 garbage in them ends up in .bin and .com files and makes the build
 unreproducible (and leaks heap contents into the output).
+Forwarded: yes
 ---
  src/microcode/bytevector.c | 16 +++++++++++++++-
  src/microcode/extern.h     |  1 +

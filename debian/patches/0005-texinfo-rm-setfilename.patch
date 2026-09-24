@@ -6,6 +6,7 @@ Subject: texinfo rm setfilename
 output name from the input file name, and giving it is now discouraged.
 Each of these names its output exactly as the file itself is named, so
 the line says nothing.
+Forwarded: yes
 ---
  doc/ffi/ffi.texinfo                   | 1 -
  doc/ref-manual/scheme.texinfo         | 1 -

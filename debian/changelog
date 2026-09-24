@@ -1,4 +1,4 @@
-mit-scheme (12.1-10) UNRELEASED; urgency=medium
+mit-scheme (12.1-10) unstable; urgency=medium
 
   * Desktop icon: add opaque white background for visibiliy. Inkscape
     insisted on updating from 90 to 96 dpi.

@@ -17,6 +17,7 @@ a stale .bci at least as well as a random value did.
 
 sf/toplev.scm stamped every .bin with the wall clock.  Honour
 SOURCE_DATE_EPOCH when it is set.
+Forwarded: yes
 ---
  src/compiler/base/toplev.scm | 17 ++++++++++++++++-
  src/sf/toplev.scm            | 14 +++++++++++++-

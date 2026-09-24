@@ -17,6 +17,7 @@ restore time, and give the random source a fixed state.  Reset and
 randomize again once the dump is done; a restored band resets through
 event:after-restore.  Take the saved-world time from SOURCE_DATE_EPOCH
 when it is set.
+Forwarded: yes
 ---
  src/runtime/gcstat.scm  | 38 +++++++++++++++++++++++++++++++++-----
  src/runtime/runtime.pkg |  6 +++++-

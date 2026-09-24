@@ -11,6 +11,7 @@ bignum zero and the cold load dies in initialize-cache-numbers!.
 Compute them from target-bytes-per-object, remember what word size the
 cache was built for, and rebuild it if that has changed by the time a
 usual-integrations declaration is processed.
+Forwarded: yes
 ---
  src/sf/pardec.scm |  1 +
  src/sf/usicon.scm | 26 +++++++++++++++++++++-----

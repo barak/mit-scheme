@@ -6,6 +6,7 @@ Subject: configure: size the host compiler heap by the host, not the target
 host cross-compiling to svm1-32le that is a cut from the 128MB default
 to 80MB, and compile-runtime dies with "Aborting!: out of memory".  Ask
 the host Scheme its word size instead.
+Forwarded: yes
 ---
  src/configure.ac | 15 +++++++++------
  1 file changed, 9 insertions(+), 6 deletions(-)

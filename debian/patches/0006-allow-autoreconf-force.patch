@@ -2,7 +2,6 @@ From: "Barak A. Pearlmutter" <barak+git@cs.nuim.ie>
 Date: Mon, 22 Jul 2013 19:58:13 +0200
 Subject: allow autoreconf force
 
-Forwarded: no
 
 autoreconf --force in src/ regenerates configure without expanding
 MIT_SCHEME_NATIVE_CODE, and says nothing about it: no aclocal.m4 there,
@@ -12,6 +11,7 @@ and nothing tells aclocal where the macro lives.
   aclocal.m4 being aclocal's own output file
 
 - name that directory with AC_CONFIG_MACRO_DIR in both configure.ac
+Forwarded: yes
 ---
  src/configure.ac                                        | 1 +
  src/microcode/configure.ac                              | 1 +

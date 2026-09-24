@@ -18,6 +18,7 @@ contradicts the up pointers in their own @node lines:
 
 Note that an identical list to the one deleted is in Top's menu one
 screen earlier.
+Forwarded: yes
 ---
  doc/sos/sos.texinfo | 9 ---------
  1 file changed, 9 deletions(-)

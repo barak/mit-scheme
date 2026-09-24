@@ -6,6 +6,7 @@ Newer ports do not provide _init at all, so linking the microcode fails
 on loong64 with "undefined reference to `_init'".  __executable_start
 is supplied by the linker on every ELF target, and the NetBSD/aarch64
 case here already redefined _init to it.
+Forwarded: yes
 ---
  src/microcode/uxtrap.h | 13 ++++++-------
  1 file changed, 6 insertions(+), 7 deletions(-)

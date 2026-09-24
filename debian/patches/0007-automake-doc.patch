@@ -14,6 +14,7 @@ install under.
 
 The split HTML tree is the one output automake does not cover; it keeps
 an explicit rule, with its own --output.
+Forwarded: yes
 ---
  doc/Makefile.am                                    |  12 ++
  doc/Makefile.in                                    | 149 ------------------

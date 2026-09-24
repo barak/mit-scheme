@@ -25,6 +25,7 @@ otherwise. gcc already sees it:
     [0, 8] of object 'block' with type 'uint8_t[8]' [-Warray-bounds=]
 
 Use sizeof(IV), which is what was meant.
+Applied-Upstream: b48d9dea3
 ---
  src/blowfish/blowfish.c | 12 ++++++------
  1 file changed, 6 insertions(+), 6 deletions(-)

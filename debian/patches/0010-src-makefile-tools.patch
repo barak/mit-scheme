@@ -11,6 +11,7 @@ three in from the makefile that invokes it and no .in is needed.
 It stays a separate makefile: it defines the same seventeen syntax-* and
 compile-* targets as Makefile.am, for the host toolchain rather than the
 target, and "make -f" is what keeps the two apart.
+Forwarded: yes
 ---
  src/Makefile.am                           | 14 +++++++--
  src/{Makefile.tools.in => Makefile.tools} | 51 ++++++-------------------------
