@@ -637,6 +637,27 @@ extern void win32_stack_reset (void);
 #  define HEAP_IN_LOW_MEMORY	1
 #  define PC_ZERO_BITS		2
 #endif
+
+/* Ports with no native-code back end, which run the SVM bytecode
+   interpreter instead.  All that is needed is MACHINE_TYPE, so that the
+   configuration is recognised at all, and HEAP_IN_LOW_MEMORY, which
+   selects the same object representation the other 64-bit little-endian
+   ports use, so that a band is interchangeable with them.
+   CURRENT_FASL_ARCH is overridden to svm_fasl_arch at the foot of this
+   file for an SVM build; the value here only keeps a non-SVM build of
+   the interpreter compiling.  */
+
+#if defined(__riscv) && (__riscv_xlen == 64)
+#  define MACHINE_TYPE		"RISC-V-64"
+#  define CURRENT_FASL_ARCH	FASL_UNKNOWN
+#  define HEAP_IN_LOW_MEMORY	1
+#endif
+
+#if defined(__loongarch__) && (__loongarch_grlen == 64)
+#  define MACHINE_TYPE		"LoongArch64"
+#  define CURRENT_FASL_ARCH	FASL_UNKNOWN
+#  define HEAP_IN_LOW_MEMORY	1
+#endif
 
 #ifdef sonyrisc
       /* On the Sony NEWS 3250, this procedure initializes the
