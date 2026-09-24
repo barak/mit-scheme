@@ -2,8 +2,11 @@ mit-scheme (12.1-10) UNRELEASED; urgency=medium
 
   * Desktop icon: add opaque white background for visibiliy. Inkscape
     insisted on updating from 90 to 96 dpi.
+  * Cut the AUXDIR_NAME patch down to letting the environment choose the
+    auxiliary directory name, and set it in debian/rules for both
+    flavours instead of patching Debian's choice into configure.
 
- -- Barak A. Pearlmutter <bap@debian.org>  Thu, 24 Sep 2026 10:22:07 +0100
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 24 Sep 2026 15:36:24 +0100
 
 mit-scheme (12.1-9) unstable; urgency=medium
 

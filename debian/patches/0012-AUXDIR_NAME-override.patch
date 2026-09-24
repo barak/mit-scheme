@@ -1,0 +1,29 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Wed, 3 Jul 2013 21:00:45 +0100
+Subject: configure: let AUXDIR_NAME be set from the environment
+
+src/microcode/configure.ac already defaults it with ":${AUXDIR_NAME:=...}",
+so it can be chosen from outside; src/configure.ac assigned it
+unconditionally and then exported it, which overrode that and left no way
+to select the auxiliary directory name.  Default it the same way.
+
+The name is otherwise unchanged, so this only matters to a caller that
+sets the variable -- to install two flavours of one version side by side,
+for instance.
+---
+ src/configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/configure.ac b/src/configure.ac
+index c5ba6a3..8b09609 100644
+--- a/src/configure.ac
++++ b/src/configure.ac
+@@ -168,7 +168,7 @@ esac
+ 
+ MIT_SCHEME_ARCH=${mit_scheme_native_code}
+ MIT_SCHEME_VERSION=${PACKAGE_VERSION}
+-AUXDIR_NAME=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}
++: "${AUXDIR_NAME:=mit-scheme-${MIT_SCHEME_ARCH}-${MIT_SCHEME_VERSION}}"
+ AUXDIR='$(libdir)'/${AUXDIR_NAME}
+ MIT_SCHEME_LIBDIR=${AUXDIR}/
+ MIT_SCHEME_INCLUDEDIR=`pwd`/lib/

@@ -9,7 +9,7 @@
 0009-automake-src.patch
 0010-src-makefile-tools.patch
 0011-automake-microcode-makegen.patch
-0012-AUXDIR_NAME-sans-arch.patch
+0012-AUXDIR_NAME-override.patch
 0013-man-page.patch
 0014-info-dircategory.patch
 0015-configure-host-heap.patch

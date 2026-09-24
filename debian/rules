@@ -44,7 +44,11 @@ export BIN_ARCH
 SVM_ARCH := svm1-$(DEB_HOST_ARCH_BITS)$(if $(filter little,$(DEB_HOST_ARCH_ENDIAN)),le,be)
 export SVM_ARCH
 
-# Its own auxiliary directory, or it would overwrite the native build's.
+# Upstream's default auxiliary directory is mit-scheme-<arch>-<version>;
+# the architecture is already in the multiarch triplet and the version
+# would move on every upload, so name it for the flavour instead.  The two
+# flavours need different names to be co-installable.
+NATIVE_AUXDIR_NAME := mit-scheme
 SVM_AUXDIR_NAME := mit-scheme-svm
 SVM_BUILDDIR := build-svm
 
@@ -120,7 +124,8 @@ ifeq ($(BOOTSTRAP),yes)
 endif
 # -arch
 ifeq ($(BUILD_NATIVE),yes)
-	dh_auto_configure --sourcedirectory=src -- \
+	AUXDIR_NAME=$(NATIVE_AUXDIR_NAME) \
+	 dh_auto_configure --sourcedirectory=src -- \
 	  $(CONF_FLAGS) $(NATIVE_CONF_FLAGS) --enable-native-code=$(BIN_ARCH)
 endif
 ifeq ($(BUILD_SVM),yes)
